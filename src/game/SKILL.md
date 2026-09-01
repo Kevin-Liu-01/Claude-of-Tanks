@@ -82,9 +82,13 @@ look height, and FOV; stage, pedestal, activation, and return paths must consume
 it without variant-specific branches. `garageStage.ts` owns the restored exact
 Verdant indoor workshop. `garageEnvironmentKit.ts` owns the other nine bounded
 scene packs: generated real-terrain excerpts, authored world-space perimeter
-structures, static tree-grove/ground-cover instances, a generated first-party
-wreck proxy, Garage-sized PBR derivatives, the finite sky and three-layer
-terrain horizon. `garageFacilityDetails.ts` flattens two-sided service bays,
+districts of seven real map structures, static tree-grove/ground-cover instances,
+a generated first-party wreck proxy, Garage-sized PBR derivatives, the finite
+sky and three-layer terrain horizon. `garageApproachDetails.ts` owns one
+terrain-following arrival route per map identity (including Cinder's three-road
+rail fan), while `exteriorDetailKit.ts` certifies every sill, pier, awning,
+ladder, pipe, balcony, and service fixture against its wall, roof, or ground
+support before those facades merge. `garageFacilityDetails.ts` flattens two-sided service bays,
 equipment, first-party tank-part vocabulary, and low-poly service vehicles into
 seven non-overlapping terrain terraces per pack; the architecture probe must
 keep their measured contact error at or below 0.1 m. It must never import a
@@ -93,8 +97,12 @@ or per-frame update port to a Garage environment module. `garageDressingAccess.t
 demand-loads one shared, optimized four-bay modern maintenance layer after
 Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten
 environments; Verdant alone may show wall-mounted interior clutter. Keep the
-fleet load behind the quiet-window scheduler, reuse one graph across variants,
-and never duplicate it per scene pack.
+fleet load behind the quiet-window scheduler, build the four full-detail static
+meshes in `garageWorkshopGeometryWorker.ts`, reconstruct them with the ordinary
+vehicle PBR palette in cooperative frame slices, reuse one graph across variants,
+and never duplicate it per scene pack. Transfer worker-computed bounds with the
+attributes; never rescan the full vertex stream on the render thread. The worker
+entry may import only those four exhibit families.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive

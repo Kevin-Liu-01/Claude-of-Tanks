@@ -544,10 +544,16 @@ export function addConnectedExterior(
 }
 
 const CATALOG_PROFILES: Readonly<Record<string, string>> = {
-  farmhouse: 'rural', granary: 'timber', chapel: 'civic', logcabin: 'timber',
-  alpine: 'timber', woodshed: 'timber', minaret: 'desert', cornershop: 'urban',
-  depot: 'industrial', warehouse: 'industrial', boatshed: 'timber',
+  farmhouse: 'rural', tavern: 'rural', granary: 'timber', chapel: 'civic',
+  logcabin: 'timber', alpine: 'timber', rangerlodge: 'timber', woodshed: 'timber',
+  minaret: 'desert', caravanserai: 'desert', bathhouse: 'desert',
+  cornershop: 'urban', church: 'civic', civichall: 'civic', firestation: 'industrial',
+  factory: 'industrial', foundryoffice: 'industrial', depot: 'industrial',
+  warehouse: 'industrial', fishery: 'industrial', boatshed: 'timber',
   lighthouse: 'civic', shed: 'industrial', compound: 'desert',
+  onionchurch: 'civic', mill: 'rural', netyard: 'open',
+  parkingdeck: 'industrial', gantry: 'open', containerrow: 'industrial',
+  watertower: 'industrial', stack: 'industrial',
 };
 
 function inferCenteredWallEnvelope(

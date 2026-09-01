@@ -58,7 +58,8 @@ export interface GarageWorkshopFleet {
   createVisual(
     specId: string,
     options?: Readonly<Record<string, unknown>>,
-  ): GarageWorkshopVisual;
+  ): Promise<GarageWorkshopVisual>;
+  dispose?(): void;
 }
 
 export interface GarageDressingExisting {
@@ -84,6 +85,16 @@ const WORKSHOP_FLEET_IDS = Object.freeze([
   't90a_burlak', 'm1a2', 't90m', 'k2',
 ] as const);
 const WORKSHOP_FLEET_ID_SET = new Set<string>(WORKSHOP_FLEET_IDS);
+const WORKSHOP_PRESENTATION_OPTIONS = Object.freeze({
+  // Full authored geometry and fittings; `ai` only halves the hidden texture
+  // bake size. The former low/low/no-decor tier visibly removed running-gear,
+  // stowage and turret detail from tanks that remain readable on Garage orbit.
+  quality: 'ai',
+  geometryQuality: 'high',
+  staticPreview: true,
+  decor: true,
+  deferStaticBatch: true,
+} as const);
 const WORKSHOP_CHUNK_VEHICLE_IDS = Object.freeze([
   null, 't90a_burlak', 'm1a2', 't90m', 'k2', null, null,
 ] as const);
@@ -122,6 +133,8 @@ export async function prepareGarageDressing(
   engineCtx: GarageDressingEngineContext,
 ): Promise<GarageWorkshopFleet> {
   const { createTank, ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
+  const { createGarageWorkshopTransfer } = await import('./garageWorkshopTransfer.ts');
+  const transfer = createGarageWorkshopTransfer(engineCtx);
   return {
     async ensureVisualBuilder(specId: string) {
       if (!WORKSHOP_FLEET_ID_SET.has(specId)) {
@@ -129,17 +142,22 @@ export async function prepareGarageDressing(
       }
       await ensureTankBuilder(specId);
     },
-    createVisual(specId: string, options: Readonly<Record<string, unknown>> = {}) {
-      return createTank(specId, engineCtx, {
-        camoSeed: 4200,
-        quality: 'low',
-        geometryQuality: 'low',
-        staticPreview: true,
-        decor: false,
-        deferStaticBatch: true,
-        ...options,
-      });
+    async createVisual(specId: string, options: Readonly<Record<string, unknown>> = {}) {
+      const camoSeed = typeof options.camoSeed === 'number' ? options.camoSeed : 4200;
+      try {
+        return await transfer.createVisual(specId, camoSeed);
+      } catch (error) {
+        // Module workers are supported by every production target, but keep a
+        // deterministic recovery path for restrictive embedded browsers.
+        console.warn('[garageDressing] workshop worker unavailable; using main-thread fallback', error);
+        return createTank(specId, engineCtx, {
+          camoSeed,
+          ...WORKSHOP_PRESENTATION_OPTIONS,
+          ...options,
+        });
+      }
     },
+    dispose() { transfer.dispose(); },
   };
 }
 
@@ -619,18 +637,14 @@ export function createGarageDressing(
     return object;
   }
 
-  function createLegacyVisual(
+  async function createLegacyVisual(
     specId: 't90a_burlak' | 'm1a2' | 't90m' | 'k2',
     camoSeed: number,
-  ): GarageWorkshopVisual {
+  ): Promise<GarageWorkshopVisual> {
     if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
-    const visual = workshopFleet.createVisual(specId, {
+    const visual = await workshopFleet.createVisual(specId, {
       camoSeed,
-      quality: 'low',
-      geometryQuality: 'low',
-      staticPreview: true,
-      decor: false,
-      deferStaticBatch: true,
+      ...WORKSHOP_PRESENTATION_OPTIONS,
     });
     visual.resetForGaragePresentation?.();
     pendingTankReveal = visual.root;
@@ -866,7 +880,7 @@ export function createGarageDressing(
     return currentVariant.id;
   }
 
-  const chunks: Array<() => void> = [];
+  const chunks: Array<() => void | Promise<void>> = [];
 
   // ==========================================================================
   // CHUNK 1 — static workshop clutter on every wall + floor decals
@@ -1268,8 +1282,8 @@ export function createGarageDressing(
   // CHUNK 2 — ORIGINAL VERDANT BAY A: T-90A Burlak on jack stands with its
   // turret lifted under the gantry. Positions are the pre-overhaul coordinates.
   // ==========================================================================
-  chunks.push(function buildOriginalVerdantBurlakBay() {
-    const visual = createLegacyVisual('t90a_burlak', 777);
+  chunks.push(async function buildOriginalVerdantBurlakBay() {
+    const visual = await createLegacyVisual('t90a_burlak', 777);
     const tank = markModernPart(visual.root, 't90a_burlak', 'gantry_repair_vehicle');
     tank.name = 'dressing_tank_a';
     tank.rotation.y = -0.55;
@@ -1393,8 +1407,8 @@ export function createGarageDressing(
   // CHUNK 3 — shared M1A2 bay with its side skirts pulled, tools, creeper and
   // welding cable.
   // ==========================================================================
-  chunks.push(function buildAbramsAndOriginalVerdantBay() {
-    const visual = createLegacyVisual('m1a2', 1440);
+  chunks.push(async function buildAbramsAndOriginalVerdantBay() {
+    const visual = await createLegacyVisual('m1a2', 1440);
     const tank = markModernPart(visual.root, 'm1a2', 'skirt_repair_vehicle');
     tank.name = 'dressing_tank_b';
     tank.rotation.y = -2.03;
@@ -1486,8 +1500,8 @@ export function createGarageDressing(
   // CHUNK 4 — shared T-90M turret, exact gun rig, timber cradle and Relikt
   // service rack.
   // ==========================================================================
-  chunks.push(function buildT90AndOriginalVerdantComponents() {
-    const visual = createLegacyVisual('t90m', 1540);
+  chunks.push(async function buildT90AndOriginalVerdantComponents() {
+    const visual = await createLegacyVisual('t90m', 1540);
     const tank = markModernPart(visual.root, 't90m', 'turret_cradle');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
@@ -1573,8 +1587,8 @@ export function createGarageDressing(
   // CHUNK 5 — ORIGINAL VERDANT K2 teardown: rolled source hull, its exact
   // road wheels and shoes, timber cradle, and the M2/DShK service table.
   // ==========================================================================
-  chunks.push(function buildOriginalVerdantK2Teardown() {
-    const visual = createLegacyVisual('k2', 172);
+  chunks.push(async function buildOriginalVerdantK2Teardown() {
+    const visual = await createLegacyVisual('k2', 172);
     const tank = markModernPart(visual.root, 'k2', 'side_hull');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
@@ -1795,7 +1809,7 @@ export function createGarageDressing(
       const label = WORKSHOP_CHUNK_LABELS[next] || fn.name || `chunk-${next}`;
       const startedAt = performance.now();
       try {
-        fn();
+        await fn();
         // Building and first drawing a new static tank in the same frame
         // combines CPU geometry work with shader/program submission. Finish
         // all seating/teardown edits first, then hide the completed object
@@ -1845,6 +1859,7 @@ export function createGarageDressing(
       battleScreenMaterial = null;
       for (const visual of workshopVisuals) visual.dispose();
       workshopVisuals.length = 0;
+      workshopFleet?.dispose?.();
       for (const o of group.userData.optimizationDisposables || []) o.dispose?.();
       group.userData.optimizationDisposables = [];
       for (const o of disposables) if (o && o.dispose) o.dispose();

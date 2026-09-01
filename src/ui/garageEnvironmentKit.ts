@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { GarageVariant } from '../game/garageVariants.ts';
-import type { GeometryBuckets } from '../world/maps/exteriorDetailKit.ts';
+import {
+  addCatalogExterior,
+  type GeometryBuckets,
+} from '../world/maps/exteriorDetailKit.ts';
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
@@ -18,6 +21,10 @@ import {
   addGarageFacilityDetails,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
+import {
+  addGarageApproachDetails,
+  type GarageApproachStats,
+} from './garageApproachDetails.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -47,6 +54,15 @@ export interface GarageEnvironmentStats {
   readonly wrecks: number;
   readonly facilityProps: number;
   readonly facilityStations: number;
+  readonly approachLabel: string;
+  readonly approachStyle: string;
+  readonly approachSegments: number;
+  readonly approachDetails: number;
+  readonly approachConnected: boolean;
+  readonly approachGroundErrorM: number;
+  readonly connectedExteriorParts: number;
+  readonly connectedExteriorBuildings: number;
+  readonly maxExteriorSupportGapM: number;
   readonly looseParts: number;
   readonly railSegments: number;
   readonly serviceVehicles: number;
@@ -98,7 +114,7 @@ const SURFACE_FILES: Readonly<Record<GarageSurfaceKey, readonly [string, string]
 
 const MAX_RESIDENT_TEXTURE_SETS = 9;
 const BUCKET_KEYS = [
-  'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'baked',
+  'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'baked', 'route',
 ] as const;
 type BucketKey = typeof BUCKET_KEYS[number];
 
@@ -548,7 +564,7 @@ export function buildGarageEnvironment(
 
   const combined = createBuckets();
   const rng = mulberry32(seed);
-  const structureRecords = recipe.structures.map((placement) => {
+  const structureRecords = recipe.structures.map((placement, structureIndex) => {
     // These are authored world-space perimeter stations, not five buildings
     // squeezed into one camera-facing strip. The shared coordinates keep
     // every footprint inside the compact patch while giving the environment
@@ -556,8 +572,21 @@ export function buildGarageEnvironment(
     const { x, z } = placement;
     const local = createBuckets();
     const dimensions = placement.builder(rng, local);
+    const catalogId = placement.builder.name.replace(/^make/, '').toLowerCase();
+    addCatalogExterior(local, {
+      id: catalogId,
+      info: dimensions,
+      variant: structureIndex,
+    });
+    const supports = Object.values(local)
+      .filter((value): value is THREE.BufferGeometry[] => Array.isArray(value))
+      .flatMap((geometries) => geometries)
+      .map((geometry) => geometry.userData.structureSupport)
+      .filter((support): support is { gap: number } => !!support && Number.isFinite(support.gap));
+    const exteriorParts = supports.length;
+    const exteriorSupportGap = Math.max(0, ...supports.map((support) => support.gap));
     const y = samplePatch(patch, heights, x, z);
-    return { placement, local, dimensions, x, z, y };
+    return { placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap };
   });
 
   // Cut a compact, feathered service terrace beneath each real structure.
@@ -779,6 +808,20 @@ export function buildGarageEnvironment(
         groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
         variant,
       });
+  const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
+    ? Object.freeze({
+        approachLabel: recipe.approach.label,
+        approachStyle: recipe.approach.style,
+        approachSegments: 0,
+        approachDetails: 0,
+        approachConnected: true,
+        approachGroundErrorM: 0,
+      })
+    : addGarageApproachDetails({
+        approach: recipe.approach,
+        buckets: combined,
+        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+      });
   for (const mesh of facilityDetails.meshes) {
     track(mesh.geometry);
     root.add(mesh);
@@ -798,6 +841,11 @@ export function buildGarageEnvironment(
       case 'wood': return texturedMaterial('wood', { color: 0xc1ad90, roughness: 0.89 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
+      case 'route': return texturedMaterial(recipe.approach.surface, {
+        color: new THREE.Color(recipe.hardstandTint).lerp(new THREE.Color(0xffffff), 0.10),
+        roughness: 0.94,
+        metalness: recipe.approach.style === 'drydock-lane' ? 0.08 : 0.01,
+      });
       default: return plainMaterial({ color: 0x55595a, roughness: 0.68, metalness: 0.30 });
     }
   };
@@ -1012,6 +1060,8 @@ export function buildGarageEnvironment(
   const stats: GarageEnvironmentStats = Object.freeze({
     distinctiveElements: Object.freeze([
       ...recipe.distinctiveElements,
+      recipe.approach.label,
+      'connected high-detail map facades',
       'three-layer map-derived terrain horizon',
       'first-party M1A2 wreck silhouettes',
       'static biome ground cover',
@@ -1036,6 +1086,13 @@ export function buildGarageEnvironment(
     structures: recipe.structures.length,
     wrecks: wreckPlacements.length,
     ...facilityDetails,
+    ...approachDetails,
+    connectedExteriorParts: structureRecords.reduce((sum, record) => sum + record.exteriorParts, 0),
+    connectedExteriorBuildings: structureRecords.filter((record) => record.exteriorParts > 0).length,
+    maxExteriorSupportGapM: Number(Math.max(
+      0,
+      ...structureRecords.map((record) => record.exteriorSupportGap),
+    ).toFixed(4)),
     placementOverlaps,
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     triangles: Math.round(triangles),

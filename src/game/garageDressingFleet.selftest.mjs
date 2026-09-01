@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 
 const dressing = await readFile(new URL('./garageDressing.ts', import.meta.url), 'utf8');
 const access = await readFile(new URL('./garageDressingAccess.ts', import.meta.url), 'utf8');
+const worker = await readFile(new URL('./garageWorkshopGeometryWorker.ts', import.meta.url), 'utf8');
+const transfer = await readFile(new URL('./garageWorkshopTransfer.ts', import.meta.url), 'utf8');
 const stage = await readFile(new URL('../ui/garageStage.ts', import.meta.url), 'utf8');
 
 assert.match(dressing, /import\('\.\.\/vehicles\/fleetFactory\.ts'\)/,
@@ -11,10 +13,21 @@ assert.match(dressing, /ensureTankBuilder\(specId\)/);
 assert.match(dressing, /WORKSHOP_CHUNK_VEHICLE_IDS\[next\]/,
   'one exact fleet builder must be resolved per streamed workshop slice');
 assert.match(dressing,
-  /quality: 'low'[\s\S]*geometryQuality: 'low'[\s\S]*staticPreview: true[\s\S]*decor: false[\s\S]*deferStaticBatch: true/,
-  'distant workshop tanks preserve exact fleet silhouettes on the bounded static tier');
+  /WORKSHOP_PRESENTATION_OPTIONS[\s\S]*quality: 'ai'[\s\S]*geometryQuality: 'high'[\s\S]*staticPreview: true[\s\S]*decor: true[\s\S]*deferStaticBatch: true/,
+  'workshop tanks retain full authored geometry and fittings on the bounded static tier');
 assert.doesNotMatch(dressing, /renderer\.compile\(/,
   'workshop streaming must not synchronously compile a decorative subtree');
+assert.match(dressing, /await transfer\.createVisual\(specId, camoSeed\)/,
+  'full-detail exhibit geometry must be acquired away from the render thread');
+assert.match(transfer, /new Worker\(new URL\('\.\/garageWorkshopGeometryWorker\.ts'/,
+  'the workshop transfer must lazily own its dedicated module worker');
+assert.match(worker, /geometryQuality: 'high'[\s\S]*decor: true/,
+  'worker exhibits retain full procedural detail and fittings');
+assert.doesNotMatch(worker, /fleetFactory|ensureFullFleet|ensureTankBuilder/,
+  'the worker must not package the full playable fleet facade');
+for (const owner of ['T90_PROFILES', 'ABRAMS_PROFILES', 'MODERN3_BUILDERS']) {
+  assert.match(worker, new RegExp(owner), `worker must register its bounded ${owner} family`);
+}
 for (const id of ['t90a_burlak', 'm1a2', 't90m', 'k2']) {
   assert.match(dressing, new RegExp(`createLegacyVisual\\('${id}'`));
 }
@@ -79,7 +92,7 @@ assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,
 assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| document\.hidden\) return/,
   'the screen timer must stop instead of polling during battle or background tabs');
 assert.match(access, /prepareGarageDressing\?\./,
-  'the access boundary prepares fleet builders before the synchronous chunk pump');
+  'the access boundary prepares fleet builders before the quiet chunk pump');
 assert.doesNotMatch(stage, /openRoof = new Set\(\['field_shed'/,
   'Verdant must retain the original enclosed ceiling and roof trusses');
 assert.match(stage, /NO SMOKING\|FLAMMABLE\|FIRE/,

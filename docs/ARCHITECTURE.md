@@ -901,8 +901,14 @@ outdoor Standard/CSM, instancing, vertex-color, glass, sky, and horizon program
 variants during the covered first frame, so a browser without parallel shader
 compile cannot move its first link stall onto an environment click.
 The outdoor packs use generated 41x37 height excerpts from their real battlefield
-spawn terrain, camera-space staged connected map structures, real instanced tree
-kits, static biome ground cover, and three terrain-derived relief bands. Two background hulks
+spawn terrain, seven connected map structures distributed around the full
+perimeter, real instanced tree kits, static biome ground cover, and three
+terrain-derived relief bands. `garageApproachDetails.ts` adds one continuous
+terrain-following route from the outer district to the podium—rail fan, urban
+boulevard, drydock causeway, snow road, convoy track, alpine pass, monsoon
+causeway, recovery trail, or foundry haul road. `exteriorDetailKit.ts` validates
+every added facade fixture against its exact support before the building is
+merged. Two background hulks
 reuse a 208-triangle proxy generated from the first-party M1A2 wreck pose; no
 fleet builder enters the Garage graph. `garageFacilityDetails.ts` merges
 arbitrary maintenance assemblies and emits repeated opaque crates, cylinders,
@@ -927,7 +933,12 @@ every Garage and are recomposed by the destination layout. The single static
 graph is reused across all ten variants; only Verdant reveals the additional
 wall-mounted clutter supported by its enclosed shell. The quiet-window
 scheduler serializes fleet preparation and chunk construction, and the phase
-owner detaches the complete layer during battle.
+owner detaches the complete layer during battle. The optional exhibit geometry
+factory runs in `garageWorkshopGeometryWorker.ts`; its entry registers only the
+four required families, transfers full high-detail buffers with worker-computed
+bounds, and never blocks the Garage render loop with a synchronous fleet build.
+`garageWorkshopTransfer.ts` reconstructs the hierarchy in bounded frame slices
+before the quiet scheduler reveals each finished exhibit.
 
 ### 3.8 fx — `src/fx/`
 

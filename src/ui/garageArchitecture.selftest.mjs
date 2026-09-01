@@ -61,9 +61,9 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.enclosingSurfaces, 0,
     `${variant.id} must remain an open Garage environment`);
   assert.equal(stats.source, 'authentic-garage-scene-pack');
-  assert.ok(stats.objects >= 8 && stats.drawCalls <= 24,
+  assert.ok(stats.objects >= 8 && stats.drawCalls <= 26,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
-  assert.ok(stats.triangles > 0 && stats.triangles <= 30_000,
+  assert.ok(stats.triangles > 0 && stats.triangles <= 50_000,
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
@@ -86,8 +86,20 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must retain bounded static biome ground cover`);
   assert.equal(stats.wrecks, 2,
     `${variant.id} must stage two first-party background wrecks`);
-  assert.equal(stats.structures, 5,
-    `${variant.id} must frame the hero with five connected map structures`);
+  assert.equal(stats.structures, 7,
+    `${variant.id} must surround the hero with seven connected map structures`);
+  assert.ok(stats.connectedExteriorBuildings >= 3,
+    `${variant.id} must apply connected exterior detail to its building district`);
+  assert.ok(stats.connectedExteriorParts >= 120,
+    `${variant.id} must retain high-detail supported facades`);
+  assert.ok(stats.maxExteriorSupportGapM <= 0.065,
+    `${variant.id} exterior fixtures must touch their authored supports`);
+  assert.ok(stats.approachConnected && stats.approachSegments >= 8,
+    `${variant.id} must carry one continuous map-authored approach to the platform`);
+  assert.ok(stats.approachDetails >= 20,
+    `${variant.id} approach must include route-specific infrastructure`);
+  assert.ok(stats.approachGroundErrorM <= 0.01,
+    `${variant.id} approach must follow the sampled battlefield terrain`);
   assert.ok(stats.facilityProps >= 100,
     `${variant.id} must distribute a complete service facility around the hero`);
   assert.equal(stats.facilityStations, 2,

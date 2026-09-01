@@ -331,6 +331,14 @@ genuine input and transition lull. The background battlefield builder observes
 the same garage-activity epoch, so optional world and workshop work cannot
 independently pile onto an interactive frame.
 
+`garageWorkshopGeometryWorker.ts` contains a deliberately closed four-family
+factory for the Burlak, Abrams, T-90M, and K2 exhibits. It builds the same full
+procedural geometry away from the render thread and transfers typed attributes
+plus exact geometry bounds; `garageWorkshopTransfer.ts` reconstructs the rig
+hierarchy with normal vehicle PBR materials in cooperative frame slices. The
+worker is created only when the first quiet exhibit slice
+actually runs and must never import the full fleet facade.
+
 `garagePedestalRuntime.ts` owns the selected hero as one lifecycle: construction,
 off-stage shader submission, warm visual LRU, stale-switch cancellation,
 watchdog convergence, and reuse across the battle boundary. It composes
@@ -348,10 +356,9 @@ and generated merge buffers have an explicit disposal owner. Transparent or
 specialized meshes and authored fleet exhibits stay independent; authored
 proxy shadows and every visible surface remain intact.
 
-The four distant repair/salvage exhibits use the normal first-party
-distance-tessellation builders. Their authored proportions and materials stay
-unchanged while sub-pixel geometry is removed; the selectable hero remains at
-full geometry quality. Repair-bay vehicles still batch compatible static
+The four distant repair/salvage exhibits use full-detail first-party builders.
+Their authored proportions, fittings, running gear, and material language stay
+intact; only the canvas texture tier is bounded for distance. Repair-bay vehicles still batch compatible static
 fittings. Independently staged salvage turret and hull exhibits remain
 unbatched because their named component subtrees are part of the workshop
 choreography.

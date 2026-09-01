@@ -48,6 +48,15 @@ export interface GarageArchitectureStats {
   wrecks: number;
   facilityProps: number;
   facilityStations: number;
+  approachLabel: string;
+  approachStyle: string;
+  approachSegments: number;
+  approachDetails: number;
+  approachConnected: boolean;
+  approachGroundErrorM: number;
+  connectedExteriorParts: number;
+  connectedExteriorBuildings: number;
+  maxExteriorSupportGapM: number;
   looseParts: number;
   railSegments: number;
   serviceVehicles: number;
@@ -93,6 +102,15 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     wrecks: 0,
     facilityProps: 0,
     facilityStations: 4,
+    approachLabel: 'original enclosed workshop floor',
+    approachStyle: 'farm-lane',
+    approachSegments: 0,
+    approachDetails: 0,
+    approachConnected: true,
+    approachGroundErrorM: 0,
+    connectedExteriorParts: 0,
+    connectedExteriorBuildings: 0,
+    maxExteriorSupportGapM: 0,
     looseParts: 0,
     railSegments: 0,
     serviceVehicles: 0,
@@ -219,6 +237,19 @@ export function createGarageArchitectureController(
       wrecks: selectedReady ? Number(root?.userData.wrecks || 0) : 0,
       facilityProps: selectedReady ? Number(root?.userData.facilityProps || 0) : 0,
       facilityStations: selectedReady ? Number(root?.userData.facilityStations || 0) : 0,
+      approachLabel: selectedReady ? String(root?.userData.approachLabel || '') : '',
+      approachStyle: selectedReady ? String(root?.userData.approachStyle || '') : '',
+      approachSegments: selectedReady ? Number(root?.userData.approachSegments || 0) : 0,
+      approachDetails: selectedReady ? Number(root?.userData.approachDetails || 0) : 0,
+      approachConnected: selectedReady && root?.userData.approachConnected === true,
+      approachGroundErrorM: selectedReady
+        ? Number(root?.userData.approachGroundErrorM || 0) : 0,
+      connectedExteriorParts: selectedReady
+        ? Number(root?.userData.connectedExteriorParts || 0) : 0,
+      connectedExteriorBuildings: selectedReady
+        ? Number(root?.userData.connectedExteriorBuildings || 0) : 0,
+      maxExteriorSupportGapM: selectedReady
+        ? Number(root?.userData.maxExteriorSupportGapM || 0) : 0,
       looseParts: selectedReady ? Number(root?.userData.looseParts || 0) : 0,
       railSegments: selectedReady ? Number(root?.userData.railSegments || 0) : 0,
       serviceVehicles: selectedReady ? Number(root?.userData.serviceVehicles || 0) : 0,
