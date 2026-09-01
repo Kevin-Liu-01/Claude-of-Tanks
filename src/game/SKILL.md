@@ -81,12 +81,14 @@ battlefield dormancy, lifecycle effects, and diagnostics.
 look height, and FOV; stage, pedestal, activation, and return paths must consume
 it without variant-specific branches. `garageStage.ts` owns the restored exact
 Verdant indoor workshop. `garageEnvironmentKit.ts` owns the other nine bounded
-scene packs: generated real-terrain excerpts, camera-space connected structure
-builders, static tree/ground-cover instances, a generated first-party wreck
-proxy, Garage-sized PBR derivatives, the finite sky and three-layer terrain
-horizon. `garageFacilityDetails.ts` flattens two-sided service bays, equipment,
-first-party tank-part vocabulary, and low-poly service vehicles into those
-packs; it must never import a playable fleet builder. Never add a world-loading
+scene packs: generated real-terrain excerpts, authored world-space perimeter
+structures, static tree-grove/ground-cover instances, a generated first-party
+wreck proxy, Garage-sized PBR derivatives, the finite sky and three-layer
+terrain horizon. `garageFacilityDetails.ts` flattens two-sided service bays,
+equipment, first-party tank-part vocabulary, and low-poly service vehicles into
+seven non-overlapping terrain terraces per pack; the architecture probe must
+keep their measured contact error at or below 0.1 m. It must never import a
+playable fleet builder. Never add a world-loading
 or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
 demand-loads one shared, optimized four-bay modern maintenance layer after
 Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten

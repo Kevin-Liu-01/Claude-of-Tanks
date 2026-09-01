@@ -930,6 +930,21 @@ thirty complete cache-eviction cycles, 6.9 MB forced-GC heap growth, and a
 two-pack cache. Cinder and Ironworks visual receipts retain their rails,
 platforms, service stations, clutter, lighting, and canonical tank framing.
 
+The outdoor authored pass keeps Verdant unchanged and spreads each other scene
+across five connected map structures, seven service terraces, two background
+wrecks, and a full perimeter of asymmetric three-tree groves. Every long rail,
+gantry, rack, and station is terrain-seated before the terrain mesh is emitted;
+the probe rejects structure/service overlaps and support-plane errors above
+0.1 m. The resulting packs remain at 20–23 draw calls and 15.2–21.0 thousand
+submitted triangles. A native production lap measured 5.6–15.5 ms construction,
+25.4 ms worst transition gap and flat renderer geometry/texture counts. The
+residency gate exercises one complete builder round before its forced-GC
+baseline so demand-loaded fleet JIT/code-cache growth is not misclassified as
+scene retention; the following thirty measured cache-eviction cycles retained
+no positive JS heap on the current fleet. Do not retain a source tree kit from
+a merged grove: its disposer closes over the pre-merge attribute arrays and
+materially increases repeated-switch heap residency.
+
 ## Reporting a performance result
 
 Record:

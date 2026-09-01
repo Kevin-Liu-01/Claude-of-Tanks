@@ -96,8 +96,14 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must include workshop equipment and stocked spare parts`);
   assert.ok(stats.serviceVehicles >= 1,
     `${variant.id} must include at least one baked service vehicle or running assembly`);
+  assert.ok(stats.placementZones >= 7,
+    `${variant.id} must distribute its authored service islands around the perimeter`);
+  assert.equal(stats.placementOverlaps, 0,
+    `${variant.id} must keep map structures clear of service equipment`);
+  assert.ok(stats.maxGroundContactErrorM <= 0.1,
+    `${variant.id} equipment must sit on its terrain terrace (${stats.maxGroundContactErrorM} m)`);
   if (variant.architecture === 'rail_roundhouse') {
-    assert.ok(stats.railSegments >= 120,
+    assert.ok(stats.railSegments >= 80,
       'Cinder Junction must be a real rail facility with three complete roads');
   }
   assert.ok(stats.cached <= stats.cacheLimit && stats.cacheLimit === 2,

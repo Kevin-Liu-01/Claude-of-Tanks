@@ -51,6 +51,9 @@ export interface GarageArchitectureStats {
   looseParts: number;
   railSegments: number;
   serviceVehicles: number;
+  placementZones: number;
+  placementOverlaps: number;
+  maxGroundContactErrorM: number;
   outdoorWarmReady: boolean;
   lastBuildMs: number;
 }
@@ -93,6 +96,9 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     looseParts: 0,
     railSegments: 0,
     serviceVehicles: 0,
+    placementZones: 4,
+    placementOverlaps: 0,
+    maxGroundContactErrorM: 0,
     triangles: 0,
   });
   Object.assign(root.userData, stats, {
@@ -216,6 +222,10 @@ export function createGarageArchitectureController(
       looseParts: selectedReady ? Number(root?.userData.looseParts || 0) : 0,
       railSegments: selectedReady ? Number(root?.userData.railSegments || 0) : 0,
       serviceVehicles: selectedReady ? Number(root?.userData.serviceVehicles || 0) : 0,
+      placementZones: selectedReady ? Number(root?.userData.placementZones || 0) : 0,
+      placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
+      maxGroundContactErrorM: selectedReady
+        ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,
       outdoorWarmReady: selected?.architecture === 'field_shed'
         || warmedArchitectures.has(selected?.architecture || 'field_shed'),
       lastBuildMs,

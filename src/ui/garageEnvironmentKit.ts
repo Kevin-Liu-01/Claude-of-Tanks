@@ -14,7 +14,10 @@ import {
   type GarageTerrainPatch,
 } from './garageTerrainPatches.generated.ts';
 import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
-import { addGarageFacilityDetails } from './garageFacilityDetails.ts';
+import {
+  addGarageFacilityDetails,
+  getGarageFacilityTerraces,
+} from './garageFacilityDetails.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -47,6 +50,9 @@ export interface GarageEnvironmentStats {
   readonly looseParts: number;
   readonly railSegments: number;
   readonly serviceVehicles: number;
+  readonly placementZones: number;
+  readonly placementOverlaps: number;
+  readonly maxGroundContactErrorM: number;
   readonly triangles: number;
 }
 
@@ -377,6 +383,13 @@ function samplePatch(
   return THREE.MathUtils.lerp(a, b, tz);
 }
 
+function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
+  return {
+    x: (side - depth) * Math.SQRT1_2,
+    z: (-side - depth) * Math.SQRT1_2,
+  };
+}
+
 function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array): THREE.BufferGeometry {
   const positions = new Float32Array(patch.width * patch.height * 3);
   const uvs = new Float32Array(patch.width * patch.height * 2);
@@ -536,12 +549,11 @@ export function buildGarageEnvironment(
   const combined = createBuckets();
   const rng = mulberry32(seed);
   const structureRecords = recipe.structures.map((placement) => {
-    // Convert semantic camera-space composition into world X/Z. This keeps
-    // each environment's different buildings inside the same readable
-    // Verdant-style frame instead of letting raw map axes hide them behind the
-    // hero or send them under the side panels.
-    const x = (placement.side - placement.depth) * Math.SQRT1_2;
-    const z = (-placement.side - placement.depth) * Math.SQRT1_2;
+    // These are authored world-space perimeter stations, not five buildings
+    // squeezed into one camera-facing strip. The shared coordinates keep
+    // every footprint inside the compact patch while giving the environment
+    // a readable 220-degree built horizon from both the hero view and orbit.
+    const { x, z } = placement;
     const local = createBuckets();
     const dimensions = placement.builder(rng, local);
     const y = samplePatch(patch, heights, x, z);
@@ -564,6 +576,86 @@ export function buildGarageEnvironment(
         const index = row * patch.width + column;
         heights[index] = THREE.MathUtils.lerp(y, heights[index], blend);
       }
+    }
+  }
+
+  // Terrain-seat the complete service islands before emitting the terrain
+  // mesh. Long rails, gantry feet and opposite canopy posts previously each
+  // sampled a different battlefield height, producing buried equipment and
+  // visibly torn frames on sloped excerpts. These compact feathered terraces
+  // preserve the outer map relief while giving every connected assembly one
+  // physically coherent support plane.
+  const facilityTerraces = getGarageFacilityTerraces(variant);
+  const terraceRecords = facilityTerraces.map((terrace) => {
+    const center = cameraPoint(terrace.side, terrace.depth);
+    return { ...terrace, ...center, y: samplePatch(patch, heights, center.x, center.z) };
+  });
+  for (const terrace of terraceRecords) {
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const side = (x - z) * Math.SQRT1_2;
+        const depth = -(x + z) * Math.SQRT1_2;
+        const distance = Math.hypot(
+          (side - terrace.side) / terrace.radiusSide,
+          (depth - terrace.depth) / terrace.radiusDepth,
+        );
+        if (distance >= 1.65) continue;
+        const blend = THREE.MathUtils.smoothstep(distance, 1.20, 1.65);
+        const index = row * patch.width + column;
+        heights[index] = THREE.MathUtils.lerp(terrace.y, heights[index], blend);
+      }
+    }
+  }
+
+  // A later terrace's feather can reach into an earlier terrace even when
+  // their actual equipment footprints do not overlap. Re-seat every exact
+  // support plane after all feathering is complete so long rails and station
+  // frames cannot inherit a neighbouring facility's grade. Authored inner
+  // footprints are disjoint (audited below), so this pass is deterministic.
+  for (const terrace of terraceRecords) {
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const side = (x - z) * Math.SQRT1_2;
+        const depth = -(x + z) * Math.SQRT1_2;
+        const distance = Math.hypot(
+          (side - terrace.side) / terrace.radiusSide,
+          (depth - terrace.depth) / terrace.radiusDepth,
+        );
+        if (distance <= 1.20) heights[row * patch.width + column] = terrace.y;
+      }
+    }
+  }
+
+  let placementOverlaps = 0;
+  for (const structure of structureRecords) {
+    const radius = Math.hypot(
+      structure.dimensions.w * structure.placement.scale,
+      structure.dimensions.d * structure.placement.scale,
+    ) * 0.48;
+    const structureSide = (structure.x - structure.z) * Math.SQRT1_2;
+    const structureDepth = -(structure.x + structure.z) * Math.SQRT1_2;
+    for (const terrace of terraceRecords) {
+      const distance = Math.hypot(
+        (structureSide - terrace.side) / (radius + terrace.radiusSide + 0.8),
+        (structureDepth - terrace.depth) / (radius + terrace.radiusDepth + 0.8),
+      );
+      if (distance < 1) placementOverlaps += 1;
+    }
+  }
+  let maxGroundContactErrorM = 0;
+  for (const terrace of terraceRecords) {
+    for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
+      [-0.55, 0.55], [0.55, 0.55]] as const) {
+      const point = cameraPoint(
+        terrace.side + terrace.radiusSide * sideOffset,
+        terrace.depth + terrace.radiusDepth * depthOffset,
+      );
+      maxGroundContactErrorM = Math.max(maxGroundContactErrorM,
+        Math.abs(samplePatch(patch, heights, point.x, point.z) - terrace.y));
     }
   }
 
@@ -677,6 +769,7 @@ export function buildGarageEnvironment(
         looseParts: 0,
         railSegments: 0,
         serviceVehicles: 0,
+        placementZones: 0,
         meshes: Object.freeze([]),
         material: null,
       })
@@ -769,27 +862,117 @@ export function buildGarageEnvironment(
   wrecks.updateMatrix();
   root.add(wrecks);
 
-  const treeKits = recipe.treeSpecies.map((species, index) => createGarageTreeKit(
-    engineCtx, null, species as TreeSpecies, seed + index * 97, index,
-  ));
-  treeKits.forEach((kit) => disposables.push(kit));
+  // One repeated far-tree mesh per species produced the old row of identical
+  // cones/lollipops. Bake three independently seeded battlefield silhouettes
+  // into each Garage grove: the draw count stays two meshes per species, while
+  // every instance reads as an asymmetric stand with real trunk separation.
+  const treeKits = recipe.treeSpecies.map((species, index) => {
+    const first = createGarageTreeKit(
+      engineCtx, null, species as TreeSpecies, seed + index * 193, index * 2,
+    );
+    const second = createGarageTreeKit(
+      engineCtx, null, species as TreeSpecies, seed + index * 193 + 97, index * 2 + 1,
+    );
+    const third = createGarageTreeKit(
+      engineCtx, null, species as TreeSpecies, seed + index * 193 + 211, index * 2 + 2,
+    );
+    const transformPart = (
+      geometry: THREE.BufferGeometry,
+      x: number,
+      z: number,
+      size: number,
+      yaw: number,
+    ): THREE.BufferGeometry => geometry.clone().applyMatrix4(new THREE.Matrix4().compose(
+      new THREE.Vector3(x, 0, z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
+      new THREE.Vector3(size, size, size),
+    ));
+    const mergeGrove = (
+      a: THREE.BufferGeometry,
+      b: THREE.BufferGeometry,
+      c: THREE.BufferGeometry,
+    ): THREE.BufferGeometry => {
+      const pieces = [
+        transformPart(a, -1.45, 0.35, 0.92, 0.22),
+        transformPart(b, 1.20, -0.58, 0.76, -0.86),
+        transformPart(c, 0.10, 1.38, 0.62, 1.42),
+      ];
+      const merged = mergeGeometries(pieces, false);
+      for (const piece of pieces) piece.dispose();
+      if (!merged) throw new Error(`Garage tree grove merge failed for ${species}`);
+      merged.computeBoundingBox();
+      merged.computeBoundingSphere();
+      return merged;
+    };
+    const trunk = mergeGrove(first.trunk, second.trunk, third.trunk);
+    const foliage = mergeGrove(first.foliage, second.foliage, third.foliage);
+    // Retain only the two live materials. Referencing `first.*Material`
+    // inside the disposer would close over the entire source kit, including
+    // the three pre-merge attribute arrays, for every cached environment.
+    const trunkMaterial = first.trunkMaterial;
+    const foliageMaterial = first.foliageMaterial;
+    first.trunk.dispose();
+    first.foliage.dispose();
+    second.dispose();
+    third.dispose();
+    const kit = {
+      species: first.species,
+      trunk,
+      foliage,
+      trunkMaterial,
+      foliageMaterial,
+      dispose() {
+        trunk.dispose();
+        foliage.dispose();
+        trunkMaterial.dispose();
+        foliageMaterial.dispose();
+      },
+    };
+    disposables.push(kit);
+    return kit;
+  });
   const matrices = treeKits.map(() => [] as THREE.Matrix4[]);
   const matrix = new THREE.Matrix4();
   const quaternion = new THREE.Quaternion();
   const scale = new THREE.Vector3();
   const position = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
-  for (let index = 0; index < recipe.treeCount; index += 1) {
-    // The canonical camera sits on the +X/+Z diagonal, so distribute the real
-    // tree kits across the opposite quadrant as a readable forest line rather
-    // than sending alternating lanes outside the camera frustum.
-    const t = recipe.treeCount <= 1 ? 0.5 : index / (recipe.treeCount - 1);
-    const side = THREE.MathUtils.lerp(-23, 23, t) + (rng() - 0.5) * 2.8;
-    const depth = 27 + (index % 4) * 3.7 + rng() * 2.8;
-    const x = (side - depth) * Math.SQRT1_2;
-    const z = (-side - depth) * Math.SQRT1_2;
+  const groveCount = Math.ceil(recipe.treeCount / 2);
+  const grovePoints: Array<{ x: number; z: number }> = [];
+  for (let attempt = 0; attempt < groveCount * 80 && grovePoints.length < groveCount; attempt += 1) {
+    const angle = rng() * Math.PI * 2;
+    const radiusScale = 0.90 + rng() * 0.10;
+    const x = Math.cos(angle) * 42 * radiusScale;
+    const z = Math.sin(angle) * 36 * radiusScale;
+    const depth = -(x + z) * Math.SQRT1_2;
+    const side = (x - z) * Math.SQRT1_2;
+    // Preserve only the narrow canonical approach lane. The old whole-half-
+    // plane exclusion left alternate orbit angles looking unfinished even
+    // though the environment owned enough vegetation for a complete ring.
+    if (depth < 5 && Math.abs(side) < 16) continue;
+    const nearStructure = structureRecords.some((record) => {
+      const radius = Math.hypot(
+        record.dimensions.w * record.placement.scale,
+        record.dimensions.d * record.placement.scale,
+      ) * 0.48;
+      return Math.hypot(x - record.x, z - record.z) < radius + 4.8;
+    });
+    const nearFacility = terraceRecords.some((terrace) => (
+      Math.hypot(x - terrace.x, z - terrace.z)
+        < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
+    ));
+    if (nearStructure || nearFacility
+        || grovePoints.some((point) => Math.hypot(x - point.x, z - point.z) < 7.0)) continue;
+    grovePoints.push({ x, z });
+  }
+  for (let index = 0; index < groveCount; index += 1) {
+    const fallbackSide = THREE.MathUtils.lerp(-31, 31,
+      groveCount <= 1 ? 0.5 : index / (groveCount - 1));
+    const fallbackDepth = 38 + Math.sin((index / Math.max(1, groveCount - 1)) * Math.PI) * 7;
+    const fallback = cameraPoint(fallbackSide, fallbackDepth);
+    const { x, z } = grovePoints[index] || fallback;
     const y = samplePatch(patch, heights, x, z);
-    const size = 0.84 + rng() * 0.30;
+    const size = 0.82 + rng() * 0.26;
     position.set(x, y, z);
     quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
     scale.set(size, size * (0.94 + rng() * 0.12), size);
@@ -853,6 +1036,8 @@ export function buildGarageEnvironment(
     structures: recipe.structures.length,
     wrecks: wreckPlacements.length,
     ...facilityDetails,
+    placementOverlaps,
+    maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     triangles: Math.round(triangles),
   });
   Object.assign(root.userData, stats);

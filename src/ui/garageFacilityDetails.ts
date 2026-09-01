@@ -13,6 +13,7 @@ export interface GarageFacilityDetailStats {
   readonly looseParts: number;
   readonly railSegments: number;
   readonly serviceVehicles: number;
+  readonly placementZones: number;
 }
 
 export interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
@@ -42,12 +43,107 @@ interface AssemblyPlacement {
   readonly scale?: number;
 }
 
+export interface GarageFacilityTerrace {
+  readonly label: string;
+  readonly side: number;
+  readonly depth: number;
+  readonly radiusSide: number;
+  readonly radiusDepth: number;
+}
+
+interface GarageFacilityLayout {
+  readonly stations: readonly [readonly [number, number], readonly [number, number]];
+  readonly logistics: readonly [readonly [number, number], readonly [number, number]];
+  readonly parts: readonly [readonly [number, number], readonly [number, number]];
+  readonly floods: readonly [readonly [number, number], readonly [number, number]];
+  readonly feature: readonly [number, number];
+  readonly featureRadius: readonly [number, number];
+}
+
 interface PrimitiveInstance {
   readonly matrix: THREE.Matrix4;
   readonly color: THREE.Color;
 }
 
 const VIEW_YAW = Math.PI / 4;
+
+const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFacilityLayout>> =
+  Object.freeze({
+    field_shed: {
+      stations: [[-18, 2], [18, 2]], logistics: [[-31, -7], [31, -7]],
+      parts: [[-30, 15], [30, 15]], floods: [[-37, 4], [37, 4]],
+      feature: [0, 18], featureRadius: [8, 6],
+    },
+    shade_depot: {
+      stations: [[-20, 2], [17, 4]], logistics: [[-32, -8], [18, -25]],
+      parts: [[-30, 15], [4, -34]], floods: [[-38, 4], [38, 3]],
+      feature: [1, 18], featureRadius: [9, 6],
+    },
+    repair_bunker: {
+      stations: [[-21, 3], [19, 0]], logistics: [[-33, -7], [20, -24]],
+      parts: [[-30, 16], [4, -34]], floods: [[-38, 6], [38, 2]],
+      feature: [-1, 18], featureRadius: [10, 6],
+    },
+    brick_arsenal: {
+      stations: [[-19, 0], [21, 4]], logistics: [[-35, 3], [17, -26]],
+      parts: [[-24, 14], [3, -35]], floods: [[-38, 2], [38, 6]],
+      feature: [0, 18], featureRadius: [11, 5],
+    },
+    naval_drydock: {
+      stations: [[-22, 1], [21, 1]], logistics: [[-34, 15], [18, -25]],
+      parts: [[-32, -8], [4, -35]], floods: [[-39, 4], [39, 4]],
+      feature: [0, 16], featureRadius: [10, 16],
+    },
+    rail_roundhouse: {
+      stations: [[-22, -1], [26, -5]], logistics: [[-35, 12], [16, -27]],
+      parts: [[-22, -16], [2, -36]], floods: [[-39, 1], [39, 1]],
+      feature: [5, 10], featureRadius: [14, 16],
+    },
+    rain_canopy: {
+      stations: [[-20, 3], [18, -1]], logistics: [[-33, -8], [20, -24]],
+      parts: [[-30, 18], [5, -34]], floods: [[-39, 6], [39, 2]],
+      feature: [0, 18], featureRadius: [10, 7],
+    },
+    rock_cavern: {
+      stations: [[-21, 0], [21, 3]], logistics: [[-34, -8], [18, -25]],
+      parts: [[-31, 16], [4, -34]], floods: [[-39, 5], [39, 5]],
+      feature: [0, 18], featureRadius: [11, 7],
+    },
+    recovery_yard: {
+      stations: [[-22, 3], [19, -1]], logistics: [[-34, -8], [19, -25]],
+      parts: [[-31, 18], [4, -34]], floods: [[-39, 6], [39, 1]],
+      feature: [0, 18], featureRadius: [11, 7],
+    },
+    factory_line: {
+      stations: [[-21, -1], [21, 3]], logistics: [[-35, 12], [16, -27]],
+      parts: [[-32, 21], [2, -36]], floods: [[-39, 2], [39, 6]],
+      feature: [0, 16], featureRadius: [12, 16],
+    },
+  });
+
+function facilityLayout(variant: GarageVariant): GarageFacilityLayout {
+  return FACILITY_LAYOUTS[variant.architecture] || FACILITY_LAYOUTS.field_shed;
+}
+
+/** Flat, feathered service pads used before terrain geometry is emitted. */
+export function getGarageFacilityTerraces(variant: GarageVariant): readonly GarageFacilityTerrace[] {
+  const layout = facilityLayout(variant);
+  return Object.freeze([
+    ...layout.stations.map(([side, depth], index) => Object.freeze({
+      label: `service-${index + 1}`, side, depth: depth + 2.4, radiusSide: 7.2, radiusDepth: 5.2,
+    })),
+    ...layout.logistics.map(([side, depth], index) => Object.freeze({
+      label: `logistics-${index + 1}`, side, depth, radiusSide: 4.3, radiusDepth: 3.5,
+    })),
+    ...layout.parts.map(([side, depth], index) => Object.freeze({
+      label: `parts-${index + 1}`, side, depth, radiusSide: 4.2, radiusDepth: 3.2,
+    })),
+    Object.freeze({
+      label: 'signature-facility', side: layout.feature[0], depth: layout.feature[1],
+      radiusSide: layout.featureRadius[0], radiusDepth: layout.featureRadius[1],
+    }),
+  ]);
+}
 
 function cameraPoint(side: number, depth: number): Point {
   return {
@@ -308,186 +404,205 @@ export function addGarageFacilityDetails({
     }
   };
 
-  const addRoundhouse = (): void => {
+  const addRoundhouse = (centerSide: number, centerDepth: number): void => {
     const masonry = new THREE.Color(0x75513f);
+    const masonryDark = new THREE.Color(0x4d342d);
     const platform = new THREE.Color(0x77726a);
-    // A foreground-facing nine-bay locomotive hall. Keep the portal frames
-    // open: parked armor and parts remain readable inside instead of being
-    // hidden behind a single opaque warehouse slab.
-    box(0, 35.0, 4.2, 43.5, 8.4, 1.1, masonry);
-    box(0, 30.4, 8.15, 44.5, 0.52, 10.2, dark);
-    box(0, 25.3, 0.38, 45.2, 0.72, 1.3, platform);
-    for (let bay = -4; bay <= 4; bay += 1) {
+    // Five open, connected portals give Cinder a strong rail identity without
+    // the old 45 m slab cutting through both map warehouses and tree line.
+    box(centerSide, centerDepth + 5.4, 0.58, 25.5, 1.16, 0.9, masonryDark);
+    box(centerSide, centerDepth + 5.4, 7.22, 25.5, 1.56, 0.9, masonryDark);
+    box(centerSide, centerDepth + 1.0, 7.75, 26.2, 0.45, 9.4, dark);
+    box(centerSide, centerDepth - 3.7, 0.32, 26.4, 0.60, 1.1, platform);
+    for (let bay = -2; bay <= 2; bay += 1) {
       const side = bay * 4.7;
-      box(side, 25.6, 4.0, 0.42, 8.0, 0.62, steel);
-      box(side, 30.2, 7.8, 0.40, 0.30, 9.6, steel);
-      if (bay < 4) {
-        const center = side + 2.35;
-        box(center, 35.6, 6.85, 4.15, 0.32, 0.20, safety);
-        box(center, 35.72, 3.40, 3.90, 6.45, 0.16, dark);
-        box(center, 35.60, 5.75, 2.35, 0.18, 0.05, accent);
+      // Rear facade: separated masonry bays with a recessed service door,
+      // clerestory window and steel mullions instead of one featureless wall.
+      box(centerSide + side, centerDepth + 5.4, 3.88, 4.22, 5.48, 0.74, masonry);
+      box(centerSide + side, centerDepth + 4.99, 2.16, 2.72, 3.58, 0.08, dark);
+      box(centerSide + side, centerDepth + 4.94, 5.52, 3.22, 1.12, 0.06,
+        bay % 2 ? accent : steel);
+      box(centerSide + side, centerDepth + 4.88, 5.52, 0.10, 1.08, 0.08, dark);
+      box(centerSide + side, centerDepth + 4.88, 5.52, 3.18, 0.10, 0.08, dark);
+      box(centerSide + side, centerDepth - 3.4, 3.85, 0.38, 7.7, 0.56, steel);
+      box(centerSide + side, centerDepth + 1.0, 7.42, 0.36, 0.28, 9.2, steel);
+      if (bay < 2) {
+        const center = centerSide + side + 2.35;
+        box(center, centerDepth + 5.9, 6.52, 4.05, 0.28, 0.18, safety);
+        box(center, centerDepth + 5.98, 3.25, 3.8, 6.1, 0.14, dark);
       }
     }
-    // Passenger/freight platforms and their attached canopies make the space
-    // read as Cinder Junction from the full Garage frame, not only close up.
-    for (const side of [-15.2, 15.2]) {
-      box(side, 16.5, 0.34, 5.8, 0.62, 27.0, platform);
-      box(side, 17.2, 5.05, 6.7, 0.28, 22.0, dark);
-      for (const offset of [-9, -3, 3, 9]) {
-        box(side, 17.2 + offset, 2.65, 0.28, 5.30, 0.28, steel);
-        box(side, 17.2 + offset, 4.82, 4.4, 0.20, 0.24, safety);
-      }
-    }
-    addTrack(-8.4, 17.0, 42);
-    addTrack(0, 17.0, 42);
-    addTrack(8.4, 17.0, 42);
+    addTrack(centerSide - 5.2, centerDepth - 2.0, 26);
+    addTrack(centerSide, centerDepth - 2.0, 26);
+    addTrack(centerSide + 5.2, centerDepth - 2.0, 26);
   };
 
-  const addShadeHall = (width: number, depth: number, roofColor: THREE.Color): void => {
-    box(0, depth, 5.35, width, 0.24, 9.0, roofColor);
-    for (const side of [-width / 2 + 0.4, width / 2 - 0.4]) {
+  const addShadeHall = (centerSide: number, width: number, depth: number,
+    roofColor: THREE.Color): void => {
+    box(centerSide, depth, 5.35, width, 0.24, 9.0, roofColor);
+    for (const side of [centerSide - width / 2 + 0.4, centerSide + width / 2 - 0.4]) {
       for (const offset of [-3.8, 0, 3.8]) box(side, depth + offset, 2.6, 0.24, 5.2, 0.24, steel);
     }
-    for (const offset of [-3.8, 0, 3.8]) box(0, depth + offset, 5.15, width, 0.20, 0.25, steel);
+    for (const offset of [-3.8, 0, 3.8]) {
+      box(centerSide, depth + offset, 5.15, width, 0.20, 0.25, steel);
+    }
   };
 
-  // Every destination gets a complete service ring: two maintenance stations,
-  // four flood towers, parts storage, tracked spares and tool carts. These are
-  // deliberately distributed around both sides of the hero rather than
-  // concentrated in the rear-right corner.
-  addServiceStation(-14.2, 15.4, 8.5, accent);
-  addServiceStation(14.2, 15.4, 8.5, accent.clone().multiplyScalar(0.76));
-  addFloodTower(-20, 7.5);
-  addFloodTower(20, 7.5);
-  addFloodTower(-23, 30, 8.4);
-  addFloodTower(23, 30, 8.4);
-  addCrates(-20, 20);
-  addDrums(18, 20);
-  addWheelRack(-19, 26);
-  addTrackRack(19, 27);
-  addToolCart(-8.4, 10.5);
-  addToolCart(8.4, 10.5, accent.clone().multiplyScalar(0.70));
-  addCrates(-21, 8.5, 2);
-  addDrums(18.5, 8.5, 6);
+  // The old scene used one identical, tightly packed prop template in all
+  // nine environments. Each destination now owns a different perimeter
+  // layout. Equipment remains merged/instanced, but its visual rhythm follows
+  // Verdant: two readable work bays, separated logistics islands and a clear
+  // hero lane instead of a wall of intersecting props.
+  const layout = facilityLayout(variant);
+  const [leftStation, rightStation] = layout.stations;
+  const [leftLogistics, rightLogistics] = layout.logistics;
+  const [leftParts, rightParts] = layout.parts;
+  addServiceStation(leftStation[0], leftStation[1], 8.5, accent);
+  addServiceStation(rightStation[0], rightStation[1], 8.5,
+    accent.clone().multiplyScalar(0.76));
+  addFloodTower(layout.floods[0][0], layout.floods[0][1], 7.6);
+  addFloodTower(layout.floods[1][0], layout.floods[1][1], 7.6);
+  addCrates(leftLogistics[0], leftLogistics[1], 2);
+  addDrums(rightLogistics[0], rightLogistics[1], 6);
+  addWheelRack(leftParts[0], leftParts[1]);
+  addTrackRack(rightParts[0], rightParts[1]);
+  addToolCart(leftStation[0] + 6.0, leftStation[1] + 1.2);
+  addToolCart(rightStation[0] - 6.0, rightStation[1] + 1.2,
+    accent.clone().multiplyScalar(0.70));
+  const [featureSide, featureDepth] = layout.feature;
 
   let assemblies: readonly AssemblyPlacement[] = [];
   switch (variant.architecture) {
     case 'shade_depot':
-      addShadeHall(23, 28, new THREE.Color(0x8e6a42));
-      addDrums(-5, 25, 9);
-      addCrates(6, 25, 3);
+      addShadeHall(featureSide, 17, featureDepth, new THREE.Color(0x8e6a42));
+      addDrums(featureSide - 6, featureDepth + 1, 6);
+      addCrates(featureSide + 6, featureDepth + 1, 2);
       assemblies = [
-        { kind: 't90_assembly', side: -14.2, depth: 15.8, yaw: 0.10, scale: 0.78 },
-        { kind: 'powerpack', side: 14.2, depth: 15.8, yaw: -0.28, scale: 0.88 },
-        { kind: 'armor_rack', side: 6, depth: 27, yaw: 0.15, scale: 0.80 },
+        { kind: 't90_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.10, scale: 0.78 },
+        { kind: 'powerpack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.28, scale: 0.88 },
+        { kind: 'armor_rack', side: featureSide + 4, depth: featureDepth, yaw: 0.15, scale: 0.80 },
       ];
       break;
     case 'repair_bunker':
-      addShadeHall(25, 29, new THREE.Color(0x77858c));
-      for (const side of [-11, 11]) {
-        cylinder(side, 31, 1.2, 0.52, 2.4, steel, VIEW_YAW, 0, Math.PI / 2, 14);
-        box(side, 31.9, 1.2, 0.25, 2.5, 0.25, dark);
+      addShadeHall(featureSide, 18, featureDepth, new THREE.Color(0x77858c));
+      for (const offset of [-6.2, 6.2]) {
+        cylinder(featureSide + offset, featureDepth + 1, 1.2, 0.52, 2.4,
+          steel, VIEW_YAW, 0, Math.PI / 2, 14);
+        box(featureSide + offset, featureDepth + 1.9, 1.2, 0.25, 2.5, 0.25, dark);
       }
       assemblies = [
-        { kind: 'leclerc_assembly', side: -14.2, depth: 15.8, yaw: 0.12, scale: 0.78 },
-        { kind: 'weapon_rack', side: 14.2, depth: 15.8, yaw: -0.12, scale: 0.90 },
-        { kind: 'powerpack', side: 4.5, depth: 28, yaw: 0.18, scale: 0.80 },
+        { kind: 'leclerc_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.12, scale: 0.78 },
+        { kind: 'weapon_rack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.12, scale: 0.90 },
+        { kind: 'powerpack', side: featureSide + 3.5, depth: featureDepth, yaw: 0.18, scale: 0.80 },
       ];
       break;
     case 'brick_arsenal':
-      box(0, 31, 1.0, 32, 2.0, 3.2, new THREE.Color(0x6b5850));
-      for (let index = -6; index <= 6; index += 1) {
-        box(index * 2.4, 29.3, 0.56, 1.9, 1.12, 0.7,
+      box(featureSide, featureDepth + 2, 1.0, 22, 2.0, 2.4, new THREE.Color(0x6b5850));
+      for (let index = -4; index <= 4; index += 1) {
+        box(featureSide + index * 2.4, featureDepth + 0.4, 0.56, 1.9, 1.12, 0.7,
           index % 2 ? new THREE.Color(0x8a7e68) : new THREE.Color(0x756e5e));
       }
       assemblies = [
-        { kind: 'abrams_assembly', side: -14.2, depth: 15.8, yaw: 0.12, scale: 0.78 },
-        { kind: 'abrams_turret_cradle', side: -2.5, depth: 27, yaw: 0.25, scale: 0.72 },
-        { kind: 'powerpack', side: 14.2, depth: 15.8, yaw: -0.18, scale: 0.88 },
-        { kind: 'weapon_rack', side: 3.5, depth: 27, yaw: 0.10, scale: 0.84 },
+        { kind: 'abrams_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.12, scale: 0.78 },
+        { kind: 'abrams_turret_cradle', side: featureSide - 4, depth: featureDepth, yaw: 0.25, scale: 0.72 },
+        { kind: 'powerpack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.18, scale: 0.88 },
+        { kind: 'weapon_rack', side: featureSide + 4, depth: featureDepth, yaw: 0.10, scale: 0.84 },
       ];
       break;
     case 'naval_drydock':
-      addTrack(-7.5, 24, 44);
-      addTrack(7.5, 24, 44);
-      for (const side of [-21, 21]) {
-        cylinder(side, 18, 0.56, 0.46, 1.10, dark, VIEW_YAW, 0, 0, 12);
-        cylinder(side, 18, 1.08, 0.16, 0.24, accent, VIEW_YAW, 0, 0, 10);
+      addTrack(featureSide - 5.5, featureDepth, 28);
+      addTrack(featureSide + 5.5, featureDepth, 28);
+      for (const offset of [-8, 8]) {
+        cylinder(featureSide + offset, featureDepth - 4, 0.56, 0.46, 1.10,
+          dark, VIEW_YAW, 0, 0, 12);
+        cylinder(featureSide + offset, featureDepth - 4, 1.08, 0.16, 0.24,
+          accent, VIEW_YAW, 0, 0, 10);
       }
-      addShadeHall(27, 31, new THREE.Color(0x526b70));
       assemblies = [
-        { kind: 'leclerc_assembly', side: -14.2, depth: 15.8, yaw: 0.08, scale: 0.78 },
-        { kind: 'weapon_rack', side: 14.2, depth: 15.8, yaw: -0.16, scale: 0.90 },
-        { kind: 'leclerc_turret_cradle', side: 2, depth: 29, yaw: 0.20, scale: 0.70 },
+        { kind: 'leclerc_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.08, scale: 0.78 },
+        { kind: 'weapon_rack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.16, scale: 0.90 },
+        { kind: 'leclerc_turret_cradle', side: featureSide, depth: featureDepth + 2, yaw: 0.20, scale: 0.70 },
       ];
       break;
     case 'rail_roundhouse':
-      addRoundhouse();
-      addDrums(-5, 31, 9);
-      addCrates(7, 31, 3);
+      addRoundhouse(featureSide, featureDepth);
+      addDrums(featureSide - 9, featureDepth + 1, 6);
+      addCrates(featureSide + 9, featureDepth + 1, 2);
       assemblies = [
-        { kind: 't90_assembly', side: -14.2, depth: 16.5, yaw: 0, scale: 0.78 },
-        { kind: 'abrams_assembly', side: 14.2, depth: 16.5, yaw: 0, scale: 0.76 },
-        { kind: 'abrams_turret_cradle', side: 0, depth: 30, yaw: -0.18, scale: 0.72 },
+        { kind: 't90_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0, scale: 0.78 },
+        { kind: 'abrams_assembly', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: 0, scale: 0.76 },
+        { kind: 'abrams_turret_cradle', side: featureSide, depth: featureDepth, yaw: -0.18, scale: 0.72 },
       ];
       break;
     case 'rain_canopy':
-      addShadeHall(29, 28, new THREE.Color(0x4d6a58));
-      for (const side of [-18, 18]) {
-        box(side, 24, 0.18, 2.4, 0.30, 14, new THREE.Color(0x435b51));
-        box(side, 24, 0.36, 0.24, 0.34, 14, accent);
+      addShadeHall(featureSide, 19, featureDepth, new THREE.Color(0x4d6a58));
+      for (const offset of [-7.5, 7.5]) {
+        box(featureSide + offset, featureDepth, 0.18, 1.8, 0.30, 10,
+          new THREE.Color(0x435b51));
+        box(featureSide + offset, featureDepth, 0.36, 0.24, 0.34, 10, accent);
       }
       assemblies = [
-        { kind: 'leclerc_assembly', side: -14.2, depth: 15.8, yaw: 0.08, scale: 0.78 },
-        { kind: 'leclerc_turret_cradle', side: -2.5, depth: 27, yaw: 0.2, scale: 0.74 },
-        { kind: 'powerpack', side: 14.2, depth: 15.8, yaw: -0.2, scale: 0.88 },
-        { kind: 'armor_rack', side: 4, depth: 27, yaw: 0.10, scale: 0.82 },
+        { kind: 'leclerc_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.08, scale: 0.78 },
+        { kind: 'leclerc_turret_cradle', side: featureSide - 4, depth: featureDepth, yaw: 0.2, scale: 0.74 },
+        { kind: 'powerpack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.2, scale: 0.88 },
+        { kind: 'armor_rack', side: featureSide + 4, depth: featureDepth, yaw: 0.10, scale: 0.82 },
       ];
       break;
     case 'rock_cavern':
       // A connected tunnel portal and retaining apron, not a floating arch.
-      box(0, 35, 3.4, 27, 6.8, 4.0, new THREE.Color(0x55585a));
-      box(0, 32.8, 2.9, 20, 5.8, 0.45, dark);
-      for (const side of [-11.5, 11.5]) box(side, 32.7, 3.3, 2.1, 6.6, 1.2, steel);
-      for (let index = -5; index <= 5; index += 1) {
-        box(index * 3.0, 38, 1.2 + Math.abs(index) * 0.08, 2.8, 2.4, 1.8,
+      box(featureSide, featureDepth + 3, 3.4, 20, 6.8, 3.0, new THREE.Color(0x55585a));
+      box(featureSide, featureDepth + 0.8, 2.55, 12.8, 5.1, 0.45, dark);
+      for (const offset of [-8.5, 8.5]) {
+        box(featureSide + offset, featureDepth + 0.7, 3.3, 1.6, 6.6, 1.0, steel);
+      }
+      for (const offset of [-6.7, -3.35, 0, 3.35, 6.7]) {
+        box(featureSide + offset, featureDepth + 0.48, 5.65, 0.30, 1.65, 0.52,
+          offset === 0 ? accent : steel, VIEW_YAW, 0, offset * 0.012);
+      }
+      box(featureSide, featureDepth + 0.35, 5.72, 14.2, 0.34, 0.72, steel);
+      box(featureSide, featureDepth + 0.21, 5.46, 10.4, 0.13, 0.06, accent);
+      for (let index = -3; index <= 3; index += 1) {
+        box(featureSide + index * 3.0, featureDepth + 6, 1.2 + Math.abs(index) * 0.08,
+          2.8, 2.4, 1.8,
           new THREE.Color(0x6a6964));
       }
       assemblies = [
-        { kind: 'abrams_assembly', side: -14.2, depth: 15.8, yaw: 0.08, scale: 0.78 },
-        { kind: 'armor_rack', side: 14.2, depth: 15.8, yaw: -0.16, scale: 0.88 },
-        { kind: 'powerpack', side: 2, depth: 28, yaw: 0.22, scale: 0.80 },
+        { kind: 'abrams_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.08, scale: 0.78 },
+        { kind: 'armor_rack', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.16, scale: 0.88 },
+        { kind: 'powerpack', side: featureSide + 2, depth: featureDepth, yaw: 0.22, scale: 0.80 },
       ];
       break;
     case 'recovery_yard':
-      addShadeHall(25, 31, new THREE.Color(0x81553d));
-      for (const side of [-12, 12]) {
-        box(side, 28, 4.6, 0.48, 9.2, 0.52, steel);
-        box(side * 0.66, 28, 7.15, 0.32, 8.2, 0.32, safety,
-          VIEW_YAW, 0, side < 0 ? -0.74 : 0.74);
+      addShadeHall(featureSide, 18, featureDepth + 2, new THREE.Color(0x81553d));
+      for (const offset of [-8.5, 8.5]) {
+        box(featureSide + offset, featureDepth, 4.2, 0.42, 8.4, 0.48, steel);
+        box(featureSide + offset * 0.66, featureDepth, 6.55, 0.28, 7.3, 0.28, safety,
+          VIEW_YAW, 0, offset < 0 ? -0.74 : 0.74);
       }
-      box(0, 28, 8.6, 26, 0.45, 0.55, steel);
-      addTrackRack(-6.5, 30);
+      box(featureSide, featureDepth, 7.9, 18, 0.40, 0.50, steel);
       assemblies = [
-        { kind: 't90_assembly', side: -14.2, depth: 15.8, yaw: 0.18, scale: 0.78 },
-        { kind: 'abrams_turret_cradle', side: 14.2, depth: 15.8, yaw: -0.18, scale: 0.82 },
-        { kind: 'powerpack', side: 2, depth: 28, yaw: 0.10, scale: 0.82 },
+        { kind: 't90_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.18, scale: 0.78 },
+        { kind: 'abrams_turret_cradle', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.18, scale: 0.82 },
+        { kind: 'powerpack', side: featureSide + 2, depth: featureDepth, yaw: 0.10, scale: 0.82 },
       ];
       break;
     case 'factory_line':
-      addTrack(-8, 25, 48);
-      addTrack(8, 25, 48);
-      for (const side of [-14, 14]) {
-        cylinder(side, 34, 3.1, 1.55, 6.2, primer, VIEW_YAW, 0, 0, 16);
-        cylinder(side, 34, 6.3, 0.72, 0.24, dark, VIEW_YAW, 0, 0, 16);
-        for (const y of [1.2, 3.0, 4.8]) cylinder(side, 33.1, y, 0.16, 6.0,
+      addTrack(featureSide - 6, featureDepth, 28);
+      addTrack(featureSide + 6, featureDepth, 28);
+      for (const offset of [-8, 8]) {
+        cylinder(featureSide + offset, featureDepth + 3, 2.6, 1.25, 5.2,
+          primer, VIEW_YAW, 0, 0, 16);
+        cylinder(featureSide + offset, featureDepth + 3, 5.3, 0.62, 0.22,
+          dark, VIEW_YAW, 0, 0, 16);
+        for (const y of [1.2, 2.7, 4.2]) {
+          cylinder(featureSide + offset, featureDepth + 2.2, y, 0.14, 5.0,
           safety, VIEW_YAW, 0, Math.PI / 2, 10);
+        }
       }
-      addShadeHall(30, 30, new THREE.Color(0x5a4540));
       assemblies = [
-        { kind: 'abrams_assembly', side: -14.2, depth: 15.8, yaw: 0, scale: 0.78 },
-        { kind: 'leclerc_turret_cradle', side: 14.2, depth: 15.8, yaw: -0.18, scale: 0.82 },
-        { kind: 'weapon_rack', side: 1.5, depth: 28, yaw: 0.18, scale: 0.84 },
+        { kind: 'abrams_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0, scale: 0.78 },
+        { kind: 'leclerc_turret_cradle', side: rightStation[0], depth: rightStation[1] + 0.4, yaw: -0.18, scale: 0.82 },
+        { kind: 'weapon_rack', side: featureSide + 1.5, depth: featureDepth, yaw: 0.18, scale: 0.84 },
       ];
       break;
     default:
@@ -553,6 +668,7 @@ export function addGarageFacilityDetails({
     looseParts,
     railSegments,
     serviceVehicles,
+    placementZones: getGarageFacilityTerraces(variant).length,
     meshes: Object.freeze(meshes),
     material: primitiveMaterial,
   });

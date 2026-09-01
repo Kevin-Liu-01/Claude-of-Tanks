@@ -11,6 +11,7 @@ const option = (name, fallback = '') => {
 };
 const baseUrl = option('url', 'http://127.0.0.1:4178').replace(/\/$/, '');
 const shotsDir = option('shots', '');
+const orbitShots = option('orbit-shots', '') === '1';
 const cpuRate = Math.max(1, Number(option('cpu-rate', '1')) || 1);
 const maxGapMs = Number(option('max-gap', cpuRate > 1 ? '120' : '80'));
 const browser = await puppeteer.launch({
@@ -111,6 +112,28 @@ try {
     }, variant.id);
     results.push({ ...state, frames });
     if (shotsDir) await page.screenshot({ path: path.join(shotsDir, `${variant.id}.png`) });
+    if (shotsDir && orbitShots) {
+      const stage = await page.evaluate(() => window.__DEBUG.showroom.debugState().stage);
+      const viewport = page.viewport();
+      const point = {
+        x: (stage.cx + 1) * viewport.width / 2,
+        y: (1 - stage.cy) * viewport.height / 2,
+      };
+      // 409 px at the production 0.22 degrees/px sensitivity is one quarter
+      // orbit. Capture the three remaining quadrants without exposing a test-
+      // only camera API or bypassing the exact pointer/input path players use.
+      for (const [index, label] of ['left', 'rear', 'right'].entries()) {
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.down();
+        await page.mouse.move(point.x + 409, point.y, { steps: 12 });
+        await page.mouse.up();
+        await new Promise((resolve) => setTimeout(resolve, 420));
+        await page.screenshot({
+          path: path.join(shotsDir, `${variant.id}--${label}.png`),
+        });
+      }
+      await page.evaluate(() => window.__DEBUG.showroom.reset());
+    }
   }
 
   // Rapid intent must converge on the final selection without exposing stale
@@ -130,26 +153,39 @@ try {
   const thrashFrames = await stopFrameProbe('__GARAGE_THRASH_PROBE');
   const thrash = await page.evaluate(() => window.__GARAGE_WORKSHOP.stats());
 
-  // Thirty complete selection cycles exercise disposal and the two-pack LRU.
+  const exerciseEnvironmentCycles = async (cycleCount) => {
+    await page.evaluate(async ({ rows, cycleCount: count }) => {
+      for (let cycle = 0; cycle < count; cycle += 1) {
+        const id = rows[cycle % rows.length].id;
+        window.__GARAGE_WORKSHOP.set(id);
+        const started = performance.now();
+        while (window.__GARAGE_WORKSHOP.stats().selected !== id
+            || window.__GARAGE_WORKSHOP.stats().architecture?.ready !== true) {
+          if (performance.now() - started > 5_000) throw new Error(`Garage cycle timeout: ${id}`);
+          await new Promise((resolve) => setTimeout(resolve, 4));
+        }
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    }, { rows: variants, cycleCount });
+  };
+
+  // Exercise one complete round before the residency baseline. The large
+  // demand-loaded fleet can tier-up shared Three.js/geometry helpers during
+  // the first repeated environment builds; counting that one-time V8 code
+  // cache as retained scene memory made the leak gate depend on fleet size.
+  // The measured thirty cycles below remain unchanged and start only after
+  // every environment builder has reached its steady execution tier.
+  await exerciseEnvironmentCycles(variants.length);
+
+  // Thirty complete measured selection cycles exercise disposal and the
+  // two-pack LRU after one-time runtime compilation has settled.
   await cdp.send('HeapProfiler.collectGarbage');
   const memoryBefore = await page.evaluate(() => ({
     heap: performance.memory?.usedJSHeapSize || 0,
     renderer: { ...(window.__DEBUG?.renderer?.info?.memory || {}) },
   }));
   await startFrameProbe('__GARAGE_CYCLE_PROBE');
-  await page.evaluate(async (rows) => {
-    for (let cycle = 0; cycle < 30; cycle += 1) {
-      const id = rows[cycle % rows.length].id;
-      window.__GARAGE_WORKSHOP.set(id);
-      const started = performance.now();
-      while (window.__GARAGE_WORKSHOP.stats().selected !== id
-          || window.__GARAGE_WORKSHOP.stats().architecture?.ready !== true) {
-        if (performance.now() - started > 5_000) throw new Error(`Garage cycle timeout: ${id}`);
-        await new Promise((resolve) => setTimeout(resolve, 4));
-      }
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    }
-  }, variants);
+  await exerciseEnvironmentCycles(30);
   const cycleFrames = await stopFrameProbe('__GARAGE_CYCLE_PROBE');
   await cdp.send('HeapProfiler.collectGarbage');
   const memoryAfter = await page.evaluate(() => ({
@@ -266,6 +302,8 @@ try {
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2
         || architecture.looseParts < 40 || architecture.serviceVehicles < 1
+        || architecture.placementZones < 7 || architecture.placementOverlaps !== 0
+        || architecture.maxGroundContactErrorM > 0.1
         || architecture.cached > 2 || architecture.residentTextureSets > 9) {
       failures.push(`${result.id}: visual/resource receipt failed`);
     }
