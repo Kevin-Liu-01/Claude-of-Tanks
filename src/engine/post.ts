@@ -53,20 +53,25 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import {
+  canRecoverAutoTier,
   getPreset,
   onPresetChange,
   reportSustainedOverload,
+  reportSustainedRecovery,
   type QualityPreset,
 } from './quality.ts';
 import {
   baseDynamicScale,
   dynamicScaleFloor,
   internalPixelRatio,
-  overloadReliefLever,
   reconstructionMode,
   reconstructionSharpness,
   type ReconstructionMode,
 } from './renderScalePolicy.ts';
+import {
+  AdaptiveQualityPolicy,
+  type AdaptiveQualityAction,
+} from './adaptiveQualityPolicy.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 interface ReconstructionTelemetry {
@@ -2114,7 +2119,6 @@ export function createPost(
   // on the canvas (1 Hz), plus the read-only post.dynScale getter below —
   // reachable for probes via window.__DEBUG.post.dynScale. Nothing about the
   // scale is persisted: every boot re-earns resolution from the preset base.
-  const DYN_STEP = 0.09;
   // Weak devices used to endure ~20 s before the full relief ladder engaged:
   // 6 s warmup + three 2.5 s resolution decisions + two trim strikes. Shader
   // compilation is now front-loaded behind the loading screen, so live
@@ -2123,22 +2127,16 @@ export function createPost(
   const DYN_WARMUP_S = 3; // ignore boot/shader-compile turbulence
   const DYN_TARGET_MS = 8.5; // 120 fps budget (+~2% vsync slack)
   const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
-  const DYN_DOWN_LEVEL = 1.08; // EMA > budget x this (plus misses) => down
-  const DYN_UP_LEVEL = 1.06; // EMA < budget x this (plus clean) => up
   const DYN_MISS_AT = 1.12; // a frame > budget x this counts as missed
-  const DYN_DOWN_MISS_MIN = 0.15; // missed-frame share required to step down
-  const DYN_UP_MISS_MAX = 0.04; // missed-frame share tolerated for an up-step
   const DYN_MIN_WINDOW_FRAMES = 30; // no decision on a thin evidence window
-  const DYN_FLAP_S = 8; // a down this soon after an up = the up flapped
-  const DYN_BACKOFF_MAX_S = 20;
-  const DYN_BACKOFF_RESET_S = 60; // a flap-free minute forgives the backoff
   // High starts at its complete 1.5x configured ratio. Lower/mobile presets
   // can still declare an adaptive base; the pure policy keeps this math shared
   // with its Node regression test.
-  let dynScale = baseDynamicScale(renderer.getPixelRatio(), preset);
+  const qualityPolicy = new AdaptiveQualityPolicy(
+    baseDynamicScale(renderer.getPixelRatio(), preset),
+  );
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
-  let dynLastStep = 0;
   let telemetryClock = 0;
   // cadence ring: ~3 s of frame deltas; p10 estimates the true vsync period
   // robustly (min alone anchors on double-fire jitter outliers).
@@ -2151,17 +2149,11 @@ export function createPost(
   let dynBudgetMs = DYN_TARGET_MS;
   let dynBestCadenceMs = DYN_BUDGET_MAX_MS;
   let dynLastDecision = 0;
-  let dynUpBackoffS = DYN_INTERVAL_S;
-  let dynLastUpAt = -Infinity;
-  let dynLastDownAt = -Infinity;
   let dynPin: number | null = null; // QA capture pin (see pinDynScale below); null = live
   // Battlefield/roster construction intentionally monopolizes frames behind
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
-  // perf-r2e adaptive-tier strike counter (see the decision block)
-  const TIER_STRIKES_MAX = 4;
-  let tierStrikes = 0;
   // perf-governor r1 (R3F PerformanceMonitor pattern, mapped onto this
   // engine): between "resolution at the floor" and "drop the whole preset
   // tier" there is now a SESSION TRIM LADDER driven purely by measured frame
@@ -2176,7 +2168,6 @@ export function createPost(
   // killcam beat can't trim; up-steps need clean windows and back off
   // exponentially when they flap (the R3F `flipflops` guard).
   const trimMax = () => (preset.aoScale > 0 ? 1 : 0);
-  const TRIM_STRIKES = 2;
   // perf-governor r2 (owner: "adjust based on framerate — if declining, kick
   // in"): the absolute budget + spike-miss gates are blind to two real cases:
   //   - a UNIFORM slowdown parked just under the miss threshold (a stable
@@ -2188,41 +2179,33 @@ export function createPost(
   // while below the smooth-enough ceiling — as overloaded, walking the same
   // relief ladder. After it fires, the baseline decays toward reality so an
   // exhausted ladder doesn't re-fire every window forever.
-  const FPS_DECLINE_K = 0.80;
-  const FPS_BASELINE_MIN = 24;   // no baseline chasing on already-slow boxes
-  const FPS_SMOOTH_CEILING = 118; // high-refresh declines should still govern
-  let fpsBaseline = 0;
-  const TRIM_UP_BACKOFF_S = 15;
   // trim releases tolerate a dirtier window than resolution up-steps (0.04):
   // background-app spikes on a healthy device otherwise freeze recovery at a
   // trimmed rung forever — the trims are coarse levers, and a flapped
   // release is caught by the exponential backoff anyway.
-  const TRIM_UP_MISS_MAX = 0.10;
-  const TRIM_UP_BACKOFF_MAX_S = 90;
-  let perfTrim = 0;
-  let trimStrikes = 0;
-  let trimUpBackoffS = TRIM_UP_BACKOFF_S;
-  let trimLastUpAt = -Infinity;
-  let trimLastDownAt = -Infinity;
   let quality: 'high' | 'low' = 'high'; // mirrors setQuality — AO recomputes from one place
   function applyAoEnabled(): void {
-    gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 1;
+    gtao.enabled = quality !== 'low'
+      && preset.aoScale > 0
+      && qualityPolicy.performanceTrim < 1;
   }
   function setPerfTrim(next: number): void {
-    const lv = Math.max(0, Math.min(trimMax(), next));
-    if (lv === perfTrim) return;
-    perfTrim = lv;
+    if (!qualityPolicy.forceTrim(next, trimMax())) return;
     applyAoEnabled();
-    renderer.domElement.dataset.perfTrim = String(perfTrim);
+    renderer.domElement.dataset.perfTrim = String(qualityPolicy.performanceTrim);
   }
   function applySize(w: number, h: number): void {
     cssW = w;
     cssH = h;
-    const renderScale = internalPixelRatio(renderer.getPixelRatio(), preset, dynScale);
+    const renderScale = internalPixelRatio(
+      renderer.getPixelRatio(),
+      preset,
+      qualityPolicy.dynamicScale,
+    );
     composer.setPixelRatio(renderScale);
     composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
-    renderer.domElement.dataset.dynScale = dynScale.toFixed(3);
+    renderer.domElement.dataset.dynScale = qualityPolicy.dynamicScale.toFixed(3);
     // Keep the screen-space helpers in step with both internal/native sizes.
     // The firefly clamp taps the COMPOSER buffer (the aerial pass' own input);
     // FSR is the to-screen pass — the governor may shrink the chain, while
@@ -2233,7 +2216,26 @@ export function createPost(
     const native = renderer.getDrawingBufferSize(_nativeSize);
     upscaler.setOutputSize(native.x, native.y);
   }
-  /** Advance the governor one frame; resizes the chain when a step fires. */
+  function applyAdaptiveQualityAction(action: AdaptiveQualityAction): void {
+    if (action === 'trim-down' || action === 'trim-up') {
+      renderer.domElement.dataset.perfTrim = String(qualityPolicy.performanceTrim);
+      applyAoEnabled();
+      return;
+    }
+    if (action === 'tier-down') {
+      reportSustainedOverload();
+      return;
+    }
+    if (action === 'tier-up') {
+      reportSustainedRecovery();
+      return;
+    }
+    if (action !== 'resolution-down' && action !== 'resolution-up') return;
+    dynEma = dynBudgetMs;
+    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+  }
+
+  /** Collect one frame of evidence and ask the pure policy for a bounded step. */
   function dynGovern(dt: number): void {
     if (adaptiveSuspended) return;
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
@@ -2256,14 +2258,13 @@ export function createPost(
       // and the live governor state without injecting scripts into the
       // game's execution realm.
       renderer.domElement.dataset.frameEmaMs = dynEma.toFixed(2);
-      renderer.domElement.dataset.dynScale = dynScale.toFixed(3);
+      renderer.domElement.dataset.dynScale = qualityPolicy.dynamicScale.toFixed(3);
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
     // Resolution only moves inside a preset's readability fence. DPR-1
     // desktop output stays native; Retina High bottoms at 1.35 instead of the
     // old 1.125 watercolor path; constrained mobile tiers retain lower floors.
-    const dynFloor = dynamicScaleFloor(renderer.getPixelRatio(), preset);
     if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
     // Decision point (every >= 1.5 s of visible frames).
@@ -2285,85 +2286,19 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
-    if (dynUpBackoffS > DYN_INTERVAL_S && dynClock - dynLastDownAt > DYN_BACKOFF_RESET_S) {
-      dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
-    }
-    // clarity-r1 RELIEF LADDER, purely from measured frame times:
-    //   AO trim → resolution steps → tier strike.
-    // GTAO is the most expensive individual pass and its absence is much less
-    // destructive than throwing away geometry/texture samples across the
-    // whole screen. Resolution is therefore the fallback, not the first move.
-    // The tier step (quality.reportSustainedOverload — persisted, no-op when
-    // the user pinned an explicit preset) now fires only after the WHOLE
-    // in-session ladder is exhausted, so it is the last resort it was always
-    // meant to be. Recovery walks the same ladder in reverse.
-    const overBudget = dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN;
-    const fpsDeclined = fpsBaseline >= FPS_BASELINE_MIN
-      && windowFps < fpsBaseline * FPS_DECLINE_K
-      && windowFps < FPS_SMOOTH_CEILING;
-    const overloaded = overBudget || fpsDeclined;
-    if (!overloaded) {
-      // clean-ish window: re-earn the baseline quickly, sag it reluctantly
-      fpsBaseline = fpsBaseline === 0 ? windowFps
-        : fpsBaseline + (windowFps - fpsBaseline) * (windowFps > fpsBaseline ? 0.3 : 0.05);
-    } else if (fpsDeclined) {
-      fpsBaseline += (windowFps - fpsBaseline) * 0.15; // decay toward reality
-    }
+    const action = qualityPolicy.evaluate({
+      clockSeconds: dynClock,
+      frameEmaMs: dynEma,
+      frameBudgetMs: dynBudgetMs,
+      missedFrameRatio: missRatio,
+      achievedFps: windowFps,
+      dynamicScaleFloor: dynamicScaleFloor(renderer.getPixelRatio(), preset),
+      maximumTrim: trimMax(),
+      mayRaiseTier: canRecoverAutoTier(),
+    });
     renderer.domElement.dataset.fps = windowFps.toFixed(1);
-    renderer.domElement.dataset.fpsBaseline = fpsBaseline.toFixed(1);
-    const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
-    const reliefLever = overloadReliefLever(perfTrim, trimMax(), dynScale, dynFloor);
-    if (overloaded && reliefLever === 'trim') {
-      // Preserve pixel density first: require consecutive evidence, then drop
-      // GTAO before touching the full-frame raster scale.
-      trimStrikes++;
-      if (trimStrikes >= TRIM_STRIKES) {
-        trimStrikes = 0;
-        setPerfTrim(perfTrim + 1);
-        if (dynClock - trimLastUpAt < DYN_FLAP_S * 2) {
-          trimUpBackoffS = Math.min(trimUpBackoffS * 2, TRIM_UP_BACKOFF_MAX_S);
-        }
-        trimLastDownAt = dynClock;
-        return;
-      }
-      return;
-    } else if (overloaded && reliefLever === 'tier' && dynClock > 8) {
-      // fully trimmed and still overloaded: escalate the session auto tier
-      tierStrikes++;
-      if (tierStrikes >= TIER_STRIKES_MAX) {
-        tierStrikes = 0;
-        if (reportSustainedOverload()) return; // preset rebroadcast resets the governor
-      }
-    } else if (!overloaded) {
-      tierStrikes = 0;
-      trimStrikes = 0;
-    }
-    if (overloaded && reliefLever === 'resolution') {
-      dynScale = Math.max(dynFloor, dynScale - DYN_STEP);
-      if (dynClock - dynLastUpAt < DYN_FLAP_S) {
-        // the last up-step flapped — back the next try off exponentially
-        dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
-      }
-      dynLastDownAt = dynClock;
-    } else if (clean
-        && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
-      // Recover pixel density before AO; structural detail is the readability
-      // priority and the AO pass is also the costliest lever to restore.
-      dynScale = Math.min(1, dynScale + DYN_STEP);
-      dynLastUpAt = dynClock;
-    } else if (perfTrim > 0
-        && dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < TRIM_UP_MISS_MAX
-        && dynClock - trimLastDownAt >= trimUpBackoffS
-        && dynClock - trimLastUpAt >= trimUpBackoffS) {
-      setPerfTrim(perfTrim - 1);
-      trimLastUpAt = dynClock;
-      return;
-    } else {
-      return;
-    }
-    dynLastStep = dynClock;
-    dynEma = dynBudgetMs; // re-seed: the next step needs fresh evidence
-    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+    renderer.domElement.dataset.fpsBaseline = qualityPolicy.learnedBaselineFps.toFixed(1);
+    applyAdaptiveQualityAction(action);
   }
   {
     const css = renderer.getSize(new THREE.Vector2());
@@ -2371,7 +2306,7 @@ export function createPost(
   }
   function resetGovernorState() {
     dynPin = null;
-    dynScale = baseDynamicScale(renderer.getPixelRatio(), preset);
+    qualityPolicy.reset(baseDynamicScale(renderer.getPixelRatio(), preset), dynClock);
     dynEma = 0;
     dynRingN = 0;
     dynRingI = 0;
@@ -2379,17 +2314,9 @@ export function createPost(
     dynWinMisses = 0;
     dynBudgetMs = DYN_TARGET_MS;
     dynBestCadenceMs = DYN_BUDGET_MAX_MS;
-    dynUpBackoffS = DYN_INTERVAL_S;
-    dynLastUpAt = -Infinity;
-    dynLastDownAt = -Infinity;
-    tierStrikes = 0;
-    trimStrikes = 0;
-    trimUpBackoffS = TRIM_UP_BACKOFF_S;
-    trimLastUpAt = -Infinity;
-    trimLastDownAt = -Infinity;
-    fpsBaseline = 0;
-    dynLastStep = dynClock;
     dynLastDecision = dynClock;
+    renderer.domElement.dataset.perfTrim = '0';
+    applyAoEnabled();
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   }
 
@@ -2403,11 +2330,6 @@ export function createPost(
     publishAAState();
     // perf-governor r1: a preset switch is a new baseline — release every
     // session trim (the new tier's own levers take over) and recompute AO.
-    perfTrim = 0;
-    trimStrikes = 0;
-    trimUpBackoffS = TRIM_UP_BACKOFF_S;
-    renderer.domElement.dataset.perfTrim = '0';
-    applyAoEnabled();
     resetGovernorState();
   });
 
@@ -2591,7 +2513,7 @@ export function createPost(
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */
-    get dynScale() { return dynScale; },
+    get dynScale() { return qualityPolicy.dynamicScale; },
 
     /**
      * QA hook (engine-aa r1): pin the governor at a fixed scale so dpr-2
@@ -2605,8 +2527,7 @@ export function createPost(
     pinDynScale(v) {
       dynPin = v == null ? null : Math.min(1,
         Math.max(dynamicScaleFloor(renderer.getPixelRatio(), preset), v));
-      if (dynPin !== null && dynPin !== dynScale) {
-        dynScale = dynPin;
+      if (dynPin !== null && qualityPolicy.setDynamicScale(dynPin)) {
         if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
       }
     },
@@ -2623,13 +2544,13 @@ export function createPost(
     },
 
     /** perf-governor r1: current session trim rung (0 = untrimmed). */
-    get perfTrim() { return perfTrim; },
+    get perfTrim() { return qualityPolicy.performanceTrim; },
 
     /** perf-governor r1: capture/shot contexts must render untrimmed. */
     resetPerfTrims() {
-      trimStrikes = 0;
-      trimUpBackoffS = TRIM_UP_BACKOFF_S;
-      setPerfTrim(0);
+      qualityPolicy.resetTrims();
+      renderer.domElement.dataset.perfTrim = '0';
+      applyAoEnabled();
     },
 
     /**
@@ -2644,14 +2565,12 @@ export function createPost(
       if (next === adaptiveSuspended) return;
       adaptiveSuspended = next;
       renderer.domElement.dataset.adaptiveSuspended = String(next);
-      setPerfTrim(0);
       resetGovernorState();
     },
 
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */
     resetAdaptiveResolution() {
-      setPerfTrim(0);
       resetGovernorState();
     },
 

@@ -94,6 +94,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
+    'src/engine/adaptiveQualityPolicy.selftest.mjs',
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',

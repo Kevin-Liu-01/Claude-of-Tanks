@@ -78,8 +78,9 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   try {
     const gl = renderer.getContext();
     const info = gl.getExtension('WEBGL_debug_renderer_info');
-    noteGpuRenderer(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
-      : (gl.getParameter(gl.RENDERER) || ''));
+    const reportedRenderer = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER);
+    noteGpuRenderer(typeof reportedRenderer === 'string' ? reportedRenderer : '');
   } catch (_) { noteGpuRenderer(''); }
   // MOBILE r1: a lost WebGL context used to be a SILENT PERMANENT black
   // screen (no handler anywhere) — on phones, where the OS reclaims the GPU

@@ -368,7 +368,7 @@ let _autoPolicyHandled = false;
 let _sessionAutoTier: AutoTier | null = null;
 
 /** Record the unmasked GL renderer string (createRenderer calls this once). */
-export function noteGpuRenderer(str: unknown): void {
+export function noteGpuRenderer(str: string): void {
   _gpuRendererString = String(str || '');
   try { console.info(`[quality] gpu: ${_gpuRendererString || '(masked)'}`); } catch (_) { /* ok */ }
 }
@@ -450,6 +450,33 @@ export function reportSustainedOverload(): boolean {
   _sessionAutoTier = next;
   try {
     console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
+  } catch (_) { /* ok */ }
+  const preset = getPreset();
+  for (const fn of listeners) fn(preset);
+  return true;
+}
+
+/** Whether measured stability can restore one auto tier without exceeding the hardware cap. */
+export function canRecoverAutoTier(): boolean {
+  if (getDeviceTier() === 'mobile' || getStoredChoice() !== 'auto') return false;
+  const currentIndex = AUTO_ORDER.indexOf(resolveAutoTier());
+  const ceilingIndex = AUTO_ORDER.indexOf(heuristicAutoCap() ?? 'high');
+  return currentIndex >= 0 && currentIndex < ceilingIndex;
+}
+
+/**
+ * Reverse one session-only overload demotion after prolonged stable evidence.
+ * Hardware heuristics remain a ceiling, and explicit user choices remain
+ * authoritative.
+ */
+export function reportSustainedRecovery(): boolean {
+  if (!canRecoverAutoTier()) return false;
+  const current = resolveAutoTier();
+  const next = AUTO_ORDER[AUTO_ORDER.indexOf(current) + 1];
+  if (!next) return false;
+  _sessionAutoTier = next;
+  try {
+    console.info(`[quality] sustained stability at '${current}' — auto tier restored to '${next}'`);
   } catch (_) { /* ok */ }
   const preset = getPreset();
   for (const fn of listeners) fn(preset);

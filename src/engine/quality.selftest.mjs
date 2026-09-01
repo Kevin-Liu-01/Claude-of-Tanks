@@ -60,6 +60,15 @@ assert.equal(resetBrowser.storage.get('cot.gfxAutoTier'), undefined,
 assert.equal(resetDesktop.reportSustainedOverload(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'low',
   'a second sustained-overload decision can converge to the floor');
+assert.equal(resetDesktop.canRecoverAutoTier(), true);
+assert.equal(resetDesktop.reportSustainedRecovery(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'medium',
+  'stable evidence can reverse one transient session demotion');
+assert.equal(resetDesktop.reportSustainedRecovery(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'high');
+assert.equal(resetDesktop.canRecoverAutoTier(), false,
+  'automatic recovery stops at the hardware-derived ceiling');
+assert.equal(resetDesktop.reportSustainedRecovery(), false);
 
 const freshDesktop = await import('./quality.ts?quality-fresh-session-contract');
 assert.equal(freshDesktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');

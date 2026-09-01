@@ -31,7 +31,10 @@ release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;
 `cameraRig.ts` owns player/cinematic poses; settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.ts` and `deviceDiag.ts`
-own tiering and rescue behavior.
+own tiering and rescue behavior. `adaptiveQualityPolicy.ts` owns the typed,
+side-effect-free decision ladder for measured shading trim, resolution relief,
+and hardware-capped auto-tier recovery; `post.ts` only samples frames and
+applies the returned WebGL action.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
