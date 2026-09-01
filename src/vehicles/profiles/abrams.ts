@@ -198,6 +198,7 @@ interface AbramsTurretConfig {
   readonly roofCheekInnerRearY?: number;
   readonly roofCheekOuterRearY?: number;
   readonly roofThroatRearY?: number;
+  readonly joinedCheekRoof?: boolean;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -533,10 +534,19 @@ function sideSlab(
   t1: Vec3Tuple,
   t2: Vec3Tuple,
   t3: Vec3Tuple,
+  joinMirroredRoof = false,
 ): void {
   const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
+  // Non-planar cheek roofs must use the same physical diagonal on both
+  // flanks. The historical positive-side order split t0->t2 while the
+  // winding-corrected mirror split t1->t3, so a sufficiently faceted roof
+  // could read as two selectable triangles on only one side. A cyclic ring
+  // rotation preserves outward winding while choosing the mirror's t1->t3
+  // diagonal; legacy profiles retain their byte-identical topology.
   P.add(bucket, side > 0
-    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
+    ? (joinMirroredRoof
+      ? slab(b1, b2, b3, b0, t1, t2, t3, t0)
+      : slab(b0, b1, b2, b3, t0, t1, t2, t3))
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
@@ -1589,7 +1599,8 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
     sideSlab(P, 'turret', side,
       [thr, t.yBotTip ?? t.yBot, zT], [bx, t.yBot, zW + 0.12], [tw, t.yBot, t.zWide - 0.7], [thr, t.yBot, zT - 1.05],
       [thr, t.roofTip, zT - faceRake], [Math.min(bx, tw - inset), t.roofWide, zW],
-      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15]);
+      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15],
+      t.joinedCheekRoof);
   }
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
@@ -10330,6 +10341,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
     roofCheekInnerRearY: mantletRoofRamp.cheekInnerRearY,
     roofCheekOuterRearY: mantletRoofRamp.cheekOuterRearY,
     roofThroatRearY: mantletRoofRamp.throatRearY,
+    joinedCheekRoof: true,
     faceRake: 0.44,
     inset: 0.18,
     wedgePull: 0.05,
@@ -10584,6 +10596,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
     turretForwardShiftM,
     turretRingZ: t.ring[2],
     mantletRoofRamp,
+    cheekRoofSurface: 'joined-mirrored-facet',
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;

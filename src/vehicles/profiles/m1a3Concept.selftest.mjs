@@ -119,6 +119,52 @@ near(turretVertexY(1.42, 0.38), roofRampY(0.38),
 near(turretVertexY(0.3672, 0.72), roofRampY(0.72),
   'center throat rear edge rises into the existing roof plane');
 
+const cheekRoofCorners = (side) => [
+  [side * 0.36, 0.50, 1.74],
+  [side * 1.42, 0.68, 1.08],
+  [side * 1.42, roofRampY(0.38), 0.38],
+  [side * 0.36, roofRampY(1.03), 1.03],
+];
+const vertexMatches = (position, expected) => expected.some(([x, y, z]) =>
+  Math.abs(position[0] - x) < 1e-4
+  && Math.abs(position[1] - y) < 1e-4
+  && Math.abs(position[2] - z) < 1e-4);
+const cheekRoofTriangles = (side) => {
+  const expected = cheekRoofCorners(side);
+  const triangles = [];
+  for (let face = 0; face < turretPositions.count / 3; face++) {
+    const vertices = [0, 1, 2].map((offset) => {
+      const index = face * 3 + offset;
+      return [turretPositions.getX(index), turretPositions.getY(index), turretPositions.getZ(index)];
+    });
+    if (vertices.every((vertex) => vertexMatches(vertex, expected))) triangles.push(vertices);
+  }
+  assert.equal(triangles.length, 2, `${side < 0 ? 'left' : 'right'} cheek roof has one two-triangle facet`);
+  return triangles;
+};
+const triangleNormal = ([a, b, c]) => {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+  const normal = [
+    ab[1] * ac[2] - ab[2] * ac[1],
+    ab[2] * ac[0] - ab[0] * ac[2],
+    ab[0] * ac[1] - ab[1] * ac[0],
+  ];
+  const length = Math.hypot(...normal);
+  return normal.map((value) => value / length);
+};
+const facetAngleDeg = (triangles) => {
+  const [a, b] = triangles.map(triangleNormal);
+  const dot = Math.max(-1, Math.min(1, a.reduce((sum, value, index) => sum + value * b[index], 0)));
+  return Math.acos(dot) * 180 / Math.PI;
+};
+const leftCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(-1));
+const rightCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(1));
+assert.ok(rightCheekFacetAngle < 14,
+  `right cheek roof remains one Gallery surface (${rightCheekFacetAngle.toFixed(2)} degrees)`);
+near(rightCheekFacetAngle, leftCheekFacetAngle,
+  'right cheek roof mirrors the joined left cheek surface');
+
 const expectedMantletRoofRamp = {
   cheekFrontY: 0.50,
   throatFrontY: 0.47,
@@ -148,6 +194,7 @@ assert.deepEqual(receipt, {
   turretForwardShiftM: 0.30,
   turretRingZ: 0.15,
   mantletRoofRamp: expectedMantletRoofRamp,
+  cheekRoofSurface: 'joined-mirrored-facet',
 }, 'the visible M1A3 feature receipt remains complete');
 
 function geometryStats(root) {
