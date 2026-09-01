@@ -86,6 +86,8 @@
     "perf:loading": "node tools/loading-budget-probe.mjs",
     "perf:transitions": "node tools/loading-budget-probe.mjs --mode transitions",
     "quality:metrics": "node tools/code-quality-metrics.ts",
+    "quality:coverage:prediction": "c8 --include src/net/localTankPrediction.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/net/localTankPrediction.selftest.mjs",
+    "quality:mutation:prediction": "stryker run stryker.prediction.config.mjs",
     "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
     "test:net:four": "node tools/multiplayer-four-player-soak.mjs",
     "test:net:seven": "node tools/multiplayer-four-player-soak.mjs --players=14 --team-size=7",
@@ -116,12 +118,17 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^10.0.0",
     "@types/node": "^24.10.12",
     "@types/three": "^0.185.4",
     "@types/ws": "^8.18.1",
+    "c8": "^12.0.0",
     "puppeteer": "^25.4.0",
     "typescript": "7.0.2",
     "typescript-compiler-api": "npm:typescript@^5.9.3",
     "vite": "^8.1.5"
+  },
+  "overrides": {
+    "qs": "6.16.0"
   }
 }

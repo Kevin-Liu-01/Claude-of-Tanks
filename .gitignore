@@ -35,3 +35,6 @@ docs/qa-evidence-manifest.json
 # Iterative visual-critic output is local evidence. Maintained conclusions
 # belong in vehicle reference packets or ADRs.
 docs/critique/*
+.stryker-tmp/
+.quality-reports/
+coverage/

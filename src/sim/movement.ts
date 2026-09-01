@@ -172,6 +172,80 @@ interface SupportCache {
   cg: MovementContactGeometry | null | undefined;
 }
 
+interface GunLaySolution {
+  horizontalDistance: number;
+  worldPitch: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
+interface SupportSamples {
+  halfLength: number;
+  centerZ: number;
+  lineCount: number;
+  step: number;
+  cosYaw: number;
+  sinYaw: number;
+  cosNegPitch: number;
+  sinNegPitch: number;
+  cosRoll: number;
+  sinRoll: number;
+  sinPitch: number;
+  cosPitch: number;
+  fitSinPitch: number;
+  fitCosPitch: number;
+  fitSinRoll: number;
+  fitCosRoll: number;
+  worldX: number;
+  worldZ: number;
+  zHalf: number;
+  sumHeightZ: number;
+  sumZZ: number;
+  sumLeft: number;
+  sumRight: number;
+  sideCount: number;
+  outerMax: number;
+  settleDeficitSum: number;
+  deficitCount: number;
+  deepestZ: number;
+  settleOuterMax: number;
+  frontMax: number;
+  frontZ: number;
+  rearMax: number;
+  rearZ: number;
+  fanMax: number;
+  bellyMax: number;
+  panY: number | null;
+}
+
+interface DriveStep {
+  grounded: boolean;
+  throttle: number;
+  steer: number;
+  braking: boolean;
+  ground: string;
+  resistance: number;
+  hardResistance: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  terrainPitch: number;
+  topSpeed: number;
+  reverseSpeed: number;
+  speedMultiplier: number;
+  traverseMax: number;
+  gunArc: number;
+  acceleration: number;
+  baseRate: number;
+  brakeCap: number;
+  brakeRate: number;
+  speedLimit: number;
+  targetSpeed: number;
+  rate: number;
+  spoolTarget: number;
+}
+
 export interface TankState {
   pos: Vector3;
   yaw: number;
@@ -221,7 +295,6 @@ export interface MovementInput {
   aimPoint?: Vector3 | null;
   /** Hold the current articulated turret/gun/hydraulic lay while sight aim moves. */
   aimLocked?: boolean;
-  [name: string]: unknown;
 }
 
 export interface MovementEntity {
@@ -244,7 +317,7 @@ export type MovementCollisionResolver = (
   position: Vector3,
   radiusM: number,
   outPush: Vector3,
-) => unknown;
+) => boolean;
 
 export interface MovementShellSpec {
   reloadS?: number;
@@ -669,6 +742,77 @@ const _gunWorldDir = new Vector3();
 const _worldUp = new Vector3(0, 1, 0);
 const _hullEuler = new Euler(0, 0, 0, 'YXZ');
 const _hullQuat = new Quaternion();
+const _gunLaySolution: GunLaySolution = {
+  horizontalDistance: 0,
+  worldPitch: 0,
+  turretYaw: 0,
+  gunPitch: 0,
+};
+const _supportSamples: SupportSamples = {
+  halfLength: 0,
+  centerZ: 0,
+  lineCount: 0,
+  step: 0,
+  cosYaw: 1,
+  sinYaw: 0,
+  cosNegPitch: 1,
+  sinNegPitch: 0,
+  cosRoll: 1,
+  sinRoll: 0,
+  sinPitch: 0,
+  cosPitch: 1,
+  fitSinPitch: 0,
+  fitCosPitch: 1,
+  fitSinRoll: 0,
+  fitCosRoll: 1,
+  worldX: 0,
+  worldZ: 0,
+  zHalf: 0,
+  sumHeightZ: 0,
+  sumZZ: 0,
+  sumLeft: 0,
+  sumRight: 0,
+  sideCount: 0,
+  outerMax: -Infinity,
+  settleDeficitSum: 0,
+  deficitCount: 0,
+  deepestZ: 0,
+  settleOuterMax: -Infinity,
+  frontMax: -Infinity,
+  frontZ: 0,
+  rearMax: -Infinity,
+  rearZ: 0,
+  fanMax: -Infinity,
+  bellyMax: -Infinity,
+  panY: null,
+};
+const _driveStep: DriveStep = {
+  grounded: true,
+  throttle: 0,
+  steer: 0,
+  braking: false,
+  ground: 'medium',
+  resistance: 1,
+  hardResistance: 1,
+  forwardX: 0,
+  forwardZ: 1,
+  rightX: 1,
+  rightZ: 0,
+  terrainPitch: 0,
+  topSpeed: 0,
+  reverseSpeed: 0,
+  speedMultiplier: 1,
+  traverseMax: 0,
+  gunArc: Infinity,
+  acceleration: 0,
+  baseRate: 0,
+  brakeCap: 0,
+  brakeRate: 0,
+  speedLimit: 0,
+  targetSpeed: 0,
+  rate: 0,
+  spoolTarget: 0,
+};
 
 // ---------------------------------------------------------------------------
 // Small math helpers
@@ -718,6 +862,58 @@ function slopeSpeedFactor(
   return 1 + Math.min(-pitchDeg / 45, DOWNHILL_BONUS_CAP);
 }
 
+function applyModuleDebuffs(
+  modules: Record<string, MovementModuleState | undefined> | undefined,
+  out: MovementDebuffs,
+): void {
+  if (!modules) return;
+  const engine = modules.engine;
+  if (engine?.state === 'red') out.immobile = true;
+  else if (engine?.state === 'yellow') out.powerMult = ENGINE_YELLOW_POWER_MULT;
+
+  const transmission = modules.transmission;
+  if (transmission?.state === 'red') {
+    out.powerMult *= 0.3;
+    out.accelMult *= 0.45;
+    out.traverseMult *= 0.45;
+  } else if (transmission?.state === 'yellow') {
+    out.powerMult *= 0.72;
+    out.accelMult *= 0.75;
+    out.traverseMult *= 0.75;
+  }
+
+  if (modules.trackL?.state === 'red' || modules.trackR?.state === 'red') {
+    out.immobile = true;
+  }
+  const ring = modules.turretRing || modules.gunMount;
+  if (ring?.state === 'red') out.turretMult = 0.2;
+  else if (ring?.state === 'yellow') out.turretMult = 0.5;
+  out.gunYellow = modules.gun?.state === 'yellow';
+}
+
+function applyCrewDebuffs(
+  crew: Record<string, boolean | undefined> | undefined,
+  out: MovementDebuffs,
+): void {
+  if (!crew) return;
+  if (crew.driver === false) {
+    out.accelMult = DRIVER_DEAD_MULT;
+    out.traverseMult = DRIVER_DEAD_MULT;
+  }
+  if (crew.gunner === false) out.aimTimeMult = GUNNER_DEAD_AIMTIME_MULT;
+}
+
+function applyEquipmentDebuffs(
+  equipment: MovementCombatState['equipMults'],
+  out: MovementDebuffs,
+): void {
+  if (!equipment) return;
+  if (typeof equipment.traverse === 'number') out.traverseMult *= equipment.traverse;
+  if (typeof equipment.turret === 'number') out.turretMult *= equipment.turret;
+  if (typeof equipment.aimTime === 'number') out.aimTimeMult *= equipment.aimTime;
+  if (typeof equipment.bloom === 'number') out.bloomMult = equipment.bloom;
+}
+
 /**
  * Extract movement-relevant debuffs from a CombatState per the locked table in
  * ARCHITECTURE §2.4. `combat == null` ⇒ fully healthy.
@@ -726,72 +922,19 @@ function readDebuffs(
   combat: MovementCombatState | null | undefined,
   out: MovementDebuffs,
 ): MovementDebuffs {
-  let immobile = false;
-  let powerMult = 1;
-  let accelMult = 1;
-  let traverseMult = 1;
-  let turretMult = 1;
-  let aimTimeMult = 1;
-  let bloomMult = 1;
-  let gunYellow = false;
-  if (combat) {
-    if (combat.destroyed) immobile = true;
-    const m = combat.modules;
-    if (m) {
-      const eng = m.engine;
-      if (eng) {
-        if (eng.state === 'red') immobile = true;
-        else if (eng.state === 'yellow') powerMult = ENGINE_YELLOW_POWER_MULT;
-      }
-      const transmission = m.transmission;
-      if (transmission) {
-        if (transmission.state === 'red') {
-          powerMult *= 0.3;
-          accelMult *= 0.45;
-          traverseMult *= 0.45;
-        } else if (transmission.state === 'yellow') {
-          powerMult *= 0.72;
-          accelMult *= 0.75;
-          traverseMult *= 0.75;
-        }
-      }
-      if ((m.trackL && m.trackL.state === 'red') ||
-          (m.trackR && m.trackR.state === 'red')) immobile = true;
-      const ring = m.turretRing || m.gunMount;
-      if (ring) {
-        if (ring.state === 'red') turretMult = 0.2;
-        else if (ring.state === 'yellow') turretMult = 0.5;
-      }
-      if (m.gun && m.gun.state === 'yellow') gunYellow = true;
-    }
-    const crew = combat.crew;
-    if (crew) {
-      if (crew.driver === false) { accelMult = DRIVER_DEAD_MULT; traverseMult = DRIVER_DEAD_MULT; }
-      if (crew.gunner === false) aimTimeMult = GUNNER_DEAD_AIMTIME_MULT;
-    }
-    // EQUIPMENT SYSTEM (game/equipment.ts): loadout multipliers attached to
-    // the combat state once per battle. Improved rotation raises hull+turret
-    // traverse (traverse >1 ⇒ rate UP), GLD/vents cut aim time (aimTime <1 ⇒
-    // faster settle), vertical stabilizer shrinks the movement-bloom EXCESS
-    // (bloomMult <1, applied at the bloom target below). All stack
-    // multiplicatively with the damage/crew debuffs above, exactly like the
-    // ammo-rack × loader stack in damage.ts startReload.
-    const em = combat.equipMults;
-    if (em) {
-      if (typeof em.traverse === 'number') traverseMult *= em.traverse;
-      if (typeof em.turret === 'number') turretMult *= em.turret;
-      if (typeof em.aimTime === 'number') aimTimeMult *= em.aimTime;
-      if (typeof em.bloom === 'number') bloomMult = em.bloom;
-    }
-  }
-  out.immobile = immobile;
-  out.powerMult = powerMult;
-  out.accelMult = accelMult;
-  out.traverseMult = traverseMult;
-  out.turretMult = turretMult;
-  out.aimTimeMult = aimTimeMult;
-  out.gunYellow = gunYellow;
-  out.bloomMult = bloomMult;
+  out.immobile = combat?.destroyed === true;
+  out.powerMult = 1;
+  out.accelMult = 1;
+  out.traverseMult = 1;
+  out.turretMult = 1;
+  out.aimTimeMult = 1;
+  out.gunYellow = false;
+  out.bloomMult = 1;
+  if (!combat) return out;
+  applyModuleDebuffs(combat.modules, out);
+  applyCrewDebuffs(combat.crew, out);
+  // Equipment multipliers stack with damage and crew effects.
+  applyEquipmentDebuffs(combat.equipMults, out);
   return out;
 }
 
@@ -948,20 +1091,1352 @@ export function resetTankVerticalState(
   state.grounded = grounded !== false;
   state.landingImpactMps = 0;
   const ride = state._ride;
-  if (ride) {
-    ride.y = y;
-    ride.v = state.verticalSpeed;
-    ride.supportY = NaN;
-    ride.groundV = 0;
-    ride.grounded = state.grounded;
+  ride.y = y;
+  ride.v = state.verticalSpeed;
+  ride.supportY = NaN;
+  ride.groundV = 0;
+  ride.grounded = state.grounded;
+  ride.airTime = 0;
+  state._sup.x = NaN;
+  state._body.landingBlendS = 0;
+  state._body.dynamicSupport = false;
+  if (grounded !== false && !state.overturned) state._body.tumbling = false;
+}
+
+function initializeRideState(state: TankState, supportY: number): RideState {
+  const ride = state._ride;
+  state.landingImpactMps = 0;
+  if (!Number.isFinite(ride.y)) ride.y = state.pos.y;
+  if (!Number.isFinite(ride.v)) ride.v = 0;
+  if (Number.isFinite(ride.supportY)) return ride;
+
+  // Fresh spawns are authored on terrain. Authority reconciliation may seed
+  // an airborne pose, whose Y, vertical speed, and phase must remain intact.
+  if (state.grounded !== false) {
+    ride.y = supportY;
+    ride.v = 0;
+    ride.grounded = true;
+  }
+  ride.supportY = supportY;
+  ride.groundV = 0;
+  return ride;
+}
+
+function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number): void {
+  const rawGroundV = clamp(
+    (supportY - ride.supportY) / dt,
+    -RIDE_SUPPORT_V_CAP,
+    RIDE_SUPPORT_V_CAP,
+  );
+  const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
+  ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
+  ride.supportY = supportY;
+}
+
+function advanceAirborneRide(
+  state: TankState,
+  ride: RideState,
+  dt: number,
+  contactY: number,
+  floorY: number,
+): boolean {
+  ride.v -= GRAVITY * dt;
+  ride.y += ride.v * dt;
+  ride.airTime = (ride.airTime || 0) + dt;
+  // A rising hull must not be grabbed back out of flight by a ramp below it.
+  if (ride.y > contactY || ride.v > ride.groundV + RIDE_DETACH_REL_V_MPS) return false;
+  state.landingImpactMps = Math.max(0, ride.groundV - ride.v);
+  ride.y = Math.max(contactY, floorY);
+  ride.airTime = 0;
+  return true;
+}
+
+function constrainLoadedRide(
+  ride: RideState,
+  supportY: number,
+  contactY: number,
+  floorY: number,
+  dt: number,
+): boolean {
+  const clearOfDroop = ride.y - contactY > RIDE_DETACH_CLEARANCE_M;
+  const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
+  if (clearOfDroop && separating) {
     ride.airTime = 0;
+    return false;
   }
-  if (state._sup) state._sup.x = NaN;
-  if (state._body) {
-    state._body.landingBlendS = 0;
-    state._body.dynamicSupport = false;
-    if (grounded !== false && !state.overturned) state._body.tumbling = false;
+
+  ride.airTime = 0;
+  ride.v += (RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
+    2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v)) * dt;
+  ride.y += ride.v * dt;
+  if (ride.y < floorY) {
+    ride.y = floorY;
+    if (ride.v < ride.groundV) ride.v = ride.groundV;
+    return true;
   }
+  if (ride.y <= contactY) return true;
+  if (ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS) return false;
+  ride.y = contactY;
+  if (ride.v > ride.groundV) ride.v = ride.groundV;
+  return true;
+}
+
+function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number): void {
+  const supportY = state._sup.y;
+  const floorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : supportY;
+  const ride = initializeRideState(state, supportY);
+  updateRideSupportVelocity(ride, supportY, dt);
+  const contactY = supportY + RIDE_DROOP_M;
+  const grounded = groundedAtStart
+    ? constrainLoadedRide(ride, supportY, contactY, floorY, dt)
+    : advanceAirborneRide(state, ride, dt, contactY, floorY);
+  state.grounded = grounded;
+  ride.grounded = grounded;
+  state.verticalSpeed = ride.v;
+  state.pos.y = ride.y;
+}
+
+function solveGunLay(
+  spec: MovementSpec,
+  state: TankState,
+  aim: Vector3,
+  out: GunLaySolution,
+): GunLaySolution {
+  // Exact inverse YXZ composition keeps the articulated bore, shell origin,
+  // reticle, and authoritative hit ray on one pose even on compound slopes.
+  _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+  _hullQuat.setFromEuler(_hullEuler);
+  const turretPivot = spec.armor?.turretPivot;
+  const gunPivot = spec.armor?.gunPivot;
+  _gunOriginWorld.set(
+    gunPivot?.[0] ?? 0,
+    gunPivot?.[1] ?? spec.dims.heightM * 0.15,
+    gunPivot?.[2] ?? 0,
+  ).applyAxisAngle(_worldUp, state.turretYaw).add(_turretPivotLocal.set(
+    turretPivot?.[0] ?? 0,
+    turretPivot?.[1] ?? spec.dims.heightM * 0.7,
+    turretPivot?.[2] ?? 0,
+  )).applyQuaternion(_hullQuat).add(state.pos);
+
+  const dx = aim.x - _gunOriginWorld.x;
+  const dy = aim.y - _gunOriginWorld.y;
+  const dz = aim.z - _gunOriginWorld.z;
+  out.horizontalDistance = Math.hypot(dx, dz);
+  out.worldPitch = Math.atan2(dy, Math.max(out.horizontalDistance, 1e-6));
+  _aimLocal.set(dx, dy, dz).applyQuaternion(_hullQuat.conjugate());
+  _hullQuat.conjugate();
+  const localHorizontal = Math.hypot(_aimLocal.x, _aimLocal.z);
+  out.turretYaw = localHorizontal > 1e-6
+    ? Math.atan2(_aimLocal.x, _aimLocal.z)
+    : state.turretYaw;
+  out.gunPitch = Math.atan2(_aimLocal.y, Math.max(localHorizontal, 1e-6));
+  return out;
+}
+
+function updateGunLimitDwell(state: TankState, labelWanted: boolean, dt: number): void {
+  state._gunLimitHoldS = labelWanted ? (state._gunLimitHoldS || 0) + dt : 0;
+  state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
+}
+
+function updateHydraulicGunLay(
+  spec: MovementSpec,
+  state: TankState,
+  solution: GunLaySolution,
+  steer: number,
+  dt: number,
+): void {
+  state.turretYaw = 0;
+  state.gunPitch = 0;
+  const hydraulicAim = spec.hydropneumaticAim;
+  const noseDown = (hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD;
+  const noseUp = (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD;
+  const requestedPitch = state.suspensionAimPitch + solution.gunPitch;
+  const yawPinned = Math.abs(wrapAngle(solution.turretYaw)) > 1e-4;
+  const pitchPinned = !state.suspensionAim ||
+    requestedPitch < -noseDown - 1e-4 || requestedPitch > noseUp + 1e-4;
+  state.atGunLimit = yawPinned || pitchPinned;
+  const labelWanted = Math.abs(steer) < 0.2 && state.atGunLimit &&
+    solution.horizontalDistance >= GUN_LIMIT_LABEL_DIST_M;
+  updateGunLimitDwell(state, labelWanted, dt);
+}
+
+function clampCasemateYaw(state: TankState, requestedYaw: number, gunArc: number): boolean {
+  if (gunArc === Infinity) return false;
+  state.turretYaw = clamp(state.turretYaw, -gunArc, gunArc);
+  return Math.abs(wrapAngle(requestedYaw)) > gunArc + 1e-4;
+}
+
+function minimumTerrainGunPitch(
+  spec: MovementSpec,
+  state: TankState,
+  hAt: HeightSampler,
+  mechanicalLow: number,
+  mechanicalHigh: number,
+): number {
+  const barrelLength = spec.armor?.gunBarrel?.lengthM ?? 0;
+  if (barrelLength <= 1) return mechanicalLow;
+  _hullUpWorld.set(0, 1, 0).applyQuaternion(_hullQuat);
+  _turretForwardWorld.set(
+    Math.sin(state.turretYaw),
+    0,
+    Math.cos(state.turretYaw),
+  ).applyQuaternion(_hullQuat);
+  _gunWorldDir.copy(_hullUpWorld).multiplyScalar(Math.sin(state.gunPitch))
+    .addScaledVector(_turretForwardWorld, Math.cos(state.gunPitch));
+
+  let requiredSin = -1;
+  for (const fraction of MUZZLE_CLEARANCE_FRACTIONS) {
+    const terrainY = hAt(
+      _gunOriginWorld.x + _gunWorldDir.x * barrelLength * fraction,
+      _gunOriginWorld.z + _gunWorldDir.z * barrelLength * fraction,
+    );
+    const candidate = (terrainY + MUZZLE_CLEARANCE_M - _gunOriginWorld.y) /
+      (barrelLength * fraction);
+    if (candidate > requiredSin) requiredSin = candidate;
+  }
+  if (requiredSin <= -1) return mechanicalLow;
+  // worldY(p) = A·sin(p) + B·cos(p) = R·sin(p + phase).
+  const radiusY = Math.hypot(_hullUpWorld.y, _turretForwardWorld.y) || 1;
+  const phaseY = Math.atan2(_turretForwardWorld.y, _hullUpWorld.y);
+  const terrainLow = Math.asin(clamp(requiredSin / radiusY, -1, 1)) - phaseY;
+  return terrainLow > mechanicalLow
+    ? Math.min(terrainLow, mechanicalHigh)
+    : mechanicalLow;
+}
+
+function updateConventionalGunLay(
+  spec: MovementSpec,
+  state: TankState,
+  debuff: MovementDebuffs,
+  solution: GunLaySolution,
+  hAt: HeightSampler,
+  gunArc: number,
+  steer: number,
+  dt: number,
+): void {
+  const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
+  state.turretYaw = chaseAngle(state.turretYaw, solution.turretYaw, turretRate * dt);
+  const yawPinned = clampCasemateYaw(state, solution.turretYaw, gunArc);
+  const mechanicalLow = -spec.gunDepressionDeg * DEG2RAD;
+  const mechanicalHigh = spec.gunElevationDeg * DEG2RAD;
+  const terrainLow = minimumTerrainGunPitch(
+    spec,
+    state,
+    hAt,
+    mechanicalLow,
+    mechanicalHigh,
+  );
+  const desiredGun = solution.gunPitch;
+  const specPinned = yawPinned || desiredGun < mechanicalLow - 1e-4 ||
+    desiredGun > mechanicalHigh + 1e-4;
+  state.atGunLimit = specPinned || desiredGun < terrainLow - 1e-4;
+  state.gunPitch = clamp(
+    approach(
+      state.gunPitch,
+      clamp(desiredGun, terrainLow, mechanicalHigh),
+      spec.gunPitchDegS * DEG2RAD * dt,
+    ),
+    mechanicalLow,
+    mechanicalHigh,
+  );
+
+  // Suppress labels for transient terrain-only pins while driving; the red
+  // reticle still communicates the instantaneous physical constraint.
+  const attitudePin = (desiredGun < mechanicalLow - 1e-4 ||
+    desiredGun > mechanicalHigh + 1e-4) &&
+    solution.worldPitch >= mechanicalLow - 1e-4 &&
+    solution.worldPitch <= mechanicalHigh + 1e-4;
+  const fastTransient = attitudePin && Math.abs(state.speed) * 3.6 > 15;
+  const labelWanted = !fastTransient && Math.abs(steer) < 0.2 &&
+    (specPinned || (state.atGunLimit &&
+      solution.horizontalDistance >= GUN_LIMIT_LABEL_DIST_M));
+  updateGunLimitDwell(state, labelWanted, dt);
+}
+
+function updateGunLay(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  hAt: HeightSampler,
+  gunArc: number,
+  steer: number,
+  dt: number,
+): void {
+  const { input, spec, state } = entity;
+  const previousTurretYaw = state.turretYaw;
+  if (input.aimPoint && !input.aimLocked) {
+    const solution = solveGunLay(spec, state, input.aimPoint, _gunLaySolution);
+    if (hasFixedHydraulicGun(spec)) {
+      updateHydraulicGunLay(spec, state, solution, steer, dt);
+    } else {
+      updateConventionalGunLay(spec, state, debuff, solution, hAt, gunArc, steer, dt);
+    }
+  } else if (input.aimLocked) {
+    // Holding the gun is deliberate rather than a mechanical limit.
+    state.atGunLimit = false;
+    state.gunLimitSpec = false;
+    state._gunLimitHoldS = 0;
+  }
+  state.turretYawRate = wrapAngle(state.turretYaw - previousTurretYaw) / dt;
+}
+
+function updateTrackScrollAndBloom(
+  spec: MovementSpec,
+  state: TankState,
+  debuff: MovementDebuffs,
+  dt: number,
+): void {
+  state.trackScroll.l += (state.speed + state.yawRate * OUTER_TRACK_ARM_M) * dt;
+  state.trackScroll.r += (state.speed - state.yawRate * OUTER_TRACK_ARM_M) * dt;
+
+  const bloom = spec.gun.bloom;
+  let target = Math.sqrt(1 +
+    (bloom.move * Math.abs(state.speed) * 3.6) ** 2 +
+    (bloom.hullRot * Math.abs(state.yawRate) * RAD2DEG) ** 2 +
+    (bloom.turret * Math.abs(state.turretYawRate) * RAD2DEG) ** 2);
+  if (debuff.bloomMult !== 1) target = 1 + (target - 1) * debuff.bloomMult;
+  if (debuff.gunYellow) target = Math.max(target * 2, GUN_YELLOW_BLOOM_FLOOR);
+  const tau = target > state.bloomF
+    ? BLOOM_GROW_TAU
+    : (spec.gun.aimTimeS * debuff.aimTimeMult) / LN6;
+  state.bloomF += (target - state.bloomF) * (1 - Math.exp(-dt / tau));
+  if (debuff.gunYellow && state.bloomF < GUN_YELLOW_BLOOM_FLOOR) {
+    state.bloomF = GUN_YELLOW_BLOOM_FLOOR;
+  }
+  if (state.bloomF < 1) state.bloomF = 1;
+}
+
+function integrateHorizontalMotion(
+  spec: MovementSpec,
+  state: TankState,
+  collide: MovementCollisionResolver | null,
+  forwardX: number,
+  forwardZ: number,
+  dt: number,
+): void {
+  const spring = state._spring;
+  state.pos.x += (forwardX * state.speed + spring.recoilVX) * dt;
+  state.pos.z += (forwardZ * state.speed + spring.recoilVZ) * dt;
+  const recoilDecay = Math.exp(-dt / RECOIL_DECAY_TAU);
+  spring.recoilVX *= recoilDecay;
+  spring.recoilVZ *= recoilDecay;
+  if (!collide) return;
+
+  const radiusM = spec.armor?.boundingRadiusM ?? spec.dims.hullLengthM * 0.5;
+  _push.set(0, 0, 0);
+  state.impactMps = 0;
+  if (!collide(state.pos, radiusM, _push)) return;
+  state.pos.add(_push);
+  const pushForward = _push.x * forwardX + _push.z * forwardZ;
+  const travel = Math.abs(state.speed) * dt;
+  if (travel <= 1e-9 || pushForward * state.speed >= 0) return;
+
+  const blockedFraction = clamp(Math.abs(pushForward) / travel, 0, 1);
+  const lostSpeed = Math.abs(state.speed) * blockedFraction;
+  state.speed *= 1 - blockedFraction;
+  state.impactMps = lostSpeed;
+  if (lostSpeed > 1.5) state._spool = 0;
+}
+
+function updateFlinchRock(state: TankState, dt: number): void {
+  const flinch = state._flinch;
+  if (!flinch) return;
+  const active = flinch.p !== 0 || flinch.r !== 0 || flinch.pv !== 0 || flinch.rv !== 0;
+  if (!active) return;
+  flinch.pv += (-FLINCH_W * FLINCH_W * flinch.p -
+    2 * FLINCH_Z * FLINCH_W * flinch.pv) * dt;
+  flinch.p += flinch.pv * dt;
+  flinch.rv += (-FLINCH_W * FLINCH_W * flinch.r -
+    2 * FLINCH_Z * FLINCH_W * flinch.rv) * dt;
+  flinch.r += flinch.rv * dt;
+  if (Math.abs(flinch.p) + Math.abs(flinch.pv) +
+      Math.abs(flinch.r) + Math.abs(flinch.rv) < 1e-4) {
+    flinch.p = 0;
+    flinch.r = 0;
+    flinch.pv = 0;
+    flinch.rv = 0;
+  }
+}
+
+function fixedHydraulicPitchRequest(
+  spec: MovementSpec,
+  state: TankState,
+  aim: Vector3,
+  suspensionPitch: number,
+  dt: number,
+): number {
+  _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+  _hullQuat.setFromEuler(_hullEuler);
+  const turretPivot = spec.armor?.turretPivot;
+  const gunPivot = spec.armor?.gunPivot;
+  _gunOriginWorld.set(
+    (turretPivot?.[0] ?? 0) + (gunPivot?.[0] ?? 0),
+    (turretPivot?.[1] ?? spec.dims.heightM * 0.7) +
+      (gunPivot?.[1] ?? spec.dims.heightM * 0.15),
+    (turretPivot?.[2] ?? 0) + (gunPivot?.[2] ?? 0),
+  ).applyQuaternion(_hullQuat).add(state.pos);
+  _aimLocal.copy(aim).sub(_gunOriginWorld).applyQuaternion(_hullQuat.conjugate());
+  _hullQuat.conjugate();
+  const pitchError = Math.atan2(
+    _aimLocal.y,
+    Math.max(Math.hypot(_aimLocal.x, _aimLocal.z), 1e-6),
+  );
+  return suspensionPitch + pitchError * Math.min(1, dt * 4);
+}
+
+function conventionalHydraulicPitchRequest(
+  spec: MovementSpec,
+  state: TankState,
+  aim: Vector3,
+): number {
+  const dx = aim.x - state.pos.x;
+  const dz = aim.z - state.pos.z;
+  const dy = aim.y - (state.pos.y + gunPivotHeight(spec));
+  return Math.atan2(dy, Math.max(Math.hypot(dx, dz), 1e-6)) - state._terr.pitch;
+}
+
+function updateSuspensionAim(
+  entity: MovementEntity,
+  fixedHydraulicGun: boolean,
+  dt: number,
+): number {
+  const { input, spec, state } = entity;
+  let suspensionPitch = state.suspensionAimPitch || 0;
+  const hydraulicAim = spec.hydropneumaticAim;
+  if ((!state.suspensionAim || !hydraulicAim) && suspensionPitch === 0) return 0;
+
+  let target = 0;
+  if (input.aimLocked) {
+    target = suspensionPitch;
+  } else if (state.suspensionAim && input.aimPoint) {
+    const requested = fixedHydraulicGun
+      ? fixedHydraulicPitchRequest(spec, state, input.aimPoint, suspensionPitch, dt)
+      : conventionalHydraulicPitchRequest(spec, state, input.aimPoint);
+    target = clamp(
+      requested,
+      -(hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD,
+      (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD,
+    );
+  }
+  suspensionPitch = approach(
+    suspensionPitch,
+    target,
+    (hydraulicAim?.rateDegS ?? SUSPENSION_AIM_DEFAULT_RATE_DEG_S) * DEG2RAD * dt,
+  );
+  if (!state.suspensionAim && Math.abs(suspensionPitch) < 1e-6) suspensionPitch = 0;
+  state.suspensionAimPitch = suspensionPitch;
+  return suspensionPitch;
+}
+
+function applyLandingAttitudeImpulse(
+  state: TankState,
+  body: RigidBodyState,
+  targetPitch: number,
+  targetRoll: number,
+  landingImpact: number,
+  upYAtStart: number,
+): void {
+  if (landingImpact <= 0) return;
+  const spring = state._spring;
+  spring.pitchV += clamp(
+    wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
+    -LANDING_TORQUE_MAX,
+    LANDING_TORQUE_MAX,
+  );
+  spring.rollV += clamp(
+    wrapAngle(targetRoll - spring.roll) * landingImpact * LANDING_TORQUE_GAIN,
+    -LANDING_TORQUE_MAX,
+    LANDING_TORQUE_MAX,
+  );
+  body.landingBlendS = LANDING_CONTACT_BLEND_S;
+  if (upYAtStart < TUMBLE_ENTER_UP_Y) body.tumbling = true;
+}
+
+function updateRigidAttitude(
+  state: TankState,
+  body: RigidBodyState,
+  groundedAtStart: boolean,
+  landingImpact: number,
+  dt: number,
+): void {
+  const spring = state._spring;
+  if (groundedAtStart) {
+    const relativePitch = wrapAngle(spring.pitch - state._terr.pitch);
+    const relativeRoll = wrapAngle(spring.roll - state._terr.roll);
+    if (body.autoRighting) {
+      spring.pitchV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativePitch -
+        2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spring.pitchV) * dt;
+      spring.rollV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativeRoll -
+        2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spring.rollV) * dt;
+    } else {
+      spring.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
+      spring.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
+      const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
+      spring.pitchV *= contactDrag;
+      spring.rollV *= contactDrag;
+    }
+  } else {
+    const airDrag = Math.exp(-AIR_ANGULAR_DRAG_S * dt);
+    spring.pitchV *= airDrag;
+    spring.rollV *= airDrag;
+  }
+
+  const angularCap = body.tumbling ? TUMBLE_ANGULAR_SPEED_MAX : AIR_ANGULAR_SPEED_MAX;
+  spring.pitchV = clamp(spring.pitchV, -angularCap, angularCap);
+  spring.rollV = clamp(spring.rollV, -angularCap, angularCap);
+  spring.pitch = wrapAngle(spring.pitch + spring.pitchV * dt);
+  spring.roll = wrapAngle(spring.roll + spring.rollV * dt);
+  const upY = Math.cos(spring.pitch) * Math.cos(spring.roll);
+  const relativeUpY = Math.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
+    Math.cos(wrapAngle(spring.roll - state._terr.roll));
+  if ((!groundedAtStart || landingImpact > 0) && upY < TUMBLE_ENTER_UP_Y) {
+    body.tumbling = true;
+  }
+  const settledSpeed = Math.abs(spring.pitchV) + Math.abs(spring.rollV);
+  if (groundedAtStart && body.autoRighting && relativeUpY > 0.94 && settledSpeed < 0.18) {
+    body.autoRighting = false;
+    body.tumbling = false;
+  } else if (groundedAtStart && body.tumbling && !body.autoRighting &&
+      relativeUpY > TUMBLE_EXIT_UP_Y && settledSpeed < 0.12 && landingImpact <= 0) {
+    body.tumbling = false;
+  }
+}
+
+function updateSupportedAttitude(
+  state: TankState,
+  body: RigidBodyState,
+  targetPitch: number,
+  targetRoll: number,
+  perch: number,
+  dt: number,
+): void {
+  const spring = state._spring;
+  body.landingBlendS = Math.max(0, (body.landingBlendS || 0) - dt);
+  const settle = body.landingBlendS > 0
+    ? 1 - body.landingBlendS / LANDING_CONTACT_BLEND_S
+    : 1;
+  const springScale = LANDING_SPRING_MIN_SCALE + (1 - LANDING_SPRING_MIN_SCALE) * settle;
+  const pitchOmega = SPRING_OMEGA * springScale * (1 + PERCH_W_BOOST * perch);
+  const pitchZeta = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
+  spring.pitchV += (pitchOmega * pitchOmega * (targetPitch - spring.pitch) -
+    2 * pitchZeta * pitchOmega * spring.pitchV) * dt;
+  spring.pitch += spring.pitchV * dt;
+  const rollOmega = SPRING_OMEGA * springScale;
+  spring.rollV += (rollOmega * rollOmega * (targetRoll - spring.roll) -
+    2 * SPRING_ZETA * rollOmega * spring.rollV) * dt;
+  spring.roll += spring.rollV * dt;
+}
+
+function updateHullAttitude(
+  state: TankState,
+  body: RigidBodyState,
+  groundedAtStart: boolean,
+  targetPitch: number,
+  targetRoll: number,
+  perch: number,
+  landingImpact: number,
+  upYAtStart: number,
+  dt: number,
+): void {
+  applyLandingAttitudeImpulse(
+    state,
+    body,
+    targetPitch,
+    targetRoll,
+    landingImpact,
+    upYAtStart,
+  );
+  if (!groundedAtStart || body.tumbling) {
+    updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt);
+  } else {
+    updateSupportedAttitude(state, body, targetPitch, targetRoll, perch, dt);
+  }
+  state.visualPitch = state._spring.pitch;
+  state.visualRoll = state._spring.roll;
+  const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+  state.overturned = state.overturned
+    ? upY < OVERTURN_EXIT_UP_Y
+    : upY < OVERTURN_ENTER_UP_Y;
+}
+
+function updateSuspensionRock(
+  spec: MovementSpec,
+  state: TankState,
+  hAt: HeightSampler,
+  groundedAtStart: boolean,
+  poseAcceleration: number,
+  perch: number,
+  dt: number,
+): void {
+  const suspension = state._susp;
+  const acceleration = groundedAtStart
+    ? clamp(poseAcceleration, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
+    : 0;
+  let pitchTarget = acceleration * SUSP_ACCEL_GAIN;
+  let rollTarget = 0;
+  if (groundedAtStart) {
+    const halfLength = SUSP_FIT_LEN * spec.dims.hullLengthM;
+    const halfWidth = SUSP_FIT_WID * spec.dims.widthM;
+    const forwardX = Math.sin(state.yaw);
+    const forwardZ = Math.cos(state.yaw);
+    const rightX = Math.cos(state.yaw);
+    const rightZ = -Math.sin(state.yaw);
+    const x = state.pos.x;
+    const z = state.pos.z;
+    const frontLeft = hAt(x + forwardX * halfLength - rightX * halfWidth,
+      z + forwardZ * halfLength - rightZ * halfWidth);
+    const frontRight = hAt(x + forwardX * halfLength + rightX * halfWidth,
+      z + forwardZ * halfLength + rightZ * halfWidth);
+    const rearLeft = hAt(x - forwardX * halfLength - rightX * halfWidth,
+      z - forwardZ * halfLength - rightZ * halfWidth);
+    const rearRight = hAt(x - forwardX * halfLength + rightX * halfWidth,
+      z - forwardZ * halfLength + rightZ * halfWidth);
+    const terrainPitch = Math.atan2(
+      (frontLeft + frontRight - rearLeft - rearRight) * 0.5,
+      2 * halfLength,
+    );
+    const terrainRoll = Math.atan2(
+      (frontRight + rearRight - frontLeft - rearLeft) * 0.5,
+      2 * halfWidth,
+    );
+    const conformance = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) *
+      SUSP_K_GAIN * (1 - perch);
+    pitchTarget += clamp(
+      (terrainPitch - state.visualPitch) * conformance,
+      -SUSP_P_CLAMP,
+      SUSP_P_CLAMP,
+    );
+    rollTarget += clamp(
+      (terrainRoll - state.visualRoll) * conformance,
+      -SUSP_R_CLAMP,
+      SUSP_R_CLAMP,
+    );
+  }
+  suspension.pv += (SUSP_W * SUSP_W * (pitchTarget - suspension.p) -
+    2 * SUSP_Z * SUSP_W * suspension.pv) * dt;
+  suspension.p += suspension.pv * dt;
+  suspension.rv += (SUSP_W * SUSP_W * (rollTarget - suspension.r) -
+    2 * SUSP_Z * SUSP_W * suspension.rv) * dt;
+  suspension.r += suspension.rv * dt;
+  if (perch <= 0) return;
+  const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
+  suspension.p *= bleed;
+  suspension.pv *= bleed;
+  suspension.r *= bleed;
+  suspension.rv *= bleed;
+}
+
+function resetSupportSamples(
+  spec: MovementSpec,
+  state: TankState,
+  contact: MovementContactGeometry | null | undefined,
+  pitch: number,
+  roll: number,
+): SupportSamples {
+  const samples = _supportSamples;
+  samples.halfLength = contact
+    ? contact.halfLenM
+    : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  samples.centerZ = contact?.zCenterM ?? 0;
+  samples.lineCount = Math.min(
+    SUPPORT_MAX_N,
+    Math.max(5, Math.ceil((2 * samples.halfLength) / SUPPORT_SPACING_M) + 1),
+  );
+  samples.step = (2 * samples.halfLength) / (samples.lineCount - 1);
+  samples.cosYaw = Math.cos(state.yaw);
+  samples.sinYaw = Math.sin(state.yaw);
+  samples.cosNegPitch = Math.cos(-pitch);
+  samples.sinNegPitch = Math.sin(-pitch);
+  samples.cosRoll = Math.cos(roll);
+  samples.sinRoll = Math.sin(roll);
+  samples.sinPitch = Math.sin(pitch);
+  samples.cosPitch = Math.cos(pitch);
+  samples.fitSinPitch = Math.sin(state._terr.pitch);
+  samples.fitCosPitch = Math.cos(state._terr.pitch);
+  samples.fitSinRoll = Math.sin(state._terr.roll);
+  samples.fitCosRoll = Math.cos(state._terr.roll);
+  samples.worldX = state.pos.x;
+  samples.worldZ = state.pos.z;
+  samples.zHalf = 0.25 * samples.halfLength;
+  samples.sumHeightZ = 0;
+  samples.sumZZ = 0;
+  samples.sumLeft = 0;
+  samples.sumRight = 0;
+  samples.sideCount = 0;
+  samples.outerMax = -Infinity;
+  samples.settleDeficitSum = 0;
+  samples.deficitCount = 0;
+  samples.deepestZ = 0;
+  samples.settleOuterMax = -Infinity;
+  samples.frontMax = -Infinity;
+  samples.frontZ = samples.halfLength;
+  samples.rearMax = -Infinity;
+  samples.rearZ = -samples.halfLength;
+  samples.fanMax = -Infinity;
+  samples.bellyMax = -Infinity;
+  samples.panY = contact?.panYM ? contact.panYM - 0.015 : null;
+  return samples;
+}
+
+function sampleTrackWrapEnds(
+  samples: SupportSamples,
+  contact: MovementContactGeometry | null | undefined,
+  hAt: HeightSampler,
+  localX: number,
+  gearBottomY: number,
+): void {
+  if (!contact?.endRise) return;
+  for (let end = 0; end < 2; end++) {
+    const localZ = end === 0
+      ? samples.centerZ + samples.halfLength + contact.endRise.dzM
+      : samples.centerZ - samples.halfLength - contact.endRise.dzM;
+    const rise = end === 0 ? contact.endRise.frontM : contact.endRise.rearM;
+    const localY = gearBottomY + rise;
+    const rolledX = localX * samples.cosRoll - localY * samples.sinRoll;
+    const rolledY = localX * samples.sinRoll + localY * samples.cosRoll;
+    const pitchedZ = rolledY * samples.sinNegPitch + localZ * samples.cosNegPitch;
+    const terrainY = hAt(
+      samples.worldX + rolledX * samples.cosYaw + pitchedZ * samples.sinYaw,
+      samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw,
+    );
+    const deficit = terrainY - ((localX * samples.sinRoll +
+      localY * samples.cosRoll) * samples.cosPitch + localZ * samples.sinPitch);
+    if (deficit > samples.outerMax) samples.outerMax = deficit;
+  }
+}
+
+function sampleOuterTrackLines(
+  samples: SupportSamples,
+  contact: MovementContactGeometry | null | undefined,
+  hAt: HeightSampler,
+  halfWidth: number,
+  gearBottomY: number,
+): void {
+  const renderedBottomLift = gearBottomY * samples.cosRoll * samples.cosPitch;
+  const fittedBottomLift = gearBottomY * samples.fitCosRoll * samples.fitCosPitch;
+  for (let side = -1; side <= 1; side += 2) {
+    const localX = side * halfWidth;
+    const rolledX = localX * samples.cosRoll - gearBottomY * samples.sinRoll;
+    const rolledY = localX * samples.sinRoll + gearBottomY * samples.cosRoll;
+    for (let index = 0; index < samples.lineCount; index++) {
+      const centeredZ = -samples.halfLength + index * samples.step;
+      const localZ = samples.centerZ + centeredZ;
+      const pitchedZ = rolledY * samples.sinNegPitch + localZ * samples.cosNegPitch;
+      const terrainY = hAt(
+        samples.worldX + rolledX * samples.cosYaw + pitchedZ * samples.sinYaw,
+        samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw,
+      );
+      samples.sumHeightZ += terrainY * centeredZ;
+      samples.sumZZ += centeredZ * centeredZ;
+      if (side < 0) samples.sumLeft += terrainY;
+      else samples.sumRight += terrainY;
+      samples.sideCount += 1;
+
+      const deficit = terrainY - (localX * samples.sinRoll * samples.cosPitch +
+        renderedBottomLift + localZ * samples.sinPitch);
+      if (deficit > samples.outerMax) samples.outerMax = deficit;
+      const fittedDeficit = terrainY - (localX * samples.fitSinRoll * samples.fitCosPitch +
+        fittedBottomLift + localZ * samples.fitSinPitch);
+      if (fittedDeficit > samples.settleOuterMax) {
+        samples.settleOuterMax = fittedDeficit;
+        samples.deepestZ = centeredZ;
+      }
+      if (centeredZ < -samples.zHalf && fittedDeficit > samples.rearMax) {
+        samples.rearMax = fittedDeficit;
+        samples.rearZ = centeredZ;
+      } else if (centeredZ > samples.zHalf && fittedDeficit > samples.frontMax) {
+        samples.frontMax = fittedDeficit;
+        samples.frontZ = centeredZ;
+      }
+      samples.settleDeficitSum += fittedDeficit;
+      samples.deficitCount += 1;
+    }
+    sampleTrackWrapEnds(samples, contact, hAt, localX, gearBottomY);
+  }
+}
+
+function sampleSupportFanSide(
+  samples: SupportSamples,
+  contact: MovementContactGeometry | null | undefined,
+  hAt: HeightSampler,
+  halfWidth: number,
+  gearBottomY: number,
+  line: (typeof SUPPORT_FAN)[number],
+  side: number,
+  stride: number,
+): void {
+  const localY = line.yOff > 0 && samples.panY !== null
+    ? samples.panY
+    : line.yOff + gearBottomY;
+  const localX = side * halfWidth * line.f;
+  const rolledX = localX * samples.cosRoll - localY * samples.sinRoll;
+  const rolledY = localX * samples.sinRoll + localY * samples.cosRoll;
+  const renderedLift = (localX * samples.sinRoll +
+    localY * samples.cosRoll) * samples.cosPitch;
+  const fittedLift = (localX * samples.fitSinRoll +
+    localY * samples.fitCosRoll) * samples.fitCosPitch;
+  for (let index = 0; index < samples.lineCount; index += stride) {
+    const localZ = samples.centerZ + (index === samples.lineCount - 2
+      ? samples.halfLength
+      : -samples.halfLength + index * samples.step);
+    const pitchedZ = rolledY * samples.sinNegPitch + localZ * samples.cosNegPitch;
+    const terrainY = hAt(
+      samples.worldX + rolledX * samples.cosYaw + pitchedZ * samples.sinYaw,
+      samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw,
+    );
+    const deficit = terrainY - (renderedLift + localZ * samples.sinPitch);
+    if (line.yOff === 0) {
+      if (deficit > samples.fanMax) samples.fanMax = deficit;
+      samples.settleDeficitSum += terrainY -
+        (fittedLift + localZ * samples.fitSinPitch);
+      samples.deficitCount += 1;
+    } else if (deficit > samples.bellyMax) {
+      samples.bellyMax = deficit;
+    }
+  }
+  if (line.yOff === 0) sampleTrackWrapEnds(samples, contact, hAt, localX, gearBottomY);
+}
+
+function sampleSupportFan(
+  samples: SupportSamples,
+  contact: MovementContactGeometry | null | undefined,
+  hAt: HeightSampler,
+  halfWidth: number,
+  gearBottomY: number,
+  rigidGear: boolean,
+): void {
+  const stride = rigidGear ? 1 : 2;
+  for (const line of SUPPORT_FAN) {
+    const sideCount = line.f === 0 ? 1 : 2;
+    for (let sideIndex = 0; sideIndex < sideCount; sideIndex++) {
+      sampleSupportFanSide(
+        samples,
+        contact,
+        hAt,
+        halfWidth,
+        gearBottomY,
+        line,
+        sideIndex === 0 ? -1 : 1,
+        stride,
+      );
+    }
+  }
+}
+
+function fallbackRigidBodySupport(
+  spec: MovementSpec,
+  samples: SupportSamples,
+  hAt: HeightSampler,
+  gearBottomY: number,
+): number {
+  const halfLength = spec.dims.hullLengthM * 0.5;
+  const halfWidth = spec.dims.widthM * 0.5;
+  const topY = Math.max(spec.dims.heightM, gearBottomY + 0.8);
+  let supportY = -Infinity;
+  for (let yIndex = 0; yIndex < 2; yIndex++) {
+    const localY = yIndex === 0 ? gearBottomY : topY;
+    for (let xSign = -1; xSign <= 1; xSign += 2) {
+      const localX = xSign * halfWidth;
+      const rolledX = localX * samples.cosRoll - localY * samples.sinRoll;
+      const rolledY = localX * samples.sinRoll + localY * samples.cosRoll;
+      for (let zSign = -1; zSign <= 1; zSign += 2) {
+        const localZ = zSign * halfLength;
+        const pitchedZ = rolledY * samples.sinNegPitch + localZ * samples.cosNegPitch;
+        const terrainY = hAt(
+          samples.worldX + rolledX * samples.cosYaw + pitchedZ * samples.sinYaw,
+          samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw,
+        );
+        const deficit = terrainY -
+          (rolledY * samples.cosPitch + localZ * samples.sinPitch);
+        if (deficit > supportY) supportY = deficit;
+      }
+    }
+  }
+  return supportY;
+}
+
+function rigidBodySupport(
+  spec: MovementSpec,
+  state: TankState,
+  samples: SupportSamples,
+  hAt: HeightSampler,
+  gearBottomY: number,
+  includeRigidBody: boolean,
+): number {
+  if (!includeRigidBody) return -Infinity;
+  const contact = spec.armor?.bodyContactPoints;
+  if (!contact?.hull || contact.hull.length < 3) {
+    return fallbackRigidBodySupport(spec, samples, hAt, gearBottomY);
+  }
+  let supportY = pointCloudSupportY(
+    contact.hull,
+    hAt,
+    samples.worldX,
+    samples.worldZ,
+    samples.cosYaw,
+    samples.sinYaw,
+    samples.cosNegPitch,
+    samples.sinNegPitch,
+    samples.cosRoll,
+    samples.sinRoll,
+  );
+  if (!contact.turret || contact.turret.length < 3) return supportY;
+  const turretPivot = spec.armor?.turretPivot;
+  const turretYaw = state.turretYaw || 0;
+  const turretSupport = pointCloudSupportY(
+    contact.turret,
+    hAt,
+    samples.worldX,
+    samples.worldZ,
+    samples.cosYaw,
+    samples.sinYaw,
+    samples.cosNegPitch,
+    samples.sinNegPitch,
+    samples.cosRoll,
+    samples.sinRoll,
+    Math.cos(turretYaw),
+    Math.sin(turretYaw),
+    turretPivot?.[0] ?? 0,
+    turretPivot?.[1] ?? 0,
+    turretPivot?.[2] ?? 0,
+  );
+  if (turretSupport > supportY) supportY = turretSupport;
+  return supportY;
+}
+
+function updateTerrainFitAndPerch(
+  state: TankState,
+  samples: SupportSamples,
+  halfWidth: number,
+  groundedAtStart: boolean,
+): void {
+  state._terr.pitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+  state._terr.roll = Math.atan2(
+    (samples.sumRight - samples.sumLeft) / (samples.sideCount / 2),
+    2 * halfWidth,
+  );
+  let tip = 0;
+  if (samples.deepestZ > samples.zHalf && samples.rearMax > -Infinity) {
+    tip = (samples.settleOuterMax - samples.rearMax) /
+      (samples.deepestZ - samples.rearZ);
+  } else if (samples.deepestZ < -samples.zHalf && samples.frontMax > -Infinity) {
+    tip = (samples.settleOuterMax - samples.frontMax) /
+      (samples.deepestZ - samples.frontZ);
+  }
+  state._terr.pitch += clamp(tip, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+  const requestedPerch = clamp(Math.abs(tip) / SETTLE_CLAMP_RAD - 1, 0, 1);
+  if (groundedAtStart && requestedPerch > state._perch) state._perch = requestedPerch;
+}
+
+function updateFanYield(
+  state: TankState,
+  samples: SupportSamples,
+  rigidGear: boolean,
+  dt: number,
+): number {
+  const roughness = samples.settleOuterMax -
+    samples.settleDeficitSum / samples.deficitCount;
+  const requested = rigidGear
+    ? 0
+    : clamp(roughness - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
+  const previous = state._fanYield || 0;
+  const next = requested > previous
+    ? Math.min(requested, previous + FAN_YIELD_OPEN_MPS * dt)
+    : requested;
+  state._fanYield = next;
+  return next;
+}
+
+function writeSupportCache(
+  entity: MovementEntity,
+  samples: SupportSamples,
+  pitch: number,
+  roll: number,
+  suspensionPitch: number,
+  groundedAtStart: boolean,
+  rigidGear: boolean,
+  rigidSupportY: number,
+  dt: number,
+): void {
+  const { spec, state } = entity;
+  const contact = entity.contactGeom;
+  const fanYield = updateFanYield(state, samples, rigidGear, dt);
+  const rigidUndercut = !!contact && Number.isFinite(contact.gearBottomYM) &&
+    Number.isFinite(contact.bottomYM) &&
+    (contact.bottomYM as number) < (contact.gearBottomYM as number) - 0.01;
+  const hydraulicAim = spec.hydropneumaticAim;
+  const hydraulicYield = state.suspensionAim && hydraulicAim && !rigidUndercut
+    ? Math.min(
+      hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
+      Math.abs(Math.sin(suspensionPitch)) * samples.halfLength,
+    )
+    : 0;
+  let supportY = Math.max(
+    samples.outerMax - hydraulicYield,
+    samples.fanMax - fanYield - hydraulicYield,
+  );
+  const bellyYield = samples.panY !== null ? 0 : fanYield;
+  const bellySupportY = samples.bellyMax - bellyYield;
+  if (bellySupportY > supportY) supportY = bellySupportY;
+  updateTerrainFitAndPerch(
+    state,
+    samples,
+    contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM,
+    groundedAtStart,
+  );
+
+  const perchCut = rigidGear ? 0 : 0.7 * state._perch;
+  const margin = SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
+    Math.min(1, (Math.abs(pitch) + Math.abs(roll)) / SUPPORT_MARGIN_ATT_RAD);
+  const normalFloor = (rigidUndercut
+    ? supportY
+    : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + margin;
+  const rigidFloor = rigidSupportY + RIGID_BODY_MARGIN_M;
+  const cache = state._sup;
+  cache.x = state.pos.x;
+  cache.z = state.pos.z;
+  cache.yaw = state.yaw;
+  cache.pitch = pitch;
+  cache.roll = roll;
+  cache.y = Math.max(supportY + margin, rigidFloor);
+  cache.floorY = Math.max(normalFloor, rigidFloor);
+  cache.rigid = rigidGear;
+  cache.cg = contact;
+}
+
+function supportCacheIsFresh(
+  state: TankState,
+  contact: MovementContactGeometry | null | undefined,
+  pitch: number,
+  roll: number,
+  rigidGear: boolean,
+): boolean {
+  const cache = state._sup;
+  return Math.abs(state.pos.x - cache.x) < 0.004 &&
+    Math.abs(state.pos.z - cache.z) < 0.004 &&
+    Math.abs(wrapAngle(state.yaw - cache.yaw)) < 0.0012 &&
+    Math.abs(pitch - cache.pitch) < 0.0012 &&
+    Math.abs(roll - cache.roll) < 0.0012 &&
+    cache.rigid === rigidGear && cache.cg === contact;
+}
+
+function solveSupportHeight(
+  entity: MovementEntity,
+  hAt: HeightSampler,
+  groundedAtStart: boolean,
+  pitch: number,
+  roll: number,
+  upY: number,
+  suspensionPitch: number,
+  dt: number,
+): void {
+  const { spec, state } = entity;
+  const contact = entity.contactGeom;
+  const rigidGear = entity.rigidGear === true;
+  if (supportCacheIsFresh(state, contact, pitch, roll, rigidGear)) return;
+  const gearBottomY = contact?.bottomYM || 0;
+  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const samples = resetSupportSamples(spec, state, contact, pitch, roll);
+  sampleOuterTrackLines(samples, contact, hAt, halfWidth, gearBottomY);
+  sampleSupportFan(samples, contact, hAt, halfWidth, gearBottomY, rigidGear);
+  const rigidSupportY = rigidBodySupport(
+    spec,
+    state,
+    samples,
+    hAt,
+    gearBottomY,
+    state._body.tumbling || upY < TUMBLE_ENTER_UP_Y,
+  );
+  writeSupportCache(
+    entity,
+    samples,
+    pitch,
+    roll,
+    suspensionPitch,
+    groundedAtStart,
+    rigidGear,
+    rigidSupportY,
+    dt,
+  );
+}
+
+function prepareDriveStep(
+  entity: MovementEntity,
+  heightField: MovementHeightField,
+  debuff: MovementDebuffs,
+  body: RigidBodyState,
+): DriveStep {
+  const { input, spec, state } = entity;
+  const drive = _driveStep;
+  drive.grounded = state.grounded !== false;
+  const drivetrainLocked = debuff.immobile || body.tumbling || state.overturned;
+  drive.throttle = drivetrainLocked ? 0 : clamp(input.throttle || 0, -1, 1);
+  drive.steer = drivetrainLocked ? 0 : clamp(input.steer || 0, -1, 1);
+  drive.braking = !!input.brake;
+  drive.ground = drive.grounded
+    ? heightField.getGroundType(state.pos.x, state.pos.z)
+    : state._groundType;
+  if (drive.grounded) state._groundType = drive.ground;
+  drive.resistance = spec.terrainResistance[drive.ground] || spec.terrainResistance.medium;
+  drive.hardResistance = spec.terrainResistance.hard;
+  drive.forwardX = Math.sin(state.yaw);
+  drive.forwardZ = Math.cos(state.yaw);
+  drive.rightX = Math.cos(state.yaw);
+  drive.rightZ = -Math.sin(state.yaw);
+  drive.terrainPitch = state._terr.pitch;
+  drive.speedMultiplier = clamp(
+    Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
+    0.25,
+    3,
+  );
+  drive.topSpeed = spec.topSpeedKmh / 3.6 * drive.speedMultiplier;
+  drive.reverseSpeed = spec.reverseSpeedKmh / 3.6 * drive.speedMultiplier;
+  drive.traverseMax = 0;
+  drive.gunArc = gunArcRadFor(spec);
+  drive.acceleration = 0;
+  drive.baseRate = 0;
+  drive.brakeRate = 0;
+  drive.speedLimit = 0;
+  drive.targetSpeed = 0;
+  drive.rate = 0;
+  drive.spoolTarget = 0;
+  return drive;
+}
+
+function casemateSteerCommand(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+  fallback: number,
+): number {
+  const { input, state } = entity;
+  if (drive.steer !== 0 || drive.gunArc === Infinity || !input.aimPoint ||
+      input.aimLocked || debuff.immobile) return fallback;
+  const requestedYaw = wrapAngle(Math.atan2(
+    input.aimPoint.x - state.pos.x,
+    input.aimPoint.z - state.pos.z,
+  ) - state.yaw);
+  const excess = Math.abs(requestedYaw) - drive.gunArc;
+  if (excess <= 0) return fallback;
+  return clamp(excess / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * Math.sign(requestedYaw);
+}
+
+function updateHullTraverse(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+  dt: number,
+): void {
+  const { spec, state } = entity;
+  const healthyMax = spec.hullTraverseDegS * DEG2RAD *
+    (drive.hardResistance / drive.resistance) *
+    (spec.pivotStyle === 'neutral' ? NEUTRAL_TURN_MULT : 1);
+  const speedFraction = Math.min(
+    Math.abs(state.speed) / Math.max(drive.topSpeed, 1e-6),
+    1,
+  );
+  drive.traverseMax = healthyMax * debuff.powerMult * debuff.traverseMult *
+    (1 - TRAVERSE_SPEED_SCALE * speedFraction * speedFraction);
+  const reverseSteer = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
+  let steerCommand = drive.steer * reverseSteer;
+  steerCommand = casemateSteerCommand(entity, debuff, drive, steerCommand);
+  const targetYawRate = steerCommand * drive.traverseMax;
+  if (drive.grounded) {
+    state.yawRate = approach(
+      state.yawRate,
+      targetYawRate,
+      (Math.max(drive.traverseMax, 1e-6) / YAW_SPOOL_S) * dt,
+    );
+  }
+  state.yaw = wrapAngle(state.yaw + state.yawRate * dt);
+  if (drive.grounded && Math.abs(state.speed) < PIVOT_SPEED_EPS &&
+      spec.pivotStyle === 'pivot' && steerCommand !== 0) {
+    const drift = Math.sign(steerCommand) * PIVOT_OFFSET_M * Math.abs(state.yawRate) * dt;
+    state.pos.x += drive.rightX * drift;
+    state.pos.z += drive.rightZ * drift;
+  }
+}
+
+function prepareTargetSpeed(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+): void {
+  const { spec, state } = entity;
+  const powerToWeight = spec.enginePowerHp * debuff.powerMult / spec.weightTons;
+  drive.acceleration = K_ACCEL * (powerToWeight / drive.resistance) *
+    debuff.accelMult * Math.sqrt(drive.speedMultiplier);
+  const driveSign = drive.throttle !== 0 ? Math.sign(drive.throttle) : Math.sign(state.speed);
+  const pitchAlong = drive.terrainPitch * (driveSign || 1);
+  drive.speedLimit = drive.throttle >= 0 ? drive.topSpeed : drive.reverseSpeed;
+  drive.speedLimit *= slopeSpeedFactor(
+    spec,
+    drive.ground,
+    pitchAlong,
+    debuff.powerMult,
+    debuff.accelMult,
+  );
+  drive.speedLimit = Math.min(drive.speedLimit, drive.topSpeed * OVERSPEED_CAP);
+  drive.targetSpeed = (drive.braking || debuff.immobile)
+    ? 0
+    : drive.speedLimit * drive.throttle;
+  if (drive.traverseMax > 1e-6 && drive.targetSpeed !== 0) {
+    drive.targetSpeed *= 1 - TURN_SPEED_LOSS * Math.min(
+      Math.abs(state.yawRate) / drive.traverseMax,
+      1,
+    );
+  }
+  drive.baseRate = debuff.immobile
+    ? K_ACCEL * (spec.enginePowerHp / spec.weightTons) / drive.resistance
+    : drive.acceleration;
+  drive.brakeCap = clamp(
+    BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT * (spec.enginePowerHp / spec.weightTons),
+    BRAKE_CAP_MIN,
+    BRAKE_CAP_MAX,
+  );
+  drive.brakeRate = Math.min(drive.baseRate * BRAKE_MULT, drive.brakeCap);
+}
+
+function selectDriveRate(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+): void {
+  const state = entity.state;
+  drive.spoolTarget = 0;
+  if (drive.braking || debuff.immobile || drive.targetSpeed * state.speed < 0) {
+    drive.rate = drive.brakeRate;
+    return;
+  }
+  if (drive.throttle === 0) {
+    drive.rate = Math.min(drive.baseRate * COAST_MULT, drive.brakeCap * 0.5);
+    return;
+  }
+  if (Math.abs(drive.targetSpeed) < Math.abs(state.speed) - 1e-9) {
+    const transmissionLimit = Math.abs(drive.speedLimit * drive.throttle);
+    drive.rate = Math.abs(state.speed) > transmissionLimit + 1e-9
+      ? drive.baseRate
+      : drive.baseRate * TURN_OVER_RATE;
+    drive.spoolTarget = 1;
+    return;
+  }
+
+  const referenceSpeed = Math.max(
+    drive.throttle >= 0 ? drive.topSpeed : drive.reverseSpeed,
+    1e-6,
+  );
+  const speedFraction = Math.min(Math.abs(state.speed) / referenceSpeed, 1);
+  drive.rate = drive.baseRate * (1 - C_DRAG * speedFraction * speedFraction);
+  const spool = state._spool || 0;
+  drive.rate *= SPOOL_FLOOR + (1 - SPOOL_FLOOR) * spool * spool;
+  drive.spoolTarget = 1;
+  if (drive.traverseMax > 1e-6) {
+    drive.rate *= 1 - TURN_POWER_DIVERT * Math.min(
+      Math.abs(state.yawRate) / drive.traverseMax,
+      1,
+    );
+  }
+}
+
+function updateDriveSpool(state: TankState, drive: DriveStep, dt: number): void {
+  if (!drive.grounded) {
+    drive.rate = 0;
+    drive.spoolTarget = 0;
+  }
+  state._spool = drive.spoolTarget > 0
+    ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
+    : Math.max(0, (state._spool || 0) - dt / SPOOL_DECAY_S);
+}
+
+function applyTurnSpeedBleed(state: TankState, drive: DriveStep, dt: number): void {
+  if (!drive.grounded || drive.traverseMax <= 1e-6 || state.yawRate === 0) return;
+  const fade = clamp(
+    (Math.abs(state.speed) / Math.max(drive.topSpeed, 1e-6) - TURN_BLEED_FADE_LO) /
+      (TURN_BLEED_FADE_HI - TURN_BLEED_FADE_LO),
+    0,
+    1,
+  );
+  state.speed *= 1 - TURN_DIRECT_BLEED * fade *
+    Math.min(Math.abs(state.yawRate) / drive.traverseMax, 1) * dt;
+}
+
+function applySlopeForces(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+  dt: number,
+): void {
+  const { spec, state } = entity;
+  const commandedPitch = drive.terrainPitch * Math.sign(drive.throttle || 1);
+  const driveBlocked = drive.grounded && drive.throttle !== 0 && commandedPitch > 0 &&
+    uphillDriveMargin(
+      spec,
+      drive.ground,
+      commandedPitch,
+      debuff.powerMult,
+      debuff.accelMult,
+    ) <= TERRAIN_MARGIN_EPS;
+  const motionPitch = drive.terrainPitch * Math.sign(state.speed || drive.throttle || 1);
+  const gripBlocked = drive.grounded && motionPitch > 0 &&
+    trackGripMargin(spec, drive.ground, motionPitch) <= TERRAIN_MARGIN_EPS;
+  if (driveBlocked || gripBlocked) state.slopeBlocked = true;
+  if (gripBlocked && state.speed * drive.terrainPitch > 0) state.speed = 0;
+  if (!drive.grounded || debuff.immobile) return;
+  const slow = drive.throttle !== 0
+    ? (1 - clamp((Math.abs(state.speed) - 1) / 2, 0, 1)) * (1 - (state._spool || 0))
+    : 0;
+  const gravityShare = gripBlocked
+    ? 1
+    : (drive.throttle !== 0 ? 0.3 + 0.7 * slow : 1);
+  state.speed += -GRAVITY * Math.sin(drive.terrainPitch) * dt * gravityShare;
+}
+
+function applyClimbCreep(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+  speedBeforeAcceleration: number,
+  dt: number,
+): void {
+  const { spec, state } = entity;
+  if (!drive.grounded || drive.throttle === 0 || drive.braking || debuff.immobile ||
+      drive.targetSpeed * drive.throttle <= 0) return;
+  const drivable = slopeSpeedFactor(
+    spec,
+    drive.ground,
+    drive.terrainPitch * Math.sign(drive.throttle),
+    debuff.powerMult,
+    debuff.accelMult,
+  );
+  if (drivable <= 0.01) return;
+  const creep = CLIMB_CREEP_MPS2 * Math.min(1, drivable / 0.15);
+  const direction = Math.sign(drive.targetSpeed);
+  const wanted = Math.min(
+    speedBeforeAcceleration * direction + creep * dt,
+    Math.abs(drive.targetSpeed),
+  );
+  if (state.speed * direction < wanted) state.speed = direction * wanted;
+}
+
+function updateLongitudinalSpeed(
+  entity: MovementEntity,
+  debuff: MovementDebuffs,
+  drive: DriveStep,
+  dt: number,
+): void {
+  const state = entity.state;
+  prepareTargetSpeed(entity, debuff, drive);
+  selectDriveRate(entity, debuff, drive);
+  updateDriveSpool(state, drive, dt);
+  const speedBeforeAcceleration = state.speed;
+  state.speed = approach(state.speed, drive.targetSpeed, drive.rate * dt);
+  applyTurnSpeedBleed(state, drive, dt);
+  applySlopeForces(entity, debuff, drive, dt);
+  applyClimbCreep(entity, debuff, drive, speedBeforeAcceleration, dt);
+  state.speed = clamp(
+    state.speed,
+    -drive.reverseSpeed * OVERSPEED_CAP,
+    drive.topSpeed * OVERSPEED_CAP,
+  );
 }
 
 /**
@@ -999,15 +2474,9 @@ export function updateTank(
   if (!(dt > 0)) return;
   const spec = entity.spec;
   const state = entity.state;
-  const input = entity.input;
-  const debuff = readDebuffs(
-    entity.combat,
-    state._debuff || (state._debuff = {} as MovementDebuffs),
-  );
+  const debuff = readDebuffs(entity.combat, state._debuff);
   const groundedAtStart = state.grounded !== false;
-  const body = state._body || (state._body = {
-    tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
-  });
+  const body = state._body;
   body.dynamicSupport = false;
   const upYAtStart = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0);
   // A grounded tank on extreme authored terrain still belongs to the normal
@@ -1022,307 +2491,13 @@ export function updateTank(
     ? state.landingImpactMps : 0;
   state.slopeBlocked = false;
 
-  const drivetrainLocked = debuff.immobile || body.tumbling || state.overturned;
-  const throttle = drivetrainLocked ? 0 : clamp(input.throttle || 0, -1, 1);
-  const steer = drivetrainLocked ? 0 : clamp(input.steer || 0, -1, 1);
-  const braking = !!input.brake;
-
-  // ---- ground sampling (hull center) ----
-  // Ground material affects track force only while the tracks are loaded.
-  // Retaining the last material in flight avoids a needless terrain lookup and
-  // prevents mid-air engine/brake authority from changing horizontal momentum.
-  const ground = groundedAtStart
-    ? heightField.getGroundType(state.pos.x, state.pos.z)
-    : state._groundType;
-  if (groundedAtStart) state._groundType = ground;
-  const res = spec.terrainResistance;
-  const R = res[ground] || res.medium;
-  const Rh = res.hard;
-
-  // ---- terrain pitch/roll: previous tick's contact-line plane fit ----
-  // The fit itself is computed at the settled post-integration pose below (so
-  // the support solve and the fit share one sampling pass); the speed/slope
-  // logic reads the one-tick-old plane, which is imperceptible at 60 Hz.
-  // r7 float gate: GLB-swapped visuals carry MEASURED contact geometry (see
-  // the SUPPORT_LEN_FRAC note) — the support lines must ride the rendered
-  // track bottoms, not the spec hull box.
-  // MOVEMENT r1 (fidelity-rebuild fallout): EVERY visual now publishes its
-  // as-built footprint (state.ts stamps it from tankFactory's rest scan /
-  // gear metadata — the rebuilt profiles moved wheel/track lines off the old
-  // hull-local y = 0 / ±0.45 L assumption). cg.bottomYM is the hull-local
-  // height of the lowest rendered surface: the support lines live at THAT
-  // plane, so the solve seats the rendered contact on the terrain instead of
-  // floating a raised track line (russia pads +2 cm, placeholder pontoons
-  // +10 cm) or burying a dropped one.
-  const cg = entity.contactGeom;
-  const hw = cg ? cg.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
-  const yBot = cg && cg.bottomYM ? cg.bottomYM : 0;
-  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);   // forwardAxis
-  const rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);  // rightAxis
-  const terrPitch = state._terr.pitch;
-
-  // Objective modes may opt a tank into a faster ruleset without mutating the
-  // shared vehicle spec (or changing standard-battle handling). Keep the
-  // multiplier on the authoritative entity so local and network simulations
-  // apply the same transmission limits.
-  const modeSpeedMult = clamp(
-    Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
-    0.25, 3,
-  );
-  const topMps = spec.topSpeedKmh / 3.6 * modeSpeedMult;
-  const revMps = spec.reverseSpeedKmh / 3.6 * modeSpeedMult;
-
-  // ---- hull traverse (wiki formula reduced: Tr = Tn × Rh/Rx × Pc, + debuffs) ----
-  // STEERING SIGN (locked — every producer of input.steer depends on it):
-  //   input.steer > 0  ⇒  yawRate > 0  ⇒  yaw INCREASES.
-  // Increasing yaw rotates forwardAxis(yaw) = [sin yaw, 0, cos yaw] toward +X,
-  // and in this Y-up right-handed world a camera looking along the hull's
-  // forward has screen-right = world -X (three.js lookAt: x_axis = up ×
-  // (eye−target)) — so POSITIVE steer is a turn toward the player's
-  // screen-LEFT, i.e. toward +rightAxis(yaw), which is the hull's local +X
-  // side, NOT the visual right side. Two independent consumers confirm this
-  // reading and stay correct under it:
-  //   • the 'pivot' drift below moves the hull center along +rightAxis for
-  //     positive steer — orbiting about the INNER (locked) track, as it should;
-  //   • trackScroll.l (= wheels at hull-local x < 0, i.e. the VISUAL RIGHT
-  //     side per tankFactory's `e.x < 0 ? l : r`) gets +yawRate × arm, i.e.
-  //     the outer track in a screen-left turn runs faster.
-  // The AI is the main producer and matches: `steer = wrapAngle(bearing −
-  // yaw) × k` (ai.ts driveToXZ/faceYaw) needs +steer to raise yaw. Therefore
-  // the PLAYER's key map is where "right" is turned into a sign: main.ts sends
-  // `steer = left − right` (a D press is negative). Never invert the mapping
-  // here or in ai.ts — that silently breaks bot navigation; and never fix a
-  // perceived inversion downstream in the renderer (it would desync the sim,
-  // the reticle, spotting and hit resolution from the visuals).
-  const trMaxHealthy = spec.hullTraverseDegS * DEG2RAD * (Rh / R) *
-    (spec.pivotStyle === 'neutral' ? NEUTRAL_TURN_MULT : 1);
-  // Speed-scaled traverse, quadratic: near-nominal yaw rate through the whole
-  // mid band (WoT tanks steer at spec rate while moving), a gentle widening
-  // only near the transmission limit.
-  const speedFrac = Math.min(Math.abs(state.speed) / Math.max(topMps, 1e-6), 1);
-  const trMax = trMaxHealthy * debuff.powerMult * debuff.traverseMult *
-    (1 - TRAVERSE_SPEED_SCALE * speedFrac * speedFrac);
-  // Reverse-steer flip: while backing up, A/D behave like a reversing car.
-  const steerSign = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
-  // Casemate auto hull-traverse (§7): with the gun yaw clamped to ±gunArc in
-  // the turret chase below, an aim point beyond the arc feeds the EXCESS into
-  // a synthesized steer input — the hull traverses toward the target, exactly
-  // WoT's sniper-mode behavior for turretless TDs. Explicit steer (player or
-  // AI) always wins, and the reverse-steer flip does NOT apply: the hull must
-  // rotate toward the target in world space regardless of drive direction.
-  const gunArc = gunArcRadFor(spec);
-  let steerCmd = steer * steerSign;
-  if (steer === 0 && gunArc !== Infinity && input.aimPoint && !input.aimLocked &&
-      !debuff.immobile) {
-    const wantRel = wrapAngle(Math.atan2(
-      input.aimPoint.x - state.pos.x, input.aimPoint.z - state.pos.z) - state.yaw);
-    const excess = Math.abs(wantRel) - gunArc;
-    if (excess > 0) {
-      steerCmd = clamp(excess / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * Math.sign(wantRel);
-    }
-  }
-  const yawTarget = steerCmd * trMax;
-  if (groundedAtStart) {
-    state.yawRate = approach(
-      state.yawRate, yawTarget, (Math.max(trMax, 1e-6) / YAW_SPOOL_S) * dt,
-    );
-  }
-  state.yaw = wrapAngle(state.yaw + state.yawRate * dt);
-  // 'pivot' tanks rotate about the locked track: the hull center orbits sideways.
-  if (groundedAtStart && Math.abs(state.speed) < PIVOT_SPEED_EPS &&
-      spec.pivotStyle === 'pivot' && steerCmd !== 0) {
-    const drift = Math.sign(steerCmd) * PIVOT_OFFSET_M * Math.abs(state.yawRate) * dt;
-    state.pos.x += rx * drift;
-    state.pos.z += rz * drift;
-  }
-
-  // ---- longitudinal speed ----
-  const pSpec = (spec.enginePowerHp * debuff.powerMult) / spec.weightTons;
-  const accel = K_ACCEL * (pSpec / R) * debuff.accelMult * Math.sqrt(modeSpeedMult);
-  const driveSign = throttle !== 0 ? Math.sign(throttle) : Math.sign(state.speed);
-  const pitchAlong = terrPitch * (driveSign || 1);
-  let vLim = throttle >= 0 ? topMps : revMps;
-  vLim *= slopeSpeedFactor(spec, ground, pitchAlong, debuff.powerMult, debuff.accelMult);
-  vLim = Math.min(vLim, topMps * OVERSPEED_CAP);
-  let vTarget = (braking || debuff.immobile) ? 0 : vLim * throttle;
-  // Turning bleeds the TARGET speed (movement doc §4): the steady-state speed
-  // in a full-rate turn settles at ~65% of straight-line speed regardless of
-  // engine power — no free serpentining at v_max.
-  if (trMax > 1e-6 && vTarget !== 0) {
-    vTarget *= 1 - TURN_SPEED_LOSS * Math.min(Math.abs(state.yawRate) / trMax, 1);
-  }
-  // Immobilized tanks brake with locked tracks at a healthy rate.
-  const baseRate = debuff.immobile ? K_ACCEL * (spec.enginePowerHp / spec.weightTons) / R : accel;
-  // Role-scaled brake cap (healthy hp/t — brakes are not the engine): heavies
-  // stop noticeably softer than lights instead of every tank sharing one snap.
-  const brakeCap = clamp(
-    BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT * (spec.enginePowerHp / spec.weightTons),
-    BRAKE_CAP_MIN, BRAKE_CAP_MAX,
-  );
-  const brakeRate = Math.min(baseRate * BRAKE_MULT, brakeCap);
-  let rate;
-  let spoolTarget = 0; // closed throttle unwinds the torque spool
-  if (braking || debuff.immobile || vTarget * state.speed < 0) {
-    rate = brakeRate; // hard brake / direction reversal — capped, ~2 s from top speed
-  } else if (throttle === 0) {
-    rate = Math.min(baseRate * COAST_MULT, brakeCap * 0.5); // rolling friction
-  } else if (Math.abs(vTarget) < Math.abs(state.speed) - 1e-9) {
-    // Over target. TWO regimes (r4 crit — turn bleed stacked too harshly):
-    // past the slope/transmission limit itself, drag pulls back at full drive
-    // force (post-8.0 overspeed snaps back hard); but when the overage exists
-    // only because turning scaled the TARGET down, the scrub is a gentle
-    // TURN_OVER_RATE fraction — momentum carries through a sweeping turn.
-    const vLimAbs = Math.abs(vLim * throttle);
-    rate = Math.abs(state.speed) > vLimAbs + 1e-9 ? baseRate : baseRate * TURN_OVER_RATE;
-    spoolTarget = 1; // throttle is open — keep the engine spooled
-  } else {
-    // Driving: quadratic drag tapers the accel — fast initial surge, asymptotic
-    // crawl to the transmission limit (§3): a = a_drive × (1 − C_DRAG·(v/v_max)²).
-    const vRef = Math.max(throttle >= 0 ? topMps : revMps, 1e-6);
-    const u = Math.min(Math.abs(state.speed) / vRef, 1);
-    rate = baseRate * (1 - C_DRAG * u * u);
-    // Engine torque spool: the launch reads heavy — SPOOL_FLOOR of the force
-    // bites instantly, the rest builds over SPOOL_S on a QUADRATIC ramp
-    // (see the r3 retune note at the constants).
-    const spool = state._spool || 0;
-    rate *= SPOOL_FLOOR + (1 - SPOOL_FLOOR) * spool * spool;
-    spoolTarget = 1;
-    // Steering diverts engine power to the tracks (§4): while turning hard the
-    // drive can't refill what the turn bleeds, so serpentining costs momentum.
-    if (trMax > 1e-6) {
-      rate *= 1 - TURN_POWER_DIVERT * Math.min(Math.abs(state.yawRate) / trMax, 1);
-    }
-  }
-  // Tracks cannot create longitudinal force while unloaded. Preserve the
-  // horizontal component through flight; gravity is integrated independently
-  // by the vertical phase below.
-  if (!groundedAtStart) {
-    rate = 0;
-    spoolTarget = 0;
-  }
-  state._spool = spoolTarget > 0
-    ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
-    : Math.max(0, (state._spool || 0) - dt / SPOOL_DECAY_S);
-  const preAccelSpeed = state.speed; // for the CLIMB_CREEP net-accel floor
-  state.speed = approach(state.speed, vTarget, rate * dt);
-  // Direct multiplicative turn bleed (movement doc §4): every hard turn costs
-  // momentum — v *= 1 − k·|yawRate|/trMax·dt. r4 crit: fades out below
-  // ~half top speed so mid-speed serpentining stays fluid; the target-scale
-  // bleed above remains the dominant term.
-  if (groundedAtStart && trMax > 1e-6 && state.yawRate !== 0) {
-    const bleedFade = clamp(
-      (Math.abs(state.speed) / Math.max(topMps, 1e-6) - TURN_BLEED_FADE_LO) /
-        (TURN_BLEED_FADE_HI - TURN_BLEED_FADE_LO), 0, 1);
-    state.speed *= 1 -
-      TURN_DIRECT_BLEED * bleedFade * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
-  }
-  // Engine strength determines whether open throttle can sustain this climb;
-  // track grip separately determines whether the support contact can hold the
-  // face at all. Only grip failure cancels carried uphill momentum outright.
-  // An engine-limited tank decelerates through the normal target/gravity solve
-  // and rolls back, while both failures publish slopeBlocked for bot recovery.
-  const commandedPitch = terrPitch * Math.sign(throttle || 1);
-  const driveBlocked = groundedAtStart && throttle !== 0 && commandedPitch > 0 &&
-    uphillDriveMargin(
-      spec, ground, commandedPitch, debuff.powerMult, debuff.accelMult,
-    ) <= TERRAIN_MARGIN_EPS;
-  const motionPitch = terrPitch * Math.sign(state.speed || throttle || 1);
-  const gripBlocked = groundedAtStart && motionPitch > 0 &&
-    trackGripMargin(spec, ground, motionPitch) <= TERRAIN_MARGIN_EPS;
-  if (driveBlocked || gripBlocked) state.slopeBlocked = true;
-  if (gripBlocked && state.speed * terrPitch > 0) {
-    state.speed = 0;
-  }
-  if (groundedAtStart && !debuff.immobile) {
-    // Gravity along the track line: stalled tanks slide back, coasting gains
-    // downhill. r3: the throttled share is SPEED-gated — a near-stationary
-    // tank on a slope hasn't hooked the ground yet (tracks barely turning:
-    // full gravity for the first moments of a slope start, pairing with the
-    // heavy-launch spool), then fades to the locked tracked share of 0.3 by
-    // ~3 m/s. r4 (round critique — dead heavy uphill starts): the unhooked
-    // share ALSO fades with the engine spool — a spooled drivetrain means the
-    // tracks are turning and biting, so a slope start goes heavy for the
-    // first ~half second and then hooks up instead of losing to gravity for
-    // 3+ s at 12 hp/t. Flat launches (sin ≈ 0 — the 0-30 tuning case) and all
-    // moving driving are untouched.
-    const slow = throttle !== 0
-      ? (1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)) * (1 - (state._spool || 0))
-      : 0;
-    state.speed += -GRAVITY * Math.sin(terrPitch) * dt *
-      (gripBlocked ? 1.0 : (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0));
-  }
-  // CLIMB_CREEP floor (r4, see the constant): with the throttle open toward a
-  // reachable target, the net of drive − drag − gravity this tick never drops
-  // below +creep in the drive direction. The creep is scaled by the DRIVABLE
-  // MARGIN in the throttle direction (§5 slope law): full strength when
-  // engine/track force comfortably exceeds gravity, fading to zero as the
-  // available force is exhausted. At zero margin the tank grinds to a crawl
-  // and rolls back; no fleet-wide angle participates in the decision.
-  // doc. The pitch is re-derived from throttle sign (not moveSign): while
-  // the hull momentarily slides BACKWARD on a steep grade, moveSign flips
-  // pitchAlong to "downhill" and vTarget goes positive for a tick — the
-  // margin gate must not read that flip as a drivable slope.
-  if (groundedAtStart && throttle !== 0 && !braking && !debuff.immobile &&
-      vTarget * throttle > 0) {
-    const drivable = slopeSpeedFactor(
-      spec,
-      ground,
-      terrPitch * Math.sign(throttle),
-      debuff.powerMult,
-      debuff.accelMult,
-    );
-    if (drivable > 0.01) {
-      const creep = CLIMB_CREEP_MPS2 * Math.min(1, drivable / 0.15);
-      const dir = Math.sign(vTarget);
-      const want = Math.min(preAccelSpeed * dir + creep * dt, Math.abs(vTarget));
-      if (state.speed * dir < want) state.speed = dir * want;
-    }
-  }
-  state.speed = clamp(state.speed, -revMps * OVERSPEED_CAP, topMps * OVERSPEED_CAP);
+  const drive = prepareDriveStep(entity, heightField, debuff, body);
+  updateHullTraverse(entity, debuff, drive, dt);
+  updateLongitudinalSpeed(entity, debuff, drive, dt);
 
   // ---- integrate position (+ decaying recoil translation) & stick to terrain ----
   const spr = state._spring;
-  state.pos.x += (fx * state.speed + spr.recoilVX) * dt;
-  state.pos.z += (fz * state.speed + spr.recoilVZ) * dt;
-  const recoilDecay = Math.exp(-dt / RECOIL_DECAY_TAU);
-  spr.recoilVX *= recoilDecay;
-  spr.recoilVZ *= recoilDecay;
-  if (collide) {
-    const radiusM = (spec.armor && spec.armor.boundingRadiusM)
-      ? spec.armor.boundingRadiusM
-      : spec.dims.hullLengthM * 0.5;
-    _push.set(0, 0, 0);
-    state.impactMps = 0;
-    if (collide(state.pos, radiusM, _push)) {
-      state.pos.add(_push);
-      // r2 (blocked-drive wheelspin — round critique MAJOR): the pushback used
-      // to restore position while leaving state.speed untouched, so a tank
-      // wedged against a wall ran-in-place indefinitely — tracks scrolling at
-      // 14-35 km/h, dust pluming, ZERO displacement, no impact feedback (the
-      // probe held a Tiger I frozen at one coordinate for ~9 s). WoT/AAA is a
-      // hard stop: cancel the velocity component the wall actually blocked.
-      // Project the pushback onto the drive direction — the fraction of this
-      // tick's forward travel that collide() undid is the blocked fraction
-      // (head-on: |push·fwd| ≈ |v|·dt ⇒ full stop; grazing a wall at a
-      // shallow angle: push ⊥ fwd ⇒ no bleed, the hull keeps sliding along).
-      const pushFwd = _push.x * fx + _push.z * fz;
-      const travel = Math.abs(state.speed) * dt;
-      if (travel > 1e-9 && pushFwd * state.speed < 0) {
-        const blocked = clamp(Math.abs(pushFwd) / travel, 0, 1);
-        const lost = Math.abs(state.speed) * blocked;
-        state.speed *= 1 - blocked;
-        // Impact telemetry for integration (state.ts): closing speed the wall
-        // absorbed THIS tick, in m/s. A genuine hit reads several m/s on the
-        // first contact tick; while held against the wall afterwards the
-        // per-tick re-acceleration is only ~accel·dt (< 0.2 m/s), so the
-        // consumer's threshold fires ONE impact event per collision, not a
-        // machine-gun of them. Also kills the spool so the engine re-bites
-        // from scratch instead of instantly re-launching off the wall.
-        state.impactMps = lost;
-        if (lost > 1.5) state._spool = 0;
-      }
-    }
-  }
+  integrateHorizontalMotion(spec, state, collide, drive.forwardX, drive.forwardZ, dt);
 
   // ---- terrain contact: line sampling, plane fit, attitude spring, SUPPORT ----
   // r5 hard-gate fix. The old model snapped pos.y to the height under the hull
@@ -1356,24 +2531,10 @@ export function updateTank(
   // via state._flinch.pv/rv from the visual's hitFlinch/recoil rock). Stepped
   // once per sim tick BEFORE the support sampling so both the sample pass and
   // the final clamp see the exact pose syncFromState will render this tick.
-  const fl = state._flinch;
-  let flP = 0;
-  let flR = 0;
-  if (fl) {
-    if (fl.p !== 0 || fl.r !== 0 || fl.pv !== 0 || fl.rv !== 0) {
-      fl.pv += (-FLINCH_W * FLINCH_W * fl.p - 2 * FLINCH_Z * FLINCH_W * fl.pv) * dt;
-      fl.p += fl.pv * dt;
-      fl.rv += (-FLINCH_W * FLINCH_W * fl.r - 2 * FLINCH_Z * FLINCH_W * fl.rv) * dt;
-      fl.r += fl.rv * dt;
-      if (Math.abs(fl.p) + Math.abs(fl.pv) + Math.abs(fl.r) + Math.abs(fl.rv) < 1e-4) {
-        fl.p = fl.r = fl.pv = fl.rv = 0;
-      }
-    }
-    flP = fl.p;
-    flR = fl.r;
-  }
+  updateFlinchRock(state, dt);
+  const flP = state._flinch?.p ?? 0;
+  const flR = state._flinch?.r ?? 0;
 
-  const sup = state._sup;
   const susp = state._susp;
 
   // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
@@ -1389,67 +2550,8 @@ export function updateTank(
   // The mode is opt-in via the special-action edge. It feeds the same spring
   // and support solve used by terrain pitch, so it adds no render-time work or
   // duplicate collision pose. At rest, the existing static-pose cache resumes.
-  let suspensionAimPitch = state.suspensionAimPitch || 0;
-  const hydraulicAim = spec.hydropneumaticAim;
   const fixedHydraulicGun = hasFixedHydraulicGun(spec);
-  // Ordinary vehicles take only this predictable false branch. The extra aim
-  // math runs solely while a Strv mode is engaged or its offset is settling.
-  if ((state.suspensionAim && hydraulicAim) || suspensionAimPitch !== 0) {
-    let suspensionAimTarget = 0;
-    if (input.aimLocked) {
-      // Fixed-gun siege vehicles hold their current hydraulic attitude just
-      // like a turreted vehicle holds turret yaw and gun pitch.
-      suspensionAimTarget = suspensionAimPitch;
-    } else if (state.suspensionAim && input.aimPoint) {
-      let requestedPitch;
-      if (fixedHydraulicGun) {
-        // Feedback from the ACTUAL rendered fixed bore. Terrain pitch, roll,
-        // spring lag and the authored trunnion position are all present in
-        // this frame, so adding the remaining local pitch error to the current
-        // hydraulic offset converges the visible barrel itself onto the aim.
-        // No virtual gunPitch joint is needed to hide an approximation error.
-        _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-        _hullQuat.setFromEuler(_hullEuler);
-        const armor = spec.armor || {};
-        const turretPivot = armor.turretPivot || [0, spec.dims.heightM * 0.7, 0];
-        const gunPivot = armor.gunPivot || [0, spec.dims.heightM * 0.15, 0];
-        _gunOriginWorld.set(
-          turretPivot[0] + gunPivot[0],
-          turretPivot[1] + gunPivot[1],
-          turretPivot[2] + gunPivot[2],
-        ).applyQuaternion(_hullQuat).add(state.pos);
-        _aimLocal.copy(input.aimPoint).sub(_gunOriginWorld)
-          .applyQuaternion(_hullQuat.conjugate());
-        _hullQuat.conjugate();
-        const borePitchError = Math.atan2(
-          _aimLocal.y, Math.max(Math.hypot(_aimLocal.x, _aimLocal.z), 1e-6));
-        // Close the remaining bore error as a damped feedback loop. Applying
-        // the whole error every 60 Hz tick fights the slower hull-attitude
-        // spring and produces a visible ±0.4° limit cycle; a 4 Hz correction
-        // converges promptly without hunting while the outer rate clamp still
-        // governs large moves.
-        requestedPitch = suspensionAimPitch + borePitchError * Math.min(1, dt * 4);
-      } else {
-        const adx = input.aimPoint.x - state.pos.x;
-        const adz = input.aimPoint.z - state.pos.z;
-        const ady = input.aimPoint.y - (state.pos.y + gunPivotHeight(spec));
-        const worldAimPitch = Math.atan2(ady, Math.max(Math.hypot(adx, adz), 1e-6));
-        requestedPitch = worldAimPitch - state._terr.pitch;
-      }
-      suspensionAimTarget = clamp(
-        requestedPitch,
-        -(hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD,
-        (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD,
-      );
-    }
-    suspensionAimPitch = approach(
-      suspensionAimPitch,
-      suspensionAimTarget,
-      (hydraulicAim?.rateDegS ?? SUSPENSION_AIM_DEFAULT_RATE_DEG_S) * DEG2RAD * dt,
-    );
-    if (!state.suspensionAim && Math.abs(suspensionAimPitch) < 1e-6) suspensionAimPitch = 0;
-    state.suspensionAimPitch = suspensionAimPitch;
-  }
+  const suspensionAimPitch = updateSuspensionAim(entity, fixedHydraulicGun, dt);
   // Once unsupported, terrain below cannot torque the hull. The spring's two
   // rate fields become the rigid body's pitch/roll angular velocity until
   // contact resumes, so the launch attitude evolves continuously instead of
@@ -1459,158 +2561,25 @@ export function updateTank(
     ? state._terr.pitch + inertialPitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
-  if (landingImpactAtStart > 0) {
-    // A landing applies torque toward the support plane in proportion to the
-    // closing impulse and attitude error. This is a bounded impulse, not an
-    // instantaneous pose assignment; nose/side-first landings can therefore
-    // continue into a roll while square landings settle quickly.
-    const pitchError = wrapAngle(targetPitch - spr.pitch);
-    const rollError = wrapAngle(targetRoll - spr.roll);
-    spr.pitchV += clamp(
-      pitchError * landingImpactAtStart * LANDING_TORQUE_GAIN,
-      -LANDING_TORQUE_MAX,
-      LANDING_TORQUE_MAX,
-    );
-    spr.rollV += clamp(
-      rollError * landingImpactAtStart * LANDING_TORQUE_GAIN,
-      -LANDING_TORQUE_MAX,
-      LANDING_TORQUE_MAX,
-    );
-    body.landingBlendS = LANDING_CONTACT_BLEND_S;
-    // Do not turn an ordinary hard landing into a drivetrain lock merely from
-    // closing speed × terrain-angle error. The bounded torque above already
-    // rotates the hull; it enters tumble naturally if that motion carries the
-    // center of mass past the physical attitude threshold. Direct tank-body
-    // contacts can also enter tumble through their measured lever impulse.
-    if (upYAtStart < TUMBLE_ENTER_UP_Y) {
-      body.tumbling = true;
-    }
-  }
-
-  const rigidAttitude = !groundedAtStart || body.tumbling;
-  if (rigidAttitude) {
-    if (groundedAtStart) {
-      // Approximate gravity about the contact edge. -sin(2a) has stable
-      // equilibria both upright and roof-down, and an unstable balance on the
-      // side: the hull falls naturally to whichever side its center of mass
-      // crossed instead of receiving a magical self-righting torque.
-      const relativePitch = wrapAngle(spr.pitch - state._terr.pitch);
-      const relativeRoll = wrapAngle(spr.roll - state._terr.roll);
-      if (body.autoRighting) {
-        // Modern random-battle recovery is represented as a strong, bounded
-        // righting actuator rather than a pose teleport. The hull visibly
-        // rolls back across its contact edge and keeps the same angular-rate
-        // cap as every other grounded tumble.
-        spr.pitchV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativePitch -
-          2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spr.pitchV) * dt;
-        spr.rollV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativeRoll -
-          2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spr.rollV) * dt;
-      } else {
-        spr.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
-        spr.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
-        const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
-        spr.pitchV *= contactDrag;
-        spr.rollV *= contactDrag;
-      }
-    } else {
-      const airDrag = Math.exp(-AIR_ANGULAR_DRAG_S * dt);
-      spr.pitchV *= airDrag;
-      spr.rollV *= airDrag;
-    }
-    const angularCap = body.tumbling ? TUMBLE_ANGULAR_SPEED_MAX : AIR_ANGULAR_SPEED_MAX;
-    spr.pitchV = clamp(spr.pitchV, -angularCap, angularCap);
-    spr.rollV = clamp(spr.rollV, -angularCap, angularCap);
-    spr.pitch = wrapAngle(spr.pitch + spr.pitchV * dt);
-    spr.roll = wrapAngle(spr.roll + spr.rollV * dt);
-
-    const upY = Math.cos(spr.pitch) * Math.cos(spr.roll);
-    const relativeUpY = Math.cos(wrapAngle(spr.pitch - state._terr.pitch)) *
-      Math.cos(wrapAngle(spr.roll - state._terr.roll));
-    if ((!groundedAtStart || landingImpactAtStart > 0) && upY < TUMBLE_ENTER_UP_Y) {
-      body.tumbling = true;
-    }
-    // Settle relative to the supporting terrain plane. A tank upright on a
-    // steep authored slope can have world-up dot < the old threshold; using
-    // world up here left its drivetrain locked in a permanent false tumble.
-    if (groundedAtStart && body.autoRighting && relativeUpY > 0.94 &&
-        Math.abs(spr.pitchV) + Math.abs(spr.rollV) < 0.18) {
-      body.autoRighting = false;
-      body.tumbling = false;
-    } else if (groundedAtStart && body.tumbling && !body.autoRighting &&
-        relativeUpY > TUMBLE_EXIT_UP_Y &&
-        Math.abs(spr.pitchV) + Math.abs(spr.rollV) < 0.12 &&
-        landingImpactAtStart <= 0) {
-      body.tumbling = false;
-    }
-  } else {
-    body.landingBlendS = Math.max(0, (body.landingBlendS || 0) - dt);
-    const settle = body.landingBlendS > 0
-      ? 1 - body.landingBlendS / LANDING_CONTACT_BLEND_S
-      : 1;
-    const springScale = LANDING_SPRING_MIN_SCALE +
-      (1 - LANDING_SPRING_MIN_SCALE) * settle;
-    const wP = SPRING_OMEGA * springScale * (1 + PERCH_W_BOOST * perch);
-    const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
-    spr.pitchV += (wP * wP * (targetPitch - spr.pitch) -
-                   2 * zP * wP * spr.pitchV) * dt;
-    spr.pitch += spr.pitchV * dt;
-    const wR = SPRING_OMEGA * springScale;
-    spr.rollV += (wR * wR * (targetRoll - spr.roll) -
-                  2 * SPRING_ZETA * wR * spr.rollV) * dt;
-    spr.roll += spr.rollV * dt;
-  }
-  state.visualPitch = spr.pitch;
-  state.visualRoll = spr.roll;
-  const upYAfterAttitude = Math.cos(spr.pitch) * Math.cos(spr.roll);
-  state.overturned = state.overturned
-    ? upYAfterAttitude < OVERTURN_EXIT_UP_Y
-    : upYAfterAttitude < OVERTURN_ENTER_UP_Y;
+  updateHullAttitude(
+    state,
+    body,
+    groundedAtStart,
+    targetPitch,
+    targetRoll,
+    perch,
+    landingImpactAtStart,
+    upYAtStart,
+    dt,
+  );
+  const upYAfterAttitude = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
 
   // ---- mirror of tankFactory's visual susp rock layer -----------------------
   // syncFromState (which runs right after this tick) will render the hull at
   // rotation.set(-(visualPitch + suspP), yaw, visualRoll + suspR + sway) —
   // replicate its spring tick-for-tick so the support solve below clears the
   // terrain at the pose that actually reaches the screen.
-  {
-    const accel = groundedAtStart
-      ? clamp(poseDvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
-      : 0;
-    let pT = accel * SUSP_ACCEL_GAIN;
-    let rT = 0;
-    if (groundedAtStart) {
-      const hl2 = SUSP_FIT_LEN * spec.dims.hullLengthM;
-      const hw2 = SUSP_FIT_WID * spec.dims.widthM;
-      const fx2 = Math.sin(state.yaw), fz2 = Math.cos(state.yaw);
-      const rx2 = Math.cos(state.yaw), rz2 = -Math.sin(state.yaw);
-      const px2 = state.pos.x, pz2 = state.pos.z;
-      const hFL = hAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
-      const hFR = hAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
-      const hRL = hAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
-      const hRR = hAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
-      const terrP2 = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl2);
-      // Renderer-consistent roll sign (positive lifts the right side): the rock
-      // layer's roll delta now measures the true conformance error instead of
-      // fighting the main spring on side slopes.
-      const terrR2 = Math.atan2((hFR + hRR - hFL - hRL) * 0.5, 2 * hw2);
-      // Perch gate (see PERCH_SUSP_BLEED): a hull carried by one line end has no
-      // loaded bogies — fade the terrain-delta target and bleed the stored
-      // displacement so the ×SUSP_VIS amplification cannot hold the rendered
-      // pose dived past the two-contact pose (the r5 egg-crate levitation).
-      const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) *
-        SUSP_K_GAIN * (1 - perch);
-      pT += clamp((terrP2 - state.visualPitch) * kf, -SUSP_P_CLAMP, SUSP_P_CLAMP);
-      rT += clamp((terrR2 - state.visualRoll) * kf, -SUSP_R_CLAMP, SUSP_R_CLAMP);
-    }
-    susp.pv += (SUSP_W * SUSP_W * (pT - susp.p) - 2 * SUSP_Z * SUSP_W * susp.pv) * dt;
-    susp.p += susp.pv * dt;
-    susp.rv += (SUSP_W * SUSP_W * (rT - susp.r) - 2 * SUSP_Z * SUSP_W * susp.rv) * dt;
-    susp.r += susp.rv * dt;
-    if (perch > 0) {
-      const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
-      susp.p *= bleed; susp.pv *= bleed;
-      susp.r *= bleed; susp.rv *= bleed;
-    }
-  }
+  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, perch, dt);
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
@@ -1629,625 +2598,23 @@ export function updateTank(
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
-  const rigidGear = entity.rigidGear === true;
-  const supFresh =
-    Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
-    Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
-    Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012 &&
-    sup.rigid === rigidGear && sup.cg === cg;
-  if (!supFresh) {
-    // Measured contact run for GLB gear (see the SUPPORT_LEN_FRAC r7 note):
-    // half-length + longitudinal center come from the rendered track-bottom
-    // band. zc shifts every sample's hull-local z; the plane FIT uses levers
-    // about zc (the sample centroid — the Σz=0 symmetry the closed-form
-    // slope assumes) while the support deficit keeps the ACTUAL z lever arm
-    // (worldY of a contact point = pos.y + x·sinR·cosP + z·sinP).
-    const sl = cg ? cg.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
-    const zc = cg ? cg.zCenterM : 0;
-    const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
-    const step = (2 * sl) / (nLine - 1);
-    // Project the hull-local contact points to world XZ with the same YXZ
-    // composition the renderer uses, at the exact rendered attitude.
-    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
-    const ca0 = Math.cos(-pitchEff), sa0 = Math.sin(-pitchEff);
-    const cr0 = Math.cos(rollEff), sr0 = Math.sin(rollEff);
-    const sinP = Math.sin(pitchEff), cosP = Math.cos(pitchEff);
-    const sinR = Math.sin(rollEff);
-    const px1 = state.pos.x, pz1 = state.pos.z;
-    let sumHZ = 0, sumZZ = 0, sumL = 0, sumR = 0, nLR = 0;
-    let outerMax = -Infinity; // track outer edges: HARD support (also the fit)
-    let sumD = 0, nD = 0;     // all yOff=0 deficits — patch roughness estimate
-    // Two-point settle bookkeeping (r3): deepest contact overall + deepest in
-    // each longitudinal half (center band excluded — no lever there).
-    // MOVEMENT r1 FLAT-GROUND POSE LOCK (pre-existing, HEAD-reproducible):
-    // settle/roughness used to read the RENDERED-pose deficits d. The
-    // rendered pose carries the ×SUSP_VIS_P-amplified susp rock, so a small
-    // squat fed the settle a spurious tip, the spring chased it, the susp
-    // mirror re-amplified the difference, and the loop ramped until tipRaw
-    // pinned at the ±0.09 clamp: on an ANALYTICALLY FLAT field every tank
-    // cruised pitched ~5.7° nose-up with pos.y ridden up +0.35 m (rear pads
-    // kissing, front track hanging in daylight), perch engaged and the fan
-    // yield opened 0.25 m — and the phantom "downhill" pitch fed a top-speed
-    // bonus. Settle, perch and roughness are TERRAIN-adaptation terms, so
-    // they now read deficits dS in the PREVIOUS FIT frame (state._terr —
-    // pose-decoupled: identically zero spread on flat/planar ground at any
-    // rendered attitude, unchanged semantics in the V-trough/crest cases the
-    // r3 settle was built for). The SUPPORT terms (outerMax/fanMax/bellyMax
-    // and the pos.y clamp) stay at the rendered pose — the no-burial
-    // guarantee is exactly about what reaches the screen.
-    const zHalf = 0.25 * sl;
-    let argZ = 0;
-    let outerMaxS = -Infinity;
-    let frontMax = -Infinity, frontZ = sl;
-    let rearMax = -Infinity, rearZ = -sl;
-    const sinPf = Math.sin(terrPitch), cosPf = Math.cos(terrPitch);
-    const sinRf = Math.sin(state._terr.roll), cosRf = Math.cos(state._terr.roll);
-    // MOVEMENT r1: the contact lines live at hull-local y = yBot (the measured
-    // bottom of the rendered gear — 0 without metadata). Same composition as
-    // the fan lines below: a point (x, yBot, z) renders at
-    //   worldY = pos.y + (x·sinR + yBot·cosR)·cosP + z·sinP.
-    const yLift = yBot * cr0 * cosP;
-    const yLiftF = yBot * cosRf * cosPf;
-    for (let side = -1; side <= 1; side += 2) {
-      const x = side * hw;
-      const x1 = x * cr0 - yBot * sr0, y1 = x * sr0 + yBot * cr0;
-      for (let k = 0; k < nLine; k++) {
-        const zr = -sl + k * step; // lever about the contact-run center (fit)
-        const z = zc + zr;         // actual hull-local z (deficit / projection)
-        const z2 = y1 * sa0 + z * ca0;
-        const h = hAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
-        sumHZ += h * zr;
-        sumZZ += zr * zr;
-        if (side < 0) sumL += h; else sumR += h;
-        nLR++;
-        // support deficit at the rendered pose (worldY of the contact point
-        // relative to pos.y): pos.y must sit at max over samples of
-        // h − ((x·sinR + yBot·cosR)·cosP + z·sinP)
-        const d = h - (x * sinR * cosP + yLift + z * sinP);
-        if (d > outerMax) outerMax = d;
-        // settle/perch/roughness deficit in the previous-fit frame (see the
-        // pose-lock note above)
-        const dS = h - (x * sinRf * cosPf + yLiftF + z * sinPf);
-        if (dS > outerMaxS) { outerMaxS = dS; argZ = zr; }
-        if (zr < -zHalf && dS > rearMax) { rearMax = dS; rearZ = zr; }
-        else if (zr > zHalf && dS > frontMax) { frontMax = dS; frontZ = zr; }
-        sumD += dS; nD++;
-      }
-      // MOVEMENT r1 wrap-end guard (support only): one sample just past each
-      // end of the flat run, raised by the measured wrap approach-rise, so
-      // the rising track ends cannot spear a steep bank the (true, shorter)
-      // contact span no longer touches — parked nose-to-wall, the old 0.45 L
-      // phantom line propped the hull there by accident (leo2a4 pad: wrap
-      // pads −14 cm into a rise). Excluded from the fit/settle: it is a
-      // clearance guard, not ground contact.
-      if (cg && cg.endRise) {
-        for (let end = 0; end < 2; end++) {
-          const zg = end === 0
-            ? zc + sl + cg.endRise.dzM
-            : zc - sl - cg.endRise.dzM;
-          const rise = end === 0 ? cg.endRise.frontM : cg.endRise.rearM;
-          const yg = yBot + rise;
-          const xg = x * cr0 - yg * sr0;
-          const yg1 = x * sr0 + yg * cr0;
-          const z2g = yg1 * sa0 + zg * ca0;
-          const hg = hAt(px1 + xg * cb + z2g * sb, pz1 - xg * sb + z2g * cb);
-          const dg = hg - ((x * sinR + yg * cr0) * cosP + zg * sinP);
-          if (dg > outerMax) outerMax = dg;
-        }
-      }
-    }
-    // r5 lateral fan (see SUPPORT_FAN): support-only lines between the outer
-    // track edges — road-wheel run, track inner edge, hull-belly guard. A
-    // hull-local point (x, yOff, z) renders (YXZ compose) at
-    //   worldY  = pos.y + (x·sinR + yOff·cosR)·cosP + z·sinP
-    //   worldXZ = yaw-rotate of (x·cosR − yOff·sinR,  (x·sinR + yOff·cosR)·
-    //             sin(−pitch) + z·cos(−pitch))
-    // so pos.y must also sit at max of h − ((x·sinR + yOff·cosR)·cosP + z·sinP)
-    // over these lines. Coarse spacing (every other z sample, endpoints kept).
-    // yOff=0 wheel-run lines are SOFT (fanMax, yield below); the yOff>0
-    // hull-belly guard stays HARD (bellyMax) — the pan is rigid geometry with
-    // no conform layer under it.
-    let fanMax = -Infinity;
-    let bellyMax = -Infinity;
-    // Fan sampling stride: the 2× coarse spacing was a perf trade justified
-    // when the fan lines were SOFT supports (conform absorbs sub-sample
-    // bulges). For rigid gear they are hard constraints — sample at full
-    // resolution (r5 drive gate: a 4 cm terrain bulge between 0.66 m-spaced
-    // fan samples put a GLB track vertex −3.1 cm under at 27 km/h).
-    const fanStride = rigidGear ? 1 : 2;
-    // MOVEMENT r1 BELLY GUARD AT THE MEASURED PAN: the fixed 0.34 m guard
-    // line assumed "every roster hull bottom is ≥ 0.40 m" — stale on the
-    // rebuilt profiles (soviet-heavy / sepv2 pans at 0.30, i.e. BELOW the
-    // guard) — and it shared the fan yield on the premise the first 6 cm
-    // never reach rendered geometry. Result: a ridge crest under a parked
-    // hull buried the pan up to 15 cm (is1, live verdant pad). With measured
-    // pan metadata the guard samples 1.5 cm under the REAL plate and clamps
-    // HARD (the pan is rigid — no conform absorbs a yielded crest there).
-    // Metadata-less entities (selftest fixtures) keep the r5 soft behavior.
-    const panY = cg && cg.panYM ? cg.panYM - 0.015 : null;
-    for (const ln of SUPPORT_FAN) {
-      // MOVEMENT r1: the whole fan translates with the measured contact plane
-      // (wheel-run lines ride the rendered gear bottom; the belly guard keeps
-      // its clearance above the contact surface — conservative when the
-      // rebuilt pan sits lower than spec, which only lifts, never buries).
-      const yo = ln.yOff > 0 && panY !== null ? panY : ln.yOff + yBot;
-      for (let side = -1; side <= 1; side += 2) {
-        const x = side * hw * ln.f;
-        const x1 = x * cr0 - yo * sr0;
-        const y1 = x * sr0 + yo * cr0;
-        const lift = (x * sinR + yo * cr0) * cosP;
-        const liftF = (x * sinRf + yo * cosRf) * cosPf; // settle-frame (pose lock)
-        for (let k = 0; k < nLine; k += fanStride) {
-          const z = zc + (k === nLine - 2 ? sl : -sl + k * step); // keep the far end
-          const z2 = y1 * sa0 + z * ca0;
-          const h = hAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
-          const d = h - (lift + z * sinP);
-          if (ln.yOff === 0) {
-            if (d > fanMax) fanMax = d;
-            sumD += h - (liftF + z * sinPf); nD++;
-          } else if (d > bellyMax) {
-            bellyMax = d;
-          }
-        }
-        // wrap-end guard on the wheel-run lines too (HARD — wrap pads past
-        // the last road wheel get little conform): a sharp crest under an
-        // INBOARD rear/front wrap corner buried a parked type90 12 cm on
-        // desert dunes while the outer-line guards straddled it.
-        if (ln.yOff === 0 && cg && cg.endRise) {
-          for (let end = 0; end < 2; end++) {
-            const zg = end === 0
-              ? zc + sl + cg.endRise.dzM
-              : zc - sl - cg.endRise.dzM;
-            const rise = end === 0 ? cg.endRise.frontM : cg.endRise.rearM;
-            const ygr = yBot + rise;
-            const xg1 = x * cr0 - ygr * sr0;
-            const yg1 = x * sr0 + ygr * cr0;
-            const z2g = yg1 * sa0 + zg * ca0;
-            const hg = hAt(px1 + xg1 * cb + z2g * sb, pz1 - xg1 * sb + z2g * cb);
-            const dg = hg - ((x * sinR + ygr * cr0) * cosP + zg * sinP);
-            if (dg > outerMax) outerMax = dg;
-          }
-        }
-        if (ln.f === 0) break; // centerline: one line, not two
-      }
-    }
-    // Assemble the support height (see FAN_YIELD_* note): track edges clamp
-    // exactly — the max-deficit outer sample always sits ON the ground
-    // (levitation-proof anchor) — while the wheel-run fan lines lose
-    // authority as the patch roughens (their residual is absorbed by the
-    // renderer's per-wheel conform + articulated track band), and the belly
-    // guard stays absolute.
-    // r5 TERRAIN-CONTACT HARD GATE (round critique CRITICAL): the yield's
-    // whole premise is that tankFactory's per-wheel conform layer (one-to-one
-    // ground travel, +0.30 m compression) absorbs terrain left proud under the
-    // wheel lines. GLB-swapped visuals hide the procedural gear. Imports that
-    // do not expose BOTH detectable wheel pivots and a deformable belt still
-    // take the FULL hard clamp on every fan/belly line. Imports with both
-    // layers clear rigidGear after their first visual sync and may spend the
-    // same bounded suspension travel as procedural gear. Entities without a
-    // visual (selftest fixtures, headless sim, pre-build pool entries) keep
-    // procedural semantics — nothing renders for them until a visual exists.
-    const rough = outerMaxS - sumD / nD; // settle-frame: pose-decoupled (see above)
-    const yieldWant = rigidGear
-      ? 0
-      : clamp(rough - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
-    const yieldPrev = state._fanYield || 0;
-    const fanYield = yieldWant > yieldPrev
-      ? Math.min(yieldWant, yieldPrev + FAN_YIELD_OPEN_MPS * dt)
-      : yieldWant; // closing (harder clamp) applies instantly
-    state._fanYield = fanYield;
-    // Hydraulic siege suspension can compress the high end of the loaded
-    // track run while the opposite end droops. Treating the outer track edge
-    // as a rigid hull point forced the chassis to sit on its highest tilted
-    // pad; every road wheel then saturated in droop and the rendered belt
-    // stayed almost parallel to the hull. Lower the sprung root by half the
-    // intentional hydraulic rise, bounded by the authored compression
-    // travel. The hard belly/undercut guards below remain unyielding.
-    const rigidUndercut = cg && Number.isFinite(cg.gearBottomYM) &&
-      Number.isFinite(cg.bottomYM) &&
-      (cg.bottomYM as number) < (cg.gearBottomYM as number) - 0.01;
-    const hydraulicTrackYield = state.suspensionAim && hydraulicAim && !rigidUndercut
-      ? Math.min(hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
-        Math.abs(Math.sin(suspensionAimPitch)) * sl)
-      : 0;
-    let supportY = outerMax - hydraulicTrackYield;
-    if (fanMax - fanYield - hydraulicTrackYield > supportY) {
-      supportY = fanMax - fanYield - hydraulicTrackYield;
-    }
-    // The METADATA-LESS belly guard shares the roughness yield: on ≤ 4 m-cell
-    // live maps a pan-threatening crest between the tracks cannot exist while
-    // the patch is smooth (guard fully hard there, r5 behavior), and on
-    // high-frequency synthetic fields honoring it would hover the whole
-    // contact patch (the selftest levitation gate). With MEASURED pan
-    // metadata the guard line sits at the real plate and clamps HARD — see
-    // the panY note above (the is1 ridge burial).
-    const bellyYield = panY !== null ? 0 : fanYield;
-    const bellySupportY = bellyMax - bellyYield;
-    if (bellySupportY > supportY) supportY = bellySupportY;
-    // The ordinary support polygon intentionally samples running gear and the
-    // belly only. During a rollover those are no longer the lowest rigid
-    // surfaces: a roof, turret side, nose or tail can carry the hull. Use the
-    // exact closed armor-shell vertices that traceTank uses, including the
-    // current turret yaw. The former spec-dimensions cuboid put the full
-    // published height at every hull corner (including antenna/RWS height) and
-    // visibly levitated roof-down tanks by up to nearly a metre.
-    let rigidBodySupportY = -Infinity;
-    if (body.tumbling || upYAfterAttitude < TUMBLE_ENTER_UP_Y) {
-      const armor = spec.armor;
-      const contact = armor?.bodyContactPoints;
-      if (contact && contact.hull && contact.hull.length >= 3) {
-        rigidBodySupportY = pointCloudSupportY(
-          contact.hull, hAt, px1, pz1, cb, sb, ca0, sa0, cr0, sr0,
-        );
-        const turret = contact.turret;
-        if (turret && turret.length >= 3) {
-          const tp = armor.turretPivot || [0, 0, 0];
-          const turretCosYaw = Math.cos(state.turretYaw || 0);
-          const turretSinYaw = Math.sin(state.turretYaw || 0);
-          const turretSupportY = pointCloudSupportY(
-            turret, hAt, px1, pz1, cb, sb, ca0, sa0, cr0, sr0,
-            turretCosYaw, turretSinYaw, tp[0], tp[1], tp[2],
-          );
-          if (turretSupportY > rigidBodySupportY) rigidBodySupportY = turretSupportY;
-        }
-      } else {
-        // Non-finalized development fixtures retain a conservative fallback;
-        // every playable fleet spec publishes bodyContactPoints during combat
-        // anatomy finalization.
-        const bodyHalfL = spec.dims.hullLengthM * 0.5;
-        const bodyHalfW = spec.dims.widthM * 0.5;
-        const bodyTopY = Math.max(spec.dims.heightM, yBot + 0.8);
-        for (let yi = 0; yi < 2; yi++) {
-          const localY = yi === 0 ? yBot : bodyTopY;
-          for (let xi = -1; xi <= 1; xi += 2) {
-            const localX = xi * bodyHalfW;
-            const x1 = localX * cr0 - localY * sr0;
-            const y1 = localX * sr0 + localY * cr0;
-            for (let zi = -1; zi <= 1; zi += 2) {
-              const localZ = zi * bodyHalfL;
-              const z2 = y1 * sa0 + localZ * ca0;
-              const h = hAt(
-                px1 + x1 * cb + z2 * sb,
-                pz1 - x1 * sb + z2 * cb,
-              );
-              const yOffset = y1 * cosP + localZ * sinP;
-              const deficit = h - yOffset;
-              if (deficit > rigidBodySupportY) rigidBodySupportY = deficit;
-            }
-          }
-        }
-      }
-    }
-    // Least-squares plane: pitch from the along-track height gradient (Σz = 0
-    // by symmetry), roll from the mean left/right line difference. RENDERER
-    // ROLL SIGN: positive roll lifts the right side, so ground higher on the
-    // RIGHT must give a POSITIVE roll target (the old 4-corner fit used the
-    // opposite sign and leaned the hull INTO every side slope).
-    state._terr.pitch = Math.atan2(sumHZ, sumZZ);
-    state._terr.roll = Math.atan2((sumR - sumL) / (nLR / 2), 2 * hw);
-    // r3 TWO-POINT SETTLE: the LSQ plane under-rotates in V-troughs and on
-    // sharp crests, so a single line-END contact carries the whole hull while
-    // every other sample hangs (rigid bodies don't rest on one point — they
-    // pivot about it until a second contact lands). When the deepest contact
-    // sits in one longitudinal half, rotate the spring's pitch target toward
-    // the deepest sample of the OPPOSITE half: ΔP = (d₁−d₂)/(z₁−z₂) is
-    // exactly the rotation that brings both onto the plane. Zero on planar
-    // ground (uniform deficits ⇒ ΔP ≈ 0), clamped so smooth terrain keeps the
-    // pure fit; the attitude spring provides the damping/rate limit.
-    let tipRaw = 0;
-    if (argZ > zHalf && rearMax > -Infinity) {
-      tipRaw = (outerMaxS - rearMax) / (argZ - rearZ);
-    } else if (argZ < -zHalf && frontMax > -Infinity) {
-      tipRaw = (outerMaxS - frontMax) / (argZ - frontZ);
-    }
-    state._terr.pitch += clamp(tipRaw, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
-    // PERCH factor (see PERCH_W_BOOST): settle demand past the clamp means the
-    // deepest contact is carrying the hull alone off one line end — feed the
-    // smoothed 0..1 excess to the pitch spring boost. Instant attack (the
-    // decay above already ran this tick), PERCH_RELEASE_S release.
-    const perchWant = clamp(Math.abs(tipRaw) / SETTLE_CLAMP_RAD - 1, 0, 1);
-    if (groundedAtStart && perchWant > state._perch) state._perch = perchWant;
-    // Attitude-scaled margin (see SUPPORT_MARGIN_ATT_M): worst-case combined
-    // pitch+roll lifts the plane an extra centimeter so the track link pads
-    // (1–2 cm below the contact plane) can never approach the 3 cm gate.
-    // During a PERCH the att share fades (× 1−0.7·perch): the hull hangs off
-    // a single line END with every other pad meters in the air — the pad-hang
-    // insurance protects nothing there while its full centimeter shows up
-    // directly as patch float (the r5 egg-crate levitation was margin 3.3 cm
-    // + the dense scan's endpoint blind spot). The tip contact itself keeps
-    // the full SUPPORT_MARGIN_M base, and the 30% att floor still covers the
-    // near-end pads through the release tail. RIGID gear keeps the FULL att
-    // margin: GLB tanks have no conform to absorb fast-rotation transients
-    // and no levitation gate riding on the margin (the selftest fixture is
-    // procedural), so headroom beats float there.
-    const perchCut = rigidGear ? 0 : 0.7 * state._perch;
-    const supportMargin = SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
-      Math.min(1, (Math.abs(pitchEff) + Math.abs(rollEff)) / SUPPORT_MARGIN_ATT_RAD);
-    // Track/wheel contact may compress into the suspension, but a measured
-    // hull pan is rigid and remains an absolute floor. If a visual publishes
-    // a keel below its gear plane, that undercut is also rigid: do not spend
-    // suspension travel by pushing the hull itself through the terrain.
-    const normalCompressionFloorY = (rigidUndercut
-      ? supportY
-      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + supportMargin;
-    const rigidBodyFloorY = rigidBodySupportY + RIGID_BODY_MARGIN_M;
-    const compressionFloorY = Math.max(normalCompressionFloorY, rigidBodyFloorY);
-    supportY = Math.max(supportY + supportMargin, rigidBodyFloorY);
-    sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
-    sup.pitch = pitchEff; sup.roll = rollEff;
-    sup.y = supportY; sup.floorY = compressionFloorY;
-    sup.rigid = rigidGear;
-    sup.cg = cg; // measured-footprint identity: a new stamp re-solves a parked tank
-  }
+  solveSupportHeight(
+    entity,
+    hAt,
+    groundedAtStart,
+    pitchEff,
+    rollEff,
+    upYAfterAttitude,
+    suspensionAimPitch,
+    dt,
+  );
 
-  // Vertical contact state. While loaded, the sprung mass follows support
-  // inside the authored compression/droop envelope. When terrain falls beyond
-  // full droop, contact opens and the root follows a ballistic arc independent
-  // of the heightfield. Re-contact occurs when the fully extended running gear
-  // reaches support; the existing spring then absorbs the landing.
-  {
-    const supportY = sup.y;
-    const floorY = Number.isFinite(sup.floorY) ? sup.floorY : supportY;
-    const ride = state._ride || (state._ride = {
-      y: state.pos.y, v: 0, supportY, groundV: 0, grounded: true, airTime: 0,
-    });
-    state.landingImpactMps = 0;
-    if (!Number.isFinite(ride.y)) ride.y = state.pos.y;
-    if (!Number.isFinite(ride.v)) ride.v = 0;
-    if (!Number.isFinite(ride.supportY)) {
-      // Fresh spawns are authored on terrain. Authority reconciliation may
-      // deliberately seed an airborne pose; preserve its Y/v and phase.
-      if (state.grounded !== false) {
-        ride.y = supportY;
-        ride.v = 0;
-        ride.grounded = true;
-      }
-      ride.supportY = supportY;
-      ride.groundV = 0;
-    }
+  // Loaded suspension follows the support envelope; once the droop limit is
+  // exceeded, the chassis uses an independent ballistic phase until landing.
+  updateVerticalContact(state, groundedAtStart, dt);
 
-    const rawGroundV = clamp((supportY - ride.supportY) / dt,
-      -RIDE_SUPPORT_V_CAP, RIDE_SUPPORT_V_CAP);
-    const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
-    ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
-    ride.supportY = supportY;
-    const contactY = supportY + RIDE_DROOP_M;
-    let grounded = groundedAtStart;
-
-    if (!grounded) {
-      ride.v -= GRAVITY * dt;
-      ride.y += ride.v * dt;
-      ride.airTime = (ride.airTime || 0) + dt;
-      // Only a descending/closing body can land. This avoids a rising ramp
-      // below an ascending hull spuriously grabbing it back out of flight.
-      if (ride.y <= contactY && ride.v <= ride.groundV + RIDE_DETACH_REL_V_MPS) {
-        const closingMps = Math.max(0, ride.groundV - ride.v);
-        ride.y = Math.max(contactY, floorY);
-        ride.grounded = true;
-        ride.airTime = 0;
-        grounded = true;
-        state.landingImpactMps = closingMps;
-      }
-    } else {
-      // Test contact before applying the spring. Across a cliff, support can
-      // move several meters in one tick; letting that delta enter the spring
-      // would create the same unbounded downward tether as the old clamp.
-      const clearOfDroop = ride.y - contactY > RIDE_DETACH_CLEARANCE_M;
-      const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
-      if (clearOfDroop && separating) {
-        ride.grounded = false;
-        ride.airTime = 0;
-        grounded = false;
-      } else {
-        ride.grounded = true;
-        ride.airTime = 0;
-        ride.v += (RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
-          2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v)) * dt;
-        ride.y += ride.v * dt;
-
-        if (ride.y < floorY) {
-          ride.y = floorY;
-          if (ride.v < ride.groundV) ride.v = ride.groundV;
-        } else if (ride.y > contactY) {
-          if (ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS) {
-            ride.grounded = false;
-            grounded = false;
-          } else {
-            ride.y = contactY;
-            if (ride.v > ride.groundV) ride.v = ride.groundV;
-          }
-        }
-      }
-    }
-
-    if (grounded && ride.y < floorY) {
-      // A rapidly rising landing surface may overtake the chassis between
-      // fixed ticks. The rigid compression floor remains the final no-tunnel
-      // constraint.
-      ride.y = floorY;
-      if (ride.v < ride.groundV) ride.v = ride.groundV;
-    }
-    state.grounded = grounded;
-    ride.grounded = grounded;
-    state.verticalSpeed = ride.v;
-    state.pos.y = ride.y;
-  }
-
-  // ---- turret & gun chase the world aim point (limits in hull space) ----
-  const aim = input.aimPoint;
-  const prevTurretYaw = state.turretYaw;
-  if (aim && !input.aimLocked) {
-    // Solve the requested ray in the actual rendered hull frame. The former
-    // small-angle subtraction (`world pitch - hull pitch/roll contribution`)
-    // missed by more than a degree on combined sidehills. Firing then hid that
-    // miss with a server-side shell snap, so the projectile visibly departed
-    // above the barrel. Exact inverse YXZ composition makes the articulated
-    // gun itself own the lay; fire code never needs to steer the shell.
-    _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-    _hullQuat.setFromEuler(_hullEuler);
-    const armor = spec.armor || {};
-    const turretPivot = armor.turretPivot || [0, spec.dims.heightM * 0.7, 0];
-    const gunPivot = armor.gunPivot || [0, spec.dims.heightM * 0.15, 0];
-    _gunOriginWorld.set(gunPivot[0], gunPivot[1], gunPivot[2])
-      .applyAxisAngle(_worldUp, state.turretYaw)
-      .add(_turretPivotLocal.set(turretPivot[0], turretPivot[1], turretPivot[2]))
-      .applyQuaternion(_hullQuat)
-      .add(state.pos);
-    const dx = aim.x - _gunOriginWorld.x;
-    const dy = aim.y - _gunOriginWorld.y;
-    const dz = aim.z - _gunOriginWorld.z;
-    const horiz = Math.hypot(dx, dz);
-    const wantPitchWorld = Math.atan2(dy, Math.max(horiz, 1e-6));
-    _aimLocal.set(dx, dy, dz).applyQuaternion(_hullQuat.conjugate());
-    _hullQuat.conjugate();
-    const localHoriz = Math.hypot(_aimLocal.x, _aimLocal.z);
-    const wantTurretYaw = localHoriz > 1e-6
-      ? Math.atan2(_aimLocal.x, _aimLocal.z)
-      : state.turretYaw;
-    const desiredGun = Math.atan2(_aimLocal.y, Math.max(localHoriz, 1e-6));
-    if (fixedHydraulicGun) {
-      // A hydraulic siege TD has one physical aiming joint: its hull. Keep the
-      // authoritative firing state on that same visible bore instead of using
-      // invisible turret/gun angles to finish the lay. The suspension feedback
-      // above removes desiredGun while auto-traverse removes wantTurretYaw.
-      state.turretYaw = 0;
-      state.gunPitch = 0;
-      const noseDown = (hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD;
-      const noseUp = (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD;
-      const requestedSuspensionPitch = suspensionAimPitch + desiredGun;
-      const yawPinned = Math.abs(wrapAngle(wantTurretYaw)) > 1e-4;
-      const pitchPinned = !state.suspensionAim ||
-        requestedSuspensionPitch < -noseDown - 1e-4 ||
-        requestedSuspensionPitch > noseUp + 1e-4;
-      state.atGunLimit = yawPinned || pitchPinned;
-      const labelWant = Math.abs(steer) < 0.2 && state.atGunLimit &&
-        horiz >= GUN_LIMIT_LABEL_DIST_M;
-      state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
-      state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
-    } else {
-      const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
-      state.turretYaw = chaseAngle(state.turretYaw, wantTurretYaw, turretRate * dt);
-    // Casemate gun-arc clamp (§7): the "virtual turret" (fire-control fine
-    // lay) only slews inside ±gunArc of the hull; the reticle pins red
-    // (atGunLimit) while the auto hull-traverse above swings the excess onto
-    // the target.
-    let yawPinned = false;
-    if (gunArc !== Infinity) {
-      if (state.turretYaw > gunArc) state.turretYaw = gunArc;
-      else if (state.turretYaw < -gunArc) state.turretYaw = -gunArc;
-      yawPinned = Math.abs(wrapAngle(wantTurretYaw)) > gunArc + 1e-4;
-    }
-    const lo = -spec.gunDepressionDeg * DEG2RAD;
-    const hi = spec.gunElevationDeg * DEG2RAD;
-    // Gun-terrain clamp (r5 minor): auto-depression onto close server-aim hits
-    // used to sink the muzzle up to ~1.4 m into rising ground. Keep the muzzle
-    // (and mid-barrel) at least MUZZLE_CLEARANCE_M above the heightfield by
-    // raising the effective depression floor; the reticle pins via atGunLimit.
-    let loEff = lo;
-    const barrelLen = spec.armor && spec.armor.gunBarrel ? spec.armor.gunBarrel.lengthM : 0;
-    if (barrelLen > 1) {
-      _hullUpWorld.set(0, 1, 0).applyQuaternion(_hullQuat);
-      _turretForwardWorld.set(
-        Math.sin(state.turretYaw), 0, Math.cos(state.turretYaw),
-      ).applyQuaternion(_hullQuat);
-      _gunWorldDir.copy(_hullUpWorld).multiplyScalar(Math.sin(state.gunPitch))
-        .addScaledVector(_turretForwardWorld, Math.cos(state.gunPitch));
-      let needSin = -1;
-      for (const frac of MUZZLE_CLEARANCE_FRACTIONS) { // muzzle tip + mid-barrel
-        const hMuz = hAt(
-          _gunOriginWorld.x + _gunWorldDir.x * barrelLen * frac,
-          _gunOriginWorld.z + _gunWorldDir.z * barrelLen * frac,
-        );
-        const s = (hMuz + MUZZLE_CLEARANCE_M - _gunOriginWorld.y) / (barrelLen * frac);
-        if (s > needSin) needSin = s;
-      }
-      if (needSin > -1) {
-        // worldY(p) = A·sin(p) + B·cos(p) = R·sin(p + phase).
-        // Invert that exact relation for the local gun pitch required to keep
-        // the tube over terrain.
-        const aY = _hullUpWorld.y;
-        const bY = _turretForwardWorld.y;
-        const radiusY = Math.hypot(aY, bY) || 1;
-        const phaseY = Math.atan2(bY, aY);
-        const loTerr = Math.asin(clamp(needSin / radiusY, -1, 1)) - phaseY;
-        if (loTerr > loEff) loEff = Math.min(loTerr, hi);
-      }
-    }
-    // Pin classification (r3): specPinned = the gun physically cannot reach
-    // the lay within its OWN limits (true depression/elevation stop or the
-    // casemate yaw arc) — always labeled. A pin introduced only by the
-    // terrain-clearance floor (loEff > lo) tints the reticle but labels only
-    // for far asks (≥ GUN_LIMIT_LABEL_DIST_M): close-range clearance pins are
-    // the every-crest noise the round critique flagged, and a genuinely
-    // obstructed close shot surfaces as PATH BLOCKED instead.
-    const specPinned = yawPinned || desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4;
-    state.atGunLimit = specPinned || desiredGun < loEff - 1e-4;
-    state.gunPitch = clamp(
-      approach(state.gunPitch, clamp(desiredGun, loEff, hi), spec.gunPitchDegS * DEG2RAD * dt),
-      lo, hi,
-    );
-    // Label DWELL + attitude-origin gate (r5 round critique MINOR): the label
-    // fired persistently while simply driving rolling terrain (3 of 6 drive
-    // captures) — WoT communicates transient depression pins with reticle
-    // color only. Two filters on the LABEL (the red tint stays tick-instant):
-    //  1. ATTITUDE-ORIGIN pins go label-silent at speed: if the ask would be
-    //     INSIDE the gun's own arc with the hull level (wantPitchWorld within
-    //     [lo, hi]) the pin exists only because the hull is momentarily
-    //     pitched/rolled — on a crest transit above ~15 km/h that is terrain
-    //     noise, not an aiming problem the player can fix. Parked or creeping
-    //     hull-down lays (the deliberate case) keep the label.
-    //  2. DWELL: any labeled state needs GUN_LIMIT_LABEL_DWELL_S of
-    //     CONTINUOUS pin first, clearing instantly on release — one-crest
-    //     flickers never reach the HUD.
-    const attitudePin =
-      (desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4) &&
-      wantPitchWorld >= lo - 1e-4 && wantPitchWorld <= hi + 1e-4;
-    const fastTransient = attitudePin && Math.abs(state.speed) * 3.6 > 15;
-    //  3. STEER (r6 round critique MINOR): the label re-fired during
-    //     quasi-stationary obstacle escapes — hard steering at a crawl kept
-    //     the hull under the 15 km/h transient gate while the reticle asked
-    //     for depression over the near crest. Active maneuvering
-    //     (|commanded steer| ≥ 0.2) never labels; WoT reserves the words for
-    //     deliberate hull-down lays, and the red tint still marks the pin.
-    //     Casemate auto-traverse is unaffected (it synthesizes steerCmd only
-    //     when input.steer is 0, and `steer` here is the raw command).
-    const labelWant = !fastTransient && Math.abs(steer) < 0.2 &&
-      (specPinned || (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M));
-    state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
-      state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
-    }
-  } else if (input.aimLocked) {
-    // Holding the gun is deliberate, not a mechanical limit. Clear any old
-    // pin label while preserving the exact articulated angles above.
-    state.atGunLimit = false;
-    state.gunLimitSpec = false;
-    state._gunLimitHoldS = 0;
-  }
-  state.turretYawRate = wrapAngle(state.turretYaw - prevTurretYaw) / dt;
-
-  // ---- track scroll: outer track runs faster (v ± yawRate × 1.5 m) ----
-  state.trackScroll.l += (state.speed + state.yawRate * OUTER_TRACK_ARM_M) * dt;
-  state.trackScroll.r += (state.speed - state.yawRate * OUTER_TRACK_ARM_M) * dt;
-
-  // ---- dispersion bloom (movement doc §8): grow fast, shrink with aim-time tau ----
-  const b = spec.gun.bloom;
-  let bloomTarget = Math.sqrt(1 +
-    (b.move * Math.abs(state.speed) * 3.6) ** 2 +
-    (b.hullRot * Math.abs(state.yawRate) * RAD2DEG) ** 2 +
-    (b.turret * Math.abs(state.turretYawRate) * RAD2DEG) ** 2);
-  // EQUIPMENT SYSTEM: vertical stabilizer scales the movement-bloom EXCESS
-  // (the part above the fully-aimed 1.0 floor) so a parked tank gains
-  // nothing — WoT's -20% dispersion-on-move semantics.
-  if (debuff.bloomMult !== 1) bloomTarget = 1 + (bloomTarget - 1) * debuff.bloomMult;
-  if (debuff.gunYellow) bloomTarget = Math.max(bloomTarget * 2, GUN_YELLOW_BLOOM_FLOOR);
-  const tau = bloomTarget > state.bloomF
-    ? BLOOM_GROW_TAU
-    : (spec.gun.aimTimeS * debuff.aimTimeMult) / LN6;
-  state.bloomF += (bloomTarget - state.bloomF) * (1 - Math.exp(-dt / tau));
-  if (debuff.gunYellow && state.bloomF < GUN_YELLOW_BLOOM_FLOOR) {
-    state.bloomF = GUN_YELLOW_BLOOM_FLOOR;
-  }
-  if (state.bloomF < 1) state.bloomF = 1;
+  updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
+  updateTrackScrollAndBloom(spec, state, debuff, dt);
 }
 
 /** Shared selector for sim, tank visual and camera presentation recoil. */

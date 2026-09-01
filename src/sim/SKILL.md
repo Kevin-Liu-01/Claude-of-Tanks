@@ -11,7 +11,9 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`movement.ts` owns tank state and terrain contact; `armor.ts` owns hit geometry;
+`movement.ts` owns tank state and terrain contact through named fixed-step
+phases for debuffs, drivetrain, gun lay, collision, attitude, support sampling,
+and ride contact; `armor.ts` owns hit geometry;
 `ballistics.ts` owns typed shells, gravity, guidance, penetration falloff, gun
 lay, and dispersion; `damage.ts` owns penetration/modules/crew/fire;
 `spotting.ts` owns strict renderer-free visibility and team-intel contracts;
@@ -28,7 +30,9 @@ renderer-free openings into the game AI controller.
 <!-- agent-docs:fill:patterns -->
 Use meters/seconds/radians, injected seeded RNG, and reusable scratch math.
 Never trust client hit/damage data. Visual track/hull geometry and combat
-hitboxes must derive from the same authored profile where specified.
+hitboxes must derive from the same authored profile where specified. Movement's
+module-scoped scratch records make each module instance allocation-free but
+non-reentrant: advance tanks sequentially inside a fixed-step owner.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

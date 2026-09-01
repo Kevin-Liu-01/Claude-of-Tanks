@@ -17,7 +17,7 @@ type LoadingYield = (force?: boolean) => Promise<void>;
 
 interface WorldMapModule<World extends WorldScene> {
   createMapAsync(
-    engineContext: unknown,
+    engineContext: object,
     options: { mapId: string; seed: number },
     progress: (label: string, fraction: number) => Promise<void>,
     slicing: { fineSlices: boolean },
@@ -59,6 +59,8 @@ interface BuildRecord<World extends WorldScene> {
   background: boolean;
   waitForGarageLull: boolean;
   cancelled: boolean;
+  backgroundInterrupted: Promise<void>;
+  interruptBackgroundWait(): void;
 }
 
 export interface WorldPrefetchStats {
@@ -74,7 +76,7 @@ export interface WorldPrefetchStats {
 }
 
 export interface WorldBuildCoordinatorDependencies<World extends WorldScene = WorldScene> {
-  engineContext: unknown;
+  engineContext: object;
   scene: THREE.Scene;
   renderer: THREE.WebGLRenderer;
   deviceTier: string;
@@ -125,7 +127,9 @@ const STAGE_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Sealing the battlefield': 'assemble',
 });
 
-function isMaterial(resource: unknown): resource is THREE.Material {
+type DisposableResource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
+
+function isMaterial(resource: DisposableResource): resource is THREE.Material {
   return typeof resource === 'object'
     && resource !== null
     && 'isMaterial' in resource
@@ -180,7 +184,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       );
       const released = disposeObject3DResources(cached.group, {
         preserveRoots,
-        onDispose: (type: string, resource: unknown) => {
+        onDispose: (type: string, resource: DisposableResource) => {
           if (type === 'material' && isMaterial(resource)) {
             dependencies.releaseShadowMaterial(resource);
           }
@@ -209,11 +213,16 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     let record = builds.get(mapId);
     if (record && !background && record.background) {
       record.background = false;
+      record.interruptBackgroundWait();
       stats.joined += 1;
       stats.promoted += 1;
     }
 
     if (!record) {
+      let interruptBackgroundWait = (): void => {};
+      const backgroundInterrupted = new Promise<void>((resolve) => {
+        interruptBackgroundWait = resolve;
+      });
       const created: BuildRecord<World> = {
         id: mapId,
         fraction: 0,
@@ -226,6 +235,8 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         background,
         waitForGarageLull,
         cancelled: false,
+        backgroundInterrupted,
+        interruptBackgroundWait,
       };
       record = created;
       const startedAt = now();
@@ -247,51 +258,74 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       const yieldBackground = dependencies.backgroundYielder?.()
         ?? createFrameBudgetYielder(4);
 
+      const throwIfCancelled = (): void => {
+        if (!created.cancelled) return;
+        stats.cancelled += 1;
+        throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
+      };
+
+      const publishProgress = (label: string, fraction: number): void => {
+        if (label !== created.stageLabel) {
+          const sampleNow = now();
+          finishBuildStage(sampleNow);
+          created.stageLabel = label;
+          created.stageMark = sampleNow;
+        }
+        created.label = label;
+        created.fraction = fraction;
+        for (const listener of created.listeners) {
+          try { listener(fraction, label); } catch { /* advisory */ }
+        }
+      };
+
+      const awaitGarageLull = async (): Promise<void> => {
+        while (created.background && created.waitForGarageLull) {
+          const activity = dependencies.getGarageActivity();
+          const idle = activity.phase === 'garage' && !activity.transitionActive &&
+            now() - activity.lastActivityAt >= 1200;
+          if (idle) return;
+          await sleep(120);
+        }
+      };
+
+      const acquireBackgroundLease = async (): Promise<void> => {
+        if (!created.background || !dependencies.acquireBackgroundWork) return;
+        const kind = created.waitForGarageLull ? 'world' : 'world-intent';
+        const pendingLease = dependencies.acquireBackgroundWork(
+          kind,
+          () => created.background && !created.cancelled,
+        );
+        backgroundLease = await Promise.race([
+          pendingLease,
+          created.backgroundInterrupted.then(() => null),
+        ]);
+        if (backgroundLease) return;
+        void pendingLease.then((lateLease) => lateLease?.release());
+      };
+
+      const paceBuild = async (): Promise<void> => {
+        if (!created.background) {
+          await yieldForeground();
+          return;
+        }
+        await awaitGarageLull();
+        await acquireBackgroundLease();
+        throwIfCancelled();
+        if (created.background && backgroundLease) await yieldBackground(true);
+        else await yieldForeground();
+      };
+
+      const handleProgress = async (label: string, fraction: number): Promise<void> => {
+        releaseBackgroundLease();
+        throwIfCancelled();
+        publishProgress(label, fraction);
+        await paceBuild();
+      };
+
       const promise = loadModule().then(({ createMapAsync }) => createMapAsync(
         dependencies.engineContext,
         { mapId, seed: 1337 },
-        async (label, fraction) => {
-          // The previous lease covered the generator work that led to this
-          // checkpoint. Release it before waiting or selecting the next lane.
-          releaseBackgroundLease();
-          if (created.cancelled) {
-            stats.cancelled += 1;
-            throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
-          }
-          if (label !== created.stageLabel) {
-            const sampleNow = now();
-            finishBuildStage(sampleNow);
-            created.stageLabel = label;
-            created.stageMark = sampleNow;
-          }
-          created.label = label;
-          created.fraction = fraction;
-          for (const listener of created.listeners) {
-            try { listener(fraction, label); } catch { /* advisory */ }
-          }
-          if (created.background) {
-            while (created.background && created.waitForGarageLull) {
-              const activity = dependencies.getGarageActivity();
-              if (activity.phase === 'garage' && !activity.transitionActive
-                  && now() - activity.lastActivityAt >= 1200) break;
-              await sleep(120);
-            }
-            if (created.background && dependencies.acquireBackgroundWork) {
-              const kind = created.waitForGarageLull ? 'world' : 'world-intent';
-              backgroundLease = await dependencies.acquireBackgroundWork(
-                kind, () => created.background && !created.cancelled,
-              );
-            }
-            if (created.cancelled) {
-              stats.cancelled += 1;
-              throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
-            }
-            if (created.background && backgroundLease) await yieldBackground(true);
-            else await yieldForeground();
-          } else {
-            await yieldForeground();
-          }
-        },
+        handleProgress,
         { fineSlices: true },
       )).then((next) => {
         releaseBackgroundLease();
@@ -346,7 +380,10 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
 
   const cancelBackgroundExcept = (mapId: string | null = null): void => {
     for (const record of builds.values()) {
-      if (record.background && record.id !== mapId) record.cancelled = true;
+      if (record.background && record.id !== mapId) {
+        record.cancelled = true;
+        record.interruptBackgroundWait();
+      }
     }
   };
 

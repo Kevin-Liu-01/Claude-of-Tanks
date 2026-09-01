@@ -209,7 +209,7 @@ if (!/deferOpeningRoutes: deferVisuals/.test(soloStart)
   || !(navigationAt >= 0 && terrainAt > navigationAt)
   || !/await warmBattleTerrainTiles\(guardedYield\)/.test(deferredWarm)
   || !/warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/.test(combatWarmComposition)
-  || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
+  || !/options\.deferOpeningRoutes\) context\.game\.openingRouteJobs\.push\(prepare\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
 }
 

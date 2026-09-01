@@ -76,4 +76,45 @@ assert.equal(coordinator.cache.size, 2);
 assert.equal(coordinator.lastRelease.id, 'verdant');
 assert.equal(verdant.group.parent, null, 'eviction detaches the released scene graph');
 
+let grantBlockedLease;
+let lateLeaseReleases = 0;
+const promotionCoordinator = createWorldBuildCoordinator({
+  engineContext: { id: 'engine' },
+  scene: new THREE.Scene(),
+  renderer: { renderLists: { dispose() {} } },
+  deviceTier: 'desktop',
+  getCurrentWorld: () => null,
+  getGarageActivity: () => ({
+    phase: 'garage', transitionActive: false, lastActivityAt: 0,
+  }),
+  releaseShadowMaterial() {},
+  loadModule: async () => ({
+    async createMapAsync(_engine, { mapId }, onProgress) {
+      await onProgress('Surveying terrain', 0.2);
+      const group = new THREE.Group();
+      group.name = mapId;
+      return { group };
+    },
+  }),
+  acquireBackgroundWork: () => new Promise((resolve) => {
+    grantBlockedLease = resolve;
+  }),
+  foregroundYielder: () => async () => {},
+  backgroundYielder: () => async () => {},
+  resourceLimits: { pedestalVisuals: 4, worldScenes: 4 },
+});
+
+const blockedPrefetch = promotionCoordinator.prefetch('fjord', { intent: true });
+assert.ok(blockedPrefetch);
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(typeof grantBlockedLease, 'function', 'prefetch waits for the optional Garage lane');
+const promotedBuild = promotionCoordinator.beginBuild('fjord');
+const promotedWorld = await promotedBuild.promise;
+assert.equal(promotedWorld.group.name, 'fjord',
+  'foreground promotion does not wait for a blocked background-work lane');
+grantBlockedLease({ release() { lateLeaseReleases += 1; } });
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(lateLeaseReleases, 1, 'a lease granted after promotion is returned immediately');
+await blockedPrefetch;
+
 console.log('worldBuildCoordinator.selftest: join, promotion, residency and eviction passed');

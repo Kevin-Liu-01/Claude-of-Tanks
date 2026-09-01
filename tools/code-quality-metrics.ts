@@ -192,9 +192,13 @@ function containsPosition(ranges: Array<readonly [number, number]>, position: nu
   return ranges.some(([start, end]) => position >= start && position < end);
 }
 
-function typeRanges(root: ts.FunctionLikeDeclaration): Array<readonly [number, number]> {
+function ignoredHalsteadRanges(root: ts.FunctionLikeDeclaration): Array<readonly [number, number]> {
   const ranges: Array<readonly [number, number]> = [];
   const visit = (node: ts.Node): void => {
+    if (node !== root && isFunctionLike(node)) {
+      ranges.push([node.getStart(), node.end]);
+      return;
+    }
     if (ts.isTypeNode(node)) {
       ranges.push([node.getStart(), node.end]);
       return;
@@ -219,7 +223,7 @@ function halsteadDifficulty(
       : ts.LanguageVariant.Standard,
     sourceText,
   );
-  const ignoredRanges = typeRanges(root);
+  const ignoredRanges = ignoredHalsteadRanges(root);
   const operators = new Set<string>();
   const operands = new Set<string>();
   let totalOperands = 0;

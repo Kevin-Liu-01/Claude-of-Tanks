@@ -34,7 +34,9 @@ play without importing Three.js rendering or DOM state.
   the same bounded transport contract.
 - `localSession.ts` proves solo play traverses the real host/client path.
 - `localTankPrediction.ts` owns typed local input replay and presentation-only
-  correction; it never owns combat or match results.
+  correction. Its reconciliation stages authority seeding, input
+  acknowledgement/replay, error accounting, bounded presentation correction,
+  and terminal cleanup; it never owns combat or match results.
 - `networkFramePump.ts` owns browser host/client frame order, snapshot/event
   application, input cadence, snapshot barriers, and network diagnostics.
 - `networkBattleBarrier.ts` owns first-authority and peer-ready predicates plus
@@ -82,7 +84,9 @@ play without importing Three.js rendering or DOM state.
 - Local prediction replays the exact shared movement path. Reconciliation error
   is presentation-only: horizontal hull motion, terrain support/tilt, and live
   turret aim use separate bounded decay channels. Contacts may extend smoothing
-  but must never change authority, collision, or ballistic state.
+  but must never change authority, collision, or ballistic state. Keep the
+  collision adapter stable for the predictor lifetime; do not allocate a new
+  closure for every replayed fixed step.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
 - Network activation must remain one operation after the peer-ready barrier;
   do not publish battle phase or camera state piecemeal from `main.ts`.

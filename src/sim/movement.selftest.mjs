@@ -10,7 +10,7 @@
 
 import { Euler, Quaternion, Vector3 } from 'three';
 import {
-  createTankState, fireRecoil, shotRecoilScale,
+  createTankState, fireRecoil, resetTankVerticalState, shotRecoilScale,
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
   updateTank, SIM_DT,
 } from './movement.ts';
@@ -898,6 +898,156 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   near(mbtState.bloomF, 2.2, 1e-9, 'rapid non-IFV gun keeps normal after-shot bloom');
   near(shotRecoilScale(mbt, beltRound), 1, 1e-9,
     'rapid non-IFV gun keeps full physical/presentation recoil');
+}
+
+// ---------------------------------------- 11. integration contract edges --
+// These are low-frequency paths, but they are authoritative contracts: damage
+// modifiers must compose, teleports must reseed contact, and sourced running
+// gear metadata must participate in support without changing the hot path.
+{
+  let malformedRejected = false;
+  try {
+    createTankState({}, new Vector3(), 0);
+  } catch (error) {
+    malformedRejected = error instanceof Error && error.message.includes('malformed TankSpec');
+  }
+  assert(malformedRejected, 'state factory rejects an incomplete movement specification');
+
+  const fallbackSpec = {
+    ...SPEC,
+    armor: { boundingRadiusM: 3.8 },
+  };
+  const fallbackState = createTankState(fallbackSpec, new Vector3(2, 3, 4), 0);
+  near(fallbackState.aimPoint.y, 3 + fallbackSpec.dims.heightM * 0.85, 1e-12,
+    'state factory uses the documented fallback trunnion height');
+
+  fallbackState._ride.y = 99;
+  fallbackState._ride.v = 7;
+  fallbackState._ride.supportY = 5;
+  fallbackState._sup.x = 8;
+  fallbackState._body.tumbling = true;
+  resetTankVerticalState(fallbackState, 6.5, -2, true);
+  near(fallbackState.pos.y, 6.5, 1e-12, 'vertical reset writes the authored height');
+  near(fallbackState.verticalSpeed, -2, 1e-12, 'vertical reset preserves a finite launch velocity');
+  assert(Number.isNaN(fallbackState._ride.supportY) && Number.isNaN(fallbackState._sup.x),
+    'vertical reset invalidates both support caches');
+  assert(fallbackState._body.tumbling === false,
+    'grounded vertical reset releases ordinary tumble state');
+  resetTankVerticalState(fallbackState, 7, Number.NaN, false);
+  assert(fallbackState.verticalSpeed === 0 && fallbackState.grounded === false,
+    'airborne vertical reset sanitizes velocity and preserves flight phase');
+
+  let invalidResetRejected = false;
+  try {
+    resetTankVerticalState(null, 0);
+  } catch (error) {
+    invalidResetRejected = error instanceof TypeError;
+  }
+  assert(invalidResetRejected, 'vertical reset rejects a missing state');
+}
+
+{
+  const field = makeField(() => 0);
+  const damaged = makeEntity(field);
+  damaged.input.throttle = 1;
+  damaged.input.steer = 1;
+  damaged.input.aimPoint = new Vector3(100, 2, 0);
+  damaged.combat = {
+    modules: {
+      transmission: { state: 'red' },
+      turretRing: { state: 'red' },
+      gun: { state: 'yellow' },
+    },
+    crew: { driver: false, gunner: false },
+    equipMults: { traverse: 1.05, turret: 1.08, aimTime: 0.9, bloom: 0.8 },
+  };
+  run(damaged, field, 30);
+  assert(damaged.state.speed > 0 && damaged.state.speed < 0.3,
+    'red transmission and dead driver compose into reduced, nonzero mobility');
+  assert(damaged.state.bloomF >= 2,
+    'yellow gun enforces the authoritative damaged-dispersion floor');
+
+  const yellowTransmission = makeEntity(field);
+  yellowTransmission.input.throttle = 1;
+  yellowTransmission.combat = {
+    modules: {
+      transmission: { state: 'yellow' },
+      turretRing: { state: 'yellow' },
+    },
+  };
+  run(yellowTransmission, field, 30);
+  assert(yellowTransmission.state.speed > damaged.state.speed,
+    'yellow transmission retains more drive authority than red transmission');
+
+  const tracked = makeEntity(field);
+  tracked.input.throttle = 1;
+  tracked.combat = { modules: { trackL: { state: 'red' } } };
+  run(tracked, field, 60);
+  near(tracked.state.speed, 0, 1e-12, 'destroyed track immobilizes the vehicle');
+}
+
+{
+  const field = makeField(() => 0);
+  const casemateSpec = {
+    ...SPEC,
+    gunArcDeg: 4,
+    armor: { ...SPEC.armor, turretless: true },
+  };
+  const casemate = makeEntity(field, 0, 0, 0, casemateSpec);
+  casemate.input.aimPoint = new Vector3(100, 2, 0);
+  run(casemate, field, 90);
+  assert(casemate.state.yaw > 0.1,
+    'casemate auto-traverse turns the hull toward a sight outside the gun arc');
+  assert(Math.abs(casemate.state.pos.x) + Math.abs(casemate.state.pos.z) > 0.001,
+    'pivot-style casemate traverse applies the authored track offset');
+
+  const hydraulicSpec = {
+    ...SPEC,
+    hydropneumaticAim: { noseDownDeg: 6, noseUpDeg: 8, rateDegS: 5 },
+  };
+  const hydraulic = makeEntity(field, 0, 0, 0, hydraulicSpec);
+  hydraulic.state.suspensionAim = true;
+  hydraulic.input.aimPoint = new Vector3(0, 40, 100);
+  run(hydraulic, field, 60);
+  assert(hydraulic.state.suspensionAimPitch > 0.03,
+    'conventional turret uses suspension aim to extend its vertical envelope');
+  const heldSuspensionPitch = hydraulic.state.suspensionAimPitch;
+  hydraulic.input.aimLocked = true;
+  hydraulic.input.aimPoint.set(0, -40, 100);
+  run(hydraulic, field, 30);
+  near(hydraulic.state.suspensionAimPitch, heldSuspensionPitch, 1e-12,
+    'sight-independent gun hold also preserves the hydraulic suspension lay');
+
+  const wrapped = makeEntity(field);
+  wrapped.contactGeom = {
+    halfLenM: 2.2,
+    halfWidM: 1.3,
+    zCenterM: 0,
+    bottomYM: 0,
+    gearBottomYM: 0,
+    endRise: { dzM: 0.3, frontM: 0.22, rearM: 0.18 },
+  };
+  run(wrapped, field, 60);
+  assert(Number.isFinite(wrapped.state.pos.y),
+    'track-wrap support metadata resolves to a finite chassis pose');
+
+  const fallbackBodySpec = {
+    ...SPEC,
+    armor: { ...SPEC.armor, bodyContactPoints: undefined },
+  };
+  const fallbackBody = makeEntity(field, 0, 0, 0, fallbackBodySpec);
+  fallbackBody.state.visualRoll = Math.PI - 0.05;
+  fallbackBody.state._spring.roll = fallbackBody.state.visualRoll;
+  run(fallbackBody, field, 2);
+  assert(Number.isFinite(fallbackBody.state.pos.y) && fallbackBody.state.overturned,
+    'fallback closed-shell support seats an overturned tank without anatomy points');
+
+  const flinching = makeEntity(field);
+  flinching.state._flinch = { p: 0.04, r: -0.03, pv: 0.1, rv: -0.1 };
+  const before = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
+  run(flinching, field, 180);
+  const after = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
+  assert(after < before * 0.01, 'impact flinch decays through the bounded attitude spring');
 }
 
 // ---------------------------------------------------------------- summary --

@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../sim/movement.ts';
 import type {
   MovementCombatState,
+  MovementCollisionResolver,
   MovementContactGeometry,
   MovementHeightField,
   MovementSpec,
@@ -86,7 +87,7 @@ export type PredictionCollision = (
   position: Vector3,
   radius: number,
   outPush: Vector3,
-) => unknown;
+) => boolean;
 
 export interface LocalTankPredictorOptions {
   entity?: PredictionEntity;
@@ -142,6 +143,54 @@ interface DisplayedPose {
   gunPitch: number;
 }
 
+function captureDisplayedPose(state: PredictionTankState, out: DisplayedPose): DisplayedPose {
+  out.x = state.pos.x;
+  out.y = state.pos.y;
+  out.z = state.pos.z;
+  out.yaw = state.yaw;
+  out.pitch = state.visualPitch;
+  out.roll = state.visualRoll;
+  out.turretYaw = state.turretYaw;
+  out.gunPitch = state.gunPitch;
+  return out;
+}
+
+function clearCorrection(correction: PredictionCorrection): void {
+  for (const key of PREDICTION_CORRECTION_KEYS) correction[key] = 0;
+}
+
+function acknowledgeInputs(history: InputHistoryFrame[], ackInputSeq: number | null): void {
+  // Stryker disable next-line ConditionalExpression: invalid acknowledgements are ignored here and by sequence arithmetic, so forcing either defensive clause false is behaviorally equivalent.
+  if (ackInputSeq == null || !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0) return;
+  let writeIndex = 0;
+  for (const frame of history) {
+    if (isSequenceNewer(frame.inputSeq, ackInputSeq)) history[writeIndex++] = frame;
+  }
+  history.length = writeIndex;
+}
+
+function historyHasDriveIntent(history: readonly InputHistoryFrame[]): boolean {
+  for (const frame of history) {
+    if (hasDriveIntent(frame.input)) return true;
+  }
+  return false;
+}
+
+function writePresentationCorrection(
+  correction: PredictionCorrection,
+  old: DisplayedPose,
+  predicted: PredictionTankState,
+): void {
+  correction.x = old.x - predicted.pos.x;
+  correction.y = old.y - predicted.pos.y;
+  correction.z = old.z - predicted.pos.z;
+  correction.yaw = wrapAngle(old.yaw - predicted.yaw);
+  correction.pitch = wrapAngle(old.pitch - predicted.visualPitch);
+  correction.roll = wrapAngle(old.roll - predicted.visualRoll);
+  correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
+  correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
+}
+
 function wrapAngle(value: number) {
   let angle = value;
   while (angle > Math.PI) angle -= Math.PI * 2;
@@ -150,14 +199,15 @@ function wrapAngle(value: number) {
 }
 
 function signedSpeed(snapshot: PredictionSnapshot) {
-  const speed = Math.hypot(snapshot.vx || 0, snapshot.vz || 0);
-  const along = (snapshot.vx || 0) * Math.sin(snapshot.yaw || 0) +
-    (snapshot.vz || 0) * Math.cos(snapshot.yaw || 0);
+  const vx = snapshot.vx ?? 0;
+  const vz = snapshot.vz ?? 0;
+  const speed = Math.hypot(vx, vz);
+  const along = vx * Math.sin(snapshot.yaw) + vz * Math.cos(snapshot.yaw);
   return along < 0 ? -speed : speed;
 }
 
-function hasDriveIntent(input: PredictionInput | null | undefined) {
-  return Math.abs(input?.throttle || 0) > 0.01 || Math.abs(input?.steer || 0) > 0.01;
+function hasDriveIntent(input: PredictionInput) {
+  return Math.abs(input.throttle ?? 0) > 0.01 || Math.abs(input.steer ?? 0) > 0.01;
 }
 
 function canHoldRestingHull(
@@ -166,8 +216,8 @@ function canHoldRestingHull(
   snapshot: PredictionSnapshot,
   motionIntent: boolean,
 ) {
-  if (motionIntent || Math.abs(predicted.speed || 0) > REST_SPEED_MPS ||
-      Math.hypot(snapshot.vx || 0, snapshot.vz || 0) > REST_SPEED_MPS) return false;
+  if (motionIntent || Math.abs(predicted.speed) > REST_SPEED_MPS ||
+      Math.hypot(snapshot.vx ?? 0, snapshot.vz ?? 0) > REST_SPEED_MPS) return false;
   return Math.hypot(old.x - predicted.pos.x, old.z - predicted.pos.z) <=
       REST_HORIZONTAL_DEADZONE_M &&
     Math.abs(old.y - predicted.pos.y) <= REST_VERTICAL_DEADZONE_M &&
@@ -201,12 +251,12 @@ function applyAuthority(state: PredictionTankState, snapshot: PredictionSnapshot
 }
 
 function applyInput(entity: PredictionSimEntity, input: PredictionInput) {
-  entity.input.throttle = input.throttle || 0;
-  entity.input.steer = input.steer || 0;
+  entity.input.throttle = input.throttle ?? 0;
+  entity.input.steer = input.steer ?? 0;
   entity.input.brake = !!input.brake;
   entity.input.fire = !!input.fire;
   entity.input.aimLocked = !!input.aimLocked;
-  entity.input.shellSlot = (input.shellSlot || 0) | 0;
+  entity.input.shellSlot = (input.shellSlot ?? 0) | 0;
   decodeAimIntent(input, entity.state.pos, entity.input.aimPoint);
 }
 
@@ -215,18 +265,23 @@ function advance(
   input: PredictionInput,
   elapsedS: number,
   heightField: PredictionHeightField,
-  collide: PredictionCollision | null,
+  collide: MovementCollisionResolver | null,
 ) {
   applyInput(entity, input);
   let remaining = Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
   while (remaining > 1e-8) {
     const dt = Math.min(SIM_DT, remaining);
-    updateTank(entity, heightField, dt,
-      collide
-        ? (pos: Vector3, radius: number, out: Vector3) => collide(entity, pos, radius, out)
-        : null);
+    updateTank(entity, heightField, dt, collide);
     remaining -= dt;
   }
+}
+
+function createCollisionResolver(
+  entity: PredictionSimEntity,
+  collide: PredictionCollision | null,
+): MovementCollisionResolver | null {
+  if (!collide) return null;
+  return (position, radius, outPush) => collide(entity, position, radius, outPush);
 }
 
 function copyPresentation(
@@ -278,6 +333,8 @@ export class LocalTankPredictor {
   readonly maxHorizontalCorrectionStepM: number;
   readonly maxVerticalCorrectionStepM: number;
   readonly simEntity: PredictionSimEntity;
+  readonly collisionResolver: MovementCollisionResolver | null;
+  readonly displayedPose: DisplayedPose;
   readonly history: InputHistoryFrame[] = [];
   readonly correction: PredictionCorrection;
   readonly stats: LocalPredictionStats;
@@ -341,7 +398,11 @@ export class LocalTankPredictor {
         aimPoint: state.aimPoint.clone(),
       },
     };
+    this.collisionResolver = createCollisionResolver(this.simEntity, collide);
     this.correction = {
+      x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+    };
+    this.displayedPose = {
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     };
     this.stats = {
@@ -363,6 +424,7 @@ export class LocalTankPredictor {
 
   recordInput(input: PredictionInput | null, elapsedS: number, inputSeq: number) {
     if (!input || !Number.isSafeInteger(inputSeq) || inputSeq < 0) return false;
+    // Stryker disable next-line ConditionalExpression: on the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
     if (this.lastRecordedSeq != null) {
       if (inputSeq === this.lastRecordedSeq) return false;
       if (!isSequenceNewer(inputSeq, this.lastRecordedSeq)) {
@@ -380,73 +442,50 @@ export class LocalTankPredictor {
       this.history.shift();
       this.stats.droppedHistory++;
     }
-    advance(this.simEntity, input, elapsedS, this.heightField, this.collide);
+    advance(this.simEntity, input, elapsedS, this.heightField, this.collisionResolver);
     this.present(elapsedS);
     return true;
   }
 
-  reconcile(
-    { tick, ackInputSeq = null, entity: snapshot, sampledEntity = null }: AuthoritySample = {},
-    elapsedS = 0,
-    destroyed = false,
-  ) {
-    if (!snapshot || typeof tick !== 'number' || !Number.isSafeInteger(tick) ||
-        tick <= this.lastAuthorityTick) return false;
-    this.lastAuthorityTick = tick;
-    // Roster visuals are created at a harmless staging origin while the load
-    // screen is up. The first authority pose is initialization, not a network
-    // correction: seed both simulation and presentation directly so latency
-    // cannot turn the origin-to-spawn distance into a hard snap/correction.
-    if (!this.initialized) {
-      this.initialized = true;
-      this.holdRestingHull = false;
-      applyAuthority(this.simEntity.state, snapshot);
-      for (const key of PREDICTION_CORRECTION_KEYS) this.correction[key] = 0;
-      copyPresentation(this.entity.state, this.simEntity.state, this.correction);
-      return true;
+  initializeAuthority(snapshot: PredictionSnapshot): void {
+    this.initialized = true;
+    this.holdRestingHull = false;
+    applyAuthority(this.simEntity.state, snapshot);
+    clearCorrection(this.correction);
+    copyPresentation(this.entity.state, this.simEntity.state, this.correction);
+  }
+
+  replayAuthority(
+    snapshot: PredictionSnapshot,
+    sampledEntity: PredictionSnapshot | null,
+  ): void {
+    applyAuthority(this.simEntity.state, sampledEntity || snapshot);
+    // Browser inputs are replaceable held states. A clock-corrected sampled
+    // entity already includes their network transit time; deterministic
+    // callers without that sample replay the unacknowledged fixed-step input.
+    if (sampledEntity) return;
+    for (const frame of this.history) {
+      advance(
+        this.simEntity,
+        frame.input,
+        frame.elapsedS,
+        this.heightField,
+        this.collisionResolver,
+      );
+      this.stats.replayedInputs++;
     }
-    const shown = this.entity.state;
-    const old = {
-      x: shown.pos.x, y: shown.pos.y, z: shown.pos.z,
-      yaw: shown.yaw, pitch: shown.visualPitch, roll: shown.visualRoll,
-      turretYaw: shown.turretYaw, gunPitch: shown.gunPitch,
-    };
-    if (typeof ackInputSeq === 'number' && Number.isSafeInteger(ackInputSeq) && ackInputSeq >= 0) {
-      let writeIndex = 0;
-      for (const frame of this.history) {
-        if (isSequenceNewer(frame.inputSeq, ackInputSeq)) this.history[writeIndex++] = frame;
-      }
-      this.history.length = writeIndex;
-    }
-    const authorityTarget = sampledEntity || snapshot;
-    applyAuthority(this.simEntity.state, authorityTarget);
-    // Browser inputs are replaceable held states. Authority acknowledges the
-    // newest state it received, not a list of commands with owned durations,
-    // so replaying each unacknowledged render-frame dt double-counts network
-    // transit time. SnapshotBuffer already supplies a clock-corrected,
-    // bounded-extrapolated own-entity sample for that path. Deterministic
-    // callers without such a sample retain exact input replay.
-    if (!sampledEntity) {
-      for (const frame of this.history) {
-        advance(this.simEntity, frame.input, frame.elapsedS, this.heightField, this.collide);
-        this.stats.replayedInputs++;
-      }
-    }
-    const predicted = this.simEntity.state;
-    const positionError = Math.hypot(
-      old.x - predicted.pos.x,
-      old.y - predicted.pos.y,
-      old.z - predicted.pos.z,
-    );
-    const staticContactCount = this.simEntity._predictionStaticContacts || 0;
-    const dynamicContactCount = this.simEntity._predictionDynamicContacts || 0;
-    const contactSinceAuthority = staticContactCount > this.lastStaticContactCount ||
-      dynamicContactCount > this.lastDynamicContactCount;
-    this.lastStaticContactCount = staticContactCount;
-    this.lastDynamicContactCount = dynamicContactCount;
+  }
+
+  recordPredictionError(positionError: number): void {
+    const staticContacts = this.simEntity._predictionStaticContacts ?? 0;
+    const dynamicContacts = this.simEntity._predictionDynamicContacts ?? 0;
+    const contacted = staticContacts > this.lastStaticContactCount ||
+      dynamicContacts > this.lastDynamicContactCount;
+    this.lastStaticContactCount = staticContacts;
+    this.lastDynamicContactCount = dynamicContacts;
     this.stats.reconciliations++;
     this.stats.lastPositionErrorM = positionError;
-    if (contactSinceAuthority) {
+    if (contacted) {
       this.contactSmoothingS = CONTACT_SMOOTH_HOLD_S;
       this.stats.contactReconciliations++;
       this.stats.maxContactPositionErrorM = Math.max(
@@ -460,41 +499,75 @@ export class LocalTankPredictor {
       );
     }
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
-    const terminalDestroyed = !!(destroyed || snapshot.destroyed);
-    const distanceSnap = positionError > this.hardSnapDistanceM;
-    if (distanceSnap) {
-      for (const key of PREDICTION_CORRECTION_KEYS) this.correction[key] = 0;
+  }
+
+  stagePresentationError(
+    old: DisplayedPose,
+    snapshot: PredictionSnapshot,
+    positionError: number,
+    terminalDestroyed: boolean,
+  ): void {
+    if (positionError > this.hardSnapDistanceM) {
+      clearCorrection(this.correction);
       this.holdRestingHull = false;
       this.contactSmoothingS = 0;
       this.stats.hardSnaps++;
-    } else {
-      this.correction.x = old.x - predicted.pos.x;
-      this.correction.y = old.y - predicted.pos.y;
-      this.correction.z = old.z - predicted.pos.z;
-      this.correction.yaw = wrapAngle(old.yaw - predicted.yaw);
-      this.correction.pitch = wrapAngle(old.pitch - predicted.visualPitch);
-      this.correction.roll = wrapAngle(old.roll - predicted.visualRoll);
-      this.correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
-      this.correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
-      this.holdRestingHull = !terminalDestroyed && canHoldRestingHull(
-        old,
-        predicted,
-        snapshot,
-        this.motionIntent || this.history.some((frame) => hasDriveIntent(frame.input)),
-      );
-      if (this.holdRestingHull) this.stats.restingHullHolds++;
-      if (terminalDestroyed && !this.terminalDestroyed) this.stats.terminalSyncs++;
+      return;
     }
+
+    const predicted = this.simEntity.state;
+    writePresentationCorrection(this.correction, old, predicted);
+    this.holdRestingHull = !terminalDestroyed && canHoldRestingHull(
+      old,
+      predicted,
+      snapshot,
+      this.motionIntent || historyHasDriveIntent(this.history),
+    );
+    if (this.holdRestingHull) this.stats.restingHullHolds++;
+    if (terminalDestroyed && !this.terminalDestroyed) this.stats.terminalSyncs++;
+  }
+
+  finishTerminalAuthority(terminalDestroyed: boolean): void {
     if (terminalDestroyed) {
-      // Death ends local input authority, but it must not teleport the hull to
-      // the terminal server pose. Preserve the already displayed pose as a
-      // bounded presentation correction and let the wreck settle over the
-      // following frames. Combat state is still authoritative immediately.
+      // Death ends local input authority without teleporting presentation to
+      // the terminal server pose. The bounded correction settles the wreck.
       this.history.length = 0;
       this.motionIntent = false;
       this.contactSmoothingS = 0;
     }
     this.terminalDestroyed = terminalDestroyed;
+  }
+
+  reconcile(
+    { tick, ackInputSeq = null, entity: snapshot, sampledEntity = null }: AuthoritySample = {},
+    elapsedS = 0,
+    destroyed = false,
+  ) {
+    if (!snapshot || !Number.isSafeInteger(tick)) return false;
+    const authorityTick = tick as number;
+    if (authorityTick <= this.lastAuthorityTick) return false;
+    this.lastAuthorityTick = authorityTick;
+    // Roster visuals are created at a harmless staging origin while the load
+    // screen is up. The first authority pose is initialization, not a network
+    // correction: seed both simulation and presentation directly so latency
+    // cannot turn the origin-to-spawn distance into a hard snap/correction.
+    if (!this.initialized) {
+      this.initializeAuthority(snapshot);
+      return true;
+    }
+    const old = captureDisplayedPose(this.entity.state, this.displayedPose);
+    acknowledgeInputs(this.history, ackInputSeq);
+    this.replayAuthority(snapshot, sampledEntity);
+    const predicted = this.simEntity.state;
+    const positionError = Math.hypot(
+      old.x - predicted.pos.x,
+      old.y - predicted.pos.y,
+      old.z - predicted.pos.z,
+    );
+    this.recordPredictionError(positionError);
+    const terminalDestroyed = !!(destroyed || snapshot.destroyed);
+    this.stagePresentationError(old, snapshot, positionError, terminalDestroyed);
+    this.finishTerminalAuthority(terminalDestroyed);
     this.present(elapsedS);
     return true;
   }
