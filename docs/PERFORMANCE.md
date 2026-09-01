@@ -85,9 +85,10 @@ profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
-All ten locations are bounded authentic scene packs. Their 41x37 terrain grids
-are generated from exact battlefield spawn heightfields, then consumed without
-importing a terrain or map runtime. Connected landmarks come from the same
+Verdant uses its restored authored indoor workshop; the other nine locations
+are bounded authentic scene packs. Their 41x37 terrain grids are generated from
+exact battlefield spawn heightfields, then consumed without importing a terrain
+or map runtime. Connected landmarks come from the same
 first-party structure kits as the battlefields and are composed in canonical
 camera space so they cannot disappear behind the hero or side panels. Distant
 vegetation uses the real tree kits; ground cover is one immutable instanced
@@ -98,23 +99,31 @@ vertex-color sky and three terrain-derived relief bands close the horizon so
 every camera ray resolves to a deliberate background rather than the renderer
 clear color.
 
-The active pack stays between 15 and 17 draws and approximately 7.9K–13.7K
-triangles, including 10–28 real trees, 48–240 static ground-cover instances,
-five connected structures, two wreck silhouettes, and three horizon layers.
-The controller retains only the active and previous packs. The first
-pack starts all nine small texture sets before interactive readiness; this
-bounded ~18 MiB decoded residency removes first-switch texture stalls on weak
-CPUs without a later timer colliding with the first click. Stale rapid-switch
-promises never become visible. The former hidden
+An outdoor pack stays between 16 and 18 draws and approximately 15.8K–21.6K
+triangles, including 10–28 real trees, static ground cover, five connected
+structures, two wreck silhouettes, three horizon layers, two complete service
+bays, 100–423 facility props, 40–365 loose parts, and one or two baked service
+vehicles. Cinder's 132 rail segments remain inside the same merged buckets.
+The controller retains only the active and previous packs. Tiny colorless
+receivers under Verdant's opaque podium seed the exact outdoor material/CSM
+variants during the already-covered first frame; their two 1x1 local textures
+add no request or decode work. The nine small texture sets then warm
+incrementally offscreen after interactive readiness. A persisted outdoor choice
+is presented beneath the boot cover immediately and starts the same transaction,
+so reload cannot strand a hidden pack on the renderer clear color. Stale rapid-
+switch promises never become visible. The former hidden
 four-tank workshop and its hundreds of thousands of triangles are retired, and
 the compatibility owner builds zero geometry.
 
 One frozen presentation pose is shared by the stage, hero pedestal, return path,
 and camera runtime. There are no per-location heading or camera branches. The
 Garage phase owns one stable light set so switching cannot relink shaders through
-a changing light count. On battle entry, phase residency releases every scene-
-pack geometry and warmed Garage texture; return restores only the selected pack
-behind the opaque transition.
+a changing light count; inactive Verdant fixtures retain their objects at zero
+intensity. Static environment geometry receives the frozen Garage shadow but
+does not cast into live CSM updates. One shadowless bounce illuminates the hero
+without another shadow map. On battle entry, phase residency releases every
+scene-pack geometry and warmed Garage texture; return restores only the selected
+pack behind the opaque transition.
 
 Garage selector previews still decode only when demanded. `npm run qa:garage`
 enumerates all ten locations and checks map bindings, authentic source receipts,

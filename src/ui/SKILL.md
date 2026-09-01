@@ -50,6 +50,11 @@ than creating screen-local unchecked copies.
 loadout, room-status, and battle-intent inputs explicit; fail fast when its
 static markup contract is missing; and preserve its disclosure/event lifecycle
 when adding responsive controls.
+`garageStage.ts` is also the exact restored Verdant workshop owner. The nine
+outdoor destinations live behind `garageArchitecture.ts`; their static service
+facilities are baked by `garageFacilityDetails.ts`, receive but do not cast live
+CSM shadows, and retain no playable-fleet runtime. Preserve one canonical hero
+pose and verify both persisted outdoor reload and 1180x820 overlay composition.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,

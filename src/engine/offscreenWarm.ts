@@ -9,6 +9,7 @@
  */
 import {
   HalfFloatType,
+  LinearSRGBColorSpace,
   Vector2,
   WebGLRenderTarget,
   type BufferGeometry,
@@ -35,6 +36,7 @@ interface WarmRenderable extends Object3D {
 
 export interface OffscreenSceneWarmer {
   (): void;
+  compileAsync(compileScene?: Object3D, targetScene?: Scene | null): Promise<void>;
   dispose(): void;
 }
 
@@ -62,7 +64,7 @@ export function createOffscreenSceneWarmer(
   const size = new Vector2();
   let target: WebGLRenderTarget | null = null;
 
-  const warmSceneOffscreen = function warmSceneOffscreen(): void {
+  const ensureTarget = (): WebGLRenderTarget => {
     renderer.getDrawingBufferSize(size);
     const width = Math.max(8, Math.floor(size.x * scale));
     const height = Math.max(8, Math.floor(size.y * scale));
@@ -74,12 +76,18 @@ export function createOffscreenSceneWarmer(
         stencilBuffer: false,
       });
       target.texture.name = 'CombatWarm.color';
+      target.texture.colorSpace = LinearSRGBColorSpace;
     } else if (target.width !== width || target.height !== height) {
       target.setSize(width, height);
     }
     target.viewport.set(0, 0, width, height);
     target.scissor.set(0, 0, width, height);
     target.scissorTest = false;
+    return target;
+  };
+
+  const warmSceneOffscreen = function warmSceneOffscreen(): void {
+    const warmTarget = ensureTarget();
 
     const priorTarget = renderer.getRenderTarget();
     const priorFace = renderer.getActiveCubeFace ? renderer.getActiveCubeFace() : 0;
@@ -88,12 +96,34 @@ export function createOffscreenSceneWarmer(
       // WebGLRenderer takes viewport/scissor directly from the render target.
       // Do not call renderer.setViewport here: that mutates the default
       // framebuffer viewport and recreates the first-battle quarter-frame bug.
-      renderer.setRenderTarget(target);
+      renderer.setRenderTarget(warmTarget);
       renderer.render(scene, camera);
     } finally {
       renderer.setRenderTarget(priorTarget, priorFace, priorMip);
     }
   } as OffscreenSceneWarmer;
+
+  warmSceneOffscreen.compileAsync = async (
+    compileScene: Object3D = scene,
+    targetScene: Scene | null = scene,
+  ): Promise<void> => {
+    const warmTarget = ensureTarget();
+    const priorTarget = renderer.getRenderTarget();
+    const priorFace = renderer.getActiveCubeFace ? renderer.getActiveCubeFace() : 0;
+    const priorMip = renderer.getActiveMipmapLevel ? renderer.getActiveMipmapLevel() : 0;
+    let compilation: Promise<unknown>;
+    try {
+      // compileAsync() calls compile() synchronously before it returns its
+      // KHR_parallel_shader_compile readiness promise. Set the private target
+      // only for that program-key transaction, then restore immediately so the
+      // live render loop can continue while the driver finishes in parallel.
+      renderer.setRenderTarget(warmTarget);
+      compilation = renderer.compileAsync(compileScene, camera, targetScene);
+    } finally {
+      renderer.setRenderTarget(priorTarget, priorFace, priorMip);
+    }
+    await compilation!;
+  };
 
   warmSceneOffscreen.dispose = () => {
     if (target) target.dispose();

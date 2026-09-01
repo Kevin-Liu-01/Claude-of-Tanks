@@ -886,24 +886,35 @@ heading, three-quarter camera offset, look height, and FOV. Environment identity
 may change terrain, structures, materials, and atmosphere, but it may never
 change tank orientation or framing.
 
-`garageStage.ts` owns only the visible hero podium and delegates its scene pack
-to `garageArchitecture.ts`. That controller demand-loads
+`garageStage.ts` owns the visible hero podium and the exact restored Verdant
+indoor workshop. It delegates the other nine scene packs to
+`garageArchitecture.ts`. That controller demand-loads
 `garageEnvironmentKit.ts`, retains at most the active and previous pack, rejects
-stale switch completions, and starts nine small Garage-only PBR surface sets in
-the bounded initial-pack transaction before interactive readiness. All ten packs
-use generated 41x37 height excerpts from their real battlefield spawn terrain,
-camera-space staged connected map structures, real instanced tree kits, static
-biome ground cover, and three terrain-derived relief bands. Two background hulks
+stale switch completions, and incrementally warms nine small Garage-only PBR
+surface sets and their exact production shader keys after interactive readiness.
+Invisible two-centimetre receivers beneath the opaque Verdant podium seed the
+outdoor Standard/CSM, instancing, vertex-color, glass, sky, and horizon program
+variants during the covered first frame, so a browser without parallel shader
+compile cannot move its first link stall onto an environment click.
+The outdoor packs use generated 41x37 height excerpts from their real battlefield
+spawn terrain, camera-space staged connected map structures, real instanced tree
+kits, static biome ground cover, and three terrain-derived relief bands. Two background hulks
 reuse a 208-triangle proxy generated from the first-party M1A2 wreck pose; no
-fleet builder enters the Garage graph. A finite vertex-color sky closes the
+fleet builder enters the Garage graph. `garageFacilityDetails.ts` merges two
+maintenance bays, lights, stocked tank-part racks, tools, crates, and low-poly
+service vehicles into the existing static buckets. Cinder adds three full rail
+roads, platforms, canopies, and a nine-bay roundhouse. A finite vertex-color sky closes the
 composition without a white world background. No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.
 
 `garageEnvironmentPresentationRuntime.ts` keeps any retained battle world
 dormant and applies the fixed anchor and canonical camera pose.
-`garagePhasePresentationRuntime.ts` owns the only Garage lights and the complete
+`garagePhasePresentationRuntime.ts` owns the global Garage lights and the complete
 GPU residency transaction: Garage-only geometry and textures leave VRAM before
-battle, then restore behind the covered return frame. The former hidden
+battle, then restore behind the covered return frame. The Verdant fixture objects
+remain in the stable light set at zero intensity outdoors, while one shadowless
+hero bounce remains active. Outdoor static scenery receives but does not cast
+live CSM shadows. The former hidden
 four-vehicle workshop has been retired; `garageDressingAccess.ts` now exposes a
 zero-geometry compatibility owner while callers migrate. It never imports fleet
 builders, schedules quiet work, or adds a second set of scene resources.

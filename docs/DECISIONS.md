@@ -141,10 +141,13 @@ dormancy. Callers use that interface instead of retaining parallel map state.
 The Garage and battlefield have exclusive scene residency. The Garage sleeps
 its frame clock after presentation settles and invalidates it only on actual
 activity. Verdant retains the authored workshop. Every other Garage destination
-uses a purpose-built Garage-only terrain and one connected map-specific
-landmark. These static environments may borrow palette, relief, vegetation,
-and industrial language from a battlefield, but never import or construct its
-terrain, collision, destructibles, services, or animated vegetation.
+uses a purpose-built Garage-only terrain, five connected map-specific
+structures, a two-sided maintenance facility, baked service vehicles, and
+stocked equipment/part racks. These static environments may borrow palette,
+relief, vegetation, and industrial language from a battlefield, but never import
+or construct its terrain, collision, destructibles, services, playable fleet,
+or animated vegetation. Cinder Junction additionally owns three complete raised
+rail roads, platforms, canopies, and a nine-bay roundhouse frame.
 `garageEnvironmentPresentationRuntime.ts` owns the fixed isolated anchor,
 camera framing, battlefield dormancy, and diagnostics. The composition root
 supplies concrete presentation ports but cannot request a world from this path.
@@ -165,7 +168,10 @@ remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
 Garage environment geometry is a distinct presentation asset, not a reduced
 battlefield: its terrain grid, perimeter instances, and landmark are authored
-for the Garage camera and capped by the Garage probe.
+for the Garage camera and capped by the Garage probe. Pack scenery is immutable,
+merged, and receive-shadow-only; the hero/podium remain the dynamic shadow
+owners. A stable shadowless bounce light keeps camouflage legible without an
+extra depth map or light-count shader variant.
 Temporary vehicle materials are not part of static wreck fidelity: once the
 factory output is deterministically collapsed to the world's vertex-colored
 wreck material, the factory uses a typed geometry-only material adapter and

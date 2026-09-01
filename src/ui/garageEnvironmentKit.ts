@@ -14,6 +14,7 @@ import {
   type GarageTerrainPatch,
 } from './garageTerrainPatches.generated.ts';
 import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
+import { addGarageFacilityDetails } from './garageFacilityDetails.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -41,6 +42,11 @@ export interface GarageEnvironmentStats {
   readonly groundCover: number;
   readonly structures: number;
   readonly wrecks: number;
+  readonly facilityProps: number;
+  readonly facilityStations: number;
+  readonly looseParts: number;
+  readonly railSegments: number;
+  readonly serviceVehicles: number;
   readonly triangles: number;
 }
 
@@ -664,6 +670,21 @@ export function buildGarageEnvironment(
     }
   }
 
+  const facilityDetails = variant.architecture === 'field_shed'
+    ? Object.freeze({
+        facilityProps: 0,
+        facilityStations: 0,
+        looseParts: 0,
+        railSegments: 0,
+        serviceVehicles: 0,
+      })
+    : addGarageFacilityDetails({
+        buckets: combined,
+        engineCtx,
+        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+        variant,
+      });
+
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
@@ -692,9 +713,17 @@ export function buildGarageEnvironment(
     track(merged);
     merged.computeBoundingBox();
     merged.computeBoundingSphere();
-    const mesh = new THREE.Mesh(merged, materialForBucket(key));
+    const material = materialForBucket(key);
+    material.name = `garage:${key}`;
+    const mesh = new THREE.Mesh(merged, material);
     mesh.name = `authored_structures_${key}`;
-    mesh.castShadow = key !== 'glass';
+    // Garage scenery is static and already carries textured/vertex-color
+    // contact definition. Keep it out of the live CSM caster set: compiling
+    // nine new bucket shadow programs on the first outdoor selection caused a
+    // half-second hitch, while cascade refreshes made fine station geometry
+    // shimmer. The hero tank and podium remain the only dynamic Garage
+    // casters; scenery still receives their stable contact shadow.
+    mesh.castShadow = false;
     mesh.receiveShadow = true;
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
@@ -770,7 +799,7 @@ export function buildGarageEnvironment(
       transforms.forEach((transform, index) => instances.setMatrixAt(index, transform));
       instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
       instances.instanceMatrix.needsUpdate = true;
-      instances.castShadow = part === 'trunks';
+      instances.castShadow = false;
       instances.receiveShadow = true;
       instances.computeBoundingBox();
       instances.computeBoundingSphere();
@@ -816,6 +845,7 @@ export function buildGarageEnvironment(
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     wrecks: wreckPlacements.length,
+    ...facilityDetails,
     triangles: Math.round(triangles),
   });
   Object.assign(root.userData, stats);

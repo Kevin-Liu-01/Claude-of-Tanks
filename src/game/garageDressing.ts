@@ -2,10 +2,9 @@
 //
 // Garage environments are now complete, map-authentic scene packs owned by
 // ui/garageArchitecture.ts. Keep this tiny runtime boundary while callers and
-// capture tooling migrate, but never stream the former four-tank workshop: it
-// was invisible in every environment and still cost hundreds of milliseconds,
-// four fleet builders, hundreds of thousands of triangles, and a second set of
-// textures during otherwise-idle Garage frames.
+// capture tooling migrate, but never stream the former four-playable-tank
+// workshop. Environment packs bake purpose-built service LODs and loose parts
+// into one static material bucket instead of retaining live fleet builders.
 import * as THREE from 'three';
 import { getGarageVariant } from './garageVariants.ts';
 
@@ -64,7 +63,8 @@ function stampRetiredWorkshopState(group: THREE.Group, variantId: string): strin
 
 /**
  * Preserve the old runtime surface without creating any hidden scene content.
- * The soft bay fill remains because it contributes to the selected hero tank;
+ * The stable shadowless hero bounce remains because it keeps dark camouflage
+ * readable without introducing another shadow map or a frame-to-frame update;
  * authentic terrain, structures, props and trees belong to the active scene
  * pack and are disposed through that pack's bounded cache.
  */
@@ -79,7 +79,7 @@ export function createGarageDressing(
   group.position.copy(pos);
 
   if (!existing.bayFill) {
-    const bayFill = new THREE.PointLight(0xb9c6d6, 10, 30, 1.8);
+    const bayFill = new THREE.PointLight(0xc8d2dc, 18, 32, 1.8);
     bayFill.position.set(12.5, 6.2, 11.5);
     bayFill.castShadow = false;
     group.add(bayFill);

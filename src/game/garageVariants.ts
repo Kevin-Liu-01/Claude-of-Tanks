@@ -1,7 +1,8 @@
-// Ten Garage destinations. Every choice owns a compact scene pack derived
-// from its real battlefield terrain, structures, materials, and vegetation.
-// This registry is deliberately renderer-free so UI, probes and persistence can
-// consume the same immutable contract without importing a world or tank builder.
+// Ten Garage destinations. Verdant owns the restored authored indoor workshop;
+// the other nine own compact scene packs derived from their battlefield terrain,
+// structures, materials, and vegetation. This registry is deliberately
+// renderer-free so UI, probes and persistence can consume the same immutable
+// contract without importing a world or playable-tank builder.
 
 export const GARAGE_VARIANT_STORAGE_KEY = 'cot.garage.variant';
 

@@ -232,11 +232,12 @@ ready. Development-only Vite warmup and module preload flatten the static
 ### 5.2 Garage
 
 The garage constructs only presentation needed for selection and session
-entry. The battlefield remains dormant. Each of the ten environments is a
-bounded renderer-only scene pack built from a generated excerpt of its real
-battlefield terrain plus connected structure kits, camera-composed instanced
-tree lines, static biome ground cover, a generated first-party wreck proxy, and
-three map-derived horizon layers beneath a finite sky.
+entry. The battlefield remains dormant. Verdant uses its restored authored
+indoor workshop. Each of the other nine environments is a bounded renderer-only
+scene pack built from a generated excerpt of its real battlefield terrain plus
+connected structure kits, camera-composed instanced tree lines, static biome
+ground cover, a generated first-party wreck proxy, two-sided service facilities,
+and three map-derived horizon layers beneath a finite sky.
 The active and previous packs are the only cached scene graphs, and Garage-only
 textures and geometry leave GPU residency during battle. One immutable
 Verdant-style presentation pose owns hero heading, camera offset, look height,

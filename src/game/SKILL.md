@@ -79,12 +79,16 @@ framing and pedestal pose math remain with their existing owners.
 battlefield dormancy, lifecycle effects, and diagnostics.
 `garagePresentationPose.ts` is the only owner of hero heading, camera offset,
 look height, and FOV; stage, pedestal, activation, and return paths must consume
-it without variant-specific branches. `garageEnvironmentKit.ts` owns all ten
-bounded scene packs: generated real-terrain excerpts, camera-space connected
-structure builders, static tree/ground-cover instances, a generated first-party
-wreck proxy, Garage-sized PBR derivatives, and the finite sky plus three-layer
-terrain horizon. Never add a world-loading or per-frame update port to a Garage
-environment module. `garageDressingAccess.ts` is a temporary zero-geometry
+it without variant-specific branches. `garageStage.ts` owns the restored exact
+Verdant indoor workshop. `garageEnvironmentKit.ts` owns the other nine bounded
+scene packs: generated real-terrain excerpts, camera-space connected structure
+builders, static tree/ground-cover instances, a generated first-party wreck
+proxy, Garage-sized PBR derivatives, the finite sky and three-layer terrain
+horizon. `garageFacilityDetails.ts` flattens two-sided service bays, equipment,
+first-party tank-part vocabulary, and low-poly service vehicles into those
+packs; it must never import a playable fleet builder. Never add a world-loading
+or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
+is a temporary zero-geometry
 compatibility boundary; do not restore the retired hidden multi-vehicle
 workshop or its fleet imports.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
@@ -175,11 +179,12 @@ succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Garage scene-pack changes must pass the architecture, terrain- and wreck-generation,
-transition, and phase-resource gates. Preserve the two-pack cache, reject stale
-switch completions, start only the bounded Garage derivative texture set in the
-initial-pack transaction, and keep all environment identity out of the
-canonical pose. Do not add
-small-prop shadow casters or duplicate Garage lights.
+transition, persisted-outdoor-entry, and phase-resource gates. Preserve the
+two-pack cache, reject stale switch completions, perform shader and texture
+warming only after interactive readiness, and keep all environment identity out
+of the canonical pose. Static pack scenery receives the settled Garage shadow
+but never joins live CSM caster updates. Keep the stable shadowless hero bounce;
+do not add small-prop shadow casters or variant-specific Garage lights.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

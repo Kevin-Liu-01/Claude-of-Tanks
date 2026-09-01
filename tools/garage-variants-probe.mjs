@@ -120,6 +120,7 @@ try {
   const thrash = await page.evaluate(() => window.__GARAGE_WORKSHOP.stats());
 
   // Thirty complete selection cycles exercise disposal and the two-pack LRU.
+  await cdp.send('HeapProfiler.collectGarbage');
   const memoryBefore = await page.evaluate(() => ({
     heap: performance.memory?.usedJSHeapSize || 0,
     renderer: { ...(window.__DEBUG?.renderer?.info?.memory || {}) },
@@ -139,12 +140,37 @@ try {
     }
   }, variants);
   const cycleFrames = await stopFrameProbe('__GARAGE_CYCLE_PROBE');
-  if (globalThis.gc) await page.evaluate(() => globalThis.gc?.());
+  await cdp.send('HeapProfiler.collectGarbage');
   const memoryAfter = await page.evaluate(() => ({
     heap: performance.memory?.usedJSHeapSize || 0,
     renderer: { ...(window.__DEBUG?.renderer?.info?.memory || {}) },
     stats: window.__GARAGE_WORKSHOP.stats(),
   }));
+
+  // A saved outdoor destination is a valid cold-entry state. It must become a
+  // complete visible pack on its own; historically only Verdant scheduled the
+  // warm transaction, leaving direct Cinder reloads on the renderer clear color.
+  const persistedOutdoorId = 'railyard_overhaul';
+  await page.evaluate((id) => localStorage.setItem('cot.garage.variant', id), persistedOutdoorId);
+  const persistedReloadStartedAt = Date.now();
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.waitForFunction((id) => {
+    const stats = window.__GARAGE_WORKSHOP?.stats();
+    return window.__GAME_READY === true && stats?.selected === id
+      && stats?.architecture?.ready === true;
+  }, { timeout: 60_000 }, persistedOutdoorId);
+  const persistedReload = await page.evaluate((id, elapsedMs) => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return {
+      id,
+      elapsedMs,
+      selected: stats.selected,
+      ready: stats.architecture?.ready === true,
+      drawCalls: stats.architecture?.drawCalls || 0,
+      triangles: stats.architecture?.triangles || 0,
+      sceneMode: stats.sceneMode,
+    };
+  }, persistedOutdoorId, Date.now() - persistedReloadStartedAt);
 
   const responsive = {};
   for (const viewport of [
@@ -195,6 +221,7 @@ try {
   }
   for (const result of results) {
     const architecture = result.stats.architecture;
+    const isVerdant = result.id === 'verdant_motor_pool';
     if (!result.selected || result.persisted !== result.id || !result.previewReady) {
       failures.push(`${result.id}: selection/persistence/preview failed`);
     }
@@ -202,17 +229,27 @@ try {
         || result.stats.activeWorkshopTriangles !== 0 || result.stats.exhibitCount !== 0) {
       failures.push(`${result.id}: retired workshop performed hidden work`);
     }
-    if (result.stats.sceneMode !== 'authentic-scene-pack'
-        || result.stats.roofMode !== 'open-environment'
+    if (result.stats.sceneMode !== (isVerdant ? 'verdant-workshop' : 'authentic-scene-pack')
+        || result.stats.roofMode !== (isVerdant ? 'enclosed-original' : 'open-environment')
         || result.stats.environment?.mode !== 'authentic-scene-pack'
         || result.stats.environment?.worldMounted) {
       failures.push(`${result.id}: authentic isolated scene-pack contract failed`);
     }
-    if (architecture.source !== 'authentic-garage-scene-pack'
+    if (isVerdant) {
+      if (architecture.source !== 'verdant-workshop'
+          || architecture.mode !== 'verdant-workshop'
+          || architecture.enclosingSurfaces !== 4
+          || architecture.terrainVertices !== 0
+          || architecture.facilityStations !== 4) {
+        failures.push(`${result.id}: restored workshop receipt failed`);
+      }
+    } else if (architecture.source !== 'authentic-garage-scene-pack'
         || architecture.drawCalls < 8 || architecture.drawCalls > 20
-        || architecture.triangles <= 0 || architecture.triangles > 15_000
+        || architecture.triangles <= 0 || architecture.triangles > 30_000
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
+        || architecture.facilityProps < 100 || architecture.facilityStations !== 2
+        || architecture.looseParts < 40 || architecture.serviceVehicles < 1
         || architecture.cached > 2 || architecture.residentTextureSets > 9) {
       failures.push(`${result.id}: visual/resource receipt failed`);
     }
@@ -232,6 +269,11 @@ try {
   if (heapGrowth > 24 * 1024 * 1024 || memoryAfter.stats.architecture.cached > 2
       || memoryAfter.stats.architecture.residentTextureSets > 9) {
     failures.push(`30-cycle residency growth failed: ${heapGrowth} bytes`);
+  }
+  if (persistedReload.selected !== persistedOutdoorId || !persistedReload.ready
+      || persistedReload.drawCalls < 8 || persistedReload.triangles <= 0
+      || persistedReload.sceneMode !== 'authentic-scene-pack') {
+    failures.push(`persisted outdoor Garage failed: ${JSON.stringify(persistedReload)}`);
   }
   for (const [name, state] of Object.entries(responsive)) {
     if (state.panelMode !== 'overlay' || state.leftDisplay !== 'none'
@@ -257,6 +299,7 @@ try {
     heapGrowth,
     memoryBefore,
     memoryAfter,
+    persistedReload,
     responsive,
     errors,
     failures,

@@ -23,8 +23,17 @@ function fakeRenderer({ throwOnRender = false } = {}) {
       assert.notEqual(current, prior, 'warm-up rendered into the caller target');
       assert.equal(current.width, 500);
       assert.equal(current.height, 250);
+      assert.equal(current.texture.colorSpace, THREE.LinearSRGBColorSpace,
+        'warm target must match the production linear post target program key');
       calls.push({ kind: 'render', scene, camera, target: current });
       if (throwOnRender) throw new Error('synthetic render failure');
+    },
+    compileAsync(scene, camera, targetScene) {
+      assert.notEqual(current, null, 'async compilation used the default framebuffer key');
+      assert.notEqual(current, prior, 'async compilation used the caller target key');
+      assert.equal(current.texture.colorSpace, THREE.LinearSRGBColorSpace);
+      calls.push({ kind: 'compile', scene, camera, targetScene, target: current });
+      return Promise.resolve();
     },
   };
 }
@@ -41,7 +50,14 @@ function fakeRenderer({ throwOnRender = false } = {}) {
   assert.deepEqual(renderer.calls.at(-1), {
     kind: 'target', target: renderer.prior, face: 3, mip: 2,
   });
-  const firstTarget = renderer.calls.find((call) => call.kind === 'render').target;
+  const firstRenderCall = renderer.calls.find((call) => call.kind === 'render');
+  assert.ok(firstRenderCall, 'warm-up must submit one private-target render');
+  const firstTarget = firstRenderCall.target;
+  await warm.compileAsync(scene);
+  assert.equal(renderer.calls.at(-2).kind, 'compile');
+  assert.deepEqual(renderer.calls.at(-1), {
+    kind: 'target', target: renderer.prior, face: 3, mip: 2,
+  }, 'the caller target is restored while parallel compilation settles');
   warm.dispose();
   warm();
   const renderCalls = renderer.calls.filter((call) => call.kind === 'render');

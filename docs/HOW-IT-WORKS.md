@@ -41,23 +41,22 @@ The workshop around the selected vehicle is a separate, demand-loaded scene.
 Ten identities are bound to ten battlefield themes and selected from
 the Staging Area control beside Home and Record. The environment choice is
 persisted independently from the next-battle map. Verdant Motor Pool keeps its
-original enclosed workshop, roof-truss run, props, and four maintenance scenes:
-T-90A Burlak under its gantry and jack stands, M1A2 with removed skirts and
-welding gear, T-90M turret/gun/Relikt service, and a rolled K2 hull with its
-actual wheel and track parts. Those same exact four scenes remain present in
-all ten selections.
-
-Those display tanks retain their complete high-detail geometry and camouflage.
-Once their authored teardown poses are final, compatible opaque leaves share
-static draw owners and tiny fittings leave the shadow pass; an exact before/
-after triangle receipt prevents this optimization from removing visible art.
+original enclosed workshop shell, corrugated walls, high-bay fixtures, service
+signage, floor equipment, cables, cones, barrels, and authored industrial
+lighting. The restored stage is the sole Verdant owner; it does not allocate an
+outdoor terrain pack.
 
 The other nine choices build compact Garage-only interpretations of their maps.
-A 24×24 terrain grid stays flat across the shared service terrace, then carries
-deterministic relief at the perimeter. Rocks and trees are instanced, and each
-theme adds one connected structure such as a drydock gantry, repair bunker,
-roundhouse, rain canopy, recovery frame, or foundry line. These scenes do not
-load battle terrain, collision, destructibles, services, or animated vegetation.
+A 41×37 terrain grid stays flat across the shared service terrace, then carries
+deterministic relief at the perimeter. Rocks and trees are instanced. Each theme
+adds five connected structures plus maintenance bays on both sides of the hero,
+flood towers, stocked track/wheel/weapon/powerpack racks, tool carts, drums,
+crates, and at least one purpose-built low-poly service vehicle. Cinder Junction
+is a rail overhaul station with three complete roads, sleepers, platforms,
+canopies, and a nine-bay roundhouse. The service silhouettes reuse first-party
+workshop part geometry and are merged into static vertex-colored buckets; they
+never load playable tank builders. These scenes do not load battle terrain,
+collision, destructibles, services, or animated vegetation.
 Any world retained for the next round stays detached and dormant. The archive
 monitor keeps only
 its current and incoming images resident and stops scheduling work while its
