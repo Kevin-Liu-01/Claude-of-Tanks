@@ -32,7 +32,8 @@ const TARGETS = Object.freeze({
   }),
   k2b: Object.freeze({
     variant: 'korean-twin', mount: [0.70, 0.70, -0.68],
-    sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
+    sizeStandard: 'k2b-compact-tower', scale: 1.14, towerRiseM: 0.12,
+    minimumWidth: 0.74, minimumHeight: 0.66,
   }),
   kf51b: Object.freeze({
     variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],

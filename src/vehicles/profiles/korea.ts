@@ -103,7 +103,13 @@ function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
     bodySlot: 'hull',
-    sizeStandard: 'm1a3-full-tower',
+    // K2B carries the same complete open-yoke mechanism as the M1A3 family,
+    // but its low stealth roof needs a slightly tighter installation. Keep
+    // every receiver/feed/optic/shield detail while trimming the whole tower
+    // by roughly ten percent and shortening its powered riser.
+    sizeStandard: 'k2b-compact-tower',
+    scale: 1.14,
+    towerRise: 0.12,
     variant: 'korean-twin',
     ammoSide: 1,
     sensorSide: -1,
@@ -122,6 +128,7 @@ function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
     mountLocal: Object.freeze([x, y, z]),
     scale: station.userData.scale,
     sizeStandard: station.userData.sizeStandard,
+    towerRiseM: station.userData.towerRise,
     yaw,
     caliberMm: station.userData.caliberMm,
     ammoSide: station.userData.ammoSide,
