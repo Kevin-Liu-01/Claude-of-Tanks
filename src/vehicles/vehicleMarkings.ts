@@ -180,6 +180,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
   bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
   spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),
+  spz_puma_s1: anchor('hull', 'left', 0.38, 0.60, 0.24, 1),
   type89: anchor('hull', 'right', 0.42, 0.64, 0.23, -1),
   carro45t: anchor('turret', 'right', 0.46, 0.47, 0.24, -1),
   ariete: anchor('turret', 'left', 0.41, 0.45, 0.25, 1),

@@ -8402,7 +8402,10 @@ export function createTank(
   const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
     Math.min(muzzleOuterR * 0.72, caliberRadius));
   const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.12);
-  const boreSegments = spec.gun.caliberMm <= 40 ? 12 : 18;
+  const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
+  const boreSegments = Number.isInteger(authoredBoreSegments)
+    ? THREE.MathUtils.clamp(authoredBoreSegments, 12, 32)
+    : spec.gun.caliberMm <= 40 ? 12 : 18;
   const boreRimGeo = new THREE.TorusGeometry(
     muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
   const boreAnnulusGeo = new THREE.RingGeometry(

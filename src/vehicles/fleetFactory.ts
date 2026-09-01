@@ -132,7 +132,11 @@ const GROUP_LOADERS = Object.freeze({
     registerProfiles(profiles);
   }),
   merkava: () => import('./profiles/merkava.ts').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
-  afv: () => import('./profiles/afvFamily.ts').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
+  afv: () => Promise.all([import('./profiles/afvFamily.ts'), import('./profiles/pumaS1.ts')])
+    .then(([family, pumaS1]) => registerProfiles({
+      ...family.AFV_FAMILY_PROFILES,
+      ...pumaS1.PUMA_S1_PROFILES,
+    })),
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.ts').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),

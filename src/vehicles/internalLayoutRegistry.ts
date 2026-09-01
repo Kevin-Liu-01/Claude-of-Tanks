@@ -363,7 +363,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
   ifvFrontTwoMan: ['bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3'],
   bmp1: ['bwp1'],
-  puma: ['spz_puma'],
+  puma: ['spz_puma', 'spz_puma_s1'],
   bmp3: ['bmp3', 'bmp3_rok'],
   bmptFive: ['bmpt_t90'],
   bmptThree: ['bmpt_terminator2'],

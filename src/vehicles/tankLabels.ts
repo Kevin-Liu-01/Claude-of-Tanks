@@ -157,6 +157,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Schützenpanzer Puma', shortName: 'Puma',
     searchAliases: ['SPz Puma', 'Puma IFV'],
   },
+  spz_puma_s1: {
+    displayName: 'Schützenpanzer Puma S1', shortName: 'Puma S1',
+    searchAliases: ['SPz Puma S1', 'Puma S1 IFV', 'Puma S1 MELLS'],
+  },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],

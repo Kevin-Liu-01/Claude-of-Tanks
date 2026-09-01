@@ -29,6 +29,8 @@ export interface AutoloaderSpec {
 
 export interface FleetGunSpec extends Record<string, unknown> {
   autoloader?: AutoloaderSpec;
+  /** Visual-only radial tessellation for unusually small cannon mouths. */
+  muzzleBoreSegments?: number;
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

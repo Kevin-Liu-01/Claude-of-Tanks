@@ -451,6 +451,58 @@ export const MODERN3_SPECS = {
     },
   },
 
+  spz_puma_s1: {
+    id: 'spz_puma_s1', name: 'SPz Puma S1', nation: 'Germany', era: 'modern', role: 'ifv',
+    hp: 2750,
+    enginePowerHp: 1088, weightTons: 43, topSpeedKmh: 70, reverseSpeedKmh: 30,
+    hullTraverseDegS: 50,
+    terrainResistance: { hard: 0.64, medium: 0.73, soft: 1.25 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 68, gunPitchDegS: 52, gunElevationDeg: 45, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 30, reloadS: 0.28, baseAccuracy: 0.245, aimTimeS: 1.05,
+      muzzleBoreSegments: 14,
+      soundProfile: 'mk30-2',
+      bloom: { move: 0.038, hullRot: 0.052, turret: 0.036, afterShot: 1.35 },
+      shells: [
+        shell('MK30 APFSDS-T S1', 'APFSDS', 30, 245, 224, 95, 1420,
+          { pen2000Mm: 202, reloadS: 0.28, count: 240 }),
+        shell('Spike LR2 MELLS', 'HEAT', 152, 900, 900, 680, 180,
+          { reloadS: 2.25, count: 8, guided: true, soundProfile: 'spike-launch' }),
+        shell('KETF ABM S1', 'HE', 30, 14, 14, 105, 1120,
+          { reloadS: 0.28, count: 240 }),
+      ],
+    },
+    dims: { hullLengthM: 7.6, overallLengthM: 7.6, widthM: 3.9, heightM: 3.6 },
+    armor: (() => {
+      const a = modernArmor({
+        hl: 3.80, hw: 1.95, inW: 1.08, floor: 0.43, trkTop: 1.04, roofY: 1.93,
+        turretPivot: [0.32, 1.93, -1.10], gunPivot: [-0.32, 0.55, 1.33],
+        barrelLenM: 2.25, barrelRadM: 0.045,
+        glacis: [70, 260, 360], lower: [55, 200, 260], side: [48, 130, 190],
+        skirt: [75, 260, 480], rear: 38, roof: 48,
+        tw: 1.10, tFrontZ: 1.24, tRearZ: -1.46, tH: 0.72,
+        cheek: [95, 240, 320], tSide: [65, 150, 230], tRear: 48, tRoof: 42,
+        mantlet: [110, 260, 340], loader: false,
+      });
+      // The RCT30 is unmanned: commander, gunner and driver remain below the
+      // roof line in the protected hull cell. The rear six-seat compartment
+      // is represented by the shared troop/ammunition volume rather than by
+      // inventing turret crew hit boxes.
+      a.crew = [
+        cbox('driver', [0.26, 0.58, 1.16], [1.02, 1.73, 2.42]),
+        cbox('gunner', [-0.24, 0.58, -0.48], [0.58, 1.72, 0.64]),
+        cbox('commander', [-1.06, 0.58, -0.48], [-0.24, 1.72, 0.64]),
+      ];
+      return a;
+    })(),
+    visual: {
+      scheme: 'nato', base: '#46503c', weather: '#59604b',
+      patches: ['#20231f', '#514031'], marking: 'number', number: 'S1-481',
+      trackWidthM: 0.52, camoScale: 0.72,
+    },
+  },
+
   type89: {
     id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,

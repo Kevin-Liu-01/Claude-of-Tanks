@@ -119,6 +119,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       }
     ]
   },
+  "spz_puma_s1": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.21,
+        "pos": [
+          -0.54,
+          1.2628536,
+          3.2784586
+        ],
+        "quaternion": [
+          -0.5010055,
+          0,
+          0,
+          0.8654441
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.27,
+        "pos": [
+          -0.9464932,
+          0.4401867,
+          -0.7001696
+        ],
+        "quaternion": [
+          -0.0111636,
+          -0.716945,
+          -0.0108524,
+          0.6969559
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
   "bmp3_rok": {
     "schemaVersion": 1,
     "seats": [

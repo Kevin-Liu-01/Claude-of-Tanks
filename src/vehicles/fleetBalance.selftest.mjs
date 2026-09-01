@@ -118,7 +118,8 @@ for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
 }
 
 const missileVelocityByVehicle = new Map([
-  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['type89', 130],
+  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_puma_s1', 180],
+  ['type89', 130],
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
   ['marder1a3', 130], ['m3a3_bradley', 195], ['bmp3', 240.5], ['upior', 117],
