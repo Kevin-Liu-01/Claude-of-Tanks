@@ -85,8 +85,24 @@ export function activateSpecialAction(
   }
 
   if (action.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-    const slot = action.missileSlot;
-    if (slot < 0 || !entity.spec?.gun?.shells?.[slot]) return RESULT_NONE;
+    const shells = entity.spec?.gun?.shells;
+    const missileSlot = action.missileSlot;
+    if (missileSlot < 0 || !shells?.[missileSlot]) return RESULT_NONE;
+    const currentSlot = combat.shellSlot;
+    let slot = missileSlot;
+    let active = true;
+    if (currentSlot === missileSlot) {
+      const rememberedSlot = Number.isInteger(action.previousShellSlot)
+        && action.previousShellSlot >= 0
+        && shells[action.previousShellSlot]?.guided !== true
+        ? action.previousShellSlot
+        : shells.findIndex((shell) => shell?.guided !== true);
+      if (rememberedSlot < 0) return RESULT_NONE;
+      slot = rememberedSlot;
+      active = false;
+    } else if (currentSlot >= 0 && shells[currentSlot]?.guided !== true) {
+      action.previousShellSlot = currentSlot;
+    }
     selectShell(combat, slot, entity.spec!);
     if (entity.input) entity.input.shellSlot = slot;
     return Object.freeze({
@@ -94,7 +110,7 @@ export function activateSpecialAction(
       kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
       // `active` describes the visible selected state, not a second hidden
       // missile mode. The canonical state remains combat.shellSlot.
-      active: true,
+      active,
       slot,
     });
   }

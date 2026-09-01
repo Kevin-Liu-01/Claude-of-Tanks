@@ -58,31 +58,44 @@ assert.equal(ifv.combat.reload.t, 2.6, 'the launcher owns its post-shot cycle');
 assert.notEqual(ifv.combat.shellSlot, originalSlot,
   'a missile impact never silently restores a different ammunition type');
 const repeatedMissileResult = activateSpecialAction(ifv);
-assert.equal(repeatedMissileResult.active, true, 'repeating E is idempotent, never a toggle-off');
-assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot,
-  'the IFV remains locked to its missile ammunition after repeated E presses');
-assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), true,
-  'the E control remains visibly latched while its ammunition slot is selected');
-selectShell(ifv.combat, originalSlot, ifv.spec);
+assert.equal(repeatedMissileResult.active, false, 'repeating E toggles the ATGM selection off');
+assert.equal(repeatedMissileResult.slot, originalSlot);
+assert.equal(ifv.combat.shellSlot, originalSlot,
+  'the previous conventional ammunition returns after the second E press');
 assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), false,
-  'choosing another numbered shell clears the visible E latch');
+  'the E control visibly releases when its previous ammunition is restored');
+assert.equal(activateSpecialAction(ifv).active, true);
+assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), true,
+  'a third E press selects and visibly latches the ATGM again');
 
 const m1a3 = entityFor('m1a3');
+const m1a3MissileSlot = m1a3.specialAction.missileSlot;
+assert.equal(m1a3MissileSlot, 1, 'M1A3 key 2 is its external missile launcher slot');
+assert.equal(m1a3.spec.gun.shells[m1a3MissileSlot].guided, true,
+  'the XM1210 round is an ATGM even though its shaped-charge warhead uses HEAT damage rules');
+assert.match(m1a3.spec.gun.shells[m1a3MissileSlot].name, /GATGM/);
+selectShell(m1a3.combat, 2, m1a3.spec);
+m1a3.input.shellSlot = 2;
+const previousCannonReloadT = m1a3.combat.reload.t;
 const cannonMagazineRounds = m1a3.combat.magazine.rounds;
 assert.equal(activateSpecialAction(m1a3).ok, true);
+assert.equal(m1a3.combat.shellSlot, m1a3MissileSlot);
 assert.equal(m1a3.combat.reload.t, 0);
 startPostShotReload(m1a3.combat, m1a3.spec);
 assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds,
   'an external guided launcher never consumes the cannon autoloader magazine');
 assert.equal(m1a3.combat.reload.kind, 'shell');
-selectShell(m1a3.combat, 0, m1a3.spec);
-assert.equal(m1a3.combat.reload.t, 0,
-  'switching back to the cannon exposes its preserved ready channel');
+const restoredM1a3 = activateSpecialAction(m1a3);
+assert.equal(restoredM1a3.active, false);
+assert.equal(restoredM1a3.slot, 2,
+  'M1A3 restores the exact conventional round selected before its ATGM');
+assert.equal(m1a3.combat.reload.t, previousCannonReloadT,
+  'switching back to the cannon exposes its preserved reload channel');
 assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds);
 for (let tick = 0; tick < Math.ceil(2.8 / SIM_DT) + 1; tick++) {
   tickReload(m1a3.combat, SIM_DT);
 }
-selectShell(m1a3.combat, m1a3.specialAction.missileSlot, m1a3.spec);
+selectShell(m1a3.combat, m1a3MissileSlot, m1a3.spec);
 assert.equal(m1a3.combat.reload.t, 0,
   'the guided launcher reloads in the background while the cannon is selected');
 

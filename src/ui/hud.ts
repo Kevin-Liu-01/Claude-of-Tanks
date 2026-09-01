@@ -4601,6 +4601,13 @@ export function initHud(bus: EventBus): HudRuntime {
   on('ui:shellSelect', ({ slot }) => {
     if (slot != null) selectSlot(slot);
   });
+  // E applies the ATGM toggle in gameplay first, then emits this
+  // presentation-only synchronization event. Re-emitting ui:shellSelect would
+  // select the same cannon slot twice and could start an accidental magazine
+  // reload when the previous round is restored.
+  on('ui:shellSelectionChanged', ({ slot }) => {
+    if (slot != null) selectSlot(slot);
+  });
   on('ui:perfMeter', (p) => {
     netOptIn = !!(p && p.on);
     if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
@@ -4628,8 +4635,10 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-      showAlert('ATGM AMMUNITION SELECTED · CLICK TO FIRE', {
-        icon: 'missileRack', tone: 'success',
+      showAlert(active
+        ? 'ATGM AMMUNITION SELECTED · CLICK TO FIRE'
+        : 'ATGM DESELECTED · PREVIOUS ROUND RESTORED', {
+        icon: active ? 'missileRack' : 'shell', tone: active ? 'success' : 'info',
       });
     }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {

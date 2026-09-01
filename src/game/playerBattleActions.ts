@@ -218,6 +218,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:magazineReload', {});
       return;
     }
+    const action = player.specialAction;
+    if (action?.kind === 'guided_missile' && slot === action.missileSlot
+        && player.combat.shellSlot !== action.missileSlot
+        && player.spec.gun.shells[player.combat.shellSlot]?.guided !== true) {
+      action.previousShellSlot = player.combat.shellSlot;
+    }
     rules.selectShell(player.combat, slot, player.spec);
     player.input.shellSlot = slot;
   });
@@ -240,15 +246,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
     if (rules.specialActionKind(player.spec) === 'guided_missile') {
-      const slot = rules.guidedMissileSlot(player.spec);
-      if (slot < 0) return;
-      bus.emit('ui:shellSelect', { slot, source: 'specialAction' });
-      bus.emit('ui:specialActionResult', {
-        ok: true,
-        kind: 'guided_missile',
-        active: true,
-        slot,
-      });
+      // Missile selection still travels through the ordinary shell-slot input
+      // in multiplayer. Apply the deterministic toggle locally so a second E
+      // restores the prior cannon round without queuing a hidden action mode.
+      const result = rules.activateSpecialAction(player);
+      if (result.ok && result.slot != null) {
+        bus.emit('ui:shellSelectionChanged', { slot: result.slot });
+      }
+      bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
     } else if (network.isActive()) network.queueAction('specialAction');
     else {
       const result = rules.activateSpecialAction(player);
@@ -270,7 +275,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       for (const shell of spec.gun.shells) {
         shellCards.push({
           name: shell.name,
-          type: shell.type,
+          // HEAT is the guided round's warhead behavior, not its delivery
+          // system. Battle presentation should identify what the player is
+          // actually selecting and firing.
+          type: shell.guided === true ? 'ATGM' : shell.type,
           dmg: shell.dmg,
           penLabel: `${Math.round(shell.pen100Mm)} mm`,
           count: rules.shellAmmunitionCapacity(shell),

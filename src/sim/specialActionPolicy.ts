@@ -16,6 +16,7 @@ export interface SpecialActionDescriptor {
 export interface SpecialActionState {
   kind: SpecialActionKind;
   missileSlot: number;
+  previousShellSlot: number;
   active: boolean;
 }
 
@@ -24,7 +25,7 @@ const DESCRIPTOR_NONE = Object.freeze({
 });
 const DESCRIPTOR_MISSILE = Object.freeze({
   kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
-  label: 'Select ATGM',
+  label: 'Toggle ATGM',
   shortLabel: 'ATGM',
 });
 const DESCRIPTOR_SUSPENSION = Object.freeze({
@@ -92,9 +93,14 @@ export function specialActionDescriptor(
 export function createSpecialActionState(
   spec: SpecialActionSpec | null | undefined,
 ): SpecialActionState {
+  const shells = spec?.gun?.shells;
+  const previousShellSlot = Array.isArray(shells)
+    ? Math.max(0, shells.findIndex((shell) => shell?.guided !== true))
+    : 0;
   return {
     kind: specialActionKind(spec),
     missileSlot: guidedMissileSlot(spec),
+    previousShellSlot,
     active: false,
   };
 }

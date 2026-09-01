@@ -46,6 +46,7 @@ const player = {
     fire: { burning: false, ticksLeft: 0, tickTimer: 0 },
   },
   input: { shellSlot: 0 },
+  specialAction: null,
 };
 const game = { phase: 'garage', timeS: 10, player };
 const rules = {
@@ -61,8 +62,22 @@ const rules = {
   },
   magazineReloadDenialReason(combat) { return combat.magazineReason || null; },
   startMagazineReload() { localCalls.push('reload'); return true; },
-  activateSpecialAction() {
+  activateSpecialAction(entity) {
     localCalls.push('special');
+    if (entity.spec.guidedAction) {
+      const action = entity.specialAction;
+      if (entity.combat.shellSlot === action.missileSlot) {
+        entity.combat.shellSlot = action.previousShellSlot;
+        entity.input.shellSlot = action.previousShellSlot;
+        return {
+          ok: true, kind: 'guided_missile', active: false, slot: action.previousShellSlot,
+        };
+      }
+      action.previousShellSlot = entity.combat.shellSlot;
+      entity.combat.shellSlot = action.missileSlot;
+      entity.input.shellSlot = action.missileSlot;
+      return { ok: true, kind: 'guided_missile', active: true, slot: action.missileSlot };
+    }
     return { ok: true, action: 'siege' };
   },
   guidedMissileSlot() { return 1; },
@@ -160,18 +175,38 @@ assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction
 assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns state mutation');
 
 spec.guidedAction = true;
+spec.gun.shells[1].guided = true;
+assert.equal(actions.setTank(spec)[1].type, 'ATGM',
+  'guided ammunition is presented as an ATGM instead of its HEAT warhead class');
+player.specialAction = {
+  kind: 'guided_missile', missileSlot: 1, previousShellSlot: 0, active: false,
+};
 bus.emit('ui:specialAction', {});
 assert.equal(player.input.shellSlot, 1,
-  'E selects the guided ammunition through the ordinary shell-select path');
+  'E selects the guided ammunition through the ordinary shell-slot state');
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction'],
   'guided E does not enqueue a separate network action mode');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
     payload.slot === 1 && payload.active === true));
 bus.emit('ui:specialAction', {});
-assert.equal(player.input.shellSlot, 1,
-  'repeating E keeps the guided ammunition selected instead of toggling back');
+assert.equal(player.input.shellSlot, 0,
+  'repeating E restores the previously selected conventional ammunition');
+assert(events.some(({ event, payload }) =>
+  event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
+    payload.slot === 0 && payload.active === false));
+
+input.press('shell3');
+assert.equal(player.input.shellSlot, 2);
+input.press('shell2');
+assert.equal(player.input.shellSlot, 1, 'key 2 directly selects the ATGM');
+assert.equal(player.specialAction.previousShellSlot, 2,
+  'direct ATGM selection remembers the conventional shell it replaced');
+input.press('specialAction');
+assert.equal(player.input.shellSlot, 2,
+  'E deselects a key-2-selected ATGM and restores that remembered shell');
 spec.guidedAction = false;
+spec.gun.shells[1].guided = false;
 
 settingsOpen = true;
 input.press('reloadMagazine');
