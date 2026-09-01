@@ -102,9 +102,9 @@ import type { WorldRayHit } from '../world/map.ts';
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
 type ModuleStates = Partial<Record<string, ModuleStateName>>;
-type ReplayKind = 'projectile' | 'collision';
+export type ReplayKind = 'projectile' | 'collision';
 type PlaybackKind = 'death' | 'victory';
-type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
+export type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
   | 'collision' | 'impact' | 'xray' | 'exit';
 type Disposable = { dispose(): void };
 
@@ -182,7 +182,7 @@ interface KillcamPoseState extends ReplayPoseState {
   turretYaw: number;
 }
 
-interface KillcamEntity {
+export interface KillcamEntity {
   id: string;
   specId: string;
   spec: KillcamSpec;
@@ -195,13 +195,13 @@ interface KillcamEntity {
   modeActive?: boolean;
 }
 
-interface KillcamShell {
+export interface KillcamShell {
   id: number;
   dead?: boolean;
   pos: THREE.Vector3;
 }
 
-interface KillcamGame {
+export interface KillcamGame {
   phase: string;
   result: string | null;
   tanks: KillcamEntity[];
@@ -215,7 +215,7 @@ interface ModuleHit {
   dmg?: number;
 }
 
-interface KillcamHitEvent {
+export interface KillcamHitEvent {
   kind: string;
   cause?: string;
   shellId: number | null;
@@ -293,7 +293,7 @@ interface EntityFrame {
   destroyed: boolean;
 }
 
-interface ReplaySnapshot {
+export interface ReplaySnapshot {
   replayKind: ReplayKind;
   ev: KillcamHitEvent;
   timeS: number;

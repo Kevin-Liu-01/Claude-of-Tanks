@@ -112,8 +112,19 @@ export interface GarageGpuRestoreOptions {
 const GARAGE_CRITICAL_SHADOW_CASCADES = 2;
 const GARAGE_LINKER_BREATHING_SLICES = 8;
 
+/**
+ * Garage return is already covered by a fully painted transition. Yielding
+ * back to the task queue keeps input, timers, and the transition watchdog
+ * responsive without asking the saturated GPU for another animation frame
+ * between every shader or shadow checkpoint. The exact post frame below is
+ * still the sole reveal gate.
+ */
+function createGarageReturnYielder(budgetMs: number): WarmYield {
+  return createOpaqueLoadingYielder(budgetMs, Number.POSITIVE_INFINITY);
+}
+
 async function drainWarmSteps(
-  steps: Generator<void, void, unknown>,
+  steps: Generator<void, void, void>,
   yieldGpu: WarmYield,
 ): Promise<number> {
   let slices = 0;
@@ -126,9 +137,9 @@ async function drainWarmSteps(
 
 /**
  * Restore evicted Garage resources without submitting one unbounded scene
- * frame. Shadow cascades and visible uploads are split into paintable slices
- * while the transition remains opaque, then the completed shadow maps are
- * frozen for the first presented Garage frame.
+ * frame. Shadow cascades and visible uploads are split into cooperative task
+ * slices while the transition remains opaque, then the completed shadow maps
+ * are frozen for the first presented Garage frame.
  */
 export async function restoreGarageGpuPipeline({
   renderer,
@@ -140,7 +151,7 @@ export async function restoreGarageGpuPipeline({
   post,
   simDt,
   resourcesReleased,
-  createYielder = createOpaqueLoadingYielder,
+  createYielder = createGarageReturnYielder,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
 }: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {

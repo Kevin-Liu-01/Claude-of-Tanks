@@ -1,4 +1,42 @@
+import type {
+  KillcamEntity,
+  KillcamGame,
+  KillcamHitEvent,
+  PlaybackPhase,
+  ReplayKind,
+  ReplaySnapshot,
+} from './killcam.ts';
+
 type MaybePromise<T> = T | PromiseLike<T>;
+
+export type KillcamResult = 'victory' | 'defeat';
+export type KillcamCapturePhase = 'xray' | 'firing' | 'collision';
+
+export interface KillcamReplayInfo {
+  phase: PlaybackPhase;
+  replayKind: ReplayKind;
+  attackerId: string | null;
+  attackerPose: number[] | null;
+  attackerRenderedPos: number[] | null;
+  barrelDot: number | null;
+  muzzle: number[] | null;
+  pathStart: number[] | null;
+  projectile: number[] | null;
+  impact: number[] | null;
+  flightElapsedS: number;
+  flightDurationS: number;
+  flightDistM: number;
+  flightTotalM: number;
+  contactElapsedS: number;
+  shotFired: boolean;
+  collisionContact: boolean;
+  targetPrePose: number[];
+  targetImpactPose: number[];
+}
+
+export interface KillcamPlayOptions {
+  freshKill?: boolean;
+}
 
 export interface KillcamSpectateAccess {
   readonly active: boolean;
@@ -13,17 +51,29 @@ export interface KillcamRuntime {
   readonly fxTimeScale: number;
   readonly lastBeginWallMs: number;
   readonly spectate: KillcamSpectateAccess;
-  readonly phase?: unknown;
-  readonly replayInfo?: unknown;
+  readonly phase: PlaybackPhase | null;
+  readonly replayInfo: KillcamReplayInfo | null;
   isActive(): boolean;
   cancel(): void;
   update(deltaSeconds: number): void;
-  playForResult(...args: unknown[]): boolean;
-  stageReplayShot(...args: unknown[]): unknown;
-  stageXrayShot(...args: unknown[]): unknown;
-  recordSimStep(...args: unknown[]): void;
-  onShellHit(...args: unknown[]): void;
-  onRam(...args: unknown[]): void;
+  playForResult(
+    result: KillcamResult,
+    timeS: number,
+    onDone: () => void,
+    options?: KillcamPlayOptions,
+  ): boolean;
+  stageReplayShot(
+    snapshot: ReplaySnapshot,
+    phase?: KillcamCapturePhase,
+  ): KillcamReplayInfo | null;
+  stageXrayShot(snapshot: ReplaySnapshot): KillcamReplayInfo | null;
+  recordSimStep(game: KillcamGame): void;
+  onShellHit(event: KillcamHitEvent, target: KillcamEntity | null): void;
+  onRam(
+    event: KillcamHitEvent,
+    first: KillcamEntity | null,
+    second: KillcamEntity | null,
+  ): void;
 }
 
 export interface KillcamAccessOptions<TModule, TRuntime extends KillcamRuntime> {
@@ -104,8 +154,8 @@ export function createKillcamAccess<TModule, TRuntime extends KillcamRuntime>({
     cancel: () => { runtime?.cancel(); },
     update: (deltaSeconds) => { runtime?.update(deltaSeconds); },
     playForResult: (...args) => runtime?.playForResult(...args) ?? false,
-    stageReplayShot: (...args) => runtime?.stageReplayShot(...args),
-    stageXrayShot: (...args) => runtime?.stageXrayShot(...args),
+    stageReplayShot: (...args) => runtime?.stageReplayShot(...args) ?? null,
+    stageXrayShot: (...args) => runtime?.stageXrayShot(...args) ?? null,
     recordSimStep: (...args) => { runtime?.recordSimStep(...args); },
     onShellHit: (...args) => { runtime?.onShellHit(...args); },
     onRam: (...args) => { runtime?.onRam(...args); },

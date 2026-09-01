@@ -74,6 +74,7 @@ const direct = createHarness();
 direct.playResult = false;
 direct.game.result = 'draw';
 direct.runtime.update();
+assert.equal(direct.plays.length, 0, 'a draw bypasses the victory/defeat replay pipeline');
 assert.equal(direct.calls.some(([name, value]) => name === 'show' && value === 'draw'), true);
 assert.equal(direct.calls.some(([name]) => name === 'deathCam'), false);
 

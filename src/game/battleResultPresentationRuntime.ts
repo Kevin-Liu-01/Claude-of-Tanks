@@ -1,4 +1,5 @@
-export type BattleResult = 'victory' | 'defeat' | 'draw' | string;
+export type BattleResult = 'victory' | 'defeat' | 'draw';
+type ReplayBattleResult = Exclude<BattleResult, 'draw'>;
 
 interface ResultPlayer {
   combat?: { destroyed?: boolean } | null;
@@ -13,7 +14,7 @@ interface ResultGame {
 interface ResultKillcam {
   lastBeginWallMs?: number | null;
   playForResult(
-    result: BattleResult,
+    result: ReplayBattleResult,
     timeS: number,
     onDone: () => void,
     options?: { freshKill: boolean },
@@ -115,6 +116,11 @@ export function createBattleResultPresentationRuntime({
   };
 
   const armResultReplay = (result: BattleResult): void => {
+    if (result === 'draw') {
+      record(false, result);
+      presentResult(result);
+      return;
+    }
     const played = killcam.playForResult(
       result,
       game.timeS,
@@ -136,11 +142,8 @@ export function createBattleResultPresentationRuntime({
         pending.fire = () => armResultReplay(result);
       } else {
         const freshKill = !deathCamShown && !!game.player?.combat?.destroyed;
-        const played = !deathCamShown && killcam.playForResult(
-          result,
-          game.timeS,
-          () => presentResult(result),
-          { freshKill },
+        const played = result !== 'draw' && !deathCamShown && killcam.playForResult(
+          result, game.timeS, () => presentResult(result), { freshKill },
         );
         record(played, result);
         if (played) veilHud(true);
