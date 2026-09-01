@@ -55,7 +55,7 @@ const PAD = 4;             // px inset per cell edge (mip bleed guard)
 const FAMILY_CELLS = {
   pen: [0, 1, 2, 3],
   crit: [4, 5],
-  scuff: [6, 7],
+  scuff: [6, 7, 15],
   gouge: [8, 9, 10, 11],
   scorch: [12, 13, 14],
 } as const;
@@ -128,6 +128,43 @@ interface ImpactEvent {
 interface ClassifiedMark {
   fam: ImpactFamily;
   sizeK: number;
+}
+
+export interface ImpactDecalDescriptor {
+  family: ImpactFamily;
+  sizeK: number;
+  hasHole: boolean;
+  variants: number;
+}
+
+/** Stable visual contract between authoritative armor outcomes and scars. */
+export function impactDecalDescriptor(
+  kind: string | null | undefined,
+  critical = false,
+): ImpactDecalDescriptor | null {
+  let fam: ImpactFamily;
+  let sizeK = 1;
+  let hasHole = false;
+  if (kind === 'pen' || kind === 'he_pen') {
+    fam = critical ? 'crit' : 'pen';
+    sizeK = kind === 'he_pen' ? 1.3 : 1;
+    hasHole = true;
+  } else if (kind === 'ricochet') {
+    fam = 'gouge';
+  } else if (kind === 'nonpen') {
+    fam = 'scuff';
+  } else if (kind === 'spaced_absorb') {
+    fam = 'scuff';
+    sizeK = 1.12;
+  } else if (kind === 'era') {
+    fam = 'scorch';
+    sizeK = 0.55;
+  } else if (kind === 'he_splash') {
+    fam = 'scorch';
+  } else {
+    return null;
+  }
+  return { family: fam, sizeK, hasHole, variants: FAMILY_CELLS[fam].length };
 }
 
 interface MarkSize {
@@ -767,20 +804,17 @@ export function createImpactDecals(
   /** Map HitEvent.kind (+crit flags) to a mark family, or null to skip. */
   function classify(ev: ImpactEvent): ClassifiedMark | null {
     const kind = ev.kind;
-    if (kind === 'pen' || kind === 'he_pen') {
-      const crit = (ev.modulesHit && ev.modulesHit.length > 0) ||
-        (ev.crewHit && ev.crewHit.length > 0) || ev.ammoRacked || ev.fireStarted;
-      return { fam: crit ? 'crit' : 'pen', sizeK: kind === 'he_pen' ? 1.3 : 1 };
-    }
-    if (kind === 'ricochet') return { fam: 'gouge', sizeK: 1 };
-    if (kind === 'nonpen') return { fam: 'scuff', sizeK: 1 };
-    if (kind === 'era') return { fam: 'scorch', sizeK: 0.55 };
     if (kind === 'he_splash') {
       // only a real armor contact point scorches the plate — pure blast
       // overpressure (no zone/localPos from the nearest-plate trace) skips
-      return (ev.zone && ev.localPos) ? { fam: 'scorch', sizeK: 1 } : null;
+      if (!ev.zone || !ev.localPos) return null;
     }
-    return null;
+    const critical = !!((ev.modulesHit && ev.modulesHit.length > 0) ||
+      (ev.crewHit && ev.crewHit.length > 0) || ev.ammoRacked || ev.fireStarted);
+    const descriptor = impactDecalDescriptor(kind, critical);
+    return descriptor
+      ? { fam: descriptor.family, sizeK: descriptor.sizeK }
+      : null;
   }
 
   /** Full quad side sizes (m) per family, caliber-scaled + jittered. */
@@ -1064,7 +1098,8 @@ export function createImpactDecals(
     ): boolean {
       if (!visual || !visual.root) return false;
       if (visual.isDestroyed && visual.isDestroyed()) return false;
-      const cls = classify({ kind, zone: 'x', localPos: [0, 0, 0] }) || { fam: 'pen', sizeK: 1 };
+      const cls = classify({ kind, zone: 'x', localPos: [0, 0, 0] })
+        || { fam: 'pen', sizeK: 1 };
       let key = legacyKeys.get(visual);
       if (!key) { key = `v${legacySeq++}`; legacyKeys.set(visual, key); }
       visual.root.updateMatrixWorld(true);

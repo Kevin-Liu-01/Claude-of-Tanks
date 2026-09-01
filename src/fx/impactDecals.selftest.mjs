@@ -1,4 +1,6 @@
-import { IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M } from './impactDecals.ts';
+import {
+  IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M, impactDecalDescriptor,
+} from './impactDecals.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { readFile } from 'node:fs/promises';
 import './lazyRuntime.selftest.mjs';
@@ -34,4 +36,33 @@ if (!/onFxEvent\(bus, 'shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e,
   throw new Error('authoritative shell:hit impact-decal ownership left effects.ts');
 }
 
-console.log('impactDecals.selftest: one authoritative decal owner per shell hit passed');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+if (!/createFx\(engineCtx, hfProxy, \{[\s\S]{0,320}resolveEntity:[\s\S]{0,120}resolveFxSubject/.test(mainSource)) {
+  throw new Error('production FX must resolve struck solo, network, and player-owned tanks');
+}
+if (!/const resolved = resolveEntity\?\.\(targetId\);[\s\S]{0,100}isDecalEntity\(resolved\)/.test(effectsSource)) {
+  throw new Error('impact decals must prefer the injected production entity resolver');
+}
+
+const pen = impactDecalDescriptor('pen');
+const critical = impactDecalDescriptor('pen', true);
+const ricochet = impactDecalDescriptor('ricochet');
+const nonpen = impactDecalDescriptor('nonpen');
+const spaced = impactDecalDescriptor('spaced_absorb');
+const splash = impactDecalDescriptor('he_splash');
+if (!pen?.hasHole || !critical?.hasHole) {
+  throw new Error('penetrating hits must retain a visible entry hole');
+}
+for (const [label, mark] of [['ricochet', ricochet], ['nonpen', nonpen],
+  ['spaced absorb', spaced], ['HE splash', splash]]) {
+  if (!mark || mark.hasHole) throw new Error(`${label} must use a no-hole surface mark`);
+}
+if (ricochet.family !== 'gouge' || nonpen.family !== 'scuff'
+    || spaced.family !== 'scuff' || splash.family !== 'scorch') {
+  throw new Error('resolved hit outcomes lost their distinct decal families');
+}
+if (pen.variants < 4 || ricochet.variants < 4 || nonpen.variants < 3) {
+  throw new Error('impact decal atlas no longer provides enough per-outcome variation');
+}
+
+console.log('impactDecals.selftest: production ownership and outcome-specific scars passed');

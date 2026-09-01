@@ -44,6 +44,8 @@ interface FxHeightField {
 
 interface FxOptions {
   seed?: number;
+  /** Resolve the live presentation entity for any struck tank, including the player. */
+  resolveEntity?(targetId: ShellId): unknown;
 }
 
 interface PuffScratch {
@@ -754,13 +756,14 @@ const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0
  * Create the combat VFX controller.
  * @param {object} engineCtx render-side dependency bundle (ARCHITECTURE §2.8)
  * @param {object} heightField terrain height query (ARCHITECTURE §2.7)
- * @param {{ seed?: number }} [opts] fx seed (default 5000 per §1.4)
+ * @param {{ seed?: number, resolveEntity?: (targetId: ShellId) => unknown }} [opts]
+ * fx seed and live presentation-entity resolver
  * @returns {object} Fx per ARCHITECTURE §3.8.2
  */
 export function createFx(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
-  { seed = 5000 }: FxOptions = {},
+  { seed = 5000, resolveEntity }: FxOptions = {},
 ): FxRuntime {
   const particles = createParticleSystem(engineCtx, { seed });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
@@ -1216,16 +1219,24 @@ export function createFx(
     anisotropy: engineCtx && engineCtx.anisotropy,
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
-  /** targetId -> game entity, resolved through the debug surface (the fx
-   *  module owns no game-state reference; window.__DEBUG.game is assigned at
-   *  boot before any battle can start — same window-global pattern as
-   *  __FX_SKIP_DESTRUCTION). */
+  function isDecalEntity(value: unknown): value is FxEntity {
+    if (!value || typeof value !== 'object') return false;
+    const entity = value as Partial<FxEntity>;
+    return !!entity.visual?.root && !!entity.state;
+  }
+
+  /** targetId -> live presentation entity. Production injects this resolver
+   *  from the composition root; the diagnostics fallback only preserves
+   *  standalone engineering harnesses that construct FX directly. */
   function decalEntityFor(targetId: ShellId | null | undefined): FxEntity | null {
-    if (!targetId || typeof window === 'undefined') return null;
+    if (targetId == null) return null;
+    const resolved = resolveEntity?.(targetId);
+    if (isDecalEntity(resolved)) return resolved;
+    if (typeof window === 'undefined') return null;
     const dbg = window.__DEBUG;
     const g = dbg && dbg.game;
     const ent = g && g.tankById ? g.tankById.get(targetId) : null;
-    return ent && ent.visual && ent.state ? ent : null;
+    return isDecalEntity(ent) ? ent : null;
   }
   /** decal sweep accumulator (see update()) */
   let decalSweepAcc = 0;
