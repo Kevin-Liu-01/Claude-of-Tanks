@@ -93,9 +93,9 @@ export function createGarageDressingScheduler({
         return;
       }
 
-      // Access preload resolves the three requested fleet families once. Each
-      // later lease adds one complete static-preview tank or one cheap turret
-      // clone, keeping exact workshop displays outside the visible boot path.
+      // Each lease resolves at most one exact builder and adds at most one
+      // complete static-preview tank or final optimization slice, keeping the
+      // shared exhibits outside the visible boot and interaction paths.
       await dressing.pump();
       onVisualChange();
     } catch (error: unknown) {

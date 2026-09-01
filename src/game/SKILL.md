@@ -88,9 +88,11 @@ horizon. `garageFacilityDetails.ts` flattens two-sided service bays, equipment,
 first-party tank-part vocabulary, and low-poly service vehicles into those
 packs; it must never import a playable fleet builder. Never add a world-loading
 or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
-is a temporary zero-geometry
-compatibility boundary; do not restore the retired hidden multi-vehicle
-workshop or its fleet imports.
+demand-loads one shared, optimized four-bay modern maintenance layer after
+Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten
+environments; Verdant alone may show wall-mounted interior clutter. Keep the
+fleet load behind the quiet-window scheduler, reuse one graph across variants,
+and never duplicate it per scene pack.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive

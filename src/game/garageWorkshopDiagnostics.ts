@@ -48,6 +48,8 @@ export interface GarageWorkshopStats {
   readonly exhibitCount: number;
   readonly sharedMaintenanceBayCount: number;
   readonly sharedMaintenanceBayIds: readonly unknown[];
+  readonly sharedMaintenanceBayQuadrants: readonly unknown[];
+  readonly workshopOrbitCoverageDegrees: number;
   readonly heroTrackContactErrorM: number | null;
   readonly verdantOriginalVisible: boolean;
   readonly verdantOriginalLayoutReceipt: string;
@@ -163,6 +165,8 @@ export function createGarageWorkshopDiagnostics({
         exhibitCount: data.workshopExhibitCount || 0,
         sharedMaintenanceBayCount: data.sharedMaintenanceBayCount || 0,
         sharedMaintenanceBayIds: arrayValue(data.sharedMaintenanceBayIds),
+        sharedMaintenanceBayQuadrants: arrayValue(data.sharedMaintenanceBayQuadrants),
+        workshopOrbitCoverageDegrees: data.workshopOrbitCoverageDegrees || 0,
         heroTrackContactErrorM: Number.isFinite(trackFloorYM)
           ? Math.abs(
             (visual?.root.position.y || 0)

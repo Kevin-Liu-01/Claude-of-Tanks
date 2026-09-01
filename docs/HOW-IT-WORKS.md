@@ -44,7 +44,12 @@ persisted independently from the next-battle map. Verdant Motor Pool keeps its
 original enclosed workshop shell, corrugated walls, high-bay fixtures, service
 signage, floor equipment, cables, cones, barrels, and authored industrial
 lighting. The restored stage is the sole Verdant owner; it does not allocate an
-outdoor terrain pack.
+outdoor terrain pack. After the Garage becomes interactive and quiet, one
+shared four-bay service layer streams in across all ten locations: a Burlak
+gantry, Abrams welding bay, T-90M armor station, and rolled K2 teardown occupy
+all four quadrants. Each environment shifts the complete layer slightly around
+its landmark; only Verdant shows the wall-mounted interior props that require
+its enclosed shell.
 
 The other nine choices build compact Garage-only interpretations of their maps.
 A 41×37 terrain grid stays flat across the shared service terrace, then carries

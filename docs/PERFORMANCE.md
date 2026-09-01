@@ -111,9 +111,11 @@ add no request or decode work. The nine small texture sets then warm
 incrementally offscreen after interactive readiness. A persisted outdoor choice
 is presented beneath the boot cover immediately and starts the same transaction,
 so reload cannot strand a hidden pack on the renderer clear color. Stale rapid-
-switch promises never become visible. The former hidden
-four-tank workshop and its hundreds of thousands of triangles are retired, and
-the compatibility owner builds zero geometry.
+switch promises never become visible. One modern four-bay maintenance graph is
+demand-loaded in quiet slices after readiness, optimized once, and shared by
+all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays occupy
+four quadrants without per-frame update work or per-variant duplication;
+Verdant's extra wall clutter remains a separate visibility branch.
 
 One frozen presentation pose is shared by the stage, hero pedestal, return path,
 and camera runtime. There are no per-location heading or camera branches. The

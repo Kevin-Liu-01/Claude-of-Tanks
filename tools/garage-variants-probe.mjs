@@ -75,6 +75,17 @@ try {
   });
   await page.click('.cot-garage-variant-trigger');
 
+  // The modern four-bay maintenance layer is demand-loaded after readiness.
+  // Let the production quiet-window scheduler build it exactly as a player
+  // sees it, and measure the intervening frames independently from switching.
+  await startFrameProbe('__GARAGE_DRESSING_PROBE');
+  await page.waitForFunction(() => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return stats.built && stats.exhibitCount === 4
+      && stats.sharedMaintenanceBayCount === 4;
+  }, { timeout: 60_000 });
+  const dressingFrames = await stopFrameProbe('__GARAGE_DRESSING_PROBE');
+
   const results = [];
   for (const variant of variants) {
     await startFrameProbe('__GARAGE_SWITCH_PROBE');
@@ -225,9 +236,14 @@ try {
     if (!result.selected || result.persisted !== result.id || !result.previewReady) {
       failures.push(`${result.id}: selection/persistence/preview failed`);
     }
-    if (!result.stats.built || result.stats.triangles !== 0
-        || result.stats.activeWorkshopTriangles !== 0 || result.stats.exhibitCount !== 0) {
-      failures.push(`${result.id}: retired workshop performed hidden work`);
+    if (!result.stats.built || result.stats.triangles <= 0
+        || result.stats.activeWorkshopTriangles <= 0 || result.stats.exhibitCount !== 4
+        || result.stats.sharedMaintenanceBayCount !== 4
+        || result.stats.sharedMaintenanceBayIds?.length !== 4
+        || result.stats.sharedMaintenanceBayQuadrants?.length !== 4
+        || new Set(result.stats.sharedMaintenanceBayQuadrants).size !== 4
+        || result.stats.workshopOrbitCoverageDegrees !== 360) {
+      failures.push(`${result.id}: complete four-bay service layer is missing`);
     }
     if (result.stats.sceneMode !== (isVerdant ? 'verdant-workshop' : 'authentic-scene-pack')
         || result.stats.roofMode !== (isVerdant ? 'enclosed-original' : 'open-environment')
@@ -265,6 +281,9 @@ try {
       || thrash.architecture.residentTextureSets > 9 || thrashFrames.maxGapMs > maxGapMs) {
     failures.push(`rapid-switch convergence failed: ${JSON.stringify({ thrash, thrashFrames })}`);
   }
+  if (dressingFrames.maxGapMs > Math.max(maxGapMs, 150)) {
+    failures.push(`workshop stream stalled a frame: ${dressingFrames.maxGapMs}ms`);
+  }
   const heapGrowth = memoryBefore.heap && memoryAfter.heap ? memoryAfter.heap - memoryBefore.heap : 0;
   if (heapGrowth > 24 * 1024 * 1024 || memoryAfter.stats.architecture.cached > 2
       || memoryAfter.stats.architecture.residentTextureSets > 9) {
@@ -294,6 +313,7 @@ try {
       drawCalls: stats.architecture.drawCalls,
       triangles: stats.architecture.triangles,
     })),
+    dressingFrames,
     thrashFrames,
     cycleFrames,
     heapGrowth,

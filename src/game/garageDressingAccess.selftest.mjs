@@ -1,14 +1,64 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import * as THREE from 'three';
+import { createGarageDressingAccess } from './garageDressingAccess.ts';
 
-const source = await readFile(new URL('./garageDressingAccess.ts', import.meta.url), 'utf8');
+let attempts = 0;
+let constructions = 0;
+let pumps = 0;
+let built = false;
+let variantId = '';
+let preparations = 0;
+const workshopFleet = { createVisual() { throw new Error('not used by access test'); } };
+const engineCtx = { id: 'engine' };
+const pos = new THREE.Vector3(4, 5, 6);
+const access = createGarageDressingAccess(engineCtx, pos, {
+  dressing: async () => {
+    attempts++;
+    if (attempts === 1) throw new Error('simulated workshop chunk failure');
+    return {
+      async prepareGarageDressing(receivedEngine) {
+        preparations++;
+        assert.equal(receivedEngine, engineCtx);
+        return workshopFleet;
+      },
+      createGarageDressing(receivedEngine, receivedPos, existing) {
+        constructions++;
+        assert.equal(receivedEngine, engineCtx);
+        assert.equal(receivedPos, pos);
+        assert.equal(existing.group, access.group);
+        assert.equal(existing.bayFill.parent, access.group);
+        assert.equal(existing.workshopFleet, workshopFleet);
+        return {
+          group: existing.group,
+          pump() { pumps++; built = true; return false; },
+          ensureBuilt() { built = true; },
+          isBuilt() { return built; },
+          setVariant(id) { variantId = id; return id; },
+          dispose() { existing.group.removeFromParent(); },
+        };
+      },
+    };
+  },
+});
 
-assert.match(source, /createGarageDressing\(engineCtx, pos/,
-  'the zero-geometry compatibility owner must exist at first paint');
-assert.doesNotMatch(source, /import\(['"].*garageDressing|DEFAULT_LOADERS|pending/,
-  'Garage readiness must not depend on a deferred module or retry state');
-assert.match(source, /pump: async \(\) => false/);
-assert.match(source, /isBuilt: \(\) => true/);
-assert.match(source, /preload: async \(\) => runtime/);
+assert.deepEqual(access.group.position.toArray(), [4, 5, 6]);
+assert.equal(access.group.children.filter((child) => child.isPointLight).length, 1);
+await assert.rejects(access.preload(), /simulated workshop chunk failure/);
+assert.equal(access.current, null);
 
-console.log('garageDressingAccess.selftest: immediate zero-work compatibility owner passed');
+const first = access.preload();
+const shared = access.preload();
+assert.equal(first, shared);
+assert.equal((await first).group, access.group);
+assert.equal(attempts, 2);
+assert.equal(constructions, 1);
+assert.equal(preparations, 1);
+assert.equal(access.isBuilt(), false);
+assert.equal(await access.pump(), false);
+assert.equal(pumps, 1);
+assert.equal(access.isBuilt(), true);
+assert.equal(access.setVariant('winter_repair_bunker'), 'winter_repair_bunker');
+assert.equal(variantId, 'winter_repair_bunker');
+await access.ensureBuilt();
+
+console.log('garageDressingAccess.selftest: light-stable retryable workshop owner passed');

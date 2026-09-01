@@ -130,6 +130,15 @@ try {
     resourcesStartedAfterReady: result.resourcesStartedAfterReady,
     heapMiB: +(result.heapBytes / 1024 / 1024).toFixed(1),
     architecture: result.stats.architecture,
+    workshop: {
+      built: result.stats.built,
+      triangles: result.stats.workshopTriangleCount,
+      optimizedTriangles: result.stats.optimizedWorkshopTriangleCount,
+      exhibits: result.stats.workshopExhibitCount,
+      maintenanceBays: result.stats.sharedMaintenanceBayCount,
+      buildTimings: result.stats.buildTimings,
+      lastBuildError: result.stats.lastBuildError,
+    },
     errors,
   };
   const failures = [];

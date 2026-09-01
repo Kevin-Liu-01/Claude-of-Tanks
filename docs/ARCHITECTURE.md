@@ -920,10 +920,14 @@ GPU residency transaction: Garage-only geometry and textures leave VRAM before
 battle, then restore behind the covered return frame. The Verdant fixture objects
 remain in the stable light set at zero intensity outdoors, while one shadowless
 hero bounce remains active. Outdoor static scenery receives but does not cast
-live CSM shadows. The former hidden
-four-vehicle workshop has been retired; `garageDressingAccess.ts` now exposes a
-zero-geometry compatibility owner while callers migrate. It never imports fleet
-builders, schedules quiet work, or adds a second set of scene resources.
+live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
+maintenance layer after interactive readiness. Four diagonally opposed bays—
+Burlak gantry, Abrams welding, T-90M armor service, and K2 teardown—surround
+every Garage and are recomposed by the destination layout. The single static
+graph is reused across all ten variants; only Verdant reveals the additional
+wall-mounted clutter supported by its enclosed shell. The quiet-window
+scheduler serializes fleet preparation and chunk construction, and the phase
+owner detaches the complete layer during battle.
 
 ### 3.8 fx — `src/fx/`
 

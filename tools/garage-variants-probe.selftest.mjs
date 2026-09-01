@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('./garage-variants-probe.mjs', import.meta.url), 'utf8');
 assert.match(source, /variants\.length !== 10/);
-assert.match(source, /stats\.triangles !== 0/);
+assert.match(source, /stats\.triangles <= 0/);
+assert.match(source, /stats\.exhibitCount !== 4/);
+assert.match(source, /stats\.sharedMaintenanceBayCount !== 4/);
+assert.match(source, /__GARAGE_DRESSING_PROBE/);
 assert.match(source, /source !== 'authentic-garage-scene-pack'/);
 assert.match(source, /architecture\.drawCalls > 24/);
 assert.match(source, /architecture\.residentTextureSets > 9/);

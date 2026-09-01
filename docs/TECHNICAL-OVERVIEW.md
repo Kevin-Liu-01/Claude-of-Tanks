@@ -233,8 +233,10 @@ ready. Development-only Vite warmup and module preload flatten the static
 
 The garage constructs only presentation needed for selection and session
 entry. The battlefield remains dormant. Verdant uses its restored authored
-indoor workshop. Each of the other nine environments is a bounded renderer-only
-scene pack built from a generated excerpt of its real battlefield terrain plus
+indoor workshop. One demand-loaded, optimized four-bay maintenance layer places
+real first-party Burlak, Abrams, T-90M, and K2 displays around all ten Garage
+types without duplicating the scene graph. Each of the other nine environments
+is a bounded renderer-only scene pack built from a generated excerpt of its real battlefield terrain plus
 connected structure kits, camera-composed instanced tree lines, static biome
 ground cover, a generated first-party wreck proxy, two-sided service facilities,
 and three map-derived horizon layers beneath a finite sky.

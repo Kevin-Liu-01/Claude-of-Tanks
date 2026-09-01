@@ -671,6 +671,7 @@ interface TankFactoryOptions {
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
   batchStatic?: boolean;
+  deferStaticBatch?: boolean;
   battleDetailLod?: boolean;
   staticPreview?: boolean;
   decor?: boolean;
@@ -7323,6 +7324,7 @@ export function createTank(
     proceduralOnly = false,
     geometryReceipt = false,
     batchStatic = false,
+    deferStaticBatch = false,
     battleDetailLod = false,
   } = opts;
   if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
@@ -9392,7 +9394,7 @@ export function createTank(
   // deliberately outside this normalization.
   normalizeTankAppearance(root);
 
-  if (geometryQuality === 'low' || batchStatic) {
+  if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
     const mobileBatchParents = [hullG, turretG, gunG, recoilG];
     root.traverse((object) => {
       if (!isVehicleGroup(object)) return;
