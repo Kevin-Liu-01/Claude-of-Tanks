@@ -144,7 +144,7 @@ interface StudioContext {
   setWorldDormant(dormant: boolean): void;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
-  enterGarage(): void;
+  enterGarage(): Promise<void> | void;
   warmStudioPipeline?(onProgress?: ProgressListener): Promise<unknown>;
   transition?: StudioTransitionRuntime;
   autoEnter?: boolean;
@@ -2705,14 +2705,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function exit() {
     if (!active || exiting) return;
     exiting = true;
-    transition.run(() => { doExit(); }, {
+    transition.run(() => doExit(), {
       kicker: 'Scene Studio', title: 'Garage',
       mapId: getWorld()?.mapId,
-      progress: false, minShowMs: 720,
+      progress: false, minShowMs: 250,
     }).finally(() => { exiting = false; });
   }
 
-  function doExit() {
+  async function doExit() {
     if (!active) return;
     if (recording) stopRecording();
     active = false;
@@ -2738,7 +2738,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     rail.rebuild();
     rail.updateVisibility();
     unsweepPool();
-    enterGarage(); // restores camo overrides, sun trim, spots, showroom
+    await enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
     docBrand('garage');
   }

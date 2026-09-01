@@ -70,6 +70,9 @@ const CASCADES = 4;
 // refresh together at 20 Hz. `update(true)` still forces every cascade for
 // deterministic captures and map switches.
 const FAR_CASCADE_START = 2;
+// Reserved only during covered shadow priming. Presentation objects use layer
+// 0, shadow-only proxies use 29, and late FX may use 30.
+const SHADOW_PRIME_LAYER = 31;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
 const _stableLightOrientationInverse = new THREE.Matrix4();
@@ -1166,7 +1169,18 @@ export function createLighting(
         shadow: light.shadow,
         autoUpdate: light.shadow.autoUpdate,
         needsUpdate: light.shadow.needsUpdate,
+        layerMask: light.layers.mask,
       }));
+      const shadowMap = renderer2.shadowMap;
+      const renderShadowMaps = shadowMap.render.bind(shadowMap);
+      const cameraLayerMask = camera2.layers.mask;
+      const priorTarget = renderer2.getRenderTarget();
+      const priorFace = renderer2.getActiveCubeFace?.() ?? 0;
+      const priorMip = renderer2.getActiveMipmapLevel?.() ?? 0;
+      const warmTarget = new THREE.WebGLRenderTarget(8, 8, {
+        depthBuffer: false,
+        stencilBuffer: false,
+      });
       const timings: number[] = [];
       let complete = false;
       try {
@@ -1180,13 +1194,42 @@ export function createLighting(
           const light = csm.lights[index];
           if (yieldBeforeCascade) await yieldBeforeCascade(index);
           const startedAt = performance.now();
+          camera2.layers.set(SHADOW_PRIME_LAYER);
+          light.layers.enable(SHADOW_PRIME_LAYER);
+          // WebGLShadowMap.render is an internal renderer phase and cannot be
+          // invoked after an async yield: Three clears its current render
+          // state at the end of every normal frame. Route one selected cascade
+          // through WebGLRenderer.render instead. The reserved camera layer
+          // keeps the color pass empty, while the wrapper restores production
+          // layers for the shadow traversal so all real casters participate.
+          shadowMap.render = (_lights, activeScene, activeCamera) => {
+            const primeMask = activeCamera.layers.mask;
+            activeCamera.layers.mask = cameraLayerMask;
+            try {
+              renderShadowMaps([light], activeScene, activeCamera);
+            } finally {
+              activeCamera.layers.mask = primeMask;
+            }
+          };
+          renderer2.setRenderTarget(warmTarget);
           light.shadow.needsUpdate = true;
-          renderer2.shadowMap.render([light], scene2, camera2);
+          renderer2.render(scene2, camera2);
           light.shadow.needsUpdate = false;
+          renderer2.setRenderTarget(priorTarget, priorFace, priorMip);
+          shadowMap.render = renderShadowMaps;
+          camera2.layers.mask = cameraLayerMask;
+          light.layers.mask = prior[index]!.layerMask;
           timings.push(Math.round(performance.now() - startedAt));
         }
         complete = true;
       } finally {
+        renderer2.setRenderTarget(priorTarget, priorFace, priorMip);
+        shadowMap.render = renderShadowMaps;
+        camera2.layers.mask = cameraLayerMask;
+        for (let index = 0; index < csm.lights.length; index++) {
+          csm.lights[index]!.layers.mask = prior[index]!.layerMask;
+        }
+        warmTarget.dispose();
         if (complete) {
           preservePrimedFrame = true;
           forceFrames = 0;

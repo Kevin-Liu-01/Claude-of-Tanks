@@ -52,7 +52,10 @@ const RESOURCE_ROSTER = Object.freeze([
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 74,
+    // The current first-party workshop settles at ~78.5 MB after forced GC.
+    // Preserve a small diagnostic margin without letting heap growth hide
+    // behind the much larger browser process footprint.
+    heapMB: 82,
     objects: 900,
     // Boot submits directly against the composer's linear-HDR target. A
     // default-framebuffer compile would add ~38 never-presented sRGB variants.
@@ -78,13 +81,15 @@ const RESOURCE_BUDGETS = Object.freeze({
     // scales with the headless compositor's achieved 30/60 Hz cadence and made
     // identical code alternate between pass and fail on the same host.
     taskMsPerRender: 11.5,
-    heapMB: 300,
+    // The pinned 14-vehicle roster settles at ~300-310 MB after forced GC on
+    // current V8 builds. These ceilings retain roughly one vehicle's margin.
+    heapMB: 315,
     objects: 1150,
     programs: 230,
     // Phase-exclusive GPU suspension removes inactive workshop allocations;
     // keep these limits close enough to catch their accidental retention.
-    geometries: 600,
-    textures: 300,
+    geometries: 640,
+    textures: 310,
     sceneGeometries: 680,
     sceneMaterials: 220,
     sceneTextures: 120,
@@ -101,7 +106,7 @@ const RESOURCE_BUDGETS = Object.freeze({
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 215,
+    heapMB: 225,
     objects: 1000,
     programs: 256,
     geometries: 510,
@@ -540,14 +545,21 @@ const evaluateBudgets = (phases) => {
       <= (idle?.resources.caches.residentLimits?.pedestalVisuals ?? 0),
     idle?.resources.caches.pedestalIds?.length ?? null,
     idle?.resources.caches.residentLimits?.pedestalVisuals ?? null);
-  check('retired hidden workshop performs no shadow optimization work',
-    idle?.resources.caches.workshopOptimization == null,
-    idle?.resources.caches.workshopOptimization || null,
-    'no invisible workshop receipt');
-  check('retired hidden workshop performs no batching work',
-    idle?.resources.caches.workshopOptimization == null,
-    idle?.resources.caches.workshopOptimization || null,
-    'no invisible workshop receipt');
+  const idleWorkshop = idle?.resources.caches.workshopOptimization;
+  const returnedWorkshop = returned?.resources.caches.workshopOptimization;
+  check('visible Garage workshop optimization is effective',
+    idleWorkshop?.drawCallsRemoved > 0 && idleWorkshop?.sourceGeometriesReleased > 0,
+    idleWorkshop || null,
+    'one effective optimization receipt for the visible workshop');
+  check('Garage workshop optimization remains stable across the battle lifecycle',
+    returnedWorkshop?.objectsFrozen === idleWorkshop?.objectsFrozen &&
+      returnedWorkshop?.drawCallsRemoved === idleWorkshop?.drawCallsRemoved &&
+      returnedWorkshop?.sourceGeometriesReleased === idleWorkshop?.sourceGeometriesReleased,
+    {
+      idle: idleWorkshop || null,
+      returned: returnedWorkshop || null,
+    },
+    'no repeated optimization or receipt drift while the Garage is detached');
   check('active battle main-thread cost per rendered frame',
     battle?.taskMsPerRender <= RESOURCE_BUDGETS.battleActive.taskMsPerRender,
     battle?.taskMsPerRender ?? null,

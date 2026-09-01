@@ -14,7 +14,6 @@ const sunDirection = new THREE.Vector3(0.3, 0.8, -0.4);
 const calls = [];
 let phase = 'garage';
 let warmCount = 0;
-let frameCount = 0;
 let pedestalPoseCount = 0;
 let cameraPoseCount = 0;
 const authoredSky = { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 };
@@ -34,8 +33,17 @@ const runtime = createGaragePhasePresentationRuntime({
   getPhase: () => phase,
   posePedestal: () => { pedestalPoseCount += 1; },
   poseCamera: () => { cameraPoseCount += 1; },
-  warmRender: () => { warmCount += 1; },
-  nextFrame: async () => { frameCount += 1; },
+  restorePresentationGpu: async () => {
+    calls.push(['restorePresentationGpu']);
+    warmCount += 1;
+    return {
+      totalMs: 12,
+      shadowPasses: [4, 3],
+      shadowPassMax: 4,
+      sceneUploadBatches: [2, 1],
+      sceneUploadMax: 2,
+    };
+  },
 });
 
 runtime.setSunTrim(true);
@@ -79,10 +87,16 @@ assert.equal(stageRoot.parent, scene);
 assert.equal(dressingRoot.parent, scene);
 assert.equal(runtime.diagnostics().gpu.suspended, true,
   'scene remount precedes the covered GPU restore');
-await runtime.resumeGpu();
+const firstRestore = await runtime.restoreGpu();
 assert.equal(warmCount, 1);
-assert.equal(frameCount, 1);
+assert.equal(firstRestore.totalMs, 12);
 assert.equal(runtime.diagnostics().gpu.suspended, false);
+assert.deepEqual(calls.at(-1), ['restorePresentationGpu'],
+  'GPU renewal delegates to the bounded presentation restore once');
+
+const residentRestore = await runtime.restoreGpu();
+assert.equal(warmCount, 2, 'resident returns still settle one exact covered Garage frame');
+assert.equal(residentRestore.sceneUploadMax, 2);
 
 const worldA = new THREE.Group();
 const worldB = new THREE.Group();

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Scene } from 'three';
-import { warmGarageGpuPipeline } from './garageGpuWarmRuntime.ts';
+import {
+  restoreGarageGpuPipeline,
+  warmGarageGpuPipeline,
+} from './garageGpuWarmRuntime.ts';
 
 const scene = new Scene();
 const camera = new PerspectiveCamera();
@@ -63,4 +66,56 @@ assert.equal(timings.sceneUploadMax, 11);
 assert.equal(timings.postPassMax, 5);
 assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 
-console.log('garageGpuWarmRuntime.selftest: target-correct bounded boot warm passed');
+{
+  const restoreCalls = [];
+  let restoreClock = 0;
+  const receipt = await restoreGarageGpuPipeline({
+    renderer,
+    scene,
+    camera,
+    lighting: {
+      setStaticPresentationDormant(value) {
+        restoreCalls.push(['staticDormant', value]);
+      },
+      update(force) { restoreCalls.push(['light', force]); },
+      async primeShadowMaps(activeRenderer, activeScene, activeCamera, yieldWarm) {
+        assert.equal(activeRenderer, renderer);
+        assert.equal(activeScene, scene);
+        assert.equal(activeCamera, camera);
+        await yieldWarm(0);
+        return [13, 5];
+      },
+    },
+    createYielder: (budgetMs) => {
+      assert.equal(budgetMs, 8);
+      return async (force) => { restoreCalls.push(['yield', force]); };
+    },
+    warmScene: async (activeRenderer, activeScene, activeCamera, options) => {
+      assert.equal(activeRenderer, renderer);
+      assert.equal(activeScene, scene);
+      assert.equal(activeCamera, camera);
+      assert.equal(options.scale, 0.0625);
+      assert.equal(options.maxObjects, 24);
+      assert.equal(options.maxWeight, 90_000);
+      await options.yieldBeforeBatch(0);
+      return [9, 4, 2];
+    },
+    now: () => { restoreClock += 10; return restoreClock; },
+  });
+  assert.deepEqual(restoreCalls[0], ['staticDormant', false]);
+  assert.deepEqual(restoreCalls[1], ['light', true]);
+  assert.deepEqual(restoreCalls.filter(([name]) => name === 'yield'), [
+    ['yield', undefined],
+    ['yield', undefined],
+  ], 'the already-opaque transition yields only when restoration exhausts its budget');
+  assert.deepEqual(restoreCalls.at(-1), ['staticDormant', true]);
+  assert.deepEqual(receipt, {
+    totalMs: 10,
+    shadowPasses: [13, 5],
+    shadowPassMax: 13,
+    sceneUploadBatches: [9, 4, 2],
+    sceneUploadMax: 9,
+  });
+}
+
+console.log('garageGpuWarmRuntime.selftest: bounded boot and return warms passed');

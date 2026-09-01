@@ -21,8 +21,15 @@ assert.match(dressing, /await transfer\.createVisual\(specId, camoSeed\)/,
   'full-detail exhibit geometry must be acquired away from the render thread');
 assert.match(transfer, /new Worker\(new URL\('\.\/garageWorkshopGeometryWorker\.ts'/,
   'the workshop transfer must lazily own its dedicated module worker');
+assert.match(transfer,
+  /await prebakeSharedTextures\([\s\S]*'ai',[\s\S]*yieldToGarageFrame/,
+  'workshop paint generation must yield between painter stages before material acquisition');
 assert.match(worker, /geometryQuality: 'high'[\s\S]*decor: true/,
   'worker exhibits retain full procedural detail and fittings');
+assert.match(transfer, /spec: TANK_SPECS\[specId\]/,
+  'the transfer must send the requested spec without loading unrelated supplemental donors');
+assert.match(worker, /TANK_SPECS\[specId\] \|\|= spec/,
+  'the worker must register the requested spec before resolving its builder');
 assert.doesNotMatch(worker, /fleetFactory|ensureFullFleet|ensureTankBuilder/,
   'the worker must not package the full playable fleet facade');
 for (const owner of ['T90_PROFILES', 'ABRAMS_PROFILES', 'MODERN3_BUILDERS']) {

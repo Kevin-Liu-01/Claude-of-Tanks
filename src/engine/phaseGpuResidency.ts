@@ -17,15 +17,14 @@ export interface PhaseGpuResidencyStats {
 
 export interface RetainedPhaseGpuResidency {
   suspend(): GpuReleaseReceipt | null;
-  resume(): Promise<void>;
+  resume(): Promise<boolean>;
   diagnostics(): PhaseGpuResidencyStats;
 }
 
 interface RetainedPhaseGpuResidencyOptions {
   root: Object3D;
   preserveRoots: Object3D[];
-  warmRender(): void;
-  nextFrame(): Promise<unknown>;
+  restoreGpu(): Promise<void>;
   releaseMaterials?: boolean;
 }
 
@@ -38,12 +37,11 @@ interface RetainedPhaseGpuResidencyOptions {
 export function createRetainedPhaseGpuResidency({
   root,
   preserveRoots,
-  warmRender,
-  nextFrame,
+  restoreGpu,
   releaseMaterials = false,
 }: RetainedPhaseGpuResidencyOptions): RetainedPhaseGpuResidency {
   if (!root?.traverse || !Array.isArray(preserveRoots)
-    || typeof warmRender !== 'function' || typeof nextFrame !== 'function') {
+    || typeof restoreGpu !== 'function') {
     throw new TypeError('phase GPU residency requires a root and render lifecycle ports');
   }
 
@@ -67,10 +65,10 @@ export function createRetainedPhaseGpuResidency({
     },
 
     async resume() {
-      if (!stats.suspended) return;
+      if (!stats.suspended) return false;
       try {
-        warmRender();
-        await nextFrame();
+        await restoreGpu();
+        return true;
       } finally {
         stats.suspended = false;
         stats.resumes += 1;

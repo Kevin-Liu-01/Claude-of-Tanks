@@ -30,7 +30,6 @@ function createFixture({ transitionGate = false } = {}) {
       setCaptureHidden: (value) => calls.push(['captureHidden', value]),
       unfreezeEffects: () => calls.push(['unfreezeEffects']),
       resetHudFrame: () => calls.push(['resetHudFrame']),
-      settleStaticShadows: () => calls.push(['settleStaticShadows']),
     },
     network: {
       shouldPreserveRoom: () => preserveRoom,
@@ -96,7 +95,16 @@ function createFixture({ transitionGate = false } = {}) {
         calls.push(['transitionEnd']);
       },
     },
-    resumeGarageGpu: async () => { calls.push(['resumeGarageGpu']); },
+    restoreGaragePresentation: async () => {
+      calls.push(['restoreGaragePresentation']);
+      return {
+        totalMs: 12,
+        shadowPasses: [4, 3],
+        shadowPassMax: 4,
+        sceneUploadBatches: [2, 1],
+        sceneUploadMax: 2,
+      };
+    },
     isBattleEntryPending: () => entryPending,
     nowMs: () => now,
     sleep: async (milliseconds) => {
@@ -143,10 +151,14 @@ assert.ok(direct.calls.findIndex(([name]) => name === 'worldDormant')
 assert.ok(direct.calls.findIndex(([name]) => name === 'emitGaragePhase')
   < direct.calls.findIndex(([name]) => name === 'showGarage'),
   'the Garage phase publishes before its UI is exposed');
-assert.equal(direct.calls.at(-2)[0], 'resumeGarageGpu');
-assert.equal(direct.calls.at(-1)[0], 'settleStaticShadows');
-assert.ok(direct.runtime.lastTrace.stages.shadowSettle >= 0,
-  'return trace owns the completed static shadow receipt');
+assert.equal(direct.calls.at(-1)[0], 'adaptive');
+assert.ok(direct.calls.findIndex(([name]) => name === 'adaptive')
+  > direct.calls.findIndex(([name]) => name === 'restoreGaragePresentation'),
+  'the quality governor resumes only after covered Garage restoration');
+assert.ok(direct.runtime.lastTrace.stages.presentationRestore >= 0,
+  'return trace owns the completed Garage presentation receipt');
+assert.equal(direct.runtime.lastTrace.presentationRestore.shadowPassMax, 4,
+  'return trace retains bounded shadow and upload measurements');
 
 const closed = createFixture();
 closed.setPreserveRoom(true);
@@ -163,7 +175,7 @@ assert.equal(leaving.runtime.transitioning, true);
 assert.equal(leaving.calls.filter(([name]) => name === 'transitionStart').length, 1);
 assert.equal(leaving.calls[0][0], 'clearPresentation',
   'replay input state releases before the transition veil waits');
-assert.equal(leaving.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 760);
+assert.equal(leaving.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 250);
 leaving.releaseTransition();
 await firstLeave;
 assert.equal(leaving.runtime.transitioning, false);

@@ -14,6 +14,10 @@ interface GarageLightingWarmPort {
   ): Promise<number[]>;
 }
 
+interface GarageLightingRestorePort extends GarageLightingWarmPort {
+  setStaticPresentationDormant(dormant: boolean): void;
+}
+
 interface ForwardProgramWarmPort {
   compile(root: Object3D): void;
 }
@@ -42,6 +46,72 @@ export interface GarageGpuWarmOptions {
   createYielder?: (budgetMs: number) => WarmYield;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
+}
+
+export interface GarageGpuRestoreReceipt {
+  totalMs: number;
+  shadowPasses: number[];
+  shadowPassMax: number;
+  sceneUploadBatches: number[];
+  sceneUploadMax: number;
+}
+
+export interface GarageGpuRestoreOptions {
+  renderer: WebGLRenderer;
+  scene: Scene;
+  camera: Camera;
+  lighting: GarageLightingRestorePort;
+  createYielder?: (budgetMs: number) => WarmYield;
+  warmScene?: typeof warmSceneOffscreenBatched;
+  now?: () => number;
+}
+
+/**
+ * Restore evicted Garage resources without submitting one unbounded scene
+ * frame. Shadow cascades and visible uploads are split into paintable slices
+ * while the transition remains opaque, then the completed shadow maps are
+ * frozen for the first presented Garage frame.
+ */
+export async function restoreGarageGpuPipeline({
+  renderer,
+  scene,
+  camera,
+  lighting,
+  createYielder = createFrameBudgetYielder,
+  warmScene = warmSceneOffscreenBatched,
+  now = () => performance.now(),
+}: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {
+  const startedAt = now();
+  const yieldGpu = createYielder(8);
+  let shadowPasses: number[] = [];
+  let sceneUploadBatches: number[] = [];
+
+  lighting.setStaticPresentationDormant(false);
+  try {
+    lighting.update(true);
+    shadowPasses = await lighting.primeShadowMaps(
+      renderer,
+      scene,
+      camera,
+      async () => { await yieldGpu(); },
+    );
+    sceneUploadBatches = await warmScene(renderer, scene, camera, {
+      scale: 0.0625,
+      maxObjects: 24,
+      maxWeight: 90_000,
+      yieldBeforeBatch: async () => { await yieldGpu(); },
+    });
+  } finally {
+    lighting.setStaticPresentationDormant(true);
+  }
+
+  return {
+    totalMs: Math.round(now() - startedAt),
+    shadowPasses,
+    shadowPassMax: Math.max(0, ...shadowPasses),
+    sceneUploadBatches,
+    sceneUploadMax: Math.max(0, ...sceneUploadBatches),
+  };
 }
 
 /**

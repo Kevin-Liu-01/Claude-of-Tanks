@@ -1,3 +1,4 @@
+import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 import type {
   BrowserBattleBridge,
@@ -153,43 +154,109 @@ export interface NetworkBattlePresentationRuntime {
   present(request: NetworkBattlePresentationRequest): Promise<void>;
 }
 
+function validateNetworkPresentationPorts(options: NetworkBattlePresentationOptions): void {
+  try {
+    checkedIntegrationPort<BattleLoadScreen>(
+      options.load?.battleLoad ?? {},
+      'network battle load screen',
+      ['show', 'rosters', 'progress', 'hide'],
+    );
+    checkedIntegrationPort(
+      options.load?.audio ?? {},
+      'network battle audio',
+      ['resume', 'loadingOn', 'ambientOn'],
+    );
+    checkedIntegrationPort(
+      options.load?.lighting ?? {},
+      'network battle lighting',
+      ['setFarCascadeDormant'],
+    );
+    checkedIntegrationPort(
+      options.load ?? {},
+      'network battle loading',
+      ['ensureBattleVisuals', 'nextFrame', 'primeReveal', 'setAdaptiveSuspended'],
+    );
+    checkedIntegrationPort(
+      options.roster ?? {},
+      'network battle roster',
+      ['getMap', 'rows', 'vehicleName', 'emitBattleStart', 'setCamoBiome'],
+    );
+    checkedIntegrationPort(
+      options.entry ?? {},
+      'network battle entry',
+      ['acquire', 'loadModules', 'loadWorld', 'publishMatch', 'getMatch'],
+    );
+    checkedIntegrationPort(
+      options.bridge ?? {},
+      'network battle bridge',
+      ['installInputRuntime', 'createStatus', 'publishStatus', 'attachRecovery',
+        'create', 'publish', 'groundSampler', 'waitForInitialSnapshot',
+        'waitForPeerReadiness'],
+    );
+    checkedIntegrationPort(
+      options.warm ?? {},
+      'network battle warmup',
+      ['getFx', 'terrain', 'wrecks', 'openingEffects', 'shotCards', 'compile'],
+    );
+    checkedIntegrationPort(
+      options.presentation ?? {},
+      'network battle activation',
+      ['resetRoundState', 'setGarageLighting', 'activate', 'runBlackWatchdog'],
+    );
+  } catch {
+    throw new TypeError('network battle presentation requires every lifecycle port');
+  }
+}
+
+function validateNetworkPresentationRequest(
+  request: NetworkBattlePresentationRequest,
+): void {
+  if (!request.viewerId || !request.own?.id || !request.own.specId ||
+      !request.mapId || !request.modeLabel || !Array.isArray(request.matchPlayers) ||
+      typeof request.connectMatch !== 'function') {
+    throw new TypeError('network battle presentation requires a complete request');
+  }
+}
+
+function presentationTeams(team: string | undefined): {
+  spectator: boolean;
+  displayTeam: string;
+  opposingTeam: string;
+} {
+  const spectator = team === 'spectator';
+  const displayTeam = spectator ? 'alpha' : String(team || 'alpha');
+  return {
+    spectator,
+    displayTeam,
+    opposingTeam: displayTeam === 'alpha' ? 'bravo' : 'alpha',
+  };
+}
+
 /**
  * Own the cold-client path from an opaque network loader to one fully prepared
  * battle frame. Private/LAN and dedicated launchers share this operation; the
  * composition root supplies concrete renderer, world, transport and UI ports.
  */
-export function createNetworkBattlePresentationRuntime({
+export function createNetworkBattlePresentationRuntime(
+  options: NetworkBattlePresentationOptions,
+): NetworkBattlePresentationRuntime {
+  validateNetworkPresentationPorts(options);
+  const {
   load,
   roster,
   entry,
   bridge,
   warm,
   presentation,
-}: NetworkBattlePresentationOptions): NetworkBattlePresentationRuntime {
-  const required = [load?.battleLoad?.show, load?.battleLoad?.rosters,
-    load?.battleLoad?.progress, load?.battleLoad?.hide, load?.audio?.resume,
-    load?.audio?.loadingOn, load?.audio?.ambientOn,
-    load?.lighting?.setFarCascadeDormant, load?.ensureBattleVisuals,
-    load?.nextFrame, load?.primeReveal, load?.setAdaptiveSuspended,
-    roster?.getMap, roster?.rows,
-    roster?.vehicleName, roster?.emitBattleStart, roster?.setCamoBiome,
-    entry?.acquire, entry?.loadModules, entry?.loadWorld, entry?.publishMatch,
-    entry?.getMatch, bridge?.installInputRuntime, bridge?.createStatus,
-    bridge?.publishStatus, bridge?.attachRecovery, bridge?.create,
-    bridge?.publish, bridge?.groundSampler, bridge?.waitForInitialSnapshot,
-    bridge?.waitForPeerReadiness, warm?.getFx, warm?.terrain, warm?.wrecks,
-    warm?.openingEffects, warm?.shotCards, warm?.compile,
-    presentation?.resetRoundState, presentation?.setGarageLighting,
-    presentation?.activate, presentation?.runBlackWatchdog];
-  if (required.some((value) => typeof value !== 'function')) {
-    throw new TypeError('network battle presentation requires every lifecycle port');
-  }
+  } = options;
 
   const now = load.now ?? (() => performance.now());
   const recordTrace = load.recordTrace ?? (() => {});
 
   return {
-    async present({
+    async present(request) {
+      validateNetworkPresentationRequest(request);
+      const {
       viewerId,
       own,
       mapId,
@@ -199,11 +266,7 @@ export function createNetworkBattlePresentationRuntime({
       signal,
       connectAfterWorld = false,
       transitionShown = false,
-    }) {
-      if (!viewerId || !own?.id || !own.specId || !mapId || !modeLabel
-        || !Array.isArray(matchPlayers) || typeof connectMatch !== 'function') {
-        throw new TypeError('network battle presentation requires a complete request');
-      }
+      } = request;
       throwIfNetworkBattleEntryAborted(signal);
 
       await load.ensureBattleVisuals();
@@ -224,9 +287,7 @@ export function createNetworkBattlePresentationRuntime({
 
       presentation.resetRoundState();
       roster.setCamoBiome(mapId);
-      const spectator = own.team === 'spectator';
-      const displayTeam = spectator ? 'alpha' : String(own.team || 'alpha');
-      const opposingTeam = displayTeam === 'alpha' ? 'bravo' : 'alpha';
+      const { spectator, displayTeam, opposingTeam } = presentationTeams(own.team);
       const allies = () => roster.rows(matchPlayers, displayTeam, viewerId);
       const enemies = () => roster.rows(matchPlayers, opposingTeam, viewerId);
 
@@ -375,12 +436,12 @@ export function createNetworkBattlePresentationRuntime({
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
-      load.setAdaptiveSuspended(false);
       // Uncover only after one complete battle frame has presented from the
       // final camera/world pose. This is the same reveal barrier as solo entry
       // and prevents both black flashes and a first-frame shader hitch.
       await load.primeReveal();
       await load.battleLoad.hide();
+      load.setAdaptiveSuspended(false);
       mark('reveal');
       trace.totalMs = Math.round(now() - loadStartedAt);
     },

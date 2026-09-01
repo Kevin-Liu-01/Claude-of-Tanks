@@ -13,6 +13,7 @@ import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
+import { isClearOfSpawns } from './spawnClearance.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
@@ -2999,6 +3000,7 @@ function* vegetationBuildSteps(
   const clusters: VegetationDisc[] = [];
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
   const treeObstacles: TreeObstacle[] = [];
+  const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
   // sim (src/sim/spotting.ts) — bushes conceal strongly, tree canopies mildly.
   const concealers: ConcealmentDisc[] = [];
@@ -3047,9 +3049,7 @@ function* vegetationBuildSteps(
       }
       if (!inPark) return false;
     }
-    for (const s of [L.spawns.player, ...L.spawns.enemies]) {
-      if (Math.hypot(x - s.x, z - s.z) < 26) return false;
-    }
+    if (!isClearOfSpawns(x, z, protectedSpawns, 26)) return false;
     return heightField.getNormalAt(x, z).y > 0.82;
   }
   function pushTree(
@@ -3242,6 +3242,10 @@ function* vegetationBuildSteps(
       // east rim) — no forest wading in the sea. noVeg is false along every
       // pre-existing map's rim, so this is a no-op for them.
       if (noVeg(x, z)) continue;
+      // Boundary spawns can sit inside the horizon ring. Preserve a larger
+      // chase-camera corridor here because rim trees intentionally bypass the
+      // ordinary playable-area site policy.
+      if (!isClearOfSpawns(x, z, protectedSpawns, 36)) continue;
       pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
     }
     for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
@@ -3254,6 +3258,7 @@ function* vegetationBuildSteps(
     const z = Math.sin(a) * rad + (rng() - 0.5) * 18;
     if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
     if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
+    if (!isClearOfSpawns(x, z, protectedSpawns, 36)) continue;
     pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
   }
 

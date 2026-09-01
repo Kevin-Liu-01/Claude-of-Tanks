@@ -1,22 +1,39 @@
 import * as THREE from 'three';
-import { createTankMaterials } from '../vehicles/materials.ts';
+import { createTankMaterials, prebakeSharedTextures } from '../vehicles/materials.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import type {
   GarageDressingEngineContext,
   GarageWorkshopVisual,
 } from './garageDressing.ts';
-import type { GarageWorkshopGeometryWire } from './garageWorkshopGeometryWorker.ts';
+import type {
+  FlatNodeWire,
+  GarageWorkshopGeometryWire,
+  GeometryWire,
+  MaterialWire,
+} from './garageWorkshopGeometryWorker.ts';
 
 type AttributeWire = GarageWorkshopGeometryWire['geometries'][number]['index'] & {};
-type NodeWire = GarageWorkshopGeometryWire['root'];
-type MaterialWire = GarageWorkshopGeometryWire['materials'][number];
 
-interface WorkerReply {
+interface WorkerReplyBase {
   ok: boolean;
   requestId: number;
   message?: string;
-  wire?: GarageWorkshopGeometryWire;
 }
+
+type WorkerReply = WorkerReplyBase & (
+  | {
+    kind: 'begin';
+    specId: string;
+    buildMs: number;
+    materials: MaterialWire[];
+    geometryCount: number;
+    nodeCount: number;
+  }
+  | { kind: 'geometries'; geometries: GeometryWire[] }
+  | { kind: 'nodes'; nodes: FlatNodeWire[] }
+  | { kind: 'complete' }
+  | { kind?: undefined }
+);
 
 interface MaterialPalette extends Record<string, unknown> {
   hull: THREE.Material;
@@ -117,7 +134,7 @@ function materialForWire(
 }
 
 function rebuildNodeObject(
-  source: NodeWire,
+  source: FlatNodeWire,
   geometries: readonly THREE.BufferGeometry[],
   materials: readonly MaterialWire[],
   palette: MaterialPalette,
@@ -158,52 +175,40 @@ function rebuildNodeObject(
 }
 
 async function rebuildNodeTree(
-  source: NodeWire,
+  nodes: readonly FlatNodeWire[],
   geometries: readonly THREE.BufferGeometry[],
   materials: readonly MaterialWire[],
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
 ): Promise<THREE.Object3D> {
-  const root = rebuildNodeObject(source, geometries, materials, palette, fallbacks);
-  const queue: Array<{
-    source: NodeWire;
-    parent: THREE.Object3D;
-    lodDistance: number | null;
-  }> = [];
-  source.children.forEach((child, index) => queue.push({
-    source: child,
-    parent: root,
-    lodDistance: source.kind === 'lod' ? source.lodDistances[index] ?? 0 : null,
-  }));
-  let cursor = 0;
+  if (!nodes.length) throw new Error('Garage workshop worker returned an empty node tree');
+  const objects: THREE.Object3D[] = [];
   let sliceStartedAt = performance.now();
-  while (cursor < queue.length) {
-    const entry = queue[cursor++];
+  for (let cursor = 0; cursor < nodes.length; cursor++) {
+    const source = nodes[cursor];
     const object = rebuildNodeObject(
-      entry.source,
+      source,
       geometries,
       materials,
       palette,
       fallbacks,
     );
-    if (entry.lodDistance !== null) {
-      (entry.parent as THREE.LOD).addLevel(object, entry.lodDistance);
-    } else {
-      entry.parent.add(object);
+    objects.push(object);
+    if (source.parentIndex >= 0) {
+      const parent = objects[source.parentIndex];
+      if (!parent) throw new Error(`Garage workshop node ${cursor} has no parent ${source.parentIndex}`);
+      if (source.lodDistance !== null) {
+        (parent as THREE.LOD).addLevel(object, source.lodDistance);
+      } else {
+        parent.add(object);
+      }
     }
-    entry.source.children.forEach((child, index) => queue.push({
-      source: child,
-      parent: object,
-      lodDistance: entry.source.kind === 'lod'
-        ? entry.source.lodDistances[index] ?? 0
-        : null,
-    }));
     if (performance.now() - sliceStartedAt >= REBUILD_SLICE_MS) {
       await yieldToGarageFrame();
       sliceStartedAt = performance.now();
     }
   }
-  return root;
+  return objects[0];
 }
 
 async function visualFromWire(
@@ -211,6 +216,7 @@ async function visualFromWire(
   engineCtx: GarageDressingEngineContext,
   camoSeed: number,
 ): Promise<GarageWorkshopVisual> {
+  const timings: Record<string, number> = { startedAt: Math.round(performance.now()) };
   const geometries: THREE.BufferGeometry[] = [];
   let sliceStartedAt = performance.now();
   for (const source of wire.geometries) {
@@ -220,25 +226,41 @@ async function visualFromWire(
       sliceStartedAt = performance.now();
     }
   }
+  timings.geometriesAt = Math.round(performance.now());
+  const spec = TANK_SPECS[wire.specId];
+  // Geometry already arrives incrementally from the worker. Paint generation
+  // must follow the same cooperative boundary: a synchronous cache miss here
+  // otherwise turns one decorative exhibit into a 200-300 ms Garage frame on
+  // a 4x-throttled CPU even though its geometry never touched the main thread.
+  await prebakeSharedTextures(
+    spec,
+    engineCtx.anisotropy || 8,
+    'ai',
+    yieldToGarageFrame,
+  );
+  timings.texturesAt = Math.round(performance.now());
   const palette = createTankMaterials(
-    TANK_SPECS[wire.specId],
+    spec,
     engineCtx as never,
     camoSeed,
     'ai',
   ) as MaterialPalette;
+  timings.materialsAt = Math.round(performance.now());
   const fallbackMaterials: THREE.Material[] = [];
   await yieldToGarageFrame();
   const root = await rebuildNodeTree(
-    wire.root,
+    wire.nodes,
     geometries,
     wire.materials,
     palette,
     fallbackMaterials,
   ) as THREE.Group;
+  timings.nodesAt = Math.round(performance.now());
   root.userData.workerGeometryBuildMs = wire.buildMs;
   root.userData.geometryQuality = 'high';
   root.userData.textureQuality = 'ai';
   root.userData.workshopTransfer = 'off-main-thread-high-detail';
+  root.userData.workshopTransferTimings = timings;
   let disposed = false;
   return {
     root,
@@ -268,19 +290,55 @@ export function createGarageWorkshopTransfer(
   let nextRequestId = 1;
   const pending = new Map<number, {
     camoSeed: number;
+    wire: GarageWorkshopGeometryWire | null;
+    geometryCount: number;
+    nodeCount: number;
     resolve(value: GarageWorkshopVisual): void;
     reject(error: Error): void;
   }>();
   const handleMessage = (event: MessageEvent<WorkerReply>): void => {
     const reply = event.data;
-    const request = pending.get(reply.requestId ?? reply.wire?.requestId ?? -1);
+    const request = pending.get(reply.requestId);
     if (!request) return;
-    pending.delete(reply.requestId ?? reply.wire?.requestId ?? -1);
-    if (!reply.ok || !reply.wire) {
+    if (!reply.ok) {
+      pending.delete(reply.requestId);
       request.reject(new Error(reply.message || 'Garage workshop worker failed'));
       return;
     }
-    void visualFromWire(reply.wire, engineCtx, request.camoSeed)
+    if (reply.kind === 'begin') {
+      request.geometryCount = reply.geometryCount;
+      request.nodeCount = reply.nodeCount;
+      request.wire = {
+        requestId: reply.requestId,
+        specId: reply.specId,
+        buildMs: reply.buildMs,
+        materials: reply.materials,
+        geometries: [],
+        nodes: [],
+      };
+      return;
+    }
+    if (!request.wire) {
+      pending.delete(reply.requestId);
+      request.reject(new Error('Garage workshop worker sent a batch before its header'));
+      return;
+    }
+    if (reply.kind === 'geometries') {
+      request.wire.geometries.push(...reply.geometries);
+      return;
+    }
+    if (reply.kind === 'nodes') {
+      request.wire.nodes.push(...reply.nodes);
+      return;
+    }
+    if (reply.kind !== 'complete') return;
+    pending.delete(reply.requestId);
+    if (request.wire.geometries.length !== request.geometryCount
+      || request.wire.nodes.length !== request.nodeCount) {
+      request.reject(new Error('Garage workshop worker transfer was incomplete'));
+      return;
+    }
+    void visualFromWire(request.wire, engineCtx, request.camoSeed)
       .then(request.resolve, request.reject);
   };
   const handleError = (event: ErrorEvent): void => {
@@ -302,8 +360,20 @@ export function createGarageWorkshopTransfer(
     createVisual(specId, camoSeed) {
       const requestId = nextRequestId++;
       return new Promise((resolve, reject) => {
-        pending.set(requestId, { camoSeed, resolve, reject });
-        ensureWorker().postMessage({ requestId, specId, camoSeed });
+        pending.set(requestId, {
+          camoSeed,
+          wire: null,
+          geometryCount: 0,
+          nodeCount: 0,
+          resolve,
+          reject,
+        });
+        ensureWorker().postMessage({
+          requestId,
+          specId,
+          camoSeed,
+          spec: TANK_SPECS[specId],
+        });
       });
     },
     dispose() {

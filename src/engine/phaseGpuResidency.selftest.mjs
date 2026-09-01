@@ -21,8 +21,10 @@ let frames = 0;
 const residency = createRetainedPhaseGpuResidency({
   root: retained,
   preserveRoots: [preserved],
-  warmRender: () => { renders += 1; },
-  nextFrame: async () => { frames += 1; },
+  restoreGpu: async () => {
+    renders += 1;
+    frames += 1;
+  },
 });
 
 assert.equal(residency.diagnostics().suspended, false);
@@ -32,7 +34,8 @@ assert.equal(ownedDisposals, 1, 'phase-exclusive geometry is released once');
 assert.equal(release?.geometries, 1);
 assert.equal(residency.suspend(), null, 'repeated suspension is idempotent');
 
-await residency.resume();
+assert.equal(await residency.resume(), true,
+  'a suspended phase reports that it submitted a restoration frame');
 assert.equal(renders, 1, 'one real covered frame restores renewable allocations');
 assert.equal(frames, 1);
 assert.deepEqual(residency.diagnostics(), {
@@ -41,7 +44,8 @@ assert.deepEqual(residency.diagnostics(), {
   resumes: 1,
   lastRelease: release,
 });
-await residency.resume();
+assert.equal(await residency.resume(), false,
+  'an already-resident phase reports that no restoration frame was needed');
 assert.equal(renders, 1, 'an already-resident phase does not render again');
 
 console.log('phaseGpuResidency.selftest: exclusive resources release and restore exactly once');

@@ -24,9 +24,13 @@ await page.setCacheEnabled(false);
 if (cpuRate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
 await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
 const errors = [];
+const warnings = [];
 page.on('console', (message) => {
   if (message.type() === 'error' && !/github-stars|favicon\.ico/.test(message.text())) {
     errors.push(message.text());
+  }
+  if (message.type() === 'warn' && /garageDressing/.test(message.text())) {
+    warnings.push(message.text());
   }
 });
 page.on('pageerror', (error) => errors.push(String(error)));
@@ -137,8 +141,11 @@ try {
       exhibits: result.stats.workshopExhibitCount,
       maintenanceBays: result.stats.sharedMaintenanceBayCount,
       buildTimings: result.stats.buildTimings,
+      transferTimings: result.stats.workshopTransferTimings,
       lastBuildError: result.stats.lastBuildError,
     },
+    longTasks: result.longTasks,
+    warnings,
     errors,
   };
   const failures = [];

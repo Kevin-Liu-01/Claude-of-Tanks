@@ -71,7 +71,10 @@ import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
-import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
+import {
+  restoreGarageGpuPipeline,
+  warmGarageGpuPipeline,
+} from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -662,9 +665,11 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   poseCamera: () => {
     if (!resetGarageShowroom?.()) garageEnvironmentPresentation.poseCamera();
   },
-  // Both bindings are initialized before either covered return can run.
-  warmRender: () => warmRender(),
-  nextFrame,
+  // Renderer ports are initialized before any covered return can run. The
+  // engine owner splits restoration into paintable shadow/upload batches.
+  restorePresentationGpu: async () => {
+    return restoreGarageGpuPipeline({ renderer, scene, camera, lighting });
+  },
 });
 const setGarageSpots = garagePhasePresentation.setActive;
 const setGarageSunTrim = garagePhasePresentation.setSunTrim;
@@ -2069,14 +2074,6 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     setCaptureHidden: (hidden: boolean) => perfHud.setCaptureHidden(hidden),
     unfreezeEffects: () => fxRuntimeAccess.current?.setFrozen(false),
     resetHudFrame: () => battleHudFrame.reset(),
-    settleStaticShadows: () => {
-      // Refit every cascade to the final Garage camera, render those exact
-      // depth maps offscreen, then retain them for the first visible frame.
-      lighting.update(true);
-      warmRender();
-      lighting.setStaticPresentationDormant(true);
-      garagePresentationDirty = false;
-    },
   },
   network: {
     shouldPreserveRoom: () => currentNetworkRoom()?.shouldPreserveAfterResult() ?? false,
@@ -2132,7 +2129,11 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   },
   audio,
   transition,
-  resumeGarageGpu: () => garagePhasePresentation.resumeGpu(),
+  restoreGaragePresentation: async () => {
+    const receipt = await garagePhasePresentation.restoreGpu();
+    garagePresentationDirty = false;
+    return receipt;
+  },
   isBattleEntryPending: () => battleEntryLifecycle.pending,
     publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
   }),

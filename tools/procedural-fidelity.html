@@ -877,21 +877,30 @@ function renderGeometryOnly(camera) {
   }
 }
 
+function readGeometryMask(renderTarget, renderSize, camera) {
+  const previousTarget = renderer.getRenderTarget();
+  const previousOverride = scene.overrideMaterial;
+  const rgba = new Uint8Array(renderSize * renderSize * 4);
+  try {
+    renderer.setRenderTarget(renderTarget);
+    renderer.clear(true, true, true);
+    scene.overrideMaterial = geometryMaskMaterial;
+    renderGeometryOnly(camera);
+    renderer.readRenderTargetPixels(renderTarget, 0, 0, renderSize, renderSize, rgba);
+  } finally {
+    scene.overrideMaterial = previousOverride;
+    renderer.setRenderTarget(previousTarget);
+  }
+  const mask = new Uint8Array(renderSize * renderSize);
+  for (let i = 0; i < mask.length; i++) mask[i] = rgba[i * 4] > 40 ? 1 : 0;
+  return mask;
+}
+
 function renderMask(visual, other, camera, part='whole') {
   visual.root.visible = true;
   other.root.visible = false;
   setPart(visual.root, part);
-  renderer.setRenderTarget(target);
-  renderer.clear(true, true, true);
-  const previousOverride = scene.overrideMaterial;
-  scene.overrideMaterial = geometryMaskMaterial;
-  renderGeometryOnly(camera);
-  scene.overrideMaterial = previousOverride;
-  const rgba = new Uint8Array(SIZE * SIZE * 4);
-  renderer.readRenderTargetPixels(target, 0, 0, SIZE, SIZE, rgba);
-  const mask = new Uint8Array(SIZE * SIZE);
-  for (let i=0; i<mask.length; i++) mask[i] = rgba[i*4] > 40 ? 1 : 0;
-  return mask;
+  return readGeometryMask(target, SIZE, camera);
 }
 
 function bounds(mask) {
@@ -1409,18 +1418,7 @@ if (params.get('profiles')) {
     reference.root.visible = true;
     procedural.root.visible = false;
     setPart(reference.root, part);
-    renderer.setRenderTarget(ptarget);
-    renderer.setSize(PSIZE, PSIZE, false);
-    renderer.clear(true, true, true);
-    const previousOverride = scene.overrideMaterial;
-    scene.overrideMaterial = geometryMaskMaterial;
-    renderGeometryOnly(camera);
-    scene.overrideMaterial = previousOverride;
-    const rgba = new Uint8Array(PSIZE * PSIZE * 4);
-    renderer.readRenderTargetPixels(ptarget, 0, 0, PSIZE, PSIZE, rgba);
-    const m = new Uint8Array(PSIZE * PSIZE);
-    for (let i = 0; i < m.length; i++) m[i] = rgba[i * 4] > 40 ? 1 : 0;
-    return m;
+    return readGeometryMask(ptarget, PSIZE, camera);
   };
   // Column trace: for each pixel column, the top/bottom silhouette edge in
   // world units. Returns ~N stations of [along, top, bottom].
@@ -1523,18 +1521,7 @@ if (params.get('geo')) {
   const gMask = (visual, other, camera, part) => {
     visual.root.visible = true; other.root.visible = false;
     setPart(visual.root, part);
-    renderer.setRenderTarget(gtarget);
-    renderer.setSize(GSIZE, GSIZE, false);
-    renderer.clear(true, true, true);
-    const previousOverride = scene.overrideMaterial;
-    scene.overrideMaterial = geometryMaskMaterial;
-    renderGeometryOnly(camera);
-    scene.overrideMaterial = previousOverride;
-    const rgba = new Uint8Array(GSIZE * GSIZE * 4);
-    renderer.readRenderTargetPixels(gtarget, 0, 0, GSIZE, GSIZE, rgba);
-    const m = new Uint8Array(GSIZE * GSIZE);
-    for (let i = 0; i < m.length; i++) m[i] = rgba[i * 4] > 40 ? 1 : 0;
-    return m;
+    return readGeometryMask(gtarget, GSIZE, camera);
   };
   const gTrace = (mask, cam, N = 96) => {
     const half = cam.right;

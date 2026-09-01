@@ -4,8 +4,16 @@ import { mountDocsIcons } from './docsIcons.ts';
 mountDocsIcons();
 
 const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.docs-toc a[href^="#"]')];
-const sections = navLinks.map((link) => document.querySelector(link.hash))
-  .filter((section): section is Element => section !== null);
+const sections = navLinks.map((link) => {
+  const encodedId = link.hash.slice(1);
+  if (!encodedId) return null;
+  try {
+    return document.getElementById(decodeURIComponent(encodedId));
+  } catch {
+    return null;
+  }
+})
+  .filter((section): section is HTMLElement => section !== null);
 
 const observer = new IntersectionObserver((entries) => {
   for (const entry of entries) {

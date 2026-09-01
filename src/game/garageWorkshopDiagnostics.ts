@@ -139,6 +139,7 @@ export function createGarageWorkshopDiagnostics({
         triangles: data.workshopTriangleCount || 0,
         activeWorkshopTriangles: data.activeWorkshopTriangleCount || 0,
         buildTimings: arrayValue(data.buildTimings),
+        workshopTransferTimings: arrayValue(data.workshopTransferTimings),
         optimization: data.optimizationReceipt
           ? Object.freeze({ ...data.optimizationReceipt }) : null,
         optimizedTriangles: data.optimizedWorkshopTriangleCount || 0,

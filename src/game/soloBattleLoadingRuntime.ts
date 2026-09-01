@@ -1,4 +1,5 @@
 import type { Object3D } from 'three';
+import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
@@ -177,12 +178,129 @@ export interface SoloBattleLoadingStartOptions {
   gameMode?: string;
 }
 
+function loadingModeLabel(gameMode: string, requestedMapId: string | null): string {
+  const battlefield = requestedMapId === 'random' ? 'Any Battlefield' : 'Selected Battlefield';
+  if (gameMode === 'standard') {
+    return requestedMapId === 'random'
+      ? 'Random Battle · Any Battlefield'
+      : 'Random Battle · Standard';
+  }
+  return `${gameModeDefinition(gameMode).label} · ${battlefield}`;
+}
+
+function plannedWorldVehicleIds(mapConfig: BattlefieldMapConfig): string[] {
+  const tankWrecks = mapConfig.props?.tankWrecks;
+  if (!tankWrecks || !('ids' in tankWrecks) || !Array.isArray(tankWrecks.ids)) return [];
+  return tankWrecks.ids;
+}
+
+function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
+  try {
+    if (!options.game) throw new TypeError('missing game state');
+    checkedIntegrationPort(
+      options.post ?? {}, 'solo battle loading quality', ['setAdaptiveSuspended'],
+    );
+    checkedIntegrationPort<BattleIntentPort>(
+      options.battleIntent ?? {}, 'solo battle loading intent', ['consumeMap', 'prepareRoster'],
+    );
+    checkedIntegrationPort<BattleLoadScreen>(
+      options.battleLoad ?? {},
+      'solo battle loading screen',
+      ['show', 'progress', 'rosters', 'hide'],
+    );
+    checkedIntegrationPort<AudioPort>(
+      options.audio ?? {},
+      'solo battle loading audio',
+      ['resume', 'loadingOn', 'ambientOn', 'warmBattleEvents'],
+    );
+    checkedIntegrationPort<EntryAcquisitionPort>(
+      options.acquisition ?? {}, 'solo battle loading acquisition', ['acquireSolo'],
+    );
+    checkedIntegrationPort<DeploymentPort>(
+      options.deployment ?? {}, 'solo battle loading deployment', ['warm'],
+    );
+    checkedIntegrationPort<EntryLifecyclePort>(
+      options.lifecycle ?? {}, 'solo battle loading lifecycle', ['primeReveal'],
+    );
+    checkedIntegrationPort(
+      {
+        getPendingMapId: options.getPendingMapId,
+        getMapName: options.getMapName,
+        loadMapConfig: options.loadMapConfig,
+        getMapThumb: options.getMapThumb,
+        hasCachedWorld: options.hasCachedWorld,
+        getWorld: options.getWorld,
+        ensureWorld: options.ensureWorld,
+        ensureBattleVisuals: options.ensureBattleVisuals,
+        getBattleVisuals: options.getBattleVisuals,
+        ensureBattleHud: options.ensureBattleHud,
+        preloadMinimap: options.preloadMinimap,
+        ensureTouchControls: options.ensureTouchControls,
+        preloadSettings: options.preloadSettings,
+        preloadArmorAim: options.preloadArmorAim,
+        planRoster: options.planRoster,
+        planCamoOverrides: options.planCamoOverrides,
+        ensureTankBuilders: options.ensureTankBuilders,
+        preloadSoloAuthority: options.preloadSoloAuthority,
+        preloadBattleClient: options.preloadBattleClient,
+        preloadBattleWarm: options.preloadBattleWarm,
+        preloadBattleStart: options.preloadBattleStart,
+        ensureKillcam: options.ensureKillcam,
+        ensureFx: options.ensureFx,
+        startBattle: options.startBattle,
+        prepareBattleWorldServices: options.prepareBattleWorldServices,
+        getPedestalVisual: options.getPedestalVisual,
+        prebakeSharedTextures: options.prebakeSharedTextures,
+        rosterRows: options.rosterRows,
+        warmShotCards: options.warmShotCards,
+        getCamoSweep: options.getCamoSweep,
+        prepareRevealCamera: options.prepareRevealCamera,
+        resolveVisiblePreBattleSeconds: options.resolveVisiblePreBattleSeconds,
+        openBattle: options.openBattle,
+        scheduleDeferredWarm: options.scheduleDeferredWarm,
+        nextFrame: options.nextFrame,
+        createLoadingYielder: options.createLoadingYielder,
+        now: options.now ?? (() => performance.now()),
+        delay: options.delay ?? (() => Promise.resolve()),
+      },
+      'solo battle loading orchestration',
+      ['getPendingMapId', 'getMapName', 'loadMapConfig', 'getMapThumb',
+        'hasCachedWorld', 'getWorld', 'ensureWorld', 'ensureBattleVisuals',
+        'getBattleVisuals', 'ensureBattleHud', 'preloadMinimap',
+        'ensureTouchControls', 'preloadSettings', 'preloadArmorAim', 'planRoster',
+        'planCamoOverrides', 'ensureTankBuilders', 'preloadSoloAuthority',
+        'preloadBattleClient', 'preloadBattleWarm', 'preloadBattleStart',
+        'ensureKillcam', 'ensureFx', 'startBattle', 'prepareBattleWorldServices',
+        'getPedestalVisual', 'prebakeSharedTextures', 'rosterRows', 'warmShotCards',
+        'getCamoSweep', 'prepareRevealCamera', 'resolveVisiblePreBattleSeconds',
+        'openBattle', 'scheduleDeferredWarm', 'nextFrame', 'createLoadingYielder',
+        'now', 'delay'],
+    );
+  } catch {
+    throw new TypeError('solo battle loading runtime requires every lifecycle port');
+  }
+}
+
+function validateLoadingNumbers(options: SoloBattleLoadingRuntimeOptions): void {
+  if (!Number.isFinite(options.anisotropy) || options.anisotropy < 0 ||
+      !Number.isFinite(options.preBattleHoldSeconds) || options.preBattleHoldSeconds < 0 ||
+      !Number.isFinite(options.minimumVisiblePreBattleSeconds) ||
+      options.minimumVisiblePreBattleSeconds < 0) {
+    throw new TypeError('solo battle loading runtime requires finite quality and countdown values');
+  }
+}
+
 /**
  * Own the covered solo entry from Battle intent through the visible countdown.
  * The composition root supplies capabilities; acquisition order, progress,
  * exact-roster preparation, diagnostics, and reveal fallback stay here.
  */
-export function createSoloBattleLoadingRuntime({
+export function createSoloBattleLoadingRuntime(
+  options: SoloBattleLoadingRuntimeOptions,
+): SoloBattleLoadingRuntime {
+  validateLoadingPorts(options);
+  validateLoadingNumbers(options);
+  const {
   game,
   post,
   battleIntent,
@@ -232,28 +350,7 @@ export function createSoloBattleLoadingRuntime({
   createLoadingYielder,
   now = () => performance.now(),
   delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
-}: SoloBattleLoadingRuntimeOptions): SoloBattleLoadingRuntime {
-  const required = [post?.setAdaptiveSuspended, battleIntent?.consumeMap,
-    battleIntent?.prepareRoster, battleLoad?.show, battleLoad?.progress,
-    battleLoad?.rosters, battleLoad?.hide, audio?.resume, audio?.loadingOn,
-    audio?.ambientOn, audio?.warmBattleEvents, acquisition?.acquireSolo,
-    deployment?.warm, lifecycle?.primeReveal, getPendingMapId, getMapName, loadMapConfig,
-    getMapThumb, hasCachedWorld, getWorld, ensureWorld, ensureBattleVisuals,
-    getBattleVisuals, ensureBattleHud, preloadMinimap, ensureTouchControls, preloadSettings,
-    preloadArmorAim, planRoster, planCamoOverrides, ensureTankBuilders,
-    preloadSoloAuthority, preloadBattleClient, preloadBattleWarm, ensureKillcam,
-    preloadBattleStart, ensureFx, startBattle, prepareBattleWorldServices, getPedestalVisual,
-    prebakeSharedTextures, rosterRows, warmShotCards, getCamoSweep,
-    prepareRevealCamera, resolveVisiblePreBattleSeconds, openBattle,
-    scheduleDeferredWarm, nextFrame, createLoadingYielder, now, delay];
-  if (required.some((entry) => typeof entry !== 'function')) {
-    throw new TypeError('solo battle loading runtime requires every lifecycle port');
-  }
-  if (!Number.isFinite(anisotropy) || anisotropy < 0 ||
-      !Number.isFinite(preBattleHoldSeconds) || preBattleHoldSeconds < 0 ||
-      !Number.isFinite(minimumVisiblePreBattleSeconds) || minimumVisiblePreBattleSeconds < 0) {
-    throw new TypeError('solo battle loading runtime requires finite quality and countdown values');
-  }
+  } = options;
 
   const host = globalThis as LoadingHost;
 
@@ -285,10 +382,7 @@ export function createSoloBattleLoadingRuntime({
         mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
-        mode: normalizedGameMode === 'standard'
-          ? mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard'
-          : `${gameModeDefinition(normalizedGameMode).label} · ${
-            mapId === 'random' ? 'Any Battlefield' : 'Selected Battlefield'}`,
+        mode: loadingModeLabel(normalizedGameMode, mapId),
         allies: [],
         enemies: [],
       });
@@ -335,10 +429,7 @@ export function createSoloBattleLoadingRuntime({
         ),
         async () => {
           const mapConfig = await mapConfigPromise;
-          const tankWrecks = mapConfig.props?.tankWrecks;
-          const plannedWorldVehicles = tankWrecks && 'ids' in tankWrecks &&
-            Array.isArray(tankWrecks.ids) ? tankWrecks.ids : [];
-          return ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]);
+          return ensureTankBuilders([...plannedRoster, ...plannedWorldVehicleIds(mapConfig)]);
         },
         () => preloadSoloAuthority(),
         () => preloadBattleClient(),
@@ -426,8 +517,6 @@ export function createSoloBattleLoadingRuntime({
       mark('holdCountdown');
       trace.totalMs = Math.round(now() - shownAt);
       host.__BATTLE_LOAD = trace;
-      post.setAdaptiveSuspended(false);
-      mark('restoreRenderer');
       if (!revealPrimed) {
         prepareRevealCamera();
         await lifecycle.primeReveal();
@@ -435,6 +524,9 @@ export function createSoloBattleLoadingRuntime({
       mark('primeReveal');
       await battleLoad.hide();
       mark('hide');
+      // Reveal is now complete; start a fresh governor baseline using only
+      // playable battle frames, never covered compilation or upload yields.
+      post.setAdaptiveSuspended(false);
       const loadingElapsedSeconds = (now() - shownAt) / 1000;
       const visiblePreBattleSeconds = resolveVisiblePreBattleSeconds(
         preBattleHoldSeconds,

@@ -56,7 +56,6 @@ function createHarness({ failAllies = false } = {}) {
       markOpeningReady: () => calls.push(['openingReady']),
     },
     post: {
-      setAdaptiveSuspended: (value) => calls.push(['adaptive', value]),
       warmFirstFrame: async (yieldBeforePass) => {
         calls.push(['postWarm']);
         await yieldBeforePass('post-pass');

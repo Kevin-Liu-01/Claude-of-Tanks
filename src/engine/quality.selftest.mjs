@@ -55,9 +55,15 @@ assert.equal(resetDesktop.resolvePresetName(), 'high');
 assert.equal(resetDesktop.reportSustainedOverload(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'medium',
   'gfxreset is consumed once instead of erasing the live governor decision');
-assert.equal(resetBrowser.storage.get('cot.gfxAutoTier'), 'medium');
+assert.equal(resetBrowser.storage.get('cot.gfxAutoTier'), undefined,
+  'live governor verdicts must not persist transient load across sessions');
 assert.equal(resetDesktop.reportSustainedOverload(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'low',
   'a second sustained-overload decision can converge to the floor');
+
+const freshDesktop = await import('./quality.ts?quality-fresh-session-contract');
+assert.equal(freshDesktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');
+assert.equal(freshDesktop.resolvePresetName(), 'high',
+  'a new session re-runs stable hardware policy instead of inheriting load');
 
 console.log('quality.selftest: device, texture, preset, and subscription contracts passed');

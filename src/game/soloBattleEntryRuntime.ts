@@ -22,7 +22,7 @@ export interface SoloBattleEntryRuntimeOptions {
   loading: SoloBattleLoadingRuntime;
   battleLoad: EntryLoadScreen;
   audio: EntryAudio;
-  enterGarage(): void;
+  enterGarage(): Promise<void> | void;
   nextFrame(): Promise<unknown>;
   isVisibleSpecId(specId: string): boolean;
   getSelectedSpecId(): string;
@@ -75,7 +75,7 @@ export function createSoloBattleEntryRuntime({
     } catch (error) {
       reportError('[battle] entry failed', error);
       audio.loadingOn(false);
-      enterGarage();
+      await enterGarage();
       lifecycle.uncoverRendering();
       await nextFrame();
       await battleLoad.hide?.();

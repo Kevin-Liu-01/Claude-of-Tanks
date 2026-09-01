@@ -100,6 +100,46 @@ let _mobileResetHandled = false;
 let _deviceTier: DeviceTier | null = null; // resolved once
 let _glMaxTexSize = 16384;   // renderer capability, captured at resolve time
 
+function captureTextureCapability(renderer?: WebGLRenderer): void {
+  try {
+    const maxTextureSize = renderer?.capabilities?.maxTextureSize;
+    if (maxTextureSize) _glMaxTexSize = maxTextureSize;
+  } catch (_) { /* capability probe only */ }
+}
+
+function requestedDeviceTier(): DeviceTier | null {
+  try {
+    const requested = new URLSearchParams(window.location.search).get('tier');
+    return requested === 'mobile' || requested === 'desktop' ? requested : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isConstrainedDevice(): boolean {
+  try {
+    const nav = navigator as DeviceNavigator;
+    const userAgent = nav.userAgent || '';
+    const touchPoints = nav.maxTouchPoints || 0;
+    const mobileUserAgent = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i
+      .test(userAgent);
+    const desktopIpad = /Macintosh/.test(userAgent) && touchPoints > 1;
+    const tightGpu = _glMaxTexSize <= 4096;
+    const smallMemory = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4;
+    const coarsePointer = typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches;
+    return mobileUserAgent || desktopIpad || tightGpu || (coarsePointer && smallMemory);
+  } catch (_) {
+    return false;
+  }
+}
+
+function publishDeviceTier(tier: DeviceTier): void {
+  try {
+    console.info(`[quality] device tier: ${tier} (maxTex ${_glMaxTexSize})`);
+  } catch (_) { /* consoleless env */ }
+}
+
 /**
  * Resolve the device tier once. Called by createRenderer immediately after
  * WebGLRenderer construction — before any preset consumer (post/lighting/
@@ -109,38 +149,10 @@ let _glMaxTexSize = 16384;   // renderer capability, captured at resolve time
  */
 export function resolveDeviceTier(renderer?: WebGLRenderer): DeviceTier {
   if (_deviceTier) return _deviceTier;
-  try {
-    if (renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) {
-      _glMaxTexSize = renderer.capabilities.maxTextureSize;
-    }
-  } catch (_) { /* capability probe only */ }
-  let forced: DeviceTier | null = null;
-  try {
-    const t = new URLSearchParams(window.location.search).get('tier');
-    if (t === 'mobile' || t === 'desktop') forced = t;
-  } catch (_) { /* no window/URL — headless import */ }
-  if (forced) {
-    _deviceTier = forced;
-  } else {
-    let mobile = false;
-    try {
-      const nav = navigator as DeviceNavigator;
-      const ua = nav.userAgent || '';
-      const touchPts = nav.maxTouchPoints || 0;
-      const phoneUA = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua);
-      const iPadDesktopUA = /Macintosh/.test(ua) && touchPts > 1; // iPadOS 13+
-      const tightGpu = _glMaxTexSize <= 4096;
-      const smallMem = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4;
-      const coarse = typeof window.matchMedia === 'function'
-        && window.matchMedia('(pointer: coarse)').matches;
-      mobile = phoneUA || iPadDesktopUA || tightGpu || (coarse && smallMem);
-    } catch (_) { mobile = false; }
-    _deviceTier = mobile ? 'mobile' : 'desktop';
-  }
-  try {
-    // one-line boot breadcrumb probes/users can quote from a phone
-    console.info(`[quality] device tier: ${_deviceTier} (maxTex ${_glMaxTexSize})`);
-  } catch (_) { /* consoleless env */ }
+  captureTextureCapability(renderer);
+  const requestedTier = requestedDeviceTier();
+  _deviceTier = requestedTier ?? (isConstrainedDevice() ? 'mobile' : 'desktop');
+  publishDeviceTier(_deviceTier);
   return _deviceTier;
 }
 
@@ -343,14 +355,17 @@ const listeners = new Set<PresetListener>();
 //  - the live frame governor (post.ts) calls reportSustainedOverload() when
 //    the frame budget has been missed for several consecutive decision
 //    windows with no resolution lever left — the auto tier steps down one
-//    notch and persists, so the next session starts where this one settled.
+//    notch for this session. Stable boot heuristics re-evaluate every visit;
+//    transient background load or thermal pressure must not pin a capable
+//    machine to Low indefinitely.
 // ---------------------------------------------------------------------------
 const LS_AUTO_TIER = 'cot.gfxAutoTier';
 const LS_AUTO_POLICY = 'cot.gfxAutoTierPolicy';
-const AUTO_POLICY_VERSION = 'clarity-r2';
+const AUTO_POLICY_VERSION = 'session-r3';
 const AUTO_ORDER: readonly AutoTier[] = ['low', 'medium', 'high']; // ultra stays explicit opt-in
 let _gpuRendererString = '';
 let _autoPolicyHandled = false;
+let _sessionAutoTier: AutoTier | null = null;
 
 /** Record the unmasked GL renderer string (createRenderer calls this once). */
 export function noteGpuRenderer(str: unknown): void {
@@ -395,39 +410,22 @@ function heuristicAutoCap(): AutoTier | null {
   return null;
 }
 
-/** The persisted governor demotion ('medium'|'low'), if any. ?gfxreset clears. */
-function storedAutoTier(): AutoTier | null {
+/** Remove verdicts written by the old cross-session governor policy. */
+function clearLegacyAutoTier(): void {
+  if (_autoPolicyHandled) return;
+  _autoPolicyHandled = true;
   try {
-    if (!_autoPolicyHandled
-        && new URLSearchParams(window.location.search).has('gfxreset')) {
-      window.localStorage.removeItem(LS_AUTO_TIER);
-      window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
-      _autoPolicyHandled = true;
-      return null;
-    }
+    window.localStorage.removeItem(LS_AUTO_TIER);
+    window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
   } catch (_) { /* headless */ }
-  try {
-    // clarity-r2 fixes loading-screen frames being mistaken for gameplay.
-    // Discard one stale verdict written by the old policy so an affected
-    // player is not left permanently blurry even after installing the fix.
-    if (!_autoPolicyHandled) {
-      _autoPolicyHandled = true;
-      if (window.localStorage.getItem(LS_AUTO_POLICY) !== AUTO_POLICY_VERSION) {
-        window.localStorage.removeItem(LS_AUTO_TIER);
-        window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
-      }
-    }
-    const v = window.localStorage.getItem(LS_AUTO_TIER);
-    return v === 'low' || v === 'medium' || v === 'high' ? v : null;
-  } catch (_) { return null; }
 }
 
 /** Resolve what 'auto' means on this device right now. */
 export function resolveAutoTier(): AutoTier {
+  clearLegacyAutoTier();
   let tier: AutoTier = 'high';
   const cap = heuristicAutoCap();
-  const stored = storedAutoTier();
-  for (const t of [cap, stored]) {
+  for (const t of [cap, _sessionAutoTier]) {
     if (t && AUTO_ORDER.indexOf(t) < AUTO_ORDER.indexOf(tier)) tier = t;
   }
   return tier;
@@ -436,7 +434,7 @@ export function resolveAutoTier(): AutoTier {
 /**
  * The governor's escalation path: sustained frame-budget misses with no
  * resolution lever left. Steps the AUTO tier down one notch (high → medium
- * → low), persists it, and rebroadcasts the preset so every engine module
+ * → low) for this session and rebroadcasts the preset so every engine module
  * resizes live. No-op (returns false) when the user pinned an explicit
  * preset or the tier is already at the floor.
  * @returns {boolean} true if a tier step was applied
@@ -449,7 +447,7 @@ export function reportSustainedOverload(): boolean {
   if (i <= 0) return false;
   const next = AUTO_ORDER[i - 1];
   if (!next) return false;
-  try { window.localStorage.setItem(LS_AUTO_TIER, next); } catch (_) { /* ok */ }
+  _sessionAutoTier = next;
   try {
     console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
   } catch (_) { /* ok */ }
@@ -532,12 +530,11 @@ export function setPresetName(name: string): void {
   if (name !== 'auto' && name !== 'low' && name !== 'medium'
     && name !== 'high' && name !== 'ultra') return;
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
-  // perf-r2e: an explicit preset pick takes control back from the adaptive
-  // auto tier — clear any persisted governor demotion so a later return to
-  // 'auto' re-detects from scratch instead of resurrecting an old verdict.
-  if (name !== 'auto') {
-    try { window.localStorage.removeItem(LS_AUTO_TIER); } catch (_) { /* ok */ }
-  }
+  // Every user choice starts a fresh auto-policy session. Explicit presets
+  // take control immediately; choosing Auto asks the hardware classifier and
+  // live governor to re-evaluate instead of resurrecting an earlier dip.
+  _sessionAutoTier = null;
+  try { window.localStorage.removeItem(LS_AUTO_TIER); } catch (_) { /* ok */ }
   const preset = getPreset();
   for (const fn of listeners) fn(preset);
 }

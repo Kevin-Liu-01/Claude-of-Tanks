@@ -1,6 +1,13 @@
 export interface GarageReturnTrace {
   stages: Record<string, number>;
   totalMs?: number;
+  presentationRestore?: {
+    totalMs: number;
+    shadowPasses: number[];
+    shadowPassMax: number;
+    sceneUploadBatches: number[];
+    sceneUploadMax: number;
+  };
 }
 
 export interface GarageReturnOptions {
@@ -36,7 +43,6 @@ interface GarageReturnPresentationPort {
   setCaptureHidden(hidden: boolean): void;
   unfreezeEffects(): void;
   resetHudFrame(): void;
-  settleStaticShadows(): void;
 }
 
 interface GarageReturnNetworkPort {
@@ -95,7 +101,7 @@ interface GarageReturnGameState {
   mapId: string;
 }
 
-export interface GarageReturnRuntimeOptions<Visual = unknown> {
+export interface GarageReturnRuntimeOptions<Visual = object> {
   game: GarageReturnGameState;
   getSelectedSpecId(): string;
   presentation: GarageReturnPresentationPort;
@@ -108,7 +114,7 @@ export interface GarageReturnRuntimeOptions<Visual = unknown> {
   ui: GarageReturnUiPort;
   audio: GarageReturnAudioPort;
   transition: GarageReturnTransitionPort;
-  resumeGarageGpu(): Promise<void>;
+  restoreGaragePresentation(): Promise<NonNullable<GarageReturnTrace['presentationRestore']>>;
   isBattleEntryPending(): boolean;
   nowMs?: () => number;
   sleep?: (milliseconds: number) => Promise<unknown>;
@@ -123,51 +129,111 @@ export interface GarageReturnRuntime {
   battleAgain(): Promise<void>;
 }
 
+function validateGarageReturnPorts<Visual>(
+  options: GarageReturnRuntimeOptions<Visual>,
+): void {
+  try {
+    if (!options.game) throw new TypeError('missing game state');
+    checkedIntegrationPort<GarageReturnPresentationPort>(
+      options.presentation ?? {},
+      'garage return presentation',
+      ['setAdaptiveSuspended', 'clearBattle', 'resetBattleTank', 'suspendEffects',
+        'setShotMode', 'setCaptureHidden', 'unfreezeEffects', 'resetHudFrame'],
+    );
+    checkedIntegrationPort<GarageReturnNetworkPort>(
+      options.network ?? {},
+      'garage return network',
+      ['shouldPreserveRoom', 'disposePresentation', 'closeMatch'],
+    );
+    checkedIntegrationPort<GarageReturnWarmPort>(
+      options.warm ?? {},
+      'garage return warm state',
+      ['invalidate', 'cancel', 'setPending'],
+    );
+    checkedIntegrationPort<GarageReturnWorkPort>(
+      options.work ?? {},
+      'garage return work scheduler',
+      ['noteActivity', 'resetFramePacer', 'scheduleDressing'],
+    );
+    checkedIntegrationPort<GarageReturnWorldPort>(
+      options.world ?? {},
+      'garage return world',
+      ['currentMapId', 'ensureGaragePlacement', 'setDormant',
+        'setFarCascadeDormant', 'clearCamoOverrides'],
+    );
+    checkedIntegrationPort<GarageReturnRosterPort<Visual>>(
+      options.roster ?? {},
+      'garage return roster',
+      ['adoptBattlePlayer', 'clearBattle', 'repaintHero'],
+    );
+    checkedIntegrationPort<GarageReturnSettingsPort>(
+      options.settings ?? {},
+      'garage return settings',
+      ['isOpen', 'close'],
+    );
+    checkedIntegrationPort<GarageReturnUiPort>(
+      options.ui ?? {},
+      'garage return interface',
+      ['setGarageSpots', 'setGarageSunTrim', 'emitGaragePhase', 'hideEndOverlay',
+        'exitPointerLock', 'hideHud', 'showGarage', 'poseGarageCamera',
+        'startShowroom', 'triggerBattle'],
+    );
+    checkedIntegrationPort<GarageReturnAudioPort>(
+      options.audio ?? {},
+      'garage return audio',
+      ['ambientOn', 'playGarageSting'],
+    );
+    checkedIntegrationPort<GarageReturnTransitionPort>(
+      options.transition ?? {},
+      'garage return transition',
+      ['run'],
+    );
+    checkedIntegrationPort(
+      {
+        getSelectedSpecId: options.getSelectedSpecId,
+        restoreGaragePresentation: options.restoreGaragePresentation,
+        isBattleEntryPending: options.isBattleEntryPending,
+        nowMs: options.nowMs ?? (() => performance.now()),
+        sleep: options.sleep ?? (() => Promise.resolve()),
+        publishTrace: options.publishTrace ?? (() => {}),
+      },
+      'garage return lifecycle',
+      ['getSelectedSpecId', 'restoreGaragePresentation', 'isBattleEntryPending',
+        'nowMs', 'sleep', 'publishTrace'],
+    );
+  } catch {
+    throw new TypeError('garage return runtime requires every lifecycle port');
+  }
+}
+
 /**
  * Owns the complete battle/Studio-to-Garage transaction. The interface keeps
  * callers ignorant of teardown ordering while injected ports keep this state
  * machine independent from DOM, WebGL, Three.js, and the network transport.
  */
-export function createGarageReturnRuntime<Visual = unknown>({
-  game,
-  getSelectedSpecId,
-  presentation,
-  network,
-  warm,
-  work,
-  world,
-  roster,
-  settings,
-  ui,
-  audio,
-  transition,
-  resumeGarageGpu,
-  isBattleEntryPending,
-  nowMs = () => performance.now(),
-  sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
-  publishTrace = () => {},
-}: GarageReturnRuntimeOptions<Visual>): GarageReturnRuntime {
-  const required = [getSelectedSpecId, presentation?.setAdaptiveSuspended,
-    presentation?.clearBattle, presentation?.resetBattleTank,
-    presentation?.suspendEffects,
-    presentation?.setShotMode, presentation?.setCaptureHidden,
-    presentation?.unfreezeEffects, presentation?.resetHudFrame,
-    presentation?.settleStaticShadows,
-    network?.shouldPreserveRoom, network?.disposePresentation,
-    network?.closeMatch, warm?.invalidate, warm?.cancel, warm?.setPending,
-    work?.noteActivity, work?.resetFramePacer, work?.scheduleDressing,
-    world?.currentMapId, world?.ensureGaragePlacement, world?.setDormant,
-    world?.setFarCascadeDormant, world?.clearCamoOverrides,
-    roster?.adoptBattlePlayer, roster?.clearBattle, roster?.repaintHero,
-    settings?.isOpen, settings?.close, ui?.setGarageSpots,
-    ui?.setGarageSunTrim, ui?.emitGaragePhase, ui?.hideEndOverlay,
-    ui?.exitPointerLock, ui?.hideHud, ui?.showGarage,
-    ui?.poseGarageCamera, ui?.startShowroom, ui?.triggerBattle,
-    audio?.ambientOn, audio?.playGarageSting, transition?.run,
-    resumeGarageGpu, isBattleEntryPending, nowMs, sleep, publishTrace];
-  if (!game || required.some((entry) => typeof entry !== 'function')) {
-    throw new TypeError('garage return runtime requires every lifecycle port');
-  }
+export function createGarageReturnRuntime<Visual = object>(
+  options: GarageReturnRuntimeOptions<Visual>,
+): GarageReturnRuntime {
+  validateGarageReturnPorts(options);
+  const {
+    game,
+    getSelectedSpecId,
+    presentation,
+    network,
+    warm,
+    work,
+    world,
+    roster,
+    settings,
+    ui,
+    audio,
+    transition,
+    restoreGaragePresentation,
+    isBattleEntryPending,
+    nowMs = () => performance.now(),
+    sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    publishTrace = () => {},
+  } = options;
 
   let activeTransition: Promise<void> | null = null;
   let lastTrace: GarageReturnTrace | null = null;
@@ -186,8 +252,6 @@ export function createGarageReturnRuntime<Visual = unknown>({
     lastTrace = trace;
     publishTrace(trace);
 
-    // Release the loader suspension before any Garage frame can be exposed.
-    presentation.setAdaptiveSuspended(false);
     // Decals and replay-owned DOM must release before the player visual moves
     // to either network disposal or the Garage pedestal cache.
     presentation.clearBattle();
@@ -244,15 +308,12 @@ export function createGarageReturnRuntime<Visual = unknown>({
     audio.ambientOn(false);
     audio.playGarageSting();
     markStage('audio');
-    await resumeGarageGpu();
-    // GPU renewal can finish without a normal composed frame. Publish the
-    // exact current Garage cascade maps inside this return transaction, then
-    // freeze them before the veil or a direct debug caller exposes the scene.
-    // Otherwise the five-second watchdog may become the first consumer of a
-    // pending forced refresh, producing one intermittent shadow flash.
-    presentation.settleStaticShadows();
-    markStage('shadowSettle');
+    trace.presentationRestore = await restoreGaragePresentation();
+    markStage('presentationRestore');
     trace.totalMs = Math.round(nowMs() - startedAt);
+    // Covered restore frames are intentionally bursty. Start the Garage's
+    // quality baseline only after every resource and shadow unit is ready.
+    presentation.setAdaptiveSuspended(false);
   };
 
   const beginTransition = (operation: () => Promise<void>): Promise<void> => {
@@ -286,7 +347,7 @@ export function createGarageReturnRuntime<Visual = unknown>({
       title: 'Garage',
       mapId: world.currentMapId() || game.mapId,
       progress: false,
-      minShowMs: 760,
+      minShowMs: 250,
     });
   });
 
@@ -318,3 +379,4 @@ export function createGarageReturnRuntime<Visual = unknown>({
     battleAgain,
   };
 }
+import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';

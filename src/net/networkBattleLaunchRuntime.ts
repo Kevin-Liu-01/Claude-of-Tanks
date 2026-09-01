@@ -106,7 +106,7 @@ export interface NetworkBattleLaunchOptions {
   disposePresentation: () => void;
   clearNetworkRound: () => void;
   closeMatch: (reason: string) => void;
-  enterGarage: () => void;
+  enterGarage: () => Promise<void> | void;
   setNetworkStatus: (status: DedicatedStatus) => void;
   recordEntryFailure: (failure: NetworkEntryFailure | null) => void;
   reportError?: (scope: string, error: unknown) => void;
@@ -255,7 +255,7 @@ export function createNetworkBattleLaunchRuntime({
     closeMatch(reason);
     lifecycle.uncoverRendering();
     await battleLoad.hide();
-    enterGarage();
+    await enterGarage();
   };
 
   const diagnosticFor = (

@@ -646,6 +646,10 @@ export function createGarageDressing(
       camoSeed,
       ...WORKSHOP_PRESENTATION_OPTIONS,
     });
+    (group.userData.workshopTransferTimings ||= []).push({
+      specId,
+      ...visual.root.userData.workshopTransferTimings,
+    });
     visual.resetForGaragePresentation?.();
     pendingTankReveal = visual.root;
     workshopVisuals.push(visual);
@@ -1786,7 +1790,11 @@ export function createGarageDressing(
         pendingTankReveal = null;
         reveal.visible = true;
         reveal.updateMatrixWorld(true);
-        (group.userData.buildTimings ||= []).push({ chunk: 'reveal-tank', ms: 0 });
+        (group.userData.buildTimings ||= []).push({
+          chunk: 'reveal-tank',
+          ms: 0,
+          at: Math.round(performance.now()),
+        });
         return next < chunks.length;
       }
       if (next >= chunks.length) return false;
@@ -1802,6 +1810,7 @@ export function createGarageDressing(
         (group.userData.buildTimings ||= []).push({
           chunk: `prepare:${requiredVehicleId}`,
           ms: Math.round(performance.now() - prepareStartedAt),
+          at: Math.round(performance.now()),
         });
         return true;
       }
@@ -1820,6 +1829,7 @@ export function createGarageDressing(
         (group.userData.buildTimings ||= []).push({
           chunk: label,
           ms: Math.round(performance.now() - startedAt),
+          at: Math.round(performance.now()),
         });
       } catch (error: unknown) {
         const message = (error as { message: string }).message;

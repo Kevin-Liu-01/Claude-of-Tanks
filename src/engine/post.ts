@@ -2328,7 +2328,7 @@ export function createPost(
       }
       return;
     } else if (overloaded && reliefLever === 'tier' && dynClock > 8) {
-      // fully trimmed and still overloaded: escalate to the persisted tier
+      // fully trimmed and still overloaded: escalate the session auto tier
       tierStrikes++;
       if (tierStrikes >= TIER_STRIKES_MAX) {
         tierStrikes = 0;
