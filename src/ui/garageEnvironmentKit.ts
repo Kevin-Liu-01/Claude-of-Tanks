@@ -677,6 +677,8 @@ export function buildGarageEnvironment(
         looseParts: 0,
         railSegments: 0,
         serviceVehicles: 0,
+        meshes: Object.freeze([]),
+        material: null,
       })
     : addGarageFacilityDetails({
         buckets: combined,
@@ -684,6 +686,11 @@ export function buildGarageEnvironment(
         groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
         variant,
       });
+  for (const mesh of facilityDetails.meshes) {
+    track(mesh.geometry);
+    root.add(mesh);
+  }
+  if (facilityDetails.material) track(facilityDetails.material);
 
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material

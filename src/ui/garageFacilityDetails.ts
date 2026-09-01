@@ -15,6 +15,11 @@ export interface GarageFacilityDetailStats {
   readonly serviceVehicles: number;
 }
 
+export interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
+  readonly meshes: readonly THREE.InstancedMesh[];
+  readonly material: THREE.MeshStandardMaterial | null;
+}
+
 interface FacilityBuildOptions {
   readonly buckets: GeometryBuckets;
   readonly engineCtx: Readonly<{
@@ -35,6 +40,11 @@ interface AssemblyPlacement {
   readonly depth: number;
   readonly yaw?: number;
   readonly scale?: number;
+}
+
+interface PrimitiveInstance {
+  readonly matrix: THREE.Matrix4;
+  readonly color: THREE.Color;
 }
 
 const VIEW_YAW = Math.PI / 4;
@@ -108,8 +118,8 @@ export function addGarageFacilityDetails({
   engineCtx,
   groundAtWorld,
   variant,
-}: FacilityBuildOptions): GarageFacilityDetailStats {
-  const baked = buckets.baked || (buckets.baked = []);
+}: FacilityBuildOptions): GarageFacilityDetailBuild {
+  buckets.baked ||= [];
   let facilityProps = 0;
   let facilityStations = 0;
   let looseParts = 0;
@@ -122,29 +132,35 @@ export function addGarageFacilityDetails({
   const timber = new THREE.Color(0x685035);
   const rubber = new THREE.Color(0x151719);
   const primer = new THREE.Color(0x70463a);
+  const unitBox = new THREE.BoxGeometry(1, 1, 1);
+  const unitCylinders = new Map<number, THREE.CylinderGeometry>();
+  const boxInstances: PrimitiveInstance[] = [];
+  const cylinderInstances = new Map<number, PrimitiveInstance[]>();
+  const unitCylinder = (segments: number): THREE.CylinderGeometry => {
+    let geometry = unitCylinders.get(segments);
+    if (!geometry) {
+      geometry = new THREE.CylinderGeometry(1, 1, 1, segments, 1);
+      unitCylinders.set(segments, geometry);
+    }
+    return geometry;
+  };
 
-  const add = (
-    geometry: THREE.BufferGeometry,
+  const transform = (
     side: number,
     depth: number,
     y: number,
     scale: readonly [number, number, number],
-    color: THREE.Color,
     yaw = VIEW_YAW,
     rotationX = 0,
     rotationZ = 0,
-  ): void => {
+  ): THREE.Matrix4 => {
     const point = cameraPoint(side, depth);
     const groundY = groundAtWorld(point.x, point.z);
-    const matrix = new THREE.Matrix4().compose(
+    return new THREE.Matrix4().compose(
       new THREE.Vector3(point.x, groundY + y, point.z),
       new THREE.Quaternion().setFromEuler(new THREE.Euler(rotationX, yaw, rotationZ)),
       new THREE.Vector3(scale[0], scale[1], scale[2]),
     );
-    geometry.applyMatrix4(matrix);
-    paintGeometry(geometry, color);
-    baked.push(geometry);
-    facilityProps += 1;
   };
 
   const box = (
@@ -158,8 +174,13 @@ export function addGarageFacilityDetails({
     yaw = VIEW_YAW,
     rotationX = 0,
     rotationZ = 0,
-  ): void => add(new THREE.BoxGeometry(1, 1, 1), side, depth, y,
-    [width, height, length], color, yaw, rotationX, rotationZ);
+  ): void => {
+    boxInstances.push({
+      matrix: transform(side, depth, y, [width, height, length], yaw, rotationX, rotationZ),
+      color: color.clone(),
+    });
+    facilityProps += 1;
+  };
 
   const cylinder = (
     side: number,
@@ -172,8 +193,16 @@ export function addGarageFacilityDetails({
     rotationX = 0,
     rotationZ = 0,
     segments = 10,
-  ): void => add(new THREE.CylinderGeometry(1, 1, 1, segments, 1), side, depth, y,
-    [radius, height, radius], color, yaw, rotationX, rotationZ);
+  ): void => {
+    unitCylinder(segments);
+    const instances = cylinderInstances.get(segments) || [];
+    instances.push({
+      matrix: transform(side, depth, y, [radius, height, radius], yaw, rotationX, rotationZ),
+      color: color.clone(),
+    });
+    cylinderInstances.set(segments, instances);
+    facilityProps += 1;
+  };
 
   const addFloodTower = (side: number, depth: number, height = 7.2): void => {
     box(side, depth, height / 2, 0.20, height, 0.20, steel);
@@ -479,8 +508,52 @@ export function addGarageFacilityDetails({
     }
     library.dispose();
   }
+  const primitiveMaterial = boxInstances.length || cylinderInstances.size
+    ? new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, metalness: 0.06 })
+    : null;
+  if (primitiveMaterial) engineCtx.setupShadowMaterial?.(primitiveMaterial);
+  const meshes: THREE.InstancedMesh[] = [];
+  const makeInstances = (
+    name: string,
+    geometry: THREE.BufferGeometry,
+    instances: readonly PrimitiveInstance[],
+  ): void => {
+    if (!primitiveMaterial || !instances.length) {
+      geometry.dispose();
+      return;
+    }
+    const mesh = new THREE.InstancedMesh(geometry, primitiveMaterial, instances.length);
+    mesh.name = name;
+    instances.forEach((instance, index) => {
+      mesh.setMatrixAt(index, instance.matrix);
+      mesh.setColorAt(index, instance.color);
+    });
+    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.computeBoundingBox();
+    mesh.computeBoundingSphere();
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    meshes.push(mesh);
+  };
+  makeInstances('garage_facility_boxes', unitBox, boxInstances);
+  for (const [segments, geometry] of unitCylinders) {
+    makeInstances(`garage_facility_cylinders_${segments}`, geometry,
+      cylinderInstances.get(segments) || []);
+  }
 
   // All primitive bases were transformed directly into owned geometries; no
   // live object, listener, animation, or per-frame updater survives this call.
-  return Object.freeze({ facilityProps, facilityStations, looseParts, railSegments, serviceVehicles });
+  return Object.freeze({
+    facilityProps,
+    facilityStations,
+    looseParts,
+    railSegments,
+    serviceVehicles,
+    meshes: Object.freeze(meshes),
+    material: primitiveMaterial,
+  });
 }

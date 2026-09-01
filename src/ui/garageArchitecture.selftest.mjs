@@ -61,7 +61,7 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.enclosingSurfaces, 0,
     `${variant.id} must remain an open Garage environment`);
   assert.equal(stats.source, 'authentic-garage-scene-pack');
-  assert.ok(stats.objects >= 8 && stats.drawCalls <= 20,
+  assert.ok(stats.objects >= 8 && stats.drawCalls <= 24,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
   assert.ok(stats.triangles > 0 && stats.triangles <= 30_000,
     `${variant.id} must stay inside the Garage environment geometry budget`);

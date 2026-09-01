@@ -17,8 +17,9 @@ import { iconUrl } from './icons.ts';
 import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 
-const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'] as const;
+const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
+let portraitObserver: IntersectionObserver | null = null;
 
 interface TopMaskEngineContext {
   renderer: THREE.WebGLRenderer;
@@ -97,22 +98,27 @@ function errorMessage(error: unknown): string {
 
 /** Stable portrait URL for a tank. @param {string} specId */
 export function getTankThumb(specId: string): string {
-  return iconUrl(specId, FALLBACK_VIEWS[0]);
+  return `/icons/thumbs/${specId}_angle.webp`;
+}
+
+function portraitUrl(specId: string, index: number): string {
+  const source = PORTRAIT_SOURCES[index] || PORTRAIT_SOURCES[0];
+  return source === 'thumb-angle' ? getTankThumb(specId) : iconUrl(specId, source);
 }
 
 function advanceFallback(img: HTMLImageElement): void {
   const id = img && img.dataset && img.dataset.cotThumb;
   if (!id) return;
   const next = Number(img.dataset.cotIconFallback || 0) + 1;
-  if (next < FALLBACK_VIEWS.length) {
+  if (next < PORTRAIT_SOURCES.length) {
     img.dataset.cotIconFallback = String(next);
-    img.src = iconUrl(id, FALLBACK_VIEWS[next]);
+    img.src = portraitUrl(id, next);
     return;
   }
 
   // A missing asset should never expose the browser's broken-image glyph or
   // a blank rectangular plate. Preserve layout while hiding only the image.
-  img.dataset.cotIconFallback = String(FALLBACK_VIEWS.length);
+  img.dataset.cotIconFallback = String(PORTRAIT_SOURCES.length);
   img.style.visibility = 'hidden';
 }
 
@@ -132,26 +138,52 @@ function installErrorGuard(): void {
  * Normalize every tank portrait under `root` to its packaged transparent PNG.
  * @param {Document|Element} root
  */
-function applyTankThumbs(root: ParentNode): void {
+function revealTankThumb(img: HTMLImageElement): void {
+  installErrorGuard();
+  const id = img.dataset.cotThumb;
+  if (!id) return;
+  portraitObserver?.unobserve(img);
+  const savedFallback = Number(img.dataset.cotIconFallback || 0);
+  const fallback = Math.min(Math.max(savedFallback, 0), PORTRAIT_SOURCES.length - 1);
+  const expected = portraitUrl(id, fallback);
+  if ((img.getAttribute('src') || '') !== expected) {
+    img.dataset.cotIconFallback = String(fallback);
+    img.style.visibility = '';
+    img.src = expected;
+  }
+  img.decoding = 'async';
+  img.draggable = false;
+  if (img.complete && !img.naturalWidth) advanceFallback(img);
+}
+
+function observeTankThumb(img: HTMLImageElement): void {
+  if (img.getAttribute('src')) return;
+  if (typeof IntersectionObserver !== 'function') {
+    revealTankThumb(img);
+    return;
+  }
+  portraitObserver ||= new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting && entry.target instanceof HTMLImageElement) {
+        revealTankThumb(entry.target);
+      }
+    }
+  }, { rootMargin: '240px 420px' });
+  portraitObserver.observe(img);
+}
+
+function observeTankThumbs(root: ParentNode): void {
   if (!root || !root.querySelectorAll) return;
   installErrorGuard();
   for (const img of root.querySelectorAll<HTMLImageElement>('img[data-cot-thumb]')) {
-    const id = img.dataset.cotThumb;
-    if (!id) continue;
-    const savedFallback = Number(img.dataset.cotIconFallback || 0);
-    const fallback = Math.min(Math.max(savedFallback, 0), FALLBACK_VIEWS.length - 1);
-    const expected = iconUrl(id, FALLBACK_VIEWS[fallback]);
-    const rawSrc = img.getAttribute('src') || '';
-    if (rawSrc !== expected) {
-      img.dataset.cotIconFallback = String(fallback);
-      img.style.visibility = '';
-      img.src = expected;
-    }
-    img.decoding = 'async';
-    img.draggable = false;
-    // Handle a cached failure that may have completed before the guard was
-    // installed. Successful cached images have a non-zero natural width.
-    if (img.complete && !img.naturalWidth) advanceFallback(img);
+    observeTankThumb(img);
+  }
+}
+
+function applyTankThumbs(root: ParentNode): void {
+  if (!root || !root.querySelectorAll) return;
+  for (const img of root.querySelectorAll<HTMLImageElement>('img[data-cot-thumb]')) {
+    revealTankThumb(img);
   }
 }
 
@@ -161,12 +193,8 @@ export function requeueTankThumbs(specId: string | null = null): void {
   installErrorGuard();
   for (const img of document.querySelectorAll<HTMLImageElement>('img[data-cot-thumb]')) {
     if (specId != null && img.dataset.cotThumb !== specId) continue;
-    if (!img.getAttribute('src')) {
-      img.dataset.cotIconFallback = '0';
-      img.style.visibility = '';
-      const id = img.dataset.cotThumb;
-      if (id) img.src = getTankThumb(id);
-    }
+    if (specId == null) observeTankThumb(img);
+    else revealTankThumb(img);
   }
 }
 
@@ -181,7 +209,7 @@ export function drainTankThumbs(): void {
  */
 export function ensureTankThumbs(_specs: unknown, _opts: unknown = {}): void {
   if (typeof document === 'undefined') return;
-  applyTankThumbs(document);
+  observeTankThumbs(document);
   document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
 }
 

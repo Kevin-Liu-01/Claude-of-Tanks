@@ -55,6 +55,11 @@ outdoor destinations live behind `garageArchitecture.ts`; their static service
 facilities are baked by `garageFacilityDetails.ts`, receive but do not cast live
 CSM shadows, and retain no playable-fleet runtime. Preserve one canonical hero
 pose and verify both persisted outdoor reload and 1180x820 overlay composition.
+Do not reintroduce all-environment post-ready warming. Selector intent may
+fetch code, exact card intent may prepare one destination, the prior complete
+pack stays visible through the handoff, and the cache retains at most the active
+and previous packs. Repeated opaque facility primitives belong in static
+instanced batches, not individual scene nodes or one-off merged allocations.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,

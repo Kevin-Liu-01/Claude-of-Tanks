@@ -1,6 +1,6 @@
 // tools/map-thumbs.mjs — regenerate the garage map-picker thumbnails.
 // Renders each map's deterministic battlefield view through the screenshot
-// harness and publishes both crisp 1280x720 picker WebPs and native 4K hero
+// harness and publishes both crisp 512x288 picker WebPs and native 4K hero
 // WebPs in public/maps/. The generated module keeps list/card consumers on the
 // lightweight derivatives while wide briefing and Studio surfaces request only
 // the currently selected 4K frame.
@@ -38,7 +38,7 @@ const VIEWS = {
   titan_gorge: 'battlefield_titan_gorge',
   skybridge: 'battlefield_skybridge',
 };
-const THUMB_W = 1280, THUMB_H = 720;
+const THUMB_W = 512, THUMB_H = 288;
 const HERO_W = 3840, HERO_H = 2160;
 const QUALITY = 88;
 

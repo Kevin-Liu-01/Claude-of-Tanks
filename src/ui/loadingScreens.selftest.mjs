@@ -41,7 +41,7 @@ for (const mapId of MAP_IDS) {
   const hero = await readFile(new URL(`../../public${MAP_HEROES[mapId]}`, import.meta.url));
   const thumb = await readFile(new URL(`../../public${MAP_THUMBS[mapId]}`, import.meta.url));
   assert.deepEqual(webpDimensions(hero), [3840, 2160], `${mapId} hero must remain native 4K`);
-  assert.deepEqual(webpDimensions(thumb), [1280, 720], `${mapId} picker must remain 720p`);
+  assert.deepEqual(webpDimensions(thumb), [512, 288], `${mapId} picker must remain a crisp 16:9 card asset`);
   assert.ok(hero.length > thumb.length * 3,
     `${mapId} picker must remain a materially lighter derivative than its hero`);
 }

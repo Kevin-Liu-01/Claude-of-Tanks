@@ -5,7 +5,7 @@ const source = await readFile(new URL('./garage-variants-probe.mjs', import.meta
 assert.match(source, /variants\.length !== 10/);
 assert.match(source, /stats\.triangles !== 0/);
 assert.match(source, /source !== 'authentic-garage-scene-pack'/);
-assert.match(source, /architecture\.drawCalls > 20/);
+assert.match(source, /architecture\.drawCalls > 24/);
 assert.match(source, /architecture\.residentTextureSets > 9/);
 assert.match(source, /for \(let pass = 0; pass < 4/);
 assert.match(source, /cycle = 0; cycle < 30/);

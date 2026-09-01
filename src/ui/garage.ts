@@ -5,11 +5,11 @@
 
 import { ensureFonts } from './fonts.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
-import { preloadImage, preloadImageWhenIdle } from './imagePreload.ts';
+import { preloadImage } from './imagePreload.ts';
 import { flagIconHTML, flagIconUrl } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
-import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.ts';
+import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
@@ -147,6 +147,8 @@ export interface GarageOptions {
   readonly maps?: readonly GarageMap[];
   readonly garageVariants?: readonly GarageVariantView[];
   readonly selectedGarageVariantId?: string;
+  readonly onGarageVariantMenuIntent?: () => void;
+  readonly onGarageVariantIntent?: (variantId: string) => void;
   readonly onGarageVariantSelect?: (variantId: string) => void;
   readonly camo?: GarageCamoOptions;
   readonly onMapSelect?: (mapId: string) => void;
@@ -580,39 +582,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let idx = -1;
     let front = 0;
     let timer: ReturnType<typeof setInterval> | 0 = 0;
-    const show = (i: number): void => {
+    const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
       front ^= 1;
-      layers[front].style.backgroundImage = `url("${FEATURED_SHOTS[i].img}")`;
+      layers[front].style.backgroundImage = `url("${imageUrl}")`;
       layers[front].classList.add('on');
       layers[front ^ 1].classList.remove('on');
       capEl.textContent = FEATURED_SHOTS[i].cap;
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       idx = i;
-      preloadImageWhenIdle(FEATURED_SHOTS[(i + 1) % FEATURED_SHOTS.length].img);
     };
-    const preload = (i: number, cb: () => void, priority: ImagePriority = 'low'): void => {
+    const preload = (i: number, cb: (url: string) => void, priority: ImagePriority = 'low'): void => {
       preloadImage(FEATURED_SHOTS[i].img, { priority }).then((url) => {
-        if (url) cb();
+        if (url) cb(url);
       });
     };
-    const jump = (i: number, priority: ImagePriority = 'high') => preload(i, () => show(i), priority);
+    const jump = (i: number, priority: ImagePriority = 'high') => preload(i, (url) => show(i, url), priority);
     const advance = (priority: ImagePriority = 'low') => jump(
       (idx + 1) % FEATURED_SHOTS.length, priority);
     const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
     // the frame away right after the user picked one
     const rearm = () => { if (timer) { clearInterval(timer); timer = 0; } arm(); };
-    // r9.1 (owner): lead with a DIFFERENT shot each load. The panel used to
-    // request and decode this 45-350 kB image while the selected tank and the
-    // post chain were still warming. Keep the gradient card in place, then
-    // activate only after the playable-ready contract (or immediately on
-    // explicit panel intent). No gallery media competes with a pristine boot.
-    const first = Math.floor(Math.random() * FEATURED_SHOTS.length);
+    // The compact Garage panel starts with the dedicated 44 kB preview of the
+    // same full-quality shot. Full-resolution gallery media and rotation begin
+    // only on user intent, so a pristine Garage never decodes hundreds of kB
+    // of unrelated marketing art while its 3D scene becomes interactive.
+    const first = 0;
     let activated = false;
     const activate = (priority: ImagePriority = 'low') => {
       if (activated) return;
       activated = true;
-      preload(first, () => { show(first); arm(); }, priority);
+      const preview = FEATURED_SHOTS[first].bootImg || FEATURED_SHOTS[first].img;
+      preloadImage(preview, { priority }).then((url) => { if (url) show(first, url); });
     };
     const activateWhenPlayable = () => {
       if (window.__GAME_READY === true) {
@@ -624,8 +625,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       setTimeout(activateWhenPlayable, 120);
     };
     activateWhenPlayable();
-    shotEl.addEventListener('pointerenter', () => activate('high'), { once: true });
-    shotEl.addEventListener('focusin', () => activate('high'), { once: true });
+    const engageGallery = () => { activate('high'); arm(); };
+    shotEl.addEventListener('pointerenter', engageGallery, { once: true });
+    shotEl.addEventListener('focusin', engageGallery, { once: true });
     shotEl.addEventListener('click', () => { activate('high'); advance('high'); rearm(); });
     requiredElement<HTMLButtonElement>(panel, '.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -696,6 +698,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const openGarageVariantMenu = () => {
     if (!garageVariants.length) return;
+    try { opts.onGarageVariantMenuIntent?.(); } catch (_) { /* optional warm path */ }
     closeGarageTools();
     closeBattleMenu();
     closeMobileNavigation();
@@ -752,6 +755,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     check.className = 'cot-garage-variant-check';
     check.innerHTML = uiIconSVG('check', 12);
     button.append(image, copy, check);
+    const signalVariantIntent = () => {
+      try { opts.onGarageVariantIntent?.(variant.id); } catch (_) { /* optional warm path */ }
+    };
+    button.addEventListener('pointerenter', signalVariantIntent, { passive: true });
+    button.addEventListener('focusin', signalVariantIntent);
+    button.addEventListener('touchstart', signalVariantIntent, { passive: true });
+    button.addEventListener('pointerdown', signalVariantIntent, { passive: true });
     button.addEventListener('click', () => {
       emit('ui:click', {});
       selectGarageVariant(variant.id);
@@ -760,6 +770,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     garageVariantButtons.set(variant.id, button);
   }
   refreshGarageVariantUi();
+  const signalVariantMenuIntent = () => {
+    try { opts.onGarageVariantMenuIntent?.(); } catch (_) { /* optional warm path */ }
+  };
+  garageVariantTrigger.addEventListener('pointerenter', signalVariantMenuIntent, { passive: true });
+  garageVariantTrigger.addEventListener('focusin', signalVariantMenuIntent);
+  garageVariantTrigger.addEventListener('touchstart', signalVariantMenuIntent, { passive: true });
+  garageVariantTrigger.addEventListener('pointerdown', signalVariantMenuIntent, { passive: true });
   const openSelectedInGallery = (layer = 'appearance') => {
     emit('ui:click', {});
     window.location.href = garageGalleryHref(selectedId, layer);
@@ -1109,14 +1126,31 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const mapGrid = document.createElement('div');
     mapGrid.className = 'cot-map-grid';
     mapScroll.appendChild(mapGrid);
+    const mapThumbLoaders = new WeakMap<Element, () => void>();
+    const mapThumbObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          mapThumbLoaders.get(entry.target)?.();
+          mapThumbObserver?.unobserve(entry.target);
+        }
+      }, { root: mapScroll, rootMargin: '120px' })
+      : null;
     for (const m of maps) {
       const card = document.createElement('div');
       card.className = 'cot-map-card';
       card.title = m.name;
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
-      if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
-      else if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`;
+      const loadThumb = () => {
+        if (thumb.dataset.loaded === 'true') return;
+        thumb.dataset.loaded = 'true';
+        if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
+        else if (m.thumb) thumb.style.backgroundImage = `url("${m.thumb.replace(/"/g, '%22')}")`;
+      };
+      mapThumbLoaders.set(thumb, loadThumb);
+      if (mapThumbObserver) mapThumbObserver.observe(thumb);
+      else loadThumb();
       const nm = document.createElement('div');
       nm.className = 'mname';
       nm.textContent = m.name;
@@ -1728,7 +1762,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span class="designation">${s.markings?.designation || ''}</span>` +
       (developmentOnly ? `<span class="dev-tag">${s.roster?.tag || 'DEV'}</span>` : '') +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
+      `<img class="ti" data-cot-thumb="${s.id}" alt="${displayName}" width="256" height="256" ` +
+      `loading="lazy" decoding="async" fetchpriority="low">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
       `<div class="era">${vehicleEraLabel(s.era, { short: true })}</div>`;
     requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
@@ -1936,7 +1971,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-technical-viewer-dialog" ` +
       `aria-label="Expand ${spec.label?.displayName || spec.name} ${initialTechnicalView.label} schematic">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
-      `data-technical-image draggable="false" decoding="async">` +
+      `data-technical-image draggable="false" loading="lazy" decoding="async" fetchpriority="low">` +
       `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 14)}Expand view</span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalView.caption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +

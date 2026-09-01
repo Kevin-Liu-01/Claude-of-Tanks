@@ -1,6 +1,6 @@
 /** Plain-node coverage for the shared UI and equipment vector icon sets. */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import './contextInfo.selftest.mjs';
 import './garageDossier.selftest.mjs';
 import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
@@ -99,6 +99,17 @@ if ((studioMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
 const tankThumbs = await readFile(new URL('./tankThumbs.ts', import.meta.url), 'utf8');
 if (!tankThumbs.includes('await ensureTankBuilder(id)')) {
   throw new Error('top-down mask fallback must join the exact fleet demand-load before createTank');
+}
+
+const iconNames = (await readdir(new URL('../../public/icons/', import.meta.url)))
+  .filter((name) => name.endsWith('_angle.webp'))
+  .sort();
+const thumbNames = (await readdir(new URL('../../public/icons/thumbs/', import.meta.url)))
+  .filter((name) => name.endsWith('_angle.webp'))
+  .sort();
+if (iconNames.length !== thumbNames.length
+    || iconNames.some((name, index) => name !== thumbNames[index])) {
+  throw new Error('every full Garage angle portrait must have a matching 256px thumbnail');
 }
 
 for (const id of ['gallery', 'speed', 'camouflage', 'shield', 'engine', 'scope', 'damage', 'optics']) {

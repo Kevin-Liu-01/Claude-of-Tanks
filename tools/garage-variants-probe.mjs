@@ -244,7 +244,7 @@ try {
         failures.push(`${result.id}: restored workshop receipt failed`);
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
-        || architecture.drawCalls < 8 || architecture.drawCalls > 20
+        || architecture.drawCalls < 8 || architecture.drawCalls > 24
         || architecture.triangles <= 0 || architecture.triangles > 30_000
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4

@@ -576,9 +576,9 @@ const evaluateBudgets = (phases) => {
   check('active battle releases authentic Garage GPU residency',
     battle?.resources.caches.garageGpuResidency?.suspended === true
       && (battle?.resources.caches.garageGpuResidency?.lastRelease?.geometries || 0) >= 12
-      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 18,
+      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 15,
     battle?.resources.caches.garageGpuResidency || null,
-    'suspended with the active scene pack and all warmed PBR sets released');
+    'suspended with every currently resident Garage stage resource released');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`active battle renderer ${resource}`,
       battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],

@@ -45,6 +45,8 @@ interface GarageStageEngineContext {
 export interface GarageStageRuntime {
   group: THREE.Group;
   setVariant(variantId: string): string;
+  prepareSelector(): Promise<void>;
+  prepareVariant(variantId: string): Promise<GarageArchitectureStats>;
   stats(): GarageArchitectureStats;
   dispose(): void;
 }
@@ -546,6 +548,11 @@ export function createGarageStage(
     roughness: 1,
     metalness: 0,
     side: THREE.DoubleSide,
+  }), { instanced: true, instanceColor: true });
+  addOutdoorSeed('facility-instance-color', seedStandard({
+    color: 0xffffff,
+    roughness: 0.88,
+    metalness: 0.06,
   }), { instanced: true, instanceColor: true });
   const skySeedMaterial = track(new THREE.MeshBasicMaterial({
     vertexColors: true,
@@ -1336,9 +1343,31 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
+  let variantPresentationGeneration = 0;
+
+  const applyVariantSceneMode = (
+    variantId: string,
+    architectureStats: GarageArchitectureStats,
+  ): void => {
+    const isVerdant = variantId === 'verdant_motor_pool';
+    for (const object of indoorStageObjects) object.visible = isVerdant;
+    // Keep the light objects present in both modes so Three's light-count
+    // defines stay invariant. Removing the Verdant fixtures forced every hero
+    // tank and decoration material to synchronously relink on first reveal.
+    for (const light of verdantLights) {
+      light.visible = true;
+      light.intensity = isVerdant ? (verdantLightIntensities.get(light) || 0) : 0;
+    }
+    architecture.group.visible = !isVerdant;
+    group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'authentic-scene-pack';
+    group.userData.garageRoofMode = isVerdant ? 'enclosed-original' : 'open-environment';
+    group.userData.garageArchitecture = architectureStats;
+    requestRender();
+  };
 
   const setVariant = (variantId: string): string => {
     const variant = getGarageVariant(variantId);
+    const presentationGeneration = ++variantPresentationGeneration;
     const neutral = new THREE.Color(0xffffff);
     group.userData.garageVariantId = variant.id;
     group.userData.garageMapId = variant.mapId;
@@ -1352,20 +1381,21 @@ export function createGarageStage(
     lensMat.emissive.setHex(variant.lightTint);
     const architectureStats = architecture.setVariant(variant);
     const isVerdant = variant.id === 'verdant_motor_pool';
-    for (const object of indoorStageObjects) object.visible = isVerdant;
-    // Keep the light objects present in both modes so Three's light-count
-    // defines stay invariant. Removing the Verdant fixtures forced every hero
-    // tank and decoration material to synchronously relink on the first
-    // outdoor reveal (~450 ms in ANGLE). Zero intensity is visually identical
-    // to removal but preserves the already-warmed shader programs.
-    for (const light of verdantLights) {
-      light.visible = true;
-      light.intensity = isVerdant ? (verdantLightIntensities.get(light) || 0) : 0;
+    if (isVerdant || architectureStats.ready) {
+      applyVariantSceneMode(variant.id, architectureStats);
+    } else {
+      // Keep the complete previous scene visible while the one requested pack
+      // decodes and uploads offscreen. The visual handoff is atomic: no white
+      // clear frame, missing horizon, or half-compiled material can appear.
+      queueMicrotask(() => {
+        if (presentationGeneration !== variantPresentationGeneration) return;
+        void architecture.whenReady().then((readyStats) => {
+          if (presentationGeneration === variantPresentationGeneration && readyStats.ready) {
+            applyVariantSceneMode(variant.id, readyStats);
+          }
+        });
+      });
     }
-    architecture.group.visible = !isVerdant;
-    group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'authentic-scene-pack';
-    group.userData.garageRoofMode = isVerdant ? 'enclosed-original' : 'open-environment';
-    group.userData.garageArchitecture = architectureStats;
     return variant.id;
   };
   setVariant(initialVariantId);
@@ -1373,6 +1403,12 @@ export function createGarageStage(
   return {
     group,
     setVariant,
+    prepareSelector() {
+      return architecture.prepareSelector();
+    },
+    prepareVariant(variantId: string) {
+      return architecture.prepareVariant(getGarageVariant(variantId));
+    },
     stats: () => architecture.stats(),
     dispose() {
       architecture.dispose();

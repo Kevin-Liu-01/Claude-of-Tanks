@@ -890,8 +890,12 @@ change tank orientation or framing.
 indoor workshop. It delegates the other nine scene packs to
 `garageArchitecture.ts`. That controller demand-loads
 `garageEnvironmentKit.ts`, retains at most the active and previous pack, rejects
-stale switch completions, and incrementally warms nine small Garage-only PBR
-surface sets and their exact production shader keys after interactive readiness.
+stale switch completions, and never constructs an unselected environment after
+interactive readiness. Selector intent fetches only the environment code; exact
+card intent decodes and uploads that destination's textures and compiles its
+production shader keys. The prior complete pack remains visible until this
+bounded preparation transaction finishes, so a switch cannot reveal a white or
+partially compiled world.
 Invisible two-centimetre receivers beneath the opaque Verdant podium seed the
 outdoor Standard/CSM, instancing, vertex-color, glass, sky, and horizon program
 variants during the covered first frame, so a browser without parallel shader
@@ -900,9 +904,11 @@ The outdoor packs use generated 41x37 height excerpts from their real battlefiel
 spawn terrain, camera-space staged connected map structures, real instanced tree
 kits, static biome ground cover, and three terrain-derived relief bands. Two background hulks
 reuse a 208-triangle proxy generated from the first-party M1A2 wreck pose; no
-fleet builder enters the Garage graph. `garageFacilityDetails.ts` merges two
-maintenance bays, lights, stocked tank-part racks, tools, crates, and low-poly
-service vehicles into the existing static buckets. Cinder adds three full rail
+fleet builder enters the Garage graph. `garageFacilityDetails.ts` merges
+arbitrary maintenance assemblies and emits repeated opaque crates, cylinders,
+beams, sleepers, and service props as static instanced batches. This preserves
+authored transforms, materials, and triangle silhouettes without paying one
+scene node or geometry bake per copy. Cinder adds three full rail
 roads, platforms, canopies, and a nine-bay roundhouse. A finite vertex-color sky closes the
 composition without a white world background. No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.

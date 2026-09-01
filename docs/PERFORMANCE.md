@@ -900,6 +900,34 @@ the change.
 `--cpu-profile-out <path>` when a DevTools CPU profile is needed to attribute a
 future regression without changing the measured workload.
 
+### 2026-08-31 Garage entry and environment-demand correction
+
+A clean production Lighthouse trace and a dedicated five-second post-ready
+probe exposed work that the older network-idle measurements hid: all nine
+outdoor environments, 125 full-resolution fleet portraits, every map picker
+image, and rotating gallery media continued to transfer or build after the
+Garage declared itself playable. The Garage now loads only viewport-near
+portraits and maps, starts the gallery on one 44 kB derivative, and prepares an
+outdoor scene only from exact destination intent. Repeated service-yard
+primitives use static instanced batches; all authored transforms and submitted
+triangles remain unchanged.
+
+Under Lighthouse's clean mobile profile, the comparable production build
+moved from 6.77 MB to 1.08 MB transferred, 252 to 106 requests, 17.82 to 3.54
+seconds of main-thread work, 16.33 to 2.61 seconds of JavaScript boot work, and
+11.19 seconds to 659 ms total blocking time. The score moved from 30 to 44; the
+remaining 6.2/7.6-second FCP/LCP values are Lighthouse simulation, while the
+trace observes the inline loading wordmark at roughly 0.49 seconds.
+
+At 4× CPU slowdown the dedicated Garage-entry gate reaches ready in 2.16
+seconds (1.89 seconds app boot), then records 38.8 ms maximum / 35.8 ms p95
+frame gaps, zero long tasks, 0.091 core-equivalent task residency, 49 MB heap,
+and zero unused Garage texture requests during the next five seconds. A native
+all-ten-environment lap records 17–18 ms p95 transitions, 25.1 ms maximum over
+thirty complete cache-eviction cycles, 6.9 MB forced-GC heap growth, and a
+two-pack cache. Cinder and Ironworks visual receipts retain their rails,
+platforms, service stations, clutter, lighting, and canonical tank framing.
+
 ## Reporting a performance result
 
 Record:
@@ -935,6 +963,12 @@ regression record.
 - No failed diagnostic leaves an off-screen render target bound.
 - No transition certification from a host-contended measurement window.
 - No full battlefield construction from passive garage idle.
+- No unselected Garage environment construction or texture upload from passive
+  idle. Selector intent may preload the code chunk; only exact destination
+  intent may prepare one scene pack, and the two-pack cache remains bounded.
+- No eager full-fleet portrait or complete battlefield-thumbnail transfer on
+  Garage entry. Viewport proximity owns those requests; selected content may
+  reveal immediately.
 - No numeric environment-geometry JSON in the common battlefield module graph;
   regenerate and validate the packed archive after authoring-source changes.
 - No one-draw-per-prop submission for exact repeated opaque workshop meshes.

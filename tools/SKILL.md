@@ -53,6 +53,12 @@ ready ceiling and a 2.5-second post-transfer application-work ceiling for every
 pristine session; slower custom conditions must declare intentional
 `--max-wall-ms` and `--max-app-ms` budgets rather than silently weakening the
 default evidence.
+Garage-entry claims additionally require `npm run perf:garage-entry`. The
+standard 4×-CPU five-second sample starts from an empty browser cache and fails
+on post-ready environment texture warming, eager fleet/map artwork, frame-gap
+spikes, long-task bursts, or console errors. Environment-transition claims use
+`tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
+selection, cache eviction, persisted reload, iPad, and phone layouts.
 Static-screen and transition claims require `npm run perf:resources:gate`; it
 records task/script CPU, forced-GC heap, scene and renderer residency, cache
 ownership, actual paint cadence, and complete-frame draw/primitive totals

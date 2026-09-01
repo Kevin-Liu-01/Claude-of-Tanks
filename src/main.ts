@@ -980,6 +980,12 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     hero: MAP_HEROES[variant.mapId as keyof typeof MAP_HEROES] || '',
   })),
   selectedGarageVariantId,
+  onGarageVariantMenuIntent: () => {
+    void garageStage.prepareSelector().catch(() => undefined);
+  },
+  onGarageVariantIntent: (variantId: string) => {
+    void garageStage.prepareVariant(variantId).catch(() => undefined);
+  },
   onGarageVariantSelect: (variantId: string) => {
     selectedGarageVariantId = saveGarageVariantId(variantId);
     const variant = getGarageVariant(selectedGarageVariantId);
