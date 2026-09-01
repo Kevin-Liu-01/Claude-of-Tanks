@@ -4,6 +4,7 @@ import {
   SHADOW_REFRESH_INTERVAL_S,
   canDormantShadowCascades,
   createShadowRefreshScheduler,
+  resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 
 {
@@ -17,6 +18,18 @@ import {
     'the mobile three-cascade rig follows the same native-depth contract');
   assert.equal(canDormantShadowCascades(null), false,
     'missing light state must fail closed');
+
+  const ready = [depth(), depth(), depth(), depth()];
+  assert.equal(resolveShadowPrimeCount(ready, 2, true), 2,
+    'an enclosed presentation may prime only its two visible cascade bands');
+  assert.equal(resolveShadowPrimeCount(ready, 2, false), 4,
+    'an active far range always receives a complete covered prime');
+  assert.equal(resolveShadowPrimeCount([depth(), depth(), missing(), missing()], 2, true), 4,
+    'missing native far depth targets fail open to a complete pass');
+  assert.equal(resolveShadowPrimeCount(ready, Number.NaN, true), 4,
+    'invalid limits cannot silently suppress shadow work');
+  assert.equal(resolveShadowPrimeCount(null, 2, true), 0,
+    'a missing lighting rig has no work to schedule');
 }
 
 const lightingSource = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');

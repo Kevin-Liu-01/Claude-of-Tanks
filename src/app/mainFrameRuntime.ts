@@ -6,7 +6,10 @@ import type { CameraRig } from '../engine/cameraRig.ts';
 import type { GarageFramePacer, GarageFrameRequest } from '../engine/garageFramePacer.ts';
 import type { PostRuntime } from '../engine/post.ts';
 import type { BattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
-import type { BattleFrameRuntime } from '../game/battleFrameRuntime.ts';
+import type {
+  BattleFrameReceipt,
+  BattleFrameRuntime,
+} from '../game/battleFrameRuntime.ts';
 import type { BattleHudFrameRuntime } from '../game/battleHudFrameRuntime.ts';
 import type { GaragePedestalRuntime } from '../game/garagePedestalRuntime.ts';
 import type { GarageShowroomRuntime } from '../game/garageShowroomRuntime.ts';
@@ -32,6 +35,7 @@ interface FrameStudio {
 
 interface FrameTrace {
   frame(dtMs: number): void;
+  mark?(name: string, data: Readonly<Record<string, number>>): void;
 }
 
 export interface MainFrameRuntimeOptions {
@@ -144,9 +148,137 @@ export function createMainFrameRuntime({
   let lastMs = -1;
   let lastFov = camera.fov;
   let lastCinematicActive = false;
+  let lastRenderedPhase = game.phase;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
+  };
+
+  const updateFogDensity = (): void => {
+    if (!(scene.fog instanceof FogExp2)) return;
+    const fogScale = camera.fov < 15
+      ? Math.max(0.22, Math.pow(camera.fov / 15, 1.6))
+      : 1;
+    scene.fog.density = getBaseFogDensity() * fogScale;
+  };
+
+  const renderShotFrame = (
+    dtSeconds: number,
+    fx: MainFxRuntime | null,
+    world: MainWorld | null,
+  ): void => {
+    camera.getWorldDirection(forward);
+    world?.update(0, camera.position, forward, null);
+    sniperFill.update();
+    fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
+    if (getShotHudFrame()) battleHudFrame.redrawFrozen();
+    lighting.update(true);
+    post.render(dtSeconds);
+  };
+
+  const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
+    if (game.phase !== 'garage') return true;
+    networkSession.pump(dtSeconds, nowMs);
+    garageFrameRequest.animate = showroom.moving || pedestal.switchPending;
+    if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
+    showroom.update(dtSeconds);
+    return true;
+  };
+
+  const updateCombatCamera = (
+    frame: BattleFrameReceipt,
+    dtSeconds: number,
+  ): void => {
+    cameraInput.autoAimPoint = getMobileAutoAim()
+      ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
+    if (frame.inBattle && !frame.paused && !frame.killcamActive) {
+      rig.update(dtSeconds, cameraInput);
+    }
+    if (frame.killcamActive) killcam.update(dtSeconds);
+  };
+
+  const updateCinematicVeil = (killcamActive: boolean): void => {
+    if (killcamActive || killcam.isActive()
+      || rig.cinematicActive === lastCinematicActive) return;
+    lastCinematicActive = rig.cinematicActive;
+    veilHud(lastCinematicActive);
+  };
+
+  const updateWorldPresentation = (
+    frame: BattleFrameReceipt,
+    dtSeconds: number,
+    fx: MainFxRuntime | null,
+  ): void => {
+    worldFramePresentation.update(dtSeconds, frame.inBattle, frame.killcamActive);
+    fx?.update(
+      frame.livePaused ? 0 : dtSeconds * (frame.killcamActive ? killcam.fxTimeScale : 1),
+      game.shells,
+      camera,
+      resolveFxSubject,
+    );
+    matchModeWorld.update(
+      frame.inBattle ? game.matchModeState as MatchModePresentationState : null,
+      game.timeS,
+    );
+    battleHudFrame.update(frame.inBattle, frame.killcamActive);
+    audioListener.update(dtSeconds, frame.inBattle, frame.killcamActive);
+  };
+
+  const renderPresentation = (
+    frame: BattleFrameReceipt,
+    dtSeconds: number,
+  ): void => {
+    const profileGarageReturn = game.phase === 'garage'
+      && lastRenderedPhase !== 'garage'
+      && typeof trace?.mark === 'function';
+    const frameStartedAt = profileGarageReturn ? performance.now() : 0;
+    if (camera.fov !== lastFov) {
+      lighting.updateFov();
+      lastFov = camera.fov;
+    }
+    const garageShadowsDirty = game.phase === 'garage'
+      && (showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
+    lighting.setStaticPresentationDormant(
+      game.phase === 'garage' && !garageShadowsDirty,
+    );
+    const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
+    lighting.update(false, dtSeconds);
+    const postStartedAt = profileGarageReturn ? performance.now() : 0;
+    post.render(dtSeconds);
+    const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
+    if (game.phase === 'garage') clearGaragePresentationDirty();
+    if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
+    perfHud.update(dtSeconds * 1000);
+    if (profileGarageReturn) {
+      trace.mark?.('garage:return-frame', {
+        preRenderMs: +(lightingStartedAt - frameStartedAt).toFixed(3),
+        lightingMs: +(postStartedAt - lightingStartedAt).toFixed(3),
+        postMs: +(frameFinishedAt - postStartedAt).toFixed(3),
+        totalMs: +(frameFinishedAt - frameStartedAt).toFixed(3),
+      });
+    }
+    lastRenderedPhase = game.phase;
+  };
+
+  const renderLiveFrame = (
+    dtSeconds: number,
+    frameWallDtSeconds: number,
+    nowMs: number,
+    fx: MainFxRuntime | null,
+  ): void => {
+    if (!prepareGarageFrame(nowMs, dtSeconds)) return;
+    const frame = battleFrame.advance(
+      dtSeconds,
+      frameWallDtSeconds,
+      nowMs,
+      game.phase === 'battle' && isBattleLoadCovering(),
+    );
+    const appliedDtSeconds = frame.dtSeconds;
+    updateCombatCamera(frame, appliedDtSeconds);
+    updateCinematicVeil(frame.killcamActive);
+    sniperFill.update();
+    updateWorldPresentation(frame, appliedDtSeconds, fx);
+    renderPresentation(frame, appliedDtSeconds);
   };
 
   const tick = (nowMs: number): void => {
@@ -173,12 +305,7 @@ export function createMainFrameRuntime({
 
     // At high zoom, reduce exponential fog so the scoped picture retains
     // distant contrast. Shot captures use the identical presentation rule.
-    if (scene.fog instanceof FogExp2) {
-      const fogScale = camera.fov < 15
-        ? Math.max(0.22, Math.pow(camera.fov / 15, 1.6))
-        : 1;
-      scene.fog.density = getBaseFogDensity() * fogScale;
-    }
+    updateFogDensity();
 
     const studio = getStudio();
     if (studio.active) {
@@ -187,80 +314,10 @@ export function createMainFrameRuntime({
     }
 
     if (getShotMode()) {
-      camera.getWorldDirection(forward);
-      world?.update(0, camera.position, forward, null);
-      sniperFill.update();
-      fx?.update(dtR, game.shells, camera, resolveFxSubject);
-      if (getShotHudFrame()) battleHudFrame.redrawFrozen();
-      lighting.update(true);
-      post.render(dtR);
+      renderShotFrame(dtR, fx, world);
       return;
     }
-
-    const garageAnimating = game.phase === 'garage'
-      && (showroom.moving || pedestal.switchPending);
-    if (game.phase === 'garage') networkSession.pump(dtR, nowMs);
-    if (game.phase === 'garage') {
-      garageFrameRequest.animate = garageAnimating;
-      if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return;
-      showroom.update(dtR);
-    }
-
-    const frameState = battleFrame.advance(
-      dtR,
-      frameWallDtS,
-      nowMs,
-      game.phase === 'battle' && isBattleLoadCovering(),
-    );
-    dtR = frameState.dtSeconds;
-    const { inBattle, paused, livePaused } = frameState;
-    const killcamActive = frameState.killcamActive;
-    cameraInput.autoAimPoint = getMobileAutoAim()
-      ?.sample(inBattle && !paused && !killcamActive) || null;
-    if (inBattle && !paused && !killcamActive) rig.update(dtR, cameraInput);
-    if (killcamActive) killcam.update(dtR);
-
-    // The battle-open cinematic owns HUD visibility until the killcam ends.
-    if (!killcamActive && !killcam.isActive()
-      && rig.cinematicActive !== lastCinematicActive) {
-      lastCinematicActive = rig.cinematicActive;
-      veilHud(lastCinematicActive);
-    }
-    sniperFill.update();
-
-    worldFramePresentation.update(dtR, inBattle, killcamActive);
-    if (fx) {
-      fx.update(
-        livePaused ? 0 : dtR * (killcamActive ? killcam.fxTimeScale : 1),
-        game.shells,
-        camera,
-        resolveFxSubject,
-      );
-    }
-
-    matchModeWorld.update(
-      inBattle ? game.matchModeState as MatchModePresentationState : null,
-      game.timeS,
-    );
-    battleHudFrame.update(inBattle, killcamActive);
-    audioListener.update(dtR, inBattle, killcamActive);
-
-    // FOV animation only needs cascade geometry refresh; material splits do
-    // not depend on FOV and remain untouched.
-    if (camera.fov !== lastFov) {
-      lighting.updateFov();
-      lastFov = camera.fov;
-    }
-    const garageShadowsDirty = game.phase === 'garage'
-      && (garageAnimating || isGaragePresentationDirty());
-    lighting.setStaticPresentationDormant(
-      game.phase === 'garage' && !garageShadowsDirty,
-    );
-    lighting.update(false, dtR);
-    post.render(dtR);
-    if (game.phase === 'garage') clearGaragePresentationDirty();
-    if (game.phase === 'battle') battleEntryLifecycle.noteBattleFrame();
-    perfHud.update(dtR * 1000);
+    renderLiveFrame(dtR, frameWallDtS, nowMs, fx);
   };
 
   return { tick, noteFovPrimed };

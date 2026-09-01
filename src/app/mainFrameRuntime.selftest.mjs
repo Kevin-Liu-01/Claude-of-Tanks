@@ -4,7 +4,9 @@ import { PerspectiveCamera, Scene } from 'three';
 
 import { createMainFrameRuntime } from './mainFrameRuntime.ts';
 
-function createFixture({ phase = 'garage', shotMode = false, studioActive = false } = {}) {
+function createFixture({
+  phase = 'garage', shotMode = false, studioActive = false, trace = null,
+} = {}) {
   const calls = [];
   const frameRequests = [];
   const scene = new Scene();
@@ -89,8 +91,9 @@ function createFixture({ phase = 'garage', shotMode = false, studioActive = fals
     isGaragePresentationDirty: () => false,
     clearGaragePresentationDirty: () => calls.push('garage:clear'),
     perfHud: { update: () => calls.push('perf') },
+    trace,
   });
-  return { runtime, calls, frameRequests, camera, battleEntryLifecycle };
+  return { runtime, calls, frameRequests, camera, game, battleEntryLifecycle };
 }
 
 const garage = createFixture();
@@ -127,6 +130,27 @@ assert.ok(battle.calls.indexOf('battle:advance') < battle.calls.indexOf('rig'));
 assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('world:presentation'));
 assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('post'));
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
+
+const returnMarks = [];
+const returning = createFixture({
+  phase: 'battle',
+  trace: {
+    frame: () => {},
+    mark: (name, data) => returnMarks.push({ name, data }),
+  },
+});
+returning.runtime.tick(1000);
+returning.game.phase = 'garage';
+returning.runtime.tick(1016);
+returning.runtime.tick(1032);
+assert.equal(returnMarks.length, 1,
+  'only the first rendered Garage frame after battle is profiled');
+assert.equal(returnMarks[0].name, 'garage:return-frame');
+assert.deepEqual(Object.keys(returnMarks[0].data), [
+  'preRenderMs', 'lightingMs', 'postMs', 'totalMs',
+]);
+assert.ok(Object.values(returnMarks[0].data).every(Number.isFinite),
+  'Garage return frame receipt contains finite stage timings');
 
 const covered = createFixture({ phase: 'battle' });
 covered.battleEntryLifecycle.renderingCovered = true;

@@ -12,11 +12,14 @@ export interface PhaseGpuResidencyStats {
   suspended: boolean;
   releases: number;
   resumes: number;
+  resumeFailures: number;
+  invalidations: number;
   lastRelease: GpuReleaseReceipt | null;
 }
 
 export interface RetainedPhaseGpuResidency {
   suspend(): GpuReleaseReceipt | null;
+  invalidate(): boolean;
   resume(): Promise<boolean>;
   diagnostics(): PhaseGpuResidencyStats;
 }
@@ -49,6 +52,8 @@ export function createRetainedPhaseGpuResidency({
     suspended: false,
     releases: 0,
     resumes: 0,
+    resumeFailures: 0,
+    invalidations: 0,
     lastRelease: null,
   };
 
@@ -64,14 +69,30 @@ export function createRetainedPhaseGpuResidency({
       return stats.lastRelease;
     },
 
+    invalidate() {
+      if (stats.suspended) return false;
+      // A restored WebGL context invalidates every GPU allocation without
+      // disposing the reusable Three.js CPU graph. Mark the phase renewable
+      // so its next covered activation performs the same complete upload path
+      // as an intentional memory-pressure release.
+      stats.suspended = true;
+      stats.invalidations += 1;
+      return true;
+    },
+
     async resume() {
       if (!stats.suspended) return false;
       try {
         await restoreGpu();
-        return true;
-      } finally {
         stats.suspended = false;
         stats.resumes += 1;
+        return true;
+      } catch (error) {
+        // Keep the phase suspended after a failed upload. Clearing this flag
+        // would make the next return treat disposed buffers as resident and
+        // reveal a partially restored scene instead of retrying under cover.
+        stats.resumeFailures += 1;
+        throw error;
       }
     },
 

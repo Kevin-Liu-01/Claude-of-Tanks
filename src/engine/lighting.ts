@@ -14,6 +14,7 @@ import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
+  resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 import {
   shadowNormalBiasForTexel,
@@ -860,7 +861,7 @@ ${endHead}`);
  * @property {CSM} csm - four quality-scaled cascaded shadow maps
  * @property {(mat: THREE.Material, extraHook?: ?Function) => THREE.Material} setupShadowMaterial
  * @property {(mat: ?THREE.Material) => boolean} releaseShadowMaterial
- * @property {(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, yieldBeforeCascade?: ?Function) => Promise<number[]>} primeShadowMaps
+ * @property {(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, options?: object) => Promise<number[]>} primeShadowMaps
  * @property {() => void} update - per-frame `csm.update()`; call AFTER the camera is final
  * @property {() => void} updateFrustums - call on resize / camera fov or aspect change
  * @property {(i: number) => void} setSunIntensity
@@ -1162,9 +1163,23 @@ export function createLighting(
       renderer2: THREE.WebGLRenderer,
       scene2: THREE.Scene,
       camera2: THREE.Camera,
-      yieldBeforeCascade: ((index: number) => void | Promise<void>) | null = null,
+      {
+        yieldBeforeCascade = null,
+        cascadeLimit = csm.lights.length,
+      }: {
+        yieldBeforeCascade?: ((index: number) => void | Promise<void>) | null;
+        cascadeLimit?: number;
+      } = {},
     ): Promise<number[]> {
       if (!renderer2?.shadowMap || !scene2 || !camera2) return [];
+      // Partial priming is safe only after every omitted native depth target
+      // exists and the far bands are explicitly dormant. Otherwise fail open
+      // to a complete pass so sampler2DShadow bindings stay valid.
+      const primeCount = resolveShadowPrimeCount(
+        csm.lights,
+        cascadeLimit,
+        farCascadeDormant,
+      );
       const prior = csm.lights.map((light) => ({
         shadow: light.shadow,
         autoUpdate: light.shadow.autoUpdate,
@@ -1190,7 +1205,7 @@ export function createLighting(
           light.shadow.autoUpdate = false;
           light.shadow.needsUpdate = false;
         }
-        for (let index = 0; index < csm.lights.length; index++) {
+        for (let index = 0; index < primeCount; index++) {
           const light = csm.lights[index];
           if (yieldBeforeCascade) await yieldBeforeCascade(index);
           const startedAt = performance.now();

@@ -4,13 +4,18 @@ import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
 
 type WarmYield = (force?: boolean) => Promise<unknown>;
 
+interface ShadowPrimeOptions {
+  yieldBeforeCascade?: ((index: number) => void | Promise<void>) | null;
+  cascadeLimit?: number;
+}
+
 interface GarageLightingWarmPort {
   update(force?: boolean): void;
   primeShadowMaps(
     renderer: WebGLRenderer,
     scene: Scene,
     camera: Camera,
-    yieldBeforeCascade: (index: number) => void | Promise<void>,
+    options?: ShadowPrimeOptions,
   ): Promise<number[]>;
 }
 
@@ -50,8 +55,10 @@ export interface GarageGpuWarmOptions {
 
 export interface GarageGpuRestoreReceipt {
   totalMs: number;
+  resourcesReleased: boolean;
   shadowPasses: number[];
   shadowPassMax: number;
+  shadowCascadeCount: number;
   sceneUploadBatches: number[];
   sceneUploadMax: number;
 }
@@ -61,10 +68,13 @@ export interface GarageGpuRestoreOptions {
   scene: Scene;
   camera: Camera;
   lighting: GarageLightingRestorePort;
+  resourcesReleased: boolean;
   createYielder?: (budgetMs: number) => WarmYield;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
 }
+
+const GARAGE_CRITICAL_SHADOW_CASCADES = 2;
 
 /**
  * Restore evicted Garage resources without submitting one unbounded scene
@@ -77,6 +87,7 @@ export async function restoreGarageGpuPipeline({
   scene,
   camera,
   lighting,
+  resourcesReleased,
   createYielder = createFrameBudgetYielder,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
@@ -93,22 +104,32 @@ export async function restoreGarageGpuPipeline({
       renderer,
       scene,
       camera,
-      async () => { await yieldGpu(); },
+      {
+        // The enclosed showroom occupies only the two continuous near bands.
+        // Lighting fails open to all cascades until its far depth maps exist,
+        // so cold or context-restored sessions remain valid.
+        cascadeLimit: GARAGE_CRITICAL_SHADOW_CASCADES,
+        yieldBeforeCascade: async () => { await yieldGpu(); },
+      },
     );
-    sceneUploadBatches = await warmScene(renderer, scene, camera, {
-      scale: 0.0625,
-      maxObjects: 24,
-      maxWeight: 90_000,
-      yieldBeforeBatch: async () => { await yieldGpu(); },
-    });
+    if (resourcesReleased) {
+      sceneUploadBatches = await warmScene(renderer, scene, camera, {
+        scale: 0.0625,
+        maxObjects: 24,
+        maxWeight: 90_000,
+        yieldBeforeBatch: async () => { await yieldGpu(); },
+      });
+    }
   } finally {
     lighting.setStaticPresentationDormant(true);
   }
 
   return {
     totalMs: Math.round(now() - startedAt),
+    resourcesReleased,
     shadowPasses,
     shadowPassMax: Math.max(0, ...shadowPasses),
+    shadowCascadeCount: shadowPasses.length,
     sceneUploadBatches,
     sceneUploadMax: Math.max(0, ...sceneUploadBatches),
   };
@@ -150,7 +171,10 @@ export async function warmGarageGpuPipeline({
 
   await yieldGpuWarm(true);
   const shadowPasses = await lighting.primeShadowMaps(
-    renderer, scene, camera, async () => { await yieldGpuWarm(true); },
+    renderer,
+    scene,
+    camera,
+    { yieldBeforeCascade: async () => { await yieldGpuWarm(true); } },
   );
   timings.shadowPassMax = Math.max(0, ...shadowPasses);
   timings.shadowPasses = shadowPasses;

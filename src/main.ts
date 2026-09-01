@@ -661,14 +661,25 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
+  // Constrained/mobile devices trade the inactive showroom's buffers for a
+  // lower VRAM ceiling. Desktop keeps the bounded static stage resident, so
+  // battle exit refreshes only camera-dependent shadows instead of uploading
+  // the same immutable geometry again.
+  shouldReleaseGpuOnBattle: () => getDeviceTier() === 'mobile',
   posePedestal: () => pedestal.poseCurrent(),
   poseCamera: () => {
     if (!resetGarageShowroom?.()) garageEnvironmentPresentation.poseCamera();
   },
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
-  restorePresentationGpu: async () => {
-    return restoreGarageGpuPipeline({ renderer, scene, camera, lighting });
+  restorePresentationGpu: async ({ resourcesReleased }) => {
+    return restoreGarageGpuPipeline({
+      renderer,
+      scene,
+      camera,
+      lighting,
+      resourcesReleased,
+    });
   },
 });
 const setGarageSpots = garagePhasePresentation.setActive;
@@ -1277,6 +1288,7 @@ const scheduleDeferredCombatWarm = combatWarmComposition.scheduleDeferred;
 renderer.userData.contextRecovery = {
   onLost() {
     graphicsContextLost = true;
+    garagePhasePresentation.invalidateGpu();
     post.setAdaptiveSuspended(true);
   },
   async onRestored() {
@@ -1294,6 +1306,10 @@ renderer.userData.contextRecovery = {
     viewport.apply();
     post.resetAdaptiveResolution();
     lighting.update(true);
+    if (game.phase === 'garage') {
+      await garagePhasePresentation.restoreGpu();
+      garagePresentationDirty = false;
+    }
     graphicsContextLost = false;
     post.setAdaptiveSuspended(false);
     // Some mobile browsers discard the outstanding rAF when the WebGL device

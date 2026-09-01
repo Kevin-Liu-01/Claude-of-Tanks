@@ -14,6 +14,7 @@ const sunDirection = new THREE.Vector3(0.3, 0.8, -0.4);
 const calls = [];
 let phase = 'garage';
 let warmCount = 0;
+let releaseOnBattle = true;
 let pedestalPoseCount = 0;
 let cameraPoseCount = 0;
 const authoredSky = { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 };
@@ -31,17 +32,20 @@ const runtime = createGaragePhasePresentationRuntime({
   getSkyConfig: () => authoredSky,
   getGroundHeight: (x, z) => (x + z) / -1000,
   getPhase: () => phase,
+  shouldReleaseGpuOnBattle: () => releaseOnBattle,
   posePedestal: () => { pedestalPoseCount += 1; },
   poseCamera: () => { cameraPoseCount += 1; },
-  restorePresentationGpu: async () => {
-    calls.push(['restorePresentationGpu']);
+  restorePresentationGpu: async ({ resourcesReleased }) => {
+    calls.push(['restorePresentationGpu', resourcesReleased]);
     warmCount += 1;
     return {
       totalMs: 12,
+      resourcesReleased,
       shadowPasses: [4, 3],
       shadowPassMax: 4,
-      sceneUploadBatches: [2, 1],
-      sceneUploadMax: 2,
+      shadowCascadeCount: 2,
+      sceneUploadBatches: resourcesReleased ? [2, 1] : [],
+      sceneUploadMax: resourcesReleased ? 2 : 0,
     };
   },
 });
@@ -91,12 +95,30 @@ const firstRestore = await runtime.restoreGpu();
 assert.equal(warmCount, 1);
 assert.equal(firstRestore.totalMs, 12);
 assert.equal(runtime.diagnostics().gpu.suspended, false);
-assert.deepEqual(calls.at(-1), ['restorePresentationGpu'],
+assert.deepEqual(calls.at(-1), ['restorePresentationGpu', true],
   'GPU renewal delegates to the bounded presentation restore once');
 
 const residentRestore = await runtime.restoreGpu();
 assert.equal(warmCount, 2, 'resident returns still settle one exact covered Garage frame');
-assert.equal(residentRestore.sceneUploadMax, 2);
+assert.equal(residentRestore.resourcesReleased, false);
+assert.equal(residentRestore.sceneUploadMax, 0,
+  'resident resources skip redundant scene uploads');
+
+releaseOnBattle = false;
+runtime.setActive(false);
+assert.equal(runtime.diagnostics().gpu.suspended, false,
+  'desktop policy keeps the bounded static Garage stage resident during battle');
+runtime.setActive(true);
+const retainedReturn = await runtime.restoreGpu();
+assert.equal(retainedReturn.resourcesReleased, false);
+assert.equal(warmCount, 3);
+
+assert.equal(runtime.invalidateGpu(), true);
+assert.equal(runtime.diagnostics().gpu.invalidations, 1);
+const contextRestore = await runtime.restoreGpu();
+assert.equal(contextRestore.resourcesReleased, true,
+  'context invalidation forces a complete scene upload despite desktop retention');
+assert.equal(warmCount, 4);
 
 const worldA = new THREE.Group();
 const worldB = new THREE.Group();

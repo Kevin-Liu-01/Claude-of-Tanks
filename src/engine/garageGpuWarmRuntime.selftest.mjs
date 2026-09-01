@@ -19,11 +19,12 @@ await warmGarageGpuPipeline({
   camera,
   lighting: {
     update(force) { calls.push(['light', force]); },
-    async primeShadowMaps(activeRenderer, activeScene, activeCamera, yieldWarm) {
+    async primeShadowMaps(activeRenderer, activeScene, activeCamera, options) {
       assert.equal(activeRenderer, renderer);
       assert.equal(activeScene, scene);
       assert.equal(activeCamera, camera);
-      await yieldWarm();
+      assert.equal(options.cascadeLimit, undefined);
+      await options.yieldBeforeCascade();
       return [7, 3, 1];
     },
   },
@@ -78,14 +79,16 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
         restoreCalls.push(['staticDormant', value]);
       },
       update(force) { restoreCalls.push(['light', force]); },
-      async primeShadowMaps(activeRenderer, activeScene, activeCamera, yieldWarm) {
+      async primeShadowMaps(activeRenderer, activeScene, activeCamera, options) {
         assert.equal(activeRenderer, renderer);
         assert.equal(activeScene, scene);
         assert.equal(activeCamera, camera);
-        await yieldWarm(0);
+        assert.equal(options.cascadeLimit, 2);
+        await options.yieldBeforeCascade(0);
         return [13, 5];
       },
     },
+    resourcesReleased: true,
     createYielder: (budgetMs) => {
       assert.equal(budgetMs, 8);
       return async (force) => { restoreCalls.push(['yield', force]); };
@@ -111,10 +114,46 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   assert.deepEqual(restoreCalls.at(-1), ['staticDormant', true]);
   assert.deepEqual(receipt, {
     totalMs: 10,
+    resourcesReleased: true,
     shadowPasses: [13, 5],
     shadowPassMax: 13,
+    shadowCascadeCount: 2,
     sceneUploadBatches: [9, 4, 2],
     sceneUploadMax: 9,
+  });
+}
+
+{
+  let warmCalls = 0;
+  const receipt = await restoreGarageGpuPipeline({
+    renderer,
+    scene,
+    camera,
+    lighting: {
+      setStaticPresentationDormant() {},
+      update() {},
+      async primeShadowMaps(_renderer, _scene, _camera, options) {
+        assert.equal(options.cascadeLimit, 2);
+        return [3, 2];
+      },
+    },
+    resourcesReleased: false,
+    createYielder: () => async () => {},
+    warmScene: async () => {
+      warmCalls += 1;
+      return [99];
+    },
+    now: () => 50,
+  });
+  assert.equal(warmCalls, 0, 'resident desktop Garage buffers are never uploaded again');
+  assert.deepEqual(receipt, {
+    totalMs: 0,
+    resourcesReleased: false,
+    shadowPasses: [3, 2],
+    shadowPassMax: 3,
+    shadowCascadeCount: 2,
+    sceneUploadBatches: [],
+    sceneUploadMax: 0,
   });
 }
 

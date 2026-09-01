@@ -99,10 +99,12 @@ function createFixture({ transitionGate = false } = {}) {
       calls.push(['restoreGaragePresentation']);
       return {
         totalMs: 12,
+        resourcesReleased: false,
         shadowPasses: [4, 3],
         shadowPassMax: 4,
-        sceneUploadBatches: [2, 1],
-        sceneUploadMax: 2,
+        shadowCascadeCount: 2,
+        sceneUploadBatches: [],
+        sceneUploadMax: 0,
       };
     },
     isBattleEntryPending: () => entryPending,
@@ -159,6 +161,8 @@ assert.ok(direct.runtime.lastTrace.stages.presentationRestore >= 0,
   'return trace owns the completed Garage presentation receipt');
 assert.equal(direct.runtime.lastTrace.presentationRestore.shadowPassMax, 4,
   'return trace retains bounded shadow and upload measurements');
+assert.equal(direct.runtime.lastTrace.presentationRestore.resourcesReleased, false,
+  'return trace records the residency decision that shaped its work');
 
 const closed = createFixture();
 closed.setPreserveRoom(true);

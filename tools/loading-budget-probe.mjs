@@ -733,6 +733,8 @@ async function measureTransitionsAndRematch() {
       switches: window.__SWITCH_TIMINGS?.slice(-5) || [],
       entry: window.__GARAGE_ENTRY || null,
       dressing: window.__DEBUG?.garageDressing?.group?.userData?.buildTimings || [],
+      returnFrame: (window.__QA_TRACE?.tail(50, 'mark') || [])
+        .filter((row) => row.name === 'garage:return-frame').at(-1) || null,
     }));
     record('battle-exit', 'garage', exited.ms, {
       invariantPass: exited.phase === 'garage',
@@ -801,9 +803,14 @@ async function measureTransitionsAndRematch() {
       };
     });
     const reexitStall = await captureStalls(battlePage.page);
+    const reexitReturnFrame = await battlePage.page.evaluate(() => (
+      (window.__QA_TRACE?.tail(50, 'mark') || [])
+        .filter((row) => row.name === 'garage:return-frame').at(-1) || null
+    ));
     record('battle-reexit', 'garage', reexit.ms, {
       phase: reexit.phase,
       stall: reexitStall,
+      returnFrame: reexitReturnFrame,
       invariantPass: reexit.phase === 'garage'
         && reexit.visualId === reexit.selected && reexit.onStage,
       errors: battlePage.errors.splice(0),

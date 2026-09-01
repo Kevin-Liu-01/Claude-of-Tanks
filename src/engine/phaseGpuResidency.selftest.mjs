@@ -42,10 +42,39 @@ assert.deepEqual(residency.diagnostics(), {
   suspended: false,
   releases: 1,
   resumes: 1,
+  resumeFailures: 0,
+  invalidations: 0,
   lastRelease: release,
 });
 assert.equal(await residency.resume(), false,
   'an already-resident phase reports that no restoration frame was needed');
 assert.equal(renders, 1, 'an already-resident phase does not render again');
 
-console.log('phaseGpuResidency.selftest: exclusive resources release and restore exactly once');
+let restoreAttempts = 0;
+const retryable = createRetainedPhaseGpuResidency({
+  root: new THREE.Group(),
+  preserveRoots: [],
+  restoreGpu: async () => {
+    restoreAttempts += 1;
+    if (restoreAttempts === 1) throw new Error('driver upload interrupted');
+  },
+});
+retryable.suspend();
+await assert.rejects(() => retryable.resume(), /driver upload interrupted/);
+assert.equal(retryable.diagnostics().suspended, true,
+  'failed restoration remains suspended so the next covered return retries');
+assert.equal(retryable.diagnostics().resumeFailures, 1);
+assert.equal(retryable.diagnostics().resumes, 0);
+assert.equal(await retryable.resume(), true);
+assert.equal(retryable.diagnostics().suspended, false);
+assert.equal(retryable.diagnostics().resumes, 1);
+
+assert.equal(retryable.invalidate(), true,
+  'context loss invalidates an otherwise resident phase exactly once');
+assert.equal(retryable.invalidate(), false, 'repeated context invalidation is idempotent');
+assert.equal(retryable.diagnostics().invalidations, 1);
+assert.equal(retryable.diagnostics().suspended, true);
+assert.equal(await retryable.resume(), true,
+  'context-invalidated resources follow the complete covered renewal path');
+
+console.log('phaseGpuResidency.selftest: exclusive resources release, retry, and restore pass');

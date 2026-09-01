@@ -5,6 +5,7 @@ import {
   createRetainedPhaseGpuResidency,
   type PhaseGpuResidencyStats,
 } from '../engine/phaseGpuResidency.ts';
+import type { GarageGpuRestoreReceipt } from '../engine/garageGpuWarmRuntime.ts';
 import {
   createPhaseSceneResidency,
   type PhaseSceneResidency,
@@ -12,12 +13,10 @@ import {
 
 export type GarageSkyConfig = MapSkyConfig;
 
-export interface GaragePresentationRestoreReceipt {
-  totalMs: number;
-  shadowPasses: number[];
-  shadowPassMax: number;
-  sceneUploadBatches: number[];
-  sceneUploadMax: number;
+export type GaragePresentationRestoreReceipt = GarageGpuRestoreReceipt;
+
+export interface GaragePresentationRestoreContext {
+  resourcesReleased: boolean;
 }
 
 interface GarageLightingPort {
@@ -35,9 +34,12 @@ export interface GaragePhasePresentationOptions {
   getSkyConfig(): GarageSkyConfig;
   getGroundHeight(x: number, z: number): number;
   getPhase(): string;
+  shouldReleaseGpuOnBattle(): boolean;
   posePedestal(): void;
   poseCamera(): void;
-  restorePresentationGpu(): Promise<GaragePresentationRestoreReceipt>;
+  restorePresentationGpu(
+    context: GaragePresentationRestoreContext,
+  ): Promise<GaragePresentationRestoreReceipt>;
 }
 
 export interface GaragePhasePresentationDiagnostics {
@@ -51,6 +53,7 @@ export interface GaragePhasePresentationRuntime {
   place(): void;
   swapWorld(previous: THREE.Object3D | null, next: THREE.Object3D): void;
   setWorldActive(root: THREE.Object3D | null, active: boolean): void;
+  invalidateGpu(): boolean;
   restoreGpu(): Promise<GaragePresentationRestoreReceipt>;
   diagnostics(): GaragePhasePresentationDiagnostics;
 }
@@ -74,6 +77,7 @@ export function createGaragePhasePresentationRuntime({
   getSkyConfig,
   getGroundHeight,
   getPhase,
+  shouldReleaseGpuOnBattle,
   posePedestal,
   poseCamera,
   restorePresentationGpu,
@@ -81,6 +85,7 @@ export function createGaragePhasePresentationRuntime({
   const required = [scene?.add, stageRoot?.removeFromParent,
     dressingRoot?.removeFromParent, lighting?.setFarCascadeDormant,
     lighting?.setSun, getSkyConfig, getGroundHeight, getPhase,
+    shouldReleaseGpuOnBattle,
     posePedestal, poseCamera, restorePresentationGpu];
   if (!(garagePosition instanceof THREE.Vector3)
     || !(sunDirection instanceof THREE.Vector3)
@@ -124,7 +129,8 @@ export function createGaragePhasePresentationRuntime({
     root: stageRoot,
     preserveRoots: [scene],
     restoreGpu: async () => {
-      restoreReceipt = await restorePresentationGpu();
+      restoreReceipt = null;
+      restoreReceipt = await restorePresentationGpu({ resourcesReleased: true });
     },
   });
 
@@ -132,7 +138,7 @@ export function createGaragePhasePresentationRuntime({
     if (spotA.visible === active) return;
     if (!active) lighting.setFarCascadeDormant(false);
     sceneResidency.setGarageActive(active);
-    if (!active) gpuResidency.suspend();
+    if (!active && shouldReleaseGpuOnBattle()) gpuResidency.suspend();
   };
 
   const setSunTrim = (active: boolean): void => {
@@ -161,9 +167,13 @@ export function createGaragePhasePresentationRuntime({
     place,
     swapWorld: sceneResidency.swapWorld,
     setWorldActive: sceneResidency.setWorldActive,
+    invalidateGpu: gpuResidency.invalidate,
     async restoreGpu() {
       const renewed = await gpuResidency.resume();
-      if (!renewed) restoreReceipt = await restorePresentationGpu();
+      if (!renewed) {
+        restoreReceipt = null;
+        restoreReceipt = await restorePresentationGpu({ resourcesReleased: false });
+      }
       if (!restoreReceipt) {
         throw new Error('Garage GPU restoration completed without a receipt');
       }

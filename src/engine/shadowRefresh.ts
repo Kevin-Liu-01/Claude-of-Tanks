@@ -38,6 +38,29 @@ export function canDormantShadowCascades(
 }
 
 /**
+ * Resolve a bounded covered shadow warm without risking uninitialized native
+ * depth samplers. A partial pass is allowed only when every omitted cascade
+ * already owns a valid depth texture and the caller has explicitly made those
+ * bands dormant; all other states fail open to a complete pass.
+ */
+export function resolveShadowPrimeCount(
+  lights: readonly ShadowLightLike[] | null | undefined,
+  requestedCount: number,
+  farCascadesDormant: boolean,
+): number {
+  const total = lights?.length ?? 0;
+  if (!total) return 0;
+  const bounded = Number.isFinite(requestedCount)
+    ? Math.max(0, Math.min(total, Math.floor(requestedCount)))
+    : total;
+  return bounded < total
+    && farCascadesDormant
+    && canDormantShadowCascades(lights, bounded)
+    ? bounded
+    : total;
+}
+
+/**
  * @param {number} cascadeCount
  * @param {{nearCount?:number, intervalS?:number}} [opts]
  */

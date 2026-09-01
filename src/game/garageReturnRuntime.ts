@@ -1,13 +1,10 @@
+import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
+import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
+
 export interface GarageReturnTrace {
   stages: Record<string, number>;
   totalMs?: number;
-  presentationRestore?: {
-    totalMs: number;
-    shadowPasses: number[];
-    shadowPassMax: number;
-    sceneUploadBatches: number[];
-    sceneUploadMax: number;
-  };
+  presentationRestore?: GaragePresentationRestoreReceipt;
 }
 
 export interface GarageReturnOptions {
@@ -379,4 +376,3 @@ export function createGarageReturnRuntime<Visual = object>(
     battleAgain,
   };
 }
-import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';

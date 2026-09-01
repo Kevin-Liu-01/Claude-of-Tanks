@@ -130,7 +130,7 @@ assert.doesNotMatch(mainSource, /const armorScopeTargets\s*=\s*\[/,
   'main must not own scoped opponent filtering');
 assert.match(mainSource, /createMainFrameRuntime\(/,
   'the composition root delegates through the typed frame owner');
-assert.match(mainFrameSource, /battleHudFrame\.update\(inBattle, killcamActive\)/,
+assert.match(mainFrameSource, /battleHudFrame\.update\(frame\.inBattle, frame\.killcamActive\)/,
   'the frame owner delegates one HUD transaction');
 
 console.log('battleHudFrameRuntime.selftest: all assertions passed');
