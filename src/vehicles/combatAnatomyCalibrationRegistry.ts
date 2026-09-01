@@ -26,6 +26,16 @@ export interface AnatomyModuleShapeReceipt extends Record<string, unknown> {
   readonly parts: readonly AnatomyCalibrationBounds[];
 }
 
+export interface AnatomyEraPlateReceipt extends Record<string, unknown> {
+  readonly name: string;
+  readonly owner: 'hull' | 'turret';
+  /** Exact visible cassette faces sharing one gameplay depletion id. */
+  readonly surfaces?: readonly (readonly (readonly number[])[])[];
+  /** r1 compatibility for receipts generated before multi-face ERA fitting. */
+  readonly verts?: readonly (readonly number[])[];
+  readonly visualSectors?: readonly string[];
+}
+
 export interface CombatAnatomyCalibration extends Record<string, unknown> {
   readonly hull: AnatomyCalibrationBounds;
   readonly turret?: AnatomyCalibrationBounds;
@@ -36,6 +46,7 @@ export interface CombatAnatomyCalibration extends Record<string, unknown> {
   readonly hullStructures?: readonly AnatomyCalibrationStructure[];
   readonly turretStructures?: readonly AnatomyCalibrationStructure[];
   readonly moduleShapes?: readonly AnatomyModuleShapeReceipt[];
+  readonly eraPlates?: readonly AnatomyEraPlateReceipt[];
   tracks: {
     readonly left: AnatomyCalibrationBounds;
     readonly right: AnatomyCalibrationBounds;

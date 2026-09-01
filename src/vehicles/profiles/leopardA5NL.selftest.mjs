@@ -12,8 +12,11 @@ assert.equal(spec.dims.widthM, 3.98, 'A5NL width includes its backed skirt prote
 
 const era = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => plate.kind === 'era');
-assert.deepEqual(era.map(({ name }) => name).sort(), ['a5nl_skirt_era_L', 'a5nl_skirt_era_R'],
-  'A5NL combat ERA matches the two visible skirt fields');
+assert.deepEqual([...new Set(era.map(({ name }) => name))].sort(),
+  ['a5nl_skirt_era_L', 'a5nl_skirt_era_R'],
+  'A5NL combat ERA matches the two depletable visible skirt fields');
+assert.equal(era.length, 60,
+  'A5NL combat ERA exposes one exact collision face for every visible skirt cassette');
 
 const tank = createTank(id, null, {
   proceduralOnly: true,

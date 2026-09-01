@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { getSpec } from '../specs.ts';
 
 const modernProfiles = new Map([
   ['leo2a5', 'leopard-2a5'],
@@ -26,6 +27,35 @@ const compoundTerminalExpectations = new Map([
   ['leo2a7v', { upper: [1.05, 0.62], ridge: [1.41, 0.22], lower: [1.38, 0.02] }],
 ]);
 const receiptsById = new Map();
+
+for (const id of ['leo2a5', 'leo2a5_a5nl']) {
+  const turretPlates = getSpec(id).armor.turretPlates;
+  assert.equal(turretPlates.some((plate) => /^turret_wedge_[LR]$/.test(plate.name)), false,
+    `${id} retires the obsolete one-piece sloping spaced-armor hitbox`);
+  const chevrons = turretPlates.filter((plate) => plate.name.startsWith('turret_chevron_'));
+  assert.equal(chevrons.length, 8,
+    `${id} traces two upper/lower chevron courses on both cheeks`);
+  const expectedProtection = id === 'leo2a5_a5nl' ? [286, 975] : [220, 750];
+  assert.ok(chevrons.every((plate) => plate.kind === 'spaced'
+      && plate.physicalMm === 90
+      && plate.keMm === expectedProtection[0] && plate.ceMm === expectedProtection[1]),
+  `${id} preserves its variant-adjusted spaced-armor protection on the corrected geometry`);
+  for (const plate of chevrons) {
+    const [v0, v1, , v3] = plate.verts;
+    const e1 = v1.map((value, axis) => value - v0[axis]);
+    const e2 = v3.map((value, axis) => value - v0[axis]);
+    const normalZ = e1[0] * e2[1] - e1[1] * e2[0];
+    assert.ok(normalZ > 0, `${id}/${plate.name} faces incoming frontal fire`);
+  }
+  const points = chevrons.flatMap((plate) => plate.verts);
+  const hasPoint = (expected) => points.some((point) => point.every(
+    (value, axis) => Math.abs(value - expected[axis]) <= 1e-6,
+  ));
+  assert.ok(hasPoint([1.44, 0.25, 1.725]), `${id} spaced layer shares the visual ridge terminal`);
+  assert.ok(hasPoint([1.06, 0.76, 0.32378651607814257]),
+    `${id} spaced layer shares the visual upper terminal`);
+  assert.ok(hasPoint([1.38, 0.02, 1.41]), `${id} spaced layer shares the visual lower terminal`);
+}
 
 const findMergedMesh = (root, name) => {
   let result = null;

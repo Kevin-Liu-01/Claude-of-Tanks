@@ -6,6 +6,7 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
   apfsdsPenetration as apfsdsPens,
+  reactivePlate,
   type ArmorEnvelope,
   type ArmorPlate,
 } from './specHelpers.ts';
@@ -131,6 +132,11 @@ const VARIANT_SPECS = {
     // the A's tier-IX protection after the tier-X donor hardening pass.
     armor: (() => {
       const armor = derivedArmor(t90m.armor, 0.80);
+      // The T-90A model carries K-5 on the glacis, skirts and frontal turret
+      // cheeks. Proryv's turret-flank Relikt plates are not present here.
+      armor.turretPlates = armor.turretPlates.filter(
+        (plate) => plate.kind !== 'era' || !/side/i.test(plate.name),
+      );
       for (const plate of [...armor.hullPlates, ...armor.turretPlates]) {
         if (plate.kind === 'era') plate.era = { keReduction: 0.20, ceFlatMm: 400 };
       }
@@ -168,8 +174,18 @@ const VARIANT_SPECS = {
     dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 3.29 },
     armor: (() => {
       const a = derivedArmor(m1a2.armor, 1.0);
-      // roster §3.2 stat-level kit: ARAT rows on the sides, slats at the rear
-      bumpPlates(a, /hull_side|skirt/i, 50, 400);
+      // ARAT rows are single-use reactive zones, not permanent base-armor
+      // inflation. Their seed quads are fitted to the visible cassettes by
+      // the combat-anatomy generator.
+      a.hullPlates.push(
+        reactivePlate('m1a2_tusk_skirt_era_R', 'right'),
+        reactivePlate('m1a2_tusk_skirt_era_L', 'left'),
+      );
+      a.turretPlates.push(
+        reactivePlate('m1a2_tusk_turret_era_R', 'right'),
+        reactivePlate('m1a2_tusk_turret_era_L', 'left'),
+      );
+      // Rear slat armor remains passive stand-off protection.
       bumpPlates(a, /rear/i, 0, 250);
       return a;
     })(),

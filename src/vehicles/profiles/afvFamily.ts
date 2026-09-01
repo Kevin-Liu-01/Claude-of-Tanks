@@ -938,13 +938,17 @@ function buildM3A3(P: AfvBuilderPort): void {
   addM3A3Turret(P);
   // Backed upper-glacis ERA field.  Three courses follow the donor glacis
   // plane and remain clear of the driver station and bow lights.
-  P.add('hullDark', KIT.box(2.14, 0.055, 0.96), 0, 1.72, 2.02, -0.464, 0, 0);
+  // The carrier's thin Y axis is the plate normal, while its long Z axis
+  // follows the glacis. Rotate that frame onto the donor's 26.6-degree
+  // slope; the old -0.464 rotation pointed the carrier depth through the
+  // hull and left the reactive bricks stacked along their own normal.
+  P.add('hullDark', KIT.box(2.14, 0.055, 0.96), 0, 1.72, 2.02, 1.107, 0, 0);
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_glacis_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 3; row++) for (let c = 0; c < 2; c++) {
         const along = -0.28 + row * 0.28;
         put(side * (0.25 + c * 0.50), 1.72 + along * 0.447,
-          2.02 + along * 0.894, -0.464, 0, 0,
+          2.02 - along * 0.894, -0.464, 0, 0,
           1.65, 1.12, 1.25);
       }
     });
@@ -1584,13 +1588,13 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('turretDark', box(0.52, 0.14, 0.46), side * 0.76, 0.46, 0.16,
       0, 0, side * 0.07);                                                      // underslung mount block
-    P.add('turret', box(0.50, 0.08, 0.60), side * 0.70, 0.585, 0.20,
+    P.addEquipment('turret', box(0.50, 0.08, 0.60), side * 0.70, 0.585, 0.20,
       0, side * 0.03, 0);                                                      // rack arm off the wall
-    P.add('turret', box(0.06, 0.40, 0.48), side * 0.90, 0.47, 0.20,
+    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 0.90, 0.47, 0.20,
       0, side * 0.03, 0);                                                      // inner hanger web
-    P.add('turret', box(0.06, 0.40, 0.48), side * 1.13, 0.47, 0.20,
+    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 1.13, 0.47, 0.20,
       0, side * 0.03, 0);                                                      // outer hanger web
-    P.add('turret', box(0.44, 0.07, 0.48), side * 1.065, 0.71, 0.20,
+    P.addEquipment('turret', box(0.44, 0.07, 0.48), side * 1.065, 0.71, 0.20,
       0, side * 0.03, 0);                                                      // top strap over both columns
     for (const colX of [1.005, 1.245]) {
       for (let row = 0; row < 2; row++) {
@@ -1614,32 +1618,39 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
   // front cheeks (the t90a eraRuCheeks read, station-local), a staggered
   // brick cassette course on the sloped face, and flank tiles on the walls.
-  P.visualEraCluster('bmpt-t90-station-era', 'turret', () => {
   for (const side of [-1, 1]) {
-    P.add('turret', box(0.42, 0.26, 0.18), side * 0.50, 0.62, 0.84,
-      -0.30, -side * 0.42, 0);
-    P.add('turretDark', box(0.36, 0.02, 0.15), side * 0.52, 0.76, 0.86,
-      -0.30, -side * 0.42, 0);
-    P.add('turret', box(0.36, 0.22, 0.16), side * 0.60, 0.44, 0.70,
-      -0.24, -side * 0.50, 0);
+    const suffix = side > 0 ? 'R' : 'L';
+    P.visualEraCluster(`turret_era_${suffix}`, 'turret', () => {
+      P.add('turret', box(0.42, 0.26, 0.18), side * 0.50, 0.62, 0.84,
+        -0.30, -side * 0.42, 0);
+      P.add('turretDark', box(0.36, 0.02, 0.15), side * 0.52, 0.76, 0.86,
+        -0.30, -side * 0.42, 0);
+      P.add('turret', box(0.36, 0.22, 0.16), side * 0.60, 0.44, 0.70,
+        -0.24, -side * 0.50, 0);
+      for (const bx of [0.16, 0.40, 0.64]) {
+        P.add('turret', box(0.20, 0.13, 0.10), side * bx, 0.42, 0.945,
+          -0.42, side * 0.10, 0);
+        P.add('turretDark', box(0.15, 0.016, 0.026), side * bx, 0.487, 0.973,
+          -0.42, side * 0.10, 0);
+      }
+      for (const bx of [0.28, 0.52]) {                                         // staggered second course
+        P.add('turret', box(0.20, 0.12, 0.09), side * bx, 0.56, 0.90,
+          -0.42, side * 0.10, 0);
+      }
+    });
+    P.visualEraCluster(`side_era_${suffix}`, 'turret', () => {
+      for (let i = 0; i < 2; i++) {
+        armorTile(P, 'turret', side * 1.265, 0.58, 0.44 - i * 0.42,
+          0.09, 0.20, 0.36, [0, 0, side * 0.05], false);
+      }
+    });
+    // Thin non-reactive stand-off shoe: overlaps the station skirt and the
+    // cassette backs without becoming either base armor or a consumable ERA
+    // layer. This keeps the side field visibly load-bearing while its strike
+    // face remains outside the station's broad turntable hit shell.
+    P.addEquipment('turret', box(0.20, 0.18, 0.82), side * 1.135, 0.58, 0.23,
+      0, 0, side * 0.05);
   }
-  for (const side of [-1, 1]) {
-    for (const bx of [0.16, 0.40, 0.64]) {
-      P.add('turret', box(0.20, 0.13, 0.10), side * bx, 0.42, 0.945,
-        -0.42, side * 0.10, 0);
-      P.add('turretDark', box(0.15, 0.016, 0.026), side * bx, 0.487, 0.973,
-        -0.42, side * 0.10, 0);
-    }
-    for (const bx of [0.28, 0.52]) {                                           // staggered second course
-      P.add('turret', box(0.20, 0.12, 0.09), side * bx, 0.56, 0.90,
-        -0.42, side * 0.10, 0);
-    }
-    for (let i = 0; i < 2; i++) {
-      armorTile(P, 'turret', side * 0.505, 0.76, 0.44 - i * 0.42,
-        0.09, 0.20, 0.36, [0, 0, side * 0.05], false);
-    }
-  }
-  });
 
   // Full roof suite. Pano: square post + box head (§5.269 bar, no funnel).
   P.addEquipment('turret', box(0.30, 0.10, 0.32), 0.36, 0.98, -0.34);

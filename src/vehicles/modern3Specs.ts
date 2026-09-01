@@ -8,6 +8,7 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   modernArmor,
+  reactivePlate,
   type ArmorEnvelope,
 } from './specHelpers.ts';
 import type { AimBloom, FleetTankSpec } from './specContracts.ts';
@@ -598,7 +599,8 @@ export const MODERN3_SPECS = {
     // hull, same 120/44). This row records the same owner-directed ×1.10
     // gameplay enlargement, including its slightly taller armor package.
     dims: { hullLengthM: 8.349, overallLengthM: 10.637, widthM: 3.96, heightM: 2.827 },
-    armor: scaleArmorFrame(modernArmor({
+    armor: (() => {
+      const armor = scaleArmorFrame(modernArmor({
       // frame re-seated on the shared buildArieteMk base; RHAe VALUES
       // byte-identical (the C2 package keeps its uparmored rows).
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
@@ -608,8 +610,18 @@ export const MODERN3_SPECS = {
       skirt: [55, 230, 520], rear: 45, roof: 45,
       tw: 1.28, tFrontZ: 2.12, tRearZ: -2.40, tH: 0.86,
       cheek: [650, 760, 1050], tSide: [420, 520, 760], tRear: 110, tRoof: 55,
-      mantlet: [500, 600, 820], loader: true, bustleAmmo: true,
-    }), ARIETE_C1_C2_SCALE),
+        mantlet: [500, 600, 820], loader: true, bustleAmmo: true,
+      }), ARIETE_C1_C2_SCALE);
+      armor.hullPlates.push(
+        reactivePlate('ariete_c2_skirt_era_R', 'right'),
+        reactivePlate('ariete_c2_skirt_era_L', 'left'),
+      );
+      armor.turretPlates.push(
+        reactivePlate('ariete_c2_turret_era_R', 'right'),
+        reactivePlate('ariete_c2_turret_era_L', 'left'),
+      );
+      return armor;
+    })(),
     visual: {
       scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945',
       patches: ['#2e3b2d', '#5b5140'], marking: 'number', number: 'C2 01',

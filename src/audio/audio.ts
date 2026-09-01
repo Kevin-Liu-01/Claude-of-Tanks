@@ -242,6 +242,12 @@ interface ShellHitEvent {
   targetHpAfter: number;
   crewHit?: string[];
   modulesHit?: HitModuleRecord[];
+  eraPlate?: string | null;
+  eraActivations?: readonly {
+    plate: string;
+    pos?: Vec3Tuple;
+    normal?: Vec3Tuple;
+  }[];
   era?: unknown;
   eraActivated?: unknown;
   reactiveArmor?: unknown;
@@ -2631,7 +2637,16 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       (listenerOwnerId == null && playerId != null && event.targetId === playerId);
     // Like the FX path, the reactive charge is additive to the deeper armor
     // result. Play its sharp cassette blast even when the final event is pen.
-    if (isEraActivation(event) && event.kind !== 'era') eraPop(p[0], p[1], p[2]);
+    const eraActivations = (event.eraActivations || []).filter(
+      (activation) => activation?.pos?.length === 3,
+    );
+    if (eraActivations.length) {
+      for (const activation of eraActivations) {
+        eraPop(activation.pos![0], activation.pos![1], activation.pos![2]);
+      }
+    } else if (isEraActivation(event) && event.kind !== 'era') {
+      eraPop(p[0], p[1], p[2]);
+    }
     switch (event.kind) {
       case 'pen':
         clang(p[0], p[1], p[2], playerHit && (event.damage || 0) > 0 ? 1 : 0);
@@ -2645,7 +2660,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
         ping(p[0], p[1], p[2], false, playerHit ? 0.45 : 0);
         break;
       case 'era':
-        eraPop(p[0], p[1], p[2]);
+        if (!eraActivations.length) eraPop(p[0], p[1], p[2]);
         break;
       case 'he_pen':
       case 'he_splash':

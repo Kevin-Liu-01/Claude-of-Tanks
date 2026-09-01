@@ -20,8 +20,13 @@ const sectorNames = [
 ];
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => sectorNames.includes(plate.name));
-assert.deepEqual(eraSectors.map((plate) => plate.name).sort(), [...sectorNames].sort(),
-  'six named ERA sectors back the complete visual package');
+const eraSectorNames = [...new Set(eraSectors.map((plate) => plate.name))];
+assert.deepEqual(eraSectorNames.sort(), [...sectorNames].sort(),
+  'six named ERA banks back the complete visual package');
+for (const sectorName of sectorNames) {
+  assert.ok(eraSectors.filter((plate) => plate.name === sectorName).length > 1,
+    `${sectorName} retains its individually fitted cassette collision faces`);
+}
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable ERA`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} has shaped-charge protection`);

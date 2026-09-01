@@ -17,6 +17,7 @@ const ERA_VEHICLE_IDS = Object.freeze([
   'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m',
   'leo2a6_ua', 't72m1_jaguar', 'pt91_twardy',
   'bmpt_terminator2', 'm3a3_bradley', 'bmpt_t90',
+  'kf51b',
 ]);
 
 const REQUIRED_T64_ERA_SECTORS = Object.freeze({

@@ -805,6 +805,20 @@ interface VisualEraReceipt {
   count: number;
 }
 
+interface VisualEraPart {
+  sector: string;
+  owner: VehicleOwner;
+  part: THREE.BufferGeometry;
+}
+
+interface EraVisualBindingReceipt {
+  owner: VehicleOwner;
+  visualSectors: Set<string>;
+  partCount: number;
+  maximumSeatDistanceM: number;
+  automaticPartCount: number;
+}
+
 interface AuthoredRange {
   plateName: string;
   start: number;
@@ -7386,8 +7400,17 @@ export function createTank(
   const destructibleClusters = new Map<string, DestructibleCluster>();
   const layeredEraPartsByCluster = new Map<string, number>();
   const layeredEraCassetteCounts = new Map<string, number>();
+  const destructibleClusterOwners = new Map<string, VehicleOwner>();
+  const destructibleEraParts: Array<{
+    name: string;
+    owner: VehicleOwner;
+    part: THREE.BufferGeometry;
+  }> = [];
   let activeDestructibleCluster: string | null = null;
   const visualEraPartsByCluster = new Map<string, VisualEraReceipt>();
+  const visualEraParts: VisualEraPart[] = [];
+  const eraVisualBindings = new Map<string, EraVisualBindingReceipt>();
+  const eraBoundPartsByPlate = new Map<string, THREE.BufferGeometry[]>();
   let activeVisualEraCluster: VisualEraCluster | null = null;
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
@@ -7429,6 +7452,17 @@ export function createTank(
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
+        const destructibleOwner = bucket.startsWith('turret') ? 'turret' : 'hull';
+        const previousOwner = destructibleClusterOwners.get(activeDestructibleCluster);
+        if (previousOwner && previousOwner !== destructibleOwner) {
+          throw new Error(`${specId}: ERA cluster ${activeDestructibleCluster} mixes ${previousOwner} and ${destructibleOwner} geometry`);
+        }
+        destructibleClusterOwners.set(activeDestructibleCluster, destructibleOwner);
+        destructibleEraParts.push({
+          name: activeDestructibleCluster,
+          owner: destructibleOwner,
+          part,
+        });
         layeredEraPartsByCluster.set(activeDestructibleCluster,
           (layeredEraPartsByCluster.get(activeDestructibleCluster) || 0) + 1);
       }
@@ -7438,6 +7472,11 @@ export function createTank(
         visualEraPartsByCluster.set(name, {
           owner: activeVisualEraCluster.owner,
           count: (current?.count || 0) + 1,
+        });
+        visualEraParts.push({
+          sector: name,
+          owner: activeVisualEraCluster.owner,
+          part,
         });
       }
       // Turret glass is reserved for sights, periscopes and electro-optical
@@ -7662,6 +7701,301 @@ export function createTank(
   if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
 
+  // Native profiles often author visible ERA as irregular wedges, lids and
+  // carrier-faced cassettes rather than the legacy shared brick primitive.
+  // Bind every such authored part to the nearest gameplay ERA plate in the
+  // same articulation frame. This preserves the profile's exact topology and
+  // draw-call budget while giving stripEra() a canonical one-shot cluster to
+  // collapse after damage.ts consumes that plate. Slat/cage sectors are
+  // intentionally excluded: visualEraCluster also carries those passive
+  // stand-off finishes, but they are not explosive cassettes.
+  const gameplayEraByOwner: Record<VehicleOwner, typeof armor.hullPlates> = {
+    hull: armor.hullPlates.filter((plate) => plate.kind === 'era'),
+    turret: armor.turretPlates.filter((plate) => plate.kind === 'era'),
+  };
+  const liveExternalParts: Record<VehicleOwner, Set<THREE.BufferGeometry>> = {
+    hull: new Set(buckets.hullExternalArmor || []),
+    turret: new Set(buckets.turretExternalArmor || []),
+  };
+  const pointToPlateDistance = (point: THREE.Vector3, plate: (typeof armor.hullPlates)[number]): number => {
+    const verts = plate.verts.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+    if (verts.length < 3) return Infinity;
+    const closest = new THREE.Vector3();
+    let best = Infinity;
+    for (let index = 1; index + 1 < verts.length; index++) {
+      const triangle = new THREE.Triangle(verts[0], verts[index], verts[index + 1]);
+      triangle.closestPointToPoint(point, closest);
+      best = Math.min(best, closest.distanceTo(point));
+    }
+    return best;
+  };
+  for (const { name, owner, part } of destructibleEraParts) {
+    if (!liveExternalParts[owner].has(part)) continue;
+    const plate = gameplayEraByOwner[owner].find((candidate) => candidate.name === name);
+    if (!plate) continue;
+    if (!part.boundingBox) part.computeBoundingBox();
+    if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
+    const center = part.boundingBox.getCenter(new THREE.Vector3());
+    const seatDistanceM = pointToPlateDistance(center, plate);
+    const binding = eraVisualBindings.get(name) || {
+      owner,
+      visualSectors: new Set<string>(),
+      partCount: 0,
+      maximumSeatDistanceM: 0,
+      automaticPartCount: 0,
+    };
+    binding.partCount++;
+    binding.maximumSeatDistanceM = Math.max(binding.maximumSeatDistanceM, seatDistanceM);
+    eraVisualBindings.set(name, binding);
+    const boundParts = eraBoundPartsByPlate.get(name) || [];
+    boundParts.push(part);
+    eraBoundPartsByPlate.set(name, boundParts);
+  }
+  for (const { sector, owner, part } of visualEraParts) {
+    if (!liveExternalParts[owner].has(part)) continue;
+    if (/cage|slat|screen|net/i.test(sector)) continue;
+    if (destructiblePartCluster.has(part)) continue;
+    let candidates = gameplayEraByOwner[owner];
+    if (!candidates.length) continue;
+    if (!part.boundingBox) part.computeBoundingBox();
+    if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
+    const center = part.boundingBox.getCenter(new THREE.Vector3());
+    const narrow = (pattern: RegExp): void => {
+      const matches = candidates.filter((plate) => pattern.test(plate.name));
+      if (matches.length) candidates = matches;
+    };
+    // Select the protection family first; a single centerline glacis plate
+    // may contain cassettes on both x sides and must not be discarded before
+    // its sector name gets a chance to identify it.
+    if (/skirt/i.test(sector)) narrow(/skirt/i);
+    else if (/glacis|nose/i.test(sector)) narrow(/glacis/i);
+    else if (/flank|side/i.test(sector)) narrow(/side/i);
+    else if (owner === 'hull') {
+      const hasSkirts = candidates.some((plate) => /skirt/i.test(plate.name));
+      const hasGlacis = candidates.some((plate) => /glacis/i.test(plate.name));
+      if (hasSkirts && hasGlacis) narrow(Math.abs(center.x) > 1.25 ? /skirt/i : /glacis/i);
+    }
+    // Preserve the side encoded by canonical plate ids even when an older
+    // broad donor plate is too far away to win a raw nearest-distance test.
+    if (center.x > 0.04) narrow(/(?:^|_)R$/i);
+    else if (center.x < -0.04) narrow(/(?:^|_)L$/i);
+    if (owner === 'turret'
+        && candidates.some((plate) => /side/i.test(plate.name))
+        && candidates.some((plate) => /turret|cheek/i.test(plate.name))) {
+      narrow(center.z < 0.65 && Math.abs(center.x) > 0.40 ? /side/i : /turret|cheek/i);
+    }
+    let selected = candidates[0];
+    let seatDistanceM = pointToPlateDistance(center, selected);
+    for (let index = 1; index < candidates.length; index++) {
+      const candidateDistanceM = pointToPlateDistance(center, candidates[index]);
+      if (candidateDistanceM < seatDistanceM) {
+        selected = candidates[index];
+        seatDistanceM = candidateDistanceM;
+      }
+    }
+    if (!destructibleClusters.has(selected.name)) {
+      destructibleClusters.set(selected.name, { ranges: [], spent: false });
+    }
+    destructiblePartCluster.set(part, selected.name);
+    const previousOwner = destructibleClusterOwners.get(selected.name);
+    if (previousOwner && previousOwner !== owner) {
+      throw new Error(`${specId}: ERA plate ${selected.name} binds both ${previousOwner} and ${owner} visuals`);
+    }
+    destructibleClusterOwners.set(selected.name, owner);
+    layeredEraPartsByCluster.set(selected.name,
+      (layeredEraPartsByCluster.get(selected.name) || 0) + 1);
+    const binding = eraVisualBindings.get(selected.name) || {
+      owner,
+      visualSectors: new Set<string>(),
+      partCount: 0,
+      maximumSeatDistanceM: 0,
+      automaticPartCount: 0,
+    };
+    binding.visualSectors.add(sector);
+    binding.partCount++;
+    binding.automaticPartCount++;
+    binding.maximumSeatDistanceM = Math.max(binding.maximumSeatDistanceM, seatDistanceM);
+    eraVisualBindings.set(selected.name, binding);
+    const boundParts = eraBoundPartsByPlate.get(selected.name) || [];
+    boundParts.push(part);
+    eraBoundPartsByPlate.set(selected.name, boundParts);
+  }
+
+  const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
+    const parts = eraBoundPartsByPlate.get(plate.name) || [];
+    if (!parts.length || plate.verts.length < 3) return [];
+    const a = new THREE.Vector3().fromArray(plate.verts[0]);
+    const authoredU = new THREE.Vector3().fromArray(plate.verts[1]).sub(a).normalize();
+    const authoredV = new THREE.Vector3().fromArray(plate.verts[plate.verts.length - 1]).sub(a);
+    const authoredNormal = new THREE.Vector3().crossVectors(authoredU, authoredV).normalize();
+    if (authoredU.lengthSq() < 0.99 || authoredNormal.lengthSq() < 0.99) return [];
+    const sideSuffix = /(?:^|_)R$/i.test(plate.name)
+      ? 1 : /(?:^|_)L$/i.test(plate.name) ? -1 : 0;
+    const point = new THREE.Vector3();
+    const fitPointCloud = (points: THREE.Vector3[]): number[][] | null => {
+      if (points.length < 4) return null;
+      const centroid = points.reduce((sum, value) => sum.add(value), new THREE.Vector3())
+        .multiplyScalar(1 / points.length);
+      let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+      for (const value of points) {
+      const dx = value.x - centroid.x;
+      const dy = value.y - centroid.y;
+      const dz = value.z - centroid.z;
+      xx += dx * dx; xy += dx * dy; xz += dx * dz;
+      yy += dy * dy; yz += dy * dz; zz += dz * dz;
+      }
+      const covariance = [[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]];
+      const eigenvectors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+      for (let iteration = 0; iteration < 18; iteration++) {
+      let p = 0, q = 1;
+      if (Math.abs(covariance[0][2]) > Math.abs(covariance[p][q])) [p, q] = [0, 2];
+      if (Math.abs(covariance[1][2]) > Math.abs(covariance[p][q])) [p, q] = [1, 2];
+      if (Math.abs(covariance[p][q]) < 1e-10) break;
+      const angle = 0.5 * Math.atan2(
+        2 * covariance[p][q], covariance[q][q] - covariance[p][p],
+      );
+      const cosine = Math.cos(angle);
+      const sine = Math.sin(angle);
+      const app = covariance[p][p];
+      const aqq = covariance[q][q];
+      const apq = covariance[p][q];
+      covariance[p][p] = cosine * cosine * app - 2 * sine * cosine * apq
+        + sine * sine * aqq;
+      covariance[q][q] = sine * sine * app + 2 * sine * cosine * apq
+        + cosine * cosine * aqq;
+      covariance[p][q] = covariance[q][p] = 0;
+      for (let k = 0; k < 3; k++) {
+        if (k === p || k === q) continue;
+        const akp = covariance[k][p];
+        const akq = covariance[k][q];
+        covariance[k][p] = covariance[p][k] = cosine * akp - sine * akq;
+        covariance[k][q] = covariance[q][k] = sine * akp + cosine * akq;
+      }
+      for (let row = 0; row < 3; row++) {
+        const vrp = eigenvectors[row][p];
+        const vrq = eigenvectors[row][q];
+        eigenvectors[row][p] = cosine * vrp - sine * vrq;
+        eigenvectors[row][q] = sine * vrp + cosine * vrq;
+      }
+      }
+      const eigenvalues = [covariance[0][0], covariance[1][1], covariance[2][2]];
+      let minimumAxis = 0;
+      if (eigenvalues[1] < eigenvalues[minimumAxis]) minimumAxis = 1;
+      if (eigenvalues[2] < eigenvalues[minimumAxis]) minimumAxis = 2;
+      let maximumAxis = 0;
+      if (eigenvalues[1] > eigenvalues[maximumAxis]) maximumAxis = 1;
+      if (eigenvalues[2] > eigenvalues[maximumAxis]) maximumAxis = 2;
+      const normal = new THREE.Vector3(
+        eigenvectors[0][minimumAxis], eigenvectors[1][minimumAxis],
+        eigenvectors[2][minimumAxis],
+      ).normalize();
+      const seedAlignment = normal.dot(authoredNormal);
+      if (Math.abs(seedAlignment) > 0.05) {
+        if (seedAlignment < 0) normal.negate();
+      } else if (normal.dot(centroid) < 0) {
+        normal.negate();
+      }
+      const maximumVector = new THREE.Vector3(
+        eigenvectors[0][maximumAxis], eigenvectors[1][maximumAxis],
+        eigenvectors[2][maximumAxis],
+      );
+      const u = maximumVector.clone()
+        .addScaledVector(normal, -maximumVector.dot(normal)).normalize();
+      if (u.lengthSq() < 0.99) {
+        u.copy(authoredU).addScaledVector(normal, -authoredU.dot(normal)).normalize();
+        if (u.lengthSq() < 0.99) u.set(1, 0, 0).addScaledVector(normal, -normal.x).normalize();
+      }
+      const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+      let uMin = Infinity, uMax = -Infinity;
+      let vMin = Infinity, vMax = -Infinity;
+      let outwardN = -Infinity;
+      for (const value of points) {
+      const pu = value.dot(u);
+      const pv = value.dot(v);
+      const pn = value.dot(normal);
+      uMin = Math.min(uMin, pu); uMax = Math.max(uMax, pu);
+      vMin = Math.min(vMin, pv); vMax = Math.max(vMax, pv);
+      outwardN = Math.max(outwardN, pn);
+      }
+      if (![uMin, uMax, vMin, vMax, outwardN].every(Number.isFinite)
+          || uMax - uMin < 0.02 || vMax - vMin < 0.02) return null;
+      const pointAt = (pu: number, pv: number): number[] => new THREE.Vector3()
+        .addScaledVector(u, pu)
+        .addScaledVector(v, pv)
+        .addScaledVector(normal, outwardN)
+        .toArray();
+      return [pointAt(uMin, vMin), pointAt(uMax, vMin),
+        pointAt(uMax, vMax), pointAt(uMin, vMax)];
+    };
+
+    // A wrapped bank needs one collision face per authored cassette/slab.
+    // Collapsing cheek, side and roof-edge parts into a single best-fit plane
+    // creates false armor across empty space. All faces still share the same
+    // plate name, so one activation atomically spends the correct visual bank.
+    const surfaces: number[][][] = [];
+    const allPoints: THREE.Vector3[] = [];
+    for (const part of parts) {
+      const positions = part.getAttribute('position');
+      if (!positions) continue;
+      const partPoints: THREE.Vector3[] = [];
+      for (let index = 0; index < positions.count; index++) {
+        point.fromBufferAttribute(positions, index);
+        // Never let a mirrored carrier lip expand an L/R gameplay zone into
+        // the opposite bank.
+        if (sideSuffix > 0 && point.x < -1e-4) continue;
+        if (sideSuffix < 0 && point.x > 1e-4) continue;
+        const value = point.clone();
+        partPoints.push(value);
+        allPoints.push(value);
+      }
+      const surface = fitPointCloud(partPoints);
+      if (surface) surfaces.push(surface);
+    }
+    if (!surfaces.length) {
+      const fallback = fitPointCloud(allPoints);
+      if (fallback) surfaces.push(fallback);
+    }
+    // Many builders author a cassette body and a thinner painted face as two
+    // coincident parts. Retain only the outer face so one physical tile does
+    // not become two nearly identical collision surfaces.
+    const deduplicated: number[][][] = [];
+    for (const surface of surfaces) {
+      const center = surface.reduce(
+        (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
+        new THREE.Vector3(),
+      ).multiplyScalar(1 / surface.length);
+      const normal = new THREE.Vector3().fromArray(surface[1])
+        .sub(new THREE.Vector3().fromArray(surface[0]))
+        .cross(new THREE.Vector3().fromArray(surface[3])
+          .sub(new THREE.Vector3().fromArray(surface[0])))
+        .normalize();
+      const duplicateIndex = deduplicated.findIndex((candidate) => {
+        const candidateCenter = candidate.reduce(
+          (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
+          new THREE.Vector3(),
+        ).multiplyScalar(1 / candidate.length);
+        const candidateNormal = new THREE.Vector3().fromArray(candidate[1])
+          .sub(new THREE.Vector3().fromArray(candidate[0]))
+          .cross(new THREE.Vector3().fromArray(candidate[3])
+            .sub(new THREE.Vector3().fromArray(candidate[0])))
+          .normalize();
+        return normal.dot(candidateNormal) > 0.995
+          && center.distanceTo(candidateCenter) < 0.05;
+      });
+      if (duplicateIndex < 0) {
+        deduplicated.push(surface);
+        continue;
+      }
+      const candidate = deduplicated[duplicateIndex];
+      const candidateCenter = candidate.reduce(
+        (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
+        new THREE.Vector3(),
+      ).multiplyScalar(1 / candidate.length);
+      if (center.dot(normal) > candidateCenter.dot(normal)) deduplicated[duplicateIndex] = surface;
+    }
+    return deduplicated;
+  };
+
   // Preserve the builder's unmerged semantic parts only for offline geometry
   // receipts. Runtime meshes stay merged exactly as before. Each AABB is in
   // the eventual bucket mesh's local coordinates; the generator reapplies the
@@ -7882,6 +8216,32 @@ export function createTank(
   root.userData.eraClusterNames = Object.freeze([
     ...new Set([...eraClusters.keys(), ...destructibleClusters.keys()]),
   ].sort());
+  root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
+    [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
+  );
+  root.userData.eraVisualBindingReceipt = Object.freeze({
+    revision: 'canonical-gameplay-era-binding-r1',
+    plates: Object.freeze(([
+      ...gameplayEraByOwner.hull.map((plate) => ({ owner: 'hull' as const, plate })),
+      ...gameplayEraByOwner.turret.map((plate) => ({ owner: 'turret' as const, plate })),
+    ]).map(({ owner, plate }) => {
+      const binding = eraVisualBindings.get(plate.name);
+      const registeredOwner = destructibleClusterOwners.get(plate.name) || null;
+      return Object.freeze({
+        name: plate.name,
+        owner,
+        registered: root.userData.eraClusterNames.includes(plate.name),
+        registeredOwner,
+        ownerMatches: registeredOwner === owner,
+        partCount: layeredEraPartsByCluster.get(plate.name) || 0,
+        cassetteCount: layeredEraCassetteCounts.get(plate.name) || 0,
+        automaticPartCount: binding?.automaticPartCount || 0,
+        visualSectors: Object.freeze([...(binding?.visualSectors || [])].sort()),
+        maximumSeatDistanceM: binding ? binding.maximumSeatDistanceM : null,
+        fittedSurfaces: fittedEraSurfaces(plate),
+      });
+    })),
+  });
   if (destructibleClusters.size || visualEraPartsByCluster.size) {
     const owners = new Set<VehicleOwner>();
     if ((buckets.hullExternalArmor || []).length) {
@@ -7897,6 +8257,18 @@ export function createTank(
       ...[...visualEraPartsByCluster.entries()].map(
         ([name, { count }]): [string, number] => [name, count]),
     ];
+    // Automatically bound native cassettes remain members of their authored
+    // visual sector while also joining a canonical gameplay plate. Count the
+    // underlying geometry once in the finish receipt; summing both semantic
+    // maps would falsely report every bound body/cover twice.
+    const authoredEraParts = new Set<THREE.BufferGeometry>([
+      ...destructibleEraParts
+        .filter(({ owner, part }) => liveExternalParts[owner].has(part))
+        .map(({ part }) => part),
+      ...visualEraParts
+        .filter(({ owner, part }) => liveExternalParts[owner].has(part))
+        .map(({ part }) => part),
+    ]);
     root.userData.eraFinishReceipt = Object.freeze({
       revision: 'fleet-layered-vehicle-scale-camo-r1',
       sectors: Object.freeze(finishSectors),
@@ -7909,9 +8281,7 @@ export function createTank(
       staticMergedProtection: true,
       maximumDrawBuckets: owners.size,
       perFrameWork: false,
-      authoredParts: [...layeredEraPartsByCluster.values(),
-        ...[...visualEraPartsByCluster.values()].map(({ count }) => count)]
-        .reduce((sum, count) => sum + count, 0),
+      authoredParts: authoredEraParts.size,
       layeredCassettes: [...layeredEraCassetteCounts.values()].reduce((sum, count) => sum + count, 0),
       partsBySector: Object.freeze(Object.fromEntries(
         partsBySector.sort(([a], [b]) => a.localeCompare(b)))),

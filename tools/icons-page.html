@@ -471,10 +471,7 @@ function drawInspectionCallouts(c, callouts) {
       .sort((a, b) => b.weight - a.weight)
       .slice(0, 6)
       .sort((a, b) => a.anchor[1] - b.anchor[1]);
-    const gap = 14;
-    candidates.forEach((item, index) => {
-      item.labelY = clamp(item.anchor[1], 56 + index * gap, 210 - (candidates.length - 1 - index) * gap);
-    });
+    packCalloutYs(candidates, 56, 210, 14);
     for (const item of candidates) {
       c.strokeStyle = item.color;
       c.beginPath();
@@ -496,6 +493,43 @@ function drawInspectionCallouts(c, callouts) {
     }
   }
   c.restore();
+}
+
+function packCalloutYs(candidates, minY, maxY, gap) {
+  if (!candidates.length) return;
+  // Keep the original near-anchor leader-line composition.  Only displace a
+  // label when its text row would collide with a neighbour, sharing that
+  // displacement across the colliding group instead of cascading every later
+  // label down the rail.  This is minimum-displacement isotonic packing after
+  // subtracting the required row gap.
+  const desired = candidates.map((item, index) => (
+    clamp(item.anchor[1], minY, maxY) - index * gap
+  ));
+  const blocks = [];
+  desired.forEach((value, index) => {
+    blocks.push({ start: index, end: index, total: value, count: 1 });
+    while (blocks.length > 1) {
+      const right = blocks.at(-1);
+      const left = blocks.at(-2);
+      if (left.total / left.count <= right.total / right.count) break;
+      left.end = right.end;
+      left.total += right.total;
+      left.count += right.count;
+      blocks.pop();
+    }
+  });
+  const fitted = new Array(desired.length);
+  for (const block of blocks) {
+    const average = block.total / block.count;
+    for (let index = block.start; index <= block.end; index++) fitted[index] = average;
+  }
+  const packed = fitted.map((value, index) => value + index * gap);
+  const shift = packed[0] < minY
+    ? minY - packed[0]
+    : packed.at(-1) > maxY
+      ? maxY - packed.at(-1)
+      : 0;
+  candidates.forEach((item, index) => { item.labelY = packed[index] + shift; });
 }
 
 function technicalDiagram(stage, metadata, kind) {

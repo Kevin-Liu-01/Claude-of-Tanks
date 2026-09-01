@@ -109,10 +109,11 @@ oplot.dispose();
     });
     return collapsed;
   };
-  const plateNames = [...TANK_SPECS.t90m.armor.hullPlates, ...TANK_SPECS.t90m.armor.turretPlates]
-    .filter((plate) => plate.kind === 'era')
-    .map((plate) => plate.name)
-    .sort();
+  const plateNames = [...new Set(
+    [...TANK_SPECS.t90m.armor.hullPlates, ...TANK_SPECS.t90m.armor.turretPlates]
+      .filter((plate) => plate.kind === 'era')
+      .map((plate) => plate.name),
+  )].sort();
   assert.deepEqual(t90m.root.userData.eraClusterNames, plateNames,
     'every T-90M gameplay ERA plate has one exact visual cluster');
   const before = countCollapsed();

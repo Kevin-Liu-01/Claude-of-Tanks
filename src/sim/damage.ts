@@ -161,6 +161,11 @@ export interface HitEvent {
   ammoRacked: boolean;
   destroyed: boolean;
   eraPlate: string | null;
+  eraActivations: Array<{
+    plate: string;
+    pos: Vec3Tuple;
+    normal: Vec3Tuple;
+  }>;
   shellName: string;
   penRollFreshMm: number;
   flightDistM: number;
@@ -626,6 +631,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     ammoRacked: false,
     destroyed: false,
     eraPlate: null,
+    eraActivations: [],
     // --- SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.ts;
     // existing fields/math above are untouched) ------------------------------
     shellName: shell.spec.name || shell.spec.type, // display name of the round
@@ -646,6 +652,20 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     impactLocalNormal: null,
     impactLocalDir: null,
   };
+}
+
+/** Preserve every reactive layer crossed by one penetrating shell. */
+function recordEraActivation(event: HitEvent, hit: PlateHit): void {
+  const plate = hit.plate.name;
+  event.eraPlate = plate; // Backward-compatible primary/last activation.
+  if (event.eraActivations.some((activation) => activation.plate === plate)) return;
+  event.eraActivations.push({
+    plate,
+    pos: [hit.point.x, hit.point.y, hit.point.z],
+    normal: hit.normal
+      ? [hit.normal.x, hit.normal.y, hit.normal.z]
+      : [0, 1, 0],
+  });
 }
 
 /**
@@ -943,7 +963,7 @@ export function resolveShellHit(
     // precursor charge pops the tile and the main jet passes uncut.
     if (plate.kind === 'era') {
       combat.eraSpent.add(plate.name);
-      event.eraPlate = plate.name;
+      recordEraActivation(event, hit);
       if (spec.tandem) continue;
       const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
       if (behavior.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
@@ -1411,7 +1431,7 @@ function heDirectHit(
       // physical thickness joins the splash absorption term below.
       if (!combat.eraSpent.has(hit.plate.name)) {
         combat.eraSpent.add(hit.plate.name);
-        event.eraPlate = hit.plate.name;
+        recordEraActivation(event, hit);
       }
       eraArmorMm += hit.plate.physicalMm;
       continue;

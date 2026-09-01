@@ -356,7 +356,7 @@ assert(sepv2Optics.max[1] - sepv2Calibration.turret.max[1] <= 0.6,
   'SEPv2 roof optics follow the compact CROWS pedestal instead of the retired tall tower');
 let sepv2BaseRoofY = -Infinity;
 for (const plate of sepv2Spec.armor.turretPlates) {
-  if (/^turret_(?:hatch|cupola)_\d+_/.test(plate.name)) continue;
+  if (plate.kind === 'era' || /^turret_(?:hatch|cupola)_\d+_/.test(plate.name)) continue;
   for (const point of plate.verts) sepv2BaseRoofY = Math.max(sepv2BaseRoofY, point[1]);
 }
 assert(sepv2BaseRoofY <= sepv2Calibration.turret.max[1] + 1e-6,

@@ -890,16 +890,18 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
   // Shallow ERAWA skirt faces are planted into the existing fender-hung
   // panels. Their outer faces remain on the published-width anchor instead
   // of widening the vehicle or becoming a second skirt wall.
-  for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
-    const z = -1.96 + i * 0.69;
-    const h = 0.225 + (i % 3) * 0.012;
-    P.add('hull', box(0.030, h, 0.56), s * 1.780, 1.045 + (i % 2) * 0.010, z,
-      0, 0, s * ((i % 3) - 1) * 0.008);
-    P.add('hullDark', box(0.009, h * 0.70, 0.46), s * 1.796,
-      1.045 + (i % 2) * 0.010, z);
-    P.add('hullDetail', box(0.010, 0.020, 0.44), s * 1.797,
-      1.045 + h * 0.47, z);
-  }
+  P.visualEraCluster('polish-erawa-hull-skirt', 'hull', () => {
+    for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
+      const z = -1.96 + i * 0.69;
+      const h = 0.225 + (i % 3) * 0.012;
+      P.add('hull', box(0.030, h, 0.56), s * 1.780, 1.045 + (i % 2) * 0.010, z,
+        0, 0, s * ((i % 3) - 1) * 0.008);
+      P.add('hullDark', box(0.009, h * 0.70, 0.46), s * 1.796,
+        1.045 + (i % 2) * 0.010, z);
+      P.add('hullDetail', box(0.010, 0.020, 0.44), s * 1.797,
+        1.045 + h * 0.47, z);
+    }
+  });
 
   // Buried cast continuations close the lower gun-root valleys. These are
   // structural turret mass behind the Polish ERAWA wedge, borrowed from the
@@ -1143,13 +1145,15 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // fixed while the suspension instances move and visibly double the wheels.
 
   // ---- skirts: ERAWA-1 armored forward third + rubber run (±1.795) -------
-  for (const s of [-1, 1]) {
-    for (let k = 0; k < 3; k++) {
-      P.add('hull', box(0.065, 0.36, 0.60), s * 1.7625, 1.02, 2.02 - k * 0.64,
-        0, 0, s * (k % 2 ? 0.015 : -0.012));
-      P.add('hullDark', box(0.018, 0.28, 0.025), s * 1.797, 1.02, 2.32 - k * 0.64);
+  P.visualEraCluster('polish-erawa-hull-skirt', 'hull', () => {
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 3; k++) {
+        P.add('hull', box(0.065, 0.36, 0.60), s * 1.7625, 1.02, 2.02 - k * 0.64,
+          0, 0, s * (k % 2 ? 0.015 : -0.012));
+        P.add('hullDark', box(0.018, 0.28, 0.025), s * 1.797, 1.02, 2.32 - k * 0.64);
+      }
     }
-  }
+  });
   ruSkirtBand(P, {
     x: 1.775, th: 0.04, z0: -2.02, z1: 0.10, yTop: 1.20, yBot: 0.74,
     panels: 4, dressIn: 0.03,

@@ -21,6 +21,7 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
   modernArmor as ifvArmor,
+  reactivePlate,
   type ShellSpec,
 } from './specHelpers.ts';
 import type {
@@ -470,6 +471,22 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   // -------------------------------------------------------------------------
 };
 
+// The CFV package exposes independent glacis, skirt, cheek and turret-side
+// reactive arrays. Bind each exact visual cluster to a gameplay plate so a
+// hit consumes only the contacted package and removes its rendered tiles.
+AFV_FAMILY_SPECS.m3a3_bradley.armor.hullPlates.push(
+  reactivePlate('m3a3_glacis_R', 'front'),
+  reactivePlate('m3a3_glacis_L', 'front'),
+  reactivePlate('m3a3_side_R', 'right'),
+  reactivePlate('m3a3_side_L', 'left'),
+);
+AFV_FAMILY_SPECS.m3a3_bradley.armor.turretPlates.push(
+  reactivePlate('m3a3_turret_cheek_R', 'front'),
+  reactivePlate('m3a3_turret_cheek_L', 'front'),
+  reactivePlate('m3a3_turret_side_R', 'right'),
+  reactivePlate('m3a3_turret_side_L', 'left'),
+);
+
 AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
   name: 'BMPT T-90', nation: 'Russia', number: 'BMPT-90',
   base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'],
@@ -500,5 +517,21 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
     he('3UOF8 HE-I', 30, 46, 960, 500, 0.28),
   ],
 });
+
+// The Terminator 2 station replaces the donor tank turret and has no turret
+// ERA of its own; retaining the T-72B3M cheek plates created invisible armor.
+AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates =
+  AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates.filter(
+    (plate) => plate.kind !== 'era',
+  );
+
+// The larger BMPT T-90 station visibly carries both front-cheek and flank
+// reactive fields. T-90A intentionally omits Proryv's flank kit, so restore
+// only those two gameplay zones for this station; the anatomy receipt seats
+// them to the station's own authored cassette faces.
+const bmptT90FlankEra = registries.tankSpecs.t90m?.armor.turretPlates
+  .filter((plate) => plate.kind === 'era' && /side/i.test(plate.name))
+  .map((plate) => structuredClone(plate)) || [];
+AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);
 
 registerFleetSpecs(registries, AFV_FAMILY_IDS, AFV_FAMILY_SPECS);

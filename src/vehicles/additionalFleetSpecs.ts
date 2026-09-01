@@ -2,7 +2,14 @@
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
-import { shell, type ArmorEnvelope } from './specHelpers.ts';
+import {
+  reactivePlate,
+  shell,
+  type ArmorEnvelope,
+  type ArmorPlate,
+  type MutableVec3Tuple,
+  type Vec3Tuple,
+} from './specHelpers.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
@@ -47,6 +54,33 @@ function requireFleetSpec(id: string): FleetTankSpec {
   const spec = tankSpecs[id];
   if (!isFleetSpecRecord(spec)) throw new Error(`Fleet donor missing or incomplete: ${id}`);
   return spec;
+}
+
+function armorWithoutEra(
+  baseId: string,
+  reject: (owner: 'hull' | 'turret', name: string) => boolean,
+): ArmorEnvelope {
+  const armor = copy(requireFleetSpec(baseId).armor);
+  armor.hullPlates = armor.hullPlates.filter(
+    (plate) => plate.kind !== 'era' || !reject('hull', plate.name),
+  );
+  armor.turretPlates = armor.turretPlates.filter(
+    (plate) => plate.kind !== 'era' || !reject('turret', plate.name),
+  );
+  return armor;
+}
+
+function abramsReactiveArmor(baseId: string, prefix: string): ArmorEnvelope {
+  const armor = copy(requireFleetSpec(baseId).armor);
+  armor.hullPlates.push(
+    reactivePlate(`${prefix}_skirt_era_R`, 'right'),
+    reactivePlate(`${prefix}_skirt_era_L`, 'left'),
+  );
+  armor.turretPlates.push(
+    reactivePlate(`${prefix}_turret_era_R`, 'right'),
+    reactivePlate(`${prefix}_turret_era_L`, 'left'),
+  );
+  return armor;
 }
 
 function make(
@@ -171,6 +205,7 @@ const SPECS: FleetTankSpec[] = [
       dims: { heightM: 2.80 } }),
   make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 },
+      armor: abramsReactiveArmor('m1a2', 'm1a2_sepv2'),
       // §5.73-1 P95 datum: elevated armored CROWS plus its seated ghillie
       // cover measures 3.44 m on the authoritative mask.
       dims: { heightM: 3.44 } }),
@@ -185,6 +220,7 @@ const SPECS: FleetTankSpec[] = [
   // build, nothing recovered to credit.
   make('m1a2', 'm1a2_sepv3', 'M1A2 SEPv3', 'USA',
     { hp: 2700, weightTons: 67.5, gun: { reloadS: 5.8 },
+      armor: abramsReactiveArmor('m1a2', 'm1a2_sepv3'),
       // FALSE-0 four-box + temporary 1024 datum replica: the wide/low CROWS
       // plus mandatory ghillie cover measures a 3.18 m P95 envelope.
       dims: { heightM: 3.18 }, community: null, visual: { number: '34' } }),
@@ -328,6 +364,9 @@ const SPECS: FleetTankSpec[] = [
       } }),
   make('t72b3', 't64bv1', 'T-64BV1', 'USSR/Russia',
     { hp: 1850, weightTons: 42.4, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.4 },
+      // The authored Kontakt-1 package covers glacis and turret. The donor's
+      // skirt pair had no visual cassettes and could never be depleted.
+      armor: armorWithoutEra('t72b3', (owner, name) => owner === 'hull' && /skirt/i.test(name)),
       dims: {
         hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17,
         // Owner-supplied 42manako T-64BV1 source silhouette after the
@@ -355,6 +394,9 @@ const SPECS: FleetTankSpec[] = [
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),
   make('t90m', 't90sm', 'T-90SM', 'Russia',
     { hp: 2400, weightTons: 48, topSpeedKmh: 72, gun: { reloadS: 6.4 },
+      // The procedural T-90SM fit has a Relikt glacis and frontal turret
+      // field. It does not carry the donor Proryv skirt or turret-flank kit.
+      armor: armorWithoutEra('t90m', (_owner, name) => /skirt|side/i.test(name)),
       dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 } }),
   make('type10', 'type90', 'Type 90 Kyu-maru', 'Japan',
     // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
@@ -379,6 +421,98 @@ const SPECS: FleetTankSpec[] = [
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
     { hp: 2300, topSpeedKmh: 65, gun: { reloadS: 6.6 } }),
 ];
+
+interface LeopardChevronStation {
+  readonly x: number;
+  readonly upperX: number;
+  readonly upperY: number;
+  readonly upperZ: number;
+  readonly ridgeY: number;
+  readonly ridgeZ: number;
+  readonly lowerX: number;
+  readonly lowerY: number;
+  readonly lowerZ: number;
+}
+
+// The playable A5 shell is a closed side-view chevron, not the donor era's
+// single sloping cheek quad. These three structural stations are the same
+// center/mid/terminal control courses authored by wedgeTurretV3's current
+// leopard-2a5 profile. Spaced appliques deliberately bypass base-shell anatomy
+// scaling, so these points are authored directly in the procedural turret
+// frame and land exactly on its upper face + lower return.
+const LEO2A5_CHEVRON_STATIONS: readonly LeopardChevronStation[] = Object.freeze([
+  Object.freeze({
+    x: 0.30, upperX: 0.30, upperY: 0.74, upperZ: 1.5187360644672352,
+    ridgeY: 0.25, ridgeZ: 2.865,
+    lowerX: 0.30, lowerY: -0.07, lowerZ: 1.87,
+  }),
+  Object.freeze({
+    x: 1.29, upperX: 0.96, upperY: 0.74, upperZ: 0.7287360644672352,
+    ridgeY: 0.25, ridgeZ: 2.075,
+    lowerX: 1.2378947368421052, lowerY: -0.07, lowerZ: 1.50,
+  }),
+  Object.freeze({
+    x: 1.44, upperX: 1.06, upperY: 0.76, upperZ: 0.32378651607814257,
+    ridgeY: 0.25, ridgeZ: 1.725,
+    lowerX: 1.38, lowerY: 0.02, lowerZ: 1.41,
+  }),
+]);
+
+function authoredLeopardChevronPoint(point: Vec3Tuple): MutableVec3Tuple {
+  return point.slice() as MutableVec3Tuple;
+}
+
+function leopardChevronPlate(name: string, finalVerts: readonly Vec3Tuple[]): ArmorPlate {
+  return {
+    name,
+    verts: finalVerts.map(authoredLeopardChevronPoint) as ArmorPlate['verts'],
+    physicalMm: 90,
+    keMm: 220,
+    ceMm: 750,
+    kind: 'spaced',
+    era: null,
+    moduleLink: null,
+    gunFollow: false,
+  };
+}
+
+function leopard2A5ChevronSpacedArmor(): ArmorPlate[] {
+  const plates: ArmorPlate[] = [];
+  for (const side of [-1, 1] as const) {
+    const sideName = side < 0 ? 'L' : 'R';
+    const point = (
+      station: LeopardChevronStation,
+      surface: 'upper' | 'ridge' | 'lower',
+    ): Vec3Tuple => surface === 'upper'
+      ? [side * station.upperX, station.upperY, station.upperZ]
+      : surface === 'ridge'
+        ? [side * station.x, station.ridgeY, station.ridgeZ]
+        : [side * station.lowerX, station.lowerY, station.lowerZ];
+    for (let index = 0; index < LEO2A5_CHEVRON_STATIONS.length - 1; index++) {
+      const a = LEO2A5_CHEVRON_STATIONS[index];
+      const b = LEO2A5_CHEVRON_STATIONS[index + 1];
+      const au = point(a, 'upper'), ar = point(a, 'ridge'), al = point(a, 'lower');
+      const bu = point(b, 'upper'), br = point(b, 'ridge'), bl = point(b, 'lower');
+      plates.push(leopardChevronPlate(
+        `turret_chevron_${sideName}_upper_${index + 1}`,
+        side > 0 ? [au, ar, br, bu] : [au, bu, br, ar],
+      ));
+      plates.push(leopardChevronPlate(
+        `turret_chevron_${sideName}_lower_${index + 1}`,
+        side > 0 ? [ar, al, bl, br] : [ar, br, bl, al],
+      ));
+    }
+  }
+  return plates;
+}
+
+{
+  const leopard2A5 = SPECS.find((spec) => spec.id === 'leo2a5');
+  if (!leopard2A5) throw new Error('Additional fleet spec missing: leo2a5');
+  leopard2A5.armor.turretPlates = leopard2A5.armor.turretPlates
+    .filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name))
+    .concat(leopard2A5ChevronSpacedArmor());
+}
 
 // SEPv3 ammo identity (coordinator wiki reference 2026-08-07): the AMP round
 // ships under its developmental XM designation on this mark (the base m1a2
@@ -410,6 +544,18 @@ const SPECS: FleetTankSpec[] = [
   if (!t90) throw new Error('Additional fleet spec missing: type90');
   t90.armor.gunPivot = [0, 0.2397, 1.0713];
   t90.armor.gunBarrel.lengthM = 4.66;
+}
+
+// These early/non-Trophy Merkava profiles render removable flank packages.
+// Register the exact semantic clusters as single-use reactive armor so the
+// first intersecting hit depletes and removes the package in gameplay.
+for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b']) {
+  const spec = SPECS.find((candidate) => candidate.id === id);
+  if (!spec) throw new Error(`Additional fleet spec missing: ${id}`);
+  spec.armor.turretPlates.push(
+    reactivePlate(`merkava_${id}_turret_era_R`, 'right'),
+    reactivePlate(`merkava_${id}_turret_era_L`, 'left'),
+  );
 }
 
 // Warrior MILAN remains a first-party procedural derivative of the authored

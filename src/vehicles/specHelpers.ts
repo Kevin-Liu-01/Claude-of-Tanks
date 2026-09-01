@@ -132,6 +132,39 @@ export const leftCheekPlate = (
 ): ArmorPlate =>
   plate(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
 
+export type ReactivePlateSurface = 'front' | 'left' | 'right' | 'top';
+
+/**
+ * Register a semantic reactive-armor zone before its fitted visual geometry is
+ * available. The combat-anatomy generator replaces this conservative seed
+ * quad with the exact cassette envelope emitted by the procedural builder.
+ */
+export function reactivePlate(
+  name: string,
+  surface: ReactivePlateSurface,
+  era: EraProtection = { keReduction: 0.20, ceFlatMm: 400 },
+  physicalMm = 10,
+): ArmorPlate {
+  const options: PlateOptions = {
+    kind: 'era', era, keMm: physicalMm, ceMm: physicalMm,
+  };
+  switch (surface) {
+    case 'left':
+      return plate(name, physicalMm,
+        [-1, 0.1, -0.5], [-1, 0.1, 0.5], [-1, 0.9, -0.5], options);
+    case 'right':
+      return plate(name, physicalMm,
+        [1, 0.1, 0.5], [1, 0.1, -0.5], [1, 0.9, 0.5], options);
+    case 'top':
+      return plate(name, physicalMm,
+        [-0.5, 1, 0.5], [0.5, 1, 0.5], [-0.5, 1, -0.5], options);
+    case 'front':
+    default:
+      return plate(name, physicalMm,
+        [-0.5, 0.1, 1], [0.5, 0.1, 1], [-0.5, 0.9, 1], options);
+  }
+}
+
 export const moduleBox = (
   module: ModuleId, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
 ): ModuleBox => ({ module, min, max, turretLocal });

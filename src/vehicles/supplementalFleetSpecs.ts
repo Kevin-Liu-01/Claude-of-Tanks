@@ -3,7 +3,7 @@
 // inputs are attribution and offline comparison evidence, never playable
 // geometry; retained candidate metadata is procedural-only.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
-import { shell, type ArmorEnvelope } from './specHelpers.ts';
+import { reactivePlate, shell, type ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
@@ -36,6 +36,20 @@ function requireFleetSpec(id: string): FleetTankSpec {
   const spec = tankSpecs[id];
   if (!isFleetSpecRecord(spec)) throw new Error(`Supplemental fleet donor missing or incomplete: ${id}`);
   return spec;
+}
+
+function armorWithoutEra(
+  baseId: string,
+  reject: (owner: 'hull' | 'turret', name: string) => boolean,
+): ArmorEnvelope {
+  const armor = copy(requireFleetSpec(baseId).armor);
+  armor.hullPlates = armor.hullPlates.filter(
+    (plate) => plate.kind !== 'era' || !reject('hull', plate.name),
+  );
+  armor.turretPlates = armor.turretPlates.filter(
+    (plate) => plate.kind !== 'era' || !reject('turret', plate.name),
+  );
+  return armor;
 }
 
 // credit rows (author/source/license verified in candidates-gen2 PROVENANCE)
@@ -162,16 +176,35 @@ const SPECS: FleetTankSpec[] = [
   // -- T-80 turbine family ---------------------------------------------------
   make('t80u', 't80', 'T-80', 'USSR/Russia',
     { hp: 1780, enginePowerHp: 1000, weightTons: 42, gun: { reloadS: 7.8 },
+      // The early T-80 profile carries passive brow appliqué, not the
+      // donor T-80U's explosive Kontakt field. Do not leave invisible ERA in
+      // the damage model when there are no authored cassettes to consume.
+      armor: armorWithoutEra('t80u', () => true),
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '117' } }, BERGMAN),
   make('t80u', 't80b', 'T-80B', 'USSR/Russia',
     { hp: 2100, enginePowerHp: 1100, weightTons: 42.5, gun: { reloadS: 7.4 },
+      armor: armorWithoutEra('t80u', () => true),
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '225' } }, BERGMAN),
   // full-ERA T-80BV — the scout round's closest silhouette proxy for the
   // roster-listed T-80BVM (Kontakt-1 vs Relikt; PROVENANCE note)
   make('t80u', 't80bv', 'T-80BV', 'USSR/Russia',
     { hp: 2200, enginePowerHp: 1100, weightTons: 43.7, gun: { reloadS: 7.1 },
+      armor: (() => {
+        const armor = copy(requireFleetSpec('t80u').armor);
+        // The authored BV profile carries an independent Kontakt-1 course on
+        // each skirt.  The T-80U donor has only glacis/turret ERA, which used
+        // to make those visible skirt cassettes enlarge the glacis hit plane
+        // through the complete hull and steal impacts aimed at the turret.
+        // Register the skirt banks as their own consumable gameplay zones so
+        // fitting, first-hit activation and visual depletion stay local.
+        armor.hullPlates.push(
+          reactivePlate('skirt_era_R', 'right'),
+          reactivePlate('skirt_era_L', 'left'),
+        );
+        return armor;
+      })(),
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '319' } }, BERGMAN),
   // -- NATO cold-war ---------------------------------------------------------
@@ -193,6 +226,15 @@ const SPECS: FleetTankSpec[] = [
       visual: { marking: 'number', number: '53' } }, AHAB_AMX30),
   make('leo1a5', 'amx30b2', 'AMX-30B2', 'France',
     { hp: 1950, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 15,
+      armor: (() => {
+        const armor = copy(requireFleetSpec('leo1a5').armor);
+        armor.hullPlates.push(
+          reactivePlate('amx30b2_glacis_era', 'front'),
+          reactivePlate('amx30b2_nose_era', 'front'),
+        );
+        armor.turretPlates.push(reactivePlate('amx30b2_turret_era', 'front'));
+        return armor;
+      })(),
       gun: {
         reloadS: 6.0, baseAccuracy: 0.29, aimTimeS: 1.7,
         shells: requireFleetSpec('leo1a5').gun.shells.map((round, index) => ({
@@ -265,6 +307,9 @@ const SPECS: FleetTankSpec[] = [
   make('t80u', 't84', 'T-84 Oplot', 'Ukraine',
     { hp: 2250, enginePowerHp: 1200, weightTons: 46, topSpeedKmh: 65,
       gun: { reloadS: 6.6 },
+      // The current T-84 profile authors the Duplet field on the turret only.
+      // Its donor glacis ERA was an unmodeled, unstrippable hit surface.
+      armor: armorWithoutEra('t80u', (owner) => owner === 'hull'),
       dims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
       visual: { number: '240' } }, T84_REMIX),
   // -- §5.38 T-90 family (owner priority wave 2026-08-08) ---------------------

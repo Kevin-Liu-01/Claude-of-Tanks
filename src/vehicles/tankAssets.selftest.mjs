@@ -35,6 +35,15 @@ assert.match(technicalGenerator, /tankAssetFile\(id, 'crewSide'\).*'crew'/s,
 assert.match(technicalGenerator,
   /orthoCam\(center, size, \[-1, 0, 0\], \[0, 1, 0\], halfHeight \* 2, halfHeight\)/,
   'technical diagrams preserve the established exact side projection');
+assert.match(technicalGenerator,
+  /packCalloutYs\(candidates, 56, 210, 14\)/,
+  'technical callouts use deterministic minimum-displacement row packing');
+assert.match(technicalGenerator,
+  /left\.total \/ left\.count <= right\.total \/ right\.count/,
+  'technical callout packing balances colliding rows around their projected anchors');
+assert.match(technicalGenerator,
+  /TIER \$\{metadata\.tierNumeral\}|LIVE EFFECTIVE THICKNESS|LIVE DAMAGE MODULES|LIVE CREW ANATOMY/,
+  'generated technical diagrams retain the established embedded schematic header');
 assert.doesNotMatch(technicalGenerator,
   /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
   'retired metadata reconstruction and redundant hit-zone rendering are absent');

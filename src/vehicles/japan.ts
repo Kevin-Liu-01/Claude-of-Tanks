@@ -10,7 +10,7 @@ import type {
   FleetGunSpec,
   FleetTankSpec,
 } from './specContracts.ts';
-import type { ShellSpec, Vec3Tuple } from './specHelpers.ts';
+import { reactivePlate, type ShellSpec, type Vec3Tuple } from './specHelpers.ts';
 import {
   bindFleetRegistries,
   cloneFleetVariant,
@@ -180,6 +180,17 @@ const JAPAN_SPECS = {
     armorFactor: 1.08,
   }),
 } satisfies Record<string, FleetTankSpec>;
+
+// Type 10B's layered side/turret modules are active reactive armor. The
+// anatomy pass fits these seed zones to the procedural cassette envelopes.
+JAPAN_SPECS.type10b.armor.hullPlates.push(
+  reactivePlate('type10b_skirt_era_R', 'right'),
+  reactivePlate('type10b_skirt_era_L', 'left'),
+);
+JAPAN_SPECS.type10b.armor.turretPlates.push(
+  reactivePlate('type10b_turret_era_R', 'right'),
+  reactivePlate('type10b_turret_era_L', 'left'),
+);
 
 registerFleetSpecs(registries, JAPAN_IDS, JAPAN_SPECS);
 

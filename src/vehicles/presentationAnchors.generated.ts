@@ -195,7 +195,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   bmp2: Object.freeze({ centerYM: 1.4619, topHalfM: 3.7186, sideHalfM: 1.8593 }),
   bmp3: Object.freeze({ centerYM: 2.019, topHalfM: 4.0156, sideHalfM: 2.2224 }),
   bmp3_rok: Object.freeze({ centerYM: 1.7891, topHalfM: 3.8469, sideHalfM: 1.9958 }),
-  bmpt_t90: Object.freeze({ centerYM: 1.8109, topHalfM: 4.3881, sideHalfM: 2.194 }),
+  bmpt_t90: Object.freeze({ centerYM: 1.771, topHalfM: 4.3881, sideHalfM: 2.194 }),
   bmpt_terminator2: Object.freeze({ centerYM: 1.6029, topHalfM: 4.0536, sideHalfM: 2.0268 }),
   bwp1: Object.freeze({ centerYM: 1.7943, topHalfM: 3.7229, sideHalfM: 2.0013 }),
   carro45t: Object.freeze({ centerYM: 2.0108, topHalfM: 7.6515, sideHalfM: 3.8257 }),

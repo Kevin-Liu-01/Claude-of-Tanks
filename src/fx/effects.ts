@@ -240,6 +240,11 @@ interface ShellHitEvent {
   targetId?: string;
   shellId?: ShellId;
   eraPlate?: string | null;
+  eraActivations?: readonly {
+    plate: string;
+    pos?: WireVec3;
+    normal?: WireVec3;
+  }[];
   zone?: string;
   modulesHit?: readonly unknown[];
   crewHit?: readonly unknown[];
@@ -602,6 +607,8 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _v4 = new THREE.Vector3();
+const _v5 = new THREE.Vector3();
+const _v6 = new THREE.Vector3();
 const _camV = new THREE.Vector3(); // camera-relative scratch (never aliased by callers)
 const _mfPos = new THREE.Vector3(); // spawnMuzzleFlash-private origin copy
 const _mfDir = new THREE.Vector3(); // spawnMuzzleFlash-private direction copy
@@ -3592,13 +3599,6 @@ export function createFx(
           }
           shellKinds.delete(e.shellId);
         }
-        // ERA is an outer-layer activation, not necessarily the final hit
-        // result. A rod/jet may pop the cassette and continue into a pen or
-        // non-pen on the base armor; preserve both visual events.
-        if (isEraActivation(e) && e.kind !== 'era') {
-          fx.impact('era', _v3, _v4, e.caliberMm);
-        }
-        fx.impact(e.kind, _v3, _v4, e.caliberMm);
         // Ballistic scarring has exactly one event owner. The FX runtime is
         // demand-loaded after main's presentation listeners, so attempting
         // to dedupe a second main-thread stamp by subscription order is not
@@ -3606,6 +3606,26 @@ export function createFx(
         // authoritative articulation-local contact data.
         const ent = decalEntityFor(e.targetId);
         if (ent) impactDecals.stampFromEvent(e, ent);
+        // ERA is an outer-layer activation, not necessarily the final hit
+        // result. A rod/jet may pop the cassette and continue into a pen or
+        // non-pen on the base armor; preserve both visual events.
+        const eraActivations = (e.eraActivations || []).filter(
+          (activation) => activation?.pos?.length === 3,
+        );
+        if (eraActivations.length) {
+          for (const activation of eraActivations) {
+            _v5.fromArray(activation.pos!);
+            _v6.fromArray(activation.normal?.length === 3 ? activation.normal : e.normal);
+            fx.impact('era', _v5, _v6, e.caliberMm);
+          }
+        } else if (isEraActivation(e) && e.kind !== 'era') {
+          fx.impact('era', _v3, _v4, e.caliberMm);
+        }
+        // A terminal ERA absorb already received its exact activation above.
+        // Legacy payloads still fall through to their ordinary `era` impact.
+        if (e.kind !== 'era' || !eraActivations.length) {
+          fx.impact(e.kind, _v3, _v4, e.caliberMm);
+        }
       });
       onFxEvent(bus, 'shell:expired', (e) => {
         // world-dressing r1: close out the shell's destructible-prop story —

@@ -6,6 +6,7 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   communityArmor,
+  reactivePlate,
 } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { bindFleetRegistries } from './fleetSpecRegistry.ts';
@@ -87,6 +88,11 @@ const KF51B_SPEC = {
     number: '52', patchK: 1.28, trackWidthM: 0.587,
   },
 } satisfies FleetTankSpec;
+
+KF51B_SPEC.armor.hullPlates.push(
+  reactivePlate('kf51b_skirt_era_R', 'right'),
+  reactivePlate('kf51b_skirt_era_L', 'left'),
+);
 
 const KF51_SPECS = {
   kf51: KF51_SPEC,

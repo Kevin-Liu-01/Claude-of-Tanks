@@ -12,10 +12,18 @@ import {
 import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
-import { createTank } from '../src/vehicles/tankFactory.ts';
-import { ALL_TANK_IDS, TANK_SPECS } from '../src/vehicles/specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from '../src/vehicles/combatAnatomyCalibrations.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
+import {
+  enableCombatAnatomyMeasurementMode,
+} from '../src/vehicles/combatAnatomyMeasurementMode.ts';
+
+// Opt out before the eager fleet factory evaluates. Otherwise each update
+// measures its own prior generated ERA/module calibration and can drift on
+// the following --check pass instead of describing the authored source.
+enableCombatAnatomyMeasurementMode();
+const { createTank } = await import('../src/vehicles/tankFactory.ts');
+const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -453,6 +461,23 @@ function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
   return rows;
 }
 
+function eraPlateReceipts(root) {
+  const receipt = root.userData.eraVisualBindingReceipt;
+  if (!receipt || !Array.isArray(receipt.plates)) return [];
+  return receipt.plates
+    .filter((plate) => plate.registered && plate.ownerMatches
+      && plate.partCount > 0 && Array.isArray(plate.fittedSurfaces)
+      && plate.fittedSurfaces.some((surface) => Array.isArray(surface) && surface.length >= 3))
+    .map((plate) => ({
+      name: plate.name,
+      owner: plate.owner,
+      surfaces: plate.fittedSurfaces.map(
+        (surface) => surface.map((point) => point.map(round)),
+      ),
+      visualSectors: [...(plate.visualSectors || [])],
+    }));
+}
+
 function receiptFor(id) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   try {
@@ -499,6 +524,7 @@ function receiptFor(id) {
       moduleShapes: moduleShapeReceipts(
         tank.root, hullRig, turretRig, TANK_SPECS[id]?.armor?.modules,
       ),
+      eraPlates: eraPlateReceipts(tank.root),
       tracks: { left: trackL, right: trackR },
     };
   } finally {

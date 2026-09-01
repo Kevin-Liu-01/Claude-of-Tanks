@@ -10,8 +10,10 @@ import {
   type AnatomyCalibrationCell,
   type AnatomyCalibrationStructure,
   type AnatomyModuleShapeReceipt,
+  type AnatomyEraPlateReceipt,
   type CombatAnatomyCalibration,
 } from './combatAnatomyCalibrationRegistry.ts';
+import { isCombatAnatomyMeasurementMode } from './combatAnatomyMeasurementMode.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import type {
   InternalCrewStation,
@@ -762,14 +764,17 @@ function reconcileFrame(
   boxes: readonly AnatomyVolume[],
   target: AnatomyCalibrationBounds | Bounds | null,
 ): void {
-  // ERA, tracks, cages and spaced appliques are add-on layers. They follow
-  // the same transform as the base shell, but may not choose that transform:
-  // otherwise one proud tile or roof cage stretches the whole hull/turret.
+  // ERA, tracks, cages and spaced appliques are add-on layers authored against
+  // their visible procedural geometry. They neither choose nor inherit the
+  // base-shell calibration transform: applying the hull/turret envelope scale
+  // to those already-seated coordinates silently moves the gameplay surface
+  // away from its cassette (most visibly on long skirt fields). Main armor and
+  // internal boxes remain receipt-calibrated below.
   const from = plateBounds(plates, true);
   if (!from || !target) return;
   const seen = new Set<Vec3>();
   for (const plate of plates || []) {
-    if (plate.kind === 'external') continue;
+    if ((plate.kind || 'main') !== 'main') continue;
     for (const point of plate.verts || []) {
       if (seen.has(point)) continue;
       seen.add(point);
@@ -830,6 +835,44 @@ function appendStructurePlates(
         [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]]),
     );
   });
+}
+
+function applyEraPlateReceipts(
+  armor: ArmorAnatomy,
+  receipts: readonly AnatomyEraPlateReceipt[] | undefined,
+): void {
+  for (const receipt of receipts || []) {
+    const plates = receipt.owner === 'turret' ? armor.turretPlates : armor.hullPlates;
+    const matchIndexes = plates.map((plate, index) => ({ plate, index }))
+      .filter(({ plate }) => plate.kind === 'era' && plate.name === receipt.name);
+    if (!matchIndexes.length) continue;
+    const sourceSurfaces: readonly (readonly (readonly number[])[])[] =
+      Array.isArray(receipt.surfaces) && receipt.surfaces.length
+      ? receipt.surfaces
+      : Array.isArray(receipt.verts) ? [receipt.verts] : [];
+    const surfaces: number[][][] = sourceSurfaces
+      .map((surface: readonly (readonly number[])[]) => surface.map(
+        (point: readonly number[]) => point.slice(),
+      ))
+      .filter((surface: number[][]) => surface.length >= 3 && surface.every(
+        (point: number[]) => point.length >= 3
+          && point.every((value: number) => Number.isFinite(value)),
+      ));
+    if (!surfaces.length) continue;
+
+    // A wrapped or faceted cassette bank is one destructible gameplay zone,
+    // but it needs one collision quad per real visible face. Every clone keeps
+    // the same name so damage.ts spends the whole bank exactly once.
+    const template = matchIndexes[0].plate;
+    const insertionIndex = matchIndexes[0].index;
+    for (let index = matchIndexes.length - 1; index >= 0; index--) {
+      plates.splice(matchIndexes[index].index, 1);
+    }
+    plates.splice(insertionIndex, 0, ...surfaces.map((verts) => ({
+      ...template,
+      verts,
+    })));
+  }
 }
 
 function applyModuleShapes(
@@ -1233,6 +1276,13 @@ export function finalizeCombatAnatomy(
     applyModuleShapes(armor, calibration.moduleShapes);
     appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
     appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
+    // The generator measures authored reactive cassettes. Reapplying its
+    // previous fitted quads here would make ERA calibration self-referential
+    // and allow update/check drift, while the mature hull/module calibration
+    // remains intentionally active during measurement.
+    if (!isCombatAnatomyMeasurementMode()) {
+      applyEraPlateReceipts(armor, calibration.eraPlates);
+    }
   }
   // Non-playable comparison/authoring specs are intentionally outside the
   // 122-vehicle evidence registry. Keep their authored anatomy usable without
