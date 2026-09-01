@@ -12,7 +12,12 @@ const config = {
   // Tests execute TypeScript directly through Node's type stripping. Skipping
   // the project tsconfig also avoids coupling mutation runs to the separate
   // TypeScript 7 application typecheck.
-  ignorePatterns: ['tsconfig.json'],
+  ignorePatterns: [
+    'tsconfig.json',
+    'dist/**',
+    'coverage/**',
+    '.quality-reports/**',
+  ],
   reporters: ['clear-text', 'json'],
   jsonReporter: {
     fileName: '.quality-reports/prediction-mutation.json',

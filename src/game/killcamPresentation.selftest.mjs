@@ -101,7 +101,8 @@ assert.match(cameraRig, /nextFov = activeSpectate\.fromFov \+ \(55 - activeSpect
   'spectator entry blends its lens instead of snapping out of the killcam FOV');
 assert.match(cameraRig, /function spectateBlendDuration\(ent: CameraEntity \| null\): number[\s\S]*Math\.hypot\(dx, dy, dz\)/,
   'long-distance spectator target changes receive a distance-aware blend');
-assert.match(state, /applyLethalRamModuleDamage[\s\S]*game\.killcam\.onRam\(ramEvent, a, b\)/,
+assert.match(state,
+  /function resolveRamDamage[\s\S]*applyLethalRamModuleDamage[\s\S]*aModulesHit,[\s\S]*bModulesHit,[\s\S]*function publishRamDamage[\s\S]*game\.killcam\.onRam\(event, a, b\)/,
   'authoritative ram resolution records module failures before live wreck presentation');
 assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number)?\s*=\s*0[\s\S]*sparkFan[\s\S]*debris/,
   'vehicle collision effects use metal contact sparks and debris rather than shell penetration FX');
