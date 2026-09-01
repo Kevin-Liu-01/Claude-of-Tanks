@@ -156,15 +156,25 @@ assert.deepEqual(hullEra.geometry.getAttribute('position').array, hullBeforeStri
   'round reset restores both glacis ERA layers exactly');
 
 const housing = gunRig.userData.leopard2A7VGunHousingReceipt;
-assert.ok(housing, 'Leopard 2A7V publishes its compact gun-housing receipt');
-assert.ok(housing.rearWidthM <= 0.56 && housing.rearHeightM <= 0.42,
-  'housing throat is materially smaller than the old 0.68 by 0.54 m block');
-assert.ok(housing.frontWidthM <= 0.38 && housing.frontHeightM <= 0.26,
-  'housing tapers tightly around the gun at its forward edge');
-assert.ok(housing.insertionDepthM >= 0.20,
+assert.ok(housing, 'Leopard 2A7V publishes its evolved L/55A1 gun-housing receipt');
+assert.equal(housing.profile, 'leopard-2a7v-l55a1-r2');
+assert.equal(housing.architecture, 'faceted-leopard-2a5-derived-l55a1-cradle');
+assert.equal(housing.lineage, 'leopard-2a5-mantlet-grammar-evolved');
+assert.ok(housing.rearWidthM <= 0.62 && housing.rearHeightM <= 0.46,
+  'faceted housing stays compact enough to seat inside the arrowhead cheeks');
+assert.ok(housing.frontWidthM <= 0.44 && housing.frontHeightM <= 0.34,
+  'housing still tapers tightly around the L/55A1 collar');
+assert.ok(housing.insertionDepthM >= 0.30,
   'housing is visibly inserted into the turret cheek opening');
 assert.ok(housing.rearTurretLocalZ < housing.cheekNoseCenterLocalZ,
   'housing rear edge terminates behind the cheek nose');
+assert.equal(housing.layeredCrownAndChin, true,
+  'the A7V mantlet has distinct armored crown and chin courses');
+assert.equal(housing.thermalSleeve, true, 'the L/55A1 carries its thermal jacket');
+assert.equal(housing.boreVisible, true, 'the muzzle publishes a visible bore');
+assert.equal(housing.raisedByM, 0.06, 'the complete gun rig is raised by 60 mm');
+assert.ok(Math.abs(gunRig.position.y - housing.pivotLocalY) < 1e-6,
+  'the receipt and actual raised gun pivot remain synchronized');
 assert.equal(housing.gunOwned, true, 'housing follows gun pitch under the gun rig');
 
 let gunMount = null;
@@ -176,10 +186,10 @@ gunMount.geometry.computeBoundingBox();
 const bounds = gunMount.geometry.boundingBox;
 assert.ok(bounds.max.x - bounds.min.x <= 0.64,
   `gun housing width remains compact (${bounds.max.x - bounds.min.x} m)`);
-assert.ok(bounds.max.y - bounds.min.y <= 0.46,
+assert.ok(bounds.max.y - bounds.min.y <= 0.48,
   `gun housing height remains compact (${bounds.max.y - bounds.min.y} m)`);
-assert.ok(bounds.min.z <= 0.49 && bounds.max.z <= 1.405,
-  `gun housing stays deeply seated and short (${bounds.min.z}..${bounds.max.z} m)`);
+assert.ok(bounds.min.z <= -0.23 && bounds.max.z <= 1.58,
+  `gun housing stays deeply seated with a readable forward collar (${bounds.min.z}..${bounds.max.z} m)`);
 
 visual.dispose();
 console.log('leopard2A7VGunEra.selftest: ok');

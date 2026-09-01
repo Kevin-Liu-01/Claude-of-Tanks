@@ -7915,34 +7915,59 @@ function buildLeo2A7V(P: TankBuilderPort) {
   // at the obsolete broad-crown width.
   P.decal('turret', 'crossgrey', null, 0.36, [1.346, 0.18, -0.65], Math.PI / 2);
   P.decal('turret', 'crossgrey', null, 0.36, [-1.346, 0.18, -0.65], -Math.PI / 2);
-  // L/55A1: trunnion world z 1.55, axis 1.98, tube tip world 7.09 over the
-  // -3.86 tail = overall 10.95 (published 10.97, 0.18%). The v1 len 5.45
-  // predates the honest ±3.86 hull and read overall 10.84 (-1.8 dims).
-  P.gunG.position.set(0, 0.18, 1.20);
-  // Compact, deeply seated trunnion saddle. The prior rear face was 0.68 m
-  // wide and 0.54 m tall; it still read as a separate armored prism despite
-  // the taper. Pulling the rear edge 18 cm into the throat and reducing both
-  // layers makes the housing terminate inside the cheek opening instead of
-  // sitting over it.
+  // L/55A1: keep the certified 5.53 m tube run, but lift the complete
+  // pitch/recoil rig 60 mm so the axis occupies the center of the A7V
+  // arrowhead opening.  Housing, tube, bore and effects therefore share
+  // one transform instead of visually raising only the barrel skin.
+  P.gunG.position.set(0, 0.24, 1.20);
+  // A7V L/55A1 cradle, evolved from the readable 2A5 mantlet grammar. The
+  // silhouette stays compact enough to seat between the chevrons, while a
+  // faceted shell, separate crown/chin courses and round forward collar
+  // replace the former single tapered prism. Every part remains gun-owned
+  // so elevation and recoil cannot open a seam at the turret front.
+  P.addGunExtra(KIT.cylX(0.235, 0.60, P.q ? 22 : 14), 0, 0, 0);              // armored trunnion roll
   P.addGunExtra(orientedSlab(
-    [-0.28, -0.21, 0.48], [0.28, -0.21, 0.48], [0.19, -0.13, 1.40], [-0.19, -0.13, 1.40],
-    [-0.25,  0.21, 0.48], [0.25,  0.21, 0.48], [0.17,  0.13, 1.40], [-0.17,  0.13, 1.40]));
-  P.addGunExtraDark(box(0.36, 0.045, 0.52), 0, -0.190, 0.91);                 // flexible boot lower seam
-  P.addGunExtraDark(KIT.cylZ(0.160, 0.045, P.q ? 20 : 14), 0, 0, 1.34);      // forward boot clamp
-  leoMantletGun(P, { rollR: 0.23, rollW: 0.52, plateW: 0.48, plateH: 0.36, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
+    [-0.31, -0.23, 0.38], [0.31, -0.23, 0.38], [0.22, -0.17, 1.30], [-0.22, -0.17, 1.30],
+    [-0.28,  0.23, 0.38], [0.28,  0.23, 0.38], [0.20,  0.17, 1.30], [-0.20,  0.17, 1.30]));
+  P.addGunExtra(orientedSlab(
+    [-0.265, 0.115, 0.44], [0.265, 0.115, 0.44], [0.205, 0.105, 1.24], [-0.205, 0.105, 1.24],
+    [-0.235, 0.225, 0.44], [0.235, 0.225, 0.44], [0.180, 0.165, 1.24], [-0.180, 0.165, 1.24])); // crown course
+  P.addGunExtra(orientedSlab(
+    [-0.255, -0.225, 0.50], [0.255, -0.225, 0.50], [0.205, -0.165, 1.20], [-0.205, -0.165, 1.20],
+    [-0.235, -0.125, 0.50], [0.235, -0.125, 0.50], [0.185, -0.105, 1.20], [-0.185, -0.105, 1.20])); // chin course
+  P.addGunExtra(box(0.40, 0.32, 0.30), 0, 0, 1.22);                          // deep forward mantlet block
+  P.addGunExtraDark(box(0.46, 0.040, 0.48), 0, -0.205, 0.86);                // flexible boot lower seam
+  P.addGunExtraDark(box(0.42, 0.018, 0.34), 0, 0.205, 0.72);                 // recessed crown seam
+  P.addGunExtraDark(KIT.cylZ(0.158, 0.020, P.q ? 24 : 16), 0, 0, 1.38);     // dark mantlet face
+  P.addGunExtra(KIT.cylZ(0.112, 0.16, P.q ? 22 : 14), 0, 0, 1.47);          // armored tube collar
+  P.addGunExtraDark(KIT.cylZ(0.114, 0.018, P.q ? 22 : 14), 0, 0, 1.559);    // collar end seam
+  P.addGunExtraDark(KIT.cylZ(0.026, 0.10, 8), 0.22, 0.055, 0.82);            // coax port
+  KIT.buildGun(P, {
+    len: 5.53, r: 0.073, sleeve: true, evac: 0.58, evacR: 1.80,
+    collar: true, baseR: 0.135,
+  });
+  muzzleBore(P, { len: 5.53, r: 0.073 });
   const protectionReceipt = addLeo2A7VFrontalProtection(P);
   if (P.geometryReceipt) {
     P.gunG.userData.leopard2A7VGunHousingReceipt = Object.freeze({
-      rearWidthM: 0.56,
-      rearHeightM: 0.42,
-      frontWidthM: 0.38,
-      frontHeightM: 0.26,
-      rearGunLocalZ: 0.48,
-      frontGunLocalZ: 1.40,
+      profile: 'leopard-2a7v-l55a1-r2',
+      architecture: 'faceted-leopard-2a5-derived-l55a1-cradle',
+      lineage: 'leopard-2a5-mantlet-grammar-evolved',
+      rearWidthM: 0.62,
+      rearHeightM: 0.46,
+      frontWidthM: 0.44,
+      frontHeightM: 0.34,
+      rearGunLocalZ: 0.38,
+      frontGunLocalZ: 1.56,
       rearTurretLocalZ: 1.68,
       cheekNoseCenterLocalZ: 1.90,
-      insertionDepthM: 0.22,
-      trunnionRollDiameterM: 0.46,
+      insertionDepthM: 0.30,
+      trunnionRollDiameterM: 0.47,
+      pivotLocalY: 0.24,
+      raisedByM: 0.06,
+      thermalSleeve: true,
+      boreVisible: true,
+      layeredCrownAndChin: true,
       gunOwned: true,
     });
     P.turretG.userData.leopard2A7VProtectionReceipt = protectionReceipt;
