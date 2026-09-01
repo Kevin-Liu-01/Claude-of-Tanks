@@ -11,12 +11,14 @@ export const MOBILE_OUTPUT_DPR_CAP = 3;
 // default framebuffer plus equally large reconstruction targets.
 export const MOBILE_OUTPUT_PIXEL_BUDGET = 4_000_000;
 
+type NumericInput = number | null | undefined;
+
 export interface OutputResolutionOptions {
-  width?: unknown;
-  height?: unknown;
-  devicePixelRatio?: unknown;
+  width?: NumericInput;
+  height?: NumericInput;
+  devicePixelRatio?: NumericInput;
   mobile?: boolean;
-  mobilePixelBudget?: unknown;
+  mobilePixelBudget?: NumericInput;
 }
 
 export interface OutputResolution {
@@ -31,7 +33,7 @@ export interface OutputResolution {
   budgetLimited: boolean;
 }
 
-function finitePositive(value: unknown, fallback: number): number {
+function finitePositive(value: NumericInput, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
@@ -71,6 +73,9 @@ export function outputResolution(
     bufferWidth,
     bufferHeight,
     outputPixels: bufferWidth * bufferHeight,
+    // Stryker disable next-line EqualityOperator: near native-scale values,
+    // IEEE-754 spacing cannot make a subtraction equal the non-dyadic 0.001
+    // literal exactly, so < and <= have no observable input distinction.
     native: Math.abs(pixelRatio - devicePixelRatio) < 0.001,
     budgetLimited: !!options.mobile && pixelRatio + 0.001 < Math.min(devicePixelRatio, MOBILE_OUTPUT_DPR_CAP),
   };
@@ -78,9 +83,9 @@ export function outputResolution(
 
 /** Small/full-screen HUD canvases follow the same phone-native density cap. */
 export function uiPixelRatio(
-  width: unknown,
-  height: unknown,
-  devicePixelRatio: unknown = typeof window !== 'undefined' ? window.devicePixelRatio : 1,
+  width: NumericInput,
+  height: NumericInput,
+  devicePixelRatio: NumericInput = typeof window !== 'undefined' ? window.devicePixelRatio : 1,
   mobile = false,
 ): number {
   return outputPixelRatio({ width, height, devicePixelRatio, mobile });

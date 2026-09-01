@@ -21,11 +21,10 @@ export function cappedPixelRatio(
 ): number {
   const rendererRatio = Number.isFinite(rendererPixelRatio) && rendererPixelRatio > 0
     ? rendererPixelRatio : 1;
-  const configuredCap = preset?.maxPixelRatio;
-  const presetCap = typeof configuredCap === 'number'
-    && Number.isFinite(configuredCap)
-    && configuredCap > 0
-    ? configuredCap : rendererRatio;
+  const configuredCap = preset?.maxPixelRatio ?? Number.NaN;
+  const presetCap = Number.isFinite(configuredCap) && configuredCap > 0
+    ? configuredCap
+    : rendererRatio;
   return Math.min(rendererRatio, presetCap);
 }
 
@@ -35,11 +34,10 @@ export function baseDynamicScale(
   preset: RenderScalePreset | null | undefined,
 ): number {
   const capped = cappedPixelRatio(rendererPixelRatio, preset);
-  const configuredBase = preset?.adaptiveBasePixelRatio;
-  const requested = typeof configuredBase === 'number'
-    && Number.isFinite(configuredBase)
-    && configuredBase > 0
-    ? configuredBase : capped;
+  const configuredBase = preset?.adaptiveBasePixelRatio ?? Number.NaN;
+  const requested = Number.isFinite(configuredBase) && configuredBase > 0
+    ? configuredBase
+    : capped;
   const base = Math.min(capped, Math.max(0.01, requested));
   return base / capped;
 }

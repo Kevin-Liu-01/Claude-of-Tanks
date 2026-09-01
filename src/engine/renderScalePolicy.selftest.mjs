@@ -18,9 +18,27 @@ const high = {
 };
 
 assert.equal(cappedPixelRatio(2, high), 1.5);
+assert.equal(cappedPixelRatio(0, null), 1,
+  'invalid renderer density resolves to a finite native fallback');
+assert.equal(cappedPixelRatio(Number.NaN, { maxPixelRatio: Number.NaN }), 1);
+assert.equal(cappedPixelRatio(2, { maxPixelRatio: 0 }), 2,
+  'non-positive preset caps cannot collapse the post chain');
+assert.equal(cappedPixelRatio(2, { maxPixelRatio: '1.25' }), 2,
+  'runtime string caps are rejected rather than silently coercing resolution');
 assert.equal(baseDynamicScale(2, high), 1,
   'desktop High must start at its full configured density');
+assert.equal(baseDynamicScale(2, null), 1);
+assert.equal(baseDynamicScale(2, { adaptiveBasePixelRatio: Number.NaN }), 1);
+assert.equal(baseDynamicScale(2, { adaptiveBasePixelRatio: 0 }), 1);
+assert.equal(baseDynamicScale(2, { adaptiveBasePixelRatio: '1' }), 1,
+  'runtime string bases cannot override the numeric preset contract');
+assert.equal(baseDynamicScale(2, { adaptiveBasePixelRatio: 0.001 }), 0.005,
+  'positive authored bases retain a non-zero safety floor');
 assert.equal(dynamicScaleFloor(2, high), 0.9);
+assert.equal(dynamicScaleFloor(2, null), 0.75);
+assert.equal(dynamicScaleFloor(2, { dynMin: Number.NaN }), 0.75);
+assert.equal(dynamicScaleFloor(1.25, high), 0.9,
+  'the DPR-1 safety fence ends at the exact retina threshold');
 assert.equal(internalPixelRatio(2, high, 0.75), 1.35,
   'desktop High must never fall back to the old muddy 1.125 ratio');
 
@@ -66,9 +84,19 @@ assert.ok(Math.abs(reconstructionSharpness(0.75) - 0.28) < 1e-12,
   'High retains the proven 0.28 RCAS recovery at a 75% input ratio');
 assert.equal(reconstructionSharpness(0.5), 0.4,
   'the recovery policy remains capped even when a caller requests it');
+assert.equal(reconstructionSharpness(-1), 0.4);
+assert.equal(reconstructionSharpness(Number.NaN), 0.4);
+assert.equal(reconstructionSharpness(2), 0.12);
 assert.equal(reconstructionMode(0.75), 'easu+rcas');
 assert.equal(reconstructionMode(0.467), 'easu');
 assert.equal(reconstructionMode(0.333), 'linear',
   'heavily reduced mobile sources must not pay for 12-tap native-output EASU');
+assert.equal(reconstructionMode(0.4), 'easu',
+  'the exact linear/EASU boundary belongs to EASU');
+assert.equal(reconstructionMode(0.6), 'easu+rcas',
+  'the exact EASU/RCAS boundary restores contrast');
+assert.equal(reconstructionMode(1), 'native-rcas');
+assert.equal(reconstructionMode(2), 'native-rcas');
+assert.equal(reconstructionMode(Number.NaN), 'linear');
 
 console.log('renderScalePolicy self-test passed');

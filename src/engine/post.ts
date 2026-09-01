@@ -90,6 +90,14 @@ interface LateFxSoftState {
   isActive(): boolean;
 }
 
+export interface LateFxSoftStateInput {
+  uSceneDepth?: THREE.IUniform<THREE.DepthTexture | null>;
+  uSoftViewport?: THREE.IUniform<THREE.Vector2>;
+  uCameraNear?: THREE.IUniform<number>;
+  uCameraFar?: THREE.IUniform<number>;
+  isActive?: () => boolean;
+}
+
 interface ExtendedGtaoPass extends GTAOPass {
   _renderPass(
     renderer: THREE.WebGLRenderer,
@@ -129,7 +137,7 @@ export interface PostRuntime {
   render(dt: number): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
-  attachLateFxState(state: unknown): void;
+  attachLateFxState(state: LateFxSoftStateInput | null | undefined): void;
   pinDynScale(value: number | null): void;
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
@@ -144,10 +152,10 @@ declare global {
   }
 }
 
-function asLateFxSoftState(value: unknown): LateFxSoftState | null {
-  if (!value || typeof value !== 'object') return null;
-  const candidate = value as Partial<LateFxSoftState>;
-  return candidate.uSceneDepth
+function asLateFxSoftState(
+  candidate: LateFxSoftStateInput | null | undefined,
+): LateFxSoftState | null {
+  return candidate?.uSceneDepth
     && candidate.uSoftViewport
     && candidate.uCameraNear
     && candidate.uCameraFar
@@ -686,6 +694,74 @@ class FsrUpscalePass extends Pass {
     if (this.outputSize.x === w && this.outputSize.y === h) return;
     this.outputSize.set(w, h);
   }
+
+  private setFinalTarget(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+  ): void {
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    if (this.clear) {
+      renderer.clear(
+        renderer.autoClearColor,
+        renderer.autoClearDepth,
+        renderer.autoClearStencil,
+      );
+    }
+  }
+
+  private renderLinear(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+    source: THREE.Texture,
+  ): void {
+    this.copyMaterial.uniforms.tDiffuse.value = source;
+    this.quad.material = this.copyMaterial;
+    this.setFinalTarget(renderer, writeBuffer);
+    this.quad.render(renderer);
+  }
+
+  private renderEasu(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+    source: THREE.Texture,
+    inputWidth: number,
+    inputHeight: number,
+    applyRcas: boolean,
+  ): void {
+    this.easuMaterial.uniforms.tDiffuse.value = source;
+    this.easuMaterial.uniforms.uInputSize.value.set(inputWidth, inputHeight);
+    this.quad.material = this.easuMaterial;
+    if (applyRcas) {
+      if (this.intermediate.width !== this.outputSize.x
+        || this.intermediate.height !== this.outputSize.y) {
+        this.intermediate.setSize(this.outputSize.x, this.outputSize.y);
+      }
+      renderer.setRenderTarget(this.intermediate);
+    } else {
+      this.setFinalTarget(renderer, writeBuffer);
+    }
+    this.quad.render(renderer);
+  }
+
+  private renderRcas(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+    source: THREE.Texture,
+    sourceWidth: number,
+    sourceHeight: number,
+    inputScale: number,
+  ): void {
+    this.rcasMaterial.uniforms.tDiffuse.value = source;
+    this.rcasMaterial.uniforms.uTexelDelta.value.set(
+      1 / sourceWidth,
+      1 / sourceHeight,
+    );
+    this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale);
+    this.quad.material = this.rcasMaterial;
+    this.setFinalTarget(renderer, writeBuffer);
+    this.quad.render(renderer);
+  }
+
   render(
     renderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
@@ -703,41 +779,19 @@ class FsrUpscalePass extends Pass {
     let source = readBuffer.texture;
     let sourceW = inW, sourceH = inH;
     if (mode === 'linear') {
-      this.copyMaterial.uniforms.tDiffuse.value = source;
-      this.quad.material = this.copyMaterial;
-      renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-      if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-      this.quad.render(renderer);
+      this.renderLinear(renderer, writeBuffer, source);
       return;
     }
     if (upscale) {
-      this.easuMaterial.uniforms.tDiffuse.value = source;
-      this.easuMaterial.uniforms.uInputSize.value.set(inW, inH);
-      this.quad.material = this.easuMaterial;
-      if (applyRcas) {
-        if (this.intermediate.width !== outW || this.intermediate.height !== outH) {
-          this.intermediate.setSize(outW, outH);
-        }
-        renderer.setRenderTarget(this.intermediate);
-      } else {
-        renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-        if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-      }
-      this.quad.render(renderer);
+      this.renderEasu(renderer, writeBuffer, source, inW, inH, applyRcas);
       if (!applyRcas) return;
       source = this.intermediate.texture;
       sourceW = outW; sourceH = outH;
     }
-    this.rcasMaterial.uniforms.tDiffuse.value = source;
-    this.rcasMaterial.uniforms.uTexelDelta.value.set(1 / sourceW, 1 / sourceH);
     // Match contrast recovery to the enlargement. High's normal 1.5→2 path
     // stays at the proven 0.28. Lower-density modes skip RCAS above, so this
     // cap cannot manufacture detail from severely undersampled foliage.
-    this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale);
-    this.quad.material = this.rcasMaterial;
-    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-    if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-    this.quad.render(renderer);
+    this.renderRcas(renderer, writeBuffer, source, sourceW, sourceH, inputScale);
   }
   telemetry(): ReconstructionTelemetry {
     return {
@@ -2320,6 +2374,79 @@ export function createPost(
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   }
 
+  function updateAerialZoom(): void {
+    aerial.uniforms.uNear.value = camera.near;
+    aerial.uniforms.uFar.value = camera.far;
+    const fovScale = camera.fov < AERIAL_ZOOM_FOV
+      ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
+      : 1;
+    aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovScale;
+    aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovScale;
+    aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
+      (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8),
+      0,
+      1,
+    );
+  }
+
+  function updateScopeGrade(): void {
+    const target = camera.userData.scoped ? 1 : 0;
+    const current = grade.uniforms.uScope.value;
+    grade.uniforms.uScope.value = Math.abs(target - current) < 0.01
+      ? target
+      : current + (target - current) * 0.45;
+    grade.uniforms.uAspect.value = camera.aspect || (16 / 9);
+    grade.uniforms.uSharp.value = grade.uniforms.uScope.value
+      * 0.95
+      * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
+    const scopeWeight = grade.uniforms.uScope.value;
+    bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeWeight);
+    aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
+    aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
+  }
+
+  function updateAerialFogColors(): void {
+    if (!scene.fog) return;
+    const fogColor = scene.fog.color;
+    aerial.uniforms.uHazeWarm.value.setRGB(
+      fogColor.r * AERIAL_WARM_TINT[0],
+      fogColor.g * AERIAL_WARM_TINT[1],
+      fogColor.b * AERIAL_WARM_TINT[2],
+    );
+    aerial.uniforms.uHazeCool.value.setRGB(
+      fogColor.r * AERIAL_COOL_TINT[0],
+      fogColor.g * AERIAL_COOL_TINT[1],
+      fogColor.b * AERIAL_COOL_TINT[2],
+    );
+    capLuminance(aerial.uniforms.uHazeWarm.value, AERIAL_HAZE_LUM_CAP);
+    capLuminance(aerial.uniforms.uHazeCool.value, AERIAL_HAZE_LUM_CAP);
+  }
+
+  function updateAerialCameraBasis(): void {
+    const elements = camera.matrixWorld.elements;
+    aerial.uniforms.uCamRight.value.set(elements[0], elements[1], elements[2]);
+    aerial.uniforms.uCamUp.value.set(elements[4], elements[5], elements[6]);
+    aerial.uniforms.uCamFwd.value.set(-elements[8], -elements[9], -elements[10]);
+    aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
+    const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+    aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
+    const sunDirection = scene.userData.sunDirWorld;
+    if (sunDirection) aerial.uniforms.uSunDir.value.copy(sunDirection).normalize();
+  }
+
+  /** Complete allocation-free post transaction for one rendered frame. */
+  function renderFrame(dt: number): void {
+    // A governor resize must land before any pass reads resolution uniforms.
+    dynGovern(dt);
+    updateAerialZoom();
+    grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
+    aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
+    updateScopeGrade();
+    updateAerialFogColors();
+    updateAerialCameraBasis();
+    composer.render(dt);
+  }
+
   // Live preset switching (settings UI writes quality.setPresetName): retarget
   // every buffer without rebuilding the chain.
   onPresetChange((p) => {
@@ -2385,93 +2512,7 @@ export function createPost(
      * @param {number} dt - render delta time in seconds (forwarded to passes)
      * @returns {void}
      */
-    render(dt) {
-      // dynamic resolution governor (see the DYN_* block above): may step the
-      // composer's internal pixel ratio and resize the chain — run it FIRST
-      // so a resize never lands between the passes below and their uniforms.
-      dynGovern(dt);
-      // sniper zoom / rig changes can retune the camera planes — keep the
-      // aerial distance reconstruction exact
-      aerial.uniforms.uNear.value = camera.near;
-      aerial.uniforms.uFar.value = camera.far;
-      // sniper de-haze (r9): scale BOTH aerial curves down with zoom, same
-      // ramp main.ts applies to the FogExp2 density — at x8 the far field
-      // must read magnified-clear, not teal-washed (see AERIAL_ZOOM_*).
-      {
-        const fovK = camera.fov < AERIAL_ZOOM_FOV
-          ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
-          : 1;
-        aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovK;
-        aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovK;
-        // far-field detail fades in as the FOV drops through scope range
-        // (x2 ~ fov 27 stays clean; x4 ~ fov 12 partial; x8 ~ fov 6.9 full)
-        aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
-          (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8), 0, 1);
-      }
-      // per-map display exposure trim (sky.ts applyPreset publishes the
-      // active preset's postExposure on scene.userData; default 1.0)
-      grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
-      // per-map cloud-shadow depth (sky.ts publishes cloudShadeAmp: 0.22
-      // fair-weather, 0.10 overcast; see CLOUD_SHADE_DEFAULT block)
-      aerial.uniforms.uCloudShade.value =
-        scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
-      // scope treatment follows the rig's live scoped flag (snapSniper sets
-      // it too, so harness captures get the exact same treatment). Eased
-      // over ~5 frames so live scope-in reads as a transition, not a pop;
-      // deterministic captures run several settle frames, so they land on
-      // the converged value.
-      {
-        const target = camera.userData.scoped ? 1 : 0;
-        const cur = grade.uniforms.uScope.value;
-        grade.uniforms.uScope.value = Math.abs(target - cur) < 0.01
-          ? target
-          : cur + (target - cur) * 0.45;
-        grade.uniforms.uAspect.value = camera.aspect || (16 / 9);
-        // r4: zoom-scaled unsharp — 0 below x3 (fov ≥ ~16°), full at x8
-        // (fov 6.25°). Follows the eased uScope so scope-in has no pop.
-        // r5 ("enemy Tiger at 300 m renders soft at x8 — real WoT sniper
-        // mode stays tack-sharp at zoom"): 0.55 → 0.95. Textures are already
-        // at their finest mip under magnification (screen-space derivatives
-        // shrink with FOV), so source softness must be re-crisped here; the
-        // tighter 1 px kernel above keeps it from haloing.
-        grade.uniforms.uSharp.value = grade.uniforms.uScope.value *
-          0.95 * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
-        // gameplay_feel r6 (scoped sun-side washout): bloom is a large share
-        // of the milk over bright ground — pull it to ~half while scoped,
-        // and take one extra step out of BOTH aerial curves beyond the r9
-        // fovK ramp (the sun-directional scatter-in is what fills the upper
-        // half of the frame against the sun). Arcade (uScope 0) is bit-
-        // identical; pairs with the luma-keyed highlight pull in the grade.
-        const scopeW = grade.uniforms.uScope.value;
-        bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeW);
-        aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeW;
-        aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeW;
-      }
-      // scatter-in targets follow the sky-sampled fog color (map switches),
-      // split into a warm (sunward) and cool (anti-sun) pole
-      if (scene.fog) {
-        const fc = scene.fog.color;
-        aerial.uniforms.uHazeWarm.value.setRGB(
-          fc.r * AERIAL_WARM_TINT[0], fc.g * AERIAL_WARM_TINT[1], fc.b * AERIAL_WARM_TINT[2]);
-        aerial.uniforms.uHazeCool.value.setRGB(
-          fc.r * AERIAL_COOL_TINT[0], fc.g * AERIAL_COOL_TINT[1], fc.b * AERIAL_COOL_TINT[2]);
-        capLuminance(aerial.uniforms.uHazeWarm.value, AERIAL_HAZE_LUM_CAP);
-        capLuminance(aerial.uniforms.uHazeCool.value, AERIAL_HAZE_LUM_CAP);
-      }
-      // camera basis + sun direction for the per-pixel directional tint
-      {
-        const e = camera.matrixWorld.elements;
-        aerial.uniforms.uCamRight.value.set(e[0], e[1], e[2]);
-        aerial.uniforms.uCamUp.value.set(e[4], e[5], e[6]);
-        aerial.uniforms.uCamFwd.value.set(-e[8], -e[9], -e[10]);
-        aerial.uniforms.uCamPos.value.set(e[12], e[13], e[14]);
-        const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-        aerial.uniforms.uTan.value.set(ty * camera.aspect, ty);
-        const sd = scene.userData.sunDirWorld;
-        if (sd) aerial.uniforms.uSunDir.value.copy(sd).normalize();
-      }
-      composer.render(dt);
-    },
+    render: renderFrame,
 
     /**
      * Resize the whole chain. Pass CSS-pixel dimensions; the composer applies
@@ -2496,7 +2537,7 @@ export function createPost(
      * This is explicit instead of a per-frame scene traversal, preserving the
      * garage boot win and the render loop's allocation/work budget.
      */
-    attachLateFxState(softState: unknown): void {
+    attachLateFxState(softState: LateFxSoftStateInput | null | undefined): void {
       lateFx.setSoftState(asLateFxSoftState(softState));
     },
 
