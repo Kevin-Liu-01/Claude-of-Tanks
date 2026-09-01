@@ -63,15 +63,19 @@ assert.match(source, /replayKind: 'collision'[\s\S]*trajPts: null/,
   'collision deaths use an explicit replay type with no projectile trajectory');
 assert.match(source, /if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision\(\);[\s\S]*return;[\s\S]*const raw = snap\.trajPts/,
   'collision playback exits before any tracer geometry can be allocated');
-assert.match(source, /function beginFiring\(stagedHold = false\)(?:: void)?[\s\S]*restageAttacker\(\)[\s\S]*recoilKick\([\s\S]*muzzleFlash\(/,
-  'projectile playback visibly fires the restored attacker from its rendered muzzle');
+assert.match(source, /function beginFiring\(stagedHold = false\)(?:: void)?[\s\S]*restageAttacker\(\)[\s\S]*triggerReplayShot\(attacker, shotDir\)/,
+  'projectile playback hands the restored attacker to the canonical shot presentation');
+assert.match(source, /function triggerReplayShot[\s\S]*recoilKick\([\s\S]*muzzleFlash\?/,
+  'the canonical shot presentation visibly recoils and fires from the rendered muzzle');
 assert.match(source, /function beginApproach\(\)(?:: void)?[\s\S]*restageIntact\(\);[\s\S]*restageAttacker\(\);[\s\S]*flightStartPose/,
   'the attacker is restored before the establishing camera lands on the projectile chase pose');
 assert.match(source, /function updateApproach\(dt(?:: number)?\)(?:: void)?[\s\S]*pinAttackerAtFiringPose\(0\)/,
   'every approach frame pins the attacker to its recorded firing pose');
 assert.match(source, /function pinAttackerAtFiringPose[\s\S]*setVisible\(true\)[\s\S]*syncFromState\(pb\.attackerPoseState/,
   'the approach pose lock keeps the restored attacker visible without allocating per frame');
-assert.match(source, /function updateCollision\(dt(?:: number)?\)(?:: void)?[\s\S]*applyReplaySurfaceState\(tvis, pb\.snap\.moduleStates[\s\S]*vehicleCollision/,
+assert.match(source, /function updateCollision\(dt(?:: number)?\)(?:: void)?[\s\S]*playCollisionContact\(c, tvis, avis\)/,
+  'collision playback routes the contact frame through one presentation owner');
+assert.match(source, /function playCollisionContact[\s\S]*applyReplaySurfaceState\(targetVisual, pb\.snap\.moduleStates[\s\S]*vehicleCollision\?/,
   'collision contact applies resolved module failures and dedicated impact effects');
 assert.match(main, /createKillCam\([\s\S]*getGame: \(\) => game/,
   'production composition injects canonical game state into the killcam');
