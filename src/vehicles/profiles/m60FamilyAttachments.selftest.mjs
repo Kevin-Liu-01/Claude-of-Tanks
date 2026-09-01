@@ -63,11 +63,17 @@ for (const id of ['m60a1', 'm60a3']) {
   }
 
   if (id === 'm60a1') {
-    assert.equal(attachments.cheekPanels?.count, 6,
-      'M60A1 has three conformal cheek panels per side');
-    assert.equal(attachments.cheekPanels.conformalSurfaceNormals, 6,
+    assert.equal(attachments.cheekPanels?.count, 12,
+      'M60A1 has two conformal three-panel courses per side');
+    assert.equal(attachments.cheekPanels.conformalSurfaceNormals, 12,
       'every M60A1 cheek panel derives its own cast-surface orientation');
-    assert(attachments.cheekPanels.castEmbedM >= 0.02,
+    assert.equal(attachments.cheekPanels.courses, 2,
+      'M60A1 cheek coverage is subdivided vertically to follow the casting');
+    assert(attachments.cheekPanels.maximumTileSpanM <= 0.42,
+      'M60A1 panels stay narrow enough to follow compound cheek curvature');
+    assert(attachments.cheekPanels.maximumSupportGapM <= 0.002,
+      'M60A1 panel inner faces remain supported at all audited corners');
+    assert(attachments.cheekPanels.castEmbedM >= 0.04,
       'M60A1 cheek panels overlap the casting instead of floating beside it');
   } else {
     assert(searchlight.widthM >= 0.56 && searchlight.lensDiameterM >= 0.34,

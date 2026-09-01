@@ -230,6 +230,7 @@ interface PattonHullConfig {
   readonly noseW?: number;
   readonly runningGearFace?: boolean;
   readonly runningGearFit?: boolean;
+  readonly rearUndercutFloorJoin?: boolean;
   readonly sponsonAftY?: number;
   readonly sponsonAftZ?: number;
   readonly sponsonBandY?: number;
@@ -559,6 +560,7 @@ interface EraCell {
   readonly w: number;
   readonly h: number;
   readonly d: number;
+  readonly supportGapM: number;
 }
 
 type Side = -1 | 1;
@@ -941,10 +943,26 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
     // tail when the reference plan shows rounded rear corners)
     const tb = H.tailBotY ?? 1.0;
     const twx = H.tailTaper ? Math.max(H.tailTaper.hw1, iw * 0.55) : iw * 0.92;
+    // The early shared wedge deliberately began above the belly. That left
+    // a visible, non-structural opening between the floor plate and stern on
+    // the M46/M47/M48 boat hulls. Opt those measured hulls into a true
+    // floor-to-tail ramp while preserving every other certified family mesh.
+    const rearUndercutBottomY = H.rearUndercutFloorJoin ? belly : belly + 0.3;
     P.add('hull', slab(
-      [-iw, belly + 0.3, H.bellyRearZ], [iw, belly + 0.3, H.bellyRearZ], [twx, tb, tail[0] + 0.02], [-twx, tb, tail[0] + 0.02],
+      [-iw, rearUndercutBottomY, H.bellyRearZ], [iw, rearUndercutBottomY, H.bellyRearZ], [twx, tb, tail[0] + 0.02], [-twx, tb, tail[0] + 0.02],
       [-iw, spons + 0.04, H.bellyRearZ], [iw, spons + 0.04, H.bellyRearZ], [twx, tail[1] - 0.02, tail[0] + 0.02], [-twx, tail[1] - 0.02, tail[0] + 0.02]));
   }
+  const rearUndercutBottomY = H.rearUndercutFloorJoin ? belly : belly + 0.3;
+  P.hullG.userData.pattonLowerHullReceipt = {
+    floorY: belly,
+    lowerGlacisAngleDeg: THREE.MathUtils.radToDeg(Math.atan2(
+      toeBot - belly,
+      Math.max(0.001, toeZ - 0.02 - H.bellyFrontZ),
+    )),
+    rearJointZ: H.bellyRearZ,
+    rearUndercutBottomY,
+    rearUndercutJoinsFloor: Math.abs(rearUndercutBottomY - belly) < 1e-6,
+  };
   if (H.tailTaper) {
     // rounded rear corners: the full-width band above stops at tailTaper.z0
     // (deck slabs must end there); this trapezoid carries the deck to the
@@ -3668,6 +3686,8 @@ function m60EraCellAt(
     .sub(m60CastingPointAt(side, worldZ - 0.025, heightFraction));
   const verticalTangent = m60CastingPointAt(side, worldZ, heightFraction + 0.018)
     .sub(m60CastingPointAt(side, worldZ, heightFraction - 0.018));
+  const longitudinalRate = Math.max(0.001, frontTangent.length() / 0.05);
+  const verticalRate = Math.max(0.001, verticalTangent.length() / 0.036);
   const normal = new THREE.Vector3().crossVectors(verticalTangent, frontTangent)
     .multiplyScalar(side).normalize();
   const xAxis = frontTangent.normalize().multiplyScalar(-side);
@@ -3676,12 +3696,30 @@ function m60EraCellAt(
   const rotation = new THREE.Matrix4().makeBasis(xAxis, yAxis, normal);
   const quaternion = new THREE.Quaternion().setFromRotationMatrix(rotation);
   const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
+  // Audit the complete inner face, not just its centre. The original broad
+  // A1 cassettes could intersect at the centre while their corners visibly
+  // hovered over the compound casting.
+  const zHalfSpan = w / (2 * longitudinalRate);
+  const heightHalfSpan = h / (2 * verticalRate);
+  const supportPlanePoint = point.clone().addScaledVector(normal, -castEmbedM);
+  let supportGapM = 0;
+  for (const zSign of [-1, 1]) {
+    for (const heightSign of [-1, 1]) {
+      const sample = m60CastingPointAt(
+        side,
+        worldZ + zSign * zHalfSpan,
+        heightFraction + heightSign * heightHalfSpan,
+      );
+      supportGapM = Math.max(supportGapM,
+        Math.max(0, supportPlanePoint.clone().sub(sample).dot(normal)));
+    }
+  }
   point.addScaledVector(normal, d / 2 - castEmbedM);
   return {
     x: point.x, y: point.y, z: point.z,
     rx: euler.x, ry: euler.y, rz: euler.z,
     nx: normal.x, ny: normal.y, nz: normal.z,
-    w, h, d,
+    w, h, d, supportGapM,
   };
 }
 
@@ -3780,20 +3818,22 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
     addM60A3TurretEra(P);
   } else {
     const cheekZ = [1.30, 0.84, 0.38];
-    const cheekWorldY = 2.36;
-    const castEmbedM = 0.025;
-    const cells = [];
+    const cheekWorldYs = [2.30, 2.51];
+    const castEmbedM = 0.045;
+    const cells: EraCell[] = [];
     for (const side of [-1, 1]) {
-      for (let i = 0; i < cheekZ.length; i++) {
-        const worldZ = cheekZ[i] + P.spec.armor.turretPivot[2];
-        const section = m60SectionAt(worldZ);
-        const heightFraction = Math.max(0.31, Math.min(0.79,
-          (cheekWorldY - section.bot) / Math.max(0.001, section.top - section.bot)));
-        const cell = m60EraCellAt(side, worldZ, heightFraction,
-          0.50, 0.36, 0.15, castEmbedM);
-        cells.push(cell);
-        pattonFaceCassette(P, 'turret', cell.x, cell.y, cell.z, cell.w,
-          cell.h, cell.d, cell.rx, cell.ry, cell.rz, 1, 1);
+      for (const cheekWorldY of cheekWorldYs) {
+        for (let i = 0; i < cheekZ.length; i++) {
+          const worldZ = cheekZ[i] + P.spec.armor.turretPivot[2];
+          const section = m60SectionAt(worldZ);
+          const heightFraction = Math.max(0.31, Math.min(0.79,
+            (cheekWorldY - section.bot) / Math.max(0.001, section.top - section.bot)));
+          const cell = m60EraCellAt(side, worldZ, heightFraction,
+            0.42, 0.18, 0.12, castEmbedM);
+          cells.push(cell);
+          pattonFaceCassette(P, 'turret', cell.x, cell.y, cell.z, cell.w,
+            cell.h, cell.d, cell.rx, cell.ry, cell.rz, 1, 1);
+        }
       }
     }
     P.turretG.userData.m60VariantAttachmentReceipt = {
@@ -3801,8 +3841,11 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
       cheekPanels: {
         count: cells.length,
         conformalSurfaceNormals: cells.length,
+        courses: cheekWorldYs.length,
         castEmbedM,
-        targetWorldY: cheekWorldY,
+        targetWorldYs: cheekWorldYs,
+        maximumTileSpanM: Math.max(...cells.map((cell) => Math.max(cell.w, cell.h))),
+        maximumSupportGapM: Math.max(...cells.map((cell) => cell.supportGapM)),
       },
     };
   }
@@ -5433,6 +5476,7 @@ const M46_HULL: PattonHullConfig = {
     [-4.02, 1.605], [-4.10, 1.545], [-4.19, 1.545], [-4.246, 1.468]],
   fenderY: [1.42, 1.60, -4.229], fenderHW: 1.668,
   toeBot: 1.06, bellyFrontZ: 1.26, bellyRearZ: -2.547, tailBotY: 1.0,
+  rearUndercutFloorJoin: true,
   // muffler band re-fit: ref side reads 1.78 over -2.34..-2.63 only (the
   // r2 strap ring at -3.20 poked 1.789 into the ref's 1.74 plateau band;
   // the -0.10 ring straddled the band-end column boundary)
@@ -5497,6 +5541,7 @@ const M47_HULL: PattonHullConfig = {
     [-4.05, 1.53], [-4.115, 1.48]],
   fenderY: [1.545, 1.10, -4.06], fenderHW: 1.677,
   toeBot: 0.75, bellyFrontZ: 1.40, bellyRearZ: -2.42, tailBotY: 1.0,
+  rearUndercutFloorJoin: true,
   mufflers: { z0: -2.26, z1: -2.62, top: 1.784, straps: [0.10, -0.14], legY0: 1.34 },
   gear: {
     // ref lower runs are straight lines: front y=0.855(z-1.15) to ~+1.93,
@@ -5551,7 +5596,7 @@ const M48_HULL: PattonHullConfig = {
   // -0.025 and heightM paid p95top+0.025).
   W: 3.631, bandHW: 1.705, trackW: 0.67, trackInset: 0.055, sponsonY: 1.39,
   sponsonAftY: 1.54, sponsonAftZ: -2.60,
-  bellyY: 0.71, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
+  bellyY: 0.626, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
   // Lift only the concealed over-track soffits above the moving shoe
   // orbit.  The source-exact outer wall and upper glacis faces stay fixed.
   glacisWingY0: 1.43, glacisWingDrop: 0.04, glacisWingZ0: 2.72,
@@ -5561,7 +5606,8 @@ const M48_HULL: PattonHullConfig = {
     [1.726, 1.780], [1.445, 1.780], [1.432, 1.823], [0.05, 1.823],
     [-0.09, 1.883], [-0.34, 1.883], [-0.52, 1.800], [-1.10, 1.775],
     [-1.62, 1.821], [-2.96, 1.821], [-2.98, 1.660], [-3.29, 1.640]],
-  toeBot: 0.96, bellyFrontZ: 2.25, bellyRearZ: -2.48, tailBotY: 0.88,
+  toeBot: 1.10, bellyFrontZ: 2.25, bellyRearZ: -2.48, tailBotY: 0.88,
+  rearUndercutFloorJoin: true,
   gear: {
     wheelR: 0.34, wheelY: 0.40, span: [1.999, -1.912], rollerN: 5, rollerY: 1.095,
     contactZF: 2.30, contactZR: -2.25, botY: 0.045,
