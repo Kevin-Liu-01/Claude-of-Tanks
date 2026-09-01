@@ -20,6 +20,8 @@ export interface PolyMultiLoftRing {
   height: StationValue;
   inset?: StationValue;
   centerHeight?: number;
+  offsetX?: number;
+  offsetZ?: number;
 }
 
 export interface StraightRidgeGunMaskOptions {
@@ -227,14 +229,16 @@ function scaledRing(
   height: StationValue,
   inset: StationValue,
   center: Point2,
+  offsetX = 0,
+  offsetZ = 0,
 ): Point3[] {
   const [centerX, centerZ] = center;
   return plan.map(([x, z], index) => {
     const scale = stationValue(inset, plan, index);
     return [
-      centerX + (x - centerX) * scale,
+      centerX + (x - centerX) * scale + offsetX,
       stationValue(height, plan, index),
-      centerZ + (z - centerZ) * scale,
+      centerZ + (z - centerZ) * scale + offsetZ,
     ];
   });
 }
@@ -340,14 +344,29 @@ export function polyMultiLoft(
 ): THREE.BufferGeometry {
   if (rings.length < 2) throw new Error('polyMultiLoft requires at least two rings');
   const center = planCenter(plan);
-  const resolved = rings.map((ring) => scaledRing(plan, ring.height, ring.inset ?? 1, center));
+  const ringCenters = rings.map((ring): Point2 => [
+    center[0] + (ring.offsetX ?? 0),
+    center[1] + (ring.offsetZ ?? 0),
+  ]);
+  const resolved = rings.map((ring) => scaledRing(
+    plan,
+    ring.height,
+    ring.inset ?? 1,
+    center,
+    ring.offsetX ?? 0,
+    ring.offsetZ ?? 0,
+  ));
   const positions: number[] = [];
   for (let index = 0; index < resolved.length - 1; index++) {
-    pushOrientedSides(positions, resolved[index], resolved[index + 1], center);
+    pushOrientedSides(positions, resolved[index], resolved[index + 1], [
+      (ringCenters[index][0] + ringCenters[index + 1][0]) * 0.5,
+      (ringCenters[index][1] + ringCenters[index + 1][1]) * 0.5,
+    ]);
   }
-  pushOrderedFan(positions, resolved[0], center, false, rings[0].centerHeight);
+  pushOrderedFan(positions, resolved[0], ringCenters[0], false, rings[0].centerHeight);
   const finalIndex = resolved.length - 1;
-  pushOrderedFan(positions, resolved[finalIndex], center, true, rings[finalIndex].centerHeight);
+  pushOrderedFan(positions, resolved[finalIndex], ringCenters[finalIndex], true,
+    rings[finalIndex].centerHeight);
   return geometryFromTriangles(positions);
 }
 
