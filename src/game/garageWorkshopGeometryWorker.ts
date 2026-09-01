@@ -76,12 +76,14 @@ interface NodeWire {
   instanceMatrix: AttributeWire | null;
   instanceColor: AttributeWire | null;
   lodDistances: number[];
+  lodHysteresis: number[];
   children: NodeWire[];
 }
 
-export interface FlatNodeWire extends Omit<NodeWire, 'children' | 'lodDistances'> {
+export interface FlatNodeWire extends Omit<NodeWire, 'children' | 'lodDistances' | 'lodHysteresis'> {
   parentIndex: number;
   lodDistance: number | null;
+  lodHysteresis: number | null;
 }
 
 export interface GarageWorkshopGeometryWire {
@@ -100,10 +102,26 @@ interface WorkshopWorkerScope {
     camoSeed: number;
     spec: (typeof TANK_SPECS)[string];
   }>) => void) | null;
-  postMessage(message: unknown, transfer?: Transferable[]): void;
+  postMessage(message: WorkshopWorkerReply, transfer?: Transferable[]): void;
 }
 
-const workerScope = globalThis as unknown as WorkshopWorkerScope;
+type WorkshopWorkerReply =
+  | {
+    ok: true;
+    kind: 'begin';
+    requestId: number;
+    specId: string;
+    buildMs: number;
+    materials: MaterialWire[];
+    geometryCount: number;
+    nodeCount: number;
+  }
+  | { ok: true; kind: 'geometries'; requestId: number; geometries: GeometryWire[] }
+  | { ok: true; kind: 'nodes'; requestId: number; nodes: FlatNodeWire[] }
+  | { ok: true; kind: 'complete'; requestId: number }
+  | { ok: false; requestId: number; message: string };
+
+const workerScope = globalThis as typeof globalThis & WorkshopWorkerScope;
 
 function copyArray(array: ArrayLike<number> & { constructor: { new(source: ArrayLike<number>): NumericArray } }): NumericArray {
   return new array.constructor(array);
@@ -146,12 +164,19 @@ function nodeTransferableBuffers(value: readonly FlatNodeWire[]): Transferable[]
   return [...buffers];
 }
 
-function primitiveUserData(source: Record<string, unknown>): Record<string, string | number | boolean> {
+const PRIMITIVE_USER_DATA_KEYS = [
+  'appearanceRole', 'authoredShadowProxy', 'combatHitboxPart', 'combatHitboxRole',
+  'runningGear', 'trackBucket', 'trackGuard', 'vehicleMarking',
+] as const;
+
+type PrimitiveUserDataKey = (typeof PRIMITIVE_USER_DATA_KEYS)[number];
+type PrimitiveUserDataValue = string | number | boolean;
+
+function primitiveUserData(
+  source: Partial<Record<PrimitiveUserDataKey, PrimitiveUserDataValue>>,
+): Record<string, PrimitiveUserDataValue> {
   const result: Record<string, string | number | boolean> = {};
-  for (const key of [
-    'appearanceRole', 'authoredShadowProxy', 'combatHitboxPart', 'combatHitboxRole',
-    'runningGear', 'trackBucket', 'trackGuard', 'vehicleMarking',
-  ]) {
+  for (const key of PRIMITIVE_USER_DATA_KEYS) {
     const value = source?.[key];
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       result[key] = value;
@@ -226,6 +251,7 @@ function serializeTank(root: THREE.Group, requestId: number, specId: string, bui
     object: THREE.Object3D,
     parentIndex: number,
     lodDistance: number | null,
+    lodHysteresis: number | null,
   ): void => {
     const mesh = object as THREE.Mesh;
     const instanced = object as THREE.InstancedMesh;
@@ -255,15 +281,17 @@ function serializeTank(root: THREE.Group, requestId: number, specId: string, bui
         ? attributeWire(instanced.instanceColor) : null,
       parentIndex,
       lodDistance,
+      lodHysteresis,
     });
     object.children.forEach((child, index) => appendNode(
       child,
       nodeIndex,
       lod.isLOD ? lod.levels[index]?.distance ?? 0 : null,
+      lod.isLOD ? lod.levels[index]?.hysteresis ?? 0 : null,
     ));
   };
 
-  appendNode(root, -1, null);
+  appendNode(root, -1, null, null);
   return { requestId, specId, nodes, geometries, materials, buildMs };
 }
 

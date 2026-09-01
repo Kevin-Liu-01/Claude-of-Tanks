@@ -443,20 +443,27 @@ for (const preset of presets) {
       }
       if (object.isMesh && !object.isInstancedMesh && !object.isBatchedMesh
           && worldVisible && !offscreenWarmup && object.geometry) {
-        const matrixKey = Array.from(object.matrixWorld.elements,
-          (value) => Number(value).toFixed(6)).join(',');
-        const key = object.geometry.uuid + '|' + matrixKey;
-        const previous = visibleMeshKeys.get(key);
-        if (previous) {
-          duplicateVisibleMeshes++;
-          if (duplicateVisibleMeshSamples.length < 8) {
-            duplicateVisibleMeshSamples.push([
-              previous.name || previous.parent?.name || previous.type,
-              object.name || object.parent?.name || object.type,
-            ]);
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        const writesFrame = materials.some((material) => material?.visible !== false
+          && (material?.colorWrite !== false || material?.depthWrite !== false));
+        if (writesFrame) {
+          const matrixKey = Array.from(object.matrixWorld.elements,
+            (value) => Number(value).toFixed(6)).join(',');
+          const key = object.geometry.uuid + '|' + matrixKey;
+          const previous = visibleMeshKeys.get(key);
+          if (previous) {
+            duplicateVisibleMeshes++;
+            if (duplicateVisibleMeshSamples.length < 8) {
+              duplicateVisibleMeshSamples.push([
+                previous.name || previous.parent?.name || previous.type,
+                object.name || object.parent?.name || object.type,
+              ]);
+            }
+          } else {
+            visibleMeshKeys.set(key, object);
           }
-        } else {
-          visibleMeshKeys.set(key, object);
         }
       }
       const materials = object.material

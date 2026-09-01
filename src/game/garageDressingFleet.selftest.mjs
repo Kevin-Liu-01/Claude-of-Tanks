@@ -26,6 +26,10 @@ assert.match(transfer,
   'workshop paint generation must yield between painter stages before material acquisition');
 assert.match(worker, /geometryQuality: 'high'[\s\S]*decor: true/,
   'worker exhibits retain full procedural detail and fittings');
+assert.match(worker, /lod\.levels\[index\]\?\.hysteresis \?\? 0/,
+  'worker exhibits must serialize the authored LOD transition hysteresis');
+assert.match(transfer, /source\.lodHysteresis \?\? 0/,
+  'main-thread exhibits must restore LOD hysteresis instead of reintroducing transition chatter');
 assert.match(transfer, /spec: TANK_SPECS\[specId\]/,
   'the transfer must send the requested spec without loading unrelated supplemental donors');
 assert.match(worker, /TANK_SPECS\[specId\] \|\|= spec/,

@@ -35,7 +35,7 @@ type WorkerReply = WorkerReplyBase & (
   | { kind?: undefined }
 );
 
-interface MaterialPalette extends Record<string, unknown> {
+interface MaterialPalette {
   hull: THREE.Material;
   wheels: THREE.Material;
   wheelsRecessed: THREE.Material;
@@ -52,6 +52,33 @@ interface MaterialPalette extends Record<string, unknown> {
   burnt: THREE.Material;
   dispose(): void;
 }
+
+type MaterialPaletteKey = Exclude<keyof MaterialPalette, 'dispose'>;
+
+const ROLE_MATERIAL_KEYS: Readonly<Record<string, MaterialPaletteKey>> = {
+  tireRubber: 'rubber',
+  trackSteel: 'trackLink',
+  trackBand: 'trackLink',
+  armorPaint: 'hull',
+  fittingPaint: 'detail',
+  gunmetal: 'dark',
+  gearShadow: 'shadow',
+  opticGlass: 'glass',
+  canvas: 'canvasCloth',
+  wood: 'wood',
+  burnt: 'burnt',
+};
+
+const NAME_MATERIAL_KEYS: ReadonlyArray<readonly [RegExp, MaterialPaletteKey]> = [
+  [/glass/i, 'glass'],
+  [/runninggeardetail|wheeldisc/i, 'wheels'],
+  [/runninggeardark|shadow/i, 'shadow'],
+  [/track|tread/i, 'trackLink'],
+  [/detail|equipment|marking/i, 'detail'],
+  [/dark|mount/i, 'dark'],
+  [/gun|barrel|recoil/i, 'barrel'],
+  [/^(hull|turret)|armor|cupola|hatch/i, 'hull'],
+];
 
 function bufferAttribute(source: NonNullable<AttributeWire>): THREE.BufferAttribute {
   return new THREE.BufferAttribute(source.array, source.itemSize, source.normalized);
@@ -99,25 +126,11 @@ function materialForWire(
   if (role === 'wheelPaint') {
     return /recessed/i.test(source.name) ? palette.wheelsRecessed : palette.wheels;
   }
-  if (role === 'tireRubber') return palette.rubber;
-  if (role === 'trackSteel' || role === 'trackBand') return palette.trackLink;
-  if (role === 'armorPaint') return palette.hull;
-  if (role === 'fittingPaint') return palette.detail;
-  if (role === 'gunmetal') return palette.dark;
-  if (role === 'gearShadow') return palette.shadow;
-  if (role === 'opticGlass') return palette.glass;
-  if (role === 'canvas') return palette.canvasCloth;
-  if (role === 'wood') return palette.wood;
-  if (role === 'burnt') return palette.burnt;
+  const roleMaterialKey = ROLE_MATERIAL_KEYS[role];
+  if (roleMaterialKey) return palette[roleMaterialKey];
 
-  if (/glass/i.test(objectName)) return palette.glass;
-  if (/runninggeardetail|wheeldisc/i.test(objectName)) return palette.wheels;
-  if (/runninggeardark|shadow/i.test(objectName)) return palette.shadow;
-  if (/track|tread/i.test(objectName)) return palette.trackLink;
-  if (/detail|equipment|marking/i.test(objectName)) return palette.detail;
-  if (/dark|mount/i.test(objectName)) return palette.dark;
-  if (/gun|barrel|recoil/i.test(objectName)) return palette.barrel;
-  if (/^(hull|turret)|armor|cupola|hatch/i.test(objectName)) return palette.hull;
+  const nameMaterialKey = NAME_MATERIAL_KEYS.find(([pattern]) => pattern.test(objectName))?.[1];
+  if (nameMaterialKey) return palette[nameMaterialKey];
 
   const material = new THREE.MeshStandardMaterial({
     color: source.color ?? 0x4a5040,
@@ -198,7 +211,11 @@ async function rebuildNodeTree(
       const parent = objects[source.parentIndex];
       if (!parent) throw new Error(`Garage workshop node ${cursor} has no parent ${source.parentIndex}`);
       if (source.lodDistance !== null) {
-        (parent as THREE.LOD).addLevel(object, source.lodDistance);
+        (parent as THREE.LOD).addLevel(
+          object,
+          source.lodDistance,
+          source.lodHysteresis ?? 0,
+        );
       } else {
         parent.add(object);
       }
