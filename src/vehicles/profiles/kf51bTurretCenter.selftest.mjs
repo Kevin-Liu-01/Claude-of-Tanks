@@ -22,6 +22,7 @@ try {
   const proportions = hull?.userData.kf51bProportionReceipt;
   const attachmentSeat = turret?.userData.kf51bAttachmentSeatReceipt;
   const roofReceipt = turret?.userData.kf51bTurretRoofReceipt;
+  const gunHousing = gun?.userData.kf51bAngularGunHousingReceipt;
   const eraFinish = tank.root.userData.eraFinishReceipt;
   const rws = tank.root.getObjectByName('kf51bRoofOpenYokeRws');
   const spareLinks = hull?.children.find((child) => child.userData.fitting === 'spareTrackLinks');
@@ -51,6 +52,29 @@ try {
     'KF51B track hit geometry follows the enlarged visual hierarchy');
   assert.equal(gun?.parent, turret,
     'KF51B gun remains owned by the translated turret rig');
+  assert.equal(gunHousing?.profile, 'kf51b-panther-angular-mantlet-r2');
+  assert.equal(gunHousing?.movingWithGun, true,
+    'KF51B mantlet, clamp and thermal shroud elevate with the gun rig');
+  assert.equal(gunHousing?.mainHousing, 'closed-tapered-six-plane-wedge');
+  assert.ok(gunHousing?.housingLengthM >= 1.20,
+    'KF51B angular mantlet replaces the retired short 390 mm shroud');
+  assert.ok(gunHousing?.rearWidthM >= 0.72 && gunHousing?.rearWidthM < 0.78,
+    'KF51B mantlet fills the turret throat without dominating the front');
+  assert.ok(gunHousing?.rearHeightM <= 0.43 && gunHousing?.forwardWidthM <= 0.49,
+    'KF51B surrounding armor stays compact around the preserved gun course');
+  assert.equal(gunHousing?.forwardClampSides, 6,
+    'KF51B mantlet terminates in a faceted armored clamp');
+  assert.equal(gunHousing?.forwardClampRadiusM, 0.175,
+    'KF51B nose clamp scales down with the surrounding mantlet armor');
+  assert.equal(gunHousing?.thermalShroudCourses, 2,
+    'KF51B gun carries a stepped two-course thermal jacket');
+  assert.equal(gunHousing?.cinchRingCount, 3,
+    'KF51B thermal jacket has three readable structural cinches');
+  assert.equal(gunHousing?.compactRoundShroudRetired, true);
+  assert.deepEqual(gunHousing?.visualGunPivotLocal, [0, 0.22, 1.58]);
+  closeTo(gunHousing?.barrelLengthLocalM, 5.30);
+  assert.equal(gunHousing?.authoritativePivotAndMuzzlePreserved, true,
+    'KF51B visual gun upgrade preserves the certified firing frame');
   assert.equal(roofReceipt?.profile, 'convex-crowned-wedge');
   assert.equal(roofReceipt?.concaveFanRemoved, true,
     'KF51B roof no longer uses the selected concave center fan');

@@ -12253,15 +12253,66 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       -0.74 + dx, 0.39 + multispectralSightLiftM, 1.366, -0.20, 0, 0);
   }
 
-  // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The compact mantlet
-  // is nested into the wedge; no large rectangular box obscures the cheeks.
+  // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The retired 390 mm
+  // round-ended shroud left a toy-like seam between the barrel and the broad
+  // Panther-B bow.  Seat a complete moving armor course in that throat: a
+  // closed tapered mantlet, separate crown and flexible chin, then a faceted
+  // clamp flowing into the stepped thermal shroud.  This borrows the strong
+  // longitudinal language of the KF51 gun without cloning its dimensions or
+  // disturbing the KF51B's certified pivot and muzzle station.
   P.gunG.position.set(0, 0.22, 1.58);
-  P.addGunExtra(slab(
-    [-0.34, -0.15, 0.02], [0.34, -0.15, 0.02], [0.29, -0.13, 0.39], [-0.29, -0.13, 0.39],
-    [-0.29, 0.15, 0.02], [0.29, 0.15, 0.02], [0.24, 0.13, 0.39], [-0.24, 0.13, 0.39]));
-  P.addGunExtra(cylZ(0.145, 0.30, P.q ? 20 : 12, 0.18), 0, 0, 0.28);
-  buildGun(P, { len: 5.30, r: 0.064, sleeve: true, collar: true, baseR: 0.12 });
+  const kf51bGunSegments = P.q ? 24 : 16;
+  P.addGunExtra(outwardClosedSlab(
+    [-0.37, -0.20, 0.02], [0.37, -0.20, 0.02], [0.245, -0.135, 1.27], [-0.245, -0.135, 1.27],
+    [-0.34, 0.23, 0.02], [0.34, 0.23, 0.02], [0.218, 0.16, 1.27], [-0.218, 0.16, 1.27],
+  ));
+  // A shallow armored crown continues the turret's rising fore-roof plane;
+  // the inset dark belly reads as a flexible weather boot at full elevation.
+  P.addGunExtra(outwardClosedSlab(
+    [-0.305, 0.22, 0.10], [0.305, 0.22, 0.10], [0.198, 0.155, 1.22], [-0.198, 0.155, 1.22],
+    [-0.278, 0.272, 0.17], [0.278, 0.272, 0.17], [0.175, 0.208, 1.17], [-0.175, 0.208, 1.17],
+  ));
+  P.addGunExtraDark(outwardClosedSlab(
+    [-0.305, -0.215, 0.10], [0.305, -0.215, 0.10], [0.198, -0.138, 1.22], [-0.198, -0.138, 1.22],
+    [-0.278, -0.18, 0.17], [0.278, -0.18, 0.17], [0.175, -0.103, 1.17], [-0.175, -0.103, 1.17],
+  ));
+  P.addGunExtraDark(cylZ(0.175, 0.12, 6), 0, 0.012, 1.31);                  // armored hexagonal nose clamp
+  P.addGunExtraDark(cylZ(0.027, 0.105, 8), 0.250, 0.050, 0.88);             // recessed coax aperture
+  P.addGunExtraDark(cylZ(0.018, 0.090, 8), -0.250, 0.076, 0.72);            // paired boresight aperture
+
+  // Keep the ballistic tube at its existing 64 mm authored radius, but give
+  // it the readable layered mass of a 130 mm installation.  Two tapered
+  // thermal-jacket courses, hard cinch rings and an offset MRS enclosure make
+  // the gun resolve as engineered hardware rather than one stretched pipe.
+  buildGun(P, { len: 5.30, r: 0.064, sleeve: false, collar: false, baseR: 0.105 });
+  P.add('gun', cylZ(0.098, 1.34, kf51bGunSegments, 0.108), 0, 0.012, 2.02);
+  P.add('gun', cylZ(0.088, 1.72, kf51bGunSegments, 0.096), 0, 0.006, 3.55);
+  for (const [z, radius] of [[1.37, 0.112], [2.70, 0.108], [4.42, 0.098]] as const) {
+    P.add('gunDark', cylZ(radius, 0.052, kf51bGunSegments), 0, 0.008, z);
+  }
+  P.add('gun', box(0.15, 0.10, 0.31), -0.105, 0.105, 4.60, 0, -0.08, 0);       // muzzle-reference sensor
+  P.add('gunDark', box(0.105, 0.036, 0.20), -0.105, 0.158, 4.60, 0, -0.08, 0);
+  P.add('gun', cylZ(0.082, 0.36, kf51bGunSegments, 0.071), 0, 0, 5.10);       // reinforced muzzle transition
+  P.add('gunDark', cylZ(0.086, 0.040, kf51bGunSegments), 0, 0, 5.275);       // crisp muzzle rim
   muzzleBore(P, { len: 5.30, r: 0.064 });
+  P.gunG.userData.kf51bAngularGunHousingReceipt = Object.freeze({
+    profile: 'kf51b-panther-angular-mantlet-r2',
+    movingWithGun: true,
+    mainHousing: 'closed-tapered-six-plane-wedge',
+    rearWidthM: 0.74,
+    rearHeightM: 0.43,
+    forwardWidthM: 0.49,
+    forwardHeightM: 0.295,
+    housingLengthM: 1.25,
+    forwardClampSides: 6,
+    forwardClampRadiusM: 0.175,
+    thermalShroudCourses: 2,
+    cinchRingCount: 3,
+    compactRoundShroudRetired: true,
+    visualGunPivotLocal: Object.freeze([0, 0.22, 1.58]),
+    barrelLengthLocalM: 5.30,
+    authoritativePivotAndMuzzlePreserved: true,
+  });
 
   // Sparse source roof: two flush hatches, one tall SEOSS optic and the
   // black rear-left remote weapon station.  Every component overlaps a
