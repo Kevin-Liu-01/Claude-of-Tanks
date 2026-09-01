@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createBrowserBattleBridge } from './browserBattleBridge.ts';
+import { BrowserInputRuntime } from './browserInputRuntime.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
 
 const visuals = [];
@@ -78,7 +79,8 @@ const entity = (id, team, x, z) => ({
   id, specId: 'm1a2', team, x, y: 1.2, z,
   vx: 0, vz: 0, yaw: 0.4, pitch: 0.03, roll: -0.02,
   turretYaw: 0.2, gunPitch: -0.04,
-  hp: 2000, maxHp: 2000, reloadS: 0, shellSlot: 0, flags: 0,
+  hp: 2000, maxHp: 2000, reloadS: 0, shellSlot: 0,
+  ammo0: 0, ammo1: 4, ammo2: 2, flags: 0,
 });
 const snapshot = {
   tick: 1,
@@ -99,6 +101,29 @@ assert.deepEqual(
   [[142, -73], [-91, 64]],
   'first visible transforms match authoritative spawn positions',
 );
+
+// A shell-selection edge is client intent until authority acknowledges it.
+// Replaying a slightly older snapshot after the player empties the active
+// channel must not erase the requested replacement before it reaches the
+// input lane, or the ammo guard suppresses fire forever on the empty slot.
+game.player.input.shellSlot = 1;
+game.player.combat.shellSlot = 1;
+snapshot.tick++;
+bridge.apply(snapshot);
+const requestedAmmoFrame = new BrowserInputRuntime().frame(game.player);
+assert.equal(requestedAmmoFrame.shellSlot, 1,
+  'a stale local snapshot cannot erase a pending ammunition selection');
+
+snapshot.entities[1].shellSlot = 1;
+snapshot.tick++;
+bridge.apply(snapshot);
+assert.equal(game.player.input.shellSlot, 1,
+  'the authority acknowledgement settles the requested ammunition slot');
+snapshot.entities[1].shellSlot = 0;
+snapshot.tick++;
+bridge.apply(snapshot);
+assert.equal(game.player.input.shellSlot, 0,
+  'a later authoritative reset applies after the pending request settles');
 
 snapshot.tick++;
 snapshot.entities[0].x++;

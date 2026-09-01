@@ -225,7 +225,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       action.previousShellSlot = player.combat.shellSlot;
     }
     rules.selectShell(player.combat, slot, player.spec);
-    player.input.shellSlot = slot;
+    // `selectShell` clamps against the real loadout. Mirror the canonical
+    // result instead of the raw 1/2/3 request so two-shell vehicles cannot
+    // publish an impossible slot that the ammo guard will hold at zero.
+    player.input.shellSlot = player.combat.shellSlot;
   });
 
   listen('ui:magazineReload', () => {
@@ -246,6 +249,15 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
     if (rules.specialActionKind(player.spec) === 'guided_missile') {
+      // A delayed network snapshot may leave authoritative presentation one
+      // slot behind the local request. E toggles the player's requested slot,
+      // so reconcile that intent before deciding whether to enter or leave
+      // the missile channel.
+      const requestedSlot = player.input.shellSlot | 0;
+      if (requestedSlot !== player.combat.shellSlot &&
+          player.spec.gun.shells[requestedSlot]) {
+        rules.selectShell(player.combat, requestedSlot, player.spec);
+      }
       // Missile selection still travels through the ordinary shell-slot input
       // in multiplayer. Apply the deterministic toggle locally so a second E
       // restores the prior cannon round without queuing a hidden action mode.

@@ -50,9 +50,10 @@ const player = {
 };
 const game = { phase: 'garage', timeS: 10, player };
 const rules = {
-  selectShell(combat, slot) {
-    localCalls.push(`shell:${slot}`);
-    combat.shellSlot = slot;
+  selectShell(combat, slot, selectedSpec) {
+    const clamped = Math.max(0, Math.min(selectedSpec.gun.shells.length - 1, slot | 0));
+    localCalls.push(`shell:${clamped}`);
+    combat.shellSlot = clamped;
   },
   repairAllModules(combat) {
     if (!combat.damagedModule) return [];
@@ -145,6 +146,15 @@ player.combat.magazine = null;
 input.press('shell1');
 assert.equal(player.combat.shellSlot, 0, 'numbered ammunition remains selectable after ATGM use');
 
+const thirdShell = spec.gun.shells.pop();
+input.press('shell3');
+assert.equal(player.combat.shellSlot, 1, 'two-shell loadouts clamp an unavailable third slot');
+assert.equal(player.input.shellSlot, 1,
+  'input publishes the clamped slot instead of becoming stuck on empty slot three');
+spec.gun.shells.push(thirdShell);
+player.combat.shellSlot = 0;
+player.input.shellSlot = 0;
+
 player.combat.damagedModule = 'engine';
 input.press('consumable1');
 assert.equal(player.combat.damagedModule, null);
@@ -189,9 +199,10 @@ assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
     payload.slot === 1 && payload.active === true));
+player.combat.shellSlot = 0;
 bus.emit('ui:specialAction', {});
 assert.equal(player.input.shellSlot, 0,
-  'repeating E restores the previously selected conventional ammunition');
+  'repeating E restores conventional ammo even while authority still reports the old slot');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
     payload.slot === 0 && payload.active === false));

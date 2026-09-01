@@ -86,6 +86,7 @@ interface BridgeEntity extends PredictionSimEntity {
   _networkDestroyed: boolean;
   _networkDestroyPop?: boolean;
   _networkEraSpent?: Set<string>;
+  _networkShellSlot?: number;
   _lastX: number;
   _lastZ: number;
 }
@@ -563,6 +564,11 @@ export function createBrowserBattleBridge<
     gunReload.t = gunReloadS;
     gunReload.totalS = Math.max(gunReloadTotalS || 0, gunReloadS);
     gunReload.kind = snapshot.gunReloadKind || snapshot.reloadKind || 'ready';
+    const priorAuthorityShellSlot = entity._networkShellSlot;
+    const requestedShellSlot = entity.input.shellSlot;
+    const hasPendingLocalShellSelection = entity.isPlayer &&
+      priorAuthorityShellSlot != null &&
+      requestedShellSlot !== priorAuthorityShellSlot;
     combat.shellSlot = snapshot.shellSlot;
     if (combat.reloadChannels?.[snapshot.shellSlot]) {
       combat.reload = combat.reloadChannels[snapshot.shellSlot];
@@ -577,7 +583,14 @@ export function createBrowserBattleBridge<
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
-    entity.input.shellSlot = snapshot.shellSlot;
+    // The local input slot is player intent, not presentation state. Preserve
+    // a selection that diverged from the last authoritative snapshot until a
+    // newer input frame reaches the host. Otherwise one delayed snapshot can
+    // erase the edge before upload and strand firing on a depleted channel.
+    // Initial snapshots and server-side resets still seed the input whenever
+    // there is no outstanding local request.
+    if (!hasPendingLocalShellSelection) entity.input.shellSlot = snapshot.shellSlot;
+    entity._networkShellSlot = snapshot.shellSlot;
     entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
     state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
       entity.specialAction.active;
