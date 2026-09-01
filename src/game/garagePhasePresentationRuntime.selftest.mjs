@@ -17,6 +17,9 @@ let warmCount = 0;
 let releaseOnBattle = true;
 let pedestalPoseCount = 0;
 let cameraPoseCount = 0;
+let holdNextRestore = false;
+let notifyRestoreStarted = null;
+let releaseHeldRestore = null;
 const authoredSky = { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 };
 
 const runtime = createGaragePhasePresentationRuntime({
@@ -38,14 +41,25 @@ const runtime = createGaragePhasePresentationRuntime({
   restorePresentationGpu: async ({ resourcesReleased }) => {
     calls.push(['restorePresentationGpu', resourcesReleased]);
     warmCount += 1;
+    if (holdNextRestore) {
+      notifyRestoreStarted?.();
+      await new Promise((resolve) => { releaseHeldRestore = resolve; });
+    }
     return {
       totalMs: 12,
       resourcesReleased,
+      programWarmMs: 3,
+      programWarmSlices: 1,
+      programCompileMs: 2,
+      programCompileMaxMs: 2,
+      programCompileObject: 'garage-hero',
+      linkerSlices: 0,
       shadowPasses: [4, 3],
       shadowPassMax: 4,
       shadowCascadeCount: 2,
       sceneUploadBatches: resourcesReleased ? [2, 1] : [],
       sceneUploadMax: resourcesReleased ? 2 : 0,
+      settleFrameMs: 4,
     };
   },
 });
@@ -98,7 +112,17 @@ assert.equal(runtime.diagnostics().gpu.suspended, false);
 assert.deepEqual(calls.at(-1), ['restorePresentationGpu', true],
   'GPU renewal delegates to the bounded presentation restore once');
 
-const residentRestore = await runtime.restoreGpu();
+holdNextRestore = true;
+const restoreStarted = new Promise((resolve) => { notifyRestoreStarted = resolve; });
+const residentRestorePending = runtime.restoreGpu();
+await restoreStarted;
+assert.equal(runtime.restoringGpu, true,
+  'the frame owner can suppress cold Garage draws throughout restoration');
+releaseHeldRestore();
+const residentRestore = await residentRestorePending;
+holdNextRestore = false;
+assert.equal(runtime.restoringGpu, false,
+  'the Garage frame cover clears immediately after restoration');
 assert.equal(warmCount, 2, 'resident returns still settle one exact covered Garage frame');
 assert.equal(residentRestore.resourcesReleased, false);
 assert.equal(residentRestore.sceneUploadMax, 0,

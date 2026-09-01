@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PerspectiveCamera, Scene } from 'three';
+import { Group, PerspectiveCamera, Scene } from 'three';
 import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
@@ -7,6 +7,7 @@ import {
 
 const scene = new Scene();
 const camera = new PerspectiveCamera();
+const programRoot = new Group();
 const renderer = {};
 const calls = [];
 const progress = [];
@@ -88,6 +89,28 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
         return [13, 5];
       },
     },
+    programRoot,
+    forwardPrograms: {
+      *initializeSteps(root, stats) {
+        assert.equal(root, programRoot);
+        restoreCalls.push(['programSteps']);
+        stats.totalCompileMs = 6;
+        stats.maxCompileMs = 4;
+        stats.maxCompileObject = 'garage-hero';
+        yield;
+        yield;
+      },
+      *linkerBreathingSlices(maxSlices) {
+        assert.equal(maxSlices, 8);
+        restoreCalls.push(['linkerSteps']);
+        yield;
+      },
+      compile() { assert.fail('bounded program steps should succeed'); },
+    },
+    post: {
+      render(dt) { restoreCalls.push(['restoreRender', dt]); },
+    },
+    simDt: 1 / 60,
     resourcesReleased: true,
     createYielder: (budgetMs) => {
       assert.equal(budgetMs, 8);
@@ -110,16 +133,26 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   assert.deepEqual(restoreCalls.filter(([name]) => name === 'yield'), [
     ['yield', undefined],
     ['yield', undefined],
-  ], 'the already-opaque transition yields only when restoration exhausts its budget');
+    ['yield', undefined],
+    ['yield', undefined],
+    ['yield', undefined],
+  ], 'the already-opaque transition uses budgeted rather than forced object yields');
   assert.deepEqual(restoreCalls.at(-1), ['staticDormant', true]);
   assert.deepEqual(receipt, {
-    totalMs: 10,
+    totalMs: 50,
     resourcesReleased: true,
+    programWarmMs: 10,
+    programWarmSlices: 2,
+    programCompileMs: 6,
+    programCompileMaxMs: 4,
+    programCompileObject: 'garage-hero',
+    linkerSlices: 1,
     shadowPasses: [13, 5],
     shadowPassMax: 13,
     shadowCascadeCount: 2,
     sceneUploadBatches: [9, 4, 2],
     sceneUploadMax: 9,
+    settleFrameMs: 10,
   });
 }
 
@@ -137,6 +170,18 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
         return [3, 2];
       },
     },
+    programRoot,
+    forwardPrograms: {
+      *initializeSteps(root) {
+        assert.equal(root, programRoot);
+      },
+      *linkerBreathingSlices(maxSlices) {
+        assert.equal(maxSlices, 8);
+      },
+      compile() { assert.fail('bounded program steps should succeed'); },
+    },
+    post: { render() {} },
+    simDt: 1 / 60,
     resourcesReleased: false,
     createYielder: () => async () => {},
     warmScene: async () => {
@@ -149,11 +194,18 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   assert.deepEqual(receipt, {
     totalMs: 0,
     resourcesReleased: false,
+    programWarmMs: 0,
+    programWarmSlices: 0,
+    programCompileMs: 0,
+    programCompileMaxMs: 0,
+    programCompileObject: null,
+    linkerSlices: 0,
     shadowPasses: [3, 2],
     shadowPassMax: 3,
     shadowCascadeCount: 2,
     sceneUploadBatches: [],
     sceneUploadMax: 0,
+    settleFrameMs: 0,
   });
 }
 

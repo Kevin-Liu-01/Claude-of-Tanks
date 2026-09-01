@@ -678,6 +678,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       scene,
       camera,
       lighting,
+      programRoot: pedestal.current?.root ?? scene,
+      forwardPrograms: forwardProgramWarm,
+      post,
+      simDt: SIM_DT,
       resourcesReleased,
     });
   },
@@ -2279,6 +2283,7 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
+  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu,
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,

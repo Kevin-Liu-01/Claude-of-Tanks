@@ -62,6 +62,7 @@ export interface MainFrameRuntimeOptions {
   garageFramePacer: GarageFramePacer;
   battleFrame: BattleFrameRuntime;
   isBattleLoadCovering(): boolean;
+  isPresentationRestoreCovering(): boolean;
   cameraInput: CameraFrameInput;
   getMobileAutoAim(): MainMobileAutoAimRuntime | null;
   rig: CameraRig;
@@ -110,6 +111,7 @@ export function createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering,
+  isPresentationRestoreCovering,
   cameraInput,
   getMobileAutoAim,
   rig,
@@ -134,6 +136,7 @@ export function createMainFrameRuntime({
     getShotHudFrame,
     resolveFxSubject,
     isBattleLoadCovering,
+    isPresentationRestoreCovering,
     getMobileAutoAim,
     veilHud,
     isGaragePresentationDirty,
@@ -291,11 +294,11 @@ export function createMainFrameRuntime({
     lastMs = nowMs;
     trace?.frame(dtR * 1000);
     if (isGraphicsContextLost()) return;
-    if (battleEntryLifecycle.renderingCovered) {
-      // The opaque entry veil suppresses expensive/incomplete scene frames,
-      // not transport progress. Fresh peers still need the browser network
-      // pump to exchange welcome, ready and first-snapshot messages while the
-      // world and roster are warming behind that veil.
+    if (battleEntryLifecycle.renderingCovered || isPresentationRestoreCovering()) {
+      // Opaque entry and Garage-restore veils suppress expensive/incomplete
+      // scene frames, not transport progress. Fresh peers still need the
+      // browser network pump while worlds and presentation state warm behind
+      // those veils.
       networkSession.pump(dtR, nowMs);
       return;
     }

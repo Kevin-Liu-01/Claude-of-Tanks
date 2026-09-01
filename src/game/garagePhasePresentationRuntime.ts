@@ -48,6 +48,7 @@ export interface GaragePhasePresentationDiagnostics {
 }
 
 export interface GaragePhasePresentationRuntime {
+  readonly restoringGpu: boolean;
   setActive(active: boolean): void;
   setSunTrim(active: boolean): void;
   place(): void;
@@ -125,12 +126,24 @@ export function createGaragePhasePresentationRuntime({
     garageRoots: [stageRoot, dressingRoot, spotTarget, spotA, spotB],
   });
   let restoreReceipt: GaragePresentationRestoreReceipt | null = null;
+  let restoreDepth = 0;
+  const restorePresentation = async (
+    resourcesReleased: boolean,
+  ): Promise<GaragePresentationRestoreReceipt> => {
+    restoreDepth += 1;
+    restoreReceipt = null;
+    try {
+      restoreReceipt = await restorePresentationGpu({ resourcesReleased });
+      return restoreReceipt;
+    } finally {
+      restoreDepth -= 1;
+    }
+  };
   const gpuResidency = createRetainedPhaseGpuResidency({
     root: stageRoot,
     preserveRoots: [scene],
     restoreGpu: async () => {
-      restoreReceipt = null;
-      restoreReceipt = await restorePresentationGpu({ resourcesReleased: true });
+      await restorePresentation(true);
     },
   });
 
@@ -162,6 +175,7 @@ export function createGaragePhasePresentationRuntime({
   };
 
   return {
+    get restoringGpu() { return restoreDepth > 0; },
     setActive,
     setSunTrim,
     place,
@@ -171,8 +185,7 @@ export function createGaragePhasePresentationRuntime({
     async restoreGpu() {
       const renewed = await gpuResidency.resume();
       if (!renewed) {
-        restoreReceipt = null;
-        restoreReceipt = await restorePresentationGpu({ resourcesReleased: false });
+        await restorePresentation(false);
       }
       if (!restoreReceipt) {
         throw new Error('Garage GPU restoration completed without a receipt');

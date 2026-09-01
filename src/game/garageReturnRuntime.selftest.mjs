@@ -100,11 +100,18 @@ function createFixture({ transitionGate = false } = {}) {
       return {
         totalMs: 12,
         resourcesReleased: false,
+        programWarmMs: 3,
+        programWarmSlices: 1,
+        programCompileMs: 2,
+        programCompileMaxMs: 2,
+        programCompileObject: 'garage-hero',
+        linkerSlices: 0,
         shadowPasses: [4, 3],
         shadowPassMax: 4,
         shadowCascadeCount: 2,
         sceneUploadBatches: [],
         sceneUploadMax: 0,
+        settleFrameMs: 4,
       };
     },
     isBattleEntryPending: () => entryPending,

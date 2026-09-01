@@ -16,6 +16,7 @@ function createFixture({
     renderingCovered: false,
     noteBattleFrame: () => calls.push('entry:frame'),
   };
+  const presentationRestore = { covering: false };
   const fx = { update: () => calls.push('fx') };
   const world = { update: () => calls.push('world') };
   const lighting = {
@@ -73,6 +74,7 @@ function createFixture({
       },
     },
     isBattleLoadCovering: () => false,
+    isPresentationRestoreCovering: () => presentationRestore.covering,
     cameraInput: { autoAimPoint: null },
     getMobileAutoAim: () => ({ sample: () => null }),
     rig: {
@@ -93,7 +95,15 @@ function createFixture({
     perfHud: { update: () => calls.push('perf') },
     trace,
   });
-  return { runtime, calls, frameRequests, camera, game, battleEntryLifecycle };
+  return {
+    runtime,
+    calls,
+    frameRequests,
+    camera,
+    game,
+    battleEntryLifecycle,
+    presentationRestore,
+  };
 }
 
 const garage = createFixture();
@@ -157,6 +167,12 @@ covered.battleEntryLifecycle.renderingCovered = true;
 covered.runtime.tick(1000);
 assert.deepEqual(covered.calls, ['schedule', 'network'],
   'covered entry skips scene work but keeps the multiplayer handshake alive');
+
+const restoring = createFixture({ phase: 'garage' });
+restoring.presentationRestore.covering = true;
+restoring.runtime.tick(1000);
+assert.deepEqual(restoring.calls, ['schedule', 'network'],
+  'covered Garage restoration skips the cold scene frame but keeps networking alive');
 
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
 
