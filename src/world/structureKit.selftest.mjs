@@ -27,6 +27,7 @@ const HIGH_RISE_IDS = [
 ];
 const highRiseDimensions = new Map();
 const lightPitchedFamilies = new Set();
+const crownParts = [];
 
 let connectedHeavyStructures = 0;
 function boundsGap(a, b) {
@@ -48,6 +49,7 @@ for (const [id, build] of Object.entries(STRUCTURE_BUILDERS)) {
   for (const geo of geos) {
     assert.ok(geo.attributes.position.count > 0, `${id}: valid geometry`);
     geo.computeBoundingBox();
+    if (geo.userData.structureSpire) crownParts.push({ id, geo, ...geo.userData.structureSpire });
   }
   // Authoring-time connectivity census: every visible part must overlap or
   // sit within a realistic fixture tolerance of the primary structure. This
@@ -87,6 +89,56 @@ assert.ok(new Set(highRiseDimensions.values()).size >= 4,
   'skyscraper families keep visibly distinct proportions and crown heights');
 assert.ok(connectedHeavyStructures >= 9,
   'at least nine heavyweight families use the connected exterior authoring contract');
+
+function endpointCenter(geo, upper) {
+  const position = geo.attributes.position;
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    minY = Math.min(minY, position.getY(i));
+    maxY = Math.max(maxY, position.getY(i));
+  }
+  const y = upper ? maxY : minY;
+  const epsilon = Math.max(1e-5, (maxY - minY) * 0.03);
+  let x = 0, z = 0, count = 0;
+  for (let i = 0; i < position.count; i++) {
+    if (Math.abs(position.getY(i) - y) > epsilon) continue;
+    x += position.getX(i);
+    z += position.getZ(i);
+    count++;
+  }
+  assert.ok(count > 0, 'spire endpoint sample contains vertices');
+  return { x: x / count, z: z / count };
+}
+
+const broadcastLegs = crownParts.filter((part) => part.style === 'broadcast' && part.role === 'leg');
+assert.equal(broadcastLegs.length, 8, 'both broadcast buildings expose four audited mast legs');
+for (const part of broadcastLegs) {
+  const bottom = endpointCenter(part.geo, false);
+  const top = endpointCenter(part.geo, true);
+  const bottomRadius = Math.hypot(bottom.x - part.centerX, bottom.z - part.centerZ);
+  const topRadius = Math.hypot(top.x - part.centerX, top.z - part.centerZ);
+  assert.ok(bottomRadius > topRadius + 0.25,
+    `${part.id}: broadcast mast has a wide supported base and narrows upward`);
+}
+
+const forkedBlades = crownParts.filter((part) => part.style === 'forked' && part.role === 'blade');
+const forkedFinials = crownParts.filter((part) => part.style === 'forked' && part.role === 'finial');
+assert.equal(forkedBlades.length, 4, 'both forked buildings expose two audited crown blades');
+assert.equal(forkedFinials.length, 4, 'each forked blade has one audited finial');
+for (const blade of forkedBlades) {
+  const bottom = endpointCenter(blade.geo, false);
+  const top = endpointCenter(blade.geo, true);
+  assert.ok(Math.abs(bottom.x - blade.centerX) > Math.abs(top.x - blade.centerX) + 0.25,
+    `${blade.id}: forked crown blade narrows toward its tip`);
+  const finial = forkedFinials.find((part) => part.id === blade.id && part.sideX === blade.sideX);
+  assert.ok(finial, `${blade.id}: forked crown blade retains its finial`);
+  const finialBase = endpointCenter(finial.geo, false);
+  assert.ok(Math.abs(top.x - finialBase.x) <= 0.08,
+    `${blade.id}: forked crown finial is seated on the blade tip`);
+}
+
+assert.equal(crownParts.filter((part) => part.style === 'needle' && part.role === 'needle').length, 2,
+  'both civic needle crowns participate in the orientation audit');
 
 for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.equal(meta.id, id, `${id}: registry id matches`);

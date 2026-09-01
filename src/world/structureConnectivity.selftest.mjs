@@ -33,6 +33,27 @@ assert.equal(new Set(entries.map(([id]) => id)).size, entries.length,
   'structure registries cannot silently replace a duplicate family id');
 
 const pitchedFamilies = new Set();
+let upwardConeSpireCount = 0;
+
+function endSpan(geometry, upper) {
+  const position = geometry.attributes.position;
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    minY = Math.min(minY, position.getY(i));
+    maxY = Math.max(maxY, position.getY(i));
+  }
+  const y = upper ? maxY : minY;
+  const epsilon = Math.max(1e-5, (maxY - minY) * 0.03);
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    if (Math.abs(position.getY(i) - y) > epsilon) continue;
+    minX = Math.min(minX, position.getX(i));
+    maxX = Math.max(maxX, position.getX(i));
+    minZ = Math.min(minZ, position.getZ(i));
+    maxZ = Math.max(maxZ, position.getZ(i));
+  }
+  return Math.max(maxX - minX, maxZ - minZ);
+}
 
 for (const seed of [0x51a7c7, 0xa1139e]) {
   for (const [id, build] of entries) {
@@ -48,6 +69,11 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
     assert.ok(dimensions.w > 1 && dimensions.d > 1 && dimensions.h > 2,
       `${id}: finite battlefield-scale dimensions`);
     for (const geometry of geometries) {
+      if (geometry.type === 'ConeGeometry') {
+        assert.ok(endSpan(geometry, false) > endSpan(geometry, true) + 0.1,
+          `${id}: conical roof spire has its broad base below its point`);
+        upwardConeSpireCount++;
+      }
       if (!geometry.userData.skillionRoofPitch) continue;
       const pitch = auditSkillionRoofPitch(geometry);
       assert.ok(pitch.drop > 0.01,
@@ -56,6 +82,9 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
     }
   }
 }
+
+assert.ok(upwardConeSpireCount >= 18,
+  'all heavyweight/site conical roof spires are audited across both seeded variants');
 
 for (const id of ['farmhouse', 'compound', 'tavern', 'schoolhouse', 'caravanserai', 'rangerlodge']) {
   assert.ok(pitchedFamilies.has(id), `${id}: side-roof orientation participates in the map-wide audit`);

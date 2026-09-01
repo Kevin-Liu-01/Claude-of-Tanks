@@ -61,6 +61,15 @@ interface GableLightOptions {
   windows?: number;
 }
 
+interface StructureSpirePart {
+  style: 'needle' | 'forked' | 'broadcast';
+  role: 'leg' | 'blade' | 'finial' | 'needle';
+  centerX: number;
+  centerZ: number;
+  sideX?: number;
+  sideZ?: number;
+}
+
 type LightStructureBuilder = (rng: Rng) => THREE.BufferGeometry;
 type DebrisMaterial = 'wood' | 'canvas' | 'metal';
 
@@ -99,6 +108,14 @@ function box(w: number, h: number, d: number, uv = 0.55): THREE.BoxGeometry {
 
 function detailUv<T extends THREE.BufferGeometry>(geo: T): T {
   geo.userData.detailUv = true;
+  return geo;
+}
+
+function tagSpirePart<T extends THREE.BufferGeometry>(
+  geo: T,
+  receipt: StructureSpirePart,
+): T {
+  geo.userData.structureSpire = receipt;
   return geo;
 }
 
@@ -525,9 +542,15 @@ function addConnectedCrown(out: StructureParts, {
     const mastH = 8.4;
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const leg = box(0.16, mastH, 0.16);
-      leg.rotateZ(sx * -0.075);
-      leg.rotateX(sz * 0.075);
-      out.dark.push(leg.translate(x + sx * 0.48, mastBase + mastH / 2, z + sz * 0.48));
+      // A communications mast must taper upward. The previous signs spread
+      // all four legs toward the sky even though the brace widths narrow with
+      // height, making every broadcast crown read upside down.
+      leg.rotateZ(sx * 0.075);
+      leg.rotateX(sz * -0.075);
+      out.dark.push(tagSpirePart(
+        leg.translate(x + sx * 0.48, mastBase + mastH / 2, z + sz * 0.48),
+        { style: 'broadcast', role: 'leg', centerX: x, centerZ: z, sideX: sx, sideZ: sz },
+      ));
     }
     for (let i = 0; i <= 4; i++) {
       const y = mastBase + i * mastH / 4;
@@ -548,12 +571,21 @@ function addConnectedCrown(out: StructureParts, {
     for (const side of [-1, 1]) {
       const sx = x + side * baseW * 0.21;
       const blade = box(0.34, 6.8, 0.42);
-      blade.rotateZ(side * -0.08);
-      out.dark.push(blade.translate(sx, y0 + 3.4, z));
+      // Lean toward the centre as the crown rises. Besides restoring the
+      // supported silhouette, this seats the blade tips under the already
+      // authored inward finial coordinates below.
+      blade.rotateZ(side * 0.08);
+      out.dark.push(tagSpirePart(
+        blade.translate(sx, y0 + 3.4, z),
+        { style: 'forked', role: 'blade', centerX: x, centerZ: z, sideX: side },
+      ));
       const finial = new THREE.ConeGeometry(0.34, 2.3, 6, 1);
       finial.rotateY(yaw + Math.PI / 6);
       finial.translate(sx - side * 0.27, y0 + 7.62, z);
-      out.roof.push(finial);
+      out.roof.push(tagSpirePart(
+        finial,
+        { style: 'forked', role: 'finial', centerX: x, centerZ: z, sideX: side },
+      ));
     }
     out.dark.push(box(baseW * 0.56, 0.24, 0.30).translate(x, y0 + 4.4, z));
     return y0 + 8.8;
@@ -572,7 +604,10 @@ function addConnectedCrown(out: StructureParts, {
   const needle = new THREE.ConeGeometry(baseW * 0.18, 7.6, 8, 1);
   needle.rotateY(yaw + Math.PI / 8);
   needle.translate(x, cursor + 3.72, z);
-  out.roof.push(needle);
+  out.roof.push(tagSpirePart(
+    needle,
+    { style: 'needle', role: 'needle', centerX: x, centerZ: z },
+  ));
   out.dark.push(cylinder(0.085, 0.12, 4.0, 8).translate(x, cursor + 9.38, z));
   out.curtain.push(cylinder(0.22, 0.22, 0.22, 10).translate(x, cursor + 11.28, z));
   return cursor + 11.4;
