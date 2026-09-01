@@ -104,35 +104,82 @@ function addHull(P: LightTigerBuilderPort): void {
 
 function addRunningGear(P: LightTigerBuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.82, wheelR: 0.325, wheelW: 0.205,
+    style: 'rubber', dishR: 0.88, wheelR: 0.325, wheelW: 0.225,
     wheelY: 0.405, xc: 1.43,
     wheelZs: [2.05, 1.29, 0.53, -0.24, -1.01, -1.78],
     sprocket: { z: 2.70, y: 0.84, r: 0.31 },
     idler: { z: -2.64, y: 0.77, r: 0.28 },
     rollers: [{ z: 1.55, y: 0.99 }, { z: 0.48, y: 1.01 },
       { z: -0.62, y: 1.00 }, { z: -1.66, y: 0.98 }],
-    rollerR: 0.082, trackW: 0.48, trackTh: 0.080,
+    rollerR: 0.082, trackW: 0.52, trackTh: 0.086,
+    trackPattern: 'japanese-modular', linkPitchM: 0.145, shoeWidthScale: 0.985,
     topY: 1.20, botY: 0.050, paintedEnds: true, arms: true,
     coveredTop: false, contactZF: 2.25, contactZR: -2.16,
   });
 
-  // Split NERA/ERA cassette course. Each module is physically seated outside
-  // the moving track, leaving service gaps and the lower rubber dust lip.
+  // Light Tiger split NERA/ERA course. The front transition folds inward and
+  // upward with the bow until it meets the upper-glacis shoulder; behind it,
+  // staggered two-row Japanese modules sit on a real carrier and spaced plate.
   for (const side of [-1, 1]) {
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.18, 1.36, 2.23], [side * 1.82, 1.36, 2.23],
+      [side * 1.18, 1.36, 3.22], [side * 1.01, 1.36, 3.22],
+      [side * 1.52, 1.96, 2.23], [side * 1.86, 1.84, 2.23],
+      [side * 1.19, 1.60, 3.22], [side * 1.04, 1.65, 3.22],
+    ));
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.55, 1.80, 2.20], [side * 1.86, 1.80, 2.20],
+      [side * 1.18, 1.56, 3.20], [side * 1.04, 1.61, 3.20],
+      [side * 1.55, 1.99, 2.20], [side * 1.81, 1.96, 2.20],
+      [side * 1.14, 1.69, 3.20], [side * 1.03, 1.69, 3.20],
+    ));
     for (let index = 0; index < 8; index++) {
-      const z = 2.45 - index * 0.69;
-      const end = index === 0 || index === 7;
-      P.addExternalArmor('hull', KIT.box(0.14, end ? 0.76 : 0.96, 0.64),
-        side * 1.77, end ? 1.46 : 1.43, z, 0, 0, side * (end ? 0.055 : 0.015));
-      P.add('hullDark', KIT.box(0.018, end ? 0.58 : 0.77, 0.034),
-        side * 1.848, end ? 1.46 : 1.43, z + 0.27);
-      for (const y of [1.19, 1.67]) {
-        P.add('hullDetail', KIT.cylX(0.015, 0.024, 8), side * 1.853, y, z,
+      const z = 2.00 - index * 0.69;
+      const end = index === 7;
+      const moduleH = end ? 0.82 : 0.96;
+      const moduleY = end ? 1.42 : 1.43;
+      const roll = side * (end ? 0.050 : 0.016);
+      P.addExternalArmor('hull', KIT.box(0.18, moduleH, 0.69),
+        side * 1.82, moduleY, z, 0, 0, roll);
+      P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.69),
+        side * 1.94, moduleY, z, 0, 0, roll);
+      for (const [row, y] of [-1, 1].map((row) => [row,
+        moduleY + row * moduleH * 0.225] as const)) {
+        const stagger = row * 0.010 * (index % 2 ? -1 : 1);
+        P.addExternalArmor('hull', KIT.box(0.072, moduleH * 0.42, 0.71),
+          side * 2.006, y, z + stagger, 0, 0, roll - row * side * 0.008);
+        P.add('hullDark', KIT.box(0.012, moduleH * 0.30, 0.55),
+          side * 2.047, y, z + stagger);
+      }
+      P.add('hullDark', KIT.box(0.014, moduleH - 0.15, 0.027),
+        side * 2.046, moduleY, z + 0.292);
+      for (const y of [moduleY - moduleH * 0.26, moduleY + moduleH * 0.26]) {
+        P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 2.052, y, z,
           0, 0, side * Math.PI / 2);
       }
     }
-    P.add('hullRubber', KIT.box(0.034, 0.18, 5.38), side * 1.835, 0.80, -0.02);
-    P.add('hull', KIT.box(0.15, 0.12, 5.52), side * 1.70, 1.98, -0.02);
+    for (const y of [1.22, 1.65]) {
+      P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.16),
+        side * 2.006, y, -0.42);
+    }
+    P.add('hullRubber', KIT.box(0.034, 0.18, 5.12), side * 2.035, 0.80, -0.36);
+    P.add('hull', KIT.box(0.15, 0.12, 5.28), side * 1.72, 1.98, -0.36);
+
+    // Inset EO windows and separate marker lamps provide actual depth cues on
+    // the hull flanks without painting stretched rectangles over the armor.
+    for (const z of [0.88, -1.22]) {
+      P.addEquipment('hull', KIT.box(0.090, 0.24, 0.30),
+        side * 1.64, 1.83, z, 0, 0, side * 0.04);
+      P.addModuleVisual('optics', 'hullDark', KIT.box(0.022, 0.16, 0.22),
+        side * 1.692, 1.83, z);
+      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.095, 0.14),
+        side * 1.711, 1.83, z);
+    }
+    for (const z of [2.04, -2.53]) {
+      P.addEquipment('hull', KIT.box(0.085, 0.13, 0.19), side * 2.050, 1.88, z);
+      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.070, 0.100),
+        side * 2.101, 1.88, z);
+    }
   }
 }
 
@@ -212,10 +259,17 @@ function addTurret(P: LightTigerBuilderPort): void {
   }
 
   // Compact roof RWS, APS interceptors, smoke banks and bustle service rack.
+  P.addCupola('turret', cylY(0.25, 0.29, 0.10, 20), 0.52, 0.80, -0.93);
+  P.addEquipment('turret', orientedSlab(
+    [-0.19, -0.08, -0.17], [0.19, -0.08, -0.17], [0.19, -0.08, 0.17], [-0.19, -0.08, 0.17],
+    [-0.15, 0.14, -0.14], [0.15, 0.14, -0.14], [0.15, 0.14, 0.14], [-0.15, 0.14, 0.14],
+  ), 0.52, 0.95, -0.93);
+  P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.08, 0.014),
+    0.52, 0.98, -0.775);
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.70, elev: 0.09,
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80, elev: 0.09,
     shield: 'low', ammo: true, seed: 899,
-  }), 0.52, 0.76, -0.93, [0, 0.07, 0]);
+  }), 0.52, 1.09, -0.93, [0, 0.07, 0]);
   for (const side of [-1, 1]) {
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 6, r: 0.041, len: 0.27, spacing: 0.092,
@@ -257,13 +311,17 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
     P.hullG.userData.type89LightTigerReceipt = Object.freeze({
       independentFromLegacyType89: true,
       referenceUsage: 'measurement-and-silhouette-only',
-      hullConstruction: 'connected-faceted-light-tiger-shell-v1',
+      hullConstruction: 'connected-faceted-light-tiger-shell-v2',
       turretConstruction: 'independent-low-profile-kde35-loft-v1',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel',
       sideArmorCassettesPerSide: 8,
+      sideArmorLayers: 3,
+      frontSkirtTransition: 'upper-glacis-connected-wedge-v1',
+      nativeTrackPattern: 'japanese-modular',
+      baseGunAssembly: 'preserved-kde35-cradle-v1',
       jyuMatLaunchTubes: 4,
       panoramicOpticStages: 2,
       rearTroopRamp: true,

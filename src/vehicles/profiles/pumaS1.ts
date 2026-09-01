@@ -90,8 +90,8 @@ function addHullShell(P: PumaS1BuilderPort): void {
       side * 1.10, 1.58, 2.58, -0.24, 0, 0);
     KIT.liftEye(P, 'hullDetail', side * 1.00, 1.34, 3.11);
   }
-  KIT.towCable(P, [[-1.34, 1.40, 2.62], [-0.68, 1.23, 3.02],
-    [0.68, 1.23, 3.02], [1.34, 1.40, 2.62]]);
+  KIT.towCable(P, [[-1.20, 1.49, 2.58], [-0.62, 1.31, 3.02],
+    [0.62, 1.31, 3.02], [1.20, 1.49, 2.58]]);
 
   // Rear troop ramp and its physical hinges/locks.
   P.add('hullDark', box(1.72, 1.12, 0.045), 0, 1.14, -3.755);
@@ -105,39 +105,91 @@ function addHullShell(P: PumaS1BuilderPort): void {
 
 function addRunningGear(P: PumaS1BuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.345, wheelW: 0.22, wheelY: 0.42, xc: 1.55,
+    style: 'rubber', dishR: 0.72, wheelR: 0.345, wheelW: 0.24, wheelY: 0.42, xc: 1.55,
     wheelZs: [2.15, 1.37, 0.61, -0.32, -1.07, -1.81],
     sprocket: { z: 2.88, y: 0.965, r: 0.34 },
     idler: { z: -2.82, y: 0.84, r: 0.29 },
     rollerR: 0.09,
     rollers: [{ z: 1.72, y: 1.02 }, { z: 0.52, y: 1.03 }, { z: -0.70, y: 1.03 },
       { z: -1.82, y: 1.01 }],
-    trackW: 0.52, trackTh: 0.085, topY: 1.28, botY: 0.055,
+    trackW: 0.56, trackTh: 0.092, topY: 1.28, botY: 0.055,
+    trackPattern: 'compact-ifv', linkPitchM: 0.155, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: false,
     contactZF: 2.40, contactZR: -2.29,
   });
 
-  // S1 level-C flank package: nine individually seated armor cassettes per
-  // side plus a flexible lower lip. Gaps expose the canonical moving course;
-  // there is no duplicate belt or opaque gear-shadow wall.
+  // S1 level-C flank package. A faceted front shoulder carries the skirt into
+  // the same upper-glacis break as the bow, so the protection is a connected
+  // armored volume rather than a flat panel stopping beside the idler. The
+  // straight course is built as a structural NERA carrier, a spaced stand-off
+  // plate and two independent outer ERA bricks at every station. All three
+  // layers remain beyond the widened native shoe envelope.
   for (const side of [-1, 1]) {
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.28, 1.50, 2.34], [side * 1.94, 1.50, 2.34],
+      [side * 1.22, 1.50, 3.52], [side * 1.04, 1.50, 3.52],
+      [side * 1.64, 2.03, 2.34], [side * 1.98, 1.92, 2.34],
+      [side * 1.23, 1.63, 3.52], [side * 1.08, 1.68, 3.52],
+    ));
+    // A raised shoulder cap seals the protection into the deck edge and gives
+    // the bow/skirt junction the continuous PL-01-style folded silhouette.
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.64, 1.91, 2.30], [side * 1.98, 1.88, 2.30],
+      [side * 1.23, 1.60, 3.50], [side * 1.09, 1.65, 3.50],
+      [side * 1.64, 2.06, 2.30], [side * 1.93, 2.03, 2.30],
+      [side * 1.19, 1.72, 3.50], [side * 1.08, 1.72, 3.50],
+    ));
     for (let index = 0; index < 9; index++) {
-      const z = 2.72 - index * 0.68;
-      const edge = index === 0 || index === 8;
-      const front = index === 0;
-      const moduleH = front ? 0.58 : (edge ? 0.92 : 1.04);
-      const moduleY = front ? 1.72 : 1.50;
-      P.addExternalArmor('hull', KIT.box(0.12, moduleH, 0.63),
-        side * 1.90, moduleY, z, 0, 0, side * (edge ? 0.035 : 0.012));
-      P.add('hullDark', KIT.box(0.018, Math.max(0.44, moduleH - 0.14), 0.032),
-        side * 1.969, moduleY, z + 0.27);
-      for (const y of front ? [1.56, 1.88] : [1.22, 1.76]) {
-        P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 1.975, y, z,
+      const z = 2.12 - index * 0.66;
+      const edge = index === 8;
+      const moduleH = edge ? 0.91 : 1.04;
+      const moduleY = edge ? 1.47 : 1.50;
+      const roll = side * (edge ? 0.038 : 0.012);
+      // Inner carrier and spaced middle plate touch one another at their
+      // mating faces; the outer bricks then sit proud on that real foundation.
+      P.addExternalArmor('hull', KIT.box(0.16, moduleH, 0.66),
+        side * 1.93, moduleY, z, 0, 0, roll);
+      P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.66),
+        side * 2.04, moduleY, z, 0, 0, roll);
+      for (const [row, y] of [-1, 1].map((row) => [row,
+        moduleY + row * (moduleH * 0.235)] as const)) {
+        P.addExternalArmor('hull', KIT.box(0.075, moduleH * 0.43, 0.66),
+          side * 2.108, y, z, 0, 0, roll + row * side * 0.006);
+        P.add('hullDark', KIT.box(0.012, moduleH * 0.31, 0.54),
+          side * 2.151, y, z, 0, 0, roll);
+      }
+      P.add('hullDark', KIT.box(0.014, moduleH - 0.16, 0.026),
+        side * 2.149, moduleY, z + 0.287);
+      for (const y of [moduleY - moduleH * 0.27, moduleY + moduleH * 0.27]) {
+        P.add('hullDetail', KIT.cylX(0.017, 0.026, 8), side * 2.155, y, z,
           0, 0, side * Math.PI / 2);
       }
     }
-    P.add('hullRubber', KIT.box(0.035, 0.20, 5.86), side * 1.955, 0.82, -0.04);
-    P.add('hull', KIT.box(0.16, 0.13, 5.95), side * 1.82, 2.05, -0.04);
+    // Two continuous seating rails bind every outer brick back into the
+    // cassette course. They close the service-line sight holes without
+    // becoming a second track proxy or entering the shoe envelope.
+    for (const y of [1.25, 1.76]) {
+      P.addExternalArmor('hull', KIT.box(0.075, 0.10, 5.88),
+        side * 2.108, y, -0.52);
+    }
+    P.add('hullRubber', KIT.box(0.035, 0.20, 5.64), side * 2.135, 0.82, -0.30);
+    P.add('hull', KIT.box(0.16, 0.13, 5.78), side * 1.84, 2.05, -0.30);
+
+    // Recessed flank camera and paired marker lamps remain readable above the
+    // armor instead of being texture-only marks compressed across the tiles.
+    for (const z of [1.05, -1.34]) {
+      P.addEquipment('hull', KIT.box(0.095, 0.25, 0.32),
+        side * 1.72, 1.88, z, 0, 0, side * 0.04);
+      P.addModuleVisual('optics', 'hullDark', KIT.box(0.024, 0.17, 0.23),
+        side * 1.775, 1.88, z);
+      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.013, 0.10, 0.15),
+        side * 1.795, 1.88, z);
+    }
+    for (const z of [2.17, -2.72]) {
+      P.addEquipment('hull', KIT.box(0.090, 0.14, 0.20), side * 2.155, 1.94, z);
+      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.075, 0.105),
+        side * 2.208, 1.94, z);
+    }
   }
 }
 
@@ -200,10 +252,17 @@ function addTurret(P: PumaS1BuilderPort): void {
   // Compact S1 remote secondary station. It is physically seated on the
   // bustle roof and uses the shared detailed weapon grammar (bearing, fork,
   // receiver, feed box and bored barrel) instead of an anonymous prism.
+  P.addCupola('turret', cylY(0.24, 0.28, 0.10, 20), 0.56, 0.79, -0.94);
+  P.addEquipment('turret', orientedSlab(
+    [-0.18, -0.08, -0.16], [0.18, -0.08, -0.16], [0.18, -0.08, 0.16], [-0.18, -0.08, 0.16],
+    [-0.15, 0.13, -0.13], [0.15, 0.13, -0.13], [0.15, 0.13, 0.13], [-0.15, 0.13, 0.13],
+  ), 0.56, 0.93, -0.94);
+  P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.075, 0.014),
+    0.56, 0.96, -0.795);
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.62, elev: 0.08,
+    mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.76, elev: 0.08,
     shield: 'low', ammo: true, seed: 172,
-  }), 0.56, 0.75, -0.94, [0, 0.08, 0]);
+  }), 0.56, 1.06, -0.94, [0, 0.08, 0]);
 
   // Twin MELLS/Spike LR2 tubes on a braced left launcher. Tubes are separated,
   // capped and visibly founded on the turret wall; they pitch with the turret
@@ -254,13 +313,17 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   if (P.geometryReceipt) {
     P.hullG.userData.pumaS1Receipt = Object.freeze({
       independentFromLegacyPuma: true,
-      hullConstruction: 'connected-faceted-s1-shell-v1',
+      hullConstruction: 'connected-faceted-s1-shell-v2',
       turretConstruction: 'independent-unmanned-rct30-loft-v1',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel',
       sideArmorCassettesPerSide: 9,
+      sideArmorLayers: 3,
+      frontSkirtTransition: 'upper-glacis-connected-wedge-v1',
+      nativeTrackPattern: 'compact-ifv',
+      baseGunAssembly: 'preserved-mk30-cradle-v1',
       mellsLaunchTubes: 2,
       panoramicOpticStages: 2,
       crewLocation: 'protected-hull-cell',

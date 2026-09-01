@@ -27,6 +27,8 @@ assert.doesNotMatch(source, /AFV_FAMILY_PROFILES|buildType89\s*\(/,
   'new Light Tiger builder does not call or import the legacy Type 89 implementation');
 assert.doesNotMatch(source, /from ['"]\.\.\/modern3\.ts['"]/,
   'new Light Tiger profile has no dependency on the old canonical builder pack');
+assert.doesNotMatch(source, /mantlet/i,
+  'Light Tiger keeps its base gun cradle without introducing a separate mantlet');
 
 const tank = createTank(spec.id, null, {
   proceduralOnly: true,
@@ -44,13 +46,17 @@ try {
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
-    hullConstruction: 'connected-faceted-light-tiger-shell-v1',
+    hullConstruction: 'connected-faceted-light-tiger-shell-v2',
     turretConstruction: 'independent-low-profile-kde35-loft-v1',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
     suspensionPlacement: 'inboard-behind-road-wheel',
     sideArmorCassettesPerSide: 8,
+    sideArmorLayers: 3,
+    frontSkirtTransition: 'upper-glacis-connected-wedge-v1',
+    nativeTrackPattern: 'japanese-modular',
+    baseGunAssembly: 'preserved-kde35-cradle-v1',
     jyuMatLaunchTubes: 4,
     panoramicOpticStages: 2,
     rearTroopRamp: true,
@@ -67,7 +73,9 @@ try {
   });
   const gear = hull.userData.runningGearReceipts?.at(-1);
   assert.equal(gear?.wheelZs.length, 6, 'six road wheels are authored per side');
-  assert.equal(gear?.trackW, 0.48, 'Light Tiger track width matches the heavy modular fit');
+  assert.equal(gear?.trackW, 0.52, 'Light Tiger native course is slightly widened under the new skirts');
+  assert.equal(gear?.trackPatternId, 'japanese-modular',
+    'Light Tiger retains its unique staggered-rib Japanese shoe construction');
   assert.equal(gear?.suspensionDynamic, true, 'road wheels retain dynamic inboard suspension arms');
   assert.equal(hull.userData.runningGearUnitCount, 1,
     'Light Tiger owns one canonical animated running-gear course');
