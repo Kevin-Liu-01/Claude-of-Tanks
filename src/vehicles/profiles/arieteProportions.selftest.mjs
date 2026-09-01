@@ -141,6 +141,14 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     assert.ok(era.contactEmbedM >= 0.01, 'C2 ERA embeds at least 10 mm into every carrier');
     assert.equal(era.maxSupportGapM, 0, 'C2 ERA permits no support daylight');
     assert.equal(era.faceNormalAlignmentDeg, 0, 'C2 ERA backs share their carrier normals');
+    assert.equal(era.turretCheekCarrier, 'forward-face',
+      'C2 cheek ERA is seated on the marked forward cheek rather than its roof or outer wall');
+    assert.equal(era.turretCheekSides, 2, 'C2 protects both turret cheeks symmetrically');
+    assert.equal(era.turretCheekRows, 2, 'C2 forward cheek field has two continuous rows');
+    assert.equal(era.turretCheekColumnsPerSide, 5,
+      'C2 forward cheek field has five columns on each side');
+    assert.ok(era.turretCheekForwardNormalDotMin > 0.70,
+      'every C2 cheek cassette follows a strongly forward-facing carrier normal');
     assert.equal(era.turretCheekCassettes, 20, 'C2 carries dense paired cheek courses');
     assert.equal(era.turretSideCassettes, 16, 'C2 carries two complete turret-side courses');
     assert.equal(era.turretBustleCassettes, 12, 'C2 carries paired aft bustle courses');

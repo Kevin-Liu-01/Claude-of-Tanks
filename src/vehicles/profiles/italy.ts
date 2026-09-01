@@ -102,6 +102,11 @@ interface ArieteC2EraReceipt {
   contactEmbedM: number;
   maxSupportGapM: number;
   faceNormalAlignmentDeg: number;
+  turretCheekCarrier: 'forward-face';
+  turretCheekSides: number;
+  turretCheekRows: number;
+  turretCheekColumnsPerSide: number;
+  turretCheekForwardNormalDotMin: number;
   turretCheekCassettes: number;
   turretSideCassettes: number;
   turretBustleCassettes: number;
@@ -229,6 +234,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     contactEmbedM: C2_ERA_EMBED_M,
     maxSupportGapM: 0,
     faceNormalAlignmentDeg: 0,
+    turretCheekCarrier: 'forward-face',
+    turretCheekSides: 2,
+    turretCheekRows: 2,
+    turretCheekColumnsPerSide: 5,
+    turretCheekForwardNormalDotMin: 1,
     turretCheekCassettes: 0,
     turretSideCassettes: 0,
     turretBustleCassettes: 0,
@@ -713,21 +723,23 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       ];
       P.add('turret', slab(...cheekBottom, ...cheekTop));                     // add-on cheek carrier intersects the C1 arrow
       P.add('turretDark', box(0.02, 0.34, 0.34), s * 1.135, 0.38, L(1.44), 0, 0, s * 0.10); // module edge seams
-      // Dense face-following cheek field. The upper and outer courses sample
-      // the same vertices used by the carrier slab, keeping all compound
-      // pitch/sweep and a real 12 mm overlap into the armor.
-      for (const u of [0.18, 0.50, 0.82]) for (const v of [0.30, 0.70]) {
-        const face = sampleArmorFace(...cheekTop, u, v, [0, 1, 0.2]);
+      // The marked carrier is the compound-raked FORWARD cheek, not the roof
+      // or the narrow outer wall. Sample its exact slab vertices as one
+      // continuous five-by-two field per side so every cassette inherits the
+      // cheek sweep, pitch and taper. Each back penetrates the carrier by
+      // 12 mm; there is no cosmetic mounting plate or daylight behind it.
+      const cheekFrontFace: Quad = [
+        cheekBottom[0], cheekBottom[1], cheekTop[1], cheekTop[0],
+      ];
+      for (const u of [0.10, 0.30, 0.50, 0.70, 0.90]) for (const v of [0.27, 0.73]) {
+        const face = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
         faceSeatedArmorCassette(P, 'turret', face, face.dv,
-          0.20, 0.055, 0.20, C2_ERA_EMBED_M);
-        if (c2EraReceipt) c2EraReceipt.turretCheekCassettes += 1;
-      }
-      const cheekOuterFace: Quad = [cheekBottom[1], cheekBottom[2], cheekTop[2], cheekTop[1]];
-      for (const u of [0.27, 0.73]) for (const v of [0.34, 0.72]) {
-        const face = sampleArmorFace(...cheekOuterFace, u, v, [s, 0, 0.25]);
-        faceSeatedArmorCassette(P, 'turret', face, face.du,
-          0.18, 0.055, 0.18, C2_ERA_EMBED_M);
-        if (c2EraReceipt) c2EraReceipt.turretCheekCassettes += 1;
+          0.13, 0.055, 0.20, C2_ERA_EMBED_M);
+        if (c2EraReceipt) {
+          c2EraReceipt.turretCheekCassettes += 1;
+          c2EraReceipt.turretCheekForwardNormalDotMin = Math.min(
+            c2EraReceipt.turretCheekForwardNormalDotMin, face.normal.z);
+        }
       }
 
       // The C2 shoulder boxes are already turret-owned armor carriers. Seat
