@@ -44,13 +44,15 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   }
   for (const band of bands) {
     band.geometry.computeBoundingBox();
-    assert(band.geometry.boundingBox.max.z > 3.40,
+    const bandBounds = band.geometry.boundingBox;
+    assert(bandBounds.max.z > 3.40,
       `${id}: animated tread wraps through the forward mudguard station`);
-    const trackWidth = band.geometry.boundingBox.max.x - band.geometry.boundingBox.min.x;
+    const trackWidth = bandBounds.max.x - bandBounds.min.x;
     const expectedWidth = 0.61;
     assert(Math.abs(trackWidth - expectedWidth) < 1e-6,
       `${id}: native course retains its authored ${expectedWidth.toFixed(3)} m width`);
-    const innerFace = Math.abs(band.position.x) - trackWidth / 2;
+    const bandX = band.position.x;
+    const innerFace = Math.abs(bandX) - trackWidth / 2;
     assert(Math.abs(innerFace - 1.115) < 1e-6,
       `${id}: family course retains the correct inner running clearance`);
   }
@@ -64,29 +66,46 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     && Math.max(Math.abs(part.min[0]), Math.abs(part.max[0])) >= 1.749);
   assert.equal(skirtPanels.length, 12,
     `${id}: six continuous armored-skirt panels are present on each side`);
-  const rightSkirtInner = Math.min(...skirtPanels.filter((part) => part.min[0] > 0)
-    .map((part) => part.min[0]));
-  const rightTrackOuter = Math.max(...bands.filter((band) => band.position.x > 0)
-    .map((band) => band.position.x + (band.geometry.boundingBox.max.x - band.geometry.boundingBox.min.x) / 2));
+  let rightSkirtInner = Infinity;
+  for (const part of skirtPanels) {
+    if (part.min[0] > 0) rightSkirtInner = Math.min(rightSkirtInner, part.min[0]);
+  }
+  let rightTrackOuter = -Infinity;
+  for (const band of bands) {
+    const bandX = band.position.x;
+    if (bandX <= 0) continue;
+    const bandBounds = band.geometry.boundingBox;
+    const bandWidth = bandBounds.max.x - bandBounds.min.x;
+    rightTrackOuter = Math.max(rightTrackOuter, bandX + bandWidth / 2);
+  }
   assert(rightSkirtInner >= rightTrackOuter - 1e-5,
     `${id}: track course remains fully inside the armored-skirt envelope`);
+  const formerHullBoxLids = combatParts.filter((part) =>
+    part.bucket === 'hullDetail'
+    && Math.max(Math.abs(part.min[0]), Math.abs(part.max[0])) > 1.70
+    && part.max[1] > 1.84
+    && (part.max[2] - part.min[2]) > 1.20);
+  assert.equal(formerHullBoxLids.length, 0,
+    `${id}: long side-box lids are no longer fixed to the hull/fenders`);
 
   const turret = tank.root.getObjectByName('turret');
   const turretRig = tank.root.getObjectByName('rig_turret');
   const gunRig = tank.root.getObjectByName('rig_gun');
   turret.geometry.computeBoundingBox();
   turretHeights.set(id, turret.geometry.boundingBox.max.y - turret.geometry.boundingBox.min.y);
-  assert(Math.abs(gunRig.position.y - 0.06684) < 1e-9,
-    `${id}: L11 assembly follows the ten-percent-taller armored-throat datum`);
+  assert(Math.abs(gunRig.position.y - 0.091524) < 1e-9,
+    `${id}: L11 assembly follows the additional ten-percent-taller armored-throat datum`);
   receipts.set(id, turret.geometry.attributes.position.count);
   const shellReceipt = turretRig.userData.chieftainArmorShellReceipt;
   shellReceipts.set(id, shellReceipt);
-  assert.equal(shellReceipt.revision, 'low-angular-layered-shell-r10',
+  assert.equal(shellReceipt.revision, 'low-angular-layered-shell-r11',
     `${id}: low angular core and fitted armor-shell rebuild remains active`);
-  assert(Math.abs(shellReceipt.turretHeightScale - 0.748) < 1e-12,
-    `${id}: turret envelope is exactly ten percent taller than the r9 geometry`);
-  assert.equal(shellReceipt.turretHeightGain, 1.10,
-    `${id}: turret-height change retains its explicit ten-percent contract`);
+  assert(Math.abs(shellReceipt.turretHeightScale - 0.8228) < 1e-12,
+    `${id}: turret envelope is exactly ten percent taller than the r10 geometry`);
+  assert.equal(shellReceipt.turretHeightGain, 1.21,
+    `${id}: total turret-height gain remains explicit relative to the r9 geometry`);
+  assert.equal(shellReceipt.turretHeightStepGain, 1.10,
+    `${id}: current turret-height step retains its exact ten-percent contract`);
   assert.equal(shellReceipt.sourceAxes, 'x,z,-y',
     `${id}: comparison source axes stay documented and canonicalized`);
   assert.equal(shellReceipt.primaryEnvelopeCount, 2,
@@ -107,7 +126,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   const primaryLobes = combatParts.filter((part) =>
     part.bucket === 'turret'
     && part.min[2] < -1.50 && part.max[2] > 1.52
-    && part.max[1] > 0.46 && part.max[1] < 0.50
+    && part.max[1] > 0.52 && part.max[1] < 0.57
     && (part.max[0] < -0.15 || part.min[0] > 0.15));
   assert.equal(primaryLobes.length, 2,
     `${id}: paired halves retain one continuous low structural core`);
@@ -119,7 +138,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     minY: -0.18, maxY: 0.05, minAbsX: 1.00, maxAbsX: 1.46,
   });
   const upperTurretFrontZ = forwardEdgeInBand(turret, {
-    minY: 0.34, maxY: 0.50, minAbsX: 1.00, maxAbsX: 1.46,
+    minY: 0.40, maxY: 0.57, minAbsX: 1.00, maxAbsX: 1.46,
   });
   assert(lowerTurretFrontZ - upperTurretFrontZ > 0.27,
     `${id}: actual outer-cheek vertices form a reclined face before the gun throat`);
@@ -127,7 +146,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   const gunJambs = combatParts.filter((part) =>
     part.bucket === 'turret'
     && part.min[2] >= 0.57 && part.max[2] >= 1.47
-    && part.max[1] > 0.40 && part.max[1] < 0.43
+    && part.max[1] > 0.45 && part.max[1] < 0.50
     && (part.max[0] < -0.12 || part.min[0] > 0.12));
   assert.equal(gunJambs.length, 2,
     `${id}: the reclined cheeks reform as two tighter square gun-aperture jambs`);
@@ -147,7 +166,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: no hidden or duplicate shell plates survive outside the seven authored panels`);
   const primaryCrownY = Math.max(...primaryLobes.map((part) => part.max[1]));
   assert(externalArmor.geometry.boundingBox.max.y - primaryCrownY > 0.015,
-    `${id}: shoulder armor still rises above the taller structural crown`);
+    `${id}: shoulder armor still rises above the additionally taller structural crown`);
   const lowerShellFrontZ = forwardEdgeInBand(externalArmor, {
     minY: -0.01, maxY: 0.10, minAbsX: 0.16, maxAbsX: 1.55,
   });
@@ -173,16 +192,17 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: moved cheek-shell envelope remains vertically centered on the gun mask`);
 
   const sideFairings = combatParts.filter((part) =>
-    part.bucket === 'turret'
+    part.bucket === 'turretEquipment'
     && (part.max[0] > 1.47 || part.min[0] < -1.47)
-    && part.max[2] < 0.21 && part.min[2] > -0.58);
+    && part.max[2] > 1.15 && part.min[2] < -0.35);
   assert.equal(sideFairings.length, 2,
-    `${id}: tapered armor fairings grow directly from both turret flanks`);
+    `${id}: long forward storage boxes grow directly from both turret flanks`);
 
   const sideCabinets = combatParts.filter((part) =>
-    part.bucket === 'turret'
+    part.bucket === 'turretEquipment'
     && part.min[2] < -1.12 && part.max[2] > -0.52
-    && (part.max[0] > 1.48 || part.min[0] < -1.48));
+    && (part.max[0] > 1.48 || part.min[0] < -1.48)
+    && (part.max[0] - part.min[0]) > 0.20);
   assert.equal(sideCabinets.length, 2,
     `${id}: one external service cabinet projects beyond each cast-turret flank`);
   assert.deepEqual(sideCabinets.map((part) => Math.sign(part.min[0] + part.max[0])).sort(), [-1, 1],
@@ -196,18 +216,54 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: the aft upright on each open flank basket remains attached and visible`);
 
   const equipmentReceipt = turretRig.userData.chieftainEquipmentReceipt;
-  assert.equal(equipmentReceipt.revision, 'source-equipment-seat-r3',
+  assert.equal(equipmentReceipt.revision, 'source-equipment-seat-r6',
     `${id}: source-compared equipment seating contract remains active`);
+  assert.equal(equipmentReceipt.roofSeatDatum, 'local-facet-surfaces',
+    `${id}: each roof fitting family uses its actual local crown facet`);
+  const expectedCupolaSeatSourceY = id === 'chieftain_mk10' ? 0.73 : 0.71;
+  const expectedCupolaSeatLocalY = -0.18 + (expectedCupolaSeatSourceY + 0.18) * 0.8228;
+  assert(Math.abs(equipmentReceipt.cupolaSeatSourceY - expectedCupolaSeatSourceY) < 1e-12,
+    `${id}: cupola lower rim touches the authored crown before height scaling`);
+  assert(Math.abs(equipmentReceipt.cupolaSeatLocalY - expectedCupolaSeatLocalY) < 1e-12,
+    `${id}: cupola lower rim remains attached after the taller-shell transform`);
+  assert.equal(equipmentReceipt.saddleSeatSourceY, 0.74,
+    `${id}: hatch, sight and periscopes sit on the higher center saddle`);
+  assert(Math.abs(equipmentReceipt.radioShoeSeatSourceY - 0.49) < 1e-12,
+    `${id}: radio shoes touch the bustle roof instead of floating above it`);
+  assert.equal(equipmentReceipt.cupolaAdapterPlinths, 1,
+    `${id}: one tapered adapter closes the outboard cupola-to-saddle step`);
   assert.equal(equipmentReceipt.commanderCupolas, 1, `${id}: commander cupola retained`);
   assert.equal(equipmentReceipt.loaderHatches, 1, `${id}: loader hatch retained`);
   assert.equal(equipmentReceipt.smokeBanks, 2, `${id}: paired cheek smoke banks retained`);
   assert.equal(equipmentReceipt.smokeTubes, 12, `${id}: six smoke tubes remain in each bank`);
   assert.equal(equipmentReceipt.sideServiceCabinets, 2,
     `${id}: both turret-side service cabinets retained`);
+  assert.equal(equipmentReceipt.turretOwnedSideBoxes, 4,
+    `${id}: two long storage boxes per side now belong to the turret`);
+  assert.equal(equipmentReceipt.sideBoxAttachmentShoes, 8,
+    `${id}: every turret-side storage box has a pair of buried attachment shoes`);
+  assert.equal(equipmentReceipt.sideBoxCamouflagedParts, 16,
+    `${id}: box bodies, outer doors and attachment shoes all use camouflage paint`);
+  assert.equal(equipmentReceipt.sideBoxPaintBucket, 'turretEquipment',
+    `${id}: turret-side storage stays equipment rather than expanding the armor hitbox`);
+  assert.equal(equipmentReceipt.sideBoxFinish, 'vehicle-scale-camouflage',
+    `${id}: the complete storage-box assembly inherits the tank camouflage`);
+  const turretEquipment = tank.root.getObjectByName('turretEquipment');
+  assert(turretEquipment, `${id}: camouflaged turret-equipment mesh is emitted`);
+  assert.equal(turretEquipment.userData.combatHitboxRole, 'equipment',
+    `${id}: camouflaged storage boxes retain equipment hitbox semantics`);
+  assert.equal(turretEquipment.material.userData.camoProjection, 'vehicle-scale-box-uv',
+    `${id}: storage-box camouflage is projected continuously at vehicle scale`);
+  assert.equal(turretEquipment.material.userData.camoUvScale, 0.55,
+    `${id}: storage-box camouflage uses the fleet-standard UV scale`);
   assert.equal(equipmentReceipt.sideBustleBaskets, 2,
     `${id}: open side bustle baskets retained`);
+  assert.equal(equipmentReceipt.sideBasketBustleTies, 4,
+    `${id}: side baskets tie into the aft boxes and bustle at both heights`);
   assert.equal(equipmentReceipt.rearBustleBaskets, 1,
     `${id}: rear bustle basket retained`);
+  assert.equal(equipmentReceipt.rearBasketBustleTies, 4,
+    `${id}: rear cage top and bottom rails tie into both bustle corners`);
   assert.equal(equipmentReceipt.radioWhips, 3, `${id}: three source-spaced radio whips retained`);
   assert.equal(equipmentReceipt.pintleGpmgs, 1, `${id}: roof pintle GPMG retained`);
   let pintleGpmg;
@@ -218,8 +274,9 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
       pintleGpmg = object;
     }
   });
-  assert(pintleGpmg && pintleGpmg.position.y > 0.78 && pintleGpmg.position.y < 0.81,
-    `${id}: pintle GPMG remains seated on the ten-percent-taller roof shell`);
+  const expectedPintleY = id === 'chieftain_mk10' ? 0.799132 : 0.782676;
+  assert(pintleGpmg && Math.abs(pintleGpmg.position.y - expectedPintleY) < 1e-9,
+    `${id}: pintle GPMG remains seated on its variant-specific roof shell`);
   const radioWhips = combatParts.filter((part) =>
     part.bucket === 'turretDark'
     && part.max[1] > 0.90
@@ -260,11 +317,11 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
 }
 
 for (const [id, height] of turretHeights) {
-  assert(height > 1.08 && height < 1.12,
-    `${id}: structural turret is exactly ten percent taller while retaining its low crown`);
+  assert(height > 1.09 && height < 1.14,
+    `${id}: seated roof equipment remains inside the compact taller-turret envelope`);
 }
-assert(Math.abs(turretHeights.get('chieftain5') - turretHeights.get('chieftain_mk10')) < 1e-6,
-  'Mk.5 and Mk.10 retain one shared primary turret family datum');
+assert(turretHeights.get('chieftain_mk10') > turretHeights.get('chieftain5'),
+  'Mk.10 armored thermal head remains the slightly taller variant-specific roof detail');
 assert(shellReceipts.get('chieftain_mk10').upperShellStandOffM
     - shellReceipts.get('chieftain5').upperShellStandOffM > 0.05,
   'Mk.10 Stillbrew shell remains materially deeper than the Mk.5 production cap');

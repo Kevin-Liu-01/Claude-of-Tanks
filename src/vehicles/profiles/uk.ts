@@ -798,43 +798,9 @@ function chieftain5Build(P: UKBuilderPort): void {
   P.add('hull', box(0.36, 0.05, 0.55), 0.925, 1.535, -3.425);
   P.add('hull', box(0.36, 0.05, 0.55), -0.925, 1.535, -3.425);
   towCableUK(P, [[-1.0, 1.44, 2.2], [0, 1.56, 1.7], [1.0, 1.44, 2.2]], 1.37);
-  // Hull-legit fender furniture (stays in the hull mask like the repaired
-  // oracle's fused-root bins): RIGHT-side tall bin run over the engine-bay
-  // fender, r4 retable to the ref's OWN station widths — outer face steps
-  // 1.655 (z -0.97..-0.27) -> 1.63 (-1.30..-0.97) -> 1.595 -> 1.53 going
-  // aft (gate stations 4/3 read the print at 1.63/1.53; the old flat-1.70
-  // run + 1.70 lid owned station 4's 2.4% width error). The width-plane NUB
-  // (1.745) and its under-chamfer live at z -0.56..-0.38 — the ref carries
-  // that plane in STATION 6 (its x1 1.749), not station 5 (1.709).
-  segBoxZ(P, 'hull', 0.30, 0.42, 0.70, 1.505, 2.0, -0.62);
-  P.add('hull', box(0.245, 0.42, 0.33), 1.5075, 2.0, -1.135);
-  P.add('hull', box(0.0435, 0.16, 0.37), 1.72675, 2.085, -0.535); // width nub
-  P.add('hull', box(0.074, 0.32, 0.55), 1.657, 2.05, -0.625);     // bin outer chamfer
-  P.add('hull', box(0.0155, 0.32, 0.37), 1.71375, 2.05, -0.535);  // nub rib
-  P.add('hull', box(0.21, 0.42, 0.32), 1.475, 2.0, -1.44);
-  P.add('hull', box(0.15, 0.44, 0.17), 1.455, 1.985, -1.635);
-  P.add('hullDetail', box(0.275, 0.02, 0.66), 1.5025, 2.205, -0.62);
-  P.add('hullDetail', box(0.225, 0.02, 0.30), 1.4975, 2.205, -1.135);
-  // plate-fill r1 (owner directive 2026-08-01): the tall bin FLOATED 0.2 m
-  // above the fender plane — a clean see-through slot ran under the whole
-  // width-committing face (ray-probed: sight lines crossed the vehicle
-  // untouched between bin bottom 1.79 and fender 1.59). The REF's own bin
-  // floats too (a full-width fill moved front_whole 47.3 -> 45.6: the
-  // certified silhouette owns that air), so the corridor closes INBOARD:
-  // a web at the right fender's own 1.50 plane, bin bottom to fender top.
-  // Sight lines under the bin now end on shadowed structure instead of
-  // crossing the vehicle; the authentic bin-overhang read stays.
-  P.add('hull', box(0.10, 0.21, 1.33), 1.45, 1.685, -0.935);
-  // LOW left bin, z-shrunk to the ref's own 1.675-band (side cols
-  // 1.421..1.786 only — the old z 0.85..2.35 run smeared five deck columns
-  // 0.09 high) with the inner edge clear of the -1.6923 front boundary.
-  P.add('hull', box(0.27, 0.14, 0.456), -1.535, 1.63, 1.604);
-  // r5 O3c: the plan read scattered ~6-8 warm lids vs the ref's SINGLE
-  // red-brown fender tarp; r6 O3b: hullWood read L~135 in FIVE views (the
-  // brightest thing on the rear vs ref warm accents <=~80) — rebucketed to
-  // the dusty spare-track tone (60,58,51 flat: inside the ref tarp band,
-  // still the one warm accent).
-  tarpRoll(P, 'hullTrack', 1.42, 1.63, -2.2, 1.0, 0.07, false);
+  // The former fender-owned storage boxes are intentionally absent here.
+  // Both Chieftains now carry their long side boxes on the yawing turret,
+  // where the common upper builder can angle and bury them into the cheeks.
   // The former oracle-specific left guard and right belt strips are gone.
   // They occupied the native course volume and became redundant once the
   // source-correct symmetric six-panel skirts above were restored.
@@ -1590,22 +1556,9 @@ function chieftainMk10Build(P: UKBuilderPort): void {
     P.add('hull', box(0.11, 0.055, 0.55), s * 1.045, 1.5325, -3.425); // under-fender sponson strips
     P.add('hull', box(0.36, 0.05, 0.55), s * 0.925, 1.535, -3.425);   // §B2 webs over the sprocket bay
   }
-  // ---- fender stowage bins (HULL — real configuration; the chieftain5
-  // print's turret-fused fender bins are that oracle's quirk). Tops capped
-  // at 1.85 so the yawing turret flank bins (bottoms 1.90 world) never clip.
-  for (const s of [-1, 1]) {
-    segBoxZ(P, 'hull', 0.26, 0.26, 1.9, s * 1.60, 1.715, 0.45);
-    segBoxZ(P, 'hull', 0.26, 0.26, 1.35, s * 1.60, 1.715, -1.75);
-    P.add('hullDetail', box(0.24, 0.02, 1.85), s * 1.60, 1.85, 0.45);
-    P.add('hullDetail', box(0.24, 0.02, 1.30), s * 1.60, 1.85, -1.75);
-    P.add('hullDark', box(0.02, 0.05, 0.2), s * 1.735, 1.78, 0.45);
-    P.add('hullDark', box(0.02, 0.05, 0.2), s * 1.735, 1.78, -1.75);
-  }
-  // strapped roll SUNK to the bin-lid line (top 1.86): the turret flank
-  // bins sweep this annulus at 1.90 — kit here must top ≤1.87 (§B5 yaw
-  // clearance; a 1.90-seated roll + jerry read as m2 stranded candidates
-  // AND clipped the yawing bins).
-  tarpRoll(P, 'hullTrack', 1.60, 1.80, -0.85, 0.9, 0.06, false);
+  // The former paired fender boxes and their strapped roll have moved to the
+  // turret owner.  Leaving no duplicate hull lids here prevents the boxes
+  // from staying behind when the turret yaws.
   // ---- wheel-bay shadow backdrops (interval-interior: deck-owned tops,
   // track-owned bottoms; the under-skirt zone reads as bay shade, not a
   // pale belt face). x 1.07..1.09 + z ±2.40 keep the panel edges clear of
@@ -4256,16 +4209,17 @@ function vickersMk1Build(P: UKBuilderPort): void {
 // crown/cheek caps then sit over that core as real plate volumes: the Mk.5 has
 // the thinner production shell, while Mk.10 receives the deeper Stillbrew fit.
 const CHIEFTAIN_UPPER_BUCKETS = [
-  'turret', 'turretExternalArmor', 'turretDetail', 'turretDark', 'turretGlass', 'turretCloth', 'turretTrack',
+  'turret', 'turretExternalArmor', 'turretEquipment', 'turretDetail', 'turretDark', 'turretGlass', 'turretCloth', 'turretTrack',
   'gun', 'gunDark', 'gunMount', 'gunMountDark',
 ];
 
 const CHIEFTAIN_TURRET_BUCKETS = CHIEFTAIN_UPPER_BUCKETS.filter((bucket) =>
   !bucket.startsWith('gun'));
 // The r9 fidelity pass deliberately compressed the turret to 68% of its
-// authored height.  Raise that finished envelope by an exact ten percent,
-// still pivoting about the buried ring seat so the turret does not float.
-const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.68 * 1.10;
+// authored height.  Raise the current r10 envelope by one further exact ten
+// percent, still pivoting about the buried ring seat so the turret does not
+// float or detach from the hull.
+const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.68 * 1.10 * 1.10;
 const CHIEFTAIN_TURRET_SEAT_Y = -0.18;
 
 function compressedChieftainTurretY(y: number): number {
@@ -4490,7 +4444,7 @@ function buildChieftainUpper2026(
     [-0.11, 0.56, 1.02], [0.11, 0.56, 1.02], [0.21, 0.64, 0.43], [-0.21, 0.64, 0.43]));
 
   P.turretG.userData.chieftainArmorShellReceipt = Object.freeze({
-    revision: 'low-angular-layered-shell-r10',
+    revision: 'low-angular-layered-shell-r11',
     sourceAxes: 'x,z,-y',
     primaryEnvelopeCount: 2,
     primaryConstruction: 'low-faceted-core',
@@ -4508,41 +4462,44 @@ function buildChieftainUpper2026(
     frontShellDatumSourceY: 0.28,
     mantletDatumSourceY: 0.28,
     turretHeightScale: CHIEFTAIN_TURRET_HEIGHT_SCALE,
-    turretHeightGain: 1.10,
+    turretHeightGain: 1.21,
+    turretHeightStepGain: 1.10,
     frontSetbackM: 0.73,
     gunAxisLocalY: 0.15,
   });
 
-  // Shallow armored service housings grow out of the turret waist.  These are
-  // tapered structural enclosures, not square cabinets balanced on the roof;
-  // their inner planes bury into the casting and their outer doors follow the
-  // flank rake before handing off to the open bustle baskets.
+  // Two long storage boxes per side now belong to the turret rather than the
+  // hull fenders.  Their inboard faces bury into the cheek/waist, their outer
+  // doors lean with the flank, and broad shoes carry each end into armor.
+  // This preserves the marked box cadence while making every box yaw with and
+  // visibly load into the turret.
   for (const s of [-1, 1]) {
-    const packZ = s < 0 ? -0.79 : -0.84;
-    const packDepth = s < 0 ? 0.74 : 0.68;
-    const packFront = packZ + packDepth * 0.5;
-    const packRear = packZ - packDepth * 0.5;
-    const fairingFront = stillbrew ? 0.20 : -0.24;
-    P.add('turret', slab(
-      [s * 1.15, 0.15, fairingFront], [s * 1.42, 0.16, fairingFront - 0.04],
-      [s * 1.49, 0.15, packFront - 0.04], [s * 1.23, 0.12, packFront],
-      [s * 1.14, 0.49, fairingFront - 0.02], [s * 1.38, 0.57, fairingFront - 0.06],
-      [s * 1.48, 0.56, packFront - 0.07], [s * 1.23, 0.49, packFront - 0.02]));
-    P.add('turret', slab(
-      [s * 1.25, 0.10, packFront], [s * 1.52, 0.14, packFront - 0.05],
-      [s * 1.52, 0.13, packRear + 0.04], [s * 1.20, 0.09, packRear],
-      [s * 1.24, 0.50, packFront - 0.03], [s * 1.49, 0.56, packFront - 0.08],
-      [s * 1.49, 0.53, packRear + 0.07], [s * 1.19, 0.47, packRear + 0.02]));
-    P.add('turretDark', box(0.022, 0.33, packDepth - 0.14), s * 1.505, 0.34, packZ, 0, s * 0.04, 0);
-    P.add('turretDetail', box(0.026, 0.29, packDepth - 0.19), s * 1.521, 0.34, packZ, 0, s * 0.04, 0);
-    for (const dz of [-0.22, 0.22]) {
-      P.add('turretDetail', box(0.04, 0.055, 0.10), s * 1.539, 0.37, packZ + dz);
+    const serviceBoxes = [
+      { z: 0.40, depth: 1.62 },
+      { z: -0.82, depth: 0.82 },
+    ];
+    for (const serviceBox of serviceBoxes) {
+      const front = serviceBox.z + serviceBox.depth * 0.5;
+      const rear = serviceBox.z - serviceBox.depth * 0.5;
+      P.addEquipment('turret', slab(
+        [s * 1.12, 0.12, front], [s * 1.51, 0.16, front - 0.04],
+        [s * 1.51, 0.15, rear + 0.04], [s * 1.14, 0.11, rear],
+        [s * 1.10, 0.46, front - 0.04], [s * 1.47, 0.54, front - 0.08],
+        [s * 1.47, 0.51, rear + 0.08], [s * 1.12, 0.43, rear + 0.04]));
+      P.add('turretDark', box(0.024, 0.30, serviceBox.depth - 0.12),
+        s * 1.505, 0.34, serviceBox.z, 0, s * 0.025, s * 0.075);
+      P.addEquipment('turret', box(0.026, 0.26, serviceBox.depth - 0.18),
+        s * 1.521, 0.34, serviceBox.z, 0, s * 0.025, s * 0.075);
+      for (const z of [front - 0.09, rear + 0.09]) {
+        P.addEquipment('turret', box(0.36, 0.075, 0.11),
+          s * 1.31, 0.18, z, 0, 0, s * 0.06);
+      }
     }
     // A paired horizontal bottle and its two shoes occupy the exposed lower
-    // edge seen beneath the service cabinet in both supplied meshes.
-    P.add('turretDark', cylZ(0.066, packDepth - 0.13, 12), s * 1.48, 0.075, packZ);
+    // edge seen beneath the aft service box in both supplied meshes.
+    P.add('turretDark', cylZ(0.066, 0.70, 12), s * 1.48, 0.075, -0.82);
     for (const dz of [-0.22, 0.22]) {
-      P.add('turretDetail', box(0.068, 0.12, 0.05), s * 1.48, 0.10, packZ + dz);
+      P.add('turretDetail', box(0.068, 0.12, 0.05), s * 1.48, 0.10, -0.82 + dz);
     }
 
     // Open flank basket: two continuous rails, a shallow tray, four uprights
@@ -4552,13 +4509,13 @@ function buildChieftainUpper2026(
     const basketDepth = 0.92;
     P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.52, basketZ);
     P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.15, basketZ);
-    P.add('turret', box(0.24, 0.028, basketDepth - 0.08), s * 1.37, 0.135, basketZ);
+    P.add('turret', box(0.54, 0.028, basketDepth - 0.08), s * 1.22, 0.135, basketZ);
     for (const dz of [-0.42, -0.14, 0.14, 0.42]) {
       P.add('turretDetail', box(0.035, 0.37, 0.035), s * 1.48, 0.335, basketZ + dz);
     }
-    for (const dz of [-0.42, 0.42]) {
-      P.add('turretDetail', box(0.24, 0.035, 0.035), s * 1.37, 0.52, basketZ + dz);
-    }
+    P.add('turretDetail', box(0.58, 0.035, 0.035), s * 1.20, 0.52, basketZ + 0.42);
+    P.add('turretDetail', box(0.82, 0.035, 0.035), s * 1.08, 0.52, basketZ - 0.42);
+    P.add('turretDetail', box(0.82, 0.035, 0.035), s * 1.08, 0.15, basketZ - 0.42);
   }
   // NBC/bustle pack and a true open rear basket with diagonal/vertical
   // returns.  Every rail lands on the pack or tray; no line ends in air.
@@ -4574,6 +4531,8 @@ function buildChieftainUpper2026(
   }
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.035, 0.46, 0.035), s * 0.75, 0.31, -2.20, s * 0.45, 0, 0);
+    P.add('turretDetail', box(0.035, 0.035, 0.42), s * 0.70, 0.52, -2.16);
+    P.add('turretDetail', box(0.035, 0.035, 0.42), s * 0.70, 0.12, -2.16);
   }
   tarpRoll(P, 'turretCloth', -0.36, 0.34, -2.16, 0.54, 0.105, true);
   tarpRoll(P, 'turretCloth', 0.29, 0.34, -2.16, 0.48, 0.095, true);
@@ -4598,26 +4557,42 @@ function buildChieftainUpper2026(
   }
 
   // Low asymmetric roof station: No.15 cupola, loader hatch, compact sight
-  // heads, periscope ring, and a properly seated L37 GPMG.
-  P.add('turret', cylY(0.30, 0.32, 0.14, seg), -0.55, 0.91, -0.20);
-  P.add('turret', cylY(0.22, 0.23, 0.15, seg), -0.55, 1.055, -0.20);
-  P.add('turret', sph(0.19, P.q ? 16 : 10), -0.55, 1.16, -0.18, 0, 0, 0, [1, 0.62, 1]);
+  // heads, periscope ring, and a properly seated L37 GPMG.  These fittings
+  // sit on different facets of the sloped crown, so each family gets its own
+  // contact datum.  A tapered adapter under the outboard cupola closes the
+  // step between the low shoulder plate and the higher center saddle: the
+  // cupola can neither hover over the shoulder nor disappear into the saddle.
+  const cupolaSeatY = stillbrew ? 0.73 : 0.71;
+  const cupolaDrop = 0.84 - cupolaSeatY;
+  const cupolaY = (y: number): number => y - cupolaDrop;
+  const cupolaAdapterBottomY = stillbrew ? 0.63 : 0.60;
+  P.add('turret', cylY(0.285, 0.31, cupolaSeatY - cupolaAdapterBottomY, seg),
+    -0.55, (cupolaSeatY + cupolaAdapterBottomY) * 0.5, -0.20);
+  P.add('turret', cylY(0.30, 0.32, 0.14, seg), -0.55, cupolaY(0.91), -0.20);
+  P.add('turret', cylY(0.22, 0.23, 0.15, seg), -0.55, cupolaY(1.055), -0.20);
+  P.add('turret', sph(0.19, P.q ? 16 : 10), -0.55, cupolaY(1.16), -0.18, 0, 0, 0, [1, 0.62, 1]);
   for (let k = 0; k < 7; k++) {
     const a = -1.25 + k * 0.42;
     P.add('turretDark', box(0.055, 0.045, 0.045), -0.55 + Math.sin(a) * 0.25,
-      1.115, -0.20 + Math.cos(a) * 0.20, 0, a, 0);
+      cupolaY(1.115), -0.20 + Math.cos(a) * 0.20, 0, a, 0);
   }
-  P.add('turretDetail', cylY(0.25, 0.27, 0.055, seg), 0.43, 0.89, -0.43);
-  P.add('turret', box(0.40, 0.055, 0.46), 0.43, 0.93, -0.43, 0, -0.12, 0);
-  P.add('turretDark', box(0.28, 0.045, 0.035), 0.43, 0.96, -0.20);
-  P.add('turret', box(0.24, 0.18, 0.25), -0.18, 0.94, -0.54);
-  P.add('turretDark', box(0.16, 0.09, 0.025), -0.18, 0.96, -0.395);
-  periscope(P, 'turretDetail', 0.20, 0.92, -0.03, 0.08);
-  periscope(P, 'turretDetail', 0.43, 0.91, -0.05, -0.10);
+  const saddleSeatY = 0.74;
+  const loaderDrop = (0.89 - 0.055 * 0.5) - saddleSeatY;
+  const loaderY = (y: number): number => y - loaderDrop;
+  P.add('turretDetail', cylY(0.25, 0.27, 0.055, seg), 0.43, loaderY(0.89), -0.43);
+  P.add('turret', box(0.40, 0.055, 0.46), 0.43, loaderY(0.93), -0.43, 0, -0.12, 0);
+  P.add('turretDark', box(0.28, 0.045, 0.035), 0.43, loaderY(0.96), -0.20);
+  const sightDrop = (0.94 - 0.18 * 0.5) - saddleSeatY;
+  const sightY = (y: number): number => y - sightDrop;
+  P.add('turret', box(0.24, 0.18, 0.25), -0.18, sightY(0.94), -0.54);
+  P.add('turretDark', box(0.16, 0.09, 0.025), -0.18, sightY(0.96), -0.395);
+  const periscopeCenterY = saddleSeatY + 0.07 * 0.5;
+  periscope(P, 'turretDetail', 0.20, periscopeCenterY, -0.03, 0.08);
+  periscope(P, 'turretDetail', 0.43, periscopeCenterY, -0.05, -0.10);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
       elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true });
-    mg.position.set(-0.49, 1.12, -0.20);
+    mg.position.set(-0.49, cupolaY(1.12), -0.20);
     mg.rotation.y = 0;
     P.turretG.add(mg);
   }
@@ -4635,12 +4610,14 @@ function buildChieftainUpper2026(
 
   // Three unequal radio stations reproduce the reference cadence.  Each
   // whip has a visible shoe, collar and short brace embedded in the bustle.
-  const radios = [[-0.92, 0.76, -1.62, 0.76], [0.82, 0.74, -1.73, 0.66], [0.18, 0.72, -1.92, 0.54]];
-  for (const [x, y, z, h] of radios) {
-    P.add('turret', box(0.13, 0.10, 0.15), x, y, z);
-    P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, y + 0.10, z);
-    P.add('turretDark', cylY(0.018, 0.012, h, 10), x, y + 0.22 + h * 0.5, z);
-    P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07, y + 0.16, z + 0.05, 0.35, 0, -0.25);
+  const radioShoeY = 0.54;
+  const radios = [[-0.92, -1.62, 0.76], [0.82, -1.73, 0.66], [0.18, -1.92, 0.54]];
+  for (const [x, z, h] of radios) {
+    P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
+    P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
+    P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.22 + h * 0.5, z);
+    P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07,
+      radioShoeY + 0.16, z + 0.05, 0.35, 0, -0.25);
   }
 
   // L11A5 thermal-sleeved cannon, fume extractor and recessed muzzle bore.
@@ -4650,15 +4627,29 @@ function buildChieftainUpper2026(
   P.add('gun', box(0.16, 0.11, 0.22), -0.18, 0.06, 5.53);
   muzzleBore(P, { len: 6.35, r: 0.115 });
   P.turretG.userData.chieftainEquipmentReceipt = Object.freeze({
-    revision: 'source-equipment-seat-r3',
+    revision: 'source-equipment-seat-r6',
+    roofSeatDatum: 'local-facet-surfaces',
+    cupolaSeatSourceY: cupolaSeatY,
+    cupolaSeatLocalY: compressedChieftainTurretY(cupolaSeatY),
+    cupolaAdapterBottomSourceY: cupolaAdapterBottomY,
+    saddleSeatSourceY: saddleSeatY,
+    radioShoeSeatSourceY: radioShoeY - 0.05,
+    cupolaAdapterPlinths: 1,
     commanderCupolas: 1,
     loaderHatches: 1,
     smokeBanks: 2,
     smokeTubes: 12,
     smokeBankCantRad: 1.05,
     sideServiceCabinets: 2,
+    turretOwnedSideBoxes: 4,
+    sideBoxAttachmentShoes: 8,
+    sideBoxCamouflagedParts: 16,
+    sideBoxPaintBucket: 'turretEquipment',
+    sideBoxFinish: 'vehicle-scale-camouflage',
     sideBustleBaskets: 2,
+    sideBasketBustleTies: 4,
     rearBustleBaskets: 1,
+    rearBasketBustleTies: 4,
     radioWhips: 3,
     pintleGpmgs: 1,
     primaryOptic: stillbrew ? 'armored-thermal-head' : 'ir-searchlight',
