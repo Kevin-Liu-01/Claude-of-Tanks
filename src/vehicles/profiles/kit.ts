@@ -149,6 +149,9 @@ interface FittingOptions {
   ammoSlot?: string;
   ammoSide?: number;
   sensorSide?: number;
+  sensorHead?: boolean;
+  sensorMount?: string;
+  weapon?: boolean;
   shield?: boolean | string;
   barrelBridge?: boolean;
   barrelLength?: number;
@@ -1542,6 +1545,7 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const sensorSide = Math.sign(opts.sensorSide || -ammoSide);
   const body = opts.bodySlot || 'detail';
+  const hasWeapon = opts.weapon !== false;
   const parts = fitParts();
   const yokeCenterY = 0.385 * s;
   const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
@@ -1570,61 +1574,75 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   // M2/K6-class receiver and long, true forward run.
   const receiverY = yokeCenterY + 0.018 * s;
   const receiverZ = 0.185 * s;
-  parts.add('dark', box(0.170 * s, 0.135 * s, 0.43 * s), 0, receiverY, receiverZ);
-  parts.add('dark', box(0.145 * s, 0.020 * s, 0.37 * s),
-    0, receiverY + 0.078 * s, receiverZ - 0.005 * s);
-  parts.add('dark', box(0.075 * s, 0.045 * s, 0.070 * s),
-    0, receiverY - 0.018 * s, receiverZ - 0.250 * s);
-  const trunnionZ = receiverZ + 0.215 * s;
-  parts.add('dark', aim(cylZ(0.033 * s, 0.18 * s, 14), 0.09 * s),
-    0, receiverY, trunnionZ);
-  for (let index = 0; index < 4; index++) {
-    parts.add('dark', aim(torus(0.034 * s, 0.0045 * s, 12),
-      (0.025 + index * 0.042) * s), 0, receiverY, trunnionZ);
-  }
-  parts.add('dark', aim(cylZ(0.0155 * s, 0.62 * s, 10), 0.49 * s),
-    0, receiverY, trunnionZ);
-  parts.add('dark', aim(cylZ(0.028 * s, 0.085 * s, 12), 0.8425 * s),
-    0, receiverY, trunnionZ);
-  parts.add('dark', aim(cylZ(0.010 * s, 0.015 * s, 10), 0.895 * s),
-    0, receiverY, trunnionZ);
+  if (hasWeapon) {
+    parts.add('dark', box(0.170 * s, 0.135 * s, 0.43 * s), 0, receiverY, receiverZ);
+    parts.add('dark', box(0.145 * s, 0.020 * s, 0.37 * s),
+      0, receiverY + 0.078 * s, receiverZ - 0.005 * s);
+    parts.add('dark', box(0.075 * s, 0.045 * s, 0.070 * s),
+      0, receiverY - 0.018 * s, receiverZ - 0.250 * s);
+    const trunnionZ = receiverZ + 0.215 * s;
+    parts.add('dark', aim(cylZ(0.033 * s, 0.18 * s, 14), 0.09 * s),
+      0, receiverY, trunnionZ);
+    for (let index = 0; index < 4; index++) {
+      parts.add('dark', aim(torus(0.034 * s, 0.0045 * s, 12),
+        (0.025 + index * 0.042) * s), 0, receiverY, trunnionZ);
+    }
+    parts.add('dark', aim(cylZ(0.0155 * s, 0.62 * s, 10), 0.49 * s),
+      0, receiverY, trunnionZ);
+    parts.add('dark', aim(cylZ(0.028 * s, 0.085 * s, 12), 0.8425 * s),
+      0, receiverY, trunnionZ);
+    parts.add('dark', aim(cylZ(0.010 * s, 0.015 * s, 10), 0.895 * s),
+      0, receiverY, trunnionZ);
 
-  // Asymmetric ammunition coffin and feed bridge. Individual alternating
-  // links remain legible in the gallery without creating per-link meshes.
-  const ammoX = ammoSide * 0.305 * s;
-  parts.add(body, box(0.245 * s, 0.255 * s, 0.31 * s),
-    ammoX, yokeCenterY - 0.055 * s, 0.015 * s);
-  parts.add('detail', box(0.265 * s, 0.023 * s, 0.33 * s),
-    ammoX, yokeCenterY + 0.084 * s, 0.015 * s);
-  parts.add('dark', box(0.022 * s, 0.22 * s, 0.27 * s),
-    ammoX + ammoSide * 0.133 * s, yokeCenterY - 0.055 * s, 0.015 * s);
-  for (let index = 0; index < 8; index++) {
-    const t = index / 7;
-    const x = (ammoX * (1 - t) + ammoSide * 0.075 * s * t);
-    const y = yokeCenterY + (0.055 + 0.018 * t) * s;
-    const z = (0.13 + 0.085 * t) * s;
-    parts.add(index % 2 ? 'shadow' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
-      x, y, z, 0, 0, -ammoSide * (0.10 + t * 0.12));
+    // Asymmetric ammunition coffin and feed bridge. Individual alternating
+    // links remain legible in the gallery without creating per-link meshes.
+    const ammoX = ammoSide * 0.305 * s;
+    parts.add(body, box(0.245 * s, 0.255 * s, 0.31 * s),
+      ammoX, yokeCenterY - 0.055 * s, 0.015 * s);
+    parts.add('detail', box(0.265 * s, 0.023 * s, 0.33 * s),
+      ammoX, yokeCenterY + 0.084 * s, 0.015 * s);
+    parts.add('dark', box(0.022 * s, 0.22 * s, 0.27 * s),
+      ammoX + ammoSide * 0.133 * s, yokeCenterY - 0.055 * s, 0.015 * s);
+    for (let index = 0; index < 8; index++) {
+      const t = index / 7;
+      const x = (ammoX * (1 - t) + ammoSide * 0.075 * s * t);
+      const y = yokeCenterY + (0.055 + 0.018 * t) * s;
+      const z = (0.13 + 0.085 * t) * s;
+      parts.add(index % 2 ? 'shadow' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
+        x, y, z, 0, 0, -ammoSide * (0.10 + t * 0.12));
+    }
   }
 
-  // Independent EO/thermal head on the opposite cheek.
-  const sensorX = sensorSide * 0.30 * s;
+  // Independent EO/thermal head on the opposite cheek. Hosts with a proper
+  // roof-seated panoramic tower can omit this compact side head so the weapon
+  // has an unobstructed firing lane and the two systems remain visually
+  // distinct.
+  const roofSensor = opts.sensorMount === 'roof';
+  const sensorX = roofSensor ? 0 : sensorSide * 0.30 * s;
   const classicPanther = variant === 'kf51-panther';
   const panther = classicPanther || variant === 'kf51b-panther';
   const twinOptics = variant === 'korean-twin' || panther;
-  const sensorY = yokeCenterY + (variant === 'a6m-arctic' || panther ? 0.015 : 0.005) * s;
-  parts.add(body, box(0.215 * s, (twinOptics ? 0.20 : 0.24) * s, 0.215 * s),
-    sensorX, sensorY, 0.055 * s);
-  parts.add('dark', box(0.190 * s, 0.024 * s, 0.19 * s),
-    sensorX, sensorY + (twinOptics ? 0.112 : 0.132) * s, 0.055 * s);
-  const opticXs = twinOptics ? [-0.045, 0.045] : [0];
-  for (const dx of opticXs) {
-    parts.add('glass', box((twinOptics ? 0.065 : 0.125) * s,
-      (twinOptics ? 0.075 : 0.105) * s, 0.014 * s),
-    sensorX + dx * s, sensorY + 0.018 * s, 0.170 * s);
+  const sensorY = roofSensor
+    ? yokeCenterY + 0.31 * s
+    : yokeCenterY + (variant === 'a6m-arctic' || panther ? 0.015 : 0.005) * s;
+  if (opts.sensorHead !== false) {
+    if (roofSensor) {
+      parts.add(body, box(0.34 * s, 0.040 * s, 0.29 * s),
+        0, sensorY - 0.125 * s, 0.025 * s);
+    }
+    parts.add(body, box(0.215 * s, (twinOptics ? 0.20 : 0.24) * s, 0.215 * s),
+      sensorX, sensorY, 0.055 * s);
+    parts.add('dark', box(0.190 * s, 0.024 * s, 0.19 * s),
+      sensorX, sensorY + (twinOptics ? 0.112 : 0.132) * s, 0.055 * s);
+    const opticXs = twinOptics ? [-0.045, 0.045] : [0];
+    for (const dx of opticXs) {
+      parts.add('glass', box((twinOptics ? 0.065 : 0.125) * s,
+        (twinOptics ? 0.075 : 0.105) * s, 0.014 * s),
+      sensorX + dx * s, sensorY + 0.018 * s, 0.170 * s);
+    }
+    parts.add('glass', cylZ(0.026 * s, 0.014 * s, 10),
+      sensorX - sensorSide * 0.055 * s, sensorY - 0.075 * s, 0.171 * s);
   }
-  parts.add('glass', cylZ(0.026 * s, 0.014 * s, 10),
-    sensorX - sensorSide * 0.055 * s, sensorY - 0.075 * s, 0.171 * s);
 
   if (variant === 'sepv3-armored') {
     parts.add(body, box(0.70 * s, 0.035 * s, 0.35 * s),
@@ -1656,6 +1674,34 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
       0, yokeCenterY + 0.135 * s, 0.035 * s);
     parts.add('dark', box(0.44 * s, 0.075 * s, 0.028 * s),
       0, yokeCenterY - 0.105 * s, 0.23 * s);
+  } else if (variant === 'puma-s1-compact') {
+    // Puma S1 signature: a narrow arrow brow, tall faceted yoke cheeks and a
+    // central recoil bridge echo the RCT30 turret without widening the roof
+    // footprint. This station is deliberately independent of the panoramic
+    // optics tower fitted on the opposite side of the roof.
+    parts.add(body, box(0.46 * s, 0.034 * s, 0.27 * s),
+      0, yokeCenterY + 0.145 * s, 0.025 * s);
+    parts.add('detail', box(0.28 * s, 0.026 * s, 0.035 * s),
+      0, yokeCenterY + 0.172 * s, 0.175 * s);
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.042 * s, 0.23 * s, 0.25 * s),
+        side * 0.265 * s, yokeCenterY + 0.018 * s, 0.020 * s,
+        0, -side * 0.10, side * 0.14);
+    }
+  } else if (variant === 'light-tiger-compact') {
+    // Light Tiger signature: split low shoulders and clipped outer guards
+    // create a lighter Japanese demonstrator silhouette while preserving the
+    // same real bearing/yoke/receiver load path.
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.20 * s, 0.034 * s, 0.29 * s),
+        side * 0.12 * s, yokeCenterY + 0.140 * s, 0.020 * s,
+        0, 0, -side * 0.08);
+      parts.add('detail', box(0.032 * s, 0.18 * s, 0.22 * s),
+        side * 0.255 * s, yokeCenterY + 0.005 * s, 0.035 * s,
+        0, -side * 0.08, side * 0.12);
+    }
+    parts.add('dark', box(0.30 * s, 0.045 * s, 0.032 * s),
+      0, yokeCenterY - 0.118 * s, 0.235 * s);
   } else if (variant === 'korean-twin') {
     for (const side of [-1, 1]) {
       parts.add('detail', box(0.028 * s, 0.16 * s, 0.27 * s),
@@ -1722,24 +1768,27 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.stationVariant = variant;
   fitting.userData.remoteControlled = true;
-  fitting.userData.weaponName = opts.weaponName || '12.7 mm remote machine gun';
-  fitting.userData.caliberMm = opts.caliberMm || 12.7;
+  fitting.userData.hasWeapon = hasWeapon;
+  fitting.userData.weaponName = hasWeapon ? (opts.weaponName || '12.7 mm remote machine gun') : null;
+  fitting.userData.caliberMm = hasWeapon ? (opts.caliberMm || 12.7) : null;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.sensorSide = sensorSide;
-  fitting.userData.hasVisibleFeedBelt = true;
-  fitting.userData.hasConnectedFeed = true;
+  fitting.userData.hasIntegratedSensorHead = opts.sensorHead !== false;
+  fitting.userData.sensorMount = roofSensor ? 'roof' : 'side';
+  fitting.userData.hasVisibleFeedBelt = hasWeapon;
+  fitting.userData.hasConnectedFeed = hasWeapon;
   fitting.userData.hasEngineeredCradle = true;
   fitting.userData.hasWorkLights = panther;
   fitting.userData.lightCount = classicPanther ? 5 : (panther ? 2 : 0);
   fitting.userData.machineGunFinish = 'gunmetal';
-  fitting.userData.firingAxis = '+Z';
-  fitting.userData.muzzleLocalZ = 1.295 * s;
-  fitting.userData.barrelAxisLocalY = receiverY + towerRise;
+  fitting.userData.firingAxis = hasWeapon ? '+Z' : null;
+  fitting.userData.muzzleLocalZ = hasWeapon ? 1.295 * s : null;
+  fitting.userData.barrelAxisLocalY = hasWeapon ? receiverY + towerRise : null;
   fitting.userData.sizeStandard = sizeStandard;
   fitting.userData.scale = s;
   fitting.userData.towerRise = towerRise;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
-  if (weaponMesh) {
+  if (hasWeapon && weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';
     weaponMesh.userData.appearanceRole = 'machineGun';
   }

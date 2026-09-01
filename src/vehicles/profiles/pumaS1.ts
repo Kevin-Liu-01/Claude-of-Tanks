@@ -49,6 +49,146 @@ function mount(
   (owner === 'hull' ? P.hullG : P.turretG).add(object);
 }
 
+interface OpenGunCradleConfig {
+  rearZ: number;
+  frontZ: number;
+  rearHalfWidth: number;
+  frontHalfWidth: number;
+  rearHalfHeight: number;
+  frontHalfHeight: number;
+  railThickness: number;
+  skinThickness: number;
+}
+
+function openCradleBeam(
+  P: PumaS1BuilderPort,
+  from: Vec3,
+  to: Vec3,
+  thickness: number,
+  dark = false,
+): void {
+  const start = new THREE.Vector3(...from);
+  const end = new THREE.Vector3(...to);
+  const direction = end.clone().sub(start);
+  const geometry = new THREE.BoxGeometry(thickness, thickness, direction.length());
+  geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1), direction.normalize(),
+  ));
+  geometry.translate(
+    (from[0] + to[0]) * 0.5,
+    (from[1] + to[1]) * 0.5,
+    (from[2] + to[2]) * 0.5,
+  );
+  (dark ? P.addGunExtraDark : P.addGunExtra).call(P, geometry);
+}
+
+function openCradleSkin(
+  P: PumaS1BuilderPort,
+  corners: [Vec3, Vec3, Vec3, Vec3],
+  thickness: number,
+): void {
+  const points = corners.map((corner) => new THREE.Vector3(...corner));
+  const normal = points[1].clone().sub(points[0])
+    .cross(points[3].clone().sub(points[0]))
+    .normalize()
+    .multiplyScalar(thickness * 0.5);
+  const vertices = points.flatMap((point) => [
+    ...point.clone().add(normal).toArray(),
+    ...point.clone().sub(normal).toArray(),
+  ]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
+    0, 0, 0, 0, 1, 0, 1, 0,
+    1, 1, 1, 1, 0, 1, 0, 1,
+  ], 2));
+  geometry.setIndex([
+    0, 2, 4, 0, 4, 6,
+    1, 7, 5, 1, 5, 3,
+    0, 1, 3, 0, 3, 2,
+    2, 3, 5, 2, 5, 4,
+    4, 5, 7, 4, 7, 6,
+    6, 7, 1, 6, 1, 0,
+  ]);
+  geometry.computeVertexNormals();
+  P.addGunExtra(geometry);
+}
+
+function addOpenTrapezoidGunCradle(
+  P: PumaS1BuilderPort,
+  config: OpenGunCradleConfig,
+): void {
+  const section = (fraction: number) => ({
+    z: THREE.MathUtils.lerp(config.rearZ, config.frontZ, fraction),
+    halfWidth: THREE.MathUtils.lerp(config.rearHalfWidth, config.frontHalfWidth, fraction),
+    halfHeight: THREE.MathUtils.lerp(config.rearHalfHeight, config.frontHalfHeight, fraction),
+  });
+  const rear = section(0);
+  const front = section(1);
+
+  // The upper and lower skins read as one clean, tapered weapon shroud while
+  // its open nose and tail leave the cannon tubes physically unobstructed.
+  openCradleSkin(P, [
+    [-rear.halfWidth, rear.halfHeight, rear.z],
+    [rear.halfWidth, rear.halfHeight, rear.z],
+    [front.halfWidth, front.halfHeight, front.z],
+    [-front.halfWidth, front.halfHeight, front.z],
+  ], config.skinThickness);
+  openCradleSkin(P, [
+    [-rear.halfWidth, -rear.halfHeight, rear.z],
+    [-front.halfWidth, -front.halfHeight, front.z],
+    [front.halfWidth, -front.halfHeight, front.z],
+    [rear.halfWidth, -rear.halfHeight, rear.z],
+  ], config.skinThickness);
+
+  // Four corner chords establish a crisp outer edge around the skins.
+  for (const side of [-1, 1] as const) {
+    for (const vertical of [-1, 1] as const) {
+      openCradleBeam(P,
+        [side * rear.halfWidth, vertical * rear.halfHeight, rear.z],
+        [side * front.halfWidth, vertical * front.halfHeight, front.z],
+        config.railThickness);
+    }
+  }
+
+  // Each flank is mostly skinned. Three narrow forward-raked webs divide the
+  // reveal into four slash-shaped ports; all openings remain side-only.
+  const sidePoint = (side: -1 | 1, fraction: number, heightScale: number): Vec3 => {
+    const current = section(fraction);
+    return [side * current.halfWidth, heightScale * current.halfHeight, current.z];
+  };
+  const portHalfHeight = 0.24;
+  const webCenters = [0.285, 0.50, 0.715] as const;
+  const webHalfWidth = 0.035;
+  const webRake = 0.060;
+  for (const side of [-1, 1] as const) {
+    openCradleSkin(P, [
+      sidePoint(side, 0, portHalfHeight), sidePoint(side, 1, portHalfHeight),
+      sidePoint(side, 1, 1), sidePoint(side, 0, 1),
+    ], config.skinThickness);
+    openCradleSkin(P, [
+      sidePoint(side, 0, -1), sidePoint(side, 1, -1),
+      sidePoint(side, 1, -portHalfHeight), sidePoint(side, 0, -portHalfHeight),
+    ], config.skinThickness);
+    openCradleSkin(P, [
+      sidePoint(side, 0, -portHalfHeight), sidePoint(side, 0.08, -portHalfHeight),
+      sidePoint(side, 0.14, portHalfHeight), sidePoint(side, 0, portHalfHeight),
+    ], config.skinThickness);
+    for (const center of webCenters) {
+      openCradleSkin(P, [
+        sidePoint(side, center - webHalfWidth, -portHalfHeight),
+        sidePoint(side, center + webHalfWidth, -portHalfHeight),
+        sidePoint(side, center + webRake + webHalfWidth, portHalfHeight),
+        sidePoint(side, center + webRake - webHalfWidth, portHalfHeight),
+      ], config.skinThickness);
+    }
+    openCradleSkin(P, [
+      sidePoint(side, 0.86, -portHalfHeight), sidePoint(side, 1, -portHalfHeight),
+      sidePoint(side, 1, portHalfHeight), sidePoint(side, 0.92, portHalfHeight),
+    ], config.skinThickness);
+  }
+}
+
 function addHullShell(P: PumaS1BuilderPort): void {
   const { box, frustum } = KIT;
   // Deep mine-protected tub and continuously connected shoulder course. The
@@ -106,16 +246,16 @@ function addHullShell(P: PumaS1BuilderPort): void {
 function addRunningGear(P: PumaS1BuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.72, wheelR: 0.345, wheelW: 0.24, wheelY: 0.42, xc: 1.55,
-    wheelZs: [2.15, 1.37, 0.61, -0.32, -1.07, -1.81],
-    sprocket: { z: 2.88, y: 0.965, r: 0.34 },
-    idler: { z: -2.82, y: 0.84, r: 0.29 },
+    wheelZs: [2.42, 1.51, 0.59, -0.34, -1.28, -2.20],
+    sprocket: { z: 3.17, y: 0.965, r: 0.35 },
+    idler: { z: -3.15, y: 0.84, r: 0.30 },
     rollerR: 0.09,
-    rollers: [{ z: 1.72, y: 1.02 }, { z: 0.52, y: 1.03 }, { z: -0.70, y: 1.03 },
-      { z: -1.82, y: 1.01 }],
+    rollers: [{ z: 2.08, y: 1.02 }, { z: 0.72, y: 1.03 }, { z: -0.62, y: 1.03 },
+      { z: -1.94, y: 1.01 }],
     trackW: 0.56, trackTh: 0.092, topY: 1.28, botY: 0.055,
     trackPattern: 'compact-ifv', linkPitchM: 0.155, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: false,
-    contactZF: 2.40, contactZR: -2.29,
+    contactZF: 2.70, contactZR: -2.63,
   });
 
   // S1 level-C flank package. A faceted front shoulder carries the skirt into
@@ -126,34 +266,44 @@ function addRunningGear(P: PumaS1BuilderPort): void {
   // layers remain beyond the widened native shoe envelope.
   for (const side of [-1, 1]) {
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.28, 1.50, 2.34], [side * 1.94, 1.50, 2.34],
-      [side * 1.22, 1.50, 3.52], [side * 1.04, 1.50, 3.52],
-      [side * 1.64, 2.03, 2.34], [side * 1.98, 1.92, 2.34],
-      [side * 1.23, 1.63, 3.52], [side * 1.08, 1.68, 3.52],
+      [side * 1.86, 0.96, 2.52], [side * 2.16, 0.96, 2.52],
+      [side * 1.86, 0.48, 3.58], [side * 2.08, 0.48, 3.58],
+      [side * 1.86, 1.92, 2.52], [side * 2.16, 1.92, 2.52],
+      [side * 1.86, 1.34, 3.58], [side * 2.08, 1.34, 3.58],
     ));
-    // A raised shoulder cap seals the protection into the deck edge and gives
-    // the bow/skirt junction the continuous PL-01-style folded silhouette.
+    // A descending shoulder cap seals the protection into the deck edge and
+    // follows the lower-glacis fall toward the nose instead of terminating in
+    // a vertical plate beside the sprocket.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.64, 1.91, 2.30], [side * 1.98, 1.88, 2.30],
-      [side * 1.23, 1.60, 3.50], [side * 1.09, 1.65, 3.50],
-      [side * 1.64, 2.06, 2.30], [side * 1.93, 2.03, 2.30],
-      [side * 1.19, 1.72, 3.50], [side * 1.08, 1.72, 3.50],
+      [side * 1.60, 1.92, 2.48], [side * 1.98, 1.88, 2.48],
+      [side * 1.20, 1.48, 3.56], [side * 1.07, 1.48, 3.56],
+      [side * 1.60, 2.08, 2.48], [side * 1.93, 2.04, 2.48],
+      [side * 1.18, 1.62, 3.56], [side * 1.07, 1.62, 3.56],
     ));
-    for (let index = 0; index < 9; index++) {
-      const z = 2.12 - index * 0.66;
-      const edge = index === 8;
+    // Thin shoulder tie closes the plan seam between the narrowed glacis and
+    // the outboard downfold. It remains above the sprocket/shoe envelope and
+    // shares the same descending bow angle as the visible skirt cap.
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.05, 1.60, 2.78], [side * 1.98, 1.60, 2.78],
+      [side * 1.98, 1.46, 3.46], [side * 1.02, 1.46, 3.46],
+      [side * 1.05, 1.70, 2.78], [side * 1.98, 1.70, 2.78],
+      [side * 1.98, 1.56, 3.46], [side * 1.02, 1.56, 3.46],
+    ));
+    for (let index = 0; index < 10; index++) {
+      const z = 2.36 - index * 0.63;
+      const edge = index === 9;
       const moduleH = edge ? 0.91 : 1.04;
       const moduleY = edge ? 1.47 : 1.50;
       const roll = side * (edge ? 0.038 : 0.012);
       // Inner carrier and spaced middle plate touch one another at their
       // mating faces; the outer bricks then sit proud on that real foundation.
-      P.addExternalArmor('hull', KIT.box(0.16, moduleH, 0.66),
+      P.addExternalArmor('hull', KIT.box(0.16, moduleH, 0.63),
         side * 1.93, moduleY, z, 0, 0, roll);
-      P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.66),
+      P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.63),
         side * 2.04, moduleY, z, 0, 0, roll);
       for (const [row, y] of [-1, 1].map((row) => [row,
         moduleY + row * (moduleH * 0.235)] as const)) {
-        P.addExternalArmor('hull', KIT.box(0.075, moduleH * 0.43, 0.66),
+        P.addExternalArmor('hull', KIT.box(0.075, moduleH * 0.43, 0.63),
           side * 2.108, y, z, 0, 0, roll + row * side * 0.006);
         P.add('hullDark', KIT.box(0.012, moduleH * 0.31, 0.54),
           side * 2.151, y, z, 0, 0, roll);
@@ -169,11 +319,11 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     // cassette course. They close the service-line sight holes without
     // becoming a second track proxy or entering the shoe envelope.
     for (const y of [1.25, 1.76]) {
-      P.addExternalArmor('hull', KIT.box(0.075, 0.10, 5.88),
-        side * 2.108, y, -0.52);
+      P.addExternalArmor('hull', KIT.box(0.075, 0.10, 6.30),
+        side * 2.108, y, -0.475);
     }
-    P.add('hullRubber', KIT.box(0.035, 0.20, 5.64), side * 2.135, 0.82, -0.30);
-    P.add('hull', KIT.box(0.16, 0.13, 5.78), side * 1.84, 2.05, -0.30);
+    P.add('hullRubber', KIT.box(0.035, 0.20, 6.32), side * 2.135, 0.82, -0.46);
+    P.add('hull', KIT.box(0.16, 0.13, 6.34), side * 1.84, 2.05, -0.46);
 
     // Recessed flank camera and paired marker lamps remain readable above the
     // armor instead of being texture-only marks compressed across the tiles.
@@ -208,61 +358,106 @@ function addTurret(P: PumaS1BuilderPort): void {
       inset: [0.72, 0.72, 0.80, 0.86, 0.89, 0.91, 0.92, 0.92, 0.91, 0.89, 0.86, 0.80] },
   ]));
 
-  // Angular MK30 cradle with perforated heat shield and a genuine coax bore.
-  P.addGunExtra(orientedSlab(
-    [-0.42, -0.25, -0.04], [0.42, -0.25, -0.04], [0.32, -0.25, 0.46], [-0.32, -0.25, 0.46],
-    [-0.34, 0.24, -0.02], [0.34, 0.24, -0.02], [0.25, 0.20, 0.52], [-0.25, 0.20, 0.52],
-  ), 0, 0, 0.18);
-  P.addGunExtraDark(cylZ(0.105, 0.30, 18), 0, 0, 0.53);
-  P.addGunExtra(box(0.34, 0.23, 1.02), 0, 0, 1.02);
-  for (const side of [-1, 1]) for (let index = 0; index < 5; index++) {
-    P.addGunExtraDark(KIT.cylX(0.028, 0.022, 10), side * 0.19, 0.075,
-      0.64 + index * 0.17);
-  }
+  // MK30 trunnion with a genuine coax bore. A restrained hollow trapezoid
+  // cradle surrounds both tubes, with its only openings cut into the flanks.
+  P.addGunExtraDark(cylZ(0.145, 0.46, 22), 0, 0, 0.62);
+  addOpenTrapezoidGunCradle(P, {
+    rearZ: 0.20, frontZ: 1.432,
+    rearHalfWidth: 0.245, frontHalfWidth: 0.168,
+    rearHalfHeight: 0.154, frontHalfHeight: 0.098,
+    railThickness: 0.0322, skinThickness: 0.0224,
+  });
   // The 30 mm tube has a substantial external jacket at the muzzle. The
   // factory's canonical measured bore assembly seats against its real cap;
   // avoiding a second authored bore keeps the small-caliber throat perfectly
   // concentric instead of letting two independently segmented discs compete.
-  buildGun(P, { len: 2.25, r: 0.045, sleeve: false, collar: true, baseR: 0.080 });
-  P.addGunExtraDark(cylZ(0.016, 1.50, 10), 0.18, -0.02, 1.38);
-  muzzleTipDot(P, 0.18, -0.02, 2.14, 0.010, { parent: 'gunG' });
+  buildGun(P, { len: 2.85, r: 0.056, sleeve: false, collar: true, baseR: 0.112 });
+  P.addGunExtraDark(cylZ(0.019, 1.95, 12), 0.20, -0.025, 1.72);
+  muzzleTipDot(P, 0.20, -0.025, 2.70, 0.012, { parent: 'gunG' });
+  P.gunG.userData.pumaS1OpenGunCradleReceipt = Object.freeze({
+    architecture: 'hollow-trapezoid-slash-port-cradle-v3',
+    movingWithGun: true,
+    verticalOffsetM: -0.13,
+    scaleFromInitialCompactEnvelope: 0.70,
+    lengthM: 1.232,
+    diagonalSidePortsPerSide: 4,
+    topBottomSkins: true,
+    sideSkinPanelsPerSide: 7,
+    openFrontRear: true,
+    surroundsMainBarrel: true,
+    surroundsCoax: true,
+  });
 
-  // Gunner primary sight, commander panoramic mast and four-camera 360 ring.
-  P.addEquipment('turret', box(0.40, 0.42, 0.42), 0.58, 0.57, 0.47, 0, -0.08, 0);
+  // Gunner primary sight remains low and clear of the main-gun corridor.
+  P.addEquipment('turret', box(0.40, 0.42, 0.42), 0.38, 0.57, 0.47, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretDark', box(0.34, 0.30, 0.025),
-    0.58, 0.58, 0.695, 0, -0.08, 0);
+    0.38, 0.58, 0.695, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.20, 0.014),
-    0.58, 0.58, 0.712, 0, -0.08, 0);
-  P.addCupola('turret', cylY(0.24, 0.27, 0.10, 18), -0.40, 0.79, -0.42);
-  P.addEquipment('turret', box(0.25, 0.34, 0.23), -0.40, 1.00, -0.42);
-  P.addModuleVisual('optics', 'turretDark', box(0.28, 0.23, 0.25),
-    -0.40, 1.26, -0.42, 0, 0.10, 0);
-  for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
-    const x = -0.40 + Math.sin(yaw) * 0.145;
-    const z = -0.42 + Math.cos(yaw) * 0.145;
-    P.addModuleVisual('optics', 'turretGlass', box(0.105, 0.095, 0.014),
-      x, 1.26, z, 0, yaw, 0);
-  }
-  P.addEquipment('turret', box(0.34, 0.09, 0.30), -0.40, 1.47, -0.42);
-  P.addModuleVisual('optics', 'turretDark', box(0.28, 0.23, 0.25),
-    -0.40, 1.61, -0.42, 0, -0.12, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.20, 0.14, 0.014),
-    -0.40, 1.61, -0.275, 0, -0.12, 0);
+    0.38, 0.58, 0.712, 0, -0.08, 0);
+  // The former K2B-derived weapon tower is now a compact, unarmed panoramic
+  // station. Its EO head is centered on the station roof; no receiver, feed,
+  // ammunition box or barrel shares the optical volume.
+  const pumaRoofOptics = FITTINGS.openYokeRws({
+    mats: P.mats,
+    bodySlot: 'turret',
+    sizeStandard: 'k2b-compact-tower',
+    scale: 0.88,
+    towerRise: 0.12,
+    variant: 'korean-twin',
+    sensorHead: true,
+    sensorMount: 'roof',
+    weapon: false,
+    seed: 172,
+  });
+  pumaRoofOptics.name = 'pumaS1K2bStyleRoofOptics';
+  pumaRoofOptics.userData.hostVariant = 'spz_puma_s1';
+  pumaRoofOptics.userData.sensorRole = 'commander-panoramic';
+  mount(P, 'turret', pumaRoofOptics, -0.36, 0.74, -0.52, [0, 0.04, 0]);
+  P.turretG.userData.pumaS1RoofOpticsReceipt = Object.freeze({
+    designFamily: pumaRoofOptics.userData.designFamily,
+    variant: pumaRoofOptics.userData.stationVariant,
+    mountLocal: Object.freeze([-0.36, 0.74, -0.52]),
+    scale: pumaRoofOptics.userData.scale,
+    sizeStandard: pumaRoofOptics.userData.sizeStandard,
+    towerRiseM: pumaRoofOptics.userData.towerRise,
+    hasWeapon: pumaRoofOptics.userData.hasWeapon,
+    sensorMount: pumaRoofOptics.userData.sensorMount,
+    integratedSensorHead: pumaRoofOptics.userData.hasIntegratedSensorHead,
+    turretOwned: true,
+  });
 
-  // Compact S1 remote secondary station. It is physically seated on the
-  // bustle roof and uses the shared detailed weapon grammar (bearing, fork,
-  // receiver, feed box and bored barrel) instead of an anonymous prism.
-  P.addCupola('turret', cylY(0.24, 0.28, 0.10, 20), 0.56, 0.79, -0.94);
-  P.addEquipment('turret', orientedSlab(
-    [-0.18, -0.08, -0.16], [0.18, -0.08, -0.16], [0.18, -0.08, 0.16], [-0.18, -0.08, 0.16],
-    [-0.15, 0.13, -0.13], [0.15, 0.13, -0.13], [0.15, 0.13, 0.13], [-0.15, 0.13, 0.13],
-  ), 0.56, 0.93, -0.94);
-  P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.075, 0.014),
-    0.56, 0.96, -0.795);
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.76, elev: 0.08,
-    shield: 'low', ammo: true, seed: 172,
-  }), 0.56, 1.06, -0.94, [0, 0.08, 0]);
+  // A separate compact RCT30-inspired weapon station occupies the former RWS
+  // seat. Its offset firing line clears both the panoramic tower and the main
+  // cannon, while the arrow brow and faceted yoke are unique to Puma S1.
+  const pumaRoofRws = FITTINGS.openYokeRws({
+    mats: P.mats,
+    bodySlot: 'turret',
+    sizeStandard: 'puma-s1-compact-rws',
+    scale: 0.68,
+    towerRise: 0.08,
+    variant: 'puma-s1-compact',
+    ammoSide: 1,
+    sensorHead: false,
+    elev: 0.055,
+    caliberMm: 12.7,
+    weaponName: 'Puma S1 compact remote machine gun',
+    seed: 173,
+  });
+  pumaRoofRws.name = 'pumaS1CompactRoofRws';
+  pumaRoofRws.userData.hostVariant = 'spz_puma_s1';
+  mount(P, 'turret', pumaRoofRws, 0.42, 0.74, -0.90, [0, 0.04, 0]);
+  P.turretG.userData.pumaS1RoofRwsReceipt = Object.freeze({
+    designFamily: pumaRoofRws.userData.designFamily,
+    variant: pumaRoofRws.userData.stationVariant,
+    mountLocal: Object.freeze([0.42, 0.74, -0.90]),
+    scale: pumaRoofRws.userData.scale,
+    sizeStandard: pumaRoofRws.userData.sizeStandard,
+    towerRiseM: pumaRoofRws.userData.towerRise,
+    caliberMm: pumaRoofRws.userData.caliberMm,
+    visibleFeedBelt: pumaRoofRws.userData.hasVisibleFeedBelt,
+    integratedSensorHead: pumaRoofRws.userData.hasIntegratedSensorHead,
+    turretOwned: true,
+  });
 
   // Twin MELLS/Spike LR2 tubes on a braced left launcher. Tubes are separated,
   // capped and visibly founded on the turret wall; they pitch with the turret
@@ -319,11 +514,11 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel',
-      sideArmorCassettesPerSide: 9,
+      sideArmorCassettesPerSide: 10,
       sideArmorLayers: 3,
-      frontSkirtTransition: 'upper-glacis-connected-wedge-v1',
+      frontSkirtTransition: 'lower-glacis-downfold-v2',
       nativeTrackPattern: 'compact-ifv',
-      baseGunAssembly: 'preserved-mk30-cradle-v1',
+      baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
       mellsLaunchTubes: 2,
       panoramicOpticStages: 2,
       crewLocation: 'protected-hull-cell',
@@ -335,7 +530,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       launcher: 'MELLS-Spike-LR2',
       stabilizedPanoramicSight: true,
       allAroundCameraCount: 4,
-      remoteSecondaryWeapon: 'MG4-class',
+      remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
     });
   }
 }
