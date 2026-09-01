@@ -503,6 +503,58 @@ export const MODERN3_SPECS = {
     },
   },
 
+  type89_light_tiger: {
+    id: 'type89_light_tiger', name: 'Type 89 Light Tiger', nation: 'Japan', era: 'next-generation', role: 'ifv',
+    hp: 2650,
+    enginePowerHp: 1000, weightTons: 38.5, topSpeedKmh: 78, reverseSpeedKmh: 32,
+    hullTraverseDegS: 54,
+    terrainResistance: { hard: 0.62, medium: 0.72, soft: 1.22 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 72, gunPitchDegS: 54, gunElevationDeg: 45, gunDepressionDeg: 11,
+    gun: {
+      caliberMm: 35, reloadS: 0.50, baseAccuracy: 0.235, aimTimeS: 0.98,
+      // Avoid an eight-ray/segment-boundary coincidence in the straight-on
+      // bore proof while keeping the small-caliber mouth visibly rounded.
+      muzzleBoreSegments: 18,
+      soundProfile: 'kde-35',
+      bloom: { move: 0.035, hullRot: 0.048, turret: 0.033, afterShot: 1.25 },
+      shells: [
+        shell('KDE-35 LT APFSDS-T', 'APFSDS', 35, 180, 166, 110, 1460,
+          { pen2000Mm: 152, reloadS: 0.50, count: 260 }),
+        shell('Type 01 Jyu-MAT Kai', 'HEAT', 160, 950, 950, 720, 210,
+          { reloadS: 2.1, count: 12, guided: true, soundProfile: 'jyu-mat-launch' }),
+        shell('35 mm AHEAD-Kai', 'HE', 35, 18, 18, 118, 1190,
+          { reloadS: 0.50, count: 260 }),
+      ],
+    },
+    dims: { hullLengthM: 6.8, overallLengthM: 7.45, widthM: 3.7, heightM: 3.4 },
+    armor: (() => {
+      const a = modernArmor({
+        hl: 3.40, hw: 1.85, inW: 1.01, floor: 0.39, trkTop: 0.98, roofY: 1.93,
+        turretPivot: [0, 1.93, -0.34], gunPivot: [0, 0.50, 1.19],
+        barrelLenM: 2.62, barrelRadM: 0.05,
+        glacis: [75, 285, 390], lower: [58, 210, 275], side: [50, 145, 205],
+        skirt: [80, 275, 500], rear: 40, roof: 48,
+        tw: 1.10, tFrontZ: 1.16, tRearZ: -1.42, tH: 0.72,
+        cheek: [100, 265, 350], tSide: [70, 165, 245], tRear: 50, tRoof: 44,
+        mantlet: [120, 285, 370], loader: false,
+      });
+      // Unmanned combat module: the three operating stations remain below
+      // the hull roof, clear of the turret volume and its external missiles.
+      a.crew = [
+        cbox('driver', [0.28, 0.54, 1.08], [1.02, 1.72, 2.28]),
+        cbox('gunner', [-0.18, 0.54, -0.48], [0.60, 1.70, 0.60]),
+        cbox('commander', [-1.02, 0.54, -0.48], [-0.18, 1.70, 0.60]),
+      ];
+      return a;
+    })(),
+    visual: {
+      scheme: 'stripes', base: '#39473a', weather: '#4b5747',
+      patches: ['#65523a', '#26352d'], marking: 'roundel', number: '89-LT',
+      trackWidthM: 0.48, camoScale: 0.62,
+    },
+  },
+
   type89: {
     id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,

@@ -71,7 +71,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts',
+    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger',
   ]),
 });
 

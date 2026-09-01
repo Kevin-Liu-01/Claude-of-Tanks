@@ -21,7 +21,7 @@ for (const spec of Object.values(TANK_SPECS)) {
     }
   }
 }
-assert.equal(guidedRounds.length, 20, 'the complete guided-ammunition fleet is covered');
+assert.equal(guidedRounds.length, 21, 'the complete guided-ammunition fleet is covered');
 
 const match = createAuthoritativeMatch({
   mapId: 'verdant',

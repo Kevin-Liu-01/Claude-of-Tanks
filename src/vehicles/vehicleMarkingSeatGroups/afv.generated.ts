@@ -168,6 +168,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       }
     ]
   },
+  "type89_light_tiger": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.016,
+          1.2718,
+          -2.7063251
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "type89_light_tiger",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.8441672
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.0658797,
+          0.3282714,
+          -0.5621969
+        ],
+        "quaternion": [
+          -0.0128355,
+          -0.6949194,
+          -0.0132775,
+          0.7188505
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "type89_light_tiger",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
   "bmp3_rok": {
     "schemaVersion": 1,
     "seats": [
