@@ -161,7 +161,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "pos": [
           1.8391329,
           1.1283463,
-          -0.2886905
+          -0.2934999
         ],
         "quaternion": [
           -0.0063639,
@@ -183,7 +183,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "pos": [
           1.8358741,
           1.1281303,
-          -1.1069602
+          -1.1129999
         ],
         "quaternion": [
           0.0063639,
@@ -210,7 +210,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "pos": [
           -1.8374336,
           1.1702374,
-          -1.1630644
+          -1.1832383
         ],
         "quaternion": [
           -0.0063638,
@@ -232,7 +232,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "pos": [
           -1.8375733,
           1.1700214,
-          -0.7136969
+          -0.73167
         ],
         "quaternion": [
           0.0063638,

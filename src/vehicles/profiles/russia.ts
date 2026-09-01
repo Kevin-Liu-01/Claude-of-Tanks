@@ -1830,9 +1830,9 @@ function buildT64BV1(P: RussiaBuilderPort): void {
       [2.52, 1.02], [2.60, 0.66], [2.655, 0.34],
     ],
     wLo: [
-      [-3.00, 0.96], [-2.80, 1.00], [2.24, 1.00], [2.46, 0.72], [2.655, 0.33],
+      [-3.00, 0.74], [-2.80, 0.74], [2.24, 0.74], [2.46, 0.70], [2.655, 0.33],
     ],
-    sponsonY: [[-3.00, 1.05], [2.26, 1.05], [2.52, 0.84], [2.655, 0.70]],
+    sponsonY: [[-3.00, 1.12], [2.26, 1.12], [2.52, 0.84], [2.655, 0.70]],
   });
 
   // Bow corner prongs: the measured plan edge steps 2.655@0.33 -> 2.75@0.53
@@ -1845,11 +1845,11 @@ function buildT64BV1(P: RussiaBuilderPort): void {
     P.add('hull', slab(
       [s * 0.53, 0.64, 2.75], [s * 0.73, 0.68, 2.88], [s * 0.90, 0.72, 2.70], [s * 0.53, 0.66, 2.62],
       [s * 0.53, 0.90, 2.75], [s * 0.73, 0.95, 2.88], [s * 0.90, 1.00, 2.70], [s * 0.53, 0.92, 2.62]));
-    P.add('hull', box(0.42, 0.26, 0.24), s * 1.06, 0.84, 2.80, -0.10, 0, 0);
-    P.add('hull', box(0.30, 0.10, 0.55), s * 1.24, 1.06, 2.55, -0.16, 0, 0);
+    P.add('hull', box(0.42, 0.26, 0.24), s * 0.74, 0.84, 2.80, -0.10, 0, 0);
+    P.add('hull', box(0.30, 0.10, 0.55), s * 0.78, 1.06, 2.55, -0.16, 0, 0);
     // front mud flap over the raised idler (plan front line 2.99)
-    P.add('hull', box(0.15, 0.26, 0.045), s * 1.565, 0.93, 2.89, -0.06, 0, 0);
-    P.add('hullRubber', box(0.15, 0.40, 0.040), s * 1.565, 0.80, 2.915);
+    P.add('hull', box(0.15, 0.26, 0.045), s * 1.72, 0.93, 2.89, -0.06, 0, 0);
+    P.add('hullRubber', box(0.15, 0.40, 0.040), s * 1.72, 0.80, 2.915);
   }
 
   // Four staggered Kontakt-1 glacis courses ON the measured glacis plane
@@ -1920,7 +1920,7 @@ function buildT64BV1(P: RussiaBuilderPort): void {
 
   // Layered transom at the measured -2.98 face: louvre field, service plate,
   // recovery eyes and the low strapped unditching log. Nothing hangs in air.
-  P.add('hull', box(2.50, 0.72, 0.18), 0, 0.82, -2.88, 0.06, 0, 0);
+  P.add('hull', box(1.84, 0.72, 0.18), 0, 0.82, -2.88, 0.06, 0, 0);
   P.add('hullDark', box(1.80, 0.30, 0.035), 0, 0.96, -2.975);
   for (let i = 0; i < 6; i++) {
     P.add('hullDetail', box(0.24, 0.13, 0.025), -0.75 + i * 0.30, 0.96, -2.995);
@@ -1930,12 +1930,12 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDark', cylZ(0.085, 0.022, 14), s * 0.48, 0.62, -2.972);
     P.add('hullDetail', cylZ(0.032, 0.028, 10), s * 0.48, 0.62, -2.975);
-    P.add('hullDetail', box(0.26, 0.032, 0.018), s * 1.12, 0.70, -2.968);
+    P.add('hullDetail', box(0.26, 0.032, 0.018), s * 0.78, 0.70, -2.968);
   }
   P.add('hullDark', box(0.22, 0.14, 0.055), -0.62, 0.55, -2.962);
   P.add('hullDetail', box(0.34, 0.045, 0.020), 0.60, 0.55, -2.968);
   {
-    const log = FITTINGS.unditchingLog({ mats: P.mats, len: 2.46, r: 0.10, straps: 4, seed: 641 });
+    const log = FITTINGS.unditchingLog({ mats: P.mats, len: 1.80, r: 0.10, straps: 4, seed: 641 });
     log.position.set(0, 0.70, -2.83);
     P.hullG.add(log);
   }
@@ -1943,8 +1943,8 @@ function buildT64BV1(P: RussiaBuilderPort): void {
     P.add('hullDark', KIT.torus(0.075, 0.018, 12), s * 0.82, 0.52, -2.96, Math.PI / 2, 0, 0);
     P.add('hullDark', box(0.07, 0.26, 0.08), s * 0.82, 0.68, -2.93);
     // rear mud flap at the measured 1.505..1.655 hanger band
-    P.add('hull', box(0.16, 0.26, 0.045), s * 1.60, 0.92, -2.94, 0.08, 0, 0);
-    P.add('hullRubber', box(0.16, 0.24, 0.040), s * 1.60, 0.70, -2.965);
+    P.add('hull', box(0.16, 0.26, 0.045), s * 1.73, 0.92, -2.94, 0.08, 0, 0);
+    P.add('hullRubber', box(0.16, 0.24, 0.040), s * 1.73, 0.70, -2.965);
   }
 
   // (rear drums/snorkel ride the TURRET rack at the measured z -1.5..-1.95
@@ -2194,6 +2194,12 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   const decalX = ringSkin(rings, 0.40) + 0.025;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [decalX, 0.38, -0.50], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [-decalX, 0.38, -0.50], -Math.PI / 2);
+  // Recessed bridge under the paired forward fender/ERA roots.  It closes
+  // the two narrow plan-view wells while remaining below the visible
+  // glacis course and inside the moving-track lanes.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.26, 0.025, 0.30), side * 0.96, 1.18, 2.44);
+  }
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,

@@ -1697,12 +1697,12 @@ function buildType10Native2026(
   // ---- hull core: tub + sponsons + two-plane glacis + stern ---------------
   // (all stations = §5.248 print decode ×1.10; §B2: tub->strake->sponson->
   // deck is one closed chain, no see-through at any angle)
-  P.add('hull', box(1.881, 0.363, 6.16), 0, 0.5555, 0.022);                     // central belly tub, floor 0.374 (print 0.34 ×1.10; the real Type 10 carries ~0.45 hydropneumatic clearance), z -3.06..+3.10
+  P.add('hull', box(1.56, 0.363, 6.16), 0, 0.5555, 0.022);                      // central belly tub remains between the scaled animated shoe lanes
   P.add('hull', box(3.124, 0.462, 3.556), 0, 1.4575, -0.172);                   // sponson body x +-1.562, underside 1.2265, top at the 1.6885 mid-deck line, z -1.95..+1.606
   P.add('hull', box(3.124, 0.3685, 0.50), 0, 1.50425, -2.20);                   // sponson REAR STEP (underside 1.32, z -2.45..-1.95): the §B6 rising run to the raised drive crosses y 1.2265 at z -2.40 — the stepped underside keeps 8+ cm above the band line (strict-sweep 16-voxel receipt this round)
   P.add('hull', box(3.124, 0.1265, 1.026), 0, 1.6253, -2.963);                  // SPROCKET-BAY ROOF: raised rear sponson segment (underside 1.562, z -3.476..-2.45; §5.308-B §B4 split absorbed at ×1.10) — the drive sprocket rides HIGH in the print's own bay (new wrap top ~1.49, 7 cm clear)
   for (const s2 of [-1, 1]) {
-    P.add('hull', box(0.077, 0.517, 4.73), s2 * 0.9845, 0.6325, 0.11);          // lower tub side strake (band 0.374..0.891 — the print's inner-bay wall; connects tub -> sponson, §B2)
+    P.add('hull', box(0.077, 0.517, 4.73), s2 * 0.780, 0.6325, 0.11);           // lower tub side strake remains inside the scaled shoe lane
   }
   P.add('hull', box(3.124, 0.0605, 4.202), 0, 1.6583, 0.154);                   // MID deck plate 1.6885 (z -1.95..+2.26)
   P.add('hull', box(3.124, 0.154, 1.815), 0, 1.705, -2.8545);                   // REAR engine deck 1.782 (z -3.76..-1.95; the print's raised powerpack roof)
@@ -1741,9 +1741,9 @@ function buildType10Native2026(
   P.add('hull', slab(                                                           // center prow wedge carries the 3.762 hullLengthM anchor at |x|<=0.242
     [-0.242, 0.66, 3.41], [0.242, 0.66, 3.41], [0.242, 0.935, 3.762], [-0.242, 0.935, 3.762],
     [-0.242, 0.88, 3.41], [0.242, 0.88, 3.41], [0.242, 1.0505, 3.762], [-0.242, 1.0505, 3.762]));
-  P.add('hull', slab(                                                           // bow belly rise from the raised floor
-    [-0.946, 0.374, 2.31], [0.946, 0.374, 2.31], [0.946, 0.473, 3.234], [-0.946, 0.473, 3.234],
-    [-0.946, 0.572, 2.31], [0.946, 0.572, 2.31], [0.946, 0.682, 3.234], [-0.946, 0.682, 3.234]));
+  P.add('hull', slab(                                                           // bow belly rise stays between the animated shoe lanes
+    [-0.82, 0.374, 2.31], [0.82, 0.374, 2.31], [0.82, 0.473, 3.234], [-0.82, 0.473, 3.234],
+    [-0.82, 0.572, 2.31], [0.82, 0.572, 2.31], [0.82, 0.682, 3.234], [-0.82, 0.682, 3.234]));
   // STERN: raised undercut + transom at the -3.762 plane
   P.add('hull', slab(                                                           // rear belly rise (print corners ×1.10, raised floor)
     [-0.9405, 0.374, -2.233], [0.9405, 0.374, -2.233], [0.9405, 0.924, -3.432], [-0.9405, 0.924, -3.432],
@@ -2271,7 +2271,7 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
   // a narrow center core stays inside the track lanes, flank wedges rise
   // outward only above the shoe crown, and the front backer follows the
   // marked upper-glacis underside instead of presenting a flat bulkhead.
-  const centralHalfWidthM = 0.94;
+  const centralHalfWidthM = 0.86;
   const centralFloorY = 1.03;
   const centralRoofY = 1.61;
   const centralRearZ = -3.20;
@@ -2282,8 +2282,8 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
     centralFrontZ - centralRearZ,
   ), 0, (centralFloorY + centralRoofY) / 2, (centralRearZ + centralFrontZ) / 2);
 
-  const flankInnerHalfWidthM = 0.92;
-  const flankWideFloorHalfWidthM = 0.97;
+  const flankInnerHalfWidthM = 0.84;
+  const flankWideFloorHalfWidthM = 0.86;
   const flankWideFloorY = 1.23;
   const flankRoofY = 1.61;
   const flankRearZ = -3.16;
@@ -2306,7 +2306,7 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
     ));
   }
 
-  const glacisFloorHalfWidthM = 0.94;
+  const glacisFloorHalfWidthM = 0.86;
   const glacisFloorY = 1.03;
   const glacisRearZ = 1.57;
   const glacisFrontZ = 2.40;
@@ -2375,7 +2375,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     liftEye, periscope, stowage } = KIT;
   const { rng } = P;
   // ---- hull: narrow tub between the tracks, upper body flared to +-1.62 --
-  P.add('hull', box(1.90, 0.60, 5.35), 0, 0.75, -0.30);                         // tub y 0.45..1.05
+  P.add('hull', box(1.72, 0.60, 5.35), 0, 0.75, -0.30);                         // tub y 0.45..1.05, clear of the shoe inner faces
   for (const s of [-1, 1]) {                                                    // flare slabs over the tracks
     P.add('hull', slab(                                                          // 90-ladder: bottom edge 1.13 ->
       [s < 0 ? -1.05 : 1.02, 1.25, 2.55], [s < 0 ? -1.02 : 1.05, 1.25, 2.55],    // 1.25 — the idler re-seat (y 0.81)
@@ -3568,7 +3568,7 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
     rearZ: 2.34,
     frontZ: 3.13,
     rearHalfWidthM: 0.93,
-    frontHalfWidthM: 1.24,
+    frontHalfWidthM: 0.96,
     rearFloorY: 0.47,
     frontFloorY: 0.56,
     rearRoofY: 1.03,

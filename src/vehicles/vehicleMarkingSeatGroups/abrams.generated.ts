@@ -257,22 +257,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.734571,
-          1.5696466,
-          -2.126424
+          -1.7372174,
+          1.5697699,
+          -2.1264122
         ],
         "quaternion": [
-          -0.009805,
-          -0.7060941,
-          -0.0098312,
-          0.7079818
+          -0.0170526,
+          -0.7052557,
+          -0.0171321,
+          0.7085408
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "m1a2_sepv3",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.1957978
+        "maximumSurfaceErrorM": 0.1909107
       },
       {
         "kind": "insignia",

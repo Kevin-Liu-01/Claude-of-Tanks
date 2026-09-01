@@ -1720,7 +1720,6 @@ function buildType99A(P: Modern2BuilderPort) {
     P.add('hull', box(0.30, 0.08, 0.95), s * 1.62, 1.80, -2.55);               // rear deck bins (LOW — the print
                                                                                //   deck line reads clean 1.72-1.82)
     P.add('hullDark', box(0.31, 0.014, 0.97), s * 1.62, 1.845, -2.55);
-    P.add('hullShadow', box(0.50, 0.026, 6.9), s * 1.44, 1.325, -0.08);        // shadow receiver remains above the native return run
   }
   liftEye(P, 'hullDetail', -1.30, 1.52, 1.70);
   liftEye(P, 'hullDetail', 1.30, 1.52, 1.70);
@@ -1781,7 +1780,7 @@ function buildType99A(P: Modern2BuilderPort) {
     // center line (arrow point) and every tile carries the ±12-deg plan
     // skew — two panels meeting at a tip, not a flat course (§5.29 law)
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
-      const y = 1.41 - r * 0.062;
+      const y = 1.57 - r * 0.062;
       const zRow = zOf(y) - 0.012 * c;                                         // chevron sweep toward center
       put(s * (0.22 + c * 0.315), y, zRow + (3 - c) * 0.052, -73.7 * D2R, s * 12 * D2R, 0);
     }
@@ -2148,10 +2147,10 @@ function buildType99AOwnerRedesign2026(P: Modern2BuilderPort) {
     [-1.06, 1.02, 3.42], [1.06, 1.02, 3.42], [1.06, 0.92, 3.25], [-1.06, 0.92, 3.25]));
   for (const side of [-1, 1]) {
     const shoulder = slab(
-      [side * 1.06, 1.20, 3.25], [side * 1.68, 1.20, 3.16],
-      [side * 1.68, 1.20, 2.85], [side * 1.06, 1.20, 3.06],
-      [side * 1.06, 1.29, 3.42], [side * 1.68, 1.34, 3.20],
-      [side * 1.68, 1.30, 2.82], [side * 1.06, 1.29, 3.18]);
+      [side * 1.06, 1.32, 3.25], [side * 1.68, 1.32, 3.16],
+      [side * 1.68, 1.32, 2.85], [side * 1.06, 1.32, 3.06],
+      [side * 1.06, 1.41, 3.42], [side * 1.68, 1.46, 3.20],
+      [side * 1.68, 1.42, 2.82], [side * 1.06, 1.41, 3.18]);
     P.add('hull', side < 0 ? outward(shoulder) : shoulder);
     P.add('hullRubber', box(0.54, 0.46, 0.035), side * 1.46, 0.89, 3.62);
     P.add('hullDetail', box(0.07, 0.12, 0.28), side * 1.48, 1.16, 3.49);
@@ -2187,7 +2186,6 @@ function buildType99AOwnerRedesign2026(P: Modern2BuilderPort) {
           0, side * Math.PI / 2, 0);
       }
     });
-    P.add('hullShadow', box(0.42, 0.026, 6.58), side * 1.45, 1.25, -0.10);
   }
 
   // Glacis arrow seams, driver station, lights and physically routed cable.
@@ -2451,7 +2449,6 @@ function buildType99AHullNative2026(P: Modern2BuilderPort) {
       P.add('hullDetail', box(0.054, 0.020, 0.050), side * 1.858, y + 0.10, z - 0.28);
       P.add('hullDetail', box(0.054, 0.020, 0.050), side * 1.858, y + 0.10, z + 0.28);
     });
-    P.add('hullShadow', box(0.34, 0.022, 6.30), side * 1.44, 1.24, -0.02);
     // Flexible aft return between the sixth primary bay and the now-correct
     // rear terminal.  It is carried by the same canted rail and leaves the
     // sprocket/shoe transition visible below.
@@ -2470,7 +2467,7 @@ function buildType99AHullNative2026(P: Modern2BuilderPort) {
   });
   const glacisCells = (put: EraPlacement, side: number) => {
     for (let c = 0; c < 4; c++) {
-      put(side * (0.23 + c * 0.34), 1.30 - c * 0.018, 2.49 + (3 - c) * 0.055,
+      put(side * (0.23 + c * 0.34), 1.44 - c * 0.018, 2.49 + (3 - c) * 0.055,
         -0.28, side * 0.20, 0, 1.15, 1.4, 1);
     }
   };

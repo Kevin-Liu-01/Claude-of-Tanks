@@ -58,8 +58,15 @@ for (const id of IDS) {
       }
       return false;
     };
-    assert.ok(hasVertex([0.94, 1.03, 1.62], 0.025)
-      && hasVertex([-0.94, 1.03, -3.20], 0.025),
+    assert.ok(hasVertex([
+      receipt.centralCore.halfWidthM,
+      receipt.centralCore.floorY,
+      receipt.centralCore.frontZ,
+    ], 0.025) && hasVertex([
+      -receipt.centralCore.halfWidthM,
+      receipt.centralCore.floorY,
+      receipt.centralCore.rearZ,
+    ], 0.025),
       `${id}: merged hull contains the central closure core`);
     assert.ok(hasVertex([1.39, 1.61, 1.65]) && hasVertex([-1.375, 1.61, 1.65]),
       `${id}: merged hull contains both buried flank wedges`);
@@ -73,8 +80,15 @@ for (const id of IDS) {
         `${id}: bow closure overlaps both marked hull faces`);
       assert.ok(bowReceipt.rearRoofY >= receipt.upperGlacisBacker.floorY,
         `${id}: bow closure rises into the shared upper-glacis backer`);
-      assert.ok(hasVertex([0.93, 1.03, 2.34])
-        && hasVertex([-1.24, 1.20, 3.13]),
+      assert.ok(hasVertex([
+        bowReceipt.rearHalfWidthM,
+        bowReceipt.rearRoofY,
+        bowReceipt.rearZ,
+      ]) && hasVertex([
+        -bowReceipt.frontHalfWidthM,
+        bowReceipt.frontRoofY,
+        bowReceipt.frontZ,
+      ]),
       `${id}: merged hull contains the tapered tub-to-bow solid`);
     } else {
       assert.equal(bowReceipt, undefined,

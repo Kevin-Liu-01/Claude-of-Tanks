@@ -4845,6 +4845,13 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   P.addGunExtraDark(cylZ(gunRadius + 0.010, 0.035, 12), 0, 0, 2.62);           // jacket seam rings
   P.addGunExtraDark(cylZ(gunRadius + 0.010, 0.035, 12), 0, 0, 3.86);
   muzzleBore(P, gunRadius, gunLen - 0.02);                                     // §B3.1 muzzle bore
+  if (b2) {
+    // Close the paired fender-root pockets under the B2 bow applique.  The
+    // plates remain below the glacis surface and do not expand its outline.
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.24, 0.025, 0.28), side * 0.96, 1.32, 2.84);
+    }
+  }
   P.topY = 1.12;
 }
 function buildAMX30B(P: MiscBuilderPort): void { buildAMX30(P, false); }

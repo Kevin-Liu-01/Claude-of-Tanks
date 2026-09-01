@@ -2408,7 +2408,7 @@ function buildPT91M(P: T90BuilderPort): void {
     // 0.434 between the tracks (the 0.30 plate cost ~20 cols x 0.13)
     belly: [[-2.88, 0.88], [-2.71, 0.69], [-1.92, 0.42], [2.26, 0.43], [3.01, 0.59], [3.10, 0.62]],
     wUp: [[-2.88, 1.57], [3.10, 1.57]],
-    wLo: [[-2.88, 1.08], [3.10, 1.05]],
+    wLo: [[-2.88, 0.96], [3.10, 0.96]],
     // r27 CONTAINMENT (critic r25 order 5): sponson floor raised 0.86 -> 1.00
     // — the 0.86 plane sat exactly on the band top run's 2 cm audit dilation
     // (track-clip-audit voxel keys: band 0.885 top dilates to 0.905) and the
@@ -2416,7 +2416,7 @@ function buildPT91M(P: T90BuilderPort): void {
     // plane: side view is skirt/band-covered at every affected column, the
     // lower slab lofts belly->sponsonY so the front columns stay filled
     // (wLo walls rise with it), stations measure whole-mask extremes.
-    sponsonY: 1.00,
+    sponsonY: 1.16,
   });
   // r12 bow corner fenders re-raked to the fresh plan digest (ref fronts
   // 3.14@0.60 -> 3.28@0.82 -> 3.41@1.03 -> 3.44@1.15..1.72 -> 3.39@1.78)
@@ -4131,10 +4131,9 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     wUp: [[-2.92, 1.20], [-2.79, 1.60], [2.88, 1.60], [3.02, 1.55]],
     // The recovered front section carries the V-belly to |x|~1.13 through
     // the long center run, then pulls it inboard only under the end pockets.
-    // Keep the V-belly inside the inner shoe faces.  The former 1.12 m
-    // half-width reached about 45 mm into the live shoe solids along the
-    // centre run even though the abstract track band itself remained clear.
-    wLo: [[-2.92, 1.00], [-2.12, 1.07], [2.48, 1.07], [3.02, 1.00]],
+    // Keep the V-belly inside the inner shoe faces. The recovered end pockets
+    // pull inboard before the center run to clear the exact linked-shoe sweep.
+    wLo: [[-2.92, 0.92], [-2.12, 1.06], [2.48, 1.06], [3.02, 0.92]],
     // T5H-e: sprocket window roof 1.18 -> 1.21 — the exact shoe audit
     // found the wrap shoes 23mm INSIDE the 1.18 roof at z -2.44..-2.40
     // (full width, the m1a1ha blind-spot class: band 0 while shoes hit).
@@ -4838,6 +4837,10 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-tw * 0.99, 0.30, -0.05], -Math.PI / 2);
   // B2 plan-contiguity closure at the paired rear fender/bin corners.
   for (const s of [-1, 1]) P.add('hull', box(0.20, 0.08, 0.22), s * 1.50, 1.37, -2.98);
+  // The Relikt carrier leaves one raster-cell pocket at each forward
+  // shoulder.  Back it with a buried hull plate rather than stretching the
+  // reactive cassette or changing its registered damage sector.
+  for (const s of [-1, 1]) P.add('hull', box(0.16, 0.025, 0.16), s * 1.14, 1.34, 2.90);
   // T4S: rear log off the loud tan default (t72b3m ORDER-3 recipe — the
   // ref tail is olive-brown; render-only, per-tank wood slot).
   P.mats.wood.color.setHex(0x473e32);
@@ -6484,7 +6487,7 @@ function buildT90SM(P: T90BuilderPort): void {
   // T6SM-d: narrow longitudinal belly-edge channels reproduce the recovered
   // front-view drop at |x|=1.13.  They lap the 0.44-m loft floor, remain
   // 6 mm inboard of the track lane, and are invisible in side/plan bounds.
-  for (const s of [-1, 1]) P.add('hull', KIT.box(0.035, 0.12, 4.40), s * 1.09, 0.39, 0);
+  for (const s of [-1, 1]) P.add('hull', KIT.box(0.035, 0.12, 4.40), s * 1.00, 0.39, 0);
   // The center keel and right inner skirt lug are likewise source-visible
   // front stations, seated into existing structure rather than free details.
   P.add('hull', KIT.box(0.09, 0.05, 4.40), 0, 0.425, 0);

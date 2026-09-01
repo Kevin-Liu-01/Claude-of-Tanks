@@ -776,7 +776,7 @@ function buildT84(P: T80BuilderPort): void {
     // occupies the former 0.98 m centre wall as well as both climb zones.
     // The narrower between-track belly is hidden behind the course and
     // leaves the complete upper hull, fenders and deep skirts unchanged.
-    wLo: [[-4.30, 0.94], [1.99, 0.94]],
+    wLo: [[-4.30, 0.84], [1.99, 0.84]],
     sponsonY: 1.1492,
   });
   // center deck overlay ±1.00 — the certified k2-mapped deck line (1.4141

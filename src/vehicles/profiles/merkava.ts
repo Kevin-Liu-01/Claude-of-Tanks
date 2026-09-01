@@ -16,7 +16,7 @@
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
 import * as THREE from 'three';
-import { KIT, muzzleBore, orientedSlab } from './kit.ts';
+import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -589,6 +589,12 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
     // recessed clamshell door plate between the side slabs
     P.add('hull', box(nhw * 2 - 0.02, a.yT - a.yB - 0.04, 0.07), 0, (a.yT + a.yB) / 2, a.z - 0.03);
+    // The recessed exit is a closed passage, not an open well.  Bridge its
+    // ceiling from the door plane to the outboard tail station; this remains
+    // below the surrounding deck and removes the top-down sky slot that the
+    // old two-slab tail construction left between them.
+    P.add('hull', box(nhw * 2 + 0.10, 0.035, Math.abs(b2.z - a.z) + 0.20),
+      0, Math.min(a.yT, b2.yT) - 0.030, (a.z + b2.z) / 2 - 0.03);
   }
 
   // Center belly between the tracks + lower glacis wedge along the keel.
@@ -6328,6 +6334,28 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
   if (!sourceOracleTurret) applyMerkavaTurretKit(P, p, t);
   merkavaSourceFinish(P, p, t);
 
+  // The owner Merkava marks predate the fittings census and used hand-built
+  // receiver fragments that could not participate in the standard's mounted
+  // weapon audit.  Seat one complete, marker-bearing commander's MAG on the
+  // actual roof plane for each playable mark.
+  if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(P.spec.id)) {
+    const roofMG = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.84,
+      ammo: true, elev: 0.08, seed: 7400 + P.spec.id.length,
+    });
+    roofMG.position.set(-0.56, V((p.shellTopY ?? p.gunAxisY + 0.45) - 0.025), L(-0.12));
+    P.turretG.add(roofMG);
+  }
+
+  if (P.spec.id === 'merkava4b') {
+    // Close the two small fender-root pockets at the projected prow.  These
+    // plates sit under the authored fender surface and do not change the
+    // exterior width or nose outline.
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.20, 0.025, 0.20), side * 1.77, p.deckY - 0.08, 2.52);
+    }
+  }
+
   // Mk.3D rear chain-mat tip past the hull tail (raw-bounds gun metric keys
   // off this measured sliver; mass/height must match the oracle band).
   if (p.rearTip && !p.sourceOracleTurret) {
@@ -10925,7 +10953,7 @@ const MERKAVA_PROFILE_DATA = {
     // except a ~2 cm front-view bottom sliver at |x| 1.14..1.16 (the
     // 3-series-cleared class); the certified keelDarkTail rear panel
     // narrows 0.88..1.28 -> 0.88..1.15 (re-measured this round, §4b lane).
-    keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58, hwClamp: 1.15 },
+    keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58, hwClamp: 1.06 },
     glacisClosure: {
       z0: 2.28, z1: 2.91,
       lower0: 0.52, lower1: 0.86,
@@ -10980,7 +11008,7 @@ const MERKAVA_PROFILE_DATA = {
     bodyHW: 1.70,
     skirt: null,
     trackW: 0.54, gearOut: 1.70, // outer 1.70(+bleed) lights the ref's ±1.73 track col but not ±1.77; inner 1.16 clears the ±1.10 col
-    bodyTrackClear: { hw: 1.13, y: 1.24 },
+    bodyTrackClear: { hw: 1.08, y: 1.24 },
     louvreTrackClearY: 1.27,
     runningGearBuckets: true,
     wheelZs: [1.46, 0.62, -0.23, -1.07, -1.91, -2.65],
@@ -11259,7 +11287,7 @@ const MERKAVA_PROFILE_DATA = {
   merkava2b: {
     ...MK12_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
-    bodyTrackClear: { hw: 1.11, y: 1.12 },
+    bodyTrackClear: { hw: 1.06, y: 1.28 },
     deckY: 1.68, rearDeckZ: -2.55,
     body: [
       { z: 2.98, yT: 1.05, yB: 0.95, wT: 0.72, wB: 0.72 },
@@ -11277,7 +11305,7 @@ const MERKAVA_PROFILE_DATA = {
       { z: -4.04, yT: 1.56, yB: 0.85, wT: 1.62, wB: 1.62 },
     ],
     tailNotch: { hw: 0.30 },
-    keel: { toeZ: 3.02, toeY: 0.98, toeHW: 0.55, midZ: 2.30, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round): MK12 band inner face 1.14 - 0.01
+    keel: { toeZ: 3.02, toeY: 0.98, toeHW: 0.55, midZ: 2.30, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.05 },
     glacisClosure: {
       z0: 1.95, z1: 2.98,
       lower0: 0.58, lower1: 0.90,
@@ -11356,7 +11384,7 @@ const MERKAVA_PROFILE_DATA = {
   merkava2d: {
     ...MK12_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
-    bodyTrackClear: { hw: 1.11, y: 1.12 },
+    bodyTrackClear: { hw: 1.06, y: 1.28 },
     deckY: 1.72, rearDeckZ: -2.55,
     // r2 post-repair: deck rides 1.72 FLAT -2.2..+0.9 on this print (the
     // old deckPack mimic is gone — its 2.34 band was stranded turret kit);
@@ -11375,7 +11403,7 @@ const MERKAVA_PROFILE_DATA = {
       { z: -4.04, yT: 1.55, yB: 0.83, wT: 1.62, wB: 1.62 },
     ],
     tailNotch: { hw: 0.30 },
-    keel: { toeZ: 3.10, toeY: 0.98, toeHW: 0.55, midZ: 2.35, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
+    keel: { toeZ: 3.10, toeY: 0.98, toeHW: 0.55, midZ: 2.35, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.05 },
     glacisClosure: {
       z0: 1.95, z1: 3.12,
       lower0: 0.46, lower1: 0.91,
@@ -11934,7 +11962,7 @@ const MERKAVA_PROFILE_DATA = {
   merkava3d: {
     ...MK3_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
-    bodyTrackClear: { hw: 1.09, y: 1.17 },
+    bodyTrackClear: { hw: 1.04, y: 1.25 },
     // BATCH-18 PUSH (2026-08-02): authored in the WARPED-REF world frame
     // (loader re-centered ~-0.31 after the muzzle warp; old-frame z map
     // z' = 1.019z - 0.302 for the body zone). All targets from the fresh
@@ -11981,7 +12009,7 @@ const MERKAVA_PROFILE_DATA = {
     tailNotch: { hw: 0.33 },
     // r12: hwClamp 1.09 pulls belly/lower-glacis clear of the band inner
     // face (1.12) — the default half-width 1.23 ran 0.11 inside it.
-    keel: { toeZ: 2.89, toeY: 0.88, toeHW: 0.75, midZ: 2.62, midY: 0.55, groundZ: 2.15, bellyY: 0.34, tailLowZ: -3.56, hwClamp: 1.09 },
+    keel: { toeZ: 2.89, toeY: 0.88, toeHW: 0.75, midZ: 2.62, midY: 0.55, groundZ: 2.15, bellyY: 0.34, tailLowZ: -3.56, hwClamp: 1.03 },
     glacis: { z0: 1.70, z1: 2.81 },
     glacisClosure: {
       z0: 1.85, z1: 2.83,
@@ -12492,7 +12520,7 @@ const MERKAVA_PROFILE_DATA = {
     // The Mk.1B-derived return rises to 1.31 m in the longer Mk.4B envelope.
     // Lift only the concealed outboard hull floor 3 cm above that course;
     // the exterior hull wall, armor skirts and lower silhouette are unchanged.
-    bodyTrackClear: { hw: 1.13, y: 1.34 },
+    bodyTrackClear: { hw: 1.08, y: 1.36 },
     tailNotch: { hw: 0.45 },
     // The lower bow follows the projected upper prow and opens into a real
     // plan-length plate rather than the old 12 cm lip.  At the opposite end
@@ -12512,7 +12540,7 @@ const MERKAVA_PROFILE_DATA = {
     glacis: { z0: 1.10, z1: 3.36 },
     podX: 0.60, podIn: 0.15,
     fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.29, z1: 2.4, y: 1.46 },
-    fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.29, top: 1.52, bot: 1.30 },
+    fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.29, top: 1.52, bot: 1.36 },
     // Course geometry above is mechanically inherited from Mk.1B.  Skirts
     // remain Mk.4B armor and merely cover the upper return; they do not
     // replace or duplicate any part of the running gear.
@@ -12532,7 +12560,7 @@ const MERKAVA_PROFILE_DATA = {
     // 86d1071 — the repaired hull mask is a bare 1.76 deck). The rear rack
     // is the measured LOW band [0.6..1.69] with a thin high tail rail.
     tailRack: {
-      z0: -3.44, z1: -3.88, top: 1.68, bot: 0.95, hw: 1.75, x0: 0.45,
+      z0: -3.44, z1: -3.88, top: 1.68, bot: 1.10, hw: 1.75, x0: 0.45,
       wings: [
         { x0: 0.60, x1: 1.10, z1: -3.88, top: 1.47, bot: 1.20 },
       ],

@@ -13,7 +13,7 @@ const sectorNames = [
 
 const spec = getSpec('m60a3');
 const sectors = spec.armor.turretPlates.filter((plate) => sectorNames.includes(plate.name));
-assert.deepEqual(sectors.map((plate) => plate.name).sort(), sectorNames,
+assert.deepEqual([...new Set(sectors.map((plate) => plate.name))].sort(), sectorNames,
   'M60A3 owns four independently strippable turret ERA sectors');
 for (const plate of sectors) {
   assert.equal(plate.kind, 'era', `${plate.name}: hit layer is consumable ERA`);

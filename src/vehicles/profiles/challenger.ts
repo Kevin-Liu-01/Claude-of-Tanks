@@ -4591,23 +4591,23 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // 0.515/0.612, the ref's own rising wrap/boat-tail line; the stern-rise
   // slabs below now own that line. Sponson strips follow the 1.245 gear
   // lane: outer 0.96 = new track inner 0.995 - 0.035.)
-  P.add('hull', box(1.72, 0.60, 6.33), 0, 0.72, 0.235);                        // belly ±0.86, y 0.42..1.02, ends z -2.93
+  P.add('hull', box(1.36, 0.60, 6.33), 0, 0.72, 0.235);                        // belly stays between the scaled live shoe lanes
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.12, 0.69, 6.03), s * 0.90, 0.675, 0.135);              // under-strip ends -2.88; stern-rise owns the rising rear floor
+    P.add('hull', box(0.12, 0.69, 6.03), s * 0.64, 0.675, 0.135);              // under-strip stays inboard of the scaled shoe envelope
   }
   // (plan-grid law, measured this round: plan columns pitch 0.13 — the
   // ±1.72 column window spans 1.655..1.785; the print keeps its band
   // walls INSIDE 1.63 there, only the skirts reach further out)
-  P.add('hull', box(1.68, 0.30, 5.85), 0, 1.17, -0.625);                       // low inner spine stays inside the shoe inner faces; shoulders carry it to the deck
+  P.add('hull', box(1.44, 0.30, 5.85), 0, 1.17, -0.625);                       // low inner spine stays inside the scaled shoe inner faces
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.57, 0.075, 5.85), s * 1.345, 1.5125, -0.625);          // sponson floor 1.06..1.63, ends -3.55
+    P.add('hull', box(0.57, 0.075, 5.85), s * 1.345, 1.6025, -0.625);          // sponson floor clears the complete scaled top run, ends -3.55
     P.add('hull', box(0.04, 0.34, 5.85), s * 1.61, 1.35, -0.625);              // source-low outer wall 1.18..1.52, not a full-height plinth
     P.add('hull', mslab1(s,                                                    // continuous upper-hull shoulder: inner spine -> sponson deck
       [0.78, 1.30, 2.30], [0.88, 1.18, 2.30], [0.88, 1.18, -3.55], [0.78, 1.30, -3.55],
-      [0.68, 1.55, 2.30], [1.08, 1.475, 2.30], [1.08, 1.475, -3.55], [0.68, 1.55, -3.55]));
+      [0.68, 1.64, 2.30], [1.08, 1.565, 2.30], [1.08, 1.565, -3.55], [0.68, 1.64, -3.55]));
     P.add('hull', mslab1(s,                                                    // sharp source chamfer -3.55 -> -3.62
-      [1.06, 1.475, -3.55], [1.63, 1.475, -3.55], [1.15, 1.475, -3.62], [1.06, 1.475, -3.62],
-      [1.06, 1.55, -3.55], [1.63, 1.55, -3.55], [1.15, 1.55, -3.62], [1.06, 1.55, -3.62]));
+      [1.06, 1.565, -3.55], [1.63, 1.565, -3.55], [1.15, 1.565, -3.62], [1.06, 1.565, -3.62],
+      [1.06, 1.64, -3.55], [1.63, 1.64, -3.55], [1.15, 1.64, -3.62], [1.06, 1.64, -3.62]));
     P.add('hullDetail', box(0.04, 0.10, 1.76), s * 1.65, 1.32, -2.65);         // station-width rail: source side-band height, outer ±1.67
   }
   // Leclerc-method plan trace: the print's full-width rear course is only
@@ -4656,9 +4656,9 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     [-0.95, 0.85, 3.75], [0.95, 0.85, 3.75], [0.95, 0.85, 3.62], [-0.95, 0.85, 3.62],
     [-0.95, 1.02, 3.66], [0.95, 1.02, 3.66], [0.95, 1.10, 3.56], [-0.95, 1.10, 3.56]));
   P.add('hull', slab(                                                          // raked lower bow, center lane (§C.1: was the r1 latent reversed
-    [-0.98, 0.42, 3.32], [0.98, 0.42, 3.32], [0.98, 0.42, 3.28], [-0.98, 0.42, 3.28],   // piece #2 — an inside-out frustum, vol -0.118; re-authored as a
-    [-0.98, 0.85, 3.74], [0.98, 0.85, 3.74], [0.98, 0.85, 3.60], [-0.98, 0.85, 3.60])); // slab in the proven ring convention, identical shape
-  P.add('hull', box(1.90, 0.14, 0.26), 0, 0.49, 3.42);                         // toe beam: measured 0.42 front-view floor
+    [-0.68, 0.42, 3.32], [0.68, 0.42, 3.32], [0.68, 0.42, 3.28], [-0.68, 0.42, 3.28],   // lower bow remains between the scaled moving shoe lanes
+    [-0.68, 0.85, 3.74], [0.68, 0.85, 3.74], [0.68, 0.85, 3.60], [-0.68, 0.85, 3.60]));
+  P.add('hull', box(1.36, 0.14, 0.26), 0, 0.49, 3.42);                         // toe beam remains inside the scaled track corridor
   for (const s of [-1, 1]) {
     // The source's final +4.07 m column is a 160 mm fender/datum lip, not a
     // full-height flap.  Keep its proven 1.34 m top and hull-length anchor,
@@ -4703,14 +4703,14 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // end-caps), underside-quad-first ring order (the file's stern-wedge
   // convention).
   P.add('hull', slab(                                                          // rise 0.42@-2.93 -> 0.64@-3.16 (through the ref's 0.515/-3.0 read)
-    [-0.95, 0.42, -2.93], [0.95, 0.42, -2.93], [0.95, 0.64, -3.16], [-0.95, 0.64, -3.16],
-    [-0.95, 1.02, -2.93], [0.95, 1.02, -2.93], [0.95, 1.02, -3.16], [-0.95, 1.02, -3.16]));
+    [-0.78, 0.42, -2.93], [0.78, 0.42, -2.93], [0.78, 0.64, -3.16], [-0.78, 0.64, -3.16],
+    [-0.78, 1.02, -2.93], [0.78, 1.02, -2.93], [0.78, 1.02, -3.16], [-0.78, 1.02, -3.16]));
   P.add('hull', slab(                                                          // steep knee 0.64@-3.16 -> 1.09@-3.27 (ref 1.094@-3.258)
-    [-0.95, 0.64, -3.16], [0.95, 0.64, -3.16], [0.95, 1.09, -3.27], [-0.95, 1.09, -3.27],
-    [-0.95, 1.02, -3.16], [0.95, 1.02, -3.16], [0.95, 1.20, -3.27], [-0.95, 1.20, -3.27]));
+    [-0.78, 0.64, -3.16], [0.78, 0.64, -3.16], [0.78, 1.09, -3.27], [-0.78, 1.09, -3.27],
+    [-0.78, 1.02, -3.16], [0.78, 1.02, -3.16], [0.78, 1.20, -3.27], [-0.78, 1.20, -3.27]));
   P.add('hull', slab(                                                          // center underside follows the recessed -3.78 lane
-    [-0.95, 1.09, -3.27], [0.95, 1.09, -3.27], [0.95, 1.19, -3.78], [-0.95, 1.19, -3.78],
-    [-0.95, 1.255, -3.27], [0.95, 1.255, -3.27], [0.95, 1.31, -3.78], [-0.95, 1.31, -3.78]));
+    [-0.78, 1.09, -3.27], [0.78, 1.09, -3.27], [0.78, 1.19, -3.78], [-0.78, 1.19, -3.78],
+    [-0.78, 1.255, -3.27], [0.78, 1.255, -3.27], [0.78, 1.31, -3.78], [-0.78, 1.31, -3.78]));
   // upper rear plate SPLIT (print plan: center-rear ends ~-3.9; the side
   // -4.17 anchor column rides the OUTER posts — hullLengthM/dAlong held):
   for (const s of [-1, 1]) {
@@ -5199,10 +5199,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // SKIRTED bays only (the rear run is honestly naked per the print).
   ch1BaseToneKit(P, { cloth: 0x262b1d, clothEnv: 0.05, dark: 0x282c22 });
   ch1BaseGearBackers(P, [
-    [0.016, 0.32, 3.60, 0.970, 0.44, 0.85],                                    // inter-wheel shadow wall (x 0.962..0.978; band inner 0.995)
-    [0.46, 0.42, 0.02, 1.23, 0.49, 2.095],                                     // catch plates at the skirted scallop stations
-    [0.46, 0.42, 0.02, 1.23, 0.49, 1.185],
-    [0.46, 0.42, 0.02, 1.23, 0.49, 0.275],
+    [0.016, 0.32, 3.60, 0.790, 0.44, 0.85],                                    // inter-wheel shadow wall remains inside the scaled shoe lane
+    [0.46, 0.42, 0.02, 0.75, 0.49, 2.095],                                     // catch plates remain behind the wheels, inside the live shoe lane
+    [0.46, 0.42, 0.02, 0.75, 0.49, 1.185],
+    [0.46, 0.42, 0.02, 0.75, 0.49, 0.275],
   ]);
   if (P.spec.id === 'challenger_3x') buildChallenger3XPackage(P);
   P.hullG.userData.challenger3HullClosureReceipt = {

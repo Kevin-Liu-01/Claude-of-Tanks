@@ -1016,6 +1016,12 @@ function buildZTZ99A2(P: ChinaBuilderPort): void {
     fill: 0.92, rails: 3, mesh: false, rotation: [0, Math.PI, 0], seed: 9965,
   }), 0, 0.22, -2.24);
   addZTZ99A2RearServiceComplex(P);
+  // Close the paired stern service-deck wells beneath the basket.  The
+  // bridge plates are hidden by the authored rear complex from side/rear
+  // views and leave the basket's open construction readable.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
+  }
 
   // smoke banks: staggered 5-tube rows on the cheek flanks
   addSmokeBanks(P, 1.38, 0.50, 0.40, 5, 9968);

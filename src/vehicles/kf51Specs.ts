@@ -63,6 +63,14 @@ const KF51_SPEC = {
     },
 } satisfies FleetTankSpec;
 
+// The procedural KF51 now carries a reactive two-row flank jacket. Keep its
+// combat zones in the boot-light spec registry so the visible cassettes are
+// hittable, consumable and depleted by the same ERA path as the KF51B set.
+KF51_SPEC.armor.hullPlates.push(
+  reactivePlate('kf51_skirt_era_R', 'right'),
+  reactivePlate('kf51_skirt_era_L', 'left'),
+);
+
 // The owner-source rebuild is intentionally additive. Keep the graduate KF51
 // stable for saves and existing scenes while exposing the rebuilt woodland
 // vehicle as KF51B with its measured palette and geometry.

@@ -3796,7 +3796,12 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   const stations = a3 ? [-2.55, -1.94, -1.33, -0.72, -0.11, 0.50, 1.11, 1.72, 2.33]
     : [-2.48, -1.82, -1.16, -0.50, 0.16, 0.82, 1.48, 2.14];
   for (const side of [-1, 1]) {
-    for (const z of stations) pattonSideCassette(P, side, 1.36, z, a3 ? 0.54 : 0.58, a3 ? 0.52 : 0.57, variant);
+    // Keep the cassette course above the live track envelope.  The previous
+    // 1.36 m centreline buried the lower third of every A3 cassette in the
+    // shoes, so a purely visual armor course failed the same construction
+    // gate used by the playable collision anatomy.
+    for (const z of stations) pattonSideCassette(P, side, a3 ? 1.65 : 1.67, z,
+      a3 ? 0.54 : 0.58, a3 ? 0.52 : 0.57, variant);
     P.add('hullDetail', box(0.055, 0.065, 5.45), side * 1.73, 1.69, -0.10);
   }
 
@@ -4349,6 +4354,14 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // torus + recessed shadow disc, mask/frame-excluded by construction.
   muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
   finishM60Variant(P, cfg.a3 ? 'a3' : 'a1');
+  if (cfg.a3) {
+    // The two front modernization carriers meet the cast glacis around a
+    // recessed service pocket.  Back each pocket with a thin hull-owned
+    // plate so the course is closed without widening the nose casting.
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.36, 0.025, 0.72), side * 0.965, 1.40, 3.22);
+    }
+  }
   P.topY = 3.26 - py + 0.12;
 }
 
@@ -5633,8 +5646,8 @@ const M48_FIT: HullFurniture = {
 const M60_HULL: PattonHullConfig = {
   W: 3.631, bandHW: 1.70, trackW: 0.69, trackInset: 0.037,
   ...M60_TRACK_FINISH,
-  sponsonY: 1.16, sponsonBandY: 1.40, bellyY: 0.47, noseW: 1.66,
-  glacisWingY0: 1.42, glacisWingDrop: 0.02, glacisWingZ0: 2.72,
+  sponsonY: 1.50, sponsonBandY: 1.55, bellyY: 0.47, bellyHW: 0.82, noseW: 1.66,
+  glacisWingY0: 1.55, glacisWingDrop: 0.02, glacisWingZ0: 2.72,
   runningGearFit: true,
   deck: [[3.44, 1.31], [1.86, 1.675], [1.76, 1.738], [-0.50, 1.742], [-2.40, 1.79], [-3.28, 1.788]],
   toeBot: 1.10, bellyFrontZ: 2.30, bellyRearZ: -2.55, tailBotY: 1.00,

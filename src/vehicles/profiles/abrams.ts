@@ -169,6 +169,7 @@ interface AbramsHullConfig {
   readonly armBucket?: string;
   readonly bellyCoreHalfW?: number;
   readonly beltCoreTop?: number;
+  readonly sponsonFloorY?: number;
   readonly endRingSpan?: number;
 }
 
@@ -438,6 +439,53 @@ function loftBand(
       [-halfW, bf, zf], [halfW, bf, zf], [halfW, br, zr], [-halfW, br, zr],
       [-(halfW - inset), tf, zf], [halfW - inset, tf, zf],
       [halfW - inset, tr, zr], [-(halfW - inset), tr, zr]));
+  }
+}
+
+// Track-safe form of the full-depth hull band.  It preserves the authored
+// exterior wall and deck edge while splitting the hidden floor into a narrow
+// load-bearing center shell and two raised sponson shells.  That leaves a
+// real, closed corridor for the moving shoes instead of letting a full-width
+// bottom face pass through the return course.
+function loftTrackClearBand(
+  P: AbramsBuilderPort,
+  bucket: string,
+  halfW: number,
+  inset: number,
+  centerHalfW: number,
+  floorY: number,
+  top: readonly Vec2Tuple[],
+  bottomAt: (z: number) => number,
+  zA: number,
+  zB: number,
+): void {
+  const zs = [...new Set([zA, zB, ...top.map((p) => p[0])]
+    .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
+    .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a);
+  for (let i = 0; i < zs.length - 1; i++) {
+    const zf = zs[i], zr = zs[i + 1];
+    const tf = lineAt(top, zf), tr = lineAt(top, zr);
+    const bf = bottomAt(zf), br = bottomAt(zr);
+    const of = Math.max(bf, Math.min(floorY, tf - 0.015));
+    const or = Math.max(br, Math.min(floorY, tr - 0.015));
+    P.add(bucket, slab(
+      [-centerHalfW, bf, zf], [centerHalfW, bf, zf],
+      [centerHalfW, br, zr], [-centerHalfW, br, zr],
+      [-centerHalfW, tf, zf], [centerHalfW, tf, zf],
+      [centerHalfW, tr, zr], [-centerHalfW, tr, zr]));
+    for (const side of [-1, 1]) {
+      const x0 = side * centerHalfW;
+      const x1 = side * halfW;
+      const tx0 = side * centerHalfW;
+      const tx1 = side * (halfW - inset);
+      const points: [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple,
+        Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple] = side > 0
+        ? [[x0, of, zf], [x1, of, zf], [x1, or, zr], [x0, or, zr],
+          [tx0, tf, zf], [tx1, tf, zf], [tx1, tr, zr], [tx0, tr, zr]]
+        : [[x1, of, zf], [x0, of, zf], [x0, or, zr], [x1, or, zr],
+          [tx1, tf, zf], [tx0, tf, zf], [tx0, tr, zr], [tx1, tr, zr]];
+      P.add(bucket, slab(...points));
+    }
   }
 }
 
@@ -1208,7 +1256,12 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   // break. In that case the full-width band must stop at the carve start;
   // the narrow, load-bearing center wedge continues aft from the same plane.
   const sponsonSternZ = Math.max(sternZ, LC?.sternZ?.[1] ?? sternZ);
-  loftBand(P, 'hull', bw, g.deckInset ?? 0.05, g.deck, () => g.beltTop, bowZ, sponsonSternZ);
+  if (g.sponsonFloorY !== undefined) {
+    loftTrackClearBand(P, 'hull', bw, g.deckInset ?? 0.05, innerW,
+      g.sponsonFloorY, g.deck, () => g.beltTop, bowZ, sponsonSternZ);
+  } else {
+    loftBand(P, 'hull', bw, g.deckInset ?? 0.05, g.deck, () => g.beltTop, bowZ, sponsonSternZ);
+  }
   // Stern wedge down the measured tail rake.
   if (LC?.sternZ) {
     // When the carve begins exactly at the stern break there is no legal
@@ -1854,6 +1907,8 @@ const TEJAS_HULL: AbramsHullConfig = {
   // Keep the full-width sponson bottom above the upper shoe envelope.  The
   // narrow central belly still carries the hull between the two courses.
   beltTop: 1.17, belly: 0.42,
+  bellyCoreHalfW: 0.98,
+  sponsonFloorY: 1.40,
   noseRake: [[2.60, 0.44], [3.10, 0.48], [3.38, 0.50], [3.54, 0.64], [3.62, 0.82],
     [3.76, 1.01], [3.83, 0.94], [3.881, 1.17]],
   // Tail at the ref's own -3.937 plan rear (a -3.97 tail left the -3.99 side
@@ -1910,7 +1965,7 @@ const TEJAS_HULL: AbramsHullConfig = {
   // leaves 110 mm of daylight while retaining the complete seven-wheel train.
   // Lowering the axle by the same radius delta preserves the 0.11 m tire-bottom
   // datum, so the wheels remain loaded into the existing ground run.
-  trackXc: 1.405, trackW: 0.58, wheelR: 0.31, wheelY: 0.42,
+  trackXc: 1.425, trackW: 0.58, wheelR: 0.31, wheelY: 0.42,
   wheelZs: [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19],
   // Pin the previously certified flat-run departure points.  Reseating the
   // road wheels must not pull either tangent ramp inward or disturb the raised
@@ -3173,6 +3228,20 @@ function tejasRoofKit(
         equipmentOwnedShielding: true,
       }),
     });
+  }
+
+  // Close the small fender/carrier pockets revealed by the strict top-down
+  // shell scan.  The plates are recessed beneath the existing skirt and
+  // ARAT surfaces, so they complete the load path without changing the
+  // certified exterior silhouette.
+  if (P.spec.id === 'm1a2_tusk') {
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.22, 0.025, 0.22), side * 1.86, 1.28, 2.43);
+    }
+  } else if (P.spec.id === 'm1a2_sepv3') {
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.20, 0.025, 2.10), side * 1.89, 1.27, 0.05);
+    }
   }
 }
 
@@ -4559,14 +4628,17 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       for (let k = 0; k < 3; k++) {
         const z = 2.38 + k * 0.31;
         const h = 0.30 - k * 0.035;
-        const bowCarrier = g.skirt.x - k * 0.045;
+        // Follow the outward sweep of the bow fender without entering the
+        // animated front return.  The former innermost carrier reached the
+        // track band at x=1.72 on the last two cassettes.
+        const bowCarrier = g.skirt.x + 0.07 - k * 0.045;
         const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
           0.11, h, 0.27, 1.08, z);
         skirtArmorBox(P, 'hull', side, bowOuter - 0.003,
           0.014, h - 0.07, 0.21, 1.08, z, 0);
       }
       // Mounting rails + standoff arms + hanger straps (the ARAT rack).
-      for (const [ry, rx] of [[0.94, 1.775], [1.24, 1.665]]) {
+      for (const [ry, rx] of [[0.94, 1.775], [1.24, 1.78]]) {
         P.add('hull', box(0.045, 0.066, 4.81), side * rx, ry, 0);
         for (const az of [-2.0, -1.0, 0, 1.0, 2.0]) {
           // Short local brackets tie each rail into the skirt/armor carrier

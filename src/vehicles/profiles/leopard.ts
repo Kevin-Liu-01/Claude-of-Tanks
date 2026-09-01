@@ -10499,21 +10499,20 @@ function buildKF51(P: TankBuilderPort) {
     // where the eye sees between the moving chain runs.
     P.add('hullShadow', box(0.104, 0.175, 0.03), s * 1.174, 0.6325, 3.25);     // upper filler, inner corridor (x 1.122..1.226)
     P.add('hullShadow', box(0.096, 0.175, 0.03), s * 1.352, 0.6325, 3.25);     // upper filler, outer corridor (x 1.304..1.400)
-    P.add('hullShadow', box(0.52, 0.12, 0.03), s * 1.30, 0.30, 3.25);          // lower filler y 0.24..0.36
+    P.add('hullShadow', box(0.52, 0.12, 0.03), s * 1.30, 0.26, 3.25);          // lower filler y 0.20..0.32
     // r3 #2 side-effect repair: the pad de-tooth pulled the idler wrap's
     // low fringe — the ref z 3.71 side column reads a 0.40 bottom the bare
     // band cannot make (same class as the certified rear-flap carrier).
-    // Small idler flap: side col 3.65..3.77 gets its 0.40 back; front-axis
-    // bots at x 1.11..1.41 stay band-owned (0.013 < 0.40); plan front there
-    // stays wrap-owned to 3.72+.
+    // Small idler flap: the same 0.40-bottom carrier now sits immediately
+    // ahead of the animated shoe envelope instead of sharing its last 29 mm.
     // r6 #3c: widened 0.30 -> 0.52 (span 1.00..1.52 inside the 0.94..1.58
     // window — the wrap-front rib rungs showed beside it; ref column is
     // FLAT p5-p95 58-68). y/z EXACT (the 0.40-bottom carrier class).
-    P.add('hullShadow', box(0.52, 0.30, 0.025), s * 1.26, 0.55, 3.71);
+    P.add('hullShadow', box(0.52, 0.30, 0.025), s * 1.26, 0.55, 3.795);
     // r4 #5c FRONT-IDLER CORNER FILL: view-left x1082-1116 read BACKGROUND
-    // where the ref shows idler+fender+flap (the zone z 3.70..3.79 below the
+    // where the ref shows idler+fender+flap (the zone z 3.70..3.83 below the
     // wrap shoulder, plus the outer corner z 3.44..3.72). A real forward
-    // mudflap board (z ≤ 3.79 — the ref 3.862 col stays EMPTY, hard stop)
+    // mudflap board stays behind the 3.83 beak tip while clearing the shoes
     // hangs at the wheel plane and an outer corner flap panel drops from the
     // drooping fender tip; both sit inside the certified front/plan unions
     // (front rows: band-owned bottoms, tops < wrap 1.24; plan: wrap-owned to
@@ -10530,17 +10529,16 @@ function buildKF51(P: TankBuilderPort) {
     // render 25.2 dead-flat at x 1.21..1.71, y 0.39..0.81; front_hull col
     // 1.68 refBot 0.39 = the flap line, plan cols 1.62..1.73 fore 3.76-3.78
     // = its face). The 16-class flat flap lives in the tone block at that
-    // exact footprint (z 3.744..3.768, inside the 3.79 hard stop); this
+    // exact footprint; this
     // board shrinks to the UNDER-FENDER SHADOW remnant above it (y 0.70..
     // 1.02 — rung cover duty x 1.00..1.56 intact: y 0.39..0.81 is flap-
     // covered, 0.40..0.70 board-covered below via the 3.71 idler flap) and
-    // retreats behind the flap plane (z 3.70..3.74).
-    // r4 CONTAINMENT: board + bracket step off the wrap's forward rim
-    // (band far edge 3.709 — rear faces move to >=3.7175, one voxel clear);
-    // same y envelopes, plan faces stay inside the 3.79 hard stop.
-    P.add('hullShadow', box(0.56, 0.32, 0.04), s * 1.28, 0.86, 3.7375);        // under-fender shadow board y 0.70..1.02
-    P.add('hullDark', box(0.18, 0.09, 0.06), s * 1.28, 1.06, 3.745);           // flap hanger bracket ahead of the wrap shoulder
-    P.add('hullDark', box(0.10, 0.09, 0.05), s * 1.46, 0.855, 3.745);          // flap hanger onto the new corner flap (y 0.81..0.90)
+    // retreats behind the flap plane.
+    // r4 CONTAINMENT: board + bracket now sit wholly ahead of the shoe front
+    // (3.767), with rear faces >=3.78 and the same y/x envelopes.
+    P.add('hullShadow', box(0.56, 0.32, 0.04), s * 1.28, 0.86, 3.805);         // under-fender shadow board y 0.70..1.02
+    P.add('hullDark', box(0.18, 0.09, 0.06), s * 1.28, 1.06, 3.81);            // flap hanger bracket ahead of the wrap shoulder
+    P.add('hullDark', box(0.10, 0.09, 0.05), s * 1.46, 0.855, 3.805);          // flap hanger onto the new corner flap (y 0.81..0.90)
     P.add('hullShadow', box(0.05, 0.42, 0.28), s * 1.7375, 0.98, 3.58);        // outer corner flap panel under the fender tip
     P.add('hullDark', box(0.05, 0.05, 0.30), s * 1.7375, 1.21, 3.57);          // fender-tip gusset joining tip → flap
   }
@@ -10548,10 +10546,9 @@ function buildKF51(P: TankBuilderPort) {
   // min-y from the grouser tips (0.005) to the band bottom (0.013) and the
   // harness re-grounded the WHOLE model 8 mm down — every side/front top
   // row dropped one raster pixel and side dy slid −0.003 → −0.013 (the
-  // frozen-box law's vertical twin). Two buried contact shims restore the
-  // exact 0.005 floor under the band bottom run (sub-pixel sliver, dark,
-  // under-track — invisible at render scale).
-  for (const s of [-1, 1] as const) P.add('hullDark', box(0.02, 0.010, 0.02), s * 1.262, 0.010, -1.585);
+  // frozen-box law's vertical twin). One buried centerline contact shim
+  // restores the exact 0.005 floor without entering either track sweep.
+  P.add('hullDark', box(0.02, 0.010, 0.02), 0, 0.010, -1.585);
   // engine deck furniture — r5 #6 REAR DECK DE-INVENT (hero-zoom): the fan
   // discs + pale torus shoulder arcs + long slat grilles had no ref
   // counterpart (ref deck = dot-perforated dark plates + low stowage).
@@ -11535,8 +11532,8 @@ function buildKF51(P: TankBuilderPort) {
         s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
       );
       armorShell(sideName, KIT.slab(
-        ...ord([[s * 1.18, 0.800, 3.758], [s * 1.72, 0.800, 3.758], [s * 1.72, 1.235, 3.690], [s * 1.18, 1.235, 3.690]]),
-        ...ord([[s * 1.18, 0.800, 3.718], [s * 1.72, 0.800, 3.718], [s * 1.72, 1.235, 3.650], [s * 1.18, 1.235, 3.650]])));
+        ...ord([[s * 1.60, 0.800, 3.758], [s * 1.72, 0.800, 3.758], [s * 1.72, 1.235, 3.690], [s * 1.60, 1.235, 3.690]]),
+        ...ord([[s * 1.60, 0.800, 3.718], [s * 1.72, 0.800, 3.718], [s * 1.72, 1.235, 3.650], [s * 1.60, 1.235, 3.650]])));
       armorShell(sideName, KIT.xform(KIT.box(0.06, 0.43, 0.46), s * 1.71, 1.015, 3.47));
     }
     const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)

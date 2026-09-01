@@ -647,8 +647,8 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
       [3.00, 0.90], [3.27, 0.42],
     ],
     // wLo inside the 0.995 track-band inner edge (wrap-zone clip law)
-    wLo: [[-3.27, 0.94], [2.40, 0.94], [2.90, 0.64], [3.27, 0.40]],
-    sponsonY: [[-3.27, 1.25], [-2.16, 1.25], [-1.96, 1.05], [2.30, 1.05], [2.70, 0.82], [3.27, 0.62]],
+    wLo: [[-3.27, 0.74], [2.40, 0.74], [2.90, 0.64], [3.27, 0.40]],
+    sponsonY: [[-3.27, 1.25], [-2.16, 1.25], [-1.96, 1.18], [2.30, 1.18], [2.70, 1.18], [3.00, 1.05], [3.27, 0.80]],
   });
 
   // Bow: plan arrow corners + fender tips + front flaps over the raised
@@ -658,7 +658,7 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
       [s * 0.35, 0.62, 3.27], [s * 0.60, 0.65, 3.16], [s * 0.90, 0.70, 2.96], [s * 0.35, 0.64, 2.96],
       [s * 0.35, 0.88, 3.27], [s * 0.60, 0.92, 3.16], [s * 0.90, 0.98, 2.96], [s * 0.35, 0.92, 2.96]));
     P.add('hull', box(0.30, 0.26, 0.24), s * 0.74, 0.88, 2.86, -0.10, 0, 0);
-    P.add('hull', box(0.30, 0.10, 0.52), s * 1.24, 1.17, 2.62, -0.16, 0, 0);
+    P.add('hull', box(0.30, 0.10, 0.52), s * 0.78, 1.17, 2.62, -0.16, 0, 0);
     // fender tip + hanger bracket chain the front flap to the fender row
     P.add('hull', box(0.40, 0.115, 0.56), s * 1.245, 1.22, 2.66);
     P.add('hull', box(0.26, 0.05, 0.20), s * 1.44, 1.14, 3.10);
@@ -1030,6 +1030,11 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [decalX, 0.38, -0.52], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [-decalX, 0.38, -0.52], -Math.PI / 2);
   addVehicleGhillieSuit(P);
+  // Donbas field fittings leave three tiny backed-but-uncovered seams at
+  // the bow.  These recessed plates close the structural shell while the
+  // asymmetric ERA/fender layout above remains unchanged.
+  P.add('hull', box(0.34, 0.025, 0.20), -0.53, 1.17, 3.25);
+  for (const side of [-1, 1]) P.add('hull', box(0.18, 0.025, 0.20), side * 1.67, 1.20, 2.35);
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,
@@ -1370,7 +1375,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
       [-2.65, 0.44], [2.45, 0.44], [3.00, 0.57], [3.505, 0.75],
     ],
     wUp: [[-3.505, 1.28], [3.505, 1.28]],
-    wLo: [[-3.505, 1.05], [3.505, 1.02]],
+    wLo: [[-3.505, 0.98], [3.505, 0.98]],
     sponsonY: [[-3.505, 1.42], [-2.42, 1.42], [-2.26, 1.24], [2.46, 1.24], [3.505, 1.24]],
   });
 

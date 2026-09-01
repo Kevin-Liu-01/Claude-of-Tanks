@@ -310,10 +310,12 @@ try {
   const lowerGlacis = frontArmorHit(0, 0.75);
   assert.ok(lowerGlacis?.point.z > 3.4 && lowerGlacis.object.material?.map,
     'KF51 lower glacis is colored by the merged camouflage armor');
-  for (const x of [-1.45, 1.45]) {
+  // The shoulder is deliberately outboard of the animated tread envelope;
+  // probe its visible mudguard seam rather than the former inboard overlap.
+  for (const x of [-1.66, 1.66]) {
     const shoulder = frontArmorHit(x, 1.0);
     assert.ok(shoulder?.point.z > 3.64 && shoulder.object.material?.map,
-      `KF51 ${x < 0 ? 'left' : 'right'} track shoulder joins the front mudguard in camo`);
+      `KF51 ${x < 0 ? 'left' : 'right'} track shoulder seats outboard of the tread and joins the front mudguard in camo`);
   }
 
   const sideArmorHit = (y, z) => new THREE.Raycaster(

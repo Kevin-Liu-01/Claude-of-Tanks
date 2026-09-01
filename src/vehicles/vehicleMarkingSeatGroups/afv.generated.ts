@@ -394,9 +394,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -0.7793228,
-          0.2839953,
-          0.5168556
+          -0.8852722,
+          0.1174653,
+          -0.1446444
         ],
         "quaternion": [
           -0.1249166,
@@ -407,9 +407,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "surfaceMesh": "turret",
         "anchorProfile": "m3a3_bradley",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0972488
       }
     ]
   },
