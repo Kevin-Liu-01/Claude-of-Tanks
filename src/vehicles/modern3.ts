@@ -2261,6 +2261,22 @@ export function buildType10BBase(P: Modern3BuilderPort) {
 // §6.5: tall slab aluminum box, one-piece 60° glacis, nose shelf, rear troop
 // ramp, RIGHT-offset two-man turret with 25 mm + elevating twin TOW box,
 // A2 appliqué side slabs with stand-off bolts, front drive sprocket.
+const bradleyGlacisAngleRad = Math.atan(0.5);
+export const BRADLEY_UPPER_GLACIS_SURFACE = Object.freeze({
+  rear: Object.freeze({ y: 1.895, z: 1.66 }),
+  front: Object.freeze({ y: 1.52, z: 2.41 }),
+  referenceCenter: Object.freeze({ y: 1.715, z: 2.02 }),
+  angleRad: bradleyGlacisAngleRad,
+  tangentRearward: Object.freeze({
+    y: Math.sin(bradleyGlacisAngleRad),
+    z: -Math.cos(bradleyGlacisAngleRad),
+  }),
+  normalOutward: Object.freeze({
+    y: Math.cos(bradleyGlacisAngleRad),
+    z: Math.sin(bradleyGlacisAngleRad),
+  }),
+});
+
 function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
   const { box } = KIT;
 
@@ -2314,6 +2330,9 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
   const glacisFrontRoofHalfWidthM = 1.40;
   const glacisRearRoofY = 1.88;
   const glacisFrontRoofY = 1.50;
+  const glacisRiseM = glacisRearRoofY - glacisFrontRoofY;
+  const glacisRunM = 2.39 - 1.62;
+  const glacisAngleRad = Math.atan2(glacisRiseM, glacisRunM);
   P.add('hull', orientedSlab(
     [-glacisFloorHalfWidthM, glacisFloorY, glacisFrontZ],
     [glacisFloorHalfWidthM, glacisFloorY, glacisFrontZ],
@@ -2353,6 +2372,18 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
       frontRoofHalfWidthM: glacisFrontRoofHalfWidthM,
       rearRoofY: glacisRearRoofY,
       frontRoofY: glacisFrontRoofY,
+      riseM: glacisRiseM,
+      runM: glacisRunM,
+      angleRad: glacisAngleRad,
+      tangentRearward: Object.freeze({
+        y: Math.sin(glacisAngleRad),
+        z: -Math.cos(glacisAngleRad),
+      }),
+      normalOutward: Object.freeze({
+        y: Math.cos(glacisAngleRad),
+        z: Math.sin(glacisAngleRad),
+      }),
+      outerSurface: BRADLEY_UPPER_GLACIS_SURFACE,
     }),
     tubRoofY: 1.05,
     upperHullFloorY: 1.59,
@@ -3624,6 +3655,7 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
   // clear of the 1.395 shoe reach (§B4).
   {
     const cuts = [-2.97, -2.21, -1.45, -0.69, 0.07, 0.83, 1.59, 2.35, 3.11];
+    const apronSegments: Array<{ side: number; rearZ: number; frontZ: number }> = [];
     for (const s of [-1, 1]) {
       for (let k = 0; k + 1 < cuts.length; k++) {
         const lo = k >= 6;
@@ -3637,11 +3669,23 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
         P.add('hullDetail', box(0.085, 0.10, 0.06),
           s * 1.6125, lo ? 1.30 : 1.46, cuts[k]);
       }
-      const apron = (z0: number, z1: number) => P.add('hull', orientedSlab(
-        [s * 1.50, 1.565, z1], [s * 1.649, 1.40, z1], [s * 1.649, 1.40, z0], [s * 1.50, 1.565, z0],
-        [s * 1.50, 1.605, z1], [s * 1.649, 1.44, z1], [s * 1.649, 1.44, z0], [s * 1.50, 1.605, z0]));
+      const apron = (z0: number, z1: number) => {
+        P.add('hull', orientedSlab(
+          [s * 1.50, 1.565, z1], [s * 1.649, 1.40, z1], [s * 1.649, 1.40, z0], [s * 1.50, 1.565, z0],
+          [s * 1.50, 1.605, z1], [s * 1.649, 1.44, z1], [s * 1.649, 1.44, z0], [s * 1.50, 1.605, z0]));
+        apronSegments.push({ side: s, rearZ: z0, frontZ: z1 });
+      };
       if (s > 0) { apron(-2.90, 0.93); }
-      else { apron(-2.90, -2.55); apron(-1.95, 1.55); }
+      else {
+        apron(-2.90, -2.55);
+        apron(-1.95, 1.55);
+        // The left donor flank has no exhaust housing to bridge its forward
+        // skirt course. Continue the same raked mounting plane into the bow
+        // shoulder so the upper-glacis edge and its ERA backing cannot expose
+        // two open cells at z~1.95/2.73. The front 0.31 m deliberately nests
+        // behind the bow-corner closure; y>=1.40 remains clear of the track.
+        apron(1.55, 3.11);
+      }
       // course END CAPS: the panel-to-hull mounting lane read as an
       // enclosed axial pocket from front-low once the tops were sealed
       // (3518px, left lane) — transverse caps close both ends of the lane
@@ -3649,6 +3693,20 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
       P.add('hull', box(0.076, 0.63, 0.05), s * 1.576, 0.935, 3.085);
       P.add('hull', box(0.076, 0.80, 0.05), s * 1.576, 1.02, -2.945);
     }
+    P.hullG.userData.bradleySkirtApronReceipt = Object.freeze({
+      revision: 'continuous-left-front-glacis-shoulder-r1',
+      segments: apronSegments.map((segment) => Object.freeze({ ...segment })),
+      leftFront: Object.freeze({
+        side: -1,
+        rearZ: 1.55,
+        frontZ: 3.11,
+        innerX: -1.50,
+        outerX: -1.649,
+        lowestY: 1.40,
+        bowClosureRearZ: 2.80,
+        bowOverlapM: 3.11 - 2.80,
+      }),
+    });
   }
 }
 

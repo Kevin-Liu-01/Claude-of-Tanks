@@ -7,7 +7,13 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
-import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.ts';
+import {
+  BRADLEY_UPPER_GLACIS_SURFACE,
+  buildBradley,
+  buildBMP2,
+  buildPuma,
+  bradleyFlankDressing,
+} from '../modern3.ts';
 import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -936,23 +942,67 @@ function addM3A3Turret(P: AfvBuilderPort): void {
 function buildM3A3(P: AfvBuilderPort): void {
   buildBradley(P);
   addM3A3Turret(P);
-  // Backed upper-glacis ERA field.  Three courses follow the donor glacis
-  // plane and remain clear of the driver station and bow lights.
-  // The carrier's thin Y axis is the plate normal, while its long Z axis
-  // follows the glacis. Rotate that frame onto the donor's 26.6-degree
-  // slope; the old -0.464 rotation pointed the carrier depth through the
-  // hull and left the reactive bricks stacked along their own normal.
-  P.add('hullDark', KIT.box(2.14, 0.055, 0.96), 0, 1.72, 2.02, 1.107, 0, 0);
+  // Backed upper-glacis ERA field. The donor's outer plate falls 0.5 m for
+  // every metre forward, so its surface tangent is 26.6 degrees below the
+  // deck. Keep that plane definition explicit: the carrier uses local Z as
+  // its tangent, while each ERA cassette uses local Z as its outward normal.
+  // The previous complementary rotations stood the carrier at 63.4 degrees
+  // and buried most of every cassette inside it.
+  const glacisAngleRad = BRADLEY_UPPER_GLACIS_SURFACE.angleRad;
+  const carrierRotationXRad = glacisAngleRad;
+  const cassetteRotationXRad = glacisAngleRad - Math.PI / 2;
+  const surfaceCenter = BRADLEY_UPPER_GLACIS_SURFACE.referenceCenter;
+  const tangentRearward = BRADLEY_UPPER_GLACIS_SURFACE.tangentRearward;
+  const normalOutward = BRADLEY_UPPER_GLACIS_SURFACE.normalOutward;
+  const carrier = Object.freeze({ widthM: 2.14, thicknessM: 0.055, lengthM: 0.96 });
+  const carrierCenterOffsetM = 0.006;
+  const cassetteDepthM = 0.07 * 1.25;
+  const cassetteSeatOverlapM = 0.006;
+  const cassetteCenterOffsetM = carrierCenterOffsetM + carrier.thicknessM / 2
+    + cassetteDepthM / 2 - cassetteSeatOverlapM;
+  const carrierCenter = Object.freeze({
+    y: surfaceCenter.y + normalOutward.y * carrierCenterOffsetM,
+    z: surfaceCenter.z + normalOutward.z * carrierCenterOffsetM,
+  });
+  P.add('hullDark', KIT.box(carrier.widthM, carrier.thicknessM, carrier.lengthM),
+    0, carrierCenter.y, carrierCenter.z, carrierRotationXRad, 0, 0);
+  const cassetteCenters: Array<Readonly<{ x: number; y: number; z: number }>> = [];
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_glacis_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 3; row++) for (let c = 0; c < 2; c++) {
         const along = -0.28 + row * 0.28;
-        put(side * (0.25 + c * 0.50), 1.72 + along * 0.447,
-          2.02 - along * 0.894, -0.464, 0, 0,
+        const x = side * (0.25 + c * 0.50);
+        const y = surfaceCenter.y + along * tangentRearward.y
+          + cassetteCenterOffsetM * normalOutward.y;
+        const z = surfaceCenter.z + along * tangentRearward.z
+          + cassetteCenterOffsetM * normalOutward.z;
+        cassetteCenters.push(Object.freeze({ x, y, z }));
+        put(x, y, z, cassetteRotationXRad, 0, 0,
           1.65, 1.12, 1.25);
       }
     });
   }
+  P.hullG.userData.bradleyUpperGlacisArmorReceipt = Object.freeze({
+    revision: 'flush-glacis-carrier-and-era-r1',
+    surfaceCenter,
+    angleRad: glacisAngleRad,
+    tangentRearward,
+    normalOutward,
+    carrier: Object.freeze({
+      ...carrier,
+      center: carrierCenter,
+      rotationXRad: carrierRotationXRad,
+      centerOffsetM: carrierCenterOffsetM,
+    }),
+    cassettes: Object.freeze({
+      count: cassetteCenters.length,
+      centers: Object.freeze(cassetteCenters),
+      rotationXRad: cassetteRotationXRad,
+      depthM: cassetteDepthM,
+      centerOffsetM: cassetteCenterOffsetM,
+      seatOverlapM: cassetteSeatOverlapM,
+    }),
+  });
 
   // Two full side ERA courses seated directly on the existing spaced-armor
   // panels. They are the only new flank layer: the smart track, road wheels,

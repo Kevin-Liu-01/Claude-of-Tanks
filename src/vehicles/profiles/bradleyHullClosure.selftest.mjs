@@ -24,6 +24,7 @@ for (const id of IDS) {
     const hull = hullRig?.getObjectByName('hull');
     const receipt = hullRig?.userData.bradleyUpperHullClosureReceipt;
     const bowReceipt = hullRig?.userData.bradleyGlacisClosureReceipt;
+    const apronReceipt = hullRig?.userData.bradleySkirtApronReceipt;
     const gear = hullRig?.userData.runningGearReceipts?.[0];
     assert.ok(hullRig && hull && receipt && gear,
       `${id}: shared Bradley hull exposes closure and running-gear receipts`);
@@ -39,6 +40,18 @@ for (const id of IDS) {
     `${id}: sloped front backer overlaps the longitudinal core`);
     assert.ok(receipt.upperGlacisBacker.frontRoofY < receipt.upperGlacisBacker.rearRoofY,
       `${id}: front backer follows the descending upper-glacis underside`);
+    assert.ok(near(receipt.upperGlacisBacker.angleRad,
+      Math.atan2(receipt.upperGlacisBacker.riseM, receipt.upperGlacisBacker.runM)),
+    `${id}: publishes the shared upper-glacis angle from its authored endpoints`);
+    assert.ok(receipt.upperGlacisBacker.tangentRearward.y > 0
+      && receipt.upperGlacisBacker.tangentRearward.z < 0
+      && receipt.upperGlacisBacker.normalOutward.y > 0
+      && receipt.upperGlacisBacker.normalOutward.z > 0,
+    `${id}: upper-glacis tangent and outward normal use the Bradley hull frame`);
+    assert.ok(near(receipt.upperGlacisBacker.outerSurface.angleRad, Math.atan(0.5))
+      && near(receipt.upperGlacisBacker.outerSurface.referenceCenter.y, 1.715)
+      && near(receipt.upperGlacisBacker.outerSurface.referenceCenter.z, 2.02),
+    `${id}: publishes the exact shared outer-glacis plane used by fitted armor`);
     assert.ok(receipt.upperGlacisOverlapM > 0,
       `${id}: upper-glacis backer terminates inside the armor skin`);
 
@@ -90,9 +103,28 @@ for (const id of IDS) {
         bowReceipt.frontZ,
       ]),
       `${id}: merged hull contains the tapered tub-to-bow solid`);
+      assert.equal(apronReceipt?.revision, 'continuous-left-front-glacis-shoulder-r1',
+        `${id}: carries the continuous left-front skirt-to-glacis shoulder`);
+      assert.ok(apronReceipt.leftFront.rearZ <= 1.55
+        && apronReceipt.leftFront.frontZ >= 3.11
+        && apronReceipt.leftFront.bowOverlapM > 0,
+      `${id}: left-front mounting apron reaches and overlaps the bow closure`);
+      assert.ok(apronReceipt.leftFront.lowestY > highestShoeY + 0.04,
+        `${id}: left-front shoulder closure remains above the animated track crown`);
+      assert.ok(hasVertex([
+        apronReceipt.leftFront.innerX,
+        1.565,
+        apronReceipt.leftFront.frontZ,
+      ]) && hasVertex([
+        apronReceipt.leftFront.outerX,
+        apronReceipt.leftFront.lowestY,
+        apronReceipt.leftFront.rearZ,
+      ]), `${id}: merged hull contains the full left-front raked apron`);
     } else {
       assert.equal(bowReceipt, undefined,
         `${id}: Marder donor remains outside the Bradley-only bow treatment`);
+      assert.equal(apronReceipt, undefined,
+        `${id}: Marder donor remains outside the Bradley skirt-apron treatment`);
     }
 
     const turretRig = tank.root.getObjectByName('rig_turret');
@@ -123,6 +155,38 @@ for (const id of IDS) {
     } else {
       assert.equal(uaRoofReceipt, undefined,
         `${id}: does not claim Ukrainian roof equipment`);
+    }
+
+    const glacisArmor = hullRig?.userData.bradleyUpperGlacisArmorReceipt;
+    if (id === 'm3a3_bradley') {
+      assert.equal(glacisArmor?.revision, 'flush-glacis-carrier-and-era-r1',
+        `${id}: carries the corrected upper-glacis armor seating receipt`);
+      assert.ok(near(glacisArmor.carrier.rotationXRad, glacisArmor.angleRad),
+        `${id}: carrier long axis follows the upper-glacis tangent`);
+      assert.ok(near(glacisArmor.angleRad,
+        receipt.upperGlacisBacker.outerSurface.angleRad),
+      `${id}: reactive package and donor hull share one exact glacis plane`);
+      assert.ok(near(glacisArmor.cassettes.rotationXRad,
+        glacisArmor.angleRad - Math.PI / 2),
+      `${id}: cassette depth axes follow the upper-glacis outward normal`);
+      assert.equal(glacisArmor.cassettes.count, 12,
+        `${id}: retains both mirrored three-by-two glacis ERA fields`);
+      assert.ok(near(
+        glacisArmor.cassettes.centerOffsetM - glacisArmor.cassettes.depthM / 2,
+        glacisArmor.carrier.centerOffsetM + glacisArmor.carrier.thicknessM / 2
+          - glacisArmor.cassettes.seatOverlapM,
+      ), `${id}: ERA cassette backs overlap the carrier instead of floating or sinking`);
+      for (const center of glacisArmor.cassettes.centers) {
+        const dy = center.y - glacisArmor.surfaceCenter.y;
+        const dz = center.z - glacisArmor.surfaceCenter.z;
+        const normalOffset = dy * glacisArmor.normalOutward.y
+          + dz * glacisArmor.normalOutward.z;
+        assert.ok(near(normalOffset, glacisArmor.cassettes.centerOffsetM),
+          `${id}: every ERA cassette center stays on the shared offset plane`);
+      }
+    } else {
+      assert.equal(glacisArmor, undefined,
+        `${id}: does not claim the M3A3 reactive upper-glacis package`);
     }
   } finally {
     tank.dispose();
