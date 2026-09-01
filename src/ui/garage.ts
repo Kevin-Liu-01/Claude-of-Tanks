@@ -1961,9 +1961,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `data-technical-view="${view.id}" data-technical-src="${iconUrl(spec.id, view.assetView)}" ` +
       `data-technical-caption="${view.caption}" data-technical-alt="${view.caption.toLowerCase()}" ` +
       `data-technical-layer="${view.galleryLayer}">${view.label}</button>`).join('');
+    const dossierHeader =
+      `<div class="cot-dossier-head">` +
+      `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
+      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
+      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div></div>`;
     const technicalSection =
       `<section class="cot-stat-section cot-technical-section">` +
-      statSectionTitle('gallery', 'Technical schematics', `${technicalViews.length} views`) +
+      dossierHeader +
       `<div class="cot-technical-tabs" role="tablist" aria-label="Vehicle technical schematics">${technicalTabs}</div>` +
       `<figure class="cot-technical-figure" id="cot-technical-schematic-panel" role="tabpanel" ` +
       `aria-label="Selected vehicle technical schematic">` +
@@ -1976,7 +1981,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<figcaption data-technical-caption-output>${initialTechnicalView.caption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
-      `${uiIconSVG('gallery', 15)}<span>Inspect this layer in Tank Gallery</span>` +
+      `${uiIconSVG('gallery', 15)}<span>Inspect in Gallery</span>` +
       `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
@@ -1995,10 +2000,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
     statsEl.innerHTML =
-      `<div class="cot-dossier-head">` +
-      `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
-      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
-      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div></div>` +
       technicalSection +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
       `<div class="cot-performance-grid">` +

@@ -141,13 +141,16 @@ assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
 assert.doesNotMatch(garageSource, /\.cot-stat-section::before\{/,
   'dossier sections do not draw stray orange rules across their top edges');
 assert.match(garageSource,
-  /Technical schematics[\s\S]*?role="tablist"[\s\S]*?data-technical-image/,
-  'every selected vehicle exposes its generated technical diagrams directly in the garage dossier');
+  /cot-technical-section[\s\S]*?cot-dossier-head[\s\S]*?role="tablist"[\s\S]*?data-technical-image/,
+  'vehicle identity and generated technical diagrams share one garage dossier card');
+assert.doesNotMatch(garageSource,
+  /statSectionTitle\('gallery', 'Technical schematics'/,
+  'the merged dossier does not repeat a technical-schematics header');
 assert.doesNotMatch(garageSource,
   /cot-dossier-head[\s\S]*?Open in Tank Gallery/,
   'the vehicle header does not duplicate the technical Gallery action');
 assert.match(garageSource,
-  /class="cot-gallery-link cot-technical-gallery"[\s\S]*?Inspect this layer in Tank Gallery[\s\S]*?class="go"/,
+  /class="cot-gallery-link cot-technical-gallery"[\s\S]*?Inspect in Gallery[\s\S]*?class="go"/,
   'the layer-specific Gallery action reuses the primary orange-accent CTA treatment');
 assert.match(garageSource,
   /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\][\s\S]*?activateTechnicalTab/,

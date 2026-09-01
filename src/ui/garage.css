@@ -394,10 +394,9 @@
   font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;}
 .cot-layer-link svg{width:13px;height:13px;color:#c88b35;}
 .cot-layer-link:hover,.cot-layer-link:focus-visible{color:#ffd79a;border-color:rgba(240,176,74,.55);outline:none;}
-.cot-technical-section{padding:13px 12px 12px;overflow:hidden;}
-.cot-technical-section .cot-stat-title{margin-inline:3px;}
-.cot-technical-section .cot-stat-title span{color:#d7e0e6;}
-.cot-technical-section .cot-stat-title small{color:#9eabb4;}
+.cot-technical-section{padding:0 12px 12px;overflow:hidden;}
+.cot-technical-section .cot-dossier-head{margin:0 -12px 8px;padding:14px 15px 13px;
+  border:0;border-bottom:1px solid rgba(146,164,180,.2);box-shadow:none;}
 .cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:6px;}
 .cot-technical-tab{height:28px;padding:0 5px;color:#aebbc4;background:rgba(7,11,14,.72);
   border:1px solid rgba(146,164,180,.17);cursor:pointer;
