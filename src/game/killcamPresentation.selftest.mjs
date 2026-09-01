@@ -51,17 +51,17 @@ assert.match(responsive,
   'phone spectator bar cancels the desktop horizontal centering transform');
 assert.match(source, /const panelEls(?:: HTMLElement\[\])? = \[dom\.title, dom\.skip, dom\.annot,/,
   'projected callouts reserve the fixed title, skip control, and analysis cards');
-assert.match(source, /w - it\.lw - 8/,
+assert.match(source, /width - label\.lw - 8/,
   'projected callouts clamp within the horizontal viewport');
-assert.match(source, /const moduleLabels = new Map(?:<[^;]+>)?\(\)/,
+assert.match(source, /function mergeXrayModuleHits[\s\S]*const merged = new Map(?:<[^;]+>)?\(\)/,
   'multiple physical hits on one module collapse into one final-state callout');
-assert.match(source, /final bounded label-only[\s\S]*const placed(?:: KillcamLabel\[\])? = \[\][\s\S]*const fits/,
+assert.match(source, /function separateFinalXrayLabels[\s\S]*const placed(?:: KillcamLabel\[\])? = \[\][\s\S]*settleXrayLabel/,
   'label separation is repeated after geometry and fixed-panel repulsion');
 assert.match(source, /const poseHistory = new Map(?:<[^;]+>)?\(\)/,
   'killcam retains the preceding simulation frame instead of reconstructing it after death');
 assert.match(source, /replayKind: 'collision'[\s\S]*trajPts: null/,
   'collision deaths use an explicit replay type with no projectile trajectory');
-assert.match(source, /if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision\(\);[\s\S]*return;[\s\S]*const raw = snap\.trajPts/,
+assert.match(source, /function startReplayPhase[\s\S]*if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision\(\);[\s\S]*return;[\s\S]*const trajectory = pb\.snap\.trajPts/,
   'collision playback exits before any tracer geometry can be allocated');
 assert.match(source, /function beginFiring\(stagedHold = false\)(?:: void)?[\s\S]*restageAttacker\(\)[\s\S]*triggerReplayShot\(attacker, shotDir\)/,
   'projectile playback hands the restored attacker to the canonical shot presentation');
@@ -93,8 +93,14 @@ assert.match(source, /function updateFlight\(dt(?:: number)?\)(?:: void)?[\s\S]*
   'the restored shooter remains visible and animates recoil through chase acquisition');
 assert.match(source, /function beginApproach\(\)(?:: void)?[\s\S]*flightStartPose\(toPos, toLook\)[\s\S]*SHOT_TRACK_FOV/,
   'approach position, target, and lens exactly match the launch frame');
-assert.match(source, /function beginXray\(\)(?:: void)? \{[\s\S]*beginCameraHandoff\(\)[\s\S]*setReplayCamera\(pb\.xcam\.pos, pb\.xcam\.look, 42, 0\)/,
+assert.match(source, /function prepareXrayPlaybackState\(\)(?:: void)? \{[\s\S]*beginCameraHandoff\(\)/,
+  'x-ray preparation starts the continuous camera handoff');
+assert.match(source, /function beginXray\(\)(?:: void)? \{[\s\S]*prepareXrayPlaybackState\(\)[\s\S]*setReplayCamera\(pb\.xcam\.pos, pb\.xcam\.look, 42, 0\)/,
   'collision, direct-analysis, and skipped paths blend into the x-ray camera');
+assert.match(source, /function teardown\(runCallback(?:: boolean)?\)(?:: void)? \{[\s\S]*publishReplayCompletion\(runCallback, done, wasDeathView\);/,
+  'teardown delegates replay completion to one transition owner');
+assert.doesNotMatch(source, /function teardown\(runCallback(?:: boolean)?\)(?:: void)? \{[\s\S]*spectate\.maybeStart\(\)[\s\S]*publishReplayCompletion/,
+  'teardown cannot start spectating twice');
 assert.doesNotMatch(source, /body\.cot-kc-live \.cot-hud\{display:none/,
   'replay HUD suppression keeps layout geometry mounted');
 assert.doesNotMatch(source, /\.cot-kc\.out \.cot-kc-bart,[\s\S]{0,120}height:51vh/,

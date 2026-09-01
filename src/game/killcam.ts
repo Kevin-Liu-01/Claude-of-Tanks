@@ -414,6 +414,28 @@ interface XrayCamera {
   look: THREE.Vector3;
 }
 
+interface XrayPoseGroups {
+  pose: THREE.Group;
+  turret: THREE.Group;
+}
+
+interface XrayBuildContext extends XrayPoseGroups {
+  snap: ReplaySnapshot;
+  event: KillcamHitEvent;
+  armor: KillcamArmor;
+  vehiclePose: ReplayPose;
+  moduleHits: Map<string, ModuleStateName>;
+  crewHits: Set<string>;
+  anchors: Map<string, THREE.Object3D>;
+  radiusScale: number;
+}
+
+interface TrackPrismBounds {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  center: Vec3Tuple;
+}
+
 interface ScreenObstacle {
   parent: THREE.Object3D | null;
   corners: THREE.Vector3[];
@@ -426,6 +448,18 @@ interface LayoutRect {
   lw: number;
   lh: number;
   fixed: boolean;
+}
+
+interface ScreenRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+interface ProjectedObstacleLayout {
+  obstacles: ScreenRect[];
+  anchors: Map<string, ScreenRect>;
 }
 
 interface KillcamLabel extends LayoutRect {
@@ -2118,6 +2152,295 @@ export function createKillCam(deps: KillcamDeps) {
     return true;
   }
 
+  function createPlaybackBundle(
+    snap: ReplaySnapshot,
+    kind: PlaybackKind,
+    onDone: (() => void) | null,
+  ): PlaybackBundle {
+    const bundle: PlaybackBundle = {
+      snap, kind, onDone,
+      replayKind: snap.replayKind || 'projectile',
+      phase: 'flight', t: 0, xt: 0,
+      group: new THREE.Group(),
+      disposables: [],
+      ghostBackup: null,
+      ghostSeen: null,
+      ghostVis: null,
+      ghostSkin: null,
+      labels: [],
+      obstacles: null!,
+      pts: null!, cum: null!, total: 0, dur: 0, segIdx: 0,
+      flightLift: null,
+      flightDist: 0, flightTimeline: null!,
+      contactT: 0, contactDir: null!,
+      app: null,
+      shot: null,
+      shotFxT: 0, shotFxLive: false,
+      collision: null,
+      isDeathView: false,
+      killerShown: false,
+      core: null!, streak: null!, trailGeo: null!,
+      halo: null!, tail: null!, shellLight: null!, muzzleLight: null!,
+      xcam: null!,
+      fxGroup: null, fxHidden: null,
+      vegGroup: null, vegWasVisible: true,
+      dimmedLights: null,
+      rewreck: null,
+      restageModuleStates: snap.preModuleStates || null,
+      restageEraSpent: snap.preEraSpent || [],
+      snapPoseState: null!,
+      attackerPoseState: null,
+      attackerRestore: null,
+      replayMuzzle: null, barrelDot: null,
+      wreck: null,
+      it: 0, itWall: 0,
+      impactVis: null!,
+      xrayAng0: 0,
+      xrayHoldS: XRAY_HOLD_S,
+      cameraBlend: null,
+      finalePending: false,
+      isFinale: false,
+      impactAng0: 0,
+    };
+    bundle.group.name = 'killcam';
+    scene.add(bundle.group);
+    bundle.fxGroup = scene.getObjectByName('fx') || null;
+    return bundle;
+  }
+
+  function replayPerspective(
+    snap: ReplaySnapshot,
+    kind: PlaybackKind,
+  ): { playerKill: boolean; playerIsVictim: boolean } {
+    const event = snap.ev;
+    const player = getPlayer();
+    const playerIsVictim = !!(player
+      && ((event.targetId != null && event.targetId === player.id)
+        || snap.targetEnt === player));
+    const playerKill = kind === 'victory'
+      || (!playerIsVictim && !!(player
+        && event.attackerId != null && event.attackerId === player.id));
+    return { playerKill, playerIsVictim };
+  }
+
+  function targetWreckReceipt(
+    snap: ReplaySnapshot,
+  ): PlaybackBundle['rewreck'] {
+    const visual = snap.targetEnt?.visual;
+    if (!visual?.isDestroyed?.()) return null;
+    const brokenTracks = ['trackL', 'trackR'].filter((module) =>
+      (snap.moduleStates && snap.moduleStates[module] === 'red')
+      || (snap.ev.modulesHit || []).some((hit) =>
+        hit.module === module && hit.newState === 'red'));
+    return {
+      pop: !!snap.ev.ammoRacked,
+      brokenTracks,
+      eraSpent: snap.eraSpent || [],
+    };
+  }
+
+  function configureReplayActors(
+    snap: ReplaySnapshot,
+    kind: PlaybackKind,
+    xrayOnly: boolean,
+  ): boolean {
+    const perspective = replayPerspective(snap, kind);
+    pb.isDeathView = perspective.playerIsVictim;
+    pb.snapPoseState = replayStateFromPose(snap.prePose || snap.pose);
+    restageAttacker();
+    pb.rewreck = targetWreckReceipt(snap);
+    pb.finalePending = !!(pb.replayKind === 'projectile'
+      && pb.isDeathView && !xrayOnly && pb.rewreck && snap.ev.destroyed);
+    return perspective.playerKill;
+  }
+
+  function prepareReplayVictim(freshKill: boolean): boolean {
+    const wreckHold = !!(freshKill && pb.isDeathView && pb.rewreck);
+    if (!wreckHold) {
+      hideFx();
+      restageIntact();
+    }
+    return wreckHold;
+  }
+
+  const replayStatIcons: Readonly<Record<string, string>> = {
+    Distance: 'scope',
+    'Impact angle': 'turretRing',
+    Armor: 'shield',
+    Damage: 'damage',
+    Pen: 'penetration',
+    Zone: 'autoAim',
+    'Closing speed': 'speed',
+    'Failed modules': 'repair',
+  };
+
+  function appendReplayStat(
+    d: KillcamDom,
+    key: string,
+    value: string,
+    wide = false,
+  ): HTMLDivElement {
+    const row = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
+    const label = el('span', '', row);
+    label.innerHTML = `${uiIconSVG(replayStatIcons[key] || 'battleRecord', 10)}<span>${key}</span>`;
+    const output = el('b', '', row);
+    output.textContent = value;
+    return row;
+  }
+
+  function replayArmorText(event: KillcamHitEvent): string {
+    const hasArmor = (event.nominalMm || 0) > 0 || (event.effectiveMm || 0) > 0;
+    if (hasArmor) {
+      return `${Math.round(event.nominalMm || 0)} → ${Math.round(event.effectiveMm || 0)} mm eff.`;
+    }
+    const external = !!event.zone
+      && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(event.zone);
+    return external ? 'external — no armor' : '—';
+  }
+
+  function penetrationQualifier(
+    event: KillcamHitEvent,
+    fresh: number,
+    residual: number,
+    nominal: number,
+  ): string {
+    if (event.eraPlate) return 'ERA';
+    const belowRollFloor = nominal > 0 && residual < nominal * 0.75 - 2;
+    return residual > 0 && (fresh > residual + 1 || belowRollFloor)
+      ? 'SCREENS'
+      : '';
+  }
+
+  function penetrationLegend(
+    cut: boolean,
+    qualifier: string,
+    residual: number,
+    nominal: number,
+  ): string {
+    if (cut) return `fresh → after ${qualifier === 'ERA' ? 'ERA' : 'screens'} / nominal`;
+    return residual > 0 && nominal > 0 ? 'roll / nominal' : '';
+  }
+
+  function appendPenetrationQualifier(
+    row: HTMLDivElement,
+    qualifier: string,
+  ): void {
+    const output = row.querySelector('b');
+    if (!qualifier || !output) return;
+    const chip = el('span', 'q', output);
+    chip.textContent = qualifier;
+    chip.style.color = qualifier === 'ERA' ? '#ffb43c' : '#9fb0bf';
+  }
+
+  function appendPenetrationStat(d: KillcamDom, event: KillcamHitEvent): void {
+    const nominal = nominalPenFor(event);
+    const residual = Math.round(event.penRollMm || 0);
+    const fresh = Math.round(event.penRollFreshMm || 0);
+    const cut = fresh > residual + 1;
+    const qualifier = penetrationQualifier(event, fresh, residual, nominal);
+    const value = residual > 0
+      ? `${cut ? `${fresh} → ` : ''}${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
+      : '—';
+    const row = appendReplayStat(d, 'Pen', value, true);
+    row.classList.add('pen');
+    appendPenetrationQualifier(row, qualifier);
+    const legend = penetrationLegend(cut, qualifier, residual, nominal);
+    row.title = legend
+      ? `Penetration (mm): ${legend}`
+      : 'Penetration roll at impact';
+    if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
+  }
+
+  function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
+    const meta = d.hdMeta.querySelector('span');
+    if (meta) meta.textContent = 'Ballistic analysis';
+    appendReplayStat(d, 'Distance', `${Math.round(event.flightDistM || 0)} m`);
+    appendReplayStat(d, 'Impact angle', `${Math.round(event.impactAngleDeg || 0)}°`);
+    appendReplayStat(d, 'Armor', replayArmorText(event));
+    appendReplayStat(d, 'Damage', `${Math.round(event.damage || 0)}`);
+    appendPenetrationStat(d, event);
+    appendReplayStat(d, 'Zone', zoneLabel(event.zone), true);
+  }
+
+  function populateCollisionStats(d: KillcamDom, event: KillcamHitEvent): void {
+    const meta = d.hdMeta.querySelector('span');
+    if (meta) meta.textContent = 'Collision analysis';
+    d.hdK.textContent = 'HULL IMPACT';
+    appendReplayStat(d, 'Closing speed', `${Math.round((event.closingMps || 0) * 3.6)} km/h`);
+    appendReplayStat(d, 'Damage', `${Math.round(event.damage || 0)}`);
+    appendReplayStat(d, 'Failed modules', `${(event.modulesHit || []).length}`, true);
+  }
+
+  function populateReplayDom(d: KillcamDom, playerKill: boolean): void {
+    const event = pb.snap.ev;
+    d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
+    d.titleS.textContent = pb.replayKind === 'collision'
+      ? (playerKill ? `${event.targetName || 'enemy'} rammed` : `rammed by ${event.attackerName || 'enemy'}`)
+      : (playerKill ? `${event.targetName || 'enemy'} destroyed`
+        : `destroyed by ${event.attackerName || 'enemy fire'}`);
+    const shellName = shellDisplayName(event);
+    d.hdK.textContent = shellName
+      ? `${event.shellType || ''} · ${shellName}`
+      : (event.shellType || '');
+    d.hdW.textContent = `${event.attackerName || 'Enemy'} → ${event.targetName || ''}`;
+    d.rows.textContent = '';
+    if (pb.replayKind === 'collision') populateCollisionStats(d, event);
+    else populateBallisticStats(d, event);
+    d.banner.classList.toggle('on', !!event.ammoRacked);
+    d.labelHost.textContent = '';
+    d.leader.textContent = '';
+    d.killer.root.classList.remove('on', 'rv');
+  }
+
+  function openReplayOverlay(d: KillcamDom): void {
+    d.root.classList.remove('in', 'out', 'now', 'grade');
+    d.root.classList.add('on');
+    clearExit();
+    void d.root.offsetWidth;
+    d.root.classList.add('in');
+    if (pb.isDeathView) {
+      d.root.classList.add('grade');
+      d.flash.classList.remove('go');
+      void d.flash.offsetWidth;
+      d.flash.classList.add('go');
+    }
+    document.body.classList.add('cot-kc-live');
+    window.addEventListener('keydown', onSkipKey, true);
+    window.addEventListener('mousedown', onSkipKey, true);
+  }
+
+  function configureReplayFillLight(): void {
+    const snap = pb.snap;
+    const radius = Math.max(9, snap.boundingRadiusM * 3.4);
+    const fill = kcLights[0];
+    fill.color.setHex(0xdfeaf4);
+    fill.intensity = 55;
+    fill.distance = radius * 4.5;
+    fill.position.set(
+      snap.pose.pos[0] + (pb.xcam.pos.x - snap.pose.pos[0]) * 0.4,
+      snap.pose.pos[1] + snap.heightM * 2.6,
+      snap.pose.pos[2] + (pb.xcam.pos.z - snap.pose.pos[2]) * 0.4,
+    );
+  }
+
+  function startReplayPhase(xrayOnly: boolean, wreckHold: boolean): void {
+    if (pb.replayKind === 'collision') {
+      if (wreckHold && beginWreck('collision')) return;
+      beginCollision();
+      return;
+    }
+    const trajectory = pb.snap.trajPts;
+    if (!xrayOnly && trajectory && trajectory.length >= 6
+        && prepareProjectileFlight(trajectory)) {
+      if (wreckHold && beginWreck('approach')) return;
+      if (beginApproach()) return;
+      beginFiring();
+      return;
+    }
+    if (wreckHold && beginWreck('xray')) return;
+    beginXray();
+  }
+
   function begin(
     snap: ReplaySnapshot,
     kind: PlaybackKind,
@@ -2130,302 +2453,15 @@ export function createKillCam(deps: KillcamDeps) {
     active = true;
     staged = false;
     lastBeginWallMs = performance.now();
-    // REPORT GATE (r6 critical): announce that the replay owns the screen.
-    // state.ts emits battle:ended in the same JS task begin() runs in, and
-    // shotInfo.ts used to render its full-screen battle report on that event
-    // immediately — the z-71 DEFEAT panel buried the still-playing z-60
-    // flight + x-ray hold. shotInfo now BUFFERS the report while a replay is
-    // live and flushes it on killcam:done (emitted in finish() below).
     if (busRef) busRef.emit('killcam:begin', { kind });
-    pb = {
-      snap, kind, onDone,
-      replayKind: snap.replayKind || 'projectile',
-      phase: 'flight', t: 0, xt: 0,
-      group: new THREE.Group(),
-      disposables: [],
-      ghostBackup: null,
-      ghostSeen: null,
-      ghostVis: null, ghostSkin: null, // re-assertable skin pass (r3)
-      labels: [],
-      obstacles: null!, // module/crew box screen rects (label repulsion, r3)
-      pts: null!, cum: null!, total: 0, dur: 0, segIdx: 0,
-      flightLift: null, // per-sample camera lift (flight LOS solve, r6)
-      flightDist: 0, flightTimeline: null!, // refresh-rate invariant retime
-      contactT: 0, contactDir: null!, // readable shell-on-armor transition
-      app: null, // death-sequence push-in approach state
-      shot: null, // attacker firing beat before projectile flight
-      shotFxT: 0, shotFxLive: false, // muzzle flash overlaps chase acquisition
-      collision: null, // two-vehicle rewind/contact beat
-      isDeathView: false, // player is the victim (grade + killer card + approach)
-      killerShown: false,
-      core: null!, streak: null!, trailGeo: null!,
-      halo: null!, tail: null!, shellLight: null!, muzzleLight: null!,
-      xcam: null!,
-      fxGroup: null, fxHidden: null,
-      vegGroup: null, vegWasVisible: true,
-      dimmedLights: null, // x-ray backdrop light dim, restored in finish (r4)
-      rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
-      restageModuleStates: snap.preModuleStates || null,
-      restageEraSpent: snap.preEraSpent || [],
-      snapPoseState: null!, // snapshot pose as a syncFromState-shaped object
-      attackerPoseState: null, // shot-time killer pose (restored on teardown)
-      attackerRestore: null, // visibility/wreck state lifted for the replay
-      replayMuzzle: null, barrelDot: null, // launch-fidelity diagnostics
-      wreck: null,   // killcam r2: live WRECK hold state (fresh own death)
-      it: 0, itWall: 0, // killcam r2: IMPACT beat clocks (anim / wall)
-      impactVis: null!,  // victim visual driven through the impact beat
-      xrayAng0: 0,      // orbit angle inherited from the impact drift
-      xrayHoldS: XRAY_HOLD_S, // trimmed by beginXray to the replay budget
-      cameraBlend: null, // continuous pose/fov handoff between replay phases
-      // killcam r3 own-death finale: the destruction beat plays AFTER the
-      // x-ray. finalePending arms the re-order (cleared once it fires or a
-      // skip cancels it), isFinale marks the beat currently running as the
-      // closing one (exit instead of x-ray), impactAng0 carries the orbit
-      // azimuth in from whichever phase handed the beat the camera.
-      finalePending: false, isFinale: false, impactAng0: 0,
-    };
-    pb.group.name = 'killcam';
-    scene.add(pb.group);
-    pb.fxGroup = scene.getObjectByName('fx') || null;
-
-    // Header/view direction resolved FIRST (killcam r2 — the wreck hold
-    // below gates on it). Header branches on the REPLAY DIRECTION, not just
-    // the caller's kind param (r5): the staged harness frame runs
-    // begin(kind='death') on a player-scored kill and titled it 'KILL CAM /
-    // destroyed by <your own tank>' — your kill phrased like your death.
-    // victim==player keeps the death phrasing; killer==player reads
-    // 'FINAL BLOW / <victim> destroyed'.
-    const ev = snap.ev;
-    const pEnt = getPlayer();
-    const playerIsVictim = !!(pEnt
-      && ((ev.targetId != null && ev.targetId === pEnt.id) || snap.targetEnt === pEnt));
-    const playerKill = kind === 'victory'
-      || (!playerIsVictim && !!(pEnt && ev.attackerId != null && ev.attackerId === pEnt.id));
-    pb.isDeathView = playerIsVictim;
-
-    // snapshot pose in syncFromState shape — shared by the pre-wreck restage,
-    // the impact beat's per-frame drive and the x-ray re-restage (killcam r2)
-    {
-      pb.snapPoseState = replayStateFromPose(snap.prePose || snap.pose);
-    }
-    restageAttacker();
-    // wreck-look bookkeeping for finish() — computed whether or not the
-    // restage runs now (the WRECK hold defers it, see restageIntact)
-    {
-      const vis0 = snap.targetEnt && snap.targetEnt.visual;
-      if (vis0 && vis0.isDestroyed && vis0.isDestroyed()) {
-        const deadTrack = (m: string): boolean =>
-          (snap.moduleStates && snap.moduleStates[m] === 'red') ||
-          (snap.ev.modulesHit || []).some((x) => x.module === m && x.newState === 'red');
-        pb.rewreck = {
-          pop: !!snap.ev.ammoRacked,
-          brokenTracks: ['trackL', 'trackR'].filter(deadTrack),
-          eraSpent: snap.eraSpent || [],
-        };
-      }
-    }
-
-    // OWN-DEATH FINALE GATE (killcam r3): the destruction re-plays AFTER the
-    // x-ray only when the PLAYER is the victim and a SHELL actually killed
-    // them. Requirements, all three load-bearing:
-    //   isDeathView — FINAL BLOW replays keep the r2 order (impact first);
-    //   !xrayOnly   — a burn-out death's captured shell only LIT the fire, so
-    //                 a replayed rack pop would be a lie (and its cook-off
-    //                 already played live in the wreck hold / death beat);
-    //   rewreck     — the victim's visual is genuinely wrecked, which is what
-    //                 lets teardown() own the final look after the beat.
-    pb.finalePending = !!(pb.replayKind === 'projectile'
-      && pb.isDeathView && !xrayOnly && pb.rewreck
-      && snap.ev.destroyed);
-
-    // WRECK HOLD ELIGIBILITY (killcam r2): a battle-deciding own death whose
-    // destruction is still playing on the live visual — the replay opens on
-    // it instead of hiding it. Everything the hold defers (fx suppression +
-    // pre-wreck restage) is applied at its handover (endWreck) or by
-    // beginXray's safety net on skip.
-    const wreckHold = !!(freshKill && pb.isDeathView && pb.rewreck);
-
-    if (!wreckHold) {
-      // Suppress live battle FX for the replay (r2 critique: the victim's
-      // death fireball/smoke rendered ON TOP of the x-ray ghost, and the
-      // dying shell's neon tracer afterglow cut a bloomed beam across the
-      // frame) — re-shown for the IMPACT beat, hidden again for the x-ray.
-      hideFx();
-      // PRE-WRECK RESTAGE (r2 major): the replay shows the moment of the
-      // hit, but by the time it plays the victim's visual has already been
-      // wrecked (burnt materials, turret settled askew / popped onto the
-      // deck, gun drooped). Ghosting THAT produced a turretless slab whose
-      // hull no longer aligned with the snapshot-posed module frames (r2
-      // evidence). Restore the live visual and re-pose it from the SNAPSHOT
-      // state; finish() re-applies the wreck (settled, embers cold) so the
-      // death cam afterwards is honest again. The sim/visual sync loop is
-      // frozen while the replay runs (main.ts step 5), so nothing overwrites
-      // the pose.
-      restageIntact();
-    }
-    d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
-    d.titleS.textContent = pb.replayKind === 'collision'
-      ? (playerKill ? `${ev.targetName || 'enemy'} rammed` : `rammed by ${ev.attackerName || 'enemy'}`)
-      : (playerKill ? `${ev.targetName || 'enemy'} destroyed`
-        : `destroyed by ${ev.attackerName || 'enemy fire'}`);
-    const cleanName = shellDisplayName(ev);
-    d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
-    d.hdW.textContent = `${ev.attackerName || 'Enemy'} → ${ev.targetName || ''}`;
-    d.rows.textContent = '';
-    const statIcon: Readonly<Record<string, string>> = {
-      Distance: 'scope',
-      'Impact angle': 'turretRing',
-      Armor: 'shield',
-      Damage: 'damage',
-      Pen: 'penetration',
-      Zone: 'autoAim',
-      'Closing speed': 'speed',
-      'Failed modules': 'repair',
-    };
-    const kv = (k: string, v: string, wide = false): HTMLDivElement => {
-      const r = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
-      const ks = el('span', '', r);
-      ks.innerHTML = `${uiIconSVG(statIcon[k] || 'battleRecord', 10)}<span>${k}</span>`;
-      const vs = el('b', '', r); vs.textContent = v;
-      return r;
-    };
-    kv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
-    kv('Impact angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
-    // 'N → M mm eff.' labels the angle-adjusted number (r5: nominal vs
-    // effective was unlabeled — the most educational stat read as opaque);
-    // hits that resolved on an external module (optics, gun barrel) state
-    // the truth instead of a bare em-dash armor story (r5 major).
-    const hasArm = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
-    const extNoArm = !hasArm && !!ev.zone
-      && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
-    kv('Armor', hasArm
-      ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
-      : extNoArm ? 'external — no armor' : '—');
-    // roll / nominal: the rolled pen alone (e.g. 986 mm vs a 63 mm plate)
-    // reads as a bug without the ±25%-roll baseline it came from.
-    // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen —
-    // ERA tiles and spaced screens already cut it in-event before the main
-    // plate test — and a bare 461/898 on an ERA'd glacis read as a broken
-    // ±25% RNG. With the additive payload field penRollFreshMm (damage.ts
-    // stamps the pre-degradation roll, see docs/GUNNERY-CAMERA-SPEC.md) the row prints the
-    // cut explicitly: 'fresh → residual / nominal · ERA'. Payloads without
-    // the field still get the qualifier whenever the event itself proves a
-    // cut happened (eraPlate set, or a residual mathematically impossible
-    // from a ±25% roll) — nothing is ever recomputed or guessed.
-    kv('Damage', `${Math.round(ev.damage || 0)}`);
-    // r8 presentation (critic: 'Pen roll' wrapped into a mangled two-line
-    // label/value jumble and the three numbers carried no legend): the row
-    // now spans the full card width on ONE line ('Pen' label, nowrap value),
-    // the ERA/screens qualifier rides as an unbreakable suffix chip, and a
-    // dim caption states the format once ('fresh → after ERA / nominal').
-    const penNom = nominalPenFor(ev);
-    const penRoll = Math.round(ev.penRollMm || 0);
-    const penFresh = Math.round(ev.penRollFreshMm || 0);
-    const penCut = penFresh > penRoll + 1;
-    const penQual = ev.eraPlate ? 'ERA'
-      : (penRoll > 0 && (penCut
-        || (penNom > 0 && penRoll < penNom * 0.75 - 2))) ? 'SCREENS' : '';
-    {
-      const r = kv('Pen', penRoll > 0
-        ? `${penCut ? `${penFresh} → ` : ''}${penRoll}${penNom > 0 ? ` / ${penNom}` : ''} mm`
-        : '—', true);
-      r.classList.add('pen');
-      if (penQual) {
-        const q = el('span', 'q', r.querySelector('b'));
-        q.textContent = penQual;
-        q.style.color = penQual === 'ERA' ? '#ffb43c' : '#9fb0bf';
-      }
-      const legend = penCut
-        ? `fresh → after ${penQual === 'ERA' ? 'ERA' : 'screens'} / nominal`
-        : penRoll > 0 && penNom > 0 ? 'roll / nominal' : '';
-      r.title = legend ? `Penetration (mm): ${legend}` : 'Penetration roll at impact';
-      if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
-    }
-    kv('Zone', zoneLabel(ev.zone), true);
-    if (pb.replayKind === 'collision') {
-      const meta = d.hdMeta.querySelector('span');
-      if (meta) meta.textContent = 'Collision analysis';
-      d.hdK.textContent = 'HULL IMPACT';
-      d.rows.textContent = '';
-      kv('Closing speed', `${Math.round((ev.closingMps || 0) * 3.6)} km/h`);
-      kv('Damage', `${Math.round(ev.damage || 0)}`);
-      kv('Failed modules', `${(ev.modulesHit || []).length}`, true);
-    } else {
-      const meta = d.hdMeta.querySelector('span');
-      if (meta) meta.textContent = 'Ballistic analysis';
-    }
-    d.banner.classList.toggle('on', !!ev.ammoRacked);
-    d.labelHost.textContent = '';
-    d.leader.textContent = '';
-    d.killer.root.classList.remove('on', 'rv');
-    // ENTRY TRANSITION (killcam_endscreen r1): the overlay mounts with bars
-    // parked off-screen, then a forced reflow arms the .in transitions —
-    // bars slide shut, title/annot/skip stagger in behind them. The shock
-    // flash fires only on the DEATH view (it is synced to the killing hit;
-    // a white-out over your own FINAL BLOW read as taking damage).
-    d.root.classList.remove('in', 'out', 'now', 'grade');
-    d.root.classList.add('on');
-    clearExit(); // never inherit a half-finished exit fade
-    void d.root.offsetWidth; // commit the parked bar transforms
-    d.root.classList.add('in');
-    if (pb.isDeathView) {
-      d.root.classList.add('grade'); // desat + vignette ramp (death view)
-      d.flash.classList.remove('go');
-      void d.flash.offsetWidth;
-      d.flash.classList.add('go');
-    }
-    // REPLAY OWNS THE SCREEN: css-level HUD veil that no later veilHud(false)
-    // caller can undo (see KC_CSS note) — removed in finish()
-    document.body.classList.add('cot-kc-live');
-
-    window.addEventListener('keydown', onSkipKey, true);
-    window.addEventListener('mousedown', onSkipKey, true);
-
-    // precompute the x-ray camera (flight blends into it)
+    pb = createPlaybackBundle(snap, kind, onDone);
+    const playerKill = configureReplayActors(snap, kind, xrayOnly);
+    const wreckHold = prepareReplayVictim(freshKill);
+    populateReplayDom(d, playerKill);
+    openReplayOverlay(d);
     pb.xcam = computeXrayCam(snap);
-
-    // Key light on the victim for the WHOLE replay (hoisted out of the x-ray
-    // phase, r6: during flight the chased tank sat at frame center as a pure
-    // unlit black silhouette). Cool camera-side fill; the fresnel skin is
-    // self-lit but the internal proxies (Lambert) and the ground pool under
-    // the hull need it, and in flight it lifts the victim out of silhouette.
-    // All replay lights come from the PERMANENT kcLights pool (never
-    // added/removed — see LIGHT-COUNT note), only retuned here.
-    {
-      const pose = snap.pose;
-      const R = Math.max(9, snap.boundingRadiusM * 3.4);
-      const fill = kcLights[0];
-      fill.color.setHex(0xdfeaf4);
-      fill.intensity = 55;
-      fill.distance = R * 4.5;
-      fill.position.set(
-        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.4,
-        pose.pos[1] + snap.heightM * 2.6,
-        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.4,
-      );
-    }
-
-    if (pb.replayKind === 'collision') {
-      if (wreckHold && beginWreck('collision')) return;
-      beginCollision();
-      return;
-    }
-
-    const raw = snap.trajPts;
-    if (!xrayOnly && raw && raw.length >= 6 && prepareProjectileFlight(raw)) {
-      // WRECK HOLD (killcam r2): a fresh battle-deciding own death plays out
-      // live before the replay. Every projectile replay then uses a continuous
-      // establishing move from the live camera to the restored firing pose.
-      if (wreckHold && beginWreck('approach')) return;
-      if (beginApproach()) return;
-      beginFiring();
-      return;
-    }
-    // no flight (fire death / missing trajectory): the fresh cook-off still
-    // gets its live beat before the analytical x-ray (killcam r2, ask d —
-    // the burn-out variant: muffled fx, no turret toss, expl_burnout sample)
-    if (wreckHold && beginWreck('xray')) return;
-    beginXray();
+    configureReplayFillLight();
+    startReplayPhase(xrayOnly, wreckHold);
   }
 
   /**
@@ -3913,207 +3949,1277 @@ export function createKillCam(deps: KillcamDeps) {
     }
   }
 
-  function beginXray() {
-    if (pb.phase === 'xray') return;
+  function prepareXrayPlaybackState(): void {
     beginCameraHandoff();
     if (pb.replayKind === 'collision') prepareCollisionAnalysis();
     pb.phase = 'xray';
     pb.xt = 0;
-    // killcam r2 safety net: whatever phase we arrive from, the analytical
-    // hold needs the victim in its pre-hit pose (the IMPACT beat re-wrecked
-    // it; a skip can land here straight from the WRECK hold) and the battle
-    // fx suppressed again (the beats re-showed them so the fireball/smoke
-    // could play — r2: the death fireball rendered ON TOP of the ghost).
-    // Both are no-ops when flight/approach handed over normally.
     pb.impactVis = null!;
     pb.wreck = null;
     restageIntact();
     hideFx();
-    // X-RAY BUDGET (killcam r2): the live beats spend seconds the buffered
-    // battle report's 16 s watchdog (shotInfo) does not know about — give
-    // back whatever they used so exit + killcam:done always land first.
-    // Floor keeps the analysis readable; no-beat replays still get the full
-    // legacy hold (elapsed ~5 s -> clamped to XRAY_HOLD_S).
-    // killcam r3: an own-death replay still owes the frame a FINALE after this
-    // hold, so its wall cost is reserved up front. The trim lands on the
-    // ANALYSIS, never on the destruction — the owner asked to see the tank
-    // blow up again, and a budget squeeze must not be what deletes it.
     pb.xrayHoldS = THREE.MathUtils.clamp(
       REPLAY_BUDGET_S - (pb.finalePending ? FINALE_RESERVE_S : 0)
         - (performance.now() - lastBeginWallMs) / 1000,
-      pb.finalePending ? FINALE_XRAY_FLOOR_S : 4.0, XRAY_HOLD_S);
-    // x-ray dressing thickness follows the SOLVED orbit radius (r5: fixed
-    // radii read as a fat baton at the tight Tiger-class orbit): ~1 at an
-    // 8.5 m orbit, floored/capped so huge and tiny victims both stay legible.
-    const rQ = THREE.MathUtils.clamp(
-      (pb.xcam && pb.xcam.off ? pb.xcam.off.length() : 8.5) / 8.5, 0.8, 1.5);
-    // retire the flight tracer + its glow dressing (keep the trail arcing
-    // into the tank; the victim fill light stays for the hold). Pool lights
-    // are only DIMMED, never removed — removal changes the light count and
-    // recompiles every lit material mid-replay (LIGHT-COUNT note).
-    if (pb.core) {
-      pb.group.remove(pb.core, pb.streak, pb.halo, pb.tail);
-      pb.shellLight.intensity = 0;
-      pb.muzzleLight.intensity = 0;
-      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null!;
-    }
-    // Cap the visible trail to the final ~60 m of arc: the full muzzle-to-hull
-    // polyline read as a beam lasering across the whole map during the hold.
-    if (pb.trailGeo && pb.cum && pb.pts) {
-      let start = 0;
-      const keepFrom = pb.total - 60;
-      while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
-      // terrain-aware trim (r4): a low grazing arc could leave kept points
-      // skimming (or, on a rising slope, visually inside) the ground — the
-      // beam then reads as if the shell emerged from the terrain. Drop every
-      // kept point up to the LAST one without ~0.6 m of clearance; the final
-      // two points (the plate arrival) are always kept.
-      if (heightField) {
-        for (let i = start; i < pb.pts.length - 3; i++) {
-          const p = pb.pts[i];
-          if (p.y < heightField.getHeightAt(p.x, p.z) + 0.6) start = i + 1;
-        }
-      }
-      pb.trailGeo.setDrawRange(start, pb.pts.length - start);
-      // Fade the kept polyline's TAIL (r5): vertex colors ramp from black
-      // where the line enters frame to full at the plate, so the trail dies
-      // away instead of hard-starting as a laser at the frame edge.
-      const colA = pb.trailGeo.getAttribute('color');
-      if (colA) {
-        const c0 = pb.cum[start];
-        const span = Math.max(1e-3, pb.total - c0);
-        for (let i = 0; i < pb.pts.length; i++) {
-          const f = THREE.MathUtils.clamp((pb.cum[i] - c0) / span, 0, 1);
-          const v = f * f;
-          colA.setXYZ(i, v, v, v);
-        }
-        colA.needsUpdate = true;
-      }
-      // Rebuild the final arc as a glow ribbon (sheath + hot core tube per
-      // segment): the 1px GL line alone was a dim tan thread at 1080p (r5).
-      // r2: the ribbon is now a TAPERED ~26 m — the uniform 60 m beam read
-      // as a pass-through laser with no travel direction. Radius and tier
-      // (far = thin/faint, near = wide/bright) ramp toward the plate, so the
-      // approach reads as a tracer ARRIVING, clearly split from the shorter
-      // internal penetration channel by the entry marker + spall burst.
-      // r5: radii ~40% slimmer and orbit-scaled — the old ribbon fattened
-      // into the baton read at close orbit.
-      const RIB_M = 26;
-      let rs = start;
-      const ribFrom = pb.total - RIB_M;
-      while (rs < pb.pts.length - 2 && pb.cum[rs + 1] < ribFrom) rs++;
-      for (let i = rs; i < pb.pts.length - 1; i++) {
-        const f = THREE.MathUtils.clamp((pb.cum[i] - ribFrom) / RIB_M, 0, 1);
-        tube(pb.pts[i], pb.pts[i + 1], (0.017 + 0.034 * f) * rQ,
-          f > 0.5 ? S.trailGlow : S.trailGlowFar, pb.group, pb.disposables);
-        tube(pb.pts[i], pb.pts[i + 1], (0.008 + 0.011 * f) * rQ,
-          f > 0.5 ? S.trailCore : S.trailCoreFar, pb.group, pb.disposables);
+      pb.finalePending ? FINALE_XRAY_FLOOR_S : 4.0,
+      XRAY_HOLD_S,
+    );
+  }
+
+  function xrayRadiusScale(): number {
+    const radius = pb.xcam?.off ? pb.xcam.off.length() : 8.5;
+    return THREE.MathUtils.clamp(radius / 8.5, 0.8, 1.5);
+  }
+
+  function retireFlightDressing(): void {
+    if (!pb.core) return;
+    pb.group.remove(pb.core, pb.streak, pb.halo, pb.tail);
+    pb.shellLight.intensity = 0;
+    pb.muzzleLight.intensity = 0;
+    pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null!;
+  }
+
+  function xrayTrailStart(): number {
+    let start = 0;
+    const keepFrom = pb.total - 60;
+    while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
+    if (!heightField) return start;
+    for (let index = start; index < pb.pts.length - 3; index++) {
+      const point = pb.pts[index];
+      if (point.y < heightField.getHeightAt(point.x, point.z) + 0.6) {
+        start = index + 1;
       }
     }
+    return start;
+  }
 
-    const snap = pb.snap;
-    const ev = snap.ev;
-    const armor = snap.armor;
-    const pose = snap.pose;
+  function fadeXrayTrail(start: number): void {
+    const colors = pb.trailGeo.getAttribute('color');
+    if (!colors) return;
+    const startDistance = pb.cum[start];
+    const span = Math.max(1e-3, pb.total - startDistance);
+    for (let index = 0; index < pb.pts.length; index++) {
+      const fraction = THREE.MathUtils.clamp(
+        (pb.cum[index] - startDistance) / span,
+        0,
+        1,
+      );
+      const value = fraction * fraction;
+      colors.setXYZ(index, value, value, value);
+    }
+    colors.needsUpdate = true;
+  }
 
-    // 1. ghost-translucent victim — fresnel skin (see sharedMats).
-    const vis = snap.targetEnt.visual;
-    if (vis.setVisible) vis.setVisible(true); // player may have died while scoped (hull hidden)
-    const ghostBackup: Array<[THREE.Mesh, THREE.Material | THREE.Material[], number, boolean]> = [];
-    const ghostSeen = new WeakSet<THREE.Mesh>();
-    pb.ghostBackup = ghostBackup;
-    pb.ghostSeen = ghostSeen;
-    // Ghost every color-rendering mesh, including currently-hidden LOD detail
-    // levels. The x-ray camera sits close enough to flip LODs mid-hold, and a
-    // skipped painted mesh would pop in with its original dark non-additive
-    // material and read as a black hole in the hull. Non-painting helpers stay
-    // excluded. Skin renders at renderOrder 11;
-    // everything the kill-cam adds (pb.group: proxies, boxes, shell path,
-    // labels' anchor dots) renders AFTER it at groupOrder 12, so the organs
-    // stay crisp whatever the local skin density.
-    // r3: extracted + RE-ASSERTED every x-ray frame (updateXray) — the
-    // perf-budget GLB kit deferral parents add-on meshes (TUSK kit: 93
-    // meshes on the live probe) into the visual ASYNCHRONOUSLY, and a
-    // one-shot traverse left them wearing their lit materials: the ghost
-    // rendered as a black add-on shell over an invisible hull.
-    const ghostVis = vis;
-    pb.ghostVis = ghostVis;
+  function addXrayTrailRibbon(start: number, radiusScale: number): void {
+    const ribbonLength = 26;
+    let ribbonStart = start;
+    const ribbonFrom = pb.total - ribbonLength;
+    while (ribbonStart < pb.pts.length - 2
+        && pb.cum[ribbonStart + 1] < ribbonFrom) ribbonStart++;
+    for (let index = ribbonStart; index < pb.pts.length - 1; index++) {
+      const fraction = THREE.MathUtils.clamp(
+        (pb.cum[index] - ribbonFrom) / ribbonLength,
+        0,
+        1,
+      );
+      tube(
+        pb.pts[index],
+        pb.pts[index + 1],
+        (0.017 + 0.034 * fraction) * radiusScale,
+        fraction > 0.5 ? S.trailGlow : S.trailGlowFar,
+        pb.group,
+        pb.disposables,
+      );
+      tube(
+        pb.pts[index],
+        pb.pts[index + 1],
+        (0.008 + 0.011 * fraction) * radiusScale,
+        fraction > 0.5 ? S.trailCore : S.trailCoreFar,
+        pb.group,
+        pb.disposables,
+      );
+    }
+  }
+
+  function dressXrayTrail(radiusScale: number): void {
+    if (!pb.trailGeo || !pb.cum || !pb.pts) return;
+    const start = xrayTrailStart();
+    pb.trailGeo.setDrawRange(start, pb.pts.length - start);
+    fadeXrayTrail(start);
+    addXrayTrailRibbon(start, radiusScale);
+  }
+
+  function applyXrayGhost(snap: ReplaySnapshot): KillcamVisual {
+    const visual = snap.targetEnt.visual;
+    if (visual.setVisible) visual.setVisible(true);
+    const backup: Array<[THREE.Mesh, THREE.Material | THREE.Material[], number, boolean]> = [];
+    const seen = new WeakSet<THREE.Mesh>();
+    pb.ghostBackup = backup;
+    pb.ghostSeen = seen;
+    pb.ghostVis = visual;
     pb.ghostSkin = () => {
-      ghostVis.root.traverse((object) => {
+      visual.root.traverse((object) => {
         const mesh = object as THREE.Mesh;
-        if (!mesh.isMesh || mesh.material === S.ghost || ghostSeen.has(mesh)) return;
-        ghostSeen.add(mesh);
-        ghostBackup.push([mesh, mesh.material, mesh.renderOrder, mesh.castShadow]);
-        // Invisible authored shadow hulls stay in the scene with colorWrite
-        // disabled. Ghosting them made their coarse convex silhouettes appear
-        // as huge cones around barrels and roof fittings. Suspend their shadow
-        // only; never turn a non-painting helper into visible x-ray geometry.
+        if (!mesh.isMesh || mesh.material === S.ghost || seen.has(mesh)) return;
+        seen.add(mesh);
+        backup.push([mesh, mesh.material, mesh.renderOrder, mesh.castShadow]);
         if (!isKillcamGhostSurface(mesh)) {
           mesh.castShadow = false;
           return;
         }
         mesh.material = S.ghost;
         mesh.renderOrder = 11;
-        // the hull's own cast shadow otherwise sits directly beneath the
-        // translucent skin and reads THROUGH it as a black tank-shaped
-        // void (live Abrams probe) — WT floats the wreck on lit ground
         mesh.castShadow = false;
       });
     };
     pb.ghostSkin();
-    pb.group.renderOrder = 12; // internals over the skin (groupOrder sort)
-    // feed the ghost shader's depth grading this victim's bounding sphere
+    pb.group.renderOrder = 12;
     S.ghostCenter.value.copy(pb.xcam.center);
     S.ghostRad.value = Math.max(2, snap.boundingRadiusM || 4);
-    // r8 per-band opacity planes (see the shader note in sharedMats): the
-    // turret-floor band starts at the SNAPSHOT armor's turret-ring height,
-    // the gear-dim band tops out at the track modules' bb ceiling — both
-    // straight from the spec the sim itself rolled against, nothing tuned
-    // per vehicle. Fallbacks derive from the spec height when a layout
-    // carries no turret pivot / track boxes.
-    {
-      const hM = Math.max(1.4, snap.heightM || 2.4);
-      S.ghostRingY.value = pose.pos[1]
-        + (armor.turretPivot ? armor.turretPivot[1] : hM * 0.62);
-      let gearTop = 0;
-      for (const mb of armor.modules || []) {
-        if (mb.module === 'trackL' || mb.module === 'trackR') {
-          gearTop = Math.max(gearTop, mb.max[1]);
-        }
+    return visual;
+  }
+
+  function configureXrayGhostBands(
+    snap: ReplaySnapshot,
+    armor: KillcamArmor,
+    pose: ReplayPose,
+  ): void {
+    const height = Math.max(1.4, snap.heightM || 2.4);
+    S.ghostRingY.value = pose.pos[1]
+      + (armor.turretPivot ? armor.turretPivot[1] : height * 0.62);
+    let gearTop = 0;
+    for (const module of armor.modules || []) {
+      if (module.module === 'trackL' || module.module === 'trackR') {
+        gearTop = Math.max(gearTop, module.max[1]);
       }
-      S.ghostGearY.value = pose.pos[1] + (gearTop > 0 ? gearTop : hM * 0.3);
     }
+    S.ghostGearY.value = pose.pos[1] + (gearTop > 0 ? gearTop : height * 0.3);
+  }
 
-    // 1a. isolate the vehicle for the hold (WT x-ray read): sunlit grass
-    // blades under/behind the hull otherwise show straight through the
-    // translucent ghost as bright speckle noise. The vegetation layer comes
-    // back in finish() for the death cam / next battle.
+  function dimXrayBackdrop(snap: ReplaySnapshot): void {
     hideReplayVegetation();
-
-    // 1a-bis. BACKDROP LIGHT DIM (r4 major — scene-luminance-invariant ghost):
-    // the fresnel skin is translucent, so whatever sits behind it leaks
-    // through the alpha blend — over sunlit grass the hull washed out to a
-    // milky low-contrast blob while the identical treatment read crisp over a
-    // dark dirt road. WT darkens the whole world behind its x-ray; here the
-    // sun cascades + ambient hemisphere are dimmed for the hold so the
-    // TERRAIN drops before the skin blends over it, while the ghost material
-    // itself (unlit MeshBasicMaterial, toneMapped:false) keeps every bit of
-    // its own brightness. Intensity writes are pure uniform updates — light
-    // COUNT never changes, so no material recompiles (LIGHT-COUNT note).
-    // Exact originals restored in finish().
     pb.dimmedLights = [];
-    const dimmedLights = pb.dimmedLights;
     scene.traverse((object) => {
-      if ((object instanceof THREE.DirectionalLight || object instanceof THREE.HemisphereLight)
-          && object.intensity > 0) {
-        dimmedLights.push([object, object.intensity]);
-        object.intensity *= object instanceof THREE.HemisphereLight ? 0.42 : 0.30;
+      const isBackdropLight = object instanceof THREE.DirectionalLight
+        || object instanceof THREE.HemisphereLight;
+      if (!isBackdropLight || object.intensity <= 0) return;
+      pb.dimmedLights!.push([object, object.intensity]);
+      object.intensity *= object instanceof THREE.HemisphereLight ? 0.42 : 0.30;
+    });
+    kcLights[0].distance = Math.max(10, snap.boundingRadiusM * 2.4);
+  }
+
+  function createXrayPoseGroups(
+    pose: ReplayPose,
+    armor: KillcamArmor,
+  ): XrayPoseGroups {
+    const poseGroup = new THREE.Group();
+    poseGroup.renderOrder = 12;
+    poseGroup.rotation.order = 'YXZ';
+    poseGroup.position.set(pose.pos[0], pose.pos[1], pose.pos[2]);
+    poseGroup.rotation.set(-pose.pitch, pose.yaw, pose.roll);
+    const turretGroup = new THREE.Group();
+    turretGroup.renderOrder = 12;
+    turretGroup.position.set(
+      armor.turretPivot[0],
+      armor.turretPivot[1],
+      armor.turretPivot[2],
+    );
+    turretGroup.rotation.y = pose.turretYaw;
+    poseGroup.add(turretGroup);
+    pb.group.add(poseGroup);
+    return { pose: poseGroup, turret: turretGroup };
+  }
+
+  function createXrayBuildContext(radiusScale: number): XrayBuildContext {
+    const snap = pb.snap;
+    const groups = createXrayPoseGroups(snap.pose, snap.armor);
+    const moduleHits = new Map<string, ModuleStateName>();
+    for (const hit of snap.ev.modulesHit) moduleHits.set(hit.module, hit.newState);
+    return {
+      snap,
+      event: snap.ev,
+      armor: snap.armor,
+      vehiclePose: snap.pose,
+      pose: groups.pose,
+      turret: groups.turret,
+      moduleHits,
+      crewHits: new Set(snap.ev.crewHit),
+      anchors: new Map<string, THREE.Object3D>(),
+      radiusScale,
+    };
+  }
+
+  function xrayModuleState(context: XrayBuildContext, name: string): ModuleStateName {
+    const state = context.snap.moduleStates?.[name] || context.moduleHits.get(name);
+    return state === 'red' || state === 'yellow' ? state : 'ok';
+  }
+
+  function xrayBoxCorners(box: KillcamBox): THREE.Vector3[] {
+    const corners: THREE.Vector3[] = [];
+    for (let index = 0; index < 8; index++) {
+      corners.push(new THREE.Vector3(
+        index & 1 ? box.max[0] : box.min[0],
+        index & 2 ? box.max[1] : box.min[1],
+        index & 4 ? box.max[2] : box.min[2],
+      ));
+    }
+    return corners;
+  }
+
+  function addXrayBoxTrackSlats(
+    box: KillcamBox,
+    size: THREE.Vector3,
+    center: THREE.Vector3,
+    material: THREE.MeshBasicMaterial,
+    parent: THREE.Object3D,
+  ): void {
+    const count = Math.max(5, Math.min(12, Math.round(size.z / 0.55)));
+    const length = (size.z / count) * 0.62;
+    const geometry = new THREE.BoxGeometry(size.x * 0.96, size.y * 0.9, length);
+    pb.disposables.push(geometry);
+    for (let index = 0; index < count; index++) {
+      const slat = new THREE.Mesh(geometry, material);
+      slat.position.set(
+        center.x,
+        center.y,
+        box.min[2] + (index + 0.5) * (size.z / count),
+      );
+      parent.add(slat);
+    }
+  }
+
+  function addXrayBox(
+    context: XrayBuildContext,
+    box: KillcamBox,
+    key: string | null,
+    material: THREE.LineBasicMaterial,
+    fillMaterial: THREE.MeshBasicMaterial | null,
+  ): void {
+    const size = new THREE.Vector3(
+      box.max[0] - box.min[0],
+      box.max[1] - box.min[1],
+      box.max[2] - box.min[2],
+    );
+    const boxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const edges = new THREE.EdgesGeometry(boxGeometry);
+    pb.disposables.push(boxGeometry, edges);
+    const segment = new THREE.LineSegments(edges, material);
+    segment.position.set(
+      (box.min[0] + box.max[0]) / 2,
+      (box.min[1] + box.max[1]) / 2,
+      (box.min[2] + box.max[2]) / 2,
+    );
+    const parent = box.turretLocal ? context.turret : context.pose;
+    parent.add(segment);
+    if (material === S.edgeDim) segment.visible = false;
+    if (fillMaterial && (key === 'm:trackL' || key === 'm:trackR')) {
+      addXrayBoxTrackSlats(box, size, segment.position, fillMaterial, parent);
+    } else if (fillMaterial) {
+      const fill = new THREE.Mesh(boxGeometry, fillMaterial);
+      fill.position.copy(segment.position);
+      parent.add(fill);
+    }
+    pb.obstacles.push({ parent, corners: xrayBoxCorners(box), key });
+    if (key && !context.anchors.has(key)) context.anchors.set(key, segment);
+  }
+
+  function trackPrismBounds(shapes: readonly TrackShape[]): TrackPrismBounds {
+    const min: Vec3Tuple = [Infinity, Infinity, Infinity];
+    const max: Vec3Tuple = [-Infinity, -Infinity, -Infinity];
+    for (const shape of shapes) {
+      for (const point of shape.poly) {
+        min[0] = Math.min(min[0], shape.x0, shape.x1);
+        max[0] = Math.max(max[0], shape.x0, shape.x1);
+        min[1] = Math.min(min[1], point[1]);
+        max[1] = Math.max(max[1], point[1]);
+        min[2] = Math.min(min[2], point[0]);
+        max[2] = Math.max(max[2], point[0]);
+      }
+    }
+    return {
+      min,
+      max,
+      center: [
+        (min[0] + max[0]) / 2,
+        (min[1] + max[1]) / 2,
+        (min[2] + max[2]) / 2,
+      ],
+    };
+  }
+
+  function trackPrismLinePositions(
+    shape: TrackShape,
+    center: Vec3Tuple,
+  ): number[] {
+    const positions: number[] = [];
+    const push = (x: number, point: readonly [number, number]): void => {
+      positions.push(x - center[0], point[1] - center[1], point[0] - center[2]);
+    };
+    for (let index = 0; index < shape.poly.length; index++) {
+      const point = shape.poly[index];
+      const next = shape.poly[(index + 1) % shape.poly.length];
+      push(shape.x0, point);
+      push(shape.x0, next);
+      push(shape.x1, point);
+      push(shape.x1, next);
+      push(shape.x0, point);
+      push(shape.x1, point);
+    }
+    return positions;
+  }
+
+  function addXrayTrackSegmentSlats(
+    shape: TrackShape,
+    center: Vec3Tuple,
+    material: THREE.MeshBasicMaterial,
+    group: THREE.Group,
+    index: number,
+  ): void {
+    const point = shape.poly[index];
+    const next = shape.poly[(index + 1) % shape.poly.length];
+    const deltaZ = next[0] - point[0];
+    const deltaY = next[1] - point[1];
+    const length = Math.hypot(deltaZ, deltaY);
+    if (length < 0.12) return;
+    const count = Math.max(1, Math.min(14, Math.round(length / 0.55)));
+    const geometry = new THREE.BoxGeometry(
+      Math.abs(shape.x1 - shape.x0) * 0.96,
+      0.17,
+      (length / count) * 0.62,
+    );
+    pb.disposables.push(geometry);
+    const tangentZ = deltaZ / length;
+    const tangentY = deltaY / length;
+    for (let slatIndex = 0; slatIndex < count; slatIndex++) {
+      const distance = (slatIndex + 0.5) * (length / count);
+      const slat = new THREE.Mesh(geometry, material);
+      slat.position.set(
+        (shape.x0 + shape.x1) / 2 - center[0],
+        point[1] + tangentY * distance + tangentZ * 0.085 - center[1],
+        point[0] + tangentZ * distance - tangentY * 0.085 - center[2],
+      );
+      slat.rotation.x = Math.atan2(-tangentY, tangentZ);
+      group.add(slat);
+    }
+  }
+
+  function addXrayTrackTreadSlats(
+    shape: TrackShape,
+    center: Vec3Tuple,
+    material: THREE.MeshBasicMaterial,
+    group: THREE.Group,
+  ): void {
+    for (let index = 0; index < shape.poly.length; index++) {
+      addXrayTrackSegmentSlats(shape, center, material, group, index);
+    }
+  }
+
+  function addXrayTrackPrism(
+    context: XrayBuildContext,
+    shapes: TrackShape[],
+    key: string,
+    material: THREE.LineBasicMaterial,
+    fillMaterial: THREE.MeshBasicMaterial | null,
+  ): void {
+    const bounds = trackPrismBounds(shapes);
+    const group = new THREE.Group();
+    group.renderOrder = 12;
+    group.position.set(...bounds.center);
+    for (const shape of shapes) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(
+        trackPrismLinePositions(shape, bounds.center),
+        3,
+      ));
+      pb.disposables.push(geometry);
+      group.add(new THREE.LineSegments(geometry, material));
+      if (fillMaterial) addXrayTrackTreadSlats(shape, bounds.center, fillMaterial, group);
+    }
+    context.pose.add(group);
+    if (material === S.edgeDim) group.visible = false;
+    pb.obstacles.push({
+      parent: context.pose,
+      corners: xrayBoxCorners({ ...bounds, turretLocal: false }),
+      key,
+    });
+    if (!context.anchors.has(key)) context.anchors.set(key, group);
+  }
+
+  function xrayTrackShapes(context: XrayBuildContext, name: string): TrackShape[] | null {
+    const shapes = (context.armor.trackShapes || [])
+      .filter((shape) => shape.module === name);
+    return shapes.length ? shapes : null;
+  }
+
+  function addXrayModuleFrame(
+    context: XrayBuildContext,
+    module: KillcamModuleBox,
+  ): void {
+    const state = xrayModuleState(context, module.module);
+    const material = state === 'red'
+      ? S.edgeRed
+      : state === 'yellow' ? S.edgeYellow : S.edgeDim;
+    const fill = state === 'red'
+      ? S.fillRed
+      : state === 'yellow' ? S.fillYellow : null;
+    const key = `m:${module.module}`;
+    const prism = module.module === 'trackL' || module.module === 'trackR'
+      ? xrayTrackShapes(context, module.module)
+      : null;
+    if (prism) {
+      addXrayTrackPrism(context, prism, key, material, fill);
+      return;
+    }
+    const parts = module.parts?.length ? module.parts : [module];
+    for (const part of parts) {
+      addXrayBox(context, { ...module, min: part.min, max: part.max }, key, material, fill);
+    }
+  }
+
+  function addXrayArmorFrames(context: XrayBuildContext): void {
+    pb.obstacles = [];
+    for (const module of context.armor.modules || []) addXrayModuleFrame(context, module);
+    for (const crew of context.armor.crew || []) {
+      const hit = context.crewHits.has(crew.crew);
+      addXrayBox(
+        context,
+        crew,
+        `c:${crew.crew}`,
+        hit ? S.edgeCrew : S.edgeDim,
+        hit ? S.fillCrew : null,
+      );
+    }
+  }
+
+  function clampXrayBox<T extends KillcamBox>(
+    context: XrayBuildContext,
+    box: T,
+  ): T {
+    const dimensions = context.snap.targetEnt?.spec?.dims;
+    if (!dimensions || box.turretLocal) return box;
+    const halfWidth = dimensions.widthM / 2 + 0.03;
+    const halfLength = (dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2 + 0.08;
+    const min: Vec3Tuple = [
+      Math.max(box.min[0], -halfWidth),
+      Math.max(box.min[1], -0.05),
+      Math.max(box.min[2], -halfLength),
+    ];
+    const max: Vec3Tuple = [
+      Math.min(box.max[0], halfWidth),
+      Math.min(box.max[1], dimensions.heightM + 0.05),
+      Math.min(box.max[2], halfLength),
+    ];
+    const empty = min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2];
+    return empty ? box : { ...box, min, max };
+  }
+
+  function xrayVictimCaliber(context: XrayBuildContext): number {
+    try {
+      return context.snap.targetEnt.spec.gun.shells[0]?.caliberMm || 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function addXrayModuleInternals(
+    context: XrayBuildContext,
+    era: string,
+    caliberMm: number,
+  ): void {
+    for (const module of context.armor.modules || []) {
+      const parts = module.parts?.length ? module.parts : [module];
+      for (const part of parts) {
+        addInternalModuleModel(
+          clampXrayBox(context, { ...module, min: part.min, max: part.max }),
+          proxMatForState(xrayModuleState(context, module.module)),
+          context.pose,
+          context.turret,
+          pb.disposables,
+          era,
+          caliberMm,
+          S.proxSteel,
+          context.armor,
+        );
+      }
+    }
+  }
+
+  function addXrayCrewInternals(context: XrayBuildContext): void {
+    const corpse = !!context.event.destroyed
+      || pb.kind === 'death'
+      || pb.kind === 'victory';
+    const crewAlive = context.snap.crewAlive;
+    for (const crew of context.armor.crew || []) {
+      const down = context.crewHits.has(crew.crew)
+        || crewAlive?.[crew.crew] === false;
+      const material = down
+        ? S.proxRed
+        : corpse ? S.proxGrey : S.proxGreen;
+      addInternalCrewModel(
+        crew,
+        material,
+        context.pose,
+        context.turret,
+        pb.disposables,
+        context.armor,
+      );
+    }
+  }
+
+  function addXrayInternals(context: XrayBuildContext): void {
+    const era = context.snap.targetEnt?.spec?.era || '';
+    addXrayModuleInternals(context, era, xrayVictimCaliber(context));
+    addInternalDrivetrainModel(
+      context.armor,
+      context.pose,
+      pb.disposables,
+      S.proxSteel,
+    );
+    addXrayCrewInternals(context);
+  }
+
+  function xrayBoxCenter(
+    context: XrayBuildContext,
+    box: KillcamBox,
+    output: THREE.Vector3,
+  ): THREE.Vector3 {
+    const x = (box.min[0] + box.max[0]) / 2;
+    const y = (box.min[1] + box.max[1]) / 2;
+    const z = (box.min[2] + box.max[2]) / 2;
+    if (!box.turretLocal) return output.set(x, y, z);
+    const yaw = context.vehiclePose.turretYaw || 0;
+    const cosine = Math.cos(yaw);
+    const sine = Math.sin(yaw);
+    return output.set(
+      x * cosine + z * sine + context.armor.turretPivot[0],
+      y + context.armor.turretPivot[1],
+      -x * sine + z * cosine + context.armor.turretPivot[2],
+    );
+  }
+
+  function xrayDamageDepth(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+  ): number {
+    let deepest = 0;
+    const depthOf = (box: KillcamBox): number =>
+      xrayBoxCenter(context, box, _a).sub(entry).dot(direction);
+    for (const hit of context.event.modulesHit) {
+      const box = context.armor.modules.find((module) => module.module === hit.module);
+      if (box) deepest = Math.max(deepest, depthOf(box));
+    }
+    for (const crewId of context.event.crewHit) {
+      const box = context.armor.crew.find((crew) => crew.crew === crewId);
+      if (box) deepest = Math.max(deepest, depthOf(box));
+    }
+    return deepest;
+  }
+
+  function xrayNearMissRecord(
+    context: XrayBuildContext,
+    box: KillcamBox,
+    key: string,
+    label: string,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+  ): NearMissRecord | null {
+    xrayBoxCenter(context, box, _a).sub(entry);
+    const along = _a.dot(direction);
+    if (along < 0.12 || along > innerLength + 0.3) return null;
+    _b.copy(direction).multiplyScalar(along);
+    const radial = _a.sub(_b).length();
+    const halfExtent = (
+      box.max[0] - box.min[0]
+      + box.max[1] - box.min[1]
+      + box.max[2] - box.min[2]
+    ) / 6;
+    const score = radial - halfExtent;
+    return score < along * 0.26 + 0.12 ? { key, label, score } : null;
+  }
+
+  function collectXrayModuleNearMisses(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+    output: NearMissRecord[],
+  ): void {
+    for (const module of context.armor.modules || []) {
+      const external = module.module === 'trackL'
+        || module.module === 'trackR'
+        || module.module === 'turretRing';
+      if (external || context.moduleHits.has(module.module)) continue;
+      const record = xrayNearMissRecord(
+        context,
+        module,
+        `m:${module.module}`,
+        KC_MODULE_LABELS[module.module] || module.module,
+        entry,
+        direction,
+        innerLength,
+      );
+      if (record) output.push(record);
+    }
+  }
+
+  function collectXrayCrewNearMisses(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+    output: NearMissRecord[],
+  ): void {
+    for (const crew of context.armor.crew || []) {
+      if (context.crewHits.has(crew.crew)
+          || context.snap.crewAlive?.[crew.crew] === false) continue;
+      const record = xrayNearMissRecord(
+        context,
+        crew,
+        `c:${crew.crew}`,
+        KC_CREW_LABELS[crew.crew] || crew.crew,
+        entry,
+        direction,
+        innerLength,
+      );
+      if (record) output.push(record);
+    }
+  }
+
+  function collectXrayNearMisses(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+  ): NearMissRecord[] {
+    if (context.event.kind !== 'pen' && context.event.kind !== 'he_pen') return [];
+    const records: NearMissRecord[] = [];
+    collectXrayModuleNearMisses(context, entry, direction, innerLength, records);
+    collectXrayCrewNearMisses(context, entry, direction, innerLength, records);
+    records.sort((left, right) => left.score - right.score);
+    const casualtyCount = context.event.modulesHit.length + context.event.crewHit.length;
+    records.length = Math.min(records.length, casualtyCount >= 3 ? 2 : 3);
+    return records;
+  }
+
+  function xrayApproachLength(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+  ): number {
+    if (!heightField) return 5.2;
+    context.pose.updateMatrixWorld(true);
+    const worldEntry = context.pose.localToWorld(entry.clone());
+    const worldDirection = direction.clone().transformDirection(context.pose.matrixWorld);
+    let length = 5.2;
+    for (; length > 1.6; length -= 0.4) {
+      const x = worldEntry.x - worldDirection.x * length;
+      const y = worldEntry.y - worldDirection.y * length;
+      const z = worldEntry.z - worldDirection.z * length;
+      if (y > heightField.getHeightAt(x, z) + 0.7) break;
+    }
+    return length;
+  }
+
+  function addXrayExternalApproach(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+  ): void {
+    const length = xrayApproachLength(context, entry, direction);
+    const start = new THREE.Vector3();
+    const end = new THREE.Vector3();
+    const segments = 4;
+    for (let index = 0; index < segments; index++) {
+      const startFraction = index / segments;
+      const endFraction = (index + 1) / segments;
+      start.copy(entry).addScaledVector(direction, -length * (1 - startFraction));
+      end.copy(entry).addScaledVector(direction, -length * (1 - endFraction));
+      const midpoint = (startFraction + endFraction) / 2;
+      const far = midpoint < 0.55;
+      tube(
+        start,
+        end,
+        (0.009 + 0.026 * midpoint) * context.radiusScale,
+        far ? S.trailGlowFar : S.trailGlow,
+        context.pose,
+        pb.disposables,
+      );
+      tube(
+        start,
+        end,
+        (0.004 + 0.012 * midpoint) * context.radiusScale,
+        far ? S.trailCoreFar : S.pathOut,
+        context.pose,
+        pb.disposables,
+      );
+    }
+  }
+
+  function addXrayDartLayer(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+    startRadius: number,
+    endRadius: number,
+    material: THREE.Material,
+  ): void {
+    const geometry = new THREE.CylinderGeometry(
+      endRadius,
+      startRadius,
+      innerLength,
+      8,
+      1,
+      true,
+    );
+    pb.disposables.push(geometry);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(entry).addScaledVector(direction, innerLength * 0.5);
+    mesh.quaternion.setFromUnitVectors(_Y, direction);
+    context.pose.add(mesh);
+  }
+
+  function addXrayInternalDart(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+  ): void {
+    addXrayDartLayer(
+      context, entry, direction, innerLength,
+      0.048 * context.radiusScale, 0.024 * context.radiusScale, S.pathIn,
+    );
+    addXrayDartLayer(
+      context, entry, direction, innerLength,
+      0.021 * context.radiusScale, 0.01 * context.radiusScale, S.pathCore,
+    );
+    _b.copy(entry).addScaledVector(direction, innerLength);
+    const geometry = new THREE.ConeGeometry(0.024 * context.radiusScale, 0.16 * context.radiusScale, 8);
+    pb.disposables.push(geometry);
+    const tip = new THREE.Mesh(geometry, S.pathCore);
+    tip.position.copy(_b).addScaledVector(direction, 0.08 * context.radiusScale);
+    tip.quaternion.setFromUnitVectors(_Y, direction);
+    context.pose.add(tip);
+  }
+
+  function addXraySpallCone(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+  ): void {
+    const length = innerLength * 0.8;
+    const geometry = new THREE.ConeGeometry(length * 0.24, length, 14, 1, true);
+    pb.disposables.push(geometry);
+    const cone = new THREE.Mesh(geometry, S.spall);
+    cone.position.copy(entry).addScaledVector(direction, length * 0.5);
+    cone.quaternion.setFromUnitVectors(_Y, _s.copy(direction).negate());
+    context.pose.add(cone);
+  }
+
+  function addXrayAmbientSpall(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    direction: THREE.Vector3,
+    innerLength: number,
+  ): void {
+    const side = new THREE.Vector3().crossVectors(direction, UP);
+    if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+    else side.normalize();
+    const normal = new THREE.Vector3().crossVectors(direction, side);
+    for (let index = 0; index < 6; index++) {
+      const azimuth = (index / 6) * Math.PI * 2 + 0.45;
+      const spread = 0.15 + 0.12 * (((index * 37) % 5) / 4);
+      const length = innerLength * (0.28 + 0.34 * (((index * 53) % 7) / 6));
+      _a.copy(direction)
+        .addScaledVector(side, Math.cos(azimuth) * spread)
+        .addScaledVector(normal, Math.sin(azimuth) * spread)
+        .normalize();
+      _b.copy(entry).addScaledVector(_a, length);
+      tube(entry, _b, 0.018, S.frag, context.pose, pb.disposables);
+    }
+  }
+
+  function addXrayFragmentSpark(
+    context: XrayBuildContext,
+    position: THREE.Vector3,
+    material: THREE.Material,
+  ): void {
+    const geometry = new THREE.SphereGeometry(0.075, 8, 6);
+    pb.disposables.push(geometry);
+    const spark = new THREE.Mesh(geometry, material);
+    spark.position.copy(position);
+    context.pose.add(spark);
+  }
+
+  function addXrayFragmentsToBox(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+    box: KillcamBox,
+    material: THREE.Material,
+    count: number,
+    radius: number,
+    spark: boolean,
+  ): void {
+    const center = xrayBoxCenter(context, box, new THREE.Vector3());
+    const length = Math.max(0.5, center.distanceTo(entry));
+    const direction = center.clone().sub(entry).multiplyScalar(1 / length);
+    const side = new THREE.Vector3().crossVectors(direction, UP);
+    if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+    else side.normalize();
+    const normal = new THREE.Vector3().crossVectors(direction, side);
+    const endpoint = new THREE.Vector3();
+    for (let index = 0; index < count; index++) {
+      const jitterSide = ((index * 73 + 31) % 17) / 16 - 0.5;
+      const jitterNormal = ((index * 41 + 7) % 13) / 12 - 0.5;
+      const rayLength = length * (0.86 + 0.3 * (((index * 53) % 5) / 4));
+      endpoint.copy(direction)
+        .addScaledVector(side, jitterSide * 0.24)
+        .addScaledVector(normal, jitterNormal * 0.24)
+        .normalize()
+        .multiplyScalar(rayLength)
+        .add(entry);
+      tube(
+        entry,
+        endpoint,
+        index === 0 ? radius * 1.35 : radius,
+        material,
+        context.pose,
+        pb.disposables,
+      );
+    }
+    if (spark) addXrayFragmentSpark(context, center, material);
+  }
+
+  function addXrayModuleDamageFragments(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+  ): void {
+    for (const hit of context.event.modulesHit) {
+      const box = context.armor.modules.find((module) => module.module === hit.module);
+      if (!box) continue;
+      const destroyed = hit.newState === 'red';
+      const damaged = hit.newState === 'yellow';
+      const material = destroyed ? S.fragRed : damaged ? S.fragYellow : S.frag;
+      addXrayFragmentsToBox(
+        context,
+        entry,
+        box,
+        material,
+        destroyed ? 4 : 3,
+        destroyed ? 0.026 : 0.019,
+        destroyed || damaged,
+      );
+    }
+  }
+
+  function addXrayCrewDamageFragments(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+  ): void {
+    for (const crewId of context.event.crewHit) {
+      const box = context.armor.crew.find((crew) => crew.crew === crewId);
+      if (box) addXrayFragmentsToBox(context, entry, box, S.fragCrew, 3, 0.019, true);
+    }
+  }
+
+  function addXrayEntryMarker(
+    context: XrayBuildContext,
+    entry: THREE.Vector3,
+  ): void {
+    const geometry = new THREE.SphereGeometry(0.05 * context.radiusScale, 10, 8);
+    pb.disposables.push(geometry);
+    const marker = new THREE.Mesh(geometry, S.marker);
+    marker.position.copy(entry);
+    context.pose.add(marker);
+  }
+
+  function addXrayShellEvidence(context: XrayBuildContext): NearMissRecord[] {
+    const localPosition = context.event.localPos;
+    const localDirection = context.event.localDir;
+    if (!localPosition || !localDirection) return [];
+    const entry = new THREE.Vector3().fromArray(localPosition);
+    const direction = new THREE.Vector3().fromArray(localDirection).normalize();
+    const deepest = xrayDamageDepth(context, entry, direction);
+    const innerLength = Math.max(
+      1.2,
+      (context.event.caliberMm || 100) * 10 / 1000 + 0.6,
+      deepest + 0.35,
+    );
+    const nearMisses = collectXrayNearMisses(context, entry, direction, innerLength);
+    addXrayExternalApproach(context, entry, direction);
+    addXrayInternalDart(context, entry, direction, innerLength);
+    addXraySpallCone(context, entry, direction, innerLength);
+    addXrayAmbientSpall(context, entry, direction, innerLength);
+    addXrayModuleDamageFragments(context, entry);
+    addXrayCrewDamageFragments(context, entry);
+    addXrayEntryMarker(context, entry);
+    return nearMisses;
+  }
+
+  function finalizeXrayObstacles(context: XrayBuildContext): void {
+    context.pose.updateMatrixWorld(true);
+    for (const obstacle of pb.obstacles) {
+      if (obstacle.parent) {
+        for (const corner of obstacle.corners) obstacle.parent.localToWorld(corner);
+      }
+      obstacle.parent = null;
+    }
+  }
+
+  function appendKillerStat(
+    d: KillcamDom,
+    key: string,
+    value: string,
+    className: string,
+    iconId: string,
+  ): void {
+    const row = el('div', `kv${className ? ` ${className}` : ''}`, d.killer.rows);
+    const label = el('span', '', row);
+    label.innerHTML = `${uiIconSVG(iconId, 10)}<span>${key}</span>`;
+    const output = el('b', '', row);
+    output.textContent = value;
+  }
+
+  function populateCollisionKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
+    appendKillerStat(d, 'Cause', 'Hull collision', 'w', 'damage');
+    appendKillerStat(
+      d,
+      'Damage',
+      (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
+      'dmg',
+      'damage',
+    );
+    appendKillerStat(
+      d,
+      'Closing speed',
+      `${Math.round((event.closingMps || 0) * 3.6)} km/h`,
+      '',
+      'speed',
+    );
+  }
+
+  function populateProjectileKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
+    const shellName = shellDisplayName(event);
+    const shell = `${event.shellType || ''}${shellName ? ` ${shellName}` : ''}`.trim() || '—';
+    appendKillerStat(d, 'Shell', shell, 'w', 'shell');
+    appendKillerStat(
+      d,
+      'Damage',
+      (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
+      'dmg',
+      'damage',
+    );
+    appendKillerStat(
+      d,
+      'Distance',
+      `${Math.round(event.flightDistM || 0)} m`,
+      '',
+      'scope',
+    );
+  }
+
+  function populateKillerCard(d: KillcamDom, event: KillcamHitEvent): void {
+    if (!pb.isDeathView) {
+      d.killer.root.classList.remove('on', 'rv');
+      return;
+    }
+    let vehicleSpec: FleetTankSpec | null = null;
+    try {
+      vehicleSpec = event.attackerSpecId ? getSpec(event.attackerSpecId) : null;
+    } catch (_) {
+      vehicleSpec = null;
+    }
+    const killerName = event.attackerName || vehicleSpec?.name || 'Enemy';
+    d.killer.name.textContent = killerName;
+    const vehicleBits: string[] = [];
+    const tier = event.attackerSpecId ? tierNumeral(event.attackerSpecId) : '';
+    if (tier) vehicleBits.push(`Tier ${tier}`);
+    if (vehicleSpec && !killerName.toLowerCase().includes(vehicleSpec.name.toLowerCase())) {
+      vehicleBits.push(vehicleSpec.name);
+    }
+    d.killer.veh.textContent = vehicleBits.join(' · ');
+    d.killer.sil.style.backgroundImage = event.attackerSpecId
+      ? `url(${iconUrl(event.attackerSpecId, 'side_silhouette')})`
+      : 'none';
+    d.killer.rows.textContent = '';
+    if (pb.replayKind === 'collision') populateCollisionKillerStats(d, event);
+    else populateProjectileKillerStats(d, event);
+    d.killer.root.classList.add('on');
+    if (staged) d.killer.root.classList.add('rv');
+  }
+
+  function pushXrayLabel(
+    label: HTMLElement,
+    world: THREE.Vector3,
+    key: string | null,
+    options: {
+      dot?: HTMLElement | null;
+      line?: SVGLineElement | null;
+      big?: boolean;
+      micro?: boolean;
+    } = {},
+  ): void {
+    pb.labels.push({
+      label,
+      dot: options.dot || null,
+      line: options.line || null,
+      big: !!options.big,
+      micro: options.micro,
+      world: world.clone(),
+      key,
+      hidden: false,
+      ax: 0,
+      ay: 0,
+      lw: 0,
+      lh: 0,
+      left: 0,
+      top: 0,
+      below: false,
+      fixed: false,
+    });
+  }
+
+  function addXrayLabel(
+    d: KillcamDom,
+    world: THREE.Vector3,
+    color: string,
+    main: string,
+    sub: string,
+    big = false,
+    ok = false,
+    key: string | null = null,
+  ): void {
+    const label = el(
+      'div',
+      big ? 'cot-kc-dmg' : `cot-kc-label${ok ? ' ok' : ''}`,
+      d.labelHost,
+    );
+    if (big) {
+      const icon = el('span', 'ico', label);
+      icon.innerHTML = uiIconSVG('damage', 15);
+      el('span', 'val', label).textContent = main;
+      pushXrayLabel(label, world, key, { big: true });
+      return;
+    }
+    label.style.color = color;
+    const icon = el('span', 'ico', label);
+    icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 11);
+    const copy = el('span', 'copy', label);
+    el('span', 'main', copy).textContent = main;
+    el('span', 's', copy).textContent = sub;
+    const dot = el('div', `cot-kc-dot${ok ? ' ok' : ''}`, d.labelHost);
+    dot.style.color = color;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('opacity', ok ? '0.45' : '0.85');
+    d.leader.appendChild(line);
+    pushXrayLabel(label, world, key, { dot, line });
+  }
+
+  function addXrayMicroLabel(
+    d: KillcamDom,
+    world: THREE.Vector3,
+    text: string,
+    key: string,
+  ): void {
+    const label = el('div', 'cot-kc-micro', d.labelHost);
+    const icon = el('span', 'ico', label);
+    icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
+    el('span', 'copy', label).textContent = text;
+    pushXrayLabel(label, world, key, { micro: true });
+  }
+
+  function addXrayNearMissLabel(
+    d: KillcamDom,
+    world: THREE.Vector3,
+    text: string,
+    key: string,
+  ): void {
+    const label = el('div', 'cot-kc-label nm', d.labelHost);
+    const icon = el('span', 'ico', label);
+    icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
+    const copy = el('span', 'copy', label);
+    el('span', 'main', copy).textContent = text;
+    el('span', 's', copy).textContent = ' · near miss';
+    pushXrayLabel(label, world, key, { micro: true });
+  }
+
+  const xrayModuleStateWords: Readonly<Record<ModuleStateName, string>> = {
+    red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT',
+  };
+  const xrayModuleStateColors: Readonly<Record<ModuleStateName, string>> = {
+    red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3',
+  };
+  const xrayModuleStateRank: Readonly<Record<ModuleStateName, number>> = {
+    ok: 0, yellow: 1, red: 2,
+  };
+  const xrayMicroLabels: Readonly<Record<string, string>> = {
+    ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL',
+  };
+
+  function mergeXrayModuleHits(event: KillcamHitEvent): Map<string, ModuleHit> {
+    const merged = new Map<string, ModuleHit>();
+    for (const hit of event.modulesHit) {
+      const previous = merged.get(hit.module);
+      if (!previous) {
+        merged.set(hit.module, { ...hit });
+        continue;
+      }
+      if (xrayModuleStateRank[hit.newState] > xrayModuleStateRank[previous.newState]) {
+        previous.newState = hit.newState;
+      }
+      if (typeof hit.dmg === 'number' && Number.isFinite(hit.dmg)) {
+        const previousDamage = typeof previous.dmg === 'number' && Number.isFinite(previous.dmg)
+          ? previous.dmg
+          : 0;
+        previous.dmg = previousDamage + hit.dmg;
+      }
+    }
+    return merged;
+  }
+
+  function addXrayModuleLabels(d: KillcamDom, context: XrayBuildContext): void {
+    for (const hit of mergeXrayModuleHits(context.event).values()) {
+      const anchor = context.anchors.get(`m:${hit.module}`);
+      if (!anchor) continue;
+      anchor.getWorldPosition(_p);
+      const damage = typeof hit.dmg === 'number' && Number.isFinite(hit.dmg)
+        ? ` −${Math.round(hit.dmg)}`
+        : '';
+      const ok = hit.newState === 'ok';
+      addXrayLabel(
+        d,
+        _p,
+        xrayModuleStateColors[hit.newState],
+        KC_MODULE_LABELS[hit.module] || hit.module,
+        `${xrayModuleStateWords[hit.newState]}${damage}`,
+        false,
+        ok,
+        `m:${hit.module}`,
+      );
+    }
+  }
+
+  function addXrayCrewLabels(d: KillcamDom, context: XrayBuildContext): void {
+    for (const crewId of new Set(context.event.crewHit)) {
+      const anchor = context.anchors.get(`c:${crewId}`);
+      if (!anchor) continue;
+      anchor.getWorldPosition(_p);
+      addXrayLabel(
+        d, _p, '#ff7d8a', KC_CREW_LABELS[crewId] || crewId,
+        'KNOCKED OUT', false, false, `c:${crewId}`,
+      );
+    }
+  }
+
+  function addXrayEntryPlateLabel(d: KillcamDom, event: KillcamHitEvent): void {
+    if (!event.zone || !event.localPos) return;
+    const outcome = hitOutcomeFor(event);
+    const thickness = (event.physicalMm || 0) > 0
+      ? ` · ${Math.round(event.physicalMm || 0)} mm`
+      : '';
+    _p.set(...event.pos);
+    addXrayLabel(
+      d, _p, outcome.color, zoneLabel(event.zone),
+      `${outcome.label}${thickness}`,
+    );
+  }
+
+  function addXrayNearMissLabels(
+    d: KillcamDom,
+    context: XrayBuildContext,
+    nearMisses: readonly NearMissRecord[],
+  ): void {
+    for (const nearMiss of nearMisses) {
+      const anchor = context.anchors.get(nearMiss.key);
+      if (!anchor) continue;
+      anchor.getWorldPosition(_p);
+      addXrayNearMissLabel(d, _p, nearMiss.label, nearMiss.key);
+    }
+  }
+
+  function addXrayDamageLabel(d: KillcamDom, event: KillcamHitEvent): void {
+    if ((event.damage || 0) <= 0) return;
+    _p.set(...event.pos);
+    addXrayLabel(d, _p, '', `−${Math.round(event.damage || 0)} HP`, '', true);
+  }
+
+  function addXrayMicroLabels(
+    d: KillcamDom,
+    context: XrayBuildContext,
+    nearMisses: readonly NearMissRecord[],
+  ): void {
+    for (const [key, text] of Object.entries(xrayMicroLabels)) {
+      if (context.moduleHits.has(key)
+          || nearMisses.some((record) => record.key === `m:${key}`)) continue;
+      const anchor = context.anchors.get(`m:${key}`);
+      if (!anchor) continue;
+      anchor.getWorldPosition(_p);
+      addXrayMicroLabel(d, _p, text, `m:${key}`);
+    }
+  }
+
+  function animateXrayLabels(event: KillcamHitEvent): void {
+    _p.set(...event.pos);
+    const ordered = pb.labels.slice().sort((left, right) => {
+      if (!!left.micro !== !!right.micro) return left.micro ? 1 : -1;
+      return left.world.distanceToSquared(_p) - right.world.distanceToSquared(_p);
+    });
+    ordered.forEach((label, index) => {
+      const delay = `${Math.min(0.6, index * 0.1).toFixed(2)}s`;
+      for (const node of [label.label, label.dot, label.line]) {
+        if (!node) continue;
+        node.classList.add('cot-kc-anim');
+        node.style.animationDelay = delay;
       }
     });
-    // pull the victim fill light in tight: at R*4.5 it pooled a bright disc
-    // of terrain around the wreck that fought the scrim — the hold only
-    // needs it on the hull volume (internals are Lambert-lit)
-    kcLights[0].distance = Math.max(10, snap.boundingRadiusM * 2.4);
+  }
+
+  function populateXrayLabels(
+    context: XrayBuildContext,
+    nearMisses: readonly NearMissRecord[],
+  ): void {
+    const d = ensureDom();
+    d.root.classList.add('xr');
+    d.labelHost.textContent = '';
+    d.leader.textContent = '';
+    populateKillerCard(d, context.event);
+    pb.labels.length = 0;
+    addXrayModuleLabels(d, context);
+    addXrayCrewLabels(d, context);
+    addXrayEntryPlateLabel(d, context.event);
+    addXrayNearMissLabels(d, context, nearMisses);
+    addXrayDamageLabel(d, context.event);
+    addXrayMicroLabels(d, context, nearMisses);
+    animateXrayLabels(context.event);
+  }
+
+  function beginXray() {
+    if (pb.phase === 'xray') return;
+    prepareXrayPlaybackState();
+    // x-ray dressing thickness follows the SOLVED orbit radius (r5: fixed
+    // radii read as a fat baton at the tight Tiger-class orbit): ~1 at an
+    // 8.5 m orbit, floored/capped so huge and tiny victims both stay legible.
+    const rQ = xrayRadiusScale();
+    retireFlightDressing();
+    dressXrayTrail(rQ);
+
+    const context = createXrayBuildContext(rQ);
+    const {
+      snap,
+      armor,
+      vehiclePose: pose,
+    } = context;
+
+    applyXrayGhost(snap);
+    configureXrayGhostBands(snap, armor, pose);
+
+    dimXrayBackdrop(snap);
 
     // 1b. key light on the wreck: created in begin() for the whole replay
     // (flight included) — cool camera-side fill so the vehicle stays the
@@ -4121,883 +5227,193 @@ export function createKillCam(deps: KillcamDeps) {
     // (r4: read as a lighting bug). Scene focus comes only from the
     // screen-space DOM veil, centered on the victim in projectLabels().
 
-    // 2. snapshot-posed frame groups (hull + turret), no live-state reads
-    const poseGrp = new THREE.Group();
-    poseGrp.renderOrder = 12;   // nested Groups reset groupOrder (see above)
-    poseGrp.rotation.order = 'YXZ';
-    poseGrp.position.set(pose.pos[0], pose.pos[1], pose.pos[2]);
-    poseGrp.rotation.set(-pose.pitch, pose.yaw, pose.roll);
-    const turretGrp = new THREE.Group();
-    turretGrp.renderOrder = 12;
-    turretGrp.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
-    turretGrp.rotation.y = pose.turretYaw;
-    poseGrp.add(turretGrp);
-    pb.group.add(poseGrp);
-
     // 3. module + crew boxes (hit ones highlighted, rest faint).
     // State honesty (r3): box tint follows the POST-HIT module state from the
     // snapshot's combat roster (moduleStates) — a rack detonated by an
     // EARLIER shell must read red too, exactly like the proxies inside it.
     // This shell's own casualties (modulesHit) are the fallback for staged /
     // legacy snapshots that carry no roster.
-    const modHit = new Map();
-    for (const m of ev.modulesHit) modHit.set(m.module, m.newState);
-    const crewHit = new Set(ev.crewHit);
-    const effState = (name: string): ModuleStateName => {
-      const s = (snap.moduleStates && snap.moduleStates[name]) || modHit.get(name);
-      return s === 'red' || s === 'yellow' ? s : 'ok';
-    };
-    const anchors = new Map(); // labelKey -> anchor object
-    pb.obstacles = []; // module/crew boxes as label-repulsion obstacles
-    const addBox = (
-      bb: KillcamBox,
-      key: string | null,
-      mat: THREE.LineBasicMaterial,
-      fillMat: THREE.MeshBasicMaterial | null,
-    ): void => {
-      const sx = bb.max[0] - bb.min[0];
-      const sy = bb.max[1] - bb.min[1];
-      const sz = bb.max[2] - bb.min[2];
-      const boxGeo = new THREE.BoxGeometry(sx, sy, sz);
-      const edges = new THREE.EdgesGeometry(boxGeo);
-      pb.disposables.push(boxGeo, edges);
-      const seg = new THREE.LineSegments(edges, mat);
-      seg.position.set((bb.min[0] + bb.max[0]) / 2, (bb.min[1] + bb.max[1]) / 2, (bb.min[2] + bb.max[2]) / 2);
-      const parent = bb.turretLocal ? turretGrp : poseGrp;
-      parent.add(seg);
-      // r8: un-hit boxes draw NO outline at all — even at the r6 whisper
-      // alpha the straight EdgesGeometry lattice read as raw debug box edges
-      // on the hull rear (critic). WT draws none: identity lives in the
-      // organ shapes + micro tags; bright outlines stay reserved for hit /
-      // destroyed modules and crew casualties. The (invisible) seg is kept
-      // as the label anchor its chips project from.
-      if (mat === S.edgeDim) seg.visible = false;
-      if (fillMat) {
-        if (key === 'm:trackL' || key === 'm:trackR') {
-          // Destroyed/damaged TRACK tint as tread segments (r6 minor): one
-          // box fill across the ~7 m run painted the whole hull side as a
-          // flat salmon slab. A row of slats inside the same module AABB —
-          // gaps at track-link pitch — reads as the track itself while the
-          // red edge outline still owns the full module footprint.
-          const n = Math.max(5, Math.min(12, Math.round(sz / 0.55)));
-          const segL = (sz / n) * 0.62;
-          const slatGeo = new THREE.BoxGeometry(sx * 0.96, sy * 0.9, segL);
-          pb.disposables.push(slatGeo);
-          for (let i = 0; i < n; i++) {
-            const slat = new THREE.Mesh(slatGeo, fillMat);
-            slat.position.set(seg.position.x, seg.position.y,
-              bb.min[2] + (i + 0.5) * (sz / n));
-            parent.add(slat);
-          }
-        } else {
-          const fill = new THREE.Mesh(boxGeo, fillMat);
-          fill.position.copy(seg.position);
-          parent.add(fill);
-        }
-      }
-      // obstacle record for the screen-space label repulsion pass (r3):
-      // local corners now, world corners once poses are final (below).
-      // r4: keyed — projectLabels re-anchors each chip's dot/leader to the
-      // screen-projected centroid of ITS OWN module rect (anchor fidelity).
-      const corners = [];
-      for (let i = 0; i < 8; i++) {
-        corners.push(new THREE.Vector3(
-          i & 1 ? bb.max[0] : bb.min[0],
-          i & 2 ? bb.max[1] : bb.min[1],
-          i & 4 ? bb.max[2] : bb.min[2],
-        ));
-      }
-      pb.obstacles.push({ parent, corners, key: key || null });
-      if (key && !anchors.has(key)) anchors.set(key, seg);
-    };
-    // TRACK-HITBOX viz (owner order 2026-08-06: the killcam's track hitboxes
-    // read as "a bunch of rectangles"): when the snapshot armor carries the
-    // derived trackShapes prisms (specs.attachTrackShapes — the same volumes
-    // hit resolution now rolls against), the track module draws as the REAL
-    // \____/ silhouette: wireframe prism (side-view polygon at both track
-    // faces + connecting rails) and, when hit, tread slats laid ALONG the
-    // band perimeter — ground run, approach/departure ramps and raised
-    // end-wheel wraps — instead of one full-length box + a flat slab row.
-    const trackPrismBounds = (shapes: readonly TrackShape[]) => {
-      const min: Vec3Tuple = [Infinity, Infinity, Infinity];
-      const max: Vec3Tuple = [-Infinity, -Infinity, -Infinity];
-      for (const shape of shapes) {
-        for (const point of shape.poly) {
-          min[0] = Math.min(min[0], shape.x0, shape.x1);
-          max[0] = Math.max(max[0], shape.x0, shape.x1);
-          min[1] = Math.min(min[1], point[1]);
-          max[1] = Math.max(max[1], point[1]);
-          min[2] = Math.min(min[2], point[0]);
-          max[2] = Math.max(max[2], point[0]);
-        }
-      }
-      return {
-        min,
-        max,
-        center: [
-          (min[0] + max[0]) / 2,
-          (min[1] + max[1]) / 2,
-          (min[2] + max[2]) / 2,
-        ] as Vec3Tuple,
-      };
-    };
-
-    const trackPrismLinePositions = (
-      shape: TrackShape,
-      center: Vec3Tuple,
-    ): number[] => {
-      const positions: number[] = [];
-      const push = (x: number, point: readonly [number, number]): void => {
-        positions.push(x - center[0], point[1] - center[1], point[0] - center[2]);
-      };
-      for (let index = 0; index < shape.poly.length; index++) {
-        const point = shape.poly[index];
-        const nextPoint = shape.poly[(index + 1) % shape.poly.length];
-        push(shape.x0, point);
-        push(shape.x0, nextPoint);
-        push(shape.x1, point);
-        push(shape.x1, nextPoint);
-        push(shape.x0, point);
-        push(shape.x1, point);
-      }
-      return positions;
-    };
-
-    const addTrackTreadSlats = (
-      shape: TrackShape,
-      center: Vec3Tuple,
-      fillMaterial: THREE.MeshBasicMaterial,
-      group: THREE.Group,
-    ): void => {
-      const xMid = (shape.x0 + shape.x1) / 2 - center[0];
-      const width = Math.abs(shape.x1 - shape.x0);
-      const thickness = 0.17;
-      for (let index = 0; index < shape.poly.length; index++) {
-        const point = shape.poly[index];
-        const nextPoint = shape.poly[(index + 1) % shape.poly.length];
-        const deltaZ = nextPoint[0] - point[0];
-        const deltaY = nextPoint[1] - point[1];
-        const length = Math.hypot(deltaZ, deltaY);
-        if (length < 0.12) continue;
-        const slatCount = Math.max(1, Math.min(14, Math.round(length / 0.55)));
-        const slatLength = (length / slatCount) * 0.62;
-        const slatGeometry = new THREE.BoxGeometry(width * 0.96, thickness, slatLength);
-        pb.disposables.push(slatGeometry);
-        const tangentZ = deltaZ / length;
-        const tangentY = deltaY / length;
-        const outwardZ = tangentY;
-        const outwardY = -tangentZ;
-        for (let slatIndex = 0; slatIndex < slatCount; slatIndex++) {
-          const distance = (slatIndex + 0.5) * (length / slatCount);
-          const slat = new THREE.Mesh(slatGeometry, fillMaterial);
-          slat.position.set(
-            xMid,
-            point[1] + tangentY * distance - outwardY * (thickness / 2) - center[1],
-            point[0] + tangentZ * distance - outwardZ * (thickness / 2) - center[2],
-          );
-          slat.rotation.x = Math.atan2(-tangentY, tangentZ);
-          group.add(slat);
-        }
-      }
-    };
-
-    const addTrackPrism = (
-      shapes: TrackShape[],
-      key: string,
-      mat: THREE.LineBasicMaterial,
-      fillMat: THREE.MeshBasicMaterial | null,
-    ): void => {
-      // union AABB first: the group is POSITIONED at the prism center so the
-      // damage chip's anchor (getWorldPosition) lands on the track itself,
-      // exactly like addBox's centered seg.
-      const bounds = trackPrismBounds(shapes);
-      const [cx, cy, cz] = bounds.center;
-      const group = new THREE.Group();
-      group.renderOrder = 12; // nested Groups reset groupOrder (see poseGrp)
-      group.position.set(cx, cy, cz);
-      for (const shape of shapes) {
-        const lineGeo = new THREE.BufferGeometry();
-        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(
-          trackPrismLinePositions(shape, bounds.center),
-          3,
-        ));
-        pb.disposables.push(lineGeo);
-        group.add(new THREE.LineSegments(lineGeo, mat));
-        if (fillMat) addTrackTreadSlats(shape, bounds.center, fillMat, group);
-      }
-      poseGrp.add(group); // tracks are hull-local, never turretLocal
-      if (mat === S.edgeDim) group.visible = false; // r8: un-hit = anchors only
-      const corners = [];
-      for (let i = 0; i < 8; i++) {
-        corners.push(new THREE.Vector3(
-          i & 1 ? bounds.max[0] : bounds.min[0],
-          i & 2 ? bounds.max[1] : bounds.min[1],
-          i & 4 ? bounds.max[2] : bounds.min[2],
-        ));
-      }
-      pb.obstacles.push({ parent: poseGrp, corners, key: key || null });
-      if (key && !anchors.has(key)) anchors.set(key, group);
-    };
-    const trackShapesOf = (name: string): TrackShape[] | null => {
-      const list = (armor.trackShapes || []).filter((s) => s.module === name);
-      return list.length ? list : null;
-    };
-    for (const mb of armor.modules || []) {
-      const state = effState(mb.module);
-      const mat = state === 'red' ? S.edgeRed : state === 'yellow' ? S.edgeYellow : S.edgeDim;
-      const fill = state === 'red' ? S.fillRed : state === 'yellow' ? S.fillYellow : null;
-      // every module box anchors (hit ones get damage chips, idle key
-      // internals get always-on micro-labels — WT-style AMMO/ENGINE/FUEL)
-      const prism = (mb.module === 'trackL' || mb.module === 'trackR')
-        ? trackShapesOf(mb.module) : null;
-      if (prism) addTrackPrism(prism, `m:${mb.module}`, mat, fill);
-      else {
-        const parts = Array.isArray(mb.parts) && mb.parts.length ? mb.parts : [mb];
-        for (const part of parts) {
-          addBox({ ...mb, min: part.min, max: part.max }, `m:${mb.module}`, mat, fill);
-        }
-      }
-    }
-    for (const cb of armor.crew || []) {
-      const hit = crewHit.has(cb.crew);
-      // always keyed (r6): near-miss chips anchor to un-hit crew boxes too
-      addBox(cb, `c:${cb.crew}`, hit ? S.edgeCrew : S.edgeDim, hit ? S.fillCrew : null);
-    }
-
+    addXrayArmorFrames(context);
     // 3b. recognizable internals inside the boxes — ammo stowage (bustle /
     // carousel / WWII tray per spec layout + era), ribbed engine block, fuel
     // cell or drums, breech, crew capsules. Healthy modules wear distinct
     // per-kind hues (brass ammo, steel-blue engine, amber fuel); hit ones
     // override to yellow (damaged) / red (destroyed) state tints.
-    const specEra = (snap.targetEnt && snap.targetEnt.spec && snap.targetEnt.spec.era) || '';
-    // defensive proxy clamp (r2): internals may never protrude through the
-    // hull silhouette — hull-local volumes are intersected with the spec's
-    // own dims box before geometry is built (turret-local boxes ride the
-    // turret frame and stay authored). No-op for spec-conform layouts.
-    const specDims = snap.targetEnt && snap.targetEnt.spec ? snap.targetEnt.spec.dims : null;
-    const clampBB = <T extends KillcamBox>(bb: T): T => {
-      if (!specDims || bb.turretLocal) return bb;
-      const hx = specDims.widthM / 2 + 0.03;
-      const hz = (specDims.hullLengthM || specDims.overallLengthM * 0.8) / 2 + 0.08;
-      const hy = specDims.heightM + 0.05;
-      const min: Vec3Tuple = [
-        Math.max(bb.min[0], -hx),
-        Math.max(bb.min[1], -0.05),
-        Math.max(bb.min[2], -hz),
-      ];
-      const max: Vec3Tuple = [
-        Math.min(bb.max[0], hx),
-        Math.min(bb.max[1], hy),
-        Math.min(bb.max[2], hz),
-      ];
-      if (min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2]) return bb;
-      return { ...bb, min, max };
-    };
-    // victim's own gun caliber sizes its ammo proxies (r6, best-effort)
-    let victimCalMm = 0;
-    try {
-      const sh0 = snap.targetEnt.spec.gun.shells[0];
-      victimCalMm = (sh0 && sh0.caliberMm) || 0;
-    } catch (_) { victimCalMm = 0; }
-    for (const mb of armor.modules || []) {
-      const parts = Array.isArray(mb.parts) && mb.parts.length ? mb.parts : [mb];
-      for (const part of parts) {
-        addInternalModuleModel(clampBB({ ...mb, min: part.min, max: part.max }),
-          proxMatForState(effState(mb.module)), poseGrp, turretGrp,
-          pb.disposables, specEra, victimCalMm, S.proxSteel, armor);
-      }
-    }
-    // hull anatomy between the boxes: driveshaft spine + transmission block
-    addInternalDrivetrainModel(armor, poseGrp, pb.disposables, S.proxSteel);
-    // Crew state honesty (r5: a corpse tank showed a thriving bright-green
-    // crew): red for casualties — this shell's crewHit plus anyone already
-    // dead in the snapshot's post-hit combat roster — and neutral grey for
-    // survivors when the vehicle is a corpse (every replay this camera plays
-    // ends in a destruction; healthy green is reserved for live crew on a
-    // still-fighting tank).
-    const corpse = !!ev.destroyed || pb.kind === 'death' || pb.kind === 'victory';
-    const crewAlive = snap.crewAlive || null;
-    for (const cb of armor.crew || []) {
-      const down = crewHit.has(cb.crew) || (crewAlive && crewAlive[cb.crew] === false);
-      addInternalCrewModel(cb, down ? S.proxRed : corpse ? S.proxGrey : S.proxGreen,
-        poseGrp, turretGrp, pb.disposables, armor);
-    }
-
-    // 4. shell path through the hull: approach tracer, penetration marker, a
-    // bright internal segment carried all the way to the DEEPEST damaged
-    // component (entry -> ammo rack is the story), and a spall cone with
-    // deterministic fragment rays opening from the penetration point.
-    const nearMiss: NearMissRecord[] = []; // spall-brushed but undamaged internals (labeled in 5)
-    if (ev.localPos && ev.localDir) {
-      const lp = new THREE.Vector3().fromArray(ev.localPos);
-      const ld = new THREE.Vector3().fromArray(ev.localDir).normalize();
-      // deepest damaged module/crew center along the internal ray (hull frame)
-      const tyaw = pose.turretYaw || 0;
-      const tc = Math.cos(tyaw);
-      const ts = Math.sin(tyaw);
-      let deepest = 0;
-      /** Module/crew box center in the HULL frame (turret boxes rotated). */
-      const centerOf = (bb: KillcamBox, out: THREE.Vector3): THREE.Vector3 => {
-        const cx = (bb.min[0] + bb.max[0]) / 2;
-        const cyy = (bb.min[1] + bb.max[1]) / 2;
-        const cz = (bb.min[2] + bb.max[2]) / 2;
-        if (bb.turretLocal) { // turret frame -> hull frame
-          return out.set(
-            cx * tc + cz * ts + armor.turretPivot[0],
-            cyy + armor.turretPivot[1],
-            -cx * ts + cz * tc + armor.turretPivot[2],
-          );
-        }
-        return out.set(cx, cyy, cz);
-      };
-      const depthOf = (bb: KillcamBox): number => centerOf(bb, _a).sub(lp).dot(ld);
-      for (const m of ev.modulesHit) {
-        const bb = (armor.modules || []).find((b) => b.module === m.module);
-        if (bb) deepest = Math.max(deepest, depthOf(bb));
-      }
-      for (const c of ev.crewHit) {
-        const bb = (armor.crew || []).find((b) => b.crew === c);
-        if (bb) deepest = Math.max(deepest, depthOf(bb));
-      }
-      const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6, deepest + 0.35);
-      // NEAR-MISS pass (r6 minor): a clean pen with no module/crew casualties
-      // left the 7 s hold telling no story beyond the −HP tag. Record the
-      // un-hit internals whose boxes the spall cone geometrically brushes —
-      // the SAME lp/ld/armor boxes the cone render and causal streaks use,
-      // so nothing is invented — and dim-label them 'NEAR MISS' in step 5.
-      // No damage is implied: the chips take the demoted gray 'ok' tier.
-      if (ev.kind === 'pen' || ev.kind === 'he_pen') {
-        const spallTan = 0.26; // rendered cone opens at r=0.24·len (+ margin)
-        const consider = (bb: KillcamBox, kkey: string, klabel: string): void => {
-          centerOf(bb, _a).sub(lp);
-          const along = _a.dot(ld);
-          if (along < 0.12 || along > innerLen + 0.3) return;
-          _b.copy(ld).multiplyScalar(along);
-          const radial = _a.sub(_b).length();
-          const half = ((bb.max[0] - bb.min[0]) + (bb.max[1] - bb.min[1])
-            + (bb.max[2] - bb.min[2])) / 6; // mean half-extent
-          const reach = along * spallTan + 0.12;
-          if (radial - half < reach) nearMiss.push({ key: kkey, label: klabel, score: radial - half });
-        };
-        for (const mb of armor.modules || []) {
-          // tracks are external gear; the turret RING encircles the whole
-          // basket — 'brushed' is near-universally true on any turret-area
-          // pen and its box coincides with the gun's in screen space (the
-          // chip clipped behind GUN on the live probe). Both stay silent.
-          if (mb.module === 'trackL' || mb.module === 'trackR'
-            || mb.module === 'turretRing') continue;
-          if (modHit.has(mb.module)) continue;
-          consider(mb, `m:${mb.module}`, KC_MODULE_LABELS[mb.module] || mb.module);
-        }
-        for (const cb of armor.crew || []) {
-          if (crewHit.has(cb.crew)) continue;
-          if (crewAlive && crewAlive[cb.crew] === false) continue; // earlier casualty — red proxy tells that
-          consider(cb, `c:${cb.crew}`, KC_CREW_LABELS[cb.crew] || cb.crew);
-        }
-        nearMiss.sort((a, b) => a.score - b.score);
-        nearMiss.length = Math.min(nearMiss.length,
-          (ev.modulesHit.length + ev.crewHit.length) >= 3 ? 2 : 3);
-      }
-      // external approach: the last meters into the plate. r4 rework — the
-      // old single 4.5 m tube was a uniform thick rod that hard-cut at the
-      // frame edge; on the staged Tiger it read as a beam rising OUT OF THE
-      // GROUND at the lower-left corner. The approach is now (a) terrain-
-      // lifted: the tail is shortened until it clears the ground line by
-      // ~0.7 m, and (b) tapered + tier-faded over its far ~65%: radius ramps
-      // toward the plate and the far half drops to the faint far-tier
-      // materials, so the beam reads as a tracer ARRIVING and simply fades
-      // where it leaves frame instead of anchoring to the terrain.
-      {
-        poseGrp.updateMatrixWorld(true);
-        const lpW = poseGrp.localToWorld(lp.clone());
-        const ldW = ld.clone().transformDirection(poseGrp.matrixWorld);
-        let APP = 5.2;
-        if (heightField) {
-          for (; APP > 1.6; APP -= 0.4) {
-            const wy = lpW.y - ldW.y * APP;
-            if (wy > heightField.getHeightAt(
-              lpW.x - ldW.x * APP, lpW.z - ldW.z * APP) + 0.7) break;
-          }
-        }
-        const sa = new THREE.Vector3();
-        const sb = new THREE.Vector3();
-        const SEGS = 4;
-        for (let i = 0; i < SEGS; i++) {
-          const t0 = i / SEGS;          // 0 at the tail, 1 at the plate
-          const t1 = (i + 1) / SEGS;
-          sa.copy(lp).addScaledVector(ld, -APP * (1 - t0));
-          sb.copy(lp).addScaledVector(ld, -APP * (1 - t1));
-          const tm = (t0 + t1) / 2;
-          const far = tm < 0.55;
-          tube(sa, sb, (0.009 + 0.026 * tm) * rQ,
-            far ? S.trailGlowFar : S.trailGlow, poseGrp, pb.disposables);
-          tube(sa, sb, (0.004 + 0.012 * tm) * rQ,
-            far ? S.trailCoreFar : S.pathOut, poseGrp, pb.disposables);
-        }
-      }
-      // internal penetration channel, carried to the deepest damaged module.
-      // r5 rework ('fat glowing baton with a bulbous white sphere at the
-      // tip'): a TAPERED long-rod dart — widest at the breach, needling down
-      // toward the deepest component — finished with a small cone tip instead
-      // of a terminal glow ball. Radii sit ~55% under the old baton and scale
-      // with the solved orbit radius so the dart stays legible on big hulls.
-      _b.copy(lp).addScaledVector(ld, innerLen);
-      const dart = (r0: number, r1: number, mat: THREE.Material): void => {
-        const g = new THREE.CylinderGeometry(r1, r0, innerLen, 8, 1, true);
-        pb.disposables.push(g);
-        const m = new THREE.Mesh(g, mat);
-        m.position.copy(lp).addScaledVector(ld, innerLen * 0.5);
-        m.quaternion.setFromUnitVectors(_Y, ld);
-        poseGrp.add(m);
-      };
-      dart(0.048 * rQ, 0.024 * rQ, S.pathIn);   // hot sheath
-      dart(0.021 * rQ, 0.01 * rQ, S.pathCore);  // white-hot core
-      // cone tip at the deepest component hit — the dart's point, no bulb
-      const tipG = new THREE.ConeGeometry(0.024 * rQ, 0.16 * rQ, 8);
-      pb.disposables.push(tipG);
-      const tip = new THREE.Mesh(tipG, S.pathCore);
-      tip.position.copy(_b).addScaledVector(ld, 0.08 * rQ);
-      tip.quaternion.setFromUnitVectors(_Y, ld);
-      poseGrp.add(tip);
-      // spall cone: apex at the penetration point, opening along the path
-      const coneLen = innerLen * 0.8;
-      const coneGeo = new THREE.ConeGeometry(coneLen * 0.24, coneLen, 14, 1, true);
-      pb.disposables.push(coneGeo);
-      const cone = new THREE.Mesh(coneGeo, S.spall);
-      cone.position.copy(lp).addScaledVector(ld, coneLen * 0.5);
-      cone.quaternion.setFromUnitVectors(_Y, _s.copy(ld).negate());
-      poseGrp.add(cone);
-      // deterministic fragment rays fanned inside the cone (short, dim —
-      // ambient spall texture; the CAUSAL streaks below carry the story)
-      const side = new THREE.Vector3().crossVectors(ld, UP);
-      if (side.lengthSq() < 1e-6) side.set(1, 0, 0); else side.normalize();
-      const norm = new THREE.Vector3().crossVectors(ld, side);
-      for (let i = 0; i < 6; i++) {
-        const az = (i / 6) * Math.PI * 2 + 0.45;
-        const spread = 0.15 + 0.12 * (((i * 37) % 5) / 4);
-        const len = innerLen * (0.28 + 0.34 * (((i * 53) % 7) / 6));
-        _a.copy(ld)
-          .addScaledVector(side, Math.cos(az) * spread)
-          .addScaledVector(norm, Math.sin(az) * spread)
-          .normalize();
-        _b.copy(lp).addScaledVector(_a, len);
-        tube(lp, _b, 0.018, S.frag, poseGrp, pb.disposables);
-      }
-      // CAUSAL fragment cone (r3, WT's signature read): thin streaks opening
-      // from the penetration point to EVERY module / crew slot this shell's
-      // resolved payload damaged, so the kill's cause is told by geometry,
-      // not only by the text chips. Streak tier follows the sim state — red
-      // (destroyed) hottest and thickest, yellow warm, an 'ok' graze dim —
-      // and red/yellow components get a terminal spark where the streaks
-      // land. Endpoints come from the same armor boxes the sim rolled
-      // against; nothing here is invented.
-      {
-        const fs = new THREE.Vector3();
-        const fn = new THREE.Vector3();
-        const fd = new THREE.Vector3();
-        const fe = new THREE.Vector3();
-        const fc = new THREE.Vector3();
-        const fragTo = (
-          bb: KillcamBox,
-          mat: THREE.Material,
-          n: number,
-          r: number,
-          spark: boolean,
-        ): void => {
-          centerOf(bb, fc);
-          const L = Math.max(0.5, fc.distanceTo(lp));
-          fd.copy(fc).sub(lp).multiplyScalar(1 / L);
-          fs.crossVectors(fd, UP);
-          if (fs.lengthSq() < 1e-6) fs.set(1, 0, 0); else fs.normalize();
-          fn.crossVectors(fd, fs);
-          for (let k = 0; k < n; k++) {
-            // deterministic jitter (no rng — staged captures must repeat)
-            const j1 = ((k * 73 + 31) % 17) / 16 - 0.5;
-            const j2 = ((k * 41 + 7) % 13) / 12 - 0.5;
-            const len = L * (0.86 + 0.3 * (((k * 53) % 5) / 4));
-            fe.copy(fd)
-              .addScaledVector(fs, j1 * 0.24)
-              .addScaledVector(fn, j2 * 0.24)
-              .normalize()
-              .multiplyScalar(len)
-              .add(lp);
-            tube(lp, fe, k === 0 ? r * 1.35 : r, mat, poseGrp, pb.disposables);
-          }
-          if (spark) {
-            const sGeo = new THREE.SphereGeometry(0.075, 8, 6);
-            pb.disposables.push(sGeo);
-            const sm = new THREE.Mesh(sGeo, mat);
-            sm.position.copy(fc);
-            poseGrp.add(sm);
-          }
-        };
-        for (const m of ev.modulesHit) {
-          const bb = (armor.modules || []).find((b) => b.module === m.module);
-          if (!bb) continue;
-          const mat = m.newState === 'red' ? S.fragRed
-            : m.newState === 'yellow' ? S.fragYellow : S.frag;
-          fragTo(bb, mat, m.newState === 'red' ? 4 : 3,
-            m.newState === 'red' ? 0.026 : 0.019,
-            m.newState === 'red' || m.newState === 'yellow');
-        }
-        for (const c of ev.crewHit) {
-          const bb = (armor.crew || []).find((b) => b.crew === c);
-          if (bb) fragTo(bb, S.fragCrew, 3, 0.019, true);
-        }
-      }
-      // entry marker halved (r5: the 0.1 m ball read as a bulb on the dart)
-      const mGeo = new THREE.SphereGeometry(0.05 * rQ, 10, 8);
-      pb.disposables.push(mGeo);
-      const marker = new THREE.Mesh(mGeo, S.marker);
-      marker.position.copy(lp);
-      poseGrp.add(marker);
-    }
-    poseGrp.updateMatrixWorld(true);
-    // finalize label-repulsion obstacles: world-space corners (static for the
-    // whole hold — only the camera moves, so projection happens per frame)
-    for (const ob of pb.obstacles) {
-      if (ob.parent) for (const c of ob.corners) ob.parent.localToWorld(c);
-      ob.parent = null;
-    }
-
-    // 5. DOM labels anchored to the snapshot (static world positions); each
-    // chip gets a leader line to its module dot and joins the vertical
-    // deconfliction pass in projectLabels(). Every number rendered here comes
-    // straight from the sim event — module damage is ev.modulesHit[i].dmg
-    // (the actual rolled value damage.ts applied); when a payload predates
-    // that field the number is OMITTED rather than fabricated.
-    const d = ensureDom();
-    d.root.classList.add('xr'); // fade in the x-ray backdrop dim
-    d.labelHost.textContent = '';
-    d.leader.textContent = '';
-    // KILLER CARD (death view): name, vehicle, shell, damage, distance —
-    // every field straight off the snapshot event (nothing recomputed).
-    // Revealed by updateXray at KILLER_CARD_AT_S; hidden for FINAL BLOW
-    // frames (the annotation block already tells the player-kill story).
-    if (pb.isDeathView) {
-      let vSpec = null;
-      try { vSpec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null; } catch (_) { vSpec = null; }
-      const kName = ev.attackerName || (vSpec && vSpec.name) || 'Enemy';
-      d.killer.name.textContent = kName;
-      const tier = ev.attackerSpecId ? tierNumeral(ev.attackerSpecId) : '';
-      // vehicle line never repeats the headline: attackerName usually IS the
-      // vehicle (state.ts enrichment) — then the line carries the tier alone
-      const vehBits = [];
-      if (tier) vehBits.push(`Tier ${tier}`);
-      if (vSpec && !kName.toLowerCase().includes(vSpec.name.toLowerCase())) vehBits.push(vSpec.name);
-      d.killer.veh.textContent = vehBits.join(' · ');
-      d.killer.sil.style.backgroundImage = ev.attackerSpecId
-        ? `url(${iconUrl(ev.attackerSpecId, 'side_silhouette')})` : 'none';
-      d.killer.rows.textContent = '';
-      const kkv = (k2: string, v2: string, cls2: string, iconId: string): void => {
-        const r2 = el('div', `kv${cls2 ? ` ${cls2}` : ''}`, d.killer.rows);
-        const ks2 = el('span', '', r2);
-        ks2.innerHTML = `${uiIconSVG(iconId, 10)}<span>${k2}</span>`;
-        const vs2 = el('b', '', r2); vs2.textContent = v2;
-      };
-      if (pb.replayKind === 'collision') {
-        kkv('Cause', 'Hull collision', 'w', 'damage');
-        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage || 0)}` : '0', 'dmg', 'damage');
-        kkv('Closing speed', `${Math.round((ev.closingMps || 0) * 3.6)} km/h`, '', 'speed');
-      } else {
-        const cleanShell = shellDisplayName(ev);
-        kkv('Shell', `${ev.shellType || ''}${cleanShell ? ` ${cleanShell}` : ''}`.trim() || '—', 'w', 'shell');
-        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage || 0)}` : '0', 'dmg', 'damage');
-        kkv('Distance', `${Math.round(ev.flightDistM || 0)} m`, '', 'scope');
-      }
-      d.killer.root.classList.add('on');
-      if (staged) d.killer.root.classList.add('rv'); // deterministic frames skip the reveal timer
-    } else {
-      d.killer.root.classList.remove('on', 'rv');
-    }
-    pb.labels.length = 0;
-      const addLabel = (
-        world: THREE.Vector3,
-        color: string,
-        main: string,
-        sub: string,
-        big = false,
-        ok = false,
-        key: string | null = null,
-      ): void => {
-      // ok = the hit left the module functional: the chip is demoted to the
-      // dim-gray tier (hollow ring dot, faint leader) so only yellow/red
-      // chips carry casualty weight — an 'ok' TRACK R / HIT chip in full
-      // white read as a loss at a glance (r4 critique).
-      const label = el('div', big ? 'cot-kc-dmg' : `cot-kc-label${ok ? ' ok' : ''}`, d.labelHost);
-      let dot = null;
-      let line = null;
-      if (!big) {
-        label.style.color = color;
-        const icon = el('span', 'ico', label);
-        icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 11);
-        const copy = el('span', 'copy', label);
-        const mainText = el('span', 'main', copy);
-        mainText.textContent = main;
-        const subText = el('span', 's', copy);
-        subText.textContent = sub;
-        dot = el('div', `cot-kc-dot${ok ? ' ok' : ''}`, d.labelHost);
-        dot.style.color = color;
-        line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('stroke', color);
-        line.setAttribute('stroke-width', '1');
-        line.setAttribute('opacity', ok ? '0.45' : '0.85');
-        d.leader.appendChild(line);
-      } else {
-        const icon = el('span', 'ico', label);
-        icon.innerHTML = uiIconSVG('damage', 15);
-        const value = el('span', 'val', label);
-        value.textContent = main;
-      }
-      pb.labels.push({
-        label, dot, line, big: !!big, world: world.clone(), key: key || null,
-        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
-        below: false, fixed: false,
-      });
-    };
-    /** Idle micro-label (no dot/leader): WT-style always-on internals tag. */
-    const addMicro = (world: THREE.Vector3, text: string, key: string): void => {
-      const label = el('div', 'cot-kc-micro', d.labelHost);
-      const icon = el('span', 'ico', label);
-      icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
-      const copy = el('span', 'copy', label);
-      copy.textContent = text;
-      pb.labels.push({
-        label, dot: null, line: null, big: false, micro: true,
-        world: world.clone(), key: key || null,
-        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
-        below: false, fixed: false,
-      });
-    };
-    /**
-     * Near-miss tag (r8): the old gray damage-chip language (dot + leader +
-     * two-line chip) read as a damaged-module callout at a glance and one
-     * clipped against the hull top edge on the live Abrams replay (critic).
-     * Rendered as a dashed one-line tag that sits ON its organ like the
-     * micro identity tags — always inside the silhouette, never straddling
-     * its edge — visibly informational, never a casualty.
-     */
-    const addNearMiss = (world: THREE.Vector3, text: string, key: string): void => {
-      const label = el('div', 'cot-kc-label nm', d.labelHost);
-      const icon = el('span', 'ico', label);
-      icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
-      const copy = el('span', 'copy', label);
-      const mainText = el('span', 'main', copy);
-      mainText.textContent = text;
-      const subText = el('span', 's', copy);
-      subText.textContent = ' · near miss';
-      pb.labels.push({
-        label, dot: null, line: null, big: false, micro: true,
-        world: world.clone(), key: key || null,
-        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
-        below: false, fixed: false,
-      });
-    };
-    const MOD_STATE_WORD: Readonly<Record<ModuleStateName, string>> = {
-      red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT',
-    };
-    const MOD_STATE_COLOR: Readonly<Record<ModuleStateName, string>> = {
-      red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3',
-    };
-    // A shell can cross more than one physical volume assigned to the same
-    // module. The simulation correctly applies both impulses, but the replay
-    // should present one final-state callout rather than stacking two TRACK R
-    // cards at the same anchor. Preserve total resolved damage and the most
-    // severe resulting state.
-    const moduleLabels = new Map<string, ModuleHit>();
-    const stateRank: Readonly<Record<ModuleStateName, number>> = { ok: 0, yellow: 1, red: 2 };
-    for (const m of ev.modulesHit) {
-      const prev = moduleLabels.get(m.module);
-      if (!prev) {
-        moduleLabels.set(m.module, { ...m });
-        continue;
-      }
-      if ((stateRank[m.newState] || 0) > (stateRank[prev.newState] || 0)) {
-        prev.newState = m.newState;
-      }
-      if (typeof m.dmg === 'number' && Number.isFinite(m.dmg)) {
-        prev.dmg = (typeof prev.dmg === 'number' && Number.isFinite(prev.dmg) ? prev.dmg : 0) + m.dmg;
-      }
-    }
-    for (const m of moduleLabels.values()) {
-      const seg = anchors.get(`m:${m.module}`);
-      if (!seg) continue;
-      seg.getWorldPosition(_p);
-      // honest damage number: only the sim's rolled value, never the caliber
-      const dmgTxt = typeof m.dmg === 'number' && Number.isFinite(m.dmg)
-        ? ` −${Math.round(m.dmg)}` : '';
-      const ok = m.newState !== 'red' && m.newState !== 'yellow';
-      addLabel(_p, MOD_STATE_COLOR[m.newState] || MOD_STATE_COLOR.ok,
-        KC_MODULE_LABELS[m.module] || m.module,
-        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok, `m:${m.module}`);
-    }
-    for (const c of new Set(ev.crewHit)) {
-      const seg = anchors.get(`c:${c}`);
-      if (!seg) continue;
-      seg.getWorldPosition(_p);
-      addLabel(_p, '#ff7d8a', KC_CREW_LABELS[c] || c, 'KNOCKED OUT', false, false, `c:${c}`);
-    }
-    // ENTRY-PLATE chip (r6 minor): the struck zone is ALWAYS annotated at the
-    // penetration point — a clean pen with no module/crew casualties used to
-    // hold 7 s with nothing but the −HP tag. Zone / plate thickness / outcome
-    // word all come straight off the payload (zone, physicalMm, kind).
-    if (ev.zone && ev.localPos) {
-      const outcome = hitOutcomeFor(ev);
-      const mm = (ev.physicalMm || 0) > 0 ? ` · ${Math.round(ev.physicalMm || 0)} mm` : '';
-      _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-      addLabel(_p, outcome.color, zoneLabel(ev.zone),
-        `${outcome.label}${mm}`, false, false, null);
-    }
-    // near-miss chips (r6 minor, collected in step 4): internals the spall
-    // cone brushed but the sim left untouched — demoted gray tier, so they
-    // can never read as casualties next to the yellow/red damage chips.
-    for (const nm of nearMiss) {
-      const seg = anchors.get(nm.key);
-      if (!seg) continue;
-      seg.getWorldPosition(_p);
-      addNearMiss(_p, nm.label, nm.key);
-    }
-    if ((ev.damage || 0) > 0) {
-      _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-      addLabel(_p, '', `−${Math.round(ev.damage || 0)} HP`, '', true);
-    }
-    // idle micro-labels on the key internals the eye needs to identify
-    const MICRO: Readonly<Record<string, string>> = {
-      ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL',
-    };
-    for (const key of Object.keys(MICRO)) {
-      if (modHit.has(key)) continue; // hit ones already carry a damage chip
-      if (nearMiss.some((n) => n.key === `m:${key}`)) continue; // NEAR MISS chip owns it
-      const seg = anchors.get(`m:${key}`);
-      if (!seg) continue;
-      seg.getWorldPosition(_p);
-      addMicro(_p, MICRO[key], `m:${key}`);
-    }
-
-    // staggered reveal guided from the impact point outward (chips first,
-    // micro tags last) — everything is readable well inside the hold window
-    _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-    const ordered = pb.labels.slice().sort((a, b) => {
-      if (!!a.micro !== !!b.micro) return a.micro ? 1 : -1;
-      return a.world.distanceToSquared(_p) - b.world.distanceToSquared(_p);
-    });
-    ordered.forEach((it, i) => {
-      const delay = `${Math.min(0.6, i * 0.1).toFixed(2)}s`;
-      for (const n of [it.label, it.dot, it.line]) {
-        if (!n) continue;
-        n.classList.add('cot-kc-anim');
-        n.style.animationDelay = delay;
-      }
-    });
-
-    // 6. camera + first label projection
+    addXrayInternals(context);
+    const nearMiss = addXrayShellEvidence(context);
+    finalizeXrayObstacles(context);
+    populateXrayLabels(context, nearMiss);
     setReplayCamera(pb.xcam.pos, pb.xcam.look, 42, 0);
     projectLabels();
   }
 
-  function projectLabels() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+  function projectXrayFocus(height: number): number {
     // screen-space focus veil: keep the radial dim centered on the VICTIM's
     // projected position every frame (a world-space blackout read as a
     // lighting bug — bright road stripe over crushed edges, r4 critique)
-    let vcy = h * 0.5; // victim's projected screen y (label side preference)
-    if (dom && pb.xcam) {
-      _proj.copy(pb.xcam.center).project(camera);
-      dom.root.style.setProperty('--kcvx', `${((_proj.x * 0.5 + 0.5) * 100).toFixed(1)}%`);
-      dom.root.style.setProperty('--kcvy', `${((-_proj.y * 0.5 + 0.5) * 100).toFixed(1)}%`);
-      vcy = (-_proj.y * 0.5 + 0.5) * h;
+    if (!dom || !pb.xcam) return height * 0.5;
+    _proj.copy(pb.xcam.center).project(camera);
+    const xPercent = (_proj.x * 0.5 + 0.5) * 100;
+    const yPercent = (-_proj.y * 0.5 + 0.5) * 100;
+    dom.root.style.setProperty('--kcvx', `${xPercent.toFixed(1)}%`);
+    dom.root.style.setProperty('--kcvy', `${yPercent.toFixed(1)}%`);
+    return yPercent * 0.01 * height;
+  }
+
+  function projectObstacleRect(
+    obstacle: ScreenObstacle,
+    width: number,
+    height: number,
+  ): ScreenRect | null {
+    const rect: ScreenRect = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    for (const corner of obstacle.corners) {
+      _proj.copy(corner).project(camera);
+      if (_proj.z > 1) return null;
+      const screenX = (_proj.x * 0.5 + 0.5) * width;
+      const screenY = (-_proj.y * 0.5 + 0.5) * height;
+      rect.x0 = Math.min(rect.x0, screenX);
+      rect.x1 = Math.max(rect.x1, screenX);
+      rect.y0 = Math.min(rect.y0, screenY);
+      rect.y1 = Math.max(rect.y1, screenY);
     }
+    return rect;
+  }
+
+  function screenRectArea(rect: ScreenRect): number {
+    return (rect.x1 - rect.x0) * (rect.y1 - rect.y0);
+  }
+
+  function projectXrayObstacles(width: number, height: number): ProjectedObstacleLayout {
     // pass 0 (r4): project every module/crew box to a screen rect once —
     // these feed BOTH the repulsion pass (2b) and the per-key ANCHOR rects:
     // each chip's dot/leader snaps to the projected centroid of its OWN
     // module's rect instead of the box's 3D center point, whose projection
     // drifted onto neighbouring assemblies (the AMMO RACK chip's leader
     // ended near the turret ring while the orange bin sat mid-hull).
-    const maxArea = 0.18 * w * h;
-    const obs = [];
-    const anchorRect = new Map(); // obstacle key -> screen rect
-    if (pb.obstacles) {
-      for (const ob of pb.obstacles) {
-        let x0 = Infinity;
-        let y0 = Infinity;
-        let x1 = -Infinity;
-        let y1 = -Infinity;
-        let behind = false;
-        for (const c of ob.corners) {
-          _proj.copy(c).project(camera);
-          if (_proj.z > 1) { behind = true; break; }
-          const sx = (_proj.x * 0.5 + 0.5) * w;
-          const sy = (-_proj.y * 0.5 + 0.5) * h;
-          if (sx < x0) x0 = sx;
-          if (sx > x1) x1 = sx;
-          if (sy < y0) y0 = sy;
-          if (sy > y1) y1 = sy;
-        }
-        if (behind) continue;
-        const area = (x1 - x0) * (y1 - y0);
-        // full-length track bands exceed the cap in both roles: undodgeable
-        // as obstacles, and their rect centroid says nothing about the hit
-        if (ob.key && !anchorRect.has(ob.key) && area <= maxArea * 1.4) {
-          anchorRect.set(ob.key, { x0, y0, x1, y1 });
-        }
-        if (area <= maxArea) obs.push({ x0, y0, x1, y1 });
+    const maxArea = 0.18 * width * height;
+    const obstacles: ScreenRect[] = [];
+    const anchors = new Map<string, ScreenRect>();
+    for (const obstacle of pb.obstacles ?? []) {
+      const rect = projectObstacleRect(obstacle, width, height);
+      if (!rect) continue;
+      const area = screenRectArea(rect);
+      // Full-length track bands exceed the cap in both roles: undodgeable as
+      // obstacles, and their rect centroid says nothing about the hit.
+      if (obstacle.key && !anchors.has(obstacle.key) && area <= maxArea * 1.4) {
+        anchors.set(obstacle.key, rect);
       }
+      if (area <= maxArea) obstacles.push(rect);
     }
+    return { obstacles, anchors };
+  }
+
+  function labelDesiredTop(label: KillcamLabel): number {
+    if (label.big) return label.ay + 14;
+    if (label.micro) return label.ay - label.lh / 2;
+    return label.below ? label.ay + 26 : label.ay - 30 - label.lh;
+  }
+
+  function projectXrayLabel(
+    label: KillcamLabel,
+    width: number,
+    height: number,
+    victimCenterY: number,
+    anchorRects: ReadonlyMap<string, ScreenRect>,
+  ): void {
+    _proj.copy(label.world).project(camera);
+    label.hidden = _proj.z > 1;
+    if (label.hidden) return;
+    label.ax = (_proj.x * 0.5 + 0.5) * width;
+    label.ay = (-_proj.y * 0.5 + 0.5) * height;
+    const anchor = label.key ? anchorRects.get(label.key) : null;
+    if (anchor) {
+      label.ax = (anchor.x0 + anchor.x1) * 0.5;
+      label.ay = (anchor.y0 + anchor.y1) * 0.5;
+    }
+    label.lw = label.label.offsetWidth || 60;
+    label.lh = label.label.offsetHeight || 18;
+    label.left = label.ax - label.lw * 0.5;
+    label.below = !label.big && !label.micro && label.ay > victimCenterY + 6;
+    label.top = labelDesiredTop(label);
+  }
+
+  function projectXrayLabelAnchors(
+    width: number,
+    height: number,
+    victimCenterY: number,
+    anchorRects: ReadonlyMap<string, ScreenRect>,
+  ): void {
     // pass 1: project anchors, compute each chip's desired rect. r4 side
     // preference: chips whose module sits in the LOWER half of the victim
     // hang BELOW their dot — a mid-hull ammo bin's chip no longer floats
     // above the turret where it read as a turret-ammo callout.
-    for (const it of pb.labels) {
-      _proj.copy(it.world).project(camera);
-      it.hidden = _proj.z > 1;
-      if (it.hidden) continue;
-      it.ax = (_proj.x * 0.5 + 0.5) * w;
-      it.ay = (-_proj.y * 0.5 + 0.5) * h;
-      const ar = it.key ? anchorRect.get(it.key) : null;
-      if (ar) {
-        it.ax = (ar.x0 + ar.x1) / 2;
-        it.ay = (ar.y0 + ar.y1) / 2;
-      }
-      it.lw = it.label.offsetWidth || 60;
-      it.lh = it.label.offsetHeight || 18;
-      it.left = it.ax - it.lw / 2;
-      it.below = !it.big && !it.micro && it.ay > vcy + 6;
-      // micro tags sit right on their component (no leader line); chips
-      // float above (lower-hull modules: below) their dot; the big damage
-      // number hangs below the impact
-      it.top = it.big ? it.ay + 14
-        : it.micro ? it.ay - it.lh / 2
-          : it.below ? it.ay + 26 : it.ay - 30 - it.lh;
+    for (const label of pb.labels) {
+      projectXrayLabel(label, width, height, victimCenterY, anchorRects);
     }
+  }
+
+  function layoutRectsOverlap(a: LayoutRect, b: LayoutRect, xGap: number, yGap: number): boolean {
+    return a.left < b.left + b.lw + xGap
+      && b.left < a.left + a.lw + xGap
+      && a.top < b.top + b.lh + yGap
+      && b.top < a.top + a.lh + yGap;
+  }
+
+  function xrayLayoutItems(): LayoutRect[] {
+    const items: LayoutRect[] = [];
+    for (const label of pb.labels) {
+      if (label.hidden) continue;
+      items.push(label);
+      if (label.dot) {
+        items.push({ left: label.ax - 6, top: label.ay - 6, lw: 12, lh: 12, fixed: true });
+      }
+    }
+    return items.sort((left, right) => left.top - right.top);
+  }
+
+  function cascadeXrayLabel(item: LayoutRect, index: number, items: readonly LayoutRect[]): void {
+    if (item.fixed) return;
+    for (let sweep = 0; sweep < 2; sweep++) {
+      for (let otherIndex = 0; otherIndex < items.length; otherIndex++) {
+        if (otherIndex === index) continue;
+        const other = items[otherIndex];
+        if (!other.fixed && otherIndex > index) continue;
+        if (layoutRectsOverlap(item, other, 6, 4)) item.top = other.top + other.lh + 4;
+      }
+    }
+  }
+
+  function separateInitialXrayRows(): void {
     // pass 2: vertical deconfliction — when projected rects overlap, cascade
     // the later chip below the earlier one with a 4px gap. Anchor DOTS join
     // as immovable obstacles so the big damage numeral can never sit on a
     // module's leader-dot cluster (r7: −519 HP muddied TRACK R's dot right
     // at the penetration point); a second sweep settles cascades that land
     // a chip on a dot further down.
-    const items: LayoutRect[] = [];
-    for (const it of pb.labels) {
-      if (it.hidden) continue;
-      items.push(it);
-      if (it.dot) items.push({ left: it.ax - 6, top: it.ay - 6, lw: 12, lh: 12, fixed: true });
+    const items = xrayLayoutItems();
+    items.forEach((item, index) => cascadeXrayLabel(item, index, items));
+  }
+
+  function labelOverlapsScreenRect(label: KillcamLabel, rect: ScreenRect): boolean {
+    return label.left < rect.x1 + 4
+      && rect.x0 < label.left + label.lw + 4
+      && label.top < rect.y1 + 3
+      && rect.y0 < label.top + label.lh + 3;
+  }
+
+  function repelXrayLabelFromGeometry(label: KillcamLabel, obstacles: readonly ScreenRect[]): void {
+    if (label.hidden || label.micro || label.big) return;
+    const minTop = label.ay - 30 - label.lh - 130;
+    const maxTop = label.ay + 26 + 130;
+    for (const rect of obstacles) {
+      if (!labelOverlapsScreenRect(label, rect)) continue;
+      label.top = label.below
+        ? Math.min(maxTop, rect.y1 + 8)
+        : Math.max(minTop, rect.y0 - label.lh - 8);
     }
-    items.sort((a, b) => a.top - b.top);
-    for (let i = 0; i < items.length; i++) {
-      const a = items[i];
-      if (a.fixed) continue;
-      for (let sweep = 0; sweep < 2; sweep++) {
-        for (let j = 0; j < items.length; j++) {
-          if (j === i) continue;
-          const b = items[j];
-          if (!b.fixed && j > i) continue; // later movables resolve on their own turn
-          if (a.left < b.left + b.lw + 6 && b.left < a.left + a.lw + 6 &&
-              a.top < b.top + b.lh + 4 && b.top < a.top + a.lh + 4) {
-            a.top = b.top + b.lh + 4;
-          }
-        }
-      }
-    }
+  }
+
+  function repelXrayLabelsFromGeometry(obstacles: readonly ScreenRect[]): void {
     // pass 2b: module-geometry repulsion (r3 — the AMMO RACK chip sat ON the
     // ammo shells it labeled). Chips slide UP along their leader lines until
     // clear of any projected module/crew box they intersect, capped at ~130px
@@ -5008,117 +5424,164 @@ export function createKillCam(deps: KillcamDeps) {
     // r3 backing plate carries legibility over any fill — dodging the
     // track-band rect flung it to the screen bottom), micro tags sit on
     // their organ by design.
-    if (obs.length) {
-      for (let sweep = 0; sweep < 2; sweep++) {
-        for (const it of pb.labels) {
-          if (it.hidden || it.micro || it.big) continue;
-          const minTop = it.ay - 30 - it.lh - 130; // lift cap: dot stays close
-          const maxTop = it.ay + 26 + 130;         // drop cap (below-side chips)
-          for (const r of obs) {
-            if (it.left < r.x1 + 4 && r.x0 < it.left + it.lw + 4 &&
-                it.top < r.y1 + 3 && r.y0 < it.top + it.lh + 3) {
-              // dodge AWAY from the hull on the chip's own side (r4): below-
-              // side chips slide further down, above-side chips further up —
-              // repulsion may never flip a chip back across the silhouette
-              it.top = it.below
-                ? Math.min(maxTop, r.y1 + 8)
-                : Math.max(minTop, r.y0 - it.lh - 8);
-            }
-          }
-        }
-      }
+    if (!obstacles.length) return;
+    for (let sweep = 0; sweep < 2; sweep++) {
+      for (const label of pb.labels) repelXrayLabelFromGeometry(label, obstacles);
     }
+  }
+
+  function visibleXrayPanelRects(): DOMRect[] {
+    if (!dom) return [];
+    const panelEls: HTMLElement[] = [dom.title, dom.skip, dom.annot, dom.killer.root];
+    return panelEls
+      .filter((node) => getComputedStyle(node).display !== 'none')
+      .map((node) => node.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0);
+  }
+
+  function labelOverlapsPanel(label: KillcamLabel, top: number, panel: DOMRect): boolean {
+    return label.left < panel.right + 6
+      && panel.left < label.left + label.lw + 6
+      && top < panel.bottom + 6
+      && panel.top < top + label.lh + 6;
+  }
+
+  function repelXrayLabelsFromPanels(panelRects: readonly DOMRect[], height: number): void {
     // pass 2c: keep projected callouts out of the fixed analysis/killer
     // cards. This matters most in portrait, where the lower-hull labels and
     // the compact ballistic card share the bottom third of the frame. Move a
     // colliding callout toward the unobstructed center instead of letting its
     // text ghost through a panel; leaders retain the anchor relationship.
-    let panelRects: DOMRect[] = [];
-    if (dom) {
-      const panelEls: HTMLElement[] = [dom.title, dom.skip, dom.annot, dom.killer.root];
-      panelRects = panelEls
-        .filter((node) => getComputedStyle(node).display !== 'none')
-        .map((node) => node.getBoundingClientRect())
-        .filter((r) => r.width > 0 && r.height > 0);
-      for (const it of pb.labels) {
-        if (it.hidden) continue;
-        for (const r of panelRects) {
-          if (it.left < r.right + 6 && r.left < it.left + it.lw + 6 &&
-              it.top < r.bottom + 6 && r.top < it.top + it.lh + 6) {
-            it.top = (r.top + r.bottom) * 0.5 > h * 0.5
-              ? r.top - it.lh - 8
-              : r.bottom + 8;
-          }
-        }
+    for (const label of pb.labels) {
+      if (label.hidden) continue;
+      for (const panel of panelRects) {
+        if (!labelOverlapsPanel(label, label.top, panel)) continue;
+        label.top = (panel.top + panel.bottom) * 0.5 > height * 0.5
+          ? panel.top - label.lh - 8
+          : panel.bottom + 8;
       }
     }
+  }
+
+  function xrayLabelPriority(label: KillcamLabel): number {
+    if (label.big) return 3;
+    return label.micro ? 1 : 2;
+  }
+
+  function labelOverlapsPlaced(
+    label: KillcamLabel,
+    top: number,
+    placed: readonly KillcamLabel[],
+  ): boolean {
+    return placed.some((other) => label.left < other.left + other.lw + 5
+      && other.left < label.left + label.lw + 5
+      && top < other.top + other.lh + 4
+      && other.top < top + label.lh + 4);
+  }
+
+  function xrayLabelFits(
+    label: KillcamLabel,
+    top: number,
+    minTop: number,
+    maxBottom: number,
+    panelRects: readonly DOMRect[],
+    placed: readonly KillcamLabel[],
+  ): boolean {
+    if (top < minTop || top + label.lh > maxBottom) return false;
+    if (panelRects.some((panel) => labelOverlapsPanel(label, top, panel))) return false;
+    return !labelOverlapsPlaced(label, top, placed);
+  }
+
+  function xrayLabelCandidateTops(
+    label: KillcamLabel,
+    minTop: number,
+    maxBottom: number,
+    placed: readonly KillcamLabel[],
+  ): number[] {
+    const candidates = [minTop, maxBottom - label.lh];
+    for (const other of placed) {
+      const horizontallySeparate = label.left >= other.left + other.lw + 5
+        || other.left >= label.left + label.lw + 5;
+      if (horizontallySeparate) continue;
+      candidates.push(other.top - label.lh - 5, other.top + other.lh + 5);
+    }
+    return candidates;
+  }
+
+  function settleXrayLabel(
+    label: KillcamLabel,
+    minTop: number,
+    maxBottom: number,
+    panelRects: readonly DOMRect[],
+    placed: readonly KillcamLabel[],
+  ): void {
+    const desired = label.top;
+    if (xrayLabelFits(label, desired, minTop, maxBottom, panelRects, placed)) return;
+    const valid = xrayLabelCandidateTops(label, minTop, maxBottom, placed)
+      .filter((top) => xrayLabelFits(label, top, minTop, maxBottom, panelRects, placed));
+    valid.sort((left, right) => Math.abs(left - desired) - Math.abs(right - desired));
+    if (valid.length) label.top = valid[0];
+  }
+
+  function separateFinalXrayLabels(panelRects: readonly DOMRect[], height: number): void {
     // Geometry and fixed-panel repulsion can move two independently solved
     // labels back onto the same screen row (most visibly the entry-plate and
     // damage cards at the impact point). Run one final bounded label-only
     // separation pass after every other obstacle has settled.
-    {
-      const priority = (it: KillcamLabel): number => it.big ? 3 : it.micro ? 1 : 2;
-      const visible = pb.labels.filter((it) => !it.hidden)
-        .sort((a, b) => priority(b) - priority(a) || a.top - b.top || a.left - b.left);
-      const minTop = h * 0.095;
-      const maxBottom = h * 0.885;
-      const hitsPanel = (it: KillcamLabel, top: number): boolean => panelRects.some((r) =>
-        it.left < r.right + 6 && r.left < it.left + it.lw + 6 &&
-        top < r.bottom + 6 && r.top < top + it.lh + 6);
-      const placed: KillcamLabel[] = [];
-      const fits = (it: KillcamLabel, top: number): boolean => top >= minTop && top + it.lh <= maxBottom &&
-        !hitsPanel(it, top) && !placed.some((other) =>
-          it.left < other.left + other.lw + 5 && other.left < it.left + it.lw + 5 &&
-          top < other.top + other.lh + 4 && other.top < top + it.lh + 4);
-      for (const it of visible) {
-        const desired = it.top;
-        if (!fits(it, desired)) {
-          const candidates = [minTop, maxBottom - it.lh];
-          for (const other of placed) {
-            if (it.left >= other.left + other.lw + 5 || other.left >= it.left + it.lw + 5) continue;
-            candidates.push(other.top - it.lh - 5, other.top + other.lh + 5);
-          }
-          const valid = candidates.filter((top) => fits(it, top));
-          if (valid.length) {
-            valid.sort((a, b) => Math.abs(a - desired) - Math.abs(b - desired));
-            it.top = valid[0];
-          }
-        }
-        placed.push(it);
-      }
+    const visible = pb.labels.filter((label) => !label.hidden)
+      .sort((left, right) => xrayLabelPriority(right) - xrayLabelPriority(left)
+        || left.top - right.top || left.left - right.left);
+    const minTop = height * 0.095;
+    const maxBottom = height * 0.885;
+    const placed: KillcamLabel[] = [];
+    for (const label of visible) {
+      settleXrayLabel(label, minTop, maxBottom, panelRects, placed);
+      placed.push(label);
     }
+  }
+
+  function writeXrayLeader(label: KillcamLabel): void {
+    if (!label.line) return;
+    const below = label.top > label.ay;
+    label.line.setAttribute('x1', label.ax.toFixed(1));
+    label.line.setAttribute('y1', label.ay.toFixed(1));
+    label.line.setAttribute('x2', (label.left + label.lw * 0.5).toFixed(1));
+    label.line.setAttribute('y2', (below ? label.top : label.top + label.lh).toFixed(1));
+  }
+
+  function writeXrayLabel(label: KillcamLabel, width: number, height: number): void {
+    const display = label.hidden ? 'none' : 'flex';
+    label.label.style.display = display;
+    if (label.dot) label.dot.style.display = label.hidden ? 'none' : 'block';
+    if (label.line) label.line.style.display = label.hidden ? 'none' : 'block';
+    if (label.hidden) return;
     // pass 3: write DOM positions + leader lines dot -> chip edge
-    for (const it of pb.labels) {
-      const off = it.hidden;
-      it.label.style.display = off ? 'none' : 'flex';
-      if (it.dot) it.dot.style.display = off ? 'none' : 'block';
-      if (it.line) it.line.style.display = off ? 'none' : 'block';
-      if (off) continue;
-      // r8 frame-safe clamp: a chip anchored high (raised barrel tip, tall
-      // AA mount) could slide under the top letterbox bar and clip (the
-      // live Abrams GUN tag, critic) — labels stay inside the letterboxed
-      // picture area whatever the anchor projection does.
-      if (!it.big) {
-        it.top = Math.min(Math.max(it.top, h * 0.095), h * 0.885 - it.lh);
-      }
-      // Mobile-safe horizontal clamp: wide labels anchored to terminal road
-      // wheels or long barrels used to escape the portrait frame even after
-      // the vertical repulsion pass had cleared the fixed cards.
-      it.left = Math.min(Math.max(it.left, 8), Math.max(8, w - it.lw - 8));
-      it.label.style.left = `${it.left.toFixed(1)}px`;
-      it.label.style.top = `${it.top.toFixed(1)}px`;
-      if (it.dot) {
-        it.dot.style.left = `${it.ax.toFixed(1)}px`;
-        it.dot.style.top = `${it.ay.toFixed(1)}px`;
-      }
-      if (it.line) {
-        const below = it.top > it.ay; // chip was cascaded under its anchor
-        it.line.setAttribute('x1', it.ax.toFixed(1));
-        it.line.setAttribute('y1', it.ay.toFixed(1));
-        it.line.setAttribute('x2', (it.left + it.lw / 2).toFixed(1));
-        it.line.setAttribute('y2', (below ? it.top : it.top + it.lh).toFixed(1));
-      }
+    // r8 frame-safe clamp: labels stay inside the letterboxed picture area.
+    if (!label.big) {
+      label.top = Math.min(Math.max(label.top, height * 0.095), height * 0.885 - label.lh);
     }
+    label.left = Math.min(Math.max(label.left, 8), Math.max(8, width - label.lw - 8));
+    label.label.style.left = `${label.left.toFixed(1)}px`;
+    label.label.style.top = `${label.top.toFixed(1)}px`;
+    if (label.dot) {
+      label.dot.style.left = `${label.ax.toFixed(1)}px`;
+      label.dot.style.top = `${label.ay.toFixed(1)}px`;
+    }
+    writeXrayLeader(label);
+  }
+
+  function projectLabels(): void {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const victimCenterY = projectXrayFocus(height);
+    const obstacleLayout = projectXrayObstacles(width, height);
+    projectXrayLabelAnchors(width, height, victimCenterY, obstacleLayout.anchors);
+    separateInitialXrayRows();
+    repelXrayLabelsFromGeometry(obstacleLayout.obstacles);
+    const panelRects = visibleXrayPanelRects();
+    repelXrayLabelsFromPanels(panelRects, height);
+    separateFinalXrayLabels(panelRects, height);
+    for (const label of pb.labels) writeXrayLabel(label, width, height);
   }
 
   function updateXray(dt: number): void {
@@ -5298,7 +5761,6 @@ export function createKillCam(deps: KillcamDeps) {
     // spectate chase instead of the static wreck orbit the integration
     // onDone just started (rig.startSpectate overrides rig.startDeathCam).
     // No-op when the battle is decided, the player lives, or no ally does.
-    if (runCallback && wasDeathView) spectate.maybeStart();
     // REPORT GATE: release — emitted on natural finish, skip AND cancel alike
     // so a buffered battle report can never be lost with the replay. Emitted
     // AFTER onDone so the integration end-overlay (.cot-end) already exists

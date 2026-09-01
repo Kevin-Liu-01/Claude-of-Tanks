@@ -76,7 +76,7 @@ for (const [event, kind, outcomeId, label, color, numeric, critical, mergeKey] o
 }
 
 const killcamSource = await readFile(new URL('../game/killcam.ts', import.meta.url), 'utf8');
-assert.match(killcamSource, /const outcome = hitOutcomeFor\(ev\)/,
+assert.match(killcamSource, /function addXrayEntryPlateLabel[\s\S]*const outcome = hitOutcomeFor\(event\)/,
   'kill-cam annotations must consume the canonical hit outcome');
 assert.doesNotMatch(killcamSource, /KIND_WORD|STOPPED BY ERA|NO PENETRATION/,
   'kill cam must not retain a second result vocabulary');
