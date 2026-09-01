@@ -10313,6 +10313,143 @@ function buildKF51(P: TankBuilderPort) {
       P.add('hullDark', cylZ(0.02, 0.016, 8), s * (s > 0 ? 1.801 : 1.70), s > 0 ? 0.95 : 0.88, 1.7 - k * 0.85, 0, s * Math.PI / 2, 0);
     }
   }
+
+  // KF51 flank protection package. The certified thin skirt courses above
+  // remain the inner splash/track screen; this outer course turns them into
+  // a carrier-backed modular jacket without changing the 3.60 m width law.
+  // Seven broad stations echo the KF51B cadence, while the smaller tiles,
+  // diagonal cage braces and angular leading shoulder keep this Panther's
+  // sharper demonstrator identity.
+  const kf51SkirtZ0 = -2.72;
+  const kf51SkirtZ1 = 2.44;
+  const kf51SkirtPanelsPerSide = 7;
+  const kf51SkirtPanelLength = (kf51SkirtZ1 - kf51SkirtZ0) / kf51SkirtPanelsPerSide;
+  const kf51CageZ0 = -3.34;
+  const kf51CageZ1 = 2.58;
+  const kf51CageOuterFaceX = 1.808;
+  const kf51SkirtSector = 'kf51-hull-skirt-era';
+  for (const s of [-1, 1] as const) {
+    // Continuous upper bearer and recessed back plate provide a visible
+    // load path into the fender/sponson instead of leaving panels suspended
+    // over the running gear.
+    P.add('hull', box(0.17, 0.045, kf51SkirtZ1 - kf51SkirtZ0),
+      s * 1.665, 1.495, (kf51SkirtZ0 + kf51SkirtZ1) * 0.5);
+    P.add('hullDark', box(0.085, 0.84, kf51SkirtZ1 - kf51SkirtZ0 - 0.03),
+      s * 1.6925, 1.085, (kf51SkirtZ0 + kf51SkirtZ1) * 0.5);
+
+    P.visualEraCluster(kf51SkirtSector, 'hull', () => {
+      for (let station = 0; station < kf51SkirtPanelsPerSide; station++) {
+        const zc = kf51SkirtZ0 + kf51SkirtPanelLength * (station + 0.5);
+        const frontStation = station === kf51SkirtPanelsPerSide - 1;
+        const bottomY = frontStation ? 0.75 : 0.67;
+        const topY = frontStation ? 1.36 : 1.47;
+        const panelHeight = topY - bottomY;
+        const panelDepth = kf51SkirtPanelLength - 0.035;
+        // Thick carrier shell plus two shallow protection lids. The lids sit
+        // inside the cage plane and leave a readable dark waist between rows.
+        P.add('hull', box(0.075, panelHeight, panelDepth),
+          s * 1.7425, bottomY + panelHeight * 0.5, zc);
+        const rowGap = 0.045;
+        const rowHeight = (panelHeight - rowGap * 3) * 0.5;
+        for (let row = 0; row < 2; row++) {
+          const rowY = bottomY + rowGap + rowHeight * 0.5
+            + row * (rowHeight + rowGap);
+          P.add('hull', box(0.022, rowHeight, panelDepth - 0.095),
+            s * 1.791, rowY, zc);
+        }
+      }
+
+      // Faceted bow shoulder closes the last module into the sloping
+      // mudguard while remaining clear of the raised idler and shoe sweep.
+      P.add('hull', slab(
+        [s * 1.69, 0.76, 2.46], [s * 1.79, 0.76, 2.46], [s * 1.78, 0.94, 3.30], [s * 1.67, 0.94, 3.30],
+        [s * 1.69, 1.36, 2.46], [s * 1.79, 1.36, 2.46], [s * 1.76, 1.20, 3.30], [s * 1.67, 1.20, 3.30]));
+    });
+
+    // Deep station joints and carrier feet keep the jacket mechanical and
+    // break up the old uninterrupted slab read.
+    for (let station = 1; station < kf51SkirtPanelsPerSide; station++) {
+      const z = kf51SkirtZ0 + kf51SkirtPanelLength * station;
+      P.add('hullDark', box(0.008, 0.74, 0.024), s * 1.801, 1.06, z);
+    }
+    P.add('hullDark', box(0.008, 0.024, kf51SkirtZ1 - kf51SkirtZ0 - 0.08),
+      s * 1.801, 1.06, (kf51SkirtZ0 + kf51SkirtZ1) * 0.5);
+    for (const z of [-2.42, -1.40, -0.37, 0.66, 1.69, 2.36]) {
+      P.add('hullDetail', box(0.20, 0.11, 0.060), s * 1.70, 1.48, z);
+    }
+
+    // Stand-off side cage. Three long rails, nine uprights and alternating
+    // diagonal braces form a real truss; short ties overlap the armor lids
+    // and prove the cage is carried by the skirt rather than floating beside it.
+    const cageLength = kf51CageZ1 - kf51CageZ0;
+    for (const y of [0.76, 1.08, 1.40]) {
+      P.addEquipment('hullDetail', box(0.008, 0.018, cageLength),
+        s * 1.804, y, (kf51CageZ0 + kf51CageZ1) * 0.5);
+    }
+    const cageSections = 8;
+    const cagePitch = cageLength / cageSections;
+    for (let station = 0; station <= cageSections; station++) {
+      const z = kf51CageZ0 + station * cagePitch;
+      P.addEquipment('hullDetail', box(0.008, 0.66, 0.018), s * 1.804, 1.08, z);
+      if (station < cageSections) {
+        const braceLength = Math.hypot(cagePitch, 0.60);
+        const braceAngle = Math.atan2(0.60, cagePitch) * (station % 2 === 0 ? 1 : -1);
+        P.addEquipment('hullDetail', box(0.008, 0.016, braceLength),
+          s * 1.804, 1.08, z + cagePitch * 0.5, braceAngle, 0, 0);
+      }
+    }
+    for (const z of [-2.90, -1.42, 0.06, 1.54, 2.36]) {
+      P.addEquipment('hullDark', box(0.072, 0.040, 0.055),
+        s * 1.768, 0.80, z);
+      P.addEquipment('hullDark', box(0.072, 0.040, 0.055),
+        s * 1.768, 1.36, z);
+    }
+
+    // Side-awareness equipment and service stowage ride the upper carrier.
+    // Equipment ownership keeps these details out of the armor hit volume.
+    for (const z of [-1.74, 1.52]) {
+      P.addEquipment('hull', box(0.075, 0.20, 0.25), s * 1.735, 1.515, z,
+        0, s * 0.08, 0);
+      P.addEquipment('hullDark', box(0.020, 0.145, 0.18), s * 1.778, 1.515, z,
+        0, s * 0.08, 0);
+      P.addEquipment('hullGlass', box(0.010, 0.080, 0.11), s * 1.794, 1.535, z,
+        0, s * 0.08, 0);
+    }
+    P.addEquipment('hull', box(0.30, 0.17, 0.60), s * 1.48, 1.65, -2.82);
+    P.addEquipment('hullDark', box(0.32, 0.020, 0.62), s * 1.48, 1.745, -2.82);
+    P.addEquipment('hullDark', box(0.025, 0.10, 0.055), s * 1.64, 1.64, -2.64);
+
+    // Three-aperture shoulder lamp/sensor block above the armored bow.
+    P.addEquipment('hull', box(0.30, 0.15, 0.19), s * 1.43, 1.50, 2.83, -0.11, 0, 0);
+    P.addEquipment('hullDark', box(0.25, 0.10, 0.016), s * 1.43, 1.50, 2.934, -0.11, 0, 0);
+    for (let aperture = -1; aperture <= 1; aperture++) {
+      P.addEquipment('hullGlass', cylZ(0.030, 0.020, P.q ? 12 : 8),
+        s * 1.43 + aperture * 0.074, 1.50, 2.948, -0.11, 0, 0);
+    }
+  }
+  P.hullG.userData.kf51SkirtArmorReceipt = Object.freeze({
+    profile: 'kf51-panther-skirt-era-cage-r1',
+    panelsPerSide: kf51SkirtPanelsPerSide,
+    protectionRows: 2,
+    visualEraSector: kf51SkirtSector,
+    carrierInnerFaceX: 1.65,
+    armorOuterFaceX: 1.802,
+    armorBottomY: 0.67,
+    armorTopY: 1.47,
+    cageOuterFaceX: kf51CageOuterFaceX,
+    publishedHalfWidthM: 1.80,
+    authoredWidthGuardM: 1.809,
+    continuousUpperCarrier: true,
+    cageLongitudinalRailsPerSide: 3,
+    cageUprightsPerSide: 9,
+    cageDiagonalBracesPerSide: 8,
+    cageCarrierTiesPerSide: 10,
+    awarenessPodsPerSide: 2,
+    shoulderAperturesPerSide: 3,
+    serviceStowageBoxesPerSide: 1,
+    equipmentOwned: true,
+    duplicateTrackCourse: false,
+  });
   // WIDTH-SCALE CALIBRATION (fleet-critical, measured this round): the
   // harness rescales the WHOLE proc by publishedWidth/authoredBBoxWidth
   // (procedural-fidelity.html safeScale) — the authored bbox width is a

@@ -48769,7 +48769,7 @@
           }
         ]
       },
-      "geometryHash": "7ee5cbfd",
+      "geometryHash": "50cb55dc",
       "metadataHash": "a5469489",
       "presentationAnchor": {
         "xM": 0.0001,
@@ -48796,7 +48796,7 @@
           "trackPadSimplified": 1,
           "unclassified": 64,
           "gearShadow": 179,
-          "armorPaint": 6,
+          "armorPaint": 8,
           "gunmetal": 7,
           "fittingPaint": 3,
           "tireRubber": 1,
@@ -48868,24 +48868,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85624,
-          "sha256": "8c0967a42b3642d6dffbb3f8789273006fb351bef364827129c72175ce63305b"
+          "bytes": 89638,
+          "sha256": "7b2257e48747aeca076d2a143d4e04704ab95cf7d9c9e9680a4b1d77649d2917"
         },
         "modulesSide": {
           "file": "kf51_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85172,
-          "sha256": "73fddbca7d9c92a64e18a267d9829f6915a351224aa2364e9c113314218b2173"
+          "bytes": 87564,
+          "sha256": "6ef29046069133dcb41e9f7ff4c58240296e00cf3c724f54237bca0b8dad8715"
         },
         "crewSide": {
           "file": "kf51_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76716,
-          "sha256": "2e46b0f9fb1f137fc72769183fdfa9a9b8a3aa791819252fa0db292b568dc530"
+          "bytes": 79435,
+          "sha256": "e24d916e0f11d0455e5f83d8b4bdbfb256efcbb52df50094f7dda120e0046641"
         },
         "markings": {
           "file": "kf51_markings.png",

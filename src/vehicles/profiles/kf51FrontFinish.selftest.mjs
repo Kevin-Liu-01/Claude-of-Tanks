@@ -16,6 +16,8 @@ try {
   const gunRig = tank.root.getObjectByName('rig_gun');
   const turret = tank.root.getObjectByName('turret');
   const turretDetail = tank.root.getObjectByName('turretDetail');
+  const skirtArmor = hullRig?.userData.kf51SkirtArmorReceipt;
+  const eraFinish = tank.root.userData.eraFinishReceipt;
   assert.ok(hullRig && turretRig && gunRig && turret && turretDetail,
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
@@ -222,6 +224,39 @@ try {
     'KF51 wheel face rings, ribs, hubs, and bolts all use canonical gear instances');
   assert.equal(hullRig.userData.runningGearUnitCount, 1,
     'KF51 wheel refinement does not add a duplicate running-gear course');
+
+  assert.equal(skirtArmor?.profile, 'kf51-panther-skirt-era-cage-r1',
+    'KF51 publishes the modern carrier-backed flank package');
+  assert.equal(skirtArmor?.panelsPerSide, 7,
+    'KF51 skirt armor follows the KF51B seven-station cadence');
+  assert.equal(skirtArmor?.protectionRows, 2,
+    'KF51 skirt modules have two readable protection rows');
+  assert.equal(skirtArmor?.continuousUpperCarrier, true,
+    'KF51 skirt jacket has a continuous load path into the sponson');
+  assert.ok(skirtArmor?.armorOuterFaceX > skirtArmor?.carrierInnerFaceX + 0.14,
+    'KF51 skirt modules have real layered depth over their recessed carrier');
+  assert.equal(skirtArmor?.cageLongitudinalRailsPerSide, 3,
+    'KF51 stand-off cage carries three continuous longitudinal rails per side');
+  assert.equal(skirtArmor?.cageUprightsPerSide, 9,
+    'KF51 stand-off cage is supported at every section boundary');
+  assert.equal(skirtArmor?.cageDiagonalBracesPerSide, 8,
+    'KF51 cage uses one structural diagonal per section');
+  assert.ok(skirtArmor?.cageOuterFaceX <= skirtArmor?.authoredWidthGuardM,
+    'KF51 cage stays inside the certified authored-width guard');
+  assert.equal(skirtArmor?.equipmentOwned, true,
+    'KF51 awareness pods, lamps, stowage and cage remain outside the armor hit volume');
+  assert.equal(skirtArmor?.duplicateTrackCourse, false,
+    'KF51 flank protection does not add another track course');
+  assert.ok(eraFinish?.visualSectors.includes(skirtArmor.visualEraSector),
+    'KF51 modular skirt course is registered as static visual external armor');
+  assert.equal(eraFinish?.semanticBucket, 'externalArmor',
+    'KF51 skirt ERA remains distinct from the base hull envelope');
+  assert.equal(eraFinish?.perFrameWork, false,
+    'KF51 skirt ERA and cages add no per-frame update work');
+  const hullBounds = new THREE.Box3().setFromObject(hullRig);
+  assert.ok(Math.abs(hullBounds.min.x + 1.809) < 1e-6
+      && Math.abs(hullBounds.max.x - 1.809) < 1e-6,
+  'KF51 armor and cage package preserves the certified authored-width envelope');
 
   // The upper-glacis surface must now be the merged camouflaged hull mesh,
   // rather than an unnamed, solid-tone comparison shell sitting above it.
