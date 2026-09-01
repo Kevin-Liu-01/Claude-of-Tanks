@@ -85,6 +85,7 @@
     "qa:device:software": "npm run build && node tools/mobilelap.mjs --production --profile=software --soak-cycles=4 --soak-seconds=10 --out=.qa-device/software-scorecard.json --trace-out=.qa-device/software-trace.json --shots=.qa-device/software-shots",
     "perf:loading": "node tools/loading-budget-probe.mjs",
     "perf:transitions": "node tools/loading-budget-probe.mjs --mode transitions",
+    "quality:metrics": "node tools/code-quality-metrics.ts",
     "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
     "test:net:four": "node tools/multiplayer-four-player-soak.mjs",
     "test:net:seven": "node tools/multiplayer-four-player-soak.mjs --players=14 --team-size=7",
@@ -93,7 +94,7 @@
     "test:net:entry": "node tools/multiplayer-guest-entry.mjs",
     "net:prod:check": "node tools/production-multiplayer-check.mjs",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
   },
   "keywords": [
     "threejs",
@@ -120,6 +121,7 @@
     "@types/ws": "^8.18.1",
     "puppeteer": "^25.4.0",
     "typescript": "7.0.2",
+    "typescript-compiler-api": "npm:typescript@^5.9.3",
     "vite": "^8.1.5"
   }
 }

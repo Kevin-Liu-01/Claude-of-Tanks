@@ -5,8 +5,8 @@ import { relative, resolve, sep } from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
-const compiler = resolve(root, 'node_modules/.bin/tsc');
-const result = spawnSync(compiler, [
+const compiler = resolve(root, 'node_modules/typescript/bin/tsc');
+const result = spawnSync(process.execPath, [compiler,
   '-p', 'tsconfig.json', '--noEmit', '--noUnusedLocals', '--noUnusedParameters',
 ], {
   cwd: root,

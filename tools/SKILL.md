@@ -19,6 +19,13 @@ Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
 tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`
 rejects stale static source/server/tool import paths after file migrations.
+`code-quality-metrics.ts` provides the repository-owned cyclomatic, cognitive,
+Halstead-difficulty, and explicit-type inventory. Its `<22`, `<22`, and `<80`
+limits are strict (`22`/`80` already fail); use explicit file arguments plus
+`--gate` for changed modules while the remaining legacy inventory is retired.
+The analyzer uses the pinned `typescript-compiler-api` AST package; typecheck
+commands invoke the native TypeScript 7 compiler explicitly so npm bin-link
+ordering cannot silently substitute the analysis parser for the project compiler.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
