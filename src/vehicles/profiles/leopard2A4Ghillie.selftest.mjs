@@ -88,6 +88,44 @@ const otco = createTank('leo2a4_otco', null, {
 });
 assert.equal(otco.root.getObjectByName('leo2a4_ghillie_hull_net'), undefined,
   'the separate OTCO variant does not inherit the base A4 field suit');
+const otcoTurretRig = otco.root.getObjectByName('rig_turret');
+const otcoTurretArmor = otcoTurretRig?.getObjectByName('turret');
+const otcoTurretCloth = otcoTurretRig?.getObjectByName('turretCloth');
+assert.ok(otcoTurretRig && otcoTurretArmor?.isMesh && otcoTurretCloth?.isMesh,
+  'OTCO publishes separate turret armor and genuine canvas equipment meshes');
+assert.equal(otcoTurretArmor.material.userData.camoProjection, 'vehicle-scale-box-uv',
+  'OTCO structural turret surfaces inherit the vehicle-scale camouflage projection');
+assert.equal(otcoTurretCloth.material.userData.camoProjection, undefined,
+  'OTCO keeps genuine canvas stowage outside the projected armor camouflage');
+const hasLocalVertex = (mesh, expected, epsilon = 1e-5) => {
+  const positions = mesh.geometry.getAttribute('position');
+  for (let index = 0; index < positions.count; index++) {
+    if (Math.abs(positions.getX(index) - expected[0]) <= epsilon
+      && Math.abs(positions.getY(index) - expected[1]) <= epsilon
+      && Math.abs(positions.getZ(index) - expected[2]) <= epsilon) return true;
+  }
+  return false;
+};
+for (const side of [-1, 1]) {
+  for (const point of [
+    [side * 0.52, 0.22, 1.62],
+    [side * 1.50, 0.20, 1.20],
+    [side * 1.48, 0.34, 1.14],
+    [side * 0.61, 0.31, -1.98],
+  ]) {
+    assert.ok(hasLocalVertex(otcoTurretArmor, point),
+      `OTCO structural shroud vertex ${point.join(',')} belongs to camouflaged turret armor`);
+    assert.equal(hasLocalVertex(otcoTurretCloth, point), false,
+      `OTCO structural shroud vertex ${point.join(',')} is excluded from canvas stowage`);
+  }
+}
+assert.deepEqual(otcoTurretRig.userData.leopard2A4OTCOTurretCamoReceipt, {
+  architecture: 'mirrored-structural-side-shrouds',
+  visibleMaterial: 'cot:armor-paint',
+  bucket: 'turret',
+  excludesCanvasStowage: true,
+  mirrored: true,
+}, 'OTCO records the structural camouflage ownership contract');
 
 tank.dispose();
 otco.dispose();

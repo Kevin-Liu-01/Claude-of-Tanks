@@ -107,11 +107,15 @@ function addOTCOPackage(P: ProceduralBuilderPort): void {
   // Retain the boxy A4 turret but give this field-modernized variant a dense
   // net/stowage silhouette and a supported roof weapon. The quarantined game
   // extraction supplies only broad visual cues, never topology.
+  // The broad mirrored side shrouds below are structural turret armor, not
+  // loose canvas. Keeping them in turretCloth made the four large owner-marked
+  // crown/cheek faces render with a flat canvas albedo instead of inheriting
+  // the vehicle's continuous camouflage projection.
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) plate(P, 'turret', side * 1.46,
       0.34 + (i & 1) * 0.025, 0.80 - i * 0.52,
       0.10, 0.34, 0.46, [0, 0, side * 0.035], false);
-    P.add('turretCloth', mirroredSlab(side, [
+    P.add('turret', mirroredSlab(side, [
       [0.52, 0.22, 1.62], [1.50, 0.20, 1.20], [1.47, 0.18, -1.92], [0.64, 0.18, -2.05],
     ], [
       [0.48, 0.33, 1.55], [1.48, 0.34, 1.14], [1.45, 0.31, -1.86], [0.61, 0.31, -1.98],
@@ -129,6 +133,13 @@ function addOTCOPackage(P: ProceduralBuilderPort): void {
   radioPair(P, 0.72, -2.40, 2440, 1.05);
   gunPlant(P, 0.78, 0.39);
   P.decal('turret', 'number', 'OTCO', 0.20, [-1.47, 0.39, -0.72], -Math.PI / 2);
+  P.turretG.userData.leopard2A4OTCOTurretCamoReceipt = Object.freeze({
+    architecture: 'mirrored-structural-side-shrouds',
+    visibleMaterial: 'cot:armor-paint',
+    bucket: 'turret',
+    excludesCanvasStowage: true,
+    mirrored: true,
+  });
   P.topY = Math.max(P.topY || 0, 1.42);
 }
 
