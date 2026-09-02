@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-02T10:27:53.942Z",
+ "generatedAt": "2026-09-02T20:04:46.513Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar); min is the headline",
  "passed": 34,
  "total": 124,
@@ -901,18 +901,6 @@
    }
   },
   {
-   "id": "vt4a1",
-   "geoMin": 82.7,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 82.7,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "bmp2",
    "geoMin": 82.7,
    "gatePassed": false,
@@ -985,18 +973,6 @@
    }
   },
   {
-   "id": "type99a",
-   "geoMin": 84.4,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 84.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "t95",
    "geoMin": 84.9,
    "gatePassed": false,
@@ -1063,12 +1039,36 @@
    }
   },
   {
+   "id": "vt4a1",
+   "geoMin": 86.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 86.7,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "ztz85_iii",
    "geoMin": 87.4,
    "gatePassed": false,
    "components": {
     "wholeCurves": 87.4,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "type99a",
+   "geoMin": 88.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 88.1,
+    "dims": 91.9,
     "floaters": 100
    }
   },

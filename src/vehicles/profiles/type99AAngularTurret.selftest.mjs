@@ -12,19 +12,7 @@ function geometrySignature(mesh) {
   return `${positions.length}:${hash >>> 0}`;
 }
 
-const EXPECTED = Object.freeze({
-  vt4a1: Object.freeze({
-    gunWorldY: 1.94, chevronHalfWidth: 1.42,
-    turretWidth: [2.90, 3.00], turretLength: [3.75, 3.95],
-  }),
-  type99a: Object.freeze({
-    gunWorldY: 2.02, chevronHalfWidth: 1.63,
-    turretWidth: [3.30, 3.42], turretLength: [4.20, 4.32],
-  }),
-});
-
 function inspect(id) {
-  const expected = EXPECTED[id];
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -36,97 +24,102 @@ function inspect(id) {
   const hull = tank.root.getObjectByName('hull');
   const turret = tank.root.getObjectByName('turret');
   const chevrons = tank.root.getObjectByName('turretExternalArmor');
-  const gun = tank.root.getObjectByName('gun');
-  assert(hullRig && turretRig && gunRig && hull && turret && chevrons && gun,
-    `${id}: independent hull, turret, gun and chevron buckets exist`);
+  assert(hullRig && turretRig && gunRig && hull && turret,
+    `${id}: hull, turret and gun rigs exist`);
 
-  const runningGear = hullRig.userData.runningGearReceipts;
-  assert.equal(runningGear.length, 1, `${id}: owns one canonical running-gear unit`);
-  assert.equal(runningGear[0].wheelZs.length, 6, `${id}: has six road-wheel stations per side`);
-  assert.equal(runningGear[0].trackW, 0.6, `${id}: uses the measured 600 mm track`);
-  assert.equal(runningGear[0].suspensionPlacement, 'inboard-behind-road-wheel',
-    `${id}: suspension arms sit behind the wheels`);
-
-  assert(chevrons.geometry.attributes.position.count >= 144,
-    `${id}: four distinct two-course chevron solids survive mesh merging`);
-  const chevronBounds = new Box3().setFromObject(chevrons);
-  assert(chevronBounds.max.x >= expected.chevronHalfWidth
-      && chevronBounds.min.x <= -expected.chevronHalfWidth,
-    `${id}: chevrons reach both sloped turret shoulders`);
-  const gunThroat = gunRig.getWorldPosition(new Vector3());
-  assert(Math.abs(gunThroat.y - expected.gunWorldY) < 1e-8,
-    `${id}: source-measured gun centerline remains fixed`);
-  assert(chevronBounds.max.z >= gunThroat.z + 0.08,
-    `${id}: chevrons frame the forward gun corridor`);
-  assert(chevronBounds.min.y <= gunThroat.y - 0.25
-      && chevronBounds.max.y >= gunThroat.y + 0.35,
-    `${id}: lower and upper chevron courses cover the full turret brow`);
-
-  const hullBounds = new Box3().setFromObject(hullRig);
-  const turretBounds = new Box3().setFromObject(turret);
-  const hullLength = hullBounds.max.z - hullBounds.min.z;
-  const turretWidth = turretBounds.max.x - turretBounds.min.x;
-  const turretLength = turretBounds.max.z - turretBounds.min.z;
-  assert(hullLength >= 7.65 && hullLength <= 7.85,
-    `${id}: complete hull/fender body retains its measured longitudinal envelope`);
-  assert(turretWidth >= expected.turretWidth[0] && turretWidth <= expected.turretWidth[1],
-    `${id}: welded turret width stays inside its model-specific source range`);
-  assert(turretLength >= expected.turretLength[0] && turretLength <= expected.turretLength[1],
-    `${id}: welded turret length stays inside its model-specific source range`);
-
-  const fittings = [];
-  turretRig.traverse((object) => {
-    if (object.userData.fittingRoot) fittings.push(object.userData.fitting);
-  });
-  assert(fittings.includes('openYokeRws'), `${id}: roof carries a supported remote weapon station`);
-  assert(fittings.includes('smokeBank'), `${id}: turret carries seated smoke banks`);
-  assert(fittings.includes('antennaWhip'), `${id}: turret carries supported communications whips`);
+  const armoredTurretBounds = new Box3().setFromObject(turret);
+  if (chevrons) armoredTurretBounds.union(new Box3().setFromObject(chevrons));
 
   return {
     tank,
-    hullBounds,
-    turretBounds,
+    hullRig,
+    turretRig,
+    gunRig,
+    hull,
+    turret,
+    chevrons,
+    hullBounds: new Box3().setFromObject(hullRig),
+    armoredTurretBounds,
     hullSignature: geometrySignature(hull),
     turretSignature: geometrySignature(turret),
   };
 }
 
 const type99a = inspect('type99a');
+const ztz99a2 = inspect('ztz99a2');
 const vt4a1 = inspect('vt4a1');
 
-assert.equal(type99a.tank.root.getObjectByName('rig_hull').userData.type99aFrontlineReceipt
-  ?.independentFromCanonicalFamily, true,
-  'Type 99A: replacement hull explicitly rejects the retired canonical family base');
-assert.deepEqual(type99a.tank.root.getObjectByName('rig_hull').userData.type99aFrontlineReceipt
-  ?.sourceMeasuredBodyEnvelopeM, [7.145, 3.699, 3.685],
-  'Type 99A: source-measured comparison envelope is retained in its receipt');
-assert.equal(type99a.tank.root.getObjectByName('rig_hull').userData.type99aFrontlineReceipt
-  ?.qualityGateFloor, 92,
-  'Type 99A: ground-up rebuild opts into the 92-point exemplar floor');
-assert.equal(type99a.tank.root.getObjectByName('rig_turret').userData.type99aFrontlineTurretReceipt
-  ?.retiredBadTurretReused, false,
-  'Type 99A: replacement turret explicitly rejects the retired turret');
-assert.equal(vt4a1.tank.root.getObjectByName('rig_hull').userData.vt4a1GeometryReceipt
-  ?.sourceGeometryImported, false,
-  'VT-4A1: supplied GLB remains a comparison oracle, never runtime geometry');
-assert.deepEqual(vt4a1.tank.root.getObjectByName('rig_hull').userData.vt4a1GeometryReceipt
-  ?.sourceMeasuredBodyEnvelopeM, [7.464, 3.496, 3.120],
-  'VT-4A1: supplied source measurements are retained without importing source geometry');
-assert.equal(vt4a1.tank.root.getObjectByName('rig_hull').userData.vt4a1GeometryReceipt
-  ?.qualityGateFloor, 92,
-  'VT-4A1: new tank opts into the 92-point exemplar floor');
-assert.equal(vt4a1.tank.root.getObjectByName('rig_turret').userData.vt4a1TurretReceipt
-  ?.independentTurret, true,
-  'VT-4A1: owns its welded turret shell');
+// Restoring the original profile route is observable in its canonical Type
+// 99 running gear and pivots, and in the absence of the retired frontline
+// replacement receipts.
+assert.equal(type99a.hullRig.userData.type99aFrontlineReceipt, undefined,
+  'Type 99A: retired Chinese-frontline hull override is not registered');
+assert.equal(type99a.turretRig.userData.type99aFrontlineTurretReceipt, undefined,
+  'Type 99A: retired Chinese-frontline turret override is not registered');
+assert.equal(type99a.hullRig.userData.runningGearReceipts[0].trackW, 0.629,
+  'Type 99A: canonical pre-pass running gear is restored');
+assert.deepEqual(type99a.turretRig.position.toArray(), [0, 1.40, -0.02],
+  'Type 99A: canonical turret seat is restored');
+assert.deepEqual(type99a.gunRig.position.toArray(), [0, 0.46, 0.70],
+  'Type 99A: canonical gun seat is restored');
 
-assert.notEqual(type99a.hullSignature, vt4a1.hullSignature,
-  'Chinese frontline hulls have distinct authored station geometry');
-assert.notEqual(type99a.turretSignature, vt4a1.turretSignature,
-  'Chinese frontline turrets have distinct authored geometry');
-assert(type99a.turretBounds.max.x - type99a.turretBounds.min.x
-    > vt4a1.turretBounds.max.x - vt4a1.turretBounds.min.x + 0.30,
-  'Type 99A and VT-4A1 retain visibly distinct turret proportions');
+// VT-4A1 and ZTZ-99A2 intentionally share one exact hull builder.
+assert.equal(vt4a1.hullSignature, ztz99a2.hullSignature,
+  'VT-4A1: primary hull geometry is an exact ZTZ-99A2 clone');
+assert.deepEqual(vt4a1.hullBounds.min.toArray(), ztz99a2.hullBounds.min.toArray(),
+  'VT-4A1: hull minimum envelope matches ZTZ-99A2 exactly');
+assert.deepEqual(vt4a1.hullBounds.max.toArray(), ztz99a2.hullBounds.max.toArray(),
+  'VT-4A1: hull maximum envelope matches ZTZ-99A2 exactly');
+assert.deepEqual(vt4a1.hullRig.userData.runningGearReceipts,
+  ztz99a2.hullRig.userData.runningGearReceipts,
+  'VT-4A1: tracks, wheel stations and running gear match ZTZ-99A2');
+assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.exactHullCloneOf, 'ztz99a2',
+  'VT-4A1: geometry receipt declares the shared A2 chassis');
+assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.sourceGeometryImported, false,
+  'VT-4A1: comparison GLB is never imported as playable geometry');
+
+// The turret is new geometry, but its complete armored envelope stays within
+// two centimeters of the A2 width/length/height while its chevrons form one
+// closed, full-height front integrated into the shell shoulders.
+assert.notEqual(vt4a1.turretSignature, ztz99a2.turretSignature,
+  'VT-4A1: new turret does not reuse ZTZ-99A2 turret geometry');
+const a2TurretSize = ztz99a2.armoredTurretBounds.getSize(new Vector3());
+const vtTurretSize = vt4a1.armoredTurretBounds.getSize(new Vector3());
+for (const axis of ['x', 'y', 'z']) {
+  assert(Math.abs(vtTurretSize[axis] - a2TurretSize[axis]) <= 0.021,
+    `VT-4A1: armored turret ${axis}-dimension matches ZTZ-99A2 envelope`);
+}
+assert(vt4a1.chevrons, 'VT-4A1: integrated chevron front exists');
+assert(vt4a1.chevrons.geometry.attributes.position.count >= 180,
+  'VT-4A1: chevron front uses closed multi-station geometry on both sides');
+const chevronBounds = new Box3().setFromObject(vt4a1.chevrons);
+const gunWorld = vt4a1.gunRig.getWorldPosition(new Vector3());
+assert(chevronBounds.max.x >= 1.70 && chevronBounds.min.x <= -1.70,
+  'VT-4A1: chevrons terminate inside both full-width turret shoulders');
+assert(chevronBounds.max.z >= gunWorld.z + 0.90,
+  'VT-4A1: chevrons close the gun-throat/front-shell junction');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.integratedChevronFront, true,
+  'VT-4A1: turret receipt records the merged chevron front');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.samePrimaryEnvelopeAs, 'ztz99a2',
+  'VT-4A1: turret receipt records its A2 dimensional envelope');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronProfile,
+  'leopard-2a6-derived',
+  'VT-4A1: front uses the Leopard 2A6 cheek architecture');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.upperSlopeDeg, 19,
+  'VT-4A1: dominant upper cheek keeps the Leopard 2A6 19-degree section');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.sharedPhysicalRidge, true,
+  'VT-4A1: upper and lower cheek faces meet at one physical ridge');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.surfacePanelsPerSide, 4,
+  'VT-4A1: each cheek carries four broad Leopard-style face cassettes');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.compoundShoulderTerminal, true,
+  'VT-4A1: roof, ridge and wall terminate on the compound turret shoulder');
+assert(
+  vt4a1.turretRig.userData.vt4a1TurretReceipt.upperRootSetbackM
+    > vt4a1.turretRig.userData.vt4a1TurretReceipt.lowerReturnMaxSetbackM,
+  'VT-4A1: upper wedge dominates the side section instead of forming a diamond',
+);
 
 type99a.tank.dispose();
+ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: independent Chinese hulls, distinct welded turrets, integrated two-course chevrons, running gear and roof fittings verified');
+console.log('type99AAngularTurret.selftest: Type 99A rollback, shared A2 chassis, independent same-envelope VT-4A1 chevron turret verified');

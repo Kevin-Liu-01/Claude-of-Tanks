@@ -24,7 +24,7 @@ function assertPlanar(id, plate) {
   assert(deviationM < 1e-8, `${id}/${plate.name}: planar within tolerance (${deviationM} m)`);
 }
 
-for (const [id, authoredPivotY] of [['type99a', 1.52], ['ztz99a2', 1.56]]) {
+for (const [id, authoredPivotY] of [['type99a', 1.40], ['ztz99a2', 1.56]]) {
   const armor = createType99Armor(id);
   assert(armor.hullPlates.length >= 30, `${id}: segmented hull envelope`);
   assert(armor.turretPlates.length >= 20, `${id}: segmented turret envelope`);

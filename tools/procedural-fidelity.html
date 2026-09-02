@@ -128,13 +128,13 @@ const LOCAL_REFERENCE_OVERRIDES = {
     gunComponentMasks:false,
     turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
   } },
-  // Owner-supplied VT-4A1 War Thunder print (2026-09-01), quarantined as a
-  // local authoring oracle only.  Its Object_* export does not preserve an
-  // honest articulated hull/turret split, so score the complete nine-view
-  // silhouette and lower running-gear profile without rewriting topology.
+  // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull and keeps
+  // the same turret envelope, but receives its own integrated-chevron turret.
+  // Use the A2 print as the authoritative shared silhouette oracle; the
+  // distinct closed VT turret/chevrons are enforced by the focused selftest.
   vt4a1: { source:'glb', qualityBar:'exemplar', glb:{
-    path:'/models/community-candidates/vt4a1_owner.glb',
-    fixedMount:true, componentMasks:false,
+    path:'/models/community-candidates/ztz99a2_manako.glb',
+    fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2,
   } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
   // §5.251: rows repaired after the owner's 952561ea GLB retirement (the

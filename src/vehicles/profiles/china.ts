@@ -56,7 +56,7 @@ interface TrackHitboxLane {
   poly: Vec2Tuple[];
 }
 
-interface ChinaBuilderPort {
+export interface ChinaBuilderPort {
   readonly hullG: import('three').Group;
   readonly turretG: import('three').Group;
   readonly gunG: import('three').Group;
@@ -748,7 +748,7 @@ function addZTZ99AOraclePackage(P: ChinaBuilderPort): void {
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
 // DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
-function buildZTZ99A2(P: ChinaBuilderPort): void {
+export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
 
@@ -890,6 +890,18 @@ function buildZTZ99A2(P: ChinaBuilderPort): void {
     mats: P.mats, w: 1.30, d: 0.34, h: 0.22, fill: 0.34, rails: 2, seed: 9955,
   }), 0, 1.88, -4.30);
 
+  // These bridge plates close the paired stern service-deck wells. They are
+  // hull structure and must travel with the hull when another vehicle uses
+  // this exact chassis, rather than being coupled to the A2 turret package.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
+  }
+}
+
+function buildZTZ99A2Turret(P: ChinaBuilderPort): void {
+  const { box, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const seg = P.q ? 20 : 14;
+
   // ---- WELDED WEDGE TURRET: one connected shell with the A2's DEEP cheek
   // rake (nose base +1.45 world raking to the +0.66 crown lip), near-vertical
   // side belt, flat 2.45 roof and a long integral bustle.
@@ -1016,12 +1028,6 @@ function buildZTZ99A2(P: ChinaBuilderPort): void {
     fill: 0.92, rails: 3, mesh: false, rotation: [0, Math.PI, 0], seed: 9965,
   }), 0, 0.22, -2.24);
   addZTZ99A2RearServiceComplex(P);
-  // Close the paired stern service-deck wells beneath the basket.  The
-  // bridge plates are hidden by the authored rear complex from side/rear
-  // views and leave the basket's open construction readable.
-  for (const side of [-1, 1]) {
-    P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
-  }
 
   // smoke banks: staggered 5-tube rows on the cheek flanks
   addSmokeBanks(P, 1.38, 0.50, 0.40, 5, 9968);
@@ -1066,6 +1072,11 @@ function buildZTZ99A2(P: ChinaBuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.60, 0.30, -0.81], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [-1.60, 0.30, -0.81], -Math.PI / 2);
   P.topY = 1.30;
+}
+
+function buildZTZ99A2(P: ChinaBuilderPort): void {
+  buildZTZ99A2Hull(P);
+  buildZTZ99A2Turret(P);
 }
 
 // ===========================================================================
