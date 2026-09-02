@@ -12727,7 +12727,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
 function buildLeo1A5Profile(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, frustum, sph, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, smokeCluster, stowage, jerryCan,
-    tarpRoll, ammoCan, shovelTool, xform } = KIT;
+    openRackGrid, tarpRoll, ammoCan, shovelTool, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const { rng } = P;
   const deck = [[1.55, 1.38], [0.2, 1.38], [-1.2, 1.365], [-2.6, 1.335], [-3.44, 1.30]];
@@ -13101,12 +13101,13 @@ function buildLeo1A5Profile(P: TankBuilderPort) {
     P.add('turretDetail', box(0.035, 0.035, 0.56), s * 0.76, 0.62, -1.58);    // side arms to the bustle
     P.add('turretDetail', box(0.035, 0.035, 0.56), s * 0.76, 0.13, -1.58);
   }
-  P.add('turretDark', box(1.50, 0.014, 0.55), 0, 0.155, -1.60);     // mesh floor
-  // HALF-height mesh back only (a full 1.54×0.44 dark panel rendered as the
-  // owner's black-rectangle class in view-rear — the basket must read as an
-  // open frame with the cargo showing over the mesh line)
-  P.add('turretDark', box(1.50, 0.20, 0.012), 0, 0.26, -1.885);
-  P.add('turretDetail', box(1.54, 0.030, 0.030), 0, 0.37, -1.89);   // mid rail on the mesh top line
+  P.add('turretDark', openRackGrid(1.50, 0.55, 0.014, 5, 8), 0, 0.155, -1.60); // open floor lattice
+  // Half-height open rear grid. Rotating the shared XZ grid around X turns
+  // its depth into the vertical run, preserving the old envelope without a
+  // gray rectangle across the rear view.
+  P.add('turretDark', openRackGrid(1.50, 0.20, 0.012, 4, 8),
+    0, 0.26, -1.885, Math.PI / 2, 0, 0);
+  P.add('turretDetail', box(1.54, 0.030, 0.030), 0, 0.37, -1.89);   // mid rail on the open-grid top line
   stowage(P, 'turretCloth', rng, [
     [-0.52, 0.46, -1.58, 0.55, 0.32, 0.42], [0.16, 0.44, -1.62, 0.48, 0.28, 0.38],
   ]);

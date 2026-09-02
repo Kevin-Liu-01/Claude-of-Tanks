@@ -453,7 +453,7 @@ function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
 // ---------------------------------------------------------------------------
 export function buildAriete(P: MiscBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan } = KIT;
+    fenders, headlight, liftEye, openRackGrid, periscope, towCable, stowage, jerryCan } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
@@ -769,16 +769,20 @@ export function buildAriete(P: MiscBuilderPort): void {
       for (const y of [0.34, 0.435, 0.53]) P.add('turretDetail', box(0.72, 0.018, 0.012), sx, y, zr + 0.010);
       P.add('turretDetail', box(0.035, 0.23, 0.012), sx + (sx < 0 ? 0.27 : -0.22), 0.435, zr + 0.008);
     }
-    P.add('turretDark', box(0.016, 0.36, 0.56), -1.095, 0.40, -2.1475);         // mesh side sheets (side-mask floor 1.70-2.06w; push-2: rear faces -2.4275 local = rendered -2.752, clear of the -2.775 boundary)
-    P.add('turretDark', box(0.016, 0.36, 0.56), 1.095, 0.40, -2.1475);
-    P.add('turretDark', box(2.16, 0.014, 0.58), 0, 0.185, -2.12);              // basket floor 1.665w (top-down fill; the deck below closes the sightline)
+    for (const sx of [-1.095, 1.095]) {
+      P.add('turretDark', openRackGrid(0.36, 0.56, 0.014, 5, 4),
+        sx, 0.40, -2.1475, 0, 0, Math.PI / 2);                                // open side lattice inside certified side-mask envelope
+    }
+    P.add('turretDark', openRackGrid(2.16, 0.58, 0.014, 5, 10), 0, 0.185, -2.12); // open basket floor at the original top-down seat
     // Unequal strapped packs leave the basket frame readable instead of
     // turning its entire rear opening into one procedural wall.
-    P.add('turretCloth', box(0.82, 0.27, 0.42), -0.55, 0.34, -2.14);
-    P.add('turretCloth', box(0.68, 0.23, 0.38), 0.52, 0.32, -2.13);
-    P.add('turretCloth', box(0.50, 0.14, 0.31), -0.43, 0.50, -2.11);
-    P.add('turretCloth', box(0.42, 0.12, 0.28), 0.58, 0.46, -2.08);
-    P.add('turretCloth', box(0.72, 0.09, 0.28), -0.16, 0.565, -2.05);          // low tarp roll
+    P.add('turretCloth', geometryXform(KIT.sph(0.5, 12), 0, 0, 0, 0, -0.08, 0,
+      [0.82, 0.27, 0.42]), -0.55, 0.34, -2.14);                               // compressed left duffel
+    P.add('turretCloth', geometryXform(KIT.sph(0.5, 12), 0, 0, 0, 0, 0.10, 0,
+      [0.68, 0.23, 0.38]), 0.52, 0.32, -2.13);                                // unequal right duffel
+    P.add('turretCloth', cylX(0.075, 0.50, 12), -0.43, 0.50, -2.11);
+    P.add('turretCloth', cylX(0.065, 0.42, 12), 0.58, 0.46, -2.08);
+    P.add('turretCloth', cylX(0.09, 0.72, 12), -0.16, 0.565, -2.05);           // low tarp roll
     P.add('turretDark', box(0.02, 0.27, 0.38), -0.55, 0.34, -2.08);
     P.add('turretDark', box(0.02, 0.23, 0.34), 0.52, 0.32, -2.08);
   }

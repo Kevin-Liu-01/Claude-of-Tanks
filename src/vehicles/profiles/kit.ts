@@ -2023,15 +2023,8 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   // boxes erased at rear and elevated three-quarter views.
   const floorY = rod / 2;
   const floorCross = Math.max(3, Math.min(8, Math.round(d / 0.12) + 1));
-  for (let i = 0; i < floorCross; i++) {
-    const z = -d / 2 + rod / 2 + i * ((d - rod) / (floorCross - 1));
-    parts.add('dark', box(w, rod, rod), 0, floorY, z);
-  }
   const floorStrings = Math.max(3, Math.min(9, Math.round(w / 0.22) + 1));
-  for (let i = 0; i < floorStrings; i++) {
-    const x = -w / 2 + rod / 2 + i * ((w - rod) / (floorStrings - 1));
-    parts.add('dark', box(rod, rod, d), x, floorY, 0);
-  }
+  parts.add('dark', KIT.openRackGrid(w, d, rod, floorCross, floorStrings), 0, floorY, 0);
 
   // Fence: posts + rails on the outer face, short end rails closing the bay.
   const nPosts = Math.min(10, Math.max(2, opts.posts || Math.round(w / 0.22)));

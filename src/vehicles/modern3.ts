@@ -90,7 +90,7 @@ const variablePolyLoft = KIT.polyLoft as (
 function buildChieftain(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear, cupola,
     headlight, liftEye, periscope, pintleMG, smokeCluster, towCable, fenders,
-    stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyTurret } = KIT;
+    openRackGrid, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyTurret } = KIT;
   const { rng } = P;
   // hull
   P.add('hull', box(2.30, 0.62, 7.30), 0, 0.72, 0);                             // lower hull
@@ -235,7 +235,7 @@ function buildChieftain(P: Modern3BuilderPort) {
   }
   // long stowage tail: full-width rear bin + bustle basket (§19.5)
   P.add('turret', box(1.9, 0.44, 0.62), 0, 0.30, -1.62);
-  P.add('turretDark', box(1.8, 0.02, 0.5), 0, 0.10, -2.12);                     // basket mesh floor
+  P.add('turretDark', openRackGrid(1.8, 0.5, 0.020, 5, 8), 0, 0.10, -2.12);    // open basket floor lattice
   P.add('turretDetail', box(1.9, 0.045, 0.045), 0, 0.42, -2.32);                // basket rails
   P.add('turretDetail', box(1.9, 0.045, 0.045), 0, 0.10, -2.32);
   for (let k = 0; k < 9; k++) P.add('turretDetail', box(0.03, 0.32, 0.03), -0.9 + k * 0.225, 0.26, -2.32);
@@ -282,7 +282,7 @@ function buildChieftain(P: Modern3BuilderPort) {
 export function buildK2(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, xform, buildGun, buildRunningGear,
     headlight, liftEye, periscope, smokeCluster, stowage, ammoCan,
-    torus } = KIT;
+    openRackGrid, torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
   const { rng } = P;
   // K2's actual rubber flaps and skirt fringes stay ordinary hull-owned
@@ -1076,9 +1076,7 @@ export function buildK2(P: Modern3BuilderPort) {
     P.add('turret', box(0.36, 0.30, 0.28), 1.13, 0.29, -1.81);                // shorter right bustle shoulder
     P.add('turret', box(1.90, 0.28, 0.18), 0, 0.30, -2.05);                   // low central autoloader body, ending ahead of the cage
     P.add('turretDetail', box(1.90, 0.08, 0.28), 0, 0.14, -2.08);             // forward basket floor at the 1.76 m underside
-    const rackFloor = new THREE.PlaneGeometry(1.80, 0.40);                    // print's edge-on basket floor: plan-visible, side-zero
-    rackFloor.rotateX(-Math.PI / 2);
-    P.add('turretDetail', rackFloor, 0, 0.10, -2.82);                         // aft edge -3.02 under the open tube rack
+    P.add('turretDetail', openRackGrid(1.80, 0.40, 0.022, 4, 8), 0, 0.10, -2.82); // open aft floor, edge -3.02 under the tube rack
     const topReel = new THREE.RingGeometry(0.285, 0.355, P.q ? 28 : 18);      // Object_21 left-rear basket reel
     topReel.rotateX(-Math.PI / 2);
     P.add('turretDetail', topReel, -1.098, 0.735, -2.218);
@@ -1191,7 +1189,7 @@ export function buildK2(P: Modern3BuilderPort) {
       for (const z of (s > 0 ? [-1.48, -1.70, -1.92] : [-1.48, -1.76, -2.04, -2.32])) P.add('turretDetail', box(0.04, 0.34, 0.04), s * rackX, 0.37, z);
       stowage(P, 'turretCloth', rng, [[s * (rackX - 0.09), 0.35, -1.92, 0.10, 0.15, 0.38]]);
     }
-    P.add('turretDetail', box(2.50, 0.035, 0.32), 0, 0.22, -2.18);             // short outer basket floor tied into shell
+    P.add('turretDetail', openRackGrid(2.50, 0.32, 0.026, 4, 10), 0, 0.22, -2.18); // open outer floor tied into shell
     stowage(P, 'turretCloth', rng, [
       [-0.58, 0.40, -2.18, 0.52, 0.20, 0.22], [0.42, 0.38, -2.18, 0.50, 0.18, 0.22],
     ]);
@@ -1691,7 +1689,7 @@ function buildType10Native2026(
   { compactRightGunnerSight = true }: Type10BuildOptions = {},
 ) {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
+    fenders, headlight, liftEye, periscope, openRackGrid, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
   const { rng } = P;
   // ---- hull core: tub + sponsons + two-plane glacis + stern ---------------
@@ -2218,7 +2216,7 @@ function buildType10Native2026(
     for (let k = 0; k < 3; k++) {                                               // side slats
       for (const s of [-1, 1]) P.add('turretDetail', box(0.0308, 0.44, 0.0308), s * 1.243, 0.374, zF - 0.1386 - k * 0.176);
     }
-    P.add('turretDark', box(2.42, 0.0176, 0.638), 0, yLo + 0.022, zMid);        // mesh floor
+    P.add('turretDark', openRackGrid(2.42, 0.638, 0.018, 6, 10), 0, yLo + 0.022, zMid); // open mesh floor
     stowage(P, 'turretCloth', rng, [
       [-0.66, 0.363, -2.992 + bustleRackSeatShift, 0.792, 0.286, 0.55],
       [0.33, 0.374, -3.036 + bustleRackSeatShift, 0.726, 0.308, 0.572],

@@ -4347,6 +4347,44 @@ function fenders(
   P.add('hull', box(w, th, z1 - z0), -xm, y, (z0 + z1) / 2);
 }
 
+/**
+ * Shapeable open rack floor shared by bespoke bustle frames.  Width runs on
+ * local X, depth on local Z, and the grid is centered on local Y=0 so an
+ * authored basket can replace a former slab without moving its seat.  The
+ * merged geometry keeps one material bucket/draw submission while retaining
+ * real air between welded members.
+ */
+function openRackGrid(
+  width: number,
+  depth: number,
+  rod = 0.022,
+  crossMembers = Math.max(3, Math.min(8, Math.round(depth / 0.12) + 1)),
+  stringers = Math.max(3, Math.min(10, Math.round(width / 0.22) + 1)),
+): THREE.BufferGeometry {
+  if (![width, depth, rod, crossMembers, stringers].every(Number.isFinite) ||
+      width <= 0 || depth <= 0 || rod <= 0 || crossMembers < 2 || stringers < 2) {
+    throw new RangeError('openRackGrid expects positive dimensions and at least two members per axis');
+  }
+  const member = Math.min(rod, width * 0.18, depth * 0.18);
+  const parts: THREE.BufferGeometry[] = [];
+  for (let index = 0; index < Math.round(crossMembers); index++) {
+    const z = -depth / 2 + member / 2 + index * ((depth - member) / (Math.round(crossMembers) - 1));
+    parts.push(xform(box(width, member, member), 0, 0, z));
+  }
+  for (let index = 0; index < Math.round(stringers); index++) {
+    const x = -width / 2 + member / 2 + index * ((width - member) / (Math.round(stringers) - 1));
+    parts.push(xform(box(member, member, depth), x, 0, 0));
+  }
+  const geometry = mergeAll(parts);
+  geometry.userData.designFamily = 'cot-open-rack-grid-v1';
+  geometry.userData.openLattice = true;
+  geometry.userData.solidProxyPanels = 0;
+  geometry.userData.floorCrossMembers = Math.round(crossMembers);
+  geometry.userData.floorStringers = Math.round(stringers);
+  geometry.userData.rackEnvelope = { widthM: width, depthM: depth, thicknessM: member };
+  return geometry;
+}
+
 function stowage(
   builder: object,
   bucket: string,
@@ -4466,7 +4504,7 @@ export const KIT = {
   runningGearContactPatch,
   buildRunningGear: buildRunningGearPublic, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
-  fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
+  fenders, openRackGrid, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
   grilleIndices,
   // Exposed for the recovered Abrams family: those variants layer their own
   // kits onto the detailed native Abrams rather than replacing it with a
@@ -6100,7 +6138,8 @@ function buildLeo2A7(P: TankBuilderPort): void {
     P.add('turretDetail', box(0.05, 0.05, 0.55), s * (LTW + 0.1), lrkT, -2.42);
     P.add('turretDetail', box(0.05, 0.05, 0.55), s * (LTW + 0.1), lrkB, -2.42);
   }
-  P.add('turretDark', box(2 * LTW + 0.16, 0.02, 0.5), 0, lrkB + 0.03, -2.45);   // rack mesh floor
+  P.add('turretDark', openRackGrid(2 * LTW + 0.16, 0.5, 0.020, 5, 10),
+    0, lrkB + 0.03, -2.45);                                                     // open rack floor lattice
   stowage(P, 'turretCloth', rng, [
     [-0.8, 0.42, -2.45, 0.75, 0.44, 0.4], [0.2, 0.38, -2.47, 0.65, 0.38, 0.38],
     [0.95, 0.40, -2.44, 0.55, 0.42, 0.36],
