@@ -477,7 +477,7 @@ export const MODERN3_SPECS = {
     armor: (() => {
       const a = modernArmor({
         hl: 3.80, hw: 1.95, inW: 1.08, floor: 0.43, trkTop: 1.04, roofY: 1.93,
-        turretPivot: [0.32, 1.93, -1.10], gunPivot: [-0.32, 0.42, 1.33],
+        turretPivot: [0.32, 1.93, -1.10], gunPivot: [-0.14, 0.42, 1.33],
         barrelLenM: 2.25, barrelRadM: 0.045,
         glacis: [70, 260, 360], lower: [55, 200, 260], side: [48, 130, 190],
         skirt: [75, 260, 480], rear: 38, roof: 48,

@@ -193,15 +193,15 @@ function addHullShell(P: PumaS1BuilderPort): void {
   const { box, frustum, polyMultiLoft } = KIT;
   // The widened lower tub reaches the inner shoe faces and provides a real
   // structural seat for the fender bridge instead of leaving a daylight slot.
-  P.add('hull', box(2.38, 0.66, 7.18), 0, 0.73, 0);
+  P.add('hull', box(2.22, 0.66, 7.18), 0, 0.73, 0);
   P.add('hull', frustum(1.10, 3.50, -3.48, 1.10, 2.74, -3.48, 0.78, 1.42));
   P.add('hull', orientedSlab(
     [-1.10, 0.43, 2.18], [1.10, 0.43, 2.18], [1.10, 0.43, 3.55], [-1.10, 0.43, 3.55],
-    [-1.18, 1.50, 1.92], [1.18, 1.50, 1.92], [1.05, 1.10, 3.55], [-1.05, 1.10, 3.55],
+    [-1.18, 1.50, 1.92], [1.18, 1.50, 1.92], [1.05, 1.56, 3.55], [-1.05, 1.56, 3.55],
   ));
   P.add('hull', orientedSlab(
-    [-1.05, 1.10, 3.55], [1.05, 1.10, 3.55], [1.56, 1.82, 1.60], [-1.56, 1.82, 1.60],
-    [-1.12, 1.24, 3.55], [1.12, 1.24, 3.55], [1.56, 1.98, 1.60], [-1.56, 1.98, 1.60],
+    [-1.05, 1.56, 3.55], [1.05, 1.56, 3.55], [1.56, 1.82, 1.60], [-1.56, 1.82, 1.60],
+    [-1.12, 1.72, 3.55], [1.12, 1.72, 3.55], [1.56, 1.98, 1.60], [-1.56, 1.98, 1.60],
   ));
   const monocoquePlan: [number, number][] = [
     [-1.56, 1.68], [1.56, 1.68], [1.66, 1.42], [1.66, -3.28],
@@ -254,7 +254,7 @@ function addHullShell(P: PumaS1BuilderPort): void {
 
 function addRunningGear(P: PumaS1BuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.72, wheelR: 0.345, wheelW: 0.24, wheelY: 0.42, xc: 1.55,
+    style: 'rubber', dishR: 0.72, wheelR: 0.345, wheelW: 0.24, wheelY: 0.42, xc: 1.47,
     wheelZs: [2.42, 1.51, 0.59, -0.34, -1.28, -2.20],
     sprocket: { z: 3.17, y: 0.965, r: 0.35 },
     idler: { z: -3.15, y: 0.84, r: 0.30 },
@@ -267,85 +267,96 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     contactZF: 2.70, contactZR: -2.63,
   });
 
-  // The native course terminates immediately beneath the structural NERA
-  // carrier. The glacis downfold and shoulder tie close the bow in both side
-  // and plan views while preserving a clean shoe envelope.
+  // The native course terminates immediately beneath a Revolution-style
+  // AMAP jacket.  Its inboard carrier overlaps the monocoque side wall, while
+  // the broad, raked protection modules sit outside the shoe envelope.  This
+  // makes the skirt read as one load-bearing hull system instead of a floating
+  // two-row brick wall.
   for (const side of [-1, 1]) {
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.86, 0.96, 2.52], [side * 2.02, 0.96, 2.52],
-      [side * 1.86, 0.48, 3.58], [side * 1.99, 0.48, 3.58],
-      [side * 1.86, 1.92, 2.52], [side * 2.02, 1.92, 2.52],
-      [side * 1.86, 1.34, 3.58], [side * 1.99, 1.34, 3.58],
+      [side * 1.82, 0.82, 2.48], [side * 2.00, 0.82, 2.48],
+      [side * 1.82, 1.56, 3.55], [side * 1.96, 1.56, 3.55],
+      [side * 1.80, 1.54, 2.48], [side * 1.98, 1.54, 2.48],
+      [side * 1.80, 1.72, 3.55], [side * 1.94, 1.72, 3.55],
     ));
-    // A descending shoulder cap seals the protection into the deck edge and
-    // follows the lower-glacis fall toward the nose instead of terminating in
-    // a vertical plate beside the sprocket.
+    // A descending shoulder cap seals the jacket into the deck edge and
+    // follows both the plan taper and lower-glacis fall toward the nose.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.58, 1.92, 2.48], [side * 1.94, 1.88, 2.48],
-      [side * 1.20, 1.48, 3.56], [side * 1.07, 1.48, 3.56],
-      [side * 1.58, 2.08, 2.48], [side * 1.91, 2.04, 2.48],
-      [side * 1.18, 1.62, 3.56], [side * 1.07, 1.62, 3.56],
+      [side * 1.48, 1.54, 2.42], [side * 1.96, 1.54, 2.42],
+      [side * 1.06, 1.54, 3.55], [side * 1.92, 1.54, 3.55],
+      [side * 1.48, 2.04, 2.42], [side * 1.88, 1.98, 2.42],
+      [side * 1.06, 1.56, 3.55], [side * 1.42, 1.56, 3.55],
     ));
-    // Thin shoulder tie closes the plan seam between the narrowed glacis and
-    // the outboard downfold. It remains above the sprocket/shoe envelope and
-    // shares the same descending bow angle as the visible skirt cap.
+    // The shoulder tie and long fender flange overlap the hull shell.  There
+    // is no visible corridor between the hull, fender, and armor carrier.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.05, 1.60, 2.78], [side * 1.94, 1.60, 2.78],
-      [side * 1.94, 1.46, 3.46], [side * 1.02, 1.46, 3.46],
-      [side * 1.05, 1.70, 2.78], [side * 1.94, 1.70, 2.78],
-      [side * 1.94, 1.56, 3.46], [side * 1.02, 1.56, 3.46],
+      [side * 1.04, 1.55, 2.76], [side * 1.86, 1.55, 2.76],
+      [side * 1.80, 1.56, 3.42], [side * 1.02, 1.56, 3.42],
+      [side * 1.04, 1.68, 2.76], [side * 1.86, 1.68, 2.76],
+      [side * 1.80, 1.70, 3.42], [side * 1.02, 1.70, 3.42],
     ));
-    for (let index = 0; index < 10; index++) {
-      const z = 2.36 - index * 0.63;
-      const edge = index === 9;
-      const moduleH = edge ? 0.91 : 1.04;
-      const moduleY = edge ? 1.47 : 1.50;
-      const roll = side * (edge ? 0.038 : 0.012);
-      // Inner carrier and spaced middle plate touch one another at their
-      // mating faces; the outer bricks then sit proud on that real foundation.
-      P.addExternalArmor('hull', KIT.box(0.16, moduleH, 0.63),
-        side * 1.93, moduleY, z, 0, 0, roll);
-      P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.63),
-        side * 2.02, moduleY, z, 0, 0, roll);
-      for (const [row, y] of [-1, 1].map((row) => [row,
-        moduleY + row * (moduleH * 0.235)] as const)) {
-        P.addExternalArmor('hull', KIT.box(0.075, moduleH * 0.43, 0.63),
-          side * 2.075, y, z, 0, 0, roll + row * side * 0.006);
-        P.add('hullDark', KIT.box(0.012, moduleH * 0.31, 0.54),
-          side * 2.118, y, z, 0, 0, roll);
+    const jacketRearZ = -3.40;
+    const jacketFrontZ = 2.48;
+    const panelCount = 8;
+    const panelLength = (jacketFrontZ - jacketRearZ) / panelCount;
+    // Deep monocoque carrier: its lower inner face clears the animated shoe
+    // envelope by 21 mm, while its upper edge leans inward and is locked to
+    // the hull by the continuous fender flanges above.
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.78, 0.72, jacketRearZ], [side * 1.90, 0.72, jacketRearZ],
+      [side * 1.90, 0.72, jacketFrontZ], [side * 1.78, 0.72, jacketFrontZ],
+      [side * 1.76, 1.88, jacketRearZ], [side * 1.90, 1.88, jacketRearZ],
+      [side * 1.90, 1.88, jacketFrontZ], [side * 1.76, 1.88, jacketFrontZ],
+    ));
+    P.add('hull', KIT.box(0.24, 0.15, jacketFrontZ - jacketRearZ + 0.06),
+      side * 1.60, 1.98, (jacketFrontZ + jacketRearZ) * 0.5);
+    P.add('hull', KIT.box(0.36, 0.12, jacketFrontZ - jacketRearZ + 0.02),
+      side * 1.49, 1.84, (jacketFrontZ + jacketRearZ) * 0.5);
+
+    for (let index = 0; index < panelCount; index++) {
+      const z = jacketRearZ + panelLength * (index + 0.5);
+      const frontPanel = index === panelCount - 1;
+      const panelTopY = frontPanel ? 1.77 : 1.88;
+      const panelBottomY = frontPanel ? 0.82 : 0.74;
+      const panelHeight = panelTopY - panelBottomY;
+      // One broad armored cassette and one shallow applique lid per station:
+      // the large facets and restrained seams match the Revolution jacket
+      // grammar without creating a toy-like ERA checkerboard.
+      P.addExternalArmor('hull', KIT.box(0.18, panelHeight, panelLength - 0.028),
+        side * 1.91, (panelTopY + panelBottomY) * 0.5, z);
+      P.addExternalArmor('hull', KIT.box(0.035, panelHeight - 0.12, panelLength - 0.10),
+        side * 2.0175, (panelTopY + panelBottomY) * 0.5, z);
+      if (index > 0) {
+        P.add('hullDark', KIT.box(0.024, panelHeight - 0.14, 0.020),
+          side * 2.038, (panelTopY + panelBottomY) * 0.5,
+          jacketRearZ + panelLength * index);
       }
-      P.add('hullDark', KIT.box(0.014, moduleH - 0.16, 0.026),
-        side * 2.116, moduleY, z + 0.287);
-      for (const y of [moduleY - moduleH * 0.27, moduleY + moduleH * 0.27]) {
-        P.add('hullDetail', KIT.cylX(0.017, 0.026, 8), side * 2.122, y, z,
+      for (const y of [panelBottomY + 0.16, panelTopY - 0.16]) {
+        P.add('hullDetail', KIT.cylX(0.016, 0.024, 8), side * 2.040, y, z,
           0, 0, side * Math.PI / 2);
       }
     }
-    // Two continuous seating rails bind every outer brick back into the
-    // cassette course. They close the service-line sight holes without
-    // becoming a second track proxy or entering the shoe envelope.
-    for (const y of [1.25, 1.76]) {
-      P.addExternalArmor('hull', KIT.box(0.075, 0.10, 6.30),
-        side * 2.075, y, -0.475);
-    }
-    P.add('hullRubber', KIT.box(0.035, 0.20, 6.32), side * 2.105, 0.82, -0.46);
-    P.add('hull', KIT.box(0.20, 0.16, 6.34), side * 1.72, 2.02, -0.46);
-    P.add('hull', KIT.box(0.32, 0.24, 6.24), side * 1.48, 1.47, -0.42);
+    // A recessed waist shadow and deep lower rubber lip articulate the jacket
+    // while preserving a single continuous protective mass.
+    P.add('hullDark', KIT.box(0.028, 0.026, jacketFrontZ - jacketRearZ - 0.10),
+      side * 2.038, 1.31, (jacketFrontZ + jacketRearZ) * 0.5);
+    P.add('hullRubber', KIT.box(0.045, 0.16, jacketFrontZ - jacketRearZ + 0.02),
+      side * 2.022, 0.72, (jacketFrontZ + jacketRearZ) * 0.5);
 
     // Recessed flank camera and paired marker lamps remain readable above the
-    // armor instead of being texture-only marks compressed across the tiles.
+    // armor instead of being texture-only marks compressed across the plates.
     for (const z of [1.05, -1.34]) {
       P.addEquipment('hull', KIT.box(0.095, 0.25, 0.32),
-        side * 1.72, 1.88, z, 0, 0, side * 0.04);
+        side * 1.98, 1.82, z, 0, 0, side * 0.03);
       P.addModuleVisual('optics', 'hullDark', KIT.box(0.024, 0.17, 0.23),
-        side * 1.775, 1.88, z);
+        side * 2.036, 1.82, z, 0, 0, side * 0.03);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.013, 0.10, 0.15),
-        side * 1.795, 1.88, z);
+        side * 2.056, 1.82, z, 0, 0, side * 0.03);
     }
     for (const z of [2.17, -2.72]) {
-      P.addEquipment('hull', KIT.box(0.090, 0.14, 0.20), side * 2.122, 1.94, z);
+      P.addEquipment('hull', KIT.box(0.080, 0.13, 0.18), side * 2.012, 1.84, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.075, 0.105),
-        side * 2.175, 1.94, z);
+        side * 2.058, 1.84, z);
     }
   }
 }
@@ -356,9 +367,9 @@ function addTurret(P: PumaS1BuilderPort): void {
   // crown that rises aft. Ten deliberate facets keep the silhouette angular
   // without turning the module into a rounded or box-backed generic turret.
   const plan = [
-    [-0.30, 1.62], [0.22, 1.62], [0.70, 1.34], [0.96, 0.72],
+    [-0.40, 1.62], [0.34, 1.62], [0.76, 1.32], [0.98, 0.70],
     [1.00, -1.15], [0.72, -1.58], [-0.78, -1.56], [-1.00, -1.12],
-    [-1.02, 0.58], [-0.72, 1.30],
+    [-1.02, 0.58], [-0.78, 1.30],
   ];
   P.add('turretDark', polyTurret(plan, 0.12, 1.04, 1.00), 0, -0.065, -0.02);
   P.add('turret', polyMultiLoft(plan, [
@@ -405,21 +416,68 @@ function addTurret(P: PumaS1BuilderPort): void {
     surroundsCoax: true,
   });
 
-  // Gunner primary sight remains low and clear of the main-gun corridor.
-  P.addEquipment('turret', box(0.40, 0.42, 0.42), 0.38, 0.57, 0.47, 0, -0.08, 0);
-  P.addModuleVisual('optics', 'turretDark', box(0.34, 0.30, 0.025),
-    0.38, 0.58, 0.695, 0, -0.08, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.20, 0.014),
-    0.38, 0.58, 0.712, 0, -0.08, 0);
-  // The former K2B-derived weapon tower is now a compact, unarmed panoramic
-  // station. Its EO head is centered on the station roof; no receiver, feed,
-  // ammunition box or barrel shares the optical volume.
+  // Puma-specific front electronics shoulders wrap the cannon root without
+  // becoming armor or entering its recoil tree. Their faceted enclosures,
+  // paired apertures and protected lamp banks match the dense RCT30 face while
+  // preserving an open, readable gun corridor at every pitch angle.
+  for (const side of [-1, 1] as const) {
+    P.addEquipment('turret', orientedSlab(
+      [side * 0.30, 0.22, 0.70], [side * 0.86, 0.24, 0.58],
+      [side * 0.70, 0.24, 1.36], [side * 0.32, 0.22, 1.49],
+      [side * 0.30, 0.62, 0.70], [side * 0.78, 0.63, 0.58],
+      [side * 0.61, 0.62, 1.34], [side * 0.28, 0.58, 1.47],
+    ));
+    P.addEquipment('turret', box(0.21, 0.29, 0.43),
+      side * 0.70, 0.43, 0.91, 0, -side * 0.10, 0);
+    P.addModuleVisual('optics', 'turretDark', box(0.25, 0.18, 0.026),
+      side * 0.48, 0.49, 1.492, 0, side * 0.025, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.105, 0.014),
+      side * 0.48, 0.49, 1.509, 0, side * 0.025, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.062, 0.052, 0.015),
+      side * 0.61, 0.36, 1.437, 0, side * 0.05, 0);
+    // The left cheek carries the compact protected lamp bank. The opposite
+    // cheek is reserved for the complete rotating panoramic installation
+    // below, so no loose circular pod competes with its silhouette.
+    if (side < 0) {
+      mount(P, 'turret', FITTINGS.lightCluster({
+        mats: P.mats, pods: 2, spacing: 0.095, r: 0.035, shield: true,
+        rake: -0.16, seed: 164,
+      }), side * 0.76, 0.37, 1.26, [-0.05, 0, 0]);
+    }
+
+    // Flank mission-module boxes, louvres and fasteners project beyond the
+    // base shell, producing the layered Puma silhouette visible in profile.
+    P.addEquipment('turret', box(0.20, 0.44, 0.72),
+      side * 1.01, 0.47, -0.50, 0, 0, -side * 0.045);
+    for (let index = 0; index < 4; index++) {
+      P.addEquipment('turret', box(0.022, 0.030, 0.48),
+        side * 1.122, 0.35 + index * 0.082, -0.50);
+    }
+    for (const z of [-0.72, -0.28]) {
+      P.addEquipment('turret', KIT.cylX(0.020, 0.025, 8),
+        side * 1.139, 0.56, z);
+    }
+
+    // Low roof electronics are physically seated on the crown and leave both
+    // the panoramic head and remote weapon tower with distinct envelopes.
+    P.addEquipment('turret', box(0.40, 0.12, 0.34),
+      side * 0.58, 0.79, -0.05, 0, side * 0.04, 0);
+    P.addEquipment('turret', box(0.43, 0.025, 0.37),
+      side * 0.58, 0.862, -0.05, 0, side * 0.04, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.055, 0.016),
+      side * 0.58, 0.80, 0.129, 0, side * 0.04, 0);
+  }
+  // A complete right-front rotating optic installation replaces the former
+  // loose cheek apertures. A wide armored pedestal, azimuth turntable and
+  // unarmed yoke make the whole assembly read as one founded subsystem.
+  P.addEquipment('turret', box(0.52, 0.20, 0.54), 0.62, 0.72, 0.52, 0, -0.05, 0);
+  P.addEquipment('turret', KIT.cylY(0.25, 0.27, 0.075, 18), 0.62, 0.855, 0.52);
   const pumaRoofOptics = FITTINGS.openYokeRws({
     mats: P.mats,
     bodySlot: 'turret',
     sizeStandard: 'k2b-compact-tower',
-    scale: 0.88,
-    towerRise: 0.12,
+    scale: 0.80,
+    towerRise: 0.10,
     variant: 'korean-twin',
     sensorHead: true,
     sensorMount: 'roof',
@@ -429,11 +487,11 @@ function addTurret(P: PumaS1BuilderPort): void {
   pumaRoofOptics.name = 'pumaS1K2bStyleRoofOptics';
   pumaRoofOptics.userData.hostVariant = 'spz_puma_s1';
   pumaRoofOptics.userData.sensorRole = 'commander-panoramic';
-  mount(P, 'turret', pumaRoofOptics, -0.36, 0.74, -0.52, [0, 0.04, 0]);
+  mount(P, 'turret', pumaRoofOptics, 0.62, 0.88, 0.52, [0, -0.05, 0]);
   P.turretG.userData.pumaS1RoofOpticsReceipt = Object.freeze({
     designFamily: pumaRoofOptics.userData.designFamily,
     variant: pumaRoofOptics.userData.stationVariant,
-    mountLocal: Object.freeze([-0.36, 0.74, -0.52]),
+    mountLocal: Object.freeze([0.62, 0.88, 0.52]),
     scale: pumaRoofOptics.userData.scale,
     sizeStandard: pumaRoofOptics.userData.sizeStandard,
     towerRiseM: pumaRoofOptics.userData.towerRise,
@@ -476,18 +534,25 @@ function addTurret(P: PumaS1BuilderPort): void {
     turretOwned: true,
   });
 
-  // Twin MELLS/Spike LR2 tubes on a braced left launcher. Tubes are separated,
-  // capped and visibly founded on the turret wall; they pitch with the turret
-  // but remain independent of the cannon recoil tree.
-  const launcherX = 1.10;
-  P.add('turret', box(0.22, 0.42, 0.62), launcherX, 0.43, -0.02, 0, 0, 0.10);
-  P.add('turretDark', box(0.14, 0.16, 0.60), 0.91, 0.43, -0.02, 0, 0, 0.52);
-  for (const y of [0.34, 0.58]) {
-    P.add('turretDark', cylZ(0.105, 0.94, 16), launcherX, y, 0.37);
-    P.add('turretDetail', KIT.torus(0.108, 0.012, 16), launcherX, y, 0.84,
-      -Math.PI / 2, 0, 0);
-    P.add('turretDark', cylZ(0.079, 0.018, 16), launcherX, y, 0.852);
+  // Twin MELLS/Spike LR2 cells use square armored launch boxes like the Puma
+  // S1 demonstrator.  The shallow square mouths are unmistakable from the
+  // front and replace every circular tube/ring from the prior iteration.
+  const launcherX = -1.02;
+  P.addEquipment('turret', box(0.24, 0.48, 0.60), launcherX, 0.47, 0.08, 0, 0, -0.08);
+  P.addEquipment('turret', box(0.18, 0.20, 0.54), -0.84, 0.47, 0.08, 0, 0, -0.42);
+  for (const y of [0.36, 0.59]) {
+    P.addEquipment('turret', box(0.30, 0.20, 0.78), launcherX, y, 0.40);
+    P.add('turretDark', box(0.205, 0.135, 0.024), launcherX, y, 0.802);
+    P.add('turretDetail', box(0.235, 0.165, 0.014), launcherX, y, 0.818);
+    P.add('turretDark', box(0.168, 0.105, 0.018), launcherX, y, 0.830);
   }
+  P.turretG.userData.pumaS1MellsLauncherReceipt = Object.freeze({
+    architecture: 'twin-square-armored-cells-v1',
+    launchCells: 2,
+    circularLaunchTubes: 0,
+    mountSide: 'vehicle-left',
+    turretOwned: true,
+  });
 
   for (const side of [-1, 1]) {
     P.add('turret', box(0.24, 0.16, 0.40), side * 1.01, 0.34, 0.06, 0, 0, -side * 0.14);
@@ -517,9 +582,9 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   addHullShell(P);
   addRunningGear(P);
   addTurret(P);
-  P.decal('hull', 'crossgrey', null, 0.34, [-1.96, 1.47, 0.12], -Math.PI / 2);
+  P.decal('hull', 'crossgrey', null, 0.34, [-1.94, 1.47, 0.12], -Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || 'S1-481', 0.23,
-    [1.96, 1.21, 1.05], Math.PI / 2);
+    [1.94, 1.21, 1.05], Math.PI / 2);
   P.decal('hull', 'number', 'Y-481', 0.21, [-0.54, 1.33, 3.48], 0, -0.34);
 
   if (P.geometryReceipt) {
@@ -531,12 +596,18 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel',
-      sideArmorCassettesPerSide: 10,
-      sideArmorLayers: 3,
-      frontSkirtTransition: 'lower-glacis-downfold-v2',
+      trackCenterlineM: 1.47,
+      sideArmorCassettesPerSide: 8,
+      sideArmorLayers: 2,
+      sideArmorInnerSeatM: 1.76,
+      sideArmorOuterEnvelopeM: 2.058,
+      skirtArchitecture: 'segmented-sloped-amap-jacket',
+      skirtAttachment: 'direct-monocoque-overlap-seat-v3',
+      frontSkirtTransition: 'revolution-amap-glacis-downfold-v3',
       nativeTrackPattern: 'compact-ifv',
       baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
-      mellsLaunchTubes: 2,
+      mellsLaunchTubes: 0,
+      mellsSquareLaunchCells: 2,
       panoramicOpticStages: 2,
       crewLocation: 'protected-hull-cell',
       planarRoofCell: true,
@@ -553,6 +624,13 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       stabilizedPanoramicSight: true,
       allAroundCameraCount: 4,
       remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+      gunCenterlineOffsetFromTurretM: 0.14,
+      gunSideEquipmentPods: 2,
+      gunSideOpticApertures: 4,
+      rotatingOpticAssembly: 'right-front-armored-yoke',
+      mellsLauncherArchitecture: 'twin-square-armored-cells-v1',
+      turretFlankElectronicsBoxes: 2,
+      roofElectronicsBoxes: 2,
       planarRoofCrown: true,
       monotonicArmorInset: true,
       concaveSurfaceCount: 0,

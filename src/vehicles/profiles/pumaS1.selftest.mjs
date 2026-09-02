@@ -18,6 +18,8 @@ assert.deepEqual(spec.dims, {
   heightM: 3.6,
 });
 assert.equal(spec.gun.caliberMm, 30);
+assert.deepEqual(spec.armor.gunPivot, [-0.14, 0.42, 1.33],
+  'Puma S1 cannon sits close to the turret centerline while preserving its asymmetric RCT30 face');
 assert.ok(spec.gun.shells.some((round) => round.guided && /Spike LR2 MELLS/.test(round.name)),
   'Puma S1 has its independent MELLS guided channel');
 assert.ok(spec.armor.crew.every((crew) => !crew.turretLocal && crew.max[1] < 1.93),
@@ -56,12 +58,18 @@ try {
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
     suspensionPlacement: 'inboard-behind-road-wheel',
-    sideArmorCassettesPerSide: 10,
-    sideArmorLayers: 3,
-    frontSkirtTransition: 'lower-glacis-downfold-v2',
+    trackCenterlineM: 1.47,
+    sideArmorCassettesPerSide: 8,
+    sideArmorLayers: 2,
+    sideArmorInnerSeatM: 1.76,
+    sideArmorOuterEnvelopeM: 2.058,
+    skirtArchitecture: 'segmented-sloped-amap-jacket',
+    skirtAttachment: 'direct-monocoque-overlap-seat-v3',
+    frontSkirtTransition: 'revolution-amap-glacis-downfold-v3',
     nativeTrackPattern: 'compact-ifv',
     baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
-    mellsLaunchTubes: 2,
+    mellsLaunchTubes: 0,
+    mellsSquareLaunchCells: 2,
     panoramicOpticStages: 2,
     crewLocation: 'protected-hull-cell',
     planarRoofCell: true,
@@ -78,6 +86,13 @@ try {
     stabilizedPanoramicSight: true,
     allAroundCameraCount: 4,
     remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+    gunCenterlineOffsetFromTurretM: 0.14,
+    gunSideEquipmentPods: 2,
+    gunSideOpticApertures: 4,
+    rotatingOpticAssembly: 'right-front-armored-yoke',
+    mellsLauncherArchitecture: 'twin-square-armored-cells-v1',
+    turretFlankElectronicsBoxes: 2,
+    roofElectronicsBoxes: 2,
     planarRoofCrown: true,
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
@@ -98,10 +113,10 @@ try {
   assert.deepEqual(turret.userData.pumaS1RoofOpticsReceipt, {
     designFamily: 'abramsx-open-yoke-v1',
     variant: 'korean-twin',
-    mountLocal: [-0.36, 0.74, -0.52],
-    scale: 0.88,
+    mountLocal: [0.62, 0.88, 0.52],
+    scale: 0.8,
     sizeStandard: 'k2b-compact-tower',
-    towerRiseM: 0.12,
+    towerRiseM: 0.1,
     hasWeapon: false,
     sensorMount: 'roof',
     integratedSensorHead: true,
@@ -126,11 +141,20 @@ try {
     integratedSensorHead: false,
     turretOwned: true,
   });
+  assert.deepEqual(turret.userData.pumaS1MellsLauncherReceipt, {
+    architecture: 'twin-square-armored-cells-v1',
+    launchCells: 2,
+    circularLaunchTubes: 0,
+    mountSide: 'vehicle-left',
+    turretOwned: true,
+  }, 'Puma S1 MELLS launcher uses two square armored cells and no circular tubes');
   assert.equal(new Box3().setFromObject(roofOptics).intersectsBox(
     new Box3().setFromObject(roofRws)), false,
   'Puma panoramic and machine-gun towers have physically separate envelopes');
   const gear = hull.userData.runningGearReceipts?.at(-1);
   assert.equal(gear?.wheelZs.length, 6, 'six road wheels are authored per side');
+  assert.equal(gear?.xcLeft, 1.47, 'left Puma track lane is tucked beneath the attached skirt');
+  assert.equal(gear?.xcRight, 1.47, 'right Puma track lane is tucked beneath the attached skirt');
   assert.equal(gear?.trackW, 0.56, 'S1 native course is slightly widened under the new skirts');
   assert.equal(gear?.trackPatternId, 'compact-ifv',
     'S1 uses its unique fine-rib heavy IFV shoe construction');
