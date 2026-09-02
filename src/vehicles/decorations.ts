@@ -1751,8 +1751,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // --- Cold war ---
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'basket', p: 1, v: { w: 1.35, d: 0.4, h: 0.32 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    // The native M60 builder owns one compact open-lattice bustle envelope
+    // shared byte-for-byte by A1 and A3. Do not stack a second cosmetic
+    // basket or floating onBasket packs over that load-bearing assembly.
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.17 }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: 0.05, along: true }] },

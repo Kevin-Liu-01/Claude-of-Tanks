@@ -4388,6 +4388,34 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.add('turretDark', box(0.05, 0.115, 0.10), 0.18, yl(2.7205), zl(-0.95));
     P.add('turretDark', box(0.085, 0.026, 0.05), 0.18, yl(2.765), zl(-0.93));
   }
+  // One shared compact rear basket serves both A1 and A3. The older M60
+  // dressing mixed variant-specific gray blocks with differently sized
+  // implied racks; this open lattice has a real floor, fence, returns,
+  // braces, feet and soft cargo while preserving one identical envelope.
+  const m60SharedBustleRack = FITTINGS.stowageRack({
+    mats: P.mats,
+    w: 1.28,
+    d: 0.38,
+    h: 0.28,
+    rails: 3,
+    posts: 7,
+    mesh: true,
+    fill: 0.72,
+    seed: cfg.a3 ? 603 : 601,
+    rotation: [0, Math.PI, 0],
+  });
+  m60SharedBustleRack.position.set(0, yl(2.16), zl(-2.15));
+  m60SharedBustleRack.name = 'm60_shared_open_lattice_bustle';
+  m60SharedBustleRack.userData.hostVariant = cfg.a3 ? 'm60a3' : 'm60a1';
+  P.turretG.add(m60SharedBustleRack);
+  P.turretG.userData.m60SharedBustleReceipt = Object.freeze({
+    designFamily: 'cot-open-lattice-bustle-v2',
+    envelopeM: Object.freeze([1.28, 0.28, 0.38]),
+    identicalAcrossVariants: true,
+    solidProxyPanels: 0,
+    floorWorldY: 2.16,
+    centerWorldZ: -2.15,
+  });
   // antenna pot: LEFT-REAR bustle roof (the measured one-column 2.835 spike
   // at z -1.41; front-hidden under the ridge at x -0.38)
   P.add('turretDetail', cylY(0.045, 0.06, 0.10, 8), -0.38, yl(2.714), zl(-1.41));

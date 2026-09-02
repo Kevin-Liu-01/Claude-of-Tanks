@@ -58,8 +58,10 @@ export interface ShapedMudguardOptions {
   /** Panel thickness across local X. */
   readonly thickness?: number;
   /** Longitudinal span across local Z. */
-  readonly length: number;
-  readonly height: number;
+  readonly length?: number;
+  readonly height?: number;
+  /** Existing closed family geometry routed through the shared material/receipt contract. */
+  readonly geometry?: THREE.BufferGeometry;
   readonly material?: 'painted-steel' | 'rubber' | 'wood-stained';
   /** Explicit family bucket for existing authored finishes. */
   readonly bucket?: string;
@@ -901,6 +903,9 @@ function requireMudguardBuilder(value: unknown): MudguardBuilderPort {
  * callers can provide a normalized [z,y] polygon for family-specific shapes.
  */
 function shapedMudguardGeometry(options: ShapedMudguardOptions): THREE.BufferGeometry {
+  if (!(options.length && options.height)) {
+    throw new Error('shared shaped mudguard geometry requires positive length and height');
+  }
   const length = Math.max(0.04, options.length);
   const height = Math.max(0.04, options.height);
   const thickness = Math.max(0.012, options.thickness ?? 0.035);
@@ -951,17 +956,31 @@ function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): vo
   const bucket = options.bucket ?? (material === 'painted-steel' ? 'hull'
     : material === 'wood-stained' ? 'hullWood' : 'hullRubber');
   const rotation = options.rotation ?? [0, 0, 0];
-  const geometry = shapedMudguardGeometry(options);
+  const geometry = options.geometry ?? shapedMudguardGeometry(options);
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  const size = bounds ? bounds.getSize(new THREE.Vector3()) : new THREE.Vector3();
+  const length = options.length ?? Math.max(size.x, size.z);
+  const height = options.height ?? size.y;
+  const thickness = options.thickness ?? Math.max(0.012, Math.min(
+    ...[size.x, size.y, size.z].filter((dimension) => dimension > 0.001),
+  ));
+  geometry.userData = {
+    ...(geometry.userData || {}),
+    designFamily: 'cot-shaped-mudguard-v1',
+    closedProfile: true,
+    customFamilyGeometry: Boolean(options.geometry),
+  };
   P.addMudguard(options.label, bucket, geometry,
     options.x, options.y, options.z, rotation[0], rotation[1], rotation[2]);
 
   // A narrow painted hanger at the upper edge makes the support relationship
   // visible and gives the seating audit a real connected island. It remains
   // hull furniture rather than rubber, even when the hanging panel is rubber.
-  if (options.support !== false) {
-    const thickness = Math.max(0.012, options.thickness ?? 0.035);
-    const supportY = options.y + options.height / 2 - Math.max(0.012, options.height * 0.035);
-    P.add('hullDetail', KIT.box(thickness * 1.45, Math.max(0.035, options.height * 0.08), options.length * 0.94),
+  const attachedSupport = options.support ?? !options.geometry;
+  if (attachedSupport) {
+    const supportY = options.y + height / 2 - Math.max(0.012, height * 0.035);
+    P.add('hullDetail', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
       options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
   }
 
@@ -972,11 +991,12 @@ function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): vo
     designFamily: 'cot-shaped-mudguard-v1',
     material,
     bucket,
-    thicknessM: options.thickness ?? 0.035,
-    lengthM: options.length,
-    heightM: options.height,
+    thicknessM: thickness,
+    lengthM: length,
+    heightM: height,
     outlinePoints: geometry.userData.outlinePoints,
-    attachedSupport: options.support !== false,
+    customFamilyGeometry: Boolean(options.geometry),
+    attachedSupport,
   });
   P.hullG.userData.sharedMudguards = receipts;
 }
@@ -1289,6 +1309,22 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     }
     parts.add(shieldSlot, box(0.19 * s, 0.032 * s, 0.026 * s),
       0, recY + shieldH * 0.48 * s, shieldZ);
+    // Folded lips, sight slots and fastener heads keep the shield from
+    // reading as one featureless rectangle. They share the shield plane and
+    // remain part of the equipment fitting rather than turret armor.
+    for (const side of [-1, 1]) {
+      parts.add(shieldSlot, box(0.022 * s, shieldH * 0.92 * s, 0.045 * s),
+        side * (0.075 + sideW - 0.012) * s, recY + 0.018 * s, shieldZ - 0.010 * s,
+        0, -side * 0.10, 0);
+      parts.add('shadow', box(sideW * 0.43 * s, 0.032 * s, 0.012 * s),
+        side * 0.145 * s, recY + shieldH * 0.18 * s, shieldZ + 0.014 * s,
+        0, -side * 0.055, 0);
+      for (const sy of [-0.28, 0.30]) {
+        parts.add('dark', cylZ(0.009 * s, 0.012 * s, 8),
+          side * (0.075 + sideW * 0.70) * s,
+          recY + sy * shieldH * s, shieldZ + 0.018 * s);
+      }
+    }
     if (shieldVariant === 'armored') {
       parts.add(shieldSlot, box(0.34 * s, 0.035 * s, 0.18 * s),
         0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
@@ -1313,6 +1349,8 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.weaponName = cls.name;
   fitting.userData.caliberMm = cls.caliber;
   fitting.userData.shieldVariant = shieldVariant || 'open';
+  fitting.userData.foldedShieldEdges = shieldVariant ? 2 : 0;
+  fitting.userData.shieldVisionPorts = shieldVariant ? 2 : 0;
   fitting.userData.hasConnectedFeed = opts.ammo !== false;
   fitting.userData.hasEngineeredCradle = true;
   fitting.userData.machineGunFinish = opts.machineGunFinish || 'gunmetal';
@@ -1469,6 +1507,21 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
       0, recY, trunZ + 0.115 * s);
   }
+  if (shieldVariant) {
+    const shieldH = shieldVariant === 'low' ? 0.21 : shieldVariant === 'armored' ? 0.34 : 0.30;
+    const lipW = shieldVariant === 'armored' ? 0.58 : 0.49;
+    parts.add('hull', box(lipW * s, 0.026 * s, 0.055 * s),
+      0, recY + shieldH * 0.56 * s, trunZ + 0.065 * s, 0.10, 0, 0);
+    for (const side of [-1, 1]) {
+      parts.add('shadow', box(0.095 * s, 0.036 * s, 0.014 * s),
+        side * 0.145 * s, recY + 0.070 * s, trunZ + 0.112 * s,
+        0, -side * 0.055, 0);
+      for (const sy of [-0.075, 0.125]) {
+        parts.add('dark', cylZ(0.010 * s, 0.014 * s, 8),
+          side * 0.235 * s, recY + sy * s, trunZ + 0.116 * s);
+      }
+    }
+  }
 
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = 'fitting_americanM2HB';
@@ -1488,6 +1541,8 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.caliberMm = 12.7;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
+  fitting.userData.foldedShieldEdges = shieldVariant ? 3 : 0;
+  fitting.userData.shieldVisionPorts = shieldVariant ? 2 : 0;
   fitting.userData.installationVariant = opts.installationVariant || 'open-cradle';
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.hasConnectedFeed = opts.ammo !== false;
@@ -1946,7 +2001,7 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
  * group.userData.aabb.
  */
 function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX } = KIT;
+  const { box, cylX, sph, xform } = KIT;
   const w = opts.w || 1.2, d = opts.d || 0.45, h = opts.h || 0.30;
   const rails = Math.min(3, Math.max(1, opts.rails || 2));
   const rng = fitRng(opts.seed ?? 1);
@@ -2017,6 +2072,7 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
 
   // soft fill: tone-varied bundles (cloth / wood / pale) with seeded jitter.
   const fill = opts.fill ?? 0.75;
+  let softBundleCount = 0;
   if (fill > 0) {
     const n = Math.max(1, Math.round(fill * w / 0.26));
     const slots = ['canvasCloth', 'wood', 'canvasCloth', 'detail'];
@@ -2028,11 +2084,30 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
         const bw = 0.24 + rng() * 0.06, bh = 0.16 + rng() * 0.05;
         parts.add('wood', box(bw, bh, d * 0.62), x, bh / 2 + 0.02, -d * 0.08, 0, yaw, 0);
         parts.add('dark', box(bw * 1.03, bh * 0.16, 0.02), x, bh * 0.5 + 0.02, -d * 0.08 + d * 0.31, 0, yaw, 0);
-      } else {
+      } else if (i % 3 === 0) {
         const r = 0.10 + rng() * 0.035, len = 0.22 + rng() * 0.10;
         parts.add(slot, cylX(r, len, 10), x, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
         parts.add('dark', cylX(r * 1.05, 0.022, 10), x - len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
         parts.add('dark', cylX(r * 1.05, 0.022, 10), x + len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
+        softBundleCount++;
+      } else {
+        const bw = 0.22 + rng() * 0.08;
+        const bh = 0.16 + rng() * 0.06;
+        const bd = d * (0.46 + rng() * 0.16);
+        // A low-poly ellipsoid produces an irregular, compressible duffel
+        // silhouette. A raised flap, pockets and real straps explain how the
+        // load stays in the lattice instead of reading as another gray box.
+        parts.add(slot, xform(sph(0.5, 10), 0, 0, 0, 0, yaw, 0, [bw, bh, bd]),
+          x, bh * 0.48 + 0.02, -d * 0.05);
+        parts.add(slot, box(bw * 0.76, 0.026, bd * 0.54),
+          x, bh * 0.88 + 0.02, -d * 0.08, 0, yaw, 0);
+        parts.add(slot, box(bw * 0.56, bh * 0.34, 0.024),
+          x, bh * 0.46 + 0.02, d * 0.18, 0, yaw, 0);
+        for (const sx of [-0.24, 0.24]) {
+          parts.add('dark', box(0.018, bh * 1.06, bd * 1.02),
+            x + sx * bw, bh * 0.49 + 0.02, -d * 0.05, 0, yaw, 0);
+        }
+        softBundleCount++;
       }
     }
     // one long tarp roll across wide racks, over the bundles.
@@ -2051,6 +2126,8 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.floorStringers = floorStrings;
   fitting.userData.outerFencePosts = nPosts;
   fitting.userData.mountingFeet = 2;
+  fitting.userData.softBundleCount = softBundleCount;
+  fitting.userData.fabricProfiles = ['rolled-tarp', 'duffel', 'ruck-with-flap'];
   fitting.userData.rackEnvelope = { widthM: w, depthM: d, heightM: h };
   return fitting;
 }
@@ -2093,7 +2170,7 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
  * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
  */
 function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY } = KIT;
+  const { box, cylY, cylZ } = KIT;
   const count = Math.max(1, opts.count || 2);
   const gap = opts.gap ?? 0.05;
   // owner 2026-08-06: cans read too bright fleet-wide in 'detail' pale
@@ -2106,15 +2183,41 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
     const x = (i - (count - 1) / 2) * pitchX;
     const yaw = (rng() - 0.5) * 0.10;
     parts.add(slot, box(0.16, 0.44, 0.32), x, 0.22, 0, 0, yaw, 0);
-    parts.add(slot, box(0.04, 0.055, 0.12), x, 0.465, 0, 0, yaw, 0);
-    parts.add('dark', cylY(0.020, 0.020, 0.035, 8), x + Math.sin(yaw) * 0.10 + 0.04, 0.455, Math.cos(yaw) * 0.10, 0, yaw, 0);
+    // Stamped X ribs on both broad faces; these are shallow equipment
+    // details, never armor plates or floating decals.
+    for (const face of [-1, 1]) {
+      for (const rz of [-0.48, 0.48]) {
+        parts.add(slot, box(0.014, 0.29, 0.020), x, 0.22, face * 0.166, 0, yaw, rz);
+      }
+    }
+    // Triple bridge handle and offset threaded spout.
+    for (const hx of [-0.045, 0, 0.045]) {
+      parts.add(slot, box(0.020, 0.055, 0.12), x + hx, 0.465, 0, 0, yaw, 0);
+    }
+    parts.add(slot, box(0.11, 0.018, 0.020), x, 0.495, -0.050, 0, yaw, 0);
+    parts.add(slot, cylY(0.030, 0.033, 0.050, 10), x + 0.045, 0.463, 0.105, 0, yaw, 0);
+    parts.add('dark', cylY(0.027, 0.027, 0.018, 10), x + 0.045, 0.496, 0.105, 0, yaw, 0);
+    // Foot seam and lower corner protectors seat every can in the rack.
+    parts.add('dark', box(0.15, 0.018, 0.31), x, 0.018, 0, 0, yaw, 0);
+    for (const sx of [-1, 1]) parts.add('dark', box(0.018, 0.08, 0.034),
+      x + sx * 0.071, 0.055, 0.145, 0, yaw, 0);
   }
   if (opts.strap !== false) {
     const w = count * pitchX + 0.02;
     parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, 0.168);
     parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, -0.168);
+    parts.add('dark', box(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
+    parts.add('dark', box(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
+    parts.add('detail', box(0.055, 0.045, 0.030), 0, 0.30, 0.182);
   }
-  return fitAssemble('jerryCans', parts, opts);
+  const fitting = fitAssemble('jerryCans', parts, opts);
+  fitting.userData.designFamily = 'cot-jerry-can-rack-v2';
+  fitting.userData.canCount = count;
+  fitting.userData.stampedFaces = count * 2;
+  fitting.userData.bridgeHandles = count * 3;
+  fitting.userData.threadedSpouts = count;
+  fitting.userData.retainingCradle = opts.strap !== false;
+  return fitting;
 }
 
 /**

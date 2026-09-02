@@ -20,7 +20,7 @@
 //   long with a +23% kit band; kursk -2.6% overall (usable as-is).
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -1747,9 +1747,15 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     for (const s of [-1, 1]) {
       for (let i = 0; i < 9; i++) {
         const z = -3.30 + (i + 0.5) * fenderStep;
-        P.addMudguard(`ua-oplot-fender-bridge-${s}-${i}`, 'hull',
-          box(0.64, 0.06, fenderStep * 0.985),
-          s * 1.565, 1.31, z, 0, 0, -s * 0.003);
+        MUDGUARDS.add(P, {
+          label: `ua-oplot-fender-bridge-${s}-${i}`,
+          bucket: 'hull',
+          material: 'painted-steel',
+          geometry: box(0.64, 0.06, fenderStep * 0.985),
+          x: s * 1.565, y: 1.31, z,
+          rotation: [0, 0, -s * 0.003],
+          support: false,
+        });
         // Rolled outer seam and inboard support angle make the shelf read as
         // a supported fender assembly rather than one featureless slab.
         P.add('hullDark', box(0.035, 0.035, fenderStep * 0.90),
@@ -1759,15 +1765,21 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
       }
       // End plates continue the shelf into the existing raked bow tip and
       // stern transom instead of ending in mid-air at the first skirt seam.
-      P.addMudguard(`ua-oplot-fender-bridge-${s}-bow`, 'hull',
-        box(0.64, 0.06, 0.74), s * 1.565, 1.31, 2.655,
-        0, 0, -s * 0.003);
-      P.addMudguard(`ua-oplot-fender-bridge-${s}-nose`, 'hull',
-        box(0.64, 0.06, 0.52), s * 1.245, 1.20, 3.27,
-        -0.18, 0, -s * 0.003);
-      P.addMudguard(`ua-oplot-fender-bridge-${s}-stern`, 'hull',
-        box(0.64, 0.06, 0.20), s * 1.565, 1.295, -3.38,
-        0, 0, -s * 0.003);
+      MUDGUARDS.add(P, {
+        label: `ua-oplot-fender-bridge-${s}-bow`, bucket: 'hull', material: 'painted-steel',
+        geometry: box(0.64, 0.06, 0.74), x: s * 1.565, y: 1.31, z: 2.655,
+        rotation: [0, 0, -s * 0.003], support: false,
+      });
+      MUDGUARDS.add(P, {
+        label: `ua-oplot-fender-bridge-${s}-nose`, bucket: 'hull', material: 'painted-steel',
+        geometry: box(0.64, 0.06, 0.52), x: s * 1.245, y: 1.20, z: 3.27,
+        rotation: [-0.18, 0, -s * 0.003], support: false,
+      });
+      MUDGUARDS.add(P, {
+        label: `ua-oplot-fender-bridge-${s}-stern`, bucket: 'hull', material: 'painted-steel',
+        geometry: box(0.64, 0.06, 0.20), x: s * 1.565, y: 1.295, z: -3.38,
+        rotation: [0, 0, -s * 0.003], support: false,
+      });
     }
     P.hullG.userData.uaOplotFenderBridge = Object.freeze({
       innerX: 1.245,

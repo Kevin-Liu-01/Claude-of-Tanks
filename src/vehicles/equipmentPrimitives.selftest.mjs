@@ -23,6 +23,8 @@ assert.equal(rack.userData.solidProxyPanels, 0);
 assert.ok(rack.userData.floorCrossMembers >= 3);
 assert.ok(rack.userData.floorStringers >= 3);
 assert.equal(rack.userData.mountingFeet, 2);
+assert.ok(rack.userData.softBundleCount >= 2);
+assert.deepEqual(rack.userData.fabricProfiles, ['rolled-tarp', 'duffel', 'ruck-with-flap']);
 assert.deepEqual(rack.userData.rackEnvelope, { widthM: 1.6, depthM: 0.52, heightM: 0.36 });
 let rackMeshes = 0;
 rack.traverse((object) => {
@@ -31,6 +33,20 @@ rack.traverse((object) => {
   assert.equal(object.userData.combatHitboxRole, 'equipment');
 });
 assert.ok(rackMeshes >= 2, 'open rack keeps separate material families after merge');
+
+const cans = FITTINGS.jerryCans({ mats, count: 3, seed: 11 });
+assert.equal(cans.userData.designFamily, 'cot-jerry-can-rack-v2');
+assert.equal(cans.userData.canCount, 3);
+assert.equal(cans.userData.stampedFaces, 6);
+assert.equal(cans.userData.bridgeHandles, 9);
+assert.equal(cans.userData.threadedSpouts, 3);
+assert.equal(cans.userData.retainingCradle, true);
+
+const shieldedMg = FITTINGS.americanM2({ mats, shield: 'armored', seed: 19 });
+assert.equal(shieldedMg.userData.shieldVariant, 'armored');
+assert.equal(shieldedMg.userData.foldedShieldEdges, 3);
+assert.equal(shieldedMg.userData.shieldVisionPorts, 2);
+assert.equal(shieldedMg.userData.hasConnectedFeed, true);
 
 const makeBuilder = () => {
   const hullG = new THREE.Group();
@@ -92,6 +108,9 @@ assert.equal(builder.hullG.userData.sharedMudguards.length, 2);
 assert.ok(builder.hullG.userData.sharedMudguards.every((receipt) => receipt.attachedSupport));
 
 rack.traverse((object) => {
+  if (object.isMesh) object.geometry.dispose();
+});
+for (const fitting of [cans, shieldedMg]) fitting.traverse((object) => {
   if (object.isMesh) object.geometry.dispose();
 });
 for (const material of Object.values(mats)) material.dispose();

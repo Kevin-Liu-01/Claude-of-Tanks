@@ -6583,7 +6583,14 @@ function buildT90MS(P: T90BuilderPort): void {
     ): void => {
       const label = `t90ms-front-guard-${side}-${segment}`;
       tagilFrontGuardLabels.push(label);
-      P.addMudguard(label, 'hull', geo, x, y, z);
+      MUDGUARDS.add(P, {
+        label,
+        bucket: 'hull',
+        material: 'painted-steel',
+        geometry: geo,
+        x, y, z,
+        support: false,
+      });
     };
     addGuardPart('root', box(0.16, 0.05, 0.50), s * 1.70, 1.40, 2.90);
     addGuardPart('upper-riser', box(0.16, 0.14, 0.055), s * 1.70, 1.33, 3.12);
@@ -9034,12 +9041,19 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     const innerX = 1.43;
     const outerX = 1.72;
     const thickness = 0.055;
-    P.addMudguard(`t90a-burlak-fender-closure-${s}-${label}`, 'hull', orientedSlab(
-      [s * innerX, innerY0 - thickness, z0], [s * outerX, outerY0 - thickness, z0],
-      [s * outerX, outerY1 - thickness, z1], [s * innerX, innerY1 - thickness, z1],
-      [s * innerX, innerY0, z0], [s * outerX, outerY0, z0],
-      [s * outerX, outerY1, z1], [s * innerX, innerY1, z1],
-    ));
+    MUDGUARDS.add(P, {
+      label: `t90a-burlak-fender-closure-${s}-${label}`,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        [s * innerX, innerY0 - thickness, z0], [s * outerX, outerY0 - thickness, z0],
+        [s * outerX, outerY1 - thickness, z1], [s * innerX, innerY1 - thickness, z1],
+        [s * innerX, innerY0, z0], [s * outerX, outerY0, z0],
+        [s * outerX, outerY1, z1], [s * innerX, innerY1, z1],
+      ),
+      x: 0, y: 0, z: 0,
+      support: false,
+    });
     // Rolled outer seam and inboard support web make each shelf visibly
     // founded instead of reading as another paper-thin floating rectangle.
     P.add('hullDetail', KIT.box(0.030, 0.030, z1 - z0 - 0.035),
@@ -9065,12 +9079,19 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     // square shelf in front of the lead timber pad. Its aft edge laps the
     // longitudinal run while the narrow toe buries into the native nose.
     const t = 0.055;
-    P.addMudguard(`t90a-burlak-fender-closure-${s}-bow`, 'hull', orientedSlab(
-      [s * 1.10, 1.272 - t, 2.35], [s * 1.72, 1.250 - t, 2.35],
-      [s * 1.38, 1.180 - t, 3.42], [s * 0.62, 1.145 - t, 3.42],
-      [s * 1.10, 1.272, 2.35], [s * 1.72, 1.250, 2.35],
-      [s * 1.38, 1.180, 3.42], [s * 0.62, 1.145, 3.42],
-    ));
+    MUDGUARDS.add(P, {
+      label: `t90a-burlak-fender-closure-${s}-bow`,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        [s * 1.10, 1.272 - t, 2.35], [s * 1.72, 1.250 - t, 2.35],
+        [s * 1.38, 1.180 - t, 3.42], [s * 0.62, 1.145 - t, 3.42],
+        [s * 1.10, 1.272, 2.35], [s * 1.72, 1.250, 2.35],
+        [s * 1.38, 1.180, 3.42], [s * 0.62, 1.145, 3.42],
+      ),
+      x: 0, y: 0, z: 0,
+      support: false,
+    });
     P.add('hullDetail', orientedSlab(
       [s * 1.695, 1.230, 2.38], [s * 1.725, 1.230, 2.38],
       [s * 1.395, 1.162, 3.39], [s * 1.365, 1.162, 3.39],
