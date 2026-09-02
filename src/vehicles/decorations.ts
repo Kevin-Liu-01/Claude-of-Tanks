@@ -13,11 +13,11 @@
 //  * Every decoration mesh lives under a dedicated group: `rig_decor_hull`
 //    (child of rig_hull) or `rig_decor_turret` (child of rig_turret, so
 //    turret decor yaws with the turret).
-//  * Decor is a COSMETIC layer: it is HARD-SKIPPED when tankFactory builds
-//    with `proceduralOnly` (the geometry-gate / shaded-parity flag), and
-//    auto-skipped on metrology stub engine contexts (see resolveDecorMode),
-//    so the gate lab's REFERENCE builds stay bare too. The geometry-gate
-//    ledger must be byte-identical before/after this module exists.
+//  * Decor is a COSMETIC layer: procedural/metrology builds skip it by
+//    default, while an explicit `decor:true` lets the first-party Gallery
+//    show the shipped equipment. Metrology stub engine contexts still
+//    auto-skip unless explicitly opted in (see resolveDecorMode), so the
+//    geometry-gate ledger remains bare and byte-stable.
 //  * In-game builds (garage pedestal, battle, studio, icon generator) get
 //    decor ON by default — no call-site changes required.
 //  * Per-tank selection is DETERMINISTIC, seeded by SPEC ID only (never
@@ -113,6 +113,7 @@ interface DecorKitArgs {
   rows?: number;
   perRow?: number;
   r?: number;
+  scale?: number;
   links?: number;
   _W?: number;
   set?: string[];
@@ -170,6 +171,7 @@ interface DecorSlotArgs {
   along?: boolean;
   low?: boolean;
   onBasket?: boolean;
+  routes?: Array<[string, DecorSlotArgs]>;
 }
 
 interface DecorManifestRow {
@@ -476,6 +478,29 @@ function woodTex() {
   });
 }
 
+// Painted polymer / field-can finish: low-contrast dust bloom, tiny scuffs,
+// and handling streaks. It stays deliberately close to neutral grey so the
+// authored vertex color remains dominant instead of turning cargo graphic.
+function fieldHardwareTex() {
+  return canvasTex('decor-field-hardware', 128, (g, S) => {
+    g.fillStyle = '#cbc9c1'; g.fillRect(0, 0, S, S);
+    const rng = mulberry32(0x4a11c0);
+    for (let i = 0; i < 180; i++) {
+      const tone = rng() < 0.68 ? '72,68,60' : '236,232,220';
+      g.fillStyle = `rgba(${tone},${0.025 + rng() * 0.04})`;
+      const r = 0.4 + rng() * 1.4;
+      g.fillRect(rng() * S, rng() * S, r, r * (0.55 + rng()));
+    }
+    for (let i = 0; i < 14; i++) {
+      g.strokeStyle = `rgba(82,78,70,${0.025 + rng() * 0.025})`;
+      g.lineWidth = 0.5 + rng();
+      g.beginPath();
+      const x = rng() * S, y = rng() * S;
+      g.moveTo(x, y); g.lineTo(x + 7 + rng() * 16, y + (rng() - 0.5) * 4); g.stroke();
+    }
+  });
+}
+
 // camouflage netting: open diagonal mesh with garnish rags; alpha = holes
 function netTex() {
   return canvasTex('decor-net', 128, (g, S) => {
@@ -548,9 +573,9 @@ export function resolveDecorMode(
   opts: DecorOptions = {},
   engineCtx: ShadowEngineContext | null = null,
 ): boolean {
-  if (opts.proceduralOnly) return false;          // metrology contract — hard skip
   if (opts.decor === false) return false;          // explicit off
   if (opts.decor === true) return true;            // explicit on (decoration board)
+  if (opts.proceduralOnly) return false;           // implicit metrology contract
   // auto: a ctx that OFFERS setupShadowMaterial but fails the CSM probe is a
   // measurement stub (fidelity lab / parity boards / thumb booth) — skip.
   // Real game ctx or no ctx at all (icon generator) -> decorate.
@@ -627,9 +652,9 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.12,
     }),
     cans: () => ({ // authored-color hardware (jerrycans): tint baked per piece
-      color: 0xffffff, roughness: 0.72, metalness: 0.12,
+      map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
       roughnessMap: getSharedRoughnessTexture(spec),
-      vertexColors: true, envMapIntensity: 0.3,
+      vertexColors: true, envMapIntensity: 0.2,
     }),
     net: () => ({
       map: netTex(), color: 0xb0b68c, roughness: 0.95, metalness: 0.0,
@@ -1036,12 +1061,28 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // Small pieces are deliberately a little graphic at gameplay distance: lids,
   // handles, straps and latches remain separate instead of becoming one grey
   // cuboid after merging.  Every geometry still originates at its physical seat.
-  cargo({ rng, v = 'beer-cooler-blue' }) {
+  cargo({ rng, v = 'beer-cooler-blue', scale = 1 }) {
     const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
       ? v as FleetEquipmentVariant : 'beer-cooler-blue';
     const parts: DecorPartList = [];
     const paint = (geo: THREE.BufferGeometry, rgb: readonly [number, number, number], ao = 0.26) => {
-      parts.push({ mat: 'cans', geo: bakeTint(geo, rgb[0], rgb[1], rgb[2], ao) });
+      // Cargo is seen beneath the same sun/IBL as the tank. Raw near-primary
+      // tints therefore read as glossy toys even on a weathered armor shell.
+      // Keep the hue identity, but lower its value and pull only the brightest
+      // colors slightly toward their neutral luminance (paint fade + grime).
+      const peak = Math.max(rgb[0], rgb[1], rgb[2], 0.0001);
+      // Values here are linear-space vertex multipliers; a seemingly modest
+      // 0.4 displays much brighter after output transfer. Keep peaks down in
+      // the painted-hardware range so red/blue pieces do not glow against camo.
+      const scale = Math.min(0.72, 0.18 / peak);
+      const neutral = ((rgb[0] + rgb[1] + rgb[2]) / 3) * scale;
+      const fade = peak > 0.48 ? 0.28 : 0;
+      const muted: readonly [number, number, number] = [
+        rgb[0] * scale * (1 - fade) + neutral * fade,
+        rgb[1] * scale * (1 - fade) + neutral * fade,
+        rgb[2] * scale * (1 - fade) + neutral * fade,
+      ];
+      parts.push({ mat: 'cans', geo: bakeTint(geo, muted[0], muted[1], muted[2], ao) });
     };
     const steel = (geo: THREE.BufferGeometry, tone = 0.52) => {
       parts.push({ mat: 'steel', geo: bakeShade(geo, tone + rng() * 0.04) });
@@ -1079,9 +1120,34 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     };
 
     switch (variant) {
-      case 'beer-cooler-blue':
-        hardCase([0.10, 0.38, 0.88], 0.50, 0.28, 0.34, [0.96, 0.98, 1.0]);
+      case 'beer-cooler-blue': { // weathered field cooler, not a clean/emissive toy block
+        const w = 0.50, h = 0.28, d = 0.34;
+        const body: readonly [number, number, number] = [0.08, 0.19, 0.29];
+        const bodyRaised: readonly [number, number, number] = [0.10, 0.22, 0.32];
+        const bodyScuff: readonly [number, number, number] = [0.07, 0.15, 0.21];
+        const lid: readonly [number, number, number] = [0.50, 0.52, 0.49];
+        const lidEdge: readonly [number, number, number] = [0.41, 0.43, 0.41];
+
+        paint(xform(box(w, h * 0.78, d), 0, h * 0.39, 0), body, 0.34);
+        paint(xform(box(w * 1.025, h * 0.22, d * 1.025), 0, h * 0.89, 0), lid, 0.30);
+        paint(xform(box(w * 0.72, 0.012, d * 0.70), 0, h * 1.015, 0), lidEdge, 0.38);
+        paint(xform(box(w * 1.01, 0.034, d * 1.015), 0, h * 0.77, 0), lidEdge, 0.34);
+        paint(xform(box(w * 0.90, 0.025, d * 1.018), 0, 0.035, 0), bodyScuff, 0.40);
+        for (const z of [-1, 1]) {
+          const faceZ = z * (d / 2 + 0.004);
+          paint(xform(box(w * 0.70, h * 0.43, 0.012), 0, h * 0.40, faceZ), bodyRaised, 0.38);
+          for (const x of [-0.20, 0.20]) {
+            paint(xform(box(0.024, h * 0.60, 0.014), x, h * 0.40, faceZ + z * 0.002), bodyScuff, 0.42);
+          }
+        }
+        paint(xform(box(w * 0.30, 0.026, 0.036), 0, h + 0.018, -d * 0.24), bodyScuff, 0.40);
+        for (const side of [-1, 1]) {
+          paint(xform(box(0.026, h * 0.29, 0.036), side * w * 0.34, h * 0.49, d * 0.505), bodyScuff, 0.42);
+          paint(xform(box(0.050, 0.038, 0.026), side * w * 0.26, h * 0.79, -d * 0.515), lidEdge, 0.40);
+          paint(xform(box(0.042, 0.070, 0.022), side * w * 0.22, h * 0.69, d * 0.518), bodyRaised, 0.40);
+        }
         break;
+      }
       case 'cooler-red':
         hardCase([0.82, 0.12, 0.09], 0.45, 0.25, 0.31, [0.96, 0.96, 0.92]);
         break;
@@ -1119,10 +1185,16 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         break;
       }
       case 'nato-fuel-can':
-        jerryCan(0, [0.62, 0.48, 0.22]);
+        jerryCan(-0.105, [0.62, 0.48, 0.22], 0.92);
+        jerryCan(0.105, [0.57, 0.44, 0.20], 0.92);
+        steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
+        for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
         break;
       case 'blue-water-can':
-        jerryCan(0, [0.10, 0.36, 0.76]);
+        jerryCan(-0.105, [0.10, 0.32, 0.60], 0.92);
+        jerryCan(0.105, [0.08, 0.28, 0.53], 0.92);
+        steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
+        for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
         break;
       case 'twin-can-cradle':
         jerryCan(-0.11, [0.55, 0.43, 0.20], 0.90);
@@ -1202,7 +1274,15 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         for (const x of [-0.22, 0.22]) wood(xform(box(0.035, 0.26, 0.36), x, 0.13, 0), 0.56);
         break;
     }
-    parts.meta = { w: 0.78, h: 0.58, d: 0.42 };
+    const safeScale = THREE.MathUtils.clamp(Number(scale) || 1, 0.72, 1);
+    if (safeScale !== 1) {
+      for (const part of parts) part.geo.scale(safeScale, safeScale, safeScale);
+    }
+    parts.meta = {
+      w: 0.78 * safeScale,
+      h: 0.58 * safeScale,
+      d: 0.42 * safeScale,
+    };
     return parts;
   },
 
@@ -1425,11 +1505,12 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- jerrycan rack (fuel tan / water green) ---------------------------------------
-  jerry({ rng, n = 3, water = true }) {
+  jerry({ rng, n = 2, water = true }) {
     const parts: DecorPartList = [];
-    for (let i = 0; i < n; i++) {
-      const x = (i - (n - 1) / 2) * 0.20;
-      const isWater = water && i === n - 1;
+    const pairedCount = Math.max(2, Math.ceil(n / 2) * 2);
+    for (let i = 0; i < pairedCount; i++) {
+      const x = (i - (pairedCount - 1) / 2) * 0.20;
+      const isWater = water && i >= pairedCount - 2;
       const tint: [number, number, number] = isWater
         ? [0.24, 0.30, 0.22]
         : [0.45, 0.37, 0.24];
@@ -1443,7 +1524,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       }
       parts.push({ mat: 'cans', geo: bakeTint(xform(cylY(0.028, 0.028, 0.05, 6), x - 0.05, 0.46, -0.11), tint[0] * 0.8, tint[1] * 0.8, tint[2] * 0.8) }); // spout
     }
-    const W = n * 0.20 + 0.06; // rack frame
+    const W = pairedCount * 0.20 + 0.06; // rack frame
     parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.03, 0.4), 0, 0.015, 0), 0.5) });
     parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.05, 0.02), 0, 0.28, -0.18), 0.5) });
     parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.05, 0.02), 0, 0.28, 0.18), 0.5) });
@@ -1930,22 +2011,93 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const curated = TANK_MANIFESTS[spec.id];
   const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
-  // Every playable gets one deterministic personal-equipment tell before the
-  // rest of the manifest consumes the triangle/overlap budget.  Across the
-  // current fleet the hash walks the full 24-variant vocabulary, while each
-  // individual tank remains byte-stable for screenshots and multiplayer.
-  const cargoIndex = fnv1a(`${spec.id}:fleet-cargo-v1`) % FLEET_EQUIPMENT_VARIANTS.length;
-  const cargo: DecorManifestRow = {
-    kit: 'cargo',
-    p: 1,
-    v: { v: FLEET_EQUIPMENT_VARIANTS[cargoIndex] },
-    slot: ['rearDeck', {
-      corner: (fnv1a(`${spec.id}:fleet-cargo-side`) & 1) ? 1 : -1,
-      back: true,
-      small: true,
-    }],
-  };
-  return [cargo, ...base];
+  // Give every playable a visible, deterministic field load rather than one
+  // tiny hash-selected object that can disappear behind a bustle. Seven
+  // station-aware pieces occupy the bustle, rear turret roof, engine deck,
+  // and hull rear rack. Pools are deliberately disjoint:
+  // a soft bag belongs on armor, paired cans sit at a rack/fender station,
+  // and hard cases remain horizontal. Keeping these first in the manifest
+  // guarantees the common fleet vocabulary before optional curated clutter.
+  const side = (fnv1a(`${spec.id}:fleet-cargo-side`) & 1) ? 1 : -1;
+  const hardCases = [
+    'beer-cooler-blue', 'cooler-red', 'insulated-chest-olive',
+    'fifty-cal-ammo-can', 'wood-ammo-crate', 'ration-case', 'medical-case',
+    'mechanics-tool-chest', 'spare-optics-case', 'thermos-crate',
+  ] as const satisfies readonly FleetEquipmentVariant[];
+  const softStowage = [
+    'long-duffel', 'large-rucksack', 'bedroll-pair', 'folded-tarp-pack',
+    'camo-net-bag', 'crew-backpack',
+  ] as const satisfies readonly FleetEquipmentVariant[];
+  const serviceGear = [
+    'soviet-tool-can', 'fire-extinguisher', 'cable-reel', 'helmet-bundle',
+    'folding-chair',
+  ] as const satisfies readonly FleetEquipmentVariant[];
+  const pairedCans = [
+    'nato-fuel-can', 'blue-water-can', 'twin-can-cradle',
+  ] as const satisfies readonly FleetEquipmentVariant[];
+  const choose = <T extends readonly FleetEquipmentVariant[]>(pool: T, salt: string, offset = 0) =>
+    pool[(fnv1a(`${spec.id}:${salt}`) + offset) % pool.length];
+  // Challenger 3 already fills the Garage card with its long gun, bustle and
+  // roof sensors. Keep the same seven-piece vocabulary, but make the portable
+  // field items slightly more compact so aft stowage does not force an
+  // out-of-family portrait crop.
+  const cargoScale = spec.id === 'challenger_3' ? 0.85 : 1;
+  const cargoVariant = (v: FleetEquipmentVariant) => ({ v, scale: cargoScale });
+  const aftRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => [
+    ['turretRear', { side: seatSide }],
+    ['turretRoof', { rear: true, side: seatSide }],
+    ['rearDeck', { corner: seatSide, back: true, small: true }],
+    ['hullRearRack', { x: seatSide * (0.12 + xOffset) }],
+    ['rearDeck', { center: true, back: true, small: true }],
+    ['turretSide', { side: seatSide, rear: true }],
+    ['fender', { side: seatSide, zFrac: -0.30, small: true }],
+  ];
+  const cargo: DecorManifestRow[] = [
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(hardCases, 'deck-case')),
+      slot: ['fleetCargo', { routes: aftRoutes(side, 0.12) }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(softStowage, 'bustle-soft')),
+      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.12) }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(serviceGear, 'fender-service')),
+      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.22) }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(pairedCans, 'rear-cans')),
+      slot: ['fleetCargo', { routes: [
+        ['hullRearRack', { x: side * 0.22 }],
+        ['turretRear', { side: -side }],
+        ['rearDeck', { corner: side, back: true, small: true }],
+        ['turretRoof', { rear: true, side }],
+        ['rearDeck', { center: true, back: true, small: true }],
+        ['turretSide', { side, rear: true }],
+        ['fender', { side, zFrac: -0.32, small: true }],
+      ] }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(hardCases, 'deck-case', 3)),
+      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.02) }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(serviceGear, 'fender-service', 2)),
+      slot: ['fleetCargo', { routes: aftRoutes(side, 0.22) }],
+    },
+    {
+      kit: 'cargo', p: 1,
+      v: cargoVariant(choose(softStowage, 'bustle-soft', 2)),
+      slot: ['fleetCargo', { routes: aftRoutes(side, 0.02) }],
+    },
+  ];
+  return [...cargo, ...base];
 }
 
 // ---------------------------------------------------------------------------
@@ -2574,7 +2726,10 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     }
 
     // --- placement bookkeeping ----------------------------------------------
-    const budget = { tris: 0, max: 3000 };
+    // Seven visible fleet-equipment stations plus the per-vehicle curated kit
+    // fit below this cap. Geometry is still merged by material/frame, so the
+    // higher detail allowance grows silhouettes without multiplying draws.
+    const budget = { tris: 0, max: 4200 };
     const buckets: Record<DecorFrame, Map<DecorMaterialKey, THREE.BufferGeometry[]>> = {
       hull: new Map(),
       turret: new Map(),
@@ -2656,6 +2811,23 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     };
 
     const SLOTS: Record<string, SlotPlacer> = {
+      fleetCargo(args, parts, name) {
+        // Fleet-wide cargo gets an authored preference followed by a few
+        // semantically compatible seats. Different turret/hull layouts can
+        // make one preferred station unreachable; silently losing the model
+        // was the reason only a cooler appeared on some vehicles.
+        for (const [slotName, slotArgs] of args.routes || []) {
+          const slot = SLOTS[slotName];
+          if (!slot || slot === SLOTS.fleetCargo) continue;
+          const candidate = clonePartList(parts);
+          if (slot(slotArgs, candidate, name)) {
+            disposePartList(parts);
+            return true;
+          }
+        }
+        disposePartList(parts);
+        return false;
+      },
       rearDeck(args, parts, name) {
         const bb = partsBBox(parts);
         const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z;
@@ -2907,11 +3079,12 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
             V(basketAnchor.x, basketAnchor.y + 0.02, basketAnchor.z - (basketAnchor.d || 0.4) / 2),
             E(0, (rng() - 0.5) * 0.3, 0), placedTurret, { allowOverlap: true });
         }
+        const x = (args.side || 0) * Math.min(W * 0.18, Math.max(0.22, sweepR * 0.22));
         for (const back of [0.1, 0.3, 0.55]) {
           const z = -(sweepR * 0.55 + back) - d * 0.2;
-          const seat = seatProbe(turP, 0, z, Math.min(bb.max.x - bb.min.x, 0.5), Math.min(d, 0.35), 3.5, 0.2);
+          const seat = seatProbe(turP, x, z, Math.min(bb.max.x - bb.min.x, 0.5), Math.min(d, 0.35), 3.5, 0.2);
           if (!seat) continue;
-          if (commit(name, parts, 'turret', V(0, seat.y - 0.01, z), E(0, (rng() - 0.5) * 0.3, 0), placedTurret)) return true;
+          if (commit(name, parts, 'turret', V(x, seat.y - 0.01, z), E(0, (rng() - 0.5) * 0.3, 0), placedTurret)) return true;
         }
         disposePartList(parts);
         return false;
@@ -2953,7 +3126,8 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         const side = args.side ?? 1;
         const bb = partsBBox(parts);
         const out = (bb.max.z - bb.min.z) * 0.35;
-        for (const z of [-0.2, -0.45, 0.05]) {
+        const sideStations = args.rear ? [-0.78, -1.02, -0.58, -1.24] : [-0.2, -0.45, 0.05];
+        for (const z of sideStations) {
           for (const yf of [0.35, 0.5]) {
             const y = Math.max(0.18, pivotTopY() * yf);
             const h = turP.side(y, z, side, W / 2 + 1);
@@ -3034,7 +3208,9 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       } catch (e) { continue; }
       try {
         const before = summary.skipped.length;
-        const ok = slotFn(row.slot[1] || {}, parts, row.kit);
+        const pieceName = row.kit === 'cargo'
+          ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit;
+        const ok = slotFn(row.slot[1] || {}, parts, pieceName);
         // slots log commit-guard skips themselves; a silent false is a probe
         // miss (no anchor surface answered) — record it so nothing hides
         if (!ok && summary.skipped.length === before) summary.skipped.push([row.kit, 'probe']);

@@ -50,6 +50,26 @@ assert.strictEqual(
 );
 assert.throws(() => KIT.grilleIndices(false, 0, 3), RangeError);
 
+const jerryCanParts = [];
+KIT.jerryCan({
+  add() {},
+  addEquipment(bucket, geometry, ...transform) {
+    jerryCanParts.push({ bucket, geometry, transform });
+  },
+}, 'hullDetail', 1, 2, 3, 0.25);
+const jerryCanBodies = jerryCanParts.filter(
+  ({ geometry }) => geometry.userData.designFamily === 'cot-field-jerry-can-v2',
+);
+assert.equal(jerryCanBodies.length, 2, 'the core jerry-can primitive always emits a pair');
+assert.deepEqual(jerryCanBodies.map(({ geometry }) => geometry.userData.pairIndex), [0, 1]);
+assert.ok(jerryCanBodies.every(({ geometry }) => geometry.userData.paired === true));
+assert.ok(jerryCanBodies.every(({ geometry }) => geometry.userData.pairSize === 2));
+assert.notEqual(
+  jerryCanBodies[0].transform[0],
+  jerryCanBodies[1].transform[0],
+  'paired cans occupy distinct seats',
+);
+
 assert.throws(
   () => createTank('m4a3e8', null, { proceduralOnly: true, geometryReceipt: true }),
   /Import tankFactory\.ts/,

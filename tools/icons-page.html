@@ -802,7 +802,12 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       const fov = 28;
       const radius = Math.hypot(extentX,
         Math.max(center.y - box.min.y, box.max.y - center.y), extentZ);
-      const dist = (radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+      // Challenger 3 combines the fleet's long L55-class gun with a dense
+      // bustle/sensor silhouette. Its centered aft field load leaves only a
+      // fraction of a card pixel at the standard margin, so give this one
+      // portrait a 3% camera cushion instead of weakening the fleet audit.
+      const portraitMargin = id === 'challenger_3' ? MARGIN * 1.03 : MARGIN;
+      const dist = (radius * portraitMargin) / Math.sin((fov / 2) * Math.PI / 180);
       const dir = new THREE.Vector3(-0.56, 0.34, 1.0).normalize();
       const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
       angleCam.position.copy(center).addScaledVector(dir, dist);

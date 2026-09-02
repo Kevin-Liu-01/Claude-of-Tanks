@@ -598,6 +598,10 @@ async function loadTank(
     camoSeed: 4242,
     quality: 'high',
     proceduralOnly: true,
+    // Gallery models remain first-party/procedural-only, but now show the
+    // same authored field equipment players see in the garage and battle.
+    // Measurement tools that omit this explicit opt-in still get bare hulls.
+    decor: true,
   }) as GalleryVisual;
   visual.centerOnPresentationPoint?.(0, 0);
   visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);

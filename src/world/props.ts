@@ -21,7 +21,16 @@ import {
   bSandbagBroken,
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
-import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import {
+  CIVILIAN_VEHICLE_CLUSTER_COUNT,
+  CIVILIAN_VEHICLE_RECEIPTS,
+  CIVILIAN_VEHICLES_PER_CLUSTER,
+  pickCivilianVehicleKind,
+  pickCivilianVehicleKindForPlacement,
+  visibleCivilianVehicleCount,
+  type CivilianVehicleKind,
+  type CivilianVehicleLane,
+} from './maps/civilianVehicleKit.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
@@ -2974,12 +2983,14 @@ ${snowCap ? `
       return null;
     }
     // Heavy roadside vehicles: map-flavored cargo, box-body, and flatbed
-    // families. The selector is seeded and bounded to three pools per lane.
-    for (let k = 0, cap = inh.trucks ?? 0; k < cap; k++) {
+    // families. Six guaranteed placements make all three bodies readable in
+    // more than one part of every battlefield rather than hiding a token
+    // example at one random edge.
+    for (let k = 0, cap = visibleCivilianVehicleCount(inh.trucks, 'heavy'); k < cap; k++) {
       const spot = roadsideSpot(5.6, 9.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
-      const kind = pickCivilianVehicleKind(mapId, 'heavy', vrng());
+      const kind = pickCivilianVehicleKindForPlacement(mapId, 'heavy', k, vrng());
       addDestructible(kind, spot[0], y - 0.04, spot[1],
         spot[2] + (vrng() < 0.25 ? (vrng() - 0.5) * 1.6 : (vrng() - 0.5) * 0.3),
         0.96 + vrng() * 0.10);
@@ -2987,15 +2998,77 @@ ${snowCap ? `
       if (vrng() < 0.6) scatterDestructibles('crate', spot[0], spot[1], 1, 2.6, 4.2);
       if (vrng() < 0.45) scatterDestructibles('ammobox', spot[0], spot[1], 1, 2.4, 4.0);
     }
-    // Light traffic: distinct sedans, wagons, pickups, vans, and utility 4x4s
-    // replace the repeated single jeep while keeping the authored count.
-    for (let k = 0, cap = inh.jeeps ?? 0; k < cap; k++) {
+    // Light traffic: distinct sedans, wagons, pickups, vans, and utility 4x4s.
+    // Ten guaranteed placements expose all five families twice on every map.
+    for (let k = 0, cap = visibleCivilianVehicleCount(inh.jeeps, 'light'); k < cap; k++) {
       const spot = roadsideSpot(4.8, 7.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
-      const kind = pickCivilianVehicleKind(mapId, 'light', vrng());
+      const kind = pickCivilianVehicleKindForPlacement(mapId, 'light', k, vrng());
       addDestructible(kind, spot[0], y - 0.03, spot[1],
         spot[2] + (vrng() - 0.5) * 0.9, 0.95 + vrng() * 0.1);
+    }
+    // Two authored traffic pockets per battlefield turn the vehicle kit into
+    // environmental storytelling rather than evenly scattered singles. One
+    // reads as a roadside parking row, the other as a stopped mixed convoy.
+    // The vehicles remain members of the existing per-kind instanced pools,
+    // so this density increase does not add one draw call per vehicle.
+    const clusterLayouts: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+      [[-1.95, -3.4], [1.95, -3.4], [-1.95, 3.4], [1.95, 3.4]],
+      [[0, -8.4], [0, -2.2], [0, 3.1], [0, 8.2]],
+    ];
+    const clusterLanes: ReadonlyArray<ReadonlyArray<CivilianVehicleLane>> = [
+      ['light', 'light', 'heavy', 'light'],
+      ['heavy', 'light', 'light', 'light'],
+    ];
+    const clusterKinds: CivilianVehicleKind[][] = clusterLanes.map((lanes, clusterIndex) =>
+      lanes.map((lane, slotIndex) => pickCivilianVehicleKindForPlacement(
+        mapId,
+        lane,
+        clusterIndex * CIVILIAN_VEHICLES_PER_CLUSTER + slotIndex,
+        vrng(),
+      )),
+    );
+    for (let clusterIndex = 0; clusterIndex < CIVILIAN_VEHICLE_CLUSTER_COUNT; clusterIndex++) {
+      const layout = clusterLayouts[clusterIndex % clusterLayouts.length];
+      const kinds = clusterKinds[clusterIndex];
+      let candidates: Array<{ kind: CivilianVehicleKind; x: number; z: number; yaw: number; sc: number }> | null = null;
+      for (let attempt = 0; attempt < 18 && !candidates; attempt++) {
+        const center = roadsideSpot(9.0, 16.0, 64);
+        if (!center) break;
+        const rowYaw = center[2] + (vrng() - 0.5) * 0.14;
+        const acrossX = Math.cos(rowYaw), acrossZ = -Math.sin(rowYaw);
+        const alongX = Math.sin(rowYaw), alongZ = Math.cos(rowYaw);
+        const plan = layout.map(([across, along], slotIndex) => ({
+          kind: kinds[slotIndex],
+          x: center[0] + acrossX * across + alongX * along,
+          z: center[1] + acrossZ * across + alongZ * along,
+          yaw: rowYaw + (slotIndex % 2 ? 0.025 : -0.025),
+          sc: 0.94 + vrng() * 0.08,
+        }));
+        const clear = plan.every((candidate) => {
+          if (Math.max(Math.abs(candidate.x), Math.abs(candidate.z)) > 455) return false;
+          if (heightField._roadDist(candidate.x, candidate.z) < 3.8 || noVeg(candidate.x, candidate.z)) return false;
+          if (heightField.getGroundType(candidate.x, candidate.z) === 'soft') return false;
+          if (heightField.getNormalAt(candidate.x, candidate.z).y < 0.89) return false;
+          const receipt = CIVILIAN_VEHICLE_RECEIPTS[candidate.kind];
+          const clearance = Math.hypot(receipt.halfWidth, receipt.halfLength) * candidate.sc;
+          return !placedB.some((building) =>
+            Math.hypot(candidate.x - building.x, candidate.z - building.z) < building.rr + clearance + 0.7);
+        });
+        if (clear) candidates = plan;
+      }
+      if (!candidates) continue;
+      for (const candidate of candidates) {
+        const y = heightField.getHeightAt(candidate.x, candidate.z);
+        addDestructible(candidate.kind, candidate.x, y - 0.035, candidate.z,
+          candidate.yaw, candidate.sc);
+      }
+      const lead = candidates[0];
+      scatterDestructibles(clusterIndex ? 'ammobox' : 'crate', lead.x, lead.z, 2, 2.8, 4.8);
+      // Portable cans remain a visible handled pair at convoy stops.
+      scatterDestructibles(clusterIndex ? 'jerrycan' : 'pallet', lead.x, lead.z,
+        clusterIndex ? 2 : 1, 2.4, 4.4);
     }
     // fuel-drum clusters (2-4 drums; ~12% carry one RED explosive drum)
     for (let k = 0, cap = inh.drumClusters ?? 0; k < cap; k++) {
@@ -3035,8 +3108,18 @@ ${snowCap ? `
         const x = spot[0] + Math.cos(a) * rr, z = spot[1] + Math.sin(a) * rr;
         if (noVeg(x, z)) continue;
         const kind = looseKinds[(vrng() * looseKinds.length) | 0];
-        addDestructible(kind, x, heightField.getHeightAt(x, z) - 0.015, z,
-          vrng() * Math.PI * 2, 0.88 + vrng() * 0.18);
+        const yaw = vrng() * Math.PI * 2;
+        const scale = 0.88 + vrng() * 0.18;
+        addDestructible(kind, x, heightField.getHeightAt(x, z) - 0.015, z, yaw, scale);
+        // Portable fuel/gas vessels are handled and stowed as pairs. Keep the
+        // mate close enough to read as one set while giving physics separate
+        // bodies so either can still be knocked loose.
+        if (kind === 'gasbottle' || kind === 'jerrycan') {
+          const pairX = x + Math.cos(yaw) * 0.48;
+          const pairZ = z + Math.sin(yaw) * 0.48;
+          addDestructible(kind, pairX, heightField.getHeightAt(pairX, pairZ) - 0.015,
+            pairZ, yaw + (vrng() - 0.5) * 0.16, scale * (0.97 + vrng() * 0.06));
+        }
       }
     }
     // campsites / supply dumps: tents, firewood, crates, drums — the "life"

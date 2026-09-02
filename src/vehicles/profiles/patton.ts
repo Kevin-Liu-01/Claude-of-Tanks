@@ -125,6 +125,14 @@ interface PattonBuilderPort {
       material: THREE.Material,
       options?: RoadWheelLayerOptions,
     ): void;
+    contactGeom?: {
+      halfLenM: number;
+      zCenterM: number;
+      halfWidM: number;
+      bottomYM: number;
+      endRise?: { dzM: number; frontM: number; rearM: number };
+    };
+    trackHitbox?: Array<{ x0: number; x1: number; poly: Array<[number, number]> }>;
   };
   readonly spec: {
     readonly armor: { readonly turretPivot: Vec3Tuple };
@@ -3865,27 +3873,34 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   const { box, cylY, cylZ } = KIT;
   const a3 = variant === 'a3';
 
-  // USMC RISE/P-style side protection: the cassette upper edge shares the
-  // measured 1.79 m fender datum. This makes the course read as fender-hung
-  // armor instead of a row of boxes perched above the side deck.
+  // USMC RISE/P-style side protection hangs below the 1.79 m fender datum.
+  // A visible rail and short hangers now carry the course; the previous
+  // top-aligned row still read like boxes perched on the deck.
   const stations = a3 ? [-2.55, -1.94, -1.33, -0.72, -0.11, 0.50, 1.11, 1.72, 2.33]
     : [-2.48, -1.82, -1.16, -0.50, 0.16, 0.82, 1.48, 2.14];
   const fenderTopY = 1.79;
+  const cassetteTopY = 1.64;
   const cassetteHeightM = a3 ? 0.54 : 0.58;
-  const cassetteCenterY = fenderTopY - cassetteHeightM / 2;
+  const cassetteCenterY = cassetteTopY - cassetteHeightM / 2;
   for (const side of [-1, 1]) {
     for (const z of stations) pattonSideCassette(P, side, cassetteCenterY, z,
       cassetteHeightM, a3 ? 0.52 : 0.57, variant);
-    P.add('hullDetail', box(0.055, 0.065, 5.45), side * 1.73, fenderTopY, -0.10);
+    P.add('hull', box(0.055, 0.065, 5.45), side * 1.73, fenderTopY - 0.025, -0.10);
+    for (const z of stations) {
+      P.add('hull', box(0.048, fenderTopY - cassetteTopY + 0.04, 0.052),
+        side * 1.73, (fenderTopY + cassetteTopY) / 2 - 0.01, z);
+    }
   }
   P.hullG.userData.m60SideCassetteReceipt = {
     variant,
     count: stations.length * 2,
     fenderTopY,
-    cassetteTopY: cassetteCenterY + cassetteHeightM / 2,
+    cassetteTopY,
     cassetteCenterY,
     cassetteBottomY: cassetteCenterY - cassetteHeightM / 2,
-    supportRailCenterY: fenderTopY,
+    supportRailCenterY: fenderTopY - 0.025,
+    hangerCount: stations.length * 2,
+    hangerDropM: fenderTopY - cassetteTopY,
     previousCenterY: a3 ? 1.65 : 1.67,
     trackClearanceShoulderY: 1.38,
     trackClearanceInnerX: 1.795,
@@ -4057,6 +4072,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   P.mats.glass.color.setHex(0x46525b);
   P.mats.glass.roughness = 0.52;
   P.mats.glass.metalness = 0.50;
+  const vehicleScale = 0.90;
   const hull = curveHull(P, cfg.hull);
   P.mats.spareTrack.color.setHex(0x403c35);
   // centre engine crown over the fender-level band deck, CAMBERED: full
@@ -4101,6 +4117,30 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       }
     }
   }
+  // Broad armored bow shoulders continue the outer fenders into the curved
+  // glacis. Closed wedge volumes replace the old narrow ledge, so the front
+  // now has the characteristic M60 shoulder mass in head-on and quarter
+  // views without widening beyond the native 1.8075 m fender envelope.
+  for (const side of [-1, 1]) {
+    P.add('hull', slab(
+      [side * 0.64, 1.22, 3.18], [side * 1.79, 1.15, 3.34],
+      [side * 1.79, 1.66, 2.08], [side * 1.07, 1.72, 2.10],
+      [side * 0.67, 1.40, 3.10], [side * 1.76, 1.33, 3.28],
+      [side * 1.75, 1.79, 2.04], [side * 1.08, 1.82, 2.06]));
+    P.add('hullDark', box(0.035, 0.055, 1.05), side * 1.765, 1.67, 2.58, 0, 0, side * 0.04);
+    for (const z of [2.28, 2.62, 2.96]) {
+      P.add('hullDark', cylY(0.022, 0.024, 0.025, 8), side * 1.77, 1.70, z);
+    }
+  }
+  P.hullG.userData.m60FrontShoulderReceipt = Object.freeze({
+    designFamily: 'cot-m60-closed-fender-shoulder-v1',
+    mirroredClosedVolumes: 2,
+    outerX: 1.79,
+    fenderJoinY: 1.79,
+    forwardZ: 3.34,
+    rearJoinZ: 2.04,
+    texturedCamouflage: true,
+  });
   // fender flares: SEGMENTED strips carry the true 3.631 width envelope (the
   // reference's own station at z 0.0..0.5 narrows to 3.343 — its width
   // carriers are panels with a gap there, the round-2 family law).
@@ -4466,7 +4506,35 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       P.add('hull', box(0.36, 0.025, 0.72), side * 0.965, 1.40, 3.22);
     }
   }
-  P.topY = 3.26 - py + 0.12;
+  // Uniformly reduce the complete articulated vehicle. The hull owns the
+  // running gear and side protection; the turret owner contains its gun and
+  // every roof fitting, so all attachment relationships survive unchanged.
+  P.hullG.scale.setScalar(vehicleScale);
+  P.turretG.scale.setScalar(vehicleScale);
+  P.turretG.position.multiplyScalar(vehicleScale);
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
+      P.gear.contactGeom[key] *= vehicleScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= vehicleScale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= vehicleScale;
+    lane.x1 *= vehicleScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  P.hullG.userData.m60CompactScaleReceipt = Object.freeze({
+    designFamily: 'cot-m60-compact-scale-v1',
+    vehicleScale,
+    turretPivotScaled: true,
+    contactGeometryScaled: true,
+    trackHitboxesScaled: true,
+  });
+  P.topY = (3.26 - py + 0.12) * vehicleScale;
 }
 
 // ---------------------------------------------------------------------------

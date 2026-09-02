@@ -4,6 +4,7 @@ import {
   DECOR_KITS,
   FLEET_EQUIPMENT_VARIANTS,
   decorManifestFor,
+  resolveDecorMode,
 } from './decorations.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 
@@ -11,6 +12,10 @@ assert.ok(FLEET_EQUIPMENT_VARIANTS.length >= 20,
   `fleet cargo vocabulary has ${FLEET_EQUIPMENT_VARIANTS.length} variants; expected at least 20`);
 assert.equal(new Set(FLEET_EQUIPMENT_VARIANTS).size, FLEET_EQUIPMENT_VARIANTS.length,
   'fleet cargo variant ids are unique');
+assert.equal(resolveDecorMode({ proceduralOnly: true }), false,
+  'unadorned procedural metrology builds remain bare by default');
+assert.equal(resolveDecorMode({ proceduralOnly: true, decor: true }), true,
+  'the first-party gallery can explicitly show procedural field equipment');
 
 const signatures = new Set();
 for (const variant of FLEET_EQUIPMENT_VARIANTS) {
@@ -49,8 +54,26 @@ const coolerColors = cooler
 assert.ok(coolerColors.some(([r, g, b]) => b > r * 2.5 && b > g * 1.4),
   'beer cooler owns a clearly blue insulated body');
 assert.ok(coolerColors.some(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b) < 0.08),
-  'beer cooler owns a separate white lid');
+  'beer cooler owns a separate neutral lid');
+assert.ok(coolerColors.every(([r, g, b]) => Math.max(r, g, b) < 0.78),
+  'beer cooler avoids bright high-contrast authored colors');
+assert.ok(cooler.length >= 18,
+  `beer cooler has molded panels, ribs, latches, hinges, and weather bands (${cooler.length} parts)`);
 for (const part of cooler) part.geo.dispose();
+
+for (const variant of ['nato-fuel-can', 'blue-water-can', 'twin-can-cradle']) {
+  const pair = DECOR_KITS.cargo({ rng: () => 0.37, v: variant });
+  const bodies = pair.filter((part) => part.mat === 'cans');
+  assert.ok(bodies.length >= 12, `${variant}: portable vessel variant contains a modeled pair`);
+  const bounds = new THREE.Box3();
+  for (const part of pair) {
+    part.geo.computeBoundingBox();
+    bounds.union(part.geo.boundingBox);
+    part.geo.dispose();
+  }
+  assert.ok(bounds.max.x - bounds.min.x >= 0.38,
+    `${variant}: paired vessels occupy a visibly two-can cradle`);
+}
 
 const basket = DECOR_KITS.basket({ rng: () => 0.37, w: 1.35, d: 0.44, h: 0.34 });
 assert.ok(basket.length >= 30,
@@ -65,11 +88,35 @@ for (const part of basket) part.geo.dispose();
 const distributed = new Set();
 for (const id of ALL_TANK_IDS) {
   const manifest = decorManifestFor(getSpec(id), () => 0.5);
-  const cargo = manifest.find((row) => row.kit === 'cargo' && (row.p ?? 1) > 0);
-  assert.ok(cargo, `${id}: deterministic manifest includes fleet cargo`);
-  distributed.add(cargo.v?.v);
+  const cargo = manifest.filter((row) => row.kit === 'cargo' && (row.p ?? 1) > 0);
+  assert.equal(cargo.length, 7, `${id}: deterministic manifest includes a seven-piece field load`);
+  assert.equal(new Set(cargo.map((row) => row.v?.v)).size, 7,
+    `${id}: equipment set does not repeat the same prop`);
+  assert.ok(cargo.every((row) => row.slot[0] === 'fleetCargo' && row.slot[1].routes.length >= 4),
+    `${id}: every equipment piece owns a four-station placement fallback`);
+  const preferred = cargo.map((row) => row.slot[1].routes[0]);
+  assert.deepEqual([...new Set(preferred.map((route) => route[0]))].sort(),
+    ['hullRearRack', 'turretRear'],
+    `${id}: preferred equipment stays on the bustle and hull rear rack`);
+  const routeStations = new Set(cargo.flatMap((row) => row.slot[1].routes.map((route) => route[0])));
+  assert.deepEqual([...routeStations].sort(),
+    ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide'].sort(),
+    `${id}: fallback network covers aft equipment stations only`);
+  assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
+    station !== 'turretRoof' || args.rear === true)),
+  `${id}: every turret-roof fallback is on the rear roof`);
+  assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
+    station !== 'rearDeck' || args.back === true)),
+  `${id}: every hull-deck fallback is on the rear engine deck`);
+  assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
+    station !== 'turretSide' || args.rear === true)),
+  `${id}: every turret-side fallback stays on the rear quarter`);
+  assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
+    station !== 'fender' || args.zFrac < 0)),
+  `${id}: every fender fallback stays aft of the turret`);
+  for (const row of cargo) distributed.add(row.v?.v);
 }
-assert.ok(distributed.size >= 20,
+assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);
 
 console.log(`decorationsEquipment.selftest: ${FLEET_EQUIPMENT_VARIANTS.length} authored variants, `

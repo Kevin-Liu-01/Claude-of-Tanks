@@ -951,10 +951,14 @@ function shapedMudguardGeometry(options: ShapedMudguardOptions): THREE.BufferGeo
 
 function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): void {
   const P = requireMudguardBuilder(builder);
-  const material = options.material ?? (options.bucket === 'hull' ? 'painted-steel'
-    : options.bucket === 'hullWood' ? 'wood-stained' : 'rubber');
-  const bucket = options.bucket ?? (material === 'painted-steel' ? 'hull'
-    : material === 'wood-stained' ? 'hullWood' : 'hullRubber');
+  // An unspecified/detail-bucket mudguard is exterior sheet steel, not a
+  // neutral gray fitting. Keep rubber and wood explicit; route every painted
+  // guard through the camouflaged hull material even when an older caller
+  // supplied the generic hullDetail bucket.
+  const material = options.material ?? (options.bucket === 'hullRubber' ? 'rubber'
+    : options.bucket === 'hullWood' ? 'wood-stained' : 'painted-steel');
+  const bucket = material === 'painted-steel' ? 'hull'
+    : material === 'wood-stained' ? 'hullWood' : 'hullRubber';
   const rotation = options.rotation ?? [0, 0, 0];
   const geometry = options.geometry ?? shapedMudguardGeometry(options);
   geometry.computeBoundingBox();
@@ -980,7 +984,7 @@ function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): vo
   const attachedSupport = options.support ?? !options.geometry;
   if (attachedSupport) {
     const supportY = options.y + height / 2 - Math.max(0.012, height * 0.035);
-    P.add('hullDetail', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
+    P.add('hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
       options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
   }
 
@@ -991,6 +995,9 @@ function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): vo
     designFamily: 'cot-shaped-mudguard-v1',
     material,
     bucket,
+    x: options.x,
+    y: options.y,
+    z: options.z,
     thicknessM: thickness,
     lengthM: length,
     heightM: height,
@@ -2164,7 +2171,8 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
  */
 function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY, cylZ } = KIT;
-  const count = Math.max(1, opts.count || 2);
+  const requestedCount = Math.max(2, Math.floor(opts.count ?? 2));
+  const count = requestedCount % 2 === 0 ? requestedCount : requestedCount + 1;
   const gap = opts.gap ?? 0.05;
   // owner 2026-08-06: cans read too bright fleet-wide in 'detail' pale
   // metal — default to the olive canvas tone; callers may still opt in.
@@ -2205,7 +2213,10 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
   }
   const fitting = fitAssemble('jerryCans', parts, opts);
   fitting.userData.designFamily = 'cot-jerry-can-rack-v2';
+  fitting.userData.requestedCanCount = requestedCount;
   fitting.userData.canCount = count;
+  fitting.userData.paired = true;
+  fitting.userData.pairCount = count / 2;
   fitting.userData.stampedFaces = count * 2;
   fitting.userData.bridgeHandles = count * 3;
   fitting.userData.threadedSpouts = count;

@@ -36,30 +36,30 @@ const RUBBER: Palette = [0.60, 0.025, 0.075];
 const GLASS: Palette = [0.57, 0.17, 0.19];
 const STEEL: Palette = [0.58, 0.045, 0.38];
 const DARK_STEEL: Palette = [0.60, 0.055, 0.20];
-const ALUMINUM: Palette = [0.58, 0.035, 0.58];
-const LAMP_WHITE: Palette = [0.12, 0.18, 0.74];
-const LAMP_AMBER: Palette = [0.095, 0.72, 0.50];
-const LAMP_RED: Palette = [0.005, 0.63, 0.34];
-const PLATE: Palette = [0.12, 0.08, 0.72];
-const WOOD: Palette = [0.075, 0.34, 0.31];
-const CANVAS: Palette = [0.105, 0.18, 0.33];
+const ALUMINUM: Palette = [0.58, 0.025, 0.29];
+const LAMP_WHITE: Palette = [0.12, 0.08, 0.40];
+const LAMP_AMBER: Palette = [0.095, 0.52, 0.38];
+const LAMP_RED: Palette = [0.005, 0.46, 0.27];
+const PLATE: Palette = [0.12, 0.04, 0.39];
+const WOOD: Palette = [0.075, 0.27, 0.25];
+const CANVAS: Palette = [0.105, 0.14, 0.26];
 const CHAR: Palette = [0.07, 0.10, 0.06];
 const RUST: Palette = [0.045, 0.49, 0.19];
 
 const CAR_PAINTS: readonly Palette[] = [
-  [0.60, 0.18, 0.25], // slate blue
-  [0.02, 0.48, 0.30], // faded red
-  [0.12, 0.22, 0.35], // ochre
-  [0.29, 0.21, 0.25], // forest green
-  [0.00, 0.02, 0.44], // oxidized white
-  [0.58, 0.04, 0.29], // grey
+  [0.60, 0.14, 0.20], // weathered slate blue
+  [0.02, 0.32, 0.22], // oxidized red
+  [0.12, 0.17, 0.27], // dusty ochre
+  [0.29, 0.16, 0.20], // faded forest green
+  [0.00, 0.015, 0.27], // dirty service white
+  [0.58, 0.03, 0.23], // road grey
 ];
 const WORK_PAINTS: readonly Palette[] = [
-  [0.13, 0.25, 0.38], // utility yellow
-  [0.03, 0.36, 0.30], // brick red
-  [0.55, 0.13, 0.31], // industrial blue
-  [0.18, 0.17, 0.27], // faded olive
-  [0.00, 0.02, 0.48], // service white
+  [0.13, 0.18, 0.29], // worn utility ochre
+  [0.03, 0.27, 0.23], // dusty brick red
+  [0.55, 0.10, 0.24], // faded industrial blue
+  [0.18, 0.13, 0.22], // work olive
+  [0.00, 0.012, 0.28], // dirty service white
 ];
 
 function box(w: number, h: number, d: number): THREE.BoxGeometry {
@@ -321,7 +321,8 @@ function addTruckChassis(parts: THREE.BufferGeometry[], rng: Rng, body: Palette)
 }
 
 function addBoxTruckBody(parts: THREE.BufferGeometry[], rng: Rng): void {
-  addBox(parts, rng, [0.10, 0.07, 0.62], 2.16, 1.82, 3.58, 0, 1.55, -1.22, 0.06);
+  // Warm, road-grimed gray rather than a fresh white billboard in sunlight.
+  addBox(parts, rng, [0.095, 0.045, 0.27], 2.16, 1.82, 3.58, 0, 1.55, -1.22, 0.045);
   for (let index = 0; index < 5; index++) {
     addBox(parts, rng, ALUMINUM, 2.18, 0.035, 0.035, 0, 0.82 + index * 0.35, -3.02, 0.01);
   }
@@ -432,23 +433,67 @@ export const CIVILIAN_VEHICLE_RECEIPTS = {
 const INDUSTRIAL_HEAVY: readonly CivilianVehicleKind[] = ['truckbox', 'truckflatbed', 'truck'];
 const RURAL_HEAVY: readonly CivilianVehicleKind[] = ['truckflatbed', 'truck', 'truckbox'];
 const DRY_HEAVY: readonly CivilianVehicleKind[] = ['truck', 'truckflatbed', 'truckbox'];
-const INDUSTRIAL_LIGHT: readonly CivilianVehicleKind[] = ['sedan', 'van', 'pickup'];
-const RURAL_LIGHT: readonly CivilianVehicleKind[] = ['wagon', 'pickup', 'jeep'];
-const DRY_LIGHT: readonly CivilianVehicleKind[] = ['pickup', 'jeep', 'van'];
+// Every battlefield receives the full light-vehicle vocabulary. The order is
+// map-flavoured (not a reduced palette), so industrial maps lead with delivery
+// traffic while rural/dry maps lead with wagons or utility vehicles.
+const INDUSTRIAL_LIGHT: readonly CivilianVehicleKind[] = ['sedan', 'van', 'pickup', 'wagon', 'jeep'];
+const RURAL_LIGHT: readonly CivilianVehicleKind[] = ['wagon', 'pickup', 'jeep', 'sedan', 'van'];
+const DRY_LIGHT: readonly CivilianVehicleKind[] = ['pickup', 'jeep', 'van', 'wagon', 'sedan'];
 
 const INDUSTRIAL_MAPS = new Set(['urban', 'railyard', 'foundry', 'caldera', 'blackglass', 'skybridge']);
 const DRY_MAPS = new Set(['desert', 'badlands', 'frontier', 'titanGorge']);
 
-/** Deterministic map-flavored selection; at most three pools per lane/map. */
-export function pickCivilianVehicleKind(
+export type CivilianVehicleLane = 'heavy' | 'light';
+
+export const MIN_VISIBLE_VEHICLES_PER_LANE = Object.freeze({
+  heavy: 6,
+  light: 10,
+} satisfies Record<CivilianVehicleLane, number>);
+
+export const CIVILIAN_VEHICLE_CLUSTER_COUNT = 2;
+export const CIVILIAN_VEHICLES_PER_CLUSTER = 4;
+
+export function visibleCivilianVehicleCount(
+  authoredCount: number | undefined,
+  lane: CivilianVehicleLane,
+): number {
+  return Math.max(MIN_VISIBLE_VEHICLES_PER_LANE[lane], Math.max(0, Math.floor(authoredCount ?? 0)));
+}
+
+export function civilianVehiclePalette(
   mapId: string,
-  lane: 'heavy' | 'light',
-  roll: number,
-): CivilianVehicleKind {
+  lane: CivilianVehicleLane,
+): readonly CivilianVehicleKind[] {
   const industrial = INDUSTRIAL_MAPS.has(mapId);
   const dry = DRY_MAPS.has(mapId);
-  const choices = lane === 'heavy'
+  return lane === 'heavy'
     ? industrial ? INDUSTRIAL_HEAVY : dry ? DRY_HEAVY : RURAL_HEAVY
     : industrial ? INDUSTRIAL_LIGHT : dry ? DRY_LIGHT : RURAL_LIGHT;
+}
+
+/** Deterministic map-flavored selection across the lane's complete palette. */
+export function pickCivilianVehicleKind(
+  mapId: string,
+  lane: CivilianVehicleLane,
+  roll: number,
+): CivilianVehicleKind {
+  const choices = civilianVehiclePalette(mapId, lane);
   return choices[Math.min(choices.length - 1, Math.floor(Math.max(0, Math.min(0.999999, roll)) * choices.length))];
+}
+
+/**
+ * Placement selector that guarantees the complete lane palette is visible
+ * before seeded repeats begin. This keeps the newer vehicle families from
+ * disappearing merely because the first few random rolls repeat one model.
+ */
+export function pickCivilianVehicleKindForPlacement(
+  mapId: string,
+  lane: CivilianVehicleLane,
+  index: number,
+  roll: number,
+): CivilianVehicleKind {
+  const choices = civilianVehiclePalette(mapId, lane);
+  const visibleRoll = index >= 0 && index < choices.length
+    ? (index + 0.5) / choices.length : roll;
+  return pickCivilianVehicleKind(mapId, lane, visibleRoll);
 }

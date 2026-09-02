@@ -20,19 +20,30 @@ for (const id of ['m60a1', 'm60a3']) {
   const gun = tank.root.getObjectByName('rig_gun');
   const attachments = turret?.userData.m60VariantAttachmentReceipt;
   const sideCassettes = hull?.userData.m60SideCassetteReceipt;
+  const shoulders = hull?.userData.m60FrontShoulderReceipt;
+  const compact = hull?.userData.m60CompactScaleReceipt;
   const searchlight = gun?.userData.m60SearchlightReceipt;
 
   assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
-  assert.equal(sideCassettes.cassetteTopY, sideCassettes.fenderTopY,
-    `${id}: side armor upper edge is exactly inline with the fender datum`);
-  assert.equal(sideCassettes.supportRailCenterY, sideCassettes.fenderTopY,
-    `${id}: cassette support rail moves down with the armor course`);
+  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.14,
+    `${id}: side armor hangs below rather than above/in line with the fender datum`);
+  assert(sideCassettes.supportRailCenterY > sideCassettes.cassetteTopY,
+    `${id}: upper support rail remains above the lowered cassette course`);
+  assert.equal(sideCassettes.hangerCount, sideCassettes.count,
+    `${id}: every lowered side cassette has a visible fender hanger`);
   assert(sideCassettes.cassetteCenterY < sideCassettes.previousCenterY,
     `${id}: side armor is lower than the superseded perched placement`);
   assert(sideCassettes.trackClearanceInnerX > 1.78,
     `${id}: lowered cassette wall remains outside the live track envelope`);
   assert(sideCassettes.exteriorX <= 1.8155,
     `${id}: track clearance does not widen the tank past its M60 fender envelope`);
+  assert.equal(shoulders?.mirroredClosedVolumes, 2,
+    `${id}: closed bow shoulders extend from both fenders`);
+  assert.equal(shoulders?.texturedCamouflage, true,
+    `${id}: bow shoulders use the hull camouflage material`);
+  assert.equal(compact?.vehicleScale, 0.9, `${id}: complete vehicle is reduced by ten percent`);
+  assert.equal(hull.scale.x, 0.9, `${id}: running gear and side protection share the hull scale`);
+  assert.equal(turret.scale.x, 0.9, `${id}: turret, gun and roof equipment share the turret scale`);
 
   assert.ok(attachments?.roofShelf, `${id}: right roof shelf publishes a seating receipt`);
   assert.equal(attachments.roofShelf.conformalCorners, 4,

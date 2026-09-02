@@ -36,10 +36,13 @@ assert.ok(rackMeshes >= 2, 'open rack keeps separate material families after mer
 
 const cans = FITTINGS.jerryCans({ mats, count: 3, seed: 11 });
 assert.equal(cans.userData.designFamily, 'cot-jerry-can-rack-v2');
-assert.equal(cans.userData.canCount, 3);
-assert.equal(cans.userData.stampedFaces, 6);
-assert.equal(cans.userData.bridgeHandles, 9);
-assert.equal(cans.userData.threadedSpouts, 3);
+assert.equal(cans.userData.requestedCanCount, 3);
+assert.equal(cans.userData.canCount, 4, 'odd requests round up to a complete pair');
+assert.equal(cans.userData.paired, true);
+assert.equal(cans.userData.pairCount, 2);
+assert.equal(cans.userData.stampedFaces, 8);
+assert.equal(cans.userData.bridgeHandles, 12);
+assert.equal(cans.userData.threadedSpouts, 4);
 assert.equal(cans.userData.retainingCradle, true);
 
 const shieldedMg = FITTINGS.americanM2({ mats, shield: 'armored', seed: 19 });
@@ -94,8 +97,8 @@ assert.equal(builder.guards.length, 2);
 assert.equal(builder.guards[0].slot, 'hullRubber');
 assert.equal(builder.guards[1].slot, 'hull');
 assert.equal(builder.supports.length, 2);
-assert.ok(builder.supports.every((entry) => entry.slot === 'hullDetail'),
-  'shared mudguard supports always use painted fitting material');
+assert.ok(builder.supports.every((entry) => entry.slot === 'hull'),
+  'shared mudguard supports use the same textured camouflage system as exterior sheet steel');
 for (const guard of builder.guards) {
   guard.geometry.computeBoundingBox();
   const size = guard.geometry.boundingBox.getSize(new THREE.Vector3());
@@ -106,6 +109,9 @@ for (const guard of builder.guards) {
 }
 assert.equal(builder.hullG.userData.sharedMudguards.length, 2);
 assert.ok(builder.hullG.userData.sharedMudguards.every((receipt) => receipt.attachedSupport));
+assert.deepEqual(builder.hullG.userData.sharedMudguards.map(({ x, y, z }) => [x, y, z]),
+  [[1.5, 0.9, 1.2], [-1.5, 1.1, -0.8]],
+  'mudguard receipts preserve authored placement for fleet audits');
 
 const coreGrid = KIT.openRackGrid(1.4, 0.48, 0.018, 5, 9);
 assert.equal(coreGrid.userData.designFamily, 'cot-open-rack-grid-v1');

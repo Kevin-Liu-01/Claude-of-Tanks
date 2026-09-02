@@ -7995,8 +7995,20 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     panels: 6, lipX: 1.76, lipY: 0.94, dressIn: 0.08,
   });
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.34, 0.48, 0.055), s * 1.64, 0.91, 3.20, 0, -s * 0.20, 0);
-    P.add('hullRubber', box(0.34, 0.58, 0.055), s * 1.64, 0.88, -3.02, 0, s * 0.16, 0);
+    MUDGUARDS.add(P, {
+      label: `t90m-proryv-front-mudguard-${s < 0 ? 'left' : 'right'}`,
+      x: s * 1.64, y: 0.81, z: 3.20,
+      thickness: 0.055, length: 0.34, height: 0.48,
+      material: 'painted-steel', rotation: [0, -s * 0.20 + Math.PI / 2, 0],
+      crown: 0.025, frontCut: 0.04, rearCut: 0.02,
+    });
+    MUDGUARDS.add(P, {
+      label: `t90m-proryv-rear-mudguard-${s < 0 ? 'left' : 'right'}`,
+      x: s * 1.64, y: 0.78, z: -3.02,
+      thickness: 0.055, length: 0.34, height: 0.58,
+      material: 'painted-steel', rotation: [0, s * 0.16 + Math.PI / 2, 0],
+      crown: 0.025, frontCut: 0.02, rearCut: 0.05,
+    });
   }
 
   // Low driver/engine deck with distinct hatches, periscopes and grilles.

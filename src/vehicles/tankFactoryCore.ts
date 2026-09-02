@@ -27,9 +27,9 @@ import {
 } from './vehicleMarkings.ts';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
-// createTank (see the seam near the GLB-swap block). Skipped for
-// proceduralOnly builds and metrology stub contexts so the geometry gate and
-// parity boards keep measuring bare silhouettes.
+// createTank (see the seam near the GLB-swap block). Procedural/metrology
+// builds skip it by default so parity boards measure bare silhouettes;
+// presentation callers may explicitly opt in with decor:true.
 import { attachTankDecorations } from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
@@ -4463,28 +4463,38 @@ function jerryCan(
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
-  const body = box(0.16, 0.40, 0.34);
-  body.userData.designFamily = 'cot-field-jerry-can-v2';
-  body.userData.stampedRibs = 4;
-  body.userData.bridgeHandles = 3;
-  body.userData.threadedSpout = true;
-  P.addEquipment(bucket, body, x, y - 0.02, z, 0, yaw, 0);
-  P.addEquipment(bucket, box(0.145, 0.08, 0.29), x, y + 0.20, z, 0, yaw, 0);   // pressed shoulder
-  for (const face of [-1, 1]) {
-    for (const diagonal of [-1, 1]) {
-      addEquipmentLocal(P, dark, box(0.026, 0.31, 0.014), x, y - 0.02, z, yaw,
-        0, 0, face * 0.174, 0, 0, diagonal * 0.42);                            // stamped X ribs
+  // Fuel cans are issued and restrained as a close pair. Keep that invariant
+  // in the lowest-level prop primitive so older hand-authored placements and
+  // newer fitting/decor manifests cannot silently reintroduce a lone can.
+  for (const [pairIndex, localX] of [-0.095, 0.095].entries()) {
+    const body = box(0.16, 0.40, 0.34);
+    body.userData.designFamily = 'cot-field-jerry-can-v2';
+    body.userData.stampedRibs = 4;
+    body.userData.bridgeHandles = 3;
+    body.userData.threadedSpout = true;
+    body.userData.paired = true;
+    body.userData.pairSize = 2;
+    body.userData.pairIndex = pairIndex;
+    addEquipmentLocal(P, bucket, body, x, y - 0.02, z, yaw, localX, 0, 0);
+    addEquipmentLocal(P, bucket, box(0.145, 0.08, 0.29), x, y + 0.20, z, yaw,
+      localX, 0, 0);                                                          // pressed shoulder
+    for (const face of [-1, 1]) {
+      for (const diagonal of [-1, 1]) {
+        addEquipmentLocal(P, dark, box(0.026, 0.31, 0.014), x, y - 0.02, z, yaw,
+          localX, 0, face * 0.174, 0, 0, diagonal * 0.42);                    // stamped X ribs
+      }
     }
+    for (const hx of [-0.048, 0.048]) {
+      addEquipmentLocal(P, dark, box(0.024, 0.075, 0.026), x, y, z, yaw,
+        localX + hx, 0.245, -0.015);
+    }
+    addEquipmentLocal(P, dark, box(0.12, 0.024, 0.026), x, y, z, yaw,
+      localX, 0.282, -0.015);                                                 // bridge handle
+    addEquipmentLocal(P, dark, cylY(0.025, 0.028, 0.045, 10), x, y, z, yaw,
+      localX + 0.045, 0.275, 0.09);                                           // threaded cap
+    addEquipmentLocal(P, dark, box(0.18, 0.025, 0.22), x, y - 0.23, z, yaw,
+      localX, 0, 0);                                                          // retaining foot / cradle contact
   }
-  for (const hx of [-0.048, 0.048]) {
-    addEquipmentLocal(P, dark, box(0.024, 0.075, 0.026), x, y, z, yaw,
-      hx, 0.245, -0.015);
-  }
-  addEquipmentLocal(P, dark, box(0.12, 0.024, 0.026), x, y, z, yaw,
-    0, 0.282, -0.015);                                                        // bridge handle
-  addEquipmentLocal(P, dark, cylY(0.025, 0.028, 0.045, 10), x, y, z, yaw,
-    0.045, 0.275, 0.09);                                                      // threaded cap
-  P.addEquipment(dark, box(0.18, 0.025, 0.22), x, y - 0.23, z, 0, yaw, 0);    // retaining foot / cradle contact
 }
 function tarpRoll(
   builder: object, bucket: string, x: number, y: number, z: number,
@@ -9900,9 +9910,9 @@ export function createTank(
 
   // ---- DECORATION SYSTEM seam (src/vehicles/decorations.ts) ---------------
   // Cosmetic stowage/fittings under rig_decor_hull / rig_decor_turret.
-  // HARD-SKIPPED inside attachTankDecorations for proceduralOnly builds and
-  // for metrology stub ctxs (geometry gate / shaded-parity boards keep
-  // measuring bare silhouettes); in-game builds dress by default. Runs AFTER
+  // Skipped by default for proceduralOnly builds and metrology stub ctxs
+  // (geometry gate / shaded-parity boards keep measuring bare silhouettes),
+  // while presentation callers may explicitly opt in. Runs AFTER
   // the movement contact scan above so the solve metadata never sees decor.
   // Every shipped tank is authored here, so decoration can attach directly
   // to the final procedural geometry in the same build.
