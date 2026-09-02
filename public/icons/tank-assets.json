@@ -315694,14 +315694,14 @@
       "geometryHash": "ad6ced4c",
       "metadataHash": "feb4f65a",
       "presentationAnchor": {
-        "xM": 0.0006,
-        "zM": -0.2706
+        "xM": -0.0002,
+        "zM": -0.2714
       },
-      "presentationHash": "0ea000e7",
+      "presentationHash": "baa36143",
       "presentationProjection": {
         "centerYM": 2.1239,
-        "topHalfM": 8.2323,
-        "sideHalfM": 4.1162
+        "topHalfM": 8.2332,
+        "sideHalfM": 4.1166
       },
       "appearance": {
         "version": 1,
