@@ -86,6 +86,55 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
 assert.ok(upwardConeSpireCount >= 18,
   'all heavyweight/site conical roof spires are audited across both seeded variants');
 
+const megatowerBuckets = Object.fromEntries(BUCKET_NAMES.map((name) => [name, []]));
+STRUCTURE_BUILDERS.megatower(seeded(0x51a7c7), megatowerBuckets, 'plaster3');
+const megatowerGeometry = Object.values(megatowerBuckets).flat();
+const megatowerCrown = megatowerGeometry
+  .map((geometry) => ({ geometry, part: geometry.userData.ruinedConcretePart }))
+  .filter(({ part }) => part?.id?.startsWith('megatower-crown-'));
+const crownRoles = (role) => megatowerCrown.filter(({ part }) => part.role === role);
+assert.equal(crownRoles('floor').length, 8,
+  'megatower torn crown uses paired floor plates to leave readable blast bites');
+assert.equal(crownRoles('transfer-beam').length, 8,
+  'every exposed megatower floor has two visible concrete ties into the surviving spine');
+assert.equal(crownRoles('column').length, 15,
+  'aligned storey-height columns visibly carry the ruined floor stack');
+assert.equal(crownRoles('steel-brace').length, 6,
+  'upper ruined bays include a restrained steel brace and rail at each level');
+for (const { geometry } of crownRoles('column')) {
+  geometry.computeBoundingBox();
+  assert.ok(geometry.boundingBox.max.y - geometry.boundingBox.min.y < 3.6,
+    'damaged crown columns stay floor-to-floor instead of becoming unrelated tall sticks');
+}
+const crownSupport = megatowerGeometry.find(
+  (geometry) => geometry.userData.ruinedConcreteCrown,
+);
+assert.ok(crownSupport, 'megatower surviving spine owns the ruined-crown attachment receipt');
+const crownReceipt = crownSupport.userData.ruinedConcreteCrown;
+assert.equal(crownReceipt.parts, megatowerCrown.length + 1,
+  'ruined-crown receipt covers every floor, transfer, column, and steel brace');
+assert.ok(crownReceipt.maxGap <= crownReceipt.epsilon,
+  'every ruined-crown member visibly reaches its named support');
+
+const arcologyBuckets = Object.fromEntries(BUCKET_NAMES.map((name) => [name, []]));
+STRUCTURE_BUILDERS.arcology(seeded(0x51a7c7), arcologyBuckets, 'stone');
+const arcologyGeometry = Object.values(arcologyBuckets).flat();
+const arcologyCrown = arcologyGeometry
+  .filter((geometry) => geometry.userData.ruinedConcretePart?.id?.startsWith('arcology-'));
+assert.equal(arcologyCrown.length, 54,
+  'both arcology roof ruins use complete three-storey concrete frame assemblies');
+const arcologyCrownSupports = arcologyGeometry
+  .filter((geometry) => geometry.userData.ruinedConcreteCrown);
+assert.equal(arcologyCrownSupports.length, 2,
+  'each arcology tower owns a distinct crown attachment receipt');
+for (const support of arcologyCrownSupports) {
+  const receipt = support.userData.ruinedConcreteCrown;
+  assert.equal(receipt.records.length + 1, receipt.parts,
+    `${receipt.id}: every exposed deck, beam, column, and brace reaches its surviving lobe`);
+  assert.ok(receipt.maxGap <= receipt.epsilon,
+    `${receipt.id}: exposed crown joints stay within construction tolerance`);
+}
+
 for (const id of ['farmhouse', 'compound', 'tavern', 'schoolhouse', 'caravanserai', 'rangerlodge']) {
   assert.ok(pitchedFamilies.has(id), `${id}: side-roof orientation participates in the map-wide audit`);
 }

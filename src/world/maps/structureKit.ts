@@ -8,7 +8,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
-import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
+import {
+  certifyGroundedStructureParts,
+  certifyStructureAttachments,
+} from '../structureConnectivity.ts';
 import { auditSkillionRoofPitch, pitchSkillionRoof } from '../propGeometry.ts';
 
 type Rng = () => number;
@@ -68,6 +71,25 @@ interface StructureSpirePart {
   centerZ: number;
   sideX?: number;
   sideZ?: number;
+}
+
+interface RuinedConcreteCrownOptions {
+  id: string;
+  supportId: string;
+  support: THREE.BufferGeometry;
+  baseY: number;
+  x: number;
+  z: number;
+  widths: readonly number[];
+  depths: readonly number[];
+  floorStep: number;
+}
+
+interface RuinedConcretePart {
+  id: string;
+  role: 'transfer-beam' | 'floor' | 'column' | 'steel-brace';
+  level: number;
+  support: string;
 }
 
 type LightStructureBuilder = (rng: Rng) => THREE.BufferGeometry;
@@ -234,6 +256,142 @@ function parts(): StructureParts {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [],
     dark: [], glass: [], curtain: [], straw: [], baked: [],
   };
+}
+
+function tagRuinedConcretePart<T extends THREE.BufferGeometry>(
+  geometry: T,
+  receipt: RuinedConcretePart,
+): T {
+  geometry.userData.ruinedConcretePart = receipt;
+  return geometry;
+}
+
+function diagonalBrace(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  z: number,
+  thickness = 0.13,
+): THREE.BoxGeometry {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const length = Math.hypot(dx, dy);
+  const brace = box(thickness, length, thickness, 1.2);
+  brace.rotateZ(-Math.atan2(dx, dy));
+  brace.translate((x0 + x1) / 2, (y0 + y1) / 2, z);
+  return brace;
+}
+
+/**
+ * Build an exposed bomb-damaged concrete frame with a visible load path.
+ *
+ * The previous tower crown used broad slabs connected to the surviving core
+ * only by one near-black bar. Its AABBs passed the general connectivity gate,
+ * but that bar vanished against the facade and the random full-height posts
+ * read as unrelated sticks. Keep the torn silhouette while making every floor
+ * visibly land on concrete transfer beams and aligned storey-height columns.
+ */
+function addRuinedConcreteCrown(
+  out: StructureParts,
+  {
+    id, supportId, support, baseY, x, z, widths, depths, floorStep,
+  }: RuinedConcreteCrownOptions,
+): void {
+  if (widths.length !== depths.length || widths.length < 2) {
+    throw new TypeError(`${id}: invalid ruined concrete floor schedule`);
+  }
+  support.computeBoundingBox();
+  if (!support.boundingBox) throw new Error(`${id}: support bounds unavailable`);
+  const supportBounds = support.boundingBox;
+  const floorYs = widths.map((_, level) => baseY + floorStep * (level + 1));
+  const attachments: Array<{ id: string; geometry: THREE.BufferGeometry; support: string }> = [];
+
+  const add = (
+    bucket: string,
+    partId: string,
+    role: RuinedConcretePart['role'],
+    level: number,
+    geometry: THREE.BufferGeometry,
+    supportPart: string,
+  ): THREE.BufferGeometry => {
+    tagRuinedConcretePart(geometry, {
+      id: partId, role, level, support: supportPart,
+    });
+    push(out, bucket, geometry);
+    attachments.push({ id: partId, geometry, support: supportPart });
+    return geometry;
+  };
+
+  for (let level = 0; level < floorYs.length; level++) {
+    const floorY = floorYs[level];
+    const width = widths[level];
+    const depth = depths[level];
+    const minX = x - width / 2;
+    const coreWidth = width * 0.70;
+    const wingWidth = width - coreWidth;
+    const coreX = minX + coreWidth / 2;
+    const wingX = minX + coreWidth + wingWidth / 2;
+    const wingDepth = depth * (level % 2 === 0 ? 0.62 : 0.72);
+    const wingZ = z + (level % 2 === 0 ? -1 : 1) * (depth - wingDepth) / 2;
+    const beamCenterX = (supportBounds.max.x + minX) / 2;
+    const beamWidth = minX - supportBounds.max.x + 0.72;
+    const beamZs = [z - depth * 0.24, z + depth * 0.24];
+
+    for (let beam = 0; beam < beamZs.length; beam++) {
+      add('stone', `${id}-transfer-${level}-${beam}`, 'transfer-beam', level,
+        box(beamWidth, 0.52, 0.58, 0.8)
+          .translate(beamCenterX, floorY - 0.34, beamZs[beam]),
+        supportId);
+    }
+    add('stone', `${id}-floor-core-${level}`, 'floor', level,
+      slab(coreWidth, 0.36, depth)
+        .translate(coreX, floorY, z),
+      `${id}-transfer-${level}-0`);
+    add('stone', `${id}-floor-wing-${level}`, 'floor', level,
+      slab(wingWidth, 0.32, wingDepth)
+        .translate(wingX, floorY - 0.02, wingZ),
+      `${id}-floor-core-${level}`);
+  }
+
+  // Three aligned bays carry the lower storeys. The outer rear bay is lost at
+  // the top, leaving a believable cantilevered break rather than random posts.
+  for (let level = 0; level < floorYs.length; level++) {
+    const lowerY = level === 0 ? baseY : floorYs[level - 1] + 0.16;
+    const upperY = floorYs[level] - 0.16;
+    const height = upperY - lowerY;
+    const columnX = [x - 2.0, x + 1.0];
+    const columnZ = [z - 1.25, z + 1.25];
+    const columns = level === floorYs.length - 1
+      ? [[columnX[0], columnZ[0]], [columnX[0], columnZ[1]], [columnX[1], columnZ[0]]]
+      : [[columnX[0], columnZ[0]], [columnX[0], columnZ[1]],
+        [columnX[1], columnZ[0]], [columnX[1], columnZ[1]]];
+    for (let column = 0; column < columns.length; column++) {
+      const [columnPosX, columnPosZ] = columns[column];
+      add('stone', `${id}-column-${level}-${column}`, 'column', level,
+        box(0.58, height, 0.58, 0.9)
+          .translate(columnPosX, lowerY + height / 2, columnPosZ),
+        `${id}-floor-core-${Math.max(0, level - 1)}`);
+    }
+
+    if (level === 0) continue;
+    const scaffoldZ = columnZ[1] + 0.28;
+    const leftX = columnX[0] - 0.05;
+    const rightX = columnX[1] + 0.05;
+    add('dark', `${id}-brace-${level}`, 'steel-brace', level,
+      diagonalBrace(leftX, lowerY + 0.12, rightX, upperY - 0.12, scaffoldZ),
+      `${id}-column-${level}-1`);
+    add('dark', `${id}-rail-${level}`, 'steel-brace', level,
+      box(rightX - leftX, 0.13, 0.13, 1.2)
+        .translate((leftX + rightX) / 2, lowerY + height * 0.52, scaffoldZ),
+      `${id}-brace-${level}`);
+  }
+
+  const receipt = certifyStructureAttachments(id, {
+    id: supportId,
+    geometry: support,
+  }, attachments, 0.04);
+  support.userData.ruinedConcreteCrown = receipt;
 }
 
 function addGableRoof(
@@ -630,8 +788,9 @@ export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = '
   // decal painted onto an otherwise pristine tower.
   out.plaster2.push(box(w * 0.72, 5.8, d * 0.78)
     .translate(-w * 0.08, upperBase + 2.9, -d * 0.04));
-  out.plaster2.push(box(w * 0.34, upperH - 2.0, d * 0.70)
-    .translate(-w * 0.25, upperBase + (upperH - 2.0) / 2, -d * 0.06));
+  const survivingSpine = box(w * 0.34, upperH - 2.0, d * 0.70)
+    .translate(-w * 0.25, upperBase + (upperH - 2.0) / 2, -d * 0.06);
+  out.plaster2.push(survivingSpine);
   out.stone.push(box(w * 0.25, upperH - 7.0, d * 0.28)
     .translate(w * 0.11, upperBase + (upperH - 7.0) / 2, -d * 0.25));
   addTowerFacadeGrid(out, {
@@ -642,21 +801,21 @@ export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = '
     out.dark.push(box(w * 0.27, 0.9, 0.10).translate(-w * 0.25, y, d * 0.29));
     out.glass.push(box(0.10, 0.9, d * 0.48).translate(-w * 0.08, y, -d * 0.06));
   }
-  // Torn-away southeast crown: exposed floor plates, snapped columns and a
-  // leaning service mast give the skyline a clear destroyed read.
-  for (let i = 0; i < 4; i++) {
-    const y = podiumH + lowerH + 4.5 + i * 4.0;
-    out.stone.push(slab(7.5 - i * 0.7, 0.28, 6.4 - i * 0.55)
-      .translate(w * 0.24, y, d * 0.18));
-    // Each torn slab retains one transfer beam into the surviving west spine.
-    // The asymmetry remains, but the floor plates are no longer suspended.
-    out.dark.push(box(3.65, 0.34, 0.44)
-      .translate(-0.05, y - 0.24, d * 0.18));
-  }
-  for (const [x, z, h] of [[5.4, 4.8, 14], [2.1, 5.0, 9], [5.2, 1.7, 7]]) {
-    const col = box(0.36, h, 0.36); col.rotateZ((rng() - 0.5) * 0.18);
-    out.dark.push(col.translate(x, podiumH + lowerH + h / 2, z));
-  }
+  // Torn-away southeast crown: an exposed reinforced-concrete skeleton with
+  // staggered blast bites, visible transfer beams and steel emergency bracing.
+  // It deliberately keeps the skyline damage without relying on invisible
+  // dark bars or long random posts to explain why the floors stay aloft.
+  addRuinedConcreteCrown(out, {
+    id: 'megatower-crown',
+    supportId: 'surviving-west-spine',
+    support: survivingSpine,
+    baseY: upperBase,
+    x: w * 0.24,
+    z: d * 0.18,
+    widths: [7.6, 7.1, 6.5, 5.9],
+    depths: [6.6, 6.25, 5.85, 5.45],
+    floorStep: 3.58,
+  });
   // The surviving west spine carries a complete stepped communications crown.
   // Its broad base overlaps the roof slab before narrowing to the needle, so
   // even the damaged variant has no hovering antenna or unsupported finial.
@@ -675,23 +834,30 @@ export function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 's
     [-9.0, hA, wallBucket],
     [9.0, hB, 'plaster3'],
   ];
-  for (const [x, h, bucket] of towers) {
+  for (let towerIndex = 0; towerIndex < towers.length; towerIndex++) {
+    const [x, h, bucket] = towers[towerIndex];
     const intactH = h - 8.0;
     out[bucket].push(box(towerW, intactH, d).translate(x, intactH / 2, 0));
     // Unequal surviving roof lobes leave a deep shell-bite through the crown.
-    out[bucket].push(box(towerW * 0.46, 8.0, d * 0.82)
-      .translate(x - towerW * 0.25, intactH + 4.0, -d * 0.04));
+    const survivingLobe = box(towerW * 0.46, 8.0, d * 0.82)
+      .translate(x - towerW * 0.25, intactH + 4.0, -d * 0.04);
+    out[bucket].push(survivingLobe);
     out.stone.push(box(towerW * 0.28, 4.2, d * 0.34)
       .translate(x + towerW * 0.26, intactH + 2.1, -d * 0.23));
-    for (let i = 0; i < 3; i++) {
-      const deck = slab(towerW * (0.34 - i * 0.035), 0.24, d * (0.42 - i * 0.035));
-      deck.rotateZ((i - 1) * 0.055);
-      out.stone.push(deck.translate(x + towerW * 0.22, intactH + 1.1 + i * 2.2, d * 0.20));
-    }
-    // A battered service spine ties the cantilevered crown decks back to the
-    // intact slab below. It is intentionally exposed as part of the damage.
-    out.dark.push(box(0.48, 7.0, 0.48)
-      .translate(x + towerW * 0.13, intactH + 3.5, d * 0.15));
+    // The exposed crown bays use the same visible concrete load path as the
+    // megatower repair. The old single dark service post disappeared against
+    // the facade and made all three decks look suspended in mid-air.
+    addRuinedConcreteCrown(out, {
+      id: `arcology-${towerIndex === 0 ? 'west' : 'east'}-crown`,
+      supportId: `arcology-${towerIndex === 0 ? 'west' : 'east'}-surviving-lobe`,
+      support: survivingLobe,
+      baseY: intactH,
+      x: x + towerW * 0.22,
+      z: d * 0.20,
+      widths: [4.2, 3.8, 3.4],
+      depths: [9.4, 8.7, 8.0],
+      floorStep: 2.2,
+    });
   }
   // Explicit facade grids preserve the gap between both towers while giving
   // each slab its own bay cadence and weather-catching frame depth.
