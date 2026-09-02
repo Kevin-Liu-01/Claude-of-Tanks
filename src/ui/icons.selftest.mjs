@@ -1,5 +1,6 @@
 /** Plain-node coverage for the shared UI and equipment vector icon sets. */
 
+import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import './contextInfo.selftest.mjs';
 import './garageDossier.selftest.mjs';
@@ -7,6 +8,13 @@ import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
 import { equipIconIds, equipIconSVG } from './equipIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
+import {
+  TANK_PORTRAIT_FRAME_POLICY,
+  auditPortraitPixels,
+  containedPortraitPlacement,
+  directPortraitPlacement,
+  measurePortraitCoreBounds,
+} from './portraitFraming.ts';
 
 const equipIds = new Set(equipIconIds());
 for (const item of EQUIPMENT_CATALOG) {
@@ -101,21 +109,54 @@ if (!tankThumbs.includes('await ensureTankBuilder(id)')) {
   throw new Error('top-down mask fallback must join the exact fleet demand-load before createTank');
 }
 for (const contract of [
-  'measurePortraitBounds',
-  'PORTRAIT_WIDTH_RATIO',
-  'PORTRAIT_HEIGHT_RATIO',
-  'PORTRAIT_BASELINE_RATIO',
-  'PORTRAIT_CORE_ALPHA_THRESHOLD',
-  'PORTRAIT_LEFT_QUANTILE',
-  'PORTRAIT_BOTTOM_QUANTILE',
-  'new Float64Array',
-  "--cot-thumb-scale",
+  "from './portraitFraming.ts'",
+  'measurePortraitCoreBounds',
+  'containedPortraitPlacement',
+  '--cot-thumb-scale',
   "cotPortraitFramed = 'true'",
 ]) {
   if (!tankThumbs.includes(contract)) {
     throw new Error(`garage portrait framing is missing ${contract}`);
   }
 }
+
+assert.deepEqual(
+  {
+    widthRatio: TANK_PORTRAIT_FRAME_POLICY.widthRatio,
+    heightRatio: TANK_PORTRAIT_FRAME_POLICY.heightRatio,
+    baselineRatio: TANK_PORTRAIT_FRAME_POLICY.baselineRatio,
+  },
+  { widthRatio: 0.54, heightRatio: 0.68, baselineRatio: 0.88 },
+  'one exported policy owns portrait width, height, and track baseline',
+);
+
+const syntheticWidth = 100;
+const syntheticHeight = 100;
+const syntheticPixels = new Uint8ClampedArray(syntheticWidth * syntheticHeight * 4);
+const paintAlpha = (x0, y0, x1, y1, alpha = 255) => {
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) syntheticPixels[(y * syntheticWidth + x) * 4 + 3] = alpha;
+  }
+};
+paintAlpha(20, 48, 79, 87); // dense hull and running gear on the shared baseline
+paintAlpha(49, 13, 50, 47); // sparse antenna
+paintAlpha(80, 58, 99, 59); // sparse barrel
+const syntheticCore = measurePortraitCoreBounds(syntheticPixels, syntheticWidth, syntheticHeight);
+assert(syntheticCore, 'dense synthetic tank has measurable portrait bounds');
+assert(syntheticCore.x0 >= 20 && syntheticCore.x1 <= 79 && syntheticCore.y0 >= 47,
+  'sparse antenna and barrel pixels do not control dense chassis framing');
+for (const placement of [
+  directPortraitPlacement(syntheticCore, 256, 256),
+  containedPortraitPlacement(syntheticCore, syntheticWidth, syntheticHeight, 140, 88),
+]) {
+  assert(Number.isFinite(placement.x) && Number.isFinite(placement.y) && placement.scale > 0,
+    'generator and runtime placements remain finite and positive');
+}
+assert.equal(
+  auditPortraitPixels(syntheticPixels, syntheticWidth, syntheticHeight).passes,
+  true,
+  'a normalized tank with sparse equipment passes the shared release envelope',
+);
 
 const iconNames = (await readdir(new URL('../../public/icons/', import.meta.url)))
   .filter((name) => name.endsWith('_angle.webp'))

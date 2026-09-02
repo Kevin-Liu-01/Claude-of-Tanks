@@ -85,9 +85,9 @@ export interface GeometryRootLike {
   traverse(visitor: (object: GeometryObjectLike) => void): void;
 }
 
-// v5 removes the redundant hit-zone rendering (the armor diagram already uses
-// the exact collision plates) and gives crew a dedicated technical view.
-export const TANK_ASSET_SCHEMA_VERSION = 5;
+// v6 makes the 256px Garage portrait a hashed child of the 512px angle asset,
+// so both sizes are generated and released as one reproducible artifact.
+export const TANK_ASSET_SCHEMA_VERSION = 6;
 
 export const TANK_ASSET_VIEWS = Object.freeze({
   angle: Object.freeze({ suffix: 'angle', ext: 'webp', width: 512, height: 512, role: 'garage hero' }),

@@ -15,6 +15,11 @@ import {
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
 import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
 import { createInspectionOverlay, inspectionLegend } from '/src/gallery/overlays.ts';
+import {
+  auditPortraitPixels,
+  directPortraitPlacement,
+  measurePortraitCoreBounds,
+} from '/src/ui/portraitFraming.ts';
 
 const BASE = 512;
 const SS = 2;
@@ -72,48 +77,6 @@ function silhouette(srcCanvas, outW, outH) {
   return out;
 }
 
-const PORTRAIT_WIDTH_RATIO = 0.54;
-const PORTRAIT_HEIGHT_RATIO = 0.68;
-const PORTRAIT_BASELINE_RATIO = 0.88;
-const PORTRAIT_CORE_ALPHA_THRESHOLD = 48;
-const PORTRAIT_LEFT_QUANTILE = 0.06;
-const PORTRAIT_RIGHT_QUANTILE = 0.94;
-const PORTRAIT_TOP_QUANTILE = 0.03;
-const PORTRAIT_BOTTOM_QUANTILE = 0.985;
-
-function portraitCoreBounds(src) {
-  const c = src.getContext('2d');
-  const img = c.getImageData(0, 0, src.width, src.height);
-  const d = img.data;
-  const xWeights = new Float64Array(src.width);
-  const yWeights = new Float64Array(src.height);
-  let totalWeight = 0;
-  for (let y = 0; y < src.height; y++) {
-    for (let x = 0; x < src.width; x++) {
-      const alpha = d[(y * src.width + x) * 4 + 3];
-      if (alpha <= PORTRAIT_CORE_ALPHA_THRESHOLD) continue;
-      xWeights[x] += alpha;
-      yWeights[y] += alpha;
-      totalWeight += alpha;
-    }
-  }
-  if (!(totalWeight > 0)) return null;
-  const quantileIndex = (weights, quantile) => {
-    const target = totalWeight * quantile;
-    let cumulative = 0;
-    for (let index = 0; index < weights.length; index++) {
-      cumulative += weights[index];
-      if (cumulative >= target) return index;
-    }
-    return weights.length - 1;
-  };
-  const x0 = quantileIndex(xWeights, PORTRAIT_LEFT_QUANTILE);
-  const x1 = quantileIndex(xWeights, PORTRAIT_RIGHT_QUANTILE);
-  const y0 = quantileIndex(yWeights, PORTRAIT_TOP_QUANTILE);
-  const y1 = quantileIndex(yWeights, PORTRAIT_BOTTOM_QUANTILE);
-  return { x0, y0, x1, y1, width: x1 - x0 + 1, height: y1 - y0 + 1 };
-}
-
 /**
  * Give every garage portrait one presentation datum: the visible tank is
  * centered horizontally and its track contact line lands on a shared
@@ -122,16 +85,13 @@ function portraitCoreBounds(src) {
  * related vehicles up/down or sideways inside identical roster cards.
  */
 function normalizeAnglePortrait(src, outSize) {
-  const bounds = portraitCoreBounds(src);
+  const context = src.getContext('2d');
+  const pixels = context.getImageData(0, 0, src.width, src.height).data;
+  const bounds = measurePortraitCoreBounds(pixels, src.width, src.height);
   if (!bounds) return src;
-  const scale = Math.min(
-    outSize * PORTRAIT_WIDTH_RATIO / bounds.width,
-    outSize * PORTRAIT_HEIGHT_RATIO / bounds.height,
-  );
+  const { x: dx, y: dy, scale } = directPortraitPlacement(bounds, outSize, outSize);
   const drawWidth = src.width * scale;
   const drawHeight = src.height * scale;
-  const dx = outSize * 0.5 - (bounds.x0 + bounds.width * 0.5) * scale;
-  const dy = outSize * PORTRAIT_BASELINE_RATIO - (bounds.y1 + 1) * scale;
   const out = document.createElement('canvas');
   out.width = outSize; out.height = outSize;
   const oc = out.getContext('2d');
@@ -151,6 +111,41 @@ function normalizeAnglePortrait(src, outSize) {
   oc.drawImage(src, dx, dy, drawWidth, drawHeight);
   oc.restore();
   return out;
+}
+
+function auditPortraitCanvas(canvas) {
+  const pixels = canvas.getContext('2d', { willReadFrequently: true })
+    .getImageData(0, 0, canvas.width, canvas.height).data;
+  return auditPortraitPixels(pixels, canvas.width, canvas.height);
+}
+
+function loadPortraitCanvas(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      resolve(canvas);
+    };
+    image.onerror = () => reject(new Error(`portrait failed to load: ${url}`));
+    image.src = url;
+  });
+}
+
+async function auditSavedPortraits(ids, sources = {}) {
+  const result = {};
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const file = tankAssetFile(id, 'angle');
+      const canvas = await loadPortraitCanvas(sources[id] || `/icons/thumbs/${file}`);
+      result[id] = auditPortraitCanvas(canvas);
+    } catch (error) {
+      result[id] = { error: String(error && error.stack || error), passes: false };
+    }
+  }));
+  return result;
 }
 
 /**
@@ -813,9 +808,23 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       angleCam.position.copy(center).addScaledVector(dir, dist);
       angleCam.lookAt(center);
       angleCam.updateMatrixWorld();
-      const angleCanvas = normalizeAnglePortrait(
-        capture(angleCam, BASE * 2, BASE * 2), BASE);
-      files[tankAssetFile(id, 'angle')] = angleCanvas.toDataURL('image/webp', 0.9);
+      const angleSource = capture(angleCam, BASE * 2, BASE * 2);
+      const angleFile = tankAssetFile(id, 'angle');
+      const angleCanvas = normalizeAnglePortrait(angleSource, BASE);
+      const thumbCanvas = normalizeAnglePortrait(angleSource, BASE / 2);
+      const portraitAudit = auditPortraitCanvas(thumbCanvas);
+      if (!portraitAudit.passes) {
+        throw new Error(
+          `${id}: portrait framing outside fleet envelope `
+          + `(${portraitAudit.displayedFullWidth.toFixed(1)}x`
+          + `${portraitAudit.displayedFullHeight.toFixed(1)} card px)`,
+        );
+      }
+      // Full dossier art and the Garage thumbnail are one atomic output. New
+      // vehicle captures can no longer update one size while leaving the
+      // other stale or hand-resized.
+      files[angleFile] = angleCanvas.toDataURL('image/webp', 0.9);
+      files[`thumbs/${angleFile}`] = thumbCanvas.toDataURL('image/webp', 0.9);
     }
     return { files, meta };
   } finally {
@@ -995,6 +1004,8 @@ window.__AUDIT = (ids) => {
   }
   return result;
 };
+
+window.__AUDIT_PORTRAITS = (ids, sources) => auditSavedPortraits(idsOrFleet(ids), sources);
 
 window.__CENTER_AUDIT = (ids) => {
   const result = {};

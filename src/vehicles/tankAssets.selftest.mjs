@@ -24,6 +24,18 @@ const technicalGenerator = readFileSync(
   new URL('../../tools/icons-page.html', import.meta.url),
   'utf8',
 );
+const portraitFraming = readFileSync(
+  new URL('../ui/portraitFraming.ts', import.meta.url),
+  'utf8',
+);
+const portraitGenerator = readFileSync(
+  new URL('../../tools/genIcons.mjs', import.meta.url),
+  'utf8',
+);
+const assetChecker = readFileSync(
+  new URL('../../tools/tank-assets-check.mjs', import.meta.url),
+  'utf8',
+);
 assert.match(technicalGenerator, /const overlayMode = kind === 'modules' \|\| kind === 'crew' \? kind : 'armor'/,
   'each technical card selects its matching live Studio/Gallery diagnostic layer');
 assert.match(technicalGenerator, /createInspectionOverlay\(spec, visual, overlayMode\)/,
@@ -47,18 +59,27 @@ assert.match(technicalGenerator,
 assert.doesNotMatch(technicalGenerator,
   /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
   'retired metadata reconstruction and redundant hit-zone rendering are absent');
+assert.match(technicalGenerator, /from '\/src\/ui\/portraitFraming\.ts'/,
+  'asset generation imports the same DOM-free portrait policy as the Garage');
 assert.match(technicalGenerator,
-  /const PORTRAIT_WIDTH_RATIO = 0\.54;[\s\S]*const PORTRAIT_HEIGHT_RATIO = 0\.68;[\s\S]*const PORTRAIT_BASELINE_RATIO = 0\.88;/,
-  'garage portraits share one fleet-wide visible-width and ground-line framing contract');
+  /function normalizeAnglePortrait\(src, outSize\)[\s\S]*measurePortraitCoreBounds[\s\S]*directPortraitPlacement[\s\S]*drawImage\(src, dx, dy, drawWidth, drawHeight\)/,
+  'angle portraits normalize dense chassis pixels through the shared placement math');
+assert.match(portraitFraming,
+  /widthRatio: 0\.54[\s\S]*heightRatio: 0\.68[\s\S]*baselineRatio: 0\.88[\s\S]*new Float64Array/,
+  'one reusable policy excludes sparse equipment and owns fleet framing');
 assert.match(technicalGenerator,
-  /function normalizeAnglePortrait\(src, outSize\)[\s\S]*portraitCoreBounds\(src\)[\s\S]*PORTRAIT_BASELINE_RATIO[\s\S]*drawImage\(src, dx, dy, drawWidth, drawHeight\)/,
-  'angle portraits normalize dense chassis pixels instead of sparse equipment or camera-frame offsets');
-assert.match(technicalGenerator,
-  /PORTRAIT_CORE_ALPHA_THRESHOLD = 48[\s\S]*PORTRAIT_LEFT_QUANTILE = 0\.06[\s\S]*PORTRAIT_BOTTOM_QUANTILE = 0\.985[\s\S]*new Float64Array/,
-  'portrait generation excludes sparse barrels, antennae, cages, and grounding shadows fleet-wide');
-assert.match(technicalGenerator,
-  /const angleCanvas = normalizeAnglePortrait\([\s\S]*capture\(angleCam, BASE \* 2, BASE \* 2\), BASE\);/,
+  /const angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[\s\S]*const angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);/,
   'the shipped garage angle asset always passes through the shared portrait normalizer');
+assert.match(technicalGenerator,
+  /const thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\)[\s\S]*files\[`thumbs\/\$\{angleFile\}`\]/,
+  'one capture atomically emits normalized 512px and 256px portraits');
+assert.match(portraitGenerator, /mkdirSync\(dirname\(outputPath\), \{ recursive: true \}\)/,
+  'portrait generation creates the nested thumbnail output deterministically');
+assert.match(portraitGenerator,
+  /portraitOnly && previous\?\.tanks\?\.\[id\][\s\S]*previous\.tanks\[id\][\s\S]*tanks\[id\] = \{ \.\.\.record, assets \}/,
+  'portrait-only generation preserves independent anatomy and presentation receipts');
+assert.match(assetChecker, /__AUDIT_PORTRAITS[\s\S]*portrait framing outside fleet envelope/,
+  'the tank asset release checker rejects missing or misframed thumbnails');
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9,
   'release contract includes five views plus separate armor, module, crew, and markings diagrams');
@@ -94,6 +115,15 @@ for (const id of DEVELOPMENT_TANK_IDS) {
     assert(existsSync(new URL(`../../public/icons/${asset.file}`, import.meta.url)),
       `${id}: missing ${asset.file}`);
   }
+  const thumbnail = assets.angle.thumbnail;
+  assert.equal(thumbnail.file, `thumbs/${assets.angle.file}`,
+    `${id}: angle portrait owns its Garage thumbnail record`);
+  assert.equal(thumbnail.width, 256, `${id}: Garage thumbnail width`);
+  assert.equal(thumbnail.height, 256, `${id}: Garage thumbnail height`);
+  assert.match(thumbnail.sha256, /^[0-9a-f]{64}$/,
+    `${id}: Garage thumbnail has a release hash`);
+  assert(existsSync(new URL(`../../public/icons/${thumbnail.file}`, import.meta.url)),
+    `${id}: missing ${thumbnail.file}`);
 }
 assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
   'single-cannon profiles require one bore/rim pair');

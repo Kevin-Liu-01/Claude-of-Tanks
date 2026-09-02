@@ -224,6 +224,71 @@ try {
         failures.push(`${id}: ${asset.file} dimensions ${dimensions ? dimensions.join('x') : 'unreadable'} != ${def.width}x${def.height}`);
       }
       checkedFiles++;
+      if (view === 'angle') {
+        const thumbnail = asset.thumbnail;
+        if (!thumbnail || thumbnail.file !== `thumbs/${asset.file}`) {
+          failures.push(`${id}: missing hashed thumbnail record for thumbs/${asset.file}`);
+          continue;
+        }
+        const thumbPath = resolve(outDir, thumbnail.file);
+        if (!existsSync(thumbPath)) {
+          failures.push(`${id}: missing atomic Garage thumbnail ${thumbnail.file}`);
+          continue;
+        }
+        const thumbnailBuffer = readFileSync(thumbPath);
+        if (sha256(thumbnailBuffer) !== thumbnail.sha256) {
+          failures.push(`${id}: ${thumbnail.file} hash drift`);
+        }
+        if (thumbnailBuffer.length !== thumbnail.bytes) {
+          failures.push(`${id}: ${thumbnail.file} byte-size drift`);
+        }
+        const thumbDimensions = imageDimensions(thumbnailBuffer, 'webp');
+        if (!thumbDimensions || thumbDimensions[0] !== 256 || thumbDimensions[1] !== 256) {
+          failures.push(`${id}: thumbnail dimensions ${thumbDimensions ? thumbDimensions.join('x') : 'unreadable'} != 256x256`);
+        }
+        checkedFiles++;
+      }
+    }
+  }
+  if (!liveOnly && selectedViews.includes('angle')) {
+    const portraitSources = {};
+    const portraitIdsToAudit = onlyTanks.length ? ids : Object.keys(manifest?.tanks || {});
+    for (const id of portraitIdsToAudit) {
+      const saved = manifest?.tanks?.[id];
+      const thumbnailFile = saved?.assets?.angle?.thumbnail?.file;
+      if (!thumbnailFile) {
+        failures.push(`${id}: missing thumbnail manifest record`);
+        continue;
+      }
+      const thumbPath = resolve(outDir, thumbnailFile);
+      if (!existsSync(thumbPath)) continue;
+      portraitSources[id] = `data:image/webp;base64,${readFileSync(thumbPath).toString('base64')}`;
+    }
+    const portraitIds = Object.keys(portraitSources);
+    const portraitAudit = portraitIds.length
+      ? await page.evaluate(
+        (auditIds, sources) => window.__AUDIT_PORTRAITS(auditIds, sources),
+        portraitIds,
+        portraitSources,
+      )
+      : {};
+    const widths = [];
+    for (const id of portraitIds) {
+      const result = portraitAudit[id];
+      if (!result || result.error || !result.passes) {
+        failures.push(
+          `${id}: portrait framing outside fleet envelope `
+          + `(${result?.error || `${Number(result?.displayedFullWidth || 0).toFixed(1)}x${Number(result?.displayedFullHeight || 0).toFixed(1)} card px`})`,
+        );
+        continue;
+      }
+      widths.push(result.displayedFullWidth);
+    }
+    if (widths.length) {
+      console.log(
+        `[tank-assets-check] portrait envelope ${Math.min(...widths).toFixed(1)}..`
+        + `${Math.max(...widths).toFixed(1)} px across ${widths.length} thumbnails`,
+      );
     }
   }
   console.log(`[tank-assets-check] audited ${ids.length} tanks / ${checkedFiles} files${liveOnly ? ' (live-only)' : ''}`);

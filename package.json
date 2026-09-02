@@ -37,6 +37,8 @@
     "icons": "node tools/genIcons.mjs",
     "tank:assets": "node tools/genIcons.mjs",
     "tank:assets:check": "node tools/tank-assets-check.mjs",
+    "tank:portraits": "node tools/genIcons.mjs --views angle --portraits-only",
+    "tank:portraits:check": "node tools/tank-assets-check.mjs --views angle --skip-bore --skip-geometry",
     "tank:centering:update": "node tools/presentation-centering.mjs --update",
     "tank:centering:check": "node tools/presentation-centering.mjs --check",
     "tank:floor:check": "node src/vehicles/fleetFloorClearance.selftest.mjs",

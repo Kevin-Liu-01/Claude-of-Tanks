@@ -10,6 +10,11 @@
 // by the garage and screenshot harness.
 
 import { iconUrl } from './icons.ts';
+import {
+  containedPortraitPlacement,
+  measurePortraitCoreBounds,
+  type PortraitPixelBounds,
+} from './portraitFraming.ts';
 // TOP-DOWN MASK RIG (damage panel r9) — see the section at the bottom of this
 // file: an offscreen orthographic render of the ACTUAL built vehicle (hull
 // layer and turret+gun layer separately), replacing the baked one-piece
@@ -18,23 +23,11 @@ import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
-const PORTRAIT_WIDTH_RATIO = 0.54;
-const PORTRAIT_HEIGHT_RATIO = 0.68;
-const PORTRAIT_BASELINE_RATIO = 0.88;
-const PORTRAIT_CORE_ALPHA_THRESHOLD = 48;
-const PORTRAIT_LEFT_QUANTILE = 0.06;
-const PORTRAIT_RIGHT_QUANTILE = 0.94;
-const PORTRAIT_TOP_QUANTILE = 0.03;
-const PORTRAIT_BOTTOM_QUANTILE = 0.985;
 let errorGuardInstalled = false;
 let portraitObserver: IntersectionObserver | null = null;
 let portraitResizeObserver: ResizeObserver | null = null;
 
-interface PortraitBounds {
-  width: number;
-  height: number;
-  centerX: number;
-  bottom: number;
+interface PortraitBounds extends PortraitPixelBounds {
   naturalWidth: number;
   naturalHeight: number;
 }
@@ -134,40 +127,13 @@ function measurePortraitBounds(img: HTMLImageElement): PortraitBounds | null {
   const context = canvas2d(canvas);
   context.drawImage(img, 0, 0);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-  const xWeights = new Float64Array(canvas.width);
-  const yWeights = new Float64Array(canvas.height);
-  let totalWeight = 0;
-  for (let y = 0; y < canvas.height; y++) {
-    for (let x = 0; x < canvas.width; x++) {
-      const alpha = pixels[(y * canvas.width + x) * 4 + 3];
-      if (alpha <= PORTRAIT_CORE_ALPHA_THRESHOLD) continue;
-      xWeights[x] += alpha;
-      yWeights[y] += alpha;
-      totalWeight += alpha;
-    }
-  }
-  if (!(totalWeight > 0)) return null;
-  const quantileIndex = (weights: Float64Array, quantile: number): number => {
-    const target = totalWeight * quantile;
-    let cumulative = 0;
-    for (let index = 0; index < weights.length; index++) {
-      cumulative += weights[index];
-      if (cumulative >= target) return index;
-    }
-    return weights.length - 1;
-  };
   // Fit the load-bearing visual mass rather than the full alpha envelope.
   // Sparse cannon tips, antennae, cage corners and the generated grounding
   // shadow used to make Tagil/Burlak/Bradley cards shrink by 25-40 percent.
-  const x0 = quantileIndex(xWeights, PORTRAIT_LEFT_QUANTILE);
-  const x1 = quantileIndex(xWeights, PORTRAIT_RIGHT_QUANTILE);
-  const y0 = quantileIndex(yWeights, PORTRAIT_TOP_QUANTILE);
-  const y1 = quantileIndex(yWeights, PORTRAIT_BOTTOM_QUANTILE);
+  const bounds = measurePortraitCoreBounds(pixels, canvas.width, canvas.height);
+  if (!bounds) return null;
   return {
-    width: x1 - x0 + 1,
-    height: y1 - y0 + 1,
-    centerX: (x0 + x1 + 1) * 0.5,
-    bottom: y1 + 1,
+    ...bounds,
     naturalWidth: canvas.width,
     naturalHeight: canvas.height,
   };
@@ -177,24 +143,13 @@ function applyPortraitFrame(img: HTMLImageElement, bounds: PortraitBounds): void
   const boxWidth = img.clientWidth;
   const boxHeight = img.clientHeight;
   if (!(boxWidth > 0) || !(boxHeight > 0)) return;
-  const fitScale = Math.min(
-    boxWidth / bounds.naturalWidth,
-    boxHeight / bounds.naturalHeight,
+  const { x, y, scale } = containedPortraitPlacement(
+    bounds,
+    bounds.naturalWidth,
+    bounds.naturalHeight,
+    boxWidth,
+    boxHeight,
   );
-  const renderedWidth = bounds.naturalWidth * fitScale;
-  const renderedHeight = bounds.naturalHeight * fitScale;
-  const insetX = (boxWidth - renderedWidth) * 0.5;
-  const insetY = (boxHeight - renderedHeight) * 0.5;
-  const visibleWidth = bounds.width * fitScale;
-  const visibleHeight = bounds.height * fitScale;
-  const scale = Math.min(
-    boxWidth * PORTRAIT_WIDTH_RATIO / visibleWidth,
-    boxHeight * PORTRAIT_HEIGHT_RATIO / visibleHeight,
-  );
-  const x = boxWidth * 0.5
-    - scale * (insetX + bounds.centerX * fitScale);
-  const y = boxHeight * PORTRAIT_BASELINE_RATIO
-    - scale * (insetY + bounds.bottom * fitScale);
   img.style.setProperty('--cot-thumb-x', `${x.toFixed(2)}px`);
   img.style.setProperty('--cot-thumb-y', `${y.toFixed(2)}px`);
   img.style.setProperty('--cot-thumb-scale', scale.toFixed(4));

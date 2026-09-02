@@ -10,7 +10,7 @@ second hand-authored source of truth.
 
 | Output | Purpose |
 | --- | --- |
-| `<id>_angle.webp` | garage hero portrait |
+| `<id>_angle.webp` | 512px garage/gallery portrait; owns a hashed 256px `thumbs/` derivative |
 | `<id>_top.webp` | top-down shaded view |
 | `<id>_side.webp` | side shaded view |
 | `<id>_top_silhouette.png` | minimap mask |
@@ -23,6 +23,29 @@ second hand-authored source of truth.
 The manifest also stores the official flag country code, tier, caliber, shell
 penetration values, plate/module data, live geometry fingerprint, metadata
 fingerprint, dimensions, byte sizes, and SHA-256 hashes.
+
+## Repeatable portrait capture
+
+Portrait capture is a fleet operation, not a manual crop. The renderer takes
+one deterministic high-resolution angle capture, measures the alpha-weighted
+dense chassis, ignores sparse barrels/antennae/cages, and places the track
+contact line on the shared baseline. That same source capture emits both the
+512px portrait and 256px Garage thumbnail. The framing policy and math live in
+`src/ui/portraitFraming.ts` and are reused by generation, runtime fallback, and
+release verification.
+
+Refresh one tank or a comma-separated family:
+
+```sh
+npm run tank:portraits -- --ids=<tank-id>
+npm run tank:portraits:check -- --ids=<tank-id>
+```
+
+Omit `--ids` for a complete fleet refresh and audit. The checker requires the
+thumbnail's manifest record, dimensions, byte count, SHA-256 hash, dense-core
+scale, baseline, and non-clipping envelope to pass. For a scratch trial without
+touching release assets, add `--out <temporary-directory> --allow-partial` to
+the generation command and pass the same `--out` to the checker.
 
 ### Renderer choice
 

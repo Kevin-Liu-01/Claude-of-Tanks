@@ -166,6 +166,7 @@ const check = (name, cond, detail = '') => {
   });
   check('garage: featured caption populated', !!caption, caption);
   const portraitAudit = await page.evaluate(async () => {
+    const { auditPortraitPixels } = await import('/src/ui/portraitFraming.ts');
     const cards = [...document.querySelectorAll('.cot-card[data-spec-id]')];
     const loadImage = (src) => new Promise((resolveImage, rejectImage) => {
       const image = new Image();
@@ -173,15 +174,6 @@ const check = (name, cond, detail = '') => {
       image.onerror = () => rejectImage(new Error(`garage portrait failed to load: ${src}`));
       image.src = src;
     });
-    const quantileIndex = (weights, totalWeight, quantile) => {
-      const target = totalWeight * quantile;
-      let cumulative = 0;
-      for (let index = 0; index < weights.length; index++) {
-        cumulative += weights[index];
-        if (cumulative >= target) return index;
-      }
-      return weights.length - 1;
-    };
     const measure = async (card) => {
       const element = card.querySelector('img.ti');
       // Offscreen cards deliberately have no src until the portrait observer
@@ -195,37 +187,12 @@ const check = (name, cond, detail = '') => {
       const context = canvas.getContext('2d', { willReadFrequently: true });
       context.drawImage(image, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      const xWeights = new Float64Array(canvas.width);
-      const yWeights = new Float64Array(canvas.height);
-      let totalWeight = 0;
-      let fullX0 = canvas.width;
-      let fullX1 = -1;
-      let fullY0 = canvas.height;
-      let fullY1 = -1;
-      for (let y = 0; y < canvas.height; y++) {
-        for (let x = 0; x < canvas.width; x++) {
-          const alpha = pixels[(y * canvas.width + x) * 4 + 3];
-          if (alpha > 8) {
-            fullX0 = Math.min(fullX0, x);
-            fullX1 = Math.max(fullX1, x);
-            fullY0 = Math.min(fullY0, y);
-            fullY1 = Math.max(fullY1, y);
-          }
-          if (alpha <= 48) continue;
-          xWeights[x] += alpha;
-          yWeights[y] += alpha;
-          totalWeight += alpha;
-        }
-      }
-      const x0 = quantileIndex(xWeights, totalWeight, 0.06);
-      const x1 = quantileIndex(xWeights, totalWeight, 0.94);
-      const y0 = quantileIndex(yWeights, totalWeight, 0.03);
-      const y1 = quantileIndex(yWeights, totalWeight, 0.985);
-      const scale = Math.min(140 * 0.54 / (x1 - x0 + 1), 88 * 0.68 / (y1 - y0 + 1));
+      const result = auditPortraitPixels(pixels, canvas.width, canvas.height);
       return {
         id: card.dataset.specId,
-        width: (fullX1 - fullX0 + 1) * scale,
-        height: (fullY1 - fullY0 + 1) * scale,
+        width: result.displayedFullWidth,
+        height: result.displayedFullHeight,
+        passes: result.passes,
       };
     };
     const portraits = await Promise.all(cards.map(measure));
@@ -239,6 +206,7 @@ const check = (name, cond, detail = '') => {
       count: portraits.length,
       minimumWidth: Math.min(...widths),
       maximumWidth: Math.max(...widths),
+      allPass: portraits.every((portrait) => portrait.passes),
       targets,
       titleBottom: getComputedStyle(cards[0].querySelector('.nm')).bottom,
     };
@@ -246,6 +214,7 @@ const check = (name, cond, detail = '') => {
   check(
     'garage: all production portraits share the fleet framing envelope',
     portraitAudit.count >= 125
+      && portraitAudit.allPass
       && portraitAudit.minimumWidth >= 90
       && portraitAudit.maximumWidth <= 122,
     `${portraitAudit.count} tanks, ${portraitAudit.minimumWidth.toFixed(1)}-${portraitAudit.maximumWidth.toFixed(1)} px`,
