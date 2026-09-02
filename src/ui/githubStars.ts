@@ -1,7 +1,6 @@
 const REPOSITORY_STATS_ENDPOINT = '/api/github-stars';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-export const FALLBACK_GITHUB_STAR_COUNT = 195;
 const STATIC_PREVIEW_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 const COMPACT_NUMBER = new Intl.NumberFormat('en', {
@@ -13,6 +12,49 @@ const starNodes = new Set<Element>();
 const intentBoundControls = new WeakSet<HTMLAnchorElement>();
 let activeRequest: Promise<number | null> | null = null;
 let memoryCache: { count: number; savedAt: number } | null = null;
+
+type GitHubStarState = 'loading' | 'ready' | 'unavailable';
+
+function githubControlFor(node: Element): HTMLAnchorElement | null {
+  const control = node.closest<HTMLAnchorElement>('a[href*="github.com/Kevin-Liu-01/"]');
+  if (control && !control.dataset.githubLabel) {
+    control.dataset.githubLabel = control.getAttribute('aria-label') ||
+      'Claude of Tanks on GitHub';
+  }
+  return control;
+}
+
+function setGitHubStarState(
+  node: Element,
+  state: GitHubStarState,
+  count?: number,
+): void {
+  const status = node as HTMLElement;
+  status.dataset.githubStarsState = state;
+  const control = githubControlFor(node);
+  const baseLabel = control?.dataset.githubLabel || 'Claude of Tanks on GitHub';
+
+  if (state === 'ready' && count !== undefined) {
+    const fullCount = FULL_NUMBER.format(count);
+    node.textContent = formatGitHubStarCount(count);
+    node.removeAttribute('aria-busy');
+    node.setAttribute('aria-label', `${fullCount} GitHub stars`);
+    control?.setAttribute('aria-label', `${baseLabel}, ${fullCount} stars`);
+    return;
+  }
+
+  node.textContent = '';
+  if (state === 'loading') {
+    node.setAttribute('aria-busy', 'true');
+    node.setAttribute('aria-label', 'Loading GitHub star count');
+    control?.setAttribute('aria-label', `${baseLabel}, loading star count`);
+    return;
+  }
+
+  node.removeAttribute('aria-busy');
+  node.setAttribute('aria-label', 'GitHub star count unavailable');
+  control?.setAttribute('aria-label', `${baseLabel}, star count unavailable`);
+}
 
 export function repositoryStatsEndpointAvailable(
   locationLike: Pick<Location, 'hostname' | 'protocol'> | null | undefined = globalThis.location,
@@ -27,18 +69,21 @@ export function formatGitHubStarCount(count: number): string {
 }
 
 function renderGitHubStarCount(count: number): void {
-  const compactCount = formatGitHubStarCount(count);
-  const fullCount = FULL_NUMBER.format(count);
-
   for (const node of starNodes) {
-    node.textContent = compactCount;
-    const control = node.closest<HTMLAnchorElement>('a[href*="github.com/Kevin-Liu-01/"]');
-    if (!control) continue;
-    if (!control.dataset.githubLabel) {
-      control.dataset.githubLabel = control.getAttribute('aria-label') ||
-        'Claude of Tanks on GitHub';
+    setGitHubStarState(node, 'ready', count);
+  }
+}
+
+function renderGitHubStarLoading(nodes: Iterable<Element> = starNodes): void {
+  for (const node of nodes) setGitHubStarState(node, 'loading');
+}
+
+function renderGitHubStarUnavailable(): void {
+  for (const node of starNodes) {
+    const status = node as HTMLElement;
+    if (status.dataset.githubStarsState === 'loading') {
+      setGitHubStarState(node, 'unavailable');
     }
-    control.setAttribute('aria-label', `${control.dataset.githubLabel}, ${fullCount} stars`);
   }
 }
 
@@ -71,17 +116,26 @@ async function fetchGitHubStars(): Promise<number | null> {
     const response = await fetch(REPOSITORY_STATS_ENDPOINT, {
       headers: { Accept: 'application/json' },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      renderGitHubStarUnavailable();
+      return null;
+    }
     const repository: unknown = await response.json();
-    if (!repository || typeof repository !== 'object') return null;
+    if (!repository || typeof repository !== 'object') {
+      renderGitHubStarUnavailable();
+      return null;
+    }
     const count = (repository as { stargazers_count?: unknown }).stargazers_count;
-    if (typeof count !== 'number' || !Number.isInteger(count)) return null;
+    if (typeof count !== 'number' || !Number.isInteger(count)) {
+      renderGitHubStarUnavailable();
+      return null;
+    }
     const verifiedCount = count;
     renderGitHubStarCount(verifiedCount);
     writeCachedStars(verifiedCount);
     return verifiedCount;
   } catch (_) {
-    // Keep the last verified numeric fallback when the endpoint is unavailable.
+    renderGitHubStarUnavailable();
     return null;
   }
 }
@@ -95,9 +149,12 @@ export function refreshGitHubStars(): Promise<number | null> {
   }
 
   // Vite's static production preview intentionally has no serverless API
-  // routes. Keep the release-verified fallback and avoid a known 404; real
+  // routes. Avoid a known 404 and resolve the spinner honestly; real
   // deployments continue to refresh through the same-origin cached handler.
-  if (!repositoryStatsEndpointAvailable()) return Promise.resolve(null);
+  if (!repositoryStatsEndpointAvailable()) {
+    renderGitHubStarUnavailable();
+    return Promise.resolve(null);
+  }
 
   if (!activeRequest) {
     activeRequest = fetchGitHubStars().finally(() => { activeRequest = null; });
@@ -117,8 +174,9 @@ function bindIntentRetry(nodes: Element[]): void {
 }
 
 /**
- * Register repository star nodes, render a packaged value synchronously, then
- * refresh the live count in the background. Repeated mounts share one request.
+ * Register repository star nodes, render a verified cached value or loading
+ * state synchronously, then refresh in the background. Repeated mounts share
+ * one request and never present an invented numeric fallback.
  */
 export function mountGitHubStars(root: Document | Element = document): Promise<number | null> {
   const mountedNodes: Element[] = [];
@@ -128,7 +186,8 @@ export function mountGitHubStars(root: Document | Element = document): Promise<n
   if (!starNodes.size) return Promise.resolve(null);
 
   const cached = readCachedStars();
-  renderGitHubStarCount(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
+  if (cached) renderGitHubStarCount(cached.count);
+  else renderGitHubStarLoading(mountedNodes);
   bindIntentRetry(mountedNodes);
   return refreshGitHubStars();
 }

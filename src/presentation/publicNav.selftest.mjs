@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  FALLBACK_GITHUB_STAR_COUNT,
   formatGitHubStarCount,
   mountGitHubStars,
   repositoryStatsEndpointAvailable,
@@ -33,7 +32,7 @@ const expectedLinks = [
   ['/studio', 'Studio'],
   ['/gallery', 'Tank Gallery'],
   ['/docs', 'Docs'],
-  ['https://github.com/Kevin-Liu-01/claude-of-tanks', `GitHub ${FALLBACK_GITHUB_STAR_COUNT}`],
+  ['https://github.com/Kevin-Liu-01/claude-of-tanks', 'GitHub'],
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
@@ -44,32 +43,49 @@ assert.equal(repositoryStatsEndpointAvailable({ hostname: '127.0.0.1', protocol:
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'localhost', protocol: 'https:' }), false);
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'cot.kevinliu.studio', protocol: 'https:' }), true);
 
-// A fresh surface renders its packaged value immediately and refreshes through
-// the same-origin cached endpoint without waiting for pointer or keyboard intent.
+// A fresh surface renders an honest loading state immediately and refreshes
+// through the same-origin cached endpoint without waiting for user intent.
 const githubIntentHandlers = {};
+const githubControlAttributes = new Map();
 const githubControlProbe = {
   dataset: {},
   getAttribute: () => 'Claude of Tanks on GitHub',
-  setAttribute() {},
+  setAttribute(name, value) { githubControlAttributes.set(name, value); },
   addEventListener(type, handler) { githubIntentHandlers[type] = handler; },
 };
+const githubStarAttributes = new Map();
 const githubStarProbe = {
+  dataset: {},
   textContent: '',
   closest: () => githubControlProbe,
+  setAttribute(name, value) { githubStarAttributes.set(name, value); },
+  removeAttribute(name) { githubStarAttributes.delete(name); },
 };
 const originalFetch = globalThis.fetch;
 let githubFetches = 0;
+let resolveGitHubFetch;
 globalThis.fetch = async (url) => {
   githubFetches++;
   assert.equal(url, '/api/github-stars');
+  await new Promise((resolve) => { resolveGitHubFetch = resolve; });
   return { ok: true, json: async () => ({ stargazers_count: 321 }) };
 };
-await mountGitHubStars({
+const githubMount = mountGitHubStars({
   matches: () => false,
   querySelectorAll: () => [githubStarProbe],
 });
 assert.equal(githubFetches, 1, 'mounting star counts performs one automatic live refresh');
+assert.equal(githubStarProbe.dataset.githubStarsState, 'loading');
+assert.equal(githubStarProbe.textContent, '');
+assert.equal(githubStarAttributes.get('aria-busy'), 'true');
+assert.equal(githubStarAttributes.get('aria-label'), 'Loading GitHub star count');
+resolveGitHubFetch();
+await githubMount;
+assert.equal(githubStarProbe.dataset.githubStarsState, 'ready');
 assert.equal(githubStarProbe.textContent, '321');
+assert.equal(githubStarAttributes.has('aria-busy'), false);
+assert.equal(githubStarAttributes.get('aria-label'), '321 GitHub stars');
+assert.equal(githubControlAttributes.get('aria-label'), 'Claude of Tanks on GitHub, 321 stars');
 assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
 assert.equal(typeof githubIntentHandlers.focus, 'function');
 await githubIntentHandlers.pointerenter();
@@ -80,6 +96,9 @@ assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-
   'desktop navigation controls must retain visible spacing');
 assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
   'navigation controls must not stretch from the top to the bottom of the bar');
+assert.match(navCss,
+  /\[data-github-stars\]\[data-github-stars-state='loading'\]::before\{[^}]*animation:cot-github-star-spin/,
+  'the shared public surface must render a compact loading indicator instead of a numeric guess');
 assert.match(navCss, /\.public-nav__links>a:not\(\.public-nav__github\):not\(\.public-nav__cta\)\{display:none\}/,
   'mobile public navigation must collapse page links while retaining GitHub and Play Now');
 assert.match(navSource, /className = 'public-nav__menu-trigger'/,
@@ -120,6 +139,10 @@ for (const [file, activeHref] of pages) {
   const github = links.find(({ href }) => href.includes('github.com'));
   assert.ok(github?.attrs.includes('target="_blank"'), `${file} GitHub control opens the repository`);
   assert.ok(linksBlock.includes('data-github-stars'), `${file} GitHub control exposes the live star count`);
+  assert.ok(linksBlock.includes('data-github-stars-state="loading"'),
+    `${file} GitHub control starts in the shared loading state`);
+  assert.doesNotMatch(linksBlock, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
+    `${file} GitHub control must not ship a stale numeric fallback`);
 }
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
@@ -135,8 +158,10 @@ const gameRepositoryLinks = [...gameHtml.matchAll(/<a[^>]+href="https:\/\/github
 assert.equal(gameRepositoryLinks.length, 2, 'loading and credits screens must retain both repository controls');
 for (const [, contents] of gameRepositoryLinks) {
   assert.ok(contents.includes('data-github-stars'), 'every repository control in the loading flow shows stars');
-  assert.ok(contents.includes(`data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}`),
-    'every repository control in the loading flow starts with the numeric fallback');
+  assert.ok(contents.includes('data-github-stars-state="loading"'),
+    'every repository control in the loading flow starts with the shared loading state');
+  assert.doesNotMatch(contents, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
+    'loading-flow repository controls must not ship a stale numeric fallback');
 }
 
 const garageSource = readFileSync(join(ROOT, 'src/ui/garage.ts'), 'utf8');
@@ -164,8 +189,11 @@ for (const destination of ['home', 'garage', 'studio', 'gallery', 'docs', 'recor
 assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-brand-utilities,\s*body\[data-cot-panels='overlay'\] \.cot-nav \.cot-nav-desktop\{display:none\}/,
   'overlay panel layouts must collapse left utilities and desktop workspace links');
-assert.match(garageSource, new RegExp(`class="github-stars" data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}<\\/span>`),
-  'garage GitHub control exposes a numeric fallback before the live star count');
+assert.match(garageSource,
+  /class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true"/,
+  'garage GitHub control exposes the shared loading state before the verified live star count');
+assert.doesNotMatch(garageSource, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
+  'garage GitHub control must not ship a stale numeric fallback');
 
 for (const file of ['home.html', 'docs.html']) {
   const html = readFileSync(join(ROOT, file), 'utf8');
@@ -173,8 +201,10 @@ for (const file of ['home.html', 'docs.html']) {
   assert.ok(repositoryLinks.length >= 2, `${file} must retain navbar and footer repository controls`);
   for (const [, contents] of repositoryLinks) {
     assert.ok(contents.includes('data-github-stars'), `${file} repository control is missing its star count`);
-    assert.ok(contents.includes(`data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}`),
-      `${file} repository control must render the verified numeric fallback`);
+    assert.ok(contents.includes('data-github-stars-state="loading"'),
+      `${file} repository control must render the shared loading state`);
+    assert.doesNotMatch(contents, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
+      `${file} repository control must not ship a stale numeric fallback`);
   }
 }
 

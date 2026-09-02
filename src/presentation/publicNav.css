@@ -95,12 +95,37 @@
   font-variant-numeric:tabular-nums;
 }
 .public-nav__stars svg{width:10px;height:10px;fill:#e9a346}
+[data-github-stars]{
+  display:inline-grid;
+  min-width:4ch;
+  min-height:1em;
+  place-items:center;
+  line-height:1;
+}
+[data-github-stars][data-github-stars-state='loading']::before{
+  width:7px;
+  height:7px;
+  box-sizing:border-box;
+  border:1px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  content:'';
+  animation:cot-github-star-spin .7s linear infinite;
+}
+[data-github-stars][data-github-stars-state='unavailable']::before{
+  content:'\2014';
+  opacity:.48;
+}
+@keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .public-nav__links .public-nav__cta{
   height:36px;
   padding-inline:18px;
   border-color:#e9a346;
   background:#e9a346;
   color:#18130c;
+}
+@media (prefers-reduced-motion:reduce){
+  [data-github-stars][data-github-stars-state='loading']::before{animation:none}
 }
 .public-nav__menu-trigger,.public-nav__menu{display:none}
 .public-nav__menu[hidden]{display:none!important}

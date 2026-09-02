@@ -40,9 +40,10 @@ Consume canonical state rather than duplicating policy. Keep large/high-cost
 screens lazy. Preserve large touch targets and test desktop plus mobile. Baked
 minimap requests must pass through `minimapAssetRuntime.ts`; keep active-world
 and prepared-service checks at the asynchronous completion edge.
-Decorative metadata such as repository stars must render a release-verified
-local value first, then refresh only through a bounded same-origin cache. Never
-make boot or Garage presentation depend on a third-party request.
+Decorative metadata such as repository stars must render a stable-width loading
+state or a bounded verified local cache, then refresh only through the cached
+same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
+Garage presentation depend on a third-party request.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.

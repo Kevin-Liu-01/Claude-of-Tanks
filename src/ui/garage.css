@@ -97,6 +97,12 @@
 .cot-nav .cot-github{position:relative;padding-inline:8px;}
 .cot-nav .github-stars{padding-left:6px;border-left:1px solid rgba(146,164,180,.28);
   color:#f0b04a;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.cot-nav [data-github-stars]{display:inline-grid;min-width:4ch;min-height:1em;place-items:center;line-height:1;}
+.cot-nav [data-github-stars][data-github-stars-state='loading']::before{
+  width:7px;height:7px;box-sizing:border-box;border:1px solid currentColor;border-right-color:transparent;
+  border-radius:50%;content:'';animation:cot-github-star-spin .7s linear infinite;}
+.cot-nav [data-github-stars][data-github-stars-state='unavailable']::before{content:'\2014';opacity:.48;}
+@keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
   right:auto;top:auto;}
@@ -959,6 +965,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   to{opacity:1;transform:translateX(-50%);}}
 @media (prefers-reduced-motion:reduce){
   .cot-garage.enter,.cot-garage.enter *{animation:none !important;}
+  .cot-nav [data-github-stars][data-github-stars-state='loading']::before{animation:none;}
 }
 
 /* RESPONSIVE COMPOSITION r1 -------------------------------------------------
