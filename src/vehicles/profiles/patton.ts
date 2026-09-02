@@ -561,6 +561,8 @@ interface EraCell {
   readonly h: number;
   readonly d: number;
   readonly supportGapM: number;
+  readonly seatCorrectionM: number;
+  readonly exteriorProjectionM: number;
 }
 
 type Side = -1 | 1;
@@ -3500,6 +3502,43 @@ function pattonSideCassette(
   variant: string,
 ): void {
   const { box, xform } = KIT;
+  if (variant !== 'a2') {
+    const bottomY = y - h / 2;
+    const topY = y + h / 2;
+    const trackClearY = 1.38;
+    const outerX = side * 1.8075;
+    const trackClearInnerX = side * 1.795;
+    const fenderAnchorInnerX = side * 1.7275;
+    const z0 = z - len / 2;
+    const z1 = z + len / 2;
+    // The lower cassette wall sits outside the animated tread envelope. Its
+    // upper half then widens inward to the real fender attachment, keeping
+    // the requested low side silhouette without putting an armor solid
+    // through the live track loop.
+    P.add('hull', orientedSlab(
+      [trackClearInnerX, bottomY, z0], [outerX, bottomY, z0],
+      [outerX, bottomY, z1], [trackClearInnerX, bottomY, z1],
+      [trackClearInnerX, trackClearY, z0], [outerX, trackClearY, z0],
+      [outerX, trackClearY, z1], [trackClearInnerX, trackClearY, z1],
+    ));
+    P.add('hull', orientedSlab(
+      [trackClearInnerX, trackClearY, z0], [outerX, trackClearY, z0],
+      [outerX, trackClearY, z1], [trackClearInnerX, trackClearY, z1],
+      [fenderAnchorInnerX, topY, z0], [outerX, topY, z0],
+      [outerX, topY, z1], [fenderAnchorInnerX, topY, z1],
+    ));
+    const faceX = side * 1.8125;
+    P.add('hullDark', box(0.010, h * 0.90, 0.018), faceX, y, z);
+    for (const sy of [-1, 1]) {
+      P.add('hullDark', box(0.010, 0.018, len * 0.92), faceX,
+        y + sy * (h / 2 - 0.018), z);
+    }
+    for (const sz of [-1, 1]) {
+      P.add('hullDark', box(0.010, h * 0.88, 0.018), faceX, y,
+        z + sz * (len / 2 - 0.018));
+    }
+    return;
+  }
   const x = side * (variant === 'a2' ? 1.775 : 1.765);
   const depth = 0.075;
   P.add('hull', box(depth, h, len), x, y, z);
@@ -3702,7 +3741,7 @@ function m60EraCellAt(
   const zHalfSpan = w / (2 * longitudinalRate);
   const heightHalfSpan = h / (2 * verticalRate);
   const supportPlanePoint = point.clone().addScaledVector(normal, -castEmbedM);
-  let supportGapM = 0;
+  let rawSupportGapM = 0;
   for (const zSign of [-1, 1]) {
     for (const heightSign of [-1, 1]) {
       const sample = m60CastingPointAt(
@@ -3710,16 +3749,25 @@ function m60EraCellAt(
         worldZ + zSign * zHalfSpan,
         heightFraction + heightSign * heightHalfSpan,
       );
-      supportGapM = Math.max(supportGapM,
+      rawSupportGapM = Math.max(rawSupportGapM,
         Math.max(0, supportPlanePoint.clone().sub(sample).dot(normal)));
     }
   }
-  point.addScaledVector(normal, d / 2 - castEmbedM);
+  // Seat the complete inner face, rather than only its centre, against the
+  // compound casting. The two-millimetre compression allowance prevents a
+  // lighting crack after the merged geometry is quantized while preserving a
+  // clearly readable armor face outside the turret skin.
+  const seatCompressionM = 0.002;
+  const seatCorrectionM = rawSupportGapM + seatCompressionM;
+  point.addScaledVector(normal, d / 2 - castEmbedM - seatCorrectionM);
   return {
     x: point.x, y: point.y, z: point.z,
     rx: euler.x, ry: euler.y, rz: euler.z,
     nx: normal.x, ny: normal.y, nz: normal.z,
-    w, h, d, supportGapM,
+    w, h, d,
+    supportGapM: Math.max(0, rawSupportGapM - seatCorrectionM),
+    seatCorrectionM,
+    exteriorProjectionM: d - castEmbedM - seatCorrectionM,
   };
 }
 
@@ -3727,7 +3775,9 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
   const turretPivot = P.spec.armor.turretPivot;
   const frontTilesPerSide = 15;
   const sideTilesPerSide = 18;
-  const castEmbedM = 0.0125;
+  const castEmbedM = 0.025;
+  const cassetteDepthM = 0.090;
+  const cells: EraCell[] = [];
   const putTurretLocal = (put: EraPlacement, cell: EraCell): void => put(
     cell.x,
     turretPivot[1] + cell.y,
@@ -3746,8 +3796,10 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
         const rowFrontZ = 2.04 - row * 0.20;
         const worldZ = rowFrontZ + (1.10 - rowFrontZ) * (column / 4);
         const heightFraction = 0.34 + row * 0.12;
-        frontCells.push(m60EraCellAt(side, worldZ, heightFraction,
-          0.27 - row * 0.025, 0.17, 0.078, castEmbedM));
+        const cell = m60EraCellAt(side, worldZ, heightFraction,
+          0.27 - row * 0.025, 0.17, cassetteDepthM, castEmbedM);
+        frontCells.push(cell);
+        cells.push(cell);
       }
     }
     P.eraCluster(`m60a3_turret_era_front_${side > 0 ? 'R' : 'L'}`, (put: EraPlacement) => {
@@ -3760,8 +3812,10 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
       for (let column = 0; column < 6; column++) {
         const localZ = 0.02 - column * 0.25;
         const worldZ = localZ + 0.30;
-        sideCells.push(m60EraCellAt(side, worldZ, heightFraction,
-          0.22, 0.17, 0.078, castEmbedM));
+        const cell = m60EraCellAt(side, worldZ, heightFraction,
+          0.22, 0.17, cassetteDepthM, castEmbedM);
+        sideCells.push(cell);
+        cells.push(cell);
       }
     }
     P.eraCluster(`m60a3_turret_era_side_${side > 0 ? 'R' : 'L'}`, (put: EraPlacement) => {
@@ -3782,6 +3836,10 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
     layersPerCassette: 2,
     curvedSurfaceNormals: (frontTilesPerSide + sideTilesPerSide) * 2,
     tangentAxesPerTile: 2,
+    maximumSupportGapM: Math.max(...cells.map((cell) => cell.supportGapM)),
+    maximumSeatCorrectionM: Math.max(...cells.map((cell) => cell.seatCorrectionM)),
+    minimumExteriorProjectionM: Math.min(...cells.map((cell) => cell.exteriorProjectionM)),
+    maximumExteriorProjectionM: Math.max(...cells.map((cell) => cell.exteriorProjectionM)),
   };
 }
 
@@ -3789,21 +3847,33 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   const { box, cylY, cylZ } = KIT;
   const a3 = variant === 'a3';
 
-  // USMC RISE/P-style side protection: one supported upper run only.  The
-  // native linked course, all six wheels and both end transitions remain
-  // fully visible below it; these are armor cassettes, never replacement
-  // tracks or corridor fillers.
+  // USMC RISE/P-style side protection: the cassette upper edge shares the
+  // measured 1.79 m fender datum. This makes the course read as fender-hung
+  // armor instead of a row of boxes perched above the side deck.
   const stations = a3 ? [-2.55, -1.94, -1.33, -0.72, -0.11, 0.50, 1.11, 1.72, 2.33]
     : [-2.48, -1.82, -1.16, -0.50, 0.16, 0.82, 1.48, 2.14];
+  const fenderTopY = 1.79;
+  const cassetteHeightM = a3 ? 0.54 : 0.58;
+  const cassetteCenterY = fenderTopY - cassetteHeightM / 2;
   for (const side of [-1, 1]) {
-    // Keep the cassette course above the live track envelope.  The previous
-    // 1.36 m centreline buried the lower third of every A3 cassette in the
-    // shoes, so a purely visual armor course failed the same construction
-    // gate used by the playable collision anatomy.
-    for (const z of stations) pattonSideCassette(P, side, a3 ? 1.65 : 1.67, z,
-      a3 ? 0.54 : 0.58, a3 ? 0.52 : 0.57, variant);
-    P.add('hullDetail', box(0.055, 0.065, 5.45), side * 1.73, 1.69, -0.10);
+    for (const z of stations) pattonSideCassette(P, side, cassetteCenterY, z,
+      cassetteHeightM, a3 ? 0.52 : 0.57, variant);
+    P.add('hullDetail', box(0.055, 0.065, 5.45), side * 1.73, fenderTopY, -0.10);
   }
+  P.hullG.userData.m60SideCassetteReceipt = {
+    variant,
+    count: stations.length * 2,
+    fenderTopY,
+    cassetteTopY: cassetteCenterY + cassetteHeightM / 2,
+    cassetteCenterY,
+    cassetteBottomY: cassetteCenterY - cassetteHeightM / 2,
+    supportRailCenterY: fenderTopY,
+    previousCenterY: a3 ? 1.65 : 1.67,
+    trackClearanceShoulderY: 1.38,
+    trackClearanceInnerX: 1.795,
+    exteriorX: 1.8125,
+    fenderAnchorInnerX: 1.7275,
+  };
 
   // Glacis kit follows the shallow M60 rake and leaves the driver/periscope
   // lane and both light clusters open.  A1 uses broad early Blazer boxes;
@@ -3824,7 +3894,8 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   } else {
     const cheekZ = [1.30, 0.84, 0.38];
     const cheekWorldYs = [2.30, 2.51];
-    const castEmbedM = 0.045;
+    const castEmbedM = 0.060;
+    const cassetteDepthM = 0.105;
     const cells: EraCell[] = [];
     for (const side of [-1, 1]) {
       for (const cheekWorldY of cheekWorldYs) {
@@ -3834,7 +3905,7 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
           const heightFraction = Math.max(0.31, Math.min(0.79,
             (cheekWorldY - section.bot) / Math.max(0.001, section.top - section.bot)));
           const cell = m60EraCellAt(side, worldZ, heightFraction,
-            0.42, 0.18, 0.12, castEmbedM);
+            0.42, 0.18, cassetteDepthM, castEmbedM);
           cells.push(cell);
           pattonFaceCassette(P, 'turret', cell.x, cell.y, cell.z, cell.w,
             cell.h, cell.d, cell.rx, cell.ry, cell.rz, 1, 1);
@@ -3851,6 +3922,9 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
         targetWorldYs: cheekWorldYs,
         maximumTileSpanM: Math.max(...cells.map((cell) => Math.max(cell.w, cell.h))),
         maximumSupportGapM: Math.max(...cells.map((cell) => cell.supportGapM)),
+        maximumSeatCorrectionM: Math.max(...cells.map((cell) => cell.seatCorrectionM)),
+        minimumExteriorProjectionM: Math.min(...cells.map((cell) => cell.exteriorProjectionM)),
+        maximumExteriorProjectionM: Math.max(...cells.map((cell) => cell.exteriorProjectionM)),
       },
     };
   }

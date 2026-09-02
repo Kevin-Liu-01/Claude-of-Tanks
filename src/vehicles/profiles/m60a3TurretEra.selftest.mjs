@@ -36,8 +36,14 @@ assert.equal(receipt.curvedSurfaceNormals, receipt.totalTiles,
   'every ERA module derives its own normal from the rounded casting');
 assert.equal(receipt.tangentAxesPerTile, 2,
   'each tile uses longitudinal and dome tangents instead of a flat bank transform');
-assert(receipt.castEmbedM >= 0.01 && receipt.castEmbedM <= 0.02,
+assert(receipt.castEmbedM >= 0.02 && receipt.castEmbedM <= 0.03,
   'modules are deliberately embedded into the cast skin instead of floating');
+assert(receipt.maximumSupportGapM <= 0.0001,
+  'every ERA module inner face is fully supported across all four corners');
+assert(receipt.minimumExteriorProjectionM >= 0.02,
+  'ERA faces remain visible after their corner-supported seat correction');
+assert(receipt.maximumExteriorProjectionM <= 0.065,
+  'ERA faces hug the casting instead of standing proud of its compound slope');
 assert(receipt.minimumMantletClearanceM >= 0.04,
   'dense cheek fields preserve the moving mantlet throat');
 

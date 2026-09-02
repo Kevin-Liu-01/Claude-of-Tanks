@@ -16,9 +16,23 @@ for (const id of ['m60a1', 'm60a3']) {
     geometryReceipt: true,
   });
   const turret = tank.root.getObjectByName('rig_turret');
+  const hull = tank.root.getObjectByName('rig_hull');
   const gun = tank.root.getObjectByName('rig_gun');
   const attachments = turret?.userData.m60VariantAttachmentReceipt;
+  const sideCassettes = hull?.userData.m60SideCassetteReceipt;
   const searchlight = gun?.userData.m60SearchlightReceipt;
+
+  assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
+  assert.equal(sideCassettes.cassetteTopY, sideCassettes.fenderTopY,
+    `${id}: side armor upper edge is exactly inline with the fender datum`);
+  assert.equal(sideCassettes.supportRailCenterY, sideCassettes.fenderTopY,
+    `${id}: cassette support rail moves down with the armor course`);
+  assert(sideCassettes.cassetteCenterY < sideCassettes.previousCenterY,
+    `${id}: side armor is lower than the superseded perched placement`);
+  assert(sideCassettes.trackClearanceInnerX > 1.78,
+    `${id}: lowered cassette wall remains outside the live track envelope`);
+  assert(sideCassettes.exteriorX <= 1.8155,
+    `${id}: track clearance does not widen the tank past its M60 fender envelope`);
 
   assert.ok(attachments?.roofShelf, `${id}: right roof shelf publishes a seating receipt`);
   assert.equal(attachments.roofShelf.conformalCorners, 4,
@@ -73,8 +87,12 @@ for (const id of ['m60a1', 'm60a3']) {
       'M60A1 panels stay narrow enough to follow compound cheek curvature');
     assert(attachments.cheekPanels.maximumSupportGapM <= 0.002,
       'M60A1 panel inner faces remain supported at all audited corners');
-    assert(attachments.cheekPanels.castEmbedM >= 0.04,
+    assert(attachments.cheekPanels.castEmbedM >= 0.055,
       'M60A1 cheek panels overlap the casting instead of floating beside it');
+    assert(attachments.cheekPanels.maximumExteriorProjectionM <= 0.045,
+      'M60A1 cheek faces remain close to the cast skin instead of standing proud');
+    assert(attachments.cheekPanels.minimumExteriorProjectionM >= 0.04,
+      'M60A1 cheek faces stay fully visible after the conformal seat correction');
   } else {
     assert(searchlight.widthM >= 0.56 && searchlight.lensDiameterM >= 0.34,
       'M60A3 carries the requested oversized gun-mounted searchlight');
