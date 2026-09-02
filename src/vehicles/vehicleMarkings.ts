@@ -139,6 +139,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv103a: anchor('hull', 'left', 0.44, 0.64, 0.27, 1),
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv122: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
+  cv90: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  cv90_mkiv: anchor('hull', 'left', 0.36, 0.59, 0.23, 1),
   // Polish family deliberately uses three different, source-appropriate
   // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
   // cheek, and PL-01 on its broad faceted hull-side armor.

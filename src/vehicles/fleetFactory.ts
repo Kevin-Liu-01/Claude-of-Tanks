@@ -116,7 +116,13 @@ const GROUP_LOADERS = Object.freeze({
   }),
   leopard: () => import('./profiles/leopard.ts').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
   italy: () => import('./profiles/italy.ts').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
-  sweden: () => import('./profiles/sweden.ts').then((mod) => registerProfiles(mod.SWEDEN_PROFILES)),
+  sweden: () => Promise.all([
+    import('./profiles/sweden.ts'),
+    import('./profiles/cv90.ts'),
+  ]).then(([family, cv90]) => registerProfiles({
+    ...family.SWEDEN_PROFILES,
+    ...cv90.CV90_PROFILES,
+  })),
   sovietHeavy: () => import('./profiles/soviet-heavy.ts').then((mod) => registerProfiles(mod.SOVIET_HEAVY_PROFILES)),
   t90: () => import('./profiles/t90.ts').then((mod) => registerProfiles(mod.T90_PROFILES)),
   russia: () => import('./profiles/russia.ts').then((mod) => registerProfiles(mod.RUSSIA_PROFILES)),

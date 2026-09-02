@@ -17,6 +17,7 @@ const expected = new Map([
   ['m1a2', 'nato-double-pin'],
   ['merkava4b', 'merkava-heavy'],
   ['m3a3_bradley', 'compact-ifv'],
+  ['cv90_mkiv', 'compact-ifv'],
   ['bmp3', 'eastern-ifv'],
   ['challenger2', 'british-rubber-pad'],
   ['leclerc', 'franco-italian-modular'],

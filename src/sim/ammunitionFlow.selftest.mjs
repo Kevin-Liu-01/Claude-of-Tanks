@@ -55,7 +55,7 @@ for (const spec of Object.values(TANK_SPECS)) {
     }
   }
 }
-assert.equal(guidedRounds.length, 21, 'the complete guided-ammunition fleet is covered');
+assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
 assert.ok(depletedChannelTransitions > 200,

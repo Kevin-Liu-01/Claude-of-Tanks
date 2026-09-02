@@ -190,10 +190,10 @@ function addOpenTrapezoidGunCradle(
 }
 
 function addHullShell(P: PumaS1BuilderPort): void {
-  const { box, frustum } = KIT;
-  // Deep mine-protected tub and continuously connected shoulder course. The
-  // bow has three real planes (lower nose, central glacis, shallow roof
-  // break) rather than a rectangular IFV placeholder.
+  const { box, frustum, polyMultiLoft } = KIT;
+  // A low bow rises through two long glacis breaks into the troop cell. The
+  // varying station heights keep the roof, shoulders and flanks visibly
+  // faceted instead of reading as a constant-height extruded box.
   P.add('hull', box(2.10, 0.66, 7.18), 0, 0.73, 0);
   P.add('hull', frustum(1.10, 3.50, -3.48, 1.10, 2.74, -3.48, 0.78, 1.42));
   P.add('hull', orientedSlab(
@@ -204,11 +204,17 @@ function addHullShell(P: PumaS1BuilderPort): void {
     [-1.28, 1.50, 1.90], [1.28, 1.50, 1.90], [1.05, 1.10, 3.55], [-1.05, 1.10, 3.55],
     [-1.40, 1.91, 1.54], [1.40, 1.91, 1.54], [1.12, 1.68, 2.54], [-1.12, 1.68, 2.54],
   ));
-  P.add('hull', box(3.32, 0.42, 4.70), 0, 1.82, -0.78);
-  P.add('hull', orientedSlab(
-    [-1.66, 1.49, -3.54], [1.66, 1.49, -3.54], [1.66, 1.49, -2.90], [-1.66, 1.49, -2.90],
-    [-1.54, 2.04, -3.76], [1.54, 2.04, -3.76], [1.66, 2.03, -2.90], [-1.66, 2.03, -2.90],
-  ));
+  const monocoquePlan: [number, number][] = [
+    [-1.02, 3.57], [1.02, 3.57], [1.43, 2.76], [1.64, 2.15],
+    [1.66, -3.28], [1.49, -3.65], [-1.49, -3.65], [-1.66, -3.28],
+    [-1.64, 2.15], [-1.43, 2.76],
+  ];
+  P.add('hull', polyMultiLoft(monocoquePlan, [
+    { height: 0.00, inset: 0.91 },
+    { height: [0.10, 0.10, 0.25, 0.36, 0.38, 0.38, 0.38, 0.38, 0.36, 0.25], inset: 0.97 },
+    { height: [0.18, 0.18, 0.46, 0.70, 0.74, 0.72, 0.72, 0.74, 0.70, 0.46],
+      inset: [0.89, 0.89, 0.93, 0.98, 0.98, 0.95, 0.95, 0.98, 0.98, 0.93] },
+  ]), 0, 1.34, 0);
   P.add('hull', box(2.12, 0.54, 0.16), 0, 1.02, 3.72, -0.08, 0, 0);
   P.add('hullDark', box(2.64, 0.035, 2.44), 0, 2.045, -1.52);
   for (let index = 0; index < 12; index++) {
@@ -258,12 +264,9 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     contactZF: 2.70, contactZR: -2.63,
   });
 
-  // S1 level-C flank package. A faceted front shoulder carries the skirt into
-  // the same upper-glacis break as the bow, so the protection is a connected
-  // armored volume rather than a flat panel stopping beside the idler. The
-  // straight course is built as a structural NERA carrier, a spaced stand-off
-  // plate and two independent outer ERA bricks at every station. All three
-  // layers remain beyond the widened native shoe envelope.
+  // The native course terminates immediately beneath the structural NERA
+  // carrier. The glacis downfold and shoulder tie close the bow in both side
+  // and plan views while preserving a clean shoe envelope.
   for (const side of [-1, 1]) {
     P.addExternalArmor('hull', orientedSlab(
       [side * 1.86, 0.96, 2.52], [side * 2.16, 0.96, 2.52],
@@ -345,17 +348,20 @@ function addRunningGear(P: PumaS1BuilderPort): void {
 
 function addTurret(P: PumaS1BuilderPort): void {
   const { box, cylY, cylZ, polyMultiLoft, polyTurret, buildGun } = KIT;
+  // The unmanned RCT shell uses a narrow gun nose, hard shoulder breaks and a
+  // crown that rises aft. Ten deliberate facets keep the silhouette angular
+  // without turning the module into a rounded or box-backed generic turret.
   const plan = [
-    [-0.20, 1.65], [0.20, 1.65], [0.62, 1.48], [0.88, 1.06],
-    [0.98, 0.20], [0.94, -1.18], [0.70, -1.55], [-0.70, -1.55],
-    [-0.94, -1.18], [-0.98, 0.20], [-0.88, 1.06], [-0.62, 1.48],
+    [-0.30, 1.62], [0.22, 1.62], [0.70, 1.34], [0.96, 0.72],
+    [1.00, -1.15], [0.72, -1.58], [-0.78, -1.56], [-1.00, -1.12],
+    [-1.02, 0.58], [-0.72, 1.30],
   ];
   P.add('turretDark', polyTurret(plan, 0.12, 1.04, 1.00), 0, -0.065, -0.02);
   P.add('turret', polyMultiLoft(plan, [
     { height: 0.02, inset: 1.00 },
-    { height: [0.46, 0.46, 0.52, 0.58, 0.62, 0.65, 0.61, 0.61, 0.65, 0.62, 0.58, 0.52], inset: 0.98 },
-    { height: [0.61, 0.61, 0.68, 0.72, 0.74, 0.77, 0.73, 0.73, 0.77, 0.74, 0.72, 0.68],
-      inset: [0.72, 0.72, 0.80, 0.86, 0.89, 0.91, 0.92, 0.92, 0.91, 0.89, 0.86, 0.80] },
+    { height: [0.34, 0.34, 0.47, 0.58, 0.66, 0.68, 0.68, 0.65, 0.56, 0.45], inset: 0.99 },
+    { height: [0.49, 0.49, 0.63, 0.74, 0.80, 0.82, 0.82, 0.79, 0.70, 0.60],
+      inset: [0.70, 0.70, 0.78, 0.86, 0.91, 0.93, 0.93, 0.91, 0.84, 0.76] },
   ]));
 
   // MK30 trunnion with a genuine coax bore. A restrained hollow trapezoid
@@ -508,8 +514,8 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   if (P.geometryReceipt) {
     P.hullG.userData.pumaS1Receipt = Object.freeze({
       independentFromLegacyPuma: true,
-      hullConstruction: 'connected-faceted-s1-shell-v2',
-      turretConstruction: 'independent-unmanned-rct30-loft-v1',
+      hullConstruction: 'progressive-slope-puma-monocoque-v4',
+      turretConstruction: 'faceted-rct30-rising-crown-v3',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,

@@ -46,8 +46,8 @@ try {
   assert.ok(hull && turret && gun, 'Puma S1 retains the canonical articulated rig');
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,
-    hullConstruction: 'connected-faceted-s1-shell-v2',
-    turretConstruction: 'independent-unmanned-rct30-loft-v1',
+    hullConstruction: 'progressive-slope-puma-monocoque-v4',
+    turretConstruction: 'faceted-rct30-rising-crown-v3',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,

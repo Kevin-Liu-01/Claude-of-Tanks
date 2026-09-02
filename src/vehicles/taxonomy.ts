@@ -67,11 +67,11 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a2_sepv3', 'merkava3c', 'merkava3d', 'merkava4b', 't72m1_jaguar',
     'pt91_twardy', 'k2b', 'bmp3_rok', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
     'ua_t84_oplot_m', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'm1128', 'm1296',
+    'm3a3_bradley', 'bmpt_t90', 'm1128', 'm1296', 'cv90',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger',
+    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv',
   ]),
 });
 

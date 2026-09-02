@@ -210,6 +210,8 @@ export const WEAPON_REPORT_PROFILES: Readonly<Record<string, Readonly<WeaponRepo
   '2a42': Object.freeze({ kind: 'autocannon', rate: 0.97, gain: 0.96, crackGain: 1.02, tailGain: 0.78, mechanicalHz: 820, mechanicalGain: 0.25, toneHz: 0, hissGain: 0, durationS: 0.40, twin: false }),
   'mk30-2': Object.freeze({ kind: 'autocannon', rate: 0.92, gain: 1.03, crackGain: 1.08, tailGain: 0.86, mechanicalHz: 690, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.43, twin: false }),
   'kde-35': Object.freeze({ kind: 'autocannon', rate: 0.86, gain: 1.10, crackGain: 1.04, tailGain: 0.94, mechanicalHz: 610, mechanicalGain: 0.20, toneHz: 0, hissGain: 0, durationS: 0.47, twin: false }),
+  'bofors-40': Object.freeze({ kind: 'autocannon', rate: 0.82, gain: 1.14, crackGain: 1.03, tailGain: 0.98, mechanicalHz: 560, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.51, twin: false }),
+  'xm913-50': Object.freeze({ kind: 'autocannon', rate: 0.76, gain: 1.20, crackGain: 1.06, tailGain: 1.04, mechanicalHz: 470, mechanicalGain: 0.24, toneHz: 0, hissGain: 0, durationS: 0.58, twin: false }),
   'rarden-l21a1': Object.freeze({ kind: 'autocannon', rate: 0.80, gain: 1.12, crackGain: 0.96, tailGain: 0.92, mechanicalHz: 520, mechanicalGain: 0.30, toneHz: 0, hissGain: 0, durationS: 0.54, twin: false }),
   '2a72': Object.freeze({ kind: 'autocannon', rate: 1.02, gain: 0.91, crackGain: 0.98, tailGain: 0.70, mechanicalHz: 910, mechanicalGain: 0.20, toneHz: 0, hissGain: 0, durationS: 0.37, twin: false }),
   'twin-2a42': Object.freeze({ kind: 'autocannon', rate: 0.94, gain: 1.06, crackGain: 1.06, tailGain: 0.82, mechanicalHz: 740, mechanicalGain: 0.32, toneHz: 0, hissGain: 0, durationS: 0.44, twin: true }),

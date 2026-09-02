@@ -34,6 +34,7 @@ let selectedViews = metadataOnly ? [] : opt('views')
   ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
+const authoringViews = new Set(['front']);
 const manifestPath = resolve(outDir, 'tank-assets.json');
 mkdirSync(outDir, { recursive: true });
 
@@ -49,7 +50,7 @@ function readManifest() {
 let startingManifest = readManifest();
 const priorManifest = startingManifest;
 for (const view of selectedViews) {
-  if (!TANK_ASSET_VIEWS[view]) {
+  if (!TANK_ASSET_VIEWS[view] && !(allowPartial && authoringViews.has(view))) {
     console.error(`[tank-assets] Unknown view '${view}'. Expected one of: ${Object.keys(TANK_ASSET_VIEWS).join(', ')}`);
     process.exit(1);
   }

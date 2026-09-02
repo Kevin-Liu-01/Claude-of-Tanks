@@ -184,7 +184,7 @@ function addOpenTrapezoidGunCradle(
 }
 
 function addHull(P: LightTigerBuilderPort): void {
-  const { box, frustum } = KIT;
+  const { box, frustum, polyMultiLoft } = KIT;
 
   // Compact six-wheel Japanese IFV tub. The four connected bow planes retain
   // the Type 89's high shoulder and clipped nose while the deeper belly,
@@ -199,11 +199,20 @@ function addHull(P: LightTigerBuilderPort): void {
     [-1.21, 1.47, 1.66], [1.21, 1.47, 1.66], [1.02, 1.19, 3.25], [-1.02, 1.19, 3.25],
     [-1.48, 1.83, 1.30], [1.48, 1.83, 1.30], [1.15, 1.66, 2.42], [-1.15, 1.66, 2.42],
   ));
-  P.add('hull', box(3.18, 0.39, 4.38), 0, 1.74, -0.82);
-  P.add('hull', orientedSlab(
-    [-1.59, 1.43, -3.24], [1.59, 1.43, -3.24], [1.59, 1.43, -2.76], [-1.59, 1.43, -2.76],
-    [-1.47, 1.94, -3.37], [1.47, 1.94, -3.37], [1.59, 1.94, -2.76], [-1.59, 1.94, -2.76],
-  ));
+  // The Japanese hull keeps its compact footprint but replaces the vertical
+  // troop box with a stepped shoulder loft. The bow, side shoulders and roof
+  // rise at different rates, giving the Light Tiger its own sharp silhouette.
+  const troopCellPlan: [number, number][] = [
+    [-0.94, 3.26], [0.94, 3.26], [1.32, 2.55], [1.49, 2.02],
+    [1.54, -3.12], [1.38, -3.38], [-1.38, -3.38], [-1.54, -3.12],
+    [-1.49, 2.02], [-1.32, 2.55],
+  ];
+  P.add('hull', polyMultiLoft(troopCellPlan, [
+    { height: 0.00, inset: 0.90 },
+    { height: [0.09, 0.09, 0.23, 0.34, 0.36, 0.36, 0.36, 0.36, 0.34, 0.23], inset: 0.97 },
+    { height: [0.16, 0.16, 0.43, 0.63, 0.68, 0.66, 0.66, 0.68, 0.63, 0.43],
+      inset: [0.87, 0.87, 0.92, 0.98, 0.99, 0.96, 0.96, 0.99, 0.98, 0.92] },
+  ]), 0, 1.34, -0.02);
 
   // Low-observable roof panels, engine louvers and recessed driver station.
   P.add('hullDark', box(1.36, 0.030, 1.74), -0.74, 1.955, 1.18);
@@ -252,21 +261,23 @@ function addRunningGear(P: LightTigerBuilderPort): void {
     coveredTop: false, contactZF: 2.54, contactZR: -2.45,
   });
 
-  // Light Tiger split NERA/ERA course. The front transition folds inward and
-  // upward with the bow until it meets the upper-glacis shoulder; behind it,
-  // staggered two-row Japanese modules sit on a real carrier and spaced plate.
+  // The layered skirt begins at the real track envelope and folds into the
+  // upper-glacis shoulder, keeping the side profile sealed without shoe clips.
   for (const side of [-1, 1]) {
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.74, 0.91, 2.42], [side * 2.08, 0.91, 2.42],
-      [side * 1.74, 0.45, 3.27], [side * 2.02, 0.45, 3.27],
-      [side * 1.74, 1.82, 2.42], [side * 2.08, 1.82, 2.42],
-      [side * 1.74, 1.27, 3.27], [side * 2.02, 1.27, 3.27],
+      [side * 1.74, 0.91, 2.42], [side * 1.98, 0.91, 2.42],
+      [side * 1.74, 0.45, 3.27], [side * 1.94, 0.45, 3.27],
+      [side * 1.74, 1.82, 2.42], [side * 1.98, 1.82, 2.42],
+      [side * 1.74, 1.27, 3.27], [side * 1.94, 1.27, 3.27],
     ));
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.52, 1.79, 2.39], [side * 1.86, 1.79, 2.39],
-      [side * 1.16, 1.35, 3.25], [side * 1.03, 1.35, 3.25],
-      [side * 1.52, 2.00, 2.39], [side * 1.81, 1.97, 2.39],
-      [side * 1.13, 1.50, 3.25], [side * 1.02, 1.50, 3.25],
+      // This shoulder is deliberately keyed through the glacis edge instead
+      // of merely touching it. It produces one continuous Swedish-style
+      // fender/body plane and removes the narrow sky pocket beside the bow.
+      [side * 1.40, 1.79, 2.39], [side * 1.82, 1.79, 2.39],
+      [side * 1.02, 1.35, 3.25], [side * 0.90, 1.35, 3.25],
+      [side * 1.40, 2.00, 2.39], [side * 1.78, 1.97, 2.39],
+      [side * 1.01, 1.50, 3.25], [side * 0.89, 1.50, 3.25],
     ));
     for (let index = 0; index < 9; index++) {
       const z = 2.22 - index * 0.64;
@@ -277,27 +288,27 @@ function addRunningGear(P: LightTigerBuilderPort): void {
       P.addExternalArmor('hull', KIT.box(0.18, moduleH, 0.64),
         side * 1.82, moduleY, z, 0, 0, roll);
       P.addExternalArmor('hull', KIT.box(0.060, moduleH - 0.08, 0.64),
-        side * 1.94, moduleY, z, 0, 0, roll);
+        side * 1.89, moduleY, z, 0, 0, roll);
       for (const [row, y] of [-1, 1].map((row) => [row,
         moduleY + row * moduleH * 0.225] as const)) {
         const stagger = row * 0.010 * (index % 2 ? -1 : 1);
         P.addExternalArmor('hull', KIT.box(0.072, moduleH * 0.42, 0.64),
-          side * 2.006, y, z + stagger, 0, 0, roll - row * side * 0.008);
+          side * 1.94, y, z + stagger, 0, 0, roll - row * side * 0.008);
         P.add('hullDark', KIT.box(0.012, moduleH * 0.30, 0.55),
-          side * 2.047, y, z + stagger);
+          side * 1.981, y, z + stagger);
       }
       P.add('hullDark', KIT.box(0.014, moduleH - 0.15, 0.027),
-        side * 2.046, moduleY, z + 0.292);
+        side * 1.980, moduleY, z + 0.292);
       for (const y of [moduleY - moduleH * 0.26, moduleY + moduleH * 0.26]) {
-        P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 2.052, y, z,
+        P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 1.986, y, z,
           0, 0, side * Math.PI / 2);
       }
     }
     for (const y of [1.22, 1.65]) {
       P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.76),
-        side * 2.006, y, -0.34);
+        side * 1.94, y, -0.34);
     }
-    P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 2.035, 0.80, -0.33);
+    P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 1.970, 0.80, -0.33);
     P.add('hull', KIT.box(0.15, 0.12, 5.80), side * 1.72, 1.98, -0.33);
 
     // Inset EO windows and separate marker lamps provide actual depth cues on
@@ -311,19 +322,22 @@ function addRunningGear(P: LightTigerBuilderPort): void {
         side * 1.711, 1.83, z);
     }
     for (const z of [2.04, -2.53]) {
-      P.addEquipment('hull', KIT.box(0.085, 0.13, 0.19), side * 2.050, 1.88, z);
+      P.addEquipment('hull', KIT.box(0.085, 0.13, 0.19), side * 1.980, 1.88, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.070, 0.100),
-        side * 2.101, 1.88, z);
+        side * 2.031, 1.88, z);
     }
   }
 }
 
 function addTurret(P: LightTigerBuilderPort): void {
   const { box, cylY, cylZ, polyMultiLoft, polyTurret, buildGun } = KIT;
+  // The Light Tiger keeps a broader conventional crew shell than the Puma,
+  // but every roof station rises away from the gun nose and then breaks into
+  // a clipped bustle. It therefore stays recognizably Japanese and angular.
   const plan = [
-    [-0.22, 1.48], [0.22, 1.48], [0.70, 1.25], [1.03, 0.70],
-    [1.08, -0.82], [0.82, -1.30], [0.56, -1.48], [-0.56, -1.48],
-    [-0.82, -1.30], [-1.08, -0.82], [-1.03, 0.70], [-0.70, 1.25],
+    [-0.25, 1.50], [0.25, 1.50], [0.78, 1.18], [1.08, 0.52],
+    [1.08, -0.95], [0.78, -1.42], [-0.72, -1.42], [-1.08, -0.95],
+    [-1.08, 0.52], [-0.78, 1.18],
   ];
   // Fine-segment machined bearing skirt: a real structural transition at the
   // unmanned module's yaw ring, not a coarse decorative puck. It remains
@@ -333,10 +347,29 @@ function addTurret(P: LightTigerBuilderPort): void {
   P.add('turretDark', polyTurret(plan, 0.10, 0.96, 1.00), 0, -0.055, -0.02);
   P.add('turret', polyMultiLoft(plan, [
     { height: 0.02, inset: 1.00 },
-    { height: [0.43, 0.43, 0.49, 0.55, 0.59, 0.62, 0.60, 0.60, 0.62, 0.59, 0.55, 0.49], inset: 0.98 },
-    { height: [0.59, 0.59, 0.65, 0.70, 0.73, 0.76, 0.72, 0.72, 0.76, 0.73, 0.70, 0.65],
-      inset: [0.74, 0.74, 0.81, 0.86, 0.90, 0.92, 0.93, 0.93, 0.92, 0.90, 0.86, 0.81] },
+    { height: [0.35, 0.35, 0.48, 0.58, 0.64, 0.67, 0.67, 0.64, 0.58, 0.48], inset: 0.99 },
+    { height: [0.50, 0.50, 0.64, 0.74, 0.79, 0.82, 0.82, 0.79, 0.74, 0.64],
+      inset: [0.71, 0.71, 0.80, 0.87, 0.92, 0.94, 0.94, 0.92, 0.87, 0.80] },
   ]));
+  for (const side of [-1, 1]) {
+    // Low-profile Japanese cheek laminates step upward with the crown. Their
+    // tapered eight-plane volumes are inset into the shell, retaining the
+    // clean outer outline while adding real angular surface construction.
+    for (const z of [0.34, -0.22, -0.78]) {
+      P.add('turret', orientedSlab(
+        [side * 0.88, 0.20, z + 0.20], [side * 1.09, 0.23, z + 0.16],
+        [side * 1.07, 0.23, z - 0.18], [side * 0.86, 0.20, z - 0.22],
+        [side * 0.80, 0.51, z + 0.18], [side * 1.00, 0.55, z + 0.14],
+        [side * 0.98, 0.53, z - 0.16], [side * 0.78, 0.49, z - 0.20],
+      ));
+    }
+    P.add('turret', orientedSlab(
+      [side * 0.27, 0.52, 0.88], [side * 0.59, 0.55, 0.78],
+      [side * 0.56, 0.53, 0.42], [side * 0.25, 0.50, 0.50],
+      [side * 0.24, 0.68, 0.81], [side * 0.52, 0.71, 0.72],
+      [side * 0.50, 0.68, 0.47], [side * 0.22, 0.65, 0.54],
+    ));
+  }
 
   // KDE-35 trunnion, coax and recessed muzzle. Its compact hollow shroud has
   // clean upper/lower skins and just two restrained openings on each flank.
@@ -490,8 +523,8 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
     P.hullG.userData.type89LightTigerReceipt = Object.freeze({
       independentFromLegacyType89: true,
       referenceUsage: 'measurement-and-silhouette-only',
-      hullConstruction: 'connected-faceted-light-tiger-shell-v2',
-      turretConstruction: 'independent-low-profile-kde35-loft-v1',
+      hullConstruction: 'progressive-slope-light-tiger-shell-v4',
+      turretConstruction: 'faceted-kde35-rising-crown-v3',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,

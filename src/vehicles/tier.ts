@@ -37,7 +37,7 @@ export const TANK_TIER = Object.freeze({
   ua_t64bv: 8, ua_t80bv: 9, ua_t80u_kursk: 9, ua_t84_oplot_m: 10, ua_m1a1: 9,
   ztz85_iii: 8, ztz99a2: 10,
   // Dedicated Swedish siege-TD progression: prototype -> A -> B.
-  strv81: 7, udes03: 8, strv103a: 9, strv122: 10,
+  strv81: 7, udes03: 8, strv103a: 9, cv90: 9, strv122: 10, cv90_mkiv: 10,
   t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10, pl01_105: 10,
   stb1: 7, type90a: 9, type10b: 10,
   leo2a4_otco: 8, leo2a4m: 9, leo2a6m: 10, leo2a6_ua: 10,

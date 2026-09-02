@@ -222,6 +222,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       }
     ]
   },
+  "cv90": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.23,
+        "pos": [
+          -1.0092891,
+          0.4797824,
+          -0.7600808
+        ],
+        "quaternion": [
+          0.0129135,
+          -0.7117336,
+          0.0127408,
+          0.7022153
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0051831
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -0.9831328,
+          0.5788006,
+          -0.1699306
+        ],
+        "quaternion": [
+          -0.1690384,
+          -0.682382,
+          -0.1710042,
+          0.6903176
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "cv90",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
   "strv122": {
     "schemaVersion": 1,
     "seats": [
@@ -264,6 +313,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "strv122",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "cv90_mkiv": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.23,
+        "pos": [
+          -1.3812857,
+          0.7497795,
+          -0.2504
+        ],
+        "quaternion": [
+          -0.0282768,
+          -0.7065412,
+          -0.0282768,
+          0.7065412
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "cv90_mkiv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.23,
+        "pos": [
+          -1.3812857,
+          0.7497795,
+          0.1544
+        ],
+        "quaternion": [
+          -0.0282768,
+          -0.7065412,
+          -0.0282768,
+          0.7065412
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "cv90_mkiv",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

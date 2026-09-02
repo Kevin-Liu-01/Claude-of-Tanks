@@ -756,6 +756,14 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       if (wants('side')) files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
       if (wants('sideSilhouette')) files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
     }
+    // Optional authoring-only orthographic front view. It is deliberately not
+    // part of the shipped tank-asset contract; geometry comparison tools can
+    // request it without expanding every vehicle's required public assets.
+    if (wants('front')) {
+      const frontHalf = Math.max(size.x, size.y) * 0.5 * MARGIN;
+      const frontCam = orthoCam(center, size, [0, 0, 1], [0, 1, 0], frontHalf, frontHalf);
+      files[`${id}_front.webp`] = capture(frontCam, BASE, BASE).toDataURL('image/webp', 0.9);
+    }
     if (wants('armorSide') || wants('modulesSide') || wants('crewSide')) {
       const sideCam = sideInspectionCamera(center, size, extentZ);
       if (wants('armorSide')) {

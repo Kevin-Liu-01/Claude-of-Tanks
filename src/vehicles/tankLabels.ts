@@ -53,6 +53,14 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Stridsvagn 122', shortName: 'Strv 122',
     searchAliases: ['Swedish Leopard 2'],
   },
+  cv90: {
+    displayName: 'CV90', shortName: 'CV90',
+    searchAliases: ['Combat Vehicle 90', 'Stridsfordon 90', 'CV9040', 'Swedish IFV'],
+  },
+  cv90_mkiv: {
+    displayName: 'CV90 Mk IV', shortName: 'CV90 Mk IV',
+    searchAliases: ['CV90 Mk 4', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
+  },
   t72m1_jaguar: {
     displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',
     searchAliases: ['T-72M1 Jaguar Poland', 'Jaguar MBT'],

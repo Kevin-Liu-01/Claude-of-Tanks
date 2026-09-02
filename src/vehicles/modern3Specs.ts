@@ -555,6 +555,96 @@ export const MODERN3_SPECS = {
     },
   },
 
+  cv90: {
+    id: 'cv90', name: 'CV90', nation: 'Sweden', era: 'modern', role: 'ifv',
+    hp: 2425,
+    enginePowerHp: 670, weightTons: 37, topSpeedKmh: 70, reverseSpeedKmh: 40,
+    hullTraverseDegS: 49,
+    terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 62, gunPitchDegS: 48, gunElevationDeg: 37, gunDepressionDeg: 8,
+    gun: {
+      caliberMm: 40, reloadS: 0.44, baseAccuracy: 0.25, aimTimeS: 1.08,
+      muzzleBoreSegments: 18,
+      soundProfile: 'bofors-40',
+      bloom: { move: 0.040, hullRot: 0.054, turret: 0.038, afterShot: 1.42 },
+      shells: [
+        shell('40 mm Slpprj m/90 APFSDS-T', 'APFSDS', 40, 210, 192, 115, 1465,
+          { pen2000Mm: 174, reloadS: 0.44, count: 234 }),
+        shell('40 mm 3P Programmable', 'HE', 40, 24, 24, 132, 1010,
+          { reloadS: 0.44, count: 234 }),
+        shell('40 mm Slpprj m/01 APFSDS-T', 'APFSDS', 40, 228, 208, 121, 1510,
+          { pen2000Mm: 188, reloadS: 0.44, count: 72 }),
+      ],
+    },
+    dims: { hullLengthM: 6.56, overallLengthM: 7.30, widthM: 3.62, heightM: 3.40 },
+    armor: modernArmor({
+      hl: 3.28, hw: 1.81, inW: 1.02, floor: 0.38, trkTop: 0.96, roofY: 1.69,
+      turretPivot: [0, 1.69, -0.48], gunPivot: [0, 0.39, 1.15],
+      barrelLenM: 3.12, barrelRadM: 0.064,
+      glacis: [62, 220, 305], lower: [48, 165, 225], side: [42, 105, 155],
+      skirt: [58, 185, 325], rear: 34, roof: 36,
+      tw: 1.08, tFrontZ: 1.34, tRearZ: -1.42, tH: 0.82,
+      cheek: [82, 210, 285], tSide: [58, 130, 195], tRear: 40, tRoof: 38,
+      mantlet: [95, 220, 300], loader: false,
+    }),
+    visual: {
+      scheme: 'stripes', base: '#3f4938', weather: '#535c49',
+      patches: ['#273028', '#59604a'], marking: 'roundel', number: '9040',
+      trackWidthM: 0.50, camoScale: 0.72,
+    },
+  },
+
+  cv90_mkiv: {
+    id: 'cv90_mkiv', name: 'CV90 Mk IV', nation: 'Sweden', era: 'next-generation', role: 'ifv',
+    hp: 2825,
+    enginePowerHp: 1000, weightTons: 40, topSpeedKmh: 74, reverseSpeedKmh: 42,
+    hullTraverseDegS: 52,
+    terrainResistance: { hard: 0.62, medium: 0.71, soft: 1.20 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 70, gunPitchDegS: 54, gunElevationDeg: 45, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 50, reloadS: 0.56, baseAccuracy: 0.225, aimTimeS: 0.92,
+      muzzleBoreSegments: 20,
+      soundProfile: 'xm913-50',
+      bloom: { move: 0.032, hullRot: 0.045, turret: 0.031, afterShot: 1.20 },
+      shells: [
+        shell('50 mm XM1204 APFSDS-T', 'APFSDS', 50, 290, 266, 145, 1490,
+          { pen2000Mm: 242, reloadS: 0.56, count: 180 }),
+        shell('Spike ER2', 'HEAT', 170, 1050, 1050, 760, 240,
+          { reloadS: 2.2, count: 8, guided: true, soundProfile: 'spike-launch' }),
+        shell('50 mm XM1203 Programmable ABM', 'HE', 50, 31, 31, 164, 1090,
+          { reloadS: 0.56, count: 180 }),
+      ],
+    },
+    dims: { hullLengthM: 6.98, overallLengthM: 8.44, widthM: 4.04, heightM: 3.92 },
+    armor: (() => {
+      const a = modernArmor({
+        hl: 3.49, hw: 2.02, inW: 1.08, floor: 0.40, trkTop: 1.01, roofY: 1.80,
+        turretPivot: [0, 1.80, -0.44], gunPivot: [0, 0.45, 1.34],
+        barrelLenM: 3.76, barrelRadM: 0.082,
+        glacis: [78, 305, 420], lower: [60, 230, 305], side: [52, 155, 225],
+        skirt: [90, 315, 540], rear: 42, roof: 50,
+        tw: 1.34, tFrontZ: 1.62, tRearZ: -1.68, tH: 0.96,
+        cheek: [120, 330, 445], tSide: [82, 205, 300], tRear: 55, tRoof: 48,
+        mantlet: [145, 360, 470], loader: false,
+      });
+      // The Mk IV mission turret is remotely operated; all three crew seats
+      // remain inside the protected hull cell below the turret roof.
+      a.crew = [
+        cbox('driver', [0.28, 0.54, 1.05], [1.04, 1.61, 2.26]),
+        cbox('gunner', [-0.18, 0.54, -0.54], [0.62, 1.62, 0.58]),
+        cbox('commander', [-1.02, 0.54, -0.54], [-0.18, 1.62, 0.58]),
+      ];
+      return a;
+    })(),
+    visual: {
+      scheme: 'splinter', base: '#3c4739', weather: '#525c49',
+      patches: ['#202823', '#657251', '#303c32'], marking: 'roundel', number: '904-IV',
+      trackWidthM: 0.57, camoScale: 0.82,
+    },
+  },
+
   type89: {
     id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,

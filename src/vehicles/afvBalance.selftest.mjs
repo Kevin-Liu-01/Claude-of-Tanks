@@ -10,6 +10,8 @@ const EXPECTED = Object.freeze({
   spz_puma:           { hp: 2100, speed: 70, reverse: 30, traverse: 46, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: [520, 'spike-launch'] },
   spz_puma_s1:        { hp: 2750, speed: 70, reverse: 30, traverse: 50, damage: 95, pen: [245, 224, 202], reload: 0.28, sound: 'mk30-2', missile: [680, 'spike-launch'] },
   type89_light_tiger: { hp: 2650, speed: 78, reverse: 32, traverse: 54, damage: 110, pen: [180, 166, 152], reload: 0.50, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  cv90:               { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  cv90_mkiv:          { hp: 2825, speed: 74, reverse: 42, traverse: 52, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: [760, 'spike-launch'] },
   type89:             { hp: 1450, speed: 70, reverse: 16, traverse: 46, damage: 82, pen: [112, 100, 88], reload: 0.52, sound: 'kde-35', missile: [500, 'jyu-mat-launch'] },
   fv510:              { hp: 1400, speed: 75, reverse: 20, traverse: 45, damage: 90, pen: [96, 86, 76], reload: 0.75, sound: 'rarden-l21a1', missile: null },
   fv510_milan:        { hp: 1525, speed: 68, reverse: 20, traverse: 43, damage: 84, pen: [96, 86, 76], reload: 0.78, sound: 'rarden-l21a1', missile: [480, 'milan-launch'] },
@@ -25,7 +27,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 17, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 19, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
