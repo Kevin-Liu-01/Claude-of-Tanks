@@ -1206,11 +1206,11 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     return parts;
   },
 
-  // -- turret bustle basket (rod frame + mesh + soft contents) -----------------------
+  // -- turret bustle basket (open lattice + shaped soft contents) -------------------
   // Local frame: open face toward +Z (bolts to the bustle), extends -Z.
   basket({ rng, w = 1.2, d = 0.42, h = 0.34 }) {
     const parts: DecorPartList = [];
-    const rod = 0.016;
+    const rod = Math.max(0.016, Math.min(0.026, Math.min(w, d, h) * 0.065));
     const st = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5 + rng() * 0.06) });
     for (const y of [h * 0.3, h]) {          // rails
       st(xform(cylX(rod, w, 5), 0, y, -d));
@@ -1220,15 +1220,58 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       st(xform(cylY(rod * 0.9, rod * 0.9, h, 4), -w / 2 + (i / 4) * w, h / 2, -d));
     }
     for (const s of [-1, 1]) st(xform(cylY(rod * 0.9, rod * 0.9, h, 4), s * w / 2, h / 2, -d * 0.04));
-    // floor + rear + side wire-grid panels
-    parts.push({ mat: 'mesh', geo: bakeShade(boxUV(xform(new THREE.PlaneGeometry(w * 0.98, d * 0.94, 1, 1), 0, h * 0.31, -d / 2, -Math.PI / 2, 0, 0), 5.5), 0.85) });
-    parts.push({ mat: 'mesh', geo: bakeShade(boxUV(xform(new THREE.PlaneGeometry(w * 0.98, h * 0.66, 1, 1), 0, h * 0.63, -d), 5.5), 0.85) });
-    for (const s of [-1, 1]) {
-      parts.push({ mat: 'mesh', geo: bakeShade(boxUV(xform(new THREE.PlaneGeometry(d * 0.92, h * 0.62, 1, 1), s * w / 2, h * 0.62, -d / 2, 0, Math.PI / 2, 0), 5.5), 0.85) });
+    // True open grids replace the old textured planes. Every aperture is
+    // physical air, so rear and elevated views can see through the basket.
+    const floorRows = Math.max(3, Math.min(7, Math.round(d / 0.10) + 1));
+    for (let i = 0; i < floorRows; i++) {
+      const z = -d + i * (d / (floorRows - 1));
+      st(xform(cylX(rod * 0.62, w * 0.98, 5), 0, h * 0.30, z));
     }
-    // contents: soft lumps riding above the floor
-    parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(sph(0.5), -w * 0.22, h * 0.62, -d * 0.55, 0.3, 0.5, 0, [0.36, 0.22, 0.3]), 2.4), 0.85 + rng() * 0.2) });
-    parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(sph(0.5), w * 0.24, h * 0.60, -d * 0.5, -0.2, 0.9, 0, [0.32, 0.20, 0.26]), 2.4), 0.7 + rng() * 0.2) });
+    const floorCols = Math.max(4, Math.min(9, Math.round(w / 0.20) + 1));
+    for (let i = 0; i < floorCols; i++) {
+      const x = -w / 2 + i * (w / (floorCols - 1));
+      st(xform(cylZ(rod * 0.62, d * 0.98, 5), x, h * 0.30, -d / 2));
+    }
+    const backCols = Math.max(5, Math.min(12, Math.round(w / 0.14)));
+    for (let i = 1; i < backCols; i++) {
+      const x = -w / 2 + i * (w / backCols);
+      st(xform(cylY(rod * 0.52, rod * 0.52, h * 0.66, 4), x, h * 0.63, -d));
+    }
+    for (const y of [h * 0.45, h * 0.68, h * 0.90]) {
+      st(xform(cylX(rod * 0.52, w * 0.98, 4), 0, y, -d));
+    }
+    for (const side of [-1, 1]) {
+      const x = side * w / 2;
+      st(xform(box(rod, rod, Math.hypot(h * 0.68, d) + rod), x,
+        h * 0.64, -d / 2, Math.atan2(-h * 0.68, d), 0, 0));
+      st(xform(box(rod, rod, Math.hypot(h * 0.68, d) + rod), x,
+        h * 0.64, -d / 2, Math.atan2(h * 0.68, d), 0, 0));
+      // Two feet visibly bridge the open basket into its host turret.
+      st(xform(box(w * 0.14, 0.045, rod * 1.5), side * w * 0.31,
+        h * 0.29, -rod * 0.6));
+    }
+    // Contents: two compressible packs with flaps, pockets, and straps plus
+    // a transverse tarp roll. They remain inside the lattice envelope.
+    for (const [x, tone, yaw] of [[-w * 0.22, 0.86, 0.22], [w * 0.24, 0.72, -0.18]] as const) {
+      const bw = Math.min(0.34, w * 0.28);
+      const bh = h * 0.56;
+      const bd = d * 0.50;
+      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(sph(0.5, 10, 7), x,
+        h * 0.48, -d * 0.50, 0.08, yaw, 0, [bw, bh, bd]), 2.4), tone + rng() * 0.08) });
+      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(box(bw * 0.74, 0.026, bd * 0.60),
+        x, h * 0.72, -d * 0.47, -0.12, yaw, 0), 2.4), tone * 0.92) });
+      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(box(bw * 0.52, bh * 0.28, 0.020),
+        x, h * 0.48, -d * 0.23, 0, yaw, 0), 2.4), tone * 0.88) });
+      for (const sx of [-0.22, 0.22]) {
+        st(xform(box(0.015, bh * 0.95, bd * 1.02), x + sx * bw,
+          h * 0.48, -d * 0.50, 0, yaw, 0));
+      }
+    }
+    const tarpR = Math.min(0.075, h * 0.22);
+    parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(capX(tarpR, w * 0.58, 9),
+      0, h * 0.90, -d * 0.42), 2.6), 0.78 + rng() * 0.10) });
+    for (const x of [-w * 0.17, w * 0.17]) st(xform(torusV(tarpR + 0.006, 0.009, 9, 4),
+      x, h * 0.90, -d * 0.42, 0, Math.PI / 2, 0));
     parts.meta = { basket: true, w, d, h };
     return parts;
   },

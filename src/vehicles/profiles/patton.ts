@@ -4357,25 +4357,9 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     rseg('turretDark', railT, -0.45, -1.950, 0.45, -1.950); // rear cross
     rseg('turretDark', yl(2.586), -0.44, -1.944, 0.44, -1.944, 0.028);
     rseg('turretDark', railT, -1.02, -1.04, 1.01, -1.04);   // front tie
-    // stowage INSIDE the rear wrap (tops <= 2.665, on the taper roof):
-    // tarp roll + two duffel slabs + a jerry can lying on its side
-    tarpRoll(P, 'turretCloth', -0.25, yl(2.596), zl(-1.845), 0.80, 0.060, true, P.q ? 12 : 8);
-    P.add('turretCloth', box(0.32, 0.12, 0.22), 0.38, yl(2.60), zl(-1.80), 0, 0.10, 0);
-    P.add('turretCloth', box(0.26, 0.10, 0.20), -0.55, yl(2.605), zl(-1.78), 0, -0.08, 0);
-    for (const dz of [-1.73, -1.87]) { // hold-down straps over the cluster
-      P.add('turretDark', box(0.30, 0.012, 0.03), 0.38, yl(2.662), zl(dz + 0.06));
-    }
-    P.add('turretDetail', box(0.34, 0.155, 0.24), 0.62, yl(2.585), zl(-1.60), 0, 0.06, 0); // jerry can (lying)
-    P.add('turretDark', box(0.05, 0.05, 0.16), 0.62, yl(2.585), zl(-1.60), 0, 0.06, 0);    // handle bar
-    P.add('turretDark', cylZ(0.028, 0.05, 8), 0.75, yl(2.60), zl(-1.66));                  // spout cap
-    // side-basket duffel slabs INSIDE the basket rail (biased LEFT like the
-    // reference's own stowage bulge; the rail line + straps carry the
-    // "strapped into the basket" read)
-    P.add('turretCloth', box(0.038, 0.17, 0.40), -1.160, yl(2.520), zl(-1.31));
-    P.add('turretCloth', box(0.034, 0.15, 0.29), 1.110, yl(2.477), zl(-1.24));
-    for (const [sx, sz, sy] of [[-1.164, -1.22, 2.52], [-1.164, -1.42, 2.52], [1.113, -1.16, 2.48], [1.113, -1.32, 2.48]]) {
-      P.add('turretDark', box(0.040, 0.15, 0.014), sx, yl(sy), zl(sz)); // straps
-    }
+    // The side wrap remains a reference-specific support rail. Its former
+    // rectangular tarp/duffel/jerry-can proxies are deliberately absent:
+    // the shared open-lattice basket below now owns all visible rear cargo.
     // M19 roof tarp ring, flat on the bustle roof at the reference's own
     // station (crop (565-760, 330-420)): dark strap ring, top 2.680.
     // KIT torus is already FLAT (normal +y) — no rotation (an rx pi/2 here
@@ -4404,7 +4388,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     seed: cfg.a3 ? 603 : 601,
     rotation: [0, Math.PI, 0],
   });
-  m60SharedBustleRack.position.set(0, yl(2.16), zl(-2.15));
+  m60SharedBustleRack.position.set(0, yl(2.29), zl(-2.15));
   m60SharedBustleRack.name = 'm60_shared_open_lattice_bustle';
   m60SharedBustleRack.userData.hostVariant = cfg.a3 ? 'm60a3' : 'm60a1';
   P.turretG.add(m60SharedBustleRack);
@@ -4413,7 +4397,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     envelopeM: Object.freeze([1.28, 0.28, 0.38]),
     identicalAcrossVariants: true,
     solidProxyPanels: 0,
-    floorWorldY: 2.16,
+    floorWorldY: 2.29,
     centerWorldZ: -2.15,
   });
   // antenna pot: LEFT-REAR bustle roof (the measured one-column 2.835 spike

@@ -52,6 +52,16 @@ assert.ok(coolerColors.some(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b)
   'beer cooler owns a separate white lid');
 for (const part of cooler) part.geo.dispose();
 
+const basket = DECOR_KITS.basket({ rng: () => 0.37, w: 1.35, d: 0.44, h: 0.34 });
+assert.ok(basket.length >= 30,
+  `shared decorative basket exposes a real lattice and shaped cargo (${basket.length} parts)`);
+assert.ok(!basket.some((part) => part.geo instanceof THREE.PlaneGeometry),
+  'decorative basket no longer uses opaque/texture-plane proxy walls');
+assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 7,
+  'decorative basket includes shaped packs, flaps, pockets, straps, and a tarp roll');
+assert.equal(basket.meta?.basket, true, 'decorative basket retains placement metadata');
+for (const part of basket) part.geo.dispose();
+
 const distributed = new Set();
 for (const id of ALL_TANK_IDS) {
   const manifest = decorManifestFor(getSpec(id), () => 0.5);

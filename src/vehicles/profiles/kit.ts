@@ -2082,13 +2082,13 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
       const yaw = (rng() - 0.5) * 0.16;
       if (slot === 'wood') {
         const bw = 0.24 + rng() * 0.06, bh = 0.16 + rng() * 0.05;
-        parts.add('wood', box(bw, bh, d * 0.62), x, bh / 2 + 0.02, -d * 0.08, 0, yaw, 0);
-        parts.add('dark', box(bw * 1.03, bh * 0.16, 0.02), x, bh * 0.5 + 0.02, -d * 0.08 + d * 0.31, 0, yaw, 0);
+        parts.add('wood', box(bw, bh, d * 0.62), x, bh / 2 + 0.02, d * 0.02, 0, yaw, 0);
+        parts.add('dark', box(bw * 1.03, bh * 0.16, 0.02), x, bh * 0.5 + 0.02, d * 0.33, 0, yaw, 0);
       } else if (i % 3 === 0) {
         const r = 0.10 + rng() * 0.035, len = 0.22 + rng() * 0.10;
-        parts.add(slot, cylX(r, len, 10), x, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
-        parts.add('dark', cylX(r * 1.05, 0.022, 10), x - len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
-        parts.add('dark', cylX(r * 1.05, 0.022, 10), x + len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
+        parts.add(slot, cylX(r, len, 10), x, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
+        parts.add('dark', cylX(r * 1.05, 0.022, 10), x - len * 0.22, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
+        parts.add('dark', cylX(r * 1.05, 0.022, 10), x + len * 0.22, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
         softBundleCount++;
       } else {
         const bw = 0.22 + rng() * 0.08;
@@ -2098,14 +2098,14 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
         // silhouette. A raised flap, pockets and real straps explain how the
         // load stays in the lattice instead of reading as another gray box.
         parts.add(slot, xform(sph(0.5, 10), 0, 0, 0, 0, yaw, 0, [bw, bh, bd]),
-          x, bh * 0.48 + 0.02, -d * 0.05);
+          x, bh * 0.48 + 0.02, d * 0.04);
         parts.add(slot, box(bw * 0.76, 0.026, bd * 0.54),
-          x, bh * 0.88 + 0.02, -d * 0.08, 0, yaw, 0);
+          x, bh * 0.88 + 0.02, d * 0.02, 0, yaw, 0);
         parts.add(slot, box(bw * 0.56, bh * 0.34, 0.024),
           x, bh * 0.46 + 0.02, d * 0.18, 0, yaw, 0);
         for (const sx of [-0.24, 0.24]) {
           parts.add('dark', box(0.018, bh * 1.06, bd * 1.02),
-            x + sx * bw, bh * 0.49 + 0.02, -d * 0.05, 0, yaw, 0);
+            x + sx * bw, bh * 0.49 + 0.02, d * 0.04, 0, yaw, 0);
         }
         softBundleCount++;
       }
@@ -2113,9 +2113,9 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
     // one long tarp roll across wide racks, over the bundles.
     if (w > 0.8 && fill >= 0.5) {
       const r = 0.085;
-      parts.add('canvasCloth', cylX(r, w * 0.55, 10), 0, h * 0.9 + r * 0.4, -d * 0.12);
-      parts.add('dark', cylX(r * 1.06, 0.024, 10), -w * 0.16, h * 0.9 + r * 0.4, -d * 0.12);
-      parts.add('dark', cylX(r * 1.06, 0.024, 10), w * 0.16, h * 0.9 + r * 0.4, -d * 0.12);
+      parts.add('canvasCloth', cylX(r, w * 0.55, 10), 0, h * 0.9 + r * 0.4, d * 0.02);
+      parts.add('dark', cylX(r * 1.06, 0.024, 10), -w * 0.16, h * 0.9 + r * 0.4, d * 0.02);
+      parts.add('dark', cylX(r * 1.06, 0.024, 10), w * 0.16, h * 0.9 + r * 0.4, d * 0.02);
     }
   }
   const fitting = fitAssemble('stowageRack', parts, opts);
