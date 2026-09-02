@@ -237,8 +237,11 @@ export function makeWaterTower(
   const legH = 7.2 + rng() * 0.8, tankH = 3.4, tankR = 2.5;
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const leg = box(0.3, legH + 0.4, 0.3, 1.2);
-    leg.rotateZ(sx * -0.045);
-    leg.rotateX(sz * 0.045);
+    // Feet flare away from the tower centre while the tops converge beneath
+    // the vessel. The old signs did the inverse, making the support cage read
+    // upside down from every Garage and battlefield angle.
+    leg.rotateZ(sx * 0.045);
+    leg.rotateX(sz * -0.045);
     leg.translate(sx * 1.7, legH / 2, sz * 1.7);
     buckets.dark.push(leg);
   }

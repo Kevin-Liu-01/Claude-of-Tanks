@@ -71,6 +71,10 @@ and previous packs. Full-detail tree groves are shared immutable library assets;
 prepare cold species across animation frames, and release their generated atlas
 only when the library is disposed. Repeated opaque facility primitives belong in static
 instanced batches, not individual scene nodes or one-off merged allocations.
+Catalog structure facades author their front on local `+Z`; outdoor recipes must
+aim that face toward the hero turntable before merging. Preserve the shared
+albedo and normal texture residency for plaster, masonry, timber, and roofs
+rather than replacing close Garage structures with flat colors.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,

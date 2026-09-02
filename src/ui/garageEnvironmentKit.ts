@@ -254,7 +254,13 @@ export function createGarageEnvironmentAssetLibrary(
     acquire(key, requestRender) {
       let entry = entries.get(key);
       if (!entry) {
-        entry = { color: null, normal: null, references: 0, lastUse: ++tick, listeners: new Set() };
+        entry = {
+          color: null,
+          normal: null,
+          references: 0,
+          lastUse: ++tick,
+          listeners: new Set(),
+        };
         entries.set(key, entry);
         const [colorUrl, normalUrl] = SURFACE_FILES[key];
         entry.color = load(key, colorUrl, true, entry);
@@ -303,10 +309,9 @@ export function createGarageEnvironmentAssetLibrary(
       }
     },
     warmAll(requestRender) {
-      // Nine 512px albedo/normal pairs total roughly 18 MiB after GPU decode.
-      // Warming them once after first paint trades 4 MiB over the old seven-set
-      // cap for hitch-free biome switches on weak CPUs; no battle resource or
-      // full-resolution source texture enters this library.
+      // Nine compressed albedo/normal pairs stay under the established Garage
+      // GPU budget. Warming them after first paint keeps switches hitch-free
+      // while the reference-counted nine-set cap still bounds residency.
       for (const key of Object.keys(SURFACE_FILES) as GarageSurfaceKey[]) {
         const handle = this.acquire(key, requestRender);
         handle.release();
@@ -934,14 +939,14 @@ export function buildGarageEnvironment(
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
-    const building = new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), 0.42);
+    const building = new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), 0.62);
     switch (key) {
-      case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 0.88 });
-      case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 0.89 });
-      case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 0.87 });
-      case 'stone': return texturedMaterial('brick', { color: building.clone().multiplyScalar(0.78), roughness: 0.92 });
-      case 'roof': return texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0x8a817a), 0.72), roughness: 0.82 });
-      case 'wood': return texturedMaterial('wood', { color: 0xc1ad90, roughness: 0.89 });
+      case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
+      case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
+      case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 1 });
+      case 'stone': return texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
+      case 'roof': return texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
+      case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
       case 'route': return texturedMaterial(recipe.approach.surface, {

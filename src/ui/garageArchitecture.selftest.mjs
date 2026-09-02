@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
+import { garageViewPoint } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
+import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
@@ -20,6 +22,19 @@ assert.doesNotMatch(kitSource, /createSkyGeometry|garage_shared_sky/,
   'outdoor Garage packs must expose the shared engine sky, not occlude it with a local sphere');
 assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
   'Garage recipes must use the real connected map structure builders');
+assert.match(kitSource,
+  /map: handle\.color,[\s\S]{0,100}normalMap: handle\.normal/,
+  'Garage structure buckets must retain their surface-specific albedo and normal textures');
+for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
+  for (const placement of recipe.structures) {
+    const { x, z } = garageViewPoint(placement.side, placement.depth);
+    const distance = Math.hypot(x, z);
+    const alignment = Math.sin(placement.yaw) * (-x / distance)
+      + Math.cos(placement.yaw) * (-z / distance);
+    assert.ok(alignment >= Math.cos(0.36),
+      `${architecture}/${placement.label}: primary facade faces the hero turntable`);
+  }
+}
 assert.match(facilitySource, /createWorkshopPartLibrary/,
   'outdoor facilities must reuse the first-party workshop part vocabulary');
 assert.doesNotMatch(facilitySource, /fleetFactory|tankFactory/,

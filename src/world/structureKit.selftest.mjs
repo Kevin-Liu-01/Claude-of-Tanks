@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, STRUCTURE_CATALOG,
 } from './maps/structureKit.ts';
+import { makeWaterTower } from './maps/railKit.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 
 function seeded(seed = 0x51a7c7) {
@@ -108,6 +109,20 @@ function endpointCenter(geo, upper) {
   }
   assert.ok(count > 0, 'spire endpoint sample contains vertices');
   return { x: x / count, z: z / count };
+}
+
+const waterTowerBuckets = Object.fromEntries(
+  ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'baked']
+    .map((key) => [key, []]),
+);
+makeWaterTower(seeded(), waterTowerBuckets);
+const waterTowerLegs = waterTowerBuckets.dark.slice(0, 4);
+assert.equal(waterTowerLegs.length, 4, 'water tower exposes four support legs');
+for (const leg of waterTowerLegs) {
+  const bottom = endpointCenter(leg, false);
+  const top = endpointCenter(leg, true);
+  assert.ok(Math.hypot(bottom.x, bottom.z) > Math.hypot(top.x, top.z) + 0.25,
+    'water tower legs flare outward at the ground and converge under the tank');
 }
 
 const broadcastLegs = crownParts.filter((part) => part.style === 'broadcast' && part.role === 'leg');

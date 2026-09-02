@@ -12,10 +12,7 @@ import {
   makeGranary, makeLogCabin, makeMill, makeOnionChurch, makeWoodshed,
 } from '../world/maps/villageKit.ts';
 import { makeChurch, makeFactory } from '../world/maps/urbanKit.ts';
-import {
-  GARAGE_CAMERA_AZIMUTH_RAD,
-  legacyGaragePointToView,
-} from '../game/garagePresentationPose.ts';
+import { legacyGaragePointToView } from '../game/garagePresentationPose.ts';
 
 export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
   'plaster' | 'roof' | 'wood' | 'brick';
@@ -26,6 +23,7 @@ export interface GarageStructurePlacement {
   /** Footprint center in the immutable opening-camera coordinate frame. */
   readonly side: number;
   readonly depth: number;
+  /** Local +Z facade faces the hero, plus a small authored character angle. */
   readonly yaw: number;
   readonly scale: number;
 }
@@ -71,11 +69,16 @@ export interface GarageEnvironmentRecipe {
 const at = (builder: StructureBuilder, label: string, x: number, z: number,
   yaw = 0, scale = 1): GarageStructurePlacement => {
   const point = legacyGaragePointToView(x, z);
+  // Catalog structures author their primary facade on local +Z. Aim that
+  // facade at the turntable so large halls behind the vehicle read as one
+  // deliberate service-yard backdrop instead of crossing it at arbitrary
+  // map-space angles. The small recipe yaw remains as visual variation.
+  const podiumFacingYaw = Math.atan2(-x, -z);
   return {
     builder,
     label,
     ...point,
-    yaw: yaw + GARAGE_CAMERA_AZIMUTH_RAD - Math.PI / 4,
+    yaw: podiumFacingYaw + yaw,
     scale,
   };
 };
