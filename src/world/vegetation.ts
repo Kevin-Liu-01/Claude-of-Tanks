@@ -204,6 +204,7 @@ export interface GarageTreeKit {
   foliage: THREE.BufferGeometry;
   trunkMaterial: THREE.MeshStandardMaterial;
   foliageMaterial: THREE.MeshStandardMaterial;
+  detailTier: 'battlefield-near' | 'battlefield-far';
   dispose(): void;
 }
 
@@ -1755,10 +1756,10 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
 }
 
 /**
- * Build one static battlefield far-tree kit with the same geometry and per-map
- * palette used beyond the near-LOD transition. Garage staging places these
- * trees in its 30–65 m background, where the opaque range silhouette is both
- * the correct asset and much cheaper than constructing map-wide alpha foliage.
+ * Build one static battlefield tree kit. Browser Garages use the same branched,
+ * alpha-carded near-tree geometry seen in battle because their groves begin at
+ * roughly 30 m; headless audits retain the opaque far silhouette so tests never
+ * need a DOM canvas. Both paths are immutable and instanced by the Garage.
  */
 export function createGarageTreeKit(
   engineCtx: GarageTreeEngineContext,
@@ -1775,38 +1776,102 @@ export function createGarageTreeKit(
     || (archetype.family === 'birch' ? palettes.birch : undefined)
     || (archetype.family === 'palm' ? palettes.palm : palettes.oak)
     || {};
-  let pair: FarTreeGeometryPair;
-  switch (archetype.family) {
-    case 'conifer': {
-      pair = buildPineFarGeometry(mulberry32(seed + 71 + k * 101), palette);
-      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.pine.canopyRadiusM;
-      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
-      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
-      break;
+  const detailed = typeof document !== 'undefined';
+  let trunk: THREE.BufferGeometry;
+  let foliage: THREE.BufferGeometry;
+  let foliageTexture: THREE.CanvasTexture | null = null;
+  if (detailed) {
+    let pair: TreeGeometryPair;
+    switch (archetype.family) {
+      case 'conifer': {
+        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.pine.canopyRadiusM;
+        const vertical = archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM;
+        pair = {
+          trunk: buildPineTrunk(mulberry32(seed + 61 + k * 101), palette),
+          cards: buildPineCards(mulberry32(seed + 63 + k * 101), 0.60, 1, palette),
+        };
+        pair.trunk.scale(radial, vertical, radial);
+        pair.cards.scale(radial, vertical, radial);
+        foliageTexture = makeNeedleSprayTexture(mulberry32(seed + 52), palette.texTone || null);
+        break;
+      }
+      case 'palm':
+        pair = buildPalmGeometry(mulberry32(seed + 81 + k * 101), palette, {
+          h0: 4.7 + k * 0.85, hr: 1.15, rMul: 1.30 - k * 0.14,
+          lean0: 0.42 + k * 0.12, leanR: 0.45,
+        });
+        foliageTexture = makePalmFrondTexture(mulberry32(seed + 53), palette.texTone || null);
+        break;
+      case 'birch': {
+        pair = buildBirchGeometry(mulberry32(seed + 85 + k * 101), palette, {
+          h0: 4.8 + k * 1.15, hr: 1.15, crw: 1.25 + k * 0.28, nBr: 12 + k * 2,
+        });
+        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.birch.canopyRadiusM;
+        const vertical = archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM;
+        pair.trunk.scale(radial, vertical, radial);
+        pair.cards.scale(radial, vertical, radial);
+        foliageTexture = makeTwigTexture(mulberry32(seed + 54), palette.texTone || null);
+        break;
+      }
+      default: {
+        const shape: BroadleafShape = {
+          cy: archetype.canopyCenterM,
+          rx: archetype.canopyRadiusM,
+          ry: Math.max(1.15, archetype.fallHeightM - archetype.canopyCenterM),
+          rz: archetype.canopyRadiusM * (0.88 + k * 0.08),
+          trunkH: archetype.trunkHeightM,
+        };
+        pair = {
+          trunk: buildBroadleafTrunk(mulberry32(seed + 65 + k * 101), shape),
+          cards: buildBroadleafCards(
+            mulberry32(seed + 67 + k * 101), 36 + k * 4, 1, palette, shape,
+          ),
+        };
+        foliageTexture = makeLeafClusterTexture(mulberry32(seed + 51), palette.texTone || null);
+        break;
+      }
     }
-    case 'palm':
-      pair = buildPalmFarGeometry(mulberry32(seed + 75 + k * 101), palette, k % 2);
-      break;
-    case 'birch': {
-      pair = buildBirchFarGeometry(mulberry32(seed + 77 + k * 101), palette);
-      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.birch.canopyRadiusM;
-      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
-      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
-      break;
+    trunk = pair.trunk;
+    foliage = pair.cards;
+  } else {
+    let pair: FarTreeGeometryPair;
+    switch (archetype.family) {
+      case 'conifer': {
+        pair = buildPineFarGeometry(mulberry32(seed + 71 + k * 101), palette);
+        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.pine.canopyRadiusM;
+        pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
+        pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
+        break;
+      }
+      case 'palm':
+        pair = buildPalmFarGeometry(mulberry32(seed + 75 + k * 101), palette, k % 2);
+        break;
+      case 'birch': {
+        pair = buildBirchFarGeometry(mulberry32(seed + 77 + k * 101), palette);
+        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.birch.canopyRadiusM;
+        pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
+        pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
+        break;
+      }
+      default: {
+        pair = buildOakFarGeometry(mulberry32(seed + 73 + k * 101), palette, k % 2);
+        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.oak.canopyRadiusM;
+        pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
+        pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
+        break;
+      }
     }
-    default: {
-      pair = buildOakFarGeometry(mulberry32(seed + 73 + k * 101), palette, k % 2);
-      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.oak.canopyRadiusM;
-      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
-      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
-      break;
-    }
+    trunk = pair.trunk;
+    foliage = pair.canopy;
   }
   const trunkMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.92, metalness: 0,
   });
   const foliageMaterial = new THREE.MeshStandardMaterial({
-    side: species === 'palm' ? THREE.DoubleSide : THREE.FrontSide,
+    map: foliageTexture,
+    alphaTest: detailed ? 0.38 : 0,
+    alphaToCoverage: detailed,
+    side: detailed || species === 'palm' ? THREE.DoubleSide : THREE.FrontSide,
     vertexColors: true,
     roughness: 1,
     metalness: 0,
@@ -1816,13 +1881,15 @@ export function createGarageTreeKit(
   engineCtx.setupShadowMaterial?.(foliageMaterial);
   return {
     species,
-    trunk: pair.trunk,
-    foliage: pair.canopy,
+    trunk,
+    foliage,
     trunkMaterial,
     foliageMaterial,
+    detailTier: detailed ? 'battlefield-near' : 'battlefield-far',
     dispose() {
-      pair.trunk.dispose();
-      pair.canopy.dispose();
+      trunk.dispose();
+      foliage.dispose();
+      foliageTexture?.dispose();
       trunkMaterial.dispose();
       foliageMaterial.dispose();
     },

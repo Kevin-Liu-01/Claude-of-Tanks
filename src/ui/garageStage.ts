@@ -542,6 +542,16 @@ export function createGarageStage(
   addOutdoorSeed('tree-instance', seedStandard({
     color: 0xffffff, vertexColors: true, roughness: 1, metalness: 0,
   }), { instanced: true });
+  addOutdoorSeed('tree-alpha-instance', seedStandard({
+    color: 0xffffff,
+    map: outdoorSeedColor,
+    alphaTest: 0.38,
+    alphaToCoverage: true,
+    side: THREE.DoubleSide,
+    vertexColors: true,
+    roughness: 1,
+    metalness: 0,
+  }), { instanced: true });
   addOutdoorSeed('ground-instance-color', seedStandard({
     color: 0xffffff,
     vertexColors: true,

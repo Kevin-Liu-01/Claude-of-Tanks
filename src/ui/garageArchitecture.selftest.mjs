@@ -28,6 +28,8 @@ assert.match(stageSource, /light\.visible = true;[\s\S]*light\.intensity = isVer
   'Verdant fixtures must preserve a stable light count across environment switches');
 assert.match(stageSource, /garage_outdoor_shader_seed/,
   'Verdant boot must seed the shared outdoor PBR/CSM program under cover');
+assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S]{0,240}alphaToCoverage: true/,
+  'Verdant boot must seed the exact detailed-tree alpha shader before outdoor reveal');
 assert.equal(GARAGE_WRECK_ASSET.sourceSpecId, 'm1a2');
 assert.ok(GARAGE_WRECK_ASSET.sourceTriangles > 30_000,
   'the tiny Garage wreck proxy must originate from a complete first-party vehicle');
@@ -84,6 +86,11 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must use battlefield tree geometry`);
   assert.equal(stats.backdropLayers, 3,
     `${variant.id} must close the view with three map-derived terrain bands`);
+  assert.notEqual(stats.horizonStyle, 'none');
+  assert.ok(stats.horizonMaxHeightM > 0 && stats.horizonMaxHeightM <= 13.2,
+    `${variant.id} skyline must stay inside its authored biome ceiling`);
+  assert.equal(stats.treeDetailTier, 'battlefield-far',
+    'headless Garage audits must retain the DOM-free battlefield tree fallback');
   assert.ok(stats.groundCover >= 48,
     `${variant.id} must retain bounded static biome ground cover`);
   assert.equal(stats.wrecks, 2,
@@ -108,6 +115,8 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must have two complete maintenance stations`);
   assert.equal(stats.openingViewFrames, 2,
     `${variant.id} must stage two connected service frames in the opening view`);
+  assert.equal(stats.openingViewTankParts, 2,
+    `${variant.id} opening service portals must hold first-party turret-and-gun assemblies`);
   assert.ok(stats.looseParts >= 40,
     `${variant.id} must include workshop equipment and stocked spare parts`);
   assert.ok(stats.serviceVehicles >= 1,
@@ -121,6 +130,16 @@ for (const variant of GARAGE_VARIANTS) {
   if (variant.architecture === 'rail_roundhouse') {
     assert.ok(stats.railSegments >= 80,
       'Cinder Junction must be a real rail facility with three complete roads');
+  }
+  if (['brick_arsenal', 'naval_drydock', 'rail_roundhouse', 'factory_line']
+    .includes(variant.architecture)) {
+    assert.ok(stats.horizonMaxHeightM <= 3.8,
+      `${variant.id} flat facility must not inherit a mountain wall`);
+  }
+  if (variant.architecture === 'rock_cavern') {
+    assert.equal(stats.horizonStyle, 'alpine');
+    assert.ok(stats.horizonMaxHeightM >= 10,
+      'Glacier Deployment must retain a real layered mountain skyline');
   }
   assert.ok(stats.cached <= stats.cacheLimit && stats.cacheLimit === 2,
     `${variant.id} must obey the two-pack transition cache`);

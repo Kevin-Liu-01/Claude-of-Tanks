@@ -15,6 +15,7 @@ import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
   GARAGE_ENVIRONMENT_RECIPES,
+  type GarageEnvironmentRecipe,
   type GarageSurfaceKey,
 } from './garageEnvironmentRecipes.ts';
 import {
@@ -53,7 +54,10 @@ export interface GarageEnvironmentStats {
   readonly textureSets: readonly string[];
   readonly treeSpecies: readonly string[];
   readonly trees: number;
+  readonly treeDetailTier: 'battlefield-near' | 'battlefield-far' | 'none';
   readonly backdropLayers: number;
+  readonly horizonStyle: GarageEnvironmentRecipe['horizonStyle'] | 'none';
+  readonly horizonMaxHeightM: number;
   readonly groundCover: number;
   readonly structures: number;
   readonly wrecks: number;
@@ -73,6 +77,7 @@ export interface GarageEnvironmentStats {
   readonly serviceVehicles: number;
   readonly placementZones: number;
   readonly openingViewFrames: number;
+  readonly openingViewTankParts: number;
   readonly placementOverlaps: number;
   readonly maxGroundContactErrorM: number;
   readonly triangles: number;
@@ -98,8 +103,20 @@ interface TextureHandle {
   release(): void;
 }
 
+interface SharedGarageTreeGrove {
+  readonly species: TreeSpecies;
+  readonly trunk: THREE.BufferGeometry;
+  readonly foliage: THREE.BufferGeometry;
+  readonly trunkMaterial: THREE.MeshStandardMaterial;
+  readonly foliageMaterial: THREE.MeshStandardMaterial;
+  readonly detailTier: 'battlefield-near' | 'battlefield-far';
+  dispose(): void;
+}
+
 export interface GarageEnvironmentAssetLibrary {
   acquire(key: GarageSurfaceKey, requestRender: () => void): TextureHandle;
+  treeGrove(species: TreeSpecies): SharedGarageTreeGrove;
+  prepareTreeGroves(species: readonly TreeSpecies[]): Promise<void>;
   warmAll(requestRender: () => void): void;
   retainedTextures(): Iterable<THREE.Texture>;
   diagnostics(): Readonly<{ residentSets: number; referencedSets: number }>;
@@ -124,11 +141,67 @@ const BUCKET_KEYS = [
 ] as const;
 type BucketKey = typeof BUCKET_KEYS[number];
 
+function buildSharedGarageTreeGrove(
+  engineCtx: GarageEnvironmentEngineContext,
+  species: TreeSpecies,
+): SharedGarageTreeGrove {
+  const seed = hashVariant(`garage-tree-${species}`);
+  const source = createGarageTreeKit(engineCtx, null, species, seed, seed % 3);
+  const transformPart = (
+    geometry: THREE.BufferGeometry,
+    x: number,
+    z: number,
+    size: number,
+    yaw: number,
+  ): THREE.BufferGeometry => geometry.clone().applyMatrix4(new THREE.Matrix4().compose(
+    new THREE.Vector3(x, 0, z),
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
+    new THREE.Vector3(size, size, size),
+  ));
+  const mergeGrove = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+    const pieces = [
+      transformPart(geometry, -1.45, 0.35, 0.92, 0.22),
+      transformPart(geometry, 1.20, -0.58, 0.76, -0.86),
+      transformPart(geometry, 0.10, 1.38, 0.62, 1.42),
+    ];
+    const merged = mergeGeometries(pieces, false);
+    for (const piece of pieces) piece.dispose();
+    if (!merged) throw new Error(`Garage tree grove merge failed for ${species}`);
+    merged.computeBoundingBox();
+    merged.computeBoundingSphere();
+    return merged;
+  };
+  const trunk = mergeGrove(source.trunk);
+  const foliage = mergeGrove(source.foliage);
+  const trunkMaterial = source.trunkMaterial;
+  const foliageMaterial = source.foliageMaterial;
+  const foliageTexture = foliageMaterial.map;
+  source.trunk.dispose();
+  source.foliage.dispose();
+  return {
+    species,
+    trunk,
+    foliage,
+    trunkMaterial,
+    foliageMaterial,
+    detailTier: source.detailTier,
+    dispose() {
+      trunk.dispose();
+      foliage.dispose();
+      foliageTexture?.dispose();
+      trunkMaterial.dispose();
+      foliageMaterial.dispose();
+    },
+  };
+}
+
 /** Reference-counted PBR residency shared by the active and previous pack. */
 export function createGarageEnvironmentAssetLibrary(
   engineCtx: GarageEnvironmentEngineContext,
 ): GarageEnvironmentAssetLibrary {
   const entries = new Map<GarageSurfaceKey, TextureEntry>();
+  const treeGroves = new Map<TreeSpecies, SharedGarageTreeGrove>();
+  const treeGrovePending = new Map<TreeSpecies, Promise<void>>();
   const retainedTextures = new Set<THREE.Texture>();
   const loader = typeof document === 'undefined' ? null : new THREE.TextureLoader();
   let tick = 0;
@@ -204,6 +277,31 @@ export function createGarageEnvironmentAssetLibrary(
         },
       };
     },
+    treeGrove(species) {
+      let grove = treeGroves.get(species);
+      if (!grove) {
+        grove = buildSharedGarageTreeGrove(engineCtx, species);
+        treeGroves.set(species, grove);
+        if (grove.foliageMaterial.map) retainedTextures.add(grove.foliageMaterial.map);
+      }
+      return grove;
+    },
+    async prepareTreeGroves(species) {
+      for (const treeSpecies of species) {
+        if (treeGroves.has(treeSpecies)) continue;
+        let pending = treeGrovePending.get(treeSpecies);
+        if (!pending) {
+          pending = (async () => {
+            if (typeof requestAnimationFrame === 'function') {
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            }
+            if (!disposed && !treeGroves.has(treeSpecies)) this.treeGrove(treeSpecies);
+          })().finally(() => treeGrovePending.delete(treeSpecies));
+          treeGrovePending.set(treeSpecies, pending);
+        }
+        await pending;
+      }
+    },
     warmAll(requestRender) {
       // Nine 512px albedo/normal pairs total roughly 18 MiB after GPU decode.
       // Warming them once after first paint trades 4 MiB over the old seven-set
@@ -226,6 +324,9 @@ export function createGarageEnvironmentAssetLibrary(
         entry.normal?.dispose();
         entry.listeners.clear();
       }
+      for (const grove of treeGroves.values()) grove.dispose();
+      treeGroves.clear();
+      treeGrovePending.clear();
       entries.clear();
       retainedTextures.clear();
     },
@@ -255,11 +356,11 @@ interface GarageAtmospherePalette { readonly horizon: number; readonly silhouett
 
 function atmospherePalette(weather: GarageVariant['weather']): GarageAtmospherePalette {
   switch (weather) {
-    case 'dust': return { horizon: 0x634c3b, silhouette: 0x49352b };
-    case 'snow': return { horizon: 0x526978, silhouette: 0x354955 };
-    case 'rain': return { horizon: 0x304b53, silhouette: 0x253d37 };
-    case 'industrial': return { horizon: 0x3b4850, silhouette: 0x30363b };
-    default: return { horizon: 0x345664, silhouette: 0x385141 };
+    case 'dust': return { horizon: 0xa27f61, silhouette: 0x725b4d };
+    case 'snow': return { horizon: 0x91a9b4, silhouette: 0x607987 };
+    case 'rain': return { horizon: 0x59767a, silhouette: 0x405c57 };
+    case 'industrial': return { horizon: 0x69767c, silhouette: 0x4b575d };
+    default: return { horizon: 0x668d99, silhouette: 0x526f5d };
   }
 }
 
@@ -268,39 +369,74 @@ function createBackdropGeometry(
   values: Float32Array,
   seed: number,
   atmosphere: GarageAtmospherePalette,
+  recipe: GarageEnvironmentRecipe,
 ): THREE.BufferGeometry {
-  // Three map-derived relief bands replace the old single procedural wall.
-  // They use perimeter samples from the exact Garage terrain excerpt, then
-  // progressively exaggerate that map's broad shape into a near ridge,
-  // midground shoulder and distant skyline. All three layers share one mesh,
-  // one material and no runtime updates.
-  const segments = 64;
+  // Three map-derived bands close the terrain without becoming the opaque,
+  // one-height wall that previously swallowed half the outdoor view. Relief
+  // is authored by biome: rail/coastal/urban facilities stay low and broad,
+  // mesas terrace, and only the alpine recipe receives a mountain skyline.
+  // The exact sampled patch still perturbs every crest, so the result remains
+  // grounded in its source battlefield rather than becoming generic scenery.
+  const segments = 96;
   const layers = [
-    { radius: 43, base: -5.5, lift: 2.2, relief: 0.34 },
-    { radius: 54, base: -6.0, lift: 5.2, relief: 0.52 },
-    { radius: 65, base: -7.0, lift: 8.0, relief: 0.72 },
+    { radius: 45, base: -5.8, height: 0.36, relief: 0.16 },
+    { radius: 58, base: -6.8, height: 0.64, relief: 0.24 },
+    { radius: 73, base: -8.0, height: 1.00, relief: 0.32 },
   ] as const;
   const verticesPerLayer = (segments + 1) * 2;
   const positions = new Float32Array(verticesPerLayer * layers.length * 3);
   const colors = new Float32Array(verticesPerLayer * layers.length * 3);
   const indices = new Uint16Array(segments * layers.length * 6);
   const phase = ((seed >>> 8) % 6283) / 1000;
-  const low = new THREE.Color(atmosphere.silhouette).multiplyScalar(0.60);
+  const datum = samplePatch(patch, values, 0, 0);
+  const low = new THREE.Color(atmosphere.silhouette)
+    .lerp(new THREE.Color(atmosphere.horizon), 0.34)
+    .multiplyScalar(0.78);
   const high = new THREE.Color(atmosphere.silhouette);
   const horizon = new THREE.Color(atmosphere.horizon);
+  let maxHeightM = -Infinity;
   let vertex = 0;
   let indexCursor = 0;
   layers.forEach((layer, layerIndex) => {
-    const crest = high.clone().lerp(horizon, 0.10 + layerIndex * 0.10)
-      .multiplyScalar(0.88 + layerIndex * 0.04);
+    const crest = high.clone().lerp(horizon, 0.34 + layerIndex * 0.12)
+      .multiplyScalar(0.90 + layerIndex * 0.035);
     for (let segment = 0; segment <= segments; segment += 1) {
       const angle = (segment / segments) * Math.PI * 2;
       const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
-      const sampled = samplePatch(patch, values, sourceX, sourceZ);
-      const broad = Math.sin(angle * 2 + phase) * (0.55 + layerIndex * 0.35)
-        + Math.sin(angle * 5 - phase * 0.6) * (0.28 + layerIndex * 0.18);
-      const shoulder = layer.lift + sampled * layer.relief + broad;
+      const sampled = THREE.MathUtils.clamp(
+        samplePatch(patch, values, sourceX, sourceZ) - datum,
+        -2.4,
+        4.8,
+      );
+      const broad = Math.sin(angle * 2 + phase) * 0.22
+        + Math.sin(angle * 5 - phase * 0.6) * 0.12
+        + Math.sin(angle * 9 + phase * 0.34) * 0.055;
+      const profile = (() => {
+        switch (recipe.horizonStyle) {
+          case 'alpine': {
+            const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
+            const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
+            return broad * 1.55 + peakA * 0.52 + peakB * 0.30;
+          }
+          case 'mesa': {
+            const shelf = Math.sin(angle * 2 + phase) * 0.52
+              + Math.sin(angle * 4 - phase) * 0.20;
+            return Math.round(shelf * 3) / 3 + broad * 0.34;
+          }
+          case 'rolling': return broad * 1.22;
+          case 'urban': return Math.round((broad + 0.18) * 5) / 8;
+          case 'coastal': return broad * 0.34 - 0.08;
+          default: return broad * 0.42;
+        }
+      })();
+      const nominal = recipe.horizonHeightM * layer.height;
+      const shoulder = THREE.MathUtils.clamp(
+        nominal + sampled * layer.relief + profile * recipe.horizonHeightM,
+        -0.15,
+        recipe.horizonHeightM,
+      );
+      maxHeightM = Math.max(maxHeightM, shoulder);
       const x = Math.cos(angle) * layer.radius;
       const z = Math.sin(angle) * layer.radius;
       positions.set([x, layer.base, z, x, shoulder, z], vertex * 3);
@@ -320,6 +456,8 @@ function createBackdropGeometry(
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
+  geometry.userData.horizonStyle = recipe.horizonStyle;
+  geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
   return geometry;
 }
 
@@ -509,7 +647,7 @@ export function buildGarageEnvironment(
   const atmosphere = atmospherePalette(variant.weather);
 
   const horizon = new THREE.Mesh(
-    track(createBackdropGeometry(patch, heights, seed, atmosphere)),
+    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -762,6 +900,7 @@ export function buildGarageEnvironment(
         railSegments: 0,
         serviceVehicles: 0,
         openingViewFrames: 0,
+        openingViewTankParts: 0,
         placementZones: 0,
         meshes: Object.freeze([]),
         material: null,
@@ -874,74 +1013,12 @@ export function buildGarageEnvironment(
   root.add(wrecks);
 
   // One repeated far-tree mesh per species produced the old row of identical
-  // cones/lollipops. Bake three independently seeded battlefield silhouettes
-  // into each Garage grove: the draw count stays two meshes per species, while
-  // every instance reads as an asymmetric stand with real trunk separation.
-  const treeKits = recipe.treeSpecies.map((species, index) => {
-    const first = createGarageTreeKit(
-      engineCtx, null, species as TreeSpecies, seed + index * 193, index * 2,
-    );
-    const second = createGarageTreeKit(
-      engineCtx, null, species as TreeSpecies, seed + index * 193 + 97, index * 2 + 1,
-    );
-    const third = createGarageTreeKit(
-      engineCtx, null, species as TreeSpecies, seed + index * 193 + 211, index * 2 + 2,
-    );
-    const transformPart = (
-      geometry: THREE.BufferGeometry,
-      x: number,
-      z: number,
-      size: number,
-      yaw: number,
-    ): THREE.BufferGeometry => geometry.clone().applyMatrix4(new THREE.Matrix4().compose(
-      new THREE.Vector3(x, 0, z),
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
-      new THREE.Vector3(size, size, size),
-    ));
-    const mergeGrove = (
-      a: THREE.BufferGeometry,
-      b: THREE.BufferGeometry,
-      c: THREE.BufferGeometry,
-    ): THREE.BufferGeometry => {
-      const pieces = [
-        transformPart(a, -1.45, 0.35, 0.92, 0.22),
-        transformPart(b, 1.20, -0.58, 0.76, -0.86),
-        transformPart(c, 0.10, 1.38, 0.62, 1.42),
-      ];
-      const merged = mergeGeometries(pieces, false);
-      for (const piece of pieces) piece.dispose();
-      if (!merged) throw new Error(`Garage tree grove merge failed for ${species}`);
-      merged.computeBoundingBox();
-      merged.computeBoundingSphere();
-      return merged;
-    };
-    const trunk = mergeGrove(first.trunk, second.trunk, third.trunk);
-    const foliage = mergeGrove(first.foliage, second.foliage, third.foliage);
-    // Retain only the two live materials. Referencing `first.*Material`
-    // inside the disposer would close over the entire source kit, including
-    // the three pre-merge attribute arrays, for every cached environment.
-    const trunkMaterial = first.trunkMaterial;
-    const foliageMaterial = first.foliageMaterial;
-    first.trunk.dispose();
-    first.foliage.dispose();
-    second.dispose();
-    third.dispose();
-    const kit = {
-      species: first.species,
-      trunk,
-      foliage,
-      trunkMaterial,
-      foliageMaterial,
-      dispose() {
-        trunk.dispose();
-        foliage.dispose();
-        trunkMaterial.dispose();
-        foliageMaterial.dispose();
-      },
-    };
-    disposables.push(kit);
-    return kit;
-  });
+  // cones/lollipops. The asset library owns one full near-tree three-tree grove
+  // per species. All cached environments share its immutable geometry,
+  // material, and atlas, so repeat switches allocate only instance matrices.
+  const treeKits = recipe.treeSpecies.map((species) => (
+    assets.treeGrove(species as TreeSpecies)
+  ));
   const matrices = treeKits.map(() => [] as THREE.Matrix4[]);
   const matrix = new THREE.Matrix4();
   const quaternion = new THREE.Quaternion();
@@ -1026,11 +1103,13 @@ export function buildGarageEnvironment(
       ...recipe.distinctiveElements,
       recipe.approach.label,
       'connected high-detail map facades',
-      'three-layer map-derived terrain horizon',
+      `three-layer ${recipe.horizonStyle} terrain horizon`,
       'first-party M1A2 wreck silhouettes',
       'static biome ground cover',
     ]),
     backdropLayers: 3,
+    horizonStyle: recipe.horizonStyle,
+    horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],
@@ -1048,6 +1127,7 @@ export function buildGarageEnvironment(
     textureSets: Object.freeze([recipe.terrainSurface, 'cobble', 'plaster', 'brick', 'roof', 'wood']),
     treeSpecies: Object.freeze([...recipe.treeSpecies]),
     trees: recipe.treeCount,
+    treeDetailTier: treeKits[0]?.detailTier || 'none',
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     wrecks: wreckPlacements.length,
@@ -1080,4 +1160,19 @@ export function buildGarageEnvironment(
       root.clear();
     },
   };
+}
+
+/**
+ * Split exact near-tree preparation across presentation frames before the
+ * synchronous static pack bake. Card hover and selection share the same
+ * architecture promise, so even a cold destination never builds two detailed
+ * species inside one rendered frame.
+ */
+export async function prepareGarageEnvironmentAssets(
+  assets: GarageEnvironmentAssetLibrary,
+  variant: GarageVariant,
+): Promise<void> {
+  const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
+  if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
+  await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[]);
 }

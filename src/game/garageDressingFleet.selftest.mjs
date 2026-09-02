@@ -60,6 +60,13 @@ for (const signature of [
   'verdant_gantry_connected_crosshead',
   'verdant_gantry_connected_side_rail',
   'verdant_gantry_ground_foot',
+  'k2_cradle_base_rail',
+  'k2_cradle_crossmember',
+  'k2_cradle_ground_foot',
+  'k2_cradle_a_frame_brace',
+  'k2_cradle_contact_saddle',
+  'k2_cradle_rubber_contact_pad',
+  'k2_cradle_connected_spine',
 ]) {
   assert.match(dressing, new RegExp(signature));
 }
@@ -70,7 +77,17 @@ assert.match(dressing, /tank\.position\.set\(16\.9, 0, 17\.7\)/,
 assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
   'T-90M component bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
-  'K2 teardown retains its original transform');
+  'K2 teardown retains its authored transform inside the swapped bay owner');
+assert.match(dressing,
+  /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  'the complete Abrams service section must move into the former K2 quadrant');
+assert.match(dressing,
+  /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
+  'the complete K2 teardown section must move into the former Abrams quadrant');
+assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
+  'the rolled K2 hull must identify its connected load-bearing support');
+assert.match(dressing, /swappedServiceBayIds = \['abrams_welding', 'rolled_k2'\]/,
+  'Garage diagnostics must receipt the requested bay swap');
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,

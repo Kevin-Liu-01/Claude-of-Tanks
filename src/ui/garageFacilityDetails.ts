@@ -19,6 +19,7 @@ export interface GarageFacilityDetailStats {
   readonly serviceVehicles: number;
   readonly placementZones: number;
   readonly openingViewFrames: number;
+  readonly openingViewTankParts: number;
 }
 
 export interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
@@ -224,6 +225,7 @@ export function addGarageFacilityDetails({
   let railSegments = 0;
   let serviceVehicles = 0;
   let openingViewFrames = 0;
+  let openingViewTankParts = 0;
   const accent = new THREE.Color(variant.accent).lerp(new THREE.Color(0xd7b66a), 0.24);
   const steel = new THREE.Color(0x343a3d);
   const dark = new THREE.Color(0x171b1d);
@@ -366,50 +368,59 @@ export function addGarageFacilityDetails({
 
   const addOpeningViewFrame = (centerSide: number, mirror: number): void => {
     openingViewFrames += 1;
-    const depth = 5.0;
-    const halfWidth = 1.9;
+    const depth = 5.2;
+    const halfWidth = 2.75;
+    const rearDepth = depth + 4.2;
+
+    // Connected four-post maintenance portal. Every upright lands on a
+    // visible footing, all roof members meet a column/crossmember, and the
+    // rear crash wall closes the silhouette. This replaces the universal
+    // collection of thin floating sticks seen in the old outdoor Garages.
+    apronBox(centerSide, depth + 2.1, 0.06, 6.4, 0.12, 5.1, dark);
     for (const sideOffset of [-halfWidth, halfWidth]) {
-      apronBox(centerSide + sideOffset, depth, 2.65, 0.22, 5.3, 0.24, steel);
-      apronBox(centerSide + sideOffset, depth + 2.7, 2.05, 0.18, 4.1, 0.20, dark);
+      for (const columnDepth of [depth, rearDepth]) {
+        apronBox(centerSide + sideOffset, columnDepth, 0.10, 0.82, 0.20, 0.82, dark);
+        apronBox(centerSide + sideOffset, columnDepth, 2.78, 0.34, 5.55, 0.34, steel);
+      }
+      apronBox(centerSide + sideOffset, depth + 2.1, 5.35, 0.38, 0.34, 4.62, steel);
+      apronBox(centerSide + sideOffset, depth + 0.48, 4.58,
+        0.20, 1.65, 0.22, safety, VIEW_YAW, 0, sideOffset < 0 ? -0.58 : 0.58);
     }
-    apronBox(centerSide, depth, 5.22, halfWidth * 2 + 0.5, 0.28, 0.34, accent);
-    apronBox(centerSide, depth + 2.7, 4.02, halfWidth * 2 + 0.25, 0.20, 0.28, steel);
-    apronBox(centerSide, depth + 1.35, 5.32, halfWidth * 2 + 0.75, 0.17, 2.95, dark);
-    apronBox(centerSide, depth + 1.34, 5.18, halfWidth * 2 + 0.48, 0.055, 2.62, accent);
-    apronBox(centerSide + mirror * 1.35, depth - 0.10, 3.75,
-      0.14, 2.7, 0.14, safety, VIEW_YAW, 0, mirror * 0.62);
-    for (const sideOffset of [-1.15, 0, 1.15]) {
-      apronBox(centerSide + sideOffset, depth + 1.35, 5.08, 0.64, 0.08, 0.34,
-        sideOffset === 0 ? accent : new THREE.Color(0xd8ddd9));
+    for (const columnDepth of [depth, rearDepth]) {
+      apronBox(centerSide, columnDepth, 5.42, 6.0, 0.38, 0.42,
+        columnDepth === depth ? accent : steel);
     }
-    // Each opening frame is a real maintenance vignette rather than a bare
-    // silhouette: connected bench, pegboard, cabinet, hoist and spare road
-    // wheels all live behind the hero keep-clear ring and share the same
-    // merged box/cylinder batches as the distant facility.
-    apronBox(centerSide, depth + 0.34, 0.76, 2.85, 0.18, 0.82, timber);
-    apronBox(centerSide, depth + 0.72, 1.82, 2.35, 1.42, 0.09, dark);
-    apronBox(centerSide, depth + 0.65, 1.26, 2.12, 0.08, 0.05, steel);
-    apronBox(centerSide, depth + 0.65, 2.32, 2.12, 0.08, 0.05, accent);
-    for (const [offset, height] of [[-0.72, 1.58], [0, 1.88], [0.72, 1.66]] as const) {
-      apronBox(centerSide + offset, depth + 0.64, height, 0.30, 0.08, 0.07,
-        offset === 0 ? safety : new THREE.Color(0xd8ddd9));
-      apronBox(centerSide + offset, depth + 0.64, height - 0.20, 0.07, 0.40, 0.07,
-        offset === 0 ? accent : steel);
+    apronBox(centerSide, depth + 2.1, 5.60, 6.45, 0.16, 4.72, dark);
+    apronBox(centerSide, depth + 2.1, 5.72, 5.92, 0.08, 4.32, accent);
+    for (const roofDepth of [depth + 0.75, depth + 2.1, depth + 3.45]) {
+      apronBox(centerSide, roofDepth, 5.47, 6.12, 0.16, 0.22, steel);
     }
-    const cabinetSide = centerSide + mirror * 1.35;
-    apronBox(cabinetSide, depth + 0.20, 0.76, 0.72, 1.52, 0.62, primer);
+    apronBox(centerSide, rearDepth - 0.16, 1.12, 5.45, 2.05, 0.20, dark);
+    apronBox(centerSide, rearDepth - 0.28, 2.22, 5.05, 0.16, 0.08, accent);
+    for (const sideOffset of [-1.65, 0, 1.65]) {
+      apronBox(centerSide + sideOffset, rearDepth - 0.30, 1.18,
+        0.08, 1.76, 0.06, sideOffset === 0 ? safety : steel);
+    }
+
+    // A proper service bench, cabinet, overhead trolley and spare road-wheel
+    // stand make the portal read as a working tank bay even before the baked
+    // first-party turret assembly is added below.
+    apronBox(centerSide + mirror * 1.12, rearDepth - 0.65, 0.78, 2.25, 0.20, 0.92, timber);
+    apronBox(centerSide + mirror * 1.12, rearDepth - 0.20, 1.63, 2.15, 1.34, 0.10, steel);
+    apronBox(centerSide - mirror * 2.02, rearDepth - 0.62, 0.82, 0.94, 1.64, 0.72, primer);
+    apronBox(centerSide, depth + 2.1, 5.18, 2.0, 0.18, 0.30, safety);
+    apronBox(centerSide, depth + 2.1, 4.30, 0.12, 1.68, 0.12, dark);
+    apronBox(centerSide, depth + 2.1, 3.42, 0.82, 0.18, 0.24, accent);
+    const cabinetSide = centerSide - mirror * 2.02;
     for (const y of [0.42, 0.72, 1.02]) {
-      apronBox(cabinetSide, depth - 0.13, y, 0.54, 0.035, 0.025, dark);
+      apronBox(cabinetSide, rearDepth - 1.0, y, 0.68, 0.035, 0.025, dark);
     }
-    apronBox(centerSide - mirror * 0.95, depth + 1.38, 4.02, 0.18, 2.28, 0.18, steel);
-    apronBox(centerSide - mirror * 0.95, depth + 1.38, 2.84, 0.62, 0.14, 0.18, safety);
-    apronBox(centerSide - mirror * 0.95, depth + 1.34, 2.62, 0.08, 0.44, 0.08, dark);
-    const wheelSide = centerSide - mirror * 1.38;
+    const wheelSide = centerSide + mirror * 2.02;
     for (let index = 0; index < 2; index += 1) {
       const wheelY = 0.43 + index * 0.68;
-      apronCylinder(wheelSide, depth - 0.18, wheelY, 0.34, 0.18,
+      apronCylinder(wheelSide, rearDepth - 0.98, wheelY, 0.38, 0.20,
         rubber, Math.PI / 2, 0, 12);
-      apronCylinder(wheelSide, depth - 0.18, wheelY, 0.17, 0.20,
+      apronCylinder(wheelSide, rearDepth - 0.98, wheelY, 0.19, 0.22,
         accent, Math.PI / 2, 0, 10);
       looseParts += 2;
     }
@@ -732,6 +743,16 @@ export function addGarageFacilityDetails({
       break;
   }
 
+  // The opening composition now holds recognisable first-party tank hardware,
+  // not generic rods. These turret-and-gun service cradles are authored by the
+  // Garage-only workshop library and flattened into the static baked bucket.
+  assemblies = [
+    ...assemblies,
+    { kind: 't90_turret_cradle', side: -9.2, depth: 7.2, yaw: 0.08, scale: 0.48 },
+    { kind: 'leclerc_turret_cradle', side: 9.2, depth: 7.2, yaw: -0.10, scale: 0.48 },
+  ];
+  openingViewTankParts = 2;
+
   if (assemblies.length) {
     const library = createWorkshopPartLibrary(engineCtx);
     for (const placement of assemblies) {
@@ -791,6 +812,7 @@ export function addGarageFacilityDetails({
     serviceVehicles,
     placementZones: getGarageFacilityTerraces(variant).length,
     openingViewFrames,
+    openingViewTankParts,
     meshes: Object.freeze(meshes),
     material: primitiveMaterial,
   });

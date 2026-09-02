@@ -169,6 +169,15 @@ try {
     }, { rows: variants, cycleCount });
   };
 
+  const settleManagedHeap = async () => {
+    await cdp.send('HeapProfiler.collectGarbage');
+    // Texture decode callbacks, compile promises, and disposal listeners can
+    // clear on the task following the visible handoff. Measure retained state,
+    // not those already-completed closures waiting for the next event turn.
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 250)));
+    await cdp.send('HeapProfiler.collectGarbage');
+  };
+
   // Exercise one complete round before the residency baseline. The large
   // demand-loaded fleet can tier-up shared Three.js/geometry helpers during
   // the first repeated environment builds; counting that one-time V8 code
@@ -179,7 +188,7 @@ try {
 
   // Thirty complete measured selection cycles exercise disposal and the
   // two-pack LRU after one-time runtime compilation has settled.
-  await cdp.send('HeapProfiler.collectGarbage');
+  await settleManagedHeap();
   const memoryBefore = await page.evaluate(() => ({
     heap: performance.memory?.usedJSHeapSize || 0,
     renderer: { ...(window.__DEBUG?.renderer?.info?.memory || {}) },
@@ -187,7 +196,7 @@ try {
   await startFrameProbe('__GARAGE_CYCLE_PROBE');
   await exerciseEnvironmentCycles(30);
   const cycleFrames = await stopFrameProbe('__GARAGE_CYCLE_PROBE');
-  await cdp.send('HeapProfiler.collectGarbage');
+  await settleManagedHeap();
   const memoryAfter = await page.evaluate(() => ({
     heap: performance.memory?.usedJSHeapSize || 0,
     renderer: { ...(window.__DEBUG?.renderer?.info?.memory || {}) },
@@ -304,10 +313,13 @@ try {
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
         || architecture.drawCalls < 8 || architecture.drawCalls > 24
-        || architecture.triangles <= 0 || architecture.triangles > 30_000
+        || architecture.triangles <= 0 || architecture.triangles > 50_000
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2
+        || architecture.openingViewFrames !== 2 || architecture.openingViewTankParts !== 2
+        || architecture.treeDetailTier !== 'battlefield-near'
+        || architecture.horizonStyle === 'none' || architecture.horizonMaxHeightM > 13.2
         || architecture.looseParts < 40 || architecture.serviceVehicles < 1
         || architecture.placementZones < 7 || architecture.placementOverlaps !== 0
         || architecture.maxGroundContactErrorM > 0.1

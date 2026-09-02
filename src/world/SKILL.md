@@ -51,6 +51,12 @@ sleep, static contact, and pair response for lightweight battlefield dressing.
 <!-- agent-docs:fill:patterns -->
 Keep height/collision queries deterministic and headless-capable. Bound per-frame
 LOD/vegetation work, reuse world caches, and reset destruction on rematch.
+Garage vegetation may reuse battlefield-near tree geometry only as static,
+instanced scenery with no world update loop. Its headless audit path must remain
+DOM-free. Share its immutable species groves across cached environment packs,
+split cold grove preparation across rendered frames, and dispose each generated
+foliage atlas with the owning library. Each Garage horizon must follow the source
+biome rather than reuse a universal mountain wall.
 Certify structure connectivity before material-bucket or instanced-geometry
 merges; merged geometry is too late to identify a floating authored fixture.
 Keep facade depth inside existing material buckets and repeated-building

@@ -16,8 +16,9 @@ Present game and session state with fast, legible desktop/mobile interactions.
 `garageStage.ts` owns the typed visible hero podium and environment bridge;
 `garageArchitecture.ts` owns the two-pack async cache and phase-tracked assets;
 `garageEnvironmentKit.ts` owns all ten bounded authentic terrain, camera-space
-structure, vegetation/ground-cover, generated wreck, PBR, and layered-horizon
-packs; the shared engine sky owns every outdoor Garage atmosphere;
+structure, full-detail instanced vegetation/ground-cover, generated wreck, PBR,
+and biome-specific layered-horizon packs; the shared engine sky owns every
+outdoor Garage atmosphere;
 `playMenu.ts` owns direct Solo,
 Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
@@ -54,7 +55,11 @@ when adding responsive controls.
 `garageStage.ts` is also the exact restored Verdant workshop owner. The nine
 outdoor destinations live behind `garageArchitecture.ts`; their static service
 facilities are baked by `garageFacilityDetails.ts`, receive but do not cast live
-CSM shadows, and retain no playable-fleet runtime. Verdant's room shell and
+CSM shadows, and retain no playable-fleet runtime. Opening-view maintenance
+portals must be grounded four-post assemblies with connected roof/floor members
+and static first-party turret-and-gun cradles. Flat-map Garages retain low
+horizons; only authored rolling, mesa, coastal, and alpine recipes may raise
+terrain silhouettes. Verdant's room shell and
 supported interior dressing use one static half-turn around the turntable;
 exclude the podium, hero, canonical camera, shared maintenance graph, and
 rear-axis archive display from that transform. Preserve one canonical hero
@@ -62,7 +67,9 @@ pose and verify both persisted outdoor reload and 1180x820 overlay composition.
 Do not reintroduce all-environment post-ready warming. Selector intent may
 fetch code, exact card intent may prepare one destination, the prior complete
 pack stays visible through the handoff, and the cache retains at most the active
-and previous packs. Repeated opaque facility primitives belong in static
+and previous packs. Full-detail tree groves are shared immutable library assets;
+prepare cold species across animation frames, and release their generated atlas
+only when the library is disposed. Repeated opaque facility primitives belong in static
 instanced batches, not individual scene nodes or one-off merged allocations.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.

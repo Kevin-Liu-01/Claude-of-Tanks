@@ -906,8 +906,11 @@ variants during the covered first frame, so a browser without parallel shader
 compile cannot move its first link stall onto an environment click.
 The outdoor packs use generated 41x37 height excerpts from their real battlefield
 spawn terrain, seven connected map structures distributed around the full
-perimeter, real instanced tree kits, static biome ground cover, and three
-terrain-derived relief bands. `garageApproachDetails.ts` adds one continuous
+perimeter, full battlefield-near tree geometry in static instanced batches,
+static biome ground cover, and three map-specific relief bands. Flat rail,
+factory, drydock, and urban yards keep a low skyline; rolling, mesa, coastal,
+and alpine destinations receive bounded silhouettes authored to their biome.
+`garageApproachDetails.ts` adds one continuous
 terrain-following route from the outer district to the podium—rail fan, urban
 boulevard, drydock causeway, snow road, convoy track, alpine pass, monsoon
 causeway, recovery trail, or foundry haul road. `exteriorDetailKit.ts` validates
@@ -919,11 +922,20 @@ arbitrary maintenance assemblies and emits repeated opaque crates, cylinders,
 beams, sleepers, and service props as static instanced batches. This preserves
 authored transforms, materials, and triangle silhouettes without paying one
 scene node or geometry bake per copy. Cinder adds three full rail
-roads, platforms, canopies, and a nine-bay roundhouse. Two connected, stocked
-maintenance frames remain legible in the untouched opening composition. The
+roads, platforms, canopies, and a nine-bay roundhouse. Two grounded four-post
+maintenance portals remain legible in the opening composition; each includes
+connected roof/floor structure, workshop equipment, and a static first-party
+turret-and-gun cradle rather than an empty decorative frame. The
 local white-card sky has been removed: `garageSkyPresets.ts` retargets the
 shared procedural dome, cloud decks, fog, and sun to the exact source-map
 atmosphere while retaining the boot PMREM so selector changes do not stall.
+Detailed tree groves are immutable assets shared across the two-pack cache;
+cold species preparation is split across rendered frames and their generated
+foliage atlases are released only with the asset library. Repeated environment
+cycling therefore does not rebuild branch geometry, leak canvas textures, or
+move that cost into the atomic pack reveal. The covered Verdant boot frame also
+seeds the exact alpha-tested, double-sided instanced foliage program used by
+those groves, keeping its first driver link out of the first outdoor switch.
 No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.
 
@@ -937,7 +949,12 @@ hero bounce remains active. Outdoor static scenery receives but does not cast
 live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
 maintenance layer after interactive readiness. Four diagonally opposed bays—
 Burlak gantry, Abrams welding, T-90M armor service, and K2 teardown—surround
-every Garage and are recomposed by the destination layout. A connected
+every Garage and are recomposed by the destination layout. The Abrams and K2
+bay owners use an explicit static half-turn to exchange opposite quadrants as
+complete assemblies, keeping the Verdant overhead work lamp attached to the
+Abrams repair choreography. The rolled K2 hull rests in a connected steel
+rollover cradle with grounded skids, crossmembers, A-frames, a continuous spine,
+and rubber contact saddles instead of disconnected timber blocks. A connected
 freestanding field-record display shares that graph in every variant, remains
 on the hero tank's rear axis, and rotates through at most two resident battle
 textures. The single static graph is reused across all ten variants; only

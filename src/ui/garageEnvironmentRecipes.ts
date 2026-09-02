@@ -53,6 +53,10 @@ export interface GarageEnvironmentRecipe {
   readonly structures: readonly GarageStructurePlacement[];
   readonly treeSpecies: readonly string[];
   readonly treeCount: number;
+  /** Distant relief grammar; flat facilities must not inherit alpine walls. */
+  readonly horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa';
+  /** Upper bound for the farthest skyline crest above the Garage datum. */
+  readonly horizonHeightM: number;
   readonly approach: GarageApproachRecipe;
   /** Vertical compression for a camera-scale Garage excerpt of the real map. */
   readonly reliefScale?: number;
@@ -87,6 +91,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeWoodshed, 'field stores', 36, -14, -0.10, 0.70),
     ],
     treeSpecies: ['oak', 'poplar'], treeCount: 24,
+    horizonStyle: 'rolling', horizonHeightM: 7.2,
     approach: {
       style: 'farm-lane', label: 'hedgerow motor-pool lane', surface: 'grass', width: 6.8,
       waypoints: [[0, 10], [-2, 24], [-7, 44]],
@@ -107,7 +112,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeBathhouse, 'wadi crew hammam', 40, -11, -0.34, 0.66),
       at(makeMinaret, 'outer-route watchtower', 6, 38, 0.22, 0.58),
     ],
-    treeSpecies: ['palm', 'acacia'], treeCount: 16,
+    treeSpecies: ['palm', 'acacia'], treeCount: 20,
+    horizonStyle: 'mesa', horizonHeightM: 5.6,
     approach: {
       style: 'desert-convoy', label: 'compacted convoy approach', surface: 'sand', width: 8.4,
       waypoints: [[1, 10], [3, 25], [-5, 46]], lanes: [-2.6, 2.6],
@@ -128,7 +134,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeOnionChurch, 'frostline chapel', 40, -11, -0.22, 0.56),
       at(makeMill, 'snowfield utility mill', 6, 38, 0.18, 0.54),
     ],
-    treeSpecies: ['spruce', 'birch'], treeCount: 18, reliefScale: 0.58,
+    treeSpecies: ['spruce', 'birch'], treeCount: 26, reliefScale: 0.58,
+    horizonStyle: 'rolling', horizonHeightM: 7.8,
     approach: {
       style: 'snow-road', label: 'ploughed recovery road', surface: 'snow', width: 7.4,
       waypoints: [[0, 10], [-3, 26], [2, 46]], lanes: [-2.2, 2.2],
@@ -149,7 +156,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeCivicHall, 'arsenal administration', 40, -11, -0.32, 0.50),
       at(makeParkingDeck, 'armored vehicle depot', 6, 38, 0.12, 0.58),
     ],
-    treeSpecies: ['poplar', 'oak'], treeCount: 14,
+    treeSpecies: ['poplar', 'oak'], treeCount: 18,
+    horizonStyle: 'urban', horizonHeightM: 3.8,
     approach: {
       style: 'urban-street', label: 'cobbled arsenal boulevard', surface: 'cobble', width: 9.2,
       waypoints: [[0, 10], [1, 28], [-4, 47]], lanes: [-3.1, 3.1],
@@ -170,7 +178,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeNetYard, 'rigging and net yard', 40, -11, -0.28, 0.66),
       at(makeWarehouse, 'harbor stores', 6, 38, 0.16, 0.52),
     ],
-    treeSpecies: ['cedar', 'pine'], treeCount: 18,
+    treeSpecies: ['cedar', 'pine'], treeCount: 22,
+    horizonStyle: 'coastal', horizonHeightM: 3.2,
     approach: {
       style: 'drydock-lane', label: 'reinforced drydock causeway', surface: 'cobble', width: 8.6,
       waypoints: [[0, 10], [-2, 27], [-1, 47]], lanes: [-3.0, 3.0],
@@ -191,7 +200,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeDepot, 'Cinder Junction station', 40, -11, -0.30, 0.72),
       at(makeFactory, 'locomotive machine shop', 6, 38, 0.12, 0.54),
     ],
-    treeSpecies: ['poplar', 'birch'], treeCount: 12,
+    treeSpecies: ['poplar', 'birch'], treeCount: 16,
+    horizonStyle: 'flat', horizonHeightM: 3.4,
     approach: {
       style: 'rail-fan', label: 'three-road roundhouse fan', surface: 'cobble', width: 4.2,
       waypoints: [[0, 9], [0, 27], [-1, 49]], lanes: [-6.2, 0, 6.2],
@@ -212,7 +222,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeGranary, 'raised ration store', 40, -11, -0.26, 0.64),
       at(makeNetYard, 'monsoon cable yard', 6, 38, 0.14, 0.62),
     ],
-    treeSpecies: ['eucalyptus', 'palm'], treeCount: 20, reliefScale: 0.72,
+    treeSpecies: ['eucalyptus', 'palm'], treeCount: 30, reliefScale: 0.72,
+    horizonStyle: 'rolling', horizonHeightM: 8.4,
     approach: {
       style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
       waypoints: [[0, 10], [4, 25], [-2, 46]], lanes: [-3.3, 3.3],
@@ -233,7 +244,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeOnionChurch, 'high-pass memorial', 40, -11, -0.24, 0.52),
       at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.14, 0.62),
     ],
-    treeSpecies: ['spruce', 'fir'], treeCount: 18, reliefScale: 0.38,
+    treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
+    horizonStyle: 'alpine', horizonHeightM: 13.2,
     approach: {
       style: 'alpine-pass', label: 'snowbound cavern approach', surface: 'snow', width: 7.2,
       waypoints: [[0, 10], [-4, 27], [-1, 46]], lanes: [-2.4, 2.4],
@@ -254,7 +266,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeShed, 'recovery fabrication shed', 40, -11, -0.30, 0.72),
       at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.16, 0.54),
     ],
-    treeSpecies: ['acacia', 'cedar'], treeCount: 14, reliefScale: 0.72,
+    treeSpecies: ['acacia', 'cedar'], treeCount: 16, reliefScale: 0.72,
+    horizonStyle: 'mesa', horizonHeightM: 7.2,
     approach: {
       style: 'recovery-trail', label: 'tracked recovery trail', surface: 'rock', width: 8.0,
       waypoints: [[0, 10], [3, 26], [-5, 46]], lanes: [-2.7, 2.7],
@@ -275,7 +288,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeParkingDeck, 'works vehicle depot', 40, -11, -0.28, 0.48),
       at(makeGantry, 'foundry transfer gantry', 6, 38, 0.14, 0.66),
     ],
-    treeSpecies: ['poplar', 'birch'], treeCount: 10,
+    treeSpecies: ['poplar', 'birch'], treeCount: 14,
+    horizonStyle: 'flat', horizonHeightM: 3.1,
     approach: {
       style: 'foundry-haul-road', label: 'rail-served foundry haul road', surface: 'cobble', width: 9.0,
       waypoints: [[0, 10], [-2, 27], [2, 48]], lanes: [-3.2, 3.2],

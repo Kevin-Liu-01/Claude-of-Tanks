@@ -42,7 +42,10 @@ export interface GarageArchitectureStats {
   textureSets: readonly string[];
   treeSpecies: readonly string[];
   trees: number;
+  treeDetailTier: 'battlefield-near' | 'battlefield-far' | 'none';
   backdropLayers: number;
+  horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'none';
+  horizonMaxHeightM: number;
   groundCover: number;
   structures: number;
   wrecks: number;
@@ -62,6 +65,7 @@ export interface GarageArchitectureStats {
   serviceVehicles: number;
   placementZones: number;
   openingViewFrames: number;
+  openingViewTankParts: number;
   placementOverlaps: number;
   maxGroundContactErrorM: number;
   outdoorWarmReady: boolean;
@@ -97,7 +101,10 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     textureSets: Object.freeze(['original-wall', 'original-floor', 'original-podium']),
     treeSpecies: Object.freeze([]),
     trees: 0,
+    treeDetailTier: 'none',
     backdropLayers: 0,
+    horizonStyle: 'none',
+    horizonMaxHeightM: 0,
     groundCover: 0,
     structures: 1,
     wrecks: 0,
@@ -117,6 +124,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     serviceVehicles: 0,
     placementZones: 4,
     openingViewFrames: 0,
+    openingViewTankParts: 0,
     placementOverlaps: 0,
     maxGroundContactErrorM: 0,
     triangles: 0,
@@ -233,7 +241,11 @@ export function createGarageArchitectureController(
       textureSets: selectedReady ? root?.userData.textureSets || [] : [],
       treeSpecies: selectedReady ? root?.userData.treeSpecies || [] : [],
       trees: selectedReady ? Number(root?.userData.trees || 0) : 0,
+      treeDetailTier: selectedReady
+        ? root?.userData.treeDetailTier || 'none' : 'none',
       backdropLayers: selectedReady ? Number(root?.userData.backdropLayers || 0) : 0,
+      horizonStyle: selectedReady ? root?.userData.horizonStyle || 'none' : 'none',
+      horizonMaxHeightM: selectedReady ? Number(root?.userData.horizonMaxHeightM || 0) : 0,
       groundCover: selectedReady ? Number(root?.userData.groundCover || 0) : 0,
       structures: selectedReady ? Number(root?.userData.structures || 0) : 0,
       wrecks: selectedReady ? Number(root?.userData.wrecks || 0) : 0,
@@ -257,6 +269,7 @@ export function createGarageArchitectureController(
       serviceVehicles: selectedReady ? Number(root?.userData.serviceVehicles || 0) : 0,
       placementZones: selectedReady ? Number(root?.userData.placementZones || 0) : 0,
       openingViewFrames: selectedReady ? Number(root?.userData.openingViewFrames || 0) : 0,
+      openingViewTankParts: selectedReady ? Number(root?.userData.openingViewTankParts || 0) : 0,
       placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
       maxGroundContactErrorM: selectedReady
         ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,
@@ -313,9 +326,11 @@ export function createGarageArchitectureController(
     if (inFlight) return inFlight;
     const task = (variant.architecture === 'field_shed'
       ? Promise.resolve(buildVerdantWorkshopOwner())
-      : getEnvironmentKit().then((kit) => {
+      : getEnvironmentKit().then(async (kit) => {
       if (disposed) return null;
       const library = ensureAssets(kit);
+      await kit.prepareGarageEnvironmentAssets(library, variant);
+      if (disposed) return null;
       const startedAt = performance.now();
       const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
       lastBuildMs = performance.now() - startedAt;

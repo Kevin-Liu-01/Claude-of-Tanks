@@ -645,6 +645,25 @@ export function createGarageDressing(
     return object;
   }
 
+  function halfTurnAuthoredServiceBay(
+    firstChildIndex: number,
+    bayId: 'abrams_welding' | 'rolled_k2',
+    sourceVehicleId: 'm1a2' | 'k2',
+  ): THREE.Group {
+    const authoredChildren = legacyVerdantRoot.children.slice(firstChildIndex);
+    const bayRoot = markModernPart(
+      new THREE.Group(), sourceVehicleId, `${bayId}_service_bay`,
+    );
+    bayRoot.name = `garage_${bayId}_half_turn`;
+    bayRoot.rotation.y = Math.PI;
+    bayRoot.userData.layoutRotationRad = Math.PI;
+    bayRoot.userData.swappedWith = bayId === 'abrams_welding' ? 'rolled_k2' : 'abrams_welding';
+    for (const child of authoredChildren) bayRoot.add(child);
+    legacyVerdantRoot.add(bayRoot);
+    bayRoot.updateMatrix();
+    return bayRoot;
+  }
+
   async function createLegacyVisual(
     specId: 't90a_burlak' | 'm1a2' | 't90m' | 'k2',
     camoSeed: number,
@@ -1414,6 +1433,7 @@ export function createGarageDressing(
   // welding cable.
   // ==========================================================================
   chunks.push(async function buildAbramsAndOriginalVerdantBay() {
+    const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('m1a2', 1440);
     const tank = markModernPart(visual.root, 'm1a2', 'skirt_repair_vehicle');
     tank.name = 'dressing_tank_b';
@@ -1500,6 +1520,7 @@ export function createGarageDressing(
     // This fixture hangs from Verdant's roof. Outdoor environments use the
     // stable Garage sun and hero lights, so never leave it in open sky.
     workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
+    halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
 
   // ==========================================================================
@@ -1591,9 +1612,10 @@ export function createGarageDressing(
 
   // ==========================================================================
   // CHUNK 5 — ORIGINAL VERDANT K2 teardown: rolled source hull, its exact
-  // road wheels and shoes, timber cradle, and the M2/DShK service table.
+  // road wheels and shoes, connected steel cradle, and M2/DShK service table.
   // ==========================================================================
   chunks.push(async function buildOriginalVerdantK2Teardown() {
+    const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('k2', 172);
     const tank = markModernPart(visual.root, 'k2', 'side_hull');
     const hull = tank.getObjectByName('rig_hull');
@@ -1629,18 +1651,46 @@ export function createGarageDressing(
     cradle.position.set(-16.25, 0, -16.85);
     cradle.rotation.y = 0.35;
     legacyVerdantRoot.add(cradle);
-    const beamGeometry = track(new THREE.BoxGeometry(2.55, 0.24, 0.58));
-    put(beamGeometry, mat.timber, 0, 0.12, -2.05,
-      0, 0, 0, 1, cradle);
-    put(beamGeometry, mat.timber, 0, 0.12, 2.05,
-      0, 0, 0, 1, cradle);
-    const chockGeometry = track(new THREE.BoxGeometry(0.36, 0.42, 0.52));
-    for (const z of [-2.05, 2.05]) {
-      put(chockGeometry, mat.timberDark, -1.1, 0.32, z,
-        0, 0, -0.28, 1, cradle);
-      put(chockGeometry, mat.timberDark, 1.1, 0.32, z,
-        0, 0, 0.28, 1, cradle);
+    cradle.userData.supportMode = 'connected-steel-rollover-cradle';
+    cradle.userData.contactPadCount = 2;
+    const baseRailGeometry = track(new THREE.BoxGeometry(0.28, 0.20, 5.55));
+    const crossmemberGeometry = track(new THREE.BoxGeometry(3.45, 0.18, 0.30));
+    const groundFootGeometry = track(new THREE.BoxGeometry(0.72, 0.08, 0.72));
+    for (const x of [-1.42, 1.42]) {
+      const rail = put(baseRailGeometry, mat.steelDark, x, 0.14, 0,
+        0, 0, 0, 1, cradle);
+      rail.name = 'k2_cradle_base_rail';
+      for (const z of [-2.46, 2.46]) {
+        const foot = put(groundFootGeometry, mat.steelDark, x, 0.04, z,
+          0, 0, 0, 1, cradle);
+        foot.name = 'k2_cradle_ground_foot';
+      }
     }
+    for (const z of [-2.46, 2.46]) {
+      const crossmember = put(crossmemberGeometry, mat.steelMid, 0, 0.20, z,
+        0, 0, 0, 1, cradle);
+      crossmember.name = 'k2_cradle_crossmember';
+    }
+
+    const frameBraceGeometry = track(new THREE.BoxGeometry(0.20, 1.92, 0.28));
+    const saddleGeometry = track(new THREE.BoxGeometry(1.12, 0.16, 0.50));
+    const contactPadGeometry = track(new THREE.BoxGeometry(0.88, 0.09, 0.42));
+    for (const z of [-1.72, 1.72]) {
+      for (const [x, roll] of [[-0.66, -0.72], [0.66, 0.72]] as const) {
+        const brace = put(frameBraceGeometry, mat.safety, x, 0.88, z,
+          0, 0, roll, 1, cradle);
+        brace.name = 'k2_cradle_a_frame_brace';
+      }
+      const saddle = put(saddleGeometry, mat.steelMid, 0, 1.53, z,
+        0, 0, 0, 1, cradle);
+      saddle.name = 'k2_cradle_contact_saddle';
+      const pad = put(contactPadGeometry, mat.rubber, 0, 1.65, z,
+        0, 0, -0.12, 1, cradle);
+      pad.name = 'k2_cradle_rubber_contact_pad';
+    }
+    const spine = put(track(new THREE.BoxGeometry(0.22, 0.22, 3.72)), mat.steelMid,
+      0, 1.40, 0, 0, 0, 0, 1, cradle);
+    spine.name = 'k2_cradle_connected_spine';
 
     if (tires?.geometry && discs?.geometry) {
       if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
@@ -1732,6 +1782,7 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
+    halfTurnAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 
   // One canonical four-bay service set is shared across all ten environments.
@@ -1753,6 +1804,7 @@ export function createGarageDressing(
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
     group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
+    group.userData.swappedServiceBayIds = ['abrams_welding', 'rolled_k2'];
     group.userData.workshopOrbitCoverageDegrees = 360;
     setVariant(currentVariant.id);
   });
