@@ -1,4 +1,12 @@
-import type { WebGLProgram as ThreeWebGLProgram } from 'three';
+import type {
+  Camera,
+  Material,
+  Object3D,
+  Scene,
+  Texture,
+  WebGLProgram as ThreeWebGLProgram,
+  WebGLRenderTarget,
+} from 'three';
 
 type WarmYield = () => Promise<void>;
 
@@ -12,21 +20,20 @@ export interface RendererWithPrograms {
   info?: RendererProgramInfo | null;
 }
 
-interface ForwardWarmObject {
+type RenderTarget = WebGLRenderTarget | WebGLRenderTarget<Texture[]> | null;
+
+type ForwardWarmObject = Object3D & {
   isMesh?: boolean;
   isPoints?: boolean;
   isLine?: boolean;
   isSprite?: boolean;
-  name?: string;
-  type?: string;
-  traverseVisible(callback: (object: ForwardWarmObject) => void): void;
-}
+};
 
 interface ParallelShaderCompileExtension {
   COMPLETION_STATUS_KHR: number;
 }
 
-function isWebGLProgram(value: unknown): value is WebGLProgram {
+function isWebGLProgram(value: ThreeWebGLProgram['program']): value is WebGLProgram {
   return typeof value === 'object' && value !== null;
 }
 
@@ -41,29 +48,29 @@ export interface ForwardProgramWarmStats {
 }
 
 export interface ForwardProgramWarmOwner {
-  compile(root: unknown): void;
+  compile(root: Object3D): void;
   initializeSteps(
-    root?: ForwardWarmObject,
+    root?: Object3D,
     stats?: ForwardProgramWarmStats | null,
-  ): Generator<void, void, unknown>;
-  linkerBreathingSlices(maxSlices: number): Generator<void, void, unknown>;
+  ): Generator<void, void, void>;
+  linkerBreathingSlices(maxSlices: number): Generator<void, void, void>;
   invalidate(): void;
 }
 
 export interface ForwardProgramWarmOptions {
   renderer: ForwardWarmRenderer;
-  scene: ForwardWarmObject;
-  camera: unknown;
-  getTarget(): unknown;
+  scene: Scene;
+  camera: Camera;
+  getTarget(): RenderTarget;
   now?: () => number;
 }
 
 interface RendererWithTargets {
-  getRenderTarget(): unknown;
+  getRenderTarget(): RenderTarget;
   getActiveCubeFace?(): number;
   getActiveMipmapLevel?(): number;
-  setRenderTarget(target: unknown, activeCubeFace?: number, activeMipmapLevel?: number): void;
-  compile(root: unknown, camera: unknown, targetScene?: unknown): unknown;
+  setRenderTarget(target: RenderTarget, activeCubeFace?: number, activeMipmapLevel?: number): void;
+  compile(root: Object3D, camera: Camera, targetScene?: Scene | null): Set<Material>;
 }
 
 export interface ProgramUniformWarmReceipt {
@@ -75,10 +82,10 @@ export interface ProgramUniformWarmReceipt {
 
 export interface TargetCompileOptions {
   renderer: RendererWithTargets;
-  root: unknown;
-  camera: unknown;
-  targetScene?: unknown;
-  target?: unknown;
+  root: Object3D;
+  camera: Camera;
+  targetScene?: Scene | null;
+  target?: RenderTarget;
 }
 
 /**
@@ -171,7 +178,7 @@ export function createForwardProgramWarmOwner({
 }: ForwardProgramWarmOptions): ForwardProgramWarmOwner {
   let parallelCompile: ParallelShaderCompileExtension | null | undefined;
 
-  const compile = (root: unknown): void => {
+  const compile = (root: Object3D): void => {
     compileForRenderTarget({
       renderer,
       root,
@@ -182,13 +189,14 @@ export function createForwardProgramWarmOwner({
   };
 
   const initializeSteps = function* (
-    root: ForwardWarmObject = scene,
+    root: Object3D = scene,
     stats: ForwardProgramWarmStats | null = null,
-  ): Generator<void, void, unknown> {
+  ): Generator<void, void, void> {
     let sliceAt = now();
-    const objects: ForwardWarmObject[] = [];
+    const objects: Object3D[] = [];
     root.traverseVisible((object) => {
-      if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
+      const renderable = object as ForwardWarmObject;
+      if (renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite) {
         objects.push(object);
       }
     });
@@ -219,7 +227,7 @@ export function createForwardProgramWarmOwner({
 
   const linkerBreathingSlices = function* (
     maxSlices: number,
-  ): Generator<void, void, unknown> {
+  ): Generator<void, void, void> {
     try {
       const gl = renderer.getContext();
       if (parallelCompile === undefined) {

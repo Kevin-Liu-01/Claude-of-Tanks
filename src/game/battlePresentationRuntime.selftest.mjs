@@ -46,7 +46,16 @@ function createEntity({
   };
 }
 
-function createHarness({ tanks = [], network = false, spotted = true, world = null } = {}) {
+function createHarness({
+  tanks = [],
+  network = false,
+  spotted = true,
+  world = null,
+  phase = 'battle',
+  fxEnabled = true,
+  cinematic = false,
+  pedestalVisual = null,
+} = {}) {
   const scene = new Scene();
   const camera = new PerspectiveCamera(60, 16 / 9, 0.5, 4000);
   camera.position.set(0, 2, 0);
@@ -70,7 +79,7 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
     },
   };
   const game = {
-    phase: 'battle',
+    phase,
     tanks,
     player: tanks.find((tank) => tank.isPlayer) || tanks[0] || null,
     spotting: { isSpotted: () => spotted },
@@ -86,11 +95,11 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
       sampleTankPresentationPose,
       isPostwarVehicleEra: (era) => era !== 'ww2',
     },
-    getFx: () => fx,
+    getFx: () => fxEnabled ? fx : null,
     getWorld: () => world,
     isNetworkMatchActive: () => network,
-    getPedestalVisual: () => null,
-    isCinematicActive: () => false,
+    getPedestalVisual: () => pedestalVisual,
+    isCinematicActive: () => cinematic,
   });
   return { runtime, game, scene, camera, effects };
 }
@@ -131,6 +140,9 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
   assert.equal(hidden.root.parent, harness.scene,
     'a legal spotting edge restores owner-detached residency before sync');
   assert.equal(hidden.syncs.length, 1);
+  harness.runtime.update();
+  assert.equal(hidden.entity._spotFade, 1,
+    'an undelimited presentation update resolves the spotting fade immediately');
 }
 
 {
@@ -179,6 +191,20 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
 }
 
 {
+  const moving = createEntity({ isPlayer: true, speed: 10 });
+  const harness = createHarness({ tanks: [moving.entity] });
+  for (let frame = 0; frame < 4; frame += 1) harness.runtime.update(1 / 60);
+  assert.equal(harness.effects.dust.length, 2,
+    'travel-based dust emits once per side after crossing its spacing threshold');
+
+  const cinematic = createEntity({ isPlayer: true, speed: 0 });
+  const cinematicHarness = createHarness({ tanks: [cinematic.entity], cinematic: true });
+  cinematicHarness.runtime.update();
+  assert.equal(cinematicHarness.effects.exhaust[0].load, 0.3,
+    'cinematic idle preserves a readable exhaust load without frame delta input');
+}
+
+{
   const reverse = createEntity({ isPlayer: true, speed: -4 });
   const world = {
     crushables: [{ x: 0, y: 0, z: -20, h: 2, dynamic: false }],
@@ -193,6 +219,65 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
   assert.ok(world.crushCalls[0].z < 0,
     'reverse impacts use travel direction rather than hull facing');
   assert.ok(harness.effects.crushed[0].direction.z < 0);
+}
+
+{
+  const mover = createEntity({ isPlayer: true, speed: 4 });
+  const world = {
+    crushables: [
+      { x: 0, y: 0, z: -20, h: 1, toppled: true },
+      { x: 100, y: 0, z: -20, h: 1 },
+      { x: 1, y: 0, z: -20, h: 1 },
+      { x: -1, y: 0, z: -20, h: 2, dynamic: true },
+    ],
+    crushCalls: [],
+    crushProp(index, x, z, speed) {
+      this.crushCalls.push({ index, x, z, speed });
+      return index === 3;
+    },
+  };
+  const harness = createHarness({ tanks: [mover.entity], world });
+  harness.runtime.update(1 / 60);
+  assert.deepEqual(world.crushCalls.map(({ index }) => index), [2, 3],
+    'toppled and out-of-reach props leave the crush provider untouched');
+  assert.equal(harness.effects.crushed[0].loose, true,
+    'dynamic props use the loose-prop impact path after a confirmed crush');
+}
+
+{
+  const parked = createEntity({ isPlayer: true });
+  const harness = createHarness({
+    tanks: [parked.entity],
+    phase: 'garage',
+    pedestalVisual: parked.visual,
+    fxEnabled: false,
+  });
+  harness.runtime.update(1 / 60);
+  assert.equal(parked.syncs.length, 0,
+    'the retained Garage hero remains owned by the pedestal presenter');
+  harness.runtime.captureSoloPoses();
+  assert.ok(parked.entity._soloRenderPose,
+    'capture initializes a missing solo pose outside active battle');
+}
+
+{
+  const missingState = createEntity({ id: 'missing-state' });
+  const missingCombat = createEntity({ id: 'missing-combat' });
+  const missingVisual = createEntity({ id: 'missing-visual' });
+  const harness = createHarness({
+    tanks: [missingState.entity, missingCombat.entity, missingVisual.entity],
+    world: {},
+  });
+  missingState.entity.state = null;
+  missingCombat.entity.combat = null;
+  missingVisual.entity.visual = null;
+  harness.runtime.resetSoloPoses();
+  harness.runtime.captureSoloPoses();
+  harness.runtime.update(1 / 60);
+  harness.runtime.primeDeploymentTerrainTiles();
+  assert.equal(missingCombat.syncs.length, 0);
+  assert.equal(missingVisual.syncs.length, 0,
+    'incomplete lifecycle records are ignored by pose, frame, and terrain passes');
 }
 
 {

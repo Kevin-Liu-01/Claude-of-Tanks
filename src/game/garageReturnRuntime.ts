@@ -20,10 +20,10 @@ interface GarageReturnTransitionOptions {
 }
 
 interface GarageReturnTransitionPort {
-  run(
-    work: () => unknown,
+  run<Result>(
+    work: () => Result | Promise<Result>,
     options: GarageReturnTransitionOptions,
-  ): Promise<unknown>;
+  ): Promise<Result>;
 }
 
 interface GarageReturnSettingsPort {
@@ -114,7 +114,7 @@ export interface GarageReturnRuntimeOptions<Visual = object> {
   restoreGaragePresentation(): Promise<NonNullable<GarageReturnTrace['presentationRestore']>>;
   isBattleEntryPending(): boolean;
   nowMs?: () => number;
-  sleep?: (milliseconds: number) => Promise<unknown>;
+  sleep?: (milliseconds: number) => Promise<void>;
   publishTrace?: (trace: GarageReturnTrace) => void;
 }
 
@@ -316,7 +316,7 @@ export function createGarageReturnRuntime<Visual = object>(
   const beginTransition = (operation: () => Promise<void>): Promise<void> => {
     if (activeTransition) return activeTransition;
     let resolvePending!: () => void;
-    let rejectPending!: (error: unknown) => void;
+    let rejectPending!: (error: Error) => void;
     const pending = new Promise<void>((resolve, reject) => {
       resolvePending = resolve;
       rejectPending = reject;
@@ -327,7 +327,9 @@ export function createGarageReturnRuntime<Visual = object>(
     try {
       operation().then(resolvePending, rejectPending);
     } catch (error) {
-      rejectPending(error);
+      rejectPending(error instanceof Error
+        ? error
+        : new Error('Garage return transition failed', { cause: error }));
     }
     const tracked = pending.finally(() => {
       if (activeTransition === tracked) activeTransition = null;

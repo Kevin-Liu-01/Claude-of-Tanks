@@ -181,7 +181,9 @@ if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S
   || !/actorVisible = entity\._spotFade > 0\.02;[\s\S]{0,160}setVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(battlePresentation)) {
   throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
-if (!/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(battleWarm)
+if (!/function\* prebakeDestroyedVariantSteps\([\s\S]*prebakeBurntSteps/.test(battleWarm)
+  || !/function warmDestroyedVisual\([\s\S]*setDestroyed/.test(battleWarm)
+  || !/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeDestroyedVariantSteps[\s\S]*warmDestroyedVisual/.test(battleWarm)
   || !/function\* warmCombatDestructionEffectSteps\([\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush/.test(battleWarm)
   || !/function\* createCombatRareWarmSteps\([\s\S]*yield\* warmCombatDestructionEffectSteps\(context\)[\s\S]*compileHiddenVariantsSteps/.test(battleWarm)) {
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');

@@ -309,7 +309,10 @@ assert.match(battlePresentationSource,
   /const setVisualResident = \(visual: TankVisual, resident: boolean\)[\s\S]{0,500}battleVisibilityDetached && !root\.parent\)[\s\S]{0,80}scene\.add\(root\)[\s\S]{0,500}if \(root\.parent === scene\)[\s\S]{0,100}root\.removeFromParent\(\)/,
   'fully hidden opponents must leave the scene hierarchy and only the visibility owner may restore them');
 assert.match(battlePresentationSource,
-  /actorVisible = entity\._spotFade > 0\.02;[\s\S]*setVisualResident\(visual, actorVisible\)[\s\S]*visual\.setVisible\(actorVisible\)[\s\S]*if \(!actorVisible\) \{[\s\S]{0,260}continue;[\s\S]{0,20}\}/,
+  /const updateActorVisibility = \([\s\S]*actorVisible = entity\._spotFade > 0\.02;[\s\S]{0,180}setVisualResident\(visual, actorVisible\)[\s\S]{0,120}visual\.setVisible\(actorVisible\)[\s\S]{0,80}return actorVisible/,
+  'spotting must restore scene residency before reporting the actor visible');
+assert.match(battlePresentationSource,
+  /const updateTank = \([\s\S]*if \(!updateActorVisibility\([\s\S]{0,240}return;[\s\S]{0,100}presentationStateFor/,
   'spotting must restore scene residency before the first visible pose sync');
 const deferredEnemyAt = deferredWarmSource.indexOf('getBattleVisuals().stream(');
 const deferredOpeningAt = deferredWarmSource.indexOf(

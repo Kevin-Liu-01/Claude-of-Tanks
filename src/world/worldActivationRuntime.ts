@@ -20,7 +20,7 @@ export interface WorldRaycastHit {
   kind: string;
 }
 
-export interface ActiveWorld<SkyConfig = unknown> {
+export interface ActiveWorld<SkyConfig extends object = object> {
   mapId: string;
   group: THREE.Object3D;
   config: { sky?: SkyConfig };
@@ -35,7 +35,7 @@ export interface WorldActivationTrace {
   id: string;
   cached: boolean;
   build?: number;
-  buildDetail?: Record<string, unknown>;
+  buildDetail?: Record<string, number | object>;
   present?: number;
   compile?: number;
   shadowWarm?: number;
@@ -58,7 +58,7 @@ type CoordinatorDependencies<World extends ActiveWorld> = Omit<
 export interface WorldActivationRuntimeOptions<
   World extends ActiveWorld<SkyConfig>,
   Collider,
-  SkyConfig = unknown,
+  SkyConfig extends object = object,
 > {
   initialMapId: string;
   coordinator?: WorldBuildCoordinator<World>;
@@ -79,7 +79,7 @@ export interface WorldActivationRuntimeOptions<
   buildMinimap(world: World, textured: boolean): void;
   loadMinimapAsset(world: World, url: string): MaybePromise<boolean>;
   compilePrograms(root: THREE.Object3D): void;
-  linkerBreathingSlices(maxSlices: number): Iterable<unknown>;
+  linkerBreathingSlices(maxSlices: number): Iterable<void>;
   updateShadowFrustums(): void;
   warmShadowFrame(): void;
   nextFrame(): Promise<void>;
@@ -138,7 +138,7 @@ export interface WorldActivationRuntime<
 export function createWorldActivationRuntime<
   World extends ActiveWorld<SkyConfig>,
   Collider,
-  SkyConfig = unknown,
+  SkyConfig extends object = object,
 >(options: WorldActivationRuntimeOptions<World, Collider, SkyConfig>): WorldActivationRuntime<World, Collider> {
   if (!options.initialMapId) throw new TypeError('world activation requires an initial map id');
   const now = options.now ?? (() => performance.now());
@@ -219,6 +219,112 @@ export function createWorldActivationRuntime<
     return world;
   };
 
+  type TimingStage = 'build' | 'present' | 'compile' | 'shadowWarm' | 'clouds' | 'activate';
+  type BuildDiagnostics = {
+    vegetation?: object | null;
+    terrain?: object | null;
+  };
+
+  const createStageMarker = (trace: WorldActivationTrace): {
+    mark(stage: TimingStage): void;
+  } => {
+    let stageAt = now();
+    return {
+      mark(stage): void {
+        const sample = now();
+        trace[stage] = Math.round(sample - stageAt);
+        stageAt = sample;
+      },
+    };
+  };
+
+  const copyBuildDiagnostics = (trace: WorldActivationTrace, world: World): void => {
+    const diagnostics = (world as World & { _buildDetail?: BuildDiagnostics })._buildDetail;
+    if (!diagnostics || !trace.buildDetail) return;
+    if (diagnostics.vegetation) {
+      trace.buildDetail.vegetationDetail = { ...diagnostics.vegetation };
+    }
+    if (diagnostics.terrain) {
+      trace.buildDetail.terrainDetail = { ...diagnostics.terrain };
+    }
+  };
+
+  const resolveWorld = async (
+    id: string,
+    cached: World | null,
+    trace: WorldActivationTrace,
+    onProgress: ProgressListener | null,
+  ): Promise<World> => {
+    if (cached) return cached;
+    const request = coordinator.beginBuild(id, onProgress);
+    try {
+      const built = await request.promise;
+      trace.buildDetail = { ...request.stageTimings };
+      copyBuildDiagnostics(trace, built);
+      return built;
+    } finally {
+      if (onProgress && request.listeners) request.listeners.delete(onProgress);
+    }
+  };
+
+  const drainLinker = async (maxSlices: number): Promise<void> => {
+    for (const _ of options.linkerBreathingSlices(maxSlices)) await options.nextFrame();
+  };
+
+  const compileWorldPrograms = async (root: THREE.Object3D): Promise<void> => {
+    try { options.compilePrograms(root); } catch { /* real render remains fallback */ }
+    await drainLinker(24);
+  };
+
+  const warmShadowCohort = async (
+    children: THREE.Object3D[],
+    lastVisible: number,
+  ): Promise<void> => {
+    const hidden: THREE.Object3D[] = [];
+    for (let index = lastVisible + 1; index < children.length; index += 1) {
+      const child = children[index];
+      if (!child.visible) continue;
+      child.visible = false;
+      hidden.push(child);
+    }
+    try {
+      options.updateShadowFrustums();
+      options.warmShadowFrame();
+    } catch { /* real render remains fallback */ }
+    for (const child of hidden) child.visible = true;
+    await drainLinker(24);
+    await options.nextFrame();
+  };
+
+  const warmWorldShadows = async (root: THREE.Object3D): Promise<void> => {
+    const children = root.children.slice();
+    const cohorts = Math.min(3, Math.max(1, children.length));
+    for (let cohort = 0; cohort < cohorts; cohort += 1) {
+      const lastVisible = Math.ceil(((cohort + 1) / cohorts) * children.length) - 1;
+      await warmShadowCohort(children, lastVisible);
+    }
+  };
+
+  const warmWorldForActivation = async (
+    world: World,
+    activationOptions: WorldActivationOptions | null,
+    mark: (stage: TimingStage) => void,
+  ): Promise<void> => {
+    const precompile = activationOptions?.precompile !== false;
+    world.group.visible = false;
+    if (precompile) await options.nextFrame();
+    mark('present');
+    world.group.visible = true;
+
+    if (precompile || activationOptions?.compilePrograms === true) {
+      await compileWorldPrograms(world.group);
+    }
+    mark('compile');
+    if (precompile) await options.nextFrame();
+    if (precompile) await warmWorldShadows(world.group);
+    mark('shadowWarm');
+  };
+
   const ensure = async (
     mapId: string | null = null,
     onProgress: ProgressListener | null = null,
@@ -226,77 +332,17 @@ export function createWorldActivationRuntime<
   ): Promise<World> => {
     const id = mapId || pendingMapId;
     coordinator.cancelBackgroundExcept(id);
-    let next = cache.get(id) ?? null;
-    const trace: WorldActivationTrace = { id, cached: !!next };
+    const cached = cache.get(id) ?? null;
+    const trace: WorldActivationTrace = { id, cached: !!cached };
     const startedAt = now();
-    let stageAt = startedAt;
-    const mark = (key: keyof WorldActivationTrace): void => {
-      const sample = now();
-      if (key !== 'id' && key !== 'cached') (trace[key] as number | undefined) = Math.round(sample - stageAt);
-      stageAt = sample;
-    };
-
-    if (!next) {
-      const request = coordinator.beginBuild(id, onProgress);
-      try {
-        next = await request.promise;
-        trace.buildDetail = { ...request.stageTimings };
-        const built = next as World & {
-          _buildDetail?: {
-            vegetation?: Record<string, unknown>;
-            terrain?: Record<string, unknown>;
-          };
-        };
-        if (built._buildDetail?.vegetation) {
-          trace.buildDetail.vegetationDetail = { ...built._buildDetail.vegetation };
-        }
-        if (built._buildDetail?.terrain) {
-          trace.buildDetail.terrainDetail = { ...built._buildDetail.terrain };
-        }
-      } finally {
-        if (onProgress && request.listeners) request.listeners.delete(onProgress);
-      }
-    }
-    mark('build');
-
-    next.group.visible = false;
-    if (activationOptions?.precompile !== false) await options.nextFrame();
-    mark('present');
-    next.group.visible = true;
-
-    if (activationOptions?.precompile !== false || activationOptions?.compilePrograms === true) {
-      try { options.compilePrograms(next.group); } catch { /* real render remains fallback */ }
-      for (const _ of options.linkerBreathingSlices(24)) await options.nextFrame();
-    }
-    mark('compile');
-    if (activationOptions?.precompile !== false) await options.nextFrame();
-
-    if (activationOptions?.precompile !== false) {
-      const children = next.group.children.slice();
-      const cohorts = Math.min(3, Math.max(1, children.length));
-      for (let cohort = 0; cohort < cohorts; cohort += 1) {
-        const lastVisible = Math.ceil(((cohort + 1) / cohorts) * children.length) - 1;
-        const hidden: THREE.Object3D[] = [];
-        for (let index = lastVisible + 1; index < children.length; index += 1) {
-          if (children[index].visible) {
-            children[index].visible = false;
-            hidden.push(children[index]);
-          }
-        }
-        try {
-          options.updateShadowFrustums();
-          options.warmShadowFrame();
-        } catch { /* real render remains fallback */ }
-        for (const child of hidden) child.visible = true;
-        for (const _ of options.linkerBreathingSlices(24)) await options.nextFrame();
-        await options.nextFrame();
-      }
-    }
-    mark('shadowWarm');
+    const timer = createStageMarker(trace);
+    const next = await resolveWorld(id, cached, trace, onProgress);
+    timer.mark('build');
+    await warmWorldForActivation(next, activationOptions, timer.mark);
 
     await options.awaitInitialCloudWarm();
     await options.ensureCloudTexturesChunked?.(options.nextFrame);
-    mark('clouds');
+    timer.mark('clouds');
 
     const needsServices = activationOptions?.services !== false
       && servicesMapId !== next.mapId;
@@ -305,10 +351,10 @@ export function createWorldActivationRuntime<
     } else if (needsServices) {
       prepareServices(next);
     }
-    mark('activate');
+    timer.mark('activate');
     trace.totalMs = Math.round(now() - startedAt);
     options.publishActivationTrace?.(trace);
-    return current as World;
+    return next;
   };
 
   return {

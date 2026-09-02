@@ -1,5 +1,6 @@
 import {
   Vector3,
+  type BufferGeometry,
   type Camera,
   type Material,
   type Object3D,
@@ -7,6 +8,7 @@ import {
   type Scene,
   type WebGLRenderer,
 } from 'three';
+import type { BotRoutePoint } from '../sim/botRoutePlanner.ts';
 import type {
   DeploymentForwardWarmBatch,
   IsolatedForwardWarmOptions,
@@ -47,7 +49,7 @@ interface BattleWarmEntity {
   isPlayer?: boolean;
   state?: BattleWarmState | null;
   visual?: BattleWarmVisual | null;
-  _openingRoute?: unknown[];
+  _openingRoute?: BotRoutePoint[] | null;
   spec?: {
     dims?: { heightM?: number };
     gun?: {
@@ -73,7 +75,7 @@ interface TerrainWarmPoint {
 
 interface BattleWarmWorld {
   heightField?: {
-    warmFastTilesAround(points: TerrainWarmPoint[]): Iterable<unknown>;
+    warmFastTilesAround(points: TerrainWarmPoint[]): Iterable<number>;
   };
   update?(
     dt: number,
@@ -90,6 +92,85 @@ export interface TerrainWarmOptions {
   primePresentation?: boolean;
 }
 
+const PLAYER_OPENING_CORRIDOR_M = [80, 112, 144] as const;
+
+function appendPlayerTerrainWarmPoints(
+  state: BattleWarmState,
+  points: TerrainWarmPoint[],
+): void {
+  const yaw = Number(state.yaw) || 0;
+  for (const distanceM of PLAYER_OPENING_CORRIDOR_M) {
+    points.push({
+      x: state.pos.x + Math.sin(yaw) * distanceM,
+      z: state.pos.z + Math.cos(yaw) * distanceM,
+      radiusM: 10,
+    });
+  }
+}
+
+function appendBotRouteWarmPoints(
+  entity: BattleWarmEntity,
+  state: BattleWarmState,
+  points: TerrainWarmPoint[],
+): void {
+  if (!entity._openingRoute) return;
+  let lastX = state.pos.x;
+  let lastZ = state.pos.z;
+  let routeM = 0;
+  let sinceWarmM = 0;
+  for (const waypoint of entity._openingRoute) {
+    const waypointX = Number(waypoint[0]);
+    const waypointZ = Number(waypoint[1]);
+    if (!Number.isFinite(waypointX) || !Number.isFinite(waypointZ)) continue;
+    const stepM = Math.hypot(waypointX - lastX, waypointZ - lastZ);
+    routeM += stepM;
+    sinceWarmM += stepM;
+    lastX = waypointX;
+    lastZ = waypointZ;
+    if (sinceWarmM >= 24 || routeM >= 120) {
+      points.push({ x: waypointX, z: waypointZ, radiusM: 10 });
+      sinceWarmM = 0;
+    }
+    if (routeM >= 120) break;
+  }
+}
+
+function collectOpeningTerrainWarmPoints(game: BattleWarmGame): TerrainWarmPoint[] {
+  const points: TerrainWarmPoint[] = [];
+  for (const entity of game.tanks) {
+    const state = entity.state;
+    if (!state) continue;
+    points.push({ x: state.pos.x, z: state.pos.z, radiusM: entity.isPlayer ? 64 : 0 });
+    if (entity.isPlayer) appendPlayerTerrainWarmPoints(state, points);
+    else appendBotRouteWarmPoints(entity, state, points);
+  }
+  return points;
+}
+
+async function primeOpeningTerrainPresentation(
+  game: BattleWarmGame,
+  world: BattleWarmWorld | null,
+  yieldForBudget: WorkYielder | null,
+  enabled: boolean,
+): Promise<void> {
+  const focus = game.player || game.tanks.find((entity) => entity.state);
+  if (!enabled || !focus?.state || typeof world?.update !== 'function') return;
+  const yaw = focus.state.yaw || 0;
+  const warmCamera = new Vector3(
+    focus.state.pos.x - Math.sin(yaw) * 12,
+    focus.state.pos.y + 5,
+    focus.state.pos.z - Math.cos(yaw) * 12,
+  );
+  const warmForward = new Vector3(Math.sin(yaw), -0.16, Math.cos(yaw)).normalize();
+  const warmFocus = new Vector3(
+    focus.state.pos.x,
+    focus.state.pos.y,
+    focus.state.pos.z,
+  );
+  world.update(0, warmCamera, warmForward, warmFocus);
+  if (yieldForBudget) await yieldForBudget(true);
+}
+
 /** Prepare exact opening terrain and vegetation caches behind the battle veil. */
 export async function warmBattleTerrainTiles({
   game,
@@ -100,79 +181,18 @@ export async function warmBattleTerrainTiles({
   const heightField = world?.heightField;
   const warmer = heightField?.warmFastTilesAround;
   if (typeof warmer !== 'function') return;
-  const points: TerrainWarmPoint[] = [];
-  for (const entity of game.tanks) {
-    const state = entity?.state;
-    const position = state?.pos;
-    if (!position) continue;
-    points.push({ x: position.x, z: position.z, radiusM: entity.isPlayer ? 64 : 0 });
-    if (entity.isPlayer) {
-      // A player can cover roughly 140 m during the opening live window. The
-      // 64 m deployment disc handles steering; extend a narrow corridor along
-      // the spawn heading so ordinary straight-line acceleration never has
-      // to synchronously bake a terrain tile after controls unlock. This is
-      // only three small, overlapping points—not a costly larger square.
-      const yaw = Number(state.yaw) || 0;
-      for (const distanceM of [80, 112, 144]) {
-        points.push({
-          x: position.x + Math.sin(yaw) * distanceM,
-          z: position.z + Math.cos(yaw) * distanceM,
-          radiusM: 10,
-        });
-      }
-      continue;
-    }
-    if (!Array.isArray(entity._openingRoute)) continue;
-    let lastX = position.x;
-    let lastZ = position.z;
-    let routeM = 0;
-    let sinceWarmM = 0;
-    for (const waypoint of entity._openingRoute) {
-      if (!waypoint) continue;
-      const routePoint = waypoint as { [index: number]: unknown };
-      const waypointX = Number(routePoint[0]);
-      const waypointZ = Number(routePoint[1]);
-      if (!Number.isFinite(waypointX) || !Number.isFinite(waypointZ)) continue;
-      const stepM = Math.hypot(waypointX - lastX, waypointZ - lastZ);
-      routeM += stepM;
-      sinceWarmM += stepM;
-      lastX = waypointX;
-      lastZ = waypointZ;
-      if (sinceWarmM >= 24 || routeM >= 120) {
-        points.push({ x: waypointX, z: waypointZ, radiusM: 10 });
-        sinceWarmM = 0;
-      }
-      if (routeM >= 120) break;
-    }
-  }
+  const points = collectOpeningTerrainWarmPoints(game);
   for (const _tile of warmer.call(heightField, points)) {
     if (yieldForBudget) await yieldForBudget();
   }
-
-  const focus = game.player || game.tanks.find((entity) => entity?.state);
-  if (primePresentation && focus?.state && typeof world?.update === 'function') {
-    const yaw = focus.state.yaw || 0;
-    const warmCamera = new Vector3(
-      focus.state.pos.x - Math.sin(yaw) * 12,
-      focus.state.pos.y + 5,
-      focus.state.pos.z - Math.cos(yaw) * 12,
-    );
-    const warmForward = new Vector3(Math.sin(yaw), -0.16, Math.cos(yaw)).normalize();
-    const warmFocus = new Vector3(
-      focus.state.pos.x,
-      focus.state.pos.y,
-      focus.state.pos.z,
-    );
-    world.update(0, warmCamera, warmForward, warmFocus);
-    if (yieldForBudget) await yieldForBudget(true);
-  }
+  await primeOpeningTerrainPresentation(game, world, yieldForBudget, primePresentation);
 }
 
 type BurnStepFactory = (
   specId: string,
   anisotropy: number,
   selection: string,
-) => Iterable<unknown>;
+) => Iterable<void>;
 
 export interface WreckWarmOptions {
   entities: Iterable<BattleWarmEntity>;
@@ -187,10 +207,13 @@ export interface WreckWarmOptions {
 
 type WreckWarmMesh = Object3D & {
   isMesh?: boolean;
+  geometry?: BufferGeometry;
   material?: Material | Material[];
   castShadow?: boolean;
   receiveShadow?: boolean;
 };
+
+type WreckFallbackProbe = { source: WreckWarmMesh; material: Material };
 
 type WreckWarmLight = Object3D & {
   isLight?: boolean;
@@ -220,10 +243,6 @@ function initializeMaterialTextures(renderer: WebGLRenderer, material: Material)
 
 function wreckProbeSignature(source: WreckWarmMesh): string {
   const candidate = source as WreckWarmMesh & {
-    geometry?: {
-      attributes?: Record<string, unknown>;
-      morphAttributes?: Record<string, unknown[]>;
-    };
     isBatchedMesh?: boolean;
     isInstancedMesh?: boolean;
     isSkinnedMesh?: boolean;
@@ -241,9 +260,7 @@ function wreckProbeSignature(source: WreckWarmMesh): string {
 function potentialFallbackWarmMeshes(root: Object3D): WreckWarmMesh[] {
   const candidates: WreckWarmMesh[] = [];
   root.traverse((object) => {
-    const candidate = object as WreckWarmMesh & {
-      geometry?: { attributes?: Record<string, unknown> };
-    };
+    const candidate = object as WreckWarmMesh;
     if (!candidate.isMesh || !candidate.material
       || Array.isArray(candidate.material)) return;
     const material = candidate.material as Material & { isMeshStandardMaterial?: boolean };
@@ -271,7 +288,7 @@ function warmWreckFallbackProbe({
   compilePrograms,
   warmRender,
 }: {
-  candidates: Array<{ source: WreckWarmMesh; material: Material }>;
+  candidates: WreckFallbackProbe[];
   scene: Scene;
   camera: Camera;
   compilePrograms(root: Object3D): void;
@@ -332,6 +349,77 @@ function warmWreckFallbackProbe({
   }
 }
 
+async function warmBurntVariant(
+  entity: BattleWarmEntity,
+  prebakeBurntSteps: BurnStepFactory,
+  anisotropy: number,
+  warmedSpecs: Set<string>,
+  yieldForFrameBudget: WorkYielder,
+): Promise<void> {
+  if (!entity.specId) return;
+  const selection = entity.camo || 'factory';
+  const wreckKey = `${entity.specId}:${selection}`;
+  if (warmedSpecs.has(wreckKey)) return;
+  warmedSpecs.add(wreckKey);
+  try {
+    for (const _step of prebakeBurntSteps(entity.specId, anisotropy, selection)) {
+      await yieldForFrameBudget();
+    }
+  } catch (_) { /* warm only */ }
+}
+
+function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): void {
+  const programs = renderer.info.programs || [];
+  for (let index = before; index < programs.length; index += 1) {
+    try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
+  }
+}
+
+function collectWreckFallbackProbes(
+  sources: Object3D[],
+  material: Material | null,
+  fallbackProbes: Map<string, WreckFallbackProbe>,
+): void {
+  if (!material) return;
+  for (const source of sources) {
+    const candidate = source as WreckWarmMesh;
+    if (!candidate.isMesh || !candidate.material) continue;
+    const signature = wreckProbeSignature(candidate);
+    if (!fallbackProbes.has(signature)) {
+      fallbackProbes.set(signature, { source: candidate, material });
+    }
+  }
+}
+
+function warmWreckVisual(
+  visual: BattleWarmVisual,
+  renderer: WebGLRenderer,
+  compilePrograms: (root: Object3D) => void,
+  fallbackProbes: Map<string, WreckFallbackProbe>,
+): void {
+  const root = visual.root;
+  if (!root) return;
+  const rootWasVisible = root.visible;
+  const restoreBattleDetails = visual.stageBattleDetailsForWarm?.();
+  try {
+    root.visible = true;
+    const fallbackSources = [
+      ...(visual.prewarmBurn?.() ?? []),
+      ...potentialFallbackWarmMeshes(root),
+    ];
+    const before = renderer.info.programs?.length || 0;
+    compilePrograms(root);
+    initializeNewProgramUniforms(renderer, before);
+    const material = visual.getWreckFallbackMaterial?.() ?? null;
+    if (material) initializeMaterialTextures(renderer, material);
+    collectWreckFallbackProbes(fallbackSources, material, fallbackProbes);
+  } catch (_) { /* warm only */ }
+  finally {
+    try { restoreBattleDetails?.(); } catch (_) { /* warm only */ }
+    root.visible = rootWasVisible;
+  }
+}
+
 /** Prebuild only the fielded roster's destroyed variants before first blood. */
 export async function warmNetworkWrecks({
   entities,
@@ -346,53 +434,14 @@ export async function warmNetworkWrecks({
   const yieldForFrameBudget = createFrameBudgetYielder(8);
   const warmedSpecs = new Set<string>();
   const roster = [...entities];
-  const fallbackProbes = new Map<string, { source: WreckWarmMesh; material: Material }>();
+  const fallbackProbes = new Map<string, WreckFallbackProbe>();
   for (const entity of roster) {
-    const visual = entity?.visual;
+    const visual = entity.visual;
     if (!visual) continue;
-    const selection = entity.camo || 'factory';
-    const wreckKey = entity.specId ? `${entity.specId}:${selection}` : '';
-    if (wreckKey && entity.specId && !warmedSpecs.has(wreckKey)) {
-      warmedSpecs.add(wreckKey);
-      try {
-        for (const _step of prebakeBurntSteps(entity.specId, anisotropy, selection)) {
-          await yieldForFrameBudget();
-        }
-      } catch (_) { /* warm only */ }
-    }
-    if (visual.root) {
-      const rootWasVisible = visual.root.visible;
-      const restoreBattleDetails = visual.stageBattleDetailsForWarm?.() ?? (() => {});
-      try {
-        visual.root.visible = true;
-        const fallbackSources = [
-          ...(visual.prewarmBurn?.() ?? []),
-          ...potentialFallbackWarmMeshes(visual.root),
-        ];
-        const before = renderer.info.programs?.length || 0;
-        compilePrograms(visual.root);
-        const programs = renderer.info.programs || [];
-        for (let index = before; index < programs.length; index++) {
-          try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
-        }
-        const material = visual.getWreckFallbackMaterial?.() ?? null;
-        if (material) {
-          initializeMaterialTextures(renderer, material);
-          for (const source of fallbackSources) {
-            const candidate = source as WreckWarmMesh;
-            if (!candidate.isMesh || !candidate.material) continue;
-            const signature = wreckProbeSignature(candidate);
-            if (!fallbackProbes.has(signature)) {
-              fallbackProbes.set(signature, { source: candidate, material });
-            }
-          }
-        }
-      } catch (_) { /* warm only */ }
-      finally {
-        try { restoreBattleDetails(); } catch (_) { /* warm only */ }
-        visual.root.visible = rootWasVisible;
-      }
-    }
+    await warmBurntVariant(
+      entity, prebakeBurntSteps, anisotropy, warmedSpecs, yieldForFrameBudget,
+    );
+    warmWreckVisual(visual, renderer, compilePrograms, fallbackProbes);
     await yieldForFrameBudget(true);
   }
 
@@ -811,7 +860,7 @@ export interface CombatWarmRuntimeContext {
   scratch3: Vector3;
   anisotropy: number;
   ensureStagedVisuals(count: number): boolean;
-  prebakeBurntSteps(specId: string, anisotropy: number): Iterable<unknown>;
+  prebakeBurntSteps(specId: string, anisotropy: number): Iterable<void>;
   warmWreckTextures(renderer: WebGLRenderer): void;
   createIsolatedForwardWarmBatches(
     options: IsolatedForwardWarmOptions,
@@ -824,37 +873,54 @@ export interface CombatWarmRuntimeContext {
   setDestructionWarmed(warmed: boolean): void;
 }
 
+function* prebakeDestroyedVariantSteps(
+  context: CombatWarmRuntimeContext,
+  specId: string,
+): Generator<void, void, void> {
+  try {
+    yield* context.prebakeBurntSteps(specId, context.anisotropy);
+  } catch (_) { /* warm only */ }
+}
+
+function warmDestroyedVisual(
+  context: CombatWarmRuntimeContext,
+  visual: BattleWarmVisual & Required<Pick<BattleWarmVisual, 'root' | 'setDestroyed' | 'resetDestroyed'>>,
+): void {
+  const { renderer, forwardProgramWarm } = context;
+  const rootWasVisible = visual.root.visible;
+  try {
+    visual.setDestroyed({ pop: true, ageS: 0 });
+    visual.root.visible = true;
+    const before = (renderer.info.programs || []).length;
+    forwardProgramWarm.compile(visual.root);
+    initializeNewProgramUniforms(renderer, before);
+  } catch (_) { /* warm only */ }
+  finally {
+    try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
+    visual.root.visible = rootWasVisible;
+  }
+}
+
+function warmDestroyedTrackState(visual: BattleWarmVisual): void {
+  if (!visual.setTrackState) return;
+  try {
+    visual.setTrackState('trackL', true);
+    visual.setTrackState('trackL', false);
+  } catch (_) { /* warm only */ }
+}
+
 function* warmDestroyedRosterVariantsSteps(
   context: CombatWarmRuntimeContext,
 ): WarmGenerator {
-  const { game, renderer, forwardProgramWarm } = context;
+  const { game } = context;
   for (const entity of game.tanks.slice()) {
-    const visual = entity?.visual;
+    const visual = entity.visual;
     if (!entity.specId || !visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
-    try {
-      yield* context.prebakeBurntSteps(entity.specId, context.anisotropy);
-    } catch (_) { /* warm only */ }
-    const rootWasVisible = visual.root.visible;
-    try {
-      visual.setDestroyed({ pop: true, ageS: 0 });
-      visual.root.visible = true;
-      const before = (renderer.info.programs || []).length;
-      forwardProgramWarm.compile(visual.root);
-      const programs = renderer.info.programs || [];
-      for (let index = before; index < programs.length; index += 1) {
-        try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
-      }
-    } catch (_) { /* warm only */ }
-    finally {
-      try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
-      visual.root.visible = rootWasVisible;
-    }
-    if (visual.setTrackState) {
-      try {
-        visual.setTrackState('trackL', true);
-        visual.setTrackState('trackL', false);
-      } catch (_) { /* warm only */ }
-    }
+    for (const _ of prebakeDestroyedVariantSteps(context, entity.specId)) yield;
+    warmDestroyedVisual(context, visual as BattleWarmVisual & Required<Pick<
+      BattleWarmVisual, 'root' | 'setDestroyed' | 'resetDestroyed'
+    >>);
+    warmDestroyedTrackState(visual);
     yield;
   }
   return undefined;
@@ -912,7 +978,7 @@ function* compileHiddenVariantsSteps(
   if (world?.group) {
     try { yield* compileAll(world.group); } catch (_) { /* warm only */ }
     yield;
-    yield* forwardProgramWarm.linkerBreathingSlices(40);
+    for (const _ of forwardProgramWarm.linkerBreathingSlices(40)) yield;
   }
 
   const flips: Object3D[] = [];
