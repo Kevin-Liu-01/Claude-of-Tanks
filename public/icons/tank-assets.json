@@ -137102,10 +137102,10 @@
       "label": {
         "id": "m1a3",
         "displayName": "M1A3 Abrams",
-        "shortName": "M1A3",
+        "shortName": "M1A3 Abrams",
         "searchAliases": [
           "M1A3 Abrams",
-          "M1A3",
+          "m1a3",
           "M1A3 Abrams concept",
           "Next-generation Abrams"
         ]
@@ -139699,8 +139699,8 @@
           }
         ]
       },
-      "geometryHash": "f47c89c3",
-      "metadataHash": "2a9e5be6",
+      "geometryHash": "d59fc83a",
+      "metadataHash": "4d660b88",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0702

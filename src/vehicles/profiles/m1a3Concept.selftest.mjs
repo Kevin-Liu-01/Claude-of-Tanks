@@ -6,6 +6,7 @@ import { tankTier } from '../tier.ts';
 
 const spec = getSpec('m1a3');
 assert.equal(spec.name, 'M1A3 Abrams');
+assert.equal(spec.label.shortName, 'M1A3 Abrams');
 assert.equal(spec.variantOf, 'm1a2');
 assert.equal(spec.era, 'next-generation');
 assert.equal(tankTier('m1a3'), 10);
