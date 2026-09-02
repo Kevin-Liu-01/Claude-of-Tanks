@@ -1,8 +1,9 @@
 // tools/marketing-shots/verify-integrations.mjs — proof pass for the
 // marketing-shot integrations:
-//   1. SPLASH: forces the real splash (__COT_FORCE_SPLASH) and screenshots it
-//      on the stable first-paint surface. Asserts the gate arms and no delayed
-//      hero, grid, or boot-chrome entrance animation is introduced.
+//   1. SPLASH: forces the real splash (__COT_FORCE_SPLASH), samples its hero
+//      opacity frame by frame, and screenshots it. Asserts the decoded image
+//      fades over the stable first paint without restoring the grid or replayed
+//      boot-chrome entrance animations.
 //   2. GARAGE: boots to the garage (webdriver gate skip), waits for the
 //      featured panel's first still, screenshots the garage.
 //   3. OG: asserts public/brand/og-image.png exists at 1200x630.
@@ -118,29 +119,73 @@ const check = (name, cond, detail = '') => {
   await page.evaluateOnNewDocument(() => {
     window.__COT_FORCE_SPLASH = true;
     window.__COT_BOOT_ANIMATIONS = [];
+    window.__COT_BOOT_HERO_SAMPLES = [];
     document.addEventListener('animationstart', (event) => {
       if (event.target instanceof Element && event.target.closest('#cot-boot')) {
         window.__COT_BOOT_ANIMATIONS.push(event.animationName);
       }
     }, true);
+    document.addEventListener('DOMContentLoaded', () => {
+      let frames = 0;
+      const sample = () => {
+        const hero = document.getElementById('cot-boot-hero');
+        const layers = hero ? [...hero.querySelectorAll('.hly')] : [];
+        window.__COT_BOOT_HERO_SAMPLES.push({
+          state: hero?.dataset.heroState || 'missing',
+          layers: layers.map((layer) => ({
+            src: layer.currentSrc || layer.getAttribute('src') || '',
+            opacity: Number.parseFloat(getComputedStyle(layer).opacity),
+            complete: layer.complete,
+            naturalWidth: layer.naturalWidth,
+          })),
+        });
+        frames += 1;
+        if (frames < 900 && document.getElementById('cot-boot')) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }, { once: true });
   });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 }).catch(() => {});
+  await page.waitForFunction(() => {
+    const layer = document.querySelector('#cot-boot-hero[data-hero-state="visible"] .hly.on');
+    return !!(layer && layer.complete && layer.naturalWidth > 0);
+  }, { timeout: 30000 }).catch(() => {});
+  await new Promise((resolve) => setTimeout(resolve, 1800));
   const splashState = await page.evaluate(() => {
     const g = document.getElementById('cot-boot-gate');
     const boot = document.getElementById('cot-boot');
+    const hero = document.getElementById('cot-boot-hero');
+    const layers = hero ? [...hero.querySelectorAll('.hly')] : [];
+    const samples = window.__COT_BOOT_HERO_SAMPLES || [];
+    const flatSamples = samples.flatMap((sample) => sample.layers || []);
     return {
       gateArmed: !!(g && g.classList.contains('on')),
-      heroAbsent: !document.getElementById('cot-boot-hero'),
+      heroVisible: hero?.dataset.heroState === 'visible' &&
+        layers.filter((layer) => layer.classList.contains('on')).length === 1 &&
+        layers.some((layer) => layer.classList.contains('on') && layer.complete &&
+          layer.naturalWidth > 0 && Number.parseFloat(getComputedStyle(layer).opacity) > 0.98),
+      heroStagedHidden: flatSamples.some((sample) => sample.src && sample.complete &&
+        sample.naturalWidth > 0 && sample.opacity <= 0.01),
+      heroCrossfaded: flatSamples.some((sample) => sample.src &&
+        sample.opacity > 0.05 && sample.opacity < 0.95),
       gridAbsent: !!boot && getComputedStyle(boot, '::after').content === 'none',
-      oneShotChrome: !window.__COT_BOOT_ANIMATIONS.some((name) =>
-        ['cot-boot-pop', 'cot-boot-rise', 'cot-boot-fade'].includes(name)),
+      oneShotChrome: (() => {
+        const entrances = window.__COT_BOOT_ANIMATIONS.filter((name) =>
+          ['cot-boot-pop', 'cot-boot-rise', 'cot-boot-fade'].includes(name));
+        const count = (name) => entrances.filter((entry) => entry === name).length;
+        return count('cot-boot-pop') === 1 && count('cot-boot-rise') === 6 &&
+          count('cot-boot-fade') === 1 && boot?.dataset.entranceState === 'complete' &&
+          !boot.classList.contains('cot-boot-enter');
+      })(),
     };
   });
   check('splash: press-any-key gate armed', splashState.gateArmed);
-  check('splash: no delayed marketing backdrop', splashState.heroAbsent);
+  check('splash: decoded marketing backdrop visible', splashState.heroVisible);
+  check('splash: decoded frame staged while hidden', splashState.heroStagedHidden);
+  check('splash: backdrop enters through a real opacity crossfade', splashState.heroCrossfaded);
   check('splash: requested grid remains absent', splashState.gridAbsent);
-  check('splash: chrome paints once without replay', splashState.oneShotChrome);
+  check('splash: chrome entrance plays exactly once without replay', splashState.oneShotChrome);
   await page.screenshot({ path: join(OUT, 'splash.png') });
   console.log(`[verify] wrote ${join(OUT, 'splash.png')}`);
   await page.close();

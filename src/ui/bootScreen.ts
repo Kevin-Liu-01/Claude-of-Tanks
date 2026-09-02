@@ -24,10 +24,13 @@
  * still be captured.
  */
 
+import { TRANSITION_SHOTS } from './featuredShots.ts';
 import { mountGitHubStars } from './githubStars.ts';
+import { preloadImage } from './imagePreload.ts';
 
 declare global {
   interface Window {
+    __COT_NO_BOOT_HERO?: boolean;
     __COT_FORCE_SPLASH?: boolean;
     __COT_BOOT_RECOVERY?: { progress?(stage: string): void };
   }
@@ -103,6 +106,105 @@ const STUDIO_STAGES = [
 const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementType | null =>
   document.getElementById(id) as ElementType | null;
 
+// Keep the entry art on the same curated source used by transitions and the
+// Garage gallery. The first shot has a small boot derivative; later shots are
+// fetched only if the player leaves the entry gate open long enough to see
+// another frame.
+export const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
+const HERO_ROTATE_MS = 9000;
+
+function afterPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+/**
+ * Decode each still before it touches a visible layer. Two stacked <img>s let
+ * the current shot remain fully painted while the next one loads. Waiting two
+ * frames after assigning the hidden layer guarantees the opacity transition
+ * has a committed start frame instead of flashing to its final state.
+ */
+function startBootHero(): () => void {
+  const wrap = $<HTMLDivElement>('cot-boot-hero');
+  if (!wrap || !BOOT_HERO_SHOTS.length || window.__COT_NO_BOOT_HERO) return () => {};
+  let q = '';
+  try { q = window.location.search || ''; } catch (_) { q = ''; }
+  if (/[?&]nohero(?:[=&]|$)/.test(q) || wrap.dataset.heroStarted === 'true') return () => {};
+
+  const layers = [...wrap.querySelectorAll<HTMLImageElement>('img.hly')];
+  if (layers.length < 2) return () => {};
+  wrap.dataset.heroStarted = 'true';
+  wrap.dataset.heroState = 'loading';
+
+  let index = -1;
+  let front = -1;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+  let generation = 0;
+  const urlFor = (shot: (typeof BOOT_HERO_SHOTS)[number]): string => shot.bootImg || shot.img;
+
+  const schedule = (): void => {
+    if (stopped || document.hidden || timer || BOOT_HERO_SHOTS.length < 2) return;
+    timer = setTimeout(() => {
+      timer = null;
+      void advance();
+    }, HERO_ROTATE_MS);
+  };
+
+  const show = async (nextIndex: number, requestGeneration: number): Promise<void> => {
+    const shot = BOOT_HERO_SHOTS[nextIndex];
+    const nextLayer = layers[(front + 1) % layers.length];
+    const url = urlFor(shot);
+    nextLayer.classList.remove('on');
+    nextLayer.src = url;
+    nextLayer.style.objectPosition = shot.focal || 'center';
+    try { await nextLayer.decode(); } catch (_) { /* preload already confirmed load */ }
+    if (stopped || requestGeneration !== generation) return;
+    await afterPaint();
+    if (stopped || requestGeneration !== generation) return;
+
+    nextLayer.classList.add('on');
+    if (front >= 0) layers[front].classList.remove('on');
+    front = (front + 1) % layers.length;
+    index = nextIndex;
+    wrap.dataset.heroState = 'visible';
+    wrap.dataset.heroIndex = String(index);
+    schedule();
+  };
+
+  async function advance(): Promise<void> {
+    if (stopped || document.hidden) return;
+    const nextIndex = (index + 1) % BOOT_HERO_SHOTS.length;
+    const requestGeneration = ++generation;
+    const url = urlFor(BOOT_HERO_SHOTS[nextIndex]);
+    const loaded = await preloadImage(url, { priority: 'low', decode: true });
+    if (!loaded || stopped || requestGeneration !== generation) return;
+    await show(nextIndex, requestGeneration);
+  }
+
+  const onVisibility = (): void => {
+    if (document.hidden) {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      generation += 1;
+      return;
+    }
+    if (index < 0) void advance();
+    else schedule();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  void advance();
+
+  return () => {
+    stopped = true;
+    generation += 1;
+    if (timer) clearTimeout(timer);
+    document.removeEventListener('visibilitychange', onVisibility);
+    wrap.dataset.heroState = 'stopped';
+  };
+}
+
 /**
  * Should the entry gate be dismissed without a keypress?
  * @returns {boolean} true for headless harnesses / explicit ?nosplash
@@ -168,6 +270,10 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let dismissed = false;
   let finished = false;
   let raf = 0;
+  let heroStartRaf = 0;
+  let entranceTimer: ReturnType<typeof setTimeout> | null = null;
+  let finishEntrance: () => void = () => {};
+  let stopHero: () => void = () => {};
   let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * TIPS.length);
 
@@ -203,6 +309,35 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   }
   showTip(tipIdx);
   if (root) tipTimer = setInterval(rotateTip, 5200);
+  if (root?.classList.contains('cot-boot-enter')) {
+    const onEntranceEnd = (event: AnimationEvent): void => {
+      if (event.animationName === 'cot-boot-fade' &&
+          event.target instanceof Element && event.target.classList.contains('cot-boot-foot')) {
+        finishEntrance();
+      }
+    };
+    finishEntrance = (): void => {
+      if (entranceTimer) clearTimeout(entranceTimer);
+      entranceTimer = null;
+      root.removeEventListener('animationend', onEntranceEnd, true);
+      root.classList.remove('cot-boot-enter');
+      root.dataset.entranceState = 'complete';
+    };
+    root.addEventListener('animationend', onEntranceEnd, true);
+    // Reduced-motion mode emits no animationend. This also retires the class
+    // if the module graph mounts after the inline animation already finished.
+    entranceTimer = setTimeout(finishEntrance, 900);
+  }
+  // Preserve the zero-image automation/cold-load path and wait for the static
+  // inline splash to receive a paint before any decorative request begins.
+  if (root && !bootGateSkipped()) {
+    heroStartRaf = requestAnimationFrame(() => {
+      heroStartRaf = requestAnimationFrame(() => {
+        heroStartRaf = 0;
+        if (!dismissed) stopHero = startBootHero();
+      });
+    });
+  }
 
   function stageLabel(key: string): string {
     const s = stages.find((x) => x[0] === key);
@@ -284,6 +419,9 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       dismissed = true;
       if (tipTimer) clearInterval(tipTimer);
       if (raf) cancelAnimationFrame(raf);
+      if (heroStartRaf) cancelAnimationFrame(heroStartRaf);
+      finishEntrance();
+      stopHero();
       if (!root) return;
       // The Garage lays itself out behind this opaque surface. Reveal its
       // already-settled chrome on the same frame the boot fade begins, so

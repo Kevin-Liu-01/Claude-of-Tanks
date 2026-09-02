@@ -165,9 +165,24 @@
       opacity: 1; transition: opacity .5s ease;
     }
     #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
-    /* One stable first-paint surface. Loading a decorative hero after this
-       screen was already visible made cold visits flash blue -> image, while
-       the grid made the change even more obvious. */
+    /* The static gradient above is the stable first paint. Marketing stills
+       are decoded off-screen, installed at opacity 0, then promoted only
+       after two animation frames so their arrival is a real fade rather than
+       the old blue -> image flash. The splash chrome itself never replays. */
+    #cot-boot-hero { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    #cot-boot-hero .hly {
+      position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px);
+      object-fit: cover; object-position: 50% 48%; opacity: 0;
+      transition: opacity 1.6s cubic-bezier(.22,1,.36,1);
+      will-change: opacity;
+    }
+    #cot-boot-hero .hly.on { opacity: 1; }
+    #cot-boot-hero::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(5,8,11,.78) 0%, rgba(5,8,11,.44) 28%, rgba(5,8,11,.42) 58%, rgba(5,8,11,.86) 100%),
+        radial-gradient(120% 95% at 50% 34%, rgba(5,8,11,.08) 0%, rgba(5,8,11,.60) 88%);
+    }
     #cot-boot::before {
       content: ''; position: absolute; left: -10%; right: -10%; bottom: -8%; height: 62%; z-index: 1;
       background: radial-gradient(60% 100% at 50% 100%, rgba(240,160,48,.20) 0%, rgba(240,160,48,.05) 45%, rgba(240,160,48,0) 72%);
@@ -200,8 +215,29 @@
     }
     .cot-boot-invite.on { display: block; }
     #cot-boot.has-invite .cot-boot-load { margin-top: 36px; }
+    /* Entrance motion is scoped to the class present in the inline first
+       paint. bootScreen.ts permanently retires that class after this stagger,
+       so image decode or later layout work cannot restart the animation. */
+    #cot-boot.cot-boot-enter .cot-boot-mark {
+      animation: cot-boot-pop .42s cubic-bezier(.16,1,.3,1) backwards;
+    }
+    #cot-boot.cot-boot-enter .cot-boot-word .l1 {
+      animation: cot-boot-rise .32s cubic-bezier(.16,1,.3,1) .04s backwards;
+    }
+    #cot-boot.cot-boot-enter .cot-boot-word .l2 {
+      animation: cot-boot-rise .32s cubic-bezier(.16,1,.3,1) .08s backwards;
+    }
+    #cot-boot.cot-boot-enter .cot-boot-invite {
+      animation: cot-boot-rise .26s cubic-bezier(.16,1,.3,1) .12s backwards;
+    }
+    @keyframes cot-boot-pop { from { opacity: 0; transform: scale(.94) translateY(6px); } }
+    @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(8px); } }
+    @keyframes cot-boot-fade { from { opacity: 0; } }
     /* --- progress ---------------------------------------------------------- */
     .cot-boot-load { margin-top: 46px; }
+    #cot-boot.cot-boot-enter .cot-boot-load {
+      animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
+    }
     .cot-boot-meta {
       display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
@@ -246,6 +282,9 @@
       font-size: 13px; font-weight: 500; line-height: 1.55; color: #aebbc7;
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
+    #cot-boot.cot-boot-enter .cot-boot-tip {
+      animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .18s backwards;
+    }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-tip b {
       display: block; margin-bottom: 5px;
@@ -269,6 +308,11 @@
     .cot-boot-links > .cot-boot-link {
       width: auto; min-width: 0; height: 38px; padding: 0 16px;
     }
+    #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
+      animation: cot-boot-rise .26s cubic-bezier(.16,1,.3,1) backwards;
+    }
+    #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link:first-child { animation-delay: .20s; }
+    #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link:last-child { animation-delay: .24s; }
     .cot-boot-link-icon {
       width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor;
       stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
@@ -303,6 +347,15 @@
     body[data-cot-width-density='narrow'] .cot-boot-links { gap: 8px; }
     body[data-cot-width-density='narrow'] .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
     @media (prefers-reduced-motion: reduce) {
+      #cot-boot-hero .hly { transition-duration: .01ms; }
+      #cot-boot.cot-boot-enter .cot-boot-mark,
+      #cot-boot.cot-boot-enter .cot-boot-word .l1,
+      #cot-boot.cot-boot-enter .cot-boot-word .l2,
+      #cot-boot.cot-boot-enter .cot-boot-invite,
+      #cot-boot.cot-boot-enter .cot-boot-load,
+      #cot-boot.cot-boot-enter .cot-boot-tip,
+      #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link,
+      #cot-boot.cot-boot-enter .cot-boot-foot { animation: none; }
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
       .cot-boot-link:hover, .cot-boot-link:hover .cot-boot-link-icon,
       .cot-boot-link:active { transform: none; }
@@ -349,6 +402,9 @@
       font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-size: 9px; font-weight: 600; letter-spacing: .26em; color: #4b5865;
       text-transform: uppercase; text-align: center;
+    }
+    #cot-boot.cot-boot-enter .cot-boot-foot {
+      animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-mark { width: 92px; height: 92px; }
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
@@ -584,7 +640,14 @@
 <body>
   <div id="app"></div>
 
-  <div id="cot-boot">
+  <div id="cot-boot" class="cot-boot-enter" data-entrance-state="playing">
+    <!-- Curated in-engine stills decode while hidden, then crossfade behind
+         this already-painted surface. Empty src attributes are intentional:
+         the boot controller owns fetch timing and never exposes a partial. -->
+    <div id="cot-boot-hero" data-hero-state="idle" aria-hidden="true">
+      <img class="hly" alt="" decoding="async" fetchpriority="low">
+      <img class="hly" alt="" decoding="async" fetchpriority="low">
+    </div>
     <div class="cot-boot-inner">
       <!-- Brand badge: v5 colored crest (master: public/brand/logo-mark.svg;
            derived inline by tools/sync-brand-marks.mjs for zero round-trips). -->

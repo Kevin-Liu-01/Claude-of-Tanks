@@ -82,14 +82,28 @@ assert.deepEqual(
 );
 const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
 const bootSource = await readFile(new URL('./bootScreen.ts', import.meta.url), 'utf8');
-assert.doesNotMatch(bootHtml, /cot-boot-hero/,
-  'the cold boot must not replace its already-painted background with a late hero');
-assert.doesNotMatch(bootSource, /startBootHero|BOOT_HERO_SHOTS/,
-  'boot code must not issue delayed decorative image requests');
+assert.match(bootHtml, /id="cot-boot-hero" data-hero-state="idle"/,
+  'the cold boot must retain its curated in-engine image surface');
+assert.equal((bootHtml.match(/<img class="hly"/g) || []).length, 2,
+  'the boot hero must use two hidden image layers for seamless crossfades');
+assert.match(bootSource, /await preloadImage\(url, \{ priority: 'low', decode: true \}\)/,
+  'boot imagery must decode at low priority before entering a visible layer');
+assert.match(bootSource, /await afterPaint\(\);[\s\S]{0,180}classList\.add\('on'\)/,
+  'decoded boot imagery must commit a hidden frame before fading in');
+assert.match(bootSource, /if \(root && !bootGateSkipped\(\)\)/,
+  'auto-skipped cold-load probes must not fetch decorative splash imagery');
 assert.doesNotMatch(bootHtml, /#cot-boot::after/,
   'the first-paint boot surface must not restore the requested-removed grid');
-assert.doesNotMatch(bootHtml, /cot-boot-(?:pop|rise|fade)/,
-  'boot chrome must paint once rather than replay staggered cold-load entrances');
+assert.match(bootHtml,
+  /id="cot-boot" class="cot-boot-enter" data-entrance-state="playing"/,
+  'boot chrome must start its one-shot entrance in the inline first paint');
+assert.match(bootHtml, /#cot-boot\.cot-boot-enter \.cot-boot-mark[\s\S]*?cot-boot-pop/,
+  'the emblem must retain its one-shot entrance');
+assert.match(bootHtml, /#cot-boot\.cot-boot-enter \.cot-boot-load[\s\S]*?cot-boot-rise/,
+  'the progress surface must retain its one-shot entrance');
+assert.match(bootSource,
+  /classList\.remove\('cot-boot-enter'\);[\s\S]{0,100}entranceState = 'complete'/,
+  'the boot controller must permanently retire the entrance class after one play');
 assert.equal((bootHtml.match(/font-display:\s*optional/g) || []).length, 3,
   'all inline game fonts must avoid a late fallback-to-brand layout swap');
 assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
