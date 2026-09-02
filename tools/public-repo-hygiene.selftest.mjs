@@ -51,6 +51,7 @@ const maintainedStandaloneTools = new Set([
   'tools/voice-smoke.mjs',
   'tools/winding-audit.mjs',
   'tools/world-pole-visual-audit.mjs',
+  'tools/world-vehicle-visual-audit.mjs',
   'tools/world-wreck-visual-audit.mjs',
 ]);
 const standaloneTools = tracked.filter((file) => (

@@ -17,6 +17,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   certifyGroundedStructureParts, certifyStructureAttachments,
 } from '../structureConnectivity.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -24,7 +25,7 @@ type PropBuilder = (rng: Rng) => THREE.BufferGeometry;
 
 export interface DestructiblePropType {
   cls: 'break' | 'topple' | 'physics';
-  mat: 'wood' | 'straw' | 'stone' | 'plaster' | 'baked';
+  mat: 'wood' | 'straw' | 'stone' | 'plaster' | 'baked' | 'vehicle';
   contact: 'ob' | 'loop' | 'none';
   r: number;
   h: number;
@@ -1406,7 +1407,8 @@ function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
  *   persists; 'physics' is a sleeping deterministic loose body that can be
  *   pushed repeatedly, bounce, tumble, collide and settle.
  * mat: 'wood' | 'straw' | 'stone' | 'plaster' (map-toned textured materials)
- *   | 'baked' (vertex color).
+ *   | 'baked' (vertex color) | 'vehicle' (vertex color multiplied by a shared
+ *     low-bandwidth paint/chip PBR texture).
  * contact: 'ob' = crushable obstacle (state.ts SAT seam — resists a crawl,
  *   breaks on real overrun, exactly the tree mechanism); 'loop' = cosmetic
  *   hull-radius crush via the world.crushables loop in main.ts (no obstacle
@@ -1458,8 +1460,14 @@ export const DESTRUCTIBLE_TYPES = {
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },
   walladobe:   { cls: 'break',  mat: 'plaster', contact: 'ob', r: 1.6,  h: 1.2,  build: bWallAdobe,  broken: bWallAdobeBroken, wall: true, collider: true, keep: 0.86, crushMin: 2.0 },
-  truck:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 2.6,  h: 2.2,  hw: 1.14, hl: 3.0, build: bTruck, broken: bTruckBroken, collider: true, keep: 0.88, crushMin: 2.0 },
-  jeep:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 1.7,  hw: 0.90, hl: 1.82, build: bJeep, broken: bJeepBroken, keep: 0.94 },
+  truck:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.3,  hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truck.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truck.broken, collider: true, keep: 0.88, crushMin: 2.0 },
+  jeep:        { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.10, h: 1.73, hw: 0.94, hl: 1.88, build: CIVILIAN_VEHICLE_RECEIPTS.jeep.build, broken: CIVILIAN_VEHICLE_RECEIPTS.jeep.broken, keep: 0.94 },
+  sedan:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.61, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.sedan.build, broken: CIVILIAN_VEHICLE_RECEIPTS.sedan.broken, keep: 0.95 },
+  wagon:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.69, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.wagon.build, broken: CIVILIAN_VEHICLE_RECEIPTS.wagon.broken, keep: 0.95 },
+  pickup:      { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.72, h: 1.77, hw: 1.11, hl: 2.47, build: CIVILIAN_VEHICLE_RECEIPTS.pickup.build, broken: CIVILIAN_VEHICLE_RECEIPTS.pickup.broken, keep: 0.93 },
+  van:         { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, hw: 1.11, hl: 2.38, build: CIVILIAN_VEHICLE_RECEIPTS.van.build, broken: CIVILIAN_VEHICLE_RECEIPTS.van.broken, collider: true, keep: 0.92, crushMin: 1.8 },
+  truckbox:    { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckbox.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckbox.broken, collider: true, keep: 0.87, crushMin: 2.0 },
+  truckflatbed:{ cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.broken, collider: true, keep: 0.87, crushMin: 2.0 },
   ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  hw: 1.30, hl: 1.72, build: bTent, broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },

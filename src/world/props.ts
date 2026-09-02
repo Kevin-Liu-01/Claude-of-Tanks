@@ -21,6 +21,7 @@ import {
   bSandbagBroken,
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
+import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
@@ -810,6 +811,42 @@ function makeGrimeTexture(noi: SimplexNoise, anisotropy: number): THREE.CanvasTe
   return toTexture(px, s, { anisotropy });
 }
 
+/**
+ * Compact neutral vehicle finish. Vertex colors carry each paint/glass/rubber
+ * zone; this 64px PBR set adds orange-peel, chips, panel grime and roughness
+ * without a unique texture or material per vehicle family.
+ */
+function makeVehiclePaint(noi: SimplexNoise, anisotropy: number): GeneratedSurfaceTextures {
+  const size = 64;
+  const pixels = new Uint8ClampedArray(size * size * 4);
+  const height = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const index = y * size + x;
+    const pixel = index * 4;
+    const fine = noi.noise(x * 0.31 + 711, y * 0.31 - 233) * 0.5 + 0.5;
+    const broad = noi.noise(x * 0.075 - 89, y * 0.10 + 417) * 0.5 + 0.5;
+    const chipNoise = noi.noise(x * 0.58 + 63, y * 0.58 + 159) * 0.5 + 0.5;
+    const chip = chipNoise > 0.94 && broad < 0.43 ? 0.075 : 0;
+    const streak = smoothstep(0.70, 0.94,
+      noi.noise(x * 0.08 + 349, y * 0.018 - 81) * 0.5 + 0.5);
+    const value = clamp(0.945 + fine * 0.035 - chip - streak * 0.025, 0.76, 0.99);
+    pixels[pixel] = value * 255;
+    pixels[pixel + 1] = value * 255;
+    pixels[pixel + 2] = value * 255;
+    pixels[pixel + 3] = 255;
+    height[index] = clamp(0.46 + fine * 0.10 - chip * 0.55 - streak * 0.045, 0, 1);
+  }
+  return {
+    albedo: toTexture(pixels, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(height, size, 0.22, anisotropy),
+    surface: surfaceFromHeight(height, size, anisotropy, {
+      roughMin: 0.68,
+      roughMax: 0.94,
+      aoMin: 0.84,
+    }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Baked sourced models (vertex-colored, welded at bake time)
 // ---------------------------------------------------------------------------
@@ -1582,6 +1619,8 @@ function* propsBuildSteps(
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
+  const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
+  yield { fine: true };
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -1626,6 +1665,14 @@ function* propsBuildSteps(
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    vehicle: new THREE.MeshStandardMaterial({
+      map: vehiclePaint.albedo,
+      normalMap: vehiclePaint.normal,
+      roughnessMap: vehiclePaint.surface,
+      vertexColors: true,
+      roughness: 0.84,
+      metalness: 0.045,
+    }),
     structureWood: new THREE.MeshStandardMaterial({
       map: structureWood.albedo, normalMap: structureWood.normal,
       roughnessMap: structureWood.surface, aoMap: structureWood.surface,
@@ -1648,6 +1695,7 @@ function* propsBuildSteps(
   }
   mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
   mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
+  mats.vehicle.envMapIntensity = 0.58;
   mats.structureWood.envMapIntensity = 0.34;
   mats.structureCanvas.envMapIntensity = 0.22;
   mats.structureMetal.envMapIntensity = 0.48;
@@ -2925,24 +2973,28 @@ ${snowCap ? `
       }
       return null;
     }
-    // parked supply trucks: nose along the road, the odd one mid-turn
+    // Heavy roadside vehicles: map-flavored cargo, box-body, and flatbed
+    // families. The selector is seeded and bounded to three pools per lane.
     for (let k = 0, cap = inh.trucks ?? 0; k < cap; k++) {
       const spot = roadsideSpot(5.6, 9.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
-      addDestructible('truck', spot[0], y - 0.04, spot[1],
+      const kind = pickCivilianVehicleKind(mapId, 'heavy', vrng());
+      addDestructible(kind, spot[0], y - 0.04, spot[1],
         spot[2] + (vrng() < 0.25 ? (vrng() - 0.5) * 1.6 : (vrng() - 0.5) * 0.3),
         0.96 + vrng() * 0.10);
       // truck stops spill cargo: crates/ammo beside the tailgate
       if (vrng() < 0.6) scatterDestructibles('crate', spot[0], spot[1], 1, 2.6, 4.2);
       if (vrng() < 0.45) scatterDestructibles('ammobox', spot[0], spot[1], 1, 2.4, 4.0);
     }
-    // light utility 4x4s: yards + plaza edges
+    // Light traffic: distinct sedans, wagons, pickups, vans, and utility 4x4s
+    // replace the repeated single jeep while keeping the authored count.
     for (let k = 0, cap = inh.jeeps ?? 0; k < cap; k++) {
       const spot = roadsideSpot(4.8, 7.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
-      addDestructible('jeep', spot[0], y - 0.03, spot[1],
+      const kind = pickCivilianVehicleKind(mapId, 'light', vrng());
+      addDestructible(kind, spot[0], y - 0.03, spot[1],
         spot[2] + (vrng() - 0.5) * 0.9, 0.95 + vrng() * 0.1);
     }
     // fuel-drum clusters (2-4 drums; ~12% carry one RED explosive drum)
@@ -3024,7 +3076,8 @@ ${snowCap ? `
         const px2 = cx + Math.cos(a) * (6.5 + vrng() * 2), pz2 = cz + Math.sin(a) * (6.5 + vrng() * 2);
         if (heightField._roadDist(px2, pz2) > 4.6 && !noVeg(px2, pz2)
           && heightField.getNormalAt(px2, pz2).y > 0.9) {
-          addDestructible(vrng() < 0.5 ? 'jeep' : 'truck', px2,
+          const lane = vrng() < 0.5 ? 'light' : 'heavy';
+          addDestructible(pickCivilianVehicleKind(mapId, lane, vrng()), px2,
             heightField.getHeightAt(px2, pz2) - 0.04, pz2, vrng() * Math.PI * 2, 0.95);
         }
       }
