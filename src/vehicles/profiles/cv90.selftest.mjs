@@ -12,6 +12,8 @@ assert.doesNotMatch(source, /Downloads|\.glb|\.obj|\.zip/,
   'comparison sources never enter the playable runtime path');
 assert.doesNotMatch(source, /buildCv90Family|Cv90Config/,
   'the two requested vehicles are not variants of a configurable family builder');
+assert.doesNotMatch(source, /from ['"].*(?:china|type99).*['"]|buildZTZ|buildType99/i,
+  'CV90 turret identity never imports or calls a foreign-family builder');
 assert.doesNotMatch(source, /height:\s*\[/,
   'CV90 hull and turret caps never use non-planar per-vertex height rings');
 assert.doesNotMatch(source, /inset:\s*\[/,
@@ -32,10 +34,10 @@ const expected = Object.freeze({
     turretReceiptKey: 'cv90IndependentTurretReceipt',
     designLineage: 'independent-tier9-cv9040-v2',
     hullConstruction: 'cv9040-planar-roof-glacis-monocoque-v4',
-    turretConstruction: 'cv9040-planar-faceted-crew-citadel-v4',
+    turretConstruction: 'cv9040-independent-arrow-wedge-crew-citadel-v5',
     gunAssembly: 'hollow-scaffolded-40mm-slash-port-cradle',
     gunArchitecture: 'hollow-trapezoid-40mm-slash-port-cradle-v2',
-    rwsName: 'cv90K2bStyleRws', rwsScale: 0.86,
+    rwsName: 'cv90K2bStyleRws', rwsScale: 0.80,
     turretPivotZ: -0.48,
     trackWidth: 0.50, sideStations: 9, rearExtension: 0.15, guided: false,
   }),
@@ -46,10 +48,10 @@ const expected = Object.freeze({
     turretReceiptKey: 'cv90MkivIndependentTurretReceipt',
     designLineage: 'independent-tier10-cv90-mkiv-v2',
     hullConstruction: 'cv90-mkiv-planar-roof-glacis-side-cell-v4',
-    turretConstruction: 'cv90-mkiv-planar-faceted-unmanned-citadel-v4',
+    turretConstruction: 'cv90-mkiv-independent-deep-arrow-mission-module-v5',
     gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
     gunArchitecture: 'faceted-closed-50mm-trunnion-shroud-v2',
-    rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.98,
+    rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.90,
     turretPivotZ: -0.44,
     trackWidth: 0.57, sideStations: 9, rearExtension: 0.08, guided: true,
   }),
@@ -103,12 +105,16 @@ for (const [id, target] of Object.entries(expected)) {
     assert.equal(hullReceipt.rearHullExtensionM, target.rearExtension);
     assert.equal(hullReceipt.rearTroopRamp, true);
     assert.equal(turretReceipt.sharedStructuralBuilder, false);
+    assert.equal(turretReceipt.identityFamily, 'cv90-native');
+    assert.equal(turretReceipt.foreignFamilyGeometryReused, false);
     assert.equal(turretReceipt.turretConstruction, target.turretConstruction);
     assert.equal(turretReceipt.gunAssembly, target.gunAssembly);
     assert.equal(turretReceipt.planarRoofCrown, true);
     assert.equal(turretReceipt.monotonicArmorInset, true);
     assert.equal(turretReceipt.concaveSurfaceCount, 0);
     assert.equal(turretReceipt.integratedRearBustle, true);
+    assert.equal(turretReceipt.structuralChevronCoursesPerSide, 2);
+    assert.equal(turretReceipt.equipmentReseatedForShell, true);
     assert.equal(turretReceipt.remoteMachineGunTower,
       'k2b-style-complete-open-yoke-rws');
     assert.equal(gun.userData.cv90GunAssemblyReceipt.architecture, target.gunArchitecture);

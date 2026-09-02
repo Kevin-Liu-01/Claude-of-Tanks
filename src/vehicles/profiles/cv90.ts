@@ -238,101 +238,106 @@ function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
 
 function buildCv90Turret(P: CvBuilderPort): void {
   const { box, cylY, cylZ, polyMultiLoft } = KIT;
-  // Conventional CV9040 crew turret: narrow cannon mask, long planar cheeks,
-  // parallel side walls and a separate bustle. This is intentionally unlike
-  // the Mk IV's wide unmanned mission module.
-  const plan: [number, number][] = [
-    [-0.24, 1.34], [0.24, 1.34], [0.72, 1.06], [1.02, 0.48],
-    [1.00, -1.22], [0.78, -1.68], [-0.78, -1.68], [-1.00, -1.22],
-    [-1.02, 0.48], [-0.72, 1.06],
+  // Compact Swedish arrow-wedge. The narrow gun channel opens into two hard
+  // cheek breaks, then a nearly parallel crew cell and clipped bustle. This
+  // is a new CV9040 shell, not a scaled mission-module or donor-family mesh.
+  const lowerPlan: [number, number][] = [
+    [-0.22, 1.46], [0.22, 1.46], [0.76, 1.04], [1.11, 0.42],
+    [1.10, -0.92], [0.90, -1.56], [0.64, -1.72], [-0.64, -1.72],
+    [-0.90, -1.56], [-1.10, -0.92], [-1.11, 0.42], [-0.76, 1.04],
   ];
-  P.add('turretDark', polyMultiLoft(plan, [
+  P.add('turretDark', cylY(1.01, 1.08, 0.12, 24), 0, -0.05, -0.30);
+  P.add('turret', polyMultiLoft(lowerPlan, [
     { height: 0.00, inset: 1.00 },
-    { height: 0.34, inset: 0.97 },
-    { height: 0.70, inset: 0.84 },
-  ]), 0, -0.04, 0);
-  P.add('turret', polyMultiLoft(plan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.36, inset: 0.96 },
-    { height: 0.72, inset: 0.82 },
+    { height: 0.28, inset: 0.98 },
+    { height: 0.70, inset: 0.78 },
   ]));
   for (const side of [-1, 1]) {
-    // The upper nose retreats behind the lower trunnion line, producing the
-    // pronounced reclined CV90 front instead of a near-vertical turret face.
-    P.addExternalArmor('turret', orientedSlab(
-      [side * 0.29, 0.05, 1.15], [side * 1.10, 0.07, 0.51],
-      [side * 1.08, 0.08, -0.34], [side * 0.60, 0.06, -0.39],
-      [side * 0.24, 0.72, 0.90], [side * 0.74, 0.69, 0.22],
-      [side * 0.91, 0.65, -0.34], [side * 0.54, 0.66, -0.39],
-    ));
-    // Three shallow, reclined cheek laminates make the side transition read
-    // as overlapping armor facets rather than one flat wall. They remain
-    // inside the primary silhouette and are fully seated into the citadel.
-    for (const z of [0.28, -0.28, -0.84]) {
-      P.add('turret', orientedSlab(
-        [side * 0.84, 0.20, z + 0.20], [side * 1.02, 0.23, z + 0.16],
-        [side * 1.00, 0.23, z - 0.18], [side * 0.82, 0.20, z - 0.22],
-        [side * 0.77, 0.50, z + 0.18], [side * 0.94, 0.53, z + 0.14],
-        [side * 0.92, 0.51, z - 0.16], [side * 0.75, 0.48, z - 0.20],
-      ));
-    }
+    // Inner and outer cheek courses are structural, share their edge and
+    // rise continuously into the roof. Their two-stage arrow plan supplies
+    // the requested deep-chevron influence while retaining a compact IFV
+    // height, narrow cannon channel and recognisably Swedish proportions.
     P.add('turret', orientedSlab(
-      [side * 0.26, 0.50, 0.78], [side * 0.56, 0.53, 0.69],
-      [side * 0.53, 0.51, 0.35], [side * 0.24, 0.48, 0.42],
-      [side * 0.23, 0.65, 0.72], [side * 0.49, 0.68, 0.64],
-      [side * 0.47, 0.65, 0.39], [side * 0.21, 0.62, 0.45],
+      [side * 0.20, 0.04, 1.45], [side * 0.76, 0.07, 1.03],
+      [side * 0.69, 0.09, 0.56], [side * 0.18, 0.07, 1.02],
+      [side * 0.18, 0.70, 1.18], [side * 0.55, 0.67, 0.79],
+      [side * 0.56, 0.61, 0.48], [side * 0.15, 0.65, 0.80],
+    ));
+    P.add('turret', orientedSlab(
+      [side * 0.76, 0.07, 1.03], [side * 1.12, 0.11, 0.42],
+      [side * 1.08, 0.12, -0.29], [side * 0.69, 0.09, 0.56],
+      [side * 0.55, 0.67, 0.79], [side * 0.85, 0.63, 0.22],
+      [side * 0.91, 0.57, -0.30], [side * 0.56, 0.61, 0.48],
+    ));
+    // A short flush applique belt carries the side line into the bustle
+    // without the detached rows that made the old shell read as a common
+    // tapered loft.
+    P.addExternalArmor('turret', orientedSlab(
+      [side * 1.08, 0.13, -0.22], [side * 1.11, 0.15, -1.30],
+      [side * 0.90, 0.16, -1.55], [side * 0.86, 0.13, -0.34],
+      [side * 0.91, 0.57, -0.22], [side * 0.96, 0.58, -1.20],
+      [side * 0.79, 0.55, -1.43], [side * 0.76, 0.55, -0.32],
     ));
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 4, r: 0.040, len: 0.25, spacing: 0.09,
       splay: side * 0.50, pitch: -0.39, seed: 920 + side,
-    }), side * 1.09, 0.47, 0.02, [0, side * 0.96, 0]);
+    }), side * 1.03, 0.46, 0.05, [0, side * 0.94, 0]);
+    P.addEquipment('turret', box(0.18, 0.13, 0.17), side * 0.86, 0.66, 0.28,
+      0, side * 0.18, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.105, 0.070, 0.014),
+      side * 0.86, 0.66, 0.375, 0, side * 0.18, 0);
   }
-  P.addGunExtraDark(cylZ(0.135, 0.44, 20), 0, 0, 0.39);
+  P.addGunExtraDark(cylZ(0.135, 0.48, 20), 0, 0, 0.41);
   addCv90ScaffoldedCradle(P);
   KIT.buildGun(P, { len: 3.12, r: 0.064, sleeve: false, collar: true, baseR: 0.13 });
   P.addGunExtraDark(cylZ(0.018, 2.08, 12), 0.22, -0.035, 1.72);
   muzzleTipDot(P, 0.22, -0.035, 2.77, 0.011, { parent: 'gunG' });
   muzzleBore(P, { len: 3.12, r: 0.064, seg: 18 });
   P.muzzleZ = 3.12;
-  P.addEquipment('turret', box(0.36, 0.34, 0.36), 0.47, 0.51, 0.64, 0, -0.08, 0);
+  // Gunner sight, commander panorama and RWS are now seated on the new roof
+  // stations instead of retaining coordinates from the superseded shell.
+  P.addEquipment('turret', box(0.34, 0.31, 0.34), 0.48, 0.69, 0.51, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretDark', box(0.29, 0.22, 0.022),
-    0.47, 0.51, 0.84, 0, -0.08, 0);
+    0.48, 0.69, 0.70, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.21, 0.14, 0.014),
-    0.47, 0.51, 0.855, 0, -0.08, 0);
+    0.48, 0.69, 0.715, 0, -0.08, 0);
   const rws = FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
-    scale: 0.86, towerRise: 0.11, variant: 'korean-twin', ammoSide: 1,
+    scale: 0.80, towerRise: 0.09, variant: 'korean-twin', ammoSide: 1,
     sensorSide: -1, elev: 0.055, caliberMm: 12.7,
     weaponName: 'CV90 Ksp 88 RWS', seed: 934,
   });
   rws.name = 'cv90K2bStyleRws';
   rws.userData.hostVariant = 'cv90';
-  mount(P, 'turret', rws, 0.55, 0.80, -0.82, [0, -0.04, 0]);
-  P.add('turret', cylY(0.20, 0.23, 0.11, 18), -0.48, 0.88, -0.48);
-  P.addEquipment('turret', box(0.34, 0.29, 0.32), -0.48, 1.07, -0.48);
+  mount(P, 'turret', rws, 0.50, 0.74, -0.91, [0, -0.04, 0]);
+  P.add('turret', cylY(0.20, 0.23, 0.10, 18), -0.47, 0.73, -0.50);
+  P.addEquipment('turret', box(0.32, 0.27, 0.30), -0.47, 0.92, -0.50);
   P.addModuleVisual('optics', 'turretGlass', box(0.20, 0.13, 0.016),
-    -0.48, 1.08, -0.31);
-  P.add('turretDark', box(0.28, 0.020, 0.28), -0.48, 1.23, -0.48);
+    -0.47, 0.93, -0.335);
+  P.add('turretDark', box(0.27, 0.020, 0.27), -0.47, 1.07, -0.50);
   mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.35, d: 0.40, h: 0.22, fill: 0.45, rails: 3, seed: 941,
-  }), 0, 0.48, -1.46);
-  P.addEquipment('turret', box(0.52, 0.30, 0.42), -0.46, 0.42, -1.55);
-  P.addEquipment('turret', box(0.52, 0.30, 0.42), 0.46, 0.42, -1.55);
-  P.add('turretDark', box(1.34, 0.12, 0.18), 0, 0.33, -1.72);
+    mats: P.mats, w: 1.42, d: 0.38, h: 0.20, fill: 0.45, rails: 3, seed: 941,
+  }), 0, 0.43, -1.58);
+  P.addEquipment('turret', box(0.50, 0.27, 0.36), -0.43, 0.39, -1.58);
+  P.addEquipment('turret', box(0.50, 0.27, 0.36), 0.43, 0.39, -1.58);
+  P.add('turretDark', box(1.38, 0.11, 0.16), 0, 0.31, -1.76);
   for (const [x, height, seed] of [[-0.82, 0.88, 955], [0.83, 0.72, 956]] as const) {
-    P.add('turretDark', cylY(0.040, 0.052, 0.08, 10), x, 0.88, -1.24);
+    P.add('turretDark', cylY(0.040, 0.052, 0.08, 10), x, 0.70, -1.20);
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: height, r: 0.010, seed }),
-      x, 0.90, -1.24);
+      x, 0.73, -1.20);
   }
-  P.decal('turret', 'crossgrey', null, 0.23, [-1.125, 0.48, -0.76], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.82);
+  P.decal('turret', 'crossgrey', null, 0.22, [-1.135, 0.43, -0.72], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.70);
   if (P.geometryReceipt) {
     P.turretG.userData.cv90IndependentTurretReceipt = Object.freeze({
-      sharedStructuralBuilder: false, turretConstruction: 'cv9040-planar-faceted-crew-citadel-v4',
+      sharedStructuralBuilder: false, identityFamily: 'cv90-native',
+      foreignFamilyGeometryReused: false,
+      turretConstruction: 'cv9040-independent-arrow-wedge-crew-citadel-v5',
       gunAssembly: 'hollow-scaffolded-40mm-slash-port-cradle',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws', allAroundOptics: true,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
-      integratedRearBustle: true,
+      integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
+      equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90', architecture: 'hollow-trapezoid-40mm-slash-port-cradle-v2',
@@ -341,7 +346,7 @@ function buildCv90Turret(P: CvBuilderPort): void {
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
       host: 'cv90', designFamily: rws.userData.designFamily,
-      variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.55, 0.80, -0.82]),
+      variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.50, 0.74, -0.91]),
       scale: rws.userData.scale, sizeStandard: rws.userData.sizeStandard,
       towerRiseM: rws.userData.towerRise, caliberMm: rws.userData.caliberMm,
       visibleFeedBelt: rws.userData.hasVisibleFeedBelt, turretOwned: true,
@@ -484,105 +489,128 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
 
 function buildCv90MkivTurret(P: CvBuilderPort): void {
   const { box, cylY, cylZ, polyMultiLoft } = KIT;
+  // Mk IV uses its own broad low-profile mission module. A split arrow nose,
+  // shoulder cells and long clipped bustle make the Tier X silhouette more
+  // assertive without scaling the crew turret used by the Tier IX vehicle.
   const citadelPlan: [number, number][] = [
-    [-0.34, 1.70], [0.34, 1.70], [0.90, 1.44], [1.34, 0.70],
-    [1.34, -1.24], [1.08, -1.82], [0.66, -1.98], [-0.66, -1.98],
-    [-1.08, -1.82], [-1.34, -1.24], [-1.34, 0.70], [-0.90, 1.44],
+    [-0.25, 1.78], [0.25, 1.78], [0.86, 1.30], [1.40, 0.54],
+    [1.42, -1.18], [1.16, -1.82], [0.72, -2.08], [-0.72, -2.08],
+    [-1.16, -1.82], [-1.42, -1.18], [-1.40, 0.54], [-0.86, 1.30],
   ];
-  P.add('turretDark', polyMultiLoft(citadelPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.44, inset: 0.97 },
-    { height: 0.92, inset: 0.83 },
-  ]), 0, -0.06, 0);
+  P.add('turretDark', cylY(1.24, 1.32, 0.13, 28), 0, -0.055, -0.34);
   P.add('turret', polyMultiLoft(citadelPlan, [
     { height: 0.00, inset: 1.00 },
-    { height: 0.46, inset: 0.96 },
-    { height: 0.96, inset: 0.81 },
+    { height: 0.32, inset: 0.98 },
+    { height: 0.86, inset: 0.77 },
   ]));
   for (const side of [-1, 1]) {
-      P.add('turret', orientedSlab(
-      [side * 0.38, 0.02, 1.38], [side * 1.43, 0.08, 0.62],
-      [side * 1.46, 0.11, -0.46], [side * 0.72, 0.04, -0.55],
-      [side * 0.30, 0.84, 1.00], [side * 0.90, 0.82, 0.25],
-      [side * 1.14, 0.77, -0.46], [side * 0.63, 0.78, -0.55],
+    // Two full-height structural cheek courses create a deep arrow without
+    // leaving a hollow center fan. The upper vertices converge on one roof
+    // course, so front, top and side silhouettes transition continuously.
+    P.add('turret', orientedSlab(
+      [side * 0.22, 0.02, 1.77], [side * 0.86, 0.05, 1.29],
+      [side * 0.78, 0.08, 0.68], [side * 0.20, 0.05, 1.22],
+      [side * 0.19, 0.85, 1.39], [side * 0.61, 0.81, 0.88],
+      [side * 0.64, 0.72, 0.52], [side * 0.16, 0.78, 0.96],
     ));
-    P.addExternalArmor('turret', box(0.18, 0.52, 1.08), side * 1.39, 0.52, -0.98);
+    P.add('turret', orientedSlab(
+      [side * 0.86, 0.05, 1.29], [side * 1.42, 0.10, 0.53],
+      [side * 1.40, 0.12, -0.38], [side * 0.78, 0.08, 0.68],
+      [side * 0.61, 0.81, 0.88], [side * 1.04, 0.73, 0.24],
+      [side * 1.12, 0.65, -0.40], [side * 0.64, 0.72, 0.52],
+    ));
+    P.addExternalArmor('turret', orientedSlab(
+      [side * 1.39, 0.14, -0.28], [side * 1.43, 0.16, -1.40],
+      [side * 1.16, 0.17, -1.80], [side * 1.08, 0.14, -0.42],
+      [side * 1.12, 0.65, -0.28], [side * 1.18, 0.66, -1.32],
+      [side * 0.98, 0.62, -1.67], [side * 0.94, 0.62, -0.40],
+    ));
+    // Shoulder APS/LWR head is seated into the new cheek shoulder.
+    P.addEquipment('turret', box(0.24, 0.19, 0.20), side * 1.13, 0.69, 0.10,
+      0, side * 0.20, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.15, 0.10, 0.014),
+      side * 1.13, 0.69, 0.215, 0, side * 0.20, 0);
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 6, r: 0.041, len: 0.27, spacing: 0.09,
       splay: side * 0.54, pitch: -0.42, seed: 930 + side,
-    }), side * 1.38, 0.55, 0.12, [0, side * 0.98, 0]);
+    }), side * 1.34, 0.50, -0.04, [0, side * 0.98, 0]);
   }
   P.addGunExtra(orientedSlab(
-    [-0.48, -0.27, 0.04], [0.48, -0.27, 0.04],
-    [0.27, -0.17, 1.70], [-0.27, -0.17, 1.70],
-    [-0.48, 0.30, 0.04], [0.48, 0.30, 0.04],
-    [0.25, 0.18, 1.70], [-0.25, 0.18, 1.70],
+    [-0.44, -0.25, 0.05], [0.44, -0.25, 0.05],
+    [0.26, -0.16, 1.62], [-0.26, -0.16, 1.62],
+    [-0.44, 0.28, 0.05], [0.44, 0.28, 0.05],
+    [0.24, 0.17, 1.62], [-0.24, 0.17, 1.62],
   ));
   P.addGunExtraDark(cylZ(0.170, 0.62, 24), 0, 0, 0.48);
   KIT.buildGun(P, { len: 3.76, r: 0.082, sleeve: true,
     evac: 0.55, evacR: 1.60, collar: true, baseR: 0.16 });
   muzzleBore(P, { len: 3.76, r: 0.082, seg: 20 });
   P.muzzleZ = 3.76;
-  P.addEquipment('turret', box(0.44, 0.42, 0.46), 0.53, 0.58, 0.69, 0, -0.08, 0);
-  P.addModuleVisual('optics', 'turretDark', box(0.35, 0.29, 0.024),
-    0.53, 0.58, 0.945, 0, -0.08, 0);
+  // All mission equipment is re-indexed to the new roof and side courses.
+  P.addEquipment('turret', box(0.41, 0.37, 0.42), 0.55, 0.78, 0.58, 0, -0.08, 0);
+  P.addModuleVisual('optics', 'turretDark', box(0.33, 0.25, 0.024),
+    0.55, 0.78, 0.815, 0, -0.08, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.27, 0.19, 0.015),
-    0.53, 0.58, 0.962, 0, -0.08, 0);
+    0.55, 0.78, 0.832, 0, -0.08, 0);
   const rws = FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
-    scale: 0.98, towerRise: 0.14, variant: 'korean-twin', ammoSide: 1,
+    scale: 0.90, towerRise: 0.11, variant: 'korean-twin', ammoSide: 1,
     sensorSide: -1, elev: 0.055, caliberMm: 12.7,
     weaponName: 'CV90 Mk IV Ksp 88 RWS', seed: 944,
   });
   rws.name = 'cv90MkivK2bStyleRws';
   rws.userData.hostVariant = 'cv90_mkiv';
-  mount(P, 'turret', rws, 0.72, 0.98, -1.05, [0, -0.04, 0]);
-  P.add('turret', cylY(0.22, 0.25, 0.12, 20), -0.58, 1.00, -0.46);
-  P.addEquipment('turret', box(0.38, 0.37, 0.35), -0.58, 1.24, -0.46);
-  P.addModuleVisual('optics', 'turretGlass', box(0.23, 0.16, 0.018), -0.58, 1.25, -0.27);
-  P.add('turretDark', box(0.31, 0.022, 0.31), -0.58, 1.44, -0.46);
-  P.add('turret', box(0.30, 0.54, 0.72), -1.24, 0.56, -0.08, 0, 0, -0.08);
-  P.add('turretDark', box(0.17, 0.18, 0.62), -1.02, 0.56, -0.08, 0, 0, -0.48);
+  mount(P, 'turret', rws, 0.68, 0.88, -1.19, [0, -0.04, 0]);
+  P.add('turret', cylY(0.22, 0.25, 0.11, 20), -0.58, 0.88, -0.50);
+  P.addEquipment('turret', box(0.37, 0.34, 0.34), -0.58, 1.10, -0.50);
+  P.addModuleVisual('optics', 'turretGlass', box(0.23, 0.16, 0.018), -0.58, 1.11, -0.31);
+  P.add('turretDark', box(0.30, 0.022, 0.30), -0.58, 1.28, -0.50);
+  // Flush twin-cell missile box: the forward shoulder overlaps the armor
+  // course while the tubes remain visually distinct and turret-owned.
+  P.addEquipment('turret', box(0.28, 0.50, 0.68), -1.20, 0.52, -0.28, 0, 0, -0.08);
+  P.add('turretDark', box(0.16, 0.17, 0.57), -0.99, 0.52, -0.28, 0, 0, -0.48);
   for (const y of [0.42, 0.70]) {
-    P.add('turretDark', cylZ(0.115, 1.06, 18), -1.24, y, 0.46);
-    P.add('turretDetail', KIT.torus(0.117, 0.012, 18), -1.24, y, 1.00, Math.PI / 2, 0, 0);
+    P.add('turretDark', cylZ(0.105, 0.94, 18), -1.20, y, 0.20);
+    P.add('turretDetail', KIT.torus(0.107, 0.012, 18), -1.20, y, 0.68, Math.PI / 2, 0, 0);
   }
   for (const [x, z, yaw] of [
-    [-1.25, 0.68, -0.18], [1.25, 0.68, 0.18],
-    [-1.14, -1.28, -2.96], [1.14, -1.28, 2.96],
+    [-1.13, 0.40, -0.18], [1.13, 0.40, 0.18],
+    [-1.02, -1.38, -2.96], [1.02, -1.38, 2.96],
   ] as const) {
-    P.addEquipment('turret', box(0.25, 0.21, 0.18), x, 0.82, z, 0, yaw, 0);
+    P.addEquipment('turret', box(0.24, 0.20, 0.18), x, 0.73, z, 0, yaw, 0);
     P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.11, 0.014),
-      x, 0.82, z + (z > 0 ? 0.10 : -0.10), 0, yaw, 0);
+      x, 0.73, z + (z > 0 ? 0.10 : -0.10), 0, yaw, 0);
   }
-  for (const x of [-0.86, 0, 0.86]) {
+  for (const x of [-0.78, 0, 0.78]) {
     mount(P, 'turret', FITTINGS.lightCluster({
       mats: P.mats, pods: 1, r: 0.037, guard: true, rake: 0, seed: 970 + x,
-    }), x, 0.80, 1.20);
+    }), x, 0.72, 1.00);
   }
   mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.84, d: 0.44, h: 0.24, fill: 0.52, rails: 4, seed: 951,
-  }), 0, 0.52, -1.91);
+    mats: P.mats, w: 1.90, d: 0.43, h: 0.23, fill: 0.52, rails: 4, seed: 951,
+  }), 0, 0.46, -2.02);
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.70, 0.34, 0.46), side * 0.56, 0.45, -1.90);
+    P.addEquipment('turret', box(0.72, 0.31, 0.42), side * 0.57, 0.42, -2.00);
   }
-  P.add('turretDark', box(1.80, 0.14, 0.20), 0, 0.34, -2.08);
+  P.add('turretDark', box(1.84, 0.13, 0.18), 0, 0.32, -2.16);
   for (const [x, height, seed] of [[-0.92, 0.95, 975], [0.94, 0.80, 976]] as const) {
-    P.add('turretDark', cylY(0.042, 0.054, 0.085, 10), x, 1.00, -1.47);
+    P.add('turretDark', cylY(0.042, 0.054, 0.085, 10), x, 0.84, -1.55);
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: height, r: 0.010, seed }),
-      x, 1.03, -1.47);
+      x, 0.87, -1.55);
   }
-  P.decal('turret', 'crossgrey', null, 0.26, [-1.49, 0.52, -0.82], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 2.12);
+  P.decal('turret', 'crossgrey', null, 0.25, [-1.47, 0.46, -0.88], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 2.02);
   if (P.geometryReceipt) {
     P.turretG.userData.cv90MkivIndependentTurretReceipt = Object.freeze({
-      sharedStructuralBuilder: false,
-      turretConstruction: 'cv90-mkiv-planar-faceted-unmanned-citadel-v4',
+      sharedStructuralBuilder: false, identityFamily: 'cv90-native',
+      foreignFamilyGeometryReused: false,
+      turretConstruction: 'cv90-mkiv-independent-deep-arrow-mission-module-v5',
       gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws',
       spikeLauncherTubes: 2, apsRadarFaces: 4,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
-      integratedRearBustle: true,
+      integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
+      equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90_mkiv', architecture: 'faceted-closed-50mm-trunnion-shroud-v2',
@@ -591,7 +619,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
       host: 'cv90_mkiv', designFamily: rws.userData.designFamily,
-      variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.72, 0.98, -1.05]),
+      variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.68, 0.88, -1.19]),
       scale: rws.userData.scale, sizeStandard: rws.userData.sizeStandard,
       towerRiseM: rws.userData.towerRise, caliberMm: rws.userData.caliberMm,
       visibleFeedBelt: rws.userData.hasVisibleFeedBelt, turretOwned: true,
