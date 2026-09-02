@@ -120,6 +120,42 @@ interface DecorKitArgs {
 
 type DecorKitBuilder = (args: DecorKitArgs) => DecorPartList;
 
+/**
+ * Fleet-wide loose-equipment vocabulary.  These are named visual variants,
+ * not twenty copies of one anonymous box: each entry has an authored material
+ * treatment and silhouette in DECOR_KITS.cargo.  Keeping the list exported
+ * gives the catalog and regression tests an exact contract for the requested
+ * variation floor.
+ */
+export const FLEET_EQUIPMENT_VARIANTS = Object.freeze([
+  'beer-cooler-blue',
+  'cooler-red',
+  'insulated-chest-olive',
+  'long-duffel',
+  'large-rucksack',
+  'bedroll-pair',
+  'folded-tarp-pack',
+  'camo-net-bag',
+  'nato-fuel-can',
+  'blue-water-can',
+  'twin-can-cradle',
+  'soviet-tool-can',
+  'fifty-cal-ammo-can',
+  'wood-ammo-crate',
+  'ration-case',
+  'medical-case',
+  'mechanics-tool-chest',
+  'fire-extinguisher',
+  'cable-reel',
+  'helmet-bundle',
+  'crew-backpack',
+  'folding-chair',
+  'spare-optics-case',
+  'thermos-crate',
+] as const);
+
+export type FleetEquipmentVariant = typeof FLEET_EQUIPMENT_VARIANTS[number];
+
 interface DecorSlotArgs {
   side?: number;
   corner?: number;
@@ -996,6 +1032,180 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     return parts;
   },
 
+  // -- loose crew cargo: 24 named, material-authored variants ---------------------
+  // Small pieces are deliberately a little graphic at gameplay distance: lids,
+  // handles, straps and latches remain separate instead of becoming one grey
+  // cuboid after merging.  Every geometry still originates at its physical seat.
+  cargo({ rng, v = 'beer-cooler-blue' }) {
+    const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
+      ? v as FleetEquipmentVariant : 'beer-cooler-blue';
+    const parts: DecorPartList = [];
+    const paint = (geo: THREE.BufferGeometry, rgb: readonly [number, number, number], ao = 0.26) => {
+      parts.push({ mat: 'cans', geo: bakeTint(geo, rgb[0], rgb[1], rgb[2], ao) });
+    };
+    const steel = (geo: THREE.BufferGeometry, tone = 0.52) => {
+      parts.push({ mat: 'steel', geo: bakeShade(geo, tone + rng() * 0.04) });
+    };
+    const cloth = (geo: THREE.BufferGeometry, tone = 0.78) => {
+      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(geo, 2.5), tone + rng() * 0.05) });
+    };
+    const wood = (geo: THREE.BufferGeometry, tone = 0.82) => {
+      parts.push({ mat: 'wood', geo: bakeShade(boxUV(geo, 2.2), tone + rng() * 0.05) });
+    };
+    const strap = (x: number, y: number, z: number, w: number, h: number, d: number) => {
+      parts.push({ mat: 'rubber', geo: bakeShade(xform(box(w, h, d), x, y, z), 0.58) });
+    };
+    const hardCase = (
+      rgb: readonly [number, number, number], w = 0.46, h = 0.25, d = 0.32,
+      lid: readonly [number, number, number] = rgb,
+    ) => {
+      paint(xform(box(w, h * 0.78, d), 0, h * 0.39, 0), rgb);
+      paint(xform(box(w * 1.03, h * 0.22, d * 1.035), 0, h * 0.89, 0), lid, 0.18);
+      steel(xform(box(w * 0.26, 0.025, 0.035), 0, h + 0.025, -d * 0.28));
+      for (const side of [-1, 1]) steel(xform(box(0.026, h * 0.30, 0.035), side * w * 0.36, h * 0.49, d * 0.51), 0.46);
+    };
+    const jerryCan = (x: number, rgb: readonly [number, number, number], scale = 1) => {
+      const w = 0.18 * scale, h = 0.40 * scale, d = 0.29 * scale;
+      paint(xform(box(w, h, d), x, h / 2, 0), rgb);
+      // stamped X panel and a real open handle/spout silhouette
+      for (const rz of [-0.58, 0.58]) {
+        paint(xform(box(0.016 * scale, h * 0.68, 0.022 * scale), x, h * 0.47, d / 2 + 0.012, 0, 0, rz),
+          [rgb[0] * 1.08, rgb[1] * 1.08, rgb[2] * 1.08]);
+      }
+      paint(xform(box(w * 0.72, 0.035 * scale, 0.045 * scale), x, h + 0.04 * scale, 0), rgb);
+      paint(xform(box(0.028 * scale, 0.085 * scale, 0.045 * scale), x - w * 0.32, h, 0), rgb);
+      paint(xform(box(0.028 * scale, 0.085 * scale, 0.045 * scale), x + w * 0.32, h, 0), rgb);
+      steel(xform(cylY(0.025 * scale, 0.029 * scale, 0.045 * scale, 7), x - w * 0.27, h + 0.055 * scale, -d * 0.28));
+    };
+
+    switch (variant) {
+      case 'beer-cooler-blue':
+        hardCase([0.10, 0.38, 0.88], 0.50, 0.28, 0.34, [0.96, 0.98, 1.0]);
+        break;
+      case 'cooler-red':
+        hardCase([0.82, 0.12, 0.09], 0.45, 0.25, 0.31, [0.96, 0.96, 0.92]);
+        break;
+      case 'insulated-chest-olive':
+        hardCase([0.34, 0.40, 0.20], 0.56, 0.27, 0.36, [0.48, 0.50, 0.29]);
+        strap(-0.18, 0.15, 0.185, 0.035, 0.22, 0.025);
+        strap(0.18, 0.15, 0.185, 0.035, 0.22, 0.025);
+        break;
+      case 'long-duffel':
+        cloth(xform(capX(0.14, 0.72, 10), 0, 0.14, 0, 0, 0.08, 0), 0.66);
+        for (const side of [-0.23, 0.23]) strap(side, 0.15, 0, 0.026, 0.24, 0.30);
+        steel(xform(torusV(0.12, 0.012, 9, 4), 0, 0.29, 0, Math.PI / 2, 0, 0));
+        break;
+      case 'large-rucksack':
+        cloth(xform(sph(0.5, 11, 7), 0, 0.22, 0, -0.10, 0.12, 0, [0.42, 0.38, 0.25]), 0.62);
+        cloth(xform(box(0.35, 0.10, 0.26), 0, 0.35, 0.015, -0.20), 0.58);
+        for (const side of [-1, 1]) strap(side * 0.13, 0.22, 0.135, 0.028, 0.33, 0.022);
+        break;
+      case 'bedroll-pair':
+        for (const z of [-0.105, 0.105]) {
+          cloth(xform(capX(0.085, 0.55, 9), 0, 0.085, z), z < 0 ? 0.67 : 0.82);
+          for (const x of [-0.15, 0.15]) strap(x, 0.088, z, 0.018, 0.17, 0.18);
+        }
+        break;
+      case 'folded-tarp-pack':
+        for (let i = 0; i < 3; i++) cloth(xform(box(0.50 - i * 0.035, 0.065, 0.34 - i * 0.02), 0, 0.035 + i * 0.064, 0), 0.70 + i * 0.06);
+        for (const x of [-0.15, 0.15]) strap(x, 0.11, 0, 0.025, 0.22, 0.36);
+        break;
+      case 'camo-net-bag': {
+        const bag = xform(sph(0.5, 10, 7), 0, 0.18, 0, 0.12, -0.18, 0, [0.46, 0.32, 0.34]);
+        cloth(bag, 0.52);
+        const skin = xform(sph(0.505, 10, 7), 0, 0.18, 0, 0.12, -0.18, 0, [0.47, 0.33, 0.35]);
+        parts.push({ mat: 'net', geo: bakeShade(boxUV(skin, 1.9), 0.92) });
+        strap(0, 0.34, 0, 0.30, 0.026, 0.035);
+        break;
+      }
+      case 'nato-fuel-can':
+        jerryCan(0, [0.62, 0.48, 0.22]);
+        break;
+      case 'blue-water-can':
+        jerryCan(0, [0.10, 0.36, 0.76]);
+        break;
+      case 'twin-can-cradle':
+        jerryCan(-0.11, [0.55, 0.43, 0.20], 0.90);
+        jerryCan(0.11, [0.26, 0.38, 0.20], 0.90);
+        steel(xform(box(0.46, 0.025, 0.34), 0, 0.015, 0), 0.48);
+        for (const side of [-1, 1]) steel(xform(box(0.025, 0.38, 0.34), side * 0.22, 0.19, 0), 0.48);
+        break;
+      case 'soviet-tool-can':
+        paint(xform(cylX(0.13, 0.60, 12), 0, 0.13, 0), [0.36, 0.43, 0.22]);
+        for (const x of [-0.26, 0.26]) steel(xform(torusV(0.135, 0.012, 12, 4), x, 0.13, 0, 0, Math.PI / 2, 0));
+        steel(xform(box(0.18, 0.025, 0.045), 0, 0.28, 0));
+        break;
+      case 'fifty-cal-ammo-can':
+        hardCase([0.28, 0.36, 0.18], 0.36, 0.24, 0.20, [0.35, 0.43, 0.22]);
+        break;
+      case 'wood-ammo-crate':
+        wood(xform(box(0.58, 0.28, 0.34), 0, 0.14, 0), 0.76);
+        for (const x of [-0.23, 0.23]) wood(xform(box(0.055, 0.30, 0.36), x, 0.15, 0), 0.58);
+        for (const z of [-0.145, 0.145]) steel(xform(box(0.46, 0.025, 0.025), 0, 0.29, z), 0.44);
+        break;
+      case 'ration-case':
+        hardCase([0.52, 0.36, 0.18], 0.42, 0.22, 0.30, [0.62, 0.45, 0.25]);
+        for (const x of [-0.12, 0.12]) paint(xform(box(0.045, 0.04, 0.012), x, 0.18, 0.157), [0.92, 0.78, 0.42]);
+        break;
+      case 'medical-case':
+        hardCase([0.33, 0.42, 0.22], 0.42, 0.24, 0.28, [0.40, 0.50, 0.26]);
+        paint(xform(box(0.05, 0.14, 0.014), 0, 0.125, 0.148), [0.92, 0.90, 0.84]);
+        paint(xform(box(0.14, 0.05, 0.014), 0, 0.125, 0.149), [0.92, 0.90, 0.84]);
+        break;
+      case 'mechanics-tool-chest':
+        hardCase([0.68, 0.10, 0.07], 0.52, 0.24, 0.28, [0.78, 0.14, 0.09]);
+        for (const x of [-0.16, 0.16]) steel(xform(box(0.045, 0.055, 0.025), x, 0.19, 0.15), 0.64);
+        break;
+      case 'fire-extinguisher':
+        paint(xform(cylY(0.105, 0.115, 0.44, 12), 0, 0.22, 0), [0.82, 0.08, 0.05]);
+        paint(xform(cylY(0.07, 0.10, 0.08, 10), 0, 0.48, 0), [0.70, 0.07, 0.04]);
+        steel(xform(box(0.19, 0.025, 0.035), 0.06, 0.54, 0), 0.54);
+        steel(xform(torusV(0.11, 0.014, 12, 4), 0, 0.25, 0, Math.PI / 2, 0, 0), 0.48);
+        break;
+      case 'cable-reel':
+        for (const x of [-0.14, 0.14]) wood(xform(cylX(0.18, 0.035, 12), x, 0.18, 0), 0.68);
+        wood(xform(cylX(0.08, 0.30, 10), 0, 0.18, 0), 0.58);
+        for (let i = 0; i < 5; i++) steel(xform(torusV(0.085 + i * 0.012, 0.010, 12, 4), -0.10 + i * 0.05, 0.18, 0, 0, Math.PI / 2, 0), 0.42);
+        break;
+      case 'helmet-bundle':
+        for (const x of [-0.15, 0, 0.15]) {
+          paint(xform(sph(0.5, 10, 6), x, 0.10 + Math.abs(x) * 0.12, 0, 0, 0, 0, [0.24, 0.14, 0.22]), [0.30, 0.38, 0.19]);
+          steel(xform(box(0.08, 0.015, 0.025), x, 0.19 + Math.abs(x) * 0.12, 0));
+        }
+        strap(0, 0.11, 0, 0.40, 0.025, 0.035);
+        break;
+      case 'crew-backpack':
+        cloth(xform(box(0.38, 0.38, 0.22), 0, 0.19, 0), 0.60);
+        cloth(xform(box(0.32, 0.12, 0.235), 0, 0.32, 0.012, -0.18), 0.56);
+        for (const x of [-0.12, 0.12]) strap(x, 0.19, 0.12, 0.025, 0.34, 0.02);
+        cloth(xform(box(0.20, 0.12, 0.08), 0, 0.09, 0.15), 0.66);
+        break;
+      case 'folding-chair':
+        for (const x of [-0.18, 0.18]) {
+          steel(xform(cylY(0.012, 0.012, 0.48, 5), x, 0.24, -0.08, 0, 0, x < 0 ? -0.16 : 0.16));
+          steel(xform(cylY(0.012, 0.012, 0.48, 5), x, 0.24, 0.08, 0, 0, x < 0 ? 0.16 : -0.16));
+        }
+        cloth(xform(box(0.42, 0.025, 0.28), 0, 0.27, 0), 0.64);
+        cloth(xform(box(0.42, 0.24, 0.025), 0, 0.41, -0.13, -0.12), 0.68);
+        break;
+      case 'spare-optics-case':
+        hardCase([0.18, 0.20, 0.17], 0.44, 0.30, 0.34, [0.24, 0.26, 0.22]);
+        parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.16, 0.08, 0.014), 0, 0.17, 0.178), 0.72) });
+        steel(xform(box(0.20, 0.018, 0.02), 0, 0.17, 0.188), 0.48);
+        break;
+      case 'thermos-crate':
+        wood(xform(box(0.50, 0.24, 0.34), 0, 0.12, 0), 0.74);
+        for (const x of [-0.13, 0.13]) {
+          paint(xform(cylY(0.060, 0.066, 0.28, 10), x, 0.26, 0), [0.72, 0.72, 0.64]);
+          paint(xform(cylY(0.052, 0.060, 0.045, 10), x, 0.422, 0), [0.18, 0.20, 0.17]);
+        }
+        for (const x of [-0.22, 0.22]) wood(xform(box(0.035, 0.26, 0.36), x, 0.13, 0), 0.56);
+        break;
+    }
+    parts.meta = { w: 0.78, h: 0.58, d: 0.42 };
+    return parts;
+  },
+
   // -- turret bustle basket (rod frame + mesh + soft contents) -----------------------
   // Local frame: open face toward +Z (bolts to the bustle), extends -Z.
   basket({ rng, w = 1.2, d = 0.42, h = 0.34 }) {
@@ -1358,6 +1568,7 @@ export const DECOR_KIT_INFO = {
   camonet: { label: 'Camo net bundle', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'roll' }, { v: 'drape' }] },
   log: { label: 'Unditching log', eras: ['ww2', 'cold-war'], variants: [{}] },
   packs: { label: 'Rucksacks / bedrolls', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }, { n: 3 }, { n: 4 }] },
+  cargo: { label: 'Crew cargo and field equipment', eras: ['ww2', 'cold-war', 'modern'], variants: FLEET_EQUIPMENT_VARIANTS.map((v) => ({ v })) },
   basket: { label: 'Bustle basket', eras: ['ww2', 'cold-war', 'modern'], variants: [{ w: 1.0 }, { w: 1.3 }] },
   cable: { label: 'Tow cable', eras: ['ww2', 'cold-war', 'modern'], variants: [{ len: 1.8 }, { len: 2.6 }] },
   tracks: { label: 'Spare track links', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 4 }, { n: 6 }] },
@@ -1674,7 +1885,23 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const curated = TANK_MANIFESTS[spec.id];
-  return curated ? curated(spec, rng) : defaultManifest(spec, rng);
+  const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
+  // Every playable gets one deterministic personal-equipment tell before the
+  // rest of the manifest consumes the triangle/overlap budget.  Across the
+  // current fleet the hash walks the full 24-variant vocabulary, while each
+  // individual tank remains byte-stable for screenshots and multiplayer.
+  const cargoIndex = fnv1a(`${spec.id}:fleet-cargo-v1`) % FLEET_EQUIPMENT_VARIANTS.length;
+  const cargo: DecorManifestRow = {
+    kit: 'cargo',
+    p: 1,
+    v: { v: FLEET_EQUIPMENT_VARIANTS[cargoIndex] },
+    slot: ['rearDeck', {
+      corner: (fnv1a(`${spec.id}:fleet-cargo-side`) & 1) ? 1 : -1,
+      back: true,
+      small: true,
+    }],
+  };
+  return [cargo, ...base];
 }
 
 // ---------------------------------------------------------------------------
