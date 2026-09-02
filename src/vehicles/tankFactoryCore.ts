@@ -714,12 +714,21 @@ interface TankVisual {
   specId: string;
   dims: { lengthM: number; widthM: number; heightM: number };
   boundingRadiusM: number;
+  /** Stable chassis datum used by live garage/gallery placement. */
   presentationAnchor: Readonly<PresentationAnchor>;
+  /** Opaque rendered-mass datum used only to frame exported technical assets. */
+  assetPresentationAnchor: Readonly<PresentationAnchor>;
   contactGeom: TankContactGeometry | null;
   presentationFloorYM: number;
   presentationTrackFloorYM: number | null;
   seatOnFloor(floorYM?: number): number;
   seatRunningGearOnFloor(floorYM?: number): number;
+  rootPositionForPresentationPoint(
+    xM: number,
+    zM: number,
+    yawRad: number,
+    out: THREE.Vector3,
+  ): THREE.Vector3;
   centerOnPresentationPoint(xM?: number, zM?: number): THREE.Vector3;
   presentationAnchorWorld(out: THREE.Vector3): THREE.Vector3;
   prepareForSimulation(): TankContactGeometry | null;
@@ -8563,13 +8572,13 @@ export function createTank(
   const staticPreview = opts.staticPreview === true || geometryOnly;
   const restScan = staticPreview ? null : measureRestContact(root);
   const gearCG = P.gear ? P.gear.contactGeom : null;
-  // Canonical neutral-presentation anchor. The articulation rig origin, the
-  // load-bearing track midpoint and a full barrel-inclusive bounding box are
-  // engineering datums, not proof of visual centering. The generated receipt
-  // is derived from each finished vehicle's opaque top-down body pixels after
-  // cannon/antenna-width rows are rejected. Unknown development builders keep
-  // the analytic contact midpoint as a safe fallback until the receipt is
-  // regenerated.
+  // Keep two horizontal datums with deliberately different jobs. Live 3D
+  // presentation is seated on the load-bearing chassis/track midpoint so
+  // switching variants cannot make the tank jump when ERA, baskets, RWS, or
+  // other asymmetric equipment changes. Exported technical art still uses
+  // the generated opaque-body centroid so its finite image canvas remains
+  // visually balanced. Conflating those jobs caused family variants sharing
+  // a chassis (notably Abrams and M60) to move by 10-15 cm on the garage pad.
   const renderedAnchor = presentationAnchorFor(specId);
   const renderedAnchorX = typeof renderedAnchor?.xM === 'number'
     && Number.isFinite(renderedAnchor.xM) ? renderedAnchor.xM : 0;
@@ -8579,9 +8588,13 @@ export function createTank(
     && Number.isFinite(gearCG.zCenterM) ? gearCG.zCenterM : null;
   const scanAnchorZ = typeof restScan?.zCenterM === 'number'
     && Number.isFinite(restScan.zCenterM) ? restScan.zCenterM : 0;
-  const presentationAnchor: Readonly<PresentationAnchor> = Object.freeze({
+  const assetPresentationAnchor: Readonly<PresentationAnchor> = Object.freeze({
     xM: renderedAnchorX,
     zM: renderedAnchorZ ?? gearAnchorZ ?? scanAnchorZ,
+  });
+  const presentationAnchor: Readonly<PresentationAnchor> = Object.freeze({
+    xM: 0,
+    zM: gearAnchorZ ?? scanAnchorZ,
   });
   const composeContactGeom = (scan: RestContactReceipt | null): TankContactGeometry | null => {
     if (!gearCG && !scan) return null;
@@ -8889,10 +8902,10 @@ export function createTank(
     specId,
     dims: { lengthM: spec.dims.overallLengthM, widthM: spec.dims.widthM, heightM: spec.dims.heightM },
     boundingRadiusM: armor.boundingRadiusM,
-    // Horizontal body-mass anchor used by every neutral presentation surface.
-    // Keep this separate from battle transforms and full-silhouette bounds:
-    // the latter must still include a long cannon so captures never clip it.
+    // Stable chassis anchor used by live neutral-presentation surfaces.
     presentationAnchor,
+    // Generated rendered-mass anchor used only by exported asset framing.
+    assetPresentationAnchor,
     // as-built rest contact metadata for the movement support solve (see the
     // measureRestContact note; state.ts stamps it onto the battle entity)
     contactGeom,
@@ -8929,6 +8942,15 @@ export function createTank(
       return root.position.y;
     },
 
+    /** Solve the rig origin for a requested world-space chassis center. */
+    rootPositionForPresentationPoint(xM, zM, yawRad, out) {
+      const ax = presentationAnchor.xM;
+      const az = presentationAnchor.zM;
+      out.x = xM - (Math.cos(yawRad) * ax + Math.sin(yawRad) * az);
+      out.z = zM - (-Math.sin(yawRad) * ax + Math.cos(yawRad) * az);
+      return out;
+    },
+
     /**
      * Put the neutral vehicle's structural center on a point in its parent's
      * X/Z plane. Presentation roots use yaw-only rotation, so solving the
@@ -8936,12 +8958,7 @@ export function createTank(
      * the historical rig origin without mutating certified vehicle geometry.
      */
     centerOnPresentationPoint(xM = 0, zM = 0) {
-      const yaw = root.rotation.y;
-      const ax = presentationAnchor.xM;
-      const az = presentationAnchor.zM;
-      root.position.x = xM - (Math.cos(yaw) * ax + Math.sin(yaw) * az);
-      root.position.z = zM - (-Math.sin(yaw) * ax + Math.cos(yaw) * az);
-      return root.position;
+      return this.rootPositionForPresentationPoint(xM, zM, root.rotation.y, root.position);
     },
 
     /** Resolve the canonical anchor in world space into caller-owned storage. */

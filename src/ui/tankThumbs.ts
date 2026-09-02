@@ -18,8 +18,23 @@ import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
+const PORTRAIT_WIDTH_RATIO = 0.86;
+const PORTRAIT_HEIGHT_RATIO = 0.78;
+const PORTRAIT_BASELINE_RATIO = 0.89;
 let errorGuardInstalled = false;
 let portraitObserver: IntersectionObserver | null = null;
+let portraitResizeObserver: ResizeObserver | null = null;
+
+interface PortraitBounds {
+  width: number;
+  height: number;
+  centerX: number;
+  bottom: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+const portraitBoundsByUrl = new Map<string, Promise<PortraitBounds | null>>();
 
 interface TopMaskEngineContext {
   renderer: THREE.WebGLRenderer;
@@ -106,11 +121,108 @@ function portraitUrl(specId: string, index: number): string {
   return source === 'thumb-angle' ? getTankThumb(specId) : iconUrl(specId, source);
 }
 
+function measurePortraitBounds(img: HTMLImageElement): PortraitBounds | null {
+  if (!(img.naturalWidth > 0) || !(img.naturalHeight > 0)) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const context = canvas2d(canvas);
+  context.drawImage(img, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  let x0 = canvas.width;
+  let y0 = canvas.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      if (pixels[(y * canvas.width + x) * 4 + 3] <= 8) continue;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    }
+  }
+  if (x1 < x0 || y1 < y0) return null;
+  return {
+    width: x1 - x0 + 1,
+    height: y1 - y0 + 1,
+    centerX: (x0 + x1 + 1) * 0.5,
+    bottom: y1 + 1,
+    naturalWidth: canvas.width,
+    naturalHeight: canvas.height,
+  };
+}
+
+function applyPortraitFrame(img: HTMLImageElement, bounds: PortraitBounds): void {
+  const boxWidth = img.clientWidth;
+  const boxHeight = img.clientHeight;
+  if (!(boxWidth > 0) || !(boxHeight > 0)) return;
+  const fitScale = Math.min(
+    boxWidth / bounds.naturalWidth,
+    boxHeight / bounds.naturalHeight,
+  );
+  const renderedWidth = bounds.naturalWidth * fitScale;
+  const renderedHeight = bounds.naturalHeight * fitScale;
+  const insetX = (boxWidth - renderedWidth) * 0.5;
+  const insetY = (boxHeight - renderedHeight) * 0.5;
+  const visibleWidth = bounds.width * fitScale;
+  const visibleHeight = bounds.height * fitScale;
+  const scale = Math.min(
+    boxWidth * PORTRAIT_WIDTH_RATIO / visibleWidth,
+    boxHeight * PORTRAIT_HEIGHT_RATIO / visibleHeight,
+  );
+  const x = boxWidth * 0.5
+    - scale * (insetX + bounds.centerX * fitScale);
+  const y = boxHeight * PORTRAIT_BASELINE_RATIO
+    - scale * (insetY + bounds.bottom * fitScale);
+  img.style.setProperty('--cot-thumb-x', `${x.toFixed(2)}px`);
+  img.style.setProperty('--cot-thumb-y', `${y.toFixed(2)}px`);
+  img.style.setProperty('--cot-thumb-scale', scale.toFixed(4));
+  img.dataset.cotPortraitFramed = 'true';
+}
+
+async function normalizePortrait(img: HTMLImageElement): Promise<void> {
+  if (!(img.complete && img.naturalWidth > 0)) return;
+  const url = img.currentSrc || img.src;
+  let pending = portraitBoundsByUrl.get(url);
+  if (!pending) {
+    pending = Promise.resolve().then(() => measurePortraitBounds(img)).catch(() => null);
+    portraitBoundsByUrl.set(url, pending);
+  }
+  const bounds = await pending;
+  if (!bounds || (img.currentSrc || img.src) !== url) return;
+  applyPortraitFrame(img, bounds);
+  if (typeof ResizeObserver === 'function') {
+    portraitResizeObserver ||= new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (!(entry.target instanceof HTMLImageElement)) continue;
+        const currentUrl = entry.target.currentSrc || entry.target.src;
+        void portraitBoundsByUrl.get(currentUrl)?.then((currentBounds) => {
+          if (currentBounds) applyPortraitFrame(entry.target as HTMLImageElement, currentBounds);
+        });
+      }
+    });
+    portraitResizeObserver.observe(img);
+  }
+}
+
+function queuePortraitNormalization(img: HTMLImageElement): void {
+  if (img.dataset.cotPortraitListener !== 'true') {
+    img.dataset.cotPortraitListener = 'true';
+    img.addEventListener('load', () => { void normalizePortrait(img); }, { passive: true });
+  }
+  if (img.complete && img.naturalWidth > 0) void normalizePortrait(img);
+}
+
 function advanceFallback(img: HTMLImageElement): void {
   const id = img && img.dataset && img.dataset.cotThumb;
   if (!id) return;
   const next = Number(img.dataset.cotIconFallback || 0) + 1;
   if (next < PORTRAIT_SOURCES.length) {
+    img.dataset.cotPortraitFramed = 'false';
+    img.style.removeProperty('--cot-thumb-x');
+    img.style.removeProperty('--cot-thumb-y');
+    img.style.removeProperty('--cot-thumb-scale');
     img.dataset.cotIconFallback = String(next);
     img.src = portraitUrl(id, next);
     return;
@@ -153,6 +265,7 @@ function revealTankThumb(img: HTMLImageElement): void {
   }
   img.decoding = 'async';
   img.draggable = false;
+  queuePortraitNormalization(img);
   if (img.complete && !img.naturalWidth) advanceFallback(img);
 }
 

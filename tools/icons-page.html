@@ -72,14 +72,18 @@ function silhouette(srcCanvas, outW, outH) {
   return out;
 }
 
-function autoCropSquare(src, outSize, marginFrac = 0.05, preserveCenter = false) {
+const PORTRAIT_WIDTH_RATIO = 0.86;
+const PORTRAIT_HEIGHT_RATIO = 0.78;
+const PORTRAIT_BASELINE_RATIO = 0.89;
+
+function opaquePixelBounds(src, alphaThreshold = 8) {
   const c = src.getContext('2d');
   const img = c.getImageData(0, 0, src.width, src.height);
   const d = img.data;
   let x0 = src.width, y0 = src.height, x1 = 0, y1 = 0;
   for (let y = 0; y < src.height; y++) {
     for (let x = 0; x < src.width; x++) {
-      if (d[(y * src.width + x) * 4 + 3] > 8) {
+      if (d[(y * src.width + x) * 4 + 3] > alphaThreshold) {
         if (x < x0) x0 = x;
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
@@ -87,14 +91,28 @@ function autoCropSquare(src, outSize, marginFrac = 0.05, preserveCenter = false)
       }
     }
   }
-  if (x1 <= x0) return src;
-  const w = x1 - x0 + 1, h = y1 - y0 + 1;
-  const cx = preserveCenter ? src.width / 2 : (x0 + x1) / 2;
-  const cy = preserveCenter ? src.height / 2 : (y0 + y1) / 2;
-  const centeredSide = preserveCenter
-    ? Math.max(Math.abs(x0 - cx), Math.abs(x1 - cx), Math.abs(y0 - cy), Math.abs(y1 - cy)) * 2
-    : Math.max(w, h);
-  const side = centeredSide * (1 + marginFrac * 2);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x0, y0, x1, y1, width: x1 - x0 + 1, height: y1 - y0 + 1 };
+}
+
+/**
+ * Give every garage portrait one presentation datum: the visible tank is
+ * centered horizontally and its track contact line lands on a shared
+ * baseline. The former square crop stayed centered on the camera frame, so
+ * antennas, searchlights and family-specific turret height moved otherwise
+ * related vehicles up/down or sideways inside identical roster cards.
+ */
+function normalizeAnglePortrait(src, outSize) {
+  const bounds = opaquePixelBounds(src);
+  if (!bounds) return src;
+  const scale = Math.min(
+    outSize * PORTRAIT_WIDTH_RATIO / bounds.width,
+    outSize * PORTRAIT_HEIGHT_RATIO / bounds.height,
+  );
+  const drawWidth = src.width * scale;
+  const drawHeight = src.height * scale;
+  const dx = outSize * 0.5 - (bounds.x0 + bounds.width * 0.5) * scale;
+  const dy = outSize * PORTRAIT_BASELINE_RATIO - (bounds.y1 + 1) * scale;
   const out = document.createElement('canvas');
   out.width = outSize; out.height = outSize;
   const oc = out.getContext('2d');
@@ -107,11 +125,11 @@ function autoCropSquare(src, outSize, marginFrac = 0.05, preserveCenter = false)
   oc.save();
   oc.globalAlpha = 0.28;
   oc.filter = 'brightness(0) blur(10px)';
-  oc.drawImage(src, cx - side / 2, cy - side / 2, side, side, 0, 7, outSize, outSize);
+  oc.drawImage(src, dx, dy + 7, drawWidth, drawHeight);
   oc.restore();
   oc.save();
   oc.filter = 'brightness(1.06) contrast(1.07) saturate(1.03)';
-  oc.drawImage(src, cx - side / 2, cy - side / 2, side, side, 0, 0, outSize, outSize);
+  oc.drawImage(src, dx, dy, drawWidth, drawHeight);
   oc.restore();
   return out;
 }
@@ -235,21 +253,22 @@ function renderedPresentationCenter(visual) {
   // when the page started, or the projection lags every anchor change by one
   // generation and the public manifest cannot match runtime exactly.
   const iconProjection = assetProjection(iconBox, { xM, zM });
+  const assetAnchor = visual.assetPresentationAnchor || visual.presentationAnchor;
   const anchorPixelX = canvas.width * (0.5
-    - (visual.presentationAnchor.xM - boundsCenter.x) / (half * 2));
+    - (assetAnchor.xM - boundsCenter.x) / (half * 2));
   const anchorPixelY = canvas.height * (0.5
-    - (visual.presentationAnchor.zM - boundsCenter.z) / (half * 2));
+    - (assetAnchor.zM - boundsCenter.z) / (half * 2));
   return {
     xM,
     zM,
     currentAnchor: {
-      xM: Number(visual.presentationAnchor.xM.toFixed(4)),
-      zM: Number(visual.presentationAnchor.zM.toFixed(4)),
+      xM: Number(assetAnchor.xM.toFixed(4)),
+      zM: Number(assetAnchor.zM.toFixed(4)),
     },
     residualPx: Number(Math.hypot(pixelX - anchorPixelX, pixelY - anchorPixelY).toFixed(2)),
     deltaM: Number(Math.hypot(
-      xM - visual.presentationAnchor.xM,
-      zM - visual.presentationAnchor.zM,
+      xM - assetAnchor.xM,
+      zM - assetAnchor.zM,
     ).toFixed(4)),
     bodyPixels: body.bodyPixels,
     acceptedRows: body.acceptedRows,
@@ -693,14 +712,15 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     // antennae influence zoom without dragging the hull away from the shared
     // garage/gallery presentation anchor. The returned half-extents are also
     // the ballistic-card projection receipt.
-    const projection = assetProjection(box, visual.presentationAnchor);
+    const assetAnchor = visual.assetPresentationAnchor || visual.presentationAnchor;
+    const projection = assetProjection(box, assetAnchor);
     const { center, size, extentX, extentZ } = projection;
     const spec = getSpec(id);
     const metadata = tankAssetMetadata(spec);
     const geometryHash = geometryFingerprint(root);
     const presentationAnchor = {
-      xM: Number(visual.presentationAnchor.xM.toFixed(4)),
-      zM: Number(visual.presentationAnchor.zM.toFixed(4)),
+      xM: Number(assetAnchor.xM.toFixed(4)),
+      zM: Number(assetAnchor.zM.toFixed(4)),
     };
     const meta = {
       ...metadata,
@@ -766,8 +786,8 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       angleCam.position.copy(center).addScaledVector(dir, dist);
       angleCam.lookAt(center);
       angleCam.updateMatrixWorld();
-      const angleCanvas = autoCropSquare(
-        capture(angleCam, BASE * 2, BASE * 2), BASE, 0.035, true);
+      const angleCanvas = normalizeAnglePortrait(
+        capture(angleCam, BASE * 2, BASE * 2), BASE);
       files[tankAssetFile(id, 'angle')] = angleCanvas.toDataURL('image/webp', 0.9);
     }
     return { files, meta };

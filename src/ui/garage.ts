@@ -1759,13 +1759,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // Stable pre-rendered 3/4 portrait generated from the final first-party
     // procedural build; no live renderer or model swap is needed here.
     card.innerHTML =
-      `<span class="designation">${s.markings?.designation || ''}</span>` +
+      `<span class="card-era">${vehicleEraLabel(s.era, { short: true })}</span>` +
       (developmentOnly ? `<span class="dev-tag">${s.roster?.tag || 'DEV'}</span>` : '') +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       `<img class="ti" data-cot-thumb="${s.id}" alt="${displayName}" width="256" height="256" ` +
       `loading="lazy" decoding="async" fetchpriority="low">` +
-      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
-      `<div class="era">${vehicleEraLabel(s.era, { short: true })}</div>`;
+      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>`;
     requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
     card.addEventListener('pointerenter', () => signalTankIntent(s.id), { passive: true });
     card.addEventListener('pointerleave', () => clearTankIntent(s.id), { passive: true });

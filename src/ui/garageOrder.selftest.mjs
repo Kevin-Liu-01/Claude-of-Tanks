@@ -11,11 +11,17 @@ const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 
 }`;
 
 assert.match(garageSource,
-  /\.cot-card \.ti\{[^}]*transform:translateY\(-3px\) scale\(1\.14\);[^}]*\}/,
+  /\.cot-card \.ti\{[^}]*width:140px;height:88px;[^}]*--cot-thumb-scale,1\.22[^}]*\}/,
   'every garage vehicle card lifts and enlarges its shared tank portrait');
 assert.match(garageSource,
-  /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*transform:translateY\(-2px\) scale\(1\.12\)[^}]*\}/,
+  /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*width:98px;height:52px;[^}]*--cot-thumb-scale,1\.2[^}]*\}/,
   'compact garage cards preserve the lifted, enlarged portrait treatment');
+assert.match(garageSource,
+  /class="card-era">\$\{vehicleEraLabel\(s\.era, \{ short: true \}\)\}<\/span>/,
+  'garage cards show the canonical vehicle era in their top-right metadata slot');
+assert.doesNotMatch(garageSource,
+  /class="designation">\$\{s\.markings\?\.designation/,
+  'garage cards do not expose technical marking identifiers as UI metadata');
 
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],

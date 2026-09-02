@@ -683,6 +683,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       Math.min(spec.gunElevationDeg ?? 20, deg || 0));
   }
 
+  /** Convert authored chassis-center coordinates to the procedural rig origin. */
+  function actorRootPosition(
+    a: StudioActor,
+    x: number,
+    z: number,
+    yaw: number,
+    out: THREE.Vector3,
+  ): THREE.Vector3 {
+    return a.visual.rootPositionForPresentationPoint(x, z, yaw, out);
+  }
+
   /**
    * Conform an actor to the terrain with the REAL movement support solve:
    * zero-input handbrake steps of updateTank settle the 4-corner attitude
@@ -693,10 +704,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function settleActor(a: StudioActor, steps = SETTLE_STEPS): void {
     const p = a.pose;
     const st = a.state;
-    st.pos.x = p.x;
-    st.pos.z = p.z;
+    const yaw = p.facingDeg * DEG;
+    actorRootPosition(a, p.x, p.z, yaw, _v3);
+    st.pos.x = _v3.x;
+    st.pos.z = _v3.z;
     resetTankVerticalState(st, hfProxy.getHeightAt(p.x, p.z));
-    st.yaw = p.facingDeg * DEG;
+    st.yaw = yaw;
     st.speed = 0;
     st.yawRate = 0;
     a.input.throttle = 0;
@@ -717,9 +730,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // pin the authored pose exactly (updateTank slews at spec rates; slope
     // slide may creep pos) — staging is authoritative, sim only shapes
     // pitch/roll/wheel conform
-    st.pos.x = p.x;
-    st.pos.z = p.z;
-    st.yaw = p.facingDeg * DEG;
+    actorRootPosition(a, p.x, p.z, yaw, _v3);
+    st.pos.x = _v3.x;
+    st.pos.z = _v3.z;
+    st.yaw = yaw;
     st.speed = 0;
     st.yawRate = 0;
     st.turretYaw = p.turretDeg * DEG;
@@ -752,6 +766,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const authoredX = a.pose.x;
     const authoredZ = a.pose.z;
     const authoredYaw = a.pose.facingDeg * DEG;
+    actorRootPosition(a, authoredX, authoredZ, authoredYaw, _v3);
+    const rootX = _v3.x;
+    const rootZ = _v3.z;
 
     st.suspensionAim = true;
     a.input.throttle = 0;
@@ -769,8 +786,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       updateTank(a, hfProxy, SIM_DT);
       // Studio placement remains authoritative while the suspension solver
       // owns vertical seating and attitude.
-      st.pos.x = authoredX;
-      st.pos.z = authoredZ;
+      st.pos.x = rootX;
+      st.pos.z = rootZ;
       st.yaw = authoredYaw;
       st.speed = 0;
       st.yawRate = 0;
@@ -1956,9 +1973,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       a.timelineX = _actorSample.x;
       a.timelineZ = _actorSample.z;
       a.timelineYaw = yaw;
-      st.pos.x = _actorSample.x;
-      st.pos.z = _actorSample.z;
-      resetTankVerticalState(st, hfProxy.getHeightAt(st.pos.x, st.pos.z));
+      actorRootPosition(a, _actorSample.x, _actorSample.z, yaw, _v3);
+      st.pos.x = _v3.x;
+      st.pos.z = _v3.z;
+      resetTankVerticalState(st, hfProxy.getHeightAt(_actorSample.x, _actorSample.z));
       st.yaw = yaw;
       st.turretYaw = _actorSample.turretDeg * DEG;
       st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg) * DEG;
@@ -2089,7 +2107,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     storyboard = upsertActorKey(storyboard, actor, {
       id,
       tMs,
-      pos: cfg.pos || [a.state.pos.x, a.state.pos.z],
+      pos: cfg.pos || [a.timelineX, a.timelineZ],
       facingDeg: cfg.facingDeg != null ? cfg.facingDeg : a.state.yaw / DEG,
       turretDeg: cfg.turretDeg != null ? cfg.turretDeg : a.state.turretYaw / DEG,
       gunDeg: cfg.gunDeg != null ? cfg.gunDeg : a.state.gunPitch / DEG,
@@ -2857,7 +2875,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     capture,
     listActors: () => actors.map((a, i) => ({
       index: i, uid: a.uid, name: a.name, id: a.specId,
-      pos: [r2(a.state.pos.x), r2(a.state.pos.z)],
+      pos: [r2(a.timelineX), r2(a.timelineZ)],
       facingDeg: r2(a.state.yaw / DEG), turretDeg: r2(a.state.turretYaw / DEG),
       gunDeg: r2(a.state.gunPitch / DEG), state: a.stateName,
       smoking: !!a.smoking, burning: !!a.burning,

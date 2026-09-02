@@ -62,7 +62,10 @@ for (const id of ALL_TANK_IDS) {
       `${id}: static presentation exposes a finite running-gear contact line`);
     assert.ok(Number.isFinite(visual.presentationAnchor?.xM)
       && Number.isFinite(visual.presentationAnchor?.zM),
-    `${id}: static presentation exposes a finite rendered-body center`);
+    `${id}: static presentation exposes a finite chassis center`);
+    assert.ok(Number.isFinite(visual.assetPresentationAnchor?.xM)
+      && Number.isFinite(visual.assetPresentationAnchor?.zM),
+    `${id}: static presentation exposes a finite asset-framing center`);
     assert.equal(typeof visual.centerOnPresentationPoint, 'function',
       `${id}: static presentation exposes the canonical horizontal-center operation`);
 
@@ -70,9 +73,9 @@ for (const id of ALL_TANK_IDS) {
     visual.centerOnPresentationPoint(TARGET_X_M, TARGET_Z_M);
     visual.presentationAnchorWorld(anchorWorld);
     assert.ok(Math.abs(anchorWorld.x - TARGET_X_M) <= EPSILON_M,
-      `${id}: rendered-body center misses presentation X by ${Math.abs(anchorWorld.x - TARGET_X_M).toFixed(4)} m`);
+      `${id}: chassis center misses presentation X by ${Math.abs(anchorWorld.x - TARGET_X_M).toFixed(4)} m`);
     assert.ok(Math.abs(anchorWorld.z - TARGET_Z_M) <= EPSILON_M,
-      `${id}: rendered-body center misses presentation Z by ${Math.abs(anchorWorld.z - TARGET_Z_M).toFixed(4)} m`);
+      `${id}: chassis center misses presentation Z by ${Math.abs(anchorWorld.z - TARGET_Z_M).toFixed(4)} m`);
 
     visual.seatOnFloor(SURFACE_Y_M);
     assert.ok(Number.isFinite(visual.presentationFloorYM),
@@ -95,8 +98,12 @@ for (const id of ALL_TANK_IDS) {
       `${id}: battle support exposes a finite rendered contact plane`);
     assert.ok(Number.isFinite(contact?.gearBottomYM),
       `${id}: battle support retains its analytic running-gear floor`);
-    assert.deepEqual(visual.presentationAnchor, TANK_PRESENTATION_ANCHORS[id],
-      `${id}: presentation center diverges from its rendered-pixel receipt`);
+    assert.deepEqual(visual.assetPresentationAnchor, TANK_PRESENTATION_ANCHORS[id],
+      `${id}: asset-framing center diverges from its rendered-pixel receipt`);
+    assert.equal(visual.presentationAnchor.xM, 0,
+      `${id}: live presentation drifts laterally from the chassis centerline`);
+    assert.ok(Math.abs(visual.presentationAnchor.zM - contact.zCenterM) <= EPSILON_M,
+      `${id}: live presentation diverges from the load-bearing track midpoint`);
 
     visual.seatOnFloor(SURFACE_Y_M);
     marginM = visibleBounds(visual.root).min.y - SURFACE_Y_M;

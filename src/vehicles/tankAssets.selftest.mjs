@@ -47,6 +47,15 @@ assert.match(technicalGenerator,
 assert.doesNotMatch(technicalGenerator,
   /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
   'retired metadata reconstruction and redundant hit-zone rendering are absent');
+assert.match(technicalGenerator,
+  /const PORTRAIT_WIDTH_RATIO = 0\.86;[\s\S]*const PORTRAIT_HEIGHT_RATIO = 0\.78;[\s\S]*const PORTRAIT_BASELINE_RATIO = 0\.89;/,
+  'garage portraits share one fleet-wide visible-width and ground-line framing contract');
+assert.match(technicalGenerator,
+  /function normalizeAnglePortrait\(src, outSize\)[\s\S]*opaquePixelBounds\(src\)[\s\S]*PORTRAIT_BASELINE_RATIO[\s\S]*drawImage\(src, dx, dy, drawWidth, drawHeight\)/,
+  'angle portraits normalize finished opaque pixels instead of preserving camera-frame offsets');
+assert.match(technicalGenerator,
+  /const angleCanvas = normalizeAnglePortrait\([\s\S]*capture\(angleCam, BASE \* 2, BASE \* 2\), BASE\);/,
+  'the shipped garage angle asset always passes through the shared portrait normalizer');
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9,
   'release contract includes five views plus separate armor, module, crew, and markings diagrams');

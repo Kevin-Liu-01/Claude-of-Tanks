@@ -100,6 +100,17 @@ const tankThumbs = await readFile(new URL('./tankThumbs.ts', import.meta.url), '
 if (!tankThumbs.includes('await ensureTankBuilder(id)')) {
   throw new Error('top-down mask fallback must join the exact fleet demand-load before createTank');
 }
+for (const contract of [
+  'measurePortraitBounds',
+  'PORTRAIT_WIDTH_RATIO',
+  'PORTRAIT_HEIGHT_RATIO',
+  'PORTRAIT_BASELINE_RATIO',
+  "--cot-thumb-scale",
+]) {
+  if (!tankThumbs.includes(contract)) {
+    throw new Error(`garage portrait framing is missing ${contract}`);
+  }
+}
 
 const iconNames = (await readdir(new URL('../../public/icons/', import.meta.url)))
   .filter((name) => name.endsWith('_angle.webp'))
