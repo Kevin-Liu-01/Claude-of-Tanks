@@ -114,10 +114,106 @@ export interface UKBuilderPort extends UKGunPort, UKMaterialPort {}
 export interface UKBuilderPort {
   readonly recoilG: THREE.Group;
   readonly rng: () => number;
+  muzzleZ: number;
+  readonly gear?: {
+    contactGeom?: {
+      halfLenM: number;
+      zCenterM: number;
+      halfWidM: number;
+      bottomYM: number;
+      endRise?: { dzM: number; frontM: number; rearM: number };
+    };
+    trackHitbox?: Array<{
+      x0: number;
+      x1: number;
+      poly: Array<[number, number]>;
+    }>;
+    roadWheelLayout?: {
+      xc: number;
+      wheelY: number;
+      wheelR: number;
+      wheelZs: number[];
+    };
+  } | null;
   clear(slots: readonly string[] | string, ...rest: string[]): void;
   clearDecals(owner?: 'hull' | 'turret'): void;
   offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  scaleAllBuckets(x?: number, y?: number, z?: number): void;
   scaleBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  scaleDecals(scale: number): void;
+}
+
+function applyCompleteVehicleScale(
+  P: UKBuilderPort,
+  vehicleScale: number,
+  designFamily: string,
+): void {
+  // Bake primitive buckets while they are still unmerged, then transform the
+  // already-instantiated fittings and smart running gear in the same frame.
+  // Keeping the articulation owners at their authored scales means gameplay,
+  // anatomy and metrology all continue to read actual metres rather than
+  // having to infer a late render-parent transform.
+  P.scaleAllBuckets(vehicleScale);
+  P.scaleDecals(vehicleScale);
+  const scaleAssembly = (object: THREE.Object3D): void => {
+    object.position.multiplyScalar(vehicleScale);
+    object.scale.multiplyScalar(vehicleScale);
+  };
+  for (const child of [...P.hullG.children]) scaleAssembly(child);
+  for (const child of [...P.turretG.children]) {
+    if (child !== P.gunG) scaleAssembly(child);
+  }
+  // Muzzle-bore furniture is deliberately a direct gun-rig child rather than
+  // bucket geometry. Scale it without scaling recoilG, whose merged cannon
+  // geometry has already been baked above.
+  for (const child of [...P.gunG.children]) {
+    if (child !== P.recoilG) scaleAssembly(child);
+  }
+  P.turretG.position.multiplyScalar(vehicleScale);
+  P.gunG.position.multiplyScalar(vehicleScale);
+
+  // Contact metadata is consumed outside the render hierarchy, so it must be
+  // transformed into the same vehicle frame explicitly.
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
+      P.gear.contactGeom[key] *= vehicleScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= vehicleScale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= vehicleScale;
+    lane.x1 *= vehicleScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  if (P.gear?.roadWheelLayout) {
+    const layout = P.gear.roadWheelLayout;
+    layout.xc *= vehicleScale;
+    layout.wheelY *= vehicleScale;
+    layout.wheelR *= vehicleScale;
+    layout.wheelZs = layout.wheelZs.map((z) => z * vehicleScale);
+  }
+  P.muzzleZ *= vehicleScale;
+  if (Number.isFinite(P.topY)) P.topY = (P.topY || 0) * vehicleScale;
+
+  const receipt = Object.freeze({
+    designFamily,
+    vehicleScale,
+    bakedBucketGeometry: true,
+    directAssembliesScaled: true,
+    ownerScalesPreserved: true,
+    turretPivotScaled: true,
+    gunPivotScaled: true,
+    muzzleAnchorScaled: true,
+    contactGeometryScaled: true,
+    trackHitboxesScaled: true,
+    roadWheelLayoutScaled: true,
+  });
+  P.hullG.userData.ukCompleteVehicleScaleReceipt = receipt;
+  P.turretG.userData.ukCompleteVehicleScaleReceipt = receipt;
 }
 
 interface UKCenturionPort extends UKMaterialPort {
@@ -2475,28 +2571,45 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   periscope(P, 'turretDetail', 0.30, mk === 5 ? 0.695 : 0.595, 0.74);
   P.add('turretDetail', box(0.2, 0.10, 0.15), -0.30, 0.82, 0.325);
   P.add('turretGlass', box(0.14, 0.05, 0.03), -0.30, 0.84, 0.415);
-  // Roof MG as a KIT fitting (§B3 census; the tankFactory pintleMG helper
-  // censuses zero). §H4 variety: M2 fifty on the Mk.5/2, MAG on the Mk.3.
-  // r7 (tone round, c5 O6a): the shared stow read as a dark pipe at 1x.
-  // The Mk.5's M2 keeps its r6 mask-proven FOOT exactly and re-poses by
-  // ROTATION only: barrel swept left-aft at +0.10 elevation so the dark
-  // line crosses the pale bustle dip roof from close-roof/rear quarters —
-  // the whole run (x -0.10..-0.71) stays under the left-biased 2.7475
-  // crown-ridge front columns (a first raised-foot pose at (0.28, 0.635)
-  // put the receiver +0.10..0.14 over six x 0.13..0.32 front columns —
-  // front_whole 90.7->89.0 — and was withdrawn; gate x2 after).
-  // The Mk.3 MAG keeps its r6-praised stow EXACTLY (verdict: honest pintle
-  // cluster, no order — §H4 tell protected).
-  // r8 (c5 O10a — MG PHYSICS dark-crown polarity): the M2 receiver zone
-  // measured 44.2 vs crown 44.4 at close-roof — ZERO contrast; the pale
-  // 'two-tone' top caps vanish against the pale deck. tone 'dark' is a
-  // material-slot-only switch (geometry byte-identical — the r6 mask-proven
-  // foot and r7 rotation pose are untouched). The c3 MAG keeps two-tone
-  // (verdict-praised, §H4 tell).
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: mk === 5 ? 'm2' : 'mag', tone: mk === 5 ? 'dark' : 'two-tone', elev: mk === 5 ? 0.05 : 0, scale: 0.8, seed: mk === 5 ? 5 : 9 });
+  // A visible, fully supported loader's MAG replaces the former low stowed
+  // run on the Mk.5/2. Its foot overlaps the hatch ring, its short armor
+  // shield rises clear of the crown, and the complete fitting remains
+  // equipment rather than enlarging the turret armor envelope. The Mk.3's
+  // already-certified low stow is intentionally unchanged.
+  if (mk === 5) {
+    P.addEquipment('turretDark', cylY(0.16, 0.18, 0.038, 18), 0.42, 0.82, -0.35);
+    P.addEquipment('turretDetail', torus(0.155, 0.012, 20), 0.42, 0.838, -0.35);
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats,
+      cls: 'mag58',
+      tone: 'two-tone',
+      elev: 0.08,
+      scale: 1.02,
+      seed: 5,
+      ammo: true,
+      shield: 'low',
+      barrelBridge: true,
+    });
+    mg.name = 'centurion5_loader_roof_machine_gun';
+    mg.position.set(0.42, 0.838, -0.35);
+    mg.rotation.y = 0.08;
+    mg.userData.stationVariant = 'centurion-mk5-loader-mag58-r1';
+    mg.userData.forwardFacing = true;
+    P.turretG.add(mg);
+    P.turretG.userData.centurionRoofMachineGunReceipt = Object.freeze({
+      revision: 'centurion-mk5-visible-loader-mag-r1',
+      weaponClass: 'mag58',
+      supportBucket: 'turretEquipment',
+      supportOverlapM: 0.0035,
+      forwardFacing: true,
+      armorEnvelopeExcluded: true,
+    });
+  } else {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, scale: 0.8, seed: 9,
+    });
     mg.position.set(-0.10, 0.53, -0.62);
-    mg.rotation.y = Math.PI + (mk === 5 ? 0.95 : 0.35);
+    mg.rotation.y = Math.PI + 0.35;
     P.turretG.add(mg);
   }
   liftEye(P, 'turretDetail', -0.80, 0.36, 1.05, 0.5);
@@ -4100,11 +4213,39 @@ function vickersMk1Build(P: UKBuilderPort): void {
   // loader hatch ring, left crown
   P.add('turretDetail', cylY(0.19, 0.21, 0.045, 14), -0.42, 1.075, -0.35);
   P.add('turretDark', box(0.30, 0.014, 0.03), -0.42, 1.105, -0.35);
-  // roof MG on a LOW stowed pintle (decoration law; centurion precedent:
-  // base sunk so tube+receiver stay under the 2.607 crown line — an upright
-  // pintle's barrel tip minted 2.70-2.75 columns over the ref's 2.49 fall).
-  // The dark ammo-box run beside the cupola carries the 2.695 height anchor.
-  pintleMG(P, 0.20, 0.72, -0.20, false);
+  // Loader's MAG: the former generic low stow was buried inside the crown and
+  // disappeared from every standard presentation angle. Seat the authored
+  // fitting on a shallow equipment-owned bearing over the loader hatch so
+  // the receiver, feed, cradle and low shield read as one attached station.
+  P.addEquipment('turretDark', cylY(0.16, 0.18, 0.038, 18), -0.42, 1.10, -0.35);
+  P.addEquipment('turretDetail', torus(0.155, 0.012, 20), -0.42, 1.118, -0.35);
+  {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats,
+      cls: 'mag58',
+      tone: 'two-tone',
+      elev: 0.08,
+      scale: 1.0,
+      seed: 23,
+      ammo: true,
+      shield: 'low',
+      barrelBridge: true,
+    });
+    mg.name = 'vickers_mk1_loader_roof_machine_gun';
+    mg.position.set(-0.42, 1.118, -0.35);
+    mg.rotation.y = -0.06;
+    mg.userData.stationVariant = 'vickers-mk1-loader-mag58-r1';
+    mg.userData.forwardFacing = true;
+    P.turretG.add(mg);
+    P.turretG.userData.vickersRoofMachineGunReceipt = Object.freeze({
+      revision: 'vickers-mk1-visible-loader-mag-r1',
+      weaponClass: 'mag58',
+      supportBucket: 'turretEquipment',
+      supportOverlapM: 0.0035,
+      forwardFacing: true,
+      armorEnvelopeExcluded: true,
+    });
+  }
   P.add('turretDark', box(0.09, 0.08, 0.34), 0.28, 1.115, 0.08);
   liftEye(P, 'turretDetail', -0.85, 0.80, 0.45, 0.5);
   liftEye(P, 'turretDetail', 0.85, 0.78, 0.45, -0.5);
@@ -4676,7 +4817,12 @@ export const UK_PROFILES = {
   // BASE-21 scaffold (2026-08-07): first real Mk 10 build — photo-class, no
   // oracle (FALSE-0 law). Overrides the modern3 generic via PROFILED_BUILDERS.
   chieftain_mk10: { build: chieftainMk10OwnerRebuild2026 },
-  vickers_mk1: { build: vickersMk1Build },
+  vickers_mk1: {
+    build: (P: UKBuilderPort) => {
+      vickersMk1Build(P);
+      applyCompleteVehicleScale(P, 0.95, 'cot-vickers-mk1-compact-r1');
+    },
+  },
   centurion3: { build: (P: UKBuilderPort) => centurionBuild(P, 3) },
   centurion5: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
   comet: {
@@ -4707,8 +4853,18 @@ export const UK_PROFILES = {
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows
   // carry the cap until the parked §E warp lands — packet round section).
-  fv510: { build: fv510PhotoBuild },
-  fv510_milan: { build: fv510MilanBuild },
+  fv510: {
+    build: (P: UKBuilderPort) => {
+      fv510PhotoBuild(P);
+      applyCompleteVehicleScale(P, 1.10, 'cot-warrior-enlarged-r1');
+    },
+  },
+  fv510_milan: {
+    build: (P: UKBuilderPort) => {
+      fv510MilanBuild(P);
+      applyCompleteVehicleScale(P, 1.10, 'cot-warrior-milan-enlarged-r1');
+    },
+  },
 } satisfies VehicleProfileRecord;
 
 // §5.75 family-module split: profiles/challenger.ts (challenger1Build moved

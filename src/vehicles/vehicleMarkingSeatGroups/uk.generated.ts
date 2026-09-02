@@ -154,9 +154,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          1.503,
-          1.2409524,
-          -0.5793
+          1.6527,
+          1.3650477,
+          -0.6372299
         ],
         "quaternion": [
           0,
@@ -174,11 +174,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.22,
+        "size": 0.242,
         "pos": [
-          0.812823,
-          0.2405097,
-          -0.0986994
+          0.8935218,
+          0.2645097,
+          -0.1086994
         ],
         "quaternion": [
           -0.0272535,
@@ -191,7 +191,29 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0013986
+        "maximumSurfaceErrorM": 0.001539
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.242,
+        "pos": [
+          -0.8875693,
+          0.2643657,
+          -0.1087202
+        ],
+        "quaternion": [
+          -0.0195706,
+          -0.6268709,
+          -0.0243044,
+          0.778498
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0021707
       }
     ]
   },
@@ -203,9 +225,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "hull",
         "size": 0.22,
         "pos": [
-          -1.503,
-          1.21856,
-          -0.6406
+          -1.6527,
+          1.340416,
+          -0.7046599
         ],
         "quaternion": [
           0,
@@ -223,11 +245,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.22,
+        "size": 0.242,
         "pos": [
-          0.812823,
-          0.2405097,
-          -0.0986994
+          0.8935218,
+          0.2645097,
+          -0.1086994
         ],
         "quaternion": [
           -0.0272535,
@@ -240,20 +262,42 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0645744
+        "maximumSurfaceErrorM": 0.0710308
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.2,
+        "size": 0.242,
         "pos": [
-          0.902919,
-          0.3,
-          -0.4807183
+          -0.8875693,
+          0.2643657,
+          -0.1087202
+        ],
+        "quaternion": [
+          -0.0195706,
+          -0.6268709,
+          -0.0243044,
+          0.778498
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0782471
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          0.9926152,
+          0.33,
+          -0.5287183
         ],
         "quaternion": [
           0,
-          0.7482353,
+          0.7482354,
           0,
           0.6634334
         ],
@@ -262,20 +306,20 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0324753
+        "maximumSurfaceErrorM": 0.0357229
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.2,
+        "size": 0.22,
         "pos": [
-          -0.902919,
-          0.3,
-          -0.4807183
+          -0.9926152,
+          0.33,
+          -0.5287183
         ],
         "quaternion": [
           0,
-          -0.7482353,
+          -0.7482354,
           0,
           0.6634334
         ],
@@ -284,7 +328,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0324753
+        "maximumSurfaceErrorM": 0.0357229
       }
     ]
   },
@@ -294,11 +338,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       {
         "kind": "designation",
         "parent": "hull",
-        "size": 0.3,
+        "size": 0.285,
         "pos": [
-          1.5669996,
-          1.2806091,
-          -0.7
+          1.488948,
+          1.2166091,
+          -0.665
         ],
         "quaternion": [
           -0.0359369,
@@ -311,16 +355,16 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0004484
+        "maximumSurfaceErrorM": 0.000426
       },
       {
         "kind": "designation",
         "parent": "hull",
-        "size": 0.3,
+        "size": 0.285,
         "pos": [
-          -1.5669996,
-          1.2806091,
-          -0.7
+          -1.488948,
+          1.2166091,
+          -0.665
         ],
         "quaternion": [
           -0.0359369,
@@ -333,16 +377,16 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0004484
+        "maximumSurfaceErrorM": 0.000426
       },
       {
         "kind": "insignia",
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          1.5695629,
-          1.2554891,
-          0.3945
+          1.4913831,
+          1.192745,
+          0.3747749
         ],
         "quaternion": [
           -0.0359369,

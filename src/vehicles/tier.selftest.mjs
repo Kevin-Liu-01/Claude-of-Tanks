@@ -17,6 +17,8 @@ for (const id of SAVED_TANK_IDS) {
 assert.equal(tierNumeral('m1a2_sepv3'), 'X', 'SEPv3 no longer renders a blank tier');
 assert.equal(tankTier('kv2'), 7, 'KV-2 is balanced and presented as a Tier VII vehicle');
 assert.equal(tankTier('t80bv'), 9, 'T-80BV UI and matchmaking agree at tier IX');
+assert.equal(tankTier('chieftain_mk10'), 8,
+  'Chieftain Mk 10 UI and matchmaking agree at tier VIII');
 assert.equal(tierNumeral('k2b'), 'X', 'K2B is presented and matched as a Tier X vehicle');
 assert.deepEqual(
   ['type90', 'type90a', 'type10', 'type10b'].map(tankTier),
