@@ -30,6 +30,10 @@ assert.doesNotMatch(source, /from ['"]\.\.\/modern3\.ts['"]/,
   'new Puma S1 profile has no dependency on the old canonical builder pack');
 assert.doesNotMatch(source, /mantlet/i,
   'Puma S1 keeps its base gun cradle without introducing a separate mantlet');
+assert.doesNotMatch(source, /height:\s*\[/,
+  'Puma S1 never builds a non-planar roof or turret cap from per-vertex heights');
+assert.doesNotMatch(source, /inset:\s*\[/,
+  'Puma S1 armor rings shrink monotonically as complete planes');
 
 const tank = createTank(spec.id, null, {
   proceduralOnly: true,
@@ -46,8 +50,8 @@ try {
   assert.ok(hull && turret && gun, 'Puma S1 retains the canonical articulated rig');
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,
-    hullConstruction: 'progressive-slope-puma-monocoque-v4',
-    turretConstruction: 'faceted-rct30-rising-crown-v3',
+    hullConstruction: 'planar-roof-puma-glacis-monocoque-v5',
+    turretConstruction: 'planar-faceted-rct30-citadel-v4',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
@@ -60,6 +64,11 @@ try {
     mellsLaunchTubes: 2,
     panoramicOpticStages: 2,
     crewLocation: 'protected-hull-cell',
+    planarRoofCell: true,
+    upperGlacisConstruction: 'separate-planar-wedge',
+    monotonicArmorInset: true,
+    concaveSurfaceCount: 0,
+    fenderBridge: 'continuous-hull-skirt-seat',
     rearTroopRamp: true,
   });
   assert.deepEqual(turret.userData.pumaS1TurretReceipt, {
@@ -69,6 +78,9 @@ try {
     stabilizedPanoramicSight: true,
     allAroundCameraCount: 4,
     remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+    planarRoofCrown: true,
+    monotonicArmorInset: true,
+    concaveSurfaceCount: 0,
   });
   const roofOptics = tank.root.getObjectByName('pumaS1K2bStyleRoofOptics');
   assert.equal(roofOptics?.parent, turret,

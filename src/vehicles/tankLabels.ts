@@ -177,6 +177,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
   },
+  vt4a1: {
+    displayName: 'VT-4A1', shortName: 'VT-4A1',
+    searchAliases: ['VT4A1', 'VT-4 A1', 'Chinese export main battle tank'],
+  },
   ztz85_iii: {
     displayName: 'ZTZ-85-III', shortName: 'ZTZ-85-III',
     searchAliases: ['Type 85-III', 'Type 85 III'],

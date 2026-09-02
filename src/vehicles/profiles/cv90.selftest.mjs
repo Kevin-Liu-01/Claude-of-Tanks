@@ -12,6 +12,10 @@ assert.doesNotMatch(source, /Downloads|\.glb|\.obj|\.zip/,
   'comparison sources never enter the playable runtime path');
 assert.doesNotMatch(source, /buildCv90Family|Cv90Config/,
   'the two requested vehicles are not variants of a configurable family builder');
+assert.doesNotMatch(source, /height:\s*\[/,
+  'CV90 hull and turret caps never use non-planar per-vertex height rings');
+assert.doesNotMatch(source, /inset:\s*\[/,
+  'CV90 hull and turret armor rings shrink monotonically as complete planes');
 for (const functionName of [
   'buildCv90Hull', 'buildCv90RunningGear', 'buildCv90Turret',
   'buildCv90MkivHull', 'buildCv90MkivRunningGear', 'buildCv90MkivTurret',
@@ -27,13 +31,13 @@ const expected = Object.freeze({
     hullReceiptKey: 'cv90IndependentHullReceipt',
     turretReceiptKey: 'cv90IndependentTurretReceipt',
     designLineage: 'independent-tier9-cv9040-v2',
-    hullConstruction: 'cv9040-progressive-glacis-monocoque-v3',
-    turretConstruction: 'cv9040-sloped-crew-citadel-v3',
+    hullConstruction: 'cv9040-planar-roof-glacis-monocoque-v4',
+    turretConstruction: 'cv9040-planar-faceted-crew-citadel-v4',
     gunAssembly: 'hollow-scaffolded-40mm-slash-port-cradle',
     gunArchitecture: 'hollow-trapezoid-40mm-slash-port-cradle-v2',
     rwsName: 'cv90K2bStyleRws', rwsScale: 0.86,
     turretPivotZ: -0.48,
-    trackWidth: 0.50, sideStations: 7, guided: false,
+    trackWidth: 0.50, sideStations: 9, rearExtension: 0.15, guided: false,
   }),
   cv90_mkiv: Object.freeze({
     name: 'CV90 Mk IV', tier: 10, caliber: 50, weight: 40,
@@ -41,13 +45,13 @@ const expected = Object.freeze({
     hullReceiptKey: 'cv90MkivIndependentHullReceipt',
     turretReceiptKey: 'cv90MkivIndependentTurretReceipt',
     designLineage: 'independent-tier10-cv90-mkiv-v2',
-    hullConstruction: 'cv90-mkiv-progressive-glacis-side-cell-v3',
-    turretConstruction: 'cv90-mkiv-sloped-unmanned-citadel-v3',
+    hullConstruction: 'cv90-mkiv-planar-roof-glacis-side-cell-v4',
+    turretConstruction: 'cv90-mkiv-planar-faceted-unmanned-citadel-v4',
     gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
     gunArchitecture: 'faceted-closed-50mm-trunnion-shroud-v2',
     rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.98,
     turretPivotZ: -0.44,
-    trackWidth: 0.57, sideStations: 8, guided: true,
+    trackWidth: 0.57, sideStations: 9, rearExtension: 0.08, guided: true,
   }),
 });
 
@@ -90,10 +94,21 @@ for (const [id, target] of Object.entries(expected)) {
     assert.equal(hullReceipt.canonicalTrackCourses, 1);
     assert.equal(hullReceipt.duplicateTrackMeshes, 0);
     assert.equal(hullReceipt.sideArmorStationsPerSide, target.sideStations);
+    assert.equal(hullReceipt.planarRoofCell, true);
+    assert.equal(hullReceipt.upperGlacisConstruction, 'separate-planar-wedge');
+    assert.equal(hullReceipt.monotonicArmorInset, true);
+    assert.equal(hullReceipt.concaveSurfaceCount, 0);
+    assert.equal(hullReceipt.fenderBridge, 'continuous-hull-skirt-seat');
+    assert.equal(hullReceipt.tracksExtendedForRearHull, false);
+    assert.equal(hullReceipt.rearHullExtensionM, target.rearExtension);
     assert.equal(hullReceipt.rearTroopRamp, true);
     assert.equal(turretReceipt.sharedStructuralBuilder, false);
     assert.equal(turretReceipt.turretConstruction, target.turretConstruction);
     assert.equal(turretReceipt.gunAssembly, target.gunAssembly);
+    assert.equal(turretReceipt.planarRoofCrown, true);
+    assert.equal(turretReceipt.monotonicArmorInset, true);
+    assert.equal(turretReceipt.concaveSurfaceCount, 0);
+    assert.equal(turretReceipt.integratedRearBustle, true);
     assert.equal(turretReceipt.remoteMachineGunTower,
       'k2b-style-complete-open-yoke-rws');
     assert.equal(gun.userData.cv90GunAssemblyReceipt.architecture, target.gunArchitecture);

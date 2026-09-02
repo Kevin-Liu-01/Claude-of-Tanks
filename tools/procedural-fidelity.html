@@ -117,7 +117,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // armour in one mesh.  It cannot supply an honest independent hull/turret
   // mask without rewriting source vertices, so component scoring is disabled
   // while whole-view, gun, track and yaw evidence remain mandatory.
-  type99a: { source:'glb', glb:{
+  type99a: { source:'glb', qualityBar:'exemplar', glb:{
     path:'/models/community-candidates/type_99a2_armored_warfare.glb',
     turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true,
     componentMasks:false,
@@ -127,6 +127,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
     // source part.  Cannon length/root remain mandatory in all whole views.
     gunComponentMasks:false,
     turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
+  } },
+  // Owner-supplied VT-4A1 War Thunder print (2026-09-01), quarantined as a
+  // local authoring oracle only.  Its Object_* export does not preserve an
+  // honest articulated hull/turret split, so score the complete nine-view
+  // silhouette and lower running-gear profile without rewriting topology.
+  vt4a1: { source:'glb', qualityBar:'exemplar', glb:{
+    path:'/models/community-candidates/vt4a1_owner.glb',
+    fixedMount:true, componentMasks:false,
   } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
   // §5.251: rows repaired after the owner's 952561ea GLB retirement (the
@@ -1222,7 +1230,11 @@ const scores={overall:nullableRounded(overallScore),hull:nullableRounded(hullSco
 // known melted turret. The invalid whole overlays remain in rawWholeAngles.
 const scoredAngleRows=wholeViewMasksAvailable ? angleRows : hullRows;
 const minView=Math.min(...Object.values(scoredAngleRows).map((row)=>row.score));
-const gatePassed=totalScore>=90 && minView>=90;
+// New or ground-up rebuilt vehicles can opt into the exemplar bar used for
+// AbramsX / Challenger 2 / Leclerc-class work.  It is intentionally stricter
+// than the legacy fleet floor and cannot be averaged away by one strong view.
+const requiredFidelity=source?.qualityBar==='exemplar'?92:90;
+const gatePassed=totalScore>=requiredFidelity && minView>=requiredFidelity;
 document.querySelector('#score').textContent=totalScore.toFixed(1);
 for (const [name,value] of Object.entries(scores)) {
   const div=document.createElement('div'); div.className='metric';
@@ -1233,7 +1245,7 @@ for (const [name,value] of Object.entries(scores)) {
 window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
   fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
-  score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),gatePassed,
+  score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),requiredMinimum:requiredFidelity,qualityBar:source?.qualityBar||'fleet',gatePassed,
   angles:Object.fromEntries(Object.entries(scoredAngleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   rawWholeAngles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   // Retain the raw silhouette receipts as well as the compact score table.
@@ -1951,7 +1963,8 @@ if (params.get('geo')) {
   const geoMin = Math.min(...Object.values(components).map((v) => +v));
   window.__GEO_CURVES = curves;                                              // italy §5.248: raw trace export for builder-lane column decode (score-neutral)
   window.__GEO_REPORT = {
-    id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
+    id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
+    qualityBar: source?.qualityBar || 'fleet', gatePassed: geoMin >= requiredFidelity,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
     wholeShapeMetric: geometryComponentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),

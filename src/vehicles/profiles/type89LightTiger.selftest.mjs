@@ -30,6 +30,10 @@ assert.doesNotMatch(source, /from ['"]\.\.\/modern3\.ts['"]/,
   'new Light Tiger profile has no dependency on the old canonical builder pack');
 assert.doesNotMatch(source, /mantlet/i,
   'Light Tiger keeps its base gun cradle without introducing a separate mantlet');
+assert.doesNotMatch(source, /height:\s*\[/,
+  'Light Tiger never builds a non-planar roof or turret cap from per-vertex heights');
+assert.doesNotMatch(source, /inset:\s*\[/,
+  'Light Tiger armor rings shrink monotonically as complete planes');
 
 const tank = createTank(spec.id, null, {
   proceduralOnly: true,
@@ -47,8 +51,8 @@ try {
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
-    hullConstruction: 'progressive-slope-light-tiger-shell-v4',
-    turretConstruction: 'faceted-kde35-rising-crown-v3',
+    hullConstruction: 'planar-roof-light-tiger-glacis-shell-v5',
+    turretConstruction: 'planar-faceted-kde35-citadel-v4',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
@@ -60,6 +64,11 @@ try {
     baseGunAssembly: 'compact-slash-port-kde35-cradle-v7',
     jyuMatLaunchTubes: 4,
     panoramicOpticStages: 2,
+    planarRoofCell: true,
+    upperGlacisConstruction: 'separate-planar-wedge',
+    monotonicArmorInset: true,
+    concaveSurfaceCount: 0,
+    fenderBridge: 'continuous-hull-skirt-seat',
     rearTroopRamp: true,
   });
   assert.deepEqual(turret.userData.type89LightTigerTurretReceipt, {
@@ -71,6 +80,9 @@ try {
     allAroundCameraCount: 4,
     hardKillAps: true,
     remoteSecondaryWeapon: '12.7mm Light Tiger compact RWS',
+    planarRoofCrown: true,
+    monotonicArmorInset: true,
+    concaveSurfaceCount: 0,
   });
   const roofOptics = tank.root.getObjectByName('type89K2bStyleRoofOptics');
   assert.equal(roofOptics?.parent, turret,

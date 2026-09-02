@@ -4,7 +4,8 @@
 // from BOTH models (same pipeline — nothing self-reported) and scores:
 // hull/whole/turret curve deviation, 14-station dimensional error, published
 // spec-dimension anchor, and articulation floater detection. GATE: every
-// component >= 90; the MINIMUM is the headline; nothing averages away.
+// component meets its registered floor (90 fleet / 92 exemplar); the MINIMUM
+// is the headline and nothing averages away.
 //
 // Writes docs/geometry-gate/<id>.json (full deltas — the builder's work
 // order) and maintains docs/geometry-gate/ledger.json (tool-written only).
@@ -83,7 +84,7 @@ try {
       fs.writeFileSync(path.join(OUT, `${id}.json`), `${JSON.stringify(report, null, 1)}\n`);
       rows.push(report);
       const c = report.components;
-      console.log(`[geo ${String(rows.length).padStart(2)}] ${id.padEnd(20)} min ${String(report.geoMin).padStart(5)} ` +
+      console.log(`[geo ${String(rows.length).padStart(2)}] ${id.padEnd(20)} min ${String(report.geoMin).padStart(5)}/${report.requiredMinimum ?? 90} ` +
         `| hull ${c.hullCurves} whole ${c.wholeCurves} turret ${c.turretCurves} ` +
         `stations ${c.stations} dims ${c.dims} floaters ${c.floaters} ${report.gatePassed ? 'PASS' : ''}`);
     } catch (error) {
@@ -104,7 +105,10 @@ if (requested && fs.existsSync(ledgerPath)) {
     for (const r of JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).rows || []) byId.set(r.id, r);
   } catch { /* corrupted ledger rebuilds from this run */ }
 }
-for (const r of rows) byId.set(r.id, { id: r.id, geoMin: r.geoMin, gatePassed: r.gatePassed, components: r.components });
+for (const r of rows) byId.set(r.id, {
+  id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
+  qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
+});
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
@@ -112,7 +116,7 @@ const passed = all.filter((r) => r.gatePassed).length;
 if (rows.length) {
   fs.writeFileSync(ledgerPath, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
-    gate: 'every component >= 90; min is the headline',
+    gate: 'every component >= its registered floor (90 fleet / 92 exemplar); min is the headline',
     passed, total: all.length, rows: all,
   }, null, 1)}\n`);
 }

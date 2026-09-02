@@ -25,6 +25,7 @@ import { finalizeCombatAnatomy } from './combatAnatomy.ts';
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
 import './modern2Specs.generated.ts';
+import './chineseFrontlineSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
@@ -99,10 +100,14 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
-  modern2: () => Promise.all([import('./modern2.ts'), import('./profiles/china.ts')])
-    .then(([canonical, profiles]) => {
+  modern2: () => Promise.all([
+    import('./modern2.ts'),
+    import('./profiles/china.ts'),
+    import('./profiles/chineseFrontline.ts'),
+  ])
+    .then(([canonical, profiles, frontline]) => {
       registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
-      registerProfiles(profiles.CHINA_PROFILES);
+      registerProfiles({ ...profiles.CHINA_PROFILES, ...frontline.CHINESE_FRONTLINE_PROFILES });
     }),
   franceCore: () => import('./france.ts')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),

@@ -185,6 +185,7 @@ console.log('-------------------|---------|--------------------------------|----
 let fails = 0;
 for (const id of ids) {
   let row = 'procedural-only', min = 'N/A', age = '—';
+  let gateRequired = 90;
   let gateApplicable = false;
   try {
     const p = `docs/geometry-gate/${id}.json`;
@@ -194,6 +195,7 @@ for (const id of ids) {
     const c = j.components;
     if (gateApplicable) {
       min = j.geoMin;
+      gateRequired = Number.isFinite(j.requiredMinimum) ? j.requiredMinimum : 90;
       row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
       age = `${Math.round((Date.now() - packetMtime) / 60000)}m`;
     }
@@ -202,7 +204,7 @@ for (const id of ids) {
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND
     && Number(cl.sweepBand) <= CLIP_BAND && Number(cl.sweepShoe) <= CLIP_BAND;
-  const gateOk = !gateApplicable || (typeof min === 'number' && min >= 90);
+  const gateOk = !gateApplicable || (typeof min === 'number' && min >= gateRequired);
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;
@@ -229,12 +231,12 @@ for (const id of ids) {
   }
   if (!gateOk || (cl && !clipOk) || !contigOk || !decorOk) fails++;
   console.log(
-    `${id.padEnd(19)}| ${String(min).padStart(7)} | ${String(row).padEnd(31)}| ${String(age).padStart(4)} | ` +
+    `${id.padEnd(19)}| ${String(min).padStart(4)}/${String(gateRequired).padEnd(2)} | ${String(row).padEnd(31)}| ${String(age).padStart(4)} | ` +
     `${clipStr.padStart(14)}${cl ? (clipOk ? ' ✓' : ' ✗') : '  '}| ${contigStr.padStart(6)} | ${decorStr}`);
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(gate>=90 where a local oracle exists + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
+    `(registered gate floor 90 fleet / 92 exemplar where a local oracle exists + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +

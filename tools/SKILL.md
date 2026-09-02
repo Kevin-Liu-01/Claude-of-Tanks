@@ -80,6 +80,12 @@ settled sample.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.
+Reference-backed new tanks and ground-up rebuilds must register the exemplar
+quality bar in `procedural-fidelity.html`: every whole silhouette view and the
+aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that
+floor quality-bar-aware through geometry packets and `tank-standard-check`;
+never replace it with a favorable average or waive it because component masks
+are unavailable on a fused source mesh.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

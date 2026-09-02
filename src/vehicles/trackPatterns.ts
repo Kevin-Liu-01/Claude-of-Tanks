@@ -132,7 +132,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],
   [/(?:stb1|type74|type90|type10|type89)(?:$|_)/, 'japanese-modular'],
   [/(?:merkava)/, 'merkava-heavy'],
-  [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|t14|ua_t)/, 'soviet-single-pin'],
+  [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|vt4|t14|ua_t)/, 'soviet-single-pin'],
 ]);
 
 /** Resolve one stable shoe construction for a vehicle's complete track train. */

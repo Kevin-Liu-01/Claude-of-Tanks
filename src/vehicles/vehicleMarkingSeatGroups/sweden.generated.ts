@@ -230,37 +230,37 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.0092891,
-          0.4797824,
-          -0.7600808
+          -0.9551659,
+          0.4816753,
+          -0.7604944
         ],
         "quaternion": [
-          0.0129135,
-          -0.7117336,
-          0.0127408,
-          0.7022153
+          -0.104105,
+          -0.7282575,
+          -0.0958533,
+          0.6705335
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0051831
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -0.9831328,
-          0.5788006,
-          -0.1699306
+          -0.8998534,
+          0.5632015,
+          -0.0190656
         ],
         "quaternion": [
-          -0.1690384,
-          -0.682382,
-          -0.1710042,
-          0.6903176
+          -0.1327759,
+          -0.6984571,
+          -0.1313308,
+          0.6908549
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "cv90",
@@ -328,8 +328,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.3812857,
-          0.7497795,
+          -1.38612,
+          0.6894795,
           -0.2504
         ],
         "quaternion": [
@@ -350,8 +350,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.3812857,
-          0.7497795,
+          -1.38612,
+          0.6894795,
           0.1544
         ],
         "quaternion": [

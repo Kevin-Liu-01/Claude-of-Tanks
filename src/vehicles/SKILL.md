@@ -114,6 +114,15 @@ normal anatomy/release sequence below.
 <!-- agent-docs:fill:tasks -->
 Read current program state and the relevant family profile, inspect standard
 side/top views, run focused geometry gates, then fleet/family/assets checks.
+For a new tank or a ground-up rebuild backed by an owner-supplied reference,
+use the exemplar quality bar: at least 92/100 overall and 92/100 in every
+registered silhouette view, plus source/spec dimensions within three percent.
+Inspect front, quarter, side, rear, and top relationships for the primary hull,
+turret, gun, fenders, skirts, and running gear; an attachment census or a score
+in the 80s is not evidence of high fidelity. Treat AbramsX, Challenger 2, and
+Leclerc as the minimum visual-complexity and geometric-coherence exemplars.
+Fused reference topology may disable dishonest component masks, but it never
+waives whole-silhouette, track-profile, attachment, or multi-view inspection.
 For every added or changed playable tank, run this required sequence:
 
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and

@@ -132,15 +132,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.302853,
-          0.688,
-          -0.424775
+          -1.5951836,
+          0.3798932,
+          -1.0630086
         ],
         "quaternion": [
-          0,
-          -0.705632,
-          0,
-          0.7085785
+          -0.0082428,
+          -0.6896775,
+          -0.0086533,
+          0.724018
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type99a",
@@ -154,15 +154,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.3481984,
-          0.6881721,
-          0.023985
+          -1.4927948,
+          0.3799252,
+          0.2169391
         ],
         "quaternion": [
-          -0.0101551,
-          -0.7079153,
-          -0.0101298,
-          0.7061517
+          -0.0081875,
+          -0.4527758,
+          -0.0161199,
+          0.8914411
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type99a",
@@ -241,6 +241,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
         "maximumSurfaceErrorM": 0.0289277
+      }
+    ]
+  },
+  "vt4a1": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.7362059,
+          0.5336448,
+          -1.5785799
+        ],
+        "quaternion": [
+          -0.0083791,
+          -0.6939682,
+          -0.0086923,
+          0.7199044
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "vt4a1",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.6840848,
+          0.7226914,
+          -0.6347335
+        ],
+        "quaternion": [
+          -0.198089,
+          -0.6622364,
+          -0.2070899,
+          0.6923276
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "vt4a1",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.005926
       }
     ]
   },

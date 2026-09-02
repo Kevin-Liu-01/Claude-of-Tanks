@@ -18,6 +18,7 @@ import { MISC_PROFILES } from './profiles/misc.ts';
 import { ITALY_PROFILES } from './profiles/italy.ts';
 import { UKRAINE_PROFILES } from './profiles/ukraine.ts';
 import { CHINA_PROFILES } from './profiles/china.ts';
+import { CHINESE_FRONTLINE_PROFILES } from './profiles/chineseFrontline.ts';
 import { SWEDEN_PROFILES } from './profiles/sweden.ts';
 import { CV90_PROFILES } from './profiles/cv90.ts';
 import { POLAND_PROFILES } from './profiles/poland.ts';
@@ -76,6 +77,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...ITALY_PROFILES,
   ...UKRAINE_PROFILES,
   ...CHINA_PROFILES,
+  ...CHINESE_FRONTLINE_PROFILES,
   ...SWEDEN_PROFILES,
   ...CV90_PROFILES,
   ...POLAND_PROFILES,
