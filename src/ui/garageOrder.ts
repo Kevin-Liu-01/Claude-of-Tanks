@@ -28,25 +28,66 @@ export interface HorizontalRailState {
   readonly hasRight: boolean;
 }
 
-// Owner-directed showcase order at the far-right edge of the U.S. fleet.
-// These stay after the normal country/tier/name ordering so entering the U.S.
-// nation lands on its intended top-tank run rather than an alphabetical mix.
-export const GARAGE_FINAL_VEHICLE_IDS = Object.freeze([
-  'm3a3_bradley',
-  'm551a1_tts',
-  'm1a2_tusk',
-  'm1a3',
-]);
+interface GarageSelectionStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
 
-const GARAGE_FINAL_VEHICLE_RANK = new Map(
-  GARAGE_FINAL_VEHICLE_IDS.map((id, rank) => [id, rank]),
+export interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
+  preferredSpec(countryId: string): Spec | undefined;
+  remember(specId: string): boolean;
+}
+
+// Owner-directed leading runs at the left edge of each national fleet. These
+// are the previous right-edge showcases in reverse, matching the Garage's new
+// high-to-low presentation while preserving the intended hero progression.
+export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
+  USA: Object.freeze([
+    'm1a3',
+    'm1a2_tusk',
+    'm551a1_tts',
+    'm3a3_bradley',
+  ]),
+  Japan: Object.freeze([
+    'type10b',
+    'type10',
+    'type89_light_tiger',
+  ]),
+  Sweden: Object.freeze([
+    'strv122',
+    'strv103',
+    'cv90_mkiv',
+  ]),
+  Germany: Object.freeze([
+    'kf51b',
+    'kf51',
+    'leo2a7v',
+    'leo2a5_a5nl',
+    'leo2a5',
+    'leo2a6m',
+    'mbt70',
+    'leo2_revolution',
+    'spz_puma_s1',
+  ]),
+});
+
+/** Flat view for checks and consumers that only need the complete set. */
+export const GARAGE_LEADING_VEHICLE_IDS = Object.freeze(
+  Object.values(GARAGE_LEADING_VEHICLE_IDS_BY_NATION).flat(),
+);
+
+const GARAGE_LEADING_VEHICLE_RANK_BY_NATION = new Map(
+  Object.entries(GARAGE_LEADING_VEHICLE_IDS_BY_NATION).map(([nation, ids]) => [
+    nation,
+    new Map(ids.map((id, rank) => [id, rank])),
+  ]),
 );
 
 /**
- * Order cards inside one catalog group by country, gameplay tier, then name.
- * The id tie-break keeps the result deterministic if two variants share a
- * public name. Rank/tier lookups are injected so this helper stays
- * browser-independent.
+ * Order cards inside one catalog group by country, descending gameplay tier,
+ * then descending display name. Owner-directed leading runs refine the order
+ * within a tier, never allowing a lower-tier vehicle to precede a higher-tier
+ * one. The id tie-break keeps duplicate public names deterministic.
  */
 export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
   a: Spec,
@@ -56,32 +97,75 @@ export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
 ): number {
   const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
   if (nationDelta) return nationDelta;
-  const aFinalRank = GARAGE_FINAL_VEHICLE_RANK.get(a.id);
-  const bFinalRank = GARAGE_FINAL_VEHICLE_RANK.get(b.id);
-  if (aFinalRank != null || bFinalRank != null) {
-    if (aFinalRank == null) return -1;
-    if (bFinalRank == null) return 1;
-    return aFinalRank - bFinalRank;
-  }
-  const tierDelta = tierOf(a.id) - tierOf(b.id);
+  const tierDelta = tierOf(b.id) - tierOf(a.id);
   if (tierDelta) return tierDelta;
-  const nameDelta = NAME_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
+  const leadingRanks = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get(a.nation);
+  const aLeadingRank = leadingRanks?.get(a.id);
+  const bLeadingRank = leadingRanks?.get(b.id);
+  if (aLeadingRank != null || bLeadingRank != null) {
+    if (aLeadingRank == null) return 1;
+    if (bLeadingRank == null) return -1;
+    return aLeadingRank - bLeadingRank;
+  }
+  const nameDelta = NAME_COLLATOR.compare(String(b.name || ''), String(a.name || ''));
   if (nameDelta) return nameDelta;
-  return NAME_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
+  return NAME_COLLATOR.compare(String(b.id || ''), String(a.id || ''));
 }
 
-/** Return the top-tank entry at the far-right end of an already-sorted
- * national fleet. Keeping this choice tied to the canonical card order makes
- * nation-chip behavior identical on desktop, touch and keyboard layouts. */
-export function topCountrySpec<Spec>(
+/** Per-country vehicle memory. Stale, malformed and cross-country stored ids
+ * are ignored, so each nation safely falls back to its leftmost sorted card. */
+export function createGarageCountrySelectionMemory<Spec extends GarageOrderSpec>(
   specs: readonly Spec[],
-  countryId: string,
   countryCodeOf: (spec: Spec) => string,
-): Spec | undefined {
-  for (let index = specs.length - 1; index >= 0; index -= 1) {
-    if (countryCodeOf(specs[index]) === countryId) return specs[index];
+  {
+    storageKey = 'cot.garage.nationTank.v1',
+    getStorage = () => globalThis.localStorage,
+  }: {
+    readonly storageKey?: string;
+    readonly getStorage?: () => GarageSelectionStorage;
+  } = {},
+): GarageCountrySelectionMemory<Spec> {
+  const visibleById = new Map(specs.map((spec) => [spec.id, spec]));
+  const rememberedByCountry = new Map<string, string>();
+
+  try {
+    const raw = getStorage().getItem(storageKey);
+    const stored = raw ? JSON.parse(raw) : null;
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      for (const [countryId, specId] of Object.entries(stored)) {
+        const spec = typeof specId === 'string' ? visibleById.get(specId) : undefined;
+        if (spec && countryCodeOf(spec) === countryId) rememberedByCountry.set(countryId, spec.id);
+      }
+    }
+  } catch {
+    // Storage can be unavailable or contain legacy/corrupt data. The in-page
+    // map still remembers deliberate selections for the current session.
   }
-  return undefined;
+
+  const persist = (): void => {
+    try {
+      getStorage().setItem(storageKey, JSON.stringify(Object.fromEntries(rememberedByCountry)));
+    } catch {
+      // Selection remains valid in memory when storage is restricted.
+    }
+  };
+
+  return {
+    preferredSpec(countryId) {
+      const remembered = visibleById.get(rememberedByCountry.get(countryId) || '');
+      if (remembered && countryCodeOf(remembered) === countryId) return remembered;
+      return specs.find((spec) => countryCodeOf(spec) === countryId);
+    },
+    remember(specId) {
+      const spec = visibleById.get(specId);
+      if (!spec) return false;
+      const countryId = countryCodeOf(spec);
+      if (!countryId) return false;
+      rememberedByCountry.set(countryId, spec.id);
+      persist();
+      return true;
+    },
+  };
 }
 
 /** Unique country groups in the same order as an already-sorted fleet. Era is

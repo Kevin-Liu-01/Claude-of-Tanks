@@ -253,7 +253,7 @@ const battleEntryAcquisition = createBattleEntryAcquisition();
 // boot without constructing a tank or touching WebGL ahead of startup order.
 const selectedVehicle = createSelectedVehicleSelection({
   visibleIds: VISIBLE_TANK_IDS,
-  defaultId: 'm1a1',
+  defaultId: 'm1a3',
 });
 const bootSelectedBuilderP = STUDIO_BOOT_INTENT
   ? Promise.resolve()

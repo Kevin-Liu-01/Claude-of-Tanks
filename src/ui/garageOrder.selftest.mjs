@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
-  compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
-  GARAGE_FINAL_VEHICLE_IDS, horizontalRailState, horizontalRailWheelDelta,
-  topCountrySpec,
+  compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
+  defaultGarageMapId, GARAGE_LEADING_VEHICLE_IDS, GARAGE_LEADING_VEHICLE_IDS_BY_NATION,
+  horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 
 const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 'utf8')}\n${
@@ -56,8 +56,8 @@ const cards = [
 
 assert.deepEqual(
   cards.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
-  ['m1a1', 'm1a2', 't72bu', 't72b3m', 't90', 'challenger'],
-  'garage cards sort by country first, tier second and display name third',
+  ['m1a2', 'm1a1', 't90', 't72b3m', 't72bu', 'challenger'],
+  'garage cards sort by country first, then descending tier and display name',
 );
 
 const usTopRun = [
@@ -72,15 +72,104 @@ const sortedUsTopRun = usTopRun.sort((a, b) => (
   compareCountryThenTierThenName(a, b, rank, topRunTierOf)
 ));
 assert.deepEqual(
-  sortedUsTopRun.slice(-4).map((card) => card.id),
-  GARAGE_FINAL_VEHICLE_IDS,
-  'the U.S. far-right showcase run is Bradley, M551A1 TTS, TUSK, then M1A3',
+  sortedUsTopRun.slice(0, 4).map((card) => card.id),
+  GARAGE_LEADING_VEHICLE_IDS_BY_NATION.USA,
+  'the U.S. left edge leads with M1A3, TUSK, M551A1 TTS, then Bradley',
 );
+
+const nationalShowcaseCases = [
+  {
+    nation: 'Japan', filler: 'type90a',
+    expected: ['type10b', 'type10', 'type89_light_tiger'],
+  },
+  {
+    nation: 'Sweden', filler: 'cv90',
+    expected: ['strv122', 'strv103', 'cv90_mkiv'],
+  },
+  {
+    nation: 'Germany', filler: 'leo2a6',
+    expected: [
+      'kf51b', 'kf51', 'leo2a7v', 'leo2a5_a5nl', 'leo2a5',
+      'leo2a6m', 'mbt70', 'leo2_revolution', 'spz_puma_s1',
+    ],
+  },
+];
+
+for (const { nation, filler, expected } of nationalShowcaseCases) {
+  assert.deepEqual(
+    GARAGE_LEADING_VEHICLE_IDS_BY_NATION[nation],
+    expected,
+    `${nation} publishes its reversed owner-directed left-edge run`,
+  );
+  const shuffled = [
+    { id: expected.at(-1), nation, name: expected.at(-1) },
+    { id: filler, nation, name: filler },
+    ...expected.slice(0, -1).reverse().map((id) => ({ id, nation, name: id })),
+  ];
+  const sorted = shuffled.sort((a, b) => (
+    compareCountryThenTierThenName(a, b, rank, () => 10)
+  ));
+  assert.deepEqual(
+    sorted.slice(0, expected.length).map((card) => card.id),
+    expected,
+    `${nation} keeps its requested hero tanks in exact reversed left-edge order`,
+  );
+}
+
 assert.equal(
-  topCountrySpec(sortedUsTopRun, 'us', () => 'us')?.id,
-  'm1a3',
-  'nation entry selects the top tank at the far-right end of its sorted fleet',
+  new Set(GARAGE_LEADING_VEHICLE_IDS).size,
+  GARAGE_LEADING_VEHICLE_IDS.length,
+  'national showcase runs do not duplicate a tank across countries',
 );
+
+assert.deepEqual(
+  [
+    { id: 'leo2a5', nation: 'Germany', name: 'Leopard 2A5' },
+    { id: 'spz_puma_s1', nation: 'Germany', name: 'Puma S1' },
+    { id: 'kf51b', nation: 'Germany', name: 'KF51B' },
+  ].sort((a, b) => compareCountryThenTierThenName(
+    a, b, rank, (id) => id === 'leo2a5' ? 9 : 10,
+  )).map((spec) => spec.id),
+  ['kf51b', 'spz_puma_s1', 'leo2a5'],
+  'descending tier remains authoritative even when a lower-tier tank belongs to a hero run',
+);
+
+let storedSelections = null;
+const selectionStorage = {
+  getItem: () => storedSelections,
+  setItem: (_key, value) => { storedSelections = value; },
+};
+const selectionSpecs = [
+  { id: 'jp_left', nation: 'Japan' },
+  { id: 'jp_other', nation: 'Japan' },
+  { id: 'se_left', nation: 'Sweden' },
+];
+const selectionCountryCode = (spec) => spec.nation === 'Japan' ? 'jp' : 'se';
+const selectionMemory = createGarageCountrySelectionMemory(
+  selectionSpecs, selectionCountryCode, { getStorage: () => selectionStorage },
+);
+assert.equal(selectionMemory.preferredSpec('jp')?.id, 'jp_left',
+  'a nation without history defaults to its leftmost sorted vehicle');
+assert.equal(selectionMemory.remember('jp_other'), true,
+  'a visible vehicle can become its nation-specific remembered choice');
+assert.deepEqual(JSON.parse(storedSelections), { jp: 'jp_other' },
+  'nation-specific selection is persisted without changing other nations');
+const restoredSelectionMemory = createGarageCountrySelectionMemory(
+  selectionSpecs, selectionCountryCode, { getStorage: () => selectionStorage },
+);
+assert.equal(restoredSelectionMemory.preferredSpec('jp')?.id, 'jp_other',
+  'a later Garage restores the last selected vehicle for that nation');
+assert.equal(restoredSelectionMemory.preferredSpec('se')?.id, 'se_left',
+  'an unvisited nation still opens at its independent left edge');
+
+storedSelections = JSON.stringify({ jp: 'se_left', se: 'missing' });
+const invalidSelectionMemory = createGarageCountrySelectionMemory(
+  selectionSpecs, selectionCountryCode, { getStorage: () => selectionStorage },
+);
+assert.equal(invalidSelectionMemory.preferredSpec('jp')?.id, 'jp_left',
+  'cross-country stored ids are rejected instead of leaking selection between nations');
+assert.equal(invalidSelectionMemory.preferredSpec('se')?.id, 'se_left',
+  'stale stored ids safely fall back to the current leftmost vehicle');
 
 const combinedEras = [
   { id: 'm1a2', nation: 'USA', era: 'modern' },
@@ -107,8 +196,8 @@ const duplicateNames = [
 ];
 assert.deepEqual(
   duplicateNames.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
-  ['variant_a', 'variant_b'],
-  'duplicate display names use a deterministic id tie-break',
+  ['variant_b', 'variant_a'],
+  'duplicate display names use a deterministic reversed id tie-break',
 );
 
 assert.deepEqual(horizontalRailState(0, 900, 400), {
@@ -142,8 +231,13 @@ assert.match(garageSource,
   'country overflow arrows use compact balanced gutters instead of looking like nation tiles');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
-assert.match(garageSource, /const top = topCountrySpec\(specs, group\.id, countryCodeOf\);[\s\S]*?api\.setSelected\(top\.id\);/,
-  'nation chips always move selection to the highest-tier end of the chosen fleet');
+assert.match(garageSource,
+  /const preferred = countrySelection\.preferredSpec\(group\.id\);[\s\S]*?api\.setSelected\(preferred\.id\);/,
+  'nation chips restore their remembered tank or choose the highest-tier left edge');
+assert.match(garageSource, /if \(remember && cardById\.has\(specId\)\) countrySelection\.remember\(specId\);/,
+  'visible Garage selections update independent per-nation memory');
+assert.match(garageSource, /applySelection\(selectedId, \{ remember: false \}\);/,
+  'hidden Garage construction cannot overwrite a persisted nation choice');
 assert.match(garageSource,
   /card\.scrollIntoView\(\{ block: 'nearest', inline: 'center', behavior: 'auto' \}\);/,
   'vehicle selection reveals distant cards immediately instead of sweeping across the carousel');

@@ -36,8 +36,8 @@ import {
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
-  compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
-  horizontalRailState, horizontalRailWheelDelta, topCountrySpec,
+  compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
+  defaultGarageMapId, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
@@ -196,7 +196,8 @@ const NATION_LABEL: Readonly<Record<string, string>> = {
 };
 
 // One unified historical/modern catalog. Country flags are the only primary
-// filter; within each country the owner-facing order is tier, then name.
+// filter; within each country the owner-facing order is highest tier first,
+// then reverse name order, with a few explicit same-tier hero runs.
 // USSR / USSR-Russia / Russia intentionally share the RU flag block.
 const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
@@ -331,9 +332,10 @@ function frontArmorMm(
 export function createGarage(opts: GarageOptions): GarageRuntime {
   const { bus, onSelect, onBattle } = opts;
   const allSpecs = opts.specs || [];
-  // One combined fleet: country first, then tier, then display name. Cards,
+  // One combined fleet: country first, then descending tier and name. Cards,
   // arrow stepping and flag-chip hand-offs all use this single sorted array.
   const specs = allSpecs.filter((s) => isGarageVisibleTankId(s.id)).sort(catalogCompare);
+  const countrySelection = createGarageCountrySelectionMemory(specs, countryCodeOf);
   const countryGroups = countryFilterGroups(specs, countryCodeOf).map(({ id, representative, count }) => ({
     id,
     count,
@@ -1675,10 +1677,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       applyCountryFilter(group.id);
-      // Enter every nation at the highest-tier, far-right end of its fleet so
-      // the pedestal, dossier and visible strip open on its top tanks.
-      const top = topCountrySpec(specs, group.id, countryCodeOf);
-      if (top) api.setSelected(top.id);
+      // Return to this nation's last selected vehicle. A nation without a
+      // remembered choice opens on its highest-tier, far-left card.
+      const preferred = countrySelection.preferredSpec(group.id);
+      if (preferred) api.setSelected(preferred.id);
     });
     chipsEl.appendChild(chip);
     chipById.set(group.id, chip);
@@ -2075,7 +2077,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (vehicleChanged) statsEl.scrollTop = 0;
   }
 
-  function applySelection(specId: string): boolean {
+  function applySelection(specId: string, { remember = true } = {}): boolean {
     if (vehicleLocked && specId !== selectedId) return false;
     const spec = specById.get(specId);
     if (!spec) return false;
@@ -2085,11 +2087,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (cardById.has(specId) && countryCodeOf(spec) !== countryFilter) {
       applyCountryFilter(countryCodeOf(spec));
     }
+    // Remember one independent selection per nation. This also adopts valid
+    // selections restored by the app on first presentation or battle return.
+    if (remember && cardById.has(specId)) countrySelection.remember(specId);
     for (const [id, card] of cardById) card.classList.toggle('sel', id === specId);
     const card = cardById.get(specId);
     if (card && card.scrollIntoView) {
-      // Selection may jump from the first card to the far-right top tank when
-      // a nation opens. Reveal it before the next paint instead of animating
+      // Selection may jump between distant remembered cards when a nation
+      // opens. Reveal it before the next paint instead of animating
       // through every intermediate card (which also exposed clipped cards
       // during the sweep).
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
@@ -2478,9 +2483,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /**
      * Open the garage screen.
-     * @param {string} [selectedId='m1a1'] - initially highlighted tank id.
+     * @param {string} [selectedId] - initially highlighted tank id.
      */
-    show(selected = 'm1a1') {
+    show(selected = selectedId) {
       refreshServiceRecord();
       closeGarageVariantMenu();
       closeGarageTools();
@@ -2646,6 +2651,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   if (mapCardById.size) api.setSelectedMap(selectedMapId);
 
   applyCountryFilter(countryFilter);
-  if (selectedId) applySelection(selectedId);
+  // Paint the hidden initial dossier without overwriting a persisted choice
+  // for the first nation before show() adopts the app's real selection.
+  if (selectedId) applySelection(selectedId, { remember: false });
   return api;
 }
