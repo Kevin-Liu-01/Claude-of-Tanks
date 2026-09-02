@@ -281,6 +281,13 @@ try {
         || result.stats.workshopOrbitCoverageDegrees !== 360) {
       failures.push(`${result.id}: complete four-bay service layer is missing`);
     }
+    if (!result.stats.battleScreenVisible
+        || result.stats.battleScreenMode !== 'crt-scroll-slideshow'
+        || result.stats.battleScreenWallBay !== 'freestanding-shared'
+        || result.stats.battleScreenImageCount < 2
+        || result.stats.battleScreenResidentImageLimit !== 2) {
+      failures.push(`${result.id}: shared field-record display is missing`);
+    }
     if (result.stats.sceneMode !== (isVerdant ? 'verdant-workshop' : 'authentic-scene-pack')
         || result.stats.roofMode !== (isVerdant ? 'enclosed-original' : 'open-environment')
         || result.stats.environment?.mode !== 'authentic-scene-pack'

@@ -39,7 +39,7 @@ assert.equal(poses.length, 0,
   'variant activation must not overwrite the active showroom camera solver');
 runtime.poseCamera();
 assert.deepEqual(poses.at(-1), {
-  position: [-1492.6, 2.75, -1508],
+  position: [-1492.6, 2.75, -1492],
   target: [-1500, 1.6, -1500],
   fov: 42,
 });

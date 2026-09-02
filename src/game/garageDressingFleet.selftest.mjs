@@ -75,6 +75,14 @@ assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
+assert.match(dressing, /legacyVerdantRoot\.add\(screenRoot\)/,
+  'the rotating battle display must share the all-Garage workshop owner');
+assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
+  'the tank rear must point toward the shared physical display');
+assert.match(dressing, /battleScreenVisible = true/,
+  'the rotating battle display must remain visible in every Garage');
+assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
+  'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,
   /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot\]/,
   'the shared bays and Verdant-only interior collapse static leaf draws independently');

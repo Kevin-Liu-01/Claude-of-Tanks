@@ -750,7 +750,6 @@ export function createGarageDressing(
       // battle. Stop here instead of polling; onBeforeRender restarts the
       // archive on the first garage-return frame, preserving zero battle cost.
       if (!group.parent || !group.visible || document.hidden) return;
-      if (currentVariant.id !== 'verdant_motor_pool') return;
       void advanceBattleScreen();
     }, delay);
   }
@@ -771,8 +770,7 @@ export function createGarageDressing(
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage =
       GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
-    if (group.parent && group.visible && !document.hidden
-        && currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance();
+    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
   }
 
   function animateBattleScreenTransition(now: number, nextIndex: number): void {
@@ -805,8 +803,7 @@ export function createGarageDressing(
     const texture = await loadBattleScreenTexture(nextIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) {
-      if (group.parent && group.visible && !document.hidden
-          && currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance(1_500);
+      if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
       return;
     }
     battleScreenNextTexture = texture;
@@ -830,7 +827,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[0].img;
-    if (currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance();
+    scheduleBattleScreenAdvance();
   }
 
   function setVariant(variantId: string): string {
@@ -848,28 +845,14 @@ export function createGarageDressing(
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
     // this tiny layout pose shifts/rotates the complete set against each
-    // environment's landmark. Verdant alone keeps the wall-mounted interior
-    // clutter because only its enclosed shell provides real supporting walls.
+    // environment's landmark. Verdant alone keeps wall-mounted interior
+    // clutter because only its enclosed shell provides real supporting walls;
+    // the freestanding archive display and all four authored service bays are
+    // part of this shared root and remain visible in every Garage.
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
-    group.userData.battleScreenVisible = isVerdant;
-    if (!isVerdant) {
-      if (battleScreenTimer !== null) window.clearTimeout(battleScreenTimer);
-      if (battleScreenFrame !== null) window.cancelAnimationFrame(battleScreenFrame);
-      battleScreenTimer = null;
-      battleScreenFrame = null;
-      if (battleScreenNextTexture) {
-        battleScreenNextTexture.dispose();
-        battleScreenNextTexture = null;
-        if (battleScreenMaterial && battleScreenCurrentTexture) {
-          battleScreenMaterial.uniforms.uImageB.value = battleScreenCurrentTexture;
-          battleScreenMaterial.uniforms.uTransition.value = 0;
-        }
-        group.userData.battleScreenResidentImageCount = battleScreenCurrentTexture ? 1 : 0;
-      }
-    } else if (battleScreenCurrentTexture) {
-      scheduleBattleScreenAdvance();
-    }
+    group.userData.battleScreenVisible = true;
+    if (battleScreenCurrentTexture) scheduleBattleScreenAdvance();
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
     group.userData.activeWorkshopTriangleCount =
@@ -890,21 +873,18 @@ export function createGarageDressing(
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   chunks.push(function buildCore() {
-    // The former per-garage map thumbnail is gone. This otherwise empty wall
-    // bay now owns one field-record monitor that scrolls through the canonical
-    // battle archive. A shader moves two resident textures; it never uploads a
+    // One freestanding field-record monitor scrolls through the canonical
+    // battle archive in every Garage. It is centered on the hero's local -Z
+    // axis, so the tank rear points physically toward it while the camera sees
+    // the glacis. A shader moves two resident textures; it never uploads a
     // canvas every frame, and the timer sleeps completely while the garage is
     // detached for battle.
-    const screenBay = garageWallTransform('south_location');
     const screenRoot = new THREE.Group();
     screenRoot.name = 'garage_battle_archive_monitor';
-    // The original hanging task lamp crosses the bay near its center. Keep the
-    // monitor inside the measured rectangle but bias it toward the clear end
-    // so the shade never masks battle footage from the showroom orbit.
-    screenRoot.position.set(screenBay.x + 2.0, screenBay.y, screenBay.z - 0.10);
-    screenRoot.rotation.y = screenBay.yaw;
-    screenRoot.userData.wallBayId = screenBay.id;
-    verdantInteriorRoot.add(screenRoot);
+    screenRoot.position.set(0, 4.15, -18.25);
+    screenRoot.rotation.y = 0;
+    screenRoot.userData.mountMode = 'freestanding-shared';
+    legacyVerdantRoot.add(screenRoot);
 
     put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
       0, 0, 0, 0, 0, 0, 1, screenRoot, false);
@@ -923,6 +903,20 @@ export function createGarageDressing(
       put(track(new THREE.SphereGeometry(0.055, 8, 6)), statusLedMaterial,
         3.04, y, 0.22, 0, 0, 0, 1, screenRoot, false);
     }
+    // Connected legs, crossbar, feet and rear braces make this an honest
+    // outdoor installation instead of a wall panel floating in scene packs.
+    const displayPostGeometry = track(new THREE.BoxGeometry(0.18, 2.45, 0.18));
+    for (const x of [-2.65, 2.65]) {
+      put(displayPostGeometry, mat.steelMid,
+        x, -3.04, -0.02, 0, 0, 0, 1, screenRoot);
+      put(track(new THREE.BoxGeometry(1.15, 0.14, 1.05)), mat.steelDark,
+        x, -4.08, -0.02, 0, 0, 0, 1, screenRoot);
+      const brace = put(track(new THREE.BoxGeometry(0.13, 2.55, 0.13)), mat.steelDark,
+        x, -3.05, -0.48, 0, 0.38, 0, 1, screenRoot);
+      brace.castShadow = true;
+    }
+    put(track(new THREE.BoxGeometry(5.55, 0.16, 0.20)), mat.steelMid,
+      0, -1.86, -0.02, 0, 0, 0, 1, screenRoot);
 
     const fallbackTexture = track(new THREE.DataTexture(
       new Uint8Array([10, 20, 18, 255]), 1, 1, THREE.RGBAFormat,
@@ -996,7 +990,7 @@ export function createGarageDressing(
       -0.22, 0, 0.20, 0, 0, 0, 1, screenRoot, false);
     battleScreenMesh.name = 'garage_battle_archive_screen';
     battleScreenMesh.userData.keepWorkshopMesh = true;
-    battleScreenMesh.userData.wallBayId = screenBay.id;
+    battleScreenMesh.userData.mountMode = 'freestanding-shared';
     battleScreenMesh.onBeforeRender = () => {
       if (!battleScreenMaterial) return;
       battleScreenMaterial.uniforms.uTime.value = performance.now() * 0.001;
@@ -1005,7 +999,7 @@ export function createGarageDressing(
     };
     group.userData.mapImageCount = 0;
     group.userData.battleScreenMode = 'crt-scroll-slideshow';
-    group.userData.battleScreenWallBay = screenBay.id;
+    group.userData.battleScreenWallBay = 'freestanding-shared';
     group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
     group.userData.battleScreenResidentImageLimit = 2;
     group.userData.battleScreenResidentImageCount = 0;
@@ -1274,8 +1268,8 @@ export function createGarageDressing(
       lane.position.set(11.2, 0.023, -6.8);
       group.add(lane);
     }
-    // The scrolling battle display remains shared and gets a freestanding
-    // support outdoors. Everything authored after it is wall/floor clutter
+    // The scrolling battle display is already owned by the shared workshop
+    // root. Everything authored after it is wall/floor clutter
     // from the original Verdant hangar and must disappear with that interior.
     for (const child of group.children.slice(interiorChildrenStart)) {
       verdantInteriorRoot.add(child);
@@ -1740,6 +1734,7 @@ export function createGarageDressing(
     group.userData.verdantOriginalExhibitCount = 4;
     group.userData.verdantOriginalExhibitIds = ['t90a_burlak', 'm1a2', 't90m', 'k2'];
     group.userData.verdantOriginalSetPieces = [
+      'field_record_display',
       'turret_gantry', 'jack_stands', 'removed_side_skirts', 'welding_cable',
       'turret_cradle', 'relikt_service_rack', 'rolled_k2_hull',
       'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',

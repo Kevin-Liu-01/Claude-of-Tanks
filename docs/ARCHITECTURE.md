@@ -933,10 +933,12 @@ hero bounce remains active. Outdoor static scenery receives but does not cast
 live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
 maintenance layer after interactive readiness. Four diagonally opposed bays—
 Burlak gantry, Abrams welding, T-90M armor service, and K2 teardown—surround
-every Garage and are recomposed by the destination layout. The single static
-graph is reused across all ten variants; only Verdant reveals the additional
-wall-mounted clutter supported by its enclosed shell. The quiet-window
-scheduler serializes fleet preparation and chunk construction, and the phase
+every Garage and are recomposed by the destination layout. A connected
+freestanding field-record display shares that graph in every variant, remains
+on the hero tank's rear axis, and rotates through at most two resident battle
+textures. The single static graph is reused across all ten variants; only
+Verdant reveals the additional wall-mounted clutter supported by its enclosed
+shell. The quiet-window scheduler serializes fleet preparation and chunk construction, and the phase
 owner detaches the complete layer during battle. The optional exhibit geometry
 factory runs in `garageWorkshopGeometryWorker.ts`; its entry registers only the
 four required families, transfers full high-detail buffers with worker-computed
@@ -1185,7 +1187,7 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `tank_closeup_ww2` | same recipe around the tiger1 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
-| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style rear three-quarter pose (rear toward camera, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
+| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose (glacis toward the viewer, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; the tank rear points toward the shared field-record display and all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
 
 `window.__SHOTS.views` lists exactly these 8 (more may be appended). `__GAME_READY`
 only after the §4 startup sequence completes. Determinism: everything seeded (§1.4),

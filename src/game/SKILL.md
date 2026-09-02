@@ -97,7 +97,9 @@ playable fleet builder. Never add a world-loading
 or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
 demand-loads one shared, optimized four-bay modern maintenance layer after
 Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten
-environments; Verdant alone may show wall-mounted interior clutter. Keep the
+environments, and its connected freestanding field-record display remains on
+the tank's rear axis in every opening composition. Verdant alone may show the
+remaining wall-mounted interior clutter. Keep the
 fleet load behind the quiet-window scheduler, build the four full-detail static
 meshes in `garageWorkshopGeometryWorker.ts`, reconstruct them with the ordinary
 vehicle PBR palette in cooperative frame slices, reuse one graph across variants,

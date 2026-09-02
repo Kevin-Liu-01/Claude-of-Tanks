@@ -1150,7 +1150,7 @@ const showroom = createGarageShowroomRuntime({
   element: renderer.domElement,
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
-  // Canonical rear-right three-quarter framing: engine deck toward the viewer,
+  // Canonical front-right three-quarter camera: glacis toward the viewer,
   // bow and gun toward screen-left. All dimensions and camera
   // math remain owned by the existing engine solver; this root supplies only
   // scene anchors and the canonical vehicle-independent frame.

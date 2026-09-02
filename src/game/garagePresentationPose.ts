@@ -2,14 +2,14 @@
 // structures, materials and atmosphere; it may never rotate the hero, move the
 // camera, or introduce a second framing path.
 export const GARAGE_PRESENTATION_POSE = Object.freeze({
-  // Vehicle forward is local +Z. The camera sits behind the hull on world -Z
-  // and to world +X: the engine deck is nearest the viewer while the bow and
-  // gun extend toward screen-left in the canonical Verdant composition.
+  // Vehicle forward is local +Z. The camera stays on that bow hemisphere and
+  // sits to world +X: the glacis faces the viewer while the bow and gun extend
+  // toward screen-left in the canonical Verdant composition.
   heroHeadingRad: 0,
-  cameraOffsetM: Object.freeze([7.4, 2.75, -8] as const),
+  cameraOffsetM: Object.freeze([7.4, 2.75, 8] as const),
   cameraLookHeightM: 1.6,
   cameraFovDeg: 42,
-  cameraAzimuthRad: Math.PI * 3 / 4,
+  cameraAzimuthRad: Math.PI / 4,
   cameraPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8)),
 });
 
