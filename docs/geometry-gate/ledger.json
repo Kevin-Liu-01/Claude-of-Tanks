@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-28T04:04:58.486Z",
- "gate": "every component >= 90; min is the headline",
- "passed": 35,
- "total": 123,
+ "generatedAt": "2026-09-02T10:27:53.942Z",
+ "gate": "every component >= its registered floor (90 fleet / 92 exemplar); min is the headline",
+ "passed": 34,
+ "total": 124,
  "rows": [
   {
    "id": "recon_tank",
@@ -901,6 +901,18 @@
    }
   },
   {
+   "id": "vt4a1",
+   "geoMin": 82.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 82.7,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "bmp2",
    "geoMin": 82.7,
    "gatePassed": false,
@@ -968,6 +980,18 @@
     "wholeCurves": 84.1,
     "turretCurves": 85.6,
     "stations": 92.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "type99a",
+   "geoMin": 84.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 84.4,
     "dims": 100,
     "floaters": 100
    }
@@ -1356,16 +1380,6 @@
     "turretCurves": 92.2,
     "stations": 93.4,
     "dims": 92.2,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "type99a",
-   "geoMin": 90.7,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 90.7,
-    "dims": 97,
     "floaters": 100
    }
   },

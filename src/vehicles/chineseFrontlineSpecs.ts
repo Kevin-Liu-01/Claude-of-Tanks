@@ -32,11 +32,14 @@ export const CHINESE_FRONTLINE_SPECS = {
     // excluded from the height datum.
     dims: {
       hullLengthM: 7.64, overallLengthM: 10.10, widthM: 3.50, heightM: 3.15,
+      // The source's substantial 12%-thickness body trace is 7.491 m; the
+      // published 7.64 m envelope includes thin rear and bow fittings.
+      silhouetteHullLengthM: 7.49,
     },
     armor: modernArmor({
       hl: 3.82, hw: 1.75, inW: 1.13, floor: 0.42, trkTop: 1.08, roofY: 1.62,
-      turretPivot: [0, 1.62, -0.18], gunPivot: [0, 0.46, 1.47],
-      barrelLenM: 4.82, barrelRadM: 0.076,
+      turretPivot: [0, 1.62, -0.18], gunPivot: [0, 0.32, 1.47],
+      barrelLenM: 5.02, barrelRadM: 0.076,
       glacis: [650, 690, 980], lower: [180, 240, 320], side: [80, 120, 180],
       skirt: [95, 170, 420], rear: 50, roof: 45,
       tw: 1.64, tFrontZ: 1.72, tRearZ: -2.66, tH: 0.98,

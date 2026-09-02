@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { unavailableOracleReport } from './geometry-gate-policy.mjs';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -49,6 +50,7 @@ try {
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
   const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
+  const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
   const publicRoot = path.resolve(ROOT, 'public');
   const localAssetPath = (assetPath) => {
     if (typeof assetPath !== 'string' || !assetPath.startsWith('/')) return null;
@@ -70,7 +72,12 @@ try {
       console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations`);
     }
     if (unavailable.length) {
-      console.log(`[geo] skipped ${unavailable.length} optional comparison oracles unavailable in this worktree`);
+      for (const id of unavailable) {
+        const qualityBar = referenceQualityBars[id] || 'fleet';
+        const report = unavailableOracleReport(id, qualityBar);
+        rows.push(report);
+        console.error(`[geo] ${id}: registered ${qualityBar} comparison oracle unavailable (requires ${report.requiredMinimum})`);
+      }
     }
   } else if (available.size < registered.size) {
     console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
@@ -124,6 +131,6 @@ const runSorted = rows.slice().sort((a, b) => a.geoMin - b.geoMin);
 const runPassed = rows.filter((r) => r.gatePassed).length;
 const runSummary = runSorted.length
   ? `worst ${runSorted[0].id} (${runSorted[0].geoMin})`
-  : 'no eligible local comparison oracles';
+  : 'no registered comparison rows requested';
 console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ${runSummary}`);
 if (CHECK && runPassed < rows.length) process.exitCode = 1;

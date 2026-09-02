@@ -252,10 +252,10 @@ function type99AArmor(): ArmorEnvelope {
   ];
 
   return {
-    boundingRadiusM: 7.7,
-    turretPivot: [0, 1.40, -0.02],
-    gunPivot: [0, 0.46, 0.70],
-    gunBarrel: { lengthM: 6.25, radiusM: 0.068 },
+    boundingRadiusM: 8.1,
+    turretPivot: [0, 1.52, -0.04],
+    gunPivot: [0, 0.50, 1.55],
+    gunBarrel: { lengthM: 7.16, radiusM: 0.071 },
     hullPlates,
     turretPlates,
     modules: [

@@ -79,15 +79,14 @@ function releaseLock() { if (!lockHeld) return; lockHeld = false; try { rmdirSyn
 process.on('exit', releaseLock);
 
 // --- phase 0: optional fresh gate run (manages its own lock) ----------------
-// A forced run may legitimately skip a registered comparison oracle when its
-// ignored/local source model is absent from this worktree. Keep the historical
-// packet for authoring reference, but do not mistake it for a measurement made
-// by this release run.
+// A forced run requires every registered comparison oracle to be present and
+// every packet to be freshly measured. geometry-gate --check owns the
+// fail-closed oracle census; the mtime check below prevents a stale packet from
+// being reported as evidence for this release run.
 let freshGateStartedAt = null;
 if (forceGate && ids.length) {
-  // The geometry gate filters this fleet to IDs with registered local
-  // comparison oracles. --check ensures an eligible oracle failure remains a
-  // hard release failure rather than being mistaken for a procedural-only ID.
+  // --check makes a missing registered oracle or a sub-floor measurement a
+  // hard release failure rather than treating it as a procedural-only ID.
   freshGateStartedAt = Date.now();
   execFileSync('node', ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check'], { stdio: 'inherit' });
 }
@@ -204,7 +203,9 @@ for (const id of ids) {
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND
     && Number(cl.sweepBand) <= CLIP_BAND && Number(cl.sweepShoe) <= CLIP_BAND;
-  const gateOk = !gateApplicable || (typeof min === 'number' && min >= gateRequired);
+  const gateOk = forceGate
+    ? gateApplicable && typeof min === 'number' && min >= gateRequired
+    : !gateApplicable || (typeof min === 'number' && min >= gateRequired);
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;
@@ -236,7 +237,7 @@ for (const id of ids) {
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(registered gate floor 90 fleet / 92 exemplar where a local oracle exists + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
+    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +

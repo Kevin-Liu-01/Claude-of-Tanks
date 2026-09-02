@@ -563,17 +563,18 @@ const MODERN2_SPECS: TankSpecRegistry = {
     // the dimensional gate for being accurate to the supplied model.
     dims: {
       hullLengthM: 7.76, overallLengthM: 11.66, widthM: 3.7, heightM: 3.16,
-      // The fused source's 12%-thickness side-body trace is 7.079 m; its
+      // The rebuilt fused-source trace is 7.209 m after restoring the complete
+      // rear shoulder and front fender courses; its
       // published/full 7.76 m hull envelope includes thin guards and the
       // rear U-cable.  Keep gameplay on the full physical envelope while
       // letting the silhouette gate compare like with like.
-      silhouetteHullLengthM: 7.08,
-      // P95 normalization only: the oracle's connected secondary stabilized
-      // station reaches 3.49 m while the broad primary sight cabinet ends at
+      silhouetteHullLengthM: 7.21,
+      // P95 normalization only: the oracle's connected stabilized-station
+      // envelope reaches 3.445 m while the broad primary sight cabinet ends at
       // 3.14 m. Keep the published combat-station height for gameplay/UI,
       // but compare the authored and oracle silhouettes on the same P95
       // connected-station envelope; thin whip tips remain excluded.
-      silhouetteHeightM: 3.49,
+      silhouetteHeightM: 3.45,
     },
     // Type 99-specific segmented combat envelope. The rendered vehicle is a
     // measured multi-course hull/welded-arrow turret; the old generic MBT

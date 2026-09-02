@@ -804,6 +804,22 @@ const REG = {
     fixedMount: true, scaleToOverall: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
   },
+  type99a: {
+    // Owner-supplied Type 99A2 comparison print. Object_29 crosses fixed and
+    // rotating ownership, so independent component masks are not admissible;
+    // the articulated gun and turret nodes still provide useful landmarks,
+    // while whole-view contours remain the authoritative fitting evidence.
+    path: 'public/models/community-candidates/type_99a2_armored_warfare.glb',
+    turretNode: '^Object_31$', gunNode: '^Object_17$', autoPivot: true,
+    pubDims: { hullLengthM: 7.21, overallLengthM: 11.66, widthM: 3.70, heightM: 3.45 },
+  },
+  vt4a1: {
+    // Owner-supplied VT-4A1 print is fused and therefore remains a complete
+    // silhouette oracle only. The playable tank is independently procedural.
+    path: 'public/models/community-candidates/vt4a1_owner.glb',
+    fixedMount: true,
+    pubDims: { hullLengthM: 7.64, overallLengthM: 10.10, widthM: 3.50, heightM: 3.15 },
+  },
   ztz85_iii: {
     // FUSED conversion (CC-BY-NC) — whole-view only; hull LOW-CONF.
     // Orientation resolved (china measure lane 2026-08-17): length on raw X,

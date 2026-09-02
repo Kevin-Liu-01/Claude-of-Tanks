@@ -93,15 +93,18 @@ function addTrackSkirts(
   for (const side of [-1, 1] as const) {
     // Continuous backed rails make the fenders, skirts, and hull read as one
     // structure. The front two panels rotate into the glacis shoulder.
-    P.addExternalArmor('hull', box(0.12, 0.12, config.count * config.step + 0.08),
-      side * (config.x - 0.05), 1.48, config.z0 - (config.count - 1) * config.step * 0.5);
+    // Keep the structural carrier immediately behind the skirt face, but
+    // outside the live shoe envelope. A 120 mm inboard rail intersected the
+    // animated course even though its face was visually hidden by the skirt.
+    P.addExternalArmor('hull', box(0.040, 0.12, config.count * config.step + 0.08),
+      side * (config.x - 0.005), 1.48, config.z0 - (config.count - 1) * config.step * 0.5);
     for (let index = 0; index < config.count; index++) {
       const z = config.z0 - index * config.step;
       const front = index < 2;
       const y = 1.13 - (front ? config.frontDrop * (2 - index) : 0);
       const pitch = front ? -0.20 + index * 0.08 : 0;
       const addPanel = (): void => {
-        P.addExternalArmor('hull', box(0.070, config.h, config.step - 0.035),
+        P.addExternalArmor('hull', box(0.040, config.h, config.step - 0.035),
           side * config.x, y, z, pitch, 0, 0);
       };
       if (config.eraSectorPrefix) {
@@ -114,15 +117,15 @@ function addTrackSkirts(
         addPanel();
       }
       P.add('hullDark', box(0.016, config.h * 0.78, 0.025),
-        side * (config.x + 0.067), y, z + config.step * 0.45, pitch, 0, 0);
+        side * (config.x + 0.015), y, z + config.step * 0.45, pitch, 0, 0);
       for (const boltY of [-0.25, 0.25]) {
         P.add('hullDetail', KIT.cylX(0.017, 0.025, 8),
-          side * (config.x + 0.072), y + boltY * config.h, z,
+          side * (config.x + 0.012), y + boltY * config.h, z,
           0, 0, side * Math.PI / 2);
       }
     }
     P.add('hullRubber', box(0.036, 0.18, config.count * config.step),
-      side * (config.x + 0.07), 0.69, config.z0 - (config.count - 1) * config.step * 0.5);
+      side * (config.x + 0.015), 0.69, config.z0 - (config.count - 1) * config.step * 0.5);
   }
 }
 
@@ -322,7 +325,7 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   const { box, polyMultiLoft, cylY } = KIT;
   addSixWheelRunningGear(P, {
     wheelZs: [2.40, 1.44, 0.48, -0.48, -1.44, -2.40],
-    wheelR: 0.47, wheelY: 0.54, xc: 1.43, idlerZ: 3.04, sprocketZ: -3.08,
+    wheelR: 0.47, wheelY: 0.54, xc: 1.39, idlerZ: 3.04, sprocketZ: -3.08,
     trackW: 0.60, topY: 1.17, contactZF: 2.85, contactZR: -2.95,
     wheelHex: '#4d563d',
   });
@@ -331,9 +334,9 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   // glacis and nearly vertical full-height side armor. This station loft is
   // unique to VT-4A1; it does not call a Type-99/T-72 family hull.
   const plan: [number, number][] = [
-    [-1.06, 3.78], [1.06, 3.78], [1.42, 3.28], [1.55, 2.55],
-    [1.55, -3.55], [1.44, -3.82], [-1.44, -3.82], [-1.55, -3.55],
-    [-1.55, 2.55], [-1.42, 3.28],
+    [-1.06, 3.77], [1.06, 3.77], [1.42, 3.29], [1.55, 2.56],
+    [1.55, -3.57], [1.44, -3.82], [-1.44, -3.82], [-1.55, -3.57],
+    [-1.55, 2.56], [-1.42, 3.31],
   ];
   P.add('hull', polyMultiLoft(plan, [
     { height: 0.42, inset: 0.61 },
@@ -346,13 +349,13 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   // shoulder is supplied by the upper station above the shoe sweep, avoiding
   // the common procedural error where the bow slices through both wraps.
   P.add('hull', orientedSlab(
-    [-1.00, 0.76, 3.76], [1.00, 0.76, 3.76], [0.95, 1.47, 2.05], [-0.95, 1.47, 2.05],
-    [-1.00, 0.81, 3.76], [1.00, 0.81, 3.76], [0.95, 1.52, 2.05], [-0.95, 1.52, 2.05],
+    [-1.00, 0.76, 3.79], [1.00, 0.76, 3.79], [0.95, 1.47, 2.08], [-0.95, 1.47, 2.08],
+    [-1.00, 0.81, 3.79], [1.00, 0.81, 3.79], [0.95, 1.52, 2.08], [-0.95, 1.52, 2.08],
   ));
   for (const side of [-1, 1] as const) {
     // High shoulder caps close the small plan-view notch between the narrow
     // lower nose and full-width fender without entering the shoe envelope.
-    P.add('hull', box(0.30, 0.12, 0.60), side * 1.03, 1.32, 3.28, -0.18, 0, 0);
+    P.add('hull', box(0.30, 0.12, 0.62), side * 1.03, 1.32, 3.34, -0.18, 0, 0);
   }
   P.add('hull', orientedSlab(
     [-0.95, 1.47, 2.05], [0.95, 1.47, 2.05], [1.46, 1.47, 2.20], [-1.46, 1.47, 2.20],
@@ -366,10 +369,10 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   // skirt carrier and dive with the glacis above the idler.  The tank now
   // has one continuous over-track body instead of a bare gap above the run.
   addContinuousTrackFenders(P, {
-    xInner: 1.37, xOuter: 1.74, y: 1.52,
-    zFront: 2.78, zRear: -3.52, noseZ: 3.55, noseY: 1.18,
+    xInner: 1.33, xOuter: 1.74, y: 1.52,
+    zFront: 2.80, zRear: -3.54, noseZ: 3.58, noseY: 1.18,
   });
-  addTrackSkirts(P, { x: 1.68, z0: 2.64, count: 9, step: 0.66, h: 0.93, frontDrop: 0.10 });
+  addTrackSkirts(P, { x: 1.74, z0: 2.64, count: 9, step: 0.66, h: 0.78, frontDrop: 0.10 });
 
   // Segmented glacis applique follows the actual two-slope hull rather than
   // floating as a rectangular tile blanket.
@@ -394,7 +397,7 @@ function buildVT4A1Hull(P: FrontlinePort): void {
     P.addEquipment('hull', box(0.30, 0.26, 0.32), side * 1.32, 1.38, 2.46, -0.22, 0, 0);
     P.addModuleVisual('optics', 'hullGlass', box(0.18, 0.10, 0.020),
       side * 1.32, 1.34, 2.64, -0.22, 0, 0);
-    KIT.liftEye(P, 'hullDetail', side * 1.02, 0.76, 3.47);
+    KIT.liftEye(P, 'hullDetail', side * 0.88, 0.76, 3.47);
   }
   mount(P, 'hull', FITTINGS.towCable({ mats: P.mats, r: 0.025, seed: 423,
     pts: [[-1.10, 1.28, 3.05], [-0.48, 1.15, 3.52], [0.48, 1.15, 3.52], [1.10, 1.28, 3.05]] }), [0, 0, 0]);
@@ -407,70 +410,80 @@ function buildVT4A1Hull(P: FrontlinePort): void {
 }
 
 function buildVT4A1Turret(P: FrontlinePort): void {
-  const { box, polyMultiLoft, cylY, torus } = KIT;
+  const { box, polyMultiLoft, torus } = KIT;
   P.turretG.position.set(0, 1.62, -0.18);
-  P.gunG.position.set(0, 0.46, 1.47);
+  // The source bore sits below the roof optics line. Keeping the trunnion at
+  // the earlier 0.46 m datum made the complete weapon float above the cheek
+  // ridge in side comparison views.
+  P.gunG.position.set(0, 0.32, 1.47);
   const plan: [number, number][] = [
     // Carry the primary shell through the gun collar. The former 1.18 m
     // nose stopped behind the pitching cradle, opening a visible seam at
     // neutral and maximum depression.
-    [-0.30, 1.30], [0.30, 1.30], [1.08, 0.72], [1.68, 0.02],
-    [1.75, -1.78], [1.38, -2.62], [0.62, -2.78], [-0.62, -2.78],
-    [-1.38, -2.62], [-1.75, -1.78], [-1.68, 0.16], [-1.08, 1.01],
+    [-0.30, 1.30], [0.30, 1.30], [0.96, 0.72], [1.38, 0.08],
+    [1.47, -1.42], [1.22, -2.02], [0.58, -2.18], [-0.58, -2.18],
+    [-1.22, -2.02], [-1.47, -1.42], [-1.38, 0.18], [-0.96, 0.98],
   ];
   P.add('turretDark', KIT.polyTurret(plan, 0.12, 0.98, 0.96), 0, -0.04, 0);
   P.add('turret', polyMultiLoft(plan, [
     { height: 0.02, inset: 1.00 },
-    { height: [0.40, 0.40, 0.54, 0.68, 0.73, 0.76, 0.77, 0.77, 0.76, 0.73, 0.68, 0.54], inset: 0.99 },
-    { height: [0.76, 0.76, 0.88, 0.97, 1.02, 1.03, 1.04, 1.04, 1.03, 1.02, 0.97, 0.88],
+    { height: [0.36, 0.36, 0.48, 0.58, 0.63, 0.66, 0.67, 0.67, 0.66, 0.63, 0.58, 0.48], inset: 0.99 },
+    { height: [0.67, 0.67, 0.75, 0.82, 0.86, 0.87, 0.88, 0.88, 0.87, 0.86, 0.82, 0.75],
       inset: [0.64, 0.64, 0.76, 0.88, 0.94, 0.96, 0.96, 0.96, 0.96, 0.94, 0.88, 0.76] },
   ]));
-  P.add('turret', cylY(1.18, 1.24, 0.12, 20), 0, -0.05, -0.20);
-  P.add('turretDark', box(0.62, 0.66, 0.20), 0, 0.42, 1.18);
+  // A welded crown and bustle replace the former circular plug.  The round
+  // primitive inflated every oblique silhouette and made the VT-4A1 read as
+  // a generic cast turret instead of the source's long, faceted module.
+  P.add('turret', orientedSlab(
+    [-0.94, 0.79, 0.42], [0.94, 0.79, 0.42], [1.10, 0.80, -1.92], [-1.10, 0.80, -1.92],
+    [-0.78, 0.91, 0.20], [0.78, 0.91, 0.20], [0.98, 0.92, -1.88], [-0.98, 0.92, -1.88],
+  ));
+  P.add('turretDark', box(0.62, 0.62, 0.24), 0, 0.35, 1.20);
   // Deep welded throat block reaches inside the pitching cradle at every
   // legal gun angle; preserve the rear face while carrying the nose forward.
-  P.add('turret', box(0.52, 0.58, 0.34), 0, 0.43, 1.34);
+  P.add('turret', box(0.54, 0.62, 0.54), 0, 0.34, 1.40);
 
   const chevronStations = Object.freeze([
-    { x: 0.23, ridgeZ: 1.58, upperY: 0.86, ridgeY: 0.36, lowerY: 0.14, upperSetback: 0.27, lowerSetback: 0.14 },
-    { x: 0.54, ridgeZ: 1.37, upperY: 0.84, ridgeY: 0.35, lowerY: 0.14, upperSetback: 0.29, lowerSetback: 0.15 },
-    { x: 0.88, ridgeZ: 1.05, upperY: 0.82, ridgeY: 0.34, lowerY: 0.13, upperSetback: 0.31, lowerSetback: 0.16 },
-    { x: 1.22, ridgeZ: 0.63, upperY: 0.79, ridgeY: 0.33, lowerY: 0.13, upperSetback: 0.33, lowerSetback: 0.17 },
-    { x: 1.70, ridgeZ: 0.12, upperY: 0.74, ridgeY: 0.31, lowerY: 0.14, upperSetback: 0.35, lowerSetback: 0.18 },
+    { x: 0.23, ridgeZ: 1.58, upperY: 0.79, ridgeY: 0.35, lowerY: 0.05, upperSetback: 0.27, lowerSetback: 0.14 },
+    { x: 0.50, ridgeZ: 1.39, upperY: 0.78, ridgeY: 0.35, lowerY: 0.05, upperSetback: 0.29, lowerSetback: 0.15 },
+    { x: 0.80, ridgeZ: 1.10, upperY: 0.76, ridgeY: 0.34, lowerY: 0.06, upperSetback: 0.31, lowerSetback: 0.16 },
+    { x: 1.08, ridgeZ: 0.70, upperY: 0.74, ridgeY: 0.33, lowerY: 0.07, upperSetback: 0.33, lowerSetback: 0.17 },
+    { x: 1.43, ridgeZ: 0.18, upperY: 0.70, ridgeY: 0.31, lowerY: 0.09, upperSetback: 0.35, lowerSetback: 0.18 },
   ] satisfies readonly ChevronStation[]);
   // Full-height Leopard-style arrowheads: one shared ridge, dominant upper
   // face, shorter lower return, and a buried terminal on the shell flank.
   for (const side of [-1, 1] as const) {
     P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, side));
     addChevronRidgeSeams(P, chevronStations, side);
-    P.add('turretDetail', box(0.030, 0.52, 1.48), side * 1.70, 0.44, -0.73, 0, -side * 0.04, 0);
-    P.addEquipment('turret', box(0.10, 0.40, 0.64), side * 1.68, 0.40, -0.66);
+    P.add('turretDetail', box(0.030, 0.46, 1.20), side * 1.44, 0.41, -0.55, 0, -side * 0.04, 0);
+    P.addEquipment('turret', box(0.10, 0.34, 0.58), side * 1.43, 0.38, -0.58);
   }
-  addChinese125Gun(P, { length: 4.82, rootR: 0.30, sleeveStart: 0.76, sleeveEnd: 3.38 });
+  addChinese125Gun(P, { length: 5.02, rootR: 0.30, sleeveStart: 0.76, sleeveEnd: 3.52 });
 
   // Sights, cupolas, APS heads and rear bustle cages match the reference's
   // dense roof silhouette while remaining supported by the turret crown.
-  P.addEquipment('turret', box(0.44, 0.36, 0.40), -0.50, 0.96, 0.39, 0, -0.05, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.18, 0.020), -0.50, 0.98, 0.60, 0, -0.05, 0);
-  P.addEquipment('turret', box(0.48, 0.20, 0.43), 0.47, 0.96, 0.10);
-  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 1.08, 0.10, Math.PI / 2, 0, 0);
-  addSmokeAndWarningSuite(P, { warningX: 1.10, warningZ: -1.52, warningY: 0.96, smokeX: 1.30, smokeZ: -0.02 });
+  P.addEquipment('turret', box(0.44, 0.36, 0.40), -0.50, 1.04, 0.39, 0, -0.05, 0);
+  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.18, 0.020), -0.50, 1.06, 0.60, 0, -0.05, 0);
+  P.addEquipment('turret', box(0.48, 0.20, 0.43), 0.47, 1.04, 0.10);
+  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 1.16, 0.10, Math.PI / 2, 0, 0);
+  addSmokeAndWarningSuite(P, { warningX: 1.04, warningZ: -1.42, warningY: 0.98, smokeX: 1.18, smokeZ: -0.02 });
   mount(P, 'turret', FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
-    scale: 0.82, towerRise: 0.17, variant: 'korean-twin', sensorHead: true,
+    scale: 0.74, towerRise: 0.10, variant: 'korean-twin', sensorHead: true,
     sensorMount: 'roof', weapon: true, caliberMm: 12.7,
     weaponName: 'QJC-88 remote weapon station', seed: 430,
-  }), [0.38, 1.02, -0.88], [0, 0.03, 0]);
+  }), [0.38, 0.98, -0.82], [0, 0.03, 0]);
+  P.addEquipment('turret', box(0.38, 0.18, 0.32), 0.38, 0.91, -0.82);
   for (const side of [-1, 1] as const) {
     mount(P, 'turret', FITTINGS.stowageRack({
       mats: P.mats, w: 1.20, d: 0.38, h: 0.30, rails: 3, fill: 0.35,
       seed: 432 + side,
-    }), [side * 1.45, 0.50, -1.78], [0, side * Math.PI / 2, 0]);
-    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: side < 0 ? 1.04 : 0.90, r: 0.011, seed: 434 + side }),
-      [side * 0.83, 1.03, -2.24]);
+    }), [side * 1.23, 0.46, -1.52], [0, side * Math.PI / 2, 0]);
+    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: side < 0 ? 1.36 : 1.20, r: 0.011, seed: 434 + side }),
+      [side * 0.76, 0.91, -1.90]);
   }
-  P.decal('turret', 'number', 'VT4', 0.25, [-1.67, 0.48, -0.48], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 2.10);
+  P.decal('turret', 'number', 'VT4', 0.25, [-1.39, 0.46, -0.42], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 2.12);
 }
 
 function buildVT4A1(P: FrontlinePort): void {
@@ -485,13 +498,17 @@ function buildVT4A1(P: FrontlinePort): void {
     P.hullG.userData.vt4a1GeometryReceipt = Object.freeze({
       independentHull: true, sourceGeometryImported: false,
       measuredEnvelopeM: Object.freeze([7.64, 3.50, 3.15]),
+      sourceMeasuredBodyEnvelopeM: Object.freeze([7.464, 3.496, 3.120]),
+      sourceMeasuredOverallLengthM: 10.082,
       installedWidthScale, installedTrackWidthM: 0.60,
       roadWheelsPerSide: 6, continuousSkirtToGlacisTransition: true,
-      duplicateTrackMeshes: 0,
+      fenderRunsJoined: true, comparisonRegistry: 'vt4a1',
+      qualityGateFloor: 92, duplicateTrackMeshes: 0,
     });
     P.turretG.userData.vt4a1TurretReceipt = Object.freeze({
       independentTurret: true, twoCourseIntegratedChevrons: true,
-      warningSensorPedestals: 2, roofRws: true, supportedBustleCages: true,
+      gunCenterlineLocalY: 0.32, warningSensorPedestals: 2,
+      roofRws: true, supportedBustleCages: true,
     });
   }
 }
@@ -509,9 +526,9 @@ function buildZTZ99AHull(P: FrontlinePort): void {
     wheelHex: '#45513b',
   });
   const plan: [number, number][] = [
-    [-0.95, 3.72], [0.95, 3.72], [1.37, 3.12], [1.53, 2.36],
-    [1.53, -3.66], [1.39, -3.88], [-1.39, -3.88], [-1.53, -3.66],
-    [-1.53, 2.36], [-1.37, 3.12],
+    [-0.95, 4.01], [0.95, 4.01], [1.37, 3.38], [1.55, 2.49],
+    [1.55, -3.90], [1.39, -4.03], [-1.39, -4.03], [-1.55, -3.90],
+    [-1.55, 2.49], [-1.37, 3.34],
   ];
   P.add('hull', polyMultiLoft(plan, [
     { height: 0.40, inset: 0.64 },
@@ -522,14 +539,14 @@ function buildZTZ99AHull(P: FrontlinePort): void {
   ]));
   // Characteristic long, shallow 99A glacis with a central arrow ridge.
   P.add('hull', orientedSlab(
-    [-0.94, 0.68, 3.70], [0.94, 0.68, 3.70], [0.82, 1.52, 1.64], [-0.82, 1.52, 1.64],
-    [-0.94, 0.73, 3.70], [0.94, 0.73, 3.70], [0.82, 1.57, 1.64], [-0.82, 1.57, 1.64],
+    [-0.94, 0.68, 3.51], [0.94, 0.68, 3.51], [0.82, 1.52, 1.64], [-0.82, 1.52, 1.64],
+    [-0.94, 0.73, 3.51], [0.94, 0.73, 3.51], [0.82, 1.57, 1.64], [-0.82, 1.57, 1.64],
   ));
   for (const side of [-1, 1] as const) {
     P.visualEraCluster(`glacis_era_${side > 0 ? 'R' : 'L'}`, 'hull', () => {
       P.addExternalArmor('hull', orientedSlab(
-        [side * 0.10, 1.54, 1.55], [side * 1.38, 1.49, 1.86], [side * 1.16, 1.25, 2.88], [side * 0.08, 1.20, 3.30],
-        [side * 0.10, 1.59, 1.55], [side * 1.38, 1.54, 1.86], [side * 1.16, 1.30, 2.88], [side * 0.08, 1.25, 3.30],
+        [side * 0.10, 1.54, 1.55], [side * 1.38, 1.49, 1.86], [side * 1.16, 1.25, 2.75], [side * 0.08, 1.20, 3.15],
+        [side * 0.10, 1.59, 1.55], [side * 1.38, 1.54, 1.86], [side * 1.16, 1.30, 2.75], [side * 0.08, 1.25, 3.15],
       ));
     });
     P.add('hullDark', box(0.035, 0.035, 1.55), side * 0.72, 1.39, 2.42, -0.28, side * 0.16, 0);
@@ -537,11 +554,11 @@ function buildZTZ99AHull(P: FrontlinePort): void {
   P.add('hullDark', box(2.62, 0.038, 2.05), 0, 1.58, -2.30);
   for (let i = 0; i < 9; i++) P.add('hullDetail', box(2.44, 0.020, 0.055), 0, 1.61, -3.18 + i * 0.19);
   addContinuousTrackFenders(P, {
-    xInner: 1.39, xOuter: 1.84, y: 1.46,
-    zFront: 2.72, zRear: -3.58, noseZ: 3.53, noseY: 1.13,
+    xInner: 1.39, xOuter: 1.86, y: 1.46,
+    zFront: 3.00, zRear: -3.78, noseZ: 3.83, noseY: 1.13,
   });
   addTrackSkirts(P, {
-    x: 1.78, z0: 2.62, count: 9, step: 0.66, h: 0.89, frontDrop: 0.09,
+    x: 1.82, z0: 2.66, count: 9, step: 0.66, h: 0.89, frontDrop: 0.09,
     eraSectorPrefix: 'skirt_era',
   });
   P.addEquipment('hull', box(0.52, 0.055, 0.44), 0, 1.58, 1.16);
@@ -553,39 +570,42 @@ function buildZTZ99AHull(P: FrontlinePort): void {
     }), [side * 1.13, 1.25, 2.85], [-0.30, 0, 0]);
     KIT.liftEye(P, 'hullDetail', side * 1.02, 0.72, 3.42);
   }
-  P.add('hull', box(2.08, 0.80, 0.16), 0, 1.14, -3.80);
-  for (let i = 0; i < 7; i++) P.add('hullDark', box(0.055, 0.52, 0.025), -0.90 + i * 0.30, 1.18, -3.90);
+  P.add('hull', box(2.18, 0.80, 0.18), 0, 1.14, -3.64);
+  for (let i = 0; i < 7; i++) P.add('hullDark', box(0.055, 0.52, 0.025), -0.90 + i * 0.30, 1.18, -3.74);
 }
 
 function buildZTZ99ATurret(P: FrontlinePort): void {
-  const { box, polyMultiLoft, cylY, torus } = KIT;
-  P.turretG.position.set(0, 1.55, -0.08);
-  P.gunG.position.set(0, 0.40, 1.34);
+  const { box, polyMultiLoft, torus } = KIT;
+  P.turretG.position.set(0, 1.52, -0.04);
+  P.gunG.position.set(0, 0.50, 1.55);
   const plan: [number, number][] = [
     // Extend the welded shell into the gun throat so the articulated cradle
     // stays physically seated throughout the full depression/elevation arc.
-    [-0.25, 1.22], [0.25, 1.22], [0.96, 0.66], [1.54, 0.02],
-    [1.62, -1.52], [1.26, -2.18], [0.58, -2.34], [-0.58, -2.34],
-    [-1.26, -2.18], [-1.62, -1.52], [-1.54, 0.16], [-0.96, 0.96],
+    [-0.27, 1.42], [0.27, 1.42], [1.02, 0.78], [1.60, 0.08],
+    [1.68, -1.62], [1.52, -2.42], [1.28, -2.64], [-1.28, -2.64],
+    [-1.52, -2.42], [-1.68, -1.62], [-1.60, 0.20], [-1.02, 1.06],
   ];
-  P.add('turretDark', KIT.polyTurret(plan, 0.11, 0.98, 0.96), 0, -0.04, 0);
+  P.add('turretDark', KIT.polyTurret(plan, 0.13, 1.18, 0.97), 0, -0.04, 0);
   P.add('turret', polyMultiLoft(plan, [
     { height: 0.02, inset: 1.00 },
-    { height: [0.35, 0.35, 0.48, 0.61, 0.68, 0.71, 0.72, 0.72, 0.71, 0.68, 0.61, 0.48], inset: 0.99 },
-    { height: [0.69, 0.69, 0.80, 0.88, 0.93, 0.95, 0.96, 0.96, 0.95, 0.93, 0.88, 0.80],
-      inset: [0.62, 0.62, 0.74, 0.86, 0.92, 0.94, 0.94, 0.94, 0.94, 0.92, 0.86, 0.74] },
+    { height: [0.40, 0.40, 0.58, 0.76, 0.86, 0.90, 0.92, 0.92, 0.90, 0.86, 0.76, 0.58], inset: 0.99 },
+    { height: [1.10, 1.10, 1.24, 1.35, 1.40, 1.44, 1.45, 1.45, 1.44, 1.40, 1.35, 1.24],
+      inset: [0.66, 0.66, 0.76, 0.87, 0.93, 0.95, 0.95, 0.95, 0.95, 0.93, 0.87, 0.76] },
   ]));
-  P.add('turret', cylY(1.12, 1.18, 0.11, 20), 0, -0.04, -0.18);
-  P.add('turretDark', box(0.58, 0.60, 0.18), 0, 0.38, 1.10);
+  P.add('turret', orientedSlab(
+    [-1.08, 1.25, 0.35], [1.08, 1.25, 0.35], [1.28, 1.27, -2.34], [-1.28, 1.27, -2.34],
+    [-0.82, 1.43, 0.12], [0.82, 1.43, 0.12], [1.12, 1.45, -2.30], [-1.12, 1.45, -2.30],
+  ));
+  P.add('turretDark', box(0.60, 0.70, 0.18), 0, 0.46, 1.31);
   // The fixed throat overlaps the moving root collar instead of terminating
   // behind it, preventing a daylight seam at maximum depression.
-  P.add('turret', box(0.48, 0.52, 0.30), 0, 0.39, 1.265);
+  P.add('turret', box(0.50, 0.62, 0.34), 0, 0.49, 1.45);
   const chevronStations = Object.freeze([
-    { x: 0.21, ridgeZ: 1.45, upperY: 0.78, ridgeY: 0.33, lowerY: 0.12, upperSetback: 0.25, lowerSetback: 0.13 },
-    { x: 0.50, ridgeZ: 1.26, upperY: 0.77, ridgeY: 0.33, lowerY: 0.12, upperSetback: 0.27, lowerSetback: 0.14 },
-    { x: 0.82, ridgeZ: 0.97, upperY: 0.75, ridgeY: 0.32, lowerY: 0.12, upperSetback: 0.29, lowerSetback: 0.15 },
-    { x: 1.14, ridgeZ: 0.58, upperY: 0.73, ridgeY: 0.31, lowerY: 0.12, upperSetback: 0.31, lowerSetback: 0.16 },
-    { x: 1.58, ridgeZ: 0.12, upperY: 0.70, ridgeY: 0.29, lowerY: 0.12, upperSetback: 0.33, lowerSetback: 0.17 },
+    { x: 0.22, ridgeZ: 1.70, upperY: 1.08, ridgeY: 0.55, lowerY: 0.08, upperSetback: 0.27, lowerSetback: 0.15 },
+    { x: 0.52, ridgeZ: 1.48, upperY: 1.07, ridgeY: 0.54, lowerY: 0.08, upperSetback: 0.29, lowerSetback: 0.16 },
+    { x: 0.86, ridgeZ: 1.14, upperY: 1.05, ridgeY: 0.53, lowerY: 0.08, upperSetback: 0.31, lowerSetback: 0.17 },
+    { x: 1.20, ridgeZ: 0.70, upperY: 1.02, ridgeY: 0.51, lowerY: 0.09, upperSetback: 0.33, lowerSetback: 0.18 },
+    { x: 1.64, ridgeZ: 0.18, upperY: 0.97, ridgeY: 0.48, lowerY: 0.10, upperSetback: 0.35, lowerSetback: 0.19 },
   ] satisfies readonly ChevronStation[]);
   // The rebuilt ZTZ shell has its own plan and vertical profile, but uses the
   // same proven structural law: one continuous upper/lower arrowhead per side.
@@ -596,32 +616,32 @@ function buildZTZ99ATurret(P: FrontlinePort): void {
     addChevronRidgeSeams(P, chevronStations, side);
     P.addEquipment('turret', box(0.12, 0.36, 0.66), side * 1.60, 0.36, -0.50);
   }
-  addChinese125Gun(P, { length: 5.00, rootR: 0.27, sleeveStart: 0.70, sleeveEnd: 3.42 });
-  P.addEquipment('turret', box(0.46, 0.44, 0.42), -0.46, 0.92, 0.35, 0, -0.05, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.21, 0.020), -0.46, 0.95, 0.58, 0, -0.05, 0);
-  P.addEquipment('turret', box(0.46, 0.22, 0.42), 0.48, 0.94, -0.16);
-  P.add('turretDark', torus(0.22, 0.016, 18), 0.48, 1.07, -0.16, Math.PI / 2, 0, 0);
+  addChinese125Gun(P, { length: 7.16, rootR: 0.29, sleeveStart: 0.78, sleeveEnd: 4.58 });
+  P.addEquipment('turret', box(0.50, 0.52, 0.46), -0.48, 1.54, 0.28, 0, -0.05, 0);
+  P.addModuleVisual('optics', 'turretGlass', box(0.27, 0.24, 0.020), -0.48, 1.57, 0.52, 0, -0.05, 0);
+  P.addEquipment('turret', box(0.50, 0.25, 0.45), 0.50, 1.55, -0.22);
+  P.add('turretDark', torus(0.23, 0.016, 18), 0.50, 1.69, -0.22, Math.PI / 2, 0, 0);
   for (const side of [-1, 1] as const) {
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 6, r: 0.043, len: 0.28, spacing: 0.10,
       splay: side * 0.48, pitch: -0.42, arc: 0.54, seed: 510 + side,
-    }), [side * 1.29, 0.46, 0.02], [0, side * 0.98, 0]);
-    P.addEquipment('turret', box(0.22, 0.18, 0.20), side * 1.04, 0.84, 0.20, 0, side * 0.20, 0);
-    P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.08, 0.018), side * 1.04, 0.86, 0.31, 0, side * 0.20, 0);
-    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 0.82 + (side > 0 ? 0.12 : 0), r: 0.010, seed: 512 + side }),
-      [side * 0.82, 0.96, -1.86]);
+    }), [side * 1.31, 0.58, 0.02], [0, side * 0.98, 0]);
+    P.addEquipment('turret', box(0.22, 0.22, 0.20), side * 1.06, 1.08, 0.16, 0, side * 0.20, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.09, 0.018), side * 1.06, 1.11, 0.27, 0, side * 0.20, 0);
+    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.50 + (side > 0 ? 0.12 : 0), r: 0.010, seed: 512 + side }),
+      [side * 0.82, 1.42, -1.92]);
   }
   mount(P, 'turret', FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
-    scale: 0.67, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
+    scale: 0.82, towerRise: 0.12, variant: 'korean-twin', sensorHead: true,
     sensorMount: 'roof', weapon: true, caliberMm: 12.7,
     weaponName: 'QJC-88 remote machine gun', seed: 515,
-  }), [0.42, 0.92, -0.78], [0, 0.03, 0]);
+  }), [0.42, 1.32, -0.82], [0, 0.03, 0]);
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.82, d: 0.44, h: 0.25, rails: 3, fill: 0.42, seed: 516,
-  }), [0, 0.44, -2.28]);
-  P.decal('turret', 'number', '99A', 0.24, [-1.48, 0.43, -0.56], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.86);
+  }), [0, 0.58, -2.36]);
+  P.decal('turret', 'number', '99A', 0.24, [-1.55, 0.58, -0.56], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 2.21);
 }
 
 function buildZTZ99A(P: FrontlinePort): void {
@@ -632,14 +652,17 @@ function buildZTZ99A(P: FrontlinePort): void {
   if (P.geometryReceipt) {
     P.hullG.userData.type99aFrontlineReceipt = Object.freeze({
       independentFromCanonicalFamily: true, independentHull: true,
+      sourceMeasuredBodyEnvelopeM: Object.freeze([7.145, 3.699, 3.685]),
+      sourceMeasuredOverallLengthM: 11.605,
       installedWidthScale, installedTrackWidthM: 0.60,
       roadWheelsPerSide: 6, unifiedGlacisAndSkirtStructure: true,
-      duplicateTrackMeshes: 0,
+      fenderRunsJoined: true, comparisonRegistry: 'type99a',
+      qualityGateFloor: 92, duplicateTrackMeshes: 0,
     });
     P.turretG.userData.type99aFrontlineTurretReceipt = Object.freeze({
       independentTurret: true, retiredBadTurretReused: false,
       twoCourseIntegratedChevronCheeks: true, equalChevronCourseHeight: true,
-      chevronsMeetSlopedTurretSides: true,
+      chevronsMeetSlopedTurretSides: true, gunCenterlineLocalY: 0.50,
     });
   }
 }

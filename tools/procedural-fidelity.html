@@ -646,6 +646,10 @@ window.__REFERENCE_SOURCES = Object.fromEntries(referenceIds.map((tankId) => [
   tankId,
   (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb?.path || null,
 ]));
+window.__REFERENCE_QUALITY_BARS = Object.fromEntries(referenceIds.map((tankId) => [
+  tankId,
+  (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.qualityBar || 'fleet',
+]));
 window.__REFERENCE_IDS = referenceIds;
 
 if (params.has('registry')) {
