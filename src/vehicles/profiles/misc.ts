@@ -3735,7 +3735,7 @@ export function buildType90(P: MiscBuilderPort): void {
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
 function buildType74(P: MiscBuilderPort): void {
-  const { box, cylY, cylZ, frustum, polyMultiLoft, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, frustum, openRackGrid, polyMultiLoft, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -3965,7 +3965,8 @@ function buildType74(P: MiscBuilderPort): void {
     for (let k = 0; k < 4; k++) {
       P.add('turretDetail', box(0.026, 0.23, 0.026), s * bx1, 0.315, bz0 - 0.06 - k * 0.36);
     }
-    P.add('turretDark', box(0.014, 0.21, bz0 - bz1 - 0.06), s * (bx1 + 0.006), 0.315, (bz0 + bz1) / 2); // mesh face
+    P.add('turretDark', openRackGrid(0.21, bz0 - bz1 - 0.06, 0.014, 5, 8),
+      s * (bx1 + 0.006), 0.315, (bz0 + bz1) / 2, 0, 0, Math.PI / 2);             // open side-basket mesh face
     P.add('turretCloth', box(bx1 - bx0 - 0.04, 0.18, bz0 - bz1 - 0.10), s * (bx0 + bx1) / 2, 0.31, (bz0 + bz1) / 2); // duffel load
     // §I fittings: full-height whip antenna on the bustle flank plus the
     // 3-tube smoke-discharge bank on the dome rear quarter (real 2x3 JGSDF fit)

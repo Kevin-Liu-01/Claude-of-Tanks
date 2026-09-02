@@ -1753,7 +1753,9 @@ function abramsBustleRack(
   // classified as background across 356 px of the rear pair). Geometry
   // byte-identical; every other family leaves it unset -> turretDark.
   const rackDark = t.rackDarkBucket ?? 'turretDark';
-  P.add(t.rackDress ? 'turretTrack' : rackDark, box(rw * 1.93, 0.016, rackD * 0.92), 0, rkB + 0.03, zMid);
+  P.add(t.rackDress ? 'turretTrack' : rackDark,
+    KIT.openRackGrid(rw * 1.93, rackD * 0.92, 0.016, 5, 13),
+    0, rkB + 0.03, zMid);
   // Rear closure (visual r3 item 5): with rackDress the flat dark sheet at
   // the rail plane read as three CLOSED panels between the posts (critic
   // "bustle air gap"). The ref mask owns the rack volume, so dress with
@@ -1771,7 +1773,9 @@ function abramsBustleRack(
     P.add('turretTrack', box(rw * 1.95, 0.36, 0.075), 0, rkB + 0.20, zRear + 0.1575);
     P.add('turretTrack', box(rw * 1.95, 0.30, 0.06), 0, rkB + 0.17, zRear + 0.09);
   } else {
-    P.add(rackDark, box(rw * 1.93, (rkTr - rkB) * 0.84, 0.014), 0, (rkTr + rkB) / 2, zRear + 0.014);
+    P.add(rackDark,
+      KIT.openRackGrid(rw * 1.93, (rkTr - rkB) * 0.84, 0.014, 6, 13),
+      0, (rkTr + rkB) / 2, zRear + 0.014, Math.PI / 2, 0, 0);
   }
   if (P.q) {
     // rackDress: the 11-post even comb behind the mesh read as a picket

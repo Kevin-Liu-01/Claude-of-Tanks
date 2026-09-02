@@ -1328,7 +1328,7 @@ function bustleRack(
   zl: HeightMap,
   rng: () => number,
 ): void {
-  const { box, tarpRoll, ammoCan } = KIT;
+  const { box, stowage, tarpRoll, ammoCan } = KIT;
   const zC = R.zC ?? (R.z1 + 0.24);
   const dC = R.z0 - zC, d = R.z0 - R.z1;
   for (const fx of [-0.8, 0, 0.8]) {
@@ -1360,7 +1360,14 @@ function bustleRack(
   const loadB = R.loadBucket || 'turretDark';
   tarpRoll(P, loadB, -R.halfW * 0.3, yl(loadY - 0.09), zl(R.z0 - dC * 0.3), R.halfW * 0.95, 0.09, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', R.halfW * 0.45, yl(R.floorY + 0.11), zl(R.z0 - dC * 0.35), 0.3);
-  P.add(loadB, box(0.40, loadY - R.floorY - 0.02, dC * 0.5), -R.halfW * 0.25, yl((loadY + R.floorY) / 2), zl(R.z0 - dC * 0.35), 0, rng() * 0.25, 0);
+  stowage(P, loadB, rng, [[
+    -R.halfW * 0.25,
+    yl((loadY + R.floorY) / 2),
+    zl(R.z0 - dC * 0.35),
+    0.40,
+    loadY - R.floorY - 0.02,
+    dC * 0.5,
+  ]]);
 }
 
 // Tall AA-pedestal mount (real T26/T42 fitting the recovered oracles model

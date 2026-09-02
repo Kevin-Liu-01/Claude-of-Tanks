@@ -7384,7 +7384,8 @@ export function buildLeo2A4(builder: object) {
       P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.70); // end post
       P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.28); // fore post into wall
     }
-    P.add('turretDark', box(2.16, 0.018, 0.38), 0, rackB + 0.03, -2.49);
+    P.add('turretDark', KIT.openRackGrid(2.16, 0.38, 0.018, 5, 11),
+      0, rackB + 0.03, -2.49);
     // §5.16 family: mesh back panel closing the rack rear (type90 donor's
     // low overhung basket read — frame + mesh, not floating bars)
     for (let k = 0; k < 11; k++) {
@@ -15638,7 +15639,8 @@ function buildLeo2A4M(P: TankBuilderPort) {
       P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.70); // end post
       P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.28); // fore post into wall
     }
-    P.add('turretDark', box(2.16, 0.018, 0.38), 0, rackB + 0.03, -2.49);
+    P.add('turretDark', KIT.openRackGrid(2.16, 0.38, 0.018, 5, 11),
+      0, rackB + 0.03, -2.49);
     // mesh back panel closing the rack rear (frame + mesh, not floating bars)
     for (let k = 0; k < 11; k++) {
       P.add('turretDark', box(0.026, rackT - rackB - 0.14, 0.014), -1.05 + k * 0.21, (rackT + rackB) / 2, -2.725);

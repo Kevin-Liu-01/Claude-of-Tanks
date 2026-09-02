@@ -831,7 +831,7 @@ function buildLeo2A4(P: Modern2BuilderPort) {
   const { box, frustum, cylY, cylX, cylZ, torus, slab,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan,
-    spareTrackStrip } = KIT;
+    openRackGrid, spareTrackStrip } = KIT;
   const { rng } = P;
   // ---- hull (Leo 2 family: shallow band over tracks, sharp one-piece glacis)
   P.add('hull', box(2.48, 0.58, 7.5), 0, 0.79, 0);                              // lower hull
@@ -945,7 +945,8 @@ function buildLeo2A4(P: Modern2BuilderPort) {
     P.add('turretDetail', box(0.05, 0.05, 0.5), s * (TW + 0.1), rkT, -2.15);
     P.add('turretDetail', box(0.05, 0.05, 0.5), s * (TW + 0.1), rkB, -2.15);
   }
-  P.add('turretDark', box(2 * TW + 0.16, 0.02, 0.45), 0, rkB + 0.03, -2.18);
+  P.add('turretDark', openRackGrid(2 * TW + 0.16, 0.45, 0.020, 5, 13),
+    0, rkB + 0.03, -2.18);
   stowage(P, 'turretCloth', rng, [
     [-0.85, 0.36, -2.18, 0.7, 0.4, 0.38], [0.1, 0.34, -2.2, 0.6, 0.36, 0.36],
     [0.9, 0.34, -2.18, 0.5, 0.38, 0.34],

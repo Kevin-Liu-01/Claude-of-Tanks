@@ -5190,7 +5190,7 @@ function buildType89(P: Modern3BuilderPort) {
 function buildAriete(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, slab, buildGun, buildRunningGear,
     headlight, liftEye, periscope, pintleMG, smokeCluster, towCable, fenders,
-    torus } = KIT;
+    openRackGrid, torus } = KIT;
 
   // Low welded hull: the old build stacked a full-width upper box over the
   // suspension, making the C1 read as a tall Challenger-shaped rectangle.
@@ -5293,7 +5293,8 @@ function buildAriete(P: Modern3BuilderPort) {
   P.add('turretDetail', box(2.26, 0.035, 0.035), 0, rackBot, rackZ);
   for (let k = 0; k < 9; k++) P.add('turretDetail', box(0.025, rackTop - rackBot, 0.025), -1.06 + k * 0.265, 0.29, rackZ);
   for (const s of [-1, 1]) P.add('turretDetail', box(0.035, 0.035, 0.42), s * 1.11, rackBot, -1.82);
-  P.add('turretDark', box(2.16, 0.015, 0.36), 0, rackBot, -1.82);
+  P.add('turretDark', openRackGrid(2.16, 0.36, 0.015, 5, 10),
+    0, rackBot, -1.82);
   P.add('turretDetail', box(0.025, 0.48, 0.025), -0.94, ATH + 0.20, -1.42, 0, 0, -0.09);
   P.add('turretDetail', box(0.025, 0.48, 0.025), 0.94, ATH + 0.20, -1.42, 0, 0, 0.09);
 

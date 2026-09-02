@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { FITTINGS, MUDGUARDS } from './profiles/kit.ts';
+import { FITTINGS, KIT, MUDGUARDS } from './profiles/kit.ts';
 
 const mats = Object.fromEntries([
   'dark', 'detail', 'canvasCloth', 'wood', 'spareTrack', 'glass', 'hull',
@@ -107,6 +107,47 @@ for (const guard of builder.guards) {
 assert.equal(builder.hullG.userData.sharedMudguards.length, 2);
 assert.ok(builder.hullG.userData.sharedMudguards.every((receipt) => receipt.attachedSupport));
 
+const coreGrid = KIT.openRackGrid(1.4, 0.48, 0.018, 5, 9);
+assert.equal(coreGrid.userData.designFamily, 'cot-open-rack-grid-v1');
+assert.equal(coreGrid.userData.openLattice, true);
+assert.equal(coreGrid.userData.solidProxyPanels, 0);
+assert.deepEqual(coreGrid.userData.rackEnvelope,
+  { widthM: 1.4, depthM: 0.48, thicknessM: 0.018 });
+
+const equipmentRows = [];
+const primitiveBuilder = {
+  q: true,
+  add() {
+    assert.fail('shared cargo primitives must use addEquipment, never structural add');
+  },
+  addEquipment(bucket, geometry, ...transform) {
+    geometry.userData.combatHitboxRole = 'equipment';
+    equipmentRows.push({ bucket, geometry, transform });
+  },
+};
+KIT.stowage(primitiveBuilder, 'turretCloth', () => 0.75,
+  [[0, 0, 0, 0.62, 0.34, 0.44]]);
+KIT.jerryCan(primitiveBuilder, 'turretCloth', 0, 0, 0, 0.15);
+KIT.tarpRoll(primitiveBuilder, 'turretCloth', 0, 0, 0, 0.8, 0.1, true, 12);
+KIT.ammoCan(primitiveBuilder, 'turretDark', 0, 0, 0, -0.2);
+assert.ok(equipmentRows.length >= 30, 'deepened cargo kit emits modeled hardware, not four marker solids');
+assert.ok(equipmentRows.every((row) => row.geometry.userData.combatHitboxRole === 'equipment'));
+const primitiveFamilies = new Set(equipmentRows.map((row) => row.geometry.userData.designFamily));
+for (const family of [
+  'cot-soft-stowage-v2', 'cot-field-jerry-can-v2',
+  'cot-rolled-fabric-v2', 'cot-ammo-can-v2',
+]) assert.ok(primitiveFamilies.has(family), `${family} receipt is present`);
+const jerryBody = equipmentRows.find((row) =>
+  row.geometry.userData.designFamily === 'cot-field-jerry-can-v2').geometry;
+assert.equal(jerryBody.userData.stampedRibs, 4);
+assert.equal(jerryBody.userData.bridgeHandles, 3);
+assert.equal(jerryBody.userData.threadedSpout, true);
+const ammoBody = equipmentRows.find((row) =>
+  row.geometry.userData.designFamily === 'cot-ammo-can-v2').geometry;
+assert.equal(ammoBody.userData.latches, 2);
+assert.equal(ammoBody.userData.hinges, 2);
+assert.equal(ammoBody.userData.carryHandle, true);
+
 rack.traverse((object) => {
   if (object.isMesh) object.geometry.dispose();
 });
@@ -115,5 +156,7 @@ for (const fitting of [cans, shieldedMg]) fitting.traverse((object) => {
 });
 for (const material of Object.values(mats)) material.dispose();
 for (const row of [...builder.guards, ...builder.supports]) row.geometry.dispose();
+coreGrid.dispose();
+for (const row of equipmentRows) row.geometry.dispose();
 
-console.log('equipmentPrimitives.selftest: open bustle lattice and shaped mudguard contracts passed');
+console.log('equipmentPrimitives.selftest: bustle, cargo, and shaped mudguard contracts passed');

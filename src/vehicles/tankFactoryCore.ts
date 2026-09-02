@@ -4393,51 +4393,152 @@ function stowage(
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const rng = requireRng(rngSource);
-  // tank_models r7 ("read as placeholder primitives"): every canvas bundle
-  // carries a soft tarp lid + two dark cinch straps so the boxes read as
-  // strapped-down kit, not bare prisms.
+  // Shared soft-kit vocabulary. Seeded shape selection keeps fleet-wide
+  // variation deterministic while preserving each authored cargo envelope.
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
-    P.addEquipment(bucket, box(w, h, d), x, y, z, 0, yaw, 0);
-    P.addEquipment(bucket, box(w * 1.04, h * 0.18, d * 1.04), x, y + h * 0.46, z, 0, yaw, 0); // tarp lid
+    const style = Math.min(2, Math.floor(rng() * 3));
+    const body = style === 0
+      ? box(w, h, d)
+      : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0,
+        [w * (style === 1 ? 0.98 : 0.92), h * 0.94, d * (style === 1 ? 0.96 : 0.90)]);
+    body.userData.designFamily = 'cot-soft-stowage-v2';
+    body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
+    P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
+    const flapDepth = style === 2 ? d * 0.64 : d * 1.04;
+    P.addEquipment(bucket, box(w * (style === 2 ? 0.76 : 1.04), h * 0.16, flapDepth),
+      x, y + h * 0.46, z + (style === 2 ? d * 0.08 : 0), 0, yaw, -0.025);      // folded flap / tarp lid
+    if (style === 2) {
+      for (const side of [-1, 1]) {
+        addEquipmentLocal(P, bucket, box(w * 0.18, h * 0.42, d * 0.34),
+          x, y, z, yaw, side * w * 0.46, -h * 0.08, -d * 0.02);                // asymmetric field pockets
+      }
+    } else if (style === 1) {
+      P.addEquipment(dark, box(w * 0.34, 0.026, 0.026),
+        x, y + h * 0.50, z - d * 0.02, 0, yaw, 0);                             // duffel carry handle
+    }
     const along = d >= w;                                    // straps across the long axis
     for (const f of [-0.28, 0.28]) {
-      P.add(dark, along
+      const strap = along
         ? box(w * 1.06, h * 1.04, 0.028)
-        : box(0.028, h * 1.04, d * 1.06),
-        x + (along ? 0 : f * w), y + h * 0.02, z + (along ? f * d : 0), 0, yaw, 0);
+        : box(0.028, h * 1.04, d * 1.06);
+      strap.userData.designFamily = 'cot-webbing-strap-v2';
+      addEquipmentLocal(P, dark, strap, x, y + h * 0.02, z, yaw,
+        along ? 0 : f * w, 0, along ? f * d : 0);
+      addEquipmentLocal(P, dark, box(0.07, 0.018, 0.055),
+        x, y + h * 0.54, z, yaw, along ? f * w * 0.10 : f * w, 0,
+        along ? f * d : f * d * 0.10);                                         // visible strap buckle
     }
   }
 }
 
 // ---- procedural prop kit (stowage clutter at canonical locations) ----------
+function addEquipmentLocal(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  z: number,
+  yaw: number,
+  localX: number,
+  localY: number,
+  localZ: number,
+  rx = 0,
+  ry = 0,
+  rz = 0,
+): void {
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  P.addEquipment(bucket, geometry,
+    x + localX * cos + localZ * sin,
+    y + localY,
+    z - localX * sin + localZ * cos,
+    rx, yaw + ry, rz);
+}
+
 function jerryCan(
   builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
-  P.addEquipment(bucket, box(0.16, 0.46, 0.34), x, y, z, 0, yaw, 0);
-  P.addEquipment(bucket, box(0.04, 0.06, 0.12), x, y + 0.26, z, 0, yaw, 0);   // handles
+  const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
+  const body = box(0.16, 0.40, 0.34);
+  body.userData.designFamily = 'cot-field-jerry-can-v2';
+  body.userData.stampedRibs = 4;
+  body.userData.bridgeHandles = 3;
+  body.userData.threadedSpout = true;
+  P.addEquipment(bucket, body, x, y - 0.02, z, 0, yaw, 0);
+  P.addEquipment(bucket, box(0.145, 0.08, 0.29), x, y + 0.20, z, 0, yaw, 0);   // pressed shoulder
+  for (const face of [-1, 1]) {
+    for (const diagonal of [-1, 1]) {
+      addEquipmentLocal(P, dark, box(0.026, 0.31, 0.014), x, y - 0.02, z, yaw,
+        0, 0, face * 0.174, 0, 0, diagonal * 0.42);                            // stamped X ribs
+    }
+  }
+  for (const hx of [-0.048, 0.048]) {
+    addEquipmentLocal(P, dark, box(0.024, 0.075, 0.026), x, y, z, yaw,
+      hx, 0.245, -0.015);
+  }
+  addEquipmentLocal(P, dark, box(0.12, 0.024, 0.026), x, y, z, yaw,
+    0, 0.282, -0.015);                                                        // bridge handle
+  addEquipmentLocal(P, dark, cylY(0.025, 0.028, 0.045, 10), x, y, z, yaw,
+    0.045, 0.275, 0.09);                                                      // threaded cap
+  P.addEquipment(dark, box(0.18, 0.025, 0.22), x, y - 0.23, z, 0, yaw, 0);    // retaining foot / cradle contact
 }
 function tarpRoll(
   builder: object, bucket: string, x: number, y: number, z: number,
   len: number, r = 0.1, alongX = true, seg = 10,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
-  P.addEquipment(bucket, alongX ? cylX(r, len, seg) : cylZ(r, len, seg), x, y, z);
+  const roll = alongX ? cylX(r, len, seg) : cylZ(r, len, seg);
+  roll.userData.designFamily = 'cot-rolled-fabric-v2';
+  roll.userData.endSeams = 2;
+  roll.userData.cinchStraps = 2;
+  P.addEquipment(bucket, roll, x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const f of [-0.3, 0.3]) {
-    P.add(dark, alongX
+    P.addEquipment(dark, alongX
       ? xform(cylX(r * 1.06, 0.03, seg), 0, 0, 0)
       : xform(cylZ(r * 1.06, 0.03, seg), 0, 0, 0),
       x + (alongX ? f * len : 0), y, z + (alongX ? 0 : f * len));    // straps
   }
+  for (const end of [-1, 1]) {
+    P.addEquipment(dark, alongX ? cylX(r * 0.80, 0.014, seg) : cylZ(r * 0.80, 0.014, seg),
+      x + (alongX ? end * len * 0.505 : 0), y,
+      z + (alongX ? 0 : end * len * 0.505));                                 // rolled end seam
+  }
+  P.addEquipment(dark, box(alongX ? len * 0.34 : 0.024, 0.018,
+    alongX ? 0.024 : len * 0.34), x, y + r * 0.88, z);                        // folded flap / tied edge
 }
 function ammoCan(
   builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
-  P.addEquipment(bucket, box(0.14, 0.2, 0.3), x, y, z, 0, yaw, 0);
+  const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
+  const body = box(0.14, 0.20, 0.30);
+  body.userData.designFamily = 'cot-ammo-can-v2';
+  body.userData.latches = 2;
+  body.userData.hinges = 2;
+  body.userData.carryHandle = true;
+  P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
+  P.addEquipment(bucket, box(0.155, 0.028, 0.315), x, y + 0.11, z, 0, yaw, 0); // rolled lid lip
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.026, 0.075, 0.024), x, y, z, yaw,
+      side * 0.045, 0.035, 0.158);                                            // twin over-center latches
+    addEquipmentLocal(P, dark, cylX(0.014, 0.04, 8), x, y, z, yaw,
+      side * 0.045, 0.08, -0.158);                                            // rear hinge barrels
+  }
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.018, 0.06, 0.018), x, y, z, yaw,
+      side * 0.046, 0.16, 0);
+  }
+  addEquipmentLocal(P, dark, box(0.11, 0.018, 0.018), x, y, z, yaw,
+    0, 0.19, 0);                                                              // folding carry handle
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.012, 0.17, 0.24), x, y, z, yaw,
+      side * 0.071, -0.005, 0);                                               // pressed side ribs
+  }
 }
 function shovelTool(builder: object, x: number, y: number, z: number, len = 0.95): void {
   const P = requireGeometryAddPort(builder);

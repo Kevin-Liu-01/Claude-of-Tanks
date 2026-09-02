@@ -223,7 +223,7 @@ function cupolaRing(
 // sight housings, APU) are photo-class per the round brief.
 // ---------------------------------------------------------------------------
 function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
-  const { box, cylY, cylZ, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, openRackGrid, torus, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
@@ -560,7 +560,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   for (const bx of [-1.02, -0.35, 0.35, 1.02]) {
     P.add('turret', box(0.05, 0.60, 0.52), bx, 0.43, L(-1.99));                // basket dividers
   }
-  P.add('turretDark', box(2.04, 0.44, 0.02), 0, 0.42, L(-2.36));               // rear mesh face (registered-frame parity with the ref's -2.44 rear)
+  P.add('turretDark', openRackGrid(2.04, 0.44, 0.020, 5, 10),
+    0, 0.42, L(-2.36), Math.PI / 2, 0, 0);                                     // open rear mesh face in the registered frame
   for (const [bx2, blen] of [[-0.70, 0.52], [0.02, 0.44], [0.72, 0.48]]) {
     P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.30, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
     P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.30, L(-1.99));
