@@ -71,6 +71,10 @@ export interface SkyRig {
   ensureCloudTexturesChunked(tick?: () => Promise<void>): Promise<void>;
   bakeEnvironment(): void;
   applyFog(targetScene: THREE.Scene): void;
+  applyPresentationPreset(
+    preset: Partial<SkyPreset> | null | undefined,
+    targetScene: THREE.Scene,
+  ): void;
   applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
 }
 
@@ -770,9 +774,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     scene.add(mesh);
     return mesh;
   };
-  // The garage bay cannot see the outdoor cloud decks. Start their exact
-  // deterministic FBM bakes in a worker while the main thread finishes boot,
-  // then install the transferred RGBA buffers before a world becomes visible.
+  // Verdant's sealed garage bay cannot see the outdoor cloud decks, but the
+  // nine open Garage destinations can. Start their exact deterministic FBM
+  // bakes in a worker while the main thread finishes boot, then install the
+  // transferred RGBA buffers before an outdoor presentation becomes visible.
   // Browsers without Worker keep the synchronous compatibility path below.
   const lazyCloudTex = (): THREE.CanvasTexture => {
     const cv = document.createElement('canvas');
@@ -1070,16 +1075,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
     },
 
-    /**
-     * Re-target the whole atmosphere to a map's sky preset (map switch):
-     * sun direction + dome uniforms + cloud opacity/tint + horizon resample +
-     * environment rebake + fog rebuild. `sunDir` is mutated IN PLACE so
-     * lighting rigs holding the reference stay correct.
-     * @param {?object} p partial preset (fields of DEFAULT_PRESET)
-     * @param {THREE.Scene} targetScene scene whose fog is replaced
-     * @returns {void}
-     */
-    applyPreset(p: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void {
+    /** Re-target visible atmosphere state without synchronously rebuilding PMREM. */
+    applyPresentationPreset(
+      p: Partial<SkyPreset> | null | undefined,
+      targetScene: THREE.Scene,
+    ): void {
       ensureCloudTextures(); // deferred boot bake — decks must be real now
       preset = { ...DEFAULT_PRESET, ...(p || {}) };
       sunDir.setFromSphericalCoords(
@@ -1091,8 +1091,26 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
       scene.userData.postExposure = preset.postExposure; // post.ts grade trim
-      rig.bakeEnvironment();
+      // Garage variants keep the one boot PMREM resident. Rebuilding a cube
+      // environment for every selector hover/rapid click caused visible frame
+      // stalls even though the authored key lights already own tank shading.
+      // Matching its strength still preserves the source map's ambient level.
+      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
       rig.applyFog(targetScene);
+    },
+
+    /**
+     * Re-target the whole atmosphere to a map's sky preset (map switch):
+     * sun direction + dome uniforms + cloud opacity/tint + horizon resample +
+     * environment rebake + fog rebuild. `sunDir` is mutated IN PLACE so
+     * lighting rigs holding the reference stay correct.
+     * @param {?object} p partial preset (fields of DEFAULT_PRESET)
+     * @param {THREE.Scene} targetScene scene whose fog is replaced
+     * @returns {void}
+     */
+    applyPreset(p: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void {
+      rig.applyPresentationPreset(p, targetScene);
+      rig.bakeEnvironment();
     },
   };
   return rig;

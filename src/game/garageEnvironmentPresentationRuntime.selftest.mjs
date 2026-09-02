@@ -13,6 +13,7 @@ const runtime = createGarageEnvironmentPresentationRuntime({
   garagePosition,
   getSelectedVariantId: () => selectedVariantId,
   setWorldDormant: (value) => calls.push(['dormant', value]),
+  applySkyPreset: () => calls.push(['sky']),
   placeGarage: () => calls.push(['place']),
   setGarageSunTrim: (value) => calls.push(['sun', value]),
   invalidatePresentation: () => calls.push(['invalidate']),
@@ -31,8 +32,8 @@ assert.deepEqual(runtime.diagnostics(), {
 
 await runtime.activate('verdant_motor_pool');
 assert.deepEqual(garagePosition.toArray(), [-1500, 0, -1500]);
-assert.deepEqual(calls.slice(-4), [
-  ['dormant', true], ['place'], ['sun', true], ['invalidate'],
+assert.deepEqual(calls.slice(-5), [
+  ['dormant', true], ['sky'], ['place'], ['sun', true], ['invalidate'],
 ]);
 assert.equal(poses.length, 0,
   'variant activation must not overwrite the active showroom camera solver');
@@ -57,6 +58,16 @@ assert.notEqual(runtime.diagnostics(), runtime.diagnostics(),
   'diagnostics must not expose retained state');
 assert.notEqual(runtime.diagnostics().anchor, runtime.diagnostics().anchor,
   'diagnostics must not expose the retained anchor tuple');
+
+const skyCallsBeforeBurst = calls.filter(([name]) => name === 'sky').length;
+await Promise.all([
+  runtime.activate('winter_repair_bunker'),
+  runtime.activate('urban_arsenal'),
+  runtime.activate('foundry_heavy_works'),
+]);
+assert.equal(calls.filter(([name]) => name === 'sky').length, skyCallsBeforeBurst + 1,
+  'synchronous selector intent must retarget only the final atmosphere');
+assert.equal(runtime.diagnostics().variantId, 'foundry_heavy_works');
 
 assert.throws(() => createGarageEnvironmentPresentationRuntime({}),
   /requires every lifecycle port/);

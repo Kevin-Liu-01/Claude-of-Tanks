@@ -3,6 +3,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import type { GarageVariant } from '../game/garageVariants.ts';
 import {
+  garageViewPoint,
+  garageWorldPointToView,
+  legacyGaragePointToView,
+} from '../game/garagePresentationPose.ts';
+import {
   addCatalogExterior,
   type GeometryBuckets,
 } from '../world/maps/exteriorDetailKit.ts';
@@ -67,6 +72,7 @@ export interface GarageEnvironmentStats {
   readonly railSegments: number;
   readonly serviceVehicles: number;
   readonly placementZones: number;
+  readonly openingViewFrames: number;
   readonly placementOverlaps: number;
   readonly maxGroundContactErrorM: number;
   readonly triangles: number;
@@ -245,41 +251,16 @@ function hashVariant(id: string): number {
   return hash >>> 0;
 }
 
-interface GarageAtmospherePalette {
-  readonly zenith: number;
-  readonly horizon: number;
-  readonly silhouette: number;
-}
+interface GarageAtmospherePalette { readonly horizon: number; readonly silhouette: number; }
 
 function atmospherePalette(weather: GarageVariant['weather']): GarageAtmospherePalette {
   switch (weather) {
-    case 'dust': return { zenith: 0x302923, horizon: 0x634c3b, silhouette: 0x49352b };
-    case 'snow': return { zenith: 0x1e3444, horizon: 0x526978, silhouette: 0x354955 };
-    case 'rain': return { zenith: 0x10242d, horizon: 0x304b53, silhouette: 0x253d37 };
-    case 'industrial': return { zenith: 0x161e27, horizon: 0x3b4850, silhouette: 0x30363b };
-    default: return { zenith: 0x112d40, horizon: 0x345664, silhouette: 0x385141 };
+    case 'dust': return { horizon: 0x634c3b, silhouette: 0x49352b };
+    case 'snow': return { horizon: 0x526978, silhouette: 0x354955 };
+    case 'rain': return { horizon: 0x304b53, silhouette: 0x253d37 };
+    case 'industrial': return { horizon: 0x3b4850, silhouette: 0x30363b };
+    default: return { horizon: 0x345664, silhouette: 0x385141 };
   }
-}
-
-function createSkyGeometry(zenithHex: number, horizonHex: number): THREE.BufferGeometry {
-  // Keep the dome just beyond the 65 m relief skyline. The post stack applies
-  // distance atmosphere from depth, so an infinite/no-depth sky is bleached
-  // toward the clear color on bright presets.
-  const geometry = new THREE.SphereGeometry(76, 24, 12);
-  const positions = geometry.getAttribute('position');
-  const colors = new Float32Array(positions.count * 3);
-  const zenith = new THREE.Color(zenithHex);
-  const horizon = new THREE.Color(horizonHex);
-  const color = new THREE.Color();
-  for (let index = 0; index < positions.count; index += 1) {
-    const vertical = THREE.MathUtils.clamp(positions.getY(index) / 70, -1, 1);
-    const blend = Math.pow(Math.max(0, vertical), 0.55);
-    color.copy(horizon).lerp(zenith, blend);
-    color.toArray(colors, index * 3);
-  }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.computeBoundingSphere();
-  return geometry;
 }
 
 function createBackdropGeometry(
@@ -400,10 +381,7 @@ function samplePatch(
 }
 
 function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
-  return {
-    x: (side - depth) * Math.SQRT1_2,
-    z: (-side - depth) * Math.SQRT1_2,
-  };
+  return garageViewPoint(side, depth);
 }
 
 function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array): THREE.BufferGeometry {
@@ -523,27 +501,12 @@ export function buildGarageEnvironment(
     return track(material);
   };
 
-  // One shared composition for every variant: atmosphere color and the exact
-  // sampled terrain profile change, but the draw graph stays fixed. The sky
-  // and three-layer terrain skyline close the excerpt without constructing a
-  // battlefield horizon service or adding any per-frame work.
+  // The scene-level engine sky already owns the exact battlefield atmosphere,
+  // cloud decks, color-space handling and PMREM. A second 76 m Garage dome
+  // occluded it and compressed to a white card under post-processing. Outdoor
+  // packs now contribute only their map-derived relief horizon; the real Sky
+  // remains visible with zero additional frame work or Garage-owned textures.
   const atmosphere = atmospherePalette(variant.weather);
-  const sky = new THREE.Mesh(
-    track(createSkyGeometry(atmosphere.zenith, atmosphere.horizon)),
-    track(new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      side: THREE.BackSide,
-      depthWrite: true,
-      fog: false,
-      toneMapped: false,
-    })),
-  );
-  sky.name = 'garage_shared_sky';
-  sky.renderOrder = -100;
-  sky.frustumCulled = false;
-  sky.matrixAutoUpdate = false;
-  sky.updateMatrix();
-  root.add(sky);
 
   const horizon = new THREE.Mesh(
     track(createBackdropGeometry(patch, heights, seed, atmosphere)),
@@ -569,7 +532,7 @@ export function buildGarageEnvironment(
     // squeezed into one camera-facing strip. The shared coordinates keep
     // every footprint inside the compact patch while giving the environment
     // a readable 220-degree built horizon from both the hero view and orbit.
-    const { x, z } = placement;
+    const { x, z } = cameraPoint(placement.side, placement.depth);
     const local = createBuckets();
     const dimensions = placement.builder(rng, local);
     const catalogId = placement.builder.name.replace(/^make/, '').toLowerCase();
@@ -624,8 +587,7 @@ export function buildGarageEnvironment(
       const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const side = (x - z) * Math.SQRT1_2;
-        const depth = -(x + z) * Math.SQRT1_2;
+        const { side, depth } = garageWorldPointToView(x, z);
         const distance = Math.hypot(
           (side - terrace.side) / terrace.radiusSide,
           (depth - terrace.depth) / terrace.radiusDepth,
@@ -648,8 +610,7 @@ export function buildGarageEnvironment(
       const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const side = (x - z) * Math.SQRT1_2;
-        const depth = -(x + z) * Math.SQRT1_2;
+        const { side, depth } = garageWorldPointToView(x, z);
         const distance = Math.hypot(
           (side - terrace.side) / terrace.radiusSide,
           (depth - terrace.depth) / terrace.radiusDepth,
@@ -665,8 +626,10 @@ export function buildGarageEnvironment(
       structure.dimensions.w * structure.placement.scale,
       structure.dimensions.d * structure.placement.scale,
     ) * 0.48;
-    const structureSide = (structure.x - structure.z) * Math.SQRT1_2;
-    const structureDepth = -(structure.x + structure.z) * Math.SQRT1_2;
+    const { side: structureSide, depth: structureDepth } = garageWorldPointToView(
+      structure.x,
+      structure.z,
+    );
     for (const terrace of terraceRecords) {
       const distance = Math.hypot(
         (structureSide - terrace.side) / (radius + terrace.radiusSide + 0.8),
@@ -798,6 +761,7 @@ export function buildGarageEnvironment(
         looseParts: 0,
         railSegments: 0,
         serviceVehicles: 0,
+        openingViewFrames: 0,
         placementZones: 0,
         meshes: Object.freeze([]),
         material: null,
@@ -891,8 +855,7 @@ export function buildGarageEnvironment(
     [21, 24, -0.68, 0.70],
   ] as const;
   wreckPlacements.forEach(([side, depth, yaw, size], index) => {
-    const x = (side - depth) * Math.SQRT1_2;
-    const z = (-side - depth) * Math.SQRT1_2;
+    const { x, z } = cameraPoint(side, depth);
     const y = samplePatch(patch, heights, x, z);
     wrecks.setMatrixAt(index, new THREE.Matrix4().compose(
       new THREE.Vector3(x, y + 0.02, z),
@@ -992,8 +955,7 @@ export function buildGarageEnvironment(
     const radiusScale = 0.90 + rng() * 0.10;
     const x = Math.cos(angle) * 42 * radiusScale;
     const z = Math.sin(angle) * 36 * radiusScale;
-    const depth = -(x + z) * Math.SQRT1_2;
-    const side = (x - z) * Math.SQRT1_2;
+    const { side, depth } = garageWorldPointToView(x, z);
     // Preserve only the narrow canonical approach lane. The old whole-half-
     // plane exclusion left alternate orbit angles looking unfinished even
     // though the environment owned enough vegetation for a complete ring.
@@ -1057,6 +1019,8 @@ export function buildGarageEnvironment(
     triangles += one * (object instanceof THREE.InstancedMesh ? object.count : 1);
   });
 
+  const landmarkView = legacyGaragePointToView(recipe.landmark[0], recipe.landmark[2]);
+  const landmarkWorld = cameraPoint(landmarkView.side, landmarkView.depth);
   const stats: GarageEnvironmentStats = Object.freeze({
     distinctiveElements: Object.freeze([
       ...recipe.distinctiveElements,
@@ -1074,7 +1038,9 @@ export function buildGarageEnvironment(
     serviceFrame: recipe.serviceFrame,
     signature: `${variant.architecture}:${objects}:${Math.round(triangles)}:${recipe.structures.map((item) => item.label).join('|')}`,
     sourceBeat: recipe.sourceBeat,
-    sourceLandmarkLocal: Object.freeze([...recipe.landmark]) as readonly [number, number, number],
+    sourceLandmarkLocal: Object.freeze([
+      landmarkWorld.x, recipe.landmark[1], landmarkWorld.z,
+    ]) as readonly [number, number, number],
     sourceStructure: recipe.sourceStructure,
     terrainProfile: recipe.terrainProfile,
     terrainSourceAnchor: patch.sourceAnchor,

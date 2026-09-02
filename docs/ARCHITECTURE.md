@@ -915,8 +915,12 @@ arbitrary maintenance assemblies and emits repeated opaque crates, cylinders,
 beams, sleepers, and service props as static instanced batches. This preserves
 authored transforms, materials, and triangle silhouettes without paying one
 scene node or geometry bake per copy. Cinder adds three full rail
-roads, platforms, canopies, and a nine-bay roundhouse. A finite vertex-color sky closes the
-composition without a white world background. No battlefield runtime,
+roads, platforms, canopies, and a nine-bay roundhouse. Two connected, stocked
+maintenance frames remain legible in the untouched opening composition. The
+local white-card sky has been removed: `garageSkyPresets.ts` retargets the
+shared procedural dome, cloud decks, fog, and sun to the exact source-map
+atmosphere while retaining the boot PMREM so selector changes do not stall.
+No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.
 
 `garageEnvironmentPresentationRuntime.ts` keeps any retained battle world

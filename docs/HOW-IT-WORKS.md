@@ -52,6 +52,10 @@ its landmark; only Verdant shows the wall-mounted interior props that require
 its enclosed shell.
 
 The other nine choices build compact Garage-only interpretations of their maps.
+They use the battle renderer's real procedural dome, cloud layers, fog, and
+map-specific sun preset; a lightweight sky registry keeps this independent of
+full battlefield loading. Their opening view includes stocked, connected
+maintenance frames before the wider 360-degree service district.
 A 41×37 terrain grid stays flat across the shared service terrace, then carries
 deterministic relief at the perimeter. Rocks and trees are instanced. Each theme
 adds five connected structures plus maintenance bays on both sides of the hero,

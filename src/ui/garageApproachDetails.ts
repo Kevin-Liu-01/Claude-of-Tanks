@@ -5,6 +5,10 @@ import type {
   GarageApproachRecipe,
   GarageApproachStyle,
 } from './garageEnvironmentRecipes.ts';
+import {
+  GARAGE_CAMERA_AZIMUTH_RAD,
+  garageViewPoint,
+} from '../game/garagePresentationPose.ts';
 
 interface GarageApproachBuildOptions {
   readonly approach: GarageApproachRecipe;
@@ -26,15 +30,13 @@ interface CameraPoint {
   readonly depth: number;
 }
 
-const VIEW_YAW = Math.PI / 4;
+const VIEW_YAW = GARAGE_CAMERA_AZIMUTH_RAD;
 const LOCAL_UP = new THREE.Vector3(0, 1, 0);
 const LOCAL_FORWARD = new THREE.Vector3(0, 0, 1);
 
 function cameraToWorld(side: number, depth: number): THREE.Vector2 {
-  return new THREE.Vector2(
-    (side - depth) * Math.SQRT1_2,
-    (-side - depth) * Math.SQRT1_2,
-  );
+  const point = garageViewPoint(side, depth);
+  return new THREE.Vector2(point.x, point.z);
 }
 
 function paint(geometry: THREE.BufferGeometry, color: number): THREE.BufferGeometry {

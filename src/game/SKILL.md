@@ -83,8 +83,9 @@ it without variant-specific branches. `garageStage.ts` owns the restored exact
 Verdant indoor workshop. `garageEnvironmentKit.ts` owns the other nine bounded
 scene packs: generated real-terrain excerpts, authored world-space perimeter
 districts of seven real map structures, static tree-grove/ground-cover instances,
-a generated first-party wreck proxy, Garage-sized PBR derivatives, the finite
-sky and three-layer terrain horizon. `garageApproachDetails.ts` owns one
+a generated first-party wreck proxy, Garage-sized PBR derivatives, the bounded
+three-layer terrain horizon, and the exact source-map preset on the shared
+procedural engine sky. `garageApproachDetails.ts` owns one
 terrain-following arrival route per map identity (including Cinder's three-road
 rail fan), while `exteriorDetailKit.ts` certifies every sill, pier, awning,
 ladder, pipe, balcony, and service fixture against its wall, roof, or ground

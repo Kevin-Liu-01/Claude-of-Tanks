@@ -14,6 +14,7 @@ export interface GarageEnvironmentPresentationOptions {
   garagePosition: THREE.Vector3;
   getSelectedVariantId(): string;
   setWorldDormant(dormant: boolean): void;
+  applySkyPreset(): void;
   placeGarage(): void;
   setGarageSunTrim(active: boolean): void;
   invalidatePresentation(): void;
@@ -43,12 +44,13 @@ export function createGarageEnvironmentPresentationRuntime({
   garagePosition,
   getSelectedVariantId,
   setWorldDormant,
+  applySkyPreset,
   placeGarage,
   setGarageSunTrim,
   invalidatePresentation,
   setCameraPose,
 }: GarageEnvironmentPresentationOptions): GarageEnvironmentPresentationRuntime {
-  const required = [getSelectedVariantId, setWorldDormant, placeGarage,
+  const required = [getSelectedVariantId, setWorldDormant, applySkyPreset, placeGarage,
     setGarageSunTrim, invalidatePresentation, setCameraPose];
   if (!(garagePosition instanceof THREE.Vector3)
     || required.some((entry) => typeof entry !== 'function')) {
@@ -65,6 +67,7 @@ export function createGarageEnvironmentPresentationRuntime({
   };
   const cameraPose = new THREE.Vector3();
   const cameraTarget = new THREE.Vector3();
+  let activationGeneration = 0;
 
   const poseCamera = (): void => {
     cameraPose.set(
@@ -81,6 +84,7 @@ export function createGarageEnvironmentPresentationRuntime({
   };
 
   const activate = async (variantId: string): Promise<void> => {
+    const generation = ++activationGeneration;
     const variant = getGarageVariant(variantId);
     garagePosition.set(GARAGE_X, 0, GARAGE_Z);
     state = {
@@ -93,6 +97,16 @@ export function createGarageEnvironmentPresentationRuntime({
     // A battlefield retained for the next round remains detached and asleep.
     // Garage variants never ask it to update, compile, or contribute shadows.
     setWorldDormant(true);
+    // Selector intent can arrive in a synchronous burst. Yield one microtask
+    // so only the final destination retargets the procedural atmosphere and
+    // presentation roots; sampling ten horizons forty times in one task was
+    // the last remaining rapid-switch frame hitch.
+    await Promise.resolve();
+    if (generation !== activationGeneration) return;
+    // Reuse the selected battlefield's real procedural sky, cloud decks, fog,
+    // and environment light. The preset registry is lightweight; no map
+    // terrain or runtime module enters the Garage loading path.
+    applySkyPreset();
     placeGarage();
     setGarageSunTrim(true);
     invalidatePresentation();

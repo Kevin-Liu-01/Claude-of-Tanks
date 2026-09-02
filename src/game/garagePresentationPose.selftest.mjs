@@ -7,6 +7,9 @@ import {
   GARAGE_CAMERA_PITCH_RAD,
   GARAGE_HERO_HEADING_RAD,
   GARAGE_PRESENTATION_POSE,
+  garageViewPoint,
+  garageWorldPointToView,
+  legacyGaragePointToView,
 } from './garagePresentationPose.ts';
 
 assert.ok(Object.isFrozen(GARAGE_PRESENTATION_POSE));
@@ -27,6 +30,15 @@ const heroForward = [
 ];
 assert.ok(cameraPlanar[0] * heroForward[0] + cameraPlanar[1] * heroForward[1] > 0,
   'the canonical camera must remain on the bow side of local +Z');
+const oldPoint = { x: -30, z: -12 };
+const viewPoint = legacyGaragePointToView(oldPoint.x, oldPoint.z);
+const recomposed = garageViewPoint(viewPoint.side, viewPoint.depth);
+assert.ok(Math.abs(recomposed.x - oldPoint.x) < 1e-9);
+assert.ok(Math.abs(recomposed.z - oldPoint.z) < 1e-9,
+  'the canonical camera must preserve the original Verdant screen-space composition');
+const roundTrip = garageWorldPointToView(recomposed.x, recomposed.z);
+assert.ok(Math.abs(roundTrip.side - viewPoint.side) < 1e-9);
+assert.ok(Math.abs(roundTrip.depth - viewPoint.depth) < 1e-9);
 
 const environmentSource = await readFile(
   new URL('./garageEnvironmentPresentationRuntime.ts', import.meta.url), 'utf8',

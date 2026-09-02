@@ -79,11 +79,11 @@ import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
-  DEFAULT_GARAGE_SKY,
   MAP_IDS,
   getMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
+import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
@@ -330,10 +330,10 @@ const sky = await bootStage('sky', () => {
   s.bakeEnvironment();
   return s;
 });
-// Loading-budget r1: the garage cannot see the outdoor cloud decks, but a
-// battle or direct Studio entry can need them immediately. Start their two
-// deterministic canvas bakes now and let the remaining boot stages overlap
-// the work. ensureWorld still awaits the shared promise before activation.
+// Loading-budget r1: Verdant's sealed bay cannot see the cloud decks, while
+// any outdoor Garage, battle, or direct Studio entry can need them immediately.
+// Start their two deterministic canvas bakes now and overlap the remaining
+// boot stages. ensureWorld still awaits the shared promise before activation.
 const bootCloudWarmP = sky.ensureCloudTexturesChunked
   ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
   : Promise.resolve();
@@ -657,7 +657,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
-    return { ...DEFAULT_GARAGE_SKY, sunColorHex: variant.lightTint };
+    return getGarageSkyPreset(variant.mapId);
   },
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
@@ -693,6 +693,10 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   garagePosition: GARAGE_POS,
   getSelectedVariantId: () => selectedGarageVariantId,
   setWorldDormant,
+  applySkyPreset: () => {
+    const variant = getGarageVariant(selectedGarageVariantId);
+    sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
+  },
   placeGarage,
   setGarageSunTrim,
   invalidatePresentation: invalidateGaragePresentation,

@@ -16,8 +16,8 @@ Present game and session state with fast, legible desktop/mobile interactions.
 `garageStage.ts` owns the typed visible hero podium and environment bridge;
 `garageArchitecture.ts` owns the two-pack async cache and phase-tracked assets;
 `garageEnvironmentKit.ts` owns all ten bounded authentic terrain, camera-space
-structure, vegetation/ground-cover, generated wreck, PBR, finite-sky, and
-layered-horizon packs;
+structure, vegetation/ground-cover, generated wreck, PBR, and layered-horizon
+packs; the shared engine sky owns every outdoor Garage atmosphere;
 `playMenu.ts` owns direct Solo,
 Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load

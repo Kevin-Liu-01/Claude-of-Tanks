@@ -16,6 +16,8 @@ assert.match(kitSource, /garageTerrainPatches\.generated\.ts/,
   'Garage terrain must use build-time battlefield excerpts');
 assert.match(kitSource, /garageWreckGeometry\.generated\.ts/,
   'Garage wrecks must use a build-time first-party proxy instead of a fleet runtime');
+assert.doesNotMatch(kitSource, /createSkyGeometry|garage_shared_sky/,
+  'outdoor Garage packs must expose the shared engine sky, not occlude it with a local sphere');
 assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
   'Garage recipes must use the real connected map structure builders');
 assert.match(facilitySource, /createWorkshopPartLibrary/,
@@ -104,6 +106,8 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must distribute a complete service facility around the hero`);
   assert.equal(stats.facilityStations, 2,
     `${variant.id} must have two complete maintenance stations`);
+  assert.equal(stats.openingViewFrames, 2,
+    `${variant.id} must stage two connected service frames in the opening view`);
   assert.ok(stats.looseParts >= 40,
     `${variant.id} must include workshop equipment and stocked spare parts`);
   assert.ok(stats.serviceVehicles >= 1,

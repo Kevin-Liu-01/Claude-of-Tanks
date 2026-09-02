@@ -12,6 +12,10 @@ import {
   makeGranary, makeLogCabin, makeMill, makeOnionChurch, makeWoodshed,
 } from '../world/maps/villageKit.ts';
 import { makeChurch, makeFactory } from '../world/maps/urbanKit.ts';
+import {
+  GARAGE_CAMERA_AZIMUTH_RAD,
+  legacyGaragePointToView,
+} from '../game/garagePresentationPose.ts';
 
 export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
   'plaster' | 'roof' | 'wood' | 'brick';
@@ -19,9 +23,9 @@ export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
 export interface GarageStructurePlacement {
   readonly builder: StructureBuilder;
   readonly label: string;
-  /** Authored world-space footprint center inside the compact terrain excerpt. */
-  readonly x: number;
-  readonly z: number;
+  /** Footprint center in the immutable opening-camera coordinate frame. */
+  readonly side: number;
+  readonly depth: number;
   readonly yaw: number;
   readonly scale: number;
 }
@@ -61,7 +65,16 @@ export interface GarageEnvironmentRecipe {
 }
 
 const at = (builder: StructureBuilder, label: string, x: number, z: number,
-  yaw = 0, scale = 1): GarageStructurePlacement => ({ builder, label, x, z, yaw, scale });
+  yaw = 0, scale = 1): GarageStructurePlacement => {
+  const point = legacyGaragePointToView(x, z);
+  return {
+    builder,
+    label,
+    ...point,
+    yaw: yaw + GARAGE_CAMERA_AZIMUTH_RAD - Math.PI / 4,
+    scale,
+  };
+};
 
 export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnvironmentRecipe>>({
   field_shed: {

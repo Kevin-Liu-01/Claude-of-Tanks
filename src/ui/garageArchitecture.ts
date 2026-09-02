@@ -61,6 +61,7 @@ export interface GarageArchitectureStats {
   railSegments: number;
   serviceVehicles: number;
   placementZones: number;
+  openingViewFrames: number;
   placementOverlaps: number;
   maxGroundContactErrorM: number;
   outdoorWarmReady: boolean;
@@ -115,6 +116,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     railSegments: 0,
     serviceVehicles: 0,
     placementZones: 4,
+    openingViewFrames: 0,
     placementOverlaps: 0,
     maxGroundContactErrorM: 0,
     triangles: 0,
@@ -254,6 +256,7 @@ export function createGarageArchitectureController(
       railSegments: selectedReady ? Number(root?.userData.railSegments || 0) : 0,
       serviceVehicles: selectedReady ? Number(root?.userData.serviceVehicles || 0) : 0,
       placementZones: selectedReady ? Number(root?.userData.placementZones || 0) : 0,
+      openingViewFrames: selectedReady ? Number(root?.userData.openingViewFrames || 0) : 0,
       placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
       maxGroundContactErrorM: selectedReady
         ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,
