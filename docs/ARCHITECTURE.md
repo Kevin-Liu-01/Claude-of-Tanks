@@ -1185,7 +1185,7 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `tank_closeup_ww2` | same recipe around the tiger1 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
-| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose at the isolated **(-1500, 0, -1500)** Garage stage; all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
+| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style rear three-quarter pose (rear toward camera, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
 
 `window.__SHOTS.views` lists exactly these 8 (more may be appended). `__GAME_READY`
 only after the §4 startup sequence completes. Determinism: everything seeded (§1.4),

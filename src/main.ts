@@ -1150,7 +1150,8 @@ const showroom = createGarageShowroomRuntime({
   element: renderer.domElement,
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
-  // Classic front-right three-quarter hero framing. All dimensions and camera
+  // Canonical rear-right three-quarter framing: engine deck toward the viewer,
+  // bow and gun toward screen-left. All dimensions and camera
   // math remain owned by the existing engine solver; this root supplies only
   // scene anchors and the canonical vehicle-independent frame.
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
