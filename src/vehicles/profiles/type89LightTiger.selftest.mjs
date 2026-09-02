@@ -28,8 +28,8 @@ assert.doesNotMatch(source, /AFV_FAMILY_PROFILES|buildType89\s*\(/,
   'new Light Tiger builder does not call or import the legacy Type 89 implementation');
 assert.doesNotMatch(source, /from ['"]\.\.\/modern3\.ts['"]/,
   'new Light Tiger profile has no dependency on the old canonical builder pack');
-assert.doesNotMatch(source, /mantlet/i,
-  'Light Tiger keeps its base gun cradle without introducing a separate mantlet');
+assert.match(source, /flat gun mask and compact rocking mantlet/i,
+  'Light Tiger carries the requested flat frontal mask and compact moving mantlet');
 assert.doesNotMatch(source, /height:\s*\[/,
   'Light Tiger never builds a non-planar roof or turret cap from per-vertex heights');
 assert.doesNotMatch(source, /inset:\s*\[/,
@@ -52,23 +52,23 @@ try {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
     hullConstruction: 'planar-roof-light-tiger-glacis-shell-v5',
-    turretConstruction: 'planar-faceted-kde35-citadel-v4',
+    turretConstruction: 'flat-front-bradley-equipment-citadel-v5',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
     suspensionPlacement: 'inboard-behind-road-wheel',
     sideArmorCassettesPerSide: 9,
     sideArmorLayers: 3,
-    frontSkirtTransition: 'lower-glacis-downfold-v2',
+    frontSkirtTransition: 'inboard-glacis-shoulder-downfold-v3',
     nativeTrackPattern: 'japanese-modular',
-    baseGunAssembly: 'compact-slash-port-kde35-cradle-v7',
+    baseGunAssembly: 'flat-mask-kde35-mantlet-v8',
     jyuMatLaunchTubes: 4,
     panoramicOpticStages: 2,
     planarRoofCell: true,
     upperGlacisConstruction: 'separate-planar-wedge',
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
-    fenderBridge: 'continuous-hull-skirt-seat',
+    fenderBridge: 'broad-over-track-shoulder-and-skirt-seat-v2',
     rearTroopRamp: true,
   });
   assert.deepEqual(turret.userData.type89LightTigerTurretReceipt, {
@@ -80,6 +80,8 @@ try {
     allAroundCameraCount: 4,
     hardKillAps: true,
     remoteSecondaryWeapon: '12.7mm Light Tiger compact RWS',
+    mantletConstruction: 'flat-mask-compact-rocking-block',
+    pairedRoofOpticBoxes: true,
     planarRoofCrown: true,
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
@@ -100,7 +102,7 @@ try {
   assert.deepEqual(turret.userData.type89RoofOpticsReceipt, {
     designFamily: 'abramsx-open-yoke-v1',
     variant: 'korean-twin',
-    mountLocal: [-0.36, 0.75, -0.50],
+    mountLocal: [-0.36, 0.76, -0.56],
     scale: 0.88,
     sizeStandard: 'k2b-compact-tower',
     towerRiseM: 0.12,
@@ -119,7 +121,7 @@ try {
   assert.deepEqual(turret.userData.type89RoofRwsReceipt, {
     designFamily: 'abramsx-open-yoke-v1',
     variant: 'light-tiger-compact',
-    mountLocal: [0.40, 0.75, -0.88],
+    mountLocal: [0.42, 0.76, -0.94],
     scale: 0.66,
     sizeStandard: 'light-tiger-compact-rws',
     towerRiseM: 0.09,
@@ -133,7 +135,11 @@ try {
   'Light Tiger panoramic and machine-gun towers have physically separate envelopes');
   const gear = hull.userData.runningGearReceipts?.at(-1);
   assert.equal(gear?.wheelZs.length, 6, 'six road wheels are authored per side');
-  assert.equal(gear?.trackW, 0.52, 'Light Tiger native course is slightly widened under the new skirts');
+  assert.equal(Math.abs(gear?.xcLeft), 1.42,
+    'Light Tiger left running gear is reseated closer to the hull centerline');
+  assert.equal(Math.abs(gear?.xcRight), 1.42,
+    'Light Tiger right running gear is reseated closer to the hull centerline');
+  assert.equal(gear?.trackW, 0.46, 'Light Tiger native course clears the hull while filling the attached skirt envelope');
   assert.equal(gear?.trackPatternId, 'japanese-modular',
     'Light Tiger retains its unique staggered-rib Japanese shoe construction');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.28) && gear?.loopPoints.some(([z]) => z < -3.22),
@@ -147,19 +153,19 @@ try {
     'Light Tiger carries a camouflaged open gun cradle');
   assert.ok(gun.getObjectByName('gunMountDark'),
     'Light Tiger retains its dark trunnion inside the painted cradle');
-  assert.deepEqual(gun.userData.type89OpenGunCradleReceipt, {
-    architecture: 'hollow-trapezoid-slash-port-cradle-v3',
+  assert.deepEqual(gun.userData.type89GunMantletReceipt, {
+    architecture: 'flat-mask-compact-rocking-mantlet-v1',
     movingWithGun: true,
-    verticalOffsetM: -0.13,
-    scaleFromInitialCompactEnvelope: 0.70,
-    lengthM: 1.344,
-    diagonalSidePortsPerSide: 4,
-    topBottomSkins: true,
-    sideSkinPanelsPerSide: 7,
-    openFrontRear: true,
+    verticalOffsetM: 0,
+    scaleFromInitialCompactEnvelope: 0.48,
+    lengthM: 0.56,
+    diagonalSidePortsPerSide: 0,
+    topBottomSkins: false,
+    sideSkinPanelsPerSide: 1,
+    openFrontRear: false,
     surroundsMainBarrel: true,
     surroundsCoax: true,
-  }, 'Light Tiger uses a compact hollow trapezoid cradle with four raked side ports');
+  }, 'Light Tiger uses a compact flat mask and rocking mantlet around the KDE-35');
   assert.ok(gun.getObjectByName('rig_muzzle')?.position.z > 3.05,
     'Light Tiger carries the enlarged long KDE-35 assembly');
   assert.ok(tank.root.getObjectByName('muzzleBoreShadowRim'),
