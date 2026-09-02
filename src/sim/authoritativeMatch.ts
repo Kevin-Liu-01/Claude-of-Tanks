@@ -40,6 +40,7 @@ import {
   repairAllModules,
   resolveHeBurst,
   resolveShellHit,
+  selectFirstAvailableShell,
   selectShell,
   magazineReloadDenialReason,
   startMagazineReload,
@@ -181,6 +182,7 @@ export interface AuthoritativeEntity {
   modeSpeedMultiplier?: number;
   _modeTargetX?: number;
   _modeTargetZ?: number;
+  _deniedShellSlot?: number;
 }
 
 export interface AuthoritativeObstacle extends CollisionRecord {
@@ -802,9 +804,24 @@ export function createAuthoritativeMatch({
     entity.input.fire = input.fire;
     entity.input.aimLocked = !!input.aimLocked;
     entity.input.actionBits = input.actionBits | 0;
-    const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
-    if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
-    entity.input.shellSlot = shellSlot;
+    const shellSlot = Math.max(0, Math.min(
+      entity.spec.gun.shells.length - 1,
+      input.shellSlot | 0,
+    ));
+    if (shellSlot !== entity.combat.shellSlot) {
+      if (selectShell(entity.combat, shellSlot, entity.spec)) {
+        entity._deniedShellSlot = undefined;
+      } else if (entity._deniedShellSlot !== shellSlot) {
+        emit('ammo_selection_denied', {
+          id: entity.id,
+          slot: shellSlot,
+          reason: 'AMMO_EMPTY',
+          guided: entity.spec.gun.shells[shellSlot]?.guided === true,
+        });
+        entity._deniedShellSlot = shellSlot;
+      }
+    }
+    entity.input.shellSlot = entity.combat.shellSlot;
     decodeAimIntent(input, entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
@@ -1097,10 +1114,19 @@ export function createAuthoritativeMatch({
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
-    if (!consumeAmmunition(combat, combat.shellSlot)) return;
+    const firedSlot = combat.shellSlot;
+    if (!consumeAmmunition(combat, firedSlot)) return;
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
+    if (!hasAmmunition(combat, firedSlot)) {
+      const fallbackSlot = selectFirstAvailableShell(combat, entity.spec);
+      if (fallbackSlot >= 0) entity.input.shellSlot = fallbackSlot;
+      entity._deniedShellSlot = undefined;
+      if (!entity.bot) {
+        emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
+      }
+    }
     fireRecoil(entity.state, entity.spec, shellSpec);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     if (!entity.bot) {
@@ -1381,7 +1407,9 @@ export function createAuthoritativeMatch({
             entity.input.shellSlot | 0,
           ));
           if (shellSlot !== entity.combat.shellSlot) {
-            selectShell(entity.combat, shellSlot, entity.spec);
+            if (!selectShell(entity.combat, shellSlot, entity.spec)) {
+              entity.input.shellSlot = entity.combat.shellSlot;
+            }
           }
         } else applyNetworkInput(entity, inputs.get(entity.id));
         useConsumables(entity);

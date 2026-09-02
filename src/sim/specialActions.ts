@@ -14,6 +14,7 @@ import type { CombatState, DamageTankSpec } from './damage.ts';
 import {
   SPECIAL_ACTION_KINDS,
 } from './specialActionPolicy.ts';
+import { hasAmmunition } from './ammunition.ts';
 import type {
   SpecialActionKind,
   SpecialActionSpec,
@@ -95,15 +96,31 @@ export function activateSpecialAction(
       const rememberedSlot = Number.isInteger(action.previousShellSlot)
         && action.previousShellSlot >= 0
         && shells[action.previousShellSlot]?.guided !== true
+        && hasAmmunition(combat, action.previousShellSlot)
         ? action.previousShellSlot
-        : shells.findIndex((shell) => shell?.guided !== true);
-      if (rememberedSlot < 0) return RESULT_NONE;
+        : shells.findIndex((shell, index) =>
+          shell?.guided !== true && hasAmmunition(combat, index));
+      if (rememberedSlot < 0) {
+        return Object.freeze({
+          ok: false,
+          kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
+          reason: 'AMMO_EMPTY',
+          slot: missileSlot,
+        });
+      }
       slot = rememberedSlot;
       active = false;
     } else if (currentSlot >= 0 && shells[currentSlot]?.guided !== true) {
       action.previousShellSlot = currentSlot;
     }
-    selectShell(combat, slot, entity.spec!);
+    if (!selectShell(combat, slot, entity.spec!)) {
+      return Object.freeze({
+        ok: false,
+        kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
+        reason: 'AMMO_EMPTY',
+        slot,
+      });
+    }
     if (entity.input) entity.input.shellSlot = slot;
     return Object.freeze({
       ok: true,

@@ -55,6 +55,14 @@ export function hasAmmunition(
     (state!.ammo![index] || 0) > 0;
 }
 
+/** Return the first stocked shell slot, or -1 when every channel is empty. */
+export function firstAvailableAmmunitionSlot(
+  state: Partial<AmmunitionState> | null | undefined,
+): number {
+  if (!Array.isArray(state?.ammo)) return -1;
+  return state!.ammo!.findIndex((count) => (Number(count) || 0) > 0);
+}
+
 /** Consume exactly one shot. Authorities call this immediately before spawn. */
 export function consumeAmmunition(
   state: Partial<AmmunitionState> | null | undefined,

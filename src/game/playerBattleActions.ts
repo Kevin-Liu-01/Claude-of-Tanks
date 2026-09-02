@@ -210,9 +210,18 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
 
   listen('ui:shellSelect', (payload) => {
-    const slot = Number((payload as { slot?: unknown } | null)?.slot);
+    const requestedSlot = Number((payload as { slot?: unknown } | null)?.slot);
     const player = livePlayer();
-    if (!player || !Number.isInteger(slot) || slot < 0) return;
+    if (!player || !Number.isInteger(requestedSlot) || requestedSlot < 0) return;
+    const slot = Math.min(player.spec.gun.shells.length - 1, requestedSlot | 0);
+    if (!rules.hasAmmunition(player.combat, slot)) {
+      bus.emit('ui:ammoSelectionDenied', {
+        slot,
+        reason: 'AMMO_EMPTY',
+        guided: player.spec.gun.shells[slot]?.guided === true,
+      });
+      return;
+    }
     if (slot === player.combat.shellSlot && player.combat.magazine &&
         player.spec.gun.shells[slot]?.guided !== true) {
       bus.emit('ui:magazineReload', {});
@@ -224,7 +233,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
         && player.spec.gun.shells[player.combat.shellSlot]?.guided !== true) {
       action.previousShellSlot = player.combat.shellSlot;
     }
-    rules.selectShell(player.combat, slot, player.spec);
+    if (rules.selectShell(player.combat, slot, player.spec) === false) {
+      bus.emit('ui:ammoSelectionDenied', {
+        slot,
+        reason: 'AMMO_EMPTY',
+        guided: player.spec.gun.shells[slot]?.guided === true,
+      });
+      return;
+    }
     // `selectShell` clamps against the real loadout. Mirror the canonical
     // result instead of the raw 1/2/3 request so two-shell vehicles cannot
     // publish an impossible slot that the ammo guard will hold at zero.
@@ -277,6 +293,17 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   listen('shell:fired', (payload) => {
     if (!(payload as { isPlayer?: unknown } | null)?.isPlayer || !game.player?.combat) return;
     syncShellCards();
+  });
+  listen('ammo:depleted', (payload) => {
+    const detail = payload as { id?: unknown; fallbackSlot?: unknown } | null;
+    const player = game.player;
+    if (!player?.combat || detail?.id !== player.id) return;
+    syncShellCards();
+    const fallbackSlot = Number(detail.fallbackSlot);
+    if (Number.isInteger(fallbackSlot) && fallbackSlot >= 0) {
+      player.input.shellSlot = fallbackSlot;
+      bus.emit('ui:shellSelectionChanged', { slot: fallbackSlot });
+    }
   });
   listen('mode:pickup_collected', syncShellCards);
 

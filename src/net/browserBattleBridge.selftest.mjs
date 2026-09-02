@@ -172,6 +172,22 @@ assert.equal(busEvents.findLast((event) => event.type === 'ui:magazineReloadDeni
 
 snapshot.tick++;
 bridge.apply(snapshot, 1 / 60, [{
+  type: 'ammo_selection_denied', id: 'guest', slot: 1, reason: 'AMMO_EMPTY', guided: true,
+}]);
+assert.deepEqual(busEvents.findLast((event) => event.type === 'ui:ammoSelectionDenied')?.payload,
+  { type: 'ammo_selection_denied', id: 'guest', slot: 1, reason: 'AMMO_EMPTY', guided: true },
+  'network empty-selection denial reaches the canonical red-flash HUD path');
+
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{
+  type: 'ammo_depleted', id: 'guest', slot: 1, fallbackSlot: 0,
+}]);
+assert.deepEqual(busEvents.findLast((event) => event.type === 'ammo:depleted')?.payload,
+  { type: 'ammo_depleted', id: 'guest', slot: 1, fallbackSlot: 0 },
+  'network depletion fallback reaches the canonical HUD selection path');
+
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{
   type: 'shell_impact', shellId: 78, shooterId: 'host', kind: 'prop',
   surfaceKind: 'building', x: 3, y: 2, z: 9, nx: 0, ny: 0.2, nz: -0.98,
   shellType: 'APFSDS', caliberMm: 120,

@@ -3,7 +3,7 @@ import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { hasAmmunition } from './ammunition.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
-import { createCombatState, selectShell } from './damage.ts';
+import { createCombatState, selectFirstAvailableShell, selectShell } from './damage.ts';
 import { SIM_DT } from './movement.ts';
 
 const input = (shellSlot, fire = false) => ({
@@ -61,6 +61,20 @@ assert.ok(multiChannelLoadouts > 100,
 assert.ok(depletedChannelTransitions > 200,
   `depleted-channel transitions are covered (${depletedChannelTransitions})`);
 
+{
+  const spec = TANK_SPECS.m1a2;
+  const combat = createCombatState(spec);
+  combat.shellSlot = 1;
+  combat.ammo = [5, 0, 2];
+  assert.equal(selectShell(combat, 1, spec), false,
+    'an exhausted slot is rejected by the canonical selector');
+  assert.equal(selectFirstAvailableShell(combat, spec), 0,
+    'depletion fallback selects the first stocked ammunition type');
+  assert.equal(combat.shellSlot, 0);
+  assert.equal(combat.reload.t, combat.reload.totalS,
+    'automatic fallback begins a complete reload for its replacement type');
+}
+
 let guidedAuthorityLaunches = 0;
 for (const { spec, round, slot } of guidedRounds) {
   const guidedMatch = createAuthoritativeMatch({
@@ -81,10 +95,31 @@ for (const { spec, round, slot } of guidedRounds) {
     guidedGunner.input.shellSlot = fallbackSlot;
     guidedGunner.combat.ammo[fallbackSlot] = 0;
   }
-  const channel = guidedGunner.combat.reloadChannels?.[slot] || guidedGunner.combat.reload;
-  channel.t = 0;
-  channel.kind = 'ready';
   const before = guidedGunner.combat.ammo[slot];
+  if (fallbackSlot >= 0) {
+    guidedMatch.step({
+      dt: SIM_DT,
+      inputs: new Map([
+        ['guided-gunner', input(slot)],
+        ['guided-target', input(0)],
+      ]),
+    });
+    assert.ok(guidedGunner.combat.reload.t > 0,
+      `${spec.id} slot ${slot + 1}: switching starts a complete reload`);
+    const reloadTicks = Math.ceil(guidedGunner.combat.reload.t / SIM_DT) + 1;
+    for (let tick = 0; tick < reloadTicks; tick++) {
+      guidedMatch.step({
+        dt: SIM_DT,
+        inputs: new Map([
+          ['guided-gunner', input(slot)],
+          ['guided-target', input(0)],
+        ]),
+      });
+    }
+  } else {
+    guidedGunner.combat.reload.t = 0;
+    guidedGunner.combat.reload.kind = 'ready';
+  }
   guidedMatch.step({
     dt: SIM_DT,
     inputs: new Map([
@@ -104,6 +139,46 @@ for (const { spec, round, slot } of guidedRounds) {
   assert.equal(guidedGunner.combat.ammo[slot], before - 1,
     `${spec.id} slot ${slot + 1}: guided authority consumes exactly one round`);
   guidedAuthorityLaunches++;
+}
+
+{
+  const guidedCase = guidedRounds.find(({ spec, slot }) =>
+    spec.gun.shells.some((_, index) => index !== slot));
+  assert.ok(guidedCase, 'at least one guided loadout has a conventional fallback');
+  const { spec, slot } = guidedCase;
+  const denialMatch = createAuthoritativeMatch({
+    mapId: 'verdant',
+    countdownS: 0,
+    players: [
+      { id: 'guided-denial-gunner', specId: spec.id, team: 'alpha',
+        spawn: { x: 0, z: -200, yaw: 0 } },
+      { id: 'guided-denial-target', specId: 't90m', team: 'bravo',
+        spawn: { x: 0, z: 200, yaw: Math.PI } },
+    ],
+  });
+  denialMatch.onMatchReady();
+  const gunner = denialMatch.entityById.get('guided-denial-gunner');
+  const fallbackSlot = gunner.spec.gun.shells.findIndex((_, index) => index !== slot);
+  gunner.combat.shellSlot = fallbackSlot;
+  gunner.input.shellSlot = fallbackSlot;
+  gunner.combat.ammo[slot] = 0;
+  denialMatch.step({
+    dt: SIM_DT,
+    inputs: new Map([
+      ['guided-denial-gunner', input(slot)],
+      ['guided-denial-target', input(0)],
+    ]),
+  });
+  const snapshot = denialMatch.snapshot({
+    tick: 1,
+    serverTimeMs: 17,
+    viewerId: 'guided-denial-gunner',
+    ackInputSeq: 1,
+  });
+  assert.ok(snapshot.events.some((event) =>
+    event.type === 'ammo_selection_denied' && event.id === 'guided-denial-gunner'
+      && event.slot === slot && event.reason === 'AMMO_EMPTY' && event.guided === true),
+  'authority identifies an empty guided channel for missile-specific HUD feedback');
 }
 
 const match = createAuthoritativeMatch({
@@ -149,7 +224,8 @@ for (let slot = 0; slot < gunner.spec.gun.shells.length; slot++) {
 
 gunner.combat.shellSlot = 1;
 gunner.input.shellSlot = 1;
-gunner.combat.ammo[1] = 0;
+gunner.combat.ammo[0] = Math.max(1, gunner.combat.ammo[0]);
+gunner.combat.ammo[1] = 1;
 gunner.combat.reload.t = 0;
 gunner.combat.reload.kind = 'ready';
 match.step({
@@ -159,17 +235,43 @@ match.step({
     ['target', input(0)],
   ]),
 });
-const empty = match.snapshot({
+const depleted = match.snapshot({
   tick: 10,
   serverTimeMs: 170,
   viewerId: 'gunner',
   ackInputSeq: 10,
 });
-assert.ok(empty.events.some((event) =>
-  event.type === 'ammo_empty' && event.id === 'gunner' && event.slot === 1),
-'an empty selected type is rejected explicitly');
-assert.ok(!empty.events.some((event) => event.type === 'shell_fired'),
-  'empty ammunition never spawns a projectile');
+assert.ok(depleted.events.some((event) =>
+  event.type === 'ammo_depleted' && event.id === 'gunner' && event.slot === 1
+    && event.fallbackSlot === 0),
+'firing the final round announces depletion and the first stocked fallback');
+assert.equal(gunner.combat.shellSlot, 0);
+assert.equal(gunner.input.shellSlot, 0);
+assert.equal(gunner.combat.reload.t, gunner.combat.reload.totalS,
+  'automatic fallback begins a complete reload for the replacement type');
+
+match.afterSnapshotBroadcast();
+match.step({
+  dt: SIM_DT,
+  inputs: new Map([
+    ['gunner', input(1)],
+    ['target', input(0)],
+  ]),
+});
+const emptySelection = match.snapshot({
+  tick: 11,
+  serverTimeMs: 187,
+  viewerId: 'gunner',
+  ackInputSeq: 11,
+});
+assert.ok(emptySelection.events.some((event) =>
+  event.type === 'ammo_selection_denied' && event.id === 'gunner'
+    && event.slot === 1 && event.reason === 'AMMO_EMPTY'),
+'selecting an empty type is rejected explicitly for HUD feedback');
+assert.equal(gunner.combat.shellSlot, 0,
+  'an empty selection never displaces the stocked fallback');
+assert.ok(!emptySelection.events.some((event) => event.type === 'shell_fired'),
+  'an empty selection never spawns a projectile');
 
 gunner.bot = true;
 gunner.aiCtl = null;

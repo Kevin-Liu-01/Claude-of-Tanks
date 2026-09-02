@@ -37,7 +37,11 @@ import type {
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
 import type { ModuleId } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
-import { createAmmunitionState } from './ammunition.ts';
+import {
+  createAmmunitionState,
+  firstAvailableAmmunitionSlot,
+  hasAmmunition,
+} from './ammunition.ts';
 
 type Rng = () => number;
 type Vec3Tuple = [number, number, number];
@@ -1858,37 +1862,47 @@ export function repairAllModules(combat: CombatState | null | undefined): string
 }
 
 /**
- * Switch the loaded shell slot. Conventional ammunition changes restart the
- * shared gun load using the NEW shell's duration. A guided launcher is a
- * separate preloaded channel: switching to or from it exposes its preserved
- * cooldown without borrowing the autocannon timer or discarding a magazine.
+ * Switch the loaded shell slot. Every actual ammunition-type change begins a
+ * complete load cycle for the selected channel, including guided launchers
+ * and full autoloader magazines. Empty channels cannot become active.
  * @param {object} combatState CombatState
  * @param {0|1|2} slot shell slot
  * @param {object} [spec] TankSpec — when given, the restart re-derives the
  *   full per-shell/crew/rack/equipment reload for the new slot; legacy
  *   callers without it keep the old same-duration restart.
- * @returns {void}
+ * @returns whether the requested slot is stocked and selected
  */
 export function selectShell(
   combatState: CombatState,
   slot: number,
   spec?: DamageTankSpec,
-): void {
-  if (spec && spec.gun.shells) slot = Math.max(0, Math.min(spec.gun.shells.length - 1, slot | 0));
-  if (slot === combatState.shellSlot) return;
-  const priorReload = combatState.reload;
+): boolean {
+  if (spec?.gun.shells) {
+    if (spec.gun.shells.length === 0) return false;
+    slot = Math.max(0, Math.min(spec.gun.shells.length - 1, slot | 0));
+  } else {
+    slot |= 0;
+  }
+  // Legacy combat fixtures may not model inventory at all. Real playable
+  // states always provide authored ammo channels, where zero must reject.
+  if (combatState.ammo.length > 0 && !hasAmmunition(combatState, slot)) return false;
+  if (slot === combatState.shellSlot) return true;
   combatState.shellSlot = slot;
   const nextReload = combatState.reloadChannels?.[slot];
   if (nextReload) combatState.reload = nextReload;
-  // A launcher is a separate preloaded weapon. Moving between it and the
-  // cannon exposes the preserved channel state; it does not discard a cannon
-  // magazine or reset an ATGM cooldown already progressing in the background.
-  if (nextReload && nextReload !== priorReload) return;
-  // Changing the desired cannon round during an existing full magazine load
-  // must not discard elapsed work and restart the same feed cycle.
-  if (nextReload?.kind === 'magazine' && nextReload.t > 0) return;
   if (spec) startReload(combatState, spec);
   else combatState.reload.t = combatState.reload.totalS;
+  return true;
+}
+
+/** Select the first stocked shell channel and start its full load cycle. */
+export function selectFirstAvailableShell(
+  combatState: CombatState,
+  spec?: DamageTankSpec,
+): number {
+  const slot = firstAvailableAmmunitionSlot(combatState);
+  if (slot < 0) return -1;
+  return selectShell(combatState, slot, spec) ? slot : -1;
 }
 
 /** Shared crew, module, and equipment multiplier for a new load cycle. */

@@ -268,6 +268,8 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   active?: boolean;
   reason?: string;
   slot?: number;
+  fallbackSlot?: number;
+  guided?: boolean;
   readyAt?: number;
   cooldownS?: number;
   remainingS?: number;
@@ -777,6 +779,20 @@ const SHELL_CLASS_UNDERLINE: Readonly<Record<string, string>> = {
 const SHELL_DEFAULT_COUNT: Readonly<Record<string, number>> = {
   AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12,
 };
+
+export function ammunitionSlotViewState(
+  shell: HudShellCard | null | undefined,
+  selected = false,
+): { count: number; empty: boolean; selected: boolean } {
+  const fallback = SHELL_DEFAULT_COUNT[String(shell?.type || '')] ?? 20;
+  const raw = shell?.count != null ? Number(shell.count) : fallback;
+  const count = Math.max(0, Math.floor(Number.isFinite(raw) ? raw : 0));
+  return { count, empty: count <= 0, selected: !!selected };
+}
+
+function shellCount(shell: HudShellCard): number {
+  return ammunitionSlotViewState(shell).count;
+}
 
 const CAUSE_LABEL: Readonly<Record<string, string>> = {
   shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED',
@@ -1298,6 +1314,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-special:active{transform:translateX(-50%) scale(.97);}
 .cot-special.active{border-color:#f0a030;color:#ffd27a;background:linear-gradient(180deg,rgba(54,39,15,.95),rgba(21,14,7,.97));
   box-shadow:0 0 16px rgba(240,160,48,.3);}
+.cot-special.empty{color:#69737b;border-color:rgba(105,115,123,.34);
+  background:linear-gradient(180deg,rgba(22,25,28,.94),rgba(10,12,14,.96));box-shadow:none;}
+.cot-special.empty .si{filter:grayscale(1);opacity:.42;}
+.cot-special.deny{animation:cotAmmoDeny .34s ease-out 2;}
 .cot-special.pending .si{animation:cotSpecialPulse .8s ease-in-out infinite alternate;}
 .cot-special .si{display:flex;align-items:center;justify-content:center;}
 .cot-special .si svg{width:22px;height:22px;display:block;}
@@ -1318,6 +1338,14 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-shell.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(34,26,12,.9),rgba(18,13,7,.92));
   box-shadow:0 0 14px rgba(240,160,48,.25);}
+.cot-shell.empty{color:#657079;border-color:rgba(105,115,123,.28);border-bottom-color:rgba(105,115,123,.28);
+  background:linear-gradient(180deg,rgba(22,25,28,.91),rgba(10,12,14,.95));box-shadow:none;}
+.cot-shell.empty canvas,.cot-shell.empty .ty,.cot-shell.empty .clr{filter:grayscale(1);opacity:.34;}
+.cot-shell.empty .cnt,.cot-shell.empty .key{color:#66717a;border-color:rgba(105,115,123,.3);}
+.cot-shell.deny{animation:cotAmmoDeny .34s ease-out 2;}
+@keyframes cotAmmoDeny{0%,100%{border-color:rgba(105,115,123,.32);box-shadow:none}
+  45%{border-color:#ff4338;background:linear-gradient(180deg,rgba(82,15,12,.96),rgba(32,7,6,.98));
+    color:#ff8d84;box-shadow:0 0 18px rgba(255,54,45,.58)}}
 /* r6-2: thin SHELL-CLASS color underline inside each ammo slot (silver
    kinetic / orange HEAT / olive HE) — class reads without the text label */
 .cot-shell .clr{position:absolute;left:0;right:0;bottom:0;height:2px;z-index:2;
@@ -1956,7 +1984,14 @@ export function initHud(bus: EventBus): HudRuntime {
     // visibly latched for as long as that slot remains selected; 1/2/3 are
     // the only actions that clear it. True modes continue to use action.active.
     const active = specialActionIsActive(action, player?.combat?.shellSlot);
+    const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
+      ? Number(action?.missileSlot) : -1;
+    const ammunition = player?.combat?.ammo;
+    const missileEmpty = Number.isInteger(missileSlot) && missileSlot >= 0
+      && Array.isArray(ammunition)
+      && (ammunition[missileSlot] || 0) <= 0;
     specialButton.classList.toggle('active', active);
+    specialButton.classList.toggle('empty', missileEmpty);
     specialButton.classList.remove('pending');
     specialButton.disabled = !player || !!player.combat?.destroyed;
     specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -1993,7 +2028,6 @@ export function initHud(bus: EventBus): HudRuntime {
       return;
     }
     if (touch) setTouchAmmoOpen(false);
-    selectSlot(index);
     bus.emit('ui:shellSelect', { slot: index });
     bus.emit('ui:click', {});
   }
@@ -3367,12 +3401,6 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   // ---------- shell selector ----------
-  function shellCount(sp: HudShellCard): number {
-    if (sp.count != null) return sp.count;
-    const type = sp.type || '';
-    return SHELL_DEFAULT_COUNT[type] != null ? SHELL_DEFAULT_COUNT[type] : 20;
-  }
-
   function renderShells(shells: HudShellCard[] | null | undefined, slot: number): void {
     for (let i = 0; i < 3; i++) {
       const sp = shells && shells[i] ? shells[i] : DEFAULT_SHELLS[i];
@@ -3391,12 +3419,13 @@ export function initHud(bus: EventBus): HudRuntime {
       requireElement<HTMLElement>(s, '.tnm').textContent = sp.name || '—';
       requireElement<HTMLElement>(s, '.p').textContent = sp.penLabel != null ? String(sp.penLabel) : '—';
       requireElement<HTMLElement>(s, '.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
-      const n = shellCount(sp);
+      const view = ammunitionSlotViewState(sp, i === slot);
+      const n = view.count;
       requireElement<HTMLElement>(s, '.cnt').textContent = `${n}`;
-      const selected = i === slot;
-      s.classList.toggle('sel', selected);
-      s.setAttribute('aria-pressed', selected ? 'true' : 'false');
-      s.setAttribute('aria-label', `${selected ? 'Selected ammunition' : 'Select ammunition'}: ${sp.name || sp.type || `slot ${i + 1}`}, ${n} rounds`);
+      s.classList.toggle('sel', view.selected);
+      s.classList.toggle('empty', view.empty);
+      s.setAttribute('aria-pressed', view.selected ? 'true' : 'false');
+      s.setAttribute('aria-label', `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${sp.name || sp.type || `slot ${i + 1}`}, ${n} rounds${view.empty ? ', empty' : ''}`);
     }
     setTouchAmmoOpen(touchAmmoOpen);
     localSlot = slot;
@@ -4599,7 +4628,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   on('ui:shellSelect', ({ slot }) => {
-    if (slot != null) selectSlot(slot);
+    if (slot != null && !slotEls[slot]?.classList.contains('empty')) selectSlot(slot);
   });
   // E applies the ATGM toggle in gameplay first, then emits this
   // presentation-only synchronization event. Re-emitting ui:shellSelect would
@@ -4648,7 +4677,31 @@ export function initHud(bus: EventBus): HudRuntime {
       showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' });
     }
   });
-  on('ui:specialActionDenied', ({ reason }) => {
+  function pulseAmmoDenied(slot: number | null | undefined, includeSpecial = false): void {
+    const target = slot != null ? slotEls[slot] : null;
+    if (target) {
+      target.classList.remove('deny');
+      void target.offsetWidth;
+      target.classList.add('deny');
+    }
+    if (includeSpecial) {
+      specialButton.classList.remove('deny');
+      void specialButton.offsetWidth;
+      specialButton.classList.add('deny');
+    }
+  }
+  on('ui:ammoSelectionDenied', ({ slot, guided }) => {
+    pulseAmmoDenied(slot, !!guided);
+    showAlert(guided ? 'MISSILES DEPLETED' : 'AMMUNITION TYPE EMPTY', {
+      icon: guided ? 'missileRack' : 'shell', tone: 'danger',
+    });
+  });
+  on('ui:specialActionDenied', ({ reason, slot }) => {
+    if (reason === 'AMMO_EMPTY') {
+      pulseAmmoDenied(slot, true);
+      showAlert('MISSILES DEPLETED', { icon: 'missileRack', tone: 'danger' });
+      return;
+    }
     showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
         : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
           : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
@@ -4702,6 +4755,17 @@ export function initHud(bus: EventBus): HudRuntime {
         icon: 'shell', tone: 'danger',
       });
     }
+  });
+  on('ammo:depleted', ({ id, slot, fallbackSlot }) => {
+    if (playerId != null && id !== playerId) return;
+    if (fallbackSlot != null && fallbackSlot >= 0) selectSlot(fallbackSlot);
+    const guided = slot != null && lastShells?.[slot]?.type === 'ATGM';
+    showAlert(guided ? 'MISSILES DEPLETED · NEXT AMMO SELECTED'
+      : fallbackSlot != null && fallbackSlot >= 0
+        ? 'AMMUNITION DEPLETED · NEXT TYPE SELECTED'
+        : 'ALL AMMUNITION DEPLETED', {
+      icon: guided ? 'missileRack' : 'shell', tone: 'danger',
+    });
   });
   on('mode:pickup_collected', ({ by, kind, ammoAdded }) => {
     if (playerId != null && by !== playerId) return;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   consumeAmmunition,
   createAmmunitionState,
+  firstAvailableAmmunitionSlot,
   hasAmmunition,
   replenishAmmunition,
   shellAmmunitionCapacity,
@@ -26,6 +27,8 @@ loadout.ammo[0] = 0;
 loadout.ammo[1] = 0;
 loadout.ammo[2] = 19;
 assert.equal(hasAmmunition(loadout, 0), false);
+assert.equal(firstAvailableAmmunitionSlot(loadout), 2,
+  'automatic depletion fallback picks the first stocked slot');
 assert.equal(consumeAmmunition(loadout, 0), false, 'empty ammunition never goes negative');
 assert.deepEqual(replenishAmmunition(loadout), {
   added: [5, 1, 1],
@@ -34,5 +37,8 @@ assert.deepEqual(replenishAmmunition(loadout), {
 assert.deepEqual(loadout.ammo, [5, 1, 20]);
 assert.equal(totalAmmunition(loadout), 26);
 assert.equal(totalAmmunitionCapacity(loadout), 48);
+loadout.ammo.fill(0);
+assert.equal(firstAvailableAmmunitionSlot(loadout), -1,
+  'an exhausted vehicle has no synthetic fallback slot');
 
 console.log('ammunition.selftest: authored inventory, consumption, and cache replenishment passed');

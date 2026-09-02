@@ -123,9 +123,12 @@ function makeSpec(overrides = {}) {
   tickReload(combat, 2.5);
   assert.equal(combat.magazine.rounds, 2);
   selectShell(combat, 2, spec);
-  startPostShotReload(combat, spec);
   const launcher = combat.reload;
   assert.equal(launcher.t, 2.5);
+  assert.equal(launcher.kind, 'shell',
+    'selecting the ATGM begins its complete launcher reload immediately');
+  tickReload(combat, 2.5);
+  startPostShotReload(combat, spec);
   assert.equal(combat.magazine.rounds, 2,
     'an auxiliary missile never consumes the cannon magazine');
 
@@ -141,11 +144,13 @@ function makeSpec(overrides = {}) {
 
   selectShell(combat, 0, spec);
   assert.equal(combat.reload, combat.gunReload);
-  const elapsedReload = combat.reload.t;
+  assert.equal(combat.reload.t, 21,
+    'switching back to cannon ammunition restarts a complete magazine reload');
+  tickReload(combat, 4);
   selectShell(combat, 1, spec);
-  assert.equal(combat.reload.t, elapsedReload,
-    'changing cannon ammo during a full magazine reload preserves elapsed time');
-  tickReload(combat, elapsedReload);
+  assert.equal(combat.reload.t, 21,
+    'changing cannon ammunition discards partial progress and starts the whole reload');
+  tickReload(combat, 21);
   assert.equal(combat.magazine.rounds, 3);
   assert.equal(combat.reload.kind, 'ready');
 }

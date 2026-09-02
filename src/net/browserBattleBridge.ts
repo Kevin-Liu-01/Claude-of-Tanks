@@ -841,9 +841,14 @@ export function createBrowserBattleBridge<
         bus.emit('ui:specialActionDenied', {
           kind: event.kind,
           reason: event.reason,
+          slot: event.slot,
         });
     } else if (event.type === 'ammo_empty' && event.id === id) {
         bus.emit('ammo:empty', event);
+    } else if (event.type === 'ammo_selection_denied' && event.id === id) {
+        bus.emit('ui:ammoSelectionDenied', event);
+    } else if (event.type === 'ammo_depleted' && event.id === id) {
+        bus.emit('ammo:depleted', event);
     } else if (event.type === 'module_state') {
         bus.emit('module:state', {
           id: event.id,

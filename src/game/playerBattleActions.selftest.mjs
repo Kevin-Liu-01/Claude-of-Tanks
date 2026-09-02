@@ -52,8 +52,10 @@ const game = { phase: 'garage', timeS: 10, player };
 const rules = {
   selectShell(combat, slot, selectedSpec) {
     const clamped = Math.max(0, Math.min(selectedSpec.gun.shells.length - 1, slot | 0));
+    if ((combat.ammo[clamped] || 0) <= 0) return false;
     localCalls.push(`shell:${clamped}`);
     combat.shellSlot = clamped;
+    return true;
   },
   repairAllModules(combat) {
     if (!combat.damagedModule) return [];
@@ -72,6 +74,14 @@ const rules = {
         entity.input.shellSlot = action.previousShellSlot;
         return {
           ok: true, kind: 'guided_missile', active: false, slot: action.previousShellSlot,
+        };
+      }
+      if ((entity.combat.ammo[action.missileSlot] || 0) <= 0) {
+        return {
+          ok: false,
+          kind: 'guided_missile',
+          reason: 'AMMO_EMPTY',
+          slot: action.missileSlot,
         };
       }
       action.previousShellSlot = entity.combat.shellSlot;
@@ -132,8 +142,16 @@ for (let shot = 0; shot < 4; shot++) {
 assert.equal(actions.shellCards[1].count, 0, 'ammo reaches zero but never becomes negative');
 assert.equal(actions.hasAmmo(1), false);
 
-player.combat.magazine = { capacity: 3 };
+player.combat.shellSlot = 0;
+player.input.shellSlot = 0;
 input.press('shell2');
+assert.equal(player.combat.shellSlot, 0, 'an empty numbered slot cannot become selected');
+assert.ok(events.some(({ event, payload }) =>
+  event === 'ui:ammoSelectionDenied' && payload.slot === 1 && payload.reason === 'AMMO_EMPTY'),
+'empty numbered ammunition publishes a stable UI denial');
+
+player.combat.magazine = { capacity: 3 };
+input.press('shell1');
 assert.equal(localCalls.at(-1), 'reload', 'selecting the live magazine slot reloads');
 assert.ok(events.some(({ event }) => event === 'ui:magazineReloadStarted'));
 player.combat.magazineReason = 'MAGAZINE_RELOADING';
@@ -146,6 +164,7 @@ player.combat.magazine = null;
 input.press('shell1');
 assert.equal(player.combat.shellSlot, 0, 'numbered ammunition remains selectable after ATGM use');
 
+player.combat.ammo[1] = 3;
 const thirdShell = spec.gun.shells.pop();
 input.press('shell3');
 assert.equal(player.combat.shellSlot, 1, 'two-shell loadouts clamp an unavailable third slot');
@@ -186,6 +205,7 @@ assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns stat
 
 spec.guidedAction = true;
 spec.gun.shells[1].guided = true;
+player.combat.ammo[1] = 3;
 assert.equal(actions.setTank(spec)[1].type, 'ATGM',
   'guided ammunition is presented as an ATGM instead of its HEAT warhead class');
 player.specialAction = {
@@ -216,6 +236,14 @@ assert.equal(player.specialAction.previousShellSlot, 2,
 input.press('specialAction');
 assert.equal(player.input.shellSlot, 2,
   'E deselects a key-2-selected ATGM and restores that remembered shell');
+player.combat.ammo[1] = 0;
+player.combat.shellSlot = 0;
+player.input.shellSlot = 0;
+input.press('specialAction');
+assert.equal(player.input.shellSlot, 0, 'an exhausted missile channel cannot become selected');
+assert.ok(events.some(({ event, payload }) =>
+  event === 'ui:specialActionDenied' && payload.reason === 'AMMO_EMPTY' && payload.slot === 1),
+'the ATGM shortcut publishes an empty-missile denial for HUD feedback');
 spec.guidedAction = false;
 spec.gun.shells[1].guided = false;
 

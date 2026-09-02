@@ -55,7 +55,7 @@ import {
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
-  selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
+  selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
   repairAllModules, startMagazineReload,
 } from '../sim/damage.ts';
 import {
@@ -1655,7 +1655,7 @@ function readyShellForFire(
     Math.min(Math.min(2, maximumSlot), entity.input.shellSlot | 0),
   );
   if (requestedSlot !== combat.shellSlot) {
-    selectShell(combat, requestedSlot, entity.spec);
+    if (!selectShell(combat, requestedSlot, entity.spec)) return null;
     if (combat.reload.t > 0) return null;
   }
   const shell = entity.spec.gun.shells[combat.shellSlot];
@@ -1765,7 +1765,8 @@ function tryFire(
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
   if (entity.combat.modules.gun?.state === 'yellow') dispersion *= 2;
   applyDispersion(_dir, dispersion, game.combatRng);
-  if (!consumeAmmunition(entity.combat, entity.combat.shellSlot)) return;
+  const firedSlot = entity.combat.shellSlot;
+  if (!consumeAmmunition(entity.combat, firedSlot)) return;
   const shell = acquireShell(
     shellSpec,
     entity.id,
@@ -1779,6 +1780,13 @@ function tryFire(
   applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
   emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus);
   startPostShotReload(entity.combat, entity.spec);
+  if (!hasAmmunition(entity.combat, firedSlot)) {
+    const fallbackSlot = selectFirstAvailableShell(entity.combat, entity.spec);
+    if (fallbackSlot >= 0) entity.input.shellSlot = fallbackSlot;
+    if (entity.isPlayer) {
+      bus.emit('ammo:depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
+    }
+  }
   game.spotting?.notifyFired(entity.id, game.timeS);
   notifyPlayerShot(game, entity);
 }

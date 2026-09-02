@@ -4,6 +4,7 @@ import {
   HIT_CONFIRM_LIFETIME_S,
   autoloaderHudShellPose,
   autoloaderHudState,
+  ammunitionSlotViewState,
   aimWarningState,
   directionalHitAmount,
   directionalHitValueVisible,
@@ -11,6 +12,17 @@ import {
   reloadHudFraction,
   resolveReticleAnchor,
 } from './hud.ts';
+
+assert.deepEqual(
+  ammunitionSlotViewState({ name: 'ATGM', type: 'ATGM', count: 0 }, false),
+  { count: 0, empty: true, selected: false },
+  'an exhausted missile/ammo slot enters the gray empty presentation state',
+);
+assert.deepEqual(
+  ammunitionSlotViewState({ name: 'Sabot', type: 'APFSDS', count: 4 }, true),
+  { count: 4, empty: false, selected: true },
+  'stocked selected ammunition keeps its active presentation state',
+);
 
 assert.equal(
   directionalHitAmount({ damage: 417, dmgRoll: 522 }),

@@ -50,8 +50,8 @@ assert.equal(missileResult.active, true,
   'E reports the guided ammunition as selected until another slot is chosen');
 assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
 assert.equal(ifv.input.shellSlot, ifv.specialAction.missileSlot);
-assert.equal(ifv.combat.reload.t, 0,
-  'E selects the same preloaded ATGM channel as its numbered ammunition slot');
+assert.equal(ifv.combat.reload.t, 2.6,
+  'E starts the selected ATGM channel from a complete reload');
 assert.equal(ifv.specialAction.active, false, 'ammunition selection is not a hidden mode');
 startPostShotReload(ifv.combat, ifv.spec);
 assert.equal(ifv.combat.reload.t, 2.6, 'the launcher owns its post-shot cycle');
@@ -67,6 +67,17 @@ assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), fal
 assert.equal(activateSpecialAction(ifv).active, true);
 assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), true,
   'a third E press selects and visibly latches the ATGM again');
+selectShell(ifv.combat, originalSlot, ifv.spec);
+ifv.input.shellSlot = originalSlot;
+ifv.combat.ammo[ifv.specialAction.missileSlot] = 0;
+const emptyMissileResult = activateSpecialAction(ifv);
+assert.deepEqual(emptyMissileResult, {
+  ok: false,
+  kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
+  reason: 'AMMO_EMPTY',
+  slot: ifv.specialAction.missileSlot,
+}, 'E rejects an exhausted missile channel without changing ammunition');
+assert.equal(ifv.combat.shellSlot, originalSlot);
 
 const m1a3 = entityFor('m1a3');
 const m1a3MissileSlot = m1a3.specialAction.missileSlot;
@@ -76,11 +87,11 @@ assert.equal(m1a3.spec.gun.shells[m1a3MissileSlot].guided, true,
 assert.match(m1a3.spec.gun.shells[m1a3MissileSlot].name, /GATGM/);
 selectShell(m1a3.combat, 2, m1a3.spec);
 m1a3.input.shellSlot = 2;
-const previousCannonReloadT = m1a3.combat.reload.t;
 const cannonMagazineRounds = m1a3.combat.magazine.rounds;
 assert.equal(activateSpecialAction(m1a3).ok, true);
 assert.equal(m1a3.combat.shellSlot, m1a3MissileSlot);
-assert.equal(m1a3.combat.reload.t, 0);
+assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.shells[m1a3MissileSlot].reloadS,
+  'switching to the external missile launcher starts its entire reload');
 startPostShotReload(m1a3.combat, m1a3.spec);
 assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds,
   'an external guided launcher never consumes the cannon autoloader magazine');
@@ -89,15 +100,15 @@ const restoredM1a3 = activateSpecialAction(m1a3);
 assert.equal(restoredM1a3.active, false);
 assert.equal(restoredM1a3.slot, 2,
   'M1A3 restores the exact conventional round selected before its ATGM');
-assert.equal(m1a3.combat.reload.t, previousCannonReloadT,
-  'switching back to the cannon exposes its preserved reload channel');
-assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds);
+assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.autoloader.fullReloadS,
+  'switching back to cannon ammunition starts a complete magazine reload');
+assert.equal(m1a3.combat.magazine.rounds, 0);
 for (let tick = 0; tick < Math.ceil(2.8 / SIM_DT) + 1; tick++) {
   tickReload(m1a3.combat, SIM_DT);
 }
 selectShell(m1a3.combat, m1a3MissileSlot, m1a3.spec);
-assert.equal(m1a3.combat.reload.t, 0,
-  'the guided launcher reloads in the background while the cannon is selected');
+assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.shells[m1a3MissileSlot].reloadS,
+  'reselecting the guided launcher always starts its complete reload');
 
 const mbt70 = entityFor('mbt70');
 assert.equal(mbt70.spec.gun.shells.length, 1,
@@ -193,8 +204,9 @@ match.step({
 });
 const authoritativeIfv = match.entityById.get('ifv');
 assert.equal(authoritativeIfv.combat.shellSlot, authoritativeIfv.specialAction.missileSlot);
-assert.equal(authoritativeIfv.combat.reload.kind, 'ready',
-  'separate missile channel is preloaded before its first shot');
+assert.equal(authoritativeIfv.combat.reload.kind, 'shell',
+  'selecting the missile channel starts its complete reload before the first shot');
+assert.ok(authoritativeIfv.combat.reload.t > 0);
 let snapshot = match.snapshot({ tick: 1, serverTimeMs: 17, viewerId: 'ifv', ackInputSeq: 1 });
 assert.ok(snapshot.events.some((event) => event.type === 'special_action' && event.id === 'ifv'));
 assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
