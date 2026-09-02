@@ -1981,7 +1981,7 @@ function smokeTubeTips(P: ChallengerBuilderPort, banks: readonly SmokeBankSeat[]
 function buildChallenger2Legacy(P: ChallengerBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, jerryCan, tarpRoll,
-    ammoCan, buildGun, buildRunningGear, cupola, torus } = KIT;
+    ammoCan, buildGun, buildRunningGear, cupola, openRackGrid, torus } = KIT;
   const { rng } = P;
   // BASE-21 MODERNIZATION rebuild (owner directive 2026-08-06, modern-first
   // correction). PHOTO-CLASS, no oracle — FALSE-0: never gate this id.
@@ -2242,13 +2242,16 @@ function buildChallenger2Legacy(P: ChallengerBuilderPort): void {
   P.add('turretDetail', box(2.90, 0.05, 0.05), 0, bkT, bkZ);                   // basket rails
   P.add('turretDetail', box(2.90, 0.05, 0.05), 0, bkB, bkZ);
   for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.40 + k * 0.233, (bkT + bkB) / 2, bkZ);
-  P.add('turretDark', box(2.80, 0.02, 0.42), 0, bkB + 0.03, -2.70);            // mesh floor
+  P.add('turretDark', openRackGrid(2.80, 0.42, 0.020, 5, 13),
+    0, bkB + 0.03, -2.70);                                                     // open basket floor lattice
   // ch1-base rail-over-mesh basketry (ch1 r10 O5a grammar): dark mesh
   // panels seated 2 mm into the bin rear face + pale rails reading over
   // them — the stack stops reading as clean crates. Interior: z >= -2.67
   // (the -2.92 basket rails own the tail), y tops 0.575 under the bin lid.
-  P.add('turretDark', box(0.46, 0.25, 0.010), -0.45, 0.30, -2.662);
-  P.add('turretDark', box(0.46, 0.25, 0.010), 0.45, 0.30, -2.662);
+  P.add('turretDark', openRackGrid(0.46, 0.25, 0.010, 4, 5),
+    -0.45, 0.30, -2.662, Math.PI / 2, 0, 0);
+  P.add('turretDark', openRackGrid(0.46, 0.25, 0.010, 4, 5),
+    0.45, 0.30, -2.662, Math.PI / 2, 0, 0);
   for (const px of [-0.45, 0.45]) {
     for (const ry of [0.22, 0.40]) P.add('turretDetail', box(0.44, 0.020, 0.007), px, ry, -2.668);
     for (const rx of [-0.20, 0, 0.20]) P.add('turretDetail', box(0.020, 0.25, 0.007), px + rx, 0.30, -2.668);
@@ -4541,7 +4544,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
 function buildChallenger3(P: ChallengerBuilderPort): void {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
     periscope, smokeCluster, stowage, jerryCan, tarpRoll,
-    ammoCan, buildGun, buildRunningGear, torus } = KIT;
+    ammoCan, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
   const { rng } = P;
 
   // ---- running gear (§B6 trapezoid; print seats): 6 Hydrogas wheels on
@@ -5147,7 +5150,8 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     P.add('turretDetail', box(2.40, 0.05, 0.05), 0, bkT, bkZ);                  // clear of the -2.23w column window — AA-sliver law, 2nd pass)
     P.add('turretDetail', box(2.40, 0.05, 0.05), 0, bkB, bkZ);
     for (let k = 0; k < 11; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.15 + k * 0.23, (bkT + bkB) / 2, bkZ);
-    P.add('turretDark', box(2.30, 0.30, 0.016), 0, (bkT + bkB) / 2, -3.315);    // mesh back panel
+    P.add('turretDark', openRackGrid(2.30, 0.30, 0.016, 4, 11),
+      0, (bkT + bkB) / 2, -3.315, Math.PI / 2, 0, 0);                          // open mesh back panel
     // ch1-base rail-over-mesh read (r10 O5a): pale rail pair drawn over the
     // dark mesh panel (same envelope — the rails sit 2 mm proud of the mesh
     // inside the -3.335 certified extreme).

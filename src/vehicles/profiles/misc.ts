@@ -3058,8 +3058,8 @@ function buildT80UNative2026(P: MiscBuilderPort): void {
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
 export function buildType90(P: MiscBuilderPort): void {
-  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope } = KIT;
+  const { box, cylX, cylY, cylZ, frustum, openRackGrid, sph, torus,
+    buildGun, buildRunningGear, fenders, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
@@ -3530,10 +3530,19 @@ export function buildType90(P: MiscBuilderPort): void {
       const x = -1.11 + i * 0.37;
       P.add('turretDetail', box(0.03, 0.32, 0.03), x, 0.58, -2.13);            // rear posts SPAN the raised rails (1.82..2.14 — the old 0.60 posts hung to 1.52 and painted the -2.29 col bottom 0.27 under the v2 basket line; §B2: connect floor rail to top rail)
     }
-    P.add('turretDark', box(2.35, 0.38, 0.014), 0, 0.60, -2.12);               // mesh back (z_w -2.32; band 1.81..2.19 — the v2 basket underside line, fresh worldtrace)
-    P.add('turretCloth', box(2.06, 0.44, 0.20), 0, 0.44, -1.92);               // strapped cargo fill, FWD step (z_w -2.22..-1.82, band 1.62..2.06 — the v2 floor rises aft: wants 1.665@-2.07)
-    P.add('turretCloth', box(2.02, 0.31, 0.15), 0, 0.575, -2.145);             // cargo AFT step (z_w -2.42..-2.27, band 1.80..2.11 — wants 1.79@-2.29 / 1.841@-2.40; GUN-FRAME LAW: local = world + 0.20)
-    P.add('turretCloth', box(1.00, 0.085, 0.26), -0.10, 0.645, -1.70);         // tarp roll (top 2.09)
+    P.add('turretDark', openRackGrid(2.35, 0.38, 0.014, 5, 11),
+      0, 0.60, -2.12, Math.PI / 2, 0, 0);                                      // open mesh back in the certified rear envelope
+    // Unequal compressed bags replace the two monolithic fabric bricks while
+    // preserving their measured front/aft silhouette bands and strap seats.
+    P.add('turretCloth', geometryXform(sph(0.5, 12), 0, 0, 0, 0, -0.06, 0,
+      [1.00, 0.42, 0.20]), -0.52, 0.44, -1.92);
+    P.add('turretCloth', geometryXform(sph(0.5, 12), 0, 0, 0, 0, 0.08, 0,
+      [0.94, 0.38, 0.19]), 0.52, 0.43, -1.91);
+    P.add('turretCloth', geometryXform(sph(0.5, 12), 0, 0, 0, 0, -0.04, 0,
+      [0.94, 0.29, 0.15]), -0.50, 0.575, -2.145);
+    P.add('turretCloth', geometryXform(sph(0.5, 12), 0, 0, 0, 0, 0.05, 0,
+      [0.96, 0.27, 0.145]), 0.52, 0.565, -2.145);
+    P.add('turretCloth', cylX(0.085, 1.00, 12), -0.10, 0.645, -1.70);          // rolled tarp with visible circular ends
     P.add('turretDark', box(0.02, 0.44, 0.20), -0.62, 0.44, -1.92);            // cinch straps ride the stepped fill
     P.add('turretDark', box(0.02, 0.44, 0.20), 0.55, 0.44, -1.92);
     // NARROW center top frame + REAR ANTENNA-MOUNT MASTS (r7, batch-49

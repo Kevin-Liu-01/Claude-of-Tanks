@@ -692,7 +692,7 @@ function buildMerkava4(P: ModernWaveBuilderPort): void {
 function buildLeo2A6(P: ModernWaveBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, jerryCan, tarpRoll, ammoCan,
-    spareTrackStrip, buildGun, buildRunningGear, torus } = KIT;
+    openRackGrid, spareTrackStrip, buildGun, buildRunningGear, torus } = KIT;
   const { rng } = P;
   // ---- hull: 2A7 family base (mirrors the shipped buildLeo2A7 hull) ----
   P.add('hull', box(2.48, 0.58, 7.5), 0, 0.79, 0);
@@ -815,7 +815,8 @@ function buildLeo2A6(P: ModernWaveBuilderPort): void {
   for (let k = 0; k < 11; k++) {
     P.add('turretDetail', box(0.035, lrkT - lrkB, 0.035), -LTW + 0.13 + k * 0.22, (lrkT + lrkB) / 2, lrkZ);
   }
-  P.add('turretDark', box(2 * LTW - 0.3, 0.02, 0.4), 0, lrkB + 0.03, -2.35);
+  P.add('turretDark', openRackGrid(2 * LTW - 0.3, 0.4, 0.020, 5, 10),
+    0, lrkB + 0.03, -2.35);
   stowage(P, 'turretCloth', rng, [
     [-0.7, 0.38, -2.32, 0.7, 0.4, 0.38], [0.35, 0.34, -2.34, 0.6, 0.34, 0.36],
   ]);

@@ -1486,7 +1486,8 @@ function wedgeTurretShell(P: TankBuilderPort, T: LeopardWedgeTurretConfig): void
 // R: { h, boxW, boxRear, emes:{x,z}, peri:{x,z,top}, cmdr:{x,z}, loader:{x,z},
 //     mastZ, antennaZ/antennaTop, rackZ, rackTop, basketZ0?, smoke:{z,y} }
 function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
-  const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const { box, cylY, cylZ, openRackGrid, periscope, liftEye, smokeCluster,
+    stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = R.h;
   // EMES 15 gunner sight: rectangular cutout recessed into the right wedge
@@ -1537,7 +1538,8 @@ function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
     P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackT, (R.boxRear + rackZ) / 2);
     P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackB, (R.boxRear + rackZ) / 2);
   }
-  P.add('turretDark', box(2 * R.boxW + 0.1, 0.018, R.boxRear - rackZ), 0, rackB + 0.03, (R.boxRear + rackZ) / 2);
+  P.add('turretDark', openRackGrid(2 * R.boxW + 0.1, R.boxRear - rackZ, 0.018, 5, 12),
+    0, rackB + 0.03, (R.boxRear + rackZ) / 2);
   const bz = (R.boxRear + rackZ) / 2;
   stowage(P, 'turretCloth', P.rng, [
     [-R.boxW * 0.55, 0.40, bz, 0.72, 0.42, 0.38], [R.boxW * 0.15, 0.36, bz - 0.02, 0.62, 0.36, 0.36],
@@ -8017,7 +8019,8 @@ function buildLeo2A7V(P: TankBuilderPort) {
 // dims + floaters MUST hold 100. The visual bar is the §B8 photo class.
 // ---------------------------------------------------------------------------
 function buildLeo2Proto(P: TankBuilderPort) {
-  const { box, cylY, cylZ, sph, xform, periscope, liftEye, smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ, openRackGrid, sph, xform, periscope, liftEye,
+    smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
     bodyHW: 1.638, sponsonY: 1.32, trackW: 0.635, xc: 1.37,
@@ -8351,7 +8354,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
   for (const bx of [-0.78, -0.26, 0.26, 0.78]) {
     P.add('turretDetail', box(0.028, 0.29, 0.028), bx, 0.355, -3.23);
   }
-  P.add('turretDark', box(2.02, 0.23, 0.012), 0, 0.355, -3.215);               // mesh back panel
+  P.add('turretDark', openRackGrid(2.02, 0.23, 0.012, 4, 10),
+    0, 0.355, -3.215, Math.PI / 2, 0, 0);                                      // open mesh back panel
   // cross decals pinned on the BIN faces (§5.04 vertical flank law)
   P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);

@@ -5495,7 +5495,8 @@ function buildM1A2(P: TankBuilderPort): void {
   for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {                        // side slats
     P.add('turretDetail', box(0.035, rkT - rkB, 0.035), s * 1.60, (rkT + rkB) / 2, -2.72 - k * 0.22);
   }
-  P.add('turretDark', box(3.16, 0.02, 0.66), 0, rkB + 0.03, -2.98);             // mesh floor
+  P.add('turretDark', openRackGrid(3.16, 0.66, 0.020, 6, 14),
+    0, rkB + 0.03, -2.98);                                                      // open welded floor lattice
   stowage(P, 'turretCloth', rng, [
     [-1.15, 0.52, -2.98, 0.6, 0.46, 0.6], [-0.35, 0.58, -2.96, 0.72, 0.56, 0.62],
     [0.55, 0.52, -2.98, 0.55, 0.44, 0.6], [1.25, 0.46, -2.96, 0.42, 0.34, 0.55],
