@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
-import { garageViewPoint } from '../game/garagePresentationPose.ts';
+import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
+import { GARAGE_FACILITY_AXIS_YAW_RAD } from './garageFacilityDetails.ts';
 import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
@@ -27,22 +28,30 @@ assert.match(kitSource,
   'Garage structure buckets must retain their surface-specific albedo and normal textures');
 for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
   for (const placement of recipe.structures) {
-    const { x, z } = garageViewPoint(placement.side, placement.depth);
-    const distance = Math.hypot(x, z);
-    const alignment = Math.sin(placement.yaw) * (-x / distance)
-      + Math.cos(placement.yaw) * (-z / distance);
-    assert.ok(alignment >= Math.cos(0.36),
-      `${architecture}/${placement.label}: primary facade faces the hero turntable`);
+    const axisDelta = Math.atan2(
+      Math.sin(placement.yaw - GARAGE_HERO_HEADING_RAD),
+      Math.cos(placement.yaw - GARAGE_HERO_HEADING_RAD),
+    );
+    assert.ok(Math.abs(axisDelta) < 1e-9,
+      `${architecture}/${placement.label}: structure shares the immutable hero axis`);
   }
 }
 assert.match(facilitySource, /createWorkshopPartLibrary/,
   'outdoor facilities must reuse the first-party workshop part vocabulary');
+assert.equal(GARAGE_FACILITY_AXIS_YAW_RAD, GARAGE_HERO_HEADING_RAD,
+  'service bays must align their rear plane with the hero tank stern plane');
+assert.doesNotMatch(facilitySource, /GARAGE_CAMERA_AZIMUTH_RAD|VIEW_YAW/,
+  'service-facility orientation must never be coupled to the opening camera');
 assert.doesNotMatch(facilitySource, /fleetFactory|tankFactory/,
   'baked service vehicles must not import the playable fleet into Garage boot');
 assert.match(stageSource, /light\.visible = true;[\s\S]*light\.intensity = isVerdant/,
   'Verdant fixtures must preserve a stable light count across environment switches');
 assert.match(stageSource, /garage_outdoor_shader_seed/,
   'Verdant boot must seed the shared outdoor PBR/CSM program under cover');
+assert.match(stageSource, /podTopMat\.color\.setHex\(variant\.platformTint\)/,
+  'each Garage must apply its authored turntable deck finish without rebuilding geometry');
+assert.match(stageSource, /podSideMat\.color\.copy\(platformEdge\)/,
+  'each Garage must apply its authored accent to the shared platform edge');
 assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S]{0,240}alphaToCoverage: true/,
   'Verdant boot must seed the exact detailed-tree alpha shader before outdoor reveal');
 assert.equal(GARAGE_WRECK_ASSET.sourceSpecId, 'm1a2');
@@ -72,6 +81,8 @@ for (const variant of GARAGE_VARIANTS) {
     assert.equal(stats.terrainVertices, 0,
       'Verdant must not allocate the replacement outdoor terrain pack');
     assert.equal(stats.facilityStations, 4);
+    assert.ok(stats.platformGroundClearanceM >= 0.02,
+      'Verdant floor must remain below the complete turntable base');
     assert.equal(stats.cached, 1);
     signatures.add(stats.signature);
     continue;
@@ -86,6 +97,8 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
+  assert.ok(stats.platformGroundClearanceM >= 0.02,
+    `${variant.id} terrain and hardstand must remain below the complete turntable base`);
   assert.equal(stats.terrainSourceAnchor?.length, 2);
   assert.ok(stats.sourceStructure && stats.sourceBeat,
     `${variant.id} must identify its real landmark and presentation beat`);

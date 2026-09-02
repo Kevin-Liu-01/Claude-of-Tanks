@@ -12,7 +12,10 @@ import {
   makeGranary, makeLogCabin, makeMill, makeOnionChurch, makeWoodshed,
 } from '../world/maps/villageKit.ts';
 import { makeChurch, makeFactory } from '../world/maps/urbanKit.ts';
-import { legacyGaragePointToView } from '../game/garagePresentationPose.ts';
+import {
+  GARAGE_HERO_HEADING_RAD,
+  legacyGaragePointToView,
+} from '../game/garagePresentationPose.ts';
 
 export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
   'plaster' | 'roof' | 'wood' | 'brick';
@@ -23,7 +26,7 @@ export interface GarageStructurePlacement {
   /** Footprint center in the immutable opening-camera coordinate frame. */
   readonly side: number;
   readonly depth: number;
-  /** Local +Z facade faces the hero, plus a small authored character angle. */
+  /** Local +Z shares the immutable hero axis; every facility uses one grid. */
   readonly yaw: number;
   readonly scale: number;
 }
@@ -67,18 +70,17 @@ export interface GarageEnvironmentRecipe {
 }
 
 const at = (builder: StructureBuilder, label: string, x: number, z: number,
-  yaw = 0, scale = 1): GarageStructurePlacement => {
+  scale = 1): GarageStructurePlacement => {
   const point = legacyGaragePointToView(x, z);
-  // Catalog structures author their primary facade on local +Z. Aim that
-  // facade at the turntable so large halls behind the vehicle read as one
-  // deliberate service-yard backdrop instead of crossing it at arbitrary
-  // map-space angles. The small recipe yaw remains as visual variation.
-  const podiumFacingYaw = Math.atan2(-x, -z);
+  // Catalog structures author their primary facade on local +Z. Keep every
+  // facility parallel to the hero tank instead of turning each building
+  // radially toward the podium; the latter produced the splayed Frosthollow
+  // layout and made background walls cross the tank at arbitrary angles.
   return {
     builder,
     label,
     ...point,
-    yaw: podiumFacingYaw + yaw,
+    yaw: GARAGE_HERO_HEADING_RAD,
     scale,
   };
 };
@@ -87,11 +89,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   field_shed: {
     terrainSurface: 'grass', terrainTint: 0xb1bd83, hardstandTint: 0x8d8a78, buildingTint: 0xd2c8a4,
     structures: [
-      at(makeFarmhouse, 'field farmhouse', -36, -6, 0.16, 0.88),
-      at(makeTavern, 'village tavern', -30, -30, -0.16, 0.76),
-      at(makeShed, 'maintenance shed', -7, -36, 0.28, 0.82),
-      at(makeGranary, 'hedgerow granary', 18, -34, 0.18, 0.68),
-      at(makeWoodshed, 'field stores', 36, -14, -0.10, 0.70),
+      at(makeFarmhouse, 'field farmhouse', -36, -6, 0.88),
+      at(makeTavern, 'village tavern', -30, -30, 0.76),
+      at(makeShed, 'maintenance shed', -7, -36, 0.82),
+      at(makeGranary, 'hedgerow granary', 18, -34, 0.68),
+      at(makeWoodshed, 'field stores', 36, -14, 0.70),
     ],
     treeSpecies: ['oak', 'poplar'], treeCount: 24,
     horizonStyle: 'rolling', horizonHeightM: 7.2,
@@ -107,13 +109,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   shade_depot: {
     terrainSurface: 'sand', terrainTint: 0xc7a06e, hardstandTint: 0xa99071, buildingTint: 0xcbb58c,
     structures: [
-      at(makeCaravanserai, 'wadi caravanserai', -36, -6, 0.12, 0.84),
-      at(makeMinaret, 'wadi minaret', -30, -30, 0.08, 0.76),
-      at(makeShed, 'forward shade bay', -7, -36, -0.24, 0.82),
-      at(makeDepot, 'wadi supply depot', 18, -34, -0.10, 0.68),
-      at(makeCaravanserai, 'outer adobe court', 36, -14, 0.20, 0.56),
-      at(makeBathhouse, 'wadi crew hammam', 40, -11, -0.34, 0.66),
-      at(makeMinaret, 'outer-route watchtower', 6, 38, 0.22, 0.58),
+      at(makeCaravanserai, 'wadi caravanserai', -36, -6, 0.84),
+      at(makeMinaret, 'wadi minaret', -30, -30, 0.76),
+      at(makeShed, 'forward shade bay', -7, -36, 0.82),
+      at(makeDepot, 'wadi supply depot', 18, -34, 0.68),
+      at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
+      at(makeBathhouse, 'wadi crew hammam', 40, -11, 0.66),
+      at(makeMinaret, 'outer-route watchtower', 6, 38, 0.58),
     ],
     treeSpecies: ['palm', 'acacia'], treeCount: 20,
     horizonStyle: 'mesa', horizonHeightM: 5.6,
@@ -129,13 +131,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   repair_bunker: {
     terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3, buildingTint: 0xc2c8c6,
     structures: [
-      at(makeRangerLodge, 'winter ranger lodge', -36, -6, 0.14, 0.82),
-      at(makeAlpine, 'snow service chalet', -30, -30, -0.16, 0.78),
-      at(makeChapel, 'frost chapel', -7, -36, 0.10, 0.72),
-      at(makeLogCabin, 'snowline cabin', 18, -34, 0.20, 0.66),
-      at(makeWoodshed, 'winter stores', 36, -14, -0.12, 0.68),
-      at(makeOnionChurch, 'frostline chapel', 40, -11, -0.22, 0.56),
-      at(makeMill, 'snowfield utility mill', 6, 38, 0.18, 0.54),
+      at(makeRangerLodge, 'winter ranger lodge', -36, -6, 0.82),
+      at(makeAlpine, 'snow service chalet', -30, -30, 0.78),
+      at(makeChapel, 'frost chapel', -7, -36, 0.72),
+      at(makeLogCabin, 'snowline cabin', 18, -34, 0.66),
+      at(makeWoodshed, 'winter stores', 36, -14, 0.68),
+      at(makeOnionChurch, 'frostline chapel', 40, -11, 0.56),
+      at(makeMill, 'snowfield utility mill', 6, 38, 0.54),
     ],
     treeSpecies: ['spruce', 'birch'], treeCount: 26, reliefScale: 0.58,
     horizonStyle: 'rolling', horizonHeightM: 7.8,
@@ -151,13 +153,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   brick_arsenal: {
     terrainSurface: 'cobble', terrainTint: 0x8a8881, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
     structures: [
-      at(makeFactory, 'urban factory', -36, -6, 0.12, 0.76),
-      at(makeFireStation, 'Steinburg fire station', -30, -30, -0.14, 0.78),
-      at(makeCornerShop, 'arsenal corner shop', -7, -36, 0.18, 0.74),
-      at(makeChurch, 'old-city church', 18, -34, 0.08, 0.54),
-      at(makeFactory, 'arsenal annex', 36, -14, -0.08, 0.56),
-      at(makeCivicHall, 'arsenal administration', 40, -11, -0.32, 0.50),
-      at(makeParkingDeck, 'armored vehicle depot', 6, 38, 0.12, 0.58),
+      at(makeFactory, 'urban factory', -36, -6, 0.76),
+      at(makeFireStation, 'Steinburg fire station', -30, -30, 0.78),
+      at(makeCornerShop, 'arsenal corner shop', -7, -36, 0.74),
+      at(makeChurch, 'old-city church', 18, -34, 0.54),
+      at(makeFactory, 'arsenal annex', 36, -14, 0.56),
+      at(makeCivicHall, 'arsenal administration', 40, -11, 0.50),
+      at(makeParkingDeck, 'armored vehicle depot', 6, 38, 0.58),
     ],
     treeSpecies: ['poplar', 'oak'], treeCount: 18,
     horizonStyle: 'urban', horizonHeightM: 3.8,
@@ -173,13 +175,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   naval_drydock: {
     terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x829a9b, buildingTint: 0xc8d2cd,
     structures: [
-      at(makeFishery, 'working fishery', -36, -6, 0.14, 0.78),
-      at(makeLighthouse, 'harbor lighthouse', -30, -30, 0, 0.84),
-      at(makeBoatshed, 'harbor boatshed', -7, -36, -0.14, 0.72),
-      at(makeShed, 'drydock service bay', 18, -34, 0.24, 0.78),
-      at(makeBoatshed, 'breakwater boatshed', 36, -14, 0.18, 0.62),
-      at(makeNetYard, 'rigging and net yard', 40, -11, -0.28, 0.66),
-      at(makeWarehouse, 'harbor stores', 6, 38, 0.16, 0.52),
+      at(makeFishery, 'working fishery', -36, -6, 0.78),
+      at(makeLighthouse, 'harbor lighthouse', -30, -30, 0.84),
+      at(makeBoatshed, 'harbor boatshed', -7, -36, 0.72),
+      at(makeShed, 'drydock service bay', 18, -34, 0.78),
+      at(makeBoatshed, 'breakwater boatshed', 36, -14, 0.62),
+      at(makeNetYard, 'rigging and net yard', 40, -11, 0.66),
+      at(makeWarehouse, 'harbor stores', 6, 38, 0.52),
     ],
     treeSpecies: ['cedar', 'pine'], treeCount: 22,
     horizonStyle: 'coastal', horizonHeightM: 3.2,
@@ -195,13 +197,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rail_roundhouse: {
     terrainSurface: 'cobble', terrainTint: 0x817a6c, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
     structures: [
-      at(makeWarehouse, 'freight warehouse', -36, -6, 0.12, 0.78),
-      at(makeGantry, 'rail gantry', -30, -30, -0.16, 0.82),
-      at(makeContainerRow, 'container rank', -7, -36, 0.12, 0.74),
-      at(makeWaterTower, 'junction water tower', 18, -34, 0, 0.72),
-      at(makeWarehouse, 'roundhouse annex', 36, -14, 0.18, 0.58),
-      at(makeDepot, 'Cinder Junction station', 40, -11, -0.30, 0.72),
-      at(makeFactory, 'locomotive machine shop', 6, 38, 0.12, 0.54),
+      at(makeWarehouse, 'freight warehouse', -36, -6, 0.78),
+      at(makeGantry, 'rail gantry', -30, -30, 0.82),
+      at(makeContainerRow, 'container rank', -7, -36, 0.74),
+      at(makeWaterTower, 'junction water tower', 18, -34, 0.72),
+      at(makeWarehouse, 'roundhouse annex', 36, -14, 0.58),
+      at(makeDepot, 'Cinder Junction station', 40, -11, 0.72),
+      at(makeFactory, 'locomotive machine shop', 6, 38, 0.54),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 16,
     horizonStyle: 'flat', horizonHeightM: 3.4,
@@ -217,13 +219,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rain_canopy: {
     terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079, buildingTint: 0xa4af99,
     structures: [
-      at(makeBathhouse, 'monsoon bathhouse', -36, -6, 0.12, 0.8),
-      at(makeDepot, 'ridge field depot', -30, -30, -0.14, 0.8),
-      at(makeFishery, 'ridge longhouse workshop', -7, -36, -0.12, 0.62),
-      at(makeShed, 'rain service canopy', 18, -34, 0.24, 0.76),
-      at(makeLogCabin, 'ridge crew lodge', 36, -14, 0.16, 0.64),
-      at(makeGranary, 'raised ration store', 40, -11, -0.26, 0.64),
-      at(makeNetYard, 'monsoon cable yard', 6, 38, 0.14, 0.62),
+      at(makeBathhouse, 'monsoon bathhouse', -36, -6, 0.8),
+      at(makeDepot, 'ridge field depot', -30, -30, 0.8),
+      at(makeFishery, 'ridge longhouse workshop', -7, -36, 0.62),
+      at(makeShed, 'rain service canopy', 18, -34, 0.76),
+      at(makeLogCabin, 'ridge crew lodge', 36, -14, 0.64),
+      at(makeGranary, 'raised ration store', 40, -11, 0.64),
+      at(makeNetYard, 'monsoon cable yard', 6, 38, 0.62),
     ],
     treeSpecies: ['eucalyptus', 'palm'], treeCount: 30, reliefScale: 0.72,
     horizonStyle: 'rolling', horizonHeightM: 8.4,
@@ -239,13 +241,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rock_cavern: {
     terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
     structures: [
-      at(makeRangerLodge, 'glacier lodge', -36, -6, 0.12, 0.8),
-      at(makeAlpine, 'pass chalet', -30, -30, -0.14, 0.78),
-      at(makeChapel, 'ridge chapel', -7, -36, 0.10, 0.72),
-      at(makeShed, 'pass service shelter', 18, -34, -0.20, 0.72),
-      at(makeLogCabin, 'glacier outpost', 36, -14, 0.18, 0.62),
-      at(makeOnionChurch, 'high-pass memorial', 40, -11, -0.24, 0.52),
-      at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.14, 0.62),
+      at(makeRangerLodge, 'glacier lodge', -36, -6, 0.8),
+      at(makeAlpine, 'pass chalet', -30, -30, 0.78),
+      at(makeChapel, 'ridge chapel', -7, -36, 0.72),
+      at(makeShed, 'pass service shelter', 18, -34, 0.72),
+      at(makeLogCabin, 'glacier outpost', 36, -14, 0.62),
+      at(makeOnionChurch, 'high-pass memorial', 40, -11, 0.52),
+      at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.62),
     ],
     treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
@@ -261,13 +263,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   recovery_yard: {
     terrainSurface: 'rock', terrainTint: 0xb16d4f, hardstandTint: 0x8d6e5e, buildingTint: 0xb69678,
     structures: [
-      at(makeCaravanserai, 'redrock compound', -36, -6, 0.12, 0.74),
-      at(makeWarehouse, 'recovery warehouse', -30, -30, -0.14, 0.74),
-      at(makeGantry, 'heavy lift gantry', -7, -36, 0.18, 0.76),
-      at(makeWaterTower, 'divide water tower', 18, -34, 0, 0.68),
-      at(makeContainerRow, 'salvage container line', 36, -14, 0.16, 0.62),
-      at(makeShed, 'recovery fabrication shed', 40, -11, -0.30, 0.72),
-      at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.16, 0.54),
+      at(makeCaravanserai, 'redrock compound', -36, -6, 0.74),
+      at(makeWarehouse, 'recovery warehouse', -30, -30, 0.74),
+      at(makeGantry, 'heavy lift gantry', -7, -36, 0.76),
+      at(makeWaterTower, 'divide water tower', 18, -34, 0.68),
+      at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
+      at(makeShed, 'recovery fabrication shed', 40, -11, 0.72),
+      at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.54),
     ],
     treeSpecies: ['acacia', 'cedar'], treeCount: 16, reliefScale: 0.72,
     horizonStyle: 'mesa', horizonHeightM: 7.2,
@@ -283,13 +285,13 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   factory_line: {
     terrainSurface: 'cobble', terrainTint: 0x716a60, hardstandTint: 0x65615b, buildingTint: 0x91857b,
     structures: [
-      at(makeFoundryOffice, 'foundry office', -36, -6, 0.12, 0.8),
-      at(makeFactory, 'heavy factory', -30, -30, -0.14, 0.76),
-      at(makeStack, 'smokestack', -7, -36, 0, 0.82),
-      at(makeWaterTower, 'works water tower', 18, -34, 0, 0.70),
-      at(makeWarehouse, 'works warehouse', 36, -14, 0.14, 0.58),
-      at(makeParkingDeck, 'works vehicle depot', 40, -11, -0.28, 0.48),
-      at(makeGantry, 'foundry transfer gantry', 6, 38, 0.14, 0.66),
+      at(makeFoundryOffice, 'foundry office', -36, -6, 0.8),
+      at(makeFactory, 'heavy factory', -30, -30, 0.76),
+      at(makeStack, 'smokestack', -7, -36, 0.82),
+      at(makeWaterTower, 'works water tower', 18, -34, 0.70),
+      at(makeWarehouse, 'works warehouse', 36, -14, 0.58),
+      at(makeParkingDeck, 'works vehicle depot', 40, -11, 0.48),
+      at(makeGantry, 'foundry transfer gantry', 6, 38, 0.66),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 14,
     horizonStyle: 'flat', horizonHeightM: 3.1,

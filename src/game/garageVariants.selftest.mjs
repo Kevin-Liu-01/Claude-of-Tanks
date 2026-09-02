@@ -15,12 +15,15 @@ assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.mapId)).size, 10, 
 assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.layout)).size, 10, 'each workshop has a distinct assembly layout');
 assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.architecture)).size, 10,
   'each battlefield selection has a distinct staging vignette');
+assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.platformTint)).size, 10,
+  'each staging area has a distinct turntable finish');
 for (const variant of GARAGE_VARIANTS) {
   assert.match(variant.id, /^[a-z0-9_]+$/);
   assert.ok(variant.name && variant.location && variant.description);
   assert.equal(variant.location, getMapConfig(variant.mapId).name,
     `${variant.id} must display its actual battlefield name`);
-  assert.ok(Number.isInteger(variant.accent) && Number.isInteger(variant.wallTint));
+  assert.ok(Number.isInteger(variant.accent) && Number.isInteger(variant.wallTint)
+    && Number.isInteger(variant.platformTint));
 }
 
 const memory = new Map();

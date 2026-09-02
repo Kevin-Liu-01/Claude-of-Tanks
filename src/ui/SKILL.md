@@ -72,9 +72,19 @@ prepare cold species across animation frames, and release their generated atlas
 only when the library is disposed. Repeated opaque facility primitives belong in static
 instanced batches, not individual scene nodes or one-off merged allocations.
 Catalog structure facades author their front on local `+Z`; outdoor recipes must
-aim that face toward the hero turntable before merging. Preserve the shared
+keep every facility parallel to `GARAGE_HERO_HEADING_RAD` so halls, rear walls,
+and the hero tank share one deliberate service-yard grid. Never radially aim an
+individual structure at the turntable before merging. Preserve the shared
 albedo and normal texture residency for plaster, masonry, timber, and roofs
 rather than replacing close Garage structures with flat colors.
+The shared turntable dimensions, ground elevations, and terrain exclusion live
+in `garagePresentationPose.ts`. Keep terrain and hardstands below the complete
+platform base, including one terrain-cell safety margin. Recolor the existing
+shared turntable materials per location; never create a new texture or shader
+program during an environment switch.
+The separate merged service-facility pack follows that same hero axis; never
+use `GARAGE_CAMERA_AZIMUTH_RAD` as its yaw or the bays will stare face-on at the
+opening camera instead of showing three-quarter depth beside the tank.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,

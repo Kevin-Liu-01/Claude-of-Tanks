@@ -18,6 +18,38 @@ export const GARAGE_CAMERA_LOOK_HEIGHT_M = GARAGE_PRESENTATION_POSE.cameraLookHe
 export const GARAGE_CAMERA_AZIMUTH_RAD = GARAGE_PRESENTATION_POSE.cameraAzimuthRad;
 export const GARAGE_CAMERA_PITCH_RAD = GARAGE_PRESENTATION_POSE.cameraPitchRad;
 
+// One physical turntable contract shared by the indoor stage, outdoor terrain
+// cutout, hero seating, and visual audits. The platform bottom stays at y=0;
+// every ground surface is held below it so no biome can swallow the rim.
+export const GARAGE_PLATFORM_GEOMETRY = Object.freeze({
+  deckRadiusM: 6,
+  baseRadiusM: 6.35,
+  topYM: 0.36,
+  groundSurfaceYM: -0.025,
+  terrainSurfaceYM: -0.045,
+  // Garage terrain excerpts use a 2.4 x 2.33 m grid. This exclusion extends
+  // beyond the podium by more than one complete cell diagonal, ensuring that
+  // no terrain triangle whose vertices sit outside the base can bridge across
+  // and visually cut through it.
+  terrainClearRadiusM: 9.8,
+  terrainFeatherRadiusM: 12.4,
+});
+
+/** Lower one terrain sample into the platform's feathered exclusion zone. */
+export function garagePlatformTerrainHeight(x: number, z: number, sourceY: number): number {
+  const radius = Math.hypot(x, z);
+  if (radius <= GARAGE_PLATFORM_GEOMETRY.terrainClearRadiusM) {
+    return Math.min(sourceY, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM);
+  }
+  if (radius >= GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM) return sourceY;
+  const linear = (radius - GARAGE_PLATFORM_GEOMETRY.terrainClearRadiusM)
+    / (GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM
+      - GARAGE_PLATFORM_GEOMETRY.terrainClearRadiusM);
+  const smooth = linear * linear * (3 - 2 * linear);
+  const cleared = Math.min(sourceY, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM);
+  return cleared + (sourceY - cleared) * smooth;
+}
+
 /**
  * Convert authored Garage view coordinates into world-local X/Z.
  *

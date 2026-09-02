@@ -68,6 +68,7 @@ export interface GarageArchitectureStats {
   openingViewTankParts: number;
   placementOverlaps: number;
   maxGroundContactErrorM: number;
+  platformGroundClearanceM: number;
   outdoorWarmReady: boolean;
   lastBuildMs: number;
 }
@@ -127,6 +128,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     openingViewTankParts: 0,
     placementOverlaps: 0,
     maxGroundContactErrorM: 0,
+    platformGroundClearanceM: 0.025,
     triangles: 0,
   });
   Object.assign(root.userData, stats, {
@@ -273,6 +275,8 @@ export function createGarageArchitectureController(
       placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
       maxGroundContactErrorM: selectedReady
         ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,
+      platformGroundClearanceM: selectedReady
+        ? Number(root?.userData.platformGroundClearanceM || 0) : 0,
       outdoorWarmReady: selected?.architecture === 'field_shed'
         || warmedArchitectures.has(selected?.architecture || 'field_shed'),
       lastBuildMs,

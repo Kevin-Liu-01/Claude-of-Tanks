@@ -11,7 +11,10 @@
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
 import { getGarageVariant } from '../game/garageVariants.ts';
-import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
+import {
+  GARAGE_HERO_HEADING_RAD,
+  GARAGE_PLATFORM_GEOMETRY,
+} from '../game/garagePresentationPose.ts';
 import {
   createGarageArchitectureController,
   type GarageArchitectureStats,
@@ -63,10 +66,10 @@ function get2dContext(
 // Keep the restored floor and podium guides locked to the single canonical
 // three-quarter hero heading owned by garagePresentationPose.ts.
 export const GARAGE_TRACK_AXIS_YAW_RAD = GARAGE_HERO_HEADING_RAD;
-export const GARAGE_PODIUM_TOP_Y_M = 0.36;
+export const GARAGE_PODIUM_TOP_Y_M = GARAGE_PLATFORM_GEOMETRY.topYM;
 const PODIUM_TREAD_UV_YAW_OFFSET_RAD = -Math.PI / 2;
 const GARAGE_FLOOR_SIZE_M = 46;
-const GARAGE_PODIUM_RADIUS_M = 6;
+const GARAGE_PODIUM_RADIUS_M = GARAGE_PLATFORM_GEOMETRY.deckRadiusM;
 const GARAGE_TRACK_CENTER_OFFSET_M = 1.55;
 const GARAGE_TRACK_SCUFF_WIDTH_M = 0.78;
 const GARAGE_TRACK_CLEAT_PITCH_M = 0.32;
@@ -395,7 +398,10 @@ export function makeHazardTexture(): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = get2dContext(c);
-  g.fillStyle = '#c9a22c';
+  // Neutral light stripes let one shared texture take on each location's
+  // authored accent through the material multiplier—no per-switch canvas
+  // repaint, upload, or additional shader program.
+  g.fillStyle = '#e7e4dc';
   g.fillRect(0, 0, W, H);
   g.fillStyle = '#1c1e20';
   for (let x = -H; x < W + H; x += 64) {
@@ -454,7 +460,7 @@ export function createGarageStage(
   track(floorMat);
   const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(HW * 2, HW * 2)), floorMat);
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0.01;
+  floor.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM;
   floor.receiveShadow = true;
   group.add(floor);
 
@@ -700,7 +706,10 @@ export function createGarageStage(
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
     track(new THREE.CylinderGeometry(
-      GARAGE_PODIUM_RADIUS_M, 6.35, GARAGE_PODIUM_TOP_Y_M, 56,
+      GARAGE_PODIUM_RADIUS_M,
+      GARAGE_PLATFORM_GEOMETRY.baseRadiusM,
+      GARAGE_PODIUM_TOP_Y_M,
+      56,
     )),
     [podSideMat, podTopMat, podTopMat],
   );
@@ -1402,7 +1411,11 @@ export function createGarageStage(
     // reads without crushing wall detail into black.
     floorMat.color.setHex(variant.floorTint).lerp(neutral, 0.42);
     wallMat.color.setHex(variant.wallTint).lerp(neutral, 0.34);
-    rimRingMat.emissive.setHex(variant.lightTint);
+    const platformEdge = new THREE.Color(variant.accent).lerp(neutral, 0.12);
+    podTopMat.color.setHex(variant.platformTint);
+    podSideMat.color.copy(platformEdge);
+    podSideMat.emissive.copy(platformEdge);
+    rimRingMat.emissive.copy(platformEdge);
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
     const architectureStats = architecture.setVariant(variant);

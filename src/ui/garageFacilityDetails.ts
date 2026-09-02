@@ -7,7 +7,7 @@ import {
 } from '../game/workshopParts.ts';
 import type { GeometryBuckets } from '../world/maps/exteriorDetailKit.ts';
 import {
-  GARAGE_CAMERA_AZIMUTH_RAD,
+  GARAGE_HERO_HEADING_RAD,
   garageViewPoint,
 } from '../game/garagePresentationPose.ts';
 
@@ -71,7 +71,11 @@ interface PrimitiveInstance {
   readonly color: THREE.Color;
 }
 
-const VIEW_YAW = GARAGE_CAMERA_AZIMUTH_RAD;
+// Facility facades share the tank's longitudinal axis. The old camera-azimuth
+// yaw made every bay stare squarely at the opening camera; matching the hero
+// means each rear wall is parallel to the tank's stern plane and exposes the
+// same three-quarter depth as the vehicle.
+export const GARAGE_FACILITY_AXIS_YAW_RAD = GARAGE_HERO_HEADING_RAD;
 
 const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFacilityLayout>> =
   Object.freeze({
@@ -182,7 +186,7 @@ function flattenAssembly(
   const point = cameraPoint(placement.side, placement.depth);
   const scale = placement.scale ?? 0.72;
   assembly.position.set(point.x, groundAtWorld(point.x, point.z) + 0.02, point.z);
-  assembly.rotation.y = VIEW_YAW + (placement.yaw || 0);
+  assembly.rotation.y = GARAGE_FACILITY_AXIS_YAW_RAD + (placement.yaw || 0);
   assembly.scale.setScalar(scale);
   assembly.updateMatrixWorld(true);
   const baked = buckets.baked || (buckets.baked = []);
@@ -251,7 +255,7 @@ export function addGarageFacilityDetails({
     depth: number,
     y: number,
     scale: readonly [number, number, number],
-    yaw = VIEW_YAW,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
     rotationX = 0,
     rotationZ = 0,
   ): THREE.Matrix4 => {
@@ -269,7 +273,7 @@ export function addGarageFacilityDetails({
     depth: number,
     y: number,
     scale: readonly [number, number, number],
-    yaw = VIEW_YAW,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
     rotationX = 0,
     rotationZ = 0,
   ): THREE.Matrix4 => {
@@ -289,7 +293,7 @@ export function addGarageFacilityDetails({
     height: number,
     length: number,
     color = steel,
-    yaw = VIEW_YAW,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
     rotationX = 0,
     rotationZ = 0,
   ): void => {
@@ -307,7 +311,7 @@ export function addGarageFacilityDetails({
     radius: number,
     height: number,
     color = steel,
-    yaw = VIEW_YAW,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
     rotationX = 0,
     rotationZ = 0,
     segments = 10,
@@ -330,7 +334,7 @@ export function addGarageFacilityDetails({
     height: number,
     length: number,
     color = steel,
-    yaw = VIEW_YAW,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
     rotationX = 0,
     rotationZ = 0,
   ): void => {
@@ -358,7 +362,8 @@ export function addGarageFacilityDetails({
     const instances = cylinderInstances.get(segments) || [];
     instances.push({
       matrix: apronTransform(
-        side, depth, y, [radius, height, radius], VIEW_YAW, rotationX, rotationZ,
+        side, depth, y, [radius, height, radius], GARAGE_FACILITY_AXIS_YAW_RAD,
+        rotationX, rotationZ,
       ),
       color: color.clone(),
     });
@@ -384,7 +389,8 @@ export function addGarageFacilityDetails({
       }
       apronBox(centerSide + sideOffset, depth + 2.1, 5.35, 0.38, 0.34, 4.62, steel);
       apronBox(centerSide + sideOffset, depth + 0.48, 4.58,
-        0.20, 1.65, 0.22, safety, VIEW_YAW, 0, sideOffset < 0 ? -0.58 : 0.58);
+        0.20, 1.65, 0.22, safety, GARAGE_FACILITY_AXIS_YAW_RAD, 0,
+        sideOffset < 0 ? -0.58 : 0.58);
     }
     for (const columnDepth of [depth, rearDepth]) {
       apronBox(centerSide, columnDepth, 5.42, 6.0, 0.38, 0.42,
@@ -441,7 +447,7 @@ export function addGarageFacilityDetails({
       box(side + x, depth, 2.65, 0.24, 5.3, 0.24, steel);
       box(side + x, depth + 4.8, 2.2, 0.20, 4.4, 0.20, steel);
       box(side + x * 0.72, depth + 0.08, 4.0, 0.15, 3.1, 0.15, safety,
-        VIEW_YAW, 0, x < 0 ? -0.62 : 0.62);
+        GARAGE_FACILITY_AXIS_YAW_RAD, 0, x < 0 ? -0.62 : 0.62);
     }
     box(side, depth, 5.18, width + 0.5, 0.28, 0.32, tint);
     box(side, depth + 4.8, 4.32, width + 0.2, 0.22, 0.26, steel);
@@ -471,9 +477,9 @@ export function addGarageFacilityDetails({
       const x = side + (index % 3) * 0.74;
       const z = depth + Math.floor(index / 3) * 0.75;
       const tint = index % 3 === 0 ? primer : index % 3 === 1 ? dark : accent;
-      cylinder(x, z, 0.46, 0.31, 0.90, tint, VIEW_YAW, 0, 0, 12);
-      cylinder(x, z, 0.30, 0.318, 0.035, steel, VIEW_YAW, 0, 0, 12);
-      cylinder(x, z, 0.64, 0.318, 0.035, steel, VIEW_YAW, 0, 0, 12);
+      cylinder(x, z, 0.46, 0.31, 0.90, tint, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
+      cylinder(x, z, 0.30, 0.318, 0.035, steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
+      cylinder(x, z, 0.64, 0.318, 0.035, steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
     }
   };
 
@@ -484,9 +490,9 @@ export function addGarageFacilityDetails({
     for (let index = 0; index < 6; index += 1) {
       const x = side - 1.65 + index * 0.66;
       cylinder(x, depth - 0.05, index % 2 ? 1.50 : 0.56, 0.36, 0.19,
-        rubber, VIEW_YAW, Math.PI / 2, 0, 12);
+        rubber, GARAGE_FACILITY_AXIS_YAW_RAD, Math.PI / 2, 0, 12);
       cylinder(x, depth - 0.05, index % 2 ? 1.50 : 0.56, 0.18, 0.21,
-        accent, VIEW_YAW, Math.PI / 2, 0, 10);
+        accent, GARAGE_FACILITY_AXIS_YAW_RAD, Math.PI / 2, 0, 10);
     }
   };
 
@@ -505,12 +511,13 @@ export function addGarageFacilityDetails({
     box(side, depth, 0.66, 1.05, 1.24, 0.56, tint);
     for (const z of [-0.23, 0.23]) for (const x of [-0.42, 0.42]) {
       cylinder(side + x, depth + z, 0.12, 0.10, 0.12, rubber,
-        VIEW_YAW, Math.PI / 2, 0, 8);
+        GARAGE_FACILITY_AXIS_YAW_RAD, Math.PI / 2, 0, 8);
     }
     for (const y of [0.42, 0.68, 0.94]) box(side, depth - 0.30, y, 0.86, 0.04, 0.03, dark);
   };
 
-  const addTrack = (side: number, depth: number, length: number, yaw = VIEW_YAW): void => {
+  const addTrack = (side: number, depth: number, length: number,
+    yaw = GARAGE_FACILITY_AXIS_YAW_RAD): void => {
     const gauge = 1.52;
     for (const railSide of [-gauge / 2, gauge / 2]) {
       // Raise the permanent way above the sampled yard surface. The earlier
@@ -619,7 +626,7 @@ export function addGarageFacilityDetails({
       addShadeHall(featureSide, 18, featureDepth, new THREE.Color(0x77858c));
       for (const offset of [-6.2, 6.2]) {
         cylinder(featureSide + offset, featureDepth + 1, 1.2, 0.52, 2.4,
-          steel, VIEW_YAW, 0, Math.PI / 2, 14);
+          steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0, Math.PI / 2, 14);
         box(featureSide + offset, featureDepth + 1.9, 1.2, 0.25, 2.5, 0.25, dark);
       }
       assemblies = [
@@ -646,9 +653,9 @@ export function addGarageFacilityDetails({
       addTrack(featureSide + 5.5, featureDepth, 28);
       for (const offset of [-8, 8]) {
         cylinder(featureSide + offset, featureDepth - 4, 0.56, 0.46, 1.10,
-          dark, VIEW_YAW, 0, 0, 12);
+          dark, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
         cylinder(featureSide + offset, featureDepth - 4, 1.08, 0.16, 0.24,
-          accent, VIEW_YAW, 0, 0, 10);
+          accent, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 10);
       }
       assemblies = [
         { kind: 'leclerc_assembly', side: leftStation[0], depth: leftStation[1] + 0.4, yaw: 0.08, scale: 0.78 },
@@ -689,7 +696,8 @@ export function addGarageFacilityDetails({
       }
       for (const offset of [-6.7, -3.35, 0, 3.35, 6.7]) {
         box(featureSide + offset, featureDepth + 0.48, 5.65, 0.30, 1.65, 0.52,
-          offset === 0 ? accent : steel, VIEW_YAW, 0, offset * 0.012);
+          offset === 0 ? accent : steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0,
+          offset * 0.012);
       }
       box(featureSide, featureDepth + 0.35, 5.72, 14.2, 0.34, 0.72, steel);
       box(featureSide, featureDepth + 0.21, 5.46, 10.4, 0.13, 0.06, accent);
@@ -709,7 +717,7 @@ export function addGarageFacilityDetails({
       for (const offset of [-8.5, 8.5]) {
         box(featureSide + offset, featureDepth, 4.2, 0.42, 8.4, 0.48, steel);
         box(featureSide + offset * 0.66, featureDepth, 6.55, 0.28, 7.3, 0.28, safety,
-          VIEW_YAW, 0, offset < 0 ? -0.74 : 0.74);
+          GARAGE_FACILITY_AXIS_YAW_RAD, 0, offset < 0 ? -0.74 : 0.74);
       }
       box(featureSide, featureDepth, 7.9, 18, 0.40, 0.50, steel);
       assemblies = [
@@ -723,12 +731,12 @@ export function addGarageFacilityDetails({
       addTrack(featureSide + 6, featureDepth, 28);
       for (const offset of [-8, 8]) {
         cylinder(featureSide + offset, featureDepth + 3, 2.6, 1.25, 5.2,
-          primer, VIEW_YAW, 0, 0, 16);
+          primer, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 16);
         cylinder(featureSide + offset, featureDepth + 3, 5.3, 0.62, 0.22,
-          dark, VIEW_YAW, 0, 0, 16);
+          dark, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 16);
         for (const y of [1.2, 2.7, 4.2]) {
           cylinder(featureSide + offset, featureDepth + 2.2, y, 0.14, 5.0,
-          safety, VIEW_YAW, 0, Math.PI / 2, 10);
+          safety, GARAGE_FACILITY_AXIS_YAW_RAD, 0, Math.PI / 2, 10);
         }
       }
       assemblies = [

@@ -3,6 +3,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import type { GarageVariant } from '../game/garageVariants.ts';
 import {
+  GARAGE_PLATFORM_GEOMETRY,
+  garagePlatformTerrainHeight,
   garageViewPoint,
   garageWorldPointToView,
   legacyGaragePointToView,
@@ -80,6 +82,7 @@ export interface GarageEnvironmentStats {
   readonly openingViewTankParts: number;
   readonly placementOverlaps: number;
   readonly maxGroundContactErrorM: number;
+  readonly platformGroundClearanceM: number;
   readonly triangles: number;
 }
 
@@ -743,6 +746,29 @@ export function buildGarageEnvironment(
     }
   }
 
+  // The podium is a physical object with its bottom at y=0. Re-apply one
+  // canonical circular exclusion after every structure/facility terrace has
+  // shaped the map excerpt so snowbanks, dunes, and steep source samples can
+  // never rise through its side wall. The feather remains outside the base and
+  // preserves the authored terrain beyond the immediate display apron.
+  let maxPlatformTerrainY = Number.NEGATIVE_INFINITY;
+  for (let row = 0; row < patch.height; row += 1) {
+    const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+    for (let column = 0; column < patch.width; column += 1) {
+      const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+      const index = row * patch.width + column;
+      heights[index] = garagePlatformTerrainHeight(x, z, heights[index]);
+      if (Math.hypot(x, z) <= GARAGE_PLATFORM_GEOMETRY.baseRadiusM) {
+        maxPlatformTerrainY = Math.max(maxPlatformTerrainY, heights[index]);
+      }
+    }
+  }
+  const platformGroundMaxY = Math.max(
+    maxPlatformTerrainY,
+    GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM,
+  );
+  const platformGroundClearanceM = Math.max(0, -platformGroundMaxY);
+
   // A later terrace's feather can reach into an earlier terrace even when
   // their actual equipment footprints do not overlap. Re-seat every exact
   // support plane after all feathering is complete so long rails and station
@@ -807,7 +833,7 @@ export function buildGarageEnvironment(
     texturedMaterial('cobble', { color: recipe.hardstandTint, roughness: 0.92, metalness: 0.02 }),
   );
   hardstand.name = 'connected_service_hardstand';
-  hardstand.position.y = -0.105;
+  hardstand.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM - 0.08;
   hardstand.receiveShadow = true;
   hardstand.matrixAutoUpdate = false;
   hardstand.updateMatrix();
@@ -1146,6 +1172,7 @@ export function buildGarageEnvironment(
     ).toFixed(4)),
     placementOverlaps,
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
+    platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),
     triangles: Math.round(triangles),
   });
   Object.assign(root.userData, stats);
