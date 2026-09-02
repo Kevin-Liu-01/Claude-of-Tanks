@@ -297,6 +297,7 @@ try {
     rearDeckEndZ: -3.62,
     runningGearReused: true,
     remoteAutocannonCaliberMm: 30,
+    remoteAutocannonBarrelDiameterM: 0.094,
     largeGunRightSearchlight: true,
     additionalEraCassettes: 80,
     skirtArmorPanelsPerSide: 6,
@@ -331,7 +332,12 @@ try {
   assert.deepEqual(ttsRunningGearContract, baseRunningGearContract,
     'M551A1 TTS reuses the Sheridan wheels and complete closed track loop exactly');
 
-  assert.ok(ttsTank.root.getObjectByName('m551a1TtsAutocannonMechanism'));
+  const remoteAutocannonMechanism = ttsTank.root
+    .getObjectByName('m551a1TtsAutocannonMechanism');
+  assert.ok(remoteAutocannonMechanism);
+  const remoteAutocannon = remoteAutocannonMechanism.parent;
+  assert.equal(remoteAutocannon?.userData.barrelDiameterM, 0.094,
+    'TTS 30 mm barrel keeps a lean remote-weapon silhouette');
   assert.ok(ttsTank.root.getObjectByName('turretEquipment'),
     'remote-station armor is merged into the vehicle-scale camouflage bucket');
   assert.ok(ttsTank.root.getObjectByName('turretGlass'),

@@ -35,7 +35,7 @@ assert(Math.abs(roof.mainRwsFrontTierBottomM - roof.mainRwsPedestalTopM) < 1e-9,
 assert(roof.primaryRemoteWeaponStation && roof.primaryRemoteWeaponStationX < 0,
   'T-14: consolidated remote autocannon occupies the primary roof station');
 assert.equal(roof.primaryRemoteWeaponCaliberMm, 30);
-assert.equal(roof.primaryRemoteWeaponBarrelDiameterM, 0.124);
+assert.equal(roof.primaryRemoteWeaponBarrelDiameterM, 0.104);
 assert.equal(roof.primaryRemoteWeaponVariant, 'armata-30mm-autocannon');
 assert(roof.primaryRemoteWeaponForwardFacing,
   'T-14: primary roof autocannon firing axis remains vehicle-forward');
@@ -91,7 +91,7 @@ const primaryRemoteWeapon = tank.root.getObjectByName('t14_primary_remote_weapon
 assert(primaryRemoteWeapon?.userData.fitting === 'pintleMG'
     && primaryRemoteWeapon.userData.fittingRoot
     && primaryRemoteWeapon.userData.caliberMm === 30
-    && primaryRemoteWeapon.userData.barrelDiameterM === 0.124
+    && primaryRemoteWeapon.userData.barrelDiameterM === 0.104
     && primaryRemoteWeapon.userData.stationVariant === 'armata-30mm-autocannon'
     && primaryRemoteWeapon.userData.forwardFacing,
   'T-14: primary station carries one canonical stronger forward-facing 30 mm autocannon');

@@ -3668,18 +3668,18 @@ function buildT14(P: Modern2BuilderPort) {
     autocannon.userData.caliberMm = 30;
     autocannon.userData.stationVariant = 'armata-30mm-autocannon';
     autocannon.userData.forwardFacing = true;
-    autocannon.userData.barrelDiameterM = 0.124;
+    autocannon.userData.barrelDiameterM = 0.104;
     const axisY = primaryRwsDeckY + 0.205;
     const chamberZ = primaryRwsZ + 0.31;
     const darkParts = [
       xform(cylX(0.062, 0.54, P.q ? 18 : 12), primaryRwsX, axisY, chamberZ),
-      xform(cylZ(0.102, 0.34, P.q ? 20 : 14), primaryRwsX, axisY,
+      xform(cylZ(0.086, 0.34, P.q ? 20 : 14), primaryRwsX, axisY,
         primaryRwsZ + 0.28),
-      xform(cylZ(0.062, 1.26, P.q ? 20 : 14), primaryRwsX, axisY,
+      xform(cylZ(0.052, 1.26, P.q ? 20 : 14), primaryRwsX, axisY,
         primaryRwsZ + 1.08),
-      xform(cylZ(0.080, 0.16, P.q ? 18 : 12), primaryRwsX, axisY,
+      xform(cylZ(0.067, 0.16, P.q ? 18 : 12), primaryRwsX, axisY,
         primaryRwsZ + 1.79),
-      xform(cylZ(0.034, 0.024, P.q ? 14 : 10), primaryRwsX, axisY,
+      xform(cylZ(0.028, 0.024, P.q ? 14 : 10), primaryRwsX, axisY,
         primaryRwsZ + 1.882),
       xform(box(0.15, 0.12, 0.30), primaryRwsX - 0.18, axisY + 0.025,
         primaryRwsZ + 0.30),
@@ -3908,7 +3908,7 @@ function buildT14(P: Modern2BuilderPort) {
     primaryRemoteWeaponStationX: primaryRwsX,
     primaryRemoteWeaponDeckM: primaryRwsDeckY,
     primaryRemoteWeaponCaliberMm: 30,
-    primaryRemoteWeaponBarrelDiameterM: 0.124,
+    primaryRemoteWeaponBarrelDiameterM: 0.104,
     primaryRemoteWeaponVariant: 'armata-30mm-autocannon',
     primaryRemoteWeaponForwardFacing: true,
     roofMachineGunStation: true,

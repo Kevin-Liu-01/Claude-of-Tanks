@@ -615,6 +615,7 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   group.name = 'm551a1TtsRemoteAutocannon';
   group.userData.remoteControlled = true;
   group.userData.caliberMm = 30;
+  group.userData.barrelDiameterM = 0.094;
   group.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
   group.userData.stationVariant = 'tts30-demonstrator';
 
@@ -644,12 +645,12 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   detail.push(xform(box(0.54, 0.025, 0.54), -0.49, 1.648, -0.06));
 
   // 30 mm barrel, articulated sleeve and block muzzle all face vehicle +Z.
-  dark.push(xform(cylZ(0.055, 1.18, P.q ? 20 : 14), -0.49, 1.345, 0.80));
-  body.push(xform(cylZ(0.095, 0.28, P.q ? 20 : 14), -0.49, 1.345, 0.30));
-  dark.push(xform(cylZ(0.073, 0.12, P.q ? 18 : 12), -0.49, 1.345, 1.43));
-  dark.push(xform(cylZ(0.025, 0.020, P.q ? 14 : 10), -0.49, 1.345, 1.50));
+  dark.push(xform(cylZ(0.047, 1.18, P.q ? 20 : 14), -0.49, 1.345, 0.80));
+  body.push(xform(cylZ(0.083, 0.28, P.q ? 20 : 14), -0.49, 1.345, 0.30));
+  dark.push(xform(cylZ(0.062, 0.12, P.q ? 18 : 12), -0.49, 1.345, 1.43));
+  dark.push(xform(cylZ(0.021, 0.020, P.q ? 14 : 10), -0.49, 1.345, 1.50));
   for (const z of [0.45, 0.67, 0.89]) {
-    dark.push(xform(torus(0.064, 0.010, P.q ? 18 : 12), -0.49, 1.345, z));
+    dark.push(xform(torus(0.055, 0.008, P.q ? 18 : 12), -0.49, 1.345, z));
   }
 
   // Asymmetric ammunition coffin and protected feed bridge distinguish the
@@ -905,6 +906,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     rearDeckEndZ: -3.62,
     runningGearReused: true,
     remoteAutocannonCaliberMm: 30,
+    remoteAutocannonBarrelDiameterM: 0.094,
     largeGunRightSearchlight: true,
     additionalEraCassettes: 80,
     skirtArmorPanelsPerSide: skirtPanelZ.length,
