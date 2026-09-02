@@ -29,7 +29,7 @@
 // m4a3e8 1.50 (track outer face EXACT), tiger1 1.855 (superstructure),
 // t34_85 1.50 (track outer face EXACT).
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations } from './kit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = readonly [number, number];
@@ -1875,8 +1875,11 @@ function buildTigerI(P: Ww2BuilderPort): void {
     P.add('hullDark', box(0.022, 0.012, 0.58), s * 1.42, 1.312, 2.83, -0.075, 0, 0);
     P.add('hull', box(0.745, 0.035, 0.55), s * 1.4625, 1.285, -2.90, 0.06, 0, 0); // rear mudguard
     P.add('hullDark', box(0.022, 0.012, 0.50), s * 1.42, 1.310, -2.90, 0.06, 0, 0);
-    P.addMudguard(`ww2-rear-flap-${s}`, 'hullRubber',
-      box(0.70, 0.24, 0.024), s * 1.44, 1.13, -3.145);                       // rear rubber flaps
+    MUDGUARDS.add(P, {
+      label: `ww2-rear-flap-${s}`, x: s * 1.44, y: 1.13, z: -3.145,
+      thickness: 0.024, length: 0.70, height: 0.24, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.010, rearCut: 0.04,
+    });                                                                        // rear rubber flaps
   }
   // bow furniture: Kugelblende ball MG (right), driver visor (left)
   P.add('hullDark', sph(0.135, P.q ? 22 : 12), 0.55, 1.68, 2.60);

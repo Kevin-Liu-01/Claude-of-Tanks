@@ -24,7 +24,7 @@
 // the whole tank rescales and every mask shifts.
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat, tubeGun } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -297,9 +297,12 @@ function galixBank(
 
 // Rubber corner mud flap over a track run.
 function mudflap(P: MiscBuilderPort, x: number, y: number, z: number, w = 0.56, h = 0.36): void {
-  const { box } = KIT;
-  P.addMudguard(`misc-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
-    'hullRubber', box(w, h, 0.035), x, y, z);
+  MUDGUARDS.add(P, {
+    label: `misc-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
+    x, y, z, thickness: 0.035, length: w, height: h,
+    material: 'rubber', rotation: [0, Math.PI / 2, 0],
+    crown: Math.min(0.018, h * 0.04), frontCut: h * 0.10, rearCut: h * 0.07,
+  });
 }
 
 // (raisedEndWheels static-primitive workaround DELETED — the kit track fix
@@ -3124,8 +3127,11 @@ export function buildType90(P: MiscBuilderPort): void {
     // (0.19 err x6, the biggest non-island plan_hull block). At 1.0-1.45
     // it sat inside the idler wrap's far quadrant (144 exact vox, r4d).
     P.add('hull', box(0.07, 0.29, 0.05), s * 0.90, 0.745, 3.57);               // (face 3.595 clear of the 3.617 col boundary now the idler far edge is 3.58; r6b: band raised to 0.60-0.89 — the 0.44 bracket bottom printed the ±0.94 front cols under the ref's 0.599 skirt-band line; the ~3.58 side-col union band stays 0.50 > the 12% cut so hullLengthM holds)
-    P.addMudguard(`misc-native-front-flap-${s}`, 'hullRubber',
-      box(0.59, 0.18, 0.03), s * 1.36, 1.01, 3.56);                           // thin flap = the plan front line at x 1.065-1.655
+    MUDGUARDS.add(P, {
+      label: `misc-native-front-flap-${s}`, x: s * 1.36, y: 1.01, z: 3.56,
+      thickness: 0.03, length: 0.59, height: 0.18, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.007, frontCut: 0.025,
+    });                                                                        // thin flap = the plan front line at x 1.065-1.655
   }
   // stern: boat-tail wedge + raised wide plate + tail lip + flap-pod anchors
   P.add('hull', slab(                                                          // center wedge (x +-0.90 — r5b: the 0.92 edge sat 1 mm inside the ±0.94 front-col boundary [0.921], an AA coin-flip): bottoms 0.58@-3.2 -> 0.93@-3.73
@@ -3136,8 +3142,11 @@ export function buildType90(P: MiscBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.145, 0.31, 0.13), s * 1.51, 1.295, -3.765);            // §A REAR ANCHOR: mudflap pods (ref plan -3.76 @ x 1.52-1.56; rear body col ~-3.80, overall ~9.79 with the 5.96 muzzle)
     P.add('hull', box(0.07, 0.03, 0.115), s * 1.545, 1.435, -3.8275);          // r5 outer-pod top lip to -3.885 (band .03 non-body): the ref plan rear at x 1.48-1.60 reads -3.885 while x 1.36-1.48 reads -3.824 — a stepped pod rear
-    P.addMudguard(`misc-native-rear-flap-${s}`, 'hullRubber',
-      box(0.40, 0.24, 0.03), s * 1.28, 1.03, -3.71);                          // rubber flaps above the wrap zone
+    MUDGUARDS.add(P, {
+      label: `misc-native-rear-flap-${s}`, x: s * 1.28, y: 1.03, z: -3.71,
+      thickness: 0.03, length: 0.40, height: 0.24, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.008, rearCut: 0.03,
+    });                                                                        // rubber flaps above the wrap zone
   }
   P.add('hullDark', box(1.95, 0.24, 0.04), 0, 1.16, -3.735);                   // rear grille shadow
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.85, 0.035, 0.045), 0, 1.05 + k * 0.09, -3.745);

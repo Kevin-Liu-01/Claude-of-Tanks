@@ -16,7 +16,7 @@
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
 import * as THREE from 'three';
-import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
+import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -1930,9 +1930,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         const flapW = sk.flapW ?? 0.30;
         const flapH = sk.flapH ?? 0.34;
         const sprocketFlapZ = c.sprocket.z + c.sprocket.r + 0.16;
-        P.addMudguard(`merkava-sprocket-flap-${s}`, sk.flapMat ?? 'hullRubber',
-          box(flapW, flapH, 0.035), s * xc,
-          sk.bot + 0.05, sprocketFlapZ, -0.12, 0, 0);
+        MUDGUARDS.add(P, {
+          label: `merkava-sprocket-flap-${s}`,
+          x: s * xc, y: sk.bot + 0.05, z: sprocketFlapZ,
+          thickness: 0.035, length: flapW, height: flapH,
+          bucket: sk.flapMat ?? 'hullRubber',
+          rotation: [-0.12, Math.PI / 2, 0], crown: 0.012,
+          frontCut: flapH * 0.10, rearCut: flapH * 0.05,
+        });
         // A transverse top hanger carries the inboard flap back to the
         // outboard fender/skirt edge. Several early marks previously left
         // 10-18 cm of open air between these two visible assemblies.
@@ -1954,17 +1959,26 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       // r12 CONTAINMENT opt-in sk.idlerFlapDz (default 0.12): the 3D flap at
       // the default offset stood coincident with the idler-wrap rear face
       // (§B4 120 exact voxels) — it steps rearward, clear of the band.
-      P.addMudguard(`merkava-idler-flap-${s}`, sk.flapMat ?? 'hullRubber',
-        box(0.30, 0.30, 0.035),
-        s * xc, sk.idlerFlapY ?? (sk.bot + 0.02),
-        c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12), 0.12, 0, 0);
+      MUDGUARDS.add(P, {
+        label: `merkava-idler-flap-${s}`,
+        x: s * xc, y: sk.idlerFlapY ?? (sk.bot + 0.02),
+        z: c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12),
+        thickness: 0.035, length: 0.30, height: 0.30,
+        bucket: sk.flapMat ?? 'hullRubber',
+        rotation: [0.12, Math.PI / 2, 0], crown: 0.010, rearCut: 0.04,
+      });
       // rear mud flaps behind the idler: the measured tail bottoms keep
       // rising 0.43->0.61 between the idler wrap and the rack wall
       for (let flapIndex = 0; flapIndex < (c.rearFlaps ?? []).length; flapIndex++) {
         const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
-        P.addMudguard(`merkava-rear-flap-${s}-${flapIndex}`, rf2.mat ?? 'hullRubber',
-          box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
-          s * (rf2.x ?? xc), ((rf2.top ?? 0.95) + rf2.bot) / 2, rf2.z);
+        MUDGUARDS.add(P, {
+          label: `merkava-rear-flap-${s}-${flapIndex}`,
+          x: s * (rf2.x ?? xc), y: ((rf2.top ?? 0.95) + rf2.bot) / 2, z: rf2.z,
+          thickness: 0.05, length: rf2.w ?? 0.26,
+          height: (rf2.top ?? 0.95) - rf2.bot,
+          bucket: rf2.mat ?? 'hullRubber', rotation: [0, Math.PI / 2, 0],
+          crown: 0.010, rearCut: Math.min(0.04, ((rf2.top ?? 0.95) - rf2.bot) * 0.1),
+        });
         if (rf2.wood) { // mud-stain strip: the ref's corner flaps read brown
           // (strip rides the OUTWARD face: +z for bow flaps, -z for tail
           // ones; pokes <= 1 cm past the flap face — sub-pixel at 1024)
@@ -2709,10 +2723,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     for (const s of [-1, 1]) {
       for (let flapIndex = 0; flapIndex < c.rearFlaps.length; flapIndex++) {
         const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
-        P.addMudguard(`merkava-skirtless-rear-flap-${s}-${flapIndex}`,
-          rf2.mat ?? 'hullRubber',
-          box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
-          s * (rf2.x ?? xcF), ((rf2.top ?? 0.95) + rf2.bot) / 2, rf2.z);
+        MUDGUARDS.add(P, {
+          label: `merkava-skirtless-rear-flap-${s}-${flapIndex}`,
+          x: s * (rf2.x ?? xcF), y: ((rf2.top ?? 0.95) + rf2.bot) / 2, z: rf2.z,
+          thickness: 0.05, length: rf2.w ?? 0.26,
+          height: (rf2.top ?? 0.95) - rf2.bot,
+          bucket: rf2.mat ?? 'hullRubber', rotation: [0, Math.PI / 2, 0],
+          crown: 0.010, rearCut: Math.min(0.04, ((rf2.top ?? 0.95) - rf2.bot) * 0.1),
+        });
       }
       if (c.tailKit) {
         // r10: rear-visibly occluded by the rack face, but the fill's 0.785

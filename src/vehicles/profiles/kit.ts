@@ -44,6 +44,39 @@ interface ProfileBuilderPort {
   ): void;
 }
 
+interface MudguardBuilderPort {
+  readonly hullG: THREE.Group;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+}
+
+export interface ShapedMudguardOptions {
+  readonly label: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  /** Panel thickness across local X. */
+  readonly thickness?: number;
+  /** Longitudinal span across local Z. */
+  readonly length: number;
+  readonly height: number;
+  readonly material?: 'painted-steel' | 'rubber' | 'wood-stained';
+  /** Explicit family bucket for existing authored finishes. */
+  readonly bucket?: string;
+  /** Top-edge rise at the center, in metres. */
+  readonly crown?: number;
+  /** Amount trimmed from the lower front (+Z after construction) corner. */
+  readonly frontCut?: number;
+  /** Amount trimmed from the lower rear (-Z after construction) corner. */
+  readonly rearCut?: number;
+  /** Drop of the front top edge relative to the rear top edge. */
+  readonly rake?: number;
+  /** Optional normalized [z,y] outline. Values are scaled by length/height. */
+  readonly profile?: readonly (readonly [number, number])[];
+  readonly rotation?: Vec3Tuple;
+  readonly support?: boolean;
+}
+
 interface ProfileConfig {
   turretWidth: number;
   turretHeight: number;
@@ -851,6 +884,107 @@ export function buildDonorVariant(builder: unknown, profile: unknown): void {
   KIT.buildCanonical(P, p.base);
   if (p.kit) p.kit(P, p);
 }
+
+function requireMudguardBuilder(value: unknown): MudguardBuilderPort {
+  if (!isRecord(value) || !(value.hullG instanceof THREE.Group) ||
+      typeof value.add !== 'function' || typeof value.addMudguard !== 'function') {
+    throw new TypeError('shared mudguard builder is missing add/addMudguard/hullG');
+  }
+  return value as unknown as MudguardBuilderPort;
+}
+
+/**
+ * Closed, profile-driven mudguard panel. The visible outline lives in the
+ * local Y/Z plane and is extruded across local X, so a single primitive can
+ * form a long side guard, a short fender return, or a transverse end flap.
+ * The default outline has clipped lower corners and a subtle center crown;
+ * callers can provide a normalized [z,y] polygon for family-specific shapes.
+ */
+function shapedMudguardGeometry(options: ShapedMudguardOptions): THREE.BufferGeometry {
+  const length = Math.max(0.04, options.length);
+  const height = Math.max(0.04, options.height);
+  const thickness = Math.max(0.012, options.thickness ?? 0.035);
+  const frontCut = Math.max(0, Math.min(height * 0.45, options.frontCut ?? height * 0.10));
+  const rearCut = Math.max(0, Math.min(height * 0.45, options.rearCut ?? height * 0.06));
+  const crown = Math.max(-height * 0.18, Math.min(height * 0.18, options.crown ?? height * 0.025));
+  const rake = Math.max(-height * 0.35, Math.min(height * 0.35, options.rake ?? 0));
+  const outline = options.profile?.length && options.profile.length >= 3
+    ? options.profile.map(([z, y]) => [z * length, y * height] as const)
+    : [
+      [-length / 2, height / 2] as const,
+      [0, height / 2 + crown] as const,
+      [length / 2, height / 2 - rake] as const,
+      [length / 2, -height / 2 + frontCut] as const,
+      [length * 0.36, -height / 2] as const,
+      [-length * 0.38, -height / 2] as const,
+      [-length / 2, -height / 2 + rearCut] as const,
+    ];
+  const shape = new THREE.Shape();
+  shape.moveTo(outline[0][0], outline[0][1]);
+  for (let i = 1; i < outline.length; i++) shape.lineTo(outline[i][0], outline[i][1]);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: thickness,
+    bevelEnabled: false,
+    steps: 1,
+    curveSegments: 1,
+  });
+  // ExtrudeGeometry grows along +Z. Rotate that axis onto local X and center
+  // the thickness about the origin; the profile's shape-X becomes local -Z.
+  geometry.rotateY(Math.PI / 2);
+  geometry.translate(-thickness / 2, 0, 0);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.userData = {
+    ...(geometry.userData || {}),
+    designFamily: 'cot-shaped-mudguard-v1',
+    outlinePoints: outline.length,
+    closedProfile: true,
+  };
+  return geometry;
+}
+
+function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): void {
+  const P = requireMudguardBuilder(builder);
+  const material = options.material ?? (options.bucket === 'hull' ? 'painted-steel'
+    : options.bucket === 'hullWood' ? 'wood-stained' : 'rubber');
+  const bucket = options.bucket ?? (material === 'painted-steel' ? 'hull'
+    : material === 'wood-stained' ? 'hullWood' : 'hullRubber');
+  const rotation = options.rotation ?? [0, 0, 0];
+  const geometry = shapedMudguardGeometry(options);
+  P.addMudguard(options.label, bucket, geometry,
+    options.x, options.y, options.z, rotation[0], rotation[1], rotation[2]);
+
+  // A narrow painted hanger at the upper edge makes the support relationship
+  // visible and gives the seating audit a real connected island. It remains
+  // hull furniture rather than rubber, even when the hanging panel is rubber.
+  if (options.support !== false) {
+    const thickness = Math.max(0.012, options.thickness ?? 0.035);
+    const supportY = options.y + options.height / 2 - Math.max(0.012, options.height * 0.035);
+    P.add('hullDetail', KIT.box(thickness * 1.45, Math.max(0.035, options.height * 0.08), options.length * 0.94),
+      options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
+  }
+
+  const receipts = Array.isArray(P.hullG.userData.sharedMudguards)
+    ? P.hullG.userData.sharedMudguards as unknown[] : [];
+  receipts.push({
+    label: options.label,
+    designFamily: 'cot-shaped-mudguard-v1',
+    material,
+    bucket,
+    thicknessM: options.thickness ?? 0.035,
+    lengthM: options.length,
+    heightM: options.height,
+    outlinePoints: geometry.userData.outlinePoints,
+    attachedSupport: options.support !== false,
+  });
+  P.hullG.userData.sharedMudguards = receipts;
+}
+
+export const MUDGUARDS = {
+  geometry: shapedMudguardGeometry,
+  add: addShapedMudguard,
+};
 
 // ===========================================================================
 // KIT.fittings — STANDARD DECORATION FITTINGS (kit-fittings round, 2026-08-03)
@@ -1796,14 +1930,16 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
 }
 
 /**
- * Rail stowage rack with soft fill (§B3 dressing). Rail fence + dark mesh
- * back panel + tone-varied duffels/crates/tarp rolls.
+ * Open-lattice stowage rack with soft fill (§B3 dressing). The rack is a
+ * complete welded structure (floor grid, outer fence, end returns, diagonal
+ * braces and hull/turret mounting feet), never a gray/black slab standing in
+ * for a basket. Tone-varied duffels/crates/tarp rolls sit inside the lattice.
  * Origin: center of the rack FLOOR plane; +z is the open/outboard face.
  * @param {object} opts
  *   mats; w=1.2 rack width; d=0.45 depth; h=0.30 rail height;
  *   posts   post count                     (default from width)
  *   rails   1..3 horizontal rails          (default 2)
- *   mesh    dark mesh back panel           (default true)
+ *   mesh    open wire-grid fence            (default true)
  *   fill    0..1 soft-fill density         (default 0.75; 0 = bare rack)
  *   seed, shadows, rotation
  * Envelope: x ±w/2, y 0..~1.35h with fill (0..h bare), z ±d/2 — see
@@ -1816,21 +1952,68 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
 
-  // fence: posts + rails on the outer face, short end rails closing the bay.
-  const zFace = d / 2 - 0.02;
+  const rod = Math.max(0.018, Math.min(0.032, Math.min(w, d, h) * 0.085));
+  const rail = rod * 1.18;
+  const zMount = -d / 2 + rod / 2;
+  const zFace = d / 2 - rod / 2;
+  const addSideBrace = (x: number, y0: number, z0: number, y1: number, z1: number): void => {
+    const dy = y1 - y0;
+    const dz = z1 - z0;
+    parts.add('dark', box(rod, rod, Math.hypot(dy, dz) + rod), x,
+      (y0 + y1) / 2, (z0 + z1) / 2, Math.atan2(-dy, dz), 0, 0);
+  };
+
+  // Floor lattice: cross-ribs and longitudinal stringers leave actual open
+  // air between members. This is the silhouette the old full-size floor/back
+  // boxes erased at rear and elevated three-quarter views.
+  const floorY = rod / 2;
+  const floorCross = Math.max(3, Math.min(8, Math.round(d / 0.12) + 1));
+  for (let i = 0; i < floorCross; i++) {
+    const z = -d / 2 + rod / 2 + i * ((d - rod) / (floorCross - 1));
+    parts.add('dark', box(w, rod, rod), 0, floorY, z);
+  }
+  const floorStrings = Math.max(3, Math.min(9, Math.round(w / 0.22) + 1));
+  for (let i = 0; i < floorStrings; i++) {
+    const x = -w / 2 + rod / 2 + i * ((w - rod) / (floorStrings - 1));
+    parts.add('dark', box(rod, rod, d), x, floorY, 0);
+  }
+
+  // Fence: posts + rails on the outer face, short end rails closing the bay.
   const nPosts = Math.min(10, Math.max(2, opts.posts || Math.round(w / 0.22)));
   for (let i = 0; i < nPosts; i++) {
     const x = -w / 2 + 0.02 + i * ((w - 0.04) / (nPosts - 1));
-    parts.add('dark', box(0.025, h, 0.025), x, h / 2, zFace);
+    parts.add('dark', box(rod, h, rod), x, h / 2, zFace);
   }
   const railYs = rails === 1 ? [h * 0.95] : rails === 2 ? [h * 0.95, h * 0.45] : [h * 0.95, h * 0.70, h * 0.45];
   for (const ry of railYs) {
-    parts.add('dark', box(w, 0.032, 0.032), 0, ry, zFace);
-    for (const sx of [-1, 1]) parts.add('dark', box(0.032, 0.032, d * 0.9), sx * (w / 2 - 0.016), ry, zFace - d * 0.45);
+    parts.add('dark', box(w, rail, rail), 0, ry, zFace);
+    for (const sx of [-1, 1]) parts.add('dark', box(rail, rail, d),
+      sx * (w / 2 - rail / 2), ry, 0);
   }
-  for (const sx of [-1, 1]) parts.add('dark', box(0.025, h, 0.025), sx * (w / 2 - 0.016), h / 2, zFace - d * 0.9);
-  if (opts.mesh !== false) parts.add('dark', box(w * 0.98, h * 0.82, 0.014), 0, h * 0.52, zFace - 0.035);
-  parts.add('dark', box(w, 0.025, 0.04), 0, 0.0125, zFace);
+  for (const sx of [-1, 1]) {
+    const x = sx * (w / 2 - rod / 2);
+    parts.add('dark', box(rod, h, rod), x, h / 2, zMount);
+    // Triangulated end returns and two real mounting feet make the basket
+    // visibly load-bearing instead of a floating rectangle.
+    addSideBrace(x, rod, zFace, h * 0.94, zMount);
+    addSideBrace(x, rod, zMount, h * 0.94, zFace);
+    parts.add('hull', box(0.12, 0.055, rod * 1.4), sx * (w * 0.31),
+      0.035, zMount - rod * 0.25);
+  }
+  if (opts.mesh !== false) {
+    // Open wire grid at the outer face. The former single box here was the
+    // fleet-wide "gray square" proxy called out in visual review.
+    const gridCols = Math.max(3, Math.min(12, Math.round(w / 0.14)));
+    const gridRows = Math.max(2, Math.min(6, Math.round(h / 0.11)));
+    for (let i = 1; i < gridCols; i++) {
+      const x = -w / 2 + i * (w / gridCols);
+      parts.add('dark', box(rod * 0.55, h * 0.82, rod * 0.55), x, h * 0.52, zFace - rod * 0.62);
+    }
+    for (let i = 1; i < gridRows; i++) {
+      const y = h * 0.12 + i * (h * 0.76 / gridRows);
+      parts.add('dark', box(w * 0.97, rod * 0.55, rod * 0.55), 0, y, zFace - rod * 0.62);
+    }
+  }
 
   // soft fill: tone-varied bundles (cloth / wood / pale) with seeded jitter.
   const fill = opts.fill ?? 0.75;
@@ -1860,7 +2043,16 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
       parts.add('dark', cylX(r * 1.06, 0.024, 10), w * 0.16, h * 0.9 + r * 0.4, -d * 0.12);
     }
   }
-  return fitAssemble('stowageRack', parts, opts);
+  const fitting = fitAssemble('stowageRack', parts, opts);
+  fitting.userData.designFamily = 'cot-open-lattice-bustle-v2';
+  fitting.userData.openLattice = true;
+  fitting.userData.solidProxyPanels = 0;
+  fitting.userData.floorCrossMembers = floorCross;
+  fitting.userData.floorStringers = floorStrings;
+  fitting.userData.outerFencePosts = nPosts;
+  fitting.userData.mountingFeet = 2;
+  fitting.userData.rackEnvelope = { widthM: w, depthM: d, heightM: h };
+  return fitting;
 }
 
 /**

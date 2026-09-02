@@ -1,6 +1,6 @@
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import {
@@ -4595,10 +4595,16 @@ function buildT72BU(P: T72BuilderPort): void {
   // outer rear mudguard corners (front-view 1.5 band at |x| 1.59..1.71;
   // plan 1024: ref outer-column rear ends -2.98)
   for (const s of [-1, 1]) {
-    P.addMudguard(`t72bu-rear-rubber-${s}`, 'hullRubber',
-      box(0.12, 0.20, 0.24), s * 1.65, 1.39, -2.90);
-    P.addMudguard(`t72bu-rear-cap-${s}`, 'hull',
-      box(0.16, 0.08, 0.12), s * 1.71, 1.32, -2.90);
+    MUDGUARDS.add(P, {
+      label: `t72bu-rear-rubber-${s}`, x: s * 1.65, y: 1.39, z: -2.90,
+      thickness: 0.12, length: 0.24, height: 0.20, material: 'rubber',
+      crown: 0.007, rearCut: 0.025,
+    });
+    MUDGUARDS.add(P, {
+      label: `t72bu-rear-cap-${s}`, x: s * 1.71, y: 1.32, z: -2.90,
+      thickness: 0.16, length: 0.12, height: 0.08, material: 'painted-steel',
+      crown: 0.003, support: false,
+    });
   }
   // fender lips (family constant) — mid-hull only: the ref rear plateau
   // (1.267) and nose (1.21) tolerate nothing above them
@@ -4666,8 +4672,12 @@ function buildT72BU(P: T72BuilderPort): void {
   // terminal bay put it through the rising shoe arc; this seated extension
   // preserves the full guard without entering the animated track sweep.
   for (const s of [-1, 1]) {
-    P.addMudguard(`t72bu-front-fender-extension-${s}`, 'hull',
-      box(0.44, 0.10, 0.25), s * 1.64, 1.32, 3.405);
+    MUDGUARDS.add(P, {
+      label: `t72bu-front-fender-extension-${s}`,
+      x: s * 1.64, y: 1.32, z: 3.405,
+      thickness: 0.44, length: 0.25, height: 0.10,
+      material: 'painted-steel', crown: 0.004, support: false,
+    });
   }
   ruFlaps(P, { x: 1.64, w: 0.36, front: [1.06, 0.38], frontZ: 3.55 });
   buildRunningGear(P, {

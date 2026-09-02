@@ -45,7 +45,7 @@
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -1086,9 +1086,20 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
   );
   for (const [fz, fy0, fy1] of flaps) {
     for (const side of [-1, 1]) {
-      P.addMudguard(`patton-${fz < 0 ? 'rear' : 'front'}-flap-${side}`,
-        'hullRubber', box(H.trackW * 0.92, fy1 - fy0, 0.03),
-        side * xc, (fy0 + fy1) / 2, fz);
+      MUDGUARDS.add(P, {
+        label: `patton-${fz < 0 ? 'rear' : 'front'}-flap-${side}`,
+        x: side * xc,
+        y: (fy0 + fy1) / 2,
+        z: fz,
+        thickness: 0.03,
+        length: H.trackW * 0.92,
+        height: fy1 - fy0,
+        material: 'rubber',
+        rotation: [0, Math.PI / 2, 0],
+        crown: 0.012,
+        frontCut: 0.025,
+        rearCut: 0.018,
+      });
       // hanger strap: articulation floater guard (the flap must stay one
       // island with the hull in every pose)
       P.add(gearFitB, box(0.035, Math.max(0.08, spons - fy1 + 0.06), 0.035),

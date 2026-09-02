@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
-import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
@@ -2050,8 +2050,11 @@ function buildChallenger2Legacy(P: ChallengerBuilderPort): void {
   }
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.15, 0.08, 0.05), s * 1.28, 1.42, -4.135);          // taillights
-    P.addMudguard(`challenger-rear-flap-${s}`, 'hullRubber',
-      box(0.62, 0.40, 0.026), s * 1.40, 0.90, -4.13);                         // rear flaps (clear of the −4.105 orbit)
+    MUDGUARDS.add(P, {
+      label: `challenger-rear-flap-${s}`, x: s * 1.40, y: 0.90, z: -4.13,
+      thickness: 0.026, length: 0.62, height: 0.40, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.015, rearCut: 0.055,
+    });                                                                        // rear flaps (clear of the −4.105 orbit)
     P.add('hullDetail', box(0.07, 0.05, 0.16), s * 1.40, 1.125, -4.06);        // flap hangers
   }
   P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.32, -4.155);                 // convoy plate
@@ -2063,8 +2066,11 @@ function buildChallenger2Legacy(P: ChallengerBuilderPort): void {
     P.add('hull', mslab1(s,                                                    // mudguards 24mm inside the anchor face (plan-row truth)
       [1.02, 1.035, 3.55], [1.735, 1.035, 3.55], [1.735, 1.035, 3.52], [1.02, 1.035, 3.52],
       [1.02, 1.075, 4.15], [1.735, 1.075, 4.15], [1.735, 1.125, 3.57], [1.02, 1.125, 3.57]));
-    P.addMudguard(`challenger-front-flap-${s}`, 'hullRubber',
-      box(0.60, 0.30, 0.026), s * 1.40, 0.86, 4.145);                         // front flaps ahead of the +4.085 orbit
+    MUDGUARDS.add(P, {
+      label: `challenger-front-flap-${s}`, x: s * 1.40, y: 0.86, z: 4.145,
+      thickness: 0.026, length: 0.60, height: 0.30, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.013, frontCut: 0.05,
+    });                                                                        // front flaps ahead of the +4.085 orbit
   }
   // big flat squared skirts at ±1.76 EXACT: raised stepped FRONT panel
   // (raked leading edge, exposes the idler + approach run) + 5 full panels.

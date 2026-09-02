@@ -15,7 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -1442,9 +1442,13 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       // override re-hangs the flap clear of the sweep INSIDE the same side
       // trace column and behind the fenders' plan reach. Default
       // byte-identical.
-      P.addMudguard(`abrams-front-flap-${side}`, 'hullRubber',
-        box(0.32 * s, 0.26 * s, 0.028), side * (sk.x - 0.17 * s),
-        sk.bot + 0.14 * s, g.frontFlapZ ?? (sk.z1 + 0.02), -0.08, 0, 0);
+      MUDGUARDS.add(P, {
+        label: `abrams-front-flap-${side}`,
+        x: side * (sk.x - 0.17 * s), y: sk.bot + 0.14 * s,
+        z: g.frontFlapZ ?? (sk.z1 + 0.02), thickness: 0.028,
+        length: 0.32 * s, height: 0.26 * s, material: 'rubber',
+        rotation: [-0.08, Math.PI / 2, 0], crown: 0.012 * s, frontCut: 0.035 * s,
+      });
     }
     if (!g.noFlaps && !g.noRearFlap) {
       // rearFlapZ hangs the flap behind the skirt end when the oracle's rear
@@ -1470,9 +1474,13 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       // boxes read as untextured gray slabs floating mid-height in the rear
       // track runs (critic item 5; ref zone samples olive (67,73,57)).
       // Geometry identical — the flap still carries the -3.77 columns.
-      P.addMudguard(`abrams-rear-flap-${side}`,
-        g.rearFlapCamo ? 'hull' : 'hullRubber', box(0.26 * s, 0.24 * s, 0.028),
-        side * (sk.x - (g.rearFlapInset ?? 0.155) * s), rfy, rfz, 0.08, 0, 0);
+      MUDGUARDS.add(P, {
+        label: `abrams-rear-flap-${side}`,
+        x: side * (sk.x - (g.rearFlapInset ?? 0.155) * s), y: rfy, z: rfz,
+        thickness: 0.028, length: 0.26 * s, height: 0.24 * s,
+        material: g.rearFlapCamo ? 'painted-steel' : 'rubber',
+        rotation: [0.08, Math.PI / 2, 0], crown: 0.010 * s, rearCut: 0.03 * s,
+      });
     }
   }
   } // end !g.noSkirt

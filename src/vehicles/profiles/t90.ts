@@ -1,6 +1,6 @@
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
-import { KIT as UNTYPED_KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -5054,11 +5054,17 @@ function buildT90(P: T90BuilderPort): void {
     // into its fender. The rear sheet also reaches the first shelf segment
     // across the deliberate 35 mm longitudinal seam; both are registered
     // with the fleet's five-centimetre physical seating audit.
-    P.addMudguard(`t90-rear-mudguard-${side}`, 'hullRubber',
-      box(0.36, 0.83, 0.05), s * 1.52, 1.065, -3.06);
+    MUDGUARDS.add(P, {
+      label: `t90-rear-mudguard-${side}`, x: s * 1.52, y: 1.065, z: -3.06,
+      thickness: 0.05, length: 0.36, height: 0.83, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.018, rearCut: 0.075,
+    });
     P.add('hullDark', box(0.34, 0.035, 0.054), s * 1.52, 1.455, -3.06); // rear fender clamp
-    P.addMudguard(`t90-front-mudguard-${side}`, 'hullRubber',
-      box(0.44, 0.55, 0.05), s * 1.48, 0.825, 3.345);
+    MUDGUARDS.add(P, {
+      label: `t90-front-mudguard-${side}`, x: s * 1.48, y: 0.825, z: 3.345,
+      thickness: 0.05, length: 0.44, height: 0.55, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.07,
+    });
     P.add('hullDark', box(0.42, 0.03, 0.054), s * 1.48, 1.085, 3.345);  // front fender clamp
   }
   P.hullG.userData.t90AttachmentReceipt = Object.freeze({
@@ -6699,8 +6705,11 @@ function buildT90MS(P: T90BuilderPort): void {
     // Preserve the 0.37 m lower edge, but carry the sheet up to the 1.10 m
     // terminal lip. It now closes the bow daylight and is physically seated
     // to the fender instead of hanging below it as a separate rubber card.
-    P.addMudguard(flapLabel, 'hullRubber',
-      box(0.40, 0.72, 0.05), s * 1.53, 0.73, 3.345);
+    MUDGUARDS.add(P, {
+      label: flapLabel, x: s * 1.53, y: 0.73, z: 3.345,
+      thickness: 0.05, length: 0.40, height: 0.72, material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.075,
+    });
     P.add('hullDark', box(0.38, 0.035, 0.060), s * 1.53, 1.075, 3.345);
   }
   P.hullG.userData.t90MSFrontMudguardReceipt = Object.freeze({

@@ -18,7 +18,7 @@
 // masks (gun overhang especially) line up. Everything is an original
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -1001,13 +1001,18 @@ export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
 
 // Front/rear rubber mud flaps over the track runs.
 export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
-  const { box } = KIT;
   for (const s of [-1, 1]) {
     const xf = s * o.x;
-    if (o.front) P.addMudguard(`ru-front-flap-${s}`, 'hullRubber',
-      box(o.w, o.front[1], 0.045), xf, o.front[0], o.frontZ);
-    if (o.rear) P.addMudguard(`ru-rear-flap-${s}`, 'hullRubber',
-      box(o.w, o.rear[1], 0.045), xf, o.rear[0], o.rearZ!);
+    if (o.front) MUDGUARDS.add(P, {
+      label: `ru-front-flap-${s}`, x: xf, y: o.front[0], z: o.frontZ,
+      thickness: 0.045, length: o.w, height: o.front[1], material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.014, frontCut: o.front[1] * 0.11,
+    });
+    if (o.rear) MUDGUARDS.add(P, {
+      label: `ru-rear-flap-${s}`, x: xf, y: o.rear[0], z: o.rearZ!,
+      thickness: 0.045, length: o.w, height: o.rear[1], material: 'rubber',
+      rotation: [0, Math.PI / 2, 0], crown: 0.014, rearCut: o.rear[1] * 0.09,
+    });
   }
 }
 
