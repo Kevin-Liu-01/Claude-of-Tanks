@@ -1,14 +1,11 @@
 // tools/marketing-shots/verify-integrations.mjs — proof pass for the
 // marketing-shot integrations:
 //   1. SPLASH: forces the real splash (__COT_FORCE_SPLASH) and screenshots it
-//      with the marketing backdrop faded in (waits for #cot-boot-hero .hly.on
-//      + image decode). Asserts the gate arms and chrome stays on top.
-//   2. BOOT TIMING A/B: navigation -> __GAME_READY wall time, median of N
-//      runs with the hero enabled vs ?nohero. The mandate allows <= 100 ms
-//      regression (the hero is lazy-loaded, so the delta should be noise).
-//   3. GARAGE: boots to the garage (webdriver gate skip), waits for the
+//      on the stable first-paint surface. Asserts the gate arms and no delayed
+//      hero, grid, or boot-chrome entrance animation is introduced.
+//   2. GARAGE: boots to the garage (webdriver gate skip), waits for the
 //      featured panel's first still, screenshots the garage.
-//   4. OG: asserts public/brand/og-image.png exists at 1200x630.
+//   3. OG: asserts public/brand/og-image.png exists at 1200x630.
 //
 // Usage: node tools/marketing-shots/verify-integrations.mjs
 // Output: shots/marketing/integration/{splash,garage}.png + console report.
@@ -114,70 +111,42 @@ const check = (name, cond, detail = '') => {
   if (!cond) failures.push(name);
 };
 
-// --- 1. splash with backdrop -------------------------------------------------
+// --- 1. stable cold splash ----------------------------------------------------
 {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 900, deviceScaleFactor: 1 });
-  await page.evaluateOnNewDocument(() => { window.__COT_FORCE_SPLASH = true; });
+  await page.evaluateOnNewDocument(() => {
+    window.__COT_FORCE_SPLASH = true;
+    window.__COT_BOOT_ANIMATIONS = [];
+    document.addEventListener('animationstart', (event) => {
+      if (event.target instanceof Element && event.target.closest('#cot-boot')) {
+        window.__COT_BOOT_ANIMATIONS.push(event.animationName);
+      }
+    }, true);
+  });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  const heroOn = await page
-    .waitForFunction(() => {
-      const ly = document.querySelector('#cot-boot-hero .hly.on');
-      return !!(ly && ly.style.backgroundImage);
-    }, { timeout: 30000 })
-    .then(() => true)
-    .catch(() => false);
-  check('splash: marketing backdrop layer faded in', heroOn);
-  // let the crossfade + entrance animations settle before the still
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 }).catch(() => {});
-  await new Promise((r) => setTimeout(r, 1400));
-  const gateArmed = await page.evaluate(() => {
+  const splashState = await page.evaluate(() => {
     const g = document.getElementById('cot-boot-gate');
-    return !!(g && g.classList.contains('on'));
+    const boot = document.getElementById('cot-boot');
+    return {
+      gateArmed: !!(g && g.classList.contains('on')),
+      heroAbsent: !document.getElementById('cot-boot-hero'),
+      gridAbsent: !!boot && getComputedStyle(boot, '::after').content === 'none',
+      oneShotChrome: !window.__COT_BOOT_ANIMATIONS.some((name) =>
+        ['cot-boot-pop', 'cot-boot-rise', 'cot-boot-fade'].includes(name)),
+    };
   });
-  check('splash: press-any-key gate armed with backdrop up', gateArmed);
-  const chrome = await page.evaluate(() => {
-    const word = document.querySelector('.cot-boot-word .l1');
-    const hero = document.getElementById('cot-boot-hero');
-    if (!word || !hero) return false;
-    const wz = getComputedStyle(word.closest('.cot-boot-inner')).zIndex;
-    return parseInt(wz, 10) > 0;
-  });
-  check('splash: chrome layered above the backdrop', chrome);
+  check('splash: press-any-key gate armed', splashState.gateArmed);
+  check('splash: no delayed marketing backdrop', splashState.heroAbsent);
+  check('splash: requested grid remains absent', splashState.gridAbsent);
+  check('splash: chrome paints once without replay', splashState.oneShotChrome);
   await page.screenshot({ path: join(OUT, 'splash.png') });
   console.log(`[verify] wrote ${join(OUT, 'splash.png')}`);
   await page.close();
 }
 
-// --- 2. boot timing A/B ------------------------------------------------------
-async function bootTime(qs) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-  const t0 = Date.now();
-  await page.goto(`${url}${qs}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
-  const dt = Date.now() - t0;
-  await page.close();
-  return dt;
-}
-{
-  const N = 3;
-  const withHero = [];
-  const noHero = [];
-  // warm the vite transform cache once so the first measured run is honest
-  await bootTime('?nohero');
-  for (let i = 0; i < N; i++) {
-    noHero.push(await bootTime('?nohero'));
-    withHero.push(await bootTime(''));
-  }
-  const med = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
-  const dm = med(withHero) - med(noHero);
-  console.log(`[verify] boot medians: hero ${med(withHero)} ms vs nohero ${med(noHero)} ms (delta ${dm >= 0 ? '+' : ''}${dm} ms)`);
-  console.log(`[verify]   hero runs: ${withHero.join(', ')} | nohero runs: ${noHero.join(', ')}`);
-  check('boot: hero backdrop costs <= 100 ms', dm <= 100, `delta ${dm} ms`);
-}
-
-// --- 3. garage with featured panel -------------------------------------------
+// --- 2. garage with featured panel -------------------------------------------
 {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 900, deviceScaleFactor: 1 });
@@ -196,13 +165,107 @@ async function bootTime(qs) {
     return c ? c.textContent : '';
   });
   check('garage: featured caption populated', !!caption, caption);
+  const portraitAudit = await page.evaluate(async () => {
+    const cards = [...document.querySelectorAll('.cot-card[data-spec-id]')];
+    const loadImage = (src) => new Promise((resolveImage, rejectImage) => {
+      const image = new Image();
+      image.onload = () => resolveImage(image);
+      image.onerror = () => rejectImage(new Error(`garage portrait failed to load: ${src}`));
+      image.src = src;
+    });
+    const quantileIndex = (weights, totalWeight, quantile) => {
+      const target = totalWeight * quantile;
+      let cumulative = 0;
+      for (let index = 0; index < weights.length; index++) {
+        cumulative += weights[index];
+        if (cumulative >= target) return index;
+      }
+      return weights.length - 1;
+    };
+    const measure = async (card) => {
+      const element = card.querySelector('img.ti');
+      // Offscreen cards deliberately have no src until the portrait observer
+      // sees them. Audit their shipped production asset directly instead of
+      // scrolling the rail 125 times and perturbing the screenshot state.
+      const source = element.src || `${location.origin}/icons/thumbs/${card.dataset.specId}_angle.webp`;
+      const image = await loadImage(source);
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const xWeights = new Float64Array(canvas.width);
+      const yWeights = new Float64Array(canvas.height);
+      let totalWeight = 0;
+      let fullX0 = canvas.width;
+      let fullX1 = -1;
+      let fullY0 = canvas.height;
+      let fullY1 = -1;
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+          if (alpha > 8) {
+            fullX0 = Math.min(fullX0, x);
+            fullX1 = Math.max(fullX1, x);
+            fullY0 = Math.min(fullY0, y);
+            fullY1 = Math.max(fullY1, y);
+          }
+          if (alpha <= 48) continue;
+          xWeights[x] += alpha;
+          yWeights[y] += alpha;
+          totalWeight += alpha;
+        }
+      }
+      const x0 = quantileIndex(xWeights, totalWeight, 0.06);
+      const x1 = quantileIndex(xWeights, totalWeight, 0.94);
+      const y0 = quantileIndex(yWeights, totalWeight, 0.03);
+      const y1 = quantileIndex(yWeights, totalWeight, 0.985);
+      const scale = Math.min(140 * 0.54 / (x1 - x0 + 1), 88 * 0.68 / (y1 - y0 + 1));
+      return {
+        id: card.dataset.specId,
+        width: (fullX1 - fullX0 + 1) * scale,
+        height: (fullY1 - fullY0 + 1) * scale,
+      };
+    };
+    const portraits = await Promise.all(cards.map(measure));
+    const widths = portraits.map((portrait) => portrait.width);
+    const targets = Object.fromEntries(
+      portraits
+        .filter((portrait) => ['t90sm', 't90a_burlak', 't90ms'].includes(portrait.id))
+        .map((portrait) => [portrait.id, portrait.width]),
+    );
+    return {
+      count: portraits.length,
+      minimumWidth: Math.min(...widths),
+      maximumWidth: Math.max(...widths),
+      targets,
+      titleBottom: getComputedStyle(cards[0].querySelector('.nm')).bottom,
+    };
+  });
+  check(
+    'garage: all production portraits share the fleet framing envelope',
+    portraitAudit.count >= 125
+      && portraitAudit.minimumWidth >= 90
+      && portraitAudit.maximumWidth <= 122,
+    `${portraitAudit.count} tanks, ${portraitAudit.minimumWidth.toFixed(1)}-${portraitAudit.maximumWidth.toFixed(1)} px`,
+  );
+  const targetWidths = Object.values(portraitAudit.targets);
+  check(
+    'garage: Tagil and Burlak retain T-90-family visual weight',
+    targetWidths.length === 3
+      && Math.min(...targetWidths) >= 100
+      && Math.max(...targetWidths) - Math.min(...targetWidths) <= 12,
+    JSON.stringify(portraitAudit.targets),
+  );
+  check('garage: tank titles keep the card bottom inset', portraitAudit.titleBottom === '8px', portraitAudit.titleBottom);
   await new Promise((r) => setTimeout(r, 900));
   await page.screenshot({ path: join(OUT, 'garage.png') });
   console.log(`[verify] wrote ${join(OUT, 'garage.png')}`);
   await page.close();
 }
 
-// --- 4. og image --------------------------------------------------------------
+// --- 3. og image --------------------------------------------------------------
 {
   const og = join(ROOT, 'public/brand/og-image.png');
   let dims = null;

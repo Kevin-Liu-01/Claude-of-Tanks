@@ -2471,6 +2471,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
 
+  let hasPresented = false;
   const api: GarageRuntime = {
     root,
     isOpen: false,
@@ -2485,17 +2486,29 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageTools();
       setGaragePanel('');
       root.style.display = 'block';
-      // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
-      // and battle-exit both used to hard-cut the whole screen in one frame).
+      const firstPresentation = !hasPresented;
+      if (firstPresentation && document.getElementById('cot-boot')) {
+        root.classList.add('awaiting-boot');
+        document.addEventListener('cot:boot-dismiss', () => {
+          root.classList.remove('awaiting-boot');
+        }, { once: true });
+      }
+      // The first Garage is already revealed by the boot fade. Replaying its
+      // entrance underneath that splash made a cold visit look like the UI
+      // loaded twice. Re-arm chrome motion only for a genuine later reopen.
       // Do not force `offsetWidth` here: after a battle that synchronously
       // lays out the complete hidden garage (fleet cards, dossiers, pickers,
       // service record) and has produced multi-second transition freezes.
       // The transition veil already gives us a frame boundary, so re-attach
       // the animation class on that boundary instead.
+      const reopening = !firstPresentation && !api.isOpen;
+      hasPresented = true;
       root.classList.remove('enter');
-      requestAnimationFrame(() => {
-        if (api.isOpen) root.classList.add('enter');
-      });
+      if (reopening) {
+        requestAnimationFrame(() => {
+          if (api.isOpen) root.classList.add('enter');
+        });
+      }
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);

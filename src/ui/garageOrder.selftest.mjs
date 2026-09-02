@@ -17,6 +17,20 @@ assert.match(garageSource,
   /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*width:98px;height:52px;[^}]*--cot-thumb-scale,1\.2[^}]*\}/,
   'compact garage cards preserve the lifted, enlarged portrait treatment');
 assert.match(garageSource,
+  /\.cot-card \.ti\{[^}]*opacity:0;[^}]*\}[\s\S]*?\.cot-card \.ti\[data-cot-portrait-framed='true'\]\{opacity:1;\}/,
+  'tank portraits remain hidden until their final centered frame is applied');
+assert.match(garageSource,
+  /\.cot-card \.nm\{position:absolute;left:10px;right:10px;bottom:8px;/,
+  'tank titles use the card padding as a stable bottom inset');
+assert.match(garageSource,
+  /const reopening = !firstPresentation && !api\.isOpen;[\s\S]*?if \(reopening\) \{[\s\S]*?classList\.add\('enter'\)/,
+  'Garage entrance motion is reserved for later reopens instead of replaying under first boot');
+assert.match(garageSource,
+  /\.cot-garage\.awaiting-boot\{visibility:hidden;\}/,
+  'first-visit Garage construction stays hidden until the boot surface begins its fade');
+assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
+  'Garage listens for the boot fade before revealing first-visit chrome');
+assert.match(garageSource,
   /class="card-era">\$\{vehicleEraLabel\(s\.era, \{ short: true \}\)\}<\/span>/,
   'garage cards show the canonical vehicle era in their top-right metadata slot');
 assert.doesNotMatch(garageSource,

@@ -24,13 +24,10 @@
  * still be captured.
  */
 
-import { TRANSITION_SHOTS } from './featuredShots.ts';
 import { mountGitHubStars } from './githubStars.ts';
-import { preloadImage } from './imagePreload.ts';
 
 declare global {
   interface Window {
-    __COT_NO_BOOT_HERO?: boolean;
     __COT_FORCE_SPLASH?: boolean;
     __COT_BOOT_RECOVERY?: { progress?(stage: string): void };
   }
@@ -105,90 +102,6 @@ const STUDIO_STAGES = [
 
 const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementType | null =>
   document.getElementById(id) as ElementType | null;
-
-// Marketing backdrop set (in-engine action stills — tools/marketing-shots).
-// All are lazy-loaded AFTER the selected Garage vehicle has finished its
-// builder/paint stage. The unchanged image remains visible while the entry
-// gate is present, but it cannot compete with the cold critical path for
-// network, decode, or main-thread time (cold-load-probe guards the timing).
-// r9.5: the list lives in featuredShots.ts — ONE copy shared with the
-// garage gallery and the state-transition screens, because hand-synced
-// copies drifted from disk twice (the r9.1 "same picture every load" bug).
-// Keep the first percentage screen on the curated current-capture pool. Export
-// the binding so the loading-screen self-test can guard against old renders
-// accidentally returning to this first paint surface.
-export const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
-const HERO_SHOTS = BOOT_HERO_SHOTS;
-type BootHeroShot = (typeof HERO_SHOTS)[number];
-const HERO_ROTATE_MS = 9000;
-
-/**
- * Lazy marketing backdrop behind the splash chrome. Fades the first still in
- * once it has decoded, then slow-crossfades through the set while the screen
- * is up. Returns a stop() used by dismiss().
- * @returns {() => void}
- */
-function startBootHero() {
-  const wrap = $<HTMLDivElement>('cot-boot-hero');
-  if (!wrap || !HERO_SHOTS.length || window.__COT_NO_BOOT_HERO) return () => {};
-  let q = '';
-  try { q = window.location.search || ''; } catch (_) { q = ''; }
-  if (/[?&]nohero\b/.test(q)) return () => {}; // A/B timing escape hatch
-  const layers = wrap.querySelectorAll<HTMLElement>('.hly');
-  if (layers.length < 2) return () => {};
-  let idx = -1;
-  let front = 0;
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let stopped = false;
-  const urlFor = (shot: BootHeroShot): string => shot.bootImg || shot.img;
-  const show = (i: number): void => {
-    const shot = HERO_SHOTS[i];
-    front ^= 1;
-    layers[front].style.backgroundImage = `url("${urlFor(shot)}")`;
-    layers[front].style.backgroundPosition = shot.focal || 'center';
-    layers[front].classList.add('on');
-    layers[front ^ 1].classList.remove('on');
-    idx = i;
-  };
-  const preload = (i: number, callback: () => void): void => {
-    // This is presentation, not a boot dependency. Low fetch priority keeps
-    // the selected tank's exact builder and paint assets ahead of the splash
-    // image on a first visit while still decoding the small hero during boot.
-    preloadImage(urlFor(HERO_SHOTS[i]), { priority: 'low' }).then((url) => {
-      if (url && !stopped) callback();
-    });
-  };
-  const advance = () => {
-    const next = (idx + 1) % HERO_SHOTS.length;
-    preload(next, () => { if (!stopped) show(next); });
-  };
-  const stopRotation = () => {
-    if (timer) clearInterval(timer);
-    timer = null;
-  };
-  const startRotation = () => {
-    if (!stopped && !document.hidden && !timer && HERO_SHOTS.length > 1) {
-      timer = setInterval(advance, HERO_ROTATE_MS);
-    }
-  };
-  const onVisibility = () => {
-    if (document.hidden) stopRotation();
-    else startRotation();
-  };
-  document.addEventListener('visibilitychange', onVisibility);
-  // First still: decode fully off the critical path, then fade in. The owner-
-  // selected handmade hero stays first; the remaining picks rotate afterward.
-  const first = 0;
-  preload(first, () => {
-    show(first);
-    startRotation();
-  });
-  return () => {
-    stopped = true;
-    stopRotation();
-    document.removeEventListener('visibilitychange', onVisibility);
-  };
-}
 
 /**
  * Should the entry gate be dismissed without a keypress?
@@ -290,15 +203,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   }
   showTip(tipIdx);
   if (root) tipTimer = setInterval(rotateTip, 5200);
-  let heroStarted = false;
-  let stopHero = () => {};
-  const ensureHeroStarted = (): void => {
-    // Automation and explicit no-splash entry remove this surface at ready;
-    // never start a decorative request that cannot become visible.
-    if (!root || heroStarted || dismissed || bootGateSkipped()) return;
-    heroStarted = true;
-    stopHero = startBootHero();
-  };
 
   function stageLabel(key: string): string {
     const s = stages.find((x) => x[0] === key);
@@ -323,7 +227,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (sp && sp[1] > target) target = sp[1];
       const i = stages.findIndex((x) => x[0] === effectiveKey);
       if (i >= 0 && tickEls[i]) tickEls[i].classList.add('on');
-      if (effectiveKey === 'vehicle') ensureHeroStarted();
       schedule();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
@@ -347,7 +250,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
      * @returns {Promise<void>}
      */
     ready() {
-      ensureHeroStarted();
       finished = true;
       target = 1;
       shown = Math.max(shown, 0.985);
@@ -380,10 +282,13 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     dismiss() {
       if (dismissed) return;
       dismissed = true;
-      stopHero();
       if (tipTimer) clearInterval(tipTimer);
       if (raf) cancelAnimationFrame(raf);
       if (!root) return;
+      // The Garage lays itself out behind this opaque surface. Reveal its
+      // already-settled chrome on the same frame the boot fade begins, so
+      // asynchronous panels can never leak their construction shifts.
+      document.dispatchEvent(new CustomEvent('cot:boot-dismiss'));
       root.classList.add('cot-boot-out');
       // keep it in the DOM for one transition, then drop it so the tips and
       // the animated sheen stop costing style recalcs during play

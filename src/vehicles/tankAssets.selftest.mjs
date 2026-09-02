@@ -48,11 +48,14 @@ assert.doesNotMatch(technicalGenerator,
   /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
   'retired metadata reconstruction and redundant hit-zone rendering are absent');
 assert.match(technicalGenerator,
-  /const PORTRAIT_WIDTH_RATIO = 0\.86;[\s\S]*const PORTRAIT_HEIGHT_RATIO = 0\.78;[\s\S]*const PORTRAIT_BASELINE_RATIO = 0\.89;/,
+  /const PORTRAIT_WIDTH_RATIO = 0\.54;[\s\S]*const PORTRAIT_HEIGHT_RATIO = 0\.68;[\s\S]*const PORTRAIT_BASELINE_RATIO = 0\.88;/,
   'garage portraits share one fleet-wide visible-width and ground-line framing contract');
 assert.match(technicalGenerator,
-  /function normalizeAnglePortrait\(src, outSize\)[\s\S]*opaquePixelBounds\(src\)[\s\S]*PORTRAIT_BASELINE_RATIO[\s\S]*drawImage\(src, dx, dy, drawWidth, drawHeight\)/,
-  'angle portraits normalize finished opaque pixels instead of preserving camera-frame offsets');
+  /function normalizeAnglePortrait\(src, outSize\)[\s\S]*portraitCoreBounds\(src\)[\s\S]*PORTRAIT_BASELINE_RATIO[\s\S]*drawImage\(src, dx, dy, drawWidth, drawHeight\)/,
+  'angle portraits normalize dense chassis pixels instead of sparse equipment or camera-frame offsets');
+assert.match(technicalGenerator,
+  /PORTRAIT_CORE_ALPHA_THRESHOLD = 48[\s\S]*PORTRAIT_LEFT_QUANTILE = 0\.06[\s\S]*PORTRAIT_BOTTOM_QUANTILE = 0\.985[\s\S]*new Float64Array/,
+  'portrait generation excludes sparse barrels, antennae, cages, and grounding shadows fleet-wide');
 assert.match(technicalGenerator,
   /const angleCanvas = normalizeAnglePortrait\([\s\S]*capture\(angleCam, BASE \* 2, BASE \* 2\), BASE\);/,
   'the shipped garage angle asset always passes through the shared portrait normalizer');

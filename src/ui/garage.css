@@ -1,5 +1,6 @@
 .cot-garage{--cot-garage-sidebar-width:280px;position:fixed;inset:0;z-index:60;display:none;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
+.cot-garage.awaiting-boot{visibility:hidden;}
 .cot-garage *{box-sizing:border-box;margin:0;padding:0;}
 .cot-garage .band-top{position:absolute;left:0;right:0;top:0;height:26%;
   background:linear-gradient(180deg,rgba(5,8,11,.94) 0%,rgba(5,8,11,.78) 55%,rgba(5,8,11,0) 100%);}
@@ -598,11 +599,14 @@
 .cot-card .ti{display:block;margin:-3px auto -5px;width:140px;height:88px;
   object-fit:contain;object-position:center 46%;
   filter:drop-shadow(0 6px 8px rgba(0,0,0,.78)) saturate(1.04) contrast(1.03);
+  opacity:0;
   transform-origin:0 0;
   transform:translate(var(--cot-thumb-x,-12px),var(--cot-thumb-y,-7px))
     scale(var(--cot-thumb-scale,1.22));}
-.cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -3px;text-align:left;
+.cot-card .ti[data-cot-portrait-framed='true']{opacity:1;}
+.cot-card .nm{position:absolute;left:10px;right:10px;bottom:8px;
+  font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;text-align:left;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
 .cot-card .nm .tiern{font-weight:900;color:#d8a04c;margin-right:5px;letter-spacing:.04em;}
 .cot-card.sel .nm .tiern{color:#f0b04a;}
@@ -1072,7 +1076,7 @@ body[data-cot-panels='overlay'] .cot-card .dev-tag{right:4px;top:22px;padding:1p
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;margin:-5px auto -6px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}
-body[data-cot-panels='overlay'] .cot-card .nm{font-size:8px;margin:0 -2px}
+body[data-cot-panels='overlay'] .cot-card .nm{left:6px;right:6px;bottom:5px;font-size:8px;margin:0}
 body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
 
 body[data-cot-width='phone'] .cot-garage .title span,
@@ -1160,6 +1164,7 @@ body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
   min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding-block:3px;
 }
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:80px;height:38px;margin:-5px auto -5px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .nm{bottom:4px}
 
 body[data-cot-input='coarse'] .cot-garage button,
 body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}

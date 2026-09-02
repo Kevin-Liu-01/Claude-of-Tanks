@@ -41,15 +41,15 @@ const FONT_DIR = '/fonts/abc-monument-grotesk';
 const FONT_CSS = `@font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Regular.woff2') format('woff2');
-  font-weight:100 400;font-style:normal;font-display:swap;}
+  font-weight:100 400;font-style:normal;font-display:optional;}
 @font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Medium.woff2') format('woff2');
-  font-weight:500 600;font-style:normal;font-display:swap;}
+  font-weight:500 600;font-style:normal;font-display:optional;}
 @font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Bold.woff2') format('woff2');
-  font-weight:700 900;font-style:normal;font-display:swap;}
+  font-weight:700 900;font-style:normal;font-display:optional;}
 /* stats and timers line up: lining tabular figures across every overlay */
 .cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end{
   font-variant-numeric:lining-nums tabular-nums;}

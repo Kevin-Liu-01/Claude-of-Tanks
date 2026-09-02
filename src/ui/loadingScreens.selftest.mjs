@@ -9,7 +9,6 @@ import {
   featuredShotForMap,
   nextFeaturedShot,
 } from './featuredShots.ts';
-import { BOOT_HERO_SHOTS } from './bootScreen.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 
@@ -58,34 +57,50 @@ for (const { mapId, asset } of minimapAssets) {
 assert.equal(FEATURED_SHOTS.length, 20, 'the handmade and owner-approved galleries stay available');
 assert.equal(TRANSITION_SHOTS.length, 10, 'only lightweight handmade and owner-approved captures rotate');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
-assert.deepEqual(
-  BOOT_HERO_SHOTS,
-  TRANSITION_SHOTS,
-  'the first percentage loading screen must use the current curated captures',
-);
 assert.equal(
-  BOOT_HERO_SHOTS[0].img,
+  TRANSITION_SHOTS[0].img,
   '/media/featured/f7_studio_t90_column_fire.webp',
-  'the handmade landing hero must be the first boot-screen option',
+  'the handmade T-90 frame must remain the first transition-screen option',
 );
 assert.equal(
-  BOOT_HERO_SHOTS[0].bootImg,
+  TRANSITION_SHOTS[0].bootImg,
   '/media/featured/f7_studio_t90_column_fire.boot.webp',
-  'the first visit must use the screen-sized derivative while retaining the gallery original',
+  'the featured panel must retain its screen-sized preview derivative',
 );
-const bootHeroAsset = await stat(new URL(`../../public${BOOT_HERO_SHOTS[0].bootImg}`, import.meta.url));
-const fullHeroAsset = await stat(new URL(`../../public${BOOT_HERO_SHOTS[0].img}`, import.meta.url));
+const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
+const fullHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].img}`, import.meta.url));
 assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
-  'the boot hero must be materially smaller than its gallery source');
+  'the featured preview must be materially smaller than its gallery source');
 assert.deepEqual(
-  BOOT_HERO_SHOTS.slice(0, 3).map((shot) => shot.img),
+  TRANSITION_SHOTS.slice(0, 3).map((shot) => shot.img),
   [
     '/media/featured/f7_studio_t90_column_fire.webp',
     '/media/featured/f6_studio_strv_steinburg_duel.webp',
     '/media/featured/f9_studio_fjord_firefight.webp',
   ],
-  'handmade Studio frames must lead the boot-screen rotation',
+  'handmade Studio frames must lead the transition-screen rotation',
 );
+const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
+const bootSource = await readFile(new URL('./bootScreen.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(bootHtml, /cot-boot-hero/,
+  'the cold boot must not replace its already-painted background with a late hero');
+assert.doesNotMatch(bootSource, /startBootHero|BOOT_HERO_SHOTS/,
+  'boot code must not issue delayed decorative image requests');
+assert.doesNotMatch(bootHtml, /#cot-boot::after/,
+  'the first-paint boot surface must not restore the requested-removed grid');
+assert.doesNotMatch(bootHtml, /cot-boot-(?:pop|rise|fade)/,
+  'boot chrome must paint once rather than replay staggered cold-load entrances');
+assert.equal((bootHtml.match(/font-display:\s*optional/g) || []).length, 3,
+  'all inline game fonts must avoid a late fallback-to-brand layout swap');
+assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
+  'boot percentage updates must keep a stable reserved width');
+assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 2px;/,
+  'boot stage ticks must reserve their height before JavaScript mounts them');
+assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
+  'rotating boot tips must not resize the vertically centered splash');
+assert.match(bootHtml,
+  /:where\(body\[data-cot-width='compact'\],body\[data-cot-width='phone'\]\) \.cot-boot-tip \{ height: 144px; \}/,
+  'narrow boot tip space must follow the centralized width policy rather than an independent breakpoint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
 assert.ok(FEATURED_IMAGES.every((img) => /\/(?:featured\/f\d+_studio_|presentation-r1\/\d+_)/.test(img)),
   'only handmade Studio or owner-approved presentation captures may enter the loading-screen rotation');

@@ -105,7 +105,12 @@ for (const contract of [
   'PORTRAIT_WIDTH_RATIO',
   'PORTRAIT_HEIGHT_RATIO',
   'PORTRAIT_BASELINE_RATIO',
+  'PORTRAIT_CORE_ALPHA_THRESHOLD',
+  'PORTRAIT_LEFT_QUANTILE',
+  'PORTRAIT_BOTTOM_QUANTILE',
+  'new Float64Array',
   "--cot-thumb-scale",
+  "cotPortraitFramed = 'true'",
 ]) {
   if (!tankThumbs.includes(contract)) {
     throw new Error(`garage portrait framing is missing ${contract}`);

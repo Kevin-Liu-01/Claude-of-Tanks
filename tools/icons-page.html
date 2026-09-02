@@ -72,26 +72,45 @@ function silhouette(srcCanvas, outW, outH) {
   return out;
 }
 
-const PORTRAIT_WIDTH_RATIO = 0.86;
-const PORTRAIT_HEIGHT_RATIO = 0.78;
-const PORTRAIT_BASELINE_RATIO = 0.89;
+const PORTRAIT_WIDTH_RATIO = 0.54;
+const PORTRAIT_HEIGHT_RATIO = 0.68;
+const PORTRAIT_BASELINE_RATIO = 0.88;
+const PORTRAIT_CORE_ALPHA_THRESHOLD = 48;
+const PORTRAIT_LEFT_QUANTILE = 0.06;
+const PORTRAIT_RIGHT_QUANTILE = 0.94;
+const PORTRAIT_TOP_QUANTILE = 0.03;
+const PORTRAIT_BOTTOM_QUANTILE = 0.985;
 
-function opaquePixelBounds(src, alphaThreshold = 8) {
+function portraitCoreBounds(src) {
   const c = src.getContext('2d');
   const img = c.getImageData(0, 0, src.width, src.height);
   const d = img.data;
-  let x0 = src.width, y0 = src.height, x1 = 0, y1 = 0;
+  const xWeights = new Float64Array(src.width);
+  const yWeights = new Float64Array(src.height);
+  let totalWeight = 0;
   for (let y = 0; y < src.height; y++) {
     for (let x = 0; x < src.width; x++) {
-      if (d[(y * src.width + x) * 4 + 3] > alphaThreshold) {
-        if (x < x0) x0 = x;
-        if (x > x1) x1 = x;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-      }
+      const alpha = d[(y * src.width + x) * 4 + 3];
+      if (alpha <= PORTRAIT_CORE_ALPHA_THRESHOLD) continue;
+      xWeights[x] += alpha;
+      yWeights[y] += alpha;
+      totalWeight += alpha;
     }
   }
-  if (x1 <= x0 || y1 <= y0) return null;
+  if (!(totalWeight > 0)) return null;
+  const quantileIndex = (weights, quantile) => {
+    const target = totalWeight * quantile;
+    let cumulative = 0;
+    for (let index = 0; index < weights.length; index++) {
+      cumulative += weights[index];
+      if (cumulative >= target) return index;
+    }
+    return weights.length - 1;
+  };
+  const x0 = quantileIndex(xWeights, PORTRAIT_LEFT_QUANTILE);
+  const x1 = quantileIndex(xWeights, PORTRAIT_RIGHT_QUANTILE);
+  const y0 = quantileIndex(yWeights, PORTRAIT_TOP_QUANTILE);
+  const y1 = quantileIndex(yWeights, PORTRAIT_BOTTOM_QUANTILE);
   return { x0, y0, x1, y1, width: x1 - x0 + 1, height: y1 - y0 + 1 };
 }
 
@@ -103,7 +122,7 @@ function opaquePixelBounds(src, alphaThreshold = 8) {
  * related vehicles up/down or sideways inside identical roster cards.
  */
 function normalizeAnglePortrait(src, outSize) {
-  const bounds = opaquePixelBounds(src);
+  const bounds = portraitCoreBounds(src);
   if (!bounds) return src;
   const scale = Math.min(
     outSize * PORTRAIT_WIDTH_RATIO / bounds.width,

@@ -18,9 +18,14 @@ import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
-const PORTRAIT_WIDTH_RATIO = 0.86;
-const PORTRAIT_HEIGHT_RATIO = 0.78;
-const PORTRAIT_BASELINE_RATIO = 0.89;
+const PORTRAIT_WIDTH_RATIO = 0.54;
+const PORTRAIT_HEIGHT_RATIO = 0.68;
+const PORTRAIT_BASELINE_RATIO = 0.88;
+const PORTRAIT_CORE_ALPHA_THRESHOLD = 48;
+const PORTRAIT_LEFT_QUANTILE = 0.06;
+const PORTRAIT_RIGHT_QUANTILE = 0.94;
+const PORTRAIT_TOP_QUANTILE = 0.03;
+const PORTRAIT_BOTTOM_QUANTILE = 0.985;
 let errorGuardInstalled = false;
 let portraitObserver: IntersectionObserver | null = null;
 let portraitResizeObserver: ResizeObserver | null = null;
@@ -129,20 +134,35 @@ function measurePortraitBounds(img: HTMLImageElement): PortraitBounds | null {
   const context = canvas2d(canvas);
   context.drawImage(img, 0, 0);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-  let x0 = canvas.width;
-  let y0 = canvas.height;
-  let x1 = -1;
-  let y1 = -1;
+  const xWeights = new Float64Array(canvas.width);
+  const yWeights = new Float64Array(canvas.height);
+  let totalWeight = 0;
   for (let y = 0; y < canvas.height; y++) {
     for (let x = 0; x < canvas.width; x++) {
-      if (pixels[(y * canvas.width + x) * 4 + 3] <= 8) continue;
-      x0 = Math.min(x0, x);
-      y0 = Math.min(y0, y);
-      x1 = Math.max(x1, x);
-      y1 = Math.max(y1, y);
+      const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+      if (alpha <= PORTRAIT_CORE_ALPHA_THRESHOLD) continue;
+      xWeights[x] += alpha;
+      yWeights[y] += alpha;
+      totalWeight += alpha;
     }
   }
-  if (x1 < x0 || y1 < y0) return null;
+  if (!(totalWeight > 0)) return null;
+  const quantileIndex = (weights: Float64Array, quantile: number): number => {
+    const target = totalWeight * quantile;
+    let cumulative = 0;
+    for (let index = 0; index < weights.length; index++) {
+      cumulative += weights[index];
+      if (cumulative >= target) return index;
+    }
+    return weights.length - 1;
+  };
+  // Fit the load-bearing visual mass rather than the full alpha envelope.
+  // Sparse cannon tips, antennae, cage corners and the generated grounding
+  // shadow used to make Tagil/Burlak/Bradley cards shrink by 25-40 percent.
+  const x0 = quantileIndex(xWeights, PORTRAIT_LEFT_QUANTILE);
+  const x1 = quantileIndex(xWeights, PORTRAIT_RIGHT_QUANTILE);
+  const y0 = quantileIndex(yWeights, PORTRAIT_TOP_QUANTILE);
+  const y1 = quantileIndex(yWeights, PORTRAIT_BOTTOM_QUANTILE);
   return {
     width: x1 - x0 + 1,
     height: y1 - y0 + 1,
