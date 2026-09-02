@@ -347,7 +347,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "pos": [
           1.551,
           0.2325,
-          -0.07155
+          -0.3799
         ],
         "quaternion": [
           0,
@@ -360,7 +360,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0015326
+        "maximumSurfaceErrorM": 0.0053552
       }
     ]
   },
