@@ -1340,6 +1340,22 @@ export function createGarageStage(
     && object !== target
     && !(object instanceof THREE.Light)
   ));
+  // The restored room was authored from the opposite end of the original
+  // Verdant opening view. Rotate the complete static indoor set once around
+  // the turntable instead of changing the canonical hero/camera pose or
+  // maintaining a second set of hand-mirrored coordinates. The podium and
+  // outdoor architecture stay direct children of `group`; the light target
+  // remains at the turntable center, so every rotated fixture still aims at
+  // the hero without any per-frame correction.
+  const verdantIndoorSetRoot = new THREE.Group();
+  verdantIndoorSetRoot.name = 'garage_verdant_indoor_half_turn';
+  group.add(verdantIndoorSetRoot);
+  for (const object of indoorStageObjects) verdantIndoorSetRoot.add(object);
+  for (const light of verdantLights) verdantIndoorSetRoot.add(light);
+  verdantIndoorSetRoot.rotation.y = Math.PI;
+  verdantIndoorSetRoot.updateMatrix();
+  verdantIndoorSetRoot.userData.layoutRotationRad = Math.PI;
+  group.userData.verdantIndoorSetRotationRad = Math.PI;
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );

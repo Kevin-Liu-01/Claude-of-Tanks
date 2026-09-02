@@ -75,6 +75,10 @@ assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
+assert.match(dressing, /verdantInteriorRoot\.rotation\.y = Math\.PI/,
+  'Verdant wall-supported clutter must follow the indoor room half-turn');
+assert.doesNotMatch(dressing, /legacyVerdantRoot\.rotation\.y = Math\.PI/,
+  'the shared bays and archive display must not rotate with the Verdant room');
 assert.match(dressing, /legacyVerdantRoot\.add\(screenRoot\)/,
   'the rotating battle display must share the all-Garage workshop owner');
 assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
@@ -118,5 +122,11 @@ assert.match(stage, /NO SMOKING\|FLAMMABLE\|FIRE/,
   'hazard signs must use the red safety category');
 assert.match(stage, /\^BAY\\b/,
   'bay identification signs must use the blue safety category');
+assert.match(stage,
+  /verdantIndoorSetRoot\.rotation\.y = Math\.PI[\s\S]*verdantIndoorSetRotationRad = Math\.PI/,
+  'the complete Verdant indoor shell and fixture set must rotate once at construction');
+assert.match(stage,
+  /object !== podium[\s\S]*object !== rimRing[\s\S]*object !== architecture\.group/,
+  'the Verdant half-turn must exclude the hero podium and outdoor scene packs');
 
 console.log('garageDressingFleet.selftest: shared four-bay fleet set and Verdant interior pass');

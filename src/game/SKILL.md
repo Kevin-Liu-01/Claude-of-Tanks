@@ -80,7 +80,10 @@ battlefield dormancy, lifecycle effects, and diagnostics.
 `garagePresentationPose.ts` is the only owner of hero heading, camera offset,
 look height, and FOV; stage, pedestal, activation, and return paths must consume
 it without variant-specific branches. `garageStage.ts` owns the restored exact
-Verdant indoor workshop. `garageEnvironmentKit.ts` owns the other nine bounded
+Verdant indoor workshop. Its shell, fixed fixtures, lights, and wall-supported
+clutter use one construction-time half-turn around the podium; never rotate the
+hero, camera, shared maintenance graph, or rear-axis archive display to achieve
+that room composition. `garageEnvironmentKit.ts` owns the other nine bounded
 scene packs: generated real-terrain excerpts, authored world-space perimeter
 districts of seven real map structures, static tree-grove/ground-cover instances,
 a generated first-party wreck proxy, Garage-sized PBR derivatives, the bounded

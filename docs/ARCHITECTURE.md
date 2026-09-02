@@ -887,7 +887,11 @@ may change terrain, structures, materials, and atmosphere, but it may never
 change tank orientation or framing.
 
 `garageStage.ts` owns the visible hero podium and the exact restored Verdant
-indoor workshop. It delegates the other nine scene packs to
+indoor workshop. The room shell, fixed fixtures, Verdant-only lights, and
+wall-supported clutter carry one static half-turn around the turntable so the
+legacy room presents from its intended end; the canonical tank, camera,
+podium, shared four-bay service graph, and rear-axis field-record display do
+not participate in that transform. It delegates the other nine scene packs to
 `garageArchitecture.ts`. That controller demand-loads
 `garageEnvironmentKit.ts`, retains at most the active and previous pack, rejects
 stale switch completions, and never constructs an unselected environment after

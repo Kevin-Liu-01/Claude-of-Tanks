@@ -54,7 +54,10 @@ when adding responsive controls.
 `garageStage.ts` is also the exact restored Verdant workshop owner. The nine
 outdoor destinations live behind `garageArchitecture.ts`; their static service
 facilities are baked by `garageFacilityDetails.ts`, receive but do not cast live
-CSM shadows, and retain no playable-fleet runtime. Preserve one canonical hero
+CSM shadows, and retain no playable-fleet runtime. Verdant's room shell and
+supported interior dressing use one static half-turn around the turntable;
+exclude the podium, hero, canonical camera, shared maintenance graph, and
+rear-axis archive display from that transform. Preserve one canonical hero
 pose and verify both persisted outdoor reload and 1180x820 overlay composition.
 Do not reintroduce all-environment post-ready warming. Selector intent may
 fetch code, exact card intent may prepare one destination, the prior complete

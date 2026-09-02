@@ -219,6 +219,14 @@ export function createGarageDressing(
   const verdantInteriorRoot = new THREE.Group();
   verdantInteriorRoot.name = 'garage_verdant_interior_clutter';
   verdantInteriorRoot.userData.variantSwitchOwner = true;
+  // This wall-supported layer belongs to the restored indoor shell, which is
+  // presented from the opposite end of its legacy authoring view. Rotate it
+  // with the shell while leaving `legacyVerdantRoot` untouched: the shared
+  // four-bay service set and field-record display must keep their canonical
+  // relationship to the hero in all ten Garage environments.
+  verdantInteriorRoot.rotation.y = Math.PI;
+  verdantInteriorRoot.updateMatrix();
+  verdantInteriorRoot.userData.layoutRotationRad = Math.PI;
   const initialVerdant = currentVariant.id === 'verdant_motor_pool';
   legacyVerdantRoot.visible = true;
   verdantInteriorRoot.visible = initialVerdant;
