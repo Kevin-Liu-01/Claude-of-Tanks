@@ -154141,6 +154141,20 @@
             "pen100Mm": 1050,
             "pen1000Mm": 1050,
             "pen2000Mm": null
+          },
+          {
+            "name": "M409A1 TTS HEAT-MP",
+            "type": "HEAT",
+            "pen100Mm": 680,
+            "pen1000Mm": 680,
+            "pen2000Mm": null
+          },
+          {
+            "name": "M657A2 TTS HE-T",
+            "type": "HE",
+            "pen100Mm": 55,
+            "pen1000Mm": 55,
+            "pen2000Mm": null
           }
         ]
       },
@@ -159507,7 +159521,7 @@
         ]
       },
       "geometryHash": "0031d0d7",
-      "metadataHash": "0dc66795",
+      "metadataHash": "f5a3125e",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -0.2194

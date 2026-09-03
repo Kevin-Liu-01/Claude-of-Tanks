@@ -18,6 +18,11 @@ export interface AmmunitionPickupResult {
   totalAdded: number;
 }
 
+function normalizedCount(value: unknown): number {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
 export const DEFAULT_AMMUNITION_BY_TYPE: Readonly<Record<string, number>> = Object.freeze({
   AP: 24,
   APCR: 20,
@@ -50,9 +55,10 @@ export function hasAmmunition(
   state: Partial<AmmunitionState> | null | undefined,
   slot: number,
 ): boolean {
-  const index = slot | 0;
+  if (!Number.isInteger(slot)) return false;
+  const index = slot;
   return index >= 0 && index < (state?.ammo?.length || 0) &&
-    (state!.ammo![index] || 0) > 0;
+    normalizedCount(state!.ammo![index]) > 0;
 }
 
 /** Return the first stocked shell slot, or -1 when every channel is empty. */
@@ -60,7 +66,7 @@ export function firstAvailableAmmunitionSlot(
   state: Partial<AmmunitionState> | null | undefined,
 ): number {
   if (!Array.isArray(state?.ammo)) return -1;
-  return state!.ammo!.findIndex((count) => (Number(count) || 0) > 0);
+  return state!.ammo!.findIndex((count) => normalizedCount(count) > 0);
 }
 
 /** Consume exactly one shot. Authorities call this immediately before spawn. */
@@ -69,8 +75,8 @@ export function consumeAmmunition(
   slot: number,
 ): boolean {
   if (!hasAmmunition(state, slot)) return false;
-  const index = slot | 0;
-  state!.ammo![index] = Math.max(0, Math.floor(state!.ammo![index]) - 1);
+  const index = slot;
+  state!.ammo![index] = normalizedCount(state!.ammo![index]) - 1;
   return true;
 }
 
@@ -106,7 +112,7 @@ export function totalAmmunition(
   state: Partial<AmmunitionState> | null | undefined,
 ): number {
   return Array.isArray(state?.ammo)
-    ? state!.ammo!.reduce((sum, count) => sum + Math.max(0, Math.floor(Number(count) || 0)), 0)
+    ? state!.ammo!.reduce((sum, count) => sum + normalizedCount(count), 0)
     : 0;
 }
 
@@ -115,7 +121,7 @@ export function totalAmmunitionCapacity(
 ): number {
   return Array.isArray(state?.ammoCapacity)
     ? state!.ammoCapacity!.reduce(
-      (sum, count) => sum + Math.max(0, Math.floor(Number(count) || 0)), 0,
+      (sum, count) => sum + normalizedCount(count), 0,
     )
     : 0;
 }

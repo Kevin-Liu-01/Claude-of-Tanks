@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createShell, guideShellToward } from '../../sim/ballistics.ts';
-import { createCombatState } from '../../sim/damage.ts';
+import { createCombatState, selectShell } from '../../sim/damage.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
@@ -92,23 +92,43 @@ assert.deepEqual({
   accuracy: 0.24,
   aimTimeS: 1.25,
 }, 'TTS owns an explicit Tier X light-missile balance envelope');
-assert.deepEqual({
-  name: ttsSpec.gun.shells[0].name,
-  pen100Mm: ttsSpec.gun.shells[0].pen100Mm,
-  pen1000Mm: ttsSpec.gun.shells[0].pen1000Mm,
-  dmg: ttsSpec.gun.shells[0].dmg,
-  velocityMps: ttsSpec.gun.shells[0].velocityMps,
-  guidanceTurnRateRadS: ttsSpec.gun.shells[0].guidanceTurnRateRadS,
-  count: ttsSpec.gun.shells[0].count,
-}, {
-  name: 'MGM-51E TTS Shillelagh ATGM',
-  pen100Mm: 1050,
-  pen1000Mm: 1050,
-  dmg: 880,
-  velocityMps: 240.5,
-  guidanceTurnRateRadS: 0.98,
-  count: 18,
-}, 'TTS remains dedicated to a substantially upgraded guided missile channel');
+assert.deepEqual(ttsSpec.gun.shells.map((round) => ({
+  name: round.name,
+  type: round.type,
+  guided: round.guided === true,
+  pen100Mm: round.pen100Mm,
+  pen1000Mm: round.pen1000Mm,
+  dmg: round.dmg,
+  velocityMps: round.velocityMps,
+  reloadS: round.reloadS,
+  count: round.count,
+})), [
+  {
+    name: 'MGM-51E TTS Shillelagh ATGM', type: 'HEAT', guided: true,
+    pen100Mm: 1050, pen1000Mm: 1050, dmg: 880, velocityMps: 240.5,
+    reloadS: 7.4, count: 18,
+  },
+  {
+    name: 'M409A1 TTS HEAT-MP', type: 'HEAT', guided: false,
+    pen100Mm: 680, pen1000Mm: 680, dmg: 680, velocityMps: 730,
+    reloadS: 7.4, count: 28,
+  },
+  {
+    name: 'M657A2 TTS HE-T', type: 'HE', guided: false,
+    pen100Mm: 55, pen1000Mm: 55, dmg: 820, velocityMps: 683,
+    reloadS: 7.4, count: 12,
+  },
+], 'TTS exposes guided, conventional, and high-explosive 152 mm ammunition');
+
+const ttsCombat = createCombatState(ttsSpec);
+ttsCombat.shellSlot = 0;
+ttsCombat.ammo[0] = 0;
+assert.equal(selectShell(ttsCombat, 1, ttsSpec), true,
+  'slot 2 remains selectable after the TTS missile channel is exhausted');
+assert.equal(ttsCombat.shellSlot, 1);
+assert.equal(selectShell(ttsCombat, 2, ttsSpec), true,
+  'slot 3 exposes the TTS high-explosive channel');
+assert.equal(ttsCombat.shellSlot, 2);
 assert.equal(garageStatGroup(ttsSpec), '10/next-generation');
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
