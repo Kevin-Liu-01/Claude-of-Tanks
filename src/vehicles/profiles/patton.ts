@@ -3760,11 +3760,13 @@ function addM60MantletSearchlight(
     housingFinish: 'vehicle-paint',
     lensBucket: 'gunMountGlass',
     offsetX,
+    housingCenterY: bodyY,
     widthM: width,
     lensDiameterM: lensRadius * 2,
     gunMountTopY: 0.23,
     housingBottomY: bodyBottomY,
     supportGapM: bodyBottomY - 0.23,
+    rearFaceZ: bodyZ - depth / 2,
     footprintZ: [bodyZ - depth / 2, bodyZ + depth / 2],
   };
 }
@@ -4703,7 +4705,11 @@ function finishM60A2Variant(
     P.addGunExtra(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0, 0, z);
   }
   P.addGunExtra(torus(0.25, 0.025, 20), 0, 0, 0.72);
-  addM60MantletSearchlight(P, 0.72, 0.22, 0.215, 1.43);
+  // Seat the searchlight directly against the launcher shield instead of
+  // leaving its housing proud of the mantlet.  The shield aperture is
+  // slightly asymmetric (-0.40..+0.41), so +0.005 is its true centre; the
+  // housing rear face now lands exactly on the z=0.806 gun-local face.
+  addM60MantletSearchlight(P, 0.72, 0.005, 0.2326, 1.0688);
   P.add('gun', cylZ(0.17, 0.035, 18), 0, 0, muzzleZ - 0.04);
 
   // Full modernization centerpiece: a compact TTS-derived remotely operated

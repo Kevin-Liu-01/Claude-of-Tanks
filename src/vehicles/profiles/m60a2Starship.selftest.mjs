@@ -105,6 +105,14 @@ try {
     'Starship mantlet searchlight has a painted housing');
   assert.equal(searchlight?.lensBucket, 'gunMountGlass',
     'Starship mantlet searchlight has a real optical lens');
+  assert.ok(Math.abs(searchlight.offsetX - 0.005) < 1e-9,
+    'Starship searchlight is centered on the asymmetric launcher-shield opening');
+  assert.ok(Math.abs(searchlight.housingCenterY - 0.355) < 1e-9,
+    'Starship searchlight is vertically centered on the selected mount face');
+  assert.ok(Math.abs(searchlight.rearFaceZ - 0.806) < 1e-9,
+    'Starship searchlight rear face is attached flush to the launcher shield');
+  assert.ok(searchlight.supportGapM <= 0.003,
+    'Starship searchlight yoke closes onto the gun-mount surface');
   assert.equal(turretRig.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
     'Starship armor has no black outline geometry');
   const receipt = hullRig.userData.m60a2RearClosureReceipt;

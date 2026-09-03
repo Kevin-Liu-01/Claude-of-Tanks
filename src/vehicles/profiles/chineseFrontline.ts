@@ -266,6 +266,10 @@ interface VtFamilyTurretConfig {
   readonly widthScale: number;
   readonly depthScale: number;
   readonly chevronDepthScale: number;
+  readonly frontShellLengthScale: number;
+  readonly chevronInnerAdvanceM: number;
+  readonly chevronOuterAdvanceM: number;
+  readonly chevronLiftM: number;
   readonly gunY: number;
   readonly gunZ: number;
   readonly gunLength: number;
@@ -273,15 +277,19 @@ interface VtFamilyTurretConfig {
 
 const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>> = Object.freeze({
   vt4a1: Object.freeze({
-    variant: 'vt4a1', pivotY: 1.56, pivotZ: 0.32,
+    variant: 'vt4a1', pivotY: 1.56, pivotZ: 0.40,
     heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
+    frontShellLengthScale: 1,
+    chevronInnerAdvanceM: 0, chevronOuterAdvanceM: 0, chevronLiftM: 0.07,
     gunY: 0.3198,
     gunZ: 0.75, gunLength: 5.95,
   }),
   type99a: Object.freeze({
-    variant: 'type99a', pivotY: 1.48, pivotZ: 0.22,
-    heightScale: 1.12, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
-    gunY: 0.4368,
+    variant: 'type99a', pivotY: 1.48, pivotZ: 0.36,
+    heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
+    frontShellLengthScale: 0.90,
+    chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
+    gunY: 0.3198,
     gunZ: 0.74, gunLength: 6.454,
   }),
 });
@@ -295,6 +303,13 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   const sz = (value: number): number => value * depthScale;
   const cz = (value: number): number => value * config.chevronDepthScale;
   const sy = (value: number): number => value * heightRatio;
+  // Shorten only the selected forward shell course around the cheek; the
+  // bustle and turret-ring footprint retain their established dimensions.
+  // Compressing toward the sidewall station (z=-0.58) avoids the global
+  // depth-scale shortcut that would also shrink the rear bustle.
+  const shellZ = (value: number): number => sz(value >= -0.58
+    ? -0.58 + (value + 0.58) * config.frontShellLengthScale
+    : value);
   P.turretG.position.set(0, config.pivotY, config.pivotZ);
   P.gunG.position.set(0, config.gunY, config.gunZ);
   const basePlan: [number, number][] = [
@@ -306,7 +321,7 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     [-0.52, -2.52], [-0.82, -2.48], [-1.38, -2.22], [-1.54, -1.58],
     [-1.60, -0.58], [-1.46, -0.10], [-1.08, 0.22], [-0.52, 0.48],
   ];
-  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), sz(z)]);
+  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), shellZ(z)]);
   const midHeights = [0.34, 0.40, 0.48, 0.55, 0.62, 0.66, 0.67, 0.67,
     0.67, 0.67, 0.66, 0.62, 0.55, 0.48, 0.40, 0.34].map((height) => height * heightScale);
   const shellHeight = 0.89 * heightScale;
@@ -319,12 +334,12 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
         0.95, 0.95, 0.94, 0.91, 0.87, 0.80, 0.72, 0.66],
       centerHeight: shellHeight },
   ]));
-  P.add('turret', cylY(sx(1.10), sx(1.16), 0.11, P.q ? 20 : 14), 0, -0.04, sz(-0.30));
+  P.add('turret', cylY(sx(1.10), sx(1.16), 0.11, P.q ? 20 : 14), 0, -0.04, shellZ(-0.30));
   // A low roof bridge overlaps the primary shell and the inner chevron roots.
   P.add('turret', orientedSlab(
-    [sx(-0.80), sy(0.59), sz(0.48)], [sx(0.80), sy(0.59), sz(0.48)],
+    [sx(-0.80), sy(0.59), shellZ(0.48)], [sx(0.80), sy(0.59), shellZ(0.48)],
     [sx(1.18), sy(0.60), sz(-2.30)], [sx(-1.18), sy(0.60), sz(-2.30)],
-    [sx(-0.68), sy(0.69), sz(0.34)], [sx(0.68), sy(0.69), sz(0.34)],
+    [sx(-0.68), sy(0.69), shellZ(0.34)], [sx(0.68), sy(0.69), shellZ(0.34)],
     [sx(1.03), sy(0.70), sz(-2.26)], [sx(-1.03), sy(0.70), sz(-2.26)],
   ));
   // Leopard-style chevrons now provide the complete frontal volume. Their
@@ -341,14 +356,29 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
       upperY: 0.593, upperZ: -0.12, ridgeY: 0.278, ridgeZ: 1.10, lowerY: 0.038, lowerZ: 0.44 },
     { x: 1.50, upperX: 1.04, ridgeX: 1.50, lowerX: 1.58,
       upperY: 0.570, upperZ: -0.40, ridgeY: 0.255, ridgeZ: 0.82, lowerY: 0.053, lowerZ: 0.30 },
-    { x: 1.68, upperX: 1.18, ridgeX: 1.68, lowerX: 1.60,
-      upperY: 0.540, upperZ: -0.55, ridgeY: 0.225, ridgeZ: 0.62, lowerY: 0.075, lowerZ: 0.22 },
+    // The terminal cap is the physical side join. Its rear upper/lower roots
+    // now finish inside the x=1.46..1.60 turret wall instead of both ending
+    // ahead of it; the cap therefore closes the former daylight seam on
+    // either side while the ridge remains the visible arrow shoulder.
+    { x: 1.68, upperX: 1.48, ridgeX: 1.68, lowerX: 1.60,
+      upperY: 0.560, upperZ: -0.54, ridgeY: 0.245, ridgeZ: 0.54, lowerY: 0.075, lowerZ: -0.12 },
   ] satisfies readonly ChevronStation[]).map((station) => ({
     ...station,
     x: sx(station.x),
     upperX: sx(station.upperX), ridgeX: sx(station.ridgeX), lowerX: sx(station.lowerX),
-    upperY: sy(station.upperY), ridgeY: sy(station.ridgeY), lowerY: sy(station.lowerY),
-    upperZ: cz(station.upperZ), ridgeZ: cz(station.ridgeZ), lowerZ: cz(station.lowerZ),
+    upperY: sy(station.upperY) + config.chevronLiftM,
+    ridgeY: sy(station.ridgeY) + config.chevronLiftM,
+    lowerY: sy(station.lowerY) + config.chevronLiftM,
+    ...(() => {
+      const progress = THREE.MathUtils.clamp((station.x - 0.22) / (1.68 - 0.22), 0, 1);
+      const advance = THREE.MathUtils.lerp(
+        config.chevronInnerAdvanceM, config.chevronOuterAdvanceM, progress);
+      return {
+        upperZ: cz(station.upperZ) + advance,
+        ridgeZ: cz(station.ridgeZ) + advance,
+        lowerZ: cz(station.lowerZ) + advance,
+      };
+    })(),
   })));
   const panelBands = Object.freeze([
     [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
@@ -475,13 +505,18 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   P.topY = Math.max(P.topY || 0, variant === 'type99a' ? 2.12 : 1.28);
 
   const commonReceipt = Object.freeze({
-    architecture: 'vt-integrated-chevron-family-r2',
+    architecture: 'vt-integrated-chevron-family-r3',
     variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
-    pivotShiftForwardM: variant === 'vt4a1' ? 0.47 : 0.24,
+    pivotShiftForwardM: variant === 'vt4a1' ? 0.55 : 0.38,
     turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
     widthScale, depthScale, chevronDepthScale: config.chevronDepthScale,
+    frontShellLengthScale: config.frontShellLengthScale,
+    chevronInnerAdvanceM: config.chevronInnerAdvanceM,
+    chevronOuterAdvanceM: config.chevronOuterAdvanceM,
+    chevronLiftM: config.chevronLiftM,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true, chevronTerminalBuriedInSideBelt: true,
+    mirroredChevronSideJoins: true, chevronSideJoinGapM: 0,
     chevronProfile: 'leopard-2a6-derived', sharedPhysicalRidge: true,
     surfacePanelsPerSide: 4, compoundShoulderTerminal: true,
     gunCenterlineLocalY: config.gunY,
@@ -504,10 +539,12 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     P.turretG.userData.type99aVtDerivativeReceipt = Object.freeze({
       ...commonReceipt,
       derivativeOf: 'vt4a1', independentGeometry: true,
+      previousTurretHeightScale: 1.12, matchedVt4a1TurretHeight: true,
       legacyType99aTurretRemoved: true, oldTurretEquipmentRemoved: true,
       turretEquipmentReseated: true, dedicatedPlaCommanderStation: true,
       continuousCommanderSightStack: true, commandSightTopWorldYM: 3.55,
-      exactHullRetained: true,
+      exactHullRetained: true, selectedForwardCheekShorteningPct: 10,
+      turretMovedForwardM: 0.14, chevronsReseatedForward: true,
     });
   }
 }

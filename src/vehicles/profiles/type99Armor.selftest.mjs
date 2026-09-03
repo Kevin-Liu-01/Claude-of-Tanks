@@ -24,7 +24,9 @@ function assertPlanar(id, plate) {
   assert(deviationM < 1e-8, `${id}/${plate.name}: planar within tolerance (${deviationM} m)`);
 }
 
-for (const [id, authoredPivotY] of [['type99a', 1.48], ['ztz99a2', 1.56], ['vt4a1', 1.56]]) {
+for (const [id, authoredPivotY, authoredPivotZ] of [
+  ['type99a', 1.48, 0.36], ['ztz99a2', 1.56, -0.15], ['vt4a1', 1.56, 0.40],
+]) {
   const armor = createType99Armor(id);
   assert(armor.hullPlates.length >= 30, `${id}: segmented hull envelope`);
   assert(armor.turretPlates.length >= 20, `${id}: segmented turret envelope`);
@@ -32,6 +34,12 @@ for (const [id, authoredPivotY] of [['type99a', 1.48], ['ztz99a2', 1.56], ['vt4a
   assert.equal(armor.modules.length, 9, `${id}: full module map`);
   assert.equal(armor.crew.length, 3, `${id}: three-person autoloader crew`);
   assert.equal(armor.turretPivot[1], authoredPivotY, `${id}: authored ring datum`);
+  assert.equal(armor.turretPivot[2], authoredPivotZ, `${id}: authored fore/aft ring datum`);
+  if (id !== 'ztz99a2') {
+    const ring = armor.modules.find((box) => box.module === 'turretRing');
+    assert(Math.abs((ring.min[2] + ring.max[2]) / 2 - authoredPivotZ) < 1e-8,
+      `${id}: combat turret-ring volume follows the fore/aft pivot`);
+  }
 }
 
 {
@@ -39,7 +47,8 @@ for (const [id, authoredPivotY] of [['type99a', 1.48], ['ztz99a2', 1.56], ['vt4a
   const hull = plateHits(armor, [4, 1.40, 0], [-4, 1.40, 0]).map((hit) => hit.plate.name);
   assert.deepEqual(hull.slice(0, 2), ['skirt_front_R', 'hull_side_upper_center_R'],
     'Type 99A flank crosses the visible skirt and outer sponson before the interior');
-  const turret = plateHits(armor, [4, 2.10, 0], [-4, 2.10, 0]).map((hit) => hit.plate.name);
+  const turret = plateHits(armor, [4, 2.10, 0.20], [-4, 2.10, 0.20])
+    .map((hit) => hit.plate.name);
   assert.deepEqual(turret.slice(0, 2), ['turret_side_forward_R', 'turret_era_R'],
     'Type 99A turret flank crosses the welded wall and integrated chevron layer');
   const roof = plateHits(armor, [0, 4, -2.40], [0, -1, -2.40]);
