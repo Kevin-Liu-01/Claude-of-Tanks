@@ -411,6 +411,24 @@ assert.ok(kitEvents.some((event) => event.type === 'consumable_used' && event.sl
 assert.ok(kitEvents.some((event) => event.type === 'consumable_denied' &&
   event.reason === 'COOLDOWN'), 'authority enforces reusable-kit cooldowns');
 
+kitEntity.state.visualRoll = Math.PI - 0.02;
+kitEntity.state._spring.roll = kitEntity.state.visualRoll;
+kitEntity.state._spring.rollV = 0;
+kitEntity.state.overturned = true;
+kitEntity.state.grounded = true;
+kitEntity.state._body.tumbling = true;
+kitEntity.state._body.autoRighting = false;
+kitInput.get('kit-a').actionBits = PLAYER_ACTION_BITS.SELF_RIGHT;
+consumableMatch.step({ dt: 1 / 60, inputs: kitInput });
+assert.equal(kitEntity.state._body.autoRighting, true,
+  'self-right input is validated and applied by match authority');
+assert.ok(kitEntity.state.verticalSpeed > 0,
+  'authority starts the recovery with a physical vertical shove');
+assert.ok(consumableMatch.snapshot({
+  tick: 3, serverTimeMs: 50, viewerId: 'kit-a', ackInputSeq: 3,
+}).events.some((event) => event.type === 'tank_self_right' && event.id === 'kit-a'),
+'self-right recovery is replicated to the requesting client');
+
 const botSupportMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [

@@ -52,6 +52,8 @@ interface KillcamView {
 
 interface InputView {
   getSettings(): { armorAimOverlay?: boolean };
+  getBinding(actionId: 'selfRight'): string | null;
+  labelFor(code: string | null): string;
 }
 
 interface CameraRigView {
@@ -190,6 +192,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     killfeedHandledByBus: true,
     spotting: null,
     matchModeState: null,
+    selfRightKeyLabel: 'F',
   };
 
   const armorTargets: TEntity[] = [];
@@ -248,6 +251,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.rosterTanks = bridge?.roster || game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
+    frameInfo.selfRightKeyLabel = input.labelFor(input.getBinding('selfRight'));
     updateSpotting(focus);
   };
 

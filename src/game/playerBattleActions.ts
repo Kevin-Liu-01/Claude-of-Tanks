@@ -25,6 +25,7 @@ type ActionRules = Pick<BattleClientAccess,
   | 'cooldownRemaining'
   | 'resetConsumableCooldowns'
   | 'startConsumableCooldown'
+  | 'requestTankSelfRight'
 >;
 type ActionCombat = Parameters<ActionRules['selectShell']>[0];
 type ActionSpec = NonNullable<Parameters<ActionRules['selectShell']>[2]>;
@@ -32,6 +33,8 @@ type ActionShell = NonNullable<ActionSpec['gun']['shells']>[number] & {
   count?: number | null;
 };
 type ActionSpecialEntity = NonNullable<Parameters<ActionRules['activateSpecialAction']>[0]>;
+type ActionState = NonNullable<Parameters<ActionRules['requestTankSelfRight']>[0]> &
+  NonNullable<ActionSpecialEntity['state']>;
 
 interface BattleActionSpec extends ActionSpec {
   gun: ActionSpec['gun'] & { shells: ActionShell[] };
@@ -39,11 +42,12 @@ interface BattleActionSpec extends ActionSpec {
 
 export interface BattleActionEntity extends Omit<
   ActionSpecialEntity,
-  'id' | 'spec' | 'combat' | 'input'
+  'id' | 'spec' | 'combat' | 'input' | 'state'
 > {
   id: string;
   spec: BattleActionSpec;
   combat: ActionCombat | null;
+  state: ActionState | null;
   input: { shellSlot: number };
 }
 
@@ -60,7 +64,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight'): void;
 }
 
 export interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -149,6 +153,11 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   onAction('specialAction', () => {
     if (!battleInputAllowed()) return;
     bus.emit('ui:specialAction', {});
+  });
+
+  onAction('selfRight', () => {
+    if (!battleInputAllowed()) return;
+    bus.emit('ui:selfRight', {});
   });
 
   for (let slot = 0; slot < 3; slot++) {
@@ -288,6 +297,19 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       const result = rules.activateSpecialAction(player);
       bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
     }
+    bus.emit('ui:click', {});
+  });
+
+  listen('ui:selfRight', () => {
+    const player = battleInputAllowed() ? livePlayer() : null;
+    if (!player) return;
+    if (network.isActive()) {
+      network.queueAction('selfRight');
+      bus.emit('ui:click', {});
+      return;
+    }
+    if (!rules.requestTankSelfRight(player.state)) return;
+    bus.emit('tank:selfRight', { id: player.id });
     bus.emit('ui:click', {});
   });
 

@@ -50,6 +50,7 @@ const ACTION_DEFS = [
   { id: 'left', label: 'Steer Left', group: 'Movement' },
   { id: 'right', label: 'Steer Right', group: 'Movement' },
   { id: 'handbrake', label: 'Handbrake', group: 'Movement' },
+  { id: 'selfRight', label: 'Flip Tank', group: 'Movement' },
   { id: 'fire', label: 'Fire Gun', group: 'Combat' },
   { id: 'sniperToggle', label: 'Sniper Mode', group: 'Combat' },
   { id: 'shell1', label: 'Shell Slot 1', group: 'Combat' },
@@ -167,7 +168,7 @@ export interface InputLayer {
 }
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps gun hold, RMB aim,
- *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
+ *  1/2/3 shells, E special action, F self-right, 4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
  *  Shift toggles sniper mode. Caps Lock holds the current physical turret
  *  rotation and gun elevation while the camera and live sight remain free.
@@ -182,6 +183,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   left: 'KeyA',
   right: 'KeyD',
   handbrake: 'Space',
+  selfRight: 'KeyF',
   fire: 'Mouse0',
   sniperToggle: 'ShiftLeft',
   shell1: 'Digit1',

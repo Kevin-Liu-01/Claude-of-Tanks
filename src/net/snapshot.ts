@@ -44,6 +44,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   SPECIAL_ACTIVE: 1 << 4,
   SPECIAL_PENDING: 1 << 5,
   AIRBORNE: 1 << 6,
+  OVERTURNED: 1 << 7,
+  AUTO_RIGHTING: 1 << 8,
 });
 
 type ReloadKindName = 'ready' | 'shell' | 'intraClip' | 'magazine';
@@ -59,6 +61,8 @@ interface SnapshotStateSource {
   turretYaw?: RuntimeValue;
   gunPitch?: RuntimeValue;
   grounded?: boolean;
+  overturned?: boolean;
+  _body?: { autoRighting?: boolean } | null;
   _ride?: { v?: RuntimeValue } | null;
 }
 
@@ -266,6 +270,8 @@ function entityFlags(entity: SnapshotEntitySource): number {
   if (entity.spotted) flags |= SNAPSHOT_FLAGS.SPOTTED;
   if (entity.specialAction?.active) flags |= SNAPSHOT_FLAGS.SPECIAL_ACTIVE;
   if (entity.state?.grounded === false) flags |= SNAPSHOT_FLAGS.AIRBORNE;
+  if (entity.state?.overturned) flags |= SNAPSHOT_FLAGS.OVERTURNED;
+  if (entity.state?._body?.autoRighting) flags |= SNAPSHOT_FLAGS.AUTO_RIGHTING;
   return flags;
 }
 

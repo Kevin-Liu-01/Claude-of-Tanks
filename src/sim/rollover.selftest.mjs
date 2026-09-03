@@ -1,18 +1,41 @@
 import assert from 'node:assert/strict';
-import { ROLLOVER_AUTO_RIGHT_S, stepRolloverLifecycle } from './rollover.ts';
+import {
+  ROLLOVER_AUTO_RIGHT_S,
+  SELF_RIGHT_ANGULAR_MPS,
+  SELF_RIGHT_LAUNCH_MPS,
+  canSelfRightTank,
+  requestTankSelfRight,
+  stepRolloverLifecycle,
+} from './rollover.ts';
 
 function state() {
   return {
     speed: 0,
     verticalSpeed: 0,
+    grounded: true,
     visualPitch: Math.PI,
     visualRoll: 0,
     overturned: true,
     rolloverCountdownS: 0,
     _spring: { pitchV: 0, rollV: 0 },
     _body: { tumbling: true, autoRighting: false },
+    _terr: { pitch: 0, roll: 0 },
+    _ride: { y: 1, v: 0, airTime: 0 },
     _rollover: { elapsedS: 0, expired: false },
   };
+}
+
+{
+  const tank = state();
+  assert.equal(canSelfRightTank(tank), true, 'a grounded overturned tank exposes recovery');
+  assert.equal(requestTankSelfRight(tank), true, 'the recovery edge is accepted once');
+  assert.equal(tank._body.autoRighting, true, 'recovery engages the damped actuator');
+  assert.equal(tank._ride.v, SELF_RIGHT_LAUNCH_MPS, 'recovery applies a visible upward shove');
+  assert.equal(Math.abs(tank._spring.pitchV), SELF_RIGHT_ANGULAR_MPS,
+    'roof-down recovery applies a bounded shortest-axis angular shove');
+  assert.equal(requestTankSelfRight(tank), false, 'an active recovery cannot be spammed');
+  assert.equal(canSelfRightTank({ ...state(), grounded: false }), false,
+    'an airborne tank cannot stack another launch impulse');
 }
 
 {
@@ -42,4 +65,4 @@ function state() {
   assert.equal(tank.rolloverCountdownS, 0, 'upright recovery clears the rollover lifecycle');
 }
 
-console.log('rollover.selftest: 9 assertions passed');
+console.log('rollover.selftest: manual and assisted recovery assertions passed');

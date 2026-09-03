@@ -36,6 +36,11 @@ const spec = {
 const player = {
   id: 'player-1',
   spec,
+  state: {
+    overturned: true,
+    grounded: true,
+    _body: { tumbling: true, autoRighting: false },
+  },
   combat: {
     destroyed: false,
     shellSlot: 0,
@@ -106,6 +111,12 @@ const rules = {
   startConsumableCooldown(readyAt, slot, timeS) {
     readyAt[slot] = timeS + 35;
     return { durationS: 35, readyAtS: readyAt[slot] };
+  },
+  requestTankSelfRight(state) {
+    if (!state.overturned || state._body.autoRighting) return false;
+    state._body.autoRighting = true;
+    localCalls.push('selfRight');
+    return true;
   },
 };
 
@@ -194,13 +205,17 @@ input.press('specialAction');
 assert.equal(localCalls.at(-1), 'special');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.action === 'siege'));
+input.press('selfRight');
+assert.equal(localCalls.at(-1), 'selfRight');
+assert(events.some(({ event }) => event === 'tank:selfRight'));
 
 networkActive = true;
 player.combat.damagedModule = 'trackL';
 bus.emit('ui:consumable', { slot: 0 });
 bus.emit('ui:magazineReload', {});
 bus.emit('ui:specialAction', {});
-assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction']);
+bus.emit('ui:selfRight', {});
+assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight']);
 assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns state mutation');
 
 spec.guidedAction = true;
@@ -214,7 +229,7 @@ player.specialAction = {
 bus.emit('ui:specialAction', {});
 assert.equal(player.input.shellSlot, 1,
   'E selects the guided ammunition through the ordinary shell-slot state');
-assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction'],
+assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight'],
   'guided E does not enqueue a separate network action mode');
 assert(events.some(({ event, payload }) =>
   event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
@@ -249,7 +264,7 @@ spec.gun.shells[1].guided = false;
 
 settingsOpen = true;
 input.press('reloadMagazine');
-assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction']);
+assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction', 'selfRight']);
 settingsOpen = false;
 actions.resetConsumables();
 networkActive = false;

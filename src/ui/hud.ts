@@ -12,6 +12,7 @@ import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
+import { canSelfRightTank } from '../sim/rollover.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -50,6 +51,7 @@ interface AimWarningView {
   blockedDistM?: number | null;
   blockedLabel?: boolean;
   gunLimitSpec?: boolean;
+  selfRightLabel?: string | null;
 }
 
 interface AimWarningState {
@@ -141,6 +143,7 @@ interface HudAimView {
   singleReticle: boolean;
   atGunLimit: boolean;
   gunLimitSpec: boolean;
+  selfRightLabel: string | null;
   reload: ReloadView;
   magazine: MagazineView | null;
   zoom: number;
@@ -199,6 +202,7 @@ export interface HudFrame {
   aim?: HudAimInput;
   spotting?: HudSpottingView | null;
   matchModeState?: HudMatchModeState | null;
+  selfRightKeyLabel?: string;
 }
 
 interface HudHeightField {
@@ -400,6 +404,7 @@ interface ReticlePaintState {
   singleReticle: boolean;
   atGunLimit: boolean;
   gunLimitSpec: boolean;
+  selfRightLabel: string | null;
   zoom: number;
   reloadKind: string;
   magazineCapacity: number;
@@ -631,7 +636,11 @@ export function aimWarningState(
   state.visible = false;
   state.kind = '';
   state.text = '';
-  if (view?.blockedDistM != null) {
+  if (view?.selfRightLabel) {
+    state.kind = 'rollover';
+    state.visible = true;
+    state.text = `PRESS ${view.selfRightLabel} TO FLIP`;
+  } else if (view?.blockedDistM != null) {
     state.kind = 'blocked';
     state.visible = !!view.blockedLabel;
     state.text = `MUZZLE BLOCKED · ${Math.round(view.blockedDistM)} M`;
@@ -3378,6 +3387,7 @@ export function initHud(bus: EventBus): HudRuntime {
     penRatio: null, distM: null, blockedDistM: null,
     gunDistM: null, gunTargetId: null, aimTargetId: null,
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
+    selfRightLabel: null,
     zoom: 1, reloadKind: '', magazineCapacity: 0, magazineRounds: 0,
     shellType: '', shellCount: 0, drawnR: 0,
   };
@@ -3409,6 +3419,7 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.singleReticle === !!view.singleReticle
       && reticlePaint.atGunLimit === !!view.atGunLimit
       && reticlePaint.gunLimitSpec === !!view.gunLimitSpec
+      && reticlePaint.selfRightLabel === view.selfRightLabel
       && nearPaint(reticlePaint.zoom, view.zoom || 1, 0.001);
   }
   function reticleWeaponStateMatches(view: HudAimView): boolean {
@@ -3441,6 +3452,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.gunTargetId = view.gunTargetId; reticlePaint.aimTargetId = aimTargetId;
     reticlePaint.singleReticle = !!view.singleReticle;
     reticlePaint.atGunLimit = !!view.atGunLimit; reticlePaint.gunLimitSpec = !!view.gunLimitSpec;
+    reticlePaint.selfRightLabel = view.selfRightLabel;
     reticlePaint.zoom = view.zoom || 1; reticlePaint.reloadKind = view.reload?.kind || '';
     reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
@@ -3715,12 +3727,15 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!warning.visible) return;
     const y = draw.cy + Math.max(62, draw.radius + 24);
     const danger = warning.kind === 'blocked';
+    const recovery = warning.kind === 'rollover';
     ctx.font = `800 10.5px ${FONT_COND}`;
     const chipW = ctx.measureText(warning.text).width + 32;
     const chipX = draw.cx - chipW * 0.5;
-    ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' : 'rgba(12,17,22,.9)';
+    ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
+      recovery ? 'rgba(33,22,8,.94)' : 'rgba(12,17,22,.9)';
     ctx.fillRect(chipX, y - 14, chipW, 24);
-    ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' : 'rgba(170,180,190,.55)';
+    ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' :
+      recovery ? 'rgba(240,160,48,.88)' : 'rgba(170,180,190,.55)';
     ctx.lineWidth = 1;
     ctx.strokeRect(chipX + 0.5, y - 13.5, chipW - 1, 23);
     ctx.beginPath();
@@ -3728,9 +3743,9 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.lineTo(chipX + 19, y + 3);
     ctx.lineTo(chipX + 7, y + 3);
     ctx.closePath();
-    ctx.strokeStyle = danger ? PEN_RED : 'rgba(190,201,210,.92)';
+    ctx.strokeStyle = danger ? PEN_RED : recovery ? RELOAD_ACCENT : 'rgba(190,201,210,.92)';
     ctx.stroke();
-    ctx.fillStyle = danger ? '#ff9b91' : 'rgba(205,216,224,.96)';
+    ctx.fillStyle = danger ? '#ff9b91' : recovery ? '#ffd17b' : 'rgba(205,216,224,.96)';
     ctx.textAlign = 'left';
     ctx.fillText(warning.text, chipX + 25, y + 1);
     ctx.textAlign = 'center';
@@ -5557,6 +5572,7 @@ export function initHud(bus: EventBus): HudRuntime {
     gunX: null, gunY: null, gunDistM: null, gunTargetId: null,
     singleReticle: false,
     atGunLimit: false, gunLimitSpec: false,
+    selfRightLabel: null,
     reload: { t: 0, totalS: 1, kind: 'ready' }, magazine: null, zoom: 1,
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
@@ -5728,6 +5744,10 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
     const aim = (!state.advancing && forced) ? forced : (frame.aim || {});
     assembleAimView(state.camera, aim);
+    aimView.selfRightLabel = frame.player?.combat?.destroyed !== true &&
+      canSelfRightTank(frame.player?.state)
+      ? (frame.selfRightKeyLabel || 'F')
+      : null;
     if (aim.shells) lastShells = aim.shells;
     const slot = aim.shellSlot ?? localSlot;
     renderShells(lastShells, slot);

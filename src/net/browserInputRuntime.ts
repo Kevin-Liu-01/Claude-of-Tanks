@@ -2,7 +2,7 @@ import { encodeAimIntent } from './aimIntent.ts';
 import { NetworkInputCadence, type NetworkInputSample } from './inputCadence.ts';
 import { PLAYER_ACTION_BITS } from './protocol.ts';
 
-type ActionName = 'reloadMagazine' | 'specialAction';
+type ActionName = 'reloadMagazine' | 'specialAction' | 'selfRight';
 
 interface VectorLike {
   x: number;
@@ -44,11 +44,13 @@ const ACTION_MASK = PLAYER_ACTION_BITS.REPAIR |
   PLAYER_ACTION_BITS.FIRST_AID |
   PLAYER_ACTION_BITS.EXTINGUISHER |
   PLAYER_ACTION_BITS.RELOAD_MAGAZINE |
-  PLAYER_ACTION_BITS.SPECIAL_ACTION;
+  PLAYER_ACTION_BITS.SPECIAL_ACTION |
+  PLAYER_ACTION_BITS.SELF_RIGHT;
 
 const NAMED_ACTION_BITS: Readonly<Record<ActionName, number>> = Object.freeze({
   reloadMagazine: PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: PLAYER_ACTION_BITS.SPECIAL_ACTION,
+  selfRight: PLAYER_ACTION_BITS.SELF_RIGHT,
 });
 
 /**

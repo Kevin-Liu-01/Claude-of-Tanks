@@ -28,7 +28,7 @@ import {
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankContactRect } from './tankContactShape.ts';
-import { stepRolloverLifecycle } from './rollover.ts';
+import { requestTankSelfRight, stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
@@ -1225,6 +1225,9 @@ export function createAuthoritativeMatch({
     if (!bits || entity.combat.destroyed) return;
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
+    if (bits & PLAYER_ACTION_BITS.SELF_RIGHT && requestTankSelfRight(entity.state)) {
+      emit('tank_self_right', { id: entity.id });
+    }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       useConsumableSlot(entity, bits, slot);
     }
@@ -1676,7 +1679,7 @@ export function createAuthoritativeMatch({
 
   function advanceRollover(dt: number): void {
     for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      if (entity.modeActive === false || entity.combat.destroyed || !entity.bot) continue;
       if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
     }
   }

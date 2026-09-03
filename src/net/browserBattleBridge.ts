@@ -740,6 +740,9 @@ export function createBrowserBattleBridge<
     state.pos.set(snapshot.x, snapshot.y, snapshot.z);
     state.verticalSpeed = snapshot.vy || 0;
     state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
+    state.overturned = !!(snapshot.flags & SNAPSHOT_FLAGS.OVERTURNED);
+    state._body.tumbling = state.overturned || !!(snapshot.flags & SNAPSHOT_FLAGS.AUTO_RIGHTING);
+    state._body.autoRighting = !!(snapshot.flags & SNAPSHOT_FLAGS.AUTO_RIGHTING);
     if (state._ride) {
       state._ride.y = snapshot.y;
       state._ride.v = state.verticalSpeed;
@@ -952,6 +955,8 @@ export function createBrowserBattleBridge<
       bus.emit('ui:ammoSelectionDenied', event);
     } else if (event.type === 'ammo_depleted') {
       bus.emit('ammo:depleted', event);
+    } else if (event.type === 'tank_self_right') {
+      bus.emit('tank:selfRight', event);
     }
   }
 
@@ -979,6 +984,7 @@ export function createBrowserBattleBridge<
     'ammo_empty',
     'ammo_selection_denied',
     'ammo_depleted',
+    'tank_self_right',
   ]);
 
   function emitEvent(event: BridgeEvent): void {

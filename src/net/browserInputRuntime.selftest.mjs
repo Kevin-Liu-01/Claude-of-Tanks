@@ -33,15 +33,18 @@ assert.equal(runtime.commit(frame), 1 / 30);
 assert.equal(runtime.pendingActionBits, 0, 'accepted client frame consumes action edges');
 
 runtime.queueAction('specialAction');
+runtime.queueAction('selfRight');
 frame = runtime.frame(player);
 runtime.acknowledge(frame.actionBits);
 assert.equal(runtime.pendingActionBits, 0, 'host advance consumes submitted edges');
 runtime.restore(frame.actionBits);
-assert.equal(runtime.pendingActionBits, PLAYER_ACTION_BITS.SPECIAL_ACTION,
+assert.equal(runtime.pendingActionBits,
+  PLAYER_ACTION_BITS.SPECIAL_ACTION | PLAYER_ACTION_BITS.SELF_RIGHT,
   'failed host advance restores the exact edge');
 
 runtime.queueConsumable(8);
-assert.equal(runtime.pendingActionBits, PLAYER_ACTION_BITS.SPECIAL_ACTION,
+assert.equal(runtime.pendingActionBits,
+  PLAYER_ACTION_BITS.SPECIAL_ACTION | PLAYER_ACTION_BITS.SELF_RIGHT,
   'invalid consumable slots cannot escape the protocol mask');
 assert.equal(runtime.frame({ ...player, combat: { destroyed: true } }), null);
 

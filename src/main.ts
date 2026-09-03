@@ -1518,6 +1518,7 @@ playerBattleActions = createPlayerBattleActions({
     cooldownRemaining: battleClientAccess.cooldownRemaining,
     resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
     startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+    requestTankSelfRight: battleClientAccess.requestTankSelfRight,
   },
 });
 const playerFrameInput = createPlayerFrameInput({

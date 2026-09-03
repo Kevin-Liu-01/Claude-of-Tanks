@@ -125,6 +125,20 @@ bridge.apply(snapshot);
 assert.equal(game.player.input.shellSlot, 0,
   'a later authoritative reset applies after the pending request settles');
 
+snapshot.entities[1].flags = SNAPSHOT_FLAGS.OVERTURNED;
+snapshot.tick++;
+bridge.apply(snapshot);
+assert.equal(game.player.state.overturned, true,
+  'local presentation receives the authoritative overturned state');
+snapshot.entities[1].flags = SNAPSHOT_FLAGS.OVERTURNED | SNAPSHOT_FLAGS.AUTO_RIGHTING;
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{ type: 'tank_self_right', id: 'guest' }]);
+assert.equal(game.player.state._body.autoRighting, true,
+  'local prediction follows the authoritative recovery actuator');
+assert.ok(busEvents.some((event) => event.type === 'tank:selfRight'),
+  'the authoritative recovery edge reaches presentation once');
+snapshot.entities[1].flags = 0;
+
 snapshot.tick++;
 snapshot.entities[0].x++;
 snapshot.entities[1].z++;

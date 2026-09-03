@@ -58,7 +58,11 @@ const runtime = createBattleHudFrameRuntime({
   game,
   camera,
   rig,
-  input: { getSettings: () => ({ armorAimOverlay: true }) },
+  input: {
+    getSettings: () => ({ armorAimOverlay: true }),
+    getBinding: () => 'KeyF',
+    labelFor: () => 'F',
+  },
   aimController: {
     update: () => { aimUpdates += 1; },
     raycast: () => null,
@@ -84,6 +88,7 @@ assert.equal(hudFrames.length, 1);
 assert.equal(hudFrames[0].player, player);
 assert.equal(hudFrames[0].mode, 'sniper');
 assert.equal(hudFrames[0].pingMs, 73);
+assert.equal(hudFrames[0].selfRightKeyLabel, 'F');
 assert.deepEqual(hudFrames[0].rosterTanks, ['server-roster']);
 assert.deepEqual(hudFrames[0].spotting.player, { id: 'player', timeS: 12 });
 assert.equal(hudFrames[0].spotting.isSpotted('enemy'), true);

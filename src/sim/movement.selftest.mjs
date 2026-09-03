@@ -14,6 +14,7 @@ import {
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
   updateTank, SIM_DT,
 } from './movement.ts';
+import { requestTankSelfRight } from './rollover.ts';
 
 // ---------------------------------------------------------------- harness --
 let failures = 0;
@@ -554,7 +555,9 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.state.visualRoll = Math.PI - 0.02;
   ent.state._spring.roll = ent.state.visualRoll;
   ent.state._body.tumbling = true;
-  ent.state._body.autoRighting = true;
+  ent.state.overturned = true;
+  assert(requestTankSelfRight(ent.state), 'self-right input accepts a grounded overturned hull');
+  assert(ent.state.verticalSpeed > 0, 'self-right input launches the hull instead of teleporting it');
   run(ent, field, 300);
   const upY = Math.cos(ent.state.visualPitch) * Math.cos(ent.state.visualRoll);
   assert(upY > 0.9, `auto-right actuator rolls through the contact edge (${upY.toFixed(3)} up)`);

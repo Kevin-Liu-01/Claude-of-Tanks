@@ -71,6 +71,11 @@ assert.equal(
 );
 
 assert.deepEqual(
+  aimWarningState({ selfRightLabel: 'F', blockedDistM: 4, blockedLabel: true }),
+  { visible: true, kind: 'rollover', text: 'PRESS F TO FLIP' },
+  'rollover recovery takes priority in the shared reticle warning lane',
+);
+assert.deepEqual(
   aimWarningState({ blockedDistM: 18.4, blockedLabel: false }),
   { visible: false, kind: 'blocked', text: 'MUZZLE BLOCKED · 18 M' },
   'a new bore obstruction tints the sight without flashing unstable copy',

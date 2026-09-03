@@ -6,6 +6,8 @@ assert.equal(DEFAULT_BINDINGS.sniperToggle, 'ShiftLeft',
   'left Shift toggles sniper mode');
 assert.equal(DEFAULT_BINDINGS.freeLook, 'CapsLock',
   'Caps Lock is the dedicated hold-to-free-look modifier');
+assert.equal(DEFAULT_BINDINGS.selfRight, 'KeyF',
+  'F is the rebindable self-right recovery key');
 
 const shiftFreeLookPrimary = { sniperToggle: null, freeLook: 'ShiftLeft' };
 const shiftFreeLookSecondary = { freeLook: 'AltLeft' };

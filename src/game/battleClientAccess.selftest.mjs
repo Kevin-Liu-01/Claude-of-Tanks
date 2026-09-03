@@ -30,6 +30,7 @@ const runtime = {
   guidedMissileSlot: () => 14,
   specialActionKind: () => 15,
   isPostwarVehicleEra: () => 16,
+  requestTankSelfRight: () => 17,
 };
 const access = createBattleClientAccess(
   () => dependencies,
@@ -55,6 +56,7 @@ assert.equal(access.computeDispersionRadM(), 1);
 assert.equal(access.magazineReloadDenialReason(), 'MAGAZINE_FULL');
 assert.equal(access.createShell(), 10);
 assert.equal(access.guidedMissileSlot(), 14);
+assert.equal(access.requestTankSelfRight(), 17);
 assert.equal(access.shellAmmunitionCapacity({ type: 'HE' }), 12);
 assert.equal(access.hasAmmunition({ ammo: [0, 2] }, 1), true);
 assert.equal(access.aimController.raycast(

@@ -238,6 +238,10 @@ function applyAuthority(state: PredictionTankState, snapshot: PredictionSnapshot
   state.gunPitch = snapshot.gunPitch;
   state.verticalSpeed = snapshot.vy || 0;
   state.grounded = !((snapshot.flags || 0) & SNAPSHOT_FLAGS.AIRBORNE);
+  state.overturned = !!((snapshot.flags || 0) & SNAPSHOT_FLAGS.OVERTURNED);
+  state._body.tumbling = state.overturned ||
+    !!((snapshot.flags || 0) & SNAPSHOT_FLAGS.AUTO_RIGHTING);
+  state._body.autoRighting = !!((snapshot.flags || 0) & SNAPSHOT_FLAGS.AUTO_RIGHTING);
   state._prevSpeed = state.speed;
   state._spring.pitch = snapshot.pitch;
   state._spring.roll = snapshot.roll;
@@ -298,6 +302,9 @@ function copyPresentation(
   target.speed = source.speed;
   target.verticalSpeed = source.verticalSpeed;
   target.grounded = source.grounded;
+  target.overturned = source.overturned;
+  target._body.tumbling = source._body.tumbling;
+  target._body.autoRighting = source._body.autoRighting;
   target.landingImpactMps = source.landingImpactMps;
   target.slopeBlocked = source.slopeBlocked;
   target.yawRate = source.yawRate;

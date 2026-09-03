@@ -2283,7 +2283,7 @@ function resolveRamContacts(
 
 function stepRolloverRecovery(game: SoloGameState, bus: EventBus): void {
   for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.combat.destroyed) continue;
+    if (entity.modeActive === false || entity.combat.destroyed || entity.isPlayer) continue;
     if (stepRolloverLifecycle(entity.state, SIM_DT)) {
       bus.emit('tank:autoflip', { id: entity.id, specId: entity.specId });
     }

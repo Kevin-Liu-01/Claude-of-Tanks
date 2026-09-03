@@ -75,6 +75,7 @@ function input(overrides = {}) {
 
 function entity(id, specId, team, x, {
   visible = false, yaw = 0, speed = 0, y = 2, verticalSpeed = 0, grounded = true,
+  overturned = false, autoRighting = false,
 } = {}) {
   return {
     id,
@@ -87,6 +88,8 @@ function entity(id, specId, team, x, {
       speed,
       verticalSpeed,
       grounded,
+      overturned,
+      _body: { autoRighting },
       visualPitch: 0,
       visualRoll: 0,
       turretYaw: 0,
@@ -1036,6 +1039,14 @@ assert.equal(airborne.vy, -4.5,
   'snapshot carries authoritative tank vertical velocity');
 assert.ok(airborne.flags & SNAPSHOT_FLAGS.AIRBORNE,
   'snapshot distinguishes ballistic flight from supported suspension motion');
+const recovering = decodeEntitySnapshot(captureEntitySnapshot(entity(
+  'recovering', 'm1a2', 'alpha', 5,
+  { overturned: true, autoRighting: true },
+)));
+assert.ok(recovering.flags & SNAPSHOT_FLAGS.OVERTURNED,
+  'snapshot exposes overturned pose for the local recovery prompt');
+assert.ok(recovering.flags & SNAPSHOT_FLAGS.AUTO_RIGHTING,
+  'snapshot suppresses repeat recovery input while authority is righting the hull');
 
 // ACK-based entity deltas preserve full client truth, including visibility
 // removals, without retransmitting unchanged tanks.
