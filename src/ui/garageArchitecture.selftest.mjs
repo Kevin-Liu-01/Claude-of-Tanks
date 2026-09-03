@@ -228,14 +228,15 @@ assert.equal(scene.children.length, 0);
 const verdant = GARAGE_VARIANTS[0];
 const selectedVariant = GARAGE_VARIANTS[1];
 const blockedPrewarmVariant = GARAGE_VARIANTS[2];
-let releaseBlockedCompile;
-let reportBlockedCompile;
-const blockedCompile = new Promise((resolve) => { releaseBlockedCompile = resolve; });
-const blockedCompileStarted = new Promise((resolve) => { reportBlockedCompile = resolve; });
+let releaseBlockedTextureWarm;
+let reportBlockedTextureWarm;
+const blockedTextureWarm = new Promise((resolve) => { releaseBlockedTextureWarm = resolve; });
+const blockedTextureWarmStarted = new Promise((resolve) => { reportBlockedTextureWarm = resolve; });
 const disposedArchitectures = [];
 const fakeAssets = {
   retainedTextures: () => [],
   diagnostics: () => ({ residentSets: 0, referencedSets: 0 }),
+  warmAll() {},
   dispose() {},
 };
 const fakeKit = {
@@ -257,6 +258,9 @@ const fakeKit = {
     return {
       root,
       stats: root.userData,
+      texturesReady: variant.architecture === blockedPrewarmVariant.architecture
+        ? (reportBlockedTextureWarm(), blockedTextureWarm)
+        : Promise.resolve(),
       dispose() {
         disposedArchitectures.push(variant.architecture);
         root.removeFromParent();
@@ -272,13 +276,6 @@ try {
   const raceController = createGarageArchitectureController({
     renderer: {
       initTexture() {},
-      compileAsync(root) {
-        if (root.userData.architectureKey === blockedPrewarmVariant.architecture) {
-          reportBlockedCompile();
-          return blockedCompile;
-        }
-        return Promise.resolve();
-      },
     },
     scene: new THREE.Scene(),
     camera: new THREE.PerspectiveCamera(),
@@ -286,7 +283,7 @@ try {
   raceController.setVariant(verdant);
   await raceController.whenReady();
   const blockedPrewarm = raceController.prepareVariant(blockedPrewarmVariant);
-  await blockedCompileStarted;
+  await blockedTextureWarmStarted;
   raceController.setVariant(selectedVariant);
   const selectedStats = await raceController.whenReady();
   assert.equal(selectedStats.ready, true);
@@ -294,7 +291,7 @@ try {
     'selected pack must remain mounted and visible through concurrent cache trim');
   assert.equal(disposedArchitectures.includes(selectedVariant.architecture), false,
     'cache trim must pin the selected async handoff target');
-  releaseBlockedCompile();
+  releaseBlockedTextureWarm();
   await blockedPrewarm;
   raceController.dispose();
 } finally {
@@ -317,5 +314,76 @@ const retryStats = await retryController.whenReady();
 assert.equal(kitLoadAttempts, 2, 'failed Garage kit imports must be requested again');
 assert.equal(retryStats.ready, true);
 retryController.dispose();
+
+// Rebuilding an evicted pack must not upload the same shared library texture
+// again. The old per-pack loop paid one animation frame per texture on every
+// switch even though the GPU resource itself had never changed.
+const originalRaf = globalThis.requestAnimationFrame;
+const originalUploadDocument = globalThis.document;
+const sharedTexture = new THREE.Texture();
+let textureUploads = 0;
+let textureLibraryWarms = 0;
+globalThis.document = {};
+globalThis.requestAnimationFrame = (callback) => {
+  callback(performance.now());
+  return 1;
+};
+try {
+  const uploadScene = new THREE.Group();
+  const uploadAssets = {
+    retainedTextures: () => [sharedTexture],
+    diagnostics: () => ({ residentSets: 1, referencedSets: 1 }),
+    warmAll() { textureLibraryWarms += 1; },
+    dispose() {},
+  };
+  const uploadKit = {
+    createGarageEnvironmentAssetLibrary: () => uploadAssets,
+    prepareGarageEnvironmentAssets: async () => {},
+    buildGarageEnvironment: (_engineCtx, _assets, variant) => {
+      const root = new THREE.Group();
+      const material = new THREE.MeshBasicMaterial({ map: sharedTexture });
+      root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
+      Object.assign(root.userData, {
+        architectureKey: variant.architecture,
+        ready: true,
+        mode: 'garage-environment',
+        source: 'authentic-garage-scene-pack',
+        signature: `upload:${variant.architecture}`,
+        objects: 1,
+        drawCalls: 1,
+        triangles: 12,
+      });
+      return {
+        root,
+        stats: root.userData,
+        texturesReady: Promise.resolve(),
+        dispose() {
+          root.removeFromParent();
+          root.children[0].geometry.dispose();
+          material.dispose();
+          root.clear();
+        },
+      };
+    },
+  };
+  const uploadController = createGarageArchitectureController({
+    renderer: { initTexture() { textureUploads += 1; } },
+  }, uploadScene, () => {}, async () => uploadKit);
+  for (const variant of [GARAGE_VARIANTS[1], GARAGE_VARIANTS[2], GARAGE_VARIANTS[3], GARAGE_VARIANTS[1]]) {
+    uploadController.setVariant(variant);
+    await uploadController.whenReady();
+  }
+  assert.equal(textureLibraryWarms, 1,
+    'the small shared surface library should start one bounded intent-time warm');
+  assert.equal(textureUploads, 1,
+    'an evicted pack must reuse the already initialized shared texture');
+  uploadController.dispose();
+} finally {
+  sharedTexture.dispose();
+  if (originalUploadDocument === undefined) delete globalThis.document;
+  else globalThis.document = originalUploadDocument;
+  if (originalRaf === undefined) delete globalThis.requestAnimationFrame;
+  else globalThis.requestAnimationFrame = originalRaf;
+}
 
 console.log('garageArchitecture.selftest: ok');

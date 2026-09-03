@@ -90,6 +90,7 @@ export interface GarageArchitectureStats {
 }
 
 const CACHE_LIMIT = 2;
+const TEXTURE_READY_TIMEOUT_MS = 600;
 const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
 type GarageEnvironmentKitLoader = typeof loadEnvironmentKit;
 
@@ -248,6 +249,7 @@ export function createGarageArchitectureController(
   let environmentKitPromise: ReturnType<typeof loadEnvironmentKit> | null = null;
   let selectionGeneration = 0;
   const warmedArchitectures = new Set<GarageVariant['architecture']>();
+  const initializedTextures = new WeakSet<THREE.Texture>();
   const retiredBuilds = new WeakSet<GarageEnvironmentBuild>();
   let disposed = false;
 
@@ -271,6 +273,11 @@ export function createGarageArchitectureController(
     if (!assets) {
       assets = kit.createGarageEnvironmentAssetLibrary(engineCtx);
       registerRetainedObject3DResources(group, { textures: assets.retainedTextures() });
+      // The complete Garage texture library is only ~1 MB compressed and is
+      // requested only after explicit environment intent. Start all nine
+      // surface pairs together so later destinations never pay a serial
+      // network/decode round trip while the selector is already closed.
+      assets.warmAll(requestRender);
     }
     return assets;
   };
@@ -482,8 +489,8 @@ export function createGarageArchitectureController(
     const current = warmPending.get(variant.architecture);
     if (current) return current;
     const task = (async () => {
-      const { renderer, scene, camera } = engineCtx;
-      if (!renderer || !scene || !camera || typeof document === 'undefined') {
+      const { renderer } = engineCtx;
+      if (!renderer || typeof document === 'undefined') {
         warmedArchitectures.add(variant.architecture);
         return build;
       }
@@ -497,44 +504,27 @@ export function createGarageArchitectureController(
           if (candidate.normalMap) textures.add(candidate.normalMap);
         }
       });
-      const waitForImage = (texture: THREE.Texture): Promise<void> => {
-        const image = texture.image as (EventTarget & {
-          complete?: boolean;
-          naturalWidth?: number;
-          decode?: () => Promise<void>;
-        }) | null;
-        if (!image || (image.complete && Number(image.naturalWidth || 0) > 0)) {
-          return Promise.resolve();
-        }
-        if (typeof image.decode === 'function') return image.decode().catch(() => undefined);
-        return new Promise((resolve) => {
-          image.addEventListener('load', () => resolve(), { once: true });
-          image.addEventListener('error', () => resolve(), { once: true });
-        });
-      };
       await Promise.race([
-        Promise.all([...textures].map(waitForImage)),
-        new Promise((resolve) => setTimeout(resolve, 1_200)),
+        build.texturesReady || Promise.resolve(),
+        new Promise((resolve) => setTimeout(resolve, TEXTURE_READY_TIMEOUT_MS)),
       ]);
       if (disposed || cache.get(variant.architecture) !== build) return null;
-      // Upload one decoded texture per frame. A cold pack can reference twelve
-      // images; batching them into its first visible draw caused a 200-500 ms
-      // ANGLE frame on constrained devices.
+      // Upload each shared texture exactly once. Rebuilt LRU packs reference
+      // the same library objects, so reinitializing all twelve images on every
+      // switch only stretched a cheap 8-15 ms geometry build across hundreds
+      // of milliseconds of redundant presentation frames.
       for (const texture of textures) {
+        if (initializedTextures.has(texture)) continue;
         renderer.initTexture(texture);
+        initializedTextures.add(texture);
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
         if (disposed || cache.get(variant.architecture) !== build) return null;
       }
-      const priorVisible = build.root.visible;
-      build.root.visible = true;
-      try {
-        await Promise.race([
-          renderer.compileAsync(build.root, camera, scene).catch(() => undefined),
-          new Promise<void>((resolve) => setTimeout(resolve, 900)),
-        ]);
-      } finally {
-        build.root.visible = priorVisible;
-      }
+      // garageStage submits exact opaque, transparent, instanced, alpha-test,
+      // vertex-color, and CSM program seeds during the covered Verdant boot.
+      // compileAsync on every destination never resolved promptly on ANGLE,
+      // so the old race timeout added a guaranteed ~900 ms to every switch
+      // without compiling a program shape that had not already been seeded.
       if (disposed || cache.get(variant.architecture) !== build) return null;
       warmedArchitectures.add(variant.architecture);
       publish();

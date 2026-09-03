@@ -22,6 +22,11 @@ interface GarageArchitectureQualityReceipt {
   readonly drawCalls?: number;
   readonly triangles?: number;
   readonly lastBuildMs?: number;
+  readonly collisionAuditedStructures?: number;
+  readonly openCollisionMaxFill?: number;
+  readonly structurePerimeterSectors?: number;
+  readonly treeTrunkMinRadialSegments?: number;
+  readonly treeTrunksRooted?: boolean;
 }
 
 interface GarageWorkshopQualityReceipt {

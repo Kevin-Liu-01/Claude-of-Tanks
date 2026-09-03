@@ -106,12 +106,14 @@ export interface GarageEnvironmentStats {
 export interface GarageEnvironmentBuild {
   readonly root: THREE.Group;
   readonly stats: GarageEnvironmentStats;
+  readonly texturesReady?: Promise<void>;
   dispose(): void;
 }
 
 interface TextureEntry {
   color: THREE.Texture | null;
   normal: THREE.Texture | null;
+  ready: Promise<void>;
   references: number;
   lastUse: number;
   listeners: Set<() => void>;
@@ -120,6 +122,7 @@ interface TextureEntry {
 interface TextureHandle {
   readonly color: THREE.Texture | null;
   readonly normal: THREE.Texture | null;
+  readonly ready: Promise<void>;
   release(): void;
 }
 
@@ -240,16 +243,23 @@ export function createGarageEnvironmentAssetLibrary(
     url: string,
     color: boolean,
     entry: TextureEntry,
+    settle: () => void,
   ): THREE.Texture | null => {
-    if (!loader) return null;
+    if (!loader) {
+      settle();
+      return null;
+    }
     const texture = loader.load(url, () => {
       if (disposed || entries.get(key) !== entry) {
         texture.dispose();
+        settle();
         return;
       }
       for (const listener of entry.listeners) listener();
+      settle();
     }, undefined, () => {
       if (entries.get(key) === entry) for (const listener of entry.listeners) listener();
+      settle();
     });
     prepare(texture, color);
     retainedTextures.add(texture);
@@ -275,17 +285,25 @@ export function createGarageEnvironmentAssetLibrary(
     acquire(key, requestRender) {
       let entry = entries.get(key);
       if (!entry) {
+        let resolveReady = (): void => {};
+        const ready = new Promise<void>((resolve) => { resolveReady = resolve; });
+        let remainingLoads = 2;
+        const settle = (): void => {
+          remainingLoads = Math.max(0, remainingLoads - 1);
+          if (remainingLoads === 0) resolveReady();
+        };
         entry = {
           color: null,
           normal: null,
+          ready,
           references: 0,
           lastUse: ++tick,
           listeners: new Set(),
         };
         entries.set(key, entry);
         const [colorUrl, normalUrl] = SURFACE_FILES[key];
-        entry.color = load(key, colorUrl, true, entry);
-        entry.normal = load(key, normalUrl, false, entry);
+        entry.color = load(key, colorUrl, true, entry, settle);
+        entry.normal = load(key, normalUrl, false, entry, settle);
       }
       entry.references += 1;
       entry.lastUse = ++tick;
@@ -294,6 +312,7 @@ export function createGarageEnvironmentAssetLibrary(
       return {
         color: entry.color,
         normal: entry.normal,
+        ready: entry.ready,
         release() {
           if (released) return;
           released = true;
@@ -1130,7 +1149,10 @@ export function buildGarageEnvironment(
   // cones/lollipops. The asset library owns one full near-tree three-tree grove
   // per species. All cached environments share its immutable geometry,
   // material, and atlas, so repeat switches allocate only instance matrices.
-  const addTreeGroves = (): GarageEnvironmentStats['treeDetailTier'] => {
+  const addTreeGroves = (): {
+    detailTier: GarageEnvironmentStats['treeDetailTier'];
+    trunkQualities: ReadonlyArray<{ radialSegments?: number; rootFlare?: boolean } | undefined>;
+  } => {
     const treeKits = recipe.treeSpecies.map((species) => (
       assets.treeGrove(species as TreeSpecies)
     ));
@@ -1202,9 +1224,17 @@ export function buildGarageEnvironment(
         root.add(instances);
       }
     });
-    return treeKits[0]?.detailTier || 'none';
+    return {
+      detailTier: treeKits[0]?.detailTier || 'none',
+      trunkQualities: treeKits.map((kit) => (
+        kit.trunk.userData.trunkQuality as {
+          radialSegments?: number;
+          rootFlare?: boolean;
+        } | undefined
+      )),
+    };
   };
-  const treeDetailTier = addTreeGroves();
+  const { detailTier: treeDetailTier, trunkQualities: treeTrunkQualities } = addTreeGroves();
 
   root.updateMatrixWorld(true);
   let objects = 0;
@@ -1222,9 +1252,6 @@ export function buildGarageEnvironment(
     const angle = Math.atan2(z, x) + Math.PI;
     return Math.floor((angle / (Math.PI * 2)) * 8) % 8;
   })).size;
-  const treeTrunkQualities = treeKits.map((kit) => (
-    kit.trunk.userData.trunkQuality as { radialSegments?: number; rootFlare?: boolean } | undefined
-  ));
   const stats: GarageEnvironmentStats = Object.freeze({
     distinctiveElements: Object.freeze([
       ...recipe.distinctiveElements,
@@ -1303,9 +1330,11 @@ export function buildGarageEnvironment(
   Object.assign(root.userData, stats);
 
   let disposed = false;
+  const texturesReady = Promise.all(handles.map((handle) => handle.ready)).then(() => undefined);
   return {
     root,
     stats,
+    texturesReady,
     dispose() {
       if (disposed) return;
       disposed = true;
