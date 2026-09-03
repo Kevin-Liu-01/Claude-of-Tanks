@@ -535,7 +535,7 @@ export const MODERN3_SPECS = {
         barrelLenM: 2.62, barrelRadM: 0.05,
         glacis: [75, 285, 390], lower: [58, 210, 275], side: [50, 145, 205],
         skirt: [80, 275, 500], rear: 40, roof: 48,
-        tw: 1.10, tFrontZ: 1.16, tRearZ: -1.42, tH: 0.72,
+        tw: 1.10, tFrontZ: 1.16, tRearZ: -2.04, tH: 0.72,
         cheek: [100, 265, 350], tSide: [70, 165, 245], tRear: 50, tRoof: 44,
         mantlet: [120, 285, 370], loader: false,
       });

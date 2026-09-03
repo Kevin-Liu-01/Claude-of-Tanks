@@ -138,7 +138,9 @@ function addRunningGear(P: LightTigerBuilderPort): void {
     rollerR: 0.082, trackW: 0.46, trackTh: 0.086,
     trackPattern: 'japanese-modular', linkPitchM: 0.145, shoeWidthScale: 0.985,
     topY: 1.20, botY: 0.050, paintedEnds: true, arms: true,
-    coveredTop: false, contactZF: 2.54, contactZR: -2.45,
+    // Put the rear departure knee on the aft road wheel instead of letting
+    // the lower run continue through empty space toward the idler.
+    coveredTop: false, contactZF: 2.54, contactZR: -2.17,
   });
 
   // The layered skirt begins at the real track envelope and folds into the
@@ -151,13 +153,14 @@ function addRunningGear(P: LightTigerBuilderPort): void {
       [side * 1.69, 1.27, 3.27], [side * 1.85, 1.27, 3.27],
     ));
     P.addExternalArmor('hull', orientedSlab(
-      // This shoulder is deliberately keyed through the glacis edge instead
-      // of merely touching it. It produces one continuous Swedish-style
-      // fender/body plane and removes the narrow sky pocket beside the bow.
-      [side * 1.30, 1.79, 2.39], [side * 1.70, 1.79, 2.39],
-      [side * 1.02, 1.35, 3.25], [side * 0.90, 1.35, 3.25],
-      [side * 1.30, 2.00, 2.39], [side * 1.68, 1.97, 2.39],
-      [side * 1.01, 1.50, 3.25], [side * 0.89, 1.50, 3.25],
+      // One continuous planar shoulder replaces the detached triangular cap.
+      // Its inner rail overlaps the upper-glacis edge, its outer rail keys
+      // into the folded skirt, and both rails share the same descending bow
+      // line. The deliberate overlap prevents a light leak at either seam.
+      [side * 1.38, 1.77, 1.60], [side * 1.70, 1.68, 2.42],
+      [side * 1.68, 1.24, 3.27], [side * 1.04, 1.19, 3.25],
+      [side * 1.44, 1.91, 1.60], [side * 1.71, 1.82, 2.42],
+      [side * 1.69, 1.38, 3.27], [side * 1.10, 1.32, 3.25],
     ));
     for (let index = 0; index < 9; index++) {
       const z = 2.22 - index * 0.64;
@@ -222,8 +225,8 @@ function addTurret(P: LightTigerBuilderPort): void {
   // planes without creating a concave crown.
   const plan = [
     [-0.82, 1.34], [0.82, 1.34], [1.12, 1.02], [1.18, 0.54],
-    [1.18, -1.08], [0.88, -1.46], [-0.88, -1.46], [-1.18, -1.08],
-    [-1.18, 0.54], [-1.12, 1.02],
+    [1.18, -1.18], [1.12, -1.72], [0.96, -2.06], [-0.96, -2.06],
+    [-1.12, -1.72], [-1.18, -1.18], [-1.18, 0.54], [-1.12, 1.02],
   ];
   // Fine-segment machined bearing skirt: a real structural transition at the
   // unmanned module's yaw ring, not a coarse decorative puck. It remains
@@ -246,7 +249,7 @@ function addTurret(P: LightTigerBuilderPort): void {
     ));
     // Bradley-like flank equipment boxes are structurally seated into the
     // shoulder and bustle rather than hanging beyond the turret outline.
-    P.addEquipment('turret', box(0.30, 0.48, 0.82), side * 1.12, 0.43, 0.28,
+    P.addEquipment('turret', box(0.42, 0.48, 0.82), side * 1.30, 0.43, 0.28,
       0, 0, side * 0.025);
     P.addEquipment('turret', box(0.25, 0.36, 0.60), side * 1.10, 0.40, -0.58,
       0, 0, -side * 0.020);
@@ -283,27 +286,34 @@ function addTurret(P: LightTigerBuilderPort): void {
     surroundsCoax: true,
   });
 
-  // Signature Jyu-MAT Kai channels remain inside squared armored side boxes;
-  // the dark launch mouths keep the guided armament legible without reverting
-  // to the former exposed round-tube silhouette.
+  // Signature Jyu-MAT Kai channels sit in proud squared armored side boxes.
+  // A buried collar overlaps the turret shoulder while the wider launcher pod
+  // projects far enough outboard to remain readable in front and side views.
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.28, 0.46, 0.62), side * 1.13, 0.46, 0.38,
+    P.addEquipment('turret', box(0.18, 0.42, 0.68), side * 1.16, 0.46, 0.38,
+      0, 0, side * 0.035);
+    P.addEquipment('turret', box(0.46, 0.46, 0.62), side * 1.39, 0.46, 0.38,
       0, 0, side * 0.035);
     for (const y of [0.32, 0.56]) {
-      P.add('turretDark', box(0.18, 0.14, 0.025), side * 1.13, y, 0.705);
+      P.add('turretDark', box(0.28, 0.14, 0.025), side * 1.39, y, 0.705);
     }
   }
 
   // Twin large square roof optics echo the Type 89's paired sight boxes. The
   // housings straddle the gun instead of blocking it, with deep dark bezels
   // and inset glass rather than painted rectangles.
+  const roofOpticBaseY = 0.66;
+  const roofOpticHeight = 0.44 * (2 / 3);
+  const roofOpticY = roofOpticBaseY + roofOpticHeight * 0.5;
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.38, 0.44, 0.36), side * 0.47, 0.88, 0.48);
-    P.addModuleVisual('optics', 'turretDark', box(0.30, 0.31, 0.030),
-      side * 0.47, 0.88, 0.676);
-    P.addModuleVisual('optics', 'turretGlass', box(0.23, 0.23, 0.014),
-      side * 0.47, 0.88, 0.699);
-    P.add('turretDetail', box(0.42, 0.045, 0.40), side * 0.47, 1.115, 0.47);
+    P.addEquipment('turret', box(0.38, roofOpticHeight, 0.36),
+      side * 0.47, roofOpticY, 0.48);
+    P.addModuleVisual('optics', 'turretDark', box(0.30, 0.31 * (2 / 3), 0.030),
+      side * 0.47, roofOpticY, 0.676);
+    P.addModuleVisual('optics', 'turretGlass', box(0.23, 0.23 * (2 / 3), 0.014),
+      side * 0.47, roofOpticY, 0.699);
+    P.add('turretDetail', box(0.42, 0.045, 0.40), side * 0.47,
+      roofOpticBaseY + roofOpticHeight + 0.0225, 0.47);
   }
   // Compact K2B-derived panoramic station. The weapon hardware is deliberately
   // omitted and the highest EO head sits centered on the station roof.
@@ -383,14 +393,14 @@ function addTurret(P: LightTigerBuilderPort): void {
         -0.18, side * 0.30, 0);
     }
   }
-  for (const [x, z, h, seed] of [[-0.76, -1.17, 0.90, 910], [0.76, -1.17, 0.78, 911]] as const) {
+  for (const [x, z, h, seed] of [[-0.76, -1.75, 0.90, 910], [0.76, -1.75, 0.78, 911]] as const) {
     P.add('turretDark', cylY(0.040, 0.055, 0.09, 10), x, 0.78, z);
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.010, seed }),
       x, 0.80, z);
   }
   mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.34, d: 0.38, h: 0.18, fill: 0.48, rails: 3, seed: 920,
-  }), 0, 0.43, -1.50);
+    mats: P.mats, w: 1.62, d: 0.46, h: 0.22, fill: 0.58, rails: 4, seed: 920,
+  }), 0, 0.43, -2.17);
 
   P.decal('turret', 'roundel', null, 0.24, [-1.10, 0.46, -0.66], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.88);
@@ -409,15 +419,17 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
     P.hullG.userData.type89LightTigerReceipt = Object.freeze({
       independentFromLegacyType89: true,
       referenceUsage: 'measurement-and-silhouette-only',
-      hullConstruction: 'planar-roof-light-tiger-glacis-shell-v5',
-      turretConstruction: 'flat-front-bradley-equipment-citadel-v5',
+      hullConstruction: 'planar-roof-light-tiger-glacis-shell-v6',
+      turretConstruction: 'flat-front-deep-bustle-equipment-citadel-v6',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel',
       sideArmorCassettesPerSide: 9,
       sideArmorLayers: 3,
-      frontSkirtTransition: 'inboard-glacis-shoulder-downfold-v3',
+      frontSkirtTransition: 'continuous-glacis-to-skirt-shoulder-v4',
+      frontCapPanelsRemoved: true,
+      rearTrackDepartureZM: -2.17,
       nativeTrackPattern: 'japanese-modular',
       baseGunAssembly: 'flat-mask-kde35-mantlet-v8',
       jyuMatLaunchTubes: 4,
@@ -426,7 +438,7 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
       upperGlacisConstruction: 'separate-planar-wedge',
       monotonicArmorInset: true,
       concaveSurfaceCount: 0,
-      fenderBridge: 'broad-over-track-shoulder-and-skirt-seat-v2',
+      fenderBridge: 'single-planar-glacis-skirt-shoulder-v3',
       rearTroopRamp: true,
     });
     P.turretG.userData.type89LightTigerTurretReceipt = Object.freeze({
@@ -440,6 +452,11 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
       remoteSecondaryWeapon: '12.7mm Light Tiger compact RWS',
       mantletConstruction: 'flat-mask-compact-rocking-block',
       pairedRoofOpticBoxes: true,
+      pairedRoofOpticHeightScale: 2 / 3,
+      launcherPodInnerXM: 1.16,
+      launcherPodOuterXM: 1.62,
+      primaryBustleRearZM: -2.06,
+      deepStructuralBustle: true,
       planarRoofCrown: true,
       monotonicArmorInset: true,
       concaveSurfaceCount: 0,

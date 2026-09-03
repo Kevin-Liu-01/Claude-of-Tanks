@@ -51,15 +51,17 @@ try {
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
-    hullConstruction: 'planar-roof-light-tiger-glacis-shell-v5',
-    turretConstruction: 'flat-front-bradley-equipment-citadel-v5',
+    hullConstruction: 'planar-roof-light-tiger-glacis-shell-v6',
+    turretConstruction: 'flat-front-deep-bustle-equipment-citadel-v6',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,
     suspensionPlacement: 'inboard-behind-road-wheel',
     sideArmorCassettesPerSide: 9,
     sideArmorLayers: 3,
-    frontSkirtTransition: 'inboard-glacis-shoulder-downfold-v3',
+    frontSkirtTransition: 'continuous-glacis-to-skirt-shoulder-v4',
+    frontCapPanelsRemoved: true,
+    rearTrackDepartureZM: -2.17,
     nativeTrackPattern: 'japanese-modular',
     baseGunAssembly: 'flat-mask-kde35-mantlet-v8',
     jyuMatLaunchTubes: 4,
@@ -68,7 +70,7 @@ try {
     upperGlacisConstruction: 'separate-planar-wedge',
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
-    fenderBridge: 'broad-over-track-shoulder-and-skirt-seat-v2',
+    fenderBridge: 'single-planar-glacis-skirt-shoulder-v3',
     rearTroopRamp: true,
   });
   assert.deepEqual(turret.userData.type89LightTigerTurretReceipt, {
@@ -82,6 +84,11 @@ try {
     remoteSecondaryWeapon: '12.7mm Light Tiger compact RWS',
     mantletConstruction: 'flat-mask-compact-rocking-block',
     pairedRoofOpticBoxes: true,
+    pairedRoofOpticHeightScale: 2 / 3,
+    launcherPodInnerXM: 1.16,
+    launcherPodOuterXM: 1.62,
+    primaryBustleRearZM: -2.06,
+    deepStructuralBustle: true,
     planarRoofCrown: true,
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
@@ -142,6 +149,11 @@ try {
   assert.equal(gear?.trackW, 0.46, 'Light Tiger native course clears the hull while filling the attached skirt envelope');
   assert.equal(gear?.trackPatternId, 'japanese-modular',
     'Light Tiger retains its unique staggered-rib Japanese shoe construction');
+  assert.equal(hull.userData.type89LightTigerReceipt.rearTrackDepartureZM, -2.17,
+    'rear track departure wraps the aft road wheel instead of joining behind it');
+  assert.ok(gear?.loopPoints.some(([z, y]) => Math.abs(z + 2.17) < 1e-9
+    && Math.abs(y - 0.05) < 1e-9),
+  'rear track course physically departs its lower run at the authored aft-wheel seat');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.28) && gear?.loopPoints.some(([z]) => z < -3.22),
     'Light Tiger track course reaches both full-length hull shoulders');
   assert.equal(gear?.suspensionDynamic, true, 'road wheels retain dynamic inboard suspension arms');
@@ -149,6 +161,16 @@ try {
     'Light Tiger owns one canonical animated running-gear course');
   assert.equal(tank.root.getObjectByName('gearTrackPads')?.userData.trackShoeDetailMode,
     'family-integrated', 'Light Tiger uses the canonical detailed shoe course');
+  const turretShell = turret.getObjectByName('turret');
+  assert.ok(turretShell, 'Light Tiger primary turret shell is present');
+  const turretShellBounds = new Box3().setFromObject(turretShell);
+  assert.ok(turretShellBounds.min.z - turret.position.z < -2.03,
+    'primary turret shell forms a deep structural rear bustle');
+  const turretEquipment = turret.getObjectByName('turretEquipment');
+  assert.ok(turretEquipment, 'Light Tiger turret equipment shell is present');
+  const turretEquipmentBounds = new Box3().setFromObject(turretEquipment);
+  assert.ok(turretEquipmentBounds.max.x > 1.61 && turretEquipmentBounds.min.x < -1.61,
+    'paired launcher boxes project clearly beyond both turret side planes');
   assert.ok(gun.getObjectByName('gunMount'),
     'Light Tiger carries a camouflaged open gun cradle');
   assert.ok(gun.getObjectByName('gunMountDark'),
