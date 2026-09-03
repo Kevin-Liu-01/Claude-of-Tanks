@@ -176,6 +176,7 @@ for (const [id, capacity, cycleS, reloadS] of [
   ['pl01', 3, 2.2, 15],
   ['pl01_105', 4, 1.8, 13.5],
   ['carro45t', 4, 2.5, 21],
+  ['abramsx', 4, 2.3, 16],
 ]) {
   const spec = getSpec(id);
   assert.equal(spec.gun.autoloader.magazineSize, capacity, `${id}: magazine capacity`);
@@ -189,5 +190,9 @@ assert.equal(getSpec('carro45t').armor.crew.some(({ crew }) => crew === 'loader'
   'carro45t: bustle autoloader replaces the manual loader station');
 assert.equal(getSpec('carro45t').armor.modules.some(({ module }) => module === 'autoloader'), true,
   'carro45t: damage anatomy exposes the autoloader mechanism');
+assert.equal(getSpec('abramsx').armor.crew.some(({ crew }) => crew === 'loader'), false,
+  'abramsx: unmanned autoloading turret has no manual loader station');
+assert.equal(getSpec('abramsx').armor.modules.some(({ module }) => module === 'autoloader'), true,
+  'abramsx: damage anatomy exposes the bustle-conveyor mechanism');
 
 console.log('autoloader.selftest: all assertions passed');

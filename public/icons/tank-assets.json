@@ -1147,15 +1147,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24996,
-          "sha256": "475403eade0ec8634da5468a123d4e5cdb774f27e0c52ab6892af0060c3bfd68",
+          "bytes": 24974,
+          "sha256": "1eba739a8833e6daea4e0e9b81c68837090707bf79f0c714375b1851746deaba",
           "thumbnail": {
             "file": "thumbs/abramsx_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10578,
-            "sha256": "ecb34c28ca083708d391d38b58537de3f9e2e8311a3278bb27ebc1d4ba95b3c4"
+            "bytes": 10548,
+            "sha256": "2c2789ae11a328604f516324f5c7ff129c15d89835f7dd076d629ff09adf1038"
           }
         },
         "top": {
@@ -1163,32 +1163,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9920,
-          "sha256": "5b7acc6f9d88940229fef7267504fa6e4b0f2a15a2e966bc6611231e85e55023"
+          "bytes": 10190,
+          "sha256": "0b055d38d146d1814e1f66d3e482dcb44b3bbabda2fb7062810ce16c38c28b6b"
         },
         "side": {
           "file": "abramsx_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9678,
-          "sha256": "9a6b97755244547fc6cd3722261b64cac89a385e8fbcedf1af81e58403892a92"
+          "bytes": 10022,
+          "sha256": "6c887601c0de1be7c47f5c998831ffa216d20e5bc41f77aead647bfcc723ad28"
         },
         "topSilhouette": {
           "file": "abramsx_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1317,
-          "sha256": "69b992f22e3b583405040928190ae508b5a160436c2da6718353c092e2990f0c"
+          "bytes": 1320,
+          "sha256": "212166ea876d71ce64d23232ba022262409f721d6246f17ad7c2487b1e14c4bd"
         },
         "sideSilhouette": {
           "file": "abramsx_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5507,
-          "sha256": "ed20f9272cbad3b66572e4e6bd2f9377f34706d5cac1a6becc59e9bbc282ccbd"
+          "bytes": 5644,
+          "sha256": "605742c0d06c925e0dee09976c6d1f32120ac0f8d4128cd774ccda1d1ce4383a"
         },
         "armorSide": {
           "file": "abramsx_armor_side.png",
