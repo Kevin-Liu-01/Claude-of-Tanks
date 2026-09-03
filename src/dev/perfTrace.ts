@@ -551,7 +551,7 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
     const life = (name: string) => (event: Event) => push('lifecycle', name, {
       persisted: event instanceof PageTransitionEvent ? event.persisted : undefined,
       hidden: document.hidden, visibilityState: document.visibilityState,
-      focused: document.hasFocus(), viewport: [innerWidth, innerHeight],
+      focused: document.hasFocus(), viewport: [window.innerWidth, window.innerHeight],
     });
     for (const name of ['freeze', 'resume', 'pagehide', 'pageshow', 'resize', 'orientationchange']) {
       window.addEventListener(name, life(name), { passive: true });
