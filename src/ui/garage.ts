@@ -49,6 +49,7 @@ import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
@@ -684,11 +685,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     ? opts.selectedGarageVariantId : garageVariants[0]?.id || '';
   const garageVariantButtons = new Map<string, HTMLButtonElement>();
   const cardById = new Map<string, HTMLElement>();
+  const cardsByCountry = new Map<string, HTMLElement[]>();
+  const specsByCountry = new Map<string, GarageTankSpec[]>();
   const specById = new Map<string, GarageTankSpec>();
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
   function indexGarageSpecs(): void {
     for (const spec of allSpecs) specById.set(spec.id, spec);
+    for (const spec of specs) {
+      const countryId = countryCodeOf(spec);
+      const group = specsByCountry.get(countryId) || [];
+      group.push(spec);
+      specsByCountry.set(countryId, group);
+    }
   }
   indexGarageSpecs();
 
@@ -1699,9 +1708,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // --- COUNTRY FILTER CHIPS -------------------------------------------------
   // The row is an explicit national flag selector. USSR and Russia share RU;
   // every historical era stays together inside its country fleet.
-  const inCountry = (spec: GarageTankSpec, countryId: string): boolean =>
-    countryCodeOf(spec) === countryId;
   let countryFilter = countryGroups[0]?.id || 'us';
+  let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
   function initializeCountryChips(): void {
     for (const group of countryGroups) {
@@ -1728,8 +1736,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   initializeCountryChips();
   function applyCountryFilter(countryId: string): void {
+    const previousCountry = renderedCountryFilter;
     countryFilter = countryId;
-    for (const [id, chip] of chipById) chip.classList.toggle('sel', id === countryId);
+    if (previousCountry !== countryId) chipById.get(previousCountry || '')?.classList.remove('sel');
+    chipById.get(countryId)?.classList.add('sel');
     // Programmatic tank selection can cross national groups. Keep the active
     // flag fully visible rather than leaving its highlight under an edge fade.
     const activeChip = chipById.get(countryId);
@@ -1739,22 +1749,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       syncCountryRailAffordances();
     });
-    let vis = 0; // garage_ui: stagger budget for the reveal animation
-    for (const spec of specs) {
-      const card = cardById.get(spec.id);
-      if (!card) continue;
-      const showCard = inCountry(spec, countryId);
-      const wasShown = card.style.display !== 'none';
-      card.style.display = showCard ? '' : 'none';
-      // garage_ui: a freshly revealed strip fades in with a light stagger
-      // instead of teleporting 20-60 cards in one style flush (opacity only —
-      // transform stays owned by the sel/hover lift). Cards already on screen
-      // and the initial hidden-root pass don't animate.
-      if (showCard && !wasShown && api.isOpen && card.animate && !REDUCED_MOTION) {
-        card.animate([{ opacity: 0 }, { opacity: 1 }],
-          { duration: 200, delay: Math.min(vis, 12) * 16, easing: 'ease-out', fill: 'backwards' });
-      }
-      if (showCard) vis++;
+    if (previousCountry && previousCountry !== countryId) {
+      for (const card of cardsByCountry.get(previousCountry) || []) card.style.display = 'none';
+    }
+    for (const card of cardsByCountry.get(countryId) || []) card.style.display = '';
+    renderedCountryFilter = countryId;
+    // One compositor animation replaces a Web Animation per vehicle. The old
+    // stagger created a burst of animation objects and style flushes on every
+    // nation switch, precisely while portraits were also decoding.
+    if (previousCountry && previousCountry !== countryId && api.isOpen &&
+        cardsEl.animate && !REDUCED_MOTION) {
+      cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
+        { duration: 140, easing: 'ease-out' });
     }
     cardsEl.scrollLeft = 0;
     queueCarouselAffordances();
@@ -1796,6 +1802,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const developmentOnly = Boolean(spec.roster?.developmentOnly);
       card.className = `cot-card${developmentOnly ? ' dev-only' : ''}`;
       card.dataset.specId = spec.id; // switch-desync r1: stable hook for tools/tests
+      const cardCountry = countryCodeOf(spec);
+      card.style.display = cardCountry === countryFilter ? '' : 'none';
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
       card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
@@ -1822,6 +1830,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       cardsEl.appendChild(card);
       cardById.set(spec.id, card);
+      const countryCards = cardsByCountry.get(cardCountry) || [];
+      countryCards.push(card);
+      cardsByCountry.set(cardCountry, countryCards);
     }
   }
   initializeTankCards();
@@ -1833,12 +1844,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const GARAGE_INFO = Object.freeze({
     Performance: 'Core mobility, survivability, vision, and concealment values. Bars compare this vehicle with others in the same tier and battlefield role; green values include mounted equipment.',
     'Special system': 'A vehicle-specific combat mechanic. The card shows its activation key, effect, and runtime limitations.',
-    Ammunition: 'Every available shell type with point-blank / 1 km penetration and average damage. Autoloaders also show magazine size, intra-clip timing, and full reload.',
+    Ammunition: 'Every authored ammunition channel with carried capacity, point-blank / 1 km penetration, and average damage. Guided missiles, shell-specific reloads, and autoloaders retain their own timing and inventory rules.',
     Protection: 'Nominal frontal hull and turret armor from the simulation profile. Angle, impact location, normalization, and shell type still determine the actual result.',
     Armament: 'Gun caliber and the authored vertical gun arc used by the aiming and ballistics simulation.',
     Modules: 'Damageable internal systems represented by this vehicle. The Gallery module overlay shows their authored placement.',
     Crew: 'Crew stations used by the vehicle damage model. Disabled crew affect the systems associated with their roles.',
-    Equipment: 'Three local loadout slots. Mounted equipment changes the same runtime values shown above and used when a battle begins.',
+    Equipment: 'Three persistent vehicle-specific loadout slots. Choose a slot to mount eligible handling, mobility, vision, survivability, or module equipment; the adjusted values above are the values used in battle.',
   });
   type GarageInfoLabel = keyof typeof GARAGE_INFO;
   interface StatBarOptions {
@@ -1944,9 +1955,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const reload = hasOwnReload
         ? `${shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0)} s reload`
         : '';
+      const inventory = `${shellAmmunitionCapacity(shell)} carried`;
+      const detail = [inventory, reload].filter(Boolean).join(' &middot; ');
       return `<div class="shellrow" style="--shell-color:${color}">` +
         `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shell.type}</span></span>` +
-        `<span class="nm">${shell.name}${reload ? `<small>${reload}</small>` : ''}</span>` +
+        `<span class="nm">${shell.name}<small>${detail}</small></span>` +
         `<span class="shellmetric"><b>${penetration}</b>mm</span>` +
         `<span class="shellmetric"><b>${shell.dmg}</b>hp</span></div>`;
     }).join('');
@@ -2062,8 +2075,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const slotBoxes = equipmentSlots(eqIds);
+    const equipmentSection =
+      `<section class="cot-stat-section cot-loadout-section">` +
+      `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment loadout</span>` +
+      `<i>${eqIds.length}/${EQUIP_SLOTS} mounted</i></div>` +
+      `<div class="eqrow">${slotBoxes}</div></section>`;
     statsEl.innerHTML =
       technicalSection +
+      equipmentSection +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
       `<div class="cot-performance-grid">` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
@@ -2101,12 +2120,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}Open module overlay</button></section>` +
       `<section class="cot-stat-section">${statSectionTitle('crew', 'Crew', `${crewRows.length} stations`)}` +
-      `<div class="cot-crew-grid">${crewChips}</div></section>` +
-      // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
-      // equipment cannot be mounted on (or saved for) a print pseudo-spec.
-      `<section class="cot-stat-section">` +
-      `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
-      `<div class="eqrow">${slotBoxes}</div></section>`;
+      `<div class="cot-crew-grid">${crewChips}</div></section>`;
     requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
     const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
     if (technicalImage) technicalImage.alt = `${spec.label?.displayName || spec.name} ${initialTechnicalView.caption.toLowerCase()}`;
@@ -2144,6 +2158,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (vehicleLocked && specId !== selectedId) return false;
     const spec = specById.get(specId);
     if (!spec) return false;
+    const previousSelectedId = selectedId;
     selectedId = specId;
     // Direct selection from another country (for example a screenshot
     // harness) switches the visible strip to that national fleet.
@@ -2153,8 +2168,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // Remember one independent selection per nation. This also adopts valid
     // selections restored by the app on first presentation or battle return.
     if (remember && cardById.has(specId)) countrySelection.remember(specId);
-    for (const [id, card] of cardById) card.classList.toggle('sel', id === specId);
+    if (previousSelectedId !== specId) cardById.get(previousSelectedId)?.classList.remove('sel');
     const card = cardById.get(specId);
+    card?.classList.add('sel');
     if (card && card.scrollIntoView) {
       // Selection may jump between distant remembered cards when a nation
       // opens. Reveal it before the next paint instead of animating
@@ -2178,7 +2194,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function step(dir: number): void {
     if (vehicleLocked) return;
     // Arrows walk the active national fleet only.
-    const pool = specs.filter((spec) => inCountry(spec, countryFilter));
+    const pool = specsByCountry.get(countryFilter) || [];
     if (!pool.length) return;
     const idx = pool.findIndex((s) => s.id === selectedId);
     const next = pool[(idx + dir + pool.length) % pool.length];
@@ -2644,7 +2660,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     getNeighborIds(radius = 2) {
       const selected = specById.get(selectedId);
       if (!selected) return [];
-      const pool = specs.filter((spec) => countryCodeOf(spec) === countryCodeOf(selected));
+      const pool = specsByCountry.get(countryCodeOf(selected)) || [];
       const index = pool.findIndex((spec) => spec.id === selectedId);
       if (index < 0 || pool.length < 2) return [];
       const result: string[] = [];

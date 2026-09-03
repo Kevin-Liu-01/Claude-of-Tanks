@@ -50,15 +50,6 @@ fs.mkdirSync(outDir, { recursive: true });
 const server = await createServer({
   root: ROOT,
   logLevel: 'error',
-  // Analytics is intentionally irrelevant to an offline rendering audit.
-  // Stub it so pristine revisions can be compared even when their optional
-  // deployment-only package is not present in the benchmark worktree.
-  plugins: [{
-    name: 'map-audit-analytics-stub',
-    enforce: 'pre',
-    resolveId(id) { return id === '@vercel/analytics' ? '\0map-audit-analytics' : null; },
-    load(id) { return id === '\0map-audit-analytics' ? 'export const inject = () => {};' : null; },
-  }],
   server: {
     host: '127.0.0.1', port: 6100 + Math.floor(Math.random() * 500),
     strictPort: false, hmr: false, watch: null,

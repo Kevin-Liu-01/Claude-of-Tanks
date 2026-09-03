@@ -27,6 +27,9 @@ const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as 
 let errorGuardInstalled = false;
 let portraitObserver: IntersectionObserver | null = null;
 let portraitResizeObserver: ResizeObserver | null = null;
+let portraitNormalizationScheduled = false;
+const portraitNormalizationQueue: HTMLImageElement[] = [];
+const queuedPortraits = new WeakSet<HTMLImageElement>();
 
 interface PortraitBounds extends PortraitPixelBounds {
   naturalWidth: number;
@@ -182,12 +185,39 @@ async function normalizePortrait(img: HTMLImageElement): Promise<void> {
   }
 }
 
+function scheduleNextPortraitNormalization(): void {
+  if (portraitNormalizationScheduled || portraitNormalizationQueue.length === 0) return;
+  portraitNormalizationScheduled = true;
+  const run = (): void => {
+    portraitNormalizationScheduled = false;
+    const img = portraitNormalizationQueue.shift();
+    if (!img) return;
+    queuedPortraits.delete(img);
+    // Pixel readback and alpha-bound measurement are deliberately serialized.
+    // Revealing a national fleet can load dozens of portraits together; doing
+    // every 256x256 canvas scan in one microtask burst used to block the menu.
+    void normalizePortrait(img).finally(scheduleNextPortraitNormalization);
+  };
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(run, { timeout: 500 });
+  } else {
+    setTimeout(run, 0);
+  }
+}
+
+function enqueuePortraitNormalization(img: HTMLImageElement): void {
+  if (queuedPortraits.has(img)) return;
+  queuedPortraits.add(img);
+  portraitNormalizationQueue.push(img);
+  scheduleNextPortraitNormalization();
+}
+
 function queuePortraitNormalization(img: HTMLImageElement): void {
   if (img.dataset.cotPortraitListener !== 'true') {
     img.dataset.cotPortraitListener = 'true';
-    img.addEventListener('load', () => { void normalizePortrait(img); }, { passive: true });
+    img.addEventListener('load', () => enqueuePortraitNormalization(img), { passive: true });
   }
-  if (img.complete && img.naturalWidth > 0) void normalizePortrait(img);
+  if (img.complete && img.naturalWidth > 0) enqueuePortraitNormalization(img);
 }
 
 function advanceFallback(img: HTMLImageElement): void {

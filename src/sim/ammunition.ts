@@ -18,7 +18,7 @@ export interface AmmunitionPickupResult {
   totalAdded: number;
 }
 
-function normalizedCount(value: unknown): number {
+function normalizedCount(value: number | null | undefined): number {
   const count = Number(value);
   return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
 }

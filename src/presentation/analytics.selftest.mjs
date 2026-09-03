@@ -35,18 +35,31 @@ assert.equal(
 );
 
 const analyticsSource = await readFile('src/analytics.ts', 'utf8');
-assert.match(analyticsSource, /import\(['"]@vercel\/analytics['"]\)/, 'analytics module lazily imports the Vercel client');
-assert.match(analyticsSource, /\binject\s*\(/, 'analytics module injects the Vercel client');
-assert.match(analyticsSource, /import\.meta\.env\.PROD/, 'analytics mode follows the Vite production environment');
-assert.match(analyticsSource, /requestIdleCallback/, 'analytics stays outside the page critical path');
+assert.match(analyticsSource, /import\(['"]@vercel\/analytics['"]\)/,
+  'analytics module lazily imports the Vercel client');
+assert.match(analyticsSource, /\binject\s*\(/,
+  'analytics module injects the Vercel client');
+assert.match(analyticsSource, /import\.meta\.env\.PROD/,
+  'analytics mode follows the Vite production environment');
+assert.match(analyticsSource, /requestIdleCallback/,
+  'analytics stays outside the page critical path');
+assert.match(analyticsSource, /VITE_SELF_HOSTED\s*===\s*['"]1['"]/,
+  'self-hosted builds can compile out hosted telemetry');
+
+const dockerfile = await readFile('Dockerfile.selfhost', 'utf8');
+assert.match(dockerfile, /VITE_SELF_HOSTED=1/,
+  'the self-hosted image disables Vercel Analytics at build time');
 
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');
   const references = html.match(/src=["']\/src\/analytics\.ts["']/g) ?? [];
   assert.equal(references.length, 1, `${entrypoint} must load analytics exactly once`);
+  assert.doesNotMatch(html,
+    /<(?:script|img|audio|video|source)\b[^>]*\bsrc=["']https?:\/\//i,
+    `${entrypoint} must package every automatic subresource locally`);
 }
 
-console.log(`analytics selftest passed (${entrypoints.length} HTML entrypoints)`);
+console.log(`analytics selftest passed (${entrypoints.length} public entrypoints; self-host image opted out)`);
 
 // The production test chain invokes this file directly, so keep the public
 // discovery/metadata contract coupled to every analytics entrypoint check.

@@ -1,0 +1,12 @@
+.git
+.gitignore
+node_modules
+dist
+shots
+.qa-*
+.quality-reports
+.stryker-tmp
+coverage
+public/models/community-candidates
+public/models/tanks/candidates-gen2
+public/models/**/*.glb.bak

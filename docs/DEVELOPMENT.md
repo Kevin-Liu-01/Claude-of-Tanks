@@ -49,19 +49,56 @@ The default service uses port 8790. Production requires secure WebSocket and
 HTTP endpoints, explicit origin configuration, persistent rating storage, and
 deployment-specific signaling/TURN configuration.
 
+### Complete self-hosted stack
+
+The repository includes a first-party deployment that serves the static game,
+same-origin signaling and ICE credentials, authoritative ranked service,
+persistent local rating file, and coturn relay without Cloudflare, Vercel,
+hosted Redis, or another application service. The self-host image disables the
+optional Vercel Analytics client used by the hosted public site. Copy `.env.example`
+to `.env`, then set at minimum:
+
+    COT_PUBLIC_ORIGIN=https://tanks.example.com
+    COT_SITE_ADDRESS=tanks.example.com
+    COT_TURN_HOSTNAME=turn.example.com
+    COT_TURN_EXTERNAL_IP=203.0.113.10
+    COT_TURN_URLS=turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp
+    COT_TURN_SHARED_SECRET=replace-with-a-long-random-secret
+
+Start every service:
+
+    docker compose --env-file .env -f compose.selfhost.yaml up --build -d
+
+Open TCP 80/443, TCP/UDP 3478, and UDP 49160–49200. Caddy terminates web TLS
+and routes `/api/signal`, `/api/ice`, `/ranked/*`, and `/match` to the bundled
+services. coturn uses the same REST shared secret as the signaling service, so
+the browser receives only expiring credentials. The single-process signaling
+store requires no Redis; Redis remains an optional horizontal-scaling adapter.
+The local default is `http://localhost:8080`; internet relay verification still
+requires a public TURN address rather than `localhost`.
+
 Production private rooms automatically request short-lived credentials from
-`/api/ice`. Configure either a Cloudflare Realtime TURN key:
+`/api/ice`. For a fully self-hosted deployment, configure coturn with
+`use-auth-secret` and supply the same shared secret to the application:
+
+    COT_TURN_URLS=turn:turn.example.test:3478,turns:turn.example.test:5349
+    COT_TURN_SHARED_SECRET=replace-with-coturn-static-auth-secret
+    COT_TURN_USERNAME=cot
+
+The endpoint generates expiring HMAC credentials locally and makes no hosted
+provider request. As an optional managed alternative, configure Cloudflare
+Realtime TURN:
 
     COT_CLOUDFLARE_TURN_KEY_ID
     COT_CLOUDFLARE_TURN_API_TOKEN
 
-or a provider-neutral JSON array of ICE servers:
+For fixed credentials or another provider, use a JSON array of ICE servers:
 
     COT_TURN_ICE_SERVERS_JSON
 
-`COT_TURN_TTL_SECONDS` optionally controls the short-lived Cloudflare
-credential lifetime (clamped to one hour through one day; default eight
-hours). `VITE_ICE_CONFIG_URL` is only needed when credentials are served from
+`COT_TURN_TTL_SECONDS` controls the self-hosted or Cloudflare credential
+lifetime (clamped to one hour through one day; default eight hours).
+`VITE_ICE_CONFIG_URL` is only needed when credentials are served from
 a different endpoint. Long-lived provider secrets must never use the `VITE_`
 prefix or enter the browser bundle.
 
@@ -77,8 +114,8 @@ relay candidate in a pristine browser using relay-only ICE policy:
 
 The signaling response must report a ready command store. The ICE response
 must be HTTP 200 and include at least one `turn:` or `turns:` URL, and the
-browser must obtain a relay candidate from those credentials. A 503, STUN-only
-list, or unusable TURN credential cannot reliably connect friends behind
+browser must obtain a relay candidate from those credentials. A 503, direct-only
+fallback, or unusable TURN credential cannot reliably connect friends behind
 restrictive NATs. Use `--dependency-only` solely to diagnose endpoints; it is
 not release evidence.
 

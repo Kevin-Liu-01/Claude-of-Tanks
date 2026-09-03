@@ -43,13 +43,13 @@ const resilient = new RtcIceLease(turn(), {
 now = 29_001;
 const retained = await resilient.refreshIfNeeded();
 assert.ok(retained.iceServers[0].urls.includes('turn:relay.example.test'),
-  'a transient STUN fallback cannot discard unexpired TURN credentials');
+  'a transient direct-only fallback cannot discard unexpired TURN credentials');
 await resilient.refreshIfNeeded();
 assert.equal(degradedRefreshes, 1, 'degraded credential service obeys retry backoff');
 now = 30_001;
 const expired = await resilient.refreshIfNeeded();
 assert.equal(expired.relayAvailable, false,
-  'after credential expiry the honest STUN fallback replaces the dead relay');
+  'after credential expiry the honest direct-only fallback replaces the dead relay');
 
 let recovered = 0;
 const cold = new RtcIceLease(stun, {

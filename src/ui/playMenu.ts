@@ -10,7 +10,7 @@ import {
   createPrivateRoomConnectionRuntime,
   type PrivateRoomConnection,
 } from '../net/privateRoomConnectionRuntime.ts';
-import { resolveSignalUrl } from '../net/signalEndpoint.ts';
+import { resolveMatchServiceUrl, resolveSignalUrl } from '../net/signalEndpoint.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
 import { normalizeRoomCode } from '../net/protocol.ts';
 import {
@@ -565,9 +565,11 @@ function defaultSignalUrl(): string {
 }
 
 function defaultRankedUrl(): string {
-  const configured = import.meta.env.VITE_MATCH_SERVICE_URL;
-  if (configured) return configured;
-  return `${location.protocol}//${location.hostname}:8790`;
+  return resolveMatchServiceUrl({
+    configured: import.meta.env.VITE_MATCH_SERVICE_URL,
+    protocol: location.protocol,
+    hostname: location.hostname,
+  });
 }
 
 async function iceServers(mode: string): Promise<IceConfiguration> {

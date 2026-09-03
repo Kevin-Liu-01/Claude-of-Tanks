@@ -3,6 +3,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
+import { createIceConfigHandler, type IceConfigHandler } from '../api/ice.ts';
 import {
   SignalingRoomStore,
   type CreateRoomOptions,
@@ -57,6 +58,8 @@ export interface SignalingServerOptions {
   allowedOrigins?: readonly string[] | null;
   webSocketPaths?: readonly string[];
   healthPaths?: readonly string[];
+  icePaths?: readonly string[];
+  iceConfigHandler?: IceConfigHandler;
   store?: SignalingStore;
 }
 
@@ -146,10 +149,13 @@ export function createSignalingServer({
   allowedOrigins = null,
   webSocketPaths = ['/signal'],
   healthPaths = ['/healthz'],
+  icePaths = ['/api/ice'],
+  iceConfigHandler = createIceConfigHandler(),
   store = new SignalingRoomStore(),
 }: SignalingServerOptions = {}): SignalingServerService {
   const allowedWebSocketPaths = new Set(webSocketPaths);
   const allowedHealthPaths = new Set(healthPaths);
+  const allowedIcePaths = new Set(icePaths);
   const webSocketServer = new WebSocketServer({
     noServer: true,
     maxPayload: MAX_PAYLOAD_BYTES,
@@ -160,6 +166,10 @@ export function createSignalingServer({
     let pathname = '';
     try { pathname = new URL(String(request.url || ''), 'http://localhost').pathname; }
     catch (_) { /* 404 below */ }
+    if (allowedIcePaths.has(pathname)) {
+      await iceConfigHandler(request, response);
+      return;
+    }
     if (allowedHealthPaths.has(pathname)) {
       const health: SignalingHealth = {
         ok: true,

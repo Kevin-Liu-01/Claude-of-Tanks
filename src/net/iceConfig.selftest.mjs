@@ -26,9 +26,9 @@ const unavailable = await loadIceConfiguration({
     error: 'turn_service_unconfigured',
   }), { status: 503 }),
 });
-assert.equal(unavailable.source, 'stun-fallback');
+assert.equal(unavailable.source, 'host-fallback');
 assert.equal(unavailable.relayAvailable, false);
-assert.equal(unavailable.iceServers.length, 1);
+assert.equal(unavailable.iceServers.length, 0);
 assert.equal(unavailable.degradedReason, 'turn_service_unconfigured');
 
 let transientCalls = 0;
@@ -62,4 +62,4 @@ const malformed = await loadIceConfiguration({
 });
 assert.equal(malformed.degradedReason, 'turn_service_invalid');
 
-console.log('iceConfig.selftest: LAN, retried TURN leases, and classified STUN fallback passed');
+console.log('iceConfig.selftest: LAN, retried TURN leases, and self-hosted fallback passed');

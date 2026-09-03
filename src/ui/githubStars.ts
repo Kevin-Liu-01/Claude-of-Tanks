@@ -158,6 +158,7 @@ export function refreshGitHubStars(): Promise<number | null> {
   }
 
   if (!activeRequest) {
+    renderGitHubStarLoading();
     activeRequest = fetchGitHubStars().finally(() => { activeRequest = null; });
   }
   return activeRequest;
@@ -168,16 +169,16 @@ function bindIntentRetry(nodes: Element[]): void {
     const control = node.closest<HTMLAnchorElement>('a[href*="github.com/Kevin-Liu-01/"]');
     if (!control || intentBoundControls.has(control)) continue;
     intentBoundControls.add(control);
-    const refresh = (): void => { void refreshGitHubStars(); };
+    const refresh = (): Promise<number | null> => refreshGitHubStars();
     control.addEventListener('pointerenter', refresh, { once: true, passive: true });
     control.addEventListener('focus', refresh, { once: true });
   }
 }
 
 /**
- * Register repository star nodes, render a verified cached value or loading
- * state synchronously, then refresh in the background. Repeated mounts share
- * one request and never present an invented numeric fallback.
+ * Register repository star nodes and render only locally cached data during
+ * startup. A live same-origin refresh begins on explicit GitHub-link intent,
+ * keeping an optional social counter off the game and menu critical paths.
  */
 export function mountGitHubStars(root: Document | Element = document): Promise<number | null> {
   const mountedNodes: Element[] = [];
@@ -188,7 +189,7 @@ export function mountGitHubStars(root: Document | Element = document): Promise<n
 
   const cached = readCachedStars();
   if (cached) renderGitHubStarCount(cached.count);
-  else renderGitHubStarLoading(mountedNodes);
+  else for (const node of mountedNodes) setGitHubStarState(node, 'unavailable');
   bindIntentRetry(mountedNodes);
-  return refreshGitHubStars();
+  return Promise.resolve(cached?.count ?? null);
 }

@@ -603,7 +603,18 @@ function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array):
 }
 
 function createBuckets(): GeometryBuckets {
-  return Object.fromEntries(BUCKET_KEYS.map((key) => [key, []])) as unknown as GeometryBuckets;
+  return {
+    plaster: [],
+    plaster2: [],
+    plaster3: [],
+    stone: [],
+    roof: [],
+    wood: [],
+    dark: [],
+    glass: [],
+    baked: [],
+    route: [],
+  };
 }
 
 function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean): THREE.BufferGeometry {
@@ -638,7 +649,8 @@ export function buildGarageEnvironment(
   const patch = getGarageTerrainPatch(variant.mapId);
   const heights = decodePatch(patch);
   const reliefScale = recipe.reliefScale ?? 1;
-  if (reliefScale !== 1) {
+  const applyReliefScale = (): void => {
+    if (reliefScale === 1) return;
     // Battlefield height is measured at kilometer scale. A Garage excerpt is
     // less than one hundred meters wide, so preserve the exact sampled shape
     // while compressing extreme vertical relief into the showroom camera's
@@ -647,7 +659,8 @@ export function buildGarageEnvironment(
     for (let index = 0; index < heights.length; index += 1) {
       heights[index] *= reliefScale;
     }
-  }
+  };
+  applyReliefScale();
   const root = new THREE.Group();
   root.name = `garage_environment_${variant.architecture}`;
   root.userData.perfOwner = 'garage/environment';
@@ -727,7 +740,7 @@ export function buildGarageEnvironment(
     for (const value of Object.values(local)) {
       if (!Array.isArray(value)) continue;
       for (const geometry of value) {
-        const support = geometry.userData.structureSupport as { gap?: unknown } | undefined;
+        const support = geometry.userData.structureSupport as { gap?: number } | undefined;
         if (support && Number.isFinite(support.gap)) {
           supports.push({ gap: Number(support.gap) });
         }
@@ -747,21 +760,24 @@ export function buildGarageEnvironment(
   // Cut a compact, feathered service terrace beneath each real structure.
   // This preserves the sampled battlefield relief between buildings while
   // preventing a wide hall from bridging a steep slope or floating at one end.
-  for (const { placement, dimensions, x: structureX, z: structureZ, y } of structureRecords) {
-    const radiusX = Math.max(3.5, dimensions.w * placement.scale * 0.58 + 1.6);
-    const radiusZ = Math.max(3.5, dimensions.d * placement.scale * 0.58 + 1.6);
-    for (let row = 0; row < patch.height; row += 1) {
-      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      for (let column = 0; column < patch.width; column += 1) {
-        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const distance = Math.hypot((x - structureX) / radiusX, (z - structureZ) / radiusZ);
-        if (distance >= 1.42) continue;
-        const blend = THREE.MathUtils.smoothstep(distance, 0.92, 1.42);
-        const index = row * patch.width + column;
-        heights[index] = THREE.MathUtils.lerp(y, heights[index], blend);
+  const shapeStructureTerraces = (): void => {
+    for (const { placement, dimensions, x: structureX, z: structureZ, y } of structureRecords) {
+      const radiusX = Math.max(3.5, dimensions.w * placement.scale * 0.58 + 1.6);
+      const radiusZ = Math.max(3.5, dimensions.d * placement.scale * 0.58 + 1.6);
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const distance = Math.hypot((x - structureX) / radiusX, (z - structureZ) / radiusZ);
+          if (distance >= 1.42) continue;
+          const blend = THREE.MathUtils.smoothstep(distance, 0.92, 1.42);
+          const index = row * patch.width + column;
+          heights[index] = THREE.MathUtils.lerp(y, heights[index], blend);
+        }
       }
     }
-  }
+  };
+  shapeStructureTerraces();
 
   // Terrain-seat the complete service islands before emitting the terrain
   // mesh. Long rails, gantry feet and opposite canopy posts previously each
@@ -774,41 +790,48 @@ export function buildGarageEnvironment(
     const center = cameraPoint(terrace.side, terrace.depth);
     return { ...terrace, ...center, y: samplePatch(patch, heights, center.x, center.z) };
   });
-  for (const terrace of terraceRecords) {
-    for (let row = 0; row < patch.height; row += 1) {
-      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      for (let column = 0; column < patch.width; column += 1) {
-        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const { side, depth } = garageWorldPointToView(x, z);
-        const distance = Math.hypot(
-          (side - terrace.side) / terrace.radiusSide,
-          (depth - terrace.depth) / terrace.radiusDepth,
-        );
-        if (distance >= 1.65) continue;
-        const blend = THREE.MathUtils.smoothstep(distance, 1.20, 1.65);
-        const index = row * patch.width + column;
-        heights[index] = THREE.MathUtils.lerp(terrace.y, heights[index], blend);
+  const shapeFacilityTerraces = (): void => {
+    for (const terrace of terraceRecords) {
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const { side, depth } = garageWorldPointToView(x, z);
+          const distance = Math.hypot(
+            (side - terrace.side) / terrace.radiusSide,
+            (depth - terrace.depth) / terrace.radiusDepth,
+          );
+          if (distance >= 1.65) continue;
+          const blend = THREE.MathUtils.smoothstep(distance, 1.20, 1.65);
+          const index = row * patch.width + column;
+          heights[index] = THREE.MathUtils.lerp(terrace.y, heights[index], blend);
+        }
       }
     }
-  }
+  };
+  shapeFacilityTerraces();
 
   // The podium is a physical object with its bottom at y=0. Re-apply one
   // canonical circular exclusion after every structure/facility terrace has
   // shaped the map excerpt so snowbanks, dunes, and steep source samples can
   // never rise through its side wall. The feather remains outside the base and
   // preserves the authored terrain beyond the immediate display apron.
-  let maxPlatformTerrainY = Number.NEGATIVE_INFINITY;
-  for (let row = 0; row < patch.height; row += 1) {
-    const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-    for (let column = 0; column < patch.width; column += 1) {
-      const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-      const index = row * patch.width + column;
-      heights[index] = garagePlatformTerrainHeight(x, z, heights[index]);
-      if (Math.hypot(x, z) <= GARAGE_PLATFORM_GEOMETRY.baseRadiusM) {
-        maxPlatformTerrainY = Math.max(maxPlatformTerrainY, heights[index]);
+  const shapePlatformTerrain = (): number => {
+    let maxPlatformTerrainY = Number.NEGATIVE_INFINITY;
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const index = row * patch.width + column;
+        heights[index] = garagePlatformTerrainHeight(x, z, heights[index]);
+        if (Math.hypot(x, z) <= GARAGE_PLATFORM_GEOMETRY.baseRadiusM) {
+          maxPlatformTerrainY = Math.max(maxPlatformTerrainY, heights[index]);
+        }
       }
     }
-  }
+    return maxPlatformTerrainY;
+  };
+  const maxPlatformTerrainY = shapePlatformTerrain();
   const platformGroundMaxY = Math.max(
     maxPlatformTerrainY,
     GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM,
@@ -820,51 +843,61 @@ export function buildGarageEnvironment(
   // support plane after all feathering is complete so long rails and station
   // frames cannot inherit a neighbouring facility's grade. Authored inner
   // footprints are disjoint (audited below), so this pass is deterministic.
-  for (const terrace of terraceRecords) {
-    for (let row = 0; row < patch.height; row += 1) {
-      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      for (let column = 0; column < patch.width; column += 1) {
-        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const { side, depth } = garageWorldPointToView(x, z);
-        const distance = Math.hypot(
-          (side - terrace.side) / terrace.radiusSide,
-          (depth - terrace.depth) / terrace.radiusDepth,
-        );
-        if (distance <= 1.20) heights[row * patch.width + column] = terrace.y;
+  const reseatFacilityTerraces = (): void => {
+    for (const terrace of terraceRecords) {
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const { side, depth } = garageWorldPointToView(x, z);
+          const distance = Math.hypot(
+            (side - terrace.side) / terrace.radiusSide,
+            (depth - terrace.depth) / terrace.radiusDepth,
+          );
+          if (distance <= 1.20) heights[row * patch.width + column] = terrace.y;
+        }
       }
     }
-  }
+  };
+  reseatFacilityTerraces();
 
-  let placementOverlaps = 0;
-  for (const structure of structureRecords) {
-    const radius = Math.hypot(
-      structure.dimensions.w * structure.placement.scale,
-      structure.dimensions.d * structure.placement.scale,
-    ) * 0.48;
-    const { side: structureSide, depth: structureDepth } = garageWorldPointToView(
-      structure.x,
-      structure.z,
-    );
+  const measurePlacementQuality = (): {
+    readonly placementOverlaps: number;
+    readonly maxGroundContactErrorM: number;
+  } => {
+    let placementOverlaps = 0;
+    for (const structure of structureRecords) {
+      const radius = Math.hypot(
+        structure.dimensions.w * structure.placement.scale,
+        structure.dimensions.d * structure.placement.scale,
+      ) * 0.48;
+      const { side: structureSide, depth: structureDepth } = garageWorldPointToView(
+        structure.x,
+        structure.z,
+      );
+      for (const terrace of terraceRecords) {
+        const distance = Math.hypot(
+          (structureSide - terrace.side) / (radius + terrace.radiusSide + 0.8),
+          (structureDepth - terrace.depth) / (radius + terrace.radiusDepth + 0.8),
+        );
+        if (distance < 1) placementOverlaps += 1;
+      }
+    }
+    let maxGroundContactErrorM = 0;
     for (const terrace of terraceRecords) {
-      const distance = Math.hypot(
-        (structureSide - terrace.side) / (radius + terrace.radiusSide + 0.8),
-        (structureDepth - terrace.depth) / (radius + terrace.radiusDepth + 0.8),
-      );
-      if (distance < 1) placementOverlaps += 1;
+      for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
+        [-0.55, 0.55], [0.55, 0.55]] as const) {
+        const point = cameraPoint(
+          terrace.side + terrace.radiusSide * sideOffset,
+          terrace.depth + terrace.radiusDepth * depthOffset,
+        );
+        maxGroundContactErrorM = Math.max(maxGroundContactErrorM,
+          Math.abs(samplePatch(patch, heights, point.x, point.z) - terrace.y));
+      }
     }
-  }
-  let maxGroundContactErrorM = 0;
-  for (const terrace of terraceRecords) {
-    for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
-      [-0.55, 0.55], [0.55, 0.55]] as const) {
-      const point = cameraPoint(
-        terrace.side + terrace.radiusSide * sideOffset,
-        terrace.depth + terrace.radiusDepth * depthOffset,
-      );
-      maxGroundContactErrorM = Math.max(maxGroundContactErrorM,
-        Math.abs(samplePatch(patch, heights, point.x, point.z) - terrace.y));
-    }
-  }
+    return { placementOverlaps, maxGroundContactErrorM };
+  };
+  const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
   const terrainGeometry = track(createTerrainGeometry(patch, heights));
   const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
@@ -889,141 +922,156 @@ export function buildGarageEnvironment(
   // single three-triangle tuft is instanced across the real terrain and color
   // graded to the selected biome. It is intentionally windless in Garage:
   // one draw, no alpha sorting, no animation wake-up and no shadow shimmer.
-  const groundCoverCount = recipe.terrainSurface === 'grass' ? 240
-    : recipe.terrainSurface === 'snow' ? 112
-      : recipe.terrainSurface === 'cobble' ? 48 : 96;
-  const groundCoverGeometry = track(createGroundCoverGeometry());
-  const groundCoverMaterial = plainMaterial({
-    color: 0xffffff,
-    roughness: 1,
-    metalness: 0,
-    vertexColors: true,
-    side: THREE.DoubleSide,
-  });
-  const groundCover = new THREE.InstancedMesh(
-    groundCoverGeometry,
-    groundCoverMaterial,
-    groundCoverCount,
-  );
-  groundCover.name = 'static_battlefield_ground_cover';
-  const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.02, 0.08, -0.22)
-    : recipe.terrainSurface === 'snow' ? new THREE.Color(0x716d58)
-      : recipe.terrainSurface === 'sand' ? new THREE.Color(0x8d744d)
-        : recipe.terrainSurface === 'rock' ? new THREE.Color(0x705d49)
-          : new THREE.Color(0x59604d);
-  const coverMatrix = new THREE.Matrix4();
-  const coverPosition = new THREE.Vector3();
-  const coverQuaternion = new THREE.Quaternion();
-  const coverScale = new THREE.Vector3();
-  const coverUp = new THREE.Vector3(0, 1, 0);
-  let groundCoverIndex = 0;
-  let groundCoverAttempts = 0;
-  while (groundCoverIndex < groundCoverCount && groundCoverAttempts < groundCoverCount * 12) {
-    groundCoverAttempts += 1;
-    const angle = rng() * Math.PI * 2;
-    const radius = Math.sqrt(17 * 17 + rng() * (44 * 44 - 17 * 17));
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const insideStructure = structureRecords.some((record) => (
-      Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
-      && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
-    ));
-    if (insideStructure) continue;
-    const y = samplePatch(patch, heights, x, z);
-    const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
-    coverPosition.set(x, y + 0.01, z);
-    coverQuaternion.setFromAxisAngle(coverUp, rng() * Math.PI * 2);
-    coverScale.set(size * (0.72 + rng() * 0.45), size, size * (0.72 + rng() * 0.45));
-    groundCover.setMatrixAt(groundCoverIndex, coverMatrix.compose(coverPosition, coverQuaternion, coverScale));
-    groundCover.setColorAt(groundCoverIndex, coverBase.clone().offsetHSL(
-      (rng() - 0.5) * 0.035,
-      (rng() - 0.5) * 0.08,
-      (rng() - 0.5) * 0.09,
-    ));
-    groundCoverIndex += 1;
-  }
-  groundCover.count = groundCoverIndex;
-  groundCover.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  groundCover.instanceMatrix.needsUpdate = true;
-  if (groundCover.instanceColor) groundCover.instanceColor.needsUpdate = true;
-  groundCover.castShadow = false;
-  groundCover.receiveShadow = true;
-  groundCover.computeBoundingBox();
-  groundCover.computeBoundingSphere();
-  groundCover.matrixAutoUpdate = false;
-  groundCover.updateMatrix();
-  root.add(groundCover);
-
-  for (const { placement, local, x, z, y } of structureRecords) {
-    const uniformScale = placement.scale;
-    const transform = new THREE.Matrix4().compose(
-      new THREE.Vector3(x, y, z),
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.yaw),
-      new THREE.Vector3(uniformScale, uniformScale, uniformScale),
+  const addGroundCover = (): number => {
+    const groundCoverCount = recipe.terrainSurface === 'grass' ? 240
+      : recipe.terrainSurface === 'snow' ? 112
+        : recipe.terrainSurface === 'cobble' ? 48 : 96;
+    const groundCoverGeometry = track(createGroundCoverGeometry());
+    const groundCoverMaterial = plainMaterial({
+      color: 0xffffff,
+      roughness: 1,
+      metalness: 0,
+      vertexColors: true,
+      side: THREE.DoubleSide,
+    });
+    const groundCover = new THREE.InstancedMesh(
+      groundCoverGeometry,
+      groundCoverMaterial,
+      groundCoverCount,
     );
-    for (const key of BUCKET_KEYS) {
-      for (const geometry of local[key] || []) {
-        geometry.applyMatrix4(transform);
-        combined[key]!.push(geometry);
+    groundCover.name = 'static_battlefield_ground_cover';
+    const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.02, 0.08, -0.22)
+      : recipe.terrainSurface === 'snow' ? new THREE.Color(0x716d58)
+        : recipe.terrainSurface === 'sand' ? new THREE.Color(0x8d744d)
+          : recipe.terrainSurface === 'rock' ? new THREE.Color(0x705d49)
+            : new THREE.Color(0x59604d);
+    const coverMatrix = new THREE.Matrix4();
+    const coverPosition = new THREE.Vector3();
+    const coverQuaternion = new THREE.Quaternion();
+    const coverScale = new THREE.Vector3();
+    const coverUp = new THREE.Vector3(0, 1, 0);
+    let groundCoverIndex = 0;
+    let groundCoverAttempts = 0;
+    const placeGroundCoverInstance = (): void => {
+      const angle = rng() * Math.PI * 2;
+      const radius = Math.sqrt(17 * 17 + rng() * (44 * 44 - 17 * 17));
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const insideStructure = structureRecords.some((record) => (
+        Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
+        && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
+      ));
+      if (insideStructure) return;
+      const y = samplePatch(patch, heights, x, z);
+      const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
+      coverPosition.set(x, y + 0.01, z);
+      coverQuaternion.setFromAxisAngle(coverUp, rng() * Math.PI * 2);
+      coverScale.set(size * (0.72 + rng() * 0.45), size, size * (0.72 + rng() * 0.45));
+      groundCover.setMatrixAt(groundCoverIndex,
+        coverMatrix.compose(coverPosition, coverQuaternion, coverScale));
+      groundCover.setColorAt(groundCoverIndex, coverBase.clone().offsetHSL(
+        (rng() - 0.5) * 0.035,
+        (rng() - 0.5) * 0.08,
+        (rng() - 0.5) * 0.09,
+      ));
+      groundCoverIndex += 1;
+    };
+    while (groundCoverIndex < groundCoverCount && groundCoverAttempts < groundCoverCount * 12) {
+      groundCoverAttempts += 1;
+      placeGroundCoverInstance();
+    }
+    groundCover.count = groundCoverIndex;
+    groundCover.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    groundCover.instanceMatrix.needsUpdate = true;
+    if (groundCover.instanceColor) groundCover.instanceColor.needsUpdate = true;
+    groundCover.castShadow = false;
+    groundCover.receiveShadow = true;
+    groundCover.computeBoundingBox();
+    groundCover.computeBoundingSphere();
+    groundCover.matrixAutoUpdate = false;
+    groundCover.updateMatrix();
+    root.add(groundCover);
+    return groundCoverIndex;
+  };
+  const groundCoverIndex = addGroundCover();
+
+  const mergeStructureRecords = (): void => {
+    for (const { placement, local, x, z, y } of structureRecords) {
+      const uniformScale = placement.scale;
+      const transform = new THREE.Matrix4().compose(
+        new THREE.Vector3(x, y, z),
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.yaw),
+        new THREE.Vector3(uniformScale, uniformScale, uniformScale),
+      );
+      for (const key of BUCKET_KEYS) {
+        for (const geometry of local[key] || []) {
+          geometry.applyMatrix4(transform);
+          combined[key]!.push(geometry);
+        }
       }
     }
-  }
+  };
+  mergeStructureRecords();
 
-  const facilitySurfaceHandles = variant.architecture === 'field_shed'
-    ? null
-    : Object.freeze({
-        structure: assets.acquire('roof', requestRender),
-        painted: assets.acquire('plaster', requestRender),
-        equipment: assets.acquire('wood', requestRender),
-        masonry: assets.acquire('brick', requestRender),
-      });
-  if (facilitySurfaceHandles) handles.push(...Object.values(facilitySurfaceHandles));
-  const facilityDetails = variant.architecture === 'field_shed'
-    ? Object.freeze({
-        facilityProps: 0,
-        facilityStations: 0,
-        looseParts: 0,
-        railSegments: 0,
-        openingViewFrames: 0,
-        placementZones: 0,
-        structuralConnections: 0,
-        unsupportedParts: 0,
-        heavyLiftSystems: 0,
-        operationalMachines: 0,
-        servicePurposeTags: Object.freeze([]),
-        facilityMaterialClasses: 0,
-        openingSightlineIntrusions: 0,
-        meshes: Object.freeze([]),
-        materials: Object.freeze([]),
-      })
-    : addGarageFacilityDetails({
-        buckets: combined,
-        engineCtx,
-        surfaceMaps: Object.fromEntries(Object.entries(facilitySurfaceHandles!).map(
-          ([key, handle]) => [key, { color: handle.color, normal: handle.normal }],
-        )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
-        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
-        variant,
-      });
-  const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
-    ? Object.freeze({
-        approachLabel: recipe.approach.label,
-        approachStyle: recipe.approach.style,
-        approachSegments: 0,
-        approachDetails: 0,
-        approachConnected: true,
-        approachGroundErrorM: 0,
-      })
-    : addGarageApproachDetails({
-        approach: recipe.approach,
-        buckets: combined,
-        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
-      });
-  for (const mesh of facilityDetails.meshes) {
-    track(mesh.geometry);
-    root.add(mesh);
-  }
-  for (const material of facilityDetails.materials) track(material);
+  const buildFacilityPresentation = () => {
+    const facilitySurfaceHandles = variant.architecture === 'field_shed'
+      ? null
+      : Object.freeze({
+          structure: assets.acquire('roof', requestRender),
+          painted: assets.acquire('plaster', requestRender),
+          equipment: assets.acquire('wood', requestRender),
+          masonry: assets.acquire('brick', requestRender),
+        });
+    if (facilitySurfaceHandles) handles.push(...Object.values(facilitySurfaceHandles));
+    const facilityDetails = variant.architecture === 'field_shed'
+      ? Object.freeze({
+          facilityProps: 0,
+          facilityStations: 0,
+          looseParts: 0,
+          railSegments: 0,
+          openingViewFrames: 0,
+          placementZones: 0,
+          structuralConnections: 0,
+          unsupportedParts: 0,
+          heavyLiftSystems: 0,
+          operationalMachines: 0,
+          servicePurposeTags: Object.freeze([]),
+          facilityMaterialClasses: 0,
+          openingSightlineIntrusions: 0,
+          meshes: Object.freeze([]),
+          materials: Object.freeze([]),
+        })
+      : addGarageFacilityDetails({
+          buckets: combined,
+          engineCtx,
+          surfaceMaps: Object.fromEntries(Object.entries(facilitySurfaceHandles!).map(
+            ([key, handle]) => [key, { color: handle.color, normal: handle.normal }],
+          )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
+          groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+          variant,
+        });
+    const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
+      ? Object.freeze({
+          approachLabel: recipe.approach.label,
+          approachStyle: recipe.approach.style,
+          approachSegments: 0,
+          approachDetails: 0,
+          approachConnected: true,
+          approachGroundErrorM: 0,
+        })
+      : addGarageApproachDetails({
+          approach: recipe.approach,
+          buckets: combined,
+          groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+        });
+    for (const mesh of facilityDetails.meshes) {
+      track(mesh.geometry);
+      root.add(mesh);
+    }
+    for (const material of facilityDetails.materials) track(material);
+    return { facilityDetails, approachDetails };
+  };
+  const { facilityDetails, approachDetails } = buildFacilityPresentation();
 
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
@@ -1047,107 +1095,116 @@ export function buildGarageEnvironment(
     }
   };
 
-  for (const key of BUCKET_KEYS) {
-    const sources = combined[key] || [];
-    if (!sources.length) continue;
-    const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked'));
-    const merged = mergeGeometries(normalized, false);
-    for (const geometry of normalized) geometry.dispose();
-    for (const geometry of sources) geometry.dispose();
-    if (!merged) throw new Error(`Garage environment could not merge ${variant.id}/${key}`);
-    track(merged);
-    merged.computeBoundingBox();
-    merged.computeBoundingSphere();
-    const material = materialForBucket(key);
-    material.name = `garage:${key}`;
-    const mesh = new THREE.Mesh(merged, material);
-    mesh.name = `authored_structures_${key}`;
-    // Garage scenery is static and already carries textured/vertex-color
-    // contact definition. Keep it out of the live CSM caster set: compiling
-    // nine new bucket shadow programs on the first outdoor selection caused a
-    // half-second hitch, while cascade refreshes made fine station geometry
-    // shimmer. The hero tank and podium remain the only dynamic Garage
-    // casters; scenery still receives their stable contact shadow.
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    mesh.matrixAutoUpdate = false;
-    mesh.updateMatrix();
-    root.add(mesh);
-  }
+  const addMergedStructures = (): void => {
+    for (const key of BUCKET_KEYS) {
+      const sources = combined[key] || [];
+      if (!sources.length) continue;
+      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked'));
+      const merged = mergeGeometries(normalized, false);
+      for (const geometry of normalized) geometry.dispose();
+      for (const geometry of sources) geometry.dispose();
+      if (!merged) throw new Error(`Garage environment could not merge ${variant.id}/${key}`);
+      track(merged);
+      merged.computeBoundingBox();
+      merged.computeBoundingSphere();
+      const material = materialForBucket(key);
+      material.name = `garage:${key}`;
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.name = `authored_structures_${key}`;
+      // Garage scenery is static and already carries textured/vertex-color
+      // contact definition. Keep it out of the live CSM caster set: compiling
+      // nine new bucket shadow programs on the first outdoor selection caused a
+      // half-second hitch, while cascade refreshes made fine station geometry
+      // shimmer. The hero tank and podium remain the only dynamic Garage
+      // casters; scenery still receives their stable contact shadow.
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      root.add(mesh);
+    }
+  };
+  addMergedStructures();
 
   // One repeated far-tree mesh per species produced the old row of identical
   // cones/lollipops. The asset library owns one full near-tree three-tree grove
   // per species. All cached environments share its immutable geometry,
   // material, and atlas, so repeat switches allocate only instance matrices.
-  const treeKits = recipe.treeSpecies.map((species) => (
-    assets.treeGrove(species as TreeSpecies)
-  ));
-  const matrices = treeKits.map(() => [] as THREE.Matrix4[]);
-  const matrix = new THREE.Matrix4();
-  const quaternion = new THREE.Quaternion();
-  const scale = new THREE.Vector3();
-  const position = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0);
-  const groveCount = Math.ceil(recipe.treeCount / 2);
-  const grovePoints: Array<{ x: number; z: number }> = [];
-  for (let attempt = 0; attempt < groveCount * 80 && grovePoints.length < groveCount; attempt += 1) {
-    const angle = rng() * Math.PI * 2;
-    const radiusScale = 0.90 + rng() * 0.10;
-    const x = Math.cos(angle) * 42 * radiusScale;
-    const z = Math.sin(angle) * 36 * radiusScale;
-    const { side, depth } = garageWorldPointToView(x, z);
-    // Preserve only the narrow canonical approach lane. The old whole-half-
-    // plane exclusion left alternate orbit angles looking unfinished even
-    // though the environment owned enough vegetation for a complete ring.
-    if (depth < 5 && Math.abs(side) < 16) continue;
-    const nearStructure = structureRecords.some((record) => {
-      const radius = Math.hypot(
-        record.dimensions.w * record.placement.scale,
-        record.dimensions.d * record.placement.scale,
-      ) * 0.48;
-      return Math.hypot(x - record.x, z - record.z) < radius + 4.8;
-    });
-    const nearFacility = terraceRecords.some((terrace) => (
-      Math.hypot(x - terrace.x, z - terrace.z)
-        < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
+  const addTreeGroves = (): GarageEnvironmentStats['treeDetailTier'] => {
+    const treeKits = recipe.treeSpecies.map((species) => (
+      assets.treeGrove(species as TreeSpecies)
     ));
-    if (nearStructure || nearFacility
-        || grovePoints.some((point) => Math.hypot(x - point.x, z - point.z) < 7.0)) continue;
-    grovePoints.push({ x, z });
-  }
-  for (let index = 0; index < groveCount; index += 1) {
-    const fallbackSide = THREE.MathUtils.lerp(-31, 31,
-      groveCount <= 1 ? 0.5 : index / (groveCount - 1));
-    const fallbackDepth = 38 + Math.sin((index / Math.max(1, groveCount - 1)) * Math.PI) * 7;
-    const fallback = cameraPoint(fallbackSide, fallbackDepth);
-    const { x, z } = grovePoints[index] || fallback;
-    const y = samplePatch(patch, heights, x, z);
-    const size = 0.82 + rng() * 0.26;
-    position.set(x, y, z);
-    quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
-    scale.set(size, size * (0.94 + rng() * 0.12), size);
-    matrices[index % treeKits.length].push(matrix.compose(position, quaternion, scale).clone());
-  }
-  treeKits.forEach((kit, kitIndex) => {
-    const transforms = matrices[kitIndex];
-    for (const [part, geometry, material] of [
-      ['trunks', kit.trunk, kit.trunkMaterial],
-      ['foliage', kit.foliage, kit.foliageMaterial],
-    ] as const) {
-      const instances = new THREE.InstancedMesh(geometry, material, transforms.length);
-      instances.name = `battlefield_tree_${kit.species}_${part}`;
-      transforms.forEach((transform, index) => instances.setMatrixAt(index, transform));
-      instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-      instances.instanceMatrix.needsUpdate = true;
-      instances.castShadow = false;
-      instances.receiveShadow = true;
-      instances.computeBoundingBox();
-      instances.computeBoundingSphere();
-      instances.matrixAutoUpdate = false;
-      instances.updateMatrix();
-      root.add(instances);
+    const matrices = treeKits.map(() => [] as THREE.Matrix4[]);
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const position = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const groveCount = Math.ceil(recipe.treeCount / 2);
+    const grovePoints: Array<{ x: number; z: number }> = [];
+    for (let attempt = 0;
+      attempt < groveCount * 80 && grovePoints.length < groveCount;
+      attempt += 1) {
+      const angle = rng() * Math.PI * 2;
+      const radiusScale = 0.90 + rng() * 0.10;
+      const x = Math.cos(angle) * 42 * radiusScale;
+      const z = Math.sin(angle) * 36 * radiusScale;
+      const { side, depth } = garageWorldPointToView(x, z);
+      // Preserve only the narrow canonical approach lane. The old whole-half-
+      // plane exclusion left alternate orbit angles looking unfinished even
+      // though the environment owned enough vegetation for a complete ring.
+      if (depth < 5 && Math.abs(side) < 16) continue;
+      const nearStructure = structureRecords.some((record) => {
+        const radius = Math.hypot(
+          record.dimensions.w * record.placement.scale,
+          record.dimensions.d * record.placement.scale,
+        ) * 0.48;
+        return Math.hypot(x - record.x, z - record.z) < radius + 4.8;
+      });
+      const nearFacility = terraceRecords.some((terrace) => (
+        Math.hypot(x - terrace.x, z - terrace.z)
+          < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
+      ));
+      if (nearStructure || nearFacility
+          || grovePoints.some((point) => Math.hypot(x - point.x, z - point.z) < 7.0)) continue;
+      grovePoints.push({ x, z });
     }
-  });
+    for (let index = 0; index < groveCount; index += 1) {
+      const fallbackSide = THREE.MathUtils.lerp(-31, 31,
+        groveCount <= 1 ? 0.5 : index / (groveCount - 1));
+      const fallbackDepth = 38 + Math.sin((index / Math.max(1, groveCount - 1)) * Math.PI) * 7;
+      const fallback = cameraPoint(fallbackSide, fallbackDepth);
+      const { x, z } = grovePoints[index] || fallback;
+      const y = samplePatch(patch, heights, x, z);
+      const size = 0.82 + rng() * 0.26;
+      position.set(x, y, z);
+      quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
+      scale.set(size, size * (0.94 + rng() * 0.12), size);
+      matrices[index % treeKits.length].push(matrix.compose(position, quaternion, scale).clone());
+    }
+    treeKits.forEach((kit, kitIndex) => {
+      const transforms = matrices[kitIndex];
+      for (const [part, geometry, material] of [
+        ['trunks', kit.trunk, kit.trunkMaterial],
+        ['foliage', kit.foliage, kit.foliageMaterial],
+      ] as const) {
+        const instances = new THREE.InstancedMesh(geometry, material, transforms.length);
+        instances.name = `battlefield_tree_${kit.species}_${part}`;
+        transforms.forEach((transform, index) => instances.setMatrixAt(index, transform));
+        instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+        instances.instanceMatrix.needsUpdate = true;
+        instances.castShadow = false;
+        instances.receiveShadow = true;
+        instances.computeBoundingBox();
+        instances.computeBoundingSphere();
+        instances.matrixAutoUpdate = false;
+        instances.updateMatrix();
+        root.add(instances);
+      }
+    });
+    return treeKits[0]?.detailTier || 'none';
+  };
+  const treeDetailTier = addTreeGroves();
 
   root.updateMatrixWorld(true);
   let objects = 0;
@@ -1197,7 +1254,7 @@ export function buildGarageEnvironment(
     textureSets: Object.freeze([recipe.terrainSurface, 'cobble', 'plaster', 'brick', 'roof', 'wood']),
     treeSpecies: Object.freeze([...recipe.treeSpecies]),
     trees: recipe.treeCount,
-    treeDetailTier: treeKits[0]?.detailTier || 'none',
+    treeDetailTier,
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     ...facilityDetails,

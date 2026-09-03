@@ -5,7 +5,7 @@ export type IceServerConfig = RTCIceServer;
 
 export interface IceConfiguration extends RtcIceLeaseConfiguration {
   relayAvailable: boolean;
-  source: 'lan' | 'service' | 'stun-fallback';
+  source: 'lan' | 'service' | 'host-fallback';
   degradedReason?: string;
   expiresInSeconds?: number;
 }
@@ -25,14 +25,6 @@ interface IceConfigurationOptions {
   retryDelaysMs?: readonly number[];
   wait?: (delayMs: number) => Promise<void>;
 }
-
-export const PUBLIC_STUN_SERVERS: readonly IceServerConfig[] = Object.freeze([{
-  urls: [
-    'stun:stun.cloudflare.com:3478',
-    'stun:stun.cloudflare.com:53',
-    'stun:stun.l.google.com:19302',
-  ],
-}]);
 
 function serverUrls(server: IceServerConfig): string[] {
   return typeof server.urls === 'string' ? [server.urls] : [...server.urls];
@@ -59,15 +51,12 @@ function hasTurn(servers: IceServerConfig[]): boolean {
   return servers.some((server) => serverUrls(server).some((url) => /^turns?:/i.test(url)));
 }
 
-function stunFallback(reason: string): IceConfiguration {
+function hostFallback(reason: string): IceConfiguration {
   return {
-    iceServers: PUBLIC_STUN_SERVERS.map((server) => ({
-      ...server,
-      urls: Array.isArray(server.urls) ? [...server.urls] : server.urls,
-    })),
+    iceServers: [],
     relayOnly: false,
     relayAvailable: false,
-    source: 'stun-fallback',
+    source: 'host-fallback',
     degradedReason: reason,
   };
 }
@@ -115,13 +104,13 @@ function validateIceOptions(
 }
 
 function serviceConfiguration(body: IceServiceBody): IceConfiguration {
-  if (!Array.isArray(body.iceServers)) return stunFallback('turn_service_invalid');
+  if (!Array.isArray(body.iceServers)) return hostFallback('turn_service_invalid');
   const servers = body.iceServers.map(readServer);
-  if (servers.some((server) => server === null)) return stunFallback('turn_service_invalid');
+  if (servers.some((server) => server === null)) return hostFallback('turn_service_invalid');
   const validServers = servers.filter((server): server is IceServerConfig => server !== null);
   const relayAvailable = hasTurn(validServers);
   const relayOnly = body.relayOnly === true;
-  if (relayOnly && !relayAvailable) return stunFallback('turn_service_missing_relay');
+  if (relayOnly && !relayAvailable) return hostFallback('turn_service_missing_relay');
   return {
     iceServers: validServers,
     relayOnly,
@@ -149,8 +138,9 @@ function retryDelayFor(
 }
 
 /** Resolve deployment ICE without ever making private-room creation depend on
- * the optional credential service. STUN remains the bounded degraded path;
- * production TURN credentials are short-lived and never bundled in JS. */
+ * the optional credential service. A failed service falls back to browser
+ * host candidates only; no hidden public STUN request leaves a self-hosted
+ * deployment. Production TURN credentials remain short-lived and server-side. */
 export async function loadIceConfiguration({
   mode,
   endpoint = '',
@@ -162,7 +152,7 @@ export async function loadIceConfiguration({
   if (mode === 'lan') {
     return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' };
   }
-  if (!endpoint || typeof fetchImpl !== 'function') return stunFallback('turn_service_unconfigured');
+  if (!endpoint || typeof fetchImpl !== 'function') return hostFallback('turn_service_unconfigured');
   validateIceOptions(timeoutMs, retryDelaysMs, wait);
 
   const deadline = Date.now() + timeoutMs;
@@ -177,7 +167,7 @@ export async function loadIceConfiguration({
       const body = await responseBody(response);
       if (!response.ok) {
         const retry = retryDelayFor(response, body, retryDelaysMs, attempt, deadline);
-        if (retry.delayMs === null) return stunFallback(retry.reason);
+        if (retry.delayMs === null) return hostFallback(retry.reason);
         await wait(retry.delayMs);
         continue;
       }
@@ -187,6 +177,6 @@ export async function loadIceConfiguration({
     const reason = error instanceof Error && error.name === 'TimeoutError'
       ? 'turn_service_timeout'
       : 'turn_service_unavailable';
-    return stunFallback(reason);
+    return hostFallback(reason);
   }
 }

@@ -412,12 +412,12 @@ that endpoint for a separate credential service. LAN remains direct.
 Credential acquisition classifies provider failures. Bounded retries cover a
 transient provider 429/5xx within the original five-second acquisition budget;
 permanent `turn_service_unconfigured` and invalid-configuration responses do
-not waste time retrying. If acquisition still degrades to STUN, the room UI
-labels the result direct-only instead of claiming universal readiness.
+not waste time retrying. If acquisition degrades to browser host candidates,
+the room UI labels the result direct-only instead of claiming universal readiness.
 
 The typed room-session owner treats those credentials as an expiring lease.
 Late host joins and replacement peer generations refresh near expiry, concurrent
-refreshes share one request, and a temporary STUN-only response cannot evict a
+refreshes share one request, and a temporary direct-only response cannot evict a
 still-valid TURN generation. This matters because room membership outlives the
 default TURN credential lifetime.
 
@@ -447,11 +447,12 @@ remain bounded in the current-generation queue. A partial queue flush restores
 the unsent suffix before reconnecting, so a handover cannot lose negotiation
 messages or emit browser console errors.
 
-STUN-only fallback keeps room creation non-blocking, but cannot traverse every
-NAT. A production release must receive HTTP 200 from `/api/ice`, verify that
+Host-candidate fallback keeps room creation non-blocking without contacting a
+public STUN service, but cannot traverse every NAT. A production release must
+receive HTTP 200 from `/api/ice`, verify that
 its `iceServers` contains a `turn:` or `turns:` URL, and gather a relay
 candidate from a pristine browser using relay-only ICE policy. HTTP 503, a
-STUN-only response, or syntactically valid but unusable credentials are a
+direct-only response, or syntactically valid but unusable credentials are a
 degraded deployment even when `/api/signal` is healthy.
 `npm run net:prod:check` enforces all requirements without printing credentials;
 `--dependency-only` is an endpoint diagnostic, not a release gate.

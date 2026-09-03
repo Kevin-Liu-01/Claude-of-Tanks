@@ -55,7 +55,7 @@ import {
   createWebRTCPeer,
 } from './webrtcPeer.ts';
 import { RoomSignalingClient } from './signalingClient.ts';
-import { resolveSignalUrl } from './signalEndpoint.ts';
+import { resolveMatchServiceUrl, resolveSignalUrl } from './signalEndpoint.ts';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.ts';
 
 function input(overrides = {}) {
@@ -713,6 +713,17 @@ assert.equal(resolveSignalUrl({
 }), 'wss://signal.example.test/signal', 'LAN honors an explicitly configured signaling service');
 assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan: true }),
   'ws://192.168.1.44:7777/signal');
+assert.equal(resolveMatchServiceUrl({ hostname: 'cot.example.test', protocol: 'https:' }),
+  'https://cot.example.test',
+  'public ranked traffic uses the self-hostable same-origin reverse proxy');
+assert.equal(resolveMatchServiceUrl({ hostname: '192.168.1.44', protocol: 'http:' }),
+  'http://192.168.1.44:8790',
+  'local development keeps the standalone match service port');
+assert.equal(resolveMatchServiceUrl({
+  configured: 'https://match.example.test',
+  hostname: 'cot.example.test',
+  protocol: 'https:',
+}), 'https://match.example.test');
 {
   const signaling = new RoomSignalingClient({
     url: 'ws://localhost:7777', WebSocketImpl: FakeWebSocket, requestTimeoutMs: 100,

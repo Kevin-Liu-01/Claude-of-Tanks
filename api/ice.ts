@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 const OFFICIAL_ORIGINS = new Set([
   'https://cot.kevinliu.studio',
@@ -10,6 +12,7 @@ const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
 export interface IceConfigHandlerOptions {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
+  now?: () => number;
 }
 
 export type IceConfigHandler = (
@@ -45,9 +48,44 @@ function validIceServers(value: RuntimeValue): value is RTCIceServer[] {
   });
 }
 
+function credentialTtl(env: NodeJS.ProcessEnv): number {
+  const requestedTtl = Number(env.COT_TURN_TTL_SECONDS || DEFAULT_TTL_SECONDS);
+  return Math.max(3_600, Math.min(86_400,
+    Number.isFinite(requestedTtl) ? Math.round(requestedTtl) : DEFAULT_TTL_SECONDS));
+}
+
+interface CoturnCredentialConfiguration {
+  iceServers: RTCIceServer[];
+  relayOnly: false;
+  expiresInSeconds: number;
+}
+
+function coturnCredentials(
+  env: NodeJS.ProcessEnv,
+  now: () => number,
+): CoturnCredentialConfiguration | 'invalid' | null {
+  const rawUrls = String(env.COT_TURN_URLS || '').trim();
+  const secret = String(env.COT_TURN_SHARED_SECRET || '').trim();
+  if (!rawUrls && !secret) return null;
+  const urls = rawUrls.split(',').map((url) => url.trim()).filter(Boolean);
+  if (!secret || urls.length === 0 || urls.some((url) => !/^turns?:/i.test(url))) return 'invalid';
+  const ttl = credentialTtl(env);
+  const expiresAt = Math.floor(now() / 1_000) + ttl;
+  const configuredLabel = String(env.COT_TURN_USERNAME || 'cot').trim();
+  const label = configuredLabel.replace(/[^a-z0-9_.-]/gi, '').slice(0, 48) || 'cot';
+  const username = `${expiresAt}:${label}`;
+  const credential = createHmac('sha1', secret).update(username).digest('base64');
+  return {
+    iceServers: [{ urls: urls.length === 1 ? urls[0] : urls, username, credential }],
+    relayOnly: false,
+    expiresInSeconds: ttl,
+  };
+}
+
 export function createIceConfigHandler({
   env = process.env,
   fetchImpl = globalThis.fetch,
+  now = Date.now,
 }: IceConfigHandlerOptions = {}): IceConfigHandler {
   return async function iceConfig(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (request.method !== 'GET') {
@@ -73,15 +111,23 @@ export function createIceConfigHandler({
       return;
     }
 
+    const coturn = coturnCredentials(env, now);
+    if (coturn === 'invalid') {
+      send(response, 503, { error: 'turn_configuration_invalid' });
+      return;
+    }
+    if (coturn) {
+      send(response, 200, coturn);
+      return;
+    }
+
     const keyId = String(env.COT_CLOUDFLARE_TURN_KEY_ID || '').trim();
     const token = String(env.COT_CLOUDFLARE_TURN_API_TOKEN || '').trim();
     if (!keyId || !token) {
       send(response, 503, { error: 'turn_service_unconfigured' });
       return;
     }
-    const requestedTtl = Number(env.COT_TURN_TTL_SECONDS || DEFAULT_TTL_SECONDS);
-    const ttl = Math.max(3_600, Math.min(86_400,
-      Number.isFinite(requestedTtl) ? Math.round(requestedTtl) : DEFAULT_TTL_SECONDS));
+    const ttl = credentialTtl(env);
     try {
       const upstream = await fetchImpl(
         `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}` +
@@ -118,4 +164,3 @@ export function createIceConfigHandler({
 }
 
 export default createIceConfigHandler();
-import type { IncomingMessage, ServerResponse } from 'node:http';

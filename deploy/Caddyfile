@@ -1,0 +1,27 @@
+{$COT_SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	@signal path /api/signal
+	handle @signal {
+		rewrite * /signal
+		reverse_proxy signal:7777
+	}
+
+	handle /api/ice {
+		reverse_proxy signal:7777
+	}
+
+	handle /ranked/* {
+		reverse_proxy match:8790
+	}
+
+	handle /match {
+		reverse_proxy match:8790
+	}
+
+	handle {
+		root * /srv
+		try_files {path} {path}.html /index.html
+		file_server
+	}
+}

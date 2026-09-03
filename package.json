@@ -31,6 +31,7 @@
     "test": "node tools/run-selftests.mjs core",
     "posttest": "node tools/run-selftests.mjs post",
     "server:signal": "node server/signalingServer.ts",
+    "selfhost:config": "docker compose --env-file .env -f compose.selfhost.yaml config",
     "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
     "build:private": "vite build",
     "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",

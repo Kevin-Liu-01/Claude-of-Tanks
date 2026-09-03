@@ -84,6 +84,7 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   core: Object.freeze([
     'tools/public-repo-hygiene.selftest.mjs',
+    'tools/selfhost-deployment.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/production-multiplayer-check.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',

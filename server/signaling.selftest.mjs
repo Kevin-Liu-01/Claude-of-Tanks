@@ -6,6 +6,7 @@ import { DistributedSignalingRoomStore } from './distributedRoomStore.ts';
 import { SignalingRoomStore } from './roomStore.ts';
 import { createRoomCode } from './roomCode.ts';
 import { createSignalingServer } from './signalingServer.ts';
+import { createIceConfigHandler } from '../api/ice.ts';
 import { RoomSignalingClient } from '../src/net/signalingClient.ts';
 
 assert.equal(createRoomCode(() => 0), 'AAAAAA');
@@ -168,9 +169,24 @@ const signaling = createSignalingServer({
   allowedOrigins: [productionOrigin],
   webSocketPaths: ['/api/signal'],
   healthPaths: ['/api/signal'],
+  iceConfigHandler: createIceConfigHandler({
+    env: {
+      COT_ALLOWED_ORIGINS: productionOrigin,
+      COT_TURN_URLS: 'turn:turn.self-host.test:3478',
+      COT_TURN_SHARED_SECRET: 'self-host-secret',
+    },
+    now: () => 100_000_000,
+  }),
 });
 const address = await signaling.listen();
 const url = `ws://127.0.0.1:${address.port}/api/signal`;
+const iceResponse = await fetch(`http://127.0.0.1:${address.port}/api/ice`, {
+  headers: { origin: productionOrigin },
+});
+assert.equal(iceResponse.status, 200, 'standalone signaling also serves local TURN credentials');
+const iceBody = await iceResponse.json();
+assert.equal(iceBody.iceServers[0].urls, 'turn:turn.self-host.test:3478');
+assert.match(iceBody.iceServers[0].username, /^\d+:cot$/);
 await assert.rejects(connect(url, 'https://attacker.example'), /Unexpected server response: 403/);
 const host = await connect(url, productionOrigin);
 const guest = await connect(url, productionOrigin);

@@ -43,8 +43,8 @@ assert.equal(repositoryStatsEndpointAvailable({ hostname: '127.0.0.1', protocol:
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'localhost', protocol: 'https:' }), false);
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'cot.kevinliu.studio', protocol: 'https:' }), true);
 
-// A fresh surface renders an honest loading state immediately and refreshes
-// through the same-origin cached endpoint without waiting for user intent.
+// A fresh surface performs no optional network work. Explicit GitHub-link
+// intent refreshes through the same-origin cached endpoint.
 const githubIntentHandlers = {};
 const githubControlAttributes = new Map();
 const githubControlProbe = {
@@ -74,23 +74,22 @@ const githubMount = mountGitHubStars({
   matches: () => false,
   querySelectorAll: () => [githubStarProbe],
 });
-assert.equal(githubFetches, 1, 'mounting star counts performs one automatic live refresh');
-assert.equal(githubStarProbe.dataset.githubStarsState, 'loading');
+assert.equal(githubFetches, 0, 'mounting star counts performs no optional network request');
+assert.equal(githubStarProbe.dataset.githubStarsState, 'unavailable');
 assert.equal(githubStarProbe.textContent, '');
-assert.equal(githubStarAttributes.get('aria-busy'), 'true');
-assert.equal(githubStarAttributes.get('aria-label'), 'Loading GitHub star count');
-resolveGitHubFetch();
 await githubMount;
-assert.equal(githubStarProbe.dataset.githubStarsState, 'ready');
-assert.equal(githubStarProbe.textContent, '321');
 assert.equal(githubStarAttributes.has('aria-busy'), false);
-assert.equal(githubStarAttributes.get('aria-label'), '321 GitHub stars');
-assert.equal(githubControlAttributes.get('aria-label'), 'Claude of Tanks on GitHub, 321 stars');
+assert.equal(githubStarAttributes.get('aria-label'), 'GitHub star count unavailable');
 assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
 assert.equal(typeof githubIntentHandlers.focus, 'function');
-await githubIntentHandlers.pointerenter();
+const githubIntent = githubIntentHandlers.pointerenter();
 assert.equal(githubFetches, 1, 'GitHub intent reuses the fresh verified count');
+resolveGitHubFetch();
+await githubIntent;
+assert.equal(githubStarProbe.dataset.githubStarsState, 'ready');
 assert.equal(githubStarProbe.textContent, '321');
+assert.equal(githubStarAttributes.get('aria-label'), '321 GitHub stars');
+assert.equal(githubControlAttributes.get('aria-label'), 'Claude of Tanks on GitHub, 321 stars');
 globalThis.fetch = originalFetch;
 assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
   'desktop navigation controls must retain visible spacing');

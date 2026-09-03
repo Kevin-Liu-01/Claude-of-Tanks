@@ -1117,6 +1117,7 @@ export function createGarageStage(
   group.add(pool2);
 
   // --- props: crates, barrels, tires, tool cabinet, workbench ----------------
+  const addWorkshopProps = (): void => {
   const crateTexC = document.createElement('canvas');
   crateTexC.width = crateTexC.height = 128;
   {
@@ -1263,6 +1264,8 @@ export function createGarageStage(
     leg.position.set(-21.6 + lx, 0.5, 1.5 + lz);
     group.add(leg);
   }
+  };
+  addWorkshopProps();
 
   // --- foreground staging (r4): the camera-side floor below the dais edge
   // rendered as featureless charcoal (critique: "dead empty floor"). WoT
@@ -1272,7 +1275,7 @@ export function createGarageStage(
   //   3. extra oil staining in the camera foreground,
   //   4. wheel chocks + a traffic cone at the frame's lower corners.
   // Decals are depthWrite-false quads a few mm over the floor plane.
-  {
+  const addForegroundStaging = (): void => {
     // 1. painted ring decal (dashed, worn)
     const ringC = document.createElement('canvas');
     ringC.width = ringC.height = 512;
@@ -1367,7 +1370,8 @@ export function createGarageStage(
       base.position.set(nx, 0.018, nz);
       group.add(body, band, base);
     }
-  }
+  };
+  addForegroundStaging();
 
   // Everything authored above except the turntable and variant architecture
   // belongs to the original Verdant indoor set. Hiding this explicit owner

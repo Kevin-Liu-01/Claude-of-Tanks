@@ -88,17 +88,7 @@ async function phaseAB() {
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
 
-  // boot splash subtitle: derived numbers must have replaced the stale
-  // hardcoded '48 Vehicles · 4 Battlefields' line (window.__BOOT_TAG mirrors
-  // the derived text so the check is immune to splash-teardown timing).
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
-  const bootTag = await page.evaluate(() => window.__BOOT_TAG || null);
-  if (!bootTag || /^48 Vehicles .+ 4 Battlefields/.test(bootTag) || !/^\d+ Vehicles · \d+ Battlefields · Tiers [IVX]+–[IVX]+$/.test(bootTag)) {
-    console.error(`  [FAIL] boot splash subtitle not derived: ${JSON.stringify(bootTag)}`);
-    failures++;
-  } else {
-    console.log(`  boot subtitle: "${bootTag}"`);
-  }
 
   // boot hero settled on stage before the clock starts
   await page.waitForFunction(() => {

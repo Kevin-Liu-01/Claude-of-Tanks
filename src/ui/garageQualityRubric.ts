@@ -1,8 +1,40 @@
+interface GarageArchitectureQualityReceipt {
+  readonly unsupportedParts?: number;
+  readonly maxGroundContactErrorM?: number;
+  readonly placementOverlaps?: number;
+  readonly structuralConnections?: number;
+  readonly servicePurposeTags?: readonly string[];
+  readonly operationalMachines?: number;
+  readonly heavyLiftSystems?: number;
+  readonly facilityStations?: number;
+  readonly openingSightlineIntrusions?: number;
+  readonly distinctiveElements?: readonly string[];
+  readonly structures?: number;
+  readonly sourceBeat?: string;
+  readonly serviceFrame?: string;
+  readonly terrainProfile?: string;
+  readonly signature?: string;
+  readonly treeSpecies?: readonly string[];
+  readonly landmarkHeightM?: number;
+  readonly facilityMaterialClasses?: number;
+  readonly connectedExteriorParts?: number;
+  readonly textureSets?: readonly string[];
+  readonly drawCalls?: number;
+  readonly triangles?: number;
+  readonly lastBuildMs?: number;
+}
+
+interface GarageWorkshopQualityReceipt {
+  readonly exhibitCount?: number;
+  readonly workshopOrbitCoverageDegrees?: number;
+  readonly modelMode?: string;
+}
+
 export interface GarageQualityInput {
   readonly id: string;
   readonly isVerdant: boolean;
-  readonly architecture: Readonly<Record<string, unknown>>;
-  readonly workshop: Readonly<Record<string, unknown>>;
+  readonly architecture: Readonly<GarageArchitectureQualityReceipt>;
+  readonly workshop: Readonly<GarageWorkshopQualityReceipt>;
   readonly transitionMaxGapMs: number;
 }
 
@@ -18,9 +50,9 @@ export interface GarageQualityScore {
   readonly failures: readonly string[];
 }
 
-const number = (value: unknown): number => Number(value || 0);
-const rows = (value: unknown): readonly unknown[] => Array.isArray(value) ? value : [];
-const text = (value: unknown): string => String(value || '');
+const number = (value: number | undefined): number => Number(value || 0);
+const rows = <T>(value: readonly T[] | undefined): readonly T[] => value || [];
+const text = (value: string | undefined): string => value || '';
 
 /**
  * Score the measurable half of the Garage approval rubric.

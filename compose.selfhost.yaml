@@ -1,0 +1,84 @@
+name: claude-of-tanks
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhost
+      target: web
+    environment:
+      COT_SITE_ADDRESS: ${COT_SITE_ADDRESS:-:80}
+    ports:
+      - "${COT_HTTP_PORT:-8080}:80"
+      - "${COT_HTTPS_PORT:-8443}:443"
+    depends_on:
+      signal:
+        condition: service_healthy
+      match:
+        condition: service_healthy
+    restart: unless-stopped
+
+  signal:
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhost
+      target: runtime
+    command: npm run server:signal
+    environment:
+      COT_SIGNAL_HOST: 0.0.0.0
+      COT_SIGNAL_PORT: 7777
+      COT_ALLOWED_ORIGINS: ${COT_PUBLIC_ORIGIN:-http://localhost:8080}
+      COT_TURN_URLS: ${COT_TURN_URLS:?set COT_TURN_URLS}
+      COT_TURN_SHARED_SECRET: ${COT_TURN_SHARED_SECRET:?set COT_TURN_SHARED_SECRET}
+      COT_TURN_USERNAME: ${COT_TURN_USERNAME:-cot}
+      COT_TURN_TTL_SECONDS: ${COT_TURN_TTL_SECONDS:-28800}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7777/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
+  match:
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhost
+      target: runtime
+    command: npm run server:match
+    environment:
+      COT_MATCH_HOST: 0.0.0.0
+      COT_MATCH_PORT: 8790
+      COT_ALLOWED_ORIGINS: ${COT_PUBLIC_ORIGIN:-http://localhost:8080}
+      COT_RATING_FILE: /var/lib/claude-of-tanks/ratings.json
+    volumes:
+      - match-data:/var/lib/claude-of-tanks
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
+  turn:
+    image: coturn/coturn:4.6.3-r3
+    command:
+      - --no-cli
+      - --log-file=stdout
+      - --fingerprint
+      - --lt-cred-mech
+      - --use-auth-secret
+      - --static-auth-secret=${COT_TURN_SHARED_SECRET:?set COT_TURN_SHARED_SECRET}
+      - --realm=${COT_TURN_REALM:-claude-of-tanks}
+      - --external-ip=${COT_TURN_EXTERNAL_IP:?set COT_TURN_EXTERNAL_IP}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-tls
+      - --no-dtls
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+    restart: unless-stopped
+
+volumes:
+  match-data:

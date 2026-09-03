@@ -5,6 +5,13 @@ export interface SignalEndpointOptions {
   hostname?: RuntimeValue;
 }
 
+function urlHost(hostname: RuntimeValue): string {
+  const hostnameText = String(hostname);
+  return hostnameText.includes(':') && !hostnameText.startsWith('[')
+    ? `[${hostnameText}]`
+    : hostnameText;
+}
+
 function isLocalNetworkHost(hostname: RuntimeValue): boolean {
   const host = String(hostname || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
   if (host === 'localhost' || host === '::1' || host.endsWith('.local')) return true;
@@ -28,10 +35,24 @@ export function resolveSignalUrl({
   const explicit = String(configured || '').trim();
   if (explicit) return explicit;
   const scheme = protocol === 'https:' ? 'wss:' : 'ws:';
-  const hostnameText = String(hostname);
-  const host = hostnameText.includes(':') && !hostnameText.startsWith('[')
-    ? `[${hostnameText}]`
-    : hostnameText;
+  const host = urlHost(hostname);
   if (!isLocalNetworkHost(hostname)) return `${scheme}//${host}/api/signal`;
   return `${scheme}//${host}:7777/signal`;
+}
+
+/** Resolve the authoritative match service without requiring a hosted
+ * provider. Public deployments use the current origin through their reverse
+ * proxy; development and physical-LAN hosts retain the bundled port 8790. */
+export function resolveMatchServiceUrl({
+  configured = '',
+  protocol = 'http:',
+  hostname = 'localhost',
+}: SignalEndpointOptions = {}): string {
+  const explicit = String(configured || '').trim();
+  if (explicit) return explicit;
+  const scheme = protocol === 'https:' ? 'https:' : 'http:';
+  const host = urlHost(hostname);
+  return isLocalNetworkHost(hostname)
+    ? `${scheme}//${host}:8790`
+    : `${scheme}//${host}`;
 }

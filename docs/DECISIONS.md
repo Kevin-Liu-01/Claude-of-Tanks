@@ -220,11 +220,11 @@ activation effect.
 
 ## Multiplayer connectivity and persistence
 
-Private internet rooms use same-origin durable signaling plus direct ICE with
-TURN fallback. STUN-only operation is degraded service, not proof that arbitrary
-friends can connect. TURN credentials are short-lived and issued from server
-secrets; long-lived relay credentials never ship to browsers. LAN rooms avoid
-internet ICE services.
+Private internet rooms use same-origin durable signaling plus operator-supplied
+ICE. TURN credentials are short-lived and issued from server secrets; long-lived
+relay credentials never ship to browsers. An unavailable ICE endpoint falls
+back to browser host candidates rather than silently contacting a public STUN
+service. LAN rooms avoid internet ICE services entirely.
 
 Room membership survives transient transport loss and page reload. A stable
 player ID reclaims its seat through a new page-session and RTC generation;

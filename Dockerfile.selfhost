@@ -1,0 +1,18 @@
+FROM node:24-bookworm-slim AS source
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+
+FROM source AS build
+ARG VITE_SELF_HOSTED=1
+ENV VITE_SELF_HOSTED=$VITE_SELF_HOSTED
+RUN npm run build
+
+FROM caddy:2.10-alpine AS web
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+
+FROM source AS runtime
+ENV NODE_ENV=production

@@ -900,8 +900,7 @@ export function addGarageFacilityDetails({
   const [featureSide, featureDepth] = layout.feature;
   const featureCluster = fixedCluster(featureSide, featureDepth);
 
-  switch (variant.architecture) {
-    case 'shade_depot':
+  const addShadeDepot = (): void => {
       servicePurposeTags.add('desert-convoy-refit');
       servicePurposeTags.add('heat-shade-logistics');
       addShadeHall(featureSide, 17, featureDepth, new THREE.Color(0x8e6a42));
@@ -910,8 +909,8 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, -4.8, -2.45, 4.2);
       addPoweredWinch(featureCluster, 5.4, -2.4, new THREE.Color(0xb98536));
       addPartsPallet(featureCluster, 0.4, -2.65, 2);
-      break;
-    case 'repair_bunker':
+  };
+  const addRepairBunker = (): void => {
       servicePurposeTags.add('winter-recovery');
       servicePurposeTags.add('heated-component-bay');
       addShadeHall(featureSide, 18, featureDepth, new THREE.Color(0x77858c));
@@ -924,8 +923,8 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, 0, -2.45, 5.2);
       addPoweredWinch(featureCluster, 6.5, -2.35, new THREE.Color(0x758b9a));
       addPartsPallet(featureCluster, -6.1, -2.55, 2);
-      break;
-    case 'brick_arsenal':
+  };
+  const addBrickArsenal = (): void => {
       servicePurposeTags.add('urban-arsenal-loading');
       servicePurposeTags.add('armored-parts-store');
       // The source factory and fire-station facades already provide the
@@ -948,8 +947,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -7.2, -1.45, new THREE.Color(0x9a6542));
       addPartsPallet(featureCluster, 6.8, -1.15, 3);
       addSafetyRail(featureCluster, 0, -1.75, 8.5);
-      break;
-    case 'naval_drydock':
+  };
+  const addNavalDrydock = (): void => {
       servicePurposeTags.add('drydock-heavy-lift');
       servicePurposeTags.add('saltwater-recovery');
       addPortalCrane(featureSide, featureDepth + 1.4, 19, 7.3,
@@ -965,8 +964,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -6.1, -3.9, new THREE.Color(0x3e7c88));
       addPoweredWinch(featureCluster, 6.1, -3.9, new THREE.Color(0x3e7c88));
       addSafetyRail(featureCluster, 0, 4.2, 15.5);
-      break;
-    case 'rail_roundhouse':
+  };
+  const addRailRoundhouse = (): void => {
       servicePurposeTags.add('rail-served-overhaul');
       servicePurposeTags.add('roundhouse-transfer');
       heavyLiftSystems += 1;
@@ -976,8 +975,8 @@ export function addGarageFacilityDetails({
       addCrates(featureSide + 9, featureDepth + 1, 2);
       addPoweredWinch(featureCluster, -8.4, -2.7, new THREE.Color(0xa56b34));
       addPartsPallet(featureCluster, 8.1, -2.65, 3);
-      break;
-    case 'rain_canopy':
+  };
+  const addRainCanopy = (): void => {
       servicePurposeTags.add('monsoon-drainage');
       servicePurposeTags.add('covered-field-repair');
       addShadeHall(featureSide, 19, featureDepth, new THREE.Color(0x4d6a58));
@@ -990,8 +989,8 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, -5.5, -2.45, 4.2);
       addPoweredWinch(featureCluster, 5.9, -2.4, new THREE.Color(0x4e8065));
       addSafetyRail(featureCluster, 0, 3.9, 12.5);
-      break;
-    case 'rock_cavern':
+  };
+  const addRockCavern = (): void => {
       servicePurposeTags.add('alpine-cavern-repair');
       servicePurposeTags.add('avalanche-recovery');
       // Open, load-bearing tunnel mouth. The earlier version was one solid
@@ -1033,8 +1032,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -6.8, -2.1, new THREE.Color(0x758692));
       addPartsPallet(featureCluster, 6.4, -2.15, 3);
       addSafetyRail(featureCluster, 0, 3.8, 12.8);
-      break;
-    case 'recovery_yard':
+  };
+  const addRecoveryYard = (): void => {
       servicePurposeTags.add('battle-damage-recovery');
       servicePurposeTags.add('rollover-heavy-lift');
       addRecoveryCrane(featureSide, featureDepth - 1.0);
@@ -1053,8 +1052,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, 0, -3.8, new THREE.Color(0xa75f3e));
       addPartsPallet(featureCluster, 0, 2.0, 3);
       addSafetyRail(featureCluster, 0, 3.25, 13.6);
-      break;
-    case 'factory_line':
+  };
+  const addFactoryLine = (): void => {
       servicePurposeTags.add('factory-line-assembly');
       servicePurposeTags.add('rail-fed-component-transfer');
       // The real map-authored transfer gantry already supplies Foundry's
@@ -1084,12 +1083,21 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, 0, -4.0, new THREE.Color(0x9a5439));
       addPartsPallet(featureCluster, 0, 3.8, 3);
       addSafetyRail(featureCluster, 0, 5.0, 13.5);
-      break;
-    default:
-      // Verdant owns the restored original workshop in garageStage.ts. This
-      // detail pack is never attached there; keep the switch exhaustive.
-      break;
-  }
+  };
+  const variantBuilders: Partial<Record<GarageVariant['architecture'], () => void>> = {
+    shade_depot: addShadeDepot,
+    repair_bunker: addRepairBunker,
+    brick_arsenal: addBrickArsenal,
+    naval_drydock: addNavalDrydock,
+    rail_roundhouse: addRailRoundhouse,
+    rain_canopy: addRainCanopy,
+    rock_cavern: addRockCavern,
+    recovery_yard: addRecoveryYard,
+    factory_line: addFactoryLine,
+  };
+  // Verdant owns the restored original workshop in garageStage.ts, so the
+  // field-shed architecture intentionally has no additional facility builder.
+  variantBuilders[variant.architecture]?.();
 
   // Vehicle exhibits do not belong to the cached environment pack. One
   // asynchronously streamed, full-detail four-bay fleet graph supplies every
@@ -1143,6 +1151,7 @@ export function addGarageFacilityDetails({
       parameters: Object.freeze({ color: 0xffffff, roughness: 0.94, metalness: 0.01 }),
     }),
   ] as const);
+  const emitFacilityMeshes = (): void => {
   for (const renderClass of renderClasses) {
     const instances = boxInstances.filter((instance) => (
       renderClass.source.includes(instance.materialClass as never)
@@ -1182,6 +1191,8 @@ export function addGarageFacilityDetails({
     }
   }
   for (const geometry of unitCylinders.values()) geometry.dispose();
+  };
+  emitFacilityMeshes();
 
   // All primitive bases were transformed directly into owned geometries; no
   // live object, listener, animation, or per-frame updater survives this call.

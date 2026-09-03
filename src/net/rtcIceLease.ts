@@ -101,7 +101,7 @@ export class RtcIceLease {
     const request = this.refresh().then((raw) => {
       const next = cloneConfiguration(raw);
       // Preserve a still-valid relay if a transient endpoint failure degrades
-      // to the STUN fallback. The next replacement will retry after a short
+      // to direct host candidates. The next replacement will retry after a short
       // cooldown rather than throwing away the working credential generation.
       if (!hasTurnServer(next.iceServers) && hasTurnServer(previous.iceServers) &&
           this.now() < previousExpiresAtMs) {

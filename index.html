@@ -369,7 +369,7 @@
     }
     .cot-credits::backdrop { background: rgba(2,4,7,.84); backdrop-filter: blur(7px); }
     .cot-credits-grid { display: grid; grid-template-columns: 190px 1fr; min-height: 300px; }
-    .cot-credits-portrait { width: 100%; height: 100%; min-height: 300px; object-fit: cover; object-position: center 18%; background: #111923; }
+    .cot-credits-portrait { width: 100%; height: 100%; min-height: 300px; padding: 28px; object-fit: contain; object-position: center; background: radial-gradient(circle at 50% 42%,#182536 0,#0b1119 72%); }
     .cot-credits-copy { position: relative; padding: 34px 36px 30px; text-align: left; }
     .cot-credits-kicker { color: #f0a030; font-size: 9px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; }
     .cot-credits h2 { margin: 9px 0 13px; font-size: 28px; line-height: 1; }
@@ -377,7 +377,7 @@
     .cot-credits-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
     .cot-credits-close { position: absolute; top: 15px; right: 17px; border: 0; background: transparent; color: #aebbc7; cursor: pointer; font-size: 24px; line-height: 1; }
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{height:150px;min-height:150px;object-position:center 24%}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{height:150px;min-height:150px;padding:16px;object-position:center}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-copy{padding:27px 24px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits h2{font-size:24px}
     .cot-boot-gate {
@@ -826,7 +826,7 @@
 
   <dialog class="cot-credits" id="cot-credits" data-cot-boot-control aria-labelledby="cot-credits-title">
     <div class="cot-credits-grid">
-      <img class="cot-credits-portrait" src="https://github.com/Kevin-Liu-01.png?size=480" alt="Kevin Liu" />
+      <img class="cot-credits-portrait" src="/brand/og-logo-transparent.png" alt="Claude of Tanks insignia" />
       <div class="cot-credits-copy">
         <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits">&times;</button>
         <span class="cot-credits-kicker">Creator / designer / director</span>

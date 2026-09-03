@@ -17,8 +17,22 @@ assert.match(garageSource,
   /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*width:98px;height:52px;[^}]*--cot-thumb-scale,1\.2[^}]*\}/,
   'compact garage cards preserve the lifted, enlarged portrait treatment');
 assert.match(garageSource,
-  /\.cot-card \.ti\{[^}]*opacity:0;[^}]*\}[\s\S]*?\.cot-card \.ti\[data-cot-portrait-framed='true'\]\{opacity:1;\}/,
-  'tank portraits remain hidden until their final centered frame is applied');
+  /\.cot-card \.ti\{[^}]*opacity:1;[^}]*\}/,
+  'tank portraits paint immediately with a safe default frame while exact normalization idles');
+assert.match(garageSource,
+  /const cardsByCountry = new Map<string, HTMLElement\[\]>\(\);/,
+  'nation switches update indexed card groups instead of rescanning the fleet');
+assert.match(garageSource,
+  /cardsEl\.animate\(\[\{ opacity: 0\.76 \}, \{ opacity: 1 \}\]/,
+  'nation switches create one strip animation instead of one animation per vehicle');
+assert.match(garageSource,
+  /cardById\.get\(previousSelectedId\)\?\.classList\.remove\('sel'\);[\s\S]*?card\?\.classList\.add\('sel'\);/,
+  'selection updates only the previous and next cards');
+assert.match(garageSource, /shellAmmunitionCapacity\(shell\).*carried/,
+  'the dossier exposes authoritative per-channel ammunition capacity');
+assert.match(garageSource,
+  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section">\$\{statSectionTitle\('speed', 'Performance'/,
+  'the persistent equipment loadout appears above primary performance instead of below the dossier fold');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;left:10px;right:10px;bottom:8px;/,
   'tank titles use the card padding as a stable bottom inset');
