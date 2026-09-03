@@ -49,6 +49,7 @@ import {
   upsertActorKey,
   clearActorTrack as clearStoryboardActorTrack,
   sampleCameraRail,
+  sampleCameraCues,
   sampleActorTrack,
 } from './studioTimeline.js';
 
@@ -91,6 +92,9 @@ const _cameraSample = {
   x: 0, y: 0, z: 0,
   lookX: 0, lookY: 0, lookZ: 0,
   fov: 50, rollDeg: 0, shotId: null,
+};
+const _cameraCueSample = {
+  rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0,
 };
 const _actorSample = {
   x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: null,
@@ -1474,9 +1478,17 @@ export function createStudio(ctx) {
     if (!sampleCameraRail(storyboard.shots, timeMs, _cameraSample)) return false;
     camera.position.set(_cameraSample.x, _cameraSample.y, _cameraSample.z);
     cam.mode = 'fly';
-    cam.fov = _cameraSample.fov;
-    cam.roll = _cameraSample.rollDeg * DEG;
     _v2.set(_cameraSample.lookX, _cameraSample.lookY, _cameraSample.lookZ);
+    if (sampleCameraCues(storyboard.cameraCues, timeMs, _cameraCueSample)) {
+      _fwd.copy(_v2).sub(camera.position).normalize();
+      _v3.crossVectors(_fwd, _up).normalize();
+      _v1.crossVectors(_v3, _fwd).normalize();
+      camera.position.addScaledVector(_v3, _cameraCueSample.rightM);
+      camera.position.addScaledVector(_v1, _cameraCueSample.upM);
+      camera.position.addScaledVector(_fwd, _cameraCueSample.forwardM);
+    }
+    cam.fov = Math.max(10, Math.min(120, _cameraSample.fov + _cameraCueSample.fovKickDeg));
+    cam.roll = (_cameraSample.rollDeg + _cameraCueSample.rollDeg) * DEG;
     lookAt(_v2);
     return true;
   }
@@ -1674,8 +1686,8 @@ export function createStudio(ctx) {
     return Math.atan2(toX - fromX, toZ - fromZ) / DEG;
   }
 
-  /** Build an immediately recordable 12-second battle from the first two actors. */
-  function directDuel() {
+  /** Build an immediately recordable 15-second promotional battle. */
+  function directDuel(opts = {}) {
     if (recording) throw new Error('Stop recording before replacing the storyboard');
     if (actors.length < 2) throw new Error('Direct Duel needs at least two staged tanks');
     const alpha = actors[0];
@@ -1686,46 +1698,240 @@ export function createStudio(ctx) {
     const distance = Math.max(1, Math.hypot(dx, dz));
     const ux = dx / distance; const uz = dz / distance;
     const px = uz; const pz = -ux;
+    const variant = Math.abs(Math.round(Number(opts.variant) || 0));
+    const style = variant % 4;
+    const side = variant % 2 === 0 ? 1 : -1;
     const move = Math.min(8, Math.max(3, distance * 0.14));
     const a1x = ax + ux * move; const a1z = az + uz * move;
     const b1x = bx - ux * move; const b1z = bz - uz * move;
+    const a2x = a1x + ux * 3 + px * side * 1.2;
+    const a2z = a1z + uz * 3 + pz * side * 1.2;
+    const b2x = b1x - ux * 1.5 - px * side * 2.2;
+    const b2z = b1z - uz * 1.5 - pz * side * 2.2;
     const midX = (a1x + b1x) * 0.5; const midZ = (a1z + b1z) * 0.5;
     const midY = hfProxy.getHeightAt(midX, midZ) + 2.2;
     const alphaFacing = bearingDeg(ax, az, bx, bz);
     const bravoFacing = bearingDeg(bx, bz, ax, az);
+    const alphaExitFacing = bearingDeg(a1x, a1z, a2x, a2z);
+    const bravoExitFacing = bearingDeg(b1x, b1z, b2x, b2z);
+    const bravoStartFx = Math.sin(bravoFacing * DEG);
+    const bravoStartFz = Math.cos(bravoFacing * DEG);
+    const bravoStartPx = bravoStartFz;
+    const bravoStartPz = -bravoStartFx;
+    const bravoExitFx = Math.sin(bravoExitFacing * DEG);
+    const bravoExitFz = Math.cos(bravoExitFacing * DEG);
+    const bravoExitPx = bravoExitFz;
+    const bravoExitPz = -bravoExitFx;
+    const bravoTurnX = b1x + (b2x - b1x) * 0.36;
+    const bravoTurnZ = b1z + (b2z - b1z) * 0.36;
+    const wrapFacing = (value) => {
+      let result = value % 360;
+      if (result > 180) result -= 360;
+      if (result < -180) result += 360;
+      return result;
+    };
+    const turretTo = (hullFacing, fromX, fromZ, toX, toZ) => wrapFacing(
+      bearingDeg(fromX, fromZ, toX, toZ) - hullFacing,
+    );
     const cameraAt = (x, z, height) => [x, hfProxy.getHeightAt(x, z) + height, z];
     const alphaRef = String(alpha.name || alpha.uid);
     const bravoRef = String(bravo.name || bravo.uid);
+    const reverseLead = style === 1;
+    const leadX = reverseLead ? bx : ax;
+    const leadZ = reverseLead ? bz : az;
+    const leadMoveX = reverseLead ? b1x : a1x;
+    const leadMoveZ = reverseLead ? b1z : a1z;
+    const leadFx = reverseLead ? -ux : ux;
+    const leadFz = reverseLead ? -uz : uz;
+    const leadPx = leadFz;
+    const leadPz = -leadFx;
+    const wideForward = [-19, 13, -28, 4][style];
+    const wideSide = [38, 31, 46, 52][style];
+    const wideHeight = [17, 11, 27, 8][style];
+    const revealBack = [12, 8, 16, 6][style];
+    const revealSide = [7, 11, 4, 14][style];
+    const revealHeight = [2.1, 1.3, 3.4, 0.9][style];
+    const trackBack = [6, 10, 4, 8][style];
+    const trackSide = [4.2, 7.5, 2.4, 10][style];
+    const trackHeight = [1.15, 2.4, 0.8, 4.5][style];
+    const trackFov = [31, 25, 38, 55][style];
+    const overheadHeight = [39, 52, 31, 65][style];
+    const impactForward = [-7, -12, 5, -4][style];
+    const impactSide = [8, -12, 15, 5][style];
+    const turnBack = [9, 13, 7, 18][style];
+    const turnSide = [6, 10, 4, 15][style];
+    const turnHeight = [2.2, 4.5, 1.25, 7.5][style];
 
     storyboard = normalizeStoryboard({
-      durationMs: 12000,
+      durationMs: 15000,
       shots: [
-        { id: 'duel-wide', label: 'Establishing', tMs: 0,
-          pos: cameraAt(midX + px * 34 - ux * 8, midZ + pz * 34 - uz * 8, 8),
-          lookAt: [midX, midY, midZ], fov: 48, transition: 'smooth' },
-        { id: 'duel-alpha', label: 'Alpha fires', tMs: 3500,
-          pos: cameraAt(a1x - ux * 15 + px * 5, a1z - uz * 15 + pz * 5, 4.2),
-          lookAt: [midX + ux * 4, midY, midZ + uz * 4], fov: 39, transition: 'cut' },
-        { id: 'duel-cross', label: 'Return fire', tMs: 6200,
-          pos: cameraAt(midX - px * 25, midZ - pz * 25, 5.8),
-          lookAt: [midX, midY, midZ], fov: 42, transition: 'smooth' },
-        { id: 'duel-impact', label: 'Knockout', tMs: 8200,
-          pos: cameraAt(b1x + px * 15 - ux * 5, b1z + pz * 15 - uz * 5, 3.3),
-          lookAt: [b1x, hfProxy.getHeightAt(b1x, b1z) + 1.8, b1z], fov: 34, transition: 'cut' },
-        { id: 'duel-end', label: 'Aftermath', tMs: 12000,
-          pos: cameraAt(midX + px * 22 + ux * 7, midZ + pz * 22 + uz * 7, 6.5),
-          lookAt: [midX, midY, midZ], fov: 44, transition: 'smooth' },
+        { id: 'duel-atmosphere', label: 'Atmospheric drop', tMs: 0,
+          pos: cameraAt(midX + ux * wideForward + px * side * wideSide,
+            midZ + uz * wideForward + pz * side * wideSide, wideHeight),
+          lookAt: [midX, midY, midZ], fov: [56, 42, 66, 35][style],
+          rollDeg: -side * [4, 9, 2, 13][style], transition: 'smooth',
+          handleOut: cameraAt(midX + ux * (wideForward * 0.65) + px * side * (wideSide * 0.8),
+            midZ + uz * (wideForward * 0.65) + pz * side * (wideSide * 0.8), wideHeight + 4) },
+        { id: 'duel-reveal', label: reverseLead ? 'Counter-charge reveal' : 'Ground-skimming reveal', tMs: 1200,
+          pos: cameraAt(leadX - leadFx * revealBack + leadPx * side * revealSide,
+            leadZ - leadFz * revealBack + leadPz * side * revealSide, revealHeight),
+          lookAt: cameraAt(leadX + leadFx * 8, leadZ + leadFz * 8, 1.5),
+          fov: [45, 31, 57, 24][style], rollDeg: side * [6, -11, 4, 14][style],
+          transition: 'bezier',
+          handleIn: cameraAt(leadX - leadFx * (revealBack + 3) + leadPx * side * (revealSide + 6),
+            leadZ - leadFz * (revealBack + 3) + leadPz * side * (revealSide + 6), revealHeight + 3.4),
+          handleOut: cameraAt(leadX - leadFx * 7 + leadPx * side * 5,
+            leadZ - leadFz * 7 + leadPz * side * 5, Math.max(1.2, revealHeight - 0.4)) },
+        { id: 'duel-track', label: reverseLead ? 'Head-on compression' : 'Track-level pursuit', tMs: 2850,
+          pos: cameraAt(leadMoveX - leadFx * trackBack + leadPx * side * trackSide,
+            leadMoveZ - leadFz * trackBack + leadPz * side * trackSide, trackHeight),
+          lookAt: cameraAt(leadMoveX + leadFx * 8, leadMoveZ + leadFz * 8, 1.25),
+          fov: trackFov, rollDeg: -side * [8, 3, 12, 6][style],
+          transition: 'bezier',
+          handleIn: cameraAt(leadMoveX - leadFx * (trackBack + 3) + leadPx * side * (trackSide * 0.65),
+            leadMoveZ - leadFz * (trackBack + 3) + leadPz * side * (trackSide * 0.65),
+            Math.max(0.7, trackHeight - 0.1)) },
+        { id: 'duel-alpha-gun', label: 'Alpha gunline', tMs: 3750,
+          pos: cameraAt(a1x + ux * [0.5, -3, 5, 1][style]
+              + px * side * [4.6, 8, 3, 10][style],
+            a1z + uz * [0.5, -3, 5, 1][style]
+              + pz * side * [4.6, 8, 3, 10][style], [3, 1.4, 5.2, 2.3][style]),
+          lookAt: cameraAt(midX + ux * 8, midZ + uz * 8, 2.0),
+          fov: [30, 23, 47, 34][style], rollDeg: side * [5, 12, -4, 17][style],
+          transition: 'cut',
+          handleOut: cameraAt(a1x + ux * 8 + px * side * 5, a1z + uz * 8 + pz * side * 5, 2.5) },
+        { id: 'duel-shell-flyby', label: 'Projectile flyby', tMs: 4100,
+          pos: cameraAt(midX - ux * [8, 2, 13, 5][style] - px * side * [2, 7, 0.8, 11][style],
+            midZ - uz * [8, 2, 13, 5][style] - pz * side * [2, 7, 0.8, 11][style],
+            [1.35, 3.2, 0.75, 5.5][style]),
+          lookAt: cameraAt(midX + ux * 15, midZ + uz * 15, 1.7),
+          fov: [24, 58, 18, 42][style], rollDeg: -side * [10, 16, 5, 20][style],
+          transition: 'cut' },
+        { id: 'duel-blast-pass', label: 'Muzzle-blast pass', tMs: 4650,
+          pos: cameraAt(midX - ux * 3 + px * side * 8, midZ - uz * 3 + pz * side * 8, 2.0),
+          lookAt: cameraAt(midX + ux * 10, midZ + uz * 10, 1.8),
+          fov: [40, 52, 33, 61][style], rollDeg: side * [12, -8, 18, 6][style],
+          transition: 'bezier',
+          handleIn: cameraAt(midX - ux * 8 + px * side * 5, midZ - uz * 8 + pz * side * 5, 1.55) },
+        { id: 'duel-overhead', label: 'Tactical overhead', tMs: 5300,
+          pos: cameraAt(midX - px * side * [4, 12, 1, 18][style],
+            midZ - pz * side * [4, 12, 1, 18][style], overheadHeight),
+          lookAt: [midX, hfProxy.getHeightAt(midX, midZ), midZ],
+          fov: [38, 31, 48, 27][style], rollDeg: side * [0, 8, -3, 14][style],
+          transition: 'cut' },
+        { id: 'duel-bravo-gun', label: 'Bravo return fire', tMs: 6050,
+          pos: cameraAt(b1x + ux * [7, 2, 11, 5][style] - px * side * [4.2, 10, 2, 13][style],
+            b1z + uz * [7, 2, 11, 5][style] - pz * side * [4.2, 10, 2, 13][style],
+            [2.45, 4.8, 1.1, 3.2][style]),
+          lookAt: cameraAt(midX - ux * 7, midZ - uz * 7, 1.9),
+          fov: [29, 51, 22, 37][style], rollDeg: -side * [7, 14, 3, 19][style],
+          transition: 'cut',
+          handleOut: cameraAt(b1x + ux * 2 - px * side * 9, b1z + uz * 2 - pz * side * 9, 3.1) },
+        { id: 'duel-whip', label: 'Turn-in whip', tMs: 6900,
+          pos: cameraAt(b1x - bravoStartFx * turnBack + bravoStartPx * side * turnSide,
+            b1z - bravoStartFz * turnBack + bravoStartPz * side * turnSide, turnHeight),
+          lookAt: cameraAt(b1x, b1z, 1.7), fov: [43, 36, 51, 31][style],
+          rollDeg: side * [10, 6, 14, 9][style], transition: 'cut' },
+        { id: 'duel-turn-track', label: 'Tracked hull turn', tMs: 7900,
+          pos: cameraAt(bravoTurnX - bravoExitFx * turnBack + bravoExitPx * side * turnSide,
+            bravoTurnZ - bravoExitFz * turnBack + bravoExitPz * side * turnSide, turnHeight),
+          lookAt: cameraAt(bravoTurnX, bravoTurnZ, 1.7), fov: [37, 42, 29, 48][style],
+          rollDeg: -side * [5, 11, 3, 14][style], transition: 'bezier',
+          handleIn: cameraAt(b1x - bravoStartFx * (turnBack - 2)
+              + bravoStartPx * side * (turnSide + 2),
+            b1z - bravoStartFz * (turnBack - 2)
+              + bravoStartPz * side * (turnSide + 2), Math.max(1.1, turnHeight - 0.4)) },
+        { id: 'duel-second-shot', label: 'Alpha snap shot', tMs: 8050,
+          pos: cameraAt(a1x - ux * [4, 7, 2, 9][style] - px * side * [8, 11, 5, 14][style],
+            a1z - uz * [4, 7, 2, 9][style] - pz * side * [8, 11, 5, 14][style],
+            [3.6, 5.5, 2.25, 7][style]),
+          lookAt: cameraAt(a1x + ux * 4, a1z + uz * 4, 1.9), fov: [34, 44, 28, 52][style],
+          rollDeg: -side * [11, 5, 17, 9][style], transition: 'cut' },
+        { id: 'duel-shell-pursuit', label: 'Shell pursuit', tMs: 8450,
+          pos: cameraAt(midX + ux * [4, -3, 10, 1][style] + px * side * [2, 8, 0.5, 13][style],
+            midZ + uz * [4, -3, 10, 1][style] + pz * side * [2, 8, 0.5, 13][style],
+            [1.2, 4, 0.7, 6.5][style]),
+          lookAt: cameraAt(b2x, b2z, 1.8), fov: [22, 55, 16, 35][style],
+          rollDeg: side * [7, 15, -3, 19][style], transition: 'cut' },
+        { id: 'duel-impact', label: 'Armor impact', tMs: 9300,
+          pos: cameraAt(b2x + ux * impactForward + px * side * impactSide,
+            b2z + uz * impactForward + pz * side * impactSide, [2.35, 5.8, 1.05, 3.6][style]),
+          lookAt: cameraAt(b2x, b2z, 1.9), fov: [30, 47, 21, 62][style],
+          rollDeg: side * [13, -9, 18, 6][style], transition: 'cut',
+          handleOut: cameraAt(b2x - ux * 11 + px * side * 5, b2z - uz * 11 + pz * side * 5, 3.0) },
+        { id: 'duel-shockwave', label: 'Shockwave pullback', tMs: 10150,
+          pos: cameraAt(b2x - ux * [15, 21, 9, 27][style] - px * side * [10, 5, 18, 14][style],
+            b2z - uz * [15, 21, 9, 27][style] - pz * side * [10, 5, 18, 14][style],
+            [5, 9, 3.2, 14][style]),
+          lookAt: cameraAt(b2x, b2z, 2.2), fov: [49, 35, 61, 28][style],
+          rollDeg: -side * [17, 10, 22, 7][style],
+          transition: 'bezier',
+          handleIn: cameraAt(b2x - ux * 10 - px * side * 2, b2z - uz * 10 - pz * side * 2, 3.25),
+          handleOut: cameraAt(midX - ux * 5 - px * side * 17, midZ - uz * 5 - pz * side * 17, 4.2) },
+        { id: 'duel-aftermath', label: 'Burning orbit', tMs: 12100,
+          pos: cameraAt(midX + ux * [4, -10, 14, 2][style] + px * side * [24, 34, 19, 43][style],
+            midZ + uz * [4, -10, 14, 2][style] + pz * side * [24, 34, 19, 43][style],
+            [5.8, 11, 4.2, 17][style]),
+          lookAt: cameraAt(b2x, b2z, 2.0), fov: [37, 29, 52, 24][style],
+          rollDeg: side * [10, 17, 5, 13][style],
+          transition: 'bezier',
+          handleIn: cameraAt(midX - ux * 2 + px * side * 17, midZ - uz * 2 + pz * side * 17, 4.4),
+          handleOut: cameraAt(midX + ux * 8 + px * side * 31, midZ + uz * 8 + pz * side * 31, 8) },
+        { id: 'duel-end', label: 'Hero pullout', tMs: 15000,
+          pos: cameraAt(midX + ux * [12, -18, 22, 5][style] - px * side * [35, 48, 29, 57][style],
+            midZ + uz * [12, -18, 22, 5][style] - pz * side * [35, 48, 29, 57][style],
+            [16, 25, 11, 33][style]),
+          lookAt: [midX, midY, midZ], fov: [47, 35, 58, 30][style],
+          rollDeg: -side * [5, 11, 2, 15][style],
+          transition: 'bezier',
+          handleIn: cameraAt(midX + ux * 14 - px * side * 27, midZ + uz * 14 - pz * side * 27, 12) },
+      ],
+      cameraCues: [
+        { id: 'duel-cue-rumble', label: 'Distant blast', tMs: 2550, durationMs: 750,
+          amplitudeM: 0.12, rollDeg: 1.5, fovKickDeg: 1, frequencyHz: 9, seed: 101 + variant },
+        { id: 'duel-cue-alpha-fire', label: 'Alpha recoil', tMs: 3850, durationMs: 620,
+          amplitudeM: 0.3, rollDeg: 3.5, fovKickDeg: 3.2, frequencyHz: 14, seed: 211 + variant },
+        { id: 'duel-cue-bravo-fire', label: 'Bravo recoil', tMs: 6150, durationMs: 620,
+          amplitudeM: 0.32, rollDeg: 3.8, fovKickDeg: 3.5, frequencyHz: 13, seed: 307 + variant },
+        { id: 'duel-cue-near-miss', label: 'Near-miss blast', tMs: 6700, durationMs: 1050,
+          amplitudeM: 0.5, rollDeg: 5.5, fovKickDeg: 4.5, frequencyHz: 11, seed: 401 + variant },
+        { id: 'duel-cue-second-fire', label: 'Second recoil', tMs: 8150, durationMs: 650,
+          amplitudeM: 0.35, rollDeg: 4, fovKickDeg: 3.8, frequencyHz: 15, seed: 503 + variant },
+        { id: 'duel-cue-impact', label: 'Armor strike', tMs: 9440, durationMs: 550,
+          amplitudeM: 0.45, rollDeg: 5, fovKickDeg: 4.5, frequencyHz: 17, seed: 601 + variant },
+        { id: 'duel-cue-kill', label: 'Ammorack shockwave', tMs: 9600, durationMs: 1500,
+          amplitudeM: 0.95, rollDeg: 9, fovKickDeg: 7, frequencyHz: 10, seed: 701 + variant },
+        { id: 'duel-cue-aftermath', label: 'Secondary detonation', tMs: 10600, durationMs: 1100,
+          amplitudeM: 0.4, rollDeg: 4.5, fovKickDeg: 3, frequencyHz: 8, seed: 809 + variant },
       ],
       actorTracks: [
         { actor: alphaRef, keys: [
-          { id: 'duel-a0', tMs: 0, pos: [ax, az], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
-          { id: 'duel-a1', tMs: 5200, pos: [a1x, a1z], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
-          { id: 'duel-a2', tMs: 12000, pos: [a1x, a1z], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-a0', tMs: 0, pos: [ax, az], facingDeg: alphaFacing,
+            turretDeg: turretTo(alphaFacing, ax, az, bx, bz), gunDeg: 0 },
+          { id: 'duel-a1', tMs: 3000, pos: [a1x, a1z], facingDeg: alphaFacing,
+            turretDeg: turretTo(alphaFacing, a1x, a1z, b1x, b1z), gunDeg: 0,
+            transition: 'drive' },
+          { id: 'duel-a2', tMs: 7800, pos: [a1x, a1z], facingDeg: alphaFacing,
+            turretDeg: turretTo(alphaFacing, a1x, a1z, b1x, b1z), gunDeg: 0 },
+          { id: 'duel-a3', tMs: 9000, pos: [a2x, a2z], facingDeg: alphaExitFacing,
+            turretDeg: turretTo(alphaExitFacing, a2x, a2z, b2x, b2z), gunDeg: 0,
+            transition: 'drive' },
+          { id: 'duel-a4', tMs: 15000, pos: [a2x, a2z], facingDeg: alphaExitFacing,
+            turretDeg: turretTo(alphaExitFacing, a2x, a2z, b2x, b2z), gunDeg: 0 },
         ] },
         { actor: bravoRef, keys: [
-          { id: 'duel-b0', tMs: 0, pos: [bx, bz], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
-          { id: 'duel-b1', tMs: 5800, pos: [b1x, b1z], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
-          { id: 'duel-b2', tMs: 12000, pos: [b1x, b1z], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-b0', tMs: 0, pos: [bx, bz], facingDeg: bravoFacing,
+            turretDeg: turretTo(bravoFacing, bx, bz, ax, az), gunDeg: 0 },
+          { id: 'duel-b1', tMs: 4000, pos: [b1x, b1z], facingDeg: bravoFacing,
+            turretDeg: turretTo(bravoFacing, b1x, b1z, a1x, a1z), gunDeg: 0,
+            transition: 'drive' },
+          { id: 'duel-b2', tMs: 7100, pos: [b1x, b1z], facingDeg: bravoFacing,
+            turretDeg: turretTo(bravoFacing, b1x, b1z, a1x, a1z), gunDeg: 0 },
+          { id: 'duel-b3', tMs: 9000, pos: [b2x, b2z], facingDeg: bravoExitFacing,
+            turretDeg: turretTo(bravoExitFacing, b2x, b2z, a2x, a2z), gunDeg: 0,
+            transition: 'drive' },
+          { id: 'duel-b4', tMs: 15000, pos: [b2x, b2z], facingDeg: bravoExitFacing,
+            turretDeg: turretTo(bravoExitFacing, b2x, b2z, a2x, a2z), gunDeg: 0 },
         ] },
       ],
     });
@@ -1733,12 +1939,27 @@ export function createStudio(ctx) {
     selectedShotId = storyboard.shots[0].id;
     resetFx();
     const authored = [
-      { type: 'dust', actor: alphaRef, tMs: 1100, params: { count: 10, intensity: 0.8 } },
-      { type: 'dust', actor: bravoRef, tMs: 1700, params: { count: 10, intensity: 0.8, dirDeg: 180 } },
-      { type: 'fire', actor: alphaRef, tMs: 4050, params: { slot: 0, tracer: true, recoil: true } },
-      { type: 'fire', actor: bravoRef, tMs: 6250, params: { slot: 0, tracer: true, recoil: true } },
-      { type: 'fire', actor: alphaRef, tMs: 8120, params: { slot: 0, tracer: true, recoil: true } },
-      { type: 'tank_kill', actor: bravoRef, tMs: 8450, params: { cause: 'ammorack', pop: true } },
+      { type: 'dust', actor: alphaRef, tMs: 350, params: { count: 14, intensity: 1.05 } },
+      { type: 'dust', actor: bravoRef, tMs: 700, params: { count: 13, intensity: 0.95, dirDeg: 180 } },
+      { type: 'dust', actor: alphaRef, tMs: 1750, params: { count: 12, intensity: 0.9 } },
+      { type: 'dust', actor: bravoRef, tMs: 2200, params: { count: 11, intensity: 0.85, dirDeg: 180 } },
+      { type: 'explosion', at: [midX + ux * 4 + px * side * 14, midZ + uz * 4 + pz * side * 14],
+        tMs: 2550, params: { size: 'large' } },
+      { type: 'fire', actor: alphaRef, tMs: 3850, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'impact', at: [midX + ux * 12, midZ + uz * 12], tMs: 4250,
+        params: { kind: 'terrain', caliberMm: 120 } },
+      { type: 'fire', actor: bravoRef, tMs: 6150, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'explosion', at: [midX - ux * 10 - px * side * 7, midZ - uz * 10 - pz * side * 7],
+        tMs: 6700, params: { size: 'large' } },
+      { type: 'sparks', at: [midX + px * side * 2, midZ + pz * side * 2], tMs: 7150,
+        params: { caliberMm: 120 } },
+      { type: 'fire', actor: alphaRef, tMs: 8150, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'impact', actor: bravoRef, tMs: 9440, params: { kind: 'pen', caliberMm: 120 } },
+      { type: 'tank_kill', actor: bravoRef, tMs: 9600, params: { cause: 'ammorack', pop: true } },
+      { type: 'explosion', at: [b2x + ux * 8 + px * side * 7, b2z + uz * 8 + pz * side * 7],
+        tMs: 10600, params: { size: 'large' } },
+      { type: 'burning', actor: bravoRef, tMs: 11100, params: {} },
+      { type: 'dust', actor: alphaRef, tMs: 11800, params: { count: 10, intensity: 0.75 } },
     ];
     for (const effect of authored) effectLog.push(makeEffectRecord(effect, effect.tMs));
     rail.rebuild();

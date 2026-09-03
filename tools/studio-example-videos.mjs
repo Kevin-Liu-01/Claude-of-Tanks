@@ -1,6 +1,6 @@
 // Render a pinned set of modern-MBT Studio duel videos.
 // Usage:
-//   npm run studio:examples -- --out shots/studio-modern-examples
+//   npm run studio:examples -- --out shots/studio-modern-all-maps-v3
 //   node tools/studio-example-videos.mjs --count 2 --fps 30 --out /tmp/duels
 //
 // The renderer uses the production __STUDIO.load/directDuel/recordVideo path.
@@ -9,38 +9,58 @@
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import {
-  mkdirSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync,
+  mkdirSync, readFileSync, renameSync, rmdirSync, statSync, writeFileSync, readdirSync,
+  unlinkSync, utimesSync,
 } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { MAP_IDS, getMapConfig } from '../src/world/maps/index.js';
 
-const SCENARIOS = [
-  ['desert', 'm1a2_sepv3', 't90m'],
-  ['winter', 'strv122', 'k2'],
-  ['desert', 'challenger_3', 'leo2a7v'],
-  ['verdant', 'type10b', 'ztz99a2'],
-  ['desert', 'leclerc_xlr', 't14'],
-  ['winter', 'kf51b', 'abramsx'],
-  ['desert', 'm1a2_tusk', 't90sm'],
-  ['verdant', 'ua_t84_oplot_m', 'pt91_twardy'],
-  ['desert', 'pl01_105', 'k2b'],
-  ['winter', 'merkava4b', 'ariete_c2'],
-  ['desert', 'm1a2_sepv2', 'type99a'],
-  ['verdant', 'leo2_revolution', 't72b3m'],
-  ['desert', 'challenger2', 'leclerc'],
-  ['winter', 'type10', 'k1a1'],
-  ['desert', 'm1a1ha', 't80u'],
-  ['verdant', 'ua_m1a1', 'ua_t64bv'],
-  ['desert', 'leo2a6m', 't90ms'],
-  ['winter', 'merkava3d', 'amx40'],
-  ['desert', 'type90a', 'pt91m'],
-  ['verdant', 'm1a2', 'ua_t80u_kursk'],
-].map(([map, alpha, bravo], index) => ({
+function stageForMap(mapId) {
+  const points = getMapConfig(mapId).spawns?.enemies || [];
+  let best = null;
+  for (let left = 0; left < points.length; left++) {
+    for (let right = left + 1; right < points.length; right++) {
+      const distance = Math.hypot(points[right].x - points[left].x, points[right].z - points[left].z);
+      const score = Math.abs(distance - 62);
+      if (!best || score < best.score) best = { left, right, score };
+    }
+  }
+  if (!best) throw new Error(`${mapId} has no two-point enemy stage`);
+  return {
+    alpha: [points[best.left].x, points[best.left].z],
+    bravo: [points[best.right].x, points[best.right].z],
+  };
+}
+
+const MAP_SEQUENCE = [...MAP_IDS, 'desert', 'winter', 'verdant', 'coastal'];
+const WINTER_MAPS = new Set(['winter', 'alpine']);
+const ARID_MAPS = new Set(['desert', 'badlands', 'caldera']);
+const TANK_PAIRS = [
+  ['m1a2_sepv3', 't90m'], ['strv122', 'k2'], ['challenger_3', 'leo2a7v'],
+  ['type10b', 'ztz99a2'], ['leclerc_xlr', 't14'], ['kf51b', 'abramsx'],
+  ['m1a2_tusk', 't90sm'], ['ua_t84_oplot_m', 'pt91_twardy'], ['pl01_105', 'k2b'],
+  ['merkava4b', 'ariete_c2'], ['m1a2_sepv2', 'type99a'], ['leo2_revolution', 't72b3m'],
+  ['challenger2', 'leclerc'], ['type10', 'k1a1'], ['m1a1ha', 't80u'],
+  ['ua_m1a1', 'ua_t64bv'], ['leo2a6m', 't90ms'], ['merkava3d', 'amx40'],
+  ['type90a', 'pt91m'], ['m1a2', 'ua_t80u_kursk'],
+];
+
+const SCENARIOS = TANK_PAIRS.map(([alpha, bravo], index) => ({
   index: index + 1,
-  map,
+  map: MAP_SEQUENCE[index],
   alpha,
   bravo,
+  stage: stageForMap(MAP_SEQUENCE[index]),
+  camo: WINTER_MAPS.has(MAP_SEQUENCE[index])
+    ? 'winter'
+    : (ARID_MAPS.has(MAP_SEQUENCE[index]) ? 'desert' : 'summer'),
   seed: 24001 + index * 137,
 }));
+
+if (new Set(SCENARIOS.slice(0, MAP_IDS.length).map((scenario) => scenario.map)).size !== MAP_IDS.length) {
+  throw new Error('Studio examples must cover every registered map');
+}
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -48,7 +68,7 @@ function opt(name, fallback) {
   return index >= 0 ? args[index + 1] : fallback;
 }
 
-const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
+const outDir = resolve(opt('out', 'shots/studio-modern-all-maps-v3'));
 const count = Math.max(1, Math.min(SCENARIOS.length, Number.parseInt(opt('count', '20'), 10) || 20));
 const only = new Set(String(opt('only', ''))
   .split(',')
@@ -57,7 +77,7 @@ const only = new Set(String(opt('only', ''))
 const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
 const videoBitsPerSecond = Math.max(
   2_000_000,
-  Math.min(30_000_000, Number.parseInt(opt('bitrate', '6000000'), 10) || 6_000_000),
+  Math.min(30_000_000, Number.parseInt(opt('bitrate', '8000000'), 10) || 8_000_000),
 );
 mkdirSync(outDir, { recursive: true });
 
@@ -162,15 +182,41 @@ const port = 7800 + Math.floor(Math.random() * 400);
 let server = null;
 let browser = null;
 const consoleErrors = [];
+let existingVideos = [];
+if (only.size) {
+  try {
+    const existing = JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf8'));
+    if (existing.version === 3 && Array.isArray(existing.videos)) {
+      existingVideos = existing.videos.filter((video) => !only.has(video.index));
+    }
+  } catch (_) { /* selective render into a new directory */ }
+}
 const manifest = {
-  version: 1,
+  version: 3,
   generatedAt: new Date().toISOString(),
   renderer: { width: 1280, height: 720, fps, videoBitsPerSecond },
-  videos: [],
+  videos: existingVideos,
 };
 
 function writeManifest() {
+  manifest.videos.sort((a, b) => a.index - b.index);
   writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function normalizeContainer(file) {
+  const remuxed = `${file}.remux.webm`;
+  const remux = spawnSync('ffmpeg', [
+    '-y', '-v', 'error', '-i', file, '-map', '0:v:0', '-c', 'copy', remuxed,
+  ], { encoding: 'utf8' });
+  if (remux.status === 0) renameSync(remuxed, file);
+  else {
+    try { unlinkSync(remuxed); } catch (_) { /* ffmpeg unavailable or no temp file */ }
+  }
+  const probe = spawnSync('ffprobe', [
+    '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', file,
+  ], { encoding: 'utf8' });
+  const seconds = Number.parseFloat(probe.stdout);
+  return Number.isFinite(seconds) ? Math.round(seconds * 1000) : null;
 }
 
 try {
@@ -235,18 +281,17 @@ try {
           throw new Error(`${info.id} is ${info.era}/${info.class}, expected modern/mbt`);
         }
       }
-      const camo = job.map === 'winter' ? 'winter' : (job.map === 'desert' ? 'desert' : 'summer');
       await S.load({
         map: job.map,
         seed: job.seed,
         actors: [
-          { id: job.alpha, name: 'alpha', pos: [-26, -8], facingDeg: 72, camo },
-          { id: job.bravo, name: 'bravo', pos: [26, 10], facingDeg: 252, camo },
+          { id: job.alpha, name: 'alpha', pos: job.stage.alpha, facingDeg: 72, camo: job.camo },
+          { id: job.bravo, name: 'bravo', pos: job.stage.bravo, facingDeg: 252, camo: job.camo },
         ],
         fxTime: 0,
         timeScale: 0,
       });
-      const board = S.directDuel();
+      const board = S.directDuel({ variant: job.index });
       if (board.durationMs > 20_000 || board.actorTracks.length !== 2) {
         throw new Error('Direct Duel did not build a bounded two-tank storyboard');
       }
@@ -269,6 +314,7 @@ try {
         size: recording.size,
         base64: String(dataUrl).split(',')[1],
         shots: board.shots.length,
+        cameraCues: board.cameraCues.length,
         effects: S.listEffects().length,
       };
     }, { ...scenario, fps, videoBitsPerSecond });
@@ -282,22 +328,33 @@ try {
     if (bytes.length !== result.size) {
       throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);
     }
-    writeFileSync(join(outDir, file), bytes);
+    const outputFile = join(outDir, file);
+    writeFileSync(outputFile, bytes);
+    const containerDurationMs = extension === 'webm' ? normalizeContainer(outputFile) : null;
+    const outputBytes = statSync(outputFile).size;
+    if (containerDurationMs != null && containerDurationMs > 20_000) {
+      throw new Error(`${file}: container duration ${containerDurationMs} ms exceeds 20 seconds`);
+    }
     manifest.videos.push({
       index: scenario.index,
       file,
       map: scenario.map,
       seed: scenario.seed,
+      shotStyle: scenario.index % 4,
+      stage: scenario.stage,
+      camo: scenario.camo,
       alpha: { id: scenario.alpha, name: result.alpha.name },
       bravo: { id: scenario.bravo, name: result.bravo.name },
       durationMs: result.durationMs,
+      containerDurationMs,
       mimeType: result.mimeType,
-      bytes: result.size,
+      bytes: outputBytes,
       cameraShots: result.shots,
+      cameraCues: result.cameraCues,
       effects: result.effects,
     });
     writeManifest();
-    console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);
+    console.log(`[studio-examples] wrote ${file} (${outputBytes} bytes)`);
   }
 
   if (consoleErrors.length) {

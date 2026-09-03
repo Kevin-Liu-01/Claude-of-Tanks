@@ -236,6 +236,8 @@ const CSS = `
 .cot-studio .tlmarker{position:absolute;top:4px;width:8px;height:10px;transform:translateX(-50%);
   border:0;padding:0;background:#e69a2d;box-shadow:0 0 5px rgba(230,154,45,.55);z-index:2;}
 .cot-studio .tlmarker.actor{background:#7fc7ff;}
+.cot-studio .tlmarker.camera-cue{width:7px;height:7px;top:6px;background:#ffd27a;
+  border-radius:0;transform:translateX(-50%) rotate(45deg);}
 .cot-studio .tlmarker.fx{width:6px;border-radius:50%;background:#ef6d58;}
 .cot-studio .tlmarker.sel{outline:2px solid #fff2d9;outline-offset:1px;}
 .cot-studio .playhead{position:absolute;top:0;bottom:0;width:1px;background:#fff2d9;
@@ -786,13 +788,13 @@ export function createStudioPanel(S) {
   });
   railRow.append(railBtn, clearTrackBtn);
   secTime.appendChild(railRow);
-  const duelBtn = el('button', 'prime', 'DIRECT 12 S DUEL');
+  const duelBtn = el('button', 'prime', 'DIRECT 15 S PROMO');
   duelBtn.style.marginTop = '6px';
   duelBtn.title = 'Uses the first two staged tanks and replaces cinematic tracks and effects';
   duelBtn.addEventListener('click', () => {
     try {
       S.directDuel();
-      flashBusy('12 SECOND DUEL STORYBOARD READY');
+      flashBusy('15 SECOND PROMO STORYBOARD READY');
     } catch (error) {
       flashBusy(error.message);
     }
@@ -1121,7 +1123,7 @@ export function createStudioPanel(S) {
       card.appendChild(copy);
       const transition = document.createElement('select');
       transition.setAttribute('aria-label', `${shot.label} transition`);
-      for (const id of ['smooth', 'linear', 'cut']) {
+      for (const id of ['bezier', 'smooth', 'linear', 'cut']) {
         const option = document.createElement('option');
         option.value = id;
         option.textContent = id.toUpperCase();
@@ -1139,6 +1141,15 @@ export function createStudioPanel(S) {
       card.appendChild(del);
       shotboard.appendChild(card);
     });
+    for (const cue of board.cameraCues) {
+      addTimelineMarker(
+        cameraLane,
+        'camera-cue',
+        cue.tMs,
+        `${cue.label} at ${(cue.tMs / 1000).toFixed(2)} seconds`,
+        () => S.seek(cue.tMs),
+      );
+    }
     for (const track of board.actorTracks) {
       for (const key of track.keys) {
         addTimelineMarker(

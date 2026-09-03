@@ -11,10 +11,11 @@ export const STUDIO_MIN_DURATION_MS = 1000;
 export const STUDIO_MAX_DURATION_MS = 20000;
 export const STUDIO_DEFAULT_DURATION_MS = 12000;
 export const STUDIO_MAX_CAMERA_SHOTS = 32;
+export const STUDIO_MAX_CAMERA_CUES = 48;
 export const STUDIO_MAX_ACTOR_KEYS = 64;
 
-const CAMERA_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);
-const ACTOR_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);
+const CAMERA_TRANSITIONS = new Set(['bezier', 'smooth', 'linear', 'cut']);
+const ACTOR_TRANSITIONS = new Set(['drive', 'smooth', 'linear', 'cut']);
 
 const finite = (value, fallback = 0) => Number.isFinite(Number(value))
   ? Number(value)
@@ -40,6 +41,11 @@ function vec3(value, fallback) {
     finite(value[1], fallback[1]),
     finite(value[2], fallback[2]),
   ];
+}
+
+function optionalVec3(value) {
+  if (!Array.isArray(value) || value.length < 3) return null;
+  return [finite(value[0]), finite(value[1]), finite(value[2])];
 }
 
 function actorPos(value, fallback = [0, 0]) {
@@ -72,7 +78,24 @@ function normalizeShot(raw, index, durationMs) {
     lookAt: vec3(raw?.lookAt, [0, 2, 0]),
     fov: clamp(finite(raw?.fov, 50), 10, 120),
     rollDeg: clamp(finite(raw?.rollDeg, 0), -60, 60),
+    handleIn: optionalVec3(raw?.handleIn),
+    handleOut: optionalVec3(raw?.handleOut),
     transition,
+  };
+}
+
+function normalizeCameraCue(raw, index, durationMs) {
+  return {
+    id: stableId(raw?.id, 'camera-cue', index),
+    label: String(raw?.label || `Camera cue ${index + 1}`).trim().slice(0, 48)
+      || `Camera cue ${index + 1}`,
+    tMs: clampStudioTime(raw?.tMs, durationMs),
+    durationMs: Math.round(clamp(finite(raw?.durationMs, 650), 60, 3000)),
+    amplitudeM: clamp(finite(raw?.amplitudeM, 0.2), 0, 2),
+    rollDeg: clamp(finite(raw?.rollDeg, 2), 0, 12),
+    fovKickDeg: clamp(finite(raw?.fovKickDeg, 2), -15, 15),
+    frequencyHz: clamp(finite(raw?.frequencyHz, 12), 1, 30),
+    seed: Math.round(clamp(finite(raw?.seed, index + 1), -1_000_000, 1_000_000)),
   };
 }
 
@@ -102,6 +125,14 @@ export function normalizeStoryboard(input = {}) {
   }
   const shots = dedupeAtTime(normalizedShots);
 
+  const sourceCues = Array.isArray(input.cameraCues) ? input.cameraCues : [];
+  const cameraCues = [];
+  const cueCount = Math.min(sourceCues.length, STUDIO_MAX_CAMERA_CUES);
+  for (let index = 0; index < cueCount; index++) {
+    cameraCues.push(normalizeCameraCue(sourceCues[index], index, durationMs));
+  }
+  cameraCues.sort((a, b) => a.tMs - b.tMs);
+
   const tracksByActor = new Map();
   for (const rawTrack of Array.isArray(input.actorTracks) ? input.actorTracks : []) {
     const actor = String(rawTrack?.actor ?? '').trim();
@@ -122,7 +153,7 @@ export function normalizeStoryboard(input = {}) {
     if (normalizedKeys.length) actorTracks.push({ actor, keys: normalizedKeys });
   }
 
-  return { version: 1, durationMs, shots, actorTracks };
+  return { version: 2, durationMs, shots, cameraCues, actorTracks };
 }
 
 export function upsertCameraShot(storyboard, shot) {
@@ -189,6 +220,7 @@ const wrapDeg = (value) => {
   return result;
 };
 const lerpAngleDeg = (a, b, t) => a + wrapDeg(b - a) * t;
+const smootherstep = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 const catmull = (p0, p1, p2, p3, t) => {
   const t2 = t * t;
   const t3 = t2 * t;
@@ -197,6 +229,12 @@ const catmull = (p0, p1, p2, p3, t) => {
     (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
     (-p0 + 3 * p1 - 3 * p2 + p3) * t3
   );
+};
+const bezier = (p0, p1, p2, p3, t) => {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return p0 * mt2 * mt + 3 * p1 * mt2 * t + 3 * p2 * mt * t2 + p3 * t2 * t;
 };
 
 function writeShot(out, shot) {
@@ -208,9 +246,10 @@ function writeShot(out, shot) {
 }
 
 /**
- * Sample the camera rail into a caller-owned object. Smooth segments use a
- * Catmull-Rom spatial rail; linear/cut arrivals remain available for precise
- * blocking. Returns false when no shots exist.
+ * Sample the camera rail into a caller-owned object. Bezier arrivals use the
+ * outgoing handle on the prior shot and incoming handle on the destination;
+ * omitted handles make a straight cubic. Smooth segments retain the original
+ * Catmull-Rom rail. Linear/cut remain available for precise blocking.
  */
 export function sampleCameraRail(shots, timeMs, out) {
   if (!Array.isArray(shots) || !shots.length || !out) return false;
@@ -225,6 +264,18 @@ export function sampleCameraRail(shots, timeMs, out) {
     out.x = lerp(a.pos[0], b.pos[0], rawT);
     out.y = lerp(a.pos[1], b.pos[1], rawT);
     out.z = lerp(a.pos[2], b.pos[2], rawT);
+  } else if (b.transition === 'bezier') {
+    const outHandle = a.handleOut;
+    const inHandle = b.handleIn;
+    const c1x = outHandle ? outHandle[0] : lerp(a.pos[0], b.pos[0], 1 / 3);
+    const c1y = outHandle ? outHandle[1] : lerp(a.pos[1], b.pos[1], 1 / 3);
+    const c1z = outHandle ? outHandle[2] : lerp(a.pos[2], b.pos[2], 1 / 3);
+    const c2x = inHandle ? inHandle[0] : lerp(a.pos[0], b.pos[0], 2 / 3);
+    const c2y = inHandle ? inHandle[1] : lerp(a.pos[1], b.pos[1], 2 / 3);
+    const c2z = inHandle ? inHandle[2] : lerp(a.pos[2], b.pos[2], 2 / 3);
+    out.x = bezier(a.pos[0], c1x, c2x, b.pos[0], rawT);
+    out.y = bezier(a.pos[1], c1y, c2y, b.pos[1], rawT);
+    out.z = bezier(a.pos[2], c1z, c2z, b.pos[2], rawT);
   } else {
     const p0 = shots[Math.max(0, index - 1)].pos;
     const p3 = shots[Math.min(shots.length - 1, index + 2)].pos;
@@ -232,7 +283,9 @@ export function sampleCameraRail(shots, timeMs, out) {
     out.y = catmull(p0[1], a.pos[1], b.pos[1], p3[1], rawT);
     out.z = catmull(p0[2], a.pos[2], b.pos[2], p3[2], rawT);
   }
-  const t = b.transition === 'smooth' ? smoothstep(rawT) : rawT;
+  const t = b.transition === 'smooth' || b.transition === 'bezier'
+    ? smoothstep(rawT)
+    : rawT;
   out.lookX = lerp(a.lookAt[0], b.lookAt[0], t);
   out.lookY = lerp(a.lookAt[1], b.lookAt[1], t);
   out.lookZ = lerp(a.lookAt[2], b.lookAt[2], t);
@@ -240,6 +293,41 @@ export function sampleCameraRail(shots, timeMs, out) {
   out.rollDeg = lerpAngleDeg(a.rollDeg, b.rollDeg, t);
   out.shotId = a.id;
   return true;
+}
+
+/**
+ * Sample deterministic presentation-only camera impulses into caller-owned
+ * local-axis offsets. Cues begin with an impact punch and decay quadratically;
+ * their seeded harmonics avoid frame-to-frame randomness and allocations.
+ */
+export function sampleCameraCues(cues, timeMs, out) {
+  if (!out) return false;
+  out.rightM = 0;
+  out.upM = 0;
+  out.forwardM = 0;
+  out.rollDeg = 0;
+  out.fovKickDeg = 0;
+  if (!Array.isArray(cues) || !cues.length) return false;
+  let active = false;
+  for (let index = 0; index < cues.length; index++) {
+    const cue = cues[index];
+    const elapsedMs = timeMs - cue.tMs;
+    if (elapsedMs < 0) break;
+    if (elapsedMs > cue.durationMs) continue;
+    active = true;
+    const progress = elapsedMs / cue.durationMs;
+    const envelope = (1 - progress) * (1 - progress);
+    const phase = cue.seed * 0.754877666;
+    const angle = phase + elapsedMs * cue.frequencyHz * Math.PI * 0.002;
+    const amplitude = cue.amplitudeM * envelope;
+    out.rightM += amplitude * (Math.sin(angle) * 0.72 + Math.sin(angle * 2.13 + 0.8) * 0.28);
+    out.upM += amplitude * (Math.cos(angle * 1.17 + 0.35) * 0.58
+      + Math.sin(angle * 2.71) * 0.24);
+    out.forwardM += amplitude * Math.sin(angle * 0.63 + 1.9) * 0.22;
+    out.rollDeg += cue.rollDeg * envelope * Math.sin(angle * 0.83 + 0.45);
+    out.fovKickDeg += cue.fovKickDeg * envelope;
+  }
+  return active;
 }
 
 function writeActor(out, key) {
@@ -261,7 +349,46 @@ export function sampleActorTrack(keys, timeMs, out) {
   if (b.transition === 'cut') return writeActor(out, a);
   const span = Math.max(1, b.tMs - a.tMs);
   const rawT = clamp((timeMs - a.tMs) / span, 0, 1);
-  const t = b.transition === 'smooth' ? smoothstep(rawT) : rawT;
+  if (b.transition === 'drive') {
+    const chordX = b.pos[0] - a.pos[0];
+    const chordZ = b.pos[1] - a.pos[1];
+    const chordM = Math.hypot(chordX, chordZ);
+    const t = smootherstep(rawT);
+    if (chordM > 1e-6) {
+      const tangentM = chordM * 0.75;
+      const aFacing = a.facingDeg * Math.PI / 180;
+      const bFacing = b.facingDeg * Math.PI / 180;
+      const m0x = Math.sin(aFacing) * tangentM;
+      const m0z = Math.cos(aFacing) * tangentM;
+      const m1x = Math.sin(bFacing) * tangentM;
+      const m1z = Math.cos(bFacing) * tangentM;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const h00 = 2 * t3 - 3 * t2 + 1;
+      const h10 = t3 - 2 * t2 + t;
+      const h01 = -2 * t3 + 3 * t2;
+      const h11 = t3 - t2;
+      out.x = h00 * a.pos[0] + h10 * m0x + h01 * b.pos[0] + h11 * m1x;
+      out.z = h00 * a.pos[1] + h10 * m0z + h01 * b.pos[1] + h11 * m1z;
+      const dh00 = 6 * t2 - 6 * t;
+      const dh10 = 3 * t2 - 4 * t + 1;
+      const dh01 = -dh00;
+      const dh11 = 3 * t2 - 2 * t;
+      const tangentX = dh00 * a.pos[0] + dh10 * m0x + dh01 * b.pos[0] + dh11 * m1x;
+      const tangentZ = dh00 * a.pos[1] + dh10 * m0z + dh01 * b.pos[1] + dh11 * m1z;
+      out.facingDeg = Math.atan2(tangentX, tangentZ) * 180 / Math.PI;
+      const worldTurretA = a.facingDeg + a.turretDeg;
+      const worldTurretB = b.facingDeg + b.turretDeg;
+      const worldTurret = lerpAngleDeg(worldTurretA, worldTurretB, t);
+      out.turretDeg = wrapDeg(worldTurret - out.facingDeg);
+      out.gunDeg = lerp(a.gunDeg, b.gunDeg, t);
+      out.keyId = a.id;
+      return true;
+    }
+  }
+  const t = b.transition === 'smooth' || b.transition === 'drive'
+    ? smoothstep(rawT)
+    : rawT;
   out.x = lerp(a.pos[0], b.pos[0], t);
   out.z = lerp(a.pos[1], b.pos[1], t);
   out.facingDeg = lerpAngleDeg(a.facingDeg, b.facingDeg, t);

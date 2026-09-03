@@ -445,33 +445,35 @@ try {
       effects: window.__STUDIO.listEffects(),
       shotCards: document.querySelectorAll('.shotcard').length,
       cameraMarkers: document.querySelectorAll('.tlmarker.camera').length,
+      cameraCueMarkers: document.querySelectorAll('.tlmarker.camera-cue').length,
       actorMarkers: document.querySelectorAll('.tlmarker.actor').length,
       effectMarkers: document.querySelectorAll('.tlmarker.fx').length,
       railVisible: window.__STUDIO.railVisible,
       railObjectVisible: window.__STUDIO._internal.railObjectVisible,
     };
   });
-  if (duel.board.durationMs !== 12000 || duel.board.shots.length !== 5
-    || duel.board.actorTracks.length !== 2 || duel.effects.length !== 6) {
+  if (duel.board.durationMs !== 15000 || duel.board.shots.length !== 16
+    || duel.board.cameraCues.length !== 8
+    || duel.board.actorTracks.length !== 2 || duel.effects.length !== 16) {
     throw new Error(`direct duel storyboard is incomplete: ${JSON.stringify(duel)}`);
   }
-  if (duel.shotCards !== 5 || duel.cameraMarkers !== 5
-    || duel.actorMarkers !== 6 || duel.effectMarkers !== 6
+  if (duel.shotCards !== 16 || duel.cameraMarkers !== 16 || duel.cameraCueMarkers !== 8
+    || duel.actorMarkers !== 10 || duel.effectMarkers !== 16
     || !duel.railVisible || !duel.railObjectVisible) {
     throw new Error(`cinematic timeline UI does not match its model: ${JSON.stringify(duel)}`);
   }
   const scrubbed = await page.evaluate(() => {
-    window.__STUDIO.seek(9000);
+    window.__STUDIO.seek(10500);
     return {
       time: window.__STUDIO.fxTimeMs,
       actors: window.__STUDIO.listActors(),
       camera: window.__STUDIO.getCamera(),
     };
   });
-  if (scrubbed.time !== 9000 || scrubbed.actors[1]?.state !== 'turret-popped') {
-    throw new Error(`9 s storyboard scrub missed the authored knockout: ${JSON.stringify(scrubbed)}`);
+  if (scrubbed.time !== 10500 || scrubbed.actors[1]?.state !== 'turret-popped') {
+    throw new Error(`10.5 s storyboard scrub missed the authored knockout: ${JSON.stringify(scrubbed)}`);
   }
-  const movedKey = duel.board.actorTracks[0].keys[1].pos;
+  const movedKey = duel.board.actorTracks[0].keys[3].pos;
   if (Math.hypot(scrubbed.actors[0].pos[0] - movedKey[0], scrubbed.actors[0].pos[1] - movedKey[1]) > 0.1) {
     throw new Error(`9 s storyboard scrub did not move the tank to its keyed pose: ${JSON.stringify(scrubbed.actors[0])}`);
   }
@@ -488,7 +490,7 @@ try {
     window.__STUDIO.setTimeScale(4);
   });
   await page.waitForFunction(
-    'window.__STUDIO.fxTimeMs >= 9000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
+    'window.__STUDIO.fxTimeMs >= 10000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
     { timeout: 5000 },
   );
   await page.evaluate(() => window.__STUDIO.pause());
@@ -506,10 +508,10 @@ try {
     };
   });
   if (JSON.stringify(duelRoundTrip.before) !== JSON.stringify(duelRoundTrip.after)
-    || duelRoundTrip.effects !== 6 || duelRoundTrip.actors[1]?.state !== 'turret-popped') {
+    || duelRoundTrip.effects !== 16 || duelRoundTrip.actors[1]?.state !== 'turret-popped') {
     throw new Error(`duel storyboard did not round-trip: ${JSON.stringify(duelRoundTrip)}`);
   }
-  console.log('[studio-selftest] 12 s duel rail, tank motion, scrub, and automatic FX playback passed');
+  console.log('[studio-selftest] 15 s promo rail, camera cues, tank motion, scrub, and automatic FX passed');
 
   // 10. Browser video path: a one-second storyboard records the actual
   // postprocessed canvas to a non-empty MediaRecorder blob. Downloads stay

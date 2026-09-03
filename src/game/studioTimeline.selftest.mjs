@@ -9,6 +9,7 @@ import {
   upsertActorKey,
   clearActorTrack,
   sampleCameraRail,
+  sampleCameraCues,
   sampleActorTrack,
 } from './studioTimeline.js';
 
@@ -30,6 +31,7 @@ const normalized = normalizeStoryboard({
   ],
 });
 assert.equal(normalized.durationMs, 20_000);
+assert.equal(normalized.version, 2);
 assert.deepEqual(normalized.shots.map((shot) => shot.id), ['start', 'replace-late']);
 assert.equal(normalized.shots[1].fov, 50, 'same-time replacement keeps the last authored shot');
 
@@ -93,4 +95,64 @@ assert.equal(cameraFrame.x, 0);
 sampleCameraRail(cutRail, 4_000, cameraFrame);
 assert.equal(cameraFrame.x, 20);
 
-console.log('studioTimeline.selftest: duration, normalization, rails, cuts, and actor tracks passed');
+const driveTrack = normalizeStoryboard({
+  durationMs: 3_000,
+  actorTracks: [{ actor: 'driver', keys: [
+    { id: 'drive-a', tMs: 0, pos: [0, 0], facingDeg: 0, turretDeg: 45 },
+    { id: 'drive-b', tMs: 3_000, pos: [10, 10], facingDeg: 90, turretDeg: -45,
+      transition: 'drive' },
+  ] }],
+}).actorTracks[0].keys;
+assert.equal(driveTrack[1].transition, 'drive');
+const driveFrame = {};
+sampleActorTrack(driveTrack, 1_500, driveFrame);
+assert(driveFrame.x < 5 && driveFrame.z > 5, 'drive path follows its heading tangents');
+assert(Math.abs(driveFrame.facingDeg - 45) < 1e-9, 'hull faces the path derivative');
+assert(Math.abs(driveFrame.facingDeg + driveFrame.turretDeg - 45) < 1e-9,
+  'turret remains stabilized in world space through the turn');
+const beforeDrive = {};
+const afterDrive = {};
+for (let tMs = 200; tMs < 3_000; tMs += 200) {
+  sampleActorTrack(driveTrack, tMs - 1, beforeDrive);
+  sampleActorTrack(driveTrack, tMs + 1, afterDrive);
+  sampleActorTrack(driveTrack, tMs, driveFrame);
+  const velocityBearing = Math.atan2(
+    afterDrive.x - beforeDrive.x,
+    afterDrive.z - beforeDrive.z,
+  ) * 180 / Math.PI;
+  let slipDeg = (velocityBearing - driveFrame.facingDeg) % 360;
+  if (slipDeg > 180) slipDeg -= 360;
+  if (slipDeg < -180) slipDeg += 360;
+  assert(Math.abs(slipDeg) < 0.01, `drive curve has ${slipDeg.toFixed(4)}° lateral slip at ${tMs} ms`);
+}
+
+const bezierBoard = normalizeStoryboard({
+  durationMs: 1_000,
+  shots: [
+    { id: 'curve-a', tMs: 0, pos: [0, 0, 0], lookAt: [0, 0, 1],
+      handleOut: [0, 10, 0] },
+    { id: 'curve-b', tMs: 1_000, pos: [10, 0, 0], lookAt: [10, 0, 1],
+      handleIn: [10, 10, 0], transition: 'bezier' },
+  ],
+  cameraCues: [
+    { id: 'impact-punch', tMs: 500, durationMs: 1_000, amplitudeM: 1,
+      rollDeg: 4, fovKickDeg: 2, frequencyHz: 10, seed: 7 },
+  ],
+});
+assert.deepEqual(bezierBoard.shots[0].handleOut, [0, 10, 0]);
+assert.equal(bezierBoard.cameraCues.length, 1);
+sampleCameraRail(bezierBoard.shots, 500, cameraFrame);
+assert(Math.abs(cameraFrame.x - 5) < 1e-9, 'cubic midpoint preserves horizontal symmetry');
+assert(Math.abs(cameraFrame.y - 7.5) < 1e-9, 'cubic handles create the authored arc');
+const cueFrame = {};
+assert(sampleCameraCues(bezierBoard.cameraCues, 750, cueFrame));
+const firstCueSample = { ...cueFrame };
+assert(sampleCameraCues(bezierBoard.cameraCues, 750, cueFrame));
+assert.deepEqual(cueFrame, firstCueSample, 'camera shake is deterministic at a fixed playhead');
+assert(cueFrame.fovKickDeg > 0 && Math.abs(cueFrame.rollDeg) > 0);
+assert.equal(sampleCameraCues(bezierBoard.cameraCues, 1_501, cueFrame), false);
+assert.deepEqual(cueFrame, {
+  rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0,
+});
+
+console.log('studioTimeline.selftest: drive curves, bezier rails, camera cues, and cuts passed');

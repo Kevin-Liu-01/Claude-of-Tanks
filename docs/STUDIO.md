@@ -81,7 +81,7 @@ __STUDIO.play() / .pause() / .stop()
 __STUDIO.getStoryboard() / .setStoryboard(board) / .setStoryboardDuration(ms)
 __STUDIO.addCameraShot(cfg?) / .updateCameraShot(id, patch) / .removeCameraShot(id)
 __STUDIO.keyActor(ref, cfg?) / .clearActorTrack(ref)
-__STUDIO.setRailVisible(on) / .directDuel()
+__STUDIO.setRailVisible(on) / .directDuel({ variant? })
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
@@ -156,15 +156,22 @@ picture only; Studio does not currently mix game audio into the capture stream.
   ],
 
   "storyboard": {
-    "version": 1,
-    "durationMs": 12000,       // clamped to 1000–20000
+    "version": 2,
+    "durationMs": 15000,       // clamped to 1000–20000
     "shots": [                 // camera positions are absolute world meters
       { "id": "shot-1", "label": "Establishing", "tMs": 0,
         "pos": [24, 8, -52], "lookAt": [12, 2, -40],
-        "fov": 45, "rollDeg": 0, "transition": "smooth" },
+        "fov": 45, "rollDeg": 0, "transition": "smooth",
+        "handleOut": [30, 10, -44] },
       { "id": "shot-2", "label": "Impact", "tMs": 8000,
         "pos": [8, 4, -18], "lookAt": [16, 2, -4],
-        "fov": 34, "rollDeg": 0, "transition": "cut" }
+        "fov": 34, "rollDeg": 8, "transition": "bezier",
+        "handleIn": [12, 3, -24] }
+    ],
+    "cameraCues": [            // deterministic, presentation-only impulses
+      { "id": "impact-punch", "label": "Armor strike", "tMs": 8000,
+        "durationMs": 900, "amplitudeM": 0.5, "rollDeg": 5,
+        "fovKickDeg": 4, "frequencyHz": 12, "seed": 17 }
     ],
     "actorTracks": [
       { "actor": "hero", "keys": [
@@ -172,8 +179,8 @@ picture only; Studio does not currently mix game audio into the capture stream.
           "facingDeg": 120, "turretDeg": -35, "gunDeg": 8,
           "transition": "smooth" },
         { "id": "key-2", "tMs": 6000, "pos": [18, -32],
-          "facingDeg": 120, "turretDeg": -20, "gunDeg": 4,
-          "transition": "smooth" }
+          "facingDeg": 138, "turretDeg": -38, "gunDeg": 4,
+          "transition": "drive" }
       ] }
     ]
   },
@@ -290,17 +297,20 @@ mid-fireball / burnt wreck, plus dust and engine smoke), asserts direct boot
 used the covered Studio stage without building or warming hidden battle-pool
 visuals, asserts no battle sim and fx frozen at `fxTime`, captures ≥2560-px
 PNGs on desert and winter with different cameras/FOVs, and verifies the scene
-JSON round-trip. It also builds the 12-second duel, checks camera/tank/FX
+JSON round-trip. It also builds the 15-second promotional duel, checks camera/tank/FX
 timeline lanes, scrubs to the knockout, proves automatic event playback, and
 records a non-empty one-second WebM through the production MediaRecorder path.
+`drive` actor arrivals use a forward-only Hermite path: the hull follows the
+path tangent while the turret stays stabilized in world space. `smooth` and
+`linear` remain pose interpolation modes for non-driving choreography.
 `src/game/studioTimeline.selftest.mjs` separately covers duration clamps,
-normalization, rails, cuts, and actor interpolation. Output:
+normalization, rails, cuts, zero-slip drive curves, and actor interpolation. Output:
 `shots/studio-selftest/*.png`.
 
-Render the pinned 20-video modern-MBT example set with:
+Render the pinned 20-video modern-MBT example set covering all sixteen maps:
 
 ```bash
-npm run studio:examples -- --out shots/studio-modern-examples
+npm run studio:examples -- --out shots/studio-modern-all-maps-v3
 ```
 
 The batch tool validates both actors as `modern`/`mbt`, records the production
