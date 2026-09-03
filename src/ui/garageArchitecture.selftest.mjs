@@ -6,7 +6,6 @@ import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import { GARAGE_FACILITY_AXIS_YAW_RAD } from './garageFacilityDetails.ts';
-import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const facilitySource = await readFile(new URL('./garageFacilityDetails.ts', import.meta.url), 'utf8');
@@ -17,12 +16,21 @@ assert.doesNotMatch(`${kitSource}\n${recipeSource}`,
   'Garage packs may reuse renderer assets, never battlefield runtime services');
 assert.match(kitSource, /garageTerrainPatches\.generated\.ts/,
   'Garage terrain must use build-time battlefield excerpts');
-assert.match(kitSource, /garageWreckGeometry\.generated\.ts/,
-  'Garage wrecks must use a build-time first-party proxy instead of a fleet runtime');
+assert.doesNotMatch(`${kitSource}\n${facilitySource}`,
+  /garageWreckGeometry|GARAGE_WRECK_ASSET|createWorkshopPartLibrary|workshopParts/,
+  'Garage scene packs must not retain silhouette-only vehicle or component proxies');
 assert.doesNotMatch(kitSource, /createSkyGeometry|garage_shared_sky/,
   'outdoor Garage packs must expose the shared engine sky, not occlude it with a local sphere');
 assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
   'Garage recipes must use the real connected map structure builders');
+assert.doesNotMatch(kitSource, /builder\.name/,
+  'production Garage facades must never depend on minifiable function names');
+for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
+  for (const placement of recipe.structures) {
+    assert.ok(placement.catalogId.length > 2,
+      `${architecture}/${placement.label}: stable exterior catalog id is required`);
+  }
+}
 assert.match(kitSource,
   /map: handle\.color,[\s\S]{0,100}normalMap: handle\.normal/,
   'Garage structure buckets must retain their surface-specific albedo and normal textures');
@@ -36,14 +44,12 @@ for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES))
       `${architecture}/${placement.label}: structure shares the immutable hero axis`);
   }
 }
-assert.match(facilitySource, /createWorkshopPartLibrary/,
-  'outdoor facilities must reuse the first-party workshop part vocabulary');
 assert.equal(GARAGE_FACILITY_AXIS_YAW_RAD, GARAGE_HERO_HEADING_RAD,
   'service bays must align their rear plane with the hero tank stern plane');
 assert.doesNotMatch(facilitySource, /GARAGE_CAMERA_AZIMUTH_RAD|VIEW_YAW/,
   'service-facility orientation must never be coupled to the opening camera');
 assert.doesNotMatch(facilitySource, /fleetFactory|tankFactory/,
-  'baked service vehicles must not import the playable fleet into Garage boot');
+  'static facility scenery must not import the playable fleet into Garage boot');
 assert.match(stageSource, /light\.visible = true;[\s\S]*light\.intensity = isVerdant/,
   'Verdant fixtures must preserve a stable light count across environment switches');
 assert.match(stageSource, /garage_outdoor_shader_seed/,
@@ -54,11 +60,6 @@ assert.match(stageSource, /podSideMat\.color\.copy\(platformEdge\)/,
   'each Garage must apply its authored accent to the shared platform edge');
 assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S]{0,240}alphaToCoverage: true/,
   'Verdant boot must seed the exact detailed-tree alpha shader before outdoor reveal');
-assert.equal(GARAGE_WRECK_ASSET.sourceSpecId, 'm1a2');
-assert.ok(GARAGE_WRECK_ASSET.sourceTriangles > 30_000,
-  'the tiny Garage wreck proxy must originate from a complete first-party vehicle');
-assert.ok(GARAGE_WRECK_ASSET.triangles > 100 && GARAGE_WRECK_ASSET.triangles < 500,
-  'the generated Garage wreck silhouette must remain deliberately tiny');
 
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
@@ -81,6 +82,13 @@ for (const variant of GARAGE_VARIANTS) {
     assert.equal(stats.terrainVertices, 0,
       'Verdant must not allocate the replacement outdoor terrain pack');
     assert.equal(stats.facilityStations, 4);
+    assert.ok(stats.structuralConnections >= 60);
+    assert.equal(stats.unsupportedParts, 0);
+    assert.ok(stats.heavyLiftSystems >= 2);
+    assert.ok(stats.operationalMachines >= 3);
+    assert.ok(stats.servicePurposeTags.length >= 5);
+    assert.ok(stats.facilityMaterialClasses >= 4);
+    assert.equal(stats.openingSightlineIntrusions, 0);
     assert.ok(stats.platformGroundClearanceM >= 0.02,
       'Verdant floor must remain below the complete turntable base');
     assert.equal(stats.cached, 1);
@@ -121,8 +129,6 @@ for (const variant of GARAGE_VARIANTS) {
     'headless Garage audits must retain the DOM-free battlefield tree fallback');
   assert.ok(stats.groundCover >= 48,
     `${variant.id} must retain bounded static biome ground cover`);
-  assert.equal(stats.wrecks, 2,
-    `${variant.id} must stage two first-party background wrecks`);
   assert.equal(stats.structures, 7,
     `${variant.id} must surround the hero with seven connected map structures`);
   assert.ok(stats.connectedExteriorBuildings >= 3,
@@ -143,12 +149,22 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must have two complete maintenance stations`);
   assert.equal(stats.openingViewFrames, 2,
     `${variant.id} must stage two connected service frames in the opening view`);
-  assert.equal(stats.openingViewTankParts, 2,
-    `${variant.id} opening service portals must hold first-party turret-and-gun assemblies`);
+  assert.ok(stats.structuralConnections >= 60,
+    `${variant.id} must certify a connected facility frame`);
+  assert.equal(stats.unsupportedParts, 0,
+    `${variant.id} must not contain a floating facility member`);
+  assert.ok(stats.heavyLiftSystems >= 2,
+    `${variant.id} must present working heavy-lift equipment`);
+  assert.ok(stats.operationalMachines >= 3,
+    `${variant.id} must present at least three assembled service machines`);
+  assert.ok(stats.servicePurposeTags.length >= 5,
+    `${variant.id} must communicate a real maintenance workflow`);
+  assert.ok(stats.facilityMaterialClasses >= 4,
+    `${variant.id} facility must retain steel, paint, equipment and masonry readings`);
+  assert.equal(stats.openingSightlineIntrusions, 0,
+    `${variant.id} facility must preserve the default hero sightline`);
   assert.ok(stats.looseParts >= 40,
     `${variant.id} must include workshop equipment and stocked spare parts`);
-  assert.ok(stats.serviceVehicles >= 1,
-    `${variant.id} must include at least one baked service vehicle or running assembly`);
   assert.ok(stats.placementZones >= 7,
     `${variant.id} must distribute its authored service islands around the perimeter`);
   assert.equal(stats.placementOverlaps, 0,

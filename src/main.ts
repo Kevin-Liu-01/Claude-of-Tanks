@@ -1011,7 +1011,20 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   })),
   selectedGarageVariantId,
   onGarageVariantMenuIntent: () => {
-    void garageStage.prepareSelector().catch(() => undefined);
+    // Opening the selector is a strong navigation intent. Warm one actual
+    // outdoor pack behind the still-open menu so its shared shader/material
+    // family and environment asset library cannot land on the first click.
+    // Keep the bounded two-pack LRU contract: this is the first non-selected
+    // outdoor choice, not an eager sweep across all nine environments.
+    const previewWarmVariant = GARAGE_VARIANTS.find((variant) => (
+      variant.id !== selectedGarageVariantId && variant.architecture !== 'field_shed'
+    ));
+    void Promise.all([
+      garageStage.prepareSelector(),
+      previewWarmVariant
+        ? garageStage.prepareVariant(previewWarmVariant.id)
+        : Promise.resolve(),
+    ]).catch(() => undefined);
   },
   onGarageVariantIntent: (variantId: string) => {
     void garageStage.prepareVariant(variantId).catch(() => undefined);

@@ -92,18 +92,22 @@ or map runtime. Connected landmarks come from the same
 first-party structure kits as the battlefields and are composed in canonical
 camera space so they cannot disappear behind the hero or side panels. Distant
 vegetation uses the real tree kits; ground cover is one immutable instanced
-draw; two wrecks reuse a generated 208-triangle proxy of the real first-party
-M1A2 silhouette; and nine 512px Garage-specific albedo/normal pairs preserve
-material identity without decoding the full map texture set. A low-cost finite
-vertex-color sky and three terrain-derived relief bands close the horizon so
-every camera ray resolves to a deliberate background rather than the renderer
-clear color.
+draw; and nine 512px Garage-specific albedo/normal pairs preserve material
+identity without decoding the full map texture set. Environment packs contain
+no tank-shaped fallback meshes. The existing quiet-window workshop streamer
+provides four fleet-exact service exhibits and their real turret, gun, armor,
+wheel, track, and rack components once for every Garage. The shared procedural
+engine sky and three terrain-derived relief bands close the horizon so every
+camera ray resolves to a deliberate background rather than the renderer clear
+color.
 
-An outdoor pack stays between 22 and 24 draws and approximately 16.9K–25.6K
+An outdoor pack stays between 23 and 25 draws and approximately 19.7K–36.7K
 triangles in the production browser probe, including real trees, static ground
-cover, seven connected map-native structures, two wreck silhouettes, three
+cover, seven connected map-native structures, three
 horizon layers, two complete service bays, 143–615 support-certified facade
-fixtures, distributed service terraces, and one baked service vehicle. Cinder's
+fixtures, four PBR facility material classes, at least three assembled operating
+machines, and distributed service terraces. The shared full-detail vehicle and
+component set is streamed separately after Garage readiness. Cinder's
 three complete rail roads remain inside the same merged buckets.
 The controller retains only the active and previous packs. Tiny colorless
 receivers under Verdant's opaque podium seed the exact outdoor material/CSM
@@ -134,15 +138,21 @@ dormant world residency, terrain/landmark/draw budgets, canonical hero contact
 and pose, persistence, preview decode, console health, rapid intent convergence,
 thirty complete cache cycles, and responsive 1180x820 plus 390x844 layouts.
 Revealed frame gaps remain under 120 ms under CDP 4x CPU throttling.
-Each non-Verdant environment is bounded to 22-24 draw calls and
-17,852-29,466 triangles despite carrying seven map-native buildings, 143-615
+Each non-Verdant environment is bounded to 23-25 draw calls and
+19,732-36,624 triangles despite carrying seven map-native buildings, 143-615
 support-certified facade fixtures, one continuous terrain-following approach,
-two first-party wreck proxies, and distributed service terraces. Cinder's
+and distributed service terraces. Cinder's
 three-road fan contributes 39 connected route segments and 216 rail details;
 all nine packs report zero structure/facility overlaps and a maximum facade
 support gap of 0.015 m.
-`npm run garage:terrain:check` rejects generated excerpt drift and
-`npm run garage:wreck:check` rejects first-party wreck-proxy drift, while
+`garageQualityRubric.ts` scores structural integrity, functional story,
+four-quadrant composition, map identity, material detail, and performance on a
+strict 100-point receipt. Criteria are atomic: a floating member, overlap,
+missing service machine, proxy vehicle, blocked hero view, resource overage, or
+transition stall loses its entire criterion instead of being averaged away.
+The production probe pairs that receipt with default/left/rear/right captures
+for human visual adjudication.
+`npm run garage:terrain:check` rejects generated excerpt drift, while
 `npm run perf:resources:gate` proves Garage resources leave GPU residency during
 battle and return behind cover.
 
@@ -941,25 +951,50 @@ At 4× CPU slowdown the dedicated Garage-entry gate reaches ready in 2.16
 seconds (1.89 seconds app boot), then records 38.8 ms maximum / 35.8 ms p95
 frame gaps, zero long tasks, 0.091 core-equivalent task residency, 49 MB heap,
 and zero unused Garage texture requests during the next five seconds. A native
-all-ten-environment lap records 17–18 ms p95 transitions, 25.1 ms maximum over
-thirty complete cache-eviction cycles, 6.9 MB forced-GC heap growth, and a
-two-pack cache. Cinder and Ironworks visual receipts retain their rails,
+all-ten-environment lap records 16.9–23.5 ms p95 transitions, 43.4 ms maximum
+per switch and 58.9 ms maximum over thirty complete cache-eviction cycles,
+8.5 MB forced-GC heap growth, and a two-pack cache. Cinder and Ironworks visual receipts retain their rails,
 platforms, service stations, clutter, lighting, and canonical tank framing.
 
 The outdoor authored pass keeps Verdant unchanged and spreads each other scene
-across five connected map structures, seven service terraces, two background
-wrecks, and a full perimeter of asymmetric three-tree groves. Every long rail,
+across seven connected map structures, seven service terraces, three or more
+assembled service machines, and a full perimeter of asymmetric three-tree
+groves. A separate post-ready workshop supplies four full-detail fleet exhibits
+and their real teardown parts without duplicating them per environment. Every long rail,
 gantry, rack, and station is terrain-seated before the terrain mesh is emitted;
 the probe rejects structure/service overlaps and support-plane errors above
-0.1 m. The resulting packs remain at 20–23 draw calls and 15.2–21.0 thousand
-submitted triangles. A native production lap measured 5.6–15.5 ms construction,
-25.4 ms worst transition gap and flat renderer geometry/texture counts. The
+0.1 m. The resulting packs remain at 23–25 draw calls and 19.7–36.6 thousand
+submitted triangles. A native production lap measured 4.9–14.4 ms construction,
+43.4 ms worst transition gap and flat renderer geometry/texture counts. The
 residency gate exercises one complete builder round before its forced-GC
 baseline so demand-loaded fleet JIT/code-cache growth is not misclassified as
 scene retention; the following thirty measured cache-eviction cycles retained
 no positive JS heap on the current fleet. Do not retain a source tree kit from
 a merged grove: its disposer closes over the pre-merge attribute arrays and
 materially increases repeated-switch heap residency.
+
+### 2026-09-02 Garage service-fleet finish and transfer correction
+
+The four shared Burlak, Abrams, T-90M, and K2 maintenance exhibits now keep
+their full 374,952-triangle authored geometry while using three immutable solid
+national-service palettes. They allocate zero texture maps, share the Russian
+palette between Burlak and T-90M, remain on the Garage's resident Standard PBR
+shader family, and drop colour, UV, and tangent buffers that their static
+materials cannot consume. The worker omitted 5,986,160 bytes across 317 unused
+attribute channels in the measured four-exhibit payload. The normal browser
+path no longer imports or constructs a duplicate fleet family on the render
+thread; exact main-thread construction remains only as a worker-failure escape.
+
+At 4x CPU throttling, a clean production entry reached the interactive Garage
+in 1.98 seconds wall / 1.70 seconds app time. During the following nine-second
+sample the worst frame was 116.2 ms, p95 was 18.3 ms, task residency was 0.134
+core-equivalent, and the complete workshop streamed with zero console errors.
+The all-ten-environment native gate then scored every Garage 100/100: the
+intent-warmed first outdoor handoff was 33.8 ms, all later cold switches stayed
+at or below 24.5 ms, thirty cache-eviction cycles peaked at 43.3 ms, and renderer
+residency remained flat at 282 geometries and 103 textures. Final static merging
+removed 441 display draws and released 354 source geometries without changing
+the 374,952 submitted workshop triangles.
 
 ## Reporting a performance result
 

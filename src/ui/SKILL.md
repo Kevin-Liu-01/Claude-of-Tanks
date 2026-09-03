@@ -57,9 +57,16 @@ outdoor destinations live behind `garageArchitecture.ts`; their static service
 facilities are baked by `garageFacilityDetails.ts`, receive but do not cast live
 CSM shadows, and retain no playable-fleet runtime. Opening-view maintenance
 portals must be grounded four-post assemblies with connected roof/floor members
-and static first-party turret-and-gun cradles. Flat-map Garages retain low
+and equipment, but no silhouette-only vehicle or component proxies. The shared
+full-detail fleet dressing owns every readable tank and teardown part. Flat-map Garages retain low
 horizons; only authored rolling, mesa, coastal, and alpine recipes may raise
-terrain silhouettes. Verdant's room shell and
+terrain silhouettes. Outdoor facility islands must use one terrain-seated local frame. Use
+endpoint-connected beams for braces and hoists; never fake a connection with an
+Euler-rotated floating bar. Preserve four PBR material readings, two heavy-lift
+systems, at least three assembled operating machines, and all four manual orbit
+captures. `garageQualityRubric.ts` must remain an all-or-nothing 90+ approval
+gate rather than a metadata-only average.
+Verdant's room shell and
 supported interior dressing use one static half-turn around the turntable;
 exclude the podium, hero, canonical camera, shared maintenance graph, and
 rear-axis archive display from that transform. Preserve one canonical hero

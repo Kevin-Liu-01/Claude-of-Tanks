@@ -238,10 +238,17 @@ real first-party Burlak, Abrams, T-90M, and K2 displays around all ten Garage
 types without duplicating the scene graph. Each of the other nine environments
 is a bounded renderer-only scene pack built from a generated excerpt of its real battlefield terrain plus
 connected structure kits, camera-composed instanced tree lines, static biome
-ground cover, a generated first-party wreck proxy, two-sided service facilities,
-two connected opening-view maintenance frames, and three map-derived horizon
+ground cover, two-sided service facilities, two connected opening-view
+maintenance frames, and three map-derived horizon
 layers beneath the same procedural sky/cloud system as battle. A lightweight
 registry applies each source map's exact atmosphere without loading that map.
+Tank-shaped proxies are forbidden: the shared four-bay layer streams complete
+fleet geometry and its actual turret, gun, armor, wheel, track, and rack parts
+after interactive readiness. Since these are distant service exhibits rather
+than selected vehicles, one dedicated worker supplies their full geometry to a
+three-palette, solid national-service material adapter. It creates no texture
+maps, omits unused colour/UV/tangent buffers, and never changes the playable or
+pedestal material pipeline.
 The active and previous packs are the only cached scene graphs, and Garage-only
 textures and geometry leave GPU residency during battle. One immutable
 Verdant-style presentation pose owns hero heading, camera offset, look height,

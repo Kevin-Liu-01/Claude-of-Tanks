@@ -49,7 +49,12 @@ shared four-bay service layer streams in across all ten locations: a Burlak
 gantry, Abrams welding bay, T-90M armor station, and rolled K2 teardown occupy
 all four quadrants. Each environment shifts the complete layer slightly around
 its landmark; only Verdant shows the wall-mounted interior props that require
-its enclosed shell.
+its enclosed shell. These are full-detail fleet shapes but not player-owned
+vehicles: the worker applies three shared solid national service finishes
+(Russian green, American desert tan, and Korean olive), allocates no camouflage
+or surface-map canvases, and does not transfer colour/UV/tangent attributes that
+the map-free materials cannot read. Signature paint remains exclusive to the
+selected hero and playable fleet.
 
 The other nine choices build compact Garage-only interpretations of their maps.
 They use the battle renderer's real procedural dome, cloud layers, fog, and
@@ -58,14 +63,23 @@ full battlefield loading. Their opening view includes stocked, connected
 maintenance frames before the wider 360-degree service district.
 A 41×37 terrain grid stays flat across the shared service terrace, then carries
 deterministic relief at the perimeter. Rocks and trees are instanced. Each theme
-adds five connected structures plus maintenance bays on both sides of the hero,
-flood towers, stocked track/wheel/weapon/powerpack racks, tool carts, drums,
-crates, and at least one purpose-built low-poly service vehicle. Cinder Junction
+adds seven connected structures plus maintenance bays on both sides of the hero,
+flood towers, stocked track/wheel racks, tool carts, drums, and crates. Cinder Junction
 is a rail overhaul station with three complete roads, sleepers, platforms,
-canopies, and a nine-bay roundhouse. The service silhouettes reuse first-party
-workshop part geometry and are merged into static vertex-colored buckets; they
-never load playable tank builders. These scenes do not load battle terrain,
-collision, destructibles, services, or animated vegetation.
+canopies, and a nine-bay roundhouse. Tank-shaped low-detail scene-pack proxies
+are forbidden. Instead, one idle-streamed full-detail fleet workshop is shared
+by every Garage: Burlak and Abrams service vehicles, a T-90M turret/gun and
+Relikt rack, plus a supported K2 hull, road wheels, track shoes, skirts, and
+weapon-service hardware. These scenes do not load battle terrain, collision,
+destructibles, services, or animated vegetation.
+Each service island is assembled on one terrain-seated local frame. Exact
+endpoint braces, footings beneath every column, supported roof purlins, crane
+runways and trolleys, powered winches, pipe manifolds, safety rails, service
+pits, benches, and stocked pallets make the machinery physically readable from
+all four Garage quadrants. The nine outdoor packs share only the implementation
+vocabulary: their signature facility remains map-specific (desert shade depot,
+heated winter bay, arsenal magazine, drydock crane, rail roundhouse, monsoon
+drainage shelter, alpine tunnel portal, recovery gantry, or foundry line).
 Any world retained for the next round stays detached and dormant. The archive
 monitor keeps only
 its current and incoming images resident and stops scheduling work while its

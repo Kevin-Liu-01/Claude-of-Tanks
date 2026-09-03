@@ -34,10 +34,8 @@ import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
-import {
-  countWorkshopTriangles,
-} from './workshopParts.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
+import { getGarageWorkshopLayoutPose } from './garageWorkshopLayout.ts';
 
 export interface GarageDressingEngineContext {
   readonly anisotropy?: number;
@@ -45,6 +43,7 @@ export interface GarageDressingEngineContext {
   readonly scene?: THREE.Scene;
   readonly camera?: THREE.Camera;
   setupShadowMaterial?(material: THREE.Material): void;
+  releaseShadowMaterial?(material: THREE.Material): boolean;
 }
 
 export interface GarageWorkshopVisual {
@@ -81,15 +80,27 @@ export interface GarageDressingRuntime {
 type Scale3 = number | [number, number, number];
 type TrackedResource = { dispose(): void };
 
+function countWorkshopTriangles(root: THREE.Object3D): number {
+  let triangles = 0;
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const geometry = object.geometry;
+    const one = (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
+    triangles += one * (object instanceof THREE.InstancedMesh ? object.count : 1);
+  });
+  return Math.round(triangles);
+}
+
 const WORKSHOP_FLEET_IDS = Object.freeze([
   't90a_burlak', 'm1a2', 't90m', 'k2',
 ] as const);
 const WORKSHOP_FLEET_ID_SET = new Set<string>(WORKSHOP_FLEET_IDS);
 const WORKSHOP_PRESENTATION_OPTIONS = Object.freeze({
-  // Full authored geometry and fittings; `ai` only halves the hidden texture
-  // bake size. The former low/low/no-decor tier visibly removed running-gear,
-  // stowage and turret detail from tanks that remain readable on Garage orbit.
+  // Full authored geometry and fittings with a fixed national delivery coat.
+  // The worker path uses a map-free PBR palette; this explicit Factory choice
+  // also prevents the recovery path from inheriting player/signature paint.
   quality: 'ai',
+  camoPattern: 'factory',
   geometryQuality: 'high',
   staticPreview: true,
   decor: true,
@@ -109,15 +120,6 @@ const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze([
   'north-east', 'south-east', 'south-west', 'north-west',
 ] as const);
 
-// Small whole-workshop offsets keep the inherited maintenance floor composed
-// against each environment's landmark without changing any bay internally.
-const WORKSHOP_LAYOUT_POSES = Object.freeze([
-  [0, 0, 0], [0.7, -0.4, 0.028], [-0.5, 0.4, -0.022],
-  [0.35, 0.55, 0.018], [-0.65, -0.2, -0.026], [0.5, 0.25, 0.022],
-  [-0.4, -0.45, -0.018], [0.55, 0.35, 0.024], [-0.6, 0.2, -0.024],
-  [0.3, -0.55, 0.016],
-] as const);
-
 // The workshop monitor is a field archive, not a location preview. Reuse the
 // canonical player-facing captures so filenames cannot drift from disk, but
 // keep the rotation compact: only one current and one incoming texture are
@@ -132,7 +134,6 @@ const BATTLE_SCREEN_SCROLL_MS = 720;
 export async function prepareGarageDressing(
   engineCtx: GarageDressingEngineContext,
 ): Promise<GarageWorkshopFleet> {
-  const { createTank, ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
   const { createGarageWorkshopTransfer } = await import('./garageWorkshopTransfer.ts');
   const transfer = createGarageWorkshopTransfer(engineCtx);
   return {
@@ -140,7 +141,6 @@ export async function prepareGarageDressing(
       if (!WORKSHOP_FLEET_ID_SET.has(specId)) {
         throw new Error(`Garage workshop does not own '${specId}'`);
       }
-      await ensureTankBuilder(specId);
     },
     async createVisual(specId: string, options: Readonly<Record<string, unknown>> = {}) {
       const camoSeed = typeof options.camoSeed === 'number' ? options.camoSeed : 4200;
@@ -148,12 +148,18 @@ export async function prepareGarageDressing(
         return await transfer.createVisual(specId, camoSeed);
       } catch (error) {
         // Module workers are supported by every production target, but keep a
-        // deterministic recovery path for restrictive embedded browsers.
+        // deterministic recovery path for restrictive embedded browsers. Only
+        // this exceptional path loads a playable builder on the render thread.
         console.warn('[garageDressing] workshop worker unavailable; using main-thread fallback', error);
+        const { createTank, ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
+        await ensureTankBuilder(specId);
         return createTank(specId, engineCtx, {
-          camoSeed,
           ...WORKSHOP_PRESENTATION_OPTIONS,
           ...options,
+          camoSeed,
+          // Recovery must obey the same non-signature finish contract as the
+          // worker path even if an internal caller accidentally passes paint.
+          camoPattern: 'factory',
         });
       }
     },
@@ -676,6 +682,10 @@ export function createGarageDressing(
     (group.userData.workshopTransferTimings ||= []).push({
       specId,
       ...visual.root.userData.workshopTransferTimings,
+      finish: visual.root.userData.workshopFinish,
+      textureCount: visual.root.userData.workshopTextureCount,
+      materialCount: visual.root.userData.workshopMaterialCount,
+      payload: visual.root.userData.workshopTransferPayload,
     });
     visual.resetForGaragePresentation?.();
     pendingTankReveal = visual.root;
@@ -863,8 +873,7 @@ export function createGarageDressing(
     group.userData.garageMapId = currentVariant.mapId;
     mat.safety.color.setHex(currentVariant.accent);
     bayFill.color.setHex(currentVariant.lightTint);
-    const [layoutX, layoutZ, layoutYaw] = WORKSHOP_LAYOUT_POSES[currentVariant.layout]
-      || WORKSHOP_LAYOUT_POSES[0];
+    const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(currentVariant);
     legacyVerdantRoot.position.set(layoutX, 0, layoutZ);
     legacyVerdantRoot.rotation.y = layoutYaw;
     legacyVerdantRoot.updateMatrix();
@@ -1102,7 +1111,7 @@ export function createGarageDressing(
       }
       workLamp(5.9, 20.7, 5);
     }
-    // Spare armor assemblies arrive in the later low-poly component slice.
+    // Fleet-exact armor assemblies arrive with the later streamed component bay.
     // big workshop wall fan (static) + guard
     {
       const f = new THREE.Group();

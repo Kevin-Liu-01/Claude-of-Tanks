@@ -48,7 +48,6 @@ export interface GarageArchitectureStats {
   horizonMaxHeightM: number;
   groundCover: number;
   structures: number;
-  wrecks: number;
   facilityProps: number;
   facilityStations: number;
   approachLabel: string;
@@ -62,10 +61,15 @@ export interface GarageArchitectureStats {
   maxExteriorSupportGapM: number;
   looseParts: number;
   railSegments: number;
-  serviceVehicles: number;
   placementZones: number;
   openingViewFrames: number;
-  openingViewTankParts: number;
+  structuralConnections: number;
+  unsupportedParts: number;
+  heavyLiftSystems: number;
+  operationalMachines: number;
+  servicePurposeTags: readonly string[];
+  facilityMaterialClasses: number;
+  openingSightlineIntrusions: number;
   placementOverlaps: number;
   maxGroundContactErrorM: number;
   platformGroundClearanceM: number;
@@ -108,7 +112,6 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     horizonMaxHeightM: 0,
     groundCover: 0,
     structures: 1,
-    wrecks: 0,
     facilityProps: 0,
     facilityStations: 4,
     approachLabel: 'original enclosed workshop floor',
@@ -122,10 +125,18 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     maxExteriorSupportGapM: 0,
     looseParts: 0,
     railSegments: 0,
-    serviceVehicles: 0,
     placementZones: 4,
     openingViewFrames: 0,
-    openingViewTankParts: 0,
+    structuralConnections: 80,
+    unsupportedParts: 0,
+    heavyLiftSystems: 3,
+    operationalMachines: 7,
+    servicePurposeTags: Object.freeze([
+      'heavy-lift', 'welding', 'component-rebuild', 'rollover-teardown',
+      'enclosed-workshop',
+    ]),
+    facilityMaterialClasses: 8,
+    openingSightlineIntrusions: 0,
     placementOverlaps: 0,
     maxGroundContactErrorM: 0,
     platformGroundClearanceM: 0.025,
@@ -250,7 +261,6 @@ export function createGarageArchitectureController(
       horizonMaxHeightM: selectedReady ? Number(root?.userData.horizonMaxHeightM || 0) : 0,
       groundCover: selectedReady ? Number(root?.userData.groundCover || 0) : 0,
       structures: selectedReady ? Number(root?.userData.structures || 0) : 0,
-      wrecks: selectedReady ? Number(root?.userData.wrecks || 0) : 0,
       facilityProps: selectedReady ? Number(root?.userData.facilityProps || 0) : 0,
       facilityStations: selectedReady ? Number(root?.userData.facilityStations || 0) : 0,
       approachLabel: selectedReady ? String(root?.userData.approachLabel || '') : '',
@@ -268,10 +278,18 @@ export function createGarageArchitectureController(
         ? Number(root?.userData.maxExteriorSupportGapM || 0) : 0,
       looseParts: selectedReady ? Number(root?.userData.looseParts || 0) : 0,
       railSegments: selectedReady ? Number(root?.userData.railSegments || 0) : 0,
-      serviceVehicles: selectedReady ? Number(root?.userData.serviceVehicles || 0) : 0,
       placementZones: selectedReady ? Number(root?.userData.placementZones || 0) : 0,
       openingViewFrames: selectedReady ? Number(root?.userData.openingViewFrames || 0) : 0,
-      openingViewTankParts: selectedReady ? Number(root?.userData.openingViewTankParts || 0) : 0,
+      structuralConnections: selectedReady
+        ? Number(root?.userData.structuralConnections || 0) : 0,
+      unsupportedParts: selectedReady ? Number(root?.userData.unsupportedParts || 0) : 0,
+      heavyLiftSystems: selectedReady ? Number(root?.userData.heavyLiftSystems || 0) : 0,
+      operationalMachines: selectedReady ? Number(root?.userData.operationalMachines || 0) : 0,
+      servicePurposeTags: selectedReady ? root?.userData.servicePurposeTags || [] : [],
+      facilityMaterialClasses: selectedReady
+        ? Number(root?.userData.facilityMaterialClasses || 0) : 0,
+      openingSightlineIntrusions: selectedReady
+        ? Number(root?.userData.openingSightlineIntrusions || 0) : 0,
       placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
       maxGroundContactErrorM: selectedReady
         ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,

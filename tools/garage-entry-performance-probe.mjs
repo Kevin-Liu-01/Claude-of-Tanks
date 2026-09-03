@@ -142,6 +142,13 @@ try {
       maintenanceBays: result.stats.sharedMaintenanceBayCount,
       buildTimings: result.stats.buildTimings,
       transferTimings: result.stats.workshopTransferTimings,
+      finishes: result.stats.workshopPresentationFinishes,
+      palettes: result.stats.workshopPaletteCount,
+      textureMaps: result.stats.workshopExhibitTextureCount,
+      paletteMaterials: result.stats.workshopPaletteMaterialCount,
+      transferredAttributeBytes: result.stats.workshopTransferredAttributeBytes,
+      omittedAttributeBytes: result.stats.workshopOmittedAttributeBytes,
+      omittedAttributeCount: result.stats.workshopOmittedAttributeCount,
       lastBuildError: result.stats.lastBuildError,
     },
     longTasks: result.longTasks,
@@ -161,6 +168,14 @@ try {
   }
   if ((report.resourceGroups['map-art']?.count || 0) > 10) {
     failures.push(`${report.resourceGroups['map-art'].count} eager battlefield images`);
+  }
+  if (report.workshop.textureMaps !== 0 || report.workshop.palettes !== 3
+      || report.workshop.omittedAttributeBytes <= 0) {
+    failures.push(`workshop service-finish contract failed: ${JSON.stringify({
+      textureMaps: report.workshop.textureMaps,
+      palettes: report.workshop.palettes,
+      omittedAttributeBytes: report.workshop.omittedAttributeBytes,
+    })}`);
   }
   if (errors.length) failures.push(`${errors.length} console/page errors`);
   console.log(JSON.stringify({ ...report, failures }, null, 2));

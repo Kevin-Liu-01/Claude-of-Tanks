@@ -24,6 +24,14 @@ export interface GarageWorkshopStats {
   readonly triangles: number;
   readonly activeWorkshopTriangles: number;
   readonly buildTimings: readonly unknown[];
+  readonly workshopTransferTimings: readonly unknown[];
+  readonly workshopPresentationFinishes: readonly string[];
+  readonly workshopPaletteCount: number;
+  readonly workshopExhibitTextureCount: number;
+  readonly workshopPaletteMaterialCount: number;
+  readonly workshopTransferredAttributeBytes: number;
+  readonly workshopOmittedAttributeBytes: number;
+  readonly workshopOmittedAttributeCount: number;
   readonly optimization: Readonly<Record<string, unknown>> | null;
   readonly optimizedTriangles: number;
   readonly optimizedTriangleParity: boolean;
@@ -95,6 +103,21 @@ function arrayValue(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? [...value] : [];
 }
 
+interface WorkshopTransferReceipt {
+  readonly finish?: unknown;
+  readonly textureCount?: unknown;
+  readonly materialCount?: unknown;
+  readonly payload?: {
+    readonly attributeBytes?: unknown;
+    readonly omittedAttributeBytes?: unknown;
+    readonly omittedAttributeCount?: unknown;
+  };
+}
+
+function finiteNumber(value: unknown): number {
+  return Number.isFinite(value) ? Number(value) : 0;
+}
+
 /**
  * Own the stable engineering surface for workshop probes. The Garage remains
  * responsible for presentation; this module only snapshots its public state
@@ -133,13 +156,49 @@ export function createGarageWorkshopDiagnostics({
       const visual = pedestal.current;
       const trackFloorYM = visual?.presentationTrackFloorYM;
       const phaseDiagnostics: GaragePhasePresentationDiagnostics = phase.diagnostics();
+      const transferTimings = arrayValue(data.workshopTransferTimings);
+      const transferReceipts = transferTimings.filter((value): value is WorkshopTransferReceipt => (
+        !!value && typeof value === 'object'
+      ));
+      const finishSet = transferReceipts.reduce((result, receipt) => {
+        const finish = String(receipt.finish || '');
+        if (finish) result.add(finish);
+        return result;
+      }, new Set<string>());
+      const finishes = [...finishSet];
+      const materialsByFinish = new Map<string, number>();
+      for (const receipt of transferReceipts) {
+        const finish = String(receipt.finish || '');
+        if (!finish) continue;
+        materialsByFinish.set(finish, Math.max(
+          materialsByFinish.get(finish) || 0,
+          finiteNumber(receipt.materialCount),
+        ));
+      }
       return {
         selected: garage.getSelectedGarageVariant(),
         built: dressing.isBuilt(),
         triangles: data.workshopTriangleCount || 0,
         activeWorkshopTriangles: data.activeWorkshopTriangleCount || 0,
         buildTimings: arrayValue(data.buildTimings),
-        workshopTransferTimings: arrayValue(data.workshopTransferTimings),
+        workshopTransferTimings: transferTimings,
+        workshopPresentationFinishes: finishes,
+        workshopPaletteCount: finishes.length,
+        workshopExhibitTextureCount: transferReceipts.reduce(
+          (sum, receipt) => sum + finiteNumber(receipt.textureCount), 0,
+        ),
+        workshopPaletteMaterialCount: [...materialsByFinish.values()].reduce(
+          (sum, count) => sum + count, 0,
+        ),
+        workshopTransferredAttributeBytes: transferReceipts.reduce(
+          (sum, receipt) => sum + finiteNumber(receipt.payload?.attributeBytes), 0,
+        ),
+        workshopOmittedAttributeBytes: transferReceipts.reduce(
+          (sum, receipt) => sum + finiteNumber(receipt.payload?.omittedAttributeBytes), 0,
+        ),
+        workshopOmittedAttributeCount: transferReceipts.reduce(
+          (sum, receipt) => sum + finiteNumber(receipt.payload?.omittedAttributeCount), 0,
+        ),
         optimization: data.optimizationReceipt
           ? Object.freeze({ ...data.optimizationReceipt }) : null,
         optimizedTriangles: data.optimizedWorkshopTriangleCount || 0,

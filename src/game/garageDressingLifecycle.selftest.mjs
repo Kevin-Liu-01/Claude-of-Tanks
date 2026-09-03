@@ -110,6 +110,9 @@ assert.doesNotMatch(main.slice(main.indexOf('createGarageDressingScheduler({'),
   'the workshop scheduler must not wait for playable vehicle builders');
 assert.match(main, /lastActivityAt: garageDressingScheduler\.getLastActivityAt\(\)/,
   'background world building must observe the same garage activity epoch');
+assert.match(main,
+  /onGarageVariantMenuIntent:[\s\S]{0,900}previewWarmVariant[\s\S]{0,900}garageStage\.prepareVariant\(previewWarmVariant\.id\)/,
+  'selector intent must warm one bounded outdoor scene before its first reveal');
 
 const readyAt = main.indexOf('window.__GAME_READY = true;');
 assert(readyAt >= 0);

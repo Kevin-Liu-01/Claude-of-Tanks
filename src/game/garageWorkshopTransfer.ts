@@ -1,6 +1,10 @@
 import * as THREE from 'three';
-import { createTankMaterials, prebakeSharedTextures } from '../vehicles/materials.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
+import {
+  createGarageWorkshopMaterialPalette,
+  garageWorkshopFinishKey,
+} from './garageWorkshopMaterials.ts';
+import type { GarageWorkshopMaterialPalette } from './garageWorkshopMaterials.ts';
 import type {
   GarageDressingEngineContext,
   GarageWorkshopVisual,
@@ -28,6 +32,7 @@ type WorkerReply = WorkerReplyBase & (
     materials: MaterialWire[];
     geometryCount: number;
     nodeCount: number;
+    payload: GarageWorkshopGeometryWire['payload'];
   }
   | { kind: 'geometries'; geometries: GeometryWire[] }
   | { kind: 'nodes'; nodes: FlatNodeWire[] }
@@ -35,25 +40,12 @@ type WorkerReply = WorkerReplyBase & (
   | { kind?: undefined }
 );
 
-interface MaterialPalette {
-  hull: THREE.Material;
-  wheels: THREE.Material;
-  wheelsRecessed: THREE.Material;
-  rubber: THREE.Material;
-  detail: THREE.Material;
-  dark: THREE.Material;
-  shadow: THREE.Material;
-  trackLink: THREE.Material;
-  spareTrack: THREE.Material;
-  glass: THREE.Material;
-  barrel: THREE.Material;
-  canvasCloth: THREE.Material;
-  wood: THREE.Material;
-  burnt: THREE.Material;
-  dispose(): void;
-}
+type MaterialPalette = GarageWorkshopMaterialPalette;
 
-type MaterialPaletteKey = Exclude<keyof MaterialPalette, 'dispose'>;
+type MaterialPaletteKey = Exclude<
+  keyof MaterialPalette,
+  'dispose' | 'finishKey' | 'textureCount' | 'materialCount'
+>;
 
 const ROLE_MATERIAL_KEYS: Readonly<Record<string, MaterialPaletteKey>> = {
   tireRubber: 'rubber',
@@ -121,6 +113,7 @@ function materialForWire(
   objectName: string,
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
+  fallbackCache: Map<string, THREE.Material>,
 ): THREE.Material {
   const role = source.role;
   if (role === 'wheelPaint') {
@@ -132,6 +125,17 @@ function materialForWire(
   const nameMaterialKey = NAME_MATERIAL_KEYS.find(([pattern]) => pattern.test(objectName))?.[1];
   if (nameMaterialKey) return palette[nameMaterialKey];
 
+  const fallbackKey = [
+    source.color ?? 0x4a5040,
+    source.roughness ?? 0.75,
+    source.metalness ?? 0.1,
+    source.opacity,
+    Number(source.transparent),
+    source.side,
+    Number(source.depthWrite),
+  ].join(':');
+  const cached = fallbackCache.get(fallbackKey);
+  if (cached) return cached;
   const material = new THREE.MeshStandardMaterial({
     color: source.color ?? 0x4a5040,
     roughness: source.roughness ?? 0.75,
@@ -140,9 +144,10 @@ function materialForWire(
     transparent: source.transparent,
     side: source.side as THREE.Side,
     depthWrite: source.depthWrite,
-    vertexColors: true,
+    vertexColors: false,
   });
   fallbacks.push(material);
+  fallbackCache.set(fallbackKey, material);
   return material;
 }
 
@@ -152,9 +157,10 @@ function rebuildNodeObject(
   materials: readonly MaterialWire[],
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
+  fallbackCache: Map<string, THREE.Material>,
 ): THREE.Object3D {
   const resolvedMaterials = source.materials.map((index) =>
-    materialForWire(materials[index], source.name, palette, fallbacks));
+    materialForWire(materials[index], source.name, palette, fallbacks, fallbackCache));
   let object: THREE.Object3D;
   if (source.kind === 'instanced') {
     const mesh = new THREE.InstancedMesh(
@@ -193,6 +199,7 @@ async function rebuildNodeTree(
   materials: readonly MaterialWire[],
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
+  fallbackCache: Map<string, THREE.Material>,
 ): Promise<THREE.Object3D> {
   if (!nodes.length) throw new Error('Garage workshop worker returned an empty node tree');
   const objects: THREE.Object3D[] = [];
@@ -205,6 +212,7 @@ async function rebuildNodeTree(
       materials,
       palette,
       fallbacks,
+      fallbackCache,
     );
     objects.push(object);
     if (source.parentIndex >= 0) {
@@ -230,8 +238,10 @@ async function rebuildNodeTree(
 
 async function visualFromWire(
   wire: GarageWorkshopGeometryWire,
-  engineCtx: GarageDressingEngineContext,
-  camoSeed: number,
+  acquirePalette: (specId: string) => {
+    palette: GarageWorkshopMaterialPalette;
+    release(): void;
+  },
 ): Promise<GarageWorkshopVisual> {
   const timings: Record<string, number> = { startedAt: Math.round(performance.now()) };
   const geometries: THREE.BufferGeometry[] = [];
@@ -244,26 +254,15 @@ async function visualFromWire(
     }
   }
   timings.geometriesAt = Math.round(performance.now());
-  const spec = TANK_SPECS[wire.specId];
-  // Geometry already arrives incrementally from the worker. Paint generation
-  // must follow the same cooperative boundary: a synchronous cache miss here
-  // otherwise turns one decorative exhibit into a 200-300 ms Garage frame on
-  // a 4x-throttled CPU even though its geometry never touched the main thread.
-  await prebakeSharedTextures(
-    spec,
-    engineCtx.anisotropy || 8,
-    'ai',
-    yieldToGarageFrame,
-  );
-  timings.texturesAt = Math.round(performance.now());
-  const palette = createTankMaterials(
-    spec,
-    engineCtx as never,
-    camoSeed,
-    'ai',
-  ) as MaterialPalette;
+  // Background service exhibits use one fixed national delivery coat. Their
+  // complete geometry remains intact, but they do not wake the procedural
+  // camouflage painters or retain maps that cannot resolve at this distance.
+  const paletteLease = acquirePalette(wire.specId);
+  const { palette } = paletteLease;
+  timings.texturesAt = timings.geometriesAt;
   timings.materialsAt = Math.round(performance.now());
   const fallbackMaterials: THREE.Material[] = [];
+  const fallbackCache = new Map<string, THREE.Material>();
   await yieldToGarageFrame();
   const root = await rebuildNodeTree(
     wire.nodes,
@@ -271,12 +270,17 @@ async function visualFromWire(
     wire.materials,
     palette,
     fallbackMaterials,
+    fallbackCache,
   ) as THREE.Group;
   timings.nodesAt = Math.round(performance.now());
   root.userData.workerGeometryBuildMs = wire.buildMs;
   root.userData.geometryQuality = 'high';
-  root.userData.textureQuality = 'ai';
-  root.userData.workshopTransfer = 'off-main-thread-high-detail';
+  root.userData.textureQuality = 'factory-solid';
+  root.userData.workshopFinish = palette.finishKey;
+  root.userData.workshopTextureCount = palette.textureCount;
+  root.userData.workshopMaterialCount = palette.materialCount + fallbackMaterials.length;
+  root.userData.workshopTransfer = 'off-main-thread-high-detail-solid-factory';
+  root.userData.workshopTransferPayload = wire.payload;
   root.userData.workshopTransferTimings = timings;
   let disposed = false;
   return {
@@ -292,7 +296,7 @@ async function visualFromWire(
       if (root.parent) root.parent.remove(root);
       for (const geometry of geometries) geometry.dispose();
       for (const material of fallbackMaterials) material.dispose();
-      palette.dispose();
+      paletteLease.release();
     },
   };
 }
@@ -305,6 +309,37 @@ export function createGarageWorkshopTransfer(
 } {
   let worker: Worker | null = null;
   let nextRequestId = 1;
+  const sharedPalettes = new Map<string, {
+    palette: GarageWorkshopMaterialPalette;
+    refs: number;
+  }>();
+  const acquirePalette = (specId: string): {
+    palette: GarageWorkshopMaterialPalette;
+    release(): void;
+  } => {
+    const spec = TANK_SPECS[specId];
+    const key = garageWorkshopFinishKey(spec);
+    let entry = sharedPalettes.get(key);
+    if (!entry) {
+      entry = {
+        palette: createGarageWorkshopMaterialPalette(spec, engineCtx),
+        refs: 0,
+      };
+      sharedPalettes.set(key, entry);
+    }
+    entry.refs++;
+    let released = false;
+    return {
+      palette: entry.palette,
+      release() {
+        if (released) return;
+        released = true;
+        if (--entry!.refs > 0) return;
+        entry!.palette.dispose();
+        sharedPalettes.delete(key);
+      },
+    };
+  };
   const pending = new Map<number, {
     camoSeed: number;
     wire: GarageWorkshopGeometryWire | null;
@@ -332,6 +367,7 @@ export function createGarageWorkshopTransfer(
         materials: reply.materials,
         geometries: [],
         nodes: [],
+        payload: reply.payload,
       };
       return;
     }
@@ -355,7 +391,7 @@ export function createGarageWorkshopTransfer(
       request.reject(new Error('Garage workshop worker transfer was incomplete'));
       return;
     }
-    void visualFromWire(request.wire, engineCtx, request.camoSeed)
+    void visualFromWire(request.wire, acquirePalette)
       .then(request.resolve, request.reject);
   };
   const handleError = (event: ErrorEvent): void => {
@@ -399,6 +435,8 @@ export function createGarageWorkshopTransfer(
       const error = new Error('Garage workshop worker disposed');
       for (const request of pending.values()) request.reject(error);
       pending.clear();
+      for (const entry of sharedPalettes.values()) entry.palette.dispose();
+      sharedPalettes.clear();
     },
   };
 }

@@ -22,6 +22,9 @@ export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
 
 export interface GarageStructurePlacement {
   readonly builder: StructureBuilder;
+  /** Stable exterior-detail catalog key. Never infer this from Function.name:
+   * production minification renames builders and silently drops facades. */
+  readonly catalogId: string;
   readonly label: string;
   /** Footprint center in the immutable opening-camera coordinate frame. */
   readonly side: number;
@@ -69,15 +72,32 @@ export interface GarageEnvironmentRecipe {
   readonly distinctiveElements: readonly string[];
 }
 
+const STRUCTURE_CATALOG_IDS = new Map<StructureBuilder, string>([
+  [makeAlpine, 'alpine'], [makeBathhouse, 'bathhouse'], [makeBoatshed, 'boatshed'],
+  [makeCaravanserai, 'caravanserai'], [makeChapel, 'chapel'], [makeChurch, 'church'],
+  [makeCivicHall, 'civichall'], [makeContainerRow, 'containerrow'],
+  [makeCornerShop, 'cornershop'], [makeDepot, 'depot'], [makeFactory, 'factory'],
+  [makeFarmhouse, 'farmhouse'], [makeFireStation, 'firestation'], [makeFishery, 'fishery'],
+  [makeFoundryOffice, 'foundryoffice'], [makeGantry, 'gantry'], [makeGranary, 'granary'],
+  [makeLighthouse, 'lighthouse'], [makeLogCabin, 'logcabin'], [makeMill, 'mill'],
+  [makeMinaret, 'minaret'], [makeNetYard, 'netyard'], [makeOnionChurch, 'onionchurch'],
+  [makeParkingDeck, 'parkingdeck'], [makeRangerLodge, 'rangerlodge'], [makeShed, 'shed'],
+  [makeStack, 'stack'], [makeTavern, 'tavern'], [makeWarehouse, 'warehouse'],
+  [makeWaterTower, 'watertower'], [makeWoodshed, 'woodshed'],
+]);
+
 const at = (builder: StructureBuilder, label: string, x: number, z: number,
   scale = 1): GarageStructurePlacement => {
   const point = legacyGaragePointToView(x, z);
+  const catalogId = STRUCTURE_CATALOG_IDS.get(builder);
+  if (!catalogId) throw new Error(`Garage structure has no stable catalog id: ${label}`);
   // Catalog structures author their primary facade on local +Z. Keep every
   // facility parallel to the hero tank instead of turning each building
   // radially toward the podium; the latter produced the splayed Frosthollow
   // layout and made background walls cross the tank at arbitrary angles.
   return {
     builder,
+    catalogId,
     label,
     ...point,
     yaw: GARAGE_HERO_HEADING_RAD,

@@ -86,17 +86,25 @@ hero, camera, shared maintenance graph, or rear-axis archive display to achieve
 that room composition. `garageEnvironmentKit.ts` owns the other nine bounded
 scene packs: generated real-terrain excerpts, authored world-space perimeter
 districts of seven real map structures, static tree-grove/ground-cover instances,
-a generated first-party wreck proxy, Garage-sized PBR derivatives, the bounded
+Garage-sized PBR derivatives, the bounded
 three-layer terrain horizon, and the exact source-map preset on the shared
 procedural engine sky. `garageApproachDetails.ts` owns one
 terrain-following arrival route per map identity (including Cinder's three-road
 rail fan), while `exteriorDetailKit.ts` certifies every sill, pier, awning,
 ladder, pipe, balcony, and service fixture against its wall, roof, or ground
-support before those facades merge. `garageFacilityDetails.ts` flattens two-sided service bays,
-equipment, first-party tank-part vocabulary, and low-poly service vehicles into
-seven non-overlapping terrain terraces per pack; the architecture probe must
+support before those facades merge. `garageFacilityDetails.ts` builds two-sided
+service frames and static equipment across seven non-overlapping terrain
+terraces per pack; it must never add tank-shaped proxy geometry. All complete
+vehicles, turrets, guns, armor arrays, road wheels, track shoes, and service
+racks come from the shared full-detail fleet dressing. The architecture probe must
 keep their measured contact error at or below 0.1 m. It must never import a
-playable fleet builder. Never add a world-loading
+playable fleet builder.
+Every outdoor signature facility needs a believable purpose visible in the
+default view and a coherent silhouette through a full orbit. Ground all
+footings to a shared island datum, connect braces by endpoints, keep service
+hardware out of the camera orbit, and use actual fleet builders—not Garage-only
+silhouettes—for every readable vehicle or tank component.
+Never add a world-loading
 or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
 demand-loads one shared, optimized four-bay modern maintenance layer after
 Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten
@@ -108,10 +116,14 @@ the tank's rear axis in every opening composition. Verdant alone may show the
 remaining wall-mounted interior clutter. Keep the
 fleet load behind the quiet-window scheduler, build the four full-detail static
 meshes in `garageWorkshopGeometryWorker.ts`, reconstruct them with the ordinary
-vehicle PBR palette in cooperative frame slices, reuse one graph across variants,
-and never duplicate it per scene pack. Transfer worker-computed bounds with the
-attributes; never rescan the full vertex stream on the render thread. The worker
-entry may import only those four exhibit families.
+vehicle PBR role contract but three shared map-free solid national-service
+palettes in cooperative frame slices, reuse one graph across variants, and never
+duplicate it per scene pack. Background exhibits must not inherit player paint
+or allocate camouflage canvases. Transfer worker-computed bounds and only the
+position/normal attributes these materials consume; never rescan the full vertex
+stream on the render thread. The worker entry may import only those four exhibit
+families. A selector-menu intent may warm one non-selected outdoor scene inside
+the two-pack LRU, never all nine packs.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
@@ -199,7 +211,7 @@ keep partial bridges private until roster preparation and initial authority
 succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
-Garage scene-pack changes must pass the architecture, terrain- and wreck-generation,
+Garage scene-pack changes must pass the architecture, terrain-generation,
 transition, persisted-outdoor-entry, and phase-resource gates. Preserve the
 two-pack cache, reject stale switch completions, perform shader and texture
 warming only after interactive readiness, and keep all environment identity out

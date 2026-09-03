@@ -93,6 +93,11 @@ export interface GarageWorkshopGeometryWire {
   geometries: GeometryWire[];
   materials: MaterialWire[];
   buildMs: number;
+  payload: {
+    attributeBytes: number;
+    omittedAttributeBytes: number;
+    omittedAttributeCount: number;
+  };
 }
 
 interface WorkshopWorkerScope {
@@ -115,6 +120,7 @@ type WorkshopWorkerReply =
     materials: MaterialWire[];
     geometryCount: number;
     nodeCount: number;
+    payload: GarageWorkshopGeometryWire['payload'];
   }
   | { ok: true; kind: 'geometries'; requestId: number; geometries: GeometryWire[] }
   | { ok: true; kind: 'nodes'; requestId: number; nodes: FlatNodeWire[] }
@@ -191,6 +197,9 @@ function serializeTank(root: THREE.Group, requestId: number, specId: string, bui
   const materials: MaterialWire[] = [];
   const materialIds = new Map<THREE.Material, number>();
   const nodes: FlatNodeWire[] = [];
+  let attributeBytes = 0;
+  let omittedAttributeBytes = 0;
+  let omittedAttributeCount = 0;
 
   const geometryId = (geometry: THREE.BufferGeometry): number => {
     const known = geometryIds.get(geometry);
@@ -199,7 +208,18 @@ function serializeTank(root: THREE.Group, requestId: number, specId: string, bui
     geometryIds.set(geometry, id);
     const attributes: Record<string, AttributeWire> = {};
     for (const [name, attribute] of Object.entries(geometry.attributes)) {
-      attributes[name] = attributeWire(attribute);
+      // The Garage palette is deliberately map-free, solid-colour, and
+      // static. Position and normal fully describe its rendered form;
+      // colour/UV/tangent channels only feed playable camouflage/detail paths
+      // and would be transferred and uploaded without affecting one pixel.
+      if (name !== 'position' && name !== 'normal') {
+        omittedAttributeBytes += attribute.array.byteLength;
+        omittedAttributeCount++;
+        continue;
+      }
+      const wire = attributeWire(attribute);
+      attributeBytes += wire.array.byteLength;
+      attributes[name] = wire;
     }
     // Exact bounds are part of the geometry payload. Recomputing them after
     // transfer scanned hundreds of thousands of vertices on the main thread
@@ -292,7 +312,15 @@ function serializeTank(root: THREE.Group, requestId: number, specId: string, bui
   };
 
   appendNode(root, -1, null, null);
-  return { requestId, specId, nodes, geometries, materials, buildMs };
+  return {
+    requestId,
+    specId,
+    nodes,
+    geometries,
+    materials,
+    buildMs,
+    payload: { attributeBytes, omittedAttributeBytes, omittedAttributeCount },
+  };
 }
 
 const GEOMETRY_BATCH_SIZE = 24;
@@ -312,6 +340,7 @@ async function postWireInBatches(wire: GarageWorkshopGeometryWire): Promise<void
     materials: wire.materials,
     geometryCount: wire.geometries.length,
     nodeCount: wire.nodes.length,
+    payload: wire.payload,
   });
   for (let index = 0; index < wire.geometries.length; index += GEOMETRY_BATCH_SIZE) {
     const geometries = wire.geometries.slice(index, index + GEOMETRY_BATCH_SIZE);

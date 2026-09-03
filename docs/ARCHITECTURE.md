@@ -915,18 +915,26 @@ terrain-following route from the outer district to the podium—rail fan, urban
 boulevard, drydock causeway, snow road, convoy track, alpine pass, monsoon
 causeway, recovery trail, or foundry haul road. `exteriorDetailKit.ts` validates
 every added facade fixture against its exact support before the building is
-merged. Two background hulks
-reuse a 208-triangle proxy generated from the first-party M1A2 wreck pose; no
-fleet builder enters the Garage graph. `garageFacilityDetails.ts` merges
-arbitrary maintenance assemblies and emits repeated opaque crates, cylinders,
-beams, sleepers, and service props as static instanced batches. This preserves
-authored transforms, materials, and triangle silhouettes without paying one
-scene node or geometry bake per copy. Cinder adds three full rail
+merged. Environment packs contain no tank-shaped proxy geometry.
+`garageFacilityDetails.ts` emits repeated opaque crates, cylinders, beams,
+sleepers, connected service frames, and workshop props as static instanced
+batches. Complete vehicles and every readable teardown component instead come
+from the one shared, streamed full-detail fleet workshop described below. This
+keeps the environment cache small without showing silhouette-only tanks,
+turrets, guns, powerpacks, or armor racks. Cinder adds three full rail
 roads, platforms, canopies, and a nine-bay roundhouse. Two grounded four-post
 maintenance portals remain legible in the opening composition; each includes
-connected roof/floor structure, workshop equipment, and a static first-party
-turret-and-gun cradle rather than an empty decorative frame. The
-local white-card sky has been removed: `garageSkyPresets.ts` retargets the
+connected roof/floor structure and workshop equipment while the shared fleet
+service bays supply the surrounding vehicles and tank parts. The
+facility builders use one hero-aligned local coordinate frame and one sampled
+ground datum per island. Columns, crossheads, roof sheets, crane runways,
+trolleys, chains, benches, rails, pipework, winches, and braces are derived from
+that frame; diagonal members are endpoint-connected rather than visually
+rotated into place. Facility steel, paint, machinery, and masonry reuse the
+environment pack's bounded PBR normal/albedo residency. Every outdoor Garage
+certifies at least three assembled operating machines, two heavy-lift systems,
+four real fleet service exhibits, and zero unsupported members.
+The local white-card sky has been removed: `garageSkyPresets.ts` retargets the
 shared procedural dome, cloud decks, fog, and sun to the exact source-map
 atmosphere while retaining the boot PMREM so selector changes do not stall.
 Detailed tree groves are immutable assets shared across the two-pack cache;

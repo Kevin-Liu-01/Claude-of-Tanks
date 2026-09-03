@@ -3,6 +3,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -290,6 +291,13 @@ try {
         || result.stats.workshopOrbitCoverageDegrees !== 360) {
       failures.push(`${result.id}: complete four-bay service layer is missing`);
     }
+    if (result.stats.workshopExhibitTextureCount !== 0
+        || result.stats.workshopPaletteCount !== 3
+        || result.stats.workshopOmittedAttributeBytes <= 0
+        || result.stats.workshopPresentationFinishes?.join('|')
+          !== 'service_t90m|service_usa_desert|service_bmp3_rok') {
+      failures.push(`${result.id}: fixed service-finish optimization is missing`);
+    }
     if (!result.stats.battleScreenVisible
         || result.stats.battleScreenMode !== 'crt-scroll-slideshow'
         || result.stats.battleScreenWallBay !== 'freestanding-shared'
@@ -312,15 +320,16 @@ try {
         failures.push(`${result.id}: restored workshop receipt failed`);
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
-        || architecture.drawCalls < 8 || architecture.drawCalls > 24
+        || architecture.drawCalls < 8 || architecture.drawCalls > 25
         || architecture.triangles <= 0 || architecture.triangles > 50_000
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2
-        || architecture.openingViewFrames !== 2 || architecture.openingViewTankParts !== 2
+        || architecture.operationalMachines < 3
+        || architecture.openingViewFrames !== 2
         || architecture.treeDetailTier !== 'battlefield-near'
         || architecture.horizonStyle === 'none' || architecture.horizonMaxHeightM > 13.2
-        || architecture.looseParts < 40 || architecture.serviceVehicles < 1
+        || architecture.looseParts < 40
         || architecture.placementZones < 7 || architecture.placementOverlaps !== 0
         || architecture.maxGroundContactErrorM > 0.1
         || architecture.cached > 2 || architecture.residentTextureSets > 9) {
@@ -332,6 +341,18 @@ try {
     }
     if (result.frames.maxGapMs > maxGapMs) {
       failures.push(`${result.id}: ${result.frames.maxGapMs}ms transition frame gap`);
+    }
+  }
+  const qualityScores = results.map((result) => scoreGarageQuality({
+    id: result.id,
+    isVerdant: result.id === 'verdant_motor_pool',
+    architecture: result.stats.architecture,
+    workshop: result.stats,
+    transitionMaxGapMs: result.frames.maxGapMs,
+  }));
+  for (const score of qualityScores) {
+    if (score.total < 90 || score.failures.length) {
+      failures.push(`${score.id}: quality ${score.total}/100 (${score.failures.join(', ')})`);
     }
   }
   if (thrash.selected !== lastId || thrash.architecture.cached > 2
@@ -370,6 +391,7 @@ try {
       drawCalls: stats.architecture.drawCalls,
       triangles: stats.architecture.triangles,
     })),
+    qualityScores,
     dressingFrames,
     thrashFrames,
     cycleFrames,

@@ -7,25 +7,40 @@ const worker = await readFile(new URL('./garageWorkshopGeometryWorker.ts', impor
 const transfer = await readFile(new URL('./garageWorkshopTransfer.ts', import.meta.url), 'utf8');
 const stage = await readFile(new URL('../ui/garageStage.ts', import.meta.url), 'utf8');
 
-assert.match(dressing, /import\('\.\.\/vehicles\/fleetFactory\.ts'\)/,
-  'the optional workshop must acquire the fleet lazily');
-assert.match(dressing, /ensureTankBuilder\(specId\)/);
+assert.doesNotMatch(dressing,
+  /Promise\.all\([\s\S]{0,300}import\('\.\.\/vehicles\/fleetFactory\.ts'\)/,
+  'the ordinary workshop path must not duplicate worker-owned fleet families on the render thread');
+assert.match(dressing,
+  /catch \(error\)[\s\S]*import\('\.\.\/vehicles\/fleetFactory\.ts'\)[\s\S]*ensureTankBuilder\(specId\)/,
+  'the playable fleet facade remains an exceptional worker-recovery path');
 assert.match(dressing, /WORKSHOP_CHUNK_VEHICLE_IDS\[next\]/,
   'one exact fleet builder must be resolved per streamed workshop slice');
 assert.match(dressing,
-  /WORKSHOP_PRESENTATION_OPTIONS[\s\S]*quality: 'ai'[\s\S]*geometryQuality: 'high'[\s\S]*staticPreview: true[\s\S]*decor: true[\s\S]*deferStaticBatch: true/,
-  'workshop tanks retain full authored geometry and fittings on the bounded static tier');
+  /WORKSHOP_PRESENTATION_OPTIONS[\s\S]*quality: 'ai'[\s\S]*camoPattern: 'factory'[\s\S]*geometryQuality: 'high'[\s\S]*staticPreview: true[\s\S]*decor: true[\s\S]*deferStaticBatch: true/,
+  'workshop tanks retain full authored geometry and fittings with a fixed recovery finish');
 assert.doesNotMatch(dressing, /renderer\.compile\(/,
   'workshop streaming must not synchronously compile a decorative subtree');
 assert.match(dressing, /await transfer\.createVisual\(specId, camoSeed\)/,
   'full-detail exhibit geometry must be acquired away from the render thread');
 assert.match(transfer, /new Worker\(new URL\('\.\/garageWorkshopGeometryWorker\.ts'/,
   'the workshop transfer must lazily own its dedicated module worker');
-assert.match(transfer,
-  /await prebakeSharedTextures\([\s\S]*'ai',[\s\S]*yieldToGarageFrame/,
-  'workshop paint generation must yield between painter stages before material acquisition');
+assert.doesNotMatch(transfer, /prebakeSharedTextures|createTankMaterials/,
+  'static exhibits must not wake procedural camouflage or scrolling-track texture allocation');
+assert.match(transfer, /createGarageWorkshopMaterialPalette/,
+  'static exhibits must use the map-free factory delivery palette');
+assert.match(transfer, /sharedPalettes = new Map/,
+  'matching national service finishes must share immutable Garage materials');
+assert.match(transfer, /textureQuality = 'factory-solid'/,
+  'diagnostics must identify the map-free background finish');
+assert.match(dressing, /camoPattern: 'factory',[\s\S]*\}\);/,
+  'the exceptional main-thread recovery path must not accept signature paint overrides');
+assert.match(dressing, /workshopTransferPayload/,
+  'the Garage must retain worker payload savings for production diagnostics');
 assert.match(worker, /geometryQuality: 'high'[\s\S]*decor: true/,
   'worker exhibits retain full procedural detail and fittings');
+assert.match(worker,
+  /name !== 'position' && name !== 'normal'/,
+  'solid workshop geometry must omit unused colour, UV and tangent transfer channels');
 assert.match(worker, /lod\.levels\[index\]\?\.hysteresis \?\? 0/,
   'worker exhibits must serialize the authored LOD transition hysteresis');
 assert.match(transfer, /source\.lodHysteresis \?\? 0/,
@@ -109,10 +124,23 @@ assert.match(dressing,
   'the shared bays and Verdant-only interior collapse static leaf draws independently');
 assert.match(dressing, /sharedMaintenanceBayCount = 4/);
 assert.match(dressing, /workshopOrbitCoverageDegrees = 360/);
+assert.match(dressing, /workshopModelMode = 'actual-fleet'/,
+  'every Garage must identify its shared service exhibits as real fleet geometry');
+for (const component of [
+  'turret_cradle',
+  'relikt_service_rack',
+  'rolled_k2_hull',
+  'road_wheel_stacks',
+  'track_shoe_pallet',
+  'weapon_service_rack',
+]) {
+  assert.match(dressing, new RegExp(component),
+    `the full-detail shared workshop must retain ${component}`);
+}
 for (const quadrant of ['north-east', 'south-east', 'south-west', 'north-west']) {
   assert.match(dressing, new RegExp(quadrant));
 }
-assert.match(dressing, /WORKSHOP_LAYOUT_POSES\[currentVariant\.layout\]/,
+assert.match(dressing, /getGarageWorkshopLayoutPose\(currentVariant\)/,
   'each environment must recompose the shared 360-degree service set');
 for (const bay of ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']) {
   assert.match(dressing, new RegExp(bay));

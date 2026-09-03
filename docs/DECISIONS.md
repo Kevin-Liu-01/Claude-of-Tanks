@@ -141,13 +141,21 @@ dormancy. Callers use that interface instead of retaining parallel map state.
 The Garage and battlefield have exclusive scene residency. The Garage sleeps
 its frame clock after presentation settles and invalidates it only on actual
 activity. Verdant retains the authored workshop. Every other Garage destination
-uses a purpose-built Garage-only terrain, five connected map-specific
-structures, a two-sided maintenance facility, baked service vehicles, and
-stocked equipment/part racks. These static environments may borrow palette,
+uses a purpose-built Garage-only terrain, seven connected map-specific
+structures, a two-sided maintenance facility, operating service machinery, and
+stocked equipment/part racks. Tank-shaped scene-pack proxies are forbidden; one
+post-ready shared workshop streams complete fleet-exact vehicles and teardown
+parts for all ten environments. The static environment packs may borrow palette,
 relief, vegetation, and industrial language from a battlefield, but never import
-or construct its terrain, collision, destructibles, services, playable fleet,
-or animated vegetation. Cinder Junction additionally owns three complete raised
+or construct its terrain, collision, destructibles, services, or animated
+vegetation. Cinder Junction additionally owns three complete raised
 rail roads, platforms, canopies, and a nine-bay roundhouse frame.
+Background fleet exhibits preserve full geometry and fittings but intentionally
+do not inherit player camouflage. They share three map-free `MeshStandardMaterial`
+service palettes and omit unused colour/UV/tangent transfer channels. This is a
+Garage-presentation decision only; playable and pedestal material contracts are
+unchanged. The normal worker path exclusively owns the four required builders;
+the render-thread fleet facade is loaded only as an explicit recovery path.
 `garageEnvironmentPresentationRuntime.ts` owns the fixed isolated anchor,
 camera framing, battlefield dormancy, and diagnostics. The composition root
 supplies concrete presentation ports but cannot request a world from this path.

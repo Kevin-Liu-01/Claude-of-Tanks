@@ -24,7 +24,6 @@ import {
   getGarageTerrainPatch,
   type GarageTerrainPatch,
 } from './garageTerrainPatches.generated.ts';
-import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 import {
   addGarageFacilityDetails,
   getGarageFacilityTerraces,
@@ -62,7 +61,6 @@ export interface GarageEnvironmentStats {
   readonly horizonMaxHeightM: number;
   readonly groundCover: number;
   readonly structures: number;
-  readonly wrecks: number;
   readonly facilityProps: number;
   readonly facilityStations: number;
   readonly approachLabel: string;
@@ -76,10 +74,15 @@ export interface GarageEnvironmentStats {
   readonly maxExteriorSupportGapM: number;
   readonly looseParts: number;
   readonly railSegments: number;
-  readonly serviceVehicles: number;
   readonly placementZones: number;
   readonly openingViewFrames: number;
-  readonly openingViewTankParts: number;
+  readonly structuralConnections: number;
+  readonly unsupportedParts: number;
+  readonly heavyLiftSystems: number;
+  readonly operationalMachines: number;
+  readonly servicePurposeTags: readonly string[];
+  readonly facilityMaterialClasses: number;
+  readonly openingSightlineIntrusions: number;
   readonly placementOverlaps: number;
   readonly maxGroundContactErrorM: number;
   readonly platformGroundClearanceM: number;
@@ -484,21 +487,6 @@ function createGroundCoverGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
-function decodeGarageWreckGeometry(): THREE.BufferGeometry {
-  const binary = globalThis.atob(GARAGE_WRECK_ASSET.millimetersBase64);
-  const positions = new Float32Array(binary.length / 2);
-  for (let index = 0; index < positions.length; index += 1) {
-    const raw = binary.charCodeAt(index * 2) | (binary.charCodeAt(index * 2 + 1) << 8);
-    positions[index] = (raw & 0x8000 ? raw - 0x10000 : raw) / 1000;
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
 function decodePatch(patch: GarageTerrainPatch): Float32Array {
   const binary = globalThis.atob(patch.centimetersBase64);
   const values = new Float32Array(binary.length / 2);
@@ -681,17 +669,21 @@ export function buildGarageEnvironment(
     const { x, z } = cameraPoint(placement.side, placement.depth);
     const local = createBuckets();
     const dimensions = placement.builder(rng, local);
-    const catalogId = placement.builder.name.replace(/^make/, '').toLowerCase();
     addCatalogExterior(local, {
-      id: catalogId,
+      id: placement.catalogId,
       info: dimensions,
       variant: structureIndex,
     });
-    const supports = Object.values(local)
-      .filter((value): value is THREE.BufferGeometry[] => Array.isArray(value))
-      .flatMap((geometries) => geometries)
-      .map((geometry) => geometry.userData.structureSupport)
-      .filter((support): support is { gap: number } => !!support && Number.isFinite(support.gap));
+    const supports: Array<{ gap: number }> = [];
+    for (const value of Object.values(local)) {
+      if (!Array.isArray(value)) continue;
+      for (const geometry of value) {
+        const support = geometry.userData.structureSupport as { gap?: unknown } | undefined;
+        if (support && Number.isFinite(support.gap)) {
+          supports.push({ gap: Number(support.gap) });
+        }
+      }
+    }
     const exteriorParts = supports.length;
     const exteriorSupportGap = Math.max(0, ...supports.map((support) => support.gap));
     const y = samplePatch(patch, heights, x, z);
@@ -923,22 +915,39 @@ export function buildGarageEnvironment(
     }
   }
 
+  const facilitySurfaceHandles = variant.architecture === 'field_shed'
+    ? null
+    : Object.freeze({
+        structure: assets.acquire('roof', requestRender),
+        painted: assets.acquire('plaster', requestRender),
+        equipment: assets.acquire('wood', requestRender),
+        masonry: assets.acquire('brick', requestRender),
+      });
+  if (facilitySurfaceHandles) handles.push(...Object.values(facilitySurfaceHandles));
   const facilityDetails = variant.architecture === 'field_shed'
     ? Object.freeze({
         facilityProps: 0,
         facilityStations: 0,
         looseParts: 0,
         railSegments: 0,
-        serviceVehicles: 0,
         openingViewFrames: 0,
-        openingViewTankParts: 0,
         placementZones: 0,
+        structuralConnections: 0,
+        unsupportedParts: 0,
+        heavyLiftSystems: 0,
+        operationalMachines: 0,
+        servicePurposeTags: Object.freeze([]),
+        facilityMaterialClasses: 0,
+        openingSightlineIntrusions: 0,
         meshes: Object.freeze([]),
-        material: null,
+        materials: Object.freeze([]),
       })
     : addGarageFacilityDetails({
         buckets: combined,
         engineCtx,
+        surfaceMaps: Object.fromEntries(Object.entries(facilitySurfaceHandles!).map(
+          ([key, handle]) => [key, { color: handle.color, normal: handle.normal }],
+        )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
         groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
         variant,
       });
@@ -960,7 +969,7 @@ export function buildGarageEnvironment(
     track(mesh.geometry);
     root.add(mesh);
   }
-  if (facilityDetails.material) track(facilityDetails.material);
+  for (const material of facilityDetails.materials) track(material);
 
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
@@ -1011,37 +1020,6 @@ export function buildGarageEnvironment(
     mesh.updateMatrix();
     root.add(mesh);
   }
-
-  // Two distant hulks reuse the exact 208-triangle shadow proxy baked from
-  // our first-party M1A2. The generated asset preserves the authored vehicle
-  // silhouette while keeping every fleet builder and live wreck system out of
-  // Garage loading. Both instances share one immutable draw call.
-  const wreckGeometry = track(decodeGarageWreckGeometry());
-  const wreckMaterial = plainMaterial({ color: 0x24201c, roughness: 0.96, metalness: 0.14 });
-  const wrecks = new THREE.InstancedMesh(wreckGeometry, wreckMaterial, 2);
-  wrecks.name = 'first_party_m1a2_background_wrecks';
-  const wreckPlacements = [
-    [-21, 24, 0.82, 0.76],
-    [21, 24, -0.68, 0.70],
-  ] as const;
-  wreckPlacements.forEach(([side, depth, yaw, size], index) => {
-    const { x, z } = cameraPoint(side, depth);
-    const y = samplePatch(patch, heights, x, z);
-    wrecks.setMatrixAt(index, new THREE.Matrix4().compose(
-      new THREE.Vector3(x, y + 0.02, z),
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
-      new THREE.Vector3(size, size, size),
-    ));
-  });
-  wrecks.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  wrecks.instanceMatrix.needsUpdate = true;
-  wrecks.castShadow = false;
-  wrecks.receiveShadow = true;
-  wrecks.computeBoundingBox();
-  wrecks.computeBoundingSphere();
-  wrecks.matrixAutoUpdate = false;
-  wrecks.updateMatrix();
-  root.add(wrecks);
 
   // One repeated far-tree mesh per species produced the old row of identical
   // cones/lollipops. The asset library owns one full near-tree three-tree grove
@@ -1135,7 +1113,7 @@ export function buildGarageEnvironment(
       recipe.approach.label,
       'connected high-detail map facades',
       `three-layer ${recipe.horizonStyle} terrain horizon`,
-      'first-party M1A2 wreck silhouettes',
+      'shared full-detail fleet service exhibits',
       'static biome ground cover',
     ]),
     backdropLayers: 3,
@@ -1161,7 +1139,6 @@ export function buildGarageEnvironment(
     treeDetailTier: treeKits[0]?.detailTier || 'none',
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
-    wrecks: wreckPlacements.length,
     ...facilityDetails,
     ...approachDetails,
     connectedExteriorParts: structureRecords.reduce((sum, record) => sum + record.exteriorParts, 0),
