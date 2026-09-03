@@ -1186,23 +1186,32 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeMapPicker();
-  // Scroll masks are affordances, not decoration: only show one while content
-  // remains below the viewport. The dossier depth collapses over its final
-  // pixels so the last loadout card resolves to full opacity instead of
-  // ending behind a permanent dark shelf.
+  // Scroll masks are affordances, not decoration: the head appears only after
+  // content moves above the viewport, while the tail appears only while more
+  // remains below. Both depths collapse near their respective ends so the
+  // first and last cards resolve to full opacity instead of hitting a shelf.
   const syncScrollFades = () => {
     const mapScroll = mapsEl.querySelector('.cot-map-scroll');
     if (mapScroll) mapScroll.classList.toggle('can-scroll', mapScroll.scrollHeight > mapScroll.clientHeight + 1);
     const cg = root.querySelector('.cot-camos .cgrid.camo');
     if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
+    const dossierPassed = Math.max(0, statsEl.scrollTop);
     const dossierRemaining = Math.max(0,
       statsEl.scrollHeight - statsEl.clientHeight - statsEl.scrollTop);
+    const hasDossierHead = dossierPassed > 1;
     const hasDossierTail = statsEl.scrollHeight > statsEl.clientHeight + 1 && dossierRemaining > 1;
+    statsEl.classList.toggle('has-scroll-head', hasDossierHead);
     statsEl.classList.toggle('has-scroll-tail', hasDossierTail);
-    if (hasDossierTail) {
-      statsEl.style.setProperty('--cot-dossier-fade-depth', `${Math.min(64, dossierRemaining)}px`);
+    statsEl.classList.toggle('has-scroll-mask', hasDossierHead || hasDossierTail);
+    if (hasDossierHead) {
+      statsEl.style.setProperty('--cot-dossier-head-fade', `${Math.min(64, dossierPassed)}px`);
     } else {
-      statsEl.style.removeProperty('--cot-dossier-fade-depth');
+      statsEl.style.removeProperty('--cot-dossier-head-fade');
+    }
+    if (hasDossierTail) {
+      statsEl.style.setProperty('--cot-dossier-tail-fade', `${Math.min(64, dossierRemaining)}px`);
+    } else {
+      statsEl.style.removeProperty('--cot-dossier-tail-fade');
     }
   };
   window.addEventListener('resize', syncScrollFades);

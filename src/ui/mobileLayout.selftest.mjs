@@ -54,11 +54,11 @@ assert.match(garage,
   /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
   'tablet and phone side panels must stay out of the tank stage until requested');
 assert.match(garage,
-  /\.cot-garage \.stats\.has-scroll-tail\{[\s\S]*mask-image:linear-gradient\(180deg,#000 0,[\s\S]*var\(--cot-dossier-fade-depth,64px\)[\s\S]*transparent 100%\)/,
-  'the dossier must fade overflowing cards into the garage instead of clipping them at a hard bottom edge');
+  /\.cot-garage \.stats\.has-scroll-mask\{[\s\S]*mask-image:linear-gradient\(180deg,transparent 0,[\s\S]*var\(--cot-dossier-head-fade,0px\)[\s\S]*var\(--cot-dossier-tail-fade,0px\)[\s\S]*transparent 100%\)/,
+  'the dossier must fade scrolled cards into the garage at both viewport edges instead of clipping them');
 assert.match(garageSource,
-  /const dossierRemaining = Math\.max\(0,[\s\S]*statsEl\.scrollHeight - statsEl\.clientHeight - statsEl\.scrollTop\)[\s\S]*Math\.min\(64, dossierRemaining\)[\s\S]*statsEl\.addEventListener\('scroll', syncScrollFades, \{ passive: true \}\)/,
-  'the dossier fade must track remaining content and disappear progressively at the true scroll end');
+  /const dossierPassed = Math\.max\(0, statsEl\.scrollTop\)[\s\S]*const dossierRemaining = Math\.max\(0,[\s\S]*has-scroll-head[\s\S]*has-scroll-tail[\s\S]*Math\.min\(64, dossierPassed\)[\s\S]*Math\.min\(64, dossierRemaining\)[\s\S]*statsEl\.addEventListener\('scroll', syncScrollFades, \{ passive: true \}\)/,
+  'the dossier fades must track content above and below, then collapse progressively at both scroll ends');
 assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
   'portrait phones must place Battle below the brand and global controls instead of overlapping them');
