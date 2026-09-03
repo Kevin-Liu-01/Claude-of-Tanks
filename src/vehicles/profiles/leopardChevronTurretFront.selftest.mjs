@@ -35,7 +35,7 @@ for (const id of ['leo2a5', 'leo2a5_a5nl']) {
   const chevrons = turretPlates.filter((plate) => plate.name.startsWith('turret_chevron_'));
   assert.equal(chevrons.length, 8,
     `${id} traces two upper/lower chevron courses on both cheeks`);
-  const expectedProtection = id === 'leo2a5_a5nl' ? [286, 975] : [220, 750];
+  const expectedProtection = id === 'leo2a5_a5nl' ? [275, 936] : [220, 750];
   assert.ok(chevrons.every((plate) => plate.kind === 'spaced'
       && plate.physicalMm === 90
       && plate.keMm === expectedProtection[0] && plate.ceMm === expectedProtection[1]),

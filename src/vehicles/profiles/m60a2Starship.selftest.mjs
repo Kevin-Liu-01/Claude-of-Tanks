@@ -19,7 +19,7 @@ const missileSlot = spec.gun.shells.findIndex((round) => round.guided === true);
 assert.notEqual(missileSlot, -1, 'MGM-51C Shillelagh is present in the launcher loadout');
 const missile = spec.gun.shells[missileSlot];
 assert.match(missile.name, /MGM-51C Shillelagh/i);
-assert.equal(missile.count, 13, 'Starship carries its dedicated missile allotment');
+assert.equal(missile.count, 10, 'Starship carries its dedicated missile allotment');
 assert.equal(missile.soundProfile, 'shillelagh-launch');
 assert.equal(specialActionKind(spec), SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
   'the ATGM action selects the Starship missile channel');

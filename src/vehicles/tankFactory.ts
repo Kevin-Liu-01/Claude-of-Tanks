@@ -16,6 +16,7 @@ import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.ts';
+import { applyFleetBalancePass } from './fleetBalancePass.ts';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
 // their derivatives so every clone observes a complete source record.
@@ -43,6 +44,7 @@ import {
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
+applyFleetBalancePass(TANK_SPECS);
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

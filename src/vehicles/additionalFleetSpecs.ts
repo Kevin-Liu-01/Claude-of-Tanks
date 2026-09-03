@@ -3,6 +3,7 @@
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import {
+  apfsdsPenetration as apfsdsPens,
   reactivePlate,
   shell,
   type ArmorEnvelope,
@@ -153,7 +154,25 @@ function merkavaArmor({ glacis, lower, wedge, notch, side }: MerkavaArmorOptions
 
 const SPECS: FleetTankSpec[] = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
-    { hp: 2100, weightTons: 62, topSpeedKmh: 56, gun: { reloadS: 7.2 },
+    {
+      // Tier IX late-Cold-War heavy MBT: strong protection and a dependable
+      // rifled-gun cycle, paid for with lower agility than its faster peers.
+      hp: 2350,
+      enginePowerHp: 1200, weightTons: 62, topSpeedKmh: 56, reverseSpeedKmh: 20,
+      hullTraverseDegS: 34,
+      terrainResistance: { hard: 0.75, medium: 0.88, soft: 1.60 },
+      turretTraverseDegS: 34, gunPitchDegS: 28,
+      gun: {
+        reloadS: 6.7, baseAccuracy: 0.28, aimTimeS: 1.8,
+        bloom: { move: 0.05, hullRot: 0.07, turret: 0.07, afterShot: 2.25 },
+        shells: [
+          shell('L26A1 CHARM-1', 'APFSDS', 120,
+            apfsdsPens(620)[0], apfsdsPens(620)[1], 520, 1650,
+            { pen2000Mm: apfsdsPens(620)[2] }),
+          shell('L31A7 HESH', 'HE', 120, 150, 150, 620, 670),
+          shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
+        ],
+      },
       dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
   make('chieftain_mk10', 'chieftain5', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },

@@ -29,8 +29,8 @@ assert.equal(spec.networkSuite.unmannedAerialSystemLink, true);
 assert.equal(spec.gun.caliberMm, 130);
 assert.deepEqual(spec.gun.autoloader, {
   magazineSize: 4,
-  intraClipS: 2.25,
-  fullReloadS: 17.5,
+  intraClipS: 2.5,
+  fullReloadS: 21,
 });
 const guidedRounds = spec.gun.shells.filter((round) => round.guided);
 assert.equal(guidedRounds.length, 1, 'one selectable gun-launched guided munition');

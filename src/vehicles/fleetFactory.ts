@@ -21,6 +21,7 @@ import {
   isCombatAnatomyCalibrationReady,
 } from './combatAnatomyCalibrationLoader.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.ts';
+import { applyFleetBalancePass } from './fleetBalancePass.ts';
 
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
@@ -68,6 +69,7 @@ export interface CreateTankOptions {
   [key: string]: unknown;
 }
 
+applyFleetBalancePass(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 

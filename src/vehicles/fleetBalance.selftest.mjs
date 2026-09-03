@@ -108,8 +108,8 @@ for (const id of SAVED_TANK_IDS) {
 }
 
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [],
-  'production peers have no severe HP, sustained-output or penetration troughs');
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 17,
+  'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 54,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -117,8 +117,75 @@ for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
     `${id}: revised sustained output is measurable`);
 }
 
+const challenger1 = TANK_SPECS.challenger1;
+const challenger1Primary = challenger1.gun.shells[0];
+assert.equal(tankTier('challenger1'), 9, 'Challenger 1 occupies Tier IX');
+assert.deepEqual({
+  hp: challenger1.hp,
+  speed: challenger1.topSpeedKmh,
+  reverse: challenger1.reverseSpeedKmh,
+  hullTraverse: challenger1.hullTraverseDegS,
+  turretTraverse: challenger1.turretTraverseDegS,
+  reload: challenger1.gun.reloadS,
+  accuracy: challenger1.gun.baseAccuracy,
+  aim: challenger1.gun.aimTimeS,
+  alpha: challenger1Primary.dmg,
+  penetration: [
+    challenger1Primary.pen100Mm,
+    challenger1Primary.pen1000Mm,
+    challenger1Primary.pen2000Mm,
+  ],
+}, {
+  hp: 2350,
+  speed: 56,
+  reverse: 20,
+  hullTraverse: 34,
+  turretTraverse: 34,
+  reload: 6.7,
+  accuracy: 0.28,
+  aim: 1.8,
+  alpha: 520,
+  penetration: [757, 689, 620],
+}, 'Challenger 1 owns a complete heavy Tier IX profile');
+assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
+  'Challenger 1 uses its own late-Cold-War kinetic round instead of the Challenger 2 donor round');
+assert.equal(garageStatGroup(challenger1), '9/cold-war',
+  'garage compares Challenger 1 against its actual Tier IX peers');
+
+const kv2 = TANK_SPECS.kv2;
+assert.equal(tankTier('kv2'), 7, 'KV-2 remains Tier VII');
+assert.deepEqual({
+  hp: kv2.hp,
+  reverse: kv2.reverseSpeedKmh,
+  hullTraverse: kv2.hullTraverseDegS,
+  turretTraverse: kv2.turretTraverseDegS,
+  reload: kv2.gun.reloadS,
+  accuracy: kv2.gun.baseAccuracy,
+  aim: kv2.gun.aimTimeS,
+  shells: kv2.gun.shells.map((round) => ({
+    name: round.name,
+    damage: round.dmg,
+    penetration: [round.pen100Mm, round.pen1000Mm],
+  })),
+}, {
+  hp: 1250,
+  reverse: 7,
+  hullTraverse: 20,
+  turretTraverse: 10,
+  reload: 20.5,
+  accuracy: 0.55,
+  aim: 3.6,
+  shells: [
+    { name: 'OF-530 HE', damage: 900, penetration: [92, 92] },
+    { name: 'BR-540 APHE', damage: 700, penetration: [155, 135] },
+    { name: 'G-530 semi-AP', damage: 760, penetration: [130, 114] },
+  ],
+}, 'KV-2 owns a more usable but still deliberate 152 mm Tier VII profile');
+assert.equal(garageStatGroup(kv2), '7/ww2',
+  'garage compares KV-2 against its Tier VII peers');
+
 const missileVelocityByVehicle = new Map([
-  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_puma_s1', 180],
+  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_puma_s1', 240],
   ['type89', 130], ['type89_light_tiger', 210], ['cv90_mkiv', 240],
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
@@ -192,21 +259,21 @@ assert.deepEqual({
   alpha: proryv.gun.shells[0].dmg,
   pen100: proryv.gun.shells[0].pen100Mm,
   pen2000: proryv.gun.shells[0].pen2000Mm,
-}, { hp: 2850, reverse: 12, reload: 6.4, alpha: 560, pen100: 855, pen2000: 720 },
+}, { hp: 2900, reverse: 14, reload: 6.1, alpha: 560, pen100: 880, pen2000: 740 },
 'Proryv owns its complete tier-X assault profile');
 assert.equal(retainedT90M.hp, 2700, 'the retained tier-IX T-90M keeps its established combat profile');
-assert.equal(proryv.armor.hullPlates.find((plate) => plate.name === 'upper_glacis').keMm, 560,
+assert.equal(proryv.armor.hullPlates.find((plate) => plate.name === 'upper_glacis').keMm, 588,
   'Proryv composite glacis is hardened');
 assert.equal(proryv.armor.turretPlates.find((plate) => plate.name === 'turret_cheek_R').keMm,
-  700, 'Proryv turret cheek is hardened');
+  735, 'Proryv turret cheek is hardened');
 assert.equal(proryv.armor.turretPlates.find((plate) => plate.name === 'turret_era_R')
   .era.ceFlatMm, 600, 'Proryv Relikt package is hardened');
 
 const localProryv = createCombatState(proryv);
 startReload(localProryv, proryv);
-assert.equal(localProryv.reload.totalS, 6.4,
+assert.equal(localProryv.reload.totalS, 6.1,
   'local reload consumes the exact Proryv gun cycle');
-assert.equal(penAtDistanceMm(proryv.gun.shells[0], 2000), 720,
+assert.equal(penAtDistanceMm(proryv.gun.shells[0], 2000), 740,
   'ballistics consumes the exact authored long-range penetration');
 assert.equal(garageStatGroup(proryv), '10/modern',
   'garage normalizes Proryv against its actual matchmaking peers');
@@ -216,10 +283,10 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
   'garage normalizes the 103A against its Cold War tier peers');
 
 const japaneseMbtProgression = [
-  ['type90', 9, 2250, 1500, 25, 44, 40, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90', 9, 2250, 1550, 34, 48, 44, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
   ['type90a', 9, 2400, 1500, 30, 46, 42, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
   ['type10', 10, 2550, 1200, 35, 48, 46, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
-  ['type10b', 10, 2700, 1200, 45, 50, 48, 40, 4.7, 0, 0, 550, 916, 750, 145, 726],
+  ['type10b', 10, 2700, 1200, 45, 50, 48, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
 for (const [
   id, tier, hp, engine, reverse, hullTraverse, turretTraverse, gunPitch,
@@ -294,8 +361,8 @@ for (const [
 
 const pattonProgression = [
   // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
-  ['m48', 8, 1950, 48, 7.2, 430, 540, 500, 450],
-  ['m60a1', 8, 2050, 50, 6.8, 440, 570, 530, 480],
+  ['m48', 8, 2050, 50, 7, 450, 580, 535, 490],
+  ['m60a1', 8, 2100, 52, 6.8, 440, 570, 530, 480],
   ['m60a3', 8, 2200, 50, 6.4, 450, 610, 570, 520],
 ];
 let previousPattonDpm = 0;
@@ -325,12 +392,12 @@ const starshipHeat = starship.gun.shells.find((round) => round.guided !== true
 const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
 assert.equal(tankTier('m60a2'), 9, 'Starship occupies Tier IX');
 assert.equal(starship.hp, 2250, 'Starship carries a Tier IX HP pool');
-assert.equal(starship.gun.reloadS, 9.6, 'Starship conventional channel keeps its deliberate cycle');
+assert.equal(starship.gun.reloadS, 9, 'Starship conventional channel keeps its deliberate cycle');
 assert.deepEqual([starshipHeat.dmg, starshipHeat.pen100Mm, starshipHeat.reloadS],
-  [650, 560, 9.6], 'Starship conventional HEAT-MP is the faster general-purpose channel');
+  [650, 560, 9], 'Starship conventional HEAT-MP is the faster general-purpose channel');
 assert.deepEqual(
   [starshipMissile.dmg, starshipMissile.pen100Mm, starshipMissile.reloadS],
-  [780, 900, 3],
+  [720, 875, 3],
   'Starship Shillelagh is the high-penetration independent launcher channel',
 );
 assert.equal(garageStatGroup(starship), '9/cold-war',

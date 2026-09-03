@@ -1,0 +1,2442 @@
+{
+  "schemaVersion": 1,
+  "simulation": {
+    "fixedStepHz": 60,
+    "range": "flat obstacle-free hard terrain",
+    "orientationsPerSeed": 2,
+    "systems": [
+      "gun laying",
+      "dispersion",
+      "armor",
+      "modules",
+      "fire",
+      "ammunition",
+      "damage"
+    ]
+  },
+  "revisedVehicles": [
+    {
+      "id": "amx30",
+      "revision": "restore the AMX-30 mobility and fire-control sidegrade",
+      "tier": 7,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1650,
+      "powerWeight": 20,
+      "speedKmh": [
+        65,
+        20
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 400,
+        "penetrationMm": [
+          500,
+          460,
+          420
+        ],
+        "reloadS": 6.2,
+        "sustainedDpm": 3870.97,
+        "accuracy": 0.29,
+        "aimTimeS": 1.7
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "amx56",
+      "revision": "make headline reload match its magazine and establish assault-branch output",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2750,
+      "powerWeight": 26.36,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        46,
+        42
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          916,
+          850,
+          750
+        ],
+        "reloadS": 14.5,
+        "sustainedDpm": 5351.35,
+        "accuracy": 0.29,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 720,
+        "turretKe": 780
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "bmp3_rok",
+      "revision": "restore a complete Tier VIII cannon, missile and protection package",
+      "tier": 8,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 1700,
+      "powerWeight": 29.41,
+      "speedKmh": [
+        70,
+        20
+      ],
+      "traverseDegS": [
+        48,
+        52
+      ],
+      "primary": {
+        "damage": 60,
+        "penetrationMm": [
+          165,
+          150,
+          135
+        ],
+        "reloadS": 0.45,
+        "sustainedDpm": 8000,
+        "accuracy": 0.29,
+        "aimTimeS": 1.3
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 66
+      },
+      "guidedWeapons": [
+        {
+          "name": "9M117M1 Arkan",
+          "damage": 500,
+          "penetrationMm": 780,
+          "reloadS": 2.4,
+          "count": 8,
+          "velocityMps": 240.5
+        }
+      ]
+    },
+    {
+      "id": "bmpt_t90",
+      "revision": "normalize guided-weapon cadence against other Tier X IFVs",
+      "tier": 10,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 2950,
+      "powerWeight": 23.54,
+      "speedKmh": [
+        60,
+        18
+      ],
+      "traverseDegS": [
+        32,
+        60
+      ],
+      "primary": {
+        "damage": 50,
+        "penetrationMm": [
+          122,
+          110,
+          98
+        ],
+        "reloadS": 0.28,
+        "sustainedDpm": 10714.29,
+        "accuracy": 0.26,
+        "aimTimeS": 1.2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 448,
+        "turretKe": 560
+      },
+      "guidedWeapons": [
+        {
+          "name": "9M120-1 Ataka-T",
+          "damage": 500,
+          "penetrationMm": 850,
+          "reloadS": 3,
+          "count": 6,
+          "velocityMps": 357.5
+        }
+      ]
+    },
+    {
+      "id": "centurion5",
+      "revision": "remove the Tier VIII Centurion survivability and mobility trough",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1900,
+      "powerWeight": 16.35,
+      "speedKmh": [
+        48,
+        15
+      ],
+      "traverseDegS": [
+        32,
+        30
+      ],
+      "primary": {
+        "damage": 480,
+        "penetrationMm": [
+          570,
+          525,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 4363.64,
+        "accuracy": 0.3,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 336,
+        "turretKe": 426
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger1",
+      "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 19.35,
+      "speedKmh": [
+        56,
+        20
+      ],
+      "traverseDegS": [
+        34,
+        34
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          757,
+          689,
+          620
+        ],
+        "reloadS": 6.7,
+        "sustainedDpm": 4656.72,
+        "accuracy": 0.28,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 500,
+        "turretKe": 600
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger_3",
+      "revision": "restore the base Challenger 3 firepower and mobility envelope",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2650,
+      "powerWeight": 22.73,
+      "speedKmh": [
+        62,
+        24
+      ],
+      "traverseDegS": [
+        38,
+        38
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          880,
+          810,
+          730
+        ],
+        "reloadS": 5.9,
+        "sustainedDpm": 5389.83,
+        "accuracy": 0.24,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 500,
+        "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger_3x",
+      "revision": "retain a measured protection and fire-control step over the base vehicle",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2780,
+      "powerWeight": 23.68,
+      "speedKmh": [
+        60,
+        24
+      ],
+      "traverseDegS": [
+        36,
+        40
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          900,
+          820,
+          740
+        ],
+        "reloadS": 5.7,
+        "sustainedDpm": 5578.95,
+        "accuracy": 0.22,
+        "aimTimeS": 1.5
+      },
+      "armorCeilingsMm": {
+        "hullKe": 500,
+        "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "chieftain_mk10",
+      "revision": "restore the late Chieftain as a competitive protected Tier VIII MBT",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2100,
+      "powerWeight": 16.36,
+      "speedKmh": [
+        50,
+        13
+      ],
+      "traverseDegS": [
+        30,
+        28
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          700,
+          640,
+          580
+        ],
+        "reloadS": 6.2,
+        "sustainedDpm": 4935.48,
+        "accuracy": 0.28,
+        "aimTimeS": 1.85
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 570
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "fv4034",
+      "revision": "trim the UK Tier VIII peer ceiling while retaining its protected identity",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2100,
+      "powerWeight": 20.17,
+      "speedKmh": [
+        56,
+        18
+      ],
+      "traverseDegS": [
+        34,
+        32
+      ],
+      "primary": {
+        "damage": 500,
+        "penetrationMm": [
+          586,
+          533,
+          480
+        ],
+        "reloadS": 7.4,
+        "sustainedDpm": 4054.05,
+        "accuracy": 0.29,
+        "aimTimeS": 1.9
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 540
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "fv510_milan",
+      "revision": "restore Tier IX cannon output without erasing its missile identity",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "ifv",
+      "hp": 1750,
+      "powerWeight": 22.89,
+      "speedKmh": [
+        68,
+        20
+      ],
+      "traverseDegS": [
+        43,
+        60
+      ],
+      "primary": {
+        "damage": 88,
+        "penetrationMm": [
+          120,
+          108,
+          96
+        ],
+        "reloadS": 0.6,
+        "sustainedDpm": 8800,
+        "accuracy": 0.29,
+        "aimTimeS": 1.3
+      },
+      "armorCeilingsMm": {
+        "hullKe": 90,
+        "turretKe": 85
+      },
+      "guidedWeapons": [
+        {
+          "name": "MILAN 2",
+          "damage": 520,
+          "penetrationMm": 850,
+          "reloadS": 2.4,
+          "count": 6,
+          "velocityMps": 130
+        }
+      ]
+    },
+    {
+      "id": "is7",
+      "revision": "restore Tier X breakthrough survivability, penetration and gun cycle",
+      "tier": 10,
+      "era": "cold-war",
+      "role": "heavy",
+      "hp": 2300,
+      "powerWeight": 15.44,
+      "speedKmh": [
+        59,
+        8
+      ],
+      "traverseDegS": [
+        26,
+        16
+      ],
+      "primary": {
+        "damage": 560,
+        "penetrationMm": [
+          520,
+          450,
+          null
+        ],
+        "reloadS": 10.2,
+        "sustainedDpm": 3294.12,
+        "accuracy": 0.36,
+        "aimTimeS": 2.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 150,
+        "turretKe": 250
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "k2",
+      "revision": "trade excess paper DPM for realized frontal protection and ammunition",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2700,
+      "powerWeight": 27.27,
+      "speedKmh": [
+        70,
+        25
+      ],
+      "traverseDegS": [
+        44,
+        40
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          890,
+          815,
+          740
+        ],
+        "reloadS": 5.7,
+        "sustainedDpm": 5578.95,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 650,
+        "turretKe": 845
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "k2b",
+      "revision": "establish a real Tier X protection and ammunition step over K2",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2600,
+      "powerWeight": 31.43,
+      "speedKmh": [
+        70,
+        30
+      ],
+      "traverseDegS": [
+        44,
+        44
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          890,
+          815,
+          740
+        ],
+        "reloadS": 5.2,
+        "sustainedDpm": 6115.38,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 688,
+        "turretKe": 894
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "kv2",
+      "revision": "reduce the 152 mm derp profile friction while preserving its slow handling identity",
+      "tier": 7,
+      "era": "ww2",
+      "role": "heavy",
+      "hp": 1250,
+      "powerWeight": 11.54,
+      "speedKmh": [
+        34,
+        7
+      ],
+      "traverseDegS": [
+        20,
+        10
+      ],
+      "primary": {
+        "damage": 900,
+        "penetrationMm": [
+          92,
+          92,
+          null
+        ],
+        "reloadS": 20.5,
+        "sustainedDpm": 2634.15,
+        "accuracy": 0.55,
+        "aimTimeS": 3.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 75,
+        "turretKe": 110
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leclerc",
+      "revision": "improve the Tier IX ready-rack cycle while retaining burst downtime",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 27.52,
+      "speedKmh": [
+        71,
+        25
+      ],
+      "traverseDegS": [
+        46,
+        42
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          806,
+          733,
+          660
+        ],
+        "reloadS": 16.5,
+        "sustainedDpm": 4478.87,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 620
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leclerc_xlr",
+      "revision": "add a real Tier X ammunition, protection and ready-rack step",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2650,
+      "powerWeight": 26.13,
+      "speedKmh": [
+        70,
+        25
+      ],
+      "traverseDegS": [
+        46,
+        42
+      ],
+      "primary": {
+        "damage": 540,
+        "penetrationMm": [
+          891,
+          830,
+          730
+        ],
+        "reloadS": 15.5,
+        "sustainedDpm": 4884.42,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 700,
+        "turretKe": 760
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leo2a4m",
+      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2500,
+      "powerWeight": 24.27,
+      "speedKmh": [
+        68,
+        31
+      ],
+      "traverseDegS": [
+        44,
+        38
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          720,
+          665,
+          610
+        ],
+        "reloadS": 6.2,
+        "sustainedDpm": 4935.48,
+        "accuracy": 0.3,
+        "aimTimeS": 1.7
+      },
+      "armorCeilingsMm": {
+        "hullKe": 586,
+        "turretKe": 614
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leo2a5_a5nl",
+      "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2725,
+      "powerWeight": 23.51,
+      "speedKmh": [
+        68,
+        31
+      ],
+      "traverseDegS": [
+        44,
+        40
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5213.11,
+        "accuracy": 0.27,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 774,
+        "turretKe": 874
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leo2a6",
+      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2300,
+      "powerWeight": 24.08,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        44,
+        40
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          855,
+          778,
+          700
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5213.11,
+        "accuracy": 0.27,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 484,
+        "turretKe": 546
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m1a1",
+      "revision": "make the base M1A1 the mobile alternative to the protected HA package",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2300,
+      "powerWeight": 25.76,
+      "speedKmh": [
+        69,
+        28
+      ],
+      "traverseDegS": [
+        46,
+        44
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          757,
+          689,
+          620
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 4800,
+        "accuracy": 0.32,
+        "aimTimeS": 1.9
+      },
+      "armorCeilingsMm": {
+        "hullKe": 516,
+        "turretKe": 731
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m1a3",
+      "revision": "remove the next-generation autoloader, protection and missile ceiling",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2750,
+      "powerWeight": 29.27,
+      "speedKmh": [
+        72,
+        34
+      ],
+      "traverseDegS": [
+        44,
+        48
+      ],
+      "primary": {
+        "damage": 570,
+        "penetrationMm": [
+          930,
+          846,
+          760
+        ],
+        "reloadS": 21,
+        "sustainedDpm": 4800,
+        "accuracy": 0.25,
+        "aimTimeS": 1.45
+      },
+      "armorCeilingsMm": {
+        "hullKe": 818,
+        "turretKe": 889
+      },
+      "guidedWeapons": [
+        {
+          "name": "XM1210 MRM-H Hypersonic GATGM",
+          "damage": 600,
+          "penetrationMm": 950,
+          "reloadS": 3,
+          "count": 4,
+          "velocityMps": 2050
+        }
+      ]
+    },
+    {
+      "id": "m26_pershing",
+      "revision": "replace inherited 76 mm ammunition and restore Tier VIII medium output",
+      "tier": 8,
+      "era": "ww2",
+      "role": "medium",
+      "hp": 1600,
+      "powerWeight": 10.74,
+      "speedKmh": [
+        40,
+        8
+      ],
+      "traverseDegS": [
+        36,
+        24
+      ],
+      "primary": {
+        "damage": 240,
+        "penetrationMm": [
+          190,
+          160,
+          null
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 2117.65,
+        "accuracy": 0.34,
+        "aimTimeS": 2.2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 89,
+        "turretKe": 89
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m45_patton",
+      "revision": "replace inherited 76 mm ammunition and restore 105 mm assault output",
+      "tier": 8,
+      "era": "ww2",
+      "role": "medium",
+      "hp": 1650,
+      "powerWeight": 10.71,
+      "speedKmh": [
+        40,
+        8
+      ],
+      "traverseDegS": [
+        36,
+        24
+      ],
+      "primary": {
+        "damage": 370,
+        "penetrationMm": [
+          175,
+          145,
+          null
+        ],
+        "reloadS": 8.4,
+        "sustainedDpm": 2642.86,
+        "accuracy": 0.39,
+        "aimTimeS": 2.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 89,
+        "turretKe": 89
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m48",
+      "revision": "restore the M48 baseline so M60 upgrades are meaningful rather than mandatory",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 18.15,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 450,
+        "penetrationMm": [
+          580,
+          535,
+          490
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 3857.14,
+        "accuracy": 0.3,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m60a1",
+      "revision": "establish a mobile M60 sidegrade beneath the M60A3 fire-control package",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2100,
+      "powerWeight": 18.11,
+      "speedKmh": [
+        52,
+        18
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 440,
+        "penetrationMm": [
+          570,
+          530,
+          480
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 3882.35,
+        "accuracy": 0.3,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "m60a2",
+      "revision": "normalize the Shillelagh burst cycle and ammunition reserve",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2250,
+      "powerWeight": 17.31,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        40,
+        38
+      ],
+      "primary": {
+        "damage": 650,
+        "penetrationMm": [
+          560,
+          560,
+          null
+        ],
+        "reloadS": 9,
+        "sustainedDpm": 4333.33,
+        "accuracy": 0.32,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": [
+        {
+          "name": "MGM-51C Shillelagh ATGM",
+          "damage": 720,
+          "penetrationMm": 875,
+          "reloadS": 3,
+          "count": 10,
+          "velocityMps": 208
+        }
+      ]
+    },
+    {
+      "id": "m60a3",
+      "revision": "support the heavier fire-control variant with adequate engine output",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2200,
+      "powerWeight": 18.06,
+      "speedKmh": [
+        50,
+        18
+      ],
+      "traverseDegS": [
+        42,
+        40
+      ],
+      "primary": {
+        "damage": 450,
+        "penetrationMm": [
+          610,
+          570,
+          520
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4218.75,
+        "accuracy": 0.28,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "merkava1b",
+      "revision": "remove the Tier VII armor and penetration ceiling",
+      "tier": 7,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1600,
+      "powerWeight": 18.33,
+      "speedKmh": [
+        46,
+        25
+      ],
+      "traverseDegS": [
+        38,
+        38
+      ],
+      "primary": {
+        "damage": 490,
+        "penetrationMm": [
+          560,
+          515,
+          470
+        ],
+        "reloadS": 8.1,
+        "sustainedDpm": 3629.63,
+        "accuracy": 0.31,
+        "aimTimeS": 1.9
+      },
+      "armorCeilingsMm": {
+        "hullKe": 175,
+        "turretKe": 227
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "object279",
+      "revision": "restore Tier X breakthrough survivability, penetration and gun cycle",
+      "tier": 10,
+      "era": "cold-war",
+      "role": "heavy",
+      "hp": 2400,
+      "powerWeight": 15.83,
+      "speedKmh": [
+        55,
+        7
+      ],
+      "traverseDegS": [
+        16,
+        14
+      ],
+      "primary": {
+        "damage": 570,
+        "penetrationMm": [
+          550,
+          480,
+          null
+        ],
+        "reloadS": 10.5,
+        "sustainedDpm": 3257.14,
+        "accuracy": 0.35,
+        "aimTimeS": 2.5
+      },
+      "armorCeilingsMm": {
+        "hullKe": 220,
+        "turretKe": 305
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "pl01",
+      "revision": "price the three-round low-profile autoloader for Tier X sustained combat",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 28.57,
+      "speedKmh": [
+        70,
+        30
+      ],
+      "traverseDegS": [
+        44,
+        44
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          891,
+          830,
+          730
+        ],
+        "reloadS": 15,
+        "sustainedDpm": 5103.09,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 715
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "pl01_105",
+      "revision": "price the four-round 105 mm branch for Tier X sustained combat",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2400,
+      "powerWeight": 28.57,
+      "speedKmh": [
+        70,
+        30
+      ],
+      "traverseDegS": [
+        44,
+        44
+      ],
+      "primary": {
+        "damage": 430,
+        "penetrationMm": [
+          855,
+          790,
+          690
+        ],
+        "reloadS": 13.5,
+        "sustainedDpm": 5460.32,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 550,
+        "turretKe": 715
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "pt91_twardy",
+      "revision": "improve the Tier IX Polish protection and feed-system step",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2250,
+      "powerWeight": 21.05,
+      "speedKmh": [
+        60,
+        20
+      ],
+      "traverseDegS": [
+        36,
+        36
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          720,
+          665,
+          590
+        ],
+        "reloadS": 6.4,
+        "sustainedDpm": 4875,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 486,
+        "turretKe": 518
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "pt91m",
+      "revision": "bring the modern Tier VIII fire-control package up to its peers",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2150,
+      "powerWeight": 17.32,
+      "speedKmh": [
+        70,
+        20
+      ],
+      "traverseDegS": [
+        36,
+        30
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          720,
+          665,
+          590
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 4457.14,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 480
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "spz_puma",
+      "revision": "balance the Tier VIII cannon and protection package against its peers",
+      "tier": 8,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 2000,
+      "powerWeight": 34.54,
+      "speedKmh": [
+        70,
+        30
+      ],
+      "traverseDegS": [
+        46,
+        60
+      ],
+      "primary": {
+        "damage": 64,
+        "penetrationMm": [
+          165,
+          150,
+          135
+        ],
+        "reloadS": 0.4,
+        "sustainedDpm": 9600,
+        "accuracy": 0.29,
+        "aimTimeS": 1.35
+      },
+      "armorCeilingsMm": {
+        "hullKe": 136,
+        "turretKe": 119
+      },
+      "guidedWeapons": [
+        {
+          "name": "Spike LR",
+          "damage": 520,
+          "penetrationMm": 760,
+          "reloadS": 2.5,
+          "count": 6,
+          "velocityMps": 117
+        }
+      ]
+    },
+    {
+      "id": "spz_puma_s1",
+      "revision": "remove the Tier X autocannon ceiling while retaining anti-armor utility",
+      "tier": 10,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 2750,
+      "powerWeight": 25.3,
+      "speedKmh": [
+        70,
+        30
+      ],
+      "traverseDegS": [
+        50,
+        68
+      ],
+      "primary": {
+        "damage": 82,
+        "penetrationMm": [
+          210,
+          192,
+          174
+        ],
+        "reloadS": 0.38,
+        "sustainedDpm": 12947.37,
+        "accuracy": 0.25,
+        "aimTimeS": 1.1
+      },
+      "armorCeilingsMm": {
+        "hullKe": 234,
+        "turretKe": 234
+      },
+      "guidedWeapons": [
+        {
+          "name": "Spike LR2 MELLS",
+          "damage": 720,
+          "penetrationMm": 1000,
+          "reloadS": 2.8,
+          "count": 6,
+          "velocityMps": 240
+        }
+      ]
+    },
+    {
+      "id": "t14",
+      "revision": "bring next-generation fire control above the severe peer floor",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2700,
+      "powerWeight": 27.27,
+      "speedKmh": [
+        75,
+        25
+      ],
+      "traverseDegS": [
+        46,
+        40
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          977,
+          889,
+          800
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 5076.92,
+        "accuracy": 0.29,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 900,
+        "turretKe": 300
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t62mv1",
+      "revision": "raise the early Cold War baseline without erasing its handling limits",
+      "tier": 7,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1850,
+      "powerWeight": 21.84,
+      "speedKmh": [
+        50,
+        8
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 430,
+        "penetrationMm": [
+          580,
+          530,
+          480
+        ],
+        "reloadS": 6.6,
+        "sustainedDpm": 3909.09,
+        "accuracy": 0.3,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 77,
+        "turretKe": 132
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t64bv1",
+      "revision": "modernize the Tier VIII fire-control floor without erasing Soviet handling",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1850,
+      "powerWeight": 19.81,
+      "speedKmh": [
+        60,
+        12
+      ],
+      "traverseDegS": [
+        36,
+        30
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          696,
+          633,
+          570
+        ],
+        "reloadS": 7.4,
+        "sustainedDpm": 4135.14,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 480
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t72b3m",
+      "revision": "modernize the Tier IX fire-control floor without erasing Soviet handling",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2250,
+      "powerWeight": 24.3,
+      "speedKmh": [
+        70,
+        20
+      ],
+      "traverseDegS": [
+        36,
+        30
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          696,
+          633,
+          570
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 4707.69,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 480
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t72m1_jaguar",
+      "revision": "remove the modern Tier VIII HP/reload trough",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 21.98,
+      "speedKmh": [
+        60,
+        18
+      ],
+      "traverseDegS": [
+        36,
+        34
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          696,
+          633,
+          570
+        ],
+        "reloadS": 6.7,
+        "sustainedDpm": 4567.16,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 477,
+        "turretKe": 509
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t80",
+      "revision": "make the base T-80 a mobile sidegrade instead of a strict T-80U downgrade",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1850,
+      "powerWeight": 28.57,
+      "speedKmh": [
+        70,
+        14
+      ],
+      "traverseDegS": [
+        46,
+        40
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          672,
+          611,
+          550
+        ],
+        "reloadS": 7.2,
+        "sustainedDpm": 4250,
+        "accuracy": 0.34,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 442,
+        "turretKe": 506
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t80b",
+      "revision": "make the T-80B the mobile alternative to the protected T-80BV",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2100,
+      "powerWeight": 29.41,
+      "speedKmh": [
+        70,
+        14
+      ],
+      "traverseDegS": [
+        46,
+        40
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          672,
+          611,
+          550
+        ],
+        "reloadS": 7,
+        "sustainedDpm": 4371.43,
+        "accuracy": 0.34,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 456,
+        "turretKe": 523
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t90",
+      "revision": "replace the stale Tier IX donor envelope used by the Tier X production tank",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2550,
+      "powerWeight": 22.58,
+      "speedKmh": [
+        65,
+        12
+      ],
+      "traverseDegS": [
+        42,
+        38
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          840,
+          780,
+          700
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5409.84,
+        "accuracy": 0.31,
+        "aimTimeS": 1.85
+      },
+      "armorCeilingsMm": {
+        "hullKe": 515,
+        "turretKe": 644
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t90a",
+      "revision": "give the base T-90A handling value beside the faster Vladimir package",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2250,
+      "powerWeight": 21.51,
+      "speedKmh": [
+        60,
+        5
+      ],
+      "traverseDegS": [
+        42,
+        38
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          720,
+          656,
+          590
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 4500,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 448,
+        "turretKe": 560
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t90a_burlak",
+      "revision": "price the bustle autoloader as a faster Tier X feed system",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2500,
+      "powerWeight": 21.51,
+      "speedKmh": [
+        60,
+        5
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 540,
+        "penetrationMm": [
+          830,
+          770,
+          675
+        ],
+        "reloadS": 6,
+        "sustainedDpm": 5400,
+        "accuracy": 0.34,
+        "aimTimeS": 2.1
+      },
+      "armorCeilingsMm": {
+        "hullKe": 448,
+        "turretKe": 560
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t90m_proryv",
+      "revision": "separate the Tier X Proryv from its Tier IX T-90M donor",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2900,
+      "powerWeight": 23.54,
+      "speedKmh": [
+        65,
+        14
+      ],
+      "traverseDegS": [
+        44,
+        40
+      ],
+      "primary": {
+        "damage": 560,
+        "penetrationMm": [
+          880,
+          820,
+          740
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5508.2,
+        "accuracy": 0.3,
+        "aimTimeS": 1.7
+      },
+      "armorCeilingsMm": {
+        "hullKe": 588,
+        "turretKe": 735
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "t90ms",
+      "revision": "give the export demonstrator a distinct Tier X protection/firepower step",
+      "tier": 10,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2550,
+      "powerWeight": 23.54,
+      "speedKmh": [
+        65,
+        5
+      ],
+      "traverseDegS": [
+        40,
+        36
+      ],
+      "primary": {
+        "damage": 540,
+        "penetrationMm": [
+          830,
+          770,
+          675
+        ],
+        "reloadS": 6.1,
+        "sustainedDpm": 5311.48,
+        "accuracy": 0.34,
+        "aimTimeS": 2.1
+      },
+      "armorCeilingsMm": {
+        "hullKe": 448,
+        "turretKe": 560
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "type10b",
+      "revision": "bring exceptional sustained output back inside the next-generation ceiling",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2700,
+      "powerWeight": 25,
+      "speedKmh": [
+        70,
+        45
+      ],
+      "traverseDegS": [
+        50,
+        48
+      ],
+      "primary": {
+        "damage": 540,
+        "penetrationMm": [
+          900,
+          820,
+          740
+        ],
+        "reloadS": 5.2,
+        "sustainedDpm": 6230.77,
+        "accuracy": 0.25,
+        "aimTimeS": 1.35
+      },
+      "armorCeilingsMm": {
+        "hullKe": 544,
+        "turretKe": 726
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "type59",
+      "revision": "bring the light Cold War MBT above the stale damage-output floor",
+      "tier": 7,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1700,
+      "powerWeight": 18.06,
+      "speedKmh": [
+        55,
+        12
+      ],
+      "traverseDegS": [
+        44,
+        40
+      ],
+      "primary": {
+        "damage": 410,
+        "penetrationMm": [
+          520,
+          475,
+          430
+        ],
+        "reloadS": 6.8,
+        "sustainedDpm": 3617.65,
+        "accuracy": 0.3,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 120
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "type89_light_tiger",
+      "revision": "close the next-generation IFV anti-armor and protection gap",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "ifv",
+      "hp": 2700,
+      "powerWeight": 25.97,
+      "speedKmh": [
+        78,
+        32
+      ],
+      "traverseDegS": [
+        54,
+        72
+      ],
+      "primary": {
+        "damage": 120,
+        "penetrationMm": [
+          240,
+          220,
+          200
+        ],
+        "reloadS": 0.46,
+        "sustainedDpm": 15652.17,
+        "accuracy": 0.23,
+        "aimTimeS": 0.95
+      },
+      "armorCeilingsMm": {
+        "hullKe": 308,
+        "turretKe": 308
+      },
+      "guidedWeapons": [
+        {
+          "name": "Type 01 Jyu-MAT Kai",
+          "damage": 720,
+          "penetrationMm": 950,
+          "reloadS": 2.1,
+          "count": 12,
+          "velocityMps": 210
+        }
+      ]
+    },
+    {
+      "id": "type90",
+      "revision": "make the base Type 90 the mobility alternative to the protected Type 90A",
+      "tier": 9,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2250,
+      "powerWeight": 30.88,
+      "speedKmh": [
+        74,
+        34
+      ],
+      "traverseDegS": [
+        48,
+        44
+      ],
+      "primary": {
+        "damage": 500,
+        "penetrationMm": [
+          806,
+          733,
+          660
+        ],
+        "reloadS": 18.5,
+        "sustainedDpm": 3930.13,
+        "accuracy": 0.3,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 600
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "ua_m2a3_bradley",
+      "revision": "restore the Ukrainian Bradley cannon, mobility and survivability envelope",
+      "tier": 9,
+      "era": "modern",
+      "role": "ifv",
+      "hp": 2150,
+      "powerWeight": 19.53,
+      "speedKmh": [
+        61,
+        22
+      ],
+      "traverseDegS": [
+        40,
+        60
+      ],
+      "primary": {
+        "damage": 68,
+        "penetrationMm": [
+          165,
+          150,
+          135
+        ],
+        "reloadS": 0.38,
+        "sustainedDpm": 10736.84,
+        "accuracy": 0.29,
+        "aimTimeS": 1.3
+      },
+      "armorCeilingsMm": {
+        "hullKe": 78,
+        "turretKe": 78
+      },
+      "guidedWeapons": [
+        {
+          "name": "BGM-71E TOW-2A",
+          "damage": 560,
+          "penetrationMm": 900,
+          "reloadS": 2.6,
+          "count": 7,
+          "velocityMps": 195
+        }
+      ]
+    },
+    {
+      "id": "ua_t64bv",
+      "revision": "modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 19.54,
+      "speedKmh": [
+        60,
+        12
+      ],
+      "traverseDegS": [
+        36,
+        30
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          696,
+          633,
+          570
+        ],
+        "reloadS": 7.4,
+        "sustainedDpm": 4135.14,
+        "accuracy": 0.33,
+        "aimTimeS": 2
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 480
+      },
+      "guidedWeapons": []
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "mirror-control",
+      "purpose": "side-bias control",
+      "band": [
+        0.35,
+        0.65
+      ],
+      "aId": "m1a2",
+      "bId": "m1a2",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 4,
+      "bWins": 4,
+      "draws": 4,
+      "aScore": 0.5,
+      "averageDurationS": 31.59,
+      "averageAEndHp": 191,
+      "averageBEndHp": 191,
+      "averageADamage": 2585.58,
+      "averageBDamage": 2585.58
+    },
+    {
+      "id": "moving-mirror-control",
+      "purpose": "moving-fire and acceleration side-bias control",
+      "band": [
+        0.35,
+        0.65
+      ],
+      "aId": "m1a2",
+      "bId": "m1a2",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 5,
+      "bWins": 5,
+      "draws": 2,
+      "aScore": 0.5,
+      "averageDurationS": 29.73,
+      "averageAEndHp": 116.67,
+      "averageBEndHp": 116.67,
+      "averageADamage": 2675.25,
+      "averageBDamage": 2675.25
+    },
+    {
+      "id": "tier9-rifled-peers",
+      "purpose": "Tier IX protected MBT peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "challenger1",
+      "bId": "t90m",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 8,
+      "bWins": 4,
+      "draws": 0,
+      "aScore": 0.667,
+      "averageDurationS": 30.76,
+      "averageAEndHp": 329.17,
+      "averageBEndHp": 339.83,
+      "averageADamage": 2570.5,
+      "averageBDamage": 2139.17
+    },
+    {
+      "id": "nextgen-challengers",
+      "purpose": "base and survivability package sidegrades",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "challenger_3",
+      "bId": "challenger_3x",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 5,
+      "bWins": 7,
+      "draws": 0,
+      "aScore": 0.417,
+      "averageDurationS": 25.23,
+      "averageAEndHp": 310.58,
+      "averageBEndHp": 274.33,
+      "averageADamage": 2584.5,
+      "averageBDamage": 2525.33
+    },
+    {
+      "id": "nextgen-abrams-peer",
+      "purpose": "next-generation US peer ceiling",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "m1a3",
+      "bId": "abramsx",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 8,
+      "bWins": 4,
+      "draws": 0,
+      "aScore": 0.667,
+      "averageDurationS": 44.53,
+      "averageAEndHp": 608.75,
+      "averageBEndHp": 179.42,
+      "averageADamage": 2734.83,
+      "averageBDamage": 2247.75
+    },
+    {
+      "id": "t90-export-step",
+      "purpose": "Tier X T-90 family progression",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "t90",
+      "bId": "t90ms",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 4,
+      "bWins": 3,
+      "draws": 5,
+      "aScore": 0.542,
+      "averageDurationS": 27.11,
+      "averageAEndHp": 233.25,
+      "averageBEndHp": 80.33,
+      "averageADamage": 2668.17,
+      "averageBDamage": 2477.17
+    },
+    {
+      "id": "chieftain-tier8",
+      "purpose": "late Cold War UK Tier VIII peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "chieftain_mk10",
+      "bId": "fv4034",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 7,
+      "bWins": 3,
+      "draws": 2,
+      "aScore": 0.667,
+      "averageDurationS": 78.88,
+      "averageAEndHp": 551.42,
+      "averageBEndHp": 388.25,
+      "averageADamage": 1864.33,
+      "averageBDamage": 1604.67
+    },
+    {
+      "id": "k2-tier9-peer",
+      "purpose": "Tier IX modern MBT peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "k2",
+      "bId": "leo2a6",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 3,
+      "bWins": 9,
+      "draws": 0,
+      "aScore": 0.25,
+      "averageDurationS": 23.08,
+      "averageAEndHp": 165.75,
+      "averageBEndHp": 376.08,
+      "averageADamage": 2009.08,
+      "averageBDamage": 2697.08
+    },
+    {
+      "id": "k2-tier9-mobile-peer",
+      "purpose": "Tier IX mobility and firing-on-the-move peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "k2",
+      "bId": "leo2a6",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 8,
+      "bWins": 4,
+      "draws": 0,
+      "aScore": 0.667,
+      "averageDurationS": 28.11,
+      "averageAEndHp": 381.08,
+      "averageBEndHp": 168.67,
+      "averageADamage": 2346.17,
+      "averageBDamage": 2407.17
+    },
+    {
+      "id": "k2-tier10-step",
+      "purpose": "Tier X modern MBT peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "k2b",
+      "bId": "type10",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 2,
+      "draws": 4,
+      "aScore": 0.667,
+      "averageDurationS": 19.97,
+      "averageAEndHp": 199.92,
+      "averageBEndHp": 17.67,
+      "averageADamage": 2791.42,
+      "averageBDamage": 2529.33
+    },
+    {
+      "id": "proryv-tier10-peer",
+      "purpose": "Tier X modern MBT peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "t90m_proryv",
+      "bId": "m1a2",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 8,
+      "bWins": 4,
+      "draws": 0,
+      "aScore": 0.667,
+      "averageDurationS": 31.01,
+      "averageAEndHp": 465,
+      "averageBEndHp": 260.75,
+      "averageADamage": 2586.75,
+      "averageBDamage": 2546.17
+    },
+    {
+      "id": "merkava-tier7-peer",
+      "purpose": "Tier VII Cold War MBT ceiling",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "merkava1b",
+      "bId": "t62mv1",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
+      "aScore": 0.5,
+      "averageDurationS": 21.06,
+      "averageAEndHp": 189.17,
+      "averageBEndHp": 258.33,
+      "averageADamage": 1736.67,
+      "averageBDamage": 1483.25
+    },
+    {
+      "id": "puma-tier8-peer",
+      "purpose": "Tier VIII modern IFV peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "spz_puma",
+      "bId": "bmp3_rok",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
+      "aScore": 0.5,
+      "averageDurationS": 46.79,
+      "averageAEndHp": 243.5,
+      "averageBEndHp": 64.42,
+      "averageADamage": 1653,
+      "averageBDamage": 1775.42
+    },
+    {
+      "id": "puma-s1-tier10-peer",
+      "purpose": "Tier X modern IFV guided-weapon peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "spz_puma_s1",
+      "bId": "bmpt_t90",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 2,
+      "bWins": 8,
+      "draws": 2,
+      "aScore": 0.25,
+      "averageDurationS": 28.35,
+      "averageAEndHp": 197.67,
+      "averageBEndHp": 1184.83,
+      "averageADamage": 1771.5,
+      "averageBDamage": 2761.17
+    },
+    {
+      "id": "leopard-heavy-peer",
+      "purpose": "Tier X Leopard-family protection packages",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "leo2a5_a5nl",
+      "bId": "strv122",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
+      "aScore": 0.5,
+      "averageDurationS": 41.83,
+      "averageAEndHp": 273.58,
+      "averageBEndHp": 491.17,
+      "averageADamage": 2446,
+      "averageBDamage": 2592.33
+    },
+    {
+      "id": "leopard-tier9-peer",
+      "purpose": "Tier IX modern MBT peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "leo2a4m",
+      "bId": "t90a",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 3,
+      "bWins": 5,
+      "draws": 4,
+      "aScore": 0.417,
+      "averageDurationS": 74.27,
+      "averageAEndHp": 505.42,
+      "averageBEndHp": 1071.25,
+      "averageADamage": 1292.17,
+      "averageBDamage": 2047
+    },
+    {
+      "id": "ifv-nextgen-peer",
+      "purpose": "next-generation IFV anti-armor weapons",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "type89_light_tiger",
+      "bId": "cv90_mkiv",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
+      "aScore": 0.5,
+      "averageDurationS": 22.92,
+      "averageAEndHp": 580.67,
+      "averageBEndHp": 508.33,
+      "averageADamage": 2432.5,
+      "averageBDamage": 2143.5
+    },
+    {
+      "id": "m60-guided-peer",
+      "purpose": "guided weapon cycle against Tier IX armor",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "m60a2",
+      "bId": "t90a",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601
+      ],
+      "duels": 12,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
+      "aScore": 0.5,
+      "averageDurationS": 20.54,
+      "averageAEndHp": 256.5,
+      "averageBEndHp": 361,
+      "averageADamage": 1976.83,
+      "averageBDamage": 2076
+    }
+  ]
+}
