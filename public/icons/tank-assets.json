@@ -198697,7 +198697,7 @@
             "min": [
               -1.75,
               0.009,
-              -3.538
+              -3.5406
             ],
             "max": [
               -1.19,
@@ -198712,7 +198712,7 @@
             "min": [
               1.19,
               0.009,
-              -3.538
+              -3.5406
             ],
             "max": [
               1.75,
@@ -198770,17 +198770,17 @@
           }
         ]
       },
-      "geometryHash": "4732f546",
-      "metadataHash": "cd0e4b52",
+      "geometryHash": "026fc3ad",
+      "metadataHash": "d2e00f96",
       "presentationAnchor": {
-        "xM": 0.0003,
-        "zM": 0.0102
+        "xM": -0.0003,
+        "zM": -0.0196
       },
-      "presentationHash": "db41e8b7",
+      "presentationHash": "68dcb59a",
       "presentationProjection": {
         "centerYM": 1.898,
-        "topHalfM": 4.438,
-        "sideHalfM": 2.219
+        "topHalfM": 4.4062,
+        "sideHalfM": 2.2031
       },
       "appearance": {
         "version": 1,
@@ -198831,15 +198831,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27184,
-          "sha256": "2ed6d7193ea7a5bc8f113f19f5e501b2b3f4b1eeda55bcc4bb56349bafb442d7",
+          "bytes": 26084,
+          "sha256": "7297767af32e33a740120cdca15f047c787be801c9484f2bf7885304d6a07c80",
           "thumbnail": {
             "file": "thumbs/spz_puma_s1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10940,
-            "sha256": "a2e37d57a29c94bd1e2802c55019c2a7730c4caf58ffdce113e18b4610639f64"
+            "bytes": 10664,
+            "sha256": "ee882830f929e936acbba4205bda0b39b8c2095349ff9de97ef193f7c4ba2cb1"
           }
         },
         "top": {
@@ -198847,56 +198847,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18116,
-          "sha256": "e09053fe2d2c3ae90056b6f3b7f0cae05ca667a9251f5f293b8d5e47d4b4f89c"
+          "bytes": 18352,
+          "sha256": "508609325d8e51cdace65472adde87b8c6187f059c3f28e8594ce5c50005ed7b"
         },
         "side": {
           "file": "spz_puma_s1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15276,
-          "sha256": "c34e06c2d764f8091615a0ab42986b5bf934dfccf9898d1b0a02a5648cba7479"
+          "bytes": 15586,
+          "sha256": "7fe8e7e829a72c60341578c1d1c15e40ba17631c282a3d7eadefc858806dc1ed"
         },
         "topSilhouette": {
           "file": "spz_puma_s1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1580,
-          "sha256": "717df21fe28ce8d4d3919a653f1c64ec114ca282ded3db9ea22f2f5e887baaa6"
+          "bytes": 1428,
+          "sha256": "f53890dbbf6fd8bce8457d43d71db0f03319adfe86bfdb19c13d733b4a84651e"
         },
         "sideSilhouette": {
           "file": "spz_puma_s1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5947,
-          "sha256": "35c990c1f2d0243f353ef7df8f5ee7f05fb941d8e36a259f7e05bbbbe50d320d"
+          "bytes": 5634,
+          "sha256": "c2ed40a82fab17f45d89f5eb3ab50c4e8a2b4f5fb7678d1d95cbefe8f9974391"
         },
         "armorSide": {
           "file": "spz_puma_s1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 134302,
-          "sha256": "62ff9afa0cd77bbba7c27c40f671e7d9276bc4c97047da6ed1d2e812a6f98050"
+          "bytes": 134262,
+          "sha256": "9204c4973347a472ade15396820551597cd4d03ed153eec272a99ab362252e5f"
         },
         "modulesSide": {
           "file": "spz_puma_s1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 139372,
-          "sha256": "8adc0671f1c88ba3a3838f810001713c40420b56c1e5678498a34d4fbad0ddbb"
+          "bytes": 140108,
+          "sha256": "79c323be79355b0dddcbcea75b081a315eb98806fcec0673486542af86888557"
         },
         "crewSide": {
           "file": "spz_puma_s1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 120088,
-          "sha256": "1a8204912f4e9b63eef9992435e43abd0a2aa88fcdd6abad4f0c98cd5ac1f043"
+          "bytes": 120978,
+          "sha256": "a22b3f4cce4e20dffe1efca496341cd1e5ba29249e3960c04fd7d2fab412c62e"
         },
         "markings": {
           "file": "spz_puma_s1_markings.png",

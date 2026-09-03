@@ -237,6 +237,11 @@ function addHullShell(P: PumaS1BuilderPort): void {
     [0.62, 1.31, 3.02], [1.20, 1.49, 2.58]]);
 
   // Rear troop ramp and its physical hinges/locks.
+  // A full-depth rear bulkhead now overlaps the lower tub, the monocoque's
+  // raked stern and the troop-ramp backing.  The old ramp began 8-14 cm
+  // behind those structures, which exposed a daylight seam from low rear
+  // quarters even though every individual panel was nominally hull-owned.
+  P.add('hull', box(2.98, 1.18, 0.20), 0, 1.15, -3.66);
   P.add('hullDark', box(1.72, 1.12, 0.045), 0, 1.14, -3.755);
   P.add('hull', box(1.56, 0.92, 0.055), 0, 1.15, -3.785);
   P.add('hullDetail', box(1.38, 0.035, 0.020), 0, 1.15, -3.818);
@@ -264,7 +269,10 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     trackW: 0.56, trackTh: 0.092, topY: 1.28, botY: 0.055,
     trackPattern: 'compact-ifv', linkPitchM: 0.155, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: false,
-    contactZF: 2.70, contactZR: -2.63,
+    // The loaded course leaves the ground beneath the aft road-wheel
+    // quadrant.  Continuing it to -2.63 made the joint happen in empty space
+    // behind that wheel before the run climbed around the rear idler.
+    contactZF: 2.70, contactZR: -2.37,
   });
 
   // The native course terminates immediately beneath a Revolution-style
@@ -275,25 +283,19 @@ function addRunningGear(P: PumaS1BuilderPort): void {
   for (const side of [-1, 1]) {
     P.addExternalArmor('hull', orientedSlab(
       [side * 1.82, 0.82, 2.48], [side * 2.00, 0.82, 2.48],
-      [side * 1.82, 1.56, 3.55], [side * 1.96, 1.56, 3.55],
+      [side * 1.96, 0.82, 3.55], [side * 1.82, 0.82, 3.55],
       [side * 1.80, 1.54, 2.48], [side * 1.98, 1.54, 2.48],
-      [side * 1.80, 1.72, 3.55], [side * 1.94, 1.72, 3.55],
+      [side * 1.94, 1.72, 3.55], [side * 1.80, 1.72, 3.55],
     ));
-    // A descending shoulder cap seals the jacket into the deck edge and
-    // follows both the plan taper and lower-glacis fall toward the nose.
+    // One cyclic, non-self-crossing shoulder volume replaces the old bow-tie
+    // cap plus overlapping tie strip.  Its inner rail overlaps the authored
+    // hull shoulder, its outer rail overlaps the AMAP downfold, and its crown
+    // follows the upper-glacis fall all the way to the nose on both sides.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.48, 1.54, 2.42], [side * 1.96, 1.54, 2.42],
-      [side * 1.06, 1.54, 3.55], [side * 1.92, 1.54, 3.55],
-      [side * 1.48, 2.04, 2.42], [side * 1.88, 1.98, 2.42],
-      [side * 1.06, 1.56, 3.55], [side * 1.42, 1.56, 3.55],
-    ));
-    // The shoulder tie and long fender flange overlap the hull shell.  There
-    // is no visible corridor between the hull, fender, and armor carrier.
-    P.addExternalArmor('hull', orientedSlab(
-      [side * 1.04, 1.55, 2.76], [side * 1.86, 1.55, 2.76],
-      [side * 1.80, 1.56, 3.42], [side * 1.02, 1.56, 3.42],
-      [side * 1.04, 1.68, 2.76], [side * 1.86, 1.68, 2.76],
-      [side * 1.80, 1.70, 3.42], [side * 1.02, 1.70, 3.42],
+      [side * 1.44, 1.54, 2.42], [side * 1.96, 1.54, 2.42],
+      [side * 1.92, 1.54, 3.55], [side * 1.04, 1.54, 3.55],
+      [side * 1.44, 2.04, 2.42], [side * 1.88, 1.98, 2.42],
+      [side * 1.92, 1.72, 3.55], [side * 1.04, 1.72, 3.55],
     ));
     const jacketRearZ = -3.40;
     const jacketFrontZ = 2.48;
@@ -590,7 +592,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   if (P.geometryReceipt) {
     P.hullG.userData.pumaS1Receipt = Object.freeze({
       independentFromLegacyPuma: true,
-      hullConstruction: 'planar-roof-puma-glacis-monocoque-v5',
+      hullConstruction: 'planar-roof-puma-glacis-monocoque-v6',
       turretConstruction: 'planar-faceted-rct30-citadel-v4',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
@@ -602,8 +604,11 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       sideArmorInnerSeatM: 1.76,
       sideArmorOuterEnvelopeM: 2.058,
       skirtArchitecture: 'segmented-sloped-amap-jacket',
-      skirtAttachment: 'direct-monocoque-overlap-seat-v3',
-      frontSkirtTransition: 'revolution-amap-glacis-downfold-v3',
+      skirtAttachment: 'direct-monocoque-overlap-seat-v4',
+      frontSkirtTransition: 'revolution-amap-glacis-downfold-v4',
+      frontShoulderBridge: 'cyclic-hull-amap-overlap-volume-v1',
+      rearTrackDepartureZM: -2.37,
+      rearBulkheadClosureDepthM: 0.20,
       nativeTrackPattern: 'compact-ifv',
       baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
       mellsLaunchTubes: 0,

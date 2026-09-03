@@ -52,7 +52,7 @@ try {
   assert.ok(hull && turret && gun, 'Puma S1 retains the canonical articulated rig');
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,
-    hullConstruction: 'planar-roof-puma-glacis-monocoque-v5',
+    hullConstruction: 'planar-roof-puma-glacis-monocoque-v6',
     turretConstruction: 'planar-faceted-rct30-citadel-v4',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
@@ -64,8 +64,11 @@ try {
     sideArmorInnerSeatM: 1.76,
     sideArmorOuterEnvelopeM: 2.058,
     skirtArchitecture: 'segmented-sloped-amap-jacket',
-    skirtAttachment: 'direct-monocoque-overlap-seat-v3',
-    frontSkirtTransition: 'revolution-amap-glacis-downfold-v3',
+    skirtAttachment: 'direct-monocoque-overlap-seat-v4',
+    frontSkirtTransition: 'revolution-amap-glacis-downfold-v4',
+    frontShoulderBridge: 'cyclic-hull-amap-overlap-volume-v1',
+    rearTrackDepartureZM: -2.37,
+    rearBulkheadClosureDepthM: 0.20,
     nativeTrackPattern: 'compact-ifv',
     baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
     mellsLaunchTubes: 0,
@@ -158,6 +161,15 @@ try {
   assert.equal(gear?.trackW, 0.56, 'S1 native course is slightly widened under the new skirts');
   assert.equal(gear?.trackPatternId, 'compact-ifv',
     'S1 uses its unique fine-rib heavy IFV shoe construction');
+  assert.equal(hull.userData.pumaS1Receipt.rearTrackDepartureZM, -2.37,
+    'Puma rear track departure is seated under the aft road-wheel quadrant');
+  const rearRoadWheelZ = Math.min(...gear.wheelZs);
+  const lowerCourse = gear.loopPoints.filter(([, y]) => Math.abs(y - gear.botY) < 1e-6);
+  const rearGroundJointZ = Math.min(...lowerCourse.map(([z]) => z));
+  assert.ok(Math.abs(rearGroundJointZ - (-2.37)) < 0.01,
+    `Puma loaded course joins its rear rise at -2.37 m (${rearGroundJointZ})`);
+  assert.ok(Math.abs((rearRoadWheelZ - rearGroundJointZ) - gear.wheelR * 0.5) < 0.01,
+    'Puma loaded course begins rising at the aft road-wheel quadrant');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.48) && gear?.loopPoints.some(([z]) => z < -3.42),
     'S1 track course reaches both full-length hull shoulders');
   assert.equal(gear?.suspensionDynamic, true, 'S1 road wheels retain dynamic suspension arms');
