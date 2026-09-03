@@ -318,7 +318,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   t80b: Object.freeze({ centerYM: 1.7506, topHalfM: 6.8695, sideHalfM: 3.4348 }),
   t80bv: Object.freeze({ centerYM: 1.7506, topHalfM: 6.235, sideHalfM: 3.1175 }),
   t80u: Object.freeze({ centerYM: 1.7603, topHalfM: 6.6673, sideHalfM: 3.3337 }),
-  t84: Object.freeze({ centerYM: 1.722, topHalfM: 6.5617, sideHalfM: 3.2809 }),
+  t84: Object.freeze({ centerYM: 1.6161, topHalfM: 6.5617, sideHalfM: 3.2809 }),
   t90: Object.freeze({ centerYM: 2.2514, topHalfM: 6.6655, sideHalfM: 3.3328 }),
   t90a: Object.freeze({ centerYM: 1.5015, topHalfM: 6.15, sideHalfM: 3.075 }),
   t90a_burlak: Object.freeze({ centerYM: 2.1414, topHalfM: 5.9187, sideHalfM: 2.9593 }),

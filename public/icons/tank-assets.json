@@ -252183,7 +252183,7 @@
           }
         ]
       },
-      "geometryHash": "6a6b0361",
+      "geometryHash": "6a01dd4e",
       "metadataHash": "46d0fcbf",
       "presentationAnchor": {
         "xM": -0.0007,
@@ -252191,7 +252191,7 @@
       },
       "presentationHash": "285db1ea",
       "presentationProjection": {
-        "centerYM": 1.722,
+        "centerYM": 1.6161,
         "topHalfM": 6.5617,
         "sideHalfM": 3.2809
       },
@@ -252215,7 +252215,7 @@
           "tireRubber": 1,
           "fittingPaint": 2,
           "opticGlass": 2,
-          "unclassified": 15,
+          "unclassified": 13,
           "gearShadow": 1,
           "machineGun": 1,
           "wood": 1
@@ -252245,15 +252245,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28204,
-          "sha256": "7347fa9f9a85e0694c40363bc4177e786a5aaebd5156db240e25b08c6cf97555",
+          "bytes": 26418,
+          "sha256": "dc68c31a4036af4cc6ccc31e9709e4bd7db179fc59d90f7d9f43619d458dd46d",
           "thumbnail": {
             "file": "thumbs/t84_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10676,
-            "sha256": "a6681662ee9fd983976067f5257d1a542e4773629d6f314cfa9116c0f9a619a2"
+            "bytes": 10304,
+            "sha256": "b64006923b43a13c3d725c40c31734b6001e49dfaa1e0ab6f9aa3e5fa8df8adc"
           }
         },
         "top": {
@@ -252261,56 +252261,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14186,
-          "sha256": "6f17b3fac839a329c624e1dcecef30bc571d132f43e319f2aefc149038de2078"
+          "bytes": 14842,
+          "sha256": "6b89677f6e4ca83b0a3e62e76cbf9061d9a3e0fe32f3bb25cd12cbcbb7487609"
         },
         "side": {
           "file": "t84_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8614,
-          "sha256": "d5405785fe445f1b2be9bdb9c90132df86b2e25d014349db47618dc3f9806ebf"
+          "bytes": 8468,
+          "sha256": "7f3cd7f3f5b44ddcd706826b34e61757eb94d6250213e0d4de159d9c7fcb7d04"
         },
         "topSilhouette": {
           "file": "t84_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1529,
-          "sha256": "1fe2f18f835df7cf7af3258da0540285670ae152f3d526955ad9e5f0635146b8"
+          "bytes": 1604,
+          "sha256": "374f30f506dd65eac8cc26fb846888dad0caa578c2209862326a0a7c1b08de2f"
         },
         "sideSilhouette": {
           "file": "t84_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4485,
-          "sha256": "322fe7ca32b166d9fa7ed97189cb13186d6fa86416c59ad695da69c31524f331"
+          "bytes": 4355,
+          "sha256": "2fd6026daf5441726fe9d78bb627e0338147652df2dc8885097f39812731d4cf"
         },
         "armorSide": {
           "file": "t84_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85623,
-          "sha256": "8d9c0ef67fd85288004f2262f412292029b6e4d3321ad400cc4c04a113ee9f50"
+          "bytes": 85033,
+          "sha256": "53a9d227817e71f7e0822b139ea8d2c2ce3e3fa117dc6044480fcdc859fc90b3"
         },
         "modulesSide": {
           "file": "t84_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85211,
-          "sha256": "195c88d96342e6d7cb4a9eb560d8002d846f0ebb5b79b57d580750c83a6fffc7"
+          "bytes": 85072,
+          "sha256": "57670e42167ee00f470d4e3e411f924d05b31eeed2195a022f67dc42a1ab9c85"
         },
         "crewSide": {
           "file": "t84_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73269,
-          "sha256": "c811423a2c5f2baa8f13f98e748aabcc211a7682ac7d0f936cd06fbad48976ec"
+          "bytes": 73238,
+          "sha256": "aa9cfac5ed45350bc05ddc0fc85af239811a013c4ebe4ce6e4d9c5e63472755c"
         },
         "markings": {
           "file": "t84_markings.png",

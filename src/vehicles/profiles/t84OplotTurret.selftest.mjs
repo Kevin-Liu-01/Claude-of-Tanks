@@ -34,6 +34,21 @@ try {
   assert.equal(receipt.bustleSidePanels, 2, 'bustle has complete left and right side shells');
   assert.equal(receipt.bustleRearClosurePanels, 1, 'bustle has a structural rear service plate');
   assert.equal(receipt.bustleAttached, true, 'bustle is attached to the turret shell');
+  assert.equal(receipt.roofEquipmentSeatRevision, 'support-derived-r1',
+    'roof fittings use the support-derived seating pass');
+  assert.equal(receipt.maxRoofEquipmentSupportGapM, 0,
+    'roof seating audit reports no unsupported fittings');
+  assert.equal(receipt.roofEquipmentSeats.length, 6,
+    'all proud T-84 roof assemblies participate in the seating audit');
+  for (const seat of receipt.roofEquipmentSeats) {
+    assert.ok(seat.bottomY <= seat.supportTopY + 1e-6,
+      `${seat.label} overlaps its actual support instead of floating`);
+  }
+  const shoulderSeat = receipt.roofEquipmentSeats.find(
+    (seat) => seat.label === 'left-shoulder-enclosure',
+  );
+  assert.ok(shoulderSeat && shoulderSeat.supportTopY - shoulderSeat.bottomY >= 0.011,
+    'left shoulder enclosure buries at least 11 mm into its carrier wall');
 
   const position = turretExternalArmor.geometry.getAttribute('position');
   const normal = turretExternalArmor.geometry.getAttribute('normal');

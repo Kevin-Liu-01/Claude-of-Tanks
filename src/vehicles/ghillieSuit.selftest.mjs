@@ -100,4 +100,23 @@ assert.ok(twardy.turret.side[0].topAt(0.90) < twardy.turret.side[0].topAt(-0.40)
 assert.ok(twardy.turret.face[0].zAt(1.0, 0.42) < twardy.turret.face[0].zAt(0.35, 0.42),
   'Twardy front drape follows the swept ERAWA wedge instead of one flat face');
 
+const oplot = GHILLIE_SUIT_CONFIGS.t84;
+const oplotTop = oplot.turret.top[0];
+assert.equal(oplotTop.seat, 'roof-equipment-envelope',
+  'T-84 net declares the completed roof-equipment envelope as its carrier');
+assert.ok(oplotTop.seatGapM > 0.02 && oplotTop.seatGapM <= 0.03,
+  'T-84 net keeps only a small physical clearance from its support');
+assert.ok(oplotTop.yAt(0, 0.30) < 0.76,
+  'T-84 net descends onto the center roof lane instead of floating at y=.89');
+assert.ok(oplotTop.yAt(-0.55, 0.52) > 0.83,
+  'T-84 net rises over the gunner sight housing');
+assert.ok(oplotTop.yAt(-0.55, -0.16) > 0.92,
+  'T-84 net clears the complete Kord assembly instead of slicing through it');
+assert.ok(oplotTop.yAt(0.43, -1.74) > 0.83,
+  'T-84 net lands over the bustle stowage lid');
+assert.ok(oplotTop.yAt(0.82, 1.20) < 0.70,
+  'T-84 net follows the Duplet cheek field instead of bridging above it');
+assert.ok(oplot.turret.side[0].topAt(0.20) < 0.58,
+  'T-84 side net attaches to the flank carrier rather than a high flat rail');
+
 console.log('Shared physical-ghillie suit selftest passed');

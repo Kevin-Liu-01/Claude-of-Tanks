@@ -515,6 +515,60 @@ const t84HullY = (_x: number, z: number): number => {
   if (z < 0.55) return 1.45;
   return 1.45 - (z - 0.55) * 0.15;
 };
+// T-84 turret carrier surface. The old net was authored as one y=.89 sheet:
+// it floated 80-350 mm above most of the roof while slicing through the
+// commander Kord. That intersection hid the weapon cradle and made its ammo
+// box, receiver ends and nearby fittings read as detached squares. This
+// envelope follows the welded roof and Duplet field, then rises locally over
+// every proud fitting. The ghillie is added after all hard equipment in the
+// vehicle builder, so it visually lands on the finished assembly.
+const t84RoofHardY = (x: number, z: number): number => {
+  const ax = Math.abs(x);
+  let support: number;
+
+  if (z < -0.72) {
+    support = profileY([[-2.09, 0.595], [-0.72, 0.675]], z); // bustle shell
+  } else if (z < 0.745) {
+    support = ax < 0.22 ? 0.717 : ax < 0.73 ? 0.805 : 0.6073; // split roof lanes / shoulder
+  } else {
+    // Carrier wing and cassette crown over the swept Duplet cheeks.
+    support = 0.59 + THREE.MathUtils.clamp((1.62 - z) * 0.09, 0, 0.08)
+      - Math.max(0, ax - 0.98) * 0.08;
+  }
+
+  // Bustle stowage lid.
+  if (x >= 0.19 && x <= 0.67 && z >= -1.91 && z <= -1.58) {
+    support = Math.max(support, 0.8092);
+  }
+  // Gunner sight, commander sight and the newly seated shoulder enclosure.
+  if (x >= -0.90 && x <= -0.20 && z >= 0.43 && z <= 0.61) {
+    support = Math.max(support, 0.815);
+  }
+  if (x >= 0.20 && x <= 0.50 && z >= 0.43 && z <= 0.59) {
+    support = Math.max(support, 0.815);
+  }
+  if (x >= -1.05 && x <= -0.84 && z >= 0.03 && z <= 0.42) {
+    support = Math.max(support, 0.6583);
+  }
+  // Commander cupola and Kord. The latter is deliberately the highest local
+  // carrier so no part of the weapon is clipped into disconnected islands.
+  if (x >= 0.14 && x <= 0.70 && z >= -0.64 && z <= -0.06) {
+    support = Math.max(support, 0.826);
+  }
+  if (x >= -1.00 && x <= -0.14 && z >= -0.34 && z <= 0.00) {
+    support = Math.max(support, 0.9075);
+  }
+  return support;
+};
+const t84TurretCoverGapM = 0.026;
+const t84TurretCoverY = (x: number, z: number): number => (
+  t84RoofHardY(x, z) + t84TurretCoverGapM
+);
+const t84TurretSideTopY = (z: number): number => {
+  if (z < -0.72) return profileY([[-1.96, 0.625], [-0.72, 0.705]], z);
+  if (z < 0.64) return 0.555;
+  return 0.66 - THREE.MathUtils.clamp((z - 0.64) / 0.54, 0, 1) * 0.12;
+};
 const oplotHullY = (_x: number, z: number): number => (
   z < 1.45 ? 1.51 : 1.51 - (z - 1.45) * 0.15
 );
@@ -715,11 +769,14 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
     turret: {
       top: [{ x0: -1.16, x1: 1.16, z0: -1.96, z1: 1.62, nx: 20, nz: 30,
-        yAt: () => 0.89,
+        yAt: t84TurretCoverY,
         outline: [[-0.80, -1.96], [0.80, -1.96], [1.16, -1.02], [1.13, 0.86], [0.68, 1.62], [-0.68, 1.62], [-1.13, 0.86], [-1.16, -1.02]],
-        holes: [rect(-0.94, -0.28, -0.54, 0.18), rect(0.18, 0.86, -0.52, 0.18), rect(-0.34, 0.34, 0.78, 1.70)], seed: 157 }],
+        // Only the cannon working corridor remains open. Roof fittings and
+        // the Kord now receive the net after they are physically seated.
+        holes: [rect(-0.34, 0.34, 0.78, 1.70)],
+        seatGapM: t84TurretCoverGapM, seat: 'roof-equipment-envelope', seed: 157 }],
       side: [-1, 1].map((side) => ({ side, z0: -1.88, z1: 1.08, nz: 26, ny: 7,
-        topAt: () => 0.82, bottomAt: (z) => -0.03 + Math.sin(z * 3.6) * 0.025,
+        topAt: t84TurretSideTopY, bottomAt: (z) => -0.03 + Math.sin(z * 3.6) * 0.025,
         outAt: (z, t) => (z < -0.85 ? 1.04 : 1.31) + (1 - t) * 0.035, seed: 165 + side })),
       face: [{ z: 1.94, x0: -1.12, x1: 1.12, y0: -0.06, y1: 0.72, nx: 18, ny: 8,
         outline: [[-0.80, -0.06], [0.80, -0.06], [1.12, 0.30], [0.76, 0.72], [-0.76, 0.72], [-1.12, 0.30]],
