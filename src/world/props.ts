@@ -42,6 +42,9 @@ import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.ts';
 import {
+  appendStructureCollisionBand, applyStructureCollisionBand, deriveStructureCollisionProfile,
+} from './structureCollision.ts';
+import {
   hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
@@ -57,6 +60,9 @@ import { preloadPropModels, requirePropModels, type BakedPropModel } from './pro
 import {
   resolveRowhouseTrimBucket, resolveStructureWindowStyle, writeStructureInstanceTint,
 } from './structureInstanceAppearance.ts';
+import {
+  SOURCED_STRUCTURE_TYPES, type SourcedStructureType,
+} from './sourcedStructureTypes.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
@@ -1024,7 +1030,7 @@ function copyBakedVertexColors(
  *   mul?:number,sink?:number,sourceZMin?:number,sourceZMax?:number}} [opts]
  * @returns {THREE.BufferGeometry} indexed geometry with position/normal/color
  */
-function bakedGeometry(name: string, opts: BakedGeometryOptions = {}): THREE.BufferGeometry {
+export function bakedGeometry(name: string, opts: BakedGeometryOptions = {}): THREE.BufferGeometry {
   const key = name + JSON.stringify(opts);
   const hit = _bakedCache.get(key);
   if (hit) return hit;
@@ -1052,6 +1058,11 @@ function bakedGeometry(name: string, opts: BakedGeometryOptions = {}): THREE.Buf
   };
   _bakedCache.set(key, geo);
   return geo;
+}
+
+export function buildSourcedStructureGeometry(id: SourcedStructureType) {
+  const spec = SOURCED_STRUCTURE_TYPES[id];
+  return bakedGeometry(spec.model, { targetH: spec.targetH, sink: spec.sink });
 }
 
 // ---------------------------------------------------------------------------
@@ -2553,17 +2564,17 @@ ${snowCap ? `
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
       cls: 'break', mat: 'baked', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
-      build: () => bakedGeometry('sack_trench_quaternius', { targetH: 1.35, sink: 0.12 }),
+      build: () => buildSourcedStructureGeometry('sandbagbig'),
       broken: bSandbagBroken,
     },
     sandbagsmall: {
       cls: 'break', mat: 'baked', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
-      build: () => bakedGeometry('sack_trench_small_quaternius', { targetH: 1.05, sink: 0.1 }),
+      build: () => buildSourcedStructureGeometry('sandbagsmall'),
       broken: bSandbagBroken,
     },
     sandbagwall: {
       cls: 'break', mat: 'baked', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
-      build: () => bakedGeometry('sandbags_jtoastie', { targetH: 1.0, sink: 0.1 }),
+      build: () => buildSourcedStructureGeometry('sandbagwall'),
       broken: bSandbagBroken,
     },
   };
@@ -2699,23 +2710,19 @@ ${snowCap ? `
     return { y: support.y, spread: support.spread, hx, hz };
   }
 
-  function addFootprintAABB(
-    list: CollisionRecord[],
-    x: number,
-    z: number,
-    y: number,
-    hx: number,
-    hz: number,
-    h: number,
-    localHw = hx,
-    localHl = hz,
-    yaw = 0,
+  function addStructureCollision(
+    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
   ): void {
-    const rec: CollisionRecord = {
-      min: [x - hx, y, z - hz], max: [x + hx, y + h, z + hz],
-    };
-    setObbShape(rec, x, z, localHw, localHl, yaw);
-    list.push(rec);
+    let profile;
+    try {
+      profile = deriveStructureCollisionProfile(tmp);
+    } catch (error) {
+      throw new Error(`${id}: unable to derive structure collision`, { cause: error });
+    }
+    appendStructureCollisionBand(obstacles, profile.contact, x, baseY, z, yaw).kind = 'structure';
+    for (const band of profile.shell) {
+      appendStructureCollisionBand(colliders, band, x, baseY, z, yaw).kind = 'structure';
+    }
   }
 
   yield;
@@ -2860,13 +2867,10 @@ ${snowCap ? `
     const fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
+    addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h,
-      info.w * 0.5, info.d * 0.5, rot);
-    addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h,
-      info.w * 0.5, info.d * 0.5, rot);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
     bi++;
@@ -3055,13 +3059,10 @@ ${snowCap ? `
       const fit = groundFit(x, z, info.w, info.d, rot);
       if (fit.spread > 3.2) return distance + width;
       jitterBuildingUvs(tmp);
+      addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
-      addFootprintAABB(obstacles, x, z, fit.y, fit.hx, fit.hz, info.h,
-        info.w * 0.5, info.d * 0.5, rot);
-      addFootprintAABB(colliders, x, z, fit.y, fit.hx, fit.hz, info.h,
-        info.w * 0.5, info.d * 0.5, rot);
       buildingFeatures.push({ x, z, w: info.w, d: info.d, rot });
       placedB.push({ x, z, rr: Math.max(info.w, info.d) * 0.75 });
       stripAABBs.push({ x, z, hx, hz });
@@ -5611,29 +5612,34 @@ ${snowCap ? `
     geometry: THREE.BufferGeometry,
     pool: DestructiblePool,
   ): void {
-    // Refit every destructible obstacle to the actual built geometry. The
-    // metadata radius was only a placement hint; using it as a square
-    // collider made carts, tents, crates and wall modules stop tanks in air.
-    // One convex hull is derived per type, then transformed per instance.
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return;
-    const localPoints: Array<[number, number]> = [];
-    for (let i = 0; i < positions.count; i++) {
-      localPoints.push([positions.getX(i), positions.getZ(i)]);
-    }
-    const localHull = convexHull2(localPoints);
-    if (localHull.length < 6) return;
+    // Refit every destructible obstacle to the actual ground-bearing solids.
+    // Roof overhangs, open bays and support gaps remain visually and
+    // physically open instead of inheriting the metadata placement box.
+    const contactBand = deriveStructureCollisionProfile({ baked: [geometry] }).contact;
     for (const record of pool.records) {
       if (!record.ob) continue;
-      const cosine = Math.cos(record.yaw), sine = Math.sin(record.yaw);
-      const points = new Array(localHull.length);
-      for (let i = 0; i < localHull.length; i += 2) {
-        const x = localHull[i] * record.sc, z = localHull[i + 1] * record.sc;
-        points[i] = record.x + x * cosine + z * sine;
-        points[i + 1] = record.z - x * sine + z * cosine;
+      const scaledBand = record.sc === 1 ? contactBand : {
+        ...contactBand,
+        parts: contactBand.parts.map((part) => part.kind === 'circle'
+          ? { ...part, cx: part.cx * record.sc, cz: part.cz * record.sc, r: part.r * record.sc }
+          : part.kind === 'obb'
+            ? {
+              ...part, cx: part.cx * record.sc, cz: part.cz * record.sc,
+              hw: part.hw * record.sc, hl: part.hl * record.sc,
+            }
+            : {
+              ...part,
+              cx: part.cx * record.sc,
+              cz: part.cz * record.sc,
+              points: part.points.map((value) => value * record.sc),
+            }),
+      };
+      applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw);
+      if (record.col) {
+        applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw);
       }
-      setConvexShape(record.ob, points);
-      if (record.col) setConvexShape(record.col, points.slice());
     }
   }
   function tintDestructibleInstances(

@@ -11,10 +11,17 @@ const EPS = 1e-9;
 
 export type Bounds3 = [number, number, number];
 
-export type CollisionShape =
+export type SimpleCollisionShape =
   | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
   | { kind: 'circle'; cx: number; cz: number; r: number }
   | { kind: 'convex'; cx: number; cz: number; points: number[] };
+
+export type CollisionShape = SimpleCollisionShape | {
+  kind: 'compound';
+  cx: number;
+  cz: number;
+  parts: SimpleCollisionShape[];
+};
 
 export interface CollisionRecord {
   min: Bounds3;
@@ -149,13 +156,64 @@ export function setConvexShape(rec: CollisionRecord, points: number[]) {
   return rec;
 }
 
+function simpleShapeBounds(shape: SimpleCollisionShape) {
+  if (shape.kind === 'circle') {
+    return [shape.cx - shape.r, shape.cz - shape.r, shape.cx + shape.r, shape.cz + shape.r];
+  }
+  if (shape.kind === 'obb') {
+    const cs = Math.abs(Math.cos(shape.yaw));
+    const sn = Math.abs(Math.sin(shape.yaw));
+    const ex = shape.hw * cs + shape.hl * sn;
+    const ez = shape.hw * sn + shape.hl * cs;
+    return [shape.cx - ex, shape.cz - ez, shape.cx + ex, shape.cz + ez];
+  }
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (let index = 0; index < shape.points.length; index += 2) {
+    minX = Math.min(minX, shape.points[index]);
+    minZ = Math.min(minZ, shape.points[index + 1]);
+    maxX = Math.max(maxX, shape.points[index]);
+    maxZ = Math.max(maxZ, shape.points[index + 1]);
+  }
+  return [minX, minZ, maxX, maxZ];
+}
+
+/** Attach a union of tight convex primitives while retaining one broad-phase record. */
+export function setCompoundShape(rec: CollisionRecord, parts: SimpleCollisionShape[]) {
+  if (!parts.length) return rec;
+  if (parts.length === 1) {
+    const part = parts[0];
+    if (part.kind === 'circle') return setCircleShape(rec, part.cx, part.cz, part.r);
+    if (part.kind === 'obb') return setObbShape(rec, part.cx, part.cz, part.hw, part.hl, part.yaw);
+    return setConvexShape(rec, part.points);
+  }
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (const part of parts) {
+    const bounds = simpleShapeBounds(part);
+    minX = Math.min(minX, bounds[0]); minZ = Math.min(minZ, bounds[1]);
+    maxX = Math.max(maxX, bounds[2]); maxZ = Math.max(maxZ, bounds[3]);
+  }
+  rec.min[0] = minX; rec.min[2] = minZ;
+  rec.max[0] = maxX; rec.max[2] = maxZ;
+  rec.shape2 = {
+    kind: 'compound',
+    cx: (minX + maxX) * 0.5,
+    cz: (minZ + maxZ) * 0.5,
+    parts,
+  };
+  return rec;
+}
+
 /** Copy a shape record without sharing mutable min/max arrays. */
 export function cloneCollisionRecord(rec: CollisionRecord): CollisionRecord {
   const out: CollisionRecord = { ...rec, min: [...rec.min], max: [...rec.max] };
   if (rec.shape2) {
-    out.shape2 = { ...rec.shape2 };
+    out.shape2 = { ...rec.shape2 } as CollisionShape;
     if (rec.shape2.kind === 'convex' && out.shape2.kind === 'convex') {
       out.shape2.points = rec.shape2.points.slice();
+    } else if (rec.shape2.kind === 'compound' && out.shape2.kind === 'compound') {
+      out.shape2.parts = rec.shape2.parts.map((part) => part.kind === 'convex'
+        ? { ...part, points: part.points.slice() }
+        : { ...part });
     }
   }
   return out;
@@ -225,6 +283,21 @@ export function pushHullFromObstacle(
   outPush: Push2,
 ) {
   const sh = ob.shape2;
+  if (sh && sh.kind === 'compound') {
+    const startX = outPush.x;
+    const startZ = outPush.z;
+    let hit = false;
+    _compoundRec.min[1] = ob.min[1]; _compoundRec.max[1] = ob.max[1];
+    for (const part of sh.parts) {
+      _compoundRec.shape2 = part;
+      _compoundPos.x = pos.x + outPush.x - startX;
+      _compoundPos.z = pos.z + outPush.z - startZ;
+      if (pushHullFromObstacle(
+        _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush,
+      )) hit = true;
+    }
+    return hit;
+  }
   if (sh?.kind === 'circle') {
     return pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
   }
@@ -412,6 +485,8 @@ const _fallbackBox: Extract<CollisionShape, { kind: 'obb' }> = {
 const _localO = { x: 0, y: 0, z: 0 };
 const _localD = { x: 0, y: 0, z: 0 };
 const _localRec: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] };
+const _compoundRec: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] };
+const _compoundPos = { x: 0, z: 0 };
 const _localN: MutableVector3Like = {
   x: 0, y: 0, z: 0,
   set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
@@ -643,11 +718,40 @@ export function rayCollisionRecord(
 ) {
   const sh = rec.shape2;
   if (!sh) return rayAabb(origin, dir, rec, maxDist, outNormal);
+  if (sh.kind === 'compound') {
+    let best = -1;
+    _compoundRayRec.min[1] = rec.min[1]; _compoundRayRec.max[1] = rec.max[1];
+    for (const part of sh.parts) {
+      _compoundRayRec.shape2 = part;
+      const hit = rayCollisionRecord(
+        origin, dir, _compoundRayRec, best < 0 ? maxDist : best, _compoundCandidateNormal,
+      );
+      if (hit < 0 || (best >= 0 && hit >= best)) continue;
+      best = hit;
+      _compoundBestNormal.set(
+        _compoundCandidateNormal.x, _compoundCandidateNormal.y, _compoundCandidateNormal.z,
+      );
+    }
+    if (best >= 0) outNormal.set(
+      _compoundBestNormal.x, _compoundBestNormal.y, _compoundBestNormal.z,
+    );
+    return best;
+  }
   if (sh.kind === 'obb') return rayObb(origin, dir, rec, sh, maxDist, outNormal);
   if (sh.kind === 'circle') return rayCircle(origin, dir, rec, sh, maxDist, outNormal);
   if (sh.kind === 'convex') return rayConvex(origin, dir, rec, sh, maxDist, outNormal);
   return rayAabb(origin, dir, rec, maxDist, outNormal);
 }
+
+const _compoundRayRec: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] };
+const _compoundCandidateNormal: MutableVector3Like = {
+  x: 0, y: 0, z: 0,
+  set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+};
+const _compoundBestNormal: MutableVector3Like = {
+  x: 0, y: 0, z: 0,
+  set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+};
 
 /** Static uniform-grid broad phase. Query writes into the caller-owned array. */
 export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): ObstacleQuery {

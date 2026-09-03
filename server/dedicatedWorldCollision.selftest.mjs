@@ -7,26 +7,26 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {
-  verdant: [6619, 6312, 6873],
-  desert: [2408, 2308, 1847],
-  winter: [5125, 4854, 4319],
-  urban: [3663, 3409, 2479],
-  coastal: [3440, 3156, 2789],
-  autumn: [6004, 5679, 6203],
-  steppe: [2175, 1848, 1340],
-  railyard: [2664, 2353, 1947],
-  frontier: [7364, 7022, 7537],
-  fjord: [6534, 6233, 5758],
-  delta: [7762, 7400, 8989],
-  badlands: [2855, 2546, 1889],
-  monsoon: [9975, 9646, 11754],
-  alpine: [8850, 8533, 7898],
-  caldera: [4732, 4408, 3621],
-  foundry: [4039, 3614, 3077],
-  ruinspires: [3020, 2557, 1331],
-  blackglass: [3544, 3178, 2294],
-  titan_gorge: [2489, 2167, 1181],
-  skybridge: [3083, 2763, 1830],
+  verdant: [6660, 6385, 6920],
+  desert: [2401, 2338, 1823],
+  winter: [5200, 4972, 4380],
+  urban: [3613, 5310, 2399],
+  coastal: [3428, 3199, 2741],
+  autumn: [6017, 5724, 6200],
+  steppe: [2261, 1960, 1394],
+  railyard: [2708, 2558, 1973],
+  frontier: [7454, 7180, 7586],
+  fjord: [6207, 6016, 5400],
+  delta: [7708, 7437, 8970],
+  badlands: [2859, 2688, 1890],
+  monsoon: [9848, 9594, 11597],
+  alpine: [8552, 8346, 7574],
+  caldera: [4396, 4269, 3265],
+  foundry: [3925, 3772, 2939],
+  ruinspires: [2834, 5281, 1159],
+  blackglass: [3542, 4367, 2270],
+  titan_gorge: [2500, 2302, 1161],
+  skybridge: [3026, 3087, 1790],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -72,11 +72,26 @@ const treeCollider = world.getColliders().find((record) => record.treeIdx === tr
 assert.equal(world.crushObstacle(tree), true, 'dedicated tree yields to shell or ram destruction');
 assert.equal(treeCollider.dead, true, 'felled dedicated tree leaves the shell/LOS collider set');
 
-const collider = world.getColliders().find((record) => !record.dead);
-const centerZ = (collider.min[2] + collider.max[2]) * 0.5;
-const centerY = (collider.min[1] + collider.max[1]) * 0.5;
-const origin = new Vector3(collider.min[0] - 2, centerY, centerZ);
-const hit = world.raycast(origin, new Vector3(1, 0, 0), collider.max[0] - collider.min[0] + 4);
+const shapeCenter = (shape, record) => {
+  if (!shape) return [(record.min[0] + record.max[0]) * 0.5, (record.min[2] + record.max[2]) * 0.5];
+  if (shape.kind === 'compound') return shapeCenter(shape.parts[0], record);
+  return [shape.cx, shape.cz];
+};
+let hit = null;
+for (const collider of world.getColliders()) {
+  if (collider.dead || collider.max[1] - collider.min[1] < 0.2) continue;
+  const [centerX, centerZ] = shapeCenter(collider.shape2, collider);
+  hit = world.raycast(
+    new Vector3(centerX, collider.max[1] + 2, centerZ),
+    new Vector3(0, -1, 0),
+    collider.max[1] - collider.min[1] + 4,
+  );
+  if (hit?.kind === 'prop') break;
+}
 assert.equal(hit?.kind, 'prop', 'headless raycast resolves captured shell cover');
+const compound = world.getColliders().find((record) => record.shape2?.kind === 'compound');
+assert.ok(compound, 'dedicated manifest retains compound structure footprints');
+assert.ok(compound.shape2.parts.length >= 2 && compound.shape2.parts.length <= 64,
+  'dedicated compound remains tight and bounded after inflation');
 
 console.log('dedicatedWorldCollision.selftest: all twenty exact map manifests passed');

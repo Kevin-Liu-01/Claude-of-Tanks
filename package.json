@@ -9,6 +9,8 @@
     "minimap:assets": "node tools/bake-minimap-assets.mjs",
     "perf:terrain-stream": "node tools/terrain-stream-benchmark.mjs",
     "qa:maps": "node tools/map-environment-audit.mjs",
+    "qa:structures": "node tools/structure-certification-audit.mjs",
+    "qa:tree-trunks": "node tools/tree-trunk-certification-audit.mjs",
     "qa:garage": "node tools/garage-variants-probe.mjs",
     "perf:garage-entry": "node tools/garage-entry-performance-probe.mjs",
     "garage:terrain:update": "node tools/generate-garage-terrain-patches.mjs",

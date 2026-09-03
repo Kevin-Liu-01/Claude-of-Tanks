@@ -12,7 +12,10 @@ import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
-import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
+import {
+  TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, treeTrunkCollisionRadiusM,
+  type TreeSpecies,
+} from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
@@ -867,6 +870,62 @@ function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false) as THREE.BufferGeometry;
 }
 
+function organicizeTrunk(
+  geometry: THREE.BufferGeometry,
+  phase: number,
+  crookX: number,
+  crookZ: number,
+  flute = 0.07,
+): THREE.BufferGeometry {
+  const position = attribute(geometry, 'position');
+  let minY = Infinity, maxY = -Infinity;
+  for (let index = 0; index < position.count; index++) {
+    minY = Math.min(minY, position.getY(index));
+    maxY = Math.max(maxY, position.getY(index));
+  }
+  const height = Math.max(1e-5, maxY - minY);
+  for (let index = 0; index < position.count; index++) {
+    let x = position.getX(index), z = position.getZ(index);
+    const y = position.getY(index);
+    const radius = Math.hypot(x, z);
+    const t = clamp((y - minY) / height, 0, 1);
+    if (radius > 1e-5) {
+      const angle = Math.atan2(z, x);
+      const irregularity = 1
+        + Math.sin(angle * 3 + phase) * flute * (1 - t * 0.55)
+        + Math.sin(angle * 7 - phase * 0.7) * flute * 0.24;
+      x *= irregularity;
+      z *= irregularity;
+    }
+    const bend = t * t;
+    x += crookX * bend + Math.sin(t * Math.PI * 1.35 + phase) * crookX * 0.22 * t;
+    z += crookZ * bend + Math.sin(t * Math.PI * 1.15 - phase) * crookZ * 0.22 * t;
+    position.setXYZ(index, x, y, z);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function addRootButtresses(
+  parts: THREE.BufferGeometry[],
+  rng: RandomSource,
+  color: THREE.Color,
+  radius: number,
+  count: number,
+): void {
+  const phase = rng() * Math.PI * 2;
+  for (let index = 0; index < count; index++) {
+    const angle = phase + index / count * Math.PI * 2 + (rng() - 0.5) * 0.22;
+    const length = radius * (1.65 + rng() * 0.55);
+    const root = new THREE.ConeGeometry(radius * (0.34 + rng() * 0.10), length, 6, 2, false);
+    root.rotateZ(Math.PI / 2 - 0.10 - rng() * 0.06);
+    root.rotateY(-angle);
+    root.scale(1, 0.48, 1);
+    root.translate(Math.cos(angle) * length * 0.42, radius * 0.24, Math.sin(angle) * length * 0.42);
+    parts.push(paintFlat(root, color.clone().multiplyScalar(0.90 + rng() * 0.10), 0));
+  }
+}
+
 // trunk + a few real branch cylinders reaching into the canopy.
 // r3 terrain_environment: takes the canopy SHAPE so every branch tip is
 // clamped INSIDE the crown hull — the r8 "bigger primary branches" reached
@@ -891,19 +950,21 @@ function buildBroadleafTrunk(
   }
   const parts: THREE.BufferGeometry[] = [];
   const trunkH = (shape.trunkH ?? 3.1) + rng() * 0.5;
-  // r2: 9 radial segs (was 7 — the "faceted prism" tell) + lifted tint
-  // (x~1.35, the striated bark map now multiplies in at ~0.72 mean)
-  const trunk = new THREE.CylinderGeometry(0.17, 0.30, trunkH, 9, 2);
-  const tp = attribute(trunk, 'position');
-  for (let i = 0; i < tp.count; i++) tp.setX(i, tp.getX(i) + tp.getY(i) * (rng() * 0.08));
-  trunk.computeVertexNormals();
+  // Twelve-sided, vertically segmented and gently crooked: enough silhouette
+  // variation to read as a grown trunk rather than a straight low-poly post.
+  const trunkPhase = rng() * Math.PI * 2;
+  const trunk = organicizeTrunk(
+    new THREE.CylinderGeometry(0.17, 0.30, trunkH, 12, 4),
+    trunkPhase, (rng() - 0.5) * 0.18, (rng() - 0.5) * 0.18, 0.085,
+  );
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.22 + rng() * 0.06, THREE.SRGBColorSpace);
-  parts.push(paintFlat(trunk, _c.clone(), 0));
+  const trunkColor = _c.clone();
+  parts.push(paintFlat(trunk, trunkColor.clone(), 0));
   // r2: root flare — the trunk widens into the ground instead of poking out
   // of it like a dowel; the root decal disc carries the contact shadow
   {
-    const flare = new THREE.CylinderGeometry(0.30, 0.55, 0.55, 9, 1);
+    const flare = new THREE.CylinderGeometry(0.30, 0.55, 0.55, 12, 2);
     const fp = attribute(flare, 'position');
     for (let i = 0; i < fp.count; i++) { // ribbed, slightly irregular flare
       const x = fp.getX(i), z = fp.getZ(i);
@@ -916,6 +977,7 @@ function buildBroadleafTrunk(
     _c.setHSL(0.07, 0.25, 0.20 + rng() * 0.05, THREE.SRGBColorSpace);
     parts.push(paintFlat(flare, _c.clone(), 0));
   }
+  addRootButtresses(parts, rng, trunkColor, 0.38, 5);
   // r8: more + BIGGER primary branches reaching well into the canopy volume
   // (critique: "bare cylinder trunks that never connect to the canopy via
   // branches") — 4-6 limbs, thicker and longer (up to ~3.4 m, canopy center
@@ -937,20 +999,29 @@ function buildBroadleafTrunk(
     if (rng() < 0.75) { // forked secondary off the limb tip
       const rotZ2 = rotZ + (rng() - 0.2) * 0.7;
       // limb tip position (approx): rotate (0,len,0) by Z then Y
-      const tx = Math.sin(rotZ) * len, ty = Math.cos(rotZ) * len;
+      const tipR = Math.sin(rotZ) * len, tipY = Math.cos(rotZ) * len;
       // secondary clamped from the tip station too — it was the worst
       // canopy-piercing offender (tip + 1.7 m at a steeper angle)
-      const len2 = clampLen(y0 + ty, rotZ2, 0.9 + rng() * 0.8, tx);
+      const len2 = clampLen(y0 + tipY, rotZ2, 0.9 + rng() * 0.8, tipR);
       const br2 = new THREE.CylinderGeometry(0.03, 0.055, len2, 4, 1);
       br2.translate(0, len2 / 2, 0);
       br2.rotateZ(rotZ2);
       br2.rotateY(rotY + (rng() - 0.5) * 0.9);
-      br2.translate(Math.cos(rotY) * tx, y0 + ty, -Math.sin(rotY) * tx);
+      br2.translate(
+        -Math.cos(rotY) * tipR,
+        y0 + tipY,
+        Math.sin(rotY) * tipR,
+      );
       _c.setHSL(0.07, 0.22, 0.22 + rng() * 0.05, THREE.SRGBColorSpace);
       parts.push(paintFlat(br2, _c.clone(), 0.25));
     }
   }
-  return mergeParts(parts);
+  const merged = mergeParts(parts);
+  merged.userData.trunkQuality = {
+    family: 'broadleaf', radialSegments: 12, verticalSegments: 4,
+    rootButtresses: 5, organicWarp: true,
+  };
+  return merged;
 }
 
 function buildBroadleafCards(
@@ -1072,15 +1143,19 @@ function buildBroadleafCards(
 function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const trunkH = 5.9 + rng() * 0.6;
-  // r2: 9 segs + root flare + lifted tint (bark map compensation) — see oak
-  const trunk = new THREE.CylinderGeometry(0.10, 0.26, trunkH, 9, 1);
+  const trunk = organicizeTrunk(
+    new THREE.CylinderGeometry(0.10, 0.26, trunkH, 11, 4),
+    rng() * Math.PI * 2, (rng() - 0.5) * 0.10, (rng() - 0.5) * 0.10, 0.065,
+  );
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.06, 0.30, 0.19 + rng() * 0.05, THREE.SRGBColorSpace);
-  parts.push(paintFlat(trunk, _c.clone(), 0));
-  const flare = new THREE.CylinderGeometry(0.26, 0.46, 0.5, 9, 1);
+  const trunkColor = _c.clone();
+  parts.push(paintFlat(trunk, trunkColor.clone(), 0));
+  const flare = new THREE.CylinderGeometry(0.26, 0.46, 0.5, 11, 2);
   flare.translate(0, 0.22, 0);
   _c.setHSL(0.06, 0.28, 0.17 + rng() * 0.04, THREE.SRGBColorSpace);
   parts.push(paintFlat(flare, _c.clone(), 0));
+  addRootButtresses(parts, rng, trunkColor, 0.31, 4);
   // r6 terrain_environment: OPAQUE snow lobes riding the tier tops (winter
   // maps, pal.snow) — the whitened needle cards alone still averaged toward
   // green at range; real load is a solid white mass sitting ON the boughs.
@@ -1115,7 +1190,12 @@ function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
     _c.setHSL(0.585, 0.04, 0.64, THREE.SRGBColorSpace).multiplyScalar(1.55);
     parts.push(paintFlat(cap, _c.clone(), 0.2));
   }
-  return mergeParts(parts);
+  const merged = mergeParts(parts);
+  merged.userData.trunkQuality = {
+    family: 'conifer', radialSegments: 11, verticalSegments: 4,
+    rootButtresses: 4, organicWarp: true,
+  };
+  return merged;
 }
 
 function buildPineCards(
@@ -1193,13 +1273,22 @@ function buildPalmGeometry(
   const lean = (vr.lean0 ?? 0.5) + rng() * (vr.leanR ?? 0.5); // total top offset in meters
   const NSEG = 6;
   let px = 0, pz = 0;
+  const trunkColor = new THREE.Color().setHSL(0.072, 0.30, 0.38, THREE.SRGBColorSpace);
+  const rootFlare = organicizeTrunk(
+    new THREE.CylinderGeometry(0.23 * rMul, 0.36 * rMul, 0.48, 10, 2),
+    rng() * Math.PI * 2, 0, 0, 0.075,
+  );
+  rootFlare.translate(0, 0.22, 0);
+  trunkParts.push(paintFlat(rootFlare, trunkColor.clone().multiplyScalar(0.88), 0));
+  addRootButtresses(trunkParts, rng, trunkColor, 0.28 * rMul, 4);
   for (let i = 0; i < NSEG; i++) {
     const t0 = i / NSEG, t1 = (i + 1) / NSEG;
     const x0 = Math.cos(leanA) * lean * t0 * t0, z0 = Math.sin(leanA) * lean * t0 * t0;
     const x1 = Math.cos(leanA) * lean * t1 * t1, z1 = Math.sin(leanA) * lean * t1 * t1;
     const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
     const seg = new THREE.CylinderGeometry(
-      (0.13 + (1 - t1) * 0.10) * rMul, (0.14 + (1 - t0) * 0.10) * rMul, segLen, 7, 1);
+      (0.13 + (1 - t1) * 0.10) * rMul, (0.14 + (1 - t0) * 0.10) * rMul, segLen, 9, 2);
+    organicizeTrunk(seg, i * 0.73 + leanA, 0, 0, 0.045);
     // ring-band illusion: alternating leaf-scar bands in warm brown
     _c.setHSL(0.072, 0.30, (i % 2 ? 0.34 : 0.43) + rng() * 0.03, THREE.SRGBColorSpace); // r2: bark-map compensation
     seg.rotateZ(Math.atan2(x1 - x0, H / NSEG) * -1);
@@ -1209,7 +1298,7 @@ function buildPalmGeometry(
     px = x1; pz = z1;
   }
   // fiber collar under the crown
-  const collar = new THREE.CylinderGeometry(0.30 * rMul, 0.19 * rMul, 0.6, 7, 1);
+  const collar = new THREE.CylinderGeometry(0.30 * rMul, 0.19 * rMul, 0.6, 9, 2);
   collar.translate(px, H - 0.15, pz);
   _c.setHSL(0.082, 0.32, 0.29, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(collar, _c.clone(), 0.2));
@@ -1312,7 +1401,12 @@ function buildPalmGeometry(
     const a = rng() * Math.PI * 2;
     cardParts.push(frond(a, -0.9 - rng() * 0.3, -1.45, 2.3 + rng() * 0.5, 1.05, 0.6, true));
   }
-  return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
+  const trunk = mergeParts(trunkParts);
+  trunk.userData.trunkQuality = {
+    family: 'palm', radialSegments: 9, verticalSegments: 2,
+    rootButtresses: 4, organicWarp: true,
+  };
+  return { trunk, cards: mergeParts(cardParts) };
 }
 
 // --- birch: pale banded trunk, upward branches, sparse bare-twig cards ---
@@ -1343,14 +1437,14 @@ function buildBirchGeometry(
   const trunkParts: THREE.BufferGeometry[] = [];
   const H = (vr.h0 ?? 5.6) + rng() * (vr.hr ?? 1.6);
   const crw = vr.crw ?? 1.55;
-  const trunk = new THREE.CylinderGeometry(0.06, 0.16, H * 0.62, 7, 3);
-  const tp = attribute(trunk, 'position');
-  for (let i = 0; i < tp.count; i++) tp.setX(i, tp.getX(i) + tp.getY(i) * (rng() * 0.03));
-  trunk.computeVertexNormals();
-  trunk.translate(0, H * 0.31, 0);
+  const trunkStem = organicizeTrunk(
+    new THREE.CylinderGeometry(0.06, 0.16, H * 0.62, 10, 5),
+    rng() * Math.PI * 2, (rng() - 0.5) * 0.08, (rng() - 0.5) * 0.08, 0.055,
+  );
+  trunkStem.translate(0, H * 0.31, 0);
   // banded bark via vertex colours: pale white with darker patches
   {
-    const trunkPosition = attribute(trunk, 'position');
+    const trunkPosition = attribute(trunkStem, 'position');
     const nv = trunkPosition.count;
     const col = new Float32Array(nv * 3);
     const fl = new Float32Array(nv);
@@ -1361,10 +1455,18 @@ function buildBirchGeometry(
       col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
       fl[i] = 0;
     }
-    trunk.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    trunk.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
-    trunkParts.push(trunk);
+    trunkStem.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    trunkStem.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
+    trunkParts.push(trunkStem);
   }
+  const birchRootColor = new THREE.Color().setHSL(0.08, 0.045, 0.66, THREE.SRGBColorSpace);
+  const birchFlare = organicizeTrunk(
+    new THREE.CylinderGeometry(0.16, 0.25, 0.36, 10, 2),
+    rng() * Math.PI * 2, 0, 0, 0.06,
+  );
+  birchFlare.translate(0, 0.16, 0);
+  trunkParts.push(paintFlat(birchFlare, birchRootColor.clone(), 0));
+  addRootButtresses(trunkParts, rng, birchRootColor, 0.21, 4);
   const addBranchLattice = (): void => {
     const leaderCount = 2 + ((rng() * 2) | 0);
     for (let leader = 0; leader < leaderCount; leader += 1) {
@@ -1390,11 +1492,10 @@ function buildBirchGeometry(
       branch.translate(0, length / 2, 0);
       branch.rotateZ(tilt);
       branch.rotateY(yaw);
-      branch.translate(
-        (rng() - 0.5) * crw * 0.5,
-        baseY,
-        (rng() - 0.5) * crw * 0.5,
-      );
+      const branchBaseRadius = 0.035 + rng() * 0.025;
+      const branchBaseX = -Math.cos(yaw) * branchBaseRadius;
+      const branchBaseZ = Math.sin(yaw) * branchBaseRadius;
+      branch.translate(branchBaseX, baseY, branchBaseZ);
       _c.setHSL(0.06, 0.06, 0.46 + rng() * 0.12, THREE.SRGBColorSpace);
       trunkParts.push(paintFlat(branch, _c.clone(), 0.3));
       if (rng() >= 0.6) continue;
@@ -1403,10 +1504,11 @@ function buildBirchGeometry(
       fork.translate(0, forkLength / 2, 0);
       fork.rotateZ(tilt + (rng() - 0.3) * 0.7);
       fork.rotateY(yaw + (rng() - 0.5) * 1.1);
+      const forkReach = Math.sin(tilt) * length * 0.9;
       fork.translate(
-        Math.sin(yaw) * Math.sin(tilt) * length * 0.9,
+        branchBaseX - Math.cos(yaw) * forkReach,
         baseY + Math.cos(tilt) * length * 0.9,
-        Math.cos(yaw) * Math.sin(tilt) * length * 0.9,
+        branchBaseZ + Math.sin(yaw) * forkReach,
       );
       _c.setHSL(0.06, 0.06, 0.50 + rng() * 0.12, THREE.SRGBColorSpace);
       trunkParts.push(paintFlat(fork, _c.clone(), 0.4));
@@ -1457,7 +1559,41 @@ function buildBirchGeometry(
     }
   };
   if (snow > 0.01) addSnowLobes();
-  return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
+  const trunk = mergeParts(trunkParts);
+  trunk.userData.trunkQuality = {
+    family: 'birch', radialSegments: 10, verticalSegments: 5,
+    rootButtresses: 4, organicWarp: true,
+  };
+  return { trunk, cards: mergeParts(cardParts) };
+}
+
+/** Deterministic near-trunk geometry used by the strict visual/shape audit. */
+export function buildTreeTrunkAuditGeometry(
+  species: TreeSpecies,
+  seed = 0x71ee,
+): THREE.BufferGeometry {
+  const rng = mulberry32(seed);
+  const archetype = TREE_ARCHETYPES[species];
+  if (archetype.family === 'conifer') {
+    const geometry = buildPineTrunk(rng);
+    const scale = TREE_GEOMETRY_SCALE[species];
+    geometry.scale(scale[0], scale[1], scale[2]);
+    return geometry;
+  }
+  if (archetype.family === 'palm') return buildPalmGeometry(rng).trunk;
+  if (archetype.family === 'birch') {
+    const geometry = buildBirchGeometry(rng).trunk;
+    const scale = TREE_GEOMETRY_SCALE[species];
+    geometry.scale(scale[0], scale[1], scale[2]);
+    return geometry;
+  }
+  return buildBroadleafTrunk(rng, {
+    cy: archetype.canopyCenterM,
+    rx: archetype.canopyRadiusM,
+    ry: Math.max(1.1, archetype.canopyRadiusM * 0.62),
+    rz: archetype.canopyRadiusM,
+    trunkH: archetype.trunkHeightM,
+  });
 }
 
 // --- far-LOD trees: OPAQUE canopy lobes (no alpha cards). Beyond ~260 m the
@@ -1833,14 +1969,13 @@ export function createGarageTreeKit(
     let pair: TreeGeometryPair;
     switch (archetype.family) {
       case 'conifer': {
-        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.pine.canopyRadiusM;
-        const vertical = archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM;
+        const scale = TREE_GEOMETRY_SCALE[species];
         pair = {
           trunk: buildPineTrunk(mulberry32(seed + 61 + k * 101), palette),
           cards: buildPineCards(mulberry32(seed + 63 + k * 101), 0.60, 1, palette),
         };
-        pair.trunk.scale(radial, vertical, radial);
-        pair.cards.scale(radial, vertical, radial);
+        pair.trunk.scale(scale[0], scale[1], scale[2]);
+        pair.cards.scale(scale[0], scale[1], scale[2]);
         foliageTexture = makeNeedleSprayTexture(mulberry32(seed + 52), palette.texTone || null);
         break;
       }
@@ -1855,10 +1990,9 @@ export function createGarageTreeKit(
         pair = buildBirchGeometry(mulberry32(seed + 85 + k * 101), palette, {
           h0: 4.8 + k * 1.15, hr: 1.15, crw: 1.25 + k * 0.28, nBr: 12 + k * 2,
         });
-        const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.birch.canopyRadiusM;
-        const vertical = archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM;
-        pair.trunk.scale(radial, vertical, radial);
-        pair.cards.scale(radial, vertical, radial);
+        const scale = TREE_GEOMETRY_SCALE[species];
+        pair.trunk.scale(scale[0], scale[1], scale[2]);
+        pair.cards.scale(scale[0], scale[1], scale[2]);
         foliageTexture = makeTwigTexture(mulberry32(seed + 54), palette.texTone || null);
         break;
       }
@@ -3038,11 +3172,11 @@ function* vegetationBuildSteps(
     };
   }
   const SPECIES: Record<Species, SpeciesDefinition> = {
-    pine: coniferDefinition(52, 61, 71, [1, 1, 1]),
-    spruce: coniferDefinition(55, 91, 111, [0.72, 1.22, 0.72]),
-    fir: coniferDefinition(56, 121, 141, [1.14, 1.04, 1.14]),
-    cedar: coniferDefinition(57, 151, 171, [1.36, 0.88, 1.36]),
-    cypress: coniferDefinition(58, 181, 201, [0.48, 1.25, 0.48]),
+    pine: coniferDefinition(52, 61, 71, TREE_GEOMETRY_SCALE.pine),
+    spruce: coniferDefinition(55, 91, 111, TREE_GEOMETRY_SCALE.spruce),
+    fir: coniferDefinition(56, 121, 141, TREE_GEOMETRY_SCALE.fir),
+    cedar: coniferDefinition(57, 151, 171, TREE_GEOMETRY_SCALE.cedar),
+    cypress: coniferDefinition(58, 181, 201, TREE_GEOMETRY_SCALE.cypress),
     oak: broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1]),
     poplar: broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58]),
     willow: broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45]),
@@ -3069,9 +3203,9 @@ function* vegetationBuildSteps(
       tex: (r, pal) => makeTwigTexture(r, pal.texTone || null),
       near: (k, pal) => scaleNear(
         buildBirchGeometry(mulberry32(seed + 331 + k * 7), pal, BIRCH_VAR[k % 3]),
-        0.78, 1.12, 0.78,
+        ...TREE_GEOMETRY_SCALE.aspen,
       ),
-      far: (r, pal) => scaleFar(buildBirchFarGeometry(r, pal), 0.78, 1.12, 0.78),
+      far: (r, pal) => scaleFar(buildBirchFarGeometry(r, pal), ...TREE_GEOMETRY_SCALE.aspen),
     },
   };
   const speciesList = veg.species.filter((sp) => SPECIES[sp]);
@@ -3177,7 +3311,7 @@ function* vegetationBuildSteps(
     const tree = trees[treeIndex];
     const archetype = TREE_ARCHETYPES[tree.species];
     const radialScale = Math.max(scaleX, scaleZ);
-    const radius = Math.max(0.16, archetype.trunkRadiusM * radialScale);
+    const radius = treeTrunkCollisionRadiusM(tree.species, tree.variant) * radialScale;
     treeObstacles.push(setCircleShape({
       min: [tree.x - radius, groundY, tree.z - radius],
       max: [tree.x + radius, groundY + archetype.trunkHeightM * scaleY, tree.z + radius],

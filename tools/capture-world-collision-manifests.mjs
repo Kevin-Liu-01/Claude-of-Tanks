@@ -43,9 +43,13 @@ for (const mapId of MAP_IDS) {
         n(record.max[0]), n(record.max[1]), n(record.max[2]),
       ] };
       const shape = record.shape2;
-      if (shape?.kind === 'obb') out.s = ['o', n(shape.cx), n(shape.cz), n(shape.hw), n(shape.hl), n(shape.yaw)];
-      else if (shape?.kind === 'circle') out.s = ['c', n(shape.cx), n(shape.cz), n(shape.r)];
-      else if (shape?.kind === 'convex') out.s = ['v', ...shape.points.map(n)];
+      const packShape = (value) => value.kind === 'obb'
+        ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw)]
+        : value.kind === 'circle'
+          ? ['c', n(value.cx), n(value.cz), n(value.r)]
+          : ['v', ...value.points.map(n)];
+      if (shape?.kind === 'compound') out.s = ['m', ...shape.parts.map(packShape)];
+      else if (shape) out.s = packShape(shape);
       if (record.crushable) out.q = 1;
       // Tree contact policy is a shared runtime invariant; avoid repeating
       // its two constant values thousands of times in the server manifest.

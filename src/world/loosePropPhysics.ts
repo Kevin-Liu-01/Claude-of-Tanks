@@ -6,6 +6,8 @@
 // clutter, while preserving the game's fixed-step/no-allocation hot-loop
 // rules. Rendering still uses the full authored mesh and quaternion tumble.
 
+import type { CollisionShape } from './collision.ts';
+
 export const LOOSE_PROP_STEP_S = 1 / 60;
 
 const GRAVITY = 9.81;
@@ -70,10 +72,7 @@ interface LoosePropObstacle {
   max: readonly [number, number, number];
   crushed?: boolean;
   dead?: boolean;
-  shape2?:
-    | { kind: 'circle'; cx: number; cz: number; r: number }
-    | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
-    | { kind: 'convex'; cx: number; cz: number; points: number[] };
+  shape2?: CollisionShape;
 }
 
 function clamp(v: number, lo: number, hi: number) { return v < lo ? lo : v > hi ? hi : v; }
@@ -411,10 +410,25 @@ export function resolveLoosePropObstacle(b: LoosePropBody, ob: LoosePropObstacle
   if (!ob || ob.crushed || ob.dead) return false;
   if (b.y + b.radius < ob.min[1] || b.y - b.radius > ob.max[1]) return false;
   const sh = ob.shape2;
+  if (sh && sh.kind === 'compound') {
+    let hit = false;
+    _compoundLooseObstacle.min = ob.min;
+    _compoundLooseObstacle.max = ob.max;
+    for (const part of sh.parts) {
+      _compoundLooseObstacle.shape2 = part;
+      if (resolveLoosePropObstacle(b, _compoundLooseObstacle)) hit = true;
+    }
+    return hit;
+  }
   return sh?.kind === 'circle'
     ? resolveCircleObstacle(b, sh)
     : resolveBoxObstacle(b, obstacleBox(ob));
 }
+
+const _compoundLooseObstacle: LoosePropObstacle = {
+  min: [0, 0, 0],
+  max: [0, 0, 0],
+};
 
 /** Resolve two loose circles. Return wake bits: 1 for a, 2 for b. */
 export function resolveLoosePropPair(a: LoosePropBody, b: LoosePropBody) {

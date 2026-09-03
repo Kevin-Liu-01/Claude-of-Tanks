@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Procedural tree trunk visual audit</title>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #132029; }
+    canvas { display: block; width: 100%; height: 100%; }
+    output {
+      position: fixed; top: 18px; left: 18px; padding: 8px 11px;
+      border: 1px solid #65727b; background: rgba(8, 13, 17, .82);
+      color: #d9e3e7; font: 600 12px/1.3 ui-monospace, SFMono-Regular, monospace;
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <output id="label">Preparing trunk…</output>
+  <script type="module">
+    import * as THREE from 'three';
+    import { buildTreeTrunkAuditGeometry } from '/src/world/vegetation.ts';
+    import {
+      TREE_ARCHETYPES, isTreeSpecies, treeTrunkCollisionRadiusM,
+    } from '/src/world/treeSpecies.ts';
+
+    const params = new URLSearchParams(location.search);
+    const species = params.get('species') || 'oak';
+    const seed = Number(params.get('seed') || 0x71ee) >>> 0;
+    const initialView = params.get('view') || 'three-quarter';
+    const showCollision = params.get('collision') !== '0';
+    if (!isTreeSpecies(species)) throw new Error(`unknown tree species: ${species}`);
+
+    const geometry = buildTreeTrunkAuditGeometry(species, seed);
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    const bounds = geometry.boundingBox.clone();
+    const position = geometry.getAttribute('position');
+    const receipt = geometry.userData.trunkQuality;
+    const collisionRadius = treeTrunkCollisionRadiusM(species, 1);
+    const visibleRadii = [];
+    for (let index = 0; index < position.count; index++) {
+      const y = position.getY(index);
+      const radius = Math.hypot(position.getX(index), position.getZ(index));
+      if (y >= 0.4 && y <= 1.65 && radius > 0.03) visibleRadii.push(radius);
+    }
+    visibleRadii.sort((a, b) => a - b);
+    const visibleRadius = visibleRadii[Math.floor(visibleRadii.length * 0.75)];
+    const radiusFit = Math.min(visibleRadius, collisionRadius) / Math.max(visibleRadius, collisionRadius);
+    const score = 28 * Math.min(1, receipt.radialSegments / 9)
+      + 12 * Math.min(1, receipt.verticalSegments / 2)
+      + 20 * Math.min(1, receipt.rootButtresses / 4)
+      + (receipt.organicWarp ? 15 : 0)
+      + radiusFit * 25;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.14;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    document.body.prepend(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x172832);
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.96, metalness: 0,
+    }));
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    if (showCollision) {
+      const trunkHeight = TREE_ARCHETYPES[species].trunkHeightM;
+      const overlay = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.CylinderGeometry(
+          collisionRadius, collisionRadius, trunkHeight, 24, 1, true,
+        )),
+        new THREE.LineBasicMaterial({ color: 0x2df2e4, transparent: true, opacity: 0.78 }),
+      );
+      overlay.position.y = trunkHeight * 0.5;
+      overlay.renderOrder = 20;
+      overlay.material.depthTest = false;
+      scene.add(overlay);
+    }
+
+    const rootExtent = Math.max(
+      Math.abs(bounds.min.x), Math.abs(bounds.max.x),
+      Math.abs(bounds.min.z), Math.abs(bounds.max.z),
+    );
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(Math.max(5, rootExtent * 3.2), 64),
+      new THREE.MeshStandardMaterial({ color: 0x26342d, roughness: 1 }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.12;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    scene.add(new THREE.HemisphereLight(0xc9deea, 0x302820, 1.55));
+    const sun = new THREE.DirectionalLight(0xffddb1, 3.4);
+    sun.position.set(6, bounds.max.y + 8, 7);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    scene.add(sun);
+
+    const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 180);
+    const fullSphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const baseBounds = new THREE.Box3(
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, Math.min(1.8, bounds.max.y), bounds.max.z),
+    );
+    const baseSphere = baseBounds.getBoundingSphere(new THREE.Sphere());
+    const directions = {
+      front: new THREE.Vector3(0, 0.08, 1),
+      rear: new THREE.Vector3(0, 0.08, -1),
+      left: new THREE.Vector3(-1, 0.08, 0),
+      right: new THREE.Vector3(1, 0.08, 0),
+      'three-quarter': new THREE.Vector3(1, 0.20, 1),
+      roof: new THREE.Vector3(0.25, 1, 0.22),
+      'base-front': new THREE.Vector3(0, 0.12, 1),
+      'base-quarter': new THREE.Vector3(-1, 0.18, 1),
+    };
+
+    let activeView = initialView;
+    const label = document.querySelector('#label');
+    const render = () => renderer.render(scene, camera);
+    function setView(nextView) {
+      activeView = nextView;
+      const detail = nextView.startsWith('base-');
+      const focusBounds = detail ? baseBounds : bounds;
+      const sphere = detail ? baseSphere : fullSphere;
+      const target = sphere.center.clone();
+      const direction = (directions[nextView] || directions['three-quarter']).clone().normalize();
+      const distance = sphere.radius / Math.sin(THREE.MathUtils.degToRad(camera.fov * 0.5)) * 1.16;
+      camera.position.copy(target).addScaledVector(direction, distance);
+      camera.lookAt(target);
+      camera.updateMatrixWorld(true);
+      render();
+      const projected = [];
+      for (const x of [focusBounds.min.x, focusBounds.max.x]) {
+        for (const y of [focusBounds.min.y, focusBounds.max.y]) {
+          for (const z of [focusBounds.min.z, focusBounds.max.z]) {
+            projected.push(new THREE.Vector3(x, y, z).project(camera));
+          }
+        }
+      }
+      const minX = Math.min(...projected.map((point) => point.x));
+      const maxX = Math.max(...projected.map((point) => point.x));
+      const minY = Math.min(...projected.map((point) => point.y));
+      const maxY = Math.max(...projected.map((point) => point.y));
+      label.value = `${species} · ${nextView} · ${score.toFixed(1)}/100 · `
+        + `${receipt.radialSegments}-side · ${receipt.rootButtresses} roots`;
+      return {
+        view: nextView,
+        frameWidth: maxX - minX,
+        frameHeight: maxY - minY,
+        detail,
+      };
+    }
+
+    function probeFrame() {
+      render();
+      const probe = document.createElement('canvas');
+      probe.width = 64; probe.height = 40;
+      const context = probe.getContext('2d', { willReadFrequently: true });
+      context.drawImage(renderer.domElement, 0, 0, probe.width, probe.height);
+      const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
+      let sum = 0, sumSquared = 0, opaque = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const luminance = pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+        sum += luminance; sumSquared += luminance * luminance;
+        if (pixels[index + 3] > 250) opaque++;
+      }
+      const count = pixels.length / 4;
+      const mean = sum / count;
+      return { mean, variance: sumSquared / count - mean * mean, opaqueRatio: opaque / count };
+    }
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      setView(activeView);
+    });
+    setView(initialView);
+    window.__TREE_TRUNK_AUDIT = {
+      ready: true,
+      species,
+      seed,
+      score,
+      receipt,
+      collisionRadius,
+      visibleRadius,
+      setView,
+      probeFrame,
+    };
+  </script>
+</body>
+</html>

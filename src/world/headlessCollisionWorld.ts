@@ -3,10 +3,12 @@ import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
-type PackedShape =
+type PackedSimpleShape =
   | readonly ['o', number, number, number, number, number]
   | readonly ['c', number, number, number]
   | readonly ['v', ...number[]];
+
+type PackedShape = PackedSimpleShape | readonly ['m', ...PackedSimpleShape[]];
 
 export interface PackedCollisionRecord {
   b: readonly [number, number, number, number, number, number];
@@ -66,14 +68,14 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
     max: [bounds[3], bounds[4], bounds[5]],
   };
   const shape = packed.s;
-  if (shape?.[0] === 'o') {
-    record.shape2 = {
-      kind: 'obb', cx: shape[1], cz: shape[2], hw: shape[3], hl: shape[4], yaw: shape[5],
+  const unpackSimpleShape = (value: PackedSimpleShape) => {
+    if (value[0] === 'o') return {
+      kind: 'obb' as const, cx: value[1], cz: value[2], hw: value[3], hl: value[4], yaw: value[5],
     };
-  } else if (shape?.[0] === 'c') {
-    record.shape2 = { kind: 'circle', cx: shape[1], cz: shape[2], r: shape[3] };
-  } else if (shape?.[0] === 'v') {
-    const points = shape.slice(1) as number[];
+    if (value[0] === 'c') return {
+      kind: 'circle' as const, cx: value[1], cz: value[2], r: value[3],
+    };
+    const points = value.slice(1) as number[];
     let cx = 0;
     let cz = 0;
     for (let index = 0; index < points.length; index += 2) {
@@ -81,7 +83,18 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
       cz += points[index + 1];
     }
     const count = Math.max(1, points.length / 2);
-    record.shape2 = { kind: 'convex', cx: cx / count, cz: cz / count, points };
+    return { kind: 'convex' as const, cx: cx / count, cz: cz / count, points };
+  };
+  if (shape?.[0] === 'm') {
+    const parts = shape.slice(1).map((part) => unpackSimpleShape(part as PackedSimpleShape));
+    record.shape2 = {
+      kind: 'compound',
+      cx: (bounds[0] + bounds[3]) * 0.5,
+      cz: (bounds[2] + bounds[5]) * 0.5,
+      parts,
+    };
+  } else if (shape) {
+    record.shape2 = unpackSimpleShape(shape);
   }
   if (packed.q) record.crushable = true;
   if (packed.m != null) record.crushMin = packed.m;

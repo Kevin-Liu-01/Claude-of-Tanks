@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
   convexHull2, createObstacleGrid, pushHullFromObstacle,
-  pushHullFromHull, rayCollisionRecord, setCircleShape, setConvexShape, setObbShape,
+  pushHullFromHull, rayCollisionRecord, setCircleShape, setCompoundShape,
+  setConvexShape, setObbShape,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -64,9 +65,27 @@ assert.equal(rayCollisionRecord(
   new Vector3(0.9, 5, 0.9), new Vector3(0, -1, 0), trunk, 10, n), -1,
   'shell ray misses an empty cylinder AABB corner');
 
+// Concave structure footprints retain their courtyards/recesses instead of
+// turning the union's enclosing hull into invisible collision.
+const lBuilding = setCompoundShape(rec(6), [
+  { kind: 'obb', cx: -1.5, cz: 0, hw: 0.5, hl: 2, yaw: 0 },
+  { kind: 'obb', cx: 0, cz: -1.5, hw: 2, hl: 0.5, yaw: 0 },
+]);
+assert.equal(lBuilding.shape2.kind, 'compound', 'multi-part structure keeps a compound footprint');
+assert.equal(hullHit({ x: 0.8, z: 0.8 }, lBuilding, 0.1, 0.1).hit, false,
+  'concave structure recess remains traversable');
+assert.equal(hullHit({ x: -1.5, z: 0.8 }, lBuilding, 0.1, 0.1).hit, true,
+  'compound structure arm remains solid');
+assert.equal(rayCollisionRecord(
+  new Vector3(0.8, 5, 0.8), new Vector3(0, -1, 0), lBuilding, 10, n), -1,
+  'shell ray misses the compound structure recess');
+assert.ok(rayCollisionRecord(
+  new Vector3(-1.5, 5, 0.8), new Vector3(0, -1, 0), lBuilding, 10, n) >= 0,
+  'shell ray hits a compound structure arm');
+
 // Static-grid broad phase returns local records once, including multi-cell props.
 const far = setCircleShape(rec(), 80, 80, 2);
-const query = createObstacleGrid([building, trunk, rock, far], 8);
+const query = createObstacleGrid([building, trunk, rock, lBuilding, far], 8);
 const out = [];
 query(-5, -5, 5, 5, out);
 assert.equal(out.includes(far), false, 'grid excludes distant environment props');

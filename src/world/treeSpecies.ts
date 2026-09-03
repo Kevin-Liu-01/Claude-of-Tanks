@@ -30,6 +30,40 @@ export interface TreeArchetype {
 }
 
 /**
+ * Near/far geometry scale shared by battlefield, Garage and visual audits.
+ * Broadleaf builders receive species dimensions directly, so their scale is 1.
+ */
+export const TREE_GEOMETRY_SCALE: Readonly<Record<TreeSpecies, readonly [number, number, number]>> =
+  Object.freeze({
+    pine: [1, 1, 1],
+    spruce: [0.72, 1.22, 0.72],
+    fir: [1.14, 1.04, 1.14],
+    cedar: [1.36, 0.88, 1.36],
+    cypress: [0.48, 1.25, 0.48],
+    oak: [1, 1, 1],
+    poplar: [1, 1, 1],
+    willow: [1, 1, 1],
+    acacia: [1, 1, 1],
+    eucalyptus: [1, 1, 1],
+    palm: [1, 1, 1],
+    birch: [1, 1, 1],
+    aspen: [0.78, 1.12, 0.78],
+  });
+
+/** Tight main-stem collision radius for the rendered near-tree geometry. */
+export function treeTrunkCollisionRadiusM(species: TreeSpecies, variant = 1): number {
+  const archetype = TREE_ARCHETYPES[species];
+  const radialScale = Math.max(TREE_GEOMETRY_SCALE[species][0], TREE_GEOMETRY_SCALE[species][2]);
+  if (archetype.family === 'conifer') return 0.25 * radialScale;
+  if (archetype.family === 'birch') return 0.15 * radialScale;
+  if (archetype.family === 'palm') {
+    const radiusMultipliers = [1.40, 1.15, 0.95] as const;
+    return 0.24 * radiusMultipliers[((variant % 3) + 3) % 3];
+  }
+  return 0.30;
+}
+
+/**
  * Shared visual/physical proportions for every procedural tree archetype.
  * The renderer uses these values for deterministic instance variation while
  * collision, shell hits, and hinge-topple use the same trunk dimensions.

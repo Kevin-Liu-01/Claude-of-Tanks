@@ -35,6 +35,8 @@ function isPackedShape(value: RuntimeValue): boolean {
   if (!Array.isArray(value) || typeof value[0] !== 'string') return false;
   if (value[0] === 'o') return isFiniteTuple(value.slice(1), 5);
   if (value[0] === 'c') return isFiniteTuple(value.slice(1), 3);
+  if (value[0] === 'm') return value.length >= 2 && value.slice(1).every(isPackedShape) &&
+    value.slice(1).every((part) => Array.isArray(part) && part[0] !== 'm');
   return value[0] === 'v' && value.length >= 7 && value.length % 2 === 1 &&
     value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
 }

@@ -19,15 +19,30 @@
   <output id="label">Preparing structure…</output>
   <script type="module">
     import * as THREE from 'three';
-    import { STRUCTURE_BUILDERS } from '/src/world/maps/structureKit.ts';
+    import { VILLAGE_BUILDERS } from '/src/world/maps/villageKit.ts';
+    import { URBAN_BUILDERS } from '/src/world/maps/urbanKit.ts';
+    import {
+      DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+    } from '/src/world/maps/structureKit.ts';
+    import { DESTRUCTIBLE_TYPES } from '/src/world/maps/inhabitKit.ts';
+    import {
+      buildSourcedStructureGeometry, preloadPropModels,
+    } from '/src/world/props.ts';
+    import { SOURCED_STRUCTURE_TYPES } from '/src/world/sourcedStructureTypes.ts';
+    import {
+      certifyStructureCollisionProfile, deriveStructureCollisionProfile,
+    } from '/src/world/structureCollision.ts';
 
     const params = new URLSearchParams(location.search);
     const id = params.get('id') || 'megatower';
     const view = params.get('view') || 'three-quarter';
     const focus = params.get('focus') || 'all';
+    const collisionLayer = params.get('collision') || 'contact';
     const seed = Number(params.get('seed') || 0x51a7c7) >>> 0;
-    const build = STRUCTURE_BUILDERS[id];
-    if (!build) throw new Error(`unknown structure id: ${id}`);
+    const build = { ...VILLAGE_BUILDERS, ...URBAN_BUILDERS, ...STRUCTURE_BUILDERS }[id];
+    const destructible = DESTRUCTIBLE_BUILDING_TYPES[id] || DESTRUCTIBLE_TYPES[id];
+    const sourced = SOURCED_STRUCTURE_TYPES[id];
+    if (!build && !destructible && !sourced) throw new Error(`unknown structure id: ${id}`);
 
     function seeded(initial) {
       let state = initial >>> 0;
@@ -45,7 +60,22 @@
       'glass', 'curtain', 'straw', 'baked',
     ];
     const buckets = Object.fromEntries(bucketNames.map((name) => [name, []]));
-    const dimensions = build(seeded(seed), buckets, 'plaster3');
+    if (sourced) await preloadPropModels();
+    const dimensions = build
+      ? build(seeded(seed), buckets, 'plaster3')
+      : destructible ? {
+        w: (destructible.hw ?? destructible.r) * 2,
+        d: (destructible.hl ?? destructible.r) * 2,
+        h: destructible.h,
+      } : {
+        w: sourced.r * 2,
+        d: sourced.r * 2,
+        h: sourced.h,
+      };
+    if (destructible) buckets.baked.push(destructible.build(seeded(seed)));
+    if (sourced) buckets.baked.push(buildSourcedStructureGeometry(id));
+    const collisionProfile = deriveStructureCollisionProfile(buckets);
+    const collisionCertification = certifyStructureCollisionProfile(buckets, collisionProfile);
     const palette = {
       plaster: 0x7a766b,
       plaster2: 0x666b68,
@@ -106,24 +136,100 @@
     }
     subject.updateMatrixWorld(true);
 
+    function convexPoints(part) {
+      if (part.kind === 'convex') return part.points;
+      if (part.kind === 'obb') {
+        const s = Math.sin(part.yaw), c = Math.cos(part.yaw);
+        return [
+          [-part.hw, -part.hl], [part.hw, -part.hl],
+          [part.hw, part.hl], [-part.hw, part.hl],
+        ].flatMap(([x, z]) => [part.cx + x * c + z * s, part.cz - x * s + z * c]);
+      }
+      const points = [];
+      for (let index = 0; index < 20; index++) {
+        const angle = index / 20 * Math.PI * 2;
+        points.push(part.cx + Math.cos(angle) * part.r, part.cz + Math.sin(angle) * part.r);
+      }
+      return points;
+    }
+
+    function addBandOverlay(band, color, opacity) {
+      const vertices = [];
+      for (const part of band.parts) {
+        const points = convexPoints(part);
+        for (let index = 0; index < points.length; index += 2) {
+          const next = (index + 2) % points.length;
+          vertices.push(
+            points[index], band.minY, points[index + 1],
+            points[next], band.minY, points[next + 1],
+            points[index], band.maxY, points[index + 1],
+            points[next], band.maxY, points[next + 1],
+            points[index], band.minY, points[index + 1],
+            points[index], band.maxY, points[index + 1],
+          );
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+        color, transparent: true, opacity, depthTest: false,
+      }));
+      lines.renderOrder = 20;
+      scene.add(lines);
+    }
+    if (collisionLayer === 'contact' || collisionLayer === 'all') {
+      addBandOverlay(collisionProfile.contact, 0x31f6e8, 0.92);
+    }
+    if (collisionLayer === 'shell' || collisionLayer === 'all') {
+      for (const band of collisionProfile.shell) addBandOverlay(band, 0xffb13c, 0.72);
+    }
+
     const structureBounds = new THREE.Box3().setFromObject(subject);
     const bounds = focus === 'crown' && !focusBounds.isEmpty() ? focusBounds : structureBounds;
     const sphere = bounds.getBoundingSphere(new THREE.Sphere());
     const size = bounds.getSize(new THREE.Vector3());
     const target = sphere.center.clone();
     target.y = bounds.min.y + size.y * 0.53;
-    const direction = {
+    const directions = {
       front: new THREE.Vector3(0, 0.12, 1),
       rear: new THREE.Vector3(0, 0.12, -1),
-      side: new THREE.Vector3(1, 0.12, 0),
+      right: new THREE.Vector3(1, 0.12, 0),
+      left: new THREE.Vector3(-1, 0.12, 0),
       'three-quarter': new THREE.Vector3(1, 0.26, 1),
-    }[view] || new THREE.Vector3(1, 0.26, 1);
-    direction.normalize();
+      'front-left': new THREE.Vector3(-1, 0.26, 1),
+      'rear-right': new THREE.Vector3(1, 0.26, -1),
+      'rear-left': new THREE.Vector3(-1, 0.26, -1),
+      roof: new THREE.Vector3(0.18, 1, 0.12),
+    };
 
     const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.1, 500);
     const fitDistance = sphere.radius / Math.sin(THREE.MathUtils.degToRad(camera.fov * 0.5)) * 1.12;
-    camera.position.copy(target).addScaledVector(direction, fitDistance);
-    camera.lookAt(target);
+    function setView(nextView) {
+      const direction = (directions[nextView] || directions['three-quarter']).clone().normalize();
+      camera.position.copy(target).addScaledVector(direction, fitDistance);
+      camera.lookAt(target);
+      camera.updateMatrixWorld(true);
+      render();
+      document.querySelector('#label').value = `${id} · ${focus} · ${nextView} · ${collisionLayer} · ${collisionCertification.minimumScore.toFixed(1)}/100 · ${parts} parts · ${triangles.toLocaleString()} tris`;
+      const projected = [];
+      for (const x of [bounds.min.x, bounds.max.x]) {
+        for (const y of [bounds.min.y, bounds.max.y]) {
+          for (const z of [bounds.min.z, bounds.max.z]) {
+            projected.push(new THREE.Vector3(x, y, z).project(camera));
+          }
+        }
+      }
+      const minX = Math.min(...projected.map((point) => point.x));
+      const maxX = Math.max(...projected.map((point) => point.x));
+      const minY = Math.min(...projected.map((point) => point.y));
+      const maxY = Math.max(...projected.map((point) => point.y));
+      return {
+        view: nextView,
+        frameWidth: maxX - minX,
+        frameHeight: maxY - minY,
+        frameArea: (maxX - minX) * (maxY - minY) * 0.25,
+      };
+    }
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(Math.max(180, dimensions.w * 5), Math.max(180, dimensions.d * 5)),
@@ -149,15 +255,31 @@
     scene.add(sun, sun.target);
 
     const render = () => renderer.render(scene, camera);
+    function probeFrame() {
+      render();
+      const probe = document.createElement('canvas');
+      probe.width = 64; probe.height = 40;
+      const context = probe.getContext('2d', { willReadFrequently: true });
+      context.drawImage(renderer.domElement, 0, 0, probe.width, probe.height);
+      const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
+      let sum = 0, sumSquared = 0, opaque = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const luminance = pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+        sum += luminance; sumSquared += luminance * luminance;
+        if (pixels[index + 3] > 250) opaque++;
+      }
+      const count = pixels.length / 4;
+      const mean = sum / count;
+      return { mean, variance: sumSquared / count - mean * mean, opaqueRatio: opaque / count };
+    }
     addEventListener('resize', () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
       render();
     });
-    render();
+    setView(view);
     document.fonts?.ready?.then(render);
-    document.querySelector('#label').value = `${id} · ${focus} · ${view} · ${parts} parts · ${triangles.toLocaleString()} tris`;
     window.__STRUCTURE_AUDIT = {
       ready: true,
       id,
@@ -166,7 +288,12 @@
       parts,
       triangles,
       dimensions,
+      collisionLayer,
+      collisionProfile,
+      collisionCertification,
       bounds: { min: bounds.min.toArray(), max: bounds.max.toArray() },
+      setView,
+      probeFrame,
     };
   </script>
 </body>
