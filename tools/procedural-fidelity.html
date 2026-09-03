@@ -128,10 +128,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
     gunComponentMasks:false,
     turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
   } },
-  // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull and keeps
-  // the same turret envelope, but receives its own integrated-chevron turret.
-  // Use the A2 print as the authoritative shared silhouette oracle; the
-  // distinct closed VT turret/chevrons are enforced by the focused selftest.
+  // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull but uses
+  // an independent low integrated-chevron turret. Keep the A2 print as the
+  // registered shared-chassis oracle; VT-specific turret construction is
+  // enforced by the focused geometric selftest below the fused-print layer.
   vt4a1: { source:'glb', qualityBar:'exemplar', glb:{
     path:'/models/community-candidates/ztz99a2_manako.glb',
     fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2,

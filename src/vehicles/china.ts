@@ -101,7 +101,8 @@ const CHINA_SPECS = {
     dims: {
       hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.45,
       silhouetteHullLengthM: 8.18, silhouetteOverallLengthM: 11.55,
-      silhouetteHeightM: 2.89,
+      // The now-seated flank modules enter the measured P95 body envelope.
+      silhouetteHeightM: 2.95,
     },
     stats: {
       hp: 2750, enginePowerHp: 1500, weightTons: 58.0, topSpeedKmh: 70,

@@ -78,30 +78,39 @@ assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.exactHullCloneOf, 'ztz
 assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.sourceGeometryImported, false,
   'VT-4A1: comparison GLB is never imported as playable geometry');
 
-// The turret is new geometry, but its complete armored envelope stays within
-// two centimeters of the A2 width/length/height while its chevrons form one
-// closed, full-height front integrated into the shell shoulders.
+// The VT turret remains independent, but is now deliberately lower than the
+// A2 while its chevrons form the complete front and its armored bustle carries
+// the shell substantially farther aft.
 assert.notEqual(vt4a1.turretSignature, ztz99a2.turretSignature,
   'VT-4A1: new turret does not reuse ZTZ-99A2 turret geometry');
 const a2TurretSize = ztz99a2.armoredTurretBounds.getSize(new Vector3());
 const vtTurretSize = vt4a1.armoredTurretBounds.getSize(new Vector3());
-for (const axis of ['x', 'y', 'z']) {
-  assert(Math.abs(vtTurretSize[axis] - a2TurretSize[axis]) <= 0.021,
-    `VT-4A1: armored turret ${axis}-dimension matches ZTZ-99A2 envelope`);
-}
+assert(vtTurretSize.y < a2TurretSize.y,
+  'VT-4A1: complete armored turret is lower than ZTZ-99A2');
 assert(vt4a1.chevrons, 'VT-4A1: integrated chevron front exists');
 assert(vt4a1.chevrons.geometry.attributes.position.count >= 180,
   'VT-4A1: chevron front uses closed multi-station geometry on both sides');
 const chevronBounds = new Box3().setFromObject(vt4a1.chevrons);
 const gunWorld = vt4a1.gunRig.getWorldPosition(new Vector3());
-assert(chevronBounds.max.x >= 1.70 && chevronBounds.min.x <= -1.70,
+assert(chevronBounds.max.x >= 1.67 && chevronBounds.min.x <= -1.67,
   'VT-4A1: chevrons terminate inside both full-width turret shoulders');
 assert(chevronBounds.max.z >= gunWorld.z + 0.90,
   'VT-4A1: chevrons close the gun-throat/front-shell junction');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.integratedChevronFront, true,
   'VT-4A1: turret receipt records the merged chevron front');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.samePrimaryEnvelopeAs, 'ztz99a2',
-  'VT-4A1: turret receipt records its A2 dimensional envelope');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale, 0.75,
+  'VT-4A1: primary turret shell is authored at three-quarter height');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.legacyFrontalWedgeRemoved, true,
+  'VT-4A1: legacy protruding frontal shell is absent');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronsArePrimaryFront, true,
+  'VT-4A1: chevrons are the primary front rather than applique');
+assert(vt4a1.turretRig.userData.vt4a1TurretReceipt.primaryShellHeightM
+    / vt4a1.turretRig.userData.vt4a1TurretReceipt.previousPrimaryShellHeightM <= 0.751,
+  'VT-4A1: primary shell height is reduced to three quarters');
+assert(vt4a1.turretRig.userData.vt4a1TurretReceipt?.armoredBustleRearZM <= -2.68,
+  'VT-4A1: integral armored bustle reaches the requested deep rear station');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.giantIntegratedBustle, true,
+  'VT-4A1: receipt records the giant integrated bustle');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronProfile,
   'leopard-2a6-derived',
   'VT-4A1: front uses the Leopard 2A6 cheek architecture');
@@ -119,7 +128,15 @@ assert(
   'VT-4A1: upper wedge dominates the side section instead of forming a diamond',
 );
 
+assert.equal(ztz99a2.turretRig.userData.ztz99a2TurretIntegrationReceipt?.selectedArmorAttached, true,
+  'ZTZ-99A2: selected side armor and seam pieces are attached');
+assert(ztz99a2.turretRig.userData.ztz99a2TurretIntegrationReceipt.serviceModuleInnerFaceXM
+    < ztz99a2.turretRig.userData.ztz99a2TurretIntegrationReceipt.compactedShoulderOuterXM,
+  'ZTZ-99A2: side modules overlap the compacted turret shoulder');
+assert.equal(ztz99a2.turretRig.userData.ztz99a2TurretIntegrationReceipt?.mirroredServiceModules, true,
+  'ZTZ-99A2: attachment repair is symmetric');
+
 type99a.tank.dispose();
 ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: Type 99A rollback, shared A2 chassis, independent same-envelope VT-4A1 chevron turret verified');
+console.log('type99AAngularTurret.selftest: Type 99A rollback, attached A2 service armor, lower primary-chevron VT-4A1 turret and deep bustle verified');

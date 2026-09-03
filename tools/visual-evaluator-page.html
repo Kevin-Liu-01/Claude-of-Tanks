@@ -140,9 +140,9 @@ const CRITIC_REFERENCE_OVERRIDES = {
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   strv122: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false } },
-  // VT-4A1 deliberately shares the complete ZTZ-99A2 hull and turret
-  // envelope. Its independent closed-chevron turret is checked in the
-  // vehicle-profile selftest while this evaluator verifies shared contours.
+  // VT-4A1 deliberately shares the complete ZTZ-99A2 hull. Its independent
+  // low closed-chevron turret is checked in the vehicle-profile selftest;
+  // this fused evaluator print remains the shared-chassis comparison layer.
   vt4a1: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false } },
   ua_t84_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },

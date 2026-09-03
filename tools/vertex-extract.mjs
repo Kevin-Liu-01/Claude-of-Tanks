@@ -805,9 +805,9 @@ const REG = {
     pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
   },
   vt4a1: {
-    // Owner directive (2026-09-02): exact ZTZ-99A2 hull clone and matching
-    // turret envelope, with a distinct integrated-chevron VT turret. Reuse
-    // the A2 print and published frame for authoritative shared contours.
+    // Owner directive (2026-09-02): exact ZTZ-99A2 hull clone with a distinct
+    // low integrated-chevron VT turret. Reuse the A2 print and published
+    // frame for the authoritative shared-chassis contour layer.
     path: 'public/models/community-candidates/ztz99a2_manako.glb',
     fixedMount: true, scaleToOverall: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },

@@ -909,9 +909,9 @@ function buildZTZ99A2Turret(P: ChinaBuilderPort): void {
   // §5.266 critic fix 3: the plan nose broadened toward the print's ~1.0 m
   // arrow chord (was a ~0.6 m pinch).
   const plan99: Vec2Tuple[] = [
-    [0.44, 1.58], [1.02, 0.95], [1.50, 0.10], [1.62, -0.60], [1.38, -1.55],
-    [0.62, -1.72], [-0.62, -1.72], [-1.38, -1.55], [-1.62, -0.60],
-    [-1.50, 0.10], [-1.02, 0.95], [-0.44, 1.58],
+    [0.44, 1.58], [1.02, 0.95], [1.46, 0.12], [1.54, -0.60], [1.38, -1.55],
+    [0.62, -1.72], [-0.62, -1.72], [-1.38, -1.55], [-1.54, -0.60],
+    [-1.46, 0.12], [-1.02, 0.95], [-0.44, 1.58],
   ];
   const inset99 = [0.52, 0.56, 0.80, 0.82, 0.88, 0.92, 0.92, 0.88, 0.82, 0.80, 0.56, 0.52];
   const crown99 = 0.89;
@@ -922,21 +922,21 @@ function buildZTZ99A2Turret(P: ChinaBuilderPort): void {
   ]));
   crownRimTrim(P, plan99, inset99, crown99);
   P.add('turret', cylY(1.10, 1.16, 0.11, seg), 0, -0.04, -0.30);
-  // turret-side service modules: the print's flank carries the shell out to
-  // the skirt line at belt height — deep strapped stowage cassettes and
-  // spaced side plates fill ±1.60..1.72 with real equipment reads.
+  // Turret-side service modules are socketed into the shell rather than
+  // hovering beyond it. Their inner faces cross the belt envelope, while the
+  // rails and weld strips sit fractionally proud of the installed cassettes.
   for (const s of [-1, 1]) {
     for (const y of [0.14, 0.42]) {
-      P.add('turretDetail', box(0.034, 0.030, 1.64), s * 1.70, y, -0.72, 0, -s * 0.04, 0);
+      P.add('turretDetail', box(0.034, 0.030, 1.64), s * 1.585, y, -0.72, 0, -s * 0.04, 0);
     }
     for (const z of [-0.02, -0.70, -1.34]) {
-      P.add('turretDetail', box(0.036, 0.36, 0.036), s * 1.695, 0.28, z, 0, -s * 0.04, 0);
+      P.add('turretDetail', box(0.036, 0.36, 0.036), s * 1.580, 0.28, z, 0, -s * 0.04, 0);
     }
-    P.add('turretDark', box(0.18, 0.40, 0.76), s * 1.625, 0.30, -0.30, 0, -s * 0.04, 0);
-    P.add('turretDark', box(0.16, 0.36, 0.56), s * 1.60, 0.28, -1.22, 0, -s * 0.04, 0);
-    P.add('turret', box(0.14, 0.34, 0.62), s * 1.63, 0.30, 0.42, 0, -s * 0.10, 0);
-    P.add('turretDetail', box(0.19, 0.035, 0.64), s * 1.625, 0.52, -0.30, 0, -s * 0.04, 0);
-    P.add('turretDark', box(0.05, 0.05, 0.55), s * 1.665, 0.14, 0.40, 0, -s * 0.10, 0);
+    P.add('turretDark', box(0.22, 0.40, 0.76), s * 1.49, 0.30, -0.30, 0, -s * 0.04, 0);
+    P.add('turretDark', box(0.20, 0.36, 0.56), s * 1.47, 0.28, -1.22, 0, -s * 0.04, 0);
+    P.add('turret', box(0.24, 0.34, 0.68), s * 1.49, 0.30, 0.39, 0, -s * 0.10, 0);
+    P.add('turretDetail', box(0.23, 0.035, 0.64), s * 1.50, 0.505, -0.30, 0, -s * 0.04, 0);
+    P.add('turretDark', box(0.065, 0.05, 0.58), s * 1.555, 0.14, 0.39, 0, -s * 0.10, 0);
   }
   // deep add-on cheek cassettes following the wedge rake (the A2 tell):
   // two courses per side, seam battens between, gun channel kept open.
@@ -965,8 +965,8 @@ function buildZTZ99A2Turret(P: ChinaBuilderPort): void {
   }
   // weld beads along the belt shoulder
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.022, 0.022, 1.40), s * 1.545, 0.355, -0.24, 0, -s * 0.04, 0);
-    P.add('turretDark', box(0.022, 0.022, 1.02), s * 1.20, 0.355, 1.30, 0, -s * 0.60, 0);
+    P.add('turretDark', box(0.030, 0.030, 1.40), s * 1.515, 0.340, -0.24, 0, -s * 0.04, 0);
+    P.add('turretDark', box(0.030, 0.030, 1.02), s * 1.20, 0.340, 1.30, 0, -s * 0.60, 0);
   }
 
   // ---- roof suite (print layout): forward-LEFT panoramic head, recessed
@@ -1071,6 +1071,14 @@ function buildZTZ99A2Turret(P: ChinaBuilderPort): void {
   P.decal('turret', 'star', null, 0.24, [-1.30, 0.52, 0.42], -Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.60, 0.30, -0.81], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [-1.60, 0.30, -0.81], -Math.PI / 2);
+  P.turretG.userData.ztz99a2TurretIntegrationReceipt = Object.freeze({
+    selectedArmorAttached: true,
+    compactedShoulderOuterXM: 1.54,
+    serviceModuleCenterXM: 1.49,
+    serviceModuleInnerFaceXM: 1.37,
+    embeddedWeldCenterYM: 0.34,
+    mirroredServiceModules: true,
+  });
   P.topY = 1.30;
 }
 

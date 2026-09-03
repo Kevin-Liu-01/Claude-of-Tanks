@@ -34,7 +34,8 @@ export const CHINESE_FRONTLINE_SPECS = {
     dims: {
       hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.45,
       silhouetteHullLengthM: 8.18, silhouetteOverallLengthM: 11.60,
-      silhouetteHeightM: 3.20,
+      // Three-quarter-height turret and re-seated roof equipment P95 datum.
+      silhouetteHeightM: 2.91,
     },
     armor: createType99Armor('ztz99a2'),
     visual: {

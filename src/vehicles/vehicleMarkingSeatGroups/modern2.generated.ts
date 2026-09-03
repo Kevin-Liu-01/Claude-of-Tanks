@@ -181,66 +181,66 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.0817587,
-          0.5245537,
-          0.4219211
+          -1.0695146,
+          0.5245329,
+          0.4218412
         ],
         "quaternion": [
-          -0.2612201,
-          -0.5212211,
-          -0.3640229,
-          0.726347
+          -0.2605608,
+          -0.5278972,
+          -0.3577797,
+          0.724863
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0647701
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.2,
         "pos": [
-          1.5727646,
+          1.5105482,
           0.3,
-          -0.8114696
+          -0.8109965
         ],
         "quaternion": [
           0,
-          0.7889665,
+          0.7635712,
           0,
-          0.6144362
+          0.6457236
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0289277
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0055313
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.2,
         "pos": [
-          -1.5727646,
+          -1.5105482,
           0.3,
-          -0.8114696
+          -0.8109965
         ],
         "quaternion": [
           0,
-          -0.7889665,
+          -0.7635712,
           0,
-          0.6144362
+          0.6457236
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0289277
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.008297
       }
     ]
   },
@@ -250,46 +250,46 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.25,
+        "size": 0.23,
         "pos": [
-          -1.6208562,
-          0.46,
-          -0.550998
+          -1.5975892,
+          0.36,
+          -0.7203594
         ],
         "quaternion": [
           0,
-          -0.7636508,
+          -0.727974,
           0,
-          0.6456295
+          0.6856047
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0161948
+        "maximumSurfaceErrorM": 0.0064327
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4717885,
-          0.5549665,
-          -0.0387152
+          -1.5686812,
+          0.36325,
+          -1.2021594
         ],
         "quaternion": [
-          -0.2449695,
-          -0.5769922,
-          -0.3044905,
-          0.7171858
+          0,
+          -0.727974,
+          0,
+          0.6856047
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "vt4a1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0121645
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
