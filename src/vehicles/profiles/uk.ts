@@ -11,7 +11,7 @@
 // challenger1 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -135,6 +135,7 @@ export interface UKBuilderPort {
       wheelZs: number[];
     };
   } | null;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   clear(slots: readonly string[] | string, ...rest: string[]): void;
   clearDecals(owner?: 'hull' | 'turret'): void;
   offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
@@ -744,6 +745,66 @@ const CHIEFTAIN_HULL = {
   numberSize: 0.34, numberR: [1.773, 1.18, 0.0], numberL: [-1.773, 1.18, 0.0],
 };
 
+/**
+ * Chieftain bow wings are pressed armor shells, not a stack of horizontal
+ * shelves.  This continuous outer web closes the idler-side daylight while
+ * a shallow upper flange carries the load back into the glacis.  Keeping the
+ * web outside the 1.725 m shoe plane preserves the complete animated course.
+ */
+function addChieftainClosedShoulderMudguards(
+  P: UKBuilderPort,
+  profile: 'chieftain5' | 'chieftain_mk10',
+): void {
+  const labels: string[] = [];
+  for (const s of [-1, 1] as const) {
+    const side = s < 0 ? 'left' : 'right';
+    const order = (ring: readonly Vec3Tuple[]): [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple] => {
+      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [s * x, y, z]);
+      return (s < 0
+        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+        : mirrored) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+    };
+
+    const webLabel = `${profile}-front-mudguard-${side}-closed-web`;
+    labels.push(webLabel);
+    MUDGUARDS.add(P, {
+      label: webLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: slab(
+        ...order([[1.735, 1.06, 2.88], [1.795, 1.06, 2.88], [1.795, 0.83, 3.76], [1.735, 0.83, 3.76]]),
+        ...order([[1.735, 1.42, 2.88], [1.795, 1.42, 2.88], [1.795, 1.06, 3.76], [1.735, 1.06, 3.76]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+
+    const flangeLabel = `${profile}-front-mudguard-${side}-shoulder-flange`;
+    labels.push(flangeLabel);
+    MUDGUARDS.add(P, {
+      label: flangeLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: slab(
+        ...order([[0.94, 1.28, 2.82], [1.76, 1.28, 2.82], [1.76, 1.09, 3.46], [0.94, 1.09, 3.46]]),
+        ...order([[0.94, 1.43, 2.82], [1.76, 1.43, 2.82], [1.76, 1.24, 3.46], [0.94, 1.24, 3.46]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+  }
+  P.hullG.userData.chieftainShoulderMudguardReceipt = Object.freeze({
+    profile,
+    architecture: 'continuous-sloped-outer-web-with-glacis-flange',
+    labels: Object.freeze(labels),
+    sides: 2,
+    partsPerSide: 2,
+    closedSideVolume: true,
+    steppedShelvesVisibleFromSide: false,
+    outerWebInnerHalfWidthM: 1.735,
+    trackOuterHalfWidthM: 1.725,
+    trackClearanceM: 0.010,
+    shoulderInnerHalfWidthM: 0.94,
+    shoulderFrontZM: 3.46,
+  });
+}
+
 function chieftain5Build(P: UKBuilderPort): void {
   const g = CHIEFTAIN_HULL;
   ukHull(P, g);
@@ -796,6 +857,7 @@ function chieftain5Build(P: UKBuilderPort): void {
   P.add('hull', slab(
     [1.523, 0.82, 3.755], [1.556, 0.82, 3.755], [1.556, 0.80, 3.55], [1.523, 0.80, 3.55],
     [1.523, 1.045, 3.755], [1.556, 1.045, 3.755], [1.556, 1.13, 3.55], [1.523, 1.13, 3.55]));
+  addChieftainClosedShoulderMudguards(P, 'chieftain5');
   for (const s of [-1, 1]) P.add('hull', box(0.21, 0.06, 0.62), s * 0.945, 1.02, 2.81);
   // Right inner-track ground filler: the certified left-shifted print
   // grounds |x| 0.89..1.05 on the RIGHT side only (left track owns
@@ -1601,6 +1663,7 @@ function chieftainMk10Build(P: UKBuilderPort): void {
       [s * 0.99, deckAtUK(g, 3.08), 3.08], [s * 1.10, deckAtUK(g, 3.08), 3.08],
       [s * 1.10, deckAtUK(g, 2.55), 2.55], [s * 0.99, deckAtUK(g, 2.55), 2.55]));
   }
+  addChieftainClosedShoulderMudguards(P, 'chieftain_mk10');
   // ---- cast belly: center keel + shallow V (family cross-section, symmetric)
   P.add('hull', box(0.06, 0.10, 3.4), 0, 0.51, 0.2);
   for (const s of [-1, 1]) {

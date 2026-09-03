@@ -2983,6 +2983,86 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
 // plan nose 3.08 -> tips +-1.50 @ z 0.65..1.90, rack +-1.02 to -2.78,
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
+function addLeopardClosedShoulderMudguards(
+  P: TankBuilderPort,
+  family: 'a4' | 'a6',
+): void {
+  const a4 = family === 'a4';
+  const shoulder = a4
+    ? { innerX: 0.94, outerX: 1.76, rearZ: 2.50, frontZ: 3.31,
+      rearBottomY: 1.46, rearTopY: 1.53, frontBottomY: 1.44, frontTopY: 1.49 }
+    : { innerX: 0.92, outerX: 1.72, rearZ: 2.05, frontZ: 3.30,
+      rearBottomY: 1.36, rearTopY: 1.48, frontBottomY: 1.31, frontTopY: 1.37 };
+  const web = a4
+    ? { innerX: 1.76, outerX: 1.845, rearZ: 2.50, frontZ: 3.86,
+      rearBottomY: 1.20, rearTopY: 1.50, frontBottomY: 0.96, frontTopY: 1.25 }
+    : { innerX: 1.72, outerX: 1.82, rearZ: 2.05, frontZ: 3.72,
+      rearBottomY: 1.18, rearTopY: 1.44, frontBottomY: 1.00, frontTopY: 1.20 };
+  const trackOuterHalfWidthM = a4 ? 1.6875 : 1.6125;
+  const labels: string[] = [];
+
+  for (const side of [-1, 1] as const) {
+    const sideName = side < 0 ? 'left' : 'right';
+    const order = (ring: readonly Vec3Tuple[]): FourPointRing => {
+      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [side * x, y, z]) as unknown as FourPointRing;
+      return side < 0
+        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+        : mirrored;
+    };
+    const shoulderLabel = `leopard-${family}-front-mudguard-${sideName}-closed-shoulder`;
+    labels.push(shoulderLabel);
+    MUDGUARDS.add(P, {
+      label: shoulderLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        ...order([[shoulder.innerX, shoulder.rearBottomY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.rearBottomY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.frontBottomY, shoulder.frontZ],
+          [shoulder.innerX, shoulder.frontBottomY, shoulder.frontZ]]),
+        ...order([[shoulder.innerX, shoulder.rearTopY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.rearTopY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.frontTopY, shoulder.frontZ],
+          [shoulder.innerX, shoulder.frontTopY, shoulder.frontZ]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+
+    const webLabel = `leopard-${family}-front-mudguard-${sideName}-closed-web`;
+    labels.push(webLabel);
+    MUDGUARDS.add(P, {
+      label: webLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        ...order([[web.innerX, web.rearBottomY, web.rearZ],
+          [web.outerX, web.rearBottomY, web.rearZ],
+          [web.outerX, web.frontBottomY, web.frontZ],
+          [web.innerX, web.frontBottomY, web.frontZ]]),
+        ...order([[web.innerX, web.rearTopY, web.rearZ],
+          [web.outerX, web.rearTopY, web.rearZ],
+          [web.outerX, web.frontTopY, web.frontZ],
+          [web.innerX, web.frontTopY, web.frontZ]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+  }
+
+  P.hullG.userData.leopardShoulderMudguardReceipt = Object.freeze({
+    family,
+    architecture: 'closed-raked-shoulder-flange-and-terminal-web',
+    labels: Object.freeze(labels),
+    sides: 2,
+    partsPerSide: 2,
+    closedSideVolume: true,
+    shoulderMergedIntoGlacis: true,
+    trackOuterHalfWidthM,
+    terminalWebInnerHalfWidthM: web.innerX,
+    terminalTrackClearanceM: web.innerX - trackOuterHalfWidthM,
+    shoulderInnerHalfWidthM: shoulder.innerX,
+    shoulderOuterHalfWidthM: shoulder.outerX,
+    shoulderFrontZM: shoulder.frontZ,
+  });
+}
+
 function buildLeo2A6(P: TankBuilderPort) {
   const { box, cylX, cylZ, torus, xform, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -3187,6 +3267,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     P.add('hull', box(0.08, 0.14, 0.40), s * 0.83, 1.25, 3.46);               // buried glacis root
     P.add('hull', box(0.14, 0.06, 0.40), s * 0.89, 1.34, 3.46);               // supported shoulder cap, |x| <= 0.96
   }
+  addLeopardClosedShoulderMudguards(P, 'a6');
   // RIGHT-side lower skirt lip band: the print's right outer face carries a
   // 0.98..1.24 band at x 1.86-1.90 where the left reads only the 1.19 rail
   // (front-view asymmetry) — segmented per the station law
@@ -7148,6 +7229,7 @@ export function buildLeo2A4(builder: object) {
     // root below, and is high enough to preserve the complete return run.
     P.add('hull', box(0.10, 0.035, 0.46), s * 0.97, 1.50, 2.98);
   }
+  addLeopardClosedShoulderMudguards(P, 'a4');
   // front mudguard assembly (photo class — the A4's fender line wraps the
   // idler): outboard mudguard post along the skirt's front inner face +
   // the over-track wing band (the a5's certified §B4 pieces — identical
@@ -9940,6 +10022,82 @@ function mudflapRect(P: TankBuilderPort, x: number, y: number, z: number) {
   });
 }
 
+function addKF51ClosedShoulderMudguards(
+  P: TankBuilderPort,
+  profile: 'kf51' | 'kf51b',
+): void {
+  const ownerExact = profile === 'kf51b';
+  const shoulder = ownerExact
+    ? { innerX: 1.50, outerX: 1.88, rearZ: 2.52, frontZ: 3.38,
+      rearBottomY: 1.42, rearTopY: 1.50, frontBottomY: 1.37, frontTopY: 1.43 }
+    : { innerX: 1.48, outerX: 1.78, rearZ: 2.48, frontZ: 3.35,
+      rearBottomY: 1.40, rearTopY: 1.48, frontBottomY: 1.37, frontTopY: 1.42 };
+  const web = ownerExact
+    ? { innerX: 1.78, outerX: 1.91, rearZ: 2.60, frontZ: 3.82,
+      rearBottomY: 1.10, rearTopY: 1.41, frontBottomY: 0.76, frontTopY: 1.08 }
+    : { innerX: 1.72, outerX: 1.805, rearZ: 2.56, frontZ: 3.78,
+      rearBottomY: 1.08, rearTopY: 1.41, frontBottomY: 0.74, frontTopY: 1.05 };
+  const trackOuterHalfWidthM = ownerExact ? 1.5555 : 1.60;
+  const labels: string[] = [];
+
+  for (const side of [-1, 1] as const) {
+    const sideName = side < 0 ? 'left' : 'right';
+    const order = (ring: readonly Vec3Tuple[]): FourPointRing => {
+      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [side * x, y, z]) as unknown as FourPointRing;
+      return side < 0
+        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+        : mirrored;
+    };
+    const shoulderLabel = `${profile}-front-mudguard-${sideName}-closed-shoulder`;
+    labels.push(shoulderLabel);
+    MUDGUARDS.add(P, {
+      label: shoulderLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        ...order([[shoulder.innerX, shoulder.rearBottomY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.rearBottomY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.frontBottomY, shoulder.frontZ],
+          [shoulder.innerX, shoulder.frontBottomY, shoulder.frontZ]]),
+        ...order([[shoulder.innerX, shoulder.rearTopY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.rearTopY, shoulder.rearZ],
+          [shoulder.outerX, shoulder.frontTopY, shoulder.frontZ],
+          [shoulder.innerX, shoulder.frontTopY, shoulder.frontZ]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+    const webLabel = `${profile}-front-mudguard-${sideName}-closed-web`;
+    labels.push(webLabel);
+    MUDGUARDS.add(P, {
+      label: webLabel,
+      bucket: 'hull',
+      material: 'painted-steel',
+      geometry: orientedSlab(
+        ...order([[web.innerX, web.rearBottomY, web.rearZ],
+          [web.outerX, web.rearBottomY, web.rearZ],
+          [web.outerX, web.frontBottomY, web.frontZ],
+          [web.innerX, web.frontBottomY, web.frontZ]]),
+        ...order([[web.innerX, web.rearTopY, web.rearZ],
+          [web.outerX, web.rearTopY, web.rearZ],
+          [web.outerX, web.frontTopY, web.frontZ],
+          [web.innerX, web.frontTopY, web.frontZ]])),
+      x: 0, y: 0, z: 0, support: false,
+    });
+  }
+  P.hullG.userData.kf51ShoulderMudguardReceipt = Object.freeze({
+    profile,
+    architecture: 'closed-sloped-shoulder-and-deep-terminal-web',
+    labels: Object.freeze(labels),
+    sides: 2,
+    partsPerSide: 2,
+    closedSideVolume: true,
+    terminalWebInnerHalfWidthM: web.innerX,
+    terminalWebOuterHalfWidthM: web.outerX,
+    trackOuterHalfWidthM,
+    trackClearanceM: web.innerX - trackOuterHalfWidthM,
+    shoulderMergedIntoGlacis: true,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // KF51 Panther — docs/references/tanks/kf51.md (kf51_grip420 oracle).
 // GATE-V9 REBUILD authored from docs/references/profiles/kf51.json (world
@@ -10468,6 +10626,7 @@ function buildKF51(P: TankBuilderPort) {
     equipmentOwned: true,
     duplicateTrackCourse: false,
   });
+  addKF51ClosedShoulderMudguards(P, 'kf51');
   // WIDTH-SCALE CALIBRATION (fleet-critical, measured this round): the
   // harness rescales the WHOLE proc by publishedWidth/authoredBBoxWidth
   // (procedural-fidelity.html safeScale) — the authored bbox width is a
@@ -12276,6 +12435,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     });
   }
   P.hullG.userData.kf51bSkirtArmorReceipt = Object.freeze(skirtReceipt);
+  addKF51ClosedShoulderMudguards(P, 'kf51b');
   // ---- German fender/deck grammar (leo1a5/a6m census set at this frame;
   // deck kit tops <= 1.71 — the low KF51 turret's sweep plane)
   for (const s of [-1, 1] as const) {
@@ -14307,6 +14467,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 },
     dishR: 0.78, splashArms: false,
   });
+  addLeopardClosedShoulderMudguards(P, 'a6');
   // ---- mine-protection package (the A6M identity): bolted belly plate
   // (proud lip visible at the bow from low angles), bolt rows on the lower
   // glacis, reinforced driver-hatch hardware.

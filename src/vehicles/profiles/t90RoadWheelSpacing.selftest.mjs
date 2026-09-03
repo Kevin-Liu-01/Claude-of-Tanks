@@ -107,18 +107,28 @@ for (const [id, expected] of Object.entries(CASES)) {
       assert.ok(attachment, 't90ms: exposes its mirrored front mudguard receipt');
       assert.equal(attachment.sides, 2,
         't90ms: authors the guard assembly on both track courses');
-      assert.equal(attachment.partsPerSide, 7,
-        't90ms: each guard has six metal supports and one rubber drop');
+      assert.equal(attachment.partsPerSide, 3,
+        't90ms: each guard has two closed armor volumes and one rubber drop');
       assert.equal(attachment.labels.length,
         attachment.sides * attachment.partsPerSide,
         't90ms: every authored guard piece has a seating label');
+      assert.equal(attachment.architecture,
+        'continuous-sloped-shoulder-and-closed-outer-shell',
+        't90ms: the bow guard uses the continuous sloped shoulder architecture');
+      assert.equal(attachment.steppedShelves, false,
+        't90ms: the old staircase of thin shelf plates does not return');
+      assert.equal(attachment.closedSideVolume, true,
+        't90ms: shoulder and outer guard are closed armor volumes');
       assert.ok(attachment.bridgeInnerX < 1.06
-        && attachment.bridgeOuterX >= 1.78,
-      't90ms: the bridge overlaps the centre glacis and reaches the outer step');
+        && attachment.bridgeOuterX >= 1.64,
+      't90ms: the shoulder overlaps the centre glacis and reaches the outer shell');
+      assert.ok(attachment.shellInnerX <= attachment.bridgeOuterX
+        && attachment.shellOuterX >= 1.78,
+      't90ms: the outer shell overlaps the shoulder and reaches the terminal guard');
       assert.ok(attachment.bridgeUndersideY > attachment.trackTopY,
-        't90ms: connected fender bridge remains above the return track course');
-      assert.ok(attachment.flapTopY >= attachment.bridgeUndersideY,
-        't90ms: rubber drop overlaps the structural terminal lip');
+        't90ms: connected shoulder remains above the return track course');
+      assert.ok(attachment.flapTopY >= attachment.shellFrontTopY - 0.03,
+        't90ms: rubber drop meets the sloped outer shell at the terminal lip');
 
       const guardSeats = tank.root.userData.mudguardFenderSeats || [];
       const guardLabels = new Set(attachment.labels);

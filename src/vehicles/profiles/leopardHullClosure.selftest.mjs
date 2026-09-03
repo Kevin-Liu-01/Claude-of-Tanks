@@ -27,6 +27,7 @@ for (const [id, expectedHalfW] of expectedHalfWidths) {
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const closure = hullRig?.userData.leopardUnderGlacisClosure;
+    const shoulderMudguard = hullRig?.userData.leopardShoulderMudguardReceipt;
     assert.ok(hullRig && closure, `${id}: under-glacis closure receipt exists`);
     assert.equal(closure.halfW, expectedHalfW,
       `${id}: closure uses the family track-safe half-width`);
@@ -96,8 +97,12 @@ for (const [id, expectedHalfW] of expectedHalfWidths) {
           const localHit = hullRig.worldToLocal(hits[0].point.clone());
           const hitHalfW = Math.abs(localHit.x);
           if (hasShoulderFill) {
+            const certifiedOuterHalfW = Math.max(
+              closure.upperShoulderOuterHalfWMax + 0.04,
+              (shoulderMudguard?.shoulderOuterHalfWidthM ?? 0) + 0.01,
+            );
             assert.ok(hitHalfW >= expectedHalfW + 0.08
-              && hitHalfW <= closure.upperShoulderOuterHalfWMax + 0.04,
+              && hitHalfW <= certifiedOuterHalfW,
             `${id}: lateral sightline closes on the canted shoulder at z=${localZ.toFixed(2)}`);
           } else {
             assert.ok(hitHalfW <= expectedHalfW + 0.04 && hitHalfW >= expectedHalfW - 0.08,

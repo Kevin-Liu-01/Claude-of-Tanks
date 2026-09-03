@@ -6566,11 +6566,12 @@ function buildT90MS(P: T90BuilderPort): void {
   }
   // Forward fender/mudguard assemblies carry the print's falling bow-side
   // band (1.40 @ 2.90 -> 1.26 @ 3.23 -> 1.10 @ 3.40) over the dropped
-  // glacis. The former three shelves reproduced those stations but left two
-  // open vertical gaps and stopped 70 mm short of the inboard shoulder.
-  // Register the complete mirrored chain as one physical mudguard: the broad
-  // bridge overlaps the centre glacis, each step overlaps its riser, and the
-  // terminal lip shares a seat with the rubber drop authored below.
+  // glacis.  The old six-box chain hit those stations but read as thin craft
+  // stairs from every oblique view.  Replace it with two CLOSED volumes: a
+  // broad load-bearing shoulder buried into the centre glacis and a deeper
+  // outboard guard shell.  Their shared edge follows one uninterrupted rake,
+  // so the Tagil now has a sloped armored brow rather than shelves and open
+  // risers.  Both floors remain above the native return/terminal shoe crown.
   const tagilFrontGuardLabels: string[] = [];
   for (const s of [-1, 1]) {
     const side = s < 0 ? 'left' : 'right';
@@ -6592,16 +6593,35 @@ function buildT90MS(P: T90BuilderPort): void {
         support: false,
       });
     };
-    addGuardPart('root', box(0.16, 0.05, 0.50), s * 1.70, 1.40, 2.90);
-    addGuardPart('upper-riser', box(0.16, 0.14, 0.055), s * 1.70, 1.33, 3.12);
-    addGuardPart('middle-step', box(0.16, 0.05, 0.32), s * 1.70, 1.26, 3.23);
-    addGuardPart('lower-riser', box(0.16, 0.15, 0.055), s * 1.70, 1.185, 3.36);
-    addGuardPart('terminal-lip', box(0.16, 0.05, 0.14), s * 1.70, 1.10, 3.40);
-    // This bridge is both the visible fender crown and the load path. Its
-    // inboard edge buries 140 mm into the centre glacis; its outboard edge
-    // reaches the step chain exactly, while the 1.075 m underside remains
-    // above the canonical 0.86 m return course.
-    addGuardPart('glacis-bridge', box(0.86, 0.055, 0.42), s * 1.35, 1.1025, 3.24);
+    const order = (ring: readonly Vec3Tuple[]): Vec3Tuple[] => {
+      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [s * x, y, z]);
+      return s < 0
+        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+        : mirrored;
+    };
+    const shoulderLower = order([
+      [0.92, 1.265, 2.62], [1.64, 1.265, 2.62],
+      [1.64, 1.115, 3.28], [0.92, 1.115, 3.28],
+    ]);
+    const shoulderUpper = order([
+      [0.92, 1.445, 2.62], [1.64, 1.445, 2.62],
+      [1.64, 1.255, 3.28], [0.92, 1.255, 3.28],
+    ]);
+    addGuardPart('closed-shoulder', orientedSlab(
+      ...shoulderLower as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple],
+      ...shoulderUpper as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]), 0, 0, 0);
+
+    const shellLower = order([
+      [1.62, 1.225, 2.76], [1.79, 1.225, 2.76],
+      [1.79, 0.985, 3.49], [1.62, 0.985, 3.49],
+    ]);
+    const shellUpper = order([
+      [1.62, 1.415, 2.76], [1.79, 1.415, 2.76],
+      [1.79, 1.115, 3.49], [1.62, 1.115, 3.49],
+    ]);
+    addGuardPart('sloped-outer-shell', orientedSlab(
+      ...shellLower as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple],
+      ...shellUpper as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]), 0, 0, 0);
   }
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, hlX: 1.02 });
@@ -6722,10 +6742,17 @@ function buildT90MS(P: T90BuilderPort): void {
   P.hullG.userData.t90MSFrontMudguardReceipt = Object.freeze({
     labels: Object.freeze(tagilFrontGuardLabels),
     sides: 2,
-    partsPerSide: 7,
+    partsPerSide: 3,
+    architecture: 'continuous-sloped-shoulder-and-closed-outer-shell',
+    steppedShelves: false,
+    closedSideVolume: true,
     bridgeInnerX: 0.92,
-    bridgeOuterX: 1.78,
-    bridgeUndersideY: 1.075,
+    bridgeOuterX: 1.64,
+    bridgeUndersideY: 1.115,
+    shellInnerX: 1.62,
+    shellOuterX: 1.79,
+    shellRearTopY: 1.415,
+    shellFrontTopY: 1.115,
     trackTopY: 0.86,
     flapBottomY: 0.37,
     flapTopY: 1.09,

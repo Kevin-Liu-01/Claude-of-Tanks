@@ -6,6 +6,7 @@ let coveredVehicles = 0;
 let registeredParts = 0;
 let t72buGear = null;
 const proryvGuards = new Map();
+const shoulderReceipts = new Map();
 
 for (const id of ALL_TANK_IDS) {
   const visual = createTank(id, null, {
@@ -36,6 +37,15 @@ for (const id of ALL_TANK_IDS) {
     if (id === 't90m' || id === 't90m_proryv') {
       proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
         .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
+    }
+    if (hullRig?.userData.chieftainShoulderMudguardReceipt) {
+      shoulderReceipts.set(id, hullRig.userData.chieftainShoulderMudguardReceipt);
+    } else if (hullRig?.userData.t90MSFrontMudguardReceipt) {
+      shoulderReceipts.set(id, hullRig.userData.t90MSFrontMudguardReceipt);
+    } else if (hullRig?.userData.leopardShoulderMudguardReceipt) {
+      shoulderReceipts.set(id, hullRig.userData.leopardShoulderMudguardReceipt);
+    } else if (hullRig?.userData.kf51ShoulderMudguardReceipt) {
+      shoulderReceipts.set(id, hullRig.userData.kf51ShoulderMudguardReceipt);
     }
   } finally {
     visual.dispose();
@@ -69,6 +79,57 @@ for (const id of ['t90m', 't90m_proryv']) {
     `${id}: front mudguards are lowered to the skirt/fender line`);
   assert.ok(guards.filter((guard) => guard.label.includes('rear')).every((guard) => guard.y <= 0.78),
     `${id}: rear mudguards are lowered to the skirt/fender line`);
+}
+
+const expectedClosedShoulders = [
+  'chieftain5', 'chieftain_mk10', 't90ms',
+  'kf51', 'kf51b',
+  'leo2a4', 'leo2a4_otco',
+  'leo2a6', 'leo2a6m', 'leo2a6_ua',
+];
+for (const id of expectedClosedShoulders) {
+  const receipt = shoulderReceipts.get(id);
+  assert(receipt, `${id}: closed shoulder/mudguard receipt`);
+  assert.equal(receipt.closedSideVolume, true,
+    `${id}: shoulder must be a closed side volume rather than a thin shelf`);
+  assert.equal(receipt.sides, 2, `${id}: shoulder closure must be mirrored`);
+  assert.ok(receipt.partsPerSide >= 2,
+    `${id}: shoulder closure needs a load-bearing flange and terminal guard`);
+  assert.equal(receipt.labels.length, receipt.sides * receipt.partsPerSide,
+    `${id}: every structural shoulder/mudguard part is registered`);
+}
+
+for (const id of ['chieftain5', 'chieftain_mk10']) {
+  const receipt = shoulderReceipts.get(id);
+  assert.equal(receipt.steppedShelvesVisibleFromSide, false,
+    `${id}: bow shoulder may not read as exposed stair steps`);
+  assert.ok(receipt.trackClearanceM >= 0.009,
+    `${id}: outer web remains beyond the moving shoe plane`);
+}
+
+{
+  const receipt = shoulderReceipts.get('t90ms');
+  assert.equal(receipt.steppedShelves, false,
+    't90ms: replace thin craft stairs with a continuous rake');
+  assert.equal(receipt.architecture, 'continuous-sloped-shoulder-and-closed-outer-shell');
+  assert.ok(receipt.shellRearTopY > receipt.shellFrontTopY,
+    't90ms: terminal guard follows a decisive forward/downward slope');
+}
+
+for (const id of ['leo2a4', 'leo2a4_otco', 'leo2a6', 'leo2a6m', 'leo2a6_ua']) {
+  const receipt = shoulderReceipts.get(id);
+  assert.equal(receipt.shoulderMergedIntoGlacis, true,
+    `${id}: shoulder flange must merge into the glacis`);
+  assert.ok(receipt.terminalTrackClearanceM >= 0.012,
+    `${id}: terminal web remains beyond the animated shoe plane`);
+}
+
+for (const id of ['kf51', 'kf51b']) {
+  const receipt = shoulderReceipts.get(id);
+  assert.equal(receipt.shoulderMergedIntoGlacis, true,
+    `${id}: Panther shoulder must merge into the glacis`);
+  assert.ok(receipt.trackClearanceM >= 0.05,
+    `${id}: deep terminal web remains outside the track course`);
 }
 
 console.log(`mudguardFenderSeating.selftest: ${ALL_TANK_IDS.length} tanks, `
