@@ -892,7 +892,7 @@ function addM3A3Turret(P: AfvBuilderPort): void {
     0.52, 0.77, -1.05);
   mount(P, 'turret', FITTINGS.spareTrackLinks({
     mats: P.mats, links: 4, width: 0.52, seed: 3620,
-  }), -0.48, 0.76, -1.04);
+  }), -0.48, 0.735, -1.04);
 
   smokePair(P, 0.76, 0.47, 0.30, 4, 3640, -0.36);
   radioPair(P, 0.86, -1.07, 3630, 0.70);
@@ -1450,8 +1450,8 @@ function buildUpior(P: AfvBuilderPort): void {
   }
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.28, pitch: 0.13, seed: 11 });
-    links.position.set(0.62, 1.475, 1.78);
-    links.rotation.x = -0.42;
+    links.position.set(0.62, 1.4435, 1.8030);
+    links.rotation.x = 0.597;
     P.hullG.add(links);
   }
   P.decal('hull', 'number', 'W-01', 0.22, [-1.482, 0.95, 0.65], -Math.PI / 2);

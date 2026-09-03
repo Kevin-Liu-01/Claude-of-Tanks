@@ -115,7 +115,7 @@ assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretRec
   roofSightGapM: 0,
   spareTrackLinkRacks: 2,
   spareTrackLinksPerRack: 4,
-  spareTrackMountXM: 1.65,
+  spareTrackMountXM: 1.641,
   spareTrackMountZM: -2.44,
   bustleStowageRacks: 2,
   bustleJerryCanCount: 2,
@@ -144,7 +144,7 @@ for (const side of ['left', 'right']) {
   const links = turretRig.getObjectByName(`mbt70_bustle_spare_links_${side}`);
   assert(links, `${side} bustle carries a real spare-track fitting`);
   assert.equal(links.parent, turretRig, `${side} spare links rotate with the turret`);
-  assert.ok(Math.abs(Math.abs(links.position.x) - 1.65) < 1e-9
+  assert.ok(Math.abs(Math.abs(links.position.x) - 1.641) < 1e-9
     && links.position.z <= -2.40,
     `${side} spare links sit flush against the aft bustle quarter`);
   assert.ok(Math.abs(Math.abs(links.rotation.z) - Math.PI / 2) < 1e-9,

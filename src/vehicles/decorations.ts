@@ -81,6 +81,7 @@ interface DecorPartMeta {
   w?: number;
   basket?: boolean;
   runH?: number;
+  continuousCarrier?: boolean;
 }
 
 interface DecorPart {
@@ -280,12 +281,30 @@ interface CommitOptions {
   allowOverlap?: boolean;
   seatY?: number | null;
   zExtra?: number;
+  attachment?: DecorAttachmentIntent;
+}
+
+interface DecorAttachmentIntent {
+  slot: string;
+  supportPoint: THREE.Vector3;
+  supportNormal: THREE.Vector3;
+  embedM: number;
 }
 
 interface DecorPieceSummary {
   kit: string;
   frame: DecorFrame;
   tris: number;
+  attachment?: {
+    slot: string;
+    supportPoint: [number, number, number];
+    supportNormal: [number, number, number];
+    mountNormal: [number, number, number];
+    alignmentDot: number;
+    supportGapM: number;
+    embedM: number;
+    continuousCarrier: boolean;
+  };
 }
 
 interface DecorSummary {
@@ -435,6 +454,36 @@ function partsBBox(parts: DecorPartList): THREE.Box3 {
     bb.union(t);
   }
   return bb;
+}
+
+/**
+ * Build a stable surface frame for kits whose authored mounting plane is XY
+ * and whose outward axis is local +Z. Local +Y stays as close to world-up as
+ * the face permits, so a track run remains vertical on side/bow armor and
+ * follows the uphill direction on a glacis.
+ */
+export function surfaceMountEuler(normal: THREE.Vector3): THREE.Euler {
+  const n = normal.clone().normalize();
+  const up = new THREE.Vector3(0, 1, 0);
+  const y = up.addScaledVector(n, -up.dot(n));
+  if (y.lengthSq() < 1e-8) {
+    const forward = new THREE.Vector3(0, 0, -1);
+    y.copy(forward).addScaledVector(n, -forward.dot(n));
+  }
+  y.normalize();
+  const x = new THREE.Vector3().crossVectors(y, n).normalize();
+  y.crossVectors(n, x).normalize();
+  const basis = new THREE.Matrix4().makeBasis(x, y, n);
+  return new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
+}
+
+function surfaceMountPosition(
+  parts: DecorPartList,
+  hit: SurfaceHit,
+  embedM: number,
+): THREE.Vector3 {
+  const minZ = partsBBox(parts).min.z;
+  return hit.p.clone().addScaledVector(hit.n.clone().normalize(), -embedM - minZ);
 }
 
 // ---------------------------------------------------------------------------
@@ -1536,13 +1585,27 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   tracks({ rng, n = 5, linkW = 0.42 }) {
     const parts: DecorPartList = [];
     const pitch = 0.15;
+    const linkH = pitch * 0.92;
+    const runH = (n - 1) * pitch + linkH;
+    // Two recessed carrier rails and four welded feet give every loose link a
+    // continuous, visible load path into the host armor. Their outward faces
+    // end at the authored mount plane (Z=0); the links sit immediately above.
+    for (const x of [-linkW * 0.32, linkW * 0.32]) {
+      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.034, runH, 0.024), x, 0, -0.012), 0.72) });
+    }
+    for (const x of [-linkW * 0.32, linkW * 0.32]) {
+      for (const y of [-runH * 0.42, runH * 0.42]) {
+        parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.12, 0.038, 0.030), x, y, -0.015), 0.68) });
+      }
+    }
     for (let i = 0; i < n; i++) {
       const y = (i - (n - 1) / 2) * pitch;
-      // alternating tone + per-link cant so the run reads as LINKS, not a slab
+      // Alternating tone + restrained per-link cant keeps the links distinct
+      // without reopening the conspicuous stair-step gaps this carrier fixes.
       const tone = ((i % 2 ? 0.58 : 0.42) + rng() * 0.08) * 0.72;
-      const cant = (rng() - 0.5) * 0.05;
+      const cant = (rng() - 0.5) * 0.018;
       const from = parts.length;
-      parts.push({ mat: 'steel', geo: bakeShade(box(linkW, pitch * 0.74, 0.055), tone) });
+      parts.push({ mat: 'steel', geo: bakeShade(box(linkW, linkH, 0.055), tone) });
       // twin center guide horns
       for (const hx of [-linkW * 0.13, linkW * 0.13]) {
         parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.045, 0.07, 0.055), hx, 0, 0.055), tone * 0.85) });
@@ -1551,11 +1614,11 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       parts.push({ mat: 'steel', geo: bakeShade(xform(box(linkW * 0.98, 0.034, 0.024), 0, -pitch * 0.24, 0.038), tone * 1.3) });
       // end connectors (pin bosses) at both edges
       for (const s of [-1, 1]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.026, 0.026, pitch * 0.8, 6), s * (linkW / 2 - 0.02), 0, 0.012), tone * 1.15) });
+        parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.026, 0.026, pitch * 0.94, 6), s * (linkW / 2 - 0.02), 0, 0.012), tone * 1.15) });
       }
       xformParts(parts, 0, y, 0.028, 0, 0, cant, from);
     }
-    parts.meta = { runH: n * pitch };
+    parts.meta = { runH, continuousCarrier: true };
     return parts;
   },
 
@@ -2674,7 +2737,10 @@ function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Eu
 }
 
 function clonePartList(parts: DecorPartList): DecorPartList {
-  return parts.map((p) => ({ mat: p.mat, geo: p.geo.clone() }));
+  const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone() })) as DecorPartList;
+  if (parts.meta) clone.meta = { ...parts.meta };
+  if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
+  return clone;
 }
 function disposePartList(parts: DecorPartList): void {
   for (const p of parts) p.geo.dispose();
@@ -2936,7 +3002,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       pos: THREE.Vector3,
       rot: THREE.Euler,
       ledger: THREE.Box3[],
-      { allowOverlap = false, seatY = null, zExtra = 0 }: CommitOptions = {},
+      { allowOverlap = false, seatY = null, zExtra = 0, attachment }: CommitOptions = {},
     ): boolean {
       let tris = 0;
       for (const p of parts) tris += triCount(p.geo);
@@ -2979,7 +3045,24 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         if (!map.has(p.mat)) map.set(p.mat, []);
         map.get(p.mat)!.push(p.geo);
       }
-      summary.pieces.push({ kit: name, frame, tris });
+      const piece: DecorPieceSummary = { kit: name, frame, tris };
+      if (attachment) {
+        const supportNormal = attachment.supportNormal.clone().normalize();
+        const mountNormal = new THREE.Vector3(0, 0, 1)
+          .applyQuaternion(new THREE.Quaternion().setFromEuler(rot)).normalize();
+        const basePoint = pos.clone().addScaledVector(mountNormal, partsBBox(parts).min.z);
+        piece.attachment = {
+          slot: attachment.slot,
+          supportPoint: attachment.supportPoint.toArray() as [number, number, number],
+          supportNormal: supportNormal.toArray() as [number, number, number],
+          mountNormal: mountNormal.toArray() as [number, number, number],
+          alignmentDot: mountNormal.dot(supportNormal),
+          supportGapM: basePoint.sub(attachment.supportPoint).dot(supportNormal),
+          embedM: attachment.embedM,
+          continuousCarrier: parts.meta?.continuousCarrier === true,
+        };
+      }
+      summary.pieces.push(piece);
       return true;
     }
 
@@ -3053,12 +3136,14 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       },
       glacis(args, parts, name) {
         const x = (args.side || 0) * W * (casemate ? 0.22 : 0.16);
+        const embedM = 0.006;
         for (const zf of [0.36, 0.42, 0.3]) {
           const z = L * zf;
           const h = deckProbe(x, z);
           if (!h || h.n.y < 0.3 || h.n.y > 0.985 || Math.abs(h.n.x) > 0.4) continue;
-          const pitch = Math.atan2(h.n.z, h.n.y);
-          if (commit(name, clonePartList(parts), 'hull', V(x, h.p.y + 0.015, z), E(pitch, 0, 0), placedHull)) {
+          const candidate = clonePartList(parts);
+          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
+            { attachment: { slot: 'glacis', supportPoint: h.p, supportNormal: h.n, embedM } })) {
             disposePartList(parts);
             return true;
           }
@@ -3069,8 +3154,9 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
           const y = H * yf;
           const h = hullP.zface(x, y, -1, L / 2 + 1.6);
           if (!h || h.n.z < 0.5) continue;
-          const pitch = Math.atan2(-h.n.y, h.n.z);
-          if (commit(name, clonePartList(parts), 'hull', V(x, y, h.p.z + 0.012), E(pitch, 0, 0), placedHull)) {
+          const candidate = clonePartList(parts);
+          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
+            { attachment: { slot: 'glacis-bow', supportPoint: h.p, supportNormal: h.n, embedM } })) {
             disposePartList(parts);
             return true;
           }
@@ -3148,14 +3234,16 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       },
       hullSide(args, parts, name) {
         const side = args.side ?? 1;
+        const embedM = 0.006;
         // plate flat against the upper hull side (spare tracks, patches)
         const z = (args.zFrac ?? 0) * L;
         for (const yf of [0.55, 0.62, 0.48]) {
           const y = H * yf;
           const h = hullP.side(y, z, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.7) continue;
-          if (commit(name, clonePartList(parts), 'hull', V(h.p.x + side * 0.006, y, z),
-            E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedHull)) {
+          const candidate = clonePartList(parts);
+          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
+            { attachment: { slot: 'hull-side', supportPoint: h.p, supportNormal: h.n, embedM } })) {
             disposePartList(parts);
             return true;
           }
@@ -3335,12 +3423,14 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       },
       turretSidePlate(args, parts, name) {
         const side = args.side ?? 1;
+        const embedM = 0.006;
         for (const z of [0.05, -0.25]) {
           const y = Math.max(0.2, pivotTopY() * 0.45);
           const h = turP.side(y, z, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.6) continue;
-          if (commit(name, clonePartList(parts), 'turret', V(h.p.x + side * 0.035, y, z),
-            E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedTurret)) {
+          const candidate = clonePartList(parts);
+          if (commit(name, candidate, 'turret', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedTurret,
+            { attachment: { slot: 'turret-side', supportPoint: h.p, supportNormal: h.n, embedM } })) {
             disposePartList(parts);
             return true;
           }

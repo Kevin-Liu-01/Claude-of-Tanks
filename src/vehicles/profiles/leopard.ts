@@ -7187,8 +7187,8 @@ export function buildLeo2A4(builder: object) {
   // §I dressing fitting: spare track links on the glacis left (a common
   // Bundeswehr A4 field fit; distinct from the a5's fender strips — §H.4).
   {
-    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.10, pitch: 0.165, seed: 7, rotation: [-0.41, 0, 0] });
-    st.position.set(-0.85, 1.50, 2.78);
+    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.10, pitch: 0.165, seed: 7, rotation: [0.229, 0, 0] });
+    st.position.set(-0.85, 1.4716, 2.7893);
     P.hullG.add(st);
   }
   // rubber lower lip under the aft skirt run (the A4's wavy rubber edge),

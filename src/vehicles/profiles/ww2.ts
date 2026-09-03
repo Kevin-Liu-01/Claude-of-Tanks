@@ -1914,8 +1914,13 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // spare links in a mounting frame on the driver plate + deck-edge strip
   P.add('hull', box(0.62, 0.44, 0.04), 0.85, 1.60, 2.625, -0.085, 0, 0);
   {
-    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.16, pitch: 0.20, seed: 3, rotation: [-0.085, 0, Math.PI / 2] });
-    st.position.set(0.66, 1.42, 2.66);
+    const st = FITTINGS.spareTrackLinks({
+      mats: P.mats, links: 3, width: 0.16, pitch: 0.20, seed: 3,
+      // The fitting's +Y mount axis follows the driver-plate normal. The old
+      // Z-quarter-turn made the links stand out as a disconnected staircase.
+      rotation: [Math.PI / 2 - 0.085, 0, 0],
+    });
+    st.position.set(0.66, 1.4235, 2.7012);
     P.hullG.add(st);
   }
   spareTrackStrip(P, 'hull', 1.55, 2.005, 0.6, 3);
@@ -1948,8 +1953,8 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // envelope: back faces -3.2125.
   P.add('hull', box(0.24, 0.46, 0.025), 0, 1.55, -3.17);
   {
-    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.15, pitch: 0.17, seed: 9, rotation: [Math.PI / 2, 0, 0] });
-    st.position.set(0, 1.55, -3.19);
+    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.15, pitch: 0.17, seed: 9, rotation: [-Math.PI / 2, 0, 0] });
+    st.position.set(0, 1.55, -3.2235);
     P.hullG.add(st);
   }
   P.decal('hull', 'soot', null, 0.85, [0.55, 1.78, -3.34], Math.PI);

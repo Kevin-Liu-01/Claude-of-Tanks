@@ -1688,8 +1688,8 @@ function chieftainMk10Build(P: UKBuilderPort): void {
     P.add('hullDetail', torus(0.065, 0.017, 10), side * 0.9, 0.70, 3.53, Math.PI / 2, 0, 0);
   }
   {
-    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.11, pitch: 0.17, seed: 11, rotation: [-0.22, 0, 0] });
-    st.position.set(-0.62, 1.44, 2.78);
+    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.11, pitch: 0.17, seed: 11, rotation: [0.208, 0, 0] });
+    st.position.set(-0.62, 1.4275, 2.7884);
     P.hullG.add(st);
   }
   towCableUK(P, [[-1.0, 1.44, 2.2], [0, 1.56, 1.7], [1.0, 1.44, 2.2]], 1.37);
@@ -3633,8 +3633,10 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   const hw = FITTINGS.antennaWhip({ mats: P.mats, h: 1.46, r: 0.010, rake: 0.0, seed: 4 });
   hw.position.set(-1.26, 2.05, -2.83);
   P.hullG.add(hw);
-  const stl = FITTINGS.spareTrackLinks({ mats: P.mats, seed: 6, rotation: [-0.503, 0, 0] });
-  stl.position.set(-0.52, 1.60, 2.30);
+  const stl = FITTINGS.spareTrackLinks({ mats: P.mats, seed: 6, rotation: [0.539, 0, 0] });
+  // Authored before the final 0.765 vertical / 1.10 presentation scaling;
+  // this pre-transform seat becomes a 41 mm carrier embed on the glacis.
+  stl.position.set(-0.52, 2.058, 2.319);
   P.hullG.add(stl);
   // Snapshot authored fitting groups before the native running gear is
   // appended. They receive the same section correction as the bucket-built

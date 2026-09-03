@@ -6,6 +6,7 @@ import {
   decorManifestFor,
   fleetEquipmentNationStyle,
   resolveDecorMode,
+  surfaceMountEuler,
 } from './decorations.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 
@@ -133,6 +134,33 @@ assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 7,
   'decorative basket includes shaped packs, flaps, pockets, straps, and a tarp roll');
 assert.equal(basket.meta?.basket, true, 'decorative basket retains placement metadata');
 for (const part of basket) part.geo.dispose();
+
+const spareTracks = DECOR_KITS.tracks({ rng: () => 0.37, n: 5, linkW: 0.48 });
+assert.equal(spareTracks.meta?.continuousCarrier, true,
+  'spare-track runs declare a continuous armor carrier');
+assert.ok(spareTracks.filter((part) => part.mat === 'kit').length >= 6,
+  'spare-track runs include two carrier rails and four welded mounting feet');
+const spareTrackBounds = new THREE.Box3();
+for (const part of spareTracks) {
+  part.geo.computeBoundingBox();
+  spareTrackBounds.union(part.geo.boundingBox);
+}
+assert.ok(spareTrackBounds.min.z < -0.02 && spareTrackBounds.max.z > 0.07,
+  'spare-track carrier crosses the seat plane while links project above it');
+assert.ok(spareTrackBounds.max.y - spareTrackBounds.min.y < 0.76,
+  'five-link run stays compact without separated stair-step links');
+for (const normal of [
+  new THREE.Vector3(0, 0.62, 0.78),
+  new THREE.Vector3(0.94, 0.24, 0.24),
+  new THREE.Vector3(-0.91, 0.16, 0.38),
+  new THREE.Vector3(0, 0, 1),
+]) {
+  const mountedNormal = new THREE.Vector3(0, 0, 1)
+    .applyEuler(surfaceMountEuler(normal));
+  assert.ok(mountedNormal.dot(normal.clone().normalize()) > 0.999999,
+    `spare-track mount normal aligns to ${normal.toArray().join(',')}`);
+}
+for (const part of spareTracks) part.geo.dispose();
 
 const distributed = new Set();
 for (const id of ALL_TANK_IDS) {

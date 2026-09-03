@@ -4508,8 +4508,8 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       // (links are glacis dressing, not the named §5.318 identity set; a
       // fore-deck relocation read §B5-stranded under the turret overhang)
       const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9 });
-      links.position.set(0.92, 1.40, 2.30);
-      links.rotation.x = -0.33;                                                // laid on the glacis rake
+      links.position.set(0.92, 1.3494, 2.3130);
+      links.rotation.x = 0.323;                                                // mount axis follows glacis normal
       P.hullG.add(links);
     }
   }

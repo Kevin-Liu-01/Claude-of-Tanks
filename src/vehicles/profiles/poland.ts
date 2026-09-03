@@ -1616,7 +1616,7 @@ function buildPL01(P: PolishBuilderPort): void {
       rotation: [glacisPitch, 0, 0],
     });
     links.name = 'pl01_105_glacis_spare_links';
-    links.position.set(0, glacisY(2.03) + 0.055, 2.03);
+    links.position.set(0, glacisY(2.03) + 0.041, 2.03);
     P.hullG.add(links);
     for (const s of [-1, 1]) {
       for (let i = 0; i < 3; i++) {

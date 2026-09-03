@@ -2236,13 +2236,32 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
   const links = Math.max(1, opts.links || 4);
   const width = opts.width || 0.5;
   const pitch = opts.pitch || 0.165;
+  const runDepth = (links - 1) * pitch + 0.15;
   const parts = fitParts();
+  // A real stowed link course is retained by rails/clamps, not balanced on
+  // isolated pads. The rails meet the underside of every link and the four
+  // broad feet recess into the host armor, providing one continuous load
+  // path even when the fitting is rotated onto a glacis or turret wall.
+  const railY = -0.0315;
+  for (const x of [-width * 0.32, width * 0.32]) {
+    parts.add('detail', box(0.030, 0.018, runDepth), x, railY, 0);
+    for (const z of [-runDepth * 0.4, runDepth * 0.4]) {
+      parts.add('detail', box(0.105, 0.019, 0.045), x, -0.031, z);
+    }
+  }
   for (let k = 0; k < links; k++) {
     const z = (k - (links - 1) / 2) * pitch;
     parts.add('spareTrack', box(width, 0.045, 0.15), 0, 0, z);
     parts.add('spareTrack', box(width * 0.88, 0.06, 0.05), 0, 0.02, z);
   }
-  return fitAssemble('spareTrackLinks', parts, opts);
+  const fitting = fitAssemble('spareTrackLinks', parts, opts);
+  fitting.userData.designFamily = 'cot-spare-track-carrier-v2';
+  fitting.userData.mountAxisLocal = [0, 1, 0];
+  fitting.userData.mountBaseOffsetM = 0.041;
+  fitting.userData.hasContinuousCarrier = true;
+  fitting.userData.carrierRailCount = 2;
+  fitting.userData.carrierFootCount = 4;
+  return fitting;
 }
 
 /**

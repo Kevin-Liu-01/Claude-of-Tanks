@@ -4561,13 +4561,28 @@ function spareTrackStrip(
   builder: object, bucket: string, x: number, y: number, z: number,
   links: number, rx = 0, ry = 0,
 ): void {
-  const P = requireGeometryAddPort(builder);
+  const P = requireEquipmentBuilderPort(builder);
   // stack of individual link slabs so the strip reads segmented — worn track
-  // steel (trackLink material), never flat blockout black (r5)
+  // steel (trackLink material), never flat blockout black (r5). Two continuous
+  // rails and four welded feet create a visible load path into the host plate;
+  // this prevents legacy strips from reading as independently floating links.
   const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
+  const detail = bucket.startsWith('turret') ? 'turretDetail' : 'hullDetail';
+  const runDepth = (links - 1) * 0.165 + 0.15;
+  for (const localX of [-0.16, 0.16]) {
+    P.addEquipment(detail, xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0),
+      x, y, z, rx, ry, 0);
+    for (const localZ of [-runDepth * 0.4, runDepth * 0.4]) {
+      P.addEquipment(detail, xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ),
+        x, y, z, rx, ry, 0);
+    }
+  }
   for (let k = 0; k < links; k++) {
-    P.add(steel, box(0.5, 0.045, 0.15), x, y, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
-    P.add(steel, box(0.44, 0.06, 0.05), x, y + 0.02, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
+    const localZ = (k - (links - 1) / 2) * 0.165;
+    P.addEquipment(steel, xform(box(0.5, 0.045, 0.15), 0, 0, localZ),
+      x, y, z, rx, ry, 0);
+    P.addEquipment(steel, xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ),
+      x, y, z, rx, ry, 0);
   }
 }
 

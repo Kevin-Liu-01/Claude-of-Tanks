@@ -2881,7 +2881,7 @@ function buildMBT70(P: Modern2BuilderPort) {
   // 50 mm.  Seat the inner face at x=+/-1.60 m (the aft bustle cheek) rather
   // than placing the fitting origin on that face and burying the links inside
   // the turret shell.
-  const SPARE_TRACK_MOUNT_X_M = 1.65;
+  const SPARE_TRACK_MOUNT_X_M = 1.641;
   const SPARE_TRACK_MOUNT_Z_M = -2.44;
   const TURRET_HALF_WIDTH_M = 1.74;
   const TURRET_WIDTH_SCALE = TURRET_HALF_WIDTH_M / 1.45;
@@ -3070,7 +3070,7 @@ function buildMBT70(P: Modern2BuilderPort) {
     P.addEquipment('turretDetail', box(0.055, 0.055, 0.64), side * 1.18, TH + 0.04, -1.52);
     const links = FITTINGS.spareTrackLinks({
       mats: P.mats, links: 4, width: 0.46, pitch: 0.165, seed: 77 + side,
-      rotation: [0, 0, side * Math.PI / 2],
+      rotation: [0, 0, -side * Math.PI / 2],
     });
     links.name = `mbt70_bustle_spare_links_${side < 0 ? 'left' : 'right'}`;
     links.position.set(side * SPARE_TRACK_MOUNT_X_M, 0.47, SPARE_TRACK_MOUNT_Z_M);
