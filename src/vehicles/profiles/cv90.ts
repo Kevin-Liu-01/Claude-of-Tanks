@@ -91,10 +91,10 @@ function panelGeometry(corners: [Vec3, Vec3, Vec3, Vec3], thickness: number): TH
 
 function buildCv90Hull(P: CvBuilderPort): void {
   const { box, cylX, cylY, polyMultiLoft } = KIT;
-  // Keep the belly within 20 mm of the inner shoe faces.  The previous
-  // 2.04 m tub left a bright slot above both tracks and made the side armor
-  // read as a detached wall.
-  P.add('hull', box(2.12, 0.66, 6.42), 0, 0.61, -0.10);
+  // The belly now rises into the upper cell instead of ending below it. Its
+  // sides stop just inboard of the shoe faces, closing the former transverse
+  // daylight slot without intersecting the animated track course.
+  P.add('hull', box(2.12, 1.06, 6.42), 0, 0.77, -0.10);
   P.add('hull', orientedSlab(
     [-0.96, 0.32, 2.18], [0.96, 0.32, 2.18],
     [0.82, 0.55, 3.28], [-0.82, 0.55, 3.28],
@@ -109,7 +109,7 @@ function buildCv90Hull(P: CvBuilderPort): void {
     [-1.02, 1.12, 3.28], [1.02, 1.12, 3.28], [1.49, 1.79, 1.82], [-1.49, 1.79, 1.82],
   ));
   const upperPlan: [number, number][] = [
-    [-1.49, 1.90], [1.49, 1.90], [1.52, 1.56], [1.52, -3.12],
+    [-1.49, 1.76], [1.49, 1.76], [1.52, 1.50], [1.52, -3.12],
     [1.34, -3.45], [-1.34, -3.45], [-1.52, -3.12], [-1.52, 1.56],
   ];
   P.add('hull', polyMultiLoft(upperPlan, [
@@ -170,50 +170,59 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
     rollerR: 0.082, trackW: 0.50, trackTh: 0.088,
     trackPattern: 'compact-ifv', linkPitchM: 0.142, shoeWidthScale: 0.99,
     topY: 1.17, botY: 0.045, paintedEnds: true, arms: true, coveredTop: false,
-    contactZF: 2.65, contactZR: -2.61,
+    // Bring the rear departure knee onto the rear-road-wheel tangent instead
+    // of letting the flat run continue behind the wheel before it rises.
+    contactZF: 2.65, contactZR: -2.48,
   });
   for (const side of [-1, 1]) {
-    // CV9040 has a shallow structural fender rather than a separate applique
-    // wall. The hem clears the 1.54 m shoe edge by only 35 mm, its upper rail
-    // keys into the monocoque shoulder, and the nose folds into the glacis.
+    // One closed shoulder cell replaces the two detached bow panels. Its
+    // inner upper edge shares the upper-glacis/roof break and its aft edge
+    // shares the skirt carrier nose, producing one continuous Swedish bow.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.73, 0.72, 2.34], [side * 1.825, 0.72, 2.34],
-      [side * 1.745, 0.72, 3.28], [side * 1.695, 0.72, 3.28],
-      [side * 1.73, 1.39, 2.34], [side * 1.825, 1.39, 2.34],
-      [side * 1.735, 1.39, 2.66], [side * 1.72, 1.39, 2.66],
+      [side * 1.02, 1.25, 3.28], [side * 1.49, 1.78, 1.76],
+      [side * 1.71, 1.42, 2.28], [side * 1.70, 1.25, 3.28],
+      [side * 1.12, 1.27, 3.28], [side * 1.73, 1.81, 1.76],
+      [side * 1.83, 1.42, 2.28], [side * 1.82, 1.25, 3.28],
     ));
-    P.addExternalArmor('hull', orientedSlab(
-      [side * 1.73, 1.39, 2.34], [side * 1.825, 1.39, 2.34],
-      [side * 1.735, 1.39, 2.66], [side * 1.72, 1.39, 2.66],
-      [side * 1.48, 1.82, 1.82], [side * 1.825, 1.82, 1.82],
-      [side * 1.715, 1.76, 2.66], [side * 1.18, 1.76, 2.66],
-    ));
-    // Continuous inboard carrier, top fender and low rubber lip close the
-    // section before the individual armor doors are applied.
-    P.addExternalArmor('hull', KIT.box(0.095, 0.92, 6.02), side * 1.74, 1.18, -0.68);
-    P.add('hull', KIT.box(0.25, 0.16, 6.08), side * 1.54, 1.66, -0.65);
+    // The carrier and fender begin inside that shoulder cell. Eight doors
+    // continue aft; the shoulder itself is the ninth protected station.
+    P.addExternalArmor('hull', KIT.box(0.095, 0.92, 5.96), side * 1.74, 1.18, -0.74);
+    P.add('hull', KIT.box(0.25, 0.16, 5.98), side * 1.54, 1.66, -0.73);
     // The inner bridge overlaps the hull shoulder and the armor carrier, so
     // plan and front views no longer reveal sky between body and skirt.
-    P.add('hull', KIT.box(0.25, 0.22, 5.92), side * 1.39, 1.53, -0.55);
-    for (let index = 0; index < 9; index++) {
-      const z = 2.34 - index * 0.72;
+    P.add('hull', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
+    for (let index = 0; index < 8; index++) {
+      const z = 1.87 - index * 0.78;
       // Let adjacent doors share a narrow structural seam. The old 60 mm
       // daylight slots were visible from above even though the carrier sat
       // behind them, so the skirt read as separate floating plates.
-      P.addExternalArmor('hull', KIT.box(0.085, 0.70, 0.73),
+      P.addExternalArmor('hull', KIT.box(0.085, 0.70, 0.79),
         side * 1.81, 1.14, z, 0, 0, side * (index % 2 ? 0.010 : -0.010));
-      P.add('hullDark', KIT.box(0.018, 0.60, 0.65), side * 1.861, 1.14, z);
+      P.add('hullDark', KIT.box(0.018, 0.60, 0.70), side * 1.861, 1.14, z);
       P.add('hullDetail', KIT.cylX(0.018, 0.11, 8), side * 1.875, 1.12, z);
     }
-    P.add('hullRubber', KIT.box(0.030, 0.17, 6.00), side * 1.88, 0.60, -0.68);
+    // A tapered rear corner closes the carrier into the troop-ramp surround.
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.32, 0.70, -3.68], [side * 1.48, 1.66, -3.68],
+      [side * 1.50, 1.66, -3.39], [side * 1.34, 0.70, -3.54],
+      [side * 1.82, 0.70, -3.68], [side * 1.82, 1.66, -3.68],
+      [side * 1.82, 1.66, -3.39], [side * 1.82, 0.70, -3.54],
+    ));
   }
 }
 
 function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
+  // A solid root casting joins the cradle to the turret face. Forward of it,
+  // the barrel sits inside a restrained four-rail truss with three side-only
+  // diagonal openings per side; there are no broad perforated top panels.
+  P.addGunExtra(orientedSlab(
+    [-0.39, -0.24, 0.04], [0.39, -0.24, 0.04], [0.31, -0.18, 0.42], [-0.31, -0.18, 0.42],
+    [-0.39, 0.24, 0.04], [0.39, 0.24, 0.04], [0.31, 0.18, 0.42], [-0.31, 0.18, 0.42],
+  ));
   const point = (side: -1 | 1, t: number, vertical: number): Vec3 => [
-    side * THREE.MathUtils.lerp(0.37, 0.20, t),
-    vertical * THREE.MathUtils.lerp(0.23, 0.13, t),
-    THREE.MathUtils.lerp(0.10, 1.42, t),
+    side * THREE.MathUtils.lerp(0.31, 0.18, t),
+    vertical * THREE.MathUtils.lerp(0.18, 0.115, t),
+    THREE.MathUtils.lerp(0.36, 1.40, t),
   ];
   P.addGunExtra(panelGeometry([
     point(-1, 0, 1), point(1, 0, 1), point(1, 1, 1), point(-1, 1, 1),
@@ -225,14 +234,11 @@ function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
     for (const vertical of [-1, 1] as const) {
       P.addGunExtra(beamGeometry(point(side, 0, vertical), point(side, 1, vertical), 0.040));
     }
-    for (const center of [0.26, 0.52, 0.78]) {
-      P.addGunExtra(panelGeometry([
-        point(side, center - 0.035, -0.40), point(side, center + 0.035, -0.40),
-        point(side, center + 0.105, 0.40), point(side, center + 0.035, 0.40),
-      ], 0.027));
+    for (const [rear, front] of [[0.08, 0.29], [0.38, 0.59], [0.68, 0.89]] as const) {
+      P.addGunExtra(beamGeometry(point(side, rear, -0.82), point(side, front, 0.82), 0.032));
     }
-    P.addGunExtra(beamGeometry(point(side, 0.03, -0.40), point(side, 0.03, 0.40), 0.035));
-    P.addGunExtra(beamGeometry(point(side, 0.97, -0.40), point(side, 0.97, 0.40), 0.035));
+    P.addGunExtra(beamGeometry(point(side, 0.02, -0.82), point(side, 0.02, 0.82), 0.034));
+    P.addGunExtra(beamGeometry(point(side, 0.98, -0.82), point(side, 0.98, 0.82), 0.034));
   }
 }
 
@@ -242,36 +248,19 @@ function buildCv90Turret(P: CvBuilderPort): void {
   // cheek breaks, then a nearly parallel crew cell and clipped bustle. This
   // is a new CV9040 shell, not a scaled mission-module or donor-family mesh.
   const lowerPlan: [number, number][] = [
-    [-0.22, 1.46], [0.22, 1.46], [0.76, 1.04], [1.11, 0.42],
+    [-0.27, 1.52], [0.27, 1.52], [0.80, 1.12], [1.14, 0.44],
     [1.10, -0.92], [0.90, -1.56], [0.64, -1.72], [-0.64, -1.72],
-    [-0.90, -1.56], [-1.10, -0.92], [-1.11, 0.42], [-0.76, 1.04],
+    [-0.90, -1.56], [-1.10, -0.92], [-1.14, 0.44], [-0.80, 1.12],
   ];
   P.add('turretDark', cylY(1.01, 1.08, 0.12, 24), 0, -0.05, -0.30);
   P.add('turret', polyMultiLoft(lowerPlan, [
     { height: 0.00, inset: 1.00 },
-    { height: 0.28, inset: 0.98 },
-    { height: 0.70, inset: 0.78 },
+    { height: 0.25, inset: 0.96 },
+    { height: 0.72, inset: 0.72 },
   ]));
   for (const side of [-1, 1]) {
-    // Inner and outer cheek courses are structural, share their edge and
-    // rise continuously into the roof. Their two-stage arrow plan supplies
-    // the requested deep-chevron influence while retaining a compact IFV
-    // height, narrow cannon channel and recognisably Swedish proportions.
-    P.add('turret', orientedSlab(
-      [side * 0.20, 0.04, 1.45], [side * 0.76, 0.07, 1.03],
-      [side * 0.69, 0.09, 0.56], [side * 0.18, 0.07, 1.02],
-      [side * 0.18, 0.70, 1.18], [side * 0.55, 0.67, 0.79],
-      [side * 0.56, 0.61, 0.48], [side * 0.15, 0.65, 0.80],
-    ));
-    P.add('turret', orientedSlab(
-      [side * 0.76, 0.07, 1.03], [side * 1.12, 0.11, 0.42],
-      [side * 1.08, 0.12, -0.29], [side * 0.69, 0.09, 0.56],
-      [side * 0.55, 0.67, 0.79], [side * 0.85, 0.63, 0.22],
-      [side * 0.91, 0.57, -0.30], [side * 0.56, 0.61, 0.48],
-    ));
-    // A short flush applique belt carries the side line into the bustle
-    // without the detached rows that made the old shell read as a common
-    // tapered loft.
+    // The arrow nose, two cheek breaks and roof are now one continuous
+    // monotonic shell. Only the aft side belt remains an applique layer.
     P.addExternalArmor('turret', orientedSlab(
       [side * 1.08, 0.13, -0.22], [side * 1.11, 0.15, -1.30],
       [side * 0.90, 0.16, -1.55], [side * 0.86, 0.13, -0.34],
@@ -332,16 +321,17 @@ function buildCv90Turret(P: CvBuilderPort): void {
     P.turretG.userData.cv90IndependentTurretReceipt = Object.freeze({
       sharedStructuralBuilder: false, identityFamily: 'cv90-native',
       foreignFamilyGeometryReused: false,
-      turretConstruction: 'cv9040-independent-arrow-wedge-crew-citadel-v5',
-      gunAssembly: 'hollow-scaffolded-40mm-slash-port-cradle',
+      turretConstruction: 'cv9040-integrated-arrow-wedge-crew-citadel-v6',
+      gunAssembly: 'rooted-hollow-40mm-diagonal-truss-cradle-v3',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws', allAroundOptics: true,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
       integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
-      equipmentReseatedForShell: true,
+      frontArmorShell: 'single-monotonic-arrow-shell', equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
-      host: 'cv90', architecture: 'hollow-trapezoid-40mm-slash-port-cradle-v2',
+      host: 'cv90', architecture: 'rooted-hollow-trapezoid-40mm-diagonal-truss-v3',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
+      rootJoinedToTurretFace: true, sideOnlyOpenings: true,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 40, barrelLengthM: 3.12,
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
@@ -365,12 +355,16 @@ function buildCv90(P: CvBuilderPort): void {
     P.hullG.userData.cv90IndependentHullReceipt = Object.freeze({
       id: 'cv90', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier9-cv9040-v2',
-      hullConstruction: 'cv9040-planar-roof-glacis-monocoque-v4', roadWheelsPerSide: 7,
+      hullConstruction: 'cv9040-fused-belly-glacis-monocoque-v5', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
-      planarRoofCell: true, upperGlacisConstruction: 'separate-planar-wedge',
+      planarRoofCell: true, upperGlacisConstruction: 'overlapped-planar-wedge',
       monotonicArmorInset: true, concaveSurfaceCount: 0,
-      fenderBridge: 'continuous-hull-skirt-seat', tracksExtendedForRearHull: false,
+      lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
+      bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
+      rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
+      rearTrackDeparture: 'rear-wheel-tangent-forward-v1', rearTrackDepartureZM: -2.48,
+      fenderBridge: 'continuous-glacis-shoulder-skirt-seat-v2', tracksExtendedForRearHull: false,
       rearHullExtensionM: 0.15, rearTroopRamp: true,
     });
   }
@@ -381,7 +375,9 @@ function buildCv90(P: CvBuilderPort): void {
 
 function buildCv90MkivHull(P: CvBuilderPort): void {
   const { box, cylX, cylY, polyMultiLoft } = KIT;
-  P.add('hull', box(2.24, 0.72, 6.78), 0, 0.63, -0.12);
+  // Raise and widen the armored belly into the mission cell while retaining
+  // a narrow mechanical clearance to the inner track faces.
+  P.add('hull', box(2.24, 1.10, 6.78), 0, 0.75, -0.12);
   P.add('hull', orientedSlab(
     [-1.02, 0.31, 2.29], [1.02, 0.31, 2.29],
     [0.88, 0.59, 3.49], [-0.88, 0.59, 3.49],
@@ -393,7 +389,7 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
     [-1.09, 1.20, 3.49], [1.09, 1.20, 3.49], [1.61, 1.93, 1.77], [-1.61, 1.93, 1.77],
   ));
   const armoredCellPlan: [number, number][] = [
-    [-1.61, 1.86], [1.61, 1.86], [1.65, 1.50], [1.65, -2.76],
+    [-1.61, 1.72], [1.61, 1.72], [1.65, 1.46], [1.65, -2.76],
     [1.50, -3.55], [1.02, -3.66], [-1.02, -3.66], [-1.50, -3.55],
     [-1.65, -2.76], [-1.65, 1.50],
   ];
@@ -412,6 +408,23 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
       side * 1.30, 1.54, -3.758);
     P.addEquipment('hull', box(0.52, 0.22, 0.56), side * 1.04, 1.86, -3.08);
   }
+  // Twin full-width auxiliary-fuel drums are nested into a structural rear
+  // rack, with visible retaining bands and service boxes rather than floating
+  // beyond the ramp plate. Their end caps reach the rear shoulder silhouette
+  // so both cylinders remain legible from side and three-quarter views.
+  for (const y of [1.08, 1.72]) {
+    P.addEquipment('hull', cylX(0.305, 3.72, 28), 0, y, -3.91);
+    for (const x of [-1.38, -0.46, 0.46, 1.38]) {
+      P.add('hullDark', cylX(0.322, 0.050, 28), x, y, -3.91);
+    }
+  }
+  for (const x of [-0.96, 0.96]) {
+    P.add('hullDark', box(0.075, 1.02, 0.085), x, 1.39, -3.87);
+    P.addEquipment('hull', box(0.30, 0.28, 0.24), x, 1.91, -3.78);
+    P.addModuleVisual('optics', 'hullGlass', box(0.15, 0.075, 0.014),
+      x, 1.91, -3.91);
+  }
+  P.add('hullDark', box(2.08, 0.085, 0.10), 0, 0.82, -3.82);
   P.addCupola('hull', cylY(0.31, 0.34, 0.060, 20), 0.66, 1.84, 1.47);
   P.add('hullDark', KIT.torus(0.315, 0.015, 20), 0.66, 1.88, 1.47);
   for (const x of [0.45, 0.66, 0.87]) KIT.periscope(P, 'hullDetail', x, 1.91, 1.76);
@@ -445,42 +458,43 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
     rollerR: 0.084, trackW: 0.57, trackTh: 0.096,
     trackPattern: 'compact-ifv', linkPitchM: 0.148, shoeWidthScale: 0.99,
     topY: 1.22, botY: 0.045, paintedEnds: true, arms: true, coveredTop: false,
-    contactZF: 2.78, contactZR: -2.72,
+    contactZF: 2.78, contactZR: -2.56,
   });
   for (const side of [-1, 1]) {
-    // Mk IV's armored side wall is nearly full height. The 1.67 m shoe edge,
-    // 1.70 m inner hem, 1.78 m carrier and deck bevel form one closed section.
+    // A single deep shoulder replaces the detached upper and lower panels.
+    // It shares vertices with the upper glacis, deck cell, fender and skirt.
     P.addExternalArmor('hull', orientedSlab(
-      [side * 1.85, 0.74, 2.48], [side * 2.01, 0.74, 2.48],
-      [side * 1.90, 0.74, 3.49], [side * 1.83, 0.74, 3.49],
-      [side * 1.85, 1.42, 2.48], [side * 2.01, 1.42, 2.48],
-      [side * 1.88, 1.42, 2.87], [side * 1.82, 1.42, 2.87],
+      [side * 1.07, 1.30, 3.49], [side * 1.61, 1.91, 1.72],
+      [side * 1.85, 1.43, 2.44], [side * 1.82, 1.30, 3.49],
+      [side * 1.16, 1.32, 3.49], [side * 1.88, 1.95, 1.72],
+      [side * 2.02, 1.43, 2.44], [side * 1.99, 1.30, 3.49],
     ));
-    P.addExternalArmor('hull', orientedSlab(
-      [side * 1.85, 1.42, 2.48], [side * 2.01, 1.42, 2.48],
-      [side * 1.88, 1.42, 2.87], [side * 1.82, 1.42, 2.87],
-      [side * 1.60, 1.96, 1.91], [side * 2.01, 1.96, 1.91],
-      [side * 1.88, 1.89, 2.87], [side * 1.28, 1.89, 2.87],
-    ));
-    P.addExternalArmor('hull', KIT.box(0.12, 1.11, 6.20), side * 1.86, 1.30, -0.70);
-    P.addExternalArmor('hull', KIT.box(0.24, 0.20, 6.26), side * 1.65, 1.78, -0.68);
-    P.add('hull', KIT.box(0.27, 0.24, 6.08), side * 1.49, 1.63, -0.60);
-    for (let index = 0; index < 9; index++) {
-      const z = 2.50 - index * 0.70;
-      P.addExternalArmor('hull', KIT.box(0.18, 0.86, 0.72),
+    P.addExternalArmor('hull', KIT.box(0.12, 1.11, 6.16), side * 1.86, 1.30, -0.72);
+    P.addExternalArmor('hull', KIT.box(0.24, 0.20, 6.20), side * 1.65, 1.78, -0.70);
+    P.add('hull', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
+    for (let index = 0; index < 8; index++) {
+      const z = 2.02 - index * 0.80;
+      P.addExternalArmor('hull', KIT.box(0.18, 0.86, 0.81),
         side * 1.97, 1.30, z, 0, 0, side * (index % 2 ? 0.012 : -0.012));
-      P.add('hullDark', KIT.box(0.026, 0.75, 0.65), side * 2.075, 1.30, z);
+      P.add('hullDark', KIT.box(0.026, 0.75, 0.72), side * 2.075, 1.30, z);
       for (const y of [1.08, 1.52]) P.add('hullDetail', KIT.cylX(0.019, 0.20, 8), side * 2.09, y, z);
     }
-    P.add('hullRubber', KIT.box(0.034, 0.19, 6.20), side * 2.10, 0.60, -0.70);
-    P.addExternalArmor('hull', KIT.box(0.15, 0.22, 6.20), side * 1.89, 1.91, -0.70);
+    P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.87, -0.70);
     for (const z of [1.25, -0.15, -1.55]) {
       P.addEquipment('hull', KIT.box(0.10, 0.24, 0.30), side * 2.09, 1.68, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.014, 0.13, 0.18), side * 2.15, 1.68, z);
     }
+    // Close the heavy skirt into the rear ramp surround instead of stopping
+    // the armor wall in open space ahead of the hull back plate.
+    P.addExternalArmor('hull', orientedSlab(
+      [side * 1.46, 0.72, -3.76], [side * 1.62, 1.84, -3.76],
+      [side * 1.65, 1.84, -3.43], [side * 1.48, 0.72, -3.59],
+      [side * 2.06, 0.72, -3.76], [side * 2.06, 1.84, -3.76],
+      [side * 2.06, 1.84, -3.43], [side * 2.06, 0.72, -3.59],
+    ));
   }
   for (const x of [-1.47, 1.47]) {
-    for (const y of [2.02, 2.37]) P.add('hullDetail', KIT.box(0.035, 0.035, 2.26), x, y, -1.57);
+    for (const y of [1.97, 2.37]) P.add('hullDetail', KIT.box(0.035, 0.035, 2.26), x, y, -1.57);
     for (const z of [-2.67, -2.12, -1.57, -1.02, -0.47]) {
       P.add('hullDetail', KIT.box(0.035, 0.38, 0.035), x, 2.19, z);
     }
@@ -489,51 +503,46 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
 
 function buildCv90MkivTurret(P: CvBuilderPort): void {
   const { box, cylY, cylZ, polyMultiLoft } = KIT;
+  // Seat the complete moving cannon farther inside the mission module. Moving
+  // the articulated rig preserves the authored shroud/barrel/bore relationship
+  // and shifts the recoil and muzzle anchors with it.
+  const gunTrunnionRecessM = 0.18;
+  P.gunG.position.z -= gunTrunnionRecessM;
   // Mk IV uses its own broad low-profile mission module. A split arrow nose,
   // shoulder cells and long clipped bustle make the Tier X silhouette more
   // assertive without scaling the crew turret used by the Tier IX vehicle.
   const citadelPlan: [number, number][] = [
-    [-0.25, 1.78], [0.25, 1.78], [0.86, 1.30], [1.40, 0.54],
+    [-0.28, 1.82], [0.28, 1.82], [0.90, 1.27], [1.46, 0.46],
     [1.42, -1.18], [1.16, -1.82], [0.72, -2.08], [-0.72, -2.08],
-    [-1.16, -1.82], [-1.42, -1.18], [-1.40, 0.54], [-0.86, 1.30],
+    [-1.16, -1.82], [-1.42, -1.18], [-1.46, 0.46], [-0.90, 1.27],
   ];
   P.add('turretDark', cylY(1.24, 1.32, 0.13, 28), 0, -0.055, -0.34);
   P.add('turret', polyMultiLoft(citadelPlan, [
     { height: 0.00, inset: 1.00 },
-    { height: 0.32, inset: 0.98 },
-    { height: 0.86, inset: 0.77 },
+    { height: 0.30, inset: 0.94 },
+    { height: 0.86, inset: 0.62 },
   ]));
   for (const side of [-1, 1]) {
-    // Two full-height structural cheek courses create a deep arrow without
-    // leaving a hollow center fan. The upper vertices converge on one roof
-    // course, so front, top and side silhouettes transition continuously.
-    P.add('turret', orientedSlab(
-      [side * 0.22, 0.02, 1.77], [side * 0.86, 0.05, 1.29],
-      [side * 0.78, 0.08, 0.68], [side * 0.20, 0.05, 1.22],
-      [side * 0.19, 0.85, 1.39], [side * 0.61, 0.81, 0.88],
-      [side * 0.64, 0.72, 0.52], [side * 0.16, 0.78, 0.96],
-    ));
-    P.add('turret', orientedSlab(
-      [side * 0.86, 0.05, 1.29], [side * 1.42, 0.10, 0.53],
-      [side * 1.40, 0.12, -0.38], [side * 0.78, 0.08, 0.68],
-      [side * 0.61, 0.81, 0.88], [side * 1.04, 0.73, 0.24],
-      [side * 1.12, 0.65, -0.40], [side * 0.64, 0.72, 0.52],
-    ));
+    // The highly sloped arrow nose and roof are one shell. Removing the old
+    // overlay cheeks eliminates the clipped/concave-looking front surfaces.
     P.addExternalArmor('turret', orientedSlab(
       [side * 1.39, 0.14, -0.28], [side * 1.43, 0.16, -1.40],
       [side * 1.16, 0.17, -1.80], [side * 1.08, 0.14, -0.42],
       [side * 1.12, 0.65, -0.28], [side * 1.18, 0.66, -1.32],
       [side * 0.98, 0.62, -1.67], [side * 0.94, 0.62, -0.40],
     ));
-    // Shoulder APS/LWR head is seated into the new cheek shoulder.
-    P.addEquipment('turret', box(0.24, 0.19, 0.20), side * 1.13, 0.69, 0.10,
-      0, side * 0.20, 0);
-    P.addModuleVisual('optics', 'turretGlass', box(0.15, 0.10, 0.014),
-      side * 1.13, 0.69, 0.215, 0, side * 0.20, 0);
+    // A rolled mounting plinth follows the armor normal; the APS/LWR head and
+    // smoke bank sit on the plinth instead of intersecting the side course.
+    P.add('turret', box(0.24, 0.15, 0.27), side * 1.02, 0.62, 0.11,
+      0, side * 0.20, side * -0.30);
+    P.addEquipment('turret', box(0.22, 0.18, 0.20), side * 1.10, 0.68, 0.10,
+      0, side * 0.20, side * -0.30);
+    P.addModuleVisual('optics', 'turretGlass', box(0.14, 0.09, 0.014),
+      side * 1.11, 0.69, 0.215, 0, side * 0.20, side * -0.30);
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 6, r: 0.041, len: 0.27, spacing: 0.09,
       splay: side * 0.54, pitch: -0.42, seed: 930 + side,
-    }), side * 1.34, 0.50, -0.04, [0, side * 0.98, 0]);
+    }), side * 1.20, 0.58, -0.04, [0, side * 0.98, side * -0.27]);
   }
   P.addGunExtra(orientedSlab(
     [-0.44, -0.25, 0.05], [0.44, -0.25, 0.05],
@@ -604,18 +613,21 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     P.turretG.userData.cv90MkivIndependentTurretReceipt = Object.freeze({
       sharedStructuralBuilder: false, identityFamily: 'cv90-native',
       foreignFamilyGeometryReused: false,
-      turretConstruction: 'cv90-mkiv-independent-deep-arrow-mission-module-v5',
+      turretConstruction: 'cv90-mkiv-integrated-steep-arrow-mission-module-v6',
       gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws',
       spikeLauncherTubes: 2, apsRadarFaces: 4,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
       integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
+      frontArmorShell: 'single-extreme-slope-arrow-shell',
+      sideEquipmentSeat: 'rolled-plinth-on-armor-normal-v1',
       equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90_mkiv', architecture: 'faceted-closed-50mm-trunnion-shroud-v2',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: false,
       diagonalSidePortsPerSide: 0, mainGunCaliberMm: 50, barrelLengthM: 3.76,
+      trunnionRecessM: gunTrunnionRecessM,
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
       host: 'cv90_mkiv', designFamily: rws.userData.designFamily,
@@ -638,12 +650,17 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
     P.hullG.userData.cv90MkivIndependentHullReceipt = Object.freeze({
       id: 'cv90_mkiv', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier10-cv90-mkiv-v2',
-      hullConstruction: 'cv90-mkiv-planar-roof-glacis-side-cell-v4', roadWheelsPerSide: 7,
+      hullConstruction: 'cv90-mkiv-fused-belly-glacis-side-cell-v5', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
       sideArmorLayers: 3, planarRoofCell: true,
-      upperGlacisConstruction: 'separate-planar-wedge', monotonicArmorInset: true,
-      concaveSurfaceCount: 0, fenderBridge: 'continuous-hull-skirt-seat',
+      upperGlacisConstruction: 'overlapped-planar-wedge', monotonicArmorInset: true,
+      concaveSurfaceCount: 0, lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
+      bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
+      rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
+      rearTrackDeparture: 'rear-wheel-tangent-forward-v1', rearTrackDepartureZM: -2.56,
+      auxiliaryFuelDrums: 2,
+      fenderBridge: 'continuous-glacis-shoulder-skirt-seat-v2',
       tracksExtendedForRearHull: false, rearHullExtensionM: 0.08, rearTroopRamp: true,
     });
   }
