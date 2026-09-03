@@ -7,21 +7,21 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import {
+  applyAdvancedIfvScale,
+  type AdvancedIfvScalePort,
+} from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface LightTigerBuilderPort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
+interface LightTigerBuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material>;
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
-  topY?: number;
-  gear?: unknown;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addCupola(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
@@ -462,6 +462,7 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
       concaveSurfaceCount: 0,
     });
   }
+  applyAdvancedIfvScale(P, 'cot-type89-light-tiger-compact-r1');
 }
 
 export const TYPE89_LIGHT_TIGER_PROFILES = Object.freeze({

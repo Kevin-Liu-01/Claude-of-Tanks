@@ -8,21 +8,22 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import {
+  ADVANCED_IFV_SCALE,
+  applyAdvancedIfvScale,
+  type AdvancedIfvScalePort,
+} from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface CvBuilderPort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
+interface CvBuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material>;
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
-  topY?: number;
-  gear?: unknown;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addCupola(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
@@ -368,6 +369,7 @@ function buildCv90(P: CvBuilderPort): void {
       rearHullExtensionM: 0.15, rearTroopRamp: true,
     });
   }
+  applyAdvancedIfvScale(P, 'cot-cv90-compact-r1');
 }
 
 // -------------------------------------------------------------------------
@@ -506,7 +508,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
   // Seat the complete moving cannon farther inside the mission module. Moving
   // the articulated rig preserves the authored shroud/barrel/bore relationship
   // and shifts the recoil and muzzle anchors with it.
-  const gunTrunnionRecessM = 0.18;
+  const gunTrunnionRecessM = 0.18 * ADVANCED_IFV_SCALE;
   P.gunG.position.z -= gunTrunnionRecessM;
   // Mk IV uses its own broad low-profile mission module. A split arrow nose,
   // shoulder cells and long clipped bustle make the Tier X silhouette more
@@ -664,6 +666,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
       tracksExtendedForRearHull: false, rearHullExtensionM: 0.08, rearTroopRamp: true,
     });
   }
+  applyAdvancedIfvScale(P, 'cot-cv90-mkiv-compact-r1');
 }
 
 export const CV90_PROFILES = Object.freeze({

@@ -22,8 +22,9 @@ const BLOOM_MODERN: Readonly<AimBloom> = {
 };
 
 const ARIETE_C1_C2_SCALE = 1.10;
+const ADVANCED_IFV_SCALE = 0.90;
 
-// Enlarge only the spatial armor/anatomy frame. Protection thickness and
+// Scale only the spatial armor/anatomy frame. Protection thickness and
 // shell performance remain gameplay values in millimetres and do not scale.
 function scaleArmorFrame(armor: ArmorEnvelope, scale: number): ArmorEnvelope {
   const point = (value: readonly number[]): [number, number, number] => [
@@ -473,7 +474,7 @@ export const MODERN3_SPECS = {
           { reloadS: 0.28, count: 240 }),
       ],
     },
-    dims: { hullLengthM: 7.6, overallLengthM: 7.6, widthM: 3.9, heightM: 3.6 },
+    dims: { hullLengthM: 6.84, overallLengthM: 6.84, widthM: 3.51, heightM: 3.24 },
     armor: (() => {
       const a = modernArmor({
         hl: 3.80, hw: 1.95, inW: 1.08, floor: 0.43, trkTop: 1.04, roofY: 1.93,
@@ -494,12 +495,12 @@ export const MODERN3_SPECS = {
         cbox('gunner', [-0.24, 0.58, -0.48], [0.58, 1.72, 0.64]),
         cbox('commander', [-1.06, 0.58, -0.48], [-0.24, 1.72, 0.64]),
       ];
-      return a;
+      return scaleArmorFrame(a, ADVANCED_IFV_SCALE);
     })(),
     visual: {
       scheme: 'nato', base: '#46503c', weather: '#59604b',
       patches: ['#20231f', '#514031'], marking: 'number', number: 'S1-481',
-      trackWidthM: 0.52, camoScale: 0.72,
+      trackWidthM: 0.468, camoScale: 0.72,
     },
   },
 
@@ -527,7 +528,7 @@ export const MODERN3_SPECS = {
           { reloadS: 0.50, count: 260 }),
       ],
     },
-    dims: { hullLengthM: 6.8, overallLengthM: 7.45, widthM: 3.7, heightM: 3.4 },
+    dims: { hullLengthM: 6.12, overallLengthM: 6.705, widthM: 3.33, heightM: 3.06 },
     armor: (() => {
       const a = modernArmor({
         hl: 3.40, hw: 1.85, inW: 1.01, floor: 0.39, trkTop: 0.98, roofY: 1.93,
@@ -546,12 +547,12 @@ export const MODERN3_SPECS = {
         cbox('gunner', [-0.18, 0.54, -0.48], [0.60, 1.70, 0.60]),
         cbox('commander', [-1.02, 0.54, -0.48], [-0.18, 1.70, 0.60]),
       ];
-      return a;
+      return scaleArmorFrame(a, ADVANCED_IFV_SCALE);
     })(),
     visual: {
       scheme: 'stripes', base: '#39473a', weather: '#4b5747',
       patches: ['#65523a', '#26352d'], marking: 'roundel', number: '89-LT',
-      trackWidthM: 0.48, camoScale: 0.62,
+      trackWidthM: 0.432, camoScale: 0.62,
     },
   },
 
@@ -577,8 +578,8 @@ export const MODERN3_SPECS = {
           { pen2000Mm: 188, reloadS: 0.44, count: 72 }),
       ],
     },
-    dims: { hullLengthM: 6.56, overallLengthM: 7.30, widthM: 3.62, heightM: 3.40 },
-    armor: modernArmor({
+    dims: { hullLengthM: 5.904, overallLengthM: 6.57, widthM: 3.258, heightM: 3.06 },
+    armor: scaleArmorFrame(modernArmor({
       hl: 3.28, hw: 1.81, inW: 1.02, floor: 0.38, trkTop: 0.96, roofY: 1.69,
       turretPivot: [0, 1.69, -0.48], gunPivot: [0, 0.39, 1.15],
       barrelLenM: 3.12, barrelRadM: 0.064,
@@ -587,11 +588,11 @@ export const MODERN3_SPECS = {
       tw: 1.08, tFrontZ: 1.34, tRearZ: -1.42, tH: 0.82,
       cheek: [82, 210, 285], tSide: [58, 130, 195], tRear: 40, tRoof: 38,
       mantlet: [95, 220, 300], loader: false,
-    }),
+    }), ADVANCED_IFV_SCALE),
     visual: {
       scheme: 'stripes', base: '#3f4938', weather: '#535c49',
       patches: ['#273028', '#59604a'], marking: 'roundel', number: '9040',
-      trackWidthM: 0.50, camoScale: 0.72,
+      trackWidthM: 0.45, camoScale: 0.72,
     },
   },
 
@@ -617,7 +618,7 @@ export const MODERN3_SPECS = {
           { reloadS: 0.56, count: 180 }),
       ],
     },
-    dims: { hullLengthM: 6.98, overallLengthM: 8.44, widthM: 4.04, heightM: 3.92 },
+    dims: { hullLengthM: 6.282, overallLengthM: 7.596, widthM: 3.636, heightM: 3.528 },
     armor: (() => {
       const a = modernArmor({
         hl: 3.49, hw: 2.02, inW: 1.08, floor: 0.40, trkTop: 1.01, roofY: 1.80,
@@ -636,12 +637,12 @@ export const MODERN3_SPECS = {
         cbox('gunner', [-0.18, 0.54, -0.54], [0.62, 1.62, 0.58]),
         cbox('commander', [-1.02, 0.54, -0.54], [-0.18, 1.62, 0.58]),
       ];
-      return a;
+      return scaleArmorFrame(a, ADVANCED_IFV_SCALE);
     })(),
     visual: {
       scheme: 'splinter', base: '#3c4739', weather: '#525c49',
       patches: ['#202823', '#657251', '#303c32'], marking: 'roundel', number: '904-IV',
-      trackWidthM: 0.57, camoScale: 0.82,
+      trackWidthM: 0.513, camoScale: 0.82,
     },
   },
 

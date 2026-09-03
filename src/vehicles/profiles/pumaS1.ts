@@ -7,22 +7,22 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
+import {
+  applyAdvancedIfvScale,
+  type AdvancedIfvScalePort,
+} from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface PumaS1BuilderPort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
+interface PumaS1BuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material>;
   readonly q?: boolean;
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
-  topY?: number;
-  gear?: unknown;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addCupola(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
   addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
@@ -241,7 +241,11 @@ function addHullShell(P: PumaS1BuilderPort): void {
   // raked stern and the troop-ramp backing.  The old ramp began 8-14 cm
   // behind those structures, which exposed a daylight seam from low rear
   // quarters even though every individual panel was nominally hull-owned.
-  P.add('hull', box(2.98, 1.18, 0.20), 0, 1.15, -3.66);
+  // Keep the aft face locked to the ramp stack while pulling the hidden
+  // forward face behind the compact track's rear shoe envelope. At the
+  // reduced vehicle scale the former 0.20 m depth landed inside a wrap shoe
+  // by 16 mm even though the unscaled audit grid rounded it clear.
+  P.add('hull', box(2.98, 1.18, 0.14), 0, 1.15, -3.69);
   P.add('hullDark', box(1.72, 1.12, 0.045), 0, 1.14, -3.755);
   P.add('hull', box(1.56, 0.92, 0.055), 0, 1.15, -3.785);
   P.add('hullDetail', box(1.38, 0.035, 0.020), 0, 1.15, -3.818);
@@ -641,6 +645,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       concaveSurfaceCount: 0,
     });
   }
+  applyAdvancedIfvScale(P, 'cot-spz-puma-s1-compact-r1');
 }
 
 export const PUMA_S1_PROFILES = Object.freeze({

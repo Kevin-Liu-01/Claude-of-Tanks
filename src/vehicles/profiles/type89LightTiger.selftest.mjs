@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Box3 } from 'three';
+import { Box3, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
@@ -12,15 +12,15 @@ assert.equal(tankTier(spec.id), 10, 'Light Tiger is Tier X');
 assert.equal(spec.role, 'ifv');
 assert.equal(spec.weightTons, 38.5);
 assert.deepEqual(spec.dims, {
-  hullLengthM: 6.8,
-  overallLengthM: 7.45,
-  widthM: 3.7,
-  heightM: 3.4,
+  hullLengthM: 6.12,
+  overallLengthM: 6.705,
+  widthM: 3.33,
+  heightM: 3.06,
 });
 assert.equal(spec.gun.caliberMm, 35);
 assert.ok(spec.gun.shells.some((round) => round.guided && /Jyu-MAT Kai/.test(round.name)),
   'Light Tiger has its own Jyu-MAT Kai guided channel');
-assert.ok(spec.armor.crew.every((crew) => !crew.turretLocal && crew.max[1] < 1.93),
+assert.ok(spec.armor.crew.every((crew) => !crew.turretLocal && crew.max[1] < 1.93 * 0.9),
   'all three crew stations remain below the roof in the protected hull cell');
 
 const source = readFileSync(new URL('./type89LightTiger.ts', import.meta.url), 'utf8');
@@ -48,6 +48,28 @@ try {
   const turret = tank.root.getObjectByName('rig_turret');
   const gun = tank.root.getObjectByName('rig_gun');
   assert.ok(hull && turret && gun, 'Light Tiger retains the canonical articulated rig');
+  assert.deepEqual(hull.userData.advancedIfvScaleReceipt, {
+    designFamily: 'cot-type89-light-tiger-compact-r1',
+    vehicleScale: 0.9,
+    specSpatialFrameScaled: true,
+    bakedBucketGeometry: true,
+    directAssembliesScaled: true,
+    ownerScalesPreserved: true,
+    turretPivotFromScaledSpec: true,
+    gunPivotFromScaledSpec: true,
+    muzzleAnchorScaled: true,
+    contactGeometryScaled: true,
+    trackHitboxesScaled: true,
+    roadWheelLayoutScaled: true,
+  }, 'Light Tiger publishes one complete 90% render/gameplay scale receipt');
+  assert.equal(turret.userData.advancedIfvScaleReceipt,
+    hull.userData.advancedIfvScaleReceipt,
+    'Light Tiger hull and turret share the same scale frame');
+  const compactBounds = new Box3().setFromObject(tank.root).getSize(new Vector3());
+  assert.ok(Math.abs(compactBounds.x - 3.9119999408721924 * 0.9) < 0.01,
+    'Light Tiger outer width is exactly ten percent smaller');
+  assert.ok(Math.abs(compactBounds.y - 3.8107486949517546 * 0.9) < 0.01,
+    'Light Tiger full equipment height is exactly ten percent smaller');
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
@@ -164,12 +186,13 @@ try {
   const turretShell = turret.getObjectByName('turret');
   assert.ok(turretShell, 'Light Tiger primary turret shell is present');
   const turretShellBounds = new Box3().setFromObject(turretShell);
-  assert.ok(turretShellBounds.min.z - turret.position.z < -2.03,
+  assert.ok(turretShellBounds.min.z - turret.position.z < -2.03 * 0.9,
     'primary turret shell forms a deep structural rear bustle');
   const turretEquipment = turret.getObjectByName('turretEquipment');
   assert.ok(turretEquipment, 'Light Tiger turret equipment shell is present');
   const turretEquipmentBounds = new Box3().setFromObject(turretEquipment);
-  assert.ok(turretEquipmentBounds.max.x > 1.61 && turretEquipmentBounds.min.x < -1.61,
+  assert.ok(turretEquipmentBounds.max.x > 1.61 * 0.9
+    && turretEquipmentBounds.min.x < -1.61 * 0.9,
     'paired launcher boxes project clearly beyond both turret side planes');
   assert.ok(gun.getObjectByName('gunMount'),
     'Light Tiger carries a camouflaged open gun cradle');
@@ -188,8 +211,8 @@ try {
     surroundsMainBarrel: true,
     surroundsCoax: true,
   }, 'Light Tiger uses a compact flat mask and rocking mantlet around the KDE-35');
-  assert.ok(gun.getObjectByName('rig_muzzle')?.position.z > 3.05,
-    'Light Tiger carries the enlarged long KDE-35 assembly');
+  assert.ok(Math.abs(gun.getObjectByName('rig_muzzle')?.position.z - 3.10 * 0.9) < 1e-6,
+    'Light Tiger muzzle and firing-effects station follows the compact KDE-35 frame');
   assert.ok(tank.root.getObjectByName('muzzleBoreShadowRim'),
     'KDE-35 carries an explicitly authored annular muzzle rim');
   assert.ok(tank.root.getObjectByName('muzzleBoreShadowDisc'),

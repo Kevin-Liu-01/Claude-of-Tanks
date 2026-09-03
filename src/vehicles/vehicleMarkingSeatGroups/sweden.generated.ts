@@ -230,37 +230,37 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.0119635,
-          0.3695809,
-          -0.2945531
+          -0.9112876,
+          0.3329209,
+          -0.2651131
         ],
         "quaternion": [
           -0.184128,
           -0.6919927,
           -0.1794885,
-          0.6745567
+          0.6745568
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "cv90",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0009586
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -0.9062991,
-          0.5723809,
-          0.0618469
+          -0.8161896,
+          0.5154409,
+          0.0556469
         ],
         "quaternion": [
           -0.184128,
           -0.6919927,
           -0.1794885,
-          0.6745567
+          0.6745568
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "cv90",
@@ -328,9 +328,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          -1.126,
-          0.6752,
-          -1.1756
+          -1.014,
+          0.60768,
+          -1.05804
         ],
         "quaternion": [
           0,
@@ -341,31 +341,31 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "surfaceMesh": "hull",
         "anchorProfile": "cv90_mkiv",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.7022145
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          -1.126,
-          0.6752,
-          -0.3737
+          1.014,
+          0.60768,
+          -1.05804
         ],
         "quaternion": [
           0,
-          -0.7071068,
+          0.7071068,
           0,
           0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "cv90_mkiv",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.1812499
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.7022145
       }
     ]
   }

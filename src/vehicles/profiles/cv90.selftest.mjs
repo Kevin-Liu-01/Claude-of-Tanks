@@ -29,7 +29,7 @@ for (const functionName of [
 const expected = Object.freeze({
   cv90: Object.freeze({
     name: 'CV90', tier: 9, caliber: 40, weight: 37,
-    dims: Object.freeze({ hullLengthM: 6.56, overallLengthM: 7.3, widthM: 3.62, heightM: 3.4 }),
+    dims: Object.freeze({ hullLengthM: 5.904, overallLengthM: 6.57, widthM: 3.258, heightM: 3.06 }),
     hullReceiptKey: 'cv90IndependentHullReceipt',
     turretReceiptKey: 'cv90IndependentTurretReceipt',
     designLineage: 'independent-tier9-cv9040-v2',
@@ -39,13 +39,13 @@ const expected = Object.freeze({
     gunArchitecture: 'rooted-hollow-trapezoid-40mm-diagonal-truss-v3',
     frontArmorShell: 'single-monotonic-arrow-shell',
     rwsName: 'cv90K2bStyleRws', rwsScale: 0.80,
-    turretPivotZ: -0.48,
+    turretPivotZ: -0.432,
     trackWidth: 0.50, sideStations: 9, rearExtension: 0.15, guided: false,
     rearTrackDepartureZ: -2.48,
   }),
   cv90_mkiv: Object.freeze({
     name: 'CV90 Mk IV', tier: 10, caliber: 50, weight: 40,
-    dims: Object.freeze({ hullLengthM: 6.98, overallLengthM: 8.44, widthM: 4.04, heightM: 3.92 }),
+    dims: Object.freeze({ hullLengthM: 6.282, overallLengthM: 7.596, widthM: 3.636, heightM: 3.528 }),
     hullReceiptKey: 'cv90MkivIndependentHullReceipt',
     turretReceiptKey: 'cv90MkivIndependentTurretReceipt',
     designLineage: 'independent-tier10-cv90-mkiv-v2',
@@ -55,7 +55,7 @@ const expected = Object.freeze({
     gunArchitecture: 'faceted-closed-50mm-trunnion-shroud-v2',
     frontArmorShell: 'single-extreme-slope-arrow-shell',
     rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.90,
-    turretPivotZ: -0.44,
+    turretPivotZ: -0.396,
     trackWidth: 0.57, sideStations: 9, rearExtension: 0.08, guided: true,
     rearTrackDepartureZ: -2.56,
   }),
@@ -89,6 +89,17 @@ for (const [id, target] of Object.entries(expected)) {
     const turret = tank.root.getObjectByName('rig_turret');
     const gun = tank.root.getObjectByName('rig_gun');
     assert.ok(hull && turret && gun, `${id} retains the canonical articulated rig`);
+    const scaleReceipt = hull.userData.advancedIfvScaleReceipt;
+    assert.equal(scaleReceipt?.vehicleScale, 0.9,
+      `${id} is uniformly reduced by ten percent`);
+    assert.equal(scaleReceipt?.specSpatialFrameScaled, true,
+      `${id} gameplay/anatomy frame follows the compact visual`);
+    assert.equal(scaleReceipt?.muzzleAnchorScaled, true,
+      `${id} firing and effects origin follows the compact gun frame`);
+    assert.equal(scaleReceipt?.bakedBucketGeometry, true,
+      `${id} armor, skirts, fittings, and running gear share the compact frame`);
+    assert.equal(turret.userData.advancedIfvScaleReceipt, scaleReceipt,
+      `${id} hull and turret share one scale receipt`);
 
     const hullReceipt = hull.userData[target.hullReceiptKey];
     const turretReceipt = turret.userData[target.turretReceiptKey];
@@ -138,12 +149,13 @@ for (const [id, target] of Object.entries(expected)) {
       assert.equal(gun.userData.cv90GunAssemblyReceipt.diagonalSidePortsPerSide, 3);
     } else {
       assert.equal(turretReceipt.sideEquipmentSeat, 'rolled-plinth-on-armor-normal-v1');
-      assert.equal(gun.userData.cv90GunAssemblyReceipt.trunnionRecessM, 0.18);
-      assert.ok(Math.abs(gun.position.z - 1.16) < 1e-6,
+      assert.equal(gun.userData.cv90GunAssemblyReceipt.trunnionRecessM, 0.18 * 0.9);
+      assert.ok(Math.abs(gun.position.z - 1.16 * 0.9) < 1e-6,
         `${id} complete cannon rig is recessed into the turret`);
     }
     assert.equal(gun.getObjectByName('rig_muzzle')?.position.z,
-      id === 'cv90_mkiv' ? 3.76 : 3.12, `${id} publishes the correct muzzle station`);
+      id === 'cv90_mkiv' ? 3.76 * 0.9 : 3.12 * 0.9,
+      `${id} publishes the correct compact muzzle station`);
     assert.ok(tank.root.getObjectByName('muzzleBoreShadowRim'),
       `${id} cannon has a recessed bore`);
 
