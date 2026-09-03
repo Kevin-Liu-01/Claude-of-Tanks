@@ -21,8 +21,12 @@
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
 import { dirname, resolve, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
+import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
+
+const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
 /**
  * Transitive relative-import closure starting at src/main.ts.
@@ -89,6 +93,13 @@ const rewriteRoutes: Connect.NextHandleFunction = (req, res, next) => {
 
 export default defineConfig({
   plugins: [
+    {
+      name: 'cot-app-version',
+      enforce: 'pre',
+      transformIndexHtml(html) {
+        return replaceAppVersionTokens(html, appVersion);
+      },
+    },
     {
       name: 'cot-product-stats',
       transformIndexHtml(html) {

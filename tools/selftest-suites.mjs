@@ -1,6 +1,7 @@
 /** Ordered regression suites used by npm's pretest/test/posttest lifecycle. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    'tools/appVersion.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'src/vehicles/fleetLazy.selftest.mjs',
     'tools/attribution-audit.mjs',
