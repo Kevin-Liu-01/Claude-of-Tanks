@@ -200880,17 +200880,17 @@
           }
         ]
       },
-      "geometryHash": "e3da3dd1",
+      "geometryHash": "a2ec809d",
       "metadataHash": "267bdf79",
       "presentationAnchor": {
-        "xM": 0.0093,
-        "zM": -0.3022
+        "xM": 0.0086,
+        "zM": -0.3016
       },
-      "presentationHash": "f9c6aa2b",
+      "presentationHash": "e897be20",
       "presentationProjection": {
-        "centerYM": 1.3741,
-        "topHalfM": 5.9257,
-        "sideHalfM": 2.9629
+        "centerYM": 1.6664,
+        "topHalfM": 5.9251,
+        "sideHalfM": 2.9625
       },
       "appearance": {
         "version": 1,
@@ -200941,15 +200941,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30898,
-          "sha256": "6b1311df2a518e797f071b86411af45615a96c9295b45936531496a5721a3afc",
+          "bytes": 31512,
+          "sha256": "b37759d95300d2b7fa0262155e6514a79b36eca663fe7144f4764a3b90163c24",
           "thumbnail": {
             "file": "thumbs/strv103_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11446,
-            "sha256": "f20d4e19d3f1d1187989362b097bf1529e0ff298c6584d85b189507fe935b8ac"
+            "bytes": 11686,
+            "sha256": "91b3effbe997d0dd8dc46d5bd5f562353992b80cb84217808ad9627a3562c248"
           }
         },
         "top": {
@@ -200957,56 +200957,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18638,
-          "sha256": "d3a70781bd13ba3d73f29f9c0297fbf51c4873c3338fc6a303dd2bcf3f1a2de1"
+          "bytes": 18632,
+          "sha256": "0745989cec8da89f3e1aeef7b2dc49467301d0ba4eb19a46cf2d4d32107e8084"
         },
         "side": {
           "file": "strv103_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9824,
-          "sha256": "8c2b5d8d0e0c719f2b33725ed6747988881027d552ea9feb94d5e91d4e6f6fb3"
+          "bytes": 10338,
+          "sha256": "f491ee492f75df886f1206f80eb25e1817ddb6c47b72c70cfa89c620a4c7c6c8"
         },
         "topSilhouette": {
           "file": "strv103_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1704,
-          "sha256": "aea944b9e98d7b4c2c186369e7af3f3288e9dc44f721ca59de04b01c69076a5b"
+          "bytes": 1674,
+          "sha256": "4870a2d75b0087fa334531008fb77dd0906f3f5577966610c9244d81add4af30"
         },
         "sideSilhouette": {
           "file": "strv103_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3986,
-          "sha256": "cb8f74d2cb5d99fc630d215defc562a88b405475f6926a6ece8f0432f3fccf9e"
+          "bytes": 4326,
+          "sha256": "0de3751f307d71defd150b3e56a20136f30f1acf50a489093106008c38edc6f2"
         },
         "armorSide": {
           "file": "strv103_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85280,
-          "sha256": "8efde15a159f13e9a643f634c72ff2c65384cff75f1ca02944cd4c9ccb82c46f"
+          "bytes": 86985,
+          "sha256": "10fb208a3b3d137330e35889a16cdbf4678b66a957937fce19f923455d15202c"
         },
         "modulesSide": {
           "file": "strv103_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87285,
-          "sha256": "189df0e666ddf13583f8e1cb11c618cc54e5d854cfcf328a6c5f8ebdfa474508"
+          "bytes": 89425,
+          "sha256": "8da9b67e465dab397fb1a830f49ea43d269c737be78aceb62a126ea4aa9939e6"
         },
         "crewSide": {
           "file": "strv103_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78057,
-          "sha256": "dbf3fd177f60ba95d445b024a4d88a513c8b1841866ec5cd6a6b5cb89b124a21"
+          "bytes": 80129,
+          "sha256": "3f45e415d7d409a007abf98ad277bad11f033a70fbc811efe453b91774fb8c90"
         },
         "markings": {
           "file": "strv103_markings.png",

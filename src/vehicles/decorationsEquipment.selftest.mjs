@@ -6,6 +6,8 @@ import {
   decorManifestFor,
   fleetEquipmentNationStyle,
   resolveDecorMode,
+  roofMountEuler,
+  roofMountPosition,
   surfaceMountEuler,
 } from './decorations.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
@@ -169,17 +171,22 @@ for (const id of ALL_TANK_IDS) {
   assert.equal(cargo.length, 7, `${id}: deterministic manifest includes a seven-piece field load`);
   assert.equal(new Set(cargo.map((row) => row.v?.v)).size, 7,
     `${id}: equipment set does not repeat the same prop`);
-  assert.ok(cargo.every((row) => row.slot[0] === 'fleetCargo' && row.slot[1].routes.length >= 4),
-    `${id}: every equipment piece owns a four-station placement fallback`);
+  assert.ok(cargo.every((row) => row.slot[0] === 'fleetCargo'
+    && row.slot[1].routes.length >= (id === 'strv103' ? 1 : 4)),
+  `${id}: equipment owns its required placement route network`);
   assert.ok(cargo.every((row) => row.v?.nation === getSpec(id).nation),
     `${id}: field equipment inherits the vehicle nation palette`);
   const preferred = cargo.map((row) => row.slot[1].routes[0]);
   assert.deepEqual([...new Set(preferred.map((route) => route[0]))].sort(),
-    ['hullRearRack', 'turretRear'],
+    (id === 'strv103'
+      ? ['hullRoof']
+      : ['hullRearRack', 'turretRear']).sort(),
     `${id}: preferred equipment stays on the bustle and hull rear rack`);
   const routeStations = new Set(cargo.flatMap((row) => row.slot[1].routes.map((route) => route[0])));
   assert.deepEqual([...routeStations].sort(),
-    ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide'].sort(),
+    (id === 'strv103'
+      ? ['hullRoof']
+      : ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide']).sort(),
     `${id}: fallback network covers aft equipment stations only`);
   assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
     station !== 'turretRoof' || args.rear === true)),
@@ -197,6 +204,59 @@ for (const id of ALL_TANK_IDS) {
 }
 assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);
+
+const strvCargo = decorManifestFor(getSpec('strv103'), () => 0.5)
+  .filter((row) => row.kit === 'cargo');
+const strvRoofStations = new Map([
+  ['mechanics-tool-chest', { x: 0.65, z: -1.45 }],
+  ['large-rucksack', { x: -0.25, z: -1.45 }],
+  ['fire-extinguisher', { x: -1.05, z: -1.30 }],
+  ['blue-water-can', { x: -0.80, z: -0.20 }],
+  ['beer-cooler-blue', { x: 1.15, z: -1.00 }],
+  ['helmet-bundle', { x: 0.85, z: -0.30 }],
+  ['folded-tarp-pack', { x: -0.25, z: -0.85 }],
+]);
+assert.deepEqual(new Map(strvCargo.map((row) => [row.v?.v, row.slot[1].routes[0][1]])),
+  strvRoofStations,
+  'Strv 103B roof cargo retains its non-overlapping measured station layout');
+assert.ok(strvCargo.every((row) => row.slot[1].routes.length === 1),
+  'Strv 103B roof cargo cannot silently fall back to an unmeasured mount');
+const strvWaterCans = strvCargo.find((row) => row.v?.v === 'blue-water-can');
+assert.ok(strvWaterCans, 'Strv 103B retains its paired blue water cans');
+assert.deepEqual(strvWaterCans.slot[1].routes[0], ['hullRoof', { x: -0.80, z: -0.20 }],
+  'Strv 103B water cans use the annotated roof seat before any fallback');
+assert.ok(strvWaterCans.slot[1].routes.every(([station]) => !station.startsWith('turret')),
+  'Strv 103B water cans cannot return to the virtual turret decoration rig');
+assert.ok(strvCargo.every((row) => row.slot[1].routes[0][0] === 'hullRoof'),
+  'every Strv 103B loose-equipment primitive prefers a measured roof seat');
+assert.ok(strvCargo.every((row) => row.slot[1].routes.every(([station]) => !station.startsWith('turret'))),
+  'Strv 103B steel, can, and canvas cargo cannot enter the virtual turret rig');
+
+const annotatedRoofHit = {
+  p: new THREE.Vector3(-0.80187, 1.82439, -0.19998),
+  n: new THREE.Vector3(0.04172, 0.99863, 0.03153).normalize(),
+  dist: 0,
+};
+const strvCanParts = DECOR_KITS.cargo({
+  rng: () => 0.37,
+  v: 'blue-water-can',
+  nation: 'Sweden',
+});
+const strvCanRotation = roofMountEuler(annotatedRoofHit.n, 0.013);
+const mountedUp = new THREE.Vector3(0, 1, 0).applyEuler(strvCanRotation);
+assert.ok(mountedUp.dot(annotatedRoofHit.n) > 0.999999,
+  'roof cargo base normal follows the annotated Strv roof skin');
+const strvCanPosition = roofMountPosition(strvCanParts, annotatedRoofHit, 0.004);
+const strvCanBounds = new THREE.Box3();
+for (const part of strvCanParts) {
+  part.geo.computeBoundingBox();
+  strvCanBounds.union(part.geo.boundingBox);
+  part.geo.dispose();
+}
+const strvCanBase = strvCanPosition.clone()
+  .addScaledVector(annotatedRoofHit.n, strvCanBounds.min.y);
+assert.ok(Math.abs(strvCanBase.sub(annotatedRoofHit.p).dot(annotatedRoofHit.n) + 0.004) < 1e-7,
+  'Strv 103B can cradle embeds 4 mm into the roof carrier instead of floating');
 
 const m48 = {
   id: 'm48', nation: 'USA', era: 'cold-war',

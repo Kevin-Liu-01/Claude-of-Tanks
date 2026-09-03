@@ -194,6 +194,7 @@ interface DecorSlotArgs {
   corner?: number;
   zFrac?: number;
   x?: number;
+  z?: number;
   spread?: number;
   rear?: boolean;
   high?: boolean;
@@ -289,6 +290,7 @@ interface DecorAttachmentIntent {
   supportPoint: THREE.Vector3;
   supportNormal: THREE.Vector3;
   embedM: number;
+  mountAxis?: 'y' | 'z';
 }
 
 interface DecorPieceSummary {
@@ -475,6 +477,29 @@ export function surfaceMountEuler(normal: THREE.Vector3): THREE.Euler {
   y.crossVectors(n, x).normalize();
   const basis = new THREE.Matrix4().makeBasis(x, y, n);
   return new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
+}
+
+/**
+ * Align a kit authored on the local XZ floor plane to a roof skin. The
+ * optional yaw is applied around the kit's local up axis before that axis is
+ * matched to the measured carrier normal, so the base remains flush even on
+ * a subtly crowned or pitched roof.
+ */
+export function roofMountEuler(normal: THREE.Vector3, yaw = 0): THREE.Euler {
+  const up = new THREE.Vector3(0, 1, 0);
+  const n = normal.clone().normalize();
+  const align = new THREE.Quaternion().setFromUnitVectors(up, n);
+  const heading = new THREE.Quaternion().setFromAxisAngle(up, yaw);
+  return new THREE.Euler().setFromQuaternion(align.multiply(heading), 'XYZ');
+}
+
+export function roofMountPosition(
+  parts: DecorPartList,
+  hit: SurfaceHit,
+  embedM: number,
+): THREE.Vector3 {
+  const minY = partsBBox(parts).min.y;
+  return hit.p.clone().addScaledVector(hit.n.clone().normalize(), -embedM - minY);
 }
 
 function surfaceMountPosition(
@@ -2287,6 +2312,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       ]
       : aftRoutes(seatSide, xOffset)
   );
+  const strvRoofRoutes = (x: number, z: number): Array<[string, DecorSlotArgs]> => [
+    ['hullRoof', { x, z }],
+  ];
+  const normalPairedCanRoutes: Array<[string, DecorSlotArgs]> = [
+      ['hullRearRack', { x: side * 0.22 }],
+      ['turretRear', { side: -side }],
+      ['rearDeck', { corner: side, back: true, small: true }],
+      ['turretRoof', { rear: true, side }],
+      ['rearDeck', { center: true, back: true, small: true }],
+      ['turretSide', { side, rear: true }],
+      ['fender', { side, zFrac: -0.32, small: true }],
+  ];
 
   // The Ukrainian M1A1's field-built anti-drone cage and profile-authored
   // fittings already define its silhouette. Keep only one paired fuel-can
@@ -2310,45 +2347,46 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case')),
-      slot: ['fleetCargo', { routes: hardCaseRoutes(side, 0.12) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(0.65, -1.45) : hardCaseRoutes(side, 0.12) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft')),
-      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.12) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(-0.25, -1.45) : aftRoutes(-side, 0.12) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(serviceGear, 'fender-service')),
-      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.22) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(-1.05, -1.30) : aftRoutes(-side, 0.22) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(pairedCans, 'rear-cans')),
-      slot: ['fleetCargo', { routes: [
-        ['hullRearRack', { x: side * 0.22 }],
-        ['turretRear', { side: -side }],
-        ['rearDeck', { corner: side, back: true, small: true }],
-        ['turretRoof', { rear: true, side }],
-        ['rearDeck', { center: true, back: true, small: true }],
-        ['turretSide', { side, rear: true }],
-        ['fender', { side, zFrac: -0.32, small: true }],
-      ] }],
+      // The 103B has no rotating turret: its water-can cradle sits at the
+      // exact roof point supplied by Gallery surface markup.
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(-0.80, -0.20) : normalPairedCanRoutes }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case', 3)),
-      slot: ['fleetCargo', { routes: hardCaseRoutes(-side, 0.02) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(1.15, -1.00) : hardCaseRoutes(-side, 0.02) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(serviceGear, 'fender-service', 2)),
-      slot: ['fleetCargo', { routes: aftRoutes(side, 0.22) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(0.85, -0.30) : aftRoutes(side, 0.22) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft', 2)),
-      slot: ['fleetCargo', { routes: aftRoutes(side, 0.02) }],
+      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+        ? strvRoofRoutes(-0.25, -0.85) : aftRoutes(side, 0.02) }],
     },
   ];
   return [...cargo, ...base];
@@ -3038,6 +3076,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       if (!allowOverlap && overlaps(bb, ledger)) { summary.skipped.push([name, 'overlap']); disposePartList(parts); return false; }
       ledger.push(bb);
       budget.tris += tris;
+      const localBounds = attachment ? partsBBox(parts).clone() : null;
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const map = buckets[frame];
       for (const p of parts) {
@@ -3048,9 +3087,15 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       const piece: DecorPieceSummary = { kit: name, frame, tris };
       if (attachment) {
         const supportNormal = attachment.supportNormal.clone().normalize();
-        const mountNormal = new THREE.Vector3(0, 0, 1)
+        const mountAxis = attachment.mountAxis === 'y'
+          ? new THREE.Vector3(0, 1, 0)
+          : new THREE.Vector3(0, 0, 1);
+        const mountNormal = mountAxis
           .applyQuaternion(new THREE.Quaternion().setFromEuler(rot)).normalize();
-        const basePoint = pos.clone().addScaledVector(mountNormal, partsBBox(parts).min.z);
+        const baseOffset = attachment.mountAxis === 'y'
+          ? localBounds!.min.y
+          : localBounds!.min.z;
+        const basePoint = pos.clone().addScaledVector(mountNormal, baseOffset);
         piece.attachment = {
           slot: attachment.slot,
           supportPoint: attachment.supportPoint.toArray() as [number, number, number],
@@ -3118,6 +3163,32 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         }
         disposePartList(parts);
         return false;
+      },
+      hullRoof(args, parts, name) {
+        const bb = partsBBox(parts);
+        const w = bb.max.x - bb.min.x;
+        const d = bb.max.z - bb.min.z;
+        const x = args.x ?? 0;
+        const z = args.z ?? (args.zFrac ?? 0) * L;
+        const seat = seatProbe(hullP, x, z, w, d, topFrom, 0.08);
+        const hit = deckProbe(x, z);
+        if (!seat || !hit || !seat.n || hit.n.y < 0.92) {
+          disposePartList(parts);
+          return false;
+        }
+        const embedM = 0.004;
+        const yaw = (rng() - 0.5) * 0.04;
+        return commit(name, parts, 'hull', roofMountPosition(parts, hit, embedM),
+          roofMountEuler(hit.n, yaw), placedHull, {
+            seatY: seat.y,
+            attachment: {
+              slot: 'hull-roof',
+              supportPoint: hit.p,
+              supportNormal: hit.n,
+              embedM,
+              mountAxis: 'y',
+            },
+          });
       },
       fender(args, parts, name) {
         const side = args.side ?? 1;
