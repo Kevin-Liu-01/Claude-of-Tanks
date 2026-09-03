@@ -23,9 +23,11 @@ for (const id of ['m60a1', 'm60a3']) {
   const shoulders = hull?.userData.m60FrontShoulderReceipt;
   const compact = hull?.userData.m60CompactScaleReceipt;
   const searchlight = gun?.userData.m60SearchlightReceipt;
+  const glacis = hull?.userData.m60GlacisArmorReceipt;
+  const armorFinish = turret?.userData.americanArmorFinishReceipt;
 
   assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
-  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.14,
+  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
     `${id}: side armor hangs below rather than above/in line with the fender datum`);
   assert(sideCassettes.supportRailCenterY > sideCassettes.cassetteTopY,
     `${id}: upper support rail remains above the lowered cassette course`);
@@ -37,6 +39,14 @@ for (const id of ['m60a1', 'm60a3']) {
     `${id}: lowered cassette wall remains outside the live track envelope`);
   assert(sideCassettes.exteriorX <= 1.8155,
     `${id}: track clearance does not widen the tank past its M60 fender envelope`);
+  assert.equal(sideCassettes.blackOutlineStrips, 0,
+    `${id}: side armor separation uses panel gaps instead of black outline strips`);
+  assert.equal(glacis?.surfaceNormalAligned, true,
+    `${id}: every glacis cassette is built from the actual upper-deck surface`);
+  assert.equal(glacis?.maximumSupportGapM, 0,
+    `${id}: glacis armor is embedded flush rather than hovering above the rake`);
+  assert.equal(glacis?.blackOutlineStrips, 0,
+    `${id}: glacis armor does not paint high-contrast frames over the camouflage`);
   assert.equal(shoulders?.mirroredClosedVolumes, 2,
     `${id}: closed bow shoulders extend from both fenders`);
   assert.equal(shoulders?.texturedCamouflage, true,
@@ -53,6 +63,10 @@ for (const id of ['m60a1', 'm60a3']) {
 
   assert.ok(searchlight, `${id}: mantlet searchlight is present`);
   assert.equal(searchlight.owner, 'rig_gun', `${id}: searchlight pitches with the gun`);
+  assert.equal(searchlight.housingBucket, 'gunMount',
+    `${id}: searchlight housing uses the gun-mount camouflage rather than a black block`);
+  assert.equal(searchlight.housingFinish, 'vehicle-paint',
+    `${id}: searchlight housing participates in the vehicle finish`);
   assert.equal(searchlight.lensBucket, 'gunMountGlass', `${id}: searchlight owns a real glass lens`);
   assert(searchlight.supportGapM <= 0.04,
     `${id}: searchlight yoke closes the gap to the marked gun-mount surface`);
@@ -94,6 +108,14 @@ for (const id of ['m60a1', 'm60a3']) {
       'every M60A1 cheek panel derives its own cast-surface orientation');
     assert.equal(attachments.cheekPanels.courses, 2,
       'M60A1 cheek coverage is subdivided vertically to follow the casting');
+    assert.equal(attachments.cheekPanels.layout, 'surface-parameter-grid',
+      'M60A1 cheek cassettes use a repeatable surface grid');
+    assert.equal(attachments.cheekPanels.alignedRows, 2,
+      'M60A1 cheek rows share common cast-height stations');
+    assert.equal(attachments.cheekPanels.alignedColumns, 3,
+      'M60A1 cheek columns share common longitudinal stations');
+    assert.equal(attachments.cheekPanels.blackOutlineStrips, 0,
+      'M60A1 cheek armor has no ink-black divider geometry');
     assert(attachments.cheekPanels.maximumTileSpanM <= 0.42,
       'M60A1 panels stay narrow enough to follow compound cheek curvature');
     assert(attachments.cheekPanels.maximumSupportGapM <= 0.002,
@@ -116,6 +138,15 @@ for (const id of ['m60a1', 'm60a3']) {
     assert.equal(sight.userData.combatHitboxRole, 'equipment',
       'M60A3 sight housing cannot inflate the turret armor envelope');
   }
+
+  assert.equal(armorFinish?.eraSeparation, 'physical-panel-gaps',
+    `${id}: armor panel readability comes from modeled gaps`);
+  assert.equal(armorFinish?.outlineGeometry, 0,
+    `${id}: no decorative black outline geometry remains on the armor`);
+  assert.equal(armorFinish?.highContrastOutlineMaterial, false,
+    `${id}: camouflage-adjacent detail remains subdued`);
+  assert.equal(armorFinish?.mechanicalGunmetalPreserved, true,
+    `${id}: lowering armor contrast does not repaint the weapon mechanisms`);
 
   tank.dispose();
 }

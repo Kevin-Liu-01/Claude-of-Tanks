@@ -36,6 +36,16 @@ assert.equal(receipt.curvedSurfaceNormals, receipt.totalTiles,
   'every ERA module derives its own normal from the rounded casting');
 assert.equal(receipt.tangentAxesPerTile, 2,
   'each tile uses longitudinal and dome tangents instead of a flat bank transform');
+assert.equal(receipt.layout, 'surface-parameter-grid',
+  'M60A3 ERA follows regular longitudinal and dome stations');
+assert.equal(receipt.alignedRows, 3,
+  'M60A3 front and flank armor share three aligned height courses');
+assert.equal(receipt.alignedFrontColumns, 5,
+  'M60A3 cheeks use five repeatable longitudinal columns');
+assert.equal(receipt.alignedSideColumns, 6,
+  'M60A3 flanks use six repeatable longitudinal columns');
+assert.equal(receipt.blackOutlineStrips, 0,
+  'M60A3 ERA is separated by physical gaps instead of ink-black linework');
 assert(receipt.castEmbedM >= 0.02 && receipt.castEmbedM <= 0.03,
   'modules are deliberately embedded into the cast skin instead of floating');
 assert(receipt.maximumSupportGapM <= 0.0001,

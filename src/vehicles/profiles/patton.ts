@@ -3498,24 +3498,60 @@ function pattonFaceCassette(
   rows = 1,
   cols = 1,
 ): void {
-  const { box, xform } = KIT;
+  const { box, cylZ, xform } = KIT;
   P.add(bucket, box(w, h, d), x, y, z, rx, ry, rz);
   const faceZ = d / 2 + 0.004;
-  const dark = bucket === 'hull' ? 'hullDark' : 'turretDark';
-  for (let row = 1; row < rows; row++) {
-    const ly = -h / 2 + h * row / rows;
-    P.add(dark, xform(box(w * 0.90, 0.018, 0.010), 0, ly, faceZ), x, y, z, rx, ry, rz);
-  }
-  for (let col = 1; col < cols; col++) {
-    const lx = -w / 2 + w * col / cols;
-    P.add(dark, xform(box(0.018, h * 0.90, 0.010), lx, 0, faceZ), x, y, z, rx, ry, rz);
-  }
-  for (const sy of [-1, 1]) {
-    P.add(dark, xform(box(w * 0.94, 0.016, 0.010), 0, sy * (h / 2 - 0.015), faceZ), x, y, z, rx, ry, rz);
-  }
+  const detail = bucket === 'hull' ? 'hullDetail' : 'turretDetail';
+  // American applique separation comes from the real air gap between
+  // cassettes, not an ink-black frame painted over every plate. Keep one
+  // subdued, scheme-tinted cover and four attachment heads on the face.
+  // `rows`/`cols` remain in the signature for old call sites, but no longer
+  // author false dark divider strips through one physical cassette.
+  P.add(detail, xform(box(w * 0.84, h * 0.76, 0.008), 0, 0, faceZ),
+    x, y, z, rx, ry, rz);
+  const boltX = w * 0.34;
+  const boltY = h * 0.30;
   for (const sx of [-1, 1]) {
-    P.add(dark, xform(box(0.016, h * 0.94, 0.010), sx * (w / 2 - 0.015), 0, faceZ), x, y, z, rx, ry, rz);
+    for (const sy of [-1, 1]) {
+      P.add(detail, xform(cylZ(Math.min(0.012, h * 0.075), 0.010, 8),
+        sx * boltX, sy * boltY, faceZ + 0.008), x, y, z, rx, ry, rz);
+    }
   }
+}
+
+function pattonGlacisCassette(
+  P: PattonBuilderPort,
+  deck: ProfileCurve,
+  x: number,
+  z: number,
+  w: number,
+  len: number,
+  thickness = 0.085,
+): void {
+  const surfaceY = deckLine(deck);
+  const x0 = x - w / 2;
+  const x1 = x + w / 2;
+  const zRear = z - len / 2;
+  const zFront = z + len / 2;
+  const p00 = new THREE.Vector3(x0, surfaceY(zFront), zFront);
+  const p10 = new THREE.Vector3(x1, surfaceY(zFront), zFront);
+  const p11 = new THREE.Vector3(x1, surfaceY(zRear), zRear);
+  const p01 = new THREE.Vector3(x0, surfaceY(zRear), zRear);
+  const normal = new THREE.Vector3().crossVectors(
+    p10.clone().sub(p00), p01.clone().sub(p00),
+  ).normalize();
+  if (normal.y < 0) normal.negate();
+  const offset = (point: THREE.Vector3, distance: number): Vec3Tuple => {
+    const value = point.clone().addScaledVector(normal, distance);
+    return [value.x, value.y, value.z];
+  };
+  const embedded = -0.008;
+  P.add('hull', orientedSlab(
+    offset(p00, embedded), offset(p10, embedded),
+    offset(p11, embedded), offset(p01, embedded),
+    offset(p00, embedded + thickness), offset(p10, embedded + thickness),
+    offset(p11, embedded + thickness), offset(p01, embedded + thickness),
+  ));
 }
 
 function pattonSideCassette(
@@ -3553,29 +3589,15 @@ function pattonSideCassette(
       [fenderAnchorInnerX, topY, z0], [outerX, topY, z0],
       [outerX, topY, z1], [fenderAnchorInnerX, topY, z1],
     ));
-    const faceX = side * 1.8125;
-    P.add('hullDark', box(0.010, h * 0.90, 0.018), faceX, y, z);
-    for (const sy of [-1, 1]) {
-      P.add('hullDark', box(0.010, 0.018, len * 0.92), faceX,
-        y + sy * (h / 2 - 0.018), z);
-    }
-    for (const sz of [-1, 1]) {
-      P.add('hullDark', box(0.010, h * 0.88, 0.018), faceX, y,
-        z + sz * (len / 2 - 0.018));
-    }
+    const faceX = side * 1.8165;
+    P.add('hullDetail', box(0.008, h * 0.78, len * 0.84), faceX, y, z);
     return;
   }
   const x = side * (variant === 'a2' ? 1.775 : 1.765);
   const depth = 0.075;
   P.add('hull', box(depth, h, len), x, y, z);
   const faceX = side * (depth / 2 + 0.004);
-  P.add('hullDark', xform(box(0.010, h * 0.90, 0.018), faceX, 0, 0), x, y, z);
-  for (const sy of [-1, 1]) {
-    P.add('hullDark', xform(box(0.010, 0.018, len * 0.92), faceX, sy * (h / 2 - 0.018), 0), x, y, z);
-  }
-  for (const sz of [-1, 1]) {
-    P.add('hullDark', xform(box(0.010, h * 0.88, 0.018), faceX, 0, sz * (len / 2 - 0.018)), x, y, z);
-  }
+  P.add('hullDetail', xform(box(0.008, h * 0.78, len * 0.84), faceX, 0, 0), x, y, z);
 }
 
 function pattonSmokeBank(
@@ -3692,37 +3714,46 @@ function m60RoofShelfGeometry(py: number, pz: number): THREE.BufferGeometry {
   );
 }
 
-function addM60MantletSearchlight(P: PattonBuilderPort, scale = 1): void {
+function addM60MantletSearchlight(
+  P: PattonBuilderPort,
+  scale = 1,
+  offsetX = 0,
+  bodyBottomY = 0.265,
+  bodyZ = 0.79,
+): void {
   const { box, cylX, cylZ, xform } = KIT;
   const width = 0.40 * scale;
   const height = 0.34 * Math.min(scale, 1.28);
   const depth = 0.73 * Math.min(scale, 1.20);
-  const bodyBottomY = 0.265;
   const bodyY = bodyBottomY + height / 2;
-  const bodyZ = 0.79;
   const frontZ = bodyZ + depth / 2;
   const lensRadius = 0.12 * Math.min(scale, 1.45);
 
-  P.addGunExtraDark(box(width, height, depth), 0, bodyY, bodyZ);
-  P.addGunExtraDark(box(width, 0.06, depth * 0.47), 0, bodyY + height / 2 + 0.03,
+  // The housing is field-painted armor; only the yoke and hinge stay
+  // gunmetal. This removes the former black cube while preserving the real
+  // glass aperture and articulated gun ownership.
+  P.addGunExtra(box(width, height, depth), offsetX, bodyY, bodyZ);
+  P.addGunExtra(box(width, 0.06, depth * 0.47), offsetX, bodyY + height / 2 + 0.03,
     bodyZ + depth * 0.18);
-  P.addGunExtraDark(xform(cylZ(lensRadius + 0.028, 0.045, 22), 0, 0, 0),
-    0, bodyY, frontZ + 0.015);
-  P.add('gunMountGlass', cylZ(lensRadius, 0.018, 24), 0, bodyY, frontZ + 0.042);
+  P.addGunExtra(xform(cylZ(lensRadius + 0.028, 0.045, 22), 0, 0, 0),
+    offsetX, bodyY, frontZ + 0.015);
+  P.add('gunMountGlass', cylZ(lensRadius, 0.018, 24), offsetX, bodyY, frontZ + 0.042);
 
   const armX = width * 0.40;
   const armHeight = Math.max(0.12, bodyBottomY - 0.12);
   for (const side of [-1, 1]) {
-    P.addGunExtraDark(box(0.06, armHeight, 0.07), side * armX,
+    P.addGunExtraDark(box(0.06, armHeight, 0.07), offsetX + side * armX,
       0.12 + armHeight / 2, bodyZ + 0.02);
   }
   P.addGunExtraDark(xform(cylX(0.035, armX * 2 + 0.06, 10), 0, 0, 0),
-    0, 0.215, bodyZ + 0.02);
+    offsetX, 0.215, bodyZ + 0.02);
 
   P.gunG.userData.m60SearchlightReceipt = {
     owner: 'rig_gun',
-    housingBucket: 'gunMountDark',
+    housingBucket: 'gunMount',
+    housingFinish: 'vehicle-paint',
     lensBucket: 'gunMountGlass',
+    offsetX,
     widthM: width,
     lensDiameterM: lensRadius * 2,
     gunMountTopY: 0.23,
@@ -3814,16 +3845,16 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
 
   for (const side of [-1, 1]) {
     const frontCells: EraCell[] = [];
+    const frontZ = [1.62, 1.49, 1.36, 1.23, 1.10];
+    const frontHeights = [0.36, 0.50, 0.64];
     for (let row = 0; row < 3; row++) {
       for (let column = 0; column < 5; column++) {
-        // Lower courses reach the narrow nose; higher courses start farther
-        // aft where the casting has opened around the mantlet.  This creates
-        // the rounded, terraced cheek silhouette instead of two flat walls.
-        const rowFrontZ = 2.04 - row * 0.20;
-        const worldZ = rowFrontZ + (1.10 - rowFrontZ) * (column / 4);
-        const heightFraction = 0.34 + row * 0.12;
-        const cell = m60EraCellAt(side, worldZ, heightFraction,
-          0.27 - row * 0.025, 0.17, cassetteDepthM, castEmbedM);
+        // A regular three-by-five grid is parameterized on the casting.
+        // Every column shares one longitudinal station and every row one
+        // dome height; the surface normal still makes each cassette hug the
+        // compound cheek without producing the former terraced scatter.
+        const cell = m60EraCellAt(side, frontZ[column], frontHeights[row],
+          0.22, 0.14, cassetteDepthM, castEmbedM);
         frontCells.push(cell);
         cells.push(cell);
       }
@@ -3833,13 +3864,12 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
     }, true);
 
     const sideCells: EraCell[] = [];
+    const sideZ = [0.32, 0.07, -0.18, -0.43, -0.68, -0.93];
+    const sideHeights = [0.36, 0.50, 0.64];
     for (let row = 0; row < 3; row++) {
-      const heightFraction = 0.34 + row * 0.14;
       for (let column = 0; column < 6; column++) {
-        const localZ = 0.02 - column * 0.25;
-        const worldZ = localZ + 0.30;
-        const cell = m60EraCellAt(side, worldZ, heightFraction,
-          0.22, 0.17, cassetteDepthM, castEmbedM);
+        const cell = m60EraCellAt(side, sideZ[column], sideHeights[row],
+          0.22, 0.14, cassetteDepthM, castEmbedM);
         sideCells.push(cell);
         cells.push(cell);
       }
@@ -3860,6 +3890,11 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
     instanced: false,
     layeredVehicleScaleCamouflage: true,
     layersPerCassette: 2,
+    layout: 'surface-parameter-grid',
+    alignedRows: 3,
+    alignedFrontColumns: 5,
+    alignedSideColumns: 6,
+    blackOutlineStrips: 0,
     curvedSurfaceNormals: (frontTilesPerSide + sideTilesPerSide) * 2,
     tangentAxesPerTile: 2,
     maximumSupportGapM: Math.max(...cells.map((cell) => cell.supportGapM)),
@@ -3869,7 +3904,11 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
   };
 }
 
-function finishM60Variant(P: PattonBuilderPort, variant: string): void {
+function finishM60Variant(
+  P: PattonBuilderPort,
+  variant: string,
+  deck: ProfileCurve,
+): void {
   const { box, cylY, cylZ } = KIT;
   const a3 = variant === 'a3';
 
@@ -3879,7 +3918,7 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   const stations = a3 ? [-2.55, -1.94, -1.33, -0.72, -0.11, 0.50, 1.11, 1.72, 2.33]
     : [-2.48, -1.82, -1.16, -0.50, 0.16, 0.82, 1.48, 2.14];
   const fenderTopY = 1.79;
-  const cassetteTopY = 1.64;
+  const cassetteTopY = 1.56;
   const cassetteHeightM = a3 ? 0.54 : 0.58;
   const cassetteCenterY = cassetteTopY - cassetteHeightM / 2;
   for (const side of [-1, 1]) {
@@ -3906,19 +3945,28 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
     trackClearanceInnerX: 1.795,
     exteriorX: 1.8125,
     fenderAnchorInnerX: 1.7275,
+    blackOutlineStrips: 0,
   };
 
   // Glacis kit follows the shallow M60 rake and leaves the driver/periscope
   // lane and both light clusters open.  A1 uses broad early Blazer boxes;
   // A3 uses a finer two-row TTS-era course.
   const glacisRows = a3
-    ? [{ z: 2.20, y: 1.69, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05], w: 0.36, d: 0.37 },
-      { z: 2.62, y: 1.59, xs: [-0.94, -0.47, 0.47, 0.94], w: 0.40, d: 0.34 }]
-    : [{ z: 2.18, y: 1.69, xs: [-0.96, -0.48, 0.48, 0.96], w: 0.43, d: 0.42 },
-      { z: 2.64, y: 1.58, xs: [-0.76, -0.25, 0.25, 0.76], w: 0.46, d: 0.36 }];
+    ? [{ z: 2.20, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05], w: 0.36, d: 0.37 },
+      { z: 2.62, xs: [-0.94, -0.47, 0.47, 0.94], w: 0.40, d: 0.34 }]
+    : [{ z: 2.18, xs: [-0.96, -0.48, 0.48, 0.96], w: 0.43, d: 0.42 },
+      { z: 2.64, xs: [-0.76, -0.25, 0.25, 0.76], w: 0.46, d: 0.36 }];
   for (const row of glacisRows) {
-    for (const x of row.xs) pattonFaceCassette(P, 'hull', x, row.y, row.z, row.w, 0.095, row.d, -0.21, 0, 0, 1, a3 ? 2 : 1);
+    for (const x of row.xs) pattonGlacisCassette(P, deck, x, row.z, row.w, row.d, 0.090);
   }
+  P.hullG.userData.m60GlacisArmorReceipt = Object.freeze({
+    carrier: 'upper-glacis-deck-polyline',
+    surfaceNormalAligned: true,
+    maximumSupportGapM: 0,
+    cellCount: glacisRows.reduce((sum, row) => sum + row.xs.length, 0),
+    blackOutlineStrips: 0,
+    finish: 'vehicle-paint',
+  });
 
   // Needle-casting cheek armor.  Every block is turret-owned, buried into
   // the swept cheek and rotates as part of the complete turret package.
@@ -3926,17 +3974,14 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
     addM60A3TurretEra(P);
   } else {
     const cheekZ = [1.30, 0.84, 0.38];
-    const cheekWorldYs = [2.30, 2.51];
+    const cheekHeights = [0.40, 0.58];
     const castEmbedM = 0.060;
     const cassetteDepthM = 0.105;
     const cells: EraCell[] = [];
     for (const side of [-1, 1]) {
-      for (const cheekWorldY of cheekWorldYs) {
+      for (const heightFraction of cheekHeights) {
         for (let i = 0; i < cheekZ.length; i++) {
           const worldZ = cheekZ[i] + P.spec.armor.turretPivot[2];
-          const section = m60SectionAt(worldZ);
-          const heightFraction = Math.max(0.31, Math.min(0.79,
-            (cheekWorldY - section.bot) / Math.max(0.001, section.top - section.bot)));
           const cell = m60EraCellAt(side, worldZ, heightFraction,
             0.42, 0.18, cassetteDepthM, castEmbedM);
           cells.push(cell);
@@ -3950,9 +3995,13 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
       cheekPanels: {
         count: cells.length,
         conformalSurfaceNormals: cells.length,
-        courses: cheekWorldYs.length,
+        courses: cheekHeights.length,
         castEmbedM,
-        targetWorldYs: cheekWorldYs,
+        layout: 'surface-parameter-grid',
+        alignedRows: cheekHeights.length,
+        alignedColumns: cheekZ.length,
+        targetHeightFractions: cheekHeights,
+        blackOutlineStrips: 0,
         maximumTileSpanM: Math.max(...cells.map((cell) => Math.max(cell.w, cell.h))),
         maximumSupportGapM: Math.max(...cells.map((cell) => cell.supportGapM)),
         maximumSeatCorrectionM: Math.max(...cells.map((cell) => cell.seatCorrectionM)),
@@ -3991,11 +4040,11 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
     P.add('turretDark', cylY(0.035, 0.045, 0.42, 10), -0.92, 1.22, -1.12);
     P.add('turretDetail', box(0.18, 0.06, 0.16), -0.92, 1.45, -1.12);
     P.add('turretGlass', box(0.10, 0.035, 0.018), -0.92, 1.45, -1.03);
-    for (const z of [1.46, 2.26, 3.08]) P.add('gunDark', cylZ(0.096, 0.035, 16), 0, 0, z);
+    for (const z of [1.46, 2.26, 3.08]) P.add('gun', cylZ(0.096, 0.035, 16), 0, 0, z);
     P.add('gunDark', box(0.16, 0.12, 0.26), 0.13, 0.10, 3.56);
     P.add('gunDark', box(0.10, 0.07, 0.018), 0.13, 0.10, 3.70);
   } else {
-    for (const z of [1.56, 2.30, 3.18]) P.add('gunDark', cylZ(0.096, 0.032, 16), 0, 0, z);
+    for (const z of [1.56, 2.30, 3.18]) P.add('gun', cylZ(0.096, 0.032, 16), 0, 0, z);
   }
 
   P.turretG.userData.m60VariantAttachmentReceipt = {
@@ -4046,6 +4095,51 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
     antennaWhips: 2,
     equipmentRack: true,
   };
+  P.turretG.userData.americanArmorFinishReceipt = Object.freeze({
+    eraSeparation: 'physical-panel-gaps',
+    outlineGeometry: 0,
+    highContrastOutlineMaterial: false,
+    mechanicalGunmetalPreserved: true,
+  });
+  P.gunG.userData.americanGunFinishReceipt = Object.freeze({
+    decorativeBlackBands: 0,
+    jacketBands: 'painted-relief',
+    muzzleBoresDark: true,
+    exposedWeaponsGunmetal: true,
+  });
+}
+
+function applyM60CompactScale(
+  P: PattonBuilderPort,
+  vehicleScale: number,
+  unscaledTopY: number,
+): void {
+  P.hullG.scale.setScalar(vehicleScale);
+  P.turretG.scale.setScalar(vehicleScale);
+  P.turretG.position.multiplyScalar(vehicleScale);
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
+      P.gear.contactGeom[key] *= vehicleScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= vehicleScale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= vehicleScale;
+    lane.x1 *= vehicleScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  P.hullG.userData.m60CompactScaleReceipt = Object.freeze({
+    designFamily: 'cot-m60-compact-scale-v2',
+    vehicleScale,
+    turretPivotScaled: true,
+    contactGeometryScaled: true,
+    trackHitboxesScaled: true,
+  });
+  P.topY = unscaledTopY * vehicleScale;
 }
 
 function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
@@ -4482,6 +4576,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // shared reference with the compact collar — measured this round.)
   buildGun(P, {
     len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082, sleeve: !!cfg.sleeve,
+    paintSleeveBands: true,
     evac: cfg.sleeve ? 0.462 : null, evacR: 1.62, collar: false, baseR: 0.15,
   });
   if (!cfg.sleeve) {
@@ -4497,7 +4592,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // shared kit helper (MANDATORY shadow-named mechanism, 3fca39b): rim
   // torus + recessed shadow disc, mask/frame-excluded by construction.
   muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
-  finishM60Variant(P, cfg.a3 ? 'a3' : 'a1');
+  finishM60Variant(P, cfg.a3 ? 'a3' : 'a1', cfg.hull.deck);
   if (cfg.a3) {
     // The two front modernization carriers meet the cast glacis around a
     // recessed service pocket.  Back each pocket with a thin hull-owned
@@ -4509,32 +4604,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Uniformly reduce the complete articulated vehicle. The hull owns the
   // running gear and side protection; the turret owner contains its gun and
   // every roof fitting, so all attachment relationships survive unchanged.
-  P.hullG.scale.setScalar(vehicleScale);
-  P.turretG.scale.setScalar(vehicleScale);
-  P.turretG.position.multiplyScalar(vehicleScale);
-  if (P.gear?.contactGeom) {
-    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
-      P.gear.contactGeom[key] *= vehicleScale;
-    }
-    if (P.gear.contactGeom.endRise) {
-      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
-        P.gear.contactGeom.endRise[key] *= vehicleScale;
-      }
-    }
-  }
-  for (const lane of P.gear?.trackHitbox || []) {
-    lane.x0 *= vehicleScale;
-    lane.x1 *= vehicleScale;
-    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
-  }
-  P.hullG.userData.m60CompactScaleReceipt = Object.freeze({
-    designFamily: 'cot-m60-compact-scale-v1',
-    vehicleScale,
-    turretPivotScaled: true,
-    contactGeometryScaled: true,
-    trackHitboxesScaled: true,
-  });
-  P.topY = (3.26 - py + 0.12) * vehicleScale;
+  applyM60CompactScale(P, vehicleScale, 3.26 - py + 0.12);
 }
 
 // ---------------------------------------------------------------------------
@@ -4545,49 +4615,84 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
 // print (its rear deck crowns 2.18 vs the A1's 1.886), so the hull chain is
 // re-authored in the extract frame. Published dims 6.95/7.27/3.63/3.11.
 // ---------------------------------------------------------------------------
-function finishM60A2Variant(P: PattonBuilderPort, muzzleZ: number): void {
+function finishM60A2Variant(
+  P: PattonBuilderPort,
+  muzzleZ: number,
+  deck: ProfileCurve,
+): void {
   const { box, cylZ, torus } = KIT;
 
   // Starship modernization course.  It deliberately stops above the native
   // road wheels and does not touch the linked track, idler or sprocket.
+  const sideCassetteCenterY = 1.34;
+  const sideCassetteHeightM = 0.48;
+  const sideCassetteTopY = sideCassetteCenterY + sideCassetteHeightM / 2;
+  const sideStations = [-2.62, -1.98, -1.34, -0.70, -0.06, 0.58, 1.22, 1.86, 2.50];
   for (const side of [-1, 1]) {
-    for (const z of [-2.62, -1.98, -1.34, -0.70, -0.06, 0.58, 1.22, 1.86, 2.50]) {
-      pattonSideCassette(P, side, 1.42, z, 0.48, 0.54, 'a2');
+    for (const z of sideStations) {
+      pattonSideCassette(P, side, sideCassetteCenterY, z, sideCassetteHeightM, 0.54, 'a2');
     }
     P.add('hullDetail', box(0.050, 0.060, 5.72), side * 1.73, 1.70, -0.08);
   }
+  P.hullG.userData.m60SideCassetteReceipt = Object.freeze({
+    variant: 'a2',
+    count: sideStations.length * 2,
+    fenderTopY: 1.805,
+    cassetteTopY: sideCassetteTopY,
+    cassetteCenterY: sideCassetteCenterY,
+    cassetteBottomY: sideCassetteCenterY - sideCassetteHeightM / 2,
+    supportRailCenterY: 1.70,
+    hangerCount: sideStations.length * 2,
+    previousCenterY: 1.42,
+    blackOutlineStrips: 0,
+  });
   for (const row of [
-    { z: 2.18, y: 1.84, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05] },
-    { z: 2.63, y: 1.72, xs: [-0.88, -0.44, 0.44, 0.88] },
+    { z: 2.18, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05], w: 0.36, d: 0.36 },
+    { z: 2.63, xs: [-0.88, -0.44, 0.44, 0.88], w: 0.38, d: 0.34 },
   ]) {
-    for (const x of row.xs) pattonFaceCassette(P, 'hull', x, row.y, row.z,
-      0.36, 0.085, 0.36, -0.20, 0, 0, 1, 2);
+    for (const x of row.xs) pattonGlacisCassette(P, deck, x, row.z, row.w, row.d, 0.090);
   }
+  P.hullG.userData.m60GlacisArmorReceipt = Object.freeze({
+    carrier: 'upper-glacis-deck-polyline',
+    surfaceNormalAligned: true,
+    maximumSupportGapM: 0,
+    cellCount: 10,
+    blackOutlineStrips: 0,
+    finish: 'vehicle-paint',
+  });
 
-  // The supplied Starship's defining mass is the compact tall tower and
-  // huge 152 mm shield.  Add only shallow, side-seated cassettes so that
-  // shape remains readable instead of burying it under an A1 clone.
+  // The Starship keeps its defining tower and 152 mm shield, but the armor
+  // now reads as a deliberate two-by-five surface grid rather than four
+  // oversized, individually outlined boxes scattered along each wall.
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      const z = 0.82 - i * 0.48;
-      const x = side * 1.205;
-      P.add('turret', box(0.10, 0.33, 0.39), x, 0.50, z, 0, 0, 0);
-      P.add('turretDark', box(0.012, 0.28, 0.030), side * 1.262, 0.50, z + 0.14);
-      P.add('turretDark', box(0.012, 0.030, 0.33), side * 1.262, 0.62, z);
+    for (let row = 0; row < 2; row++) {
+      const y = 0.39 + row * 0.245;
+      for (let column = 0; column < 5; column++) {
+        const z = 0.88 - column * 0.42;
+        P.add('turret', box(0.090, 0.205, 0.36), side * 1.205, y, z);
+        P.add('turretDetail', box(0.008, 0.158, 0.29), side * 1.254, y, z);
+      }
     }
     pattonSmokeBank(P, side, 0.54, 0.92, 0.76);
   }
+  P.turretG.userData.m60a2EraGridReceipt = Object.freeze({
+    layout: 'surface-aligned-grid',
+    rowsPerSide: 2,
+    columnsPerSide: 5,
+    totalCassettes: 20,
+    blackOutlineStrips: 0,
+    finish: 'vehicle-paint-with-scheme-detail-covers',
+  });
 
   // Rebuild the 152 mm installation as a layered gun/launcher plant:
   // accordion boot collars, reinforced trunnion ring, missile-reference
   // box, and a heavy muzzle rim.  All pieces pitch with the gun.
   for (const z of [0.76, 0.94, 1.12]) {
-    P.addGunExtraDark(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0, 0, z);
+    P.addGunExtra(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0, 0, z);
   }
-  P.addGunExtraDark(torus(0.25, 0.025, 20), 0, 0, 0.72);
-  P.add('gunDark', box(0.18, 0.15, 0.28), 0.20, 0.13, 1.54);
-  P.add('gunDark', box(0.10, 0.08, 0.018), 0.20, 0.13, 1.69);
-  P.add('gunDark', cylZ(0.17, 0.035, 18), 0, 0, muzzleZ - 0.04);
+  P.addGunExtra(torus(0.25, 0.025, 20), 0, 0, 0.72);
+  addM60MantletSearchlight(P, 0.72, 0.22, 0.215, 1.43);
+  P.add('gun', cylZ(0.17, 0.035, 18), 0, 0, muzzleZ - 0.04);
 
   // Full modernization centerpiece: a compact TTS-derived remotely operated
   // M2 tower buried into the Starship roof, backed by a dedicated sensor box
@@ -4609,11 +4714,18 @@ function finishM60A2Variant(P: PattonBuilderPort, muzzleZ: number): void {
     lamp.position.set(side * 0.88, 0.53, 0.92);
     P.turretG.add(lamp);
   }
-  const serviceRack = FITTINGS.stowageRack({ mats: P.mats, w: 0.92, d: 0.38,
-    h: 0.26, posts: 5, rails: 2, fill: 0.78, seed: 6020 });
-  serviceRack.position.set(0.30, 0.29, -1.72);
+  const serviceRack = FITTINGS.stowageRack({ mats: P.mats, w: 1.28, d: 0.44,
+    h: 0.30, posts: 7, rails: 3, mesh: true, fill: 0.72, seed: 6020 });
+  serviceRack.position.set(0, 0.29, -2.02);
   serviceRack.rotation.y = Math.PI;
+  serviceRack.name = 'm60a2_open_lattice_bustle';
   P.turretG.add(serviceRack);
+  P.turretG.userData.m60A2BustleReceipt = Object.freeze({
+    designFamily: 'cot-open-lattice-bustle-v2',
+    envelopeM: Object.freeze([1.28, 0.30, 0.44]),
+    attachedToTurret: true,
+    centerTurretLocal: Object.freeze([0, 0.29, -2.02]),
+  });
   P.turretG.userData.americanModernizationReceipt = {
     standardMachineGun: 'sheridan-m2hb-v2',
     stationFamily: 'm551a1-tts-derived-v1',
@@ -4621,7 +4733,21 @@ function finishM60A2Variant(P: PattonBuilderPort, muzzleZ: number): void {
     guardedAuxiliaryLights: 2,
     antennaWhips: 2,
     equipmentRack: true,
+    properMantletSearchlight: true,
+    rearBustle: true,
   };
+  P.turretG.userData.americanArmorFinishReceipt = Object.freeze({
+    eraSeparation: 'physical-panel-gaps',
+    outlineGeometry: 0,
+    highContrastOutlineMaterial: false,
+    mechanicalGunmetalPreserved: true,
+  });
+  P.gunG.userData.americanGunFinishReceipt = Object.freeze({
+    decorativeBlackBands: 0,
+    jacketBands: 'painted-relief',
+    muzzleBoresDark: true,
+    exposedWeaponsGunmetal: true,
+  });
 
 }
 
@@ -5011,8 +5137,8 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
   // legacy 0.076 gunDark face disc above stays — certified gate state,
   // fully occluded behind the new furniture.
   muzzleBore(P, { z: glen, r: 0.148 });
-  finishM60A2Variant(P, glen);
-  P.topY = 3.14 - py + 0.12;
+  finishM60A2Variant(P, glen, cfg.hull.deck);
+  applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
 }
 
 // ---------------------------------------------------------------------------

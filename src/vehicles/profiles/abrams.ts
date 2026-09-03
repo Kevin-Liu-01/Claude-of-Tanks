@@ -1402,8 +1402,8 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
         // top trim are ink-line language on a surface the ref renders FUSED
         // — the fleet law bans <L35 there. hullShadow renders the ref
         // band's own ~49/255 mid-shadow floor; non-tejas keeps hullDark.
-        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(0.05, (pTop - sk.bot) * 0.86, 0.016), side * (sk.x - 0.033), (pTop + sk.bot) / 2, z - panelD / 2);
-        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(0.02, 0.02, 0.16 * s), side * (sk.x - 0.012), pTop - 0.14 * s, z);
+        P.add(g.softSeams ? 'hullDetail' : 'hullDark', box(0.05, (pTop - sk.bot) * 0.86, 0.016), side * (sk.x - 0.033), (pTop + sk.bot) / 2, z - panelD / 2);
+        P.add(g.softSeams ? 'hullDetail' : 'hullDark', box(0.02, 0.02, 0.16 * s), side * (sk.x - 0.012), pTop - 0.14 * s, z);
         for (const f of [-0.28, 0.28]) {
           P.add('hullDetail', cylX(0.016, 0.05, 8), side * (sk.x - 0.028), pTop - 0.05 * s, z + f * panelD);
         }
@@ -1429,7 +1429,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // band (a full-run strip at sk.top+0.02 owned nine 1.45-flat columns
     // over the ref's 1.35 glacis — vertex r2 finding).
     const trimZ1 = g.skirtClampToDeck ? Math.min(sk.z1 - 0.05, 2.40) : sk.z1 - 0.05;
-    P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(0.014, 0.035, trimZ1 - sk.z0 - 0.05),
+    P.add(g.softSeams ? 'hullDetail' : 'hullDark', box(0.014, 0.035, trimZ1 - sk.z0 - 0.05),
       side * (sk.x - 0.012), sk.top + (g.skirtClampToDeck ? -0.04 : 0.02), (sk.z0 + 0.05 + trimZ1) / 2);
     // Flaps sit flush INSIDE the skirt plane and never below its hem (the
     // reference hem line is the front-view silhouette bottom at this x).
@@ -1824,7 +1824,7 @@ function abramsBustleRack(
     P.add('turretDetail', box(0.14 * s, (rkT - rkB) * 0.50, clothD * 0.7), rw * 0.30, rkB + 0.02 + (rkT - rkB) * 0.25, clothZ, 0, -0.06, 0);
     for (let k = 0; k < 2; k++) {
       if (ws[k] < 0.02) continue;
-      P.add('turretTrack', box(ws[k] * 1.03, 0.022, clothD * 1.02), xs[k], rkB + 0.025 + hs[k] * 0.55, clothZ, 0, rys[k], 0);
+      P.add('turretDetail', box(ws[k] * 1.03, 0.022, clothD * 1.02), xs[k], rkB + 0.025 + hs[k] * 0.55, clothZ, 0, rys[k], 0);
     }
     P.add('turretTrack', box(rw * 1.86, 0.045, 0.02), 0, rkB - 0.038, zRear + 0.03);
     // Bay contents in front of the recessed backer (visual r3 item 5): kit
@@ -1838,9 +1838,9 @@ function abramsBustleRack(
     P.add('turretDetail', box(0.28, 0.14, 0.10), -0.05, rkB + 0.09, zRear + 0.065, 0, 0.12, 0);
     P.add('turretDetail', box(0.17, 0.11, 0.09), 0.07, rkB + 0.225, zRear + 0.07, 0, -0.08, 0);
     P.add('turretCloth', cylX(0.085, 0.44, 10), rw * 0.56, rkB + 0.12, zRear + 0.065);
-    P.add('turretTrack', box(0.02, 0.17, 0.105), rw * 0.56, rkB + 0.12, zRear + 0.0625);
+    P.add('turretDetail', box(0.02, 0.17, 0.105), rw * 0.56, rkB + 0.12, zRear + 0.0625);
     P.add('turretDetail', box(0.15, 0.21, 0.095), rw * 0.82, rkB + 0.135, zRear + 0.06);
-    P.add('turretTrack', box(0.155, 0.02, 0.10), rw * 0.82, rkB + 0.205, zRear + 0.06);
+    P.add('turretDetail', box(0.155, 0.02, 0.10), rw * 0.82, rkB + 0.205, zRear + 0.06);
   } else {
     P.add('turretCloth', box(0.72 * s * dufW, (rkT - rkB) * 0.82, clothD), -rw * 0.58, (rkT + rkB) / 2, clothZ);
     P.add('turretCloth', box(0.8 * s * dufW, (rkT - rkB) * 0.9, clothD), d2x, (rkT + rkB) / 2, clothZ);
@@ -1865,7 +1865,7 @@ function abramsBustleRack(
     .filter((_, k) => (strapMul[k] ?? 1) >= 0.02);
   for (const [x, w] of strapDufs) {
     for (const f of [-0.27, 0.27]) {
-      P.add(t.rackDress ? 'turretTrack' : rackDark, box(0.024, (rkT - rkB) * 0.88, clothD * 1.15), x + f * w, (rkT + rkB) / 2 - 0.01, clothZ);
+      P.add(t.rackDress ? 'turretDetail' : rackDark, box(0.024, (rkT - rkB) * 0.88, clothD * 1.15), x + f * w, (rkT + rkB) / 2 - 0.01, clothZ);
     }
   }
 }
@@ -2947,11 +2947,9 @@ function tejasRoofKit(
   P.add('turretCloth', box(0.24, 0.08, 0.66), 0, 0.74, -2.70);
   // Visual r3 item 2: strap density halved (6 straps + 2 rails + 2 end
   // straps read as a lashed crate parapet; the ref band shows a few soft
-  // seams only). Three sunken straps survive.
+  // seams only). Three sunken, vehicle-painted straps survive.
   for (const sx of [-0.72, -0.28, 0.52]) {
-    // (r5: straps mid-shade — three of the top view's black bars over the
-    // fused ref band were these cinch straps)
-    P.add('turretTrack', box(0.026, 0.062, 0.672), sx, 0.828, -2.70);
+    P.add('turretDetail', box(0.026, 0.062, 0.672), sx, 0.828, -2.70);
   }
   liftEye(P, 'turretDetail', -t.tw * 0.62, t.roofWide - 0.12, 0.55);
   liftEye(P, 'turretDetail', t.tw * 0.62, t.roofWide - 0.12, 0.55);
@@ -3002,9 +3000,8 @@ function tejasRoofKit(
   // -2.71 world (the old -2.80 end paved bin -2.783 with a 1.60 bottom).
   // Rear bay bottom rides HIGHER (post-warp side rows -2.34..-2.67 world:
   // ref band bottom 1.73, not the forward bays' 1.60).
-  // (r5: every wall-band bay seam below rides the mid-shade channel — the
-  // fleet law's "turret panel bars"; the ref wall band is one fused mass
-  // with soft AO joints, and these read as bold ink verticals at 2x)
+  // The wall-band seams are shallow painted joins. Routing them through the
+  // shadow bucket made them read as bold black ink at gallery scale.
   // PANEL-PITCH (owner order 2026-08-08): the four bays + their seam strips
   // lie on the tumblehome plane (flankSlab law above) — each bay anchors the
   // certified -1.695 plan line at ITS OWN bottom (per-bay anchors: the rear
@@ -3017,7 +3014,7 @@ function tejasRoofKit(
     [0.03, -0.99, 0.04, 0.06, 0.56, 0.06],
   ]) {
     flankSlab(P, 'turret', t, -1, 1.695, y0, y0, 0.62, z0, z1, 'wall');
-    flankSlab(P, 'turretTrack', t, -1, 1.696, y0, sy0, sy1, sz - 0.01, sz + 0.01, 0.06);
+    flankSlab(P, 'turretDetail', t, -1, 1.696, y0, sy0, sy1, sz - 0.01, sz + 0.01, 0.06);
   }
   // The forward-most bay used to carry the same proud outer face all the
   // way to the smoke-bank station.  Its square end then pierced through the
@@ -3051,9 +3048,9 @@ function tejasRoofKit(
   // face plane, as before) + its cinch strap follows at the pitched face.
   // The RIGHT pouch leans on the rear loft (no band there) — untouched.
   flankSlab(P, 'turretCloth', t, -1, 1.6587, 0.27, 0.27, 0.57, -3.09, -2.75, 0.11);
-  P.add('turretTrack', box(0.115, 0.024, 0.35), -1.5519, 0.44, -2.92);
+  P.add('turretDetail', box(0.115, 0.024, 0.35), -1.5519, 0.44, -2.92);
   P.add('turretCloth', box(0.10, 0.26, 0.35), 1.435, 0.44, -2.97);
-  P.add('turretTrack', box(0.105, 0.022, 0.36), 1.435, 0.46, -2.97);
+  P.add('turretDetail', box(0.105, 0.022, 0.36), 1.435, 0.46, -2.97);
   // Right rack-side stowage bar: ref turret plan reaches z -3.09 world at
   // x 1.16 (the ±1.07 rack leaves that bin's rear at the shell -2.78).
   // Bar top at the ref's 2.19 side read (a 2.30 bar owned the -3.094 side
@@ -3068,7 +3065,7 @@ function tejasRoofKit(
     [0.20, -2.60, -2.12], [0.10, -2.08, -1.03], [0.03, -0.99, 0.04], [0.03, 0.08, 0.99],
   ]) {
     const fx = 1.698 - wallSlope(t) * (0.55 - yA);
-    P.add('turretTrack', box(0.02, 0.02, z1 - z0), -(fx - 0.01), 0.55, (z0 + z1) / 2);
+    P.add('turretDetail', box(0.02, 0.02, z1 - z0), -(fx - 0.01), 0.55, (z0 + z1) / 2);
   }
   // Tarp roll shifted outboard/up to the ref's 2.38 shoulder at x -1.5..-1.63
   // (at -1.52/2.35 it painted the -1.458 column the ref keeps at 2.286 and
@@ -3076,8 +3073,8 @@ function tejasRoofKit(
   // Scheme-painted (visual r2 item 8: the khaki cloth end disc peeked over
   // the left cheek as the "lone beige cylinder"); geometry identical.
   P.add('turret', cylZ(0.075, 0.6, 10), -1.56, t.roofMain - 0.055, -0.55);
-  P.add('turretTrack', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.255, Math.PI / 2, 0, 0);
-  P.add('turretTrack', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.845, Math.PI / 2, 0, 0);
+  P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.255, Math.PI / 2, 0, 0);
+  P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.845, Math.PI / 2, 0, 0);
   // W1b roof-edge shelf law (front coldiff): outboard of the narrowed loft
   // top (±1.27 with inset 0.30) the ref carries a flat ~2.29 stowage shelf
   // to |x| 1.46-1.49 on BOTH flanks (left 2.286-2.317 over -1.29..-1.46,
@@ -3100,8 +3097,8 @@ function tejasRoofKit(
   // the inner lip fills to the loft, the outer nests on it as before.
   flankSlab(P, 'turret', t, 1, 1.578, 0.03, 0.03, 0.62, -0.87, 0.74, 'wall');
   flankSlab(P, 'turret', t, 1, 1.612, 0.03, 0.03, 0.58, -0.87, 0.63, 0.034);
-  flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, 0.29, 0.31, 0.05);
-  flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, -0.56, -0.54, 0.05);
+  flankSlab(P, 'turretDetail', t, 1, 1.6125, 0.03, 0.07, 0.53, 0.29, 0.31, 0.05);
+  flankSlab(P, 'turretDetail', t, 1, 1.6125, 0.03, 0.07, 0.53, -0.56, -0.54, 0.05);
   // Owner surface-markup pass 2026-08-14: the legacy width-plane horns and
   // risers above were four vertical cuboids.  Their selected faces lived at
   // x={-1.828,-1.762,+1.675,+1.660}, visibly bridging air while the Abrams
@@ -3300,43 +3297,28 @@ function abramsArmorHardware(
     // Hull-side carrier and retainers stay inside the certified ±1.828 m
     // plane. They are armor/detail toned: a near-black backing turned the
     // whole array into a graphic H-grid instead of layered armor.
-    P.add(reactive ? 'hull' : 'hullDark', box(0.006, reactive ? 0.54 : 0.28, 4.55),
+    P.add(reactive ? 'hull' : 'hullDetail', box(0.006, reactive ? 0.54 : 0.28, 4.55),
       side * 1.822, reactive ? 1.07 : 1.10, 0.18);
     for (let k = 0; k < count; k++) {
       const z = 2.20 - k * (reactive ? 0.52 : 0.66);
       for (const y of rows) {
         P.add('hullDetail', box(0.005, reactive ? 0.16 : 0.13,
           reactive ? 0.39 : 0.50), side * 1.826, y, z);
-        P.add(reactive ? 'hullDetail' : 'hullDark', cylX(0.015, 0.008, 8), side * 1.824,
+        P.add('hullDetail', cylX(0.015, 0.008, 8), side * 1.824,
           y + 0.045, z - 0.12);
-        P.add(reactive ? 'hullDetail' : 'hullDark', cylX(0.015, 0.008, 8), side * 1.824,
+        P.add('hullDetail', cylX(0.015, 0.008, 8), side * 1.824,
           y - 0.045, z + 0.12);
       }
       if (k < count - 1) {
-        P.add(reactive ? 'hullDetail' : 'hullDark', box(0.006, reactive ? 0.48 : 0.24, 0.028),
+        P.add('hullDetail', box(0.006, reactive ? 0.48 : 0.24, 0.028),
           side * 1.824, reactive ? 1.07 : 1.10,
           z - (reactive ? 0.26 : 0.33));
       }
     }
 
-    // Turret retention straps follow the certified 16.9-degree flank plane
-    // through flankSlab; no vertical plate is allowed to stand off the shell.
-    const xFaceA = reactive ? flushFlankX(t, 0.03) : (side < 0 ? 1.704 : 1.621);
-    const straps = reactive ? [-2.42, -1.94, -1.46, -0.98] : [-2.28, -1.50];
-    for (const z of straps) {
-      if (reactive) {
-        armorFlankPatch(P, 'turretDetail', t, side,
-          0.15, 0.54, z, z + 0.045, 0.010, 0.014);
-      } else {
-        flankSlab(P, 'turretDetail', t, side, xFaceA + 0.004, 0.03,
-          0.15, 0.46, z, z + 0.045, 0.016);
-      }
-      P.add(reactive ? 'turretDetail' : 'turretDark', cylX(0.013, 0.010, 8),
-        side * (reactive ? flushFlankX(t, 0.47, 0.018) : 1.61),
-        reactive ? 0.47 : 0.40, z + 0.022);
-      P.add(reactive ? 'turretDetail' : 'turretDark', cylX(0.013, 0.010, 8),
-        side * (reactive ? flushFlankX(t, 0.21, 0.018) : 1.66), 0.21, z + 0.022);
-    }
+    // The armor volumes and their physical gaps carry the panel rhythm.
+    // Former proud retention strips cast long ink-like strokes across the
+    // turret in quarter views, so no decorative line geometry is overlaid.
   }
 
   // M1A1HA + current Tejas M1A2 owner armor pass. The base M1A1 deliberately
@@ -3523,7 +3505,7 @@ function abramsArmorHardware(
     // protected optics/cabling.  The asymmetric stack gives M1A1/HA the
     // same authored equipment density as the modern SEP variants without
     // floating props or a single fused rectangular pile.
-    P.add('turretDark', box(0.76, 0.075, 0.59), 0.30, 0.735, -0.52);
+    P.add('turretDetail', box(0.76, 0.075, 0.59), 0.30, 0.735, -0.52);
     P.add('turret', box(0.70, 0.26, 0.53), 0.30, 0.80, -0.52);
     P.add('turretDetail', box(0.60, 0.048, 0.43), 0.30, 0.952, -0.52);
     for (const x of [0.13, 0.37]) {
@@ -3531,8 +3513,8 @@ function abramsArmorHardware(
       P.add('turretGlass', box(0.135, 0.072, 0.014), x, 0.88, -0.151);
     }
     P.add('turretDetail', box(0.055, 0.055, 0.92), 0.64, 0.74, -0.51);
-    P.add('turretDark', box(0.028, 0.025, 0.84), 0.64, 0.783, -0.51);
-    P.add('turretDark', box(0.58, 0.070, 0.48), 0.91, 0.715, -0.60);
+    P.add('turretDetail', box(0.028, 0.025, 0.84), 0.64, 0.783, -0.51);
+    P.add('turretDetail', box(0.58, 0.070, 0.48), 0.91, 0.715, -0.60);
     P.add('turret', box(0.54, 0.23, 0.44), 0.91, 0.79, -0.60);
     P.add('turretDetail', box(0.44, 0.038, 0.34), 0.91, 0.927, -0.60);
     P.add('turret', cylY(0.20, 0.23, 0.12, 18), 0.84, 0.91, -0.18);
@@ -3553,7 +3535,7 @@ function abramsArmorHardware(
       P.add('turretDetail', cylY(0.016, 0.019, 0.012, 8), x, 0.982, z);
     }
     for (const [x, z, w] of [[-0.12, -1.10, 0.23], [0.14, -1.10, 0.20], [0.38, -1.10, 0.18]]) {
-      P.add('turretDark', box(w + 0.06, 0.055, 0.30), x, 0.715, z);
+      P.add('turretDetail', box(w + 0.06, 0.055, 0.30), x, 0.715, z);
       P.add('turret', box(w, 0.15, 0.27), x, 0.78, z);
       P.add('turretDetail', box(w - 0.04, 0.026, 0.21), x, 0.868, z);
     }
@@ -3916,10 +3898,10 @@ function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     ]) {
       // (r5 law: the hem bands read as floating INK rectangles on the lit
       // skirt face at 2x — the ref hem shadow is a soft dark; mid tier)
-      P.add('hullShadow', box(0.018, hh, hw), side * (skx - 0.0075), hy, hz);
+      P.add('hullDetail', box(0.018, hh, hw), side * (skx - 0.0075), hy, hz);
     }
     for (const jz of [1.493, -0.593]) {         // joint deepeners near the hem
-      P.add('hullShadow', box(0.016, 0.16, 0.05), side * (skx - 0.0065), 0.78, jz);
+      P.add('hullDetail', box(0.016, 0.16, 0.05), side * (skx - 0.0065), 0.78, jz);
     }
     // -- 2. inter-wheel void blocks (x 1.20..1.44: overlap the 1.09..1.22 AO
     // wall, stay 7.5 cm behind the 1.515 wheel faces; tops hide behind the
@@ -3939,7 +3921,7 @@ function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // (floater contract). r5: hullDark -> hullShadow — the x0.26 cap drew
     // the skirt-top INK line on both front quarters (ref: soft slot,
     // top-view slot L21 vs our 16); the mid tier is the ref's own read.
-    P.add('hullShadow', box(0.075, 0.02, 6.9), side * 1.7765, 1.318, -0.05);
+    P.add('hullDetail', box(0.075, 0.02, 6.9), side * 1.7765, 1.318, -0.05);
   }
   const bayMesh = new THREE.Mesh(mergeAll(bayGeos), P.mats.dark);
   bayMesh.name = 'gear_wheelBayVoidDress';
@@ -3995,8 +3977,8 @@ function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean 
   for (const vx of [-0.455, -0.30, -0.15, 0.15, 0.30, 0.455]) {
     P.add('hullWood', box(0.020, 0.30, 0.016), vx, 1.185, W + 0.006);
   }
-  P.add(sd ? 'hullShadow' : 'hullDark', box(0.045, 0.35, 0.014), -0.61, 1.185, W + 0.004);
-  P.add(sd ? 'hullShadow' : 'hullDark', box(0.045, 0.35, 0.014), 0.61, 1.185, W + 0.004);
+  P.add(sd ? 'hullDetail' : 'hullDark', box(0.045, 0.35, 0.014), -0.61, 1.185, W + 0.004);
+  P.add(sd ? 'hullDetail' : 'hullDark', box(0.045, 0.35, 0.014), 0.61, 1.185, W + 0.004);
   P.add('hullDetail', box(1.84, 0.032, 0.012), 0, 1.372, W + 0.005);
   // Taillights + tow pintle on the same wall. (The two hullDark shackle
   // toruses are GONE — visual r3 item 4's "two stray circle outlines".)
@@ -4004,7 +3986,7 @@ function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean 
     P.add('hullDark', box(0.125, 0.072, 0.010), side * 0.80, 1.352, W + 0.004);
     P.add('hullDetail', box(0.135, 0.014, 0.012), side * 0.80, 1.396, W + 0.005);
   }
-  P.add(sd ? 'hullShadow' : 'hullDark', box(0.30, 0.062, 0.018), 0, 1.030, W + 0.008);
+  P.add(sd ? 'hullDetail' : 'hullDark', box(0.30, 0.062, 0.018), 0, 1.030, W + 0.008);
   P.add('hullDetail', box(0.10, 0.09, 0.016), 0, 1.032, W + 0.007);
   // TOW-SHACKLE STATIONS on the lower plate (rear round 2026-08-06 — owner:
   // "tow points on the lower plate"): clevis bracket pairs + shackle bow +
@@ -4029,7 +4011,7 @@ function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean 
     P.add('hullWood', box(0.014, 0.27, 0.012), side * 1.0025 - 0.042, 1.26, WS - 0.005);
     P.add('hullWood', box(0.014, 0.27, 0.012), side * 1.0025 + 0.042, 1.26, WS - 0.005);
     // plate course seam where the step meets the corner-guard line
-    P.add(sd ? 'hullShadow' : 'hullDark', box(0.014, 0.55, 0.006), side * 1.062, 1.30, WS - 0.003);
+    P.add(sd ? 'hullDetail' : 'hullDark', box(0.014, 0.55, 0.006), side * 1.062, 1.30, WS - 0.003);
   }
   // TIP box ON the plate face at the real right-rear station (§B3 phone-box
   // tells; softDark detail tone — the hullDark slab read as a black HOLE in
@@ -4037,8 +4019,8 @@ function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean 
   P.add(sd ? 'hullDetail' : 'hullDark', box(0.16, 0.22, 0.030), 0.86, 1.52, WS - 0.017);
   P.add('hullDetail', box(0.17, 0.028, 0.036), 0.86, 1.645, WS - 0.018);
   if (sd) {
-    P.add('hullShadow', box(0.13, 0.016, 0.012), 0.86, 1.573, WS - 0.036);  // lid seam
-    P.add('hullShadow', box(0.024, 0.034, 0.010), 0.86, 1.508, WS - 0.036); // latch
+    P.add('hullDetail', box(0.13, 0.016, 0.012), 0.86, 1.573, WS - 0.036);  // lid seam
+    P.add('hullDetail', box(0.024, 0.034, 0.010), 0.86, 1.508, WS - 0.036); // latch
     P.add('hullDetail', box(0.032, 0.012, 0.014), 0.86, 1.451, WS - 0.035); // cable port
   }
 }
@@ -4050,6 +4032,23 @@ function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean 
 // Ref reads (critic pairs, board light): pads (55,51,43) H40 S12 L19 /
 // rear wrap (69,64,54) H40 — proc was (14,14,11) L5 pure-black cog slab.
 // Wheel DISH albedo already matched (ref (58,65,48) vs proc (57,63,50)).
+function publishAmericanArmorFinish(P: AbramsBuilderPort): void {
+  P.turretG.userData.americanArmorFinishReceipt = Object.freeze({
+    eraSeparation: 'physical-panel-gaps',
+    outlineGeometry: 0,
+    decorativeTurretStraps: 0,
+    highContrastOutlineMaterial: false,
+    mechanicalGunmetalPreserved: true,
+  });
+  P.gunG.userData.americanGunFinishReceipt = Object.freeze({
+    decorativeBlackBands: 0,
+    jacketBands: 'painted-relief',
+    mantletSeams: 'painted-relief',
+    muzzleBoresDark: true,
+    exposedWeaponsGunmetal: true,
+  });
+}
+
 function tejasToneKit(P: AbramsBuilderPort): void {
   const reactiveArmor = ['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']
     .includes(P.spec.id);
@@ -4203,9 +4202,9 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   // the builder runs — createTank merges buckets AFTER it returns — so the
   // re-material rides the factory's own guaranteed post-merge call,
   // P.gear.update(0,0) (rest-pose seat), via a one-shot self-restoring
-  // wrapper. The otherwise-unused turretTrack bucket carries every turret
-  // mid-tier element (rack recesses/voids/straps, hatch rings, wall-band
-  // panel bars, rail seam, CWS lugs, pouch lids, under-rim strip); the
+  // wrapper. The otherwise-unused turretTrack bucket carries true turret
+  // recesses plus compact hatch/CWS hardware. Decorative bustle straps and
+  // wall seams stay vehicle-painted instead of entering this shadow tier; the
   // whole gunG dark set (mantlet band seams, coax, evac groove/cinch
   // rings, MRS seam) is mid-tier by the same law. turretDark keeps the
   // true-black x0.26 channel for the M2.
@@ -4493,8 +4492,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // seams DELETED, horizontal seams stretched with the cover: one bold line
   // at the cover top edge + a slim lower seam, per the ref's band language.
   P.addGunExtra(box(0.56, 0.40, 0.13), 0, 0.05, 0.415);
-  P.addGunExtraDark(box(0.50, 0.030, 0.028), 0, 0.20, 0.47);
-  P.addGunExtraDark(box(0.44, 0.024, 0.028), 0, -0.14, 0.47);
+  P.addGunExtra(box(0.50, 0.030, 0.028), 0, 0.20, 0.47);
+  P.addGunExtra(box(0.44, 0.024, 0.028), 0, -0.14, 0.47);
   P.addGunExtraDark(cylZ(0.042, 0.18, 10), 0.16, 0.02, 0.47);
   P.addGunExtra(cylZ(0.125, 0.28, 14), 0, 0, 0.66);
   if (P.spec.id === 'm1a1ha') {
@@ -4545,8 +4544,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   P.add('gun', cylZ(0.166, 0.341, 20), 0, 0, 1.634);
   P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.444);
   P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.824);
-  P.add('gunDark', cylZ(0.152, 0.012, 18), 0, 0, 1.4595);
-  P.add('gunDark', cylZ(0.152, 0.012, 18), 0, 0, 1.8085);
+  P.add('gun', cylZ(0.152, 0.012, 18), 0, 0, 1.4595);
+  P.add('gun', cylZ(0.152, 0.012, 18), 0, 0, 1.8085);
   // The M256 thermal jacket is assembled from round sleeve sections. Keep a
   // single radial dimension here: one-axis scaling makes the muzzle read as
   // a visibly oval barrel from the front.
@@ -4556,11 +4555,11 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       P.add('gun', cylZ(0.125, z1 - z0, seg), 0.05, 0.007, (z0 + z1) / 2);
     }
     for (const zc of [0.72, 1.13]) {                                 // cinch bands in the grooves
-      P.add('gunDark', cylZ(0.1235, 0.036, seg), 0.05, 0.007, zc);
+      P.add('gun', cylZ(0.1235, 0.036, seg), 0.05, 0.007, zc);
     }
-    P.add('gunDark', cylZ(0.120, 0.06, seg), 0.05, 0.007, 1.60);    // recessed joint ring
+    P.add('gun', cylZ(0.120, 0.06, seg), 0.05, 0.007, 1.60);        // recessed joint ring
     P.add('gun', cylZ(0.125, 0.27, seg), 0.05, 0.007, 1.775);       // sleeve B
-    P.add('gunDark', cylZ(0.118, 0.014, seg), 0.05, 0.007, 1.899);  // sleeve mouth washer
+    P.add('gun', cylZ(0.118, 0.014, seg), 0.05, 0.007, 1.899);      // sleeve mouth washer
   }
   P.add('gun', cylZ(t.gunR * 1.12, 0.09, 12), 0, 0, t.gunLen - 0.55);
   // MRS collar step at the muzzle (visual r2 item 11): stepped sleeve +
@@ -4569,9 +4568,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // column) and the whole band lives on the already-priced only-proc
   // published-overall columns (residual law).
   P.add('gun', cylZ(0.112, 0.30, 14), 0, 0, t.gunLen - 0.30);
-  P.add('gunDark', cylZ(0.1145, 0.022, 14), 0, 0, t.gunLen - 0.165);
+  P.add('gun', cylZ(0.1145, 0.022, 14), 0, 0, t.gunLen - 0.165);
   P.add('gun', cylZ(0.121, 0.05, 14), 0, 0, t.gunLen - 0.038);
-  P.add('gunDark', box(0.05, 0.045, 0.075), 0, 0.100, t.gunLen - 0.26);
+  P.add('gun', box(0.05, 0.045, 0.075), 0, 0.100, t.gunLen - 0.26);
   P.add('gun', cylZ(0.13, 0.16, 12), 0, 0, t.gunLen - 0.1);
   // §B3.1 MUZZLE BORE (owner addendum 2026-08-06, "make tips of guns have
   // holes"): the M256 face carries the bore — counterbore rim lip (torus,
@@ -4582,7 +4581,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // the ww2-lane banked residual). Radially interior to every muzzle-zone
   // silhouette (r <= 0.076 < 0.121); the family mats.dark x0.26 channel
   // renders the disc the certified M2-black ~16 read.
-  P.add('gunDark', torus(0.070, 0.006, 18), 0, 0, t.gunLen - 0.0185, Math.PI / 2, 0, 0);
+  P.add('gun', torus(0.070, 0.006, 18), 0, 0, t.gunLen - 0.0185, Math.PI / 2, 0, 0);
   boreDisc(P, 0.058, t.gunLen - 0.0175);
   P.topY = t.roofMain + 1.0;
   // Visual r2 kits (work order items 1/3/5/7 + the tone laws).
@@ -4592,6 +4591,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // was the owner's report on every mark, not just m1a1ha).
   tejasRearKit(P, { softDark: true });
   tejasToneKit(P);
+  publishAmericanArmorFinish(P);
 
   if (p.abramsKit === 'tusk') {
     // TUSK kit at REAL scale on the published-true body — §B3.2 REBUILD
@@ -6885,8 +6885,8 @@ function buildM1a2(P: AbramsBuilderPort, V: AbramsProfileOptions = {}): void {
     } else {
       // LEFT forward flank: spare cable COIL on the wall (era-true stowage;
       // torus outer -1.449 sits in the lip bin at lip-legal z 0.12..0.44).
-      P.add('turretDark', torus(0.14, 0.016, 18), -1.433, 1.72 - M1A2_RING[1], 0.28 - M1A2_RING[2], 0, 0, Math.PI / 2);
-      P.add('turretDark', box(0.014, 0.05, 0.05), -1.435, 1.72 - M1A2_RING[1], 0.28 - M1A2_RING[2]);
+      P.add('turretDetail', torus(0.14, 0.016, 18), -1.433, 1.72 - M1A2_RING[1], 0.28 - M1A2_RING[2], 0, 0, Math.PI / 2);
+      P.add('turretDetail', box(0.014, 0.05, 0.05), -1.435, 1.72 - M1A2_RING[1], 0.28 - M1A2_RING[2]);
       // RIGHT forward flank: spare-link strip hung on the wall (era tell).
       // (rz +PI/2 folds the guide-horn ridge INBOARD; plates half-sunk at
       // 1.3075..1.3525, z-centered 0.33 inside the bin's 0.025..1.41 window.)
@@ -6936,13 +6936,13 @@ function buildM1a2(P: AbramsBuilderPort, V: AbramsProfileOptions = {}): void {
     for (const z of [0.22, 0.58, 0.86]) {
       P.add('turretDetail', box(0.006, 0.03, 0.26), -0.867, 2.30 - M1A2_RING[1], z - M1A2_RING[2]);
     }
-    P.add('turretDark', box(0.006, 0.024, 0.85), -0.866, 2.20 - M1A2_RING[1], 0.50 - M1A2_RING[2]);
-    P.add('turretDark', box(0.05, 0.09, 0.09), -0.868, 2.24 - M1A2_RING[1], 0.14 - M1A2_RING[2]);
-    P.add('turretDark', box(0.006, 0.024, 1.30), 0.851, 2.22 - M1A2_RING[1], 0.30 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.006, 0.024, 0.85), -0.866, 2.20 - M1A2_RING[1], 0.50 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.05, 0.09, 0.09), -0.868, 2.24 - M1A2_RING[1], 0.14 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.006, 0.024, 1.30), 0.851, 2.22 - M1A2_RING[1], 0.30 - M1A2_RING[2]);
     for (const z of [-0.10, 0.55]) {
       P.add('turretDetail', box(0.006, 0.03, 0.26), 0.852, 2.28 - M1A2_RING[1], z - M1A2_RING[2]);
     }
-    P.add('turretDark', box(0.05, 0.08, 0.08), 0.853, 2.25 - M1A2_RING[1], 0.85 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.05, 0.08, 0.08), 0.853, 2.25 - M1A2_RING[1], 0.85 - M1A2_RING[2]);
   }
   // Rack front frame posts (side col -2.46 reads 2.10 between the crowns).
   tb('turret', -0.90, 0.90, 1.63, 2.10, -2.518, -2.425);
@@ -6987,7 +6987,7 @@ function buildM1a2(P: AbramsBuilderPort, V: AbramsProfileOptions = {}): void {
     for (const s of [-1, 1]) {
       P.add('turretDetail', box(0.14, 0.012, 0.08), s * 0.72, 1.970 - M1A2_RING[1], 1.30 - M1A2_RING[2]);
       P.add('turretDetail', box(0.02, 0.014, 0.12), s * 0.55, 1.971 - M1A2_RING[1], 0.85 - M1A2_RING[2]);
-      P.add('turretDark', box(0.10, 0.008, 0.10), s * 0.88, 1.969 - M1A2_RING[1], 0.62 - M1A2_RING[2]);
+      P.add('turretDetail', box(0.10, 0.008, 0.10), s * 0.88, 1.969 - M1A2_RING[1], 0.62 - M1A2_RING[2]);
     }
   }
   // Flank walls under the saddle line. (r2: 2.125/2.128 -> 2.100 — the ref
@@ -8192,6 +8192,7 @@ function buildAim(P: AbramsBuilderPort): void {
   // span, where the body classification is harmless.
   buildGun(P, { len: 4.67, r: 0.115, sleeve: true, evac: 0.375, evacR: 2.0, collar: false, baseR: 0.16 });
   P.add('gun', cylZ(0.13, 0.09, 12), 0, 0, 4.10);
+  publishAmericanArmorFinish(P);
   P.topY = 1.9;
 }
 
@@ -10401,7 +10402,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
         1.10 + frontBias * 0.35, z, 0, 0, side * (k % 2 ? 0.008 : -0.008));
       P.add('hullDetail', box(0.025, h * 0.72, 0.045), side * 2.075,
         1.10 + frontBias * 0.35, z);
-      P.add('hullDark', box(0.012, h * 0.82, 0.022), side * 2.079,
+      P.add('hullDetail', box(0.012, h * 0.82, 0.022), side * 2.079,
         1.10 + frontBias * 0.35, z + 0.302);
     }
     P.addExternalArmor('hull', box(0.20, 0.14, 7.18), side * 1.995, 1.53, -0.02);
@@ -10452,11 +10453,11 @@ function buildM1A3(P: AbramsBuilderPort): void {
   // Isolated, armored bustle autoloader with six blow-off roof panels.
   P.add('turret', box(2.92, 0.53, 1.46), 0, 0.37, -2.42);
   P.add('turret', box(3.12, 0.22, 0.74), 0, 0.58, -3.01);
-  P.add('turretDark', box(2.72, 0.035, 0.045), 0, 0.655, -1.69);
+  P.add('turretDetail', box(2.72, 0.035, 0.045), 0, 0.655, -1.69);
   for (let k = 0; k < 6; k++) {
     const x = -1.10 + k * 0.44;
     P.addHatch('turret', box(0.37, 0.045, 0.75), x, 0.775, -2.48);
-    P.add('turretDark', box(0.018, 0.052, 0.70), x + 0.205, 0.778, -2.48);
+    P.add('turretDetail', box(0.018, 0.052, 0.70), x + 0.205, 0.778, -2.48);
   }
 
   // Layered turret side armor and open bustle cage.
@@ -10574,12 +10575,12 @@ function buildM1A3(P: AbramsBuilderPort): void {
   buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.18 });
   for (const [z0, z1, radius] of [[0.60, 1.46, 0.145], [1.52, 2.38, 0.140], [2.44, 3.18, 0.136]]) {
     P.add('gun', cylZ(radius, z1 - z0, 22), 0, 0, (z0 + z1) / 2);
-    P.add('gunDark', torus(radius * 1.01, 0.012, 20), 0, 0, z0, Math.PI / 2, 0, 0);
+    P.add('gun', torus(radius * 1.01, 0.012, 20), 0, 0, z0, Math.PI / 2, 0, 0);
   }
   P.add('gun', cylZ(0.178, 0.48, 22), 0, 0, 3.46);
-  P.add('gunDark', torus(0.178, 0.016, 20), 0, 0, 3.23, Math.PI / 2, 0, 0);
+  P.add('gun', torus(0.178, 0.016, 20), 0, 0, 3.23, Math.PI / 2, 0, 0);
   P.add('gun', cylZ(0.150, 0.38, 20), 0, 0, 5.43);
-  P.add('gunDark', torus(0.153, 0.018, 20), 0, 0, 5.26, Math.PI / 2, 0, 0);
+  P.add('gun', torus(0.153, 0.018, 20), 0, 0, 5.26, Math.PI / 2, 0, 0);
   // Shadow-named bore furniture remains visible in production while staying
   // neutral to silhouette/centering receipts. Its proud annulus and recessed
   // disc prevent the base tube's closed cylinder cap from winning head-on
@@ -10612,6 +10613,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;
+  publishAmericanArmorFinish(P);
 }
 
 // ---------------------------------------------------------------------------

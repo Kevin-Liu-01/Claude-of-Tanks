@@ -59,7 +59,48 @@ const tank = createTank('m60a2', null, {
 });
 try {
   const hullRig = tank.root.getObjectByName('rig_hull');
+  const turretRig = tank.root.getObjectByName('rig_turret');
+  const gunRig = tank.root.getObjectByName('rig_gun');
   assert.ok(hullRig, 'Starship retains the canonical hull rig');
+  assert.ok(turretRig, 'Starship retains the canonical turret rig');
+  assert.ok(gunRig, 'Starship retains the canonical gun rig');
+  const compact = hullRig.userData.m60CompactScaleReceipt;
+  const vehicleScale = compact?.vehicleScale ?? 1;
+  assert.equal(vehicleScale, 0.9, 'Starship joins the ten-percent-smaller M60 family envelope');
+  assert.equal(hullRig.scale.x, vehicleScale, 'Starship hull, running gear and side armor scale together');
+  assert.equal(turretRig.scale.x, vehicleScale, 'Starship turret, launcher and equipment scale together');
+
+  const sideCassettes = hullRig.userData.m60SideCassetteReceipt;
+  assert.ok(sideCassettes, 'Starship publishes its lowered side-armor seating receipt');
+  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
+    'Starship side ERA hangs below the fender datum');
+  assert.equal(sideCassettes.blackOutlineStrips, 0,
+    'Starship side ERA uses subdued inset faces instead of black frames');
+  const glacis = hullRig.userData.m60GlacisArmorReceipt;
+  assert.equal(glacis?.surfaceNormalAligned, true,
+    'Starship glacis armor follows the authored deck curve at every corner');
+  assert.equal(glacis?.maximumSupportGapM, 0,
+    'Starship glacis cassettes are flush-seated to the upper plate');
+  assert.equal(glacis?.blackOutlineStrips, 0,
+    'Starship glacis armor has no decorative black divider strips');
+  const turretGrid = turretRig.userData.m60a2EraGridReceipt;
+  assert.equal(turretGrid?.layout, 'surface-aligned-grid',
+    'Starship turret applique uses one deliberate surface grid');
+  assert.equal(turretGrid?.rowsPerSide, 2);
+  assert.equal(turretGrid?.columnsPerSide, 5);
+  assert.equal(turretGrid?.totalCassettes, 20);
+  assert.equal(turretGrid?.blackOutlineStrips, 0);
+  const bustle = turretRig.userData.m60A2BustleReceipt;
+  assert.equal(bustle?.attachedToTurret, true,
+    'Starship rear lattice is a true turret bustle');
+  assert.equal(bustle?.designFamily, 'cot-open-lattice-bustle-v2');
+  const searchlight = gunRig.userData.m60SearchlightReceipt;
+  assert.equal(searchlight?.housingBucket, 'gunMount',
+    'Starship mantlet searchlight has a painted housing');
+  assert.equal(searchlight?.lensBucket, 'gunMountGlass',
+    'Starship mantlet searchlight has a real optical lens');
+  assert.equal(turretRig.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
+    'Starship armor has no black outline geometry');
   const receipt = hullRig.userData.m60a2RearClosureReceipt;
   assert.equal(receipt?.panels, 2, 'both over-track rear shoulders are structurally closed');
   assert.ok(receipt.deckOverlapM >= 0.02, 'closures overlap the deck instead of floating below it');
@@ -89,13 +130,15 @@ try {
     );
     const hit = ray.intersectObject(hullRig, true)
       .find((intersection) => intersection.object.name === 'hull');
-    assert.ok(hit, `${side < 0 ? 'left' : 'right'} rear shoulder has a camouflaged structural panel`);
-    assert.ok(hit.point.z <= -3.40 && hit.point.z >= -3.70,
+    if (!hit) assert.fail(
+      `${side < 0 ? 'left' : 'right'} rear shoulder has a camouflaged structural panel`,
+    );
+    assert.ok(hit.point.z <= -3.40 * vehicleScale && hit.point.z >= -3.70 * vehicleScale,
       `${side < 0 ? 'left' : 'right'} closure is seated against the rear deck edge`);
 
-    for (const [y, label] of [[1.70, 'lower'], [1.90, 'upper']]) {
+    for (const [y, label] of [[1.70 * vehicleScale, 'lower'], [1.90 * vehicleScale, 'upper']]) {
       const shoulderRay = new THREE.Raycaster(
-        new THREE.Vector3(side * 2.5, y, -3.0),
+        new THREE.Vector3(side * 2.5, y, -3.0 * vehicleScale),
         new THREE.Vector3(-side, 0, 0),
         0,
         1.5,
@@ -104,15 +147,15 @@ try {
         .find((intersection) => intersection.object.name === 'hull');
       assert.ok(shoulderHit,
         `${side < 0 ? 'left' : 'right'} ${label} side shoulder is backed by structural hull`);
-      assert.ok(Math.abs(Math.abs(shoulderHit.point.x) - sideShoulder.outerX) <= 0.015,
+      assert.ok(Math.abs(Math.abs(shoulderHit.point.x) - sideShoulder.outerX * vehicleScale) <= 0.015,
         `${side < 0 ? 'left' : 'right'} ${label} shoulder reaches the marked outer hull edge`);
     }
 
     const transitionRay = new THREE.Raycaster(
-      new THREE.Vector3(side * 1.47, 1.72, -1.10),
+      new THREE.Vector3(side * 1.47 * vehicleScale, 1.72 * vehicleScale, -1.10 * vehicleScale),
       new THREE.Vector3(0, 0, 1),
       0,
-      0.7,
+      0.7 * vehicleScale,
     );
     const transitionHit = transitionRay.intersectObject(hullRig, true)
       .find((intersection) => intersection.object.name === 'hull');

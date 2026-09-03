@@ -43,6 +43,7 @@ interface SheridanMaterials extends Record<string, THREE.Material> {
 interface SheridanBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
   readonly mats: SheridanMaterials;
   readonly q?: boolean;
   readonly spec: {
@@ -1458,12 +1459,19 @@ function buildSheridan(P: SheridanBuilderPort): void {
     0, 0.0072, 1.4034);
   P.addGunExtra(cylZ(0.0906, 0.4502, P.q ? 28 : 16, 0.1258),
     0, 0.0072, 1.8622);
-  // Hard rings preserve the five independently measured sleeve breaks.
+  // Painted relief rings preserve the measured sleeve breaks without
+  // drawing high-contrast black bands across the M81 barrel.
   for (const [z, r, depth] of [
     [0.6229, 0.1536, 0.018], [1.0937, 0.1472, 0.014],
     [1.7094, 0.1471, 0.014], [1.6371, 0.096, 0.020],
-  ]) P.addGunExtraDark(cylZ(r, depth, P.q ? 24 : 14), 0, 0.0072, z);
+  ]) P.addGunExtra(cylZ(r, depth, P.q ? 24 : 14), 0, 0.0072, z);
   muzzleBore(P, { len: 2.09, r: 0.115 });
+  P.gunG.userData.americanGunFinishReceipt = Object.freeze({
+    decorativeBlackBands: 0,
+    jacketBands: 'painted-relief',
+    muzzleBoresDark: true,
+    exposedWeaponsGunmetal: true,
+  });
 
   // Turret cheek ERA follows the cast tangent, with attachment rails buried
   // into the shell rather than suspended in front of it.

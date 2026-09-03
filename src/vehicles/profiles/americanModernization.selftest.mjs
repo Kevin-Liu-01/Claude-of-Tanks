@@ -52,6 +52,19 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   tank.dispose();
 }
 
+for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
+  const tank = make(id);
+  const gun = tank.root.getObjectByName('rig_gun');
+  const receipt = gun?.userData.americanGunFinishReceipt;
+  assert.equal(receipt?.decorativeBlackBands, 0,
+    `${id}: gun sleeves use painted relief instead of decorative black bands`);
+  assert.equal(receipt?.muzzleBoresDark, true,
+    `${id}: true muzzle openings remain dark after the band cleanup`);
+  assert.equal(receipt?.exposedWeaponsGunmetal, true,
+    `${id}: exposed secondary weapons retain their gunmetal finish`);
+  tank.dispose();
+}
+
 {
   const tank = make('m60a2');
   const turret = tank.root.getObjectByName('rig_turret');
@@ -68,6 +81,12 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
     'M60A2 RWS keeps the weapon mechanism gunmetal while its armor stays painted');
   assert.equal(turret.userData.americanModernizationReceipt?.stationVariant, 'hunter');
   assert.equal(turret.userData.americanModernizationReceipt?.guardedAuxiliaryLights, 2);
+  assert.equal(turret.userData.americanModernizationReceipt?.properMantletSearchlight, true,
+    'M60A2 replaces the old dark block with a complete mantlet searchlight');
+  assert.equal(turret.userData.americanModernizationReceipt?.rearBustle, true,
+    'M60A2 carries a turret-owned rear bustle');
+  assert.equal(turret.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
+    'M60A2 applique has no decorative black outline geometry');
   tank.dispose();
 }
 
@@ -80,6 +99,17 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
+  assert.equal(turret.userData.americanArmorFinishReceipt?.eraSeparation,
+    'physical-panel-gaps', `${id}: Abrams armor uses physical seams rather than ink outlines`);
+  assert.equal(turret.userData.americanArmorFinishReceipt?.highContrastOutlineMaterial,
+    false, `${id}: Abrams panel detail stays in the subdued vehicle palette`);
+  assert.equal(turret.userData.americanArmorFinishReceipt?.decorativeTurretStraps,
+    0, `${id}: Abrams turret has no proud line-strip overlays`);
+  const gunFinish = tank.root.getObjectByName('rig_gun')?.userData.americanGunFinishReceipt;
+  assert.equal(gunFinish?.decorativeBlackBands, 0,
+    `${id}: Abrams gun uses painted sleeve relief instead of black rings`);
+  assert.equal(gunFinish?.muzzleBoresDark, true,
+    `${id}: Abrams keeps only the true muzzle opening dark`);
   const hasFullCommanderTower = id === 'm1a2_tusk' || id === 'm1a2_sepv3';
   const compactStation = fittings(tank.root,
     (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
@@ -156,6 +186,19 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
     `${id}: relocated optic is flush-seated on the roof carrier`);
   abramsStations.set(id,
     `${station[0].userData.designFamily || station[0].userData.americanRwsFamily}:${station[0].userData.stationVariant}`);
+  tank.dispose();
+}
+
+{
+  const tank = make('m1a3');
+  const turret = tank.root.getObjectByName('rig_turret');
+  const gunFinish = tank.root.getObjectByName('rig_gun')?.userData.americanGunFinishReceipt;
+  assert.equal(turret.userData.americanArmorFinishReceipt?.outlineGeometry, 0,
+    'm1a3: modular armor relies on physical gaps instead of black outline strips');
+  assert.equal(gunFinish?.decorativeBlackBands, 0,
+    'm1a3: 130 mm thermal-jacket joints remain vehicle-painted');
+  assert.equal(gunFinish?.muzzleBoresDark, true,
+    'm1a3: true muzzle opening remains dark');
   tank.dispose();
 }
 assert.equal(new Set(abramsStations.values()).size, 4,

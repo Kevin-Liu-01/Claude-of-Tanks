@@ -296,6 +296,7 @@ interface GunBuildConfig {
   r: number;
   brake?: string | boolean | null;
   sleeve?: boolean;
+  paintSleeveBands?: boolean;
   evac?: number | boolean | null;
   collar?: boolean;
   baseR?: number;
@@ -4078,7 +4079,7 @@ function buildGun(builder: object, config: object): void {
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62 } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
@@ -4090,11 +4091,12 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
     // clamp rings render DARK (canvas/steel cinch bands) so the sleeved tube
     // splits into sleeve / ring / bare-steel segments instead of one painted
     // pipe; a dark seam ring also closes each sleeve start.
+    const sleeveBandBucket = paintSleeveBands ? g : gd;
     for (const [f0, f1] of [[0.16, 0.46], [0.52, 0.82]]) {
       const sl = (f1 - f0) * len;
       g.push(xform(cylZ(r * 1.22, sl, seg), 0, 0, f0 * len + sl / 2));
-      gd.push(xform(cylZ(r * 1.24, 0.045, seg), 0, 0, f0 * len + 0.02));     // start seam ring
-      gd.push(xform(cylZ(r * 1.31, 0.06, seg), 0, 0, f1 * len + 0.03));      // clamp ring
+      sleeveBandBucket.push(xform(cylZ(r * 1.24, 0.045, seg), 0, 0, f0 * len + 0.02)); // start seam ring
+      sleeveBandBucket.push(xform(cylZ(r * 1.31, 0.06, seg), 0, 0, f1 * len + 0.03));  // clamp ring
     }
   }
   if (evac !== null) {
