@@ -41,7 +41,7 @@ assert(prototype.equipment.geometry.boundingBox.min.z <= -2.34,
   'ZTZ-99A2 Prototype: preserved deep rear service package remains present');
 
 const receipt = production.turretRig.userData.ztz99a2ProductionReceipt;
-assert.equal(receipt?.architecture, 'ztz99a2-production-arrow-r1',
+assert.equal(receipt?.architecture, 'ztz99a2-production-arrow-r3',
   'ZTZ-99A2: canonical ID receives the new production turret');
 assert.equal(receipt?.prototypeGeometryReused, false,
   'ZTZ-99A2: production turret is not the relabeled prototype mesh');
@@ -49,6 +49,24 @@ assert.equal(receipt?.integratedChevronFront, true,
   'ZTZ-99A2: production chevrons form the integrated primary front');
 assert.equal(receipt?.chevronSideJoinGapM, 0,
   'ZTZ-99A2: chevrons terminate inside the side shoulders without a gap');
+assert.equal(receipt?.chevronProfile, 'vt4a1-leopard-2a6-derived',
+  'ZTZ-99A2: production front uses the requested VT/Leopard chevron grammar');
+assert.equal(receipt?.chevronStationsPerSide, 6,
+  'ZTZ-99A2: each watertight cheek carries six shaping stations');
+assert.equal(receipt?.surfacePanelsPerSide, 4,
+  'ZTZ-99A2: four raised armor cassettes make each chevron visually explicit');
+assert.equal(receipt?.sharedPhysicalRidge, true,
+  'ZTZ-99A2: upper and lower cheek faces meet on one physical ridge');
+assert.equal(receipt?.chevronRidgeAdvanceM, 1.10,
+  'ZTZ-99A2: chevron ridge is the dominant front ahead of the shortened shell');
+assert.equal(receipt?.chevronUpperRootYM, 0.83,
+  'ZTZ-99A2: chevrons rise into the turret roof course');
+assert.equal(receipt?.chevronLowerReturnYM, -0.04,
+  'ZTZ-99A2: chevrons descend through the turret chin course');
+assert.equal(receipt?.chevronVerticalCoverageM, 0.87,
+  'ZTZ-99A2: chevrons cover the full vertical front rather than a shallow band');
+assert.equal(receipt?.fullHeightFrontCoverage, true,
+  'ZTZ-99A2: receipt records full-height frontal chevron coverage');
 assert.equal(receipt?.bustleExtensionM, 0.50,
   'ZTZ-99A2: bustle is extended by exactly 0.50 m');
 assert.equal(receipt?.bustleUndersideRiseM, 0.42,
@@ -63,15 +81,35 @@ assert.deepEqual(production.turretRig.position.toArray(), [0, 1.56, 0.12],
 assert.notEqual(signature(prototype.turret), signature(production.turret),
   'ZTZ-99A2: production and prototype primary turret geometry are distinct');
 const chevrons = production.tank.root.getObjectByName('turretExternalArmor');
-assert(chevrons && new Box3().setFromObject(chevrons).max.z >= 1.64,
+assert(chevrons && chevrons.geometry.attributes.position.count >= 180,
+  'ZTZ-99A2: front uses closed multi-station chevrons rather than three shallow slabs');
+assert(new Box3().setFromObject(chevrons).max.z >= 1.83,
   'ZTZ-99A2: closed chevron volumes project around the gun throat');
+const chevronPositions = chevrons.geometry.attributes.position;
+let frontMinY = Infinity;
+let frontMaxY = -Infinity;
+for (let index = 0; index < chevronPositions.count; index++) {
+  if (chevronPositions.getZ(index) < 0.55) continue;
+  frontMinY = Math.min(frontMinY, chevronPositions.getY(index));
+  frontMaxY = Math.max(frontMaxY, chevronPositions.getY(index));
+}
+assert(frontMinY <= -0.039 && frontMaxY >= 0.829 && frontMaxY - frontMinY >= 0.869,
+  'ZTZ-99A2: rendered chevron geometry spans the roof-to-chin front envelope');
 
 for (const vehicle of [prototype, production, vt4a1]) {
   const hullReceipt = vehicle.hullRig.userData.ztz99a2HullIntegrationReceipt;
   assert.equal(hullReceipt?.shoulderVolumes, 2,
     'A2 chassis: both glacis-to-skirt shoulder volumes are present');
+  assert.equal(hullReceipt?.architecture, 'ztz99a2-production-chassis-r3',
+    'A2 chassis: revised closed shoulder architecture is installed');
+  assert.equal(hullReceipt?.shoulderStationsPerSide, 6,
+    'A2 chassis: each shoulder is a six-station closed structural loft');
   assert.equal(hullReceipt?.frontMudguardsAttachedToShoulders, true,
     'A2 chassis: front steel mudguards are structurally tied into the shoulders');
+  assert.equal(hullReceipt?.frontMudguardShoulderOverlapM, 0.0475,
+    'A2 chassis: mudguard rear faces overlap the structural shoulders');
+  assert.equal(hullReceipt?.floatingBowStiffenersRemoved, true,
+    'A2 chassis: detached low bow stiffeners are removed');
   assert.equal(hullReceipt?.endWheelLiftM, 0.10,
     'A2 chassis: idler and rear sprocket are raised by 0.10 m');
   assert.equal(hullReceipt?.idlerYM, 0.74,
@@ -81,6 +119,15 @@ for (const vehicle of [prototype, production, vt4a1]) {
   assert.equal(vehicle.hullRig.userData.sharedMudguards
     ?.filter((entry) => entry.label.startsWith('ztz99a2-front-mudguard-')).length, 2,
   'A2 chassis: two broad shaped front mudguards are registered');
+  for (const mudguard of vehicle.hullRig.userData.sharedMudguards
+    .filter((entry) => entry.label.startsWith('ztz99a2-front-mudguard-'))) {
+    assert.equal(mudguard.y, 1.19,
+      'A2 chassis: front mudguard vertical datum matches the shoulder face');
+    assert.equal(mudguard.z, 3.46,
+      'A2 chassis: front mudguard is buried into the shoulder nose');
+    assert.equal(mudguard.attachedSupport, true,
+      'A2 chassis: every front mudguard retains an attached upper support');
+  }
 }
 assert.equal(signature(production.hull), signature(prototype.hull),
   'Production and prototype use the same improved ZTZ-99A2 chassis');
@@ -90,4 +137,4 @@ assert.equal(signature(production.hull), signature(vt4a1.hull),
 prototype.tank.dispose();
 production.tank.dispose();
 vt4a1.tank.dispose();
-console.log('ztz99a2RearService.selftest: production/prototype split, exact bustle rise, shoulders, mudguards and raised end wheels verified');
+console.log('ztz99a2RearService.selftest: dominant closed chevrons, exact bustle rise and sealed shared bow shoulders verified');

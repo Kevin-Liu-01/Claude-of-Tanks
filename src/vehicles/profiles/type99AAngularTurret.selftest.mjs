@@ -215,6 +215,13 @@ assert.equal(ztz99a2Prototype.turretRig.userData.ztz99a2TurretIntegrationReceipt
   'ZTZ-99A2 Prototype: preserved side armor and seam pieces remain attached');
 assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.integratedChevronFront, true,
   'ZTZ-99A2: canonical production turret carries an integrated chevron front');
+assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.chevronProfile,
+  'vt4a1-leopard-2a6-derived',
+  'ZTZ-99A2: prominent front uses the VT-4A1 Leopard-style chevron grammar');
+assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.surfacePanelsPerSide, 4,
+  'ZTZ-99A2: each closed cheek has four raised face cassettes');
+assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.fullHeightFrontCoverage, true,
+  'ZTZ-99A2: chevrons cover the complete roof-to-chin frontal height');
 assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.bustleExtensionM, 0.50,
   'ZTZ-99A2: production bustle extension is exact');
 assert.equal(ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.bustleUndersideRiseM, 0.42,

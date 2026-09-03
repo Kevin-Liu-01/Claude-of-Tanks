@@ -12,6 +12,12 @@
 
 import { KIT, FITTINGS, MUDGUARDS, orientedSlab, muzzleBore } from './kit.ts';
 import {
+  chevronSurfacePanel,
+  closedIntegratedChevron,
+  interpolateChevronStation,
+  type ChevronStation,
+} from './chineseChevron.ts';
+import {
   loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
   buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
   ruBoot,
@@ -791,12 +797,26 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     for (let i = 0; i < 9; i++) {
       P.add('hull', box(0.055, 0.26, 0.56), s * 1.035, 0.49, -3.20 + i * 0.655);
     }
-    // The reference hull does not leave the track shoulder as an open shelf.
-    // A closed, raked bridge continues the glacis shoulder into the skirt
-    // hanger and gives the armored mudguard a structural rear landing.
-    P.add('hull', orientedSlab(
-      [s * 1.06, 1.58, 1.56], [s * 1.70, 1.58, 1.30], [s * 1.70, 1.52, 1.08], [s * 1.06, 1.52, 1.30],
-      [s * 0.72, 1.06, 3.42], [s * 1.82, 1.31, 3.02], [s * 1.82, 1.19, 2.76], [s * 0.72, 0.98, 3.20]));
+    // One closed six-station shoulder now overlaps every adjoining system:
+    // deck/fender at the rear, first skirt cassette at the outer belt,
+    // glacis at the inner edge and the transverse mudguard at the bow. The
+    // former eight-corner slab pinched diagonally and exposed daylight from
+    // low oblique views; this loft is a single convex structural body.
+    const shoulderPlanRight: Vec2Tuple[] = [
+      [1.02, 1.36], [1.72, 1.18], [1.84, 2.70],
+      [1.84, 3.48], [1.10, 3.48], [0.72, 3.32],
+    ];
+    const shoulderLowerRight = [1.46, 1.42, 1.18, 0.98, 0.98, 0.96];
+    const shoulderUpperRight = [1.62, 1.60, 1.50, 1.40, 1.39, 1.14];
+    const shoulderPlan = s > 0
+      ? shoulderPlanRight
+      : shoulderPlanRight.map(([x, z]) => [-x, z] as Vec2Tuple).reverse();
+    const shoulderLower = s > 0 ? shoulderLowerRight : [...shoulderLowerRight].reverse();
+    const shoulderUpper = s > 0 ? shoulderUpperRight : [...shoulderUpperRight].reverse();
+    P.add('hull', KIT.polyMultiLoft(shoulderPlan, [
+      { height: shoulderLower, inset: 1 },
+      { height: shoulderUpper, inset: 1 },
+    ]));
   }
 
   // ---- glacis chevron armor: three raked panel courses with real seam
@@ -835,27 +855,20 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     liftEye(P, 'hullDetail', s * 1.30, 1.42, 2.30);
   }
   towCable(P, [[-1.10, 1.18, 3.06], [-0.42, 1.32, 2.30], [0.48, 1.30, 2.26], [1.10, 1.18, 3.06]]);
-  // Broad segmented steel guards replace the detached rubber bow flaps.
-  // Their rear edge overlaps the shoulder bridge and their crown follows the
-  // upper-glacis fall, matching the production ZTZ's characteristic fenders.
+  // Broad transverse steel guards replace the detached rubber bow flaps.
+  // Their complete rear face is buried 47.5 mm into the new shoulder loft;
+  // top and bottom datums exactly match its front stations, so the guard,
+  // upper glacis and skirt read as one connected armored shoulder.
   for (const s of [-1, 1]) {
     MUDGUARDS.add(P, {
       label: `ztz99a2-front-mudguard-${s < 0 ? 'left' : 'right'}`,
-      x: s * 1.47, y: 1.25, z: 3.35,
+      x: s * 1.47, y: 1.19, z: 3.46,
       thickness: 0.055, length: 0.74, height: 0.42,
       rotation: [0, Math.PI / 2, 0], crown: 0.026,
       frontCut: 0.09, rearCut: 0.025, rake: 0.08,
     });
-    P.add('hullDark', box(0.64, 0.025, 0.035), s * 1.47, 1.455, 3.15, -0.20, 0, 0);
   }
   ruFlaps(P, { x: 1.47, w: 0.50, rear: [0.86, 0.46], rearZ: -4.02 });
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.05, 0.07, 0.24), s * 1.32, 1.24, 3.50, -0.30, 0, 0);
-    // flap stiffener bar (whip-rough coupling law: keeps the bow trace
-    // anchor column above the 12% body threshold)
-    P.add('hullDark', KIT.cylX(0.045, 0.42, 10), s * 1.47, 0.43, 3.59);
-    P.add('hullDark', box(0.04, 0.24, 0.045), s * 1.47, 0.58, 3.59);
-  }
 
   // ---- heavy side modules: four rigid forward bays with cassette blocks +
   // two rubber rear bays, outer faces on the 3.70 width datum.  §5.266
@@ -919,10 +932,14 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
   }
   P.hullG.userData.ztz99a2HullIntegrationReceipt = Object.freeze({
-    architecture: 'ztz99a2-production-chassis-r2',
+    architecture: 'ztz99a2-production-chassis-r3',
     shoulderVolumes: 2,
+    shoulderStationsPerSide: 6,
+    shoulderFrontZM: 3.48,
     frontMudguards: 2,
     frontMudguardsAttachedToShoulders: true,
+    frontMudguardShoulderOverlapM: 0.0475,
+    floatingBowStiffenersRemoved: true,
     shoulderSkirtJoinGapM: 0,
     endWheelLiftM: 0.10,
     idlerYM: 0.74,
@@ -1126,7 +1143,9 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // the forward belt to keep the bustle clear of the engine deck.
   P.turretG.position.set(0, 1.56, 0.12);
   const plan: Vec2Tuple[] = [
-    [0.30, 1.43], [0.82, 1.15], [1.40, 0.48], [1.56, -0.30],
+    // Stop the primary shell behind the ridge. The closed chevrons below
+    // own the complete frontal projection, matching the VT-4A1 hierarchy.
+    [0.30, 0.62], [0.82, 0.52], [1.40, 0.28], [1.56, -0.30],
     [1.50, -1.50], [1.18, -2.22], [0.82, -2.22],
     [-0.82, -2.22], [-1.18, -2.22], [-1.50, -1.50],
     [-1.56, -0.30], [-1.40, 0.48], [-0.82, 1.15], [-0.30, 1.43],
@@ -1147,22 +1166,43 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.add('turret', cylY(1.08, 1.14, 0.10, seg), 0, -0.03, -0.12);
 
   // Leopard-class chevrons are the production shell's primary frontal
-  // armor. Their outer returns bury into the side belt, eliminating the
-  // applique gap that made the earlier interpretation read as floating.
+  // armor. This is the same watertight upper/ridge/lower construction used
+  // by VT-4A1, resized to the independent A2 shell and given four raised
+  // face cassettes per side. Their roots now run from the turret roof course
+  // to the chin course, instead of compressing the arrow into a shallow band.
+  // The ridge still sits 1.10 m ahead of the shell nose.
+  const chevronStations = Object.freeze([
+    { x: 0.22, upperX: 0.22, ridgeX: 0.22, lowerX: 0.22,
+      upperY: 0.83, upperZ: 0.58, ridgeY: 0.39, ridgeZ: 1.72, lowerY: -0.04, lowerZ: 0.86 },
+    { x: 0.38, upperX: 0.34, ridgeX: 0.38, lowerX: 0.40,
+      upperY: 0.83, upperZ: 0.50, ridgeY: 0.38, ridgeZ: 1.66, lowerY: -0.04, lowerZ: 0.82 },
+    { x: 0.82, upperX: 0.62, ridgeX: 0.82, lowerX: 0.78,
+      upperY: 0.81, upperZ: 0.18, ridgeY: 0.36, ridgeZ: 1.42, lowerY: -0.02, lowerZ: 0.70 },
+    { x: 1.18, upperX: 0.86, ridgeX: 1.18, lowerX: 1.18,
+      upperY: 0.79, upperZ: -0.08, ridgeY: 0.34, ridgeZ: 1.16, lowerY: 0.00, lowerZ: 0.46 },
+    { x: 1.48, upperX: 1.04, ridgeX: 1.48, lowerX: 1.54,
+      upperY: 0.76, upperZ: -0.36, ridgeY: 0.31, ridgeZ: 0.88, lowerY: 0.03, lowerZ: 0.18 },
+    { x: 1.62, upperX: 1.46, ridgeX: 1.62, lowerX: 1.56,
+      upperY: 0.72, upperZ: -0.50, ridgeY: 0.29, ridgeZ: 0.66, lowerY: 0.05, lowerZ: -0.18 },
+  ] satisfies readonly ChevronStation[]);
+  const chevronPanelBands = Object.freeze([
+    [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
+  ] as const);
   P.visualEraCluster('ztz99a2-production-chevron-era', 'turret', () => {
-    for (const s of [-1, 1]) {
-      P.addExternalArmor('turret', orientedSlab(
-        [s * 0.20, 0.02, 1.54], [s * 0.84, 0.02, 1.08], [s * 0.75, 0.08, 0.66], [s * 0.18, 0.08, 1.02],
-        [s * 0.18, 0.66, 1.05], [s * 0.62, 0.68, 0.72], [s * 0.58, 0.72, 0.42], [s * 0.16, 0.72, 0.70]));
-      P.addExternalArmor('turret', orientedSlab(
-        [s * 0.84, 0.02, 1.08], [s * 1.58, 0.05, 0.18], [s * 1.46, 0.10, -0.10], [s * 0.75, 0.08, 0.66],
-        [s * 0.62, 0.68, 0.72], [s * 1.30, 0.64, 0.13], [s * 1.34, 0.69, -0.22], [s * 0.58, 0.72, 0.42]));
-      // Physical terminal cap joins chevron, roof and vertical belt.
-      P.addExternalArmor('turret', orientedSlab(
-        [s * 1.40, 0.05, 0.50], [s * 1.60, 0.05, 0.14], [s * 1.56, 0.08, -0.32], [s * 1.42, 0.08, -0.10],
-        [s * 1.20, 0.67, 0.30], [s * 1.34, 0.67, 0.12], [s * 1.38, 0.70, -0.34], [s * 1.24, 0.70, -0.16]));
-      P.add('turretDark', box(0.034, 0.48, 0.034), s * 0.84, 0.35, 0.88, -0.45, s * 0.70, 0);
-      P.add('turretDark', box(1.08, 0.024, 0.040), s * 0.83, 0.705, 0.48, 0, s * 0.65, 0);
+    for (const s of [-1, 1] as const) {
+      P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, s));
+      for (const [startT, endT] of chevronPanelBands) {
+        const startX = chevronStations[0].x
+          + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
+        const endX = chevronStations[0].x
+          + (chevronStations.at(-1)!.x - chevronStations[0].x) * endT;
+        P.addExternalArmor('turret', chevronSurfacePanel(
+          interpolateChevronStation(chevronStations, startX),
+          interpolateChevronStation(chevronStations, endX),
+          s,
+        ));
+      }
+      P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
     }
   });
 
@@ -1229,13 +1269,24 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
   P.turretG.userData.ztz99a2ProductionReceipt = Object.freeze({
-    architecture: 'ztz99a2-production-arrow-r1',
+    architecture: 'ztz99a2-production-arrow-r3',
     independentProductionTurret: true,
     prototypeGeometryReused: false,
     actualReferenceDerived: true,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true,
     chevronSideJoinGapM: 0,
+    chevronProfile: 'vt4a1-leopard-2a6-derived',
+    chevronStationsPerSide: 6,
+    surfacePanelsPerSide: 4,
+    sharedPhysicalRidge: true,
+    primaryShellFrontZM: 0.62,
+    chevronRidgeFrontZM: 1.72,
+    chevronRidgeAdvanceM: 1.10,
+    chevronUpperRootYM: 0.83,
+    chevronLowerReturnYM: -0.04,
+    chevronVerticalCoverageM: 0.87,
+    fullHeightFrontCoverage: true,
     bustleExtensionM,
     bustleUndersideRiseM,
     formerRearStationM: -1.72,

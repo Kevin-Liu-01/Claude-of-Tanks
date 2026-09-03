@@ -69,6 +69,11 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'leo2_revolution',
     'spz_puma_s1',
   ]),
+  China: Object.freeze([
+    'vt4a1',
+    'ztz99a2',
+    'ztz99a2_prototype',
+  ]),
 });
 
 /** Flat view for checks and consumers that only need the complete set. */

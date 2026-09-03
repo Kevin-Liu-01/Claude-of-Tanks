@@ -107,6 +107,10 @@ const nationalShowcaseCases = [
       'leo2a6m', 'mbt70', 'leo2_revolution', 'spz_puma_s1',
     ],
   },
+  {
+    nation: 'China', filler: 'type99a',
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
+  },
 ];
 
 for (const { nation, filler, expected } of nationalShowcaseCases) {
