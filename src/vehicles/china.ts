@@ -15,7 +15,7 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2'] as const);
+const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2_prototype', 'ztz99a2'] as const);
 
 type ChinaStatOverrides = Partial<Pick<FleetTankSpec,
   | 'hp'
@@ -93,6 +93,22 @@ const CHINA_SPECS = {
     },
     armorFactor: 1.14,
   }),
+  ztz99a2_prototype: variant('ztz99a2_prototype', 'type99a', {
+    name: 'ZTZ-99A2 Prototype', number: '99A2-P', base: '#35453a', weather: '#4a5847',
+    patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43,
+    dims: {
+      hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.45,
+      silhouetteHullLengthM: 8.18, silhouetteOverallLengthM: 11.55,
+      silhouetteHeightM: 2.95,
+    },
+    stats: {
+      hp: 2650, enginePowerHp: 1500, weightTons: 57.5, topSpeedKmh: 70,
+      reverseSpeedKmh: 28, turretTraverseDegS: 40, gunPitchDegS: 32,
+    },
+    reloadS: 6.6,
+    armor: createType99Armor('ztz99a2_prototype'),
+    armorFactor: 1.12,
+  }),
   ztz99a2: variant('ztz99a2', 'type99a', {
     name: 'ZTZ-99A2', number: '99A2', base: '#36463a', weather: '#4c5a49',
     patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43,
@@ -109,7 +125,7 @@ const CHINA_SPECS = {
       reverseSpeedKmh: 28, turretTraverseDegS: 42, gunPitchDegS: 34,
     },
     reloadS: 6.4,
-    // The A2 has a distinct ground-up ring seat, hull and turret bustle.
+    // Production A2: new reference-shaped turret on the improved A2 hull.
     armor: createType99Armor('ztz99a2'),
     armorFactor: 1.12,
   }),

@@ -270,6 +270,9 @@ interface VtFamilyTurretConfig {
   readonly chevronInnerAdvanceM: number;
   readonly chevronOuterAdvanceM: number;
   readonly chevronLiftM: number;
+  readonly rearExtensionM: number;
+  readonly rearUndersideLiftM: number;
+  readonly rearCrownLiftM: number;
   readonly gunY: number;
   readonly gunZ: number;
   readonly gunLength: number;
@@ -281,14 +284,16 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
     heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
     frontShellLengthScale: 1,
     chevronInnerAdvanceM: 0, chevronOuterAdvanceM: 0, chevronLiftM: 0.07,
+    rearExtensionM: 0, rearUndersideLiftM: 0, rearCrownLiftM: 0,
     gunY: 0.3198,
     gunZ: 0.75, gunLength: 5.95,
   }),
   type99a: Object.freeze({
-    variant: 'type99a', pivotY: 1.48, pivotZ: 0.36,
+    variant: 'type99a', pivotY: 1.57, pivotZ: 0.64,
     heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
     frontShellLengthScale: 0.90,
     chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
+    rearExtensionM: 0.50, rearUndersideLiftM: 0.42, rearCrownLiftM: 0.10,
     gunY: 0.3198,
     gunZ: 0.74, gunLength: 6.454,
   }),
@@ -303,6 +308,9 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   const sz = (value: number): number => value * depthScale;
   const cz = (value: number): number => value * config.chevronDepthScale;
   const sy = (value: number): number => value * heightRatio;
+  const rearProgress = (value: number): number => THREE.MathUtils.clamp(
+    (-value - 1.58) / (2.68 - 1.58), 0, 1,
+  );
   // Shorten only the selected forward shell course around the cheek; the
   // bustle and turret-ring footprint retain their established dimensions.
   // Compressing toward the sidewall station (z=-0.58) avoids the global
@@ -310,6 +318,15 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   const shellZ = (value: number): number => sz(value >= -0.58
     ? -0.58 + (value + 0.58) * config.frontShellLengthScale
     : value);
+  const rearZ = (value: number): number => (
+    shellZ(value) - config.rearExtensionM * rearProgress(value)
+  );
+  const rearBottomY = (value: number, z: number): number => (
+    sy(value) + config.rearUndersideLiftM * rearProgress(z)
+  );
+  const rearTopY = (value: number, z: number): number => (
+    sy(value) + config.rearCrownLiftM * rearProgress(z)
+  );
   P.turretG.position.set(0, config.pivotY, config.pivotZ);
   P.gunG.position.set(0, config.gunY, config.gunZ);
   const basePlan: [number, number][] = [
@@ -321,13 +338,24 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     [-0.52, -2.52], [-0.82, -2.48], [-1.38, -2.22], [-1.54, -1.58],
     [-1.60, -0.58], [-1.46, -0.10], [-1.08, 0.22], [-0.52, 0.48],
   ];
-  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), shellZ(z)]);
+  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), rearZ(z)]);
+  const lowerHeights = basePlan.map(([, z]) => 0.02
+    + config.rearUndersideLiftM * rearProgress(z));
   const midHeights = [0.34, 0.40, 0.48, 0.55, 0.62, 0.66, 0.67, 0.67,
-    0.67, 0.67, 0.66, 0.62, 0.55, 0.48, 0.40, 0.34].map((height) => height * heightScale);
+    0.67, 0.67, 0.66, 0.62, 0.55, 0.48, 0.40, 0.34].map((height, index) => (
+    height * heightScale + config.rearCrownLiftM * rearProgress(basePlan[index][1])
+  ));
   const shellHeight = 0.89 * heightScale;
-  P.add('turretDark', KIT.polyTurret(plan, 0.09, 0.97, 0.98), 0, -0.04, 0);
+  if (config.rearUndersideLiftM > 0) {
+    P.add('turretDark', polyMultiLoft(plan, [
+      { height: lowerHeights.map((height) => height - 0.025), inset: 0.985 },
+      { height: lowerHeights.map((height) => height + 0.035), inset: 0.970 },
+    ]));
+  } else {
+    P.add('turretDark', KIT.polyTurret(plan, 0.09, 0.97, 0.98), 0, -0.04, 0);
+  }
   P.add('turret', polyMultiLoft(plan, [
-    { height: 0.02, inset: 1.00 },
+    { height: lowerHeights, inset: 1.00 },
     { height: midHeights, inset: 1.00 },
     { height: shellHeight,
       inset: [0.66, 0.72, 0.80, 0.87, 0.91, 0.94, 0.95, 0.95,
@@ -338,9 +366,11 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   // A low roof bridge overlaps the primary shell and the inner chevron roots.
   P.add('turret', orientedSlab(
     [sx(-0.80), sy(0.59), shellZ(0.48)], [sx(0.80), sy(0.59), shellZ(0.48)],
-    [sx(1.18), sy(0.60), sz(-2.30)], [sx(-1.18), sy(0.60), sz(-2.30)],
+    [sx(1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
+    [sx(-1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
     [sx(-0.68), sy(0.69), shellZ(0.34)], [sx(0.68), sy(0.69), shellZ(0.34)],
-    [sx(1.03), sy(0.70), sz(-2.26)], [sx(-1.03), sy(0.70), sz(-2.26)],
+    [sx(1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
+    [sx(-1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
   ));
   // Leopard-style chevrons now provide the complete frontal volume. Their
   // outer stations penetrate the shell shoulder and their inner stations
@@ -412,26 +442,38 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   P.visualEraCluster(`${variant}-integral-bustle`, 'turret', () => {
     for (const side of [-1, 1] as const) {
       P.addExternalArmor('turret', orientedSlab(
-        [side * sx(0.54), sy(0.08), sz(-1.76)], [side * sx(1.38), sy(0.10), sz(-1.66)],
-        [side * sx(1.42), sy(0.12), sz(-2.56)], [side * sx(0.52), sy(0.10), sz(-2.68)],
-        [side * sx(0.48), sy(0.60), sz(-1.76)], [side * sx(1.20), sy(0.58), sz(-1.72)],
-        [side * sx(1.24), sy(0.54), sz(-2.52)], [side * sx(0.46), sy(0.57), sz(-2.66)],
+        [side * sx(0.54), rearBottomY(0.08, -1.76), rearZ(-1.76)],
+        [side * sx(1.38), rearBottomY(0.10, -1.66), rearZ(-1.66)],
+        [side * sx(1.42), rearBottomY(0.12, -2.56), rearZ(-2.56)],
+        [side * sx(0.52), rearBottomY(0.10, -2.68), rearZ(-2.68)],
+        [side * sx(0.48), rearTopY(0.60, -1.76), rearZ(-1.76)],
+        [side * sx(1.20), rearTopY(0.58, -1.72), rearZ(-1.72)],
+        [side * sx(1.24), rearTopY(0.54, -2.52), rearZ(-2.52)],
+        [side * sx(0.46), rearTopY(0.57, -2.66), rearZ(-2.66)],
       ));
       P.addEquipment('turret', box(sx(0.30), sy(0.34), sz(0.58)),
-        side * sx(1.22), sy(0.40), sz(-2.28));
+        side * sx(1.22), rearTopY(0.40, -2.28), rearZ(-2.28));
       P.add('turretDark', box(sx(0.32), 0.036, sz(0.62)),
-        side * sx(1.22), sy(0.58), sz(-2.28));
+        side * sx(1.22), rearTopY(0.58, -2.28), rearZ(-2.28));
       P.add('turretDetail', box(0.035, sy(0.42), 0.035),
-        side * sx(1.40), sy(0.35), sz(-2.58));
+        side * sx(1.40), rearBottomY(0.35, -2.58), rearZ(-2.58));
     }
-    P.addExternalArmor('turret', box(sx(1.30), sy(0.46), sz(0.54)),
-      0, sy(0.34), sz(-2.50));
+    P.addExternalArmor('turret', orientedSlab(
+      [-sx(0.67), rearBottomY(0.11, -2.23), rearZ(-2.23)],
+      [sx(0.67), rearBottomY(0.11, -2.23), rearZ(-2.23)],
+      [sx(0.64), rearBottomY(0.10, -2.70), rearZ(-2.70)],
+      [-sx(0.64), rearBottomY(0.10, -2.70), rearZ(-2.70)],
+      [-sx(0.62), rearTopY(0.57, -2.23), rearZ(-2.23)],
+      [sx(0.62), rearTopY(0.57, -2.23), rearZ(-2.23)],
+      [sx(0.58), rearTopY(0.57, -2.70), rearZ(-2.70)],
+      [-sx(0.58), rearTopY(0.57, -2.70), rearZ(-2.70)],
+    ));
   });
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: sx(2.65), d: sz(0.62), h: sy(0.48), posts: 8,
     fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
     seed: variant === 'type99a' ? 9940 : 438,
-  }), [0, sy(0.18), sz(-2.78)]);
+  }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
 
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer
@@ -491,11 +533,12 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     mount(P, 'turret', FITTINGS.stowageRack({
       mats: P.mats, w: sz(1.38), d: sx(0.42), h: sy(0.34), rails: 3, fill: 0.58,
       seed: (variant === 'type99a' ? 9950 : 432) + side,
-    }), [side * sx(1.28), sy(0.35), sz(-1.94)], [0, side * Math.PI / 2, 0]);
+    }), [side * sx(1.28), rearTopY(0.35, -1.94), rearZ(-1.94)], [0, side * Math.PI / 2, 0]);
     mount(P, 'turret', FITTINGS.antennaWhip({
       mats: P.mats, h: side < 0 ? 1.18 : 1.05, r: 0.011,
       seed: (variant === 'type99a' ? 9960 : 434) + side,
-    }), [side * sx(0.76), 0.70 + roofLift, sz(-2.12)]);
+    }), [side * sx(0.76), 0.70 + roofLift + config.rearCrownLiftM * rearProgress(-2.12),
+      rearZ(-2.12)]);
   }
   const marking = variant === 'type99a' ? '99A' : 'VT4';
   P.decal('turret', 'number', marking, 0.23,
@@ -505,15 +548,18 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   P.topY = Math.max(P.topY || 0, variant === 'type99a' ? 2.12 : 1.28);
 
   const commonReceipt = Object.freeze({
-    architecture: 'vt-integrated-chevron-family-r3',
+    architecture: 'vt-integrated-chevron-family-r4',
     variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
-    pivotShiftForwardM: variant === 'vt4a1' ? 0.55 : 0.38,
+    pivotShiftForwardM: variant === 'vt4a1' ? 0.55 : 0.66,
     turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
     widthScale, depthScale, chevronDepthScale: config.chevronDepthScale,
     frontShellLengthScale: config.frontShellLengthScale,
     chevronInnerAdvanceM: config.chevronInnerAdvanceM,
     chevronOuterAdvanceM: config.chevronOuterAdvanceM,
     chevronLiftM: config.chevronLiftM,
+    rearExtensionM: config.rearExtensionM,
+    rearUndersideLiftM: config.rearUndersideLiftM,
+    rearCrownLiftM: config.rearCrownLiftM,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true, chevronTerminalBuriedInSideBelt: true,
     mirroredChevronSideJoins: true, chevronSideJoinGapM: 0,
@@ -522,7 +568,7 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     gunCenterlineLocalY: config.gunY,
     muzzleWorldZM: config.pivotZ + config.gunZ + config.gunLength,
     warningSensorPedestals: 2, reseatedRoofEquipment: true,
-    armoredBustleRearZM: sz(-2.68), giantIntegratedBustle: true,
+    armoredBustleRearZM: rearZ(-2.68), giantIntegratedBustle: true,
   });
   P.turretG.userData.vtFamilyTurretReceipt = commonReceipt;
   if (variant === 'vt4a1') {
@@ -544,7 +590,10 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
       turretEquipmentReseated: true, dedicatedPlaCommanderStation: true,
       continuousCommanderSightStack: true, commandSightTopWorldYM: 3.55,
       exactHullRetained: true, selectedForwardCheekShorteningPct: 10,
-      turretMovedForwardM: 0.14, chevronsReseatedForward: true,
+      turretMovedForwardM: 0.42, turretRaisedM: 0.09,
+      slopedBustleUnderside: true, rearHullOverlapEliminated: true,
+      minimumRearDeckClearanceM: 0.02,
+      chevronsReseatedForward: true,
     });
   }
 }
@@ -573,7 +622,10 @@ function buildVT4A1(P: FrontlinePort): void {
 
 function buildType99AWithVtDerivative(P: FrontlinePort): void {
   buildType99AHullOnly(P as never);
-  addRearFuelDrums(P as unknown as ChinaBuilderPort, 1.67, -3.72, 9910);
+  addRearFuelDrums(P as unknown as ChinaBuilderPort, 1.56, -3.68, 9910, {
+    radius: 0.25, length: 1.12, centerX: 0.61, cradleDepth: 0.34,
+    rearPlateZ: -3.52,
+  });
   buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.type99a);
 }
 

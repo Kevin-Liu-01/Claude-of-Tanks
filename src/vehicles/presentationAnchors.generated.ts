@@ -165,7 +165,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   type89_light_tiger: Object.freeze({ xM: 0.0001, zM: -0.0584 }),
   type90: Object.freeze({ xM: 0, zM: -0.2043 }),
   type90a: Object.freeze({ xM: 0, zM: -0.2175 }),
-  type99a: Object.freeze({ xM: 0.0013, zM: -0.2693 }),
+  type99a: Object.freeze({ xM: -0.0004, zM: -0.27 }),
   ua_challenger2: Object.freeze({ xM: 0.0004, zM: 0.0726 }),
   ua_m1a1: Object.freeze({ xM: 0.0036, zM: 0.0216 }),
   ua_m2a3_bradley: Object.freeze({ xM: 0.0015, zM: -0.0451 }),
@@ -176,9 +176,10 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   udes03: Object.freeze({ xM: 0, zM: -0.0225 }),
   upior: Object.freeze({ xM: -0.0002, zM: -0.0519 }),
   vickers_mk1: Object.freeze({ xM: 0.0001, zM: -0.1333 }),
-  vt4a1: Object.freeze({ xM: -0.0001, zM: -0.4438 }),
+  vt4a1: Object.freeze({ xM: -0.0001, zM: -0.4481 }),
   ztz85_iii: Object.freeze({ xM: 0.0004, zM: -0.7809 }),
-  ztz99a2: Object.freeze({ xM: 0.0002, zM: -0.4472 }),
+  ztz99a2: Object.freeze({ xM: 0.0002, zM: -0.4372 }),
+  ztz99a2_prototype: Object.freeze({ xM: 0.0001, zM: -0.4229 }),
 });
 
 export function presentationAnchorFor(id: string): TankPresentationAnchor | null {
@@ -338,7 +339,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   type89_light_tiger: Object.freeze({ centerYM: 1.7705, topHalfM: 3.7323, sideHalfM: 1.9539 }),
   type90: Object.freeze({ centerYM: 1.5893, topHalfM: 6.6173, sideHalfM: 3.3086 }),
   type90a: Object.freeze({ centerYM: 1.589, topHalfM: 6.6314, sideHalfM: 3.3157 }),
-  type99a: Object.freeze({ centerYM: 2.0392, topHalfM: 8.4131, sideHalfM: 4.2066 }),
+  type99a: Object.freeze({ centerYM: 2.046, topHalfM: 8.7135, sideHalfM: 4.3567 }),
   ua_challenger2: Object.freeze({ centerYM: 2.0712, topHalfM: 8.6834, sideHalfM: 4.3417 }),
   ua_m1a1: Object.freeze({ centerYM: 1.6282, topHalfM: 6.2156, sideHalfM: 3.1078 }),
   ua_m2a3_bradley: Object.freeze({ centerYM: 1.9339, topHalfM: 3.8422, sideHalfM: 2.1377 }),
@@ -349,9 +350,10 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   udes03: Object.freeze({ centerYM: 1.358, topHalfM: 5.1022, sideHalfM: 2.5511 }),
   upior: Object.freeze({ centerYM: 1.2734, topHalfM: 3.1437, sideHalfM: 1.5718 }),
   vickers_mk1: Object.freeze({ centerYM: 1.8107, topHalfM: 6.034, sideHalfM: 3.017 }),
-  vt4a1: Object.freeze({ centerYM: 1.7813, topHalfM: 8.1141, sideHalfM: 4.057 }),
+  vt4a1: Object.freeze({ centerYM: 1.7805, topHalfM: 8.1187, sideHalfM: 4.0593 }),
   ztz85_iii: Object.freeze({ centerYM: 2.4045, topHalfM: 6.2591, sideHalfM: 3.1295 }),
-  ztz99a2: Object.freeze({ centerYM: 1.8519, topHalfM: 8.034, sideHalfM: 4.017 }),
+  ztz99a2: Object.freeze({ centerYM: 1.6, topHalfM: 8.3443, sideHalfM: 4.1722 }),
+  ztz99a2_prototype: Object.freeze({ centerYM: 1.8011, topHalfM: 8.008, sideHalfM: 4.004 }),
 });
 
 export function presentationProjectionFor(id: string): TankPresentationProjection | null {

@@ -2,7 +2,7 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
-  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2', 'vt4a1', 'type59']),
+  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59']),
   franceCore: Object.freeze(['amx40']),
   modern3Core: Object.freeze(['k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
   // These visual profiles used to be imported by every garage boot even when

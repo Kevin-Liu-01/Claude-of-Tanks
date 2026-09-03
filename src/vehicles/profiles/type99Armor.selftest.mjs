@@ -25,7 +25,8 @@ function assertPlanar(id, plate) {
 }
 
 for (const [id, authoredPivotY, authoredPivotZ] of [
-  ['type99a', 1.48, 0.36], ['ztz99a2', 1.56, -0.15], ['vt4a1', 1.56, 0.40],
+  ['type99a', 1.57, 0.64], ['ztz99a2_prototype', 1.56, -0.15],
+  ['ztz99a2', 1.56, 0.12], ['vt4a1', 1.56, 0.40],
 ]) {
   const armor = createType99Armor(id);
   assert(armor.hullPlates.length >= 30, `${id}: segmented hull envelope`);
@@ -35,7 +36,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
   assert.equal(armor.crew.length, 3, `${id}: three-person autoloader crew`);
   assert.equal(armor.turretPivot[1], authoredPivotY, `${id}: authored ring datum`);
   assert.equal(armor.turretPivot[2], authoredPivotZ, `${id}: authored fore/aft ring datum`);
-  if (id !== 'ztz99a2') {
+  if (id !== 'ztz99a2_prototype') {
     const ring = armor.modules.find((box) => box.module === 'turretRing');
     assert(Math.abs((ring.min[2] + ring.max[2]) / 2 - authoredPivotZ) < 1e-8,
       `${id}: combat turret-ring volume follows the fore/aft pivot`);
@@ -47,7 +48,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
   const hull = plateHits(armor, [4, 1.40, 0], [-4, 1.40, 0]).map((hit) => hit.plate.name);
   assert.deepEqual(hull.slice(0, 2), ['skirt_front_R', 'hull_side_upper_center_R'],
     'Type 99A flank crosses the visible skirt and outer sponson before the interior');
-  const turret = plateHits(armor, [4, 2.10, 0.20], [-4, 2.10, 0.20])
+  const turret = plateHits(armor, [4, 2.10, 0.40], [-4, 2.10, 0.40])
     .map((hit) => hit.plate.name);
   assert.deepEqual(turret.slice(0, 2), ['turret_side_forward_R', 'turret_era_R'],
     'Type 99A turret flank crosses the welded wall and integrated chevron layer');
@@ -67,7 +68,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
 
 // Integration: registration uses each distinct envelope, keeps the A2 armor
 // factor, and publishes the runtime-derived track prisms used by shell traces.
-for (const id of ['type99a', 'ztz99a2', 'vt4a1']) {
+for (const id of ['type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   const calibration = combatAnatomyCalibration(id);

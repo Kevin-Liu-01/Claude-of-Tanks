@@ -10,7 +10,7 @@ const ERA_VEHICLE_IDS = Object.freeze([
   't80bv', 't80u', 't84', 't90', 't90a', 't90a_vladimir',
   't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv',
   'type10b', 'ariete_c2', 'leo2a6m', 'leo2a7v', 'amx56',
-  'type99a', 'ztz99a2', 't14', 't72b3',
+  'type99a', 'ztz99a2_prototype', 'ztz99a2', 't14', 't72b3',
   'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',
   'merkava3d', 'merkava4b', 'amx30b2', 'm60a3',

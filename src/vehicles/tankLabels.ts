@@ -189,6 +189,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-99A2', shortName: 'ZTZ-99A2',
     searchAliases: ['Type 99A2', 'ZTZ 99A2'],
   },
+  ztz99a2_prototype: {
+    displayName: 'ZTZ-99A2 Prototype', shortName: 'ZTZ-99A2 Proto',
+    searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],
+  },
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a2_sepv3: { displayName: 'M1A2 Abrams SEPv3' },
   m1a3: {

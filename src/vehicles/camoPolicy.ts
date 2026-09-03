@@ -81,7 +81,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_challenger2e', 'sig_challenger_3x',
   'sig_amx56', 'sig_leclerc', 'sig_ariete_c2',
   'sig_type10b', 'sig_type90', 'sig_type90a',
-  'sig_type59', 'sig_ztz85_iii', 'sig_type99a', 'sig_ztz99a2',
+  'sig_type59', 'sig_ztz85_iii', 'sig_type99a', 'sig_ztz99a2_prototype', 'sig_ztz99a2',
   'sig_pt91m', 'sig_t72m1_jaguar', 'sig_pt91_twardy', 'sig_pl01_105',
   'sig_bwp1', 'sig_upior',
   'sig_k2', 'sig_k1a1', 'sig_k2b',
@@ -160,6 +160,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_type59: 'Type 59',
   sig_ztz85_iii: 'ZTZ-85-III',
   sig_type99a: 'Type 99A Tight Digital',
+  sig_ztz99a2_prototype: 'ZTZ-99A2 Prototype',
   sig_ztz99a2: 'ZTZ-99A2',
   sig_pt91m: 'PT-91M Pendekar',
   sig_t72m1_jaguar: 'T-72M1 Jaguar',
@@ -368,6 +369,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#35483a', weather: '#4a5947', patches: ['#263229', '#59634c', '#736a4d'], camoScale: 0.5 }),
   preset('sig_type99a', 'type99a', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4d573f', weather: '#57614a', patches: ['#6f684c', '#39412f', '#23261e'], camoScale: 0.34, digitalCellK: 1.2 }),
+  preset('sig_ztz99a2_prototype', 'ztz99a2_prototype', signatureTags('cn', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#35453a', weather: '#4a5847', patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43 }),
   preset('sig_ztz99a2', 'ztz99a2', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#36463a', weather: '#4c5a49', patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43 }),
   preset('sig_pt91m', 'pt91m', signatureTags('pl', 'woodland', 'stripes'),
@@ -553,7 +556,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Japan
   'type10b', 'type90', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
-  'type59', 'ztz85_iii', 'type99a', 'ztz99a2',
+  'type59', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2',
   // Poland — PL-01 itself owns the national Factory reference.
   'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
   // South Korea — BMP-3 ROK itself owns the national Factory reference.

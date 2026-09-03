@@ -147,7 +147,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0020585
+        "maximumSurfaceErrorM": 0.0020551
       },
       {
         "kind": "designation",
@@ -169,33 +169,33 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0017491
+        "maximumSurfaceErrorM": 0.0017451
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.5060985,
-          0.387547,
-          -1.1312757
+          -1.4694415,
+          0.461785,
+          -1.5726304
         ],
         "quaternion": [
           0,
-          -0.7284099,
+          -0.764724,
           0,
-          0.6851416
+          0.6443579
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type99a",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0113233
       }
     ]
   },
-  "ztz99a2": {
+  "ztz99a2_prototype": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -263,6 +263,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0.008297
+      }
+    ]
+  },
+  "ztz99a2": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.4771947,
+          0.4107419,
+          0.0076629
+        ],
+        "quaternion": [
+          -0.1333176,
+          0.6207384,
+          0.1622337,
+          0.7553744
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "ztz99a2",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.1532136
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.0854302,
+          0.6605441,
+          0.4124994
+        ],
+        "quaternion": [
+          -0.164507,
+          -0.3130293,
+          -0.4351454,
+          0.8280088
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "ztz99a2",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
