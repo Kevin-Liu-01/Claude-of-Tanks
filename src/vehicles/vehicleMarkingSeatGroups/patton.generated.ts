@@ -147,7 +147,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "designation",
@@ -169,29 +169,29 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.092,
+          1.3041029,
           0.6362,
-          -1.0448001
+          -0.4359444
         ],
         "quaternion": [
           0,
-          0.7071068,
+          0.8338824,
           0,
-          0.7071068
+          0.5519421
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m60a2",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       }
     ]
   },
