@@ -168,22 +168,24 @@ export async function restoreGarageGpuPipeline({
   lighting.setStaticPresentationDormant(false);
   try {
     lighting.update(true);
-    const programWarmAt = now();
-    try {
-      programWarmSlices = await drainWarmSteps(
-        forwardPrograms.initializeSteps(programRoot, programStats),
-        yieldGpu,
-      );
-      linkerSlices = await drainWarmSteps(
-        forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES),
-        yieldGpu,
-      );
-    } catch {
-      // Scoped compile remains the compatibility fallback. The covered exact
-      // frame below still proves every draw-time path before reveal.
-      try { forwardPrograms.compile(programRoot); } catch { /* exact frame is fallback */ }
+    if (resourcesReleased) {
+      const programWarmAt = now();
+      try {
+        programWarmSlices = await drainWarmSteps(
+          forwardPrograms.initializeSteps(programRoot, programStats),
+          yieldGpu,
+        );
+        linkerSlices = await drainWarmSteps(
+          forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES),
+          yieldGpu,
+        );
+      } catch {
+        // Scoped compile remains the compatibility fallback. The covered exact
+        // frame below still proves every draw-time path before reveal.
+        try { forwardPrograms.compile(programRoot); } catch { /* exact frame is fallback */ }
+      }
+      programWarmMs = Math.round(now() - programWarmAt);
     }
-    programWarmMs = Math.round(now() - programWarmAt);
     shadowPasses = await lighting.primeShadowMaps(
       renderer,
       scene,

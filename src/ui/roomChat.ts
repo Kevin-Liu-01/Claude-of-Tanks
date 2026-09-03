@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MAX_ROOM_CHAT_LENGTH } from '../net/protocol.ts';
 import { FONT_COND, FONT_STACK } from './fonts.ts';
 
@@ -25,7 +26,7 @@ interface RoomChatMessage {
 
 export interface RoomChatRuntime {
   root: HTMLElement;
-  append(message: unknown): boolean;
+  append(message: RuntimeValue): boolean;
   open(): boolean;
   close(options?: { relock?: boolean }): void;
   setPlayer(playerId: string): void;
@@ -93,9 +94,9 @@ function isEditingTarget(target: EventTarget | null) {
     target.tagName === 'SELECT' || target.isContentEditable);
 }
 
-export function normalizeRoomChatMessage(value: unknown): RoomChatMessage | null {
+export function normalizeRoomChatMessage(value: RuntimeValue): RoomChatMessage | null {
   if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
+  const record = value as Record<string, RuntimeValue>;
   const id = String(record.id || '');
   if (!id) return null;
   const rawTeam = String(record.team || 'spectator');
@@ -232,7 +233,7 @@ export function createRoomChat({
     quietTimer = setTimeout(() => root.classList.add('quiet'), 9_000);
   }
 
-  function append(value: unknown) {
+  function append(value: RuntimeValue) {
     const message = normalizeRoomChatMessage(value);
     if (!message || seenIds.has(message.id)) return false;
     seenIds.add(message.id);

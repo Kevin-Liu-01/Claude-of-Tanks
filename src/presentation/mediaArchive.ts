@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
@@ -66,7 +67,7 @@ function openShot(shot: PresentationShot): void {
   dialog.showModal();
 }
 
-function shotCard(shot: PresentationShot, index: number, recipe: unknown): HTMLElement {
+function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): HTMLElement {
   const card = document.createElement('article');
   card.className = 'media-archive-card';
   const button = document.createElement('button');
@@ -103,7 +104,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: unknown): HTMLE
   return card;
 }
 
-function normalize(value: unknown): string {
+function normalize(value: RuntimeValue): string {
   return String(value || '').trim().toLowerCase();
 }
 
@@ -189,7 +190,7 @@ export function autoMountMediaArchives(scope: ParentNode = document): void {
       feature: root.dataset.feature || undefined,
       kinds,
       filters: root.dataset.filters !== 'false',
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       const message = error instanceof Error ? error.message : String(error);
       root.innerHTML = `<p class="media-archive-count">${message}</p>`;
     });

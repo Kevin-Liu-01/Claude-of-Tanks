@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * sky.ts — procedural atmosphere: visible sky dome, PMREM environment bake
  * (the IBL ambient layer), and horizon-matched fog.
@@ -78,7 +79,7 @@ export interface SkyRig {
   applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -986,7 +987,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       scene.environment = envTarget.texture;
       scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
       enforceEnvValidity(renderer, scene); // MOBILE r4: see bakeEnvironment
-    }).catch((error: unknown) => console.warn(
+    }).catch((error: RuntimeValue) => console.warn(
       '[sky] HDRI env failed, procedural bake kept —', errorMessage(error),
     ));
   };

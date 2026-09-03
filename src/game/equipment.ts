@@ -67,16 +67,16 @@ export interface EquipmentCategory {
 }
 
 export interface EquipmentSpecLike {
-  era?: unknown;
+  era?: string | null;
   role?: string;
   gun?: {
-    autoloader?: unknown;
+    autoloader?: object;
   };
 }
 
 export interface EquipmentStatsSpec extends EquipmentSpecLike {
   gun: {
-    autoloader?: unknown;
+    autoloader?: object;
     reloadS: number;
     aimTimeS: number;
   };
@@ -102,7 +102,7 @@ export interface EquipmentCombatState {
   equip?: string[];
   /** Replaced atomically by applyEquipmentToCombat; callers may carry a
    * narrower simulation-facing multiplier view before this boundary. */
-  equipMults?: unknown;
+  equipMults?: object;
   modules?: Partial<Record<EquipmentModuleId, {
     maxHp: number;
     hp: number;
@@ -122,6 +122,13 @@ export interface EquipmentModifiedStats {
 
 /** Equipment slots per vehicle (WoT standard). */
 export const EQUIP_SLOTS = 3;
+
+type ScalarEquipmentMultiplier = Exclude<keyof EquipmentEffects, 'moduleHp'>;
+
+const SCALAR_EQUIPMENT_MULTIPLIERS: readonly ScalarEquipmentMultiplier[] = [
+  'reload', 'aimTime', 'bloom', 'traverse', 'turret', 'repair',
+  'heSplash', 'crewHe', 'engineFire', 'fireTicks', 'extinguish',
+];
 
 /**
  * The catalog. Order = garage picker order (grouped by category).
@@ -307,6 +314,28 @@ export function saveEquipment(
   return clean;
 }
 
+function applyScalarEquipmentEffects(
+  multipliers: EquipmentMultipliers,
+  effects: EquipmentEffects,
+): void {
+  for (const key of SCALAR_EQUIPMENT_MULTIPLIERS) {
+    const factor = effects[key];
+    if (factor) multipliers[key] *= factor;
+  }
+}
+
+function applyModuleEquipmentEffects(
+  multipliers: EquipmentMultipliers,
+  effects: EquipmentEffects,
+): void {
+  if (!effects.moduleHp) return;
+  for (const moduleId of Object.keys(effects.moduleHp) as EquipmentModuleId[]) {
+    const factor = effects.moduleHp[moduleId];
+    if (factor === undefined) continue;
+    multipliers.moduleHp[moduleId] = (multipliers.moduleHp[moduleId] || 1) * factor;
+  }
+}
+
 /**
  * Fold a loadout into the combat/movement/repair multiplier record the sim
  * hooks read off CombatState.equipMults. Every field defaults to 1 (or {})
@@ -326,25 +355,8 @@ export function computeEquipMults(
   for (const id of ids) {
     const it = EQUIPMENT_BY_ID.get(id);
     if (!it || !it.effects) continue;
-    const e = it.effects;
-    if (e.reload) m.reload *= e.reload;
-    if (e.aimTime) m.aimTime *= e.aimTime;
-    if (e.bloom) m.bloom *= e.bloom;
-    if (e.traverse) m.traverse *= e.traverse;
-    if (e.turret) m.turret *= e.turret;
-    if (e.repair) m.repair *= e.repair;
-    if (e.heSplash) m.heSplash *= e.heSplash;
-    if (e.crewHe) m.crewHe *= e.crewHe;
-    if (e.engineFire) m.engineFire *= e.engineFire;
-    if (e.fireTicks) m.fireTicks *= e.fireTicks;
-    if (e.extinguish) m.extinguish *= e.extinguish;
-    if (e.moduleHp) {
-      for (const mod of Object.keys(e.moduleHp) as EquipmentModuleId[]) {
-        const factor = e.moduleHp[mod];
-        if (factor === undefined) continue;
-        m.moduleHp[mod] = (m.moduleHp[mod] || 1) * factor;
-      }
-    }
+    applyScalarEquipmentEffects(m, it.effects);
+    applyModuleEquipmentEffects(m, it.effects);
   }
   return m;
 }

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -153,7 +154,7 @@ export interface InputLayer {
   virtualActive(): boolean;
   isTouchLayout(): boolean;
   getSettings(): InputSettings;
-  setSetting(key: keyof InputSettings, value: unknown): void;
+  setSetting(key: keyof InputSettings, value: RuntimeValue): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
   setEnabled(enabled: boolean): void;
   isLocked(): boolean;
@@ -359,15 +360,15 @@ function labelForPadButton(index: number | null) {
   return PAD_BUTTON_LABELS[index] || `PAD ${index}`;
 }
 
-function loadJson(key: string): unknown {
+function loadJson(key: string): RuntimeValue {
   try {
     const raw = localStorage.getItem(key);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    const parsed: RuntimeValue = raw ? JSON.parse(raw) : null;
     return parsed;
   } catch (_) { return null; }
 }
 
-function saveJson(key: string, value: unknown) {
+function saveJson(key: string, value: RuntimeValue) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* private mode */ }
 }
 
@@ -375,7 +376,7 @@ const clamp = (value: number, low: number, high: number) => (
   Math.max(low, Math.min(high, value))
 );
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -406,14 +407,14 @@ function stickCurve(v: number) {
  * @returns {boolean} whether either map changed
  */
 export function migrateShiftAimCapsFreeLookBindings(
-  primary: Record<string, unknown>,
-  secondary: Record<string, unknown>,
+  primary: Record<string, RuntimeValue>,
+  secondary: Record<string, RuntimeValue>,
 ) {
   if (!primary || typeof primary !== 'object' ||
       !secondary || typeof secondary !== 'object') return false;
 
   let changed = false;
-  const has = (map: Record<string, unknown>, actionId: string) => (
+  const has = (map: Record<string, RuntimeValue>, actionId: string) => (
     Object.prototype.hasOwnProperty.call(map, actionId)
   );
   const ownsOutsideCameraLayout = (code: string) => [primary, secondary].some((map) =>
@@ -448,80 +449,92 @@ export function migrateShiftAimCapsFreeLookBindings(
 export function createInput(opts: { lockElement?: HTMLElement | null } = {}): InputLayer {
   const lockElement = opts.lockElement ?? null;
 
-  // --- bindings (primary + secondary + pad) ----------------------------------
-  // maps[0] = primary (BINDINGS_KEY, v1-compatible), maps[1] = secondary.
-  const maps: [BindingMap, BindingMap] = [
-    {} as BindingMap,
-    {} as BindingMap,
-  ];
-  for (const def of ACTION_DEFS) {
-    maps[0][def.id] = DEFAULT_BINDINGS[def.id] ?? null;
-    maps[1][def.id] = DEFAULT_BINDINGS2[def.id] ?? null;
+  function defaultKeyboardMaps(): [BindingMap, BindingMap] {
+    const result: [BindingMap, BindingMap] = [{} as BindingMap, {} as BindingMap];
+    for (const definition of ACTION_DEFS) {
+      result[0][definition.id] = DEFAULT_BINDINGS[definition.id] ?? null;
+      result[1][definition.id] = DEFAULT_BINDINGS2[definition.id] ?? null;
+    }
+    return result;
   }
-  const storedMaps: unknown[] = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
-  // Existing players commonly have a full copy of the previous defaults in
-  // localStorage, so changing DEFAULT_BINDINGS alone would leave Shift on free
-  // look. Migrate only recognized default shapes and preserve custom layouts.
-  if (loadJson(BINDINGS_LAYOUT_KEY) !== 3 && isRecord(storedMaps[0])) {
+
+  function migrateStoredKeyboardMaps(storedMaps: RuntimeValue[]): void {
+    if (loadJson(BINDINGS_LAYOUT_KEY) === 3 || !isRecord(storedMaps[0])) return;
     if (!isRecord(storedMaps[1])) storedMaps[1] = {};
     const primary = storedMaps[0];
     const secondary = storedMaps[1];
-    if (isRecord(secondary) && migrateShiftAimCapsFreeLookBindings(primary, secondary)) {
-      saveJson(BINDINGS_KEY, primary);
-      saveJson(BINDINGS2_KEY, secondary);
-    }
+    if (!isRecord(secondary)) return;
+    if (!migrateShiftAimCapsFreeLookBindings(primary, secondary)) return;
+    saveJson(BINDINGS_KEY, primary);
+    saveJson(BINDINGS2_KEY, secondary);
   }
-  saveJson(BINDINGS_LAYOUT_KEY, 3);
-  for (let s = 0; s < 2; s++) {
-    const stored = storedMaps[s];
-    if (isRecord(stored)) {
-      for (const def of ACTION_DEFS) {
-        const v = stored[def.id];
-        if (typeof v === 'string' && v) maps[s][def.id] = v;
-        else if (v === null) maps[s][def.id] = null; // explicitly cleared by the player
+
+  function applyStoredKeyboardMaps(
+    maps: [BindingMap, BindingMap],
+    storedMaps: RuntimeValue[],
+  ): void {
+    for (let slot = 0; slot < 2; slot++) {
+      const stored = storedMaps[slot];
+      if (!isRecord(stored)) continue;
+      for (const definition of ACTION_DEFS) {
+        const value = stored[definition.id];
+        if (typeof value === 'string' && value) maps[slot][definition.id] = value;
+        else if (value === null) maps[slot][definition.id] = null;
       }
     }
   }
-  // Sanitize: a physical code may own at most one (action, slot). Older saves
-  // can collide with newly-added defaults (e.g. Digit4 now = Repair Kit) — the
-  // earlier definition wins, the later slot is cleared.
-  {
-    const used = new Set();
-    for (let s = 0; s < 2; s++) {
-      for (const def of ACTION_DEFS) {
-        const code = maps[s][def.id];
+
+  function dedupeKeyboardMaps(maps: [BindingMap, BindingMap]): void {
+    const used = new Set<string>();
+    for (let slot = 0; slot < 2; slot++) {
+      for (const definition of ACTION_DEFS) {
+        const code = maps[slot][definition.id];
         if (!code) continue;
-        if (used.has(code)) maps[s][def.id] = null;
+        if (used.has(code)) maps[slot][definition.id] = null;
         else used.add(code);
       }
     }
   }
 
-  const padBindings = {} as PadBindingMap;
-  for (const def of ACTION_DEFS) {
-    padBindings[def.id] = DEFAULT_PAD_BINDINGS[def.id] ?? null;
+  function loadKeyboardMaps(): [BindingMap, BindingMap] {
+    const maps = defaultKeyboardMaps();
+    const storedMaps: RuntimeValue[] = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
+    migrateStoredKeyboardMaps(storedMaps);
+    saveJson(BINDINGS_LAYOUT_KEY, 3);
+    applyStoredKeyboardMaps(maps, storedMaps);
+    dedupeKeyboardMaps(maps);
+    return maps;
   }
-  const storedPad = loadJson(PAD_KEY);
-  if (isRecord(storedPad)) {
-    for (const def of ACTION_DEFS) {
-      const v = storedPad[def.id];
-      if (typeof v === 'number' && v >= 0 && v < PAD_MAX_BUTTONS) padBindings[def.id] = v;
-      else if (v === null && Object.prototype.hasOwnProperty.call(storedPad, def.id)) padBindings[def.id] = null;
+
+  function loadPadBindings(): PadBindingMap {
+    const bindings = {} as PadBindingMap;
+    for (const definition of ACTION_DEFS) {
+      bindings[definition.id] = DEFAULT_PAD_BINDINGS[definition.id] ?? null;
     }
-  }
-  // Adding the dedicated free-look action moves the default RB assignment
-  // away from the older context-sensitive RMB action. Old saves can contain
-  // that prior RB value, so apply the same first-owner dedupe as keyboard
-  // bindings; `freeLook` appears first and keeps the physical button.
-  {
-    const used = new Set();
-    for (const def of ACTION_DEFS) {
-      const button = padBindings[def.id];
+    const stored = loadJson(PAD_KEY);
+    if (isRecord(stored)) {
+      for (const definition of ACTION_DEFS) {
+        const value = stored[definition.id];
+        if (typeof value === 'number' && value >= 0 && value < PAD_MAX_BUTTONS) {
+          bindings[definition.id] = value;
+        } else if (value === null && Object.prototype.hasOwnProperty.call(stored, definition.id)) {
+          bindings[definition.id] = null;
+        }
+      }
+    }
+    const used = new Set<number>();
+    for (const definition of ACTION_DEFS) {
+      const button = bindings[definition.id];
       if (button == null) continue;
-      if (used.has(button)) padBindings[def.id] = null;
+      if (used.has(button)) bindings[definition.id] = null;
       else used.add(button);
     }
+    return bindings;
   }
+
+  // --- bindings (primary + secondary + pad) ----------------------------------
+  const maps = loadKeyboardMaps();
+  const padBindings = loadPadBindings();
 
   let codeToAction = new Map<string, ActionId>(); // code -> actionId (both keyboard slots)
   let padButtonToAction = new Map<number, ActionId>(); // button index -> actionId
@@ -545,10 +558,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     saveJson(slot === 0 ? BINDINGS_KEY : BINDINGS2_KEY, maps[slot]);
   }
 
-  // --- gameplay settings -------------------------------------------------------
-  const settings: InputSettings = { ...DEFAULT_SETTINGS };
-  const storedSettings = loadJson(SETTINGS_KEY);
-  if (isRecord(storedSettings)) {
+  function applyStoredSettings(
+    settings: InputSettings,
+    storedSettings: Record<string, RuntimeValue>,
+  ): void {
     if (typeof storedSettings.sensitivity === 'number') settings.sensitivity = clamp(storedSettings.sensitivity, 0.2, 3);
     if (typeof storedSettings.invertY === 'boolean') settings.invertY = storedSettings.invertY;
     if (typeof storedSettings.sniperSensScale === 'number') settings.sniperSensScale = clamp(storedSettings.sniperSensScale, 0.2, 3);
@@ -572,6 +585,11 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
   }
 
+  // --- gameplay settings -------------------------------------------------------
+  const settings: InputSettings = { ...DEFAULT_SETTINGS };
+  const storedSettings = loadJson(SETTINGS_KEY);
+  if (isRecord(storedSettings)) applyStoredSettings(settings, storedSettings);
+
   // --- live state ----------------------------------------------------------------
   const down = new Set<string>(); // active codes — Set semantics kill key-ghosting
   const actionHandlers = new Map<ActionId, Set<ActionHandler>>(); // actionId -> Set<cb(code)>
@@ -587,8 +605,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const virtualMove = { x: 0, y: 0 }; // x right, y forward, both -1..1
   let virtualMoveActive = false;
   let virtualLastActiveMs = -Infinity;
-  const state = {} as InputState;
-  for (const def of ACTION_DEFS) state[def.id] = false;
+  const state = Object.fromEntries(
+    ACTION_DEFS.map((definition) => [definition.id, false]),
+  ) as InputState;
   let enabled = true;
   let rawDX = 0;
   let rawDY = 0;
@@ -728,6 +747,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const padPrevPressed: boolean[] = new Array(PAD_MAX_BUTTONS).fill(false);
   const padAim = { x: 0, y: 0 }; // curved right-stick deflection (-1..1)
   const padMove = { x: 0, y: 0 }; // curved left-stick deflection (-1..1)
+  const padRawMove = { x: 0, y: 0 };
   let padConnected = false;
   let padLastActiveMs = -Infinity;
   let padLastPollMs = -1;
@@ -739,68 +759,87 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const onPadConnected = () => { padEverConnected = true; };
   window.addEventListener('gamepadconnected', onPadConnected);
 
+  function resetPadState(): void {
+    padHeld.clear();
+    padAim.x = 0;
+    padAim.y = 0;
+    padMove.x = 0;
+    padMove.y = 0;
+    padRawMove.x = 0;
+    padRawMove.y = 0;
+    padConnected = false;
+  }
+
+  function firstConnectedPad(): Gamepad | null {
+    const pads = typeof navigator !== 'undefined' && navigator.getGamepads
+      ? navigator.getGamepads() : null;
+    if (!pads) return null;
+    for (const pad of pads) {
+      if (pad?.connected) return pad;
+    }
+    return null;
+  }
+
+  function readPadAxes(pad: Gamepad): boolean {
+    const axes = pad.axes || [];
+    const leftX = axes.length > 0 ? axes[0] : 0;
+    const leftY = axes.length > 1 ? axes[1] : 0;
+    const rightX = axes.length > 2 ? axes[2] : 0;
+    const rightY = axes.length > 3 ? axes[3] : 0;
+    padRawMove.x = leftX;
+    padRawMove.y = leftY;
+    padMove.x = stickCurve(leftX);
+    padMove.y = stickCurve(leftY);
+    padAim.x = stickCurve(rightX);
+    padAim.y = stickCurve(rightY);
+    return Math.abs(leftX) > PAD_DEADZONE || Math.abs(leftY) > PAD_DEADZONE ||
+      Math.abs(rightX) > PAD_DEADZONE || Math.abs(rightY) > PAD_DEADZONE;
+  }
+
+  function pollPadButtons(pad: Gamepad): boolean {
+    let active = false;
+    const buttonCount = Math.min(pad.buttons.length, PAD_MAX_BUTTONS);
+    for (let index = 0; index < buttonCount; index++) {
+      const button = pad.buttons[index];
+      const pressed = !!button &&
+        (button.pressed || button.value > PAD_TRIGGER_THRESHOLD);
+      if (pressed) active = true;
+      const wasPressed = padPrevPressed[index];
+      padPrevPressed[index] = pressed;
+      if (!enabled) continue;
+      const actionId = padButtonToAction.get(index);
+      if (!actionId) continue;
+      if (pressed) padHeld.add(actionId);
+      if (pressed && !wasPressed) firePress(actionId, `Pad${index}`);
+    }
+    for (let index = buttonCount; index < PAD_MAX_BUTTONS; index++) {
+      padPrevPressed[index] = false;
+    }
+    return active;
+  }
+
+  function updatePadMovementActions(): void {
+    if (!enabled) return;
+    if (padRawMove.y < -PAD_MOVE_THRESHOLD) padHeld.add('forward');
+    if (padRawMove.y > PAD_MOVE_THRESHOLD) padHeld.add('back');
+    if (padRawMove.x < -PAD_MOVE_THRESHOLD) padHeld.add('left');
+    if (padRawMove.x > PAD_MOVE_THRESHOLD) padHeld.add('right');
+  }
+
   function pollPad() {
     if (!padEverConnected) return;
     const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (padLastPollMs >= 0 && nowMs - padLastPollMs < 4) return;
     padLastPollMs = nowMs;
-    padHeld.clear();
-    padAim.x = 0; padAim.y = 0;
-    padMove.x = 0; padMove.y = 0;
-    padConnected = false;
-    const pads = (typeof navigator !== 'undefined' && navigator.getGamepads)
-      ? navigator.getGamepads() : null;
-    let pad = null;
-    if (pads) {
-      for (const p of pads) {
-        if (p && p.connected) { pad = p; break; }
-      }
-    }
+    resetPadState();
+    const pad = firstConnectedPad();
     if (!pad) {
       padPrevPressed.fill(false);
       return;
     }
     padConnected = true;
-
-    const ax = pad.axes || [];
-    const lx = ax.length > 0 ? ax[0] : 0;
-    const ly = ax.length > 1 ? ax[1] : 0;
-    const rx = ax.length > 2 ? ax[2] : 0;
-    const ry = ax.length > 3 ? ax[3] : 0;
-    padMove.x = stickCurve(lx);
-    padMove.y = stickCurve(ly);
-    padAim.x = stickCurve(rx);
-    padAim.y = stickCurve(ry);
-
-    let anyActivity =
-      Math.abs(lx) > PAD_DEADZONE || Math.abs(ly) > PAD_DEADZONE ||
-      Math.abs(rx) > PAD_DEADZONE || Math.abs(ry) > PAD_DEADZONE;
-
-    // buttons: held state + press edges through the same action pipeline
-    const n = Math.min(pad.buttons.length, PAD_MAX_BUTTONS);
-    for (let i = 0; i < n; i++) {
-      const b = pad.buttons[i];
-      const pressed = !!b && (b.pressed || b.value > PAD_TRIGGER_THRESHOLD);
-      if (pressed) anyActivity = true;
-      const was = padPrevPressed[i];
-      padPrevPressed[i] = pressed;
-      if (!enabled) continue;
-      const actionId = padButtonToAction.get(i);
-      if (!actionId) continue;
-      if (pressed) padHeld.add(actionId);
-      if (pressed && !was) firePress(actionId, `Pad${i}`);
-    }
-    for (let i = n; i < PAD_MAX_BUTTONS; i++) padPrevPressed[i] = false;
-
-    // left stick -> synthesized held movement actions (digital fallback; the
-    // curved analog values stay available via getPadMove for analog throttle)
-    if (enabled) {
-      if (ly < -PAD_MOVE_THRESHOLD) padHeld.add('forward');
-      if (ly > PAD_MOVE_THRESHOLD) padHeld.add('back');
-      if (lx < -PAD_MOVE_THRESHOLD) padHeld.add('left');
-      if (lx > PAD_MOVE_THRESHOLD) padHeld.add('right');
-    }
-
+    const anyActivity = readPadAxes(pad) || pollPadButtons(pad);
+    updatePadMovementActions();
     if (anyActivity) padLastActiveMs = nowMs;
   }
 

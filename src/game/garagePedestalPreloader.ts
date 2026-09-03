@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 type BudgetYield = () => Promise<void> | undefined;
 
 interface GaragePedestalPreloaderOptions {
@@ -6,25 +7,25 @@ interface GaragePedestalPreloaderOptions {
   getSelectedId(): string;
   getNeighborIds(): readonly string[];
   hasCachedVisual(specId: string): boolean;
-  ensureTankBuilder(specId: string): Promise<unknown>;
-  ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
-  getSpec(specId: string): unknown;
+  ensureTankBuilder(specId: string): Promise<RuntimeValue>;
+  ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
+  getSpec(specId: string): RuntimeValue;
   prebakeSharedTextures(
-    spec: unknown,
+    spec: RuntimeValue,
     anisotropy: number,
     quality: string,
     yieldForBudget?: BudgetYield,
-  ): Promise<unknown>;
+  ): Promise<RuntimeValue>;
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
-  nextFrame(): Promise<unknown>;
-  scheduleDelay(callback: () => void, delayMs: number): unknown;
+  nextFrame(): Promise<RuntimeValue>;
+  scheduleDelay(callback: () => void, delayMs: number): RuntimeValue;
   acquireBackgroundWork?: (
     kind: 'pedestal-neighbors',
     stillValid: () => boolean,
   ) => Promise<{ release(): void } | null>;
   anisotropy: number;
-  warn?: (message: string, error: unknown) => void;
+  warn?: (message: string, error: RuntimeValue) => void;
   retainedIntentLimit?: number;
   neighborDelayMs?: number;
 }
@@ -32,7 +33,7 @@ interface GaragePedestalPreloaderOptions {
 export interface GaragePedestalPreloader {
   invalidate(): void;
   queueNeighbors(): void;
-  preloadIntent(specId: string): Promise<unknown>;
+  preloadIntent(specId: string): Promise<RuntimeValue>;
   readonly retainedIds: readonly string[];
   readonly pendingIntents: number;
 }
@@ -70,7 +71,7 @@ export function createGaragePedestalPreloader({
 
   let generation = 0;
   const retainedIds = new Set<string>();
-  const intentPromises = new Map<string, Promise<unknown>>();
+  const intentPromises = new Map<string, Promise<RuntimeValue>>();
   const active = (token: number) => token === generation && getPhase() === 'garage';
   const invalidate = () => { generation += 1; };
 
@@ -117,7 +118,7 @@ export function createGaragePedestalPreloader({
             retainedIds.add(id);
             await nextFrame();
           }
-        } catch (error: unknown) {
+        } catch (error) {
           if (error !== CANCELLED) warn('[garage] neighbor texture prefetch failed:', error);
         } finally {
           lease.release();
@@ -126,7 +127,7 @@ export function createGaragePedestalPreloader({
     }, neighborDelayMs);
   };
 
-  const preloadIntent = (specId: string): Promise<unknown> => {
+  const preloadIntent = (specId: string): Promise<RuntimeValue> => {
     if (!specId || specId === getSelectedId() || hasCachedVisual(specId)) {
       return Promise.resolve();
     }

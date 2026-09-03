@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Camera } from 'three';
 import type { EventBus } from './stateCore.ts';
 import {
@@ -40,12 +41,12 @@ export interface MobileAutoAimRuntime {
   dispose(): void;
 }
 
-function eventId(payload: unknown): string | null {
+function eventId(payload: RuntimeValue): string | null {
   if (!payload || typeof payload !== 'object' || !('id' in payload)) return null;
   return typeof payload.id === 'string' ? payload.id : null;
 }
 
-function eventPhase(payload: unknown): string | null {
+function eventPhase(payload: RuntimeValue): string | null {
   if (!payload || typeof payload !== 'object' || !('phase' in payload)) return null;
   return typeof payload.phase === 'string' ? payload.phase : null;
 }

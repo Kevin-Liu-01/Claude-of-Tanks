@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 /**
  * In-memory signaling membership for one Node process.
  *
@@ -19,7 +20,7 @@ export interface SignalingPlayer {
 export interface SignalingMessage {
   type: string;
   requestId?: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, RuntimeValue>;
 }
 
 export interface SignalingNotification {
@@ -57,23 +58,23 @@ export interface SignalingRoomStoreOptions {
 }
 
 export interface CreateRoomOptions {
-  player?: unknown;
-  sessionId?: unknown;
+  player?: RuntimeValue;
+  sessionId?: RuntimeValue;
   maxPlayers?: number;
-  mode?: unknown;
+  mode?: RuntimeValue;
 }
 
 export interface JoinRoomOptions {
-  roomCode?: unknown;
-  player?: unknown;
-  sessionId?: unknown;
+  roomCode?: RuntimeValue;
+  player?: RuntimeValue;
+  sessionId?: RuntimeValue;
 }
 
 export interface RelaySignalOptions {
-  roomCode?: unknown;
-  toPeerId?: unknown;
-  toSessionId?: unknown;
-  signal?: unknown;
+  roomCode?: RuntimeValue;
+  toPeerId?: RuntimeValue;
+  toSessionId?: RuntimeValue;
+  signal?: RuntimeValue;
 }
 
 interface SignalingMember {
@@ -99,11 +100,11 @@ interface SignalingMembership {
   peerId: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function cleanPlayer(player: unknown): SignalingPlayer {
+function cleanPlayer(player: RuntimeValue): SignalingPlayer {
   const source = isRecord(player) ? player : {};
   const id = String(source.id || '').trim();
   const name = String(source.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
@@ -113,7 +114,7 @@ function cleanPlayer(player: unknown): SignalingPlayer {
   return { id, name };
 }
 
-function cleanSessionId(value: unknown, playerId: string): string {
+function cleanSessionId(value: RuntimeValue, playerId: string): string {
   const id = String(value || '').trim();
   // Cached pre-session clients can overlap a server deploy. Give those older
   // chunks a stable compatibility epoch instead of rejecting the room join;

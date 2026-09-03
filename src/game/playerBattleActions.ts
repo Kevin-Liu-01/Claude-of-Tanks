@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { ActionId } from './input.ts';
@@ -111,7 +112,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   const shellCards: ShellCard[] = [];
   const consumableReadyAt = [0, 0, 0];
   const disposeCallbacks: Array<() => void> = [];
-  const listen = (event: string, listener: (payload: unknown) => void): void => {
+  const listen = (event: string, listener: (payload: RuntimeValue) => void): void => {
     disposeCallbacks.push(bus.on(event, listener));
   };
   const onAction = (action: ActionId, listener: () => void): void => {
@@ -158,7 +159,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   }
 
   listen('ui:consumable', (payload) => {
-    const slot = Number((payload as { slot?: unknown } | null)?.slot);
+    const slot = Number((payload as { slot?: RuntimeValue } | null)?.slot);
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player || !Number.isInteger(slot) || !rules.hasConsumableRule(slot)) return;
     if (network.isActive()) {
@@ -210,7 +211,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
 
   listen('ui:shellSelect', (payload) => {
-    const requestedSlot = Number((payload as { slot?: unknown } | null)?.slot);
+    const requestedSlot = Number((payload as { slot?: RuntimeValue } | null)?.slot);
     const player = livePlayer();
     if (!player || !Number.isInteger(requestedSlot) || requestedSlot < 0) return;
     const slot = Math.min(player.spec.gun.shells.length - 1, requestedSlot | 0);
@@ -291,11 +292,11 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
 
   listen('shell:fired', (payload) => {
-    if (!(payload as { isPlayer?: unknown } | null)?.isPlayer || !game.player?.combat) return;
+    if (!(payload as { isPlayer?: RuntimeValue } | null)?.isPlayer || !game.player?.combat) return;
     syncShellCards();
   });
   listen('ammo:depleted', (payload) => {
-    const detail = payload as { id?: unknown; fallbackSlot?: unknown } | null;
+    const detail = payload as { id?: RuntimeValue; fallbackSlot?: RuntimeValue } | null;
     const player = game.player;
     if (!player?.combat || detail?.id !== player.id) return;
     syncShellCards();

@@ -1,8 +1,9 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { NetworkBrowserSessionRuntime } from './networkBrowserSessionRuntime.ts';
 
 interface NetworkRoundState {
-  result: unknown;
-  resultReason: unknown;
+  result: RuntimeValue;
+  resultReason: RuntimeValue;
   timeS: number;
   preBattleS: number;
 }

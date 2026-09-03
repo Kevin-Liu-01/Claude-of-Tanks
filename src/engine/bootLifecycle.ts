@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface BootProgressScreen {
   begin(stage: string): void;
   end(stage: string): void;
@@ -15,7 +16,7 @@ export interface BootLifecycle {
 
 interface BootLifecycleOptions {
   screen: BootProgressScreen;
-  yieldFrame: () => Promise<unknown>;
+  yieldFrame: () => Promise<RuntimeValue>;
   now?: () => number;
   heavyStageMs?: number;
 }

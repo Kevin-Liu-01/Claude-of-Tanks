@@ -17,6 +17,7 @@ import {
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 import {
+  SHADOW_OPACITY,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
@@ -37,15 +38,11 @@ declare global {
 type NumericAttributeArray = THREE.InstancedBufferAttribute['array'];
 type MaterialCompileHook = THREE.Material['onBeforeCompile'];
 
-interface CsmShaderOwner {
-  shaders?: Map<unknown, unknown>;
-}
+type CsmShaderOwner = Pick<CSM, 'shaders'>;
 
-interface CsmRegisteredMaterial {
+type CsmRegisteredMaterial = Pick<THREE.Material, 'defines' | 'needsUpdate'> & {
   onBeforeCompile?: MaterialCompileHook;
-  defines?: Record<string, unknown>;
-  needsUpdate: boolean;
-}
+};
 
 type ExtendedCsm = CSM & {
   _initCascades(): void;
@@ -55,21 +52,12 @@ type ExtendedCsm = CSM & {
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
 // exp2 fog (sky.ts) shadows must hold that far or buildings/trees float.
-// PERF: shadow range and per-cascade map sizes now come from the graphics
-// quality preset (src/engine/quality.ts — ultra [4096,4096,4096,2048], high
-// [4096,2048,2048,1024]; medium/low trade range+resolution for fill rate,
-// and PCF radii are penumbra-compensated per size — see applyShadowSizes).
-// The farther cascades cover 100s of meters, where their smaller texels remain
-// subpixel at gameplay scale. High now uses ~100 MB of shadow depth targets
-// instead of ~160 MB, while keeping its hero cascade at 4096. The stock CSM
-// update assumes every cascade has one uniform resolution; this module's stable
-// update below snaps each projection to its ACTUAL map size instead.
-// Moving near-field shadows must refresh on every presented frame. Capping
-// them to 60 Hz made the player, nearby vehicles and contact shadows visibly
-// step across surfaces on high-refresh displays — an artifact that reads like
-// texture Z-fighting. Only the genuinely subpixel far pair are rate-capped and
-// refresh together at 20 Hz. `update(true)` still forces every cascade for
-// deterministic captures and map switches.
+// Shadow range and per-cascade map sizes come from the graphics preset. Every
+// desktop preset shares the same stable 2048/1024 layout and 520 m range, and
+// the projection below snaps each cascade to its actual texel grid. All active
+// cascades refresh from the same presented-frame timestamp; mixing full-rate
+// near maps with 20 Hz far maps made tree/building shadows step and flash in
+// cascade fades. `update(true)` still forces transition settling explicitly.
 const FAR_CASCADE_START = 2;
 // Reserved only during covered shadow priming. Presentation objects use layer
 // 0, shadow-only proxies use 29, and late FX may use 30.
@@ -198,49 +186,12 @@ const SHADOW_BIAS = -0.0002;
 // clear step against lit road after ACES. Cascade 1 follows (2.6 → 2.3) to
 // keep the softness ladder monotonic without a band-to-band jump.
 const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
-// r3 SHADOW DENSITY ("vehicles beyond ~100m cast no shadows — floating
-// stickers"; measured: the shadow MAP is intact out to 700 m, but the ambient
-// stack that has grown round-over-round to rescue hull flanks — hemi 0.51
-// effective + anti-sun fill 0.66 + IBL floor 0.32 — fills sun-shadowed ground
-// to ~29% of lit LINEAR, and ACES + the grade's high-luma taper compress that
-// to a ~1.3:1 DISPLAY ratio: a 4 m tank shadow at 150-250 m is statistically
-// invisible against terrain albedo mottle. Near-field shadows only read
-// because GTAO (faded out past ~250 m) stacks on top — the exact "shadow dies
-// at the distance tank gameplay lives at" tell.)
-// Fix: a WoT-era shadow-density term, not a global key:fill rebalance (the
-// fills exist to keep hull flanks/canopy interiors readable and must stay).
-// Physically: an occluder that blocks the sun also blocks a chunk of sky +
-// bounce, so inside a sun cast shadow the hemisphere/IBL/ambient irradiance
-// is scaled by SHADOW_AMBIENT_DIM. Cast shadows keep hue (the cool split-tone
-// still reads) but recover a ~2:1 display ratio at ANY camera distance —
-// cascade resolution was never the limit. Implemented as a global
-// ShaderChunk patch layered over the CSMShader chunks (see the block after
-// the CSM constructor); materials.js's vehicle deep-shade luminance floor
-// runs later in the chain and keeps hulls readable inside the denser shade.
-// r4 LP2: 0.58 → 0.50 — the staged closeup/combat vehicle shadows still sat
-// only ~1.6:1 against lit road after ACES (they read as road discoloration,
-// not as THE TANK'S shadow); a denser ambient dim inside sun shadow restores
-// the ~2.2:1 display step everywhere. Hull readability inside shade is held
-// by materials.js's deep-shade luminance floor + the hemi bounce floor.
-// r5 ("player-view shadow floor is near-black: tank shadow on the road drops
-// to ~15% luminance with no cool sky fill; blue-sky daylight should fill
-// shadows to ~35-45% with a cool tint"): the r4 0.50 scalar stacked with the
-// grade's sub-pivot contrast + GTAO into a ~6.7:1 display step. The dim is
-// now a TINTED vector (luminance ~0.70) whose blue channel keeps ~92% — a
-// cast shadow under open sky is lit BY that sky, so it fills brighter AND
-// cooler. Distance readability (the r3 "shadows die at range" fix this dim
-// was born for) is preserved by the ~1.9:1 display step that remains plus
-// the new distance-widened penumbra making edges read as shadow, not decal.
-// (Measured after the first r5 pass: at [0.60,0.70,0.92] the road shadow
-// still displayed at ~11% of lit — the display chain (ACES toe + sub-pivot
-// grade contrast) was the real crusher, fixed by the grade's new low-end
-// taper in post.ts. The dim itself now only needs to carry the COOL TINT and
-// a gentle density step; the linear ratio lands ~26% and displays ~35%.)
-const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
-// Indirect SPECULAR (env reflections) dims harder: a sky probe reflecting at
-// full strength inside a cast shadow is the classic "wet plastic in shade"
-// tell on ice/wet roads once materials gain speculars.
-const SHADOW_AMBIENT_SPEC_DIM = 0.55;
+// Neutral values retain the CSM fade-visibility instrumentation used by the
+// shader compatibility checks without applying the old custom ambient crush.
+// Shadowed road/foliage pixels now keep Three's standard hemisphere and IBL
+// contribution instead of collapsing into near-black patches.
+const SHADOW_AMBIENT_DIM = [1.0, 1.0, 1.0];
+const SHADOW_AMBIENT_SPEC_DIM = 1.0;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
 // resolved as a visible hatch/cross pattern and crawled because its rotation
@@ -353,7 +304,7 @@ const FILL_HORIZ_M = 230;
 
 type DrawableImage = CanvasImageSource & { width: number; height: number };
 
-function isDrawableImage(value: unknown): value is DrawableImage {
+function isDrawableImage(value: object | null | undefined): value is DrawableImage {
   if (!value || typeof value !== 'object' ||
       !('width' in value) || typeof value.width !== 'number' ||
       !('height' in value) || typeof value.height !== 'number') return false;
@@ -364,6 +315,58 @@ function isDrawableImage(value: unknown): value is DrawableImage {
     (typeof HTMLVideoElement !== 'undefined' && value instanceof HTMLVideoElement) ||
     (typeof SVGImageElement !== 'undefined' && value instanceof SVGImageElement) ||
     (typeof VideoFrame !== 'undefined' && value instanceof VideoFrame);
+}
+
+function alphaCoverage(data: Uint8ClampedArray, cutoff: number): number {
+  let passing = 0;
+  for (let index = 3; index < data.length; index += 4) {
+    if (data[index] >= cutoff) passing++;
+  }
+  return passing / (data.length / 4);
+}
+
+function downsampleCoverageMip(previous: ImageData, size: number): ImageData {
+  const current = new ImageData(size, size);
+  const source = previous.data;
+  const target = current.data;
+  const sourceWidth = size * 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const topLeft = ((y * 2) * sourceWidth + x * 2) * 4;
+      const topRight = topLeft + 4;
+      const bottomLeft = topLeft + sourceWidth * 4;
+      const bottomRight = bottomLeft + 4;
+      const output = (y * size + x) * 4;
+      for (let channel = 0; channel < 4; channel++) {
+        target[output + channel] = (source[topLeft + channel] + source[topRight + channel] +
+          source[bottomLeft + channel] + source[bottomRight + channel] + 2) >> 2;
+      }
+    }
+  }
+  return current;
+}
+
+function correctMipCoverage(
+  image: ImageData,
+  targetCoverage: number,
+  cutoff: number,
+): void {
+  if (targetCoverage <= 0 || image.width < 2) return;
+  const data = image.data;
+  const currentCoverage = alphaCoverage(data, cutoff);
+  if (currentCoverage >= targetCoverage * 0.7 && currentCoverage <= targetCoverage * 1.3) return;
+  const alphas: number[] = [];
+  for (let index = 3; index < data.length; index += 4) alphas.push(data[index]);
+  alphas.sort((a, b) => b - a);
+  const quantileIndex = Math.min(
+    alphas.length - 1,
+    Math.max(0, Math.round(targetCoverage * alphas.length) - 1),
+  );
+  const quantile = Math.max(1, alphas[quantileIndex]);
+  for (let index = 3; index < data.length; index += 4) {
+    const alpha = cutoff + (data[index] - quantile) * 3;
+    data[index] = Math.max(0, Math.min(255, alpha));
+  }
 }
 
 /**
@@ -382,7 +385,7 @@ function isDrawableImage(value: unknown): value is DrawableImage {
  * @returns {void}
  */
 function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
-  const img: unknown = tex.image;
+  const img = tex.image as object | null | undefined;
   if (!isDrawableImage(img)) return;
   if (!img || !img.width || (tex.mipmaps && tex.mipmaps.length > 0)) return;
   const size = img.width;
@@ -397,54 +400,16 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
   const level0 = ctx.getImageData(0, 0, size, size);
 
   const cutByte = Math.round(cutoff * 255);
-  let passing = 0;
   const d0 = level0.data;
-  for (let i = 3; i < d0.length; i += 4) if (d0[i] >= cutByte) passing++;
-  const targetCov = passing / (d0.length / 4);
+  const targetCov = alphaCoverage(d0, cutByte);
 
   const chain = [level0];
   let prev = level0;
   let s = size;
   while (s > 1) {
     s >>= 1;
-    const cur = new ImageData(s, s);
-    const pd = prev.data;
-    const cd = cur.data;
-    const pw = s * 2;
-    for (let y = 0; y < s; y++) {
-      for (let x = 0; x < s; x++) {
-        const i00 = ((y * 2) * pw + x * 2) * 4;
-        const i10 = i00 + 4;
-        const i01 = i00 + pw * 4;
-        const i11 = i01 + 4;
-        const o = (y * s + x) * 4;
-        for (let k = 0; k < 4; k++) {
-          cd[o + k] = (pd[i00 + k] + pd[i10 + k] + pd[i01 + k] + pd[i11 + k] + 2) >> 2;
-        }
-      }
-    }
-    if (targetCov > 0 && s >= 2) {
-      // Only correct levels whose pass-coverage actually drifted from level 0
-      // (box-filtering pulls it toward all-pass or all-fail). Quantile-anchored
-      // contrast: texels above the coverage quantile pass the cutoff, the rest
-      // fall away — restores level-0 coverage while keeping internal
-      // silhouette variation instead of an all-or-nothing rectangle.
-      let pass = 0;
-      for (let i = 3; i < cd.length; i += 4) if (cd[i] >= cutByte) pass++;
-      const covNow = pass / (cd.length / 4);
-      if (covNow < targetCov * 0.7 || covNow > targetCov * 1.3) {
-        const alphas = [];
-        for (let i = 3; i < cd.length; i += 4) alphas.push(cd[i]);
-        alphas.sort((a, b) => b - a);
-        const qi = Math.min(alphas.length - 1, Math.max(0, Math.round(targetCov * alphas.length) - 1));
-        const q = Math.max(1, alphas[qi]);
-        const boost = 3;
-        for (let i = 3; i < cd.length; i += 4) {
-          const v = cutByte + (cd[i] - q) * boost;
-          cd[i] = v < 0 ? 0 : (v > 255 ? 255 : v);
-        }
-      }
-    }
+    const cur = downsampleCoverageMip(prev, s);
+    correctMipCoverage(cur, targetCov, cutByte);
     chain.push(cur);
     prev = cur;
   }
@@ -462,9 +427,9 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // every shadow-casting InstancedMesh renders its FULL instance set into EVERY
 // cascade — the vegetation casters are built frustumCulled=false with
 // map-spanning instance sets, so even the ~25 m cascade-0 box rasterizes all
-// 373 K vegetation caster tris plus the 150 K merged-facade props mesh, three
-// at an average of three maps per 60 Hz frame (two near maps continuously,
-// plus both far maps every other frame) = 2.10 M of the 7.34 M frame total.
+// 373 K vegetation caster tris plus the 150 K merged-facade props mesh. The
+// coherent scheduler now refreshes all four modest maps together, making
+// per-instance culling essential to keep that stable pass bounded.
 // Mesh-level frustum culling can never help
 // (a map-spanning merged bounding sphere intersects every cascade box); the
 // correct cut is per-INSTANCE cascade culling:
@@ -483,7 +448,7 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // misses a cascade's frustum was rasterized fully off that cascade's map and
 // contributed nothing; the test is conservative (per-instance sphere from the
 // geometry bounding sphere x instance scale + SHADOW_CULL_MARGIN covering
-// vertex wind sway and the bounded 30 Hz staleness of the far cohort).
+// vertex wind sway and normal cascade-fit movement).
 // Static-ness is DETECTED, not assumed: a mesh qualifies only after its
 // instanceMatrix version sat unchanged across 3 consecutive shadow draws, and
 // any foreign write (vegetation chunk rebuild, map switch, live count change)
@@ -617,40 +582,100 @@ function buildCullRec(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
   return rec;
 }
 
+function shadowCullDebugDisabled(): boolean {
+  return typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.noCull;
+}
+
+function advancePendingCull(
+  mesh: THREE.InstancedMesh,
+  record: PendingCullRecord,
+): ActiveCullRecord | null {
+  if (mesh.instanceMatrix.version !== record.version || mesh.count !== record.count) {
+    record.version = mesh.instanceMatrix.version;
+    record.count = mesh.count;
+    record.stable = 0;
+    return null;
+  }
+  record.stable++;
+  return record.stable >= 3 ? buildCullRec(mesh) : null;
+}
+
+function activeCullWasInvalidated(mesh: THREE.InstancedMesh, record: ActiveCullRecord): boolean {
+  if (mesh.count !== record.n) return true;
+  for (const entry of record.attrs) {
+    if (entry.attr.version !== entry.version) return true;
+  }
+  return false;
+}
+
+function resolveActiveCull(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
+  const record = _cullState.get(mesh);
+  if (record === null) return null;
+  if (record === undefined) {
+    if (geometryTris(mesh.geometry) * mesh.count < SHADOW_CULL_MIN_TRIS) {
+      _cullState.set(mesh, null);
+    } else {
+      cullPending(mesh);
+    }
+    return null;
+  }
+  if (record.pending) return advancePendingCull(mesh, record);
+  if (!activeCullWasInvalidated(mesh, record)) return record;
+  cullPending(mesh);
+  return null;
+}
+
+function prepareCullFrustum(shadowCamera: THREE.Camera): void {
+  if (_cullFrusCam === shadowCamera && _cullFrusStamp === _cullTick) return;
+  _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
+  _cullFrustum.setFromProjectionMatrix(_cullProj);
+  _cullFrusCam = shadowCamera;
+  _cullFrusStamp = _cullTick;
+}
+
+function copyCullInstance(record: ActiveCullRecord, sourceIndex: number, targetIndex: number): void {
+  for (const entry of record.attrs) {
+    const sourceOffset = sourceIndex * entry.size;
+    const targetOffset = targetIndex * entry.size;
+    for (let component = 0; component < entry.size; component++) {
+      entry.attr.array[targetOffset + component] = entry.snap[sourceOffset + component];
+    }
+  }
+}
+
+function compactCullRecord(record: ActiveCullRecord): number {
+  let visibleCount = 0;
+  for (let index = 0; index < record.n; index++) {
+    _cullSphere.center.set(
+      record.centers[index * 3],
+      record.centers[index * 3 + 1],
+      record.centers[index * 3 + 2],
+    );
+    _cullSphere.radius = record.radii[index];
+    if (!_cullFrustum.intersectsSphere(_cullSphere)) continue;
+    if (visibleCount !== index) copyCullInstance(record, index, visibleCount);
+    visibleCount++;
+  }
+  return visibleCount;
+}
+
+function markCompactedAttributes(record: ActiveCullRecord, visibleCount: number): void {
+  if (visibleCount <= 0) return;
+  for (const entry of record.attrs) {
+    entry.attr.addUpdateRange(0, visibleCount * entry.size);
+    entry.attr.needsUpdate = true;
+    entry.version = entry.attr.version;
+  }
+}
+
 /** onBeforeShadow half: compact the instance prefix to this cascade's frustum. */
 function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): void {
   // shadow-flicker bisect hook (probes): __SHADOW_DEBUG.noCull skips the
   // instance compaction entirely; harmless in production (never set).
-  if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.noCull) return;
+  if (shadowCullDebugDisabled()) return;
   if (!(object instanceof THREE.InstancedMesh) || object.count === 0) return;
-  let rec = _cullState.get(object);
-  if (rec === null) return; // permanently skipped
-  if (rec === undefined) {
-    if (geometryTris(object.geometry) * object.count < SHADOW_CULL_MIN_TRIS) {
-      _cullState.set(object, null);
-      return;
-    }
-    cullPending(object);
-    return;
-  }
-  if (rec.pending) {
-    // static only once the buffer sat untouched across 3 consecutive draws
-    if (object.instanceMatrix.version !== rec.version || object.count !== rec.count) {
-      rec.version = object.instanceMatrix.version;
-      rec.count = object.count;
-      rec.stable = 0;
-      return;
-    }
-    if (++rec.stable < 3) return;
-    rec = buildCullRec(object);
-    if (!rec) return;
-  }
-  // foreign-write / live-count invalidation (owner rebuilt the instances)
-  if (object.count !== rec.n) { cullPending(object); return; }
-  for (let a = 0; a < rec.attrs.length; a++) {
-    const e = rec.attrs[a];
-    if (e.attr.version !== e.version) { cullPending(object); return; }
-  }
+  const rec = resolveActiveCull(object);
+  if (!rec) return;
   // one frustum build per cascade render (cascades draw their objects
   // back-to-back, so a single {camera, tick} memo covers the whole pass)
   // (shadow-flash forensics 2026-08-08: an earlier suspicion pinned driving
@@ -658,44 +683,14 @@ function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): v
   // freezeMask/noCull A/Bs then showed the compaction contributes ZERO
   // measurable flicker (the flash was GTAO boil, see post.ts ao-boil r1/r2),
   // so the box is exact again. SHADOW_CULL_MARGIN already absorbs sway and
-  // rate-capped far-cascade staleness.)
-  if (_cullFrusCam !== shadowCamera || _cullFrusStamp !== _cullTick) {
-    _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
-    _cullFrustum.setFromProjectionMatrix(_cullProj);
-    _cullFrusCam = shadowCamera;
-    _cullFrusStamp = _cullTick;
-  }
-  const { centers, radii, attrs, n } = rec;
-  let k = 0;
-  for (let i = 0; i < n; i++) {
-    _cullSphere.center.set(centers[i * 3], centers[i * 3 + 1], centers[i * 3 + 2]);
-    _cullSphere.radius = radii[i];
-    if (!_cullFrustum.intersectsSphere(_cullSphere)) continue;
-    if (k !== i) {
-      for (let a = 0; a < attrs.length; a++) {
-        const e = attrs[a];
-        const size = e.size;
-        const arr = e.attr.array;
-        const snap = e.snap;
-        const so = i * size;
-        const doff = k * size;
-        for (let j = 0; j < size; j++) arr[doff + j] = snap[so + j];
-      }
-    }
-    k++;
-  }
-  if (k === n) return; // nothing culled — buffers untouched, draw as-is
-  object.count = k;
-  rec.k = k;
+  // the complete active shadow fit.)
+  prepareCullFrustum(shadowCamera);
+  const visibleCount = compactCullRecord(rec);
+  if (visibleCount === rec.n) return; // nothing culled — buffers untouched, draw as-is
+  object.count = visibleCount;
+  rec.k = visibleCount;
   rec.compacted = true;
-  if (k > 0) {
-    for (let a = 0; a < attrs.length; a++) {
-      const e = attrs[a];
-      e.attr.addUpdateRange(0, k * e.size);
-      e.attr.needsUpdate = true; // version++ — resync our expectation
-      e.version = e.attr.version;
-    }
-  }
+  markCompactedAttributes(rec, visibleCount);
 }
 
 /** onAfterShadow half: restore owner bytes + full count before anyone reads. */
@@ -766,22 +761,11 @@ function patchShadowDepthPacking(): void {
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
 }
 
-let shadowChunksPatched = false;
-/**
- * Layer the shadow-density capture over the (CSM-installed) lighting chunks:
- *  - `lights_fragment_begin`: declare `cotSunVis`, record the CSM sun's
- *    shadow visibility (green channel: our sun colors never zero it), and
- *    resolve fade overlaps with the same weights as the direct-light blend;
- *  - `lights_fragment_end`: scale ambient/IBL irradiance (and env radiance)
- *    by SHADOW_AMBIENT_DIM inside the sun's cast shadow.
- * Guards compile away on non-CSM materials (no USE_CSM define). Throws on a
- * missed anchor so a three.js upgrade fails loudly, per the bloom/GTAO
- * precedent in post.ts.
- * @returns {void}
- */
-function patchShadowAmbientChunks() {
-  if (shadowChunksPatched) return;
-  shadowChunksPatched = true;
+let stableShadowSamplingPatched = false;
+/** Keep the PCF kernel orientation stable in shadow space during camera motion. */
+function patchStableShadowSampling() {
+  if (stableShadowSamplingPatched) return;
+  stableShadowSamplingPatched = true;
 
   const declAnchor = 'IncidentLight directLight;';
   const fadeAnchor =
@@ -844,7 +828,7 @@ ${endHead}`);
   // still changed phase whenever a snapped cascade recentered because the
   // same world point moved to a different local atlas texel. A rotation based
   // only on the cascade's fixed radius cannot change during camera motion or
-  // a rate-capped refresh, while retaining a different orientation for each
+  // a coherent refresh, while retaining a different orientation for each
   // cascade and the same five-sample cost.
   const penAnchor =
     'float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;';
@@ -947,12 +931,12 @@ export function createLighting(
     return prepareStableCascades(csm);
   };
 
-  // --- r3 SHADOW DENSITY chunk patch (see SHADOW_AMBIENT_DIM above) --------
+  // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
   // CSM's constructor just replaced ShaderChunk.lights_fragment_begin with
   // CSMShader's version; layer a capture of the sun's per-fragment shadow
   // visibility onto it, then scale the indirect terms in lights_fragment_end.
   // Applied ONCE per page load (guarded), before any lit material compiles.
-  patchShadowAmbientChunks();
+  patchStableShadowSampling();
   // r6: reroute all shadow-map depth draws onto the working RGBA-packing
   // program (see patchShadowDepthPacking above) — restores building/prop/
   // vehicle cast shadows that the broken Basic-packing path was dropping.
@@ -1003,10 +987,11 @@ export function createLighting(
 
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
+    csm.lights[i].shadow.intensity = SHADOW_OPACITY;
     csm.lights[i].color.setHex(SUN_COLOR);
     // Every cascade is driven explicitly by the coherent scheduler. This keeps
     // telemetry exact while guaranteeing that the near pair remains current on
-    // frames which also refresh the rate-capped far cohort.
+    // frames which refresh the complete cascade set.
     csm.lights[i].shadow.autoUpdate = false;
     csm.lights[i].shadow.needsUpdate = true; // first frame renders all
   }
@@ -1017,11 +1002,18 @@ export function createLighting(
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
-    // Reallocating every cascade synchronously creates a 1000+ draw-call
-    // recovery frame exactly while the GPU is already overloaded. Keep each
-    // existing map alive, then replace/refresh one cascade per render frame.
+    // Desktop presets deliberately share one shadow layout, so ordinary
+    // quality switching does not disturb live depth maps. Mobile layout
+    // changes remain incremental to avoid a one-frame allocation spike.
     pendingShadowSizes = p.shadowMapSizes.slice();
-    pendingShadowMask = (2 ** csm.lights.length) - 1;
+    pendingShadowMask = 0;
+    for (let index = 0; index < csm.lights.length; index++) {
+      const requested = p.shadowMapSizes[Math.min(index, p.shadowMapSizes.length - 1)];
+      if (csm.lights[index].shadow.mapSize.x !== requested) {
+        pendingShadowMask |= 1 << index;
+      }
+    }
+    if (!pendingShadowMask) pendingShadowSizes = null;
     pendingShadowCursor = 0;
     csm.shadowMapSize = p.shadowMapSizes[0];
     if (csm.maxFar !== p.shadowMaxFar) {
@@ -1031,9 +1023,7 @@ export function createLighting(
       applyShadowNormalBiases();
     }
   });
-  const shadowScheduler = createShadowRefreshScheduler(csm.lights.length, {
-    nearCount: Math.min(FAR_CASCADE_START, csm.lights.length),
-  });
+  const shadowScheduler = createShadowRefreshScheduler(csm.lights.length);
   const allCascadeMask = (2 ** csm.lights.length) - 1;
   const continuousCascadeMask = (2 ** Math.min(FAR_CASCADE_START, csm.lights.length)) - 1;
   const farCascadeMask = allCascadeMask & ~continuousCascadeMask;
@@ -1052,11 +1042,9 @@ export function createLighting(
   // depth image. Visible motion or a scene mutation releases the latch and
   // forces every cascade before the next color frame.
   let staticPresentationDormant = false;
-  // r4 LP2 (teleport robustness): any event that can move casters or the
-  // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
-  // forces FULL cascade redraws for the next 2 frames, so the rate cap
-  // staleness optimization can never hold a teleported vehicle out of the
-  // far maps for even one presented frame.
+  // Any event that can move casters or the cascade fit wholesale — map/sun
+  // switch, frustum change, __SHOTS restage — forces two complete redraws so
+  // the first stable frame cannot reuse a pre-transition map.
   let forceFrames = 0;
   // A covered battle-entry warm can render the exact current cascade maps in
   // separate offscreen frames. The following default-framebuffer render must
@@ -1064,8 +1052,8 @@ export function createLighting(
   // task; normal live scheduling resumes on the next frame.
   let preservePrimedFrame = false;
 
-  /** Mark every rate-capped cascade for re-render on the next frame. */
-  function forceRateCappedCascades(): void {
+  /** Mark every cascade for complete redraw on the next two frames. */
+  function forceAllCascades(): void {
     forceFrames = 2;
     shadowScheduler.reset();
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
@@ -1115,6 +1103,105 @@ export function createLighting(
   scene.add(fill);
   scene.add(fill.target);
 
+  function setAllCascadeUpdates(needsUpdate: boolean): void {
+    for (const light of csm.lights) {
+      light.shadow.autoUpdate = false;
+      light.shadow.needsUpdate = needsUpdate;
+    }
+  }
+
+  function consumeDormantOrPrimedFrame(force: boolean): boolean {
+    if (staticPresentationDormant && !force && !pendingShadowMask) {
+      applyStaticPresentationDormancy();
+      return true;
+    }
+    if (!preservePrimedFrame || force || pendingShadowMask) return false;
+    preservePrimedFrame = false;
+    lastScheduledMask = 0;
+    setAllCascadeUpdates(false);
+    applyFarCascadeDormancy();
+    return true;
+  }
+
+  function consumePendingShadowResize(): number {
+    if (!pendingShadowMask || !pendingShadowSizes) return -1;
+    for (let offset = 0; offset < csm.lights.length; offset++) {
+      const index = (pendingShadowCursor + offset) % csm.lights.length;
+      if (!(pendingShadowMask & (1 << index))) continue;
+      pendingShadowMask &= ~(1 << index);
+      pendingShadowCursor = (index + 1) % csm.lights.length;
+      applyShadowSize(index, pendingShadowSizes[Math.min(index, pendingShadowSizes.length - 1)]);
+      if (!pendingShadowMask) pendingShadowSizes = null;
+      return index;
+    }
+    return -1;
+  }
+
+  function scheduleEveryCascade(): void {
+    lastScheduledMask = shadowScheduler.forceMask();
+    applyStableCascadePoses(csm, allCascadeMask);
+    setAllCascadeUpdates(true);
+  }
+
+  function scheduleFrozenCascades(mask: number): void {
+    applyStableCascadePoses(csm, allCascadeMask & ~mask);
+    for (let index = 0; index < csm.lights.length; index++) {
+      const shadow = csm.lights[index].shadow;
+      shadow.autoUpdate = false;
+      shadow.needsUpdate = !(mask & (1 << index));
+      if (shadow.needsUpdate) lastScheduledMask |= 1 << index;
+    }
+  }
+
+  function scheduleSteadyCascades(step: number, transitionCascade: number): void {
+    setAllCascadeUpdates(false);
+    lastScheduledMask = shadowScheduler.step(step);
+    if (farCascadeDormant && (lastScheduledMask & ~continuousCascadeMask)) {
+      lastScheduledMask = continuousCascadeMask;
+    }
+    if (transitionCascade >= 0) {
+      lastScheduledMask = transitionCascade < FAR_CASCADE_START
+        ? continuousCascadeMask
+        : farCascadeMask;
+    }
+    applyStableCascadePoses(csm, lastScheduledMask);
+    for (let index = 0; index < csm.lights.length; index++) {
+      if (lastScheduledMask & (1 << index)) csm.lights[index].shadow.needsUpdate = true;
+    }
+  }
+
+  function scheduleCascadeFrame(force: boolean, step: number, transitionCascade: number): void {
+    lastScheduledMask = 0;
+    if (force || forceFrames > 0) {
+      if (forceFrames > 0) forceFrames--;
+      scheduleEveryCascade();
+      if (force) forceFrames = Math.max(forceFrames, 1);
+      return;
+    }
+    const debug = typeof window !== 'undefined' ? window.__SHADOW_DEBUG : null;
+    if (debug?.forceAll) {
+      scheduleEveryCascade();
+      return;
+    }
+    if (debug?.freezeMask !== undefined) {
+      scheduleFrozenCascades(debug.freezeMask | 0);
+      return;
+    }
+    scheduleSteadyCascades(step, transitionCascade);
+  }
+
+  function updateLighting(force = false, dt = 1 / 60): void {
+    lastFitChangedMask = 0;
+    if (consumeDormantOrPrimedFrame(force)) return;
+    preservePrimedFrame = false;
+    const transitionCascade = consumePendingShadowResize();
+    lastFitChangedMask = prepareCurrentCascadeFits(force);
+    shFrame++;
+    const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
+    scheduleCascadeFrame(force, step, transitionCascade);
+    applyFarCascadeDormancy();
+  }
+
   return {
     csm,
 
@@ -1134,7 +1221,7 @@ export function createLighting(
       if (farCascadeDormant === next) return;
       farCascadeDormant = next;
       if (next) applyFarCascadeDormancy();
-      else forceRateCappedCascades();
+      else forceAllCascades();
     },
 
     /**
@@ -1150,7 +1237,7 @@ export function createLighting(
       }
       staticPresentationDormant = next;
       if (next) applyStaticPresentationDormancy();
-      else forceRateCappedCascades();
+      else forceAllCascades();
     },
 
     /**
@@ -1326,107 +1413,7 @@ export function createLighting(
      * @param {number} [dt=1/60] render delta used by the refresh-rate caps.
      * @returns {void}
      */
-    update(force = false, dt = 1 / 60): void {
-      lastFitChangedMask = 0;
-      if (staticPresentationDormant && !force && !pendingShadowMask) {
-        applyStaticPresentationDormancy();
-        return;
-      }
-      // Keep both matrices and depth maps bit-for-bit aligned with the
-      // covered warm pose for the first full post frame. A forced capture or
-      // pending quality resize invalidates the receipt and takes precedence.
-      if (preservePrimedFrame && !force && !pendingShadowMask) {
-        preservePrimedFrame = false;
-        lastScheduledMask = 0;
-        for (const light of csm.lights) {
-          light.shadow.autoUpdate = false;
-          light.shadow.needsUpdate = false;
-        }
-        applyFarCascadeDormancy();
-        return;
-      }
-      preservePrimedFrame = false;
-      let transitionCascade = -1;
-      if (pendingShadowMask) {
-        for (let offset = 0; offset < csm.lights.length; offset++) {
-          const i = (pendingShadowCursor + offset) % csm.lights.length;
-          if (!(pendingShadowMask & (1 << i))) continue;
-          transitionCascade = i;
-          pendingShadowMask &= ~(1 << i);
-          pendingShadowCursor = (i + 1) % csm.lights.length;
-          applyShadowSize(i,
-            pendingShadowSizes![Math.min(i, pendingShadowSizes!.length - 1)]);
-          if (!pendingShadowMask) pendingShadowSizes = null;
-          break;
-        }
-      }
-      lastFitChangedMask = prepareCurrentCascadeFits(force);
-      shFrame++;
-      const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
-      lastScheduledMask = 0;
-      if (force || forceFrames > 0) {
-        if (forceFrames > 0) forceFrames--;
-        lastScheduledMask = shadowScheduler.forceMask();
-        applyStableCascadePoses(csm, allCascadeMask);
-        for (let i = 0; i < csm.lights.length; i++) {
-          csm.lights[i].shadow.autoUpdate = false;
-          csm.lights[i].shadow.needsUpdate = true;
-        }
-        if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
-      } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
-        // bisect hook: every cascade re-renders every frame (no rate cap)
-        lastScheduledMask = shadowScheduler.forceMask();
-        applyStableCascadePoses(csm, allCascadeMask);
-        for (let i = 0; i < csm.lights.length; i++) {
-          csm.lights[i].shadow.autoUpdate = false;
-          csm.lights[i].shadow.needsUpdate = true;
-        }
-      } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.freezeMask !== undefined) {
-        // bisect hook: masked cascades stop re-rendering entirely (matrix
-        // freezes with content — consistent stale shadows); unmasked near
-        // cascades render every frame, unmasked far ones every frame too so
-        // robin staleness never confounds the freeze comparison.
-        const mask = window.__SHADOW_DEBUG.freezeMask | 0;
-        applyStableCascadePoses(csm, allCascadeMask & ~mask);
-        for (let i = 0; i < csm.lights.length; i++) {
-          const sh = csm.lights[i].shadow;
-          if (mask & (1 << i)) { sh.autoUpdate = false; sh.needsUpdate = false; } else {
-            sh.autoUpdate = false;
-            sh.needsUpdate = true;
-            lastScheduledMask |= 1 << i;
-          }
-        }
-      } else {
-        // The near pair refreshes on every presented frame. The far pair is
-        // rate-capped but refreshes atomically, in addition to the near pair.
-        // A previous mutually-exclusive cohort scheduler withheld the near maps
-        // on each far frame; the foreground then sampled a one-frame-old camera
-        // pose and visibly swapped between dappled light and solid shadow.
-        for (let i = 0; i < csm.lights.length; i++) {
-          csm.lights[i].shadow.autoUpdate = false;
-          csm.lights[i].shadow.needsUpdate = false;
-        }
-        lastScheduledMask = shadowScheduler.step(step);
-        if (farCascadeDormant && (lastScheduledMask & ~continuousCascadeMask)) {
-          lastScheduledMask = continuousCascadeMask;
-        }
-        if (transitionCascade >= 0) {
-          lastScheduledMask = transitionCascade < FAR_CASCADE_START
-            ? continuousCascadeMask
-            : farCascadeMask;
-        }
-        // A rate-capped far map must keep its projection and depth texture as
-        // one atomic pair. Prepare every snapped fit above, but apply a far fit
-        // only on its cohort's scheduled render frame. Adjacent far maps move
-        // together because the fade overlap samples both in one color frame;
-        // near fits follow every presented frame, including far refreshes.
-        applyStableCascadePoses(csm, lastScheduledMask);
-        for (let i = 0; i < csm.lights.length; i++) {
-          if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;
-        }
-      }
-      applyFarCascadeDormancy();
-    },
+    update: updateLighting,
 
     /**
      * Recompute cascade splits. Call whenever `camera.fov`, `camera.aspect`
@@ -1454,7 +1441,7 @@ export function createLighting(
       csm.updateFrustums();
       shadowFitCache.invalidate();
       applyShadowNormalBiases();
-      forceRateCappedCascades(); // cascade boxes jumped — stale maps would smear
+      forceAllCascades(); // cascade boxes jumped — stale maps would smear
     },
 
     /**
@@ -1498,7 +1485,7 @@ export function createLighting(
       shadowFitCache.invalidate();
       prepareCurrentCascadeFits(true);
       applyStableCascadePoses(csm, allCascadeMask);
-      forceRateCappedCascades(); // sun moved — every cascade must re-render
+      forceAllCascades(); // sun moved — every cascade must re-render
     },
 
     /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
@@ -1526,6 +1513,7 @@ export function createLighting(
             ).toFixed(6)),
             position: light.position.toArray().map((value) => Number(value.toFixed(4))),
             radius: shadow.radius,
+            intensity: shadow.intensity,
             normalBias: shadow.normalBias,
             autoUpdate: shadow.autoUpdate,
             needsUpdate: shadow.needsUpdate,

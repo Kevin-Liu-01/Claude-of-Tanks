@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 
 interface OutputResolution {
@@ -11,14 +12,14 @@ type DebugRenderer = THREE.WebGLRenderer & {
 };
 
 interface DebugLighting {
-  getShadowTelemetry(): unknown;
+  getShadowTelemetry(): RuntimeValue;
   update(force?: boolean): void;
 }
 
 interface DebugPost {
   dynScale: number;
-  perfTrim: unknown;
-  upscaler: { telemetry(): unknown };
+  perfTrim: RuntimeValue;
+  upscaler: { telemetry(): RuntimeValue };
 }
 
 interface DebugTank {
@@ -30,17 +31,17 @@ interface DebugGame {
   mapId?: string | null;
   timeS?: number;
   tanks?: DebugTank[];
-  shells?: unknown;
+  shells?: RuntimeValue;
 }
 
 interface DebugWorld {
   group?: THREE.Object3D;
   mapId?: string | null;
-  destructibles?: unknown;
-  tankWreckSpots?: unknown;
-  getObstacles?(): unknown;
-  getColliders?(): unknown;
-  getConcealment?(): unknown;
+  destructibles?: RuntimeValue;
+  tankWreckSpots?: RuntimeValue;
+  getObstacles?(): RuntimeValue;
+  getColliders?(): RuntimeValue;
+  getConcealment?(): RuntimeValue;
   getLoosePropStats?(): { total: number; active: number };
 }
 
@@ -54,7 +55,7 @@ interface NetworkTelemetry {
 
 interface DiagnosticGlobal {
   devicePixelRatio?: number;
-  __GL_DIAG?: { rescue?: string; errors?: unknown };
+  __GL_DIAG?: { rescue?: string; errors?: RuntimeValue };
 }
 
 export interface DebugTelemetryDependencies {
@@ -73,11 +74,11 @@ export interface DebugTelemetryDependencies {
 }
 
 export interface DebugTelemetryOwner {
-  collect(): Record<string, unknown>;
-  sampleShadowContribution(): Promise<Record<string, unknown>>;
+  collect(): Record<string, RuntimeValue>;
+  sampleShadowContribution(): Promise<Record<string, RuntimeValue>>;
 }
 
-function collectionSize(value: unknown): number {
+function collectionSize(value: RuntimeValue): number {
   if (!value || (typeof value !== 'object' && typeof value !== 'function')) return 0;
   const candidate = value as { length?: number; size?: number };
   if (Number.isFinite(candidate.length)) return candidate.length as number;
@@ -85,9 +86,9 @@ function collectionSize(value: unknown): number {
   return 0;
 }
 
-function recordValue(value: unknown): Record<string, unknown> {
+function recordValue(value: RuntimeValue): Record<string, RuntimeValue> {
   return value && typeof value === 'object'
-    ? value as Record<string, unknown>
+    ? value as Record<string, RuntimeValue>
     : {};
 }
 
@@ -149,7 +150,7 @@ export function createDebugTelemetryOwner(
     return gpuName;
   }
 
-  function collect(): Record<string, unknown> {
+  function collect(): Record<string, RuntimeValue> {
     const draw = deps.renderer.getDrawingBufferSize(drawSize);
     const outputResolution = deps.renderer.userData.outputResolution ?? null;
     const shadow = recordValue(deps.lighting.getShadowTelemetry());
@@ -220,7 +221,7 @@ export function createDebugTelemetryOwner(
     });
   }
 
-  async function sampleShadowContribution(): Promise<Record<string, unknown>> {
+  async function sampleShadowContribution(): Promise<Record<string, RuntimeValue>> {
     const initialShadow = deps.renderer.shadowMap.enabled;
     const counts = shadowSceneCounts(true);
     if (!initialShadow) {

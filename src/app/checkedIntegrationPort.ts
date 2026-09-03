@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Validate a lazy phase adapter before narrowing it to the loaded owner's
  * exact parameter type. Callers derive T with Parameters<typeof owner> so the
@@ -8,7 +9,7 @@ export function checkedIntegrationPort<T extends object>(
   label: string,
   requiredFunctions: readonly string[],
 ): T {
-  const record = value as Record<string, unknown>;
+  const record = value as Record<string, RuntimeValue>;
   for (const key of requiredFunctions) {
     if (typeof record[key] !== 'function') {
       throw new TypeError(`${label} integration requires ${key}()`);

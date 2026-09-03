@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Versioned, transport-agnostic multiplayer protocol primitives.
  *
@@ -46,7 +47,7 @@ export const MESSAGE_TYPES = Object.freeze({
 
 export type MessageType = typeof MESSAGE_TYPES[keyof typeof MESSAGE_TYPES];
 
-export interface ProtocolEnvelope<TPayload = unknown> {
+export interface ProtocolEnvelope<TPayload = RuntimeValue> {
   v: typeof PROTOCOL_VERSION;
   type: MessageType;
   seq: number;
@@ -100,22 +101,22 @@ export class ProtocolError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isMessageType(value: unknown): value is MessageType {
+function isMessageType(value: RuntimeValue): value is MessageType {
   return typeof value === 'string' && MESSAGE_TYPE_SET.has(value);
 }
 
-function assertFiniteNumber(value: unknown, field: string): number {
+function assertFiniteNumber(value: RuntimeValue, field: string): number {
   if (!Number.isFinite(value)) {
     throw new ProtocolError('invalid_number', `${field} must be finite`);
   }
   return Number(value);
 }
 
-function assertSequence(value: unknown, field: string): number {
+function assertSequence(value: RuntimeValue, field: string): number {
   if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > MAX_SEQUENCE) {
     throw new ProtocolError('invalid_sequence', `${field} must be an unsigned sequence`);
   }
@@ -127,7 +128,7 @@ function clamp(value: number, lo: number, hi: number): number {
 }
 
 /** Normalize a human-entered private-room code. */
-export function normalizeRoomCode(value: unknown): string {
+export function normalizeRoomCode(value: RuntimeValue): string {
   return String(value || '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
@@ -167,7 +168,7 @@ export function createRoomCode(rng: () => number = cryptoUnit): string {
  * authority. Chat stays plain text: controls, bidi overrides, and invisible
  * joiners are removed so a message cannot visually impersonate UI chrome.
  */
-export function normalizeRoomChatText(value: unknown): string {
+export function normalizeRoomChatText(value: RuntimeValue): string {
   if (typeof value !== 'string') {
     throw new ProtocolError('invalid_chat', 'chat text must be a string');
   }
@@ -203,7 +204,7 @@ export function createEnvelope<TPayload>(
   };
 }
 
-function assertProtocolEnvelope(value: unknown): asserts value is ProtocolEnvelope {
+function assertProtocolEnvelope(value: RuntimeValue): asserts value is ProtocolEnvelope {
   if (!isRecord(value)) {
     throw new ProtocolError('invalid_envelope', 'message must be an object');
   }
@@ -223,7 +224,7 @@ function assertProtocolEnvelope(value: unknown): asserts value is ProtocolEnvelo
 }
 
 /** Validate untrusted transport data before dispatch without cloning it. */
-export function validateEnvelope(value: unknown): ProtocolEnvelope {
+export function validateEnvelope(value: RuntimeValue): ProtocolEnvelope {
   assertProtocolEnvelope(value);
   return value;
 }
@@ -234,7 +235,7 @@ export function validateEnvelope(value: unknown): ProtocolEnvelope {
  * preserves the finite camera-hit point (and therefore close-range parallax)
  * without accepting an unbounded client-authored world position.
  */
-export function normalizePlayerInput(value: unknown): NormalizedPlayerInput {
+export function normalizePlayerInput(value: RuntimeValue): NormalizedPlayerInput {
   if (!isRecord(value)) {
     throw new ProtocolError('invalid_input', 'input must be an object');
   }

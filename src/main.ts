@@ -1,3 +1,4 @@
+import type { RuntimeValue } from './runtimeTypes.ts';
 /**
  * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
  *
@@ -381,7 +382,7 @@ const engineCtx = {
 // multi-octave height stack in camera, HUD, FX and kill-cam hot paths.
 let shotMode = false;
 const _upNormal = new THREE.Vector3(0, 1, 0);
-let worldRuntime: WorldActivationRuntime<MainWorld, unknown>;
+let worldRuntime: WorldActivationRuntime<MainWorld, RuntimeValue>;
 let battleHudRuntime: MainBattleHudRuntime | null = null;
 const currentWorld = () => worldRuntime?.current ?? null;
 const currentHud = () => battleHudRuntime?.currentHud() ?? null;
@@ -399,7 +400,7 @@ let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 worldRuntime = createWorldActivationRuntime<
   MainWorld,
-  unknown,
+  RuntimeValue,
   MainWorld['config']['sky']
 >({
   initialMapId: 'verdant',
@@ -1292,7 +1293,7 @@ const combatWarmComposition = createCombatWarmComposition({
   anisotropy: engineCtx.anisotropy ?? 4,
   noteFovPrimed: (fov: number) => mainFrame.noteFovPrimed(fov),
   simDt: SIM_DT,
-  publishStudioTrace: (trace: unknown) => { window.__STUDIO_WARM = trace; },
+  publishStudioTrace: (trace: RuntimeValue) => { window.__STUDIO_WARM = trace; },
   devTrace,
 });
 const {
@@ -1371,16 +1372,16 @@ const endOverlay = createEndOverlayRuntime({
 // Input — routed through the rebindable action layer (src/game/input.ts) and
 // the settings panel (src/ui/settings.ts). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
-const debugFlags: { forceFire: boolean; lastEndFlow?: unknown } = { forceFire: false };
+const debugFlags: { forceFire: boolean; lastEndFlow?: RuntimeValue } = { forceFire: false };
 const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
   killcam,
   rig,
   veilHud,
   showEndOverlay: endOverlay.show,
-  emitPresented: (result: unknown) => bus.emit('battle:presented', { result }),
+  emitPresented: (result: RuntimeValue) => bus.emit('battle:presented', { result }),
   exitPointerLock: () => { document.exitPointerLock?.(); },
-  recordFlow: (receipt: unknown) => { debugFlags.lastEndFlow = receipt; },
+  recordFlow: (receipt: RuntimeValue) => { debugFlags.lastEndFlow = receipt; },
 });
 const battlePhase = createBattlePhasePolicy({
   getPhase: () => game.phase,
@@ -1692,7 +1693,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       stopShowroom: () => showroom.stop(),
       openBattle: battleRollout.open,
     },
-    recordTrace: (trace: unknown) => {
+    recordTrace: (trace: RuntimeValue) => {
       if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = trace;
     },
   }),
@@ -1832,7 +1833,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           lighting,
           ensureBattleVisuals: ensureBattleVisualStreamer,
           nextFrame,
-          recordTrace: (trace: unknown) => {
+          recordTrace: (trace: RuntimeValue) => {
             if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
           },
           setAdaptiveSuspended: (value: boolean) => post.setAdaptiveSuspended(value),
@@ -2060,7 +2061,7 @@ async function beginSoloBattle({
 async function debugStartBattle(
   specId: string,
   mapId: string | null = null,
-  opts: Record<string, unknown> = {},
+  opts: Record<string, RuntimeValue> = {},
 ) {
   const { startDebugBattle } = await import('./dev/debugBattleEntryRuntime.ts');
   return startDebugBattle({
@@ -2173,7 +2174,8 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     return receipt;
   },
   isBattleEntryPending: () => battleEntryLifecycle.pending,
-    publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
+  isBattleEntryCovering: () => battleLoad.covering,
+    publishTrace: (trace: RuntimeValue) => { window.__GARAGE_ENTRY = trace; },
   }),
 });
 const enterGarage = garageReturn.enter;
@@ -2507,7 +2509,7 @@ const studioAccess = createStudioAccess({
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
-  createContext: (studioFx: unknown) => ({
+  createContext: (studioFx: RuntimeValue) => ({
     renderer, scene, camera, post, lighting, game, hud: currentHud(), garage, showroom,
     hfProxy, getWorld: currentWorld,
     ensureWorld: (id: string, onProgress: (fraction: number, label: string) => void) => ensureWorld(id, onProgress, {
@@ -2660,7 +2662,7 @@ if (diagnosticsRequested) {
       ),
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
-      injectNetworkEvents: (events: unknown) => {
+      injectNetworkEvents: (events: RuntimeValue) => {
         const latestNetworkSnapshot = networkSession.latestSnapshot;
         if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
         const batch = Array.isArray(events) ? events : [];

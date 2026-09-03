@@ -314,10 +314,229 @@ export function sampleHorizonSilhouette({
 // centred on 0.62 (recentred by the material color) — hue stays in the
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
+type HorizonNoiseSampler = (
+  u: number,
+  v: number,
+  frequencyU: number,
+  frequencyV: number,
+  offset: number,
+) => number;
+
+interface HorizonTextureTerrainSample {
+  luminance: number;
+  belowTree: number;
+  ridge: number;
+  segment: number;
+  gully: number;
+}
+
+interface HorizonTextureColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function createHorizonNoiseSampler(noise: SimplexNoise): HorizonNoiseSampler {
+  const tau = Math.PI * 2;
+  return (u, v, frequencyU, frequencyV, offset) => noise.noise3d(
+    Math.cos(u * tau) * frequencyU * 0.5 + offset,
+    Math.sin(u * tau) * frequencyU * 0.5 - offset * 0.7,
+    v * frequencyV + offset * 1.31,
+  );
+}
+
+function applyHorizonStrata(
+  luminance: number,
+  sampleNoise: HorizonNoiseSampler,
+  u: number,
+  v: number,
+  banding: number,
+): number {
+  if (banding <= 0.003) return luminance;
+  const warp = sampleNoise(u, v, 2.2, 0.6, 23) * 0.45;
+  const band = Math.sin(v * 46 + warp) * 0.5
+    + Math.sin(v * 13.5 + warp * 0.6 + 1.7) * 0.5;
+  const bedWeight = 0.55
+    + 0.45 * (sampleNoise(u, v, 1.5, 9, 311) * 0.5 + 0.5);
+  let result = luminance * (1 + band * banding * 1.35 * bedWeight);
+  const marker = smoothstep(0.75, 0.95, Math.sin(v * 6.2 + warp * 0.4 + 0.6));
+  result *= 1 - marker * banding * 0.65;
+  return result * (1 + smoothstep(0.72, 0.95, v) * 0.07
+    - (1 - smoothstep(0.05, 0.4, v)) * 0.08);
+}
+
+function sampleHorizonTextureTerrain(
+  sampleNoise: HorizonNoiseSampler,
+  options: HorizonTextureOptions,
+  u: number,
+  v: number,
+): HorizonTextureTerrainSample {
+  const { banding, treeline, grainAmp, gullyAmp = 1 } = options;
+  const belowTree = treeline > 0
+    ? 1 - smoothstep(treeline * 0.85, treeline * 1.08, v) : 0;
+  const fineDetail = treeline > 0 ? 0 : 1;
+  let luminance = 1 + (sampleNoise(u, v, 90, 100, 17) * 0.05
+    + sampleNoise(u, v, 34, 38, 5) * 0.06) * grainAmp * fineDetail;
+  const faceVariation = smoothstep(0.25, 0.75,
+    sampleNoise(u, v * 0.25, 9, 1.1, 77) * 0.5 + 0.5);
+  const ridge = 1 - Math.abs(sampleNoise(u, v, 46, 2.6, 9));
+  const segment = 0.45 + 0.55 * smoothstep(0.3, 0.72,
+    sampleNoise(u, v, 31, 9.5, 118) * 0.5 + 0.5);
+  const gully = smoothstep(0.86, 0.985, ridge) * gullyAmp
+    * (0.35 + 0.65 * faceVariation) * segment;
+  const scree = smoothstep(0.72, 0.92, ridge) * (1 - gully)
+    * gullyAmp * faceVariation * segment;
+  luminance *= 1 - gully * 0.13 + scree * 0.04;
+  const talus = sampleNoise(u, v, 64, 46, 205);
+  luminance *= 1 + talus * 0.045 * (0.5 + 0.5 * gullyAmp) * fineDetail;
+  luminance *= treeline > 0
+    ? 1 + sampleNoise(u, v, 7, 3.6, 41) * 0.05
+    : 1 + sampleNoise(u, v, 7, 11, 41) * 0.06;
+  luminance = applyHorizonStrata(luminance, sampleNoise, u, v, banding);
+  return { luminance, belowTree, ridge, segment, gully };
+}
+
+function applyCoolRockDetail(
+  color: HorizonTextureColor,
+  sampleNoise: HorizonNoiseSampler,
+  u: number,
+  v: number,
+): HorizonTextureColor {
+  const warp = sampleNoise(u, v, 2.6, 0.7, 143) * 0.35;
+  const ledge = Math.sin(v * 34 + warp) * 0.55
+    + Math.sin(v * 11.5 + warp * 0.7 + 2.1) * 0.45;
+  const ledgeWeight = 0.55
+    + 0.45 * (sampleNoise(u, v, 1.7, 8, 517) * 0.5 + 0.5);
+  const cragA = sampleNoise(u, v, 30, 11, 653);
+  const cragB = sampleNoise(u, v, 12, 4.6, 719);
+  const joint = smoothstep(0.82, 0.97,
+    1 - Math.abs(sampleNoise(u, v, 40, 3.4, 787)));
+  const rockMix = (1 + ledge * 0.115 * ledgeWeight)
+    * (1 + cragA * 0.075 + cragB * 0.10) * (1 - joint * 0.16);
+  const shelfWeight = smoothstep(0.55, 0.95, ledge) * ledgeWeight
+    * 0.5 * smoothstep(0.06, 0.16, v);
+  const r = color.r * rockMix;
+  const g = color.g * rockMix;
+  const b = color.b * rockMix * 0.995;
+  return {
+    r: r + (1.06 - r) * shelfWeight,
+    g: g + (1.08 - g) * shelfWeight,
+    b: b + (1.12 - b) * shelfWeight,
+  };
+}
+
+function applyForestDetail(
+  color: HorizonTextureColor,
+  sample: HorizonTextureTerrainSample,
+  sampleNoise: HorizonNoiseSampler,
+  u: number,
+  v: number,
+  treeline: number,
+): HorizonTextureColor {
+  const below = sample.belowTree;
+  const baseWeight = below * 0.40;
+  let r = color.r * (1 - baseWeight * 1.05);
+  let g = color.g * (1 - baseWeight * 0.42);
+  let b = color.b * (1 - baseWeight * 0.95);
+  const crownA = sampleNoise(u, v, 48, 40, 631);
+  const crownB = sampleNoise(u, v, 20, 16, 733);
+  const crownSlope = sampleNoise(u, v + 0.01, 48, 40, 631)
+    - sampleNoise(u, v - 0.01, 48, 40, 631);
+  const crownLight = clamp(1 + (crownA * 0.025 + crownB * 0.05
+    + crownSlope * 0.05) * below, 0.6, 1.5);
+  r *= crownLight; g *= crownLight; b *= crownLight;
+  const standA = sampleNoise(u, v, 9, 5.5, 217) * 0.5 + 0.5;
+  const standB = sampleNoise(u, v, 3.4, 2.1, 305) * 0.5 + 0.5;
+  const standC = sampleNoise(u, v, 1.3, 0.9, 419) * 0.5 + 0.5;
+  const warmWeight = smoothstep(0.56, 0.86, standB) * below;
+  r *= 1 + warmWeight * 0.16;
+  g *= 1 + warmWeight * 0.10;
+  b *= 1 - warmWeight * 0.10;
+  const darkWeight = smoothstep(0.60, 0.88, 1 - standA) * below;
+  r *= 1 - darkWeight * 0.22;
+  g *= 1 - darkWeight * 0.12;
+  b *= 1 - darkWeight * 0.08;
+  const lift = (standC - 0.5) * 0.14 * below;
+  r *= 1 + lift; g *= 1 + lift; b *= 1 + lift;
+  const clearing = smoothstep(0.62, 0.86,
+    sampleNoise(u, v, 8, 4.6, 841) * 0.5 + 0.5) * below;
+  r *= 1 + clearing * 0.22;
+  g *= 1 + clearing * 0.20;
+  b *= 1 + clearing * 0.06;
+  const scar = smoothstep(0.80, 0.94,
+    sampleNoise(u, v, 16, 4.5, 947) * 0.5 + 0.5)
+    * below * smoothstep(treeline * 0.35, treeline * 0.75, v);
+  return {
+    r: r + (0.72 - r) * scar * 0.6,
+    g: g + (0.72 - g) * scar * 0.6,
+    b: b + (0.70 - b) * scar * 0.6,
+  };
+}
+
+function applySnowDetail(
+  color: HorizonTextureColor,
+  sample: HorizonTextureTerrainSample,
+  sampleNoise: HorizonNoiseSampler,
+  u: number,
+  v: number,
+  snowline: number,
+): HorizonTextureColor {
+  const snowWeight = smoothstep(snowline - 0.02, snowline + 0.09,
+    v + sampleNoise(u, v, 24, 24, 51) * 0.05);
+  const sastrugi = sampleNoise(u, v, 30, 17, 361) * 0.5
+    + sampleNoise(u, v, 14, 7, 409) * 0.5;
+  const basin = sampleNoise(u, v, 5.5, 3.2, 477);
+  const rib = smoothstep(0.90, 0.99, sample.ridge);
+  const ribMask = smoothstep(0.50, 0.80,
+    sampleNoise(u, v * 0.4, 13, 2.0, 533) * 0.5 + 0.5);
+  const crag = smoothstep(0.70, 0.92,
+    sampleNoise(u, v, 26, 6.5, 601) * 0.5 + 0.5)
+    * smoothstep(0.30, 0.55, v) * (1 - smoothstep(0.80, 0.95, v));
+  const spur = sampleNoise(u, v, 11, 4.8, 861);
+  const shortSegment = smoothstep(0.30, 0.62,
+    sampleNoise(u, v, 12, 26, 997) * 0.5 + 0.5);
+  const snowLight = 1.03 + sastrugi * 0.26 + basin * 0.34 + spur * 0.18
+    - sample.gully * 0.10 - rib * ribMask * sample.segment * shortSegment * 0.18;
+  let snowR = snowLight * 0.98;
+  let snowG = snowLight;
+  let snowB = snowLight * 1.04;
+  snowR += (0.60 - snowR) * crag * 0.85;
+  snowG += (0.63 - snowG) * crag * 0.85;
+  snowB += (0.70 - snowB) * crag * 0.85;
+  return {
+    r: color.r + (snowR - color.r) * snowWeight * 0.94,
+    g: color.g + (snowG - color.g) * snowWeight * 0.94,
+    b: color.b + (snowB - color.b) * snowWeight * 0.94,
+  };
+}
+
+function sampleHorizonTexturePixel(
+  sampleNoise: HorizonNoiseSampler,
+  options: HorizonTextureOptions,
+  u: number,
+  v: number,
+): HorizonTextureColor {
+  const sample = sampleHorizonTextureTerrain(sampleNoise, options, u, v);
+  let color: HorizonTextureColor = {
+    r: sample.luminance * (options.coolRock ? 0.978 : 1),
+    g: sample.luminance * (options.coolRock ? 0.998 : 0.995),
+    b: sample.luminance * (options.coolRock ? 1.022 : 0.975),
+  };
+  if (options.coolRock) color = applyCoolRockDetail(color, sampleNoise, u, v);
+  if (options.treeline > 0 && v < options.treeline * 1.08) {
+    color = applyForestDetail(color, sample, sampleNoise, u, v, options.treeline);
+  }
+  if (options.snowline <= 1) {
+    color = applySnowDetail(color, sample, sampleNoise, u, v, options.snowline);
+  }
+  return color;
+}
+
 function makeHorizonTexture(
   noi: SimplexNoise,
-  { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }: HorizonTextureOptions,
+  options: HorizonTextureOptions,
 ): THREE.CanvasTexture {
+  const { banding, treeline } = options;
   // Loading-speed r1: this texture is repeated around a backdrop hundreds of
   // metres away. 1536x512 oversampled the projected ridge by ~4x and spent
   // ~0.6 s in deterministic simplex work per map; 512x192 retains more than
@@ -328,210 +547,16 @@ function makeHorizonTexture(
   const ctx = require2DContext(c);
   const img = ctx.createImageData(su, sv);
   const d = img.data;
-  const TAU = Math.PI * 2;
-  // u-wrapping noise: angular loop on a circle, altitude along the 3rd axis
-  const wn = (u: number, v: number, fu: number, fv: number, off: number): number => noi.noise3d(
-    Math.cos(u * TAU) * fu * 0.5 + off,
-    Math.sin(u * TAU) * fu * 0.5 - off * 0.7,
-    v * fv + off * 1.31,
-  );
-  // NOTE on fu/fv balance: one u repeat covers ~370 m of ridge arc while the
-  // full v range covers ~200 m of altitude — fv must run ~3x fu-per-meter or
-  // every feature bakes in vertically stretched and the walls read as hanging
-  // curtain striping (the r3 'green felt curtain' artifact on the verdant
-  // hills). Keep fv ≈ 3 * fu * (feature aspect) when tuning.
+  const sampleNoise = createHorizonNoiseSampler(noi);
   for (let y = 0; y < sv; y++) {
-    const v = 1 - y / (sv - 1); // canvas row 0 = top of texture (flipY) = v 1
+    const v = 1 - y / (sv - 1);
     for (let x = 0; x < su; x++) {
-      const u = x / su;
-      let L = 1.0;
-      // r6: forest weight computed EARLY — the granular rock grain must not
-      // print onto canopy: under tangential-grazing anisotropic minification
-      // its isotropic speckle smears into diagonal brush strokes (the
-      // residual felt read on the ring side walls)
-      const belowTree = treeline > 0 ? 1 - smoothstep(treeline * 0.85, treeline * 1.08, v) : 0;
-      // granular grain, two octaves. r6c: fully OFF on vegetated styles —
-      // canopy below the treeline and grass meadow above it are both smooth
-      // at ring distance, and any fine texel noise combs into down-slope
-      // fiber wherever the wall is viewed along-tangent (u degenerate)
-      const fineOk = treeline > 0 ? 0 : 1;
-      L += (wn(u, v, 90, 100, 17) * 0.05 + wn(u, v, 34, 38, 5) * 0.06) * grainAmp * fineOk;
-      // drainage gullies: dark chutes down the faces with lighter scree fans.
-      // SEGMENTED, not wall-height: a second altitude-frequency mask breaks
-      // every chute into offset runs, because continuous top-to-bottom
-      // streaks magnified on the far walls read as vertical paint smear
-      // (the r-critique's "vertical texture smearing" on the desert ring)
-      const faceVar = smoothstep(0.25, 0.75, wn(u, v * 0.25, 9, 1.1, 77) * 0.5 + 0.5);
-      const g = 1 - Math.abs(wn(u, v, 46, 2.6, 9));
-      const seg = 0.45 + 0.55 * smoothstep(0.3, 0.72, wn(u, v, 31, 9.5, 118) * 0.5 + 0.5);
-      const gully = smoothstep(0.86, 0.985, g) * gullyAmp * (0.35 + 0.65 * faceVar) * seg;
-      const scree = smoothstep(0.72, 0.92, g) * (1 - gully) * gullyAmp * faceVar * seg;
-      L *= 1 - gully * 0.13 + scree * 0.04;
-      // isotropic talus/boulder speckle: rubble-textured rock with no
-      // preferred direction, so cliff faces keep grain even where the
-      // directional chutes are masked out
-      const talus = wn(u, v, 64, 46, 205);
-      L *= 1 + talus * 0.045 * (0.5 + 0.5 * gullyAmp) * fineOk;
-      // broad tonal patches so big faces never read as one fill (r6: on
-      // vegetated styles the v-frequency drops to keep the degenerate-u
-      // grazing projection free of fine stripes)
-      L *= treeline > 0 ? 1 + wn(u, v, 7, 3.6, 41) * 0.05 : 1 + wn(u, v, 7, 11, 41) * 0.06;
-      if (banding > 0.003) {
-        // horizontal sedimentary strata, wobbled and width-varied, plus an
-        // occasional darker marker bed — constant-altitude bands, exactly
-        // how tableland geology reads from a distance.
-        // r6: warp amplitude 1.9 -> 0.45 rad. The old warp displaced the fine
-        // beds by ~8 m vertically over a 60 m horizontal wavelength — the
-        // bands sheared into chevrons that magnified on the outer ring as
-        // melted-curtain striations. Near-straight beds with only a gentle
-        // long drift read as layered rock at every distance.
-        const warp = wn(u, v, 2.2, 0.6, 23) * 0.45;
-        const band = Math.sin(v * 46 + warp) * 0.5 + Math.sin(v * 13.5 + warp * 0.6 + 1.7) * 0.5;
-        // per-bed strength variation so the wall is not one uniform stripe
-        // print: some beds nearly vanish, others stay bold
-        const bedW = 0.55 + 0.45 * (wn(u, v, 1.5, 9, 311) * 0.5 + 0.5);
-        L *= 1 + band * banding * 1.35 * bedW;
-        const marker = smoothstep(0.75, 0.95, Math.sin(v * 6.2 + warp * 0.4 + 0.6));
-        L *= 1 - marker * banding * 0.65;
-        // caprock/base tonal break-up: pale rim near the cap, darker scree
-        // apron toward the base — vertical color structure that reads as
-        // geology instead of a uniform tan fill
-        L *= 1 + smoothstep(0.72, 0.95, v) * 0.07 - (1 - smoothstep(0.05, 0.4, v)) * 0.08;
-      }
-      // faintly warm rock by default; alpine (winter) flips to a faintly COOL
-      // cast — the warm bias stacked with the warm scene grade/haze and read
-      // as tan desert stone framing a snow map (the r3 winter critique)
-      let r = L * (coolRock ? 0.978 : 1);
-      let gc = L * (coolRock ? 0.998 : 0.995);
-      let b = L * (coolRock ? 1.022 : 0.975);
-      if (coolRock) {
-        // r3 (content_breadth) ALPINE ROCK STRUCTURE: the bare-rock zones of
-        // the winter wall carried only grain+talus (~±10% pre-fog) and
-        // rendered as smooth grey slabs (critique, major). Three additions,
-        // all broad-in-v so tangential grazing can NEVER comb them into the
-        // old vertical fiber:
-        //  - constant-altitude LEDGE BEDS (~37 m / ~110 m spacing, per-bed
-        //    strength variation) — glacial benches/strata, horizontal by
-        //    construction so they actively counter the vertical-smear read
-        //  - blocky CRAG mottle (two isotropic octaves) + darker joints
-        //  - SNOW LEDGES: thin white accumulation bands riding the ledge
-        //    crests below the cap — the elevation-banded snow a real winter
-        //    face carries
-        const lwarp = wn(u, v, 2.6, 0.7, 143) * 0.35;
-        const ledge = Math.sin(v * 34 + lwarp) * 0.55
-          + Math.sin(v * 11.5 + lwarp * 0.7 + 2.1) * 0.45;
-        const ledgeW = 0.55 + 0.45 * (wn(u, v, 1.7, 8, 517) * 0.5 + 0.5);
-        const cragA = wn(u, v, 30, 11, 653);
-        const cragB = wn(u, v, 12, 4.6, 719);
-        const joint = smoothstep(0.82, 0.97, 1 - Math.abs(wn(u, v, 40, 3.4, 787)));
-        const rockM = (1 + ledge * 0.115 * ledgeW)
-          * (1 + cragA * 0.075 + cragB * 0.10) * (1 - joint * 0.16);
-        r *= rockM; gc *= rockM; b *= rockM * 0.995;
-        const shelf = smoothstep(0.55, 0.95, ledge) * ledgeW;
-        const shelfW = shelf * 0.5 * smoothstep(0.06, 0.16, v);
-        r += (1.06 - r) * shelfW;
-        gc += (1.08 - gc) * shelfW;
-        b += (1.12 - b) * shelfW;
-      }
-      if (treeline > 0 && v < treeline * 1.08) {
-        // r6 CANOPY REWRITE. The old block was built from vertically-coherent
-        // features (downslope creases at fv 2.2, gullies, angle-keyed face
-        // columns) — magnified on the ring walls they read as green velvet
-        // fabric, the critique's "curtain". A forested hillside seen from
-        // kilometers away is: crown clumps (isotropic, sun-lit from above),
-        // species-stand patchwork, meadow clearings and pale rock breaks —
-        // nothing vertically elongated.
-        const below = belowTree;
-        // base forest darkening (green shift)
-        const mw = below * 0.40;
-        r *= 1 - mw * 1.05; gc *= 1 - mw * 0.42; b *= 1 - mw * 0.95;
-        // crown texture kept NEAR-OFF (r6c). Any sub-20 m canopy variation is
-        // fiber fuel: where the ring wall is seen along-tangent the u axis
-        // degenerates to zero pixels and the texture renders as a 1-D
-        // function of v — every fine v-frequency becomes a combed-hair
-        // stripe down the slope, at ANY anisotropy setting. Real forested
-        // hills at 600 m+ genuinely read smooth: broad stand patchwork +
-        // serrated crest combs carry the forest, so only a whisper of crown
-        // mottle survives here for the frontal mid-ring faces.
-        const cA = wn(u, v, 48, 40, 631);
-        const cB = wn(u, v, 20, 16, 733);
-        const dAv = wn(u, v + 0.01, 48, 40, 631) - wn(u, v - 0.01, 48, 40, 631);
-        const cl = clamp(1 + (cA * 0.025 + cB * 0.05 + dAv * 0.05) * below, 0.6, 1.5);
-        r *= cl; gc *= cl; b *= cl;
-        // species-stand patchwork, three octaves of hue/value (kept from r5)
-        const standA = wn(u, v, 9, 5.5, 217) * 0.5 + 0.5;   // ~40 m patches
-        const standB = wn(u, v, 3.4, 2.1, 305) * 0.5 + 0.5; // ~110 m stands
-        const standC = wn(u, v, 1.3, 0.9, 419) * 0.5 + 0.5; // whole-flank drift
-        const warmW = smoothstep(0.56, 0.86, standB) * below;      // birch/larch stands
-        r *= 1 + warmW * 0.16; gc *= 1 + warmW * 0.10; b *= 1 - warmW * 0.10;
-        const darkW = smoothstep(0.60, 0.88, 1 - standA) * below;  // spruce blocks
-        r *= 1 - darkW * 0.22; gc *= 1 - darkW * 0.12; b *= 1 - darkW * 0.08;
-        const lift = (standC - 0.5) * 0.14 * below;                // broad value drift
-        r *= 1 + lift; gc *= 1 + lift; b *= 1 + lift;
-        // meadow clearings: warm lighter breaks in the canopy sheet
-        const clr = smoothstep(0.62, 0.86, wn(u, v, 8, 4.6, 841) * 0.5 + 0.5) * below;
-        r *= 1 + clr * 0.22; gc *= 1 + clr * 0.20; b *= 1 + clr * 0.06;
-        // sparse pale rock breaks on the upper flanks (broad in v — fine
-        // v-frequencies stripe the tangentially-grazed walls)
-        const scar = smoothstep(0.80, 0.94, wn(u, v, 16, 4.5, 947) * 0.5 + 0.5)
-          * below * smoothstep(treeline * 0.35, treeline * 0.75, v);
-        r += (0.72 - r) * scar * 0.6; gc += (0.72 - gc) * scar * 0.6; b += (0.70 - b) * scar * 0.6;
-      }
-      if (snowline <= 1) {
-        const sw = smoothstep(snowline - 0.02, snowline + 0.09, v + wn(u, v, 24, 24, 51) * 0.05);
-        // r7 SNOW SURFACE DETAIL: the near-constant 0.03 wind noise left every
-        // snowed face reading as an untextured smooth sheet (the "faceted
-        // low-poly with untextured faces" critique). Three structure scales:
-        //  - sastrugi: wind-carved drift banding, gently diagonal, broad in v
-        //  - drift shadows: large soft accumulation basins between spurs
-        //  - rock ribs: dark spur lines piercing the caps where gullies run,
-        //    plus sparse crag windows on the steeper mid-band (broad in v so
-        //    tangential grazing cannot comb them into stripes)
-        const sast = wn(u, v, 30, 17, 361) * 0.5 + wn(u, v, 14, 7, 409) * 0.5; // r5 TE: lower u-freq — no grazing stripes
-        const basin = wn(u, v, 5.5, 3.2, 477);
-        // rib lines from the RAW ridged field (the gullyAmp-scaled `gully` is
-        // ~0.12 on alpine — far too faint to survive the ring fog)
-        const ribRaw = smoothstep(0.90, 0.99, g);
-        const ribMask = smoothstep(0.50, 0.80, wn(u, v * 0.4, 13, 2.0, 533) * 0.5 + 0.5);
-        const crag = smoothstep(0.70, 0.92, wn(u, v, 26, 6.5, 601) * 0.5 + 0.5)
-          * smoothstep(0.30, 0.55, v) * (1 - smoothstep(0.80, 0.95, v));
-        // r8: amplitudes ~2x + one extra mid octave. At the r7 strengths the
-        // whole structure pass washed out under fog/haze and the ring read as
-        // an untextured smooth-gradient sheet with visible geometry facets
-        // (critique: "flat-shaded untextured low-poly"). Broad-in-v scales
-        // only, so tangential grazing still cannot comb them into stripes.
-        const spur = wn(u, v, 11, 4.8, 861); // shoulder/spur shading between basins
-        // r8b: measured std of the r8 pass was only ±9% luminance — after the
-        // ~50% scene-fog wash that rendered as a smooth gradient. Broad basins
-        // and spur shading carry most of the boost (they survive distance);
-        // combined std lands ~±19% pre-fog, and the alpine material darkening
-        // (1.61 -> 1.26 recenter) keeps it out of the tonemap shoulder.
-        // r1 (content_breadth): rib strength 0.60 -> 0.30 and SEGMENTED by
-        // the same offset-run mask the gullies use — the full-height 0.60
-        // rib chutes were the "vertical texture smearing" the critique saw
-        // on the winter wall (dark top-to-bottom streaks magnified at range)
-        // r6 (content_breadth): the surviving ribs STILL read as rain streaks
-        // across the big massif face (critique). seg's fv 9.5 leaves ~21 m
-        // runs — long enough to chain visually into full-height chutes at
-        // ring distance. A second, much tighter v-segmentation (fv 26 ≈ 8 m
-        // runs) breaks every rib into short couloir dashes, and both chute
-        // terms drop another step; the isotropic sastrugi/basin/spur fields
-        // carry the face structure instead.
-        const seg2 = smoothstep(0.30, 0.62, wn(u, v, 12, 26, 997) * 0.5 + 0.5);
-        const snowL = 1.03 + sast * 0.26 + basin * 0.34 + spur * 0.18
-          - gully * 0.10 - ribRaw * ribMask * seg * seg2 * 0.18;
-        let sr = snowL * 0.98, sg = snowL * 1.0, sb = snowL * 1.04;
-        // crag windows: bare cool rock showing through the mid-flank snow
-        sr += (0.60 - sr) * crag * 0.85; sg += (0.63 - sg) * crag * 0.85; sb += (0.70 - sb) * crag * 0.85;
-        r += (sr - r) * sw * 0.94;
-        gc += (sg - gc) * sw * 0.94;
-        b += (sb - b) * sw * 0.94;
-      }
-      const j = (y * su + x) * 4;
-      d[j] = clamp(r * 159, 0, 255);
-      d[j + 1] = clamp(gc * 159, 0, 255);
-      d[j + 2] = clamp(b * 159, 0, 255);
-      d[j + 3] = 255;
+      const color = sampleHorizonTexturePixel(sampleNoise, options, x / su, v);
+      const offset = (y * su + x) * 4;
+      d[offset] = clamp(color.r * 159, 0, 255);
+      d[offset + 1] = clamp(color.g * 159, 0, 255);
+      d[offset + 2] = clamp(color.b * 159, 0, 255);
+      d[offset + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -677,514 +702,548 @@ function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
   // ring wall; low aniso mips those grazing stretches to a soft green band
   // while frontal (magnified) combs stay crisp
   t.anisotropy = 2;
-  return t;
+return t;
 }
 
-/**
- * Build the horizon mountain ring for a map.
- * @param {object} engineCtx EngineCtx (unused, kept for call-site parity)
- * @param {?object} cfg map config (uses cfg.horizon, cfg.sky, cfg.id)
- * @param {number} seed base seed (mixed with the map id hash)
- * @returns {THREE.Mesh} unlit vertex-colored ring mesh named 'horizon-ring'
- */
-export function buildHorizonRing(
-  _engineCtx: unknown,
-  cfg: HorizonMapConfig | null | undefined,
-  seed: number,
-): THREE.Mesh {
-  const H = (cfg && cfg.horizon) || {};
-  const mapId = (cfg && cfg.id) || 'verdant';
-  const style = H.style || STYLE_BY_MAP[mapId] || 'rolling';
-  const profile = PROFILES[style];
-  const amp = H.amp ?? 1;
-  const haze = H.haze ?? 1;
-  const grainAmp = H.grain ?? 1;
+const HORIZON_ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
+  default: HorizonRingRow[];
+} = {
+  default: [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
+    { r: 760, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
+    { r: 990, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
+    // outermost row is a REAL fourth range, not a low taper: a low flat lip
+    // here projected as a dead-straight 'shoreline' and its fog-saturated
+    // backslope read as a blown-out white lake wherever the nearer rows
+    // dipped (loudest on the mesa style's low inter-table stretches)
+    { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
+  ],
+  rolling: [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 470, base: 22, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 600, base: 32, amp: 38, f0: 3.0, f1: 6.4, aer: 0.12 },
+    { r: 800, base: 45, amp: 72, f0: 2.0, f1: 4.4, aer: 0.32 },
+    { r: 1050, base: 60, amp: 112, f0: 1.4, f1: 3.1, aer: 0.54 },
+    { r: 1330, base: 72, amp: 120, f0: 1.0, f1: 2.2, aer: 0.72 },
+  ],
+  escarpment: [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 470, base: 24, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 600, base: 36, amp: 44, f0: 2.8, f1: 6.0, aer: 0.14 },
+    { r: 800, base: 50, amp: 82, f0: 2.0, f1: 4.4, aer: 0.34 },
+    { r: 1050, base: 66, amp: 116, f0: 1.4, f1: 3.1, aer: 0.54 },
+    { r: 1330, base: 76, amp: 106, f0: 1.0, f1: 2.2, aer: 0.70 },
+  ],
+  // terrain_environment r3: alpine gets its OWN row table with two extra
+  // intermediate ranges. On the shared 4-ridge table the radial span
+  // between rows reached 230-250 m — each wall was a single quad strip of
+  // ~12 x 150 m triangles whose baked per-vertex shading interpolated into
+  // exactly the "raw planar facets / vertical brush-smear" the critique
+  // called out. Tighter spacing (plus the per-fragment relight below)
+  // turns the wall into overlapping layered ridge lines.
+  // r4 terrain_environment: two MORE intermediate ranges (650/940). The
+  // winter critique's "faceted low-poly triangle mountains" were the huge
+  // radial wall quads between adjacent rows — with only ~5 visible rows a
+  // single triangle spanned 130-200 m and its vertex-color/normal
+  // interpolation read as flat slate facets. Tighter row spacing halves
+  // the facet size and adds two extra overlapping ridge lines.
+  alpine: [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.10 },
+    { r: 650, base: 52, amp: 64, f0: 2.8, f1: 5.7, aer: 0.14 },
+    { r: 720, base: 56, amp: 76, f0: 2.6, f1: 5.2, aer: 0.18 },
+    { r: 870, base: 66, amp: 102, f0: 1.9, f1: 4.0, aer: 0.30 },
+    { r: 940, base: 74, amp: 114, f0: 1.7, f1: 3.6, aer: 0.36 },
+    { r: 1040, base: 82, amp: 128, f0: 1.5, f1: 3.3, aer: 0.44 },
+    { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
+  ],
+};
 
-  // lighting_post r7: vegetated ring base lifted toward the SUNLIT hillside
-  // band (0x4a5a44 -> 0x5b6c4c) — the unlit ring's baked colors must carry
-  // the sun x albedo product; 2-3-stops-dark backdrop was the teal-curtain
-  // critical's other half.
-  const base = new THREE.Color(H.baseHex ?? 0x5b6c4c);
-  const fogC = new THREE.Color((cfg && cfg.sky && cfg.sky.fogTintHex) ?? 0x8fa3bd);
-  // detail palette: sensible per-style defaults, overridable per map
-  const rockC = new THREE.Color(H.rockHex ?? (style === 'mesa' ? 0x8a5a38 : 0x66625e));
-  const snowC = new THREE.Color(H.snowHex ?? 0xeef2f7);
-  const forestC = new THREE.Color(H.forestHex ?? 0x435f3a); // r7: lit-canopy green (was 0x2e4230 deep shade)
-  const snowline = H.snowline ?? (style === 'alpine' ? 0.42 : 2); // >1 disables
-  // r7: vegetated default treelines pushed near the crests (0.55/0.5 ->
-  // 0.90/0.88). The old constant-altitude cutoff drew a horizontal band
-  // across every hill where forest texture gave way to smooth bald ramp —
-  // the critic's "artificial terrace band" + "bald gradient slopes". At
-  // these view distances real hill country reads forested to the summit.
-  const treeline = H.treeline ?? (style === 'rolling' ? 0.90 : style === 'escarpment' ? 0.88 : 0);
-  const treelineLayers = resolveHorizonTreelineLayers(H);
-  const banding = H.banding ?? (style === 'mesa' ? 0.16 : 0);
-  // soft vegetated hills carry far less exposed rock / flank contrast than
-  // cliff-forming styles — full strength there reads as curtain striping
-  const rockAmp = style === 'rolling' ? 0.22 : style === 'escarpment' ? 0.3 : 0.78;
-  const shadeAmp = style === 'rolling' ? 0.05 : style === 'escarpment' ? 0.06 : 0.12;
+const HORIZON_SEGMENTS = 520;
+const HORIZON_RIM_HALF_WIDTH = 512;
 
-  const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
-  const gnoi = new SimplexNoise({ random: mulberry32(((seed ^ 0x33C7) ^ idHash(mapId)) >>> 0) });
-  const N = 520; // ~11 m silhouette resolution at the main ridge radius
+interface HorizonRingGeometry {
+  rows: HorizonRingRow[];
+  positions: Float32Array;
+  heights: Float32Array;
+  maxHeight: number;
+}
 
-  // Radial rows. The tuck + skirt rows ride just outside the playable rim and
-  // stay LOW but opaque (ground-toned) so the fog-washed outer floor and the
-  // pale sky band can never peek between the rim crest and the ridges — the
-  // old ring showed exactly that gap as a white 'sea' sheet in wide shots.
-  // Ridge bases sit well above any establishing camera (~50 m).
-  // ANCHOR row: pinned 22 m underground inside the map rim, so the ring's
-  // inner lip is welded to the terrain — without it, any skirt vertex that
-  // rises above a rim dip opens a slot where the cream horizon sky pours
-  // through as flat white 'ponds' behind the rim forest.
-  // Skirt base 26-40 m + first ridge base 50 m keep the wall itself clear of
-  // the rim crest at the map edge.
-  // r6: rows are PER STYLE. The shared table put the first ridge at base 50 /
-  // amp 52 only ~100 m past the rim — on the vegetated maps that projected as
-  // a near-vertical green wall filling a third of the frame (the "curtain"
-  // critique). Vegetated styles now open with a LOW first ridge and recede
-  // through progressively taller, much hazier shells, so the ring reads as
-  // 3-4 distinct forested ridgelines instead of one continuous slope. Cliff
-  // styles (alpine/mesa) keep the imposing wall — it suits them.
-  const ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
-    default: HorizonRingRow[];
-  } = {
-    default: [
-      { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
-      { r: 760, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
-      { r: 990, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
-      // outermost row is a REAL fourth range, not a low taper: a low flat lip
-      // here projected as a dead-straight 'shoreline' and its fog-saturated
-      // backslope read as a blown-out white lake wherever the nearer rows
-      // dipped (loudest on the mesa style's low inter-table stretches)
-      { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
-    ],
-    rolling: [
-      { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 470, base: 22, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 600, base: 32, amp: 38, f0: 3.0, f1: 6.4, aer: 0.12 },
-      { r: 800, base: 45, amp: 72, f0: 2.0, f1: 4.4, aer: 0.32 },
-      { r: 1050, base: 60, amp: 112, f0: 1.4, f1: 3.1, aer: 0.54 },
-      { r: 1330, base: 72, amp: 120, f0: 1.0, f1: 2.2, aer: 0.72 },
-    ],
-    escarpment: [
-      { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 470, base: 24, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 600, base: 36, amp: 44, f0: 2.8, f1: 6.0, aer: 0.14 },
-      { r: 800, base: 50, amp: 82, f0: 2.0, f1: 4.4, aer: 0.34 },
-      { r: 1050, base: 66, amp: 116, f0: 1.4, f1: 3.1, aer: 0.54 },
-      { r: 1330, base: 76, amp: 106, f0: 1.0, f1: 2.2, aer: 0.70 },
-    ],
-    // terrain_environment r3: alpine gets its OWN row table with two extra
-    // intermediate ranges. On the shared 4-ridge table the radial span
-    // between rows reached 230-250 m — each wall was a single quad strip of
-    // ~12 x 150 m triangles whose baked per-vertex shading interpolated into
-    // exactly the "raw planar facets / vertical brush-smear" the critique
-    // called out. Tighter spacing (plus the per-fragment relight below)
-    // turns the wall into overlapping layered ridge lines.
-    // r4 terrain_environment: two MORE intermediate ranges (650/940). The
-    // winter critique's "faceted low-poly triangle mountains" were the huge
-    // radial wall quads between adjacent rows — with only ~5 visible rows a
-    // single triangle spanned 130-200 m and its vertex-color/normal
-    // interpolation read as flat slate facets. Tighter row spacing halves
-    // the facet size and adds two extra overlapping ridge lines.
-    alpine: [
-      { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-      { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.10 },
-      { r: 650, base: 52, amp: 64, f0: 2.8, f1: 5.7, aer: 0.14 },
-      { r: 720, base: 56, amp: 76, f0: 2.6, f1: 5.2, aer: 0.18 },
-      { r: 870, base: 66, amp: 102, f0: 1.9, f1: 4.0, aer: 0.30 },
-      { r: 940, base: 74, amp: 114, f0: 1.7, f1: 3.6, aer: 0.36 },
-      { r: 1040, base: 82, amp: 128, f0: 1.5, f1: 3.3, aer: 0.44 },
-      { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
-    ],
-  };
-  const rows0 = ROWS_BY_STYLE[style] || ROWS_BY_STYLE.default;
+interface HorizonGradients {
+  slope: Float32Array;
+  tangent: Float32Array;
+  radial: Float32Array;
+}
 
-  const nv0 = N * rows0.length;
-  const pos0 = new Float32Array(nv0 * 3);
-  const hs0 = new Float32Array(nv0);
-  let maxH = 1;
-  // >>> gameplay_feel r4: keep every ring row OUTSIDE the playable square. --
-  // The rows are circles but the map is a SQUARE (half-width ~512): a
-  // 428/470 m skirt circle lies entirely INSIDE that square, so anywhere the
-  // player drives past radius ~430 from map center (the r4 critique's rough
-  // drive spot sat at r=474) the opaque 22-38 m skirt wall stood in the
-  // MIDDLE of the playfield and filled the whole chase/scope frame as a
-  // featureless smeared "green wall" (drive_chase.png; reproduced and
-  // isolated by hiding horizon-* meshes — scratchpad/gfdiag). Warp each
-  // row's radius to hug the square rim instead:
-  //   rEff(a) = max(row.r, rimDist(a) + margin_row)
-  // with rimDist(a) = HALF_W / max(|cos a|, |sin a|) the distance from map
-  // center to the square rim along that azimuth. Axis-facing stretches are
-  // unchanged (row.r already clears the rim there); the edge/corner wedges
-  // push outward, so the backdrop becomes a rounded square that can never
-  // enter the playfield. The treeline combs follow automatically (they read
-  // the warped crest vertices).
-  const RIM_HALF_W = 512;
-  // r3: margins keyed per row COUNT — the 7-row alpine table needs its own
-  // outward-push ladder (values interpolate the original radius->margin curve)
-  // r4: 9-row alpine ladder (rows added at 650/940) — margins interpolated so
-  // rEff stays monotonic across rows along every azimuth (incl. corners)
-  const ROW_RIM_MARGIN = rows0.length === 9
-    ? [-34, 22, 95, 150, 200, 340, 430, 540, 800]
-    : rows0.length === 7
-      ? [-34, 22, 95, 200, 340, 540, 800]
-      : [-34, 22, 95, 280, 520, 800];
-  // <<< gameplay_feel r4 ------------------------------------------------------
-  for (let ri = 0; ri < rows0.length; ri++) {
-    const row = rows0[ri];
-    for (let k = 0; k < N; k++) {
-      const a = (k / N) * Math.PI * 2;
-      // >>> gameplay_feel r4: square-rim radius clamp (see note above)
-      const rim = RIM_HALF_W / Math.max(Math.abs(Math.cos(a)), Math.abs(Math.sin(a)));
-      const rEff = Math.max(row.r, rim + (ROW_RIM_MARGIN[ri] ?? 300));
-      const jr = rEff * (1 + 0.03 * noi.noise(Math.cos(a) * 4 + ri * 13, Math.sin(a) * 4 - ri * 7));
-      // <<< gameplay_feel r4
-      let hh;
-      if (row.skirt) {
-        hh = row.base + (noi.noise(Math.cos(a) * row.f0, Math.sin(a) * row.f0) * 0.5 + 0.5) * row.amp;
-      } else {
-        hh = profile(a, noi, row);
-      }
-      hh *= amp;
-      const i = ri * N + k;
-      hs0[i] = hh;
-      if (!row.skirt && hh > maxH) maxH = hh;
-      pos0[i * 3] = Math.cos(a) * jr;
-      pos0[i * 3 + 1] = hh;
-      pos0[i * 3 + 2] = Math.sin(a) * jr;
+interface HorizonColorContext {
+  style: HorizonStyle;
+  rows: readonly HorizonRingRow[];
+  heights: Float32Array;
+  maxHeight: number;
+  base: THREE.Color;
+  fog: THREE.Color;
+  rock: THREE.Color;
+  snow: THREE.Color;
+  forest: THREE.Color;
+  snowline: number;
+  treeline: number;
+  banding: number;
+  rockAmp: number;
+  haze: number;
+  grainAmp: number;
+  noise: SimplexNoise;
+  gradients: HorizonGradients;
+  sun: readonly [number, number, number];
+}
+
+function horizonRowMargins(rowCount: number): readonly number[] {
+  if (rowCount === 9) return [-34, 22, 95, 150, 200, 340, 430, 540, 800];
+  if (rowCount === 7) return [-34, 22, 95, 200, 340, 540, 800];
+  return [-34, 22, 95, 280, 520, 800];
+}
+
+function sampleRingRowHeight(
+  row: HorizonRingRow,
+  angle: number,
+  noise: SimplexNoise,
+  profile: HorizonProfile,
+): number {
+  if (!row.skirt) return profile(angle, noise, row);
+  return row.base
+    + (noise.noise(Math.cos(angle) * row.f0, Math.sin(angle) * row.f0) * 0.5 + 0.5) * row.amp;
+}
+
+function buildInitialHorizonGeometry(
+  rows: HorizonRingRow[],
+  style: HorizonStyle,
+  profile: HorizonProfile,
+  noise: SimplexNoise,
+  amp: number,
+): HorizonRingGeometry {
+  const positions = new Float32Array(HORIZON_SEGMENTS * rows.length * 3);
+  const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
+  const margins = horizonRowMargins(rows.length);
+  let maxHeight = 1;
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+      const rim = HORIZON_RIM_HALF_WIDTH
+        / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
+      const radius = Math.max(row.r, rim + (margins[rowIndex] ?? 300));
+      const jitteredRadius = radius * (1 + 0.03 * noise.noise(
+        Math.cos(angle) * 4 + rowIndex * 13,
+        Math.sin(angle) * 4 - rowIndex * 7,
+      ));
+      const height = sampleRingRowHeight(row, angle, noise, profile) * amp;
+      const index = rowIndex * HORIZON_SEGMENTS + segment;
+      heights[index] = height;
+      if (!row.skirt && height > maxHeight) maxHeight = height;
+      positions[index * 3] = Math.cos(angle) * jitteredRadius;
+      positions[index * 3 + 1] = height;
+      positions[index * 3 + 2] = Math.sin(angle) * jitteredRadius;
     }
-    // Low-pass only the skyline-owning alpine rows. This is deliberately a
-    // geometry operation (rather than a material blur): even at x8 zoom the
-    // silhouette cannot contain a one- or two-vertex needle. Eight compact
-    // passes retain broad peak groups while removing the repeated sawtooth.
     if (style === 'alpine' && !row.skirt) {
-      const baseI = ri * N;
-      softenAlpineRing(hs0, baseI, N, row, amp);
-      for (let k = 0; k < N; k++) pos0[(baseI + k) * 3 + 1] = hs0[baseI + k];
+      const offset = rowIndex * HORIZON_SEGMENTS;
+      softenAlpineRing(heights, offset, HORIZON_SEGMENTS, row, amp);
+      for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+        positions[(offset + segment) * 3 + 1] = heights[offset + segment];
+      }
     }
   }
+  return { rows, positions, heights, maxHeight };
+}
 
-  // --- alpine RADIAL SUBDIVISION (content_breadth r5) ------------------------
-  // Even with the 9-row ladder + smoothed analytic normals, the wall between
-  // two adjacent alpine rows is ONE quad strip spanning 65-200 m radially —
-  // from the establishing camera those quads render as flat "folded paper"
-  // facets with a plain vertex-color gradient (critique, minor). Insert two
-  // interpolated circles per non-skirt gap and displace them with a fractal
-  // crag field scaled to the local wall relief: facet size drops ~3x, and the
-  // sub-row knolls/gullies feed the smoothed-normal relight + per-fragment
-  // rock splat with REAL surface structure instead of an interpolation ramp.
-  // Silhouette is untouched (authored crest circles keep their vertices);
-  // other styles pass through unchanged. Cost: 9 -> 21 rows x 520 verts.
-  let rows = rows0, pos = pos0, hs = hs0;
-  if (style === 'alpine') {
-    const SUB = 2;
-    const rowsX: HorizonRingRow[] = [];
-    const posX: number[] = [];
-    const hsX: number[] = [];
-    const pushRow = (rowObj: HorizonRingRow, srcBase: number): void => {
-      rowsX.push(rowObj);
-      for (let k = 0; k < N; k++) {
-        const i = srcBase + k;
-        posX.push(pos0[i * 3], pos0[i * 3 + 1], pos0[i * 3 + 2]);
-        hsX.push(hs0[i]);
-      }
-    };
-    for (let ri = 0; ri < rows0.length; ri++) {
-      pushRow(rows0[ri], ri * N);
-      if (ri >= rows0.length - 1 || rows0[ri].skirt || rows0[ri + 1].skirt) continue;
-      const rA = rows0[ri], rB = rows0[ri + 1];
-      for (let s = 1; s <= SUB; s++) {
-        const f = s / (SUB + 1);
-        rowsX.push({
-          r: rA.r + (rB.r - rA.r) * f,
-          base: rA.base + (rB.base - rA.base) * f,
-          amp: rA.amp + (rB.amp - rA.amp) * f,
-          f0: rA.f0, f1: rA.f1,
-          aer: rA.aer + (rB.aer - rA.aer) * f,
-          interpolated: true,
-        });
-        const fq = 6.5 + s * 2.3;
-        for (let k = 0; k < N; k++) {
-          const a = (k / N) * Math.PI * 2;
-          const iA = ri * N + k, iB = (ri + 1) * N + k;
-          const hA = hs0[iA], hB = hs0[iB];
-          // crag displacement sized to the local wall relief (+ a floor so
-          // even gentle spans pick up micro-structure)
-          const crag = noi.noise(Math.cos(a) * fq + ri * 23.7 + s * 17.1,
-            Math.sin(a) * fq - ri * 11.3 + s * 7.7) * 0.72
-            + noi.noise(Math.cos(a) * 14.0 + s * 41.0 + ri * 3.0,
-              Math.sin(a) * 14.0 - s * 23.0) * 0.28;
-          const disp = crag * (Math.abs(hB - hA) * 0.16 + 7.0);
-          // small radial wander so remaining facet borders never run straight
-          const rj = 1 + 0.011 * noi.noise(Math.cos(a) * 9.0 - s * 13.0 + ri * 5.0,
-            Math.sin(a) * 9.0 + s * 29.0);
-          posX.push(
-            (pos0[iA * 3] + (pos0[iB * 3] - pos0[iA * 3]) * f) * rj,
-            hA + (hB - hA) * f + disp,
-            (pos0[iA * 3 + 2] + (pos0[iB * 3 + 2] - pos0[iA * 3 + 2]) * f) * rj);
-          hsX.push(hA + (hB - hA) * f + disp);
-        }
-      }
-    }
-    rows = rowsX;
-    pos = new Float32Array(posX);
-    hs = new Float32Array(hsX);
+function appendSourceRingRow(
+  rows: HorizonRingRow[],
+  positions: number[],
+  heights: number[],
+  source: HorizonRingGeometry,
+  rowIndex: number,
+): void {
+  rows.push(source.rows[rowIndex]);
+  const offset = rowIndex * HORIZON_SEGMENTS;
+  for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+    const index = offset + segment;
+    positions.push(
+      source.positions[index * 3],
+      source.positions[index * 3 + 1],
+      source.positions[index * 3 + 2],
+    );
+    heights.push(source.heights[index]);
   }
-  const nv = N * rows.length;
-  const col = new Float32Array(nv * 3);
-  const uvA = new Float32Array(nv * 2);
-  // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
-  // strata/snow features in the texture land at constant world height
-  for (let ri = 0; ri < rows.length; ri++) {
-    for (let k = 0; k < N; k++) {
-      const i = ri * N + k;
-      uvA[i * 2] = (k / N) * 10;
-      uvA[i * 2 + 1] = clamp(hs[i] / maxH, 0, 1);
-    }
-  }
+}
 
-  // --- vertex shading -------------------------------------------------------
-  // Baked, unlit: sun-facing ridge flanks lighter (real azimuth from cfg.sky),
-  // steep faces expose rock, snow above the snowline on gentler slopes, forest
-  // tint below the treeline, sandstone strata on mesa cliffs, fine albedo
-  // grain, then the aerial-perspective haze ramp toward the fog color.
-  const sunAz = ((cfg && cfg.sky && cfg.sky.sunAzimuthDeg) ?? 115) * Math.PI / 180;
-  // lighting_post r3: real per-vertex N·L against the map sun replaces the
-  // tangential-only baked sun/shade term (walls read as unshaded texture at
-  // sniper x8). Elevation from cfg.sky, default 32 deg.
-  const sunEl = ((cfg && cfg.sky && cfg.sky.sunElevationDeg) ?? 32) * Math.PI / 180;
-  const lx = Math.sin(sunAz) * Math.cos(sunEl);
-  const ly = Math.sin(sunEl);
-  const lz = Math.cos(sunAz) * Math.cos(sunEl);
-  // SMOOTHED height series for the shading derivatives only (silhouette keeps
-  // its sharp vertices): raw per-vertex differences bake into alternating
-  // light/dark column striping on the ridge faces.
-  const hsS = new Float32Array(hs);
-  for (let pass = 0; pass < 3; pass++) {
-    for (let ri = 0; ri < rows.length; ri++) {
-      const prev = hsS.slice(ri * N, ri * N + N);
-      for (let k = 0; k < N; k++) {
-        hsS[ri * N + k] = prev[(k - 1 + N) % N] * 0.27 + prev[k] * 0.46 + prev[(k + 1) % N] * 0.27;
-      }
-    }
-  }
-  // Per-vertex slope/sun response, then SMOOTHED ALONG THE RING before it
-  // drives any color: the wall between two radial rows is a single quad
-  // strip ~7 m wide and up to 100+ m tall, so any column-to-column jitter in
-  // a slope-keyed color term (rock takeover, iron-oxide flush, snow shedding)
-  // bakes into exact full-height vertical stripes — the r3 critique's
-  // "vertical texture smearing" on the desert canyon walls was these vertex
-  // color columns, not the detail texture.
-  const slopeA = new Float32Array(nv);
-  // per-vertex smoothed gradients (lighting_post r3: replaces the collapsed
-  // tangential sunA scalar — both components feed a full N·L in the color loop)
-  const dTangA = new Float32Array(nv);
-  const dRadA = new Float32Array(nv);
-  for (let ri = 0; ri < rows.length; ri++) {
-    const row = rows[ri];
-    for (let k = 0; k < N; k++) {
-      const i = ri * N + k;
-      const hPrev = hsS[ri * N + ((k - 1 + N) % N)];
-      const hNext = hsS[ri * N + ((k + 1) % N)];
-      const dTang = (hNext - hPrev) / (2 * Math.PI * row.r / N * 2); // dh/darc
-      const hIn = ri > 0 ? hsS[(ri - 1) * N + k] : hsS[i];
-      const hOut = ri < rows.length - 1 ? hsS[(ri + 1) * N + k] : hsS[i];
-      const dRad = (hOut - hIn) / (((ri < rows.length - 1 ? rows[ri + 1].r : row.r) -
-        (ri > 0 ? rows[ri - 1].r : row.r)) || 1);
-      slopeA[i] = clamp(Math.hypot(dTang, dRad * 2.2) * 1.6, 0, 1);
-      dTangA[i] = dTang;       // dh/darc
-      dRadA[i] = dRad * 2.2;   // dh/dradial, same weighting as slopeA
-    }
-  }
-  for (let pass = 0; pass < 5; pass++) {
-    for (let ri = 0; ri < rows.length; ri++) {
-      const ps = slopeA.slice(ri * N, ri * N + N);
-      const pt = dTangA.slice(ri * N, ri * N + N);
-      const pr = dRadA.slice(ri * N, ri * N + N);
-      for (let k = 0; k < N; k++) {
-        const km = (k - 1 + N) % N, kp = (k + 1) % N;
-        slopeA[ri * N + k] = ps[km] * 0.27 + ps[k] * 0.46 + ps[kp] * 0.27;
-        dTangA[ri * N + k] = pt[km] * 0.27 + pt[k] * 0.46 + pt[kp] * 0.27;
-        dRadA[ri * N + k] = pr[km] * 0.27 + pr[k] * 0.46 + pr[kp] * 0.27;
-      }
-    }
-  }
-  const c = new THREE.Color();
-  const tmp = new THREE.Color();
-  for (let ri = 0; ri < rows.length; ri++) {
-    const row = rows[ri];
-    for (let k = 0; k < N; k++) {
-      const a = (k / N) * Math.PI * 2;
-      const i = ri * N + k;
-      const t = clamp(hs[i] / maxH, 0, 1);
-      const slope = slopeA[i];
+function interpolatedHorizonRow(a: HorizonRingRow, b: HorizonRingRow, fraction: number): HorizonRingRow {
+  return {
+    r: a.r + (b.r - a.r) * fraction,
+    base: a.base + (b.base - a.base) * fraction,
+    amp: a.amp + (b.amp - a.amp) * fraction,
+    f0: a.f0,
+    f1: a.f1,
+    aer: a.aer + (b.aer - a.aer) * fraction,
+    interpolated: true,
+  };
+}
 
-      c.copy(base);
-      // altitude tone drift: valleys slightly deeper, crests lighter
-      c.multiplyScalar(0.82 + t * 0.34);
-      // steep faces expose rock
-      const rockW = smoothstep(0.34, 0.8, slope) * (row.skirt ? 0.25 : rockAmp);
-      c.lerp(rockC, rockW);
-      // forest band on the lower flanks (rolling / escarpment).
-      // r6: the strength noise MUST vary with altitude too — keyed on the
-      // ring angle alone it painted full-height light/dark columns down the
-      // walls (a major contributor to the green-curtain fabric read).
-      if (treeline > 0) {
-        const fn = gnoi.noise(Math.cos(a) * 7 + 3 + t * 3.1, Math.sin(a) * 7 + ri - t * 2.4) * 0.5 + 0.5;
-        const fw = (1 - smoothstep(treeline * 0.55, treeline, t)) * (1 - slope * 0.4) *
-          (0.5 + 0.5 * fn);
-        c.lerp(forestC, clamp(fw, 0, 1) * 0.6);
-      }
-      // iron-oxide flush on the steepest mesa walls — the strata BANDS are
-      // painted by the altitude-mapped detail texture (per-vertex sin bands
-      // aliased into mush at this vertex spacing)
-      if (banding > 0.001) {
-        // 0.4 (was 0.55): with the slope series smoothed the flush is a broad
-        // face wash — softer, so the texture strata stay the dominant read
-        const steepW = smoothstep(0.3, 0.7, slope);
-        tmp.setRGB(c.r * 1.08, c.g * 0.89, c.b * 0.75);
-        c.lerp(tmp, steepW * 0.4);
-      }
-      // snow above the snowline (gentler slopes hold snow; cliffs shed it).
-      // r3: full caps above the line PLUS a thinner dusting on gentle ground
-      // below it — a winter range is snow-bound to the valley floor, not a
-      // snow-capped desert; bare tan foothills were the loudest winter tell
-      if (snowline <= 1) {
-        const band = smoothstep(snowline, snowline + 0.16, t +
-          gnoi.noise(Math.cos(a) * 6 - 9, Math.sin(a) * 6 + 4) * 0.07);
-        // r7: shed band 0.45-0.9 -> 0.30-0.68 — the old hold kept nearly
-        // every face snowbound and the whole ring flattened into uniform
-        // cream pyramids; steep flanks now expose cool rock ribs, giving the
-        // slope-based snow/rock banding a real range shows
-        // r8: 0.30-0.68 -> 0.22-0.56 — even so the winter shot still rendered
-        // a near-uniform grey-white wall; more shed rock = more slope-keyed
-        // material contrast to mask the facet shading
-        // r1 (content_breadth): the r8 shed OVERSHOT — the fractal alpine
-        // profile's slope metric sits >0.56 on virtually the whole wall, so
-        // hold≈0 everywhere and the ring rendered as a BARE grey rock curtain
-        // with zero snow on the peaks (critique). Two-part fix: widen the
-        // shed band back to 0.38-0.78 (only true cliff faces shed), and force
-        // a crest hold — the upper ~third of every summit stays snowbound
-        // regardless of slope, exactly how a winter range reads. Shed rock
-        // survives on the steep mid-flanks, giving the slope-keyed contrast
-        // WITHOUT trading the caps away.
-        const hold = 1 - smoothstep(0.38, 0.78, slope);
-        const crest = smoothstep(0.52, 0.80, t);
-        const holdEff = Math.min(1, hold + crest * 0.9);
-        c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * holdEff);
-      }
-      // lighting_post r3: real N·L against the map sun — sun-facing slopes
-      // lift warm, back slopes drop cool, exactly like the terrain-side
-      // per-vertex relight in buildChunkGeometry. The haze lerp stays AFTER
-      // this, so distance still flattens the lighting like aerial perspective.
-      // tangent t̂ = (-sin a, 0, cos a), radial r̂ = (cos a, 0, sin a)
-      {
-        const nx = dTangA[i] * Math.sin(a) - dRadA[i] * Math.cos(a);
-        const nz = -dTangA[i] * Math.cos(a) - dRadA[i] * Math.sin(a);
-        const inv = 1 / Math.hypot(nx, 1, nz);
-        const ndl = (nx * lx + ly + nz * lz) * inv;         // N.L, -1..1
-        // r3 terrain_environment: alpine drops to 0.10 — its full N·L bake
-        // interpolated across the huge wall triangles as visible planar
-        // facets; the per-fragment relight in the material (smooth vertex
-        // normals, uFragRel) carries the directional shading instead.
-        const relAmp = row.skirt ? 0.08 :
-          (style === 'alpine' ? 0.10 : style === 'mesa' ? 0.34 : 0.26);
-        const lit = Math.max(ndl, 0), shade = Math.max(-ndl, 0);
-        c.multiplyScalar(1 - relAmp * 0.85 + relAmp * 1.6 * lit); // sun side up, back slopes down
-        c.lerp(tmp.setRGB(c.r * 1.05, c.g * 1.0, c.b * 0.92), lit * 0.30);   // warm lit faces
-        c.lerp(tmp.setRGB(c.r * 0.88, c.g * 0.93, c.b * 1.08), shade * 0.35); // cool shadow faces
-      }
-      // low-frequency tone drift only — fine grain now lives in the detail
-      // texture where it can't bake into triangle-sized shading facets.
-      // ALTITUDE in the noise domain: keyed on (a, ri) alone this drift was
-      // constant from wall base to crest, baking full-height light/dark
-      // columns that read as vertical paint smear on the far desert walls
-      const g1 = gnoi.noise(Math.cos(a) * 5.5 + ri * 0.7 + t * 2.6, Math.sin(a) * 5.5 - ri * 0.4 - t * 1.9);
-      c.multiplyScalar(1 + g1 * 0.045 * grainAmp);
-      // aerial perspective: row depth + valley haze + gentle base fade that
-      // melts the ring into the scene fog instead of a hard color step
-      let hazeW = row.aer * haze + (1 - t) * 0.07;
-      if (row.skirt) hazeW = row.aer * haze; // ground band stays ground-toned
-      c.lerp(fogC, clamp(hazeW, 0, 0.94));
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-    }
+function appendInterpolatedRingRow(
+  positions: number[],
+  heights: number[],
+  source: HorizonRingGeometry,
+  noise: SimplexNoise,
+  rowIndex: number,
+  subdivision: number,
+): void {
+  const fraction = subdivision / 3;
+  const frequency = 6.5 + subdivision * 2.3;
+  for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+    const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+    const inner = rowIndex * HORIZON_SEGMENTS + segment;
+    const outer = (rowIndex + 1) * HORIZON_SEGMENTS + segment;
+    const innerHeight = source.heights[inner];
+    const outerHeight = source.heights[outer];
+    const crag = noise.noise(
+      Math.cos(angle) * frequency + rowIndex * 23.7 + subdivision * 17.1,
+      Math.sin(angle) * frequency - rowIndex * 11.3 + subdivision * 7.7,
+    ) * 0.72 + noise.noise(
+      Math.cos(angle) * 14.0 + subdivision * 41.0 + rowIndex * 3.0,
+      Math.sin(angle) * 14.0 - subdivision * 23.0,
+    ) * 0.28;
+    const displacement = crag * (Math.abs(outerHeight - innerHeight) * 0.16 + 7.0);
+    const radiusJitter = 1 + 0.011 * noise.noise(
+      Math.cos(angle) * 9.0 - subdivision * 13.0 + rowIndex * 5.0,
+      Math.sin(angle) * 9.0 + subdivision * 29.0,
+    );
+    const height = innerHeight + (outerHeight - innerHeight) * fraction + displacement;
+    positions.push(
+      (source.positions[inner * 3]
+        + (source.positions[outer * 3] - source.positions[inner * 3]) * fraction) * radiusJitter,
+      height,
+      (source.positions[inner * 3 + 2]
+        + (source.positions[outer * 3 + 2] - source.positions[inner * 3 + 2]) * fraction) * radiusJitter,
+    );
+    heights.push(height);
   }
+}
 
-  // DEBUG: paint each row a flat color to identify geometry in screenshots
-  const horizonDebug = (globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean })
-    .__HORIZON_DEBUG;
-  if (horizonDebug) {
-    const dbg = [[1, 0.4, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1]];
-    for (let ri = 0; ri < rows.length; ri++) {
-      const dc = dbg[ri % dbg.length];
-      for (let k = 0; k < N; k++) {
-        const i = ri * N + k;
-        col[i * 3] = dc[0]; col[i * 3 + 1] = dc[1]; col[i * 3 + 2] = dc[2];
+function subdivideAlpineGeometry(
+  source: HorizonRingGeometry,
+  style: HorizonStyle,
+  noise: SimplexNoise,
+): HorizonRingGeometry {
+  if (style !== 'alpine') return source;
+  const rows: HorizonRingRow[] = [];
+  const positions: number[] = [];
+  const heights: number[] = [];
+  for (let rowIndex = 0; rowIndex < source.rows.length; rowIndex++) {
+    appendSourceRingRow(rows, positions, heights, source, rowIndex);
+    const next = source.rows[rowIndex + 1];
+    if (!next || source.rows[rowIndex].skirt || next.skirt) continue;
+    for (let subdivision = 1; subdivision <= 2; subdivision++) {
+      rows.push(interpolatedHorizonRow(source.rows[rowIndex], next, subdivision / 3));
+      appendInterpolatedRingRow(positions, heights, source, noise, rowIndex, subdivision);
+    }
+  }
+  return {
+    rows,
+    positions: new Float32Array(positions),
+    heights: new Float32Array(heights),
+    maxHeight: source.maxHeight,
+  };
+}
+
+function buildHorizonUvs(heights: Float32Array, maxHeight: number): Float32Array {
+  const uv = new Float32Array(heights.length * 2);
+  for (let index = 0; index < heights.length; index++) {
+    uv[index * 2] = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * 10;
+    uv[index * 2 + 1] = clamp(heights[index] / maxHeight, 0, 1);
+  }
+  return uv;
+}
+
+function smoothHorizonHeights(
+  heights: Float32Array,
+  rowCount: number,
+  passes: number,
+): Float32Array {
+  const smoothed = new Float32Array(heights);
+  for (let pass = 0; pass < passes; pass++) {
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      const offset = rowIndex * HORIZON_SEGMENTS;
+      const previous = smoothed.slice(offset, offset + HORIZON_SEGMENTS);
+      for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+        const before = (segment - 1 + HORIZON_SEGMENTS) % HORIZON_SEGMENTS;
+        const after = (segment + 1) % HORIZON_SEGMENTS;
+        smoothed[offset + segment] = previous[before] * 0.27
+          + previous[segment] * 0.46 + previous[after] * 0.27;
       }
     }
   }
-  const idx = [];
-  for (let ri = 0; ri < rows.length - 1; ri++) {
-    for (let k = 0; k < N; k++) {
-      const k1 = (k + 1) % N;
-      const a0 = ri * N + k, a1 = ri * N + k1;
-      const b0 = (ri + 1) * N + k, b1 = (ri + 1) * N + k1;
-      idx.push(a0, b0, a1, a1, b0, b1);
+  return smoothed;
+}
+
+function rawHorizonGradients(
+  rows: readonly HorizonRingRow[],
+  heights: Float32Array,
+): HorizonGradients {
+  const count = heights.length;
+  const slope = new Float32Array(count);
+  const tangent = new Float32Array(count);
+  const radial = new Float32Array(count);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const index = rowIndex * HORIZON_SEGMENTS + segment;
+      const before = rowIndex * HORIZON_SEGMENTS
+        + (segment - 1 + HORIZON_SEGMENTS) % HORIZON_SEGMENTS;
+      const after = rowIndex * HORIZON_SEGMENTS + (segment + 1) % HORIZON_SEGMENTS;
+      const tangentDelta = (heights[after] - heights[before])
+        / (2 * Math.PI * row.r / HORIZON_SEGMENTS * 2);
+      const innerHeight = rowIndex > 0
+        ? heights[(rowIndex - 1) * HORIZON_SEGMENTS + segment] : heights[index];
+      const outerHeight = rowIndex < rows.length - 1
+        ? heights[(rowIndex + 1) * HORIZON_SEGMENTS + segment] : heights[index];
+      const innerRadius = rowIndex > 0 ? rows[rowIndex - 1].r : row.r;
+      const outerRadius = rowIndex < rows.length - 1 ? rows[rowIndex + 1].r : row.r;
+      const radialDelta = (outerHeight - innerHeight) / (outerRadius - innerRadius || 1);
+      slope[index] = clamp(Math.hypot(tangentDelta, radialDelta * 2.2) * 1.6, 0, 1);
+      tangent[index] = tangentDelta;
+      radial[index] = radialDelta * 2.2;
     }
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  geo.setAttribute('uv', new THREE.BufferAttribute(uvA, 2));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  // r4 terrain_environment: ANALYTIC SMOOTHED NORMALS for the alpine ring.
-  // computeVertexNormals face-averages the sharp silhouette geometry, so
-  // adjacent vertices carry wildly different normals and the per-fragment
-  // relight/rock-splat interpolated them as huge flat planes — the winter
-  // critique's "faceted low-poly triangle mountains". The 5-pass smoothed
-  // slope series (dTangA/dRadA, same data the vertex relight uses) shades
-  // the wall as one continuous surface; the SILHOUETTE keeps its sharp
-  // vertices. Alpine only: the other styles never read normals (unlit).
-  if (style === 'alpine') {
-    const nAttr = geo.attributes.normal;
-    for (let ri = 0; ri < rows.length; ri++) {
-      for (let k = 0; k < N; k++) {
-        const i = ri * N + k;
-        const a = (k / N) * Math.PI * 2;
-        const nx = dTangA[i] * Math.sin(a) - dRadA[i] * Math.cos(a);
-        const nz = -dTangA[i] * Math.cos(a) - dRadA[i] * Math.sin(a);
-        const inv = 1 / Math.hypot(nx, 1, nz);
-        nAttr.setXYZ(i, nx * inv, inv, nz * inv);
+  return { slope, tangent, radial };
+}
+
+function smoothHorizonGradients(
+  gradients: HorizonGradients,
+  rowCount: number,
+  passes: number,
+): void {
+  for (let pass = 0; pass < passes; pass++) {
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      const offset = rowIndex * HORIZON_SEGMENTS;
+      const sourceSlope = gradients.slope.slice(offset, offset + HORIZON_SEGMENTS);
+      const sourceTangent = gradients.tangent.slice(offset, offset + HORIZON_SEGMENTS);
+      const sourceRadial = gradients.radial.slice(offset, offset + HORIZON_SEGMENTS);
+      for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+        const before = (segment - 1 + HORIZON_SEGMENTS) % HORIZON_SEGMENTS;
+        const after = (segment + 1) % HORIZON_SEGMENTS;
+        gradients.slope[offset + segment] = sourceSlope[before] * 0.27
+          + sourceSlope[segment] * 0.46 + sourceSlope[after] * 0.27;
+        gradients.tangent[offset + segment] = sourceTangent[before] * 0.27
+          + sourceTangent[segment] * 0.46 + sourceTangent[after] * 0.27;
+        gradients.radial[offset + segment] = sourceRadial[before] * 0.27
+          + sourceRadial[segment] * 0.46 + sourceRadial[after] * 0.27;
       }
     }
   }
-  // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
-  // establishing cameras — with default FrontSide it backface-culls and the
-  // sky shows through as a pale 'sea sheet' between rim and ridges (the old
-  // ring's desert artifact).
-  // Detail texture is authored around mid-gray 0.62 (linear); the material
-  // color 1.61 recentres it so vertex colors keep their intended tone while
-  // the map layers rock grain / gullies / strata / snow flatten on top.
-  // gullies belong on cliff-forming styles; vegetated hills at 700 m don't
-  // show drainage chutes, they show forest texture
-  // chute strength tuned way down on the cliff styles: at far-wall
-  // magnification the old 1.0/0.85 chutes dominated every face as vertical
-  // streaking — strata (mesa) and snow/rock contrast (alpine) carry the
-  // material read instead
-  // r6: mesa 0.38 -> 0.14 — even the tuned chutes still stacked with the
-  // sheared strata into vertical melt on the far walls; vegetated styles get
-  // ZERO (the canopy texture owns those faces, and any downslope streak
-  // reads as curtain fabric on a forested hill)
-  // r7: alpine 0.24 -> 0.12 — the residual chutes still striped the big
-  // near walls with vertical fiber under the winter overcast
-  // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
-  // cut in the snow pass; kills the last of the vertical smear on the wall
+}
+
+function buildHorizonGradients(
+  rows: readonly HorizonRingRow[],
+  heights: Float32Array,
+): HorizonGradients {
+  const gradients = rawHorizonGradients(rows, smoothHorizonHeights(heights, rows.length, 3));
+  smoothHorizonGradients(gradients, rows.length, 5);
+  return gradients;
+}
+
+function applyHorizonSurfaceBands(
+  color: THREE.Color,
+  scratch: THREE.Color,
+  context: HorizonColorContext,
+  row: HorizonRingRow,
+  angle: number,
+  altitude: number,
+  slope: number,
+  rowIndex: number,
+): void {
+  const rockWeight = smoothstep(0.34, 0.8, slope) * (row.skirt ? 0.25 : context.rockAmp);
+  color.lerp(context.rock, rockWeight);
+  if (context.treeline > 0) {
+    const forestNoise = context.noise.noise(
+      Math.cos(angle) * 7 + 3 + altitude * 3.1,
+      Math.sin(angle) * 7 + rowIndex - altitude * 2.4,
+    ) * 0.5 + 0.5;
+    const forestWeight = (1 - smoothstep(context.treeline * 0.55, context.treeline, altitude))
+      * (1 - slope * 0.4) * (0.5 + 0.5 * forestNoise);
+    color.lerp(context.forest, clamp(forestWeight, 0, 1) * 0.6);
+  }
+  if (context.banding > 0.001) {
+    const steepWeight = smoothstep(0.3, 0.7, slope);
+    scratch.setRGB(color.r * 1.08, color.g * 0.89, color.b * 0.75);
+    color.lerp(scratch, steepWeight * 0.4);
+  }
+  if (context.snowline <= 1) {
+    const band = smoothstep(
+      context.snowline,
+      context.snowline + 0.16,
+      altitude + context.noise.noise(Math.cos(angle) * 6 - 9, Math.sin(angle) * 6 + 4) * 0.07,
+    );
+    const hold = 1 - smoothstep(0.38, 0.78, slope);
+    const crest = smoothstep(0.52, 0.80, altitude);
+    const effectiveHold = Math.min(1, hold + crest * 0.9);
+    const coverage = clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * effectiveHold;
+    color.lerp(context.snow, coverage);
+  }
+}
+
+function horizonNormal(
+  gradients: HorizonGradients,
+  index: number,
+  angle: number,
+): readonly [number, number, number] {
+  const nx = gradients.tangent[index] * Math.sin(angle) - gradients.radial[index] * Math.cos(angle);
+  const nz = -gradients.tangent[index] * Math.cos(angle) - gradients.radial[index] * Math.sin(angle);
+  const inverseLength = 1 / Math.hypot(nx, 1, nz);
+  return [nx, nz, inverseLength];
+}
+
+function applyHorizonDirectionalLight(
+  color: THREE.Color,
+  scratch: THREE.Color,
+  context: HorizonColorContext,
+  row: HorizonRingRow,
+  angle: number,
+  index: number,
+): void {
+  const [nx, nz, inverseLength] = horizonNormal(context.gradients, index, angle);
+  const [lightX, lightY, lightZ] = context.sun;
+  const normalDotLight = (nx * lightX + lightY + nz * lightZ) * inverseLength;
+  const relativeAmplitude = row.skirt ? 0.08
+    : context.style === 'alpine' ? 0.10 : context.style === 'mesa' ? 0.34 : 0.26;
+  const lit = Math.max(normalDotLight, 0);
+  const shade = Math.max(-normalDotLight, 0);
+  color.multiplyScalar(1 - relativeAmplitude * 0.85 + relativeAmplitude * 1.6 * lit);
+  color.lerp(scratch.setRGB(color.r * 1.05, color.g, color.b * 0.92), lit * 0.30);
+  color.lerp(scratch.setRGB(color.r * 0.88, color.g * 0.93, color.b * 1.08), shade * 0.35);
+}
+
+function applyHorizonToneAndHaze(
+  color: THREE.Color,
+  context: HorizonColorContext,
+  row: HorizonRingRow,
+  angle: number,
+  altitude: number,
+  rowIndex: number,
+): void {
+  const toneNoise = context.noise.noise(
+    Math.cos(angle) * 5.5 + rowIndex * 0.7 + altitude * 2.6,
+    Math.sin(angle) * 5.5 - rowIndex * 0.4 - altitude * 1.9,
+  );
+  color.multiplyScalar(1 + toneNoise * 0.045 * context.grainAmp);
+  const baseHaze = row.aer * context.haze;
+  const hazeWeight = row.skirt ? baseHaze : baseHaze + (1 - altitude) * 0.07;
+  color.lerp(context.fog, clamp(hazeWeight, 0, 0.94));
+}
+
+function buildHorizonColors(context: HorizonColorContext): Float32Array {
+  const colors = new Float32Array(context.heights.length * 3);
+  const color = new THREE.Color();
+  const scratch = new THREE.Color();
+  for (let rowIndex = 0; rowIndex < context.rows.length; rowIndex++) {
+    const row = context.rows[rowIndex];
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+      const index = rowIndex * HORIZON_SEGMENTS + segment;
+      const altitude = clamp(context.heights[index] / context.maxHeight, 0, 1);
+      const slope = context.gradients.slope[index];
+      color.copy(context.base).multiplyScalar(0.82 + altitude * 0.34);
+      applyHorizonSurfaceBands(color, scratch, context, row, angle, altitude, slope, rowIndex);
+      applyHorizonDirectionalLight(color, scratch, context, row, angle, index);
+      applyHorizonToneAndHaze(color, context, row, angle, altitude, rowIndex);
+      colors[index * 3] = color.r;
+      colors[index * 3 + 1] = color.g;
+      colors[index * 3 + 2] = color.b;
+    }
+  }
+  return colors;
+}
+
+function applyHorizonDebugColors(colors: Float32Array, rowCount: number): void {
+  const debugColors = [[1, 0.4, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1]];
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+    const debugColor = debugColors[rowIndex % debugColors.length];
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const index = rowIndex * HORIZON_SEGMENTS + segment;
+      colors[index * 3] = debugColor[0];
+      colors[index * 3 + 1] = debugColor[1];
+      colors[index * 3 + 2] = debugColor[2];
+    }
+  }
+}
+
+function buildHorizonIndices(rowCount: number): number[] {
+  const indices: number[] = [];
+  for (let rowIndex = 0; rowIndex < rowCount - 1; rowIndex++) {
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const next = (segment + 1) % HORIZON_SEGMENTS;
+      const inner = rowIndex * HORIZON_SEGMENTS + segment;
+      const innerNext = rowIndex * HORIZON_SEGMENTS + next;
+      const outer = (rowIndex + 1) * HORIZON_SEGMENTS + segment;
+      const outerNext = (rowIndex + 1) * HORIZON_SEGMENTS + next;
+      indices.push(inner, outer, innerNext, innerNext, outer, outerNext);
+    }
+  }
+  return indices;
+}
+
+function applyAnalyticHorizonNormals(
+  geometry: THREE.BufferGeometry,
+  style: HorizonStyle,
+  rowCount: number,
+  gradients: HorizonGradients,
+): void {
+  if (style !== 'alpine') return;
+  const normals = geometry.attributes.normal;
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      const index = rowIndex * HORIZON_SEGMENTS + segment;
+      const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+      const [nx, nz, inverseLength] = horizonNormal(gradients, index, angle);
+      normals.setXYZ(index, nx * inverseLength, inverseLength, nz * inverseLength);
+    }
+  }
+}
+
+function buildHorizonGeometry(
+  ring: HorizonRingGeometry,
+  colors: Float32Array,
+  uv: Float32Array,
+  style: HorizonStyle,
+  gradients: HorizonGradients,
+): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(ring.positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geometry.setIndex(buildHorizonIndices(ring.rows.length));
+  geometry.computeVertexNormals();
+  applyAnalyticHorizonNormals(geometry, style, ring.rows.length, gradients);
+  return geometry;
+}
+
+interface HorizonMaterialContext {
+  noise: SimplexNoise;
+  banding: number;
+  snowline: number;
+  treeline: number;
+  grainAmp: number;
+  style: HorizonStyle;
+  seed: number;
+  mapId: string;
+  sun: readonly [number, number, number];
+  maxHeight: number;
+}
+
+function buildHorizonMaterial({
+  noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
+  sun, maxHeight: maxH,
+}: HorizonMaterialContext): THREE.MeshBasicMaterial {
+  const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = makeHorizonTexture(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
@@ -1330,23 +1389,30 @@ export function buildHorizonRing(
     };
     mat.customProgramCacheKey = () => 'horizon-ring-r7te-' + style;
   }
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.name = 'horizon-ring';
-  mesh.castShadow = false;
-  mesh.receiveShadow = false;
-  mesh.matrixAutoUpdate = false;
-  // GTAO's depth-edge pass draws dark halo slashes along distant ridge
-  // silhouettes — exclude the backdrop like the other flat-lit world layers
-  mesh.userData.aoExclude = true;
+  return mat;
+}
 
-  // --- distant skyline impostor (vegetated styles only) ---------------------
-  // One alpha-tested canopy ribbon follows whichever authored ridge actually
-  // forms the skyline at each azimuth. It adds a soft forest-scale irregularity
-  // against the sky without layering cards over visible ridge faces, and
-  // inherits the same baked color/haze grading.
-  // Values below 0.14 fade every crown to zero; skip the texture, geometry,
-  // and draw call entirely on the intentionally bare desert/canyon maps.
-  if (treeline >= 0.14) {
+interface HorizonTreelineContext {
+  mesh: THREE.Mesh;
+  treeline: number;
+  seed: number;
+  mapId: string;
+  noise: SimplexNoise;
+  rows: readonly HorizonRingRow[];
+  positions: Float32Array;
+  maxHeight: number;
+  snowline: number;
+  fog: THREE.Color;
+  colors: Float32Array;
+  layers: number;
+}
+
+function addHorizonTreeline({
+  mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
+  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
+}: HorizonTreelineContext): void {
+  const N = HORIZON_SEGMENTS;
+  if (treeline < 0.14) return;
     const profileSeed = ((seed ^ 0xA771) ^ idHash(mapId)) >>> 0;
     const combTex = makeTreeLineTexture(profileSeed);
     // Alpine walls contain interpolated geometry rows for smooth shading.
@@ -1463,6 +1529,218 @@ export function buildHorizonRing(
       vertices: cPos.length / 3,
     };
     mesh.add(comb);
-  }
+}
+
+interface HorizonResolvedSettings {
+  amp: number;
+  haze: number;
+  grainAmp: number;
+  snowline: number;
+  treeline: number;
+  treelineLayers: number;
+  banding: number;
+  rockAmp: number;
+}
+
+interface HorizonPalette {
+  base: THREE.Color;
+  fog: THREE.Color;
+  rock: THREE.Color;
+  snow: THREE.Color;
+  forest: THREE.Color;
+}
+
+function resolveHorizonStyle(horizon: HorizonConfig, mapId: string): HorizonStyle {
+  return horizon.style || STYLE_BY_MAP[mapId] || 'rolling';
+}
+
+function resolveHorizonSettings(
+  horizon: HorizonConfig,
+  style: HorizonStyle,
+): HorizonResolvedSettings {
+  const defaultTreeline = style === 'rolling' ? 0.90 : style === 'escarpment' ? 0.88 : 0;
+  const rockAmp = style === 'rolling' ? 0.22 : style === 'escarpment' ? 0.3 : 0.78;
+  return {
+    amp: horizon.amp ?? 1,
+    haze: horizon.haze ?? 1,
+    grainAmp: horizon.grain ?? 1,
+    snowline: horizon.snowline ?? (style === 'alpine' ? 0.42 : 2),
+    treeline: horizon.treeline ?? defaultTreeline,
+    treelineLayers: resolveHorizonTreelineLayers(horizon),
+    banding: horizon.banding ?? (style === 'mesa' ? 0.16 : 0),
+    rockAmp,
+  };
+}
+
+function resolveHorizonPalette(
+  horizon: HorizonConfig,
+  sky: MapSkyConfig | undefined,
+  style: HorizonStyle,
+): HorizonPalette {
+  const defaultRock = style === 'mesa' ? 0x8a5a38 : 0x66625e;
+  return {
+    base: new THREE.Color(horizon.baseHex ?? 0x5b6c4c),
+    fog: new THREE.Color(sky?.fogTintHex ?? 0x8fa3bd),
+    rock: new THREE.Color(horizon.rockHex ?? defaultRock),
+    snow: new THREE.Color(horizon.snowHex ?? 0xeef2f7),
+    forest: new THREE.Color(horizon.forestHex ?? 0x435f3a),
+  };
+}
+
+/**
+ * Build the horizon mountain ring for a map.
+ * @param {object} engineCtx EngineCtx (unused, kept for call-site parity)
+ * @param {?object} cfg map config (uses cfg.horizon, cfg.sky, cfg.id)
+ * @param {number} seed base seed (mixed with the map id hash)
+ * @returns {THREE.Mesh} unlit vertex-colored ring mesh named 'horizon-ring'
+ */
+export function buildHorizonRing(
+  _engineCtx: object | null,
+  cfg: HorizonMapConfig | null | undefined,
+  seed: number,
+): THREE.Mesh {
+  const H = cfg?.horizon || {};
+  const mapId = cfg?.id || 'verdant';
+  const style = resolveHorizonStyle(H, mapId);
+  const profile = PROFILES[style];
+  const {
+    amp, haze, grainAmp, snowline, treeline, treelineLayers, banding, rockAmp,
+  } = resolveHorizonSettings(H, style);
+
+  // lighting_post r7: vegetated ring base lifted toward the SUNLIT hillside
+  // band (0x4a5a44 -> 0x5b6c4c) — the unlit ring's baked colors must carry
+  // the sun x albedo product; 2-3-stops-dark backdrop was the teal-curtain
+  // critical's other half.
+  const { base, fog: fogC, rock: rockC, snow: snowC, forest: forestC } =
+    resolveHorizonPalette(H, cfg?.sky, style);
+  // detail palette: sensible per-style defaults, overridable per map
+  // r7: vegetated default treelines pushed near the crests (0.55/0.5 ->
+  // 0.90/0.88). The old constant-altitude cutoff drew a horizontal band
+  // across every hill where forest texture gave way to smooth bald ramp —
+  // the critic's "artificial terrace band" + "bald gradient slopes". At
+  // these view distances real hill country reads forested to the summit.
+  // soft vegetated hills carry far less exposed rock / flank contrast than
+  // cliff-forming styles — full strength there reads as curtain striping
+  const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
+  const gnoi = new SimplexNoise({ random: mulberry32(((seed ^ 0x33C7) ^ idHash(mapId)) >>> 0) });
+
+  // Radial rows. The tuck + skirt rows ride just outside the playable rim and
+  // stay LOW but opaque (ground-toned) so the fog-washed outer floor and the
+  // pale sky band can never peek between the rim crest and the ridges — the
+  // old ring showed exactly that gap as a white 'sea' sheet in wide shots.
+  // Ridge bases sit well above any establishing camera (~50 m).
+  // ANCHOR row: pinned 22 m underground inside the map rim, so the ring's
+  // inner lip is welded to the terrain — without it, any skirt vertex that
+  // rises above a rim dip opens a slot where the cream horizon sky pours
+  // through as flat white 'ponds' behind the rim forest.
+  // Skirt base 26-40 m + first ridge base 50 m keep the wall itself clear of
+  // the rim crest at the map edge.
+  // r6: rows are PER STYLE. The shared table put the first ridge at base 50 /
+  // amp 52 only ~100 m past the rim — on the vegetated maps that projected as
+  // a near-vertical green wall filling a third of the frame (the "curtain"
+  // critique). Vegetated styles now open with a LOW first ridge and recede
+  // through progressively taller, much hazier shells, so the ring reads as
+  // 3-4 distinct forested ridgelines instead of one continuous slope. Cliff
+  // styles (alpine/mesa) keep the imposing wall — it suits them.
+  const rows0 = HORIZON_ROWS_BY_STYLE[style] || HORIZON_ROWS_BY_STYLE.default;
+  const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp);
+
+  // --- alpine RADIAL SUBDIVISION (content_breadth r5) ------------------------
+  // Even with the 9-row ladder + smoothed analytic normals, the wall between
+  // two adjacent alpine rows is ONE quad strip spanning 65-200 m radially —
+  // from the establishing camera those quads render as flat "folded paper"
+  // facets with a plain vertex-color gradient (critique, minor). Insert two
+  // interpolated circles per non-skirt gap and displace them with a fractal
+  // crag field scaled to the local wall relief: facet size drops ~3x, and the
+  // sub-row knolls/gullies feed the smoothed-normal relight + per-fragment
+  // rock splat with REAL surface structure instead of an interpolation ramp.
+  // Silhouette is untouched (authored crest circles keep their vertices);
+  // other styles pass through unchanged. Cost: 9 -> 21 rows x 520 verts.
+  const ring = subdivideAlpineGeometry(initialRing, style, noi);
+  const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
+  const uvA = buildHorizonUvs(hs, maxH);
+  // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
+  // strata/snow features in the texture land at constant world height
+  // --- vertex shading -------------------------------------------------------
+  // Baked, unlit: sun-facing ridge flanks lighter (real azimuth from cfg.sky),
+  // steep faces expose rock, snow above the snowline on gentler slopes, forest
+  // tint below the treeline, sandstone strata on mesa cliffs, fine albedo
+  // grain, then the aerial-perspective haze ramp toward the fog color.
+  const sunAz = ((cfg && cfg.sky && cfg.sky.sunAzimuthDeg) ?? 115) * Math.PI / 180;
+  // lighting_post r3: real per-vertex N·L against the map sun replaces the
+  // tangential-only baked sun/shade term (walls read as unshaded texture at
+  // sniper x8). Elevation from cfg.sky, default 32 deg.
+  const sunEl = ((cfg && cfg.sky && cfg.sky.sunElevationDeg) ?? 32) * Math.PI / 180;
+  const lx = Math.sin(sunAz) * Math.cos(sunEl);
+  const ly = Math.sin(sunEl);
+  const lz = Math.cos(sunAz) * Math.cos(sunEl);
+  // SMOOTHED height series for the shading derivatives only (silhouette keeps
+  // its sharp vertices): raw per-vertex differences bake into alternating
+  // light/dark column striping on the ridge faces.
+  const gradients = buildHorizonGradients(rows, hs);
+  // Per-vertex slope/sun response, then SMOOTHED ALONG THE RING before it
+  // drives any color: the wall between two radial rows is a single quad
+  // strip ~7 m wide and up to 100+ m tall, so any column-to-column jitter in
+  // a slope-keyed color term (rock takeover, iron-oxide flush, snow shedding)
+  // bakes into exact full-height vertical stripes — the r3 critique's
+  // "vertical texture smearing" on the desert canyon walls was these vertex
+  // color columns, not the detail texture.
+  const col = buildHorizonColors({
+    style, rows, heights: hs, maxHeight: maxH,
+    base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
+    snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
+    gradients, sun: [lx, ly, lz],
+  });
+
+  // DEBUG: paint each row a flat color to identify geometry in screenshots
+  const horizonDebug = (globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean })
+    .__HORIZON_DEBUG;
+  if (horizonDebug) applyHorizonDebugColors(col, rows.length);
+  const geo = buildHorizonGeometry(ring, col, uvA, style, gradients);
+  // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
+  // establishing cameras — with default FrontSide it backface-culls and the
+  // sky shows through as a pale 'sea sheet' between rim and ridges (the old
+  // ring's desert artifact).
+  // Detail texture is authored around mid-gray 0.62 (linear); the material
+  // color 1.61 recentres it so vertex colors keep their intended tone while
+  // the map layers rock grain / gullies / strata / snow flatten on top.
+  // gullies belong on cliff-forming styles; vegetated hills at 700 m don't
+  // show drainage chutes, they show forest texture
+  // chute strength tuned way down on the cliff styles: at far-wall
+  // magnification the old 1.0/0.85 chutes dominated every face as vertical
+  // streaking — strata (mesa) and snow/rock contrast (alpine) carry the
+  // material read instead
+  // r6: mesa 0.38 -> 0.14 — even the tuned chutes still stacked with the
+  // sheared strata into vertical melt on the far walls; vegetated styles get
+  // ZERO (the canopy texture owns those faces, and any downslope streak
+  // reads as curtain fabric on a forested hill)
+  // r7: alpine 0.24 -> 0.12 — the residual chutes still striped the big
+  // near walls with vertical fiber under the winter overcast
+  // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
+  // cut in the snow pass; kills the last of the vertical smear on the wall
+  const mat = buildHorizonMaterial({
+    noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
+    sun: [lx, ly, lz], maxHeight: maxH,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'horizon-ring';
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.matrixAutoUpdate = false;
+  // GTAO's depth-edge pass draws dark halo slashes along distant ridge
+  // silhouettes — exclude the backdrop like the other flat-lit world layers
+  mesh.userData.aoExclude = true;
+
+  // --- distant skyline impostor (vegetated styles only) ---------------------
+  // One alpha-tested canopy ribbon follows whichever authored ridge actually
+  // forms the skyline at each azimuth. It adds a soft forest-scale irregularity
+  // against the sky without layering cards over visible ridge faces, and
+  // inherits the same baked color/haze grading.
+  // Values below 0.14 fade every crown to zero; skip the texture, geometry,
+  // and draw call entirely on the intentionally bare desert/canyon maps.
+  addHorizonTreeline({
+    mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
+    maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
+  });
   return mesh;
 }

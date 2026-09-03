@@ -1088,58 +1088,99 @@ function colored<T extends THREE.BufferGeometry>(
   return geo;
 }
 
-function gableLight({
-  w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2,
-}: GableLightOptions, rng: Rng): THREE.BufferGeometry[] {
-  const out: THREE.BufferGeometry[] = [];
-  const [wall, trim, dark] = pal;
-  if (raised > 0) {
-    for (const x of [-w * 0.38, w * 0.38]) for (const z of [-d * 0.38, d * 0.38]) {
-      colored(out, box(0.16, raised, 0.16).translate(x, raised / 2, z), dark, rng);
-    }
+function addRaisedGableSupports(
+  out: THREE.BufferGeometry[],
+  w: number,
+  d: number,
+  raised: number,
+  dark: number,
+  rng: Rng,
+): void {
+  if (raised <= 0) return;
+  for (const x of [-w * 0.38, w * 0.38]) for (const z of [-d * 0.38, d * 0.38]) {
+    colored(out, box(0.16, raised, 0.16).translate(x, raised / 2, z), dark, rng);
   }
-  const y0 = raised;
-  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wall, rng);
-  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, d / 2 - 0.07), wall, rng);
-  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, -d / 2 + 0.07), wall, rng);
-  const slope = Math.hypot(w / 2 + 0.28, roofH + 0.05), ang = Math.atan2(roofH + 0.05, w / 2 + 0.28);
+}
+
+function addLightGableRoof(
+  out: THREE.BufferGeometry[],
+  w: number,
+  d: number,
+  wallH: number,
+  roofH: number,
+  y0: number,
+  dark: number,
+  rng: Rng,
+): void {
+  const slope = Math.hypot(w / 2 + 0.28, roofH + 0.05);
+  const angle = Math.atan2(roofH + 0.05, w / 2 + 0.28);
   for (const side of [-1, 1]) {
     const roof = slab(slope + 0.12, 0.10, d + 0.6);
-    roof.rotateZ(side * ang); roof.translate(-side * (w / 4 + 0.14), y0 + wallH + roofH / 2 + 0.04, 0);
+    roof.rotateZ(side * angle);
+    roof.translate(-side * (w / 4 + 0.14), y0 + wallH + roofH / 2 + 0.04, 0);
     colored(out, roof, dark, rng);
   }
-  colored(out, box(w * 0.24, wallH * 0.68, 0.07).translate(0, y0 + wallH * 0.34, d / 2 + 0.04), dark, rng);
-  for (let i = 0; i < windows; i++) {
-    const x = windows === 1 ? -w * 0.25 : -w * 0.3 + i * (w * 0.6 / Math.max(1, windows - 1));
+}
+
+function addGableWindows(
+  out: THREE.BufferGeometry[],
+  w: number,
+  d: number,
+  wallH: number,
+  y0: number,
+  windows: number,
+  trim: number,
+  dark: number,
+  rng: Rng,
+): void {
+  for (let index = 0; index < windows; index++) {
+    const x = windows === 1 ? -w * 0.25 : -w * 0.3 + index * (w * 0.6 / Math.max(1, windows - 1));
     if (Math.abs(x) < w * 0.16) continue;
-    const ww = w * 0.17, wh = wallH * 0.34, wy = y0 + wallH * 0.58;
-    colored(out, box(ww, wh, 0.06).translate(x, wy, d / 2 + 0.05), 0x52656a, rng, 0.04);
-    // A complete trim surround and cross mullion keeps these lightweight
-    // destructibles legible as occupied buildings before they are broken.
-    // Detail-only paint uses a neutral sampler. Preserve the caller RNG
-    // sequence so adding facade geometry cannot reshuffle later prop variants
-    // or activate an otherwise-unused material family on a map.
-    for (const sx of [-1, 1]) colored(out,
-      box(0.065, wh + 0.16, 0.09).translate(x + sx * (ww / 2 + 0.045), wy, d / 2 + 0.09), trim, _detailRng);
-    for (const sy of [-1, 1]) colored(out,
-      box(ww + 0.19, 0.065, 0.09).translate(x, wy + sy * (wh / 2 + 0.045), d / 2 + 0.09), trim, _detailRng);
-    colored(out, box(0.045, wh - 0.05, 0.08).translate(x, wy, d / 2 + 0.12), dark, rng);
-    colored(out, box(ww - 0.04, 0.045, 0.08).translate(x, wy, d / 2 + 0.12), dark, _detailRng);
+    const width = w * 0.17;
+    const height = wallH * 0.34;
+    const y = y0 + wallH * 0.58;
+    colored(out, box(width, height, 0.06).translate(x, y, d / 2 + 0.05), 0x52656a, rng, 0.04);
+    for (const side of [-1, 1]) colored(out,
+      box(0.065, height + 0.16, 0.09).translate(x + side * (width / 2 + 0.045), y, d / 2 + 0.09), trim, _detailRng);
+    for (const side of [-1, 1]) colored(out,
+      box(width + 0.19, 0.065, 0.09).translate(x, y + side * (height / 2 + 0.045), d / 2 + 0.09), trim, _detailRng);
+    colored(out, box(0.045, height - 0.05, 0.08).translate(x, y, d / 2 + 0.12), dark, rng);
+    colored(out, box(width - 0.04, 0.045, 0.08).translate(x, y, d / 2 + 0.12), dark, _detailRng);
   }
-  if (porch > 0) {
-    colored(out, box(w * 0.9, 0.12, porch).translate(0, y0 + 0.08, d / 2 + porch / 2), trim, rng);
-    for (const x of [-w * 0.38, w * 0.38]) colored(out, box(0.10, wallH * 0.68, 0.10).translate(x, y0 + wallH * 0.35, d / 2 + porch * 0.82), dark, rng);
-    const awning = pitchSkillionRoof(slab(w, 0.08, porch + 0.35), 'z', 1, 0.16);
-    colored(out, awning.translate(0, y0 + wallH * 0.73, d / 2 + porch * 0.42), trim, rng);
+}
+
+function addGablePorch(
+  out: THREE.BufferGeometry[],
+  w: number,
+  d: number,
+  wallH: number,
+  y0: number,
+  porch: number,
+  trim: number,
+  dark: number,
+  rng: Rng,
+): void {
+  if (porch <= 0) return;
+  colored(out, box(w * 0.9, 0.12, porch).translate(0, y0 + 0.08, d / 2 + porch / 2), trim, rng);
+  for (const x of [-w * 0.38, w * 0.38]) {
+    colored(out, box(0.10, wallH * 0.68, 0.10).translate(x, y0 + wallH * 0.35, d / 2 + porch * 0.82), dark, rng);
   }
-  if (chimney) colored(out, box(0.42, 1.8, 0.42).translate(-w * 0.28, y0 + wallH + roofH * 0.78, -d * 0.2), dark, rng);
-  // Connected exterior service language shared by the lightweight family.
-  // Battens overlap the wall shell, the fascia overlaps the gable caps, and
-  // the utility box/conduit both penetrate the side wall: no decorative part
-  // can hover beside the building after instancing on uneven terrain.
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+  const awning = pitchSkillionRoof(slab(w, 0.08, porch + 0.35), 'z', 1, 0.16);
+  colored(out, awning.translate(0, y0 + wallH * 0.73, d / 2 + porch * 0.42), trim, rng);
+}
+
+function addGableServiceDetails(
+  out: THREE.BufferGeometry[],
+  w: number,
+  d: number,
+  wallH: number,
+  y0: number,
+  trim: number,
+  dark: number,
+): void {
+  for (const xSide of [-1, 1]) for (const zSide of [-1, 1]) {
     colored(out, box(0.14, wallH, 0.14).translate(
-      sx * (w / 2 + 0.025), y0 + wallH / 2, sz * (d / 2 + 0.025),
+      xSide * (w / 2 + 0.025), y0 + wallH / 2, zSide * (d / 2 + 0.025),
     ), trim, _detailRng);
   }
   for (const z of [-d / 2 - 0.03, d / 2 + 0.03]) {
@@ -1147,9 +1188,32 @@ function gableLight({
   }
   const serviceY = y0 + Math.min(1.65, wallH * 0.58);
   colored(out, box(0.24, 0.62, 0.82).translate(w / 2 + 0.08, serviceY, -d * 0.12), dark, _detailRng);
-  colored(out, box(0.10, Math.max(0.45, serviceY - y0 - 0.20), 0.10).translate(
-    w / 2 + 0.035, y0 + Math.max(0.45, serviceY - y0 - 0.20) / 2 + 0.08, -d * 0.12,
+  const conduitHeight = Math.max(0.45, serviceY - y0 - 0.20);
+  colored(out, box(0.10, conduitHeight, 0.10).translate(
+    w / 2 + 0.035, y0 + conduitHeight / 2 + 0.08, -d * 0.12,
   ), dark, _detailRng);
+}
+
+function gableLight({
+  w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2,
+}: GableLightOptions, rng: Rng): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  const [wall, trim, dark] = pal;
+  addRaisedGableSupports(out, w, d, raised, dark, rng);
+  const y0 = raised;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wall, rng);
+  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, d / 2 - 0.07), wall, rng);
+  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, -d / 2 + 0.07), wall, rng);
+  addLightGableRoof(out, w, d, wallH, roofH, y0, dark, rng);
+  colored(out, box(w * 0.24, wallH * 0.68, 0.07).translate(0, y0 + wallH * 0.34, d / 2 + 0.04), dark, rng);
+  addGableWindows(out, w, d, wallH, y0, windows, trim, dark, rng);
+  addGablePorch(out, w, d, wallH, y0, porch, trim, dark, rng);
+  if (chimney) colored(out, box(0.42, 1.8, 0.42).translate(-w * 0.28, y0 + wallH + roofH * 0.78, -d * 0.2), dark, rng);
+  // Connected exterior service language shared by the lightweight family.
+  // Battens overlap the wall shell, the fascia overlaps the gable caps, and
+  // the utility box/conduit both penetrate the side wall: no decorative part
+  // can hover beside the building after instancing on uneven terrain.
+  addGableServiceDetails(out, w, d, wallH, y0, trim, dark);
   return out;
 }
 

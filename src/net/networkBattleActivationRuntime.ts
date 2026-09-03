@@ -1,12 +1,13 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
 }
 
 interface NetworkBattleEntity {
-  spec: unknown;
-  visual?: unknown;
-  equip?: unknown;
+  spec: RuntimeValue;
+  visual?: RuntimeValue;
+  equip?: RuntimeValue;
   state?: { yaw?: number } | null;
 }
 
@@ -40,13 +41,13 @@ interface HudPort {
 }
 
 interface PlayerActionsPort {
-  setTank(spec: unknown): void;
+  setTank(spec: RuntimeValue): void;
   resetConsumables(): void;
 }
 
 interface DamagePanelPort {
-  setTank(spec: unknown, visual?: unknown): void;
-  setEquipment(equipment: unknown): void;
+  setTank(spec: RuntimeValue, visual?: RuntimeValue): void;
+  setEquipment(equipment: RuntimeValue): void;
 }
 
 interface CameraRigPort {

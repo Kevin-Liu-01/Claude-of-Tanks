@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/world/sourcedTextures.ts — sourced CC0 PBR texture hookup (ambientCG /
 // Poly Haven sets committed under public/textures/, see docs/ATTRIBUTION.md).
 //
@@ -470,7 +471,7 @@ export function applySourcedTerrain(
     const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
     jobs.push(applySet(entry.set, layer, {
       roughInAlpha: true, roughMul, tint: entry.tint || null,
-    }).catch((error: unknown) => console.warn(
+    }).catch((error: RuntimeValue) => console.warn(
       `[sourcedTextures] terrain ${mapId}/${key}:`,
       error instanceof Error ? error.message : String(error),
     )));
@@ -562,7 +563,7 @@ export function applySourcedBuildings(
       ? { tint: null }
       : isTint(tint) ? { tint } : tint;
     jobs.push(applySet(setKey, layer, { roughInAlpha: false, ...opts })
-      .catch((error: unknown) => console.warn(
+      .catch((error: RuntimeValue) => console.warn(
         `[sourcedTextures] building ${bucket}:`,
         error instanceof Error ? error.message : String(error),
       )));

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { InstancedMesh, Object3D, Scene, Vector3 } from 'three';
 import type {
   ArmorIntersection,
@@ -24,12 +25,12 @@ interface ForcedHudFrame {
   shellSlot: number;
   dispersionRadM: number;
   zoom?: number;
-  shells?: readonly unknown[];
+  shells?: readonly RuntimeValue[];
 }
 
 export interface ShotTankSpec extends DamageTankSpec {
   name: string;
-  hydropneumaticAim?: unknown;
+  hydropneumaticAim?: RuntimeValue;
   dims: { heightM: number; widthM: number };
   armor: ArmorModel & { boundingRadiusM: number };
   gun: DamageTankSpec['gun'] & {
@@ -117,7 +118,7 @@ export interface ShotRig {
 }
 
 export interface ShotBus {
-  emit(event: string, payload: unknown): void;
+  emit(event: string, payload: RuntimeValue): void;
 }
 
 export interface ShotFx {
@@ -137,7 +138,7 @@ export interface ShotGarage {
 }
 
 export interface ShotGarageDressing {
-  ensureBuilt(): Promise<unknown>;
+  ensureBuilt(): Promise<RuntimeValue>;
 }
 
 export interface ShotShowroom {
@@ -145,7 +146,7 @@ export interface ShotShowroom {
 }
 
 export interface ShotKillcam {
-  stageReplayShot(payload: unknown, stage: string): void;
+  stageReplayShot(payload: RuntimeValue, stage: string): void;
 }
 
 interface StagedHitEvent extends HitEvent {
@@ -167,7 +168,7 @@ export interface ShotViewDependencies {
   forcedHudFrame(mode: string, frame: ForcedHudFrame): void;
   computeDispersionRadM(spec: ShotTankSpec, state: ArmorPoseState, distanceM: number): number;
   game: ShotGame;
-  shellCards: readonly unknown[];
+  shellCards: readonly RuntimeValue[];
   scene: Scene;
   closeupStage(entity: ShotEntity): void;
   orbitPose(
@@ -179,7 +180,7 @@ export interface ShotViewDependencies {
   ): void;
   bus: ShotBus;
   fx: ShotFx;
-  setPedestalTank(specId: string): Promise<unknown>;
+  setPedestalTank(specId: string): Promise<RuntimeValue>;
   garage: ShotGarage;
   garageDressing: ShotGarageDressing;
   showroom: ShotShowroom;
@@ -379,22 +380,25 @@ export function createShotViews({
     const enemies = game.tanks.filter((ent) =>
       // SYMMETRIC TEAMS: allies spawn 22-44 m away — scope must frame an ENEMY
       ent.team === 'enemy' && ent.state && ent.combat && !ent.combat.destroyed);
-    let best = null;
-    let bestD = Infinity;
-    for (const ent of enemies) {
-      const d = ent.state.pos.distanceTo(p.state.pos);
-      if (d < bestD && clearTo(ent) && nearClear(...aimTo(ent))) { bestD = d; best = ent; }
-    }
-    if (!best) {
+    const closestEnemy = (
+      accepts: (entity: ShotEntity) => boolean,
+    ): { entity: ShotEntity | null; distance: number } => {
+      let entity: ShotEntity | null = null;
+      let distance = Infinity;
+      for (const candidate of enemies) {
+        const candidateDistance = candidate.state.pos.distanceTo(p.state.pos);
+        if (candidateDistance < distance && accepts(candidate)) {
+          entity = candidate;
+          distance = candidateDistance;
+        }
+      }
+      return { entity, distance };
+    };
+    const restageEnemy = (): ShotEntity => {
       // No enemy is genuinely visible from the trunnion: restage the nearest
       // one onto open ground along a surveyed bearing (deterministic sweep —
       // ±75° around the player's hull nose at WoT engagement ranges).
-      let near = enemies[0];
-      let nearD = Infinity;
-      for (const ent of enemies) {
-        const d = ent.state.pos.distanceTo(p.state.pos);
-        if (d < nearD) { nearD = d; near = ent; }
-      }
+      const near = closestEnemy(() => true).entity || enemies[0];
       const obstacles = world.getObstacles ? world.getObstacles() : [];
       const groundFree = (x: number, z: number): boolean => {
         for (const c of conceal) {
@@ -412,61 +416,57 @@ export function createShotViews({
       // the tank at the last FAILED (occluded) position.
       const origX = near.state.pos.x, origY = near.state.pos.y, origZ = near.state.pos.z;
       const origYaw = near.state.yaw;
-      outer:
-      for (const distM of [300, 240, 360, 190, 150, 420]) {
-        for (let k = 0; k < 29; k++) {
-          const ang = p.state.yaw +
-            (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 24);
-          const x = p.state.pos.x + Math.sin(ang) * distM;
-          const z = p.state.pos.z + Math.cos(ang) * distM;
-          if (Math.abs(x) > 460 || Math.abs(z) > 460 || !groundFree(x, z)) continue;
-          near.state.pos.set(x, world.heightField.getHeightAt(x, z), z);
-          near.state.yaw = ang + Math.PI * 0.72; // 3/4 aspect to the player
-          if (clearTo(near) && nearClear(...aimTo(near))) { best = near; break outer; }
-        }
-      }
-      if (!best) {
-        // hud_ui r2 relaxed sweep: terrain LOS only (turret top + hull
-        // center) — map dressing density can over-reject the strict pass
-        // wholesale (concealer circles + near-prop cone).
-        const terrainClear = (ent: ShotEntity): boolean => {
-          const tp = ent.state.pos;
-          const hh2 = ent.spec.dims.heightM;
-          for (const oy of [hh2 * 0.92, hh2 * 0.5]) {
-            _v2.set(tp.x, tp.y + oy, tp.z);
-            _v3.copy(_v2).sub(_v1);
-            const dd = _v3.length();
-            _v3.multiplyScalar(1 / Math.max(dd, 1e-3));
-            const block = world.raycast(_v1, _v3, dd);
-            if (block && block.dist < dd - 0.25) return false;
-          }
-          return true;
-        };
-        outer2:
+      const findRestaged = (accepts: (entity: ShotEntity) => boolean): ShotEntity | null => {
         for (const distM of [300, 240, 360, 190, 150, 420]) {
           for (let k = 0; k < 29; k++) {
-            const ang = p.state.yaw +
-              (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 24);
+            const ang = p.state.yaw
+              + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 24);
             const x = p.state.pos.x + Math.sin(ang) * distM;
             const z = p.state.pos.z + Math.cos(ang) * distM;
             if (Math.abs(x) > 460 || Math.abs(z) > 460 || !groundFree(x, z)) continue;
             near.state.pos.set(x, world.heightField.getHeightAt(x, z), z);
-            near.state.yaw = ang + Math.PI * 0.72;
-            if (terrainClear(near)) { best = near; break outer2; }
+            near.state.yaw = ang + Math.PI * 0.72; // 3/4 aspect to the player
+            if (accepts(near)) return near;
           }
         }
+        return null;
+      };
+      const terrainClear = (entity: ShotEntity): boolean => {
+        const tp = entity.state.pos;
+        const height = entity.spec.dims.heightM;
+        for (const yOffset of [height * 0.92, height * 0.5]) {
+          _v2.set(tp.x, tp.y + yOffset, tp.z);
+          _v3.copy(_v2).sub(_v1);
+          const distance = _v3.length();
+          _v3.multiplyScalar(1 / Math.max(distance, 1e-3));
+          const block = world.raycast(_v1, _v3, distance);
+          if (block && block.dist < distance - 0.25) return false;
+        }
+        return true;
+      };
+      let staged = findRestaged((entity) => clearTo(entity) && nearClear(...aimTo(entity)));
+      if (!staged) {
+        // hud_ui r2 relaxed sweep: terrain LOS only (turret top + hull
+        // center) — map dressing density can over-reject the strict pass
+        // wholesale (concealer circles + near-prop cone).
+        staged = findRestaged(terrainClear);
       }
-      if (!best) {
+      if (!staged) {
         // TRUE original staging (the old code left the tank at the last
         // FAILED sweep position — captured frames aimed 420 m into an empty
         // hillside)
         near.state.pos.set(origX, origY, origZ);
         near.state.yaw = origYaw;
-        best = near;
+        staged = near;
       }
-      best.visual.syncFromState(best.state);
-      bestD = best.state.pos.distanceTo(p.state.pos);
-    }
+      staged.visual.syncFromState(staged.state);
+      return staged;
+    };
+    const initial = closestEnemy((entity) => clearTo(entity) && nearClear(...aimTo(entity)));
+    const best = initial.entity || restageEnemy();
+    const bestD = initial.entity
+      ? initial.distance
+      : best.state.pos.distanceTo(p.state.pos);
     const dx = best.state.pos.x - p.state.pos.x;
     const dz = best.state.pos.z - p.state.pos.z;
     const yaw = Math.atan2(dx, dz);
@@ -739,7 +739,6 @@ export function createShotViews({
     // state; first candidate that pens with ≥2 module/crew casualties wins.
     const rightX = Math.cos(target.state.yaw);
     const rightZ = -Math.sin(target.state.yaw);
-    let ev: StagedHitEvent | null = null;
     const tryOne = (h: number, side: number, seed: number): StagedHitEvent | null => {
       _v2.copy(target.state.pos);
       _v2.y += h;
@@ -760,18 +759,21 @@ export function createShotViews({
         hits, mulberry32(seed),
       );
     };
-    outer:
-    for (const seed of [9001, 4242, 555, 77]) {
-      for (const h of [0.85, 1.0, 1.2, 1.45]) {
-        for (const side of [0, 0.55, -0.55]) {
-          const cand = tryOne(h, side, seed);
-          if (!cand || cand.kind !== 'pen' || !cand.localPos) continue;
-          if (!ev) ev = cand;
-          if ((cand.modulesHit.length + cand.crewHit.length) >= 2) { ev = cand; break outer; }
+    const selectHitEvent = (): StagedHitEvent | null => {
+      let firstPenetration: StagedHitEvent | null = null;
+      for (const seed of [9001, 4242, 555, 77]) {
+        for (const h of [0.85, 1.0, 1.2, 1.45]) {
+          for (const side of [0, 0.55, -0.55]) {
+            const candidate = tryOne(h, side, seed);
+            if (!candidate || candidate.kind !== 'pen' || !candidate.localPos) continue;
+            firstPenetration ??= candidate;
+            if ((candidate.modulesHit.length + candidate.crewHit.length) >= 2) return candidate;
+          }
         }
       }
-    }
-    if (!ev) ev = tryOne(1.05, 0, 4242);
+      return firstPenetration;
+    };
+    let ev = selectHitEvent() || tryOne(1.05, 0, 4242);
     if (!ev) throw new Error('Killcam x-ray recipe could not resolve a staged penetration');
     ev.attackerName = shooter.spec.name;
     // killcam_shotinfo r3: match live events (state.ts enriches every hit

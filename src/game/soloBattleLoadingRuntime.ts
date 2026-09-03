@@ -1,10 +1,17 @@
-import type { Object3D } from 'three';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
+import type { MainFxRuntime } from '../app/mainContracts.ts';
+import type { AudioMixer } from '../audio/audio.ts';
 import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
+import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
+import type { BattleEntryAcquisition } from './battleEntryAcquisition.ts';
+import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
+import type { BattleIntentRuntime } from './battleIntentRuntime.ts';
+import type { GaragePedestalVisual } from './garagePedestalRuntime.ts';
+import type { SoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 import type {
   BattleVisualEntity,
   BattleVisualStreamer,
@@ -12,6 +19,8 @@ import type {
 
 interface LoadingEntity extends BattleVisualEntity {
   isPlayer?: boolean;
+  spec: MaterialTankSpec & NonNullable<BattleVisualEntity['spec']>;
+  visual?: (NonNullable<BattleVisualEntity['visual']> & GaragePedestalVisual) | null;
 }
 
 interface LoadingGame {
@@ -19,52 +28,22 @@ interface LoadingGame {
   player?: LoadingEntity | null;
 }
 
-interface AudioPort {
-  resume(): unknown;
-  loadingOn(active: boolean): void;
-  ambientOn(active: boolean): void;
-  warmBattleEvents(): Promise<unknown> | unknown;
-}
-
-interface FxRuntime {
-  group: Object3D;
-  preloadTextures?(): Promise<unknown> | unknown;
-  warmTextures?(): unknown;
-}
-
-interface BattleIntentPort {
-  consumeMap(specId: string, mapId: string): string;
-  prepareRoster(options: {
-    specId: string;
-    mapId: string;
-    rosterIds: string[];
-    autoCamoIds: string[];
-    yieldForBudget: WorkYielder;
-  }): Promise<unknown> | unknown;
-}
-
-interface EntryAcquisitionPort {
-  acquireSolo(tasks: Array<() => Promise<unknown> | unknown>): Promise<unknown>;
-}
-
-interface DeploymentPort {
-  warm(camoSweep: PromiseLike<unknown> | unknown): Promise<{
-    generation: number;
-    revealPrimed: boolean;
-  }>;
-}
-
-interface EntryLifecyclePort {
-  primeReveal(): Promise<unknown>;
-}
+type AudioPort = Pick<AudioMixer, 'resume' | 'loadingOn' | 'ambientOn' | 'warmBattleEvents'>;
+type FxRuntime = Pick<MainFxRuntime, 'group' | 'preloadTextures' | 'warmTextures'>;
+type BattleIntentPort = Pick<BattleIntentRuntime, 'consumeMap' | 'prepareRoster'>;
+type EntryAcquisitionPort = Pick<BattleEntryAcquisition, 'acquireSolo'>;
+type DeploymentPort = Pick<SoloBattleDeploymentRuntime, 'warm'>;
+type EntryLifecyclePort = Pick<BattleEntryLifecycle, 'primeReveal'>;
+type TextureUploadTrace = Awaited<ReturnType<BattleVisualStreamer['stageRootTextureUploads']>>;
+type AsyncLoadResult = Promise<object | boolean | null | void>;
 
 interface BattleLoadTrace {
   map: string;
   worldCached: boolean;
   stages: Record<string, number>;
-  fxTextureUpload?: unknown;
-  world?: unknown;
-  worldTextureUpload?: unknown;
+  fxTextureUpload?: TextureUploadTrace;
+  world?: object | null;
+  worldTextureUpload?: TextureUploadTrace;
   totalMs?: number;
   loadingElapsedMs?: number;
   visiblePreBattleS?: number;
@@ -88,7 +67,7 @@ interface VisualLoadTiming {
 type LoadingHost = typeof globalThis & {
   __VISUAL_LOAD_TIMINGS?: VisualLoadTiming[];
   __BATTLE_LOAD?: BattleLoadTrace;
-  __WORLD_LOAD?: unknown;
+  __WORLD_LOAD?: object;
 };
 
 export interface SoloBattleLoadingRuntimeOptions {
@@ -110,22 +89,22 @@ export interface SoloBattleLoadingRuntimeOptions {
     mapId: string,
     onProgress: (fraction: number, label: string) => void,
     options: { precompile: boolean; services: boolean },
-  ): Promise<unknown>;
-  ensureBattleVisuals(): Promise<unknown>;
+  ): AsyncLoadResult;
+  ensureBattleVisuals(): AsyncLoadResult;
   getBattleVisuals(): BattleVisualStreamer;
-  ensureBattleHud(): Promise<unknown>;
-  preloadMinimap(mapId: string): Promise<unknown>;
-  ensureTouchControls(): Promise<unknown>;
-  preloadSettings(): Promise<unknown>;
-  preloadArmorAim(): Promise<unknown>;
+  ensureBattleHud(): AsyncLoadResult;
+  preloadMinimap(mapId: string): AsyncLoadResult;
+  ensureTouchControls(): AsyncLoadResult;
+  preloadSettings(): AsyncLoadResult;
+  preloadArmorAim(): AsyncLoadResult;
   planRoster(specId: string, randomRoster: boolean): string[];
   planCamoOverrides(specId: string, mapId: string, randomRoster: boolean): string[];
-  ensureTankBuilders(specIds: string[]): Promise<unknown>;
-  preloadSoloAuthority(): Promise<unknown>;
-  preloadBattleClient(): Promise<unknown>;
-  preloadBattleWarm(): Promise<unknown>;
-  preloadBattleStart(): Promise<unknown>;
-  ensureKillcam(): Promise<unknown>;
+  ensureTankBuilders(specIds: string[]): AsyncLoadResult;
+  preloadSoloAuthority(): AsyncLoadResult;
+  preloadBattleClient(): AsyncLoadResult;
+  preloadBattleWarm(): AsyncLoadResult;
+  preloadBattleStart(): AsyncLoadResult;
+  ensureKillcam(): AsyncLoadResult;
   ensureFx(): Promise<FxRuntime>;
   startBattle(
     specId: string,
@@ -138,17 +117,17 @@ export interface SoloBattleLoadingRuntimeOptions {
     },
   ): void;
   prepareBattleWorldServices(world: WorldRuntime): void;
-  getPedestalVisual(): unknown;
+  getPedestalVisual(): GaragePedestalVisual | null;
   prebakeSharedTextures(
-    spec: unknown,
+    spec: MaterialTankSpec,
     anisotropy: number,
     quality: 'preview',
     yieldForBudget: WorkYielder,
-  ): Promise<unknown>;
+  ): Promise<void>;
   anisotropy: number;
   rosterRows(team: string): BattleLoadRosterRow[];
   warmShotCards(specIds: string[]): void;
-  getCamoSweep(): PromiseLike<unknown> | unknown;
+  getCamoSweep(): Parameters<DeploymentPort['warm']>[0];
   prepareRevealCamera(): void;
   resolveVisiblePreBattleSeconds(
     requestedSeconds: number,
@@ -159,10 +138,10 @@ export interface SoloBattleLoadingRuntimeOptions {
   minimumVisiblePreBattleSeconds: number;
   openBattle(seconds: number): void;
   scheduleDeferredWarm(generation: number): void;
-  nextFrame(): Promise<unknown>;
+  nextFrame(): Promise<void>;
   createLoadingYielder(budgetMs: number, maxDelayMs: number): WorkYielder;
   now?: () => number;
-  delay?: (milliseconds: number) => Promise<unknown>;
+  delay?: (milliseconds: number) => Promise<void>;
 }
 
 export interface SoloBattleLoadingRuntime {

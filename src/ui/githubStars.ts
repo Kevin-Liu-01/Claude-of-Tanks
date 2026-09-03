@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 const REPOSITORY_STATS_ENDPOINT = '/api/github-stars';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -90,9 +91,9 @@ function renderGitHubStarUnavailable(): void {
 function readCachedStars(): { count: number; savedAt: number } | null {
   if (memoryCache) return memoryCache;
   try {
-    const cached: unknown = JSON.parse(localStorage.getItem(STAR_CACHE_KEY) || 'null');
+    const cached: RuntimeValue = JSON.parse(localStorage.getItem(STAR_CACHE_KEY) || 'null');
     if (!cached || typeof cached !== 'object') return null;
-    const { count, savedAt } = cached as { count?: unknown; savedAt?: unknown };
+    const { count, savedAt } = cached as { count?: RuntimeValue; savedAt?: RuntimeValue };
     if (typeof count !== 'number' || !Number.isInteger(count) ||
         typeof savedAt !== 'number' || !Number.isFinite(savedAt)) return null;
     memoryCache = { count, savedAt };
@@ -120,12 +121,12 @@ async function fetchGitHubStars(): Promise<number | null> {
       renderGitHubStarUnavailable();
       return null;
     }
-    const repository: unknown = await response.json();
+    const repository: RuntimeValue = await response.json();
     if (!repository || typeof repository !== 'object') {
       renderGitHubStarUnavailable();
       return null;
     }
-    const count = (repository as { stargazers_count?: unknown }).stargazers_count;
+    const count = (repository as { stargazers_count?: RuntimeValue }).stargazers_count;
     if (typeof count !== 'number' || !Number.isInteger(count)) {
       renderGitHubStarUnavailable();
       return null;

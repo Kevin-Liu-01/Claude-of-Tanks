@@ -84,7 +84,7 @@ if (!effectsSource.includes('retireSubjectColumn(e.id);')) {
 if (!/setReplaySuppressed\(suppressed(?:\s*:\s*boolean)?\)/.test(effectsSource)) {
   throw new Error('effects lack the reversible killcam reconstruction gate');
 }
-if (!effectsSource.includes('if (replaySuppressed) col.acc = 0;')) {
+if (!/if \(replaySuppressed\) \{\s*col\.acc = 0;\s*return/.test(effectsSource)) {
   throw new Error('suppressed wreck columns can accumulate a replay emission backlog');
 }
 if (!mainFrameSource.includes('game.shells, camera, resolveFxSubject')) {

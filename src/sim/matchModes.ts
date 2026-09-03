@@ -79,6 +79,10 @@ const PICKUP_RADIUS_M = 7;
 const WORLD_MARGIN_M = 420;
 
 interface Vec3Like { x: number; y: number; z: number }
+interface ObjectivePoint { x: number; z: number }
+type MatchModeEventValue = string | number | boolean | null |
+  MatchModeEventValue[] | { [key: string]: MatchModeEventValue };
+type MatchModeEventPayload = Record<string, MatchModeEventValue>;
 
 export interface MatchModeEntity {
   id: string;
@@ -106,7 +110,7 @@ interface MatchModeHooks<Entity extends MatchModeEntity> {
   revive(entity: Entity, spawn: MatchModeSpawn, healthScale: number): void;
   setActive?(entity: Entity, active: boolean): void;
   terrainHeight?(x: number, z: number): number;
-  emit?(type: string, payload: Record<string, unknown>): void;
+  emit?(type: string, payload: MatchModeEventPayload): void;
 }
 
 interface MatchModeControllerOptions<Entity extends MatchModeEntity>
@@ -210,12 +214,12 @@ export interface MatchModeController<
   serialize(viewerId?: string | null): MatchModePresentationState;
 }
 
-export function normalizeGameMode(value: unknown): GameModeId {
+export function normalizeGameMode<Value>(value: Value): GameModeId {
   const id = String(value || 'standard');
   return MODE_SET.has(id) ? id as GameModeId : 'standard';
 }
 
-export function gameModeDefinition(value: unknown): GameModeDefinition {
+export function gameModeDefinition<Value>(value: Value): GameModeDefinition {
   return GAME_MODE_DEFINITIONS[normalizeGameMode(value)];
 }
 
@@ -225,6 +229,13 @@ function teamOf(entity: MatchModeEntity): ObjectiveTeam {
 
 function otherTeam(team: ObjectiveTeam): ObjectiveTeam {
   return team === 'alpha' ? 'bravo' : 'alpha';
+}
+
+function scoreTargetForMode(mode: GameModeId): number | null {
+  if (mode === 'capture_the_flag') return FLAG_SCORE_TARGET;
+  if (mode === 'zone_control') return ZONE_SCORE_TARGET;
+  if (mode === 'turbo_ball') return BALL_SCORE_TARGET;
+  return null;
 }
 
 function squaredDistance(entity: MatchModeEntity, x: number, z: number): number {
@@ -366,9 +377,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     label: definition.label,
     perspectiveTeam: 'alpha',
     respawns: definition.respawns,
-    target: id === 'capture_the_flag' ? FLAG_SCORE_TARGET
-      : id === 'zone_control' ? ZONE_SCORE_TARGET
-        : id === 'turbo_ball' ? BALL_SCORE_TARGET : null,
+    target: scoreTargetForMode(id),
     score,
     flags,
     zones,
@@ -484,110 +493,152 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return result;
   };
 
+  const dropCarriedFlags = (entity: Entity, timeS: number): void => {
+    for (const flag of flags) {
+      if (flag.carrierId !== entity.id) continue;
+      flag.carrierId = null;
+      flag.status = 'dropped';
+      flag.x = entity.state.pos.x;
+      flag.z = entity.state.pos.z;
+      flag.y = terrainHeight(flag.x, flag.z) + 2.5;
+      flag.returnAtS = timeS + FLAG_RETURN_S;
+      emit('mode_flag_dropped', { team: flag.team, by: entity.id, x: flag.x, z: flag.z });
+    }
+  };
+
+  const observeEntityDeath = (entity: Entity, timeS: number): void => {
+    const isDead = !!entity.combat.destroyed;
+    const wasDead = destroyed.get(entity.id) || false;
+    if (isDead === wasDead) return;
+    destroyed.set(entity.id, isDead);
+    if (!isDead) return;
+    dropCarriedFlags(entity, timeS);
+    if (definition.respawns) respawnAt.set(entity.id, timeS + RESPAWN_S);
+  };
+
   const handleDeathsAndRespawns = (timeS: number): void => {
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
-      const isDead = !!entity.combat.destroyed;
-      const wasDead = destroyed.get(entity.id) || false;
-      if (isDead && !wasDead) {
-        destroyed.set(entity.id, true);
-        for (const flag of flags) {
-          if (flag.carrierId !== entity.id) continue;
-          flag.carrierId = null;
-          flag.status = 'dropped';
-          flag.x = entity.state.pos.x;
-          flag.z = entity.state.pos.z;
-          flag.y = terrainHeight(flag.x, flag.z) + 2.5;
-          flag.returnAtS = timeS + FLAG_RETURN_S;
-          emit('mode_flag_dropped', { team: flag.team, by: entity.id, x: flag.x, z: flag.z });
-        }
-        if (definition.respawns) respawnAt.set(entity.id, timeS + RESPAWN_S);
-      } else if (!isDead && wasDead) {
-        destroyed.set(entity.id, false);
-      }
+      observeEntityDeath(entity, timeS);
       const due = respawnAt.get(entity.id);
       if (due != null && timeS >= due) reviveAtSpawn(entity, 1);
     }
   };
 
-  const stepFlags = (timeS: number): MatchModeResult | null => {
-    for (const flag of flags) {
-      if (flag.status === 'carried') {
-        const carrier = flag.carrierId ? entityById.get(flag.carrierId) : null;
-        if (carrier && !carrier.combat.destroyed && carrier.modeActive !== false) {
-          flag.x = carrier.state.pos.x;
-          flag.y = carrier.state.pos.y + 3.4;
-          flag.z = carrier.state.pos.z;
-        }
-        continue;
-      }
-      if (flag.status === 'dropped' && flag.returnAtS != null && timeS >= flag.returnAtS) {
-        resetFlag(flag);
-        emit('mode_flag_returned', { team: flag.team, automatic: true });
-      }
-      for (const entity of entities) {
-        if (entity.modeActive === false || entity.combat.destroyed) continue;
-        const team = teamOf(entity);
-        if (squaredDistance(entity, flag.x, flag.z) > FLAG_RADIUS_M * FLAG_RADIUS_M) continue;
-        if (team === flag.team) {
-          if (flag.status === 'dropped') {
-            resetFlag(flag);
-            emit('mode_flag_returned', { team: flag.team, by: entity.id });
-          }
-          continue;
-        }
-        flag.status = 'carried';
-        flag.carrierId = entity.id;
-        flag.returnAtS = null;
-        emit('mode_flag_taken', { team: flag.team, by: entity.id });
-        break;
-      }
+  const syncCarriedFlag = (flag: FlagState): boolean => {
+    if (flag.status !== 'carried') return false;
+    const carrier = flag.carrierId ? entityById.get(flag.carrierId) : null;
+    if (carrier && !carrier.combat.destroyed && carrier.modeActive !== false) {
+      flag.x = carrier.state.pos.x;
+      flag.y = carrier.state.pos.y + 3.4;
+      flag.z = carrier.state.pos.z;
     }
+    return true;
+  };
+
+  const returnExpiredFlag = (flag: FlagState, timeS: number): void => {
+    if (flag.status !== 'dropped' || flag.returnAtS == null || timeS < flag.returnAtS) return;
+    resetFlag(flag);
+    emit('mode_flag_returned', { team: flag.team, automatic: true });
+  };
+
+  const touchFlag = (flag: FlagState, entity: Entity): boolean => {
+    if (entity.modeActive === false || entity.combat.destroyed) return false;
+    if (squaredDistance(entity, flag.x, flag.z) > FLAG_RADIUS_M * FLAG_RADIUS_M) return false;
+    if (teamOf(entity) === flag.team) {
+      if (flag.status !== 'dropped') return false;
+      resetFlag(flag);
+      emit('mode_flag_returned', { team: flag.team, by: entity.id });
+      return false;
+    }
+    flag.status = 'carried';
+    flag.carrierId = entity.id;
+    flag.returnAtS = null;
+    emit('mode_flag_taken', { team: flag.team, by: entity.id });
+    return true;
+  };
+
+  const updateAvailableFlag = (flag: FlagState, timeS: number): void => {
+    if (syncCarriedFlag(flag)) return;
+    returnExpiredFlag(flag, timeS);
     for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed) continue;
-      const team = teamOf(entity);
-      const enemyFlag = flags.find((flag) => flag.carrierId === entity.id);
-      const ownFlag = flags.find((flag) => flag.team === team);
-      if (!enemyFlag || !ownFlag || ownFlag.status !== 'home') continue;
-      const base = centers[team];
-      if (squaredDistance(entity, base.x, base.z) > FLAG_CAPTURE_RADIUS_M ** 2) continue;
-      score[team]++;
-      resetFlag(enemyFlag);
-      emit('mode_flag_captured', { team, by: entity.id, score: score[team] });
-      if (score[team] >= FLAG_SCORE_TARGET) return finish(team, 'flag_limit');
+      if (touchFlag(flag, entity)) return;
+    }
+  };
+
+  const flagCarriedBy = (entityId: string): FlagState | null => {
+    for (const flag of flags) if (flag.carrierId === entityId) return flag;
+    return null;
+  };
+
+  const flagForTeam = (team: ObjectiveTeam): FlagState | null => {
+    for (const flag of flags) if (flag.team === team) return flag;
+    return null;
+  };
+
+  const captureCarriedFlag = (entity: Entity): MatchModeResult | null => {
+    if (entity.modeActive === false || entity.combat.destroyed) return null;
+    const team = teamOf(entity);
+    const enemyFlag = flagCarriedBy(entity.id);
+    const ownFlag = flagForTeam(team);
+    if (!enemyFlag || !ownFlag || ownFlag.status !== 'home') return null;
+    const base = centers[team];
+    if (squaredDistance(entity, base.x, base.z) > FLAG_CAPTURE_RADIUS_M ** 2) return null;
+    score[team]++;
+    resetFlag(enemyFlag);
+    emit('mode_flag_captured', { team, by: entity.id, score: score[team] });
+    return score[team] >= FLAG_SCORE_TARGET ? finish(team, 'flag_limit') : null;
+  };
+
+  const stepFlags = (timeS: number): MatchModeResult | null => {
+    for (const flag of flags) updateAvailableFlag(flag, timeS);
+    for (const entity of entities) {
+      const completed = captureCarriedFlag(entity);
+      if (completed) return completed;
     }
     return null;
   };
 
+  const zoneOccupancy = (zone: ZoneState): number => {
+    let alpha = 0;
+    let bravo = 0;
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed ||
+          squaredDistance(entity, zone.x, zone.z) > ZONE_RADIUS_M ** 2) continue;
+      if (teamOf(entity) === 'alpha') alpha++;
+      else bravo++;
+    }
+    return alpha * 16 + bravo;
+  };
+
+  const advanceZoneControl = (zone: ZoneState, alpha: number, bravo: number, dt: number): void => {
+    zone.contested = alpha > 0 && bravo > 0;
+    if (zone.contested || (alpha === 0 && bravo === 0)) return;
+    const direction = alpha > 0 ? 1 : -1;
+    const count = Math.max(alpha, bravo);
+    zone.control = Math.max(-1, Math.min(1,
+      zone.control + direction * dt * (1 + (count - 1) * 0.35) / ZONE_CAPTURE_S));
+    const previousOwner = zone.owner;
+    zone.owner = zone.control >= 0.999 ? 'alpha' : zone.control <= -0.999 ? 'bravo' : null;
+    if (zone.owner && zone.owner !== previousOwner) {
+      emit('mode_zone_captured', { zoneId: zone.id, team: zone.owner });
+    }
+  };
+
+  const zoneScoreWinner = (): ObjectiveTeam | 'draw' | null => {
+    if (score.alpha < ZONE_SCORE_TARGET && score.bravo < ZONE_SCORE_TARGET) return null;
+    if (score.alpha === score.bravo) return 'draw';
+    return score.alpha > score.bravo ? 'alpha' : 'bravo';
+  };
+
   const stepZones = (dt: number): MatchModeResult | null => {
     for (const zone of zones) {
-      let alpha = 0;
-      let bravo = 0;
-      for (const entity of entities) {
-        if (entity.modeActive === false || entity.combat.destroyed ||
-            squaredDistance(entity, zone.x, zone.z) > ZONE_RADIUS_M ** 2) continue;
-        if (teamOf(entity) === 'alpha') alpha++;
-        else bravo++;
-      }
-      zone.contested = alpha > 0 && bravo > 0;
-      if (!zone.contested && (alpha > 0 || bravo > 0)) {
-        const direction = alpha > 0 ? 1 : -1;
-        const count = Math.max(alpha, bravo);
-        zone.control = Math.max(-1, Math.min(1,
-          zone.control + direction * dt * (1 + (count - 1) * 0.35) / ZONE_CAPTURE_S));
-        const previousOwner = zone.owner;
-        zone.owner = zone.control >= 0.999 ? 'alpha' : zone.control <= -0.999 ? 'bravo' : null;
-        if (zone.owner && zone.owner !== previousOwner) {
-          emit('mode_zone_captured', { zoneId: zone.id, team: zone.owner });
-        }
-      }
+      const occupancy = zoneOccupancy(zone);
+      advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt);
       if (zone.owner) score[zone.owner] += dt * ZONE_POINTS_PER_SECOND;
     }
-    if (score.alpha >= ZONE_SCORE_TARGET || score.bravo >= ZONE_SCORE_TARGET) {
-      return finish(score.alpha === score.bravo ? 'draw'
-        : score.alpha > score.bravo ? 'alpha' : 'bravo', 'score_limit');
-    }
-    return null;
+    const winner = zoneScoreWinner();
+    return winner ? finish(winner, 'score_limit') : null;
   };
 
   const resetBall = (): void => {
@@ -601,39 +652,46 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ball.lastTouchId = null;
   };
 
-  const stepBall = (dt: number, timeS: number): MatchModeResult | null => {
-    if (!ball) return null;
-    for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed) continue;
-      const dx = ball.x - entity.state.pos.x;
-      const dz = ball.z - entity.state.pos.z;
-      const distance = Math.hypot(dx, dz);
-      if (distance > 6.5 || timeS - lastBallTouchS < 0.12) continue;
-      const inv = distance > 0.01 ? 1 / distance : 1;
-      const nx = distance > 0.01 ? dx * inv : Math.sin(entity.state.yaw);
-      const nz = distance > 0.01 ? dz * inv : Math.cos(entity.state.yaw);
-      const driveX = Math.sin(entity.state.yaw) * entity.state.speed;
-      const driveZ = Math.cos(entity.state.yaw) * entity.state.speed;
-      const closing = Math.max(0, driveX * nx + driveZ * nz);
-      ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * (4 + closing * 0.35);
-      ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * (4 + closing * 0.35);
-      ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
-      ball.lastTouchId = entity.id;
-      lastBallTouchS = timeS;
-      emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
-    }
+  const touchBallWithEntity = (entity: Entity, timeS: number): void => {
+    if (!ball || entity.modeActive === false || entity.combat.destroyed) return;
+    const dx = ball.x - entity.state.pos.x;
+    const dz = ball.z - entity.state.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance > 6.5 || timeS - lastBallTouchS < 0.12) return;
+    const inv = distance > 0.01 ? 1 / distance : 1;
+    const nx = distance > 0.01 ? dx * inv : Math.sin(entity.state.yaw);
+    const nz = distance > 0.01 ? dz * inv : Math.cos(entity.state.yaw);
+    const driveX = Math.sin(entity.state.yaw) * entity.state.speed;
+    const driveZ = Math.cos(entity.state.yaw) * entity.state.speed;
+    const closing = Math.max(0, driveX * nx + driveZ * nz);
+    ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * (4 + closing * 0.35);
+    ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * (4 + closing * 0.35);
+    ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
+    ball.lastTouchId = entity.id;
+    lastBallTouchS = timeS;
+    emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
+  };
+
+  const integrateBall = (dt: number): void => {
+    if (!ball) return;
     ball.vy -= BALL_GRAVITY_MPS2 * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
     ball.z += ball.vz * dt;
     ball.vx *= BALL_LINEAR_DRAG;
     ball.vz *= BALL_LINEAR_DRAG;
+  };
+
+  const bounceBallFromTerrain = (): void => {
+    if (!ball) return;
     const floor = terrainHeight(ball.x, ball.z) + BALL_RADIUS_M;
-    if (ball.y < floor) {
-      ball.y = floor;
-      if (ball.vy < -1) ball.vy *= -0.58;
-      else ball.vy = 0;
-    }
+    if (ball.y >= floor) return;
+    ball.y = floor;
+    ball.vy = ball.vy < -1 ? ball.vy * -0.58 : 0;
+  };
+
+  const containBallInWorld = (): void => {
+    if (!ball) return;
     if (Math.abs(ball.x) > WORLD_MARGIN_M) {
       ball.x = Math.sign(ball.x) * WORLD_MARGIN_M;
       ball.vx *= -0.65;
@@ -642,12 +700,20 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ball.z = Math.sign(ball.z) * WORLD_MARGIN_M;
       ball.vz *= -0.65;
     }
-    let scoringTeam: ObjectiveTeam | null = null;
-    if ((ball.x - centers.alpha.x) ** 2 + (ball.z - centers.alpha.z) ** 2
-        <= BALL_GOAL_RADIUS_M ** 2) scoringTeam = 'bravo';
-    else if ((ball.x - centers.bravo.x) ** 2 + (ball.z - centers.bravo.z) ** 2
-        <= BALL_GOAL_RADIUS_M ** 2) scoringTeam = 'alpha';
-    if (!scoringTeam) return null;
+  };
+
+  const ballScoringTeam = (): ObjectiveTeam | null => {
+    if (!ball) return null;
+    const atAlphaGoal = (ball.x - centers.alpha.x) ** 2 + (ball.z - centers.alpha.z) ** 2
+      <= BALL_GOAL_RADIUS_M ** 2;
+    if (atAlphaGoal) return 'bravo';
+    const atBravoGoal = (ball.x - centers.bravo.x) ** 2 + (ball.z - centers.bravo.z) ** 2
+      <= BALL_GOAL_RADIUS_M ** 2;
+    return atBravoGoal ? 'alpha' : null;
+  };
+
+  const completeBallGoal = (scoringTeam: ObjectiveTeam): MatchModeResult | null => {
+    if (!ball) return null;
     score[scoringTeam]++;
     emit('mode_goal_scored', {
       team: scoringTeam, by: ball.lastTouchId, score: score[scoringTeam],
@@ -658,14 +724,25 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ? finish(scoringTeam, 'goal_limit') : null;
   };
 
-  const stepHorde = (timeS: number): MatchModeResult | null => {
-    const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
-      !entity.combat.destroyed && !entity.bot);
-    if (!humansAlive) return finish('bravo', 'horde_overrun');
+  const stepBall = (dt: number, timeS: number): MatchModeResult | null => {
+    if (!ball) return null;
+    for (const entity of entities) touchBallWithEntity(entity, timeS);
+    integrateBall(dt);
+    bounceBallFromTerrain();
+    containBallInWorld();
+    const scoringTeam = ballScoringTeam();
+    return scoringTeam ? completeBallGoal(scoringTeam) : null;
+  };
+
+  const livingHordeEnemyCount = (): number => {
     let alive = 0;
     for (const enemy of hordeEnemies) {
       if (enemy.modeActive !== false && !enemy.combat.destroyed) alive++;
     }
+    return alive;
+  };
+
+  const updateHordeIntermission = (alive: number, timeS: number): void => {
     if (state.horde) {
       state.horde.alive = alive;
       state.horde.nextWaveInS = nextWaveAtS == null ? 0 : Math.max(0, nextWaveAtS - timeS);
@@ -679,32 +756,45 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       wave++;
       startHordeWave();
     }
+  };
+
+  const collectPickup = (pickup: PickupState, entity: Entity): boolean => {
+    if (entity.bot || entity.modeActive === false || entity.combat.destroyed ||
+        squaredDistance(entity, pickup.x, pickup.z) > PICKUP_RADIUS_M ** 2) return false;
+    if (pickup.kind === 'ammo') {
+      const refill = replenishAmmunition(entity.combat);
+      if (refill.totalAdded <= 0) return false;
+      emit('mode_pickup_collected', {
+        id: pickup.id,
+        kind: pickup.kind,
+        by: entity.id,
+        ammoAdded: refill.totalAdded,
+        addedBySlot: refill.added,
+      });
+    } else {
+      const restored = Math.max(1, Math.round(entity.combat.maxHp * 0.35));
+      entity.combat.hp = Math.min(entity.combat.maxHp, entity.combat.hp + restored);
+      emit('mode_pickup_collected', { id: pickup.id, kind: pickup.kind, by: entity.id });
+    }
+    pickup.active = false;
+    return true;
+  };
+
+  const collectHordePickups = (): void => {
     for (const pickup of pickups) {
       if (!pickup.active) continue;
       for (const entity of teams.alpha) {
-        if (entity.bot || entity.modeActive === false || entity.combat.destroyed ||
-            squaredDistance(entity, pickup.x, pickup.z) > PICKUP_RADIUS_M ** 2) continue;
-        if (pickup.kind === 'heal') {
-          const restored = Math.max(1, Math.round(entity.combat.maxHp * 0.35));
-          entity.combat.hp = Math.min(entity.combat.maxHp, entity.combat.hp + restored);
-        } else {
-          const refill = replenishAmmunition(entity.combat);
-          if (refill.totalAdded <= 0) continue;
-          emit('mode_pickup_collected', {
-            id: pickup.id,
-            kind: pickup.kind,
-            by: entity.id,
-            ammoAdded: refill.totalAdded,
-            addedBySlot: refill.added,
-          });
-          pickup.active = false;
-          break;
-        }
-        pickup.active = false;
-        emit('mode_pickup_collected', { id: pickup.id, kind: pickup.kind, by: entity.id });
-        break;
+        if (collectPickup(pickup, entity)) break;
       }
     }
+  };
+
+  const stepHorde = (timeS: number): MatchModeResult | null => {
+    const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
+      !entity.combat.destroyed && !entity.bot);
+    if (!humansAlive) return finish('bravo', 'horde_overrun');
+    updateHordeIntermission(livingHordeEnemyCount(), timeS);
+    collectHordePickups();
     return null;
   };
 
@@ -726,6 +816,52 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       playerAmmo: viewer ? totalAmmunition(viewer.combat) : null,
       playerAmmoCapacity: viewer ? totalAmmunitionCapacity(viewer.combat) : null,
     };
+  };
+
+  const flagBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+    const carried = flagCarriedBy(entity.id);
+    if (carried) return { x: centers[team].x, z: centers[team].z };
+    const enemyFlag = flagForTeam(otherTeam(team));
+    return enemyFlag ? { x: enemyFlag.x, z: enemyFlag.z } : null;
+  };
+
+  const zoneBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+    let best: ZoneState | null = null;
+    let bestDistance = Infinity;
+    for (const zone of zones) {
+      if (zone.owner === team) continue;
+      const distance = squaredDistance(entity, zone.x, zone.z);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = zone;
+      }
+    }
+    return best ? { x: best.x, z: best.z } : null;
+  };
+
+  const hordeBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+    const targets = team === 'bravo' ? teams.alpha : teams.bravo;
+    let nearest: Entity | null = null;
+    let nearestDistance = Infinity;
+    for (const target of targets) {
+      if (target.modeActive === false || target.combat.destroyed) continue;
+      const distance = squaredDistance(entity, target.state.pos.x, target.state.pos.z);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = target;
+      }
+    }
+    return nearest ? { x: nearest.state.pos.x, z: nearest.state.pos.z } : null;
+  };
+
+  const botTarget = (entity: Entity): ObjectivePoint | null => {
+    if (entity.modeActive === false || entity.combat.destroyed) return null;
+    const team = teamOf(entity);
+    if (id === 'capture_the_flag') return flagBotTarget(entity, team);
+    if (id === 'zone_control') return zoneBotTarget(entity, team);
+    if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
+    if (id === 'endless_horde') return hordeBotTarget(entity, team);
+    return null;
   };
 
   return {
@@ -754,39 +890,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot' });
       return true;
     },
-    botTarget(entity) {
-      if (entity.modeActive === false || entity.combat.destroyed) return null;
-      const team = teamOf(entity);
-      if (id === 'capture_the_flag') {
-        const carried = flags.find((flag) => flag.carrierId === entity.id);
-        if (carried) return { x: centers[team].x, z: centers[team].z };
-        const enemyFlag = flags.find((flag) => flag.team === otherTeam(team));
-        return enemyFlag ? { x: enemyFlag.x, z: enemyFlag.z } : null;
-      }
-      if (id === 'zone_control') {
-        let best: ZoneState | null = null;
-        let bestDistance = Infinity;
-        for (const zone of zones) {
-          if (zone.owner === team) continue;
-          const distance = squaredDistance(entity, zone.x, zone.z);
-          if (distance < bestDistance) { bestDistance = distance; best = zone; }
-        }
-        return best ? { x: best.x, z: best.z } : null;
-      }
-      if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
-      if (id === 'endless_horde') {
-        const targets = team === 'bravo' ? teams.alpha : teams.bravo;
-        let nearest: Entity | null = null;
-        let nearestDistance = Infinity;
-        for (const target of targets) {
-          if (target.modeActive === false || target.combat.destroyed) continue;
-          const distance = squaredDistance(entity, target.state.pos.x, target.state.pos.z);
-          if (distance < nearestDistance) { nearestDistance = distance; nearest = target; }
-        }
-        return nearest ? { x: nearest.state.pos.x, z: nearest.state.pos.z } : null;
-      }
-      return null;
-    },
+    botTarget,
     serialize,
   };
 }

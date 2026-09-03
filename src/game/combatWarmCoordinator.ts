@@ -3,7 +3,7 @@ import {
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 
-type WarmGenerator = Generator<unknown, unknown, unknown>;
+type WarmGenerator = Generator<object | void, object | void, void>;
 type WarmFactory = () => WarmGenerator;
 type WarmKind = 'opening' | 'rare';
 
@@ -68,28 +68,41 @@ export function createCombatWarmCoordinator({
     }
   };
 
+  const generatorFor = (kind: WarmKind): WarmGenerator | null =>
+    kind === 'opening' ? openingGenerator : rareGenerator;
+
+  const isReady = (kind: WarmKind): boolean =>
+    kind === 'opening' ? openingReady : rareReady;
+
+  const storeGenerator = (kind: WarmKind, generator: WarmGenerator): void => {
+    if (kind === 'opening') openingGenerator = generator;
+    else rareGenerator = generator;
+  };
+
+  const clearGeneratorIfCurrent = (kind: WarmKind, generator: WarmGenerator): void => {
+    if (generatorFor(kind) !== generator) return;
+    if (kind === 'opening') openingGenerator = null;
+    else rareGenerator = null;
+  };
+
   const warmChunked = async (
     kind: WarmKind,
     factory: WarmFactory,
     budgetMs: number,
     providedYielder: WorkYielder | null,
   ): Promise<void> => {
-    const isOpening = kind === 'opening';
-    let generator = isOpening ? openingGenerator : rareGenerator;
-    if ((isOpening ? openingReady : rareReady) && !generator) return;
+    let generator = generatorFor(kind);
+    if (isReady(kind) && !generator) return;
     if (!generator) {
       generator = factory();
-      if (isOpening) openingGenerator = generator;
-      else rareGenerator = generator;
+      storeGenerator(kind, generator);
     }
     const yieldForBudget = providedYielder ?? createYielder(budgetMs);
     for (;;) {
-      const liveGenerator = isOpening ? openingGenerator : rareGenerator;
-      if (liveGenerator !== generator) return;
+      if (generatorFor(kind) !== generator) return;
       const result = generator.next();
       if (result.done) {
-        if (isOpening && openingGenerator === generator) openingGenerator = null;
-        if (!isOpening && rareGenerator === generator) rareGenerator = null;
+        clearGeneratorIfCurrent(kind, generator);
         return;
       }
       await yieldForBudget();

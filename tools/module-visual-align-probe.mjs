@@ -121,37 +121,40 @@ try {
 
         // gather classified hull-local points
         const hull = [], turret = [];
-        root.traverse((o) => {
-          if (!o.geometry) return;
-          if (o.material && o.material.colorWrite === false) return;
-          if (!visible(o)) return;
-          const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
-          if (!pa) return;
-          const sub = subtreeOf(o);
-          if (sub === 'gun') return;
-          const dst = sub === 'turret' ? turret : hull;
-          if (o.isInstancedMesh) {
-            const inst = new THREE.Matrix4();
-            const per = Math.max(1, Math.floor(pa.count / 48));
-            for (let i = 0; i < o.count; i++) {
-              o.getMatrixAt(i, inst);
-              const e = inst.elements;
-              if (Math.abs(e[0]) + Math.abs(e[5]) + Math.abs(e[10]) < 1e-5) continue;
-              rel.multiplyMatrices(o.matrixWorld, inst).premultiply(invRoot);
-              for (let k = 0; k < pa.count; k += per) {
-                pt.fromBufferAttribute(pa, k).applyMatrix4(rel);
+        const gatherClassifiedPoints = () => {
+          root.traverse((o) => {
+            if (!o.geometry) return;
+            if (o.material && o.material.colorWrite === false) return;
+            if (!visible(o)) return;
+            const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
+            if (!pa) return;
+            const sub = subtreeOf(o);
+            if (sub === 'gun') return;
+            const dst = sub === 'turret' ? turret : hull;
+            if (o.isInstancedMesh) {
+              const inst = new THREE.Matrix4();
+              const per = Math.max(1, Math.floor(pa.count / 48));
+              for (let i = 0; i < o.count; i++) {
+                o.getMatrixAt(i, inst);
+                const e = inst.elements;
+                if (Math.abs(e[0]) + Math.abs(e[5]) + Math.abs(e[10]) < 1e-5) continue;
+                rel.multiplyMatrices(o.matrixWorld, inst).premultiply(invRoot);
+                for (let k = 0; k < pa.count; k += per) {
+                  pt.fromBufferAttribute(pa, k).applyMatrix4(rel);
+                  dst.push(pt.x, pt.y, pt.z);
+                }
+              }
+            } else if (o.isMesh) {
+              rel.multiplyMatrices(invRoot, o.matrixWorld);
+              const step = Math.max(1, Math.floor(pa.count / 20000));
+              for (let i = 0; i < pa.count; i += step) {
+                pt.fromBufferAttribute(pa, i).applyMatrix4(rel);
                 dst.push(pt.x, pt.y, pt.z);
               }
             }
-          } else if (o.isMesh) {
-            rel.multiplyMatrices(invRoot, o.matrixWorld);
-            const step = Math.max(1, Math.floor(pa.count / 20000));
-            for (let i = 0; i < pa.count; i += step) {
-              pt.fromBufferAttribute(pa, i).applyMatrix4(rel);
-              dst.push(pt.x, pt.y, pt.z);
-            }
-          }
-        });
+          });
+        };
+        gatherClassifiedPoints();
         if (!hull.length) return { error: 'no hull points' };
 
         const p95 = (arr) => {
@@ -160,59 +163,71 @@ try {
           return arr[Math.min(arr.length - 1, Math.floor(arr.length * 0.95))];
         };
 
-        // hull z extents + height
-        let zMin = Infinity, zMax = -Infinity, yMax = -Infinity;
-        for (let i = 0; i < hull.length; i += 3) {
-          const z = hull[i + 2], y = hull[i + 1];
-          if (z < zMin) zMin = z;
-          if (z > zMax) zMax = z;
-          if (y > yMax) yMax = y;
-        }
-
         // module boxes of record
         const box = (n) => (armor.modules || []).find((m) => m.module === n);
         const eng = box('engine');
         const trkR = box('trackR') || box('trackL');
         const ring = box('turretRing');
-
-        // deckY: p95 of hull tops inside the ENGINE box z band, |x| < 40% width
-        const deckYs = [];
-        if (eng) {
-          let xLim = 0;
-          for (let i = 0; i < hull.length; i += 3) xLim = Math.max(xLim, Math.abs(hull[i]));
-          xLim *= 0.4;
-          for (let i = 0; i < hull.length; i += 3) {
-            const x = hull[i], y = hull[i + 1], z = hull[i + 2];
-            if (z >= eng.min[2] && z <= eng.max[2] && Math.abs(x) < xLim) deckYs.push(y);
-          }
-        }
-        const deckY = p95(deckYs);
-
-        // trackX: max |x| in the low band (y < 0.35 * hull yMax)
-        let trackX = 0;
-        const yBand = yMax * 0.35;
-        for (let i = 0; i < hull.length; i += 3) {
-          if (hull[i + 1] < yBand) trackX = Math.max(trackX, Math.abs(hull[i]));
-        }
-
-        // sideX: p95 |x| of hull verts in the upper-hull band at mid z
-        const sideXs = [];
-        for (let i = 0; i < hull.length; i += 3) {
-          const y = hull[i + 1], z = hull[i + 2];
-          if (y > yMax * 0.55 && y < yMax * 0.9 && Math.abs(z) < (zMax - zMin) * 0.2) {
-            sideXs.push(Math.abs(hull[i]));
-          }
-        }
-        const sideX = p95(sideXs);
-
-        // turret base y (excluding gun subtree)
-        let tBaseY = NaN;
-        if (turret.length) {
-          const tys = [];
-          for (let i = 1; i < turret.length; i += 3) tys.push(turret[i]);
-          tys.sort((a, b) => a - b);
-          tBaseY = tys[Math.min(tys.length - 1, Math.floor(tys.length * 0.02))];
-        }
+        const measureVisual = () => {
+          const hullExtents = () => {
+            let zMin = Infinity, zMax = -Infinity, yMax = -Infinity;
+            for (let i = 0; i < hull.length; i += 3) {
+              const z = hull[i + 2], y = hull[i + 1];
+              if (z < zMin) zMin = z;
+              if (z > zMax) zMax = z;
+              if (y > yMax) yMax = y;
+            }
+            return { zMin, zMax, yMax };
+          };
+          const deckHeight = () => {
+            if (!eng) return NaN;
+            let xLim = 0;
+            for (let i = 0; i < hull.length; i += 3) xLim = Math.max(xLim, Math.abs(hull[i]));
+            xLim *= 0.4;
+            const deckYs = [];
+            for (let i = 0; i < hull.length; i += 3) {
+              const x = hull[i], y = hull[i + 1], z = hull[i + 2];
+              if (z >= eng.min[2] && z <= eng.max[2] && Math.abs(x) < xLim) deckYs.push(y);
+            }
+            return p95(deckYs);
+          };
+          const trackWidth = (yMax) => {
+            let trackX = 0;
+            const yBand = yMax * 0.35;
+            for (let i = 0; i < hull.length; i += 3) {
+              if (hull[i + 1] < yBand) trackX = Math.max(trackX, Math.abs(hull[i]));
+            }
+            return trackX;
+          };
+          const sideWidth = (zMin, zMax, yMax) => {
+            const sideXs = [];
+            for (let i = 0; i < hull.length; i += 3) {
+              const y = hull[i + 1], z = hull[i + 2];
+              if (y > yMax * 0.55 && y < yMax * 0.9 && Math.abs(z) < (zMax - zMin) * 0.2) {
+                sideXs.push(Math.abs(hull[i]));
+              }
+            }
+            return p95(sideXs);
+          };
+          const turretBase = () => {
+            if (!turret.length) return NaN;
+            const tys = [];
+            for (let i = 1; i < turret.length; i += 3) tys.push(turret[i]);
+            tys.sort((a, b) => a - b);
+            return tys[Math.min(tys.length - 1, Math.floor(tys.length * 0.02))];
+          };
+          const { zMin, zMax, yMax } = hullExtents();
+          return {
+            zMin,
+            zMax,
+            yMax,
+            deckY: deckHeight(),
+            trackX: trackWidth(yMax),
+            sideX: sideWidth(zMin, zMax, yMax),
+            tBaseY: turretBase(),
+          };
+        };
+        const { zMin, zMax, yMax, deckY, trackX, sideX, tBaseY } = measureVisual();
 
         // armor-side references — trace the DECK RAY through the armor model
         // exactly like a plunging shell: straight down at the engine bay center.
@@ -220,30 +235,31 @@ try {
         const pose = {
           pos: new THREE.Vector3(0, 0, 0), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
         };
-        let roofPlateY = NaN, deckRayModules = [];
-        if (eng) {
-          const cx = (eng.min[0] + eng.max[0]) / 2;
-          const cz = (eng.min[2] + eng.max[2]) / 2;
-          const hits = traceTank(
-            new THREE.Vector3(cx, 20, cz), new THREE.Vector3(cx, -1, cz), pose, armor, new Set());
-          for (const h of hits) {
-            if (h.kind === 'plate' && h.plate.kind !== 'era' && !isFinite(roofPlateY)) {
-              roofPlateY = h.point.y;
+        const measureArmorReferences = () => {
+          let roofPlateY = NaN;
+          const deckRayModules = [];
+          if (eng) {
+            const cx = (eng.min[0] + eng.max[0]) / 2;
+            const cz = (eng.min[2] + eng.max[2]) / 2;
+            const hits = traceTank(
+              new THREE.Vector3(cx, 20, cz), new THREE.Vector3(cx, -1, cz), pose, armor, new Set());
+            for (const h of hits) {
+              if (h.kind === 'plate' && h.plate.kind !== 'era' && !isFinite(roofPlateY)) {
+                roofPlateY = h.point.y;
+              }
+              if (h.kind === 'module') deckRayModules.push(h.module);
             }
-            if (h.kind === 'module') deckRayModules.push(h.module);
           }
-        }
-
-        // armor side-plate x at the upper-hull band (side ray at mid z)
-        let sidePlateX = NaN;
-        {
+          let sidePlateX = NaN;
           const y = yMax * 0.72;
           const hits = traceTank(
             new THREE.Vector3(20, y, 0), new THREE.Vector3(-20, y, 0), pose, armor, new Set());
           for (const h of hits) {
             if (h.kind === 'plate' && h.plate.kind !== 'era') { sidePlateX = h.point.x; break; }
           }
-        }
+          return { roofPlateY, deckRayModules, sidePlateX };
+        };
+        const { roofPlateY, deckRayModules, sidePlateX } = measureArmorReferences();
 
         const boundsOf = (plates) => {
           const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
@@ -283,48 +299,64 @@ try {
         };
         const hullStructureGap = structureGap('hull', calibration?.hullStructures, armor.hullPlates);
         const turretStructureGap = structureGap('turret', calibration?.turretStructures, armor.turretPlates);
-        let moduleShapeGap = 0;
-        for (const shape of calibration?.moduleShapes || []) {
-          const actual = (armor.modules || []).find((entry) =>
-            entry.module === shape.module && !!entry.turretLocal === !!shape.turretLocal);
-          if (!actual || !Array.isArray(actual.parts) || actual.parts.length !== shape.parts.length) {
-            moduleShapeGap = Infinity;
-            break;
+        const measureModuleShapeGap = () => {
+          let gap = 0;
+          for (const shape of calibration?.moduleShapes || []) {
+            const actual = (armor.modules || []).find((entry) =>
+              entry.module === shape.module && !!entry.turretLocal === !!shape.turretLocal);
+            if (!actual || !Array.isArray(actual.parts) || actual.parts.length !== shape.parts.length) {
+              return Infinity;
+            }
+            for (let index = 0; index < shape.parts.length; index++) {
+              gap = Math.max(gap, faceGap(actual.parts[index], shape.parts[index]));
+            }
           }
-          for (let index = 0; index < shape.parts.length; index++) {
-            moduleShapeGap = Math.max(moduleShapeGap, faceGap(actual.parts[index], shape.parts[index]));
+          return gap;
+        };
+        const measureTrackGap = () => {
+          let gap = 0;
+          for (const [name, side] of [['trackL', 'left'], ['trackR', 'right']]) {
+            const module = (armor.modules || []).find((entry) => entry.module === name);
+            gap = Math.max(gap, faceGap(module, calibration?.tracks?.[side]));
           }
-        }
-        let trackGap = 0;
-        for (const [name, side] of [['trackL', 'left'], ['trackR', 'right']]) {
-          const module = (armor.modules || []).find((entry) => entry.module === name);
-          trackGap = Math.max(trackGap, faceGap(module, calibration?.tracks?.[side]));
-        }
-        let volumeOverflow = 0;
-        let minVolumeDepth = Infinity;
-        for (const entry of [...(armor.modules || []), ...(armor.crew || [])]) {
-          if (entry.module === 'trackL' || entry.module === 'trackR') continue;
-          const externalVolume = entry.external === true || entry.module === 'optics'
-            || entry.module === 'turretRing' || entry.module === 'gunMount';
-          const envelope = entry.turretLocal ? turretArmor : hullArmor;
-          const shapes = Array.isArray(entry.parts) && entry.parts.length ? entry.parts : [entry];
-          for (const shape of shapes) {
+          return gap;
+        };
+        const measureInteriorVolumes = () => {
+          let volumeOverflow = 0;
+          let minVolumeDepth = Infinity;
+          const measureShape = (shape, envelope, externalVolume) => {
+            let shapeOverflow = 0;
+            let shapeMinDepth = Infinity;
             for (let axis = 0; axis < 3; axis++) {
-              // Visible external systems legitimately include thin glass,
-              // sight windows, ring plates and mantlet faces. The minimum
-              // interior-volume depth gate is not meaningful for them.
               if (!externalVolume) {
-                minVolumeDepth = Math.min(minVolumeDepth, shape.max[axis] - shape.min[axis]);
+                shapeMinDepth = Math.min(shapeMinDepth, shape.max[axis] - shape.min[axis]);
               }
               if (!envelope || externalVolume) continue;
-              volumeOverflow = Math.max(
-                volumeOverflow,
+              shapeOverflow = Math.max(
+                shapeOverflow,
                 envelope.min[axis] - shape.min[axis],
                 shape.max[axis] - envelope.max[axis],
               );
             }
+            return { shapeOverflow, shapeMinDepth };
+          };
+          for (const entry of [...(armor.modules || []), ...(armor.crew || [])]) {
+            if (entry.module === 'trackL' || entry.module === 'trackR') continue;
+            const externalVolume = entry.external === true || entry.module === 'optics'
+              || entry.module === 'turretRing' || entry.module === 'gunMount';
+            const envelope = entry.turretLocal ? turretArmor : hullArmor;
+            const shapes = Array.isArray(entry.parts) && entry.parts.length ? entry.parts : [entry];
+            for (const shape of shapes) {
+              const measured = measureShape(shape, envelope, externalVolume);
+              volumeOverflow = Math.max(volumeOverflow, measured.shapeOverflow);
+              minVolumeDepth = Math.min(minVolumeDepth, measured.shapeMinDepth);
+            }
           }
-        }
+          return { volumeOverflow, minVolumeDepth };
+        };
+        const moduleShapeGap = measureModuleShapeGap();
+        const trackGap = measureTrackGap();
+        const { volumeOverflow, minVolumeDepth } = measureInteriorVolumes();
         const receipt = {
           hullFaceGap: faceGap(hullArmor, calibration?.hull, true),
           turretFaceGap: calibration?.turret ? faceGap(turretArmor, calibration.turret) : 0,

@@ -170,8 +170,16 @@ export function createGaragePhasePresentationRuntime({
     stageRoot.position.copy(garagePosition);
     dressingRoot.position.copy(garagePosition);
     positionLights();
-    posePedestal();
-    if (getPhase() === 'garage') poseCamera();
+    // World-service preparation also refreshes the dormant Garage anchor while
+    // a battle is being assembled. The player can be borrowing the pedestal
+    // visual at that point, so Garage-only pose solvers must never touch it.
+    // Keeping both pose writes behind the same phase gate makes the handoff
+    // atomic: the deployed tank remains at its authoritative spawn and the
+    // reveal camera cannot snap to the off-map Garage coordinate.
+    if (getPhase() === 'garage') {
+      posePedestal();
+      poseCamera();
+    }
   };
 
   return {

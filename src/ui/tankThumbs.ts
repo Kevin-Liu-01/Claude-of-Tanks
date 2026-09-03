@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/tankThumbs.ts — stable garage tank portraits.
 //
 // The old implementation rebuilt every portrait in an offscreen WebGL
@@ -97,15 +98,15 @@ function canvas2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   return context;
 }
 
-function asTopMaskEngineContext(value: unknown): TopMaskEngineContext | null {
+function asTopMaskEngineContext(value: RuntimeValue): TopMaskEngineContext | null {
   if (!value || typeof value !== 'object') return null;
-  const candidate = value as { renderer?: unknown };
+  const candidate = value as { renderer?: RuntimeValue };
   return candidate.renderer instanceof THREE.WebGLRenderer
     ? { renderer: candidate.renderer }
     : null;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -295,7 +296,7 @@ export function drainTankThumbs(): void {
  * Compatibility entry point used by garage setup. The specs/options are kept
  * in the signature so callers do not need special cases.
  */
-export function ensureTankThumbs(_specs: unknown, _opts: unknown = {}): void {
+export function ensureTankThumbs(_specs: RuntimeValue, _opts: RuntimeValue = {}): void {
   if (typeof document === 'undefined') return;
   observeTankThumbs(document);
   document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
@@ -335,7 +336,7 @@ let maskEngineCtx: TopMaskEngineContext | null = null; // main.ts hands over its
 /** Wire the shared engine context (renderer + shadow hook) for mask renders.
  *  Without it, getTopDownMasks reports 'failed' and the damage panel keeps
  *  its vector fallback (harness/booth contexts). @param {object} engineCtx */
-export function initTopMaskRig(engineCtx: unknown): void {
+export function initTopMaskRig(engineCtx: RuntimeValue): void {
   maskEngineCtx = asTopMaskEngineContext(engineCtx);
 }
 
@@ -346,6 +347,113 @@ const maskCache = new Map<string, MaskCacheValue>();
 const MASK_CACHE_MAX = 10;
 let maskRT: THREE.WebGLRenderTarget | null = null;
 let maskPixels: Uint8Array | null = null;
+
+interface MaskPixelBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+interface MaskRenderResources {
+  target: THREE.WebGLRenderTarget;
+  pixels: Uint8Array;
+}
+
+interface MaskCanvasResult {
+  canvas: HTMLCanvasElement;
+  bounds: MaskPixelBounds;
+}
+
+function ensureMaskRenderResources(): MaskRenderResources {
+  if (!maskRT) {
+    maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {
+      depthBuffer: true, stencilBuffer: false,
+    });
+    maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
+  }
+  if (!maskPixels) maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
+  return { target: maskRT, pixels: maskPixels };
+}
+
+function renderMaskPixels(
+  renderer: THREE.WebGLRenderer,
+  target: THREE.WebGLRenderTarget,
+  pixels: Uint8Array,
+  scene: THREE.Scene,
+  camera: THREE.OrthographicCamera,
+): void {
+  const previousTarget = renderer.getRenderTarget();
+  const previousColor = new THREE.Color();
+  renderer.getClearColor(previousColor);
+  const previousAlpha = renderer.getClearAlpha();
+  try {
+    renderer.setRenderTarget(target);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(true, true, false);
+    renderer.render(scene, camera);
+    renderer.readRenderTargetPixels(target, 0, 0, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
+  } finally {
+    renderer.setRenderTarget(previousTarget);
+    renderer.setClearColor(previousColor, previousAlpha);
+  }
+}
+
+function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
+  const size = MASK_RT_SIZE;
+  const big = document.createElement('canvas');
+  big.width = size;
+  big.height = size;
+  const context = canvas2d(big);
+  const image = context.createImageData(size, size);
+  const data = image.data;
+  const bounds: MaskPixelBounds = { minX: size, maxX: -1, minY: size, maxY: -1 };
+  for (let y = 0; y < size; y++) {
+    const sourceRow = (size - 1 - y) * size * 4;
+    const targetRow = y * size * 4;
+    for (let x = 0; x < size; x++) {
+      const alpha = pixels[sourceRow + x * 4 + 3];
+      if (alpha <= 8) continue;
+      const offset = targetRow + x * 4;
+      data[offset] = 255;
+      data[offset + 1] = 255;
+      data[offset + 2] = 255;
+      data[offset + 3] = alpha;
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }
+  }
+  if (bounds.maxX < 0) return null;
+  context.putImageData(image, 0, 0);
+  return { canvas: big, bounds };
+}
+
+function downscaleMask(source: HTMLCanvasElement): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = MASK_SIZE;
+  output.height = MASK_SIZE;
+  canvas2d(output).drawImage(source, 0, 0, MASK_SIZE, MASK_SIZE);
+  return output;
+}
+
+function maskPassResult(
+  rendered: MaskCanvasResult,
+  camX: number,
+  camZ: number,
+  halfM: number,
+): MaskPassResult {
+  const metresPerPixel = (halfM * 2) / MASK_RT_SIZE;
+  const { bounds } = rendered;
+  return {
+    canvas: downscaleMask(rendered.canvas),
+    minX: camX + halfM - (bounds.maxX + 1) * metresPerPixel,
+    maxX: camX + halfM - bounds.minX * metresPerPixel,
+    minZ: camZ + halfM - (bounds.maxY + 1) * metresPerPixel,
+    maxZ: camZ + halfM - bounds.minY * metresPerPixel,
+  };
+}
 
 /** One alpha-coverage pass -> white mask canvas (also reports plan bounds).
  *  @returns {{canvas:HTMLCanvasElement,minX:number,maxX:number,minZ:number,maxZ:number}|null} */
@@ -358,70 +466,20 @@ function renderMaskPass(
   const engine = maskEngineCtx;
   if (!engine) return null;
   const renderer = engine.renderer;
-  if (!maskRT) {
-    maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {
-      depthBuffer: true, stencilBuffer: false,
-    });
-    maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
-  }
-  const target = maskRT;
-  const pixels = maskPixels;
-  if (!target || !pixels) return null;
-  const prevTarget = renderer.getRenderTarget();
-  const prevColor = new THREE.Color();
-  renderer.getClearColor(prevColor);
-  const prevAlpha = renderer.getClearAlpha();
+  const { target, pixels } = ensureMaskRenderResources();
   const cam = new THREE.OrthographicCamera(-halfM, halfM, halfM, -halfM, 0.1, 80);
   cam.position.set(camX, 40, camZ);
   cam.up.set(0, 0, 1);
   cam.lookAt(camX, 0, camZ);
   cam.updateMatrixWorld(true);
-  try {
-    renderer.setRenderTarget(target);
-    renderer.setClearColor(0x000000, 0);
-    renderer.clear(true, true, false);
-    renderer.render(scene, cam);
-    renderer.readRenderTargetPixels(target, 0, 0, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
-  } finally {
-    renderer.setRenderTarget(prevTarget);
-    renderer.setClearColor(prevColor, prevAlpha);
-  }
-  // alpha coverage -> white mask (readPixels rows are bottom-up: flip)
-  const S = MASK_RT_SIZE;
-  const big = document.createElement('canvas');
-  big.width = S; big.height = S;
-  const bctx = canvas2d(big);
-  const img = bctx.createImageData(S, S);
-  const d = img.data;
-  let px0 = S, px1 = -1, py0 = S, py1 = -1;
-  for (let y = 0; y < S; y++) {
-    const src = (S - 1 - y) * S * 4;
-    const dst = y * S * 4;
-    for (let x = 0; x < S; x++) {
-      const a = pixels[src + x * 4 + 3];
-      if (a > 8) {
-        const o = dst + x * 4;
-        d[o] = 255; d[o + 1] = 255; d[o + 2] = 255; d[o + 3] = a;
-        if (x < px0) px0 = x; if (x > px1) px1 = x;
-        if (y < py0) py0 = y; if (y > py1) py1 = y;
-      }
-    }
-  }
-  if (px1 < 0) return null; // nothing rendered
-  bctx.putImageData(img, 0, 0);
-  const out = document.createElement('canvas');
-  out.width = MASK_SIZE; out.height = MASK_SIZE;
-  canvas2d(out).drawImage(big, 0, 0, MASK_SIZE, MASK_SIZE);
+  renderMaskPixels(renderer, target, pixels, scene, cam);
+  // Alpha coverage becomes a white mask. readPixels rows are bottom-up, so
+  // maskCanvasFromPixels flips them while collecting exact plan bounds.
+  const rendered = maskCanvasFromPixels(pixels);
+  if (!rendered) return null;
   // opaque pixel bounds back in METERS (pixel x = camX-half..camX+half maps
   // world -x; pixel y top = camZ+half): used for tight panel scaling.
-  const mPerPx = (halfM * 2) / S;
-  return {
-    canvas: out,
-    minX: camX + halfM - (px1 + 1) * mPerPx,
-    maxX: camX + halfM - px0 * mPerPx,
-    minZ: camZ + halfM - (py1 + 1) * mPerPx,
-    maxZ: camZ + halfM - py0 * mPerPx,
-  };
+  return maskPassResult(rendered, camX, camZ, halfM);
 }
 
 /** Render both layers for a built visual. @returns {object|null} entry */
@@ -532,7 +590,7 @@ export function getTopDownMasks(
         ? { root: clonedRoot, dispose() {} }
         : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' }) as TankMaskVisual;
       entry = renderMaskEntry(visual, spec);
-    } catch (error: unknown) {
+    } catch (error) {
       console.warn(`[tankThumbs] top-down mask build failed for ${id}:`, errorMessage(error));
     }
     if (!entry) {

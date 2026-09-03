@@ -48,6 +48,7 @@ export interface GarageArchitectureStats {
   horizonMaxHeightM: number;
   groundCover: number;
   structures: number;
+  wrecks: number;
   facilityProps: number;
   facilityStations: number;
   approachLabel: string;
@@ -61,6 +62,7 @@ export interface GarageArchitectureStats {
   maxExteriorSupportGapM: number;
   looseParts: number;
   railSegments: number;
+  serviceVehicles: number;
   placementZones: number;
   openingViewFrames: number;
   structuralConnections: number;
@@ -79,6 +81,47 @@ export interface GarageArchitectureStats {
 
 const CACHE_LIMIT = 2;
 const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
+
+function numericStat(value: number | string | null | undefined): number {
+  return Number(value) || 0;
+}
+
+function textStat(value: string | null | undefined): string {
+  return String(value || '');
+}
+
+function listStat<T>(value: readonly T[] | null | undefined): readonly T[] {
+  return value || [];
+}
+
+function nullableStat<T>(value: T | null | undefined): T | null {
+  return value ?? null;
+}
+
+function drawCallStat(
+  drawCalls: number | null | undefined,
+  objects: number | null | undefined,
+): number {
+  return numericStat(drawCalls) || numericStat(objects);
+}
+
+function treeDetailTierStat(value: string | null | undefined): GarageArchitectureStats['treeDetailTier'] {
+  return value === 'battlefield-near' || value === 'battlefield-far' ? value : 'none';
+}
+
+function horizonStyleStat(value: string | null | undefined): GarageArchitectureStats['horizonStyle'] {
+  switch (value) {
+    case 'flat':
+    case 'rolling':
+    case 'urban':
+    case 'coastal':
+    case 'alpine':
+    case 'mesa':
+      return value;
+    default:
+      return 'none';
+  }
+}
 
 function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
   const root = new THREE.Group();
@@ -225,76 +268,69 @@ export function createGarageArchitectureController(
     const root = active?.root;
     const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
     const selectedReady = !!selected && root?.userData.architectureKey === selected.architecture;
+    const data = selectedReady ? root?.userData || {} : {};
     return {
       key: selected?.architecture || 'field_shed',
       mapId: selected?.mapId || 'verdant',
-      mode: selectedReady && root?.userData.mode === 'verdant-workshop'
+      mode: data.mode === 'verdant-workshop'
         ? 'verdant-workshop' : 'garage-environment',
-      signature: selectedReady ? String(root?.userData.signature || '') : '',
-      objects: selectedReady ? Number(root?.userData.objects || 0) : 0,
-      drawCalls: selectedReady ? Number(root?.userData.drawCalls || root?.userData.objects || 0) : 0,
-      triangles: selectedReady ? Number(root?.userData.triangles || 0) : 0,
+      signature: textStat(data.signature),
+      objects: numericStat(data.objects),
+      drawCalls: drawCallStat(data.drawCalls, data.objects),
+      triangles: numericStat(data.triangles),
       cached: cache.size,
       cacheLimit: CACHE_LIMIT,
       residentTextureSets: textureStats.residentSets,
       referencedTextureSets: textureStats.referencedSets,
-      enclosingSurfaces: selectedReady ? Number(root?.userData.enclosingSurfaces || 0) : 0,
-      ready: selectedReady && root?.userData.ready === true,
-      source: selectedReady && root?.userData.source === 'verdant-workshop'
+      enclosingSurfaces: numericStat(data.enclosingSurfaces),
+      ready: data.ready === true,
+      source: data.source === 'verdant-workshop'
         ? 'verdant-workshop' : 'authentic-garage-scene-pack',
-      sourceBeat: selectedReady ? String(root?.userData.sourceBeat || '') : '',
-      sourceStructure: selectedReady ? String(root?.userData.sourceStructure || '') : '',
-      sourceLandmarkLocal: selectedReady ? root?.userData.sourceLandmarkLocal || null : null,
-      distinctiveElements: selectedReady ? root?.userData.distinctiveElements || [] : [],
-      landmarkHeightM: selectedReady ? Number(root?.userData.landmarkHeightM || 0) : 0,
-      serviceFrame: selectedReady ? String(root?.userData.serviceFrame || '') : '',
-      terrainProfile: selectedReady ? String(root?.userData.terrainProfile || '') : '',
-      terrainSourceAnchor: selectedReady ? root?.userData.terrainSourceAnchor || null : null,
-      terrainVertices: selectedReady ? Number(root?.userData.terrainVertices || 0) : 0,
-      textureSets: selectedReady ? root?.userData.textureSets || [] : [],
-      treeSpecies: selectedReady ? root?.userData.treeSpecies || [] : [],
-      trees: selectedReady ? Number(root?.userData.trees || 0) : 0,
-      treeDetailTier: selectedReady
-        ? root?.userData.treeDetailTier || 'none' : 'none',
-      backdropLayers: selectedReady ? Number(root?.userData.backdropLayers || 0) : 0,
-      horizonStyle: selectedReady ? root?.userData.horizonStyle || 'none' : 'none',
-      horizonMaxHeightM: selectedReady ? Number(root?.userData.horizonMaxHeightM || 0) : 0,
-      groundCover: selectedReady ? Number(root?.userData.groundCover || 0) : 0,
-      structures: selectedReady ? Number(root?.userData.structures || 0) : 0,
-      facilityProps: selectedReady ? Number(root?.userData.facilityProps || 0) : 0,
-      facilityStations: selectedReady ? Number(root?.userData.facilityStations || 0) : 0,
-      approachLabel: selectedReady ? String(root?.userData.approachLabel || '') : '',
-      approachStyle: selectedReady ? String(root?.userData.approachStyle || '') : '',
-      approachSegments: selectedReady ? Number(root?.userData.approachSegments || 0) : 0,
-      approachDetails: selectedReady ? Number(root?.userData.approachDetails || 0) : 0,
-      approachConnected: selectedReady && root?.userData.approachConnected === true,
-      approachGroundErrorM: selectedReady
-        ? Number(root?.userData.approachGroundErrorM || 0) : 0,
-      connectedExteriorParts: selectedReady
-        ? Number(root?.userData.connectedExteriorParts || 0) : 0,
-      connectedExteriorBuildings: selectedReady
-        ? Number(root?.userData.connectedExteriorBuildings || 0) : 0,
-      maxExteriorSupportGapM: selectedReady
-        ? Number(root?.userData.maxExteriorSupportGapM || 0) : 0,
-      looseParts: selectedReady ? Number(root?.userData.looseParts || 0) : 0,
-      railSegments: selectedReady ? Number(root?.userData.railSegments || 0) : 0,
-      placementZones: selectedReady ? Number(root?.userData.placementZones || 0) : 0,
-      openingViewFrames: selectedReady ? Number(root?.userData.openingViewFrames || 0) : 0,
-      structuralConnections: selectedReady
-        ? Number(root?.userData.structuralConnections || 0) : 0,
-      unsupportedParts: selectedReady ? Number(root?.userData.unsupportedParts || 0) : 0,
-      heavyLiftSystems: selectedReady ? Number(root?.userData.heavyLiftSystems || 0) : 0,
-      operationalMachines: selectedReady ? Number(root?.userData.operationalMachines || 0) : 0,
-      servicePurposeTags: selectedReady ? root?.userData.servicePurposeTags || [] : [],
-      facilityMaterialClasses: selectedReady
-        ? Number(root?.userData.facilityMaterialClasses || 0) : 0,
-      openingSightlineIntrusions: selectedReady
-        ? Number(root?.userData.openingSightlineIntrusions || 0) : 0,
-      placementOverlaps: selectedReady ? Number(root?.userData.placementOverlaps || 0) : 0,
-      maxGroundContactErrorM: selectedReady
-        ? Number(root?.userData.maxGroundContactErrorM || 0) : 0,
-      platformGroundClearanceM: selectedReady
-        ? Number(root?.userData.platformGroundClearanceM || 0) : 0,
+      sourceBeat: textStat(data.sourceBeat),
+      sourceStructure: textStat(data.sourceStructure),
+      sourceLandmarkLocal: nullableStat(data.sourceLandmarkLocal),
+      distinctiveElements: listStat<string>(data.distinctiveElements),
+      landmarkHeightM: numericStat(data.landmarkHeightM),
+      serviceFrame: textStat(data.serviceFrame),
+      terrainProfile: textStat(data.terrainProfile),
+      terrainSourceAnchor: nullableStat(data.terrainSourceAnchor),
+      terrainVertices: numericStat(data.terrainVertices),
+      textureSets: listStat<string>(data.textureSets),
+      treeSpecies: listStat<string>(data.treeSpecies),
+      trees: numericStat(data.trees),
+      treeDetailTier: treeDetailTierStat(data.treeDetailTier),
+      backdropLayers: numericStat(data.backdropLayers),
+      horizonStyle: horizonStyleStat(data.horizonStyle),
+      horizonMaxHeightM: numericStat(data.horizonMaxHeightM),
+      groundCover: numericStat(data.groundCover),
+      structures: numericStat(data.structures),
+      wrecks: numericStat(data.wrecks),
+      facilityProps: numericStat(data.facilityProps),
+      facilityStations: numericStat(data.facilityStations),
+      approachLabel: textStat(data.approachLabel),
+      approachStyle: textStat(data.approachStyle),
+      approachSegments: numericStat(data.approachSegments),
+      approachDetails: numericStat(data.approachDetails),
+      approachConnected: data.approachConnected === true,
+      approachGroundErrorM: numericStat(data.approachGroundErrorM),
+      connectedExteriorParts: numericStat(data.connectedExteriorParts),
+      connectedExteriorBuildings: numericStat(data.connectedExteriorBuildings),
+      maxExteriorSupportGapM: numericStat(data.maxExteriorSupportGapM),
+      looseParts: numericStat(data.looseParts),
+      railSegments: numericStat(data.railSegments),
+      serviceVehicles: numericStat(data.serviceVehicles),
+      placementZones: numericStat(data.placementZones),
+      openingViewFrames: numericStat(data.openingViewFrames),
+      structuralConnections: numericStat(data.structuralConnections),
+      unsupportedParts: numericStat(data.unsupportedParts),
+      heavyLiftSystems: numericStat(data.heavyLiftSystems),
+      operationalMachines: numericStat(data.operationalMachines),
+      servicePurposeTags: listStat<string>(data.servicePurposeTags),
+      facilityMaterialClasses: numericStat(data.facilityMaterialClasses),
+      openingSightlineIntrusions: numericStat(data.openingSightlineIntrusions),
+      placementOverlaps: numericStat(data.placementOverlaps),
+      maxGroundContactErrorM: numericStat(data.maxGroundContactErrorM),
+      platformGroundClearanceM: numericStat(data.platformGroundClearanceM),
       outdoorWarmReady: selected?.architecture === 'field_shed'
         || warmedArchitectures.has(selected?.architecture || 'field_shed'),
       lastBuildMs,

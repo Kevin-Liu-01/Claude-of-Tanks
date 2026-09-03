@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 const OFFICIAL_ORIGINS = new Set([
   'https://cot.kevinliu.studio',
   'https://claudeoftanks.kevinliu.studio',
@@ -16,7 +17,7 @@ export type IceConfigHandler = (
   response: ServerResponse,
 ) => Promise<void>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
@@ -26,7 +27,7 @@ function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
   return new Set([...OFFICIAL_ORIGINS, ...extra]);
 }
 
-function send(response: ServerResponse, status: number, body: unknown): void {
+function send(response: ServerResponse, status: number, body: RuntimeValue): void {
   response.statusCode = status;
   response.setHeader('content-type', 'application/json; charset=utf-8');
   response.setHeader('cache-control', 'private, no-store, max-age=0');
@@ -34,12 +35,12 @@ function send(response: ServerResponse, status: number, body: unknown): void {
   response.end(JSON.stringify(body));
 }
 
-function validIceServers(value: unknown): value is RTCIceServer[] {
-  return Array.isArray(value) && value.length > 0 && value.every((server: unknown) => {
+function validIceServers(value: RuntimeValue): value is RTCIceServer[] {
+  return Array.isArray(value) && value.length > 0 && value.every((server: RuntimeValue) => {
     if (!isRecord(server)) return false;
-    const urls: unknown[] = Array.isArray(server.urls) ? server.urls : [server.urls];
+    const urls: RuntimeValue[] = Array.isArray(server.urls) ? server.urls : [server.urls];
     return urls.length > 0 && urls.every(
-      (url: unknown) => typeof url === 'string' && /^(?:stun|turns?):/i.test(url),
+      (url: RuntimeValue) => typeof url === 'string' && /^(?:stun|turns?):/i.test(url),
     );
   });
 }
@@ -63,7 +64,7 @@ export function createIceConfigHandler({
     const staticJson = String(env.COT_TURN_ICE_SERVERS_JSON || '').trim();
     if (staticJson) {
       try {
-        const iceServers: unknown = JSON.parse(staticJson);
+        const iceServers: RuntimeValue = JSON.parse(staticJson);
         if (!validIceServers(iceServers)) throw new Error('invalid ICE server list');
         send(response, 200, { iceServers, relayOnly: false });
       } catch (_) {
@@ -99,7 +100,7 @@ export function createIceConfigHandler({
         send(response, 503, { error: 'turn_service_unavailable' });
         return;
       }
-      const body: unknown = await upstream.json();
+      const body: RuntimeValue = await upstream.json();
       const iceServers = isRecord(body) ? body.iceServers : null;
       if (!validIceServers(iceServers)) {
         send(response, 503, { error: 'turn_service_invalid' });

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 
 import type { AimController, AimFrame } from './aimController.ts';
@@ -31,14 +32,14 @@ type HudUpdateRuntime = Pick<HudRuntime, 'update'>;
 type DamagePanelRuntime = Pick<DamagePanelController, 'update'>;
 
 interface NetworkBridgeView {
-  entities: ReadonlyMap<string, unknown>;
+  entities: ReadonlyMap<string, RuntimeValue>;
   roster?: HudTank[];
-  setPerspective?(entityId: string): unknown;
+  setPerspective?(entityId: string): RuntimeValue;
 }
 
 interface NetworkSessionView {
   match: {
-    client?: { getStats?(): Record<string, unknown> | null } | null;
+    client?: { getStats?(): Record<string, RuntimeValue> | null } | null;
   } | null;
   spectator: boolean;
   bridge: NetworkBridgeView | null;
@@ -57,7 +58,7 @@ interface CameraRigView {
   mode: string;
 }
 
-function isHudTankEntity(value: unknown): value is HudTankEntity {
+function isHudTankEntity(value: RuntimeValue): value is HudTankEntity {
   return !!value && typeof value === 'object'
     && typeof Reflect.get(value, 'id') === 'string'
     && typeof Reflect.get(value, 'team') === 'string'
@@ -87,7 +88,7 @@ export interface BattleHudFrameInfo<TEntity extends HudTankEntity = HudTankEntit
   player: TEntity | null;
   tanks: TEntity[];
   rosterTanks?: HudTank[];
-  shells: unknown[];
+  shells: RuntimeValue[];
   aim: AimFrame;
   killfeedHandledByBus: boolean;
   spotting: BattleHudSpotFrame<TEntity> | null;
@@ -206,7 +207,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   const tanks = (): TEntity[] => game.tanks;
   const player = (): TEntity | null => game.player;
 
-  const bridgeEntity = (value: unknown): TEntity | null => {
+  const bridgeEntity = (value: RuntimeValue): TEntity | null => {
     // Network presentation entities implement the same HUD contract as the
     // local roster. Validate that contract at the transport boundary; the
     // generic identity itself cannot be recovered from erased wire data.
@@ -229,21 +230,15 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.matchModeState = game.matchModeState;
   };
 
-  const update = (inBattle: boolean, killcamActive: boolean): void => {
-    const bridge = networkSession.bridge;
-    const observerFocus = networkSession.spectator && killcam.spectate.active
-      ? bridgeEntity(bridge?.entities.get(killcam.spectate.targetId || ''))
-      : null;
-    const focus = player() || observerFocus;
-    if (observerFocus) bridge?.setPerspective?.(observerFocus.id);
+  const observerFocus = (bridge: NetworkBridgeView | null): TEntity | null => {
+    if (!networkSession.spectator || !killcam.spectate.active) return null;
+    return bridgeEntity(bridge?.entities.get(killcam.spectate.targetId || ''));
+  };
 
-    // Use both the frame-top latch and the live state. A replay can begin in
-    // the simulation step immediately before this operation.
-    if (!inBattle || !focus || killcamActive || killcam.isActive()) {
-      armorAimOverlay.hide();
-      return;
-    }
-
+  const writeFrameInfo = (
+    focus: TEntity,
+    bridge: NetworkBridgeView | null,
+  ): void => {
     frameInfo.timeS = game.timeS;
     const rttMs = networkSession.match?.client?.getStats?.()?.rttMs;
     frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
@@ -254,34 +249,55 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     updateSpotting(focus);
+  };
 
+  const collectArmorTargets = (localPlayer: TEntity, enabled: boolean): void => {
+    armorTargets.length = 0;
+    if (!enabled) return;
+    for (const entity of tanks()) {
+      if (entity === localPlayer || entity.team === localPlayer.team) continue;
+      if (entity.combat?.destroyed || !entity.visual?.root?.visible) continue;
+      armorTargets.push(entity);
+    }
+  };
+
+  const updateArmorOverlay = (localPlayer: TEntity | null): void => {
+    if (!localPlayer) {
+      armorAimOverlay.hide();
+      return;
+    }
+    const armorEnabled = !!input.getSettings().armorAimOverlay;
+    const armorScoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
+    collectArmorTargets(localPlayer, armorEnabled && armorScoped);
+    const shellSlot = localPlayer.combat?.shellSlot ?? 0;
+    armorAimOverlay.update({
+      enabled: armorEnabled,
+      scoped: armorScoped,
+      targets: armorTargets,
+      shellSpec: localPlayer.spec?.gun?.shells?.[shellSlot],
+      muzzle: muzzleScratch,
+      nowMs: now(),
+    });
+  };
+
+  const update = (inBattle: boolean, killcamActive: boolean): void => {
+    const bridge = networkSession.bridge;
+    const observer = observerFocus(bridge);
+    const focus = player() || observer;
+    if (observer) bridge?.setPerspective?.(observer.id);
+
+    // Use both the frame-top latch and the live state. A replay can begin in
+    // the simulation step immediately before this operation.
+    if (!inBattle || !focus || killcamActive || killcam.isActive()) {
+      armorAimOverlay.hide();
+      return;
+    }
+
+    writeFrameInfo(focus, bridge);
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
     requireHud().update(frameInfo);
-
-    if (localPlayer) {
-      const armorEnabled = !!input.getSettings().armorAimOverlay;
-      const armorScoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
-      armorTargets.length = 0;
-      if (armorEnabled && armorScoped) {
-        for (const entity of tanks()) {
-          if (entity === localPlayer || entity.team === localPlayer.team ||
-              entity.combat?.destroyed || !entity.visual?.root?.visible) continue;
-          armorTargets.push(entity);
-        }
-      }
-      const shellSlot = localPlayer.combat?.shellSlot ?? 0;
-      armorAimOverlay.update({
-        enabled: armorEnabled,
-        scoped: armorScoped,
-        targets: armorTargets,
-        shellSpec: localPlayer.spec?.gun?.shells?.[shellSlot],
-        muzzle: muzzleScratch,
-        nowMs: now(),
-      });
-    } else {
-      armorAimOverlay.hide();
-    }
+    updateArmorOverlay(localPlayer);
     if (focus.combat) requireDamagePanel().update(focus.combat);
   };
 

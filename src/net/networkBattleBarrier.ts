@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { NetworkSnapshot } from './networkFramePump.ts';
 
 interface ReadyClientLike {
@@ -6,7 +7,7 @@ interface ReadyClientLike {
 
 interface ReadyMatchLike {
   readonly client?: ReadyClientLike | null;
-  ready(): unknown;
+  ready(): RuntimeValue;
 }
 
 type WaitForSnapshot = (
@@ -18,8 +19,8 @@ type WaitForSnapshot = (
 interface NetworkBattleBarrierOptions {
   getMatch: () => ReadyMatchLike | null;
   waitForSnapshot: WaitForSnapshot;
-  scheduleRepeating?: (callback: () => void, intervalMs: number) => unknown;
-  cancelRepeating?: (handle: unknown) => void;
+  scheduleRepeating?: (callback: () => void, intervalMs: number) => RuntimeValue;
+  cancelRepeating?: (handle: RuntimeValue) => void;
   retryMs?: number;
   timeoutMs?: number;
 }
@@ -57,7 +58,7 @@ export function createNetworkBattleBarrier({
     throw new TypeError('network battle barrier intervals must be positive and finite');
   }
 
-  let readyLease: unknown = null;
+  let readyLease: RuntimeValue = null;
   let generation = 0;
 
   const cancel = () => {
@@ -76,7 +77,7 @@ export function createNetworkBattleBarrier({
           const entities = Array.isArray(snapshot.entities) ? snapshot.entities : [];
           return spectator
             ? entities.length > 0
-            : entities.some((entity: unknown) => entity
+            : entities.some((entity: RuntimeValue) => entity
               && typeof entity === 'object'
               && 'id' in entity
               && entity.id === viewerId);

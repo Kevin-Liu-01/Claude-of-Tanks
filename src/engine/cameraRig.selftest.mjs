@@ -3,13 +3,16 @@ import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 import { createCameraRig } from './cameraRig.ts';
 
 const camera = new PerspectiveCamera(60, 16 / 9, 0.1, 2000);
+const visualRoot = new Object3D();
+const turretAnchor = new Vector3(0, 2, 0);
+const gunAnchor = new Vector3(0, 1.7, 0.2);
 const player = {
   state: { pos: new Vector3(0, 0, 0), yaw: 0, turretYaw: 0 },
   input: { aimPoint: new Vector3() },
   visual: {
-    root: new Object3D(),
-    turretTopWorld(out) { return out.set(0, 2, 0); },
-    gunPivotWorld(out) { return out.set(0, 1.7, 0.2); },
+    root: visualRoot,
+    turretTopWorld(out) { return out.copy(turretAnchor).applyMatrix4(visualRoot.matrixWorld); },
+    gunPivotWorld(out) { return out.copy(gunAnchor).applyMatrix4(visualRoot.matrixWorld); },
   },
 };
 const rig = createCameraRig(camera, {
@@ -25,7 +28,14 @@ const idle = {
   shiftPressed: false,
 };
 
+visualRoot.position.set(-1500, 0, -1500);
+visualRoot.updateMatrixWorld(true);
+visualRoot.position.set(40, 0, -400);
 rig.snapArcade(2, 0, -0.1);
+assert.equal(camera.position.x, 40,
+  'reveal snap samples the moved battle root instead of its stale Garage matrix');
+assert.ok(camera.position.z < -410 && camera.position.z > -420,
+  'reveal snap starts beside the battle spawn before the renderer traverses the scene');
 const initialAim = rig.aimPoint.clone();
 const initialDirection = new Vector3();
 camera.getWorldDirection(initialDirection);

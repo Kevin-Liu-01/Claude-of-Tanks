@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Canonical private/LAN invitation URLs.
  *
@@ -17,10 +18,10 @@ export interface RoomInvite {
 }
 
 export interface CreateRoomInviteOptions {
-  roomCode?: unknown;
-  mode?: unknown;
-  hostName?: unknown;
-  baseUrl?: unknown;
+  roomCode?: RuntimeValue;
+  mode?: RuntimeValue;
+  hostName?: RuntimeValue;
+  baseUrl?: RuntimeValue;
 }
 
 const INVITE_ROOM_PARAM = 'room';
@@ -28,17 +29,17 @@ const INVITE_MODE_PARAM = 'mode';
 const INVITE_HOST_PARAM = 'host';
 const INVITE_MODES = new Set<RoomInviteMode>(['private', 'lan']);
 
-function isInviteMode(value: unknown): value is RoomInviteMode {
+function isInviteMode(value: RuntimeValue): value is RoomInviteMode {
   return typeof value === 'string' && INVITE_MODES.has(value as RoomInviteMode);
 }
 
-function asUrl(value: unknown): URL {
+function asUrl(value: RuntimeValue): URL {
   if (value instanceof URL) return new URL(value.href);
   return new URL(String(value || ''), 'https://invalid.local/');
 }
 
 /** Parse a private/LAN room invite without trusting raw URL input. */
-export function parseRoomInvite(value: unknown): RoomInvite | null {
+export function parseRoomInvite(value: RuntimeValue): RoomInvite | null {
   let url: URL;
   try {
     url = asUrl(value);
@@ -77,7 +78,7 @@ export function createRoomInviteUrl({
 }
 
 /** Human invitation heading. Unnamed legacy links retain a useful fallback. */
-export function roomInviteTitle(hostName: unknown): string {
+export function roomInviteTitle(hostName: RuntimeValue): string {
   const inviteHost = normalizePlayerName(hostName);
   return inviteHost ? `Join ${inviteHost}’s Game` : 'Join a Private Game';
 }

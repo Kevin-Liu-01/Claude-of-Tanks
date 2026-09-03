@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { Material, Object3D, Scene, Texture } from 'three';
 import type { ArmorOverlayTarget } from './armorAimOverlay.ts';
 
@@ -7,12 +8,12 @@ export type VisualPredicate<Entity extends BattleVisualEntity = BattleVisualEnti
 ) => boolean;
 
 interface BattleVisualRoot extends Object3D {
-  userData: Record<string, unknown>;
+  userData: Record<string, RuntimeValue>;
 }
 
 interface BattleVisual {
   root?: BattleVisualRoot | null;
-  syncFromState?: (state: unknown) => void;
+  syncFromState?: (state: object) => void;
   setVisible?: (visible: boolean) => void;
   prewarmBurn?: () => Object3D[] | void;
   getWreckFallbackMaterial?: () => Material | null;
@@ -48,7 +49,7 @@ interface TextureUploadRenderer {
 }
 
 interface ArmorAimWarmOwner<Entity extends BattleVisualEntity> {
-  prime(entity: Entity): unknown;
+  prime(entity: Entity): RuntimeValue;
   warm(): () => void;
 }
 
@@ -69,7 +70,7 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
   scene: Scene;
   renderer: TextureUploadRenderer;
   anisotropy: number;
-  ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
+  ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
   nextStagedBake(
     game: TGame,
     predicate?: VisualPredicate<TGame['tanks'][number]> | null,
@@ -78,14 +79,14 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
     game: TGame,
     count: number,
     predicate?: VisualPredicate<TGame['tanks'][number]> | null,
-  ): unknown;
-  getSpec(specId: string): unknown;
+  ): RuntimeValue;
+  getSpec(specId: string): RuntimeValue;
   prebakeSharedTextures(
-    spec: unknown,
+    spec: RuntimeValue,
     anisotropy: number,
     quality: string,
     tick: () => Promise<void>,
-  ): Promise<unknown>;
+  ): Promise<RuntimeValue>;
   armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
   forwardProgramWarm: ForwardCompileOwner;
   recordTiming?: (timing: VisualLoadTiming) => void;
@@ -144,7 +145,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
         ? candidate.material : (candidate.material ? [candidate.material] : []);
       for (const material of materials) {
         for (const key of Object.keys(material)) {
-          const value = Reflect.get(material, key) as unknown;
+          const value = Reflect.get(material, key) as RuntimeValue;
           if ((value as Texture | undefined)?.isTexture) textures.add(value as Texture);
         }
       }

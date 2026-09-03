@@ -69,6 +69,39 @@ const STACK_RESTITUTION = 0.07;
 const _boundsA = new Float64Array(3); // minY, maxY, centerY
 const _boundsB = new Float64Array(3);
 
+interface BodyContactFrame {
+  active: boolean;
+  halfWidth: number;
+  halfLength: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  centerX: number;
+  centerZ: number;
+}
+
+const _contactFramePool: BodyContactFrame[] = [];
+
+function contactFrame(index: number): BodyContactFrame {
+  let frame = _contactFramePool[index];
+  if (!frame) {
+    frame = {
+      active: false,
+      halfWidth: 0,
+      halfLength: 0,
+      forwardX: 0,
+      forwardZ: 0,
+      rightX: 0,
+      rightZ: 0,
+      centerX: 0,
+      centerZ: 0,
+    };
+    _contactFramePool[index] = frame;
+  }
+  return frame;
+}
+
 function clamp(value: number, lo: number, hi: number): number {
   return value < lo ? lo : value > hi ? hi : value;
 }
@@ -110,10 +143,73 @@ function axisSeparates(
   return distance >= aRadius + bRadius;
 }
 
+function includeHullVerticalBounds(
+  state: TankBodyState,
+  hull: readonly number[],
+  cosPitch: number,
+  sinPitch: number,
+  cosRoll: number,
+  sinRoll: number,
+  out: Float64Array,
+): void {
+  for (let index = 0; index < hull.length; index += 3) {
+    const rolledY = hull[index] * sinRoll + hull[index + 1] * cosRoll;
+    const worldY = state.pos.y + rolledY * cosPitch - hull[index + 2] * sinPitch;
+    if (worldY < out[0]) out[0] = worldY;
+    if (worldY > out[1]) out[1] = worldY;
+  }
+}
+
+function includeTurretVerticalBounds(
+  entity: TankBodyEntity,
+  turret: readonly number[],
+  cosPitch: number,
+  sinPitch: number,
+  cosRoll: number,
+  sinRoll: number,
+  out: Float64Array,
+): void {
+  const state = entity.state;
+  const pivot = entity.spec.armor?.turretPivot || [0, 0, 0];
+  const turretYaw = state.turretYaw || 0;
+  const turretCos = Math.cos(turretYaw);
+  const turretSin = Math.sin(turretYaw);
+  for (let index = 0; index < turret.length; index += 3) {
+    const x = turret[index];
+    const z = turret[index + 2];
+    const localX = pivot[0] + x * turretCos + z * turretSin;
+    const localY = pivot[1] + turret[index + 1];
+    const localZ = pivot[2] - x * turretSin + z * turretCos;
+    const rolledY = localX * sinRoll + localY * cosRoll;
+    const worldY = state.pos.y + rolledY * cosPitch - localZ * sinPitch;
+    if (worldY < out[0]) out[0] = worldY;
+    if (worldY > out[1]) out[1] = worldY;
+  }
+}
+
+function setFallbackVerticalBounds(
+  entity: TankBodyEntity,
+  cosPitch: number,
+  sinPitch: number,
+  cosRoll: number,
+  sinRoll: number,
+  out: Float64Array,
+): void {
+  const state = entity.state;
+  const dims = entity.spec.dims;
+  const centerOffsetY = dims.heightM * 0.5 * cosRoll * cosPitch;
+  const extentY = Math.abs(sinRoll * cosPitch) * dims.widthM * 0.5 +
+    Math.abs(cosRoll * cosPitch) * dims.heightM * 0.5 +
+    Math.abs(sinPitch) * dims.hullLengthM * 0.5;
+  const centerY = state.pos.y + centerOffsetY;
+  out[0] = centerY - extentY;
+  out[1] = centerY + extentY;
+  out[2] = centerY;
+}
+
 /** Exact world-Y interval of the YXZ-oriented closed armor shell. */
 function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array {
   const state = entity.state;
-  const dims = entity.spec.dims;
   const pitch = state.visualPitch || 0;
   const roll = state.visualRoll || 0;
   const cosPitch = Math.cos(pitch);
@@ -123,49 +219,19 @@ function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array
   const contact = entity.spec.armor?.bodyContactPoints;
   const hull = contact?.hull;
   if (hull && hull.length >= 3) {
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let index = 0; index < hull.length; index += 3) {
-      // Euler YXZ: yaw does not affect world Y. Roll is applied before the
-      // pitch rotation, matching movement.ts pointCloudSupportY.
-      const rolledY = hull[index] * sinRoll + hull[index + 1] * cosRoll;
-      const worldY = state.pos.y + rolledY * cosPitch - hull[index + 2] * sinPitch;
-      if (worldY < minY) minY = worldY;
-      if (worldY > maxY) maxY = worldY;
-    }
+    out[0] = Infinity;
+    out[1] = -Infinity;
+    includeHullVerticalBounds(state, hull, cosPitch, sinPitch, cosRoll, sinRoll, out);
     const turret = contact?.turret;
     if (turret && turret.length >= 3) {
-      const pivot = entity.spec.armor?.turretPivot || [0, 0, 0];
-      const turretYaw = state.turretYaw || 0;
-      const turretCos = Math.cos(turretYaw);
-      const turretSin = Math.sin(turretYaw);
-      for (let index = 0; index < turret.length; index += 3) {
-        const x = turret[index];
-        const z = turret[index + 2];
-        const localX = pivot[0] + x * turretCos + z * turretSin;
-        const localY = pivot[1] + turret[index + 1];
-        const localZ = pivot[2] - x * turretSin + z * turretCos;
-        const rolledY = localX * sinRoll + localY * cosRoll;
-        const worldY = state.pos.y + rolledY * cosPitch - localZ * sinPitch;
-        if (worldY < minY) minY = worldY;
-        if (worldY > maxY) maxY = worldY;
-      }
+      includeTurretVerticalBounds(entity, turret, cosPitch, sinPitch, cosRoll, sinRoll, out);
     }
-    out[0] = minY;
-    out[1] = maxY;
-    out[2] = (minY + maxY) * 0.5;
+    out[2] = (out[0] + out[1]) * 0.5;
     return out;
   }
 
   // Synthetic/unfinalized fixtures retain a conservative dimensions box.
-  const centerOffsetY = dims.heightM * 0.5 * cosRoll * cosPitch;
-  const extentY = Math.abs(sinRoll * cosPitch) * dims.widthM * 0.5 +
-    Math.abs(cosRoll * cosPitch) * dims.heightM * 0.5 +
-    Math.abs(sinPitch) * dims.hullLengthM * 0.5;
-  const centerY = state.pos.y + centerOffsetY;
-  out[0] = centerY - extentY;
-  out[1] = centerY + extentY;
-  out[2] = centerY;
+  setFallbackVerticalBounds(entity, cosPitch, sinPitch, cosRoll, sinRoll, out);
   return out;
 }
 
@@ -225,6 +291,175 @@ function moveRootY(state: TankBodyState, delta: number): void {
   state._ride.y = state.pos.y;
 }
 
+function prepareContactFrame(entity: TankBodyEntity | null | undefined, index: number): void {
+  const frame = contactFrame(index);
+  frame.active = !!entity?.state && !!entity.spec?.dims && entity.modeActive !== false;
+  if (!frame.active || !entity) return;
+  const state = entity.state;
+  const rect = tankContactRect(entity.spec);
+  frame.halfWidth = rect.halfWidth;
+  frame.halfLength = rect.halfLength;
+  frame.forwardX = Math.sin(state.yaw);
+  frame.forwardZ = Math.cos(state.yaw);
+  frame.rightX = frame.forwardZ;
+  frame.rightZ = -frame.forwardX;
+  frame.centerX = state.pos.x + frame.rightX * rect.centerX + frame.forwardX * rect.centerZ;
+  frame.centerZ = state.pos.z + frame.rightZ * rect.centerX + frame.forwardZ * rect.centerZ;
+}
+
+function prepareContactFrames(entities: readonly TankBodyEntity[]): void {
+  for (let index = 0; index < entities.length; index++) {
+    prepareContactFrame(entities[index], index);
+  }
+}
+
+function horizontalBodiesOverlap(a: BodyContactFrame, b: BodyContactFrame): boolean {
+  const dx = a.centerX - b.centerX;
+  const dz = a.centerZ - b.centerZ;
+  const outer = Math.hypot(a.halfLength, a.halfWidth) + Math.hypot(b.halfLength, b.halfWidth);
+  if (dx * dx + dz * dz > outer * outer) return false;
+  return rectsOverlap(
+    a.centerX, a.centerZ,
+    a.forwardX, a.forwardZ,
+    a.rightX, a.rightZ,
+    a.halfLength, a.halfWidth,
+    b.centerX, b.centerZ,
+    b.forwardX, b.forwardZ,
+    b.rightX, b.rightZ,
+    b.halfLength, b.halfWidth,
+  );
+}
+
+function correctVerticalOverlap(
+  upper: TankBodyEntity,
+  lower: TankBodyEntity,
+  penetration: number,
+  upperMass: number,
+  lowerMass: number,
+  lowerLocked: boolean,
+): void {
+  const correction = Math.max(0, penetration + CONTACT_SLOP_M);
+  if (correction <= 0) return;
+  const upperShare = lowerLocked ? 1 : lowerMass / (upperMass + lowerMass);
+  moveRootY(upper.state, correction * upperShare);
+  if (!lowerLocked) moveRootY(lower.state, -correction * (1 - upperShare));
+}
+
+function resolveVerticalImpulse(
+  upper: TankBodyEntity,
+  lower: TankBodyEntity,
+  upperMass: number,
+  lowerMass: number,
+  lowerLocked: boolean,
+): number {
+  const upperV = upper.state.verticalSpeed || upper.state._ride.v || 0;
+  const lowerV = lower.state.verticalSpeed || lower.state._ride.v || 0;
+  const closing = Math.max(0, lowerV - upperV);
+  if (closing > 0) {
+    const invUpper = 1 / upperMass;
+    const invLower = lowerLocked ? 0 : 1 / lowerMass;
+    const impulse = (1 + STACK_RESTITUTION) * closing / (invUpper + invLower);
+    setVerticalVelocity(upper.state, upperV + impulse * invUpper);
+    if (!lowerLocked) setVerticalVelocity(lower.state, lowerV - impulse * invLower);
+  } else if (upper.state.verticalSpeed < lowerV) {
+    setVerticalVelocity(upper.state, lowerV);
+  }
+  return closing;
+}
+
+function markDynamicSupport(upper: TankBodyEntity): ReturnType<typeof ensureBodyState> {
+  const body = ensureBodyState(upper.state);
+  body.dynamicSupport = true;
+  upper.state.grounded = false;
+  upper.state._ride.grounded = false;
+  return body;
+}
+
+function applyAngularImpact<Entity extends TankBodyEntity>(
+  upper: Entity,
+  lower: Entity,
+  upperFrame: BodyContactFrame,
+  upperBody: ReturnType<typeof ensureBodyState>,
+  closing: number,
+  onImpact: TankBodyImpact<Entity> | null,
+): void {
+  if (closing <= 0.8) return;
+  const centerDx = upper.state.pos.x - lower.state.pos.x;
+  const centerDz = upper.state.pos.z - lower.state.pos.z;
+  const rightX = Math.cos(upper.state.yaw);
+  const rightZ = -Math.sin(upper.state.yaw);
+  const forwardX = Math.sin(upper.state.yaw);
+  const forwardZ = Math.cos(upper.state.yaw);
+  const leverRight = clamp(
+    -(centerDx * rightX + centerDz * rightZ) / Math.max(upperFrame.halfWidth, 0.1),
+    -1,
+    1,
+  );
+  const leverForward = clamp(
+    -(centerDx * forwardX + centerDz * forwardZ) / Math.max(upperFrame.halfLength, 0.1),
+    -1,
+    1,
+  );
+  const pitchKick = clamp(
+    leverForward * closing * STACK_ANGULAR_GAIN,
+    -STACK_ANGULAR_KICK_MAX,
+    STACK_ANGULAR_KICK_MAX,
+  );
+  const rollKick = clamp(
+    leverRight * closing * STACK_ANGULAR_GAIN,
+    -STACK_ANGULAR_KICK_MAX,
+    STACK_ANGULAR_KICK_MAX,
+  );
+  upper.state._spring.pitchV += pitchKick;
+  upper.state._spring.rollV += rollKick;
+  const upY = Math.cos(upper.state.visualPitch) * Math.cos(upper.state.visualRoll);
+  if (Math.abs(pitchKick) + Math.abs(rollKick) >= STACK_TUMBLE_KICK || upY < 0.7) {
+    upperBody.tumbling = true;
+  }
+  if (!onImpact) return;
+  const centerDistance = Math.hypot(centerDx, centerDz);
+  const normalX = centerDistance > 1e-5 ? centerDx / centerDistance : 0;
+  const normalZ = centerDistance > 1e-5 ? centerDz / centerDistance : 0;
+  onImpact(upper, lower, closing, normalX, normalZ);
+}
+
+function resolveContactPair<Entity extends TankBodyEntity>(
+  a: Entity,
+  b: Entity,
+  aFrame: BodyContactFrame,
+  bFrame: BodyContactFrame,
+  onImpact: TankBodyImpact<Entity> | null,
+): boolean {
+  if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) return false;
+  if (!horizontalBodiesOverlap(aFrame, bFrame)) return false;
+  verticalBounds(a, _boundsA);
+  verticalBounds(b, _boundsB);
+  const aAbove = _boundsA[2] >= _boundsB[2];
+  const upper = aAbove ? a : b;
+  const lower = aAbove ? b : a;
+  const upperFrame = aAbove ? aFrame : bFrame;
+  const upperBounds = aAbove ? _boundsA : _boundsB;
+  const lowerBounds = aAbove ? _boundsB : _boundsA;
+  const minHeight = Math.min(
+    upperBounds[1] - upperBounds[0],
+    lowerBounds[1] - lowerBounds[0],
+  );
+  if (upperBounds[2] - lowerBounds[2] < minHeight * STACK_AXIS_FRACTION) return false;
+  const penetration = lowerBounds[1] - upperBounds[0];
+  if (penetration < -CONTACT_SLOP_M ||
+      penetration > minHeight * STACK_MAX_PENETRATION_FRACTION) return false;
+
+  const upperMass = Math.max(1, upper.spec.weightTons || 1);
+  const lowerMass = Math.max(1, lower.spec.weightTons || 1);
+  const lowerLocked = lower.state.grounded !== false && !ensureBodyState(lower.state).tumbling;
+  correctVerticalOverlap(upper, lower, penetration, upperMass, lowerMass, lowerLocked);
+  const closing = resolveVerticalImpulse(upper, lower, upperMass, lowerMass, lowerLocked);
+  const upperBody = markDynamicSupport(upper);
+  applyAngularImpact(upper, lower, upperFrame, upperBody, closing, onImpact);
+  upper.state.speed *= 0.985;
+  return true;
+}
+
 /**
  * Resolve vertical tank-on-tank contacts once after every movement pass.
  * Returns the number of active contacts for probes/telemetry.
@@ -234,144 +469,17 @@ export function resolveTankBodyContacts<Entity extends TankBodyEntity>(
   _dt: number,
   onImpact: TankBodyImpact<Entity> | null = null,
 ): number {
+  prepareContactFrames(entities);
   let contacts = 0;
   for (let i = 0; i < entities.length; i++) {
     const a = entities[i];
-    if (!a?.state || !a.spec?.dims || a.modeActive === false) continue;
-    const aState = a.state;
-    const aRect = tankContactRect(a.spec);
-    const aHalfW = aRect.halfWidth;
-    const aHalfL = aRect.halfLength;
-    const aFx = Math.sin(aState.yaw);
-    const aFz = Math.cos(aState.yaw);
-    const aRx = aFz;
-    const aRz = -aFx;
-    const aCenterX = aState.pos.x + aRx * aRect.centerX + aFx * aRect.centerZ;
-    const aCenterZ = aState.pos.z + aRz * aRect.centerX + aFz * aRect.centerZ;
-
+    const aFrame = _contactFramePool[i];
+    if (!aFrame.active) continue;
     for (let j = i + 1; j < entities.length; j++) {
       const b = entities[j];
-      if (!b?.state || !b.spec?.dims || b.modeActive === false) continue;
-      if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) continue;
-      const bState = b.state;
-      const bRect = tankContactRect(b.spec);
-      const bHalfW = bRect.halfWidth;
-      const bHalfL = bRect.halfLength;
-      const bFx = Math.sin(bState.yaw);
-      const bFz = Math.cos(bState.yaw);
-      const bRx = bFz;
-      const bRz = -bFx;
-      const bCenterX = bState.pos.x + bRx * bRect.centerX + bFx * bRect.centerZ;
-      const bCenterZ = bState.pos.z + bRz * bRect.centerX + bFz * bRect.centerZ;
-      const dx = aCenterX - bCenterX;
-      const dz = aCenterZ - bCenterZ;
-      const outer = Math.hypot(aHalfL, aHalfW) + Math.hypot(bHalfL, bHalfW);
-      if (dx * dx + dz * dz > outer * outer) continue;
-      if (!rectsOverlap(
-        aCenterX, aCenterZ, aFx, aFz, aRx, aRz, aHalfL, aHalfW,
-        bCenterX, bCenterZ, bFx, bFz, bRx, bRz, bHalfL, bHalfW,
-      )) continue;
-
-      verticalBounds(a, _boundsA);
-      verticalBounds(b, _boundsB);
-      const aAbove = _boundsA[2] >= _boundsB[2];
-      const upper = aAbove ? a : b;
-      const lower = aAbove ? b : a;
-      const upperBounds = aAbove ? _boundsA : _boundsB;
-      const lowerBounds = aAbove ? _boundsB : _boundsA;
-      const minHeight = Math.min(
-        upperBounds[1] - upperBounds[0],
-        lowerBounds[1] - lowerBounds[0],
-      );
-      if (upperBounds[2] - lowerBounds[2] < minHeight * STACK_AXIS_FRACTION) continue;
-
-      const penetration = lowerBounds[1] - upperBounds[0];
-      if (penetration < -CONTACT_SLOP_M ||
-          penetration > minHeight * STACK_MAX_PENETRATION_FRACTION) continue;
-
-      const correction = Math.max(0, penetration + CONTACT_SLOP_M);
-      const upperMass = Math.max(1, upper.spec.weightTons || 1);
-      const lowerMass = Math.max(1, lower.spec.weightTons || 1);
-      const lowerLocked = lower.state.grounded !== false &&
-        !ensureBodyState(lower.state).tumbling;
-      const upperShare = lowerLocked ? 1 : lowerMass / (upperMass + lowerMass);
-      if (correction > 0) {
-        moveRootY(upper.state, correction * upperShare);
-        if (!lowerLocked) moveRootY(lower.state, -correction * (1 - upperShare));
-      }
-
-      const upperV = upper.state.verticalSpeed || upper.state._ride.v || 0;
-      const lowerV = lower.state.verticalSpeed || lower.state._ride.v || 0;
-      const closing = Math.max(0, lowerV - upperV);
-      if (closing > 0) {
-        const invUpper = 1 / upperMass;
-        const invLower = lowerLocked ? 0 : 1 / lowerMass;
-        const impulse = (1 + STACK_RESTITUTION) * closing / (invUpper + invLower);
-        setVerticalVelocity(upper.state, upperV + impulse * invUpper);
-        if (!lowerLocked) setVerticalVelocity(lower.state, lowerV - impulse * invLower);
-      } else if (upper.state.verticalSpeed < lowerV) {
-        setVerticalVelocity(upper.state, lowerV);
-      }
-
-      const upperBody = ensureBodyState(upper.state);
-      upperBody.dynamicSupport = true;
-      // Terrain-grounded means supported by the heightfield. A tank roof is a
-      // dynamic support, so retain the airborne flag and let this pair pass
-      // re-seat it every fixed tick without feeding the terrain spring.
-      upper.state.grounded = false;
-      upper.state._ride.grounded = false;
-
-      if (closing > 0.8) {
-        const upperRect = aAbove ? aRect : bRect;
-        const centerDx = upper.state.pos.x - lower.state.pos.x;
-        const centerDz = upper.state.pos.z - lower.state.pos.z;
-        const upperYaw = upper.state.yaw;
-        const rightX = Math.cos(upperYaw);
-        const rightZ = -Math.sin(upperYaw);
-        const forwardX = Math.sin(upperYaw);
-        const forwardZ = Math.cos(upperYaw);
-        // The lower hull supports the side opposite the upper center offset.
-        // Upward impulse there supplies the physically correct tipping sense.
-        const leverRight = clamp(
-          -(centerDx * rightX + centerDz * rightZ) /
-            Math.max(upperRect.halfWidth, 0.1),
-          -1,
-          1,
-        );
-        const leverForward = clamp(
-          -(centerDx * forwardX + centerDz * forwardZ) /
-            Math.max(upperRect.halfLength, 0.1),
-          -1,
-          1,
-        );
-        const pitchKick = clamp(
-          leverForward * closing * STACK_ANGULAR_GAIN,
-          -STACK_ANGULAR_KICK_MAX,
-          STACK_ANGULAR_KICK_MAX,
-        );
-        const rollKick = clamp(
-          leverRight * closing * STACK_ANGULAR_GAIN,
-          -STACK_ANGULAR_KICK_MAX,
-          STACK_ANGULAR_KICK_MAX,
-        );
-        upper.state._spring.pitchV += pitchKick;
-        upper.state._spring.rollV += rollKick;
-        const upY = Math.cos(upper.state.visualPitch) * Math.cos(upper.state.visualRoll);
-        if (Math.abs(pitchKick) + Math.abs(rollKick) >= STACK_TUMBLE_KICK || upY < 0.7) {
-          upperBody.tumbling = true;
-        }
-        if (onImpact) {
-          const centerDistance = Math.hypot(centerDx, centerDz);
-          const normalX = centerDistance > 1e-5 ? centerDx / centerDistance : 0;
-          const normalZ = centerDistance > 1e-5 ? centerDz / centerDistance : 0;
-          onImpact(upper, lower, closing, normalX, normalZ);
-        }
-      }
-
-      // Dynamic roof contact scrubs track momentum rather than letting a tank
-      // skate indefinitely across another hull.
-      upper.state.speed *= 0.985;
-      contacts++;
+      const bFrame = _contactFramePool[j];
+      if (!bFrame.active) continue;
+      if (resolveContactPair(a, b, aFrame, bFrame, onImpact)) contacts++;
     }
   }
   return contacts;

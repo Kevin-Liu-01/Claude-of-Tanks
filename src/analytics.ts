@@ -1,4 +1,5 @@
-const mountAnalytics = (): Promise<unknown> => import('@vercel/analytics').then(({ inject }) => inject({
+import type { RuntimeValue } from './runtimeTypes.ts';
+const mountAnalytics = (): Promise<RuntimeValue> => import('@vercel/analytics').then(({ inject }) => inject({
   mode: import.meta.env.PROD ? 'production' : 'development',
 }));
 

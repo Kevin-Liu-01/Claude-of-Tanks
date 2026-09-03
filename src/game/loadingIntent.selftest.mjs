@@ -58,7 +58,7 @@ assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
   'network modes should warm their own selected path');
 
 assert.match(garage,
-  /pointerenter[\s\S]{0,120}signalTankIntent\(s\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(s\.id, true\)/,
+  /pointerenter[\s\S]{0,120}signalTankIntent\(spec\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(spec\.id, true\)/,
   'vehicle cards must expose deliberate hover and immediate press intent');
 assert.match(pedestalPreloader,
   /const preloadIntent = \(specId: string\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,

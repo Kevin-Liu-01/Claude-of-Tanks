@@ -111,8 +111,8 @@ interface ImpactEvent {
   targetId?: string | number;
   caliberMm?: number;
   zone?: string;
-  modulesHit?: readonly unknown[];
-  crewHit?: readonly unknown[];
+  modulesHit?: readonly { module: string; newState: string; dmg: number }[];
+  crewHit?: readonly string[];
   ammoRacked?: boolean;
   fireStarted?: boolean;
   impactFrame?: ImpactFrame;
@@ -218,6 +218,11 @@ interface DecalRecord {
 interface TurretEnvelope {
   mn: [number, number, number];
   mx: [number, number, number];
+}
+
+interface StampRoute {
+  nodeKey: DecalNodeKey;
+  node: THREE.Object3D;
 }
 
 export interface ImpactDecalStats {
@@ -628,32 +633,65 @@ function clampToSkin(
   _raycaster.far = 1.45; // still reaches spaced armor/skirts around the plate
   const hits = _raycaster.intersectObject(node, true);
   for (const h of hits) {
-    const o = h.object;
-    // visible opaque skin only: never our own decals, never the hidden
-    // placeholder hull under a GLB swap, never colorWrite-false shadow
-    // proxies, never glass/soot overlay cards, never ERA brick instances
-    if (!o.visible || o.name === 'fx_impactDecals'
-      || !(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh) continue;
-    let vis = true;
-    for (let par = o.parent; par && par !== node; par = par.parent) {
-      if (!par.visible) { vis = false; break; }
-    }
-    if (!vis) continue;
-    const mm = Array.isArray(o.material) ? o.material[0] : o.material;
-    if (!mm || mm.colorWrite === false || mm.transparent === true) continue;
-    node.worldToLocal(pos.copy(h.point));
-    if (h.face && h.face.normal) {
-      _nm3.getNormalMatrix(o.matrixWorld);
-      _hitN.copy(h.face.normal).applyMatrix3(_nm3).normalize();
-      _wqi.copy(_wq).invert();
-      _hitN.applyQuaternion(_wqi); // world -> node-local
-      // adopt the skin's facing only when it broadly agrees with the plate
-      // normal (never re-aim a side mark onto a perpendicular greeble face)
-      if (_hitN.dot(normal) > 0.45) normal.copy(_hitN).normalize();
-    }
+    if (!isVisibleOpaqueSkin(node, h.object)) continue;
+    adoptSkinHit(node, h as THREE.Intersection<THREE.Mesh>, pos, normal);
     return true;
   }
   return false;
+}
+
+/** Exclude hidden helpers, transparent overlays, and the decal batch itself. */
+function isVisibleOpaqueSkin(
+  node: THREE.Object3D,
+  object: THREE.Object3D,
+): object is THREE.Mesh {
+  if (!object.visible || object.name === 'fx_impactDecals') return false;
+  if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh) return false;
+  for (let parent = object.parent; parent && parent !== node; parent = parent.parent) {
+    if (!parent.visible) return false;
+  }
+  const material = Array.isArray(object.material) ? object.material[0] : object.material;
+  return !!material && material.colorWrite !== false && material.transparent !== true;
+}
+
+/** Move the stamp to a ray hit and adopt a compatible rendered-skin normal. */
+function adoptSkinHit(
+  node: THREE.Object3D,
+  hit: THREE.Intersection<THREE.Mesh>,
+  pos: THREE.Vector3,
+  normal: THREE.Vector3,
+): void {
+  node.worldToLocal(pos.copy(hit.point));
+  if (!hit.face) return;
+  _nm3.getNormalMatrix(hit.object.matrixWorld);
+  _hitN.copy(hit.face.normal).applyMatrix3(_nm3).normalize();
+  _wqi.copy(_wq).invert();
+  _hitN.applyQuaternion(_wqi);
+  // Never re-aim a side mark onto a perpendicular greeble face.
+  if (_hitN.dot(normal) > 0.45) normal.copy(_hitN).normalize();
+}
+
+/** Compute a turret-local AABB once per immutable armor specification. */
+function computeTurretEnvelope(plates?: readonly ArmorPlate[]): TurretEnvelope | null {
+  if (!plates?.length) return null;
+  const env: TurretEnvelope = {
+    mn: [Infinity, Infinity, Infinity],
+    mx: [-Infinity, -Infinity, -Infinity],
+  };
+  for (const plate of plates) {
+    if (!Array.isArray(plate.verts)) continue;
+    for (const vertex of plate.verts) expandTurretEnvelope(env, vertex);
+  }
+  return env.mn[0] < env.mx[0] ? env : null;
+}
+
+function expandTurretEnvelope(env: TurretEnvelope, vertex: Vec3Tuple): void {
+  env.mn[0] = Math.min(env.mn[0], vertex[0]);
+  env.mn[1] = Math.min(env.mn[1], vertex[1]);
+  env.mn[2] = Math.min(env.mn[2], vertex[2]);
+  env.mx[0] = Math.max(env.mx[0], vertex[0]);
+  env.mx[1] = Math.max(env.mx[1], vertex[1]);
+  env.mx[2] = Math.max(env.mx[2], vertex[2]);
 }
 
 /** UV rect for an atlas cell (respects CanvasTexture flipY). */
@@ -779,22 +817,7 @@ export function createImpactDecals(
     if (!spec || !spec.armor) return null;
     let env = turretEnvBySpec.get(spec.id);
     if (env !== undefined) return env;
-    env = null;
-    const plates = spec.armor.turretPlates;
-    if (plates && plates.length) {
-      const mn: [number, number, number] = [Infinity, Infinity, Infinity];
-      const mx: [number, number, number] = [-Infinity, -Infinity, -Infinity];
-      for (const p of plates) {
-        if (!Array.isArray(p.verts)) continue;
-        for (const v of p.verts) {
-          for (let a = 0; a < 3; a++) {
-            if (v[a] < mn[a]) mn[a] = v[a];
-            if (v[a] > mx[a]) mx[a] = v[a];
-          }
-        }
-      }
-      if (mn[0] < mx[0]) env = { mn, mx };
-    }
+    env = computeTurretEnvelope(spec.armor.turretPlates);
     turretEnvBySpec.set(spec.id, env);
     return env;
   }
@@ -925,6 +948,144 @@ export function createImpactDecals(
     return { nm, slot };
   }
 
+  // Retained route state avoids allocating a result object for every impact.
+  const stampRoute: StampRoute = { nodeKey: 'hull', node: new THREE.Object3D() };
+
+  function findArticulationNode(
+    rec: DecalRecord,
+    visual: ImpactVisual,
+    frame: 'turret' | 'gun',
+  ): THREE.Object3D | null {
+    const isGun = frame === 'gun';
+    const cacheKey = isGun ? 'gunNode' : 'turretNode';
+    const rigName = isGun ? 'rig_gun' : 'rig_turret';
+    return rec[cacheKey]
+      || (rec[cacheKey] = visual.root.getObjectByName(rigName) ?? null);
+  }
+
+  function routeExactArticulation(
+    rec: DecalRecord,
+    visual: ImpactVisual,
+    impactFrame: 'turret' | 'gun',
+    gunPivot: Vec3Tuple | null,
+    pos: THREE.Vector3,
+  ): boolean {
+    const node = findArticulationNode(rec, visual, impactFrame);
+    if (!node) return false;
+    stampRoute.nodeKey = impactFrame;
+    stampRoute.node = node;
+    if (impactFrame === 'gun' && gunPivot) {
+      // Gun-follow coordinates retain the turret origin; rig_gun starts at
+      // the trunnion, so translate into the actual parent frame.
+      pos.x -= gunPivot[0];
+      pos.y -= gunPivot[1];
+      pos.z -= gunPivot[2];
+    }
+    return true;
+  }
+
+  function isInsideTurretEnvelope(
+    x: number,
+    y: number,
+    z: number,
+    env: TurretEnvelope,
+  ): boolean {
+    return x > env.mn[0] - MARGIN && x < env.mx[0] + MARGIN
+      && y > env.mn[1] - MARGIN && y < env.mx[1] + MARGIN
+      && z > env.mn[2] - MARGIN && z < env.mx[2] + MARGIN;
+  }
+
+  function routeLegacyTurret(
+    rec: DecalRecord,
+    visual: ImpactVisual,
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    dir: THREE.Vector3 | null,
+    turretYaw: number,
+    turretPivot: Vec3Tuple,
+    env: TurretEnvelope,
+  ): void {
+    _pt.copy(pos);
+    _pt.x -= turretPivot[0];
+    _pt.y -= turretPivot[1];
+    _pt.z -= turretPivot[2];
+    const cy = Math.cos(-turretYaw || 0);
+    const sy = Math.sin(-turretYaw || 0);
+    const tx = _pt.x * cy + _pt.z * sy;
+    const tz = -_pt.x * sy + _pt.z * cy;
+    if (!isInsideTurretEnvelope(tx, _pt.y, tz, env)) return;
+    const node = findArticulationNode(rec, visual, 'turret');
+    if (!node) return;
+    stampRoute.nodeKey = 'turret';
+    stampRoute.node = node;
+    pos.set(tx, _pt.y, tz);
+    rot2D(normal, cy, sy);
+    if (dir) rot2D(dir, cy, sy);
+  }
+
+  function resolveStampRoute(
+    rec: DecalRecord,
+    visual: ImpactVisual,
+    impactFrame: DecalNodeKey | null,
+    gunPivot: Vec3Tuple | null,
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    dir: THREE.Vector3 | null,
+    turretYaw: number,
+    turretPivot: Vec3Tuple | null,
+    env: TurretEnvelope | null,
+  ): boolean {
+    stampRoute.nodeKey = 'hull';
+    stampRoute.node = visual.root;
+    if (impactFrame === 'turret' || impactFrame === 'gun') {
+      return routeExactArticulation(rec, visual, impactFrame, gunPivot, pos);
+    }
+    if (!impactFrame && env && turretPivot) {
+      routeLegacyTurret(rec, visual, pos, normal, dir, turretYaw, turretPivot, env);
+    }
+    return true;
+  }
+
+  function orientStampTangent(
+    fam: ImpactFamily,
+    normal: THREE.Vector3,
+    dir: THREE.Vector3 | null,
+  ): void {
+    _n.copy(normal).normalize();
+    if (_n.lengthSq() < 0.5) _n.set(0, 1, 0);
+    if (fam === 'gouge' && dir) {
+      _t.copy(dir).addScaledVector(_n, -dir.dot(_n));
+      if (_t.lengthSq() > 0.02) {
+        _t.normalize();
+        _b.crossVectors(_n, _t).normalize();
+        return;
+      }
+    }
+    _t.set(0.31, 0.65, 0.69).cross(_n);
+    if (_t.lengthSq() < 1e-4) _t.set(1, 0, 0).cross(_n);
+    _t.normalize();
+    const angle = rng() * Math.PI * 2;
+    _b.crossVectors(_n, _t);
+    _t.multiplyScalar(Math.cos(angle)).addScaledVector(_b, Math.sin(angle)).normalize();
+    _b.crossVectors(_n, _t).normalize();
+  }
+
+  function writeStamp(
+    rec: DecalRecord,
+    fam: ImpactFamily,
+    sizeK: number,
+    caliberMm: number | undefined,
+    pos: THREE.Vector3,
+  ): void {
+    const { w, h } = sizeFor(fam, caliberMm, sizeK);
+    const lift = IMPACT_DECAL_LIFT_M + rng() * 0.002;
+    _c0.copy(pos).addScaledVector(_n, lift);
+    const cells = FAMILY_CELLS[fam];
+    const cell = cells[(rng() * cells.length) | 0];
+    const { nm, slot } = allocEntry(rec, stampRoute.nodeKey, stampRoute.node);
+    writeQuad(nm, slot, _c0, _t, _b, w / 2, (h || w) / 2, cell, shadeFor(fam));
+  }
+
   /**
    * Core stamp in the supplied articulation frame. Legacy calls pass no
    * impactFrame and retain the hull-local turret-envelope fallback.
@@ -946,80 +1107,11 @@ export function createImpactDecals(
   ): boolean {
     const rec = recFor(key, visual);
     rec.lastStampT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    // --- exact node routing from the authoritative collision frame ----------
-    let nodeKey: DecalNodeKey = 'hull';
-    let node = visual.root;
-    if (impactFrame === 'turret' || impactFrame === 'gun') {
-      const isGun = impactFrame === 'gun';
-      const cacheKey = isGun ? 'gunNode' : 'turretNode';
-      const rigName = isGun ? 'rig_gun' : 'rig_turret';
-      const exactNode = rec[cacheKey]
-        || (rec[cacheKey] = visual.root.getObjectByName(rigName) ?? null);
-      if (!exactNode) return false;
-      nodeKey = impactFrame;
-      node = exactNode;
-      if (isGun && gunPivot) {
-        // Gun-follow collision coordinates retain the turret origin while
-        // rig_gun's local origin is the trunnion.
-        pos.x -= gunPivot[0];
-        pos.y -= gunPivot[1];
-        pos.z -= gunPivot[2];
-      }
-    } else if (!impactFrame && env && turretPivot) {
-      // Legacy payloads know only hull-local position, so preserve the old
-      // armor-envelope inference for recordings/network packets from before
-      // impactFrame was introduced.
-      _pt.copy(pos);
-      _pt.x -= turretPivot[0]; _pt.y -= turretPivot[1]; _pt.z -= turretPivot[2];
-      const cy = Math.cos(-turretYaw || 0);
-      const sy = Math.sin(-turretYaw || 0);
-      const tx = _pt.x * cy + _pt.z * sy;
-      const tz = -_pt.x * sy + _pt.z * cy;
-      if (tx > env.mn[0] - MARGIN && tx < env.mx[0] + MARGIN &&
-          _pt.y > env.mn[1] - MARGIN && _pt.y < env.mx[1] + MARGIN &&
-          tz > env.mn[2] - MARGIN && tz < env.mx[2] + MARGIN) {
-        const tn = rec.turretNode
-          || (rec.turretNode = visual.root.getObjectByName('rig_turret') ?? null);
-        if (tn) {
-          nodeKey = 'turret';
-          node = tn;
-          // rotate the whole stamp frame into turret space
-          pos.set(tx, _pt.y, tz);
-          rot2D(normal, cy, sy);
-          if (dir) rot2D(dir, cy, sy);
-        }
-      }
-    }
-    // --- clamp onto the rendered skin (skirts/GLB shells stand proud of the
-    // armor-model plates; an unclamped mark buries behind them) --------------
-    clampToSkin(node, pos, normal);
-    // --- tangent frame -------------------------------------------------------
-    _n.copy(normal).normalize();
-    if (_n.lengthSq() < 0.5) _n.set(0, 1, 0);
-    let aligned = false;
-    if (fam === 'gouge' && dir) {
-      _t.copy(dir).addScaledVector(_n, -dir.dot(_n));
-      if (_t.lengthSq() > 0.02) { _t.normalize(); aligned = true; }
-    }
-    if (!aligned) {
-      // random rotation about the normal so repeat hits never tile
-      _t.set(0.31, 0.65, 0.69).cross(_n);
-      if (_t.lengthSq() < 1e-4) _t.set(1, 0, 0).cross(_n);
-      _t.normalize();
-      const a = rng() * Math.PI * 2;
-      _b.crossVectors(_n, _t);
-      _t.multiplyScalar(Math.cos(a)).addScaledVector(_b, Math.sin(a)).normalize();
-    }
-    _b.crossVectors(_n, _t).normalize();
-    const { w, h } = sizeFor(fam, caliberMm, sizeK);
-    const w2 = w / 2;
-    const h2 = (h || w) / 2;
-    const lift = IMPACT_DECAL_LIFT_M + rng() * 0.002;
-    _c0.copy(pos).addScaledVector(_n, lift);
-    const cells = FAMILY_CELLS[fam] || FAMILY_CELLS.pen;
-    const cell = cells[(rng() * cells.length) | 0];
-    const { nm, slot } = allocEntry(rec, nodeKey, node);
-    writeQuad(nm, slot, _c0, _t, _b, w2, h2, cell, shadeFor(fam));
+    if (!resolveStampRoute(rec, visual, impactFrame, gunPivot, pos, normal,
+      dir, turretYaw, turretPivot, env)) return false;
+    clampToSkin(stampRoute.node, pos, normal);
+    orientStampTangent(fam, normal, dir);
+    writeStamp(rec, fam, sizeK, caliberMm, pos);
     return true;
   }
 
@@ -1028,6 +1120,62 @@ export function createImpactDecals(
     const x = v.x * cy + v.z * sy;
     const z = -v.x * sy + v.z * cy;
     v.x = x; v.z = z;
+  }
+
+  function exactImpactFrame(ev: ImpactEvent): ImpactFrame | null {
+    return typeof ev.impactFrame === 'string' && Array.isArray(ev.impactLocalPos)
+      ? ev.impactFrame
+      : null;
+  }
+
+  function setInverseHullRotation(state: ImpactState): void {
+    _e.set(-(state.visualPitch || 0), state.yaw || 0, state.visualRoll || 0, 'YXZ');
+    _q.setFromEuler(_e).invert();
+  }
+
+  function resolveImpactPosition(
+    ev: ImpactEvent,
+    state: ImpactState,
+    frame: ImpactFrame | null,
+  ): boolean {
+    if (frame && ev.impactLocalPos) {
+      _p.fromArray(ev.impactLocalPos);
+      return true;
+    }
+    if (ev.localPos) {
+      _p.fromArray(ev.localPos);
+      return true;
+    }
+    if (!ev.pos || !state.pos) return false;
+    setInverseHullRotation(state);
+    _p.fromArray(ev.pos).sub(state.pos).applyQuaternion(_q);
+    return true;
+  }
+
+  function resolveImpactNormal(
+    ev: ImpactEvent,
+    state: ImpactState,
+    frame: ImpactFrame | null,
+  ): void {
+    if (frame && ev.impactLocalNormal) {
+      _n.fromArray(ev.impactLocalNormal);
+      return;
+    }
+    if (frame && ev.impactLocalDir) {
+      _n.fromArray(ev.impactLocalDir).negate();
+      return;
+    }
+    setInverseHullRotation(state);
+    _n.set(ev.normal?.[0] ?? 0, ev.normal?.[1] ?? 1, ev.normal?.[2] ?? 0)
+      .applyQuaternion(_q);
+  }
+
+  function resolveImpactDirection(
+    ev: ImpactEvent,
+    frame: ImpactFrame | null,
+  ): THREE.Vector3 | null {
+    const direction = frame && ev.impactLocalDir ? ev.impactLocalDir : ev.localDir;
+    return direction ? _d.fromArray(direction) : null;
   }
 
   const api: ImpactDecalRuntime = {
@@ -1046,38 +1194,10 @@ export function createImpactDecals(
       const cls = classify(ev);
       if (!cls) return false;
       const st = ent.state;
-      const impactLocalPos = ev.impactLocalPos;
-      const exactFrame: ImpactFrame | null = typeof ev.impactFrame === 'string'
-        && Array.isArray(impactLocalPos) ? ev.impactFrame : null;
-      if (exactFrame === 'barrel') return false; // tube cannot host a flat quad
-      if (exactFrame && impactLocalPos) {
-        _p.set(impactLocalPos[0], impactLocalPos[1], impactLocalPos[2]);
-      } else if (ev.localPos) {
-        _p.set(ev.localPos[0], ev.localPos[1], ev.localPos[2]);
-      } else if (ev.pos && st && st.pos) {
-        _e.set(-(st.visualPitch || 0), st.yaw || 0, st.visualRoll || 0, 'YXZ');
-        _q.setFromEuler(_e).invert();
-        _p.set(ev.pos[0], ev.pos[1], ev.pos[2]).sub(st.pos).applyQuaternion(_q);
-      } else return false;
-      if (exactFrame && Array.isArray(ev.impactLocalNormal)) {
-        _n.set(ev.impactLocalNormal[0], ev.impactLocalNormal[1], ev.impactLocalNormal[2]);
-      } else if (exactFrame && Array.isArray(ev.impactLocalDir)) {
-        // AABB-only module contacts do not have a resolved face normal. The
-        // opposite incoming direction is a stable outward approximation in
-        // the correct articulation frame and lets clampToSkin refine it.
-        _n.set(
-          -ev.impactLocalDir[0], -ev.impactLocalDir[1], -ev.impactLocalDir[2],
-        );
-      } else {
-        // Legacy world normal -> hull-local.
-        _e.set(-(st.visualPitch || 0), st.yaw || 0, st.visualRoll || 0, 'YXZ');
-        _q.setFromEuler(_e).invert();
-        _n.set(ev.normal ? ev.normal[0] : 0, ev.normal ? ev.normal[1] : 1,
-          ev.normal ? ev.normal[2] : 0).applyQuaternion(_q);
-      }
-      const exactDir = exactFrame && Array.isArray(ev.impactLocalDir)
-        ? ev.impactLocalDir : ev.localDir;
-      const dir = exactDir ? _d.set(exactDir[0], exactDir[1], exactDir[2]) : null;
+      const exactFrame = exactImpactFrame(ev);
+      if (exactFrame === 'barrel' || !resolveImpactPosition(ev, st, exactFrame)) return false;
+      resolveImpactNormal(ev, st, exactFrame);
+      const dir = resolveImpactDirection(ev, exactFrame);
       const armor = ent.spec && ent.spec.armor;
       return stampLocal(String(ev.targetId), visual, cls.fam, cls.sizeK,
         ev.caliberMm, _p, _n, dir, st.turretYaw || 0,

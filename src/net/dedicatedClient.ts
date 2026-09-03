@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWebSocketTransport, type ChannelTransport } from './channelTransport.ts';
 import {
   maybeCreateAdverseNetworkTransport,
@@ -14,7 +15,7 @@ type Unsubscribe = () => void;
 type SocketListener = (event: SocketEvent) => void;
 
 interface SocketEvent {
-  error?: unknown;
+  error?: RuntimeValue;
 }
 
 interface SocketLike {
@@ -28,20 +29,20 @@ interface SocketLike {
   off?(type: string, listener: SocketListener): void;
 }
 
-export interface DedicatedMatchTicket extends Record<string, unknown> {
+export interface DedicatedMatchTicket extends Record<string, RuntimeValue> {
   matchId: string;
   playerId: string;
   token: string;
   mapId: string;
-  roster?: unknown[];
+  roster?: RuntimeValue[];
 }
 
 export interface DedicatedConnectionOptions extends Partial<MatchClientOptions> {
-  url?: unknown;
+  url?: RuntimeValue;
   matchId?: string;
   playerId?: string;
   token?: string;
-  WebSocketImpl?: unknown;
+  WebSocketImpl?: RuntimeValue;
   timeoutMs?: number;
   clientOptions?: MatchClientOptions;
 }
@@ -53,14 +54,14 @@ export interface DedicatedConnection {
   ready: Promise<MatchClientRuntime>;
 }
 
-export interface DedicatedStatus extends Record<string, unknown> {
+export interface DedicatedStatus extends Record<string, RuntimeValue> {
   state: string;
 }
 
 export interface DedicatedClientMatchOptions {
-  url?: unknown;
+  url?: RuntimeValue;
   ticket?: DedicatedMatchTicket;
-  WebSocketImpl?: unknown;
+  WebSocketImpl?: RuntimeValue;
   onStatus?: ((status: DedicatedStatus) => void) | null;
   reconnectDelaysMs?: number[];
 }
@@ -70,7 +71,7 @@ export interface DedicatedClientMatch {
   readonly role: 'client';
   readonly playerId: string;
   readonly mapId: string;
-  readonly roster: unknown[];
+  readonly roster: RuntimeValue[];
   readonly client: MatchClientRuntime | null;
   readonly socket: SocketLike | null;
   readonly reconnecting: boolean;
@@ -97,25 +98,25 @@ function addListener(
   return () => target.off?.(type, listener);
 }
 
-function asError(value: unknown, fallback: string): Error {
+function asError(value: RuntimeValue, fallback: string): Error {
   if (value instanceof Error) return value;
   return new Error(fallback);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isSocketLike(value: unknown): value is SocketLike {
+function isSocketLike(value: RuntimeValue): value is SocketLike {
   return isRecord(value) &&
     (typeof value.readyState === 'number' || typeof value.readyState === 'string') &&
     typeof value.binaryType === 'string' && typeof value.send === 'function' &&
     typeof value.close === 'function';
 }
 
-function createSocket(constructorValue: unknown, endpoint: URL): SocketLike {
+function createSocket(constructorValue: RuntimeValue, endpoint: URL): SocketLike {
   if (typeof constructorValue !== 'function') throw new Error('WebSocket is unavailable');
-  const socket: unknown = Reflect.construct(constructorValue, [endpoint]);
+  const socket: RuntimeValue = Reflect.construct(constructorValue, [endpoint]);
   if (!isSocketLike(socket)) {
     throw new TypeError(
       'WebSocket must expose readyState/binaryType and implement send() and close()',
@@ -203,7 +204,7 @@ export function connectDedicatedMatch({
   return { socket, transport, client, ready };
 }
 
-function messageFor(error: unknown): string {
+function messageFor(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -222,7 +223,7 @@ export async function beginDedicatedClientMatch({
   let closed = false;
   let reconnecting = false;
   let readySent = false;
-  const report = (state: string, detail: Record<string, unknown> = {}) => {
+  const report = (state: string, detail: Record<string, RuntimeValue> = {}) => {
     onStatus?.({ state, ...detail });
   };
   const session: DedicatedClientMatch = {
@@ -241,7 +242,7 @@ export async function beginDedicatedClientMatch({
     update(nowMs: number): SampledSnapshotFrame | null {
       return connection?.client.update(nowMs) || null;
     },
-    submitInput(input: Record<string, unknown>, clientTick?: number): boolean {
+    submitInput(input: Record<string, RuntimeValue>, clientTick?: number): boolean {
       return connection?.client.submitInput(input, clientTick) || false;
     },
     close(reason = 'dedicated_match_closed'): void {

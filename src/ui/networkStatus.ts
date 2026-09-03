@@ -67,6 +67,61 @@ function ensureStyle(): void {
   document.head.appendChild(style);
 }
 
+function zero(value: number | undefined): number {
+  return value || 0;
+}
+
+function formatNetworkHeading(stats: NetworkDiagnosticsStats): string {
+  const rtt = stats.rttMs == null ? '—' : `${stats.rttMs.toFixed(0)} ms`;
+  const jitter = zero(stats.rttJitterMs).toFixed(1);
+  const loss = (zero(stats.estimatedSnapshotLoss) * 100).toFixed(1);
+  return `NET  ${rtt}  ±${jitter} ms  gap ${loss}%`;
+}
+
+function formatBufferLine(buffer: NonNullable<NetworkDiagnosticsStats['buffer']>): string {
+  return `BUF  ${zero(buffer.interpolationDelayMs).toFixed(0)} ms  ` +
+    `jitter ${zero(buffer.arrivalJitterMs).toFixed(1)}  ` +
+    `extra ${zero(buffer.extrapolatedSamples)}`;
+}
+
+function transportCounters(stats: NetworkDiagnosticsStats): NetworkTransportCounters {
+  const transport = stats.transport || {};
+  const baseTransport = transport.base || transport;
+  return baseTransport.state || baseTransport;
+}
+
+function formatWireLine(stats: NetworkDiagnosticsStats): string {
+  const transport = transportCounters(stats);
+  return `WIRE ${zero(stats.transportBufferedBytes)} B  ` +
+    `state-coal ${zero(transport.stateCoalesced)}  ` +
+    `input-coal ${zero(transport.inputCoalesced)}`;
+}
+
+function formatSyncLine(stats: NetworkDiagnosticsStats): string {
+  const inputLag = stats.inputAckLag == null ? '—' : stats.inputAckLag;
+  return `SYNC input ${inputLag}f  ` +
+    `edges ${zero(stats.pendingInputEdges)}  ` +
+    `base-miss ${zero(stats.missingSnapshotBaselines)}`;
+}
+
+function formatPredictionLine(
+  prediction: NonNullable<NetworkDiagnosticsStats['prediction']>,
+): string {
+  return `PRED ${zero(prediction.pendingInputs)} pending  ` +
+    `err ${zero(prediction.lastPositionErrorM).toFixed(2)} m  ` +
+    `corr ${zero(prediction.correctionM).toFixed(2)} m`;
+}
+
+function formatDiagnostics(stats: NetworkDiagnosticsStats): string {
+  return [
+    formatNetworkHeading(stats),
+    formatBufferLine(stats.buffer || {}),
+    formatWireLine(stats),
+    formatSyncLine(stats),
+    formatPredictionLine(stats.prediction || {}),
+  ].join('\n');
+}
+
 /** Small fail-visible reconnect banner for dedicated network battles. */
 export function createNetworkStatus(): NetworkStatusController {
   ensureStyle();
@@ -122,27 +177,7 @@ export function createNetworkStatus(): NetworkStatusController {
     const now = performance.now();
     if (now - lastDiagnosticsAt < 250) return;
     lastDiagnosticsAt = now;
-    const buffer = stats.buffer || {};
-    const prediction = stats.prediction || {};
-    const rtt = stats.rttMs == null ? '—' : `${stats.rttMs.toFixed(0)} ms`;
-    const jitter = Number(stats.rttJitterMs || 0).toFixed(1);
-    const loss = ((stats.estimatedSnapshotLoss || 0) * 100).toFixed(1);
-    const transport = stats.transport || {};
-    const baseTransport = transport.base || transport;
-    const stateTransport = baseTransport.state || baseTransport;
-    diagnostics.textContent =
-      `NET  ${rtt}  ±${jitter} ms  gap ${loss}%\n` +
-      `BUF  ${Number(buffer.interpolationDelayMs || 0).toFixed(0)} ms  ` +
-      `jitter ${Number(buffer.arrivalJitterMs || 0).toFixed(1)}  ` +
-      `extra ${buffer.extrapolatedSamples || 0}\n` +
-      `WIRE ${stats.transportBufferedBytes || 0} B  ` +
-      `state-coal ${stateTransport.stateCoalesced || 0}  ` +
-      `input-coal ${stateTransport.inputCoalesced || 0}\n` +
-      `SYNC input ${stats.inputAckLag == null ? '—' : stats.inputAckLag}f  ` +
-      `edges ${stats.pendingInputEdges || 0}  base-miss ${stats.missingSnapshotBaselines || 0}\n` +
-      `PRED ${prediction.pendingInputs || 0} pending  ` +
-      `err ${Number(prediction.lastPositionErrorM || 0).toFixed(2)} m  ` +
-      `corr ${Number(prediction.correctionM || 0).toFixed(2)} m`;
+    diagnostics.textContent = formatDiagnostics(stats);
   }
 
   return {

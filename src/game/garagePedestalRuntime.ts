@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   Object3D,
   Scene,
@@ -8,7 +9,7 @@ import { createGaragePedestalPreloader } from './garagePedestalPreloader.ts';
 type BudgetYield = () => Promise<void> | undefined;
 
 interface GaragePedestalSpec {
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 export interface GaragePedestalVisual {
@@ -22,7 +23,7 @@ export interface GaragePedestalVisual {
   seatOnFloor?(y: number): void;
   seatRunningGearOnFloor?(y: number): void;
   prepareForSimulation?(): void;
-  setGroundSampler?(sampler: unknown): void;
+  setGroundSampler?(sampler: RuntimeValue): void;
   __everShown?: boolean;
   __pedestalCompiling?: boolean;
   __pedestalCompileP?: Promise<void> | null;
@@ -33,8 +34,8 @@ interface BattleEntity {
 }
 
 interface PedestalDebugTarget {
-  __SWITCH_TIMINGS?: Array<Record<string, unknown>>;
-  __PED_TRACE?: Array<Record<string, unknown>>;
+  __SWITCH_TIMINGS?: Array<Record<string, RuntimeValue>>;
+  __PED_TRACE?: Array<Record<string, RuntimeValue>>;
 }
 
 declare global {
@@ -42,7 +43,7 @@ declare global {
 }
 
 interface InitialPedestalOptions {
-  builderReady?: Promise<unknown>;
+  builderReady?: Promise<RuntimeValue>;
   yieldForBudget?: BudgetYield;
 }
 
@@ -63,18 +64,18 @@ interface GaragePedestalRuntimeOptions {
     },
   ): GaragePedestalVisual;
   getSpec(specId: string): GaragePedestalSpec;
-  ensureTankBuilder(specId: string): Promise<unknown>;
-  ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
+  ensureTankBuilder(specId: string): Promise<RuntimeValue>;
+  ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
   prebakeSharedTextures(
     spec: GaragePedestalSpec,
     anisotropy: number,
     quality: 'ai' | 'preview',
     yieldForBudget?: BudgetYield,
-  ): Promise<unknown>;
+  ): Promise<RuntimeValue>;
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
   compilePrograms(root: Object3D): void;
-  nextFrame(): Promise<unknown>;
+  nextFrame(): Promise<RuntimeValue>;
   getDeviceTier(): string;
   getPhase(): string;
   isBootComplete(): boolean;
@@ -82,17 +83,17 @@ interface GaragePedestalRuntimeOptions {
   getNeighborIds(): readonly string[];
   getBattlePlayer(): BattleEntity | null | undefined;
   getBattleEntity(specId: string): BattleEntity | null | undefined;
-  groundSampler: unknown;
-  scheduleDelay(callback: () => void, delayMs: number): unknown;
+  groundSampler: RuntimeValue;
+  scheduleDelay(callback: () => void, delayMs: number): RuntimeValue;
   acquireBackgroundWork?: (
     kind: 'pedestal-neighbors',
     stillValid: () => boolean,
   ) => Promise<{ release(): void } | null>;
-  scheduleWatchdog?(callback: () => void, delayMs: number): unknown;
-  cancelWatchdog?(handle: unknown): void;
+  scheduleWatchdog?(callback: () => void, delayMs: number): RuntimeValue;
+  cancelWatchdog?(handle: RuntimeValue): void;
   now?(): number;
   debugTarget?: PedestalDebugTarget | null;
-  warn?(message: string, error: unknown): void;
+  warn?(message: string, error: RuntimeValue): void;
   invalidatePresentation?(): void;
 }
 
@@ -102,7 +103,7 @@ export interface GaragePedestalRuntime {
   readonly switchPending: boolean;
   set(specId: string, force?: boolean): Promise<void>;
   prepareInitial(specId: string, options?: InitialPedestalOptions): Promise<void>;
-  preloadIntent(specId: string): Promise<unknown>;
+  preloadIntent(specId: string): Promise<RuntimeValue>;
   invalidatePreload(): void;
   queueNeighbors(): void;
   trim(maxEntries?: number): void;
@@ -185,7 +186,7 @@ export function createGaragePedestalRuntime({
     debugTarget.__PED_TRACE = [];
   }
 
-  const trace = (event: string, data: Record<string, unknown>) => {
+  const trace = (event: string, data: Record<string, RuntimeValue>) => {
     const log = debugTarget?.__PED_TRACE;
     if (!log) return;
     log.push({ t: Math.round(now()), ev: event, ...data });

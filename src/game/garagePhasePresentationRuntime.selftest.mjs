@@ -87,7 +87,8 @@ assert.equal(pedestalPoseCount, 1);
 assert.equal(cameraPoseCount, 1);
 phase = 'battle';
 runtime.place();
-assert.equal(pedestalPoseCount, 2);
+assert.equal(pedestalPoseCount, 1,
+  'battle service preparation must not move the borrowed player visual back to the Garage');
 assert.equal(cameraPoseCount, 1, 'battle placement must not steal the live camera');
 
 runtime.setActive(false);

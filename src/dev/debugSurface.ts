@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Explicit browser diagnostics surface.
  *
@@ -11,78 +12,78 @@ import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRunti
 type UnknownAction = CallableFunction;
 
 interface DebugInstallTarget {
-  __DEBUG?: unknown;
+  __DEBUG?: RuntimeValue;
 }
 
 export interface DebugSurfaceDependencies {
-  scene: unknown;
-  camera: unknown;
-  renderer: unknown;
-  post: unknown;
-  lighting: unknown;
-  game: { spotting?: unknown };
-  rig: unknown;
-  bus: unknown;
-  input: unknown;
-  settings: unknown;
-  pauseInfo: unknown;
-  garage: unknown;
+  scene: RuntimeValue;
+  camera: RuntimeValue;
+  renderer: RuntimeValue;
+  post: RuntimeValue;
+  lighting: RuntimeValue;
+  game: { spotting?: RuntimeValue };
+  rig: RuntimeValue;
+  bus: RuntimeValue;
+  input: RuntimeValue;
+  settings: RuntimeValue;
+  pauseInfo: RuntimeValue;
+  garage: RuntimeValue;
   quality: Readonly<Record<string, UnknownAction>>;
-  getFx(): unknown;
-  getPedestalVisual(): unknown;
+  getFx(): RuntimeValue;
+  getPedestalVisual(): RuntimeValue;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
   getPedestalCacheIds(): readonly string[];
   getWorldCacheIds(): readonly string[];
   getResidentLimits(): Readonly<Record<string, number>>;
-  getBattleVisualPoolStats(): unknown;
-  getGarageFramePacerStats(): unknown;
-  getFrameLoopSchedulerStats(): unknown;
-  getPhaseSceneResidency(): unknown;
-  getGarageGpuResidency(): unknown;
-  getLastWorldRelease(): unknown;
+  getBattleVisualPoolStats(): RuntimeValue;
+  getGarageFramePacerStats(): RuntimeValue;
+  getFrameLoopSchedulerStats(): RuntimeValue;
+  getPhaseSceneResidency(): RuntimeValue;
+  getGarageGpuResidency(): RuntimeValue;
+  getLastWorldRelease(): RuntimeValue;
   isGraphicsContextLost(): boolean;
-  selectGarageTank(id: string): unknown;
-  stagePedestalTank(id: string): unknown;
-  getWorld(): unknown;
-  switchMap(mapId: string): unknown;
-  flags: unknown;
-  frameInfo: unknown;
+  selectGarageTank(id: string): RuntimeValue;
+  stagePedestalTank(id: string): RuntimeValue;
+  getWorld(): RuntimeValue;
+  switchMap(mapId: string): RuntimeValue;
+  flags: RuntimeValue;
+  frameInfo: RuntimeValue;
   aimAtNearest: UnknownAction;
   gunAimError: UnknownAction;
-  playerShellLog: unknown;
-  botPressure: unknown;
+  playerShellLog: RuntimeValue;
+  botPressure: RuntimeValue;
   aimState: UnknownAction;
   fastForward: UnknownAction;
   slayEnemies: UnknownAction;
   startBattle: UnknownAction;
-  bakeMinimapForMap(mapId: string): Promise<unknown>;
+  bakeMinimapForMap(mapId: string): Promise<RuntimeValue>;
   beginBattleEntry: UnknownAction;
   beginSoloBattle: UnknownAction;
-  beginNetworkBattle(request?: PrivateBattleLaunchRequest): unknown;
+  beginNetworkBattle(request?: PrivateBattleLaunchRequest): RuntimeValue;
   enterGarage: UnknownAction;
   leaveBattleToGarage: UnknownAction;
-  killcam: unknown;
-  showroom: unknown;
-  garageDressing: unknown;
+  killcam: RuntimeValue;
+  showroom: RuntimeValue;
+  garageDressing: RuntimeValue;
   spawnKillShell: UnknownAction;
   getShotMode(): boolean;
   setShotMode(value: boolean): void;
   forceHitMark(bounced: boolean): Promise<void>;
-  getDamagePanel(): unknown;
-  devTrace: unknown;
-  getNetworkDiagnostics(): unknown;
-  getNetworkPresentationStats(): unknown;
-  collectTelemetry(): unknown;
-  sampleShadowContribution(): unknown;
-  injectNetworkEvents(events: unknown): boolean;
+  getDamagePanel(): RuntimeValue;
+  devTrace: RuntimeValue;
+  getNetworkDiagnostics(): RuntimeValue;
+  getNetworkPresentationStats(): RuntimeValue;
+  collectTelemetry(): RuntimeValue;
+  sampleShadowContribution(): RuntimeValue;
+  injectNetworkEvents(events: RuntimeValue): boolean;
 }
 
 /** Install the full live QA surface on an explicit target. */
 export function installDebugSurface(
   deps: DebugSurfaceDependencies,
   target: DebugInstallTarget = globalThis as DebugInstallTarget,
-): unknown {
+): RuntimeValue {
   const surface = {
     scene: deps.scene,
     camera: deps.camera,

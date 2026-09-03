@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
 import type {
   SoloBattleDeploymentRuntime,
@@ -35,7 +36,7 @@ export function createSoloBattleDeploymentAccess({
   return Object.freeze({
     preload: owner.preload,
     get current() { return owner.current; },
-    async warm(camoSweep: PromiseLike<unknown> | unknown): Promise<SoloBattleDeploymentWarmResult> {
+    async warm(camoSweep: PromiseLike<RuntimeValue> | RuntimeValue): Promise<SoloBattleDeploymentWarmResult> {
       return (await owner.preload()).warm(camoSweep);
     },
   });

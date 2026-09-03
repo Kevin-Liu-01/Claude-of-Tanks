@@ -46,72 +46,136 @@ function localMatrix(node) {
   );
 }
 
+function parentIndices(nodes) {
+  const parents = new Array(nodes.length).fill(-1);
+  nodes.forEach((node, index) => {
+    for (const child of node.children || []) parents[child] = index;
+  });
+  return parents;
+}
+
+function sceneRoots(json, nodes, parents) {
+  return (json.scenes && json.scenes[json.scene || 0]?.nodes) ||
+    nodes.map((_, index) => index).filter((index) => parents[index] < 0);
+}
+
+function worldMatrices(nodes, roots) {
+  const world = new Array(nodes.length);
+  const walk = (index, parentMatrix) => {
+    const matrix = localMatrix(nodes[index]);
+    if (parentMatrix) matrix.premultiply(parentMatrix);
+    world[index] = matrix;
+    for (const child of nodes[index].children || []) walk(child, matrix);
+  };
+  for (const root of roots) walk(root, null);
+  return world;
+}
+
+function descendants(nodes, root) {
+  const result = new Set();
+  const add = (index) => {
+    result.add(index);
+    for (const child of nodes[index]?.children || []) add(child);
+  };
+  if (root != null) add(root);
+  return result;
+}
+
+function expandAccessorBounds(box, point, accessor, matrix) {
+  if (!accessor?.min || !accessor?.max) return;
+  for (const x of [accessor.min[0], accessor.max[0]]) {
+    for (const y of [accessor.min[1], accessor.max[1]]) {
+      for (const z of [accessor.min[2], accessor.max[2]]) {
+        box.expandByPoint(point.set(x, y, z).applyMatrix4(matrix));
+      }
+    }
+  }
+}
+
+function subtreeSpan(json, nodes, world, root) {
+  const box = new THREE.Box3();
+  const point = new THREE.Vector3();
+  for (const index of descendants(nodes, root)) {
+    const node = nodes[index];
+    const mesh = node.mesh == null ? null : json.meshes?.[node.mesh];
+    if (!mesh || !world[index]) continue;
+    for (const primitive of mesh.primitives || []) {
+      const accessorIndex = primitive.attributes?.POSITION;
+      const accessor = accessorIndex == null ? null : json.accessors?.[accessorIndex];
+      expandAccessorBounds(box, point, accessor, world[index]);
+    }
+  }
+  if (box.isEmpty()) return 0;
+  const size = box.getSize(new THREE.Vector3());
+  return Math.max(size.x, size.y, size.z);
+}
+
+function findNode(json, nodes, world, source, within = null, preferLargest = false) {
+  const expression = new RegExp(source, 'i');
+  const allowed = within == null ? null : descendants(nodes, within);
+  const hits = [];
+  for (let index = 0; index < nodes.length; index++) {
+    if ((!allowed || allowed.has(index)) && expression.test(nodeName(nodes[index], index))) {
+      hits.push(index);
+    }
+  }
+  if (preferLargest && hits.length > 1) {
+    hits.sort((left, right) =>
+      subtreeSpan(json, nodes, world, right) - subtreeSpan(json, nodes, world, left));
+  }
+  return { index: hits[0] ?? null, count: hits.length };
+}
+
+function meshBounds(json) {
+  const result = new Map();
+  (json.meshes || []).forEach((mesh, meshIndex) => {
+    const bounds = new THREE.Box3();
+    const point = new THREE.Vector3();
+    for (const primitive of mesh.primitives || []) {
+      const accessorIndex = primitive.attributes?.POSITION;
+      const accessor = accessorIndex == null ? null : json.accessors?.[accessorIndex];
+      expandAccessorBounds(bounds, point, accessor, new THREE.Matrix4());
+    }
+    result.set(meshIndex, bounds);
+  });
+  return result;
+}
+
+function orientedSceneSize(json, nodes, world, orientation) {
+  const box = new THREE.Box3();
+  const corner = new THREE.Vector3();
+  const boundsByMesh = meshBounds(json);
+  nodes.forEach((node, index) => {
+    const bounds = node.mesh == null ? null : boundsByMesh.get(node.mesh);
+    if (!bounds || bounds.isEmpty() || !world[index]) return;
+    const matrix = world[index].clone().premultiply(orientation);
+    expandAccessorBounds(box, corner, {
+      min: bounds.min.toArray(),
+      max: bounds.max.toArray(),
+    }, matrix);
+  });
+  return box.isEmpty() ? null : box.getSize(new THREE.Vector3());
+}
+
 function inspectGlb(file, cfg) {
   const json = readGlb(file);
   const nodes = json.nodes || [];
-  const parents = new Array(nodes.length).fill(-1);
-  nodes.forEach((n, i) => (n.children || []).forEach((c) => { parents[c] = i; }));
-  const roots = (json.scenes && json.scenes[json.scene || 0]?.nodes) ||
-    nodes.map((_, i) => i).filter((i) => parents[i] < 0);
-  const world = new Array(nodes.length);
-  const walk = (i, parentM) => {
-    const m = localMatrix(nodes[i]);
-    if (parentM) m.premultiply(parentM);
-    world[i] = m;
-    for (const c of nodes[i].children || []) walk(c, m);
-  };
-  for (const i of roots) walk(i, null);
-
-  const descendants = (root) => {
-    const out = new Set();
-    const add = (i) => { out.add(i); for (const c of nodes[i]?.children || []) add(c); };
-    if (root != null) add(root);
-    return out;
-  };
-  const subtreeSpan = (root) => {
-    const box = new THREE.Box3();
-    const point = new THREE.Vector3();
-    for (const i of descendants(root)) {
-      const node = nodes[i];
-      const mesh = node.mesh == null ? null : json.meshes?.[node.mesh];
-      if (!mesh || !world[i]) continue;
-      for (const prim of mesh.primitives || []) {
-        const ai = prim.attributes?.POSITION;
-        const a = ai == null ? null : json.accessors?.[ai];
-        if (!a?.min || !a?.max) continue;
-        for (const x of [a.min[0], a.max[0]]) for (const y of [a.min[1], a.max[1]]) {
-          for (const z of [a.min[2], a.max[2]]) box.expandByPoint(point.set(x, y, z).applyMatrix4(world[i]));
-        }
-      }
-    }
-    if (box.isEmpty()) return 0;
-    const size = box.getSize(new THREE.Vector3());
-    return Math.max(size.x, size.y, size.z);
-  };
-  const find = (source, within = null, preferLargest = false) => {
-    const re = new RegExp(source, 'i');
-    const allowed = within == null ? null : descendants(within);
-    const hits = [];
-    for (let i = 0; i < nodes.length; i++) {
-      if ((!allowed || allowed.has(i)) && re.test(nodeName(nodes[i], i))) hits.push(i);
-    }
-    if (!preferLargest || hits.length < 2) return { index: hits[0] ?? null, count: hits.length };
-    hits.sort((a, b) => subtreeSpan(b) - subtreeSpan(a));
-    return { index: hits[0], count: hits.length };
-  };
+  const parents = parentIndices(nodes);
+  const world = worldMatrices(nodes, sceneRoots(json, nodes, parents));
 
   const fixedMount = cfg.fixedMount === true;
-  const turretHit = fixedMount ? { index: null, count: 0 } : find(cfg.turretNode || 'turret');
+  const turretHit = fixedMount ? { index: null, count: 0 }
+    : findNode(json, nodes, world, cfg.turretNode || 'turret');
   const turret = turretHit.index;
   let gun = null;
   let gunMatchCount = 0;
   if (turret != null) {
     const gunRe = cfg.gunNode || '(^|[_\\s.-])(gun|barrel|cannon)(?=$|[_\\s.-])';
-    let gunHit = find(gunRe, turret, true);
+    let gunHit = findNode(json, nodes, world, gunRe, turret, true);
     gun = gunHit.index;
     gunMatchCount = gunHit.count;
     if (gun == null && cfg.gunNode) {
-      gunHit = find(gunRe, null, true);
+      gunHit = findNode(json, nodes, world, gunRe, null, true);
       gun = gunHit.index;
       gunMatchCount = gunHit.count;
     }
@@ -120,29 +184,7 @@ function inspectGlb(file, cfg) {
   const orient = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
     cfg.pitchOffset || 0, cfg.yawOffset || 0, cfg.rollOffset || 0,
   ));
-  const box = new THREE.Box3();
-  const corner = new THREE.Vector3();
-  const meshBoxes = new Map();
-  (json.meshes || []).forEach((mesh, mi) => {
-    const mb = new THREE.Box3();
-    for (const prim of mesh.primitives || []) {
-      const ai = prim.attributes && prim.attributes.POSITION;
-      const a = ai == null ? null : json.accessors?.[ai];
-      if (!a?.min || !a?.max) continue;
-      mb.expandByPoint(new THREE.Vector3().fromArray(a.min));
-      mb.expandByPoint(new THREE.Vector3().fromArray(a.max));
-    }
-    meshBoxes.set(mi, mb);
-  });
-  nodes.forEach((node, i) => {
-    const mb = node.mesh == null ? null : meshBoxes.get(node.mesh);
-    if (!mb || mb.isEmpty() || !world[i]) return;
-    const m = world[i].clone().premultiply(orient);
-    for (const x of [mb.min.x, mb.max.x]) for (const y of [mb.min.y, mb.max.y]) {
-      for (const z of [mb.min.z, mb.max.z]) box.expandByPoint(corner.set(x, y, z).applyMatrix4(m));
-    }
-  });
-  const size = box.isEmpty() ? null : box.getSize(new THREE.Vector3());
+  const size = orientedSceneSize(json, nodes, world, orient);
   return {
     nodeCount: nodes.length,
     meshCount: (json.meshes || []).length,
@@ -151,9 +193,90 @@ function inspectGlb(file, cfg) {
     gun: gun == null ? null : nodeName(nodes[gun], gun),
     turretMatchCount: turretHit.count,
     gunMatchCount,
-    gunInsideTurret: gun != null && descendants(turret).has(gun),
+    gunInsideTurret: gun != null && descendants(nodes, turret).has(gun),
     size: size ? [size.x, size.y, size.z].map((v) => round(v, 4)) : null,
   };
+}
+
+function scoreArticulation(spec, cfg, inspection, issues, hardCaps) {
+  const turretless = spec.armor?.turretless === true;
+  const fixedMount = cfg.fixedMount === true;
+  const score = { turret: 0, gun: 0, hierarchy: 0, pivot: 0 };
+  if (turretless && fixedMount) {
+    score.turret = 3;
+    score.pivot = 1;
+    if (cfg.gunNode && inspection.gun) {
+      score.gun = 2;
+      score.hierarchy = 1;
+    } else {
+      score.gun = 1.25;
+      score.hierarchy = 0.75;
+      issues.push('fixed-mount gun is fused; visual elevation remains virtual');
+      hardCaps.push('fused fixed-mount gun caps score at 9.0');
+    }
+    return { ...score, turretless, fixedMount };
+  }
+  if (turretless) {
+    issues.push('casemate source is not declared fixedMount');
+    hardCaps.push('casemate contract mismatch');
+    return { ...score, turretless, fixedMount };
+  }
+  if (fixedMount) {
+    issues.push('fixedMount is forbidden on a real turreted vehicle');
+    hardCaps.push('turreted vehicle capped at 4.0');
+    return { ...score, turretless, fixedMount };
+  }
+  if (!inspection.turret) {
+    issues.push('no separable turret node');
+    hardCaps.push('missing turret caps score at 5.5');
+    return { ...score, turretless, fixedMount };
+  }
+  score.turret = 3;
+  score.pivot = cfg.autoPivot || cfg.pivot ? 1 : 0.7;
+  if (!inspection.gun) {
+    score.gun = 1.25;
+    score.hierarchy = 0.75;
+    issues.push('gun is fused to turret; elevation remains virtual');
+    hardCaps.push('fused gun caps score at 9.0');
+    return { ...score, turretless, fixedMount };
+  }
+  score.gun = 2;
+  score.hierarchy = inspection.gunInsideTurret ? 1 : 0.8;
+  if (!inspection.gunInsideTurret) issues.push('gun is a turret sibling; loader reparent required');
+  if (inspection.gunMatchCount > 1) {
+    issues.push(`${inspection.gunMatchCount} gun-name matches; largest barrel selected`);
+  }
+  return { ...score, turretless, fixedMount };
+}
+
+function scoreProportions(spec, inspection, issues) {
+  if (!inspection.size) {
+    issues.push('no accessor bounds; proportion check unavailable');
+    return 0.5;
+  }
+  const [width, height, length] = inspection.size;
+  const gotWidth = width / Math.max(length, 1e-6);
+  const gotHeight = height / Math.max(length, 1e-6);
+  const wantedWidth = spec.dims.widthM / spec.dims.overallLengthM;
+  const wantedHeight = spec.dims.heightM / spec.dims.overallLengthM;
+  const error = (Math.abs(gotWidth - wantedWidth) / wantedWidth +
+    Math.abs(gotHeight - wantedHeight) / wantedHeight) / 2;
+  if (error > 0.35) issues.push(`overall proportions differ ${Math.round(error * 100)}% from spec`);
+  return clamp(1 - error / 0.75, 0.5, 1);
+}
+
+function capArticulationScore(score, articulation, inspection) {
+  if (articulation.fixedMount && !articulation.turretless) return Math.min(score, 4);
+  if (!articulation.turretless && !articulation.fixedMount && !inspection.turret) {
+    return Math.min(score, 5.5);
+  }
+  if (!articulation.turretless && inspection.turret && !inspection.gun) {
+    return Math.min(score, 9);
+  }
+  if (articulation.turretless && articulation.fixedMount && !inspection.gun) {
+    return Math.min(score, 9);
+  }
+  return score;
 }
 
 function scoreGlb(id, spec, cfg, role) {
@@ -172,75 +295,15 @@ function scoreGlb(id, spec, cfg, role) {
       issues: [`GLB parse failed: ${error.message}`], hardCaps: ['invalid source'], inspection: null };
   }
 
-  const turretless = spec.armor?.turretless === true;
-  const fixedMount = cfg.fixedMount === true;
   let source = 1;
-  let turret = 0;
-  let gun = 0;
-  let hierarchy = 0;
-  let pivot = 0;
-
-  if (turretless) {
-    if (fixedMount) {
-      turret = 3;
-      pivot = 1;
-      if (cfg.gunNode && inspection.gun) { gun = 2; hierarchy = 1; }
-      else {
-        gun = 1.25;
-        hierarchy = 0.75;
-        issues.push('fixed-mount gun is fused; visual elevation remains virtual');
-        hardCaps.push('fused fixed-mount gun caps score at 9.0');
-      }
-    }
-    else {
-      issues.push('casemate source is not declared fixedMount');
-      hardCaps.push('casemate contract mismatch');
-    }
-  } else if (fixedMount) {
-    issues.push('fixedMount is forbidden on a real turreted vehicle');
-    hardCaps.push('turreted vehicle capped at 4.0');
-  } else if (!inspection.turret) {
-    issues.push('no separable turret node');
-    hardCaps.push('missing turret caps score at 5.5');
-  } else {
-    turret = 3;
-    pivot = cfg.autoPivot || cfg.pivot ? 1 : 0.7;
-    if (inspection.gun) {
-      gun = 2;
-      hierarchy = inspection.gunInsideTurret ? 1 : 0.8;
-      if (!inspection.gunInsideTurret) issues.push('gun is a turret sibling; loader reparent required');
-      if (inspection.gunMatchCount > 1) issues.push(`${inspection.gunMatchCount} gun-name matches; largest barrel selected`);
-    } else {
-      // A fused tube still yaws correctly with its turret, but visual elevation
-      // cannot follow the simulation. It can pass only when every other gate
-      // is healthy and remains visible in the report.
-      gun = 1.25;
-      hierarchy = 0.75;
-      issues.push('gun is fused to turret; elevation remains virtual');
-      hardCaps.push('fused gun caps score at 9.0');
-    }
-  }
-
-  let proportions = 0.5;
-  if (inspection.size) {
-    const [w, h, l] = inspection.size;
-    const gotW = w / Math.max(l, 1e-6);
-    const gotH = h / Math.max(l, 1e-6);
-    const wantW = spec.dims.widthM / spec.dims.overallLengthM;
-    const wantH = spec.dims.heightM / spec.dims.overallLengthM;
-    const err = (Math.abs(gotW - wantW) / wantW + Math.abs(gotH - wantH) / wantH) / 2;
-    proportions = clamp(1 - err / 0.75, 0.5, 1);
-    if (err > 0.35) issues.push(`overall proportions differ ${Math.round(err * 100)}% from spec`);
-  } else issues.push('no accessor bounds; proportion check unavailable');
+  const articulation = scoreArticulation(spec, cfg, inspection, issues, hardCaps);
+  const { turret, gun, hierarchy, pivot, turretless } = articulation;
+  const proportions = scoreProportions(spec, inspection, issues);
 
   const hygiene = cfg.fixedGun ? 0 : 1;
   if (cfg.fixedGun) issues.push('legacy fixedGun config is ambiguous; use fixedMount');
-  let score = source + turret + gun + hierarchy + pivot + proportions + hygiene;
-  if (fixedMount && !turretless) score = Math.min(score, 4);
-  if (!turretless && !fixedMount && !inspection.turret) score = Math.min(score, 5.5);
-  if (!turretless && inspection.turret && !inspection.gun) score = Math.min(score, 9);
-  if (turretless && fixedMount && !inspection.gun) score = Math.min(score, 9);
-  score = round(score, 2);
+  const rawScore = source + turret + gun + hierarchy + pivot + proportions + hygiene;
+  const score = round(capArticulationScore(rawScore, articulation, inspection), 2);
   return { id, role, kind: 'glb', path: cfg.path, score, pass: score >= PASS,
     turretless, issues, hardCaps, inspection,
     components: { source, turret, gun, hierarchy, pivot, proportions: round(proportions), hygiene } };

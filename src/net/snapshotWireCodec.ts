@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   MESSAGE_TYPES,
   normalizePlayerInput,
@@ -7,7 +8,7 @@ import {
 } from './protocol.ts';
 import type { WireCodec } from './channelTransport.ts';
 
-type WireRow = Record<string, unknown>;
+type WireRow = Record<string, RuntimeValue>;
 
 export interface SnapshotWirePayload {
   tick: number;
@@ -15,10 +16,10 @@ export interface SnapshotWirePayload {
   ackInputSeq: number;
   baseTick: number;
   entities: WireRow[];
-  removedEntityIds: unknown[];
+  removedEntityIds: RuntimeValue[];
   shells: WireRow[];
-  events: unknown[];
-  meta: Record<string, unknown> | null;
+  events: RuntimeValue[];
+  meta: Record<string, RuntimeValue> | null;
 }
 
 export type ReplaceableWireEnvelope =
@@ -45,11 +46,11 @@ const MAX_SHELLS = 256;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function toBytes(value: unknown): Uint8Array {
+function toBytes(value: RuntimeValue): Uint8Array {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
   if (ArrayBuffer.isView(value)) {
@@ -59,11 +60,11 @@ function toBytes(value: unknown): Uint8Array {
 }
 
 function packRows(
-  rows: unknown,
+  rows: RuntimeValue,
   fields: readonly string[],
   limit: number,
   label: string,
-): unknown[][] {
+): RuntimeValue[][] {
   if (!Array.isArray(rows) || rows.length > limit) {
     throw new TypeError(`${label} rows exceed the wire limit`);
   }
@@ -74,7 +75,7 @@ function packRows(
 }
 
 function unpackRows(
-  rows: unknown,
+  rows: RuntimeValue,
   fields: readonly string[],
   limit: number,
   label: string,
@@ -97,7 +98,7 @@ function unpackRows(
   });
 }
 
-function encodeInputEnvelope(envelope: ProtocolEnvelope): unknown[] {
+function encodeInputEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
   const input = normalizePlayerInput(envelope.payload);
   return [
     INPUT_WIRE_TAG,
@@ -121,7 +122,7 @@ function encodeInputEnvelope(envelope: ProtocolEnvelope): unknown[] {
   ];
 }
 
-function decodeInputEnvelope(wire: unknown[]): ProtocolEnvelope<NormalizedPlayerInput> {
+function decodeInputEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<NormalizedPlayerInput> {
   if (wire.length !== 18) throw new TypeError('invalid input wire packet');
   const envelope = validateEnvelope({
     v: wire[1],
@@ -152,7 +153,7 @@ function decodeInputEnvelope(wire: unknown[]): ProtocolEnvelope<NormalizedPlayer
   };
 }
 
-function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): unknown[] {
+function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
   if (!isRecord(envelope.payload)) throw new TypeError('snapshot payload is required');
   const packet = envelope.payload;
   return [
@@ -172,7 +173,7 @@ function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): unknown[] {
   ];
 }
 
-function readSnapshotEnvelope(wire: unknown[]): ProtocolEnvelope<SnapshotWirePayload> {
+function readSnapshotEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<SnapshotWirePayload> {
   if (wire.length !== 13 || wire[0] !== SNAPSHOT_WIRE_TAG) {
     throw new TypeError('invalid snapshot wire packet');
   }
@@ -212,10 +213,10 @@ function readSnapshotEnvelope(wire: unknown[]): ProtocolEnvelope<SnapshotWirePay
 
 /** Compact binary JSON-array codec for replaceable snapshot and input envelopes. */
 export const snapshotWireCodec: WireCodec & {
-  encode(value: unknown): Uint8Array;
-  decode(value: unknown): ReplaceableWireEnvelope;
+  encode(value: RuntimeValue): Uint8Array;
+  decode(value: RuntimeValue): ReplaceableWireEnvelope;
 } = Object.freeze({
-  encode(value: unknown): Uint8Array {
+  encode(value: RuntimeValue): Uint8Array {
     const envelope = validateEnvelope(value);
     if (!envelope.payload) throw new TypeError('replaceable envelope is required');
     const wire = envelope.type === MESSAGE_TYPES.INPUT
@@ -227,14 +228,14 @@ export const snapshotWireCodec: WireCodec & {
     return encoder.encode(JSON.stringify(wire));
   },
 
-  decode(value: unknown): ReplaceableWireEnvelope {
-    const wire = JSON.parse(decoder.decode(toBytes(value))) as unknown;
+  decode(value: RuntimeValue): ReplaceableWireEnvelope {
+    const wire = JSON.parse(decoder.decode(toBytes(value))) as RuntimeValue;
     if (!Array.isArray(wire)) throw new TypeError('invalid replaceable wire packet');
     if (wire[0] === INPUT_WIRE_TAG) return decodeInputEnvelope(wire);
     return readSnapshotEnvelope(wire);
   },
 
-  size(value: unknown): number {
+  size(value: RuntimeValue): number {
     if (typeof value === 'string') return encoder.encode(value).byteLength;
     return toBytes(value).byteLength;
   },

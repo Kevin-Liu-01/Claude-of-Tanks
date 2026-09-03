@@ -1,8 +1,9 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 
 installResponsiveLayout();
 
-const mountStars = (): Promise<unknown> => import('../ui/githubStars.ts')
+const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
 
 function mountMobileNavigation(): void {

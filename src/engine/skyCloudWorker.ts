@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   bakeCirrusPixels,
   bakeCumulusPixels,
@@ -12,16 +13,16 @@ interface CloudBakeRequest {
 
 interface CloudWorkerScope {
   onmessage: ((event: MessageEvent<CloudBakeRequest>) => void) | null;
-  postMessage(message: Record<string, unknown>, transfer: Transferable[]): void;
+  postMessage(message: Record<string, RuntimeValue>, transfer: Transferable[]): void;
 }
 
-function isCloudWorkerScope(value: unknown): value is CloudWorkerScope {
+function isCloudWorkerScope(value: RuntimeValue): value is CloudWorkerScope {
   return value !== null && typeof value === 'object' &&
     'postMessage' in value && typeof value.postMessage === 'function' &&
     'onmessage' in value;
 }
 
-const workerScope: unknown = globalThis;
+const workerScope: RuntimeValue = globalThis;
 if (!isCloudWorkerScope(workerScope)) {
   throw new TypeError('cloud bake worker requires a WorkerGlobalScope');
 }

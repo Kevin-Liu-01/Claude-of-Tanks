@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * End every battle-owned presentation lifetime before a resident player tank
  * is reused by the garage. Combat FX owns meshes parented to the tank (impact
@@ -21,27 +22,27 @@ interface LifecycleInput {
   fire: boolean;
   aimLocked: boolean;
   shellSlot: number;
-  aimPoint?: { set?(x: number, y: number, z: number): unknown };
+  aimPoint?: { set?(x: number, y: number, z: number): RuntimeValue };
 }
 
 interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
   visual: Visual | null;
-  state?: unknown;
-  combat?: unknown;
-  specialAction?: unknown;
-  equip?: unknown;
-  ai?: unknown;
-  aiCtl?: unknown;
+  state?: RuntimeValue;
+  combat?: RuntimeValue;
+  specialAction?: RuntimeValue;
+  equip?: RuntimeValue;
+  ai?: RuntimeValue;
+  aiCtl?: RuntimeValue;
   team: string;
   isPlayer: boolean;
   rigidGear?: boolean;
-  contactGeom?: unknown;
+  contactGeom?: RuntimeValue;
   _destroyedAnnounced?: boolean;
-  _glbContactStampedVisual?: unknown;
-  _openingRoute?: unknown;
+  _glbContactStampedVisual?: RuntimeValue;
+  _openingRoute?: RuntimeValue;
   _lastImpactT?: number;
-  _reloadEvent?: unknown;
-  _soloRenderPose?: unknown;
+  _reloadEvent?: RuntimeValue;
+  _soloRenderPose?: RuntimeValue;
   _spotFade?: number;
   _fxAcc?: number;
   _dustTravelAcc?: number;
@@ -50,17 +51,17 @@ interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
 
 export interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   allTanks?: LifecycleEntity<Visual>[];
-  tanks: unknown[];
-  shells: unknown[];
-  player: unknown | null;
-  spotting: unknown | null;
-  result: unknown | null;
-  resultReason: unknown | null;
+  tanks: RuntimeValue[];
+  shells: RuntimeValue[];
+  player: RuntimeValue | null;
+  spotting: RuntimeValue | null;
+  result: RuntimeValue | null;
+  resultReason: RuntimeValue | null;
   preBattleS: number;
   timeS: number;
   fireTickAcc: number;
   nextShellId: number;
-  openingRouteJobs?: unknown[];
+  openingRouteJobs?: RuntimeValue[];
 }
 
 export function resetBattleTankForGarage({

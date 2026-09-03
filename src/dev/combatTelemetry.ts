@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3 } from 'three';
 
 interface PhaseChangeEvent {
@@ -34,14 +35,14 @@ interface CombatTelemetryEventMap {
 }
 
 interface EventBus {
-  on(event: string, listener: (payload: unknown) => void): unknown;
+  on(event: string, listener: (payload: RuntimeValue) => void): RuntimeValue;
 }
 
 function onCombatEvent<EventName extends keyof CombatTelemetryEventMap>(
   bus: EventBus,
   event: EventName,
   listener: (payload: CombatTelemetryEventMap[EventName]) => void,
-): unknown {
+): RuntimeValue {
   return bus.on(event, (payload) => listener(payload as CombatTelemetryEventMap[EventName]));
 }
 

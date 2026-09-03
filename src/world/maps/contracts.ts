@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { PropsMapConfig } from '../props.ts';
 import type { TerrainMapConfig } from '../terrain.ts';
 import type { VegetationMapConfig } from '../vegetation.ts';
@@ -11,4 +12,4 @@ import type { VegetationMapConfig } from '../vegetation.ts';
  * payloads without widening the map registry's inferred per-map fields.
  */
 export type MapCompositionConfig = TerrainMapConfig & VegetationMapConfig &
-  PropsMapConfig & Record<string, unknown>;
+  PropsMapConfig & Record<string, RuntimeValue>;

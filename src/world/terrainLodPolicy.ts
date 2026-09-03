@@ -7,8 +7,8 @@ export interface TerrainLodChunk {
   cx: number;
   cz: number;
   level: TerrainLodLevel;
-  present?: ArrayLike<unknown>;
-  lods?: ArrayLike<unknown>;
+  present?: ArrayLike<boolean | object | null>;
+  lods?: ArrayLike<boolean | object | null>;
 }
 
 export interface TerrainLodBuild {
@@ -44,6 +44,42 @@ export function initialTerrainLods(distanceM: number): TerrainLodLevel[] {
   return [2];
 }
 
+interface TerrainLodCandidate {
+  index: number;
+  level: TerrainLodLevel;
+  distanceM: number;
+  urgent: boolean;
+}
+
+function considerTerrainLodCandidate(
+  current: TerrainLodCandidate,
+  index: number,
+  level: TerrainLodLevel,
+  distanceM: number,
+  urgent: boolean,
+): TerrainLodCandidate {
+  if (urgent) {
+    if (current.index >= 0 && current.urgent && distanceM >= current.distanceM) return current;
+  } else {
+    if (current.urgent) return current;
+    if (current.index >= 0 && distanceM >= current.distanceM) return current;
+  }
+  return { index, level, distanceM, urgent };
+}
+
+function terrainLodPrefetch(
+  want: TerrainLodLevel,
+  distanceM: number,
+  present: ArrayLike<boolean | object | null>,
+): TerrainLodLevel | null {
+  if (want === 2 && distanceM < TERRAIN_LOD_DIST[1] + 125) return 1;
+  if (want === 1 && distanceM < TERRAIN_LOD_DIST[0] + 125) return 0;
+  // Opening construction creates exactly the visible level. During frozen
+  // deployment, restore one coarse outward-travel fallback in the background.
+  if (want < 2 && !present[2]) return 2;
+  return null;
+}
+
 /**
  * Pick at most one missing geometry for this rendered frame. Missing visible
  * detail wins first; then a one-band lookahead quietly prepares the next finer
@@ -59,10 +95,12 @@ export function chooseTerrainLodBuild(
   camZ: number,
   out: TerrainLodBuild | null = null,
 ): TerrainLodBuild | null {
-  let bestIndex = -1;
-  let bestLevel: TerrainLodLevel = 2;
-  let bestDistance = Infinity;
-  let bestUrgent = false;
+  let best: TerrainLodCandidate = {
+    index: -1,
+    level: 2,
+    distanceM: Infinity,
+    urgent: false,
+  };
   for (let index = 0; index < chunks.length; index++) {
     const chunk = chunks[index];
     const distanceM = Math.hypot(camX - chunk.cx, camZ - chunk.cz);
@@ -70,41 +108,23 @@ export function chooseTerrainLodBuild(
     const present = chunk.present || chunk.lods;
     if (!present) continue;
     if (!present[want]) {
-      if (bestIndex < 0 || !bestUrgent || distanceM < bestDistance) {
-        bestIndex = index;
-        bestLevel = want;
-        bestDistance = distanceM;
-        bestUrgent = true;
-      }
+      best = considerTerrainLodCandidate(best, index, want, distanceM, true);
       continue;
     }
-    if (bestUrgent) continue;
+    if (best.urgent) continue;
 
     // Prepare one finer band roughly one chunk before its visible threshold.
-    let prefetch: TerrainLodLevel | null = null;
-    if (want === 2 && distanceM < TERRAIN_LOD_DIST[1] + 125) prefetch = 1;
-    else if (want === 1 && distanceM < TERRAIN_LOD_DIST[0] + 125) prefetch = 0;
-    // Opening construction now creates exactly the visible level. Restore the
-    // same coarse outward-travel fallback during the frozen deployment warm,
-    // after the battlefield is already visible but before controls release.
-    // Until it exists the currently visible level remains in place, so no
-    // lower-quality frame or geometry pop can occur.
-    else if (want < 2 && !present[2]) prefetch = 2;
+    const prefetch = terrainLodPrefetch(want, distanceM, present);
     if (prefetch !== null && !present[prefetch]) {
-      if (bestIndex < 0 || distanceM < bestDistance) {
-        bestIndex = index;
-        bestLevel = prefetch;
-        bestDistance = distanceM;
-        bestUrgent = false;
-      }
+      best = considerTerrainLodCandidate(best, index, prefetch, distanceM, false);
     }
   }
-  if (bestIndex < 0) return null;
+  if (best.index < 0) return null;
   const result = out || {} as TerrainLodBuild;
-  result.index = bestIndex;
-  result.level = bestLevel;
-  result.distanceM = bestDistance;
-  result.urgent = bestUrgent;
+  result.index = best.index;
+  result.level = best.level;
+  result.distanceM = best.distanceM;
+  result.urgent = best.urgent;
   return result;
 }
 

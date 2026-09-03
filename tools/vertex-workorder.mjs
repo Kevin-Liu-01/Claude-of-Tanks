@@ -63,16 +63,29 @@ try {
     const AXES = { side: new THREE.Vector3(1, 0, 0), plan: new THREE.Vector3(0, 1, 0), front: new THREE.Vector3(0, 0, 1) };
     const planZOff = { mode: 'legacy', off: 0 };
     const GS = 1024;
+    const scanColumn = (mask, size, x0, x1) => {
+      let top = -1;
+      let bot = -1;
+      for (let x = x0; x < x1; x++) {
+        for (let y = size - 1; y >= 0; y--) {
+          if (!mask[y * size + x]) continue;
+          if (y > top) top = y;
+          break;
+        }
+        for (let y = 0; y < size; y++) {
+          if (!mask[y * size + x]) continue;
+          if (bot < 0 || y < bot) bot = y;
+          break;
+        }
+      }
+      return { top, bot };
+    };
     const trace = (mask, cam, N = 96) => {
       const S = Math.round(Math.sqrt(mask.length));
       const half = cam.right; const out = []; const step = S / N;
       for (let c = 0; c < N; c++) {
         const x0 = Math.floor(c * step); const x1 = Math.min(S, Math.floor((c + 1) * step));
-        let top = -1; let bot = -1;
-        for (let x = x0; x < x1; x++) {
-          for (let y = S - 1; y >= 0; y--) if (mask[y * S + x]) { if (y > top) top = y; break; }
-          for (let y = 0; y < S; y++) if (mask[y * S + x]) { if (bot < 0 || y < bot) bot = y; break; }
-        }
+        const { top, bot } = scanColumn(mask, S, x0, x1);
         out.push(top >= 0 ? [((x0 + x1) / 2 + 0.5) / S * 2 * half - half,
           ((top + 0.5) / S * 2 - 1) * half, ((bot + 0.5) / S * 2 - 1) * half] : null);
       }
@@ -84,14 +97,24 @@ try {
     // the minimum whole-mask bottom defines the v->world offset exactly —
     // no camera-center guessing (two prior conventions each fit only one
     // view; this closes the question for good).
-    const yOff = { side: 0, front: 0, plan: 0 };
-    for (const view of ['side', 'front']) {
-      const cam0 = cameraFor(AXES[view]);
-      const t0 = trace(renderMask(reference, procedural, cam0, 'whole'), cam0);
-      let mn = Infinity;
-      for (const c of t0) if (c && c[2] < mn) mn = c[2];
-      yOff[view] = Number.isFinite(mn) ? -mn : 0;
-    }
+    const minimumTraceBottom = (traceColumns) => {
+      let minimum = Infinity;
+      for (const column of traceColumns) {
+        if (column && column[2] < minimum) minimum = column[2];
+      }
+      return minimum;
+    };
+    const groundOffsetForView = (view) => {
+      const camera = cameraFor(AXES[view]);
+      const columns = trace(renderMask(reference, procedural, camera, 'whole'), camera);
+      const minimum = minimumTraceBottom(columns);
+      return Number.isFinite(minimum) ? -minimum : 0;
+    };
+    const yOff = {
+      side: groundOffsetForView('side'),
+      front: groundOffsetForView('front'),
+      plan: 0,
+    };
     // plan calibration: the plan 'vertical' is world-z on screen; anchor the
     // REF hull-mask REAR edge to the extract's known hullMask.z0 (ground
     // truth, same spirit as the side/front ground anchor).
@@ -103,41 +126,62 @@ try {
     // comes from the THIN-END test on the whole mask (the end held by the
     // gun tube alone — few columns — is the FRONT), and the offset from the
     // HULL trace (whole-mask rear can overhang the hull rear).
-    {
+    const traceExtents = (columns) => {
+      let minimum = Infinity;
+      let maximum = -Infinity;
+      for (const column of columns) {
+        if (!column) continue;
+        if (column[2] < minimum) minimum = column[2];
+        if (column[1] > maximum) maximum = column[1];
+      }
+      return { minimum, maximum };
+    };
+    const referencePlanDatums = () => {
+      try {
+        const vertex = JSON.parse(window.__VERTEX_JSON || 'null');
+        const z0 = vertex?.measured?.hullMask?.z0 ?? null;
+        const gunBox = vertex?.landmarks?.gunBox;
+        const z1 = gunBox ? gunBox.hi[2] : (vertex?.measured?.hullMask?.z1 ?? null);
+        return { z0, z1 };
+      } catch {
+        return { z0: null, z1: null };
+      }
+    };
+    const thinEndCounts = (columns, minimum, maximum) => {
+      const near = 0.40;
+      let nearMinimum = 0;
+      let nearMaximum = 0;
+      for (const column of columns) {
+        if (!column) continue;
+        if (column[2] <= minimum + near) nearMinimum++;
+        if (column[1] >= maximum - near) nearMaximum++;
+      }
+      return { nearMinimum, nearMaximum };
+    };
+    const calibratePlanZOffset = () => {
       const cam0 = cameraFor(AXES.plan);
       const t0 = trace(renderMask(reference, procedural, cam0, 'whole'), cam0);
       const t0h = trace(renderMask(reference, procedural, cam0, 'hull'), cam0);
-      let mn = Infinity, mx = -Infinity;
-      for (const c of t0) if (c) { if (c[2] < mn) mn = c[2]; if (c[1] > mx) mx = c[1]; }
-      let mnH = Infinity, mxH = -Infinity;
-      for (const c of t0h) if (c) { if (c[2] < mnH) mnH = c[2]; if (c[1] > mxH) mxH = c[1]; }
-      let z0 = null, z1 = null;
-      try {
-        const vx = JSON.parse(window.__VERTEX_JSON || 'null');
-        z0 = vx?.measured?.hullMask?.z0 ?? null;
-        const gb = vx?.landmarks?.gunBox;
-        z1 = gb ? gb.hi[2] : (vx?.measured?.hullMask?.z1 ?? null);
-      } catch {}
-      if (z0 !== null && Number.isFinite(mn) && Number.isFinite(mx) && Number.isFinite(mnH)) {
-        const near = 0.40;
-        let nMn = 0, nMx = 0;
-        for (const c of t0) {
-          if (!c) continue;
-          if (c[2] <= mn + near) nMn++;
-          if (c[1] >= mx - near) nMx++;
-        }
-        if (nMn !== nMx) {
+      const whole = traceExtents(t0);
+      const hull = traceExtents(t0h);
+      const { z0, z1 } = referencePlanDatums();
+      if (z0 !== null && Number.isFinite(whole.minimum)
+        && Number.isFinite(whole.maximum) && Number.isFinite(hull.minimum)) {
+        const counts = thinEndCounts(t0, whole.minimum, whole.maximum);
+        if (counts.nearMinimum !== counts.nearMaximum) {
           // thin end = muzzle = front (max z). mode B maps v=mn -> z max.
-          planZOff.mode = nMn < nMx ? 'B' : 'A';
+          planZOff.mode = counts.nearMinimum < counts.nearMaximum ? 'B' : 'A';
         } else {
           // symmetric fallback (gunless mask): old endpoint-vs-target pick
-          const frontA = (z0 - mnH) + mx, frontB = (z0 + mxH) - mn;
-          const target = z1 !== null ? z1 : (z0 + (mx - mn));
+          const frontA = (z0 - hull.minimum) + whole.maximum;
+          const frontB = (z0 + hull.maximum) - whole.minimum;
+          const target = z1 !== null ? z1 : (z0 + (whole.maximum - whole.minimum));
           planZOff.mode = Math.abs(frontA - target) <= Math.abs(frontB - target) ? 'A' : 'B';
         }
-        planZOff.off = planZOff.mode === 'A' ? (z0 - mnH) : (z0 + mxH);
+        planZOff.off = planZOff.mode === 'A' ? (z0 - hull.minimum) : (z0 + hull.maximum);
       } else { planZOff.mode = 'legacy'; planZOff.off = C.z; }
-    }
+    };
+    calibratePlanZOffset();
     const toWorld = {
       side: (p) => [C.z - p[0], p[1] + yOff.side, p[2] + yOff.side],
       plan: (p) => planZOff.mode === 'A'
@@ -145,29 +189,39 @@ try {
         : [p[0] + C.x, planZOff.off - p[2], planZOff.off - p[1]],
       front: (p) => [p[0] + C.x, p[1] + yOff.front, p[2] + yOff.front],
     };
+    const sampledRow = (view, referenceColumn, proceduralColumn) => {
+      const world = referenceColumn ? toWorld[view](referenceColumn) : null;
+      const proc = proceduralColumn ? toWorld[view](proceduralColumn) : null;
+      return {
+        u: +((referenceColumn || proceduralColumn)[0]).toFixed(3),
+        world: world ? world.map((value) => +value.toFixed(3)) : null,
+        proc: proc ? proc.map((value) => +value.toFixed(3)) : null,
+        err: (referenceColumn && proceduralColumn)
+          ? +((Math.abs(referenceColumn[1] - proceduralColumn[1])
+            + Math.abs(referenceColumn[2] - proceduralColumn[2])) / 2).toFixed(3)
+          : null,
+        only: referenceColumn && !proceduralColumn
+          ? 'ref' : (!referenceColumn && proceduralColumn ? 'proc' : null),
+      };
+    };
+    const sampledRows = (view, referenceMask, proceduralMask) => {
+      const rows = [];
+      for (let i = 0; i < 96; i++) {
+        const referenceColumn = referenceMask[i];
+        const proceduralColumn = proceduralMask[i];
+        if (!referenceColumn && !proceduralColumn) continue;
+        rows.push(sampledRow(view, referenceColumn, proceduralColumn));
+      }
+      return rows;
+    };
     const out = { center: [C.x, C.y, C.z].map((v) => +v.toFixed(3)), rows: {} };
-    const big = { side: 512, plan: 512, front: 512 };
     for (const view of ['side', 'plan', 'front']) {
       const cam = cameraFor(AXES[view]);
       for (const part of ['whole', 'hull', 'turret']) {
         if (part === 'turret' && view === 'front') continue;
         const rm = trace(renderMask(reference, procedural, cam, part), cam);
         const pm = trace(renderMask(procedural, reference, cam, part), cam);
-        const rows = [];
-        for (let i = 0; i < 96; i++) {
-          const r = rm[i]; const p = pm[i];
-          if (!r && !p) continue;
-          const w = r ? toWorld[view](r) : null;
-          const q = p ? toWorld[view](p) : null;
-          rows.push({
-            u: +( (r || p)[0] ).toFixed(3),
-            world: w ? w.map((v) => +v.toFixed(3)) : null,
-            proc: q ? q.map((v) => +v.toFixed(3)) : null,
-            err: (r && p) ? +((Math.abs(r[1] - p[1]) + Math.abs(r[2] - p[2])) / 2).toFixed(3) : null,
-            only: r && !p ? 'ref' : (!r && p ? 'proc' : null),
-          });
-        }
-        out.rows[`${view}_${part}`] = rows;
+        out.rows[`${view}_${part}`] = sampledRows(view, rm, pm);
       }
     }
     // restore whole visibility for cleanliness

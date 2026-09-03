@@ -175,82 +175,101 @@ export function createMatchModeWorldPresentation(
     if (pickupMarkers) for (const marker of pickupMarkers) marker.visible = false;
   };
 
-  const update = (state: MatchModePresentationState | null, timeS: number): void => {
-    const active = !!state && state.id !== 'standard';
-    root.visible = active;
-    if (!active || !state) return;
-    hideAll();
-
-    if (state.id === 'capture_the_flag') {
-      const markers = buildFlags();
-      for (let index = 0; index < markers.length; index++) {
-        const flag = state.flags[index];
-        const marker = markers[index];
-        if (!flag) continue;
-        marker.visible = true;
-        marker.position.set(flag.x, flag.y - 2.5, flag.z);
-        marker.rotation.y = timeS * 0.22 + index * Math.PI;
-        const homeRing = marker.children[2];
-        homeRing.visible = flag.status === 'home';
-        if (flag.status === 'home') {
-          marker.position.y = flag.baseY;
-        }
-      }
-    } else if (state.id === 'zone_control') {
-      const markers = buildZones();
-      for (let index = 0; index < markers.length; index++) {
-        const zone = state.zones[index];
-        const marker = markers[index];
-        if (!zone) continue;
-        marker.visible = true;
-        marker.position.set(zone.x, zone.y, zone.z);
-        const material = marker.userData.markerMaterial;
-        material?.color.setHex(zone.contested ? AMBER
-          : zone.owner ? teamColor(zone.owner) : NEUTRAL);
-        if (material) material.opacity = zone.contested ? 0.68 : 0.28 + Math.abs(zone.control) * 0.38;
-      }
-    } else if (state.id === 'turbo_ball') {
-      buildTurbo();
-      if (ballMarker && state.ball) {
-        ballMarker.visible = true;
-        ballMarker.position.set(state.ball.x, state.ball.y, state.ball.z);
-        ballMarker.rotation.set(timeS * 0.55, timeS * 0.8, timeS * 0.35);
-      }
-      if (goalMarkers && state.goals.length === goalMarkers.length) {
-        const midX = (state.goals[0].x + state.goals[1].x) * 0.5;
-        const midY = (state.goals[0].y + state.goals[1].y) * 0.5 + 10;
-        const midZ = (state.goals[0].z + state.goals[1].z) * 0.5;
-        for (let index = 0; index < goalMarkers.length; index++) {
-          const goal = state.goals[index];
-          const marker = goalMarkers[index];
-          marker.visible = true;
-          marker.position.set(goal.x, goal.y, goal.z);
-          marker.lookAt(midX, midY, midZ);
-        }
-      }
-    } else if (state.id === 'endless_horde') {
-      const markers = buildPickups();
-      let markerIndex = 0;
-      for (const pickup of state.pickups) {
-        if (!pickup.active || markerIndex >= markers.length) continue;
-        const marker = markers[markerIndex++];
-        marker.visible = true;
-        marker.position.set(pickup.x,
-          pickup.y + Math.sin(timeS * 2.1 + markerIndex) * 0.45, pickup.z);
-        marker.rotation.y = timeS * 0.75 + markerIndex * 0.6;
-        if (marker.userData.heal) marker.userData.heal.visible = pickup.kind === 'heal';
-        if (marker.userData.ammo) marker.userData.ammo.visible = pickup.kind === 'ammo';
-      }
+  const updateFlags = (state: MatchModePresentationState, timeS: number): void => {
+    const markers = buildFlags();
+    for (const [index, flag] of state.flags.entries()) {
+      const marker = markers[index];
+      if (!marker) break;
+      marker.visible = true;
+      marker.position.set(flag.x, flag.y - 2.5, flag.z);
+      marker.rotation.y = timeS * 0.22 + index * Math.PI;
+      const homeRing = marker.children[2];
+      homeRing.visible = flag.status === 'home';
+      if (flag.status === 'home') marker.position.y = flag.baseY;
     }
   };
 
+  const updateZones = (state: MatchModePresentationState): void => {
+    const markers = buildZones();
+    for (const [index, zone] of state.zones.entries()) {
+      const marker = markers[index];
+      if (!marker) break;
+      marker.visible = true;
+      marker.position.set(zone.x, zone.y, zone.z);
+      const material = marker.userData.markerMaterial;
+      if (!material) continue;
+      const color = zone.contested ? AMBER
+        : zone.owner ? teamColor(zone.owner) : NEUTRAL;
+      material.color.setHex(color);
+      material.opacity = zone.contested ? 0.68 : 0.28 + Math.abs(zone.control) * 0.38;
+    }
+  };
+
+  const updateTurboBall = (state: MatchModePresentationState, timeS: number): void => {
+    buildTurbo();
+    if (ballMarker && state.ball) {
+      ballMarker.visible = true;
+      ballMarker.position.set(state.ball.x, state.ball.y, state.ball.z);
+      ballMarker.rotation.set(timeS * 0.55, timeS * 0.8, timeS * 0.35);
+    }
+    if (!goalMarkers || state.goals.length !== goalMarkers.length) return;
+    const firstGoal = state.goals[0];
+    const secondGoal = state.goals[1];
+    const midX = (firstGoal.x + secondGoal.x) * 0.5;
+    const midY = (firstGoal.y + secondGoal.y) * 0.5 + 10;
+    const midZ = (firstGoal.z + secondGoal.z) * 0.5;
+    for (let index = 0; index < goalMarkers.length; index += 1) {
+      const goal = state.goals[index];
+      const marker = goalMarkers[index];
+      marker.visible = true;
+      marker.position.set(goal.x, goal.y, goal.z);
+      marker.lookAt(midX, midY, midZ);
+    }
+  };
+
+  const updatePickups = (state: MatchModePresentationState, timeS: number): void => {
+    const markers = buildPickups();
+    let markerIndex = 0;
+    for (const pickup of state.pickups) {
+      if (!pickup.active || markerIndex >= markers.length) continue;
+      const marker = markers[markerIndex];
+      markerIndex += 1;
+      marker.visible = true;
+      marker.position.set(
+        pickup.x,
+        pickup.y + Math.sin(timeS * 2.1 + markerIndex) * 0.45,
+        pickup.z,
+      );
+      marker.rotation.y = timeS * 0.75 + markerIndex * 0.6;
+      if (marker.userData.heal) marker.userData.heal.visible = pickup.kind === 'heal';
+      if (marker.userData.ammo) marker.userData.ammo.visible = pickup.kind === 'ammo';
+    }
+  };
+
+  const update = (state: MatchModePresentationState | null, timeS: number): void => {
+    if (!state || state.id === 'standard') {
+      root.visible = false;
+      return;
+    }
+    root.visible = true;
+    hideAll();
+    if (state.id === 'capture_the_flag') updateFlags(state, timeS);
+    else if (state.id === 'zone_control') updateZones(state);
+    else if (state.id === 'turbo_ball') updateTurboBall(state, timeS);
+    else updatePickups(state, timeS);
+  };
+
   const dispose = (): void => {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
     root.traverse((object) => {
       const mesh = object as THREE.Mesh;
-      mesh.geometry?.dispose();
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      for (const material of materials) material?.dispose();
+      if (mesh.geometry) geometries.add(mesh.geometry);
+      const meshMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of meshMaterials) if (material) materials.add(material);
     });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
     root.removeFromParent();
   };
 

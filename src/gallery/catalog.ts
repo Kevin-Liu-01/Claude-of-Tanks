@@ -13,7 +13,7 @@ interface GalleryShellSpec {
 
 interface GalleryArmorPlate {
   kind?: string;
-  era?: unknown;
+  era?: boolean | object;
   physicalMm?: number;
   keMm?: number;
   ceMm?: number;
@@ -65,8 +65,8 @@ export interface GalleryVehicleSpec {
   armor?: {
     hullPlates?: GalleryArmorPlate[];
     turretPlates?: GalleryArmorPlate[];
-    modules?: unknown[];
-    crew?: unknown[];
+    modules?: object[];
+    crew?: object[];
   };
 }
 
@@ -89,7 +89,7 @@ function normalized(value: number, low: number, high: number): number {
   return clamp(((value - low) / (high - low)) * 100);
 }
 
-function titleCase(value: unknown): string {
+function titleCase<T>(value: T): string {
   return String(value || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -145,19 +145,33 @@ function protectionAssessment(bestKe: number): string {
   return 'limited kinetic protection, which increases the importance of positioning';
 }
 
-export function technicalLabel(value: unknown): string {
+export function technicalLabel<T>(value: T): string {
   return titleCase(value || 'unspecified');
 }
 
-export function createGalleryRecord(spec: GalleryVehicleSpec) {
-  const label = tankLabelRecord(spec);
+interface GalleryGunSummary {
+  shell: GalleryShellSpec | null;
+  best: ReturnType<typeof bestShell>;
+  autoloader: GalleryAutoloaderSpec | null;
+  magazineSize: number;
+  intraClipS: number;
+  fullReloadS: number;
+  burstDamage: number;
+  dpm: number;
+  shellTypes: string[];
+}
+
+interface GalleryProtectionSummary {
+  bestKeMm: number;
+  bestCeMm: number;
+  features: string[];
+  modules: object[];
+  crew: object[];
+}
+
+function summarizeGalleryGun(spec: GalleryVehicleSpec): GalleryGunSummary {
   const shell = primaryShell(spec);
   const best = bestShell(spec);
-  const keValues = plateValues(spec, 'keMm');
-  const ceValues = plateValues(spec, 'ceMm');
-  const powerToWeight = Number(spec.weightTons) > 0
-    ? Number(spec.enginePowerHp || 0) / Number(spec.weightTons)
-    : 0;
   const damage = Number(shell?.dmg || 0);
   const autoloader = spec.gun?.autoloader || null;
   const magazineSize = autoloader
@@ -177,26 +191,39 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
   const sustainedCycleS = fullReloadS + Math.max(0, magazineSize - 1) * intraClipS;
   const burstDamage = damage * magazineSize;
   const dpm = burstDamage * (60 / sustainedCycleS);
-  const bestKeMm = Math.max(0, ...keValues);
-  const bestCeMm = Math.max(0, ...ceValues);
-  const features = protectionFeatures(spec);
   const shellTypes = [...new Set((spec.gun?.shells || []).map((item) => item.type)
     .filter((value): value is string => Boolean(value)))];
-  const modules = spec.armor?.modules || [];
-  const crew = spec.armor?.crew || [];
-  const tier = tankTier(spec.id);
-  const nation = String(spec.nation || 'Unknown nation');
-  const era = vehicleEraLabel(spec.era);
+  return {
+    shell, best, autoloader, magazineSize, intraClipS, fullReloadS,
+    burstDamage, dpm, shellTypes,
+  };
+}
 
-  const ratings = {
+function summarizeGalleryProtection(spec: GalleryVehicleSpec): GalleryProtectionSummary {
+  return {
+    bestKeMm: Math.max(0, ...plateValues(spec, 'keMm')),
+    bestCeMm: Math.max(0, ...plateValues(spec, 'ceMm')),
+    features: protectionFeatures(spec),
+    modules: spec.armor?.modules || [],
+    crew: spec.armor?.crew || [],
+  };
+}
+
+function galleryRatings(
+  spec: GalleryVehicleSpec,
+  powerToWeight: number,
+  gun: GalleryGunSummary,
+  protection: GalleryProtectionSummary,
+) {
+  return {
     firepower: rounded(
-      normalized(best?.penetration || 0, 60, 900) * 0.58
-      + normalized(dpm, 700, 5600) * 0.32
+      normalized(gun.best?.penetration || 0, 60, 900) * 0.58
+      + normalized(gun.dpm, 700, 5600) * 0.32
       + normalized(Number(spec.gun?.caliberMm || 0), 20, 155) * 0.10,
       0,
     ),
     protection: rounded(
-      normalized(bestKeMm, 20, 900) * 0.72
+      normalized(protection.bestKeMm, 20, 900) * 0.72
       + normalized(Number(spec.hp || 0), 400, 3000) * 0.28,
       0,
     ),
@@ -208,26 +235,115 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     ),
     survivability: rounded(
       normalized(Number(spec.hp || 0), 400, 3000) * 0.6
-      + normalized(modules.length + crew.length, 3, 15) * 0.4,
+      + normalized(protection.modules.length + protection.crew.length, 3, 15) * 0.4,
       0,
     ),
   };
+}
 
-  const armamentSentence = autoloader
-    ? `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${magazineSize}-round magazine autoloader with a ${rounded(intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(fullReloadS)} seconds; the modeled ammunition suite comprises ${shellTypes.length || 1} ${shellTypes.length === 1 ? 'family' : 'families'}.`
-    : `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${shellTypes.length || 1} ammunition ${shellTypes.length === 1 ? 'family' : 'families'}.`;
-  const firstParagraph = `In Claude of Tanks, ${label.displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} vehicle representing the ${era} era. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
-  const featureSentence = features.length
-    ? ` The authored plate set also includes ${joinTechnicalList(features)}.`
+function galleryArmamentSentence(spec: GalleryVehicleSpec, gun: GalleryGunSummary): string {
+  const familyCount = gun.shellTypes.length || 1;
+  const familyLabel = gun.shellTypes.length === 1 ? 'family' : 'families';
+  if (!gun.autoloader) {
+    return `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${familyCount} ammunition ${familyLabel}.`;
+  }
+  return `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${gun.magazineSize}-round magazine autoloader with a ${rounded(gun.intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(gun.fullReloadS)} seconds; the modeled ammunition suite comprises ${familyCount} ${familyLabel}.`;
+}
+
+function galleryBrief(
+  spec: GalleryVehicleSpec,
+  displayName: string,
+  tier: number,
+  nation: string,
+  era: string,
+  powerToWeight: number,
+  gun: GalleryGunSummary,
+  protection: GalleryProtectionSummary,
+): string[] {
+  const armamentSentence = galleryArmamentSentence(spec, gun);
+  const firstParagraph = `In Claude of Tanks, ${displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} vehicle representing the ${era} era. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
+  const featureSentence = protection.features.length
+    ? ` The authored plate set also includes ${joinTechnicalList(protection.features)}.`
     : '';
-  const secondParagraph = `The current balance model gives this vehicle ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))}. Its armor model provides ${protectionAssessment(bestKeMm)}. Post-penetration damage can affect ${modules.length} modeled module volumes and ${crew.length} crew stations.${featureSentence}`;
+  const secondParagraph = `The current balance model gives this vehicle ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))}. Its armor model provides ${protectionAssessment(protection.bestKeMm)}. Post-penetration damage can affect ${protection.modules.length} modeled module volumes and ${protection.crew.length} crew stations.${featureSentence}`;
+  return [firstParagraph, secondParagraph];
+}
 
-  const highlights = [
-    ...(autoloader ? [`${magazineSize}-round magazine: ${burstDamage.toLocaleString('en-US')} burst damage with a ${rounded(intraClipS)} s intra-magazine cycle`] : []),
-    best ? `${best.shell.name || best.shell.type}: ${rounded(best.penetration, 0)} mm penetration at 1,000 m` : 'Ammunition performance is not specified',
+function galleryHighlights(
+  spec: GalleryVehicleSpec,
+  powerToWeight: number,
+  gun: GalleryGunSummary,
+  protection: GalleryProtectionSummary,
+): string[] {
+  return [
+    ...(gun.autoloader ? [`${gun.magazineSize}-round magazine: ${gun.burstDamage.toLocaleString('en-US')} burst damage with a ${rounded(gun.intraClipS)} s intra-magazine cycle`] : []),
+    gun.best ? `${gun.best.shell.name || gun.best.shell.type}: ${rounded(gun.best.penetration, 0)} mm penetration at 1,000 m` : 'Ammunition performance is not specified',
     `${rounded(powerToWeight)} hp/t and ${rounded(Number(spec.hullTraverseDegS || 0), 0)}°/s hull traverse`,
-    `${(spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length} authored armor plates; ${modules.length + crew.length} internal volumes`,
+    `${(spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length} authored armor plates; ${protection.modules.length + protection.crew.length} internal volumes`,
   ];
+}
+
+function galleryMetrics(
+  spec: GalleryVehicleSpec,
+  powerToWeight: number,
+  gun: GalleryGunSummary,
+  protection: GalleryProtectionSummary,
+) {
+  return Object.freeze({
+    hp: Number(spec.hp || 0),
+    enginePowerHp: Number(spec.enginePowerHp || 0),
+    weightTons: Number(spec.weightTons || 0),
+    powerToWeight: rounded(powerToWeight),
+    topSpeedKmh: Number(spec.topSpeedKmh || 0),
+    reverseSpeedKmh: Number(spec.reverseSpeedKmh || 0),
+    hullTraverseDegS: Number(spec.hullTraverseDegS || 0),
+    turretTraverseDegS: Number(spec.turretTraverseDegS || 0),
+    caliberMm: Number(spec.gun?.caliberMm || 0),
+    reloadS: rounded(gun.fullReloadS),
+    autoloader: Boolean(gun.autoloader),
+    magazineSize: gun.magazineSize,
+    intraClipS: rounded(gun.intraClipS),
+    burstDamage: gun.burstDamage,
+    aimTimeS: Number(spec.gun?.aimTimeS || 0),
+    dpm: rounded(gun.dpm, 0),
+    bestPenetrationMm: rounded(gun.best?.penetration || 0, 0),
+    bestKeMm: rounded(protection.bestKeMm, 0),
+    bestCeMm: rounded(protection.bestCeMm, 0),
+    armorPlateCount: (spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length,
+    moduleCount: protection.modules.length,
+    crewCount: protection.crew.length,
+  });
+}
+
+function galleryDimensions(spec: GalleryVehicleSpec) {
+  return Object.freeze({
+    hullLengthM: Number(spec.dims?.hullLengthM || 0),
+    overallLengthM: Number(spec.dims?.overallLengthM || 0),
+    widthM: Number(spec.dims?.widthM || 0),
+    heightM: Number(spec.dims?.heightM || 0),
+  });
+}
+
+function galleryShellRecords(spec: GalleryVehicleSpec) {
+  return Object.freeze((spec.gun?.shells || []).map((item) => Object.freeze({
+    name: item.name || item.type,
+    type: item.type || 'Unknown',
+    penetrationMm: Number(item.pen1000Mm ?? item.pen100Mm ?? 0),
+    damage: Number(item.dmg || 0),
+    velocityMps: Number(item.velocityMps || 0),
+  })));
+}
+
+export function createGalleryRecord(spec: GalleryVehicleSpec) {
+  const label = tankLabelRecord(spec);
+  const gun = summarizeGalleryGun(spec);
+  const protection = summarizeGalleryProtection(spec);
+  const powerToWeight = Number(spec.weightTons) > 0
+    ? Number(spec.enginePowerHp || 0) / Number(spec.weightTons)
+    : 0;
+  const tier = tankTier(spec.id);
+  const nation = String(spec.nation || 'Unknown nation');
+  const era = vehicleEraLabel(spec.era);
 
   return Object.freeze({
     id: spec.id,
@@ -246,49 +362,15 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     image: `/icons/${spec.id}_angle.webp`,
     searchText: [
       label.searchAliases.join(' '), nation, era, tier,
-      autoloader ? 'magazine autoloader' : '',
+      gun.autoloader ? 'magazine autoloader' : '',
       spec.roster?.developmentOnly ? `dev development ${spec.roster.reason || ''}` : 'production',
     ].join(' ').toLocaleLowerCase('en-US'),
-    ratings: Object.freeze(ratings),
-    metrics: Object.freeze({
-      hp: Number(spec.hp || 0),
-      enginePowerHp: Number(spec.enginePowerHp || 0),
-      weightTons: Number(spec.weightTons || 0),
-      powerToWeight: rounded(powerToWeight),
-      topSpeedKmh: Number(spec.topSpeedKmh || 0),
-      reverseSpeedKmh: Number(spec.reverseSpeedKmh || 0),
-      hullTraverseDegS: Number(spec.hullTraverseDegS || 0),
-      turretTraverseDegS: Number(spec.turretTraverseDegS || 0),
-      caliberMm: Number(spec.gun?.caliberMm || 0),
-      reloadS: rounded(fullReloadS),
-      autoloader: Boolean(autoloader),
-      magazineSize,
-      intraClipS: rounded(intraClipS),
-      burstDamage,
-      aimTimeS: Number(spec.gun?.aimTimeS || 0),
-      dpm: rounded(dpm, 0),
-      bestPenetrationMm: rounded(best?.penetration || 0, 0),
-      bestKeMm: rounded(bestKeMm, 0),
-      bestCeMm: rounded(bestCeMm, 0),
-      armorPlateCount: (spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length,
-      moduleCount: modules.length,
-      crewCount: crew.length,
-    }),
-    dimensions: Object.freeze({
-      hullLengthM: Number(spec.dims?.hullLengthM || 0),
-      overallLengthM: Number(spec.dims?.overallLengthM || 0),
-      widthM: Number(spec.dims?.widthM || 0),
-      heightM: Number(spec.dims?.heightM || 0),
-    }),
-    brief: Object.freeze([firstParagraph, secondParagraph]),
-    highlights: Object.freeze(highlights),
-    shells: Object.freeze((spec.gun?.shells || []).map((item) => Object.freeze({
-      name: item.name || item.type,
-      type: item.type || 'Unknown',
-      penetrationMm: Number(item.pen1000Mm ?? item.pen100Mm ?? 0),
-      damage: Number(item.dmg || 0),
-      velocityMps: Number(item.velocityMps || 0),
-    }))),
+    ratings: Object.freeze(galleryRatings(spec, powerToWeight, gun, protection)),
+    metrics: galleryMetrics(spec, powerToWeight, gun, protection),
+    dimensions: galleryDimensions(spec),
+    brief: Object.freeze(galleryBrief(spec, label.displayName, tier, nation, era, powerToWeight, gun, protection)),
+    highlights: Object.freeze(galleryHighlights(spec, powerToWeight, gun, protection)),
+    shells: galleryShellRecords(spec),
   });
 }
 

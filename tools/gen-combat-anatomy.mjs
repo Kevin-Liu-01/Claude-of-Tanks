@@ -12,7 +12,6 @@ import {
 import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
-import { COMBAT_ANATOMY_CALIBRATIONS } from '../src/vehicles/combatAnatomyCalibrations.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import {
   enableCombatAnatomyMeasurementMode,
@@ -29,6 +28,9 @@ const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
 const loaderOutputPath = resolve('src/vehicles/combatAnatomyLoaders.generated.ts');
 const check = process.argv.includes('--check');
+const COMBAT_ANATOMY_CALIBRATIONS = check
+  ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
+  : Object.freeze({});
 const round = (value) => Number(value.toFixed(4));
 
 // Geometry-derived combat shells are deliberately much coarser than the
@@ -129,44 +131,41 @@ function quantizedPointKey(point) {
     + `${Math.round(point[2] / POINT_QUANTUM_M)}`;
 }
 
-function convexCell(points) {
+function uniquePointCloud(points) {
   const unique = new Map();
   for (const point of points) {
     const key = quantizedPointKey(point);
     if (!unique.has(key)) unique.set(key, new THREE.Vector3(...point));
   }
-  let cloud = [...unique.values()];
-  if (cloud.length < 4) return null;
+  return [...unique.values()];
+}
 
-  // Presentation geometry contains millimetric bevels, fasteners and other
-  // silhouette noise that would turn a combat slice into hundreds of tiny
-  // planes. A deterministic 26-direction support hull keeps the real outer
-  // extents and slopes while bounding every cell to a few dozen faces.
-  if (cloud.length > SUPPORT_DIRECTIONS.length) {
-    const supported = new Map();
-    for (const direction of SUPPORT_DIRECTIONS) {
-      let best = null;
-      let bestProjection = -Infinity;
-      for (const point of cloud) {
-        const projection = point.x * direction[0] + point.y * direction[1] + point.z * direction[2];
-        if (projection > bestProjection) {
-          bestProjection = projection;
-          best = point;
-        }
-      }
-      if (best) supported.set(quantizedPointKey(best.toArray()), best);
+function supportPointCloud(cloud) {
+  if (cloud.length <= SUPPORT_DIRECTIONS.length) return cloud;
+  const supported = new Map();
+  for (const direction of SUPPORT_DIRECTIONS) {
+    let best = null;
+    let bestProjection = -Infinity;
+    for (const point of cloud) {
+      const projection = point.x * direction[0] + point.y * direction[1] + point.z * direction[2];
+      if (projection <= bestProjection) continue;
+      bestProjection = projection;
+      best = point;
     }
-    cloud = [...supported.values()];
+    if (best) supported.set(quantizedPointKey(best.toArray()), best);
   }
+  return [...supported.values()];
+}
 
-  let hull;
+function convexHullFromCloud(cloud) {
   try {
-    hull = new ConvexHull().setFromPoints(cloud);
+    return new ConvexHull().setFromPoints(cloud);
   } catch {
     return null;
   }
-  if (!hull.faces.length) return null;
+}
 
+function indexedHullFaces(hull) {
   const vertices = [];
   const vertexMap = new Map();
   const faces = [];
@@ -187,16 +186,68 @@ function convexCell(points) {
     } while (edge !== face.edge);
     if (indices.length === 3 && new Set(indices).size === 3) faces.push(indices);
   }
-  if (vertices.length < 4 || faces.length < 4) return null;
+  return { vertices, faces };
+}
+
+function pointBounds(points) {
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
-  for (const point of vertices) {
+  for (const point of points) {
     for (let axis = 0; axis < 3; axis++) {
       min[axis] = Math.min(min[axis], point[axis]);
       max[axis] = Math.max(max[axis], point[axis]);
     }
   }
-  return { min: min.map(round), max: max.map(round), vertices, faces };
+  return { min: min.map(round), max: max.map(round) };
+}
+
+function convexCell(points) {
+  let cloud = uniquePointCloud(points);
+  if (cloud.length < 4) return null;
+
+  // Presentation geometry contains millimetric bevels, fasteners and other
+  // silhouette noise that would turn a combat slice into hundreds of tiny
+  // planes. A deterministic 26-direction support hull keeps the real outer
+  // extents and slopes while bounding every cell to a few dozen faces.
+  cloud = supportPointCloud(cloud);
+  const hull = convexHullFromCloud(cloud);
+  if (!hull || !hull.faces.length) return null;
+  const { vertices, faces } = indexedHullFaces(hull);
+  if (vertices.length < 4 || faces.length < 4) return null;
+  return { ...pointBounds(vertices), vertices, faces };
+}
+
+function trianglePolygon(object, triangle, relative, a, b, c, roofY) {
+  const position = object.geometry.getAttribute('position');
+  const index = object.geometry.index;
+  const ia = index ? index.getX(triangle * 3) : triangle * 3;
+  const ib = index ? index.getX(triangle * 3 + 1) : triangle * 3 + 1;
+  const ic = index ? index.getX(triangle * 3 + 2) : triangle * 3 + 2;
+  a.fromBufferAttribute(position, ia).applyMatrix4(relative);
+  b.fromBufferAttribute(position, ib).applyMatrix4(relative);
+  c.fromBufferAttribute(position, ic).applyMatrix4(relative);
+  const polygon = [a.toArray(), b.toArray(), c.toArray()];
+  return Number.isFinite(roofY) ? clipPolygonAxis(polygon, 1, roofY, false) : polygon;
+}
+
+function addPolygonToSlices(polygon, pointsBySlice, z0, z1, step) {
+  if (polygon.length < 3) return;
+  let triangleMinZ = Infinity;
+  let triangleMaxZ = -Infinity;
+  for (const point of polygon) {
+    triangleMinZ = Math.min(triangleMinZ, point[2]);
+    triangleMaxZ = Math.max(triangleMaxZ, point[2]);
+  }
+  const lastSlice = pointsBySlice.length - 1;
+  const first = Math.max(0, Math.min(lastSlice, Math.floor((triangleMinZ - z0) / step)));
+  const last = Math.max(0, Math.min(lastSlice, Math.floor((triangleMaxZ - z0) / step)));
+  for (let slice = first; slice <= last; slice++) {
+    const minimumZ = z0 + slice * step;
+    const maximumZ = slice === lastSlice ? z1 : z0 + (slice + 1) * step;
+    let clipped = clipPolygonAxis(polygon, 2, minimumZ, true);
+    clipped = clipPolygonAxis(clipped, 2, maximumZ, false);
+    if (clipped.length >= 3) pointsBySlice[slice].push(...clipped);
+  }
 }
 
 /**
@@ -231,30 +282,8 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) 
     const relative = new THREE.Matrix4().multiplyMatrices(invOwner, object.matrixWorld);
     const triangleCount = index ? index.count / 3 : position.count / 3;
     for (let triangle = 0; triangle < triangleCount; triangle++) {
-      const ia = index ? index.getX(triangle * 3) : triangle * 3;
-      const ib = index ? index.getX(triangle * 3 + 1) : triangle * 3 + 1;
-      const ic = index ? index.getX(triangle * 3 + 2) : triangle * 3 + 2;
-      a.fromBufferAttribute(position, ia).applyMatrix4(relative);
-      b.fromBufferAttribute(position, ib).applyMatrix4(relative);
-      c.fromBufferAttribute(position, ic).applyMatrix4(relative);
-      let polygon = [a.toArray(), b.toArray(), c.toArray()];
-      if (Number.isFinite(roofY)) polygon = clipPolygonAxis(polygon, 1, roofY, false);
-      if (polygon.length < 3) continue;
-      let triMinZ = Infinity;
-      let triMaxZ = -Infinity;
-      for (const point of polygon) {
-        triMinZ = Math.min(triMinZ, point[2]);
-        triMaxZ = Math.max(triMaxZ, point[2]);
-      }
-      const first = Math.max(0, Math.min(sliceCount - 1, Math.floor((triMinZ - z0) / step)));
-      const last = Math.max(0, Math.min(sliceCount - 1, Math.floor((triMaxZ - z0) / step)));
-      for (let slice = first; slice <= last; slice++) {
-        const minZ = z0 + slice * step;
-        const maxZ = slice === sliceCount - 1 ? z1 : z0 + (slice + 1) * step;
-        let clipped = clipPolygonAxis(polygon, 2, minZ, true);
-        clipped = clipPolygonAxis(clipped, 2, maxZ, false);
-        if (clipped.length >= 3) pointsBySlice[slice].push(...clipped);
-      }
+      const polygon = trianglePolygon(object, triangle, relative, a, b, c, roofY);
+      addPolygonToSlices(polygon, pointsBySlice, z0, z1, step);
     }
   }
 

@@ -172,13 +172,13 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     },
     programRoot,
     forwardPrograms: {
-      *initializeSteps(root) {
-        assert.equal(root, programRoot);
+      *initializeSteps() {
+        assert.fail('resident programs must not be submitted again');
       },
-      *linkerBreathingSlices(maxSlices) {
-        assert.equal(maxSlices, 8);
+      *linkerBreathingSlices() {
+        assert.fail('resident programs need no linker drain');
       },
-      compile() { assert.fail('bounded program steps should succeed'); },
+      compile() { assert.fail('resident programs must not be compiled again'); },
     },
     post: { render() {} },
     simDt: 1 / 60,

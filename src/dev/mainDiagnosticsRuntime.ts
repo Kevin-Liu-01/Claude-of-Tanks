@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createCombatTelemetry,
   type CombatTelemetryOptions,
@@ -8,13 +9,13 @@ import {
 } from './debugSurface.ts';
 
 interface PerfHudDiagnosticsPort {
-  preload(): Promise<unknown>;
+  preload(): Promise<RuntimeValue>;
   setVisible(visible: boolean): void;
 }
 
 interface MainDiagnosticsInstallers {
-  createTelemetry(options: CombatTelemetryOptions): unknown;
-  installSurface(options: DebugSurfaceDependencies): unknown;
+  createTelemetry(options: CombatTelemetryOptions): RuntimeValue;
+  installSurface(options: DebugSurfaceDependencies): RuntimeValue;
 }
 
 export interface MainDiagnosticsRuntimeOptions {
@@ -22,7 +23,7 @@ export interface MainDiagnosticsRuntimeOptions {
   debugSurface: DebugSurfaceDependencies;
   perfHud: PerfHudDiagnosticsPort;
   showDebugHud: boolean;
-  warn?: (message: string, error: unknown) => void;
+  warn?: (message: string, error: RuntimeValue) => void;
   installers?: MainDiagnosticsInstallers;
 }
 

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared, allocation-free world collision primitives.
 //
 // World props keep min/max AABBs for cheap broad-phase consumers, but may
@@ -40,7 +41,7 @@ interface Vector3Like extends Position2 {
 }
 
 interface MutableVector3Like extends Vector3Like {
-  set(x: number, y: number, z: number): unknown;
+  set(x: number, y: number, z: number): RuntimeValue;
 }
 
 interface Push2 extends Position2 {
@@ -52,6 +53,20 @@ interface AxisOverlap {
   overlap: number;
   nx: number;
   nz: number;
+}
+
+interface CirclePush extends Position2 {
+  depth: number;
+}
+
+interface RayInterval {
+  t0: number;
+  t1: number;
+  nx: number;
+  ny: number;
+  nz: number;
+  axis: number;
+  sign: number;
 }
 
 export type ObstacleQuery = (
@@ -210,65 +225,128 @@ export function pushHullFromObstacle(
   outPush: Push2,
 ) {
   const sh = ob.shape2;
-  if (sh && sh.kind === 'circle') {
-    // Circle center in hull-local (right/forward) coordinates.
-    const dx = sh.cx - pos.x, dz = sh.cz - pos.z;
-    const cx = dx * rx + dz * rz;
-    const cz = dx * fx + dz * fz;
-    const qx = Math.max(-halfW, Math.min(cx, halfW));
-    const qz = Math.max(-halfL, Math.min(cz, halfL));
-    const vx = qx - cx, vz = qz - cz;
-    const d2 = vx * vx + vz * vz;
-    if (d2 >= sh.r * sh.r) return false;
-    let px: number, pz: number, depth: number;
-    if (d2 > EPS) {
-      const d = Math.sqrt(d2);
-      px = vx / d; pz = vz / d; depth = sh.r - d;
-    } else {
-      const ox = halfW + sh.r - Math.abs(cx);
-      const oz = halfL + sh.r - Math.abs(cz);
-      if (ox < oz) { px = cx >= 0 ? -1 : 1; pz = 0; depth = ox; }
-      else { px = 0; pz = cz >= 0 ? -1 : 1; depth = oz; }
-    }
-    outPush.x += (rx * px + fx * pz) * depth;
-    outPush.z += (rz * px + fz * pz) * depth;
-    return true;
+  if (sh?.kind === 'circle') {
+    return pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
   }
 
   const best = _pushBest;
   best.overlap = Infinity; best.nx = 0; best.nz = 0;
-  if (sh && sh.kind === 'convex') {
-    const pts = sh.points;
-    if (!testConvexAxis(fx, fz, pts, sh, pos, fx, fz, rx, rz, halfL, halfW, best) ||
-        !testConvexAxis(rx, rz, pts, sh, pos, fx, fz, rx, rz, halfL, halfW, best)) return false;
-    for (let i = 0; i < pts.length; i += 2) {
-      const j = (i + 2) % pts.length;
-      if (!testConvexAxis(-(pts[j + 1] - pts[i + 1]), pts[j] - pts[i],
-        pts, sh, pos, fx, fz, rx, rz, halfL, halfW, best)) return false;
-    }
-  } else {
-    const box = sh && sh.kind === 'obb' ? sh : _fallbackBox;
-    if (box === _fallbackBox) {
-      box.cx = (ob.min[0] + ob.max[0]) * 0.5;
-      box.cz = (ob.min[2] + ob.max[2]) * 0.5;
-      box.hw = (ob.max[0] - ob.min[0]) * 0.5;
-      box.hl = (ob.max[2] - ob.min[2]) * 0.5;
-      box.yaw = 0;
-    }
-    const ofx = Math.sin(box.yaw), ofz = Math.cos(box.yaw);
-    const orx = ofz, orz = -ofx;
-    if (!testObbAxis(fx, fz, box, ofx, ofz, orx, orz,
-      pos, fx, fz, rx, rz, halfL, halfW, best) ||
-      !testObbAxis(rx, rz, box, ofx, ofz, orx, orz,
-        pos, fx, fz, rx, rz, halfL, halfW, best) ||
-      !testObbAxis(ofx, ofz, box, ofx, ofz, orx, orz,
-        pos, fx, fz, rx, rz, halfL, halfW, best) ||
-      !testObbAxis(orx, orz, box, ofx, ofz, orx, orz,
-        pos, fx, fz, rx, rz, halfL, halfW, best)) return false;
-  }
+  const overlaps = sh?.kind === 'convex'
+    ? overlapsConvexObstacle(sh, pos, fx, fz, rx, rz, halfL, halfW, best)
+    : overlapsBoxObstacle(ob, sh?.kind === 'obb' ? sh : null,
+      pos, fx, fz, rx, rz, halfL, halfW, best);
+  if (!overlaps) return false;
   outPush.x += best.nx * best.overlap;
   outPush.z += best.nz * best.overlap;
   return true;
+}
+
+function pushHullFromCircle(
+  pos: Position2,
+  fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number,
+  circle: Extract<CollisionShape, { kind: 'circle' }>,
+  outPush: Push2,
+): boolean {
+  const dx = circle.cx - pos.x;
+  const dz = circle.cz - pos.z;
+  const centerX = dx * rx + dz * rz;
+  const centerZ = dx * fx + dz * fz;
+  const closestX = Math.max(-halfW, Math.min(centerX, halfW));
+  const closestZ = Math.max(-halfL, Math.min(centerZ, halfL));
+  const deltaX = closestX - centerX;
+  const deltaZ = closestZ - centerZ;
+  const distanceSq = deltaX * deltaX + deltaZ * deltaZ;
+  if (distanceSq >= circle.r * circle.r) return false;
+  circlePushLocal(centerX, centerZ, deltaX, deltaZ, distanceSq,
+    halfL, halfW, circle.r, _circlePush);
+  outPush.x += (rx * _circlePush.x + fx * _circlePush.z) * _circlePush.depth;
+  outPush.z += (rz * _circlePush.x + fz * _circlePush.z) * _circlePush.depth;
+  return true;
+}
+
+function circlePushLocal(
+  centerX: number, centerZ: number,
+  deltaX: number, deltaZ: number,
+  distanceSq: number, halfL: number, halfW: number, radius: number,
+  out: CirclePush,
+): void {
+  if (distanceSq > EPS) {
+    const distance = Math.sqrt(distanceSq);
+    out.x = deltaX / distance;
+    out.z = deltaZ / distance;
+    out.depth = radius - distance;
+    return;
+  }
+  const overlapX = halfW + radius - Math.abs(centerX);
+  const overlapZ = halfL + radius - Math.abs(centerZ);
+  if (overlapX < overlapZ) {
+    out.x = centerX >= 0 ? -1 : 1;
+    out.z = 0;
+    out.depth = overlapX;
+    return;
+  }
+  out.x = 0;
+  out.z = centerZ >= 0 ? -1 : 1;
+  out.depth = overlapZ;
+}
+
+function overlapsConvexObstacle(
+  shape: Extract<CollisionShape, { kind: 'convex' }>,
+  pos: Position2,
+  fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, best: AxisOverlap,
+): boolean {
+  const points = shape.points;
+  if (!testConvexAxis(fx, fz, points, shape, pos,
+    fx, fz, rx, rz, halfL, halfW, best)) return false;
+  if (!testConvexAxis(rx, rz, points, shape, pos,
+    fx, fz, rx, rz, halfL, halfW, best)) return false;
+  for (let index = 0; index < points.length; index += 2) {
+    const next = (index + 2) % points.length;
+    const axisX = -(points[next + 1] - points[index + 1]);
+    const axisZ = points[next] - points[index];
+    if (!testConvexAxis(axisX, axisZ, points, shape, pos,
+      fx, fz, rx, rz, halfL, halfW, best)) return false;
+  }
+  return true;
+}
+
+function obstacleBox(
+  obstacle: CollisionRecord,
+  shape: Extract<CollisionShape, { kind: 'obb' }> | null,
+): Extract<CollisionShape, { kind: 'obb' }> {
+  if (shape) return shape;
+  _fallbackBox.cx = (obstacle.min[0] + obstacle.max[0]) * 0.5;
+  _fallbackBox.cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
+  _fallbackBox.hw = (obstacle.max[0] - obstacle.min[0]) * 0.5;
+  _fallbackBox.hl = (obstacle.max[2] - obstacle.min[2]) * 0.5;
+  _fallbackBox.yaw = 0;
+  return _fallbackBox;
+}
+
+function overlapsBoxObstacle(
+  obstacle: CollisionRecord,
+  shape: Extract<CollisionShape, { kind: 'obb' }> | null,
+  pos: Position2,
+  fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, best: AxisOverlap,
+): boolean {
+  const box = obstacleBox(obstacle, shape);
+  const obstacleForwardX = Math.sin(box.yaw);
+  const obstacleForwardZ = Math.cos(box.yaw);
+  const obstacleRightX = obstacleForwardZ;
+  const obstacleRightZ = -obstacleForwardX;
+  return testObbAxis(fx, fz, box, obstacleForwardX, obstacleForwardZ,
+    obstacleRightX, obstacleRightZ, pos, fx, fz, rx, rz, halfL, halfW, best)
+    && testObbAxis(rx, rz, box, obstacleForwardX, obstacleForwardZ,
+      obstacleRightX, obstacleRightZ, pos, fx, fz, rx, rz, halfL, halfW, best)
+    && testObbAxis(obstacleForwardX, obstacleForwardZ, box,
+      obstacleForwardX, obstacleForwardZ, obstacleRightX, obstacleRightZ,
+      pos, fx, fz, rx, rz, halfL, halfW, best)
+    && testObbAxis(obstacleRightX, obstacleRightZ, box,
+      obstacleForwardX, obstacleForwardZ, obstacleRightX, obstacleRightZ,
+      pos, fx, fz, rx, rz, halfL, halfW, best);
 }
 
 /**
@@ -327,6 +405,7 @@ function testHullAxis(
 }
 
 const _pushBest = { overlap: Infinity, nx: 0, nz: 0 };
+const _circlePush: CirclePush = { x: 0, z: 0, depth: 0 };
 const _fallbackBox: Extract<CollisionShape, { kind: 'obb' }> = {
   kind: 'obb', cx: 0, cz: 0, hw: 0, hl: 0, yaw: 0,
 };
@@ -337,6 +416,37 @@ const _localN: MutableVector3Like = {
   x: 0, y: 0, z: 0,
   set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
 };
+const _rayInterval: RayInterval = {
+  t0: 0, t1: 0, nx: 0, ny: 0, nz: 0, axis: -1, sign: 1,
+};
+
+function clipAabbAxis(
+  origin: number,
+  direction: number,
+  lower: number,
+  upper: number,
+  axis: number,
+  interval: RayInterval,
+): boolean {
+  if (Math.abs(direction) < EPS) return origin >= lower && origin <= upper;
+  const inverse = 1 / direction;
+  let entry = (lower - origin) * inverse;
+  let exit = (upper - origin) * inverse;
+  let sign = -1;
+  if (entry > exit) {
+    const swap = entry;
+    entry = exit;
+    exit = swap;
+    sign = 1;
+  }
+  if (entry > interval.t0) {
+    interval.t0 = entry;
+    interval.axis = axis;
+    interval.sign = sign;
+  }
+  if (exit < interval.t1) interval.t1 = exit;
+  return interval.t0 <= interval.t1;
+}
 
 function rayAabb(
   origin: Vector3Like,
@@ -345,26 +455,182 @@ function rayAabb(
   maxDist: number,
   outNormal: MutableVector3Like,
 ) {
-  let tmin = 0, tmax = maxDist, axis = -1, sign = 1;
-  for (let a = 0; a < 3; a++) {
-    const o = a === 0 ? origin.x : a === 1 ? origin.y : origin.z;
-    const d = a === 0 ? dir.x : a === 1 ? dir.y : dir.z;
-    const lo = rec.min[a], hi = rec.max[a];
-    if (Math.abs(d) < EPS) { if (o < lo || o > hi) return -1; continue; }
-    const inv = 1 / d;
-    let t0 = (lo - o) * inv, t1 = (hi - o) * inv, s = -1;
-    if (t0 > t1) { const q = t0; t0 = t1; t1 = q; s = 1; }
-    if (t0 > tmin) { tmin = t0; axis = a; sign = s; }
-    if (t1 < tmax) tmax = t1;
-    if (tmin > tmax) return -1;
-  }
-  if (axis >= 0) {
+  const interval = _rayInterval;
+  interval.t0 = 0;
+  interval.t1 = maxDist;
+  interval.axis = -1;
+  interval.sign = 1;
+  if (!clipAabbAxis(origin.x, dir.x, rec.min[0], rec.max[0], 0, interval)
+      || !clipAabbAxis(origin.y, dir.y, rec.min[1], rec.max[1], 1, interval)
+      || !clipAabbAxis(origin.z, dir.z, rec.min[2], rec.max[2], 2, interval)) return -1;
+  if (interval.axis >= 0) {
     outNormal.set(0, 0, 0);
-    if (axis === 0) outNormal.x = sign;
-    else if (axis === 1) outNormal.y = sign;
-    else outNormal.z = sign;
+    if (interval.axis === 0) outNormal.x = interval.sign;
+    else if (interval.axis === 1) outNormal.y = interval.sign;
+    else outNormal.z = interval.sign;
   } else outNormal.set(-dir.x, -dir.y, -dir.z);
-  return tmin;
+  return interval.t0;
+}
+
+function initializeExtrudedInterval(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  maxDist: number,
+  againstRay: boolean,
+): RayInterval | null {
+  const interval = _rayInterval;
+  interval.t0 = 0;
+  interval.t1 = maxDist;
+  interval.nx = againstRay ? -dir.x : 0;
+  interval.ny = againstRay ? -dir.y : 0;
+  interval.nz = againstRay ? -dir.z : 0;
+  if (Math.abs(dir.y) < EPS) {
+    return origin.y >= rec.min[1] && origin.y <= rec.max[1] ? interval : null;
+  }
+  let entry = (rec.min[1] - origin.y) / dir.y;
+  let exit = (rec.max[1] - origin.y) / dir.y;
+  let signY = -1;
+  if (entry > exit) {
+    const swap = entry;
+    entry = exit;
+    exit = swap;
+    signY = 1;
+  }
+  if (entry > interval.t0) {
+    interval.t0 = entry;
+    interval.nx = 0;
+    interval.ny = signY;
+    interval.nz = 0;
+  }
+  if (exit < interval.t1) interval.t1 = exit;
+  return interval;
+}
+
+function rayObb(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  shape: Extract<CollisionShape, { kind: 'obb' }>,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+): number {
+  const sine = Math.sin(shape.yaw);
+  const cosine = Math.cos(shape.yaw);
+  const deltaX = origin.x - shape.cx;
+  const deltaZ = origin.z - shape.cz;
+  _localO.x = deltaX * cosine - deltaZ * sine;
+  _localO.y = origin.y;
+  _localO.z = deltaX * sine + deltaZ * cosine;
+  _localD.x = dir.x * cosine - dir.z * sine;
+  _localD.y = dir.y;
+  _localD.z = dir.x * sine + dir.z * cosine;
+  _localRec.min[0] = -shape.hw;
+  _localRec.min[1] = rec.min[1];
+  _localRec.min[2] = -shape.hl;
+  _localRec.max[0] = shape.hw;
+  _localRec.max[1] = rec.max[1];
+  _localRec.max[2] = shape.hl;
+  const distance = rayAabb(_localO, _localD, _localRec, maxDist, _localN);
+  if (distance < 0) return -1;
+  outNormal.set(
+    _localN.x * cosine + _localN.z * sine,
+    _localN.y,
+    -_localN.x * sine + _localN.z * cosine,
+  );
+  return distance;
+}
+
+function clipCircleSides(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  shape: Extract<CollisionShape, { kind: 'circle' }>,
+  interval: RayInterval,
+): boolean {
+  const originX = origin.x - shape.cx;
+  const originZ = origin.z - shape.cz;
+  const directionSq = dir.x * dir.x + dir.z * dir.z;
+  if (directionSq < EPS) return originX * originX + originZ * originZ <= shape.r * shape.r;
+  const linear = 2 * (originX * dir.x + originZ * dir.z);
+  const constant = originX * originX + originZ * originZ - shape.r * shape.r;
+  const discriminant = linear * linear - 4 * directionSq * constant;
+  if (discriminant < 0) return false;
+  const root = Math.sqrt(discriminant);
+  const entry = (-linear - root) / (2 * directionSq);
+  const exit = (-linear + root) / (2 * directionSq);
+  if (entry > interval.t0) {
+    interval.t0 = entry;
+    const hitX = originX + dir.x * entry;
+    const hitZ = originZ + dir.z * entry;
+    const inverseLength = 1 / Math.max(Math.hypot(hitX, hitZ), EPS);
+    interval.nx = hitX * inverseLength;
+    interval.ny = 0;
+    interval.nz = hitZ * inverseLength;
+  }
+  if (exit < interval.t1) interval.t1 = exit;
+  return true;
+}
+
+function rayCircle(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  shape: Extract<CollisionShape, { kind: 'circle' }>,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+): number {
+  const interval = initializeExtrudedInterval(origin, dir, rec, maxDist, false);
+  if (!interval || !clipCircleSides(origin, dir, shape, interval)) return -1;
+  if (interval.t0 > interval.t1 || interval.t1 < 0 || interval.t0 > maxDist) return -1;
+  outNormal.set(interval.nx, interval.ny, interval.nz);
+  return Math.max(0, interval.t0);
+}
+
+function clipConvexEdge(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  points: number[],
+  index: number,
+  interval: RayInterval,
+): boolean {
+  const next = (index + 2) % points.length;
+  const edgeX = points[next] - points[index];
+  const edgeZ = points[next + 1] - points[index + 1];
+  const inverseLength = 1 / (Math.hypot(edgeX, edgeZ) || 1);
+  const inwardX = -edgeZ * inverseLength;
+  const inwardZ = edgeX * inverseLength;
+  const originSide = (origin.x - points[index]) * inwardX
+    + (origin.z - points[index + 1]) * inwardZ;
+  const directionSide = dir.x * inwardX + dir.z * inwardZ;
+  if (Math.abs(directionSide) < EPS) return originSide >= 0;
+  const distance = -originSide / directionSide;
+  if (directionSide > 0 && distance > interval.t0) {
+    interval.t0 = distance;
+    interval.nx = -inwardX;
+    interval.ny = 0;
+    interval.nz = -inwardZ;
+  } else if (directionSide < 0 && distance < interval.t1) {
+    interval.t1 = distance;
+  }
+  return interval.t0 <= interval.t1;
+}
+
+function rayConvex(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  shape: Extract<CollisionShape, { kind: 'convex' }>,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+): number {
+  const interval = initializeExtrudedInterval(origin, dir, rec, maxDist, true);
+  if (!interval) return -1;
+  for (let index = 0; index < shape.points.length; index += 2) {
+    if (!clipConvexEdge(origin, dir, shape.points, index, interval)) return -1;
+  }
+  if (interval.t1 < 0 || interval.t0 > maxDist) return -1;
+  outNormal.set(interval.nx, interval.ny, interval.nz);
+  return Math.max(0, interval.t0);
 }
 
 /** Ray against the tight footprint extruded from minY to maxY. */
@@ -377,90 +643,9 @@ export function rayCollisionRecord(
 ) {
   const sh = rec.shape2;
   if (!sh) return rayAabb(origin, dir, rec, maxDist, outNormal);
-  if (sh.kind === 'obb') {
-    const s = Math.sin(sh.yaw), c = Math.cos(sh.yaw);
-    const dx = origin.x - sh.cx, dz = origin.z - sh.cz;
-    _localO.x = dx * c - dz * s; _localO.y = origin.y; _localO.z = dx * s + dz * c;
-    _localD.x = dir.x * c - dir.z * s; _localD.y = dir.y; _localD.z = dir.x * s + dir.z * c;
-    _localRec.min[0] = -sh.hw; _localRec.min[1] = rec.min[1]; _localRec.min[2] = -sh.hl;
-    _localRec.max[0] = sh.hw; _localRec.max[1] = rec.max[1]; _localRec.max[2] = sh.hl;
-    const t = rayAabb(_localO, _localD, _localRec, maxDist, _localN);
-    if (t < 0) return -1;
-    outNormal.set(_localN.x * c + _localN.z * s, _localN.y, -_localN.x * s + _localN.z * c);
-    return t;
-  }
-  if (sh.kind === 'circle') {
-    let t0 = 0, t1 = maxDist;
-    let nx = 0, ny = 0, nz = 0;
-    // vertical slab
-    if (Math.abs(dir.y) < EPS) {
-      if (origin.y < rec.min[1] || origin.y > rec.max[1]) return -1;
-    } else {
-      let a = (rec.min[1] - origin.y) / dir.y;
-      let b = (rec.max[1] - origin.y) / dir.y;
-      let sy = -1;
-      if (a > b) { const q = a; a = b; b = q; sy = 1; }
-      if (a > t0) { t0 = a; nx = 0; ny = sy; nz = 0; }
-      if (b < t1) t1 = b;
-    }
-    const ox = origin.x - sh.cx, oz = origin.z - sh.cz;
-    const aa = dir.x * dir.x + dir.z * dir.z;
-    if (aa < EPS) {
-      if (ox * ox + oz * oz > sh.r * sh.r) return -1;
-    } else {
-      const bb = 2 * (ox * dir.x + oz * dir.z);
-      const cc = ox * ox + oz * oz - sh.r * sh.r;
-      const disc = bb * bb - 4 * aa * cc;
-      if (disc < 0) return -1;
-      const sd = Math.sqrt(disc);
-      let a = (-bb - sd) / (2 * aa), b = (-bb + sd) / (2 * aa);
-      if (a > t0) {
-        t0 = a;
-        const hx = ox + dir.x * a, hz = oz + dir.z * a;
-        const il = 1 / Math.max(Math.hypot(hx, hz), EPS);
-        nx = hx * il; ny = 0; nz = hz * il;
-      }
-      if (b < t1) t1 = b;
-    }
-    if (t0 > t1 || t1 < 0 || t0 > maxDist) return -1;
-    outNormal.set(nx, ny, nz);
-    return Math.max(0, t0);
-  }
-  if (sh.kind === 'convex') {
-    let t0 = 0, t1 = maxDist;
-    let enx = -dir.x, eny = -dir.y, enz = -dir.z;
-    // y slab first
-    if (Math.abs(dir.y) < EPS) {
-      if (origin.y < rec.min[1] || origin.y > rec.max[1]) return -1;
-    } else {
-      let a = (rec.min[1] - origin.y) / dir.y;
-      let b = (rec.max[1] - origin.y) / dir.y;
-      let sy = -1;
-      if (a > b) { const q = a; a = b; b = q; sy = 1; }
-      if (a > t0) { t0 = a; enx = 0; eny = sy; enz = 0; }
-      if (b < t1) t1 = b;
-    }
-    const pts = sh.points;
-    for (let i = 0; i < pts.length; i += 2) {
-      const j = (i + 2) % pts.length;
-      const ex = pts[j] - pts[i], ez = pts[j + 1] - pts[i + 1];
-      // CCW polygon inward normal = (-edge.z, edge.x).
-      let ix = -ez, iz = ex;
-      const il = Math.hypot(ix, iz) || 1;
-      ix /= il; iz /= il;
-      const s0 = (origin.x - pts[i]) * ix + (origin.z - pts[i + 1]) * iz;
-      const sd = dir.x * ix + dir.z * iz;
-      if (Math.abs(sd) < EPS) { if (s0 < 0) return -1; continue; }
-      const t = -s0 / sd;
-      if (sd > 0) {
-        if (t > t0) { t0 = t; enx = -ix; eny = 0; enz = -iz; }
-      } else if (t < t1) t1 = t;
-      if (t0 > t1) return -1;
-    }
-    if (t1 < 0 || t0 > maxDist) return -1;
-    outNormal.set(enx, eny, enz);
-    return Math.max(0, t0);
-  }
+  if (sh.kind === 'obb') return rayObb(origin, dir, rec, sh, maxDist, outNormal);
+  if (sh.kind === 'circle') return rayCircle(origin, dir, rec, sh, maxDist, outNormal);
+  if (sh.kind === 'convex') return rayConvex(origin, dir, rec, sh, maxDist, outNormal);
   return rayAabb(origin, dir, rec, maxDist, outNormal);
 }
 

@@ -127,9 +127,12 @@ export function createHeadlessCollisionWorld(
   const bestNormal = new Vector3();
   const fastHeightAt = worldHeightField.getHeightAtFast || worldHeightField.getHeightAt;
 
-  function raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null {
+  function nearestColliderHit(
+    origin: Vector3,
+    direction: Vector3,
+    maxDistance: number,
+  ): { distance: number; record: CollisionRecord | null } {
     let bestDistance = Infinity;
-    let bestKind: 'prop' | null = null;
     let bestRecord: CollisionRecord | null = null;
     const endX = origin.x + direction.x * maxDistance;
     const endZ = origin.z + direction.z * maxDistance;
@@ -145,51 +148,61 @@ export function createHeadlessCollisionWorld(
       );
       if (distance >= 0 && distance < bestDistance) {
         bestDistance = distance;
-        bestKind = 'prop';
         bestRecord = collider;
         bestNormal.copy(hitNormal);
       }
     }
+    return { distance: bestDistance, record: bestRecord };
+  }
 
-    let terrainDistance = -1;
+  function terrainHitDistance(
+    origin: Vector3,
+    direction: Vector3,
+    maxDistance: number,
+  ): number {
+    const refineHit = (lowDistance: number, highDistance: number): number => {
+      let low = lowDistance;
+      let high = highDistance;
+      for (let index = 0; index < 6; index++) {
+        const mid = (low + high) * 0.5;
+        bisectPoint.copy(direction).multiplyScalar(mid).add(origin);
+        if (bisectPoint.y - fastHeightAt(bisectPoint.x, bisectPoint.z) <= 0) high = mid;
+        else low = mid;
+      }
+      return (low + high) * 0.5;
+    };
     let distance = 0;
     let clearance = origin.y - fastHeightAt(origin.x, origin.z);
-    if (clearance <= 0) {
-      terrainDistance = 0;
-    } else {
-      const limit = Math.min(maxDistance, bestDistance);
-      let priorDistance = 0;
-      while (distance < limit) {
-        const step = Math.min(Math.max(clearance * 0.5, 0.5), 2);
-        priorDistance = distance;
-        distance = Math.min(distance + step, limit);
-        point.copy(direction).multiplyScalar(distance).add(origin);
-        if (direction.y > 0 && point.y > worldHeightField.maxY + 2) break;
-        clearance = point.y - fastHeightAt(point.x, point.z);
-        if (clearance <= 0) {
-          let lo = priorDistance;
-          let hi = distance;
-          for (let index = 0; index < 6; index++) {
-            const mid = (lo + hi) * 0.5;
-            bisectPoint.copy(direction).multiplyScalar(mid).add(origin);
-            if (bisectPoint.y - fastHeightAt(bisectPoint.x, bisectPoint.z) <= 0) hi = mid;
-            else lo = mid;
-          }
-          terrainDistance = (lo + hi) * 0.5;
-          break;
-        }
-        if (distance >= limit) break;
-      }
+    if (clearance <= 0) return 0;
+    while (distance < maxDistance) {
+      const step = Math.min(Math.max(clearance * 0.5, 0.5), 2);
+      const priorDistance = distance;
+      distance = Math.min(distance + step, maxDistance);
+      point.copy(direction).multiplyScalar(distance).add(origin);
+      if (direction.y > 0 && point.y > worldHeightField.maxY + 2) return -1;
+      clearance = point.y - fastHeightAt(point.x, point.z);
+      if (clearance <= 0) return refineHit(priorDistance, distance);
+      if (distance >= maxDistance) return -1;
     }
+    return -1;
+  }
+
+  function raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null {
+    const propHit = nearestColliderHit(origin, direction, maxDistance);
+    const terrainDistance = terrainHitDistance(
+      origin,
+      direction,
+      Math.min(maxDistance, propHit.distance),
+    );
 
     let hitDistance: number;
     let kind: 'terrain' | 'prop';
-    if (terrainDistance >= 0 && terrainDistance < bestDistance) {
+    if (terrainDistance >= 0 && terrainDistance < propHit.distance) {
       hitDistance = terrainDistance;
       kind = 'terrain';
-    } else if (bestKind && bestDistance <= maxDistance) {
-      hitDistance = bestDistance;
-      kind = bestKind;
+    } else if (propHit.record && propHit.distance <= maxDistance) {
+      hitDistance = propHit.distance;
+      kind = 'prop';
     } else {
       return null;
     }
@@ -202,7 +215,7 @@ export function createHeadlessCollisionWorld(
       normal,
       dist: hitDistance,
       kind,
-      record: kind === 'prop' ? bestRecord : null,
+      record: kind === 'prop' ? propHit.record : null,
     };
   }
 

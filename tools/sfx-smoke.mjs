@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // sfx-smoke.mjs — end-to-end verification for COMBAT-SFX r4.
 //
 // Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
@@ -26,58 +27,12 @@
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const FFMPEG = process.env.FFMPEG || '/opt/homebrew/bin/ffmpeg';
 
 // --- FIFO capture lock (same protocol/dirs as tools/screenshot.mjs) ---------
-const LOCK_DIR = '/tmp/cot-shots.lock';
-const QUEUE_DIR = '/tmp/cot-shots.queue';
-const LOCK_STALE_MS = 5 * 60 * 1000;
-const TICKET_STALE_MS = 60 * 60 * 1000;
-let lockHeld = false;
-function ticketPid(name) { const m = name.match(/-(\d+)\.t$/); return m ? parseInt(m[1], 10) : -1; }
-function ticketAlive(name) {
-  const pid = ticketPid(name);
-  if (pid <= 0) return false;
-  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
-}
-async function acquireLock(timeoutMs) {
-  mkdirSync(QUEUE_DIR, { recursive: true });
-  const myTicket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
-  writeFileSync(join(QUEUE_DIR, myTicket), String(process.pid));
-  const t0 = Date.now();
-  try {
-    for (;;) {
-      let head = null;
-      let names = [];
-      try { names = readdirSync(QUEUE_DIR).filter((n) => n.endsWith('.t')).sort(); } catch (_) { names = [myTicket]; }
-      for (const n of names) {
-        if (n === myTicket) { head = head || n; break; }
-        let stale = false;
-        try { stale = Date.now() - statSync(join(QUEUE_DIR, n)).mtimeMs > TICKET_STALE_MS; } catch (_) { continue; }
-        if (stale || !ticketAlive(n)) { try { unlinkSync(join(QUEUE_DIR, n)); } catch (_) { /* raced */ } continue; }
-        head = n; break;
-      }
-      if (head === myTicket) {
-        try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
-        try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; }
-        } catch (_) { continue; }
-      }
-      if (Date.now() - t0 > timeoutMs) throw new Error('cot-shots lock timeout');
-      await new Promise((r) => setTimeout(r, head === myTicket ? 300 : 1000));
-    }
-  } finally {
-    try { unlinkSync(join(QUEUE_DIR, myTicket)); } catch (_) { /* fine */ }
-  }
-}
-function releaseLock() {
-  if (!lockHeld) return;
-  lockHeld = false;
-  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
-}
 
 // --- args / output -----------------------------------------------------------
 const args = process.argv.slice(2);
@@ -136,9 +91,7 @@ function bassEnergyPct(file, hz = 120) {
 
 await acquireLock(15 * 60 * 1000);
 process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => {
-  try { const now = new Date(); utimesSync(LOCK_DIR, now, now); } catch (_) { /* fine */ }
-}, 60 * 1000);
+const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 lockRefresher.unref();
 
 // --- server (own 7xxx port per the COMBAT-SFX agent mandate) -----------------

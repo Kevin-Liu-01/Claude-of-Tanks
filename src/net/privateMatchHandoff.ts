@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { resolveMapId } from '../world/maps/index.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { isBotTankId } from '../game/matchmaking.ts';
@@ -64,13 +65,13 @@ type MatchClientPort = MatchClientRuntime;
 
 interface PersistentRoomController {
   state(): SerializedLobby;
-  command(playerId: string, command: Record<string, unknown>): SerializedLobby;
+  command(playerId: string, command: Record<string, RuntimeValue>): SerializedLobby;
   markPlaying(): void;
   finish(outcome: FinishLobbyRoundOptions): void;
   disconnect(playerId: string): void;
   remove(playerId: string, reason?: string): void;
   rejoin(playerId: string, player?: Partial<PrivateMatchPlayer>): SerializedLobby;
-  metadataFor(playerId: string): Record<string, unknown>;
+  metadataFor(playerId: string): Record<string, RuntimeValue>;
 }
 
 interface MatchAuthorityPort {
@@ -78,9 +79,9 @@ interface MatchAuthorityPort {
   attachPeer(options: {
     peerId: string;
     transport: MatchTransport;
-    metadata?: Record<string, unknown>;
+    metadata?: Record<string, RuntimeValue>;
   }): Unsubscribe;
-  acceptPeerMessage(peerId: string, message: unknown): boolean;
+  acceptPeerMessage(peerId: string, message: RuntimeValue): boolean;
   replaceSimulation(simulation: MatchSimulation, options: { round: number }): MatchSimulation;
   advance(elapsedMs: number): number;
   close(reason?: string): void;
@@ -89,7 +90,7 @@ interface MatchAuthorityPort {
 interface MatchChannelHandoff {
   peerId: string;
   transport: MatchTransport;
-  pendingMessages?: unknown[];
+  pendingMessages?: RuntimeValue[];
   finishHandoff?(): void;
 }
 
@@ -136,7 +137,7 @@ function seededUnit(seed: number): () => number {
   };
 }
 
-function validateMatchLobby(lobbyState: unknown): PrivateMatchLobby {
+function validateMatchLobby(lobbyState: RuntimeValue): PrivateMatchLobby {
   if (!lobbyState || typeof lobbyState !== 'object') {
     throw new TypeError('a canonical match lobby state is required');
   }
@@ -149,7 +150,7 @@ function validateMatchLobby(lobbyState: unknown): PrivateMatchLobby {
   return lobby as PrivateMatchLobby;
 }
 
-function validateStartingLobby(lobbyState: unknown): PrivateMatchLobby & { phase: 'starting' } {
+function validateStartingLobby(lobbyState: RuntimeValue): PrivateMatchLobby & { phase: 'starting' } {
   const lobby = validateMatchLobby(lobbyState);
   if (lobby.phase !== 'starting') {
     throw new TypeError('a canonical starting lobby state is required');
@@ -158,13 +159,13 @@ function validateStartingLobby(lobbyState: unknown): PrivateMatchLobby & { phase
 }
 
 /** Resolve a random lobby map identically on every peer before match handoff. */
-export function resolvePrivateMatchMap(lobbyState: unknown): string {
+export function resolvePrivateMatchMap(lobbyState: RuntimeValue): string {
   const lobby = validateMatchLobby(lobbyState);
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 
 /** Deterministically fill empty lobby slots with authority-owned bots. */
-export function buildPrivateMatchPlayers(lobbyState: unknown): PrivateMatchPlayer[] {
+export function buildPrivateMatchPlayers(lobbyState: RuntimeValue): PrivateMatchPlayer[] {
   const lobby = validateMatchLobby(lobbyState);
   const horde = lobby.gameMode === 'endless_horde';
   const humans = lobby.players
@@ -219,7 +220,7 @@ function createPersistentRoomController(
   if (!lobby || !(lobby.players instanceof Map)) return null;
   return {
     state: () => serializeLobby(lobby),
-    command(playerId: string, command: Record<string, unknown>) {
+    command(playerId: string, command: Record<string, RuntimeValue>) {
       applyLobbyCommand(lobby, playerId, command, {
         isVehicleAllowed: session.isVehicleAllowed || (() => true),
         isCamoAllowed: session.isCamoAllowed || (() => true),
@@ -272,12 +273,12 @@ export interface PrivateHostMatch {
   readonly client: MatchClientPort;
   ready(): boolean;
   onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
-  roomCommand(command: Record<string, unknown>): unknown;
+  roomCommand(command: Record<string, RuntimeValue>): RuntimeValue;
   onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
   getRoomChatHistory(): RoomChatMessage[];
-  sendRoomChat(text: string): unknown;
+  sendRoomChat(text: string): RuntimeValue;
   prepareRound(options: {
-    lobbyState: unknown;
+    lobbyState: RuntimeValue;
     worldCollision?: AuthoritativeWorldCollision | null;
   }): { mapId: string; simulation: MatchSimulation };
   advance(
@@ -295,10 +296,10 @@ export interface PrivateClientMatch {
   readonly client: MatchClientPort;
   ready(): boolean;
   onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
-  roomCommand(command: Record<string, unknown>): unknown;
+  roomCommand(command: Record<string, RuntimeValue>): RuntimeValue;
   onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
   getRoomChatHistory(): RoomChatMessage[];
-  sendRoomChat(text: string): unknown;
+  sendRoomChat(text: string): RuntimeValue;
   update(nowMs: number): SampledSnapshotFrame | null;
   submitInput(input: NetworkInputFrame, clientTick?: number): boolean;
   close(reason?: string): void;
@@ -306,7 +307,7 @@ export interface PrivateClientMatch {
 
 export interface BeginPrivateHostMatchOptions {
   session?: HostRoomSession;
-  lobbyState?: unknown;
+  lobbyState?: RuntimeValue;
   simulationFactory?: PrivateSimulationFactory;
   worldCollision?: AuthoritativeWorldCollision | null;
   battleLimitS?: number;
@@ -403,7 +404,7 @@ export function beginPrivateHostMatch({
     onRoomState(listener: (state: MatchRoomState) => void) {
       return client.onRoomState(listener);
     },
-    roomCommand(command: Record<string, unknown>) { return client.submitRoomCommand(command); },
+    roomCommand(command: Record<string, RuntimeValue>) { return client.submitRoomCommand(command); },
     onRoomChat(listener: (message: RoomChatMessage) => void) {
       return client.onRoomChat(listener);
     },
@@ -413,7 +414,7 @@ export function beginPrivateHostMatch({
       lobbyState: nextLobby,
       worldCollision: nextCollision = null,
     }: {
-      lobbyState: unknown;
+      lobbyState: RuntimeValue;
       worldCollision?: AuthoritativeWorldCollision | null;
     }) {
       const next = validateStartingLobby(nextLobby);
@@ -428,7 +429,7 @@ export function beginPrivateHostMatch({
       host.replaceSimulation(simulation, { round: Number(next.round) || 1 });
       return { mapId: nextMapId, simulation };
     },
-    advance(elapsedMs: number, input: Record<string, unknown> | null = null) {
+    advance(elapsedMs: number, input: Record<string, RuntimeValue> | null = null) {
       if (input) client.submitInput(input, host.tick);
       host.advance(elapsedMs);
       wallTimeMs += elapsedMs;
@@ -450,7 +451,7 @@ export async function beginPrivateClientMatch({
 }: {
   session?: ClientRoomSession;
   playerId?: string;
-  lobbyState?: unknown;
+  lobbyState?: RuntimeValue;
 } = {}): Promise<PrivateClientMatch> {
   if (!session || (typeof session.takeMatchClient !== 'function' &&
       typeof session.takeMatchTransport !== 'function')) {
@@ -480,14 +481,14 @@ export async function beginPrivateClientMatch({
     onRoomState(listener: (state: MatchRoomState) => void) {
       return client.onRoomState(listener);
     },
-    roomCommand(command: Record<string, unknown>) { return client.submitRoomCommand(command); },
+    roomCommand(command: Record<string, RuntimeValue>) { return client.submitRoomCommand(command); },
     onRoomChat(listener: (message: RoomChatMessage) => void) {
       return client.onRoomChat(listener);
     },
     getRoomChatHistory() { return client.getRoomChatHistory(); },
     sendRoomChat(text: string) { return client.sendRoomChat(text); },
     update(nowMs: number) { return client.update(nowMs); },
-    submitInput(input: Record<string, unknown>, clientTick?: number) {
+    submitInput(input: Record<string, RuntimeValue>, clientTick?: number) {
       return client.submitInput(input, clientTick);
     },
     close(reason = 'private_match_closed') {

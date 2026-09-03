@@ -1,23 +1,24 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface DebugBattleEntryOptions {
   getPendingMapId(): string;
   resolveMapId(mapId: string): string;
-  ensureFullFleet(): Promise<unknown>;
-  ensureWorld(mapId: string): Promise<unknown>;
-  preloadSoloAuthority(): Promise<unknown>;
-  preloadBattleClient(): Promise<unknown>;
-  ensureBattleHud(): Promise<unknown>;
-  ensureTouchControls(): Promise<unknown>;
-  preloadArmorAim(): Promise<unknown>;
-  ensureFx(): Promise<unknown>;
-  ensureKillcam(): Promise<unknown>;
-  preloadBattleWarm(): Promise<unknown>;
-  preloadBattleStart(): Promise<unknown>;
+  ensureFullFleet(): Promise<RuntimeValue>;
+  ensureWorld(mapId: string): Promise<RuntimeValue>;
+  preloadSoloAuthority(): Promise<RuntimeValue>;
+  preloadBattleClient(): Promise<RuntimeValue>;
+  ensureBattleHud(): Promise<RuntimeValue>;
+  ensureTouchControls(): Promise<RuntimeValue>;
+  preloadArmorAim(): Promise<RuntimeValue>;
+  ensureFx(): Promise<RuntimeValue>;
+  ensureKillcam(): Promise<RuntimeValue>;
+  preloadBattleWarm(): Promise<RuntimeValue>;
+  preloadBattleStart(): Promise<RuntimeValue>;
   prepareWorldServices(): void;
   startBattle(
     specId: string,
     mapId: string,
-    options: Readonly<Record<string, unknown>>,
-  ): Promise<unknown> | unknown;
+    options: Readonly<Record<string, RuntimeValue>>,
+  ): Promise<RuntimeValue> | RuntimeValue;
 }
 
 /**
@@ -33,8 +34,8 @@ export async function startDebugBattle(
   ports: DebugBattleEntryOptions,
   specId: string,
   mapId: string | null = null,
-  options: Readonly<Record<string, unknown>> = {},
-): Promise<unknown> {
+  options: Readonly<Record<string, RuntimeValue>> = {},
+): Promise<RuntimeValue> {
   const required = [ports?.getPendingMapId, ports?.resolveMapId,
     ports?.ensureFullFleet, ports?.ensureWorld, ports?.preloadSoloAuthority,
     ports?.preloadBattleClient, ports?.ensureBattleHud,

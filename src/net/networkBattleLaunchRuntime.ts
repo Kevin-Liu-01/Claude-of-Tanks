@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   NetworkRoomCoordinator,
   NetworkRoomPlayer,
@@ -18,13 +19,13 @@ interface BattleEntryLifecyclePort {
   run<T>(task: () => Promise<T>, busyValue: T): Promise<T>;
   coverRendering(): void;
   uncoverRendering(): void;
-  primeReveal(): Promise<unknown>;
+  primeReveal(): Promise<RuntimeValue>;
   readonly pending: boolean;
 }
 
 interface AudioLoadingPort {
-  resume(): unknown;
-  loadingOn(active: boolean): unknown;
+  resume(): RuntimeValue;
+  loadingOn(active: boolean): RuntimeValue;
 }
 
 type NetworkMatchPort = NetworkBrowserMatch & {
@@ -39,7 +40,7 @@ type NetworkMatchPort = NetworkBrowserMatch & {
       transport?: { kind?: string };
     }>;
   };
-  prepareRound?(options: Record<string, unknown>): unknown;
+  prepareRound?(options: Record<string, RuntimeValue>): RuntimeValue;
 };
 
 type PrivateMatchModule = Pick<
@@ -100,7 +101,7 @@ export interface NetworkBattleLaunchOptions {
   ) => BattleLoadRosterRow[];
   emitBattleStart: (payload: { playerId: string; specId?: string; mapId?: string }) => void;
   resetBattleState: () => void;
-  presentBattle: (request: NetworkBattlePresentationRequest) => Promise<unknown>;
+  presentBattle: (request: NetworkBattlePresentationRequest) => Promise<RuntimeValue>;
   loadPrivateMatch: () => Promise<PrivateMatchModule>;
   loadDedicatedMatch: () => Promise<DedicatedMatchModule>;
   disposePresentation: () => void;
@@ -109,7 +110,7 @@ export interface NetworkBattleLaunchOptions {
   enterGarage: () => Promise<void> | void;
   setNetworkStatus: (status: DedicatedStatus) => void;
   recordEntryFailure: (failure: NetworkEntryFailure | null) => void;
-  reportError?: (scope: string, error: unknown) => void;
+  reportError?: (scope: string, error: RuntimeValue) => void;
 }
 
 export interface PrivateBattleLaunchRequest {
@@ -131,25 +132,25 @@ export interface NetworkBattleLaunchRuntime {
   cancel(reason?: string): void;
 }
 
-function messageFor(error: unknown): string {
+function messageFor(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isPrivateHostSession(value: unknown): value is PrivateHostSession {
+function isPrivateHostSession(value: RuntimeValue): value is PrivateHostSession {
   if (!value || typeof value !== 'object') return false;
   const session = value as {
-    roomInfo?: { peerId?: unknown };
-    takeMatchChannels?: unknown;
+    roomInfo?: { peerId?: RuntimeValue };
+    takeMatchChannels?: RuntimeValue;
   };
   return typeof session.roomInfo?.peerId === 'string' &&
     typeof session.takeMatchChannels === 'function';
 }
 
-function isPrivateClientSession(value: unknown): value is PrivateClientSession {
+function isPrivateClientSession(value: RuntimeValue): value is PrivateClientSession {
   if (!value || typeof value !== 'object') return false;
   const session = value as {
-    takeMatchClient?: unknown;
-    takeMatchTransport?: unknown;
+    takeMatchClient?: RuntimeValue;
+    takeMatchTransport?: RuntimeValue;
   };
   return typeof session.takeMatchClient === 'function' ||
     typeof session.takeMatchTransport === 'function';
@@ -259,7 +260,7 @@ export function createNetworkBattleLaunchRuntime({
   };
 
   const diagnosticFor = (
-    error: unknown,
+    error: RuntimeValue,
     role?: string,
   ): NetworkEntryFailure => {
     const match = getMatch();

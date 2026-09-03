@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 
 interface BattleRolloutGame {
@@ -9,7 +10,7 @@ interface BattleRolloutHud {
 }
 
 interface BattleRolloutAudio {
-  resume(): unknown;
+  resume(): RuntimeValue;
   ambientOn(active: boolean): void;
 }
 

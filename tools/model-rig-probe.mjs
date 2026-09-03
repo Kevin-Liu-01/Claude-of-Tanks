@@ -130,6 +130,33 @@ try {
       };
       const matrixChanged = (a, b) => !!a && !!b
         && a.some((value, index) => Math.abs(value - b[index]) > 1e-6);
+      const articulationReceipt = ({
+        swapped, d0, d1, down, level, up, proceduralTurretMesh,
+        proceduralGunMesh, sourceTurret, sourceGun,
+      }) => ({
+        rig: true,
+        swapped,
+        directionChanged: d0.angleTo(d1) > 0.30,
+        yawApplied: Math.abs(Math.atan2(
+          Math.sin(Math.atan2(d1.x, d1.z) - Math.atan2(d0.x, d0.z)),
+          Math.cos(Math.atan2(d1.x, d1.z) - Math.atan2(d0.x, d0.z)),
+        )) > 0.30,
+        pitchApplied: d1.y > 0.05,
+        legalPitchApplied: turretless || (down.direction.y < -0.01 && up.direction.y > 0.01),
+        gunMountSeated: turretless || (!!gunMount && isBelow(gunMount, gun)),
+        gunMountMoved: turretless || (matrixChanged(down.mountMatrix, level.mountMatrix)
+          && matrixChanged(level.mountMatrix, up.mountMatrix)),
+        pitchResourcesStable: down.census === level.census && level.census === up.census,
+        directions: [d0.toArray().map((value) => Number(value.toFixed(3))),
+          d1.toArray().map((value) => Number(value.toFixed(3)))],
+        sourceTurretSeated: !sourceTurret || isBelow(sourceTurret, turret),
+        sourceGunSeated: !sourceGun || isBelow(sourceGun, recoil),
+        sourceTurretName: sourceTurret?.name || null,
+        sourceGunName: sourceGun?.name || null,
+        proceduralTurretMesh,
+        proceduralGunMesh,
+        fixedContract: !cfg?.fixedMount || turretless,
+      });
 
       const ty = turret.rotation.y;
       const gx = gun.rotation.x;
@@ -162,29 +189,10 @@ try {
           proceduralGunMesh = true;
         }
       });
-      return {
-        rig: true,
-        swapped,
-        directionChanged: d0.angleTo(d1) > 0.30,
-        yawApplied: Math.abs(Math.atan2(
-          Math.sin(Math.atan2(d1.x, d1.z) - Math.atan2(d0.x, d0.z)),
-          Math.cos(Math.atan2(d1.x, d1.z) - Math.atan2(d0.x, d0.z)),
-        )) > 0.30,
-        pitchApplied: d1.y > 0.05,
-        legalPitchApplied: turretless || (down.direction.y < -0.01 && up.direction.y > 0.01),
-        gunMountSeated: turretless || (!!gunMount && isBelow(gunMount, gun)),
-        gunMountMoved: turretless || (matrixChanged(down.mountMatrix, level.mountMatrix)
-          && matrixChanged(level.mountMatrix, up.mountMatrix)),
-        pitchResourcesStable: down.census === level.census && level.census === up.census,
-        directions: [d0.toArray().map((v) => Number(v.toFixed(3))), d1.toArray().map((v) => Number(v.toFixed(3)))],
-        sourceTurretSeated: !sourceTurret || isBelow(sourceTurret, turret),
-        sourceGunSeated: !sourceGun || isBelow(sourceGun, recoil),
-        sourceTurretName: sourceTurret?.name || null,
-        sourceGunName: sourceGun?.name || null,
-        proceduralTurretMesh,
-        proceduralGunMesh,
-        fixedContract: !cfg?.fixedMount || turretless,
-      };
+      return articulationReceipt({
+        swapped, d0, d1, down, level, up, proceduralTurretMesh,
+        proceduralGunMesh, sourceTurret, sourceGun,
+      });
     }, row);
 
     check(`${row.id}: rig present`, result.rig === true);

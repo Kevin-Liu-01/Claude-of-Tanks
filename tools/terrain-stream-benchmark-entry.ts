@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import * as THREE from 'three';
 import { getMapConfig } from '../src/world/maps/index.ts';
 import {
@@ -50,38 +51,45 @@ declare global {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+type BenchmarkFieldValue = object | string | number | boolean | null | undefined;
+type BenchmarkRecord = Record<string, BenchmarkFieldValue>;
+
+function isRecord<Value>(value: Value): value is Value & BenchmarkRecord {
   return typeof value === 'object' && value !== null;
 }
 
-function isNumberTuple(value: unknown, length: number): boolean {
+function isNumberTuple(value: RuntimeValue, length: number): boolean {
   return Array.isArray(value) && value.length === length
     && value.every((item) => typeof item === 'number' && Number.isFinite(item));
 }
 
-function isTerrainMapConfig(value: unknown): value is TerrainMapConfig {
-  if (!isRecord(value)) return false;
-  if (value.splat !== undefined) {
-    if (!isRecord(value.splat)) return false;
-    for (const key of ['tintA', 'tintB', 'tintC', 'roadTint', 'iceSky']) {
-      const tuple = value.splat[key];
-      if (tuple !== undefined && !isNumberTuple(tuple, 3)) return false;
-    }
-  }
-  if (value.terrain !== undefined) {
-    if (!isRecord(value.terrain)) return false;
-    const roads = value.terrain.roads;
-    if (roads !== undefined && roads !== 'country') {
-      if (!isRecord(roads)) return false;
-      if (roads.paths !== undefined && (!Array.isArray(roads.paths)
-        || !roads.paths.every((path) => Array.isArray(path)
-          && path.every((point) => isNumberTuple(point, 2))))) return false;
-    }
-  }
-  return true;
+function hasValidSplatConfig(value: BenchmarkRecord): boolean {
+  if (value.splat === undefined) return true;
+  if (!isRecord(value.splat)) return false;
+  const splat = value.splat;
+  return ['tintA', 'tintB', 'tintC', 'roadTint', 'iceSky'].every((key) => {
+    const tuple = splat[key];
+    return tuple === undefined || isNumberTuple(tuple, 3);
+  });
 }
 
-const terrainConfigCandidate: unknown = config;
+function hasValidTerrainRoads(value: BenchmarkRecord): boolean {
+  if (value.terrain === undefined) return true;
+  if (!isRecord(value.terrain)) return false;
+  const roads = value.terrain.roads;
+  if (roads === undefined || roads === 'country') return true;
+  if (!isRecord(roads)) return false;
+  return roads.paths === undefined || (Array.isArray(roads.paths)
+    && roads.paths.every((path) => Array.isArray(path)
+      && path.every((point) => isNumberTuple(point, 2))));
+}
+
+function isTerrainMapConfig(value: RuntimeValue): value is TerrainMapConfig {
+  if (!isRecord(value)) return false;
+  return hasValidSplatConfig(value) && hasValidTerrainRoads(value);
+}
+
+const terrainConfigCandidate: RuntimeValue = config;
 if (!isTerrainMapConfig(terrainConfigCandidate)) {
   throw new Error('Verdant map config is incompatible with the terrain benchmark');
 }

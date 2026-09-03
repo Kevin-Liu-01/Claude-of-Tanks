@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tanks';
@@ -15,7 +16,7 @@ export type GitHubStarsHandler = (
 function send(
   response: ServerResponse,
   status: number,
-  body: unknown,
+  body: RuntimeValue,
   cacheControl = 'private, no-store, max-age=0',
 ): void {
   response.statusCode = status;
@@ -47,12 +48,12 @@ export function createGitHubStarsHandler({
         return;
       }
 
-      const repository: unknown = await upstream.json();
+      const repository: RuntimeValue = await upstream.json();
       if (!repository || typeof repository !== 'object') {
         send(response, 503, { error: 'github_response_invalid' });
         return;
       }
-      const count = (repository as { stargazers_count?: unknown }).stargazers_count;
+      const count = (repository as { stargazers_count?: RuntimeValue }).stargazers_count;
       if (typeof count !== 'number' || !Number.isInteger(count)) {
         send(response, 503, { error: 'github_response_invalid' });
         return;

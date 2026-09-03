@@ -622,7 +622,7 @@ export function createGarageStage(
   const podTopC = document.createElement('canvas');
   const podiumTextureSize = 512;
   podTopC.width = podTopC.height = podiumTextureSize;
-  {
+  function paintPodiumTexture(): void {
     const g = get2dContext(podTopC, { willReadFrequently: true });
     const C = podiumTextureSize / 2;
     const px = podiumTextureSize / 1024;
@@ -699,6 +699,7 @@ export function createGarageStage(
     }
     dither(g, podiumTextureSize, podiumTextureSize, rng, 0.05);
   }
+  paintPodiumTexture();
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(podTopC, { aniso })),
     color: 0xffffff, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
@@ -751,19 +752,22 @@ export function createGarageStage(
   track(wallMat);
   const wallGeo = track(new THREE.PlaneGeometry(HW * 2, WALL_H));
   const baseWalls: THREE.Mesh[] = [];
-  for (const [rx, ry, x, z] of [
-    [0, 0, 0, -HW],            // north (faces +z, behind the tank in frame)
-    [0, Math.PI, 0, HW],       // south
-    [0, Math.PI / 2, -HW, 0],  // west (left in frame)
-    [0, -Math.PI / 2, HW, 0],  // east
-  ]) {
-    const wall = new THREE.Mesh(wallGeo, wallMat);
-    wall.rotation.set(rx, ry, 0);
-    wall.position.set(x, WALL_H / 2, z);
-    wall.receiveShadow = true;
-    group.add(wall);
-    baseWalls.push(wall);
+  function addHangarWalls(): void {
+    for (const [rx, ry, x, z] of [
+      [0, 0, 0, -HW],            // north (faces +z, behind the tank in frame)
+      [0, Math.PI, 0, HW],       // south
+      [0, Math.PI / 2, -HW, 0],  // west (left in frame)
+      [0, -Math.PI / 2, HW, 0],  // east
+    ]) {
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.rotation.set(rx, ry, 0);
+      wall.position.set(x, WALL_H / 2, z);
+      wall.receiveShadow = true;
+      group.add(wall);
+      baseWalls.push(wall);
+    }
   }
+  addHangarWalls();
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
     color: 0x1e2124, roughness: 0.95, metalness: 0.1,
     emissive: 0x151b22, emissiveIntensity: 0.65,
@@ -781,12 +785,15 @@ export function createGarageStage(
   track(trussMat);
   const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
   const roofTrusses: THREE.Mesh[] = [];
-  for (let i = -1; i <= 1; i++) {
-    const truss = new THREE.Mesh(trussGeo, trussMat);
-    truss.position.set(0, WALL_H - 0.35, i * 12);
-    group.add(truss);
-    roofTrusses.push(truss);
+  function addRoofTrusses(): void {
+    for (let index = -1; index <= 1; index++) {
+      const truss = new THREE.Mesh(trussGeo, trussMat);
+      truss.position.set(0, WALL_H - 0.35, index * 12);
+      group.add(truss);
+      roofTrusses.push(truss);
+    }
   }
+  addRoofTrusses();
   const architecture = createGarageArchitectureController(engineCtx || {}, group, requestRender);
   const verdantLights: THREE.Light[] = [];
 
@@ -804,20 +811,23 @@ export function createGarageStage(
   const shadeGeo = track(new THREE.CylinderGeometry(0.16, 0.85, 0.6, 20));
   const glowGeo = track(new THREE.CylinderGeometry(0.66, 0.66, 0.06, 20));
   const cableGeo = track(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 6));
-  for (const [hx, hz] of [[-4.5, -3.5], [5, 2.5]]) {
-    const shade = new THREE.Mesh(shadeGeo, housingMat);
-    shade.position.set(hx, 7.6, hz);
-    const glow = new THREE.Mesh(glowGeo, lampMat);
-    glow.position.set(hx, 7.32, hz);
-    const cable = new THREE.Mesh(cableGeo, housingMat);
-    cable.position.set(hx, 8.7, hz);
-    group.add(shade, glow, cable);
-    // reach the hangar's far corners (~33 m) so the floor never dies to black
-    const pt = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
-    pt.position.set(hx, 7.1, hz);
-    verdantLights.push(pt);
-    group.add(pt);
+  function addHighbayLamps(): void {
+    for (const [x, z] of [[-4.5, -3.5], [5, 2.5]]) {
+      const shade = new THREE.Mesh(shadeGeo, housingMat);
+      shade.position.set(x, 7.6, z);
+      const glow = new THREE.Mesh(glowGeo, lampMat);
+      glow.position.set(x, 7.32, z);
+      const cable = new THREE.Mesh(cableGeo, housingMat);
+      cable.position.set(x, 8.7, z);
+      group.add(shade, glow, cable);
+      // reach the hangar's far corners (~33 m) so the floor never dies to black
+      const pointLight = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
+      pointLight.position.set(x, 7.1, z);
+      verdantLights.push(pointLight);
+      group.add(pointLight);
+    }
   }
+  addHighbayLamps();
 
   // hud_ui r5: third highbay DIRECTLY over the turntable (dressing only — no
   // extra live light) carrying a faint volumetric cone down to the podium, so
@@ -917,46 +927,49 @@ export function createGarageStage(
     { p: new THREE.Vector3(7, 6.8, -HW + 0.3), i: 44 },
     { p: new THREE.Vector3(-HW + 0.3, 6.8, 4), i: 0 },
   ];
-  for (const f of floods) {
-    const holder = new THREE.Group();
-    holder.position.copy(f.p);
-    const plate = new THREE.Mesh(plateGeo, bracketMat);
-    plate.position.z = 0.0;
-    const arm = new THREE.Mesh(armGeo, bracketMat);
-    arm.position.z = 0.24;
-    const shell = new THREE.Mesh(shellGeo, bracketMat);
-    shell.position.z = 0.55;
-    const rim = new THREE.Mesh(rimGeo, housingMat);
-    rim.position.z = 0.72;
-    const hood = new THREE.Mesh(hoodGeo, bracketMat);
-    hood.position.set(0, 0.33, 0.6);
-    const lens = new THREE.Mesh(lensGeo, lensMat);
-    lens.position.z = 0.755;
-    const halo = new THREE.Sprite(lampHaloMat); // circular camera-facing glow
-    halo.scale.set(1.7, 1.7, 1);
-    halo.position.z = 0.80;
-    holder.add(plate, arm, shell, rim, hood, lens, halo);
-    for (let fi = 0; fi < 4; fi++) { // heat-sink fins along the shell top
-      const fin = new THREE.Mesh(finGeo, bracketMat);
-      fin.position.set(0, 0.3, 0.42 + fi * 0.09);
-      holder.add(fin);
-    }
-    for (const bx of [-0.18, 0.18]) { // guard bars across the lens
-      const bar = new THREE.Mesh(barGeo, bracketMat);
-      bar.position.set(bx, 0, 0.78);
-      holder.add(bar);
-    }
-    group.add(holder);
-    // aim the housing at the podium (lookAt works in world space)
-    holder.lookAt(new THREE.Vector3(0, 1.2, 0).add(group.position));
-    if (f.i > 0) {
-      const spot = new THREE.SpotLight(0xefeee8, f.i, 46, 0.62, 0.55, 1.5); // camo_spotting r2: neutral wall flood
-      spot.position.copy(f.p);
-      spot.target = target;
-      verdantLights.push(spot);
-      group.add(spot);
+  function addWallFloods(): void {
+    for (const flood of floods) {
+      const holder = new THREE.Group();
+      holder.position.copy(flood.p);
+      const plate = new THREE.Mesh(plateGeo, bracketMat);
+      plate.position.z = 0.0;
+      const arm = new THREE.Mesh(armGeo, bracketMat);
+      arm.position.z = 0.24;
+      const shell = new THREE.Mesh(shellGeo, bracketMat);
+      shell.position.z = 0.55;
+      const rim = new THREE.Mesh(rimGeo, housingMat);
+      rim.position.z = 0.72;
+      const hood = new THREE.Mesh(hoodGeo, bracketMat);
+      hood.position.set(0, 0.33, 0.6);
+      const lens = new THREE.Mesh(lensGeo, lensMat);
+      lens.position.z = 0.755;
+      const halo = new THREE.Sprite(lampHaloMat); // circular camera-facing glow
+      halo.scale.set(1.7, 1.7, 1);
+      halo.position.z = 0.80;
+      holder.add(plate, arm, shell, rim, hood, lens, halo);
+      for (let finIndex = 0; finIndex < 4; finIndex++) { // heat-sink fins along the shell top
+        const fin = new THREE.Mesh(finGeo, bracketMat);
+        fin.position.set(0, 0.3, 0.42 + finIndex * 0.09);
+        holder.add(fin);
+      }
+      for (const barX of [-0.18, 0.18]) { // guard bars across the lens
+        const bar = new THREE.Mesh(barGeo, bracketMat);
+        bar.position.set(barX, 0, 0.78);
+        holder.add(bar);
+      }
+      group.add(holder);
+      // aim the housing at the podium (lookAt works in world space)
+      holder.lookAt(new THREE.Vector3(0, 1.2, 0).add(group.position));
+      if (flood.i > 0) {
+        const spot = new THREE.SpotLight(0xefeee8, flood.i, 46, 0.62, 0.55, 1.5); // camo_spotting r2: neutral wall flood
+        spot.position.copy(flood.p);
+        spot.target = target;
+        verdantLights.push(spot);
+        group.add(spot);
+      }
     }
   }
+  addWallFloods();
 
   // --- wall dressing: pipes, signage, second light pool (west + north) -------
   // The camera frames the north/west corner; without dressing the upper-left
@@ -967,23 +980,29 @@ export function createGarageStage(
   }));
   track(pipeMat);
   const pipeRunGeo = track(new THREE.CylinderGeometry(0.1, 0.1, HW * 2 - 2, 12));
-  for (const [py2, rr] of [[4.85, 1], [5.35, 0.55]]) {
-    const pipe = new THREE.Mesh(pipeRunGeo, pipeMat);
-    pipe.rotation.x = Math.PI / 2;
-    pipe.position.set(-HW + 0.42, py2, 0);
-    pipe.scale.set(rr, 1, rr);
-    pipe.castShadow = true;
-    group.add(pipe);
+  function addWallPipeRuns(): void {
+    for (const [pipeY, radiusScale] of [[4.85, 1], [5.35, 0.55]]) {
+      const pipe = new THREE.Mesh(pipeRunGeo, pipeMat);
+      pipe.rotation.x = Math.PI / 2;
+      pipe.position.set(-HW + 0.42, pipeY, 0);
+      pipe.scale.set(radiusScale, 1, radiusScale);
+      pipe.castShadow = true;
+      group.add(pipe);
+    }
   }
+  addWallPipeRuns();
   // pipe brackets pinning the runs to the wall
   const pbGeo = track(new THREE.BoxGeometry(0.3, 0.16, 0.5));
-  for (const bz of [-16, -8, 0, 8, 16]) {
-    const b1 = new THREE.Mesh(pbGeo, bracketMat);
-    b1.position.set(-HW + 0.24, 4.85, bz);
-    const b2 = new THREE.Mesh(pbGeo, bracketMat);
-    b2.position.set(-HW + 0.24, 5.35, bz);
-    group.add(b1, b2);
+  function addWallPipeBrackets(): void {
+    for (const bracketZ of [-16, -8, 0, 8, 16]) {
+      const b1 = new THREE.Mesh(pbGeo, bracketMat);
+      b1.position.set(-HW + 0.24, 4.85, bracketZ);
+      const b2 = new THREE.Mesh(pbGeo, bracketMat);
+      b2.position.set(-HW + 0.24, 5.35, bracketZ);
+      group.add(b1, b2);
+    }
   }
+  addWallPipeBrackets();
   // vertical drop with a valve wheel near the workbench
   const dropGeo = track(new THREE.CylinderGeometry(0.09, 0.09, 4.3, 10));
   const drop = new THREE.Mesh(dropGeo, pipeMat);
@@ -1025,11 +1044,13 @@ export function createGarageStage(
   const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
   // sign plates re-bake themselves on fonts.ready (see makeSignTexture) —
   // this pushes the refreshed canvases to the GPU.
-  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
+  function refreshSignsAfterFontLoad(): void {
+    if (!document.fonts || document.fonts.check(SIGN_FONT)) return;
     document.fonts.ready
       .then(() => { signTex1.needsUpdate = true; signTex2.needsUpdate = true; })
       .catch(() => {});
   }
+  refreshSignsAfterFontLoad();
   const signMat1 = track(shadowMat(new THREE.MeshStandardMaterial({
     map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.16,
     roughness: 0.6, metalness: 0.2,

@@ -11,7 +11,7 @@ export { debugModeRequested } from '../dev/debugIntent.ts';
 interface RendererDiagnostics {
   info: {
     render: { calls: number; triangles: number };
-    programs?: unknown[] | null;
+    programs?: object[] | null;
     memory: { geometries: number; textures: number };
   };
 }
@@ -23,8 +23,8 @@ interface DebugGameState {
 
 interface PerfTracePort {
   enabled?: boolean;
-  mark(name: string, payload: unknown): void;
-  stats(): unknown;
+  mark(name: string, payload: object): void;
+  stats(): object;
   download(): string | null | undefined;
 }
 
@@ -85,7 +85,7 @@ interface NetworkTelemetry {
 interface MemoryTelemetry { drawBuffer?: string }
 
 interface DebugTelemetry {
-  error?: unknown;
+  error?: string;
   quality?: QualityTelemetry;
   simulation?: SimulationTelemetry;
   world?: WorldTelemetry;
@@ -112,9 +112,9 @@ interface FrameStats {
 }
 
 interface QaSummaryOptions {
-  traceStats?: unknown;
-  hudSnapshot?: { stats?: unknown; telemetry?: unknown } | null;
-  telemetry?: unknown;
+  traceStats?: object;
+  hudSnapshot?: { stats?: FrameStats | null; telemetry?: DebugTelemetry | null } | null;
+  telemetry?: DebugTelemetry | null;
   capturedAt?: string;
 }
 
@@ -193,19 +193,77 @@ export function buildQaSummary({
   };
 }
 
-function fmtCount(value: unknown): string {
+function fmtCount(value: number | string | null | undefined): string {
   const n = Number(value) || 0;
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}m`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
   return String(n);
 }
 
-function fmtBytes(value: unknown): string {
+function fmtBytes(value: number | string | null | undefined): string {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return '—';
   if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${n.toFixed(0)} B`;
+}
+
+function frameStatsText(stats: FrameStats): string {
+  const stall = stats.worstStall ? `${stats.worstStall.toFixed(0)} ms` : '—';
+  const simulation = stats.simPct >= 0 ? `${stats.simPct.toFixed(0)}%` : '—';
+  return `${stats.fps.toFixed(0)} fps   1% low ${stats.onePctLow.toFixed(0)}\n` +
+    `${stats.p50.toFixed(1)} / ${stats.p95.toFixed(1)} / ${stats.p99.toFixed(1)} ms\n` +
+    `stall ${stall}   sim ${simulation}`;
+}
+
+function renderStatsText(stats: FrameStats): string {
+  return `${stats.calls} calls   ${fmtCount(stats.tris)} tri\n` +
+    `${stats.programs} programs\n${stats.geometries} geo   ${stats.textures} tex`;
+}
+
+function qualityText(quality: QualityTelemetry): string {
+  return `${quality.buffer || '—'} buffer  dpr ${quality.dpr ?? '—'}  scale ${quality.dynScale ?? '—'}\n` +
+    `${quality.preset || '—'} / ${quality.tier || '—'}   trim ${quality.perfTrim ?? '—'}   ${quality.gpu || 'GPU unavailable'}`;
+}
+
+function simulationText(simulation: SimulationTelemetry, gamePhase: string): string {
+  return `${simulation.phase || gamePhase || '—'}   ${simulation.map || 'no map'}\n` +
+    `${Number(simulation.timeS || 0).toFixed(1)} s   tanks ${simulation.alive ?? '—'}/${simulation.tanks ?? '—'}   shells ${simulation.shells ?? '—'}`;
+}
+
+function worldText(world: WorldTelemetry): string {
+  return `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
+    `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
+    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
+}
+
+function cascadeText(cascades: readonly ShadowCascadeTelemetry[]): string {
+  if (!cascades.length) return 'cascade telemetry unavailable';
+  return cascades.map((cascade, index) =>
+    `C${index} ${cascade.size ?? '—'}${cascade.allocated ? '✓' : '…'} r${Number(cascade.radius || 0).toFixed(2)}`,
+  ).join('   ');
+}
+
+function shadowText(shadow: ShadowTelemetry): string {
+  const rescue = shadow.rescue ? ` · rescue ${shadow.rescue}` : '';
+  const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
+  return `${shadow.enabled ? 'ON' : 'OFF'}${rescue}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
+    cascadeText(cascades) +
+    `\n${shadow.casters ?? '—'} casters   ${shadow.receivers ?? '—'} receivers   shader errors ${shadow.shaderErrors ?? 0}`;
+}
+
+function networkText(network: NetworkTelemetry): string {
+  if (network.connected == null) return 'local / offline\nno transport overhead';
+  return `${network.connected ? 'connected' : 'disconnected'}   RTT ${Number(network.rttMs || 0).toFixed(0)} ms\n` +
+    `jitter ${Number(network.jitterMs || 0).toFixed(0)} ms   loss ${Number(network.lossPct || 0).toFixed(1)}%\n` +
+    `buffer ${fmtBytes(network.bufferedBytes)}`;
+}
+
+function memoryText(stats: FrameStats, memory: MemoryTelemetry, quality: QualityTelemetry): string {
+  const heap = stats.heapMB >= 0
+    ? `${stats.heapMB.toFixed(0)} / ${stats.heapLimitMB.toFixed(0)} MB JS`
+    : 'JS heap unavailable';
+  return `${heap}\n${memory.drawBuffer || quality.buffer || '—'} draw buffer`;
 }
 
 export function createPerfHud({
@@ -379,7 +437,7 @@ export function createPerfHud({
     if (telemetryProvider) {
       try {
         t = telemetryProvider() || null;
-      } catch (error: unknown) {
+      } catch (error) {
         t = { error: error instanceof Error ? error.message : String(error) };
       }
       latestTelemetry = t;
@@ -390,40 +448,16 @@ export function createPerfHud({
     const shadow = t?.shadows || {};
     const network = t?.network || {};
     const memory = t?.memory || {};
-    const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
     statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
     el.classList.toggle('has-error', !!t?.error);
-    sectionValue('frame').textContent =
-      `${s.fps.toFixed(0)} fps   1% low ${s.onePctLow.toFixed(0)}\n` +
-      `${s.p50.toFixed(1)} / ${s.p95.toFixed(1)} / ${s.p99.toFixed(1)} ms\n` +
-      `stall ${s.worstStall ? `${s.worstStall.toFixed(0)} ms` : '—'}   sim ${s.simPct >= 0 ? `${s.simPct.toFixed(0)}%` : '—'}`;
-    sectionValue('render').textContent =
-      `${s.calls} calls   ${fmtCount(s.tris)} tri\n` +
-      `${s.programs} programs\n${s.geometries} geo   ${s.textures} tex`;
-    sectionValue('quality').textContent =
-      `${q.buffer || '—'} buffer  dpr ${q.dpr ?? '—'}  scale ${q.dynScale ?? '—'}\n` +
-      `${q.preset || '—'} / ${q.tier || '—'}   trim ${q.perfTrim ?? '—'}   ${q.gpu || 'GPU unavailable'}`;
-    sectionValue('simulation').textContent =
-      `${sim.phase || game.phase || '—'}   ${sim.map || 'no map'}\n` +
-      `${Number(sim.timeS || 0).toFixed(1)} s   tanks ${sim.alive ?? '—'}/${sim.tanks ?? '—'}   shells ${sim.shells ?? '—'}`;
-    sectionValue('world').textContent =
-      `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
-      `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
-      `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
-    sectionValue('shadows').textContent =
-      `${shadow.enabled ? 'ON' : 'OFF'}${shadow.rescue ? ` · rescue ${shadow.rescue}` : ''}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
-      (cascades.length
-        ? cascades.map((c: ShadowCascadeTelemetry, i: number) => `C${i} ${c.size ?? '—'}${c.allocated ? '✓' : '…'} r${Number(c.radius || 0).toFixed(2)}`).join('   ')
-        : 'cascade telemetry unavailable') +
-      `\n${shadow.casters ?? '—'} casters   ${shadow.receivers ?? '—'} receivers   shader errors ${shadow.shaderErrors ?? 0}`;
-    sectionValue('network').textContent = network.connected == null
-      ? 'local / offline\nno transport overhead'
-      : `${network.connected ? 'connected' : 'disconnected'}   RTT ${Number(network.rttMs || 0).toFixed(0)} ms\n` +
-        `jitter ${Number(network.jitterMs || 0).toFixed(0)} ms   loss ${Number(network.lossPct || 0).toFixed(1)}%\n` +
-        `buffer ${fmtBytes(network.bufferedBytes)}`;
-    sectionValue('memory').textContent =
-      `${s.heapMB >= 0 ? `${s.heapMB.toFixed(0)} / ${s.heapLimitMB.toFixed(0)} MB JS` : 'JS heap unavailable'}\n` +
-      `${memory.drawBuffer || q.buffer || '—'} draw buffer`;
+    sectionValue('frame').textContent = frameStatsText(s);
+    sectionValue('render').textContent = renderStatsText(s);
+    sectionValue('quality').textContent = qualityText(q);
+    sectionValue('simulation').textContent = simulationText(sim, game.phase);
+    sectionValue('world').textContent = worldText(world);
+    sectionValue('shadows').textContent = shadowText(shadow);
+    sectionValue('network').textContent = networkText(network);
+    sectionValue('memory').textContent = memoryText(s, memory, q);
   }
 
   return {

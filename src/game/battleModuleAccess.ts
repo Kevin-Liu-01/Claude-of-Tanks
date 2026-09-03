@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 type PlayMenuModule = typeof import('../ui/playMenu.ts');
 type BrowserBattleBridgeModule = typeof import('../net/browserBattleBridge.ts');
 type NetworkStatusModule = typeof import('../ui/networkStatus.ts');
@@ -44,7 +45,7 @@ function retryable<T>(load: () => Promise<T>): () => Promise<T> {
   let pending: Promise<T> | null = null;
   return () => {
     if (pending) return pending;
-    const request = load().catch((error: unknown) => {
+    const request = load().catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

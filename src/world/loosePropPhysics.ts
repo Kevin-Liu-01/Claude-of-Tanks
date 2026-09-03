@@ -179,6 +179,21 @@ function integrateQuaternion(b: LoosePropBody, dt: number) {
   b.qx *= inv; b.qy *= inv; b.qz *= inv; b.qw *= inv;
 }
 
+function applyBattlefieldBounds(b: LoosePropBody, bounds: number): number {
+  let bounced = 0;
+  if (b.x < -bounds || b.x > bounds) {
+    b.x = clamp(b.x, -bounds, bounds);
+    b.vx *= -b.restitution;
+    bounced = 2;
+  }
+  if (b.z < -bounds || b.z > bounds) {
+    b.z = clamp(b.z, -bounds, bounds);
+    b.vz *= -b.restitution;
+    bounced = 2;
+  }
+  return bounced;
+}
+
 // Ground-constrained props use a small 2.5D model: planar translation plus
 // visual tumble. Their center follows the terrain directly, so no contact can
 // accumulate vertical energy. The support interpolation keeps an upright cone
@@ -197,13 +212,7 @@ function stepGroundConstrainedBody(
 
   b.x += b.vx * dt; b.z += b.vz * dt;
   integrateQuaternion(b, dt);
-  let flags = 1;
-  if (b.x < -bounds || b.x > bounds) {
-    b.x = clamp(b.x, -bounds, bounds); b.vx *= -b.restitution; flags |= 2;
-  }
-  if (b.z < -bounds || b.z > bounds) {
-    b.z = clamp(b.z, -bounds, bounds); b.vz *= -b.restitution; flags |= 2;
-  }
+  let flags = 1 | applyBattlefieldBounds(b, bounds);
 
   const halfH = b.height * 0.5;
   const axisY = Math.abs(1 - 2 * (b.qx * b.qx + b.qz * b.qz));
@@ -224,6 +233,57 @@ function stepGroundConstrainedBody(
     }
   } else b.sleepS = 0;
   return flags;
+}
+
+function resolveTerrainContact(
+  b: LoosePropBody,
+  dt: number,
+  normalAt: ((x: number, z: number) => SurfaceNormal) | null,
+): number {
+  const n = normalAt ? normalAt(b.x, b.z) : null;
+  const nx = n ? n.x : 0;
+  const ny = n ? Math.max(0.25, n.y) : 1;
+  const nz = n ? n.z : 0;
+  const vn = b.vx * nx + b.vy * ny + b.vz * nz;
+  let flags = 0;
+  if (vn < -0.48) {
+    b.vx -= (1 + b.restitution) * vn * nx;
+    b.vy -= (1 + b.restitution) * vn * ny;
+    b.vz -= (1 + b.restitution) * vn * nz;
+    b.vx *= 0.86;
+    b.vz *= 0.86;
+    flags = 2;
+  } else {
+    if (b.vy < 0) b.vy = 0;
+    // Gravity projected into the terrain plane lets clutter roll down a
+    // bank instead of freezing on a sloped height sample.
+    b.vx += GRAVITY * nx * ny * dt;
+    b.vz += GRAVITY * nz * ny * dt;
+  }
+  const grip = Math.max(0, 1 - b.friction * dt);
+  b.vx *= grip;
+  b.vz *= grip;
+  // Blend toward rolling angular velocity without erasing impact tumble.
+  const rollX = b.vz / b.radius;
+  const rollZ = -b.vx / b.radius;
+  b.wx += (rollX - b.wx) * Math.min(1, dt * 3.2);
+  b.wz += (rollZ - b.wz) * Math.min(1, dt * 3.2);
+  return flags;
+}
+
+function updateLoosePropSleep(b: LoosePropBody, dt: number, grounded: boolean): boolean {
+  const planar = Math.hypot(b.vx, b.vz);
+  const angular = Math.hypot(b.wx, b.wy, b.wz);
+  if (!grounded || Math.abs(b.vy) >= 0.08 || planar >= 0.11 || angular >= 0.72) {
+    b.sleepS = 0;
+    return false;
+  }
+  b.sleepS += dt;
+  if (b.sleepS < 0.72) return false;
+  b.vx = 0; b.vy = 0; b.vz = 0;
+  b.wx = 0; b.wy = 0; b.wz = 0;
+  b.active = false; b.cooldownS = 0; b.sleepS = 0;
+  return true;
 }
 
 /**
@@ -248,56 +308,16 @@ export function stepLoosePropBody(
 
   b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
   integrateQuaternion(b, dt);
-  let flags = 1;
-
   // Battlefield edge is a soft invisible curb for loose presentation props.
-  if (b.x < -bounds || b.x > bounds) {
-    b.x = clamp(b.x, -bounds, bounds); b.vx *= -b.restitution; flags |= 2;
-  }
-  if (b.z < -bounds || b.z > bounds) {
-    b.z = clamp(b.z, -bounds, bounds); b.vz *= -b.restitution; flags |= 2;
-  }
+  let flags = 1 | applyBattlefieldBounds(b, bounds);
 
   const floorY = heightAt(b.x, b.z) + b.radius;
-  let grounded = false;
-  if (b.y <= floorY) {
-    grounded = true;
+  const grounded = b.y <= floorY;
+  if (grounded) {
     b.y = floorY;
-    const n = normalAt ? normalAt(b.x, b.z) : null;
-    const nx = n ? n.x : 0, ny = n ? Math.max(0.25, n.y) : 1, nz = n ? n.z : 0;
-    const vn = b.vx * nx + b.vy * ny + b.vz * nz;
-    if (vn < -0.48) {
-      b.vx -= (1 + b.restitution) * vn * nx;
-      b.vy -= (1 + b.restitution) * vn * ny;
-      b.vz -= (1 + b.restitution) * vn * nz;
-      b.vx *= 0.86; b.vz *= 0.86;
-      flags |= 2;
-    } else {
-      if (b.vy < 0) b.vy = 0;
-      // Gravity projected into the terrain plane lets clutter roll down a
-      // bank instead of freezing on a sloped height sample.
-      b.vx += GRAVITY * nx * ny * dt;
-      b.vz += GRAVITY * nz * ny * dt;
-    }
-    const grip = Math.max(0, 1 - b.friction * dt);
-    b.vx *= grip; b.vz *= grip;
-    // Blend toward rolling angular velocity without erasing impact tumble.
-    const rollX = b.vz / b.radius, rollZ = -b.vx / b.radius;
-    b.wx += (rollX - b.wx) * Math.min(1, dt * 3.2);
-    b.wz += (rollZ - b.wz) * Math.min(1, dt * 3.2);
+    flags |= resolveTerrainContact(b, dt, normalAt);
   }
-
-  const planar = Math.hypot(b.vx, b.vz);
-  const angular = Math.hypot(b.wx, b.wy, b.wz);
-  if (grounded && Math.abs(b.vy) < 0.08 && planar < 0.11 && angular < 0.72) {
-    b.sleepS += dt;
-    if (b.sleepS >= 0.72) {
-      b.vx = 0; b.vy = 0; b.vz = 0;
-      b.wx = 0; b.wy = 0; b.wz = 0;
-      b.active = false; b.cooldownS = 0; b.sleepS = 0;
-      flags |= 4;
-    }
-  } else b.sleepS = 0;
+  if (updateLoosePropSleep(b, dt, grounded)) flags |= 4;
   return flags;
 }
 
@@ -315,45 +335,85 @@ function applyWallBounce(b: LoosePropBody, nx: number, nz: number, depth: number
   return true;
 }
 
+function resolveCircleObstacle(
+  b: LoosePropBody,
+  shape: { kind: 'circle'; cx: number; cz: number; r: number },
+): boolean {
+  const dx = b.x - shape.cx;
+  const dz = b.z - shape.cz;
+  const rr = b.radius + shape.r;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= rr * rr) return false;
+  const d = Math.sqrt(Math.max(d2, EPS));
+  return applyWallBounce(b, d2 > EPS ? dx / d : 1, d2 > EPS ? dz / d : 0, rr - d);
+}
+
+interface ObstacleBox {
+  cx: number;
+  cz: number;
+  hw: number;
+  hl: number;
+  yaw: number;
+}
+
+function obstacleBox(ob: LoosePropObstacle): ObstacleBox {
+  const shape = ob.shape2;
+  if (shape?.kind === 'obb') return shape;
+  return {
+    cx: (ob.min[0] + ob.max[0]) * 0.5,
+    cz: (ob.min[2] + ob.max[2]) * 0.5,
+    hw: (ob.max[0] - ob.min[0]) * 0.5,
+    hl: (ob.max[2] - ob.min[2]) * 0.5,
+    yaw: 0,
+  };
+}
+
+function insideBoxNormal(
+  lx: number,
+  lz: number,
+  box: ObstacleBox,
+  radius: number,
+): [number, number, number] {
+  const px = box.hw + radius - Math.abs(lx);
+  const pz = box.hl + radius - Math.abs(lz);
+  return px < pz
+    ? [lx >= 0 ? 1 : -1, 0, px]
+    : [0, lz >= 0 ? 1 : -1, pz];
+}
+
+function resolveBoxObstacle(b: LoosePropBody, box: ObstacleBox): boolean {
+  const s = Math.sin(box.yaw);
+  const c = Math.cos(box.yaw);
+  const dx = b.x - box.cx;
+  const dz = b.z - box.cz;
+  const lx = dx * c - dz * s;
+  const lz = dx * s + dz * c;
+  const qx = clamp(lx, -box.hw, box.hw);
+  const qz = clamp(lz, -box.hl, box.hl);
+  let vx = lx - qx;
+  let vz = lz - qz;
+  const d2 = vx * vx + vz * vz;
+  if (d2 >= b.radius * b.radius) return false;
+  let depth: number;
+  if (d2 <= EPS) {
+    [vx, vz, depth] = insideBoxNormal(lx, lz, box, b.radius);
+  } else {
+    const d = Math.sqrt(d2);
+    vx /= d;
+    vz /= d;
+    depth = b.radius - d;
+  }
+  return applyWallBounce(b, vx * c + vz * s, -vx * s + vz * c, depth);
+}
+
 /** Resolve a loose body's circle against one authored static obstacle. */
 export function resolveLoosePropObstacle(b: LoosePropBody, ob: LoosePropObstacle | null | undefined) {
   if (!ob || ob.crushed || ob.dead) return false;
   if (b.y + b.radius < ob.min[1] || b.y - b.radius > ob.max[1]) return false;
   const sh = ob.shape2;
-  if (sh && sh.kind === 'circle') {
-    const dx = b.x - sh.cx, dz = b.z - sh.cz;
-    const rr = b.radius + sh.r, d2 = dx * dx + dz * dz;
-    if (d2 >= rr * rr) return false;
-    const d = Math.sqrt(Math.max(d2, EPS));
-    return applyWallBounce(b, d2 > EPS ? dx / d : 1, d2 > EPS ? dz / d : 0, rr - d);
-  }
-
-  let cx, cz, hw, hl, yaw;
-  if (sh && sh.kind === 'obb') {
-    cx = sh.cx; cz = sh.cz; hw = sh.hw; hl = sh.hl; yaw = sh.yaw;
-  } else {
-    cx = (ob.min[0] + ob.max[0]) * 0.5;
-    cz = (ob.min[2] + ob.max[2]) * 0.5;
-    hw = (ob.max[0] - ob.min[0]) * 0.5;
-    hl = (ob.max[2] - ob.min[2]) * 0.5;
-    yaw = 0;
-  }
-  const s = Math.sin(yaw), c = Math.cos(yaw);
-  const dx = b.x - cx, dz = b.z - cz;
-  const lx = dx * c - dz * s, lz = dx * s + dz * c;
-  const qx = clamp(lx, -hw, hw), qz = clamp(lz, -hl, hl);
-  let vx = lx - qx, vz = lz - qz;
-  let d2 = vx * vx + vz * vz, depth;
-  if (d2 >= b.radius * b.radius) return false;
-  if (d2 <= EPS) {
-    const px = hw + b.radius - Math.abs(lx);
-    const pz = hl + b.radius - Math.abs(lz);
-    if (px < pz) { vx = lx >= 0 ? 1 : -1; vz = 0; depth = px; }
-    else { vx = 0; vz = lz >= 0 ? 1 : -1; depth = pz; }
-  } else {
-    const d = Math.sqrt(d2); vx /= d; vz /= d; depth = b.radius - d;
-  }
-  return applyWallBounce(b, vx * c + vz * s, -vx * s + vz * c, depth);
+  return sh?.kind === 'circle'
+    ? resolveCircleObstacle(b, sh)
+    : resolveBoxObstacle(b, obstacleBox(ob));
 }
 
 /** Resolve two loose circles. Return wake bits: 1 for a, 2 for b. */

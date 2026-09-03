@@ -94,24 +94,28 @@ function smoothstepNum(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Return the exact RGBA bytes for the low cumulus deck. */
-export function bakeCumulusPixels(
+interface CumulusSamplers {
+  fbmD: NoiseSampler;
+  fbmWX: NoiseSampler;
+  fbmWY: NoiseSampler;
+  fbmM: NoiseSampler;
+  fbmHF: NoiseSampler;
+}
+
+interface CumulusFields {
+  mask: Float32Array;
+  core: Float32Array;
+  sigma: Float32Array;
+}
+
+function fillCumulusFields(
   width: number,
   height: number,
   config: CumulusBakeConfig,
-): Uint8ClampedArray {
-  const {
-    seed, warp, macroAniso, threshold, cluster, edge, edgeWisp, coreWidth,
-    marchSteps, marchStepPx, shadeK, lit, shade, silver, detailAmp,
-    alphaVariation, maxAlpha,
-  } = config;
-  const rng = mulberry32(seed);
-  const fbmD = makeFbm(rng, 6, 8);
-  const fbmWX = makeFbm(rng, 3, 5);
-  const fbmWY = makeFbm(rng, 3, 5);
-  const fbmM = makeFbm(rng, 2, 3);
-  const fbmHF = makeFbm(rng, 3, 48);
-
+  samplers: CumulusSamplers,
+): CumulusFields {
+  const { warp, macroAniso, threshold, cluster, edge, edgeWisp, coreWidth } = config;
+  const { fbmD, fbmWX, fbmWY, fbmM, fbmHF } = samplers;
   const mask = new Float32Array(width * height);
   const core = new Float32Array(width * height);
   const sigma = new Float32Array(width * height);
@@ -125,51 +129,91 @@ export function bakeCumulusPixels(
       if (wv < 0) wv += 1;
       const d = fbmD(wu, wv);
       const mac = fbmM(u, (v * macroAniso) % 1);
-      const thr = threshold + (mac - 0.5) * 2 * cluster;
-      const i = y * width + x;
+      const thresholdAtPoint = threshold + (mac - 0.5) * 2 * cluster;
+      const index = y * width + x;
       const edgeWidth = edge + edgeWisp * (1 - smoothstepNum(0.35, 0.62, mac));
-      const m = smoothstepNum(thr, thr + edgeWidth, d)
+      const density = smoothstepNum(thresholdAtPoint, thresholdAtPoint + edgeWidth, d)
         * (0.72 + 0.28 * smoothstepNum(0.25, 0.75, fbmHF(u * 0.25, v * 0.25)));
-      const c = smoothstepNum(thr + edgeWidth, thr + edgeWidth + coreWidth, d);
-      mask[i] = m;
-      core[i] = c;
-      sigma[i] = m * (0.3 + 0.7 * c);
+      const coreDensity = smoothstepNum(
+        thresholdAtPoint + edgeWidth,
+        thresholdAtPoint + edgeWidth + coreWidth,
+        d,
+      );
+      mask[index] = density;
+      core[index] = coreDensity;
+      sigma[index] = density * (0.3 + 0.7 * coreDensity);
     }
   }
+  return { mask, core, sigma };
+}
 
+function shadeCumulusPixels(
+  width: number,
+  height: number,
+  config: CumulusBakeConfig,
+  samplers: Pick<CumulusSamplers, 'fbmM' | 'fbmHF'>,
+  fields: CumulusFields,
+): Uint8ClampedArray {
+  const {
+    macroAniso, marchSteps, marchStepPx, shadeK, lit, shade, silver,
+    detailAmp, alphaVariation, maxAlpha,
+  } = config;
+  const { fbmM, fbmHF } = samplers;
+  const { mask, core, sigma } = fields;
   const pixels = new Uint8ClampedArray(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const i = y * width + x;
-      const o = i * 4;
-      const m = mask[i]!;
-      if (m <= 0) {
-        pixels[o + 3] = 0;
+      const index = y * width + x;
+      const offset = index * 4;
+      const density = mask[index]!;
+      if (density <= 0) {
+        pixels[offset + 3] = 0;
         continue;
       }
-      let occl = 0;
-      for (let s = 1; s <= marchSteps; s++) {
-        let yy = (y - s * marchStepPx) % height;
-        if (yy < 0) yy += height;
-        occl += sigma[yy * width + x]!;
+      let occlusion = 0;
+      for (let step = 1; step <= marchSteps; step++) {
+        let sampleY = (y - step * marchStepPx) % height;
+        if (sampleY < 0) sampleY += height;
+        occlusion += sigma[sampleY * width + x]!;
       }
-      const light = Math.pow(Math.exp(-shadeK * occl), 0.85);
-      const coreValue = core[i]!;
+      const light = Math.pow(Math.exp(-shadeK * occlusion), 0.85);
+      const coreValue = core[index]!;
       const silverLine = 1 + silver * (1 - coreValue) * light;
-      pixels[o] = Math.min(255, Math.round(255
+      pixels[offset] = Math.min(255, Math.round(255
         * (shade[0] + (lit[0] - shade[0]) * light) * silverLine));
-      pixels[o + 1] = Math.min(255, Math.round(255
+      pixels[offset + 1] = Math.min(255, Math.round(255
         * (shade[1] + (lit[1] - shade[1]) * light) * silverLine));
-      pixels[o + 2] = Math.min(255, Math.round(255
+      pixels[offset + 2] = Math.min(255, Math.round(255
         * (shade[2] + (lit[2] - shade[2]) * light) * silverLine * 0.97));
-      const macroA = 1 - alphaVariation
+      const macroAlpha = 1 - alphaVariation
         * (1 - fbmM(x / width, ((y / height) * macroAniso) % 1));
-      const hfA = 1 - detailAmp * (1 - coreValue) * fbmHF(x / width, y / height);
-      pixels[o + 3] = Math.round(255 * maxAlpha * macroA * hfA * m
+      const detailAlpha = 1 - detailAmp * (1 - coreValue) * fbmHF(x / width, y / height);
+      pixels[offset + 3] = Math.round(255 * maxAlpha * macroAlpha * detailAlpha * density
         * (0.30 + 0.70 * coreValue));
     }
   }
   return pixels;
+}
+
+/** Return the exact RGBA bytes for the low cumulus deck. */
+export function bakeCumulusPixels(
+  width: number,
+  height: number,
+  config: CumulusBakeConfig,
+): Uint8ClampedArray {
+  const {
+    seed,
+  } = config;
+  const rng = mulberry32(seed);
+  const fbmD = makeFbm(rng, 6, 8);
+  const fbmWX = makeFbm(rng, 3, 5);
+  const fbmWY = makeFbm(rng, 3, 5);
+  const fbmM = makeFbm(rng, 2, 3);
+  const fbmHF = makeFbm(rng, 3, 48);
+
+  const samplers = { fbmD, fbmWX, fbmWY, fbmM, fbmHF };
+  const fields = fillCumulusFields(width, height, config, samplers);
+  return shadeCumulusPixels(width, height, config, samplers, fields);
 }
 
 /** Return the exact RGBA bytes for the high cirrus deck. */

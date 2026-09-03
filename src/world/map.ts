@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/world/map.ts — composes terrain meshes + vegetation + props into the World.
 // Contract: docs/ARCHITECTURE.md §2.7 (World shape), §3.2 (layout rules).
 // Which battlefield gets built is driven by a map config (src/world/maps/*):
@@ -62,11 +63,11 @@ interface LayoutDisc {
 export type WorldHeightField = HeightField;
 
 interface TerrainUserData {
-  sourcedTexturesReady?: Promise<unknown>;
-  streamingStats?: unknown;
+  sourcedTexturesReady?: Promise<RuntimeValue>;
+  streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 type TerrainRoot = ReturnType<typeof buildTerrainMeshes> & { userData: TerrainUserData };
@@ -98,7 +99,7 @@ type VegetationRuntime = ReturnType<typeof createVegetation>;
 interface MapFeatureRecord {
   x: number;
   z: number;
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 type PropsRuntime = ReturnType<typeof createProps>;
@@ -123,12 +124,12 @@ export interface WorldRuntime {
   getConcealment(): ConcealmentDisc[];
   crushables: CrushableRecord[];
   crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): boolean;
-  destructibles: unknown[];
-  looseProps: unknown[];
+  destructibles: RuntimeValue[];
+  looseProps: RuntimeValue[];
   getLoosePropStats(): { total: number; active: number };
-  tankWreckSpots: unknown[];
-  utilityPolePlacements: unknown[];
-  decorationGroundingReceipts: unknown[];
+  tankWreckSpots: RuntimeValue[];
+  utilityPolePlacements: RuntimeValue[];
+  decorationGroundingReceipts: RuntimeValue[];
   crushObstacle(
     record: CollisionRecord | null | undefined,
     dx: number,
@@ -162,7 +163,7 @@ export interface WorldRuntime {
     aimDistanceMeters?: number | null,
   ): void;
   group: THREE.Group;
-  _buildDetail?: { vegetation: unknown; terrain: unknown };
+  _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue };
 }
 
 const _pt = new THREE.Vector3();
@@ -175,7 +176,7 @@ const _bisA = new THREE.Vector3();
  * @returns {object} World (ARCHITECTURE §2.7) + {mapId, config}
  */
 export function createMap(
-  engineContext: unknown,
+  engineContext: RuntimeValue,
   { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
@@ -201,7 +202,7 @@ export function createMap(
  * @returns {Promise<object>} World (ARCHITECTURE §2.7) + {mapId, config}
  */
 export async function createMapAsync(
-  engineContext: unknown,
+  engineContext: RuntimeValue,
   { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
   onStep: WorldBuildProgress | null = null,
   { fineSlices = false }: WorldSlicingOptions = {},
@@ -342,72 +343,82 @@ function assembleWorld(
   // above keeps the exact analytic query.
   const hAtF = heightField.getHeightAtFast || heightField.getHeightAt;
 
+  function nearestPropHit(
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    maxDist: number,
+  ): { distance: number; record: CollisionRecord | null } {
+    let best = Infinity;
+    let record: CollisionRecord | null = null;
+    const endX = origin.x + dir.x * maxDist;
+    const endZ = origin.z + dir.z * maxDist;
+    queryColliders(
+      Math.min(origin.x, endX), Math.min(origin.z, endZ),
+      Math.max(origin.x, endX), Math.max(origin.z, endZ), rayCandidates);
+    for (const candidate of rayCandidates) {
+      // Destroyed records stay in the broad phase for O(1) rematch restore.
+      if (candidate.dead) continue;
+      const distance = rayCollisionRecord(
+        origin, dir, candidate, Math.min(maxDist, best), _aabbNrm,
+      );
+      if (distance >= 0 && distance < best) {
+        best = distance;
+        record = candidate;
+        _bestNrm.copy(_aabbNrm);
+      }
+    }
+    return { distance: best, record };
+  }
+
+  function terrainHitDistance(
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    maxDist: number,
+  ): number {
+    const refineHit = (lowDistance: number, highDistance: number): number => {
+      let low = lowDistance;
+      let high = highDistance;
+      for (let index = 0; index < 6; index++) {
+        const mid = (low + high) * 0.5;
+        _bisA.copy(dir).multiplyScalar(mid).add(origin);
+        if (_bisA.y - hAtF(_bisA.x, _bisA.z) <= 0) high = mid;
+        else low = mid;
+      }
+      return (low + high) * 0.5;
+    };
+    let distance = 0;
+    let clearance = origin.y - hAtF(origin.x, origin.z);
+    if (clearance <= 0) return 0;
+    while (distance < maxDist) {
+      const step = Math.min(Math.max(clearance * 0.5, 0.5), 2.0);
+      const priorDistance = distance;
+      distance = Math.min(distance + step, maxDist);
+      _pt.copy(dir).multiplyScalar(distance).add(origin);
+      if (dir.y > 0 && _pt.y > heightField.maxY + 2) return -1;
+      clearance = _pt.y - hAtF(_pt.x, _pt.z);
+      if (clearance <= 0) return refineHit(priorDistance, distance);
+      if (distance >= maxDist) return -1;
+    }
+    return -1;
+  }
+
   function raycast(
     origin: THREE.Vector3,
     dir: THREE.Vector3,
     maxDist: number,
   ): WorldRayHit | null {
-    // props first — they bound the terrain march
-    let best = Infinity;
-    let bestKind: WorldRayHit['kind'] | null = null;
-    let bestRecord: CollisionRecord | null = null;
-    const ex = origin.x + dir.x * maxDist;
-    const ez = origin.z + dir.z * maxDist;
-    queryColliders(
-      Math.min(origin.x, ex), Math.min(origin.z, ez),
-      Math.max(origin.x, ex), Math.max(origin.z, ez), rayCandidates);
-    for (const c of rayCandidates) {
-      // DESTRUCTIBLES r1: a destroyed wall segment / truck stops blocking
-      // shells and AI line-of-sight — its collider is flagged dead in place
-      // (O(1) rematch restore) rather than spliced out.
-      if (c.dead) continue;
-      const t = rayCollisionRecord(origin, dir, c, Math.min(maxDist, best), _aabbNrm);
-      if (t >= 0 && t < best) {
-        best = t;
-        bestKind = 'prop';
-        bestRecord = c;
-        _bestNrm.copy(_aabbNrm);
-      }
-    }
-    // terrain march with adaptive step + bisection refinement
-    let terrainT = -1;
-    let t = 0;
-    let clearance = origin.y - hAtF(origin.x, origin.z);
-    if (clearance <= 0) {
-      terrainT = 0;
-    } else {
-      const limit = Math.min(maxDist, best);
-      let prevT = 0;
-      while (t < limit) {
-        const step = Math.min(Math.max(clearance * 0.5, 0.5), 2.0);
-        prevT = t;
-        t = Math.min(t + step, limit);
-        _pt.copy(dir).multiplyScalar(t).add(origin);
-        if (dir.y > 0 && _pt.y > heightField.maxY + 2) break; // rising above all terrain
-        clearance = _pt.y - hAtF(_pt.x, _pt.z);
-        if (clearance <= 0) {
-          let lo = prevT, hi = t;
-          for (let i = 0; i < 6; i++) {
-            const mid = (lo + hi) * 0.5;
-            _bisA.copy(dir).multiplyScalar(mid).add(origin);
-            if (_bisA.y - hAtF(_bisA.x, _bisA.z) <= 0) hi = mid; else lo = mid;
-          }
-          terrainT = (lo + hi) * 0.5;
-          break;
-        }
-        if (t >= limit) break;
-      }
-    }
+    const propHit = nearestPropHit(origin, dir, maxDist);
+    const terrainT = terrainHitDistance(origin, dir, Math.min(maxDist, propHit.distance));
     let hitT: number;
     let kind: WorldRayHit['kind'];
-    if (terrainT >= 0 && terrainT < best) { hitT = terrainT; kind = 'terrain'; }
-    else if (bestKind && best <= maxDist) { hitT = best; kind = 'prop'; }
+    if (terrainT >= 0 && terrainT < propHit.distance) { hitT = terrainT; kind = 'terrain'; }
+    else if (propHit.record && propHit.distance <= maxDist) { hitT = propHit.distance; kind = 'prop'; }
     else return null;
     const point = new THREE.Vector3().copy(dir).multiplyScalar(hitT).add(origin);
     const normal = kind === 'terrain'
       ? heightField.getNormalAt(point.x, point.z).clone()
       : _bestNrm.clone();
-    return { point, normal, dist: hitT, kind, record: kind === 'prop' ? bestRecord : null };
+    return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
   return {

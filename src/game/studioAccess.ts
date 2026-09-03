@@ -1,11 +1,12 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 interface StudioRuntime {
   active: boolean;
   tick(deltaSeconds: number): void;
-  enter(options?: unknown): Promise<unknown> | unknown;
+  enter(options?: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
 }
 
 interface StudioModule {
-  createStudio(context: unknown): StudioRuntime;
+  createStudio(context: RuntimeValue): StudioRuntime;
 }
 
 interface StudioPresentation {
@@ -20,13 +21,13 @@ interface KeyboardEventTarget {
 
 export interface StudioAccessOptions {
   loadModule(): Promise<StudioModule>;
-  preloadFxModule(): Promise<unknown>;
-  ensureFxRuntime(): Promise<unknown>;
+  preloadFxModule(): Promise<RuntimeValue>;
+  ensureFxRuntime(): Promise<RuntimeValue>;
   prepareRuntime(): void;
-  createContext(fx: unknown): unknown;
+  createContext(fx: RuntimeValue): RuntimeValue;
   getPhase(): string;
   keyTarget?: KeyboardEventTarget | null;
-  onEntryError?: (error: unknown) => void;
+  onEntryError?: (error: RuntimeValue) => void;
 }
 
 export interface StudioAccess {
@@ -87,7 +88,7 @@ export function createStudioAccess({
       uninstallKeyboard();
       runtime = module.createStudio(createContext(fx));
       return runtime;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (runtimePromise === request) runtimePromise = null;
       throw error;
     });

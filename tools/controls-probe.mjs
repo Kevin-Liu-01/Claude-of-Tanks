@@ -275,15 +275,18 @@ async function runMode(mode, { stubNoLock, width, height }) {
     cursorAim: window.__DEBUG.input.isCursorAim(),
     toast: !!document.querySelector('.cot-lock-toast'),
   }));
-  if (stubNoLock) {
-    check(mode, 'pointer lock denied -> cursor-aim active', !lockState.locked && lockState.cursorAim,
-      `locked=${lockState.locked} cursorAim=${lockState.cursorAim}`);
-    check(mode, 'one-time cursor-aim toast shown', lockState.toast);
-  } else {
+  const verifyLockPresentation = () => {
+    if (stubNoLock) {
+      check(mode, 'pointer lock denied -> cursor-aim active', !lockState.locked && lockState.cursorAim,
+        `locked=${lockState.locked} cursorAim=${lockState.cursorAim}`);
+      check(mode, 'one-time cursor-aim toast shown', lockState.toast);
+      return;
+    }
     check(mode, 'pointer lock engaged', lockState.locked && !lockState.cursorAim,
       `locked=${lockState.locked} cursorAim=${lockState.cursorAim}`);
     check(mode, 'no cursor-aim toast in lock mode', !lockState.toast);
-  }
+  };
+  verifyLockPresentation();
 
   // let the battle-open cinematic finish (3 s flyby) before aim assertions
   await sleep(3600);
@@ -295,9 +298,11 @@ async function runMode(mode, { stubNoLock, width, height }) {
   // --- mouse movement slews the turret ---------------------------------------
   const aimX = Math.round(width * 0.72), aimY = Math.round(height * 0.42);
   const yaw0 = await page.evaluate(() => window.__DEBUG.game.player.state.turretYaw);
-  if (stubNoLock) {
-    await page.mouse.move(aimX, aimY, { steps: 12 }); // real cursor -> cursor-aim ray
-  } else {
+  const moveAimInput = async () => {
+    if (stubNoLock) {
+      await page.mouse.move(aimX, aimY, { steps: 12 }); // real cursor -> cursor-aim ray
+      return;
+    }
     // Locked mouselook: EVERY CDP move is a relative delta (Chromium diffs
     // consecutive synthetic positions), so sweep directly from the BATTLE
     // button position — parking at screen center first would inject a huge
@@ -307,7 +312,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
     for (let i = 0; i < 10; i++) {
       await page.mouse.move(btn.cx + (i + 1) * 35, Math.max(5, btn.cy - (i + 1) * 4), { steps: 2 });
     }
-  }
+  };
+  await moveAimInput();
   await sleep(2600); // real traverse speed: let the turret converge
   const aim1 = await page.evaluate(() => {
     const p = window.__DEBUG.game.player;
@@ -340,7 +346,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
   await sleep(700);
   const shot = await page.evaluate(() => ({ fired: window.__PROBE.fired.slice() }));
   check(mode, 'LMB fires a player shell', shot.fired.length === 1, `player shells=${shot.fired.length}`);
-  if (shot.fired.length === 1) {
+  const verifyShotDirection = () => {
+    if (shot.fired.length !== 1) return;
     const s = shot.fired[0];
     const want = [
       aim1.aimPoint[0] - s.muzzlePos[0],
@@ -351,7 +358,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
     const dot = (want[0] * s.dir[0] + want[1] * s.dir[1] + want[2] * s.dir[2]) / (wl || 1);
     const ang = Math.acos(Math.max(-1, Math.min(1, dot)));
     check(mode, 'shot flies in reticle direction', ang < 0.12, `angle to converged aim point ${ang.toFixed(4)} rad`);
-  }
+  };
+  verifyShotDirection();
 
   // --- sniper entry: Shift toggle + RMB hold-to-aim ------------------------------
   // gunnery r1 (owner): the RMB default is HOLD-TO-AIM in every environment —
@@ -420,7 +428,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
   // only appears on demand: ammunition, consumables, free-look, minimap size,
   // shot log, diagnostics and Settings. Use real CDP keyboard/mouse/wheel
   // events; the action observer is diagnostic only and does not invoke them.
-  if (!stubNoLock) {
+  const verifyDesktopInputMatrix = async () => {
+    if (stubNoLock) return;
     await page.evaluate(() => {
       window.__PROBE.actions = {};
       for (const { id } of window.__DEBUG.input.actionDefs) {
@@ -569,13 +578,15 @@ async function runMode(mode, { stubNoLock, width, height }) {
       await page.mouse.click(resume.x, resume.y);
       await sleep(350);
     }
-  }
+  };
+  await verifyDesktopInputMatrix();
 
   // --- rebind persistence (gunnery r1; lock mode only to keep runtime sane) --
   // Rebind fire onto KeyF through the input API (the settings chips call the
   // same setBinding), assert the new key actually fires a shell, then reload
   // the page and assert the binding survived localStorage round-trip.
-  if (!stubNoLock) {
+  const verifyRebindPersistence = async () => {
+    if (stubNoLock) return;
     // The binding check is not a reload-speed check. Long-reload vehicles can
     // still be cycling the deliberate reticle shot above after the movement
     // assertions complete, so wait for the authoritative fire gate instead
@@ -629,7 +640,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
     await page.evaluate(() => window.__DEBUG.input.resetBindings());
     const restored = await page.evaluate(() => window.__DEBUG.input.getBinding('fire', 0));
     check(mode, 'reset restores the default fire bind', restored === 'Mouse0', `fire=${restored}`);
-  }
+  };
+  await verifyRebindPersistence();
 
   check(mode, 'no page errors', pageErrors.length === 0,
     pageErrors.slice(0, 3).join(' | ') || 'clean');
@@ -642,6 +654,63 @@ async function runMode(mode, { stubNoLock, width, height }) {
  * contract + the 1280px battle-HUD layout (no LEAVE BATTLE button, team
  * panels sane). See the header block.
  */
+async function verifyDenyRetryHud(page, mode, width) {
+  const hudLayout = await page.evaluate(() => {
+    const out = {
+      // The settings overlay owns the designed leave action. A raw battle-HUD
+      // leave control outside that overlay is a regression.
+      leaveBtn: [...document.querySelectorAll('button')].some((button) =>
+        /leave battle/i.test(button.textContent || '') && button.offsetParent !== null
+        && !button.closest('.cot-settings')),
+      pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      ears: {},
+    };
+    const spread = (values) => (values.length > 1
+      ? Math.max(...values) - Math.min(...values) : 0);
+    const teamPanelLayout = (side) => {
+      const ear = document.querySelector(`.cot-ear.${side}`);
+      if (!ear) return null;
+      const bounds = ear.getBoundingClientRect();
+      const rows = [...ear.querySelectorAll('.cot-er')];
+      const heights = rows.map((row) =>
+        Math.round(row.getBoundingClientRect().height * 2) / 2);
+      const tiers = rows.map((row) => row.querySelector('.tier')).filter(Boolean)
+        .map((tier) => tier.getBoundingClientRect());
+      const names = rows.map((row) => row.querySelector('.vn')).filter(Boolean)
+        .map((name) => name.getBoundingClientRect());
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        rows: rows.length,
+        heightSpread: heights.length ? Math.max(...heights) - Math.min(...heights) : 0,
+        tierColSpread: side === 'l'
+          ? spread(names.map((name) => name.left))
+          : spread(tiers.map((tier) => tier.left)),
+      };
+    };
+    out.ears.l = teamPanelLayout('l');
+    out.ears.r = teamPanelLayout('r');
+    return out;
+  });
+  check(mode, 'no LEAVE BATTLE button in the battle HUD', !hudLayout.leaveBtn);
+  check(mode, 'no horizontal page overflow at 1280px', !hudLayout.pageOverflow);
+  const left = hudLayout.ears.l;
+  const right = hudLayout.ears.r;
+  check(mode, 'both team panels present with rows',
+    !!left && !!right && left.rows > 0 && right.rows > 0,
+    `L=${left && left.rows} R=${right && right.rows} rows`);
+  if (!left || !right) return;
+  check(mode, 'team panels inside the viewport',
+    left.left >= -0.5 && right.right <= width + 0.5,
+    `L.left=${left.left.toFixed(1)} R.right=${right.right.toFixed(1)}`);
+  check(mode, 'team rows uniform height both sides',
+    left.heightSpread <= 1 && right.heightSpread <= 1,
+    `spread L=${left.heightSpread} R=${right.heightSpread}`);
+  check(mode, 'tier numeral columns aligned both sides',
+    left.tierColSpread <= 0.6 && right.tierColSpread <= 0.6,
+    `spread L=${left.tierColSpread.toFixed(2)}px R=${right.tierColSpread.toFixed(2)}px`);
+}
+
 async function runDenyRetryMode() {
   const mode = 'deny-retry';
   const width = 1280, height = 800;
@@ -690,55 +759,7 @@ async function runDenyRetryMode() {
 
   // --- battle-HUD layout gate at 1280px (owner round: leave button removed,
   // team panels consistent) --------------------------------------------------
-  const hudLayout = await page.evaluate(() => {
-    const out = {
-      // the settings overlay's own 'Leave Battle' row is the DESIGNED exit —
-      // only a leave control in the raw battle HUD (outside .cot-settings)
-      // is a regression
-      leaveBtn: [...document.querySelectorAll('button')].some((b) =>
-        /leave battle/i.test(b.textContent || '') && b.offsetParent !== null &&
-        !b.closest('.cot-settings')),
-      pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
-      ears: {},
-    };
-    for (const side of ['l', 'r']) {
-      const ear = document.querySelector(`.cot-ear.${side}`);
-      if (!ear) { out.ears[side] = null; continue; }
-      const er = ear.getBoundingClientRect();
-      const rows = [...ear.querySelectorAll('.cot-er')];
-      const hts = rows.map((r) => Math.round(r.getBoundingClientRect().height * 2) / 2);
-      const tiers = rows.map((r) => r.querySelector('.tier')).filter(Boolean)
-        .map((t) => t.getBoundingClientRect());
-      const vns = rows.map((r) => r.querySelector('.vn')).filter(Boolean)
-        .map((t) => t.getBoundingClientRect());
-      const spread = (xs) => (xs.length > 1 ? Math.max(...xs) - Math.min(...xs) : 0);
-      out.ears[side] = {
-        left: er.left, right: er.right, rows: rows.length,
-        heightSpread: hts.length ? Math.max(...hts) - Math.min(...hts) : 0,
-        // aligned tier column: fixed numeral box -> name starts (left ear) /
-        // numeral starts (right ear) line up down the panel
-        tierColSpread: side === 'l' ? spread(vns.map((v) => v.left)) : spread(tiers.map((t) => t.left)),
-      };
-    }
-    return out;
-  });
-  check(mode, 'no LEAVE BATTLE button in the battle HUD', !hudLayout.leaveBtn);
-  check(mode, 'no horizontal page overflow at 1280px', !hudLayout.pageOverflow);
-  const eL = hudLayout.ears.l, eR = hudLayout.ears.r;
-  check(mode, 'both team panels present with rows',
-    !!eL && !!eR && eL.rows > 0 && eR.rows > 0,
-    `L=${eL && eL.rows} R=${eR && eR.rows} rows`);
-  if (eL && eR) {
-    check(mode, 'team panels inside the viewport',
-      eL.left >= -0.5 && eR.right <= width + 0.5,
-      `L.left=${eL.left.toFixed(1)} R.right=${eR.right.toFixed(1)}`);
-    check(mode, 'team rows uniform height both sides',
-      eL.heightSpread <= 1 && eR.heightSpread <= 1,
-      `spread L=${eL.heightSpread} R=${eR.heightSpread}`);
-    check(mode, 'tier numeral columns aligned both sides',
-      eL.tierColSpread <= 0.6 && eR.tierColSpread <= 0.6,
-      `spread L=${eL.tierColSpread.toFixed(2)}px R=${eR.tierColSpread.toFixed(2)}px`);
-  }
+  await verifyDenyRetryHud(page, mode, width);
 
   // --- denial #2: a primary-button gesture RETRIES the lock -----------------
   const gx = Math.round(width / 2), gy = Math.round(height * 0.55);

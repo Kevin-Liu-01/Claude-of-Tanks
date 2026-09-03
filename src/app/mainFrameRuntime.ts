@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { FogExp2, Vector3, type PerspectiveCamera, type Scene } from 'three';
 
 import type { ListenerPoseRuntime } from '../audio/listenerPoseRuntime.ts';
@@ -52,7 +53,7 @@ export interface MainFrameRuntimeOptions {
   getShotMode(): boolean;
   getShotHudFrame(): boolean;
   sniperFill: SniperFillRuntime;
-  resolveFxSubject(id: string): unknown;
+  resolveFxSubject(id: string): RuntimeValue;
   battleHudFrame: BattleHudFrameRuntime;
   lighting: MainLightingRuntime;
   post: PostRuntime;

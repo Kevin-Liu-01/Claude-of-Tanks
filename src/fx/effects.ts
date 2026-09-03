@@ -17,6 +17,7 @@ import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts'
 import { createImpactDecals } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
+import type { EventBus } from '../game/stateCore.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
@@ -45,7 +46,7 @@ interface FxHeightField {
 interface FxOptions {
   seed?: number;
   /** Resolve the live presentation entity for any struck tank, including the player. */
-  resolveEntity?(targetId: ShellId): unknown;
+  resolveEntity?(targetId: ShellId): object | null;
 }
 
 interface PuffScratch {
@@ -125,15 +126,13 @@ interface FxDebugSurface {
   };
 }
 
-interface FxEventBus {
-  on(event: string, listener: (payload: unknown) => void): unknown;
-}
+type FxEventBus = Pick<EventBus, 'on'>;
 
 function onFxEvent<EventName extends keyof FxEventMap>(
   bus: FxEventBus,
   event: EventName,
   listener: (payload: FxEventMap[EventName]) => void,
-): unknown {
+): () => void {
   return bus.on(event, (payload) => listener(payload as FxEventMap[EventName]));
 }
 
@@ -246,8 +245,8 @@ interface ShellHitEvent {
     normal?: WireVec3;
   }[];
   zone?: string;
-  modulesHit?: readonly unknown[];
-  crewHit?: readonly unknown[];
+  modulesHit?: readonly { module: string; newState: string; dmg: number }[];
+  crewHit?: readonly string[];
   ammoRacked?: boolean;
   fireStarted?: boolean;
   impactFrame?: 'hull' | 'turret' | 'gun' | 'barrel';
@@ -300,7 +299,7 @@ export interface FxRuntime {
   getGuidedMissileDebug(): object;
   getAttachmentDebug(): object;
   warmTextures(): void;
-  preloadTextures(): Promise<unknown>;
+  preloadTextures(): Promise<boolean>;
   warmTexturesChunked(yieldFrame: () => Promise<void>): Promise<void>;
   warmOpeningEffects(
     pos: THREE.Vector3,
@@ -1226,8 +1225,8 @@ export function createFx(
     anisotropy: engineCtx && engineCtx.anisotropy,
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
-  function isDecalEntity(value: unknown): value is FxEntity {
-    if (!value || typeof value !== 'object') return false;
+  function isDecalEntity(value: object | null | undefined): value is FxEntity {
+    if (!value) return false;
     const entity = value as Partial<FxEntity>;
     return !!entity.visual?.root && !!entity.state;
   }
@@ -1522,6 +1521,399 @@ export function createFx(
       cam.position.distanceToSquared(pos) < 100);
   }
 
+  interface MuzzleFlashState {
+    pos: THREE.Vector3;
+    dir: THREE.Vector3;
+    caliberMm: number;
+    birthOffset: number;
+    reach: number;
+    s: number;
+    scoped: boolean;
+    nearAtt: number;
+    dkF: number;
+    axSize: number;
+    axSizeC: number;
+    axAtt: number;
+    lightK: number;
+  }
+
+  const muzzleFlashState: MuzzleFlashState = {
+    pos: _mfPos,
+    dir: _mfDir,
+    caliberMm: 0,
+    birthOffset: 0,
+    reach: 1,
+    s: 1,
+    scoped: false,
+    nearAtt: 1,
+    dkF: 1,
+    axSize: 1,
+    axSizeC: 1,
+    axAtt: 1,
+    lightK: 1,
+  };
+
+  function emitMuzzleCoreAndPetals(state: MuzzleFlashState): void {
+    const { pos, dir, s, caliberMm, birthOffset, axSize, axSizeC, axAtt } = state;
+    _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
+    _puffO.vel[0] = dir.x * 1.5; _puffO.vel[1] = dir.y * 1.5; _puffO.vel[2] = dir.z * 1.5;
+    _puffO.life = Math.max(0.105, -birthOffset * 2.6);
+    const coreK = 0.8 + (caliberMm / 120) * 0.5;
+    _puffO.size0 = 0.66 * s * axSizeC * coreK; _puffO.size1 = 1.62 * s * axSizeC * coreK;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xffffff, _puffO.col0); col3(0xffffff, _puffO.col1);
+    _puffO.alpha = 0.32 + 0.42 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+    particles.emit('flash', _puffO);
+    _puffO.life = Math.max(0.17, -birthOffset * 3.0);
+    _puffO.size0 = 0.55 * s * axSizeC * coreK; _puffO.size1 = 1.38 * s * axSizeC * coreK;
+    _puffO.rotVel = (rng() - 0.5) * 2;
+    col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
+    particles.emit('flash', _puffO);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
+      const tilt = 1.02 + rng() * 0.3;
+      const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
+      _sv.set(
+        dir.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2,
+        dir.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2,
+        dir.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2,
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.14; _jetO.pos[1] = pos.y + dir.y * 0.14; _jetO.pos[2] = pos.z + dir.z * 0.14;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
+      _jetO.width = 0.20 * s * axSize;
+      _jetO.len0 = 0.42 * s; _jetO.len1 = (1.0 + rng() * 0.4) * s;
+      _jetO.seed = rng();
+      col3(0xfff0c4, _jetO.col);
+      _jetO.alpha = 0.92 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+    if (birthOffset >= 0) {
+      spawnMuzzleRing(_sv.set(pos.x + dir.x * 0.3, pos.y + dir.y * 0.3, pos.z + dir.z * 0.3),
+        dir, s * axSize, 0, axAtt);
+    }
+  }
+
+  function emitMuzzleAxialAndBrakeJets(state: MuzzleFlashState): void {
+    const { pos, dir, s, birthOffset, reach, dkF, axSize, axAtt } = state;
+    for (let i = 0; i < 3; i++) {
+      const off = i === 0 ? 0 : 0.10 + rng() * 0.08;
+      const a = rng() * Math.PI * 2;
+      _sv.set(
+        dir.x + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * off,
+        dir.y + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * off,
+        dir.z + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * off,
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.1; _jetO.pos[1] = pos.y + dir.y * 0.1; _jetO.pos[2] = pos.z + dir.z * 0.1;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = Math.max(i === 0 ? 0.135 : 0.105, -birthOffset * 2.2);
+      _jetO.width = (i === 0 ? 0.38 : 0.28) * s * axSize;
+      _jetO.len0 = 0.40 * s;
+      _jetO.len1 = (i === 0 ? 1.6 + rng() * 0.4 : 1.1 + rng() * 0.35) * s * reach *
+        (0.7 + 0.3 * dkF);
+      _jetO.seed = rng();
+      col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _jetO.col);
+      _jetO.alpha = (i === 0 ? 0.7 : 0.45) * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+    for (let i = 0; i < 2; i++) {
+      const a = rng() * Math.PI * 2;
+      _sv.set(
+        -dir.x * 0.6 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)),
+        -dir.y * 0.6 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)),
+        -dir.z * 0.6 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)),
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.06; _jetO.pos[1] = pos.y + dir.y * 0.06; _jetO.pos[2] = pos.z + dir.z * 0.06;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = 0.07 + rng() * 0.02;
+      _jetO.width = 0.20 * s * axSize;
+      _jetO.len0 = 0.2 * s; _jetO.len1 = (0.55 + rng() * 0.2) * s;
+      _jetO.seed = rng();
+      col3(0xffd88a, _jetO.col);
+      _jetO.alpha = 0.5 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+    _puffO.pos[0] = pos.x - dir.x * 0.22; _puffO.pos[1] = pos.y - dir.y * 0.22; _puffO.pos[2] = pos.z - dir.z * 0.22;
+    _puffO.vel[0] = -dir.x * 1.2; _puffO.vel[1] = -dir.y * 1.2 + 0.3; _puffO.vel[2] = -dir.z * 1.2;
+    _puffO.life = 0.07;
+    _puffO.size0 = 0.5 * s * axSize; _puffO.size1 = 0.72 * s * axSize;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xfff1cc, _puffO.col0); col3(0xffb050, _puffO.col1);
+    _puffO.alpha = 0.55 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+    particles.emit('flash', _puffO);
+    for (let i = 0; i < 2; i++) {
+      const a = i * Math.PI + 0.5 + rng() * 0.9;
+      _sv.set(
+        (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * 0.55 + dir.x * 0.65,
+        (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * 0.55 + dir.y * 0.65,
+        (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * 0.55 + dir.z * 0.65,
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.22; _jetO.pos[1] = pos.y + dir.y * 0.22; _jetO.pos[2] = pos.z + dir.z * 0.22;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = 0.06 + rng() * 0.02;
+      _jetO.width = 0.17 * s * axSize;
+      _jetO.len0 = 0.22 * s; _jetO.len1 = (0.45 + rng() * 0.20) * s * Math.max(reach, 0.7);
+      _jetO.seed = rng();
+      col3(0xffc86e, _jetO.col);
+      _jetO.alpha = 0.40 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+  }
+
+  function emitMuzzleCombustionAndAfterflash(state: MuzzleFlashState): void {
+    const { pos, dir, s, birthOffset, axSize, axAtt } = state;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + rng() * 1.1;
+      const tilt = 0.22 + rng() * 0.15;
+      const st = Math.sin(tilt), ct = Math.cos(tilt);
+      _sv.set(
+        dir.x * ct + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st,
+        dir.y * ct + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st,
+        dir.z * ct + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st,
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.16; _jetO.pos[1] = pos.y + dir.y * 0.16; _jetO.pos[2] = pos.z + dir.z * 0.16;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = 0.07 + rng() * 0.04;
+      _jetO.width = (0.19 + rng() * 0.05) * s * axSize;
+      _jetO.len0 = 0.16 * s; _jetO.len1 = (0.55 + rng() * 0.35) * s;
+      _jetO.seed = rng();
+      col3(0xffdf9a, _jetO.col);
+      _jetO.alpha = 0.32 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+    for (let i = 0; i < 2; i++) {
+      const j = i < 1 ? 0 : 0.22;
+      const jx = (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * j;
+      const jy = (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * j;
+      const jz = (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * j;
+      const v = ((i < 1 ? 14 : 11) + rng() * 4) * state.reach;
+      _strkO.pos[0] = pos.x + dir.x * 0.2; _strkO.pos[1] = pos.y + dir.y * 0.2; _strkO.pos[2] = pos.z + dir.z * 0.2;
+      _strkO.vel[0] = dir.x * v + jx; _strkO.vel[1] = dir.y * v + jy; _strkO.vel[2] = dir.z * v + jz;
+      _strkO.life = 0.06 + rng() * 0.04;
+      _strkO.width = (0.06 + rng() * 0.05) * s; _strkO.stretch = 0.05; _strkO.grav = 0;
+      col3(0xffc25e, _strkO.col); _strkO.alpha = 0.7 * axAtt; _strkO.seed = rng(); _strkO.birthOffset = birthOffset;
+      particles.emit('sparks', _strkO);
+    }
+    for (let i = 0; i < 3; i++) {
+      const along = 0.3 + rng() * 0.55 * s;
+      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * 0.16 * s;
+      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.16 * s;
+      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.16 * s;
+      const v = 4 + rng() * 4;
+      _puffO.vel[0] = dir.x * v; _puffO.vel[1] = dir.y * v; _puffO.vel[2] = dir.z * v;
+      _puffO.life = 0.05 + rng() * 0.05;
+      _puffO.size0 = 0.26 * s; _puffO.size1 = 0.62 * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 8;
+      col3(0xffe9a0, _puffO.col0); col3(0xff6a14, _puffO.col1);
+      _puffO.alpha = 0.38 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+      particles.emit('fire', _puffO);
+    }
+    for (let i = 0; i < 6; i++) {
+      const along = (0.22 + rng() * 0.7) * s;
+      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * 0.14 * s;
+      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.14 * s;
+      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.14 * s;
+      const v = 2.2 + rng() * 2.8;
+      _puffO.vel[0] = dir.x * v + (rng() - 0.5) * 0.6;
+      _puffO.vel[1] = dir.y * v + 0.35 + rng() * 0.4;
+      _puffO.vel[2] = dir.z * v + (rng() - 0.5) * 0.6;
+      _puffO.life = 0.08 + rng() * 0.08;
+      _puffO.size0 = 0.34 * s; _puffO.size1 = (0.85 + rng() * 0.55) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 6;
+      col3(0xffb45e, _puffO.col0); col3(0xb3491a, _puffO.col1);
+      _puffO.alpha = 0.4 * (0.4 + 0.6 * axAtt); _puffO.grav = 0.6; _puffO.birthOffset = birthOffset;
+      particles.emit('fire', _puffO);
+    }
+  }
+
+  function emitMuzzlePropellantMass(state: MuzzleFlashState): void {
+    const { pos, dir, s, birthOffset } = state;
+    for (let i = 0; i < 7; i++) {
+      const along = 0.3 + (i / 6) * 1.9 + rng() * 0.35;
+      const la = rng() * Math.PI * 2;
+      const lr = rng() * 0.30 * s;
+      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * lr;
+      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * lr;
+      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * lr;
+      _puffO.vel[0] = dir.x * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8 + 0.3;
+      _puffO.vel[1] = dir.y * (1.8 + rng() * 1.6) + 0.5 + rng() * 0.5;
+      _puffO.vel[2] = dir.z * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8;
+      _puffO.life = 1.5 + rng() * 1.3;
+      _puffO.size0 = (1.6 + rng() * 0.7) * s; _puffO.size1 = (3.0 + rng() * 1.4) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.2;
+      col3(0xaba79f, _puffO.col0); col3(0x8f8c86, _puffO.col1);
+      _puffO.alpha = 0.16 + rng() * 0.07; _puffO.grav = 0.4;
+      _puffO.birthOffset = birthOffset - 0.09 - rng() * 0.06;
+      particles.emit('psmoke', _puffO);
+    }
+    for (let i = 0; i < 3; i++) {
+      const la = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x - dir.x * 0.25 + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * 0.2;
+      _puffO.pos[1] = pos.y - dir.y * 0.25 + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * 0.2;
+      _puffO.pos[2] = pos.z - dir.z * 0.25 + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * 0.2;
+      _puffO.vel[0] = -dir.x * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7 + 0.3;
+      _puffO.vel[1] = 0.7 + rng() * 0.6;
+      _puffO.vel[2] = -dir.z * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7;
+      _puffO.life = 1.4 + rng() * 0.9;
+      _puffO.size0 = 0.9 * s; _puffO.size1 = (2.1 + rng() * 1.0) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xaea99f, _puffO.col0); col3(0x928f88, _puffO.col1);
+      _puffO.alpha = 0.18 + rng() * 0.07; _puffO.grav = 0.4;
+      _puffO.birthOffset = birthOffset - 0.08;
+      particles.emit('psmoke', _puffO);
+    }
+  }
+
+  function emitMuzzleSmoke(state: MuzzleFlashState): void {
+    const { pos, dir, s, birthOffset, scoped } = state;
+    const smokeBirth = birthOffset - 0.2;
+    const smokeA = scoped ? 0.30 : 0.62;
+    const lifeK = scoped ? 0.45 : 1;
+    const donutCount = scoped ? 4 : 9;
+    for (let i = 0; i < donutCount; i++) {
+      const a = rng() * Math.PI * 2;
+      const r = (0.15 + rng() * 0.24) * s;
+      const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
+      const ry = _v1.y * Math.cos(a) + _v2.y * Math.sin(a);
+      const rz = _v1.z * Math.cos(a) + _v2.z * Math.sin(a);
+      const along = 0.4 + rng() * 0.5;
+      _puffO.pos[0] = pos.x + dir.x * along + rx * r;
+      _puffO.pos[1] = pos.y + dir.y * along + ry * r;
+      _puffO.pos[2] = pos.z + dir.z * along + rz * r;
+      const v = 2.4 + rng() * 2.6;
+      const fwd = 2.2 + rng() * 2.4;
+      _puffO.vel[0] = rx * v + dir.x * fwd; _puffO.vel[1] = ry * v + dir.y * fwd; _puffO.vel[2] = rz * v + dir.z * fwd;
+      _puffO.life = (1.6 + rng() * 1.2) * lifeK;
+      _puffO.size0 = (0.9 + rng() * 0.45) * s; _puffO.size1 = (2.3 + rng() * 1.7) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0xb1ada4, _puffO.col0); col3(0x94918b, _puffO.col1);
+      _puffO.alpha = (0.19 + rng() * 0.13) * smokeA; _puffO.grav = 0.6;
+      _puffO.birthOffset = smokeBirth - rng() * 0.30;
+      particles.emit('psmoke', _puffO);
+    }
+    const plumeCount = scoped ? 4 : 10;
+    for (let i = 0; i < plumeCount; i++) {
+      const along = 0.8 + rng() * 3.2 * s;
+      const lat = along * 0.24 * (rng() - 0.5) * 2;
+      const la = rng() * Math.PI * 2;
+      const lx = _v1.x * Math.cos(la) + _v2.x * Math.sin(la);
+      const ly = _v1.y * Math.cos(la) + _v2.y * Math.sin(la);
+      const lz = _v1.z * Math.cos(la) + _v2.z * Math.sin(la);
+      _puffO.pos[0] = pos.x + dir.x * along + lx * lat;
+      _puffO.pos[1] = pos.y + dir.y * along + ly * lat;
+      _puffO.pos[2] = pos.z + dir.z * along + lz * lat;
+      const v = 4 + rng() * 5;
+      _puffO.vel[0] = dir.x * v + lx * 1.1 + 0.4 + (rng() - 0.5) * 0.6;
+      _puffO.vel[1] = dir.y * v + ly * 1.1 + 0.7 + rng() * 0.7;
+      _puffO.vel[2] = dir.z * v + lz * 1.1 + (rng() - 0.5) * 0.6;
+      _puffO.life = (1.7 + rng() * 1.5) * lifeK;
+      _puffO.size0 = (0.6 + rng() * 0.35) * s; _puffO.size1 = (1.7 + rng() * 1.5) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xbdb9b1, _puffO.col0); col3(0x94928c, _puffO.col1);
+      _puffO.alpha = (0.10 + rng() * 0.11) * smokeA; _puffO.grav = 0.5;
+      _puffO.birthOffset = smokeBirth - rng() * 0.35 - (along / (3.2 * s + 0.8)) * 0.25;
+      particles.emit('psmoke', _puffO);
+    }
+  }
+
+  function emitLingeringMuzzleFx(state: MuzzleFlashState): void {
+    const { pos, dir, s, birthOffset, reach, axAtt } = state;
+    const smokeBirth = birthOffset - 0.2;
+    for (let i = 0; i < 8; i++) {
+      const along = 0.15 + rng() * 0.45;
+      _puffO.pos[0] = pos.x + dir.x * along; _puffO.pos[1] = pos.y + dir.y * along; _puffO.pos[2] = pos.z + dir.z * along;
+      _puffO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
+      _puffO.vel[1] = 0.55 + rng() * 0.55;
+      _puffO.vel[2] = dir.z * 0.3 + (rng() - 0.5) * 0.4 + 0.12;
+      _puffO.life = 2.3 + rng() * 1.4;
+      _puffO.size0 = 0.5 * s; _puffO.size1 = (2.0 + rng() * 0.9) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+      col3(0xc6c2ba, _puffO.col0); col3(0x9a9791, _puffO.col1);
+      _puffO.alpha = 0.20 + rng() * 0.10; _puffO.grav = 0.4;
+      _puffO.birthOffset = smokeBirth - rng() * 0.4;
+      particles.emit('psmoke', _puffO);
+    }
+    _sv.set(pos.x + dir.x * 0.6, pos.y + dir.y * 0.6, pos.z + dir.z * 0.6);
+    sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset);
+  }
+
+  function emitMuzzleGroundBlast(state: MuzzleFlashState): void {
+    const { pos, dir, caliberMm, birthOffset, nearAtt, dkF } = state;
+    const gy = groundY(pos.x, pos.z);
+    const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
+    if (hK <= 0.05) return;
+    spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
+      Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
+      _puffO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.8;
+      _puffO.pos[1] = gy + 0.75;
+      _puffO.pos[2] = pos.z + dir.z * 0.9 + Math.sin(a) * 0.8;
+      _puffO.vel[0] = Math.cos(a) * (9 + rng() * 4) + dir.x * 2;
+      _puffO.vel[1] = 0.8 + rng() * 0.8;
+      _puffO.vel[2] = Math.sin(a) * (9 + rng() * 4) + dir.z * 2;
+      _puffO.life = 0.38 + rng() * 0.22;
+      _puffO.size0 = 0.55; _puffO.size1 = (2.3 + rng() * 0.9) * (0.75 + 0.25 * hK);
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.5;
+      col3(0x99948a, _puffO.col0); col3(0x847f76, _puffO.col1);
+      _puffO.alpha = (0.26 + 0.10 * hK) * (0.7 + 0.3 * nearAtt);
+      _puffO.grav = -0.6; _puffO.birthOffset = birthOffset;
+      particles.emit('dust', _puffO);
+    }
+    const donutN = Math.round(12 + 6 * hK) * (caliberMm >= 100 ? 1 : 0.7) | 0;
+    for (let i = 0; i < donutN; i++) {
+      const a = (i / donutN) * Math.PI * 2 + rng() * 0.5;
+      const r0 = 0.6 + rng() * 0.7;
+      const firstWave = i % 2 === 0;
+      _puffO.pos[0] = pos.x + dir.x * 0.8 + Math.cos(a) * r0;
+      _puffO.pos[1] = gy + 0.85;
+      _puffO.pos[2] = pos.z + dir.z * 0.8 + Math.sin(a) * r0;
+      _puffO.vel[0] = Math.cos(a) * (5.0 + rng() * 3.6) + dir.x * 1.5;
+      _puffO.vel[1] = 1.1 + rng() * 1.3;
+      _puffO.vel[2] = Math.sin(a) * (5.0 + rng() * 3.6) + dir.z * 1.5;
+      _puffO.life = (firstWave ? 0.85 + rng() * 0.45 : 1.4 + rng() * 0.8) * (0.85 + 0.15 * dkF);
+      _puffO.size0 = 0.45;
+      _puffO.size1 = (2.2 + rng() * 1.2) * (0.7 + 0.3 * hK) * (0.75 + 0.3 * dkF);
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
+      col3(0x969084, _puffO.col0); col3(0x827c72, _puffO.col1);
+      _puffO.alpha = (firstWave ? (0.26 + 0.09 * hK) : (0.20 + 0.07 * hK)) *
+        (0.85 + 0.13 * Math.min(dkF, 1.8));
+      _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.03;
+      particles.emit('dust', _puffO);
+    }
+    const chipN = Math.round(3 + 3 * hK);
+    for (let i = 0; i < chipN; i++) {
+      const a = rng() * Math.PI * 2;
+      _debO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.5;
+      _debO.pos[1] = gy + 0.4;
+      _debO.pos[2] = pos.z + dir.z * 0.9 + Math.sin(a) * 0.5;
+      _debO.vel[0] = Math.cos(a) * (3.5 + rng() * 3.0) + dir.x * 2.5;
+      _debO.vel[1] = 3.0 + rng() * 3.0 * (0.5 + 0.5 * hK);
+      _debO.vel[2] = Math.sin(a) * (3.5 + rng() * 3.0) + dir.z * 2.5;
+      _debO.life = 0.9; _debO.scale = 0.04 + rng() * 0.05; _debO.spin = 14 + rng() * 16;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = birthOffset;
+      particles.emit('debris', _debO);
+    }
+    for (let i = 0; i < 9; i++) {
+      const a = rng() * Math.PI * 2;
+      const ahead = 2.2 + rng() * 2.2;
+      _puffO.pos[0] = pos.x + dir.x * ahead + Math.cos(a) * 1.2;
+      _puffO.pos[1] = gy + 0.95;
+      _puffO.pos[2] = pos.z + dir.z * ahead + Math.sin(a) * 1.2;
+      _puffO.vel[0] = Math.cos(a) * (2.5 + rng() * 2.5) + dir.x * 4.5;
+      _puffO.vel[1] = 0.9 + rng() * 1.1;
+      _puffO.vel[2] = Math.sin(a) * (2.5 + rng() * 2.5) + dir.z * 4.5;
+      _puffO.life = (1.2 + rng() * 1.0) * (0.85 + 0.15 * dkF);
+      _puffO.size0 = 0.5;
+      _puffO.size1 = (2.1 + rng() * 1.0) * (0.7 + 0.3 * hK) * (0.75 + 0.3 * dkF);
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+      col3(0x969084, _puffO.col0); col3(0x827c72, _puffO.col1);
+      _puffO.alpha = 0.19 + 0.06 * hK; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.03;
+      particles.emit('dust', _puffO);
+    }
+  }
+
   /**
    * @param {number} reach forward-extent multiplier for the BRIGHT elements
    *   (tongues/spears). 1 for live fire; the screenshot composer passes <1 so
@@ -1589,514 +1981,34 @@ export function createFx(
     const axSizeC = (1 - 0.32 * axial * axial) * nearS * dkC;
     const axAtt = (1 - 0.48 * axial * axial) * nearA;
     const lightK = (1 - 0.5 * axial * axial) * (0.55 + 0.45 * nearAtt);
+    const state = muzzleFlashState;
+    state.pos.copy(pos);
+    state.dir.copy(dir);
+    state.caliberMm = caliberMm;
+    state.birthOffset = birthOffset;
+    state.reach = reach;
+    state.s = s;
+    state.scoped = scoped;
+    state.nearAtt = nearAtt;
+    state.dkF = dkF;
+    state.axSize = axSize;
+    state.axSizeC = axSizeC;
+    state.axAtt = axAtt;
+    state.lightK = lightK;
     basisFrom(dir, _v1, _v2);
     if (!scoped) {
-    // 1. blinding core PINNED to the muzzle tip: a 1-frame pure-white pop
-    //    stacked on a compact 90 ms core so the gameplay framing always
-    //    reads a distinct white-hot heart inside the orange combustion.
-    //    Sizes/alphas raised (r6): the brightest pixel cluster of the whole
-    //    flash must sit ON the barrel-tip pixels — the composed frame's
-    //    center-of-brightness used to live 1.5-3 m downrange in the tracer
-    //    bridge, reading as a shell airburst off a bare muzzle.
-    _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
-    _puffO.vel[0] = dir.x * 1.5; _puffO.vel[1] = dir.y * 1.5; _puffO.vel[2] = dir.z * 1.5;
-    // r5: composed births (birthOffset < 0) stretch the pinned white cores so
-    // the frozen frame still catches them mid-life — with the stock 45/90 ms
-    // lives the 50 ms composed frame showed a BARE muzzle while the tracer
-    // bolt 1.2 m downrange owned the brightest pixels (detached-flash read).
-    // Lives raised ~60% across the flash stack (r5 motion capture: the whole
-    // discharge fit inside a single 60 fps frame from the chase camera).
-    // r6: 0.075 -> 0.105 (and the whole bright stack below) — chase_fire_a at
-    // 70 ms caught a bare muzzle; the bloom-visible flash must span 5-6
-    // frames at 60 fps so any capture inside the first ~100 ms reads a shot.
-    _puffO.life = Math.max(0.105, -birthOffset * 2.6);
-    // lighting_post r3 (round 3): core reads pea-sized next to its own ground
-    // glow — scale the white-hot CORE with caliber (120 mm ≈ 1.3x, 152 ≈ 1.43x)
-    // so the size hierarchy is flash > glow.
-    const coreK = 0.8 + (caliberMm / 120) * 0.5;
-    // r7 caliber-true scale (critic: "120 mm muzzle flash is undersized and
-    // mushy ... a ~1.5 m soft white blob"): the white-hot core doubles to a
-    // 2.5-3 m event for a 120 mm gun (petal/jet layers below carry the spiky
-    // silhouette so it never reads as one big soft orb).
-    // r7 fire-moment wash: cores SPAWN at ~half size and grow — t=0 reads a
-    // compact white heart inside the petal star (the fireseq_060ms look),
-    // never a 3-4 m cream ball; alpha eased so the ignition frame keeps the
-    // hull camo legible while the 50-60 ms frame still owns peak brightness.
-    _puffO.size0 = 0.66 * s * axSizeC * coreK; _puffO.size1 = 1.62 * s * axSizeC * coreK;
-    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
-    col3(0xffffff, _puffO.col0); col3(0xffffff, _puffO.col1);
-    _puffO.alpha = 0.32 + 0.42 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
-    particles.emit('flash', _puffO);
-    _puffO.life = Math.max(0.17, -birthOffset * 3.0);
-    _puffO.size0 = 0.55 * s * axSizeC * coreK; _puffO.size1 = 1.38 * s * axSizeC * coreK;
-    _puffO.rotVel = (rng() - 0.5) * 2;
-    col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
-    particles.emit('flash', _puffO);
-    // 1c. crisp radial PETALS (r7 critic: "no crisp radial petals"): 4 short
-    //    spiky incandescent tongues in a shallow forward star around the
-    //    brake, alive 2-4 frames. Short (<= ~1.6 m) so the r5 "side-on
-    //    asterisk of long spears" cannot return — this is the sharp muzzle
-    //    star inside the bigger core, not a spoke wheel.
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
-      const tilt = 1.02 + rng() * 0.3;             // ~58-76 deg off-bore
-      const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
-      _sv.set(
-        dir.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2,
-        dir.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2,
-        dir.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2,
-      ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.14; _jetO.pos[1] = pos.y + dir.y * 0.14; _jetO.pos[2] = pos.z + dir.z * 0.14;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      // r7: petals front-loaded — alive from frame 0 at near-full strength so
-      // the ignition frame reads the crisp radial star (fireseq_060ms) rather
-      // than a soft halo (the star IS the t=0 signature now).
-      _jetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
-      _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.42 * s; _jetO.len1 = (1.0 + rng() * 0.4) * s;
-      _jetO.seed = rng();
-      col3(0xfff0c4, _jetO.col);
-      _jetO.alpha = 0.92 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
-    }
-    // 1b. pressure "refraction" ring snapping out along the bore axis.
-    // lighting_post r3: halve att for backdated (composed screenshot) births
-    // — at the 50 ms composed age the two ring planes rendered as translucent
-    // bokeh-disk ghosts beside the flash.
-    // lighting_post r4: skip the ring entirely for composed (backdated) births
-    // — the frozen mid-expansion plane read as a circular translucent orange
-    // ghost 2 m from the bore in the combat_firing still.
-    if (birthOffset >= 0) {
-      spawnMuzzleRing(_sv.set(pos.x + dir.x * 0.3, pos.y + dir.y * 0.3, pos.z + dir.z * 0.3),
-        dir, s * axSize, 0, axAtt);
-    }
-    // 2. volumetric blast cone: layered noisy jet quads oriented ALONG THE
-    //    BORE AXIS (not camera-facing) — one primary jet dead on axis plus
-    //    two shorter jets kicked a few degrees off it. Kept UNDER a barrel
-    //    length and translucent: the r2 cone stacked into one giant opaque
-    //    orange airbrush smear two barrel-lengths long.
-    for (let i = 0; i < 3; i++) {
-      const off = i === 0 ? 0 : 0.10 + rng() * 0.08;
-      const a = rng() * Math.PI * 2;
-      _sv.set(
-        dir.x + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * off,
-        dir.y + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * off,
-        dir.z + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * off,
-      ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.1; _jetO.pos[1] = pos.y + dir.y * 0.1; _jetO.pos[2] = pos.z + dir.z * 0.1;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      // composed births stretch the primary cone lives too (see core note).
-      // r1: 0.13/0.10 -> 0.11/0.085 — jets must be gone (or bore-hugging via
-      // the tip-biased erosion) before the 0.14 s pinned core dies, so no
-      // frame ever shows a bright bolt downrange of an already-dark muzzle.
-      _jetO.life = Math.max(i === 0 ? 0.135 : 0.105, -birthOffset * 2.2); // r6: +2 frames
-      // r7 (critic: flash undersized/mushy): jet body widened and lengthened
-      // ~35% with the doubled core — a 120 mm discharge now spans ~2.5-3.5 m
-      // of readable incandescence. Still ~1 barrel-length: the r7-old
-      // "diagonal white wash" guard (nearS/axSize) keeps close cameras safe.
-      _jetO.width = (i === 0 ? 0.38 : 0.28) * s * axSize;
-      _jetO.len0 = 0.40 * s;
-      _jetO.len1 = (i === 0 ? 1.6 + rng() * 0.4 : 1.1 + rng() * 0.35) * s * reach *
-        (0.7 + 0.3 * dkF);
-      _jetO.seed = rng();
-      col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _jetO.col);
-      _jetO.alpha = (i === 0 ? 0.7 : 0.45) * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
-    }
-    // 2a2. BACK-SPLASH: two short jets swept backward around the brake plus a
-    //    small halo puff BEHIND the tip. Real 120 mm blast wraps the muzzle
-    //    device; with every element forward-biased the flash mass sat wholly
-    //    downrange and a thin/dark barrel read as bare with a detached
-    //    airburst (r6 canonical-frame critical). Straddling the tip welds the
-    //    flash onto the tube from any camera.
-    for (let i = 0; i < 2; i++) {
-      const a = rng() * Math.PI * 2;
-      _sv.set(
-        -dir.x * 0.6 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)),
-        -dir.y * 0.6 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)),
-        -dir.z * 0.6 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)),
-      ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.06; _jetO.pos[1] = pos.y + dir.y * 0.06; _jetO.pos[2] = pos.z + dir.z * 0.06;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.07 + rng() * 0.02;
-      _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.2 * s; _jetO.len1 = (0.55 + rng() * 0.2) * s;
-      _jetO.seed = rng();
-      col3(0xffd88a, _jetO.col);
-      _jetO.alpha = 0.5 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
-    }
-    _puffO.pos[0] = pos.x - dir.x * 0.22; _puffO.pos[1] = pos.y - dir.y * 0.22; _puffO.pos[2] = pos.z - dir.z * 0.22;
-    _puffO.vel[0] = -dir.x * 1.2; _puffO.vel[1] = -dir.y * 1.2 + 0.3; _puffO.vel[2] = -dir.z * 1.2;
-    _puffO.life = 0.07;
-    _puffO.size0 = 0.5 * s * axSize; _puffO.size1 = 0.72 * s * axSize;
-    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
-    col3(0xfff1cc, _puffO.col0); col3(0xffb050, _puffO.col1);
-    _puffO.alpha = 0.55 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
-    particles.emit('flash', _puffO);
-    // 2b. muzzle-brake side jets — r5 (critic: "side-on the flash presents a
-    //    radial starburst fan, 4-6 thin spears radiating symmetrically"):
-    //    the 4 near-lateral spears (66° off-bore) crossed the 4 radial
-    //    petals into an asterisk from any profile framing. 2 jets, kicked
-    //    ~40° off the bore and shorter — brake venting reads as forward
-    //    combustion shoulders, not star spokes.
-    for (let i = 0; i < 2; i++) {
-      const a = i * Math.PI + 0.5 + rng() * 0.9;
-      _sv.set(
-        (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * 0.55 + dir.x * 0.65,
-        (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * 0.55 + dir.y * 0.65,
-        (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * 0.55 + dir.z * 0.65,
-      ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.22; _jetO.pos[1] = pos.y + dir.y * 0.22; _jetO.pos[2] = pos.z + dir.z * 0.22;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.06 + rng() * 0.02;
-      _jetO.width = 0.17 * s * axSize;
-      _jetO.len0 = 0.22 * s; _jetO.len1 = (0.45 + rng() * 0.20) * s * Math.max(reach, 0.7);
-      _jetO.seed = rng();
-      col3(0xffc86e, _jetO.col);
-      _jetO.alpha = 0.40 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
-    }
-    // 2c. forward combustion lobes — r5: the 50-75° radial petals were the
-    //    other half of the side-on asterisk. Same 4 staggered lobes, but
-    //    biased into a FORWARD cone (half-angle ~13-21°) so a profile view
-    //    reads one horizontal tongue with ragged shoulders, never a star.
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + rng() * 1.1;
-      const tilt = 0.22 + rng() * 0.15;
-      const st = Math.sin(tilt), ct = Math.cos(tilt);
-      _sv.set(
-        dir.x * ct + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st,
-        dir.y * ct + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st,
-        dir.z * ct + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st,
-      ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.16; _jetO.pos[1] = pos.y + dir.y * 0.16; _jetO.pos[2] = pos.z + dir.z * 0.16;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.07 + rng() * 0.04;
-      _jetO.width = (0.19 + rng() * 0.05) * s * axSize;
-      _jetO.len0 = 0.16 * s; _jetO.len1 = (0.55 + rng() * 0.35) * s;
-      _jetO.seed = rng();
-      col3(0xffdf9a, _jetO.col);
-      _jetO.alpha = 0.32 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
-    }
-    // 3. barrel-aligned incandescent tongues — thin streak detail inside the
-    //    jet cone (kept sparse; the jets carry the volume now).
-    // r7: was 4 streaks at v≈24-34 with 2.4 m lateral jitter — from any live
-    // camera they froze as 3-4 PARALLEL TRACER LINES fanning under the bore.
-    // Two tongues, dead on axis, half the speed, tight jitter.
-    for (let i = 0; i < 2; i++) {
-      // r1: lateral jitter 0.8 -> 0.22 — the second tongue froze as a bright
-      // streak dislocated BELOW the jet axis in the composed combat_firing
-      // frame; both tongues now hug the bore line.
-      const j = i < 1 ? 0 : 0.22;
-      const jx = (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * j;
-      const jy = (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * j;
-      const jz = (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * j;
-      const v = ((i < 1 ? 14 : 11) + rng() * 4) * reach;
-      _strkO.pos[0] = pos.x + dir.x * 0.2; _strkO.pos[1] = pos.y + dir.y * 0.2; _strkO.pos[2] = pos.z + dir.z * 0.2;
-      _strkO.vel[0] = dir.x * v + jx; _strkO.vel[1] = dir.y * v + jy; _strkO.vel[2] = dir.z * v + jz;
-      _strkO.life = 0.06 + rng() * 0.04;
-      _strkO.width = (0.06 + rng() * 0.05) * s; _strkO.stretch = 0.05; _strkO.grav = 0;
-      col3(0xffc25e, _strkO.col); _strkO.alpha = 0.7 * axAtt; _strkO.seed = rng(); _strkO.birthOffset = birthOffset;
-      particles.emit('sparks', _strkO);
-    }
-    // 4. compact orange petal cards hugging the first 0.8 m (hot-to-orange ramp)
-    for (let i = 0; i < 3; i++) {
-      const along = 0.3 + rng() * 0.55 * s;
-      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * 0.16 * s;
-      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.16 * s;
-      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.16 * s;
-      const v = 4 + rng() * 4;
-      _puffO.vel[0] = dir.x * v; _puffO.vel[1] = dir.y * v; _puffO.vel[2] = dir.z * v;
-      _puffO.life = 0.05 + rng() * 0.05;
-      _puffO.size0 = 0.26 * s; _puffO.size1 = 0.62 * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 8;
-      col3(0xffe9a0, _puffO.col0); col3(0xff6a14, _puffO.col1);
-      _puffO.alpha = 0.38 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
-      particles.emit('fire', _puffO);
-    }
-    // 4b. AFTERFLASH: the blinding pop must not be a two-state nuclear-then-
-    //     nothing lifecycle. A 100-250 ms cooling stage — small orange licks
-    //     collapsing toward ember red — bridges flash -> propellant smoke
-    //     over ~6-15 rendered frames.
-    for (let i = 0; i < 6; i++) {
-      const along = (0.22 + rng() * 0.7) * s;
-      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * (rng() - 0.5) + _v2.x * (rng() - 0.5)) * 0.14 * s;
-      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.14 * s;
-      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.14 * s;
-      const v = 2.2 + rng() * 2.8;
-      _puffO.vel[0] = dir.x * v + (rng() - 0.5) * 0.6;
-      _puffO.vel[1] = dir.y * v + 0.35 + rng() * 0.4;
-      _puffO.vel[2] = dir.z * v + (rng() - 0.5) * 0.6;
-      // r1: 0.10-0.25 -> 0.08-0.16 s — the slowest licks outlived the pinned
-      // core and hung downrange as detached orange blobs at ~90-150 ms
-      _puffO.life = 0.08 + rng() * 0.08;
-      _puffO.size0 = 0.34 * s; _puffO.size1 = (0.85 + rng() * 0.55) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 6;
-      col3(0xffb45e, _puffO.col0); col3(0xb3491a, _puffO.col1);
-      _puffO.alpha = 0.4 * (0.4 + 0.6 * axAtt); _puffO.grav = 0.6; _puffO.birthOffset = birthOffset;
-      particles.emit('fire', _puffO);
-    }
-    // 4c. gray takeover -> PROPELLANT MASS (r5 critic: "at 100-300 ms only
-    //     3-5 disconnected ~1 m billboard puffs drift near the bore; a real
-    //     120 mm shot leaves a coherent 5-10 m gray-brown cloud"). Ten puffs
-    //     seeded ALONG the bore line (0.3-2.2 m) with overlapping placement,
-    //     born at 1-1.6 m (not sub-meter) so the 100-300 ms window already
-    //     shows one connected volume, growing to 2.6-4.2 m and hanging
-    //     2-3.8 s before the wind shears it off.
-    // r7 HAZE REBUILD (critic: "one homogeneous mustard-tan veil, zero billow
-    // structure, lingers near-opaque past 900 ms"): fewer/smaller-count cards
-    // at ~HALF peak opacity, desaturated from tan toward grey-white, lives
-    // cut ~25% — the cloud stays a readable translucent powder mass with
-    // erosion-torn edges (psmoke shader) that clearly thins by 900 ms.
-    for (let i = 0; i < 7; i++) {
-      const along = 0.3 + (i / 6) * 1.9 + rng() * 0.35;
-      const la = rng() * Math.PI * 2;
-      const lr = rng() * 0.30 * s;
-      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * lr;
-      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * lr;
-      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * lr;
-      _puffO.vel[0] = dir.x * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8 + 0.3;
-      _puffO.vel[1] = dir.y * (1.8 + rng() * 1.6) + 0.5 + rng() * 0.5;
-      _puffO.vel[2] = dir.z * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8;
-      _puffO.life = 1.5 + rng() * 1.3;
-      // r6 (critic: "3-5 textureless gaussian cotton balls"): the propellant
-      // mass now rides the EROSION-masked psmoke pool (torn billow octaves,
-      // see PUFF_FRAG_PROP) with bigger birth sizes so neighbours overlap
-      // from frame one — one connected turbulent cloud, alpha up a notch to
-      // compensate the erosion cut.
-      // r7 (critic: "discrete round sprite balls with heavy stipple"):
-      // birth sizes up ~40% again — adjacent puffs must OVERLAP at birth so
-      // the 100-500 ms window reads one merged cloud, never popcorn.
-      _puffO.size0 = (1.6 + rng() * 0.7) * s; _puffO.size1 = (3.0 + rng() * 1.4) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.2;
-      col3(0xaba79f, _puffO.col0); col3(0x8f8c86, _puffO.col1); // r7: grey-white, off tan
-      _puffO.alpha = 0.16 + rng() * 0.07; _puffO.grav = 0.4;
-      _puffO.birthOffset = birthOffset - 0.09 - rng() * 0.06;
-      particles.emit('psmoke', _puffO);
-    }
-    // 4d. brake back-wash: 3 puffs curling BACKWARD around the muzzle device
-    //     so the cloud straddles the tip instead of floating wholly downrange.
-    for (let i = 0; i < 3; i++) {
-      const la = rng() * Math.PI * 2;
-      _puffO.pos[0] = pos.x - dir.x * 0.25 + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * 0.2;
-      _puffO.pos[1] = pos.y - dir.y * 0.25 + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * 0.2;
-      _puffO.pos[2] = pos.z - dir.z * 0.25 + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * 0.2;
-      _puffO.vel[0] = -dir.x * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7 + 0.3;
-      _puffO.vel[1] = 0.7 + rng() * 0.6;
-      _puffO.vel[2] = -dir.z * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7;
-      _puffO.life = 1.4 + rng() * 0.9;
-      _puffO.size0 = 0.9 * s; _puffO.size1 = (2.1 + rng() * 1.0) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0xaea99f, _puffO.col0); col3(0x928f88, _puffO.col1); // r7 haze de-tan
-      _puffO.alpha = 0.18 + rng() * 0.07; _puffO.grav = 0.4;
-      _puffO.birthOffset = birthOffset - 0.08;
-      particles.emit('psmoke', _puffO); // r6: erosion-masked propellant pool
-    }
+      emitMuzzleCoreAndPetals(state);
+      emitMuzzleAxialAndBrakeJets(state);
+      emitMuzzleCombustionAndAfterflash(state);
+      emitMuzzlePropellantMass(state);
     } // end !scoped
-    // 5. irregular propellant donut hugging the muzzle — randomized angle,
-    //    radius and forward kick so it never reads as a neat stacked ring
-    //    (backdated slightly so it is readable in the 50 ms composed frame).
-    //    Scoped: thinned to a faint haze so the scope never floods.
-    const smokeBirth = birthOffset - 0.2;
-    // r7 scoped sight-picture clear (critic: "the veil blinds the entire
-    // sight picture for 600 ms+ after every shot — WoT clears the scope in
-    // ~200-300 ms"): scoped haze runs ~30% alpha and ~45% lifetime so the
-    // scope reads a translucent grey wisp that is gone well under a second.
-    const smokeA = scoped ? 0.30 : 0.62;
-    const lifeK = scoped ? 0.45 : 1;
-    for (let i = 0; i < (scoped ? 4 : 9); i++) {
-      const a = rng() * Math.PI * 2;
-      const r = (0.15 + rng() * 0.24) * s;
-      const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
-      const ry = _v1.y * Math.cos(a) + _v2.y * Math.sin(a);
-      const rz = _v1.z * Math.cos(a) + _v2.z * Math.sin(a);
-      const along = 0.4 + rng() * 0.5;
-      _puffO.pos[0] = pos.x + dir.x * along + rx * r;
-      _puffO.pos[1] = pos.y + dir.y * along + ry * r;
-      _puffO.pos[2] = pos.z + dir.z * along + rz * r;
-      const v = 2.4 + rng() * 2.6;
-      const fwd = 2.2 + rng() * 2.4;
-      _puffO.vel[0] = rx * v + dir.x * fwd; _puffO.vel[1] = ry * v + dir.y * fwd; _puffO.vel[2] = rz * v + dir.z * fwd;
-      // r5: donut lives/sizes raised toward the 4c mass so the two merge into
-      // ONE hanging cloud (the r4 live event read as 3-5 separate 1 m circles)
-      _puffO.life = (1.6 + rng() * 1.2) * lifeK;
-      _puffO.size0 = (0.9 + rng() * 0.45) * s; _puffO.size1 = (2.3 + rng() * 1.7) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xb1ada4, _puffO.col0); col3(0x94918b, _puffO.col1); // r7 haze de-tan
-      // lighting_post r4: per-puff birth stagger + wider alpha/size variance —
-      // uniform age/alpha froze the donut into one straight-edged gray sheet.
-      _puffO.alpha = (0.19 + rng() * 0.13) * smokeA; _puffO.grav = 0.6;
-      _puffO.birthOffset = smokeBirth - rng() * 0.30;
-      particles.emit('psmoke', _puffO); // r6: erosion-masked propellant pool
-    }
-    // 6. forward cordite plume — a widening cone (lateral spread grows with
-    //    distance), long-lived, expanding slowly and drifting with the wind
-    for (let i = 0; i < (scoped ? 4 : 10); i++) {
-      const along = 0.8 + rng() * 3.2 * s;
-      const lat = along * 0.24 * (rng() - 0.5) * 2;
-      const la = rng() * Math.PI * 2;
-      const lx = _v1.x * Math.cos(la) + _v2.x * Math.sin(la);
-      const ly = _v1.y * Math.cos(la) + _v2.y * Math.sin(la);
-      const lz = _v1.z * Math.cos(la) + _v2.z * Math.sin(la);
-      _puffO.pos[0] = pos.x + dir.x * along + lx * lat;
-      _puffO.pos[1] = pos.y + dir.y * along + ly * lat;
-      _puffO.pos[2] = pos.z + dir.z * along + lz * lat;
-      const v = 4 + rng() * 5;
-      _puffO.vel[0] = dir.x * v + lx * 1.1 + 0.4 + (rng() - 0.5) * 0.6;
-      _puffO.vel[1] = dir.y * v + ly * 1.1 + 0.7 + rng() * 0.7;
-      _puffO.vel[2] = dir.z * v + lz * 1.1 + (rng() - 0.5) * 0.6;
-      _puffO.life = (1.7 + rng() * 1.5) * lifeK;
-      _puffO.size0 = (0.6 + rng() * 0.35) * s; _puffO.size1 = (1.7 + rng() * 1.5) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0xbdb9b1, _puffO.col0); col3(0x94928c, _puffO.col1); // r7 haze de-tan
-      // lighting_post r4: birth stagger + distance taper (see donut note)
-      _puffO.alpha = (0.10 + rng() * 0.11) * smokeA; _puffO.grav = 0.5;
-      _puffO.birthOffset = smokeBirth - rng() * 0.35 - (along / (3.2 * s + 0.8)) * 0.25;
-      particles.emit('psmoke', _puffO); // r6: erosion-masked propellant pool
-    }
+    emitMuzzleSmoke(state);
     // Scoped LIGHT attenuation (r6): the muzzle light an inch from the lens
     // whited out the bottom half of the scope — suppress it like the
     // geometry, leaving a readable kick without the flashbang.
     if (scoped) return lightK * 0.2; // no wisps/bore sparks/ground wash an inch from the lens
-    // 6b. lingering wisp cluster curling off the hot muzzle itself — the
-    // 1-3 s cordite hang that says "gun just fired" long after the flash.
-    // r5 motion capture: 2-3 faint blobs gone in ~1.5 s read as nothing from
-    // the chase camera. 12 puffs, 2.8-4.6 s lives, staggered births and a
-    // slow wind drift so the haze visibly HANGS at the bore and shears away.
-    // lighting_post r2: 12 -> 9 (veil cut)
-    for (let i = 0; i < 8; i++) {
-      const along = 0.15 + rng() * 0.45;
-      _puffO.pos[0] = pos.x + dir.x * along; _puffO.pos[1] = pos.y + dir.y * along; _puffO.pos[2] = pos.z + dir.z * along;
-      _puffO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
-      _puffO.vel[1] = 0.55 + rng() * 0.55;
-      _puffO.vel[2] = dir.z * 0.3 + (rng() - 0.5) * 0.4 + 0.12;
-      _puffO.life = 2.3 + rng() * 1.4;
-      _puffO.size0 = 0.5 * s; _puffO.size1 = (2.0 + rng() * 0.9) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
-      col3(0xc6c2ba, _puffO.col0); col3(0x9a9791, _puffO.col1); // r7 haze de-tan
-      _puffO.alpha = 0.20 + rng() * 0.10; _puffO.grav = 0.4;
-      _puffO.birthOffset = smokeBirth - rng() * 0.4;
-      particles.emit('psmoke', _puffO); // r6: erosion-masked propellant pool
-    }
-    // 7. hot spark spray down the bore line (after basis users — sparkFan
-    //    re-derives its own basis and clobbers _v1/_v2)
-    _sv.set(pos.x + dir.x * 0.6, pos.y + dir.y * 0.6, pos.z + dir.z * 0.6);
-    // r7: 26 m/s over 0.4 s threw 8-10 m incandescent rays that stacked into
-    // the diagonal wash — halved speed/life keeps a 2-3 m ember spray.
-    // r1: life 0.28 -> 0.11 — the 0.14-0.36 s sparks were THE detached bright
-    // bolt hanging 1.5-2 m downrange at 90 ms while the bore was already
-    // dark; the spray now dies with the flash body.
-    sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset);
-    // 8. muzzle-blast ground interaction (low muzzles only): a radial dust
-    //    donut expanding under the brake + a forward blast wash 2-4 m ahead.
-    //    r4: the live event read as "no ground dust skirt, no shock ring" —
-    //    the whole stage now scales with how close the bore is to the ground
-    //    (hK: full at deck height, gone by 3.5 m) and adds the ground
-    //    pressure ring the composed views already earn.
-    const gy = groundY(pos.x, pos.z);
-    // r5 (critic: "no blast dust ring or kicked particulate on a dry dirt
-    // road"): the old curve zeroed by 3.5 m so an MBT muzzle 2.2-2.4 m up
-    // earned hK 0.31-0.37 and its ~0.3-alpha cards never read in the first
-    // 300 ms. Full response holds to 1.2 m and fades at 4.6 m (hK ~0.65 for
-    // an MBT); the donut is denser, faster, front-loaded (short first-wave
-    // lives + backdate so the kick is ON by 100 ms) and kicks real dirt chips.
-    const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
-    if (hK > 0.05) {
-      // 8a0. ground pressure ring snapping out under the muzzle (the visible
-      // side-on "shock ring"). r7: fires for COMPOSED births too (ageS from
-      // the backdate) — the staged combat_firing frame promised a ground
-      // overpressure read and never showed one.
-      spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
-        Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
-      // 8a-1. one-shot overpressure dust HALO: a fast ring of low cards
-      // already expanding by 20-100 ms (r7 critic: "no ground overpressure
-      // dust halo at the muzzle" in the peak-flash frames). Short lives —
-      // the halo pops with the flash and hands off to the slower donut.
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
-        _puffO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.8;
-        _puffO.pos[1] = gy + 0.75;
-        _puffO.pos[2] = pos.z + dir.z * 0.9 + Math.sin(a) * 0.8;
-        _puffO.vel[0] = Math.cos(a) * (9 + rng() * 4) + dir.x * 2;
-        _puffO.vel[1] = 0.8 + rng() * 0.8;
-        _puffO.vel[2] = Math.sin(a) * (9 + rng() * 4) + dir.z * 2;
-        _puffO.life = 0.38 + rng() * 0.22;
-        _puffO.size0 = 0.55; _puffO.size1 = (2.3 + rng() * 0.9) * (0.75 + 0.25 * hK);
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.5;
-        // r7 exposure wash: grey-neutral dust (was mustard-tan) and NO
-        // backdate — the halo visibly SNAPS OUT over the first frames instead
-        // of standing pre-bloomed at ignition.
-        col3(0x99948a, _puffO.col0); col3(0x847f76, _puffO.col1);
-        _puffO.alpha = (0.26 + 0.10 * hK) * (0.7 + 0.3 * nearAtt);
-        _puffO.grav = -0.6; _puffO.birthOffset = birthOffset;
-        particles.emit('dust', _puffO);
-      }
-      // 8a. recoil dust donut directly beneath the muzzle (r2: born at
-      // grass-canopy height — grass-root cards stippled against the blades)
-      const donutN = Math.round(12 + 6 * hK) * (caliberMm >= 100 ? 1 : 0.7) | 0;
-      for (let i = 0; i < donutN; i++) {
-        const a = (i / donutN) * Math.PI * 2 + rng() * 0.5;
-        const r0 = 0.6 + rng() * 0.7;
-        const firstWave = i % 2 === 0; // fast dense kick, then lingering haze
-        _puffO.pos[0] = pos.x + dir.x * 0.8 + Math.cos(a) * r0;
-        _puffO.pos[1] = gy + 0.85;
-        _puffO.pos[2] = pos.z + dir.z * 0.8 + Math.sin(a) * r0;
-        _puffO.vel[0] = Math.cos(a) * (5.0 + rng() * 3.6) + dir.x * 1.5;
-        _puffO.vel[1] = 1.1 + rng() * 1.3;
-        _puffO.vel[2] = Math.sin(a) * (5.0 + rng() * 3.6) + dir.z * 1.5;
-        // r6 chase-cam readability: the r5 dkF floor covered flash SIZE only;
-        // the blast dust ring stayed sub-visible from the gameplay camera
-        // ("no ground blast dust ring around the muzzle on grass"). Lives and
-        // sizes now share the distance floor, alpha gets a mild lift with it.
-        _puffO.life = (firstWave ? 0.85 + rng() * 0.45 : 1.4 + rng() * 0.8) * (0.85 + 0.15 * dkF);
-        _puffO.size0 = 0.45;
-        _puffO.size1 = (2.2 + rng() * 1.2) * (0.7 + 0.3 * hK) * (0.75 + 0.3 * dkF);
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
-        // r7: grey-neutral (de-mustard) + backdate 0.10 -> 0.03 so the donut
-        // grows out of the blast instead of pre-existing it at ignition
-        col3(0x969084, _puffO.col0); col3(0x827c72, _puffO.col1);
-        _puffO.alpha = (firstWave ? (0.26 + 0.09 * hK) : (0.20 + 0.07 * hK)) *
-          (0.85 + 0.13 * Math.min(dkF, 1.8));
-        _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.03;
-        particles.emit('dust', _puffO);
-      }
-      // 8a2. kicked dirt chips: a few solid clods whipped off the surface
-      // under the brake — the particulate half of the blast skirt.
-      const chipN = Math.round(3 + 3 * hK);
-      for (let i = 0; i < chipN; i++) {
-        const a = rng() * Math.PI * 2;
-        _debO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.5;
-        _debO.pos[1] = gy + 0.4;
-        _debO.pos[2] = pos.z + dir.z * 0.9 + Math.sin(a) * 0.5;
-        _debO.vel[0] = Math.cos(a) * (3.5 + rng() * 3.0) + dir.x * 2.5;
-        _debO.vel[1] = 3.0 + rng() * 3.0 * (0.5 + 0.5 * hK);
-        _debO.vel[2] = Math.sin(a) * (3.5 + rng() * 3.0) + dir.z * 2.5;
-        _debO.life = 0.9; _debO.scale = 0.04 + rng() * 0.05; _debO.spin = 14 + rng() * 16;
-        _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-        _debO.groundY = gy; _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = birthOffset;
-        particles.emit('debris', _debO);
-      }
-      // 8b. forward blast wash
-      for (let i = 0; i < 9; i++) {
-        const a = rng() * Math.PI * 2;
-        const ahead = 2.2 + rng() * 2.2;
-        _puffO.pos[0] = pos.x + dir.x * ahead + Math.cos(a) * 1.2;
-        _puffO.pos[1] = gy + 0.95; // r2: over the blade band (anti-static)
-        _puffO.pos[2] = pos.z + dir.z * ahead + Math.sin(a) * 1.2;
-        _puffO.vel[0] = Math.cos(a) * (2.5 + rng() * 2.5) + dir.x * 4.5;
-        _puffO.vel[1] = 0.9 + rng() * 1.1;
-        _puffO.vel[2] = Math.sin(a) * (2.5 + rng() * 2.5) + dir.z * 4.5;
-        _puffO.life = (1.2 + rng() * 1.0) * (0.85 + 0.15 * dkF); // r6: chase floor
-        _puffO.size0 = 0.5;
-        _puffO.size1 = (2.1 + rng() * 1.0) * (0.7 + 0.3 * hK) * (0.75 + 0.3 * dkF);
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
-        col3(0x969084, _puffO.col0); col3(0x827c72, _puffO.col1); // r7 de-mustard
-        _puffO.alpha = 0.19 + 0.06 * hK; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.03;
-        particles.emit('dust', _puffO);
-      }
-    }
+    emitLingeringMuzzleFx(state);
+    emitMuzzleGroundBlast(state);
     return lightK;
   }
 
@@ -2214,6 +2126,65 @@ export function createFx(
     }
   }
 
+  function emitDirtClods(
+    pos: THREE.Vector3,
+    scale: number,
+    big: boolean,
+    birthOffset: number,
+    gy: number,
+    baseY: number,
+  ): void {
+    const clodCount = big ? 9 : 6;
+    const trailCount = big ? 7 : 5;
+    for (let index = 0; index < clodCount; index++) {
+      const angle = rng() * Math.PI * 2;
+      const tilt = rng() * 0.7;
+      const vx = Math.cos(angle) * Math.sin(tilt) * 14 * scale;
+      const vy = (9 + rng() * 9) * scale;
+      const vz = Math.sin(angle) * Math.sin(tilt) * 14 * scale;
+      _debO.pos[0] = pos.x;
+      _debO.pos[1] = baseY;
+      _debO.pos[2] = pos.z;
+      _debO.vel[0] = vx;
+      _debO.vel[1] = vy;
+      _debO.vel[2] = vz;
+      _debO.life = 2.2;
+      _debO.scale = 0.1 + rng() * 0.12 * scale;
+      _debO.spin = 6 + rng() * 14;
+      _debO.axis[0] = rng() - 0.5;
+      _debO.axis[1] = rng() - 0.5;
+      _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy;
+      _debO.hot = false;
+      _debO.seed = rng();
+      _debO.birthOffset = birthOffset;
+      particles.emit('debris', _debO);
+      if (index >= trailCount) continue;
+      for (let trailTime = 0.06; trailTime < 1.0; trailTime += 0.1) {
+        const sampledDrag = (1 - Math.exp(-0.12 * trailTime)) / 0.12;
+        const py = baseY + vy * sampledDrag - 10.8 * trailTime * trailTime;
+        if (py < gy + 0.25) break;
+        _puffO.pos[0] = pos.x + vx * sampledDrag + (rng() - 0.5) * 0.12;
+        _puffO.pos[1] = py;
+        _puffO.pos[2] = pos.z + vz * sampledDrag + (rng() - 0.5) * 0.12;
+        _puffO.vel[0] = (rng() - 0.5) * 0.3;
+        _puffO.vel[1] = -0.4 - rng() * 0.5;
+        _puffO.vel[2] = (rng() - 0.5) * 0.3;
+        _puffO.life = 0.5 + rng() * 0.4;
+        _puffO.size0 = 0.15 * scale;
+        _puffO.size1 = 0.5 * scale;
+        _puffO.rot = rng() * Math.PI * 2;
+        _puffO.rotVel = (rng() - 0.5) * 2;
+        col3(0x4a3b29, _puffO.col0);
+        col3(0x5d5040, _puffO.col1);
+        _puffO.alpha = 0.7;
+        _puffO.grav = -1.5;
+        _puffO.birthOffset = birthOffset + trailTime * 0.9;
+        particles.emit('smoke', _puffO);
+      }
+    }
+  }
+
   /** HE / terrain dirt plume: dark column + radial skirt + clods + dust ring. */
   function dirtPlume(
     pos: THREE.Vector3,
@@ -2284,36 +2255,7 @@ export function createFx(
     // dirt clods + arcing clod tracer streaks: each clod drags a dotted trail
     // of dark ejecta sampled along the same drag trajectory the debris shader
     // integrates (k = 0.12, g = -21.6) — the WoT "soil fountain" signature
-    const clods = big ? 9 : 6;
-    for (let i = 0; i < clods; i++) {
-      const a = rng() * Math.PI * 2;
-      const tilt = rng() * 0.7;
-      const vx = Math.cos(a) * Math.sin(tilt) * 14 * s;
-      const vy = (9 + rng() * 9) * s;
-      const vz = Math.sin(a) * Math.sin(tilt) * 14 * s;
-      _debO.pos[0] = pos.x; _debO.pos[1] = baseY; _debO.pos[2] = pos.z;
-      _debO.vel[0] = vx; _debO.vel[1] = vy; _debO.vel[2] = vz;
-      _debO.life = 2.2; _debO.scale = 0.1 + rng() * 0.12 * s; _debO.spin = 6 + rng() * 14;
-      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-      _debO.groundY = gy; _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = birthOffset;
-      particles.emit('debris', _debO);
-      if (i >= (big ? 7 : 5)) continue; // trails on the first 5-7 clods only
-      for (let ts = 0.06; ts < 1.0; ts += 0.1) {
-        const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
-        const px = pos.x + vx * sd;
-        const py = baseY + vy * sd - 10.8 * ts * ts;
-        const pz = pos.z + vz * sd;
-        if (py < gy + 0.25) break;
-        _puffO.pos[0] = px + (rng() - 0.5) * 0.12; _puffO.pos[1] = py; _puffO.pos[2] = pz + (rng() - 0.5) * 0.12;
-        _puffO.vel[0] = (rng() - 0.5) * 0.3; _puffO.vel[1] = -0.4 - rng() * 0.5; _puffO.vel[2] = (rng() - 0.5) * 0.3;
-        _puffO.life = 0.5 + rng() * 0.4;
-        _puffO.size0 = 0.15 * s; _puffO.size1 = 0.5 * s;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-        col3(0x4a3b29, _puffO.col0); col3(0x5d5040, _puffO.col1);
-        _puffO.alpha = 0.7; _puffO.grav = -1.5; _puffO.birthOffset = birthOffset + ts * 0.9;
-        particles.emit('smoke', _puffO);
-      }
-    }
+    emitDirtClods(pos, s, big, birthOffset, gy, baseY);
   }
 
   /** HE detonation fireball (scaled by caliber) — flash + fire + black smoke. */
@@ -2340,30 +2282,15 @@ export function createFx(
     impactSmoke(_sv.set(pos.x, pos.y + 0.4, pos.z), _UP, 8, 1.6 * s, 0x2c2a28, 0x565450, 0.7, birthOffset);
   }
 
-  /**
-   * Full vehicle destruction sequence, optionally backdated (composer).
-   * `cause` varies the spectacle so kills stop reading as one canned clip:
-   *  - 'ammorack': the full turret-toss detonation (geyser, hatch jets, max
-   *    debris) — the rare spectacular;
-   *  - 'shot': plain HP kill — solid fireball but no rack geyser, fewer
-   *    debris, turret stays seated (gun droop + hatch smoke);
-   *  - 'fire': burn-out — flashover whoosh + heavy smoke, almost no debris.
-   */
-  function spawnDestruction(
+  function emitDestructionFlash(
     pos: THREE.Vector3,
-    visual: FxVisual | null,
-    birthOffset = 0,
-    cause: DestructionCause = 'ammorack',
+    cy: number,
+    burn: boolean,
+    dk: number,
+    birthOffset: number,
   ): void {
-    const rack = cause === 'ammorack';
-    const burn = cause === 'fire';
-    const gy = groundY(pos.x, pos.z);
-    const cy = Math.max(pos.y, gy) + 1.2;
-    // distance-compensated spectacle (r7: a 244 m kill read as a ~40 px
-    // orange puff) — scale the big volumetric cards up with camera distance
-    const dk = distBoost(pos.x, cy, pos.z);
-    // white-hot detonation core (first ~200 ms, star sprites, bloom feed)
-    for (let i = 0; i < (burn ? 1 : 3); i++) {
+    const count = burn ? 1 : 3;
+    for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
       const v = 2 + rng() * 4;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.6; _puffO.pos[1] = cy + (rng() - 0.5) * 0.6; _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
@@ -2377,22 +2304,83 @@ export function createFx(
       _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('flash', _puffO);
     }
-    // FIREBALL BODY (r1 volumetric rebuild): the mass is now carried by
-    // NORMAL-blended billow cards (occluding fire-in-smoke lobes with a
-    // blackbody ramp — see particles PUFF_FRAG_BILLOW) forming a rolling
-    // crown with a real silhouette; the additive fire pool only adds glow
-    // pockets inside it. The old all-additive stack was a translucent orange
-    // haze wall by 1.5 s with trees showing through the "core".
+  }
+
+  function emitDestructionOuterBillows(
+    pos: THREE.Vector3,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    fireS: number,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    const count = rack ? 12 : (burn ? 6 : 9);
+    for (let i = 0; i < count; i++) {
+      const a = rng() * Math.PI * 2, b = rng() * Math.PI;
+      const crown = i < 3 && !burn;
+      const v = (2.6 + rng() * 3.6) * fireS;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.1 * fireS;
+      _puffO.pos[1] = cy + (crown ? 0.8 + rng() * 1.2 : (rng() - 0.4) * 1.1);
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.1 * fireS;
+      _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
+      _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.5 + (crown ? 2.4 : 1.1);
+      _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
+      _puffO.life = crown ? 1.25 + rng() * 0.6 : 0.85 + rng() * 0.75;
+      _puffO.size0 = (crown ? 2.8 + rng() * 1.0 : 2.0 + rng() * 1.0) * fireS * dk;
+      _puffO.size1 = (crown ? 7.0 + rng() * 2.2 : 4.8 + rng() * 1.8) * fireS * dk;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0x4a423a, _puffO.col0); col3(0x2b2723, _puffO.col1);
+      _puffO.alpha = 0.88 + rng() * 0.1; _puffO.grav = 1.1;
+      _puffO.birthOffset = i < count / 3
+        ? birthOffset - rng() * 0.25
+        : birthOffset + rng() * 0.35;
+      particles.emit('billow', _puffO);
+    }
+  }
+
+  function emitDestructionFirePockets(
+    pos: THREE.Vector3,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    fireS: number,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    const count = rack ? 12 : (burn ? 6 : 9);
+    for (let i = 0; i < count; i++) {
+      const a = rng() * Math.PI * 2, b = rng() * Math.PI;
+      const v = (3.0 + rng() * 4.2) * fireS;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.0 * fireS;
+      _puffO.pos[1] = cy + (rng() - 0.55) * 1.0;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.0 * fireS;
+      _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
+      _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.45 + 0.9;
+      _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
+      _puffO.life = 0.7 + rng() * 1.0;
+      _puffO.size0 = (1.8 + rng() * 1.0) * fireS * dk; _puffO.size1 = (4.2 + rng() * 2.0) * fireS * dk;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
+      col3(0xffd865, _puffO.col0); col3(0xe6520f, _puffO.col1);
+      _puffO.alpha = 0.34 + rng() * 0.18; _puffO.grav = 1.0;
+      _puffO.birthOffset = i < count / 3
+        ? birthOffset - rng() * 0.25
+        : birthOffset + rng() * 0.35;
+      particles.emit('fire', _puffO);
+    }
+  }
+
+  function emitDestructionFireball(
+    pos: THREE.Vector3,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    dk: number,
+    birthOffset: number,
+  ): number {
     const fireS = burn ? 0.7 : 1;
-    // r4 BASE ANCHOR (composed-fireball minor): 3 deck-hugging billow cards
-    // born ON the hull roof, welding the blast mass to the vehicle so the
-    // fireball never reads as a detached airburst hanging between hull and
-    // turret. Slow risers, slightly backdated so the composed frame catches
-    // them already rolling.
-    // r7 (critic: "the fireball base floats with a visible gap above the
-    // turret ring"): 4 anchors born ON the deck line (cy - 0.85), slow
-    // risers — the blast mass stays welded to the hull through its life.
-    for (let i = 0; i < (burn ? 2 : 4); i++) {
+    const anchorCount = burn ? 2 : 4;
+    for (let i = 0; i < anchorCount; i++) {
       const a = (i / 4) * Math.PI * 2 + rng() * 0.9;
       _puffO.pos[0] = pos.x + Math.cos(a) * (0.5 + rng() * 0.5);
       _puffO.pos[1] = cy - 0.85 + rng() * 0.35;
@@ -2409,14 +2397,10 @@ export function createFx(
       _puffO.birthOffset = birthOffset - 0.1 - rng() * 0.15;
       particles.emit('billow', _puffO);
     }
-    // r5 CORE OCCUPANCY (critic: "fireball reads as a hollow donut ...
-    // empty interior behind the popped turret"): 3 fat, slow, near-static
-    // billow cards pinned AT the blast centroid, born slightly early and
-    // living past the shell lobes — the perimeter cards always billow around
-    // an occupied core, never around empty air.
-    for (let i = 0; i < (burn ? 1 : 3); i++) {
+    const coreCount = burn ? 1 : 3;
+    for (let i = 0; i < coreCount; i++) {
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
-      _puffO.pos[1] = cy + (rng() - 0.6) * 0.9; // r7: core sits lower, on the ring
+      _puffO.pos[1] = cy + (rng() - 0.6) * 0.9;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
       _puffO.vel[0] = (rng() - 0.5) * 0.8;
       _puffO.vel[1] = 1.3 + rng() * 0.7;
@@ -2430,84 +2414,31 @@ export function createFx(
       _puffO.birthOffset = birthOffset - 0.06 - rng() * 0.12;
       particles.emit('billow', _puffO);
     }
-    const bilN = rack ? 12 : (burn ? 6 : 9);
-    for (let i = 0; i < bilN; i++) {
-      const a = rng() * Math.PI * 2, b = rng() * Math.PI;
-      const crown = i < 3 && !burn; // 3 big lobes cap the mass from above
-      const v = (2.6 + rng() * 3.6) * fireS;
-      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.1 * fireS;
-      _puffO.pos[1] = cy + (crown ? 0.8 + rng() * 1.2 : (rng() - 0.4) * 1.1);
-      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.1 * fireS;
-      _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
-      _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.5 + (crown ? 2.4 : 1.1);
-      _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      // r2: lives cut ~30% — the billow's paint-to-char window must land
-      // inside ~1 s (the long tail held a readable bright mid-dissolve stage
-      // over the hull for 2 s, the "noisy white plaster" major)
-      _puffO.life = crown ? 1.25 + rng() * 0.6 : 0.85 + rng() * 0.75;
-      _puffO.size0 = (crown ? 2.8 + rng() * 1.0 : 2.0 + rng() * 1.0) * fireS * dk;
-      _puffO.size1 = (crown ? 7.0 + rng() * 2.2 : 4.8 + rng() * 1.8) * fireS * dk;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      // col0->col1 is the SOOT base the billow shader cools into: mid smoke
-      // grey-brown collapsing to dark soot — the burning interior comes from
-      // the shader's blackbody ramp, not these colors
-      col3(0x4a423a, _puffO.col0); col3(0x2b2723, _puffO.col1);
-      _puffO.alpha = 0.88 + rng() * 0.1; _puffO.grav = 1.1;
-      _puffO.birthOffset = i < bilN / 3
-        ? birthOffset - rng() * 0.25
-        : birthOffset + rng() * 0.35;
-      particles.emit('billow', _puffO);
-    }
-    // additive glow pockets INSIDE the billow mass: fewer, shorter-lived and
-    // dimmer than r6 — they feed bloom and the white-hot heart, then die
-    // before they can stack into the 1.5 s screen-wide haze wall.
-    const fireN = rack ? 12 : (burn ? 6 : 9);
-    for (let i = 0; i < fireN; i++) {
-      const a = rng() * Math.PI * 2, b = rng() * Math.PI;
-      const v = (3.0 + rng() * 4.2) * fireS;
-      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.0 * fireS;
-      _puffO.pos[1] = cy + (rng() - 0.55) * 1.0;
-      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.0 * fireS;
-      _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
-      _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.45 + 0.9;
-      _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = 0.7 + rng() * 1.0;
-      _puffO.size0 = (1.8 + rng() * 1.0) * fireS * dk; _puffO.size1 = (4.2 + rng() * 2.0) * fireS * dk;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-      // col1 pulled off pure red toward burnt orange (r5 maroon-fog fix —
-      // works with the additive shader's late-life soot desaturation)
-      col3(0xffd865, _puffO.col0); col3(0xe6520f, _puffO.col1);
-      _puffO.alpha = 0.34 + rng() * 0.18; _puffO.grav = 1.0;
-      // r5 pop-readability stagger: only the first third of the cards are
-      // backdated (instant ignition); the rest bloom over the next ~0.35 s so
-      // peak fireball radius lands ~200 ms AFTER the turret leaves the ring —
-      // the tumbling silhouette reads against sky instead of drowning in the
-      // crown (r4: pop invisible in all 14 live frames).
-      _puffO.birthOffset = i < fireN / 3
-        ? birthOffset - rng() * 0.25
-        : birthOffset + rng() * 0.35;
-      particles.emit('fire', _puffO);
-    }
-    // r2 SPAWN-FRAME BUDGET: batches whose particles are born in the FUTURE
-    // (positive birthOffset) don't need to be written on the blast frame —
-    // live kills stagger them over the next few frames via the timer queue
-    // (the single-frame emit burst was part of the 55->26 fps kill hitch).
-    // Composed/backdated captures still spawn synchronously.
-    const _dpx = pos.x, _dpz = pos.z;
-    const deferBatch = (delayS: number, fn: () => void): void => {
-      if (birthOffset < 0 || frozen) fn();
-      else timers.push({ t: delayS, fn });
-    };
-    // fire-to-smoke takeover: dark roil born WHERE the flame puffs are as
-    // they die (0.4-1.4 s in), so the fireball transitions into a churning
-    // black mass instead of thinning to sparse sprites
-    deferBatch(0.03, () => {
+    emitDestructionOuterBillows(pos, cy, rack, burn, fireS, dk, birthOffset);
+    emitDestructionFirePockets(pos, cy, rack, burn, fireS, dk, birthOffset);
+    return fireS;
+  }
+
+  function deferFxBatch(birthOffset: number, delayS: number, fn: () => void): void {
+    if (birthOffset < 0 || frozen) fn();
+    else timers.push({ t: delayS, fn });
+  }
+
+  function scheduleDestructionSmokeTakeover(
+    posX: number,
+    posZ: number,
+    cy: number,
+    fireS: number,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    deferFxBatch(birthOffset, 0.03, () => {
       for (let i = 0; i < 14; i++) {
         const a = rng() * Math.PI * 2;
         const r = (0.6 + rng() * 1.5) * fireS;
-        _puffO.pos[0] = _dpx + Math.cos(a) * r;
+        _puffO.pos[0] = posX + Math.cos(a) * r;
         _puffO.pos[1] = cy + rng() * 2.2;
-        _puffO.pos[2] = _dpz + Math.sin(a) * r;
+        _puffO.pos[2] = posZ + Math.sin(a) * r;
         _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8);
         _puffO.vel[1] = 2.2 + rng() * 2.6;
         _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8);
@@ -2520,9 +2451,13 @@ export function createFx(
         particles.emit('smoke', _puffO);
       }
     });
-    // dark combustion intrusions INSIDE the fireball volume — sooty pockets
-    // mixed into the flame mass give the churn its internal structure
-    // (lighting_post r4: 8 → 12 cells, supports the de-clipped core gradient)
+  }
+
+  function emitDestructionInteriorSmoke(
+    pos: THREE.Vector3,
+    cy: number,
+    birthOffset: number,
+  ): void {
     for (let i = 0; i < 12; i++) {
       const a = rng() * Math.PI * 2;
       const r = 0.5 + rng() * 1.1;
@@ -2537,13 +2472,20 @@ export function createFx(
       _puffO.alpha = 0.5 + rng() * 0.2; _puffO.grav = 1.2; _puffO.birthOffset = birthOffset - rng() * 0.15;
       particles.emit('smoke', _puffO);
     }
-    // ground-hugging fire skirt around the hull — welds the blast to the
-    // vehicle and the terrain (no more floating airburst read)
-    for (let i = 0; i < (burn ? 4 : 10); i++) {
+  }
+
+  function emitDestructionHullFire(
+    pos: THREE.Vector3,
+    gy: number,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    birthOffset: number,
+  ): void {
+    const skirtCount = burn ? 4 : 10;
+    for (let i = 0; i < skirtCount; i++) {
       const a = rng() * Math.PI * 2;
       const r = 1.2 + rng() * 1.0;
-      // r2: gy+0.9 (was +0.5) — the additive skirt burned INSIDE the grass
-      // blade band and stippled against the alpha-tested blades
       _puffO.pos[0] = pos.x + Math.cos(a) * r; _puffO.pos[1] = gy + 0.9 + rng() * 0.4; _puffO.pos[2] = pos.z + Math.sin(a) * r;
       _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3);
       _puffO.vel[1] = 1.2 + rng() * 1.2;
@@ -2555,12 +2497,8 @@ export function createFx(
       _puffO.alpha = 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
       particles.emit('fire', _puffO);
     }
-    // r6 RING FIRE (rack kills): with the turret gone the open ring exposed
-    // the hollow hull interior as a hard black void in every framing of the
-    // first seconds. 4 slow flickering flame cards pinned AT the ring with
-    // staggered lives keep the cavity reading as a burning interior until
-    // the smoke column's own base licks take over.
-    for (let i = 0; i < (rack ? 4 : 0); i++) {
+    const ringFireCount = rack ? 4 : 0;
+    for (let i = 0; i < ringFireCount; i++) {
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.7;
       _puffO.pos[1] = cy + 0.15 + rng() * 0.3;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.7;
@@ -2575,10 +2513,8 @@ export function createFx(
       _puffO.birthOffset = birthOffset - rng() * 0.4 + i * 0.45;
       particles.emit('fire', _puffO);
     }
-    // ammo-rack geyser: a violent vertical fire column blasting out of the
-    // turret ring — the signature of the rack cook-off that pops the turret.
-    // RESERVED for ammo-rack kills so the toss stays a spectacle.
-    for (let i = 0; i < (rack ? 9 : 0); i++) {
+    const geyserCount = rack ? 9 : 0;
+    for (let i = 0; i < geyserCount; i++) {
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
       _puffO.pos[1] = cy + 0.4 + rng() * 0.6;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
@@ -2592,11 +2528,10 @@ export function createFx(
       _puffO.alpha = 0.7; _puffO.grav = -2; _puffO.birthOffset = birthOffset - rng() * 0.12;
       particles.emit('fire', _puffO);
     }
-    // hatch blowouts: sharp angled jets venting from crew hatches as the
-    // overpressure escapes — short, directional, incandescent
-    for (let i = 0; i < (rack ? 3 : (burn ? 0 : 2)); i++) {
+    const hatchJetCount = rack ? 3 : (burn ? 0 : 2);
+    for (let i = 0; i < hatchJetCount; i++) {
       const a = rng() * Math.PI * 2;
-      const tilt = 0.25 + rng() * 0.45; // off-vertical
+      const tilt = 0.25 + rng() * 0.45;
       _sv.set(Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt)).normalize();
       _jetO.pos[0] = pos.x + (rng() - 0.5) * 1.0;
       _jetO.pos[1] = cy + 0.3;
@@ -2610,7 +2545,6 @@ export function createFx(
       _jetO.alpha = 0.85; _jetO.birthOffset = birthOffset - rng() * 0.05;
       particles.emit('jet', _jetO);
     }
-    // rising fire licks feeding the base of the smoke column
     for (let i = 0; i < 8; i++) {
       const a = rng() * Math.PI * 2;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2; _puffO.pos[1] = cy + rng() * 0.6; _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
@@ -2622,50 +2556,42 @@ export function createFx(
       _puffO.alpha = 0.6; _puffO.grav = 3; _puffO.birthOffset = birthOffset - rng() * 0.2;
       particles.emit('fire', _puffO);
     }
-    // rolling black smoke cap + buoyant column starters. Backdated 0.25 s so
-    // the fade-in is already complete when the composer freezes at 0.6 s (and
-    // live, thick smoke erupts with the fireball instead of trailing it).
-    // r7 (critic: "the fire column caps in discrete soot-chip stipple instead
-    // of rolling smoke"): the cap cards spawn BIGGER (size0 up ~60%) in a
-    // tighter footprint so neighbours overlap from birth into one rolling
-    // mass, and they inherit the column's upward velocity.
+  }
+
+  function emitDestructionSmokeCap(
+    pos: THREE.Vector3,
+    cy: number,
+    dk: number,
+    birthOffset: number,
+  ): void {
     for (let i = 0; i < 30; i++) {
       const a = rng() * Math.PI * 2;
       const v = 1 + rng() * 2.5;
-      const high = i < 12; // first batch caps the fireball from above
+      const high = i < 12;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
       _puffO.pos[1] = cy + (high ? 1.2 + rng() * 2.0 : rng() * 1.2);
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
-      // wind bias keeps the cap drifting WITH the stalk + column (r5 shear)
       _puffO.vel[0] = Math.cos(a) * v + COLUMN_WIND_X * 0.7;
       _puffO.vel[1] = 3.2 + rng() * 4.0;
       _puffO.vel[2] = Math.sin(a) * v + COLUMN_WIND_Z * 0.7;
-      // r2: 3.2-5.2 s (was 4-8) — the full-height column feed (see
-      // emitColumnPuff) now owns the plume past ~4 s; these cap cards only
-      // bridge the fireball into it. The old 8 s tail was half of the
-      // "static ink blob pinned at the top of the frame" major.
       _puffO.life = 3.2 + rng() * 2.0;
       _puffO.size0 = (2.5 + rng() * 0.8) * dk; _puffO.size1 = (5.8 + rng() * 2.4) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
-      // every third puff is a lighter grey so the cap keeps internal contrast
-      // instead of stacking to one flat ink-black silhouette. Albedo floor
-      // lifted again (r2): the stack must never resolve to pure black.
       if (i % 3 === 2) { col3(0x4a463f, _puffO.col0); col3(0x817d75, _puffO.col1); }
       else { col3(0x363029, _puffO.col0); col3(0x655f56, _puffO.col1); }
-      // r1: backdated 0.45 s (was 0.25) — the cap must already read as a
-      // rolling dark mass at the composed 0.6 s hero moment
       _puffO.alpha = 0.60 + rng() * 0.14; _puffO.grav = 1.3; _puffO.birthOffset = birthOffset - 0.55;
       particles.emit('smoke', _puffO);
     }
-    // shockwave dust ring on the ground — fast, clearly expanding, but
-    // ORGANIC: jittered radius/angle/size and ~30% of slots dropped so the
-    // ring never resolves into evenly spaced puffs on a perfect circle (r5)
-    // r2 ANTI-STATIC: the ring rode at gy+0.45 — waist-deep INSIDE the grass
-    // blade band, so every card interleaved with alpha-tested blades into
-    // per-pixel TV static across ~40% of the frame for the 2 s dust window
-    // (THE r2 critical). The wave now skims the grass TOPS (gy+1.1), runs
-    // bigger and dimmer cards (same total mass, no per-blade contrast), and
-    // its silhouette reads against terrain instead of through the meadow.
+  }
+
+  function emitDestructionShockAndSparks(
+    pos: THREE.Vector3,
+    gy: number,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    birthOffset: number,
+  ): void {
     const ringN = burn ? 10 : 30;
     for (let i = 0; i < ringN; i++) {
       if (rng() < 0.3) continue;
@@ -2681,133 +2607,138 @@ export function createFx(
       _puffO.alpha = 0.20 + rng() * 0.13; _puffO.grav = -0.5; _puffO.birthOffset = birthOffset - rng() * 0.1;
       particles.emit('dust', _puffO);
     }
-    // scorched earth: persistent soot decal projected onto the terrain
     spawnScorch(pos.x, pos.z, (burn ? 3.6 : 5.4) + rng() * 1.4);
-    // pressure shockwave: fast-expanding ground-aligned ring in the first
-    // ~450 ms (additive, fades as it expands) — a burn-out has no blast wave
     if (!burn) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
-    // spark shower — glowing streaks emitted radially, arcing under gravity,
-    // with randomized length/width/brightness AND staggered births so the
-    // frozen frame mixes fresh leaders with drooping, dying arcs.
-    // r1 "rain streaks" fix: the single 1.4 s fan froze as long near-parallel
-    // rods through the fireball. Two fans — a short-lived fast burst plus a
-    // slower wide drooping fan — at ~half the stretch, so frozen frames mix
-    // headings and arc curvature instead of parallel lines.
-    // r5: stretch trimmed (0.045/0.055 -> 0.034/0.04) — the fastest leaders
-    // froze as straight rails through the trees (r4 "vector lines" major)
     sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
     sparkFan(_sv.set(pos.x, cy + 0.4, pos.z), _UP, rack ? 12 : (burn ? 3 : 8), 9, 1.45, 0xffb860, 0.8, 0.04, 0.04, birthOffset, 0.5);
-    // debris shower (irregular scorched chunks, a FEW glowing hot) — high
-    // radial speed + strong gravity so chunks read ballistic, never floating.
-    // r6 "orange popcorn": too many hot lumps froze in tree canopies with no
-    // motion cue. Fewer/smaller chunks on flatter arcs, hot fraction cut, and
-    // every hot chunk drags a velocity-aligned spark streak so a frozen frame
-    // reads MOTION, not confetti pasted into the foliage.
-    // r7 (critic: "only 1-2 debris chunks readable at a 20 m camera from a
-    // full rack detonation"): rack kills throw a denser, chunkier shower.
-    for (let i = 0; i < (rack ? 30 : (burn ? 5 : 14)); i++) {
+  }
+
+  function emitHotChunkTrail(
+    pos: THREE.Vector3,
+    cy: number,
+    gy: number,
+    dvx: number,
+    dvy: number,
+    dvz: number,
+    birthOffset: number,
+  ): void {
+    _strkO.pos[0] = pos.x; _strkO.pos[1] = cy; _strkO.pos[2] = pos.z;
+    _strkO.vel[0] = dvx; _strkO.vel[1] = dvy; _strkO.vel[2] = dvz;
+    _strkO.life = 0.5 + rng() * 0.35;
+    _strkO.width = 0.035 + rng() * 0.03; _strkO.stretch = 0.034; _strkO.grav = -21.6;
+    col3(0xffc274, _strkO.col); _strkO.alpha = 0.8; _strkO.seed = rng();
+    _strkO.birthOffset = birthOffset;
+    particles.emit('sparks', _strkO);
+    for (let ts = 0.10; ts < 0.6; ts += 0.16) {
+      const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
+      const py = cy + dvy * sd - 10.8 * ts * ts;
+      if (py < gy + 0.3) break;
+      _puffO.pos[0] = pos.x + dvx * sd; _puffO.pos[1] = py; _puffO.pos[2] = pos.z + dvz * sd;
+      _puffO.vel[0] = (rng() - 0.5) * 0.4; _puffO.vel[1] = 0.5 + rng() * 0.4; _puffO.vel[2] = (rng() - 0.5) * 0.4;
+      _puffO.life = 0.7 + rng() * 0.4;
+      _puffO.size0 = 0.22; _puffO.size1 = 0.9 + rng() * 0.4;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0x36322e, _puffO.col0); col3(0x605c55, _puffO.col1);
+      _puffO.alpha = 0.5; _puffO.grav = 0.5; _puffO.birthOffset = birthOffset + ts;
+      particles.emit('smoke', _puffO);
+    }
+  }
+
+  function emitHotChunkLanding(
+    lx: number,
+    lz: number,
+    birthOffset: number,
+  ): void {
+    _puffO.pos[1] = groundY(lx, lz) + 0.35;
+    _puffO.vel[0] = 0; _puffO.vel[1] = 0.25; _puffO.vel[2] = 0;
+    _puffO.life = 0.55 + rng() * 0.3;
+    _puffO.size0 = 0.55; _puffO.size1 = 0.22;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xffa14e, _puffO.col0); col3(0x99290a, _puffO.col1);
+    _puffO.alpha = 0.55; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+    particles.emit('fire', _puffO);
+    _puffO.pos[1] = groundY(lx, lz) + 0.7;
+    _puffO.vel[1] = 0.8 + rng() * 0.5;
+    _puffO.life = 1.1 + rng() * 0.6;
+    _puffO.size0 = 0.25; _puffO.size1 = 1.0 + rng() * 0.5;
+    _puffO.rotVel = (rng() - 0.5) * 2;
+    col3(0x45403a, _puffO.col0); col3(0x6e6a61, _puffO.col1);
+    _puffO.alpha = 0.4; _puffO.grav = 0.5; _puffO.birthOffset = birthOffset + 0.1;
+    particles.emit('smoke', _puffO);
+  }
+
+  function emitChunkLanding(
+    pos: THREE.Vector3,
+    cy: number,
+    gy: number,
+    dvx: number,
+    dvy: number,
+    dvz: number,
+    birthOffset: number,
+    life: number,
+    scale: number,
+    fullHot: boolean,
+  ): void {
+    for (let ts = 0.14; ts < life; ts += 0.07) {
+      const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
+      const py = cy + dvy * sd - 10.8 * ts * ts;
+      if (py > gy + scale * 0.5) continue;
+      const lx = pos.x + dvx * sd, lz = pos.z + dvz * sd;
+      _puffO.pos[0] = lx; _puffO.pos[1] = groundY(lx, lz) + 0.8; _puffO.pos[2] = lz;
+      _puffO.vel[0] = dvx * 0.06 + (rng() - 0.5) * 0.6; _puffO.vel[1] = 0.9 + rng() * 0.7;
+      _puffO.vel[2] = dvz * 0.06 + (rng() - 0.5) * 0.6;
+      _puffO.life = 0.9 + rng() * 0.5;
+      _puffO.size0 = 0.45; _puffO.size1 = 1.5 + rng() * 0.7;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+      col3(0x8a8069, _puffO.col0); col3(0x776f5f, _puffO.col1);
+      _puffO.alpha = 0.34; _puffO.grav = -0.5; _puffO.birthOffset = birthOffset + ts;
+      particles.emit('dust', _puffO);
+      if (fullHot) emitHotChunkLanding(lx, lz, birthOffset + ts);
+      break;
+    }
+  }
+
+  function emitDestructionDebrisShower(
+    pos: THREE.Vector3,
+    gy: number,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    birthOffset: number,
+  ): void {
+    const count = rack ? 30 : (burn ? 5 : 14);
+    for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.85;
       const bo = birthOffset - rng() * 0.15;
       _debO.pos[0] = pos.x; _debO.pos[1] = cy; _debO.pos[2] = pos.z;
       _debO.vel[0] = Math.cos(a) * Math.sin(tilt) * (13 + rng() * 11);
-      // r4: vy capped ~10 (was up to 13) — the fastest burning chunks froze
-      // cropped at the very top of the composed frame
       _debO.vel[1] = 4 + rng() * 6;
       _debO.vel[2] = Math.sin(a) * Math.sin(tilt) * (13 + rng() * 11);
-      // r5: 1.7-2.8 -> 1.4-2.1 s — landed chips must fade off the lawn
-      // within ~2 s instead of lingering as confetti (r4 debris major)
       _debO.life = 1.4 + rng() * 0.7;
-      // r7: 0.08-0.21 -> 0.10-0.25 — chunks must read at 20 m (the r5 slab
-      // cap stands: nothing over ~0.25)
       _debO.scale = 0.10 + rng() * 0.15;
       _debO.spin = 8 + rng() * 18;
       _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-      // r1: fractional heat — full-hot chunks drag spark streaks, the rest
-      // carry a faint fire-rim glow (0.45) so nothing tumbles as a pure
-      // matte-black card against the fireball (fire_chase_060ms critique)
       const fullHot = rng() < 0.55;
       _debO.groundY = gy; _debO.hot = fullHot ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = bo;
       const dvx = _debO.vel[0], dvy = _debO.vel[1], dvz = _debO.vel[2];
+      const life = _debO.life, scale = _debO.scale;
       particles.emit('debris', _debO);
-      if (fullHot) {
-        // paired incandescent streak: same launch state, drag-decayed by the
-        // sparks shader along the same trajectory family — the motion cue
-        _strkO.pos[0] = pos.x; _strkO.pos[1] = cy; _strkO.pos[2] = pos.z;
-        _strkO.vel[0] = dvx; _strkO.vel[1] = dvy; _strkO.vel[2] = dvz;
-        // r5: shorter life + ~half stretch — the 1.2 m velocity rods froze as
-        // dead-straight hairlines crossing the frame (r4 debris major); a
-        // short glowing dash whose heading follows the drag/gravity curve
-        // reads as a falling ember, not a vector line.
-        _strkO.life = 0.5 + rng() * 0.35;
-        _strkO.width = 0.035 + rng() * 0.03; _strkO.stretch = 0.034; _strkO.grav = -21.6;
-        col3(0xffc274, _strkO.col); _strkO.alpha = 0.8; _strkO.seed = rng();
-        _strkO.birthOffset = bo;
-        particles.emit('sparks', _strkO);
-        // r2: short-lived ember-smoke trail riding the SAME drag trajectory
-        // the debris shader integrates (k = 0.12, g = -21.6) — a hot chunk
-        // reads as burning wreckage, not a clean tumbling card
-        for (let ts = 0.10; ts < 0.6; ts += 0.16) {
-          const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
-          const py = cy + dvy * sd - 10.8 * ts * ts;
-          if (py < gy + 0.3) break;
-          _puffO.pos[0] = pos.x + dvx * sd; _puffO.pos[1] = py; _puffO.pos[2] = pos.z + dvz * sd;
-          _puffO.vel[0] = (rng() - 0.5) * 0.4; _puffO.vel[1] = 0.5 + rng() * 0.4; _puffO.vel[2] = (rng() - 0.5) * 0.4;
-          _puffO.life = 0.7 + rng() * 0.4;
-          _puffO.size0 = 0.22; _puffO.size1 = 0.9 + rng() * 0.4;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-          col3(0x36322e, _puffO.col0); col3(0x605c55, _puffO.col1);
-          _puffO.alpha = 0.5; _puffO.grav = 0.5; _puffO.birthOffset = bo + ts;
-          particles.emit('smoke', _puffO);
-        }
-      }
-      // r2: ground contact — solve the shader's own trajectory for the
-      // landing instant and pre-book a small dust kick at the impact point
-      // (GPU debris can't call back; the closed form makes it deterministic)
-      for (let ts = 0.14; ts < _debO.life; ts += 0.07) {
-        const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
-        const py = cy + dvy * sd - 10.8 * ts * ts;
-        if (py > gy + _debO.scale * 0.5) continue;
-        const lx = pos.x + dvx * sd, lz = pos.z + dvz * sd;
-        _puffO.pos[0] = lx; _puffO.pos[1] = groundY(lx, lz) + 0.8; _puffO.pos[2] = lz;
-        _puffO.vel[0] = dvx * 0.06 + (rng() - 0.5) * 0.6; _puffO.vel[1] = 0.9 + rng() * 0.7;
-        _puffO.vel[2] = dvz * 0.06 + (rng() - 0.5) * 0.6;
-        _puffO.life = 0.9 + rng() * 0.5;
-        _puffO.size0 = 0.45; _puffO.size1 = 1.5 + rng() * 0.7;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
-        col3(0x8a8069, _puffO.col0); col3(0x776f5f, _puffO.col1);
-        _puffO.alpha = 0.34; _puffO.grav = -0.5; _puffO.birthOffset = bo + ts;
-        particles.emit('dust', _puffO);
-        // r6 (critic: "static orange flecks pasted flat on the grass with no
-        // glow halo"): a hot chunk's landing now books a small additive
-        // ember-glow card (shrinking, dying fast — the halo) + a rising
-        // smoke wisp, so grounded embers read as cooling fire, not decals.
-        if (fullHot) {
-          _puffO.pos[1] = groundY(lx, lz) + 0.35;
-          _puffO.vel[0] = 0; _puffO.vel[1] = 0.25; _puffO.vel[2] = 0;
-          _puffO.life = 0.55 + rng() * 0.3;
-          _puffO.size0 = 0.55; _puffO.size1 = 0.22;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
-          col3(0xffa14e, _puffO.col0); col3(0x99290a, _puffO.col1);
-          _puffO.alpha = 0.55; _puffO.grav = 0; _puffO.birthOffset = bo + ts;
-          particles.emit('fire', _puffO);
-          _puffO.pos[1] = groundY(lx, lz) + 0.7;
-          _puffO.vel[1] = 0.8 + rng() * 0.5;
-          _puffO.life = 1.1 + rng() * 0.6;
-          _puffO.size0 = 0.25; _puffO.size1 = 1.0 + rng() * 0.5;
-          _puffO.rotVel = (rng() - 0.5) * 2;
-          col3(0x45403a, _puffO.col0); col3(0x6e6a61, _puffO.col1);
-          _puffO.alpha = 0.4; _puffO.grav = 0.5; _puffO.birthOffset = bo + ts + 0.1;
-          particles.emit('smoke', _puffO);
-        }
-        break;
-      }
+      if (fullHot) emitHotChunkTrail(pos, cy, gy, dvx, dvy, dvz, bo);
+      emitChunkLanding(pos, cy, gy, dvx, dvy, dvz, bo, life, scale, fullHot);
     }
-    // large chunks with smoke trails (sampled along the same drag
-    // trajectory the debris shader integrates: k = 0.12, g = -21.6)
-    // r7: rack 3 -> 5 — the signature detonation needs more than a couple of
-    // readable smoking slabs at the 20 m kill framing.
-    for (let i = 0; i < (rack ? 5 : (burn ? 0 : 2)); i++) {
+  }
+
+  function emitDestructionLargeChunks(
+    pos: THREE.Vector3,
+    gy: number,
+    cy: number,
+    rack: boolean,
+    burn: boolean,
+    birthOffset: number,
+  ): void {
+    const count = rack ? 5 : (burn ? 0 : 2);
+    for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.5;
       const vx = Math.cos(a) * Math.sin(tilt) * 14;
@@ -2835,30 +2766,35 @@ export function createFx(
         particles.emit('smoke', _puffO);
       }
     }
-    // one heavy hatch slab arcing high (the REAL turret pops via
-    // visual.setDestroyed's physics arc — see tankFactory). Rack kills only.
-    // r6: vy 14-22 -> 9-13 — the slab out-flew the (now lower) turret toss
-    // and read as a lone black speck against the sky ("distant bird").
-    if (rack) {
-      _debO.pos[0] = pos.x; _debO.pos[1] = cy + 0.6; _debO.pos[2] = pos.z;
-      _debO.vel[0] = (rng() - 0.5) * 6; _debO.vel[1] = 9 + rng() * 4; _debO.vel[2] = (rng() - 0.5) * 6;
-      _debO.life = 2.6; _debO.scale = 0.45 + rng() * 0.2; _debO.spin = 5 + rng() * 6;
-      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = 0.2; _debO.axis[2] = rng() - 0.5;
-      _debO.groundY = gy; _debO.hot = true; _debO.seed = rng(); _debO.birthOffset = birthOffset;
-      particles.emit('debris', _debO);
-    }
-    // settling dust: a delayed low blanket that drifts in AFTER the fireball
-    // dies (positive birthOffset relative to the blast = future birth).
-    // r2 anti-static: lifted from gy+0.35 (grass-root level — per-blade
-    // interleave static) to just over the blade tops, dimmer + larger.
-    // Deferred off the blast frame live (kill-hitch budget).
-    deferBatch(0.06, () => {
+  }
+
+  function emitDestructionHatchSlab(
+    pos: THREE.Vector3,
+    gy: number,
+    cy: number,
+    birthOffset: number,
+  ): void {
+    _debO.pos[0] = pos.x; _debO.pos[1] = cy + 0.6; _debO.pos[2] = pos.z;
+    _debO.vel[0] = (rng() - 0.5) * 6; _debO.vel[1] = 9 + rng() * 4; _debO.vel[2] = (rng() - 0.5) * 6;
+    _debO.life = 2.6; _debO.scale = 0.45 + rng() * 0.2; _debO.spin = 5 + rng() * 6;
+    _debO.axis[0] = rng() - 0.5; _debO.axis[1] = 0.2; _debO.axis[2] = rng() - 0.5;
+    _debO.groundY = gy; _debO.hot = true; _debO.seed = rng(); _debO.birthOffset = birthOffset;
+    particles.emit('debris', _debO);
+  }
+
+  function scheduleDestructionSettlingDust(
+    posX: number,
+    posZ: number,
+    gy: number,
+    birthOffset: number,
+  ): void {
+    deferFxBatch(birthOffset, 0.06, () => {
       for (let i = 0; i < 12; i++) {
         const a = rng() * Math.PI * 2;
         const d = 1.5 + rng() * 3.5;
-        _puffO.pos[0] = _dpx + Math.cos(a) * d;
+        _puffO.pos[0] = posX + Math.cos(a) * d;
         _puffO.pos[1] = gy + 1.0;
-        _puffO.pos[2] = _dpz + Math.sin(a) * d;
+        _puffO.pos[2] = posZ + Math.sin(a) * d;
         _puffO.vel[0] = Math.cos(a) * (0.5 + rng() * 0.6);
         _puffO.vel[1] = 0.25 + rng() * 0.3;
         _puffO.vel[2] = Math.sin(a) * (0.5 + rng() * 0.6);
@@ -2871,31 +2807,24 @@ export function createFx(
         particles.emit('dust', _puffO);
       }
     });
-    // explosion light + persistent smoke column + burnt hull swap. Light sits
-    // 2.4 m above the hull: warm falloff over wreck/terrain without nuking
-    // the hull albedo to flat orange.
-    flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
-      EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
-    // INSTANT dark smoke stalk (r7 distant-kill readability): a column of
-    // dense near-black puffs already standing 4-14 m over the wreck at the
-    // moment of the blast, so a 200-400 m kill shows a rising black marker
-    // instead of waiting ~8 s for the slow column puffs to climb.
-    for (let i = 0; i < (burn ? 6 : 14); i++) {
+  }
+
+  function emitDestructionSmokeStalk(
+    pos: THREE.Vector3,
+    cy: number,
+    burn: boolean,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    const count = burn ? 6 : 14;
+    for (let i = 0; i < count; i++) {
       const h = (i / 12) * 12 + rng() * 2;
-      // r1: the stalk LEANS downwind from birth (0.30 m of x-drift per meter
-      // of height) — a dead-vertical stub hid exactly behind the fireball
-      // from the hero framing; the lean silhouettes it beside the flame mass
       _puffO.pos[0] = pos.x + COLUMN_WIND_X * h * 0.30 + (rng() - 0.5) * (1.3 + h * 0.18);
       _puffO.pos[1] = cy + 1.5 + h;
       _puffO.pos[2] = pos.z + COLUMN_WIND_Z * h * 0.30 + (rng() - 0.5) * (1.3 + h * 0.18);
-      // wind shear grows with height so the stalk bends the same way the
-      // persistent column does (r5: straight stalk vs drifting column sheared
-      // the two masses apart into a detached blob)
       _puffO.vel[0] = COLUMN_WIND_X * (0.3 + h * 0.09) + (rng() - 0.5) * 0.9;
       _puffO.vel[1] = 3.0 + rng() * 2.0;
       _puffO.vel[2] = COLUMN_WIND_Z * (0.3 + h * 0.09) + (rng() - 0.5) * 0.9;
-      // r2: 3-4.8 s (was 5-8) + lifted albedo — the stalk seeds the marker,
-      // then hands off to the continuously-fed column (static-blob fix)
       _puffO.life = 3.0 + rng() * 1.8;
       _puffO.size0 = (2.0 + rng() * 1.0 + h * 0.10) * dk;
       _puffO.size1 = (6.0 + rng() * 2.5 + h * 0.22) * dk;
@@ -2903,20 +2832,20 @@ export function createFx(
       if (i % 3 === 2) { col3(0x423e38, _puffO.col0); col3(0x736f68, _puffO.col1); }
       else { col3(0x332e29, _puffO.col0); col3(0x5f5a52, _puffO.col1); }
       _puffO.alpha = 0.55 + rng() * 0.15; _puffO.grav = 1.0;
-      // r1 hero-frame fix: the stalk is BACKDATED (-1.1 s at the deck rising
-      // to -0.3 s at the crown) so a readable dark column already stands over
-      // the wreck at the spectacle moment — the staged explosion.png used to
-      // promise "smoke column" and show none, and live kills had a 2.5-4 s
-      // smoke lull while the old +0.4 s future births were still fading in.
       _puffO.birthOffset = birthOffset - 1.1 + (h / 14) * 0.8;
       particles.emit('smoke', _puffO);
     }
-    // fire-to-smoke bridge: dense deck-level puffs whose births SPAN the
-    // window from the blast itself through the fireball's death (-0.35 s to
-    // +2.5 s), so (a) the composed hero frame catches fresh dark smoke low
-    // around the fire and (b) the column never detaches from the burning
-    // hull during the live handoff (r1: "2.5-4 s lull").
-    for (let i = 0; i < (burn ? 5 : 10); i++) {
+  }
+
+  function emitDestructionSmokeBridge(
+    pos: THREE.Vector3,
+    cy: number,
+    burn: boolean,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    const count = burn ? 5 : 10;
+    for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
       _puffO.pos[1] = cy + 0.6 + rng() * 1.6;
@@ -2928,16 +2857,22 @@ export function createFx(
       _puffO.size0 = (1.8 + rng() * 0.8) * dk; _puffO.size1 = (5.4 + rng() * 2.2) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.4;
       if (i % 3 === 2) { col3(0x3d3934, _puffO.col0); col3(0x6e6a63, _puffO.col1); }
-      else { col3(0x363029, _puffO.col0); col3(0x615b52, _puffO.col1); } // r2 albedo floor
+      else { col3(0x363029, _puffO.col0); col3(0x615b52, _puffO.col1); }
       _puffO.alpha = 0.6 + rng() * 0.14; _puffO.grav = 1.0;
       _puffO.birthOffset = birthOffset - 0.35 + (i / 9) * 2.85 + rng() * 0.25;
       particles.emit('smoke', _puffO);
     }
-    // instant eruption skirt: heavy black smoke bursting out WITH the
-    // fireball, hugging its flanks low over the hull — this is the dark mass
-    // the hero frame (and the first live second) reads as "smoke column
-    // being born", before the stalk/column take over.
-    for (let i = 0; i < (burn ? 4 : 8); i++) {
+  }
+
+  function emitDestructionEruptionSkirt(
+    pos: THREE.Vector3,
+    cy: number,
+    burn: boolean,
+    dk: number,
+    birthOffset: number,
+  ): void {
+    const count = burn ? 4 : 8;
+    for (let i = 0; i < count; i++) {
       const a = (i / 8) * Math.PI * 2 + rng() * 0.7;
       const r = 1.3 + rng() * 1.3;
       _puffO.pos[0] = pos.x + Math.cos(a) * r;
@@ -2950,21 +2885,108 @@ export function createFx(
       _puffO.size0 = (2.0 + rng() * 0.8) * dk; _puffO.size1 = (5.0 + rng() * 1.8) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
       if (i % 3 === 2) { col3(0x403c36, _puffO.col0); col3(0x716d66, _puffO.col1); }
-      else { col3(0x332e27, _puffO.col0); col3(0x5c584f, _puffO.col1); } // r2 albedo floor
+      else { col3(0x332e27, _puffO.col0); col3(0x5c584f, _puffO.col1); }
       _puffO.alpha = 0.68 + rng() * 0.12; _puffO.grav = 1.1;
       _puffO.birthOffset = birthOffset + 0.05 + rng() * 0.3;
       particles.emit('smoke', _puffO);
     }
+  }
+
+  function finalizeDestroyedVisual(
+    visual: FxVisual | null,
+    rack: boolean,
+    birthOffset: number,
+  ): void {
+    if (!visual) return;
+    impactDecals.clearVehicle(visual);
+    const delay = 0.15 + birthOffset;
+    if (delay <= 0) visual.setDestroyed({ pop: rack, ageS: -delay });
+    else timers.push({ t: delay, fn: () => visual.setDestroyed({ pop: rack }) });
+  }
+
+  /**
+   * Full vehicle destruction sequence, optionally backdated (composer).
+   * `cause` varies the spectacle so kills stop reading as one canned clip:
+   *  - 'ammorack': the full turret-toss detonation (geyser, hatch jets, max
+   *    debris) — the rare spectacular;
+   *  - 'shot': plain HP kill — solid fireball but no rack geyser, fewer
+   *    debris, turret stays seated (gun droop + hatch smoke);
+   *  - 'fire': burn-out — flashover whoosh + heavy smoke, almost no debris.
+   */
+  function spawnDestruction(
+    pos: THREE.Vector3,
+    visual: FxVisual | null,
+    birthOffset = 0,
+    cause: DestructionCause = 'ammorack',
+  ): void {
+    const rack = cause === 'ammorack';
+    const burn = cause === 'fire';
+    const gy = groundY(pos.x, pos.z);
+    const cy = Math.max(pos.y, gy) + 1.2;
+    // distance-compensated spectacle (r7: a 244 m kill read as a ~40 px
+    // orange puff) — scale the big volumetric cards up with camera distance
+    const dk = distBoost(pos.x, cy, pos.z);
+    emitDestructionFlash(pos, cy, burn, dk, birthOffset);
+    const fireS = emitDestructionFireball(pos, cy, rack, burn, dk, birthOffset);
+    // r2 SPAWN-FRAME BUDGET: batches whose particles are born in the FUTURE
+    // (positive birthOffset) don't need to be written on the blast frame —
+    // live kills stagger them over the next few frames via the timer queue
+    // (the single-frame emit burst was part of the 55->26 fps kill hitch).
+    // Composed/backdated captures still spawn synchronously.
+    scheduleDestructionSmokeTakeover(pos.x, pos.z, cy, fireS, dk, birthOffset);
+    emitDestructionInteriorSmoke(pos, cy, birthOffset);
+    emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);
+    // rolling black smoke cap + buoyant column starters. Backdated 0.25 s so
+    // the fade-in is already complete when the composer freezes at 0.6 s (and
+    // live, thick smoke erupts with the fireball instead of trailing it).
+    // r7 (critic: "the fire column caps in discrete soot-chip stipple instead
+    // of rolling smoke"): the cap cards spawn BIGGER (size0 up ~60%) in a
+    // tighter footprint so neighbours overlap from birth into one rolling
+    // mass, and they inherit the column's upward velocity.
+    emitDestructionSmokeCap(pos, cy, dk, birthOffset);
+    // shockwave dust ring on the ground — fast, clearly expanding, but
+    // ORGANIC: jittered radius/angle/size and ~30% of slots dropped so the
+    // ring never resolves into evenly spaced puffs on a perfect circle (r5)
+    // r2 ANTI-STATIC: the ring rode at gy+0.45 — waist-deep INSIDE the grass
+    // blade band, so every card interleaved with alpha-tested blades into
+    // per-pixel TV static across ~40% of the frame for the 2 s dust window
+    // (THE r2 critical). The wave now skims the grass TOPS (gy+1.1), runs
+    // bigger and dimmer cards (same total mass, no per-blade contrast), and
+    // its silhouette reads against terrain instead of through the meadow.
+    emitDestructionShockAndSparks(pos, gy, cy, rack, burn, birthOffset);
+    emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset);
+    emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset);
+    if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
+    // settling dust: a delayed low blanket that drifts in AFTER the fireball
+    // dies (positive birthOffset relative to the blast = future birth).
+    // r2 anti-static: lifted from gy+0.35 (grass-root level — per-blade
+    // interleave static) to just over the blade tops, dimmer + larger.
+    // Deferred off the blast frame live (kill-hitch budget).
+    scheduleDestructionSettlingDust(pos.x, pos.z, gy, birthOffset);
+    // explosion light + persistent smoke column + burnt hull swap. Light sits
+    // 2.4 m above the hull: warm falloff over wreck/terrain without nuking
+    // the hull albedo to flat orange.
+    flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
+      EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
+    // INSTANT dark smoke stalk (r7 distant-kill readability): a column of
+    // dense near-black puffs already standing 4-14 m over the wreck at the
+    // moment of the blast, so a 200-400 m kill shows a rising black marker
+    // instead of waiting ~8 s for the slow column puffs to climb.
+    emitDestructionSmokeStalk(pos, cy, burn, dk, birthOffset);
+    // fire-to-smoke bridge: dense deck-level puffs whose births SPAN the
+    // window from the blast itself through the fireball's death (-0.35 s to
+    // +2.5 s), so (a) the composed hero frame catches fresh dark smoke low
+    // around the fire and (b) the column never detaches from the burning
+    // hull during the live handoff (r1: "2.5-4 s lull").
+    emitDestructionSmokeBridge(pos, cy, burn, dk, birthOffset);
+    // instant eruption skirt: heavy black smoke bursting out WITH the
+    // fireball, hugging its flanks low over the hull — this is the dark mass
+    // the hero frame (and the first live second) reads as "smoke column
+    // being born", before the stalk/column take over.
+    emitDestructionEruptionSkirt(pos, cy, burn, dk, birthOffset);
     columns.push({ key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
     capColumns();
-    if (visual) {
-      // scarring dies with the vehicle — and must be OFF the hierarchy
-      // before setDestroyed's burn-material traverse walks it
-      impactDecals.clearVehicle(visual);
-      const delay = 0.15 + birthOffset; // birthOffset ≤ 0 when backdated
-      if (delay <= 0) visual.setDestroyed({ pop: rack, ageS: -delay });
-      else timers.push({ t: delay, fn: () => visual.setDestroyed({ pop: rack }) });
-    }
+    finalizeDestroyedVisual(visual, rack, birthOffset);
   }
 
   /** Camera-distance size compensation so kills stay legible at 200-400 m. */
@@ -3146,6 +3168,989 @@ export function createFx(
 
   const _due: FxTimer[] = []; // reused timer-fire scratch (cleared after each use)
 
+  function advanceFxClock(): number {
+    const nowClockS = particles.getTime();
+    let tickDt = nowClockS - lastTickS;
+    lastTickS = nowClockS;
+    if (!(tickDt > 0)) return 0;
+    return Math.min(tickDt, 8);
+  }
+
+  function syncColumnAnchors(resolveSubject: ((id: string) => FxEntity | null) | null): void {
+    if (!columns.length || !resolveSubject) return;
+    for (const col of columns) {
+      if (col.key == null) continue;
+      const subject = resolveSubject(col.key);
+      col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
+    }
+  }
+
+  function updateClockDrivenLights(): void {
+    for (const st of lightStates) applyLight(st);
+    for (const ring of shockRings) applyShockRing(ring);
+    for (const ring of muzzleRings) applyMuzzleRing(ring);
+  }
+
+  function sweepImpactDecals(dt: number): void {
+    decalSweepAcc += dt;
+    if (decalSweepAcc <= 1.4) return;
+    decalSweepAcc = 0;
+    impactDecals.sweep();
+  }
+
+  function updateWreckLight(): void {
+    if (replaySuppressed) return;
+    const explosionState = lightStates[1];
+    if (lightAge(explosionState) >= explosionState.dur && columns.length) {
+      const col = columns[columns.length - 1];
+      explosionLight.position.set(col.pos[0], col.pos[1] + 2.6, col.pos[2]);
+      explosionLight.distance = 12;
+      const time = particles.getTime();
+      explosionLight.intensity = (
+        9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
+      ) * col.scale;
+      return;
+    }
+    if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== 13) {
+      explosionLight.distance = 13;
+    }
+  }
+
+  function advanceTimers(tickDt: number): void {
+    if (!timers.length) return;
+    _due.length = 0;
+    for (const timer of timers) {
+      timer.t -= tickDt;
+      if (timer.t <= 0) _due.push(timer);
+    }
+    if (!_due.length) return;
+    let live = 0;
+    for (const timer of timers) if (timer.t > 0) timers[live++] = timer;
+    timers.length = live;
+    if (!replaySuppressed) for (const timer of _due) timer.fn();
+    _due.length = 0;
+  }
+
+  function advanceActiveColumn(col: SmokeColumn, tickDt: number): void {
+    col.ttl -= tickDt;
+    if (col.ttl <= 0) {
+      col.ttl = 0;
+      col.smolder = SMOKE_SMOLDER_S;
+      col.acc = 0;
+      return;
+    }
+    if (replaySuppressed) {
+      col.acc = 0;
+      return;
+    }
+    col.acc += tickDt;
+    while (col.acc >= COLUMN_TICK_S) {
+      col.acc -= COLUMN_TICK_S;
+      emitColumnPuff(col, -col.acc);
+    }
+  }
+
+  function advanceSmolderColumn(col: SmokeColumn, tickDt: number): boolean {
+    col.smolder = (col.smolder === undefined ? SMOKE_SMOLDER_S : col.smolder) - tickDt;
+    if (col.smolder <= 0) return false;
+    if (replaySuppressed) {
+      col.acc = 0;
+      return true;
+    }
+    col.acc += tickDt;
+    while (col.acc >= 0.45) {
+      col.acc -= 0.45;
+      emitSmolderPuff(col, -col.acc);
+    }
+    return true;
+  }
+
+  function compactSmokeColumns(): void {
+    let live = 0;
+    for (const col of columns) {
+      if (col.ttl > 0 || (col.smolder ?? 0) > 0) columns[live++] = col;
+    }
+    columns.length = live;
+  }
+
+  function advanceSmokeColumns(tickDt: number): void {
+    if (!columns.length) return;
+    let compact = false;
+    for (const col of columns) {
+      if (col.ttl > 0) advanceActiveColumn(col, tickDt);
+      else if (!advanceSmolderColumn(col, tickDt)) compact = true;
+    }
+    if (compact) compactSmokeColumns();
+  }
+
+  function advanceTimedFx(tickDt: number): void {
+    if (!(tickDt > 0)) return;
+    advanceTimers(tickDt);
+    advanceSmokeColumns(tickDt);
+  }
+
+  function initialSweepTail(shell: LiveShell): [number, number, number] {
+    const source = shell.prevPos ?? shell.pos;
+    return [source.x, source.y, source.z];
+  }
+
+  function sweepShellsThroughProps(shells: LiveShell[]): void {
+    if (frozen) return;
+    _sweepSeen.clear();
+    for (let index = 0; index < shells.length; index++) {
+      const shell = shells[index];
+      if (!shell.pos || shell.id == null) continue;
+      _sweepSeen.add(shell.id);
+      if (shell.dead) continue;
+      let tail = sweepTails.get(shell.id);
+      if (!tail) {
+        tail = initialSweepTail(shell);
+        sweepTails.set(shell.id, tail);
+      }
+      const dx = shell.pos.x - tail[0];
+      const dy = shell.pos.y - tail[1];
+      const dz = shell.pos.z - tail[2];
+      if (dx * dx + dy * dy + dz * dz > 1e-6) {
+        notifyShellSweep(tail[0], tail[1], tail[2], shell.pos.x, shell.pos.y, shell.pos.z);
+      }
+      tail[0] = shell.pos.x;
+      tail[1] = shell.pos.y;
+      tail[2] = shell.pos.z;
+    }
+    for (const id of sweepTails.keys()) if (!_sweepSeen.has(id)) sweepTails.delete(id);
+  }
+
+  let liveAtgmCount = 0;
+
+  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
+    const shellPos = shell.pos;
+    if (liveAtgmCount < MAX_ATGM_BODIES) {
+      _atgmObject.position.copy(shellPos).addScaledVector(_v1, -0.65);
+      _atgmObject.quaternion.setFromUnitVectors(_Z, _v1);
+      _atgmObject.scale.set(1, 1, 1);
+      _atgmObject.updateMatrix();
+      atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
+      _atgmFlareObject.position.copy(shellPos).addScaledVector(_v1, -1.35);
+      _atgmFlareObject.quaternion.identity();
+      _atgmFlareObject.scale.setScalar(1.15);
+      _atgmFlareObject.updateMatrix();
+      atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
+      liveAtgmCount++;
+    }
+
+    let trail = guidedTrails.get(shell.id);
+    if (!trail) {
+      trail = {
+        points: new Float32Array(ATGM_TRAIL_POINTS * 3),
+        count: 0,
+        age: 0,
+        seen: true,
+      };
+      guidedTrails.set(shell.id, trail);
+      if (shell.prevPos) appendGuidedTrailPoint(
+        trail, shell.prevPos.x, shell.prevPos.y, shell.prevPos.z,
+      );
+    }
+    trail.age = 0;
+    trail.seen = true;
+    appendGuidedTrailPoint(trail, shellPos.x, shellPos.y, shellPos.z);
+    return writeGuidedTrail(trail, tracerIndex);
+  }
+
+  function writeShellBolt(
+    shell: LiveShell,
+    camera: THREE.Camera,
+    preset: (typeof TRACER_PRESETS)[keyof typeof TRACER_PRESETS],
+    guided: boolean,
+    tracerIndex: number,
+  ): number {
+    const shellPos = shell.pos;
+    col3(preset.core, _coreArr);
+    col3(preset.glow, _glowArr);
+    let widthScale = shell.isPlayer ? 1 : 1.7;
+    let brightness = shell.isPlayer ? 1.15 : 1.5;
+    _camV.copy(shellPos).sub(camera.position);
+    const cameraDistance = _camV.length();
+    if (cameraDistance > 1e-4) {
+      const alignment = THREE.MathUtils.smoothstep(
+        Math.abs(_camV.dot(_v1)) / cameraDistance,
+        0.9,
+        0.995,
+      );
+      widthScale *= 1 + 2.6 * alignment;
+      brightness *= 1 + 0.9 * alignment;
+    }
+    const width = Math.min(preset.width * widthScale, 0.15);
+    writeTracer(
+      tracerIndex,
+      _v2.x, _v2.y, _v2.z,
+      shellPos.x, shellPos.y, shellPos.z,
+      width,
+      brightness,
+      guided ? _atgmCore : _coreArr,
+      guided ? _atgmGlow : _glowArr,
+      guided ? 1 : 0,
+    );
+    if (!guided) rememberShellTrail(shell, width, brightness);
+    return tracerIndex + 1;
+  }
+
+  function rememberShellTrail(shell: LiveShell, width: number, brightness: number): void {
+    let trail = trails.get(shell.id);
+    if (!trail) {
+      trail = { d: new Float32Array(14), age: 0, seen: true };
+      trails.set(shell.id, trail);
+    }
+    trail.age = 0;
+    trail.seen = true;
+    const data = trail.d;
+    data[0] = _v2.x;
+    data[1] = _v2.y;
+    data[2] = _v2.z;
+    data[3] = shell.pos.x;
+    data[4] = shell.pos.y;
+    data[5] = shell.pos.z;
+    data[6] = width * 1.3;
+    data[7] = brightness * 0.16;
+    data[8] = 0.45 + _coreArr[0] * 0.25;
+    data[9] = 0.44 + _coreArr[1] * 0.25;
+    data[10] = 0.43 + _coreArr[2] * 0.25;
+    data[11] = 0.30 + _glowArr[0] * 0.25;
+    data[12] = 0.30 + _glowArr[1] * 0.25;
+    data[13] = 0.30 + _glowArr[2] * 0.25;
+  }
+
+  function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
+    let tracerCount = 0;
+    liveAtgmCount = 0;
+    renderedAtgmTrailSegments = 0;
+    for (const trail of guidedTrails.values()) trail.seen = false;
+    for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
+      const shell = shells[index];
+      if (shell.dead) continue;
+      const guided = !!shell.spec?.guided;
+      const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
+      const preset = TRACER_PRESETS[tracerId ?? 'AP'];
+      const speed = shell.vel.length();
+      const length = Math.min(
+        THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
+        Math.max(shell.distM || 0, 0.08),
+      );
+      _v1.copy(shell.vel).normalize();
+      _v2.copy(shell.pos).addScaledVector(_v1, -length);
+      if (guided) {
+        tracerCount = writeGuidedShell(shell, tracerCount);
+        if (tracerCount >= MAX_TRACERS) continue;
+      }
+      tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount);
+    }
+    return tracerCount;
+  }
+
+  function commitAtgmInstances(): void {
+    atgmBodies.count = liveAtgmCount;
+    atgmFlares.count = liveAtgmCount;
+    renderedAtgmBodies = liveAtgmCount;
+    if (liveAtgmCount > 0 || atgmBodies.userData.lastCount > 0) {
+      atgmBodies.instanceMatrix.needsUpdate = true;
+      atgmFlares.instanceMatrix.needsUpdate = true;
+    }
+    atgmBodies.userData.lastCount = liveAtgmCount;
+  }
+
+  function writeGuidedTrailAfterglow(tracerCount: number, tickDt: number): number {
+    for (const [id, trail] of guidedTrails) {
+      if (trail.seen) continue;
+      trail.age += tickDt;
+      if (trail.age >= ATGM_TRAIL_S) {
+        guidedTrails.delete(id);
+        continue;
+      }
+      const fade = 1 - trail.age / ATGM_TRAIL_S;
+      tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
+    }
+    return tracerCount;
+  }
+
+  function writeShellTrailAfterglow(tracerCount: number, tickDt: number): number {
+    for (const [id, trail] of trails) {
+      if (trail.seen) {
+        trail.seen = false;
+        continue;
+      }
+      trail.age += tickDt;
+      if (trail.age >= TRAIL_S) {
+        trails.delete(id);
+        continue;
+      }
+      if (tracerCount >= MAX_TRACERS) continue;
+      const fade = 1 - trail.age / TRAIL_S;
+      const data = trail.d;
+      _trailCore[0] = data[8];
+      _trailCore[1] = data[9];
+      _trailCore[2] = data[10];
+      _trailGlow[0] = data[11];
+      _trailGlow[1] = data[12];
+      _trailGlow[2] = data[13];
+      writeTracer(
+        tracerCount++,
+        data[0], data[1], data[2],
+        data[3], data[4], data[5],
+        data[6], data[7] * fade * fade,
+        _trailCore, _trailGlow,
+      );
+    }
+    return tracerCount;
+  }
+
+  function writeStaticTracerAfterglow(tracerCount: number): number {
+    const nowS = particles.getTime();
+    for (let index = 0; index < staticTracers.length && tracerCount < MAX_TRACERS; index++) {
+      const tracer = staticTracers[index];
+      const age = tracer.length > 14 ? nowS - tracer[14] : 0;
+      const fade = 1 - THREE.MathUtils.smoothstep(age, 0.3, 0.9);
+      if (fade <= 0.001) continue;
+      _trailCore[0] = tracer[8];
+      _trailCore[1] = tracer[9];
+      _trailCore[2] = tracer[10];
+      _trailGlow[0] = tracer[11];
+      _trailGlow[1] = tracer[12];
+      _trailGlow[2] = tracer[13];
+      writeTracer(
+        tracerCount++,
+        tracer[0], tracer[1], tracer[2],
+        tracer[3], tracer[4], tracer[5],
+        tracer[6], tracer[7] * fade,
+        _trailCore,
+        _trailGlow,
+      );
+    }
+    return tracerCount;
+  }
+
+  function commitTracerInstances(tracerCount: number): void {
+    tracerGeo.instanceCount = tracerCount;
+    if (tracerCount > 0 || tracerGeo._lastCount !== 0) {
+      for (const attribute of tracerAttrs) attribute.needsUpdate = true;
+    }
+    tracerGeo._lastCount = tracerCount;
+  }
+
+  function emitWetTrackDust(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    intensity: number,
+    waterMask: number,
+  ): void {
+    if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
+    if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
+    const gy = groundY(pos.x, pos.z);
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.45;
+    _puffO.pos[1] = Math.max(pos.y, gy) + 0.20 + waterMask * 0.16;
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.45;
+    _puffO.vel[0] = -dir.x * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
+    _puffO.vel[1] = 1.15 + intensity * 1.55 + rng() * 0.65;
+    _puffO.vel[2] = -dir.z * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
+    _puffO.life = 0.34 + rng() * 0.30;
+    _puffO.size0 = 0.10 + intensity * 0.10;
+    _puffO.size1 = 0.42 + intensity * 0.54;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 2.2;
+    col3(0xd8e2dc, _puffO.col0);
+    col3(0x8ca9aa, _puffO.col1);
+    _puffO.alpha = (0.12 + intensity * 0.17) * (0.55 + waterMask * 0.45);
+    _puffO.grav = -0.85;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+    if (rng() >= 0.82) return;
+    _strkO.pos[0] = pos.x + (rng() - 0.5) * 0.35;
+    _strkO.pos[1] = Math.max(pos.y, gy) + 0.22;
+    _strkO.pos[2] = pos.z + (rng() - 0.5) * 0.35;
+    _strkO.vel[0] = (rng() - 0.5) * 2.4 - dir.x * intensity;
+    _strkO.vel[1] = 2.1 + rng() * 2.2;
+    _strkO.vel[2] = (rng() - 0.5) * 2.4 - dir.z * intensity;
+    _strkO.life = 0.25 + rng() * 0.24;
+    _strkO.width = 0.018 + rng() * 0.012;
+    _strkO.stretch = 0.022;
+    _strkO.grav = -13.5;
+    col3(0xb7d0cf, _strkO.col);
+    _strkO.alpha = 0.34 + rng() * 0.20;
+    _strkO.seed = rng();
+    _strkO.birthOffset = 0;
+    particles.emit('sparks', _strkO);
+  }
+
+  function drySurfaceMultiplier(groundType: string): number {
+    if (groundType === 'hard') return 1.5;
+    if (groundType === 'soft') return 1.2;
+    return 1.9;
+  }
+
+  let dustSizeCap = 1;
+  let dustAlphaCap = 1;
+  let dustColor0 = 0xa8a189;
+  let dustColor1 = 0x8e8a6c;
+
+  function updateDustCameraCaps(pos: THREE.Vector3): void {
+    let cameraFactor = 1;
+    const camera = engineCtx.camera;
+    if (camera) {
+      _camV.set(pos.x, pos.y, pos.z).sub(camera.position);
+      cameraFactor = THREE.MathUtils.clamp((_camV.length() - 6) / 12, 0, 1);
+    }
+    dustSizeCap = 0.62 + 0.38 * cameraFactor;
+    dustAlphaCap = 0.55 + 0.45 * cameraFactor;
+  }
+
+  function updateDryDustColors(groundType: string): void {
+    if (groundType === 'hard') {
+      dustColor0 = 0xa79d8c;
+      dustColor1 = 0x8f887b;
+      return;
+    }
+    if (groundType === 'soft') {
+      dustColor0 = 0x6d675a;
+      dustColor1 = 0x5c574c;
+      return;
+    }
+    dustColor0 = 0xa8a189;
+    dustColor1 = 0x8e8a6c;
+  }
+
+  function emitTrackKick(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    intensity: number,
+    groundType: string,
+    gy: number,
+  ): void {
+    const kickRate = groundType === 'hard' ? 0.5 : 0.45;
+    if (rng() >= kickRate) return;
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+    _puffO.pos[1] = Math.max(pos.y, gy) + (groundType === 'hard' ? 0.35 : 0.7);
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+    _puffO.vel[0] = -dir.x * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
+    _puffO.vel[1] = 1.6 + rng() * 1.6 * intensity;
+    _puffO.vel[2] = -dir.z * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
+    _puffO.life = 0.8 + rng() * 0.5;
+    _puffO.size0 = 0.35;
+    _puffO.size1 = 1.3 + intensity * 1.1;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 3;
+    if (groundType === 'hard') {
+      col3(dustColor0, _puffO.col0);
+      col3(dustColor1, _puffO.col1);
+    } else {
+      col3(0x57513f, _puffO.col0);
+      col3(0x655e4c, _puffO.col1);
+    }
+    _puffO.alpha = (0.28 + 0.28 * intensity) * dustAlphaCap;
+    _puffO.grav = -1.2;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+    if (groundType === 'hard' || rng() >= 0.55) return;
+    _debO.pos[0] = pos.x;
+    _debO.pos[1] = Math.max(pos.y, gy) + 0.5;
+    _debO.pos[2] = pos.z;
+    _debO.vel[0] = -dir.x * (4 + rng() * 4) + (rng() - 0.5) * 2;
+    _debO.vel[1] = 2.5 + rng() * 3 * intensity;
+    _debO.vel[2] = -dir.z * (4 + rng() * 4) + (rng() - 0.5) * 2;
+    _debO.life = 0.9;
+    _debO.scale = 0.05 + rng() * 0.05;
+    _debO.spin = 12 + rng() * 14;
+    _debO.axis[0] = rng() - 0.5;
+    _debO.axis[1] = rng() - 0.5;
+    _debO.axis[2] = rng() - 0.5;
+    _debO.groundY = gy;
+    _debO.hot = false;
+    _debO.seed = rng();
+    _debO.birthOffset = 0;
+    particles.emit('debris', _debO);
+  }
+
+  function emitDryTrackWake(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    intensity: number,
+    groundType: string,
+    gy: number,
+    surfaceMultiplier: number,
+    sizeVariation: number,
+    alphaVariation: number,
+  ): void {
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.6;
+    _puffO.pos[1] = Math.max(pos.y, gy) + (groundType === 'hard' ? 0.55 : 0.95) + rng() * 0.35;
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
+    const inheritedSpeed = intensity * 2.4;
+    _puffO.vel[0] = dir.x * inheritedSpeed - dir.x * (1.5 + rng() * 1.8)
+      + (rng() - 0.5) * 1.3 + COLUMN_WIND_X * 0.55;
+    _puffO.vel[1] = 0.9 + (1.4 + rng() * 1.3) * intensity;
+    _puffO.vel[2] = dir.z * inheritedSpeed - dir.z * (1.5 + rng() * 1.8)
+      + (rng() - 0.5) * 1.3 + COLUMN_WIND_Z * 0.55;
+    _puffO.life = 3.0 + rng() * 2.6;
+    _puffO.size0 = (0.4 + intensity * 0.7) * sizeVariation;
+    _puffO.size1 = Math.min(
+      5.2,
+      (2.4 + intensity * 3.4 + rng() * 1.2)
+        * sizeVariation * Math.min(surfaceMultiplier, 1.25),
+    ) * dustSizeCap;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 2.4;
+    col3(dustColor0, _puffO.col0);
+    col3(dustColor1, _puffO.col1);
+    const maxAlpha = groundType === 'hard' ? 0.42 : 0.58;
+    const baseAlpha = groundType === 'hard'
+      ? 0.14 + 0.32 * intensity
+      : 0.26 + 0.36 * intensity;
+    _puffO.alpha = Math.min(maxAlpha, baseAlpha * alphaVariation * 1.18) * dustAlphaCap;
+    _puffO.grav = -0.10;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+  }
+
+  function emitUpperTrackWake(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    intensity: number,
+    gy: number,
+  ): void {
+    _puffO.pos[0] = pos.x - dir.x * 1.2 + (rng() - 0.5) * 0.5;
+    _puffO.pos[1] = Math.max(pos.y, gy) + 1.15 + rng() * 0.4;
+    _puffO.pos[2] = pos.z - dir.z * 1.2 + (rng() - 0.5) * 0.5;
+    _puffO.vel[0] = dir.x * intensity * 1.6 + (rng() - 0.5) + COLUMN_WIND_X * 0.6;
+    _puffO.vel[1] = 1.5 + rng() * 1.2 * intensity;
+    _puffO.vel[2] = dir.z * intensity * 1.6 + (rng() - 0.5) + COLUMN_WIND_Z * 0.6;
+    _puffO.life = 2.6 + rng() * 1.6;
+    _puffO.size0 = 0.8 + intensity * 0.5;
+    _puffO.size1 = Math.min(5.6, 3.0 + intensity * 2.6 + rng() * 1.2) * dustSizeCap;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 2.0;
+    col3(0xa8a189, _puffO.col0);
+    col3(0x8a876f, _puffO.col1);
+    _puffO.alpha = Math.min(0.56, 0.34 + 0.34 * intensity) * dustAlphaCap;
+    _puffO.grav = -0.06;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+  }
+
+  function rebaseFxClock(atTimeS: number): void {
+    const delta = atTimeS - particles.getTime();
+    if (Math.abs(delta) <= 20) return;
+    particles.shiftTime(delta);
+    for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
+    for (const state of lightStates) state.bornAt += delta;
+    for (const ring of shockRings) ring.bornAt += delta;
+    for (const ring of muzzleRings) ring.bornAt += delta;
+    const births = printBirth.array;
+    for (let index = 0; index < births.length; index++) {
+      if (births[index] > -1e8) births[index] += delta;
+    }
+    printBirth.clearUpdateRanges();
+    printBirth.addUpdateRange(0, births.length);
+    printBirth.needsUpdate = true;
+    lastTickS += delta;
+    noteFxClockShift(delta);
+  }
+
+  type PropBreakFamily =
+    | 'drumblast'
+    | 'woodbuilding'
+    | 'canvasbuilding'
+    | 'metalbuilding'
+    | 'masonry'
+    | 'sandbag'
+    | 'vehicle'
+    | 'canvas'
+    | 'ammo'
+    | 'wood'
+    | 'hay'
+    | 'barrel'
+    | 'pot'
+    | 'metal';
+
+  function propBreakFamily(kind: string): PropBreakFamily {
+    if (kind === 'drumblast') return 'drumblast';
+    if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
+    if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
+    if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
+    if (/^wall/.test(kind)) return 'masonry';
+    if (/^sandbag/.test(kind)) return 'sandbag';
+    if (/truck|jeep/.test(kind)) return 'vehicle';
+    if (kind === 'tent') return 'canvas';
+    if (kind === 'ammobox') return 'ammo';
+    if (/^fence|^gate|crate|pallet|cart|stall|bench|trough|firewood|sled|rugframe/.test(kind)) return 'wood';
+    if (/bale|stook|hay/.test(kind)) return 'hay';
+    if (kind === 'barrel') return 'barrel';
+    if (kind === 'pot') return 'pot';
+    if (/lamp|drum|churn/.test(kind)) return 'metal';
+    return 'wood';
+  }
+
+  function emitBuildingBreak(
+    family: 'woodbuilding' | 'canvasbuilding' | 'metalbuilding',
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    const canvas = family === 'canvasbuilding';
+    const metal = family === 'metalbuilding';
+    if (metal) {
+      _v3.set(pos.x, gy + Math.min(1.8, heightM * 0.42), pos.z);
+      sparkFan(_v3, _UP, 12, 9, 1.3, 0xffc980, 0.5, 0.035, 0.045, 0, 0.14);
+    }
+    const fragmentCount = canvas ? 8 : metal ? 13 : 17;
+    for (let i = 0; i < fragmentCount; i++) {
+      const a = rng() * Math.PI * 2;
+      _debO.pos[0] = pos.x + (rng() - 0.5) * 2.8;
+      _debO.pos[1] = gy + 0.35 + rng() * Math.min(2.4, heightM * 0.55);
+      _debO.pos[2] = pos.z + (rng() - 0.5) * 2.8;
+      _debO.vel[0] = dir.x * (2.2 + rng() * 3.4) + Math.cos(a) * (1.2 + rng() * 3.5);
+      _debO.vel[1] = 2.0 + rng() * 4.2;
+      _debO.vel[2] = dir.z * (2.2 + rng() * 3.4) + Math.sin(a) * (1.2 + rng() * 3.5);
+      _debO.life = 1.5 + rng() * 0.6;
+      _debO.scale = (canvas ? 0.06 : 0.09) + rng() * (canvas ? 0.07 : 0.13);
+      _debO.spin = 8 + rng() * 18;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = metal && rng() < 0.12 ? 0.35 : 0;
+      _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+    const dustA = canvas ? 0xa89b7d : metal ? 0x777979 : 0x8a745e;
+    const dustB = canvas ? 0x82775f : metal ? 0x55595a : 0x675444;
+    for (let i = 0; i < 12; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 3.6;
+      _puffO.pos[1] = gy + 0.18 + rng() * 0.9;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 3.6;
+      _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 3.0) + dir.x * 2.0;
+      _puffO.vel[1] = 0.8 + rng() * 1.5;
+      _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 3.0) + dir.z * 2.0;
+      _puffO.life = 1.6 + rng() * 1.2;
+      _puffO.size0 = 0.75 + rng() * 0.5; _puffO.size1 = 3.2 + rng() * 2.2;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.7;
+      col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
+      _puffO.alpha = 0.42 + rng() * 0.15; _puffO.grav = -0.38; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+  }
+
+  function emitMasonryBreak(
+    kind: string,
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    const adobe = /adobe/.test(kind);
+    const dustA = adobe ? 0xa58a64 : 0x8d877b;
+    const dustB = adobe ? 0x86704f : 0x6f695e;
+    for (let i = 0; i < 15; i++) {
+      _debO.pos[0] = pos.x + (rng() - 0.5) * 1.6;
+      _debO.pos[1] = gy + 0.25 + rng() * Math.min(1.0, heightM * 0.8);
+      _debO.pos[2] = pos.z + (rng() - 0.5) * 1.6;
+      _debO.vel[0] = dir.x * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
+      _debO.vel[1] = 1.8 + rng() * 3.4;
+      _debO.vel[2] = dir.z * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
+      _debO.life = 1.5 + rng() * 0.5;
+      _debO.scale = 0.10 + rng() * 0.12;
+      _debO.spin = 8 + rng() * 14;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+    for (let i = 0; i < 11; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
+      _puffO.pos[1] = gy + 0.3 + rng() * 0.7;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
+      _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 2.4) + dir.x * 2.2;
+      _puffO.vel[1] = 1.0 + rng() * 1.5;
+      _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 2.4) + dir.z * 2.2;
+      _puffO.life = 1.6 + rng() * 1.1;
+      _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 2.8 + rng() * 1.5;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
+      col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
+      _puffO.alpha = 0.46 + rng() * 0.16; _puffO.grav = -0.42; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+  }
+
+  function emitSandbagBreak(pos: THREE.Vector3, dir: THREE.Vector3, gy: number): void {
+    for (let i = 0; i < 13; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
+      _puffO.pos[1] = gy + 0.2 + rng() * 0.5;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
+      _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.2) + dir.x * 2.6;
+      _puffO.vel[1] = 0.7 + rng() * 1.0;
+      _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.2) + dir.z * 2.6;
+      _puffO.life = 1.5 + rng() * 1.0;
+      _puffO.size0 = 0.6 + rng() * 0.4; _puffO.size1 = 2.6 + rng() * 1.4;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xa89772, _puffO.col0); col3(0x8a7b5c, _puffO.col1);
+      _puffO.alpha = 0.48 + rng() * 0.14; _puffO.grav = -0.55; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+    for (let i = 0; i < 4; i++) {
+      _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.4; _debO.pos[2] = pos.z;
+      _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
+      _debO.vel[1] = 1.6 + rng() * 2.0;
+      _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
+      _debO.life = 1.1; _debO.scale = 0.06 + rng() * 0.05; _debO.spin = 10 + rng() * 12;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+  }
+
+  function emitVehicleBreak(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    _v3.set(pos.x, gy + Math.min(1.2, heightM * 0.5), pos.z);
+    sparkFan(_v3, _UP, 14, 11, 1.2, 0xffce8a, 0.5, 0.04, 0.04, 0, 0.12);
+    for (let i = 0; i < 10; i++) {
+      _debO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
+      _debO.pos[1] = gy + 0.4 + rng() * Math.min(1.4, heightM * 0.6);
+      _debO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
+      _debO.vel[0] = dir.x * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
+      _debO.vel[1] = 2.4 + rng() * 3.6;
+      _debO.vel[2] = dir.z * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
+      _debO.life = 1.5; _debO.scale = 0.08 + rng() * 0.09; _debO.spin = 10 + rng() * 16;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = rng() < 0.2 ? 0.45 : 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+    for (let i = 0; i < 5; i++) {
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
+      _puffO.pos[1] = gy + 0.7 + rng() * 0.8;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
+      _puffO.vel[0] = (rng() - 0.5) * 1.2; _puffO.vel[1] = 1.8 + rng() * 1.6; _puffO.vel[2] = (rng() - 0.5) * 1.2;
+      _puffO.life = 0.5 + rng() * 0.3;
+      _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 1.1 + rng() * 0.5;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0xffb054, _puffO.col0); col3(0xd96a22, _puffO.col1);
+      _puffO.alpha = 0.85; _puffO.grav = 0.6; _puffO.birthOffset = 0;
+      particles.emit('fire', _puffO);
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
+      _puffO.pos[1] = gy + 0.8 + rng() * 0.8;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
+      _puffO.vel[0] = Math.cos(a) * (0.8 + rng() * 1.2) + dir.x * 1.4;
+      _puffO.vel[1] = 1.6 + rng() * 1.6;
+      _puffO.vel[2] = Math.sin(a) * (0.8 + rng() * 1.2) + dir.z * 1.4;
+      _puffO.life = 1.8 + rng() * 1.2;
+      _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 3.0 + rng() * 1.6;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+      col3(0x2e2b28, _puffO.col0); col3(0x4a4642, _puffO.col1);
+      _puffO.alpha = 0.5 + rng() * 0.15; _puffO.grav = 0.25; _puffO.birthOffset = 0;
+      particles.emit('smoke', _puffO);
+    }
+  }
+
+  function emitCanvasBreak(pos: THREE.Vector3, dir: THREE.Vector3, gy: number): void {
+    for (let i = 0; i < 9; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
+      _puffO.pos[1] = gy + 0.3 + rng() * 0.9;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
+      _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.8) + dir.x * 2.0;
+      _puffO.vel[1] = 0.9 + rng() * 1.2;
+      _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.8) + dir.z * 2.0;
+      _puffO.life = 1.3 + rng() * 0.8;
+      _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 2.0 + rng() * 1.0;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xa39676, _puffO.col0); col3(0x857a5e, _puffO.col1);
+      _puffO.alpha = 0.4 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+    for (let i = 0; i < 4; i++) {
+      _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5; _debO.pos[2] = pos.z;
+      _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
+      _debO.vel[1] = 2.0 + rng() * 2.4;
+      _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
+      _debO.life = 1.2; _debO.scale = 0.05 + rng() * 0.05; _debO.spin = 12 + rng() * 14;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+  }
+
+  function emitAmmoBreak(pos: THREE.Vector3, dir: THREE.Vector3, gy: number): void {
+    _v3.set(pos.x, gy + 0.4, pos.z);
+    sparkFan(_v3, _UP, 8, 8, 1.0, 0xffd58a, 0.4, 0.03, 0.035, 0, 0.14);
+    for (let i = 0; i < 9; i++) {
+      _debO.pos[0] = pos.x + (rng() - 0.5) * 0.6;
+      _debO.pos[1] = gy + 0.3 + rng() * 0.4;
+      _debO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
+      _debO.vel[0] = dir.x * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
+      _debO.vel[1] = 2.2 + rng() * 3.0;
+      _debO.vel[2] = dir.z * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
+      _debO.life = 1.3; _debO.scale = 0.05 + rng() * 0.06; _debO.spin = 12 + rng() * 16;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+  }
+
+  function emitDrumBlast(pos: THREE.Vector3, gy: number): void {
+    const cy = gy + 0.7;
+    spawnScorch(pos.x, pos.z, 2.4 + rng() * 0.7);
+    _puffO.pos[0] = pos.x; _puffO.pos[1] = cy + 0.4; _puffO.pos[2] = pos.z;
+    _puffO.vel[0] = 0; _puffO.vel[1] = 0.6; _puffO.vel[2] = 0;
+    _puffO.life = 0.22;
+    _puffO.size0 = 1.6; _puffO.size1 = 3.6;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xffe9b8, _puffO.col0); col3(0xffb45e, _puffO.col1);
+    _puffO.alpha = 0.95; _puffO.grav = 0; _puffO.birthOffset = 0;
+    particles.emit('flash', _puffO);
+    for (let i = 0; i < 12; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.7;
+      _puffO.pos[1] = cy + rng() * 0.7;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.7;
+      _puffO.vel[0] = Math.cos(a) * (1.6 + rng() * 2.4);
+      _puffO.vel[1] = 2.6 + rng() * 3.0;
+      _puffO.vel[2] = Math.sin(a) * (1.6 + rng() * 2.4);
+      _puffO.life = 0.5 + rng() * 0.35;
+      _puffO.size0 = 0.8 + rng() * 0.5; _puffO.size1 = 2.0 + rng() * 0.9;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
+      col3(0xffc262, _puffO.col0); col3(0xe06a1e, _puffO.col1);
+      _puffO.alpha = 0.9; _puffO.grav = 1.1; _puffO.birthOffset = 0;
+      particles.emit('fire', _puffO);
+    }
+    for (let i = 0; i < 7; i++) {
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.9;
+      _puffO.pos[1] = cy + 0.4 + rng() * 0.9;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.9;
+      _puffO.vel[0] = (rng() - 0.5) * 1.6;
+      _puffO.vel[1] = 2.2 + rng() * 2.2;
+      _puffO.vel[2] = (rng() - 0.5) * 1.6;
+      _puffO.life = 1.9 + rng() * 1.3;
+      _puffO.size0 = 1.0 + rng() * 0.6; _puffO.size1 = 3.6 + rng() * 1.8;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.4;
+      col3(0x241f1b, _puffO.col0); col3(0x45403a, _puffO.col1);
+      _puffO.alpha = 0.62; _puffO.grav = 0.35; _puffO.birthOffset = 0;
+      particles.emit('billow', _puffO);
+    }
+    _v3.set(pos.x, cy, pos.z);
+    sparkFan(_v3, _UP, 16, 15, 1.15, 0xffc274, 0.55, 0.045, 0.05, 0, 0.1);
+    for (let i = 0; i < 10; i++) {
+      const a = rng() * Math.PI * 2;
+      _debO.pos[0] = pos.x; _debO.pos[1] = cy; _debO.pos[2] = pos.z;
+      _debO.vel[0] = Math.cos(a) * (6 + rng() * 7);
+      _debO.vel[1] = 3.5 + rng() * 5;
+      _debO.vel[2] = Math.sin(a) * (6 + rng() * 7);
+      _debO.life = 1.3 + rng() * 0.5;
+      _debO.scale = 0.07 + rng() * 0.09;
+      _debO.spin = 12 + rng() * 18;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = rng() < 0.5 ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+  }
+
+  function emitHayBreak(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    for (let i = 0; i < 12; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.8;
+      _puffO.pos[1] = gy + 0.3 + rng() * Math.min(1.6, heightM * 0.7);
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.8;
+      _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8) + dir.x * 2.0;
+      _puffO.vel[1] = 0.8 + rng() * 1.4;
+      _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8) + dir.z * 2.0;
+      _puffO.life = 1.6 + rng() * 1.2;
+      _puffO.size0 = 0.5 + rng() * 0.4; _puffO.size1 = 2.0 + rng() * 1.4;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+      col3(0xb59f5e, _puffO.col0); col3(0x93804a, _puffO.col1);
+      _puffO.alpha = 0.42 + rng() * 0.14; _puffO.grav = -0.25; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+    for (let i = 0; i < 5; i++) {
+      _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5 + rng() * 0.6; _debO.pos[2] = pos.z;
+      _debO.vel[0] = dir.x * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
+      _debO.vel[1] = 1.8 + rng() * 2.2;
+      _debO.vel[2] = dir.z * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
+      _debO.life = 1.2; _debO.scale = 0.035 + rng() * 0.04; _debO.spin = 8 + rng() * 10;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+  }
+
+  function emitMetalBreak(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    _v3.set(pos.x, gy + Math.min(1.0, heightM * 0.4), pos.z);
+    sparkFan(_v3, _UP, 10, 9, 1.1, 0xffce8a, 0.45, 0.035, 0.035, 0, 0.1);
+    for (let i = 0; i < 6; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x; _puffO.pos[1] = gy + 0.3; _puffO.pos[2] = pos.z;
+      _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.6) + dir.x * 2.2;
+      _puffO.vel[1] = 0.8 + rng() * 1.0;
+      _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.6) + dir.z * 2.2;
+      _puffO.life = 1.1 + rng() * 0.7;
+      _puffO.size0 = 0.4 + rng() * 0.3; _puffO.size1 = 1.6 + rng() * 0.9;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0x6f6a60, _puffO.col0); col3(0x57534b, _puffO.col1);
+      _puffO.alpha = 0.36 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+  }
+
+  function emitWoodBreak(
+    family: 'wood' | 'barrel' | 'pot',
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    heightM: number,
+    gy: number,
+  ): void {
+    const nChip = family === 'barrel' ? 10 : family === 'pot' ? 9 : 12;
+    const chipScaleBase = family === 'barrel' ? 0.08 : family === 'pot' ? 0.04 : 0.05;
+    const chipScaleRange = family === 'barrel' ? 0.09 : family === 'pot' ? 0.05 : 0.07;
+    for (let i = 0; i < nChip; i++) {
+      _debO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+      _debO.pos[1] = gy + 0.3 + rng() * Math.min(1.1, heightM * 0.5);
+      _debO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+      _debO.vel[0] = dir.x * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
+      _debO.vel[1] = 2.2 + rng() * 3.6;
+      _debO.vel[2] = dir.z * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
+      _debO.life = 1.4; _debO.scale = chipScaleBase + rng() * chipScaleRange; _debO.spin = 12 + rng() * 18;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+    for (let i = 0; i < 7; i++) {
+      const a = rng() * Math.PI * 2;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+      _puffO.pos[1] = gy + 0.25 + rng() * 0.4;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+      _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.0) + dir.x * 2.4;
+      _puffO.vel[1] = 0.9 + rng() * 1.2;
+      _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.0) + dir.z * 2.4;
+      _puffO.life = 1.3 + rng() * 0.9;
+      _puffO.size0 = 0.45 + rng() * 0.3; _puffO.size1 = 1.9 + rng() * 1.1;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      if (family === 'pot') { col3(0x9a6a4a, _puffO.col0); col3(0x7c5238, _puffO.col1); }
+      else { col3(0x8a8271, _puffO.col0); col3(0x776f60, _puffO.col1); }
+      _puffO.alpha = 0.4 + rng() * 0.15; _puffO.grav = -0.4; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
+  }
+
   const fx: FxRuntime = {
     group,
 
@@ -3260,309 +4265,20 @@ export function createFx(
     ): void {
       particles.update(dt);
       printUniforms.uTime.value = particles.getTime();
-      // r4 CLOCK-DELTA driving: timers, smoke columns and tracer afterglow
-      // all advance by the SHARED PARTICLE CLOCK's forward motion, not by a
-      // frozen-gated render dt. Live play is identical (the clock advances by
-      // dt each frame), but stepped-frozen captures (setFrozen(true, T) with
-      // increasing T) now age the whole system honestly: a wreck's smoke
-      // column keeps pumping across capture steps, timers fire, trails fade.
-      // The old `if (!frozen)` gate showed a kill as a dead still-life the
-      // moment the harness pinned the clock. Per-frame delta is clamped so a
-      // single stepped jump replays at most one capture window of emission.
-      const nowClockS = particles.getTime();
-      let tickDt = nowClockS - lastTickS;
-      lastTickS = nowClockS;
-      if (!(tickDt > 0)) tickDt = 0;
-      else if (tickDt > 8) tickDt = 8;
+      const tickDt = advanceFxClock();
       battleFreshS += tickDt;
-      // Only the SOURCE of a continuous burning effect follows the tank.
-      // Previously emitted smoke stays world-space and trails naturally.
-      // Refresh outside tickDt so a frozen Studio/capture pose still moves
-      // the emitter and its parked light with an edited actor.
-      if (columns.length && resolveSubject) {
-        for (const col of columns) {
-          if (col.key == null) continue; // destroyed wrecks stay world-fixed
-          const subject = resolveSubject(col.key);
-          col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
-        }
-      }
-      // lights + rings are pure functions of the SHARED clock (r1: the old
-      // self-timers were gated on !frozen, so stepped-frozen captures held
-      // the 430-peak blast light forever — every destroy frame's deck cooked
-      // to uniform terracotta). Applying every frame keeps live behavior
-      // identical and makes frozen/stepped captures age honestly.
-      for (const st of lightStates) applyLight(st);
-      for (const r of shockRings) applyShockRing(r);
-      for (const r of muzzleRings) applyMuzzleRing(r);
-      // defensive decal sweep (~1.4 s cadence): drop scarring whose vehicle
-      // wrecked or left the scene through any path that skipped the
-      // tank:destroyed / spawnDestruction clears
-      decalSweepAcc += dt;
-      if (decalSweepAcc > 1.4) {
-        decalSweepAcc = 0;
-        impactDecals.sweep();
-      }
-      // burning-wreck flicker: while the explosion light is idle, park it
-      // over the newest smoke column so fires read as living light sources.
-      // r1 terracotta-deck fix: localized (8 m range, ~1/3 the r6 intensity)
-      // — the pulsing ember emissive carries the deck glow; this light only
-      // accents the immediate fire pool.
-      if (!replaySuppressed) {
-        const exSt = lightStates[1];
-        if (lightAge(exSt) >= exSt.dur && columns.length) {
-          const col = columns[columns.length - 1];
-          explosionLight.position.set(col.pos[0], col.pos[1] + 2.6, col.pos[2]);
-          // lighting_post r3: distance 8 / peak ~2.4×scale was sub-visible —
-          // the parked wreck glow now actually rims nearby debris/hull.
-          // r6: 16 -> 12 — the wreck fire pool hugs the wreck, never the road
-          explosionLight.distance = 12;
-          const t = particles.getTime();
-          // r6: +30% base — with the blast light collapsing by ~1 s this
-          // flickering fire IS the wreck's light story from then on
-          explosionLight.intensity = (9.5 + 3.2 * Math.sin(t * 13.7) + 2.2 * Math.sin(t * 7.1 + 1.9)) * col.scale;
-        } else if (lightAge(exSt) < exSt.dur && explosionLight.distance !== 13) {
-          explosionLight.distance = 13; // restore the blast range for live flashes
-        }
-      }
-      if (tickDt > 0) {
-        // one-shot timers (module-scope scratch — timer callbacks can re-enter
-        // fx spawn paths, so _due is length-cleared again AFTER the fire loop
-        // and never retains dead closures)
-        if (timers.length) {
-          _due.length = 0;
-          for (const tm of timers) { tm.t -= tickDt; if (tm.t <= 0) _due.push(tm); }
-          if (_due.length) {
-            let live = 0;
-            for (const tm of timers) if (tm.t > 0) timers[live++] = tm;
-            timers.length = live;
-            if (!replaySuppressed) for (const tm of _due) tm.fn();
-            _due.length = 0;
-          }
-        }
-        // smoke columns (main stage), then a long smolder tail on the wreck.
-        // r4: puffs emitted for a large stepped jump are BACKDATED by the
-        // remaining accumulator (-col.acc) so the column reads as having
-        // pumped continuously across the whole window, exactly like the
-        // composeExplosionMoment pre-seed does.
-        if (columns.length) {
-          let compact = false;
-          for (const col of columns) {
-            if (col.ttl > 0) {
-              col.ttl -= tickDt;
-              if (col.ttl <= 0) { col.ttl = 0; col.smolder = SMOKE_SMOLDER_S; col.acc = 0; continue; }
-              if (replaySuppressed) col.acc = 0;
-              else {
-                col.acc += tickDt;
-                while (col.acc >= COLUMN_TICK_S) { col.acc -= COLUMN_TICK_S; emitColumnPuff(col, -col.acc); }
-              }
-            } else {
-              col.smolder = (col.smolder === undefined ? SMOKE_SMOLDER_S : col.smolder) - tickDt;
-              if (col.smolder <= 0) { compact = true; continue; }
-              if (replaySuppressed) col.acc = 0;
-              else {
-                col.acc += tickDt;
-                while (col.acc >= 0.45) { col.acc -= 0.45; emitSmolderPuff(col, -col.acc); }
-              }
-            }
-          }
-          if (compact) {
-            let live = 0;
-            for (const col of columns) {
-              if (col.ttl > 0 || (col.smolder ?? 0) > 0) columns[live++] = col;
-            }
-            columns.length = live;
-          }
-        }
-      }
-      // world-dressing r1: sweep live shell flight segments against the
-      // destructible small-prop layer (fence rails, carts, bales...) — the
-      // props break cosmetically, the shell is never consumed (they carry no
-      // colliders). Each shell sweeps from its LAST swept point (sweepTails)
-      // so multi-tick sim advances leave no coverage gaps. Forwarded through
-      // the destructibles seam; a no-op unless an active world registered.
-      if (shells && !frozen) {
-        _sweepSeen.clear();
-        for (let i = 0; i < shells.length; i++) {
-          const sh = shells[i];
-          if (!sh.pos || sh.id == null) continue;
-          _sweepSeen.add(sh.id);
-          if (sh.dead) continue;
-          let tail = sweepTails.get(sh.id);
-          if (!tail) {
-            tail = sh.prevPos
-              ? [sh.prevPos.x, sh.prevPos.y, sh.prevPos.z]
-              : [sh.pos.x, sh.pos.y, sh.pos.z];
-            sweepTails.set(sh.id, tail);
-          }
-          const dx = sh.pos.x - tail[0], dy = sh.pos.y - tail[1], dz = sh.pos.z - tail[2];
-          if (dx * dx + dy * dy + dz * dz > 1e-6) {
-            notifyShellSweep(tail[0], tail[1], tail[2], sh.pos.x, sh.pos.y, sh.pos.z);
-          }
-          tail[0] = sh.pos.x; tail[1] = sh.pos.y; tail[2] = sh.pos.z;
-        }
-        if (sweepTails.size) {
-          for (const id of sweepTails.keys()) if (!_sweepSeen.has(id)) sweepTails.delete(id);
-        }
-      }
-      // tracer ribbons — live shells first, then fading afterglow trails
-      // (an APFSDS crosses the whole engagement in ~0.2 s; without the
-      // lingering trail almost no 60 fps frame ever caught a streak),
-      // then composer statics
-      let n = 0;
-      let atgmCount = 0;
-      renderedAtgmTrailSegments = 0;
-      for (const trail of guidedTrails.values()) trail.seen = false;
-      const shellCount = shells ? shells.length : 0;
-      for (let i = 0; i < shellCount && n < MAX_TRACERS; i++) {
-        const sh = shells[i];
-        if (sh.dead) continue;
-        const shPos = sh.pos;
-        const shVel = sh.vel;
-        const guided = !!sh.spec?.guided;
-        const tracerId = guided ? 'ATGM' : sh.spec?.tracer;
-        const preset = TRACER_PRESETS[tracerId ?? 'AP'];
-        const speed = shVel.length();
-        // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
-        // bolt is a 3-6 m head+tail streak — APFSDS at 1700 m/s tops out at
-        // 6 m, ordnance velocities land 3-4 m. Clamped by distM so a fresh
-        // shell's tail never pokes back out of the muzzle. The old dim
-        // 28 m PATH ribbon is GONE — it was the laser's body.
-        const len = Math.min(THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
-          Math.max(sh.distM || 0, 0.08));
-        _v1.copy(shVel).normalize();
-        _v2.copy(shPos).addScaledVector(_v1, -len);
-        if (guided) {
-          // A physical missile body rides at the live authoritative position;
-          // the exhaust flare sits just behind it. The shell position is the
-          // nose, so offset the body rearward along its instantaneous heading.
-          if (atgmCount < MAX_ATGM_BODIES) {
-            _atgmObject.position.copy(shPos).addScaledVector(_v1, -0.65);
-            _atgmObject.quaternion.setFromUnitVectors(_Z, _v1);
-            _atgmObject.scale.set(1, 1, 1);
-            _atgmObject.updateMatrix();
-            atgmBodies.setMatrixAt(atgmCount, _atgmObject.matrix);
-            _atgmFlareObject.position.copy(shPos).addScaledVector(_v1, -1.35);
-            _atgmFlareObject.quaternion.identity();
-            _atgmFlareObject.scale.setScalar(1.15);
-            _atgmFlareObject.updateMatrix();
-            atgmFlares.setMatrixAt(atgmCount, _atgmFlareObject.matrix);
-            atgmCount++;
-          }
-
-          let guidedTrail = guidedTrails.get(sh.id);
-          if (!guidedTrail) {
-            guidedTrail = {
-              points: new Float32Array(ATGM_TRAIL_POINTS * 3),
-              count: 0,
-              age: 0,
-              seen: true,
-            };
-            guidedTrails.set(sh.id, guidedTrail);
-            if (sh.prevPos) appendGuidedTrailPoint(
-              guidedTrail, sh.prevPos.x, sh.prevPos.y, sh.prevPos.z,
-            );
-          }
-          guidedTrail.age = 0;
-          guidedTrail.seen = true;
-          appendGuidedTrailPoint(guidedTrail, shPos.x, shPos.y, shPos.z);
-          n = writeGuidedTrail(guidedTrail, n);
-          if (n >= MAX_TRACERS) continue;
-        }
-        col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
-        // enemy fire reads wider/brighter — battlefield legibility (width is
-        // hard-capped below: no tracer body may exceed ~0.15 m)
-        let wide = sh.isPlayer ? 1 : 1.7;
-        let bright = sh.isPlayer ? 1.15 : 1.5;
-        // dead-astern boost: a ribbon seen within ~15° of the bore axis is
-        // foreshortened to a dot — widen/brighten so the player's own shot
-        // stays readable from the default chase camera (r5: invisible)
-        if (camera) {
-          _camV.copy(shPos).sub(camera.position);
-          const cl = _camV.length();
-          if (cl > 1e-4) {
-            const k = THREE.MathUtils.smoothstep(Math.abs(_camV.dot(_v1)) / cl, 0.9, 0.995);
-            wide *= 1 + 2.6 * k;
-            bright *= 1 + 0.9 * k;
-          }
-        }
-        const bw = Math.min(preset.width * wide, 0.15);
-        writeTracer(n++, _v2.x, _v2.y, _v2.z, shPos.x, shPos.y, shPos.z,
-          bw, bright,
-          guided ? _atgmCore : _coreArr,
-          guided ? _atgmGlow : _glowArr,
-          guided ? 1 : 0);
-        // record/refresh the afterglow trail for this shell — stored as a
-        // VAPOR ribbon (r4): what lingers after the bolt passes is powder
-        // vapor, not light. Grey-tinted, alpha-capped low, only the bolt's
-        // own 3-6 m segment (r7: the old 28 m span WAS the laser).
-        if (!sh.spec?.guided) {
-          let tr = trails.get(sh.id);
-          if (!tr) { tr = { d: new Float32Array(14), age: 0, seen: true }; trails.set(sh.id, tr); }
-          tr.age = 0; tr.seen = true;
-          const d = tr.d;
-          d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z;
-          d[3] = shPos.x; d[4] = shPos.y; d[5] = shPos.z;
-          d[6] = bw * 1.3; d[7] = bright * 0.16;
-          // desaturate the preset hue hard toward smoke grey (25% color keeps a
-          // faint warm/cool identity without reading as an incandescent rod)
-          d[8] = 0.45 + _coreArr[0] * 0.25; d[9] = 0.44 + _coreArr[1] * 0.25; d[10] = 0.43 + _coreArr[2] * 0.25;
-          d[11] = 0.30 + _glowArr[0] * 0.25; d[12] = 0.30 + _glowArr[1] * 0.25; d[13] = 0.30 + _glowArr[2] * 0.25;
-        }
-      }
-      atgmBodies.count = atgmCount;
-      atgmFlares.count = atgmCount;
-      renderedAtgmBodies = atgmCount;
-      if (atgmCount > 0 || atgmBodies.userData.lastCount > 0) {
-        atgmBodies.instanceMatrix.needsUpdate = true;
-        atgmFlares.instanceMatrix.needsUpdate = true;
-      }
-      atgmBodies.userData.lastCount = atgmCount;
-
-      // Keep the steered path yellow for a short beat after impact so the
-      // player can read where the missile curved before guidance disengages.
-      if (guidedTrails.size) {
-        for (const [id, trail] of guidedTrails) {
-          if (trail.seen) continue;
-          trail.age += tickDt;
-          if (trail.age >= ATGM_TRAIL_S) { guidedTrails.delete(id); continue; }
-          const fade = 1 - trail.age / ATGM_TRAIL_S;
-          n = writeGuidedTrail(trail, n, fade * fade);
-        }
-      }
-      // afterglow: trails not refreshed this frame fade out over TRAIL_S
-      // (aged by the shared clock's motion — stepped captures fade honestly)
-      if (trails.size) {
-        for (const [id, tr] of trails) {
-          if (tr.seen) { tr.seen = false; continue; }
-          tr.age += tickDt;
-          if (tr.age >= TRAIL_S) { trails.delete(id); continue; }
-          if (n >= MAX_TRACERS) continue;
-          const k = 1 - tr.age / TRAIL_S;
-          const d = tr.d;
-          _trailCore[0] = d[8]; _trailCore[1] = d[9]; _trailCore[2] = d[10];
-          _trailGlow[0] = d[11]; _trailGlow[1] = d[12]; _trailGlow[2] = d[13];
-          // no width growth (was *(1 + age*2.2)): the widening made the dying
-          // streak read as a thick persistent beam instead of a fading trail
-          writeTracer(n++, d[0], d[1], d[2], d[3], d[4], d[5],
-            d[6], d[7] * k * k,
-            _trailCore, _trailGlow);
-        }
-      }
-      const nowS = particles.getTime();
-      for (let i = 0; i < staticTracers.length && n < MAX_TRACERS; i++) {
-        const t = staticTracers[i];
-        // age-fade against the (possibly frozen/stepped) shared clock
-        const age = t.length > 14 ? nowS - t[14] : 0;
-        const k = 1 - THREE.MathUtils.smoothstep(age, 0.3, 0.9);
-        if (k <= 0.001) continue;
-        writeTracer(n++, t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7] * k,
-          [t[8], t[9], t[10]], [t[11], t[12], t[13]]);
-      }
-      tracerGeo.instanceCount = n;
-      if (n > 0 || tracerGeo._lastCount !== 0) {
-        for (const a of tracerAttrs) a.needsUpdate = true;
-      }
-      tracerGeo._lastCount = n;
+      syncColumnAnchors(resolveSubject);
+      updateClockDrivenLights();
+      sweepImpactDecals(dt);
+      updateWreckLight();
+      advanceTimedFx(tickDt);
+      sweepShellsThroughProps(shells);
+      let tracerCount = writeLiveShellTracers(shells, camera);
+      commitAtgmInstances();
+      tracerCount = writeGuidedTrailAfterglow(tracerCount, tickDt);
+      tracerCount = writeShellTrailAfterglow(tracerCount, tickDt);
+      tracerCount = writeStaticTracerAfterglow(tracerCount);
+      commitTracerInstances(tracerCount);
     },
 
     /**
@@ -4067,187 +4783,26 @@ export function createFx(
      */
     dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void {
       if (intensity <= 0.02) return;
-      const waterMask = heightField && heightField.getWaterMaskAt
-        ? heightField.getWaterMaskAt(pos.x, pos.z) : 0;
+      const waterMask = heightField?.getWaterMaskAt?.(pos.x, pos.z) ?? 0;
       if (waterMask > 0.02) {
-        // Wet running gear replaces, rather than supplements, the dry dust
-        // path. The shared print ring becomes a short pale tread wake and the
-        // shared dust pool becomes low spray, preserving all draw families.
-        if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
-        if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
-        const gy = groundY(pos.x, pos.z);
-        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.45;
-        _puffO.pos[1] = Math.max(pos.y, gy) + 0.20 + waterMask * 0.16;
-        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.45;
-        _puffO.vel[0] = -dir.x * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
-        _puffO.vel[1] = 1.15 + intensity * 1.55 + rng() * 0.65;
-        _puffO.vel[2] = -dir.z * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
-        _puffO.life = 0.34 + rng() * 0.30;
-        _puffO.size0 = 0.10 + intensity * 0.10;
-        _puffO.size1 = 0.42 + intensity * 0.54;
-        _puffO.rot = rng() * Math.PI * 2;
-        _puffO.rotVel = (rng() - 0.5) * 2.2;
-        col3(0xd8e2dc, _puffO.col0);
-        col3(0x8ca9aa, _puffO.col1);
-        _puffO.alpha = (0.12 + intensity * 0.17) * (0.55 + waterMask * 0.45);
-        _puffO.grav = -0.85;
-        _puffO.birthOffset = 0;
-        particles.emit('dust', _puffO);
-        // A fine ballistic droplet supplies the vertical splash cue that the
-        // soft mist card cannot. Reuse the existing streak pool; no water-only
-        // material, geometry or draw call is introduced.
-        if (rng() < 0.82) {
-          _strkO.pos[0] = pos.x + (rng() - 0.5) * 0.35;
-          _strkO.pos[1] = Math.max(pos.y, gy) + 0.22;
-          _strkO.pos[2] = pos.z + (rng() - 0.5) * 0.35;
-          _strkO.vel[0] = (rng() - 0.5) * 2.4 - dir.x * intensity;
-          _strkO.vel[1] = 2.1 + rng() * 2.2;
-          _strkO.vel[2] = (rng() - 0.5) * 2.4 - dir.z * intensity;
-          _strkO.life = 0.25 + rng() * 0.24;
-          _strkO.width = 0.018 + rng() * 0.012;
-          _strkO.stretch = 0.022;
-          _strkO.grav = -13.5;
-          col3(0xb7d0cf, _strkO.col);
-          _strkO.alpha = 0.34 + rng() * 0.20;
-          _strkO.seed = rng();
-          _strkO.birthOffset = 0;
-          particles.emit('sparks', _strkO);
-        }
+        emitWetTrackDust(pos, dir, intensity, waterMask);
         return;
       }
-      // track prints: stamped ahead of the probability gate so the corridor
-      // is continuous regardless of the dust dice
       if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir);
-      // surface type: dirt roads kick heavier rooster tails, soft marsh mud
-      // less. r4: hard 1.9 -> 1.5 and grass alpha floor raised — the old
-      // spread was the "binary road/grass" read (screen-swallowing beige on
-      // the road, near-nothing one meter onto the verge).
-      const gt = heightField && heightField.getGroundType
-        ? heightField.getGroundType(pos.x, pos.z) : 'medium';
-      // r5 (critic: "driving ~10 m/s across dry meadow raises no dust"):
-      // turf/loam rates raised to road parity — the old 1.05/0.75 gate plus
-      // the dimmer grass alpha left the meadow wake sub-visible against
-      // dense 3D grass. Grass now throws a darker, chunkier torn-turf wake.
-      // r6 (critic major: "a 60-ton tank carving a meadow at 12.4 m/s shows
-      // no readable dust plume"): the r5 dark-loam wake was invisible dark-
-      // on-dark against the meadow. Grass emission now runs ~2x the r5 rate
-      // (surf 1.3 -> 1.9, above road) and the media goes PALE grey-green
-      // (sunlit dust over dark grass — the WoT twin-plume contrast direction)
-      // with a persistent second plume card per pass below.
-      const surf = gt === 'hard' ? 1.5 : (gt === 'soft' ? 1.2 : 1.9);
-      if (rng() > intensity * 0.85 * surf) return;
+      const groundType = heightField?.getGroundType?.(pos.x, pos.z) ?? 'medium';
+      const surfaceMultiplier = drySurfaceMultiplier(groundType);
+      if (rng() > intensity * 0.85 * surfaceMultiplier) return;
       const gy = groundY(pos.x, pos.z);
-      // r4 CHASE-CAM OCCLUSION GUARD: the wake must never swallow the
-      // vehicle silhouette from the default 13-18 m chase camera. Cards
-      // spawned close to the camera get capped size and thinner alpha; far
-      // framings (battle observers) keep the full plume.
-      let camK = 1;
-      const cam = engineCtx && engineCtx.camera;
-      if (cam) {
-        _camV.set(pos.x, pos.y, pos.z).sub(cam.position);
-        camK = THREE.MathUtils.clamp((_camV.length() - 6) / 12, 0, 1);
-      }
-      const sizeCapK = 0.62 + 0.38 * camK;
-      const alphaCapK = 0.55 + 0.45 * camK;
-      // ground-tinted media: packed dirt roads throw a light tan, turf/loam a
-      // desaturated grey-earth, marsh mud a dark umber (neutral hues — the
-      // scene's light supplies the warmth).
-      let c0, c1;
-      if (gt === 'hard') { c0 = 0xa79d8c; c1 = 0x8f887b; }
-      else if (gt === 'soft') { c0 = 0x6d675a; c1 = 0x5c574c; }
-      // r6: pale grey-green dust (was dark loam 0x6f6b57 — invisible against
-      // the meadow); dry-soil dust with a green cast reads twin plumes
-      // r7 (critic: STILL "zero dust at the tracks" carving meadow at
-      // 10 m/s): lifted another step toward sunlit-dust brightness — the
-      // wake must sit clearly ABOVE the meadow tone, matching the road read.
-      else { c0 = 0xa8a189; c1 = 0x8e8a6c; }
-      // per-puff turbulence: randomized scale/opacity so the wake is a mix of
-      // small dense kicks and big thin veils, not one uniform fog mass
-      const kSize = 0.6 + rng() * 0.8;
-      const kA = 0.55 + rng() * 0.65;
-      // r2 sprocket spray: a small dense kick right at the contact patch
-      // (short-lived, ground level) sells "dirt thrown off the sprockets"
-      // under the big veil. r4: runs on EVERY surface — grass throws root
-      // clods and darker turf flecks at ~40% of the road rate.
-      if (rng() < (gt === 'hard' ? 0.5 : 0.45)) { // r5: grass kick near road rate
-        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
-        _puffO.pos[1] = Math.max(pos.y, gy) + (gt === 'hard' ? 0.35 : 0.7);
-        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
-        _puffO.vel[0] = -dir.x * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
-        _puffO.vel[1] = 1.6 + rng() * 1.6 * intensity;
-        _puffO.vel[2] = -dir.z * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
-        _puffO.life = 0.8 + rng() * 0.5;
-        _puffO.size0 = 0.35; _puffO.size1 = 1.3 + intensity * 1.1;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-        // grass kick runs darker (torn turf, not road dust)
-        if (gt === 'hard') { col3(c0, _puffO.col0); col3(c1, _puffO.col1); }
-        else { col3(0x57513f, _puffO.col0); col3(0x655e4c, _puffO.col1); }
-        _puffO.alpha = (0.28 + 0.28 * intensity) * alphaCapK; _puffO.grav = -1.2; _puffO.birthOffset = 0;
-        particles.emit('dust', _puffO);
-        // solid clods + grass flecks whipped off the sprocket on soft ground
-        // (r5: 0.3 -> 0.55 — the torn-turf particulate is what sells an
-        // off-road wake over dense 3D grass where thin haze cards vanish)
-        if (gt !== 'hard' && rng() < 0.55) {
-          _debO.pos[0] = pos.x; _debO.pos[1] = Math.max(pos.y, gy) + 0.5; _debO.pos[2] = pos.z;
-          _debO.vel[0] = -dir.x * (4 + rng() * 4) + (rng() - 0.5) * 2;
-          _debO.vel[1] = 2.5 + rng() * 3 * intensity;
-          _debO.vel[2] = -dir.z * (4 + rng() * 4) + (rng() - 0.5) * 2;
-          _debO.life = 0.9; _debO.scale = 0.05 + rng() * 0.05; _debO.spin = 12 + rng() * 14;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
-      }
-      // rooster-tail wake -> lingering corridor. r2 ANTI-STATIC: the veil is
-      // born at ~1.05 m (grass-blade TOPS). r4 BILLOW REBUILD: cards start
-      // small AT the contact point with velocity inheritance (they initially
-      // travel WITH the hull, then shear off downwind), grow with age and
-      // churn (higher rotVel) — the wake billows out of the running gear
-      // instead of stamping a full-size beige wall behind the hull. Sizes
-      // and alpha are HARD-CAPPED so no card can occlude the tank.
-      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.6;
-      _puffO.pos[1] = Math.max(pos.y, gy) + (gt === 'hard' ? 0.55 : 0.95) + rng() * 0.35;
-      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
-      const inherit = intensity * 2.4; // carried with the hull, shears off
-      _puffO.vel[0] = dir.x * inherit - dir.x * (1.5 + rng() * 1.8) + (rng() - 0.5) * 1.3 + COLUMN_WIND_X * 0.55;
-      _puffO.vel[1] = 0.9 + (1.4 + rng() * 1.3) * intensity;
-      _puffO.vel[2] = dir.z * inherit - dir.z * (1.5 + rng() * 1.8) + (rng() - 0.5) * 1.3 + COLUMN_WIND_Z * 0.55;
-      _puffO.life = 3.0 + rng() * 2.6;
-      _puffO.size0 = (0.4 + intensity * 0.7) * kSize;
-      _puffO.size1 = Math.min(5.2, (2.4 + intensity * 3.4 + rng() * 1.2) * kSize * Math.min(surf, 1.25)) * sizeCapK;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.4;
-      col3(c0, _puffO.col0); col3(c1, _puffO.col1);
-      // r5: grass/loam veil alpha raised to slightly ABOVE road (denser dark
-      // media vs the bright road tan) — the meadow wake must read (r4 major)
-      // r7: another step (0.50 -> 0.58 cap, +0.06 base) — the off-road wake
-      // was still sub-visible at 10 m/s in the r6 drive frames.
-      _puffO.alpha = Math.min(gt === 'hard' ? 0.42 : 0.58,
-        (gt === 'hard' ? 0.14 + 0.32 * intensity : 0.26 + 0.36 * intensity) * kA * 1.18) * alphaCapK;
-      // Settle slowly instead of pulling a 4-5 s veil through the ground;
-      // soft-depth then resolves the contact edge without a muddy half-card.
-      _puffO.grav = -0.10; _puffO.birthOffset = 0;
-      particles.emit('dust', _puffO);
-      // Persistent upper lobe (grass): one taller, longer-lived card
-      // rising off the track rear at speed — WoT reference shows twin plumes
-      // hanging over the wake corridor at anything over ~20 km/h. The old
-      // additional generic veil was redundant with this lobe and multiplied
-      // overdraw; the low primary + this upper lobe make a cleaner two-scale
-      // silhouette per track.
-      if (gt !== 'hard' && intensity > 0.28) {
-        _puffO.pos[0] = pos.x - dir.x * 1.2 + (rng() - 0.5) * 0.5;
-        _puffO.pos[1] = Math.max(pos.y, gy) + 1.15 + rng() * 0.4;
-        _puffO.pos[2] = pos.z - dir.z * 1.2 + (rng() - 0.5) * 0.5;
-        _puffO.vel[0] = dir.x * intensity * 1.6 + (rng() - 0.5) + COLUMN_WIND_X * 0.6;
-        _puffO.vel[1] = 1.5 + rng() * 1.2 * intensity;
-        _puffO.vel[2] = dir.z * intensity * 1.6 + (rng() - 0.5) + COLUMN_WIND_Z * 0.6;
-        _puffO.life = 2.6 + rng() * 1.6;
-        _puffO.size0 = 0.8 + intensity * 0.5;
-        _puffO.size1 = Math.min(5.6, 3.0 + intensity * 2.6 + rng() * 1.2) * sizeCapK;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.0;
-        col3(0xa8a189, _puffO.col0); col3(0x8a876f, _puffO.col1); // r7: sunlit-dust lift
-        _puffO.alpha = Math.min(0.56, 0.34 + 0.34 * intensity) * alphaCapK;
-        _puffO.grav = -0.06; _puffO.birthOffset = 0;
-        particles.emit('dust', _puffO);
+      updateDustCameraCaps(pos);
+      updateDryDustColors(groundType);
+      const sizeVariation = 0.6 + rng() * 0.8;
+      const alphaVariation = 0.55 + rng() * 0.65;
+      emitTrackKick(pos, dir, intensity, groundType, gy);
+      emitDryTrackWake(
+        pos, dir, intensity, groundType, gy, surfaceMultiplier, sizeVariation, alphaVariation,
+      );
+      if (groundType !== 'hard' && intensity > 0.28) {
+        emitUpperTrackWake(pos, dir, intensity, gy);
       }
     },
 
@@ -4422,369 +4977,44 @@ export function createFx(
       // DESTRUCTIBLES r1: dir now carries MAGNITUDE — 1 = shell-grade break,
       // a ramming hull scales it with its overrun speed (props.ts breakRecord)
       // so every throw velocity below inherits the tank's momentum.
-      const fam = kind === 'drumblast' ? 'drumblast'
-        : /fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind) ? 'woodbuilding'
-          : /deserttent|commandtent|fieldhospital/.test(kind) ? 'canvasbuilding'
-            : /guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind) ? 'metalbuilding'
-              : /^wall/.test(kind) ? 'masonry'
-          : /^sandbag/.test(kind) ? 'sandbag'
-            : /truck|jeep/.test(kind) ? 'vehicle'
-              : kind === 'tent' ? 'canvas'
-                : kind === 'ammobox' ? 'ammo'
-                  : /^fence|^gate|crate|pallet|cart|stall|bench|trough|firewood|sled|rugframe/.test(kind) ? 'wood'
-                    : /bale|stook|hay/.test(kind) ? 'hay'
-                      : kind === 'barrel' ? 'barrel'
-                        : kind === 'pot' ? 'pot'
-                          : /lamp|drum|churn/.test(kind) ? 'metal' : 'wood';
-      if (fam === 'woodbuilding' || fam === 'canvasbuilding' || fam === 'metalbuilding') {
-        // Building-scale collapse: more mass and a wider ground-hugging dust
-        // front than the small-prop burst, while retaining the global six-
-        // bursts-per-frame cap in props.ts. Persistent large debris is the
-        // broken instance; these particles sell the instant of collapse.
-        const canvas = fam === 'canvasbuilding', metal = fam === 'metalbuilding';
-        if (metal) {
-          _v3.set(pos.x, gy + Math.min(1.8, heightM * 0.42), pos.z);
-          sparkFan(_v3, _UP, 12, 9, 1.3, 0xffc980, 0.5, 0.035, 0.045, 0, 0.14);
-        }
-        const fragmentCount = canvas ? 8 : metal ? 13 : 17;
-        for (let i = 0; i < fragmentCount; i++) {
-          const a = rng() * Math.PI * 2;
-          _debO.pos[0] = pos.x + (rng() - 0.5) * 2.8;
-          _debO.pos[1] = gy + 0.35 + rng() * Math.min(2.4, heightM * 0.55);
-          _debO.pos[2] = pos.z + (rng() - 0.5) * 2.8;
-          _debO.vel[0] = dir.x * (2.2 + rng() * 3.4) + Math.cos(a) * (1.2 + rng() * 3.5);
-          _debO.vel[1] = 2.0 + rng() * 4.2;
-          _debO.vel[2] = dir.z * (2.2 + rng() * 3.4) + Math.sin(a) * (1.2 + rng() * 3.5);
-          _debO.life = 1.5 + rng() * 0.6;
-          _debO.scale = (canvas ? 0.06 : 0.09) + rng() * (canvas ? 0.07 : 0.13);
-          _debO.spin = 8 + rng() * 18;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = metal && rng() < 0.12 ? 0.35 : 0;
-          _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
-        const dustA = canvas ? 0xa89b7d : metal ? 0x777979 : 0x8a745e;
-        const dustB = canvas ? 0x82775f : metal ? 0x55595a : 0x675444;
-        for (let i = 0; i < 12; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 3.6;
-          _puffO.pos[1] = gy + 0.18 + rng() * 0.9;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 3.6;
-          _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 3.0) + dir.x * 2.0;
-          _puffO.vel[1] = 0.8 + rng() * 1.5;
-          _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 3.0) + dir.z * 2.0;
-          _puffO.life = 1.6 + rng() * 1.2;
-          _puffO.size0 = 0.75 + rng() * 0.5; _puffO.size1 = 3.2 + rng() * 2.2;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.7;
-          col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
-          _puffO.alpha = 0.42 + rng() * 0.15; _puffO.grav = -0.38; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
+      const family = propBreakFamily(kind);
+      if (family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding') {
+        emitBuildingBreak(family, pos, dir, heightM, gy);
         return;
       }
-      if (fam === 'masonry') {
-        // wall module breach: a dense shower of masonry chunks with real
-        // ballistics (velocity inherited from the rammer via dir magnitude,
-        // gravity, tumble, ground settle in the debris shader) + a rolling
-        // stone-dust cloud. Adobe walls dust warmer than fieldstone.
-        const adobe = /adobe/.test(kind);
-        const dustA = adobe ? 0xa58a64 : 0x8d877b, dustB = adobe ? 0x86704f : 0x6f695e;
-        for (let i = 0; i < 15; i++) {
-          _debO.pos[0] = pos.x + (rng() - 0.5) * 1.6;
-          _debO.pos[1] = gy + 0.25 + rng() * Math.min(1.0, heightM * 0.8);
-          _debO.pos[2] = pos.z + (rng() - 0.5) * 1.6;
-          _debO.vel[0] = dir.x * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
-          _debO.vel[1] = 1.8 + rng() * 3.4;
-          _debO.vel[2] = dir.z * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
-          _debO.life = 1.5 + rng() * 0.5;
-          _debO.scale = 0.10 + rng() * 0.12; // real masonry lumps, not chips
-          _debO.spin = 8 + rng() * 14;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
-        for (let i = 0; i < 11; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
-          _puffO.pos[1] = gy + 0.3 + rng() * 0.7;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
-          _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 2.4) + dir.x * 2.2;
-          _puffO.vel[1] = 1.0 + rng() * 1.5;
-          _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 2.4) + dir.z * 2.2;
-          _puffO.life = 1.6 + rng() * 1.1;
-          _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 2.8 + rng() * 1.5;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
-          col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
-          _puffO.alpha = 0.46 + rng() * 0.16; _puffO.grav = -0.42; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
+      if (family === 'masonry') {
+        emitMasonryBreak(kind, pos, dir, heightM, gy);
         return;
       }
-      if (fam === 'sandbag') {
-        // burst bags: a heavy LOW sand-dust surge (the bags absorb the hit —
-        // almost no hard fragments, all spilling fill)
-        for (let i = 0; i < 13; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
-          _puffO.pos[1] = gy + 0.2 + rng() * 0.5;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
-          _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.2) + dir.x * 2.6;
-          _puffO.vel[1] = 0.7 + rng() * 1.0; // hugs the ground
-          _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.2) + dir.z * 2.6;
-          _puffO.life = 1.5 + rng() * 1.0;
-          _puffO.size0 = 0.6 + rng() * 0.4; _puffO.size1 = 2.6 + rng() * 1.4;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-          col3(0xa89772, _puffO.col0); col3(0x8a7b5c, _puffO.col1);
-          _puffO.alpha = 0.48 + rng() * 0.14; _puffO.grav = -0.55; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
-        for (let i = 0; i < 4; i++) { // a few whipped bag scraps
-          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.4; _debO.pos[2] = pos.z;
-          _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
-          _debO.vel[1] = 1.6 + rng() * 2.0;
-          _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
-          _debO.life = 1.1; _debO.scale = 0.06 + rng() * 0.05; _debO.spin = 10 + rng() * 12;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
+      if (family === 'sandbag') {
+        emitSandbagBreak(pos, dir, gy);
         return;
       }
-      if (fam === 'vehicle') {
-        // soft-skin vehicle killed: metal panel chunks, a spark clang, one
-        // short flame lick and a fast-building dark smoke slug — reads as
-        // the truck torching down to its hulk without a full HE fireball
-        _v3.set(pos.x, gy + Math.min(1.2, heightM * 0.5), pos.z);
-        sparkFan(_v3, _UP, 14, 11, 1.2, 0xffce8a, 0.5, 0.04, 0.04, 0, 0.12);
-        for (let i = 0; i < 10; i++) {
-          _debO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
-          _debO.pos[1] = gy + 0.4 + rng() * Math.min(1.4, heightM * 0.6);
-          _debO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
-          _debO.vel[0] = dir.x * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
-          _debO.vel[1] = 2.4 + rng() * 3.6;
-          _debO.vel[2] = dir.z * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
-          _debO.life = 1.5; _debO.scale = 0.08 + rng() * 0.09; _debO.spin = 10 + rng() * 16;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = rng() < 0.2 ? 0.45 : 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
-        for (let i = 0; i < 5; i++) { // brief flame licks out of the cab/bed
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
-          _puffO.pos[1] = gy + 0.7 + rng() * 0.8;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
-          _puffO.vel[0] = (rng() - 0.5) * 1.2; _puffO.vel[1] = 1.8 + rng() * 1.6; _puffO.vel[2] = (rng() - 0.5) * 1.2;
-          _puffO.life = 0.5 + rng() * 0.3;
-          _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 1.1 + rng() * 0.5;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-          col3(0xffb054, _puffO.col0); col3(0xd96a22, _puffO.col1);
-          _puffO.alpha = 0.85; _puffO.grav = 0.6; _puffO.birthOffset = 0;
-          particles.emit('fire', _puffO);
-        }
-        for (let i = 0; i < 8; i++) { // oily smoke slug
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
-          _puffO.pos[1] = gy + 0.8 + rng() * 0.8;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
-          _puffO.vel[0] = Math.cos(a) * (0.8 + rng() * 1.2) + dir.x * 1.4;
-          _puffO.vel[1] = 1.6 + rng() * 1.6;
-          _puffO.vel[2] = Math.sin(a) * (0.8 + rng() * 1.2) + dir.z * 1.4;
-          _puffO.life = 1.8 + rng() * 1.2;
-          _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 3.0 + rng() * 1.6;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
-          col3(0x2e2b28, _puffO.col0); col3(0x4a4642, _puffO.col1);
-          _puffO.alpha = 0.5 + rng() * 0.15; _puffO.grav = 0.25; _puffO.birthOffset = 0;
-          particles.emit('smoke', _puffO);
-        }
+      if (family === 'vehicle') {
+        emitVehicleBreak(pos, dir, heightM, gy);
         return;
       }
-      if (fam === 'canvas') {
-        // tent folding: pale canvas dust whoosh + snapped-pole chips
-        for (let i = 0; i < 9; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
-          _puffO.pos[1] = gy + 0.3 + rng() * 0.9;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
-          _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.8) + dir.x * 2.0;
-          _puffO.vel[1] = 0.9 + rng() * 1.2;
-          _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.8) + dir.z * 2.0;
-          _puffO.life = 1.3 + rng() * 0.8;
-          _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 2.0 + rng() * 1.0;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-          col3(0xa39676, _puffO.col0); col3(0x857a5e, _puffO.col1);
-          _puffO.alpha = 0.4 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
-        for (let i = 0; i < 4; i++) {
-          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5; _debO.pos[2] = pos.z;
-          _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
-          _debO.vel[1] = 2.0 + rng() * 2.4;
-          _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
-          _debO.life = 1.2; _debO.scale = 0.05 + rng() * 0.05; _debO.spin = 12 + rng() * 14;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
+      if (family === 'canvas') {
+        emitCanvasBreak(pos, dir, gy);
         return;
       }
-      if (fam === 'ammo') {
-        // ammo boxes splinter with a short cook-off crackle of spark streaks
-        _v3.set(pos.x, gy + 0.4, pos.z);
-        sparkFan(_v3, _UP, 8, 8, 1.0, 0xffd58a, 0.4, 0.03, 0.035, 0, 0.14);
-        for (let i = 0; i < 9; i++) {
-          _debO.pos[0] = pos.x + (rng() - 0.5) * 0.6;
-          _debO.pos[1] = gy + 0.3 + rng() * 0.4;
-          _debO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
-          _debO.vel[0] = dir.x * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
-          _debO.vel[1] = 2.2 + rng() * 3.0;
-          _debO.vel[2] = dir.z * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
-          _debO.life = 1.3; _debO.scale = 0.05 + rng() * 0.06; _debO.spin = 12 + rng() * 16;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
+      if (family === 'ammo') {
+        emitAmmoBreak(pos, dir, gy);
         return;
       }
-      if (fam === 'drumblast') {
-        // EXPLOSIVE fuel drum: a real (small) fireball — flash core, fire
-        // bloom, oily billow column, hot debris with paired ember streaks,
-        // radial spark fan and a scorch stamp. Deliberately ~40% of a tank
-        // explosion's particle count: cheap enough for a chained row.
-        const cy = gy + 0.7;
-        spawnScorch(pos.x, pos.z, 2.4 + rng() * 0.7);
-        _puffO.pos[0] = pos.x; _puffO.pos[1] = cy + 0.4; _puffO.pos[2] = pos.z;
-        _puffO.vel[0] = 0; _puffO.vel[1] = 0.6; _puffO.vel[2] = 0;
-        _puffO.life = 0.22;
-        _puffO.size0 = 1.6; _puffO.size1 = 3.6;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
-        col3(0xffe9b8, _puffO.col0); col3(0xffb45e, _puffO.col1);
-        _puffO.alpha = 0.95; _puffO.grav = 0; _puffO.birthOffset = 0;
-        particles.emit('flash', _puffO);
-        for (let i = 0; i < 12; i++) { // fire bloom
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.7;
-          _puffO.pos[1] = cy + rng() * 0.7;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.7;
-          _puffO.vel[0] = Math.cos(a) * (1.6 + rng() * 2.4);
-          _puffO.vel[1] = 2.6 + rng() * 3.0;
-          _puffO.vel[2] = Math.sin(a) * (1.6 + rng() * 2.4);
-          _puffO.life = 0.5 + rng() * 0.35;
-          _puffO.size0 = 0.8 + rng() * 0.5; _puffO.size1 = 2.0 + rng() * 0.9;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-          col3(0xffc262, _puffO.col0); col3(0xe06a1e, _puffO.col1);
-          _puffO.alpha = 0.9; _puffO.grav = 1.1; _puffO.birthOffset = 0;
-          particles.emit('fire', _puffO);
-        }
-        for (let i = 0; i < 7; i++) { // oily billow column
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.9;
-          _puffO.pos[1] = cy + 0.4 + rng() * 0.9;
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.9;
-          _puffO.vel[0] = (rng() - 0.5) * 1.6;
-          _puffO.vel[1] = 2.2 + rng() * 2.2;
-          _puffO.vel[2] = (rng() - 0.5) * 1.6;
-          _puffO.life = 1.9 + rng() * 1.3;
-          _puffO.size0 = 1.0 + rng() * 0.6; _puffO.size1 = 3.6 + rng() * 1.8;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.4;
-          col3(0x241f1b, _puffO.col0); col3(0x45403a, _puffO.col1);
-          _puffO.alpha = 0.62; _puffO.grav = 0.35; _puffO.birthOffset = 0;
-          particles.emit('billow', _puffO);
-        }
-        _v3.set(pos.x, cy, pos.z);
-        sparkFan(_v3, _UP, 16, 15, 1.15, 0xffc274, 0.55, 0.045, 0.05, 0, 0.1);
-        for (let i = 0; i < 10; i++) { // hot drum shrapnel
-          const a = rng() * Math.PI * 2;
-          _debO.pos[0] = pos.x; _debO.pos[1] = cy; _debO.pos[2] = pos.z;
-          _debO.vel[0] = Math.cos(a) * (6 + rng() * 7);
-          _debO.vel[1] = 3.5 + rng() * 5;
-          _debO.vel[2] = Math.sin(a) * (6 + rng() * 7);
-          _debO.life = 1.3 + rng() * 0.5;
-          _debO.scale = 0.07 + rng() * 0.09;
-          _debO.spin = 12 + rng() * 18;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = rng() < 0.5 ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
+      if (family === 'drumblast') {
+        emitDrumBlast(pos, gy);
         return;
       }
-      if (fam === 'hay') {
-        // hay puff: slow pale chaff cloud + a few light straws, no hard chips
-        for (let i = 0; i < 12; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.8;
-          _puffO.pos[1] = gy + 0.3 + rng() * Math.min(1.6, heightM * 0.7);
-          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.8;
-          _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8) + dir.x * 2.0;
-          _puffO.vel[1] = 0.8 + rng() * 1.4;
-          _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8) + dir.z * 2.0;
-          _puffO.life = 1.6 + rng() * 1.2;
-          _puffO.size0 = 0.5 + rng() * 0.4; _puffO.size1 = 2.0 + rng() * 1.4;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
-          col3(0xb59f5e, _puffO.col0); col3(0x93804a, _puffO.col1);
-          _puffO.alpha = 0.42 + rng() * 0.14; _puffO.grav = -0.25; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
-        for (let i = 0; i < 5; i++) { // light straw wisps
-          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5 + rng() * 0.6; _debO.pos[2] = pos.z;
-          _debO.vel[0] = dir.x * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
-          _debO.vel[1] = 1.8 + rng() * 2.2;
-          _debO.vel[2] = dir.z * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
-          _debO.life = 1.2; _debO.scale = 0.035 + rng() * 0.04; _debO.spin = 8 + rng() * 10;
-          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-          particles.emit('debris', _debO);
-        }
+      if (family === 'hay') {
+        emitHayBreak(pos, dir, heightM, gy);
         return;
       }
-      if (fam === 'metal') {
-        // metal clang: short spark fan + dark dust kick, no wood chips
-        _v3.set(pos.x, gy + Math.min(1.0, heightM * 0.4), pos.z);
-        sparkFan(_v3, _UP, 10, 9, 1.1, 0xffce8a, 0.45, 0.035, 0.035, 0, 0.1);
-        for (let i = 0; i < 6; i++) {
-          const a = rng() * Math.PI * 2;
-          _puffO.pos[0] = pos.x; _puffO.pos[1] = gy + 0.3; _puffO.pos[2] = pos.z;
-          _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.6) + dir.x * 2.2;
-          _puffO.vel[1] = 0.8 + rng() * 1.0;
-          _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.6) + dir.z * 2.2;
-          _puffO.life = 1.1 + rng() * 0.7;
-          _puffO.size0 = 0.4 + rng() * 0.3; _puffO.size1 = 1.6 + rng() * 0.9;
-          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-          col3(0x6f6a60, _puffO.col0); col3(0x57534b, _puffO.col1);
-          _puffO.alpha = 0.36 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
-          particles.emit('dust', _puffO);
-        }
+      if (family === 'metal') {
+        emitMetalBreak(pos, dir, heightM, gy);
         return;
       }
-      // wood / barrel-stave / pottery-shard families: chip debris + dust,
-      // barrel throws bigger arcs, pottery throws small sharp bits
-      const nChip = fam === 'barrel' ? 10 : fam === 'pot' ? 9 : 12;
-      const chipS = fam === 'barrel' ? [0.08, 0.09] : fam === 'pot' ? [0.04, 0.05] : [0.05, 0.07];
-      for (let i = 0; i < nChip; i++) {
-        _debO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
-        _debO.pos[1] = gy + 0.3 + rng() * Math.min(1.1, heightM * 0.5);
-        _debO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
-        _debO.vel[0] = dir.x * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
-        _debO.vel[1] = 2.2 + rng() * 3.6;
-        _debO.vel[2] = dir.z * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
-        _debO.life = 1.4; _debO.scale = chipS[0] + rng() * chipS[1]; _debO.spin = 12 + rng() * 18;
-        _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-        _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
-        particles.emit('debris', _debO);
-      }
-      for (let i = 0; i < 7; i++) {
-        const a = rng() * Math.PI * 2;
-        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
-        _puffO.pos[1] = gy + 0.25 + rng() * 0.4;
-        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
-        _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.0) + dir.x * 2.4;
-        _puffO.vel[1] = 0.9 + rng() * 1.2;
-        _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.0) + dir.z * 2.4;
-        _puffO.life = 1.3 + rng() * 0.9;
-        _puffO.size0 = 0.45 + rng() * 0.3; _puffO.size1 = 1.9 + rng() * 1.1;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-        if (fam === 'pot') { col3(0x9a6a4a, _puffO.col0); col3(0x7c5238, _puffO.col1); }
-        else { col3(0x8a8271, _puffO.col0); col3(0x776f60, _puffO.col1); }
-        _puffO.alpha = 0.4 + rng() * 0.15; _puffO.grav = -0.4; _puffO.birthOffset = 0;
-        particles.emit('dust', _puffO);
-      }
+      emitWoodBreak(family, pos, dir, heightM, gy);
     },
 
     /**
@@ -4804,23 +5034,7 @@ export function createFx(
      * @param {number|null} [atTimeS] pin the shared clock to this time
      */
     setFrozen(f: boolean, atTimeS: number | null = null): void {
-      if (atTimeS !== null && atTimeS !== undefined) {
-        const delta = atTimeS - particles.getTime();
-        if (Math.abs(delta) > 20) {
-          particles.shiftTime(delta);
-          for (const t of staticTracers) if (t.length > 14) t[14] += delta;
-          for (const st of lightStates) st.bornAt += delta;
-          for (const r of shockRings) r.bornAt += delta;
-          for (const r of muzzleRings) r.bornAt += delta;
-          const pb = printBirth.array;
-          for (let i = 0; i < pb.length; i++) { if (pb[i] > -1e8) pb[i] += delta; }
-          printBirth.clearUpdateRanges();
-          printBirth.addUpdateRange(0, pb.length);
-          printBirth.needsUpdate = true;
-          lastTickS += delta; // a rebase preserves ages — it is not elapsed time
-          noteFxClockShift(delta); // keep fxNow() continuous for tank visuals
-        }
-      }
+      if (atTimeS != null) rebaseFxClock(atTimeS);
       frozen = f;
       particles.setFrozen(f, atTimeS);
     },

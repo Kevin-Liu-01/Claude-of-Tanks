@@ -250,8 +250,8 @@ export function addGarageApproachDetails({
     }
   };
 
-  switch (approach.style) {
-    case 'rail-fan':
+  const styleBuilders: Record<GarageApproachStyle, () => void> = {
+    'rail-fan': () => {
       for (const lane of approach.lanes || [0]) addRailRoad(lane);
       for (const depth of [18, 34, 45]) {
         const point = samplePath(points, depth);
@@ -259,8 +259,8 @@ export function addGarageApproachDetails({
         addGroundBox(point.side + 10.2, depth, 0.26, 6.2, 0.26, 0x34383a);
         addGroundBox(point.side, depth, 20.6, 0.24, 0.28, 0xd09a2f, 0, baked);
       }
-      break;
-    case 'desert-convoy':
+    },
+    'desert-convoy': () => {
       addPath(points, approach.width, 0.10);
       addRuts(approach.lanes || [-2.5, 2.5], 0x776044, 0.52);
       addRoadsidePosts(8, approach.width / 2 + 0.7, 0x4b4540, 1.3);
@@ -268,15 +268,15 @@ export function addGarageApproachDetails({
         const point = samplePath(points, depth);
         addGroundCylinder(point.side - approach.width / 2 - 1.8, depth, 0.44, 0.86, 0x8d6a3d, 12);
       }
-      break;
-    case 'snow-road':
+    },
+    'snow-road': () => {
       addPath(points, approach.width, 0.13);
       addRuts(approach.lanes || [-2.2, 2.2], 0x86949a, 0.46);
       addEdgeCourse(-approach.width / 2 - 0.45, 0xbec8ca, 0.68, 0.34);
       addEdgeCourse(approach.width / 2 + 0.45, 0xbec8ca, 0.68, 0.34);
       addRoadsidePosts(5.8, approach.width / 2 + 1.0, 0xc14f36, 1.85);
-      break;
-    case 'urban-street':
+    },
+    'urban-street': () => {
       addPath(points, approach.width, 0.16);
       addEdgeCourse(-approach.width / 2, 0x676b69, 0.38, 0.28);
       addEdgeCourse(approach.width / 2, 0x676b69, 0.38, 0.28);
@@ -290,8 +290,8 @@ export function addGarageApproachDetails({
             0.9, 0.14, 0.14, 0xe0b35a);
         }
       }
-      break;
-    case 'drydock-lane':
+    },
+    'drydock-lane': () => {
       addPath(points, approach.width, 0.22);
       addEdgeCourse(-approach.width / 2, 0x56666a, 0.42, 0.46);
       addEdgeCourse(approach.width / 2, 0x56666a, 0.42, 0.46);
@@ -305,15 +305,15 @@ export function addGarageApproachDetails({
             1.0, 0.08, 0.22, 0xb59443);
         }
       }
-      break;
-    case 'monsoon-causeway':
+    },
+    'monsoon-causeway': () => {
       addPath(points, approach.width, 0.24);
       addEdgeCourse(-approach.width / 2 - 0.45, 0x344f49, 0.42, 0.34);
       addEdgeCourse(approach.width / 2 + 0.45, 0x344f49, 0.42, 0.34);
       addRuts(approach.lanes || [-2.6, 2.6], 0x3c4f45, 0.34);
       addRoadsidePosts(7, approach.width / 2 + 1.0, 0xd19a2e, 1.45);
-      break;
-    case 'alpine-pass':
+    },
+    'alpine-pass': () => {
       addPath(points, approach.width, 0.16);
       addRuts(approach.lanes || [-2.3, 2.3], 0x7b878c, 0.36);
       addEdgeCourse(-approach.width / 2 - 0.8, 0x61696c, 0.24, 0.30);
@@ -324,8 +324,8 @@ export function addGarageApproachDetails({
         addGroundBox(point.side + approach.width / 2 + 1.6, depth,
           3.2, 0.72, 0.75, 0x67696a);
       }
-      break;
-    case 'recovery-trail':
+    },
+    'recovery-trail': () => {
       addPath(points, approach.width, 0.10);
       addRuts(approach.lanes || [-2.7, 2.7], 0x5d4337, 0.58);
       addRoadsidePosts(8.5, approach.width / 2 + 0.9, 0xb87937, 1.2);
@@ -336,8 +336,8 @@ export function addGarageApproachDetails({
         addGroundBox(point.side - approach.width / 2 - 1.6, depth,
           1.9, 0.22, 1.3, 0x72503d);
       }
-      break;
-    case 'foundry-haul-road':
+    },
+    'foundry-haul-road': () => {
       addPath(points, approach.width, 0.18);
       addEdgeCourse(-approach.width / 2, 0x4e5051, 0.34, 0.30);
       addEdgeCourse(approach.width / 2, 0x4e5051, 0.34, 0.30);
@@ -350,13 +350,14 @@ export function addGarageApproachDetails({
         }
       }
       addRoadsidePosts(7, approach.width / 2 + 1.3, 0xd19a2e, 2.1);
-      break;
-    default:
+    },
+    'farm-lane': () => {
       addPath(points, approach.width, 0.10);
       addRuts([-approach.width * 0.28, approach.width * 0.28], 0x5f624c, 0.34);
       addRoadsidePosts(9, approach.width / 2 + 0.7, 0x5f5d4c, 1.15);
-      break;
-  }
+    },
+  };
+  styleBuilders[approach.style]();
 
   return Object.freeze({
     approachLabel: approach.label,

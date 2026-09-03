@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 type Unsubscribe = () => void;
 type Lane = 'control' | 'input' | 'state';
 type Direction = 'send' | 'receive';
@@ -21,13 +22,13 @@ export interface SimulatableTransport {
   readonly kind?: string;
   readonly readyState?: string;
   readonly bufferedAmount?: number;
-  readonly stats?: unknown;
-  send(message: unknown): boolean;
-  sendInput?(message: unknown): boolean;
-  sendState?(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  readonly stats?: RuntimeValue;
+  send(message: RuntimeValue): boolean;
+  sendInput?(message: RuntimeValue): boolean;
+  sendState?(message: RuntimeValue): boolean;
+  onMessage(listener: (message: RuntimeValue) => void): Unsubscribe;
   onClose?(listener: (reason: string) => void): Unsubscribe;
-  onError?(listener: (error: unknown) => void): Unsubscribe;
+  onError?(listener: (error: RuntimeValue) => void): Unsubscribe;
   close?(reason?: string): void;
 }
 
@@ -37,7 +38,7 @@ export interface AdverseNetworkStats {
   droppedState: number;
   droppedInput: number;
   pending: number;
-  base: unknown;
+  base: RuntimeValue;
 }
 
 export interface AdverseNetworkTransport {
@@ -46,17 +47,17 @@ export interface AdverseNetworkTransport {
   readonly bufferedAmount: number;
   readonly stats: AdverseNetworkStats;
   readonly rawTransport: SimulatableTransport;
-  send(message: unknown): boolean;
-  sendInput(message: unknown): boolean;
-  sendState(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  send(message: RuntimeValue): boolean;
+  sendInput(message: RuntimeValue): boolean;
+  sendState(message: RuntimeValue): boolean;
+  onMessage(listener: (message: RuntimeValue) => void): Unsubscribe;
   onClose(listener: (reason: string) => void): Unsubscribe;
-  onError(listener: (error: unknown) => void): Unsubscribe;
+  onError(listener: (error: RuntimeValue) => void): Unsubscribe;
   close(reason?: string): void;
   dispose(): void;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
@@ -118,9 +119,9 @@ export function createAdverseNetworkTransport(
       throw new TypeError(`${label} must be in [0, 1]`);
     }
   }
-  const messages = new Set<(message: unknown) => void>();
+  const messages = new Set<(message: RuntimeValue) => void>();
   const closes = new Set<(reason: string) => void>();
-  const errors = new Set<(error: unknown) => void>();
+  const errors = new Set<(error: RuntimeValue) => void>();
   const timers = new Set<TimerHandle>();
   let closed = false;
   let reliableSendDueMs = -Infinity;
@@ -161,11 +162,11 @@ export function createAdverseNetworkTransport(
     return Math.max(0, due - now);
   }
 
-  function reportError(error: unknown): void {
+  function reportError(error: RuntimeValue): void {
     for (const listener of [...errors]) listener(error);
   }
 
-  function scheduleSend(message: unknown, lane: Lane = 'control'): boolean {
+  function scheduleSend(message: RuntimeValue, lane: Lane = 'control'): boolean {
     if (closed || transport.readyState === 'closed') return false;
     const state = lane === 'state';
     const input = lane === 'input';
@@ -215,10 +216,10 @@ export function createAdverseNetworkTransport(
 
   return {
     kind: `${transport.kind || 'transport'}-simulated`,
-    send(message: unknown): boolean { return scheduleSend(message, 'control'); },
-    sendInput(message: unknown): boolean { return scheduleSend(message, 'input'); },
-    sendState(message: unknown): boolean { return scheduleSend(message, 'state'); },
-    onMessage(listener: (message: unknown) => void): Unsubscribe {
+    send(message: RuntimeValue): boolean { return scheduleSend(message, 'control'); },
+    sendInput(message: RuntimeValue): boolean { return scheduleSend(message, 'input'); },
+    sendState(message: RuntimeValue): boolean { return scheduleSend(message, 'state'); },
+    onMessage(listener: (message: RuntimeValue) => void): Unsubscribe {
       messages.add(listener);
       return () => messages.delete(listener);
     },
@@ -226,7 +227,7 @@ export function createAdverseNetworkTransport(
       closes.add(listener);
       return () => closes.delete(listener);
     },
-    onError(listener: (error: unknown) => void): Unsubscribe {
+    onError(listener: (error: RuntimeValue) => void): Unsubscribe {
       errors.add(listener);
       return () => errors.delete(listener);
     },

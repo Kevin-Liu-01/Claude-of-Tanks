@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
 // vehicles, so credits and XP would communicate progression that does not
@@ -31,17 +32,17 @@ export interface PlayerRecord {
 }
 
 export interface BattleResultInput {
-  result?: unknown;
-  kills?: unknown;
-  damage?: unknown;
-  vehicleId?: unknown;
-  mapId?: unknown;
-  durationS?: unknown;
-  completedAt?: unknown;
+  result?: RuntimeValue;
+  kills?: RuntimeValue;
+  damage?: RuntimeValue;
+  vehicleId?: RuntimeValue;
+  mapId?: RuntimeValue;
+  durationS?: RuntimeValue;
+  completedAt?: RuntimeValue;
 }
 
 interface ProfileEventBus {
-  on(event: string, listener: (payload?: unknown) => void): unknown;
+  on(event: string, listener: (payload?: RuntimeValue) => void): RuntimeValue;
 }
 
 interface BattleTally {
@@ -58,23 +59,23 @@ const installedBuses = new WeakSet<ProfileEventBus>();
 let cachedProfile: PlayerRecord | null = null;
 let lastBattle: BattleRecord | null = null;
 
-function finiteInt(value: unknown, fallback = 0): number {
+function finiteInt(value: RuntimeValue, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.max(0, Math.round(value))
     : fallback;
 }
 
-function firstString(...values: unknown[]): string {
+function firstString(...values: RuntimeValue[]): string {
   return values.find((value): value is string => typeof value === 'string') ?? '';
 }
 
-function resultOf(value: unknown): BattleResult {
+function resultOf(value: RuntimeValue): BattleResult {
   return value === 'victory' || value === 'draw' ? value : 'defeat';
 }
 
-function recordOf(value: unknown): Record<string, unknown> | null {
+function recordOf(value: RuntimeValue): Record<string, RuntimeValue> | null {
   return value !== null && typeof value === 'object'
-    ? value as Record<string, unknown>
+    ? value as Record<string, RuntimeValue>
     : null;
 }
 
@@ -92,7 +93,7 @@ function blankProfile(): PlayerRecord {
   };
 }
 
-function sanitizeBattle(value: unknown): BattleRecord | null {
+function sanitizeBattle(value: RuntimeValue): BattleRecord | null {
   const source = recordOf(value);
   if (!source) return null;
   return {
@@ -106,7 +107,7 @@ function sanitizeBattle(value: unknown): BattleRecord | null {
   };
 }
 
-function sanitizeProfile(value: unknown): PlayerRecord {
+function sanitizeProfile(value: RuntimeValue): PlayerRecord {
   const source = recordOf(value);
   if (!source) return blankProfile();
   return {

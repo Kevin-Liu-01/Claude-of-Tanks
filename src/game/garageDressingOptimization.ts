@@ -79,15 +79,19 @@ function belongsToFleetExhibit(object: THREE.Object3D, root: THREE.Object3D): bo
   return false;
 }
 
-function canInstanceStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
+function isSpecializedMesh(mesh: THREE.Mesh): boolean {
   const specialized = mesh as THREE.Mesh & {
     isInstancedMesh?: boolean;
     isBatchedMesh?: boolean;
     isSkinnedMesh?: boolean;
   };
-  if (specialized.isInstancedMesh || specialized.isBatchedMesh || specialized.isSkinnedMesh) {
-    return false;
-  }
+  return specialized.isInstancedMesh === true
+    || specialized.isBatchedMesh === true
+    || specialized.isSkinnedMesh === true;
+}
+
+function canInstanceStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
+  if (isSpecializedMesh(mesh)) return false;
   if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
   if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
   if (!mesh.visible || mesh.material.transparent || mesh.material.visible === false) return false;
@@ -110,14 +114,7 @@ function geometryLayoutKey(geometry: THREE.BufferGeometry): string | null {
 }
 
 function canMergeStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
-  const specialized = mesh as THREE.Mesh & {
-    isInstancedMesh?: boolean;
-    isBatchedMesh?: boolean;
-    isSkinnedMesh?: boolean;
-  };
-  if (specialized.isInstancedMesh || specialized.isBatchedMesh || specialized.isSkinnedMesh) {
-    return false;
-  }
+  if (isSpecializedMesh(mesh)) return false;
   if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
   if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
   if (!mesh.visible || mesh.material.transparent || mesh.material.visible === false) return false;
@@ -137,14 +134,7 @@ function isVisibleWithin(object: THREE.Object3D, owner: THREE.Object3D): boolean
 }
 
 function canMergeStaticDisplayMesh(mesh: THREE.Mesh, owner: THREE.Object3D): boolean {
-  const specialized = mesh as THREE.Mesh & {
-    isInstancedMesh?: boolean;
-    isBatchedMesh?: boolean;
-    isSkinnedMesh?: boolean;
-  };
-  if (specialized.isInstancedMesh || specialized.isBatchedMesh || specialized.isSkinnedMesh) {
-    return false;
-  }
+  if (isSpecializedMesh(mesh)) return false;
   if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
   if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
   if (!isVisibleWithin(mesh, owner) || mesh.material.transparent || mesh.material.visible === false) {
@@ -321,6 +311,144 @@ function mergeStaticWorkshopProps(root: THREE.Object3D): {
   };
 }
 
+function collectStaticDisplayBatches(
+  owner: THREE.Object3D,
+): Map<THREE.Material, Map<string, StaticMergeBatch>> {
+  const byMaterial = new Map<THREE.Material, Map<string, StaticMergeBatch>>();
+  owner.updateWorldMatrix(true, true);
+  owner.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !canMergeStaticDisplayMesh(mesh, owner)) return;
+    const layout = geometryLayoutKey(mesh.geometry);
+    if (!layout) return;
+    const material = mesh.material as THREE.Material;
+    let byState = byMaterial.get(material);
+    if (!byState) byMaterial.set(material, byState = new Map());
+    const key = `${Number(mesh.castShadow)}:${Number(mesh.receiveShadow)}:${mesh.renderOrder}`
+      + `:${mesh.layers.mask}:${Number(mesh.frustumCulled)}:${layout}`;
+    let batch = byState.get(key);
+    if (!batch) {
+      batch = {
+        material,
+        castShadow: mesh.castShadow,
+        receiveShadow: mesh.receiveShadow,
+        renderOrder: mesh.renderOrder,
+        layersMask: mesh.layers.mask,
+        frustumCulled: mesh.frustumCulled,
+        meshes: [],
+      };
+      byState.set(key, batch);
+    }
+    batch.meshes.push(mesh);
+  });
+  return byMaterial;
+}
+
+function displayBatchElementCount(batch: StaticMergeBatch): number {
+  return batch.meshes.reduce((sum, mesh) => sum
+    + (mesh.geometry.index?.count
+      || mesh.geometry.attributes.position?.count
+      || 0), 0);
+}
+
+interface MergedDisplayBatch {
+  geometry: THREE.BufferGeometry;
+  sourceGeometries: THREE.BufferGeometry[];
+  meshesMerged: number;
+  elementsMerged: number;
+}
+
+interface MergedDisplayOwner extends StaticMergeResult {
+  generatedGeometries: THREE.BufferGeometry[];
+}
+
+function mergeStaticDisplayBatch(
+  owner: THREE.Object3D,
+  batch: StaticMergeBatch,
+  mergeIndex: number,
+): MergedDisplayBatch | null {
+  if (batch.meshes.length < 2) return null;
+  const elementsMerged = displayBatchElementCount(batch);
+  if (elementsMerged / (batch.meshes.length - 1)
+      > MAX_DISPLAY_ELEMENTS_PER_REMOVED_DRAW) return null;
+  const transformed = batch.meshes.map((mesh) => {
+    const geometry = mesh.geometry.clone();
+    _instanceMatrix.multiplyMatrices(_rootWorldInverse, mesh.matrixWorld);
+    geometry.applyMatrix4(_instanceMatrix);
+    return geometry;
+  });
+  const geometry = mergeGeometries(transformed, false);
+  for (const clone of transformed) clone.dispose();
+  if (!geometry) return null;
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  const merged = new THREE.Mesh(geometry, batch.material);
+  merged.name = `workshop_display_merge_${mergeIndex}`;
+  merged.castShadow = batch.castShadow;
+  merged.receiveShadow = batch.receiveShadow;
+  merged.renderOrder = batch.renderOrder;
+  merged.layers.mask = batch.layersMask;
+  merged.frustumCulled = batch.frustumCulled;
+  merged.userData.workshopStaticDisplayMerge = true;
+  merged.updateMatrix();
+  merged.matrixAutoUpdate = false;
+  const sourceGeometries = batch.meshes.map((mesh) => mesh.geometry);
+  for (const mesh of batch.meshes) mesh.removeFromParent();
+  owner.add(merged);
+  return {
+    geometry,
+    sourceGeometries,
+    meshesMerged: batch.meshes.length,
+    elementsMerged,
+  };
+}
+
+function mergeStaticDisplayOwner(
+  owner: THREE.Object3D,
+  firstMergeIndex: number,
+): MergedDisplayOwner {
+  const byMaterial = collectStaticDisplayBatches(owner);
+  const sourceGeometries = new Set<THREE.BufferGeometry>();
+  const generatedGeometries: THREE.BufferGeometry[] = [];
+  let meshesMerged = 0;
+  let mergeBatches = 0;
+  let elementsMerged = 0;
+  _rootWorldInverse.copy(owner.matrixWorld).invert();
+  for (const byState of byMaterial.values()) {
+    for (const batch of byState.values()) {
+      const merged = mergeStaticDisplayBatch(
+        owner,
+        batch,
+        firstMergeIndex + mergeBatches,
+      );
+      if (!merged) continue;
+      for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
+      generatedGeometries.push(merged.geometry);
+      meshesMerged += merged.meshesMerged;
+      mergeBatches += 1;
+      elementsMerged += merged.elementsMerged;
+    }
+  }
+  return {
+    meshesMerged,
+    mergeBatches,
+    sourceGeometries,
+    generatedGeometries,
+    drawCallsRemoved: meshesMerged - mergeBatches,
+    elementsMerged,
+  };
+}
+
+function pruneEmptyDisplayGroups(owner: THREE.Object3D): void {
+  const descendants: THREE.Object3D[] = [];
+  owner.traverse((object) => { if (object !== owner) descendants.push(object); });
+  for (let index = descendants.length - 1; index >= 0; index--) {
+    const object = descendants[index];
+    if (object.children.length > 0 || object.parent === null) continue;
+    if (object.type === 'Group' || object.type === 'Object3D') object.removeFromParent();
+  }
+}
+
 /**
  * Collapse only the immutable interior of each authored display. The owner is
  * retained, so alternate Garage layouts can still move complete tanks and
@@ -338,83 +466,13 @@ function mergeStaticDisplayOwners(
   const sourceGeometries = new Set<THREE.BufferGeometry>();
 
   for (const owner of new Set(owners)) {
-    const byMaterial = new Map<THREE.Material, Map<string, StaticMergeBatch>>();
-    owner.updateWorldMatrix(true, true);
-    owner.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh || !canMergeStaticDisplayMesh(mesh, owner)) return;
-      const layout = geometryLayoutKey(mesh.geometry);
-      if (!layout) return;
-      let byState = byMaterial.get(mesh.material as THREE.Material);
-      if (!byState) byMaterial.set(mesh.material as THREE.Material, byState = new Map());
-      const key = `${Number(mesh.castShadow)}:${Number(mesh.receiveShadow)}:${mesh.renderOrder}`
-        + `:${mesh.layers.mask}:${Number(mesh.frustumCulled)}:${layout}`;
-      let batch = byState.get(key);
-      if (!batch) {
-        batch = {
-          material: mesh.material as THREE.Material,
-          castShadow: mesh.castShadow,
-          receiveShadow: mesh.receiveShadow,
-          renderOrder: mesh.renderOrder,
-          layersMask: mesh.layers.mask,
-          frustumCulled: mesh.frustumCulled,
-          meshes: [],
-        };
-        byState.set(key, batch);
-      }
-      batch.meshes.push(mesh);
-    });
-
-    _rootWorldInverse.copy(owner.matrixWorld).invert();
-    for (const byState of byMaterial.values()) {
-      for (const batch of byState.values()) {
-        if (batch.meshes.length < 2) continue;
-        const batchElements = batch.meshes.reduce((sum, mesh) => sum
-          + (mesh.geometry.index?.count
-            || mesh.geometry.attributes.position?.count
-            || 0), 0);
-        if (batchElements / (batch.meshes.length - 1)
-            > MAX_DISPLAY_ELEMENTS_PER_REMOVED_DRAW) continue;
-        const transformed = batch.meshes.map((mesh) => {
-          const geometry = mesh.geometry.clone();
-          _instanceMatrix.multiplyMatrices(_rootWorldInverse, mesh.matrixWorld);
-          geometry.applyMatrix4(_instanceMatrix);
-          return geometry;
-        });
-        const geometry = mergeGeometries(transformed, false);
-        for (const clone of transformed) clone.dispose();
-        if (!geometry) continue;
-        geometry.computeBoundingBox();
-        geometry.computeBoundingSphere();
-        const merged = new THREE.Mesh(geometry, batch.material);
-        merged.name = `workshop_display_merge_${mergeBatches + 1}`;
-        merged.castShadow = batch.castShadow;
-        merged.receiveShadow = batch.receiveShadow;
-        merged.renderOrder = batch.renderOrder;
-        merged.layers.mask = batch.layersMask;
-        merged.frustumCulled = batch.frustumCulled;
-        merged.userData.workshopStaticDisplayMerge = true;
-        merged.updateMatrix();
-        merged.matrixAutoUpdate = false;
-        for (const mesh of batch.meshes) {
-          sourceGeometries.add(mesh.geometry);
-          mesh.removeFromParent();
-        }
-        owner.add(merged);
-        generated.push(geometry);
-        meshesMerged += batch.meshes.length;
-        mergeBatches += 1;
-        elementsMerged += batchElements;
-      }
-    }
-
-    const descendants: THREE.Object3D[] = [];
-    owner.traverse((object) => { if (object !== owner) descendants.push(object); });
-    for (let index = descendants.length - 1; index >= 0; index--) {
-      const object = descendants[index];
-      if (object.children.length > 0 || object.parent === null) continue;
-      if (object.type === 'Group' || object.type === 'Object3D') object.removeFromParent();
-    }
+    const merged = mergeStaticDisplayOwner(owner, mergeBatches + 1);
+    for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
+    generated.push(...merged.generatedGeometries);
+    meshesMerged += merged.meshesMerged;
+    mergeBatches += merged.mergeBatches;
+    elementsMerged += merged.elementsMerged;
+    pruneEmptyDisplayGroups(owner);
   }
 
   return {

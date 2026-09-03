@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
 import type { ShotViewName } from './shotContract.ts';
@@ -76,9 +77,9 @@ const VIEW_MAP: Partial<Record<ShotViewName, string>> = {
 
 interface ShotRuntimeEntity extends ShotEntity {
   input: { throttle: number; steer: number; brake: boolean; fire: boolean };
-  equip?: unknown;
+  equip?: RuntimeValue;
   visual: ShotVisual & {
-    setGroundSampler?(sampler: unknown): void;
+    setGroundSampler?(sampler: RuntimeValue): void;
   };
 }
 
@@ -87,7 +88,7 @@ interface ShotRuntimeGame extends Omit<ShotGame, 'player' | 'tanks'> {
   tanks: ShotRuntimeEntity[];
   allTanks: ShotRuntimeEntity[];
   player: ShotRuntimeEntity;
-  shells: unknown[];
+  shells: RuntimeValue[];
 }
 
 interface ForcedAim {
@@ -100,7 +101,7 @@ interface ForcedAim {
   magazine?: { rounds: number; capacity: number };
   shellSlot: number;
   zoom?: number;
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 interface RuntimeShotWorld extends ShotWorld {
@@ -117,7 +118,7 @@ interface RuntimeShotWorld extends ShotWorld {
 
 interface RuntimeShotHud extends ShotHud {
   update(frame: ShotFrameInfo): void;
-  forceAimDisplay(frame: unknown): void;
+  forceAimDisplay(frame: RuntimeValue): void;
 }
 
 interface RuntimeShotFx extends ShotFx {
@@ -145,7 +146,7 @@ interface ShotFrameAim {
   reload: { t: number; totalS: number; kind: string };
   magazine: { rounds: number; capacity: number };
   shellSlot: number;
-  shells: readonly unknown[];
+  shells: readonly RuntimeValue[];
   zoom: number;
   gunMarker: Vector3;
 }
@@ -154,21 +155,21 @@ interface ShotFrameInfo {
   timeS: number;
   mode: string;
   player: ShotRuntimeEntity;
-  shells: unknown[];
+  shells: RuntimeValue[];
   aim: ShotFrameAim;
 }
 
 interface ShotRuntimeContext {
-  preloadSoloBattleRuntime(): Promise<unknown>;
-  preloadBattleClientRuntime(): Promise<unknown>;
-  ensureBattleHud(): Promise<unknown>;
-  ensureTouchControls(): Promise<unknown>;
-  ensureFullFleet(): Promise<unknown>;
-  ensureFxRuntime(): Promise<unknown>;
-  ensureKillcamRuntime(): Promise<unknown>;
-  preloadBattleWarm(): Promise<unknown>;
-  preloadArmorAimOverlay(): Promise<unknown>;
-  switchMap(mapId: string): Promise<unknown>;
+  preloadSoloBattleRuntime(): Promise<RuntimeValue>;
+  preloadBattleClientRuntime(): Promise<RuntimeValue>;
+  ensureBattleHud(): Promise<RuntimeValue>;
+  ensureTouchControls(): Promise<RuntimeValue>;
+  ensureFullFleet(): Promise<RuntimeValue>;
+  ensureFxRuntime(): Promise<RuntimeValue>;
+  ensureKillcamRuntime(): Promise<RuntimeValue>;
+  preloadBattleWarm(): Promise<RuntimeValue>;
+  preloadArmorAimOverlay(): Promise<RuntimeValue>;
+  switchMap(mapId: string): Promise<RuntimeValue>;
   setWorldDormant(dormant: boolean): void;
   setCamoBiome(mapId: string): void;
   applyCamoPatterns(): void;
@@ -177,8 +178,8 @@ interface ShotRuntimeContext {
   drainCombatWarm(): void;
   buildShellCards(spec: ShotEntity['spec']): void;
   setDamagePanelTank(spec: ShotEntity['spec'], visual: ShotVisual): void;
-  setDamagePanelEquipment(equipment: unknown): void;
-  groundSampler: unknown;
+  setDamagePanelEquipment(equipment: RuntimeValue): void;
+  groundSampler: RuntimeValue;
   input: { setEnabled(enabled: boolean): void };
   settings: { isOpen(): boolean; close(): void };
   showroom: ShotShowroom & { stop(): void };
@@ -196,7 +197,7 @@ interface ShotRuntimeContext {
   getHud(): RuntimeShotHud;
   getFx(): RuntimeShotFx;
   getKillcam(): RuntimeShotKillcam;
-  getShellCards(): readonly unknown[];
+  getShellCards(): readonly RuntimeValue[];
   game: ShotRuntimeGame;
   frameInfo: ShotFrameInfo;
   rig: ShotRig & { aimPoint: Vector3; mode: string; aimDist: number };

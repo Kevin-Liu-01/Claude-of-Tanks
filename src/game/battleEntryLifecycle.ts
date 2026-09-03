@@ -1,15 +1,16 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 interface RevealReceipt {
   primed: true;
   frameSerial: number;
   waitMs: number;
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 interface BattleEntryLifecycleOptions {
-  nextFrame: () => Promise<unknown>;
+  nextFrame: () => Promise<RuntimeValue>;
   now?: () => number;
   revealTimeoutMs?: number;
-  getRevealContext?: () => Record<string, unknown>;
+  getRevealContext?: () => Record<string, RuntimeValue>;
   onReveal?: (receipt: RevealReceipt) => void;
 }
 

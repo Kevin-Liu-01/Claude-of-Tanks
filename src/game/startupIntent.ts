@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { RoomInvite } from '../net/roomInvite.ts';
 
 export interface StartupLocation {
@@ -7,7 +8,7 @@ export interface StartupLocation {
 }
 
 interface RoomInviteModule {
-  parseRoomInvite(value: unknown): RoomInvite | null;
+  parseRoomInvite(value: RuntimeValue): RoomInvite | null;
 }
 
 export interface StartupIntent {

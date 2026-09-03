@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -31,11 +32,11 @@ export interface DedicatedMatchServerService {
   close(reason?: string): Promise<void>;
 }
 
-interface MatchAuthMessage extends Record<string, unknown> {
+interface MatchAuthMessage extends Record<string, RuntimeValue> {
   type: 'match_auth';
-  matchId?: unknown;
-  playerId?: unknown;
-  token?: unknown;
+  matchId?: RuntimeValue;
+  playerId?: RuntimeValue;
+  token?: RuntimeValue;
 }
 
 interface HttpError extends Error {
@@ -43,18 +44,18 @@ interface HttpError extends Error {
   code?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function asHttpError(value: unknown): HttpError {
+function asHttpError(value: RuntimeValue): HttpError {
   return value instanceof Error ? value as HttpError : new Error(String(value));
 }
 
 function json(
   response: http.ServerResponse,
   status: number,
-  body: unknown,
+  body: RuntimeValue,
   headers: http.OutgoingHttpHeaders = {},
 ): void {
   const data = JSON.stringify(body);
@@ -89,7 +90,7 @@ function bearer(request: http.IncomingMessage): string {
 async function readJson(
   request: http.IncomingMessage,
   maxBytes = 16 * 1024,
-): Promise<Record<string, unknown>> {
+): Promise<Record<string, RuntimeValue>> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const chunk of request) {
@@ -100,7 +101,7 @@ async function readJson(
   }
   if (!chunks.length) return {};
   try {
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    const parsed: RuntimeValue = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (!isRecord(parsed)) throw new Error('request body must be a JSON object');
     return parsed;
   }
@@ -114,8 +115,8 @@ function parseAllowedOrigins(value: AllowedOriginsInput): Set<string> | null {
 }
 
 function parseMatchAuth(raw: RawData): MatchAuthMessage | null {
-  let value: unknown;
-  try { value = JSON.parse(String(raw)) as unknown; } catch (_) { return null; }
+  let value: RuntimeValue;
+  try { value = JSON.parse(String(raw)) as RuntimeValue; } catch (_) { return null; }
   if (!isRecord(value) || value.type !== 'match_auth') return null;
   return value as MatchAuthMessage;
 }
@@ -127,6 +128,134 @@ function createDefaultMatchmaker(registry: DedicatedMatchRegistry): RankedMatchm
   });
 }
 
+function parseRequestUrl(request: http.IncomingMessage): URL | null {
+  try {
+    return new URL(String(request.url || ''), 'http://localhost');
+  } catch {
+    return null;
+  }
+}
+
+function respondToOptions(
+  response: http.ServerResponse,
+  headers: http.OutgoingHttpHeaders,
+): void {
+  response.writeHead(204, headers);
+  response.end();
+}
+
+function respondWithRequestError(
+  response: http.ServerResponse,
+  caught: RuntimeValue,
+  headers: http.OutgoingHttpHeaders,
+): void {
+  const error = asHttpError(caught);
+  json(response, error.status || (error.code === 'ranked_auth_failed' ? 401 : 400), {
+    error: error.code || 'invalid_request',
+    message: error.message,
+  }, headers);
+}
+
+function dispatchQueueTicketRoute(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  url: URL,
+  headers: http.OutgoingHttpHeaders,
+  matchmaker: RankedMatchmaker,
+): void {
+  const ticketId = decodeURIComponent(url.pathname.slice('/ranked/queue/'.length));
+  const token = bearer(request);
+  if (request.method === 'GET') {
+    const ticket = matchmaker.poll(ticketId, token);
+    json(response, ticket ? 200 : 404, ticket || { error: 'ticket_not_found' }, headers);
+    return;
+  }
+  if (request.method === 'DELETE') {
+    const cancelled = matchmaker.cancel(ticketId, token);
+    json(response, cancelled ? 200 : 409,
+      cancelled ? { cancelled: true } : { error: 'ticket_not_cancellable' }, headers);
+    return;
+  }
+  json(response, 405, { error: 'method_not_allowed' }, headers);
+}
+
+async function dispatchHttpRoute(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  url: URL,
+  headers: http.OutgoingHttpHeaders,
+  registry: DedicatedMatchRegistry,
+  matchmaker: RankedMatchmaker,
+): Promise<void> {
+  const route = `${request.method || ''} ${url.pathname}`;
+  switch (route) {
+    case 'GET /healthz':
+      json(response, 200, {
+        ok: true,
+        service: 'cot-match',
+        ...registry.stats(),
+        ...matchmaker.stats(),
+      }, headers);
+      return;
+    case 'POST /ranked/identity': {
+      const body = await readJson(request);
+      json(response, 201, matchmaker.createIdentity({ name: body.name }), headers);
+      return;
+    }
+    case 'GET /ranked/leaderboard':
+      json(response, 200, {
+        players: matchmaker.leaderboard(url.searchParams.get('limit')),
+      }, headers);
+      return;
+    case 'POST /ranked/queue': {
+      const body = await readJson(request);
+      const queued = matchmaker.join({ ...body, identityToken: bearer(request) });
+      json(response, 202, queued, headers);
+      return;
+    }
+  }
+  if (request.method === 'GET' && url.pathname.startsWith('/ranked/profile/')) {
+    const playerId = decodeURIComponent(url.pathname.slice('/ranked/profile/'.length));
+    const profile = matchmaker.profile(playerId);
+    json(response, profile ? 200 : 404, profile || { error: 'profile_not_found' }, headers);
+    return;
+  }
+  if (url.pathname.startsWith('/ranked/queue/')) {
+    dispatchQueueTicketRoute(request, response, url, headers, matchmaker);
+    return;
+  }
+  json(response, 404, { error: 'not_found' }, headers);
+}
+
+async function handleHttpRequest(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  origins: ReadonlySet<string> | null,
+  registry: DedicatedMatchRegistry,
+  matchmaker: RankedMatchmaker,
+): Promise<void> {
+  const headers = corsHeaders(request, origins);
+  const requestOrigin = request.headers.origin;
+  if (origins && requestOrigin && !origins.has(requestOrigin)) {
+    json(response, 403, { error: 'origin_forbidden' });
+    return;
+  }
+  const url = parseRequestUrl(request);
+  if (!url) {
+    json(response, 400, { error: 'invalid_url' }, headers);
+    return;
+  }
+  if (request.method === 'OPTIONS' && url.pathname.startsWith('/ranked/')) {
+    respondToOptions(response, headers);
+    return;
+  }
+  try {
+    await dispatchHttpRoute(request, response, url, headers, registry, matchmaker);
+  } catch (caught) {
+    respondWithRequestError(response, caught, headers);
+  }
+}
+
 export async function createDedicatedMatchServer({
   host = '127.0.0.1',
   port = 0,
@@ -136,56 +265,8 @@ export async function createDedicatedMatchServer({
   matchmaker = createDefaultMatchmaker(registry),
 }: DedicatedMatchServerOptions = {}): Promise<DedicatedMatchServerService> {
   const origins = parseAllowedOrigins(allowedOrigins);
-  const server = http.createServer(async (request, response) => {
-    const headers = corsHeaders(request, origins);
-    if (origins && request.headers.origin && !origins.has(request.headers.origin)) {
-      json(response, 403, { error: 'origin_forbidden' });
-      return;
-    }
-    let url: URL;
-    try { url = new URL(String(request.url || ''), 'http://localhost'); }
-    catch (_) { json(response, 400, { error: 'invalid_url' }, headers); return; }
-    if (request.method === 'OPTIONS' && url.pathname.startsWith('/ranked/')) {
-      response.writeHead(204, headers);
-      response.end();
-      return;
-    }
-    try {
-      if (request.method === 'GET' && url.pathname === '/healthz') {
-        json(response, 200, { ok: true, service: 'cot-match', ...registry.stats(),
-          ...matchmaker.stats() }, headers);
-      } else if (request.method === 'POST' && url.pathname === '/ranked/identity') {
-        const body = await readJson(request);
-        json(response, 201, matchmaker.createIdentity({ name: body.name }), headers);
-      } else if (request.method === 'GET' && url.pathname === '/ranked/leaderboard') {
-        json(response, 200, { players: matchmaker.leaderboard(url.searchParams.get('limit')) }, headers);
-      } else if (request.method === 'GET' && url.pathname.startsWith('/ranked/profile/')) {
-        const playerId = decodeURIComponent(url.pathname.slice('/ranked/profile/'.length));
-        const profile = matchmaker.profile(playerId);
-        json(response, profile ? 200 : 404, profile || { error: 'profile_not_found' }, headers);
-      } else if (request.method === 'POST' && url.pathname === '/ranked/queue') {
-        const body = await readJson(request);
-        const queued = matchmaker.join({ ...body, identityToken: bearer(request) });
-        json(response, 202, queued, headers);
-      } else if (url.pathname.startsWith('/ranked/queue/')) {
-        const ticketId = decodeURIComponent(url.pathname.slice('/ranked/queue/'.length));
-        const token = bearer(request);
-        if (request.method === 'GET') {
-          const ticket = matchmaker.poll(ticketId, token);
-          json(response, ticket ? 200 : 404, ticket || { error: 'ticket_not_found' }, headers);
-        } else if (request.method === 'DELETE') {
-          const cancelled = matchmaker.cancel(ticketId, token);
-          json(response, cancelled ? 200 : 409,
-            cancelled ? { cancelled: true } : { error: 'ticket_not_cancellable' }, headers);
-        } else json(response, 405, { error: 'method_not_allowed' }, headers);
-      } else json(response, 404, { error: 'not_found' }, headers);
-    } catch (caught) {
-      const error = asHttpError(caught);
-      json(response, error.status || (error.code === 'ranked_auth_failed' ? 401 : 400), {
-        error: error.code || 'invalid_request',
-        message: error.message,
-      }, headers);
-    }
+  const server = http.createServer((request, response) => {
+    void handleHttpRequest(request, response, origins, registry, matchmaker);
   });
   const sockets = new WebSocketServer({
     noServer: true,

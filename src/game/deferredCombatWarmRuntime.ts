@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createFrameBudgetYielder,
   nextFrame,
@@ -29,14 +30,14 @@ interface CombatWarmCoordinator {
 }
 
 interface WarmableWorld {
-  warmTerrainLookahead?(cameraPosition: unknown, bandCount: number): number;
+  warmTerrainLookahead?(cameraPosition: RuntimeValue, bandCount: number): number;
 }
 
 interface WarmTrace {
   done: boolean;
   generation: number;
   stages: Record<string, number>;
-  enemyProgramUniformWarm?: unknown;
+  enemyProgramUniformWarm?: RuntimeValue;
   navigationJobs?: number[];
   terrainLookaheadJobs?: number;
   totalMs?: number;
@@ -47,7 +48,7 @@ interface WarmTrace {
 }
 
 interface TraceSink {
-  mark?(event: string, payload: Record<string, unknown>): void;
+  mark?(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
 type DeferredWarmHost = typeof globalThis & {
@@ -62,10 +63,10 @@ export interface DeferredCombatWarmRuntimeOptions<
 > {
   game: Game;
   renderer: RendererWithPrograms;
-  camera: { position: unknown };
+  camera: { position: RuntimeValue };
   getBattleVisuals(): BattleVisualStreamer<Entity>;
   combatWarm: CombatWarmCoordinator;
-  warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<unknown>;
+  warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<RuntimeValue>;
   getWorld(): World | null;
   getGeneration(): number;
   setPending(pending: boolean): void;
@@ -192,9 +193,9 @@ export function createDeferredCombatWarmRuntime<
       trace.doneBeforeRollout = game.phase === 'battle'
         && typeof game.preBattleS === 'number' && game.preBattleS > 0;
       devTrace?.mark?.('battle:deferred-warm-end', { totalMs: trace.totalMs });
-    })().catch((error: unknown) => {
+    })().catch((error: RuntimeValue) => {
       const code = error && typeof error === 'object' && 'code' in error
-        ? (error as { code?: unknown }).code : null;
+        ? (error as { code?: RuntimeValue }).code : null;
       if (code !== 'combat_warm_cancelled') {
         trace.error = String(error);
         console.warn('[warm] deferred deployment warm failed (continuing):', error);

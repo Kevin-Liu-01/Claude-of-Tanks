@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type {
   GarageDressingEngineContext,
@@ -72,7 +73,7 @@ export function createGarageDressingAccess(
         group, bayFill, variantId, workshopFleet,
       });
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

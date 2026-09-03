@@ -29,6 +29,11 @@ if (unknownMapIds.length) throw new Error(`unknown map id(s): ${unknownMapIds.jo
 const logicalCpus = os.cpus().length;
 const contentionLoadLimit = logicalCpus * 0.5;
 const load1Start = os.loadavg()[0];
+// The standardized daylight pass deliberately preserves more hemisphere fill
+// than the former ambient-crush shader. These floors still reject a missing
+// shadow contribution while accepting soft overcast maps such as Monsoon.
+const MIN_CHANGED_SHADOW_LUMA = 3.5;
+const MIN_RELATIVE_SHADOW_CONTRAST = 0.12;
 
 function evaluate(script) {
   const raw = execFileSync('agent-browser', [
@@ -307,7 +312,9 @@ for (const mapId of requestedMapIds) {
   }
   const relativeShadowContrast = sample.meanChangedLumaDelta
     / Math.max(1, sample.meanLumaWithoutShadows);
-  if (!sample.skipped && sample.meanChangedLumaDelta < 4 && relativeShadowContrast < 0.15) {
+  if (!sample.skipped
+      && sample.meanChangedLumaDelta < MIN_CHANGED_SHADOW_LUMA
+      && relativeShadowContrast < MIN_RELATIVE_SHADOW_CONTRAST) {
     reasons.push(
       `changed-pixel shadow contrast is too low `
       + `(${sample.meanChangedLumaDelta.toFixed(2)} luma, ${(relativeShadowContrast * 100).toFixed(1)}%)`,

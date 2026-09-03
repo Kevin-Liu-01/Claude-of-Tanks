@@ -63,6 +63,78 @@ function gableRoof(
 // FARM THEME (verdant / autumn / steppe)
 // ---------------------------------------------------------------------------
 
+function addFarmhouseCrossWing(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket: string,
+  w: number,
+  d: number,
+): { wd: number; ww: number } {
+  const ww = w * 0.62, wd = 4.4 + rng() * 1.2, wH = 2.7, wR = 1.5;
+  const wx = w / 2 + wd / 2 - 0.4;
+  const wing = newParts();
+  wing[wallBucket].push(box(wd, wH, ww).translate(wx, wH / 2, -d * 0.16));
+  // The gable triangle caps the outer (+x) end; its ridge runs along x.
+  wing[wallBucket].push(gablePrism(ww, wR, 0.3).rotateY(Math.PI / 2)
+    .translate(wx + wd / 2 - 0.15, wH, -d * 0.16));
+  const slope = Math.hypot(ww / 2 + 0.35, wR + 0.1);
+  const ang = Math.atan2(wR + 0.1, ww / 2 + 0.35);
+  for (const side of [-1, 1]) {
+    const slab = slabBox(wd + 0.7, 0.12, slope + 0.15, 0.35);
+    // The sign opposes the z-offset side so ridge and eave edges meet.
+    slab.rotateX(-side * ang);
+    slab.translate(wx, wH + wR / 2 + 0.06, -d * 0.16 - side * (ww / 4 + 0.18));
+    wing.roof.push(slab);
+  }
+  wing.roof.push(slabBox(wd + 0.7, 0.13, 0.34, 0.5)
+    .translate(wx, wH + wR + 0.04, -d * 0.16));
+  pushParts(buckets, wing);
+  return { wd, ww };
+}
+
+function addFarmhousePorch(parts: BuildingParts, w: number, d: number): void {
+  const px = -w / 2 - 0.75;
+  for (let k = 0; k < 3; k++) {
+    parts.wood.push(box(0.12, 2.2, 0.12)
+      .translate(px - 0.3, 1.1, -d * 0.30 + k * d * 0.30));
+  }
+  const roof = slabBox(1.7, 0.09, d * 0.72, 0.4);
+  pitchSkillionRoof(roof, 'x', -1, 0.28);
+  parts.roof.push(roof.translate(px - 0.02, 2.45, 0));
+  parts.stone.push(box(1.4, 0.16, 1.3).translate(px, 0.08, d * 0.18));
+  parts.wood.push(box(0.10, 2.2, 1.05).translate(-w / 2 - 0.04, 1.1, d * 0.18));
+  parts.dark.push(box(0.06, 2.0, 0.85).translate(-w / 2 - 0.02, 1.05, d * 0.18));
+}
+
+function addFarmhouseWindows(
+  rng: () => number,
+  parts: BuildingParts,
+  w: number,
+  d: number,
+  ww: number,
+): void {
+  const shutter = rng() < 0.7;
+  for (const zz of [-d * 0.30, 0, d * 0.30]) {
+    for (const side of [-1, 1]) {
+      if (side > 0 && Math.abs(zz + d * 0.16) < ww * 0.6) continue;
+      if (Math.abs(zz - d * 0.18) < 0.9 && side < 0) continue;
+      if (rng() < 0.15) continue;
+      parts.wood.push(box(0.12, 1.05, 0.84)
+        .translate(side * (w / 2 + 0.04), 1.75, zz));
+      parts[rng() < 0.5 ? 'glass' : 'curtain'].push(box(0.05, 0.9, 0.68)
+        .translate(side * (w / 2 + 0.015), 1.75, zz));
+      parts.stone.push(box(0.15, 0.09, 0.96)
+        .translate(side * (w / 2 + 0.05), 1.16, zz));
+      if (!shutter) continue;
+      // Facade sticks remain at least 0.09 m thick to avoid sub-pixel shimmer.
+      parts.wood.push(box(0.09, 0.98, 0.28)
+        .translate(side * (w / 2 + 0.05), 1.75, zz - 0.58));
+      parts.wood.push(box(0.09, 0.98, 0.28)
+        .translate(side * (w / 2 + 0.05), 1.75, zz + 0.58));
+    }
+  }
+}
+
 /** 1.5-story farmhouse: main gabled block + lower cross-wing + porch. */
 export function makeFarmhouse(
   rng: () => number,
@@ -77,61 +149,9 @@ export function makeFarmhouse(
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
   gableRoof(parts, w, d, wallH, roofH, over);
-  // cross-wing (lower, off one long side)
-  const ww = w * 0.62, wd = 4.4 + rng() * 1.2, wH = 2.7, wR = 1.5;
-  const wx = w / 2 + wd / 2 - 0.4;
-  const wing = newParts();
-  wing[wallBucket].push(box(wd, wH, ww).translate(wx, wH / 2, -d * 0.16));
-  // gable triangle caps the OUTER (+x) end of the wing; ridge runs along x
-  wing[wallBucket].push(gablePrism(ww, wR, 0.3).rotateY(Math.PI / 2)
-    .translate(wx + wd / 2 - 0.15, wH, -d * 0.16));
-  {
-    const slope = Math.hypot(ww / 2 + 0.35, wR + 0.1);
-    const ang = Math.atan2(wR + 0.1, ww / 2 + 0.35);
-    for (const side of [-1, 1]) {
-      const slab = slabBox(wd + 0.7, 0.12, slope + 0.15, 0.35);
-      // rotateX(+ang) tips the +z edge DOWN (opposite of rotateZ, which lifts
-      // +x) — the sign must oppose the z-offset side or the two planes form a
-      // sunken V: ridge edges inside the walls, eave edges floating in air
-      // (the "roofs are on wrong" farmhouse)
-      slab.rotateX(-side * ang);
-      slab.translate(wx, wH + wR / 2 + 0.06, -d * 0.16 - side * (ww / 4 + 0.18));
-      wing.roof.push(slab);
-    }
-    wing.roof.push(slabBox(wd + 0.7, 0.13, 0.34, 0.5).translate(wx, wH + wR + 0.04, -d * 0.16));
-  }
-  pushParts(buckets, wing);
-  // porch along the other side: 3 posts + skillion roof + step
-  const px = -w / 2 - 0.75;
-  for (let k = 0; k < 3; k++) {
-    parts.wood.push(box(0.12, 2.2, 0.12).translate(px - 0.3, 1.1, -d * 0.30 + k * d * 0.30));
-  }
-  {
-    const pr = slabBox(1.7, 0.09, d * 0.72, 0.4);
-    pitchSkillionRoof(pr, 'x', -1, 0.28);
-    parts.roof.push(pr.translate(px - 0.02, 2.45, 0));
-  }
-  parts.stone.push(box(1.4, 0.16, 1.3).translate(px, 0.08, d * 0.18));
-  // door + windows with framed reveals
-  parts.wood.push(box(0.10, 2.2, 1.05).translate(-w / 2 - 0.04, 1.1, d * 0.18));
-  parts.dark.push(box(0.06, 2.0, 0.85).translate(-w / 2 - 0.02, 1.05, d * 0.18));
-  const shutter = rng() < 0.7;
-  for (const zz of [-d * 0.30, 0, d * 0.30]) {
-    for (const side of [-1, 1]) {
-      if (side > 0 && Math.abs(zz + d * 0.16) < ww * 0.6) continue; // wing side
-      if (Math.abs(zz - d * 0.18) < 0.9 && side < 0) continue;      // door slot
-      if (rng() < 0.15) continue;
-      parts.wood.push(box(0.12, 1.05, 0.84).translate(side * (w / 2 + 0.04), 1.75, zz));
-      parts[rng() < 0.5 ? 'glass' : 'curtain'].push(box(0.05, 0.9, 0.68).translate(side * (w / 2 + 0.015), 1.75, zz));
-      parts.stone.push(box(0.15, 0.09, 0.96).translate(side * (w / 2 + 0.05), 1.16, zz));
-      if (shutter) {
-        // AA spec: facade sticks >= 0.09 m — thinner shutters aliased to
-        // sub-pixel shimmer lines at gameplay range
-        parts.wood.push(box(0.09, 0.98, 0.28).translate(side * (w / 2 + 0.05), 1.75, zz - 0.58));
-        parts.wood.push(box(0.09, 0.98, 0.28).translate(side * (w / 2 + 0.05), 1.75, zz + 0.58));
-      }
-    }
-  }
+  const { wd, ww } = addFarmhouseCrossWing(rng, buckets, wallBucket, w, d);
+  addFarmhousePorch(parts, w, d);
+  addFarmhouseWindows(rng, parts, w, d, ww);
   // gable attic window + chimney
   parts.dark.push(box(0.55, 0.65, 0.06).translate(w * 0.1, wallH + roofH * 0.42, d / 2 + 0.02));
   parts.stone.push(box(0.6, 1.7, 0.6).translate(-w * 0.2, wallH + roofH - 0.1, -d * 0.28));
@@ -497,6 +517,99 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
 
 /** Urban corner shop: 2-story block, chamfered corner entrance, display
  * glass on both street faces, signboard + string course. */
+function addCornerShopEntrance(
+  parts: BuildingParts,
+  wallBucket: string,
+  w: number,
+  d: number,
+  wallH: number,
+): void {
+  const chamfer = box(2.3, wallH, 0.9);
+  chamfer.rotateY(-Math.PI / 4);
+  parts[wallBucket].push(chamfer.translate(w / 2 - 0.75, wallH / 2, d / 2 - 0.75));
+  const door = box(1.15, 2.35, 0.14);
+  door.rotateY(-Math.PI / 4);
+  parts.wood.push(door.translate(w / 2 - 0.42, 1.2, d / 2 - 0.42));
+  const leaf = box(0.92, 2.15, 0.07);
+  leaf.rotateY(-Math.PI / 4);
+  parts.dark.push(leaf.translate(w / 2 - 0.38, 1.15, d / 2 - 0.38));
+  const sign = box(2.1, 0.55, 0.12);
+  sign.rotateY(-Math.PI / 4);
+  parts.wood.push(sign.translate(w / 2 - 0.50, 2.85, d / 2 - 0.50));
+}
+
+function addCornerShopDisplays(parts: BuildingParts, w: number, d: number): void {
+  for (const face of [0, 1]) {
+    const along = face === 0 ? w : d;
+    for (let k = 0; k < 2; k++) {
+      const position = -along / 2 + 1.8 + k * (along / 2 - 1.2);
+      const pane = box(0.07, 1.6, 2.0);
+      const riser = box(0.16, 0.45, 2.14);
+      const lintel = box(0.10, 0.42, 2.2);
+      if (face === 0) {
+        parts.glass.push(pane.translate(w / 2 + 0.02, 1.42, position));
+        parts.stone.push(riser.translate(w / 2 + 0.05, 0.33, position));
+        parts.wood.push(lintel.translate(w / 2 + 0.06, 2.5, position));
+      } else {
+        pane.rotateY(Math.PI / 2);
+        riser.rotateY(Math.PI / 2);
+        lintel.rotateY(Math.PI / 2);
+        parts.glass.push(pane.translate(position, 1.42, d / 2 + 0.02));
+        parts.stone.push(riser.translate(position, 0.33, d / 2 + 0.05));
+        parts.wood.push(lintel.translate(position, 2.5, d / 2 + 0.06));
+      }
+    }
+  }
+}
+
+function addCornerShopUpperWindows(
+  rng: () => number,
+  parts: BuildingParts,
+  w: number,
+  d: number,
+): void {
+  for (const face of [0, 1]) {
+    const along = face === 0 ? w : d;
+    const count = Math.max(2, Math.round(along / 2.5));
+    for (let k = 0; k < count; k++) {
+      const position = -along / 2 + (k + 0.5) * (along / count);
+      if (rng() < 0.12) continue;
+      const pane = box(0.05, 1.2, 0.8);
+      const sill = box(0.2, 0.10, 1.05);
+      const paneBucket = rng() < 0.6 ? 'glass' : rng() < 0.8 ? 'curtain' : 'dark';
+      if (face === 0) {
+        parts[paneBucket].push(pane.translate(w / 2 + 0.012, 5.0, position));
+        parts.stone.push(sill.translate(w / 2 + 0.09, 4.32, position));
+      } else {
+        pane.rotateY(Math.PI / 2);
+        sill.rotateY(Math.PI / 2);
+        parts[paneBucket].push(pane.translate(position, 5.0, d / 2 + 0.012));
+        parts.stone.push(sill.translate(position, 4.32, d / 2 + 0.09));
+      }
+    }
+  }
+}
+
+function addCornerShopParapet(
+  parts: BuildingParts,
+  wallBucket: string,
+  w: number,
+  d: number,
+  wallH: number,
+): void {
+  const parapetHeight = 0.7;
+  const y = wallH + parapetHeight / 2;
+  parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, d / 2 - 0.11));
+  parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, -d / 2 + 0.11));
+  parts[wallBucket].push(box(0.22, parapetHeight, d).translate(w / 2 - 0.11, y, 0));
+  parts[wallBucket].push(box(0.22, parapetHeight, d).translate(-w / 2 + 0.11, y, 0));
+  parts.stone.push(box(w + 0.14, 0.10, 0.32)
+    .translate(0, wallH + parapetHeight + 0.05, d / 2 - 0.11));
+  parts.stone.push(box(w + 0.14, 0.10, 0.32)
+    .translate(0, wallH + parapetHeight + 0.05, -d / 2 + 0.11));
+  parts.roof.push(slabBox(w - 0.3, 0.08, d - 0.3, 0.3).translate(0, wallH + 0.1, 0));
+}
+
 export function makeCornerShop(
   rng: () => number,
   buckets: GeometryBuckets,
@@ -507,71 +620,13 @@ export function makeCornerShop(
   const parts = newParts();
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
-  // chamfer corner: a diagonal face block at (+x,+z)
-  const ch = box(2.3, wallH, 0.9);
-  ch.rotateY(-Math.PI / 4);
-  parts[wallBucket].push(ch.translate(w / 2 - 0.75, wallH / 2, d / 2 - 0.75));
-  // corner door + fascia sign above it
-  const door = box(1.15, 2.35, 0.14);
-  door.rotateY(-Math.PI / 4);
-  parts.wood.push(door.translate(w / 2 - 0.42, 1.2, d / 2 - 0.42));
-  const leaf = box(0.92, 2.15, 0.07);
-  leaf.rotateY(-Math.PI / 4);
-  parts.dark.push(leaf.translate(w / 2 - 0.38, 1.15, d / 2 - 0.38));
-  const sign = box(2.1, 0.55, 0.12);
-  sign.rotateY(-Math.PI / 4);
-  parts.wood.push(sign.translate(w / 2 - 0.50, 2.85, d / 2 - 0.50));
-  // display glass runs on both street faces + stall risers + lintel boards
-  for (const face of [0, 1]) {
-    const along = face === 0 ? w : d;
-    for (let k = 0; k < 2; k++) {
-      const cz = -along / 2 + 1.8 + k * (along / 2 - 1.2);
-      const gl = box(0.07, 1.6, 2.0);
-      const rs = box(0.16, 0.45, 2.14);
-      const lb = box(0.10, 0.42, 2.2);
-      if (face === 0) {
-        parts.glass.push(gl.translate(w / 2 + 0.02, 1.42, cz));
-        parts.stone.push(rs.translate(w / 2 + 0.05, 0.33, cz));
-        parts.wood.push(lb.translate(w / 2 + 0.06, 2.5, cz));
-      } else {
-        gl.rotateY(Math.PI / 2); rs.rotateY(Math.PI / 2); lb.rotateY(Math.PI / 2);
-        parts.glass.push(gl.translate(cz, 1.42, d / 2 + 0.02));
-        parts.stone.push(rs.translate(cz, 0.33, d / 2 + 0.05));
-        parts.wood.push(lb.translate(cz, 2.5, d / 2 + 0.06));
-      }
-    }
-  }
+  addCornerShopEntrance(parts, wallBucket, w, d, wallH);
+  addCornerShopDisplays(parts, w, d);
   // string course + upper windows
   parts.stone.push(box(w + 0.16, 0.14, 0.10).translate(0, 3.3, d / 2 + 0.04));
   parts.stone.push(box(0.10, 0.14, d + 0.16).translate(w / 2 + 0.04, 3.3, 0));
-  for (const face of [0, 1]) {
-    const along = face === 0 ? w : d;
-    const n = Math.max(2, Math.round(along / 2.5));
-    for (let k = 0; k < n; k++) {
-      const cz = -along / 2 + (k + 0.5) * (along / n);
-      if (rng() < 0.12) continue;
-      const pane = box(0.05, 1.2, 0.8);
-      const sill = box(0.2, 0.10, 1.05);
-      const bucketPane = rng() < 0.6 ? 'glass' : rng() < 0.8 ? 'curtain' : 'dark';
-      if (face === 0) {
-        parts[bucketPane].push(pane.translate(w / 2 + 0.012, 5.0, cz));
-        parts.stone.push(sill.translate(w / 2 + 0.09, 4.32, cz));
-      } else {
-        pane.rotateY(Math.PI / 2); sill.rotateY(Math.PI / 2);
-        parts[bucketPane].push(pane.translate(cz, 5.0, d / 2 + 0.012));
-        parts.stone.push(sill.translate(cz, 4.32, d / 2 + 0.09));
-      }
-    }
-  }
-  // parapet-flat roof with coping (urban roofscape family)
-  const ph = 0.7;
-  parts[wallBucket].push(box(w, ph, 0.22).translate(0, wallH + ph / 2, d / 2 - 0.11));
-  parts[wallBucket].push(box(w, ph, 0.22).translate(0, wallH + ph / 2, -d / 2 + 0.11));
-  parts[wallBucket].push(box(0.22, ph, d).translate(w / 2 - 0.11, wallH + ph / 2, 0));
-  parts[wallBucket].push(box(0.22, ph, d).translate(-w / 2 + 0.11, wallH + ph / 2, 0));
-  parts.stone.push(box(w + 0.14, 0.10, 0.32).translate(0, wallH + ph + 0.05, d / 2 - 0.11));
-  parts.stone.push(box(w + 0.14, 0.10, 0.32).translate(0, wallH + ph + 0.05, -d / 2 + 0.11));
-  parts.roof.push(slabBox(w - 0.3, 0.08, d - 0.3, 0.3).translate(0, wallH + 0.1, 0));
+  addCornerShopUpperWindows(rng, parts, w, d);
+  addCornerShopParapet(parts, wallBucket, w, d, wallH);
   pushParts(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }

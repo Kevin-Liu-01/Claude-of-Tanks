@@ -16,6 +16,11 @@ import { buildHorizonRing, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import {
+  normalTextureFromHeight as normalFromHeight,
+  textureFromRgbaPixels as canvasToTexture,
+  tileableTorusNoise as torusNoise,
+} from './proceduralTexture.ts';
 
 type GroundType = 'hard' | 'medium' | 'soft';
 type RoadPoint = [number, number];
@@ -205,7 +210,7 @@ export interface HeightField {
 
 interface TerrainEngineContext {
   anisotropy?: number;
-  setupShadowMaterial(material: THREE.MeshStandardMaterial, hook: MaterialShaderHook): unknown;
+  setupShadowMaterial(material: THREE.MeshStandardMaterial, hook: MaterialShaderHook): void;
 }
 
 interface TerrainTextureLayer {
@@ -220,12 +225,6 @@ interface SandstoneBed {
   tone: number;
   hueJ: number;
   hard: number;
-}
-
-interface CanvasTextureOptions {
-  srgb?: boolean;
-  anisotropy?: number;
-  repeat?: boolean;
 }
 
 interface SplatNoiseSample {
@@ -557,26 +556,29 @@ export function createHeightField(
     (s) => [s.x, s.z, _VILLAGE.cx, _VILLAGE.cz]
   );
 
-  for (let gz = 0; gz < GN; gz++) {
-    const z = gz * CELL - HALF;
-    for (let gx = 0; gx < GN; gx++) {
-      const x = gx * CELL - HALF;
-      const i = gz * GN + gx;
-      for (let r = 0; r < roads.length; r++) {
-        const nodes = roads[r];
-        for (let s = 0; s < nodes.length - 1; s++) {
-          const { d, t } = segDist(x, z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
-          if (d < gRoadDist[i]) { gRoadDist[i] = d; gSegRoad[i] = r; gSegIdx[i] = s; gSegT[i] = t; }
+  function buildRoadLookupGrid(): void {
+    for (let gz = 0; gz < GN; gz++) {
+      const z = gz * CELL - HALF;
+      for (let gx = 0; gx < GN; gx++) {
+        const x = gx * CELL - HALF;
+        const i = gz * GN + gx;
+        for (let r = 0; r < roads.length; r++) {
+          const nodes = roads[r];
+          for (let s = 0; s < nodes.length - 1; s++) {
+            const { d, t } = segDist(x, z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
+            if (d < gRoadDist[i]) { gRoadDist[i] = d; gSegRoad[i] = r; gSegIdx[i] = s; gSegT[i] = t; }
+          }
         }
+        let cw = 0;
+        for (const c of corridors) {
+          const { d } = segDist(x, z, c[0], c[1], c[2], c[3]);
+          cw = Math.max(cw, 1 - smoothstep(8, 30, d));
+        }
+        gCorridor[i] = cw;
       }
-      let cw = 0;
-      for (const c of corridors) {
-        const { d } = segDist(x, z, c[0], c[1], c[2], c[3]);
-        cw = Math.max(cw, 1 - smoothstep(8, 30, d));
-      }
-      gCorridor[i] = cw;
     }
   }
+  buildRoadLookupGrid();
 
   function gridSample(arr: ArrayLike<number>, x: number, z: number): number {
     const gx = clamp((x + HALF) / CELL, 0, GN - 1.0001);
@@ -605,6 +607,109 @@ export function createHeightField(
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
+
+  function applyMacroTerrain(
+    x: number,
+    z: number,
+    h: number,
+    corridorWeight: number,
+    settlementWeight: number,
+    marshWeight: number,
+  ): number {
+    let spawnClear = 1;
+    if (T.dunes || T.mesas || T.landforms.length) {
+      for (let p = 0; p < padPts.length; p++) {
+        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
+        if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
+      }
+    }
+    if (T.dunes) {
+      // r5 terrain_environment: ASYMMETRIC dune profile. Real transverse
+      // dunes ramp gently up the windward side and drop on a steep slip face
+      // downwind of the brink; the old symmetric ridge^3 read as featureless
+      // blobby mounds (critique). Compare the ridge field against a sample
+      // ~16 m UPWIND (global wind [0.8,0.6], matching the splat rippleDir):
+      // windward faces (higher than upwind) fill toward the crest, lee faces
+      // (lower than upwind) drop away faster — a slip-face brink. A short
+      // ~24 m crest-ripple octave roughens the brink line so dune tops stop
+      // reading as airbrushed domes from the establishing camera.
+      const dn = 1 - Math.abs(noi.noise(x * 0.0021 + 402, z * 0.0046 + 91));
+      const dnu = 1 - Math.abs(noi.noise((x - 12.8) * 0.0021 + 402, (z - 9.6) * 0.0046 + 91));
+      const dn2 = noi.noise(x * 0.0064 - 55, z * 0.0064 + 233) * 0.5 + 0.5;
+      const dnb = dn * 0.62 + dnu * 0.38;
+      const dnub = dnu * 0.65 + dn * 0.35;
+      const dnc = dnb * dnb * (3 - 2 * dnb);
+      const dnuc = dnub * dnub * (3 - 2 * dnub);
+      const skew = clamp((dnc - dnuc) * 2.0, -0.28, 0.28);
+      let duneH = dnc * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 + skew * 0.55);
+      duneH += smoothstep(0.55, 0.95, dnc) * noi.noise(x * 0.041 + 17, z * 0.041 - 63)
+        * 0.45 * T.dunes.amp * 0.08;
+      h += duneH * (1 - corridorWeight * 0.7) * (1 - settlementWeight) * spawnClear;
+    }
+    if (T.mesas) {
+      const mn = sampleMesaNoise(x, z);
+      const band = T.mesas.thr1 - T.mesas.thr0;
+      const wallWidth = T.mesas.wallWidth ?? 0.42;
+      const tierWidth = T.mesas.tierWidth ?? 0.045;
+      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.04 + tierWidth, mn);
+      const tierScale = T.mesas.tierScale ?? 0.45;
+      const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
+      const corridorFloor = T.mesas.corridorFloor ?? 0;
+      const corridorProtect = 1 - corridorWeight * (1 - corridorFloor);
+      h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
+        * corridorProtect * (1 - settlementWeight) * (1 - marshWeight) * spawnClear;
+    }
+    for (let li = 0; li < T.landforms.length; li++) {
+      const form = T.landforms[li];
+      const corridorScale = form.corridorScale ?? 0.62;
+      const settlementScale = form.settlementScale ?? 0.45;
+      const wetScale = form.wetScale ?? 0.30;
+      const protect = (1 - corridorWeight * (1 - corridorScale))
+        * (1 - settlementWeight * (1 - settlementScale))
+        * (1 - marshWeight * (1 - wetScale));
+      h += sampleLandformHeight(form, x, z) * spawnClear * protect;
+    }
+    return h;
+  }
+
+  function applyHeightConstraints(
+    x: number,
+    z: number,
+    h: number,
+    marshWeight: number,
+    settlementWeight: number,
+    lakesOn: boolean,
+    padsOn: boolean,
+    roadsOn: boolean,
+  ): number {
+    if (lakesOn) {
+      for (let li = 0; li < _LAKES.length; li++) {
+        const lk = _LAKES[li];
+        const ld = Math.hypot(x - lk.x, z - lk.z);
+        if (ld < lk.r * 1.32) {
+          const w = smoothstep(lk.r * 1.32, lk.r * 0.94, ld);
+          h += (lakeLevels[li] - h) * w;
+        }
+      }
+    }
+    if (padsOn) {
+      for (let p = 0; p < padPts.length; p++) {
+        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
+        if (pd < 22) h += (padYs[p] - h) * (1 - smoothstep(9, 22, pd));
+      }
+    }
+    if (!roadsOn) return h;
+    const rd = gridSample(gRoadDist, x, z);
+    if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));
+    if (rd > 4 && rd < 22) {
+      const bermA = 0.5 + 0.5 * noi.noise(x * 0.031 + 71, z * 0.031 - 44);
+      const berm = Math.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
+      const ditch = -Math.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
+      h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight);
+    }
+    return h;
+  }
 
   function heightAt(
     x: number,
@@ -638,87 +743,7 @@ export function createHeightField(
     // pad — a mesa wall rising through the 9-22 m pad blend used to notch a
     // flat shelf into the cliff face with the spawned tank half-EMBEDDED in
     // the rock (desert establishing shot: green hull sunk in the mesa flank).
-    let spawnClear = 1;
-    if (T.dunes || T.mesas || T.landforms.length) {
-      for (let p = 0; p < padPts.length; p++) {
-        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
-        if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
-      }
-    }
-    if (T.dunes) {
-      // r5 terrain_environment: ASYMMETRIC dune profile. Real transverse
-      // dunes ramp gently up the windward side and drop on a steep slip face
-      // downwind of the brink; the old symmetric ridge^3 read as featureless
-      // blobby mounds (critique). Compare the ridge field against a sample
-      // ~16 m UPWIND (global wind [0.8,0.6], matching the splat rippleDir):
-      // windward faces (higher than upwind) fill toward the crest, lee faces
-      // (lower than upwind) drop away faster — a slip-face brink. A short
-      // ~24 m crest-ripple octave roughens the brink line so dune tops stop
-      // reading as airbrushed domes from the establishing camera.
-      const dn = 1 - Math.abs(noi.noise(x * 0.0021 + 402, z * 0.0046 + 91));
-      const dnu = 1 - Math.abs(noi.noise((x - 12.8) * 0.0021 + 402, (z - 9.6) * 0.0046 + 91));
-      const dn2 = noi.noise(x * 0.0064 - 55, z * 0.0064 + 233) * 0.5 + 0.5;
-      // Two already-required samples across the wind axis form one broad dune mass instead
-      // of cubing a single zero-crossing into a needle ridge. Smoothstep
-      // gives both the toe and crest a zero derivative; the smaller skew
-      // retains a readable lee face without a razor brink. Keeping this to
-      // the original pair preserves the terrain hot-loop noise budget.
-      const dnb = dn * 0.62 + dnu * 0.38;
-      const dnub = dnu * 0.65 + dn * 0.35;
-      const dnc = dnb * dnb * (3 - 2 * dnb);
-      const dnuc = dnub * dnub * (3 - 2 * dnub);
-      const skew = clamp((dnc - dnuc) * 2.0, -0.28, 0.28);
-      let duneH = dnc * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 + skew * 0.55);
-      duneH += smoothstep(0.55, 0.95, dnc) * noi.noise(x * 0.041 + 17, z * 0.041 - 63)
-        * 0.45 * T.dunes.amp * 0.08;
-      h += duneH * (1 - cw * 0.7) * (1 - vm) * spawnClear;
-    }
-    if (T.mesas) {
-      // domain-warped mesa field (r5): unwarped blobs read as lumpy noise
-      // mounds; the warp stretches outlines into the irregular embayed
-      // escarpment plan real tablelands show from above
-      const mn = sampleMesaNoise(x, z);
-      // real mesa profile: near-vertical cliff wall, flat cap, plus a smaller
-      // second tier so big buttes read stepped. Wall band widened 0.28 -> 0.42
-      // and tier2 widened (r5): the old widths crossed the full 38 m rise
-      // within ~one far-LOD vertex (5.3 m), leaving single-vertex facet
-      // spikes on the escarpment edges (the crimson spike artifact).
-      const band = (T.mesas.thr1 - T.mesas.thr0);
-      // Some maps want sheer tableland walls; village-adjacent desert mesas
-      // need a longer talus shoulder so a threshold island cannot collapse
-      // into a one-cell triangular spike. Both controls are map-authored and
-      // preserve the legacy profile when omitted.
-      const wallWidth = T.mesas.wallWidth ?? 0.42;
-      const tierWidth = T.mesas.tierWidth ?? 0.045;
-      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
-      const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.04 + tierWidth, mn);
-      const tierScale = T.mesas.tierScale ?? 0.45;
-      const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
-      // Never cut the entire mesa height out along a synthetic spawn-to-town
-      // corridor: several converging corridors otherwise leave thin wedges
-      // of full-height rock between them. Those wedges were the dark shark-
-      // fin hills visible behind Sirocco's village. The actual roadbed still
-      // grades the final surface below; this floor only keeps the surrounding
-      // landform continuous.
-      const corridorFloor = T.mesas.corridorFloor ?? 0;
-      const corridorProtect = 1 - cw * (1 - corridorFloor);
-      h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
-        * corridorProtect * (1 - vm) * (1 - marshW) * spawnClear;
-    }
-    // Authored macro composition: broad ridge lines, knolls, slag heaps,
-    // levees and shallow basins break the expansion maps into distinct lanes
-    // without adding a single render object. Roads are grounded later in the
-    // pipeline; the weights here merely keep their approaches readable.
-    for (let li = 0; li < T.landforms.length; li++) {
-      const form = T.landforms[li];
-      const corridorScale = form.corridorScale ?? 0.62;
-      const settlementScale = form.settlementScale ?? 0.45;
-      const wetScale = form.wetScale ?? 0.30;
-      const protect = (1 - cw * (1 - corridorScale))
-        * (1 - vm * (1 - settlementScale))
-        * (1 - marshW * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z) * spawnClear * protect;
-    }
+    h = applyMacroTerrain(x, z, h, cw, vm, marshW);
     // tactical micro-terrain: berm crests + shallow scrapes every ~70-110 m so
     // the open midfield offers hull-down folds instead of a flat golf course.
     // Attenuated (not zeroed) on drive corridors so they stay drivable, and
@@ -751,88 +776,83 @@ export function createHeightField(
     // lake level tracks the lowest shore, so on the uphill side the raw
     // terrain can sit 10+ m above the sheet — graded over ~35 m that is a
     // snowy bank; over the old few-meter band it was a sheer quarry wall.
-    if (lakesOn) {
-      for (let li = 0; li < _LAKES.length; li++) {
-        const lk = _LAKES[li];
-        const ld = Math.hypot(x - lk.x, z - lk.z);
-        if (ld < lk.r * 1.32) {
-          const w = smoothstep(lk.r * 1.32, lk.r * 0.94, ld);
-          h += (lakeLevels[li] - h) * w;
+    return applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn);
+  }
+
+  function smoothRoadElevations(nodeElev: number[][]): void {
+    for (const elev of nodeElev) {
+      for (let pass = 0; pass < 4; pass++) {
+        const prev = elev.slice();
+        for (let i = 1; i < elev.length - 1; i++) {
+          elev[i] = prev[i - 1] * 0.25 + prev[i] * 0.5 + prev[i + 1] * 0.25;
         }
       }
     }
-    if (padsOn) {
-      for (let p = 0; p < padPts.length; p++) {
-        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
-        if (pd < 22) h += (padYs[p] - h) * (1 - smoothstep(9, 22, pd));
-      }
-    }
-    if (roadsOn) {
-      const rd = gridSample(gRoadDist, x, z);
-      // wide feather: the roadbed melts into the terrain instead of sitting
-      // proud on an embankment shelf
-      if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));
-      // r3 terrain_environment: roadside berm + drainage ditch profile — a
-      // low graded shoulder hump (~25 cm) and a shallow ditch beyond it,
-      // both wandering in strength along the road, so the carriageway reads
-      // built into the landscape instead of painted onto a smooth blanket
-      if (rd > 4 && rd < 22) {
-        const bermA = 0.5 + 0.5 * noi.noise(x * 0.031 + 71, z * 0.031 - 44);
-        const berm = Math.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
-        const ditch = -Math.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
-        h += (berm + ditch) * (1 - vm) * (1 - marshW);
-      }
-    }
-    return h;
   }
-
-  // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
-  const nodeElev = roads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
-  for (const elev of nodeElev) {
-    for (let pass = 0; pass < 4; pass++) {
-      const prev = elev.slice();
-      for (let i = 1; i < elev.length - 1; i++) elev[i] = prev[i - 1] * 0.25 + prev[i] * 0.5 + prev[i + 1] * 0.25;
-    }
-  }
-  // blend every road pair to a common elevation at their crossing
-  for (let ra = 0; ra < roads.length; ra++) for (let rb = ra + 1; rb < roads.length; rb++) {
+  const _junctionScratch = [0, 0, 1e9];
+  function findRoadJunction(ra: number, rb: number): number[] {
     let jA = 0, jB = 0, best = 1e9;
     for (let a = 0; a < roads[ra].length; a++) for (let b = 0; b < roads[rb].length; b++) {
       const dd = Math.hypot(roads[ra][a][0] - roads[rb][b][0], roads[ra][a][1] - roads[rb][b][1]);
       if (dd < best) { best = dd; jA = a; jB = b; }
     }
-    if (best > 40) continue; // roads never actually cross
-    const jElev = (nodeElev[ra][jA] + nodeElev[rb][jB]) * 0.5;
-    for (let k = -3; k <= 3; k++) {
-      const w = (1 - Math.abs(k) / 4) * 0.85;
-      if (nodeElev[ra][jA + k] !== undefined) nodeElev[ra][jA + k] += (jElev - nodeElev[ra][jA + k]) * w;
-      if (nodeElev[rb][jB + k] !== undefined) nodeElev[rb][jB + k] += (jElev - nodeElev[rb][jB + k]) * w;
+    _junctionScratch[0] = jA;
+    _junctionScratch[1] = jB;
+    _junctionScratch[2] = best;
+    return _junctionScratch;
+  }
+  function blendRoadJunctions(nodeElev: number[][]): void {
+    // Blend every road pair to a common elevation at their crossing.
+    for (let ra = 0; ra < roads.length; ra++) for (let rb = ra + 1; rb < roads.length; rb++) {
+      const [jA, jB, best] = findRoadJunction(ra, rb);
+      if (best > 40) continue; // roads never actually cross
+      const jElev = (nodeElev[ra][jA] + nodeElev[rb][jB]) * 0.5;
+      for (let k = -3; k <= 3; k++) {
+        const w = (1 - Math.abs(k) / 4) * 0.85;
+        if (nodeElev[ra][jA + k] !== undefined) nodeElev[ra][jA + k] += (jElev - nodeElev[ra][jA + k]) * w;
+        if (nodeElev[rb][jB + k] !== undefined) nodeElev[rb][jB + k] += (jElev - nodeElev[rb][jB + k]) * w;
+      }
     }
   }
-  for (let i = 0; i < GN * GN; i++) {
-    const e = nodeElev[gSegRoad[i]];
-    const s = gSegIdx[i];
-    gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];
+  function buildRoadElevationGrid(): void {
+    const nodeElev = roads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
+    smoothRoadElevations(nodeElev);
+    blendRoadJunctions(nodeElev);
+    for (let i = 0; i < GN * GN; i++) {
+      const e = nodeElev[gSegRoad[i]];
+      const s = gSegIdx[i];
+      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];
+    }
   }
+  // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
+  buildRoadElevationGrid();
 
   // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---
-  for (let li = 0; li < _LAKES.length; li++) {
-    const lk = _LAKES[li];
-    let lo = Infinity;
-    // sample the SHORELINE ring (not 0.6 r): the sheet sits just below the
-    // lowest bank point, so bank height stays ~depth everywhere instead of
-    // stacking the full cross-lake terrain drop onto the near shore
-    for (let a = 0; a < 12; a++) {
-      const hh = heightAt(lk.x + Math.cos(a * 0.5236) * lk.r * 0.95,
-        lk.z + Math.sin(a * 0.5236) * lk.r * 0.95, false, false, false);
-      if (hh < lo) lo = hh;
+  function initializeLakeLevels(): void {
+    for (let li = 0; li < _LAKES.length; li++) {
+      const lk = _LAKES[li];
+      let lo = Infinity;
+      // sample the SHORELINE ring (not 0.6 r): the sheet sits just below the
+      // lowest bank point, so bank height stays ~depth everywhere instead of
+      // stacking the full cross-lake terrain drop onto the near shore
+      for (let a = 0; a < 12; a++) {
+        const hh = heightAt(lk.x + Math.cos(a * 0.5236) * lk.r * 0.95,
+          lk.z + Math.sin(a * 0.5236) * lk.r * 0.95, false, false, false);
+        if (hh < lo) lo = hh;
+      }
+      // maps r1 (ADDITIVE): lk.level pins the sheet elevation absolutely — a
+      // multi-circle SEA must share one waterline (per-circle auto levels step
+      // where the sheets overlap). Default stays the auto shoreline formula.
+      lakeLevels[li] = lk.level ?? (Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4));
     }
-    // maps r1 (ADDITIVE): lk.level pins the sheet elevation absolutely — a
-    // multi-circle SEA must share one waterline (per-circle auto levels step
-    // where the sheets overlap). Default stays the auto shoreline formula.
-    lakeLevels[li] = lk.level ?? (Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4));
   }
-  for (let p = 0; p < padPts.length; p++) padYs[p] = heightAt(padPts[p].x, padPts[p].z, false, true);
+  function initializeSpawnPadLevels(): void {
+    for (let p = 0; p < padPts.length; p++) {
+      padYs[p] = heightAt(padPts[p].x, padPts[p].z, false, true);
+    }
+  }
+  initializeLakeLevels();
+  initializeSpawnPadLevels();
 
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
 
@@ -983,12 +1003,17 @@ export function createHeightField(
     return false;
   }
 
-  // --- min/max over a coarse scan ---
-  let minY = Infinity, maxY = -Infinity;
-  for (let gz = 0; gz <= 128; gz++) for (let gx = 0; gx <= 128; gx++) {
-    const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
-    if (h < minY) minY = h; if (h > maxY) maxY = h;
+  function measureHeightRange(): [number, number] {
+    let minY = Infinity, maxY = -Infinity;
+    for (let gz = 0; gz <= 128; gz++) for (let gx = 0; gx <= 128; gx++) {
+      const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
+      if (h < minY) minY = h;
+      if (h > maxY) maxY = h;
+    }
+    return [minY, maxY];
   }
+  // --- min/max over a coarse scan ---
+  const [minY, maxY] = measureHeightRange();
 
   // r6 terrain_environment: LANDFORM weight — 1 where the MESA field (and the
   // rocky map rim) shapes the terrain, 0 on dunes/flats. The splat shader's
@@ -997,16 +1022,20 @@ export function createHeightField(
   // horizontal terracing (the "heightmap quantization" critique). Baked to a
   // small mask (createSplatMaterial) so rock/strata live only on real mesas.
   const mesas = T.mesas;
-  const mesaWeight: HeightField['_mesaW'] = mesas ? (x: number, z: number): number => {
-    const mn = sampleMesaNoise(x, z);
-    const band = (mesas.thr1 - mesas.thr0);
-    // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
-    // keeps its rock identity, the open dune field beyond it does not
-    const wall = smoothstep(mesas.thr0 - band * 0.55,
-      mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
-    const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z)));
-    return Math.max(wall, rim);
-  } : null;
+  function createMesaWeightSampler(): HeightField['_mesaW'] {
+    if (!mesas) return null;
+    return (x: number, z: number): number => {
+      const mn = sampleMesaNoise(x, z);
+      const band = mesas.thr1 - mesas.thr0;
+      // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
+      // keeps its rock identity, the open dune field beyond it does not
+      const wall = smoothstep(mesas.thr0 - band * 0.55,
+        mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
+      const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z)));
+      return Math.max(wall, rim);
+    };
+  }
+  const mesaWeight = createMesaWeightSampler();
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
@@ -1050,57 +1079,6 @@ export function applyTone(
 // ---------------------------------------------------------------------------
 // Procedural PBR texture layers (browser-only; called from buildTerrainMeshes)
 // ---------------------------------------------------------------------------
-
-function canvasToTexture(
-  px: Uint8ClampedArray,
-  s: number,
-  { srgb = false, anisotropy = 16, repeat = true }: CanvasTextureOptions = {},
-): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  require2DContext(c).putImageData(
-    new ImageData(px as Uint8ClampedArray<ArrayBuffer>, s, s), 0, 0,
-  );
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  t.anisotropy = anisotropy;
-  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
-function normalFromHeight(
-  h: Float32Array,
-  s: number,
-  strength: number,
-  anisotropy: number,
-): THREE.CanvasTexture {
-  const px = new Uint8ClampedArray(s * s * 4);
-  const H = (x: number, y: number): number => h[((y + s) % s) * s + ((x + s) % s)];
-  const v = new THREE.Vector3();
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
-    const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x, y - 1) + H(x + 1, y - 1));
-    v.set(-dx * strength, -dy * strength, 1).normalize();
-    const i = (y * s + x) * 4;
-    px[i] = v.x * 127.5 + 127.5; px[i + 1] = v.y * 127.5 + 127.5; px[i + 2] = v.z * 127.5 + 127.5; px[i + 3] = 255;
-  }
-  return canvasToTexture(px, s, { anisotropy });
-}
-
-// tileable simplex on a torus; integer fu/fv keep it seamless
-function torusNoise(
-  noi: SimplexNoise,
-  u: number,
-  v: number,
-  fu: number,
-  fv: number,
-  off: number,
-): number {
-  const a = u * Math.PI * 2 * fu, b = v * Math.PI * 2 * fv;
-  const r1 = fu * 0.55, r2 = fv * 0.55;
-  return noi.noise4d(Math.cos(a) * r1 + off, Math.sin(a) * r1 - off * 0.7,
-    Math.cos(b) * r2 + off * 1.3, Math.sin(b) * r2 + off * 0.35);
-}
 
 // CPU twin of the splat shader's uNoise samples (seed 3011 matches
 // makeShaderNoiseTexture in createSplatMaterial). Lets vegetation placement
@@ -1730,16 +1708,18 @@ function makeMaskTexture(
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.
-  let landGrid: Float32Array | null = null;
   const LG = 257, LCELL = MAP_SIZE / (LG - 1);
-  if (landformW) {
-    landGrid = new Float32Array(LG * LG);
+  function createLandGrid(): Float32Array | null {
+    if (!landformW) return null;
+    const grid = new Float32Array(LG * LG);
     for (let gz = 0; gz < LG; gz++) {
       for (let gx = 0; gx < LG; gx++) {
-        landGrid[gz * LG + gx] = clamp(landformW(gx * LCELL - HALF, gz * LCELL - HALF), 0, 1);
+        grid[gz * LG + gx] = clamp(landformW(gx * LCELL - HALF, gz * LCELL - HALF), 0, 1);
       }
     }
+    return grid;
   }
+  const landGrid = createLandGrid();
   function landAt(x: number, z: number): number {
     const grid = landGrid;
     if (!grid) return 0;
@@ -1752,66 +1732,78 @@ function makeMaskTexture(
     return a + (b - a) * fz;
   }
   const dist = new Float32Array(s * s).fill(1e9);
-  for (const nodes of layout.roads) {
-    for (let sg = 0; sg < nodes.length - 1; sg++) {
-      const [ax, az] = nodes[sg], [bx, bz] = nodes[sg + 1];
-      const x0 = clamp(Math.floor((Math.min(ax, bx) - 14 + HALF) * T), 0, s - 1);
-      const x1 = clamp(Math.ceil((Math.max(ax, bx) + 14 + HALF) * T), 0, s - 1);
-      const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
-      const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
-      for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
-        const { d } = segDist(tx / T - HALF, tz / T - HALF, ax, az, bx, bz);
-        const i = tz * s + tx;
-        if (d < dist[i]) dist[i] = d;
-      }
-    }
-  }
-  const px = new Uint8ClampedArray(s * s * 4);
-  for (let tz = 0; tz < s; tz++) {
-    const z = tz / T - HALF;
-    for (let tx = 0; tx < s; tx++) {
-      const x = tx / T - HALF, i = tz * s + tx, j = i * 4;
-      const d = dist[i];
-      if (d < 13) {
-        // edge wobble + a slow width modulation so the road narrows/widens
-        // along its length instead of running at one constant gauge
-        const wob = seedNoi.noise(x * 0.055, z * 0.055) * 0.8 + seedNoi.noise(x * 0.21, z * 0.21) * 0.35;
-        const wid = seedNoi.noise(x * 0.011 + 41, z * 0.011 - 17) * 1.5;
-        let core = 1 - smoothstep(3.3 + wob + wid, 4.4 + wob + wid, d);
-        // center grass strip between the wheel tracks
-        core *= 0.34 + 0.66 * smoothstep(0.25, 0.95, d + wob * 0.12);
-        px[j] = core * 255;
-        // twin compacted wheel ruts, gaussian profile at +-1.55 m; amplitude
-        // wanders along the road so the striping never repeats identically
-        const rutAmp = 0.55 + 0.45 * (seedNoi.noise(x * 0.019 - 3, z * 0.019 + 8) * 0.5 + 0.5);
-        const rut = Math.exp(-Math.pow((d - 1.55) / 0.55, 2));
-        px[j + 1] = rut * core * 245 * rutAmp;
-      }
-      let marsh = 0;
-      for (const m of _MARSHES) {
-        const md = Math.hypot(x - m.x, z - m.z);
-        if (md < m.r + 24) {
-          if (m.depth !== undefined) { // lake: ice sheet with a drifted-snow bank
-            // ends AT the flat sheet edge (0.94 r): letting it spill to 1.02 r
-            // dressed the graded snow banks in glossy blue ice
-            const re = m.r * (1 + 0.04 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
-            marsh = Math.max(marsh, 1 - smoothstep(re * 0.80, re * 0.96, md));
-          } else {
-            const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
-            marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
-          }
+  function rasterizeRoadDistances(): void {
+    for (const nodes of layout.roads) {
+      for (let sg = 0; sg < nodes.length - 1; sg++) {
+        const [ax, az] = nodes[sg], [bx, bz] = nodes[sg + 1];
+        const x0 = clamp(Math.floor((Math.min(ax, bx) - 14 + HALF) * T), 0, s - 1);
+        const x1 = clamp(Math.ceil((Math.max(ax, bx) + 14 + HALF) * T), 0, s - 1);
+        const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
+        const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
+        for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
+          const { d } = segDist(tx / T - HALF, tz / T - HALF, ax, az, bx, bz);
+          const i = tz * s + tx;
+          if (d < dist[i]) dist[i] = d;
         }
       }
-      px[j + 2] = (landGrid ? landAt(x, z) : marsh) * 255;
-      const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
-      const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
-      const vm = 1 - smoothstep(0, 26, Math.hypot(dx, dz));
-      if (vm > 0) {
-        const patch = 0.45 + 0.55 * (seedNoi.noise(x * 0.045 - 19, z * 0.045 + 8) * 0.5 + 0.5);
-        px[j + 3] = vm * patch * 0.8 * 255;
+    }
+  }
+  rasterizeRoadDistances();
+  const px = new Uint8ClampedArray(s * s * 4);
+  function paintRoadMask(x: number, z: number, i: number, j: number): void {
+    const d = dist[i];
+    if (d >= 13) return;
+    // edge wobble + a slow width modulation so the road narrows/widens
+    // along its length instead of running at one constant gauge
+    const wob = seedNoi.noise(x * 0.055, z * 0.055) * 0.8 + seedNoi.noise(x * 0.21, z * 0.21) * 0.35;
+    const wid = seedNoi.noise(x * 0.011 + 41, z * 0.011 - 17) * 1.5;
+    let core = 1 - smoothstep(3.3 + wob + wid, 4.4 + wob + wid, d);
+    // center grass strip between the wheel tracks
+    core *= 0.34 + 0.66 * smoothstep(0.25, 0.95, d + wob * 0.12);
+    px[j] = core * 255;
+    // twin compacted wheel ruts, gaussian profile at +-1.55 m; amplitude
+    // wanders along the road so the striping never repeats identically
+    const rutAmp = 0.55 + 0.45 * (seedNoi.noise(x * 0.019 - 3, z * 0.019 + 8) * 0.5 + 0.5);
+    const rut = Math.exp(-Math.pow((d - 1.55) / 0.55, 2));
+    px[j + 1] = rut * core * 245 * rutAmp;
+  }
+  function sampleMarshMask(x: number, z: number): number {
+    let marsh = 0;
+    for (const m of _MARSHES) {
+      const md = Math.hypot(x - m.x, z - m.z);
+      if (md >= m.r + 24) continue;
+      if (m.depth !== undefined) { // lake: ice sheet with a drifted-snow bank
+        // ends AT the flat sheet edge (0.94 r): letting it spill to 1.02 r
+        // dressed the graded snow banks in glossy blue ice
+        const re = m.r * (1 + 0.04 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
+        marsh = Math.max(marsh, 1 - smoothstep(re * 0.80, re * 0.96, md));
+      } else {
+        const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
+        marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
+      }
+    }
+    return marsh;
+  }
+  function paintVillageMask(x: number, z: number, j: number): void {
+    const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
+    const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
+    const vm = 1 - smoothstep(0, 26, Math.hypot(dx, dz));
+    if (vm <= 0) return;
+    const patch = 0.45 + 0.55 * (seedNoi.noise(x * 0.045 - 19, z * 0.045 + 8) * 0.5 + 0.5);
+    px[j + 3] = vm * patch * 0.8 * 255;
+  }
+  function paintMaskPixels(): void {
+    for (let tz = 0; tz < s; tz++) {
+      const z = tz / T - HALF;
+      for (let tx = 0; tx < s; tx++) {
+        const x = tx / T - HALF, i = tz * s + tx, j = i * 4;
+        paintRoadMask(x, z, i, j);
+        px[j + 2] = (landGrid ? landAt(x, z) : sampleMarshMask(x, z)) * 255;
+        paintVillageMask(x, z, j);
       }
     }
   }
+  paintMaskPixels();
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
   // store is premultiplied, so putImageData ZEROES the road/rut/marsh RGB
@@ -2203,10 +2195,14 @@ void splatCompute() {
                    texture2D(uNoise, uvB + vec2(0.0, 0.005)).g - hb);
     // uMidRelief: per-map scale — bright low-sun sand turns this dapple into
     // a leopard-spot shadow field, so the desert runs it well under 1.0 and
-    // leans on the anisotropic wind ripples for mid-frequency character
+    // leans on the anisotropic wind ripples for mid-frequency character.
+    // This is landform relief, not road relief. Applying it to the compacted
+    // carriageway made the smooth noise gradients behave like oversized
+    // normal-map dents: black circular splotches remained even with CSM,
+    // GTAO, tree shadows, and decals all disabled.
     // r5 terrain_environment: planar-noise dapple gated off slopes — its
     // gradient is meaningless down a face and printed streaks (corduroy kin)
-    float dapG = 1.0 - triW * 0.85;
+    float dapG = (1.0 - triW * 0.85) * (1.0 - roadCore);
     n.xy -= (ga * 1.4 + gb * 2.0) * dMid * uMidRelief * dapG;
     float midN2 = texture2D(uNoise, uv * 0.0089 + vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
@@ -2390,11 +2386,14 @@ void splatCompute() {
   float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
   if (dNear > 0.001) {
     vec3 dn = texture2D(uNrmD, uv * 1.07).xyz * 2.0 - 1.0;
-    n.xy += dn.xy * 0.85 * dNear;
+    // Open soil benefits from clod-scale relief, but the same normal contains
+    // isolated cavities that read as black potholes on a compacted road.
+    // Keep every near-detail octave off the carriageway; the dedicated road
+    // pass below supplies its own shallow, continuous surface response.
+    float openNear = dNear * (1.0 - roadCore);
+    n.xy += dn.xy * 0.85 * openNear;
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * dNear * uMicroAmp;
-    vec4 grav = texture2D(uAlbR, uv * 0.83);
-    a.rgb = mix(a.rgb, grav.rgb * vec3(1.02, 0.96, 0.86), roadCore * 0.42 * dNear);
+    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * openNear * uMicroAmp;
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
     // now carries ALBEDO as well as normal — the 5-20 m meadow read as one
@@ -2404,12 +2403,13 @@ void splatCompute() {
     float dNear2 = 1.0 - smoothstep(6.0, 26.0, camDist);
     if (dNear2 > 0.001) {
       vec3 dn2 = texture2D(uNrmG, uv * 2.71).xyz * 2.0 - 1.0;
-      n.xy += dn2.xy * 0.75 * dNear2;
+      float openNear2 = dNear2 * (1.0 - roadCore);
+      n.xy += dn2.xy * 0.75 * openNear2;
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
       float glM = dot(texture2D(uAlbG, uv * 2.71, 6.0).rgb, vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * dNear2;
+      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * openNear2;
     }
   }
   {
@@ -2418,18 +2418,33 @@ void splatCompute() {
     // town streets: the rock layer (cobble/sett) laid across the full
     // carriageway at every distance, ruts nearly gone.
     float dW = roadCore * 0.9 * (1.0 - uRoadTex);
-    // pull the compacted core toward NEUTRAL packed earth: tint, then
-    // partially desaturate so the carriageway never glows orange against
-    // the graded green field
-    vec3 roadCol = a.rgb * uRoadTint + vec3(0.014, 0.010, 0.006);
+    // Build the compacted core from a deliberately low-frequency dirt
+    // sample. Keeping only a quarter of the underlying terrain preserves
+    // local variation without baking the source texture's AO/cavity blobs
+    // into what should read as one continuous, traffic-smoothed surface.
+    // A deep mip provides the dirt palette without preserving any individual
+    // source clod. Very-low-frequency noise restores gentle soil variation
+    // without stamping round marks repeatedly down the road.
+    vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 7.0).rgb;
+    packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
+    vec3 roadCol = mix(packedRoad, a.rgb, 0.25) * uRoadTint
+      + vec3(0.014, 0.010, 0.006);
     roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), 0.26);
     a.rgb = mix(a.rgb, roadCol, dW);
-    // r6: paved rut wear 0.10 -> 0.30 — town streets need visible dark
-    // wheel-wear lanes or the carriageway reads as one clean bright sheet
-    // terrain_environment r2: the mask G channel mip-averages away past
-    // ~250 m and distant roads collapsed into uniform beige ribbons — boost
-    // the surviving rut signal with distance so the two-track read holds
-    a.rgb *= 1.0 - min(rut * (1.0 + farM * 0.9), 1.0) * mix(0.55, 0.30, uRoadTex);
+    // The sourced dirt normal contains deep clod/pothole forms intended for
+    // open ground. Repeating it at full strength down a road produced the
+    // alternating chain of black ovals visible in Verdant. Use a strongly
+    // mip-smoothed, shallow packed-earth normal for the road core; the mask
+    // gradient below adds the authored wheel-rut relief afterwards.
+    vec2 packedRoadN = groundNrm(uNrmD, uv * 0.210, df, mipB + 7.0).xy;
+    packedRoadN = mix(vec2(0.5), packedRoadN, 0.10);
+    n.xy = mix(n.xy, packedRoadN, dW);
+    // Keep compacted wheel lanes legible without painting near-black marks
+    // into the road albedo. The previous 55% dirt-road multiplier turned the
+    // low-resolution rut mask into a repeating chain of oval stains on every
+    // country-road map. Dirt now relies primarily on shallow normal relief;
+    // paved roads retain a little more tonal wear.
+    a.rgb *= 1.0 - min(rut * (1.0 + farM * 0.45), 1.0) * mix(0.10, 0.22, uRoadTex);
     if (uRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
@@ -2478,9 +2493,9 @@ void splatCompute() {
     vec2 rutG;
     rutG.x = texture2D(uMask, mUV + vec2(texel, 0.0)).g - texture2D(uMask, mUV - vec2(texel, 0.0)).g;
     rutG.y = texture2D(uMask, mUV + vec2(0.0, texel)).g - texture2D(uMask, mUV - vec2(0.0, texel)).g;
-    // r2: attenuation eased (1-df -> 1-df*0.55) so rut relief survives into
-    // the midfield instead of dying at the 160 m detail fade
-    n.xy += rutG * 0.9 * (1.0 - df * 0.55);
+    // Shallow relief reads as compressed earth instead of a row of deep
+    // potholes, and remains stable as the detail textures change mip level.
+    n.xy += rutG * 0.30 * (1.0 - df * 0.72);
   }
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
   // (maps r1: the whole sheet block reads fMs — identical to fM everywhere
@@ -2848,7 +2863,7 @@ function createSplatMaterial(
   // looking across the boundary; the culled backface opened a fog-bright
   // sliver through the desert canyon pass (battlefield_desert center).
   mat.side = THREE.DoubleSide;
-  const splatHook: MaterialShaderHook = (shader) => {
+  function assignSplatTextureUniforms(shader: MaterialShader): void {
     shader.uniforms.uAlbG = { value: layers.G.albedo };
     shader.uniforms.uAlbD = { value: layers.D.albedo };
     shader.uniforms.uAlbR = { value: layers.R.albedo };
@@ -2859,6 +2874,8 @@ function createSplatMaterial(
     shader.uniforms.uNrmM = { value: layers.M.normal };
     shader.uniforms.uMask = { value: mask };
     shader.uniforms.uNoise = { value: noiseTex };
+  }
+  function assignSplatToneUniforms(shader: MaterialShader): void {
     shader.uniforms.uTintA = { value: new THREE.Vector3(...tintA) };
     shader.uniforms.uTintB = { value: new THREE.Vector3(...tintB) };
     shader.uniforms.uTintC = { value: new THREE.Vector3(...tintC) };
@@ -2869,6 +2886,8 @@ function createSplatMaterial(
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uIceDrift = { value: (S.iceLake || S.seaLake) ? (S.iceDrift ?? 0.85) : 0 };
+  }
+  function assignSplatBiomeUniforms(shader: MaterialShader): void {
     // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
     // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
     // bare sand/mud apron + surf line + open-water weight; the "drift" field
@@ -2886,13 +2905,16 @@ function createSplatMaterial(
     // r6: landform rock gate — 1 = rock/strata keyed to the mask-B landform
     // weight (desert), 0 = slope-only legacy behavior (B stays marsh/ice)
     shader.uniforms.uRockGate = { value: landformW ? 1 : 0 };
-    {
-      const rd = S.rippleDir || [0.8, 0.6];
-      const rl = Math.hypot(rd[0], rd[1]) || 1;
-      shader.uniforms.uRipple = {
-        value: new THREE.Vector3(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0),
-      };
-    }
+    const rd = S.rippleDir || [0.8, 0.6];
+    const rl = Math.hypot(rd[0], rd[1]) || 1;
+    shader.uniforms.uRipple = {
+      value: new THREE.Vector3(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0),
+    };
+  }
+  const splatHook: MaterialShaderHook = (shader) => {
+    assignSplatTextureUniforms(shader);
+    assignSplatToneUniforms(shader);
+    assignSplatBiomeUniforms(shader);
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
@@ -3064,8 +3086,8 @@ function* buildChunkGeometrySteps(
   const pos = new Float32Array(vcount * 3);
   const nrm = new Float32Array(vcount * 3);
   const inv2e = 1 / (2 * stepF);
-  let vi = 0;
-  for (let gz = 0; gz < n; gz++) {
+  function writeSurfaceRow(gz: number, startIndex: number): number {
+    let vi = startIndex;
     for (let gx = 0; gx < n; gx++) {
       const wx = cx0 + gx * step, wz = cz0 + gz * step;
       const fi = hgrid ? (gz * stride + 1) * pn + (gx * stride + 1) : 0;
@@ -3080,10 +3102,18 @@ function* buildChunkGeometrySteps(
       nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
       vi++;
     }
-    if (progress && (gz & 7) === 7) {
-      yield [progress.done + 0.8, progress.total, false];
+    return vi;
+  }
+  function* writeSurfaceVertices(): Generator<TerrainBuildProgress, void, void> {
+    let vi = 0;
+    for (let gz = 0; gz < n; gz++) {
+      vi = writeSurfaceRow(gz, vi);
+      if (progress && (gz & 7) === 7) {
+        yield [progress.done + 0.8, progress.total, false];
+      }
     }
   }
+  yield* writeSurfaceVertices();
   // perimeter vertex indices in ring order (S, E, N, W edges)
   const ring: number[] = [];
   for (let gx = 0; gx < segs; gx++) ring.push(gx);                       // z=min, x asc
@@ -3206,7 +3236,7 @@ function* terrainBuildSteps(
   let initialGeometryCount = 0;
   let initialFineGridCount = 0;
   yield [1, CHUNKS * CHUNKS + 2, true]; // splat canvas bake done
-  for (let cz = 0; cz < CHUNKS; cz++) {
+  function* buildTerrainRow(cz: number): Generator<TerrainBuildProgress, void, void> {
     for (let cx = 0; cx < CHUNKS; cx++) {
       const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
       const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
@@ -3249,6 +3279,7 @@ function* terrainBuildSteps(
       yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
     }
   }
+  for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
   const streamStats: TerrainStreamingStats = {
     enabled: streamFarLods,
     totalGeometryCount: CHUNKS * CHUNKS * LOD_SEGS.length,

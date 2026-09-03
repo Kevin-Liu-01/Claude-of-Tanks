@@ -4,9 +4,13 @@ import { PRESETS } from './quality.ts';
 import {
   SHADOW_NORMAL_BIAS_MAX_M,
   SHADOW_NORMAL_BIAS_MIN_M,
+  SHADOW_OPACITY,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
+
+assert.ok(SHADOW_OPACITY >= 0.45 && SHADOW_OPACITY <= 0.65,
+  'daylight shadows preserve receiver detail without losing readable silhouettes');
 
 const cascadeSpans = [82.5, 176.25, 391.5, 806.75];
 

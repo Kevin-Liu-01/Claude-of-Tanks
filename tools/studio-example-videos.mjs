@@ -1,3 +1,4 @@
+import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Render a pinned set of modern-MBT Studio duel videos.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
@@ -8,9 +9,7 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import {
-  mkdirSync, readFileSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync,
-} from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const SCENARIOS = [
@@ -185,100 +184,10 @@ const videoBitsPerSecond = Math.max(
 mkdirSync(outDir, { recursive: true });
 
 // FIFO GPU lock shared by the repository's browser rendering tools.
-const LOCK_DIR = '/tmp/cot-shots.lock';
-const QUEUE_DIR = '/tmp/cot-shots.queue';
-const LOCK_STALE_MS = 5 * 60 * 1000;
-const TICKET_STALE_MS = 60 * 60 * 1000;
-let lockHeld = false;
-
-function ticketPid(name) {
-  const match = name.match(/-(\d+)\.t$/);
-  return match ? Number.parseInt(match[1], 10) : -1;
-}
-
-function ticketAlive(name) {
-  const pid = ticketPid(name);
-  if (pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
-}
-
-async function acquireLock(timeoutMs) {
-  mkdirSync(QUEUE_DIR, { recursive: true });
-  const ticket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
-  writeFileSync(join(QUEUE_DIR, ticket), String(process.pid));
-  const startedAt = Date.now();
-  try {
-    for (;;) {
-      let head = null;
-      let names = [];
-      try {
-        names = readdirSync(QUEUE_DIR).filter((name) => name.endsWith('.t')).sort();
-      } catch (_) {
-        names = [ticket];
-      }
-      for (const name of names) {
-        if (name === ticket) {
-          head ||= name;
-          break;
-        }
-        let stale = false;
-        try {
-          stale = Date.now() - statSync(join(QUEUE_DIR, name)).mtimeMs > TICKET_STALE_MS;
-        } catch (_) {
-          continue;
-        }
-        if (stale || !ticketAlive(name)) {
-          try { unlinkSync(join(QUEUE_DIR, name)); } catch (_) { /* raced */ }
-          continue;
-        }
-        head = name;
-        break;
-      }
-      if (head === ticket) {
-        try {
-          mkdirSync(LOCK_DIR);
-          lockHeld = true;
-          return;
-        } catch (_) { /* lock is live */ }
-        try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) {
-            try { rmdirSync(LOCK_DIR); } catch (error) {
-              if (error.code === 'ENOTDIR') unlinkSync(LOCK_DIR);
-              else throw error;
-            }
-            continue;
-          }
-        } catch (_) {
-          continue;
-        }
-      }
-      if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-      await new Promise((done) => setTimeout(done, head === ticket ? 300 : 1000));
-    }
-  } finally {
-    try { unlinkSync(join(QUEUE_DIR, ticket)); } catch (_) { /* fine */ }
-  }
-}
-
-function releaseLock() {
-  if (!lockHeld) return;
-  lockHeld = false;
-  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
-}
 
 await acquireLock(45 * 60 * 1000);
 process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => {
-  try {
-    const now = new Date();
-    utimesSync(LOCK_DIR, now, now);
-  } catch (_) { /* fine */ }
-}, 60 * 1000);
+const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 lockRefresher.unref();
 
 const port = 7800 + Math.floor(Math.random() * 400);
@@ -352,51 +261,98 @@ try {
     );
     const result = await page.evaluate(async (job) => {
       const S = window.__STUDIO;
+      const validateModernVehicles = (infos) => {
+        for (const info of infos) {
+          if (info.era !== 'modern') {
+            throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
+          }
+        }
+      };
+      const buildActorTracks = (actors, travel, durationMs) => actors.map((actor, actorIndex) => {
+        const heading = (actor.facingDeg || 0) * Math.PI / 180;
+        const distance = travel?.[actorIndex] ?? (actorIndex === 1 ? 0.8 : 1.8);
+        return {
+          actor: actor.name,
+          keys: [
+            { id: `${actor.name}-0`, tMs: 0, pos: [...actor.pos], facingDeg: actor.facingDeg || 0,
+              turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+            { id: `${actor.name}-1`, tMs: durationMs,
+              pos: [actor.pos[0] + Math.sin(heading) * distance, actor.pos[1] + Math.cos(heading) * distance],
+              facingDeg: actor.facingDeg || 0, turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+          ],
+        };
+      });
+      const minimumLeadSeparation = (actorTracks) => {
+        let minimum = Number.POSITIVE_INFINITY;
+        for (let sample = 0; sample <= 120; sample += 1) {
+          const progress = sample / 120;
+          const leadPositions = actorTracks.slice(0, 2).map(({ keys }) => [
+            keys[0].pos[0] + (keys[1].pos[0] - keys[0].pos[0]) * progress,
+            keys[0].pos[1] + (keys[1].pos[1] - keys[0].pos[1]) * progress,
+          ]);
+          minimum = Math.min(minimum, Math.hypot(
+            leadPositions[0][0] - leadPositions[1][0],
+            leadPositions[0][1] - leadPositions[1][1],
+          ));
+        }
+        return minimum;
+      };
+      const buildRailShots = (job, base, durationMs) => {
+        const [x, y, z] = base.pos;
+        const [lx, ly, lz] = base.lookAt;
+        const dx = lx - x;
+        const dz = lz - z;
+        const length = Math.max(0.001, Math.hypot(dx, dz));
+        const forwardX = dx / length;
+        const forwardZ = dz / length;
+        const rightX = forwardZ;
+        const rightZ = -forwardX;
+        const times = [0, 1850, 3900, durationMs];
+        return job.rail.map(([right, up, forward], railIndex) => ({
+          id: `rail-${railIndex + 1}`,
+          label: ['Contact', 'Crossing fire', 'Impact dive', 'Breakthrough'][railIndex],
+          tMs: times[railIndex],
+          pos: [x + rightX * right + forwardX * forward, y + up,
+            z + rightZ * right + forwardZ * forward],
+          lookAt: [lx + rightX * right * 0.22 + forwardX * forward * 0.5,
+            ly + up * 0.14, lz + rightZ * right * 0.22 + forwardZ * forward * 0.5],
+          fov: job.fovs?.[railIndex] ?? Math.max(32, base.fov - railIndex),
+          rollDeg: job.rolls?.[railIndex] ?? 0,
+          transition: railIndex === 0 ? 'linear' : 'smooth',
+        }));
+      };
+      const buildDefaultShots = (base, durationMs) => {
+        const [x, y, z] = base.pos;
+        const [lx, ly, lz] = base.lookAt;
+        return [
+          { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
+            fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
+          { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
+            lookAt: [lx + 0.5, ly + 0.1, lz], fov: Math.max(32, base.fov - 1),
+            rollDeg: (base.rollDeg || 0) * 0.5, transition: 'smooth' },
+          { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
+            lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
+            rollDeg: 0, transition: 'smooth' },
+        ];
+      };
+      const dataUrlFromBlob = (blob) => new Promise((resolveData, rejectData) => {
+        const reader = new FileReader();
+        reader.addEventListener('load', () => resolveData(reader.result), { once: true });
+        reader.addEventListener('error', () => rejectData(reader.error), { once: true });
+        reader.readAsDataURL(blob);
+      });
       const alphaInfo = S.getSpecInfo(job.alpha);
       const bravoInfo = S.getSpecInfo(job.bravo);
-      for (const info of [alphaInfo, bravoInfo]) {
-        if (info.era !== 'modern') {
-          throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
-        }
-      }
+      validateModernVehicles([alphaInfo, bravoInfo]);
       let board;
       let minimumLeadSeparationM = null;
       if (job.scene) {
         await S.load(job.scene);
         const base = S.getCamera();
-        const [x, y, z] = base.pos;
-        const [lx, ly, lz] = base.lookAt;
         const durationMs = 6000;
-        const actorTracks = job.scene.actors.map((actor, actorIndex) => {
-          const heading = (actor.facingDeg || 0) * Math.PI / 180;
-          const travel = job.travel?.[actorIndex] ?? (actorIndex === 1 ? 0.8 : 1.8);
-          return {
-            actor: actor.name,
-            keys: [
-              { id: `${actor.name}-0`, tMs: 0, pos: [...actor.pos], facingDeg: actor.facingDeg || 0,
-                turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
-              { id: `${actor.name}-1`, tMs: durationMs,
-                pos: [actor.pos[0] + Math.sin(heading) * travel, actor.pos[1] + Math.cos(heading) * travel],
-                facingDeg: actor.facingDeg || 0, turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
-            ],
-          };
-        });
+        const actorTracks = buildActorTracks(job.scene.actors, job.travel, durationMs);
         if (job.minimumLeadSeparationM && actorTracks.length >= 2) {
-          minimumLeadSeparationM = Number.POSITIVE_INFINITY;
-          for (let sample = 0; sample <= 120; sample++) {
-            const progress = sample / 120;
-            const leadPositions = actorTracks.slice(0, 2).map(({ keys }) => [
-              keys[0].pos[0] + (keys[1].pos[0] - keys[0].pos[0]) * progress,
-              keys[0].pos[1] + (keys[1].pos[1] - keys[0].pos[1]) * progress,
-            ]);
-            minimumLeadSeparationM = Math.min(
-              minimumLeadSeparationM,
-              Math.hypot(
-                leadPositions[0][0] - leadPositions[1][0],
-                leadPositions[0][1] - leadPositions[1][1],
-              ),
-            );
-          }
+          minimumLeadSeparationM = minimumLeadSeparation(actorTracks);
           if (minimumLeadSeparationM < job.minimumLeadSeparationM) {
             throw new Error(
               `Lead vehicles close to ${minimumLeadSeparationM.toFixed(2)} m; ` +
@@ -404,46 +360,9 @@ try {
             );
           }
         }
-        let shots;
-        if (job.rail) {
-          const dx = lx - x;
-          const dz = lz - z;
-          const length = Math.max(0.001, Math.hypot(dx, dz));
-          const forwardX = dx / length;
-          const forwardZ = dz / length;
-          const rightX = forwardZ;
-          const rightZ = -forwardX;
-          const times = [0, 1850, 3900, durationMs];
-          shots = job.rail.map(([right, up, forward], railIndex) => ({
-            id: `rail-${railIndex + 1}`,
-            label: ['Contact', 'Crossing fire', 'Impact dive', 'Breakthrough'][railIndex],
-            tMs: times[railIndex],
-            pos: [
-              x + rightX * right + forwardX * forward,
-              y + up,
-              z + rightZ * right + forwardZ * forward,
-            ],
-            lookAt: [
-              lx + rightX * right * 0.22 + forwardX * forward * 0.5,
-              ly + up * 0.14,
-              lz + rightZ * right * 0.22 + forwardZ * forward * 0.5,
-            ],
-            fov: job.fovs?.[railIndex] ?? Math.max(32, base.fov - railIndex),
-            rollDeg: job.rolls?.[railIndex] ?? 0,
-            transition: railIndex === 0 ? 'linear' : 'smooth',
-          }));
-        } else {
-          shots = [
-            { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
-              fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
-            { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
-              lookAt: [lx + 0.5, ly + 0.1, lz], fov: Math.max(32, base.fov - 1),
-              rollDeg: (base.rollDeg || 0) * 0.5, transition: 'smooth' },
-            { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
-              lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
-              rollDeg: 0, transition: 'smooth' },
-          ];
-        }
+        const shots = job.rail
+          ? buildRailShots(job, base, durationMs)
+          : buildDefaultShots(base, durationMs);
         board = {
           durationMs,
           shots,
@@ -474,12 +393,7 @@ try {
         videoBitsPerSecond: job.videoBitsPerSecond,
         download: false,
       });
-      const dataUrl = await new Promise((resolveData, rejectData) => {
-        const reader = new FileReader();
-        reader.addEventListener('load', () => resolveData(reader.result), { once: true });
-        reader.addEventListener('error', () => rejectData(reader.error), { once: true });
-        reader.readAsDataURL(recording.blob);
-      });
+      const dataUrl = await dataUrlFromBlob(recording.blob);
       return {
         alpha: alphaInfo,
         bravo: bravoInfo,

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface NetworkInputSample {
   throttle?: number;
   steer?: number;
@@ -14,7 +15,7 @@ export interface NetworkInputCadenceOptions {
   maxAccumulatedS?: number;
 }
 
-const finite = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;
+const finite = (value: RuntimeValue): number => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 /**
  * Bound replaceable held-input uploads independently from display refresh.

@@ -1,8 +1,9 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface CamoSwatchAccessOptions<T> {
   load: () => Promise<T>;
   isPlayable: () => boolean;
-  schedule?: (callback: () => void, delayMs: number) => unknown;
-  cancel?: (handle: unknown) => void;
+  schedule?: (callback: () => void, delayMs: number) => RuntimeValue;
+  cancel?: (handle: RuntimeValue) => void;
   readyPollMs?: number;
   postReadyDelayMs?: number;
 }
@@ -32,7 +33,7 @@ export function createCamoSwatchAccess<T>({
   let module: T | null = null;
   let pending: Promise<T> | null = null;
   let scheduled: Promise<T> | null = null;
-  let timer: unknown = null;
+  let timer: RuntimeValue = null;
   let promote: (() => void) | null = null;
 
   const begin = (): Promise<T> => {

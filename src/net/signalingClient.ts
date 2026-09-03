@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { normalizeRoomCode } from './protocol.ts';
 
 type Unsubscribe = () => void;
@@ -7,12 +8,12 @@ type SignalingState = 'idle' | 'connecting' | 'open' | 'closed' | 'reconnecting'
 type SocketEventType = 'open' | 'message' | 'error' | 'close';
 
 interface SocketEvent {
-  data?: unknown;
-  error?: unknown;
+  data?: RuntimeValue;
+  error?: RuntimeValue;
 }
 
 interface SignalingSocket {
-  [eventHandler: `on${string}`]: unknown;
+  [eventHandler: `on${string}`]: RuntimeValue;
   readonly readyState: number | string;
   send(value: string): void;
   close(code?: number, reason?: string): void;
@@ -23,8 +24,8 @@ interface SignalingSocket {
 type SignalingSocketFactory = (url: string) => SignalingSocket;
 
 interface PendingRequest {
-  resolve(value: unknown): void;
-  reject(reason: unknown): void;
+  resolve(value: RuntimeValue): void;
+  reject(reason: RuntimeValue): void;
   timer: Timer;
 }
 
@@ -36,11 +37,11 @@ export interface SignalingPlayer {
 export interface SignalingEvent {
   type: string;
   requestId?: string;
-  payload?: unknown;
-  [key: string]: unknown;
+  payload?: RuntimeValue;
+  [key: string]: RuntimeValue;
 }
 
-export interface SignalingRoomInfo extends Record<string, unknown> {
+export interface SignalingRoomInfo extends Record<string, RuntimeValue> {
   roomCode: string;
   peerId: string;
   hostId: string;
@@ -48,25 +49,25 @@ export interface SignalingRoomInfo extends Record<string, unknown> {
 }
 
 export interface RoomSignalingClientOptions {
-  url?: unknown;
-  WebSocketImpl?: unknown;
+  url?: RuntimeValue;
+  WebSocketImpl?: RuntimeValue;
   connectTimeoutMs?: number;
   requestTimeoutMs?: number;
   eventPollIntervalMs?: number;
   eventPollTimeoutMs?: number;
   reconnectDelaysMs?: number[];
-  sessionId?: unknown;
+  sessionId?: RuntimeValue;
 }
 
 export interface CreateSignalingRoomOptions {
-  player?: unknown;
+  player?: RuntimeValue;
   maxPlayers?: number;
-  mode?: unknown;
+  mode?: RuntimeValue;
 }
 
 export interface JoinSignalingRoomOptions {
-  roomCode?: unknown;
-  player?: unknown;
+  roomCode?: RuntimeValue;
+  player?: RuntimeValue;
 }
 
 interface QueuedSignalMessage {
@@ -75,7 +76,7 @@ interface QueuedSignalMessage {
     roomCode: string;
     toPeerId: string;
     toSessionId: string;
-    signal: unknown;
+    signal: RuntimeValue;
   };
 }
 
@@ -98,7 +99,7 @@ const RETRYABLE_CONNECTION_ERRORS = new Set([
   'signaling_request_timeout',
 ]);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -106,22 +107,22 @@ function codedError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
-function errorCode(error: unknown, fallback: string): string {
+function errorCode(error: RuntimeValue, fallback: string): string {
   if (!isRecord(error) || typeof error.code !== 'string' || !error.code) return fallback;
   return error.code;
 }
 
-function isSignalingSocket(value: unknown): value is SignalingSocket {
+function isSignalingSocket(value: RuntimeValue): value is SignalingSocket {
   return isRecord(value) &&
     (typeof value.readyState === 'number' || typeof value.readyState === 'string') &&
     typeof value.send === 'function' && typeof value.close === 'function';
 }
 
-function websocketFactory(injected: unknown): SignalingSocketFactory {
+function websocketFactory(injected: RuntimeValue): SignalingSocketFactory {
   const Ctor = injected || globalThis.WebSocket;
   if (typeof Ctor !== 'function') throw new Error('WebSocket is unavailable');
   return (url: string) => {
-    const socket: unknown = Reflect.construct(Ctor, [url]);
+    const socket: RuntimeValue = Reflect.construct(Ctor, [url]);
     if (!isSignalingSocket(socket)) {
       throw new TypeError('WebSocket must expose readyState and implement send() and close()');
     }
@@ -141,7 +142,7 @@ function createSessionId(): string {
   throw new Error('secure randomness is unavailable for signaling session identity');
 }
 
-function cleanSessionId(value: unknown): string {
+function cleanSessionId(value: RuntimeValue): string {
   const id = String(value || '').trim();
   if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) throw new TypeError('invalid signaling session id');
   return id;
@@ -175,7 +176,7 @@ function socketMayClose(socket: SignalingSocket | null): socket is SignalingSock
     : socket.readyState === 'connecting' || socket.readyState === 'open';
 }
 
-function cleanPlayer(player: unknown): SignalingPlayer {
+function cleanPlayer(player: RuntimeValue): SignalingPlayer {
   const record = isRecord(player) ? player : {};
   const id = String(record.id || '').trim();
   const name = String(record.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
@@ -186,7 +187,7 @@ function cleanPlayer(player: unknown): SignalingPlayer {
 }
 
 function readRoomInfo(
-  value: unknown,
+  value: RuntimeValue,
   fallbackRoomCode = '',
   requireHost = false,
 ): SignalingRoomInfo {
@@ -206,13 +207,13 @@ function readRoomInfo(
   };
 }
 
-function eventPayload(message: SignalingEvent): Record<string, unknown> | null {
+function eventPayload(message: SignalingEvent): Record<string, RuntimeValue> | null {
   return isRecord(message.payload) ? message.payload : null;
 }
 
 function unrefTimer(timer: Timer | PollTimer): void {
   if (typeof timer === 'object' && timer !== null && 'unref' in timer) {
-    const unref = (timer as { unref?: unknown }).unref;
+    const unref = (timer as { unref?: RuntimeValue }).unref;
     if (typeof unref === 'function') unref.call(timer);
   }
 }
@@ -310,7 +311,7 @@ export class RoomSignalingClient {
         removeOpen();
         removeError();
       };
-      const fail = (error: unknown, closeSocket = true) => {
+      const fail = (error: RuntimeValue, closeSocket = true) => {
         if (settled) return;
         settled = true;
         cleanupConnect();
@@ -368,7 +369,7 @@ export class RoomSignalingClient {
     return this.connectPromise;
   }
 
-  #send(value: unknown): void {
+  #send(value: RuntimeValue): void {
     const socket = this.socket;
     if (this.state !== 'open' || !socketIsOpen(socket)) {
       throw codedError('signaling_closed', 'signaling socket is not open');
@@ -384,9 +385,9 @@ export class RoomSignalingClient {
 
   #request(
     type: string,
-    payload: unknown,
+    payload: RuntimeValue,
     timeoutMs = this.requestTimeoutMs,
-  ): Promise<unknown> {
+  ): Promise<RuntimeValue> {
     const requestId = `${++this.requestSeq}`;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -404,7 +405,7 @@ export class RoomSignalingClient {
     });
   }
 
-  async #requestWithStoreRetry(type: string, payload: unknown): Promise<unknown> {
+  async #requestWithStoreRetry(type: string, payload: RuntimeValue): Promise<RuntimeValue> {
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.#request(type, payload);
@@ -416,7 +417,7 @@ export class RoomSignalingClient {
     }
   }
 
-  async #requestRoom(type: string, payload: unknown): Promise<unknown> {
+  async #requestRoom(type: string, payload: RuntimeValue): Promise<RuntimeValue> {
     for (let attempt = 0; ; attempt++) {
       try {
         await this.connect();
@@ -444,8 +445,8 @@ export class RoomSignalingClient {
     for (const listener of [...this.listeners]) listener(message);
   }
 
-  #receive(raw: unknown): void {
-    let parsed: unknown;
+  #receive(raw: RuntimeValue): void {
+    let parsed: RuntimeValue;
     try {
       parsed = JSON.parse(String(raw));
     } catch {
@@ -596,7 +597,7 @@ export class RoomSignalingClient {
       this.resumePromise = null;
       if (!resumed && retryReason && !this.manualClose) this.#scheduleReconnect(retryReason);
       return resumed;
-    }, (error: unknown) => {
+    }, (error: RuntimeValue) => {
       this.resumePromise = null;
       if (!this.manualClose) this.#scheduleReconnect(errorCode(error, 'resume_failed'));
       return false;
@@ -637,7 +638,7 @@ export class RoomSignalingClient {
             throw codedError('signaling_poll_mismatch', 'signaling poll returned another room');
           }
         })
-        .catch((error: unknown) => {
+        .catch((error: RuntimeValue) => {
           if (this.manualClose || !this.roomCode || this.state !== 'open') return;
           const reason = errorCode(error, 'signaling_poll_failed');
           this.#discardSocket(reason);
@@ -712,7 +713,7 @@ export class RoomSignalingClient {
     return { ...result, roomCode: code };
   }
 
-  sendSignal(toPeerId: unknown, signal: unknown, toSessionId: unknown = ''): boolean {
+  sendSignal(toPeerId: RuntimeValue, signal: RuntimeValue, toSessionId: RuntimeValue = ''): boolean {
     if (!this.roomCode || !this.peerId) throw new Error('join or create a room first');
     const target = String(toPeerId || '').trim();
     if (!target) throw new TypeError('target peer is required');

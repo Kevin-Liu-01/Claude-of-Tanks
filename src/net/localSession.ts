@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import {
   AuthoritativeMatchRuntime,
@@ -48,7 +49,7 @@ export function createLocalMatchSession({
     host,
     client,
     ready() { return client.readyForMatch(); },
-    async advance(elapsedMs: number, input: Record<string, unknown> | null = null) {
+    async advance(elapsedMs: number, input: Record<string, RuntimeValue> | null = null) {
       if (input) client.submitInput(input, host.tick);
       // Respect the same asynchronous delivery ordering as network adapters.
       await Promise.resolve();

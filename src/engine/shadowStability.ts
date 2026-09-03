@@ -1,6 +1,8 @@
 export const SHADOW_NORMAL_BIAS_MIN_M = 0.045;
 export const SHADOW_NORMAL_BIAS_MAX_M = 0.28;
 export const SHADOW_NORMAL_BIAS_TEXELS = 0.35;
+/** Stable daylight shadow strength; leaves receiver texture readable. */
+export const SHADOW_OPACITY = 0.52;
 
 /** Snap one light-space coordinate to a shadow-map texel. */
 export function snapShadowCoordinate(coordinate: number, worldUnitsPerTexel: number): number {

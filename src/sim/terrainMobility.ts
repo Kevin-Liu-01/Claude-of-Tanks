@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Shared deterministic terrain-mobility policy.
  *
@@ -23,9 +24,9 @@ const TRACK_GRIP_MAX = 0.27;
 
 export interface TerrainMobilitySpec {
   terrainResistance?: Readonly<Record<string, number>>;
-  enginePowerHp?: unknown;
-  weightTons?: unknown;
-  trackTraction?: unknown;
+  enginePowerHp?: RuntimeValue;
+  weightTons?: RuntimeValue;
+  trackTraction?: RuntimeValue;
 }
 
 function clamp(value: number, min: number, max: number): number {

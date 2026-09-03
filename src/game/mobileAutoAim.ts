@@ -1,7 +1,8 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Camera } from 'three';
 
 export interface MobileAutoAimCandidate {
-  team?: unknown;
+  team?: RuntimeValue;
   state: { pos: Vector3 } | null;
   spec: { dims: { heightM: number } };
   combat: { destroyed?: boolean } | null;

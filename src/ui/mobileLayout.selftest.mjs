@@ -149,16 +149,18 @@ assert.match(hud,
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
 assert.match(hud,
-  /const valueR = R0 \+ thick \+ \(e\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, tx, ty\)[\s\S]*fillText\(label, tx, ty\)/,
+  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, x, y\)[\s\S]*fillText\(label, x, y\)/,
   'incoming result labels must sit beyond the wedge instead of inside its glow');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
-assert.match(hud, /incomingHitFeedbackFor\(hit\)[\s\S]*e\.kind !== kind \|\| e\.mergeKey !== feedback\.mergeKey/,
+assert.match(hud,
+  /function mergeIncomingHitDirection[\s\S]*existing\.kind !== kind \|\| existing\.mergeKey !== mergeKey[\s\S]*incomingHitFeedbackFor\(hit\)[\s\S]*mergeIncomingHitDirection\([\s\S]*feedback\.mergeKey/,
   'nearby hits may merge only when their canonical outcomes match');
-assert.match(hud, /fillStyle = e\.labelColor[\s\S]*fillText\(label, tx, ty\)/,
+assert.match(hud, /fillStyle = indicator\.labelColor[\s\S]*fillText\(label, x, y\)/,
   'direction labels must retain the canonical damage, splash, and outcome colors');
-assert.match(shotInfo, /const cls = hitOutcomeFor\(ev\)/,
-  'shot cards and incoming cards must classify through the shared hit-outcome registry');
+assert.match(shotInfo,
+  /function recordOutgoingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)[\s\S]*function recordIncomingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)/,
+  'outgoing and incoming shot records must both classify through the shared hit-outcome registry');
 assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,
   'combat-result surfaces must use the shared result label and icon vocabulary');
 assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) t\.classList\.add\('deflected'\)/,
@@ -196,7 +198,7 @@ assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:31px[^}]*contain:layout pa
   'world tank labels must start from stable geometry before one-time name measurement');
 assert.match(hud, /bar\.layoutW = Math\.max\(128, Math\.min\(280, measured\)\)/,
   'ambient labels must expand once to preserve complete vehicle names');
-assert.match(hud, /targetX = Math\.max\(plateHalf \+ 4, Math\.min\(w - plateHalf - 4, _sx\)\)/,
+assert.match(hud, /targetX = Math\.max\(halfWidth \+ 4, Math\.min\(w - halfWidth - 4, _sx\)\)/,
   'variable-width target labels must remain clamped within the viewport while tracking a tank');
 assert.doesNotMatch(hud, /tgtEl\.offsetHeight/,
   'target tracking must not force a layout read in the render loop');

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   sanitizeLoadout,
@@ -85,12 +86,12 @@ export interface RankedJoinResult extends PublicRankedTicket {
 }
 
 export interface RankedJoinOptions {
-  playerId?: unknown;
-  identityToken?: unknown;
-  specId?: unknown;
+  playerId?: RuntimeValue;
+  identityToken?: RuntimeValue;
+  specId?: RuntimeValue;
   equipment?: string[];
-  camo?: unknown;
-  teamSize?: unknown;
+  camo?: RuntimeValue;
+  teamSize?: RuntimeValue;
 }
 
 export interface RankedMatchmakerOptions {
@@ -108,11 +109,11 @@ export interface RankedMatchmakerStats {
   ratedMatches: number;
 }
 
-function hashToken(token: unknown): Buffer {
+function hashToken(token: RuntimeValue): Buffer {
   return createHash('sha256').update(String(token)).digest();
 }
 
-function tokenMatches(expected: Buffer, received: unknown): boolean {
+function tokenMatches(expected: Buffer, received: RuntimeValue): boolean {
   const actual = hashToken(received);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
@@ -126,7 +127,7 @@ function randomToken(): string {
 }
 
 /** Ranked rotation consumes the same complete pool as every Random Battle. */
-export function rankedBattleMapForSequence(sequence: unknown): string {
+export function rankedBattleMapForSequence(sequence: RuntimeValue): string {
   const candidate = Number(sequence);
   const index = Number.isSafeInteger(candidate) && candidate >= 0 ? candidate : 0;
   return RANDOM_BATTLE_MAP_IDS[index % RANDOM_BATTLE_MAP_IDS.length];
@@ -185,15 +186,15 @@ export class RankedMatchmaker {
       Number(maxEntries) || 4096));
   }
 
-  createIdentity(input: { name?: unknown }): RatingIdentity {
+  createIdentity(input: { name?: RuntimeValue }): RatingIdentity {
     return this.ratings.createIdentity(input);
   }
 
-  profile(playerId: unknown): PublicRatingProfile | null {
+  profile(playerId: RuntimeValue): PublicRatingProfile | null {
     return this.ratings.profile(playerId);
   }
 
-  leaderboard(limit: unknown): RatingLeaderboardEntry[] {
+  leaderboard(limit: RuntimeValue): RatingLeaderboardEntry[] {
     return this.ratings.leaderboard(limit);
   }
 
@@ -257,13 +258,13 @@ export class RankedMatchmaker {
     return { ...publicTicket(entry), ticketToken };
   }
 
-  poll(ticketId: unknown, ticketToken: unknown): PublicRankedTicket | null {
+  poll(ticketId: RuntimeValue, ticketToken: RuntimeValue): PublicRankedTicket | null {
     const entry = this.entries.get(String(ticketId));
     if (!entry || !tokenMatches(entry.tokenHash, ticketToken)) return null;
     return publicTicket(entry);
   }
 
-  cancel(ticketId: unknown, ticketToken: unknown): boolean {
+  cancel(ticketId: RuntimeValue, ticketToken: RuntimeValue): boolean {
     const entry = this.entries.get(String(ticketId));
     if (!entry || !tokenMatches(entry.tokenHash, ticketToken) || entry.status !== 'queued') return false;
     entry.status = 'cancelled';

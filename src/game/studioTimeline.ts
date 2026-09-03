@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Pure Scene Studio cinematic timeline helpers.
  *
@@ -18,14 +19,14 @@ export type StudioVec2 = [number, number];
 export type StudioVec3 = [number, number, number];
 
 export interface CameraShotInput {
-  id?: unknown;
-  label?: unknown;
-  tMs?: unknown;
-  pos?: unknown;
-  lookAt?: unknown;
-  fov?: unknown;
-  rollDeg?: unknown;
-  transition?: unknown;
+  id?: RuntimeValue;
+  label?: RuntimeValue;
+  tMs?: RuntimeValue;
+  pos?: RuntimeValue;
+  lookAt?: RuntimeValue;
+  fov?: RuntimeValue;
+  rollDeg?: RuntimeValue;
+  transition?: RuntimeValue;
 }
 
 export interface CameraShot {
@@ -40,13 +41,13 @@ export interface CameraShot {
 }
 
 export interface ActorKeyInput {
-  id?: unknown;
-  tMs?: unknown;
-  pos?: unknown;
-  facingDeg?: unknown;
-  turretDeg?: unknown;
-  gunDeg?: unknown;
-  transition?: unknown;
+  id?: RuntimeValue;
+  tMs?: RuntimeValue;
+  pos?: RuntimeValue;
+  facingDeg?: RuntimeValue;
+  turretDeg?: RuntimeValue;
+  gunDeg?: RuntimeValue;
+  transition?: RuntimeValue;
 }
 
 export interface ActorKey {
@@ -60,8 +61,8 @@ export interface ActorKey {
 }
 
 export interface ActorTrackInput {
-  actor?: unknown;
-  keys?: readonly ActorKeyInput[] | unknown;
+  actor?: RuntimeValue;
+  keys?: readonly ActorKeyInput[] | RuntimeValue;
 }
 
 export interface ActorTrack {
@@ -70,9 +71,9 @@ export interface ActorTrack {
 }
 
 export interface StoryboardInput {
-  durationMs?: unknown;
-  shots?: readonly CameraShotInput[] | unknown;
-  actorTracks?: readonly ActorTrackInput[] | unknown;
+  durationMs?: RuntimeValue;
+  shots?: readonly CameraShotInput[] | RuntimeValue;
+  actorTracks?: readonly ActorTrackInput[] | RuntimeValue;
 }
 
 export interface Storyboard {
@@ -106,12 +107,12 @@ export interface ActorTrackSample {
 const CAMERA_TRANSITIONS = new Set<StudioTransition>(['smooth', 'linear', 'cut']);
 const ACTOR_TRANSITIONS = new Set<StudioTransition>(['smooth', 'linear', 'cut']);
 
-const finite = (value: unknown, fallback = 0): number => Number.isFinite(Number(value))
+const finite = (value: RuntimeValue, fallback = 0): number => Number.isFinite(Number(value))
   ? Number(value)
   : fallback;
 const clamp = (value: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, value));
 
-export function clampStudioDuration(value: unknown): number {
+export function clampStudioDuration(value: RuntimeValue): number {
   return Math.round(clamp(
     finite(value, STUDIO_DEFAULT_DURATION_MS),
     STUDIO_MIN_DURATION_MS,
@@ -119,11 +120,11 @@ export function clampStudioDuration(value: unknown): number {
   ));
 }
 
-export function clampStudioTime(value: unknown, durationMs: unknown = STUDIO_DEFAULT_DURATION_MS): number {
+export function clampStudioTime(value: RuntimeValue, durationMs: RuntimeValue = STUDIO_DEFAULT_DURATION_MS): number {
   return Math.round(clamp(finite(value, 0), 0, clampStudioDuration(durationMs)));
 }
 
-function vec3(value: unknown, fallback: StudioVec3): StudioVec3 {
+function vec3(value: RuntimeValue, fallback: StudioVec3): StudioVec3 {
   if (!Array.isArray(value) || value.length < 3) return [...fallback];
   return [
     finite(value[0], fallback[0]),
@@ -132,14 +133,14 @@ function vec3(value: unknown, fallback: StudioVec3): StudioVec3 {
   ];
 }
 
-function actorPos(value: unknown, fallback: StudioVec2 = [0, 0]): StudioVec2 {
+function actorPos(value: RuntimeValue, fallback: StudioVec2 = [0, 0]): StudioVec2 {
   if (!Array.isArray(value) || value.length < 2) return [...fallback];
   return value.length >= 3
     ? [finite(value[0], fallback[0]), finite(value[2], fallback[1])]
     : [finite(value[0], fallback[0]), finite(value[1], fallback[1])];
 }
 
-function stableId(value: unknown, prefix: string, index: number): string {
+function stableId(value: RuntimeValue, prefix: string, index: number): string {
   const id = String(value || '').trim();
   return id || `${prefix}-${index + 1}`;
 }
@@ -231,7 +232,7 @@ export function upsertCameraShot(storyboard: StoryboardInput, shot: CameraShotIn
   return normalizeStoryboard({ ...board, shots });
 }
 
-export function removeCameraShot(storyboard: StoryboardInput, ref: unknown): Storyboard {
+export function removeCameraShot(storyboard: StoryboardInput, ref: RuntimeValue): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const id = String(ref || '');
   board.shots = board.shots.filter((shot) => shot.id !== id);
@@ -240,7 +241,7 @@ export function removeCameraShot(storyboard: StoryboardInput, ref: unknown): Sto
 
 export function upsertActorKey(
   storyboard: StoryboardInput,
-  actorRef: unknown,
+  actorRef: RuntimeValue,
   key: ActorKeyInput,
 ): Storyboard {
   const board = normalizeStoryboard(storyboard);
@@ -266,7 +267,7 @@ export function upsertActorKey(
   return normalizeStoryboard({ ...board, actorTracks });
 }
 
-export function clearActorTrack(storyboard: StoryboardInput, actorRef: unknown): Storyboard {
+export function clearActorTrack(storyboard: StoryboardInput, actorRef: RuntimeValue): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const actor = String(actorRef ?? '').trim();
   board.actorTracks = board.actorTracks.filter((track) => track.actor !== actor);

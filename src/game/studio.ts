@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -89,7 +90,7 @@ interface StudioPoolTank {
 
 interface StudioGameState {
   phase: string;
-  _engineCtx: unknown;
+  _engineCtx: RuntimeValue;
   allTanks: StudioPoolTank[];
   tanks: StudioPoolTank[];
 }
@@ -103,15 +104,15 @@ interface StudioFxRuntime {
     deltaSeconds: number,
     shells: StudioShell[],
     camera: THREE.PerspectiveCamera,
-    resolveSubject: (id: unknown) => StudioActor | null,
+    resolveSubject: (id: RuntimeValue) => StudioActor | null,
   ): void;
   muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
   destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
   exhaust(position: THREE.Vector3, intensity: number, sooty: boolean): void;
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
-  composeFiringMoment(options: Readonly<Record<string, unknown>>): void;
-  composeExplosionMoment(options: Readonly<Record<string, unknown>>): void;
+  composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
+  composeExplosionMoment(options: Readonly<Record<string, RuntimeValue>>): void;
 }
 
 interface StudioLightingRuntime {
@@ -122,7 +123,7 @@ interface StudioLightingRuntime {
 interface StudioTransitionRuntime {
   run<T>(
     work: (progress: ProgressListener) => T | Promise<T>,
-    options?: Readonly<Record<string, unknown>>,
+    options?: Readonly<Record<string, RuntimeValue>>,
   ): Promise<T>;
   progress?(fraction: number, label: string): void;
 }
@@ -145,7 +146,7 @@ interface StudioContext {
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
   enterGarage(): Promise<void> | void;
-  warmStudioPipeline?(onProgress?: ProgressListener): Promise<unknown>;
+  warmStudioPipeline?(onProgress?: ProgressListener): Promise<RuntimeValue>;
   transition?: StudioTransitionRuntime;
   autoEnter?: boolean;
 }
@@ -283,6 +284,13 @@ interface EffectFireOptions {
   tMs?: number;
 }
 
+interface StudioEffectExecution {
+  readonly input: StudioEffectInput | StudioEffectRecord;
+  readonly actor: StudioActor | null;
+  readonly position: THREE.Vector3;
+  readonly params: StudioEffectParams;
+}
+
 interface CameraConfig {
   mode?: 'fly' | 'orbit';
   pos?: readonly number[];
@@ -325,7 +333,7 @@ interface RecordingSession {
   chunks: Blob[];
   promise: Promise<VideoResult>;
   resolve(result: VideoResult): void;
-  reject(reason?: unknown): void;
+  reject(reason?: RuntimeValue): void;
   download: boolean;
   name: string | null;
   mimeType: string;
@@ -366,7 +374,7 @@ interface StudioRuntime {
   tick(deltaSeconds: number): void;
   enter(options?: EnterOptions): Promise<void>;
   exit(): void;
-  api: StudioPanelApi & Readonly<Record<string, unknown>>;
+  api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
 }
 
 const DEG = Math.PI / 180;
@@ -629,24 +637,32 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     lookAt(o.target);
   }
 
+  const flyMovementKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyE', 'KeyQ'] as const;
+
+  function flyCameraIsMoving(): boolean {
+    return flyMovementKeys.some((code) => keys.has(code));
+  }
+
+  function translateFlyCamera(distance: number): void {
+    camera.getWorldDirection(_fwd);
+    _v1.set(0, 0, 0);
+    if (keys.has('KeyW')) _v1.addScaledVector(_fwd, distance);
+    if (keys.has('KeyS')) _v1.addScaledVector(_fwd, -distance);
+    _v2.set(_fwd.z, 0, -_fwd.x).normalize(); // right axis (horizontal)
+    if (keys.has('KeyD')) _v1.addScaledVector(_v2, -distance);
+    if (keys.has('KeyA')) _v1.addScaledVector(_v2, distance);
+    if (keys.has('KeyE')) _v1.y += distance;
+    if (keys.has('KeyQ')) _v1.y -= distance;
+    camera.position.add(_v1);
+  }
+
   function updateCamera(dt: number): boolean {
     if (timeScale > 0 && storyboard.shots.length) return false;
     const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1;
     const v = cam.speed * boost * dt;
     if (cam.mode === 'fly') {
-      const moving = keys.has('KeyW') || keys.has('KeyS') || keys.has('KeyA')
-        || keys.has('KeyD') || keys.has('KeyE') || keys.has('KeyQ');
-      if (!moving && !cameraDirty) return false;
-      camera.getWorldDirection(_fwd);
-      _v1.set(0, 0, 0);
-      if (keys.has('KeyW')) _v1.addScaledVector(_fwd, v);
-      if (keys.has('KeyS')) _v1.addScaledVector(_fwd, -v);
-      _v2.set(_fwd.z, 0, -_fwd.x).normalize(); // right axis (horizontal)
-      if (keys.has('KeyD')) _v1.addScaledVector(_v2, -v);
-      if (keys.has('KeyA')) _v1.addScaledVector(_v2, v);
-      if (keys.has('KeyE')) _v1.y += v;
-      if (keys.has('KeyQ')) _v1.y -= v;
-      camera.position.add(_v1);
+      if (!flyCameraIsMoving() && !cameraDirty) return false;
+      translateFlyCamera(v);
       applyCameraPose();
       return true;
     }
@@ -753,7 +769,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * @param {number} pitchDeg requested sight-line elevation in degrees
    * @returns {?object} settled suspension telemetry, or null when unsupported
    */
-  function setHydropneumaticAim(ref: ActorRef, pitchDeg = 0): Readonly<Record<string, unknown>> | null {
+  function setHydropneumaticAim(ref: ActorRef, pitchDeg = 0): Readonly<Record<string, RuntimeValue>> | null {
     const a = findActor(ref);
     const hydraulic = a?.spec?.hydropneumaticAim;
     if (!a || !hydraulic) return null;
@@ -840,7 +856,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   // Allocation-free: fx.update invokes this once per active keyed emitter per
   // frame. Studio actor uids are the ids carried by tank:fire events.
-  function resolveFxSubject(id: unknown): StudioActor | null {
+  function resolveFxSubject(id: RuntimeValue): StudioActor | null {
     for (let i = 0; i < actors.length; i++) {
       if (actors[i].uid === id) return actors[i];
     }
@@ -853,40 +869,57 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    *   camo, camoSeed, state, stateAgeS, recoilAgeS, name }
    * @returns {object} actor record
    */
-  function addActor(cfg: StudioActorInput = {}): StudioActor {
-    const specId = cfg.id || cfg.specId || 'm1a2';
-    const spec = getSpec(specId); // throws on unknown id (deliberate)
-    const engineCtx = game._engineCtx;
-    const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;
-    const visual = createTank(specId, engineCtx, { camoSeed, quality: 'high' });
-    scene.add(visual.root);
-    // KILL-HITCH FIX: studio actors are not game.tanks, so they miss
-    // warmCombatPipeline's burn prewarm — install the disarmed burn hook now
-    // so setActorState('wrecked'/'turret-popped') never pays first-use
-    // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
-    if (visual.prewarmBurn) visual.prewarmBurn();
-    if (visual.setGroundSampler) {
-      visual.setGroundSampler((x: number, z: number) => hfProxy.getHeightAt(x, z));
-    }
+  function actorPosition(cfg: StudioActorInput): Readonly<{ x: number; z: number }> {
     const pos = cfg.pos || [0, 0];
-    const x = pos[0] || 0;
-    const z = (pos.length >= 3 ? pos[2] : pos[1]) || 0;
-    const authoredStateName = cfg.authoredState && ACTOR_STATES.includes(cfg.authoredState)
+    return {
+      x: pos[0] || 0,
+      z: (pos.length >= 3 ? pos[2] : pos[1]) || 0,
+    };
+  }
+
+  function actorAuthoredState(cfg: StudioActorInput): Readonly<{
+    stateName: string;
+    stateAgeS: number | null;
+    smoking: boolean;
+    burning: boolean;
+    recoilAgeS: number | null;
+  }> {
+    const stateName = cfg.authoredState && ACTOR_STATES.includes(cfg.authoredState)
       ? cfg.authoredState
       : (cfg.state && ACTOR_STATES.includes(cfg.state) ? cfg.state : 'intact');
-    const authoredSmoking = cfg.authoredSmoking != null
-      ? !!cfg.authoredSmoking
-      : !!cfg.smoking;
-    const authoredBurning = cfg.authoredBurning != null
-      ? !!cfg.authoredBurning
-      : !!cfg.burning;
-    const a: StudioActor = {
+    return {
+      stateName,
+      stateAgeS: cfg.authoredStateAgeS !== undefined
+        ? cfg.authoredStateAgeS
+        : (cfg.stateAgeS != null ? cfg.stateAgeS : null),
+      smoking: cfg.authoredSmoking != null ? !!cfg.authoredSmoking : !!cfg.smoking,
+      burning: cfg.authoredBurning != null ? !!cfg.authoredBurning : !!cfg.burning,
+      recoilAgeS: cfg.authoredRecoilAgeS !== undefined
+        ? cfg.authoredRecoilAgeS
+        : (cfg.recoilAgeS != null ? cfg.recoilAgeS : null),
+    };
+  }
+
+  function createActorRecord(
+    cfg: StudioActorInput,
+    specId: string,
+    spec: TankSpec,
+    visual: TankVisual,
+    camoSeed: number,
+  ): StudioActor {
+    const { x, z } = actorPosition(cfg);
+    const authored = actorAuthoredState(cfg);
+    return {
       uid: `a${uidSeq++}`,
       name: cfg.name || null,
       specId,
       spec,
       visual,
-      state: createTankState(spec, _v1.set(x, hfProxy.getHeightAt(x, z), z), (cfg.facingDeg || 0) * DEG),
+      state: createTankState(
+        spec,
+        _v1.set(x, hfProxy.getHeightAt(x, z), z),
+        (cfg.facingDeg || 0) * DEG,
+      ),
       input: {
         throttle: 0, steer: 0, brake: true, fire: false,
         aimPoint: new THREE.Vector3(), shellSlot: 0,
@@ -908,20 +941,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       stateName: 'intact',
       stateAgeS: cfg.stateAgeS != null ? cfg.stateAgeS : null,
       recoilAgeS: cfg.recoilAgeS != null ? cfg.recoilAgeS : null,
-      // Authoring baseline is distinct from the current presentation state.
-      // Effects may wreck, smoke, burn, recoil, or detrack the live visual;
-      // removing one effect replays the remaining stack from these values.
-      authoredStateName,
-      authoredStateAgeS: cfg.authoredStateAgeS !== undefined
-        ? cfg.authoredStateAgeS
-        : (cfg.stateAgeS != null ? cfg.stateAgeS : null),
-      authoredSmoking,
-      authoredBurning,
-      authoredRecoilAgeS: cfg.authoredRecoilAgeS !== undefined
-        ? cfg.authoredRecoilAgeS
-        : (cfg.recoilAgeS != null ? cfg.recoilAgeS : null),
-      // continuous-emitter flags — the enum states set them, but the
-      // engine_smoke/burning EFFECTS may also layer them onto wreck states
+      authoredStateName: authored.stateName,
+      authoredStateAgeS: authored.stateAgeS,
+      authoredSmoking: authored.smoking,
+      authoredBurning: authored.burning,
+      authoredRecoilAgeS: authored.recoilAgeS,
       smoking: false,
       burning: false,
       timelineX: x,
@@ -929,6 +953,40 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       timelineYaw: (cfg.facingDeg || 0) * DEG,
       timelineTrack: null,
     };
+  }
+
+  function activateActorPresentation(a: StudioActor): void {
+    if (a.camo && a.camo !== 'inherit') setCamoOverride(a.specId, a.camo);
+    applyCamoPatterns(a.specId);
+    settleActor(a);
+    applyActorState(a, a.authoredStateName, a.authoredStateAgeS);
+    if (a.authoredSmoking) a.smoking = true;
+    if (a.authoredBurning && !a.burning) igniteColumn(a);
+    if (a.authoredRecoilAgeS != null && a.visual.recoilKick) {
+      a.visual.recoilKick(a.authoredRecoilAgeS);
+      a.visual.syncFromState(a.state, 0);
+    }
+    if (loading) return;
+    panel.refreshActors();
+    invalidate();
+  }
+
+  function addActor(cfg: StudioActorInput = {}): StudioActor {
+    const specId = cfg.id || cfg.specId || 'm1a2';
+    const spec = getSpec(specId); // throws on unknown id (deliberate)
+    const engineCtx = game._engineCtx;
+    const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;
+    const visual = createTank(specId, engineCtx, { camoSeed, quality: 'high' });
+    scene.add(visual.root);
+    // KILL-HITCH FIX: studio actors are not game.tanks, so they miss
+    // warmCombatPipeline's burn prewarm — install the disarmed burn hook now
+    // so setActorState('wrecked'/'turret-popped') never pays first-use
+    // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
+    if (visual.prewarmBurn) visual.prewarmBurn();
+    if (visual.setGroundSampler) {
+      visual.setGroundSampler((x: number, z: number) => hfProxy.getHeightAt(x, z));
+    }
+    const a = createActorRecord(cfg, specId, spec, visual, camoSeed);
     actors.push(a);
     // Scene JSON load stages a complete batch. Rebuilding the rail bindings
     // and DOM actor list after every intermediate actor created redundant
@@ -936,24 +994,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!loading) bindStoryboardTracks();
     actorRoots.push(visual.root);
     actorByRoot.set(visual.root, a);
-    if (a.camo && a.camo !== 'inherit') {
-      setCamoOverride(specId, a.camo);
-    }
-    // A shared texture may have been cached for the garage biome. Resolve the
-    // one visible spec now; never sweep unrelated cached vehicles.
-    applyCamoPatterns(specId);
-    settleActor(a);
-    applyActorState(a, authoredStateName, a.authoredStateAgeS);
-    if (authoredSmoking) a.smoking = true;   // additive layer over any mesh state
-    if (authoredBurning && !a.burning) igniteColumn(a);
-    if (a.authoredRecoilAgeS != null && visual.recoilKick) {
-      visual.recoilKick(a.authoredRecoilAgeS);
-      visual.syncFromState(a.state, 0);
-    }
-    if (!loading) {
-      panel.refreshActors();
-      invalidate();
-    }
+    // Resolve the one visible spec now; never sweep unrelated cached vehicles.
+    activateActorPresentation(a);
     return a;
   }
 
@@ -1058,42 +1100,51 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     fxBus.emit('tank:fire', { id: a.uid, burning: true });
   }
 
+  function applyActorPosePatch(a: StudioActor, patch: StudioActorPatch): void {
+    const pose = a.pose;
+    if (patch.pos) {
+      pose.x = patch.pos[0];
+      pose.z = patch.pos.length >= 3 ? patch.pos[2] : patch.pos[1];
+    }
+    if (patch.x != null) pose.x = patch.x;
+    if (patch.z != null) pose.z = patch.z;
+    if (patch.facingDeg != null) pose.facingDeg = patch.facingDeg;
+    if (patch.turretDeg != null) pose.turretDeg = patch.turretDeg;
+    if (patch.gunDeg != null) pose.gunDeg = clampGunDeg(a.spec, patch.gunDeg);
+    if (patch.name !== undefined) {
+      a.name = patch.name || null;
+      bindStoryboardTracks();
+    }
+    if (patch.camo === undefined) return;
+    a.camo = patch.camo || null;
+    if (!a.camo) return;
+    setCamoOverride(a.specId, a.camo);
+    applyCamoPatterns(a.specId);
+  }
+
+  function applyActorStatePatch(a: StudioActor, patch: StudioActorPatch): void {
+    if (!patch.state || !ACTOR_STATES.includes(patch.state)) return;
+    a.authoredStateName = patch.state;
+    a.authoredStateAgeS = patch.stateAgeS ?? a.authoredStateAgeS;
+    if (!effectLog.length) applyActorState(a, a.authoredStateName, a.authoredStateAgeS);
+  }
+
+  function applyActorRecoilPatch(a: StudioActor, patch: StudioActorPatch): void {
+    if (patch.recoilAgeS === undefined) return;
+    a.recoilAgeS = patch.recoilAgeS;
+    a.authoredRecoilAgeS = patch.recoilAgeS;
+    if (a.recoilAgeS == null || !a.visual.recoilKick) return;
+    a.visual.recoilKick(a.recoilAgeS);
+    a.visual.syncFromState(a.state, 0);
+  }
+
   function updateActor(ref: ActorRef, patch: StudioActorPatch = {}): StudioActor | null {
     const a = findActor(ref);
     if (!a) return null;
-    const p = a.pose;
-    if (patch.pos) {
-      p.x = patch.pos[0];
-      p.z = patch.pos.length >= 3 ? patch.pos[2] : patch.pos[1];
-    }
-    if (patch.x != null) p.x = patch.x;
-    if (patch.z != null) p.z = patch.z;
-    if (patch.facingDeg != null) p.facingDeg = patch.facingDeg;
-    if (patch.turretDeg != null) p.turretDeg = patch.turretDeg;
-    if (patch.gunDeg != null) p.gunDeg = clampGunDeg(a.spec, patch.gunDeg);
-    if (patch.name !== undefined) a.name = patch.name || null;
-    if (patch.name !== undefined) bindStoryboardTracks();
-    if (patch.camo !== undefined) {
-      a.camo = patch.camo || null;
-      if (a.camo) {
-        setCamoOverride(a.specId, a.camo);
-        applyCamoPatterns(a.specId);
-      }
-    }
+    applyActorPosePatch(a, patch);
     settleActor(a, patch._drag ? SETTLE_STEPS_DRAG : SETTLE_STEPS);
-    if (patch.state && ACTOR_STATES.includes(patch.state)) {
-      a.authoredStateName = patch.state;
-      a.authoredStateAgeS = patch.stateAgeS ?? a.authoredStateAgeS;
-      if (!effectLog.length) applyActorState(a, a.authoredStateName, a.authoredStateAgeS);
-    }
-    if (patch.recoilAgeS !== undefined) {
-      a.recoilAgeS = patch.recoilAgeS;
-      a.authoredRecoilAgeS = patch.recoilAgeS;
-      if (a.recoilAgeS != null && a.visual.recoilKick) {
-        a.visual.recoilKick(a.recoilAgeS);
-        a.visual.syncFromState(a.state, 0);
-      }
-    }
+    applyActorStatePatch(a, patch);
+    applyActorRecoilPatch(a, patch);
     if (effectLog.length && !patch._drag) rebuildEffects(clockMs);
     invalidate();
     return a;
@@ -1235,7 +1286,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (e.code === 'F8' && !e.repeat) {
       if (active) { exit(); e.preventDefault(); return; }
       if (game.phase === 'garage') {
-        enter().catch((err: unknown) => console.error('[studio] enter failed', err));
+        enter().catch((err: RuntimeValue) => console.error('[studio] enter failed', err));
         e.preventDefault();
       }
       return;
@@ -1291,7 +1342,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return { a: null, pos: out };
   }
 
-  function reserveEffectId(id: unknown): void {
+  function reserveEffectId(id: RuntimeValue): void {
     const m = /^fx(\d+)$/.exec(String(id || ''));
     if (m) effectUidSeq = Math.max(effectUidSeq, Number(m[1]) + 1);
   }
@@ -1315,6 +1366,329 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  function fireActorGun({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    const slot = Math.max(0, Math.min(
+      actor.spec.gun.shells.length - 1,
+      (params.slot ?? 0) | 0,
+    ));
+    const shellSpec = actor.spec.gun.shells[slot];
+    let muzzleIndex = null;
+    if (params.recoil !== false && actor.visual.recoilKick) {
+      muzzleIndex = actor.visual.recoilKick(0);
+      actor.visual.syncFromState(actor.state, 0);
+    }
+    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
+    actor.visual.gunDirWorld(_v3);
+    const shellId = -(uidSeq * 100000 + shells.length + 1);
+    fxBus.emit('shell:fired', {
+      shellId,
+      shooterId: actor.uid,
+      isPlayer: false,
+      shellType: shellSpec.type,
+      shellName: shellSpec.name,
+      weaponSound: shellSpec.soundProfile || actor.spec.gun.soundProfile || null,
+      caliberMm: shellSpec.caliberMm,
+      muzzlePos: [_v2.x, _v2.y, _v2.z],
+      dir: [_v3.x, _v3.y, _v3.z],
+    });
+    if (params.tracer !== false) {
+      shells.push(createShell(shellSpec, actor.uid, false, _v2, _v3, shellId));
+    }
+    return true;
+  }
+
+  function fireMuzzleFlash({ actor, position, params }: StudioEffectExecution): boolean {
+    if (actor) {
+      actor.visual.gunMuzzleWorld(_v2);
+      actor.visual.gunDirWorld(_v3);
+    } else {
+      _v2.copy(position);
+      const direction = (params.dirDeg || 0) * DEG;
+      _v3.set(Math.sin(direction), 0, Math.cos(direction));
+    }
+    fx.muzzleFlash(_v2, _v3, params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120));
+    return true;
+  }
+
+  function fireTracer({ input, params }: StudioEffectExecution): boolean {
+    const from = params.from || input.from;
+    const to = params.to || input.to;
+    if (!from || !to) return false;
+    _v2.set(from[0], from[1], from[2]);
+    _v3.set(to[0], to[1], to[2]).sub(_v2).normalize();
+    const type = params.shellType || 'AP';
+    const spec = {
+      name: 'studio',
+      type,
+      tracer: type,
+      velocityMps: params.speedMps || 900,
+      caliberMm: params.caliberMm || 105,
+    };
+    const shellId = -(uidSeq * 100000 + shells.length + 1);
+    const shell: StudioShell = createShell(
+      spec, 'studio', !!params.isPlayer, _v2, _v3, shellId,
+    );
+    shell._studioMaxDistM = _v2.distanceTo(_v1.set(to[0], to[1], to[2]));
+    shells.push(shell);
+    return true;
+  }
+
+  function fireImpact(
+    execution: StudioEffectExecution,
+    defaultKind: string,
+    defaultCaliberMm: number,
+    normal: readonly [number, number, number],
+  ): boolean {
+    const { actor, position, params } = execution;
+    const impactNormal = params.normal || normal;
+    _v2.set(impactNormal[0], impactNormal[1], impactNormal[2]).normalize();
+    fxBus.emit('shell:hit', {
+      shellId: null,
+      targetId: actor ? actor.uid : null,
+      kind: params.kind || defaultKind,
+      caliberMm: params.caliberMm || defaultCaliberMm,
+      damage: 0,
+      pos: [position.x, position.y, position.z],
+      normal: [_v2.x, _v2.y, _v2.z],
+    });
+    return true;
+  }
+
+  function fireExplosion({ position, params }: StudioEffectExecution): boolean {
+    const size = params.size || 'large';
+    if (size === 'small') {
+      fxBus.emit('shell:expired', {
+        shellId: -1,
+        hitTerrain: true,
+        pos: [position.x, position.y, position.z],
+      });
+    } else {
+      fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
+    }
+    return true;
+  }
+
+  function fireTankKill({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    _v2.copy(actor.state.pos);
+    fx.destruction(_v2, actor.visual, params.cause || 'ammorack');
+    actor.visual.setDestroyed({ pop: params.pop !== false, ageS: 0 });
+    actor.stateName = params.pop !== false ? 'turret-popped' : 'wrecked';
+    actor.stateAgeS = 0;
+    panel.refreshActors();
+    return true;
+  }
+
+  function fireDust({ actor, position, params }: StudioEffectExecution): boolean {
+    const count = params.count != null ? params.count : 10;
+    const direction = (params.dirDeg || 0) * DEG;
+    _v3.set(Math.sin(direction), 0, Math.cos(direction));
+    _v2.copy(position);
+    if (actor) _v2.y = actor.state.pos.y + 0.3;
+    for (let index = 0; index < count; index += 1) {
+      fx.dust(_v2, _v3, params.intensity != null ? params.intensity : 1);
+    }
+    return true;
+  }
+
+  function fireEngineSmoke({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    actor.smoking = !params.off;
+    if (actor.stateName === 'intact' && actor.smoking) actor.stateName = 'engine-smoking';
+    else if (actor.stateName === 'engine-smoking' && !actor.smoking) actor.stateName = 'intact';
+    if (actor.smoking) {
+      _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
+      _v2.copy(actor.state.pos).addScaledVector(_fwd, -actor.spec.dims.hullLengthM * 0.42);
+      _v2.y += actor.spec.dims.heightM * 0.72;
+      for (let index = 0; index < 8; index += 1) fx.exhaust(_v2, 1, true);
+    }
+    panel.refreshActors();
+    return true;
+  }
+
+  function fireBurning({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    if (params.off) {
+      actor.burning = false;
+      fxBus.emit('tank:fire', { id: actor.uid, burning: false });
+      if (actor.stateName === 'burning') actor.stateName = 'intact';
+    } else {
+      igniteColumn(actor);
+      if (actor.stateName === 'intact') actor.stateName = 'burning';
+    }
+    panel.refreshActors();
+    return true;
+  }
+
+  function fireDetrack({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    const side = (params.side || 'R').toUpperCase() === 'L' ? 'trackL' : 'trackR';
+    actor.visual.setTrackState?.(side, true);
+    fxBus.emit('shell:hit', {
+      targetId: actor.uid,
+      kind: 'nonpen',
+      caliberMm: 20,
+      damage: 0,
+      pos: [actor.state.pos.x, actor.state.pos.y + 0.6, actor.state.pos.z],
+      normal: [0, 1, 0],
+    });
+    fxBus.emit('module:state', { id: actor.uid, module: side, state: 'red' });
+    return true;
+  }
+
+  function fireFiringMoment({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    const muzzleIndex = actor.visual.recoilKick?.(
+      params.ageS != null ? params.ageS : 0.05,
+    ) ?? null;
+    actor.visual.syncFromState(actor.state, 0);
+    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
+    actor.visual.gunDirWorld(_v3);
+    fx.composeFiringMoment({
+      muzzlePos: _v2.clone(),
+      dir: _v3.clone(),
+      caliberMm: params.caliberMm || actor.spec.gun.caliberMm,
+      tracerType: params.shellType || actor.spec.gun.shells[0].type,
+      ageS: params.ageS != null ? params.ageS : 0.05,
+    });
+    return true;
+  }
+
+  function fireExplosionMoment({ position, params }: StudioEffectExecution): boolean {
+    fx.composeExplosionMoment({
+      pos: position.clone(),
+      ageS: params.ageS != null ? params.ageS : 0.6,
+    });
+    return true;
+  }
+
+  function fireMgBurst({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    actor.visual.gunMuzzleWorld(_v2);
+    actor.visual.gunDirWorld(_v3);
+    fx.muzzleFlash(_v2, _v3, params.caliberMm || 25);
+    const count = Math.max(1, Math.min(14, params.count != null ? params.count : 7));
+    const gapM = params.gapM != null ? params.gapM : 7;
+    const spread = (params.spreadDeg != null ? params.spreadDeg : 0.9) * DEG;
+    for (let index = 0; index < count; index += 1) {
+      const spec = {
+        name: 'studio-mg', type: 'AP', tracer: 'AP',
+        velocityMps: params.speedMps || 820,
+        caliberMm: params.caliberMm || 12.7,
+      };
+      const yaw = ((index % 3) - 1) * spread;
+      const pitch = (index % 2 ? 0.45 : -0.35) * spread;
+      const direction = _v3.clone().applyAxisAngle(_up, yaw);
+      direction.y += pitch;
+      direction.normalize();
+      const from = _v2.clone().addScaledVector(direction, 2 + index * gapM);
+      const shell = createShell(
+        spec, actor.uid, false, from, direction,
+        -(uidSeq * 100000 + shells.length + 1),
+      );
+      shell.distM = 2 + index * gapM;
+      shells.push(shell);
+    }
+    return true;
+  }
+
+  function fireBarrage({ position, params }: StudioEffectExecution): boolean {
+    const count = Math.max(1, Math.min(12, params.count != null ? params.count : 5));
+    const radius = params.radiusM != null ? params.radiusM : 10;
+    const size = params.size || 'mixed';
+    const seedAngle = (params.seedDeg || 23) * DEG;
+    for (let index = 0; index < count; index += 1) {
+      const angle = seedAngle + (index / count) * Math.PI * 2;
+      const distance = radius * (0.3 + 0.7 * (((index * 37) % 10) / 10));
+      const x = position.x + Math.sin(angle) * distance;
+      const z = position.z + Math.cos(angle) * distance;
+      const y = hfProxy.getHeightAt(x, z) + 0.05;
+      const medium = size === 'medium' || (size === 'mixed' && index % 3 === 0);
+      if (medium) fx.destruction(_v2.set(x, y, z), null, 'shot');
+      else fxBus.emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [x, y, z] });
+    }
+    return true;
+  }
+
+  function fireArmorScar({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    const count = Math.max(1, Math.min(10, params.count != null ? params.count : 4));
+    const reach = Math.max(
+      actor.spec.dims.widthM || 3.6,
+      actor.spec.dims.hullLengthM || 7,
+    ) * 0.62;
+    const seedAngle = (params.seedDeg || 0) * DEG;
+    for (let index = 0; index < count; index += 1) {
+      const angle = seedAngle + ((index * 137) % 360) * DEG;
+      const heightFraction = 0.3 + 0.42 * (((index * 53) % 10) / 10);
+      _v3.set(Math.sin(angle), 0.14, Math.cos(angle)).normalize();
+      _v2.copy(actor.state.pos);
+      _v2.y += actor.spec.dims.heightM * heightFraction;
+      _v2.addScaledVector(_v3, reach);
+      fx.armorScar(actor.visual, _v2, _v3, params.caliberMm || 100);
+    }
+    return true;
+  }
+
+  function fireExhaust({ actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
+    _v2.copy(actor.state.pos).addScaledVector(_fwd, -actor.spec.dims.hullLengthM * 0.42);
+    _v2.y += actor.spec.dims.heightM * 0.72;
+    const count = Math.max(1, Math.min(30, params.count != null ? params.count : 14));
+    for (let index = 0; index < count; index += 1) {
+      fx.exhaust(
+        _v2,
+        params.intensity != null ? params.intensity : 0.95,
+        params.sooty !== false,
+      );
+    }
+    return true;
+  }
+
+  const effectHandlers: Readonly<Record<
+    string,
+    (execution: StudioEffectExecution) => boolean
+  >> = Object.freeze({
+    fire: fireActorGun,
+    muzzle_flash: fireMuzzleFlash,
+    tracer: fireTracer,
+    impact: (execution) => fireImpact(execution, 'pen', 120, [0, 1, 0]),
+    sparks: (execution) => fireImpact(execution, 'ricochet', 100, [0, 1, 0]),
+    explosion: fireExplosion,
+    tank_kill: fireTankKill,
+    dust: fireDust,
+    engine_smoke: fireEngineSmoke,
+    burning: fireBurning,
+    detrack: fireDetrack,
+    firing_moment: fireFiringMoment,
+    explosion_moment: fireExplosionMoment,
+    mg_burst: fireMgBurst,
+    barrage: fireBarrage,
+    armor_scar: fireArmorScar,
+    exhaust: fireExhaust,
+  });
+
+  function recordFiredEffect(
+    input: StudioEffectInput | StudioEffectRecord,
+    opts: EffectFireOptions,
+  ): void {
+    if (opts.record !== false) {
+      const record = makeEffectRecord(input, opts.tMs != null ? opts.tMs : clockMs);
+      effectLog.push(record);
+      activeEffectIds.add(record.id);
+      if (effectLog.length > MAX_STUDIO_EFFECTS) {
+        effectLog.shift();
+        rebuildEffects(clockMs);
+      }
+      selectedEffect = record;
+      if (opts.refresh !== false) panel.setSelectedEffect(record);
+    } else if (input.id) {
+      activeEffectIds.add(input.id);
+    }
+  }
+
   /**
    * Fire one effect NOW (records it on the effect log at the current studio
    * clock so state()/load() round-trip). See docs/STUDIO.md for the schema.
@@ -1332,303 +1706,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const a = got.a;
     const pos = got.pos;
     const w = getWorld();
-    let ok = true;
-    switch (e.type) {
-      case 'fire': {
-        // full firing event on an actor: flash + recoil + optional live shell
-        if (!a) { ok = false; break; }
-        const slot = Math.max(0, Math.min(a.spec.gun.shells.length - 1, (params.slot ?? 0) | 0));
-        const shellSpec = a.spec.gun.shells[slot];
-        // §5.362: kick BEFORE sampling the flash origin — twin-plant ids
-        // (spec.gun.muzzles) alternate per fire event, and the returned
-        // barrel index places the flash on the firing tip. Single-bore
-        // actors: index is null and the sample is the legacy center anchor.
-        let muzzleIndex = null;
-        if (params.recoil !== false && a.visual.recoilKick) {
-          muzzleIndex = a.visual.recoilKick(0);
-          a.visual.syncFromState(a.state, 0);
-        }
-        a.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
-        a.visual.gunDirWorld(_v3);
-        const shellId = -(uidSeq * 100000 + shells.length + 1);
-        fxBus.emit('shell:fired', {
-          shellId, shooterId: a.uid, isPlayer: false,
-          shellType: shellSpec.type, shellName: shellSpec.name,
-          weaponSound: shellSpec.soundProfile || a.spec.gun.soundProfile || null,
-          caliberMm: shellSpec.caliberMm,
-          muzzlePos: [_v2.x, _v2.y, _v2.z], dir: [_v3.x, _v3.y, _v3.z],
-        });
-        if (params.tracer !== false) {
-          shells.push(createShell(shellSpec, a.uid, false, _v2, _v3, shellId));
-        }
-        break;
-      }
-      case 'muzzle_flash': {
-        if (a) {
-          a.visual.gunMuzzleWorld(_v2);
-          a.visual.gunDirWorld(_v3);
-        } else {
-          _v2.copy(pos);
-          const d = (params.dirDeg || 0) * DEG;
-          _v3.set(Math.sin(d), 0, Math.cos(d));
-        }
-        fx.muzzleFlash(_v2, _v3, params.caliberMm || (a ? a.spec.gun.caliberMm : 120));
-        break;
-      }
-      case 'tracer': {
-        // a real shell entity flying from → to (freeze mid-flight via fxTime)
-        const from = params.from || e.from;
-        const to = params.to || e.to;
-        if (!from || !to) { ok = false; break; }
-        _v2.set(from[0], from[1], from[2]);
-        _v3.set(to[0], to[1], to[2]).sub(_v2).normalize();
-        const type = params.shellType || 'AP';
-        const spec = {
-          name: 'studio', type, tracer: type,
-          velocityMps: params.speedMps || 900, caliberMm: params.caliberMm || 105,
-        };
-        const shellId = -(uidSeq * 100000 + shells.length + 1);
-        const shell: StudioShell = createShell(
-          spec,
-          'studio',
-          !!params.isPlayer,
-          _v2,
-          _v3,
-          shellId,
-        );
-        shell._studioMaxDistM = _v2.distanceTo(_v1.set(to[0], to[1], to[2]));
-        shells.push(shell);
-        break;
-      }
-      case 'impact': {
-        _v2.set(params.normal ? params.normal[0] : 0,
-          params.normal ? params.normal[1] : 1,
-          params.normal ? params.normal[2] : 0).normalize();
-        fxBus.emit('shell:hit', {
-          shellId: null,
-          targetId: a ? a.uid : null,
-          kind: params.kind || 'pen',
-          caliberMm: params.caliberMm || 120,
-          damage: 0,
-          pos: [pos.x, pos.y, pos.z],
-          normal: [_v2.x, _v2.y, _v2.z],
-        });
-        break;
-      }
-      case 'sparks': {
-        _v2.set(0, 1, 0);
-        fxBus.emit('shell:hit', {
-          shellId: null,
-          targetId: a ? a.uid : null,
-          kind: params.kind || 'ricochet',
-          caliberMm: params.caliberMm || 100,
-          damage: 0,
-          pos: [pos.x, pos.y, pos.z],
-          normal: [_v2.x, _v2.y, _v2.z],
-        });
-        break;
-      }
-      case 'explosion': {
-        const size = params.size || 'large';
-        if (size === 'small') {
-          // terrain HE plume through the real shell-expiry path
-          fxBus.emit('shell:expired', {
-            shellId: -1, hitTerrain: true, pos: [pos.x, pos.y, pos.z],
-          });
-        } else {
-          fx.destruction(pos, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
-        }
-        break;
-      }
-      case 'tank_kill': {
-        if (!a) { ok = false; break; }
-        _v2.copy(a.state.pos);
-        fx.destruction(_v2, a.visual, params.cause || 'ammorack');
-        a.visual.setDestroyed({ pop: params.pop !== false, ageS: 0 });
-        a.stateName = params.pop !== false ? 'turret-popped' : 'wrecked';
-        a.stateAgeS = 0;
-        panel.refreshActors();
-        break;
-      }
-      case 'dust': {
-        const n = params.count != null ? params.count : 10;
-        const d = (params.dirDeg || 0) * DEG;
-        _v3.set(Math.sin(d), 0, Math.cos(d));
-        _v2.copy(pos);
-        if (a) _v2.y = a.state.pos.y + 0.3;
-        for (let i = 0; i < n; i++) fx.dust(_v2, _v3, params.intensity != null ? params.intensity : 1);
-        break;
-      }
-      case 'engine_smoke': {
-        // ADDITIVE: layers onto any mesh state (a smoldering burnt wreck)
-        if (!a) { ok = false; break; }
-        a.smoking = params.off ? false : true;
-        if (a.stateName === 'intact' && a.smoking) a.stateName = 'engine-smoking';
-        else if (a.stateName === 'engine-smoking' && !a.smoking) a.stateName = 'intact';
-        if (a.smoking) {
-          _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
-          _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
-          _v2.y += a.spec.dims.heightM * 0.72;
-          // The continuous emitter normally starts on the next FX tick. Seed
-          // it with the same real exhaust recipe so a frozen Studio button
-          // click has immediate, selectable visual feedback.
-          for (let i = 0; i < 8; i++) fx.exhaust(_v2, 1, true);
-        }
-        panel.refreshActors();
-        break;
-      }
-      case 'burning': {
-        // ADDITIVE: fire/smoke column onto any mesh state
-        if (!a) { ok = false; break; }
-        if (params.off) {
-          a.burning = false;
-          fxBus.emit('tank:fire', { id: a.uid, burning: false });
-          if (a.stateName === 'burning') a.stateName = 'intact';
-        } else {
-          igniteColumn(a);
-          if (a.stateName === 'intact') a.stateName = 'burning';
-        }
-        panel.refreshActors();
-        break;
-      }
-      case 'detrack': {
-        if (!a) { ok = false; break; }
-        const side = (params.side || 'R').toUpperCase() === 'L' ? 'trackL' : 'trackR';
-        if (a.visual.setTrackState) a.visual.setTrackState(side, true);
-        // seed lastKnownPos at the running gear, then the real detrack beat
-        fxBus.emit('shell:hit', {
-          targetId: a.uid, kind: 'nonpen', caliberMm: 20, damage: 0,
-          pos: [a.state.pos.x, a.state.pos.y + 0.6, a.state.pos.z],
-          normal: [0, 1, 0],
-        });
-        fxBus.emit('module:state', { id: a.uid, module: side, state: 'red' });
-        break;
-      }
-      case 'firing_moment': {
-        // composed static (the combat_firing contract language) — frozen art
-        if (!a) { ok = false; break; }
-        // §5.362: twin-plant ids compose the flash on the firing barrel's
-        // (recoiled) tip — recoilKick returns the alternated index.
-        let fmIndex = null;
-        if (a.visual.recoilKick) fmIndex = a.visual.recoilKick(params.ageS != null ? params.ageS : 0.05);
-        a.visual.syncFromState(a.state, 0);
-        a.visual.gunMuzzleWorld(_v2, fmIndex != null ? fmIndex : undefined);
-        a.visual.gunDirWorld(_v3);
-        fx.composeFiringMoment({
-          muzzlePos: _v2.clone(), dir: _v3.clone(),
-          caliberMm: params.caliberMm || a.spec.gun.caliberMm,
-          tracerType: params.shellType || a.spec.gun.shells[0].type,
-          ageS: params.ageS != null ? params.ageS : 0.05,
-        });
-        break;
-      }
-      case 'explosion_moment': {
-        fx.composeExplosionMoment({ pos: pos.clone(), ageS: params.ageS != null ? params.ageS : 0.6 });
-        break;
-      }
-      case 'mg_burst': {
-        // coax-MG stream: N small tracers spawned as a chain down the gun
-        // line (a frozen frame reads them as rounds in flight), plus a small
-        // flash. Jitter is a FIXED per-index pattern — deterministic under
-        // load(), no rng draw.
-        if (!a) { ok = false; break; }
-        a.visual.gunMuzzleWorld(_v2);
-        a.visual.gunDirWorld(_v3);
-        fx.muzzleFlash(_v2, _v3, params.caliberMm || 25);
-        const n = Math.max(1, Math.min(14, params.count != null ? params.count : 7));
-        const gapM = params.gapM != null ? params.gapM : 7;
-        const spread = (params.spreadDeg != null ? params.spreadDeg : 0.9) * DEG;
-        for (let i = 0; i < n; i++) {
-          const spec = {
-            name: 'studio-mg', type: 'AP', tracer: 'AP',
-            velocityMps: params.speedMps || 820, caliberMm: params.caliberMm || 12.7,
-          };
-          const jy = ((i % 3) - 1) * spread;          // fixed yaw fan
-          const jp = ((i % 2) ? 0.45 : -0.35) * spread; // fixed pitch stagger
-          const dir = _v3.clone();
-          dir.applyAxisAngle(_up, jy);
-          dir.y += jp;
-          dir.normalize();
-          const from = _v2.clone().addScaledVector(dir, 2 + i * gapM);
-          const shell = createShell(spec, a.uid, false, from, dir,
-            -(uidSeq * 100000 + shells.length + 1));
-          shell.distM = 2 + i * gapM;
-          shells.push(shell);
-        }
-        break;
-      }
-      case 'barrage': {
-        // artillery stonk: deterministic ring of ground bursts around the
-        // anchor (marker / actor / at). size: 'small' | 'medium' | 'mixed'.
-        const n = Math.max(1, Math.min(12, params.count != null ? params.count : 5));
-        const rad = params.radiusM != null ? params.radiusM : 10;
-        const size = params.size || 'mixed';
-        const seedA = (params.seedDeg || 23) * DEG;
-        for (let i = 0; i < n; i++) {
-          const ang = seedA + (i / n) * Math.PI * 2;
-          const rr = rad * (0.3 + 0.7 * (((i * 37) % 10) / 10));
-          const x = pos.x + Math.sin(ang) * rr;
-          const z = pos.z + Math.cos(ang) * rr;
-          const y = hfProxy.getHeightAt(x, z) + 0.05;
-          const medium = size === 'medium' || (size === 'mixed' && i % 3 === 0);
-          if (medium) {
-            fx.destruction(_v2.set(x, y, z), null, 'shot');
-          } else {
-            fxBus.emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [x, y, z] });
-          }
-        }
-        break;
-      }
-      case 'armor_scar': {
-        // battle scarring: stamp N permanent impact decals around the hull
-        // shell at fixed bearings/heights (deterministic — no rng draw).
-        if (!a) { ok = false; break; }
-        const n = Math.max(1, Math.min(10, params.count != null ? params.count : 4));
-        const reach = Math.max(a.spec.dims.widthM || 3.6, a.spec.dims.hullLengthM || 7) * 0.62;
-        const seedA = (params.seedDeg || 0) * DEG;
-        for (let i = 0; i < n; i++) {
-          const ang = seedA + ((i * 137) % 360) * DEG;
-          const hf = 0.3 + 0.42 * (((i * 53) % 10) / 10);
-          _v3.set(Math.sin(ang), 0.14, Math.cos(ang)).normalize();
-          _v2.copy(a.state.pos);
-          _v2.y += a.spec.dims.heightM * hf;
-          _v2.addScaledVector(_v3, reach);
-          fx.armorScar(a.visual, _v2, _v3, params.caliberMm || 100);
-        }
-        break;
-      }
-      case 'exhaust': {
-        // diesel belch off the engine deck (same anchor the continuous
-        // engine-smoke emitter uses). fx.exhaust is probability-gated on the
-        // seeded fx rng, so bursts stay deterministic under load().
-        if (!a) { ok = false; break; }
-        _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
-        _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
-        _v2.y += a.spec.dims.heightM * 0.72;
-        const n = Math.max(1, Math.min(30, params.count != null ? params.count : 14));
-        for (let i = 0; i < n; i++) {
-          fx.exhaust(_v2, params.intensity != null ? params.intensity : 0.95, params.sooty !== false);
-        }
-        break;
-      }
-      default:
-        console.warn(`[studio] unknown effect type: ${e.type}`);
-        ok = false;
+    const handler = effectHandlers[e.type];
+    if (!handler) {
+      console.warn(`[studio] unknown effect type: ${e.type}`);
+      return false;
     }
+    const ok = handler({ input: e, actor: a, position: pos, params });
     if (ok) {
-      if (opts.record !== false) {
-        const record = makeEffectRecord(e, opts.tMs != null ? opts.tMs : clockMs);
-        effectLog.push(record);
-        activeEffectIds.add(record.id);
-        if (effectLog.length > MAX_STUDIO_EFFECTS) {
-          effectLog.shift();
-          rebuildEffects(clockMs);
-        }
-        selectedEffect = record;
-        if (opts.refresh !== false) panel.setSelectedEffect(record);
-      } else if (e.id) {
-        activeEffectIds.add(e.id);
-      }
+      recordFiredEffect(e, opts);
       if (w) w.setWindTime(0.35 + clockMs / 1000);
       invalidate();
     }
@@ -2063,7 +2148,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return storyboard.shots.find((shot) => shot.id === id) || null;
   }
 
-  function updateCameraShot(ref: unknown, patch: CameraShotInput = {}) {
+  function updateCameraShot(ref: RuntimeValue, patch: CameraShotInput = {}) {
     if (recording) return null;
     const id = String(ref || '');
     const shot = storyboard.shots.find((item) => item.id === id);
@@ -2075,7 +2160,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return storyboard.shots.find((item) => item.id === id) || null;
   }
 
-  function removeCameraShot(ref: unknown): boolean {
+  function removeCameraShot(ref: RuntimeValue): boolean {
     if (recording) return false;
     const id = String(ref || '');
     if (!storyboard.shots.some((shot) => shot.id === id)) return false;
@@ -2086,7 +2171,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function selectCameraShot(ref: unknown, seek = true): string | null {
+  function selectCameraShot(ref: RuntimeValue, seek = true): string | null {
     const shot = storyboard.shots.find((item) => item.id === String(ref || ''));
     if (!shot) return null;
     selectedShotId = shot.id;
@@ -2313,7 +2398,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     const chunks: Blob[] = [];
     let resolvePromise!: (result: VideoResult) => void;
-    let rejectPromise!: (reason?: unknown) => void;
+    let rejectPromise!: (reason?: RuntimeValue) => void;
     const promise = new Promise<VideoResult>((resolve, reject) => {
       resolvePromise = resolve;
       rejectPromise = reject;
@@ -2443,6 +2528,65 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  async function ensureLoadMap(json: StudioSceneInput): Promise<void> {
+    const mapId = resolveMapId(json.map || 'verdant', () => 0.01);
+    if (!active) await enter({ map: mapId });
+    const world = getWorld();
+    if (!world || world.mapId !== mapId) await setMap(mapId);
+  }
+
+  async function replaceLoadActors(
+    json: StudioSceneInput,
+    yieldForFrameBudget: () => Promise<void>,
+  ): Promise<void> {
+    sceneMeta.seed = json.seed != null ? json.seed : 5000;
+    timeScale = 0;
+    clearActors();
+    resetFx(sceneMeta.seed);
+    await yieldForFrameBudget();
+    for (const cfg of json.actors || []) {
+      addActor(cfg);
+      await yieldForFrameBudget();
+    }
+  }
+
+  function loadedStoryboard(json: StudioSceneInput): Storyboard {
+    const lastEffectMs = (json.effects || []).reduce<number>(
+      (maximum, effect) => Math.max(maximum, Number(effect.tMs) || 0),
+      0,
+    );
+    return normalizeStoryboard(json.storyboard || {
+      durationMs: Math.min(
+        STUDIO_MAX_DURATION_MS,
+        Math.max(12000, Number(json.fxTime) || 0, lastEffectMs),
+      ),
+    });
+  }
+
+  function replaceLoadEffects(json: StudioSceneInput, fxMs: number): void {
+    const effects = (json.effects || [])
+      .map((effect: StudioEffectInput): StudioEffectInput & { tMs: number } => ({
+        ...effect,
+        tMs: clampStudioTime(effect.tMs || 0, storyboard.durationMs),
+      }))
+      .sort((left, right) => left.tMs - right.tMs);
+    for (const effect of effects) effectLog.push(makeEffectRecord(effect, effect.tMs));
+    rebuildEffects(fxMs);
+  }
+
+  function restoreLoadedPresentation(json: StudioSceneInput, fxMs: number): void {
+    timeScale = fxMs >= storyboard.durationMs
+      ? 0
+      : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));
+    getWorld()?.setWindTime(0.35 + fxMs / 1000);
+    for (const actor of actors) actor.visual.syncFromState(actor.state, 0);
+    lighting.updateFrustums();
+    lighting.update(true);
+    selectedEffect = null;
+    rail.updateVisibility();
+    panel.refreshAll();
+  }
+
   /**
    * Deterministic scene build (THE scripted-shoot entry point):
    * enter/switch map → reset fx → build+pose actors → apply camera → fire
@@ -2454,36 +2598,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   async function load(
     json: StudioSceneInput = {},
-    _opts: Readonly<Record<string, unknown>> = {},
+    _opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
-      const mapId = resolveMapId(json.map || 'verdant', () => 0.01);
-      if (!active) await enter({ map: mapId });
-      const w0 = getWorld();
-      if (!w0 || w0.mapId !== mapId) await setMap(mapId);
-      sceneMeta.seed = json.seed != null ? json.seed : 5000;
-      timeScale = 0; // build frozen — nothing ages while we stage
-      clearActors();
-      resetFx(sceneMeta.seed);
-      await yieldForFrameBudget();
-      for (const cfg of json.actors || []) {
-        addActor(cfg);
-        await yieldForFrameBudget();
-      }
-      storyboard = normalizeStoryboard(json.storyboard || {
-        durationMs: Math.min(STUDIO_MAX_DURATION_MS, Math.max(
-          12000,
-          Number(json.fxTime) || 0,
-          (json.effects || []).reduce<number>(
-            (max, effect) => Math.max(max, Number(effect.tMs) || 0),
-            0,
-          ),
-        )),
-      });
+      await ensureLoadMap(json);
+      await replaceLoadActors(json, yieldForFrameBudget);
+      storyboard = loadedStoryboard(json);
       bindStoryboardTracks();
       selectedShotId = storyboard.shots[0]?.id || null;
       rail.rebuild();
@@ -2493,28 +2617,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // rebuild the visible frame at the requested playhead. Future events
       // remain scheduled and will fire automatically during playback.
       const fxMs = clampStudioTime(json.fxTime || 0, storyboard.durationMs);
-      const list = (json.effects || [])
-        .map((e: StudioEffectInput): StudioEffectInput & { tMs: number } => ({
-          ...e,
-          tMs: clampStudioTime(e.tMs || 0, storyboard.durationMs),
-        }))
-        .sort((x, y) => x.tMs - y.tMs);
-      for (const e of list) {
-        effectLog.push(makeEffectRecord(e, e.tMs));
-      }
-      rebuildEffects(fxMs);
+      replaceLoadEffects(json, fxMs);
       await yieldForFrameBudget();
-      timeScale = fxMs >= storyboard.durationMs
-        ? 0
-        : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));
-      const w = getWorld();
-      if (w) w.setWindTime(0.35 + fxMs / 1000);
-      for (const a of actors) a.visual.syncFromState(a.state, 0);
-      lighting.updateFrustums();
-      lighting.update(true);
-      selectedEffect = null;
-      rail.updateVisibility();
-      panel.refreshAll();
+      restoreLoadedPresentation(json, fxMs);
       return stateJson();
     } finally {
       loading = false;
@@ -2979,7 +3084,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     getSpecInfo: (id: string) => {
       const s = getSpec(id);
       const roster = s.roster && typeof s.roster === 'object'
-        ? s.roster as Record<string, unknown>
+        ? s.roster as Record<string, RuntimeValue>
         : null;
       return {
         id: s.id, name: s.name, era: s.era,
@@ -3017,7 +3122,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (!window.__GAME_READY) return;
       clearInterval(t);
       enter({ map: urlParam('map') || 'verdant' })
-        .catch((err: unknown) => console.error('[studio] auto-enter failed', err));
+        .catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
     }, 60);
   }
 

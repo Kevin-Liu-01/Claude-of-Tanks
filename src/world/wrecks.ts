@@ -50,6 +50,11 @@ type TankWreckVisual = ReturnType<typeof createTank>;
 
 type DebrisFamily = 'char' | 'rust' | 'rubber';
 
+interface WreckGeometrySet {
+  geos: THREE.BufferGeometry[];
+  proxyGeos: THREE.BufferGeometry[];
+}
+
 function mulberry32(a: number): () => number {
   return function (): number {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -87,6 +92,171 @@ function chainVisible(o: THREE.Object3D, root: THREE.Object3D): boolean {
     if (n === root) return true;
   }
   return true; // detached-under-root should not happen; keep permissive
+}
+
+function appendInstancedGeometry(
+  mesh: THREE.InstancedMesh,
+  rootInv: THREE.Matrix4,
+  geos: THREE.BufferGeometry[],
+): void {
+  const relative = new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld);
+  const instance = new THREE.Matrix4();
+  const transform = new THREE.Matrix4();
+  const count = Math.min(mesh.count, 400);
+  for (let i = 0; i < count; i++) {
+    mesh.getMatrixAt(i, instance);
+    transform.multiplyMatrices(relative, instance);
+    geos.push(mesh.geometry.clone().applyMatrix4(transform));
+  }
+}
+
+function isSimplifiedTrackReplacement(mesh: THREE.Mesh): boolean {
+  if (mesh.name === 'gearTrackPadsSimplified') return false;
+  return mesh.name === 'gearTrackPads'
+    && !!mesh.parent?.children.some((child) => child.name === 'gearTrackPadsSimplified');
+}
+
+function isDiscardedWreckPart(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
+  if (isSimplifiedTrackReplacement(mesh)) return true;
+  if (mesh.name !== 'gearTrackPadsSimplified' && !chainVisible(mesh, root)) return true;
+  return WRECK_FINE_GEAR.test(mesh.name || '');
+}
+
+function appendWreckMeshGeometry(
+  mesh: THREE.Mesh,
+  root: THREE.Object3D,
+  rootInv: THREE.Matrix4,
+  target: WreckGeometrySet,
+  size: THREE.Vector3,
+): void {
+  if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
+  const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+  if (material?.colorWrite === false) {
+    target.proxyGeos.push(mesh.geometry.clone().applyMatrix4(
+      new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
+    ));
+    return;
+  }
+  if (material?.transparent && 'map' in material && material.map) return;
+  if (mesh instanceof THREE.InstancedMesh) {
+    appendInstancedGeometry(mesh, rootInv, target.geos);
+    return;
+  }
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  mesh.geometry.boundingBox?.getSize(size);
+  if (Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M) return;
+  target.geos.push(mesh.geometry.clone().applyMatrix4(
+    new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
+  ));
+}
+
+function collectWreckGeometry(root: THREE.Object3D, rootInv: THREE.Matrix4): WreckGeometrySet {
+  const target: WreckGeometrySet = { geos: [], proxyGeos: [] };
+  const size = new THREE.Vector3();
+  root.traverse((object: THREE.Object3D) => {
+    if (object instanceof THREE.Mesh) {
+      appendWreckMeshGeometry(object, root, rootInv, target, size);
+    }
+  });
+  return target;
+}
+
+function normalizeGeometry(
+  geometry: THREE.BufferGeometry,
+  keepNormal: boolean,
+): THREE.BufferGeometry {
+  const normalized = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (keepNormal && !normalized.attributes.normal) normalized.computeVertexNormals();
+  for (const key of Object.keys(normalized.attributes)) {
+    if (key !== 'position' && (!keepNormal || key !== 'normal')) normalized.deleteAttribute(key);
+  }
+  normalized.morphAttributes = {};
+  normalized.clearGroups();
+  return normalized;
+}
+
+function normalizeGeometrySet(
+  geometries: THREE.BufferGeometry[],
+  keepNormal: boolean,
+): THREE.BufferGeometry[] {
+  return geometries.map((geometry) => normalizeGeometry(geometry, keepNormal));
+}
+
+function mergeRequired(
+  geometries: THREE.BufferGeometry[],
+  failureMessage: string,
+): THREE.BufferGeometry {
+  const merged = mergeGeometries(geometries, false);
+  if (!merged) throw new Error(failureMessage);
+  return merged;
+}
+
+function wreckVertexColor(
+  px: number,
+  py: number,
+  pz: number,
+  up: number,
+  rustPhase: number,
+): readonly [number, number, number] {
+  const panel = hash3(
+    Math.round(px * 2.4) * 0.5,
+    Math.round(py * 2.4) * 0.5,
+    Math.round(pz * 2.4) * 0.5,
+  );
+  const grain = hash3(px * 9.1, py * 9.1, pz * 9.1);
+  const rust = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
+  if (rust > 0.80 && up < 0.85) {
+    const level = 0.085 + grain * 0.075;
+    return [level * 1.75, level * 0.9, level * 0.55];
+  }
+  const level = 0.046 + panel * 0.022 + grain * 0.017 + up * up * 0.020;
+  return [level * 1.05, level, level * 0.93];
+}
+
+function paintWreckGeometry(merged: THREE.BufferGeometry, rustPhase: number): void {
+  const position = merged.attributes.position;
+  const normal = merged.attributes.normal;
+  const colors = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    const color = wreckVertexColor(
+      position.getX(i),
+      position.getY(i),
+      position.getZ(i),
+      Math.max(0, normal.getY(i)),
+      rustPhase,
+    );
+    colors[i * 3] = color[0];
+    colors[i * 3 + 1] = color[1];
+    colors[i * 3 + 2] = color[2];
+  }
+  merged.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
+
+function mergeShadowGeometry(proxyGeos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
+  if (!proxyGeos.length) return null;
+  const normalized = normalizeGeometrySet(proxyGeos, false);
+  const merged = mergeGeometries(normalized, false);
+  for (const geometry of normalized) geometry.dispose();
+  return merged;
+}
+
+function wreckBakeResult(
+  merged: THREE.BufferGeometry,
+  shadowGeo: THREE.BufferGeometry | null,
+): WreckBake {
+  merged.computeBoundingBox();
+  const bounds = merged.boundingBox;
+  if (!bounds) throw new Error('wreck bounds unavailable');
+  merged.translate(0, -bounds.min.y, 0);
+  shadowGeo?.translate(0, -bounds.min.y, 0);
+  return {
+    geo: merged,
+    shadowGeo,
+    hx: (bounds.max.x - bounds.min.x) / 2,
+    hz: (bounds.max.z - bounds.min.z) / 2,
+    h: bounds.max.y - bounds.min.y,
+    tris: (merged.attributes.position.count / 3) | 0,
+  };
 }
 
 /**
@@ -133,139 +303,25 @@ export function bakeTankWreck(
     const root = visual.root;
     root.updateMatrixWorld(true);
     const rootInv = _m.copy(root.matrixWorld).invert().clone();
-
-    const geos: THREE.BufferGeometry[] = [];
-    const proxyGeos: THREE.BufferGeometry[] = []; // the tank's own low-poly SHADOW PROXIES, same pose
-    const expandInstanced = (o: THREE.InstancedMesh) => {
-      const src = o.geometry;
-      const rel = new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld);
-      const inst = new THREE.Matrix4();
-      const n = Math.min(o.count, 400);
-      for (let i = 0; i < n; i++) {
-        o.getMatrixAt(i, inst);
-        const g = src.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(rel, inst));
-        geos.push(g);
-      }
-    };
-    const _sz = new THREE.Vector3();
-    root.traverse((o: THREE.Object3D) => {
-      if (!(o instanceof THREE.Mesh)) return;
-      if (!o.geometry?.attributes?.position) return;
-      const simplifiedTrackPads = o.name === 'gearTrackPadsSimplified';
-      const hasSimplifiedTrackSibling = o.name === 'gearTrackPads'
-        && o.parent?.children.some((child) => child.name === 'gearTrackPadsSimplified');
-      // Wreck dressing bakes the existing 22-triangle distance shoe instead
-      // of expanding the 164-196 triangle inspection shoe hundreds of times.
-      // Both LOD levels share the exact instance matrices, width and grouser
-      // peak, so this changes neither the course nor the visible silhouette.
-      if (hasSimplifiedTrackSibling) return;
-      if (!simplifiedTrackPads && !chainVisible(o, root)) return;
-      if (WRECK_FINE_GEAR.test(o.name || '')) return;
-      const m0 = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (m0 && m0.colorWrite === false) {
-        // PERF: the factory's articulation-aware low-poly shadow proxies —
-        // bake them separately as the wreck's SHADOW caster so the three CSM
-        // cascades never re-draw the full hulk (the proxies already sit in
-        // the settled wreck pose; this is the same trick live tanks use).
-        const g = o.geometry.clone()
-          .applyMatrix4(new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld));
-        proxyGeos.push(g);
-        return;
-      }
-      if (m0 && m0.transparent && 'map' in m0 && m0.map) return; // decal planes etc.
-      if (o instanceof THREE.InstancedMesh) { expandInstanced(o); return; }
-      // PERF: wrecks are DRESSING — sub-fitting greebles (periscopes, hooks,
-      // lamps, sub-35 cm fittings) never read on a charred hulk at gameplay
-      // distance but dominate the triangle bill. Skip small parts by size.
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      o.geometry.boundingBox.getSize(_sz);
-      const diag = Math.hypot(_sz.x, _sz.y, _sz.z);
-      if (diag < WRECK_MIN_PART_DIAGONAL_M) return;
-      const g = o.geometry.clone()
-        .applyMatrix4(new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld));
-      geos.push(g);
-    });
+    const { geos, proxyGeos } = collectWreckGeometry(root, rootInv);
     if (!geos.length) throw new Error('no bakeable geometry');
-
-    // normalize attribute sets for the merge: position + normal only
-    const normd: THREE.BufferGeometry[] = [];
-    for (const g of geos) {
-      let gg = g.index ? g.toNonIndexed() : g;
-      if (!gg.attributes.normal) gg.computeVertexNormals();
-      for (const key of Object.keys(gg.attributes)) {
-        if (key !== 'position' && key !== 'normal') gg.deleteAttribute(key);
-      }
-      gg.morphAttributes = {};
-      gg.clearGroups();
-      normd.push(gg);
-    }
-    const merged = mergeGeometries(normd, false);
-    if (!merged) throw new Error('merge failed');
+    const normalized = normalizeGeometrySet(geos, true);
+    const merged = mergeRequired(normalized, 'merge failed');
 
     // ---- charred/rusted wreck paint (vertex colors, matte 'baked' mat) ----
     // Language matches the props charPaint hulks: scorched brown-black body,
     // clustered rust bloom, ash-lightened upward faces, subtle panel drift.
-    const pos = merged.attributes.position;
-    const nrm = merged.attributes.normal;
-    const nV = pos.count;
-    const col = new Float32Array(nV * 3);
     // stay inside the PROVEN charPaint value band (props.ts r7 hulks:
     // v 0.055-0.105) — the first cut carried an up-facing "ash" bonus to
     // ~0.16 albedo which tonemapped to TAN under a 3.5+ sun (steppe/verdant
     // frame review); charred steel must stay near-black even sunlit.
     const rustPhase = rng() * 40;
-    for (let i = 0; i < nV; i++) {
-      const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
-      const up = Math.max(0, nrm.getY(i));
-      const panel = hash3(Math.round(px * 2.4) * 0.5, Math.round(py * 2.4) * 0.5, Math.round(pz * 2.4) * 0.5);
-      const grain = hash3(px * 9.1, py * 9.1, pz * 9.1);
-      const rustN = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
-      let r, g2, b;
-      if (rustN > 0.80 && up < 0.85) { // clustered rust bloom on sides
-        const rl = 0.085 + grain * 0.075;
-        r = rl * 1.75; g2 = rl * 0.9; b = rl * 0.55;
-      } else {
-        const v = 0.046 + panel * 0.022 + grain * 0.017 + up * up * 0.020; // faint ash caps
-        r = v * 1.05; g2 = v; b = v * 0.93;
-      }
-      col[i * 3] = r; col[i * 3 + 1] = g2; col[i * 3 + 2] = b;
-    }
-    merged.setAttribute('color', new THREE.BufferAttribute(col, 3));
-
-    // shadow-caster geometry from the factory proxies (position only)
-    let shadowGeo: THREE.BufferGeometry | null = null;
-    if (proxyGeos.length) {
-      const pn: THREE.BufferGeometry[] = [];
-      for (const g of proxyGeos) {
-        let gg = g.index ? g.toNonIndexed() : g;
-        for (const key of Object.keys(gg.attributes)) {
-          if (key !== 'position') gg.deleteAttribute(key);
-        }
-        gg.morphAttributes = {};
-        gg.clearGroups();
-        pn.push(gg);
-      }
-      shadowGeo = mergeGeometries(pn, false);
-      for (const g of pn) g.dispose();
-    }
-
-    // base to y=0 (dead suspension settle happens at placement time)
-    merged.computeBoundingBox();
-    const bb = merged.boundingBox;
-    if (!bb) throw new Error('wreck bounds unavailable');
-    merged.translate(0, -bb.min.y, 0);
-    if (shadowGeo) shadowGeo.translate(0, -bb.min.y, 0);
-    const out = {
-      geo: merged,
-      shadowGeo,
-      hx: (bb.max.x - bb.min.x) / 2,
-      hz: (bb.max.z - bb.min.z) / 2,
-      h: bb.max.y - bb.min.y,
-      tris: (merged.attributes.position.count / 3) | 0,
-    };
-    for (const g of normd) g.dispose();
-    return out;
-  } catch (error: unknown) {
+    paintWreckGeometry(merged, rustPhase);
+    const shadowGeo = mergeShadowGeometry(proxyGeos);
+    const result = wreckBakeResult(merged, shadowGeo);
+    for (const geometry of normalized) geometry.dispose();
+    return result;
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`[wrecks] bake failed for ${specId}:`, message);
     return null;
@@ -294,6 +350,100 @@ export function wreckPool(era: string): string[] {
     'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete', 'pt91m', 'strv122'];
 }
 
+function debrisBaseColor(
+  family: DebrisFamily,
+  rust: boolean,
+): readonly [number, number, number] {
+  if (rust) return [0.16, 0.072, 0.034];
+  if (family === 'rubber') return [0.028, 0.026, 0.024];
+  return [0.064, 0.057, 0.051];
+}
+
+function appendColoredDebris(
+  geometry: THREE.BufferGeometry,
+  family: DebrisFamily,
+  rng: () => number,
+  parts: THREE.BufferGeometry[],
+): void {
+  const normalized = normalizeGeometry(geometry, true);
+  const colors = new Float32Array(normalized.attributes.position.count * 3);
+  for (let i = 0; i < normalized.attributes.position.count; i++) {
+    const grain = 0.78 + rng() * 0.38;
+    const rust = family === 'rust' || (family === 'char' && rng() < 0.12);
+    const base = debrisBaseColor(family, rust);
+    colors[i * 3] = base[0] * grain;
+    colors[i * 3 + 1] = base[1] * grain;
+    colors[i * 3 + 2] = base[2] * grain;
+  }
+  normalized.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  parts.push(normalized);
+}
+
+function appendTornTrackRun(
+  side: number,
+  modern: boolean,
+  rng: () => number,
+  parts: THREE.BufferGeometry[],
+): void {
+  const count = (modern ? 10 : 8) + ((rng() * 5) | 0);
+  const startX = side * (modern ? 2.05 : 1.65);
+  const startZ = (rng() - 0.5) * 2.2;
+  const direction = (side > 0 ? 0.45 : Math.PI + 0.45) + (rng() - 0.5) * 1.2;
+  for (let i = 0; i < count; i++) {
+    if (i > 2 && rng() < 0.16) continue;
+    const distance = i * (modern ? 0.48 : 0.42);
+    const x = startX + Math.sin(direction) * distance + Math.sin(i * 0.8) * 0.16;
+    const z = startZ + Math.cos(direction) * distance + Math.cos(i * 0.63) * 0.14;
+    const pad = new THREE.BoxGeometry(modern ? 0.50 : 0.43, 0.09, modern ? 0.31 : 0.27);
+    pad.rotateY(direction + (rng() - 0.5) * 0.36);
+    pad.rotateX((rng() - 0.5) * 0.22);
+    pad.rotateZ((rng() - 0.5) * 0.18);
+    pad.translate(x, 0.07 + rng() * 0.05, z);
+    appendColoredDebris(pad, i % 5 === 0 ? 'rust' : 'char', rng, parts);
+  }
+}
+
+function appendDetachedWheel(
+  modern: boolean,
+  rng: () => number,
+  parts: THREE.BufferGeometry[],
+): void {
+  const radius = (modern ? 0.34 : 0.29) + rng() * 0.12;
+  const wheel = new THREE.CylinderGeometry(radius, radius, 0.18 + rng() * 0.10, 10, 1);
+  const upright = rng() < 0.45;
+  wheel.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : (rng() - 0.5) * 0.22);
+  wheel.rotateY(rng() * Math.PI);
+  const angle = rng() * Math.PI * 2;
+  const distance = 2.7 + rng() * 3.2;
+  const x = Math.sin(angle) * distance;
+  const z = Math.cos(angle) * distance;
+  wheel.translate(x, upright ? radius : 0.12, z);
+  appendColoredDebris(wheel, 'rubber', rng, parts);
+
+  const hub = new THREE.CylinderGeometry(radius * 0.36, radius * 0.36, 0.205, 9, 1);
+  hub.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : 0);
+  hub.rotateY(rng() * Math.PI);
+  hub.translate(x, upright ? radius : 0.13, z);
+  appendColoredDebris(hub, 'rust', rng, parts);
+}
+
+function appendArmorPanel(rng: () => number, parts: THREE.BufferGeometry[]): void {
+  const width = 0.45 + rng() * 0.75;
+  const depth = 0.28 + rng() * 0.58;
+  const panel = new THREE.BoxGeometry(width, 0.045 + rng() * 0.045, depth);
+  panel.rotateX((rng() - 0.5) * 0.45);
+  panel.rotateY(rng() * Math.PI);
+  panel.rotateZ((rng() - 0.5) * 0.32);
+  const angle = rng() * Math.PI * 2;
+  const distance = 2.0 + rng() * 4.0;
+  panel.translate(
+    Math.sin(angle) * distance,
+    0.08 + rng() * 0.12,
+    Math.cos(angle) * distance,
+  );
+  appendColoredDebris(panel, rng() < 0.35 ? 'rust' : 'char', rng, parts);
+}
+
 /**
  * Build lightweight local-space battlefield debris for a baked tank wreck:
  * torn track-pad runs, detached road wheels, armor panels and tow-cable scrap.
@@ -313,80 +463,22 @@ export function bakeWreckDebris(
   const modern = opts.modern !== false;
   const parts: THREE.BufferGeometry[] = [];
 
-  function colored(geo: THREE.BufferGeometry, family: DebrisFamily = 'char'): void {
-    let g = geo.index ? geo.toNonIndexed() : geo;
-    if (!g.attributes.normal) g.computeVertexNormals();
-    for (const key of Object.keys(g.attributes)) {
-      if (key !== 'position' && key !== 'normal') g.deleteAttribute(key);
-    }
-    const n = g.attributes.position.count;
-    const colors = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const grain = 0.78 + rng() * 0.38;
-      const rust = family === 'rust' || (family === 'char' && rng() < 0.12);
-      const base = rust ? [0.16, 0.072, 0.034]
-        : family === 'rubber' ? [0.028, 0.026, 0.024] : [0.064, 0.057, 0.051];
-      colors[i * 3] = base[0] * grain;
-      colors[i * 3 + 1] = base[1] * grain;
-      colors[i * 3 + 2] = base[2] * grain;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    g.clearGroups();
-    g.morphAttributes = {};
-    parts.push(g);
-  }
-
   // Two visibly torn track runs: irregular pads snake away from opposite hull
   // corners, with gaps and flipped shoes instead of intact ribbon geometry.
   for (const side of [-1, 1]) {
-    const count = (modern ? 10 : 8) + ((rng() * 5) | 0);
-    const startX = side * (modern ? 2.05 : 1.65);
-    const startZ = (rng() - 0.5) * 2.2;
-    const dir = (side > 0 ? 0.45 : Math.PI + 0.45) + (rng() - 0.5) * 1.2;
-    for (let i = 0; i < count; i++) {
-      if (i > 2 && rng() < 0.16) continue;
-      const t = i * (modern ? 0.48 : 0.42);
-      const x = startX + Math.sin(dir) * t + Math.sin(i * 0.8) * 0.16;
-      const z = startZ + Math.cos(dir) * t + Math.cos(i * 0.63) * 0.14;
-      const pad = new THREE.BoxGeometry(modern ? 0.50 : 0.43, 0.09, modern ? 0.31 : 0.27);
-      pad.rotateY(dir + (rng() - 0.5) * 0.36);
-      pad.rotateX((rng() - 0.5) * 0.22);
-      pad.rotateZ((rng() - 0.5) * 0.18);
-      pad.translate(x, 0.07 + rng() * 0.05, z);
-      colored(pad, i % 5 === 0 ? 'rust' : 'char');
-    }
+    appendTornTrackRun(side, modern, rng, parts);
   }
 
   // Detached road wheels: a mix of flat, leaning and nearly upright discs.
   const wheelCount = (modern ? 4 : 3) + ((rng() * 3) | 0);
   for (let i = 0; i < wheelCount; i++) {
-    const r = (modern ? 0.34 : 0.29) + rng() * 0.12;
-    const wheel = new THREE.CylinderGeometry(r, r, 0.18 + rng() * 0.10, 10, 1);
-    const upright = rng() < 0.45;
-    wheel.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : (rng() - 0.5) * 0.22);
-    wheel.rotateY(rng() * Math.PI);
-    const a = rng() * Math.PI * 2, rr = 2.7 + rng() * 3.2;
-    wheel.translate(Math.sin(a) * rr, upright ? r : 0.12, Math.cos(a) * rr);
-    colored(wheel, 'rubber');
-    // Exposed steel hub keeps a detached wheel readable against charred soil.
-    const hub = new THREE.CylinderGeometry(r * 0.36, r * 0.36, 0.205, 9, 1);
-    hub.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : 0);
-    hub.rotateY(rng() * Math.PI);
-    hub.translate(Math.sin(a) * rr, upright ? r : 0.13, Math.cos(a) * rr);
-    colored(hub, 'rust');
+    appendDetachedWheel(modern, rng, parts);
   }
 
   // Armor skirts, grilles and stowage panels thrown beyond the burn scar.
   const panelCount = 4 + ((rng() * 4) | 0);
   for (let i = 0; i < panelCount; i++) {
-    const w = 0.45 + rng() * 0.75, d = 0.28 + rng() * 0.58;
-    const panel = new THREE.BoxGeometry(w, 0.045 + rng() * 0.045, d);
-    panel.rotateX((rng() - 0.5) * 0.45);
-    panel.rotateY(rng() * Math.PI);
-    panel.rotateZ((rng() - 0.5) * 0.32);
-    const a = rng() * Math.PI * 2, rr = 2.0 + rng() * 4.0;
-    panel.translate(Math.sin(a) * rr, 0.08 + rng() * 0.12, Math.cos(a) * rr);
-    colored(panel, rng() < 0.35 ? 'rust' : 'char');
+    appendArmorPanel(rng, parts);
   }
 
   const merged = mergeGeometries(parts, false);

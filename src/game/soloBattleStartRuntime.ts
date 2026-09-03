@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import type { HudRuntime } from '../ui/hud.ts';
 
@@ -55,7 +56,7 @@ export interface SoloBattleStartRuntimeOptions {
     setShotMode(active: boolean): void;
     setCaptureHidden(hidden: boolean): void;
     setSimulationAccumulator(value: number): void;
-    setCamoSweep(work: MaybePromise<unknown>): void;
+    setCamoSweep(work: MaybePromise<RuntimeValue>): void;
   };
   world: {
     resolveMapId(mapId: string): string;
@@ -84,13 +85,13 @@ export interface SoloBattleStartRuntimeOptions {
         gameMode?: string;
       },
     ): void;
-    combatWarm: { reset(): void; drain(): unknown };
+    combatWarm: { reset(): void; drain(): RuntimeValue };
     presentation: { primeDeploymentTerrainTiles(): void; resetSoloPoses(): void };
     applyPlayerCamo(specId: string): void;
     applyRosterCamo(options: {
       priorityIds: readonly string[];
       onlySpecIds: readonly string[];
-    }): MaybePromise<unknown>;
+    }): MaybePromise<RuntimeValue>;
   };
   ui: {
     hud: {
@@ -98,7 +99,7 @@ export interface SoloBattleStartRuntimeOptions {
       setMode: HudRuntime['setMode'];
     };
     playerActions: {
-      setTank(spec: unknown): void;
+      setTank(spec: RuntimeValue): void;
       resetConsumables(): void;
     };
     damagePanel: {

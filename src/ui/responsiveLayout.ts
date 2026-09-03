@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * One viewport contract for every game surface.
  *
@@ -54,7 +55,7 @@ export interface ResponsiveLayoutHandle {
   destroy(): void;
 }
 
-type ResponsiveWindow = Window & { [key: symbol]: unknown };
+type ResponsiveWindow = Window & { [key: symbol]: RuntimeValue };
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));

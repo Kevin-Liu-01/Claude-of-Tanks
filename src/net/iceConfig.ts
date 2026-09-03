@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { RtcIceLeaseConfiguration } from './rtcIceLease.ts';
 
 export type IceServerConfig = RTCIceServer;
@@ -10,10 +11,10 @@ export interface IceConfiguration extends RtcIceLeaseConfiguration {
 }
 
 interface IceServiceBody {
-  iceServers?: unknown;
-  relayOnly?: unknown;
-  expiresInSeconds?: unknown;
-  error?: unknown;
+  iceServers?: RuntimeValue;
+  relayOnly?: RuntimeValue;
+  expiresInSeconds?: RuntimeValue;
+  error?: RuntimeValue;
 }
 
 interface IceConfigurationOptions {
@@ -37,11 +38,11 @@ function serverUrls(server: IceServerConfig): string[] {
   return typeof server.urls === 'string' ? [server.urls] : [...server.urls];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readServer(value: unknown): IceServerConfig | null {
+function readServer(value: RuntimeValue): IceServerConfig | null {
   if (!isRecord(value)) return null;
   const urls = typeof value.urls === 'string' ? [value.urls]
     : Array.isArray(value.urls) && value.urls.every((url) => typeof url === 'string')
@@ -80,7 +81,7 @@ function waitFor(delayMs: number): Promise<void> {
 
 async function responseBody(response: Response): Promise<IceServiceBody> {
   try {
-    const value: unknown = await response.json();
+    const value: RuntimeValue = await response.json();
     if (!isRecord(value)) return {};
     return {
       iceServers: value.iceServers,
@@ -102,6 +103,51 @@ function shouldRetryService(status: number, reason: string): boolean {
   return RETRYABLE_ICE_STATUS.has(status) || RETRYABLE_ICE_ERROR.has(reason);
 }
 
+function validateIceOptions(
+  timeoutMs: number,
+  retryDelaysMs: readonly number[],
+  wait: (delayMs: number) => Promise<void>,
+): void {
+  const invalidDelay = retryDelaysMs.some((delayMs) => !Number.isFinite(delayMs) || delayMs < 0);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || invalidDelay || typeof wait !== 'function') {
+    throw new TypeError('ICE acquisition options are invalid');
+  }
+}
+
+function serviceConfiguration(body: IceServiceBody): IceConfiguration {
+  if (!Array.isArray(body.iceServers)) return stunFallback('turn_service_invalid');
+  const servers = body.iceServers.map(readServer);
+  if (servers.some((server) => server === null)) return stunFallback('turn_service_invalid');
+  const validServers = servers.filter((server): server is IceServerConfig => server !== null);
+  const relayAvailable = hasTurn(validServers);
+  const relayOnly = body.relayOnly === true;
+  if (relayOnly && !relayAvailable) return stunFallback('turn_service_missing_relay');
+  return {
+    iceServers: validServers,
+    relayOnly,
+    relayAvailable,
+    source: 'service',
+    ...(Number.isFinite(body.expiresInSeconds)
+      ? { expiresInSeconds: Number(body.expiresInSeconds) }
+      : {}),
+  };
+}
+
+function retryDelayFor(
+  response: Response,
+  body: IceServiceBody,
+  retryDelaysMs: readonly number[],
+  attempt: number,
+  deadline: number,
+): { delayMs: number; reason: string } | { delayMs: null; reason: string } {
+  const reason = serviceError(body, response.status);
+  const delayMs = retryDelaysMs[attempt];
+  const unavailable = delayMs === undefined
+    || !shouldRetryService(response.status, reason)
+    || Date.now() + delayMs >= deadline;
+  return { delayMs: unavailable ? null : delayMs, reason };
+}
+
 /** Resolve deployment ICE without ever making private-room creation depend on
  * the optional credential service. STUN remains the bounded degraded path;
  * production TURN credentials are short-lived and never bundled in JS. */
@@ -117,12 +163,7 @@ export async function loadIceConfiguration({
     return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' };
   }
   if (!endpoint || typeof fetchImpl !== 'function') return stunFallback('turn_service_unconfigured');
-
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 ||
-      retryDelaysMs.some((delayMs) => !Number.isFinite(delayMs) || delayMs < 0) ||
-      typeof wait !== 'function') {
-    throw new TypeError('ICE acquisition options are invalid');
-  }
+  validateIceOptions(timeoutMs, retryDelaysMs, wait);
 
   const deadline = Date.now() + timeoutMs;
   try {
@@ -135,35 +176,12 @@ export async function loadIceConfiguration({
       });
       const body = await responseBody(response);
       if (!response.ok) {
-        const reason = serviceError(body, response.status);
-        const retryDelayMs = retryDelaysMs[attempt];
-        if (retryDelayMs === undefined || !shouldRetryService(response.status, reason) ||
-            Date.now() + retryDelayMs >= deadline) {
-          return stunFallback(reason);
-        }
-        await wait(retryDelayMs);
+        const retry = retryDelayFor(response, body, retryDelaysMs, attempt, deadline);
+        if (retry.delayMs === null) return stunFallback(retry.reason);
+        await wait(retry.delayMs);
         continue;
       }
-      if (!Array.isArray(body.iceServers)) {
-        return stunFallback('turn_service_invalid');
-      }
-      const servers = body.iceServers.map(readServer);
-      if (servers.some((server) => server === null)) {
-        return stunFallback('turn_service_invalid');
-      }
-      const validServers = servers.filter((server): server is IceServerConfig => server !== null);
-      const relayAvailable = hasTurn(validServers);
-      const relayOnly = body.relayOnly === true;
-      if (relayOnly && !relayAvailable) return stunFallback('turn_service_missing_relay');
-      return {
-        iceServers: validServers,
-        relayOnly,
-        relayAvailable,
-        source: 'service',
-        ...(Number.isFinite(body.expiresInSeconds)
-          ? { expiresInSeconds: Number(body.expiresInSeconds) }
-          : {}),
-      };
+      return serviceConfiguration(body);
     }
   } catch (error) {
     const reason = error instanceof Error && error.name === 'TimeoutError'

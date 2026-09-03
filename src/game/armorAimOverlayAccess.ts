@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ArmorAimOverlayRuntime } from './armorAimOverlay.ts';
 
 export type {
@@ -38,7 +39,7 @@ export function createArmorAimOverlayAccess(
     const request = load().then((module) => {
       current = module.createArmorAimOverlay();
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * cameraRig.ts — the WoT camera: third-person arcade orbit + sniper zoom.
  *
@@ -111,8 +112,8 @@ export type CameraAimRaycast = (
 export interface CameraEntityVisual {
   root: THREE.Object3D;
   boundingRadiusM?: number;
-  turretTopWorld(out: THREE.Vector3): unknown;
-  gunPivotWorld(out: THREE.Vector3): unknown;
+  turretTopWorld(out: THREE.Vector3): RuntimeValue;
+  gunPivotWorld(out: THREE.Vector3): RuntimeValue;
 }
 
 export interface CameraEntity {
@@ -691,6 +692,161 @@ export function createCameraRig(
     }
   }
 
+  function latchCursorAim(camInput: CameraInputFrame): void {
+    cursorAimOn = !!camInput.cursorAim;
+    if (!cursorAimOn) return;
+    cursorNdcX = camInput.cursorX || 0;
+    cursorNdcY = camInput.cursorY || 0;
+  }
+
+  function solveDeathCamera(player: CameraEntity, dt: number): boolean {
+    if (!death) return false;
+    camera.userData.scoped = false;
+    death.az += 0.22 * dt;
+    pivotTargetFor(player, _pivotTarget);
+    _pivotTarget.y -= PIVOT_ABOVE_TURRET_M * 0.6;
+    const distance = 15 + Math.sin(death.az * 0.7) * 1.5;
+    _desired.set(
+      _pivotTarget.x + Math.sin(death.az) * distance * 0.93,
+      _pivotTarget.y + distance * 0.36,
+      _pivotTarget.z + Math.cos(death.az) * distance * 0.93,
+    );
+    const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+    if (_desired.y < minY) _desired.y = minY;
+    camera.position.copy(_desired);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(_pivotTarget);
+    setFov(50);
+    return true;
+  }
+
+  function advanceCinematic(
+    player: CameraEntity,
+    dt: number,
+    camInput: CameraInputFrame,
+  ): boolean {
+    if (!cine) return true;
+    const skip = Math.abs(camInput.mouseDX) > 2 || Math.abs(camInput.mouseDY) > 2 ||
+      camInput.wheel !== 0 || camInput.shiftPressed || camInput.rmb;
+    if (skip || !solveCinematic(player, dt)) endCinematic(player);
+    // A sniper-toggle tap skips the flyby and must continue through the
+    // rising-edge handler in this same frame. Every other skip, plus natural
+    // completion, leaves camera input for the next frame as before.
+    return camInput.shiftPressed && cine === null;
+  }
+
+  function updateScopeActions(camInput: CameraInputFrame): void {
+    if (camInput.shiftPressed && !prevShift) {
+      if (rig.mode === 'ARCADE') rig.enterSniper();
+      else rig.exitSniper(true);
+    }
+    prevShift = camInput.shiftPressed;
+
+    if (camInput.aimHold && !prevAimHold && rig.mode === 'ARCADE') {
+      aimHoldLatched = true;
+      rig.enterSniper();
+    } else if (!camInput.aimHold && prevAimHold && aimHoldLatched) {
+      aimHoldLatched = false;
+      if (rig.mode === 'SNIPER') rig.exitSniper(true);
+    }
+    if (!camInput.aimHold && aimHoldLatched && rig.mode === 'ARCADE') {
+      aimHoldLatched = false;
+    }
+    prevAimHold = !!camInput.aimHold;
+  }
+
+  function updateWheelZoom(camInput: CameraInputFrame): void {
+    if (!camInput.wheel) return;
+    const direction = camInput.wheel > 0 ? 1 : -1;
+    for (let remaining = Math.min(Math.abs(camInput.wheel | 0), 3);
+      remaining > 0; remaining--) stepZoom(direction);
+  }
+
+  function updateAutoAim(
+    player: CameraEntity,
+    dt: number,
+    autoAimPoint: CameraInputFrame['autoAimPoint'],
+  ): void {
+    if (!autoAimPoint) return;
+    if (rig.mode === 'SNIPER') sniperAnchorFor(player, _autoAimAnchor);
+    else pivotTargetFor(player, _autoAimAnchor);
+    const dx = autoAimPoint.x - _autoAimAnchor.x;
+    const dy = autoAimPoint.y - _autoAimAnchor.y;
+    const dz = autoAimPoint.z - _autoAimAnchor.z;
+    const horizontalDistance = Math.hypot(dx, dz);
+    if (horizontalDistance <= 1e-3) return;
+    const desiredYaw = Math.atan2(dx, dz);
+    const desiredPitch = THREE.MathUtils.clamp(
+      Math.atan2(dy, horizontalDistance), PITCH_MIN, PITCH_MAX,
+    );
+    const follow = 1 - Math.exp(-Math.max(dt, 0) / AUTO_AIM_FOLLOW_TAU_S);
+    aimYaw += wrapPi(desiredYaw - aimYaw) * follow;
+    aimPitch += (desiredPitch - aimPitch) * follow;
+    aimTouched = true;
+  }
+
+  function updateAimAngles(
+    player: CameraEntity,
+    dt: number,
+    camInput: CameraInputFrame,
+  ): void {
+    const sensitivity = rig.mode === 'SNIPER' ? BASE_SENS / rig.zoom : BASE_SENS;
+    if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
+    aimYaw += camInput.mouseDX * sensitivity;
+    aimPitch = THREE.MathUtils.clamp(
+      aimPitch - camInput.mouseDY * sensitivity, PITCH_MIN, PITCH_MAX,
+    );
+    updateAutoAim(player, dt, camInput.autoAimPoint);
+  }
+
+  function applyIdleCameraMotion(): void {
+    if (rig.mode !== 'SNIPER') return;
+    camera.rotation.x += 0.0011 * noise.noise(shakeT * 0.45, 11.7, 0) +
+      0.0004 * Math.sin(shakeT * 1.9);
+    camera.rotation.y += 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
+  }
+
+  function applyTraumaMotion(): void {
+    if (trauma <= 0) return;
+    const scale = Math.pow(trauma, 1.6) *
+      (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
+    camera.rotation.x += SHAKE_AMP_XY * scale * noise.noise(shakeT * SHAKE_FREQ, 0, 0);
+    camera.rotation.y += SHAKE_AMP_XY * scale * noise.noise(0, shakeT * SHAKE_FREQ, 0);
+    camera.rotation.z += SHAKE_AMP_Z * scale * noise.noise(0, 0, shakeT * SHAKE_FREQ);
+  }
+
+  function applyRecoilMotion(dt: number): void {
+    if (recoil <= 1e-4) {
+      recoil = 0;
+      return;
+    }
+    camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.55 : 1);
+    recoil *= Math.exp(-dt / 0.09);
+  }
+
+  function applyFovKick(dt: number): void {
+    if (fovKick > 0.02) {
+      const base = lastFov;
+      setFov(base * (1 + 0.075 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
+      lastFov = base;
+      fovKick *= Math.exp(-dt / 0.08);
+      return;
+    }
+    if (fovKick === 0) return;
+    fovKick = 0;
+    camera.fov = lastFov;
+    camera.updateProjectionMatrix();
+  }
+
+  function applyCameraMotion(dt: number): void {
+    trauma = Math.max(0, trauma - TRAUMA_DECAY_PER_S * dt);
+    shakeT += dt;
+    applyIdleCameraMotion();
+    applyTraumaMotion();
+    applyRecoilMotion(dt);
+    applyFovKick(dt);
+  }
+
   const rig: CameraRig = {
     mode: 'ARCADE',
     zoom: SNIPER_ZOOMS_BASE[0],
@@ -735,171 +891,22 @@ export function createCameraRig(
       const player = getPlayer();
       if (!player) return;
 
-      // CURSOR-AIM FALLBACK: latch this frame's cursor ray inputs for
-      // updateAim (main.ts sets cursorAim only while a battle is live and
-      // pointer lock is unavailable).
-      cursorAimOn = !!camInput.cursorAim;
-      if (cursorAimOn) {
-        cursorNdcX = camInput.cursorX || 0;
-        cursorNdcY = camInput.cursorY || 0;
-      }
+      latchCursorAim(camInput);
 
-      // SPECTATE: ally chase-cam owns the frame (mouse/wheel/keys ignored —
-      // orbit input arrives via rig.spectateLook from the spectate controller).
-      // Death-cam: slow orbit of the wreck (input ignored until released).
-      if (death) {
-        camera.userData.scoped = false;
-        death.az += 0.22 * dt;
-        pivotTargetFor(player, _pivotTarget);
-        _pivotTarget.y -= PIVOT_ABOVE_TURRET_M * 0.6;
-        const d = 15 + Math.sin(death.az * 0.7) * 1.5;
-        _desired.set(
-          _pivotTarget.x + Math.sin(death.az) * d * 0.93,
-          _pivotTarget.y + d * 0.36,
-          _pivotTarget.z + Math.cos(death.az) * d * 0.93,
-        );
-        const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
-        if (_desired.y < minY) _desired.y = minY;
-        camera.position.copy(_desired);
-        camera.up.set(0, 1, 0);
-        camera.lookAt(_pivotTarget);
-        setFov(50);
-        return;
-      }
+      if (solveDeathCamera(player, dt)) return;
 
-      // Battle-start cinematic flyby — skippable with any input.
-      if (cine) {
-        const skip = Math.abs(camInput.mouseDX) > 2 || Math.abs(camInput.mouseDY) > 2 ||
-          camInput.wheel !== 0 || camInput.shiftPressed || camInput.rmb;
-        if (skip || !solveCinematic(player, dt)) endCinematic(player);
-        // controls_gunnery r6: a sniper-toggle tap must SKIP AND STILL TOGGLE. The
-        // tap used to be eaten by the skip (prevShift never updates in this
-        // branch, so the rising edge died with the cinematic): players who
-        // toggled scope during the opening flyby landed in ARCADE with no scope
-        // treatment and read sniper entry as broken (probe: mode ARCADE /
-        // fov 60 after a mid-flyby tap; the critic's "live sniper entry has
-        // no vignette" frame is exactly this failure). A shift-skip now
-        // falls through so the rising-edge toggle below fires this same
-        // frame; every other skip input (and the natural end) returns as
-        // before.
-        if (!(camInput.shiftPressed && cine === null)) return;
-      }
+      if (!advanceCinematic(player, dt, camInput)) return;
+      updateScopeActions(camInput);
 
-      // The dedicated sniper action toggles on its rising edge.
-      if (camInput.shiftPressed && !prevShift) {
-        if (rig.mode === 'ARCADE') rig.enterSniper();
-        else rig.exitSniper(true); // gameplay_feel r6: restore pre-scope orbit
-      }
-      prevShift = camInput.shiftPressed;
-
-      // RMB HOLD-TO-AIM (gunnery r1, settings rmbMode 'hold' — the default):
-      // press enters sniper, release returns to the pre-scope arcade orbit
-      // with the aim ray preserved (bug-2 rules). The latch ties the exit to
-      // an entry THIS hold made: releasing RMB over an action- or wheel-entered
-      // scope must not kick the player out of it.
-      if (camInput.aimHold && !prevAimHold) {
-        if (rig.mode === 'ARCADE') {
-          aimHoldLatched = true;
-          rig.enterSniper();
-        }
-      } else if (!camInput.aimHold && prevAimHold && aimHoldLatched) {
-        aimHoldLatched = false;
-        if (rig.mode === 'SNIPER') rig.exitSniper(true);
-      }
-      if (!camInput.aimHold && aimHoldLatched && rig.mode === 'ARCADE') {
-        aimHoldLatched = false; // scope left by other means mid-hold
-      }
-      prevAimHold = !!camInput.aimHold;
-
-      // Consume ALL wheel notches accumulated this frame (main.ts clamps to
-      // ±3): fast flicks used to collapse to one step per render frame.
-      if (camInput.wheel) {
-        const wDir = camInput.wheel > 0 ? 1 : -1;
-        for (let n = Math.min(Math.abs(camInput.wheel | 0), 3); n > 0; n--) stepZoom(wDir);
-      }
-
-      const sens = rig.mode === 'SNIPER' ? BASE_SENS / rig.zoom : BASE_SENS;
-      // One camera/aim path in every mode. Caps/RB and optional RMB free-look
-      // only hold the physical gun through player.input.aimLocked; they never
-      // freeze this ray or maintain a second set of orbit offsets.
-      if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
-      aimYaw += camInput.mouseDX * sens;
-      aimPitch = THREE.MathUtils.clamp(aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
-
-      // MOBILE AUTO-AIM: drive the same shared yaw/pitch pair used by manual
-      // aim, so arcade camera, sniper view, server reticle and turret all
-      // converge on one center-mass point. The short angular spring prevents
-      // a jarring camera teleport when the lock button is pressed.
-      if (camInput.autoAimPoint) {
-        if (rig.mode === 'SNIPER') sniperAnchorFor(player, _autoAimAnchor);
-        else pivotTargetFor(player, _autoAimAnchor);
-        const dx = camInput.autoAimPoint.x - _autoAimAnchor.x;
-        const dy = camInput.autoAimPoint.y - _autoAimAnchor.y;
-        const dz = camInput.autoAimPoint.z - _autoAimAnchor.z;
-        const horiz = Math.hypot(dx, dz);
-        if (horiz > 1e-3) {
-          const wantYaw = Math.atan2(dx, dz);
-          const wantPitch = THREE.MathUtils.clamp(
-            Math.atan2(dy, horiz), PITCH_MIN, PITCH_MAX);
-          const follow = 1 - Math.exp(-Math.max(dt, 0) / AUTO_AIM_FOLLOW_TAU_S);
-          aimYaw += wrapPi(wantYaw - aimYaw) * follow;
-          aimPitch += (wantPitch - aimPitch) * follow;
-          aimTouched = true;
-        }
-      }
+      updateWheelZoom(camInput);
+      updateAimAngles(player, dt, camInput);
 
       applyPlayerVisibility(player, rig.mode !== 'SNIPER');
       if (rig.mode === 'ARCADE') solveArcade(player, dt, false);
       else solveSniper(player);
 
       updateAim(player);
-
-      // Trauma shake — additive rotational only, after the solve.
-      trauma = Math.max(0, trauma - TRAUMA_DECAY_PER_S * dt);
-      shakeT += dt;
-      // Sniper idle drift: subtle low-frequency handheld wander + breathing
-      // bob, additive AFTER the aim raycast so the reticle stays truthful.
-      if (rig.mode === 'SNIPER') {
-        camera.rotation.x += 0.0011 * noise.noise(shakeT * 0.45, 11.7, 0) +
-          0.0004 * Math.sin(shakeT * 1.9);
-        camera.rotation.y += 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
-      }
-      if (trauma > 0) {
-        // t^1.6 (was t^2): a 0.35-trauma hit now lands a clearly readable
-        // ~0.7 deg flinch instead of a sub-pixel wobble
-        const s = Math.pow(trauma, 1.6) * (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
-        camera.rotation.x += SHAKE_AMP_XY * s * noise.noise(shakeT * SHAKE_FREQ, 0, 0);
-        camera.rotation.y += SHAKE_AMP_XY * s * noise.noise(0, shakeT * SHAKE_FREQ, 0);
-        camera.rotation.z += SHAKE_AMP_Z * s * noise.noise(0, 0, shakeT * SHAKE_FREQ);
-      }
-      // Recoil pitch kick — sharp upward bump on fire, fast exponential return.
-      // Sniper keeps a STRONG reticle kick (0.55): with own-gun flash geometry
-      // hidden in the scope, the kick is what sells the shot.
-      if (recoil > 1e-4) {
-        camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.55 : 1);
-        recoil *= Math.exp(-dt / 0.09);
-      } else {
-        recoil = 0;
-      }
-      // FOV punch on fire (effects_combat r7: "fire-kick not readable in
-      // motion") — a 2-3 frame wide-angle pulse that reads as concussion.
-      // Applied AFTER the mode solve set the base fov; decays in ~120 ms.
-      // Scoped keeps a fraction so the zoom optics only flinch.
-      if (fovKick > 0.02) {
-        const base = lastFov;
-        // 0.075 (was 0.045) over ~0.08 s: a 4.5-deg concussion pulse that
-        // survives 3-5 rendered frames (r5: the shot was a non-event from the
-        // chase camera — flash sub-100 ms, kick sub-pixel).
-        setFov(base * (1 + 0.075 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
-        lastFov = base; // next solve compares against the UNKICKED base
-        fovKick *= Math.exp(-dt / 0.08);
-      } else if (fovKick !== 0) {
-        // pulse over — snap the projection back to the unkicked base
-        // (setFov would no-op: lastFov already holds the base value)
-        fovKick = 0;
-        camera.fov = lastFov;
-        camera.updateProjectionMatrix();
-      }
+      applyCameraMotion(dt);
     },
 
     /**
@@ -1278,6 +1285,14 @@ export function createCameraRig(
       const player = getPlayer();
       if (!player) return;
       applyPlayerVisibility(player, true);
+      // A Garage hero can be reparented and synchronously moved to its battle
+      // spawn immediately before this covered reveal snap. Three.js normally
+      // refreshes descendant world matrices during render, which is one frame
+      // too late for turretTopWorld(): sampling the stale showroom matrix
+      // starts the visible camera at the Garage anchor and eases across the
+      // whole map after the loader fades. Deterministic snaps own an immediate
+      // matrix barrier before querying articulation anchors.
+      player.visual?.root.updateWorldMatrix(true, true);
       solveArcade(player, 0, true);
       updateAim(player);
       camera.updateMatrixWorld(true);
@@ -1311,6 +1326,7 @@ export function createCameraRig(
       const player = getPlayer();
       if (!player) return;
       applyPlayerVisibility(player, false);
+      player.visual?.root.updateWorldMatrix(true, true);
       solveSniper(player);
       updateAim(player);
       camera.updateMatrixWorld(true);
@@ -1497,7 +1513,7 @@ export interface ShowroomOrbit {
   drag(dxPx: number, dyPx: number): void;
   endDrag(): void;
   wheel(notches: number): void;
-  debugState(): Record<string, unknown>;
+  debugState(): Record<string, RuntimeValue>;
 }
 
 type ShowroomCamera = THREE.PerspectiveCamera & {
@@ -1538,6 +1554,7 @@ export function createShowroomOrbit(
   const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
   let appliedAspect = NaN;
   const appliedWin = { cx: NaN, cy: NaN, hx: NaN, hy: NaN };
+  const projectionBounds = { nx0: 0, nx1: 0, ny0: 0, ny1: 0 };
 
   /** Stage rect (CSS px) → NDC center/half-extents, with a sanity floor. */
   function readWindow(): typeof win {
@@ -1565,47 +1582,54 @@ export function createShowroomOrbit(
     return win;
   }
 
+  function measureFixedFrame(frame: ShowroomFixedFrame): void {
+    _sbMin.set(-frame.hw, -frame.hh, -frame.hd);
+    _sbMax.set(frame.hw, frame.hh, frame.hd);
+    _sbCenter.set(frame.x, frame.y, frame.z);
+    for (let index = 0; index < 8; index++) {
+      _sbCorners[index].set(
+        _sbCenter.x + (index & 1 ? frame.hw : -frame.hw),
+        _sbCenter.y + (index & 2 ? frame.hh : -frame.hh),
+        _sbCenter.z + (index & 4 ? frame.hd : -frame.hd),
+      );
+    }
+  }
+
+  function measureSubjectFrame(root: THREE.Object3D): boolean {
+    if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
+    for (let index = 0; index < 8; index++) {
+      _sbCorners[index].set(
+        index & 1 ? _sbMax.x : _sbMin.x,
+        index & 2 ? _sbMax.y : _sbMin.y,
+        index & 4 ? _sbMax.z : _sbMin.z,
+      ).applyMatrix4(root.matrixWorld);
+    }
+    _sbCenter.set(0, 0, 0);
+    for (let index = 0; index < 8; index++) _sbCenter.add(_sbCorners[index]);
+    _sbCenter.multiplyScalar(1 / 8);
+    return true;
+  }
+
+  function updateMeasuredRadius(): void {
+    let radius = 0;
+    for (let index = 0; index < 8; index++) {
+      radius = Math.max(radius, _sbCorners[index].distanceTo(_sbCenter));
+    }
+    nearDist = radius + SHOW_NEAR_PAD_M;
+  }
+
   /** Re-measure the hero's oriented box + world corners. @returns {boolean} */
   function measure(): boolean {
     const root = deps.getSubject ? deps.getSubject() : null;
     subject = root || null;
     haveBox = false;
     if (!root) return false;
-    // FIXED FRAMING (garage r9 — owner: "when I select different tanks the
-    // camera keeps shifting around, just keep the camera in one place looking
-    // at center of garage"). The per-hull fit re-solved the ANCHOR (measured
-    // box center) and the DISTANCE on every carousel step, so a Leo 2A7 and a
-    // Panzer III parked the eye in visibly different places. With
-    // deps.fixedFrame the orbit still requires a live subject (an empty
-    // pedestal must never be framed) but poses against a CANONICAL box on the
-    // stage center: identical eye for every vehicle, while the stage-rect fit
-    // below still adapts to viewport size / UI panel layout as before.
-    const fb = deps.fixedFrame ? deps.fixedFrame() : null;
-    if (fb) {
-      // The fixed showroom contract deliberately ignores each vehicle's own
-      // bounds. Do not traverse hundreds of meshes and update their matrices
-      // merely to overwrite the result with this canonical stage box.
-      _sbMin.set(-fb.hw, -fb.hh, -fb.hd);
-      _sbMax.set(fb.hw, fb.hh, fb.hd);
-      _sbCenter.set(fb.x, fb.y, fb.z);
-      for (let i = 0; i < 8; i++) {
-        _sbCorners[i].set(_sbCenter.x + (i & 1 ? fb.hw : -fb.hw),
-          _sbCenter.y + (i & 2 ? fb.hh : -fb.hh),
-          _sbCenter.z + (i & 4 ? fb.hd : -fb.hd));
-      }
-    } else {
-      if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
-      for (let i = 0; i < 8; i++) {
-        _sbCorners[i].set(i & 1 ? _sbMax.x : _sbMin.x, i & 2 ? _sbMax.y : _sbMin.y,
-          i & 4 ? _sbMax.z : _sbMin.z).applyMatrix4(root.matrixWorld);
-      }
-      _sbCenter.set(0, 0, 0);
-      for (let i = 0; i < 8; i++) _sbCenter.add(_sbCorners[i]);
-      _sbCenter.multiplyScalar(1 / 8);
-    }
-    let radius = 0;
-    for (let i = 0; i < 8; i++) radius = Math.max(radius, _sbCorners[i].distanceTo(_sbCenter));
-    nearDist = radius + SHOW_NEAR_PAD_M;
+    // A fixed showroom frame avoids traversing each replacement tank merely
+    // to overwrite its bounds with the canonical stage box.
+    const fixedFrame = deps.fixedFrame ? deps.fixedFrame() : null;
+    if (fixedFrame) measureFixedFrame(fixedFrame);
+    else if (!measureSubjectFrame(root)) return false;
+    updateMeasuredRadius();
     haveBox = true;
     return true;
   }
@@ -1616,6 +1640,62 @@ export function createShowroomOrbit(
     _sbC.set(Math.sin(y) * cp, Math.sin(p), Math.cos(y) * cp);
     _sbR.set(Math.cos(y), 0, -Math.sin(y));
     _sbU.set(-Math.sin(p) * Math.sin(y), cp, -Math.sin(p) * Math.cos(y));
+  }
+
+  function prepareCornerProjection(yawRad: number, pitchRad: number): number {
+    basis(yawRad, pitchRad);
+    let maxDepth = -Infinity;
+    for (let index = 0; index < 8; index++) {
+      _sbV.copy(_sbCorners[index]).sub(_sbCenter);
+      _sbPr[index] = _sbV.dot(_sbR);
+      _sbPu[index] = _sbV.dot(_sbU);
+      _sbPc[index] = _sbV.dot(_sbC);
+      if (_sbPc[index] > maxDepth) maxDepth = _sbPc[index];
+    }
+    return maxDepth;
+  }
+
+  function readProjectionBounds(
+    distance: number,
+    shiftX: number,
+    shiftY: number,
+    tanH: number,
+    tanV: number,
+  ): void {
+    projectionBounds.nx0 = Infinity;
+    projectionBounds.nx1 = -Infinity;
+    projectionBounds.ny0 = Infinity;
+    projectionBounds.ny1 = -Infinity;
+    for (let index = 0; index < 8; index++) {
+      const depth = distance - _sbPc[index];
+      const nx = (_sbPr[index] - shiftX) / (depth * tanH);
+      const ny = (_sbPu[index] - shiftY) / (depth * tanV);
+      if (nx < projectionBounds.nx0) projectionBounds.nx0 = nx;
+      if (nx > projectionBounds.nx1) projectionBounds.nx1 = nx;
+      if (ny < projectionBounds.ny0) projectionBounds.ny0 = ny;
+      if (ny > projectionBounds.ny1) projectionBounds.ny1 = ny;
+    }
+  }
+
+  function fitHorizontalWindow(distance: number, tanH: number): number {
+    let shiftX = -win.cx * distance * tanH;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    for (let index = 0; index < 8; index++) {
+      const nx = (_sbPr[index] - shiftX) / ((distance - _sbPc[index]) * tanH);
+      if (nx < minX) minX = nx;
+      if (nx > maxX) maxX = nx;
+    }
+    const windowMin = win.cx - win.hx * 0.995;
+    const windowMax = win.cx + win.hx * 0.995;
+    if (maxX - minX > windowMax - windowMin) {
+      shiftX += ((minX + maxX) * 0.5 - win.cx) * distance * tanH;
+    } else if (minX < windowMin) {
+      shiftX += (minX - windowMin) * distance * tanH;
+    } else if (maxX > windowMax) {
+      shiftX += (maxX - windowMax) * distance * tanH;
+    }
+    return shiftX;
   }
 
   /**
@@ -1634,36 +1714,26 @@ export function createShowroomOrbit(
     const w = readWindow();
     const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
     const tanH = tanV * (camera.aspect || 16 / 9);
-    basis(y, p);
-    let maxPc = -Infinity;
-    for (let i = 0; i < 8; i++) {
-      _sbV.copy(_sbCorners[i]).sub(_sbCenter);
-      _sbPr[i] = _sbV.dot(_sbR);
-      _sbPu[i] = _sbV.dot(_sbU);
-      _sbPc[i] = _sbV.dot(_sbC);
-      if (_sbPc[i] > maxPc) maxPc = _sbPc[i];
-    }
+    const maxPc = prepareCornerProjection(y, p);
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
     let d = fixedDist || Math.max(dFloor, nearDist * 2.2);
     let sx = 0, sy = 0;
     for (let it = 0; it < SHOW_SOLVE_ITERS; it++) {
-      let nx0 = Infinity, nx1 = -Infinity, ny0 = Infinity, ny1 = -Infinity;
-      for (let i = 0; i < 8; i++) {
-        const depth = d - _sbPc[i];
-        const nx = (_sbPr[i] - sx) / (depth * tanH);
-        const ny = (_sbPu[i] - sy) / (depth * tanV);
-        if (nx < nx0) nx0 = nx; if (nx > nx1) nx1 = nx;
-        if (ny < ny0) ny0 = ny; if (ny > ny1) ny1 = ny;
-      }
+      readProjectionBounds(d, sx, sy, tanH, tanV);
       if (!fixedDist) {
-        const s = Math.min((w.hx * fill) / Math.max(nx1 - nx0, 1e-6),
-          (w.hy * fill) / Math.max(ny1 - ny0, 1e-6));
+        const s = Math.min(
+          (w.hx * fill) / Math.max(projectionBounds.nx1 - projectionBounds.nx0, 1e-6),
+          (w.hy * fill) / Math.max(projectionBounds.ny1 - projectionBounds.ny0, 1e-6),
+        );
         const dNew = THREE.MathUtils.clamp(d / s, dFloor, SHOW_DIST_MAX_M);
         // offsets are proportional to distance — carry them across the step so
         // the centering correction below starts from the same framing
         const k = dNew / d;
         sx *= k; sy *= k;
-        nx0 /= k; nx1 /= k; ny0 /= k; ny1 /= k;   // first-order ndc rescale
+        projectionBounds.nx0 /= k;
+        projectionBounds.nx1 /= k;
+        projectionBounds.ny0 /= k;
+        projectionBounds.ny1 /= k;
         d = dNew;
       }
       // UI-AWARE CENTERING (garage-scene r1): pin the projected OBB CENTER on
@@ -1676,23 +1746,9 @@ export function createShowroomOrbit(
       // tracks the hull mass, so the tank now reads centered in the UI-free
       // area. Camera ANGLES are untouched — this only slides the eye/look-at
       // pair along the camera's right axis, exactly like the old offset.
-      sx = -w.cx * d * tanH;                    // closed form: center → w.cx
-      let fx0 = Infinity, fx1 = -Infinity;      // extremes at the pinned sx
-      for (let i = 0; i < 8; i++) {
-        const nx = (_sbPr[i] - sx) / ((d - _sbPc[i]) * tanH);
-        if (nx < fx0) fx0 = nx; if (nx > fx1) fx1 = nx;
-      }
-      // fit wins over mass-centering: shove back inside the rect so a long
-      // gun can never crop against a panel (narrow viewports, broadside orbit)
-      const loN = w.cx - w.hx * 0.995, hiN = w.cx + w.hx * 0.995;
-      if (fx1 - fx0 > hiN - loN) {
-        // silhouette wider than the window (distance already capped —
-        // crowded portrait viewports): symmetric overflow, old behavior
-        sx += ((fx0 + fx1) * 0.5 - w.cx) * d * tanH;
-      } else if (fx0 < loN) sx += (fx0 - loN) * d * tanH;
-      else if (fx1 > hiN) sx += (fx1 - hiN) * d * tanH;
+      sx = fitHorizontalWindow(d, tanH);
       // vertical framing keeps the original extremes-midpoint behavior
-      sy += ((ny0 + ny1) * 0.5 - w.cy) * d * tanV;
+      sy += ((projectionBounds.ny0 + projectionBounds.ny1) * 0.5 - w.cy) * d * tanV;
     }
     return { dist: d, sx, sy };
   }
@@ -1718,6 +1774,112 @@ export function createShowroomOrbit(
     appliedWin.hx = win.hx; appliedWin.hy = win.hy;
   }
 
+  function resetMeasuredOrbit(): boolean {
+    tYaw = yaw = heroYaw;
+    tPitch = pitch = heroPitch;
+    tZoom = zoom = 1;
+    yawVel = pitchVel = 0;
+    dragging = false;
+    sinceInputS = 999;
+    measureAccS = 0;
+    heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+    applyPose();
+    return true;
+  }
+
+  function resetOrbit(): boolean {
+    return measure() ? resetMeasuredOrbit() : false;
+  }
+
+  function pollForFirstSubject(dt: number): boolean {
+    measureAccS += dt;
+    if (measureAccS <= 0.4) return false;
+    measureAccS = 0;
+    return measure() && haveBox ? resetMeasuredOrbit() : false;
+  }
+
+  function framingChanged(previousHeroDist: number): boolean {
+    return Math.abs(heroDist - previousHeroDist) > SHOW_SETTLE_EPS ||
+      Math.abs(camera.aspect - appliedAspect) > SHOW_SETTLE_EPS ||
+      Math.abs(win.cx - appliedWin.cx) > SHOW_SETTLE_EPS ||
+      Math.abs(win.cy - appliedWin.cy) > SHOW_SETTLE_EPS ||
+      Math.abs(win.hx - appliedWin.hx) > SHOW_SETTLE_EPS ||
+      Math.abs(win.hy - appliedWin.hy) > SHOW_SETTLE_EPS;
+  }
+
+  function settleNewSubject(previousSubject: THREE.Object3D | null): void {
+    if (previousSubject === subject) return;
+    tYaw = yaw + wrapPi(heroYaw - yaw);
+    tPitch = heroPitch;
+    tZoom = 1;
+    yawVel = pitchVel = 0;
+  }
+
+  function refreshSubjectMeasurement(dt: number): boolean {
+    measureAccS += dt;
+    if (measureAccS <= 0.4) return false;
+    measureAccS = 0;
+    const previousSubject = subject;
+    const previousHeroDist = heroDist;
+    if (!measure() || !haveBox) return false;
+    heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+    settleNewSubject(previousSubject);
+    return framingChanged(previousHeroDist);
+  }
+
+  function coastOrbitTargets(dt: number): void {
+    tYaw += yawVel * dt;
+    tPitch += pitchVel * dt;
+    const unclampedPitch = tPitch;
+    tPitch = THREE.MathUtils.clamp(tPitch, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+    if (tPitch !== unclampedPitch) pitchVel = 0;
+    const decay = Math.exp(-dt / SHOW_INERTIA_TAU_S);
+    yawVel *= decay;
+    pitchVel *= decay;
+  }
+
+  function returnOrbitTargets(dt: number): void {
+    if (sinceInputS <= SHOW_IDLE_RETURN_S) return;
+    const follow = 1 - Math.exp(-dt / SHOW_RETURN_TAU_S);
+    tYaw += wrapPi(heroYaw - tYaw) * follow;
+    tPitch += (heroPitch - tPitch) * follow;
+    tZoom += (1 - tZoom) * follow;
+    const settled = Math.abs(wrapPi(heroYaw - tYaw)) < SHOW_SETTLE_EPS &&
+      Math.abs(heroPitch - tPitch) < SHOW_SETTLE_EPS &&
+      Math.abs(1 - tZoom) < SHOW_SETTLE_EPS;
+    if (!settled) return;
+    tYaw = yaw + wrapPi(heroYaw - yaw);
+    tPitch = heroPitch;
+    tZoom = 1;
+  }
+
+  function advanceOrbitTargets(dt: number): void {
+    if (dragging) {
+      sinceInputS = 0;
+      return;
+    }
+    sinceInputS += dt;
+    if (Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN) coastOrbitTargets(dt);
+    else yawVel = pitchVel = 0;
+    returnOrbitTargets(dt);
+  }
+
+  function dampOrbitPose(dt: number): boolean {
+    const previousYaw = yaw;
+    const previousPitch = pitch;
+    const previousZoom = zoom;
+    const follow = 1 - Math.exp(-dt / SHOW_FOLLOW_TAU_S);
+    yaw += (tYaw - yaw) * follow;
+    pitch += (tPitch - pitch) * follow;
+    zoom += (tZoom - zoom) * follow;
+    if (Math.abs(tYaw - yaw) < SHOW_SETTLE_EPS) yaw = tYaw;
+    if (Math.abs(tPitch - pitch) < SHOW_SETTLE_EPS) pitch = tPitch;
+    if (Math.abs(tZoom - zoom) < SHOW_SETTLE_EPS) zoom = tZoom;
+    return Math.abs(yaw - previousYaw) > Number.EPSILON ||
+      Math.abs(pitch - previousPitch) > Number.EPSILON ||
+      Math.abs(zoom - previousZoom) > Number.EPSILON;
+  }
+
   const api: ShowroomOrbit = {
     /** True once a hero has been measured (the orbit owns the camera). */
     get active() { return running && haveBox; },
@@ -1739,17 +1901,7 @@ export function createShowroomOrbit(
      * @returns {boolean} true when a hero was measured and the pose applied
      */
     reset(): boolean {
-      if (!measure()) return false;
-      tYaw = yaw = heroYaw;
-      tPitch = pitch = heroPitch;
-      tZoom = zoom = 1;
-      yawVel = pitchVel = 0;
-      dragging = false;
-      sinceInputS = 999;
-      measureAccS = 0;
-      heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
-      applyPose();
-      return true;
+      return resetOrbit();
     },
 
     /** Enable showroom ownership and immediately solve the selected hero. */
@@ -1774,93 +1926,14 @@ export function createShowroomOrbit(
     update(dt: number): boolean {
       if (!running) return false;
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
-      let dirty = false;
-      // perf-r5 camera-lock fix: the empty-pedestal poll below used to sit
-      // BEHIND the haveBox gate, so a start() on an empty pedestal (the boot
-      // hero now builds asynchronously behind a chunked prebake) left the
-      // controller inert forever — the static garageCameraPose owned the
-      // camera and the garage read as "locked". Keep polling until a hero
-      // exists, then settle onto the hero pose exactly like start() did.
-      if (!haveBox) {
-        measureAccS += d;
-        if (measureAccS > 0.4) {
-          measureAccS = 0;
-          if (measure() && haveBox) return api.reset();
-        }
-        return false;
-      }
+      if (!haveBox) return pollForFirstSubject(d);
       // The hero GLB streams in behind a procedural stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
       // framing (and heroDist) always describes what is actually on stage.
-      measureAccS += d;
-      if (measureAccS > 0.4) {
-        measureAccS = 0;
-        const prev = subject;
-        const previousHeroDist = heroDist;
-        if (measure() && haveBox) {
-          heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
-          dirty = Math.abs(heroDist - previousHeroDist) > SHOW_SETTLE_EPS ||
-            Math.abs(camera.aspect - appliedAspect) > SHOW_SETTLE_EPS ||
-            Math.abs(win.cx - appliedWin.cx) > SHOW_SETTLE_EPS ||
-            Math.abs(win.cy - appliedWin.cy) > SHOW_SETTLE_EPS ||
-            Math.abs(win.hx - appliedWin.hx) > SHOW_SETTLE_EPS ||
-            Math.abs(win.hy - appliedWin.hy) > SHOW_SETTLE_EPS;
-          if (prev !== subject) { // new hero on the pedestal — settle it back
-            // nearest yaw equivalent of the hero heading: a tank switch after
-            // a free 360° orbit swings ≤180° home, never rewinds whole turns
-            tYaw = yaw + wrapPi(heroYaw - yaw);
-            tPitch = heroPitch; tZoom = 1;
-            yawVel = pitchVel = 0;
-          }
-        }
-        if (!haveBox) return false;
-      }
-      if (dragging) {
-        sinceInputS = 0;
-      } else {
-        sinceInputS += d;
-        if (Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN) {
-          // garage-scene r1: yaw coasts FREE (360° walk-around) — only the
-          // pitch clamp survives, killing its coast at the stops as before.
-          tYaw += yawVel * d;
-          tPitch += pitchVel * d;
-          const before = tPitch;
-          tPitch = THREE.MathUtils.clamp(tPitch, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
-          if (tPitch !== before) pitchVel = 0;   // kill the coast at the clamp
-          const k = Math.exp(-d / SHOW_INERTIA_TAU_S);
-          yawVel *= k; pitchVel *= k;
-        } else {
-          yawVel = pitchVel = 0;
-        }
-        if (sinceInputS > SHOW_IDLE_RETURN_S) {
-          const a = 1 - Math.exp(-d / SHOW_RETURN_TAU_S);
-          // spring home the SHORT way around: after a free orbit the hero
-          // pose is any yaw ≡ heroYaw (mod 2π) — never a multi-turn rewind
-          tYaw += wrapPi(heroYaw - tYaw) * a;
-          tPitch += (heroPitch - tPitch) * a;
-          tZoom += (1 - tZoom) * a;
-          if (Math.abs(wrapPi(heroYaw - tYaw)) < SHOW_SETTLE_EPS &&
-              Math.abs(heroPitch - tPitch) < SHOW_SETTLE_EPS &&
-              Math.abs(1 - tZoom) < SHOW_SETTLE_EPS) {
-            tYaw = yaw + wrapPi(heroYaw - yaw);
-            tPitch = heroPitch;
-            tZoom = 1;
-          }
-        }
-      }
-      const previousYaw = yaw;
-      const previousPitch = pitch;
-      const previousZoom = zoom;
-      const f = 1 - Math.exp(-d / SHOW_FOLLOW_TAU_S);
-      yaw += (tYaw - yaw) * f;
-      pitch += (tPitch - pitch) * f;
-      zoom += (tZoom - zoom) * f;
-      if (Math.abs(tYaw - yaw) < SHOW_SETTLE_EPS) yaw = tYaw;
-      if (Math.abs(tPitch - pitch) < SHOW_SETTLE_EPS) pitch = tPitch;
-      if (Math.abs(tZoom - zoom) < SHOW_SETTLE_EPS) zoom = tZoom;
-      const moved = Math.abs(yaw - previousYaw) > Number.EPSILON ||
-        Math.abs(pitch - previousPitch) > Number.EPSILON ||
-        Math.abs(zoom - previousZoom) > Number.EPSILON;
+      const dirty = refreshSubjectMeasurement(d);
+      if (!haveBox) return false;
+      advanceOrbitTargets(d);
+      const moved = dampOrbitPose(d);
       if (dirty || moved) applyPose();
       return dirty || moved;
     },
@@ -1926,7 +1999,7 @@ export function createShowroomOrbit(
      * Live state for the headless camera probe (tools/garage-camera-probe.mjs).
      * @returns {object}
      */
-    debugState(): Record<string, unknown> {
+    debugState(): Record<string, RuntimeValue> {
       return {
         active: running && haveBox,
         running,

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 type FrameCallback = (timestampMs: number) => void;
 type InputListener = () => void;
 
@@ -33,10 +34,10 @@ export interface FrameLoopSchedulerOptions {
   requestFrame?(callback: FrameCallback): number;
   cancelFrame?(id: number): void;
   now?(): number;
-  setDelayed?(callback: () => void, delayMs: number): unknown;
-  clearDelayed?(handle: unknown): void;
-  setRecurring?(callback: () => void, intervalMs: number): unknown;
-  clearRecurring?(handle: unknown): void;
+  setDelayed?(callback: () => void, delayMs: number): RuntimeValue;
+  clearDelayed?(handle: RuntimeValue): void;
+  setRecurring?(callback: () => void, intervalMs: number): RuntimeValue;
+  clearRecurring?(handle: RuntimeValue): void;
   documentState?: DocumentState;
   inputTarget?: InputTarget;
 }
@@ -92,7 +93,7 @@ export function createFrameLoopScheduler({
   let lastTickWallMs = -Infinity;
   let frameQueued = false;
   let frameId: number | null = null;
-  let idleHandle: unknown = null;
+  let idleHandle: RuntimeValue = null;
   let disposed = false;
   let backgroundSuspended = false;
   let nextAnimationTickMs = -Infinity;

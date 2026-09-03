@@ -511,41 +511,59 @@ export function createDamagePanel(): DamagePanelController {
   // Module anchor points in VEHICLE space (meters, relaxed apart so chips
   // stay legible when two modules share a bay). turretLocal boxes keep their
   // turret-relative coordinates and ride the turret layer.
-  function computeAnchors() {
-    anchors = [];
-    if (!spec) return;
+  function collectModuleAnchors(): ModuleAnchor[] {
+    if (!spec) return [];
     const mods = (spec.armor && spec.armor.modules) || [];
-    const pts = [];
+    const points: ModuleAnchor[] = [];
     for (const m of mods) {
       if (m.module === 'trackL' || m.module === 'trackR') continue; // floods
       if (!m.min || !m.max || !MODULE_ICON[m.module]) continue;
-      pts.push({
+      points.push({
         name: m.module,
         x: (m.min[0] + m.max[0]) / 2,
         z: (m.min[2] + m.max[2]) / 2,
         turretLocal: !!m.turretLocal,
       });
     }
+    return points;
+  }
+
+  function relaxAnchorPair(a: ModuleAnchor, b: ModuleAnchor, minDistance: number): void {
+    if (a.turretLocal !== b.turretLocal) return;
+    let dx = b.x - a.x;
+    let dz = b.z - a.z;
+    let distance = Math.hypot(dx, dz);
+    if (distance >= minDistance) return;
+    if (distance < 0.01) {
+      dx = 1;
+      dz = 0;
+      distance = 1;
+    }
+    const push = (minDistance - distance) / 2 / distance;
+    a.x -= dx * push;
+    a.z -= dz * push;
+    b.x += dx * push;
+    b.z += dz * push;
+  }
+
+  function relaxModuleAnchors(points: ModuleAnchor[]): void {
     // relax overlaps in meters (chip ~15 px -> MIN_D px/scale meters); only
     // pairs within the SAME space relax against each other — cross-space
     // pairs move relative to each other with the turret anyway.
-    const MIN_D = 15 / Math.max(2, scaleS);
-    for (let it = 0; it < 6; it++) {
-      for (let i = 0; i < pts.length; i++) {
-        for (let j = i + 1; j < pts.length; j++) {
-          const a = pts[i], b = pts[j];
-          if (a.turretLocal !== b.turretLocal) continue;
-          let dx = b.x - a.x, dz = b.z - a.z;
-          let d = Math.hypot(dx, dz);
-          if (d >= MIN_D) continue;
-          if (d < 0.01) { dx = 1; dz = 0; d = 1; }
-          const push = (MIN_D - d) / 2 / d;
-          a.x -= dx * push; a.z -= dz * push;
-          b.x += dx * push; b.z += dz * push;
+    const minDistance = 15 / Math.max(2, scaleS);
+    for (let iteration = 0; iteration < 6; iteration++) {
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          relaxAnchorPair(points[i], points[j], minDistance);
         }
       }
     }
-    anchors = pts;
+  }
+
+  function computeAnchors(): void {
+    const points = collectModuleAnchors();
+    relaxModuleAnchors(points);
+    anchors = points;
   }
 
   // One damaged-module chip (r4: healthy modules draw NOTHING — the clean
@@ -714,7 +732,43 @@ export function createDamagePanel(): DamagePanelController {
 
   const REGION_MODULES = ['engine', 'transmission', 'ammoRack', 'fuelTank'];
 
-  function draw() {
+  function drawDamagedRegions(): void {
+    if (!masks || !spec) return;
+    const modules = (spec.armor && spec.armor.modules) || [];
+    for (const module of modules) {
+      if (!module.min || !module.max || module.turretLocal) continue;
+      const isTrack = module.module === 'trackL' || module.module === 'trackR';
+      if (!isTrack && REGION_MODULES.indexOf(module.module) < 0) continue;
+      const state = moduleState(module.module);
+      if (state === 'ok') continue;
+      floodHullRect(
+        module.min[0],
+        module.min[2],
+        module.max[0],
+        module.max[2],
+        state,
+        isTrack ? 3 : 2,
+      );
+    }
+    drawTurretLayer();
+  }
+
+  function drawDamagedModuleAnchors(): void {
+    if (!anchors) computeAnchors();
+    if (!anchors) return;
+    const point: Vec2 = [0, 0];
+    for (const anchor of anchors) {
+      const state = moduleState(anchor.name);
+      if (state === 'ok') continue;
+      if (anchor.turretLocal) panelPtTurret(anchor.x, anchor.z, point);
+      else panelPtHull(anchor.x, anchor.z, point);
+      point[0] = Math.max(9, Math.min(CW - 9, point[0]));
+      point[1] = Math.max(9, Math.min(CH - 9, point[1]));
+      drawPip(anchor.name, point[0], point[1], state);
+    }
+  }
+
+  function draw(): void {
     ctx.clearRect(0, 0, CW, CH);
     if (!spec) return;
 
@@ -724,34 +778,11 @@ export function createDamagePanel(): DamagePanelController {
     // de-tracked running gear + module hit-zones flood their REAL armor-model
     // boxes, stamped in hull space so they ride the hull layer (r9). Zones
     // are invisible while healthy — the clean panel carries no letterforms.
-    if (masks) {
-      const mods = (spec.armor && spec.armor.modules) || [];
-      for (const m of mods) {
-        if (!m.min || !m.max || m.turretLocal) continue;
-        const isTrack = m.module === 'trackL' || m.module === 'trackR';
-        if (!isTrack && REGION_MODULES.indexOf(m.module) < 0) continue;
-        const st = moduleState(m.module);
-        if (st === 'ok') continue;
-        floodHullRect(m.min[0], m.min[2], m.max[0], m.max[2], st, isTrack ? 3 : 2);
-      }
-      drawTurretLayer();
-    }
+    drawDamagedRegions();
 
     // damaged-module chips at their vehicle-space anchors (hull chips ride
     // the hull layer, turret chips the turret layer)
-    if (!anchors) computeAnchors();
-    const activeAnchors = anchors;
-    if (!activeAnchors) return;
-    const pt: Vec2 = [0, 0];
-    for (const a of activeAnchors) {
-      const st = moduleState(a.name);
-      if (st === 'ok') continue;
-      if (a.turretLocal) panelPtTurret(a.x, a.z, pt);
-      else panelPtHull(a.x, a.z, pt);
-      pt[0] = Math.max(9, Math.min(CW - 9, pt[0]));
-      pt[1] = Math.max(9, Math.min(CH - 9, pt[1]));
-      drawPip(a.name, pt[0], pt[1], st);
-    }
+    drawDamagedModuleAnchors();
   }
 
   function rebuildCrewRow(): void {
@@ -804,6 +835,55 @@ export function createDamagePanel(): DamagePanelController {
       hp: spec ? spec.hp : 1, maxHp: spec ? spec.hp : 1, destroyed: false,
       modules, crew, fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
     };
+  }
+
+  function applyPoseSample(pose: DamagePanelPoseSample | undefined): void {
+    if (!pose) return;
+    if (pose.hull != null && isFinite(pose.hull)) hullYawW = pose.hull;
+    if (pose.turret != null && isFinite(pose.turret)) turretYawH = pose.turret;
+    if (pose.cam != null && isFinite(pose.cam)) camYawW = pose.cam;
+  }
+
+  function applyModuleSamples(
+    target: DamagePanelCombatState,
+    modules: DamagePanelStateSample['modules'],
+  ): void {
+    if (!modules) return;
+    for (const name of Object.keys(modules)) {
+      const state = modules[name];
+      target.modules[name] = typeof state === 'string'
+        ? {
+          hp: state === 'ok' ? 1 : state === 'yellow' ? 0.5 : 0,
+          maxHp: 1,
+          state,
+          repairT: 0,
+        }
+        : state;
+    }
+  }
+
+  function combatFromSample(sample: DamagePanelStateSample): DamagePanelCombatState {
+    const next = healthyCombat();
+    if (sample.hpFrac != null) {
+      next.hp = next.maxHp * Math.max(0, Math.min(1, sample.hpFrac));
+    }
+    if (sample.hp != null) next.hp = sample.hp;
+    applyModuleSamples(next, sample.modules);
+    if (sample.crew) {
+      for (const name of Object.keys(sample.crew)) next.crew[name] = sample.crew[name];
+    }
+    if (sample.burning != null) next.fire.burning = sample.burning;
+    return next;
+  }
+
+  function applyStateSample(sample: DamagePanelStateSample | DamagePanelCombatState): void {
+    if ('pose' in sample) applyPoseSample(sample.pose);
+    combat = isFullCombatState(sample) ? sample : combatFromSample(sample);
+    lastHpText = '';
+    lastFireOn = null;
+    lastDrawSig = null;
+    refreshDom();
+    draw();
   }
 
   return {
@@ -910,32 +990,7 @@ export function createDamagePanel(): DamagePanelController {
      */
     setState(sample) {
       if (!sample) return;
-      if ('pose' in sample && sample.pose) {
-        this.setPose(sample.pose.hull, sample.pose.turret, sample.pose.cam);
-      }
-      if (isFullCombatState(sample)) {
-        combat = sample; // full CombatState
-      } else {
-        const c = healthyCombat();
-        if (sample.hpFrac != null) c.hp = c.maxHp * Math.max(0, Math.min(1, sample.hpFrac));
-        if (sample.hp != null) c.hp = sample.hp;
-        if (sample.modules) {
-          for (const k of Object.keys(sample.modules)) {
-            const v = sample.modules[k];
-            c.modules[k] = typeof v === 'string'
-              ? { hp: v === 'ok' ? 1 : v === 'yellow' ? 0.5 : 0, maxHp: 1, state: v, repairT: 0 }
-              : v;
-          }
-        }
-        if (sample.crew) for (const k of Object.keys(sample.crew)) c.crew[k] = sample.crew[k];
-        if (sample.burning != null) c.fire.burning = !!sample.burning;
-        combat = c;
-      }
-      lastHpText = '';
-      lastFireOn = null;
-      lastDrawSig = null;
-      refreshDom();
-      draw();
+      applyStateSample(sample);
     },
   };
 }

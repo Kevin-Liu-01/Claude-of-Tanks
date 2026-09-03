@@ -52,11 +52,20 @@ export interface GarageWorkshopVisual {
   dispose(): void;
 }
 
+interface GarageWorkshopVisualOptions {
+  readonly camoSeed?: number;
+  readonly quality?: 'high' | 'ai' | 'low' | 'preview';
+  readonly geometryQuality?: 'high' | 'low';
+  readonly staticPreview?: boolean;
+  readonly decor?: boolean;
+  readonly deferStaticBatch?: boolean;
+}
+
 export interface GarageWorkshopFleet {
   ensureVisualBuilder(specId: string): Promise<void>;
   createVisual(
     specId: string,
-    options?: Readonly<Record<string, unknown>>,
+    options?: Readonly<GarageWorkshopVisualOptions>,
   ): Promise<GarageWorkshopVisual>;
   dispose?(): void;
 }
@@ -142,7 +151,7 @@ export async function prepareGarageDressing(
         throw new Error(`Garage workshop does not own '${specId}'`);
       }
     },
-    async createVisual(specId: string, options: Readonly<Record<string, unknown>> = {}) {
+    async createVisual(specId: string, options: Readonly<GarageWorkshopVisualOptions> = {}) {
       const camoSeed = typeof options.camoSeed === 'number' ? options.camoSeed : 4200;
       try {
         return await transfer.createVisual(specId, camoSeed);
@@ -903,6 +912,146 @@ export function createGarageDressing(
     return currentVariant.id;
   }
 
+  function prepareK2TeardownHull(
+    tank: THREE.Object3D,
+    hull: THREE.Object3D | undefined,
+    turret: THREE.Object3D | undefined,
+  ): void {
+    if (turret) turret.visible = false;
+    if (hull) {
+      const removedGear: THREE.Object3D[] = [];
+      hull.traverse((object) => {
+        if (object.userData.runningGear
+            || /^(gear|hullRunningGear|k2_track_rubber)/.test(object.name || '')) {
+          removedGear.push(object);
+        }
+      });
+      const hiddenGearOwner = new THREE.Group();
+      hiddenGearOwner.name = 'verdant_original_removed_k2_running_gear';
+      hiddenGearOwner.visible = false;
+      tank.add(hiddenGearOwner);
+      for (const object of removedGear) hiddenGearOwner.attach(object);
+    }
+    tank.traverse((object) => {
+      if (object.userData.authoredShadowProxy) object.visible = false;
+    });
+  }
+
+  function addK2RoadWheelStacks(
+    tires: THREE.Mesh | undefined,
+    discs: THREE.Mesh | undefined,
+  ): void {
+    if (!tires?.geometry || !discs?.geometry) return;
+    if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
+    const size = new THREE.Vector3();
+    tires.geometry.boundingBox?.getSize(size);
+    const rise = Math.max(0.14, size.x * 0.92);
+    const wheelPositions: Array<readonly [number, number, number]> = [];
+    for (const [x, z, count] of [[-21.25, -8.65, 4], [-20.20, -9.75, 4]] as const) {
+      for (let index = 0; index < count; index++) {
+        wheelPositions.push([x, 0.10 + rise * (index + 0.5), z]);
+      }
+    }
+    const wheelTires = markModernPart(
+      new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
+      'k2',
+      'road_wheel_tires',
+    );
+    const wheelDiscs = markModernPart(
+      new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
+      'k2',
+      'road_wheel_discs',
+    );
+    const wheelRotation = new THREE.Euler(0, 0, Math.PI / 2);
+    const wheelMatrix = new THREE.Matrix4();
+    wheelPositions.forEach(([x, y, z], index) => {
+      wheelMatrix.makeRotationFromEuler(wheelRotation).setPosition(x, y, z);
+      wheelTires.setMatrixAt(index, wheelMatrix);
+      wheelDiscs.setMatrixAt(index, wheelMatrix);
+    });
+    wheelTires.instanceMatrix.needsUpdate = true;
+    wheelDiscs.instanceMatrix.needsUpdate = true;
+    wheelTires.castShadow = wheelTires.receiveShadow = true;
+    wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
+    legacyVerdantRoot.add(wheelTires, wheelDiscs);
+    track(wheelTires);
+    track(wheelDiscs);
+  }
+
+  function addK2TrackShoePallet(pads: THREE.Mesh | undefined): void {
+    if (!pads?.geometry) return;
+    const pallet = markModernPart(new THREE.Group(), 'k2', 'track_shoe_pallet');
+    pallet.position.set(-21.15, 0, -13.45);
+    pallet.rotation.y = -0.12;
+    legacyVerdantRoot.add(pallet);
+    put(track(new THREE.BoxGeometry(1.75, 0.11, 1.15)), mat.timberDark,
+      0, 0.06, 0, 0, 0, 0, 1, pallet);
+    const shoes = markModernPart(
+      new THREE.InstancedMesh(pads.geometry, pads.material, 8),
+      'k2',
+      'track_shoes',
+    );
+    const shoeRotation = new THREE.Euler();
+    const shoeMatrix = new THREE.Matrix4();
+    let shoeIndex = 0;
+    for (let row = 0; row < 4; row++) {
+      for (let column = 0; column < 2; column++) {
+        shoeRotation.set(Math.PI, column % 2 ? 0.035 : -0.035, 0);
+        shoeMatrix.makeRotationFromEuler(shoeRotation).setPosition(
+          -0.38 + column * 0.76,
+          0.19,
+          -0.35 + row * 0.23,
+        );
+        shoes.setMatrixAt(shoeIndex++, shoeMatrix);
+      }
+    }
+    shoes.instanceMatrix.needsUpdate = true;
+    shoes.castShadow = shoes.receiveShadow = true;
+    pallet.add(shoes);
+    track(shoes);
+  }
+
+  function addCoreShellRack(): void {
+    const rack = new THREE.Group();
+    rack.position.set(22.1, 0, 1.8);
+    rack.rotation.y = -Math.PI / 2;
+    group.add(rack);
+    put(track(new THREE.BoxGeometry(2.3, 0.08, 0.8)), mat.steelMid,
+      0, 0.06, 0, 0, 0, 0, 1, rack);
+    put(track(new THREE.BoxGeometry(2.3, 0.06, 0.7)), mat.steelMid,
+      0, 0.62, 0, 0, 0, 0, 1, rack);
+    const post = track(new THREE.BoxGeometry(0.07, 1.25, 0.07));
+    for (const px of [-1.1, 1.1]) {
+      put(post, mat.safety, px, 0.62, -0.3, 0, 0, 0, 1, rack);
+      put(post, mat.safety, px, 0.62, 0.3, 0, 0, 0, 1, rack);
+    }
+    const bodies = new THREE.InstancedMesh(G.shellBody, mat.olive, 12);
+    const tips = new THREE.InstancedMesh(G.shellTip, mat.brass, 12);
+    const matrix = new THREE.Matrix4();
+    let index = 0;
+    for (const rackZ of [-0.18, 0.18]) {
+      for (let column = 0; column < 6; column++) {
+        const shellX = -0.95 + column * 0.38 + (rng() - 0.5) * 0.05;
+        matrix.makeTranslation(shellX, 0.46, rackZ);
+        bodies.setMatrixAt(index, matrix);
+        matrix.makeTranslation(shellX, 0.93, rackZ);
+        tips.setMatrixAt(index, matrix);
+        index++;
+      }
+    }
+    bodies.castShadow = tips.castShadow = true;
+    rack.add(bodies, tips);
+    track(bodies);
+    track(tips);
+    // Two loose rounds lie on a pallet beside the rack.
+    put(track(new THREE.BoxGeometry(1.1, 0.1, 0.8)), mat.timberDark,
+      0.2, 0.05, 0.95, 0.2, 0, 0, 1, rack);
+    put(G.shellBody, mat.olive,
+      0.05, 0.16, 0.95, 0.2, 0, Math.PI / 2, 1, rack);
+    put(G.shellBody, mat.olive,
+      0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
+  }
+
   const chunks: Array<() => void | Promise<void>> = [];
 
   // ==========================================================================
@@ -1050,41 +1199,8 @@ export function createGarageDressing(
       put(track(new THREE.BoxGeometry(0.55, 1.9, 0.95)), mat.olive, 22.35, 0.95, lz, 0, 0, 0, 1);
       put(track(new THREE.BoxGeometry(0.04, 1.7, 0.8)), mat.steelDark, 22.05, 0.95, lz, 0, 0, 0, 1, group, false);
     }
-    // shell rack: frame + two rows of standing rounds (instanced)
-    {
-      const rack = new THREE.Group();
-      rack.position.set(22.1, 0, 1.8);
-      rack.rotation.y = -Math.PI / 2;
-      group.add(rack);
-      put(track(new THREE.BoxGeometry(2.3, 0.08, 0.8)), mat.steelMid, 0, 0.06, 0, 0, 0, 0, 1, rack);
-      put(track(new THREE.BoxGeometry(2.3, 0.06, 0.7)), mat.steelMid, 0, 0.62, 0, 0, 0, 0, 1, rack);
-      const post = track(new THREE.BoxGeometry(0.07, 1.25, 0.07));
-      for (const px of [-1.1, 1.1]) {
-        put(post, mat.safety, px, 0.62, -0.3, 0, 0, 0, 1, rack);
-        put(post, mat.safety, px, 0.62, 0.3, 0, 0, 0, 1, rack);
-      }
-      const bodies = new THREE.InstancedMesh(G.shellBody, mat.olive, 12);
-      const tips = new THREE.InstancedMesh(G.shellTip, mat.brass, 12);
-      const M4 = new THREE.Matrix4();
-      let i = 0;
-      for (const rz of [-0.18, 0.18]) {
-        for (let k = 0; k < 6; k++) {
-          const sx = -0.95 + k * 0.38 + (rng() - 0.5) * 0.05;
-          M4.makeTranslation(sx, 0.46, rz);
-          bodies.setMatrixAt(i, M4);
-          M4.makeTranslation(sx, 0.93, rz);
-          tips.setMatrixAt(i, M4);
-          i++;
-        }
-      }
-      bodies.castShadow = tips.castShadow = true;
-      rack.add(bodies, tips);
-      track(bodies); track(tips);
-      // two loose rounds lying on a pallet beside the rack
-      put(track(new THREE.BoxGeometry(1.1, 0.1, 0.8)), mat.timberDark, 0.2, 0.05, 0.95, 0.2, 0, 0, 1, rack);
-      put(G.shellBody, mat.olive, 0.05, 0.16, 0.95, 0.2, 0, Math.PI / 2, 1, rack);
-      put(G.shellBody, mat.olive, 0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
-    }
+    // Shell rack: frame + two rows of standing rounds (instanced).
+    addCoreShellRack();
     wallSignAt('BAY 02', 'east_bay_02');
     extinguisherAt('east_extinguisher');
     // oil drum cluster (one with a hand pump), plus a tipped drum
@@ -1633,24 +1749,7 @@ export function createGarageDressing(
     const discs = (tank.getObjectByName('gearRoadWheelDiscs')
       || tank.getObjectByName('gearRoadWheelDiscsRecessed')) as THREE.Mesh | undefined;
     const pads = tank.getObjectByName('gearTrackPads') as THREE.Mesh | undefined;
-    if (turret) turret.visible = false;
-    if (hull) {
-      const removedGear: THREE.Object3D[] = [];
-      hull.traverse((object) => {
-        if (object.userData.runningGear
-            || /^(gear|hullRunningGear|k2_track_rubber)/.test(object.name || '')) {
-          removedGear.push(object);
-        }
-      });
-      const hiddenGearOwner = new THREE.Group();
-      hiddenGearOwner.name = 'verdant_original_removed_k2_running_gear';
-      hiddenGearOwner.visible = false;
-      tank.add(hiddenGearOwner);
-      for (const object of removedGear) hiddenGearOwner.attach(object);
-    }
-    tank.traverse((object) => {
-      if (object.userData.authoredShadowProxy) object.visible = false;
-    });
+    prepareK2TeardownHull(tank, hull, turret);
     tank.position.set(-16.25, 0, -16.85);
     tank.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
     legacyVerdantRoot.add(tank);
@@ -1701,74 +1800,8 @@ export function createGarageDressing(
       0, 1.40, 0, 0, 0, 0, 1, cradle);
     spine.name = 'k2_cradle_connected_spine';
 
-    if (tires?.geometry && discs?.geometry) {
-      if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
-      const size = new THREE.Vector3();
-      tires.geometry.boundingBox?.getSize(size);
-      const rise = Math.max(0.14, size.x * 0.92);
-      const wheelPositions: Array<readonly [number, number, number]> = [];
-      for (const [x, z, count] of [[-21.25, -8.65, 4], [-20.20, -9.75, 4]] as const) {
-        for (let index = 0; index < count; index++) {
-          wheelPositions.push([x, 0.10 + rise * (index + 0.5), z]);
-        }
-      }
-      const wheelTires = markModernPart(
-        new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
-        'k2',
-        'road_wheel_tires',
-      );
-      const wheelDiscs = markModernPart(
-        new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
-        'k2',
-        'road_wheel_discs',
-      );
-      const wheelRotation = new THREE.Euler(0, 0, Math.PI / 2);
-      const wheelMatrix = new THREE.Matrix4();
-      wheelPositions.forEach(([x, y, z], index) => {
-        wheelMatrix.makeRotationFromEuler(wheelRotation).setPosition(x, y, z);
-        wheelTires.setMatrixAt(index, wheelMatrix);
-        wheelDiscs.setMatrixAt(index, wheelMatrix);
-      });
-      wheelTires.instanceMatrix.needsUpdate = true;
-      wheelDiscs.instanceMatrix.needsUpdate = true;
-      wheelTires.castShadow = wheelTires.receiveShadow = true;
-      wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
-      legacyVerdantRoot.add(wheelTires, wheelDiscs);
-      track(wheelTires);
-      track(wheelDiscs);
-    }
-
-    if (pads?.geometry) {
-      const pallet = markModernPart(new THREE.Group(), 'k2', 'track_shoe_pallet');
-      pallet.position.set(-21.15, 0, -13.45);
-      pallet.rotation.y = -0.12;
-      legacyVerdantRoot.add(pallet);
-      put(track(new THREE.BoxGeometry(1.75, 0.11, 1.15)), mat.timberDark,
-        0, 0.06, 0, 0, 0, 0, 1, pallet);
-      const shoes = markModernPart(
-        new THREE.InstancedMesh(pads.geometry, pads.material, 8),
-        'k2',
-        'track_shoes',
-      );
-      const shoeRotation = new THREE.Euler();
-      const shoeMatrix = new THREE.Matrix4();
-      let shoeIndex = 0;
-      for (let row = 0; row < 4; row++) {
-        for (let column = 0; column < 2; column++) {
-          shoeRotation.set(Math.PI, column % 2 ? 0.035 : -0.035, 0);
-          shoeMatrix.makeRotationFromEuler(shoeRotation).setPosition(
-            -0.38 + column * 0.76,
-            0.19,
-            -0.35 + row * 0.23,
-          );
-          shoes.setMatrixAt(shoeIndex++, shoeMatrix);
-        }
-      }
-      shoes.instanceMatrix.needsUpdate = true;
-      shoes.castShadow = shoes.receiveShadow = true;
-      pallet.add(shoes);
-      track(shoes);
-    }
+    addK2RoadWheelStacks(tires, discs);
+    addK2TrackShoePallet(pads);
 
     const weaponRack = new THREE.Group();
     weaponRack.name = 'dressing_modern_machine_gun_service_rack';
@@ -1895,8 +1928,8 @@ export function createGarageDressing(
           ms: Math.round(performance.now() - startedAt),
           at: Math.round(performance.now()),
         });
-      } catch (error: unknown) {
-        const message = (error as { message: string }).message;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         group.userData.lastBuildError = { chunk: label, message };
         console.warn(`[garageDressing] chunk '${label}' failed —`, message);
         throw error;

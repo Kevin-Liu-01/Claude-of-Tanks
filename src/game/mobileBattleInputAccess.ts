@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { Camera, Vector3 } from 'three';
 
 import type { InputLayer } from './input.ts';
@@ -143,7 +144,7 @@ export function createMobileBattleInputAccess<
     if (pending) return pending;
     const request = Promise.all([touch.preload(), ensureAutoAim()])
       .then(([controls]) => controls)
-      .catch((error: unknown) => {
+      .catch((error: RuntimeValue) => {
         if (pending === request) pending = null;
         throw error;
       });

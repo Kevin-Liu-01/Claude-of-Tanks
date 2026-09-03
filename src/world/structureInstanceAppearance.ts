@@ -1,5 +1,6 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface StructureTintTarget {
-  setRGB(r: number, g: number, b: number): unknown;
+  setRGB(r: number, g: number, b: number): RuntimeValue;
 }
 
 export interface StructureWindowStyle {

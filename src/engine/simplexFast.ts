@@ -51,6 +51,32 @@ const SIMPLEX = new Uint8Array([
   2, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 2, 0, 0, 0, 0, 3, 2, 0, 1, 3, 2, 1, 0,
 ]);
 
+function rankWeight(value: number, other: number, weight: number): number {
+  return value > other ? weight : 0;
+}
+
+function simplexOffset(rank: number, threshold: number): number {
+  return rank >= threshold ? 1 : 0;
+}
+
+function contribution4d(
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  gradientIndex: number,
+): number {
+  let attenuation = 0.6 - x * x - y * y - z * z - w * w;
+  if (attenuation < 0) return 0.0;
+  attenuation *= attenuation;
+  return attenuation * attenuation * (
+    GRAD4[gradientIndex] * x
+    + GRAD4[gradientIndex + 1] * y
+    + GRAD4[gradientIndex + 2] * z
+    + GRAD4[gradientIndex + 3] * w
+  );
+}
+
 export class SimplexNoise {
 
   private readonly _perm: Int32Array;
@@ -205,25 +231,25 @@ export class SimplexNoise {
     const y0 = y - Y0;
     const z0 = z - Z0;
     const w0 = w - W0;
-    const c = ((x0 > y0) ? 32 : 0) + ((x0 > z0) ? 16 : 0) + ((y0 > z0) ? 8 : 0)
-      + ((x0 > w0) ? 4 : 0) + ((y0 > w0) ? 2 : 0) + ((z0 > w0) ? 1 : 0);
+    const c = rankWeight(x0, y0, 32) + rankWeight(x0, z0, 16) + rankWeight(y0, z0, 8)
+      + rankWeight(x0, w0, 4) + rankWeight(y0, w0, 2) + rankWeight(z0, w0, 1);
     const c4 = c * 4;
     const sc0 = SIMPLEX[c4];
     const sc1 = SIMPLEX[c4 + 1];
     const sc2 = SIMPLEX[c4 + 2];
     const sc3 = SIMPLEX[c4 + 3];
-    const i1 = sc0 >= 3 ? 1 : 0;
-    const j1 = sc1 >= 3 ? 1 : 0;
-    const k1 = sc2 >= 3 ? 1 : 0;
-    const l1 = sc3 >= 3 ? 1 : 0;
-    const i2 = sc0 >= 2 ? 1 : 0;
-    const j2 = sc1 >= 2 ? 1 : 0;
-    const k2 = sc2 >= 2 ? 1 : 0;
-    const l2 = sc3 >= 2 ? 1 : 0;
-    const i3 = sc0 >= 1 ? 1 : 0;
-    const j3 = sc1 >= 1 ? 1 : 0;
-    const k3 = sc2 >= 1 ? 1 : 0;
-    const l3 = sc3 >= 1 ? 1 : 0;
+    const i1 = simplexOffset(sc0, 3);
+    const j1 = simplexOffset(sc1, 3);
+    const k1 = simplexOffset(sc2, 3);
+    const l1 = simplexOffset(sc3, 3);
+    const i2 = simplexOffset(sc0, 2);
+    const j2 = simplexOffset(sc1, 2);
+    const k2 = simplexOffset(sc2, 2);
+    const l2 = simplexOffset(sc3, 2);
+    const i3 = simplexOffset(sc0, 1);
+    const j3 = simplexOffset(sc1, 1);
+    const k3 = simplexOffset(sc2, 1);
+    const l3 = simplexOffset(sc3, 1);
     const x1 = x0 - i1 + G4;
     const y1 = y0 - j1 + G4;
     const z1 = z0 - k1 + G4;
@@ -249,36 +275,11 @@ export class SimplexNoise {
     const gi2 = pm32[ii + i2 + perm[jj + j2 + perm[kk + k2 + perm[ll + l2]]]] * 4;
     const gi3 = pm32[ii + i3 + perm[jj + j3 + perm[kk + k3 + perm[ll + l3]]]] * 4;
     const gi4 = pm32[ii + 1 + perm[jj + 1 + perm[kk + 1 + perm[ll + 1]]]] * 4;
-    let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0 - w0 * w0;
-    if (t0 < 0) n0 = 0.0;
-    else {
-      t0 *= t0;
-      n0 = t0 * t0 * (GRAD4[gi0] * x0 + GRAD4[gi0 + 1] * y0 + GRAD4[gi0 + 2] * z0 + GRAD4[gi0 + 3] * w0);
-    }
-    let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1 - w1 * w1;
-    if (t1 < 0) n1 = 0.0;
-    else {
-      t1 *= t1;
-      n1 = t1 * t1 * (GRAD4[gi1] * x1 + GRAD4[gi1 + 1] * y1 + GRAD4[gi1 + 2] * z1 + GRAD4[gi1 + 3] * w1);
-    }
-    let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2 - w2 * w2;
-    if (t2 < 0) n2 = 0.0;
-    else {
-      t2 *= t2;
-      n2 = t2 * t2 * (GRAD4[gi2] * x2 + GRAD4[gi2 + 1] * y2 + GRAD4[gi2 + 2] * z2 + GRAD4[gi2 + 3] * w2);
-    }
-    let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3 - w3 * w3;
-    if (t3 < 0) n3 = 0.0;
-    else {
-      t3 *= t3;
-      n3 = t3 * t3 * (GRAD4[gi3] * x3 + GRAD4[gi3 + 1] * y3 + GRAD4[gi3 + 2] * z3 + GRAD4[gi3 + 3] * w3);
-    }
-    let t4 = 0.6 - x4 * x4 - y4 * y4 - z4 * z4 - w4 * w4;
-    if (t4 < 0) n4 = 0.0;
-    else {
-      t4 *= t4;
-      n4 = t4 * t4 * (GRAD4[gi4] * x4 + GRAD4[gi4 + 1] * y4 + GRAD4[gi4 + 2] * z4 + GRAD4[gi4 + 3] * w4);
-    }
+    n0 = contribution4d(x0, y0, z0, w0, gi0);
+    n1 = contribution4d(x1, y1, z1, w1, gi1);
+    n2 = contribution4d(x2, y2, z2, w2, gi2);
+    n3 = contribution4d(x3, y3, z3, w3, gi3);
+    n4 = contribution4d(x4, y4, z4, w4, gi4);
     return 27.0 * (n0 + n1 + n2 + n3 + n4);
   }
 

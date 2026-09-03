@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Object3D } from 'three';
 import { createCombatState, type CombatState } from '../sim/damage.ts';
 import { createTankState, shotRecoilScale } from '../sim/movement.ts';
@@ -53,7 +54,7 @@ interface TankVisual {
   resetEra?(): void;
   setDestroyed?(options: { pop: boolean }): void;
   resetDestroyed?(): void;
-  setGroundSampler?(sampler: (x: number, z: number) => unknown): void;
+  setGroundSampler?(sampler: (x: number, z: number) => RuntimeValue): void;
 }
 
 interface BridgeInput {
@@ -114,6 +115,18 @@ interface CollisionObstacle {
   crushMin?: number;
 }
 
+interface PredictionContactFrame {
+  centerX: number;
+  centerZ: number;
+  halfLength: number;
+  halfWidth: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  broadRadius: number;
+}
+
 interface HeightField extends MovementHeightField {}
 
 interface WorldCollision {
@@ -135,7 +148,7 @@ interface WorldCollision {
 }
 
 interface EngineContext {
-  scene: { add(object: unknown): void };
+  scene: { add(object: RuntimeValue): void };
   anisotropy?: number;
 }
 
@@ -156,12 +169,12 @@ interface BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting> {
   result?: string | null;
   resultReason?: string | null;
   mapId?: string;
-  gameMode?: unknown;
-  matchModeState?: unknown;
+  gameMode?: RuntimeValue;
+  matchModeState?: RuntimeValue;
 }
 
 interface EventBus {
-  emit(type: string, payload: Record<string, unknown>): void;
+  emit(type: string, payload: Record<string, RuntimeValue>): void;
 }
 
 interface BridgeShell {
@@ -212,14 +225,14 @@ interface BridgeEvent extends PresentationEvent {
   speedMps?: number;
   result?: string;
   reason?: string;
-  slot?: unknown;
-  cooldownS?: unknown;
-  readyAt?: unknown;
-  remainingS?: unknown;
+  slot?: RuntimeValue;
+  cooldownS?: RuntimeValue;
+  readyAt?: RuntimeValue;
+  remainingS?: RuntimeValue;
   active?: boolean;
-  module?: unknown;
-  state?: unknown;
-  source?: unknown;
+  module?: RuntimeValue;
+  state?: RuntimeValue;
+  source?: RuntimeValue;
   burning?: boolean;
   aId?: string;
   bId?: string;
@@ -244,17 +257,17 @@ type PrepareVisualTextures = (
   quality: string,
   tick: () => Promise<void>,
   camo: string,
-) => Promise<unknown>;
+) => Promise<RuntimeValue>;
 
 export interface BrowserBattleBridgeOptions<
-  TLegacyEntity = unknown,
-  TLegacyShell = unknown,
-  TLegacySpotting = unknown,
+  TLegacyEntity = RuntimeValue,
+  TLegacyShell = RuntimeValue,
+  TLegacySpotting = RuntimeValue,
 > {
   engineCtx: EngineContext;
   game: BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting>;
   bus: EventBus;
-  viewerId: unknown;
+  viewerId: RuntimeValue;
   spectator?: boolean;
   worldCollision?: WorldCollision | null;
   createTankVisual?: CreateTankVisual;
@@ -274,8 +287,8 @@ export interface BrowserBattleBridge {
   endDisconnected(): boolean;
   recordInput(input: PredictionInput | null, dt: number, inputSeq: number): boolean;
   getPredictionStats(): LocalPredictionStats | null;
-  getPresentationEventStats(): Record<string, unknown>;
-  setPerspective(entityId: unknown): boolean;
+  getPresentationEventStats(): Record<string, RuntimeValue>;
+  setPerspective(entityId: RuntimeValue): boolean;
   unmount(): void;
   dispose(): void;
 }
@@ -293,7 +306,7 @@ const VEL_SCALE = 100;
 const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
 const _predictionContactCenter = new Vector3();
 
-function hashString(value: unknown): number {
+function hashString(value: RuntimeValue): number {
   let hash = 2166136261;
   for (const char of String(value)) {
     hash ^= char.charCodeAt(0);
@@ -364,73 +377,134 @@ export function createBrowserBattleBridge<
     outPush: Vector3,
   ): boolean {
     outPush.set(0, 0, 0);
-    const contactRect = tankContactRect(entity.spec);
-    const halfL = contactRect.halfLength;
-    const halfW = contactRect.halfWidth;
-    const yaw = entity.state.yaw;
-    const fx = Math.sin(yaw), fz = Math.cos(yaw);
-    const rx = fz, rz = -fx;
-    const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
-    const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
-    _predictionContactCenter.set(centerX, pos.y, centerZ);
+    const frame = predictionContactFrame(entity, pos);
+    _predictionContactCenter.set(frame.centerX, pos.y, frame.centerZ);
     pushHullInsidePlayableBounds(
-      centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+      frame.centerX,
+      frame.centerZ,
+      frame.forwardX,
+      frame.forwardZ,
+      frame.rightX,
+      frame.rightZ,
+      frame.halfLength,
+      frame.halfWidth,
+      outPush,
     );
     if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
-    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    collidePredictionObstacles(entity, pos.y, frame, outPush);
+    collidePredictionEntities(entity, frame, outPush);
+    return outPush.x !== 0 || outPush.z !== 0;
+  }
+
+  function predictionContactFrame(
+    entity: PredictionSimEntity,
+    pos: Vector3,
+  ): PredictionContactFrame {
+    const contactRect = tankContactRect(entity.spec);
+    const forwardX = Math.sin(entity.state.yaw);
+    const forwardZ = Math.cos(entity.state.yaw);
+    const rightX = forwardZ;
+    const rightZ = -forwardX;
+    const centerX = pos.x + rightX * contactRect.centerX + forwardX * contactRect.centerZ;
+    const centerZ = pos.z + rightZ * contactRect.centerX + forwardZ * contactRect.centerZ;
+    return {
+      centerX,
+      centerZ,
+      halfLength: contactRect.halfLength,
+      halfWidth: contactRect.halfWidth,
+      forwardX,
+      forwardZ,
+      rightX,
+      rightZ,
+      broadRadius: Math.hypot(contactRect.halfLength, contactRect.halfWidth) + 0.01,
+    };
+  }
+
+  function predictionObstacles(frame: PredictionContactFrame): CollisionObstacle[] {
+    if (!worldCollision) return [];
     const candidates = typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(
-        centerX - broadRadius, centerZ - broadRadius,
-        centerX + broadRadius, centerZ + broadRadius,
+        frame.centerX - frame.broadRadius,
+        frame.centerZ - frame.broadRadius,
+        frame.centerX + frame.broadRadius,
+        frame.centerZ + frame.broadRadius,
         nearbyPredictionObstacles,
       )
       : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
-    for (const obstacle of candidates) {
-      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
+    return candidates;
+  }
+
+  function collidePredictionObstacles(
+    entity: PredictionSimEntity,
+    height: number,
+    frame: PredictionContactFrame,
+    outPush: Vector3,
+  ): void {
+    for (const obstacle of predictionObstacles(frame)) {
+      if (obstacle.crushed || height > obstacle.max[1] + 0.5) continue;
       // Fast overruns are resolved by authority. Let prediction continue
       // through crushable dressing instead of visibly stopping at a fence
       // that the next snapshot is about to destroy.
       if (obstacle.crushable &&
           Math.abs(entity.state.speed) > (obstacle.crushMin ?? 2.8)) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-      const dx = centerX - closestX, dz = centerZ - closestZ;
-      if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(frame.centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(frame.centerZ, obstacle.max[2]));
+      const dx = frame.centerX - closestX;
+      const dz = frame.centerZ - closestZ;
+      if (dx * dx + dz * dz >= frame.broadRadius * frame.broadRadius) continue;
       if (pushHullFromObstacle(
-        _predictionContactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+        _predictionContactCenter,
+        frame.forwardX,
+        frame.forwardZ,
+        frame.rightX,
+        frame.rightZ,
+        frame.halfLength,
+        frame.halfWidth,
+        obstacle,
+        outPush,
       )) {
         entity._predictionStaticContacts = (entity._predictionStaticContacts || 0) + 1;
       }
     }
+  }
 
+  function collidePredictionEntities(
+    entity: PredictionSimEntity,
+    frame: PredictionContactFrame,
+    outPush: Vector3,
+  ): void {
     // Mirror authority's exact-shell OBB narrow phase against currently
     // disclosed snapshot poses; never consult hidden entities. Parity here is
     // what prevents a teammate contact from becoming a correction loop.
     for (const other of entities.values()) {
       if (other.id === id || !other.state ||
           (!other.networkVisible && !other.combat?.destroyed)) continue;
-      const otherRect = tankContactRect(other.spec);
-      const otherHalfL = otherRect.halfLength;
-      const otherHalfW = otherRect.halfWidth;
-      const ofx = Math.sin(other.state.yaw);
-      const ofz = Math.cos(other.state.yaw);
-      const orx = ofz, orz = -ofx;
-      const otherCenterX = other.state.pos.x +
-        orx * otherRect.centerX + ofx * otherRect.centerZ;
-      const otherCenterZ = other.state.pos.z +
-        orz * otherRect.centerX + ofz * otherRect.centerZ;
-      const dx = centerX - otherCenterX;
-      const dz = centerZ - otherCenterZ;
-      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
+      const otherFrame = predictionContactFrame(other, other.state.pos);
+      const dx = frame.centerX - otherFrame.centerX;
+      const dz = frame.centerZ - otherFrame.centerZ;
+      const outer = frame.broadRadius + otherFrame.broadRadius - 0.02;
       if (dx * dx + dz * dz > outer * outer) continue;
       if (!pushHullFromHull(
-        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
-        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
+        frame.centerX,
+        frame.centerZ,
+        frame.forwardX,
+        frame.forwardZ,
+        frame.rightX,
+        frame.rightZ,
+        frame.halfLength,
+        frame.halfWidth,
+        otherFrame.centerX,
+        otherFrame.centerZ,
+        otherFrame.forwardX,
+        otherFrame.forwardZ,
+        otherFrame.rightX,
+        otherFrame.rightZ,
+        otherFrame.halfLength,
+        otherFrame.halfWidth,
         outPush,
       )) continue;
       entity._predictionDynamicContacts = (entity._predictionDynamicContacts || 0) + 1;
     }
-    return outPush.x !== 0 || outPush.z !== 0;
   }
 
   function ensureEntity(snapshot: EntitySeed | DecodedEntitySnapshot): BridgeEntity {
@@ -545,8 +619,20 @@ export function createBrowserBattleBridge<
     entity.team = snapshot.team === referenceTeam ? 'player' : 'enemy';
     entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
-    const state = entity.state;
-    const combat = entity.combat;
+    const destroyed = updateEntityCombat(entity, snapshot);
+    updateEntityEra(entity, snapshot);
+    updateEntityDestruction(entity, destroyed);
+    updateEntityPose(entity, snapshot, dt, immediateAuthority);
+    entity._lastX = entity.state.pos.x;
+    entity._lastZ = entity.state.pos.z;
+    revealEntity(entity);
+  }
+
+  function updateEntityCombat(
+    entity: BridgeEntity,
+    snapshot: DecodedEntitySnapshot,
+  ): boolean {
+    const { combat } = entity;
     combat.hp = snapshot.hp;
     combat.maxHp = snapshot.maxHp;
     if (snapshot.magazineCapacity > 0) {
@@ -592,15 +678,18 @@ export function createBrowserBattleBridge<
     if (!hasPendingLocalShellSelection) entity.input.shellSlot = snapshot.shellSlot;
     entity._networkShellSlot = snapshot.shellSlot;
     entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
-    state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
+    entity.state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
       entity.specialAction.active;
+    return destroyed;
+  }
+
+  function updateEntityEra(
+    entity: BridgeEntity,
+    snapshot: DecodedEntitySnapshot,
+  ): void {
     const spentEra = Array.isArray(snapshot.eraSpent) ? snapshot.eraSpent : [];
     const shownEra = entity._networkEraSpent || (entity._networkEraSpent = new Set());
-    let resetEra = false;
-    for (const plateName of shownEra) {
-      if (!spentEra.includes(plateName)) { resetEra = true; break; }
-    }
-    if (resetEra) {
+    if ([...shownEra].some((plateName) => !spentEra.includes(plateName))) {
       entity.visual.resetEra?.();
       shownEra.clear();
     }
@@ -609,47 +698,69 @@ export function createBrowserBattleBridge<
       entity.visual.stripEra?.(plateName);
       shownEra.add(plateName);
     }
+  }
+
+  function updateEntityDestruction(entity: BridgeEntity, destroyed: boolean): void {
     if (destroyed) visualDestroy(entity);
-    else if (!destroyed && entity._networkDestroyed) {
-      if (entity.visual.resetDestroyed) entity.visual.resetDestroyed();
-      entity._networkDestroyed = false;
-      entity._networkDestroyPop = false;
-    }
+    else if (entity._networkDestroyed) resetVisualDestruction(entity);
+  }
+
+  function resetVisualDestruction(entity: BridgeEntity): void {
+    entity.visual.resetDestroyed?.();
+    entity._networkDestroyed = false;
+    entity._networkDestroyPop = false;
+  }
+
+  function updateEntityPose(
+    entity: BridgeEntity,
+    snapshot: DecodedEntitySnapshot,
+    dt: number,
+    immediateAuthority: ImmediateAuthoritySnapshot | null,
+  ): void {
     if (entity.predictor && immediateAuthority) {
       entity.predictor.reconcile({
         ...immediateAuthority,
         sampledEntity: snapshot,
-      }, dt, destroyed);
-    } else {
-      const dx = snapshot.x - entity._lastX;
-      const dz = snapshot.z - entity._lastZ;
-      const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
-      state.trackScroll.l += forwardDistance;
-      state.trackScroll.r += forwardDistance;
-      state.pos.set(snapshot.x, snapshot.y, snapshot.z);
-      state.verticalSpeed = snapshot.vy || 0;
-      state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
-      if (state._ride) {
-        state._ride.y = snapshot.y;
-        state._ride.v = state.verticalSpeed;
-        state._ride.grounded = state.grounded;
-      }
-      state.yaw = snapshot.yaw;
-      state.visualPitch = snapshot.pitch;
-      state.visualRoll = snapshot.roll;
-      state.turretYaw = snapshot.turretYaw;
-      state.gunPitch = snapshot.gunPitch;
-      const speed = Math.hypot(snapshot.vx, snapshot.vz);
-      const direction = snapshot.vx * Math.sin(snapshot.yaw) + snapshot.vz * Math.cos(snapshot.yaw);
-      state.speed = direction < 0 ? -speed : speed;
+      }, dt, entity.combat.destroyed);
+      return;
     }
-    entity._lastX = state.pos.x;
-    entity._lastZ = state.pos.z;
+    applySnapshotPose(entity, snapshot);
+  }
+
+  function applySnapshotPose(
+    entity: BridgeEntity,
+    snapshot: DecodedEntitySnapshot,
+  ): void {
+    const { state } = entity;
+    const dx = snapshot.x - entity._lastX;
+    const dz = snapshot.z - entity._lastZ;
+    const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
+    state.trackScroll.l += forwardDistance;
+    state.trackScroll.r += forwardDistance;
+    state.pos.set(snapshot.x, snapshot.y, snapshot.z);
+    state.verticalSpeed = snapshot.vy || 0;
+    state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
+    if (state._ride) {
+      state._ride.y = snapshot.y;
+      state._ride.v = state.verticalSpeed;
+      state._ride.grounded = state.grounded;
+    }
+    state.yaw = snapshot.yaw;
+    state.visualPitch = snapshot.pitch;
+    state.visualRoll = snapshot.roll;
+    state.turretYaw = snapshot.turretYaw;
+    state.gunPitch = snapshot.gunPitch;
+    const speed = Math.hypot(snapshot.vx, snapshot.vz);
+    const direction = snapshot.vx * Math.sin(snapshot.yaw) + snapshot.vz * Math.cos(snapshot.yaw);
+    state.speed = direction < 0 ? -speed : speed;
+  }
+
+  function revealEntity(entity: BridgeEntity): void {
     // Prepared network visuals live at a hidden staging origin. Seed the
     // renderer from authority exactly once before revealing them; the normal
     // main-loop sync remains the sole per-frame owner after this point.
     if (!entity._networkPoseReady) {
-      entity.visual.syncFromState(state, 0);
+      entity.visual.syncFromState(entity.state, 0);
       entity._networkPoseReady = true;
     }
     entity.visual.setVisible(true);
@@ -720,169 +831,188 @@ export function createBrowserBattleBridge<
     game.shells = liveShells;
   }
 
+  function emitShellFired(event: BridgeEvent): void {
+    const shooter = entities.get(String(event.shooterId || ''));
+    let muzzlePos = [event.x, event.y, event.z];
+    let shellSpec = null;
+    let muzzleIndex: number | null = -1;
+    if (shooter?.visual.recoilKick) {
+      const shells = shooter.spec?.gun?.shells || [];
+      shellSpec = shells.find((shell) => shell.name === event.shellName)
+        || shells.find((shell) => shell.type === event.shellType) || null;
+      muzzleIndex = shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec));
+      if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
+        shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex);
+        muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
+      }
+    }
+    bus.emit('shell:fired', {
+      shellId: event.shellId,
+      shooterId: event.shooterId,
+      isPlayer: event.shooterId === id,
+      shellType: event.shellType,
+      shellName: event.shellName,
+      weaponSound: event.weaponSound || shellSpec?.soundProfile
+        || shooter?.spec?.gun?.soundProfile || null,
+      muzzleIndex,
+      caliberMm: event.caliberMm,
+      velocityMps: event.velocityMps,
+      timeS: event.timeS,
+      muzzlePos,
+      dir: [event.dx, event.dy, event.dz],
+      shooterSpecId: shooter?.specId,
+    });
+  }
+
+  function emitShellImpact(event: BridgeEvent): void {
+    bus.emit('shell:expired', {
+      shellId: event.shellId,
+      shooterId: event.shooterId,
+      hitTerrain: event.kind === 'terrain',
+      hitKind: event.kind,
+      surfaceKind: event.surfaceKind || event.kind,
+      normal: [event.nx || 0, event.ny ?? 1, event.nz || 0],
+      shellType: event.shellType,
+      caliberMm: event.caliberMm,
+      pos: [event.x, event.y, event.z],
+    });
+  }
+
+  function emitTankDestroyed(event: BridgeEvent): void {
+    const entity = entities.get(String(event.id || ''));
+    bus.emit('tank:destroyed', {
+      id: event.id,
+      specId: entity?.specId,
+      killerId: event.killerId,
+      cause: event.cause === 'ammo_rack' ? 'ammorack' : event.cause,
+      pos: entity ? [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z] : null,
+    });
+  }
+
+  function emitWorldPropDestroyed(event: BridgeEvent): void {
+    const obstacleIndex = Number(event.obstacleIndex);
+    const obstacle = worldCollision?.getObstacles &&
+        Number.isSafeInteger(obstacleIndex) && obstacleIndex >= 0
+      ? worldCollision.getObstacles()[obstacleIndex]
+      : null;
+    if (obstacle && !obstacle.crushed && worldCollision?.crushObstacle) {
+      worldCollision.crushObstacle(
+        obstacle,
+        Number(event.directionX) || 0,
+        Number(event.directionZ) || 0,
+        Number(event.speedMps) || 0,
+      );
+    }
+    bus.emit('prop:crushed', {
+      kind: event.kind,
+      speedMps: event.speedMps,
+      cause: event.cause,
+      pos: obstacle ? [
+        (obstacle.min[0] + obstacle.max[0]) * 0.5,
+        obstacle.min[1],
+        (obstacle.min[2] + obstacle.max[2]) * 0.5,
+      ] : null,
+      dir: [event.directionX, 0, event.directionZ],
+    });
+  }
+
+  function emitLocalPlayerEvent(event: BridgeEvent): void {
+    if (event.id !== id) return;
+    if (event.type === 'consumable_used') {
+      bus.emit('ui:consumableUsed', {
+        slot: event.slot,
+        cooldownS: event.cooldownS,
+        readyAt: event.readyAt,
+      });
+    } else if (event.type === 'consumable_denied') {
+      bus.emit('ui:consumableDenied', {
+        slot: event.slot,
+        reason: event.reason,
+        remainingS: event.remainingS,
+      });
+    } else if (event.type === 'magazine_reload') {
+      bus.emit('ui:magazineReloadStarted', {});
+    } else if (event.type === 'magazine_reload_denied') {
+      bus.emit('ui:magazineReloadDenied', { reason: event.reason });
+    } else if (event.type === 'special_action') {
+      bus.emit('ui:specialActionResult', {
+        kind: event.kind,
+        active: !!event.active,
+        reason: event.reason || null,
+      });
+    } else if (event.type === 'special_action_denied') {
+      bus.emit('ui:specialActionDenied', {
+        kind: event.kind,
+        reason: event.reason,
+        slot: event.slot,
+      });
+    } else if (event.type === 'ammo_empty') {
+      bus.emit('ammo:empty', event);
+    } else if (event.type === 'ammo_selection_denied') {
+      bus.emit('ui:ammoSelectionDenied', event);
+    } else if (event.type === 'ammo_depleted') {
+      bus.emit('ammo:depleted', event);
+    }
+  }
+
+  function emitMatchEnded(event: BridgeEvent): void {
+    const result = spectator ? 'draw' : event.result === 'draw' ? 'draw'
+      : event.result === viewerTeam ? 'victory' : 'defeat';
+    game.result = result;
+    game.resultReason = event.reason || 'elimination';
+    bus.emit('battle:ended', {
+      result,
+      reason: game.resultReason,
+      timeS: game.timeS,
+      map: game.mapId,
+      roster: resultRoster(),
+    });
+  }
+
+  const localPlayerEventTypes = new Set([
+    'consumable_used',
+    'consumable_denied',
+    'magazine_reload',
+    'magazine_reload_denied',
+    'special_action',
+    'special_action_denied',
+    'ammo_empty',
+    'ammo_selection_denied',
+    'ammo_depleted',
+  ]);
+
   function emitEvent(event: BridgeEvent): void {
     if (typeof event.type !== 'string') return;
-    if (event.type === 'shell_fired') {
-        const shooter = entities.get(String(event.shooterId || ''));
-        // §5.362 fleet recoil in networked battles: the authoritative sim
-        // fires server-side, so play the same presentation recuperator
-        // stroke the local sim would (state.ts tryFire wiring) on the
-        // shooter's first-party visual — flash and barrel throw share this
-        // one event. Belt rounds resolve the shared rapid scale from the
-        // fired shell exactly like the local path.
-        let muzzlePos = [event.x, event.y, event.z];
-        let shellSpec = null;
-        let muzzleIndex: number | null = -1;
-        if (shooter && shooter.visual && shooter.visual.recoilKick) {
-          const shells = (shooter.spec && shooter.spec.gun && shooter.spec.gun.shells) || [];
-          shellSpec = shells.find((s) => s.name === event.shellName)
-            || shells.find((s) => s.type === event.shellType) || null;
-          muzzleIndex = shooter.visual.recoilKick(
-            0, recoilScale(shooter.spec, shellSpec));
-          // Twin-plant ids: the flash spawns at the firing barrel's tip
-          // (the visual owns the alternation cursor here — the server's
-          // center-bore ballistics stay authoritative for the shell).
-          if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
-            shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex);
-            muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
-          }
-        }
-        bus.emit('shell:fired', {
-          shellId: event.shellId,
-          shooterId: event.shooterId,
-          isPlayer: event.shooterId === id,
-          shellType: event.shellType,
-          shellName: event.shellName,
-          weaponSound: event.weaponSound || shellSpec?.soundProfile
-            || shooter?.spec?.gun?.soundProfile || null,
-          muzzleIndex,
-          caliberMm: event.caliberMm,
-          velocityMps: event.velocityMps,
-          timeS: event.timeS,
-          muzzlePos,
-          dir: [event.dx, event.dy, event.dz],
-          shooterSpecId: shooter?.specId,
-        });
-    } else if (event.type === 'shell_hit') {
-        bus.emit('shell:hit', {
-          ...event,
-          attackerId: event.attackerId || event.shooterId,
-        });
-    } else if (event.type === 'shell_impact') {
-        bus.emit('shell:expired', {
-          shellId: event.shellId,
-          shooterId: event.shooterId,
-          hitTerrain: event.kind === 'terrain',
-          hitKind: event.kind,
-          surfaceKind: event.surfaceKind || event.kind,
-          normal: [event.nx || 0, event.ny ?? 1, event.nz || 0],
-          shellType: event.shellType,
-          caliberMm: event.caliberMm,
-          pos: [event.x, event.y, event.z],
-        });
-    } else if (event.type === 'tank_destroyed') {
-        const entity = entities.get(String(event.id || ''));
-        bus.emit('tank:destroyed', {
-          id: event.id,
-          specId: entity && entity.specId,
-          killerId: event.killerId,
-          cause: event.cause === 'ammo_rack' ? 'ammorack' : event.cause,
-          pos: entity ? [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z] : null,
-        });
-    } else if (event.type === 'world_prop_destroyed') {
-        const collision = worldCollision;
-        const obstacleIndex = Number(event.obstacleIndex);
-        const obstacle = collision && typeof collision.getObstacles === 'function' &&
-            Number.isSafeInteger(obstacleIndex) && obstacleIndex >= 0
-          ? collision.getObstacles()[obstacleIndex]
-          : null;
-        if (obstacle && !obstacle.crushed && typeof collision?.crushObstacle === 'function') {
-          collision.crushObstacle(
-            obstacle,
-            Number(event.directionX) || 0,
-            Number(event.directionZ) || 0,
-            Number(event.speedMps) || 0,
-          );
-        }
-        bus.emit('prop:crushed', {
-          kind: event.kind,
-          speedMps: event.speedMps,
-          cause: event.cause,
-          pos: obstacle ? [
-            (obstacle.min[0] + obstacle.max[0]) * 0.5,
-            obstacle.min[1],
-            (obstacle.min[2] + obstacle.max[2]) * 0.5,
-          ] : null,
-          dir: [event.directionX, 0, event.directionZ],
-        });
-    } else if (event.type === 'consumable_used' && event.id === id) {
-        bus.emit('ui:consumableUsed', {
-          slot: event.slot,
-          cooldownS: event.cooldownS,
-          readyAt: event.readyAt,
-        });
-    } else if (event.type === 'consumable_denied' && event.id === id) {
-        bus.emit('ui:consumableDenied', {
-          slot: event.slot,
-          reason: event.reason,
-          remainingS: event.remainingS,
-        });
-    } else if (event.type === 'magazine_reload' && event.id === id) {
-        bus.emit('ui:magazineReloadStarted', {});
-    } else if (event.type === 'magazine_reload_denied' && event.id === id) {
-        bus.emit('ui:magazineReloadDenied', { reason: event.reason });
-    } else if (event.type === 'special_action' && event.id === id) {
-        bus.emit('ui:specialActionResult', {
-          kind: event.kind,
-          active: !!event.active,
-          reason: event.reason || null,
-        });
-    } else if (event.type === 'special_action_denied' && event.id === id) {
-        bus.emit('ui:specialActionDenied', {
-          kind: event.kind,
-          reason: event.reason,
-          slot: event.slot,
-        });
-    } else if (event.type === 'ammo_empty' && event.id === id) {
-        bus.emit('ammo:empty', event);
-    } else if (event.type === 'ammo_selection_denied' && event.id === id) {
-        bus.emit('ui:ammoSelectionDenied', event);
-    } else if (event.type === 'ammo_depleted' && event.id === id) {
-        bus.emit('ammo:depleted', event);
-    } else if (event.type === 'module_state') {
-        bus.emit('module:state', {
-          id: event.id,
-          module: event.module,
-          state: event.state,
-          source: event.source,
-        });
+    if (event.type === 'shell_fired') emitShellFired(event);
+    else if (event.type === 'shell_hit') {
+      bus.emit('shell:hit', { ...event, attackerId: event.attackerId || event.shooterId });
+    } else if (event.type === 'shell_impact') emitShellImpact(event);
+    else if (event.type === 'tank_destroyed') emitTankDestroyed(event);
+    else if (event.type === 'world_prop_destroyed') emitWorldPropDestroyed(event);
+    else if (localPlayerEventTypes.has(event.type)) emitLocalPlayerEvent(event);
+    else if (event.type === 'module_state') {
+      bus.emit('module:state', {
+        id: event.id,
+        module: event.module,
+        state: event.state,
+        source: event.source,
+      });
     } else if (event.type === 'tank_fire') {
-        bus.emit('tank:fire', { id: event.id, burning: event.burning });
+      bus.emit('tank:fire', { id: event.id, burning: event.burning });
     } else if (event.type === 'tank_ram') {
-        bus.emit('tank:ram', {
-          aId: event.aId,
-          bId: event.bId,
-          dmgA: event.damageA,
-          dmgB: event.damageB,
-          closingMps: event.closingMps,
-          aIsPlayer: event.aId === id,
-          bIsPlayer: event.bId === id,
-          pos: [event.x, event.y, event.z],
-        });
-    } else if (event.type === 'match_ended') {
-        const result = spectator ? 'draw' : event.result === 'draw' ? 'draw'
-          : event.result === viewerTeam ? 'victory' : 'defeat';
-        game.result = result;
-        game.resultReason = event.reason || 'elimination';
-        bus.emit('battle:ended', {
-          result,
-          reason: game.resultReason,
-          timeS: game.timeS,
-          map: game.mapId,
-          roster: resultRoster(),
-        });
-    } else if (event.type?.startsWith('mode_')) {
-        bus.emit(event.type.replace(/^mode_/, 'mode:'), event);
+      bus.emit('tank:ram', {
+        aId: event.aId,
+        bId: event.bId,
+        dmgA: event.damageA,
+        dmgB: event.damageB,
+        closingMps: event.closingMps,
+        aIsPlayer: event.aId === id,
+        bIsPlayer: event.bId === id,
+        pos: [event.x, event.y, event.z],
+      });
+    } else if (event.type === 'match_ended') emitMatchEnded(event);
+    else if (event.type.startsWith('mode_')) {
+      bus.emit(event.type.replace(/^mode_/, 'mode:'), event);
     }
   }
 
@@ -890,7 +1020,7 @@ export function createBrowserBattleBridge<
     emit: (event) => emitEvent(event as BridgeEvent),
   });
 
-  function resultRoster(): Array<Record<string, unknown>> {
+  function resultRoster(): Array<Record<string, RuntimeValue>> {
     return [...entities.values()].map((entity) => ({
       id: entity.id,
       name: entity.displayName || entity.spec?.name || entity.specId,
@@ -902,7 +1032,7 @@ export function createBrowserBattleBridge<
     }));
   }
 
-  function reconcileDestructibles(meta: Record<string, unknown> | null): void {
+  function reconcileDestructibles(meta: Record<string, RuntimeValue> | null): void {
     const revision = Number(meta?.destructibleRevision);
     if (!Number.isSafeInteger(revision) || revision < 0 ||
         revision <= appliedDestructibleRevision) return;
@@ -961,15 +1091,27 @@ export function createBrowserBattleBridge<
   ): boolean {
     if (!snapshot) return false;
     if (typeof snapshot.meta?.phase === 'string') snapshotPhase = snapshot.meta.phase;
-    // Index destruction causes before state reconciliation so an ammo-rack
-    // turret pop is staged once, with the correct variant, instead of first
-    // creating a generic wreck and rebuilding it when the event arrives.
-    for (const event of reliableEvents) {
+    indexDestructionCauses(reliableEvents);
+    reconcileSnapshotEntities(snapshot, dt);
+    publishSnapshotState(snapshot);
+    updateShells(snapshot.shells);
+    presentationEvents.enqueue(reliableEvents);
+    presentationEvents.flush();
+    reconcileDestructibles(snapshot.meta);
+    reconcilePersistentResult(snapshot);
+    return true;
+  }
+
+  function indexDestructionCauses(events: PresentationEvent[]): void {
+    // Index causes before entity reconciliation so ammo-rack turret pop is
+    // staged once instead of rebuilding a generic wreck after the event.
+    for (const event of events) {
       if (event.type === 'tank_destroyed' && typeof event.id === 'string' &&
-          typeof event.cause === 'string') {
-        destructionCause.set(event.id, event.cause);
-      }
+          typeof event.cause === 'string') destructionCause.set(event.id, event.cause);
     }
+  }
+
+  function reconcileSnapshotEntities(snapshot: SampledSnapshotFrame, dt: number): void {
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
     const own = spectator ? null : snapshot.entities.find((entry) => entry.id === id);
@@ -980,12 +1122,20 @@ export function createBrowserBattleBridge<
       dt,
       entry.id === id ? snapshot.immediateAuthority : null,
     );
+    classifyAndHideEntities();
+    if (!mounted) mount();
+    publishVisibleRoster();
+  }
+
+  function classifyAndHideEntities(): void {
     for (const entity of entities.values()) {
       const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
       entity.team = entity.networkTeam === referenceTeam ? 'player' : 'enemy';
       if (!entity.networkVisible) entity.visual.setVisible(false);
     }
-    if (!mounted) mount();
+  }
+
+  function publishVisibleRoster(): void {
     visibleRoster.length = 0;
     for (const entity of entities.values()) {
       if (entity.networkVisible || entity.combat.destroyed) visibleRoster.push(entity);
@@ -993,6 +1143,9 @@ export function createBrowserBattleBridge<
     game.tanks = visibleRoster;
     game.tankById = entities;
     game.player = spectator ? null : entities.get(id) || null;
+  }
+
+  function publishSnapshotState(snapshot: SampledSnapshotFrame): void {
     game.timeS = Number.isFinite(snapshot.meta?.battleTimeMs)
       ? Number(snapshot.meta?.battleTimeMs) / 1000
       : snapshot.serverTimeMs / 1000;
@@ -1001,30 +1154,26 @@ export function createBrowserBattleBridge<
       : 0;
     game.gameMode = snapshot.meta?.gameMode || 'standard';
     game.matchModeState = snapshot.meta?.modeState || null;
-    updateShells(snapshot.shells);
-    presentationEvents.enqueue(reliableEvents);
-    presentationEvents.flush();
-    reconcileDestructibles(snapshot.meta);
+  }
 
+  function reconcilePersistentResult(snapshot: SampledSnapshotFrame): void {
     // The verdict is persistent snapshot state. Reliable events preserve the
     // cinematic chronology, but reconnects/keyframes must still converge if
     // the original match_ended event predates this client.
-    if (!game.result && snapshot.meta?.result &&
-        !presentationEvents.hasType('match_ended')) {
-      const authorityResult = snapshot.meta.result;
-      game.result = spectator ? 'draw' : authorityResult === 'draw' ? 'draw'
-        : authorityResult === viewerTeam ? 'victory' : 'defeat';
-      game.resultReason = typeof snapshot.meta.resultReason === 'string'
-        ? snapshot.meta.resultReason : 'elimination';
-      bus.emit('battle:ended', {
-        result: game.result,
-        reason: game.resultReason,
-        timeS: game.timeS,
-        map: game.mapId,
-        roster: resultRoster(),
-      });
-    }
-    return true;
+    if (game.result || !snapshot.meta?.result ||
+        presentationEvents.hasType('match_ended')) return;
+    const authorityResult = snapshot.meta.result;
+    game.result = spectator ? 'draw' : authorityResult === 'draw' ? 'draw'
+      : authorityResult === viewerTeam ? 'victory' : 'defeat';
+    game.resultReason = typeof snapshot.meta.resultReason === 'string'
+      ? snapshot.meta.resultReason : 'elimination';
+    bus.emit('battle:ended', {
+      result: game.result,
+      reason: game.resultReason,
+      timeS: game.timeS,
+      map: game.mapId,
+      roster: resultRoster(),
+    });
   }
 
   function endDisconnected(): boolean {
@@ -1041,7 +1190,7 @@ export function createBrowserBattleBridge<
     return true;
   }
 
-  function setPerspective(entityId: unknown): boolean {
+  function setPerspective(entityId: RuntimeValue): boolean {
     if (!spectator) return false;
     const target = entities.get(String(entityId || ''));
     if (!target) return false;

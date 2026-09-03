@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export const NETWORK_BATTLE_ENTRY_ABORTED = 'network_battle_entry_aborted';
 
 export interface NetworkBattleEntryAbortError extends Error {
@@ -25,7 +26,7 @@ export function throwIfNetworkBattleEntryAborted(signal?: AbortSignal): void {
 }
 
 export function isNetworkBattleEntryAbortError(
-  error: unknown,
+  error: RuntimeValue,
 ): error is NetworkBattleEntryAbortError {
   return !!error && typeof error === 'object'
     && 'code' in error

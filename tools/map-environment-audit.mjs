@@ -185,6 +185,39 @@ async function collectMap(mapId, frames) {
       let instancedMeshNodes = 0;
       let instances = 0;
       let triangles = 0;
+      const materialLineage = (object) => {
+        const lineage = [];
+        for (let node = object; node && node !== root; node = node.parent) {
+          lineage.push(node.name || node.type || 'node');
+        }
+        return lineage.reverse().join('/');
+      };
+      const materialBounds = (object) => {
+        object.geometry?.computeBoundingBox?.();
+        const bounds = object.geometry?.boundingBox;
+        return {
+          vertices: object.geometry?.attributes?.position?.count || 0,
+          bounds: bounds ? [
+            Number((bounds.max.x - bounds.min.x).toFixed(2)),
+            Number((bounds.max.y - bounds.min.y).toFixed(2)),
+            Number((bounds.max.z - bounds.min.z).toFixed(2)),
+          ] : [],
+        };
+      };
+      const registerMaterial = (material, object) => {
+        if (!material) return;
+        materials.add(material);
+        if (withInventory) {
+          if (!materialUsers.has(material)) materialUsers.set(material, new Set());
+          if (!materialUserDetails.has(material)) materialUserDetails.set(material, []);
+          materialUsers.get(material).add(materialLineage(object));
+          materialUserDetails.get(material).push(materialBounds(object));
+        }
+        for (const key of Object.keys(material)) {
+          const value = material[key];
+          if (value?.isTexture) textures.add(value);
+        }
+      };
       root?.traverse((object) => {
         if (!object.visible) return;
         nodes++;
@@ -199,33 +232,7 @@ async function collectMap(mapId, frames) {
         }
         const objectMaterials = Array.isArray(object.material)
           ? object.material : [object.material];
-        for (const material of objectMaterials) {
-          if (!material) continue;
-          materials.add(material);
-          if (withInventory) {
-            if (!materialUsers.has(material)) materialUsers.set(material, new Set());
-            if (!materialUserDetails.has(material)) materialUserDetails.set(material, []);
-            const lineage = [];
-            for (let node = object; node && node !== root; node = node.parent) {
-              lineage.push(node.name || node.type || 'node');
-            }
-            materialUsers.get(material).add(lineage.reverse().join('/'));
-            object.geometry?.computeBoundingBox?.();
-            const bounds = object.geometry?.boundingBox;
-            materialUserDetails.get(material).push({
-              vertices: object.geometry?.attributes?.position?.count || 0,
-              bounds: bounds ? [
-                Number((bounds.max.x - bounds.min.x).toFixed(2)),
-                Number((bounds.max.y - bounds.min.y).toFixed(2)),
-                Number((bounds.max.z - bounds.min.z).toFixed(2)),
-              ] : [],
-            });
-          }
-          for (const key of Object.keys(material)) {
-            const value = material[key];
-            if (value?.isTexture) textures.add(value);
-          }
-        }
+        for (const material of objectMaterials) registerMaterial(material, object);
       });
       return {
         nodes, meshNodes, instancedMeshNodes, instances,
@@ -274,6 +281,44 @@ async function collectMap(mapId, frames) {
     const groundedDestructibles = world.destructibles
       .filter((record) => record.groundSupport);
     const groundingReceipts = world.decorationGroundingReceipts || [];
+    const utilityPoleQuality = () => ({
+      enabled: !!props.telegraph,
+      stations: poleStations.length,
+      pairedStations: poleStations.filter((station) => station.paired).length,
+      singleStations: poleStations.filter((station) => !station.paired).length,
+      physicalPosts: polePosts.length,
+      sourceTrianglesPerPost: fullPoleMesh ? triangleCount(fullPoleMesh.geometry) : 0,
+      maxPairRelief: roundValue(Math.max(0, ...poleStations.map((station) => station.pairRelief))),
+      maxAcceptedPairRelief: roundValue(Math.max(0,
+        ...poleStations.filter((station) => station.paired)
+          .map((station) => station.pairRelief))),
+      maxLocalRelief: roundValue(Math.max(0, ...polePosts.map((post) => post.supportSpread))),
+      unsupportedPosts: polePosts.filter((post) =>
+        Math.abs(post.y - (post.supportMin - 0.035)) > 0.001).length,
+      pairedReliefs: poleStations.filter((station) => station.paired)
+        .map((station) => roundValue(station.pairRelief)),
+      singleReliefs: poleStations.filter((station) => !station.paired)
+        .map((station) => roundValue(station.pairRelief)),
+    });
+    const groundingQuality = () => ({
+      destructibleReceipts: groundedDestructibles.length,
+      unsupportedDestructibles: groundedDestructibles.filter((record) =>
+        record.y > record.groundSupport.min + 0.001).length,
+      wideDecorationReceipts: groundingReceipts.length,
+      unsupportedWideDecorations: groundingReceipts.filter((record) =>
+        record.baseClearance > 0.001).length,
+      maxBaseClearance: roundValue(Math.max(0,
+        ...groundingReceipts.map((record) => record.baseClearance))),
+      kinds: [...new Set(groundingReceipts.map((record) => record.kind))].sort(),
+    });
+    const waterQuality = () => ({
+      features: waterFeatures.length,
+      lakes: (terrain.lakes || []).length,
+      marshes: (terrain.marshes || []).length,
+      liquid: !!(terrain.softLakes || config.splat?.seaLake),
+      frozen: !!config.splat?.iceLake,
+      softInteraction: !!terrain.softLakes || waterFeatures.some((feature) => feature.depth == null),
+    });
     return {
       id,
       name: config.name,
@@ -314,36 +359,8 @@ async function collectMap(mapId, frames) {
           wrecks: world.tankWreckSpots.length,
           craters: props.craters || 0,
           rubblePiles: props.rubblePiles || 0,
-          utilityPoles: {
-            enabled: !!props.telegraph,
-            stations: poleStations.length,
-            pairedStations: poleStations.filter((station) => station.paired).length,
-            singleStations: poleStations.filter((station) => !station.paired).length,
-            physicalPosts: polePosts.length,
-            sourceTrianglesPerPost: fullPoleMesh ? triangleCount(fullPoleMesh.geometry) : 0,
-            maxPairRelief: roundValue(Math.max(0, ...poleStations.map((station) => station.pairRelief))),
-            maxAcceptedPairRelief: roundValue(Math.max(0,
-              ...poleStations.filter((station) => station.paired)
-                .map((station) => station.pairRelief))),
-            maxLocalRelief: roundValue(Math.max(0, ...polePosts.map((post) => post.supportSpread))),
-            unsupportedPosts: polePosts.filter((post) =>
-              Math.abs(post.y - (post.supportMin - 0.035)) > 0.001).length,
-            pairedReliefs: poleStations.filter((station) => station.paired)
-              .map((station) => roundValue(station.pairRelief)),
-            singleReliefs: poleStations.filter((station) => !station.paired)
-              .map((station) => roundValue(station.pairRelief)),
-          },
-          grounding: {
-            destructibleReceipts: groundedDestructibles.length,
-            unsupportedDestructibles: groundedDestructibles.filter((record) =>
-              record.y > record.groundSupport.min + 0.001).length,
-            wideDecorationReceipts: groundingReceipts.length,
-            unsupportedWideDecorations: groundingReceipts.filter((record) =>
-              record.baseClearance > 0.001).length,
-            maxBaseClearance: roundValue(Math.max(0,
-              ...groundingReceipts.map((record) => record.baseClearance))),
-            kinds: [...new Set(groundingReceipts.map((record) => record.kind))].sort(),
-          },
+          utilityPoles: utilityPoleQuality(),
+          grounding: groundingQuality(),
         },
         foliage: {
           configuredSpecies: new Set(vegetation.species || []).size,
@@ -352,14 +369,7 @@ async function collectMap(mapId, frames) {
           grassDensity: vegetation.grassDensity || 0,
           bushCount: vegetation.bushCount || 0,
         },
-        water: {
-          features: waterFeatures.length,
-          lakes: (terrain.lakes || []).length,
-          marshes: (terrain.marshes || []).length,
-          liquid: !!(terrain.softLakes || config.splat?.seaLake),
-          frozen: !!config.splat?.iceLake,
-          softInteraction: !!terrain.softLakes || waterFeatures.some((feature) => feature.depth == null),
-        },
+        water: waterQuality(),
       },
     };
   }, { id: mapId, frameStats: frames, includeInventory });

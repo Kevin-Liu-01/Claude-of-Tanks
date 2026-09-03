@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   MESSAGE_TYPES,
   createEnvelope,
@@ -23,8 +24,8 @@ type Unsubscribe = () => void;
 
 export interface LobbyTransport {
   readonly readyState?: string;
-  send(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  send(message: RuntimeValue): boolean;
+  onMessage(listener: (message: RuntimeValue) => void): Unsubscribe;
   onClose?(listener: (reason: string) => void): Unsubscribe;
   close(reason?: string): void;
 }
@@ -32,7 +33,7 @@ export interface LobbyTransport {
 export interface ReleasedLobbyTransport {
   peerId: string;
   transport: LobbyTransport;
-  pendingMessages: unknown[];
+  pendingMessages: RuntimeValue[];
   finishHandoff: Unsubscribe;
 }
 
@@ -58,7 +59,7 @@ interface RuntimePeer {
   transport: LobbyTransport;
   sendSeq: number;
   lastRecvSeq: number | null;
-  pendingHandoffMessages: unknown[];
+  pendingHandoffMessages: RuntimeValue[];
   unsubscribeMessage: Unsubscribe | null;
   unsubscribeClose: Unsubscribe | null;
 }
@@ -71,11 +72,11 @@ const MATCH_HANDOFF_TYPES = new Set<MessageType>([
   MESSAGE_TYPES.LEAVE,
 ]);
 const MAX_PENDING_HANDOFF_MESSAGES = 64;
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function errorPayload(error: unknown): LobbyRuntimeError {
+function errorPayload(error: RuntimeValue): LobbyRuntimeError {
   let code = 'invalid_lobby_command';
   let message = 'invalid lobby command';
   if (isRecord(error) && typeof error.code === 'string' && error.code) code = error.code;
@@ -84,7 +85,7 @@ function errorPayload(error: unknown): LobbyRuntimeError {
   return { code, message };
 }
 
-function remoteErrorPayload(value: unknown): LobbyRuntimeError {
+function remoteErrorPayload(value: RuntimeValue): LobbyRuntimeError {
   if (!isRecord(value)) return errorPayload(value);
   return {
     code: typeof value.code === 'string' && value.code ? value.code : 'remote_lobby_error',
@@ -124,7 +125,7 @@ export class LobbyHostRuntime {
     transport,
     player,
   }: {
-    peerId?: unknown;
+    peerId?: RuntimeValue;
     transport?: LobbyTransport;
     player?: AddLobbyPlayerOptions;
   } = {}): Unsubscribe {
@@ -156,7 +157,7 @@ export class LobbyHostRuntime {
     return () => { this.detachPeer(id, 'detached'); };
   }
 
-  #send(peer: RuntimePeer, type: MessageType, payload: unknown): boolean {
+  #send(peer: RuntimePeer, type: MessageType, payload: RuntimeValue): boolean {
     const accepted = peer.transport.send(createEnvelope(type, payload, {
       seq: peer.sendSeq,
       ack: peer.lastRecvSeq == null ? 0 : peer.lastRecvSeq,
@@ -167,7 +168,7 @@ export class LobbyHostRuntime {
     return accepted;
   }
 
-  #receive(peer: RuntimePeer, raw: unknown): void {
+  #receive(peer: RuntimePeer, raw: RuntimeValue): void {
     try {
       const message = validateEnvelope(raw);
       if (this.lobby.phase === LOBBY_PHASES.STARTING &&
@@ -200,7 +201,7 @@ export class LobbyHostRuntime {
     }
   }
 
-  command(playerId: string, command: unknown): LobbyState {
+  command(playerId: string, command: RuntimeValue): LobbyState {
     const before = this.lobby.phase;
     applyLobbyCommand(this.lobby, playerId, command, {
       isVehicleAllowed: this.isVehicleAllowed,
@@ -225,7 +226,7 @@ export class LobbyHostRuntime {
     return () => this.listeners.delete(listener);
   }
 
-  detachPeer(peerId: unknown, reason = 'left'): boolean {
+  detachPeer(peerId: RuntimeValue, reason = 'left'): boolean {
     const peer = this.peers.get(String(peerId));
     if (!peer) return false;
     this.peers.delete(peer.id);
@@ -297,7 +298,7 @@ export class LobbyClientRuntime {
       : null;
   }
 
-  #send(type: MessageType, payload: unknown): boolean {
+  #send(type: MessageType, payload: RuntimeValue): boolean {
     const accepted = this.transport.send(createEnvelope(type, payload, {
       seq: this.sendSeq,
       ack: this.lastRecvSeq == null ? 0 : this.lastRecvSeq,
@@ -307,7 +308,7 @@ export class LobbyClientRuntime {
     return accepted;
   }
 
-  #receive(raw: unknown): void {
+  #receive(raw: RuntimeValue): void {
     try {
       const message = validateEnvelope(raw);
       if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
@@ -326,7 +327,7 @@ export class LobbyClientRuntime {
     }
   }
 
-  submit(command: unknown): boolean {
+  submit(command: RuntimeValue): boolean {
     return this.#send(MESSAGE_TYPES.LOBBY_COMMAND, command);
   }
 

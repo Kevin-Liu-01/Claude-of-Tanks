@@ -1,6 +1,7 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface DeadlineClock {
-  setTimeout(callback: () => void, delayMs: number): unknown;
-  clearTimeout(handle: unknown): void;
+  setTimeout(callback: () => void, delayMs: number): RuntimeValue;
+  clearTimeout(handle: RuntimeValue): void;
 }
 
 export interface DeferredDeadline<T> {
@@ -36,7 +37,7 @@ export function createDeferredDeadline<T>(
   }
 
   let resolvePromise: (value: T) => void = () => {};
-  let rejectPromise: (reason: unknown) => void = () => {};
+  let rejectPromise: (reason: RuntimeValue) => void = () => {};
   let isSettled = false;
   const promise = new Promise<T>((resolve, reject) => {
     resolvePromise = resolve;

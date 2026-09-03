@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // A 7v7 synchronized volley can carry fourteen shell reports in one network
 // batch. Submitting eight full muzzle/audio graphs in one render beat caused
 // 50-130 ms main-thread stalls on otherwise healthy clients. Three preserves
@@ -12,7 +13,7 @@ const HEAVY_EVENT_TYPES: ReadonlySet<string> = new Set([
   'world_prop_destroyed',
 ]);
 
-export interface PresentationEvent extends Record<string, unknown> {
+export interface PresentationEvent extends Record<string, RuntimeValue> {
   type?: string;
 }
 
@@ -28,7 +29,7 @@ export interface PresentationEventQueueStats {
   peakPending: number;
 }
 
-function isPresentationEvent(value: unknown): value is PresentationEvent {
+function isPresentationEvent(value: RuntimeValue): value is PresentationEvent {
   return value !== null && typeof value === 'object';
 }
 
@@ -64,7 +65,7 @@ export class PresentationEventQueue {
     this.isHeavy = isHeavy;
   }
 
-  enqueue(events: unknown): number {
+  enqueue(events: RuntimeValue): number {
     if (!Array.isArray(events) || events.length === 0) return this.size;
     for (const event of events) {
       if (isPresentationEvent(event)) this.pending.push(event);

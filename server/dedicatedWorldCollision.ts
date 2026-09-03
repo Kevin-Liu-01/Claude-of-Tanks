@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import manifests from './world-collision-manifests.json' with { type: 'json' };
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import type {
@@ -21,16 +22,16 @@ export interface DedicatedCollisionManifestStats {
   concealers: number;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isFiniteTuple(value: unknown, length: number): value is number[] {
+function isFiniteTuple(value: RuntimeValue, length: number): value is number[] {
   return Array.isArray(value) && value.length === length &&
     value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
 }
 
-function isPackedShape(value: unknown): boolean {
+function isPackedShape(value: RuntimeValue): boolean {
   if (!Array.isArray(value) || typeof value[0] !== 'string') return false;
   if (value[0] === 'o') return isFiniteTuple(value.slice(1), 5);
   if (value[0] === 'c') return isFiniteTuple(value.slice(1), 3);
@@ -38,11 +39,11 @@ function isPackedShape(value: unknown): boolean {
     value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
 }
 
-function isNullableNumber(value: unknown): boolean {
+function isNullableNumber(value: RuntimeValue): boolean {
   return value == null || (typeof value === 'number' && Number.isFinite(value));
 }
 
-function isPackedCollisionRecord(value: unknown): value is PackedCollisionRecord {
+function isPackedCollisionRecord(value: RuntimeValue): value is PackedCollisionRecord {
   return isRecord(value) && isFiniteTuple(value.b, 6) &&
     (value.s === undefined || isPackedShape(value.s)) &&
     (value.q === undefined || typeof value.q === 'boolean' || value.q === 0 || value.q === 1) &&
@@ -51,7 +52,7 @@ function isPackedCollisionRecord(value: unknown): value is PackedCollisionRecord
     isNullableNumber(value.t) && isNullableNumber(value.p);
 }
 
-function isCollisionManifest(value: unknown): value is CollisionManifest {
+function isCollisionManifest(value: RuntimeValue): value is CollisionManifest {
   return isRecord(value) && Array.isArray(value.obstacles) &&
     value.obstacles.every(isPackedCollisionRecord) &&
     Array.isArray(value.colliders) && value.colliders.every(isPackedCollisionRecord) &&
@@ -60,12 +61,12 @@ function isCollisionManifest(value: unknown): value is CollisionManifest {
 }
 
 function isCollisionManifestMap(
-  value: unknown,
+  value: RuntimeValue,
 ): value is Record<string, CollisionManifest> {
   return isRecord(value) && Object.values(value).every(isCollisionManifest);
 }
 
-function readCollisionManifests(value: unknown): CollisionManifestBundle {
+function readCollisionManifests(value: RuntimeValue): CollisionManifestBundle {
   if (!isRecord(value) || value.version !== 2 ||
       typeof value.terrainSeed !== 'number' || !Number.isFinite(value.terrainSeed) ||
       !isCollisionManifestMap(value.maps)) {
@@ -79,7 +80,7 @@ const terrainByMap = new Map<string, TerrainHeightField>();
 
 /** Build match-local collision state from the exact captured visual map. */
 export function createDedicatedWorldCollision(
-  mapId: unknown,
+  mapId: RuntimeValue,
 ): ReturnType<typeof createHeadlessCollisionWorld> {
   const id = String(mapId || 'verdant');
   const manifest = collisionManifests.maps[id];

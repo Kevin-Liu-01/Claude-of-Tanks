@@ -1,14 +1,15 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { NetworkRecoveryOwner } from './connectionRecovery.ts';
 
 export interface NetworkSnapshot {
   tick: number;
-  serverTimeMs?: unknown;
-  ackInputSeq?: unknown;
-  entities?: unknown;
-  shells?: unknown;
-  events?: unknown;
-  immediateAuthority?: unknown;
-  meta?: Record<string, unknown> | null;
+  serverTimeMs?: RuntimeValue;
+  ackInputSeq?: RuntimeValue;
+  entities?: RuntimeValue;
+  shells?: RuntimeValue;
+  events?: RuntimeValue;
+  immediateAuthority?: RuntimeValue;
+  meta?: Record<string, RuntimeValue> | null;
 }
 
 export interface NetworkInputFrame {
@@ -21,8 +22,8 @@ export interface NetworkClientLike {
   readySent?: boolean;
   lastSubmittedInputSeq: number | null;
   onConnection?(listener: (connected: boolean) => void): (() => void) | void;
-  drainEventsThrough?(tick: number, target: Record<string, unknown>[]): void;
-  getStats?(): Record<string, unknown> | null;
+  drainEventsThrough?(tick: number, target: Record<string, RuntimeValue>[]): void;
+  getStats?(): Record<string, RuntimeValue> | null;
 }
 
 interface NetworkMatchBase {
@@ -43,7 +44,7 @@ export interface NetworkClientMatchLike extends NetworkMatchBase {
 export type NetworkMatchLike = NetworkHostMatchLike | NetworkClientMatchLike;
 
 export interface NetworkBridgeLike {
-  apply(snapshot: NetworkSnapshot, dt: number, events?: unknown[]): void;
+  apply(snapshot: NetworkSnapshot, dt: number, events?: RuntimeValue[]): void;
   recordInput(input: NetworkInputFrame, elapsedS: number, sequence: number | null): void;
   endDisconnected?(): void;
   getPredictionStats?(): object | null;
@@ -51,13 +52,13 @@ export interface NetworkBridgeLike {
 
 export interface NetworkStatusLike {
   readonly diagnosticsVisible?: boolean;
-  set?(status: unknown): void;
+  set?(status: RuntimeValue): void;
   dispose?(): void;
-  update(stats: Record<string, unknown> | null): void;
+  update(stats: Record<string, RuntimeValue> | null): void;
 }
 
 export interface NetworkInputRuntimeLike {
-  frame(player: unknown): NetworkInputFrame | null;
+  frame(player: RuntimeValue): NetworkInputFrame | null;
   advance(dt: number): void;
   shouldSend(input: NetworkInputFrame): boolean;
   commit(input: NetworkInputFrame): number;
@@ -73,13 +74,13 @@ interface NetworkFramePumpOptions {
   getMatch: () => NetworkMatchLike | null;
   getBridge: () => NetworkBridgeLike | null;
   getStatus: () => NetworkStatusLike | null;
-  getPlayer: () => unknown;
+  getPlayer: () => RuntimeValue;
   isBattleActive: () => boolean;
   shouldPresentDisconnect?: () => boolean;
   recovery: NetworkRecoveryOwner;
-  nextFrame: () => Promise<unknown>;
+  nextFrame: () => Promise<RuntimeValue>;
   now?: () => number;
-  onHostError?: (error: unknown) => void;
+  onHostError?: (error: RuntimeValue) => void;
 }
 
 export interface NetworkFramePump {
@@ -87,7 +88,7 @@ export interface NetworkFramePump {
   queueAction(action: string): void;
   queueConsumable(slot: number): void;
   pump(dt: number, nowMs: number): void;
-  diagnostics(): Record<string, unknown> | null;
+  diagnostics(): Record<string, RuntimeValue> | null;
   waitForSnapshot(
     predicate: (snapshot: NetworkSnapshot) => boolean,
     timeoutMs: number,
@@ -119,7 +120,7 @@ export function createNetworkFramePump({
 
   let inputRuntime: NetworkInputRuntimeLike | null = null;
   let latestSnapshot: NetworkSnapshot | null = null;
-  const pendingEvents: Record<string, unknown>[] = [];
+  const pendingEvents: Record<string, RuntimeValue>[] = [];
 
   const acceptSnapshot = (snapshot: NetworkSnapshot | null, dt: number) => {
     if (!snapshot) return;
@@ -135,6 +136,51 @@ export function createNetworkFramePump({
     const stats = getMatch()?.client?.getStats?.() || null;
     if (!stats) return null;
     return { ...stats, prediction: getBridge()?.getPredictionStats?.() || null };
+  };
+
+  const pumpHost = (
+    match: NetworkHostMatchLike,
+    playerInput: NetworkInputFrame | null,
+    bridge: NetworkBridgeLike | null,
+    dt: number,
+  ): void => {
+    const submittedActionBits = playerInput?.actionBits || 0;
+    if (submittedActionBits) inputRuntime?.acknowledge(submittedActionBits);
+    try {
+      const snapshot = match.advance(dt * 1000, playerInput);
+      if (playerInput && match.client?.lastSubmittedInputSeq != null) {
+        bridge?.recordInput(playerInput, dt, match.client.lastSubmittedInputSeq);
+      }
+      acceptSnapshot(snapshot, dt);
+    } catch (error) {
+      inputRuntime?.restore(submittedActionBits);
+      onHostError(error);
+    }
+  };
+
+  const pumpClient = (
+    match: NetworkClientMatchLike,
+    playerInput: NetworkInputFrame | null,
+    bridge: NetworkBridgeLike | null,
+    dt: number,
+    nowMs: number,
+  ): void => {
+    inputRuntime?.advance(dt);
+    const client = match.client;
+    if (playerInput && client?.connected && inputRuntime?.shouldSend(playerInput)) {
+      if (match.submitInput(playerInput)) {
+        const predictionElapsedS = inputRuntime.commit(playerInput);
+        bridge?.recordInput(playerInput, predictionElapsedS, client.lastSubmittedInputSeq);
+      }
+    } else if (!playerInput) {
+      inputRuntime?.resetCadence();
+    }
+    acceptSnapshot(match.update(nowMs), dt);
+  };
+
+  const updateVisibleDiagnostics = (): void => {
+    const status = getStatus();
+    if (status?.diagnosticsVisible) status.update(diagnostics());
   };
 
   return {
@@ -160,38 +206,11 @@ export function createNetworkFramePump({
       const playerInput = isBattleActive() ? inputRuntime?.frame(getPlayer()) || null : null;
       const bridge = getBridge();
       if (match.role === 'host') {
-        const submittedActionBits = playerInput?.actionBits || 0;
-        if (submittedActionBits) inputRuntime?.acknowledge(submittedActionBits);
-        try {
-          const snapshot = match.advance(dt * 1000, playerInput);
-          if (playerInput && match.client?.lastSubmittedInputSeq != null) {
-            bridge?.recordInput(playerInput, dt, match.client.lastSubmittedInputSeq);
-          }
-          acceptSnapshot(snapshot, dt);
-        } catch (error) {
-          inputRuntime?.restore(submittedActionBits);
-          onHostError(error);
-        }
+        pumpHost(match, playerInput, bridge, dt);
       } else {
-        inputRuntime?.advance(dt);
-        const client = match.client;
-        if (playerInput && client?.connected && inputRuntime?.shouldSend(playerInput)) {
-          if (match.submitInput(playerInput)) {
-            const predictionElapsedS = inputRuntime.commit(playerInput);
-            bridge?.recordInput(
-              playerInput,
-              predictionElapsedS,
-              client.lastSubmittedInputSeq,
-            );
-          }
-        } else if (!playerInput) {
-          inputRuntime?.resetCadence();
-        }
-        acceptSnapshot(match.update(nowMs), dt);
+        pumpClient(match, playerInput, bridge, dt, nowMs);
       }
-
-      const status = getStatus();
-      if (status?.diagnosticsVisible) status.update(diagnostics());
+      updateVisibleDiagnostics();
     },
 
     diagnostics,

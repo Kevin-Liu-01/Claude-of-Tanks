@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
  * runtime. This module deliberately has no Three.js, DOM, WebGL, vehicle, or
@@ -6,16 +7,16 @@
  */
 
 export type RandomSource = () => number;
-export type EventListener = (payload: unknown) => void;
-export type EventRecorder = (event: string, payload: unknown) => void;
+export type EventListener = (payload: RuntimeValue) => void;
+export type EventRecorder = (event: string, payload: RuntimeValue) => void;
 
 export interface EventBus {
   on(event: string, listener: EventListener): () => void;
   off(event: string, listener: EventListener): void;
-  emit(event: string, payload: unknown): void;
+  emit(event: string, payload: RuntimeValue): void;
 }
 
-export interface GameState<Entity = unknown, Spotting = unknown, MatchModeState = unknown> {
+export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, MatchModeState = RuntimeValue> {
   phase: 'garage' | 'battle' | 'ended' | 'shot';
   preBattleS: number;
   mapId: string;
@@ -24,7 +25,7 @@ export interface GameState<Entity = unknown, Spotting = unknown, MatchModeState 
   battleCount: number;
   tankById: Map<string, Entity>;
   player: Entity | null;
-  shells: unknown[];
+  shells: RuntimeValue[];
   nextShellId: number;
   timeS: number;
   fireTickAcc: number;
@@ -32,11 +33,11 @@ export interface GameState<Entity = unknown, Spotting = unknown, MatchModeState 
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
   spotting: Spotting | null;
-  openingRouteJobs: unknown[];
+  openingRouteJobs: RuntimeValue[];
   gameMode: string;
   matchModeState: MatchModeState | null;
-  matchModeController: unknown | null;
-  modeEvents: Array<{ type: string; payload: Record<string, unknown> }>;
+  matchModeController: RuntimeValue | null;
+  modeEvents: Array<{ type: string; payload: Record<string, RuntimeValue> }>;
 }
 
 /** Canonical deterministic PRNG used by the legacy solo runtime. */
@@ -91,9 +92,9 @@ export function createBus(onEmit: EventRecorder | null = null): EventBus {
 
 /** Create an empty mutable session without loading any battle implementation. */
 export function createGameState<
-  Entity = unknown,
-  Spotting = unknown,
-  MatchModeState = unknown,
+  Entity = RuntimeValue,
+  Spotting = RuntimeValue,
+  MatchModeState = RuntimeValue,
 >(): GameState<Entity, Spotting, MatchModeState> {
   return {
     phase: 'garage',

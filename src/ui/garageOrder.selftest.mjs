@@ -31,7 +31,7 @@ assert.match(garageSource,
 assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
   'Garage listens for the boot fade before revealing first-visit chrome');
 assert.match(garageSource,
-  /class="card-era">\$\{vehicleEraLabel\(s\.era, \{ short: true \}\)\}<\/span>/,
+  /class="card-era">\$\{vehicleEraLabel\((?:s|spec)\.era, \{ short: true \}\)\}<\/span>/,
   'garage cards show the canonical vehicle era in their top-right metadata slot');
 assert.doesNotMatch(garageSource,
   /class="designation">\$\{s\.markings\?\.designation/,

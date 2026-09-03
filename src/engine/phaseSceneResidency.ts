@@ -1,11 +1,12 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 interface SceneRoot {
-  parent: unknown | null;
+  parent: RuntimeValue | null;
   visible: boolean;
-  removeFromParent(): unknown;
+  removeFromParent(): RuntimeValue;
 }
 
 interface SceneHost {
-  add(...roots: SceneRoot[]): unknown;
+  add(...roots: SceneRoot[]): RuntimeValue;
 }
 
 export interface PhaseSceneResidency {

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Boot-light audio facade.
  *
@@ -32,12 +33,12 @@ export interface LazyAudio {
   preload(): Promise<AudioMixerModule | null>;
   resume(): void;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
   loadingOn(active: boolean): void;
-  warmBattleEvents(): Promise<unknown>;
+  warmBattleEvents(): Promise<RuntimeValue>;
   ambientOn(active: boolean): void;
   hitConfirm(kind: string, damage?: number): void;
   readonly ready: boolean;
@@ -203,7 +204,7 @@ export function createLazyAudio({
       bus = nextBus;
       if (real) real.bindBus(nextBus);
     },
-    update(dt: number, listener: AudioListenerPose, tanks: readonly unknown[]) {
+    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]) {
       real?.update(dt, listener, tanks);
     },
     setMasterVolume(value: number) { real?.setMasterVolume(value); },

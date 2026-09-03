@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createModal } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import {
@@ -16,7 +17,7 @@ import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
 type CustomCamoDraft = CustomCamo;
 
 interface CustomCamoOptions {
-  getCustom(specId: string): unknown;
+  getCustom(specId: string): RuntimeValue;
   setCustom(specId: string, draft: CustomCamoDraft): void;
 }
 
@@ -24,14 +25,14 @@ export interface CustomCamoStudioOptions {
   button: HTMLButtonElement;
   camo: CustomCamoOptions;
   selectedId: () => string | null;
-  selectedSpec: () => unknown;
-  paintPreview: (canvas: HTMLCanvasElement, spec: unknown, patternId: string) => void;
+  selectedSpec: () => RuntimeValue;
+  paintPreview: (canvas: HTMLCanvasElement, spec: RuntimeValue, patternId: string) => void;
   emitClick: () => void;
   refreshSelection: () => void;
   requeueThumb: (specId: string) => void;
 }
 
-const normalized = (value?: unknown): CustomCamoDraft => normalizeCustomCamo(value);
+const normalized = (value?: RuntimeValue): CustomCamoDraft => normalizeCustomCamo(value);
 
 /**
  * Full custom-paint authoring surface. This module is intentionally reachable
@@ -311,7 +312,7 @@ export function createCustomCamoStudio({
     try {
       const raw = await navigator.clipboard?.readText?.();
       if (!raw) throw new Error('Clipboard is empty');
-      const parsed = JSON.parse(raw) as { pattern?: unknown };
+      const parsed = JSON.parse(raw) as { pattern?: RuntimeValue };
       const candidate = parsed?.pattern || parsed;
       if (!candidate || typeof candidate !== 'object' || !('style' in candidate)
         || candidate.style !== 'drawn' || !('strokes' in candidate) || !Array.isArray(candidate.strokes)) {

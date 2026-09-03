@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   getLastBattleRecord,
   type BattleRecord,
@@ -5,7 +6,7 @@ import {
 } from '../game/profile.ts';
 
 interface EndOverlayBus {
-  emit(event: string, payload: Record<string, unknown>): void;
+  emit(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
 export interface EndOverlayRuntime {

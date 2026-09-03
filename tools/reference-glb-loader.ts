@@ -49,6 +49,15 @@ interface ConnectedSubset {
   readonly remainders: THREE.Mesh[];
 }
 
+interface ReferenceRig {
+  readonly root: THREE.Group;
+  readonly hull: THREE.Group;
+  readonly turret: THREE.Group;
+  readonly gun: THREE.Group;
+  readonly unclassified: THREE.Group;
+  readonly authoredFrame: THREE.Group;
+}
+
 type EmissiveMaterial = THREE.MeshLambertMaterial | THREE.MeshPhongMaterial
   | THREE.MeshStandardMaterial | THREE.MeshToonMaterial;
 
@@ -83,6 +92,121 @@ function attachAll(parent: THREE.Object3D, nodes: readonly THREE.Object3D[]): vo
   for (const node of roots) parent.attach(node);
 }
 
+function findComponentRoot(parents: number[], vertex: number): number {
+  let rootVertex = vertex;
+  while (parents[rootVertex] !== rootVertex) rootVertex = parents[rootVertex];
+  while (parents[vertex] !== vertex) {
+    const next = parents[vertex];
+    parents[vertex] = rootVertex;
+    vertex = next;
+  }
+  return rootVertex;
+}
+
+function unionVertices(parents: number[], left: number, right: number): void {
+  const leftRoot = findComponentRoot(parents, left);
+  const rightRoot = findComponentRoot(parents, right);
+  if (leftRoot !== rightRoot) parents[rightRoot] = leftRoot;
+}
+
+function componentIndex(index: ArrayLike<number>, vertexCount: number): Map<number, ConnectedComponent> {
+  const parents = Array.from({ length: vertexCount }, (_, vertex) => vertex);
+  for (let cursor = 0; cursor < index.length; cursor += 3) {
+    unionVertices(parents, index[cursor], index[cursor + 1]);
+    unionVertices(parents, index[cursor], index[cursor + 2]);
+  }
+  const components = new Map<number, ConnectedComponent>();
+  for (let cursor = 0; cursor < index.length; cursor += 3) {
+    const root = findComponentRoot(parents, index[cursor]);
+    const component = components.get(root) || {
+      indices: [],
+      vertices: new Set<number>(),
+      bounds: new THREE.Box3(),
+    };
+    for (let offset = 0; offset < 3; offset++) {
+      const vertex = index[cursor + offset];
+      component.indices.push(vertex);
+      component.vertices.add(vertex);
+    }
+    components.set(root, component);
+  }
+  return components;
+}
+
+function updateComponentBounds(
+  components: ReadonlyMap<number, ConnectedComponent>,
+  positions: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  matrixWorld: THREE.Matrix4,
+): void {
+  const scratch = new THREE.Vector3();
+  for (const component of components.values()) {
+    for (const vertex of component.vertices) {
+      scratch.fromBufferAttribute(positions, vertex).applyMatrix4(matrixWorld);
+      component.bounds.expandByPoint(scratch);
+    }
+  }
+}
+
+function componentMatchesRule(component: ConnectedComponent, rule: ComponentSubsetRule): boolean {
+  const vertexCount = component.vertices.size;
+  if (rule.minVertices != null && vertexCount < rule.minVertices) return false;
+  if (rule.maxVertices != null && vertexCount > rule.maxVertices) return false;
+  if (rule.worldMinY != null && component.bounds.min.y < rule.worldMinY) return false;
+  return rule.worldMaxY == null || component.bounds.max.y <= rule.worldMaxY;
+}
+
+function splitComponentIndices(
+  components: ReadonlyMap<number, ConnectedComponent>,
+  rule: ComponentSubsetRule,
+): { readonly selected: number[]; readonly remaining: number[] } {
+  const selected: number[] = [];
+  const remaining: number[] = [];
+  for (const component of components.values()) {
+    (componentMatchesRule(component, rule) ? selected : remaining).push(...component.indices);
+  }
+  return { selected, remaining };
+}
+
+function compactSubsetGeometry(
+  geometry: THREE.BufferGeometry,
+  indices: readonly number[],
+  vertexCount: number,
+): THREE.BufferGeometry {
+  const values = vertexCount > 0xffff ? new Uint32Array(indices) : new Uint16Array(indices);
+  const indexed = geometry.clone();
+  indexed.setIndex(new THREE.BufferAttribute(values, 1));
+  const compact = indexed.toNonIndexed();
+  indexed.dispose();
+  compact.clearGroups();
+  compact.computeBoundingBox();
+  compact.computeBoundingSphere();
+  return compact;
+}
+
+function splitMeshComponents(
+  node: THREE.Mesh,
+  rule: ComponentSubsetRule,
+  label: string,
+): { readonly subset: THREE.Mesh; readonly remainder: THREE.Mesh } | null {
+  const index = node.geometry.index;
+  const positions = node.geometry.attributes.position;
+  if (!index || !positions || !node.parent) return null;
+  node.updateWorldMatrix(true, false);
+  const geometry = node.geometry;
+  const components = componentIndex(index.array, positions.count);
+  updateComponentBounds(components, positions, node.matrixWorld);
+  const { selected, remaining } = splitComponentIndices(components, rule);
+  if (!selected.length || !remaining.length) return null;
+  const subsetGeometry = compactSubsetGeometry(geometry, selected, positions.count);
+  const remainingGeometry = compactSubsetGeometry(geometry, remaining, positions.count);
+  node.geometry = remainingGeometry;
+  const subset = node.clone(false);
+  subset.name = `${node.name}__${label}`;
+  subset.geometry = subsetGeometry;
+  node.parent.add(subset);
+  return { subset, remainder: node };
+}
+
 // Split selected connected islands from one fused source mesh without
 // changing the rendered whole. Some comparison prints collapse armor,
 // fittings, and interior pieces into a generic Object_N mesh; a node-name
@@ -96,94 +220,12 @@ function extractConnectedSubset(
   if (!rule?.node) return { subsets: [], remainders: [] };
   const subsets: THREE.Mesh[] = [];
   const remainders: THREE.Mesh[] = [];
-  const scratch = new THREE.Vector3();
   for (const node of matchingNodes(root, rule.node)) {
-    if (!(node instanceof THREE.Mesh) || !node.geometry.index
-      || !node.geometry.attributes.position || !node.parent) continue;
-    node.updateWorldMatrix(true, false);
-    const geometry = node.geometry;
-    const index = geometry.index.array;
-    const positions = geometry.attributes.position;
-    const parents = Array.from({ length: positions.count }, (_, vertex) => vertex);
-    const find = (vertex: number): number => {
-      let rootVertex = vertex;
-      while (parents[rootVertex] !== rootVertex) rootVertex = parents[rootVertex];
-      while (parents[vertex] !== vertex) {
-        const next = parents[vertex];
-        parents[vertex] = rootVertex;
-        vertex = next;
-      }
-      return rootVertex;
-    };
-    const union = (left: number, right: number): void => {
-      left = find(left);
-      right = find(right);
-      if (left !== right) parents[right] = left;
-    };
-    for (let cursor = 0; cursor < index.length; cursor += 3) {
-      union(index[cursor], index[cursor + 1]);
-      union(index[cursor], index[cursor + 2]);
-    }
-    const components = new Map<number, ConnectedComponent>();
-    for (let cursor = 0; cursor < index.length; cursor += 3) {
-      const componentRoot = find(index[cursor]);
-      let component = components.get(componentRoot);
-      if (!component) {
-        component = { indices: [], vertices: new Set<number>(), bounds: new THREE.Box3() };
-        components.set(componentRoot, component);
-      }
-      for (let offset = 0; offset < 3; offset++) {
-        const vertex = index[cursor + offset];
-        component.indices.push(vertex);
-        component.vertices.add(vertex);
-      }
-    }
-    for (const component of components.values()) {
-      for (const vertex of component.vertices) {
-        scratch.fromBufferAttribute(positions, vertex).applyMatrix4(node.matrixWorld);
-        component.bounds.expandByPoint(scratch);
-      }
-    }
-    const selected: number[] = [];
-    const remaining: number[] = [];
-    for (const component of components.values()) {
-      const vertexCount = component.vertices.size;
-      const matches = (rule.minVertices == null || vertexCount >= rule.minVertices)
-        && (rule.maxVertices == null || vertexCount <= rule.maxVertices)
-        && (rule.worldMinY == null || component.bounds.min.y >= rule.worldMinY)
-        && (rule.worldMaxY == null || component.bounds.max.y <= rule.worldMaxY);
-      (matches ? selected : remaining).push(...component.indices);
-    }
-    if (!selected.length || !remaining.length) continue;
-    const makeIndex = (values: readonly number[]): Uint16Array | Uint32Array => (
-      positions.count > 0xffff ? new Uint32Array(values) : new Uint16Array(values)
-    );
-    const subsetIndexed = geometry.clone();
-    subsetIndexed.setIndex(new THREE.BufferAttribute(makeIndex(selected), 1));
-    // Compact the position stream as well as the index stream. Box3 and
-    // BufferGeometry.computeBoundingBox intentionally scan every attribute
-    // vertex, including vertices no longer referenced by a subset index. A
-    // sparse clone therefore rendered correctly but reported the original
-    // fused node's bounds, poisoning normalization/dimension diagnostics.
-    const subsetGeometry = subsetIndexed.toNonIndexed();
-    subsetIndexed.dispose();
-    subsetGeometry.clearGroups();
-    subsetGeometry.computeBoundingBox();
-    subsetGeometry.computeBoundingSphere();
-    const remainingIndexed = geometry.clone();
-    remainingIndexed.setIndex(new THREE.BufferAttribute(makeIndex(remaining), 1));
-    const remainingGeometry = remainingIndexed.toNonIndexed();
-    remainingIndexed.dispose();
-    remainingGeometry.clearGroups();
-    remainingGeometry.computeBoundingBox();
-    remainingGeometry.computeBoundingSphere();
-    node.geometry = remainingGeometry;
-    remainders.push(node);
-    const subset = node.clone(false);
-    subset.name = `${node.name}__${label}`;
-    subset.geometry = subsetGeometry;
-    node.parent.add(subset);
-    subsets.push(subset);
+    if (!(node instanceof THREE.Mesh)) continue;
+    const split = splitMeshComponents(node, rule, label);
+    if (!split) continue;
+    subsets.push(split.subset);
+    remainders.push(split.remainder);
   }
   return { subsets, remainders };
 }
@@ -239,15 +281,7 @@ function replaceMeshMaterials(
   });
 }
 
-export async function loadReferenceGlb(
-  source: ReferenceGlbSource | null | undefined,
-  specId: string,
-  spec: ReferenceVehicleSpec | null | undefined,
-): Promise<{ readonly root: THREE.Group; readonly specId: string }> {
-  const cfg = source?.glb;
-  if (!cfg?.path) throw new Error(`${specId} has no source GLB path`);
-
-  const gltf = await new GLTFLoader().loadAsync(cfg.path);
+function createReferenceRig(specId: string, yawOffset: number): ReferenceRig {
   const root = new THREE.Group();
   root.name = `reference_${specId}`;
   const hull = new THREE.Group();
@@ -258,13 +292,149 @@ export async function loadReferenceGlb(
   gun.name = 'rig_gun';
   const unclassified = new THREE.Group();
   unclassified.name = 'reference_unclassified';
-  root.add(hull, turret, unclassified);
-  turret.add(gun);
-
   const authoredFrame = new THREE.Group();
   authoredFrame.name = 'reference_authored_frame';
-  authoredFrame.rotation.y = Number(cfg.yawOffset || 0);
+  authoredFrame.rotation.y = yawOffset;
+  root.add(hull, turret, unclassified);
   hull.add(authoredFrame);
+  turret.add(gun);
+  return { root, hull, turret, gun, unclassified, authoredFrame };
+}
+
+function centerPathologicalScene(scene: THREE.Object3D): void {
+  const rawBox = new THREE.Box3().setFromObject(scene);
+  if (rawBox.isEmpty()) return;
+  const center = rawBox.getCenter(new THREE.Vector3());
+  const diagonal = rawBox.getSize(new THREE.Vector3()).length();
+  if (Math.hypot(center.x, center.z) <= 0.35 * Math.max(diagonal, 1e-6)) return;
+  scene.position.x -= center.x;
+  scene.position.z -= center.z;
+}
+
+function subsetRules(cfg: ReferenceGlbConfig): ComponentSubsetRule[] {
+  const rules: ComponentSubsetRule[] = [];
+  if (cfg.turretComponentSubset) {
+    rules.push({ ...cfg.turretComponentSubset, owner: 'turret' });
+  }
+  if (cfg.componentSubsets) rules.push(...cfg.componentSubsets);
+  return rules;
+}
+
+function extractSemanticSubsets(
+  scene: THREE.Object3D,
+  cfg: ReferenceGlbConfig,
+  unclassified: THREE.Group,
+): Record<SemanticOwner, THREE.Mesh[]> {
+  const semantic: Record<SemanticOwner, THREE.Mesh[]> = {
+    turret: [],
+    gun: [],
+    unclassified: [],
+  };
+  const rules = subsetRules(cfg);
+  for (let index = 0; index < rules.length; index++) {
+    const rule = rules[index];
+    const owner: SemanticOwner = rule.owner || 'unclassified';
+    const subset = extractConnectedSubset(scene, rule, `${owner}Subset${index}`);
+    semantic[owner].push(...subset.subsets);
+    if (rule.excludeRemainderFromHull) attachAll(unclassified, subset.remainders);
+  }
+  return semantic;
+}
+
+function seatTurretPivot(
+  root: THREE.Group,
+  turret: THREE.Group,
+  turretNodes: readonly THREE.Object3D[],
+  cfg: ReferenceGlbConfig,
+): void {
+  if (!cfg.autoPivot || !turretNodes.length) return;
+  const pivot = Array.isArray(cfg.pivot)
+    ? new THREE.Vector3().fromArray(cfg.pivot)
+    : turretNodes[0].getWorldPosition(new THREE.Vector3());
+  turret.position.copy(pivot);
+  root.updateMatrixWorld(true);
+}
+
+function seatGunPivot(
+  root: THREE.Group,
+  turret: THREE.Group,
+  gun: THREE.Group,
+  gunNodes: readonly THREE.Object3D[],
+  cfg: ReferenceGlbConfig,
+): void {
+  if (!cfg.autoPivot || !gunNodes.length) return;
+  const pivotWorld = gunNodes[0].getWorldPosition(new THREE.Vector3());
+  gun.position.copy(turret.worldToLocal(pivotWorld.clone()));
+  root.updateMatrixWorld(true);
+}
+
+function applyParkedTurretYaw(
+  root: THREE.Group,
+  turret: THREE.Group,
+  turretNodes: readonly THREE.Object3D[],
+  turretYaw: number | undefined,
+): void {
+  if (!turretYaw) return;
+  const clusterBox = new THREE.Box3();
+  for (const node of turretNodes) clusterBox.expandByObject(node);
+  if (clusterBox.isEmpty()) clusterBox.setFromObject(turret);
+  if (clusterBox.isEmpty()) return;
+  const pivot = clusterBox.getCenter(new THREE.Vector3());
+  for (const child of turret.children) {
+    child.position.x -= pivot.x;
+    child.position.z -= pivot.z;
+  }
+  turret.rotation.y = Number(turretYaw);
+  turret.position.x = pivot.x;
+  turret.position.z = pivot.z;
+  root.updateMatrixWorld(true);
+}
+
+function routeArticulatedComponents(
+  scene: THREE.Object3D,
+  rig: ReferenceRig,
+  cfg: ReferenceGlbConfig,
+): void {
+  if (cfg.fixedMount || !cfg.turretNode) return;
+  const semantic = extractSemanticSubsets(scene, cfg, rig.unclassified);
+  const turretNodes = [...matchingNodes(scene, cfg.turretNode), ...semantic.turret];
+  const turretFollowers = matchingNodes(scene, cfg.turretFollowers);
+  seatTurretPivot(rig.root, rig.turret, turretNodes, cfg);
+  attachAll(rig.turret, [...turretNodes, ...turretFollowers]);
+
+  const gunNodes = [...matchingNodes(rig.root, cfg.gunNode), ...semantic.gun];
+  const gunFollowers = matchingNodes(rig.root, cfg.gunFollowers);
+  seatGunPivot(rig.root, rig.turret, rig.gun, gunNodes, cfg);
+  attachAll(rig.gun, [...gunNodes, ...gunFollowers]);
+  applyParkedTurretYaw(rig.root, rig.turret, turretNodes, cfg.turretYaw);
+}
+
+function normalizeReferenceWidth(root: THREE.Group, spec: ReferenceVehicleSpec | null | undefined): void {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const width = box.getSize(new THREE.Vector3()).x;
+  const targetWidth = Number(spec?.dims?.widthM || 0);
+  if (width <= 1e-6 || targetWidth <= 0) return;
+  const scale = targetWidth / width;
+  root.scale.setScalar(scale);
+  root.position.y = -box.min.y * scale;
+}
+
+function applyOracleMaterialPolicy(root: THREE.Group, cfg: ReferenceGlbConfig): void {
+  if (cfg.maskFloorOracle) replaceMeshMaterials(root, 'floor');
+  if (cfg.brightenOracle) replaceMeshMaterials(root, 'bright');
+}
+
+export async function loadReferenceGlb(
+  source: ReferenceGlbSource | null | undefined,
+  specId: string,
+  spec: ReferenceVehicleSpec | null | undefined,
+): Promise<{ readonly root: THREE.Group; readonly specId: string }> {
+  const cfg = source?.glb;
+  if (!cfg?.path) throw new Error(`${specId} has no source GLB path`);
+
+  const gltf = await new GLTFLoader().loadAsync(cfg.path);
+  const rig = createReferenceRig(specId, Number(cfg.yawOffset || 0));
   // Off-origin print class (§5.248 ukraine finds: t80u_kursk diorama at
   // -1124u, t64bv_donbass at +4.2 m). An off-center model breaks every
   // subsequent origin-anchored rotation (yawOffset here, the page's
@@ -272,116 +442,15 @@ export async function loadReferenceGlb(
   // center the RAW footprint INSIDE the authored frame — before any yaw —
   // when its offset is pathological (> 0.35 of the model diagonal; every
   // near-centered print keeps its exact historical transform).
-  {
-    const rawBox = new THREE.Box3().setFromObject(gltf.scene);
-    if (!rawBox.isEmpty()) {
-      const rawC = rawBox.getCenter(new THREE.Vector3());
-      const diag = rawBox.getSize(new THREE.Vector3()).length();
-      if (Math.hypot(rawC.x, rawC.z) > 0.35 * Math.max(diag, 1e-6)) {
-        gltf.scene.position.x -= rawC.x;
-        gltf.scene.position.z -= rawC.z;
-      }
-    }
-  }
-  authoredFrame.add(gltf.scene);
-  root.updateMatrixWorld(true);
-
-  if (!cfg.fixedMount && cfg.turretNode) {
-    // Generic source meshes occasionally fuse several ownership domains into
-    // one Object_N node. Allow the fidelity registration to split any number
-    // of connected-island rules and route only the selected islands to their
-    // honest articulation owner. Remainders stay under authoredFrame (hull)
-    // unless the rule explicitly marks them as non-comparable internals.
-    const semanticSubsets: Record<SemanticOwner, THREE.Mesh[]> = {
-      turret: [], gun: [], unclassified: [],
-    };
-    const subsetRules: ComponentSubsetRule[] = [];
-    if (cfg.turretComponentSubset) {
-      subsetRules.push({ ...cfg.turretComponentSubset, owner: 'turret' });
-    }
-    if (cfg.componentSubsets) subsetRules.push(...cfg.componentSubsets);
-    for (let index = 0; index < subsetRules.length; index++) {
-      const rule = subsetRules[index];
-      const owner: SemanticOwner = rule.owner || 'unclassified';
-      const subset = extractConnectedSubset(
-        gltf.scene, rule, `${owner}Subset${index}`);
-      semanticSubsets[owner].push(...subset.subsets);
-      if (rule.excludeRemainderFromHull) {
-        attachAll(unclassified, subset.remainders);
-      }
-    }
-    const turretNodes = [
-      ...matchingNodes(gltf.scene, cfg.turretNode),
-      ...semanticSubsets.turret,
-    ];
-    const turretFollowers = matchingNodes(gltf.scene, cfg.turretFollowers);
-    // Keep the comparison rig on the source file's authored rotation centre.
-    // Re-parenting a turret under a pivot left at the scene origin makes it
-    // orbit the hull during yaw, which corrupts both articulation boards and
-    // component masks. Most articulated source files retain a useful object
-    // origin even when their mesh vertices were baked in an arbitrary DCC
-    // frame; explicit `pivot` remains available for the exceptions.
-    if (cfg.autoPivot && turretNodes.length) {
-      const pivot = Array.isArray(cfg.pivot)
-        ? new THREE.Vector3().fromArray(cfg.pivot)
-        : turretNodes[0].getWorldPosition(new THREE.Vector3());
-      turret.position.copy(pivot);
-      root.updateMatrixWorld(true);
-    }
-    attachAll(turret, [...turretNodes, ...turretFollowers]);
-
-    const gunNodes = [
-      ...matchingNodes(root, cfg.gunNode),
-      ...semanticSubsets.gun,
-    ];
-    const gunFollowers = matchingNodes(root, cfg.gunFollowers);
-    if (cfg.autoPivot && gunNodes.length) {
-      const pivotWorld = gunNodes[0].getWorldPosition(new THREE.Vector3());
-      gun.position.copy(turret.worldToLocal(pivotWorld.clone()));
-      root.updateMatrixWorld(true);
-    }
-    attachAll(gun, [...gunNodes, ...gunFollowers]);
-
-    // PARKED-POSE CORRECTION (§5.269 upior class, additive + opt-in): some
-    // prints are AUTHORED with the turret slewed away from the fleet's
-    // gun-forward rest law (the upior concept parks its whole station 180°
-    // over the engine deck). cfg.turretYaw re-poses the articulated rig
-    // about its own footprint center (the autoPivot convention) AFTER the
-    // attach so masks, curves and dims compare rest-law frames. Absent the
-    // param, nothing moves — every existing registration is byte-identical.
-    if (cfg.turretYaw) {
-      // Pivot on the TURRET-SHELL footprint only: a rear-hanging parked gun
-      // biases the whole-cluster center ~0.5 m off the ring (measured on
-      // the upior probe: muzzle landed 1.0 m short of the bow).
-      const clusterBox = new THREE.Box3();
-      for (const node of turretNodes) clusterBox.expandByObject(node);
-      if (clusterBox.isEmpty()) clusterBox.setFromObject(turret);
-      if (!clusterBox.isEmpty()) {
-        const pivot = clusterBox.getCenter(new THREE.Vector3());
-        for (const child of turret.children) {
-          child.position.x -= pivot.x;
-          child.position.z -= pivot.z;
-        }
-        turret.rotation.y = Number(cfg.turretYaw);
-        turret.position.x = pivot.x;
-        turret.position.z = pivot.z;
-        root.updateMatrixWorld(true);
-      }
-    }
-  }
+  centerPathologicalScene(gltf.scene);
+  rig.authoredFrame.add(gltf.scene);
+  rig.root.updateMatrixWorld(true);
+  routeArticulatedComponents(gltf.scene, rig, cfg);
 
   // Source files arrive in metres, centimetres, millimetres, or arbitrary
   // DCC units. Register on the published vehicle width before any scoring;
   // width is stable and is not inflated by the cannon or roof antennas.
-  root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root);
-  const width = box.getSize(new THREE.Vector3()).x;
-  const targetWidth = Number(spec?.dims?.widthM || 0);
-  if (width > 1e-6 && targetWidth > 0) {
-    const scale = targetWidth / width;
-    root.scale.setScalar(scale);
-    root.position.y = -box.min.y * scale;
-  }
+  normalizeReferenceWidth(rig.root, spec);
 
   // §5.317 (t95 WoT print): some textured rips carry near-black albedo
   // regions (gun / track bottoms / glacis) that fall under the gate's mask
@@ -392,23 +461,14 @@ export async function loadReferenceGlb(
   // and texture-preserving (the floor ADDS; maps stay visible) — so every
   // authored surface clears the threshold. Opt-in per registration; do not
   // combine with brightenOracle (its emissive×map product would re-darken).
-  if (cfg.maskFloorOracle) {
-    // Rip-class prints also carry inward-wound faces (aprons / band bottoms)
-    // that FrontSide culls into the same hole class. DoubleSide keeps the
-    // authored surface mask-visible from every gate camera.
-    replaceMeshMaterials(root, 'floor');
-  }
+  applyOracleMaterialPolicy(rig.root, cfg);
 
   // A few legacy source sheets bake almost all illumination into a very dark
   // albedo. Their silhouettes remain valid, but a shaded comparison becomes
   // unreadable. Opt-in emissive reuse reveals the authored texture without
   // replacing it or changing any geometry.
-  if (cfg.brightenOracle) {
-    replaceMeshMaterials(root, 'bright');
-  }
-
-  root.userData.__glbSwapped = true;
-  root.userData.__comparisonOracle = true;
-  root.updateMatrixWorld(true);
-  return { root, specId };
+  rig.root.userData.__glbSwapped = true;
+  rig.root.userData.__comparisonOracle = true;
+  rig.root.updateMatrixWorld(true);
+  return { root: rig.root, specId };
 }

@@ -4,27 +4,54 @@ import type {
   GarageEnvironmentPresentationRuntime,
   GarageEnvironmentState,
 } from './garageEnvironmentPresentationRuntime.ts';
+import type { GarageDressingOptimizationReceipt } from './garageDressingOptimization.ts';
 import type { GaragePedestalRuntime } from './garagePedestalRuntime.ts';
 import type {
   GaragePhasePresentationDiagnostics,
   GaragePhasePresentationRuntime,
 } from './garagePhasePresentationRuntime.ts';
 import type { GarageVariant } from './garageVariants.ts';
+import type { GarageArchitectureStats } from '../ui/garageArchitecture.ts';
 import type { GarageStageRuntime } from '../ui/garageStage.ts';
 import type { GarageRuntime } from '../ui/garage.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export type GarageWorkshopVariant = Pick<
   GarageVariant,
   'id' | 'mapId' | 'name' | 'architecture'
 >;
 
+export interface GarageWorkshopBuildTiming {
+  readonly chunk: string;
+  readonly ms: number;
+  readonly at: number;
+}
+
+export interface GarageWorkshopTransferTiming {
+  readonly specId?: RuntimeValue;
+  readonly finish?: RuntimeValue;
+  readonly textureCount?: RuntimeValue;
+  readonly materialCount?: RuntimeValue;
+  readonly payload?: {
+    readonly attributeBytes?: RuntimeValue;
+    readonly omittedAttributeBytes?: RuntimeValue;
+    readonly omittedAttributeCount?: RuntimeValue;
+  };
+  readonly [key: string]: RuntimeValue;
+}
+
+export interface GarageWorkshopWallLayout {
+  readonly bays: number;
+  readonly overlaps: readonly string[];
+}
+
 export interface GarageWorkshopStats {
   readonly selected: string;
   readonly built: boolean;
   readonly triangles: number;
   readonly activeWorkshopTriangles: number;
-  readonly buildTimings: readonly unknown[];
-  readonly workshopTransferTimings: readonly unknown[];
+  readonly buildTimings: readonly GarageWorkshopBuildTiming[];
+  readonly workshopTransferTimings: readonly GarageWorkshopTransferTiming[];
   readonly workshopPresentationFinishes: readonly string[];
   readonly workshopPaletteCount: number;
   readonly workshopExhibitTextureCount: number;
@@ -32,18 +59,18 @@ export interface GarageWorkshopStats {
   readonly workshopTransferredAttributeBytes: number;
   readonly workshopOmittedAttributeBytes: number;
   readonly workshopOmittedAttributeCount: number;
-  readonly optimization: Readonly<Record<string, unknown>> | null;
+  readonly optimization: Readonly<GarageDressingOptimizationReceipt> | null;
   readonly optimizedTriangles: number;
   readonly optimizedTriangleParity: boolean;
   readonly mapId: string;
-  readonly architecture: unknown;
+  readonly architecture: GarageArchitectureStats;
   readonly sceneMode: string;
   readonly roofMode: string;
   readonly environment: Readonly<GarageEnvironmentState> & {
     readonly worldMounted: boolean;
     readonly retainedWorldMapId: string | null;
   };
-  readonly wallLayout: unknown;
+  readonly wallLayout: GarageWorkshopWallLayout;
   readonly mapImageCount: number;
   readonly battleScreenMode: string;
   readonly battleScreenWallBay: string;
@@ -55,19 +82,19 @@ export interface GarageWorkshopStats {
   readonly modelMode: string;
   readonly exhibitCount: number;
   readonly sharedMaintenanceBayCount: number;
-  readonly sharedMaintenanceBayIds: readonly unknown[];
-  readonly sharedMaintenanceBayQuadrants: readonly unknown[];
+  readonly sharedMaintenanceBayIds: readonly string[];
+  readonly sharedMaintenanceBayQuadrants: readonly string[];
   readonly workshopOrbitCoverageDegrees: number;
   readonly heroTrackContactErrorM: number | null;
   readonly verdantOriginalVisible: boolean;
   readonly verdantOriginalLayoutReceipt: string;
   readonly verdantOriginalTriangleCount: number;
   readonly verdantOriginalExhibitCount: number;
-  readonly verdantOriginalExhibitIds: readonly unknown[];
-  readonly verdantOriginalSetPieces: readonly unknown[];
+  readonly verdantOriginalExhibitIds: readonly string[];
+  readonly verdantOriginalSetPieces: readonly string[];
   readonly forwardCorrectionRad: number;
-  readonly families: readonly unknown[];
-  readonly sourceVehicleIds: readonly unknown[];
+  readonly families: readonly string[];
+  readonly sourceVehicleIds: readonly string[];
   readonly renderer: { readonly calls: number; readonly triangles: number };
 }
 
@@ -99,22 +126,47 @@ export interface GarageWorkshopDiagnosticsOptions {
   readonly invalidatePresentation: () => void;
 }
 
-function arrayValue(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? [...value] : [];
+function copiedArray<T>(value: readonly T[] | null | undefined): readonly T[] {
+  return value ? [...value] : [];
 }
 
-interface WorkshopTransferReceipt {
-  readonly finish?: unknown;
-  readonly textureCount?: unknown;
-  readonly materialCount?: unknown;
-  readonly payload?: {
-    readonly attributeBytes?: unknown;
-    readonly omittedAttributeBytes?: unknown;
-    readonly omittedAttributeCount?: unknown;
-  };
+function numberValue(value: number | null | undefined): number {
+  return value || 0;
 }
 
-function finiteNumber(value: unknown): number {
+function stringValue(value: string | null | undefined): string {
+  return value || '';
+}
+
+function trueValue(value: boolean | null | undefined): boolean {
+  return value === true;
+}
+
+function optimizationValue(
+  value: GarageDressingOptimizationReceipt | null | undefined,
+): Readonly<GarageDressingOptimizationReceipt> | null {
+  return value ? Object.freeze({ ...value }) : null;
+}
+
+function heroTrackContactError(
+  visual: GaragePedestalRuntime['current'],
+  garagePositionY: number,
+  podiumTopYM: number,
+): number | null {
+  const trackFloorYM = visual?.presentationTrackFloorYM;
+  if (!Number.isFinite(trackFloorYM)) return null;
+  return Math.abs(
+    numberValue(visual?.root.position.y)
+    + numberValue(trackFloorYM)
+    - (garagePositionY + podiumTopYM),
+  );
+}
+
+function isWorkshopTransferTiming(value: RuntimeValue): value is GarageWorkshopTransferTiming {
+  return !!value && typeof value === 'object';
+}
+
+function finiteNumber(value: RuntimeValue): number {
   return Number.isFinite(value) ? Number(value) : 0;
 }
 
@@ -154,12 +206,9 @@ export function createGarageWorkshopDiagnostics({
       const data = dressing.group.userData;
       const stageData = stage.group.userData;
       const visual = pedestal.current;
-      const trackFloorYM = visual?.presentationTrackFloorYM;
       const phaseDiagnostics: GaragePhasePresentationDiagnostics = phase.diagnostics();
-      const transferTimings = arrayValue(data.workshopTransferTimings);
-      const transferReceipts = transferTimings.filter((value): value is WorkshopTransferReceipt => (
-        !!value && typeof value === 'object'
-      ));
+      const transferTimings = copiedArray<RuntimeValue>(data.workshopTransferTimings);
+      const transferReceipts = transferTimings.filter(isWorkshopTransferTiming);
       const finishSet = transferReceipts.reduce((result, receipt) => {
         const finish = String(receipt.finish || '');
         if (finish) result.add(finish);
@@ -178,10 +227,10 @@ export function createGarageWorkshopDiagnostics({
       return {
         selected: garage.getSelectedGarageVariant(),
         built: dressing.isBuilt(),
-        triangles: data.workshopTriangleCount || 0,
-        activeWorkshopTriangles: data.activeWorkshopTriangleCount || 0,
-        buildTimings: arrayValue(data.buildTimings),
-        workshopTransferTimings: transferTimings,
+        triangles: numberValue(data.workshopTriangleCount),
+        activeWorkshopTriangles: numberValue(data.activeWorkshopTriangleCount),
+        buildTimings: copiedArray<GarageWorkshopBuildTiming>(data.buildTimings),
+        workshopTransferTimings: transferReceipts,
         workshopPresentationFinishes: finishes,
         workshopPaletteCount: finishes.length,
         workshopExhibitTextureCount: transferReceipts.reduce(
@@ -199,14 +248,13 @@ export function createGarageWorkshopDiagnostics({
         workshopOmittedAttributeCount: transferReceipts.reduce(
           (sum, receipt) => sum + finiteNumber(receipt.payload?.omittedAttributeCount), 0,
         ),
-        optimization: data.optimizationReceipt
-          ? Object.freeze({ ...data.optimizationReceipt }) : null,
-        optimizedTriangles: data.optimizedWorkshopTriangleCount || 0,
-        optimizedTriangleParity: data.optimizedWorkshopTriangleParity === true,
-        mapId: data.garageMapId || '',
-        architecture: stage.stats?.() || stageData.garageArchitecture || {},
-        sceneMode: stageData.garageSceneMode || '',
-        roofMode: stageData.garageRoofMode || '',
+        optimization: optimizationValue(data.optimizationReceipt),
+        optimizedTriangles: numberValue(data.optimizedWorkshopTriangleCount),
+        optimizedTriangleParity: trueValue(data.optimizedWorkshopTriangleParity),
+        mapId: stringValue(data.garageMapId),
+        architecture: stage.stats(),
+        sceneMode: stringValue(stageData.garageSceneMode),
+        roofMode: stringValue(stageData.garageRoofMode),
         environment: {
           ...environment.diagnostics(),
           worldMounted: phaseDiagnostics.scene.worldMounted,
@@ -214,35 +262,35 @@ export function createGarageWorkshopDiagnostics({
         },
         wallLayout: data.wallLayout || { bays: 0, overlaps: [] },
         mapImageCount: data.mapImageCount ?? -1,
-        battleScreenMode: data.battleScreenMode || '',
-        battleScreenWallBay: data.battleScreenWallBay || '',
-        battleScreenImageCount: data.battleScreenImageCount || 0,
-        battleScreenResidentImageLimit: data.battleScreenResidentImageLimit || 0,
-        battleScreenResidentImageCount: data.battleScreenResidentImageCount || 0,
-        battleScreenCurrentImage: data.battleScreenCurrentImage || '',
-        battleScreenVisible: data.battleScreenVisible === true,
-        modelMode: data.workshopModelMode || '',
-        exhibitCount: data.workshopExhibitCount || 0,
-        sharedMaintenanceBayCount: data.sharedMaintenanceBayCount || 0,
-        sharedMaintenanceBayIds: arrayValue(data.sharedMaintenanceBayIds),
-        sharedMaintenanceBayQuadrants: arrayValue(data.sharedMaintenanceBayQuadrants),
-        workshopOrbitCoverageDegrees: data.workshopOrbitCoverageDegrees || 0,
-        heroTrackContactErrorM: Number.isFinite(trackFloorYM)
-          ? Math.abs(
-            (visual?.root.position.y || 0)
-            + (trackFloorYM || 0)
-            - (garagePosition.y + podiumTopYM)
-          )
-          : null,
-        verdantOriginalVisible: data.verdantOriginalVisible === true,
-        verdantOriginalLayoutReceipt: data.verdantOriginalLayoutReceipt || '',
-        verdantOriginalTriangleCount: data.verdantOriginalTriangleCount || 0,
-        verdantOriginalExhibitCount: data.verdantOriginalExhibitCount || 0,
-        verdantOriginalExhibitIds: arrayValue(data.verdantOriginalExhibitIds),
-        verdantOriginalSetPieces: arrayValue(data.verdantOriginalSetPieces),
-        forwardCorrectionRad: data.workshopForwardCorrectionRad || 0,
-        families: arrayValue(data.workshopFamilies),
-        sourceVehicleIds: arrayValue(data.workshopSourceVehicleIds),
+        battleScreenMode: stringValue(data.battleScreenMode),
+        battleScreenWallBay: stringValue(data.battleScreenWallBay),
+        battleScreenImageCount: numberValue(data.battleScreenImageCount),
+        battleScreenResidentImageLimit: numberValue(data.battleScreenResidentImageLimit),
+        battleScreenResidentImageCount: numberValue(data.battleScreenResidentImageCount),
+        battleScreenCurrentImage: stringValue(data.battleScreenCurrentImage),
+        battleScreenVisible: trueValue(data.battleScreenVisible),
+        modelMode: stringValue(data.workshopModelMode),
+        exhibitCount: numberValue(data.workshopExhibitCount),
+        sharedMaintenanceBayCount: numberValue(data.sharedMaintenanceBayCount),
+        sharedMaintenanceBayIds: copiedArray<string>(data.sharedMaintenanceBayIds),
+        sharedMaintenanceBayQuadrants: copiedArray<string>(
+          data.sharedMaintenanceBayQuadrants,
+        ),
+        workshopOrbitCoverageDegrees: numberValue(data.workshopOrbitCoverageDegrees),
+        heroTrackContactErrorM: heroTrackContactError(
+          visual,
+          garagePosition.y,
+          podiumTopYM,
+        ),
+        verdantOriginalVisible: trueValue(data.verdantOriginalVisible),
+        verdantOriginalLayoutReceipt: stringValue(data.verdantOriginalLayoutReceipt),
+        verdantOriginalTriangleCount: numberValue(data.verdantOriginalTriangleCount),
+        verdantOriginalExhibitCount: numberValue(data.verdantOriginalExhibitCount),
+        verdantOriginalExhibitIds: copiedArray<string>(data.verdantOriginalExhibitIds),
+        verdantOriginalSetPieces: copiedArray<string>(data.verdantOriginalSetPieces),
+        forwardCorrectionRad: numberValue(data.workshopForwardCorrectionRad),
+        families: copiedArray<string>(data.workshopFamilies),
+        sourceVehicleIds: copiedArray<string>(data.workshopSourceVehicleIds),
         renderer: {
           calls: renderer.info.render.calls,
           triangles: renderer.info.render.triangles,

@@ -1,3 +1,4 @@
+import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
 // Render the presentation's canonical in-engine Studio action loop, including
 // the live Scene Studio controls and cinematic timeline.
 //
@@ -12,9 +13,7 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import {
-  mkdirSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync,
-} from 'node:fs';
+import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -32,92 +31,6 @@ const bitrate = Math.max(4_000_000, Math.min(
   Number.parseInt(opt('bitrate', '10000000'), 10) || 10_000_000,
 ));
 mkdirSync(outDir, { recursive: true });
-
-const LOCK_DIR = '/tmp/cot-shots.lock';
-const QUEUE_DIR = '/tmp/cot-shots.queue';
-const LOCK_STALE_MS = 5 * 60 * 1000;
-const TICKET_STALE_MS = 60 * 60 * 1000;
-let lockHeld = false;
-
-function ticketPid(name) {
-  const match = name.match(/-(\d+)\.t$/);
-  return match ? Number.parseInt(match[1], 10) : -1;
-}
-
-function ticketAlive(name) {
-  const pid = ticketPid(name);
-  if (pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
-}
-
-async function acquireLock(timeoutMs) {
-  mkdirSync(QUEUE_DIR, { recursive: true });
-  const ticket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
-  writeFileSync(join(QUEUE_DIR, ticket), String(process.pid));
-  const startedAt = Date.now();
-  try {
-    for (;;) {
-      let head = null;
-      let names = [];
-      try {
-        names = readdirSync(QUEUE_DIR).filter((name) => name.endsWith('.t')).sort();
-      } catch (_) {
-        names = [ticket];
-      }
-      for (const name of names) {
-        if (name === ticket) {
-          head ||= name;
-          break;
-        }
-        let stale = false;
-        try {
-          stale = Date.now() - statSync(join(QUEUE_DIR, name)).mtimeMs > TICKET_STALE_MS;
-        } catch (_) {
-          continue;
-        }
-        if (stale || !ticketAlive(name)) {
-          try { unlinkSync(join(QUEUE_DIR, name)); } catch (_) { /* raced */ }
-          continue;
-        }
-        head = name;
-        break;
-      }
-      if (head === ticket) {
-        try {
-          mkdirSync(LOCK_DIR);
-          lockHeld = true;
-          return;
-        } catch (_) { /* live renderer */ }
-        try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) {
-            try { rmdirSync(LOCK_DIR); } catch (error) {
-              if (error.code === 'ENOTDIR') unlinkSync(LOCK_DIR);
-              else throw error;
-            }
-            continue;
-          }
-        } catch (_) {
-          continue;
-        }
-      }
-      if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-      await new Promise((done) => setTimeout(done, head === ticket ? 300 : 1000));
-    }
-  } finally {
-    try { unlinkSync(join(QUEUE_DIR, ticket)); } catch (_) { /* fine */ }
-  }
-}
-
-function releaseLock() {
-  if (!lockHeld) return;
-  lockHeld = false;
-  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
-}
 
 const scene = {
   map: 'winter',
@@ -150,12 +63,7 @@ const scene = {
 
 await acquireLock(45 * 60 * 1000);
 process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => {
-  try {
-    const now = new Date();
-    utimesSync(LOCK_DIR, now, now);
-  } catch (_) { /* fine */ }
-}, 60 * 1000);
+const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 lockRefresher.unref();
 
 const port = 7800 + Math.floor(Math.random() * 400);

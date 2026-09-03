@@ -241,7 +241,10 @@ assert.doesNotMatch(playMenuSource, /new RoomSignalingClient|new PrivateRoom(?:H
 assert.match(playMenuSource, /privateRoomConnection\.forget\(\);[\s\S]{0,80}activeRoom = adapter/,
   'battle handoff relinquishes menu ownership without closing the live transport');
 assert.match(playMenuSource,
-  /next\.phase === 'starting' \|\| next\.phase === 'playing'[\s\S]{0,180}beginNetworkHandoff\(next, 'client'\)/,
+  /function shouldBeginClientHandoff\(next: SerializedLobby\)[\s\S]{0,220}next\.phase === 'starting' \|\| next\.phase === 'playing'[\s\S]{0,180}role === 'client'[\s\S]{0,120}!handedOff[\s\S]{0,80}!activeRoom/,
+  'the client handoff predicate accepts both starting and already-playing rooms exactly once');
+assert.match(playMenuSource,
+  /if \(shouldBeginClientHandoff\(next\)\)[\s\S]{0,120}beginNetworkHandoff\(next, 'client'\)/,
   'the real invite UI resumes a refreshed guest into an already-playing room');
 assert.match(playMenuSource,
   /roomIce && !roomIce\.relayAvailable[\s\S]{0,300}production TURN service is not configured/,

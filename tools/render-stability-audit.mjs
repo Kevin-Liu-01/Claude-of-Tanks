@@ -80,9 +80,9 @@ for (const preset of presets) {
     // Regression for the live-only shadow flash: the old adaptive trim path
     // changed cascade ownership and presented large lighting steps. The
     // current scheduler deliberately keeps every native shadow auto-update
-    // disabled and submits mutually exclusive near/far pairs itself. Force
-    // the maximum trim rung and prove that ownership remains manual before
-    // running the ordinary texel/frozen-frame contracts.
+    // disabled and submits one coherent all-cascade pass itself. Force the
+    // maximum trim rung and prove that ownership remains manual before running
+    // the ordinary texel/frozen-frame contracts.
     D.post.forcePerfTrim(99);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const trimTelemetry = D.telemetry();
@@ -140,12 +140,12 @@ for (const preset of presets) {
     }
 
     // Render the same wide camera sweep twice into a tiny direct-render
-    // viewport: first with every cascade refreshed (ground truth), then with
-    // the production far-cascade cadence. This catches filter-phase changes
-    // that are invisible in a frozen shot. The scene cannot advance while
-    // this synchronous block runs, so any changed pixel is rendering
-    // instability, not animation. Adjacent far maps are also required to
-    // refresh as one cohort because CSM fade samples them in the same pixel.
+    // viewport: first with an explicit force refresh (ground truth), then with
+    // the production cascade schedule. This catches filter-phase changes that
+    // are invisible in a frozen shot. The scene cannot advance while this
+    // synchronous block runs, so any changed pixel is rendering instability,
+    // not animation. Every active map must share one camera timestamp because
+    // CSM fade samples adjacent cascades in the same pixel.
     const motionOffsets = [0, 2, 4, 6, 8, 10, 12, 14, 16];
     const directGl = D.renderer.getContext();
     const directWidth = 160;
@@ -701,9 +701,9 @@ await waitForEvaluation(`(() => ({
 
 // Run the force-all comparison again inside the real forest battlefield for
 // every preset on this device tier. The staged sweep above is deliberately
-// deterministic, but it does not contain the dense canopy-shadow field from
-// the user report. Keeping the world frozen while replaying identical camera
-// poses makes any changed pixel a cascade-cadence defect rather than motion.
+// deterministic, but it does not contain the dense tree field from the user
+// report. Keeping the world frozen while replaying identical camera poses
+// makes any changed pixel a cascade-cadence defect rather than motion.
 const livePresetMotion = evaluate(`(async () => {
   const D = window.__DEBUG;
   const renderer = D.renderer;
@@ -1061,7 +1061,7 @@ const liveDrive = evaluate(`(() => {
 // observer far enough to demote a dense ring of trees. This turns the user's
 // intermittent forest-light flash into a deterministic frame boundary. All
 // cascades are current and instance culling is disabled, so the first frame
-// whose proxy population drops measures only the near-tree caster handoff.
+// whose trunk-caster population drops measures only the near-tree handoff.
 const treeLodShadowTransition = evaluate(`(() => {
   const D = window.__DEBUG;
   const renderer = D.renderer;
@@ -1092,10 +1092,10 @@ const treeLodShadowTransition = evaluate(`(() => {
   D.rig.setExternalPose(base, look, camera.fov);
   window.__SHADOW_DEBUG = { forceAll: true, noCull: true };
 
-  const proxyCount = () => {
+  const casterCount = () => {
     let count = 0;
     D.scene.traverse((object) => {
-      if (object.userData?.canopyShadowProxy) count += object.count || 0;
+      if (object.userData?.treeTrunk && object.castShadow) count += object.count || 1;
     });
     return count;
   };
@@ -1126,9 +1126,9 @@ const treeLodShadowTransition = evaluate(`(() => {
     return { changedSamples, visiblyChangedSamples, maxRgbDelta };
   };
 
-  let proxyCountBefore = 0;
-  let proxyCountPeak = 0;
-  let proxyCountAfter = 0;
+  let casterCountBefore = 0;
+  let casterCountPeak = 0;
+  let casterCountAfter = 0;
   let removalFrame = -1;
   let removalChangedSamples = 0;
   let removalVisiblyChangedSamples = 0;
@@ -1137,15 +1137,15 @@ const treeLodShadowTransition = evaluate(`(() => {
     D.world.update(0, base, forward, null);
     D.world.update(0, base, forward, null);
     let previousPixels = capture();
-    let previousProxyCount = proxyCount();
-    proxyCountBefore = previousProxyCount;
-    proxyCountPeak = previousProxyCount;
+    let previousCasterCount = casterCount();
+    casterCountBefore = previousCasterCount;
+    casterCountPeak = previousCasterCount;
     for (let frame = 0; frame < 30; frame++) {
       D.world.update(1 / 60, shifted, forward, null);
       const currentPixels = capture();
-      const currentProxyCount = proxyCount();
-      proxyCountPeak = Math.max(proxyCountPeak, currentProxyCount);
-      if (removalFrame < 0 && currentProxyCount < previousProxyCount) {
+      const currentCasterCount = casterCount();
+      casterCountPeak = Math.max(casterCountPeak, currentCasterCount);
+      if (removalFrame < 0 && currentCasterCount < previousCasterCount) {
         const frameDiff = diff(previousPixels, currentPixels);
         removalFrame = frame;
         removalChangedSamples = frameDiff.changedSamples;
@@ -1153,9 +1153,9 @@ const treeLodShadowTransition = evaluate(`(() => {
         removalMaxRgbDelta = frameDiff.maxRgbDelta;
       }
       previousPixels = currentPixels;
-      previousProxyCount = currentProxyCount;
+      previousCasterCount = currentCasterCount;
     }
-    proxyCountAfter = proxyCount();
+    casterCountAfter = casterCount();
   } finally {
     D.world.update(0, base, forward, null);
     D.world.update(0, base, forward, null);
@@ -1171,9 +1171,9 @@ const treeLodShadowTransition = evaluate(`(() => {
     D.rig.release();
   }
   return {
-    proxyCountBefore,
-    proxyCountPeak,
-    proxyCountAfter,
+    casterCountBefore,
+    casterCountPeak,
+    casterCountAfter,
     removalFrame,
     removalChangedSamples,
     removalVisiblyChangedSamples,
@@ -1204,8 +1204,8 @@ if (liveDrive.glError !== 0) liveDriveReasons.push(`live WebGL error ${liveDrive
 if (liveDrive.shaderErrors !== 0) {
   liveDriveReasons.push(`${liveDrive.shaderErrors} live shader errors`);
 }
-if (liveDrive.canopyShadowProxyCasters < 1 || liveDrive.canopyShadowProxyVertices < 1) {
-  liveDriveReasons.push('live world has no stable tree-canopy shadow proxies');
+if (liveDrive.canopyShadowProxyCasters !== 0 || liveDrive.canopyShadowProxyVertices !== 0) {
+  liveDriveReasons.push('opaque tree-canopy shadow proxies were reintroduced');
 }
 if (liveDrive.treeFoliageShadowCasters !== 0) {
   liveDriveReasons.push(
@@ -1253,7 +1253,7 @@ if (liveDrive.groundContactDecalReceivers !== 0) {
   );
 }
 if (treeLodShadowTransition.removalFrame < 0) {
-  liveDriveReasons.push('tree LOD stress did not exercise a canopy-caster removal');
+  liveDriveReasons.push('tree LOD stress did not exercise a trunk-caster removal');
 } else if (treeLodShadowTransition.removalVisiblyChangedSamples > 800) {
   liveDriveReasons.push(
     `tree LOD caster removal changed ${treeLodShadowTransition.removalVisiblyChangedSamples} visible samples`,
@@ -1270,7 +1270,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 9,
+  version: 10,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { RoomChatInput, RoomChatOptions, RoomChatRuntime } from '../ui/roomChat.ts';
 import type {
   ActiveRoomAdapter,
@@ -33,7 +34,7 @@ export interface NetworkRoomState {
   teamSize?: number;
   revision?: number;
   matchSeed?: number | null;
-  lastResult?: unknown;
+  lastResult?: RuntimeValue;
   players: NetworkRoomPlayer[];
 }
 
@@ -47,10 +48,10 @@ interface NetworkRoomMatch {
   playerId?: string;
   role?: string;
   client?: { closed?: boolean } | null;
-  roomCommand?(command: Record<string, unknown>): unknown;
+  roomCommand?(command: Record<string, RuntimeValue>): RuntimeValue;
   onRoomState?(listener: (state: NetworkRoomState) => void): (() => void) | void;
-  onRoomChat?(listener: (message: unknown) => void): (() => void) | void;
-  getRoomChatHistory?(): unknown[];
+  onRoomChat?(listener: (message: RuntimeValue) => void): (() => void) | void;
+  getRoomChatHistory?(): RuntimeValue[];
   sendRoomChat?(text: string): boolean;
 }
 
@@ -77,11 +78,11 @@ export interface NetworkRoomCoordinatorOptions {
   isSpectator: () => boolean;
   input: RoomChatInput;
   setGarageStatus: (status: GarageRoomStatus | null) => void;
-  emitRoomState: (payload: unknown) => void;
+  emitRoomState: (payload: RuntimeValue) => void;
   preloadLobbyIntent: (state: NetworkRoomState) => void;
-  equipmentFor: (specId: string) => unknown;
+  equipmentFor: (specId: string) => RuntimeValue;
   camoFor: (specId: string) => string;
-  onRematch: (state: NetworkRoomState) => unknown;
+  onRematch: (state: NetworkRoomState) => RuntimeValue;
   onClose: (reason: string) => void;
   schedule?: (callback: () => void) => void;
   randomUint32?: () => number;
@@ -113,19 +114,71 @@ function defaultRandomUint32(): number {
   return words[0];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isLobbyPhase(value: unknown): value is SerializedLobby['phase'] {
+function isLobbyPhase(value: RuntimeValue): value is SerializedLobby['phase'] {
   return value === 'waiting' || value === 'starting' ||
     value === 'playing' || value === 'finished';
 }
 
-function isGameMode(value: unknown): value is SerializedLobby['gameMode'] {
+function isGameMode(value: RuntimeValue): value is SerializedLobby['gameMode'] {
   return value === 'standard' || value === 'capture_the_flag' ||
     value === 'zone_control' || value === 'turbo_ball' ||
     value === 'endless_horde';
+}
+
+function isNonNegativeInteger(value: number | undefined): boolean {
+  return Number.isSafeInteger(value) && Number(value) >= 0;
+}
+
+function isPositiveInteger(value: number | undefined): boolean {
+  return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
+function isSerializedRoundResult(value: RuntimeValue): boolean {
+  return value === null || (
+    isRecord(value)
+    && Number.isSafeInteger(value.round) && Number(value.round) >= 0
+    && (value.result === null || typeof value.result === 'string')
+    && (value.reason === null || typeof value.reason === 'string')
+  );
+}
+
+function isSerializedLobbyPlayer(player: NetworkRoomPlayer): boolean {
+  const validTeam = player.team === 'alpha' || player.team === 'bravo' || player.team === 'spectator';
+  const validEquipment = Array.isArray(player.equipment)
+    && player.equipment.every((entry) => typeof entry === 'string');
+  const validRating = player.rating === null
+    || (typeof player.rating === 'number' && Number.isFinite(player.rating));
+  return typeof player.id === 'string' && /^[a-zA-Z0-9_-]{1,48}$/.test(player.id)
+    && typeof player.name === 'string' && player.name.length > 0
+    && validTeam
+    && (player.specId === null || typeof player.specId === 'string')
+    && validEquipment
+    && typeof player.camo === 'string'
+    && typeof player.ready === 'boolean'
+    && typeof player.connected === 'boolean'
+    && typeof player.isHost === 'boolean'
+    && validRating;
+}
+
+function hasSerializedLobbyEnvelope(state: NetworkRoomState, playerIds: string[]): boolean {
+  return typeof state.roomCode === 'string' && /^[A-Z0-9]{6}$/.test(state.roomCode)
+    && typeof state.mode === 'string'
+    && isGameMode(state.gameMode)
+    && isLobbyPhase(state.phase)
+    && typeof state.hostId === 'string' && playerIds.includes(state.hostId)
+    && isNonNegativeInteger(state.maxPlayers)
+    && isNonNegativeInteger(state.maxSpectators)
+    && typeof state.allowTeamSwitch === 'boolean'
+    && typeof state.locked === 'boolean'
+    && typeof state.mapId === 'string'
+    && isPositiveInteger(state.teamSize)
+    && isNonNegativeInteger(state.revision)
+    && (state.matchSeed === null || isNonNegativeInteger(state.matchSeed))
+    && isNonNegativeInteger(state.round);
 }
 
 /**
@@ -136,44 +189,12 @@ function isGameMode(value: unknown): value is SerializedLobby['gameMode'] {
 function isSerializedLobbyState(
   state: NetworkRoomState,
 ): state is NetworkRoomState & SerializedLobby {
-  const result = state.lastResult;
-  const validResult = result === null || (
-    isRecord(result) &&
-    Number.isSafeInteger(result.round) && Number(result.round) >= 0 &&
-    (result.result === null || typeof result.result === 'string') &&
-    (result.reason === null || typeof result.reason === 'string')
-  );
-  const validPlayers = state.players.every((player) =>
-    typeof player.id === 'string' && /^[a-zA-Z0-9_-]{1,48}$/.test(player.id) &&
-    typeof player.name === 'string' && player.name.length > 0 &&
-    (player.team === 'alpha' || player.team === 'bravo' || player.team === 'spectator') &&
-    (player.specId === null || typeof player.specId === 'string') &&
-    Array.isArray(player.equipment) &&
-    player.equipment.every((entry) => typeof entry === 'string') &&
-    typeof player.camo === 'string' &&
-    typeof player.ready === 'boolean' &&
-    typeof player.connected === 'boolean' &&
-    typeof player.isHost === 'boolean' &&
-    (player.rating === null || (typeof player.rating === 'number' &&
-      Number.isFinite(player.rating))));
+  const validPlayers = state.players.every(isSerializedLobbyPlayer);
   const playerIds = validPlayers ? state.players.map((player) => player.id) : [];
-  return typeof state.roomCode === 'string' && /^[A-Z0-9]{6}$/.test(state.roomCode) &&
-    typeof state.mode === 'string' &&
-    isGameMode(state.gameMode) &&
-    isLobbyPhase(state.phase) &&
-    typeof state.hostId === 'string' && playerIds.includes(state.hostId) &&
-    Number.isSafeInteger(state.maxPlayers) && Number(state.maxPlayers) >= 0 &&
-    Number.isSafeInteger(state.maxSpectators) && Number(state.maxSpectators) >= 0 &&
-    typeof state.allowTeamSwitch === 'boolean' &&
-    typeof state.locked === 'boolean' &&
-    typeof state.mapId === 'string' &&
-    Number.isSafeInteger(state.teamSize) && Number(state.teamSize) > 0 &&
-    Number.isSafeInteger(state.revision) && Number(state.revision) >= 0 &&
-    (state.matchSeed === null || (Number.isSafeInteger(state.matchSeed) &&
-      Number(state.matchSeed) >= 0)) &&
-    Number.isSafeInteger(state.round) && Number(state.round) >= 0 &&
-    validResult &&
-    validPlayers && new Set(playerIds).size === playerIds.length;
+  return validPlayers
+    && new Set(playerIds).size === playerIds.length
+    && isSerializedRoundResult(state.lastResult)
+    && hasSerializedLobbyEnvelope(state, playerIds);
 }
 
 /** Own the browser room lifecycle from lobby handoff through repeated rounds. */
@@ -212,7 +233,7 @@ export function createNetworkRoomCoordinator({
   let menuAttached = false;
   let presentedRound = 0;
   let rematchPending = false;
-  const pendingChat: unknown[] = [];
+  const pendingChat: RuntimeValue[] = [];
   let roomChat: RoomChatRuntime | null = null;
   let roomChatPromise: Promise<RoomChatRuntime> | null = null;
 
@@ -242,7 +263,7 @@ export function createNetworkRoomCoordinator({
     roomChat.setActive(chatVisible());
   };
 
-  const handleChat = (message: unknown) => {
+  const handleChat = (message: RuntimeValue) => {
     if (roomChat) roomChat.append(message);
     else {
       pendingChat.push(message);
@@ -266,7 +287,7 @@ export function createNetworkRoomCoordinator({
       for (const message of pendingChat.splice(0)) roomChat.append(message);
       syncChatVisibility();
       return roomChat;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (roomChatPromise === request) roomChatPromise = null;
       throw error;
     });
@@ -283,7 +304,7 @@ export function createNetworkRoomCoordinator({
       state,
       playerId: getMatch()?.playerId || '',
       role: getMatch()?.role === 'host' ? 'host' : 'client',
-      command: (command: Record<string, unknown>) => getMatch()?.roomCommand?.(command),
+      command: (command: Record<string, RuntimeValue>) => getMatch()?.roomCommand?.(command),
       leave: (reason?: string) => onClose(reason || 'left_room'),
     };
     if (!menuAttached) {

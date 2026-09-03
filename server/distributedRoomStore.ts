@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 /**
  * Redis-backed signaling membership for horizontally scaled deployments.
  *
@@ -168,11 +169,11 @@ export interface DistributedStoreHealth {
   code?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function errorCode(value: unknown): string | null {
+function errorCode(value: RuntimeValue): string | null {
   return isRecord(value) && typeof value.code === 'string' ? value.code : null;
 }
 
@@ -180,7 +181,7 @@ function codedError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
-function cleanPlayer(player: unknown): SignalingPlayer {
+function cleanPlayer(player: RuntimeValue): SignalingPlayer {
   const source = isRecord(player) ? player : {};
   const id = String(source.id || '').trim();
   const name = String(source.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
@@ -190,7 +191,7 @@ function cleanPlayer(player: unknown): SignalingPlayer {
   return { id, name };
 }
 
-function cleanSessionId(value: unknown, playerId: string): string {
+function cleanSessionId(value: RuntimeValue, playerId: string): string {
   const id = String(value || '').trim();
   if (!id && /^[a-zA-Z0-9_-]{1,48}$/.test(playerId)) return `legacy_${playerId}`;
   if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
@@ -205,13 +206,13 @@ function randomUnit(): number {
   return word[0] / 0x100000000;
 }
 
-function parseResult(raw: unknown): Record<string, unknown> {
-  const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
+function parseResult(raw: RuntimeValue): Record<string, RuntimeValue> {
+  const value: RuntimeValue = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!isRecord(value)) throw codedError('store_invalid', 'invalid room store response');
   return value;
 }
 
-function readStoredPeer(value: unknown): StoredPeer {
+function readStoredPeer(value: RuntimeValue): StoredPeer {
   if (!isRecord(value) || !isRecord(value.player)) {
     throw codedError('store_invalid', 'invalid peer in room store response');
   }
@@ -222,7 +223,7 @@ function readStoredPeer(value: unknown): StoredPeer {
   return { peerId, player, sessionId };
 }
 
-function readStoredRoom(value: unknown): StoredRoom {
+function readStoredRoom(value: RuntimeValue): StoredRoom {
   if (!isRecord(value) || !Array.isArray(value.peers)) {
     throw codedError('store_invalid', 'invalid room in store response');
   }
@@ -237,7 +238,7 @@ function readStoredRoom(value: unknown): StoredRoom {
   };
 }
 
-function readSignalingMessage(value: unknown): SignalingMessage | null {
+function readSignalingMessage(value: RuntimeValue): SignalingMessage | null {
   if (!isRecord(value) || typeof value.type !== 'string' || !isRecord(value.payload)) return null;
   return {
     type: value.type,
@@ -258,7 +259,7 @@ function waitForRedisReady(
       client.off('ready', onReady);
       client.off('end', onEnd);
     };
-    const finish = (error: unknown = null): void => {
+    const finish = (error: RuntimeValue = null): void => {
       if (settled) return;
       settled = true;
       cleanup();
@@ -359,7 +360,7 @@ export class DistributedSignalingRoomStore {
       keepAlive: 10_000,
       retryStrategy: (attempt: number) => Math.min(2_000, 100 * (2 ** Math.min(attempt - 1, 5))),
     });
-    const noteError = (role: string, error: unknown): void => {
+    const noteError = (role: string, error: RuntimeValue): void => {
       const now = Date.now();
       if (now - this._lastErrorLogAt < 5_000) return;
       this._lastErrorLogAt = now;
@@ -370,7 +371,7 @@ export class DistributedSignalingRoomStore {
     this.subscriber.on('message', (channel: string, raw: string) => {
       if (channel !== this.channel) return;
       try {
-        const delivery: unknown = JSON.parse(raw);
+        const delivery: RuntimeValue = JSON.parse(raw);
         const peerId = String(isRecord(delivery) ? delivery.peerId || '' : '');
         if (peerId && this.connections.has(peerId)) {
           this.#flushMailbox(peerId).catch((error) => {
@@ -383,11 +384,11 @@ export class DistributedSignalingRoomStore {
     });
   }
 
-  roomKey(roomCode: unknown): string {
+  roomKey(roomCode: RuntimeValue): string {
     return `${this.namespace}:room:${roomCode}`;
   }
 
-  mailboxKey(peerId: unknown): string {
+  mailboxKey(peerId: RuntimeValue): string {
     return `${this.namespace}:mailbox:${peerId}`;
   }
 
@@ -450,7 +451,7 @@ export class DistributedSignalingRoomStore {
     };
   }
 
-  async #runCommand(command: () => Promise<unknown>): Promise<unknown> {
+  async #runCommand(command: () => Promise<RuntimeValue>): Promise<RuntimeValue> {
     try {
       return await command();
     } catch (cause) {
@@ -461,7 +462,7 @@ export class DistributedSignalingRoomStore {
     }
   }
 
-  async #drainMailbox(peerId: unknown): Promise<SignalingMessage[]> {
+  async #drainMailbox(peerId: RuntimeValue): Promise<SignalingMessage[]> {
     const id = String(peerId || '');
     if (!id) return [];
     // Chain drains instead of sharing one result: a pub/sub wake and a client
@@ -478,7 +479,7 @@ export class DistributedSignalingRoomStore {
       const messages: SignalingMessage[] = [];
       for (const item of raw) {
         try {
-          const parsed: unknown = typeof item === 'string' ? JSON.parse(item) : item;
+          const parsed: RuntimeValue = typeof item === 'string' ? JSON.parse(item) : item;
           const message = readSignalingMessage(parsed);
           if (message) messages.push(message);
         } catch (_) { /* discard malformed mailbox entries */ }
@@ -493,7 +494,7 @@ export class DistributedSignalingRoomStore {
     }
   }
 
-  async #flushMailbox(peerId: unknown): Promise<number> {
+  async #flushMailbox(peerId: RuntimeValue): Promise<number> {
     const id = String(peerId || '');
     const connection = this.connections.get(id);
     if (!connection || !this.deliveryHandler) return 0;
@@ -621,7 +622,7 @@ export class DistributedSignalingRoomStore {
     }
     const raw = await this.#runCommand(() => this.command.get(this.roomKey(code)));
     if (!raw) throw codedError('room_not_found', 'room not found');
-    const room = readStoredRoom(typeof raw === 'string' ? JSON.parse(raw) as unknown : raw);
+    const room = readStoredRoom(typeof raw === 'string' ? JSON.parse(raw) as RuntimeValue : raw);
     const sender = room.peers.find((peer) => peer.peerId === membership.peerId);
     if (!sender) {
       throw codedError('not_in_room', 'not a room member');

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared garage/matchmaking eligibility and pure candidate ordering.
 //
 // The vehicle registry intentionally contains legacy, QA and generic-source
@@ -20,11 +21,11 @@ export interface MatchCandidate {
   spec?: { era?: string | null } | null;
 }
 
-export const isGarageVisibleTankId = (id: unknown): id is string =>
+export const isGarageVisibleTankId = (id: RuntimeValue): id is string =>
   typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));
 
 /** Every vehicle exposed by the production catalog is eligible for bot seats. */
-export const isBotTankId = (id: unknown): id is string =>
+export const isBotTankId = (id: RuntimeValue): id is string =>
   typeof id === 'string' && PRODUCTION_TANK_IDS.includes(id);
 
 /**

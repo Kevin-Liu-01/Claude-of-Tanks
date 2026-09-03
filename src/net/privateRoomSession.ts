@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createLobby,
   type LobbyState,
@@ -31,7 +32,10 @@ import {
 } from './signalingClient.ts';
 
 type Unsubscribe = () => void;
-type RoomCommand = Record<string, unknown>;
+type RoomCommand = Record<string, RuntimeValue>;
+type SignalPrimitive = string | number | boolean | null | undefined;
+type SignalValue = SignalPrimitive | SignalRecord | SignalValue[];
+interface SignalRecord { [key: string]: SignalValue }
 
 interface RoomPlayer {
   id?: string;
@@ -87,14 +91,14 @@ type MatchRuntimeTransport = RuntimeMatchTransport;
 
 interface MatchClientPort {
   roomState?: RoomState | null;
-  errors: unknown[];
+  errors: RuntimeValue[];
   closed: boolean;
   connected: boolean;
   transport: MatchRuntimeTransport;
   onConnection(listener: (connected: boolean) => void): Unsubscribe;
   onRoomState(listener: (state: RoomState) => void): Unsubscribe;
   connect(metadata: { mode: string; phase: string }): void;
-  submitRoomCommand(command: RoomCommand): unknown;
+  submitRoomCommand(command: RoomCommand): RuntimeValue;
   reconnectTransport(
     transport: MatchRuntimeTransport,
     metadata: { mode: string; phase: string },
@@ -106,8 +110,8 @@ interface MatchClientPort {
 
 export interface PrivateRoomAdapter {
   onState(listener: (state: RoomState) => void): Unsubscribe;
-  submit(command: RoomCommand): unknown;
-  readonly errors: unknown[];
+  submit(command: RoomCommand): RuntimeValue;
+  readonly errors: RuntimeValue[];
   readonly closed: boolean;
 }
 
@@ -134,7 +138,7 @@ export interface PrivateRoomHostOptions {
   isCamoAllowed?: (camo: string) => boolean;
   isMapAllowed?: (mapId: string) => boolean;
   onStart?: ((state: SerializedLobby) => void) | null;
-  onError?: ((error: unknown) => void) | null;
+  onError?: ((error: RuntimeValue) => void) | null;
 }
 
 export interface PrivateRoomClientOptions {
@@ -145,7 +149,7 @@ export interface PrivateRoomClientOptions {
   iceExpiresInSeconds?: number;
   refreshIceConfiguration?: (() => Promise<RtcIceLeaseConfiguration>) | null;
   RTCPeerConnectionImpl?: typeof RTCPeerConnection | null;
-  onError?: ((error: unknown) => void) | null;
+  onError?: ((error: RuntimeValue) => void) | null;
   onClose?: ((reason: string) => void) | null;
   onConnectionState?: ((state: RTCPeerConnectionState) => void) | null;
   disconnectedRebuildDelayMs?: number;
@@ -154,40 +158,51 @@ export interface PrivateRoomClientOptions {
   initialRebuildDelaysMs?: number[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is SignalRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readRtcSignal(value: unknown): RtcSignal | undefined {
+function readIceCandidate(value: SignalValue): RTCIceCandidateInit | undefined {
+  if (!isRecord(value)) return undefined;
+  const candidate: RTCIceCandidateInit = {};
+  if (typeof value.candidate === 'string') candidate.candidate = value.candidate;
+  if (typeof value.sdpMid === 'string' || value.sdpMid === null) candidate.sdpMid = value.sdpMid;
+  if (typeof value.sdpMLineIndex === 'number' && Number.isInteger(value.sdpMLineIndex)) {
+    candidate.sdpMLineIndex = value.sdpMLineIndex;
+  } else if (value.sdpMLineIndex === null) {
+    candidate.sdpMLineIndex = null;
+  }
+  if (typeof value.usernameFragment === 'string' || value.usernameFragment === null) {
+    candidate.usernameFragment = value.usernameFragment;
+  }
+  return candidate;
+}
+
+function isSessionDescriptionType(value: SignalValue): value is RTCSdpType {
+  return value === 'answer' || value === 'offer' || value === 'pranswer' || value === 'rollback';
+}
+
+function readSessionDescription(value: SignalValue): RTCSessionDescriptionInit | undefined {
+  if (!isRecord(value) || !isSessionDescriptionType(value.type)) return undefined;
+  if (value.sdp !== undefined && typeof value.sdp !== 'string') return undefined;
+  return { type: value.type, ...(value.sdp === undefined ? {} : { sdp: value.sdp }) };
+}
+
+function readRtcSignal(value: RuntimeValue): RtcSignal | undefined {
   if (!isRecord(value)) return undefined;
   if (value.kind === 'restart') return { kind: 'restart' };
-  if (value.kind === 'ice' && isRecord(value.candidate)) {
-    const raw = value.candidate;
-    const candidate: RTCIceCandidateInit = {};
-    if (typeof raw.candidate === 'string') candidate.candidate = raw.candidate;
-    if (typeof raw.sdpMid === 'string' || raw.sdpMid === null) candidate.sdpMid = raw.sdpMid;
-    if (typeof raw.sdpMLineIndex === 'number' && Number.isInteger(raw.sdpMLineIndex)) {
-      candidate.sdpMLineIndex = raw.sdpMLineIndex;
-    } else if (raw.sdpMLineIndex === null) candidate.sdpMLineIndex = null;
-    if (typeof raw.usernameFragment === 'string' || raw.usernameFragment === null) {
-      candidate.usernameFragment = raw.usernameFragment;
-    }
-    return { kind: 'ice', candidate };
+  if (value.kind === 'ice') {
+    const candidate = readIceCandidate(value.candidate);
+    return candidate ? { kind: 'ice', candidate } : undefined;
   }
-  if (value.kind === 'description' && isRecord(value.description)) {
-    const raw = value.description;
-    if (raw.type !== 'answer' && raw.type !== 'offer' && raw.type !== 'pranswer' &&
-        raw.type !== 'rollback') return undefined;
-    if (raw.sdp !== undefined && typeof raw.sdp !== 'string') return undefined;
-    return {
-      kind: 'description',
-      description: { type: raw.type, ...(raw.sdp === undefined ? {} : { sdp: raw.sdp }) },
-    };
+  if (value.kind === 'description') {
+    const description = readSessionDescription(value.description);
+    return description ? { kind: 'description', description } : undefined;
   }
   return undefined;
 }
 
-function readRoomPeer(value: unknown): RoomPeer | null {
+function readRoomPeer(value: RuntimeValue): RoomPeer | null {
   if (!isRecord(value) || typeof value.peerId !== 'string' || !value.peerId) return null;
   const rawPlayer = isRecord(value.player) ? value.player : null;
   const player = rawPlayer ? {
@@ -207,7 +222,7 @@ function readRoomPeer(value: unknown): RoomPeer | null {
   };
 }
 
-function readSignalPayload(value: unknown): SignalPayload | null {
+function readSignalPayload(value: RuntimeValue): SignalPayload | null {
   if (!isRecord(value)) return null;
   const peers = Array.isArray(value.peers)
     ? value.peers.map(readRoomPeer).filter((peer): peer is RoomPeer => peer !== null)
@@ -227,9 +242,9 @@ function readSignalPayload(value: unknown): SignalPayload | null {
   };
 }
 
-function errorCode(error: unknown, fallback: string): string {
+function errorCode(error: RuntimeValue, fallback: string): string {
   if (typeof error !== 'object' || error === null || !('code' in error)) return fallback;
-  const code = (error as { code?: unknown }).code;
+  const code = (error as { code?: RuntimeValue }).code;
   return typeof code === 'string' && code ? code : fallback;
 }
 
@@ -245,7 +260,7 @@ export class PrivateRoomHostSession {
   readonly isVehicleAllowed: (specId: string) => boolean;
   readonly isCamoAllowed: (camo: string) => boolean;
   readonly isMapAllowed: (mapId: string) => boolean;
-  readonly onError: ((error: unknown) => void) | null;
+  readonly onError: ((error: RuntimeValue) => void) | null;
   readonly peers = new Map<string, SessionPeer>();
   readonly lobby: LobbyState;
   readonly runtime: LobbyHostRuntime;
@@ -315,39 +330,50 @@ export class PrivateRoomHostSession {
     }
   }
 
-  #fail(error: unknown): void {
+  #fail(error: RuntimeValue): void {
     if (this.onError) this.onError(error);
+  }
+
+  #peerJoined(payload: SignalPayload): void {
+    if (!payload.peerId) return;
+    this.#joinPeer({ ...payload, peerId: payload.peerId }).catch((error) => this.#fail(error));
+  }
+
+  #roomSignal(payload: SignalPayload): void {
+    const session = payload.fromPeerId ? this.peers.get(payload.fromPeerId) : null;
+    if (session && payload.signal && payload.fromSessionId === session.sessionId) {
+      session.handleSignal(payload.signal).catch((error) => this.#fail(error));
+    }
+  }
+
+  #peerLeft(payload: SignalPayload): void {
+    if (!payload.peerId) return;
+    const session = this.peers.get(payload.peerId);
+    // Remove the canonical room seat before closing the RTC channels. Their
+    // close callback is intentionally treated as recoverable transport loss.
+    this.matchRuntime?.detachPeer?.(payload.peerId, 'peer_left');
+    this.runtime.detachPeer(payload.peerId, 'peer_left');
+    if (session) session.close('peer_left');
+    this.peers.delete(payload.peerId);
+  }
+
+  #signalingResumed(payload: SignalPayload): void {
+    // The durable room response is the source of truth after a socket gap.
+    // Reconcile peers that may have joined while this host instance could
+    // not receive pub/sub or mailbox wake-ups.
+    for (const peer of payload.peers || []) {
+      if (peer.peerId === this.roomInfo.peerId) continue;
+      this.#joinPeer(peer).catch((error) => this.#fail(error));
+    }
   }
 
   #event(message: SignalingEvent): void {
     const payload = readSignalPayload(message?.payload);
     if (!payload || payload.roomCode !== this.roomInfo.roomCode) return;
-    if (message.type === 'peer_joined') {
-      if (!payload.peerId) return;
-      this.#joinPeer({ ...payload, peerId: payload.peerId }).catch((error) => this.#fail(error));
-    } else if (message.type === 'room_signal') {
-      const session = payload.fromPeerId ? this.peers.get(payload.fromPeerId) : null;
-      if (session && payload.signal && payload.fromSessionId === session.sessionId) {
-        session.handleSignal(payload.signal).catch((error) => this.#fail(error));
-      }
-    } else if (message.type === 'peer_left') {
-      if (!payload.peerId) return;
-      const session = this.peers.get(payload.peerId);
-      // Remove the canonical room seat before closing the RTC channels. Their
-      // close callback is intentionally treated as recoverable transport loss.
-      this.matchRuntime?.detachPeer?.(payload.peerId, 'peer_left');
-      this.runtime.detachPeer(payload.peerId, 'peer_left');
-      if (session) session.close('peer_left');
-      this.peers.delete(payload.peerId);
-    } else if (message.type === 'signaling_resumed') {
-      // The durable room response is the source of truth after a socket gap.
-      // Reconcile peers that may have joined while this host instance could
-      // not receive pub/sub or mailbox wake-ups.
-      for (const peer of payload.peers || []) {
-        if (peer.peerId === this.roomInfo.peerId) continue;
-        this.#joinPeer(peer).catch((error) => this.#fail(error));
-      }
-    }
+    if (message.type === 'peer_joined') this.#peerJoined(payload);
+    else if (message.type === 'room_signal') this.#roomSignal(payload);
+    else if (message.type === 'peer_left') this.#peerLeft(payload);
+    else if (message.type === 'signaling_resumed') this.#signalingResumed(payload);
   }
 
   async #joinPeer({ peerId, player, sessionId: rawSessionId }: RoomPeer): Promise<void> {
@@ -398,7 +424,7 @@ export class PrivateRoomHostSession {
     }
   }
 
-  command(command: RoomCommand): unknown {
+  command(command: RoomCommand): RuntimeValue {
     return this.runtime.command(this.roomInfo.peerId, command);
   }
 
@@ -426,7 +452,7 @@ export class PrivateRoomHostSession {
 export class PrivateRoomClientSession {
   readonly signaling: SignalingPort;
   readonly roomInfo: RoomInfo & { hostId: string };
-  readonly onError: ((error: unknown) => void) | null;
+  readonly onError: ((error: RuntimeValue) => void) | null;
   readonly onClose: ((reason: string) => void) | null;
   private readonly iceLease: RtcIceLease;
   readonly RTCPeerConnectionImpl: typeof RTCPeerConnection | null;
@@ -493,47 +519,50 @@ export class PrivateRoomClientSession {
       roomInfo.peers?.find((peer) => peer.peerId === roomInfo.hostId)?.sessionId || '',
     );
     this.peer = this.#createPeer();
-    this.unsubscribeSignal = signaling.onEvent((message: SignalingEvent) => {
-      const payload = readSignalPayload(message?.payload);
-      if (message && message.type === 'room_signal' && payload?.signal &&
-          payload.roomCode === roomInfo.roomCode &&
-          payload.fromPeerId === roomInfo.hostId &&
-          payload.fromSessionId === this.hostSessionId) {
-        this.peer.handleSignal(payload.signal).catch((error) => {
-          if (this.onError) this.onError(error);
-        });
-      } else if (message && message.type === 'peer_joined' && payload &&
-                 payload.roomCode === roomInfo.roomCode &&
-                 payload.peerId === roomInfo.hostId) {
-        const nextSessionId = String(payload.sessionId || '');
-        if (nextSessionId && nextSessionId !== this.hostSessionId) {
-          this.hostSessionId = nextSessionId;
-          this.#replacePeer().catch((error) => {
-            if (this.onError) this.onError(error);
-          });
-        } else if (['failed', 'disconnected'].includes(this.peer.connectionState)) {
-          this.peer.restartIce();
-        }
-      } else if (message && message.type === 'room_closed' && payload &&
-                 payload.roomCode === roomInfo.roomCode) {
-        this.#close(payload.reason || 'room_closed', true);
-      } else if (message && message.type === 'signaling_resumed' && payload &&
-                 payload.roomCode === roomInfo.roomCode) {
-        const host = payload.peers?.find((peer) => peer.peerId === roomInfo.hostId);
-        const nextSessionId = String(host?.sessionId || '');
-        if (nextSessionId && nextSessionId !== this.hostSessionId) {
-          this.hostSessionId = nextSessionId;
-          this.#replacePeer().catch((error) => {
-            if (this.onError) this.onError(error);
-          });
-        } else if (this.peer.connectionState !== 'connected') {
-          this.peer.restartIce();
-        }
-      }
-    });
+    this.unsubscribeSignal = signaling.onEvent((message) => this.#event(message));
     this.ready = this.#bindInitialPeer(this.peer).catch(
       (error) => this.#recoverInitialPeer(error),
     );
+  }
+
+  #fail(error: RuntimeValue): void {
+    if (this.onError) this.onError(error);
+  }
+
+  #replaceForSession(nextSessionId: string, restartDisconnectedOnly: boolean): void {
+    if (nextSessionId && nextSessionId !== this.hostSessionId) {
+      this.hostSessionId = nextSessionId;
+      this.#replacePeer().catch((error) => this.#fail(error));
+      return;
+    }
+    const recoverable = restartDisconnectedOnly
+      ? ['failed', 'disconnected'].includes(this.peer.connectionState)
+      : this.peer.connectionState !== 'connected';
+    if (recoverable) this.peer.restartIce();
+  }
+
+  #event(message: SignalingEvent): void {
+    const payload = readSignalPayload(message?.payload);
+    if (!payload || payload.roomCode !== this.roomInfo.roomCode) return;
+    if (message.type === 'room_signal') {
+      if (payload.signal && payload.fromPeerId === this.roomInfo.hostId &&
+          payload.fromSessionId === this.hostSessionId) {
+        this.peer.handleSignal(payload.signal).catch((error) => this.#fail(error));
+      }
+      return;
+    }
+    if (message.type === 'peer_joined' && payload.peerId === this.roomInfo.hostId) {
+      this.#replaceForSession(String(payload.sessionId || ''), true);
+      return;
+    }
+    if (message.type === 'room_closed') {
+      this.#close(payload.reason || 'room_closed', true);
+      return;
+    }
+    if (message.type === 'signaling_resumed') {
+      const host = payload.peers?.find((peer) => peer.peerId === this.roomInfo.hostId);
+      this.#replaceForSession(String(host?.sessionId || ''), false);
+    }
   }
 
   #createPeer(): WebRtcPeerSession {
@@ -640,7 +669,7 @@ export class PrivateRoomClientSession {
     };
   }
 
-  async #recoverInitialPeer(initialError: unknown): Promise<PrivateRoomAdapter> {
+  async #recoverInitialPeer(initialError: RuntimeValue): Promise<PrivateRoomAdapter> {
     let error = initialError;
     for (const delayMs of this.initialRebuildDelaysMs) {
       if (this.closed) throw error;
@@ -705,7 +734,7 @@ export class PrivateRoomClientSession {
     }
   }
 
-  async submit(command: RoomCommand): Promise<unknown> {
+  async submit(command: RoomCommand): Promise<RuntimeValue> {
     await this.ready;
     if (!this.runtime) throw new Error('room runtime is unavailable');
     return this.runtime.submitRoomCommand(command);

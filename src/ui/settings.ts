@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -78,12 +79,12 @@ type TimerHandle = ReturnType<typeof setTimeout>;
 
 interface SettingsEventPayload {
   readonly phase?: string;
-  readonly [key: string]: unknown;
+  readonly [key: string]: RuntimeValue;
 }
 
 interface SettingsBus {
-  emit(event: string, payload: unknown): unknown;
-  on(event: string, handler: (payload: unknown) => void): unknown;
+  emit(event: string, payload: RuntimeValue): RuntimeValue;
+  on(event: string, handler: (payload: RuntimeValue) => void): RuntimeValue;
 }
 
 export interface SettingsOptions {

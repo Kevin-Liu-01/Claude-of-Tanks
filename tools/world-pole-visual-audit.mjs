@@ -75,35 +75,41 @@ try {
       }
       return true;
     };
-    let selected = null;
-    for (const pole of poles) {
+    const evaluateView = (pole, groundY, index) => {
+      const azimuth = index * Math.PI * 2 / 24;
+      const x = pole.x + Math.sin(azimuth) * viewDistance;
+      const z = pole.z + Math.cos(azimuth) * viewDistance;
+      const y = debug.world.heightField.getHeightAt(x, z);
+      const cameraY = Math.max(y + 6.2, groundY + 8.05);
+      let blocked = 0;
+      for (let step = 2; step < 20; step += 1) {
+        const t = step / 20;
+        const sx = x + (pole.x - x) * t;
+        const sz = z + (pole.z - z) * t;
+        const sightY = cameraY + (groundY + 3.55 - cameraY) * t;
+        const terrainY = debug.world.heightField.getHeightAt(sx, sz);
+        if (terrainY > sightY - 0.45) blocked += terrainY - sightY + 0.45;
+      }
+      let obstacleHits = 0;
+      for (const obstacle of obstacles) {
+        if (segmentHits(x, z, pole.x, pole.z, obstacle)) obstacleHits += 1;
+      }
+      const score = obstacleHits * 10000 + blocked * 1000
+        + Math.abs(y - groundY) + Math.hypot(pole.x, pole.z) * 0.001;
+      return { pole, groundY, x, y, z, cameraY, score };
+    };
+    const selectPoleView = () => {
+      let selected = null;
+      for (const pole of poles) {
       const groundY = debug.world.heightField.getHeightAt(pole.x, pole.z);
       for (let index = 0; index < 24; index += 1) {
-        const azimuth = index * Math.PI * 2 / 24;
-        const x = pole.x + Math.sin(azimuth) * viewDistance;
-        const z = pole.z + Math.cos(azimuth) * viewDistance;
-        const y = debug.world.heightField.getHeightAt(x, z);
-        const cameraY = Math.max(y + 6.2, groundY + 8.05);
-        let blocked = 0;
-        for (let step = 2; step < 20; step += 1) {
-          const t = step / 20;
-          const sx = x + (pole.x - x) * t;
-          const sz = z + (pole.z - z) * t;
-          const sightY = cameraY + (groundY + 3.55 - cameraY) * t;
-          const terrainY = debug.world.heightField.getHeightAt(sx, sz);
-          if (terrainY > sightY - 0.45) blocked += terrainY - sightY + 0.45;
-        }
-        let obstacleHits = 0;
-        for (const obstacle of obstacles) {
-          if (segmentHits(x, z, pole.x, pole.z, obstacle)) obstacleHits++;
-        }
-        const score = obstacleHits * 10000 + blocked * 1000
-          + Math.abs(y - groundY) + Math.hypot(pole.x, pole.z) * 0.001;
-        if (!selected || score < selected.score) {
-          selected = { pole, groundY, x, y, z, cameraY, score };
+          const candidate = evaluateView(pole, groundY, index);
+          if (!selected || candidate.score < selected.score) selected = candidate;
         }
       }
-    }
+      return selected;
+    };
+    const selected = selectPoleView();
     const { pole, groundY } = selected;
     const target = new Vector3(pole.x, groundY + 3.55, pole.z);
     const camera = new Vector3(selected.x, selected.cameraY, selected.z);
@@ -112,16 +118,20 @@ try {
     debug.camera.updateMatrixWorld(true);
     debug.world.update(0, debug.camera.position, null, null);
 
-    const matrix = new Matrix4();
-    let nearest = null;
-    for (const mesh of [full, distance]) {
-      for (let index = 0; index < mesh.count; index += 1) {
-        mesh.getMatrixAt(index, matrix);
-        const e = matrix.elements;
-        const d2 = (e[12] - pole.x) ** 2 + (e[14] - pole.z) ** 2;
-        if (!nearest || d2 < nearest.d2) nearest = { matrix: matrix.clone(), d2 };
+    const nearestPoleInstance = () => {
+      const matrix = new Matrix4();
+      let nearest = null;
+      for (const mesh of [full, distance]) {
+        for (let index = 0; index < mesh.count; index += 1) {
+          mesh.getMatrixAt(index, matrix);
+          const elements = matrix.elements;
+          const d2 = (elements[12] - pole.x) ** 2 + (elements[14] - pole.z) ** 2;
+          if (!nearest || d2 < nearest.d2) nearest = { matrix: matrix.clone(), d2 };
+        }
       }
-    }
+      return nearest;
+    };
+    const nearest = nearestPoleInstance();
     if (!nearest || nearest.d2 > 0.01) throw new Error('review pole instance matrix missing');
 
     full.visible = false;

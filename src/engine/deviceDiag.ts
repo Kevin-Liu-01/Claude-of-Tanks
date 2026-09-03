@@ -56,6 +56,18 @@ interface SceneWatchdogOptions {
   onRescue?: (result: SceneWatchdogResult) => void;
 }
 
+interface SceneWatchdogStage {
+  label: string;
+  can(): boolean;
+  apply(): void;
+  revert(): void;
+}
+
+interface SceneWatchdogProbe {
+  measure(): number;
+  dispose(): void;
+}
+
 declare global {
   interface Window {
     __GL_DIAG?: GlDiagnosticBag;
@@ -382,6 +394,128 @@ function appendRescue(label: string): void {
   else if (bag._refresh) bag._refresh();
 }
 
+function createWatchdogProbe(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+): SceneWatchdogProbe {
+  if (FORCE === 'blackscene') {
+    const simulated = [0, 0, 42, 42];
+    let index = 0;
+    return {
+      measure() {
+        return simulated[Math.min(index++, simulated.length - 1)];
+      },
+      dispose() {},
+    };
+  }
+  const probe = createSceneBandProbe(renderer);
+  return {
+    measure: () => probe.measure(scene, camera),
+    dispose: () => probe.dispose(),
+  };
+}
+
+function createWatchdogStages(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+): SceneWatchdogStage[] {
+  let previousShadowEnabled = false;
+  let previousEnvironment: THREE.Texture | null = null;
+  let previousFog: THREE.Fog | THREE.FogExp2 | null = null;
+  return [
+    {
+      label: 'shadows-off',
+      can: () => renderer.shadowMap.enabled,
+      apply() {
+        previousShadowEnabled = renderer.shadowMap.enabled;
+        renderer.shadowMap.enabled = false;
+        recompileScene(scene);
+      },
+      revert() {
+        renderer.shadowMap.enabled = previousShadowEnabled;
+        recompileScene(scene);
+      },
+    },
+    {
+      label: 'environment-off',
+      can: () => !!scene.environment,
+      apply() {
+        previousEnvironment = scene.environment;
+        scene.environment = null;
+        recompileScene(scene);
+      },
+      revert() {
+        scene.environment = previousEnvironment;
+        recompileScene(scene);
+      },
+    },
+    {
+      label: 'fog-off',
+      can: () => !!scene.fog,
+      apply() {
+        previousFog = scene.fog;
+        scene.fog = null;
+        recompileScene(scene);
+      },
+      revert() {
+        scene.fog = previousFog;
+        recompileScene(scene);
+      },
+    },
+  ];
+}
+
+function keepRequiredWatchdogStages(
+  applied: readonly SceneWatchdogStage[],
+  probe: SceneWatchdogProbe,
+  note: (message: string) => void,
+): void {
+  const priorStages = applied.slice(0, -1);
+  for (const stage of priorStages) stage.revert();
+  if (priorStages.length === 0) return;
+  const confirm = probe.measure();
+  if (confirm >= 6) return;
+  for (const stage of priorStages) stage.apply();
+  note(`watchdog: revert broke it (band ${confirm.toFixed(1)}) — keeping all stages`);
+}
+
+function markWatchdogRescued(
+  out: SceneWatchdogResult,
+  stage: SceneWatchdogStage,
+  luminance: number,
+  onRescue?: (result: SceneWatchdogResult) => void,
+): void {
+  out.after = luminance;
+  out.rescued = true;
+  out.stage = stage.label;
+  appendRescue(`${stage.label} (scene watchdog, band ${out.before.toFixed(1)}->${luminance.toFixed(1)})`);
+  onRescue?.(out);
+}
+
+function tryWatchdogStages(
+  stages: readonly SceneWatchdogStage[],
+  probe: SceneWatchdogProbe,
+  out: SceneWatchdogResult,
+  note: (message: string) => void,
+  onRescue?: (result: SceneWatchdogResult) => void,
+): boolean {
+  const applied: SceneWatchdogStage[] = [];
+  for (const stage of stages) {
+    if (!stage.can()) continue;
+    stage.apply();
+    applied.push(stage);
+    const luminance = probe.measure();
+    note(`watchdog: +${stage.label} -> band ${luminance.toFixed(1)}`);
+    if (luminance < 6) continue;
+    keepRequiredWatchdogStages(applied, probe, note);
+    markWatchdogRescued(out, stage, luminance, onRescue);
+    return true;
+  }
+  for (let index = applied.length - 1; index >= 0; index--) applied[index].revert();
+  return false;
+}
+
 /**
  * Shadow reclaim (mobile r5). The owner's phone hit a one-boot litShadow
  * probe false-negative, so the boot rescue turned shadows off even though
@@ -437,73 +571,8 @@ export function runSceneBlackWatchdog(
   camera: THREE.Camera,
   { onRescue }: SceneWatchdogOptions = {},
 ): SceneWatchdogResult {
-  // FORCE==='blackscene' test rig: simulated band readings — black baseline,
-  // stage 1 (shadows) does NOT cure, stage 2 (environment) does, and the
-  // confirm re-measure after reverting stage 1 stays cured. Exercises the
-  // full ladder walk + revert logic deterministically on a healthy desktop.
-  const sim = FORCE === 'blackscene' ? [0, 0, 42, 42] : null;
-  let simI = 0;
-  const probe = sim ? null : createSceneBandProbe(renderer);
-  const measure = () => {
-    if (sim) return sim[Math.min(simI++, sim.length - 1)];
-    // lower 60% of the frame — terrain/vehicle band; sky stays out of it
-    return probe!.measure(scene, camera);
-  };
-  // Rescue ladder, cheapest-degradation first. Each stage: {apply, revert,
-  // label}. The owner's device proved shadows-off alone does NOT cure the
-  // black scene (live ?diagforce=noshadow test), so the ladder continues to
-  // the scene ENVIRONMENT (PMREM bake NaN/black poisons every lit material's
-  // IBL sum while env-free probe scenes pass — the current prime suspect)
-  // and then fog. The first curing stage stays; non-curing stages revert.
-  let previousShadowEnabled = false;
-  let previousEnvironment: THREE.Texture | null = null;
-  let previousFog: THREE.Fog | THREE.FogExp2 | null = null;
-  const stages: Array<{
-    label: string;
-    can: () => boolean;
-    apply: () => void;
-    revert: () => void;
-  }> = [
-    {
-      label: 'shadows-off',
-      can: () => renderer.shadowMap.enabled,
-      apply() {
-        previousShadowEnabled = renderer.shadowMap.enabled;
-        renderer.shadowMap.enabled = false;
-        recompileScene(scene);
-      },
-      revert() {
-        renderer.shadowMap.enabled = previousShadowEnabled;
-        recompileScene(scene);
-      },
-    },
-    {
-      label: 'environment-off',
-      can: () => !!scene.environment,
-      apply() {
-        previousEnvironment = scene.environment;
-        scene.environment = null;
-        recompileScene(scene);
-      },
-      revert() {
-        scene.environment = previousEnvironment;
-        recompileScene(scene);
-      },
-    },
-    {
-      label: 'fog-off',
-      can: () => !!scene.fog,
-      apply() {
-        previousFog = scene.fog;
-        scene.fog = null;
-        recompileScene(scene);
-      },
-      revert() {
-        scene.fog = previousFog;
-        recompileScene(scene);
-      },
-    },
-  ];
+  const probe = createWatchdogProbe(renderer, scene, camera);
+  const stages = createWatchdogStages(renderer, scene);
   const out: SceneWatchdogResult = {
     before: 0,
     after: null,
@@ -515,44 +584,18 @@ export function runSceneBlackWatchdog(
     if (bag && bag.errors.length < 8) bag.errors.push(message);
   };
   try {
-    out.before = measure();
+    out.before = probe.measure();
     // darkest legitimate biome band measures far above this; a failed lit
     // pipeline reads ~0
     if (out.before >= 6) return out;
-    const applied = [];
-    for (const st of stages) {
-      if (!st.can()) continue;
-      st.apply();
-      applied.push(st);
-      const lum = measure();
-      note(`watchdog: +${st.label} -> band ${lum.toFixed(1)}`);
-      if (lum >= 6) {
-        // cured — drop every earlier stage that wasn't needed, confirm
-        for (const prev of applied.slice(0, -1)) prev.revert();
-        if (applied.length > 1) {
-          const confirm = measure();
-          if (confirm < 6) { // interaction: the earlier stages mattered too
-            for (const prev of applied.slice(0, -1)) prev.apply();
-            note(`watchdog: revert broke it (band ${confirm.toFixed(1)}) — keeping all stages`);
-          }
-        }
-        out.after = lum;
-        out.rescued = true;
-        out.stage = st.label;
-        appendRescue(`${st.label} (scene watchdog, band ${out.before.toFixed(1)}->${lum.toFixed(1)})`);
-        if (onRescue) onRescue(out);
-        return out;
-      }
-    }
-    // nothing cured it: revert everything, report
-    for (const st of applied.reverse()) st.revert();
+    if (tryWatchdogStages(stages, probe, out, note, onRescue)) return out;
     note(`watchdog: black scene (band ${out.before.toFixed(1)}) — no ladder stage cured it`);
     if (bag && bag._showOverlay) bag._showOverlay();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     note(`watchdog threw: ${message.slice(0, 160)}`);
   } finally {
-    probe?.dispose();
+    probe.dispose();
   }
   return out;
 }
@@ -570,10 +613,10 @@ export function mountDiagOverlay({
   renderer: THREE.WebGLRenderer;
 }): void {
   const gl = renderer.getContext();
-  const cap = (key: keyof WebGLRenderingContext): unknown => {
+  const cap = (key: keyof WebGLRenderingContext): string => {
     try {
       const constant = gl[key as keyof typeof gl];
-      return typeof constant === 'number' ? gl.getParameter(constant) : '?';
+      return typeof constant === 'number' ? String(gl.getParameter(constant)) : '?';
     } catch (_) {
       return '?';
     }

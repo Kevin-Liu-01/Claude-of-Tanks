@@ -294,34 +294,43 @@ async function stageFaceoff(authorityPage, lobby) {
       const hit = collision.raycast(probe, direction, distance - 2);
       return !hit || hit.dist >= distance - 2.5;
     };
-    const candidates = [];
-    for (let radius = 0; radius <= 320; radius += 40) {
-      for (let x = -radius; x <= radius; x += 40) candidates.push([x, -radius], [x, radius]);
-      for (let z = -radius + 40; z <= radius - 40; z += 40) {
-        candidates.push([-radius, z], [radius, z]);
-      }
-    }
-    let pair = null;
-    search:
-    for (const [cx, cz] of candidates) {
-      for (const axis of ['z', 'x']) {
-        const alpha = axis === 'z'
-          ? { x: cx, z: cz - 15, yaw: 0 }
-          : { x: cx - 15, z: cz, yaw: Math.PI / 2 };
-        const bravo = axis === 'z'
-          ? { x: cx, z: cz + 15, yaw: Math.PI }
-          : { x: cx + 15, z: cz, yaw: -Math.PI / 2 };
-        if (pointClear(alpha.x, alpha.z) && pointClear(bravo.x, bravo.z) &&
-            clearLine(alpha, bravo)) {
-          pair = { axis, alpha, bravo };
-          break search;
+    const formationCandidates = () => {
+      const candidates = [];
+      for (let radius = 0; radius <= 320; radius += 40) {
+        for (let x = -radius; x <= radius; x += 40) {
+          candidates.push([x, -radius], [x, radius]);
+        }
+        for (let z = -radius + 40; z <= radius - 40; z += 40) {
+          candidates.push([-radius, z], [radius, z]);
         }
       }
-    }
+      return candidates;
+    };
+    const faceoffAt = (cx, cz, axis) => {
+      const alpha = axis === 'z'
+        ? { x: cx, z: cz - 15, yaw: 0 }
+        : { x: cx - 15, z: cz, yaw: Math.PI / 2 };
+      const bravo = axis === 'z'
+        ? { x: cx, z: cz + 15, yaw: Math.PI }
+        : { x: cx + 15, z: cz, yaw: -Math.PI / 2 };
+      const clear = pointClear(alpha.x, alpha.z) && pointClear(bravo.x, bravo.z)
+        && clearLine(alpha, bravo);
+      return clear ? { axis, alpha, bravo } : null;
+    };
+    const selectFaceoff = () => {
+      for (const [cx, cz] of formationCandidates()) {
+        for (const axis of ['z', 'x']) {
+          const pair = faceoffAt(cx, cz, axis);
+          if (pair) return pair;
+        }
+      }
+      return null;
+    };
+    const pair = selectFaceoff();
     if (!pair) throw new Error('no clear faceoff lane found');
     const alphaPlayer = lobbyState.players.find((player) => player.team === 'alpha');
     const bravoPlayer = lobbyState.players.find((player) => player.team === 'bravo');
-    for (const [player, pose] of [[alphaPlayer, pair.alpha], [bravoPlayer, pair.bravo]]) {
+    const resetEntity = (player, pose) => {
       const entity = simulation.entityById.get(player.id);
       const y = heightAt(pose.x, pose.z);
       entity.state.pos.set(pose.x, y, pose.z);
@@ -348,7 +357,9 @@ async function stageFaceoff(authorityPage, lobby) {
       entity.input.steer = 0;
       entity.input.brake = true;
       entity.input.fire = false;
-    }
+    };
+    resetEntity(alphaPlayer, pair.alpha);
+    resetEntity(bravoPlayer, pair.bravo);
     const alphaEntity = simulation.entityById.get(alphaPlayer.id);
     const bravoEntity = simulation.entityById.get(bravoPlayer.id);
     alphaEntity.input.aimPoint.copy(bravoEntity.state.pos);

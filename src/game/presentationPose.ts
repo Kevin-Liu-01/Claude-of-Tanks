@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Allocation-free render interpolation for fixed-step solo tank states.
  *
@@ -81,7 +82,7 @@ export interface TankPresentationTracker {
   pose: TankPresentationSample;
 }
 
-function finite(value: unknown, fallback = 0): number {
+function finite(value: RuntimeValue, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 

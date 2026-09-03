@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { Camera, Object3D, Scene } from 'three';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import {
@@ -48,7 +49,7 @@ interface ArmorWarmPort {
 }
 
 interface BattleWarmPort {
-  warmBattleTerrainTiles(options: TerrainWarmOptions): Promise<unknown>;
+  warmBattleTerrainTiles(options: TerrainWarmOptions): Promise<RuntimeValue>;
   stageCombatFxProgramSubmission(
     options: CombatFxSubmissionOptions,
   ): Promise<CombatFxSubmission> | CombatFxSubmission;
@@ -66,7 +67,7 @@ interface LightingPort {
 }
 
 interface TraceSink {
-  mark?(event: string, payload: Record<string, unknown>): void;
+  mark?(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
 interface DeploymentWarmTrace {
@@ -81,13 +82,13 @@ interface DeploymentWarmTrace {
     totalMs: number;
   };
   deploymentUniformsDeferred?: boolean;
-  deploymentShadowWarm?: unknown;
+  deploymentShadowWarm?: RuntimeValue;
   deploymentForwardWarm?: {
-    batches: unknown[];
+    batches: RuntimeValue[];
     maxMs: number;
     totalMs: number;
   };
-  deploymentPostWarm?: unknown;
+  deploymentPostWarm?: RuntimeValue;
   totalMs?: number;
   preBattleRemainingS?: number | null;
   doneBeforeRollout?: boolean;
@@ -130,7 +131,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   setDestructionWarmed(warmed: boolean): void;
   devTrace?: TraceSink | null;
   now?: () => number;
-  yieldFrame?: () => Promise<unknown>;
+  yieldFrame?: () => Promise<RuntimeValue>;
   createLoadingYielder?: (budgetMs: number, maxDelayMs: number) => WorkYielder;
 }
 
@@ -140,7 +141,7 @@ export interface SoloBattleDeploymentWarmResult {
 }
 
 export interface SoloBattleDeploymentRuntime {
-  warm(camoSweep: PromiseLike<unknown> | unknown): Promise<SoloBattleDeploymentWarmResult>;
+  warm(camoSweep: PromiseLike<RuntimeValue> | RuntimeValue): Promise<SoloBattleDeploymentWarmResult>;
 }
 
 function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): void {

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Battle-mode picker and private/LAN/ranked lobby presentation.
  *
@@ -28,7 +29,7 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
-import type { LobbyTeam, SerializedLobby } from '../net/lobby.ts';
+import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
 import type {
   RankedQueueState,
   RankedQueueTicket,
@@ -70,24 +71,24 @@ export interface ActiveRoomAdapter {
   state: SerializedLobby;
   playerId: string;
   role: RoomRole;
-  command(command: Record<string, unknown>): unknown;
-  leave(reason?: string): unknown;
+  command(command: Record<string, RuntimeValue>): RuntimeValue;
+  leave(reason?: string): RuntimeValue;
 }
 
 export interface PlayMenuOptions {
   maps?: PlayMenuMap[];
   getSelection(): PlayMenuSelection;
-  onSolo?(request?: { gameMode?: GameModeId }): unknown;
+  onSolo?(request?: { gameMode?: GameModeId }): RuntimeValue;
   onNetworkStart?(request: {
     role: RoomRole;
     session: RoomSession;
     lobbyState: SerializedLobby;
-  }): MaybePromise<unknown>;
+  }): MaybePromise<RuntimeValue>;
   onNetworkClose?(reason: string): void;
   onRankedStart?(request: {
     serviceUrl: string;
     state: RankedQueueState;
-  }): MaybePromise<unknown>;
+  }): MaybePromise<RuntimeValue>;
   onLobbyChange?(context: PlayMenuLobbyContext | null): void;
   isVehicleAllowed?(specId: string): boolean;
   isCamoAllowed?(camo: string): boolean;
@@ -96,8 +97,8 @@ export interface PlayMenuOptions {
 }
 
 export interface PlayMenuInvite {
-  roomCode?: unknown;
-  hostName?: unknown;
+  roomCode?: RuntimeValue;
+  hostName?: RuntimeValue;
   autoJoin?: boolean;
 }
 
@@ -335,15 +336,15 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
   return element;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function leaderboardPlayers(value: unknown): LeaderboardPlayer[] {
+function leaderboardPlayers(value: RuntimeValue): LeaderboardPlayer[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
     if (!isRecord(entry)) return [];
@@ -356,7 +357,7 @@ function leaderboardPlayers(value: unknown): LeaderboardPlayer[] {
   });
 }
 
-function recordText(value: Record<string, unknown>, key: string, fallback = ''): string {
+function recordText(value: Record<string, RuntimeValue>, key: string, fallback = ''): string {
   const field = value[key];
   return field == null ? fallback : String(field);
 }
@@ -370,9 +371,9 @@ function remember(key: string, value: string): void {
 }
 
 function rememberRoomUrl(
-  roomCode: unknown,
-  mode: unknown,
-  hostName: unknown = null,
+  roomCode: RuntimeValue,
+  mode: RuntimeValue,
+  hostName: RuntimeValue = null,
 ): void {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
@@ -429,7 +430,7 @@ function bindMenuSelect(
     return index < 0 ? 0 : index;
   }
 
-  function setValue(nextValue: unknown, emit = false): void {
+  function setValue(nextValue: RuntimeValue, emit = false): void {
     const option = options.find((item) => item.dataset.value === String(nextValue));
     if (!option) return;
     control.dataset.value = option.dataset.value;
@@ -496,12 +497,12 @@ function bindMenuSelect(
   Object.defineProperty(control, 'value', {
     configurable: true,
     get: () => control.dataset.value,
-    set: (nextValue: unknown) => setValue(nextValue),
+    set: (nextValue: RuntimeValue) => setValue(nextValue),
   });
   Object.defineProperty(control, 'disabled', {
     configurable: true,
     get: () => disabled,
-    set: (nextDisabled: unknown) => {
+    set: (nextDisabled: RuntimeValue) => {
       disabled = !!nextDisabled;
       control.classList.toggle('disabled', disabled);
       control.setAttribute('aria-disabled', String(disabled));
@@ -800,7 +801,7 @@ export function createPlayMenu({
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
   function showSelectedGameMode(
-    next: unknown = selectedGameMode,
+    next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
   ): void {
     selectedGameMode = normalizeGameMode(next);
@@ -836,7 +837,7 @@ export function createPlayMenu({
     onError: (error) => setStatus(errorMessage(error), true),
   });
 
-  function hostNameFromRoom(value: unknown): string {
+  function hostNameFromRoom(value: RuntimeValue): string {
     if (!isRecord(value)) return '';
     const explicit = normalizePlayerName(value.hostName);
     if (explicit) return explicit;
@@ -851,7 +852,7 @@ export function createPlayMenu({
     return normalizePlayerName(host.name || nestedPlayer?.name);
   }
 
-  function presentInvitation(hostName: unknown, roomCode: unknown, connected = false): void {
+  function presentInvitation(hostName: RuntimeValue, roomCode: RuntimeValue, connected = false): void {
     const resolvedHost = normalizePlayerName(hostName);
     if (resolvedHost) invitedHostName = resolvedHost;
     const code = normalizeRoomCode(roomCode);
@@ -873,7 +874,7 @@ export function createPlayMenu({
     if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
   }
 
-  function setStatus(message: unknown, error = false): void {
+  function setStatus(message: RuntimeValue, error = false): void {
     status.textContent = message == null ? '' : String(message);
     status.classList.toggle('err', !!error);
   }
@@ -915,11 +916,11 @@ export function createPlayMenu({
     return activeRoom?.playerId || session?.roomInfo.peerId;
   }
 
-  function command(command: Record<string, unknown>): void {
+  function command(command: Record<string, RuntimeValue>): void {
     try {
       if (activeRoom) {
         Promise.resolve(activeRoom.command(command))
-          .catch((error: unknown) => setStatus(errorMessage(error), true));
+          .catch((error: RuntimeValue) => setStatus(errorMessage(error), true));
         return;
       }
       const activeSession = session;
@@ -929,8 +930,8 @@ export function createPlayMenu({
         : 'submit' in activeSession
           ? activeSession.submit(command)
           : Promise.reject(new Error('Room command channel is unavailable'));
-      Promise.resolve(result).catch((error: unknown) => setStatus(errorMessage(error), true));
-    } catch (error: unknown) { setStatus(errorMessage(error), true); }
+      Promise.resolve(result).catch((error: RuntimeValue) => setStatus(errorMessage(error), true));
+    } catch (error) { setStatus(errorMessage(error), true); }
   }
 
   function setConnecting(next: boolean): void {
@@ -999,7 +1000,7 @@ export function createPlayMenu({
       try {
         const profile = await rankedClient.profile(identity.playerId);
         rankedProfile.textContent = `${recordText(profile, 'rank', 'Unranked')} · ${recordText(profile, 'rating', '1000')} ELO · ${recordText(profile, 'matches', '0')} matches`;
-      } catch (error: unknown) {
+      } catch (error) {
         if (!isRecord(error) || error.status !== 404) throw error;
         rankedClient.clearIdentity();
         rankedProfile.textContent = 'New commanders begin at 1000 ELO';
@@ -1078,14 +1079,14 @@ export function createPlayMenu({
         session: activeSession,
         lobbyState: next,
       }));
-    } catch (error: unknown) {
+    } catch (error) {
       handedOff = false;
       setStatus(errorMessage(error), true);
       return false;
     }
     notifyLobbyChange(null);
     hide(false);
-    start.catch((error: unknown) => {
+    start.catch((error: RuntimeValue) => {
       handedOff = false;
       show();
       setStatus(errorMessage(error), true);
@@ -1093,36 +1094,19 @@ export function createPlayMenu({
     return true;
   }
 
-  function renderLobby(next: SerializedLobby): void {
-    state = next;
+  function rememberLiveRoom(next: SerializedLobby): void {
+    if (!next.roomCode) return;
     const roomHostName = hostNameFromRoom(next);
-    // Every browser carries the live room in its canonical URL. A guest can
-    // reattach to the current authority, while a reloaded browser host
-    // reconstructs the waiting room and lets guests resubmit their retained
-    // selections over replacement WebRTC channels.
-    if (next.roomCode) {
-      rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName);
-    }
-    if (role === 'client' && next.roomCode) {
-      presentInvitation(roomHostName, next.roomCode, true);
-    }
-    // A client learns that the host started through this state callback. Cover
-    // immediately; rebuilding the now-obsolete lobby first creates a guest-
-    // only window in which a constrained renderer can present the garage.
-    // A refreshed guest rejoins the durable room after authority has already
-    // crossed the starting barrier. Treat the live `playing` receipt as the
-    // same battle-entry intent; the match runtime reclaims this stable player
-    // id and streams the current authority snapshot into the rebuilt world.
-    if ((next.phase === 'starting' || next.phase === 'playing') &&
-        role === 'client' && !handedOff && !activeRoom) {
-      beginNetworkHandoff(next, 'client');
-      return;
-    }
-    setClosePurpose(true);
-    notifyLobbyChange(next);
-    lobbyEl.classList.add('show');
-    room.classList.add('connected');
-    root.classList.add('lobby-active');
+    rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName);
+    if (role === 'client') presentInvitation(roomHostName, next.roomCode, true);
+  }
+
+  function shouldBeginClientHandoff(next: SerializedLobby): boolean {
+    return (next.phase === 'starting' || next.phase === 'playing') &&
+      role === 'client' && !handedOff && !activeRoom;
+  }
+
+  function renderLobbyBattlefield(next: SerializedLobby): void {
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
@@ -1137,83 +1121,110 @@ export function createPlayMenu({
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
     showSelectedGameMode(next.gameMode || 'standard', { fromLobby: true });
-    const me = next.players.find((player) => player.id === ownId());
-    if (me) {
-      teamSelect.value = me.team;
-      if (nameInput.value !== me.name) {
-        nameInput.value = me.name;
-        rankedName.value = me.name;
-        remember(PLAYER_NAME_KEY, me.name);
-      }
-      readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : "I'm ready";
-      readyBtn.disabled = me.team === 'spectator' || next.phase !== 'waiting';
-      readyBtn.classList.toggle('needs-ready', me.team !== 'spectator' && !me.ready && next.phase === 'waiting');
-      readyBtn.classList.toggle('is-ready', me.team !== 'spectator' && me.ready);
-      readyBtn.setAttribute('aria-pressed', String(me.team !== 'spectator' && me.ready));
-      readyBtn.setAttribute('aria-label', me.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
-    } else {
+  }
+
+  function renderLobbySelf(player: LobbyPlayer | undefined, next: SerializedLobby): void {
+    if (!player) {
       readyBtn.classList.remove('needs-ready', 'is-ready');
       readyBtn.removeAttribute('aria-pressed');
+      return;
     }
-    teamSelect.disabled = next.phase !== 'waiting' || !!me?.ready ||
+    teamSelect.value = player.team;
+    if (nameInput.value !== player.name) {
+      nameInput.value = player.name;
+      rankedName.value = player.name;
+      remember(PLAYER_NAME_KEY, player.name);
+    }
+    const spectator = player.team === 'spectator';
+    readyBtn.textContent = spectator ? 'Watching' : player.ready ? 'Not ready' : "I'm ready";
+    readyBtn.disabled = spectator || next.phase !== 'waiting';
+    readyBtn.classList.toggle('needs-ready', !spectator && !player.ready && next.phase === 'waiting');
+    readyBtn.classList.toggle('is-ready', !spectator && player.ready);
+    readyBtn.setAttribute('aria-pressed', String(!spectator && player.ready));
+    readyBtn.setAttribute('aria-label', player.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
+  }
+
+  function updateLobbyControls(
+    next: SerializedLobby,
+    player: LobbyPlayer | undefined,
+  ): void {
+    teamSelect.disabled = next.phase !== 'waiting' || !!player?.ready ||
       next.gameMode === 'endless_horde';
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
-    const activePlayers = next.players.filter((player) => player.team !== 'spectator');
+    const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
     const everyoneReady = activePlayers.length > 0 &&
-      activePlayers.every((player) => player.ready && player.specId);
+      activePlayers.every((candidate) => candidate.ready && candidate.specId);
     const canStart = role === 'host' && next.phase === 'waiting' && everyoneReady;
     startBtn.disabled = !canStart;
     startBtn.classList.toggle('can-start', canStart);
-    playersEl.textContent = '';
-    for (const player of next.players) {
-      const row = document.createElement('div');
-      const isMe = player.id === ownId();
-      row.className = `player ${player.team}${isMe ? ' self' : ''}${
-        isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
-      const host = document.createElement('span');
-      host.className = 'host';
-      host.textContent = player.isHost ? 'HOST' : '';
-      const playerName = document.createElement('b');
-      playerName.className = 'name';
-      playerName.textContent = player.name;
-      const vehicle = document.createElement('div');
-      vehicle.className = 'vehicle';
-      if (player.specId) {
-        const icon = document.createElement('img');
-        icon.className = 'vehicle-icon';
-        icon.src = iconUrl(player.specId, 'angle');
-        icon.alt = '';
-        icon.loading = 'lazy';
-        icon.decoding = 'async';
-        icon.addEventListener('error', () => icon.classList.add('missing'), { once: true });
-        const vehicleCopy = document.createElement('span');
-        vehicleCopy.className = 'vehicle-copy';
-        const vehicleName = document.createElement('span');
-        vehicleName.className = 'vehicle-name';
-        try { vehicleName.textContent = getVehicleName(player.specId) || player.specId; }
-        catch (_) { vehicleName.textContent = player.specId; }
-        const vehicleCamo = document.createElement('span');
-        vehicleCamo.className = 'vehicle-camo';
-        vehicleCamo.textContent = `${getCamoName(player.camo || 'factory')} camouflage`;
-        vehicleCopy.append(vehicleName, vehicleCamo);
-        vehicle.append(icon, vehicleCopy);
-      } else {
-        const vehicleName = document.createElement('span');
-        vehicleName.className = 'vehicle-name';
-        vehicleName.textContent = 'Selecting vehicle';
-        vehicle.appendChild(vehicleName);
-      }
-      const team = document.createElement('span');
-      team.className = 'team';
-      team.textContent = lobbyTeamLabel(player.team);
-      const ready = document.createElement('span');
-      ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-      ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
-      row.append(host, playerName, vehicle, team, ready);
-      playersEl.appendChild(row);
+  }
+
+  function markMissingVehicleIcon(event: Event): void {
+    if (event.currentTarget instanceof HTMLImageElement) {
+      event.currentTarget.classList.add('missing');
     }
+  }
+
+  function createLobbyVehicle(player: LobbyPlayer): HTMLDivElement {
+    const vehicle = document.createElement('div');
+    vehicle.className = 'vehicle';
+    const vehicleName = document.createElement('span');
+    vehicleName.className = 'vehicle-name';
+    if (!player.specId) {
+      vehicleName.textContent = 'Selecting vehicle';
+      vehicle.appendChild(vehicleName);
+      return vehicle;
+    }
+    const icon = document.createElement('img');
+    icon.className = 'vehicle-icon';
+    icon.src = iconUrl(player.specId, 'angle');
+    icon.alt = '';
+    icon.loading = 'lazy';
+    icon.decoding = 'async';
+    icon.addEventListener('error', markMissingVehicleIcon, { once: true });
+    const vehicleCopy = document.createElement('span');
+    vehicleCopy.className = 'vehicle-copy';
+    try { vehicleName.textContent = getVehicleName(player.specId) || player.specId; }
+    catch (_) { vehicleName.textContent = player.specId; }
+    const vehicleCamo = document.createElement('span');
+    vehicleCamo.className = 'vehicle-camo';
+    vehicleCamo.textContent = `${getCamoName(player.camo || 'factory')} camouflage`;
+    vehicleCopy.append(vehicleName, vehicleCamo);
+    vehicle.append(icon, vehicleCopy);
+    return vehicle;
+  }
+
+  function createLobbyPlayerRow(player: LobbyPlayer, playerId: string | undefined): HTMLDivElement {
+    const row = document.createElement('div');
+    const isMe = player.id === playerId;
+    row.className = `player ${player.team}${isMe ? ' self' : ''}${
+      isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
+    const host = document.createElement('span');
+    host.className = 'host';
+    host.textContent = player.isHost ? 'HOST' : '';
+    const playerName = document.createElement('b');
+    playerName.className = 'name';
+    playerName.textContent = player.name;
+    const team = document.createElement('span');
+    team.className = 'team';
+    team.textContent = lobbyTeamLabel(player.team);
+    const ready = document.createElement('span');
+    ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
+    ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    row.append(host, playerName, createLobbyVehicle(player), team, ready);
+    return row;
+  }
+
+  function renderLobbyPlayers(next: SerializedLobby, playerId: string | undefined): void {
+    playersEl.textContent = '';
+    const fragment = document.createDocumentFragment();
+    for (const player of next.players) fragment.appendChild(createLobbyPlayerRow(player, playerId));
+    playersEl.appendChild(fragment);
+  }
+
+  function renderLobbyNote(next: SerializedLobby): void {
     const fillNote = next.gameMode === 'endless_horde'
       ? ' All players deploy together; escalating enemy waves are authority-owned.'
       : ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
@@ -1224,6 +1235,38 @@ export function createPlayMenu({
       ? 'LAN gameplay stays on direct Wi-Fi WebRTC paths; signaling only introduces the peers.'
       : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') +
       fillNote + relayNote;
+  }
+
+  function renderLobby(next: SerializedLobby): void {
+    state = next;
+    // Every browser carries the live room in its canonical URL. A guest can
+    // reattach to the current authority, while a reloaded browser host
+    // reconstructs the waiting room and lets guests resubmit their retained
+    // selections over replacement WebRTC channels.
+    rememberLiveRoom(next);
+    // A client learns that the host started through this state callback. Cover
+    // immediately; rebuilding the now-obsolete lobby first creates a guest-
+    // only window in which a constrained renderer can present the garage.
+    // A refreshed guest rejoins the durable room after authority has already
+    // crossed the starting barrier. Treat the live `playing` receipt as the
+    // same battle-entry intent; the match runtime reclaims this stable player
+    // id and streams the current authority snapshot into the rebuilt world.
+    if (shouldBeginClientHandoff(next)) {
+      beginNetworkHandoff(next, 'client');
+      return;
+    }
+    setClosePurpose(true);
+    notifyLobbyChange(next);
+    lobbyEl.classList.add('show');
+    room.classList.add('connected');
+    root.classList.add('lobby-active');
+    renderLobbyBattlefield(next);
+    const playerId = ownId();
+    const me = next.players.find((player) => player.id === playerId);
+    renderLobbySelf(me, next);
+    updateLobbyControls(next, me);
+    renderLobbyPlayers(next, playerId);
+    renderLobbyNote(next);
   }
 
   async function connectRoom(kind: 'create' | 'join'): Promise<boolean> {
@@ -1293,7 +1336,7 @@ export function createPlayMenu({
       room.classList.remove('show');
       ranked.classList.add('show');
       setStatus('Server-authoritative matchmaking. Your rating is owned by the match service.');
-      refreshRanked().catch((error: unknown) => setStatus(errorMessage(error), true));
+      refreshRanked().catch((error: RuntimeValue) => setStatus(errorMessage(error), true));
       return;
     }
     ranked.classList.remove('show');
@@ -1329,19 +1372,19 @@ export function createPlayMenu({
     try {
       if (await connectRoom('create')) setStatus(roomConnectionStatus('created'));
     }
-    catch (error: unknown) { setStatus(errorMessage(error), true); }
+    catch (error) { setStatus(errorMessage(error), true); }
   });
   joinBtn.addEventListener('click', async () => {
     setStatus('Joining room…');
     try {
       if (await connectRoom('join')) setStatus(roomConnectionStatus('joined'));
     }
-    catch (error: unknown) { setStatus(errorMessage(error), true); }
+    catch (error) { setStatus(errorMessage(error), true); }
   });
   rankedQueueBtn.addEventListener('click', async () => {
     setStatus('Joining ranked queue…');
     try { await queueRanked(); }
-    catch (error: unknown) {
+    catch (error) {
       if (!(error instanceof Error) || error.name !== 'AbortError') {
         setStatus(errorMessage(error), true);
       }
@@ -1445,7 +1488,7 @@ export function createPlayMenu({
       .then((connected) => {
         if (connected) setStatus(roomConnectionStatus('joined'));
       })
-      .catch((error: unknown) => setStatus(errorMessage(error), true));
+      .catch((error: RuntimeValue) => setStatus(errorMessage(error), true));
   }
   function hide(closeSession = true): void {
     closeMenuSelects();

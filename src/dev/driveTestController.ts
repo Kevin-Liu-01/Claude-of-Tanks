@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { createShell } from '../sim/ballistics.ts';
 import type { DamageShellSpec } from '../sim/damage.ts';
@@ -74,7 +75,7 @@ interface DriveTestGame {
   player: DriveTestTank | null;
   tanks: DriveTestTank[];
   tankById: Map<string, DriveTestTank>;
-  shells: unknown[];
+  shells: RuntimeValue[];
   nextShellId: number;
 }
 
@@ -99,7 +100,7 @@ interface DriveTestAimController {
     outOrigin: THREE.Vector3,
     outDirection: THREE.Vector3,
     outTarget: THREE.Vector3,
-  ): unknown;
+  ): RuntimeValue;
   muzzlePathBlockDist(
     origin: THREE.Vector3,
     target: THREE.Vector3,
@@ -108,7 +109,7 @@ interface DriveTestAimController {
 }
 
 interface DriveTestBus {
-  emit(type: string, payload: Record<string, unknown>): void;
+  emit(type: string, payload: Record<string, RuntimeValue>): void;
 }
 
 interface PlayerShellRecord {
@@ -121,7 +122,7 @@ export interface DriveTestControllerOptions {
   getGame(): DriveTestGame;
   getWorld(): DriveTestWorld | null;
   getRig(): DriveTestRig;
-  getCollider(): unknown;
+  getCollider(): RuntimeValue;
   bus: DriveTestBus;
   input: { isDown(action: string): boolean };
   aimController: DriveTestAimController;
@@ -133,7 +134,7 @@ export interface DriveTestControllerOptions {
     bus: DriveTestBus,
     world: DriveTestWorld,
     rig: DriveTestRig,
-    collider: unknown,
+    collider: RuntimeValue,
   ): void;
   resetPresentationPoses(): void;
   resetSimAccumulator(): void;
@@ -143,7 +144,7 @@ export interface DriveTestController {
   readonly aimTargetId: string | null;
   aimAtNearest(): { id: string; distM: number } | null;
   gunAimError(): number;
-  aimState(): Record<string, unknown> | null;
+  aimState(): Record<string, RuntimeValue> | null;
   fastForward(seconds: number): number;
   spawnKillShell(aimYFrac?: number): boolean;
   slayEnemies(): void;
@@ -186,6 +187,15 @@ export function createDriveTestController({
   let leadLatchHFrac = 0;
   let leadLatchUntilS = -1;
   let leadLatchTargetId: string | null = null;
+
+  function lastShotBounced(targetId: string): boolean {
+    for (let index = playerShellLog.length - 1; index >= 0; index--) {
+      const record = playerShellLog[index];
+      if (record.targetId !== targetId || !record.terminal) continue;
+      return record.terminal === 'tank' && (record.damage || 0) <= 0;
+    }
+    return false;
+  }
 
   function debugLeadPoint(
     player: LiveDriveTestTank,
@@ -241,13 +251,7 @@ export function createDriveTestController({
       return clearanceM;
     };
 
-    let bouncedLast = false;
-    for (let index = playerShellLog.length - 1; index >= 0; index--) {
-      const record = playerShellLog[index];
-      if (record.targetId !== target.id || !record.terminal) continue;
-      bouncedLast = record.terminal === 'tank' && (record.damage || 0) <= 0;
-      break;
-    }
+    const bouncedLast = lastShotBounced(target.id);
     const game = getGame();
     const latched = leadLatchTargetId === target.id && game.timeS < leadLatchUntilS;
     if (latched && clearAt(leadLatchHFrac)) return out;
@@ -305,7 +309,7 @@ export function createDriveTestController({
     return Math.acos(Math.min(1, Math.max(-1, v3.dot(v2))));
   }
 
-  function aimState(): Record<string, unknown> | null {
+  function aimState(): Record<string, RuntimeValue> | null {
     const game = getGame();
     const player = game.player;
     if (!isLiveDriveTestTank(player) || player.combat.destroyed || !player.visual) return null;
@@ -395,6 +399,23 @@ export function createDriveTestController({
     return { id: best.id, distM: bestDistanceM };
   }
 
+  function prepareFastForwardInput(game: DriveTestGame): void {
+    const player = game.player;
+    if (!isLiveDriveTestTank(player) || player.combat.destroyed) return;
+    player.input.fire = debugFlags.forceFire
+      || (player.input.fire && input.isDown('fire'));
+    const target = aimTargetId ? game.tankById.get(aimTargetId) : null;
+    if (isLiveDriveTestTank(target) && !target.combat.destroyed) {
+      debugLeadPoint(player, target, player.input.aimPoint);
+    }
+  }
+
+  function syncFastForwardPresentation(game: DriveTestGame): void {
+    for (const entity of game.tanks) {
+      if (entity.state && entity.visual?.syncFromState) entity.visual.syncFromState(entity.state);
+    }
+  }
+
   function fastForward(seconds: number): number {
     const game = getGame();
     const world = getWorld();
@@ -403,21 +424,9 @@ export function createDriveTestController({
     const steps = Math.max(0, Math.round(seconds / SIM_DT));
     for (let step = 0; step < steps; step++) {
       if (game.phase !== 'battle') break;
-      const player = game.player;
-      if (isLiveDriveTestTank(player) && !player.combat.destroyed) {
-        player.input.fire = debugFlags.forceFire
-          || (player.input.fire && input.isDown('fire'));
-        const target = aimTargetId ? game.tankById.get(aimTargetId) : null;
-        if (isLiveDriveTestTank(target) && !target.combat.destroyed) {
-          debugLeadPoint(player, target, player.input.aimPoint);
-        }
-      }
+      prepareFastForwardInput(game);
       simStep(game, bus, world, rig, getCollider());
-      for (const entity of game.tanks) {
-        if (entity.state && entity.visual?.syncFromState) {
-          entity.visual.syncFromState(entity.state);
-        }
-      }
+      syncFastForwardPresentation(game);
     }
     resetPresentationPoses();
     resetSimAccumulator();
@@ -484,7 +493,7 @@ export function createDriveTestController({
         v1,
         v3,
         game.nextShellId++,
-      ) as { id: unknown };
+      ) as { id: RuntimeValue };
       game.shells.push(shell);
       bus.emit('shell:fired', {
         shellId: shell.id,

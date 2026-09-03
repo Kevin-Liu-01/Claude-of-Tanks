@@ -1,17 +1,18 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { GarageDressingAccess } from './garageDressingAccess.ts';
 
 interface GarageDressingSchedulerOptions {
   dressing: GarageDressingAccess;
   getPhase(): string;
   isTransitionActive(): boolean;
-  requestIdle(callback: () => void): unknown;
-  scheduleDelay(callback: () => void, delayMs: number): unknown;
+  requestIdle(callback: () => void): RuntimeValue;
+  scheduleDelay(callback: () => void, delayMs: number): RuntimeValue;
   acquireBackgroundWork?: (
     kind: 'dressing',
     stillValid: () => boolean,
   ) => Promise<{ release(): void } | null>;
   now?: () => number;
-  warn?: (message: string, error: unknown) => void;
+  warn?: (message: string, error: RuntimeValue) => void;
   onVisualChange?: () => void;
   quietMs?: number;
 }
@@ -23,7 +24,7 @@ export interface GarageDressingScheduler {
   readonly scheduled: boolean;
 }
 
-function messageOf(error: unknown): string {
+function messageOf(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -98,7 +99,7 @@ export function createGarageDressingScheduler({
       // shared exhibits outside the visible boot and interaction paths.
       await dressing.pump();
       onVisualChange();
-    } catch (error: unknown) {
+    } catch (error) {
       warn('[garageDressing] quiet build failed —', error);
     } finally {
       lease.release();

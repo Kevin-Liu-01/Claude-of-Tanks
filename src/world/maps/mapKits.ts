@@ -21,6 +21,7 @@
 import * as THREE from 'three';
 import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
+import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 
 type Rng = () => number;
@@ -54,7 +55,12 @@ interface GroundingReceipt {
   x: number;
   y: number;
   z: number;
-  [name: string]: unknown;
+  relief?: number;
+  baseClearance?: number;
+  supportMin?: number;
+  supportMax?: number;
+  start?: GroundedSegmentEndpoint;
+  end?: GroundedSegmentEndpoint;
 }
 
 interface DressingContext {
@@ -632,147 +638,200 @@ function jetty(
   }
 }
 
-/**
- * Map-specific dressing pass — call from props.ts createProps right before
- * the bucket merge ("--- merge buckets into one mesh per material ---").
- * @param {object} ctx {mapId, L (layout), heightField, rng, buckets}
- */
+function isDressingPointClear(
+  heightField: DressingHeightField,
+  x: number,
+  z: number,
+  extent: number,
+  roadClearance: number,
+): boolean {
+  return Math.max(Math.abs(x), Math.abs(z)) <= extent
+    && heightField._roadDist(x, z) >= roadClearance;
+}
+
+function addWinterShoreReeds(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const clumps = Math.round(lake.r * (big ? 0.52 : 0.3));
+  for (let i = 0; i < clumps; i++) {
+    const angle = rng() * Math.PI * 2;
+    const radius = lake.r * (0.82 + rng() * 0.22);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (!isDressingPointClear(heightField, x, z, 480, 6)) continue;
+    reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
+  }
+}
+
+function addWinterShoreIce(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const clusters = Math.round(lake.r * (big ? 0.62 : 0.42));
+  for (let i = 0; i < clusters; i++) {
+    const angle = rng() * Math.PI * 2;
+    const radius = lake.r * (0.90 + rng() * 0.12);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (!isDressingPointClear(heightField, x, z, 480, 6)) continue;
+    if (rng() < 0.45) continue;
+    const y = heightField.getHeightAt(x, z);
+    const slabCount = 2 + ((rng() * 4) | 0);
+    for (let slabIndex = 0; slabIndex < slabCount; slabIndex++) {
+      const width = 0.7 + rng() * 1.1;
+      const height = 0.22 + rng() * 0.34;
+      const slab = box(width, height, 0.14 + rng() * 0.10, 0.9);
+      slab.rotateZ((rng() - 0.5) * 0.9);
+      slab.rotateX((rng() - 0.5) * 0.8);
+      slab.rotateY(-angle + (rng() - 0.5) * 0.9);
+      slab.translate(x + (rng() - 0.5) * 2.6, y + height * 0.28,
+        z + (rng() - 0.5) * 2.6);
+      buckets.stone.push(jitterUV(slab, rng));
+    }
+  }
+}
+
+function addWinterPressureRidges(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const ridges = big ? 7 : 2;
+  for (let i = 0; i < ridges; i++) {
+    const angle = rng() * Math.PI * 2;
+    const radius = lake.r * (0.16 + rng() * 0.5);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    pressureRidge(buckets, rng, x, z, heightField.getHeightAt(x, z),
+      rng() * Math.PI, 10 + rng() * 10);
+  }
+}
+
+const WINTER_WIND_YAW = -0.6;
+
+function addSnowLens(
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+  x: number,
+  z: number,
+  radius: number,
+  height: number,
+  streak: boolean,
+): void {
+  const geometry = new THREE.SphereGeometry(1, 24, 10);
+  const elongation = streak ? 3.0 + rng() * 1.8 : 1.4 + rng() * 0.5;
+  geometry.scale(radius * elongation * 0.5, height, radius * (0.55 + rng() * 0.3));
+  geometry.rotateY(WINTER_WIND_YAW + (rng() - 0.5) * 0.24);
+  geometry.translate(x, heightField.getHeightAt(x, z) + height * 0.12, z);
+  buckets.plaster.push(jitterUV(geometry, rng));
+}
+
+function addWinterInteriorDrifts(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const driftCount = big ? 12 : 5;
+  for (let i = 0; i < driftCount; i++) {
+    const angle = rng() * Math.PI * 2;
+    const radius = lake.r * (0.15 + rng() * 0.6);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    addSnowLens(heightField, rng, buckets, x, z,
+      3.0 + rng() * 4.0, 0.13 + rng() * 0.12, true);
+    const tailCount = 1 + ((rng() * 3) | 0);
+    for (let tail = 1; tail <= tailCount; tail++) {
+      addSnowLens(heightField, rng, buckets,
+        x + Math.cos(WINTER_WIND_YAW) * (5 + tail * (4 + rng() * 3)),
+        z - Math.sin(WINTER_WIND_YAW) * (5 + tail * (4 + rng() * 3)),
+        1.2 + rng() * 1.8, 0.08 + rng() * 0.07, true);
+    }
+  }
+}
+
+function addWinterRimDrifts(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const rimCount = Math.round(lake.r * (big ? 0.5 : 0.35));
+  for (let i = 0; i < rimCount; i++) {
+    const angle = rng() * Math.PI * 2;
+    if (rng() < 0.30) continue;
+    const radius = lake.r * (0.90 + rng() * 0.16);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (!isDressingPointClear(heightField, x, z, 480, 6)) continue;
+    addSnowLens(heightField, rng, buckets, x, z,
+      2.6 + rng() * 3.4, 0.13 + rng() * 0.14, false);
+  }
+}
+
+function addWinterLakeLandmark(
+  lake: LayoutDisc,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+  groundingReceipts?: GroundingReceipt[] | null,
+): void {
+  const boatAngle = Math.PI * 1.32 + rng() * 0.2;
+  const boatX = lake.x + Math.cos(boatAngle) * lake.r * 0.86;
+  const boatZ = lake.z + Math.sin(boatAngle) * lake.r * 0.86;
+  frozenRowboat(buckets, rng, heightField, boatX, boatZ,
+    boatAngle + Math.PI / 2, groundingReceipts);
+  const jettyAngle = boatAngle + 0.45;
+  const jettyX = lake.x + Math.cos(jettyAngle) * lake.r * 1.02;
+  const jettyZ = lake.z + Math.sin(jettyAngle) * lake.r * 1.02;
+  jetty(buckets, rng, jettyX, jettyZ, jettyAngle + Math.PI,
+    heightField.getHeightAt(jettyX, jettyZ));
+}
+
+function dressWinterLakes({
+  L, heightField, rng, buckets, groundingReceipts,
+}: FocusedDressingContext): void {
+  for (const lake of L.lakes || []) {
+    const big = lake.r >= 80;
+    addWinterShoreReeds(lake, big, heightField, rng, buckets);
+    addWinterShoreIce(lake, big, heightField, rng, buckets);
+    addWinterPressureRidges(lake, big, heightField, rng, buckets);
+    addWinterInteriorDrifts(lake, big, heightField, rng, buckets);
+    addWinterRimDrifts(lake, big, heightField, rng, buckets);
+    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts);
+  }
+}
+
+function legacyDressingKits(mapId?: string): readonly string[] {
+  if (mapId === 'coastal') return ['coastal'];
+  if (mapId === 'autumn') return ['river'];
+  if (mapId === 'railyard') return ['rail'];
+  if (mapId === 'winter') return ['winterLake'];
+  return [];
+}
+
+/** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, L, heightField, rng, buckets, groundingReceipts = null,
 }: DressingContext): void {
-  // Configurable kit dispatch lets new maps compose the production dressing
-  // vocabulary without cloning geometry builders. Legacy ids resolve to the
-  // exact one kit they used before, preserving their RNG stream and output.
-  const kits = extraKits || (mapId === 'coastal' ? ['coastal']
-    : mapId === 'autumn' ? ['river']
-      : mapId === 'railyard' ? ['rail']
-        : mapId === 'winter' ? ['winterLake'] : []);
-  if (kits.includes('coastal')) {
-    dressCoastalShore({ L, heightField, rng, buckets, groundingReceipts });
-  }
-  if (kits.includes('river')) dressAutumnRiver({ L, heightField, rng, buckets });
-  if (kits.includes('rail')) dressRailYard({ L, heightField, rng, buckets });
-  if (!kits.includes('winterLake') || !L.lakes || !L.lakes.length) return;
-  for (const lake of L.lakes) {
-    const big = lake.r >= 80; // the signature basin gets the full treatment
-    // --- shoreline reed stands: clumped along the drift band -------------
-    const clumps = Math.round(lake.r * (big ? 0.52 : 0.3));
-    for (let i = 0; i < clumps; i++) {
-      const a = rng() * Math.PI * 2;
-      const rr = lake.r * (0.82 + rng() * 0.22);
-      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-      if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
-      if (heightField._roadDist(x, z) < 6) continue;
-      reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
-    }
-    // --- jumbled shore-ice ring (content_breadth r5) ----------------------
-    // The sheet met the snowfield as a soft airbrushed border ("flat light-
-    // blue paint puddle ... soft undefined shoreline" critique). Real lake
-    // ice piles broken refrozen plates along the waterline; a clumpy ring of
-    // small canted slabs draws a bright, structured shoreline that reads at
-    // establishing distance. Stone bucket = winter's pale snow-dusted tone.
-    {
-      const clusters = Math.round(lake.r * (big ? 0.62 : 0.42));
-      for (let i = 0; i < clusters; i++) {
-        const a = rng() * Math.PI * 2;
-        // hug the waterline: just inside/outside the nominal radius
-        const rr = lake.r * (0.90 + rng() * 0.12);
-        const cx = lake.x + Math.cos(a) * rr, cz = lake.z + Math.sin(a) * rr;
-        if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) continue;
-        if (heightField._roadDist(cx, cz) < 6) continue;
-        // ~55% of the ring carries jumble; leave clean drift stretches
-        if (rng() < 0.45) continue;
-        const y = heightField.getHeightAt(cx, cz);
-        const n = 2 + ((rng() * 4) | 0);
-        for (let k = 0; k < n; k++) {
-          const pw = 0.7 + rng() * 1.1, ph = 0.22 + rng() * 0.34;
-          const slab = box(pw, ph, 0.14 + rng() * 0.10, 0.9);
-          slab.rotateZ((rng() - 0.5) * 0.9);
-          slab.rotateX((rng() - 0.5) * 0.8);
-          slab.rotateY(-a + (rng() - 0.5) * 0.9);
-          slab.translate(cx + (rng() - 0.5) * 2.6, y + ph * 0.28, cz + (rng() - 0.5) * 2.6);
-          buckets.stone.push(jitterUV(slab, rng));
-        }
-      }
-    }
-    // --- refrozen pressure ridges out on the sheet ------------------------
-    const ridges = big ? 7 : 2;
-    for (let i = 0; i < ridges; i++) {
-      const a = rng() * Math.PI * 2;
-      const rr = lake.r * (0.16 + rng() * 0.5);
-      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-      pressureRidge(buckets, rng, x, z, heightField.getHeightAt(x, z),
-        rng() * Math.PI, 10 + rng() * 10);
-    }
-    // --- drift lenses ON the sheet + a drifted shore ring (content_breadth
-    // r6). (a) partially snow-drifted ice patches: low flattened lenses
-    // scattered over the interior so the sheet reads wind-worked instead of
-    // one uniform macro print; (b) a patchy ring of shore-drift lenses
-    // straddling the nominal radius — the splat rim used to end as a hard
-    // ellipse against the snowfield (critique); overlapping soft lenses blur
-    // the shoreline into a 3-8 m drifted transition. Plaster bucket + the
-    // winter snow-cap shader = bright snow tops with soft blue side shading.
-    {
-      // r7 terrain_environment: WIND-STREAK drifts. The old round lenses
-      // stamped "obviously repeated circular blobs" across the sheet
-      // (critique) — real on-ice drifts are elongated sastrugi tails carved
-      // by ONE prevailing wind. Every interior drift is now a 3-5:1 streak
-      // aligned to the same azimuth as the ice texture's authored wind
-      // streaks (dir 0.6 rad in makeIceLayer -> rotateY(-0.6)), with only
-      // small per-streak yaw jitter; several short tail segments trail off
-      // downwind so the shapes read carved, not stamped.
-      const WIND_YAW = -0.6;
-      const lens = (x: number, z: number, r: number, h: number, streak: boolean): void => {
-        // These lenses are broad enough to sit directly under a chase camera.
-        // The former 10×5 sphere left metre-wide planar facets across a
-        // 20-30 m streak; at grazing angles they read as torn white polygons
-        // hovering over the ice. A modest 24×10 cap keeps the same silhouette
-        // and material budget while producing a continuous snow surface.
-        const g = new THREE.SphereGeometry(1, 24, 10);
-        const el = streak ? 3.0 + rng() * 1.8 : 1.4 + rng() * 0.5;
-        g.scale(r * el * 0.5, h, r * (0.55 + rng() * 0.3));
-        g.rotateY(WIND_YAW + (rng() - 0.5) * 0.24);
-        g.translate(x, heightField.getHeightAt(x, z) + h * 0.12, z);
-        buckets.plaster.push(jitterUV(g, rng));
-      };
-      const nDrift = big ? 12 : 5;
-      for (let i = 0; i < nDrift; i++) {
-        const a = rng() * Math.PI * 2;
-        const rr = lake.r * (0.15 + rng() * 0.6);
-        const dx = lake.x + Math.cos(a) * rr, dz = lake.z + Math.sin(a) * rr;
-        lens(dx, dz, 3.0 + rng() * 4.0, 0.13 + rng() * 0.12, true);
-        // downwind tail fragments
-        const nTail = 1 + ((rng() * 3) | 0);
-        for (let t = 1; t <= nTail; t++) {
-          lens(dx + Math.cos(WIND_YAW) * (5 + t * (4 + rng() * 3)),
-            dz - Math.sin(WIND_YAW) * (5 + t * (4 + rng() * 3)),
-            1.2 + rng() * 1.8, 0.08 + rng() * 0.07, true);
-        }
-      }
-      const nRim = Math.round(lake.r * (big ? 0.5 : 0.35));
-      for (let i = 0; i < nRim; i++) {
-        const a = rng() * Math.PI * 2;
-        if (rng() < 0.30) continue; // leave clean sheet stretches
-        const rr = lake.r * (0.90 + rng() * 0.16);
-        const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-        if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
-        if (heightField._roadDist(x, z) < 6) continue;
-        lens(x, z, 2.6 + rng() * 3.4, 0.13 + rng() * 0.14, false);
-      }
-    }
-    if (!big) continue;
-    // --- one frozen-in rowboat + a sagging jetty on the near shore -------
-    // deterministic-ish placement on the south-west shore (faces the
-    // establishing camera at [40,52,-288] for the signature lake)
-    const ba = Math.PI * 1.32 + rng() * 0.2;
-    const bx = lake.x + Math.cos(ba) * lake.r * 0.86;
-    const bz = lake.z + Math.sin(ba) * lake.r * 0.86;
-    frozenRowboat(buckets, rng, heightField, bx, bz, ba + Math.PI / 2, groundingReceipts);
-    const ja = ba + 0.45;
-    const jx = lake.x + Math.cos(ja) * lake.r * 1.02;
-    const jz = lake.z + Math.sin(ja) * lake.r * 1.02;
-    jetty(buckets, rng, jx, jz, ja + Math.PI, heightField.getHeightAt(jx, jz));
-  }
+  const kits = extraKits || legacyDressingKits(mapId);
+  const focused = { L, heightField, rng, buckets, groundingReceipts };
+  if (kits.includes('coastal')) dressCoastalShore(focused);
+  if (kits.includes('river')) dressAutumnRiver(focused);
+  if (kits.includes('rail')) dressRailYard(focused);
+  if (kits.includes('winterLake')) dressWinterLakes(focused);
 }
 
 // =============================================================================
@@ -841,70 +900,100 @@ function beachedBoat(
   });
 }
 
+function addCoastalBoats(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+  groundingReceipts?: GroundingReceipt[] | null,
+): void {
+  const boatCount = big ? 3 : 1;
+  for (let i = 0; i < boatCount; i++) {
+    const angle = Math.PI + (rng() - 0.5) * 1.5;
+    const radius = lake.r * (1.045 + rng() * 0.05);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (!isDressingPointClear(heightField, x, z, 470, 7)) continue;
+    beachedBoat(buckets, rng, heightField, x, z,
+      angle + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts);
+  }
+}
+
+function addCoastalDriftwood(
+  lake: LayoutDisc,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+  groundingReceipts?: GroundingReceipt[] | null,
+): void {
+  const driftCount = Math.round(lake.r * 0.14);
+  for (let i = 0; i < driftCount; i++) {
+    const angle = Math.PI + (rng() - 0.5) * 2.2;
+    const radius = lake.r * (1.03 + rng() * 0.09);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (!isDressingPointClear(heightField, x, z, 470, 6)) continue;
+    const length = 1.6 + rng() * 2.6;
+    const yaw = angle + Math.PI / 2 + (rng() - 0.5) * 0.8;
+    const pose = planGroundedSegment(
+      heightField, x, z, Math.cos(yaw), -Math.sin(yaw), length, 0.12, 0.03,
+    );
+    const log = box(length, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
+    _groundNormal.set(pose.axisX, pose.axisY, pose.axisZ);
+    _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
+    log.applyQuaternion(_groundQuat);
+    log.translate(x, pose.y, z);
+    buckets.wood.push(jitterUV(log, rng));
+    groundingReceipts?.push({
+      kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
+      baseClearance: -0.03, start: pose.start, end: pose.end,
+    });
+  }
+}
+
+function addCoastalBuoys(
+  lake: LayoutDisc,
+  big: boolean,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const buoyCount = big ? 5 : 2;
+  for (let i = 0; i < buoyCount; i++) {
+    const angle = Math.PI + (rng() - 0.5) * 1.8;
+    const radius = lake.r * (0.72 + rng() * 0.2);
+    const x = lake.x + Math.cos(angle) * radius;
+    const z = lake.z + Math.sin(angle) * radius;
+    if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
+    const buoy = new THREE.SphereGeometry(0.32 + rng() * 0.12, 8, 6);
+    scaleUV(buoy, 1.5, 1);
+    buoy.translate(x, heightField.getHeightAt(x, z) + 0.16, z);
+    buckets.plaster.push(jitterUV(buoy, rng));
+  }
+}
+
+function addCoastalJetty(
+  lake: LayoutDisc,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const angle = Math.PI + (rng() - 0.5) * 0.5;
+  const x = lake.x + Math.cos(angle) * lake.r * 1.05;
+  const z = lake.z + Math.sin(angle) * lake.r * 1.05;
+  jetty(buckets, rng, x, z, angle + Math.PI, heightField.getHeightAt(x, z), 11);
+}
+
 function dressCoastalShore({
   L, heightField, rng, buckets, groundingReceipts,
 }: FocusedDressingContext): void {
-  if (!L.lakes || !L.lakes.length) return;
-  // land direction: the sea circles sit on the east edge, land is -x — the
-  // dressing hugs whichever shore arc faces the map interior
-  for (const lake of L.lakes) {
-    const big = lake.r >= 110; // main bay arcs get boats + the jetty
-    // --- beached boats + driftwood on the landward arc ----------------------
-    const nBoat = big ? 3 : 1;
-    for (let i = 0; i < nBoat; i++) {
-      const a = Math.PI + (rng() - 0.5) * 1.5; // landward bearing (cos<0 => -x)
-      const rr = lake.r * (1.045 + rng() * 0.05); // just above the surf line
-      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-      if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
-      if (heightField._roadDist(x, z) < 7) continue;
-      beachedBoat(buckets, rng, heightField, x, z,
-        a + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts);
-    }
-    // driftwood: silvered logs strewn along the wrack line
-    const nDrift = Math.round(lake.r * 0.14);
-    for (let i = 0; i < nDrift; i++) {
-      const a = Math.PI + (rng() - 0.5) * 2.2;
-      const rr = lake.r * (1.03 + rng() * 0.09);
-      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-      if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
-      if (heightField._roadDist(x, z) < 6) continue;
-      const len = 1.6 + rng() * 2.6;
-      const yaw = a + Math.PI / 2 + (rng() - 0.5) * 0.8;
-      const pose = planGroundedSegment(
-        heightField, x, z, Math.cos(yaw), -Math.sin(yaw), len, 0.12, 0.03,
-      );
-      const log = box(len, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
-      // The driftwood box is authored along local X. Align that axis to the
-      // two endpoint supports in one rotation so pitch cannot skew its shore
-      // bearing on diagonal placements.
-      _groundNormal.set(pose.axisX, pose.axisY, pose.axisZ);
-      _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
-      log.applyQuaternion(_groundQuat);
-      log.translate(x, pose.y, z);
-      buckets.wood.push(jitterUV(log, rng));
-      groundingReceipts?.push({
-        kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
-        baseClearance: -0.03, start: pose.start, end: pose.end,
-      });
-    }
-    // mooring buoys bobbing in the shallows (plaster = whitewash tone)
-    const nBuoy = big ? 5 : 2;
-    for (let i = 0; i < nBuoy; i++) {
-      const a = Math.PI + (rng() - 0.5) * 1.8;
-      const rr = lake.r * (0.72 + rng() * 0.2);
-      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
-      if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
-      const b = new THREE.SphereGeometry(0.32 + rng() * 0.12, 8, 6);
-      scaleUV(b, 1.5, 1);
-      b.translate(x, heightField.getHeightAt(x, z) + 0.16, z);
-      buckets.plaster.push(jitterUV(b, rng));
-    }
-    if (!big) continue;
-    // --- the village jetty: walks off the landward shore into the bay ------
-    const ja = Math.PI + (rng() - 0.5) * 0.5;
-    const jx = lake.x + Math.cos(ja) * lake.r * 1.05;
-    const jz = lake.z + Math.sin(ja) * lake.r * 1.05;
-    jetty(buckets, rng, jx, jz, ja + Math.PI, heightField.getHeightAt(jx, jz), 11);
+  for (const lake of L.lakes || []) {
+    const big = lake.r >= 110;
+    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts);
+    addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts);
+    addCoastalBuoys(lake, big, heightField, rng, buckets);
+    if (big) addCoastalJetty(lake, heightField, rng, buckets);
   }
 }
 
@@ -912,10 +1001,12 @@ function dressCoastalShore({
 // maps r1 — AUTUMN RIVER dressing (ruined bridge, ford posts, bank reeds)
 // =============================================================================
 
-function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingContext): void {
-  const links = (L.marshes || []).filter((m) => m.r <= 40); // river chain links
-  if (links.length < 3) return;
-  // --- bank reeds: clumps along both banks of every link -------------------
+function addRiverBankReeds(
+  links: readonly LayoutDisc[],
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
   for (const m of links) {
     const clumps = 2 + ((rng() * 3) | 0);
     for (let i = 0; i < clumps; i++) {
@@ -927,83 +1018,143 @@ function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingConte
       reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
     }
   }
-  // --- ruined stone bridge at ~40% along the chain --------------------------
-  {
-    const i0 = Math.floor(links.length * 0.4);
-    const a = links[Math.max(0, i0 - 1)], b = links[Math.min(links.length - 1, i0 + 1)];
-    const cx = links[i0].x, cz = links[i0].z;
-    const flow = Math.atan2(b.z - a.z, b.x - a.x);
-    const cross = flow + Math.PI / 2; // bridge axis spans the channel
-    const halfSpan = links[i0].r * 1.02; // abutments sit right at the banks
-    for (const s of [-1, 1]) {
-      const ax = cx + Math.cos(cross) * halfSpan * s;
-      const az = cz + Math.sin(cross) * halfSpan * s;
-      const ay = heightField.getHeightAt(ax, az);
-      // r4: bulked up — the first-cut 3.4 m blocks read as lone crates from
-      // any gameplay camera. Abutment mass + arch stub + parapet remnant.
-      const ab = box(6.2, 3.2, 5.4, 0.6);
-      ab.rotateY(-cross);
-      ab.translate(ax, ay + 1.2, az);
-      buckets.stone.push(jitterUV(ab, rng));
-      const stub = box(3.8, 1.6, 4.6, 0.6); // broken arch springing
-      stub.rotateY(-cross);
-      stub.rotateZ(-s * Math.cos(cross) * 0.30);
-      stub.rotateX(s * Math.sin(cross) * 0.30);
-      stub.translate(ax - Math.cos(cross) * s * 4.0, ay + 2.2, az - Math.sin(cross) * s * 4.0);
-      buckets.stone.push(jitterUV(stub, rng));
-      const para = box(0.5, 1.1, 5.8, 0.8); // surviving parapet stump
-      para.rotateY(-cross);
-      para.translate(ax + Math.cos(cross + Math.PI / 2) * 2.6, ay + 3.2, az + Math.sin(cross + Math.PI / 2) * 2.6);
-      buckets.stone.push(jitterUV(para, rng));
-      const wing = box(1.6, 1.8, 6.4, 0.6); // splayed wing wall
-      wing.rotateY(-cross + s * 0.5);
-      wing.translate(ax + Math.cos(cross) * s * 2.2, ay + 0.6, az + Math.sin(cross) * s * 2.2);
-      buckets.stone.push(jitterUV(wing, rng));
-    }
-    // fallen arch slabs canted in the channel
-    for (let k = 0; k < 5; k++) {
-      const t = (rng() - 0.5) * halfSpan * 1.2;
-      const sx = cx + Math.cos(cross) * t, sz = cz + Math.sin(cross) * t;
-      const slab = box(2.2 + rng() * 1.6, 0.7, 2.6 + rng() * 1.0, 0.7);
-      slab.rotateY(-cross + (rng() - 0.5) * 0.8);
-      slab.rotateZ((rng() - 0.5) * 0.5);
-      slab.translate(sx, heightField.getHeightAt(sx, sz) + 0.3, sz);
-      buckets.stone.push(jitterUV(slab, rng));
-    }
+}
+
+function addBridgeAbutment(
+  side: number,
+  centerX: number,
+  centerZ: number,
+  cross: number,
+  halfSpan: number,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const x = centerX + Math.cos(cross) * halfSpan * side;
+  const z = centerZ + Math.sin(cross) * halfSpan * side;
+  const y = heightField.getHeightAt(x, z);
+  const abutment = box(6.2, 3.2, 5.4, 0.6);
+  abutment.rotateY(-cross);
+  abutment.translate(x, y + 1.2, z);
+  buckets.stone.push(jitterUV(abutment, rng));
+  const stub = box(3.8, 1.6, 4.6, 0.6);
+  stub.rotateY(-cross);
+  stub.rotateZ(-side * Math.cos(cross) * 0.30);
+  stub.rotateX(side * Math.sin(cross) * 0.30);
+  stub.translate(x - Math.cos(cross) * side * 4.0, y + 2.2,
+    z - Math.sin(cross) * side * 4.0);
+  buckets.stone.push(jitterUV(stub, rng));
+  const parapet = box(0.5, 1.1, 5.8, 0.8);
+  parapet.rotateY(-cross);
+  parapet.translate(x + Math.cos(cross + Math.PI / 2) * 2.6, y + 3.2,
+    z + Math.sin(cross + Math.PI / 2) * 2.6);
+  buckets.stone.push(jitterUV(parapet, rng));
+  const wing = box(1.6, 1.8, 6.4, 0.6);
+  wing.rotateY(-cross + side * 0.5);
+  wing.translate(x + Math.cos(cross) * side * 2.2, y + 0.6,
+    z + Math.sin(cross) * side * 2.2);
+  buckets.stone.push(jitterUV(wing, rng));
+}
+
+function addFallenBridgeSlabs(
+  centerX: number,
+  centerZ: number,
+  cross: number,
+  halfSpan: number,
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  for (let k = 0; k < 5; k++) {
+    const offset = (rng() - 0.5) * halfSpan * 1.2;
+    const x = centerX + Math.cos(cross) * offset;
+    const z = centerZ + Math.sin(cross) * offset;
+    const slab = box(2.2 + rng() * 1.6, 0.7, 2.6 + rng() * 1.0, 0.7);
+    slab.rotateY(-cross + (rng() - 0.5) * 0.8);
+    slab.rotateZ((rng() - 0.5) * 0.5);
+    slab.translate(x, heightField.getHeightAt(x, z) + 0.3, z);
+    buckets.stone.push(jitterUV(slab, rng));
   }
-  // --- ford marker posts where the roads wade the river ---------------------
-  // scan each road polyline for enter/exit transitions across the channel
-  const inRiver = (x: number, z: number): boolean => {
-    for (const m of links) if (Math.hypot(x - m.x, z - m.z) < m.r * 0.85) return true;
-    return false;
-  };
-  for (const nodes of L.roads) {
+}
+
+function addRuinedRiverBridge(
+  links: readonly LayoutDisc[],
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const centerIndex = Math.floor(links.length * 0.4);
+  const before = links[Math.max(0, centerIndex - 1)];
+  const after = links[Math.min(links.length - 1, centerIndex + 1)];
+  const centerX = links[centerIndex].x;
+  const centerZ = links[centerIndex].z;
+  const cross = Math.atan2(after.z - before.z, after.x - before.x) + Math.PI / 2;
+  const halfSpan = links[centerIndex].r * 1.02;
+  for (const side of [-1, 1]) {
+    addBridgeAbutment(side, centerX, centerZ, cross, halfSpan, heightField, rng, buckets);
+  }
+  addFallenBridgeSlabs(centerX, centerZ, cross, halfSpan, heightField, rng, buckets);
+}
+
+function isInRiver(links: readonly LayoutDisc[], x: number, z: number): boolean {
+  return links.some((link) => Math.hypot(x - link.x, z - link.z) < link.r * 0.85);
+}
+
+function addFordMarkerPair(
+  previous: readonly [number, number],
+  current: readonly [number, number],
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const [previousX, previousZ] = previous;
+  const [x, z] = current;
+  const tangentX = x - previousX;
+  const tangentZ = z - previousZ;
+  const tangentLength = Math.hypot(tangentX, tangentZ) || 1;
+  const lateralX = -tangentZ / tangentLength;
+  const lateralZ = tangentX / tangentLength;
+  for (const side of [-1, 1]) {
+    const markerX = x + lateralX * 4.6 * side;
+    const markerZ = z + lateralZ * 4.6 * side;
+    if (Math.max(Math.abs(markerX), Math.abs(markerZ)) > 470) continue;
+    const markerY = heightField.getHeightAt(markerX, markerZ);
+    const post = box(0.16, 1.5, 0.16, 1.6);
+    post.rotateY(rng() * Math.PI);
+    post.translate(markerX, markerY + 0.72, markerZ);
+    buckets.wood.push(jitterUV(post, rng));
+    const tip = box(0.19, 0.22, 0.19, 1.0);
+    tip.translate(markerX, markerY + 1.45, markerZ);
+    buckets.plaster.push(tip);
+  }
+}
+
+function addRiverFordMarkers(
+  roads: DressingLayout['roads'],
+  links: readonly LayoutDisc[],
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  for (const nodes of roads) {
     let prev = false;
     for (let i = 0; i < nodes.length; i++) {
       const [nx, nz] = nodes[i];
-      const now = inRiver(nx, nz);
+      const now = isInRiver(links, nx, nz);
       if (now !== prev && i > 0) {
-        // transition — plant a white-tipped post pair either side of the lane
-        const [px, pz] = nodes[i - 1];
-        const tx = nx - px, tz = nz - pz;
-        const tl = Math.hypot(tx, tz) || 1;
-        const lx = -tz / tl, lz = tx / tl;
-        for (const s of [-1, 1]) {
-          const wx = nx + lx * 4.6 * s, wz = nz + lz * 4.6 * s;
-          if (Math.max(Math.abs(wx), Math.abs(wz)) > 470) continue;
-          const wy = heightField.getHeightAt(wx, wz);
-          const post = box(0.16, 1.5, 0.16, 1.6);
-          post.rotateY(rng() * Math.PI);
-          post.translate(wx, wy + 0.72, wz);
-          buckets.wood.push(jitterUV(post, rng));
-          const tip = box(0.19, 0.22, 0.19, 1.0);
-          tip.translate(wx, wy + 1.45, wz);
-          buckets.plaster.push(tip);
-        }
+        addFordMarkerPair(nodes[i - 1], nodes[i], heightField, rng, buckets);
       }
       prev = now;
     }
   }
+}
+
+function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingContext): void {
+  const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
+  if (links.length < 3) return;
+  addRiverBankReeds(links, heightField, rng, buckets);
+  addRuinedRiverBridge(links, heightField, rng, buckets);
+  addRiverFordMarkers(L.roads, links, heightField, rng, buckets);
 }
 
 // =============================================================================
@@ -1083,25 +1234,35 @@ function bufferStop(
   buckets.wood.push(jitterUV(beam, rng));
 }
 
-function dressRailYard({ L, heightField, rng, buckets }: FocusedDressingContext): void {
-  const v = L.village;
-  // --- the track fan: parallel sidings east of the yard's center road ------
-  // (positions authored against the railyard.js grid: roads at x=-120/0/130)
-  const LINES = [
-    { x: 40, z0: -235, z1: 235 },
-    { x: 49, z0: -235, z1: 235 },
-    { x: 58, z0: -205, z1: 210 },  // stubs — staggered ends read as a yard fan
-    { x: 67, z0: -175, z1: 185 },
-    { x: 76, z0: -150, z1: 160 },
-    { x: -66, z0: -235, z1: 235 }, // through line west of the center road
-    { x: -57, z0: -190, z1: 200 },
-  ];
-  for (const ln of LINES) railLine(buckets, rng, heightField, ln.x, ln.z0, ln.z1);
-  for (const ln of LINES) {
-    if (ln.z1 < 230) bufferStop(buckets, rng, heightField, ln.x, ln.z1 + 0.8);
-    if (ln.z0 > -230) bufferStop(buckets, rng, heightField, ln.x, ln.z0 - 0.8);
+const RAIL_YARD_LINES = [
+  { x: 40, z0: -235, z1: 235 },
+  { x: 49, z0: -235, z1: 235 },
+  { x: 58, z0: -205, z1: 210 },
+  { x: 67, z0: -175, z1: 185 },
+  { x: 76, z0: -150, z1: 160 },
+  { x: -66, z0: -235, z1: 235 },
+  { x: -57, z0: -190, z1: 200 },
+] as const;
+
+function addRailYardLines(
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  for (const line of RAIL_YARD_LINES) {
+    railLine(buckets, rng, heightField, line.x, line.z0, line.z1);
   }
-  // --- coal heaps between sidings (dark matte cones read at range) ---------
+  for (const line of RAIL_YARD_LINES) {
+    if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
+    if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8);
+  }
+}
+
+function addRailYardCoalHeaps(
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
   for (let i = 0; i < 7; i++) {
     const x = 34 + rng() * 50, z = -140 + rng() * 280;
     if (heightField._roadDist(x, z) < 7) continue;
@@ -1113,29 +1274,60 @@ function dressRailYard({ L, heightField, rng, buckets }: FocusedDressingContext)
     heap.translate(x, heightField.getHeightAt(x, z) + r * 0.05, z);
     buckets.dark.push(heap);
   }
-  // --- cable drums + sleeper stacks along the western fence line -----------
-  for (let i = 0; i < 9; i++) {
-    const x = v.x0 + 8 + rng() * 30, z = v.z0 + 12 + rng() * (v.z1 - v.z0 - 24);
-    if (heightField._roadDist(x, z) < 7) continue;
-    const y = heightField.getHeightAt(x, z);
-    if (rng() < 0.5) { // cable drum on its side
-      const r = 0.7 + rng() * 0.4;
-      const drum = new THREE.CylinderGeometry(r, r, r * 1.1, 10, 1);
-      scaleUV(drum, 3, 1);
-      drum.rotateZ(Math.PI / 2);
-      drum.rotateY(rng() * Math.PI);
-      drum.translate(x, y + r, z);
-      buckets.wood.push(jitterUV(drum, rng));
-    } else { // stacked sleeper cribbing
-      for (let layer = 0; layer < 3; layer++) {
-        for (let s = -1; s <= 1; s += 2) {
-          const sl = box(2.2, 0.14, 0.30, 1.2);
-          if (layer % 2) sl.rotateY(Math.PI / 2);
-          sl.translate(x + (layer % 2 ? s * 0.7 : 0), y + 0.1 + layer * 0.16,
-            z + (layer % 2 ? 0 : s * 0.7));
-          buckets.wood.push(jitterUV(sl, rng));
-        }
-      }
+}
+
+function addCableDrum(
+  x: number,
+  y: number,
+  z: number,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  const radius = 0.7 + rng() * 0.4;
+  const drum = new THREE.CylinderGeometry(radius, radius, radius * 1.1, 10, 1);
+  scaleUV(drum, 3, 1);
+  drum.rotateZ(Math.PI / 2);
+  drum.rotateY(rng() * Math.PI);
+  drum.translate(x, y + radius, z);
+  buckets.wood.push(jitterUV(drum, rng));
+}
+
+function addSleeperStack(
+  x: number,
+  y: number,
+  z: number,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  for (let layer = 0; layer < 3; layer++) {
+    for (let side = -1; side <= 1; side += 2) {
+      const sleeper = box(2.2, 0.14, 0.30, 1.2);
+      if (layer % 2) sleeper.rotateY(Math.PI / 2);
+      sleeper.translate(x + (layer % 2 ? side * 0.7 : 0), y + 0.1 + layer * 0.16,
+        z + (layer % 2 ? 0 : side * 0.7));
+      buckets.wood.push(jitterUV(sleeper, rng));
     }
   }
+}
+
+function addRailYardSupplies(
+  village: DressingLayout['village'],
+  heightField: DressingHeightField,
+  rng: Rng,
+  buckets: DressingBuckets,
+): void {
+  for (let i = 0; i < 9; i++) {
+    const x = village.x0 + 8 + rng() * 30;
+    const z = village.z0 + 12 + rng() * (village.z1 - village.z0 - 24);
+    if (heightField._roadDist(x, z) < 7) continue;
+    const y = heightField.getHeightAt(x, z);
+    if (rng() < 0.5) addCableDrum(x, y, z, rng, buckets);
+    else addSleeperStack(x, y, z, rng, buckets);
+  }
+}
+
+function dressRailYard({ L, heightField, rng, buckets }: FocusedDressingContext): void {
+  addRailYardLines(heightField, rng, buckets);
+  addRailYardCoalHeaps(heightField, rng, buckets);
+  addRailYardSupplies(L.village, heightField, rng, buckets);
 }

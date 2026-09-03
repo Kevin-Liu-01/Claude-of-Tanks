@@ -10,17 +10,22 @@ import { createTank } from '../vehicles/fleetFactory.ts';
 import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
+import type { CombatState } from '../sim/damage.ts';
+import type { MovementContactGeometry, TankState } from '../sim/movement.ts';
+import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
+
+type GroundSampler = (x: number, z: number) => number;
 
 export interface BattleVisual {
   specId: string;
   root: Object3D;
   boundingRadiusM?: number;
-  turretTopWorld(out: Vector3): unknown;
-  gunPivotWorld(out: Vector3): unknown;
-  gunMuzzleWorld(out: Vector3, muzzleIndex?: number): unknown;
-  gunDirWorld(out: Vector3): unknown;
-  setGroundSampler?(sampler: unknown): void;
-  syncFromState?(state: unknown): void;
+  turretTopWorld(out: Vector3): Vector3 | void;
+  gunPivotWorld(out: Vector3): Vector3 | void;
+  gunMuzzleWorld(out: Vector3, muzzleIndex?: number): Vector3 | void;
+  gunDirWorld(out: Vector3): Vector3 | void;
+  setGroundSampler?(sampler: GroundSampler): void;
+  syncFromState?(state: object): void;
   setVisible(visible: boolean): void;
   prepareForSimulation?(): void;
   resetForGaragePresentation?(): void;
@@ -41,9 +46,9 @@ export interface RosterEntity {
   spec: ReturnType<typeof getSpec>;
   team: string;
   isPlayer: boolean;
-  state: unknown;
-  combat: unknown;
-  specialAction: unknown;
+  state: TankState | null;
+  combat: CombatState | null;
+  specialAction: SpecialActionState | null;
   input: {
     throttle: number;
     steer: number;
@@ -55,10 +60,10 @@ export interface RosterEntity {
   };
   visual: BattleVisual | null;
   rigidGear: boolean;
-  contactGeom: unknown;
+  contactGeom: MovementContactGeometry | null;
   _camoSeed: number;
-  ai: unknown;
-  aiCtl: unknown;
+  ai: object | null;
+  aiCtl: object | null;
   _destroyedAnnounced: boolean;
 }
 
@@ -68,7 +73,7 @@ export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
   tanks: Entity[];
   battleCount: number;
   _engineCtx?: EngineContext;
-  _groundSampler?: unknown;
+  _groundSampler?: GroundSampler | null;
   _battleVisualPool?: {
     take(specId: string): BattleVisual | null;
   };
@@ -308,6 +313,86 @@ function textureQualityFor(game: RosterGameState, ent: RosterEntity) {
 // vehicles/tier.ts. This prevents a newly added tank from showing one tier in
 // the garage while being matched as another.
 
+const BATTLE_ROSTER_SEED = 0x51e57;
+
+function shuffleBattleCandidates(
+  candidates: RosterEntity[],
+  battleOrdinal: number,
+): RosterEntity[] {
+  const rng = mulberry32(BATTLE_ROSTER_SEED ^ (battleOrdinal * 2654435761));
+  for (let index = candidates.length - 1; index > 0; index--) {
+    const swapIndex = (rng() * (index + 1)) | 0;
+    [candidates[index], candidates[swapIndex]] =
+      [candidates[swapIndex], candidates[index]];
+  }
+  return candidates;
+}
+
+function shuffledBotPool(
+  game: RosterGameState,
+  player: RosterEntity,
+  battleOrdinal: number,
+  excluded: readonly RosterEntity[] = [],
+): RosterEntity[] {
+  const candidates = game.allTanks.filter((entity) =>
+    entity !== player && !excluded.includes(entity) && isBotTankId(entity.specId));
+  return shuffleBattleCandidates(candidates, battleOrdinal);
+}
+
+function topUpForcedRoster(
+  game: RosterGameState,
+  player: RosterEntity,
+  list: RosterEntity[],
+  enemySlots: number,
+  battleOrdinal: number,
+): void {
+  const pool = shuffledBotPool(game, player, battleOrdinal, list);
+  for (const entity of pool) {
+    if (list.length >= enemySlots) return;
+    list.push(entity);
+  }
+}
+
+function forcedBattleCandidates(
+  game: RosterGameState,
+  player: RosterEntity,
+  randomize: boolean,
+  enemySlots: number,
+  battleOrdinal: number,
+): RosterEntity[] | null {
+  const flags = debugFlags();
+  const forced = flags?.forceRoster;
+  if (!Array.isArray(forced) || forced.length === 0) return null;
+  const list = forced
+    .map((id) => game.tankById.get(id))
+    .filter((entity): entity is RosterEntity => !!entity && entity !== player);
+  if (randomize && !flags?.rosterExact && list.length < enemySlots) {
+    topUpForcedRoster(game, player, list, enemySlots, battleOrdinal);
+  }
+  return list;
+}
+
+function stagedBattleCandidates(
+  game: RosterGameState,
+  playerSpecId: string,
+): RosterEntity[] {
+  return TANK_IDS
+    .filter((id) => id !== playerSpecId)
+    .map((id) => game.tankById.get(id))
+    .filter((entity): entity is RosterEntity => !!entity);
+}
+
+function randomBattleCandidates(
+  game: RosterGameState,
+  player: RosterEntity,
+  battleOrdinal: number,
+): RosterEntity[] {
+  return rankMatchCandidates(
+    shuffledBotPool(game, player, battleOrdinal),
+    player,
+  );
+}
+
 /**
  * COMMUNITY TANKS: pick this battle's participants — the player plus the
  * non-player slots. BATTLE-AI r7 (7v7): every RANDOM battle (all garage
@@ -334,54 +419,22 @@ export function pickBattleParticipants(
   // instead of whatever the pool happens to draw — the round-2 critic
   // measured 1095 worst-frame draw calls on one random roster and 470 on
   // another, on the identical build. Debug/tooling only (perfprobe).
-  const forced = debugFlags()?.forceRoster || null;
-  if (Array.isArray(forced) && forced.length) {
-    const list = forced
-      .map((id) => game.tankById.get(id))
-      .filter((entity): entity is RosterEntity => !!entity && entity !== player);
-    // BATTLE-AI r7: random battles are 7v7 now — a pinned lineup shorter than
-    // the slot count (perfprobe's 7-id worst case predates 7v7) TOPS UP from
-    // the seeded shuffle so the perf gate measures a real 14-tank battle, not
-    // a legacy 8-tank one. battleCount is deterministic per probe run, so the
-    // fill is reproducible. Explicit 13-id rosters pin everything as before,
-    // and flags.rosterExact suppresses the top-up entirely (perf A/B tooling
-    // — an 8-tank control battle is not otherwise reachable post-7v7).
-    const exact = !!debugFlags()?.rosterExact;
-    if (randomize && !exact && list.length < enemySlots) {
-      const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
-      const pool = game.allTanks.filter((e) =>
-        e !== player && !list.includes(e) && isBotTankId(e.specId));
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = (rng() * (i + 1)) | 0;
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      for (const e of pool) {
-        if (list.length >= enemySlots) break;
-        list.push(e);
-      }
-    }
-    return [player, ...list.slice(0, enemySlots)];
-  }
-  let others;
+  const forced = forcedBattleCandidates(
+    game, player, randomize, enemySlots, battleOrdinal,
+  );
+  if (forced) return [player, ...forced.slice(0, enemySlots)];
+
+  let others: RosterEntity[];
   if (randomize) {
-    const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
-    others = game.allTanks.filter((e) => e !== player && isBotTankId(e.specId));
-    for (let i = others.length - 1; i > 0; i--) {       // Fisher-Yates
-      const j = (rng() * (i + 1)) | 0;
-      [others[i], others[j]] = [others[j], others[i]];
-    }
     // Curated matchmaking: same-era tanks always fill first, while their
     // seeded order lets the production catalog rotate through bot seats. A
     // cross-era tank is an emergency fallback only when
     // the production catalog cannot fill all 13 non-player slots;
     // picking the Random battlefield no longer turns WWII vs modern back on.
-    others = rankMatchCandidates(others, player);
+    others = randomBattleCandidates(game, player, battleOrdinal);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
-    others = TANK_IDS
-      .filter((id) => id !== playerSpecId)
-      .map((id) => game.tankById.get(id))
-      .filter((entity): entity is RosterEntity => !!entity);
+    others = stagedBattleCandidates(game, playerSpecId);
   }
   return [player, ...others.slice(0, enemySlots)];
 }

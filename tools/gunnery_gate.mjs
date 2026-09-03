@@ -1,3 +1,4 @@
+import { acquireCaptureLock as acquireLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Automated player hull-hit-rate gate (controls_gunnery r6).
 // FAILS (exit 1) unless >=80% of fully-settled aim-assisted shots at <=350 m
 // (moving targets included) register a tank impact, across 8 random-roster
@@ -8,23 +9,7 @@
 // Usage: node tools/gunnery_gate.mjs [--battles 8] [--shots 6] [--min 80]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, rmdirSync, statSync, unlinkSync } from 'node:fs';
 
-const LOCK_DIR = '/tmp/cot-shots.lock';
-const LOCK_STALE_MS = 5 * 60 * 1000;
-let lockHeld = false;
-async function acquireLock() {
-  const t0 = Date.now();
-  for (;;) {
-    try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
-    try {
-      if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; }
-    } catch (_) { continue; }
-    if (Date.now() - t0 > 10 * 60 * 1000) throw new Error('cot-shots lock timeout');
-    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
-  }
-}
-function releaseLock() { if (lockHeld) { lockHeld = false; try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ } } }
 await acquireLock();
 process.on('exit', releaseLock);
 
@@ -81,7 +66,170 @@ try {
     const D = window.__DEBUG;
     const g = D.game;
     const out = { battles: [], convergeFails: 0, convergeLimitSkips: 0, convergeTravelSkips: 0, convergeDetails: [] };
-    for (let b = 0; b < BATTLES; b++) {
+    const hf = D.world.heightField;
+    const obstacles = D.world.getObstacles ? D.world.getObstacles() : [];
+    const rayOrigin = g.player.state.pos.clone();
+    const rayDirection = rayOrigin.clone();
+    const laneClear = (cx, cy, cz, tx, ty, tz) => {
+      rayOrigin.set(cx, cy, cz);
+      rayDirection.set(tx - cx, ty - cy, tz - cz);
+      const distance = rayDirection.length();
+      rayDirection.multiplyScalar(1 / distance);
+      return !D.world.raycast(rayOrigin, rayDirection, distance - 2);
+    };
+    const laneGroundIsLevel = (cx, cz, centerHeight) => {
+      if (Math.abs(centerHeight) > 14) return false;
+      let low = Infinity;
+      let high = -Infinity;
+      for (const [ox, oz] of [[4, 0], [-4, 0], [0, 4], [0, -4]]) {
+        const height = hf.getHeightAt(cx + ox, cz + oz);
+        low = Math.min(low, height);
+        high = Math.max(high, height);
+      }
+      return high - low <= 1.6;
+    };
+    const laneOverlapsObstacle = (cx, cz) => obstacles.some((obstacle) =>
+      cx > obstacle.min[0] - 4 && cx < obstacle.max[0] + 4
+      && cz > obstacle.min[2] - 4 && cz < obstacle.max[2] + 4);
+    const laneCrowdedByEnemy = (cx, cz, target, enemies) => enemies.some((enemy) => {
+      if (enemy === target) return false;
+      const dx = enemy.state.pos.x - cx;
+      const dz = enemy.state.pos.z - cz;
+      return dx * dx + dz * dz < 220 * 220;
+    });
+    const candidateLane = (target, enemies, radius, angleIndex) => {
+      const tp = target.state.pos;
+      const angle = (angleIndex / 24) * Math.PI * 2;
+      const cx = tp.x + Math.sin(angle) * radius;
+      const cz = tp.z + Math.cos(angle) * radius;
+      if (Math.abs(cx) > 470 || Math.abs(cz) > 470) return null;
+      const groundY = hf.getHeightAt(cx, cz);
+      if (!laneGroundIsLevel(cx, cz, groundY - tp.y)) return null;
+      if (laneOverlapsObstacle(cx, cz) || laneCrowdedByEnemy(cx, cz, target, enemies)) return null;
+      const targetY = tp.y + target.spec.dims.heightM * 0.55;
+      if (!laneClear(cx, groundY + 2.3, cz, tp.x, targetY, tp.z)) return null;
+      if (!laneClear(cx, groundY + 1.7, cz, tp.x, targetY, tp.z)) return null;
+      return { cx, cz, groundY, target: tp };
+    };
+    const stagePlayerLane = () => {
+      const enemies = g.tanks.filter((tank) =>
+        tank.team === 'enemy' && tank.state && tank.combat && !tank.combat.destroyed);
+      for (const enemy of enemies) {
+        for (const radius of [295, 325, 265]) {
+          for (let angleIndex = 0; angleIndex < 24; angleIndex++) {
+            const lane = candidateLane(enemy, enemies, radius, angleIndex);
+            if (!lane) continue;
+            const playerState = g.player.state;
+            playerState.pos.set(lane.cx, lane.groundY + 0.4, lane.cz);
+            playerState.yaw = Math.atan2(lane.target.x - lane.cx, lane.target.z - lane.cz);
+            playerState.speed = 0;
+            playerState.turretYaw = 0;
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    const refreshPlayerModules = () => {
+      const modules = g.player.combat.modules || {};
+      for (const key of Object.keys(modules)) {
+        if (modules[key] && modules[key].state) modules[key].state = 'green';
+      }
+    };
+    const settleAim = (target) => {
+      let state = null;
+      let minimumFourSecondError = Infinity;
+      let startingError = null;
+      for (let waitStep = 0; waitStep < 56; waitStep++) {
+        state = D.aimState();
+        if (startingError == null && state) startingError = state.errMrad;
+        if (state && waitStep < 16) {
+          minimumFourSecondError = Math.min(minimumFourSecondError, state.errMrad);
+        }
+        const errorCap = waitStep < 32 ? 0.5 : 1.2;
+        const bloomCap = waitStep < 32 ? 1.15 : 1.3;
+        const settled = state && state.errMrad <= errorCap && state.reloadT <= 0
+          && state.blockedDistM == null && state.bloomF <= bloomCap;
+        if (settled) break;
+        D.fastForward(0.25);
+        if (!target.combat || target.combat.destroyed) break;
+      }
+      return { state, minimumFourSecondError, startingError };
+    };
+    const recordConvergence = (battleIndex, aimed, target, settledAim) => {
+      if (!target.state || Math.abs(target.state.speed || 0) >= 1
+        || settledAim.minimumFourSecondError < 3) return;
+      const travel4sMrad = g.player.spec.turretTraverseDegS * Math.PI / 180 * 4 * 1000;
+      if (settledAim.startingError != null
+        && settledAim.startingError > travel4sMrad * 0.9) {
+        out.convergeTravelSkips++;
+        return;
+      }
+      if (settledAim.state && settledAim.state.atGunLimit) {
+        out.convergeLimitSkips++;
+        return;
+      }
+      out.convergeFails++;
+      out.convergeDetails.push({
+        battle: battleIndex,
+        target: aimed.id,
+        startErrMrad: settledAim.startingError,
+        minErr4s: settledAim.minimumFourSecondError,
+        state: settledAim.state,
+      });
+    };
+    const fireSettledShot = () => {
+      const before = g.shells.length ? Math.max(...g.shells.map((shell) => shell.id)) : -1;
+      D.flags.forceFire = true;
+      let fired = false;
+      for (let step = 0; step < 10 && !fired; step++) {
+        D.fastForward(0.05);
+        fired = g.shells.some((shell) => shell.isPlayer && shell.id > before);
+      }
+      D.flags.forceFire = false;
+      return fired;
+    };
+    const shotStateIsReady = (state) => state && state.errMrad <= 1.2
+      && state.reloadT <= 0 && state.blockedDistM == null && state.bloomF <= 1.3;
+    const sampleShot = (battleIndex) => {
+      if (g.phase !== 'battle' || !g.player || g.player.combat.destroyed) return 'stop';
+      refreshPlayerModules();
+      const aimed = D.aimAtNearest();
+      if (!aimed) {
+        D.fastForward(2);
+        return false;
+      }
+      const target = g.tankById.get(aimed.id);
+      if (!target || !target.state) return false;
+      const settledAim = settleAim(target);
+      recordConvergence(battleIndex, aimed, target, settledAim);
+      if (!target.combat || target.combat.destroyed) return false;
+      const refreshedAim = D.aimAtNearest();
+      if (!refreshedAim || refreshedAim.id !== aimed.id) return false;
+      D.fastForward(0.5);
+      if (!shotStateIsReady(D.aimState())) return false;
+      if (Math.abs(target.state.speed || 0) > 3) return false;
+      if (!fireSettledShot()) return false;
+      D.fastForward(6);
+      return true;
+    };
+    const collectShots = (battleIndex) => {
+      let shots = 0;
+      let guard = 0;
+      while (shots < SHOTS_PER && guard++ < SHOTS_PER * 5) {
+        const result = sampleShot(battleIndex);
+        if (result === 'stop') break;
+        if (result) shots++;
+      }
+    };
+    const recordBattle = (logStart) => {
+      out.battles.push({
+        roster: g.tanks.filter((tank) => tank.team === 'enemy').map((tank) => tank.specId),
+        shells: D.playerShellLog.slice(logStart),
+        botPressure: { ...D.botPressure },
+      });
+    };
+    const runBattle = async (battleIndex) => {
       await D.startBattle('m1a2');
       // LANE STAGING (controls_gunnery r4, critic minor #3): the gate's job
       // is measuring GUNNERY, not spawn luck — a 4x5 run gated only 5/20
@@ -91,60 +239,7 @@ try {
       // every battle then contributes a full sample. Falls back to the
       // spawn position when no lane exists (never skips the battle).
       D.fastForward(2);
-      (() => {
-        const hf = D.world.heightField;
-        const obstacles = D.world.getObstacles ? D.world.getObstacles() : [];
-        const enemies = g.tanks.filter((t) => t.team === 'enemy' && t.state && t.combat && !t.combat.destroyed);
-        const o = g.player.state.pos.clone();
-        const dir = o.clone();
-        const clearAt = (cx, cy, cz, tx, ty, tz) => {
-          o.set(cx, cy, cz);
-          dir.set(tx - cx, ty - cy, tz - cz);
-          const d = dir.length();
-          dir.multiplyScalar(1 / d);
-          return !D.world.raycast(o, dir, d - 2);
-        };
-        for (const e of enemies) {
-          const tp = e.state.pos;
-          const ty = tp.y + e.spec.dims.heightM * 0.55;
-          for (const r of [295, 325, 265]) {
-            for (let k = 0; k < 24; k++) {
-              const a = (k / 24) * Math.PI * 2;
-              const cx = tp.x + Math.sin(a) * r;
-              const cz = tp.z + Math.cos(a) * r;
-              if (Math.abs(cx) > 470 || Math.abs(cz) > 470) continue;
-              const gy = hf.getHeightAt(cx, cz);
-              if (Math.abs(gy - tp.y) > 14) continue; // pitch-arc compatible
-              let lo = Infinity, hi = -Infinity;
-              for (const [ox, oz] of [[4, 0], [-4, 0], [0, 4], [0, -4]]) {
-                const h2 = hf.getHeightAt(cx + ox, cz + oz);
-                lo = Math.min(lo, h2); hi = Math.max(hi, h2);
-              }
-              if (hi - lo > 1.6) continue; // level parking
-              let bad = false;
-              for (const ob of obstacles) {
-                if (cx > ob.min[0] - 4 && cx < ob.max[0] + 4 &&
-                    cz > ob.min[2] - 4 && cz < ob.max[2] + 4) { bad = true; break; }
-              }
-              if (bad) continue;
-              for (const e2 of enemies) {
-                if (e2 === e) continue;
-                const dx2 = e2.state.pos.x - cx, dz2 = e2.state.pos.z - cz;
-                if (dx2 * dx2 + dz2 * dz2 < 220 * 220) { bad = true; break; }
-              }
-              if (bad) continue;
-              if (!clearAt(cx, gy + 2.3, cz, tp.x, ty, tp.z)) continue;
-              if (!clearAt(cx, gy + 1.7, cz, tp.x, ty, tp.z)) continue;
-              const ps = g.player.state;
-              ps.pos.set(cx, gy + 0.4, cz);
-              ps.yaw = Math.atan2(tp.x - cx, tp.z - cz);
-              ps.speed = 0;
-              ps.turretYaw = 0;
-              return;
-            }
-          }
-        }
-      })();
+      stagePlayerLane();
       D.fastForward(1.5); // support solve grounds the hull on the lane
       // INSTRUMENT SURVIVABILITY (r4): the fixed AI now genuinely duels —
       // battle-0 staging drew 37 aimed shells and module hits froze the
@@ -152,99 +247,18 @@ try {
       // path honesty, not player survival; keep the instrument functional
       // (return-fire pressure counters stay untouched and honest).
       g.player.combat.hp = 50000;
-      const refreshModules = () => {
-        const m = g.player.combat.modules || {};
-        for (const k of Object.keys(m)) { if (m[k] && m[k].state) m[k].state = 'green'; }
-      };
       const logStart = D.playerShellLog.length;
-      let shots = 0;
-      let guard = 0;
-      while (shots < SHOTS_PER && guard++ < SHOTS_PER * 5) {
-        if (g.phase !== 'battle' || !g.player || g.player.combat.destroyed) break;
-        refreshModules();
-        const aimed = D.aimAtNearest();
-        if (!aimed) { D.fastForward(2); continue; }
-        const tgt = g.tankById.get(aimed.id);
-        if (!tgt || !tgt.state) continue;
-        // settle: <=0.5 mrad AND reload done (dispersion follows bloom decay).
-        // controls_gunnery r3: fully-aimed discipline — also require a clear
-        // muzzle path and bloom <=1.15 (the old loop fired at bloom ~2.4 over
-        // lines grazing 1.1 m above a crest; those were dispersion-tail
-        // terrain deaths, not gun-lay data).
-        let st = null;
-        let minErr4s = Infinity; // convergence trap: min errMrad over first 4 s
-        let startErrMrad = null;
-        for (let w = 0; w < 56; w++) {
-          st = D.aimState();
-          if (startErrMrad == null && st) startErrMrad = st.errMrad;
-          if (st && w < 16) minErr4s = Math.min(minErr4s, st.errMrad);
-          // r4: prefer fully settled (0.5 mrad) for 8 s, then accept
-          // near-settled (1.2 mrad ~= 0.36 m at 300 m, well inside the
-          // reticle) — the r4 AI actually DUELS now, so live targets rarely
-          // hold still long enough for a 0.5 mrad lay, and the old strict
-          // gate collected zero shots in a 4x5 staged run.
-          const errCap = w < 32 ? 0.5 : 1.2;
-          const bloomCap = w < 32 ? 1.15 : 1.3;
-          if (st && st.errMrad <= errCap && st.reloadT <= 0 &&
-              st.blockedDistM == null && st.bloomF <= bloomCap) break;
-          D.fastForward(0.25);
-          if (!tgt.combat || tgt.combat.destroyed) break;
-        }
-        // controls_gunnery r3: convergence regression assert — a
-        // near-stationary target the gun cannot get within 3 mrad of in 4 s
-        // is the off-axis-anchor class of bug, round-blocking.
-        if (tgt.state && Math.abs(tgt.state.speed || 0) < 1 && minErr4s >= 3) {
-          // A physical depression/elevation or casemate-yaw clamp is not the
-          // off-axis-anchor regression this assertion is designed to catch.
-          // aimState exposes that distinction; retain the hard failure only
-          // when the gun had legal travel and still would not converge.
-          const travel4sMrad = g.player.spec.turretTraverseDegS * Math.PI / 180 * 4 * 1000;
-          if (startErrMrad != null && startErrMrad > travel4sMrad * 0.9) {
-            // A near-180° target switch cannot physically finish inside the
-            // fixed four-second diagnostic window; do not call legal traverse
-            // time an anchor failure. The ordinary settle/fire gate still
-            // requires actual convergence before it can contribute a shot.
-            out.convergeTravelSkips++;
-          } else if (st && st.atGunLimit) out.convergeLimitSkips++;
-          else {
-            out.convergeFails++;
-            out.convergeDetails.push({ battle: b, target: aimed.id, startErrMrad, minErr4s, state: st });
-          }
-        }
-        if (!tgt.combat || tgt.combat.destroyed) continue;
-        const re = D.aimAtNearest(); // refresh sticky lead just before firing
-        if (!re) continue;
-        // controls_gunnery r3: the refresh snap can pin a DIFFERENT newly-
-        // LOS-clear enemy; half a second is not a full slew.
-        if (re.id !== aimed.id) continue;
-        D.fastForward(0.5);
-        st = D.aimState();
-        if (!st || st.errMrad > 1.2 || st.reloadT > 0 ||
-            st.blockedDistM != null || st.bloomF > 1.3) continue;
-        // r4: sprinting movers contaminate the HIT-RATE sample with pure
-        // lead error — the rate gate is about gun-lay/path honesty.
-        if (Math.abs(tgt.state.speed || 0) > 3) continue;
-        const before = g.shells.length ? Math.max(...g.shells.map((s) => s.id)) : -1;
-        D.flags.forceFire = true;
-        let fired = false;
-        for (let i = 0; i < 10 && !fired; i++) {
-          D.fastForward(0.05);
-          fired = g.shells.some((s) => s.isPlayer && s.id > before);
-        }
-        D.flags.forceFire = false;
-        if (!fired) continue;
-        shots++;
-        D.fastForward(6); // shell terminal + next approach
-      }
+      // settle: <=0.5 mrad AND reload done (dispersion follows bloom decay).
+      // Fully-aimed discipline also requires a clear muzzle path and low bloom.
+      collectShots(battleIndex);
       // r4: give the return-fire loop its window — the critic's contract is
       // "aimed >= 3 within 60 s of the volley", so watch after the shots
       // instead of sampling botPressure the instant the last shell lands.
       for (let w = 0; w < 15 && g.phase === 'battle'; w++) D.fastForward(2);
-      out.battles.push({
-        roster: g.tanks.filter((t) => t.team === 'enemy').map((t) => t.specId),
-        shells: D.playerShellLog.slice(logStart),
-        botPressure: { ...D.botPressure },
-      });
+      recordBattle(logStart);
+    };
+    for (let battleIndex = 0; battleIndex < BATTLES; battleIndex++) {
+      await runBattle(battleIndex);
     }
     return out;
   }, BATTLES, SHOTS_PER);

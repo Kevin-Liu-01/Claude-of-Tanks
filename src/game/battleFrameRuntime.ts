@@ -134,6 +134,105 @@ export function createBattleFrameRuntime({
     simulationAccumulator = 0;
   };
 
+  const applyPauseEdge = (livePaused: boolean, dtSeconds: number): number => {
+    let appliedDtSeconds = dtSeconds;
+    if (livePaused === pauseInfo.paused) return appliedDtSeconds;
+    pauseInfo.paused = livePaused;
+    if (!livePaused) {
+      appliedDtSeconds = Math.min(appliedDtSeconds, simulationDt);
+      pauseInfo.resumes += 1;
+      pauseInfo.lastResumeDtR = appliedDtSeconds;
+    }
+    emitPause(livePaused);
+    return appliedDtSeconds;
+  };
+
+  const pollFrameInput = (
+    appliedDtSeconds: number,
+    inBattle: boolean,
+    paused: boolean,
+    killcamActive: boolean,
+    cameraLocked: boolean,
+  ): void => {
+    inputSample.dtSeconds = appliedDtSeconds;
+    inputSample.inBattle = inBattle;
+    inputSample.paused = paused;
+    inputSample.killcamActive = killcamActive;
+    inputSample.cameraLocked = cameraLocked;
+    inputSample.rigMode = getRigMode();
+    inputSample.player = game.player as PlayerFrameSample['player'];
+    input.poll(inputSample);
+  };
+
+  const advanceCountdown = (wallDtSeconds: number): void => {
+    if (game.preBattleS === Infinity) return;
+    const heldSeconds = game.preBattleS;
+    game.preBattleS = countdown.advance(
+      game.preBattleS,
+      wallDtSeconds,
+      countdown.isWarmPending(),
+    );
+    countdown.show(game.preBattleS);
+    if (heldSeconds > 0 && game.preBattleS === 0) countdown.rollout();
+  };
+
+  const advanceSoloSimulation = (appliedDtSeconds: number): void => {
+    simulationAccumulator = Math.min(
+      simulationAccumulator + appliedDtSeconds,
+      simulationDt * maxSimulationSteps,
+    );
+    while (simulationAccumulator >= simulationDt) {
+      stepSimulation();
+      presentation.captureSoloPose();
+      simulationAccumulator -= simulationDt;
+    }
+  };
+
+  const advanceLiveBattle = (
+    appliedDtSeconds: number,
+    wallDtSeconds: number,
+    networkActive: boolean,
+  ): void => {
+    if (networkActive) {
+      countdown.show(game.preBattleS);
+      simulationAccumulator = 0;
+    } else if (game.preBattleS > 0) {
+      advanceCountdown(wallDtSeconds);
+      simulationAccumulator = 0;
+    } else {
+      advanceSoloSimulation(appliedDtSeconds);
+    }
+    presentation.updateResult();
+  };
+
+  const updatePresentation = (
+    appliedDtSeconds: number,
+    networkActive: boolean,
+    killcamActive: boolean,
+    livePaused: boolean,
+  ): number => {
+    const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
+    return alpha;
+  };
+
+  const writeReceipt = (
+    appliedDtSeconds: number,
+    inBattle: boolean,
+    paused: boolean,
+    killcamActive: boolean,
+    livePaused: boolean,
+    presentationAlpha: number,
+  ): BattleFrameReceipt => {
+    receipt.dtSeconds = appliedDtSeconds;
+    receipt.inBattle = inBattle;
+    receipt.paused = paused;
+    receipt.killcamActive = killcamActive;
+    receipt.livePaused = livePaused;
+    receipt.presentationAlpha = presentationAlpha;
+    return receipt;
+  };
+
   const advance = (
     dtSeconds: number,
     wallDtSeconds: number,
@@ -144,78 +243,29 @@ export function createBattleFrameRuntime({
     const paused = settings.isOpen();
     const killcamActive = killcam.isActive();
     const livePaused = paused && inBattle && !killcamActive && !game.result;
-    let appliedDtSeconds = dtSeconds;
-
-    if (livePaused !== pauseInfo.paused) {
-      pauseInfo.paused = livePaused;
-      if (!livePaused) {
-        // Never replay the wall-clock pause as four simulation steps. One
-        // fixed step is the most the first resumed frame may integrate.
-        appliedDtSeconds = Math.min(appliedDtSeconds, simulationDt);
-        pauseInfo.resumes += 1;
-        pauseInfo.lastResumeDtR = appliedDtSeconds;
-      }
-      emitPause(livePaused);
-    }
+    const appliedDtSeconds = applyPauseEdge(livePaused, dtSeconds);
     pauseInfo.lastDtR = appliedDtSeconds;
-
-    inputSample.dtSeconds = appliedDtSeconds;
-    inputSample.inBattle = inBattle;
-    inputSample.paused = paused;
-    inputSample.killcamActive = killcamActive;
-    inputSample.cameraLocked = cameraLocked;
-    inputSample.rigMode = getRigMode();
-    inputSample.player = game.player as PlayerFrameSample['player'];
-    input.poll(inputSample);
+    pollFrameInput(appliedDtSeconds, inBattle, paused, killcamActive, cameraLocked);
 
     // A persistent Garage room is pumped before the event-paced early return
     // in main. Every other phase reaches this owner and pumps exactly once.
     if (game.phase !== 'garage') network.pump(appliedDtSeconds, nowMs);
+    const networkActive = network.isActive();
 
     if (inBattle && !paused && !killcamActive) {
-      if (network.isActive()) {
-        countdown.show(game.preBattleS);
-        simulationAccumulator = 0;
-      } else if (game.preBattleS > 0) {
-        if (game.preBattleS !== Infinity) {
-          const heldSeconds = game.preBattleS;
-          game.preBattleS = countdown.advance(
-            game.preBattleS,
-            wallDtSeconds,
-            countdown.isWarmPending(),
-          );
-          countdown.show(game.preBattleS);
-          if (heldSeconds > 0 && game.preBattleS === 0) countdown.rollout();
-        }
-        simulationAccumulator = 0;
-      } else {
-        simulationAccumulator = Math.min(
-          simulationAccumulator + appliedDtSeconds,
-          simulationDt * maxSimulationSteps,
-        );
-        while (simulationAccumulator >= simulationDt) {
-          stepSimulation();
-          presentation.captureSoloPose();
-          simulationAccumulator -= simulationDt;
-        }
-      }
-      presentation.updateResult();
+      advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
     }
-
-    const presentationAlpha = network.isActive()
-      ? 1
-      : simulationAccumulator / simulationDt;
-    if (!killcamActive && !livePaused) {
-      presentation.update(appliedDtSeconds, presentationAlpha);
-    }
-
-    receipt.dtSeconds = appliedDtSeconds;
-    receipt.inBattle = inBattle;
-    receipt.paused = paused;
-    receipt.killcamActive = killcamActive;
-    receipt.livePaused = livePaused;
-    receipt.presentationAlpha = presentationAlpha;
-    return receipt;
+    const presentationAlpha = updatePresentation(
+      appliedDtSeconds, networkActive, killcamActive, livePaused,
+    );
+    return writeReceipt(
+      appliedDtSeconds,
+      inBattle,
+      paused,
+      killcamActive,
+      livePaused,
+      presentationAlpha,
+    );
   };
 
   return {

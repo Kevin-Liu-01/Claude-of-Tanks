@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 
 interface PointerLockInput {
@@ -20,7 +21,7 @@ export interface PointerLockFeedbackRuntimeOptions {
   isBattleStageVisible(): boolean;
   canRecapturePointer(): boolean;
   ensureTouchControls(): Promise<TouchControlsLike | null>;
-  nextFrame(): Promise<unknown>;
+  nextFrame(): Promise<RuntimeValue>;
 }
 
 export interface PointerLockFeedbackRuntime {

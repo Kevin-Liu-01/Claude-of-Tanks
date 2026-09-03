@@ -5,7 +5,7 @@
  * DEFAULT settings on a retina display (devicePixelRatio 2), where the
  * composer's High 1.5 pixel ratio rasterizes 2.25x the pixels of a 1080p@dpr1
  * frame through the full HDR post chain. Measured on this class of GPU that
- * requires scaled AO/bloom and adaptive relief to stay inside the budget.
+ * requires scaled bloom and adaptive raster relief to stay inside the budget.
  * (native-output r1: the renderer CANVAS may back at mobile DPR 3 under the
  * output-pixel budget — see resolutionPolicy.ts — but only the final
  * reconstruction pass rasterizes there; every cap below still governs the
@@ -23,9 +23,9 @@
  *   1.0, below every cap, so dpr-1 output is UNCHANGED on every preset >= medium
  *   (the screenshot contract shots are bit-identical on auto/ultra/high).
  * - `aoScale` — GTAO buffer scale relative to composer resolution (0 = off).
- *   Half-res AO + bilinear upsample is the industry default; at retina
- *   resolutions full-res GTAO (16 taps + Poisson denoise + a full scene
- *   depth/normal prepass) is the single most expensive pass in the frame.
+ *   Gameplay presets keep this off: temporal screen-space AO produced visible
+ *   grain and boil on foliage, snow, and moving shadow receivers. Material AO,
+ *   CSM, and authored contact detail provide stable depth instead.
  * - `bloomScale` — UnrealBloom internal chain scale (its mip chain is already
  *   input/2, so 0.5 runs it at quarter res; composite stays full-res).
  * - `msaaSamples` — geometry-edge samples on the scene-only HDR target. The
@@ -36,18 +36,9 @@
  *
  * Preset semantics (resolution numbers are the EFFECTIVE internal 3D/post
  * pixel ratio, independent of the final display canvas density):
- * - ultra : maxed visuals — 4x scene MSAA, full-res AO, native 2.0 ratio, 4096
- *           cascade 2. Explicit
- *           opt-in via settings (r7: auto no longer selects it — see
- *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Uses full-resolution
- *           display-space SMAA and the full 1.5 ratio from the first frame,
- *           with half-res AO and a 0.6x
- *           bloom chain. The frame governor drops AO before resolution and
- *           never lets High fall below 1.35, preventing the muddy 1.125 path.
- * - medium: SMAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
- * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
- *           cascades, shorter shadow range.
+ * Desktop presets share one shadow footprint and range. Quality changes alter
+ * raster density, antialiasing, and bloom only; they never swap the lighting
+ * model underneath a running battle.
  */
 import type { WebGLRenderer } from 'three';
 
@@ -71,6 +62,15 @@ export interface QualityPreset {
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
 }
+
+/**
+ * Stable desktop CSM contract. Updating all four modest maps every presented
+ * battle frame costs approximately the same shadow fill as the former 2K
+ * near + 20 Hz far scheme, but removes the mixed-timestamp tree/building
+ * flashes and keeps quality switching visually continuous.
+ */
+export const DESKTOP_SHADOW_MAP_SIZES = [2048, 2048, 1024, 1024] as const;
+export const DESKTOP_SHADOW_MAX_FAR = 520;
 
 type AutoTier = 'low' | 'medium' | 'high';
 type PresetListener = (preset: QualityPreset) => void;
@@ -177,29 +177,6 @@ export function texSize(px: number, textureClass: 'world' | 'vehicle' = 'world')
 }
 
 export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
-  // r5: cascade 2 (roughly the 130-230 m band where pole/tree/building
-  // shadows are most readable at gameplay camera angles) went 2048 → 4096 on
-  // ultra/high — at 2048 its ~0.15 m texels x the PCF disk radius produced
-  // the "wide over-blurred dark stripes" shadow critique; 4096 halves the
-  // physical penumbra. Cascade 3 (230-520 m) stays 2048: genuinely subpixel.
-  // Far cascades still re-render as a 30 Hz cohort (lighting.ts), so the
-  // average fill-rate cost is amortized; the extra RT memory is ultra-only.
-  // r7 (perf recert): the 4096 cascade 2 is now ULTRA-ONLY. 'high' — the
-  // retina DEFAULT — returns to 2048 with a physical-penumbra-preserving PCF
-  // radius compensation in lighting.ts (radius scales with mapSize/reference,
-  // so the r5 stripe fix is kept: penumbra WIDTH is identical, only shadow
-  // texel resolution in the 130-230 m band drops). Measured on the reference
-  // machine at dpr2/60 s: scaled AO, bloom and cascade 2 leave enough
-  // headroom to restore native-class scene raster resolution. The live
-  // governor owns the fallback when a device cannot sustain that resolution.
-  // r5 (lighting_post: "battlefield_urban has zero cast-shadow volumes from
-  // buildings onto streets at establishing-shot distance"): shadowMaxFar
-  // 520 → 700 on ultra/high. The urban establishing camera reads town rows
-  // out to ~500 m, and CSM's fade=true starts dissolving the last cascade
-  // well before maxFar — at 520 the far half of the town rendered shadowless.
-  // 700 keeps the whole town inside solid shadow range; the far cascades
-  // still re-render as a 30 Hz cohort (lighting.ts), so average fill cost is
-  // amortized, and the r7 penumbra compensation keeps edge softness constant.
   ultra: {
     label: 'Ultra',
     msaaSamples: 4,
@@ -207,10 +184,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
     dynMin: 0.75,
-    aoScale: 1.0,
+    aoScale: 0,
     bloomScale: 1.0,
-    shadowMapSizes: [4096, 4096, 4096, 2048],
-    shadowMaxFar: 700,
+    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
+    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
   // reaches SMAA before the smaller native-canvas upscale instead of being
@@ -230,16 +207,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
-    aoScale: 0.5,
+    aoScale: 0,
     bloomScale: 0.6,
-    // 4K hero shadows belong to explicit Ultra. A continuously refreshed 4K
-    // map cost ~5.8 ms together with the remaining cascades at 1080p and was
-    // immune to the adaptive AO trim, turning ordinary Verdant motion into
-    // frame spikes. High keeps both near cascades continuous (no cadence
-    // flashing) on the stable 2K grid and preserves physical penumbra width
-    // in lighting.ts. The shadow RT footprint falls from ~100 MB to ~52 MB.
-    shadowMapSizes: [2048, 2048, 2048, 1024],
-    shadowMaxFar: 700,
+    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
+    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
   },
   medium: {
     label: 'Medium',
@@ -249,10 +220,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // fallback by another hidden 0.75 dynamic scale: desktop readability
     // remains at least one internal sample per CSS pixel.
     dynMin: 1.0,
-    aoScale: 0.5,
+    aoScale: 0,
     bloomScale: 0.5,
-    shadowMapSizes: [2048, 2048, 1024, 1024],
-    shadowMaxFar: 520,
+    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
+    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
   },
   low: {
     label: 'Low',
@@ -261,8 +232,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     dynMin: 1.0,
     aoScale: 0,
     bloomScale: 0.5,
-    shadowMapSizes: [2048, 2048, 1024, 1024],
-    shadowMaxFar: 380,
+    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
+    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
   },
   // Mobile quick-switch levels keep the constrained texture budget fixed —
   // live switching cannot (and should not) rebuild the world's texture
@@ -515,10 +486,9 @@ export function getMobilePresetChoice(): MobilePresetName {
  *
  * r7: auto used to give dpr-1 displays 'ultra'. Measured on the reference
  * machine at 1080p/60 s certification windows, ultra's tail sat at p99
- * 27 ms (gate 25) with every other line passing — the full-res AO + 1.0
- * bloom + 4096 cascade 2 stack leaves too little headroom to absorb normal
- * desktop scheduling noise. High keeps the scaled AO/bloom/shadow workload,
- * but now lets its dynamic raster ratio absorb scheduling/GPU pressure instead
+ * 27 ms (gate 25) with every other line passing. High keeps the scaled bloom
+ * workload and lets its dynamic raster ratio absorb scheduling/GPU pressure
+ * instead
  * of permanently presenting every Retina player with a 1.0x upscaled scene.
  */
 export function resolvePresetName(choice: PresetChoice = getStoredChoice()): PresetName {

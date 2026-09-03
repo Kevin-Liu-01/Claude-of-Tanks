@@ -1,8 +1,9 @@
-type MaybePromise<T = unknown> = T | PromiseLike<T>;
+import type { RuntimeValue } from '../runtimeTypes.ts';
+type MaybePromise<T = RuntimeValue> = T | PromiseLike<T>;
 type BudgetYield = (force?: boolean) => Promise<void> | undefined;
 
 interface BattleIntentSpec {
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 interface BattleIntentFxRuntime {
@@ -27,7 +28,7 @@ interface BattleIntentRuntimeOptions {
   resolveMapId(mapId: string): string;
   loadWorldModule(): MaybePromise;
   prefetchWorld(mapId: string, options?: { intent?: boolean }): MaybePromise;
-  ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
+  ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
   planRoster(specId: string): readonly string[];
   getSpec(specId: string): BattleIntentSpec;
   prebakeSharedTextures(
@@ -35,7 +36,7 @@ interface BattleIntentRuntimeOptions {
     anisotropy: number,
     quality: 'ai' | 'preview',
     yieldForBudget?: BudgetYield,
-  ): Promise<unknown>;
+  ): Promise<RuntimeValue>;
   createBudgetYield(budgetMs: number): BudgetYield;
   anisotropy: number;
   setCamoBiome(mapId: string): void;
@@ -44,7 +45,7 @@ interface BattleIntentRuntimeOptions {
   applyCamoPatterns(options: {
     priorityIds: readonly string[];
     onlySpecIds: readonly string[];
-  }): Promise<unknown>;
+  }): Promise<RuntimeValue>;
   preloadBattleVisuals(): MaybePromise;
   preloadAudio(): MaybePromise;
   preloadSettings(): MaybePromise;
@@ -56,7 +57,7 @@ interface BattleIntentRuntimeOptions {
   preloadKillcam(): MaybePromise;
   ensureFxRuntime(): Promise<BattleIntentFxRuntime>;
   preloadMinimap(mapId: string): MaybePromise;
-  warn?(message: string, error: unknown): void;
+  warn?(message: string, error: RuntimeValue): void;
 }
 
 export interface BattleIntentRuntime {

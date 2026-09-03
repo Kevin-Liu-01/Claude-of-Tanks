@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   BattleVisualEntity,
   BattleVisualStreamer,
@@ -41,7 +42,7 @@ export function createBattleVisualStreamerAccess<
     const request = loaders.load().then((module) => {
       current = module.createBattleVisualStreamer(options);
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

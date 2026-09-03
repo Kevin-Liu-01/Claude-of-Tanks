@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createGarageReturnRuntime } from './garageReturnRuntime.ts';
 import { createGameState } from './stateCore.ts';
 
-function createFixture({ transitionGate = false } = {}) {
+function createFixture({ transitionGate = false, battleCoverDelay = 0 } = {}) {
   const game = createGameState();
   game.phase = 'battle';
   game.preBattleS = 3;
@@ -14,6 +14,8 @@ function createFixture({ transitionGate = false } = {}) {
   let now = 100;
   let preserveRoom = true;
   let entryPending = false;
+  let entryCovering = false;
+  let coverPolls = 0;
   let releaseTransition = null;
   let triggerCount = 0;
   const adoptedVisual = { id: 'hero' };
@@ -78,6 +80,7 @@ function createFixture({ transitionGate = false } = {}) {
       triggerBattle: () => {
         triggerCount += 1;
         calls.push(['triggerBattle']);
+        if (battleCoverDelay === 0) entryCovering = true;
       },
     },
     audio: {
@@ -115,11 +118,18 @@ function createFixture({ transitionGate = false } = {}) {
       };
     },
     isBattleEntryPending: () => entryPending,
+    isBattleEntryCovering: () => entryCovering,
     nowMs: () => now,
     sleep: async (milliseconds) => {
       calls.push(['sleep', milliseconds]);
       now += milliseconds;
-      if (calls.filter(([name]) => name === 'sleep').length === 2) entryPending = false;
+      if (entryPending && calls.filter(([name]) => name === 'sleep').length === 2) {
+        entryPending = false;
+      }
+      if (triggerCount > 0 && !entryCovering) {
+        coverPolls += 1;
+        if (coverPolls >= battleCoverDelay) entryCovering = true;
+      }
     },
     publishTrace: (trace) => traces.push(trace),
   });
@@ -186,7 +196,18 @@ assert.equal(leaving.runtime.transitioning, true);
 assert.equal(leaving.calls.filter(([name]) => name === 'transitionStart').length, 1);
 assert.equal(leaving.calls[0][0], 'clearPresentation',
   'replay input state releases before the transition veil waits');
-assert.equal(leaving.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 250);
+assert.deepEqual(
+  leaving.calls.find(([name]) => name === 'transitionStart')[1],
+  {
+    kicker: 'Leaving battle',
+    title: 'Garage',
+    mapId: 'urban',
+    progress: false,
+    minShowMs: 150,
+    pace: 'quick',
+  },
+  'battle exit uses the resident-state pace without changing transition content',
+);
 leaving.releaseTransition();
 await firstLeave;
 assert.equal(leaving.runtime.transitioning, false);
@@ -197,9 +218,18 @@ await rematch.runtime.battleAgain();
 assert.equal(rematch.calls.filter(([name]) => name === 'sleep').length, 2);
 assert.equal(rematch.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 420);
 assert.equal(rematch.triggerCount, 1);
-assert.ok(rematch.calls.findIndex(([name]) => name === 'transitionEnd')
-  < rematch.calls.findIndex(([name]) => name === 'triggerBattle'),
-  'the canonical Battle action fires only after the Garage transition completes');
+assert.ok(rematch.calls.findIndex(([name]) => name === 'triggerBattle')
+  < rematch.calls.findIndex(([name]) => name === 'transitionEnd'),
+  'the canonical Battle action fires while the result transition still covers Garage');
+
+const coveredHandoff = createFixture({ battleCoverDelay: 2 });
+await coveredHandoff.runtime.battleAgain();
+assert.equal(coveredHandoff.calls.filter(([name, milliseconds]) => (
+  name === 'sleep' && milliseconds === 16
+)).length, 2, 'the result veil waits until the pre-battle screen owns coverage');
+assert.ok(coveredHandoff.calls.findIndex(([name]) => name === 'triggerBattle')
+  < coveredHandoff.calls.findIndex(([name]) => name === 'transitionEnd'),
+  'the pre-battle cover handoff completes before the result veil exits');
 
 assert.throws(() => createGarageReturnRuntime({}), /requires every lifecycle port/);
 

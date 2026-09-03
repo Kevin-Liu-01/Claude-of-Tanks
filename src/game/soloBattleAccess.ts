@@ -1,8 +1,9 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface SoloBattleRuntime {
-  setupBattle(...args: unknown[]): unknown;
-  simStep(...args: unknown[]): unknown;
-  createCollider(...args: unknown[]): unknown;
-  prepareNextOpeningRoute(...args: unknown[]): unknown;
+  setupBattle(...args: RuntimeValue[]): RuntimeValue;
+  simStep(...args: RuntimeValue[]): RuntimeValue;
+  createCollider(...args: RuntimeValue[]): RuntimeValue;
+  prepareNextOpeningRoute(...args: RuntimeValue[]): RuntimeValue;
 }
 
 export type SoloBattleRuntimeLoader = () => Promise<SoloBattleRuntime>;

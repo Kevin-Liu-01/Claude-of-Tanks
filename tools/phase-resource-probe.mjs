@@ -86,19 +86,29 @@ const RESOURCE_BUDGETS = Object.freeze({
     heapMB: 315,
     objects: 1150,
     programs: 230,
-    // Phase-exclusive GPU suspension removes inactive workshop allocations;
-    // keep these limits close enough to catch their accidental retention.
-    geometries: 640,
-    textures: 310,
+    // Desktop intentionally retains the detached Garage's immutable GPU
+    // allocations so return-to-Garage never has to re-upload the workshop.
+    // Keep aggregate renderer ceilings close enough to catch real growth.
+    // The pinned scene owns 668 visible geometries; the renderer necessarily
+    // retains those plus its tiny warm-only probe set. Keep the aggregate cap
+    // aligned with the stricter visible-scene ceiling below.
+    geometries: 680,
+    // Stable full-warm baseline is 312, including render targets and the
+    // detached desktop Garage cache. Visible/effect textures remain governed
+    // independently below, so four slots here cover driver bookkeeping only.
+    textures: 316,
     sceneGeometries: 680,
     sceneMaterials: 220,
-    sceneTextures: 120,
+    // The active graph owns 122 distinct material/uniform textures: the
+    // composer depth attachment and ten shared FX textures account for the
+    // small increase over the former 120-texture roster baseline. Keep two
+    // slots of driver/content variance while gating the FX owner separately.
+    sceneTextures: 124,
+    effectTextures: 10,
     sceneTexturePixels: 27_000_000,
-    // Near cascades now remain current on the same frame as the coherent far
-    // pair. That deliberately restores two depth submissions on far-refresh
-    // frames so a moving foreground never samples a stale camera pose. Keep
-    // these ceilings tight around that visually-correct peak rather than the
-    // lower but flashing mutually-exclusive scheduler.
+    // Every active cascade now shares the same presented-frame timestamp.
+    // Keep these ceilings tight around the coherent all-cascade workload
+    // rather than the lower but visibly flashing staggered scheduler.
     calls: 780,
     triangles: 4_800_000,
     shadowCalls: 360,
@@ -189,6 +199,7 @@ const sampleResources = () => page.evaluate(() => {
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
+  const textureOwners = new Map();
   let objects = 0;
   let visibleObjects = 0;
   let meshes = 0;
@@ -196,22 +207,25 @@ const sampleResources = () => page.evaluate(() => {
   const visibleMeshWork = [];
   const owners = new WeakMap();
   const markOwner = (root, owner) => root?.traverse?.((object) => owners.set(object, owner));
-  markOwner(debug.world?.group, 'world');
-  for (const [index, child] of (debug.world?.group?.children || []).entries()) {
-    const label = child.name || child.type || `child-${index}`;
-    markOwner(child, `world/${label}`);
-  }
-  markOwner(debug.fx?.group, 'effects');
-  markOwner(debug.garageDressing?.group, 'garage/workshop');
-  const vehicleRoots = new Set();
-  for (const entity of debug.game?.tanks || []) {
-    const root = entity?.visual?.root;
-    if (!root || vehicleRoots.has(root)) continue;
-    vehicleRoots.add(root);
-    markOwner(root, entity.isPlayer
-      ? 'vehicles/player'
-      : `vehicles/${entity.team || 'other'}`);
-  }
+  const registerOwners = () => {
+    markOwner(debug.world?.group, 'world');
+    for (const [index, child] of (debug.world?.group?.children || []).entries()) {
+      const label = child.name || child.type || `child-${index}`;
+      markOwner(child, `world/${label}`);
+    }
+    markOwner(debug.fx?.group, 'effects');
+    markOwner(debug.garageDressing?.group, 'garage/workshop');
+    const vehicleRoots = new Set();
+    for (const entity of debug.game?.tanks || []) {
+      const root = entity?.visual?.root;
+      if (!root || vehicleRoots.has(root)) continue;
+      vehicleRoots.add(root);
+      markOwner(root, entity.isPlayer
+        ? 'vehicles/player'
+        : `vehicles/${entity.team || 'other'}`);
+    }
+  };
+  registerOwners();
   const sceneBreakdown = {};
   const effectiveVisible = (object) => {
     for (let cursor = object; cursor; cursor = cursor.parent) {
@@ -230,102 +244,130 @@ const sampleResources = () => page.evaluate(() => {
       Number.isFinite(requested) ? requested : available,
     ));
   };
-  const collectTexture = (value) => {
-    if (value?.isTexture) textures.add(value);
+  const collectTexture = (value, owner) => {
+    if (!value?.isTexture) return;
+    textures.add(value);
+    const ownedBy = textureOwners.get(value) || new Set();
+    ownedBy.add(owner);
+    textureOwners.set(value, ownedBy);
   };
-  debug.scene.traverse((object) => {
-    objects += 1;
-    if (object.visible) visibleObjects += 1;
-    if (object.geometry) geometries.add(object.geometry);
-    if (object.isMesh) {
-      meshes += 1;
-      if (object.visible) visibleMeshes += 1;
-      if (effectiveVisible(object)) {
-        const owner = owners.get(object) || 'scene';
-        const bucket = sceneBreakdown[owner] ||= {
-          meshes: 0, drawGroups: 0, triangles: 0, shadowCasters: 0,
-          shadowTriangles: 0, geometries: new Set(), materials: new Set(),
-        };
-        const instances = object.isInstancedMesh ? object.count : 1;
-        const triangles = Math.floor(primitiveCount(object.geometry) / 3) * instances;
-        const materialCount = Array.isArray(object.material)
-          ? Math.max(1, object.geometry?.groups?.length || object.material.length)
-          : 1;
-        bucket.meshes += 1;
-        bucket.drawGroups += materialCount;
-        bucket.triangles += triangles;
-        visibleMeshWork.push({
-          owner,
-          name: object.name || object.userData?.distanceRepresentation
-            || object.geometry?.type || object.type,
-          instances,
-          triangles,
-          castShadow: !!object.castShadow,
-          shadowOnly: !!object.userData?.shadowOnly,
-        });
-        bucket.geometries.add(object.geometry);
-        const ownedMaterials = Array.isArray(object.material)
-          ? object.material : object.material ? [object.material] : [];
-        ownedMaterials.forEach((material) => bucket.materials.add(material));
-        if (object.castShadow) {
-          bucket.shadowCasters += 1;
-          bucket.shadowTriangles += triangles;
-        }
-      }
+  const collectVisibleMesh = (object) => {
+    if (!object.isMesh) return;
+    meshes += 1;
+    if (object.visible) visibleMeshes += 1;
+    if (!effectiveVisible(object)) return;
+    const owner = owners.get(object) || 'scene';
+    const bucket = sceneBreakdown[owner] ||= {
+      meshes: 0, drawGroups: 0, triangles: 0, shadowCasters: 0,
+      shadowTriangles: 0, geometries: new Set(), materials: new Set(),
+    };
+    const instances = object.isInstancedMesh ? object.count : 1;
+    const triangles = Math.floor(primitiveCount(object.geometry) / 3) * instances;
+    const materialCount = Array.isArray(object.material)
+      ? Math.max(1, object.geometry?.groups?.length || object.material.length)
+      : 1;
+    bucket.meshes += 1;
+    bucket.drawGroups += materialCount;
+    bucket.triangles += triangles;
+    visibleMeshWork.push({
+      owner,
+      name: object.name || object.userData?.distanceRepresentation
+        || object.geometry?.type || object.type,
+      instances,
+      triangles,
+      castShadow: !!object.castShadow,
+      shadowOnly: !!object.userData?.shadowOnly,
+    });
+    bucket.geometries.add(object.geometry);
+    const ownedMaterials = Array.isArray(object.material)
+      ? object.material : object.material ? [object.material] : [];
+    ownedMaterials.forEach((material) => bucket.materials.add(material));
+    if (object.castShadow) {
+      bucket.shadowCasters += 1;
+      bucket.shadowTriangles += triangles;
     }
+  };
+  const collectObjectMaterials = (object) => {
     const objectMaterials = Array.isArray(object.material)
       ? object.material
       : object.material ? [object.material] : [];
+    const textureOwner = owners.get(object) || 'scene';
     for (const material of objectMaterials) {
       materials.add(material);
-      for (const value of Object.values(material)) collectTexture(value);
+      for (const value of Object.values(material)) collectTexture(value, textureOwner);
       for (const uniform of Object.values(material.uniforms || {})) {
         const value = uniform?.value;
-        if (Array.isArray(value)) value.forEach(collectTexture);
-        else collectTexture(value);
+        if (Array.isArray(value)) {
+          for (const entry of value) collectTexture(entry, textureOwner);
+        } else collectTexture(value, textureOwner);
       }
     }
-  });
-  for (const bucket of Object.values(sceneBreakdown)) {
-    bucket.geometries = bucket.geometries.size;
-    bucket.materials = bucket.materials.size;
-  }
-  visibleMeshWork.sort((a, b) => b.triangles - a.triangles);
-  const textureSources = {};
-  const textureWork = [];
-  let sceneTexturePixels = 0;
-  for (const texture of textures) {
-    const image = texture.image || texture.source?.data;
-    const images = Array.isArray(image) ? image : [image];
-    let pixels = 0;
-    let source = 'unknown';
-    for (const entry of images) {
-      if (!entry) continue;
-      const width = entry.videoWidth || entry.naturalWidth || entry.width || 0;
-      const height = entry.videoHeight || entry.naturalHeight || entry.height || 0;
-      pixels += Math.max(0, width * height);
-      source = entry.constructor?.name || source;
+  };
+  const collectSceneObject = (object) => {
+    objects += 1;
+    if (object.visible) visibleObjects += 1;
+    if (object.geometry) geometries.add(object.geometry);
+    collectVisibleMesh(object);
+    collectObjectMaterials(object);
+  };
+  debug.scene.traverse(collectSceneObject);
+  const finalizeSceneBreakdown = () => {
+    for (const bucket of Object.values(sceneBreakdown)) {
+      bucket.geometries = bucket.geometries.size;
+      bucket.materials = bucket.materials.size;
     }
-    sceneTexturePixels += pixels;
-    textureSources[source] = (textureSources[source] || 0) + 1;
-    textureWork.push({
-      name: texture.name || texture.source?.data?.name || texture.constructor?.name || 'texture',
-      source,
-      pixels,
-      mipmapped: texture.generateMipmaps !== false,
-    });
-  }
-  textureWork.sort((a, b) => b.pixels - a.pixels);
-  const programUse = {};
-  const singletonProgramNames = {};
-  for (const program of renderer.info.programs || []) {
-    const uses = String(program.usedTimes ?? 0);
-    programUse[uses] = (programUse[uses] || 0) + 1;
-    if ((program.usedTimes ?? 0) === 1) {
-      const name = program.name || '(unnamed)';
-      singletonProgramNames[name] = (singletonProgramNames[name] || 0) + 1;
+    visibleMeshWork.sort((a, b) => b.triangles - a.triangles);
+  };
+  finalizeSceneBreakdown();
+  const summarizeTextures = () => {
+    const textureSources = {};
+    const textureOwnerCounts = {};
+    const textureWork = [];
+    let sceneTexturePixels = 0;
+    for (const texture of textures) {
+      const image = texture.image || texture.source?.data;
+      const images = Array.isArray(image) ? image : [image];
+      let pixels = 0;
+      let source = 'unknown';
+      for (const entry of images) {
+        if (!entry) continue;
+        const width = entry.videoWidth || entry.naturalWidth || entry.width || 0;
+        const height = entry.videoHeight || entry.naturalHeight || entry.height || 0;
+        pixels += Math.max(0, width * height);
+        source = entry.constructor?.name || source;
+      }
+      sceneTexturePixels += pixels;
+      textureSources[source] = (textureSources[source] || 0) + 1;
+      const ownedBy = [...(textureOwners.get(texture) || [])].sort();
+      for (const owner of ownedBy) {
+        textureOwnerCounts[owner] = (textureOwnerCounts[owner] || 0) + 1;
+      }
+      textureWork.push({
+        name: texture.name || texture.source?.data?.name || texture.constructor?.name || 'texture',
+        owners: ownedBy,
+        source,
+        pixels,
+        mipmapped: texture.generateMipmaps !== false,
+      });
     }
-  }
+    textureWork.sort((a, b) => b.pixels - a.pixels);
+    return { sceneTexturePixels, textureSources, textureOwnerCounts, textureWork };
+  };
+  const summarizePrograms = () => {
+    const programUse = {};
+    const singletonProgramNames = {};
+    for (const program of renderer.info.programs || []) {
+      const uses = String(program.usedTimes ?? 0);
+      programUse[uses] = (programUse[uses] || 0) + 1;
+      if ((program.usedTimes ?? 0) === 1) {
+        const name = program.name || '(unnamed)';
+        singletonProgramNames[name] = (singletonProgramNames[name] || 0) + 1;
+      }
+    }
+    return { programUse, singletonProgramNames };
+  };
+  const textureSummary = summarizeTextures();
+  const programSummary = summarizePrograms();
   return {
     phase: debug.game.phase,
     roster: (debug.game?.tanks || []).map((entity) => ({
@@ -343,9 +385,10 @@ const sampleResources = () => page.evaluate(() => {
     sceneGeometries: geometries.size,
     sceneMaterials: materials.size,
     sceneTextures: textures.size,
-    sceneTexturePixels,
-    textureSources,
-    topSceneTextures: textureWork.slice(0, 20),
+    sceneTexturePixels: textureSummary.sceneTexturePixels,
+    textureSources: textureSummary.textureSources,
+    textureOwnerCounts: textureSummary.textureOwnerCounts,
+    topSceneTextures: textureSummary.textureWork.slice(0, 20),
     sceneBreakdown,
     topVisibleMeshes: visibleMeshWork.slice(0, 24),
     renderer: {
@@ -354,8 +397,8 @@ const sampleResources = () => page.evaluate(() => {
       lines: completeFrame.lines,
       points: completeFrame.points,
       programs: (renderer.info.programs || []).length,
-      programUse,
-      singletonProgramNames,
+      programUse: programSummary.programUse,
+      singletonProgramNames: programSummary.singletonProgramNames,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
     },
@@ -473,16 +516,14 @@ const measurePhase = async (name) => {
   };
 };
 
-const evaluateBudgets = (phases) => {
-  const byName = new Map(phases.map((phase) => [phase.name, phase]));
-  const idle = byName.get('garage-idle');
-  const battle = byName.get('battle-active');
-  const returned = byName.get('garage-returned');
-  const checks = [];
-  const check = (name, pass, actual, limit) => {
-    checks.push({ name, pass: Boolean(pass), actual, limit });
-  };
+const checkResourceLimits = (check, label, source, budget, resources) => {
+  for (const resource of resources) {
+    check(`${label} ${resource}`, source?.[resource] <= budget[resource],
+      source?.[resource] ?? null, `<= ${budget[resource]}`);
+  }
+};
 
+const checkGarageIdleActivity = (check, idle) => {
   check('garage idle render cadence', idle?.rendersPerSecond <= 0.3,
     idle?.rendersPerSecond ?? null, '<= 0.3 renders/s');
   check('garage idle animation clock sleeps',
@@ -502,41 +543,16 @@ const evaluateBudgets = (phases) => {
   check('garage idle scene objects',
     idle?.resources.objects <= RESOURCE_BUDGETS.garageIdle.objects,
     idle?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.garageIdle.objects}`);
-  for (const resource of ['programs', 'geometries', 'textures']) {
-    check(`garage idle renderer ${resource}`,
-      idle?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
-      idle?.resources.renderer[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
-  }
-  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
-    'sceneTexturePixels']) {
-    check(`garage idle visible ${resource}`,
-      idle?.resources[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
-      idle?.resources[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
-  }
-  for (const workload of ['calls', 'triangles']) {
-    check(`garage idle complete-frame ${workload}`,
-      idle?.resources.renderer[workload] <= RESOURCE_BUDGETS.garageIdle[workload],
-      idle?.resources.renderer[workload] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageIdle[workload]}`);
-  }
-  check('active battle refreshes distant shadow cascades coherently',
-    Object.keys(battle?.frameWorkload?.byShadowMask || {}).length === 2
-      && battle?.frameWorkload?.byShadowMask?.['3']
-      && battle?.frameWorkload?.byShadowMask?.['15']
-      && !battle?.frameWorkload?.byShadowMask?.['7']
-      && !battle?.frameWorkload?.byShadowMask?.['11']
-      && !battle?.frameWorkload?.byShadowMask?.['12'],
-    Object.keys(battle?.frameWorkload?.byShadowMask || {}),
-    'continuous near mask 3 and atomic all-cascade far-refresh mask 15');
-  for (const workload of ['shadowCalls', 'shadowTriangles']) {
-    check(`active battle complete-frame ${workload}`,
-      battle?.frameWorkload?.[workload]?.max
-        <= RESOURCE_BUDGETS.battleActive[workload],
-      battle?.frameWorkload?.[workload]?.max ?? null,
-      `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
-  }
+  checkResourceLimits(check, 'garage idle renderer', idle?.resources.renderer,
+    RESOURCE_BUDGETS.garageIdle, ['programs', 'geometries', 'textures']);
+  checkResourceLimits(check, 'garage idle visible', idle?.resources,
+    RESOURCE_BUDGETS.garageIdle,
+    ['sceneGeometries', 'sceneMaterials', 'sceneTextures', 'sceneTexturePixels']);
+  checkResourceLimits(check, 'garage idle complete-frame', idle?.resources.renderer,
+    RESOURCE_BUDGETS.garageIdle, ['calls', 'triangles']);
+};
+
+const checkGarageIdleResidency = (check, idle, returned) => {
   check('garage constructs no battlefield without intent',
     (idle?.resources.caches.worldIds?.length || 0) === 0,
     idle?.resources.caches.worldIds || [], '0 resident worlds');
@@ -560,6 +576,27 @@ const evaluateBudgets = (phases) => {
       returned: returnedWorkshop || null,
     },
     'no repeated optimization or receipt drift while the Garage is detached');
+};
+
+const checkGarageIdleBudgets = (check, idle, returned) => {
+  checkGarageIdleActivity(check, idle);
+  checkGarageIdleResidency(check, idle, returned);
+};
+
+const checkBattleFrameBudgets = (check, battle) => {
+  const battleShadowMasks = Object.keys(battle?.frameWorkload?.byShadowMask || {});
+  check('active battle refreshes every shadow cascade coherently',
+    battleShadowMasks.length === 1
+      && Boolean(battle?.frameWorkload?.byShadowMask?.['15']),
+    battleShadowMasks,
+    'all-cascade mask 15 on every presented battle frame');
+  for (const workload of ['shadowCalls', 'shadowTriangles']) {
+    check(`active battle complete-frame ${workload}`,
+      battle?.frameWorkload?.[workload]?.max
+        <= RESOURCE_BUDGETS.battleActive[workload],
+      battle?.frameWorkload?.[workload]?.max ?? null,
+      `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
+  }
   check('active battle main-thread cost per rendered frame',
     battle?.taskMsPerRender <= RESOURCE_BUDGETS.battleActive.taskMsPerRender,
     battle?.taskMsPerRender ?? null,
@@ -575,28 +612,31 @@ const evaluateBudgets = (phases) => {
   check('active battle scene objects',
     battle?.resources.objects <= RESOURCE_BUDGETS.battleActive.objects,
     battle?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.battleActive.objects}`);
+};
+
+const checkBattleResidencyBudgets = (check, battle) => {
   check('active battle resource roster is pinned and complete',
     battle?.resources.roster?.length === 14
       && battle.resources.roster.every((entity) => entity.visual),
     battle?.resources.roster || null,
     '14 visualized actors in the pinned production roster');
+  check('active battle shared effect texture residency is bounded',
+    (battle?.resources.textureOwnerCounts?.effects || 0)
+      <= RESOURCE_BUDGETS.battleActive.effectTextures,
+    battle?.resources.textureOwnerCounts?.effects ?? null,
+    `<= ${RESOURCE_BUDGETS.battleActive.effectTextures} textures`);
   check('active battle detaches Garage roots',
     battle?.resources.caches.phaseSceneResidency?.garageMounted === false
       && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
     battle?.resources.caches.phaseSceneResidency || null,
     'Garage detached; world mounted');
-  check('active battle releases authentic Garage GPU residency',
-    battle?.resources.caches.garageGpuResidency?.suspended === true
-      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.geometries || 0) >= 12
-      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 15,
+  check('active battle retains detached desktop Garage GPU residency',
+    battle?.resources.caches.garageGpuResidency?.suspended === false
+      && (battle?.resources.caches.garageGpuResidency?.releases || 0) === 0,
     battle?.resources.caches.garageGpuResidency || null,
-    'suspended with every currently resident Garage stage resource released');
-  for (const resource of ['programs', 'geometries', 'textures']) {
-    check(`active battle renderer ${resource}`,
-      battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
-      battle?.resources.renderer[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
-  }
+    'detached but resident, with no release/re-upload cycle');
+  checkResourceLimits(check, 'active battle renderer', battle?.resources.renderer,
+    RESOURCE_BUDGETS.battleActive, ['programs', 'geometries', 'textures']);
   const terrainIndexPool = battle?.resources?.caches?.terrainIndexPool;
   check('active battlefield shares exact terrain topology',
     terrainIndexPool?.attributes <= 3
@@ -604,19 +644,23 @@ const evaluateBudgets = (phases) => {
       && terrainIndexPool?.totalBytesAvoided >= 7_500_000,
     terrainIndexPool ?? null,
     '<= 3 index buffers, >= 64 references, >= 7.5 MB legacy index storage avoided');
-  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
-    'sceneTexturePixels']) {
-    check(`active battle visible ${resource}`,
-      battle?.resources[resource] <= RESOURCE_BUDGETS.battleActive[resource],
-      battle?.resources[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
-  }
+};
+
+const checkBattleBudgets = (check, battle) => {
+  checkBattleFrameBudgets(check, battle);
+  checkBattleResidencyBudgets(check, battle);
+  checkResourceLimits(check, 'active battle visible', battle?.resources,
+    RESOURCE_BUDGETS.battleActive,
+    ['sceneGeometries', 'sceneMaterials', 'sceneTextures', 'sceneTexturePixels']);
   for (const workload of ['calls', 'triangles']) {
     check(`active battle complete-frame ${workload}`,
       battle?.frameWorkload?.[workload]?.max <= RESOURCE_BUDGETS.battleActive[workload],
       battle?.frameWorkload?.[workload]?.max ?? null,
       `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
   }
+};
+
+const checkReturnedGarageActivity = (check, returned) => {
   check('returned Garage CPU residency',
     returned?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent,
     returned?.taskCoreEquivalent ?? null,
@@ -636,6 +680,9 @@ const evaluateBudgets = (phases) => {
   check('returned Garage scene objects',
     returned?.resources.objects <= RESOURCE_BUDGETS.garageReturned.objects,
     returned?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.garageReturned.objects}`);
+};
+
+const checkReturnedGarageResidency = (check, returned) => {
   check('returned Garage detaches battlefield root',
     returned?.resources.caches.phaseSceneResidency?.garageMounted === true
       && returned?.resources.caches.phaseSceneResidency?.worldMounted === false,
@@ -645,31 +692,18 @@ const evaluateBudgets = (phases) => {
     !returned?.resources.sceneBreakdown?.effects,
     returned?.resources.sceneBreakdown?.effects || null,
     'no attached effects scene or pooled battle GPU graph');
-  check('returned Garage restores retained scene-pack GPU resources',
+  check('returned Garage reuses retained desktop scene-pack GPU resources',
     returned?.resources.caches.garageGpuResidency?.suspended === false
-      && (returned?.resources.caches.garageGpuResidency?.resumes || 0) >= 1,
+      && (returned?.resources.caches.garageGpuResidency?.resumes || 0) === 0,
     returned?.resources.caches.garageGpuResidency || null,
-    'scene pack resumed once behind the return transition');
-  for (const resource of ['programs', 'geometries', 'textures']) {
-    check(`returned Garage renderer ${resource}`,
-      returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
-      returned?.resources.renderer[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
-  }
-  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
-    'sceneTexturePixels']) {
-    check(`returned Garage visible ${resource}`,
-      returned?.resources[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
-      returned?.resources[resource] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
-  }
-  for (const workload of ['calls', 'triangles']) {
-    check(`returned Garage complete-frame ${workload}`,
-      returned?.resources.renderer[workload]
-        <= RESOURCE_BUDGETS.garageReturned[workload],
-      returned?.resources.renderer[workload] ?? null,
-      `<= ${RESOURCE_BUDGETS.garageReturned[workload]}`);
-  }
+    'scene pack remains resident without a restore upload');
+  checkResourceLimits(check, 'returned Garage renderer', returned?.resources.renderer,
+    RESOURCE_BUDGETS.garageReturned, ['programs', 'geometries', 'textures']);
+  checkResourceLimits(check, 'returned Garage visible', returned?.resources,
+    RESOURCE_BUDGETS.garageReturned,
+    ['sceneGeometries', 'sceneMaterials', 'sceneTextures', 'sceneTexturePixels']);
+  checkResourceLimits(check, 'returned Garage complete-frame', returned?.resources.renderer,
+    RESOURCE_BUDGETS.garageReturned, ['calls', 'triangles']);
   check('returned Garage battle pool respects resident limit',
     (returned?.resources.caches.battleVisualPool?.size || 0)
       <= (returned?.resources.caches.battleVisualPool?.capacity ?? 0),
@@ -680,6 +714,26 @@ const evaluateBudgets = (phases) => {
       <= (returned?.resources.caches.residentLimits?.worldScenes ?? 0),
     returned?.resources.caches.worldIds?.length ?? null,
     returned?.resources.caches.residentLimits?.worldScenes ?? null);
+};
+
+const checkReturnedGarageBudgets = (check, returned) => {
+  checkReturnedGarageActivity(check, returned);
+  checkReturnedGarageResidency(check, returned);
+};
+
+const evaluateBudgets = (phases) => {
+  const byName = new Map(phases.map((phase) => [phase.name, phase]));
+  const idle = byName.get('garage-idle');
+  const battle = byName.get('battle-active');
+  const returned = byName.get('garage-returned');
+  const checks = [];
+  const check = (name, pass, actual, limit) => {
+    checks.push({ name, pass: Boolean(pass), actual, limit });
+  };
+
+  checkGarageIdleBudgets(check, idle, returned);
+  checkBattleBudgets(check, battle);
+  checkReturnedGarageBudgets(check, returned);
 
   return { pass: checks.every((entry) => entry.pass), checks };
 };

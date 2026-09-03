@@ -1,17 +1,18 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface PerfHudRuntime {
   update(dtMs: number): void;
   toggle(): void;
   setVisible(visible: boolean): void;
   isVisible(): boolean;
-  setTelemetryProvider(provider: (() => unknown) | null): void;
+  setTelemetryProvider(provider: (() => RuntimeValue) | null): void;
   setCaptureHidden(hidden: boolean): void;
-  stats(): unknown;
-  snapshot(): unknown;
+  stats(): RuntimeValue;
+  snapshot(): RuntimeValue;
 }
 
 export interface DebugTelemetryRuntime {
-  collect(): Record<string, unknown>;
-  sampleShadowContribution(): Promise<Record<string, unknown>>;
+  collect(): Record<string, RuntimeValue>;
+  sampleShadowContribution(): Promise<Record<string, RuntimeValue>>;
 }
 
 export interface PerfDiagnosticsRuntime {
@@ -22,8 +23,8 @@ export interface PerfDiagnosticsRuntime {
 export interface PerfDiagnosticsFacade extends PerfHudRuntime {
   preload(): Promise<PerfDiagnosticsRuntime>;
   isReady(): boolean;
-  collectTelemetry(): Record<string, unknown> | null;
-  sampleShadowContribution(): Promise<Record<string, unknown>>;
+  collectTelemetry(): Record<string, RuntimeValue> | null;
+  sampleShadowContribution(): Promise<Record<string, RuntimeValue>>;
 }
 
 /**
@@ -40,7 +41,7 @@ export function createPerfDiagnosticsAccess(
   let pending: Promise<PerfDiagnosticsRuntime> | null = null;
   let captureHidden = false;
   let desiredVisible = false;
-  let telemetryProvider: (() => unknown) | null = null;
+  let telemetryProvider: (() => RuntimeValue) | null = null;
 
   const preload = (): Promise<PerfDiagnosticsRuntime> => {
     if (runtime) return Promise.resolve(runtime);
@@ -67,7 +68,7 @@ export function createPerfDiagnosticsAccess(
       return;
     }
     if (!desiredVisible) return;
-    void preload().catch((error: unknown) => {
+    void preload().catch((error: RuntimeValue) => {
       console.warn('[diagnostics] optional engineering runtime failed to load', error);
     });
   };

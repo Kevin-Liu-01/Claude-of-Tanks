@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export const SPECIAL_ACTION_KINDS = Object.freeze({
   NONE: 'none',
   GUIDED_MISSILE: 'guided_missile',
@@ -40,10 +41,10 @@ const DESCRIPTOR_RELOAD = Object.freeze({
 });
 
 export interface SpecialActionSpec {
-  hydropneumaticAim?: unknown;
+  hydropneumaticAim?: RuntimeValue;
   gun?: {
     primaryGuided?: boolean;
-    autoloader?: unknown;
+    autoloader?: RuntimeValue;
     shells?: readonly { guided?: boolean }[];
   };
 }

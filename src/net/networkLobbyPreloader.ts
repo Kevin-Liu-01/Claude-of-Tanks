@@ -1,15 +1,16 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { NetworkRoomState } from './networkRoomCoordinator.ts';
 
 export interface NetworkLobbyPreloaderOptions {
   getGamePhase(): string;
-  preloadPresentation(): Promise<unknown>;
-  preloadVisuals(): Promise<unknown>;
-  preloadBattleModules(): Promise<unknown>;
-  preloadChat(): Promise<unknown>;
-  ensureTankBuilders(specIds: string[]): Promise<unknown>;
-  loadWorldModule(): Promise<unknown>;
+  preloadPresentation(): Promise<RuntimeValue>;
+  preloadVisuals(): Promise<RuntimeValue>;
+  preloadBattleModules(): Promise<RuntimeValue>;
+  preloadChat(): Promise<RuntimeValue>;
+  ensureTankBuilders(specIds: string[]): Promise<RuntimeValue>;
+  loadWorldModule(): Promise<RuntimeValue>;
   cancelBackgroundWorldBuildsExcept(mapId: string | null): void;
-  prefetchWorld(mapId: string): unknown;
+  prefetchWorld(mapId: string): RuntimeValue;
 }
 
 export interface NetworkLobbyPreloader {
@@ -40,12 +41,12 @@ export function createNetworkLobbyPreloader({
   let mapIntentInitialized = false;
   let requestedMapId: string | null = null;
 
-  const request = (key: string, start: () => Promise<unknown>): void => {
+  const request = (key: string, start: () => Promise<RuntimeValue>): void => {
     if (prepared.has(key) || pending.has(key)) return;
-    let transfer: Promise<unknown>;
+    let transfer: Promise<RuntimeValue>;
     try {
       transfer = Promise.resolve(start());
-    } catch (error: unknown) {
+    } catch (error) {
       transfer = Promise.reject(error);
     }
     const tracked = transfer.then(() => {

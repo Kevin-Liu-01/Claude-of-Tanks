@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   TransportClosedError,
   type MessageTransport,
@@ -8,28 +9,28 @@ type Unsubscribe = () => void;
 type ChannelReadyState = 'connecting' | 'open' | 'closing' | 'closed';
 
 interface ChannelEvent {
-  data?: unknown;
-  error?: unknown;
+  data?: RuntimeValue;
+  error?: RuntimeValue;
 }
 
 interface ChannelLike {
-  [eventHandler: `on${string}`]: unknown;
+  [eventHandler: `on${string}`]: RuntimeValue;
   readyState: number | string;
   bufferedAmount?: number;
   bufferedAmountLowThreshold?: number;
   ordered?: boolean;
   maxRetransmits?: number | null;
   maxPacketLifeTime?: number | null;
-  send(value: unknown): void;
+  send(value: RuntimeValue): void;
   close(): void;
   addEventListener?(type: string, listener: (event: ChannelEvent) => void): void;
   removeEventListener?(type: string, listener: (event: ChannelEvent) => void): void;
 }
 
 export interface WireCodec {
-  encode(value: unknown): unknown;
-  decode(value: unknown): unknown;
-  size?(value: unknown): number;
+  encode(value: RuntimeValue): RuntimeValue;
+  decode(value: RuntimeValue): RuntimeValue;
+  size?(value: RuntimeValue): number;
 }
 
 export interface ChannelTransportOptions {
@@ -63,9 +64,9 @@ export interface SplitTransportStats {
 }
 
 export interface ChannelTransport extends MessageTransport {
-  sendState(message: unknown): boolean;
-  sendInput(message: unknown): boolean;
-  onError(listener: (error: unknown) => void): Unsubscribe;
+  sendState(message: RuntimeValue): boolean;
+  sendInput(message: RuntimeValue): boolean;
+  onError(listener: (error: RuntimeValue) => void): Unsubscribe;
   dispose(): void;
   readonly bufferedAmount: number;
   readonly stats: ChannelTransportStats | SplitTransportStats;
@@ -78,7 +79,7 @@ interface SingleChannelTransport extends ChannelTransport {
 }
 
 interface EncodedMessage {
-  encoded: unknown;
+  encoded: RuntimeValue;
   bytes: number;
 }
 
@@ -88,52 +89,52 @@ const DEFAULT_MAX_STATE_BUFFERED_BYTES = 64 * 1024;
 const DEFAULT_MAX_INPUT_BUFFERED_BYTES = 1024;
 const binarySnapshotCodec: WireCodec = snapshotWireCodec;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function isChannelLike(value: unknown): value is ChannelLike {
+function isChannelLike(value: RuntimeValue): value is ChannelLike {
   return isRecord(value)
     && (typeof value.readyState === 'number' || typeof value.readyState === 'string')
     && typeof value.send === 'function'
     && typeof value.close === 'function';
 }
 
-function readChannel(value: unknown): ChannelLike {
+function readChannel(value: RuntimeValue): ChannelLike {
   if (!isChannelLike(value)) {
     throw new TypeError('channel must expose readyState and implement send() and close()');
   }
   return value;
 }
 
-function isWireCodec(value: unknown): value is WireCodec {
+function isWireCodec(value: RuntimeValue): value is WireCodec {
   return isRecord(value)
     && typeof value.encode === 'function'
     && typeof value.decode === 'function';
 }
 
-function readCodec(value: unknown, label: string): WireCodec {
+function readCodec(value: RuntimeValue, label: string): WireCodec {
   if (!isWireCodec(value)) {
     throw new TypeError(`${label} must implement encode() and decode()`);
   }
   return value;
 }
 
-function utf8Size(value: unknown): number {
+function utf8Size(value: RuntimeValue): number {
   const text = typeof value === 'string' ? value : String(value);
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(text).byteLength;
   return text.length * 2;
 }
 
 const jsonWireCodec: WireCodec = Object.freeze({
-  encode(value: unknown): string { return JSON.stringify(value); },
-  decode(value: unknown): unknown {
+  encode(value: RuntimeValue): string { return JSON.stringify(value); },
+  decode(value: RuntimeValue): RuntimeValue {
     if (typeof value !== 'string') {
       throw new TypeError('JSON transport expects string messages');
     }
-    return JSON.parse(value) as unknown;
+    return JSON.parse(value) as RuntimeValue;
   },
-  size(value: unknown): number { return utf8Size(value); },
+  size(value: RuntimeValue): number { return utf8Size(value); },
 });
 
 function addListener(
@@ -173,7 +174,7 @@ function channelBufferedAmount(channel: ChannelLike): number {
 
 /** Wrap WebRTC RTCDataChannel or WebSocket behind the shared transport seam. */
 function createChannelTransport(
-  channelValue: unknown,
+  channelValue: RuntimeValue,
   {
     kind = 'channel',
     codec: rawCodec = jsonWireCodec,
@@ -189,9 +190,9 @@ function createChannelTransport(
   const channel = readChannel(channelValue);
   const codec = readCodec(rawCodec, 'codec');
   const stateCodec = readCodec(rawStateCodec || codec, 'stateCodec');
-  const messages = new Set<(message: unknown) => void>();
+  const messages = new Set<(message: RuntimeValue) => void>();
   const closes = new Set<(reason: string) => void>();
-  const errors = new Set<(error: unknown) => void>();
+  const errors = new Set<(error: RuntimeValue) => void>();
   let closedReason: string | null = null;
   let pendingState: EncodedMessage | null = null;
   let pendingInput: EncodedMessage | null = null;
@@ -242,7 +243,7 @@ function createChannelTransport(
     for (const listener of [...errors]) listener(error);
   });
 
-  function encode(message: unknown, wireCodec: WireCodec = codec): EncodedMessage {
+  function encode(message: RuntimeValue, wireCodec: WireCodec = codec): EncodedMessage {
     const encoded = wireCodec.encode(message);
     const bytes = typeof wireCodec.size === 'function'
       ? wireCodec.size(encoded)
@@ -250,7 +251,7 @@ function createChannelTransport(
     return { encoded, bytes };
   }
 
-  function sendEncoded(encoded: unknown, bytes: number): boolean {
+  function sendEncoded(encoded: RuntimeValue, bytes: number): boolean {
     if (bytes > maxMessageBytes) {
       stats.rejected++;
       return false;
@@ -305,12 +306,12 @@ function createChannelTransport(
 
   transport = {
     kind,
-    send(message: unknown): boolean {
+    send(message: RuntimeValue): boolean {
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
       const { encoded, bytes } = encode(message);
       return sendEncoded(encoded, bytes);
     },
-    sendState(message: unknown): boolean {
+    sendState(message: RuntimeValue): boolean {
       if (!coalesceState) return transport.send(message);
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
       const encodedState = encode(message, stateCodec);
@@ -329,7 +330,7 @@ function createChannelTransport(
       if (!accepted) stats.stateCoalesced++;
       return true;
     },
-    sendInput(message: unknown): boolean {
+    sendInput(message: RuntimeValue): boolean {
       if (!coalesceInput) return transport.send(message);
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
       const encodedInput = encode(message, stateCodec);
@@ -348,7 +349,7 @@ function createChannelTransport(
       if (!accepted) stats.inputCoalesced++;
       return true;
     },
-    onMessage(listener: (message: unknown) => void): Unsubscribe {
+    onMessage(listener: (message: RuntimeValue) => void): Unsubscribe {
       messages.add(listener);
       return () => messages.delete(listener);
     },
@@ -360,7 +361,7 @@ function createChannelTransport(
       }
       return () => closes.delete(listener);
     },
-    onError(listener: (error: unknown) => void): Unsubscribe {
+    onError(listener: (error: RuntimeValue) => void): Unsubscribe {
       errors.add(listener);
       return () => errors.delete(listener);
     },
@@ -395,7 +396,7 @@ function createChannelTransport(
 }
 
 export function createWebRTCDataChannelTransport(
-  channelValue: unknown,
+  channelValue: RuntimeValue,
   options: ChannelTransportOptions = {},
 ): ChannelTransport {
   const channel = readChannel(channelValue);
@@ -411,8 +412,8 @@ export function createWebRTCDataChannelTransport(
  * WebRTC lane while keeping lobby, combat events, and control reliable.
  */
 export function createWebRTCSplitTransport(
-  controlChannelValue: unknown,
-  stateChannelValue: unknown,
+  controlChannelValue: RuntimeValue,
+  stateChannelValue: RuntimeValue,
   options: ChannelTransportOptions = {},
 ): ChannelTransport {
   const controlChannel = readChannel(controlChannelValue);
@@ -442,15 +443,15 @@ export function createWebRTCSplitTransport(
     maxStateBufferedBytes: options.maxStateBufferedBytes ?? DEFAULT_MAX_STATE_BUFFERED_BYTES,
     maxInputBufferedBytes: options.maxInputBufferedBytes ?? DEFAULT_MAX_INPUT_BUFFERED_BYTES,
   });
-  const messages = new Set<(message: unknown) => void>();
+  const messages = new Set<(message: RuntimeValue) => void>();
   const closes = new Set<(reason: string) => void>();
-  const errors = new Set<(error: unknown) => void>();
+  const errors = new Set<(error: RuntimeValue) => void>();
   let closedReason: string | null = null;
 
-  const forwardMessage = (message: unknown) => {
+  const forwardMessage = (message: RuntimeValue) => {
     for (const listener of [...messages]) listener(message);
   };
-  const forwardError = (error: unknown) => {
+  const forwardError = (error: RuntimeValue) => {
     for (const listener of [...errors]) listener(error);
   };
   const removeControlMessage = control.onMessage(forwardMessage);
@@ -458,7 +459,7 @@ export function createWebRTCSplitTransport(
   const removeControlError = control.onError(forwardError);
   const removeStateError = state.onError(forwardError);
 
-  function finishClose(reason: unknown): void {
+  function finishClose(reason: RuntimeValue): void {
     if (closedReason != null) return;
     closedReason = String(reason || 'remote_closed');
     if (control.readyState !== 'closed') control.close(closedReason);
@@ -474,10 +475,10 @@ export function createWebRTCSplitTransport(
 
   return {
     kind: 'webrtc',
-    send(message: unknown): boolean { return control.send(message); },
-    sendInput(message: unknown): boolean { return state.sendInput(message); },
-    sendState(message: unknown): boolean { return state.sendState(message); },
-    onMessage(listener: (message: unknown) => void): Unsubscribe {
+    send(message: RuntimeValue): boolean { return control.send(message); },
+    sendInput(message: RuntimeValue): boolean { return state.sendInput(message); },
+    sendState(message: RuntimeValue): boolean { return state.sendState(message); },
+    onMessage(listener: (message: RuntimeValue) => void): Unsubscribe {
       messages.add(listener);
       return () => messages.delete(listener);
     },
@@ -486,7 +487,7 @@ export function createWebRTCSplitTransport(
       else closes.add(listener);
       return () => closes.delete(listener);
     },
-    onError(listener: (error: unknown) => void): Unsubscribe {
+    onError(listener: (error: RuntimeValue) => void): Unsubscribe {
       errors.add(listener);
       return () => errors.delete(listener);
     },
@@ -519,7 +520,7 @@ export function createWebRTCSplitTransport(
 }
 
 export function createWebSocketTransport(
-  socket: unknown,
+  socket: RuntimeValue,
   options: ChannelTransportOptions = {},
 ): ChannelTransport {
   const maxBufferedBytes = options.maxBufferedBytes ?? DEFAULT_MAX_BUFFERED_BYTES;

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { MovementShellSpec, MovementSpec } from '../sim/movement.ts';
 import type { EventBus } from './stateCore.ts';
@@ -33,7 +34,7 @@ interface FeedbackGame {
 
 interface FeedbackRig {
   addTrauma(amount: number): void;
-  recoilKick?(amount: number, fovScale: number): unknown;
+  recoilKick?(amount: number, fovScale: number): RuntimeValue;
 }
 
 interface FeedbackAudio {
@@ -108,7 +109,7 @@ export function createCombatFeedbackRuntime({
   const effectPosition = new THREE.Vector3();
   const effectDirection = new THREE.Vector3();
   const unsubscribe: Array<() => void> = [];
-  const listen = (event: string, listener: (payload: unknown) => void): void => {
+  const listen = (event: string, listener: (payload: RuntimeValue) => void): void => {
     unsubscribe.push(bus.on(event, listener));
   };
 

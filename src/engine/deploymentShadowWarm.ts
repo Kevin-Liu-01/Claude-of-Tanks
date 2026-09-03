@@ -26,6 +26,12 @@ interface CasterState {
   lods: Array<{ object: Object3D & { autoUpdate: boolean }; autoUpdate: boolean }>;
 }
 
+interface SavedShadowState {
+  shadow: DirectionalLight['shadow'];
+  autoUpdate: boolean;
+  needsUpdate: boolean;
+}
+
 export interface DeploymentShadowWarmReceipt {
   cascades: number;
   cascadeMs?: number[];
@@ -39,7 +45,7 @@ export interface DeploymentShadowWarmReceipt {
 }
 
 export interface DeploymentShadowWarmOwner {
-  warmDepthProgramSteps(): Generator<void, void, unknown>;
+  warmDepthProgramSteps(): Generator<void, void, void>;
   prime(yieldForBudget?: BudgetYield | null): Promise<DeploymentShadowWarmReceipt>;
   dispose(): void;
 }
@@ -158,7 +164,7 @@ export function createDeploymentShadowWarmOwner({
   });
   uploadMaterial.name = 'DeploymentBufferUpload';
 
-  const warmDepthProgramSteps = function* (): Generator<void, void, unknown> {
+  const warmDepthProgramSteps = function* (): Generator<void, void, void> {
     const lights = lighting.csm?.lights ?? [];
     const light = lights[lights.length - 1];
     if (!light?.shadow) return;
@@ -250,93 +256,134 @@ export function createDeploymentShadowWarmOwner({
     }
   };
 
-  const prime = async (
-    yieldForBudget: BudgetYield | null = null,
-  ): Promise<DeploymentShadowWarmReceipt> => {
-    const lights = lighting.csm?.lights ?? [];
-    if (!lights.length) return { cascades: 0, totalMs: 0, maxMs: 0 };
-    const prior = lights.map((light) => ({
-      shadow: light.shadow,
-      autoUpdate: light.shadow.autoUpdate,
-      needsUpdate: light.shadow.needsUpdate,
-    }));
-    const startedAt = now();
-    const cascadeMs: number[] = [];
-    const casterBatchMs: number[] = [];
-    let geometryUploadMs = 0;
-    let primed = false;
-    let casterState: CasterState | null = null;
-    try {
-      camera.updateMatrixWorld(true);
-      lighting.updateFov();
-      noteFovPrimed((camera as Camera & { fov?: number }).fov ?? 0);
-      lighting.update(true, simDt);
-      for (const light of lights) {
-        light.shadow.autoUpdate = false;
-        light.shadow.needsUpdate = false;
-      }
+  async function yieldCovered(yieldForBudget: BudgetYield | null): Promise<void> {
+    if (yieldForBudget) await yieldForBudget(true);
+  }
 
-      const priorOverrideMaterial = scene.overrideMaterial;
-      const geometryUploadAt = now();
-      try {
-        scene.overrideMaterial = uploadMaterial;
-        warmRender();
-      } finally {
-        scene.overrideMaterial = priorOverrideMaterial;
-      }
-      geometryUploadMs = Math.round(now() - geometryUploadAt);
-      if (yieldForBudget) await yieldForBudget(true);
-
-      casterState = createCasterBatches(scene, camera);
-      const firstLight = lights[0];
-      for (const { object } of casterState.casters) object.castShadow = false;
-      shadowOnlyCamera.layers.mask = camera.layers.mask;
-      for (const batch of casterState.batches) {
-        for (const object of batch) object.castShadow = true;
-        firstLight.shadow.needsUpdate = true;
-        const batchAt = now();
-        shadowOnlyWarm();
-        casterBatchMs.push(Math.round(now() - batchAt));
-        firstLight.shadow.needsUpdate = false;
-        for (const object of batch) object.castShadow = false;
-        if (yieldForBudget) await yieldForBudget(true);
-      }
-      for (const { object } of casterState.casters) object.castShadow = true;
-
-      for (const light of lights) {
-        light.shadow.needsUpdate = true;
-        const cascadeAt = now();
-        shadowOnlyWarm();
-        cascadeMs.push(Math.round(now() - cascadeAt));
-        light.shadow.needsUpdate = false;
-        if (yieldForBudget) await yieldForBudget(true);
-      }
-      lighting.preservePrimedCascadesForNextFrame();
-      for (const { object, autoUpdate } of casterState.lods) object.autoUpdate = autoUpdate;
-      primed = true;
-    } finally {
-      if (casterState) {
-        for (const { object } of casterState.casters) object.castShadow = true;
-        for (const { object, autoUpdate } of casterState.lods) object.autoUpdate = autoUpdate;
-      }
-      if (!primed) {
-        for (const state of prior) {
-          state.shadow.autoUpdate = state.autoUpdate;
-          state.shadow.needsUpdate = state.needsUpdate;
-        }
-      }
+  function primeLighting(lights: readonly DirectionalLight[]): void {
+    camera.updateMatrixWorld(true);
+    lighting.updateFov();
+    noteFovPrimed((camera as Camera & { fov?: number }).fov ?? 0);
+    lighting.update(true, simDt);
+    for (const light of lights) {
+      light.shadow.autoUpdate = false;
+      light.shadow.needsUpdate = false;
     }
+  }
+
+  function uploadDeploymentGeometry(): number {
+    const priorOverrideMaterial = scene.overrideMaterial;
+    const startedAt = now();
+    try {
+      scene.overrideMaterial = uploadMaterial;
+      warmRender();
+    } finally {
+      scene.overrideMaterial = priorOverrideMaterial;
+    }
+    return Math.round(now() - startedAt);
+  }
+
+  async function warmCasterBatches(
+    state: CasterState,
+    firstLight: DirectionalLight,
+    yieldForBudget: BudgetYield | null,
+  ): Promise<number[]> {
+    const batchTimes: number[] = [];
+    for (const { object } of state.casters) object.castShadow = false;
+    shadowOnlyCamera.layers.mask = camera.layers.mask;
+    for (const batch of state.batches) {
+      for (const object of batch) object.castShadow = true;
+      firstLight.shadow.needsUpdate = true;
+      const startedAt = now();
+      shadowOnlyWarm();
+      batchTimes.push(Math.round(now() - startedAt));
+      firstLight.shadow.needsUpdate = false;
+      for (const object of batch) object.castShadow = false;
+      await yieldCovered(yieldForBudget);
+    }
+    for (const { object } of state.casters) object.castShadow = true;
+    return batchTimes;
+  }
+
+  async function warmCascades(
+    lights: readonly DirectionalLight[],
+    yieldForBudget: BudgetYield | null,
+  ): Promise<number[]> {
+    const cascadeTimes: number[] = [];
+    for (const light of lights) {
+      light.shadow.needsUpdate = true;
+      const startedAt = now();
+      shadowOnlyWarm();
+      cascadeTimes.push(Math.round(now() - startedAt));
+      light.shadow.needsUpdate = false;
+      await yieldCovered(yieldForBudget);
+    }
+    return cascadeTimes;
+  }
+
+  function restoreCasterState(state: CasterState): void {
+    for (const { object } of state.casters) object.castShadow = true;
+    for (const { object, autoUpdate } of state.lods) object.autoUpdate = autoUpdate;
+  }
+
+  function restoreShadowState(states: readonly SavedShadowState[]): void {
+    for (const state of states) {
+      state.shadow.autoUpdate = state.autoUpdate;
+      state.shadow.needsUpdate = state.needsUpdate;
+    }
+  }
+
+  function warmReceipt(
+    startedAt: number,
+    cascadeMs: number[],
+    casterBatchMs: number[],
+    casterState: CasterState,
+    geometryUploadMs: number,
+  ): DeploymentShadowWarmReceipt {
     return {
       cascades: cascadeMs.length,
       cascadeMs,
       maxMs: cascadeMs.length ? Math.max(...cascadeMs) : 0,
-      casterCount: casterState?.casters.length ?? 0,
+      casterCount: casterState.casters.length,
       casterBatches: casterBatchMs.length,
       casterBatchMs,
       casterBatchMaxMs: casterBatchMs.length ? Math.max(...casterBatchMs) : 0,
       geometryUploadMs,
       totalMs: Math.round(now() - startedAt),
     };
+  }
+
+  const prime = async (
+    yieldForBudget: BudgetYield | null = null,
+  ): Promise<DeploymentShadowWarmReceipt> => {
+    const lights = lighting.csm?.lights ?? [];
+    if (!lights.length) return { cascades: 0, totalMs: 0, maxMs: 0 };
+    const prior: SavedShadowState[] = lights.map((light) => ({
+      shadow: light.shadow,
+      autoUpdate: light.shadow.autoUpdate,
+      needsUpdate: light.shadow.needsUpdate,
+    }));
+    const startedAt = now();
+    let geometryUploadMs = 0;
+    let primed = false;
+    let casterState: CasterState | null = null;
+    let cascadeMs: number[] = [];
+    let casterBatchMs: number[] = [];
+    try {
+      primeLighting(lights);
+      geometryUploadMs = uploadDeploymentGeometry();
+      await yieldCovered(yieldForBudget);
+      casterState = createCasterBatches(scene, camera);
+      casterBatchMs = await warmCasterBatches(casterState, lights[0], yieldForBudget);
+      cascadeMs = await warmCascades(lights, yieldForBudget);
+      lighting.preservePrimedCascadesForNextFrame();
+      restoreCasterState(casterState);
+      primed = true;
+    } finally {
+      if (casterState) restoreCasterState(casterState);
+      if (!primed) restoreShadowState(prior);
+    }
+    return warmReceipt(startedAt, cascadeMs, casterBatchMs, casterState, geometryUploadMs);
   };
 
   return {

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type * as THREE from 'three';
 import { createShowroomOrbit } from '../engine/cameraRig.ts';
 
@@ -28,7 +29,7 @@ interface ShowroomOrbitControl {
   drag(dx: number, dy: number): void;
   endDrag(): void;
   wheel(notches: number): void;
-  debugState(): Record<string, unknown>;
+  debugState(): Record<string, RuntimeValue>;
 }
 
 interface GarageShowroomRuntimeOptions {
@@ -51,7 +52,7 @@ export interface GarageShowroomRuntime {
   dispose(): void;
   readonly active: boolean;
   readonly moving: boolean;
-  debugState(): Record<string, unknown>;
+  debugState(): Record<string, RuntimeValue>;
 }
 
 /**

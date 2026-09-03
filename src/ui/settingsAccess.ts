@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createElement, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -89,7 +90,7 @@ export function createSettingsAccess(
         registerMenuAction: false,
       });
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });
@@ -101,7 +102,7 @@ export function createSettingsAccess(
     if (!canOpen()) return;
     void preload().then((runtime) => {
       if (canOpen() && !runtime.isOpen()) runtime.open();
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       console.error('[settings] failed to load', error);
     });
   };

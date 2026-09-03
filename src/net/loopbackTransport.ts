@@ -6,14 +6,16 @@
  * for their one in-process local peer while retaining the same wire protocol.
  */
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 type Unsubscribe = () => void;
 type TransportReadyState = 'open' | 'closed';
 
 export interface MessageTransport {
   readonly kind: string;
   readonly readyState: string;
-  send(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  send(message: RuntimeValue): boolean;
+  onMessage(listener: (message: RuntimeValue) => void): Unsubscribe;
   onClose(listener: (reason: string) => void): Unsubscribe;
   close(reason?: string): void;
 }
@@ -44,8 +46,8 @@ export interface LoopbackTransportOptions {
 
 interface LoopbackEndpoint extends LoopbackTransport {
   _setPeer(value: LoopbackEndpoint): void;
-  _enqueue(message: unknown): boolean;
-  _finishClose(reason: unknown, notifyPeer: boolean): void;
+  _enqueue(message: RuntimeValue): boolean;
+  _finishClose(reason: RuntimeValue, notifyPeer: boolean): void;
 }
 
 export class TransportClosedError extends Error {
@@ -67,9 +69,9 @@ function createEndpoint(
   maxQueuedMessages: number,
   direct: boolean,
 ): LoopbackEndpoint {
-  const messageListeners = new Set<(message: unknown) => void>();
+  const messageListeners = new Set<(message: RuntimeValue) => void>();
   const closeListeners = new Set<(reason: string) => void>();
-  const queue: unknown[] = [];
+  const queue: RuntimeValue[] = [];
   let peer: LoopbackEndpoint | null = null;
   let scheduled = false;
   let readyState: TransportReadyState = 'open';
@@ -94,7 +96,7 @@ function createEndpoint(
     }
   }
 
-  function enqueue(message: unknown): boolean {
+  function enqueue(message: RuntimeValue): boolean {
     if (readyState !== 'open') return false;
     if (direct) {
       stats.received++;
@@ -114,7 +116,7 @@ function createEndpoint(
     return true;
   }
 
-  function finishClose(reason: unknown, notifyPeer: boolean): void {
+  function finishClose(reason: RuntimeValue, notifyPeer: boolean): void {
     if (readyState === 'closed') return;
     readyState = 'closed';
     closeReason = String(reason || 'closed');
@@ -128,7 +130,7 @@ function createEndpoint(
   const endpoint: LoopbackEndpoint = {
     kind: 'loopback',
     label,
-    send(message: unknown): boolean {
+    send(message: RuntimeValue): boolean {
       if (readyState !== 'open' || !peer || peer.readyState !== 'open') {
         throw new TransportClosedError();
       }
@@ -137,7 +139,7 @@ function createEndpoint(
       else stats.rejected++;
       return accepted;
     },
-    onMessage(listener: (message: unknown) => void): Unsubscribe {
+    onMessage(listener: (message: RuntimeValue) => void): Unsubscribe {
       if (typeof listener !== 'function') throw new TypeError('message listener must be a function');
       messageListeners.add(listener);
       return () => messageListeners.delete(listener);

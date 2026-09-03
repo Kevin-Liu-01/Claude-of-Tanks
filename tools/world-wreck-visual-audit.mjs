@@ -47,6 +47,65 @@ try {
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
   const receipt = await page.evaluate(async () => {
+    const selectView = (debug, spot, groundY, distance) => {
+      let selected = null;
+      for (let index = 0; index < 24; index += 1) {
+        const azimuth = spot.yaw + Math.PI * 0.72 + index * Math.PI * 2 / 24;
+        const cameraX = spot.x + Math.sin(azimuth) * distance;
+        const cameraZ = spot.z + Math.cos(azimuth) * distance;
+        const cameraGroundY = debug.world.heightField.getHeightAt(cameraX, cameraZ);
+        const score = Math.abs(cameraGroundY - groundY);
+        if (!selected || score < selected.score) {
+          selected = { azimuth, cameraX, cameraZ, cameraGroundY, score };
+        }
+      }
+      return selected;
+    };
+    const collectTopGeometry = (debug) => {
+      const records = [];
+      const isVisible = (object) => {
+        for (let node = object; node; node = node.parent) {
+          if (node.visible === false) return false;
+          if (node === debug.world.group) break;
+        }
+        return true;
+      };
+      const primitiveCount = (object) => {
+        const positionCount = object.geometry.getAttribute('position')?.count || 0;
+        let count = object.geometry.index?.count || positionCount;
+        if (object.isInstancedMesh) count *= Math.max(0, object.count || 0);
+        if (object.isBatchedMesh && object._multiDrawCounts) {
+          count = 0;
+          for (let index = 0; index < object._multiDrawCount; index += 1) {
+            count += Math.abs(object._multiDrawCounts[index] || 0);
+          }
+        }
+        return count;
+      };
+      const topSubsystem = (object) => {
+        let subsystem = object;
+        while (subsystem.parent && subsystem.parent !== debug.world.group) subsystem = subsystem.parent;
+        return subsystem;
+      };
+      debug.world.group.traverse((object) => {
+        if (!(object.isMesh || object.isPoints || object.isLine) || !object.geometry) return;
+        if (!isVisible(object)) return;
+        const subsystem = topSubsystem(object);
+        const primitives = primitiveCount(object);
+        records.push({
+          subsystem: subsystem.name || subsystem.type,
+          name: object.name || '(unnamed)',
+          geometryType: object.geometry.type,
+          material: (Array.isArray(object.material) ? object.material : [object.material])
+            .map((material) => material?.name || material?.type || '(none)').join('|'),
+          instances: object.isInstancedMesh ? object.count : 1,
+          triangles: object.isMesh ? Math.floor(primitives / 3) : 0,
+          castShadow: !!object.castShadow,
+          userData: Object.keys(object.userData || {}).sort(),
+        });
+      });
+      return records.sort((a, b) => b.triangles - a.triangles);
+    };
     await window.__SHOTS.set('battlefield');
     const debug = window.__DEBUG;
     const spot = debug.world?.tankWreckSpots?.[0];
@@ -60,15 +119,7 @@ try {
     // Wrecks can sit beside steep roads. Pick the nearest level viewing arc
     // deterministically so the probe never buries the camera in a ridge or
     // frames the hulk behind intervening terrain.
-    let view = null;
-    for (let index = 0; index < 24; index += 1) {
-      const azimuth = spot.yaw + Math.PI * 0.72 + index * Math.PI * 2 / 24;
-      const cameraX = spot.x + Math.sin(azimuth) * distance;
-      const cameraZ = spot.z + Math.cos(azimuth) * distance;
-      const cameraGroundY = debug.world.heightField.getHeightAt(cameraX, cameraZ);
-      const score = Math.abs(cameraGroundY - groundY);
-      if (!view || score < view.score) view = { azimuth, cameraX, cameraZ, cameraGroundY, score };
-    }
+    const view = selectView(debug, spot, groundY, distance);
     const { cameraX, cameraZ, cameraGroundY } = view;
     const camera = new Vector3(
       cameraX,
@@ -82,39 +133,7 @@ try {
     debug.lighting.updateFrustums();
     debug.lighting.update(true);
     const position = wreck.geometry.getAttribute('position');
-    const topGeometry = [];
-    debug.world.group.traverse((object) => {
-      if (!(object.isMesh || object.isPoints || object.isLine) || !object.geometry) return;
-      let visible = true;
-      for (let node = object; node; node = node.parent) {
-        if (node.visible === false) { visible = false; break; }
-        if (node === debug.world.group) break;
-      }
-      if (!visible) return;
-      const positionCount = object.geometry.getAttribute('position')?.count || 0;
-      let primitiveCount = object.geometry.index?.count || positionCount;
-      if (object.isInstancedMesh) primitiveCount *= Math.max(0, object.count || 0);
-      if (object.isBatchedMesh && object._multiDrawCounts) {
-        primitiveCount = 0;
-        for (let index = 0; index < object._multiDrawCount; index += 1) {
-          primitiveCount += Math.abs(object._multiDrawCounts[index] || 0);
-        }
-      }
-      let subsystem = object;
-      while (subsystem.parent && subsystem.parent !== debug.world.group) subsystem = subsystem.parent;
-      topGeometry.push({
-        subsystem: subsystem.name || subsystem.type,
-        name: object.name || '(unnamed)',
-        geometryType: object.geometry.type,
-        material: (Array.isArray(object.material) ? object.material : [object.material])
-          .map((material) => material?.name || material?.type || '(none)').join('|'),
-        instances: object.isInstancedMesh ? object.count : 1,
-        triangles: object.isMesh ? Math.floor(primitiveCount / 3) : 0,
-        castShadow: !!object.castShadow,
-        userData: Object.keys(object.userData || {}).sort(),
-      });
-    });
-    topGeometry.sort((a, b) => b.triangles - a.triangles);
+    const topGeometry = collectTopGeometry(debug);
     return {
       spot,
       mergedWreckTriangles: Math.floor((wreck.geometry.index?.count || position.count) / 3),

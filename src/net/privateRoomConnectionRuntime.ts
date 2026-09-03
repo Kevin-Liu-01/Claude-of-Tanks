@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   serializeLobby,
   readSerializedLobby,
@@ -103,7 +104,7 @@ interface PrivateRoomConnectionOptions {
   isMapAllowed(mapId: string): boolean;
   onHostStart?(state: LobbyState, connection: PrivateRoomConnection): void;
   onClientClose?(reason: string): void;
-  onError?(error: unknown): void;
+  onError?(error: RuntimeValue): void;
 }
 
 interface ConnectionAttempt {
@@ -111,6 +112,11 @@ interface ConnectionAttempt {
   signaling: SignalingLike;
   session: HostSessionLike | ClientSessionLike | null;
   disposed: boolean;
+}
+
+interface AcquiredRoom {
+  roomInfo: RoomInfo;
+  ice: IceConfiguration;
 }
 
 export interface PrivateRoomConnectionRuntime {
@@ -133,6 +139,22 @@ function observeClientRoom(adapter: PrivateRoomAdapter): RoomStateRuntime {
   return {
     onState: (listener) => adapter.onState((state) => listener(readSerializedLobby(state))),
   };
+}
+
+function validateConnectRequest(request: PrivateRoomConnectRequest): void {
+  const validKind = request?.kind === 'create' || request?.kind === 'join';
+  const validTeamSize = Number.isSafeInteger(request?.teamSize)
+    && request.teamSize >= 1
+    && request.teamSize <= 7;
+  const complete = validKind
+    && Boolean(request.mode)
+    && Boolean(request.signalUrl)
+    && Boolean(request.player?.id)
+    && Boolean(request.player?.name)
+    && Boolean(request.selection?.specId)
+    && Boolean(request.selection?.mapId)
+    && validTeamSize;
+  if (!complete) throw new TypeError('private room connect request is incomplete');
 }
 
 /**
@@ -208,16 +230,166 @@ PrivateRoomConnectionRuntime {
     current = null;
   };
 
+  const attemptIsCurrent = (attempt: ConnectionAttempt): boolean =>
+    generationIsLive(attempt.generation) && pending === attempt;
+
+  const clearCurrentGeneration = (value: number): void => {
+    const connected = current;
+    if (connected && connected.generation === value) current = null;
+  };
+
+  const acquireRoom = async (
+    request: PrivateRoomConnectRequest,
+    attempt: ConnectionAttempt,
+  ): Promise<AcquiredRoom | null> => {
+    const { signaling } = attempt;
+    const iceRequest = loadIce(request.mode);
+    let roomInfo: RoomInfo;
+    let ice: IceConfiguration;
+    if (request.kind === 'join') {
+      [, ice] = await Promise.all([signaling.connect(), iceRequest]);
+      if (!attemptIsCurrent(attempt)) {
+        disposeAttempt(attempt, 'room_connection_superseded');
+        return null;
+      }
+      roomInfo = await signaling.joinRoom({
+        roomCode: request.roomCode,
+        player: request.player,
+      });
+    } else {
+      [roomInfo, ice] = await Promise.all([
+        signaling.createRoom({
+          player: request.player,
+          mode: request.mode,
+          maxPlayers: request.maxPlayers || 14,
+        }),
+        iceRequest,
+      ]);
+    }
+    if (attemptIsCurrent(attempt)) return { roomInfo, ice };
+    disposeAttempt(attempt, 'room_connection_superseded');
+    return null;
+  };
+
+  const connectHost = (
+    request: PrivateRoomConnectRequest,
+    attempt: ConnectionAttempt,
+    acquired: AcquiredRoom,
+    actualMode: string,
+  ): PrivateRoomHostConnection => {
+    let deferredStart: LobbyState | null = null;
+    let hostSession: HostSessionLike | null = null;
+    let connection: PrivateRoomHostConnection | null = null;
+    const start = (state: LobbyState) => {
+      if (!hostSession || !connection) {
+        deferredStart = state;
+        return;
+      }
+      if (current === connection && generationIsLive(attempt.generation)) {
+        onHostStart(state, connection);
+      }
+    };
+    hostSession = adapters.createHostSession({
+      signaling: attempt.signaling,
+      roomInfo: acquired.roomInfo,
+      hostName: request.player.name,
+      hostSpecId: request.selection.specId,
+      hostEquipment: [...(request.selection.equipment || [])],
+      hostCamo: request.selection.camo,
+      mapId: request.selection.mapId,
+      gameMode: request.selection.gameMode || 'standard',
+      teamSize: request.teamSize,
+      iceServers: acquired.ice.iceServers,
+      relayOnly: acquired.ice.relayOnly,
+      iceExpiresInSeconds: acquired.ice.expiresInSeconds,
+      refreshIceConfiguration: () => loadIce(actualMode),
+      isVehicleAllowed,
+      isCamoAllowed,
+      isMapAllowed,
+      onStart: start,
+      onError,
+    });
+    attempt.session = hostSession;
+    connection = {
+      generation: attempt.generation,
+      role: 'host',
+      mode: actualMode,
+      signaling: attempt.signaling,
+      session: hostSession,
+      roomInfo: acquired.roomInfo,
+      ice: acquired.ice,
+      runtime: hostSession.runtime,
+    };
+    current = connection;
+    pending = null;
+    if (deferredStart) onHostStart(deferredStart, connection);
+    return connection;
+  };
+
+  const replayClientSelection = async (
+    session: ClientSessionLike,
+    selection: RoomSelection,
+  ): Promise<void> => {
+    await Promise.resolve(session.submit({
+      type: 'select_vehicle', specId: selection.specId,
+    }));
+    await Promise.resolve(session.submit({
+      type: 'select_equipment', equipment: [...(selection.equipment || [])],
+    }));
+    await Promise.resolve(session.submit({
+      type: 'select_camo', camo: selection.camo,
+    }));
+  };
+
+  const connectClient = async (
+    request: PrivateRoomConnectRequest,
+    attempt: ConnectionAttempt,
+    acquired: AcquiredRoom,
+    actualMode: string,
+  ): Promise<PrivateRoomClientConnection | null> => {
+    let clientSession: ClientSessionLike | null = null;
+    const sessionClosed = (reason: string) => {
+      if (!generationIsLive(attempt.generation)) return;
+      if (clientSession && (current?.session === clientSession || pending === attempt)) {
+        onClientClose(reason);
+      }
+    };
+    clientSession = adapters.createClientSession({
+      signaling: attempt.signaling,
+      roomInfo: acquired.roomInfo,
+      iceServers: acquired.ice.iceServers,
+      relayOnly: acquired.ice.relayOnly,
+      iceExpiresInSeconds: acquired.ice.expiresInSeconds,
+      refreshIceConfiguration: () => loadIce(actualMode),
+      onError,
+      onClose: sessionClosed,
+    });
+    attempt.session = clientSession;
+    const runtime = observeClientRoom(await clientSession.ready);
+    if (!attemptIsCurrent(attempt)) {
+      disposeAttempt(attempt, 'room_connection_superseded');
+      return null;
+    }
+    const connection: PrivateRoomClientConnection = {
+      generation: attempt.generation,
+      role: 'client',
+      mode: actualMode,
+      signaling: attempt.signaling,
+      session: clientSession,
+      roomInfo: acquired.roomInfo,
+      ice: acquired.ice,
+      runtime,
+    };
+    current = connection;
+    pending = null;
+    await replayClientSelection(clientSession, request.selection);
+    return connection;
+  };
+
   const connect = async (
     request: PrivateRoomConnectRequest,
   ): Promise<PrivateRoomConnection | null> => {
-    if (!request || !['create', 'join'].includes(request.kind) ||
-        !request.mode || !request.signalUrl || !request.player?.id ||
-        !request.player?.name || !request.selection?.specId ||
-        !request.selection?.mapId || !Number.isSafeInteger(request.teamSize) ||
-        request.teamSize < 1 || request.teamSize > 7) {
-      throw new TypeError('private room connect request is incomplete');
-    }
+    validateConnectRequest(request);
     if (pending || current) throw new Error('a private room connection already owns this menu');
 
     const attemptGeneration = ++generation;
@@ -229,8 +401,6 @@ PrivateRoomConnectionRuntime {
       disposed: false,
     };
     pending = attempt;
-    let connection: PrivateRoomConnection | null = null;
-
     try {
       // A cold invite must have its ICE/TURN generation ready before joining
       // announces the peer to the host. Previously both operations started at
@@ -239,136 +409,17 @@ PrivateRoomConnectionRuntime {
       // Warm the WebSocket concurrently, then join only when RTC construction
       // can begin immediately. Hosts retain the faster parallel create path:
       // nobody can discover their new room code until this operation returns.
-      const iceRequest = loadIce(request.mode);
-      let roomInfo: RoomInfo;
-      let ice: IceConfiguration;
-      if (request.kind === 'join') {
-        [, ice] = await Promise.all([signaling.connect(), iceRequest]);
-        if (!generationIsLive(attemptGeneration) || pending !== attempt) {
-          disposeAttempt(attempt, 'room_connection_superseded');
-          return null;
-        }
-        roomInfo = await signaling.joinRoom({
-          roomCode: request.roomCode,
-          player: request.player,
-        });
-      } else {
-        [roomInfo, ice] = await Promise.all([
-          signaling.createRoom({
-            player: request.player,
-            mode: request.mode,
-            maxPlayers: request.maxPlayers || 14,
-          }),
-          iceRequest,
-        ]);
-      }
-      if (!generationIsLive(attemptGeneration) || pending !== attempt) {
-        disposeAttempt(attempt, 'room_connection_superseded');
-        return null;
-      }
-
-      const actualMode = roomInfo.mode || request.mode;
-      const ownsHostSeat = request.kind === 'create' || roomInfo.hostId === roomInfo.peerId;
-      if (ownsHostSeat) {
-        let deferredStart: LobbyState | null = null;
-        let hostSession: HostSessionLike | null = null;
-        const start = (state: LobbyState) => {
-          if (!hostSession || !connection) {
-            deferredStart = state;
-            return;
-          }
-          if (current === connection && generationIsLive(attemptGeneration)) {
-            onHostStart(state, connection);
-          }
-        };
-        hostSession = adapters.createHostSession({
-          signaling,
-          roomInfo,
-          hostName: request.player.name,
-          hostSpecId: request.selection.specId,
-          hostEquipment: [...(request.selection.equipment || [])],
-          hostCamo: request.selection.camo,
-          mapId: request.selection.mapId,
-          gameMode: request.selection.gameMode || 'standard',
-          teamSize: request.teamSize,
-          iceServers: ice.iceServers,
-          relayOnly: ice.relayOnly,
-          iceExpiresInSeconds: ice.expiresInSeconds,
-          refreshIceConfiguration: () => loadIce(actualMode),
-          isVehicleAllowed,
-          isCamoAllowed,
-          isMapAllowed,
-          onStart: start,
-          onError,
-        });
-        attempt.session = hostSession;
-        connection = {
-          generation: attemptGeneration,
-          role: 'host',
-          mode: actualMode,
-          signaling,
-          session: hostSession,
-          roomInfo,
-          ice,
-          runtime: hostSession.runtime,
-        };
-        current = connection;
-        pending = null;
-        if (deferredStart) onHostStart(deferredStart, connection);
-      } else {
-        let clientSession: ClientSessionLike | null = null;
-        const sessionClosed = (reason: string) => {
-          if (!generationIsLive(attemptGeneration)) return;
-          if (clientSession && (current?.session === clientSession || pending === attempt)) {
-            onClientClose(reason);
-          }
-        };
-        clientSession = adapters.createClientSession({
-          signaling,
-          roomInfo,
-          iceServers: ice.iceServers,
-          relayOnly: ice.relayOnly,
-          iceExpiresInSeconds: ice.expiresInSeconds,
-          refreshIceConfiguration: () => loadIce(actualMode),
-          onError,
-          onClose: sessionClosed,
-        });
-        attempt.session = clientSession;
-        const runtime = observeClientRoom(await clientSession.ready);
-        if (!generationIsLive(attemptGeneration) || pending !== attempt) {
-          disposeAttempt(attempt, 'room_connection_superseded');
-          return null;
-        }
-        connection = {
-          generation: attemptGeneration,
-          role: 'client',
-          mode: actualMode,
-          signaling,
-          session: clientSession,
-          roomInfo,
-          ice,
-          runtime,
-        };
-        current = connection;
-        pending = null;
-        // Reliable room commands are ordered. Replaying the complete garage
-        // selection after the peer is ready makes a truly cold invite join
-        // converge before the user can ready up.
-        await Promise.resolve(clientSession.submit({
-          type: 'select_vehicle', specId: request.selection.specId,
-        }));
-        await Promise.resolve(clientSession.submit({
-          type: 'select_equipment', equipment: [...(request.selection.equipment || [])],
-        }));
-        await Promise.resolve(clientSession.submit({
-          type: 'select_camo', camo: request.selection.camo,
-        }));
-      }
-      return connection;
+      const acquired = await acquireRoom(request, attempt);
+      if (!acquired) return null;
+      const actualMode = acquired.roomInfo.mode || request.mode;
+      const ownsHostSeat = request.kind === 'create'
+        || acquired.roomInfo.hostId === acquired.roomInfo.peerId;
+      if (ownsHostSeat) return connectHost(request, attempt, acquired, actualMode);
+      return await connectClient(request, attempt, acquired, actualMode);
     } catch (error) {
       const canceled = !generationIsLive(attemptGeneration) || pending !== attempt;
       if (pending === attempt) pending = null;
-      if (current?.generation === attemptGeneration) current = null;
+      clearCurrentGeneration(attemptGeneration);
       disposeAttempt(
         attempt,
         canceled ? 'room_connection_superseded' : 'connection_failed',

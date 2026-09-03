@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
 // frame with a transparent center band (the 3D pedestal shows through),
 // bottom tank carousel, right stats card, top-center BATTLE button.
@@ -132,7 +133,7 @@ interface PlayRequest {
 
 export interface GarageOptions {
   readonly specs: GarageTankSpec[];
-  readonly bus?: { emit(event: string, payload: unknown): void };
+  readonly bus?: { emit(event: string, payload: RuntimeValue): void };
   readonly onSelect?: (specId: string) => void;
   readonly onBattle?: (
     specId: string,
@@ -513,7 +514,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
     const avgKills = record.matches ? record.kills / record.matches : 0;
     const num = (value: number) => value.toLocaleString('en-US');
-    const safe = (value: unknown) => String(value).replace(/[&<>"']/g, (char) => ({
+    const safe = (value: RuntimeValue) => String(value).replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     } as Record<string, string>)[char] ?? char);
     const metric = (label: string, value: string, note: string) => `<div class="cot-record-metric"><span>${label}</span>` +
@@ -686,9 +687,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const specById = new Map<string, GarageTankSpec>();
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
-  for (const s of allSpecs) specById.set(s.id, s);
+  function indexGarageSpecs(): void {
+    for (const spec of allSpecs) specById.set(spec.id, spec);
+  }
+  indexGarageSpecs();
 
-  const emit = (ev: string, payload: unknown): void => { if (bus?.emit) bus.emit(ev, payload); };
+  const emit = (ev: string, payload: RuntimeValue): void => { if (bus?.emit) bus.emit(ev, payload); };
   const selectedGarageVariant = () => garageVariants.find((variant) =>
     variant.id === selectedGarageVariantId) || garageVariants[0] || null;
   const isGarageVariantMenuOpen = () => !garageVariantMenu.hidden;
@@ -733,45 +737,48 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (notify) opts.onGarageVariantSelect?.(variantId);
     return true;
   };
-  for (const variant of garageVariants) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'cot-garage-variant-card';
-    button.setAttribute('role', 'option');
-    button.dataset.variantId = variant.id;
-    const image = document.createElement('img');
-    image.src = variant.thumb || variant.hero || '';
-    image.alt = '';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    const copy = document.createElement('span');
-    copy.className = 'cot-garage-variant-copy';
-    const name = document.createElement('strong');
-    name.textContent = variant.name;
-    const location = document.createElement('small');
-    location.textContent = variant.location;
-    const description = document.createElement('em');
-    description.textContent = variant.description;
-    copy.append(name, location, description);
-    const check = document.createElement('span');
-    check.className = 'cot-garage-variant-check';
-    check.innerHTML = uiIconSVG('check', 12);
-    button.append(image, copy, check);
-    const signalVariantIntent = () => {
-      try { opts.onGarageVariantIntent?.(variant.id); } catch (_) { /* optional warm path */ }
-    };
-    button.addEventListener('pointerenter', signalVariantIntent, { passive: true });
-    button.addEventListener('focusin', signalVariantIntent);
-    button.addEventListener('touchstart', signalVariantIntent, { passive: true });
-    button.addEventListener('pointerdown', signalVariantIntent, { passive: true });
-    button.addEventListener('click', () => {
-      emit('ui:click', {});
-      selectGarageVariant(variant.id);
-    });
-    garageVariantMenu.appendChild(button);
-    garageVariantButtons.set(variant.id, button);
+  function initializeGarageVariantPicker(): void {
+    for (const variant of garageVariants) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cot-garage-variant-card';
+      button.setAttribute('role', 'option');
+      button.dataset.variantId = variant.id;
+      const image = document.createElement('img');
+      image.src = variant.thumb || variant.hero || '';
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      const copy = document.createElement('span');
+      copy.className = 'cot-garage-variant-copy';
+      const name = document.createElement('strong');
+      name.textContent = variant.name;
+      const location = document.createElement('small');
+      location.textContent = variant.location;
+      const description = document.createElement('em');
+      description.textContent = variant.description;
+      copy.append(name, location, description);
+      const check = document.createElement('span');
+      check.className = 'cot-garage-variant-check';
+      check.innerHTML = uiIconSVG('check', 12);
+      button.append(image, copy, check);
+      const signalVariantIntent = () => {
+        try { opts.onGarageVariantIntent?.(variant.id); } catch (_) { /* optional warm path */ }
+      };
+      button.addEventListener('pointerenter', signalVariantIntent, { passive: true });
+      button.addEventListener('focusin', signalVariantIntent);
+      button.addEventListener('touchstart', signalVariantIntent, { passive: true });
+      button.addEventListener('pointerdown', signalVariantIntent, { passive: true });
+      button.addEventListener('click', () => {
+        emit('ui:click', {});
+        selectGarageVariant(variant.id);
+      });
+      garageVariantMenu.appendChild(button);
+      garageVariantButtons.set(variant.id, button);
+    }
+    refreshGarageVariantUi();
   }
-  refreshGarageVariantUi();
+  initializeGarageVariantPicker();
   const signalVariantMenuIntent = () => {
     try { opts.onGarageVariantMenuIntent?.(); } catch (_) { /* optional warm path */ }
   };
@@ -908,14 +915,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     selectTechnicalModalView(viewId);
     technicalModal.open({ trigger });
   };
-  for (const tab of technicalModalTabs) {
-    tab.addEventListener('click', () => {
-      const viewId = tab.dataset.technicalModalView as GarageTechnicalViewId | undefined;
-      if (!viewId) return;
-      emit('ui:click', {});
-      selectTechnicalModalView(viewId);
-    });
+  function bindTechnicalViewerTabs(): void {
+    for (const tab of technicalModalTabs) {
+      tab.addEventListener('click', () => {
+        const viewId = tab.dataset.technicalModalView as GarageTechnicalViewId | undefined;
+        if (!viewId) return;
+        emit('ui:click', {});
+        selectTechnicalModalView(viewId);
+      });
+    }
   }
+  bindTechnicalViewerTabs();
   technicalModal.body.addEventListener('keydown', (event) => {
     const tab = eventElement(event)?.closest<HTMLButtonElement>('[data-technical-modal-view]');
     if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -1093,7 +1103,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
   const mapCardById = new Map<string, HTMLElement>();
-  if (maps.length) {
+  function initializeMapPicker(): void {
+    if (!maps.length) return;
     const title = document.createElement('div');
     title.className = 'mtitle';
     title.innerHTML = `${uiIconSVG('map', 13)}<span>Battlefield</span>`;
@@ -1165,6 +1176,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       mapCardById.set(m.id, card);
     }
   }
+  initializeMapPicker();
   // garage_polish r9: the scroll fade masks only make sense when the list
   // actually overflows — on tall viewports the whole roster fits and the
   // fade would dim the last row for no reason. Toggle per resize.
@@ -1179,11 +1191,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
   // so window resize alone is insufficient to keep the fade affordance true.
-  if (typeof ResizeObserver === 'function') {
+  function observeScrollFadeSize(): void {
+    if (typeof ResizeObserver !== 'function') return;
     const scrollFadeObserver = new ResizeObserver(syncScrollFades);
     const mapScroll = mapsEl.querySelector('.cot-map-scroll');
     if (mapScroll) scrollFadeObserver.observe(mapScroll);
   }
+  observeScrollFadeSize();
 
   // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
   // opts.camo = { patterns: string[], label: {id:label}, get(specId),
@@ -1203,7 +1217,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const camoTagButtonById = new Map<CamoTagId, HTMLButtonElement>();
   let activeCamoTag: CamoTagId = 'all';
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
-  if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
+  function initializeCamoPicker(): void {
+    if (!camoOpts?.patterns?.length) return;
     const title = document.createElement('div');
     title.className = 'ctitle';
     title.innerHTML = `${uiIconSVG('camouflage', 13)}<span>Camouflage</span>`;
@@ -1341,6 +1356,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
     }
   }
+  initializeCamoPicker();
   // Battlefield and camouflage form one balanced pair. They share the
   // available vertical budget, grow together, and stop once the taller
   // section can show all of its content. Any excess room remains below the
@@ -1375,10 +1391,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   window.addEventListener('resize', syncSidebarPanelHeight);
   requestAnimationFrame(syncSidebarPanelHeight);
-  if (typeof ResizeObserver === 'function') {
+  function observeSidebarSize(): void {
+    if (typeof ResizeObserver !== 'function') return;
     const sidebarSizeObserver = new ResizeObserver(syncSidebarPanelHeight);
     sidebarSizeObserver.observe(requiredElement<HTMLElement>(root, '.cot-leftcol'));
   }
+  observeSidebarSize();
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
   // `cot.equip.<specId>`, read battle-side by game/state.ts at spawn). The
@@ -1565,32 +1583,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requestAnimationFrame(syncScrollFades);
   }
 
+  function syncCamoCardSelection(selectedPatternId: string): void {
+    for (const [patternId, card] of camoCardById) {
+      const selected = patternId === selectedPatternId;
+      card.classList.toggle('sel', selected);
+      // The grid scrolls, so restoring a persisted selection must keep its
+      // active card visible without disturbing a deliberately filtered list.
+      if (selected && !card.hidden) card.scrollIntoView?.({ block: 'nearest' });
+    }
+  }
+
+  function repaintTankCamoSwatches(spec: GarageTankSpec): void {
+    for (const [patternId, card] of camoCardById) {
+      const canvas = card.querySelector<HTMLCanvasElement>('.sw canvas');
+      if (!canvas) continue;
+      if (patternId === 'auto') paintAutoCamoSwatch(canvas, spec);
+      else paintCamoSwatch(canvas, spec, patternId);
+    }
+  }
+
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
-    const cur = camoOpts.get(selectedId);
+    const selectedPatternId = camoOpts.get(selectedId);
     customCamoStudioAccess?.peek()?.syncSelected();
     refreshCamoTagFilters();
-    for (const [pid, card] of camoCardById) {
-      card.classList.toggle('sel', pid === cur);
-      // camo r8: the grid scrolls now — keep the active pattern in view when
-      // selection changes (tank switch restoring a persisted pick).
-      if (pid === cur && !card.hidden && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
-    }
+    syncCamoCardSelection(selectedPatternId);
     // repaint swatch tiles for THIS tank (factory palette + nation digital
     // differ per vehicle — the preview must show what the hull will wear)
-    if (swatchesFor !== selectedId) {
-      const spec = specById.get(selectedId);
-      if (spec) {
-        for (const [pid, card] of camoCardById) {
-          const cv = card.querySelector<HTMLCanvasElement>('.sw canvas');
-          if (cv) {
-            if (pid === 'auto') paintAutoCamoSwatch(cv, spec);
-            else paintCamoSwatch(cv, spec, pid);
-          }
-        }
-        swatchesFor = selectedId;
-      }
-    }
+    if (swatchesFor === selectedId) return;
+    const spec = specById.get(selectedId);
+    if (!spec) return;
+    repaintTankCamoSwatches(spec);
+    swatchesFor = selectedId;
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
@@ -1607,38 +1631,41 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // tier-VII M60 and tier-X Abrams off the same scale without reintroducing a
   // public vehicle-class taxonomy.
   const statGroupOf = garageStatGroup;
-  const STAT_RANGES = new Map<string, StatRange>(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
-  for (const s of allSpecs) {
-    const g = statGroupOf(s);
-    let r = STAT_RANGES.get(g);
-    if (!r) {
-      r = {
-        hp: [Infinity, -Infinity], speed: [Infinity, -Infinity],
-        hpt: [Infinity, -Infinity], dmg: [Infinity, -Infinity],
-        reload: [Infinity, -Infinity],
-        // EQUIPMENT SYSTEM rows: aim time + the spotting pair, so optics/
-        // nets/rammers visibly move their bars against the same peer group
-        aim: [Infinity, -Infinity], view: [Infinity, -Infinity],
-        camo: [Infinity, -Infinity],
+  function buildStatRanges(): Map<string, StatRange> {
+    const ranges = new Map<string, StatRange>();
+    for (const spec of allSpecs) {
+      const group = statGroupOf(spec);
+      let range = ranges.get(group);
+      if (!range) {
+        range = {
+          hp: [Infinity, -Infinity], speed: [Infinity, -Infinity],
+          hpt: [Infinity, -Infinity], dmg: [Infinity, -Infinity],
+          reload: [Infinity, -Infinity],
+          // EQUIPMENT SYSTEM rows: aim time + the spotting pair, so optics/
+          // nets/rammers visibly move their bars against the same peer group
+          aim: [Infinity, -Infinity], view: [Infinity, -Infinity],
+          camo: [Infinity, -Infinity],
+        };
+        ranges.set(group, range);
+      }
+      const add = (key: StatRangeKey, value: number | null | undefined): void => {
+        if (value == null || !isFinite(value)) return;
+        if (value < range[key][0]) range[key][0] = value;
+        if (value > range[key][1]) range[key][1] = value;
       };
-      STAT_RANGES.set(g, r);
+      add('hp', spec.hp);
+      add('speed', spec.topSpeedKmh);
+      add('hpt', spec.enginePowerHp / spec.weightTons);
+      add('reload', spec.gun.reloadS);
+      add('aim', spec.gun.aimTimeS);
+      add('view', viewRangeOf(spec));
+      add('camo', baseCamoOf(spec, false));
+      const shells = spec.gun?.shells || [];
+      add('dmg', shells.length ? Math.max(...shells.map((shell) => shell.dmg || 0)) : null);
     }
-    const range = r;
-    const add = (key: StatRangeKey, v: number | null | undefined): void => {
-      if (v == null || !isFinite(v)) return;
-      if (v < range[key][0]) range[key][0] = v;
-      if (v > range[key][1]) range[key][1] = v;
-    };
-    add('hp', s.hp);
-    add('speed', s.topSpeedKmh);
-    add('hpt', s.enginePowerHp / s.weightTons);
-    add('reload', s.gun.reloadS);
-    add('aim', s.gun.aimTimeS);
-    add('view', viewRangeOf(s));
-    add('camo', baseCamoOf(s, false));
-    const shells = (s.gun && s.gun.shells) || [];
-    add('dmg', shells.length ? Math.max(...shells.map((sh) => sh.dmg || 0)) : null);
+    return ranges;
   }
+  const STAT_RANGES = buildStatRanges(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   // min→0.14 stub, max→1.0 full; degenerate spans (single-vehicle group)
   // park at a neutral 0.72 so the card never shows an all-stub column
   function statFrac(
@@ -1664,27 +1691,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     countryCodeOf(spec) === countryId;
   let countryFilter = countryGroups[0]?.id || 'us';
   const chipById = new Map<string, HTMLButtonElement>();
-  for (const group of countryGroups) {
-    const count = group.count;
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'cot-country-chip';
-    chip.dataset.country = group.id;
-    chip.title = `${group.name} · ${count} vehicles`;
-    chip.setAttribute('aria-label', `Show ${group.name} vehicles`);
-    chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
-      `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
-    chip.addEventListener('click', () => {
-      emit('ui:click', {});
-      applyCountryFilter(group.id);
-      // Return to this nation's last selected vehicle. A nation without a
-      // remembered choice opens on its highest-tier, far-left card.
-      const preferred = countrySelection.preferredSpec(group.id);
-      if (preferred) api.setSelected(preferred.id);
-    });
-    chipsEl.appendChild(chip);
-    chipById.set(group.id, chip);
+  function initializeCountryChips(): void {
+    for (const group of countryGroups) {
+      const count = group.count;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'cot-country-chip';
+      chip.dataset.country = group.id;
+      chip.title = `${group.name} · ${count} vehicles`;
+      chip.setAttribute('aria-label', `Show ${group.name} vehicles`);
+      chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
+        `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
+      chip.addEventListener('click', () => {
+        emit('ui:click', {});
+        applyCountryFilter(group.id);
+        // Return to this nation's last selected vehicle. A nation without a
+        // remembered choice opens on its highest-tier, far-left card.
+        const preferred = countrySelection.preferredSpec(group.id);
+        if (preferred) api.setSelected(preferred.id);
+      });
+      chipsEl.appendChild(chip);
+      chipById.set(group.id, chip);
+    }
   }
+  initializeCountryChips();
   function applyCountryFilter(countryId: string): void {
     countryFilter = countryId;
     for (const [id, chip] of chipById) chip.classList.toggle('sel', id === countryId);
@@ -1748,38 +1778,41 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       try { onTankIntent(specId); } catch (_) { /* optional warm path */ }
     }, 90);
   };
-  for (const s of specs) {
-    const card = document.createElement('div');
-    const developmentOnly = Boolean(s.roster?.developmentOnly);
-    card.className = `cot-card${developmentOnly ? ' dev-only' : ''}`;
-    card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
-    const displayName = s.label?.displayName || s.name;
-    const shortName = s.label?.shortName || displayName;
-    card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
-    card.setAttribute('aria-label', `${tierNumeral(s.id) || ''} ${displayName}${developmentOnly ? ', development vehicle' : ''}`.trim());
-    card.style.setProperty('--nation-flag', `url("${flagIconUrl(s.nation)}")`);
-    // Stable pre-rendered 3/4 portrait generated from the final first-party
-    // procedural build; no live renderer or model swap is needed here.
-    card.innerHTML =
-      `<span class="card-era">${vehicleEraLabel(s.era, { short: true })}</span>` +
-      (developmentOnly ? `<span class="dev-tag">${s.roster?.tag || 'DEV'}</span>` : '') +
-      `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" data-cot-thumb="${s.id}" alt="${displayName}" width="256" height="256" ` +
-      `loading="lazy" decoding="async" fetchpriority="low">` +
-      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>`;
-    requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
-    card.addEventListener('pointerenter', () => signalTankIntent(s.id), { passive: true });
-    card.addEventListener('pointerleave', () => clearTankIntent(s.id), { passive: true });
-    card.addEventListener('focusin', () => signalTankIntent(s.id, true));
-    card.addEventListener('touchstart', () => signalTankIntent(s.id, true), { passive: true });
-    card.addEventListener('pointerdown', () => signalTankIntent(s.id, true), { passive: true });
-    card.addEventListener('click', () => {
-      emit('ui:click', {});
-      api.setSelected(s.id);
-    });
-    cardsEl.appendChild(card);
-    cardById.set(s.id, card);
+  function initializeTankCards(): void {
+    for (const spec of specs) {
+      const card = document.createElement('div');
+      const developmentOnly = Boolean(spec.roster?.developmentOnly);
+      card.className = `cot-card${developmentOnly ? ' dev-only' : ''}`;
+      card.dataset.specId = spec.id; // switch-desync r1: stable hook for tools/tests
+      const displayName = spec.label?.displayName || spec.name;
+      const shortName = spec.label?.shortName || displayName;
+      card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
+      card.setAttribute('aria-label', `${tierNumeral(spec.id) || ''} ${displayName}${developmentOnly ? ', development vehicle' : ''}`.trim());
+      card.style.setProperty('--nation-flag', `url("${flagIconUrl(spec.nation)}")`);
+      // Stable pre-rendered 3/4 portrait generated from the final first-party
+      // procedural build; no live renderer or model swap is needed here.
+      card.innerHTML =
+        `<span class="card-era">${vehicleEraLabel(spec.era, { short: true })}</span>` +
+        (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || 'DEV'}</span>` : '') +
+        `<span class="flag">${flagIconHTML(spec.nation, 20)}<i>${NATION_LABEL[spec.nation] || spec.nation}</i></span>` +
+        `<img class="ti" data-cot-thumb="${spec.id}" alt="${displayName}" width="256" height="256" ` +
+        `loading="lazy" decoding="async" fetchpriority="low">` +
+        `<div class="nm"><b class="tiern">${tierNumeral(spec.id) || ''}</b><span class="nmt"></span></div>`;
+      requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
+      card.addEventListener('pointerenter', () => signalTankIntent(spec.id), { passive: true });
+      card.addEventListener('pointerleave', () => clearTankIntent(spec.id), { passive: true });
+      card.addEventListener('focusin', () => signalTankIntent(spec.id, true));
+      card.addEventListener('touchstart', () => signalTankIntent(spec.id, true), { passive: true });
+      card.addEventListener('pointerdown', () => signalTankIntent(spec.id, true), { passive: true });
+      card.addEventListener('click', () => {
+        emit('ui:click', {});
+        api.setSelected(spec.id);
+      });
+      cardsEl.appendChild(card);
+      cardById.set(spec.id, card);
+    }
   }
+  initializeTankCards();
   applyCountryFilter(countryFilter);
   // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
   // across the garage carousel and screenshot harness.
@@ -1876,6 +1909,50 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
+
+  function animateStatsSwap(vehicleChanged: boolean): void {
+    const shouldAnimate = vehicleChanged
+      && statsFor !== null
+      && typeof statsEl.animate === 'function'
+      && !REDUCED_MOTION;
+    if (!shouldAnimate) return;
+    statsEl.animate(
+      [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 190, easing: 'ease-out' },
+    );
+  }
+
+  function ammunitionRows(shells: readonly GarageShellSpec[], baseReloadS: number): string {
+    return shells.map((shell) => {
+      const color = SHELL_TYPE_COLOR[shell.type] || '#9fb0bf';
+      const penetration = shell.type === 'HE'
+        ? `${shell.pen100Mm}`
+        : `${shell.pen100Mm} / ${shell.pen1000Mm}`;
+      const hasOwnReload = !!shell.reloadS && Math.abs(shell.reloadS - baseReloadS) > 0.01;
+      const reload = hasOwnReload
+        ? `${shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0)} s reload`
+        : '';
+      return `<div class="shellrow" style="--shell-color:${color}">` +
+        `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shell.type}</span></span>` +
+        `<span class="nm">${shell.name}${reload ? `<small>${reload}</small>` : ''}</span>` +
+        `<span class="shellmetric"><b>${penetration}</b>mm</span>` +
+        `<span class="shellmetric"><b>${shell.dmg}</b>hp</span></div>`;
+    }).join('');
+  }
+
+  function equipmentSlots(equipmentIds: readonly string[]): string {
+    const slots: string[] = [];
+    for (let index = 0; index < EQUIP_SLOTS; index++) {
+      const item = equipmentIds[index] ? EQUIPMENT_BY_ID.get(equipmentIds[index]) : null;
+      slots.push(item
+        ? `<div class="eqslot" data-slot="${index}" title="${item.name} &mdash; ${item.desc}">` +
+          `${equipIconSVG(item.id, 26)}<span class="sl">${item.short}</span></div>`
+        : `<div class="eqslot empty" data-slot="${index}" title="Mount equipment">` +
+          `<span class="plus">+</span><span class="sl">Empty</span></div>`);
+    }
+    return slots.join('');
+  }
+
   function renderStats(spec: GarageTankSpec): void {
     if (technicalModal.isOpen()) technicalModal.close({ restoreFocus: false, immediate: true });
     statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
@@ -1885,36 +1962,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const vehicleChanged = statsFor !== spec.id;
     // garage_ui: vehicle-switch micro-fade — the stats card content used to
     // teleport; a 190 ms fade/rise sells the swap without delaying the data.
-    if (statsFor !== spec.id && statsFor !== null &&
-        statsEl.animate && !REDUCED_MOTION) {
-      statsEl.animate(
-        [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
-        { duration: 190, easing: 'ease-out' });
-    }
+    animateStatsSwap(vehicleChanged);
     statsFor = spec.id;
     const hpT = spec.enginePowerHp / spec.weightTons;
     const shells = (spec.gun && spec.gun.shells) || [];
-    let shellRows = '';
-    for (const sh of shells) {
-      const col = SHELL_TYPE_COLOR[sh.type] || '#9fb0bf';
-      // penetration at point blank / at 1 km
-      const pen = sh.type === 'HE' ? `${sh.pen100Mm}` : `${sh.pen100Mm} / ${sh.pen1000Mm}`;
-      // per-shell reload (IFV autocannon vs. ATGM rail): only shown when the
-      // shell's own duration differs from the headline Reload bar above.
-      const shRel = sh.reloadS && Math.abs(sh.reloadS - spec.gun.reloadS) > 0.01
-        ? `${sh.reloadS.toFixed(sh.reloadS < 10 ? 1 : 0)} s reload` : '';
-      shellRows += `<div class="shellrow" style="--shell-color:${col}">` +
-        `<span class="shellkind">${shellIconSVG(sh.type, 24)}<span class="ty">${sh.type}</span></span>` +
-        `<span class="nm">${sh.name}${shRel ? `<small>${shRel}</small>` : ''}</span>` +
-        `<span class="shellmetric"><b>${pen}</b>mm</span>` +
-        `<span class="shellmetric"><b>${sh.dmg}</b>hp</span></div>`;
-    }
+    const shellRows = ammunitionRows(shells, spec.gun.reloadS);
     const hullMm = frontArmorMm(spec.armor && spec.armor.hullPlates, ['glacis', 'front', 'driver']);
     const turMm = frontArmorMm(spec.armor && spec.armor.turretPlates, ['front', 'cheek', 'mantlet']);
     // headline DAMAGE (alpha) — penetration lives in the per-shell rows only
     // (r3: a vehicle-level pen number duplicated the shell table; no AAA tank
     // game headlines a single pen figure)
-    const bestDmg = shells.length ? Math.max(...shells.map((s) => s.dmg || 0)) : 0;
+    const bestDmg = Math.max(0, ...shells.map((shell) => shell.dmg || 0));
     // Every bar normalizes within the vehicle's OWN tier+class peer
     // group, higher-is-better (reload inverted) — see STAT_RANGES above
     const grp = statGroupOf(spec);
@@ -1991,15 +2049,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
-    let slotBoxes = '';
-    for (let i = 0; i < EQUIP_SLOTS; i++) {
-      const it = eqIds[i] ? EQUIPMENT_BY_ID.get(eqIds[i]) : null;
-      slotBoxes += it
-        ? `<div class="eqslot" data-slot="${i}" title="${it.name} &mdash; ${it.desc}">` +
-          `${equipIconSVG(it.id, 26)}<span class="sl">${it.short}</span></div>`
-        : `<div class="eqslot empty" data-slot="${i}" title="Mount equipment">` +
-          `<span class="plus">+</span><span class="sl">Empty</span></div>`;
-    }
+    const slotBoxes = equipmentSlots(eqIds);
     statsEl.innerHTML =
       technicalSection +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
@@ -2217,7 +2267,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const choice of battleRuleChoices) choice.setAttribute('aria-checked', 'false');
   }
-  function setBattleGameMode(nextMode: unknown): void {
+  function setBattleGameMode(nextMode: RuntimeValue): void {
     const id = normalizeGameMode(nextMode);
     const meta = battleRuleMeta[id];
     if (!meta) return;

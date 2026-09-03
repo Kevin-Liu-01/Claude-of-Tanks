@@ -31,6 +31,10 @@ import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 
 const FADE_IN_MS = 190;
 const FADE_OUT_MS = 140;
+const QUICK_FADE_IN_MS = 90;
+const QUICK_FADE_OUT_MS = 80;
+
+export type TransitionPace = 'standard' | 'quick';
 
 export interface TransitionOptions {
   readonly kicker?: string;
@@ -40,6 +44,8 @@ export interface TransitionOptions {
   readonly hero?: string;
   readonly mapId?: string;
   readonly minShowMs?: number;
+  /** Shorter veil timing for already-resident state returns. */
+  readonly pace?: TransitionPace;
 }
 
 export type TransitionProgress = (fraction: number, label?: string) => void;
@@ -62,6 +68,8 @@ const CSS = `
 .cot-trans.on{display:flex;}
 .cot-trans.lit{opacity:1;}
 .cot-trans.out{opacity:0;transition:opacity ${FADE_OUT_MS}ms var(--cot-ease-out);}
+.cot-trans.quick{transition-duration:${QUICK_FADE_IN_MS}ms;}
+.cot-trans.quick.out{transition-duration:${QUICK_FADE_OUT_MS}ms;}
 .cot-trans *{box-sizing:border-box;margin:0;padding:0;}
 .cot-trans .bg{position:absolute;inset:-2%;background-size:cover;
   background-position:center;filter:saturate(.88) contrast(1.04);
@@ -162,6 +170,7 @@ export function createTransition(): TransitionScreen {
   let shownAt = 0;
   let hideToken = 0; // cancels a pending hide when show() re-enters first
   let warmAfterWork: string | null = null;
+  let activeFadeOutMs = FADE_OUT_MS;
   const api: TransitionScreen = {
     get visible() { return visible; },
     // `visible` flips false when fade-out begins. `active` remains true until
@@ -209,9 +218,12 @@ export function createTransition(): TransitionScreen {
       const at = TRANSITION_SHOTS.findIndex((entry) => entry.img === hero);
       warmAfterWork = at >= 0 && TRANSITION_SHOTS.length > 1
         ? TRANSITION_SHOTS[(at + 1) % TRANSITION_SHOTS.length].img : null;
+      const quick = o.pace === 'quick';
+      activeFadeOutMs = quick ? QUICK_FADE_OUT_MS : FADE_OUT_MS;
       visible = true;
       shownAt = performance.now();
       root.classList.remove('out');
+      root.classList.toggle('quick', quick);
       root.classList.add('on');
       // let the display flip commit before opacity animates (timer, not rAF —
       // see the sleep() note; in a hidden tab the fade simply skips)
@@ -233,8 +245,9 @@ export function createTransition(): TransitionScreen {
       visible = false;
       root.classList.add('out');
       root.classList.remove('lit');
-      await sleep(FADE_OUT_MS + 40);
-      if (hideToken === token) root.classList.remove('on', 'out');
+      const fadeOutMs = activeFadeOutMs;
+      await sleep(fadeOutMs + 40);
+      if (hideToken === token) root.classList.remove('on', 'out', 'quick');
     },
 
     /**
@@ -250,7 +263,10 @@ export function createTransition(): TransitionScreen {
     async run<Result>(work: TransitionWork<Result>, o: TransitionOptions = {}): Promise<Result> {
       if (skipTransitions()) return work(() => {});
       api.show(o);
-      await sleep(FADE_IN_MS + 60); // land fully lit before heavy work stalls paint
+      const fadeInSettleMs = o.pace === 'quick'
+        ? QUICK_FADE_IN_MS + 40
+        : FADE_IN_MS + 60;
+      await sleep(fadeInSettleMs); // land fully lit before heavy work stalls paint
       let result!: Result;
       try {
         result = await work(api.progress);

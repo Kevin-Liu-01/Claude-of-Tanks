@@ -313,15 +313,18 @@ async function stageFormation(hostPage, renderedRole, lobby) {
     };
     const laneSpacing = 10.5;
     const halfDepth = 32;
-    const candidates = [];
-    for (let radius = 0; radius <= 320; radius += 40) {
-      for (let x = -radius; x <= radius; x += 40) {
-        candidates.push([x, -radius], [x, radius]);
+    const formationCandidates = () => {
+      const candidates = [];
+      for (let radius = 0; radius <= 320; radius += 40) {
+        for (let x = -radius; x <= radius; x += 40) {
+          candidates.push([x, -radius], [x, radius]);
+        }
+        for (let z = -radius + 40; z <= radius - 40; z += 40) {
+          candidates.push([-radius, z], [radius, z]);
+        }
       }
-      for (let z = -radius + 40; z <= radius - 40; z += 40) {
-        candidates.push([-radius, z], [radius, z]);
-      }
-    }
+      return candidates;
+    };
     const makePoints = (cx, cz, axis) => Array.from({ length: teamSize }, (_, index) => {
       const lateral = (index - (teamSize - 1) / 2) * laneSpacing;
       return axis === 'z'
@@ -334,34 +337,68 @@ async function stageFormation(hostPage, renderedRole, lobby) {
           bravo: { x: cx + halfDepth, z: cz + lateral, yaw: -Math.PI / 2 },
         };
     });
-    let selected = null;
-    search:
-    for (const [cx, cz] of candidates) {
-      for (const axis of ['z', 'x']) {
-        const points = makePoints(cx, cz, axis);
-        if (!points.every((lane) => pointClear(lane.alpha.x, lane.alpha.z) &&
-          pointClear(lane.bravo.x, lane.bravo.z))) continue;
-        for (const lane of points) {
-          const aEntity = simulation.entityById.get(teams.alpha[0].id);
-          const origin = aEntity.state.pos.clone().set(
-            lane.alpha.x, heightAt(lane.alpha.x, lane.alpha.z) + 2.1, lane.alpha.z,
-          );
-          const target = aEntity.state.pos.clone().set(
-            lane.bravo.x, heightAt(lane.bravo.x, lane.bravo.z) + 2.1, lane.bravo.z,
-          );
-          const direction = target.clone().sub(origin);
-          const distance = direction.length();
-          direction.multiplyScalar(1 / distance);
-          const hit = collision.raycast(origin, direction, distance - 2);
-          if (hit && hit.dist < distance - 2.5) continue search;
+    const laneHasLineOfSight = (lane) => {
+      const anchor = simulation.entityById.get(teams.alpha[0].id);
+      const origin = anchor.state.pos.clone().set(
+        lane.alpha.x, heightAt(lane.alpha.x, lane.alpha.z) + 2.1, lane.alpha.z,
+      );
+      const target = anchor.state.pos.clone().set(
+        lane.bravo.x, heightAt(lane.bravo.x, lane.bravo.z) + 2.1, lane.bravo.z,
+      );
+      const direction = target.clone().sub(origin);
+      const distance = direction.length();
+      direction.multiplyScalar(1 / distance);
+      const hit = collision.raycast(origin, direction, distance - 2);
+      return !hit || hit.dist >= distance - 2.5;
+    };
+    const validFormationAt = (cx, cz, axis) => {
+      const points = makePoints(cx, cz, axis);
+      const clear = points.every((lane) => pointClear(lane.alpha.x, lane.alpha.z)
+        && pointClear(lane.bravo.x, lane.bravo.z));
+      return clear && points.every(laneHasLineOfSight)
+        ? { cx, cz, axis, points } : null;
+    };
+    const selectFormation = () => {
+      for (const [cx, cz] of formationCandidates()) {
+        for (const axis of ['z', 'x']) {
+          const candidate = validFormationAt(cx, cz, axis);
+          if (candidate) return candidate;
         }
-        selected = { cx, cz, axis, points };
-        break search;
       }
-    }
+      return null;
+    };
+    const selected = selectFormation();
     if (!selected) throw new Error('no clear seven-lane live-combat formation was found');
 
     const pairById = {};
+    const resetEntityForFormation = (player, target, pose) => {
+      const entity = simulation.entityById.get(player.id);
+      const y = heightAt(pose.x, pose.z);
+      entity.state.pos.set(pose.x, y, pose.z);
+      entity.state.yaw = pose.yaw;
+      entity.state.speed = 0;
+      entity.state.yawRate = 0;
+      entity.state.visualPitch = 0;
+      entity.state.visualRoll = 0;
+      entity.state.turretYaw = 0;
+      entity.state.gunPitch = 0;
+      entity.state.turretYawRate = 0;
+      entity.state._prevSpeed = 0;
+      entity.state._spool = 0;
+      entity.state._ride.y = y;
+      entity.state._ride.v = 0;
+      entity.state._ride.supportY = y;
+      entity.state._sup.x = NaN;
+      entity.state._sup.z = NaN;
+      entity.combat.hp = entity.combat.maxHp;
+      entity.combat.destroyed = false;
+      entity.combat.reload.t = 0;
+      entity.input.throttle = 0;
+      entity.input.steer = 0;
+      entity.input.brake = true;
+      entity.input.fire = false;
+      pairById[player.id] = { targetId: target.id, team: player.team, yaw: pose.yaw };
+    };
     for (let index = 0; index < teamSize; index++) {
       const alpha = teams.alpha[index];
       const bravo = teams.bravo[index];
@@ -370,32 +407,7 @@ async function stageFormation(hostPage, renderedRole, lobby) {
         [alpha, bravo, lane.alpha],
         [bravo, alpha, lane.bravo],
       ]) {
-        const entity = simulation.entityById.get(player.id);
-        const y = heightAt(pose.x, pose.z);
-        entity.state.pos.set(pose.x, y, pose.z);
-        entity.state.yaw = pose.yaw;
-        entity.state.speed = 0;
-        entity.state.yawRate = 0;
-        entity.state.visualPitch = 0;
-        entity.state.visualRoll = 0;
-        entity.state.turretYaw = 0;
-        entity.state.gunPitch = 0;
-        entity.state.turretYawRate = 0;
-        entity.state._prevSpeed = 0;
-        entity.state._spool = 0;
-        entity.state._ride.y = y;
-        entity.state._ride.v = 0;
-        entity.state._ride.supportY = y;
-        entity.state._sup.x = NaN;
-        entity.state._sup.z = NaN;
-        entity.combat.hp = entity.combat.maxHp;
-        entity.combat.destroyed = false;
-        entity.combat.reload.t = 0;
-        entity.input.throttle = 0;
-        entity.input.steer = 0;
-        entity.input.brake = true;
-        entity.input.fire = false;
-        pairById[player.id] = { targetId: target.id, team: player.team, yaw: pose.yaw };
+        resetEntityForFormation(player, target, pose);
       }
     }
     state.formation = {
@@ -673,64 +685,54 @@ async function startLightCombat(page, isHost, formation) {
     state.combatEnabled = true;
     state.measureMotion = true;
     state.combatStartedAt = performance.now();
-    const buildInput = () => {
-      const motionAtMs = performance.now();
-      const playerId = state.roomInfo.peerId;
-      const pair = state.formation.pairById[playerId];
-      const elapsed = motionAtMs - state.combatStartedAt;
-      const driveElapsed = motionAtMs -
-        (state.measurementStartedAt || state.combatStartedAt);
-      const sample = state.sample;
-      const own = sample?.entities?.find((entity) => entity.id === playerId);
+    const nearestEnemy = (own, enemies) => enemies.reduce((nearest, candidate) => {
+      const distance = Math.hypot(candidate.x - own.x, candidate.z - own.z);
+      return !nearest || distance < nearest.distance ? { entity: candidate, distance } : nearest;
+    }, null)?.entity || null;
+    const selectTarget = (playerId, pair, own, sample) => {
       const enemies = sample?.entities?.filter((entity) =>
         state.formation.pairById[entity.id]?.team !== pair.team && !entity.destroyed) || [];
-      let target = enemies.find((entity) => entity.id === pair.targetId) || null;
-      if (!target && own) {
-        target = enemies.reduce((nearest, candidate) => {
-          const distance = Math.hypot(candidate.x - own.x, candidate.z - own.z);
-          return !nearest || distance < nearest.distance ? { entity: candidate, distance } : nearest;
-        }, null)?.entity || null;
-      }
-      if (own && state.measureMotion) {
-        const motion = state.motion;
-        if (motion.last) {
-          const dx = own.x - motion.last.x;
-          const dy = own.y - motion.last.y;
-          const dz = own.z - motion.last.z;
-          const stepM = Math.hypot(dx, dy, dz);
-          const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
-          const speedMps = Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0);
-          const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
-          motion.maxStepM = Math.max(motion.maxStepM, stepM);
-          if (elapsedS <= 0.025) {
-            motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
-          }
-          motion.maxExcessStepM = Math.max(
-            motion.maxExcessStepM,
-            Math.max(0, stepM - expectedStepM),
-          );
-          // Measure reconciliation against the tank's live heading, not its
-          // opening formation heading. Pursuit deliberately turns survivors
-          // after a stalemate; a fast tank driving forward after a 180-degree
-          // turn is not a backwards network correction.
-          const previousYaw = Number.isFinite(motion.last.yaw) ? motion.last.yaw : own.yaw;
-          const headingYaw = Math.atan2(
-            Math.sin(previousYaw) + Math.sin(own.yaw),
-            Math.cos(previousYaw) + Math.cos(own.yaw),
-          );
-          const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
-          motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
+      return enemies.find((entity) => entity.id === pair.targetId)
+        || (own ? nearestEnemy(own, enemies) : null);
+    };
+    const recordMotion = (own, motionAtMs) => {
+      if (!own || !state.measureMotion) return;
+      const motion = state.motion;
+      if (motion.last) {
+        const dx = own.x - motion.last.x;
+        const dy = own.y - motion.last.y;
+        const dz = own.z - motion.last.z;
+        const stepM = Math.hypot(dx, dy, dz);
+        const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
+        const speedMps = Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0);
+        const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
+        motion.maxStepM = Math.max(motion.maxStepM, stepM);
+        if (elapsedS <= 0.025) {
+          motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
         }
-        motion.last = {
-          x: own.x,
-          y: own.y,
-          z: own.z,
-          yaw: own.yaw,
-          atMs: motionAtMs,
-          speedMps: Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0),
-        };
-        motion.samples++;
+        motion.maxExcessStepM = Math.max(
+          motion.maxExcessStepM,
+          Math.max(0, stepM - expectedStepM),
+        );
+        const previousYaw = Number.isFinite(motion.last.yaw) ? motion.last.yaw : own.yaw;
+        const headingYaw = Math.atan2(
+          Math.sin(previousYaw) + Math.sin(own.yaw),
+          Math.cos(previousYaw) + Math.cos(own.yaw),
+        );
+        const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
+        motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
       }
+      motion.last = {
+        x: own.x,
+        y: own.y,
+        z: own.z,
+        yaw: own.yaw,
+        atMs: motionAtMs,
+        speedMps: Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0),
+      };
+      motion.samples++;
+    };
+    const combatInput = (own, target, elapsed, driveElapsed) => {
       if (!state.combatEnabled || !own || own.destroyed || !target) return null;
       const dx = target.x - own.x;
       const dy = target.y + 1.5 - own.y;
@@ -754,6 +756,19 @@ async function startLightCombat(page, isHost, formation) {
         shellSlot: pursuit ? 2 : 0,
         actionBits: 0,
       };
+    };
+    const buildInput = () => {
+      const motionAtMs = performance.now();
+      const playerId = state.roomInfo.peerId;
+      const pair = state.formation.pairById[playerId];
+      const elapsed = motionAtMs - state.combatStartedAt;
+      const driveElapsed = motionAtMs -
+        (state.measurementStartedAt || state.combatStartedAt);
+      const sample = state.sample;
+      const own = sample?.entities?.find((entity) => entity.id === playerId);
+      const target = selectTarget(playerId, pair, own, sample);
+      recordMotion(own, motionAtMs);
+      return combatInput(own, target, elapsed, driveElapsed);
     };
     if (host) {
       state.inputTimer = setInterval(() => { state.nextInput = buildInput(); }, 8);
@@ -793,85 +808,98 @@ async function startFullCombat(page, formation) {
         code, key, bubbles: true,
       }));
     };
+    const selectLiveTarget = (player) => {
+      const preferred = window.__DEBUG.game.tankById.get(pair.targetId);
+      if (preferred && !preferred.combat?.destroyed) return preferred;
+      if (!player?.state) return null;
+      return window.__DEBUG.game.tanks
+        .filter((entity) => formationState.pairById[entity.id]?.team !== pair.team
+          && !entity.combat?.destroyed)
+        .sort((a, b) => a.state.pos.distanceToSquared(player.state.pos)
+          - b.state.pos.distanceToSquared(player.state.pos))[0] || null;
+    };
+    const selectPursuitShell = () => {
+      if (state.pursuitShellSelected) return;
+      state.pursuitShellSelected = true;
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        code: 'Digit3', key: '3', bubbles: true,
+      }));
+      window.dispatchEvent(new KeyboardEvent('keyup', {
+        code: 'Digit3', key: '3', bubbles: true,
+      }));
+    };
+    const updatePursuit = (player, target, elapsed) => {
+      player.input.aimPoint.copy(target.state.pos);
+      player.input.aimPoint.y += target.spec.dims.heightM * 0.52;
+      const dx = target.state.pos.x - player.state.pos.x;
+      const dz = target.state.pos.z - player.state.pos.z;
+      const desiredYaw = Math.atan2(dx, dz);
+      const yawError = Math.atan2(
+        Math.sin(desiredYaw - player.state.yaw),
+        Math.cos(desiredYaw - player.state.yaw),
+      );
+      const pursuit = elapsed >= pursuitDelayMs;
+      if (pursuit) selectPursuitShell();
+      setPursuitKey('KeyW', 'w', pursuit);
+      setPursuitKey('KeyA', 'a', pursuit && yawError > 0.06);
+      setPursuitKey('KeyD', 'd', pursuit && yawError < -0.06);
+    };
+    const recordFullMotion = (player, motionAtMs) => {
+      const motion = state.motion;
+      const own = player.state.pos;
+      if (motion.last) {
+        const dx = own.x - motion.last.x;
+        const dy = own.y - motion.last.y;
+        const dz = own.z - motion.last.z;
+        const stepM = Math.hypot(dx, dy, dz);
+        const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
+        const speedMps = Math.hypot(
+          player.state.speed || 0,
+          player.state.verticalSpeed || 0,
+        );
+        const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
+        motion.maxStepM = Math.max(motion.maxStepM, stepM);
+        if (elapsedS <= 0.025) {
+          motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
+        }
+        motion.maxExcessStepM = Math.max(
+          motion.maxExcessStepM,
+          Math.max(0, stepM - expectedStepM),
+        );
+        const previousYaw = Number.isFinite(motion.last.yaw)
+          ? motion.last.yaw : player.state.yaw;
+        const headingYaw = Math.atan2(
+          Math.sin(previousYaw) + Math.sin(player.state.yaw),
+          Math.cos(previousYaw) + Math.cos(player.state.yaw),
+        );
+        const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
+        motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
+      }
+      motion.last = {
+        x: own.x,
+        y: own.y,
+        z: own.z,
+        yaw: player.state.yaw,
+        atMs: motionAtMs,
+        speedMps: Math.hypot(player.state.speed || 0, player.state.verticalSpeed || 0),
+      };
+      motion.samples++;
+    };
+    const releasePursuitKeys = () => {
+      setPursuitKey('KeyW', 'w', false);
+      setPursuitKey('KeyA', 'a', false);
+      setPursuitKey('KeyD', 'd', false);
+    };
     const loop = () => {
       const motionAtMs = performance.now();
       const elapsed = motionAtMs - state.combatStartedAt;
       const player = window.__DEBUG.game.player;
-      const preferred = window.__DEBUG.game.tankById.get(pair.targetId);
-      let target = preferred && !preferred.combat?.destroyed ? preferred : null;
-      if (!target && player?.state) {
-        target = window.__DEBUG.game.tanks
-          .filter((entity) => formationState.pairById[entity.id]?.team !== pair.team &&
-            !entity.combat?.destroyed)
-          .sort((a, b) => a.state.pos.distanceToSquared(player.state.pos) -
-            b.state.pos.distanceToSquared(player.state.pos))[0];
-      }
+      const target = selectLiveTarget(player);
       if (player?.state && target?.state) {
-        player.input.aimPoint.copy(target.state.pos);
-        player.input.aimPoint.y += target.spec.dims.heightM * 0.52;
-        const dx = target.state.pos.x - player.state.pos.x;
-        const dz = target.state.pos.z - player.state.pos.z;
-        const desiredYaw = Math.atan2(dx, dz);
-        const yawError = Math.atan2(
-          Math.sin(desiredYaw - player.state.yaw),
-          Math.cos(desiredYaw - player.state.yaw),
-        );
-        const pursuit = elapsed >= pursuitDelayMs;
-        if (pursuit && !state.pursuitShellSelected) {
-          state.pursuitShellSelected = true;
-          window.dispatchEvent(new KeyboardEvent('keydown', {
-            code: 'Digit3', key: '3', bubbles: true,
-          }));
-          window.dispatchEvent(new KeyboardEvent('keyup', {
-            code: 'Digit3', key: '3', bubbles: true,
-          }));
-        }
-        setPursuitKey('KeyW', 'w', pursuit);
-        setPursuitKey('KeyA', 'a', pursuit && yawError > 0.06);
-        setPursuitKey('KeyD', 'd', pursuit && yawError < -0.06);
-        const motion = state.motion;
-        const own = player.state.pos;
-        if (motion.last) {
-          const dx = own.x - motion.last.x;
-          const dy = own.y - motion.last.y;
-          const dz = own.z - motion.last.z;
-          const stepM = Math.hypot(dx, dy, dz);
-          const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
-          const speedMps = Math.hypot(
-            player.state.speed || 0,
-            player.state.verticalSpeed || 0,
-          );
-          const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
-          motion.maxStepM = Math.max(motion.maxStepM, stepM);
-          if (elapsedS <= 0.025) {
-            motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
-          }
-          motion.maxExcessStepM = Math.max(
-            motion.maxExcessStepM,
-            Math.max(0, stepM - expectedStepM),
-          );
-          const previousYaw = Number.isFinite(motion.last.yaw)
-            ? motion.last.yaw : player.state.yaw;
-          const headingYaw = Math.atan2(
-            Math.sin(previousYaw) + Math.sin(player.state.yaw),
-            Math.cos(previousYaw) + Math.cos(player.state.yaw),
-          );
-          const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
-          motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
-        }
-        motion.last = {
-          x: own.x,
-          y: own.y,
-          z: own.z,
-          yaw: player.state.yaw,
-          atMs: motionAtMs,
-          speedMps: Math.hypot(player.state.speed || 0, player.state.verticalSpeed || 0),
-        };
-        motion.samples++;
+        updatePursuit(player, target, elapsed);
+        recordFullMotion(player, motionAtMs);
       } else {
-        setPursuitKey('KeyW', 'w', false);
-        setPursuitKey('KeyA', 'a', false);
-        setPursuitKey('KeyD', 'd', false);
+        releasePursuitKeys();
       }
       window.__DEBUG.flags.forceFire = state.combatEnabled && elapsed >= 1200;
       if (state.combatEnabled) state.aimRaf = requestAnimationFrame(loop);

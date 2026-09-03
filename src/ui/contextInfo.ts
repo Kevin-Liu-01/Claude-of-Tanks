@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Accessible modal-backed context help shared by Garage and Scene Studio.
 // Info triggers deliberately open on activation (never hover) so the same
 // interaction works with mouse, keyboard, touch, and gamepad-emulated focus.
@@ -10,10 +11,10 @@ type LiveValue<T> = T | (() => T);
 type InfoImageFit = 'cover' | 'contain';
 
 interface InfoImageRecord {
-  src?: unknown;
-  alt?: unknown;
-  fit?: unknown;
-  caption?: unknown;
+  src?: RuntimeValue;
+  alt?: RuntimeValue;
+  fit?: RuntimeValue;
+  caption?: RuntimeValue;
 }
 
 export type InfoImage = string | InfoImageRecord | null | undefined;
@@ -42,7 +43,7 @@ export interface InfoButtonOptions {
   label?: string;
   title?: string;
   text?: LiveValue<string>;
-  json?: LiveValue<unknown> | null;
+  json?: LiveValue<RuntimeValue> | null;
   className?: string;
   eyebrow?: LiveValue<string>;
   subtitle?: LiveValue<string>;

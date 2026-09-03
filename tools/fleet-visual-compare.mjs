@@ -62,6 +62,74 @@ try {
           image.onerror = () => reject(new Error('image decode failed'));
           image.src = src;
         });
+        const drawPixels = (canvas, image, width, height) => {
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          context.clearRect(0, 0, width, height);
+          context.drawImage(image, 0, 0);
+          return context.getImageData(0, 0, width, height).data;
+        };
+        const updateBounds = (bounds, index, present, pixel, width) => {
+          if (!present) return;
+          const x = pixel % width;
+          const y = Math.floor(pixel / width);
+          const box = bounds[index];
+          box.minX = Math.min(box.minX, x);
+          box.maxX = Math.max(box.maxX, x);
+          box.minY = Math.min(box.minY, y);
+          box.maxY = Math.max(box.maxY, y);
+        };
+        const comparePixels = (a, b, width, height) => {
+          const bounds = [
+            { minX: width, minY: height, maxX: -1, maxY: -1 },
+            { minX: width, minY: height, maxX: -1, maxY: -1 },
+          ];
+          const totals = {
+            alphaIntersection: 0, alphaUnion: 0, absError: 0, changed: 0,
+            samples: 0, sumA: 0, sumB: 0, sumAA: 0, sumBB: 0, sumAB: 0,
+          };
+          for (let offset = 0, pixel = 0; offset < a.length; offset += 4, pixel += 1) {
+            const presentA = a[offset + 3] > 8;
+            const presentB = b[offset + 3] > 8;
+            if (presentA || presentB) totals.alphaUnion += 1;
+            if (presentA && presentB) totals.alphaIntersection += 1;
+            updateBounds(bounds, 0, presentA, pixel, width);
+            updateBounds(bounds, 1, presentB, pixel, width);
+            let pixelError = 0;
+            for (let channel = 0; channel < 4; channel += 1) {
+              pixelError += Math.abs(a[offset + channel] - b[offset + channel]);
+            }
+            totals.absError += pixelError;
+            if (pixelError / 4 > 8) totals.changed += 1;
+            if (!(presentA || presentB)) continue;
+            const lumA = 0.2126 * a[offset] + 0.7152 * a[offset + 1] + 0.0722 * a[offset + 2];
+            const lumB = 0.2126 * b[offset] + 0.7152 * b[offset + 1] + 0.0722 * b[offset + 2];
+            totals.sumA += lumA;
+            totals.sumB += lumB;
+            totals.sumAA += lumA * lumA;
+            totals.sumBB += lumB * lumB;
+            totals.sumAB += lumA * lumB;
+            totals.samples += 1;
+          }
+          return { bounds, ...totals };
+        };
+        const structuralSimilarity = (stats) => {
+          const meanA = stats.samples ? stats.sumA / stats.samples : 0;
+          const meanB = stats.samples ? stats.sumB / stats.samples : 0;
+          const varianceA = stats.samples > 1
+            ? (stats.sumAA - stats.samples * meanA * meanA) / (stats.samples - 1) : 0;
+          const varianceB = stats.samples > 1
+            ? (stats.sumBB - stats.samples * meanB * meanB) / (stats.samples - 1) : 0;
+          const covariance = stats.samples > 1
+            ? (stats.sumAB - stats.samples * meanA * meanB) / (stats.samples - 1) : 0;
+          const c1 = 6.5025;
+          const c2 = 58.5225;
+          const denominator = (meanA * meanA + meanB * meanB + c1)
+            * (varianceA + varianceB + c2);
+          return denominator
+            ? ((2 * meanA * meanB + c1) * (2 * covariance + c2)) / denominator : 1;
+        };
         const [beforeImage, afterImage] = await Promise.all([load(beforeUrl), load(afterUrl)]);
         if (beforeImage.width !== afterImage.width || beforeImage.height !== afterImage.height) {
           return {
@@ -73,88 +141,28 @@ try {
         const width = beforeImage.width;
         const height = beforeImage.height;
         const canvases = [document.getElementById('a'), document.getElementById('b')];
-        const pixels = canvases.map((canvas, index) => {
-          canvas.width = width;
-          canvas.height = height;
-          const context = canvas.getContext('2d', { willReadFrequently: true });
-          context.clearRect(0, 0, width, height);
-          context.drawImage(index ? afterImage : beforeImage, 0, 0);
-          return context.getImageData(0, 0, width, height).data;
-        });
+        const pixels = canvases.map((canvas, index) =>
+          drawPixels(canvas, index ? afterImage : beforeImage, width, height));
         const [a, b] = pixels;
-        const bounds = [
-          { minX: width, minY: height, maxX: -1, maxY: -1 },
-          { minX: width, minY: height, maxX: -1, maxY: -1 },
-        ];
-        let alphaIntersection = 0;
-        let alphaUnion = 0;
-        let absError = 0;
-        let changed = 0;
-        let samples = 0;
-        let sumA = 0;
-        let sumB = 0;
-        let sumAA = 0;
-        let sumBB = 0;
-        let sumAB = 0;
-        for (let offset = 0, pixel = 0; offset < a.length; offset += 4, pixel++) {
-          const presentA = a[offset + 3] > 8;
-          const presentB = b[offset + 3] > 8;
-          if (presentA || presentB) alphaUnion++;
-          if (presentA && presentB) alphaIntersection++;
-          for (const [index, present] of [[0, presentA], [1, presentB]]) {
-            if (!present) continue;
-            const x = pixel % width;
-            const y = Math.floor(pixel / width);
-            const box = bounds[index];
-            box.minX = Math.min(box.minX, x);
-            box.maxX = Math.max(box.maxX, x);
-            box.minY = Math.min(box.minY, y);
-            box.maxY = Math.max(box.maxY, y);
-          }
-          let pixelError = 0;
-          for (let channel = 0; channel < 4; channel++) {
-            pixelError += Math.abs(a[offset + channel] - b[offset + channel]);
-          }
-          absError += pixelError;
-          if (pixelError / 4 > 8) changed++;
-          if (!(presentA || presentB)) continue;
-          const lumA = 0.2126 * a[offset] + 0.7152 * a[offset + 1] + 0.0722 * a[offset + 2];
-          const lumB = 0.2126 * b[offset] + 0.7152 * b[offset + 1] + 0.0722 * b[offset + 2];
-          sumA += lumA;
-          sumB += lumB;
-          sumAA += lumA * lumA;
-          sumBB += lumB * lumB;
-          sumAB += lumA * lumB;
-          samples++;
-        }
-        const meanA = samples ? sumA / samples : 0;
-        const meanB = samples ? sumB / samples : 0;
-        const varianceA = samples > 1 ? (sumAA - samples * meanA * meanA) / (samples - 1) : 0;
-        const varianceB = samples > 1 ? (sumBB - samples * meanB * meanB) / (samples - 1) : 0;
-        const covariance = samples > 1 ? (sumAB - samples * meanA * meanB) / (samples - 1) : 0;
-        const c1 = 6.5025;
-        const c2 = 58.5225;
-        const ssimDenominator = (meanA * meanA + meanB * meanB + c1) *
-          (varianceA + varianceB + c2);
-        const ssim = ssimDenominator
-          ? ((2 * meanA * meanB + c1) * (2 * covariance + c2)) / ssimDenominator : 1;
+        const stats = comparePixels(a, b, width, height);
+        const ssim = structuralSimilarity(stats);
         const edgeShiftPx = Math.max(
-          Math.abs(bounds[0].minX - bounds[1].minX),
-          Math.abs(bounds[0].minY - bounds[1].minY),
-          Math.abs(bounds[0].maxX - bounds[1].maxX),
-          Math.abs(bounds[0].maxY - bounds[1].maxY),
+          Math.abs(stats.bounds[0].minX - stats.bounds[1].minX),
+          Math.abs(stats.bounds[0].minY - stats.bounds[1].minY),
+          Math.abs(stats.bounds[0].maxX - stats.bounds[1].maxX),
+          Math.abs(stats.bounds[0].maxY - stats.bounds[1].maxY),
         );
         return {
           width,
           height,
           dimensionMismatch: null,
           ssim,
-          normalizedAbsoluteError: absError / (width * height * 4 * 255),
-          changedPixelRatio: changed / (width * height),
-          silhouetteIou: alphaUnion ? alphaIntersection / alphaUnion : 1,
+          normalizedAbsoluteError: stats.absError / (width * height * 4 * 255),
+          changedPixelRatio: stats.changed / (width * height),
+          silhouetteIou: stats.alphaUnion ? stats.alphaIntersection / stats.alphaUnion : 1,
           edgeShiftPx,
-          beforeBounds: bounds[0],
-          afterBounds: bounds[1],
+          beforeBounds: stats.bounds[0],
+          afterBounds: stats.bounds[1],
         };
       }, dataUrl(beforeDir, beforeAsset), dataUrl(afterDir, afterAsset));
       const pass = !result.dimensionMismatch && result.ssim >= minSsim &&

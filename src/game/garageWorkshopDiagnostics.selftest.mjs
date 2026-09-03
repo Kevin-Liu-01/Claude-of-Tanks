@@ -5,7 +5,10 @@ import { createGarageWorkshopDiagnostics } from './garageWorkshopDiagnostics.ts'
 const dressingGroup = new THREE.Group();
 dressingGroup.userData = {
   workshopTriangleCount: 4321,
-  buildTimings: ['shell', 'fleet'],
+  buildTimings: [
+    { chunk: 'shell', ms: 3, at: 10 },
+    { chunk: 'fleet', ms: 7, at: 20 },
+  ],
   garageMapId: 'verdant',
   sharedMaintenanceBayIds: ['alpha'],
   workshopFamilies: ['abrams'],

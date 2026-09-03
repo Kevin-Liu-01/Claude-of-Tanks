@@ -1,3 +1,4 @@
+import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Performance probe harness (perf engineer tooling).
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
@@ -21,8 +22,8 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { writeFileSync, appendFileSync, mkdirSync, rmdirSync, statSync, utimesSync, readdirSync, unlinkSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 
@@ -41,71 +42,17 @@ import { execSync } from 'node:child_process';
 // review's certification runs starved to timeout exactly this way). Waiters
 // now take a FIFO TICKET (ordered file in /tmp/cot-shots.queue); only the
 // lowest live ticket contends for the mkdir, so handoff is first-come-first-
-// served and starvation-free among ticket-aware tools. The mkdir on LOCK_DIR
+// served and starvation-free among ticket-aware tools. The shared atomic lock directory
 // remains the actual exclusion primitive, so tools still running the old
 // spin protocol stay mutually excluded (they just don't queue); dead ticket
 // owners are reaped via kill(pid, 0) liveness, crashed holders via lock
 // mtime staleness, exactly as before.
-const LOCK_DIR = '/tmp/cot-shots.lock';
-const QUEUE_DIR = '/tmp/cot-shots.queue';
-const LOCK_STALE_MS = 5 * 60 * 1000;
-const TICKET_STALE_MS = 60 * 60 * 1000; // pid-reuse safety net for reaping
-let lockHeld = false;
-function ticketPid(name) {
-  const m = name.match(/-(\d+)\.t$/);
-  return m ? parseInt(m[1], 10) : -1;
-}
-function ticketAlive(name) {
-  const pid = ticketPid(name);
-  if (pid <= 0) return false;
-  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
-}
-async function acquireLock(timeoutMs) {
-  mkdirSync(QUEUE_DIR, { recursive: true });
-  // zero-padded ms timestamp + pid: lexicographic name order == arrival order
-  const myTicket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
-  writeFileSync(join(QUEUE_DIR, myTicket), String(process.pid));
-  const t0 = Date.now();
-  try {
-    for (;;) {
-      // find the queue head among LIVE tickets (reap dead/stale ones)
-      let head = null;
-      let names = [];
-      try { names = readdirSync(QUEUE_DIR).filter((n) => n.endsWith('.t')).sort(); } catch (_) { names = [myTicket]; }
-      for (const n of names) {
-        if (n === myTicket) { head = head || n; break; }
-        let stale = false;
-        try { stale = Date.now() - statSync(join(QUEUE_DIR, n)).mtimeMs > TICKET_STALE_MS; } catch (_) { continue; }
-        if (stale || !ticketAlive(n)) { try { unlinkSync(join(QUEUE_DIR, n)); } catch (_) { /* raced */ } continue; }
-        head = n; break;
-      }
-      // only the head contends — everyone else parks (no thundering herd)
-      if (head === myTicket) {
-        try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
-        try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; }
-        } catch (_) { continue; }
-      }
-      if (Date.now() - t0 > timeoutMs) throw new Error('cot-shots lock timeout');
-      await new Promise((r) => setTimeout(r, head === myTicket ? 300 : 1000));
-    }
-  } finally {
-    // ticket never outlives the wait — removed on acquire AND on timeout
-    try { unlinkSync(join(QUEUE_DIR, myTicket)); } catch (_) { /* fine */ }
-  }
-}
-function releaseLock() {
-  if (!lockHeld) return;
-  lockHeld = false;
-  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
-}
+
 await acquireLock(15 * 60 * 1000);
 process.on('exit', releaseLock);
 // keep the lock's mtime fresh so a long 60 s certification is never reclaimed
 // as stale by a sibling harness mid-run
-const lockRefresher = setInterval(() => {
-  try { const now = new Date(); utimesSync(LOCK_DIR, now, now); } catch (_) { /* fine */ }
-}, 60 * 1000);
+const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 lockRefresher.unref();
 
 const args = process.argv.slice(2);

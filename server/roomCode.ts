@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 /**
  * Node-compatible room-code generation for serverless signaling.
  *
@@ -17,7 +18,7 @@ function codedError(code: string, message: string): CodedError {
 }
 
 /** Generate the same readable six-character alphabet used by room invites. */
-export function createRoomCode(rng: () => unknown): string {
+export function createRoomCode(rng: () => RuntimeValue): string {
   if (typeof rng !== 'function') throw new TypeError('room code RNG is required');
   let out = '';
   for (let index = 0; index < ROOM_CODE_LENGTH; index++) {

@@ -77,6 +77,18 @@ interface RouteSolution {
   cost: number;
 }
 
+interface RouteSearchState {
+  navigation: BotNavigationGrid;
+  spec: TerrainMobilitySpec;
+  seed: number;
+  costs: Float64Array;
+  parents: Int32Array;
+  closed: Uint8Array;
+  heap: MinHeap;
+  goalX: number;
+  goalZ: number;
+}
+
 function encodeGroundType(type: string) {
   return type === 'hard' ? GROUND_HARD : type === 'soft' ? GROUND_SOFT : GROUND_MEDIUM;
 }
@@ -157,6 +169,43 @@ function roleOffset(role: string, rng: () => number) {
   return magnitude * (rng() < 0.5 ? -1 : 1);
 }
 
+function isSolidObstacleAt(
+  obstacles: readonly NavigationObstacle[],
+  x: number,
+  z: number,
+): boolean {
+  for (const obstacle of obstacles) {
+    if (obstacle.crushed || obstacle.crushable) continue;
+    if (x >= obstacle.min[0] - 3.5 && x <= obstacle.max[0] + 3.5
+      && z >= obstacle.min[2] - 3.5 && z <= obstacle.max[2] + 3.5) return true;
+  }
+  return false;
+}
+
+function sampleNavigationRow<T extends NavigationObstacle>(
+  iz: number,
+  heightField: NavigationHeightField,
+  queryObstacles: ObstacleQuery<T> | null,
+  obstacles: readonly T[],
+  candidates: T[],
+  heights: Float32Array,
+  groundTypes: Uint8Array,
+  blocked: Uint8Array,
+): void {
+  for (let ix = 0; ix < GRID_N; ix++) {
+    const index = cellIndex(ix, iz);
+    const x = worldCoord(ix);
+    const z = worldCoord(iz);
+    heights[index] = heightField.getHeightAt(x, z);
+    const ground = heightField.getGroundType?.(x, z) ?? 'medium';
+    groundTypes[index] = encodeGroundType(ground);
+    const nearby = queryObstacles
+      ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
+      : obstacles;
+    blocked[index] = isSolidObstacleAt(nearby, x, z) ? 1 : 0;
+  }
+}
+
 /** Build the immutable terrain/cover grid once for every bot in a match. */
 export function createBotNavigationGrid<T extends NavigationObstacle>({
   heightField,
@@ -172,30 +221,194 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
   const candidates: T[] = [];
   const obstacles = getObstacles() || [];
   for (let iz = 0; iz < GRID_N; iz++) {
-    for (let ix = 0; ix < GRID_N; ix++) {
-      const index = cellIndex(ix, iz);
-      const x = worldCoord(ix);
-      const z = worldCoord(iz);
-      heights[index] = heightField.getHeightAt(x, z);
-      groundTypes[index] = encodeGroundType(
-        typeof heightField.getGroundType === 'function'
-          ? heightField.getGroundType(x, z)
-          : 'medium',
-      );
-      const nearby = queryObstacles
-        ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
-        : obstacles;
-      for (const obstacle of nearby) {
-        if (obstacle.crushed || obstacle.crushable) continue;
-        if (x >= obstacle.min[0] - 3.5 && x <= obstacle.max[0] + 3.5 &&
-            z >= obstacle.min[2] - 3.5 && z <= obstacle.max[2] + 3.5) {
-          blocked[index] = 1;
-          break;
-        }
+    sampleNavigationRow(iz, heightField, queryObstacles, obstacles, candidates,
+      heights, groundTypes, blocked);
+  }
+  return Object.freeze({ heights, blocked, groundTypes });
+}
+
+function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
+  const count = GRID_N * GRID_N;
+  return navigation.heights instanceof Float32Array
+    && navigation.blocked instanceof Uint8Array
+    && navigation.groundTypes instanceof Uint8Array
+    && navigation.heights.length === count
+    && navigation.blocked.length === count
+    && navigation.groundTypes.length === count;
+}
+
+function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {
+  for (let radius = 0; radius < 8; radius++) {
+    for (let dz = -radius; dz <= radius; dz++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+        const nx = ix + dx;
+        const nz = iz + dz;
+        if (nx < 0 || nz < 0 || nx >= GRID_N || nz >= GRID_N) continue;
+        if (!blocked[cellIndex(nx, nz)]) return [nx, nz];
       }
     }
   }
-  return Object.freeze({ heights, blocked, groundTypes });
+  return [ix, iz];
+}
+
+function isOutsideGrid(ix: number, iz: number): boolean {
+  return ix < 0 || iz < 0 || ix >= GRID_N || iz >= GRID_N;
+}
+
+function diagonalCornerIsBlocked(
+  node: HeapNode,
+  dx: number,
+  dz: number,
+  blocked: Uint8Array,
+): boolean {
+  return dx !== 0 && dz !== 0
+    && (!!blocked[cellIndex(node.ix + dx, node.iz)]
+      || !!blocked[cellIndex(node.ix, node.iz + dz)]);
+}
+
+function routeGroundType(
+  spec: TerrainMobilitySpec,
+  groundTypes: Uint8Array,
+  fromIndex: number,
+  toIndex: number,
+): GroundType {
+  const from = decodeGroundType(groundTypes[fromIndex]);
+  const to = decodeGroundType(groundTypes[toIndex]);
+  return groundResistanceFor(spec, to) >= groundResistanceFor(spec, from) ? to : from;
+}
+
+function relaxNeighbor(
+  node: HeapNode,
+  step: readonly [number, number, number],
+  search: RouteSearchState,
+): void {
+  const [dx, dz, distanceScale] = step;
+  const nx = node.ix + dx;
+  const nz = node.iz + dz;
+  if (isOutsideGrid(nx, nz)) return;
+  const { navigation, closed, costs, parents, heap, spec } = search;
+  const nextIndex = cellIndex(nx, nz);
+  if (closed[nextIndex] || navigation.blocked[nextIndex]) return;
+  if (diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return;
+  const distance = CELL_M * distanceScale;
+  const signedGrade = (navigation.heights[nextIndex] - navigation.heights[node.index]) / distance;
+  const ground = routeGroundType(spec, navigation.groundTypes, node.index, nextIndex);
+  if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS) return;
+  const terrainCost = terrainTravelCostFactor(spec, ground, signedGrade);
+  const variability = 1 + hashNoise(search.seed, nx, nz) * 0.22;
+  const nextCost = costs[node.index] + distance * terrainCost * variability;
+  if (nextCost >= costs[nextIndex]) return;
+  costs[nextIndex] = nextCost;
+  parents[nextIndex] = node.index;
+  const heuristic = Math.hypot(search.goalX - nx, search.goalZ - nz) * CELL_M;
+  heap.push({ index: nextIndex, ix: nx, iz: nz, score: nextCost + heuristic });
+}
+
+function reconstructRoute(
+  parents: Int32Array,
+  costs: Float64Array,
+  startIndex: number,
+  goalIndex: number,
+): RouteSolution {
+  if (parents[goalIndex] < 0 && goalIndex !== startIndex) {
+    return { points: [], cost: Infinity };
+  }
+  const points: BotRoutePoint[] = [];
+  let current = goalIndex;
+  while (current >= 0) {
+    points.push([worldCoord(current % GRID_N), worldCoord(Math.floor(current / GRID_N))]);
+    if (current === startIndex) break;
+    current = parents[current];
+  }
+  points.reverse();
+  return { points, cost: costs[goalIndex] };
+}
+
+function solveRoute(
+  from: Position2,
+  to: Position2,
+  navigation: BotNavigationGrid,
+  spec: TerrainMobilitySpec,
+  seed: number,
+): RouteSolution {
+  const [sx, sz] = nearestOpen(navigation.blocked, worldCell(from.x), worldCell(from.z));
+  const [goalX, goalZ] = nearestOpen(navigation.blocked, worldCell(to.x), worldCell(to.z));
+  const startIndex = cellIndex(sx, sz);
+  const goalIndex = cellIndex(goalX, goalZ);
+  const costs = new Float64Array(GRID_N * GRID_N);
+  costs.fill(Infinity);
+  const parents = new Int32Array(GRID_N * GRID_N);
+  parents.fill(-1);
+  const closed = new Uint8Array(GRID_N * GRID_N);
+  const heap = new MinHeap();
+  const search: RouteSearchState = {
+    navigation, spec, seed, costs, parents, closed, heap, goalX, goalZ,
+  };
+  costs[startIndex] = 0;
+  heap.push({ index: startIndex, ix: sx, iz: sz, score: 0 });
+  while (heap.length) {
+    const node = heap.pop();
+    if (!node) break;
+    if (closed[node.index]) continue;
+    closed[node.index] = 1;
+    if (node.index === goalIndex) break;
+    for (const step of NEIGHBOR_STEPS) relaxNeighbor(node, step, search);
+  }
+  return reconstructRoute(parents, costs, startIndex, goalIndex);
+}
+
+function roleDetourPoint(
+  start: Position2,
+  goal: Position2,
+  role: string,
+  rng: () => number,
+): Position2 {
+  const dx = goal.x - start.x;
+  const dz = goal.z - start.z;
+  const distance = Math.hypot(dx, dz) || 1;
+  const offset = roleOffset(role, rng);
+  const fraction = role === 'sniper' ? 0.34 + rng() * 0.16 : 0.42 + rng() * 0.2;
+  return {
+    x: clamp(start.x + dx * fraction + (dz / distance) * offset,
+      WORLD_MIN + 15, WORLD_MAX - 15),
+    z: clamp(start.z + dz * fraction - (dx / distance) * offset,
+      WORLD_MIN + 15, WORLD_MAX - 15),
+  };
+}
+
+function shouldUseRoleDetour(
+  start: Position2,
+  goal: Position2,
+  via: Position2,
+  direct: RouteSolution,
+  first: RouteSolution,
+  second: RouteSolution,
+): boolean {
+  if (!first.points.length || !second.points.length) return false;
+  if (!direct.points.length) return true;
+  const directDistance = Math.max(Math.hypot(goal.x - start.x, goal.z - start.z), 1);
+  const viaDistance = Math.hypot(via.x - start.x, via.z - start.z)
+    + Math.hypot(goal.x - via.x, goal.z - via.z);
+  const geometricDetour = Math.max(1, viaDistance / directDistance);
+  const terrainBurden = ((first.cost + second.cost) / Math.max(direct.cost, 1)) / geometricDetour;
+  return terrainBurden <= 1.25;
+}
+
+function simplifyRoute(raw: readonly BotRoutePoint[], goal: Position2): BotRoutePoint[] {
+  if (!raw.length) return [];
+  const points: BotRoutePoint[] = [];
+  for (let index = 1; index < raw.length; index++) {
+    const prior = raw[index - 1];
+    const current = raw[index];
+    const next = raw[index + 1];
+    const turns = !!next
+      && (Math.sign(current[0] - prior[0]) !== Math.sign(next[0] - current[0])
+        || Math.sign(current[1] - prior[1]) !== Math.sign(next[1] - current[1]));
+    if (turns || index % 3 === 0 || index === raw.length - 1) points.push(current);
+  }
+  points[points.length - 1] = [goal.x, goal.z];
+  return points;
 }
 
 /**
@@ -228,134 +441,20 @@ export function planBotRoute({
     queryObstacles,
     getObstacles,
   });
-  const { heights, blocked, groundTypes } = grid;
-  if (!(heights instanceof Float32Array) || !(blocked instanceof Uint8Array) ||
-      !(groundTypes instanceof Uint8Array) ||
-      heights.length !== GRID_N * GRID_N || blocked.length !== GRID_N * GRID_N ||
-      groundTypes.length !== GRID_N * GRID_N) {
+  if (!isValidNavigationGrid(grid)) {
     throw new TypeError('navigation must be a bot navigation grid');
   }
-
-  function nearestOpen(ix: number, iz: number): [number, number] {
-    for (let radius = 0; radius < 8; radius++) {
-      for (let dz = -radius; dz <= radius; dz++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
-          const nx = ix + dx;
-          const nz = iz + dz;
-          if (nx < 0 || nz < 0 || nx >= GRID_N || nz >= GRID_N) continue;
-          if (!blocked[cellIndex(nx, nz)]) return [nx, nz];
-        }
-      }
-    }
-    return [ix, iz];
-  }
-
-  function solve(from: Position2, to: Position2): RouteSolution {
-    const [sx, sz] = nearestOpen(worldCell(from.x), worldCell(from.z));
-    const [gx, gz] = nearestOpen(worldCell(to.x), worldCell(to.z));
-    const startIndex = cellIndex(sx, sz);
-    const goalIndex = cellIndex(gx, gz);
-    const count = GRID_N * GRID_N;
-    const costs = new Float64Array(count);
-    costs.fill(Infinity);
-    const parents = new Int32Array(count);
-    parents.fill(-1);
-    const closed = new Uint8Array(count);
-    const heap = new MinHeap();
-    costs[startIndex] = 0;
-    heap.push({ index: startIndex, ix: sx, iz: sz, score: 0 });
-    while (heap.length) {
-      const node = heap.pop();
-      if (!node) break;
-      if (closed[node.index]) continue;
-      closed[node.index] = 1;
-      if (node.index === goalIndex) break;
-      for (const [dx, dz, distanceScale] of NEIGHBOR_STEPS) {
-        const nx = node.ix + dx;
-        const nz = node.iz + dz;
-        if (nx < 0 || nz < 0 || nx >= GRID_N || nz >= GRID_N) continue;
-        const nextIndex = cellIndex(nx, nz);
-        if (closed[nextIndex] || blocked[nextIndex]) continue;
-        if (dx && dz && (blocked[cellIndex(node.ix + dx, node.iz)] ||
-          blocked[cellIndex(node.ix, node.iz + dz)])) continue;
-        const distance = CELL_M * distanceScale;
-        const signedGrade = (heights[nextIndex] - heights[node.index]) / distance;
-        const fromGround = decodeGroundType(groundTypes[node.index]);
-        const toGround = decodeGroundType(groundTypes[nextIndex]);
-        const ground = groundResistanceFor(spec, toGround) >= groundResistanceFor(spec, fromGround)
-          ? toGround : fromGround;
-        if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS) continue;
-        const terrainCost = terrainTravelCostFactor(spec, ground, signedGrade);
-        const variability = 1 + hashNoise(seed, nx, nz) * 0.22;
-        const nextCost = costs[node.index] + distance * terrainCost * variability;
-        if (nextCost >= costs[nextIndex]) continue;
-        costs[nextIndex] = nextCost;
-        parents[nextIndex] = node.index;
-        const heuristic = Math.hypot(gx - nx, gz - nz) * CELL_M;
-        heap.push({ index: nextIndex, ix: nx, iz: nz, score: nextCost + heuristic });
-      }
-    }
-    if (parents[goalIndex] < 0 && goalIndex !== startIndex) {
-      return { points: [], cost: Infinity };
-    }
-    const path: BotRoutePoint[] = [];
-    let current = goalIndex;
-    while (current >= 0) {
-      const ix = current % GRID_N;
-      const iz = Math.floor(current / GRID_N);
-      path.push([worldCoord(ix), worldCoord(iz)]);
-      if (current === startIndex) break;
-      current = parents[current];
-    }
-    path.reverse();
-    return { points: path, cost: costs[goalIndex] };
-  }
-
-  const dx = goal.x - start.x;
-  const dz = goal.z - start.z;
-  const direct = solve(start, goal);
+  const direct = solveRoute(start, goal, grid, spec, seed);
   let raw = direct.points;
   if (useRoleDetour) {
-    const distance = Math.hypot(dx, dz) || 1;
-    const lateralX = dz / distance;
-    const lateralZ = -dx / distance;
-    const offset = roleOffset(role, rng);
-    const fraction = role === 'sniper' ? 0.34 + rng() * 0.16 : 0.42 + rng() * 0.2;
-    const via = {
-      x: clamp(start.x + dx * fraction + lateralX * offset, WORLD_MIN + 15, WORLD_MAX - 15),
-      z: clamp(start.z + dz * fraction + lateralZ * offset, WORLD_MIN + 15, WORLD_MAX - 15),
-    };
-    const first = solve(start, via);
-    const second = solve(via, goal);
-    const viaValid = first.points.length > 0 && second.points.length > 0;
-    const viaCost = first.cost + second.cost;
-    // Role openings intentionally take longer geometric lanes; that spacing
-    // is part of battle pacing and must not be optimized away. Compare only
-    // the EXTRA terrain burden after normalizing the requested detour length.
-    const directDistance = Math.max(distance, 1);
-    const viaDistance = Math.hypot(via.x - start.x, via.z - start.z) +
-      Math.hypot(goal.x - via.x, goal.z - via.z);
-    const geometricDetour = Math.max(1, viaDistance / directDistance);
-    const terrainBurden = direct.points.length
-      ? (viaCost / Math.max(direct.cost, 1)) / geometricDetour
-      : 1;
-    if (viaValid && (!direct.points.length || terrainBurden <= 1.25)) {
+    const via = roleDetourPoint(start, goal, role, rng);
+    const first = solveRoute(start, via, grid, spec, seed);
+    const second = solveRoute(via, goal, grid, spec, seed);
+    // Role openings may take longer geometric lanes, but not materially more
+    // expensive terrain after normalizing that requested detour distance.
+    if (shouldUseRoleDetour(start, goal, via, direct, first, second)) {
       raw = first.points.concat(second.points.slice(1));
     }
   }
-  if (!raw.length) return [];
-
-  const points: BotRoutePoint[] = [];
-  for (let index = 1; index < raw.length; index++) {
-    const prior = raw[index - 1];
-    const current = raw[index];
-    const next = raw[index + 1];
-    const turns = next &&
-      (Math.sign(current[0] - prior[0]) !== Math.sign(next[0] - current[0]) ||
-       Math.sign(current[1] - prior[1]) !== Math.sign(next[1] - current[1]));
-    if (turns || index % 3 === 0 || index === raw.length - 1) points.push(current);
-  }
-  points[points.length - 1] = [goal.x, goal.z];
-  return points;
+  return simplifyRoute(raw, goal);
 }

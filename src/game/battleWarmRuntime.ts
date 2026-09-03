@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   Vector3,
   type BufferGeometry,
@@ -64,7 +65,7 @@ interface BattleWarmEntity {
 interface BattleWarmGame {
   tanks: BattleWarmEntity[];
   player?: BattleWarmEntity | null;
-  shells?: unknown[];
+  shells?: RuntimeValue[];
 }
 
 interface TerrainWarmPoint {
@@ -469,7 +470,7 @@ interface BattleFxPort {
   impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
   dust(position: Vector3, direction: Vector3, scale: number): void;
   exhaust(position: Vector3, scale: number, moving: boolean): void;
-  update(dt: number, shells: unknown[], camera: Camera): void;
+  update(dt: number, shells: RuntimeValue[], camera: Camera): void;
   destruction(position: Vector3, source: null, kind: 'shot' | 'ammorack'): void;
   armorScar?(
     visual: { root: Object3D },
@@ -483,7 +484,7 @@ interface BattleFxPort {
 
 interface StudioFxPort extends BattleFxPort {
   warmTexturesChunked?(yieldForBudget: WorkYielder): Promise<void>;
-  preloadTextures?(): Promise<unknown>;
+  preloadTextures?(): Promise<RuntimeValue>;
   impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
   dust(position: Vector3, direction: Vector3, scale: number): void;
   exhaust(position: Vector3, scale: number, moving: boolean): void;
@@ -504,7 +505,7 @@ export interface OpeningEffectsWarmOptions {
   fx: BattleFxPort;
   post: BattlePostPort;
   camera: Camera;
-  shells: unknown[];
+  shells: RuntimeValue[];
   decalVisual?: { root: Object3D } | null;
   compilePrograms(root: Object3D): void;
   warmRender(): void;
@@ -526,7 +527,7 @@ export interface StudioEffectsWarmOptions {
   post: BattlePostPort;
   renderer: Pick<WebGLRenderer, 'initTexture'>;
   camera: Camera;
-  initializeForwardPrograms(root: Object3D): Iterable<unknown>;
+  initializeForwardPrograms(root: Object3D): Iterable<RuntimeValue>;
   isCombatPipelineWarmed(): boolean;
   onProgress?(fraction: number, label: string): void;
   onTrace?(trace: StudioWarmTrace): void;
@@ -799,7 +800,7 @@ export function invalidateBattleWarmRuntime(): void {
   warmGeneration += 1;
 }
 
-type WarmGenerator = Generator<unknown, unknown, unknown>;
+type WarmGenerator = Generator<object | void, object | void, void>;
 
 interface CombatWarmFxPort extends StudioFxPort {
   muzzleFlash(position: Vector3, direction: Vector3, caliberMm: number): void;
@@ -821,8 +822,8 @@ interface CombatWarmLightingPort {
 
 interface CombatWarmTrace {
   stages: Record<string, number>;
-  effectDetail?: Record<string, unknown>;
-  hiddenDetail?: Record<string, unknown>;
+  effectDetail?: Record<string, RuntimeValue>;
+  hiddenDetail?: Record<string, RuntimeValue>;
   totalMs?: number;
 }
 
@@ -851,7 +852,7 @@ export interface CombatWarmRuntimeContext {
   camera: PerspectiveCamera;
   scene: Scene;
   world(): CombatWarmWorld | null;
-  warmRender(): unknown;
+  warmRender(): RuntimeValue;
   deploymentShadowWarm: DeploymentShadowWarmOwner;
   forwardProgramWarm: ForwardProgramWarmOwner;
   lighting: CombatWarmLightingPort;
@@ -928,7 +929,7 @@ function* warmDestroyedRosterVariantsSteps(
 
 function* compileHiddenVariantsSteps(
   context: CombatWarmRuntimeContext,
-  detail: Record<string, unknown> | null = null,
+  detail: Record<string, RuntimeValue> | null = null,
 ): WarmGenerator {
   const {
     game, renderer, camera, forwardProgramWarm, lighting,
@@ -1049,7 +1050,7 @@ export function* createCombatOpeningWarmSteps(
   for (const entity of game.tanks) entity.visual?.prewarmBurn?.();
   markWarmStage('rosterHooks');
 
-  const effectDetail: Record<string, unknown> = {};
+  const effectDetail: Record<string, RuntimeValue> = {};
   let effectDetailAt = performance.now();
   const markEffectDetail = (name: string): void => {
     const now = performance.now();
@@ -1145,7 +1146,7 @@ function* warmCombatDestructionEffectSteps(
   const rootWasVisible = fx.group.visible;
   let batches = 0;
   let maxBatchMs = 0;
-  let error: unknown = null;
+  let error: RuntimeValue = null;
   fx.group.visible = false;
   try {
     fx.destruction(position, null, 'shot');
@@ -1232,7 +1233,7 @@ export function* createCombatRareWarmSteps(
   yield;
   mark('textures');
 
-  yield* context.deploymentShadowWarm.warmDepthProgramSteps();
+  for (const _ of context.deploymentShadowWarm.warmDepthProgramSteps()) yield;
   mark('shadows');
   rareTrace.hiddenDetail = {};
   yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail);

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createWebRTCSplitTransport,
   type ChannelTransport,
@@ -29,7 +30,7 @@ export interface WebRtcPeerOptions {
   iceServers?: RTCIceServer[];
   relayOnly?: boolean;
   RTCPeerConnectionImpl?: typeof RTCPeerConnection | null;
-  transportOptions?: Record<string, unknown>;
+  transportOptions?: Record<string, RuntimeValue>;
   recoveryDelaysMs?: number[];
   disconnectGraceMs?: number;
   initialRecoveryDelayMs?: number;
@@ -120,7 +121,7 @@ export function createWebRTCPeer({
   let rejectTransport!: (error: Error) => void;
   let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   let recoveryAttempts = 0;
-  let negotiationChain: Promise<unknown> = Promise.resolve();
+  let negotiationChain: Promise<RuntimeValue> = Promise.resolve();
   let connectTimer: ReturnType<typeof setTimeout> | null = null;
   const transportReady = new Promise<MatchTransport>((resolve, reject) => {
     settleTransport = resolve;
@@ -263,57 +264,72 @@ export function createWebRTCPeer({
     });
   }
 
-  function handleSignal(signal: RtcSignal): Promise<void> {
-    return queueNegotiation(async () => {
-      if (closed) return;
-      if (!signal || typeof signal !== 'object') throw new TypeError('invalid RTC signal');
-      if (signal.kind === 'restart') {
-        if (role !== 'host') throw new Error('only the host accepts RTC restart requests');
-        clearRecovery();
-        scheduleRecovery(0);
-        return;
-      }
-      if (signal.kind === 'ice') {
-        if (!signal.candidate) return;
-        if (remoteDescriptionSet) await peerConnection.addIceCandidate(signal.candidate);
-        else pendingCandidates.push(signal.candidate);
-        return;
-      }
-      if (signal.kind !== 'description' || !signal.description) {
-        throw new TypeError('unknown RTC signal');
-      }
-      const description = signal.description;
-      if (role === 'host' && description.type !== 'answer') {
-        throw new Error('host expected an answer');
-      }
-      if (role === 'client' && description.type !== 'offer') {
-        throw new Error('client expected an offer');
-      }
-      if (sameDescription(peerConnection.remoteDescription, description)) {
-        // A durable-mailbox replay is an acknowledgement opportunity, not a
-        // second negotiation. Clients resend the already-created answer so a
-        // dropped answer cannot strand a fresh host behind the loading UI.
-        if (role === 'client' && peerConnection.localDescription?.type === 'answer') {
-          onSignal({
-            kind: 'description',
-            description: signalDescription(peerConnection.localDescription),
-          });
-        }
-        return;
-      }
-      await peerConnection.setRemoteDescription(description);
-      remoteDescriptionSet = true;
-      await drainCandidates();
-      if (role === 'client') {
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        onSignal({
-          kind: 'description',
-          description: signalDescription(peerConnection.localDescription),
-        });
-        scheduleRecovery(initialRecoveryDelayMs);
-      }
+  function processRestartSignal(): void {
+    if (role !== 'host') throw new Error('only the host accepts RTC restart requests');
+    clearRecovery();
+    scheduleRecovery(0);
+  }
+
+  async function processIceSignal(candidate: RTCIceCandidateInit | null | undefined): Promise<void> {
+    if (!candidate) return;
+    if (remoteDescriptionSet) await peerConnection.addIceCandidate(candidate);
+    else pendingCandidates.push(candidate);
+  }
+
+  function validateRemoteDescription(description: RTCSessionDescriptionInit): void {
+    if (role === 'host' && description.type !== 'answer') {
+      throw new Error('host expected an answer');
+    }
+    if (role === 'client' && description.type !== 'offer') {
+      throw new Error('client expected an offer');
+    }
+  }
+
+  function resendAcknowledgedAnswer(): void {
+    if (role !== 'client' || peerConnection.localDescription?.type !== 'answer') return;
+    onSignal({
+      kind: 'description',
+      description: signalDescription(peerConnection.localDescription),
     });
+  }
+
+  async function processDescriptionSignal(
+    description: RTCSessionDescriptionInit | null | undefined,
+  ): Promise<void> {
+    if (!description) throw new TypeError('unknown RTC signal');
+    validateRemoteDescription(description);
+    if (sameDescription(peerConnection.remoteDescription, description)) {
+      // A durable-mailbox replay is an acknowledgement opportunity, not a
+      // second negotiation. Clients resend the already-created answer so a
+      // dropped answer cannot strand a fresh host behind the loading UI.
+      resendAcknowledgedAnswer();
+      return;
+    }
+    await peerConnection.setRemoteDescription(description);
+    remoteDescriptionSet = true;
+    await drainCandidates();
+    if (role === 'client') {
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      onSignal({
+        kind: 'description',
+        description: signalDescription(peerConnection.localDescription),
+      });
+      scheduleRecovery(initialRecoveryDelayMs);
+    }
+  }
+
+  async function processSignal(signal: RtcSignal): Promise<void> {
+    if (closed) return;
+    if (!signal || typeof signal !== 'object') throw new TypeError('invalid RTC signal');
+    if (signal.kind === 'restart') return processRestartSignal();
+    if (signal.kind === 'ice') return processIceSignal(signal.candidate);
+    if (signal.kind === 'description') return processDescriptionSignal(signal.description);
+    throw new TypeError('unknown RTC signal');
+  }
+
+  function handleSignal(signal: RtcSignal): Promise<void> {
+    return queueNegotiation(() => processSignal(signal));
   }
 
   const session: WebRtcPeerSession = {

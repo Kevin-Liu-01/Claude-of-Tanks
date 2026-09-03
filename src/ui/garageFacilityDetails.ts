@@ -699,10 +699,6 @@ export function addGarageFacilityDetails({
     }
   };
 
-  const addTrack = (side: number, depth: number, length: number): void => {
-    addTrackOnCluster(fixedCluster(side, depth), 0, 0, length);
-  };
-
   const addRoundhouse = (centerSide: number, centerDepth: number): void => {
     const cluster = fixedCluster(centerSide, centerDepth);
     const masonry = new THREE.Color(0x75513f);

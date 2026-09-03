@@ -67,6 +67,91 @@ function finite(value: number | null | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+interface AnatomyBounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+function emptyAnatomyBounds(): AnatomyBounds {
+  return { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+}
+
+function addAnatomyPoint(bounds: AnatomyBounds, x: number, z: number): void {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+  bounds.minX = Math.min(bounds.minX, x);
+  bounds.maxX = Math.max(bounds.maxX, x);
+  bounds.minZ = Math.min(bounds.minZ, z);
+  bounds.maxZ = Math.max(bounds.maxZ, z);
+}
+
+function addPlateBounds(
+  bounds: AnatomyBounds,
+  plates: readonly ArmorPlate[] | undefined,
+  offset: Vector3 = [0, 0, 0],
+): void {
+  for (const plate of plates || []) {
+    for (const point of plate.verts || []) {
+      addAnatomyPoint(bounds, point[0] + offset[0], point[2] + offset[2]);
+    }
+  }
+}
+
+function addTrackBounds(
+  bounds: AnatomyBounds,
+  shapes: readonly TrackShape[] | undefined,
+): void {
+  for (const shape of shapes || []) {
+    for (const point of shape.poly || []) {
+      addAnatomyPoint(bounds, shape.x0, point[0]);
+      addAnatomyPoint(bounds, shape.x1, point[0]);
+    }
+  }
+}
+
+function includePublishedWidth(
+  bounds: AnatomyBounds,
+  anchor: { readonly xM: number },
+  width: number,
+): void {
+  const left = anchor.xM - width / 2;
+  const right = anchor.xM + width / 2;
+  if (!Number.isFinite(bounds.minX)) {
+    bounds.minX = left;
+    bounds.maxX = right;
+    return;
+  }
+  bounds.minX = Math.min(bounds.minX, left);
+  bounds.maxX = Math.max(bounds.maxX, right);
+}
+
+function includePublishedLength(
+  bounds: AnatomyBounds,
+  anchor: { readonly zM: number },
+  hullLength: number,
+): void {
+  if (Number.isFinite(bounds.minZ)) return;
+  bounds.minZ = anchor.zM - hullLength / 2;
+  bounds.maxZ = anchor.zM + hullLength / 2;
+}
+
+function includeForwardExtent(
+  bounds: AnatomyBounds,
+  dims: ShotDiagramSpec['dims'],
+  armor: DiagramArmor,
+  turretPivot: Vector3,
+  hullLength: number,
+): void {
+  const barrelLength = finite(armor.gunBarrel?.lengthM, 0);
+  if (barrelLength > 0) {
+    const gunPivot = armor.gunPivot || [0, 0, 0];
+    bounds.maxZ = Math.max(bounds.maxZ, turretPivot[2] + gunPivot[2] + barrelLength);
+    return;
+  }
+  bounds.maxZ = Math.max(bounds.maxZ, bounds.minZ + finite(dims.overallLengthM, hullLength));
+}
+
 /**
  * Put an exact articulation-local impact back into the neutral, forward-facing
  * hull pose used by the static top/side schematics. Legacy events already
@@ -108,59 +193,21 @@ function anatomyEnvelope(
 ): { minX: number; maxX: number; minZ: number; maxZ: number } {
   const dims = spec.dims || {};
   const armor = spec.armor || {};
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minZ = Infinity;
-  let maxZ = -Infinity;
-  const add = (x: number, z: number): void => {
-    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minZ = Math.min(minZ, z);
-    maxZ = Math.max(maxZ, z);
-  };
-  for (const plate of armor.hullPlates || []) {
-    for (const point of plate.verts || []) add(point[0], point[2]);
-  }
+  const bounds = emptyAnatomyBounds();
+  addPlateBounds(bounds, armor.hullPlates);
   const turretPivot = armor.turretPivot || [0, 0, 0];
-  for (const plate of armor.turretPlates || []) {
-    for (const point of plate.verts || []) {
-      add(point[0] + turretPivot[0], point[2] + turretPivot[2]);
-    }
-  }
-  for (const shape of armor.trackShapes || []) {
-    for (const point of shape.poly || []) {
-      add(shape.x0, point[0]);
-      add(shape.x1, point[0]);
-    }
-  }
-
+  addPlateBounds(bounds, armor.turretPlates, turretPivot);
+  addTrackBounds(bounds, armor.trackShapes);
   const width = finite(dims.widthM, 1);
-  if (!Number.isFinite(minX)) {
-    minX = anchor.xM - width / 2;
-    maxX = anchor.xM + width / 2;
-  } else {
-    // Published width remains the presentation fallback for small fittings
-    // that are not armor volumes but do contribute to the exported mask.
-    minX = Math.min(minX, anchor.xM - width / 2);
-    maxX = Math.max(maxX, anchor.xM + width / 2);
-  }
-
+  // Published width remains the presentation fallback for small fittings
+  // that are not armor volumes but do contribute to the exported mask.
+  includePublishedWidth(bounds, anchor, width);
   const hullLength = finite(dims.hullLengthM, 1);
-  if (!Number.isFinite(minZ)) {
-    minZ = anchor.zM - hullLength / 2;
-    maxZ = anchor.zM + hullLength / 2;
-  }
-  const gunPivot = armor.gunPivot || [0, 0, 0];
-  const barrelLength = finite(armor.gunBarrel?.lengthM, 0);
-  if (barrelLength > 0) {
-    // Exported top/side icons are framed around the body presentation anchor
-    // while the forward cannon still expands their fit envelope.
-    maxZ = Math.max(maxZ, turretPivot[2] + gunPivot[2] + barrelLength);
-  } else {
-    maxZ = Math.max(maxZ, minZ + finite(dims.overallLengthM, hullLength));
-  }
-  return { minX, maxX, minZ, maxZ };
+  includePublishedLength(bounds, anchor, hullLength);
+  // Exported top/side icons are framed around the body presentation anchor
+  // while the forward cannon still expands their fit envelope.
+  includeForwardExtent(bounds, dims, armor, turretPivot, hullLength);
+  return bounds;
 }
 
 /**

@@ -33,6 +33,7 @@ export interface ResourceDisposalReceipt {
 
 type ResourceKind = 'geometry' | 'material' | 'texture';
 type DisposableResource = BufferGeometry | Material | Texture;
+type RuntimeValue = object | string | number | boolean | bigint | symbol | null | undefined;
 
 interface ResourceDisposalOptions {
   preserveRoots?: Object3D[];
@@ -53,6 +54,10 @@ interface ResourceBag {
   geometries: Set<BufferGeometry>;
   materials: Set<Material>;
   textures: Set<Texture>;
+}
+
+function createResourceBag(): ResourceBag {
+  return { geometries: new Set(), materials: new Set(), textures: new Set() };
 }
 
 const LIMITS = Object.freeze({
@@ -86,36 +91,40 @@ export function registerRetainedObject3DResources(
 }
 
 /** @returns {{pedestalVisuals:number, worldScenes:number}} */
-export function residentResourceLimits(tier: unknown): ResourceLimits {
+export function residentResourceLimits(tier: string | null | undefined): ResourceLimits {
   return LIMITS[tier === 'mobile' ? 'mobile' : 'desktop'];
 }
 
-function isTexture(value: unknown): value is Texture {
+function isTexture(value: RuntimeValue): value is Texture {
   return value !== null && typeof value === 'object'
-    && (value as { isTexture?: boolean }).isTexture === true;
+    && 'isTexture' in value && value.isTexture === true;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function collectTextureValue(value: RuntimeValue, out: Set<Texture>): void {
+  if (isTexture(value)) {
+    out.add(value);
+    return;
+  }
+  if (!Array.isArray(value)) return;
+  for (const item of value) if (isTexture(item)) out.add(item);
+}
+
+function collectUniformTextures(material: Material, out: Set<Texture>): void {
+  const candidate = (material as Material & { uniforms?: RuntimeValue }).uniforms;
+  if (!isRecord(candidate)) return;
+  for (const uniform of Object.values(candidate)) {
+    collectTextureValue(isRecord(uniform) ? uniform.value : null, out);
+  }
 }
 
 function collectMaterialTextures(material: Material | null | undefined, out: Set<Texture>): void {
   if (!material) return;
-  for (const value of Object.values(material)) {
-    if (isTexture(value)) out.add(value);
-    else if (Array.isArray(value)) {
-      for (const item of value) if (isTexture(item)) out.add(item);
-    }
-  }
-  const uniforms = 'uniforms' in material && isRecord(material.uniforms)
-    ? material.uniforms : null;
-  for (const uniform of Object.values(uniforms || {})) {
-    const value = isRecord(uniform) ? uniform.value : null;
-    if (isTexture(value)) out.add(value);
-    else if (Array.isArray(value)) {
-      for (const item of value) if (isTexture(item)) out.add(item);
-    }
-  }
+  for (const value of Object.values(material)) collectTextureValue(value, out);
+  collectUniformTextures(material, out);
 }
 
 function collectDeclaredResources(object: Object3D, bag: ResourceBag): void {
@@ -137,19 +146,40 @@ function collectDeclaredResources(object: Object3D, bag: ResourceBag): void {
 function collectTreeResources(root: Object3D | null | undefined, bag: ResourceBag): void {
   if (!root?.traverse) return;
   root.traverse((object) => {
-    collectDeclaredResources(object, bag);
-    const resourceObject = object as ResourceObject;
-    if (resourceObject.geometry) bag.geometries.add(resourceObject.geometry);
-    const materials = Array.isArray(resourceObject.material)
-      ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
-    for (const material of materials) {
-      bag.materials.add(material);
-      collectMaterialTextures(material, bag.textures);
-    }
-    if (resourceObject.skeleton?.boneTexture) {
-      bag.textures.add(resourceObject.skeleton.boneTexture);
+    collectObjectResources(object, bag);
+  });
+}
+
+function collectObjectResources(object: Object3D, bag: ResourceBag): ResourceObject {
+  collectDeclaredResources(object, bag);
+  const resourceObject = object as ResourceObject;
+  if (resourceObject.geometry) bag.geometries.add(resourceObject.geometry);
+  const materials = Array.isArray(resourceObject.material)
+    ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
+  for (const material of materials) {
+    bag.materials.add(material);
+    collectMaterialTextures(material, bag.textures);
+  }
+  if (resourceObject.skeleton?.boneTexture) bag.textures.add(resourceObject.skeleton.boneTexture);
+  return resourceObject;
+}
+
+function collectOwnedTreeResources(
+  root: Object3D | null | undefined,
+  bag: ResourceBag,
+  disposeMeshContainers: boolean,
+): number {
+  let objects = 0;
+  root?.traverse?.((object) => {
+    objects += 1;
+    const resourceObject = collectObjectResources(object, bag);
+    if (disposeMeshContainers
+      && (resourceObject.isBatchedMesh || resourceObject.isInstancedMesh)
+      && typeof resourceObject.dispose === 'function') {
+      resourceObject.dispose();
     }
   });
+  return objects;
 }
 
 /**
@@ -178,32 +208,11 @@ export function releaseObject3DGpuResources(
     onDispose = null,
   }: ResourceDisposalOptions = {},
 ): ResourceDisposalReceipt {
-  const keep: ResourceBag = {
-    geometries: new Set(), materials: new Set(), textures: new Set(),
-  };
+  const keep = createResourceBag();
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
-  const owned: ResourceBag = {
-    geometries: new Set(), materials: new Set(), textures: new Set(),
-  };
-  let objects = 0;
-  if (root?.traverse) {
-    root.traverse((object) => {
-      objects += 1;
-      collectDeclaredResources(object, owned);
-      const resourceObject = object as ResourceObject;
-      if (resourceObject.geometry) owned.geometries.add(resourceObject.geometry);
-      const materials = Array.isArray(resourceObject.material)
-        ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
-      for (const material of materials) {
-        owned.materials.add(material);
-        collectMaterialTextures(material, owned.textures);
-      }
-      if (resourceObject.skeleton?.boneTexture) {
-        owned.textures.add(resourceObject.skeleton.boneTexture);
-      }
-    });
-  }
+  const owned = createResourceBag();
+  const objects = collectOwnedTreeResources(root, owned, false);
 
   const receipt = { objects, geometries: 0, materials: 0, textures: 0 };
   for (const geometry of owned.geometries) {
@@ -243,38 +252,13 @@ export function disposeObject3DResources(
   root: Object3D | null | undefined,
   { preserveRoots = [], onDispose = null }: ResourceDisposalOptions = {},
 ): ResourceDisposalReceipt {
-  const keep: ResourceBag = {
-    geometries: new Set(), materials: new Set(), textures: new Set(),
-  };
+  const keep = createResourceBag();
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
-  const owned: ResourceBag = {
-    geometries: new Set(), materials: new Set(), textures: new Set(),
-  };
-  let objects = 0;
-  if (root?.traverse) {
-    root.traverse((object) => {
-      objects += 1;
-      collectDeclaredResources(object, owned);
-      const resourceObject = object as ResourceObject;
-      if (resourceObject.geometry) owned.geometries.add(resourceObject.geometry);
-      const materials = Array.isArray(resourceObject.material)
-        ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
-      for (const material of materials) {
-        owned.materials.add(material);
-        collectMaterialTextures(material, owned.textures);
-      }
-      if (resourceObject.skeleton?.boneTexture) {
-        owned.textures.add(resourceObject.skeleton.boneTexture);
-      }
-      // Batched/instanced meshes may own private GPU textures that are not
-      // reachable through `material` (matrices, visibility, morph data).
-      if ((resourceObject.isBatchedMesh || resourceObject.isInstancedMesh)
-        && typeof resourceObject.dispose === 'function') {
-        resourceObject.dispose();
-      }
-    });
-  }
+  const owned = createResourceBag();
+  // Batched/instanced meshes may own private GPU textures that are not
+  // reachable through `material` (matrices, visibility, morph data).
+  const objects = collectOwnedTreeResources(root, owned, true);
 
   root?.removeFromParent?.();
   let geometries = 0;

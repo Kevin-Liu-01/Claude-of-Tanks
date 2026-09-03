@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared consumable rules. Kits are reusable for the whole battle; successful
 // use starts the item's own cooldown, while no-op presses remain free.
 
@@ -19,7 +20,7 @@ export const CONSUMABLE_RULES: readonly ConsumableRule[] = Object.freeze([
 
 export const CONSUMABLE_READY_MARK = '∞';
 
-export function cooldownRemaining(nowS: unknown, readyAtS: unknown): number {
+export function cooldownRemaining(nowS: RuntimeValue, readyAtS: RuntimeValue): number {
   return Math.max(0, (Number(readyAtS) || 0) - (Number(nowS) || 0));
 }
 

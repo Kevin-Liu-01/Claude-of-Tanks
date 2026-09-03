@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 
 export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add'] as const);
@@ -84,7 +85,7 @@ interface SurfaceAnnotation {
   note: string;
   ownership: string;
   rigPath: Array<{ name: string; uuid: string }>;
-  poseAtSelection: unknown;
+  poseAtSelection: RuntimeValue;
   mesh: {
     name: string;
     type: string;
@@ -131,7 +132,7 @@ export interface SurfaceMarkupOptions {
   camera: THREE.PerspectiveCamera;
   controls: SurfaceControls;
   getSpec(id: string): SurfaceSpec | null | undefined;
-  getPose(): unknown;
+  getPose(): RuntimeValue;
   renderFrame(): void;
   showToast?(message: string): void;
   onHover?(info: SurfaceInspectionInfo | null): void;
@@ -216,42 +217,57 @@ function quantizedVertexKey(position: PositionAttribute, index: number): string 
   return `${Math.round(position.getX(index) * scale)},${Math.round(position.getY(index) * scale)},${Math.round(position.getZ(index) * scale)}`;
 }
 
+function indexFaceEdges(edges: Map<string, number[]>, keys: string[], face: number): void {
+  for (const [first, second] of [[0, 1], [1, 2], [2, 0]]) {
+    const edge = keys[first] < keys[second]
+      ? `${keys[first]}|${keys[second]}`
+      : `${keys[second]}|${keys[first]}`;
+    const faces = edges.get(edge) || [];
+    faces.push(face);
+    edges.set(edge, faces);
+  }
+}
+
+function indexGeometryFaces(
+  geometry: THREE.BufferGeometry,
+  position: PositionAttribute,
+  count: number,
+): { edges: Map<string, number[]>; normals: THREE.Vector3[] } {
+  const normals: THREE.Vector3[] = Array.from({ length: count }, () => new THREE.Vector3());
+  const edges = new Map<string, number[]>();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  for (let face = 0; face < count; face++) {
+    const indices = faceVertexIndices(geometry, face);
+    a.fromBufferAttribute(position, indices[0]);
+    b.fromBufferAttribute(position, indices[1]);
+    c.fromBufferAttribute(position, indices[2]);
+    normals[face].crossVectors(b.sub(a), c.sub(a)).normalize();
+    indexFaceEdges(edges, indices.map((index) => quantizedVertexKey(position, index)), face);
+  }
+  return { edges, normals };
+}
+
+function connectAdjacentFaces(edges: Map<string, number[]>, neighbors: number[][]): void {
+  for (const faces of edges.values()) {
+    if (faces.length < 2) continue;
+    for (const face of faces) {
+      for (const other of faces) {
+        if (face !== other && !neighbors[face].includes(other)) neighbors[face].push(other);
+      }
+    }
+  }
+}
+
 function geometryAdjacency(geometry: THREE.BufferGeometry): GeometryAdjacency | null {
   if (adjacencyCache.has(geometry)) return adjacencyCache.get(geometry) ?? null;
   const count = faceCount(geometry);
   if (count > 180000) return null;
   const position = positionAttribute(geometry);
   const neighbors: number[][] = Array.from({ length: count }, () => []);
-  const normals: THREE.Vector3[] = Array.from({ length: count }, () => new THREE.Vector3());
-  const edges = new Map<string, number[]>();
-  const a = new THREE.Vector3();
-  const b = new THREE.Vector3();
-  const c = new THREE.Vector3();
-
-  for (let face = 0; face < count; face++) {
-    const indices = faceVertexIndices(geometry, face);
-    a.fromBufferAttribute(position, indices[0]);
-    b.fromBufferAttribute(position, indices[1]);
-    c.fromBufferAttribute(position, indices[2]);
-    normals[face] = new THREE.Vector3().crossVectors(b.clone().sub(a), c.clone().sub(a)).normalize();
-    const keys = indices.map((index) => quantizedVertexKey(position, index));
-    for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
-      const edge = keys[i0] < keys[i1] ? `${keys[i0]}|${keys[i1]}` : `${keys[i1]}|${keys[i0]}`;
-      const list = edges.get(edge) || [];
-      list.push(face);
-      edges.set(edge, list);
-    }
-  }
-
-  for (const list of edges.values()) {
-    if (list.length < 2) continue;
-    for (const face of list) {
-      for (const other of list) {
-        if (face !== other && !neighbors[face].includes(other)) neighbors[face].push(other);
-      }
-    }
-  }
-
+  const { edges, normals } = indexGeometryFaces(geometry, position, count);
+  connectAdjacentFaces(edges, neighbors);
   const result = { neighbors, normals };
   adjacencyCache.set(geometry, result);
   return result;

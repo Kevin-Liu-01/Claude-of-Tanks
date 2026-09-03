@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export const TREE_SPECIES = Object.freeze([
   'pine',
   'spruce',
@@ -102,6 +103,6 @@ export const TREE_ARCHETYPES: Readonly<Record<TreeSpecies, Readonly<TreeArchetyp
     }),
   });
 
-export function isTreeSpecies(value: unknown): value is TreeSpecies {
+export function isTreeSpecies(value: RuntimeValue): value is TreeSpecies {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(TREE_ARCHETYPES, value);
 }

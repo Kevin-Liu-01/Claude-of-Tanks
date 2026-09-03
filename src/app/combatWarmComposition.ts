@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   PerspectiveCamera,
   Scene,
@@ -33,7 +34,7 @@ type CombatWarmPost = CombatWarmRuntimeContext['post'];
 type IsolatedForwardWarmFactory = CombatWarmRuntimeContext['createIsolatedForwardWarmBatches'];
 
 interface TraceSink {
-  mark?(event: string, payload: Record<string, unknown>): void;
+  mark?(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
 export interface CombatWarmCompositionOptions {
@@ -61,7 +62,7 @@ export interface CombatWarmCompositionOptions {
   anisotropy: number;
   noteFovPrimed(fov: number): void;
   simDt: number;
-  publishStudioTrace?(trace: unknown): void;
+  publishStudioTrace?(trace: RuntimeValue): void;
   devTrace?: TraceSink | null;
 }
 

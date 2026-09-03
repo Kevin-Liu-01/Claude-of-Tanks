@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import type {
   PlayMenuInvite,
@@ -15,12 +16,12 @@ export interface PlaySurfaceRequest {
   specId?: string;
   mapId?: string;
   gameMode?: GameModeId;
-  startSolo?: () => MaybePromise<unknown>;
+  startSolo?: () => MaybePromise<RuntimeValue>;
 }
 
 interface PlayMenuModule {
   createPlayMenu(options: PlayMenuOptions): PlayMenuRuntime;
-  preloadPlayMode(mode: PlayMode): MaybePromise<unknown>;
+  preloadPlayMode(mode: PlayMode): MaybePromise<RuntimeValue>;
 }
 
 interface PlaySurfaceRuntimeOptions {
@@ -32,13 +33,13 @@ interface PlaySurfaceRuntimeOptions {
     specId: string;
     mapId: string;
     gameMode?: GameModeId;
-  }): MaybePromise<unknown>;
+  }): MaybePromise<RuntimeValue>;
   showActiveRoom(): MaybePromise<boolean>;
-  preloadCommon: Array<() => MaybePromise<unknown>>;
-  preloadNetworkPresentation(): MaybePromise<unknown>;
-  preloadPrivateMatch(): MaybePromise<unknown>;
-  preloadDedicatedMatch(): MaybePromise<unknown>;
-  reportError?(scope: string, error: unknown): void;
+  preloadCommon: Array<() => MaybePromise<RuntimeValue>>;
+  preloadNetworkPresentation(): MaybePromise<RuntimeValue>;
+  preloadPrivateMatch(): MaybePromise<RuntimeValue>;
+  preloadDedicatedMatch(): MaybePromise<RuntimeValue>;
+  reportError?(scope: string, error: RuntimeValue): void;
 }
 
 export interface PlaySurfaceRuntime {
@@ -50,9 +51,9 @@ export interface PlaySurfaceRuntime {
 }
 
 function observe(
-  task: () => MaybePromise<unknown>,
+  task: () => MaybePromise<RuntimeValue>,
   scope: string,
-  reportError: (scope: string, error: unknown) => void,
+  reportError: (scope: string, error: RuntimeValue) => void,
 ): void {
   try {
     void Promise.resolve(task()).catch((error) => reportError(scope, error));
@@ -90,9 +91,9 @@ export function createPlaySurfaceRuntime({
   }
 
   let menuPromise: Promise<PlayMenuRuntime> | null = null;
-  let pendingSoloStart: (() => MaybePromise<unknown>) | null = null;
+  let pendingSoloStart: (() => MaybePromise<RuntimeValue>) | null = null;
 
-  const runSolo = (start: () => MaybePromise<unknown>): void => {
+  const runSolo = (start: () => MaybePromise<RuntimeValue>): void => {
     observe(start, 'solo entry failed', reportError);
   };
 

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { WebGLRenderer } from 'three';
 import type { InputLayer } from '../game/input.ts';
 
@@ -15,7 +16,7 @@ interface TraceGame {
   phase?: string;
   timeS?: number;
   preBattleS?: number;
-  result?: unknown;
+  result?: RuntimeValue;
   player?: { input?: { throttle?: number; steer?: number; fire?: boolean } } | null;
 }
 
@@ -27,7 +28,7 @@ interface TraceContext {
   shotMode?: boolean;
   studio?: boolean;
   renderScale?: number;
-  [key: string]: unknown;
+  [key: string]: RuntimeValue;
 }
 
 interface TraceRefs {
@@ -35,8 +36,8 @@ interface TraceRefs {
   game?: TraceGame;
   input?: TraceInput;
   getContext?: () => TraceContext;
-  getTelemetry?: () => unknown;
-  [key: string]: unknown;
+  getTelemetry?: () => RuntimeValue;
+  [key: string]: RuntimeValue;
 }
 
 export interface DevTraceOptions {
@@ -55,7 +56,7 @@ interface TraceEventRow {
   name: string;
   phase: string;
   simS: number | null;
-  data: unknown;
+  data: RuntimeValue;
 }
 
 interface RingBuffer<T> {
@@ -73,10 +74,10 @@ interface TraceSnapshotOptions {
 }
 
 interface TraceGpuInfo {
-  vendor: unknown;
-  renderer: unknown;
-  version: unknown;
-  maxTextureSize: unknown;
+  vendor: RuntimeValue;
+  renderer: RuntimeValue;
+  version: RuntimeValue;
+  maxTextureSize: RuntimeValue;
 }
 
 interface LongTaskAttribution {
@@ -92,8 +93,8 @@ interface LongTaskEntry extends PerformanceEntry {
 
 declare global {
   interface Window {
-    __DEV_TRACE?: unknown;
-    __QA_TRACE?: unknown;
+    __DEV_TRACE?: RuntimeValue;
+    __QA_TRACE?: RuntimeValue;
   }
   interface Navigator { deviceMemory?: number }
   interface Performance { memory?: { usedJSHeapSize: number } }
@@ -116,11 +117,11 @@ const FLAGS = {
 
 const defaultNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function finiteNumber(value: unknown, fallback: number): number {
+function finiteNumber(value: RuntimeValue, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
@@ -146,11 +147,37 @@ function ring<T>(capacity: number): RingBuffer<T> {
 }
 
 // Bus hot paths reuse payload objects, so snapshot immediately at emit time.
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function cloneSafe(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+function cloneArrayLikeSafe(value: ArrayLike<RuntimeValue>, depth: number, seen: WeakSet<object>): RuntimeValue[] {
+  const length = Number(value.length) || 0;
+  const copiedLength = Math.min(length, 64);
+  const out: RuntimeValue[] = Array.from(
+    { length: copiedLength },
+    (_, index) => cloneSafe(value[index], depth + 1, seen),
+  );
+  if (length > copiedLength) out.push(`[+${length - copiedLength} items]`);
+  return out;
+}
+
+function cloneRecordSafe(
+  value: Record<string, RuntimeValue>,
+  depth: number,
+  seen: WeakSet<object>,
+): Record<string, RuntimeValue> {
+  const out: Record<string, RuntimeValue> = {};
+  const keys = Object.keys(value);
+  for (const key of keys.slice(0, 40)) {
+    try { out[key] = cloneSafe(value[key], depth + 1, seen); }
+    catch (error) { out[key] = `[unreadable: ${errorMessage(error)}]`; }
+  }
+  if (keys.length > 40) out.__truncatedKeys = keys.length - 40;
+  return out;
+}
+
+function cloneSafe(value: RuntimeValue, depth = 0, seen = new WeakSet<object>()): RuntimeValue {
   if (value == null || ['string', 'boolean'].includes(typeof value)) return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   if (typeof value === 'bigint') return `${value}n`;
@@ -160,32 +187,16 @@ function cloneSafe(value: unknown, depth = 0, seen = new WeakSet<object>()): unk
   if (depth >= 4) return `[${value.constructor?.name || 'Object'}]`;
   seen.add(value);
   if (Array.isArray(value) || ArrayBuffer.isView(value)) {
-    const arrayLike = value as ArrayLike<unknown>;
-    const length = Number(arrayLike.length) || 0;
-    const n = Math.min(length, 64);
-    const out: unknown[] = Array.from(
-      { length: n },
-      (_, i) => cloneSafe(arrayLike[i], depth + 1, seen),
-    );
-    if (length > n) out.push(`[+${length - n} items]`);
-    return out;
+    return cloneArrayLikeSafe(value as ArrayLike<RuntimeValue>, depth, seen);
   }
   if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack || '' };
-  const out: Record<string, unknown> = {};
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record);
-  for (const key of keys.slice(0, 40)) {
-    try { out[key] = cloneSafe(record[key], depth + 1, seen); }
-    catch (error) { out[key] = `[unreadable: ${errorMessage(error)}]`; }
-  }
-  if (keys.length > 40) out.__truncatedKeys = keys.length - 40;
-  return out;
+  return cloneRecordSafe(value as Record<string, RuntimeValue>, depth, seen);
 }
 
 // Room snapshots contain full equipment/camouflage/player records. The live
 // 7v7 probe only needs lifecycle evidence, and deep-cloning fourteen complete
 // records inside the event hook can itself become the stall being measured.
-function traceEventPayload(name: string, data: unknown): unknown {
+function traceEventPayload(name: string, data: RuntimeValue): RuntimeValue {
   if (name !== 'network:roomState' || !isRecord(data) || !isRecord(data.state)) return data;
   const state = data.state;
   const players = Array.isArray(state.players) ? state.players : [];
@@ -211,7 +222,7 @@ function traceEventPayload(name: string, data: unknown): unknown {
 }
 
 function inert() {
-  const noop = (..._args: unknown[]) => {};
+  const noop = (..._args: RuntimeValue[]) => {};
   return {
     enabled: false, active: false, event: noop, action: noop, frame: noop,
     mark: noop, configure: noop, clear: noop, start: noop, stop: noop,
@@ -270,7 +281,7 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
   let lastRender = -1, lastRenderAt = 0, renderFrozenAt = 0;
 
   const rel = (t = now()) => +(t - traceZero).toFixed(3);
-  function push(kind: string, name: string, data: unknown, at = now()): TraceEventRow | null {
+  function push(kind: string, name: string, data: RuntimeValue, at = now()): TraceEventRow | null {
     if (!active) return null;
     const row = {
       seq: ++seq, tMs: rel(at), kind, name,
@@ -286,7 +297,7 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
     if (consoleAll) console.info(`[COT trace ${row.tMs}ms] ${kind}:${name}`, row.data);
     return row;
   }
-  function anomaly(name: string, data: Record<string, unknown>, at = now()): TraceEventRow | null {
+  function anomaly(name: string, data: Record<string, RuntimeValue>, at = now()): TraceEventRow | null {
     return push('anomaly', name, { ...data, lastEventSeq: eventNext, lastEventName }, at);
   }
   function context(): TraceContext {
@@ -306,67 +317,114 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
     if (ctx.studio) bits |= FLAGS.studio;
     return bits;
   }
+
+  function storeFrameSample(
+    at: number,
+    gap: number,
+    dtMs: number,
+    phase: string,
+    sim: number,
+    pre: number,
+    bits: number,
+    renderFrame: number,
+    game: TraceGame | undefined,
+    ctx: TraceContext,
+  ): void {
+    const info = refs.renderer?.info;
+    const input = game?.player?.input;
+    const index = frameNext;
+    f.t[index] = rel(at); f.gap[index] = gap; f.dt[index] = dtMs; f.sim[index] = sim; f.pre[index] = pre;
+    f.phase[index] = PHASE_CODE.get(phase) ?? 0; f.flags[index] = bits; f.renderFrame[index] = renderFrame;
+    f.calls[index] = info?.render?.calls || 0; f.tris[index] = info?.render?.triangles || 0;
+    f.programs[index] = Math.min((info?.programs || []).length, 65535);
+    f.geometries[index] = Math.min(info?.memory?.geometries || 0, 65535);
+    f.textures[index] = Math.min(info?.memory?.textures || 0, 65535);
+    f.heap[index] = typeof performance !== 'undefined' && performance.memory
+      ? performance.memory.usedJSHeapSize / 1048576 : -1;
+    f.renderScale[index] = finiteNumber(ctx.renderScale, -1);
+    f.throttle[index] = Number(input?.throttle) || 0;
+    f.steer[index] = Number(input?.steer) || 0;
+    f.fire[index] = input?.fire ? 1 : 0;
+    if (frameSize === frameCap) frameDropped++; else frameSize++;
+    frameNext = (frameNext + 1) % frameCap;
+  }
+
+  function recordGapAnomaly(
+    gap: number,
+    dtMs: number,
+    phase: string,
+    sim: number,
+    renderFrame: number,
+    live: boolean,
+    bits: number,
+    at: number,
+  ): void {
+    const hidden = !!(bits & (FLAGS.hidden | FLAGS.unfocused));
+    if (gap >= 250) {
+      freezes++;
+      if (live) liveFreezes++;
+      anomaly(hidden ? 'frame:hidden-gap' : 'screen:freeze', {
+        gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame,
+        live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
+      }, at);
+      return;
+    }
+    if (gap < 50) return;
+    spikes++;
+    if (live) liveSpikes++;
+    anomaly(hidden ? 'frame:hidden-spike' : 'frame:spike', {
+      gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame,
+      live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
+    }, at);
+  }
+
+  function resetFreezeTracking(phase: string, sim: number, renderFrame: number, at: number): void {
+    lastPhase = phase; lastSim = sim; lastSimAt = at; simFrozenAt = 0;
+    lastRender = renderFrame; lastRenderAt = at; renderFrozenAt = 0;
+  }
+
+  function trackSimulationFreeze(sim: number, at: number): void {
+    if (!Number.isFinite(lastSim) || sim > lastSim + 1e-6) {
+      if (simFrozenAt) anomaly('sim:resume', { frozenMs: +(at - simFrozenAt).toFixed(2), simS: sim }, at);
+      lastSim = sim; lastSimAt = at; simFrozenAt = 0;
+    } else if (!simFrozenAt && at - lastSimAt >= 750) {
+      simFrozenAt = lastSimAt;
+      anomaly('sim:freeze', { frozenMs: +(at - lastSimAt).toFixed(2), simS: sim }, at);
+    }
+  }
+
+  function trackRenderFreeze(renderFrame: number, at: number): void {
+    if (renderFrame !== lastRender) {
+      if (renderFrozenAt) anomaly('render:resume', { frozenMs: +(at - renderFrozenAt).toFixed(2), renderFrame }, at);
+      lastRender = renderFrame; lastRenderAt = at; renderFrozenAt = 0;
+    } else if (!renderFrozenAt && at - lastRenderAt >= 750) {
+      renderFrozenAt = lastRenderAt;
+      anomaly('render:freeze', { frozenMs: +(at - lastRenderAt).toFixed(2), renderFrame }, at);
+    }
+  }
+
   function frame(dtMs = 0) {
     if (!active) return;
     const at = now();
     const gap = lastFrameAt ? Math.max(0, at - lastFrameAt) : Math.max(0, dtMs);
     lastFrameAt = at; maxGap = Math.max(maxGap, gap);
-    const game = refs.game, info = refs.renderer?.info, ctx = context();
+    const game = refs.game, ctx = context();
     const phase = ctx.studio ? 'studio' : (game?.phase || 'unknown');
     const sim = finiteNumber(game?.timeS, 0);
     const pre = finiteNumber(game?.preBattleS, -1);
     const bits = flagBits(game, ctx);
     const live = phase === 'battle' && pre <= 0 && !(bits &
       (FLAGS.hidden | FLAGS.unfocused | FLAGS.paused | FLAGS.result | FLAGS.killcam));
-    const rf = info?.render?.frame || 0;
-    const inp = game?.player?.input;
-    const i = frameNext;
-    f.t[i] = rel(at); f.gap[i] = gap; f.dt[i] = dtMs; f.sim[i] = sim; f.pre[i] = pre;
-    f.phase[i] = PHASE_CODE.get(phase) ?? 0; f.flags[i] = bits; f.renderFrame[i] = rf;
-    f.calls[i] = info?.render?.calls || 0; f.tris[i] = info?.render?.triangles || 0;
-    f.programs[i] = Math.min((info?.programs || []).length, 65535);
-    f.geometries[i] = Math.min(info?.memory?.geometries || 0, 65535);
-    f.textures[i] = Math.min(info?.memory?.textures || 0, 65535);
-    f.heap[i] = typeof performance !== 'undefined' && performance.memory
-      ? performance.memory.usedJSHeapSize / 1048576 : -1;
-    f.renderScale[i] = finiteNumber(ctx.renderScale, -1);
-    f.throttle[i] = Number(inp?.throttle) || 0; f.steer[i] = Number(inp?.steer) || 0; f.fire[i] = inp?.fire ? 1 : 0;
-    if (frameSize === frameCap) frameDropped++; else frameSize++;
-    frameNext = (frameNext + 1) % frameCap;
-
-    const hidden = !!(bits & (FLAGS.hidden | FLAGS.unfocused));
-    if (gap >= 250) {
-      freezes++;
-      if (live) liveFreezes++;
-      anomaly(hidden ? 'frame:hidden-gap' : 'screen:freeze', {
-        gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf,
-        live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
-      }, at);
-    } else if (gap >= 50) {
-      spikes++;
-      if (live) liveSpikes++;
-      anomaly(hidden ? 'frame:hidden-spike' : 'frame:spike', {
-        gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf,
-        live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
-      }, at);
-    }
+    const renderFrame = refs.renderer?.info?.render?.frame || 0;
+    storeFrameSample(at, gap, dtMs, phase, sim, pre, bits, renderFrame, game, ctx);
+    recordGapAnomaly(gap, dtMs, phase, sim, renderFrame, live, bits, at);
 
     if (phase !== lastPhase || !live) {
-      lastPhase = phase; lastSim = sim; lastSimAt = at; simFrozenAt = 0;
-      lastRender = rf; lastRenderAt = at; renderFrozenAt = 0; return;
+      resetFreezeTracking(phase, sim, renderFrame, at);
+      return;
     }
-    if (!Number.isFinite(lastSim) || sim > lastSim + 1e-6) {
-      if (simFrozenAt) anomaly('sim:resume', { frozenMs: +(at - simFrozenAt).toFixed(2), simS: sim }, at);
-      lastSim = sim; lastSimAt = at; simFrozenAt = 0;
-    } else if (!simFrozenAt && at - lastSimAt >= 750) {
-      simFrozenAt = lastSimAt; anomaly('sim:freeze', { frozenMs: +(at - lastSimAt).toFixed(2), simS: sim }, at);
-    }
-    if (rf !== lastRender) {
-      if (renderFrozenAt) anomaly('render:resume', { frozenMs: +(at - renderFrozenAt).toFixed(2), renderFrame: rf }, at);
-      lastRender = rf; lastRenderAt = at; renderFrozenAt = 0;
-    } else if (!renderFrozenAt && at - lastRenderAt >= 750) {
-      renderFrozenAt = lastRenderAt; anomaly('render:freeze', { frozenMs: +(at - lastRenderAt).toFixed(2), renderFrame: rf }, at);
-    }
+    trackSimulationFreeze(sim, at);
+    trackRenderFreeze(renderFrame, at);
   }
   function rows() {
     const out = new Array(frameSize), start = frameSize === frameCap ? frameNext : 0;
@@ -436,16 +494,16 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
 
   const api = {
     enabled: true, get active() { return active; },
-    event: (name: string, data: unknown = {}) => push('bus', name, traceEventPayload(name, data)),
-    action: (name: string, data: unknown = {}) => push('action', name, data), frame,
-    mark: (name: string, data: unknown = {}) => push('mark', name, data),
+    event: (name: string, data: RuntimeValue = {}) => push('bus', name, traceEventPayload(name, data)),
+    action: (name: string, data: RuntimeValue = {}) => push('action', name, data), frame,
+    mark: (name: string, data: RuntimeValue = {}) => push('mark', name, data),
     configure(next: TraceRefs = {}) {
       refs = { ...refs, ...next };
       if (refs.input?.onAction && !inputBound) {
         inputBound = true;
         const input = refs.input;
         for (const def of input.actionDefs || []) {
-          input.onAction?.(def.id, (code: unknown) => api.action(def.id, { code }));
+          input.onAction?.(def.id, (code: RuntimeValue) => api.action(def.id, { code }));
         }
       }
       // GPU driver queries can serialize with software rasterizers. Keep them

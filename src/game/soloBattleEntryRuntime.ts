@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import type {
   SoloBattleLoadingRuntime,
@@ -5,7 +6,7 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 interface EntryLoadScreen {
-  hide?(): Promise<unknown> | unknown;
+  hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
 interface EntryAudio {
@@ -23,11 +24,11 @@ export interface SoloBattleEntryRuntimeOptions {
   battleLoad: EntryLoadScreen;
   audio: EntryAudio;
   enterGarage(): Promise<void> | void;
-  nextFrame(): Promise<unknown>;
+  nextFrame(): Promise<RuntimeValue>;
   isVisibleSpecId(specId: string): boolean;
   getSelectedSpecId(): string;
   getSelectedMapId(): string;
-  reportError?(message: string, error: unknown): void;
+  reportError?(message: string, error: RuntimeValue): void;
 }
 
 export interface SoloBattleEntryRuntime {

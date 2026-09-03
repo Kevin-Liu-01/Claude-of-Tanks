@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * src/audio/audio.ts — the Claude of Tanks sound system (COMBAT-SFX r4).
  *
@@ -101,7 +102,7 @@ interface AudioMixerOptions {
 export interface AudioMixer {
   resume(): void;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -129,9 +130,9 @@ interface AudioPosition {
 
 interface AudioTankSpec {
   topSpeedKmh?: number;
-  role?: unknown;
-  weightTons?: unknown;
-  era?: unknown;
+  role?: RuntimeValue;
+  weightTons?: RuntimeValue;
+  era?: RuntimeValue;
 }
 
 interface AudioTankState {
@@ -183,7 +184,7 @@ interface FireLoop extends KillableRig { out: GainNode; pan: StereoPannerNode }
 interface HeartbeatRig { o: OscillatorNode; g: GainNode }
 interface LandingTracker { prevY: number; vy: number; lastThumpT: number }
 
-interface SoundLogEntry extends Record<string, unknown> {
+interface SoundLogEntry extends Record<string, RuntimeValue> {
   seq: number;
   t: number;
   type: string;
@@ -248,9 +249,9 @@ interface ShellHitEvent {
     pos?: Vec3Tuple;
     normal?: Vec3Tuple;
   }[];
-  era?: unknown;
-  eraActivated?: unknown;
-  reactiveArmor?: unknown;
+  era?: RuntimeValue;
+  eraActivated?: RuntimeValue;
+  reactiveArmor?: RuntimeValue;
 }
 
 interface TankDestroyedEvent {
@@ -323,7 +324,7 @@ interface VolumeEvent {
 
 interface AudioDebugSurface {
   readonly ctx: AudioContext | null;
-  readonly voiceLog: readonly unknown[];
+  readonly voiceLog: readonly RuntimeValue[];
   readonly voicesLoaded: boolean;
   readonly sfxLog: readonly SfxLogEntry[];
   readonly sfxLoaded: boolean;
@@ -331,9 +332,9 @@ interface AudioDebugSurface {
   readonly killcamSfxLog: readonly KillcamSfxLogEntry[];
   readonly soundLog: readonly SoundLogEntry[];
   readonly loadingActive: boolean;
-  listenerState(): Record<string, unknown>;
+  listenerState(): Record<string, RuntimeValue>;
   spatialAt(x: number, y: number, z: number): { dist: number; gain: number; pan: number };
-  engineState(): Array<Record<string, unknown>>;
+  engineState(): Array<Record<string, RuntimeValue>>;
   setEngineProbeSolo(id?: string | null): string | null;
   sayVoice(id: string): boolean;
   clearVoiceQueue(): void;
@@ -342,7 +343,7 @@ interface AudioDebugSurface {
   readTapB64(offset: number, count: number): string;
   clearTap(): void;
   readonly sampleRate: number;
-  busGains(): Record<string, unknown> | null;
+  busGains(): Record<string, RuntimeValue> | null;
   readonly _nodes: Record<string, AudioNode>;
 }
 
@@ -419,7 +420,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
   // (cot.settings.v1) and live-updated via 'ui:volumes'.
   const chanVol = { engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 };
   let alarmHeartbeatOn = true; // critical-HP heartbeat option (settings toggle)
-  const clamp01 = (v: unknown, fallback: number): number => (
+  const clamp01 = (v: RuntimeValue, fallback: number): number => (
     typeof v === 'number' ? Math.max(0, Math.min(1, v)) : fallback
   );
   try {
@@ -542,7 +543,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
   const soundLog: SoundLogEntry[] = [];
   let soundSeq = 0;
 
-  function logSound(type: string, data: Record<string, unknown> | null = null): void {
+  function logSound(type: string, data: Record<string, RuntimeValue> | null = null): void {
     soundLog.push({ seq: ++soundSeq, t: ctx ? ctx!.currentTime : 0, type, ...(data || {}) });
     if (soundLog.length > 256) soundLog.shift();
   }
@@ -951,6 +952,62 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     return when + dur;
   }
 
+  function addBakedMechanicalReport(
+    voice: OneShotVoice,
+    report: Readonly<WeaponReportProfile>,
+    muzzleIndex: number,
+    when: number,
+    lowpass: BiquadFilterNode,
+  ): void {
+    if (report.mechanicalGain <= 0) return;
+    const actionAt = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
+    wire(voice, osrc(voice, 'triangle', report.mechanicalHz, actionAt, 0.10),
+      env(actionAt, 0.001, report.mechanicalGain, 0.07), lowpass);
+    wire(voice, nsrc(voice, actionAt, 0.045),
+      flt('bandpass', report.mechanicalHz * 1.45, 0.92),
+      env(actionAt, 0.001, report.mechanicalGain * 0.62, 0.035), lowpass);
+    if (!report.twin) return;
+    const sidePitch = muzzleIndex === 1 ? 1.08 : 0.94;
+    wire(voice, osrc(voice, 'square', report.mechanicalHz * sidePitch, actionAt + 0.014, 0.06),
+      env(actionAt + 0.014, 0.001, report.mechanicalGain * 0.24, 0.045), lowpass);
+  }
+
+  function addPlayerCasingFoley(
+    voice: OneShotVoice,
+    when: number,
+    lowpass: BiquadFilterNode,
+    caliberMm: number,
+    baseGain: number,
+  ): void {
+    if (caliberMm > 105) return;
+    const brassAt = when + 0.65 + rng() * 0.2;
+    for (let index = 0; index < 2; index++) {
+      const at = brassAt + index * (0.07 + rng() * 0.05);
+      wire(voice, osrc(voice, 'triangle', 880 + rng() * 620, at, 0.07),
+        env(at, 0.001, baseGain - index * 0.006, 0.05), lowpass);
+    }
+  }
+
+  function addPlayerGunFoley(
+    voice: OneShotVoice,
+    when: number,
+    lowpass: BiquadFilterNode,
+    caliberMm: number,
+    synth: boolean,
+  ): void {
+    const windGain = synth ? 0.30 : 0.26;
+    const clankGain = synth ? 0.28 : 0.26;
+    const latchNoiseGain = synth ? 0.19 : 0.18;
+    wire(voice, nsrc(voice, when, 0.3), flt('lowpass', 850, 0.6),
+      env(when, 0.01, windGain, 0.26), lowpass);
+    const clankAt = when + 0.20 + rng() * 0.05;
+    wire(voice, osrc(voice, 'triangle', 290 * (0.95 + rng() * 0.1), clankAt, 0.16),
+      env(clankAt, 0.002, clankGain, 0.12), lowpass);
+    wire(voice, nsrc(voice, clankAt, 0.05), flt('bandpass', 720, 0.82),
+      env(clankAt, 0.001, latchNoiseGain, 0.04), lowpass);
+    addPlayerCasingFoley(voice, when, lowpass, caliberMm, synth ? 0.027 : 0.025);
+  }
+
   /**
    * Layered baked cannon shot (COMBAT-SFX r4). Near = sub punch + crack +
    * tail; far = tail-dominant (crack fades over ~45-180 m on top of the
@@ -988,37 +1045,8 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     }
     sampleLayer(v, `fire_${cls}_tail`, when + 0.012 + rng() * 0.018,
       report.tailGain, jitterRate() * report.rate, lp);
-    if (report.mechanicalGain > 0) {
-      const tAction = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
-      wire(v, osrc(v, 'triangle', report.mechanicalHz, tAction, 0.10),
-        env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
-      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.45, 0.92),
-        env(tAction, 0.001, report.mechanicalGain * 0.62, 0.035), lp);
-      if (report.twin) {
-        const sidePitch = muzzleIndex === 1 ? 1.08 : 0.94;
-        wire(v, osrc(v, 'square', report.mechanicalHz * sidePitch, tAction + 0.014, 0.06),
-          env(tAction + 0.014, 0.001, report.mechanicalGain * 0.24, 0.045), lp);
-      }
-    }
-    if (isPlayer) {
-      // Muzzle-blast wind over the hull.
-      wire(v, nsrc(v, when, 0.3), flt('lowpass', 850, 0.6), env(when, 0.01, 0.26, 0.26), lp);
-      // Breech clank at the end of recoil (~0.22 s): metal-on-metal latch.
-      const tCl = when + 0.20 + rng() * 0.05;
-      wire(v, osrc(v, 'triangle', 290 * (0.95 + rng() * 0.1), tCl, 0.16),
-        env(tCl, 0.002, 0.26, 0.12), lp);
-      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 720, 0.82), env(tCl, 0.001, 0.18, 0.04), lp);
-      // A restrained casing/loader-floor cue. It must never compete with the
-      // report as a handful of high-pitched loose hardware.
-      if (caliberMm <= 105) {
-        const tBr = when + 0.65 + rng() * 0.2;
-        for (let i = 0; i < 2; i++) {
-          const at = tBr + i * (0.07 + rng() * 0.05);
-          wire(v, osrc(v, 'triangle', 880 + rng() * 620, at, 0.07),
-            env(at, 0.001, 0.025 - i * 0.006, 0.05), lp);
-        }
-      }
-    }
+    addBakedMechanicalReport(v, report, muzzleIndex, when, lp);
+    if (isPlayer) addPlayerGunFoley(v, when, lp, caliberMm, false);
   }
 
   /** Baked pen clang (+ interior whump when WE took the damage). */
@@ -1287,36 +1315,38 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     wire(v, src, lp);
     // Live crack overlay: only audible up close where the bed's baked crack
     // has been dulled by the shared lowpass — restores the whip-snap.
-    if (s.dist < 120) {
-      wire(v, nsrc(v, when, 0.03), flt('highpass', 2400 + rng() * 900, 0.8),
-        env(when, 0.001, (cls === 'light' ? 0.55 : 0.42) * report.crackGain, 0.018), lp);
-    }
-    if (report.mechanicalGain > 0) {
-      const tAction = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
-      const sidePitch = report.twin && muzzleIndex === 1 ? 1.08 : 1;
-      wire(v, osrc(v, 'triangle', report.mechanicalHz * sidePitch, tAction, 0.10),
-        env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
-      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.45, 0.92),
-        env(tAction, 0.001, report.mechanicalGain * 0.60, 0.035), lp);
-    }
-    if (isPlayer) {
-      // Muzzle-blast wind over the hull.
-      wire(v, nsrc(v, when, 0.3), flt('lowpass', 850, 0.6), env(when, 0.01, 0.30, 0.26), lp);
-      // Breech clank at the end of recoil (~0.22 s): metal-on-metal latch.
-      const tCl = when + 0.20 + rng() * 0.05;
-      wire(v, osrc(v, 'triangle', 290 * (0.95 + rng() * 0.1), tCl, 0.16),
-        env(tCl, 0.002, 0.28, 0.12), lp);
-      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 720, 0.82), env(tCl, 0.001, 0.19, 0.04), lp);
-      // Loader-floor cue kept low and sparse beneath the gun report.
-      if (caliberMm <= 105) {
-        const tBr = when + 0.65 + rng() * 0.2;
-        for (let i = 0; i < 2; i++) {
-          const at = tBr + i * (0.07 + rng() * 0.05);
-          wire(v, osrc(v, 'triangle', 880 + rng() * 620, at, 0.07),
-            env(at, 0.001, 0.027 - i * 0.006, 0.05), lp);
-        }
-      }
-    }
+    if (s.dist < 120) addSynthCrack(v, when, lp, cls, report);
+    addSynthMechanicalReport(v, report, muzzleIndex, when, lp);
+    if (isPlayer) addPlayerGunFoley(v, when, lp, caliberMm, true);
+  }
+
+  function addSynthCrack(
+    voice: OneShotVoice,
+    when: number,
+    lowpass: BiquadFilterNode,
+    caliberClass: string,
+    report: Readonly<WeaponReportProfile>,
+  ): void {
+    const gain = (caliberClass === 'light' ? 0.55 : 0.42) * report.crackGain;
+    wire(voice, nsrc(voice, when, 0.03), flt('highpass', 2400 + rng() * 900, 0.8),
+      env(when, 0.001, gain, 0.018), lowpass);
+  }
+
+  function addSynthMechanicalReport(
+    voice: OneShotVoice,
+    report: Readonly<WeaponReportProfile>,
+    muzzleIndex: number,
+    when: number,
+    lowpass: BiquadFilterNode,
+  ): void {
+    if (report.mechanicalGain <= 0) return;
+    const actionAt = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
+    const sidePitch = report.twin && muzzleIndex === 1 ? 1.08 : 1;
+    wire(voice, osrc(voice, 'triangle', report.mechanicalHz * sidePitch, actionAt, 0.10),
+      env(actionAt, 0.001, report.mechanicalGain, 0.07), lowpass);
+    wire(voice, nsrc(voice, actionAt, 0.045),
+      flt('bandpass', report.mechanicalHz * 1.45, 0.92),
+      env(actionAt, 0.001, report.mechanicalGain * 0.60, 0.035), lowpass);
   }
 
   // -------------------------------------------------------------- impacts ---
@@ -2628,8 +2658,103 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     return null;
   }
 
+  function playEraActivationSounds(event: ShellHitEvent): number {
+    const activations = (event.eraActivations || []).filter(
+      (activation) => activation?.pos?.length === 3,
+    );
+    for (const activation of activations) {
+      eraPop(activation.pos![0], activation.pos![1], activation.pos![2]);
+    }
+    if (!activations.length && isEraActivation(event) && event.kind !== 'era') {
+      eraPop(event.pos[0], event.pos[1], event.pos[2]);
+    }
+    return activations.length;
+  }
+
+  function playHighExplosiveHit(event: ShellHitEvent, playerHit: boolean): void {
+    const [x, y, z] = event.pos;
+    const caliberMm = event.caliberMm || 122;
+    if (sfxReady) {
+      bakedShellExplosion(x, y, z, caliberMm, false);
+      if (playerHit && (event.damage || 0) > 0) hitWhump(0.9);
+      return;
+    }
+    synthExplosion(x, y, z, 0.55 + caliberMm / 160, false, false);
+  }
+
+  function playTerrainHit(event: ShellHitEvent): void {
+    const [x, y, z] = event.pos;
+    const caliberMm = event.caliberMm || 100;
+    if (sfxReady) bakedShellExplosion(x, y, z, caliberMm, true);
+    else synthExplosion(x, y, z, 0.4 + caliberMm / 220, true, false);
+  }
+
+  function playShellHitSound(
+    event: ShellHitEvent,
+    playerHit: boolean,
+    eraActivationCount: number,
+  ): void {
+    const [x, y, z] = event.pos;
+    switch (event.kind) {
+      case 'pen':
+        clang(x, y, z, playerHit && (event.damage || 0) > 0 ? 1 : 0);
+        return;
+      case 'ricochet':
+        ping(x, y, z, true);
+        return;
+      case 'nonpen':
+      case 'spaced_absorb':
+        ping(x, y, z, false, playerHit ? 0.45 : 0);
+        return;
+      case 'era':
+        if (!eraActivationCount) eraPop(x, y, z);
+        return;
+      case 'he_pen':
+      case 'he_splash':
+        playHighExplosiveHit(event, playerHit);
+        return;
+      case 'terrain':
+        playTerrainHit(event);
+        return;
+      default:
+        return;
+    }
+  }
+
+  function reportIncomingShellHit(event: ShellHitEvent): void {
+    const call = incomingCallFor(event);
+    if (call) radio.say(call, { delayS: 0.12 });
+    const maxHp = event.targetMaxHp || 0;
+    const lowHpCrossed = !lowHpCalled && !event.destroyed && (event.damage || 0) > 0
+      && maxHp > 0 && event.targetHpAfter / maxHp <= 0.25;
+    if (!lowHpCrossed || (call && call !== 'were_hit')) return;
+    lowHpCalled = true;
+    radio.say('low_hp', { delayS: 0.35 });
+  }
+
+  function reportOutgoingShellHit(event: ShellHitEvent): void {
+    if (event.targetId == null || event.destroyed) return;
+    const moduleHit = (event.modulesHit || []).some((module) => module.module === 'ammoRack');
+    if (moduleHit) {
+      radio.say('enemy_ammo_rack', { delayS: 0.18 });
+      return;
+    }
+    const damaged = (event.damage || 0) > 0;
+    if (((event.modulesHit?.length || 0) + (event.crewHit?.length || 0)) > 0 && damaged) {
+      radio.say('enemy_crit', { prob: 0.72, delayS: 0.18 });
+      return;
+    }
+    if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) {
+      radio.say('penetration', { prob: 0.82, delayS: 0.18 });
+      return;
+    }
+    if (event.kind === 'ricochet' || event.kind === 'nonpen'
+        || event.kind === 'spaced_absorb') {
+      radio.say('ricochet', { prob: 0.8, delayS: 0.16 });
+    }
+  }
+
   function onShellHit(event: ShellHitEvent): void {
-    const p = event.pos;
     // Receiving-end feel: a damaging hit on the PLAYER adds
     // an interior low whump + rumble under the impact sound. Deflections
     // deliberately get NONE — a bounce must feel like relief, not damage.
@@ -2637,49 +2762,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       (listenerOwnerId == null && playerId != null && event.targetId === playerId);
     // Like the FX path, the reactive charge is additive to the deeper armor
     // result. Play its sharp cassette blast even when the final event is pen.
-    const eraActivations = (event.eraActivations || []).filter(
-      (activation) => activation?.pos?.length === 3,
-    );
-    if (eraActivations.length) {
-      for (const activation of eraActivations) {
-        eraPop(activation.pos![0], activation.pos![1], activation.pos![2]);
-      }
-    } else if (isEraActivation(event) && event.kind !== 'era') {
-      eraPop(p[0], p[1], p[2]);
-    }
-    switch (event.kind) {
-      case 'pen':
-        clang(p[0], p[1], p[2], playerHit && (event.damage || 0) > 0 ? 1 : 0);
-        break;
-      case 'ricochet':
-        ping(p[0], p[1], p[2], true);
-        break;
-      case 'nonpen':
-      case 'spaced_absorb':
-        // Non-pen still slams the plate — a smaller whump than a pen.
-        ping(p[0], p[1], p[2], false, playerHit ? 0.45 : 0);
-        break;
-      case 'era':
-        if (!eraActivations.length) eraPop(p[0], p[1], p[2]);
-        break;
-      case 'he_pen':
-      case 'he_splash':
-        if (sfxReady) {
-          bakedShellExplosion(p[0], p[1], p[2], event.caliberMm || 122, false);
-          if (playerHit && (event.damage || 0) > 0) hitWhump(0.9);
-        } else {
-          synthExplosion(p[0], p[1], p[2],
-            0.55 + (event.caliberMm || 122) / 160, false, false);
-        }
-        break;
-      case 'terrain':
-        if (sfxReady) bakedShellExplosion(p[0], p[1], p[2], event.caliberMm || 100, true);
-        else synthExplosion(p[0], p[1], p[2],
-          0.4 + (event.caliberMm || 100) / 220, true, false);
-        break;
-      default:
-        break;
-    }
+    playShellHitSound(event, playerHit, playEraActivationSounds(event));
     logSound('shell:hit', {
       id: event.shellId, kind: event.kind, targetId: event.targetId,
       attackerId: event.attackerId, occupied: playerHit, damage: event.damage || 0,
@@ -2689,31 +2772,9 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     // reports the final result only after the impact is known.
     if (playerId == null) return;
     if (event.targetId === playerId) {
-      const call = incomingCallFor(event);
-      if (call) radio.say(call, { delayS: 0.12 });
-      if (!lowHpCalled && !event.destroyed && (event.damage || 0) > 0 &&
-          (event.targetMaxHp || 0) > 0 &&
-          event.targetHpAfter / (event.targetMaxHp || 1) <= 0.25) {
-        // Only add the threshold warning when the shell had no more specific
-        // consequence; otherwise it would replace a gun/crew/fire warning.
-        if (!call || call === 'were_hit') {
-          lowHpCalled = true;
-          radio.say('low_hp', { delayS: 0.35 });
-        }
-      }
-    } else if (event.attackerId === playerId && event.targetId != null && !event.destroyed) {
-      const rackHit = (event.modulesHit || []).some((module) => module.module === 'ammoRack');
-      if (rackHit) radio.say('enemy_ammo_rack', { delayS: 0.18 });
-      else if (((event.modulesHit && event.modulesHit.length) ||
-          (event.crewHit && event.crewHit.length)) && (event.damage || 0) > 0) {
-        radio.say('enemy_crit', { prob: 0.72, delayS: 0.18 });
-      } else if ((event.kind === 'pen' || event.kind === 'he_pen') &&
-          (event.damage || 0) > 0) {
-        radio.say('penetration', { prob: 0.82, delayS: 0.18 });
-      } else if (event.kind === 'ricochet' || event.kind === 'nonpen' ||
-          event.kind === 'spaced_absorb') {
-        radio.say('ricochet', { prob: 0.8, delayS: 0.16 });
-      }
+      reportIncomingShellHit(event);
+    } else if (event.attackerId === playerId) {
+      reportOutgoingShellHit(event);
     }
   }
 
@@ -2753,12 +2814,10 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     if (event.state === prev) return;
     const RANK: Readonly<Record<ModuleCondition, number>> = { ok: 0, yellow: 1, red: 2 };
     const worse = RANK[event.state] > RANK[prev];
-    // Track break is a WORLD sound (any tank in earshot, spatial).
-    if (worse && event.state === 'red' &&
-        (event.module === 'trackL' || event.module === 'trackR')) {
-      const info = tankInfo.get(event.id);
-      if (info && info.pos) trackSnap(info.pos.x, info.pos.y, info.pos.z);
-    }
+    const trackBroken = worse && event.state === 'red'
+      && (event.module === 'trackL' || event.module === 'trackR');
+    const info = trackBroken ? tankInfo.get(event.id) : null;
+    if (info?.pos) trackSnap(info.pos.x, info.pos.y, info.pos.z);
     if (playerId == null || event.id !== playerId || phase !== 'battle') return;
     // The parent shell:hit already selected one best call from the entire hit.
     // Keep alarms/world sounds above, but never enqueue each module again.
@@ -2766,19 +2825,23 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       if (worse && event.module === 'ammoRack') ammoRackWarning();
       return;
     }
-    if (worse) {
-      if (event.module === 'ammoRack') ammoRackWarning();
-      const call = MODULE_DAMAGE_CALL[event.module];
-      if (call && (event.state === 'red' ||
-          event.module !== 'trackL' && event.module !== 'trackR')) {
-        radio.say(call, { delayS: 0.1 });
-      }
-    } else if (event.repaired) {
-      const call = event.module === 'gun' ? 'gun_repaired'
-        : (event.module === 'trackL' || event.module === 'trackR') ? 'track_repaired'
-          : event.module === 'engine' ? 'engine_repaired' : 'repairs';
-      radio.say(call, { delayS: 0.12 });
-    }
+    if (worse) reportModuleDamage(event);
+    else if (event.repaired) reportModuleRepair(event.module);
+  }
+
+  function reportModuleDamage(event: ModuleStateEvent): void {
+    if (event.module === 'ammoRack') ammoRackWarning();
+    const call = MODULE_DAMAGE_CALL[event.module];
+    const track = event.module === 'trackL' || event.module === 'trackR';
+    if (call && (event.state === 'red' || !track)) radio.say(call, { delayS: 0.1 });
+  }
+
+  function reportModuleRepair(module: string): void {
+    let call = 'repairs';
+    if (module === 'gun') call = 'gun_repaired';
+    else if (module === 'trackL' || module === 'trackR') call = 'track_repaired';
+    else if (module === 'engine') call = 'engine_repaired';
+    radio.say(call, { delayS: 0.12 });
   }
 
   // ----------------------------------------------------------- public API ---
@@ -2809,6 +2872,65 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     graphReady = true;
   }
 
+  function shouldRestartReload(total: number, kind: string, reloadTime: number): boolean {
+    return !reloadCycle.active || reloadCycle.kind !== kind
+      || Math.abs(reloadCycle.total - total) > 0.01
+      || reloadTime > reloadCycle.lastT + 0.04;
+  }
+
+  function startReloadCycle(total: number, kind: string, caliberMm: number, reloadTime: number): void {
+    reloadCycle.active = true;
+    reloadCycle.total = total;
+    reloadCycle.kind = kind;
+    reloadCycle.caliberMm = caliberMm;
+    reloadCycle.lastT = reloadTime;
+    reloadCycle.nextCue = 0;
+    reloadCycle.plan = resolveReloadCuePlan(total, kind, caliberMm);
+    logSound('reload:start', { kind, total, caliberMm });
+  }
+
+  function playReloadCues(progress: number, kind: string, caliberMm: number): void {
+    const cues = reloadCycle.plan?.cues || [];
+    while (reloadCycle.nextCue < cues.length
+        && progress + 1e-6 >= cues[reloadCycle.nextCue].at) {
+      const cue = cues[reloadCycle.nextCue++];
+      reloadMechanicalSound(cue.type, caliberMm);
+      logSound('reload:cue', { cue: cue.type, kind, progress, caliberMm });
+    }
+  }
+
+  function finishReloadCycle(total: number, kind: string, caliberMm: number): void {
+    if (reloadCycle.plan?.ready) {
+      reloadReadySound(caliberMm);
+      logSound('reload:ready', { kind, total, caliberMm });
+    }
+    reloadCycle.active = false;
+    reloadCalled = false;
+    if (total >= 1.25) radio.say('reloaded', { prob: 0.82, delayS: 0.08 });
+  }
+
+  function onReload(event: ReloadEvent): void {
+    if (!ctx || phase !== 'battle' || battleOver) return;
+    const total = Math.max(0.05, Number(event.total) || 0.05);
+    const kind = event.kind || 'shell';
+    const caliberMm = Math.max(12, Number(event.caliberMm) || 100);
+    const reloadTime = Number(event.t) || 0;
+    if (shouldRestartReload(total, kind, reloadTime)) {
+      startReloadCycle(total, kind, caliberMm, reloadTime);
+    }
+    const progress = Number.isFinite(event.progress)
+      ? Math.max(0, Math.min(1, Number(event.progress)))
+      : Math.max(0, Math.min(1, 1 - reloadTime / total));
+    reloadCycle.plan ||= resolveReloadCuePlan(total, kind, caliberMm);
+    playReloadCues(progress, kind, caliberMm);
+    reloadCycle.lastT = reloadTime;
+    if (event.done) finishReloadCycle(total, kind, caliberMm);
+    else if (!reloadCalled && total >= 2.2) {
+      reloadCalled = true;
+      radio.say('reloading', { prob: 0.5, delayS: 0.1 });
+    }
+  }
+
   /**
    * Subscribe to game events. Safe to call before resume() — handlers no-op
    * until the context exists.
@@ -2830,52 +2952,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
         });
       }
     });
-    on<ReloadEvent>('player:reload', (event) => {
-      if (!ctx || !event || phase !== 'battle' || battleOver) return;
-      const total = Math.max(0.05, Number(event.total) || 0.05);
-      const kind = event.kind || 'shell';
-      const caliberMm = Math.max(12, Number(event.caliberMm) || 100);
-      const reloadTime = Number(event.t) || 0;
-      const restarted = !reloadCycle.active || reloadCycle.kind !== kind ||
-        Math.abs(reloadCycle.total - total) > 0.01 || reloadTime > reloadCycle.lastT + 0.04;
-      if (restarted) {
-        reloadCycle.active = true;
-        reloadCycle.total = total;
-        reloadCycle.kind = kind;
-        reloadCycle.caliberMm = caliberMm;
-        reloadCycle.lastT = reloadTime;
-        reloadCycle.nextCue = 0;
-        reloadCycle.plan = resolveReloadCuePlan(total, kind, caliberMm);
-        logSound('reload:start', { kind, total, caliberMm });
-      }
-      const progress = Number.isFinite(event.progress)
-        ? Math.max(0, Math.min(1, Number(event.progress)))
-        : Math.max(0, Math.min(1, 1 - reloadTime / total));
-      const plan = reloadCycle.plan || resolveReloadCuePlan(total, kind, caliberMm);
-      reloadCycle.plan = plan;
-      const cues = plan.cues;
-      while (reloadCycle.nextCue < cues.length &&
-          progress + 1e-6 >= cues[reloadCycle.nextCue].at) {
-        const cue = cues[reloadCycle.nextCue++];
-        reloadMechanicalSound(cue.type, caliberMm);
-        logSound('reload:cue', { cue: cue.type, kind, progress, caliberMm });
-      }
-      reloadCycle.lastT = reloadTime;
-      if (event.done) {
-        if (plan.ready) {
-          reloadReadySound(caliberMm);
-          logSound('reload:ready', { kind, total, caliberMm });
-        }
-        reloadCycle.active = false;
-        reloadCalled = false;
-        // Autocannon cycles keep their mechanical cue but do not flood the
-        // radio; spoken ready calls are for reloads the player had to wait on.
-        if ((event.total || 0) >= 1.25) radio.say('reloaded', { prob: 0.82, delayS: 0.08 });
-      } else if (!reloadCalled && (event.total || 0) >= 2.2) {
-        reloadCalled = true;
-        radio.say('reloading', { prob: 0.5, delayS: 0.1 });
-      }
-    });
+    on<ReloadEvent>('player:reload', onReload);
     on<TankDestroyedEvent>('tank:destroyed', (event) => {
       if (ctx) onTankDestroyed(event);
     });
@@ -3048,13 +3125,13 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
    *   ownerId?: string|null, scoped?: boolean}} listener camera/vehicle pose
    * @param {Array<object>} tanks all TankEntity objects (alive and dead)
    */
-  function toAudioTankEntity(value: unknown): AudioTankEntity | null {
+  function toAudioTankEntity(value: RuntimeValue): AudioTankEntity | null {
     if (!value || typeof value !== 'object') return null;
     const candidate = value as {
-      id?: unknown;
+      id?: RuntimeValue;
       state?: {
-        pos?: { x?: unknown; y?: unknown; z?: unknown };
-        speed?: unknown;
+        pos?: { x?: RuntimeValue; y?: RuntimeValue; z?: RuntimeValue };
+        speed?: RuntimeValue;
       };
     };
     if (typeof candidate.id !== 'string' || !candidate.state?.pos ||
@@ -3089,140 +3166,168 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     return false;
   }
 
-  function update(
-    dt: number,
-    listener: AudioListenerPose,
-    tanks: readonly unknown[],
-  ): void {
-    if (!ctx) return;
-    // Refresh listener pose (XZ forward, normalized defensively).
-    lx = listener.pos.x; ly = listener.pos.y; lz = listener.pos.z;
+  function updateListenerPose(listener: AudioListenerPose): void {
+    lx = listener.pos.x;
+    ly = listener.pos.y;
+    lz = listener.pos.z;
     listenerKind = listener.kind || 'camera';
     listenerOwnerId = listener.ownerId ?? null;
     listenerScoped = !!listener.scoped && listenerKind !== 'killcam-camera';
-    const fx = listener.forward.x, fz = listener.forward.z;
-    const fl = Math.sqrt(fx * fx + fz * fz);
-    if (fl > 0.001) { lfx = fx / fl; lfz = fz / fl; }
-    listenerValid = true;
-
-    // Prune finished one-shots.
-    const now = ctx!.currentTime;
-    for (let i = voices.length - 1; i >= 0; i--) {
-      if (voices[i].end <= now || voices[i].dead) { disposeVoice(voices[i]); voices.splice(i, 1); }
+    const forwardX = listener.forward.x;
+    const forwardZ = listener.forward.z;
+    const forwardLength = Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
+    if (forwardLength > 0.001) {
+      lfx = forwardX / forwardLength;
+      lfz = forwardZ / forwardLength;
     }
+    listenerValid = true;
+  }
 
-    radio.update();
+  function pruneFinishedVoices(now: number): void {
+    for (let index = voices.length - 1; index >= 0; index--) {
+      const voice = voices[index];
+      if (voice.end > now && !voice.dead) continue;
+      disposeVoice(voice);
+      voices.splice(index, 1);
+    }
+  }
 
-    if (!tanks) return;
-
-    // First pass mirrors identity/position before any event-side decisions,
-    // then ranks the nearest audible engines. Existing voices receive a small
-    // hysteresis bias so equal-distance tanks do not churn at the cap edge.
-    for (let i = 0; i < tanks.length; i++) {
-      const ent = toAudioTankEntity(tanks[i]);
-      if (!ent) continue;
-      const id = ent.id;
-      let info = tankInfo.get(id);
-      if (!info) {
-        info = { team: ent.team, isPlayer: !!ent.isPlayer, pos: ent.state.pos };
-        tankInfo.set(id, info);
+  function indexTankAudioState(tanks: readonly RuntimeValue[]): void {
+    for (let index = 0; index < tanks.length; index++) {
+      const entity = toAudioTankEntity(tanks[index]);
+      if (!entity) continue;
+      const id = entity.id;
+      const info = tankInfo.get(id);
+      if (info) {
+        info.team = entity.team;
+        info.isPlayer = !!entity.isPlayer;
+        info.pos = entity.state.pos;
       } else {
-        info.team = ent.team;
-        info.isPlayer = !!ent.isPlayer;
-        info.pos = ent.state.pos;
+        tankInfo.set(id, {
+          team: entity.team,
+          isPlayer: !!entity.isPlayer,
+          pos: entity.state.pos,
+        });
       }
-      if (ent.isPlayer) playerId = id;
+      if (entity.isPlayer) playerId = id;
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
+  }
 
-    for (let i = 0; i < engineCandidateCount; i++) engineCandidates[i] = null;
+  function rankAudibleEngines(tanks: readonly RuntimeValue[]): void {
+    for (let index = 0; index < engineCandidateCount; index++) engineCandidates[index] = null;
     engineCandidateCount = 0;
-    for (let i = 0; i < tanks.length; i++) {
-      const ent = toAudioTankEntity(tanks[i]);
-      if (!ent || ent.combat?.destroyed) continue;
-      if (probeEngineSoloId != null && ent.id !== probeEngineSoloId) continue;
-      const pos = ent.state.pos;
-      const dx = pos.x - lx, dy = pos.y - ly, dz = pos.z - lz;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const own = ent.id === listenerOwnerId;
-      const active = engines.has(ent.id);
-      if (!own && !engineAudibleAtDistance(dist, active)) continue;
+    for (let index = 0; index < tanks.length; index++) {
+      const entity = toAudioTankEntity(tanks[index]);
+      if (!entity || entity.combat?.destroyed) continue;
+      if (probeEngineSoloId != null && entity.id !== probeEngineSoloId) continue;
+      const pos = entity.state.pos;
+      const dx = pos.x - lx;
+      const dy = pos.y - ly;
+      const dz = pos.z - lz;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const own = entity.id === listenerOwnerId;
+      const active = engines.has(entity.id);
+      if (!own && !engineAudibleAtDistance(distance, active)) continue;
       const score = own ? -1e9
-        : dist - (active ? AUDIO_DISTANCE_MODEL.activeEngineBiasM : 0);
-      rankEngineCandidate(ent, score);
+        : distance - (active ? AUDIO_DISTANCE_MODEL.activeEngineBiasM : 0);
+      rankEngineCandidate(entity, score);
     }
+  }
 
-    for (const [id, eng] of engines) {
+  function stopUnselectedEngines(): void {
+    for (const [id, engine] of engines) {
       if (isEngineCandidate(id)) continue;
-      eng.kill();
+      engine.kill();
       engines.delete(id);
       landing.delete(id);
       logSound('engine:stop', { id, reason: 'range-or-priority' });
     }
+  }
 
-    for (let i = 0; i < tanks.length; i++) {
-      const ent = toAudioTankEntity(tanks[i]);
-      // Deferred battle staging leaves roster shells in game.tanks while the
-      // garage is open; they intentionally have no simulation state yet.
-      // Audio must ignore them until setupBattle supplies a world position.
-      if (!ent) continue;
-      const id = ent.id;
-      const dead = !!(ent.combat && ent.combat.destroyed);
-      let eng = engines.get(id);
-      if (!dead && isEngineCandidate(id)) {
-        if (!eng) {
-          eng = createEngineVoice(ent);
-          engines.set(id, eng);
-          logSound('engine:start', { id, own: id === listenerOwnerId });
-        }
-        eng.update(ent, id === listenerOwnerId, listenerScoped);
-      }
-
-      // Suspension landing detection for engine-audible tanks: a fast sink
-      // that suddenly stops is a hard landing (listener-side, no sim hooks).
-      if (!dead && engines.has(id) && dt > 0.0001) {
-        const y = ent.state.pos.y;
-        let tr = landing.get(id);
-        if (!tr) { tr = { prevY: y, vy: 0, lastThumpT: -1 }; landing.set(id, tr); }
-        else {
-          const vy = (y - tr.prevY) / dt;
-          // |vy| > 30 m/s is a teleport (battle staging/respawn), not physics.
-          if (tr.vy < -LANDING_VY_MPS && tr.vy > -30 && vy > -0.6 &&
-              now - tr.lastThumpT > 0.7) {
-            tr.lastThumpT = now;
-            suspensionThump(ent.state.pos.x, y, ent.state.pos.z, -tr.vy);
-          }
-          tr.vy = vy;
-          tr.prevY = y;
-        }
-      }
-
-      // Player-only mechanical + alarm state.
-      if (ent.isPlayer && !dead && phase === 'battle') {
-        if (!traverseRig) traverseRig = createTraverseRig();
-        traverseRig.update(ent, dt, listenerScoped);
-        // Critical-HP heartbeat: a bounded pulse window per threshold
-        // crossing (never a permanent drone), optional via settings.
-        if (alarmHeartbeatOn && !battleOver && ent.combat && ent.combat.maxHp > 0) {
-          const frac = ent.combat.hp / ent.combat.maxHp;
-          if (frac > HEARTBEAT_HP_FRAC) {
-            heartbeatArmedBelow = 0;
-          } else if (heartbeatArmedBelow === 0 || frac < heartbeatArmedBelow - 0.05) {
-            heartbeatArmedBelow = frac;
-            heartbeatPulse();
-          }
-        }
-      }
-
-      // Re-spatialize any burning-tank fire loop.
-      const fire = fireLoops.get(id);
-      if (fire) {
-        const pos = ent.state.pos;
-        const s = spat(pos.x, pos.y, pos.z);
-        fire.out.gain.setTargetAtTime(s.gain, now, 0.15);
-        fire.pan.pan.setTargetAtTime(s.pan, now, 0.15);
-      }
+  function updateEngineVoice(entity: AudioTankEntity, dead: boolean): void {
+    const id = entity.id;
+    if (dead || !isEngineCandidate(id)) return;
+    let engine = engines.get(id);
+    if (!engine) {
+      engine = createEngineVoice(entity);
+      engines.set(id, engine);
+      logSound('engine:start', { id, own: id === listenerOwnerId });
     }
+    engine.update(entity, id === listenerOwnerId, listenerScoped);
+  }
+
+  function updateLandingSound(entity: AudioTankEntity, dt: number, now: number, dead: boolean): void {
+    if (dead || !engines.has(entity.id) || dt <= 0.0001) return;
+    const y = entity.state.pos.y;
+    const tracker = landing.get(entity.id);
+    if (!tracker) {
+      landing.set(entity.id, { prevY: y, vy: 0, lastThumpT: -1 });
+      return;
+    }
+    const velocityY = (y - tracker.prevY) / dt;
+    const landed = tracker.vy < -LANDING_VY_MPS && tracker.vy > -30
+      && velocityY > -0.6 && now - tracker.lastThumpT > 0.7;
+    if (landed) {
+      tracker.lastThumpT = now;
+      suspensionThump(entity.state.pos.x, y, entity.state.pos.z, -tracker.vy);
+    }
+    tracker.vy = velocityY;
+    tracker.prevY = y;
+  }
+
+  function updatePlayerMechanics(entity: AudioTankEntity, dt: number, dead: boolean): void {
+    if (!entity.isPlayer || dead || phase !== 'battle') return;
+    if (!traverseRig) traverseRig = createTraverseRig();
+    traverseRig.update(entity, dt, listenerScoped);
+    const combat = entity.combat;
+    if (!alarmHeartbeatOn || battleOver || !combat || combat.maxHp <= 0) return;
+    const healthFraction = combat.hp / combat.maxHp;
+    if (healthFraction > HEARTBEAT_HP_FRAC) {
+      heartbeatArmedBelow = 0;
+      return;
+    }
+    if (heartbeatArmedBelow !== 0 && healthFraction >= heartbeatArmedBelow - 0.05) return;
+    heartbeatArmedBelow = healthFraction;
+    heartbeatPulse();
+  }
+
+  function updateFireLoop(entity: AudioTankEntity, now: number): void {
+    const fire = fireLoops.get(entity.id);
+    if (!fire) return;
+    const pos = entity.state.pos;
+    const spatial = spat(pos.x, pos.y, pos.z);
+    fire.out.gain.setTargetAtTime(spatial.gain, now, 0.15);
+    fire.pan.pan.setTargetAtTime(spatial.pan, now, 0.15);
+  }
+
+  function updateTankAudio(tanks: readonly RuntimeValue[], dt: number, now: number): void {
+    for (let index = 0; index < tanks.length; index++) {
+      const entity = toAudioTankEntity(tanks[index]);
+      if (!entity) continue;
+      const dead = !!entity.combat?.destroyed;
+      updateEngineVoice(entity, dead);
+      updateLandingSound(entity, dt, now, dead);
+      updatePlayerMechanics(entity, dt, dead);
+      updateFireLoop(entity, now);
+    }
+  }
+
+  function update(
+    dt: number,
+    listener: AudioListenerPose,
+    tanks: readonly RuntimeValue[],
+  ): void {
+    if (!ctx) return;
+    updateListenerPose(listener);
+    const now = ctx!.currentTime;
+    pruneFinishedVoices(now);
+    radio.update();
+    if (!tanks) return;
+    indexTankAudioState(tanks);
+    rankAudibleEngines(tanks);
+    stopUnselectedEngines();
+    updateTankAudio(tanks, dt, now);
   }
 
   /**

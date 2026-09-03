@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
 import type {
   GarageReturnOptions,
@@ -22,7 +23,7 @@ interface GarageReturnAccessOptions<Visual> {
 }
 
 /** Return/rematch transaction, retained as a stable async facade. */
-export function createGarageReturnAccess<Visual = unknown>({
+export function createGarageReturnAccess<Visual = RuntimeValue>({
   options,
   load = () => import('./garageReturnRuntime.ts'),
 }: GarageReturnAccessOptions<Visual>): GarageReturnAccess {

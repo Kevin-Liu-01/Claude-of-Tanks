@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
 
@@ -71,8 +72,8 @@ navLinks.forEach((link) => link.addEventListener('click', () => {
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');
 const archiveOpen = document.querySelector<HTMLButtonElement>('#docsArchiveOpen');
 const archiveClose = document.querySelector<HTMLButtonElement>('#docsArchiveClose');
-let archiveMountPromise: Promise<unknown> | null = null;
-let archiveMotionPromise: Promise<unknown> | null = null;
+let archiveMountPromise: Promise<RuntimeValue> | null = null;
+let archiveMotionPromise: Promise<RuntimeValue> | null = null;
 
 function stopArchiveMotion(): void {
   archiveDialog?.querySelectorAll<HTMLVideoElement>('video').forEach((video) => video.pause());
@@ -103,7 +104,7 @@ function mountArchiveMotionInfo(): void {
         } : null,
       }));
     });
-  }).catch((error: unknown) => {
+  }).catch((error: RuntimeValue) => {
     archiveMotionPromise = null;
     announce(error instanceof Error ? error.message : String(error));
   });
@@ -120,7 +121,7 @@ archiveOpen?.addEventListener('click', () => {
       document.querySelector('#docsArchiveBody'),
       { mode: 'wall', limit: 88, filters: false },
     ))
-    .catch((error: unknown) => {
+    .catch((error: RuntimeValue) => {
       archiveMountPromise = null;
       announce(error instanceof Error ? error.message : String(error));
     });

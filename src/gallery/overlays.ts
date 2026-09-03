@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import {
   addInternalCrewModel,
@@ -16,7 +17,7 @@ export type InspectionMode = 'appearance' | 'armor' | 'modules' | 'crew';
 type OverlayResource = AnatomyResource;
 
 interface ArmorPlate extends ArmorPlatePort {
-  era?: unknown;
+  era?: RuntimeValue;
   physicalMm?: number;
   keMm?: number;
   ceMm?: number;
@@ -71,6 +72,25 @@ export interface InspectionOverlay {
   clear(): void;
 }
 
+function overlayMaterial(object: THREE.Mesh): THREE.Material | null {
+  if (!object.material) return null;
+  return Array.isArray(object.material) ? object.material[0] || null : object.material;
+}
+
+function restoreOverlayEmphasis(object: THREE.Mesh): void {
+  if (setAnatomyEmphasis(object, false)) return;
+  const material = overlayMaterial(object);
+  if (material) material.opacity = object.userData.galleryBaseOpacity || 0.38;
+}
+
+function applyOverlayEmphasis(object: THREE.Mesh): void {
+  if (setAnatomyEmphasis(object, true)) return;
+  const material = overlayMaterial(object);
+  if (!material) return;
+  object.userData.galleryBaseOpacity ||= material.opacity;
+  material.opacity = Math.min(0.74, material.opacity + 0.28);
+}
+
 const MODULE_COLORS: Readonly<Record<string, number>> = Object.freeze({
   engine: 0xf0a23a, fuelTank: 0xe76f51, ammoRack: 0xff4d5f,
   missileRack: 0xff6b45, autoloader: 0xff738e, feedSystem: 0xffa75c,
@@ -111,32 +131,46 @@ function plateGeometry(plate: ArmorPlate): THREE.BufferGeometry | null {
   return geometry;
 }
 
+function appendCollisionFace(
+  byPlate: Map<ArmorPlate, number[]>,
+  cell: CollisionCell,
+  face: CollisionFace,
+): void {
+  if (face.internal || !face.plate) return;
+  let positions = byPlate.get(face.plate);
+  if (!positions) {
+    positions = [];
+    byPlate.set(face.plate, positions);
+  }
+  for (const index of face.indices || []) {
+    const point = cell.vertices?.[index];
+    if (point) positions.push(point[0], point[1], point[2]);
+  }
+}
+
+function collisionGeometry(
+  plate: ArmorPlate,
+  positions: number[],
+): { plate: ArmorPlate; geometry: THREE.BufferGeometry } | null {
+  if (positions.length < 9 || positions.length % 9 !== 0) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return { plate, geometry };
+}
+
 function collisionPlateGeometry(cells?: CollisionCell[]): Array<{
   plate: ArmorPlate;
   geometry: THREE.BufferGeometry;
 }> {
   const byPlate = new Map<ArmorPlate, number[]>();
   for (const cell of cells || []) {
-    for (const face of cell.faces || []) {
-      if (face.internal || !face.plate) continue;
-      let positions = byPlate.get(face.plate);
-      if (!positions) {
-        positions = [];
-        byPlate.set(face.plate, positions);
-      }
-      for (const index of face.indices || []) {
-        const point = cell.vertices?.[index];
-        if (point) positions.push(point[0], point[1], point[2]);
-      }
-    }
+    for (const face of cell.faces || []) appendCollisionFace(byPlate, cell, face);
   }
   const geometries: Array<{ plate: ArmorPlate; geometry: THREE.BufferGeometry }> = [];
   for (const [plate, positions] of byPlate) {
-    if (positions.length < 9 || positions.length % 9 !== 0) continue;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
-    geometries.push({ plate, geometry });
+    const result = collisionGeometry(plate, positions);
+    if (result) geometries.push(result);
   }
   return geometries;
 }
@@ -368,6 +402,58 @@ function addCrewModels(
   });
 }
 
+function addDetailedArmorPlates(
+  container: THREE.Object3D,
+  plates: readonly ArmorPlate[],
+  baseIndex: number,
+  turret: boolean,
+  resources: OverlayResource[],
+  pickables: THREE.Mesh[],
+): void {
+  let detailIndex = 0;
+  for (const plate of plates) {
+    if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
+    addPlate(container, plate, baseIndex + detailIndex, turret, resources, pickables);
+    detailIndex += 1;
+  }
+}
+
+function addArmorModels(
+  spec: InspectionSpec,
+  hullContainer: THREE.Object3D,
+  turretContainer: THREE.Object3D,
+  resources: OverlayResource[],
+  pickables: THREE.Mesh[],
+): void {
+  const hullPlates = spec.armor?.hullPlates || [];
+  const turretPlates = spec.armor?.turretPlates || [];
+  const exactHull = collisionPlateGeometry(spec.armor?.collisionShells?.hull);
+  const exactTurret = collisionPlateGeometry(spec.armor?.collisionShells?.turret);
+  exactHull.forEach(({ plate, geometry }, index) =>
+    addPlate(hullContainer, plate, index, false, resources, pickables, geometry));
+  exactTurret.forEach(({ plate, geometry }, index) =>
+    addPlate(turretContainer, plate, index, true, resources, pickables, geometry));
+  addDetailedArmorPlates(hullContainer, hullPlates, exactHull.length, false, resources, pickables);
+  addDetailedArmorPlates(turretContainer, turretPlates, exactTurret.length, true, resources, pickables);
+}
+
+function addInspectionModels(
+  mode: InspectionMode,
+  spec: InspectionSpec,
+  hullContainer: THREE.Object3D,
+  turretContainer: THREE.Object3D,
+  resources: OverlayResource[],
+  pickables: THREE.Mesh[],
+): void {
+  if (mode === 'armor') {
+    addArmorModels(spec, hullContainer, turretContainer, resources, pickables);
+  } else if (mode === 'modules') {
+    addModuleModels(spec, hullContainer, turretContainer, resources, pickables);
+  } else if (mode === 'crew') {
+    addCrewModels(spec, hullContainer, turretContainer, resources, pickables);
+  }
+}
+
 function setAnatomyEmphasis(picker: THREE.Mesh | null, emphasized: boolean): boolean {
   const model = picker?.userData?.inspectionVisual;
   if (!(model instanceof THREE.Object3D)) return false;
@@ -399,33 +485,7 @@ export function createInspectionOverlay(
   const hullContainer = attachContainer(root, `gallery_${mode}_hull`);
   const turretContainer = attachContainer(turret, `gallery_${mode}_turret`);
   containers.push(hullContainer, turretContainer);
-
-  if (mode === 'armor') {
-    const hullPlates = spec.armor?.hullPlates || [];
-    const turretPlates = spec.armor?.turretPlates || [];
-    const exactHull = collisionPlateGeometry(spec.armor?.collisionShells?.hull);
-    const exactTurret = collisionPlateGeometry(spec.armor?.collisionShells?.turret);
-    exactHull.forEach(({ plate, geometry }, index) =>
-      addPlate(hullContainer, plate, index, false, resources, pickables, geometry));
-    exactTurret.forEach(({ plate, geometry }, index) =>
-      addPlate(turretContainer, plate, index, true, resources, pickables, geometry));
-    let hullDetailIndex = 0;
-    for (const plate of hullPlates) {
-      if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
-      addPlate(hullContainer, plate, exactHull.length + hullDetailIndex, false, resources, pickables);
-      hullDetailIndex += 1;
-    }
-    let turretDetailIndex = 0;
-    for (const plate of turretPlates) {
-      if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
-      addPlate(turretContainer, plate, exactTurret.length + turretDetailIndex, true, resources, pickables);
-      turretDetailIndex += 1;
-    }
-  } else if (mode === 'modules') {
-    addModuleModels(spec, hullContainer, turretContainer, resources, pickables);
-  } else if (mode === 'crew') {
-    addCrewModels(spec, hullContainer, turretContainer, resources, pickables);
-  }
+  addInspectionModels(mode, spec, hullContainer, turretContainer, resources, pickables);
 
   let emphasized: THREE.Mesh | null = null;
   return {
@@ -433,24 +493,9 @@ export function createInspectionOverlay(
     count: pickables.length,
     pickables,
     emphasize(object: THREE.Mesh | null) {
-      if (emphasized) {
-        if (!setAnatomyEmphasis(emphasized, false) && emphasized.material) {
-          const material = Array.isArray(emphasized.material)
-            ? emphasized.material[0] : emphasized.material;
-          if (material) material.opacity = emphasized.userData.galleryBaseOpacity || 0.38;
-        }
-      }
+      if (emphasized) restoreOverlayEmphasis(emphasized);
       emphasized = object || null;
-      if (emphasized) {
-        if (!setAnatomyEmphasis(emphasized, true) && emphasized.material) {
-          const material = Array.isArray(emphasized.material)
-            ? emphasized.material[0] : emphasized.material;
-          if (material) {
-            emphasized.userData.galleryBaseOpacity ||= material.opacity;
-            material.opacity = Math.min(0.74, material.opacity + 0.28);
-          }
-        }
-      }
+      if (emphasized) applyOverlayEmphasis(emphasized);
     },
     clear() {
       containers.forEach((container) => container.removeFromParent());

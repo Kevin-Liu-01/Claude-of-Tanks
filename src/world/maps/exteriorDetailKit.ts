@@ -216,19 +216,15 @@ function addCornerPiers(
   }
 }
 
-function addFacadeBayRhythm(
+function addFrontRearBays(
   author: ExteriorAuthor,
   w: number,
   d: number,
-  wallH: number,
-  profile: string,
-  variant: number,
+  material: string,
+  pierW: number,
+  pierD: number,
+  pierH: number,
 ): void {
-  if (!['urban', 'civic', 'industrial', 'desert'].includes(profile)) return;
-  const material = profile === 'industrial' ? 'dark' : 'stone';
-  const pierW = profile === 'desert' ? 0.24 : 0.14;
-  const pierD = profile === 'desert' ? 0.16 : 0.12;
-  const pierH = Math.max(1.7, wallH - 0.45);
   const bayCount = Math.max(2, Math.min(4, Math.round(w / 3.4)));
   for (let bay = 1; bay < bayCount; bay++) {
     const x = -w / 2 + (w * bay) / bayCount;
@@ -238,19 +234,35 @@ function addFacadeBayRhythm(
           .translate(x, pierH / 2 + 0.10, side * (d / 2 + 0.035)));
     }
   }
+}
 
-  if (profile === 'industrial') {
-    const sideBayCount = Math.max(2, Math.min(4, Math.round(d / 4.1)));
-    for (let bay = 1; bay < sideBayCount; bay++) {
-      const z = -d / 2 + (d * bay) / sideBayCount;
-      for (const side of [-1, 1]) {
-        author.add(`side-bay-${bay}-${side}`, 'dark',
-          box(0.12, pierH, pierW)
-            .translate(side * (w / 2 + 0.035), pierH / 2 + 0.10, z));
-      }
+function addIndustrialSideBays(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  pierW: number,
+  pierH: number,
+): void {
+  const sideBayCount = Math.max(2, Math.min(4, Math.round(d / 4.1)));
+  for (let bay = 1; bay < sideBayCount; bay++) {
+    const z = -d / 2 + (d * bay) / sideBayCount;
+    for (const side of [-1, 1]) {
+      author.add(`side-bay-${bay}-${side}`, 'dark',
+        box(0.12, pierH, pierW)
+          .translate(side * (w / 2 + 0.035), pierH / 2 + 0.10, z));
     }
   }
+}
 
+function addUtilityApertures(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+  material: string,
+): void {
   // A pair of framed utility apertures gives broad blank elevations real
   // depth. They sit against the wall envelope and reuse existing buckets;
   // no additional material or scene node survives the merge.
@@ -283,6 +295,24 @@ function addFacadeBayRhythm(
       }
     }
   }
+}
+
+function addFacadeBayRhythm(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
+  if (!['urban', 'civic', 'industrial', 'desert'].includes(profile)) return;
+  const material = profile === 'industrial' ? 'dark' : 'stone';
+  const pierW = profile === 'desert' ? 0.24 : 0.14;
+  const pierD = profile === 'desert' ? 0.16 : 0.12;
+  const pierH = Math.max(1.7, wallH - 0.45);
+  addFrontRearBays(author, w, d, material, pierW, pierD, pierH);
+  if (profile === 'industrial') addIndustrialSideBays(author, w, d, pierW, pierH);
+  addUtilityApertures(author, w, d, wallH, profile, variant, material);
 }
 
 function addRainwater(
@@ -396,6 +426,94 @@ function addEntryAssembly(
   }
 }
 
+function addRuralSignature(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  variant: number,
+): void {
+  const frontZ = d / 2 + 0.06;
+  // Asymmetric shutter groups break the repeated blank-house silhouette.
+  const y = Math.min(2.15, wallH * 0.58);
+  const centerX = variant % 2 === 0 ? -w * 0.23 : w * 0.23;
+  for (const side of [-1, 1]) {
+    author.add(`shutter-${side}`, 'wood',
+      box(Math.min(0.36, w * 0.055), 1.12, 0.11)
+        .translate(centerX + side * Math.min(0.56, w * 0.085), y, frontZ));
+  }
+  author.add('shutter-head', 'wood',
+    box(Math.min(1.5, w * 0.22), 0.10, 0.13)
+      .translate(centerX, y + 0.62, frontZ + 0.01));
+}
+
+function addUrbanSignature(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
+  // A shallow balcony is carried by its wall-embedded deck; railings are
+  // registered against that deck so no bar can survive as a floating part.
+  const deckY = Math.min(wallH - 0.85, profile === 'civic' ? 3.45 : 3.05);
+  const deckW = Math.min(w * (variant % 2 === 0 ? 0.56 : 0.42), 5.8);
+  author.add('balcony-deck', 'stone',
+    box(deckW, 0.13, 0.88).translate(0, deckY, d / 2 + 0.40));
+  const postXs = [-deckW / 2 + 0.12, 0, deckW / 2 - 0.12];
+  for (let index = 0; index < postXs.length; index++) {
+    author.add(`balcony-post-${index}`, 'dark',
+      box(0.08, 0.78, 0.08)
+        .translate(postXs[index], deckY + 0.45, d / 2 + 0.78), 'balcony-deck');
+  }
+  author.add('balcony-rail', 'dark',
+    box(deckW, 0.08, 0.08).translate(0, deckY + 0.82, d / 2 + 0.78),
+    'balcony-post-0');
+}
+
+function addIndustrialSignature(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  variant: number,
+): void {
+  // External service ladder: two facade-seated rails and bounded rungs.
+  const x = w / 2 + 0.055;
+  const z = (variant % 3 - 1) * d * 0.18;
+  const ladderH = Math.max(1.8, wallH * 0.78);
+  for (const side of [-1, 1]) {
+    author.add(`ladder-rail-${side}`, 'dark',
+      cylinder(0.045, ladderH, 7)
+        .translate(x, ladderH / 2 + 0.16, z + side * 0.42));
+  }
+  const rungCount = Math.max(4, Math.min(8, Math.round(ladderH / 0.48)));
+  for (let index = 0; index < rungCount; index++) {
+    author.add(`ladder-rung-${index}`, 'dark',
+      box(0.12, 0.055, 0.84)
+        .translate(x + 0.025, 0.34 + index * (ladderH - 0.36) / (rungCount - 1), z),
+      'ladder-rail--1');
+  }
+}
+
+function addDesertSignature(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  variant: number,
+): void {
+  // Grounded facade buttresses add adobe depth without a new material or
+  // per-building object. They taper visually as stepped supported blocks.
+  for (const side of [-1, 1]) {
+    const x = side * w * (variant % 2 === 0 ? 0.34 : 0.26);
+    author.add(`buttress-${side}`, 'stone',
+      box(0.42, Math.min(1.55, wallH * 0.46), 0.72)
+        .translate(x, Math.min(0.775, wallH * 0.23), d / 2 + 0.27), 'ground');
+  }
+}
+
 function addProfileSignature(
   author: ExteriorAuthor,
   w: number,
@@ -404,70 +522,14 @@ function addProfileSignature(
   profile: string,
   variant: number,
 ): void {
-  const frontZ = d / 2 + 0.06;
   if (profile === 'rural' || profile === 'timber') {
-    // Asymmetric shutter groups break the repeated blank-house silhouette.
-    const y = Math.min(2.15, wallH * 0.58);
-    const centerX = variant % 2 === 0 ? -w * 0.23 : w * 0.23;
-    for (const side of [-1, 1]) {
-      author.add(`shutter-${side}`, 'wood',
-        box(Math.min(0.36, w * 0.055), 1.12, 0.11)
-          .translate(centerX + side * Math.min(0.56, w * 0.085), y, frontZ));
-    }
-    author.add('shutter-head', 'wood',
-      box(Math.min(1.5, w * 0.22), 0.10, 0.13)
-        .translate(centerX, y + 0.62, frontZ + 0.01));
-    return;
-  }
-
-  if (profile === 'urban' || profile === 'civic') {
-    // A shallow balcony is carried by its wall-embedded deck; railings are
-    // registered against that deck so no bar can survive as a floating part.
-    const deckY = Math.min(wallH - 0.85, profile === 'civic' ? 3.45 : 3.05);
-    const deckW = Math.min(w * (variant % 2 === 0 ? 0.56 : 0.42), 5.8);
-    author.add('balcony-deck', 'stone',
-      box(deckW, 0.13, 0.88).translate(0, deckY, d / 2 + 0.40));
-    const postXs = [-deckW / 2 + 0.12, 0, deckW / 2 - 0.12];
-    for (let index = 0; index < postXs.length; index++) {
-      author.add(`balcony-post-${index}`, 'dark',
-        box(0.08, 0.78, 0.08)
-          .translate(postXs[index], deckY + 0.45, d / 2 + 0.78), 'balcony-deck');
-    }
-    author.add('balcony-rail', 'dark',
-      box(deckW, 0.08, 0.08).translate(0, deckY + 0.82, d / 2 + 0.78),
-      'balcony-post-0');
-    return;
-  }
-
-  if (profile === 'industrial') {
-    // External service ladder: two facade-seated rails and bounded rungs.
-    const x = w / 2 + 0.055;
-    const z = (variant % 3 - 1) * d * 0.18;
-    const ladderH = Math.max(1.8, wallH * 0.78);
-    for (const side of [-1, 1]) {
-      author.add(`ladder-rail-${side}`, 'dark',
-        cylinder(0.045, ladderH, 7)
-          .translate(x, ladderH / 2 + 0.16, z + side * 0.42));
-    }
-    const rungCount = Math.max(4, Math.min(8, Math.round(ladderH / 0.48)));
-    for (let index = 0; index < rungCount; index++) {
-      author.add(`ladder-rung-${index}`, 'dark',
-        box(0.12, 0.055, 0.84)
-          .translate(x + 0.025, 0.34 + index * (ladderH - 0.36) / (rungCount - 1), z),
-        'ladder-rail--1');
-    }
-    return;
-  }
-
-  if (profile === 'desert') {
-    // Grounded facade buttresses add adobe depth without a new material or
-    // per-building object. They taper visually as stepped supported blocks.
-    for (const side of [-1, 1]) {
-      const x = side * w * (variant % 2 === 0 ? 0.34 : 0.26);
-      author.add(`buttress-${side}`, 'stone',
-        box(0.42, Math.min(1.55, wallH * 0.46), 0.72)
-          .translate(x, Math.min(0.775, wallH * 0.23), d / 2 + 0.27), 'ground');
-    }
+    addRuralSignature(author, w, d, wallH, variant);
+  } else if (profile === 'urban' || profile === 'civic') {
+    addUrbanSignature(author, w, d, wallH, profile, variant);
+  } else if (profile === 'industrial') {
+    addIndustrialSignature(author, w, d, wallH, variant);
+  } else if (profile === 'desert') {
+    addDesertSignature(author, w, d, wallH, variant);
   }
 }
 
@@ -498,15 +560,30 @@ export function addConnectedExterior(
   parts: GeometryBuckets,
   options: ExteriorOptions = {},
 ): ExteriorReceipt {
-  const {
-    id = 'building', w, d, wallH, profile = 'rural', variant = 0,
-  } = options;
+  const { variant, ...envelope } = validateExteriorEnvelope(options);
+  const author = detailAuthor(parts, envelope);
+  addPrimaryExterior(author, envelope, variant);
+  addSecondaryExterior(author, envelope, variant);
+  return appendExteriorReceipt(parts, author.receipt());
+}
+
+function validateExteriorEnvelope(
+  options: ExteriorOptions,
+): ExteriorEnvelope & { variant: number } {
+  const { id = 'building', w, d, wallH, profile = 'rural', variant = 0 } = options;
   if (!(typeof w === 'number' && w > 1
       && typeof d === 'number' && d > 1
       && typeof wallH === 'number' && wallH > 1)) {
     throw new TypeError(`${id}: invalid exterior envelope`);
   }
-  const author = detailAuthor(parts, { w, d, wallH, id, profile });
+  return { id, w, d, wallH, profile, variant };
+}
+
+function addPrimaryExterior(
+  author: ExteriorAuthor,
+  { w, d, wallH, profile }: ExteriorEnvelope,
+  variant: number,
+): void {
   const masonry = profile !== 'timber' && profile !== 'canvas';
   addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
   addFacadeBayRhythm(author, w, d, wallH, profile, variant);
@@ -515,7 +592,13 @@ export function addConnectedExterior(
     addProfileSignature(author, w, d, wallH, profile, variant);
     addRoofService(author, w, d, wallH, profile, variant);
   }
+}
 
+function addSecondaryExterior(
+  author: ExteriorAuthor,
+  { w, d, wallH, profile }: ExteriorEnvelope,
+  variant: number,
+): void {
   // Dense rowhouse strips already carry authored window reveals, dormers and
   // street furniture. Alternate the heavyweight corner/service package there
   // so a whole block does not become the same repeated silhouette (and so the
@@ -533,7 +616,12 @@ export function addConnectedExterior(
   if ((profile === 'urban' || profile === 'industrial' || profile === 'desert') && variant % 2 === 0) {
     addSupportedAwning(author, w, d, wallH, profile === 'desert' ? 'wood' : 'roof');
   }
-  const receipt = author.receipt();
+}
+
+function appendExteriorReceipt(
+  parts: GeometryBuckets,
+  receipt: ExteriorReceipt,
+): ExteriorReceipt {
   let receipts = parts[EXTERIOR_RECEIPTS];
   if (!receipts) {
     receipts = [];

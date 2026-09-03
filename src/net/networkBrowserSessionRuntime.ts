@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createNetworkBattleBarrier } from './networkBattleBarrier.ts';
 import { createNetworkRecoveryOwner } from './connectionRecovery.ts';
 import {
@@ -12,27 +13,27 @@ import type { SampledSnapshotFrame } from './snapshot.ts';
 
 export type NetworkBrowserMatch = NetworkMatchLike & {
   playerId?: string;
-  ready(): unknown;
-  close(reason?: string): unknown;
+  ready(): RuntimeValue;
+  close(reason?: string): RuntimeValue;
 };
 
 export interface NetworkBrowserBridge extends NetworkBridgeLike {
-  entities: Map<string, unknown>;
+  entities: Map<string, RuntimeValue>;
   dispose(): void;
-  getPresentationEventStats?(): Record<string, unknown> | null;
+  getPresentationEventStats?(): Record<string, RuntimeValue> | null;
 }
 
 export interface NetworkBrowserStatus extends NetworkStatusLike {
-  set(status: unknown): void;
+  set(status: RuntimeValue): void;
   dispose(): void;
 }
 
 interface NetworkBrowserSessionOptions {
-  getPlayer(): unknown;
+  getPlayer(): RuntimeValue;
   isBattleActive(): boolean;
   shouldPresentDisconnect(): boolean;
-  nextFrame(): Promise<unknown>;
-  onHostError?: (error: unknown) => void;
+  nextFrame(): Promise<RuntimeValue>;
+  onHostError?: (error: RuntimeValue) => void;
 }
 
 export interface NetworkBrowserSessionRuntime {
@@ -52,8 +53,8 @@ export interface NetworkBrowserSessionRuntime {
   disposePresentation(): void;
   close(reason?: string): void;
   setSpectator(spectator: boolean): void;
-  resolveEntity(id: string): unknown;
-  diagnostics(): Record<string, unknown> | null;
+  resolveEntity(id: string): RuntimeValue;
+  diagnostics(): Record<string, RuntimeValue> | null;
   readonly match: NetworkBrowserMatch | null;
   readonly bridge: NetworkBrowserBridge | null;
   readonly status: NetworkBrowserStatus | null;

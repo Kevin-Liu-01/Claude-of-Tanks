@@ -905,6 +905,86 @@ function applyFbmAlpha(
   ctx.putImageData(img, 0, 0);
 }
 
+interface FlipbookProfile {
+  tileSize: number;
+  octaves: number;
+  churnLo: number;
+  churnHi: number;
+  gamma: number;
+}
+
+function flipbookProfile(style: FlipbookStyle): FlipbookProfile {
+  if (style === 'fire') {
+    return { tileSize: 256, octaves: 5, churnLo: 0.55, churnHi: 0.55, gamma: 0.88 };
+  }
+  if (style === 'prop') {
+    return { tileSize: 192, octaves: 5, churnLo: 0.36, churnHi: 0.88, gamma: 0.98 };
+  }
+  if (style === 'dust') {
+    return { tileSize: 128, octaves: 4, churnLo: 0.58, churnHi: 0.62, gamma: 1.06 };
+  }
+  return { tileSize: 128, octaves: 4, churnLo: 0.52, churnHi: 0.62, gamma: 1.06 };
+}
+
+function renderFlipbookFrame(
+  frame: number,
+  profile: FlipbookProfile,
+  warp: Noise2D,
+  churn: Noise2D,
+  pixels: Uint8ClampedArray,
+): void {
+  const tiles = 4;
+  const tile = profile.tileSize;
+  const atlasSize = tiles * tile;
+  const progress = frame / (tiles * tiles - 1);
+  const tileX = (frame % tiles) * tile;
+  const tileY = Math.floor(frame / tiles) * tile;
+  const rotation = progress * 1.35;
+  const cosine = Math.cos(rotation);
+  const sine = Math.sin(rotation);
+  const zoom = 1 / (1 + 0.5 * progress);
+  for (let y = 0; y < tile; y++) {
+    renderFlipbookRow(y, tileX, tileY, atlasSize, progress, cosine, sine,
+      zoom, profile, warp, churn, pixels);
+  }
+}
+
+function renderFlipbookRow(
+  y: number,
+  tileX: number,
+  tileY: number,
+  atlasSize: number,
+  progress: number,
+  cosine: number,
+  sine: number,
+  zoom: number,
+  profile: FlipbookProfile,
+  warp: Noise2D,
+  churn: Noise2D,
+  pixels: Uint8ClampedArray,
+): void {
+  const tile = profile.tileSize;
+  for (let x = 0; x < tile; x++) {
+    const nx = (x + 0.5) / tile - 0.5;
+    const ny = (y + 0.5) / tile - 0.5;
+    const radius = Math.sqrt(nx * nx + ny * ny) * 2;
+    const ux = (nx * cosine - ny * sine) * zoom + 0.5 + progress * 0.23;
+    const uy = (nx * sine + ny * cosine) * zoom + 0.5;
+    const warpedRadius = radius
+      + (warp(ux, uy) - 0.5) * (0.40 + 0.42 * progress);
+    let alpha = 1 - (warpedRadius - 0.14) / (0.76 - 0.14 * progress);
+    alpha = Math.max(0, Math.min(1, alpha));
+    alpha *= profile.churnLo + profile.churnHi * churn(ux * 1.9 + 3.7, uy * 1.9 + 1.3);
+    alpha = Math.max(0, (alpha - 0.20 * progress) / (1 - 0.20 * progress));
+    alpha = Math.pow(Math.min(1, alpha), profile.gamma);
+    const cap = Math.max(0, Math.min(1, (radius - 0.84) / 0.15));
+    alpha *= 1 - cap * cap * (3 - 2 * cap);
+    const offset = ((tileY + y) * atlasSize + tileX + x) * 4;
+    pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = 255;
+    pixels[offset + 3] = Math.round(alpha * 255);
+  }
+}
+
 /**
  * Procedural 4x4 flipbook atlas of noise-eroded billow frames (generated on
  * a canvas at boot). Frame k rotates + advects the fbm domain and raises the
@@ -923,22 +1003,15 @@ function* makeFlipbookTextureSteps(
   // a destruction fireball card reaches 5-7 m, and the coarse noise scaled to
   // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
   // ate into it (r6). smoke/dust keep 128 — they never erode as hard.
-  const fire = style === 'fire';
-  // r6 'prop' style: the muzzle propellant mass — mid-res tiles with HIGH
-  // per-texel churn contrast so the erosion-band shader (PUFF_FRAG_PROP) has
-  // real internal structure to gate; the cloud reads as torn billows, never
-  // an airbrushed gradient.
-  const prop = style === 'prop';
-  // lighting_post r3 (round 3): fire 176 → 256 — tiles still resolved as
-  // stipple in 2x crops of 5-7 m cards (one-time bake cost ~+40 ms).
-  const TILES = 4, T = fire ? 256 : (prop ? 192 : 128), S = TILES * T;
+  const profile = flipbookProfile(style);
+  const tiles = 4;
+  const atlasSize = tiles * profile.tileSize;
   const cv = document.createElement('canvas');
-  cv.width = cv.height = S;
+  cv.width = cv.height = atlasSize;
   const ctx = cv.getContext('2d')!;
-  const warp = makeFbm(rng, (fire || prop) ? 5 : 4);
-  const churn = makeFbm(rng, (fire || prop) ? 5 : 4);
-  const img = ctx.createImageData(S, S);
-  const d = img.data;
+  const warp = makeFbm(rng, profile.octaves);
+  const churn = makeFbm(rng, profile.octaves);
+  const img = ctx.createImageData(atlasSize, atlasSize);
   // r5 anti-stipple: fire churn contrast 0.26/1.10 -> 0.44/0.72 and smoke
   // 0.48/0.78 -> 0.52/0.62 — the old per-texel contrast is what the erosion
   // front binarized into GIF-dither confetti on 5-7 m cards at 100% zoom.
@@ -949,38 +1022,8 @@ function* makeFlipbookTextureSteps(
   // destruction cards (r4 "hundreds of dark stipple dots").
   // prop: high per-texel contrast IS the point — PUFF_FRAG_PROP's wide
   // erosion band dissolves it as translucent billow gradients, never speckle.
-  const churnLo = fire ? 0.55 : (prop ? 0.36 : (style === 'dust' ? 0.58 : 0.52));
-  const churnHi = fire ? 0.55 : (prop ? 0.88 : (style === 'dust' ? 0.62 : 0.62));
-  const gamma = fire ? 0.88 : (prop ? 0.98 : 1.06);
-  for (let k = 0; k < TILES * TILES; k++) {
-    const q = k / (TILES * TILES - 1);          // 0 -> 1 over the sequence
-    const tx = (k % TILES) * T, ty = Math.floor(k / TILES) * T;
-    const rot = q * 1.35;                        // domain rotation = roll
-    const cs = Math.cos(rot), sn = Math.sin(rot);
-    const zoom = 1 / (1 + 0.5 * q);              // features grow as it rolls
-    for (let y = 0; y < T; y++) {
-      for (let x = 0; x < T; x++) {
-        const nx = (x + 0.5) / T - 0.5, ny = (y + 0.5) / T - 0.5;
-        const r = Math.sqrt(nx * nx + ny * ny) * 2;
-        const ux = (nx * cs - ny * sn) * zoom + 0.5 + q * 0.23;
-        const uy = (nx * sn + ny * cs) * zoom + 0.5;
-        const w = warp(ux, uy);
-        const c = churn(ux * 1.9 + 3.7, uy * 1.9 + 1.3);
-        const rw = r + (w - 0.5) * (0.40 + 0.42 * q); // raggedness grows
-        let a = 1 - (rw - 0.14) / (0.76 - 0.14 * q);
-        a = Math.max(0, Math.min(1, a));
-        a *= churnLo + churnHi * c;
-        // erosion floor rises over the sequence: late frames break apart
-        a = Math.max(0, (a - 0.20 * q) / (1 - 0.20 * q));
-        a = Math.pow(Math.min(1, a), gamma);
-        // hard radial cap: tile edges must stay fully transparent (no seams)
-        const capT = Math.max(0, Math.min(1, (r - 0.84) / 0.15));
-        a *= 1 - capT * capT * (3 - 2 * capT);
-        const i = ((ty + y) * S + tx + x) * 4;
-        d[i] = d[i + 1] = d[i + 2] = 255;
-        d[i + 3] = Math.round(a * 255);
-      }
-    }
+  for (let frame = 0; frame < tiles * tiles; frame++) {
+    renderFlipbookFrame(frame, profile, warp, churn, img.data);
     // A whole six-atlas bake measured above 200 ms on constrained hardware,
     // Long Animation Frame just after splash teardown. A tile is the
     // smallest deterministic boundary: all RNG consumption and pixel order

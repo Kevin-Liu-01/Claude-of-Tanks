@@ -1,7 +1,8 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 const RECIPES_URL = '/media/capture-recipes-r1.json';
 export interface CaptureRecipeCatalog {
   media: Record<string, string>;
-  recipes: Record<string, unknown>;
+  recipes: Record<string, RuntimeValue>;
 }
 
 let recipesPromise: Promise<CaptureRecipeCatalog> | undefined;
@@ -16,14 +17,14 @@ export function loadCaptureRecipes(): Promise<CaptureRecipeCatalog> {
   return recipesPromise;
 }
 
-export function mediaPath(value: unknown): string {
+export function mediaPath(value: RuntimeValue): string {
   const source = String(value || '');
   if (!source) return '';
   try { return new URL(source, globalThis.location?.href || 'http://localhost/').pathname; }
   catch (_) { return source; }
 }
 
-export function recipeForMedia(catalog: CaptureRecipeCatalog, value: unknown): unknown | null {
+export function recipeForMedia(catalog: CaptureRecipeCatalog, value: RuntimeValue): RuntimeValue | null {
   const id = catalog?.media?.[mediaPath(value)];
   return id ? catalog.recipes?.[id] || null : null;
 }

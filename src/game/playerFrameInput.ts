@@ -116,71 +116,88 @@ export function createPlayerFrameInput({
     wheelStep = Math.max(wheelStep - 1, -3);
   });
 
+  function playerCanDrive(sample: PlayerFrameSample): sample is PlayerFrameSample & {
+    player: PlayerEntity;
+  } {
+    return sample.inBattle && !sample.paused && !sample.killcamActive &&
+      !!sample.player && !sample.player.combat.destroyed;
+  }
+
+  function updateTankInput(sample: PlayerFrameSample): void {
+    const player = sample.player;
+    if (!player) return;
+    const tankInput = player.input;
+    if (!playerCanDrive(sample)) {
+      tankInput.throttle = 0;
+      tankInput.steer = 0;
+      tankInput.brake = false;
+      tankInput.fire = false;
+      return;
+    }
+    const state = input.getState();
+    const touchDriving = input.getVirtualMove(virtualMove);
+    tankInput.throttle = touchDriving
+      ? virtualMove.y
+      : (state.forward ? 1 : 0) - (state.back ? 1 : 0);
+    // TankInput steer is positive hull yaw. In this world that turns the
+    // nose toward screen-left, so the D/right action must be negative.
+    tankInput.steer = touchDriving
+      ? -virtualMove.x
+      : (state.left ? 1 : 0) - (state.right ? 1 : 0);
+    tankInput.brake = state.handbrake;
+    const fireLane = input.isLocked() || input.padActive() ||
+      input.isCursorAim() || input.virtualActive();
+    tankInput.fire = ((state.fire && fireLane) || forceFire()) &&
+      hasAmmo(tankInput.shellSlot | 0);
+  }
+
+  function updateCameraDelta(sample: PlayerFrameSample): void {
+    input.consumeMouseDelta(mouse, sample.dtSeconds, sample.rigMode === 'SNIPER');
+    const paused = sample.paused;
+    const cameraLocked = sample.cameraLocked;
+    camera.mouseDX = paused || cameraLocked ? 0 : mouse.x;
+    camera.mouseDY = paused || cameraLocked ? 0 : mouse.y;
+    camera.wheel = paused || cameraLocked ? 0 : wheelStep;
+  }
+
+  function updateCursorAim(sample: PlayerFrameSample, cursorAim: boolean): void {
+    camera.cursorAim = sample.inBattle && !sample.paused && !sample.cameraLocked && cursorAim;
+    if (!camera.cursorAim) return;
+    input.getCursorNdc(cursorNdc);
+    camera.cursorX = cursorNdc.x;
+    camera.cursorY = cursorNdc.y;
+  }
+
+  function battleAimIsAvailable(sample: PlayerFrameSample): boolean {
+    return sample.inBattle && !sample.paused && !sample.killcamActive &&
+      !sample.cameraLocked && !!sample.player && !sample.player.combat.destroyed;
+  }
+
+  function updateAimActions(sample: PlayerFrameSample, cursorAim: boolean): void {
+    const rmbMode = input.getSettings().rmbMode || 'hold';
+    const rmbHeld = input.isDown('freeCamera');
+    const freeLookHeld = input.isDown('freeLook');
+    const sniperToggleHeld = input.isDown('sniperToggle');
+    const aimAvailable = battleAimIsAvailable(sample);
+    camera.rmb = aimAvailable && !cursorAim &&
+      (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
+    if (sample.player?.input) sample.player.input.aimLocked = camera.rmb;
+    camera.aimHold = aimAvailable && rmbMode === 'hold' && rmbHeld;
+    camera.shiftPressed = !sample.cameraLocked && (
+      sniperToggleHeld ||
+      (rmbMode === 'toggle' && rmbHeld) ||
+      (rmbMode === 'freelook' && cursorAim && rmbHeld)
+    );
+  }
+
   return {
     camera,
-    poll({
-      dtSeconds,
-      inBattle,
-      paused,
-      killcamActive,
-      cameraLocked,
-      rigMode,
-      player,
-    }) {
-      if (inBattle && !paused && !killcamActive && player && !player.combat.destroyed) {
-        const state = input.getState();
-        const tankInput = player.input;
-        const touchDriving = input.getVirtualMove(virtualMove);
-        tankInput.throttle = touchDriving
-          ? virtualMove.y
-          : (state.forward ? 1 : 0) - (state.back ? 1 : 0);
-        // TankInput steer is positive hull yaw. In this world that turns the
-        // nose toward screen-left, so the D/right action must be negative.
-        tankInput.steer = touchDriving
-          ? -virtualMove.x
-          : (state.left ? 1 : 0) - (state.right ? 1 : 0);
-        tankInput.brake = state.handbrake;
-        const fireLane = input.isLocked() || input.padActive()
-          || input.isCursorAim() || input.virtualActive();
-        tankInput.fire = ((state.fire && fireLane) || forceFire())
-          && hasAmmo(tankInput.shellSlot | 0);
-      } else if (player) {
-        const tankInput = player.input;
-        tankInput.throttle = 0;
-        tankInput.steer = 0;
-        tankInput.brake = false;
-        tankInput.fire = false;
-      }
-
-      input.consumeMouseDelta(mouse, dtSeconds, rigMode === 'SNIPER');
-      camera.mouseDX = paused || cameraLocked ? 0 : mouse.x;
-      camera.mouseDY = paused || cameraLocked ? 0 : mouse.y;
-      camera.wheel = paused || cameraLocked ? 0 : wheelStep;
-
+    poll(sample) {
+      updateTankInput(sample);
+      updateCameraDelta(sample);
       const cursorAim = input.isCursorAim();
-      camera.cursorAim = inBattle && !paused && !cameraLocked && cursorAim;
-      if (camera.cursorAim) {
-        input.getCursorNdc(cursorNdc);
-        camera.cursorX = cursorNdc.x;
-        camera.cursorY = cursorNdc.y;
-      }
-
-      const rmbMode = input.getSettings().rmbMode || 'hold';
-      const rmbHeld = input.isDown('freeCamera');
-      const freeLookHeld = input.isDown('freeLook');
-      const sniperToggleHeld = input.isDown('sniperToggle');
-      const liveBattleAimAvailable = inBattle && !paused && !killcamActive &&
-        !cameraLocked && !!player && !player.combat.destroyed;
-      camera.rmb = liveBattleAimAvailable && !cursorAim
-        && (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
-      if (player?.input) player.input.aimLocked = camera.rmb;
-      camera.aimHold = liveBattleAimAvailable
-        && rmbMode === 'hold' && rmbHeld;
-      camera.shiftPressed = !cameraLocked && (
-        sniperToggleHeld
-        || (rmbMode === 'toggle' && rmbHeld)
-        || (rmbMode === 'freelook' && cursorAim && rmbHeld)
-      );
+      updateCursorAim(sample, cursorAim);
+      updateAimActions(sample, cursorAim);
       wheelStep = 0;
       return camera;
     },

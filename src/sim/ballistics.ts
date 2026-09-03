@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * ballistics.ts — shell flight integration, penetration-vs-distance, aim
  * solutions and gun dispersion sampling.
@@ -25,7 +26,7 @@ export interface BallisticShellSpec {
   pen2000Mm?: number;
   dmg?: number;
   moduleDmg?: number;
-  tracer?: unknown;
+  tracer?: RuntimeValue;
 }
 
 export interface PenetrationSpec {

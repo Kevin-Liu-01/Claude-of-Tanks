@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Retryable owner for the battle-only HUD graph.
  *
@@ -64,7 +65,7 @@ export function createBattleHudAccess(
       hud.setDamagePanel(damagePanel);
       current = Object.freeze({ hud, damagePanel });
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

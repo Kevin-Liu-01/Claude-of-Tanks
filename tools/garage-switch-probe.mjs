@@ -117,20 +117,23 @@ async function phaseAB() {
       reset() { this.samples = 0; this.empty = 0; this.spans.length = 0; this._start = 0; },
       _start: 0,
     };
+    const visiblePedestalTank = (debug) => {
+      for (const child of debug.scene.children) {
+        if (!child.name || !child.name.startsWith('tank_')) continue;
+        if (child.visible === false) continue;
+        if (Math.abs(child.position.x + 1500) > 4
+          || Math.abs(child.position.z + 1500) > 4) continue;
+        if (child.position.y < -80) continue;
+        return true;
+      }
+      return false;
+    };
     setInterval(() => {
       const D = window.__DEBUG;
       if (!D || !D.scene || D.game.phase !== 'garage') return;
       const E = window.__EMPTY_STAGE;
       E.samples++;
-      let occupied = false;
-      for (const c of D.scene.children) {
-        if (!c.name || !c.name.startsWith('tank_')) continue;
-        if (c.visible === false) continue;
-        if (Math.abs(c.position.x + 1500) > 4 || Math.abs(c.position.z + 1500) > 4) continue;
-        if (c.position.y < -80) continue; // parked heroes live 200 m down
-        occupied = true;
-        break;
-      }
+      const occupied = visiblePedestalTank(D);
       const now = Math.round(performance.now());
       if (!occupied) {
         E.empty++;
@@ -191,79 +194,79 @@ async function phaseAB() {
       } : null,
     };
   });
-
-  // --- Phase A: rapid-click rounds ---
-  console.log(`[phase A] ${ROUNDS} rounds x ${CLICKS} rapid clicks (50-150 ms)`);
+  const waitForConvergence = async (timeoutMs, intervalMs, startedAt = Date.now()) => {
+    let state = await converged();
+    while (!state.ok && Date.now() - startedAt < timeoutMs) {
+      await sleep(intervalMs);
+      state = await converged();
+    }
+    return { state, elapsedMs: Date.now() - startedAt };
+  };
   let roundsFailed = 0;
-  for (let round = 1; round <= ROUNDS; round++) {
-    await page.evaluate(() => window.__EMPTY_STAGE.reset());
-    let lastId = '?';
-    for (let i = 0; i < CLICKS; i++) {
-      const kind = rng() < 0.18 ? 'chip' : 'card';
-      const id = await clickTarget(kind);
-      if (id) lastId = `${kind}:${id}`;
-      await sleep(50 + Math.floor(rng() * 100));
-    }
-    // convergence: authored procedural builds can still span several frames
-    const t0 = Date.now();
-    let state = await converged();
-    while (!state.ok && Date.now() - t0 < 10000) {
-      await sleep(150);
-      state = await converged();
-    }
-    const emptiness = await page.evaluate(() => {
-      const E = window.__EMPTY_STAGE;
-      return { empty: E.empty, spans: E.spans.slice(-6) };
-    });
-    const emptyBad = emptiness.empty > 0;
-    if (!state.ok || emptyBad) {
-      roundsFailed++;
-      failures++;
-      console.error(`  round ${round}: FAIL (last click ${lastId})`);
-      console.error(`    selected=${state.sel} domSel=${state.domId} pedestal=${JSON.stringify(state.pv)}`);
-      if (emptyBad) console.error(`    EMPTY STAGE observed: ${emptiness.empty} samples, spans(ms)=${JSON.stringify(emptiness.spans)}`);
-      const trace = await page.evaluate(() => (window.__PED_TRACE || []).slice(-40));
-      console.error('    __PED_TRACE tail:');
-      for (const r of trace) console.error(`      ${JSON.stringify(r)}`);
-      const tim = await page.evaluate(() => (window.__SWITCH_TIMINGS || []).slice(-8));
-      console.error(`    __SWITCH_TIMINGS tail: ${JSON.stringify(tim)}`);
-    } else {
-      console.log(`  round ${round}: ok (converged on ${state.sel}, pedestal ${state.pv.id}, empty-samples 0)`);
-    }
-    await sleep(400);
-  }
-  console.log(`[phase A] ${ROUNDS - roundsFailed}/${ROUNDS} rounds converged`);
-
-  // --- Phase B: slow single clicks stay instant ---
-  console.log('[phase B] slow single clicks (1.2 s cadence) stay instant');
-  await sleep(1500);
-  const slowMs = [];
-  for (let i = 0; i < 8; i++) {
-    const t0 = Date.now();
-    await clickTarget('card');
-    let state = await converged();
-    while (!state.ok && Date.now() - t0 < 12000) {
-      await sleep(30);
-      state = await converged();
-    }
-    const ms = Date.now() - t0;
-    slowMs.push(state.ok ? ms : -1);
-    if (!state.ok) {
-      failures++;
-      console.error(`  slow click ${i + 1}: FAIL — never converged (${JSON.stringify(state)})`);
-    }
-    await sleep(1200);
-  }
-  const okMs = slowMs.filter((m) => m >= 0).sort((a, b) => a - b);
-  const median = okMs.length ? okMs[Math.floor(okMs.length / 2)] : -1;
-  console.log(`  slow-click reveal ms: ${slowMs.join(', ')} (median ${median})`);
-  // warm/procedural switches measure 20-70 ms; the round-trip overhead of the
-  // probe adds ~10-40 ms. Cold GLBs may legitimately take longer; the median
-  // over 8 mostly-warm revisits is the guard.
-  if (median < 0 || median > 600) {
+  const reportRapidFailure = async (round, lastId, state, emptiness) => {
+    roundsFailed++;
     failures++;
-    console.error(`  [FAIL] slow-click median ${median} ms (budget 600)`);
-  }
+    console.error(`  round ${round}: FAIL (last click ${lastId})`);
+    console.error(`    selected=${state.sel} domSel=${state.domId} pedestal=${JSON.stringify(state.pv)}`);
+    if (emptiness.empty > 0) {
+      console.error(`    EMPTY STAGE observed: ${emptiness.empty} samples, spans(ms)=${JSON.stringify(emptiness.spans)}`);
+    }
+    const trace = await page.evaluate(() => (window.__PED_TRACE || []).slice(-40));
+    console.error('    __PED_TRACE tail:');
+    for (const row of trace) console.error(`      ${JSON.stringify(row)}`);
+    const timings = await page.evaluate(() => (window.__SWITCH_TIMINGS || []).slice(-8));
+    console.error(`    __SWITCH_TIMINGS tail: ${JSON.stringify(timings)}`);
+  };
+  const runRapidRounds = async () => {
+    console.log(`[phase A] ${ROUNDS} rounds x ${CLICKS} rapid clicks (50-150 ms)`);
+    for (let round = 1; round <= ROUNDS; round++) {
+      await page.evaluate(() => window.__EMPTY_STAGE.reset());
+      let lastId = '?';
+      for (let i = 0; i < CLICKS; i++) {
+        const kind = rng() < 0.18 ? 'chip' : 'card';
+        const id = await clickTarget(kind);
+        if (id) lastId = `${kind}:${id}`;
+        await sleep(50 + Math.floor(rng() * 100));
+      }
+      const { state } = await waitForConvergence(10000, 150);
+      const emptiness = await page.evaluate(() => {
+        const E = window.__EMPTY_STAGE;
+        return { empty: E.empty, spans: E.spans.slice(-6) };
+      });
+      if (!state.ok || emptiness.empty > 0) {
+        await reportRapidFailure(round, lastId, state, emptiness);
+      } else {
+        console.log(`  round ${round}: ok (converged on ${state.sel}, pedestal ${state.pv.id}, empty-samples 0)`);
+      }
+      await sleep(400);
+    }
+    console.log(`[phase A] ${ROUNDS - roundsFailed}/${ROUNDS} rounds converged`);
+  };
+  const runSlowClicks = async () => {
+    console.log('[phase B] slow single clicks (1.2 s cadence) stay instant');
+    await sleep(1500);
+    const slowMs = [];
+    for (let i = 0; i < 8; i++) {
+      const startedAt = Date.now();
+      await clickTarget('card');
+      const { state, elapsedMs } = await waitForConvergence(12000, 30, startedAt);
+      slowMs.push(state.ok ? elapsedMs : -1);
+      if (!state.ok) {
+        failures++;
+        console.error(`  slow click ${i + 1}: FAIL — never converged (${JSON.stringify(state)})`);
+      }
+      await sleep(1200);
+    }
+    const okMs = slowMs.filter((ms) => ms >= 0).sort((a, b) => a - b);
+    const median = okMs.length ? okMs[Math.floor(okMs.length / 2)] : -1;
+    console.log(`  slow-click reveal ms: ${slowMs.join(', ')} (median ${median})`);
+    if (median < 0 || median > 600) {
+      failures++;
+      console.error(`  [FAIL] slow-click median ${median} ms (budget 600)`);
+    }
+  };
+  await runRapidRounds();
+  await runSlowClicks();
 
   if (pageErrors.length) {
     failures++;

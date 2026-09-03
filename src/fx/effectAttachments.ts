@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Attachment contracts for combat effects.
  *
@@ -55,14 +56,14 @@ export interface EffectEmitterAnchor {
 }
 
 export interface EffectSubjectAnchor {
-  visual?: { root?: unknown };
+  visual?: { root?: RuntimeValue };
   state?: {
     pos?: Partial<MutablePosition>;
     yaw?: number;
   };
 }
 
-function isVisualAnchorRoot(value: unknown): value is VisualAnchorRoot {
+function isVisualAnchorRoot(value: RuntimeValue): value is VisualAnchorRoot {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<VisualAnchorRoot>;
   return typeof candidate.worldToLocal === 'function' &&

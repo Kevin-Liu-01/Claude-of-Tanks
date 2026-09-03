@@ -163,6 +163,8 @@ export interface HudTank {
   specialAction?: SpecialActionState | null;
 }
 
+type HudTargetTank = HudTank & { state: TankState; combat: CombatState };
+
 export interface ConcealmentView {
   spotted?: boolean;
   inBush?: boolean;
@@ -251,7 +253,7 @@ interface HudHitEvent extends HitEventPresentation {
   damage: number;
   dmgRoll?: number;
   modulesHit?: ReadonlyArray<{ newState?: string }>;
-  crewHit?: readonly unknown[];
+  crewHit?: readonly string[];
 }
 
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
@@ -300,6 +302,36 @@ interface HitDirection {
   _screenAng: number | null;
 }
 
+interface IncomingHitOrigin { x: number; z: number }
+
+interface HitIndicatorFrameState {
+  playerX: number;
+  playerZ: number;
+  rightX: number;
+  rightZ: number;
+  forwardX: number;
+  forwardZ: number;
+  centerX: number;
+  centerY: number;
+  minDimension: number;
+  radius: number;
+  thickness: number;
+}
+
+interface HitIndicatorPaintState {
+  age: number;
+  angle: number;
+  alpha: number;
+  growth: number;
+  halfAngle: number;
+  thickness: number;
+  rimHalfAngle: number;
+  bodyColor: string;
+  bodyAlpha: number;
+  rimColor: string;
+  rimAlpha: number;
+}
+
 interface MinimapBlip {
   x: number;
   y: number;
@@ -319,6 +351,14 @@ interface EarRow {
   lastFrac: number;
   wasDead: boolean | null;
   wasSpotted: boolean;
+}
+interface TeamTally {
+  allyAlive: number;
+  allyTotal: number;
+  enemyAlive: number;
+  enemyTotal: number;
+  deadEnemies: string[];
+  deadAllies: string[];
 }
 interface HpBar {
   root: HTMLDivElement;
@@ -369,6 +409,33 @@ interface ReticlePaintState {
   drawnR: number;
 }
 
+interface ReticleDrawState {
+  cx: number;
+  cy: number;
+  radius: number;
+  circleX: number;
+  circleY: number;
+  sniper: boolean;
+  blocked: boolean;
+  limited: boolean;
+  reloadFraction: number;
+  reloading: boolean;
+  gunColor: string;
+  ringColor: string;
+  zoomScale: number;
+  markerLineWidth: number;
+  centerClearanceRadius: number;
+  single: boolean;
+  magazine: AutoloaderHudState | null;
+  magazineBottomY: number;
+}
+
+interface HudFrameUpdateState {
+  advancing: boolean;
+  camera: THREE.PerspectiveCamera | null;
+  dt: number;
+}
+
 interface SceneRenderable extends THREE.Object3D {
   isMesh?: boolean;
   isSprite?: boolean;
@@ -415,13 +482,68 @@ export interface HudRuntime {
   forceAimDisplay(frame: HudAimInput): void;
 }
 
+interface HudMinimapDebugState {
+  rotationRad: number;
+  rotationDeg: number;
+  deploymentYawRad: number | null;
+  flipped: boolean;
+  orientationLocked: boolean;
+  backgroundKind: 'none' | 'image' | 'canvas';
+  backgroundReady: boolean;
+  backingWidth: number;
+  backingHeight: number;
+}
+
+interface HudReticleMagazineDebugState {
+  shellCount: number;
+  y: number | null;
+  rounds: number;
+  capacity: number;
+  overflow: number;
+  fullReload: boolean;
+  loadProgress: number;
+  reloading: boolean;
+  curved: true;
+  outerRotationRad: number;
+  centerDropPx: number;
+}
+
+interface HudReticleDebugState {
+  mode: HudMode;
+  singleReticle: boolean;
+  w: number;
+  h: number;
+  zoom: number;
+  distM: number | null;
+  dispRadM: number | null;
+  radPx: number;
+  smoothRadPx: number;
+  drawnR: number;
+  gunOutside: boolean;
+  desiredX: number;
+  desiredY: number;
+  gunX: number | null;
+  gunY: number | null;
+  circleX: number;
+  circleY: number;
+  gunOffsetPx: number | null;
+  atGunLimit: boolean;
+  gunTargetId: string | null;
+  penRatio: number | null;
+  cameraMarkerColor: string | null;
+  gunMarkerColor: string | null;
+  magazineIndicator: HudReticleMagazineDebugState | null;
+  floorPx: number;
+  ceilPx: number;
+}
+
 interface HudDebugSurface {
   getHitArcs(): ReturnType<HudRuntime['getHitArcs']>;
   getSpectateBar(): ReturnType<HudRuntime['getSpectateBar']>;
   stageSpectateBar(payload?: HudEventPayload): void;
   getMinimapBackgroundDataUrl(type?: string, quality?: number): string | null;
-  getMinimapState(): Record<string, unknown>;
-  getReticleState(): Record<string, unknown>;
+  getMinimapState(): HudMinimapDebugState;
+  getReticleState(): HudReticleDebugState;
 }
 
 declare global {
@@ -1756,6 +1878,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const earR = el('div', 'cot-ear r', root);
   earL.innerHTML = `<div class="hd"><span>Allies</span><span class="al"></span></div>`;
   earR.innerHTML = `<div class="hd"><span class="al"></span><span>Enemies</span></div>`;
+  const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
+  const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
 
   const killfeed = el('div', 'cot-killfeed', root);
@@ -2140,8 +2264,11 @@ export function initHud(bus: EventBus): HudRuntime {
   let mmDirty = true; // force an immediate minimap paint on the next update()
   let mmBuildGeneration = 0;
   const minimapAssetCache = new Map<string, Promise<HTMLImageElement>>();
+  const minimapForestX = new Float32Array(12);
+  const minimapForestY = new Float32Array(12);
   let w = 1, h = 1, dpr = 1;
   let scopeGrad: CanvasGradient | null = null;
+  let scopeChromGrad: CanvasGradient | null = null;
   let scopeGradZoom = -1;
   let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
   let scopePrevMode: HudMode = 'hidden'; // transition detector for the fade
@@ -2164,6 +2291,16 @@ export function initHud(bus: EventBus): HudRuntime {
   // camera (see pushHitDirection root-cause note). `re` marks a merged
   // repeat (re-pulse attack); max 5 live entries.
   const hitDirs: HitDirection[] = [];
+  const incomingHitOrigin: IncomingHitOrigin = { x: 0, z: 0 };
+  const hitIndicatorFrameScratch: HitIndicatorFrameState = {
+    playerX: 0, playerZ: 0,
+    rightX: 0, rightZ: 0, forwardX: 0, forwardZ: 0,
+    centerX: 0, centerY: 0, minDimension: 0, radius: 0, thickness: 0,
+  };
+  const hitIndicatorPaintScratch: HitIndicatorPaintState = {
+    age: 0, angle: 0, alpha: 0, growth: 0, halfAngle: 0, thickness: 0,
+    rimHalfAngle: 0, bodyColor: '', bodyAlpha: 0, rimColor: '', rimAlpha: 0,
+  };
   const liveNums: LiveDamageNumber[] = [];
   let hitMark: HitMark | null = null;
   const hitConfirmScratch: HitConfirmState = {
@@ -2176,11 +2313,25 @@ export function initHud(bus: EventBus): HudRuntime {
     fullReload: false, loadProgress: 0, intraClip: false, reloading: false,
   };
   const magazineShellPoseScratch: AutoloaderShellPose = { y: 0, rotation: 0 };
+  const reticleDrawScratch: ReticleDrawState = {
+    cx: 0, cy: 0, radius: RET_FLOOR_PX, circleX: 0, circleY: 0,
+    sniper: false, blocked: false, limited: false,
+    reloadFraction: 0, reloading: false,
+    gunColor: PEN_NONE, ringColor: CIRCLE_COL,
+    zoomScale: 1, markerLineWidth: 1.6, centerClearanceRadius: 14,
+    single: false, magazine: null, magazineBottomY: 0,
+  };
+  const hudFrameUpdateScratch: HudFrameUpdateState = {
+    advancing: false,
+    camera: null,
+    dt: 1 / 60,
+  };
   const hpPool = new Map<string, HpBar>(); // tank id -> { root, fill, nm, lastFrac }
   const spotById = new Map<string, SpotMemory>(); // tank id -> { vis, lastT, lastX, lastZ, ever }
   let mapWorldSize = 1024;
   let lastScore = '';
   let lastTimer = '';
+  let lastTimerLabel = '';
   let spawnFlags: SpawnFlag[] | null = null; // team spawn markers, set per battle
 
   /** Clear every transient combat-feedback owner at a round/phase boundary. */
@@ -2213,6 +2364,7 @@ export function initHud(bus: EventBus): HudRuntime {
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scopeGrad = null;
+    scopeChromGrad = null;
     scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
@@ -2262,24 +2414,74 @@ export function initHud(bus: EventBus): HudRuntime {
     return true;
   }
 
+  function spotMemoryFor(tank: HudTank): SpotMemory {
+    const existing = spotById.get(tank.id);
+    if (existing) return existing;
+    const memory: SpotMemory = {
+      vis: false,
+      lastT: -1e9,
+      lastX: 0,
+      lastZ: 0,
+      lastYaw: 0,
+      ever: false,
+    };
+    spotById.set(tank.id, memory);
+    return memory;
+  }
+
+  function rememberSpottedPose(memory: SpotMemory, state: TankState): void {
+    memory.lastX = state.pos.x;
+    memory.lastZ = state.pos.z;
+    memory.lastYaw = state.yaw;
+  }
+
+  function fallbackTankVisible(
+    playerState: TankState,
+    tankState: TankState,
+  ): boolean {
+    const dx = tankState.pos.x - playerState.pos.x;
+    const dz = tankState.pos.z - playerState.pos.z;
+    if (Math.hypot(dx, dz) > SPOT_RANGE_M) return false;
+    return hasLOS(
+      playerState.pos.x,
+      playerState.pos.y + 2.6,
+      playerState.pos.z,
+      tankState.pos.x,
+      tankState.pos.y + 1.9,
+      tankState.pos.z,
+    );
+  }
+
+  function updateSpotMemory(
+    memory: SpotMemory,
+    state: TankState,
+    seen: boolean,
+    authoritative: boolean,
+    timeS: number,
+  ): void {
+    if (seen) {
+      memory.lastT = timeS;
+      memory.ever = true;
+      rememberSpottedPose(memory, state);
+    }
+    memory.vis = authoritative ? seen : seen || timeS - memory.lastT < SPOT_PERSIST_S;
+    if (memory.vis) rememberSpottedPose(memory, state);
+  }
+
   function updateSpotting(frame: HudFrame): void {
     const player = frame.player;
-    if (!player || !player.state) return;
-    const pp = player.state.pos;
+    if (!player?.state) return;
     const tanks = frame.tanks || [];
+    const spotting = frame.spotting?.isSpotted ? frame.spotting : null;
     for (let i = 0; i < tanks.length; i++) {
-      const t = tanks[i];
-      if (!t || t.isPlayer || !t.state) continue;
-      if (t.team === 'player') continue; // allies always known
-      let sp = spotById.get(t.id);
-      if (!sp) {
-        sp = { vis: false, lastT: -1e9, lastX: 0, lastZ: 0, lastYaw: 0, ever: false };
-        spotById.set(t.id, sp);
-      }
-      if (t.combat && t.combat.destroyed) {
+      const tank = tanks[i];
+      if (!tank?.state || tank.isPlayer || tank.team === 'player') continue;
+      const memory = spotMemoryFor(tank);
+      if (tank.combat?.destroyed) {
         // wrecks are permanently known once dead
-        sp.vis = true; sp.ever = true;
-        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw;
+        memory.vis = true;
+        memory.ever = true;
+        rememberSpottedPose(memory, tank.state);
         continue;
       }
       // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
@@ -2287,26 +2489,10 @@ export function initHud(bus: EventBus): HudRuntime {
       // — camo values, bushes, fire bloom and the 5 s linger all live there.
       // The legacy range+terrain-LOS model below stays as the fallback for
       // forced screenshot frames and headless fixtures.
-      const sys = frame.spotting && typeof frame.spotting.isSpotted === 'function'
-        ? frame.spotting : null;
-      let seen: boolean;
-      if (sys) {
-        seen = sys.isSpotted(t.id);
-      } else {
-        const dx = t.state.pos.x - pp.x;
-        const dz = t.state.pos.z - pp.z;
-        const d = Math.hypot(dx, dz);
-        seen = d <= SPOT_RANGE_M &&
-          hasLOS(pp.x, pp.y + 2.6, pp.z, t.state.pos.x, t.state.pos.y + 1.9, t.state.pos.z);
-      }
-      if (seen) {
-        sp.lastT = frame.timeS;
-        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw;
-        sp.ever = true;
-      }
-      // the sim already includes the spotted linger; legacy adds its own
-      sp.vis = sys ? seen : (seen || (frame.timeS - sp.lastT) < SPOT_PERSIST_S);
-      if (sp.vis) { sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw; }
+      const seen = spotting
+        ? spotting.isSpotted(tank.id)
+        : fallbackTankVisible(player.state, tank.state);
+      updateSpotMemory(memory, tank.state, seen, !!spotting, frame.timeS);
     }
   }
 
@@ -2334,153 +2520,242 @@ export function initHud(bus: EventBus): HudRuntime {
     return nick;
   }
 
-  let rosterSig = '';
-  function updateTeams(frame: HudFrame): void {
-    // Network presentation may omit hidden enemies from `frame.tanks` to
-    // prevent reticle/minimap leakage. The team ears still know the locked
-    // match roster and death state through this policy-safe companion list.
-    const tanks = frame.rosterTanks || frame.tanks || [];
-    // content_breadth r2: battle restarts don't always round-trip through
-    // setMode('hidden') — when the participant set (or the player entity)
-    // changes, drop and rebuild the whole roster DOM instead of appending
-    // 4 fresh rows under the stale 4 (entity ids are stable spec ids).
-    let sig = '';
-    for (let i = 0; i < tanks.length; i++) {
-      const t = tanks[i];
-      if (t && t.spec) sig += t.id + (t.isPlayer ? '*' : '') + ';';
+  const rosterIds: string[] = [];
+  const rosterPlayers: boolean[] = [];
+  const teamTally: TeamTally = {
+    allyAlive: 0,
+    allyTotal: 0,
+    enemyAlive: 0,
+    enemyTotal: 0,
+    deadEnemies: [],
+    deadAllies: [],
+  };
+
+  function rosterChanged(tanks: HudTank[]): boolean {
+    let validIndex = 0;
+    for (const tank of tanks) {
+      if (!tank?.spec) continue;
+      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer) {
+        return true;
+      }
+      validIndex++;
     }
-    if (sig !== rosterSig) {
-      rosterSig = sig;
-      for (const [, row] of earRows) row.root.remove();
-      earRows.clear();
-      nickById.clear();
-      lastScore = '';
+    return validIndex !== rosterIds.length;
+  }
+
+  function rebuildRosterIdentity(tanks: HudTank[]): void {
+    rosterIds.length = 0;
+    rosterPlayers.length = 0;
+    for (const tank of tanks) {
+      if (!tank?.spec) continue;
+      rosterIds.push(tank.id);
+      rosterPlayers.push(!!tank.isPlayer);
     }
-    let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
-    const deadEnemies: string[] = []; // vehicle ids — fill the ALLY frag chips
-    const deadAllies: string[] = [];  // vehicle ids — fill the ENEMY frag chips
-    for (let i = 0; i < tanks.length; i++) {
-      const t = tanks[i];
-      if (!t || !t.spec) continue;
-      const ally = t.team === 'player' || !!t.isPlayer;
-      const dead = !!(t.combat && t.combat.destroyed);
-      if (ally) { allyTotal++; if (!dead) allyAlive++; else deadAllies.push(t.spec.id); }
-      else { enemyTotal++; if (!dead) enemyAlive++; else deadEnemies.push(t.spec.id); }
-      let row = earRows.get(t.id);
-      if (!row) {
-        const r = el('div', 'cot-er');
-        const color = ally ? PEN_GREEN : PEN_RED;
-        // r7: tier is a BARE roman numeral leading the vehicle-name line
-        // (WoT) — no boxed badge chip
-        r.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
-          `<span class="n"><span class="nick"></span>` +
-          `<span class="veh"><i class="tier"></i><span class="vn"></span></span></span>` +
-          `<div class="hpm"><i></i></div>`;
-        // Per-vehicle generated silhouette, team-tinted. The right ear mirrors
-        // it in CSS so opposing vehicles face inward toward the playfield.
-        maskIcon(requireElement<HTMLElement>(r, '.ic'), t.spec.id, 'side_silhouette', color);
-        if (t.isPlayer) r.classList.add('me');
-        requireElement<HTMLElement>(r, '.tier').textContent = tierNumeral(t.spec.id) || '–';
-        requireElement<HTMLElement>(r, '.nick').textContent = nickFor(t);
-        requireElement<HTMLElement>(r, '.vn').textContent = t.spec.name;
-        (ally ? earL : earR).appendChild(r);
-        row = {
-          root: r,
-          hp: requireElement<HTMLElement>(r, '.hpm i'),
-          ic: requireElement<HTMLElement>(r, '.ic'),
-          ally, lastFrac: -1, wasDead: null, wasSpotted: ally,
-        };
-        earRows.set(t.id, row);
-      }
-      if (dead !== row.wasDead) { row.root.classList.toggle('dead', dead); row.wasDead = dead; }
-      // enemy rows: full-brightness while spotted, whole row dims + desaturates
-      // while unspotted (mirrors the minimap spotting gate)
-      if (!ally) {
-        const sp = dead || isSpotted(t.id);
-        if (sp !== row.wasSpotted) {
-          row.root.classList.toggle('unlit', !sp);
-          row.wasSpotted = sp;
-        }
-      }
-      if (t.combat && !dead) {
-        const frac = Math.max(0, Math.min(1, t.combat.hp / t.combat.maxHp));
-        if (Math.abs(frac - row.lastFrac) > 0.005) {
-          // r5-2: vertical inner-edge gauge — fill by HEIGHT (grows upward)
-          row.hp.style.height = `${(frac * 100).toFixed(1)}%`;
-          row.lastFrac = frac;
-        }
+  }
+
+  function syncRosterIdentity(tanks: HudTank[]): void {
+    if (!rosterChanged(tanks)) return;
+    rebuildRosterIdentity(tanks);
+    for (const row of earRows.values()) row.root.remove();
+    earRows.clear();
+    nickById.clear();
+    lastScore = '';
+  }
+
+  function createEarRow(tank: HudTank, ally: boolean): EarRow {
+    const spec = tank.spec!;
+    const rootEl = el('div', 'cot-er');
+    rootEl.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
+      `<span class="n"><span class="nick"></span>` +
+      `<span class="veh"><i class="tier"></i><span class="vn"></span></span></span>` +
+      `<div class="hpm"><i></i></div>`;
+    const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
+    maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
+    if (tank.isPlayer) rootEl.classList.add('me');
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = spec.name;
+    (ally ? earL : earR).appendChild(rootEl);
+    const row = {
+      root: rootEl,
+      hp: requireElement<HTMLElement>(rootEl, '.hpm i'),
+      ic: iconEl,
+      ally,
+      lastFrac: -1,
+      wasDead: null,
+      wasSpotted: ally,
+    };
+    earRows.set(tank.id, row);
+    return row;
+  }
+
+  function updateEarRow(tank: HudTank, ally: boolean, dead: boolean): void {
+    const row = earRows.get(tank.id) || createEarRow(tank, ally);
+    if (dead !== row.wasDead) {
+      row.root.classList.toggle('dead', dead);
+      row.wasDead = dead;
+    }
+    if (!ally) {
+      const spotted = dead || isSpotted(tank.id);
+      if (spotted !== row.wasSpotted) {
+        row.root.classList.toggle('unlit', !spotted);
+        row.wasSpotted = spotted;
       }
     }
-    const modeState = frame.matchModeState;
-    if (modeState && modeState.id && modeState.id !== 'standard') {
-      const ownTeam = modeState.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
-      objectiveTeam = ownTeam;
-      const enemyTeam = ownTeam === 'alpha' ? 'bravo' : 'alpha';
-      const horde = modeState.id === 'endless_horde' ? modeState.horde : null;
-      const ownScore = horde ? `W${horde.wave}` : Math.round(modeState.score?.[ownTeam] || 0);
-      const enemyScore = horde ? Math.round(horde.alive || 0)
-        : Math.round(modeState.score?.[enemyTeam] || 0);
-      const score = `${modeState.id}|${ownScore}:${enemyScore}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
-      if (score !== lastScore) {
-        fgEl.textContent = String(ownScore);
-        feEl.textContent = String(enemyScore);
-        allyLabelEl.textContent = horde ? 'Wave' : 'Allies';
-        enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
-        wedgeL.textContent = '';
-        wedgeR.textContent = '';
-        requireElement<HTMLElement>(earL, '.al').textContent = `${allyAlive} / ${allyTotal}`;
-        requireElement<HTMLElement>(earR, '.al').textContent = `${enemyAlive} / ${enemyTotal}`;
-        lastScore = score;
-      }
-      const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
-      const timer = waitS > 0 ? `${waitS}s` : fmtTimer(BATTLE_DURATION_S - frame.timeS);
-      timerLabelEl.textContent = waitS > 0 ? 'Next wave' :
-        modeState.id === 'capture_the_flag' ? 'Capture 3' :
-          modeState.id === 'zone_control' ? 'First 1000' :
-            modeState.id === 'turbo_ball' ? 'First 5' : 'Survive';
-      if (timer !== lastTimer) { tmEl.textContent = timer; lastTimer = timer; }
-      const modeCopy = modeState.id === 'capture_the_flag'
-        ? `FLAGS ${ownScore} / ${modeState.target || 3}`
-        : modeState.id === 'zone_control'
-          ? `CONTROL ${ownScore} / ${modeState.target || 1000}`
-          : modeState.id === 'turbo_ball'
-            ? `GOALS ${ownScore} / ${modeState.target || 5}`
-            : `WAVE ${horde?.wave || 1} · ${horde?.alive || 0} HOSTILES · AMMO ${modeState.playerAmmo ?? '—'} / ${modeState.playerAmmoCapacity ?? '—'}`;
-      const modeStatus = `${modeState.id}|${modeCopy}`;
-      if (modeStatus !== lastModeStatus) {
-        const icon = modeState.id === 'capture_the_flag' ? 'modeFlag'
-          : modeState.id === 'zone_control' ? 'modeZones'
-            : modeState.id === 'turbo_ball' ? 'modeTurbo' : 'modeHorde';
-        modeStatusIcon.innerHTML = uiIconSVG(icon, 15, 'currentColor');
-        modeStatusName.textContent = modeState.label || 'Objective';
-        modeStatusValue.textContent = modeCopy;
-        modeStatusEl.classList.add('show');
-        lastModeStatus = modeStatus;
-      }
+    if (!tank.combat || dead) return;
+    const fraction = Math.max(0, Math.min(1, tank.combat.hp / tank.combat.maxHp));
+    if (Math.abs(fraction - row.lastFrac) <= 0.005) return;
+    row.hp.style.height = `${(fraction * 100).toFixed(1)}%`;
+    row.lastFrac = fraction;
+  }
+
+  function resetTeamTally(): void {
+    teamTally.allyAlive = 0;
+    teamTally.allyTotal = 0;
+    teamTally.enemyAlive = 0;
+    teamTally.enemyTotal = 0;
+    teamTally.deadEnemies.length = 0;
+    teamTally.deadAllies.length = 0;
+  }
+
+  function tallyTank(tank: HudTank, ally: boolean, dead: boolean): void {
+    if (ally) {
+      teamTally.allyTotal++;
+      if (dead) teamTally.deadAllies.push(tank.spec!.id);
+      else teamTally.allyAlive++;
       return;
     }
+    teamTally.enemyTotal++;
+    if (dead) teamTally.deadEnemies.push(tank.spec!.id);
+    else teamTally.enemyAlive++;
+  }
+
+  function updateRosterRows(tanks: HudTank[]): TeamTally {
+    syncRosterIdentity(tanks);
+    resetTeamTally();
+    for (const tank of tanks) {
+      if (!tank?.spec) continue;
+      const ally = tank.team === 'player' || !!tank.isPlayer;
+      const dead = !!tank.combat?.destroyed;
+      tallyTank(tank, ally, dead);
+      updateEarRow(tank, ally, dead);
+    }
+    return teamTally;
+  }
+
+  function updateTimer(label: string, value: string): void {
+    if (label !== lastTimerLabel) {
+      timerLabelEl.textContent = label;
+      lastTimerLabel = label;
+    }
+    if (value !== lastTimer) {
+      tmEl.textContent = value;
+      lastTimer = value;
+    }
+  }
+
+  function modeTimerLabel(modeId: string, waiting: boolean): string {
+    if (waiting) return 'Next wave';
+    if (modeId === 'capture_the_flag') return 'Capture 3';
+    if (modeId === 'zone_control') return 'First 1000';
+    if (modeId === 'turbo_ball') return 'First 5';
+    return 'Survive';
+  }
+
+  function modeStatusCopy(
+    modeState: HudMatchModeState,
+    ownScore: string | number,
+  ): string {
+    if (modeState.id === 'capture_the_flag') return `FLAGS ${ownScore} / ${modeState.target || 3}`;
+    if (modeState.id === 'zone_control') return `CONTROL ${ownScore} / ${modeState.target || 1000}`;
+    if (modeState.id === 'turbo_ball') return `GOALS ${ownScore} / ${modeState.target || 5}`;
+    const horde = modeState.horde;
+    return `WAVE ${horde?.wave || 1} · ${horde?.alive || 0} HOSTILES · AMMO ${modeState.playerAmmo ?? '—'} / ${modeState.playerAmmoCapacity ?? '—'}`;
+  }
+
+  function modeStatusIconName(modeId: string): string {
+    if (modeId === 'capture_the_flag') return 'modeFlag';
+    if (modeId === 'zone_control') return 'modeZones';
+    if (modeId === 'turbo_ball') return 'modeTurbo';
+    return 'modeHorde';
+  }
+
+  function updateModeStatus(modeState: HudMatchModeState, ownScore: string | number): void {
+    const copy = modeStatusCopy(modeState, ownScore);
+    const status = `${modeState.id}|${copy}`;
+    if (status === lastModeStatus) return;
+    modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
+    modeStatusName.textContent = modeState.label || 'Objective';
+    modeStatusValue.textContent = copy;
+    modeStatusEl.classList.add('show');
+    lastModeStatus = status;
+  }
+
+  function updateModeScore(
+    frame: HudFrame,
+    modeState: HudMatchModeState,
+    tally: TeamTally,
+  ): void {
+    const ownTeam = modeState.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
+    objectiveTeam = ownTeam;
+    const enemyTeam = ownTeam === 'alpha' ? 'bravo' : 'alpha';
+    const horde = modeState.id === 'endless_horde' ? modeState.horde : null;
+    const ownScore = horde ? `W${horde.wave}` : Math.round(modeState.score?.[ownTeam] || 0);
+    const enemyScore = horde
+      ? Math.round(horde.alive || 0)
+      : Math.round(modeState.score?.[enemyTeam] || 0);
+    const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
+    if (score !== lastScore) {
+      fgEl.textContent = String(ownScore);
+      feEl.textContent = String(enemyScore);
+      allyLabelEl.textContent = horde ? 'Wave' : 'Allies';
+      enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
+      wedgeL.textContent = '';
+      wedgeR.textContent = '';
+      allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
+      enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
+      lastScore = score;
+    }
+    const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
+    const timer = waitS > 0 ? `${waitS}s` : fmtTimer(BATTLE_DURATION_S - frame.timeS);
+    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0), timer);
+    updateModeStatus(modeState, ownScore);
+  }
+
+  function updateStandardScore(frame: HudFrame, tally: TeamTally): void {
     if (lastModeStatus) {
       modeStatusEl.classList.remove('show');
       lastModeStatus = '';
     }
-    allyLabelEl.textContent = 'Allies';
-    enemyLabelEl.textContent = 'Enemy';
-    timerLabelEl.textContent = 'Time';
-    const score = `${enemyTotal - enemyAlive}:${allyTotal - allyAlive}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
+    const allyKills = tally.enemyTotal - tally.enemyAlive;
+    const enemyKills = tally.allyTotal - tally.allyAlive;
+    const score = `${allyKills}:${enemyKills}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
     if (score !== lastScore) {
-      const allyKills = enemyTotal - enemyAlive;
-      const enemyKills = allyTotal - allyAlive;
       fgEl.textContent = String(allyKills);
       feEl.textContent = String(enemyKills);
-      const slots = Math.max(allyTotal, enemyTotal);
-      syncWedge(wedgeL, slots, deadEnemies, false);
-      syncWedge(wedgeR, slots, deadAllies, true);
-      requireElement<HTMLElement>(earL, '.al').textContent = `${allyAlive} / ${allyTotal}`;
-      requireElement<HTMLElement>(earR, '.al').textContent = `${enemyAlive} / ${enemyTotal}`;
+      allyLabelEl.textContent = 'Allies';
+      enemyLabelEl.textContent = 'Enemy';
+      const slots = Math.max(tally.allyTotal, tally.enemyTotal);
+      syncWedge(wedgeL, slots, tally.deadEnemies, false);
+      syncWedge(wedgeR, slots, tally.deadAllies, true);
+      allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
+      enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
     }
-    const timer = fmtTimer(BATTLE_DURATION_S - frame.timeS);
-    if (timer !== lastTimer) { tmEl.textContent = timer; lastTimer = timer; }
+    updateTimer('Time', fmtTimer(BATTLE_DURATION_S - frame.timeS));
+  }
+
+  function updateTeams(frame: HudFrame): void {
+    // Network presentation may omit hidden enemies from `frame.tanks`; the
+    // policy-safe roster still owns the score and team ears.
+    const tanks = frame.rosterTanks || frame.tanks || [];
+    const tally = updateRosterRows(tanks);
+    const modeState = frame.matchModeState;
+    if (modeState?.id && modeState.id !== 'standard') {
+      updateModeScore(frame, modeState, tally);
+      return;
+    }
+    updateStandardScore(frame, tally);
   }
 
   // ---------- reticle / scope canvas ----------
@@ -2495,6 +2770,147 @@ export function initHud(bus: EventBus): HudRuntime {
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
   //   3. the zoom readout anchored below reticle center (drawReticle).
+  function ensureScopeGradients(zoom: number): void {
+    if (scopeGrad && scopeChromGrad && scopeGradZoom === zoom) return;
+    const deep = 0.48;
+    const innerRadius = w * (0.30 - 0.012 * Math.log2(zoom));
+    scopeGrad = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, w * 0.62);
+    scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
+    scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
+    scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
+    scopeChromGrad = ctx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
+    scopeChromGrad.addColorStop(0, 'rgba(84,118,205,0)');
+    scopeChromGrad.addColorStop(0.72, 'rgba(88,122,210,0.055)');
+    scopeChromGrad.addColorStop(1, 'rgba(104,130,225,0.15)');
+    scopeGradZoom = zoom;
+  }
+
+  function scopeFadeAlpha(): number {
+    if (scopeFadeMs < 0) return 1;
+    const alpha = Math.min(1, (performance.now() - scopeFadeMs) / 100);
+    if (alpha >= 1) scopeFadeMs = -1;
+    return alpha;
+  }
+
+  function paintScopeVignette(alpha: number): void {
+    if (!scopeGrad || !scopeChromGrad) return;
+    const lensCx = w / 2;
+    const lensCy = h / 2;
+    const scaleY = h / w;
+    ctx.save();
+    ctx.translate(lensCx, lensCy);
+    ctx.scale(1, scaleY);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = scopeGrad;
+    ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
+    ctx.fillStyle = scopeChromGrad;
+    ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
+    ctx.restore();
+  }
+
+  function appendHorizontalScopeRun(
+    start: number,
+    end: number,
+    y: number,
+    cutStart: number | null,
+    cutEnd: number | null,
+  ): void {
+    if (cutStart == null || cutEnd == null || cutEnd <= start || cutStart >= end) {
+      ctx.moveTo(start, y);
+      ctx.lineTo(end, y);
+      return;
+    }
+    if (cutStart - start > 1) {
+      ctx.moveTo(start, y);
+      ctx.lineTo(cutStart, y);
+    }
+    if (end - cutEnd > 1) {
+      ctx.moveTo(cutEnd, y);
+      ctx.lineTo(end, y);
+    }
+  }
+
+  function appendVerticalScopeRun(
+    start: number,
+    end: number,
+    x: number,
+    cutStart: number | null,
+    cutEnd: number | null,
+  ): void {
+    if (cutStart == null || cutEnd == null || cutEnd <= start || cutStart >= end) {
+      ctx.moveTo(x, start);
+      ctx.lineTo(x, end);
+      return;
+    }
+    if (cutStart - start > 1) {
+      ctx.moveTo(x, start);
+      ctx.lineTo(x, cutStart);
+    }
+    if (end - cutEnd > 1) {
+      ctx.moveTo(x, cutEnd);
+      ctx.lineTo(x, end);
+    }
+  }
+
+  function paintScopeCrossArms(
+    cx: number,
+    cy: number,
+    gap: number,
+    armEnd: number,
+    color: string,
+    lineWidth: number,
+  ): void {
+    const plate = tgtShown ? tgtRect : null;
+    const verticalCut = plate && Math.abs(plate.cx - cx) < plate.hw + 3 ? plate : null;
+    const horizontalCut = plate && cy > plate.top - 5 && cy < plate.bottom + 5 ? plate : null;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    appendHorizontalScopeRun(
+      cx - armEnd, cx - gap, cy + 0.5,
+      horizontalCut ? horizontalCut.cx - horizontalCut.hw - 5 : null,
+      horizontalCut ? horizontalCut.cx + horizontalCut.hw + 5 : null,
+    );
+    appendHorizontalScopeRun(
+      cx + gap, cx + armEnd, cy + 0.5,
+      horizontalCut ? horizontalCut.cx - horizontalCut.hw - 5 : null,
+      horizontalCut ? horizontalCut.cx + horizontalCut.hw + 5 : null,
+    );
+    appendVerticalScopeRun(
+      cy - armEnd, cy - gap, cx + 0.5,
+      verticalCut ? verticalCut.top - 5 : null,
+      verticalCut ? verticalCut.bottom + 5 : null,
+    );
+    appendVerticalScopeRun(
+      cy + gap, cy + armEnd, cx + 0.5,
+      verticalCut ? verticalCut.top - 5 : null,
+      verticalCut ? verticalCut.bottom + 5 : null,
+    );
+    ctx.stroke();
+  }
+
+  function paintScopeMilTicks(
+    cx: number,
+    cy: number,
+    spacing: number,
+    count: number,
+    color: string,
+    lineWidth: number,
+  ): void {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    for (let i = 1; i <= count; i++) {
+      const distance = i * spacing;
+      const tick = i % 2 === 0 ? 4.5 : 3;
+      ctx.moveTo(cx - tick, cy - distance + 0.5); ctx.lineTo(cx + tick, cy - distance + 0.5);
+      ctx.moveTo(cx - tick, cy + distance + 0.5); ctx.lineTo(cx + tick, cy + distance + 0.5);
+      ctx.moveTo(cx - distance + 0.5, cy - tick); ctx.lineTo(cx - distance + 0.5, cy + tick);
+      ctx.moveTo(cx + distance + 0.5, cy - tick); ctx.lineTo(cx + distance + 0.5, cy + tick);
+    }
+    ctx.stroke();
+  }
+
   function drawScope(view: HudAimView): void {
     const zoom = view.zoom || 2;
     // Sight furniture follows the actual server-aim projection. This matters
@@ -2504,50 +2920,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
     const cx = anchor.x ?? view.cx;
     const cy = anchor.y ?? view.cy;
-    const lensCx = w / 2, lensCy = h / 2;
-    if (!scopeGrad || scopeGradZoom !== zoom) {
-      // r7-2 MAJOR (round critique: "vignette nearly imperceptible at the
-      // frame edges — 8x reads as a plain FOV change"): the falloff is now
-      // ELLIPTICAL, built in a y-scaled space where every frame edge is
-      // equidistant from center. The old circular gradient reached the
-      // left/right edges at ~29% but the top/bottom edges at ~6% — on a
-      // 16:9 frame the treatment effectively didn't exist along the whole
-      // horizontal band the eye actually reads. Now every edge midpoint
-      // lands ~25% luminance falloff and the extreme corners ~48%, still
-      // with no ring/tunnel boundary inside the sight picture. Zoom pulls
-      // the start radius in fractionally (tighter optic at x8).
-      const deep = 0.48;
-      const r0 = w * (0.30 - 0.012 * Math.log2(zoom));
-      const r1 = w * 0.62;
-      scopeGrad = ctx.createRadialGradient(0, 0, r0, 0, 0, r1);
-      scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-      scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
-      scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
-      scopeGradZoom = zoom;
-    }
-    // vignette fade-in (~0.1 s); forced screenshot frames snap it complete
-    // via forceAimDisplay
-    const fadeK = scopeFadeMs >= 0
-      ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
-    if (fadeK >= 1) scopeFadeMs = -1;
-    const sy = h / w; // elliptical space: y compressed so edges are equal
-    ctx.save();
-    ctx.translate(lensCx, lensCy);
-    ctx.scale(1, sy);
-    ctx.globalAlpha = fadeK;
-    ctx.fillStyle = scopeGrad;
-    ctx.fillRect(-lensCx, -lensCy / sy, w, h / sy);
-    // NO color tint over the scene: WoT sniper optics keep the arcade
-    // grading — but real scope glass shows a cool chromatic fringe where
-    // the vignette bites. Same elliptical space, slightly wider start so
-    // the blue-violet edge sits just outside the luminance falloff knee.
-    const chrom = ctx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
-    chrom.addColorStop(0, 'rgba(84,118,205,0)');
-    chrom.addColorStop(0.72, 'rgba(88,122,210,0.055)');
-    chrom.addColorStop(1, 'rgba(104,130,225,0.15)');
-    ctx.fillStyle = chrom;
-    ctx.fillRect(-lensCx, -lensCy / sy, w, h / sy);
-    ctx.restore();
+    ensureScopeGradients(zoom);
+    const fadeK = scopeFadeAlpha();
+    paintScopeVignette(fadeK);
     ctx.globalAlpha = fadeK;
     // SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT
     // sniper mode has NO full-screen crosshair — the r8 edge-to-edge
@@ -2556,71 +2931,15 @@ export function initHud(bus: EventBus): HudRuntime {
     // sight furniture stays central: circle + ticks + short cross skeleton.
     // The arms still yield to the over-target plate (a line slicing through
     // the enemy's name text read as a rendering bug, not a sight element).
-    {
-      const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
-      const gap = rNow + 3;
-      const armEnd = rNow * 1.55 + 3; // arms clipped to ~1.55x circle radius
-      const vRuns: Array<[number, number]> = [[cy - armEnd, cy - gap], [cy + gap, cy + armEnd]];
-      const hRuns: Array<[number, number]> = [[cx - armEnd, cx - gap], [cx + gap, cx + armEnd]];
-      const cut = (runs: Array<[number, number]>, a: number, b: number): void => {
-        for (let i = runs.length - 1; i >= 0; i--) {
-          const [r0, r1] = runs[i];
-          if (b <= r0 || a >= r1) continue;
-          runs.splice(i, 1);
-          if (a - r0 > 1) runs.push([r0, a]);
-          if (r1 - b > 1) runs.push([b, r1]);
-        }
-      };
-      if (tgtShown && tgtRect) {
-        if (Math.abs(tgtRect.cx - cx) < tgtRect.hw + 3) {
-          cut(vRuns, tgtRect.top - 5, tgtRect.bottom + 5);
-        }
-        if (cy > tgtRect.top - 5 && cy < tgtRect.bottom + 5) {
-          cut(hRuns, tgtRect.cx - tgtRect.hw - 5, tgtRect.cx + tgtRect.hw + 5);
-        }
-      }
-      for (const pass of [
-        { c: 'rgba(4,7,6,0.38)', lw: 2.4 },
-        // r5-2: the short cross arms carry the sniper skin's green so the
-        // whole sight reads as ONE bright instrument, not arcade furniture
-        { c: 'rgba(170,240,178,0.6)', lw: 1.1 },
-      ]) {
-        ctx.strokeStyle = pass.c;
-        ctx.lineWidth = pass.lw;
-        ctx.beginPath();
-        for (const [x0, x1] of hRuns) {
-          ctx.moveTo(x0, cy + 0.5); ctx.lineTo(x1, cy + 0.5);
-        }
-        for (const [y0, y1] of vRuns) {
-          ctx.moveTo(cx + 0.5, y0); ctx.lineTo(cx + 0.5, y1);
-        }
-        ctx.stroke();
-      }
-
-      // Fine first-focal-plane mil references: subdued enough not to compete
-      // with the dispersion circle, but useful for holding elevation/lead at
-      // long range. Spacing grows with magnification like an optical reticle.
-      const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);
-      const maxMil = Math.min(3, Math.max(1, Math.floor((armEnd - 4) / mil)));
-      for (const pass of [
-        { c: 'rgba(3,7,5,0.52)', lw: 2.2 },
-        { c: 'rgba(176,242,184,0.70)', lw: 0.9 },
-      ]) {
-        ctx.strokeStyle = pass.c;
-        ctx.lineWidth = pass.lw;
-        ctx.beginPath();
-        for (let i = 1; i <= maxMil; i++) {
-          const d = i * mil;
-          const major = i % 2 === 0;
-          const tick = major ? 4.5 : 3;
-          ctx.moveTo(cx - tick, cy - d + 0.5); ctx.lineTo(cx + tick, cy - d + 0.5);
-          ctx.moveTo(cx - tick, cy + d + 0.5); ctx.lineTo(cx + tick, cy + d + 0.5);
-          ctx.moveTo(cx - d + 0.5, cy - tick); ctx.lineTo(cx - d + 0.5, cy + tick);
-          ctx.moveTo(cx + d + 0.5, cy - tick); ctx.lineTo(cx + d + 0.5, cy + tick);
-        }
-        ctx.stroke();
-      }
-    }
+    const radius = clampRetR(smoothRadPx);
+    const gap = radius + 3;
+    const armEnd = radius * 1.55 + 3;
+    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(4,7,6,0.38)', 2.4);
+    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(170,240,178,0.6)', 1.1);
+    const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);
+    const maxMil = Math.min(3, Math.max(1, Math.floor((armEnd - 4) / mil)));
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(3,7,5,0.52)', 2.2);
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(176,242,184,0.70)', 0.9);
     ctx.globalAlpha = 1;
   }
 
@@ -2684,172 +3003,273 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.closePath();
   }
 
+  function prepareHitIndicatorFrame(): HitIndicatorFrameState | null {
+    const camera = lastCamera;
+    const playerState = playerRef?.state;
+    if (!camera || !playerState) return null;
+    const elements = camera.matrixWorld.elements;
+    let rightX = elements[0];
+    let rightZ = elements[2];
+    let forwardX = -elements[8];
+    let forwardZ = -elements[10];
+    const rightLength = Math.hypot(rightX, rightZ);
+    const forwardLength = Math.hypot(forwardX, forwardZ);
+    if (rightLength < 1e-4 || forwardLength < 1e-4) return null;
+    rightX /= rightLength;
+    rightZ /= rightLength;
+    forwardX /= forwardLength;
+    forwardZ /= forwardLength;
+    const frame = hitIndicatorFrameScratch;
+    frame.playerX = playerState.pos.x;
+    frame.playerZ = playerState.pos.z;
+    frame.rightX = rightX;
+    frame.rightZ = rightZ;
+    frame.forwardX = forwardX;
+    frame.forwardZ = forwardZ;
+    frame.centerX = w / 2;
+    frame.centerY = h / 2;
+    frame.minDimension = Math.min(w, h);
+    const drawnRadius = clampRetR(smoothRadPx);
+    frame.radius = Math.min(
+      Math.max(frame.minDimension * 0.185, drawnRadius + 26),
+      frame.minDimension * 0.30,
+    );
+    frame.thickness = Math.min(Math.max(frame.minDimension * 0.115, 64), 118);
+    return frame;
+  }
+
+  function expireHitIndicators(timeS: number): void {
+    for (let i = hitDirs.length - 1; i >= 0; i--) {
+      const indicator = hitDirs[i];
+      const arcClass = ARC_CLASS[indicator.kind];
+      const age = timeS - indicator.t0;
+      if (age > ARC_IN_S + arcClass.holdS + arcClass.fadeS || age < 0) {
+        hitDirs.splice(i, 1);
+      }
+    }
+  }
+
+  function prepareHitIndicatorPaint(
+    indicator: HitDirection,
+    timeS: number,
+    frame: HitIndicatorFrameState,
+  ): HitIndicatorPaintState | null {
+    const dx = indicator.wx - frame.playerX;
+    const dz = indicator.wz - frame.playerZ;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 1e-3) return null;
+    const normalX = dx / distance;
+    const normalZ = dz / distance;
+    const relativeAngle = Math.atan2(
+      normalX * frame.rightX + normalZ * frame.rightZ,
+      normalX * frame.forwardX + normalZ * frame.forwardZ,
+    );
+    indicator._screenAng = relativeAngle;
+    const paint = hitIndicatorPaintScratch;
+    paint.age = timeS - indicator.t0;
+    paint.angle = relativeAngle - Math.PI / 2;
+    const arcClass = ARC_CLASS[indicator.kind];
+    if (paint.age < ARC_IN_S) {
+      const attack = paint.age / ARC_IN_S;
+      const start = indicator.re ? 0.8 : 0.55;
+      paint.alpha = attack;
+      paint.growth = start + (1.05 - start) * (1 - (1 - attack) * (1 - attack));
+    } else {
+      paint.growth = 1.05 - 0.05 * Math.min(1, (paint.age - ARC_IN_S) / 0.14);
+      const fade = paint.age - ARC_IN_S - arcClass.holdS;
+      paint.alpha = fade <= 0
+        ? 1
+        : Math.pow(Math.max(0, 1 - fade / arcClass.fadeS), 1.35);
+    }
+    paint.halfAngle = arcClass.half * paint.growth;
+    const damageWeight = indicator.kind === 'bounce'
+      ? 0
+      : Math.min(1, (indicator.dmg || 0) / 520);
+    paint.thickness = frame.thickness * arcClass.thickF
+      * (0.74 + 0.40 * damageWeight) * paint.growth;
+    paint.rimHalfAngle = paint.halfAngle * 0.82;
+    paint.bodyColor = arcClass.body;
+    paint.bodyAlpha = arcClass.bodyA;
+    paint.rimColor = arcClass.rim;
+    paint.rimAlpha = arcClass.rimA;
+    return paint;
+  }
+
+  function paintHitIndicatorBody(
+    frame: HitIndicatorFrameState,
+    paint: HitIndicatorPaintState,
+  ): void {
+    wedgePath(
+      frame.centerX,
+      frame.centerY,
+      paint.angle,
+      paint.halfAngle,
+      frame.radius,
+      paint.thickness,
+    );
+    let gradient = ctx.createRadialGradient(
+      frame.centerX, frame.centerY, frame.radius,
+      frame.centerX, frame.centerY, frame.radius + paint.thickness,
+    );
+    gradient.addColorStop(0, `rgba(8,11,14,${(0.40 * paint.alpha).toFixed(3)})`);
+    gradient.addColorStop(0.55, `rgba(8,11,14,${(0.16 * paint.alpha).toFixed(3)})`);
+    gradient.addColorStop(1, 'rgba(8,11,14,0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    gradient = ctx.createRadialGradient(
+      frame.centerX, frame.centerY, frame.radius,
+      frame.centerX, frame.centerY, frame.radius + paint.thickness,
+    );
+    gradient.addColorStop(0, `rgba(${paint.bodyColor},${(paint.bodyAlpha * paint.alpha).toFixed(3)})`);
+    gradient.addColorStop(0.32, `rgba(${paint.bodyColor},${(paint.bodyAlpha * 0.62 * paint.alpha).toFixed(3)})`);
+    gradient.addColorStop(1, `rgba(${paint.bodyColor},0)`);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  }
+
+  function strokeHitIndicatorArc(
+    frame: HitIndicatorFrameState,
+    paint: HitIndicatorPaintState,
+    color: string,
+    lineWidth: number,
+    radiusOffset: number,
+    halfAngle: number,
+  ): void {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.arc(
+      frame.centerX,
+      frame.centerY,
+      frame.radius + radiusOffset,
+      paint.angle - halfAngle,
+      paint.angle + halfAngle,
+    );
+    ctx.stroke();
+  }
+
+  function paintHitIndicatorRim(
+    indicator: HitDirection,
+    frame: HitIndicatorFrameState,
+    paint: HitIndicatorPaintState,
+  ): void {
+    ctx.lineCap = 'butt';
+    strokeHitIndicatorArc(
+      frame,
+      paint,
+      `rgba(8,11,14,${(0.70 * paint.alpha).toFixed(3)})`,
+      4.6,
+      1,
+      paint.rimHalfAngle,
+    );
+    strokeHitIndicatorArc(
+      frame,
+      paint,
+      `rgba(${paint.rimColor},${(paint.rimAlpha * paint.alpha).toFixed(3)})`,
+      2.3,
+      1,
+      paint.rimHalfAngle,
+    );
+    if (paint.age < 0.25) {
+      const flash = 1 - paint.age / 0.25;
+      ctx.globalCompositeOperation = 'lighter';
+      strokeHitIndicatorArc(
+        frame,
+        paint,
+        `rgba(255,236,220,${(0.55 * flash * paint.alpha).toFixed(3)})`,
+        3.4,
+        1,
+        paint.rimHalfAngle * 0.9,
+      );
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (indicator.crit && indicator.kind !== 'bounce' && paint.age < 1.4) {
+      const pulse = 0.55 + 0.45 * Math.sin(paint.age * Math.PI * 4);
+      ctx.globalCompositeOperation = 'lighter';
+      strokeHitIndicatorArc(
+        frame,
+        paint,
+        `rgba(255,216,164,${(0.8 * pulse * paint.alpha).toFixed(3)})`,
+        3.2,
+        3.5,
+        paint.halfAngle * 0.34,
+      );
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  function paintHitIndicatorLabel(
+    indicator: HitDirection,
+    frame: HitIndicatorFrameState,
+    paint: HitIndicatorPaintState,
+  ): void {
+    const showBlockedAmount = !indicator.numeric && directionalHitValueVisible(
+      directionalHitValuesEnabled,
+      indicator.amount,
+      indicator.kind,
+    );
+    const label = showBlockedAmount ? `${indicator.label} · ${indicator.amount}` : indicator.label;
+    const fontPx = indicator.numeric
+      ? Math.round(Math.min(Math.max(frame.minDimension * 0.023, 14), 19))
+      : Math.round(Math.min(Math.max(
+        frame.minDimension * (label.length > 13 ? 0.015 : 0.018),
+        10,
+      ), 14));
+    const valueRadius = frame.radius + paint.thickness + (indicator.numeric ? 14 : 16);
+    ctx.save();
+    ctx.font = `900 ${fontPx}px ${FONT_COND}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'miter';
+    ctx.miterLimit = 2;
+    const labelHalf = ctx.measureText(label).width / 2;
+    const x = Math.min(Math.max(
+      frame.centerX + Math.cos(paint.angle) * valueRadius,
+      labelHalf + 8,
+    ), w - labelHalf - 8);
+    const y = Math.min(Math.max(
+      frame.centerY + Math.sin(paint.angle) * valueRadius,
+      fontPx + 8,
+    ), h - fontPx - 8);
+    ctx.globalAlpha = Math.min(1, 0.98 * paint.alpha);
+    ctx.lineWidth = indicator.numeric ? 4.6 : 4;
+    ctx.strokeStyle = 'rgba(5,8,11,0.94)';
+    ctx.strokeText(label, x, y);
+    ctx.fillStyle = indicator.labelColor;
+    ctx.fillText(label, x, y);
+    if (indicator.crit && indicator.numeric) {
+      const critRadius = valueRadius + fontPx + 5;
+      const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
+      ctx.font = `900 ${critFontPx}px ${FONT_COND}`;
+      const critHalf = ctx.measureText('CRIT').width / 2;
+      const critX = Math.min(Math.max(
+        frame.centerX + Math.cos(paint.angle) * critRadius,
+        critHalf + 8,
+      ), w - critHalf - 8);
+      const critY = Math.min(Math.max(
+        frame.centerY + Math.sin(paint.angle) * critRadius,
+        critFontPx + 8,
+      ), h - critFontPx - 8);
+      ctx.lineWidth = 3.4;
+      ctx.strokeText('CRIT', critX, critY);
+      ctx.fillStyle = '#ffd0a8';
+      ctx.fillText('CRIT', critX, critY);
+    }
+    ctx.restore();
+  }
+
   function drawHitIndicators(timeS: number): void {
     if (!hitDirs.length) return;
-    const cam = lastCamera;
-    const pl = playerRef && playerRef.state ? playerRef.state.pos : null;
-    if (!cam || !pl) return;
-    // camera basis, y-flattened: screen-right = +X column of matrixWorld,
-    // forward = -Z column (the exact convention the damage panel's camYaw
-    // read uses) — recomputed EVERY frame so the wedges stay WORLD-anchored
-    // and counter-rotate as the camera/turret turns (probe-asserted)
-    const m = cam.matrixWorld.elements;
-    let rx = m[0];
-    let rz = m[2];
-    let fx = -m[8];
-    let fz = -m[10];
-    const rl = Math.hypot(rx, rz);
-    const fl = Math.hypot(fx, fz);
-    if (rl < 1e-4 || fl < 1e-4) return; // camera looking straight down
-    rx /= rl; rz /= rl; fx /= fl; fz /= fl;
-    const cx = w / 2;
-    const cy = h / 2;
-    const minWH = Math.min(w, h);
-    // ring radius: just outside the DRAWN dispersion circle (drawReticle's
-    // clamp of smoothRadPx, one frame stale — fine), floored at WoT's fixed
-    // read distance and capped so top/bottom wedges stay in frame and clear
-    // of the corner furniture (minimap / damage panel) even mid-bloom.
-    const drawnR = clampRetR(smoothRadPx); // same clamp the circle draws with
-    const R0 = Math.min(Math.max(minWH * 0.185, drawnR + 26), minWH * 0.30);
-    const thickBase = Math.min(Math.max(minWH * 0.115, 64), 118);
-    // expiry sweep first, then draw oldest -> newest so a fresh wedge always
-    // paints over an older overlapping one
-    for (let i = hitDirs.length - 1; i >= 0; i--) {
-      const e = hitDirs[i];
-      const cls = ARC_CLASS[e.kind] || ARC_CLASS.pen;
-      const age = timeS - e.t0;
-      if (age > ARC_IN_S + cls.holdS + cls.fadeS || age < 0) hitDirs.splice(i, 1);
-    }
+    const frame = prepareHitIndicatorFrame();
+    if (!frame) return;
+    expireHitIndicators(timeS);
     for (let i = 0; i < hitDirs.length; i++) {
-      const e = hitDirs[i];
-      const cls = ARC_CLASS[e.kind] || ARC_CLASS.pen;
-      const age = timeS - e.t0;
-      const dx = e.wx - pl.x;
-      const dz = e.wz - pl.z;
-      const dl = Math.hypot(dx, dz);
-      if (dl < 1e-3) continue;
-      const nx = dx / dl;
-      const nz = dz / dl;
-      // + = screen right, 0 = camera forward
-      const rel = Math.atan2(nx * rx + nz * rz, nx * fx + nz * fz);
-      e._screenAng = rel;
-      const c = rel - Math.PI / 2; // canvas frame: -PI/2 = screen top
-      // envelopes: fast pulse-in with a small overshoot (a re-pulsed wedge
-      // re-runs the attack from 0.8 so repeats flash instead of re-growing),
-      // brief hold, then an eased fade-out
-      let aEnv;
-      let grow;
-      if (age < ARC_IN_S) {
-        const t = age / ARC_IN_S;
-        aEnv = t;
-        const from = e.re ? 0.8 : 0.55;
-        grow = from + (1.05 - from) * (1 - (1 - t) * (1 - t));
-      } else {
-        grow = 1.05 - 0.05 * Math.min(1, (age - ARC_IN_S) / 0.14);
-        const fadeT = age - ARC_IN_S - cls.holdS;
-        aEnv = fadeT <= 0 ? 1 : Math.pow(Math.max(0, 1 - fadeT / cls.fadeS), 1.35);
-      }
-      const half = cls.half * grow;
-      // damage weights the wedge's radial reach (big hits loom larger)
-      const dmgK = e.kind === 'bounce' ? 0 : Math.min(1, (e.dmg || 0) / 520);
-      const thick = thickBase * cls.thickF * (0.74 + 0.40 * dmgK) * grow;
-      // body: dark grounding pass, then the class glow — both radial-gradient
-      // falloffs off the bright inner edge (sunlit sand cannot erase it)
-      wedgePath(cx, cy, c, half, R0, thick);
-      let g = ctx.createRadialGradient(cx, cy, R0, cx, cy, R0 + thick);
-      g.addColorStop(0, `rgba(8,11,14,${(0.40 * aEnv).toFixed(3)})`);
-      g.addColorStop(0.55, `rgba(8,11,14,${(0.16 * aEnv).toFixed(3)})`);
-      g.addColorStop(1, 'rgba(8,11,14,0)');
-      ctx.fillStyle = g;
-      ctx.fill();
-      g = ctx.createRadialGradient(cx, cy, R0, cx, cy, R0 + thick);
-      g.addColorStop(0, `rgba(${cls.body},${(cls.bodyA * aEnv).toFixed(3)})`);
-      g.addColorStop(0.32, `rgba(${cls.body},${(cls.bodyA * 0.62 * aEnv).toFixed(3)})`);
-      g.addColorStop(1, `rgba(${cls.body},0)`);
-      ctx.fillStyle = g;
-      ctx.fill();
-      // bright inner rim (the WoT edge): middle ~82% of the span, round caps,
-      // dark under-stroke per HUD convention
-      const rimHalf = half * 0.82;
-      // Square-ended keylines keep the indicator in the current hard-edged
-      // combat UI family; the tapered body still carries the bearing.
-      ctx.lineCap = 'butt';
-      for (const pass of [
-        { col: `rgba(8,11,14,${(0.70 * aEnv).toFixed(3)})`, lw: 4.6 },
-        { col: `rgba(${cls.rim},${(cls.rimA * aEnv).toFixed(3)})`, lw: 2.3 },
-      ]) {
-        ctx.strokeStyle = pass.col;
-        ctx.lineWidth = pass.lw;
-        ctx.beginPath();
-        ctx.arc(cx, cy, R0 + 1, c - rimHalf, c + rimHalf);
-        ctx.stroke();
-      }
-      // attack flash: additive white-hot rim pop for the first ~0.25 s
-      if (age < 0.25) {
-        const f = 1 - age / 0.25;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = `rgba(255,236,220,${(0.55 * f * aEnv).toFixed(3)})`;
-        ctx.lineWidth = 3.4;
-        ctx.beginPath();
-        ctx.arc(cx, cy, R0 + 1, c - rimHalf * 0.9, c + rimHalf * 0.9);
-        ctx.stroke();
-        ctx.globalCompositeOperation = 'source-over';
-      }
-      // crit accent (damage wedges only): hot core flash pulsing on the
-      // damage panel's ~2 Hz module beat for the first ~1.4 s
-      if (e.crit && e.kind !== 'bounce' && age < 1.4) {
-        const pulse = 0.55 + 0.45 * Math.sin(age * Math.PI * 4);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = `rgba(255,216,164,${(0.8 * pulse * aEnv).toFixed(3)})`;
-        ctx.lineWidth = 3.2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, R0 + 3.5, c - half * 0.34, c + half * 0.34);
-        ctx.stroke();
-        ctx.globalCompositeOperation = 'source-over';
-      }
-      // Historical WoT read: damage/outcome copy sits CLEAR of the wedge,
-      // not buried inside its glow. Applied damage is always exact, including
-      // amber HE splash; blocks keep their canonical word. The existing
-      // Interface option adds the pre-mitigation value to blocked words.
-      const showBlockedAmount = !e.numeric
-        && directionalHitValueVisible(directionalHitValuesEnabled, e.amount, e.kind);
-      const label = showBlockedAmount ? `${e.label} · ${e.amount}` : e.label;
-      const fontPx = e.numeric
-        ? Math.round(Math.min(Math.max(minWH * 0.023, 14), 19))
-        : Math.round(Math.min(Math.max(minWH * (label.length > 13 ? 0.015 : 0.018), 10), 14));
-      const valueR = R0 + thick + (e.numeric ? 14 : 16);
-      ctx.save();
-      ctx.font = `900 ${fontPx}px ${FONT_COND}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineJoin = 'miter';
-      ctx.miterLimit = 2;
-      const labelHalf = ctx.measureText(label).width / 2;
-      const tx = Math.min(Math.max(cx + Math.cos(c) * valueR, labelHalf + 8), w - labelHalf - 8);
-      const ty = Math.min(Math.max(cy + Math.sin(c) * valueR, fontPx + 8), h - fontPx - 8);
-      ctx.globalAlpha = Math.min(1, 0.98 * aEnv);
-      ctx.lineWidth = e.numeric ? 4.6 : 4;
-      ctx.strokeStyle = 'rgba(5,8,11,0.94)';
-      ctx.strokeText(label, tx, ty);
-      ctx.fillStyle = e.labelColor;
-      ctx.fillText(label, tx, ty);
-
-      // A compact CRIT tag continues farther along the same radial bearing.
-      // For a top hit this places it above the number exactly like the legacy
-      // presentation; side and rear hits remain directionally coherent.
-      if (e.crit && e.numeric) {
-        const critR = valueR + fontPx + 5;
-        const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
-        ctx.font = `900 ${critFontPx}px ${FONT_COND}`;
-        const critHalf = ctx.measureText('CRIT').width / 2;
-        const critX = Math.min(Math.max(cx + Math.cos(c) * critR, critHalf + 8), w - critHalf - 8);
-        const critY = Math.min(Math.max(cy + Math.sin(c) * critR, critFontPx + 8), h - critFontPx - 8);
-        ctx.lineWidth = 3.4;
-        ctx.strokeText('CRIT', critX, critY);
-        ctx.fillStyle = '#ffd0a8';
-        ctx.fillText('CRIT', critX, critY);
-      }
-      ctx.restore();
+      const indicator = hitDirs[i];
+      const paint = prepareHitIndicatorPaint(indicator, timeS, frame);
+      if (!paint) continue;
+      paintHitIndicatorBody(frame, paint);
+      paintHitIndicatorRim(indicator, frame, paint);
+      paintHitIndicatorLabel(indicator, frame, paint);
     }
     ctx.lineCap = 'butt';
   }
@@ -2968,18 +3388,19 @@ export function initHud(bus: EventBus): HudRuntime {
   ): boolean => (a == null && b == null)
     || (a != null && b != null && Number.isFinite(a) && Number.isFinite(b)
       && Math.abs(a - b) <= eps);
-  function reticleCanReuse(view: HudAimView): boolean {
-    if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
-    if (reloadHudFraction(view.reload) > 0) return false;
-    const targetR = clampRetR(reticleTargetR(view));
-    if (Math.abs(targetR - smoothRadPx) > 0.01) return false;
-    const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
-    const mag = view.magazine;
-    return reticlePaint.mode === mode && reticlePaint.w === w && reticlePaint.h === h
-      && nearPaint(reticlePaint.cx, view.cx) && nearPaint(reticlePaint.cy, view.cy)
+  function reticleGeometryMatches(view: HudAimView): boolean {
+    return reticlePaint.mode === mode
+      && reticlePaint.w === w
+      && reticlePaint.h === h
+      && nearPaint(reticlePaint.cx, view.cx)
+      && nearPaint(reticlePaint.cy, view.cy)
       && nearPaint(reticlePaint.radPx, view.radPx, 0.01)
-      && nearPaint(reticlePaint.gunX, view.gunX) && nearPaint(reticlePaint.gunY, view.gunY)
-      && nearPaint(reticlePaint.penRatio, view.penRatio, 0.001)
+      && nearPaint(reticlePaint.gunX, view.gunX)
+      && nearPaint(reticlePaint.gunY, view.gunY)
+      && nearPaint(reticlePaint.drawnR, lastDrawnR, 0.01);
+  }
+  function reticleAimStateMatches(view: HudAimView): boolean {
+    return nearPaint(reticlePaint.penRatio, view.penRatio, 0.001)
       && nearPaint(reticlePaint.distM, view.distM, 0.25)
       && nearPaint(reticlePaint.blockedDistM, view.blockedDistM, 0.05)
       && nearPaint(reticlePaint.gunDistM, view.gunDistM, 0.05)
@@ -2988,13 +3409,25 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.singleReticle === !!view.singleReticle
       && reticlePaint.atGunLimit === !!view.atGunLimit
       && reticlePaint.gunLimitSpec === !!view.gunLimitSpec
-      && nearPaint(reticlePaint.zoom, view.zoom || 1, 0.001)
-      && reticlePaint.reloadKind === (view.reload?.kind || '')
-      && reticlePaint.magazineCapacity === ((mag?.capacity ?? 0) | 0)
-      && reticlePaint.magazineRounds === ((mag?.rounds ?? 0) | 0)
+      && nearPaint(reticlePaint.zoom, view.zoom || 1, 0.001);
+  }
+  function reticleWeaponStateMatches(view: HudAimView): boolean {
+    const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
+    const magazine = view.magazine;
+    return reticlePaint.reloadKind === (view.reload?.kind || '')
+      && reticlePaint.magazineCapacity === ((magazine?.capacity ?? 0) | 0)
+      && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
       && reticlePaint.shellType === (shell.type || '')
-      && reticlePaint.shellCount === shellCount(shell)
-      && nearPaint(reticlePaint.drawnR, lastDrawnR, 0.01);
+      && reticlePaint.shellCount === shellCount(shell);
+  }
+  function reticleCanReuse(view: HudAimView): boolean {
+    if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
+    if (reloadHudFraction(view.reload) > 0) return false;
+    const targetR = clampRetR(reticleTargetR(view));
+    if (Math.abs(targetR - smoothRadPx) > 0.01) return false;
+    return reticleGeometryMatches(view)
+      && reticleAimStateMatches(view)
+      && reticleWeaponStateMatches(view);
   }
   function captureReticlePaint(view: HudAimView): void {
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
@@ -3015,38 +3448,304 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.drawnR = lastDrawnR;
   }
 
-  function drawReticle(view: HudAimView, dt: number): void {
+  function strokeReticleCircle(cx: number, cy: number, radius: number): void {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function paintReticleMarker(
+    cx: number,
+    cy: number,
+    scale: number,
+    centerRadius: number,
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(cx - 8 * scale, cy + 0.5); ctx.lineTo(cx - 2.8 * scale, cy + 0.5);
+    ctx.moveTo(cx + 2.8 * scale, cy + 0.5); ctx.lineTo(cx + 8 * scale, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - 8 * scale); ctx.lineTo(cx + 0.5, cy - 2.8 * scale);
+    ctx.moveTo(cx + 0.5, cy + 2.8 * scale); ctx.lineTo(cx + 0.5, cy + 8 * scale);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, centerRadius * Math.min(scale, 1.35), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function reticleGunColor(view: HudAimView, draw: ReticleDrawState): string {
+    if (draw.blocked) return PEN_RED;
+    if (draw.limited) return 'rgba(160,170,180,0.95)';
+    const gunOnTarget = aimTargetId != null
+      && (forcedStill || view.gunTargetId === aimTargetId);
+    return penColor(gunOnTarget ? view.penRatio : null);
+  }
+
+  function reticleRingColor(draw: ReticleDrawState): string {
+    if (draw.blocked) return PEN_RED;
+    if (draw.limited) return 'rgba(160,170,180,0.95)';
+    return draw.sniper ? SNIPER_COL : CIRCLE_COL;
+  }
+
+  function prepareReticleDraw(view: HudAimView, dt: number): ReticleDrawState {
+    const state = reticleDrawScratch;
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
-    const cx = anchor.x ?? view.cx;
-    const cy = anchor.y ?? view.cy;
-    // bloom/shrink smoothing toward the target pixel radius
-    const targetR = reticleTargetR(view);
-    const k = 1 - Math.exp(-14 * dt);
-    smoothRadPx += (targetR - smoothRadPx) * k;
-    let r = clampRetR(smoothRadPx);
-    // WoT contract: the dispersion circle belongs to the GUN, never to the
-    // camera. The old hold-open behavior enlarged a camera-centered circle
-    // until it swallowed an off-axis gun marker, making both reticles look
-    // aligned during the exact depression/limit state that needed separation.
-    let gunOutside = false;
-    let gunOffPx = 0;
-    if (view.gunX != null && view.gunY != null) {
-      gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
-      gunOutside = gunOffPx > r;
+    state.cx = anchor.x ?? view.cx;
+    state.cy = anchor.y ?? view.cy;
+    state.single = anchor.single;
+    const targetRadius = reticleTargetR(view);
+    smoothRadPx += (targetRadius - smoothRadPx) * (1 - Math.exp(-14 * dt));
+    state.radius = clampRetR(smoothRadPx);
+    state.circleX = view.gunX ?? state.cx;
+    state.circleY = view.gunY ?? state.cy;
+    lastDrawnR = state.radius;
+    lastGunOutside = view.gunX != null && view.gunY != null
+      && Math.hypot(view.gunX - state.cx, view.gunY - state.cy) > state.radius;
+    lastCircleX = state.circleX;
+    lastCircleY = state.circleY;
+
+    state.sniper = mode === 'sniper';
+    state.reloadFraction = reloadHudFraction(view.reload);
+    state.reloading = state.reloadFraction > 0;
+    state.blocked = view.blockedDistM != null;
+    state.limited = !state.blocked && view.atGunLimit;
+    state.gunColor = reticleGunColor(view, state);
+    state.ringColor = reticleRingColor(state);
+    state.zoomScale = state.sniper
+      ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8))
+      : 1;
+    state.markerLineWidth = (state.sniper ? 1.8 : 1.6)
+      * Math.min(state.zoomScale, 1.4);
+    state.centerClearanceRadius = 14 + (state.zoomScale - 1) * 9;
+    state.magazine = null;
+    state.magazineBottomY = 0;
+    return state;
+  }
+
+  function paintAutoloaderMagazine(view: HudAimView, draw: ReticleDrawState): void {
+    const magazine = autoloaderHudState(view.magazine, view.reload, magazineHudScratch);
+    draw.magazine = magazine;
+    draw.magazineBottomY = 0;
+    if (!magazine) {
+      lastMagazineIndicatorY = null;
+      lastMagazineIndicatorState = null;
+      return;
     }
-    lastDrawnR = r;
-    lastGunOutside = gunOutside;
-    const ccx = view.gunX != null ? view.gunX : cx;
-    const ccy = view.gunY != null ? view.gunY : cy;
-    lastCircleX = ccx; lastCircleY = ccy;
+
+    const shellW = draw.sniper ? 6.5 : 5.5;
+    const shellH = draw.sniper ? 16 : 14;
+    const gap = draw.sniper ? 4 : 3.5;
+    const visibleShells = magazine.visibleShells;
+    const totalW = visibleShells * shellW + (visibleShells - 1) * gap;
+    const y0 = draw.cy + draw.centerClearanceRadius + 6;
+    draw.magazineBottomY = y0 + shellH;
+    lastMagazineIndicatorY = y0;
+    lastMagazineIndicatorState = magazine;
+    const shellInk = magazine.reloading ? AUTOLOADER_SHELL_RELOADING : RELOAD_ACCENT;
+    const shellOutline = magazine.reloading
+      ? 'rgba(174,184,192,0.64)'
+      : 'rgba(240,160,48,0.7)';
+
+    for (let i = 0; i < visibleShells; i++) {
+      const pose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
+      const shellCx = draw.cx + (i - (visibleShells - 1) * 0.5) * (shellW + gap);
+      const shellCy = y0 + pose.y + shellH * 0.5;
+      draw.magazineBottomY = Math.max(draw.magazineBottomY, y0 + pose.y + shellH);
+      const ready = i < magazine.readyShells;
+      const loading = magazine.fullReload
+        ? Math.max(0, Math.min(1, magazine.loadProgress * visibleShells - i))
+        : 0;
+      ctx.save();
+      ctx.translate(shellCx, shellCy);
+      ctx.rotate(pose.rotation);
+      const x = -shellW * 0.5;
+      const y = -shellH * 0.5;
+      magazineShellPath(ctx, x, y, shellW, shellH);
+      ctx.strokeStyle = 'rgba(5,8,11,0.88)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      magazineShellPath(ctx, x, y, shellW, shellH);
+      ctx.fillStyle = 'rgba(7,11,14,0.52)';
+      ctx.fill();
+      if (ready || loading > 0) {
+        ctx.save();
+        magazineShellPath(ctx, x, y, shellW, shellH);
+        ctx.clip();
+        ctx.fillStyle = shellInk;
+        const fillH = ready ? shellH : shellH * loading;
+        ctx.fillRect(x - 1, y + shellH - fillH, shellW + 2, fillH + 1);
+        ctx.restore();
+      }
+      magazineShellPath(ctx, x, y, shellW, shellH);
+      ctx.strokeStyle = ready || loading > 0 ? shellInk : shellOutline;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (magazine.overflow > 0) {
+      ctx.fillStyle = shellInk;
+      ctx.font = `700 9px ${FONT_COND}`;
+      ctx.textAlign = 'left';
+      ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + 3, y0 + shellH);
+      ctx.textAlign = 'center';
+    }
+  }
+
+  function paintReadyPulse(draw: ReticleDrawState): void {
+    if (readyPulseT < 0) return;
+    const age = lastTimeS - readyPulseT;
+    if (age < 0 || age >= 0.4) {
+      readyPulseT = -1;
+      return;
+    }
+    if (forcedStill) return;
+    ctx.globalAlpha = 0.95 * (1 - age / 0.4);
+    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = '#ffffff';
+    ctx.lineWidth = draw.markerLineWidth + 0.6;
+    paintReticleMarker(draw.cx, draw.cy, draw.zoomScale, 1.1);
+  }
+
+  function paintPhysicalGunMarker(view: HudAimView, draw: ReticleDrawState): void {
+    if (draw.single) return;
+    if (view.gunX == null || view.gunY == null) {
+      lastGunMarkerCol = PEN_NONE;
+      return;
+    }
+    const scale = 0.9 * draw.zoomScale;
+    lastGunMarkerCol = draw.gunColor;
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = 'rgba(6,9,12,0.9)';
+    ctx.fillStyle = 'rgba(6,9,12,0.9)';
+    ctx.lineWidth = draw.markerLineWidth * 0.9 + 1.3;
+    paintReticleMarker(view.gunX, view.gunY, scale, 1.1);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = draw.gunColor;
+    ctx.fillStyle = draw.gunColor;
+    ctx.lineWidth = draw.markerLineWidth * 0.9;
+    paintReticleMarker(view.gunX, view.gunY, scale, 1.1);
+  }
+
+  function paintReloadCountdown(view: HudAimView, draw: ReticleDrawState): void {
+    if (!draw.reloading) return;
+    const text = view.reload.t >= 10
+      ? `${Math.ceil(view.reload.t)}`
+      : `${view.reload.t.toFixed(1)}`;
+    const y = draw.magazine
+      ? draw.magazineBottomY + 15
+      : draw.cy + draw.centerClearanceRadius + 15;
+    ctx.fillStyle = RELOAD_ACCENT;
+    ctx.font = `700 16px ${FONT_COND}`;
+    const textW = ctx.measureText(text).width;
+    ctx.font = `500 10.5px ${FONT_COND}`;
+    const unitW = ctx.measureText(' s').width;
+    const x = draw.cx - (textW + unitW) / 2;
+    ctx.textAlign = 'left';
+    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.fillText(text, x, y);
+    ctx.font = `500 10.5px ${FONT_COND}`;
+    ctx.fillText(' s', x + textW, y);
+    ctx.textAlign = 'center';
+  }
+
+  function paintSniperAmmoReadout(draw: ReticleDrawState): void {
+    if (draw.blocked) return;
+    const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
+    const count = shellCount(shell);
+    const type = shell.type || '';
+    const y = Math.min(
+      draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
+      h - 150,
+    );
+    ctx.font = `700 13.5px ${FONT_COND}`;
+    const countW = ctx.measureText(`${count} `).width;
+    ctx.font = `800 9px ${FONT_COND}`;
+    const typeW = ctx.measureText(type).width;
+    const x = draw.cx - (countW + typeW) / 2;
+    ctx.textAlign = 'left';
+    ctx.font = `700 13.5px ${FONT_COND}`;
+    ctx.fillStyle = 'rgba(226,236,244,0.92)';
+    ctx.fillText(`${count} `, x, y);
+    ctx.font = `800 9px ${FONT_COND}`;
+    ctx.fillStyle = SHELL_TYPE_COLOR[type] || 'rgba(159,176,191,0.9)';
+    ctx.fillText(type, x + countW, y);
+    ctx.textAlign = 'center';
+  }
+
+  function paintSniperDistance(view: HudAimView, draw: ReticleDrawState): void {
+    if (view.distM == null || !Number.isFinite(view.distM)) return;
+    const offset = 0.7071 * (draw.radius + 9);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(208,221,232,0.8)';
+    ctx.font = `600 11.5px ${FONT_COND}`;
+    ctx.fillText(
+      `${Math.round(view.distM)} m`,
+      draw.cx + offset + 4,
+      draw.cy + offset + 12,
+    );
+    ctx.textAlign = 'center';
+  }
+
+  function paintSniperZoom(view: HudAimView, draw: ReticleDrawState): void {
+    if (window.__HUD_HIDE_ZOOM_PLATE) return;
+    const y = h - 96;
+    const text = `×${(view.zoom || 8).toFixed(1)}`;
+    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.fillStyle = 'rgba(196,246,202,0.95)';
+    ctx.fillText(text, draw.cx, y);
+    const halfWidth = ctx.measureText(text).width / 2 + 12;
+    ctx.strokeStyle = 'rgba(170,240,178,0.5)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(draw.cx - halfWidth - 20, y - 5.5);
+    ctx.lineTo(draw.cx - halfWidth, y - 5.5);
+    ctx.moveTo(draw.cx + halfWidth, y - 5.5);
+    ctx.lineTo(draw.cx + halfWidth + 20, y - 5.5);
+    ctx.stroke();
+  }
+
+  function paintSniperReadouts(view: HudAimView, draw: ReticleDrawState): void {
+    if (!draw.sniper) return;
+    paintSniperAmmoReadout(draw);
+    paintSniperDistance(view, draw);
+    paintSniperZoom(view, draw);
+  }
+
+  function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
+    const warning = aimWarningState(view, aimWarningScratch);
+    if (!warning.visible) return;
+    const y = draw.cy + Math.max(62, draw.radius + 24);
+    const danger = warning.kind === 'blocked';
+    ctx.font = `800 10.5px ${FONT_COND}`;
+    const chipW = ctx.measureText(warning.text).width + 32;
+    const chipX = draw.cx - chipW * 0.5;
+    ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' : 'rgba(12,17,22,.9)';
+    ctx.fillRect(chipX, y - 14, chipW, 24);
+    ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' : 'rgba(170,180,190,.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(chipX + 0.5, y - 13.5, chipW - 1, 23);
+    ctx.beginPath();
+    ctx.moveTo(chipX + 13, y - 8);
+    ctx.lineTo(chipX + 19, y + 3);
+    ctx.lineTo(chipX + 7, y + 3);
+    ctx.closePath();
+    ctx.strokeStyle = danger ? PEN_RED : 'rgba(190,201,210,.92)';
+    ctx.stroke();
+    ctx.fillStyle = danger ? '#ff9b91' : 'rgba(205,216,224,.96)';
+    ctx.textAlign = 'left';
+    ctx.fillText(warning.text, chipX + 25, y + 1);
+    ctx.textAlign = 'center';
+  }
+
+  function drawReticle(view: HudAimView, dt: number): void {
+    const draw = prepareReticleDraw(view, dt);
+    const { cx, cy, radius: r, circleX: ccx, circleY: ccy } = draw;
     // Conventional tanks keep a screen-center CAMERA marker plus the physical
     // gun mark. A hydraulic fixed gun collapses both onto the reachable shot
     // point because there is no independent turret lay to communicate.
-    const sniper = mode === 'sniper';
+    const sniper = draw.sniper;
     const cameraCol = view.atGunLimit ? PEN_RED : PEN_NONE;
-    const rl0 = view.reload;
-    const reloadFrac = reloadHudFraction(rl0);
-    const isReloading = reloadFrac > 0;
+    const reloadFrac = draw.reloadFraction;
+    const isReloading = draw.reloading;
 
     // --- dispersion circle: ONE thin DASHED ring (stock WoT's aim circle),
     // NO outer tick marks. r7-2 MAJOR (round critique: "16-20 chunky
@@ -3059,18 +3758,13 @@ export function initHud(bus: EventBus): HudRuntime {
     const segPeriod = (2 * Math.PI * r) / segN;
     const dashLen = Math.max(2.5, segPeriod * 0.52);
     const dashGap = Math.max(1.5, segPeriod - dashLen);
-    function circlePass() {
-      ctx.beginPath();
-      ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
-      ctx.stroke();
-    }
     const circleLw = sniper ? 1.5 : 1.3;
     ctx.lineCap = 'butt';
     ctx.setLineDash([dashLen, dashGap]);
     ctx.globalAlpha = 0.72;
     ctx.strokeStyle = 'rgba(0,0,0,0.62)'; // dark halo under-pass
     ctx.lineWidth = circleLw + 1.5;
-    circlePass();
+    strokeReticleCircle(ccx, ccy, r);
     ctx.globalAlpha = 0.97;
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
@@ -3078,18 +3772,12 @@ export function initHud(bus: EventBus): HudRuntime {
     // GUN-LIMIT (r2): gun pinned by the pitch clamp / muzzle-clearance floor
     // / casemate arc — the circle greys out so an unconverged lay is visibly
     // not-ready even though the path itself is clear.
-    const blocked = view.blockedDistM != null;
-    const limited = !blocked && view.atGunLimit;
-    const gunOnTarget = aimTargetId != null &&
-      (forcedStill || view.gunTargetId === aimTargetId);
-    const gunCol = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)'
-      : penColor(gunOnTarget ? view.penRatio : null);
-    const ringCol = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)'
-      : sniper ? SNIPER_COL : CIRCLE_COL;
+    const gunCol = draw.gunColor;
+    const ringCol = draw.ringColor;
     ctx.strokeStyle = ringCol;
     ctx.fillStyle = ringCol;
     ctx.lineWidth = circleLw;
-    circlePass();
+    strokeReticleCircle(ccx, ccy, r);
     // RELOAD PROGRESS LIVES IN THE DISPERSION DOTS. The old second circle
     // around the center marker duplicated the same state and cluttered the
     // point of aim after every shot. The remaining fraction now paints an
@@ -3116,41 +3804,29 @@ export function initHud(bus: EventBus): HudRuntime {
     // the accumulated dark passes were what fused into the backing disc.
     // hud_ui r5: the marker SCALES with zoom in sniper mode — at x8 a fixed
     // 8px cross would be lost on the target's hull.
-    const zs = sniper ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8)) : 1;
-    const primaryMarkerCol = anchor.single ? gunCol : cameraCol;
-    lastCameraMarkerCol = anchor.single ? null : cameraCol;
-    lastGunMarkerCol = anchor.single ? gunCol : PEN_NONE;
+    const zs = draw.zoomScale;
+    const primaryMarkerCol = draw.single ? gunCol : cameraCol;
+    lastCameraMarkerCol = draw.single ? null : cameraCol;
+    lastGunMarkerCol = draw.single ? gunCol : PEN_NONE;
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
     if (wasReloading && !isReloading) readyPulseT = lastTimeS;
     wasReloading = isReloading;
-    function markerPass(inkOnly: boolean): void {
-      ctx.beginPath();
-      ctx.moveTo(cx - 8 * zs, cy + 0.5); ctx.lineTo(cx - 2.8 * zs, cy + 0.5);
-      ctx.moveTo(cx + 2.8 * zs, cy + 0.5); ctx.lineTo(cx + 8 * zs, cy + 0.5);
-      ctx.moveTo(cx + 0.5, cy - 8 * zs); ctx.lineTo(cx + 0.5, cy - 2.8 * zs);
-      ctx.moveTo(cx + 0.5, cy + 2.8 * zs); ctx.lineTo(cx + 0.5, cy + 8 * zs);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(cx, cy, (inkOnly ? 1.6 : 1.1) * Math.min(zs, 1.35), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    const markLw = (sniper ? 1.8 : 1.6) * Math.min(zs, 1.4);
+    const markLw = draw.markerLineWidth;
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
     ctx.fillStyle = 'rgba(6,9,12,0.9)';
     ctx.lineWidth = markLw + 1.2;
-    markerPass(true);
+    paintReticleMarker(cx, cy, zs, 1.6);
     ctx.globalAlpha = 0.97;
     ctx.strokeStyle = primaryMarkerCol;
     ctx.fillStyle = primaryMarkerCol;
     ctx.lineWidth = markLw;
-    markerPass(false);
+    paintReticleMarker(cx, cy, zs, 1.1);
 
     // Layout clearance for the center marker's magazine/countdown furniture;
     // no circle is drawn here (reload progress is on the dispersion dots).
-    const centerClearanceR = 14 + (zs - 1) * 9;
     // Magazine autoloader ready-rack: up to four shells curve directly
     // UNDER the center marker. The outer rounds tilt inward and sit slightly
     // above the middle round, forming a shallow ready-rack arc.
@@ -3159,93 +3835,13 @@ export function initHud(bus: EventBus): HudRuntime {
     // the base upward while the timer counts down.
     // A magazine larger than the four-shell visual window keeps an exact
     // +N overflow label instead of silently losing authoritative state.
-    const magazineHud = autoloaderHudState(view.magazine, rl0, magazineHudScratch);
-    let magazineBottomY = 0;
-    if (magazineHud) {
-      const shellW = sniper ? 6.5 : 5.5;
-      const shellH = sniper ? 16 : 14;
-      const gap = sniper ? 4 : 3.5;
-      const visibleShells = magazineHud.visibleShells;
-      const totalW = visibleShells * shellW
-        + (visibleShells - 1) * gap;
-      const y0 = cy + centerClearanceR + 6;
-      magazineBottomY = y0 + shellH;
-      lastMagazineIndicatorY = y0;
-      lastMagazineIndicatorState = magazineHud;
-      const shellInk = magazineHud.reloading
-        ? AUTOLOADER_SHELL_RELOADING : RELOAD_ACCENT;
-      const shellOutline = magazineHud.reloading
-        ? 'rgba(174,184,192,0.64)' : 'rgba(240,160,48,0.7)';
-
-      for (let i = 0; i < visibleShells; i++) {
-        const shellPose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
-        const shellCx = cx + (i - (visibleShells - 1) * 0.5) * (shellW + gap);
-        const shellCy = y0 + shellPose.y + shellH * 0.5;
-        magazineBottomY = Math.max(magazineBottomY, y0 + shellPose.y + shellH);
-        const ready = i < magazineHud.readyShells;
-        const loading = magazineHud.fullReload
-          ? Math.max(0, Math.min(1, magazineHud.loadProgress * visibleShells - i))
-          : 0;
-        ctx.save();
-        ctx.translate(shellCx, shellCy);
-        ctx.rotate(shellPose.rotation);
-        const x = -shellW * 0.5;
-        const y = -shellH * 0.5;
-        // dark under-stroke keeps the silhouettes legible over sky and snow
-        magazineShellPath(ctx, x, y, shellW, shellH);
-        ctx.strokeStyle = 'rgba(5,8,11,0.88)';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        magazineShellPath(ctx, x, y, shellW, shellH);
-        ctx.fillStyle = 'rgba(7,11,14,0.52)';
-        ctx.fill();
-        if (ready || loading > 0) {
-          ctx.save();
-          magazineShellPath(ctx, x, y, shellW, shellH);
-          ctx.clip();
-          ctx.fillStyle = shellInk;
-          const fillH = ready ? shellH : shellH * loading;
-          ctx.fillRect(x - 1, y + shellH - fillH, shellW + 2, fillH + 1);
-          ctx.restore();
-        }
-        magazineShellPath(ctx, x, y, shellW, shellH);
-        ctx.strokeStyle = ready || loading > 0
-          ? shellInk : shellOutline;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.restore();
-      }
-      if (magazineHud.overflow > 0) {
-        ctx.fillStyle = shellInk;
-        ctx.font = `700 9px ${FONT_COND}`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`+${magazineHud.overflow}`, cx + totalW * 0.5 + 3, y0 + shellH);
-        ctx.textAlign = 'center';
-      }
-    } else {
-      lastMagazineIndicatorY = null;
-      lastMagazineIndicatorState = null;
-    }
+    paintAutoloaderMagazine(view, draw);
     // ready pulse (r7): the moment the reload-dot sweep clears, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
     // r8 MAJOR: never in a forced still — with timeS frozen the flash held at
     // full alpha in every captured frame and painted the pen-colored marker
     // ready-pulse WHITE (the canonical sniper shot lost its green pen read).
-    if (readyPulseT >= 0) {
-      const pAge = lastTimeS - readyPulseT;
-      if (pAge >= 0 && pAge < 0.4) {
-        if (!forcedStill) {
-          const pa = 1 - pAge / 0.4;
-          ctx.globalAlpha = 0.95 * pa;
-          ctx.strokeStyle = '#ffffff';
-          ctx.fillStyle = '#ffffff';
-          ctx.lineWidth = markLw + 0.6;
-          markerPass(false);
-        }
-      } else {
-        readyPulseT = -1;
-      }
-    }
+    paintReadyPulse(draw);
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
@@ -3253,36 +3849,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // barrel's real reachable point. It draws even when aligned, overlaying a
     // colored center dot on the neutral camera cross; when a gun limit pins,
     // it separates and stays at the point where the next shell will go.
-    if (!anchor.single && view.gunX != null && view.gunY != null) {
-      const gx = view.gunX, gy = view.gunY;
-      const gzs = 0.9 * zs;
-      const gunPass = () => {
-        ctx.beginPath();
-        ctx.moveTo(gx - 8 * gzs, gy + 0.5); ctx.lineTo(gx - 2.8 * gzs, gy + 0.5);
-        ctx.moveTo(gx + 2.8 * gzs, gy + 0.5); ctx.lineTo(gx + 8 * gzs, gy + 0.5);
-        ctx.moveTo(gx + 0.5, gy - 8 * gzs); ctx.lineTo(gx + 0.5, gy - 2.8 * gzs);
-        ctx.moveTo(gx + 0.5, gy + 2.8 * gzs); ctx.lineTo(gx + 0.5, gy + 8 * gzs);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(gx, gy, 1.1 * Math.min(gzs, 1.35), 0, Math.PI * 2);
-        ctx.fill();
-      };
-      const gCol = gunCol;
-      lastGunMarkerCol = gCol;
-      ctx.globalAlpha = 0.55;
-      ctx.strokeStyle = 'rgba(6,9,12,0.9)';
-      ctx.fillStyle = 'rgba(6,9,12,0.9)';
-      ctx.lineWidth = markLw * 0.9 + 1.3;
-      gunPass();
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = gCol;
-      ctx.fillStyle = gCol;
-      ctx.lineWidth = markLw * 0.9;
-      gunPass();
-      ctx.globalAlpha = 1;
-    } else if (!anchor.single) {
-      lastGunMarkerCol = PEN_NONE;
-    }
+    paintPhysicalGunMarker(view, draw);
+    ctx.globalAlpha = 1;
 
     // --- readouts (r7, WoT PC layout): everything hangs CENTERED below the
     // reticle. The reload countdown sits just under the center marker; the
@@ -3292,29 +3860,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
-    if (isReloading) {
-      // r7-2 (round critique: "the countdown floats below the reticle while
-      // the arc sits inside it"): the numeral now lives at the RETICLE
-      // CENTER — directly below the cross — keeping the timer adjacent to
-      // the dotted progress sweep without rebuilding a second center ring.
-      // r4: the unit renders as a SEPARATE smaller non-bold ' s' — at bold
-      // condensed sizes the lowercase glyph read as a capital "3.4 S".
-      ctx.fillStyle = RELOAD_ACCENT;
-      const cdTxt = rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : `${rl0.t.toFixed(1)}`;
-      const cdY = magazineHud
-        ? magazineBottomY + 15
-        : cy + centerClearanceR + 15; // below center marker / magazine
-      ctx.font = `700 16px ${FONT_COND}`;
-      const cdW = ctx.measureText(cdTxt).width;
-      ctx.font = `500 10.5px ${FONT_COND}`;
-      const unitW = ctx.measureText(' s').width;
-      ctx.textAlign = 'left';
-      ctx.font = `700 16px ${FONT_COND}`;
-      ctx.fillText(cdTxt, cx - (cdW + unitW) / 2, cdY);
-      ctx.font = `500 10.5px ${FONT_COND}`;
-      ctx.fillText(' s', cx - (cdW + unitW) / 2 + cdW, cdY);
-      ctx.textAlign = 'center';
-    }
+    paintReloadCountdown(view, draw);
     // r4 (WoT arcade furniture): sniper-only readouts — vanilla WoT arcade
     // carries no text under the reticle. r6-2 (round critique: "the
     // 24 APFSDS / 300 m / x8.0 stack floats at ~62% screen height"): the
@@ -3322,110 +3868,51 @@ export function initHud(bus: EventBus): HudRuntime {
     //   - chambered count: ONE compact line hugging the circle's lower rim
     //   - distance: a small corner tag hanging off the reticle's 4:30 rim
     //   - zoom factor: anchored BOTTOM-CENTER above the shell tray (WoT)
-    if (mode === 'sniper') {
-      if (!blocked) {
-        const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
-        const n = shellCount(sp);
-        const tType = sp.type || '';
-        // r7-2: clear the sniper cross's lower arm (rim → r*1.55, drawScope)
-        // — the readout used to sit inside the arm's run and the hairline
-        // sliced through the ammo count text.
-        const yInfo = Math.min(
-          cy + Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), h - 150);
-        ctx.font = `700 13.5px ${FONT_COND}`;
-        const wN = ctx.measureText(`${n} `).width;
-        ctx.font = `800 9px ${FONT_COND}`;
-        const wT = ctx.measureText(tType).width;
-        const x0 = cx - (wN + wT) / 2;
-        ctx.textAlign = 'left';
-        ctx.font = `700 13.5px ${FONT_COND}`;
-        ctx.fillStyle = 'rgba(226,236,244,0.92)';
-        ctx.fillText(`${n} `, x0, yInfo);
-        ctx.font = `800 9px ${FONT_COND}`;
-        ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
-        ctx.fillText(tType, x0 + wN, yInfo);
-        ctx.textAlign = 'center';
-      }
-      if (view.distM != null && isFinite(view.distM)) {
-        const dTag = 0.7071 * (r + 9);
-        ctx.textAlign = 'left';
-        ctx.fillStyle = 'rgba(208,221,232,0.8)';
-        ctx.font = `600 11.5px ${FONT_COND}`;
-        ctx.fillText(`${Math.round(view.distM)} m`, cx + dTag + 4, cy + dTag + 12);
-        ctx.textAlign = 'center';
-      }
-      if (!window.__HUD_HIDE_ZOOM_PLATE) {
-        const zy = h - 96;
-        ctx.font = `700 16px ${FONT_COND}`;
-        ctx.fillStyle = 'rgba(196,246,202,0.95)';
-        const zTxt = `×${(view.zoom || 8).toFixed(1)}`;
-        ctx.fillText(zTxt, cx, zy);
-        // short flanking rails make it an INDICATOR, not stray text
-        const zw = ctx.measureText(zTxt).width / 2 + 12;
-        ctx.strokeStyle = 'rgba(170,240,178,0.5)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(cx - zw - 20, zy - 5.5); ctx.lineTo(cx - zw, zy - 5.5);
-        ctx.moveTo(cx + zw, zy - 5.5); ctx.lineTo(cx + zw + 20, zy - 5.5);
-        ctx.stroke();
-      }
-    }
-    const warning = aimWarningState(view, aimWarningScratch);
-    if (warning.visible) {
-      const y = cy + Math.max(62, r + 24);
-      const danger = warning.kind === 'blocked';
-      ctx.font = `800 10.5px ${FONT_COND}`;
-      const textW = ctx.measureText(warning.text).width;
-      const chipW = textW + 32;
-      const chipX = cx - chipW * 0.5;
-      ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' : 'rgba(12,17,22,.9)';
-      ctx.fillRect(chipX, y - 14, chipW, 24);
-      ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' : 'rgba(170,180,190,.55)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(chipX + 0.5, y - 13.5, chipW - 1, 23);
-      // Compact alert triangle: an icon, not a decorative glyph character.
-      ctx.beginPath();
-      ctx.moveTo(chipX + 13, y - 8);
-      ctx.lineTo(chipX + 19, y + 3);
-      ctx.lineTo(chipX + 7, y + 3);
-      ctx.closePath();
-      ctx.strokeStyle = danger ? PEN_RED : 'rgba(190,201,210,.92)';
-      ctx.stroke();
-      ctx.fillStyle = danger ? '#ff9b91' : 'rgba(205,216,224,.96)';
-      ctx.textAlign = 'left';
-      ctx.fillText(warning.text, chipX + 25, y + 1);
-      ctx.textAlign = 'center';
-    }
+    paintSniperReadouts(view, draw);
+    paintAimWarning(view, draw);
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
   }
 
   // ---------- shell selector ----------
+  function renderShellSlot(
+    element: ShellSlotButton,
+    shell: HudShellCard,
+    index: number,
+    selectedSlot: number,
+  ): void {
+    const type = shell.type || '';
+    if (element._iconType !== type) {
+      drawShellIcon(element._icon, type);
+      element._iconType = type;
+    }
+    const typeEl = requireElement<HTMLElement>(element, '.ty');
+    typeEl.textContent = type;
+    typeEl.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
+    requireElement<HTMLElement>(element, '.clr').style.background =
+      SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
+    requireElement<HTMLElement>(element, '.tnm').textContent = shell.name || '—';
+    requireElement<HTMLElement>(element, '.p').textContent = shell.penLabel != null
+      ? String(shell.penLabel)
+      : '—';
+    requireElement<HTMLElement>(element, '.d').textContent = shell.dmg != null
+      ? String(shell.dmg)
+      : '—';
+    const view = ammunitionSlotViewState(shell, index === selectedSlot);
+    requireElement<HTMLElement>(element, '.cnt').textContent = `${view.count}`;
+    element.classList.toggle('sel', view.selected);
+    element.classList.toggle('empty', view.empty);
+    element.setAttribute('aria-pressed', view.selected ? 'true' : 'false');
+    const name = shell.name || shell.type || `slot ${index + 1}`;
+    element.setAttribute(
+      'aria-label',
+      `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${name}, ${view.count} rounds${view.empty ? ', empty' : ''}`,
+    );
+  }
+
   function renderShells(shells: HudShellCard[] | null | undefined, slot: number): void {
     for (let i = 0; i < 3; i++) {
-      const sp = shells && shells[i] ? shells[i] : DEFAULT_SHELLS[i];
-      const s = slotEls[i];
-      const type = sp.type || '';
-      if (s._iconType !== type) {
-        drawShellIcon(s._icon, type);
-        s._iconType = type;
-      }
-      const ty = requireElement<HTMLElement>(s, '.ty');
-      ty.textContent = sp.type || '';
-      ty.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
-      // shell-CLASS underline (silver kinetic / orange chemical / olive HE)
-      requireElement<HTMLElement>(s, '.clr').style.background =
-        SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
-      requireElement<HTMLElement>(s, '.tnm').textContent = sp.name || '—';
-      requireElement<HTMLElement>(s, '.p').textContent = sp.penLabel != null ? String(sp.penLabel) : '—';
-      requireElement<HTMLElement>(s, '.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
-      const view = ammunitionSlotViewState(sp, i === slot);
-      const n = view.count;
-      requireElement<HTMLElement>(s, '.cnt').textContent = `${n}`;
-      s.classList.toggle('sel', view.selected);
-      s.classList.toggle('empty', view.empty);
-      s.setAttribute('aria-pressed', view.selected ? 'true' : 'false');
-      s.setAttribute('aria-label', `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${sp.name || sp.type || `slot ${i + 1}`}, ${n} rounds${view.empty ? ', empty' : ''}`);
+      renderShellSlot(slotEls[i], shells?.[i] || DEFAULT_SHELLS[i], i, slot);
     }
     setTouchAmmoOpen(touchAmmoOpen);
     localSlot = slot;
@@ -3445,6 +3932,81 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- world-space tank nameplates ----------
   const hpBarsSeen = new Set<string>();
+  function shouldShowHpBar(tank: HudTank | null | undefined): tank is HudTank & {
+    combat: CombatState;
+  } {
+    if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
+    if (tank.id === aimTargetId) return false;
+    return tank.team === 'player' || isSpotted(tank.id);
+  }
+
+  function projectHpBarAnchor(tank: HudTank, camera: THREE.PerspectiveCamera): boolean {
+    if (tank.visual?.turretTopWorld) {
+      tank.visual.turretTopWorld(_tmp);
+    } else if (tank.state?.pos) {
+      _tmp.copy(tank.state.pos);
+      _tmp.y += tank.spec?.dims?.heightM ?? 2.5;
+    } else {
+      return false;
+    }
+    project(camera, _tmp.x, _tmp.y, _tmp.z);
+    return _sVisible && _sDist <= SPOT_RANGE_M + 60;
+  }
+
+  function createHpBar(tank: HudTank): HpBar {
+    const ally = tank.team === 'player';
+    const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
+    rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>`
+      + `<div class="tr"><div class="fl"></div></div>`;
+    if (tank.spec) {
+      maskIcon(
+        requireElement<HTMLElement>(rootEl, '.si'),
+        tank.spec.id,
+        'side_silhouette',
+        ally ? PEN_GREEN : '#ff5555',
+      );
+    }
+    const bar: HpBar = {
+      root: rootEl,
+      nm: requireElement<HTMLElement>(rootEl, '.nm span'),
+      fill: requireElement<HTMLElement>(rootEl, '.fl'),
+      lastFrac: -1,
+      lastName: '',
+      lastOp: -1,
+      layoutW: 128,
+    };
+    hpPool.set(tank.id, bar);
+    return bar;
+  }
+
+  function updateHpBarLabel(bar: HpBar, tank: HudTank): void {
+    const name = tank.spec?.name ?? tank.id;
+    if (bar.lastName === name) return;
+    bar.nm.textContent = name;
+    bar.lastName = name;
+    const measured = Math.ceil(bar.nm.scrollWidth) + 26 + 5 + 14;
+    bar.layoutW = Math.max(128, Math.min(280, measured));
+    bar.root.style.width = `${bar.layoutW}px`;
+  }
+
+  function positionHpBar(bar: HpBar): void {
+    const plateX = _sx - bar.layoutW * 0.5;
+    const plateY = _sy - 42;
+    bar.root.style.transform = `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0)`;
+    bar.root.style.display = 'block';
+    const opacity = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
+    if (Math.abs(opacity - bar.lastOp) <= 0.03) return;
+    bar.root.style.opacity = opacity.toFixed(2);
+    bar.lastOp = opacity;
+  }
+
+  function updateHpBarFill(bar: HpBar, combat: CombatState): void {
+    const fraction = Math.max(0, Math.min(1, combat.hp / combat.maxHp));
+    if (Math.abs(fraction - bar.lastFrac) <= 0.001) return;
+    bar.fill.style.width = `${(fraction * 100).toFixed(1)}%`;
+    bar.lastFrac = fraction;
+  }
+
   function updateHpBars(frame: HudFrame): void {
     const camera = frame.camera;
     if (!camera) return;
@@ -3453,66 +4015,12 @@ export function initHud(bus: EventBus): HudRuntime {
     const tanks = frame.tanks || [];
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
-      if (!t || t.isPlayer || !t.combat || t.combat.destroyed) continue;
-      if (t.id === aimTargetId) continue; // over-target plate replaces it
-      if (t.team !== 'player' && !isSpotted(t.id)) continue; // spotting gate
-      if (t.visual && t.visual.turretTopWorld) {
-        t.visual.turretTopWorld(_tmp);
-      } else if (t.state && t.state.pos) {
-        _tmp.copy(t.state.pos);
-        _tmp.y += (t.spec && t.spec.dims ? t.spec.dims.heightM : 2.5);
-      } else continue;
-      project(camera, _tmp.x, _tmp.y, _tmp.z);
-      if (!_sVisible || _sDist > SPOT_RANGE_M + 60) continue;
+      if (!shouldShowHpBar(t) || !projectHpBarAnchor(t, camera)) continue;
       seen.add(t.id);
-      let bar = hpPool.get(t.id);
-      if (!bar) {
-        const ally = t.team === 'player';
-        const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
-        rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>` +
-          `<div class="tr"><div class="fl"></div></div>`;
-        if (t.spec) {
-          maskIcon(requireElement<HTMLElement>(rootEl, '.si'), t.spec.id, 'side_silhouette',
-            ally ? PEN_GREEN : '#ff5555');
-        }
-        bar = {
-          root: rootEl,
-          nm: requireElement<HTMLElement>(rootEl, '.nm span'),
-          fill: requireElement<HTMLElement>(rootEl, '.fl'),
-          lastFrac: -1,
-          lastName: '',
-          lastOp: -1,
-          layoutW: 128,
-        };
-        hpPool.set(t.id, bar);
-      }
-      const nm = t.spec ? t.spec.name : t.id;
-      if (bar.lastName !== nm) {
-        bar.nm.textContent = nm;
-        bar.lastName = nm;
-        // Read only when a label string changes, never in the steady-state
-        // render loop. The plate then keeps stable geometry until renamed.
-        const measured = Math.ceil(bar.nm.scrollWidth) + 26 + 5 + 14;
-        bar.layoutW = Math.max(128, Math.min(280, measured));
-        bar.root.style.width = `${bar.layoutW}px`;
-      }
-      // Preserve the literal world projection. Nearby tanks are allowed to
-      // produce overlapping plates; screen-space packing made formations look
-      // farther apart than they are. The HUD root clips plates naturally at
-      // the viewport edge instead of pinning an off-edge tank to the frame.
-      const plateX = _sx - bar.layoutW * 0.5;
-      const plateY = _sy - 42;
-      bar.root.style.transform =
-        `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0)`;
-      bar.root.style.display = 'block';
-      // fade with distance (fully readable close, slightly ghosted near spot range)
-      const op = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
-      if (Math.abs(op - bar.lastOp) > 0.03) { bar.root.style.opacity = op.toFixed(2); bar.lastOp = op; }
-      const frac = Math.max(0, Math.min(1, t.combat.hp / t.combat.maxHp));
-      if (Math.abs(frac - bar.lastFrac) > 0.001) {
-        bar.fill.style.width = `${(frac * 100).toFixed(1)}%`;
-        bar.lastFrac = frac;
-      }
+      const bar = hpPool.get(t.id) ?? createHpBar(t);
+      updateHpBarLabel(bar, t);
+      positionHpBar(bar);
+      updateHpBarFill(bar, t.combat);
     }
     for (const [id, bar] of hpPool) {
       if (!seen.has(id)) bar.root.style.display = 'none';
@@ -3527,106 +4035,144 @@ export function initHud(bus: EventBus): HudRuntime {
   // the aim distance lands on the hull — a tank far BEHIND the aim point
   // never lights up. Live battles additionally require the target to be
   // spotted; forced screenshot stills trust the recipe (vehicle is rendered).
-  function updateTargetPlate(): void {
-    let best: HudTank | null = null;
-    let bestPx = Infinity;
-    const cam = lastCamera;
-    const tanks = lastTanksRef || [];
-    if (cam && mode !== 'hidden' && aimView.distM != null) {
-      // Live battles bind the plate to the exact entity under the gun ray.
-      // Forced screenshot recipes predate gunTargetId and keep the legacy
-      // screen-space fallback below for deterministic documentation views.
-      if (!forcedStill && aimView.gunTargetId != null) {
-        best = tanks.find((t) => t && t.id === aimView.gunTargetId && !t.isPlayer &&
-          t.team !== 'player' && t.state && t.combat && !t.combat.destroyed && isSpotted(t.id)) || null;
-      }
-      const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
-      const gatePx = Math.max(rNow * 1.15, 70);
-      for (let i = 0; !best && (forcedStill || aimView.gunTargetId == null) && i < tanks.length; i++) {
-        const t = tanks[i];
-        if (!t || t.isPlayer || !t.state || !t.combat || t.combat.destroyed) continue;
-        if (t.team === 'player') continue;
-        if (!forcedStill && !isSpotted(t.id)) continue;
-        const hM = (t.spec && t.spec.dims && t.spec.dims.heightM) || 2.4;
-        project(cam, t.state.pos.x, t.state.pos.y + hM * 0.55, t.state.pos.z);
-        if (!_sVisible) continue;
-        const radM = (t.spec && t.spec.armor && t.spec.armor.boundingRadiusM) || 6;
-        if (Math.abs(_sDist - aimView.distM) > radM + 16) continue;
-        const dpx = Math.hypot(_sx - aimView.cx, _sy - aimView.cy);
-        if (dpx < gatePx && dpx < bestPx) { best = t; bestPx = dpx; }
-      }
+  function isAimTargetCandidate(tank: HudTank | null | undefined): tank is HudTargetTank {
+    if (!tank || tank.isPlayer || !tank.state || !tank.combat || tank.combat.destroyed) return false;
+    if (tank.team === 'player') return false;
+    return forcedStill || isSpotted(tank.id);
+  }
+
+  function findExactGunTarget(tanks: HudTank[]): HudTargetTank | null {
+    const targetId = aimView.gunTargetId;
+    if (forcedStill || targetId == null) return null;
+    for (let i = 0; i < tanks.length; i++) {
+      const tank = tanks[i];
+      if (tank?.id === targetId && isAimTargetCandidate(tank)) return tank;
     }
-    aimTargetId = best ? best.id : null;
-    if (!best || !best.state || !best.combat || !cam) {
-      if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
-      tgtRect = null;
+    return null;
+  }
+
+  function findScreenAimTarget(
+    tanks: HudTank[],
+    camera: THREE.PerspectiveCamera,
+  ): HudTargetTank | null {
+    if (!forcedStill && aimView.gunTargetId != null) return null;
+    const radius = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    const gatePx = Math.max(radius * 1.15, 70);
+    let best: HudTargetTank | null = null;
+    let bestPx = Infinity;
+    for (let i = 0; i < tanks.length; i++) {
+      const tank = tanks[i];
+      if (!isAimTargetCandidate(tank)) continue;
+      const heightM = tank.spec?.dims?.heightM ?? 2.4;
+      project(camera, tank.state.pos.x, tank.state.pos.y + heightM * 0.55, tank.state.pos.z);
+      if (!_sVisible) continue;
+      const radiusM = tank.spec?.armor?.boundingRadiusM ?? 6;
+      if (Math.abs(_sDist - (aimView.distM ?? 0)) > radiusM + 16) continue;
+      const distancePx = Math.hypot(_sx - aimView.cx, _sy - aimView.cy);
+      if (distancePx >= gatePx || distancePx >= bestPx) continue;
+      best = tank;
+      bestPx = distancePx;
+    }
+    return best;
+  }
+
+  function selectAimTarget(): HudTargetTank | null {
+    const camera = lastCamera;
+    if (!camera || mode === 'hidden' || aimView.distM == null) return null;
+    return findExactGunTarget(lastTanksRef || [])
+      ?? findScreenAimTarget(lastTanksRef || [], camera);
+  }
+
+  function hideTargetPlate(): void {
+    aimTargetId = null;
+    if (tgtShown) {
+      tgtEl.style.display = 'none';
+      tgtShown = false;
+    }
+    tgtRect = null;
+  }
+
+  function projectTargetPlateAnchor(
+    target: HudTargetTank,
+    camera: THREE.PerspectiveCamera,
+  ): boolean {
+    if (target.visual?.turretTopWorld) {
+      target.visual.turretTopWorld(_tmp);
+    } else {
+      _tmp.copy(target.state.pos);
+      _tmp.y += target.spec?.dims?.heightM ?? 2.5;
+    }
+    project(camera, _tmp.x, _tmp.y, _tmp.z);
+    return _sVisible;
+  }
+
+  function updateTargetPlateCopy(target: HudTargetTank): void {
+    const nickname = nickFor(target);
+    const tier = target.spec ? tierNumeral(target.spec.id) : '–';
+    const name = target.spec?.name ?? String(target.id);
+    let copyChanged = false;
+    if (tgtRefs.nick.textContent !== nickname) {
+      tgtRefs.nick.textContent = nickname;
+      copyChanged = true;
+    }
+    if (tgtRefs.tier.textContent !== tier) tgtRefs.tier.textContent = tier;
+    if (tgtRefs.veh.textContent !== name) {
+      tgtRefs.veh.textContent = name;
+      copyChanged = true;
+    }
+    if (!copyChanged) return;
+    const nickWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 16;
+    const vehicleWidth = Math.ceil(tgtRefs.veh.scrollWidth) + 72;
+    tgtPlateWidth = Math.max(176, Math.min(320, Math.max(nickWidth, vehicleWidth)));
+    tgtEl.style.width = `${tgtPlateWidth}px`;
+  }
+
+  function positionTargetPlate(): void {
+    const halfWidth = tgtPlateWidth * 0.5;
+    const targetX = Math.max(halfWidth + 4, Math.min(w - halfWidth - 4, _sx));
+    const bottom = Math.max(72, Math.min(h - 12, _sy - 14));
+    tgtEl.style.transform = `translate3d(${(targetX - halfWidth).toFixed(1)}px,${(bottom - 64).toFixed(1)}px,0)`;
+    tgtRect = { cx: targetX, hw: halfWidth, top: bottom - 64, bottom };
+  }
+
+  function updateTargetPlateContent(target: HudTargetTank): void {
+    const vehicleId = target.spec?.id ?? null;
+    if (vehicleId && vehicleId !== tgtLastVehicleId) {
+      maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', '#f0b4ab');
+      tgtLastVehicleId = vehicleId;
+    }
+    const fraction = Math.max(0, Math.min(1, target.combat.hp / target.combat.maxHp));
+    const hpWidth = `${(fraction * 100).toFixed(1)}%`;
+    if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
+    const hpText = `${Math.max(0, Math.round(target.combat.hp))}/${Math.round(target.combat.maxHp)}`;
+    if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
+    if (!tgtShown) {
+      tgtEl.style.display = 'block';
+      tgtShown = true;
+    }
+    const bar = hpPool.get(target.id);
+    if (bar) bar.root.style.display = 'none';
+  }
+
+  function updateTargetPlate(): void {
+    const target = selectAimTarget();
+    const camera = lastCamera;
+    if (!target || !camera) {
+      hideTargetPlate();
       return;
     }
+    aimTargetId = target.id;
     // r5: anchor a FIXED 24px above the vehicle's screen-space top (turret
     // top) — the old +1.4 m world offset ballooned to ~140px of float at x8
     // sniper zoom, detaching the plate from its vehicle. The chevron in the
     // plate's own footer points down into that gap.
-    if (best.visual && best.visual.turretTopWorld) {
-      best.visual.turretTopWorld(_tmp);
-    } else {
-      _tmp.copy(best.state.pos);
-      _tmp.y += (best.spec && best.spec.dims ? best.spec.dims.heightM : 2.5);
-    }
-    project(cam, _tmp.x, _tmp.y, _tmp.z);
-    if (!_sVisible) {
-      aimTargetId = null;
-      if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
-      tgtRect = null;
+    if (!projectTargetPlateAnchor(target, camera)) {
+      hideTargetPlate();
       return;
     }
-    const targetNick = nickFor(best);
-    const targetTier = (best.spec && tierNumeral(best.spec.id)) || '–';
-    const targetName = best.spec ? best.spec.name : String(best.id);
-    let targetCopyChanged = false;
-    if (tgtRefs.nick.textContent !== targetNick) {
-      tgtRefs.nick.textContent = targetNick;
-      targetCopyChanged = true;
-    }
-    if (tgtRefs.tier.textContent !== targetTier) tgtRefs.tier.textContent = targetTier;
-    if (tgtRefs.veh.textContent !== targetName) {
-      tgtRefs.veh.textContent = targetName;
-      targetCopyChanged = true;
-    }
-    if (targetCopyChanged) {
-      // The aimed-at plate grows around complete strings instead of replacing
-      // the end of a vehicle name with an ellipsis. Measurements happen only
-      // when the selected target or its display name changes.
-      const nickWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 16;
-      const vehicleWidth = Math.ceil(tgtRefs.veh.scrollWidth) + 72;
-      tgtPlateWidth = Math.max(176, Math.min(320, Math.max(nickWidth, vehicleWidth)));
-      tgtEl.style.width = `${tgtPlateWidth}px`;
-    }
-    const plateHalf = tgtPlateWidth * 0.5;
-    const targetX = Math.max(plateHalf + 4, Math.min(w - plateHalf - 4, _sx));
-    const targetBottom = Math.max(72, Math.min(h - 12, _sy - 14));
-    tgtEl.style.transform =
-      `translate3d(${(targetX - plateHalf).toFixed(1)}px,${(targetBottom - 64).toFixed(1)}px,0)`;
-    const targetVehicleId = best.spec?.id || null;
-    if (targetVehicleId && targetVehicleId !== tgtLastVehicleId) {
-      maskIcon(tgtRefs.cg, targetVehicleId, 'side_silhouette', '#f0b4ab');
-      tgtLastVehicleId = targetVehicleId;
-    }
-    const bestCombat = best.combat;
-    const frac = Math.max(0, Math.min(1, bestCombat.hp / bestCombat.maxHp));
-    const hpWidth = `${(frac * 100).toFixed(1)}%`;
-    if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
-    const hpText = `${Math.max(0, Math.round(bestCombat.hp))}/${Math.round(bestCombat.maxHp)}`;
-    if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
-    if (!tgtShown) { tgtEl.style.display = 'block'; tgtShown = true; }
-    // record the plate's screen rect so the sniper hairlines gap behind it
-    // (drawScope runs after this in both the live and forced-still paths)
-    tgtRect = {
-      cx: targetX, hw: plateHalf,
-      top: targetBottom - 64, bottom: targetBottom,
-    };
-    // the ambient plate for this tank (if it was already mounted) yields
-    const bar = hpPool.get(best.id);
-    if (bar) bar.root.style.display = 'none';
+    updateTargetPlateCopy(target);
+    positionTargetPlate();
+    updateTargetPlateContent(target);
   }
 
   // ---------- minimap ----------
@@ -3746,6 +4292,226 @@ export function initHud(bus: EventBus): HudRuntime {
     roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
     buildingFill: '#ccd1d9',
   };
+
+  function paintCapturedMinimapUnderlay(
+    context: CanvasRenderingContext2D,
+    capture: HTMLCanvasElement,
+    size: number,
+  ): void {
+    context.imageSmoothingQuality = 'high';
+    context.filter = 'saturate(1.05) brightness(1.15) contrast(1.03)';
+    context.drawImage(capture, 0, 0, size, size);
+    context.filter = 'none';
+    context.fillStyle = 'rgba(6,10,8,0.06)';
+    context.fillRect(0, 0, size, size);
+  }
+
+  function paintProceduralMinimapTerrain(
+    context: CanvasRenderingContext2D,
+    heightField: HudHeightField,
+    palette: HudMinimapPalette,
+    size: number,
+  ): void {
+    const image = context.createImageData(size, size);
+    const data = image.data;
+    const half = mapWorldSize / 2;
+    const step = mapWorldSize / size;
+    const range = Math.max(1e-3, heightField.maxY - heightField.minY);
+    for (let row = 0; row < size; row++) {
+      const z = half - (row + 0.5) * step;
+      for (let column = 0; column < size; column++) {
+        const x = -half + (column + 0.5) * step;
+        const height = heightField.getHeightAt(x, z);
+        const deltaX = heightField.getHeightAt(x + step * 2, z)
+          - heightField.getHeightAt(x - step * 2, z);
+        const deltaZ = heightField.getHeightAt(x, z + step * 2)
+          - heightField.getHeightAt(x, z - step * 2);
+        let shade = Math.max(0.55, Math.min(1.2, 0.88 - deltaX * 0.05 + deltaZ * 0.05));
+        shade = Math.round(shade * 5) / 5;
+        const tone = Math.round(((height - heightField.minY) / range) * 5) / 5;
+        const ground = heightField.getGroundType(x, z);
+        const color = ground === 'hard'
+          ? palette.hard
+          : ground === 'soft' ? palette.soft : palette.base;
+        const offset = (row * size + column) * 4;
+        data[offset] = (color[0] + tone * 42) * shade;
+        data[offset + 1] = (color[1] + tone * 42) * shade;
+        data[offset + 2] = (color[2] + tone * 30) * shade;
+        data[offset + 3] = 255;
+      }
+    }
+    context.putImageData(image, 0, 0);
+  }
+
+  function paintMinimapWater(
+    context: CanvasRenderingContext2D,
+    patches: MapDisc[] | undefined,
+    palette: HudMinimapPalette,
+  ): void {
+    if (!patches) return;
+    context.fillStyle = palette.water;
+    context.strokeStyle = palette.waterStroke;
+    context.lineWidth = 0.8;
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i];
+      const point = worldToMap(patch.x, patch.z, false);
+      context.beginPath();
+      context.arc(point[0], point[1], (patch.r / mapWorldSize) * MM, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    }
+  }
+
+  function mixedForestFill(color: string): string {
+    const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\)/
+      .exec(color);
+    if (!match) return color;
+    const red = Math.round(+match[1] + (52 - +match[1]) * 0.35);
+    const green = Math.round(+match[2] + (60 - +match[2]) * 0.35);
+    const blue = Math.round(+match[3] + (48 - +match[3]) * 0.35);
+    const alpha = match[4] != null ? +match[4] : 1;
+    return `rgba(${red},${green},${blue},${(alpha * 0.8).toFixed(2)})`;
+  }
+
+  function buildForestPolygon(
+    context: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    offsetX: number,
+    offsetY: number,
+    scale: number,
+  ): void {
+    context.beginPath();
+    for (let i = 0; i < minimapForestX.length; i++) {
+      const x = centerX + (minimapForestX[i] - centerX) * scale + offsetX;
+      const y = centerY + (minimapForestY[i] - centerY) * scale + offsetY;
+      if (i === 0) context.moveTo(x, y); else context.lineTo(x, y);
+    }
+    context.closePath();
+  }
+
+  function paintForestCluster(
+    context: CanvasRenderingContext2D,
+    cluster: MapDisc,
+    palette: HudMinimapPalette,
+    captured: boolean,
+    forestFill: string,
+  ): void {
+    const point = worldToMap(cluster.x, cluster.z, false);
+    const centerX = point[0];
+    const centerY = point[1];
+    const seed = Math.abs(Math.sin(cluster.x * 12.9898 + cluster.z * 78.233) * 43758.5453);
+    const seedUnit = seed - Math.floor(seed);
+    const radius = Math.max(2.2, (cluster.r / mapWorldSize) * MM) * (0.82 + seedUnit * 0.4);
+    for (let i = 0; i < minimapForestX.length; i++) {
+      const angle = (i / minimapForestX.length) * Math.PI * 2;
+      const jitteredRadius = radius * (0.62 + 0.46 * Math.abs(Math.sin(seed + i * 2.3))
+        + 0.14 * Math.sin(seed * 3.1 + i * 5.7));
+      minimapForestX[i] = centerX + Math.cos(angle) * jitteredRadius;
+      minimapForestY[i] = centerY + Math.sin(angle) * jitteredRadius
+        * (0.86 + 0.12 * Math.sin(seed * 1.7));
+    }
+    if (captured) context.filter = 'blur(0.5px)';
+    buildForestPolygon(context, centerX, centerY, 0.8, 1.1, 1);
+    context.fillStyle = captured ? 'rgba(8,14,7,0.18)' : 'rgba(8,14,7,0.28)';
+    context.fill();
+    buildForestPolygon(context, centerX, centerY, 0, 0, 1);
+    context.globalAlpha = (0.68 + seedUnit * 0.24) * (captured ? 0.72 : 1);
+    context.fillStyle = forestFill;
+    context.fill();
+    if (!captured) {
+      context.globalAlpha = 0.42;
+      context.strokeStyle = palette.forestStroke;
+      context.lineWidth = 0.45;
+      context.stroke();
+    }
+    context.globalAlpha = 1;
+    buildForestPolygon(context, centerX, centerY, -0.5, -0.7, 0.55);
+    context.fillStyle = `rgba(106,140,74,${captured ? 0.1 : 0.22})`;
+    context.fill();
+    if (captured) context.filter = 'none';
+  }
+
+  function paintMinimapForests(
+    context: CanvasRenderingContext2D,
+    clusters: MapDisc[] | undefined,
+    palette: HudMinimapPalette,
+    captured: boolean,
+  ): void {
+    if (!clusters) return;
+    context.lineJoin = 'round';
+    const forestFill = captured ? mixedForestFill(palette.forest) : palette.forest;
+    for (let i = 0; i < clusters.length; i++) {
+      paintForestCluster(context, clusters[i], palette, captured, forestFill);
+    }
+  }
+
+  function paintMinimapRoadPass(
+    context: CanvasRenderingContext2D,
+    roads: Array<Array<readonly [number, number]>>,
+    color: string,
+    lineWidth: number,
+  ): void {
+    context.strokeStyle = color;
+    context.lineWidth = lineWidth;
+    for (let roadIndex = 0; roadIndex < roads.length; roadIndex++) {
+      const road = roads[roadIndex];
+      context.beginPath();
+      for (let pointIndex = 0; pointIndex < road.length; pointIndex++) {
+        const point = worldToMap(road[pointIndex][0], road[pointIndex][1], false);
+        if (pointIndex === 0) context.moveTo(point[0], point[1]);
+        else context.lineTo(point[0], point[1]);
+      }
+      context.stroke();
+    }
+  }
+
+  function paintMinimapRoads(
+    context: CanvasRenderingContext2D,
+    roads: Array<Array<readonly [number, number]>> | undefined,
+    palette: HudMinimapPalette,
+  ): void {
+    if (!roads) return;
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    paintMinimapRoadPass(context, roads, palette.roadCasing, 3.8);
+    paintMinimapRoadPass(context, roads, palette.roadFill, 2);
+    context.lineCap = 'butt';
+  }
+
+  function darkBuildingFill(color: string): string {
+    if (color[0] !== '#' || color.length !== 7) return 'rgb(56,50,42)';
+    const value = parseInt(color.slice(1), 16);
+    return `rgb(${(((value >> 16) & 255) * 0.32) | 0},`
+      + `${(((value >> 8) & 255) * 0.32) | 0},${((value & 255) * 0.32) | 0})`;
+  }
+
+  function paintMinimapBuildings(
+    context: CanvasRenderingContext2D,
+    buildings: MapBuilding[] | undefined,
+    palette: HudMinimapPalette,
+  ): void {
+    if (!buildings) return;
+    const fill = darkBuildingFill(palette.buildingFill);
+    context.strokeStyle = 'rgba(198,208,218,0.4)';
+    context.lineWidth = 0.7;
+    for (let i = 0; i < buildings.length; i++) {
+      const building = buildings[i];
+      const point = worldToMap(building.x, building.z, false);
+      const width = Math.max(4, ((building.w ?? 0) / mapWorldSize) * MM);
+      const depth = Math.max(4, ((building.d ?? 0) / mapWorldSize) * MM);
+      context.save();
+      context.translate(point[0], point[1]);
+      context.rotate(-(building.rot || building.yaw || 0));
+      context.globalAlpha = 0.9;
+      context.fillStyle = fill;
+      context.fillRect(-width / 2, -depth / 2, width, depth);
+      context.globalAlpha = 1;
+      if (width * depth >= 26) context.strokeRect(-width / 2, -depth / 2, width, depth);
+      context.restore();
+    }
+  }
+
   function buildMinimapBg(
     heightField: HudHeightField,
     features?: HudMinimapFeatures | null,
@@ -3769,52 +4535,8 @@ export function initHud(bus: EventBus): HudRuntime {
     const bg = document.createElement('canvas');
     bg.width = N; bg.height = N;
     const bctx = requireCanvasContext(bg);
-    if (snapBg) {
-      // Keep the one-time satellite capture readable independently of the
-      // source-texture cache state. The old 15% black veil plus sub-unity
-      // brightness crushed cold-origin terrain into a nearly black map.
-      // A mild lift/desaturation preserves texture and map color while the
-      // retained veil still separates the white grid, blips, and range ring.
-      bctx.imageSmoothingQuality = 'high';
-      bctx.filter = 'saturate(1.05) brightness(1.15) contrast(1.03)';
-      bctx.drawImage(snapBg, 0, 0, N, N);
-      bctx.filter = 'none';
-      bctx.fillStyle = 'rgba(6,10,8,0.06)';
-      bctx.fillRect(0, 0, N, N);
-    }
-    if (!snapBg) {
-    const img = bctx.createImageData(N, N);
-    const data = img.data;
-    const half = mapWorldSize / 2;
-    const step = mapWorldSize / N;
-    const minY = heightField.minY, maxY = heightField.maxY;
-    const range = Math.max(1e-3, maxY - minY);
-    for (let j = 0; j < N; j++) {
-      const z = half - (j + 0.5) * step; // top row = +Z
-      for (let i = 0; i < N; i++) {
-        const x = -half + (i + 0.5) * step;
-        const hgt = heightField.getHeightAt(x, z);
-        // hillshade via central differences (light from NW), quantized so
-        // slopes read as clean facets instead of smeared gradients
-        const hx = heightField.getHeightAt(x + step * 2, z) - heightField.getHeightAt(x - step * 2, z);
-        const hz = heightField.getHeightAt(x, z + step * 2) - heightField.getHeightAt(x, z - step * 2);
-        let shade = Math.max(0.55, Math.min(1.2, 0.88 - hx * 0.05 + hz * 0.05));
-        shade = Math.round(shade * 5) / 5;
-        const tone = Math.round(((hgt - minY) / range) * 5) / 5; // 6 flat bands
-        const gt = heightField.getGroundType(x, z);
-        let r: number;
-        let g: number;
-        let b: number;
-        if (gt === 'hard') { [r, g, b] = pal.hard; }
-        else if (gt === 'soft') { [r, g, b] = pal.soft; }
-        else { [r, g, b] = pal.base; }
-        r = (r + tone * 42) * shade; g = (g + tone * 42) * shade; b = (b + tone * 30) * shade;
-        const o = (j * N + i) * 4;
-        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
-      }
-    }
-    bctx.putImageData(img, 0, 0);
-    }
+    if (snapBg) paintCapturedMinimapUnderlay(bctx, snapBg, N);
+    else paintProceduralMinimapTerrain(bctx, heightField, pal, N);
 
     // compose feature layers at device resolution (vector coords in CSS px)
     const out = document.createElement('canvas');
@@ -3824,19 +4546,7 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
 
     const f = features || {};
-    // soft/water patches: flat hard-edged pools
-    if (f.waterOrSoft) {
-      octx.fillStyle = pal.water;
-      octx.strokeStyle = pal.waterStroke;
-      octx.lineWidth = 0.8;
-      for (const p of f.waterOrSoft) {
-        const [px, py] = worldToMap(p.x, p.z, false);
-        octx.beginPath();
-        octx.arc(px, py, (p.r / mapWorldSize) * MM, 0, Math.PI * 2);
-        octx.fill();
-        octx.stroke();
-      }
-    }
+    paintMinimapWater(octx, f.waterOrSoft, pal);
     // tree clusters: irregular forest polygons — r7 SATELLITE READ, r4
     // DE-STICKER pass: the repeated dark-outlined octagons read as clipart
     // dabs. Each stand is now a 12-vertex lumpy polygon whose per-vertex
@@ -3844,132 +4554,18 @@ export function initHud(bus: EventBus): HudRuntime {
     // actual scatter position, the heavy keyline drops to a faint half-alpha
     // hairline, and the shadow/crown offsets shrink so the stands melt into
     // the painted underlay like WoT's aerial tiles.
-    if (f.treeClusters) {
-      octx.lineJoin = 'round';
-      // r6-2 (round critique: "saturated dark-green cartoon blobs clash with
-      // the photographic ortho terrain"): over a REAL capture the stands are
-      // desaturated ~1/3 toward a neutral terrain tone, run thinner alpha,
-      // lose the keyline and take a 0.5px blur — canopy shading that melts
-      // into the photo instead of sitting on it. The vector-fallback map
-      // keeps the full-strength cartography (it has no photo to clash with).
-      let forestFill = pal.forest;
-      let crownAlpha = 0.22;
-      let strokeAlpha = 0.42;
-      let bodyAlphaK = 1;
-      if (snapBg) {
-        const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\)/
-          .exec(String(pal.forest));
-        if (m) {
-          const mix = (a: number, b: number, k: number): number =>
-            Math.round(a + (b - a) * k);
-          const r0 = +m[1], g0 = +m[2], b0 = +m[3], a0 = m[4] != null ? +m[4] : 1;
-          forestFill = `rgba(${mix(r0, 52, 0.35)},${mix(g0, 60, 0.35)},` +
-            `${mix(b0, 48, 0.35)},${(a0 * 0.8).toFixed(2)})`;
-        }
-        crownAlpha = 0.1;
-        strokeAlpha = 0;
-        bodyAlphaK = 0.72;
-      }
-      const NV = 12;
-      const vx = new Float32Array(NV);
-      const vy = new Float32Array(NV);
-      for (const p of f.treeClusters) {
-        const [px, py] = worldToMap(p.x, p.z, false);
-        // deterministic per-stand variation seeded from the scatter position
-        const seed = Math.abs(Math.sin(p.x * 12.9898 + p.z * 78.233) * 43758.5453);
-        const s01 = seed - Math.floor(seed);
-        const pr = Math.max(2.2, (p.r / mapWorldSize) * MM) * (0.82 + s01 * 0.4);
-        for (let k = 0; k < NV; k++) {
-          const a = (k / NV) * Math.PI * 2;
-          const jr = pr * (0.62 + 0.46 * Math.abs(Math.sin(seed + k * 2.3))
-            + 0.14 * Math.sin(seed * 3.1 + k * 5.7));
-          vx[k] = px + Math.cos(a) * jr;
-          vy[k] = py + Math.sin(a) * jr * (0.86 + 0.12 * Math.sin(seed * 1.7));
-        }
-        const poly = (dx: number, dy: number, s: number): void => {
-          octx.beginPath();
-          for (let k = 0; k < NV; k++) {
-            const x2 = px + (vx[k] - px) * s + dx;
-            const y2 = py + (vy[k] - py) * s + dy;
-            if (k === 0) octx.moveTo(x2, y2); else octx.lineTo(x2, y2);
-          }
-          octx.closePath();
-        };
-        if (snapBg) octx.filter = 'blur(0.5px)'; // soft edge over the photo
-        poly(0.8, 1.1, 1);              // soft canopy shadow cast to the SE
-        octx.fillStyle = snapBg ? 'rgba(8,14,7,0.18)' : 'rgba(8,14,7,0.28)';
-        octx.fill();
-        poly(0, 0, 1);                  // canopy body (alpha varies per stand)
-        octx.globalAlpha = (0.68 + s01 * 0.24) * bodyAlphaK;
-        octx.fillStyle = forestFill;
-        octx.fill();
-        if (strokeAlpha > 0) {
-          octx.globalAlpha = strokeAlpha; // faint hairline (fallback map only)
-          octx.strokeStyle = pal.forestStroke;
-          octx.lineWidth = 0.45;
-          octx.stroke();
-        }
-        octx.globalAlpha = 1;
-        poly(-0.5, -0.7, 0.55);         // sunlit crown toward the NW light
-        octx.fillStyle = `rgba(106,140,74,${crownAlpha})`;
-        octx.fill();
-        if (snapBg) octx.filter = 'none';
-      }
-    }
+    paintMinimapForests(octx, f.treeClusters, pal, !!snapBg);
     // roads: dark casing pass + solid tan ribbon pass — r7: wider casing so
     // every road carries a visible dark edge line (satellite read) instead
     // of a pale unbordered ribbon
-    if (f.roads) {
-      octx.lineJoin = 'round';
-      octx.lineCap = 'round';
-      for (const pass of [
-        { c: pal.roadCasing, lw: 3.8 },
-        { c: pal.roadFill, lw: 2.0 },
-      ]) {
-        octx.strokeStyle = pass.c;
-        octx.lineWidth = pass.lw;
-        for (const line of f.roads) {
-          octx.beginPath();
-          for (let i = 0; i < line.length; i++) {
-            const [px, py] = worldToMap(line[i][0], line[i][1], false);
-            if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
-          }
-          octx.stroke();
-        }
-      }
-      octx.lineCap = 'butt';
-    }
+    paintMinimapRoads(octx, f.roads, pal);
     // buildings: DARK footprints with a faint light keyline (r8 — WoT draws
     // structures dark on its aerial tiles; the pale chips scattered through
     // villages read as unexplained white unit markers at a glance). The
     // per-map palette fill is darkened to ~1/3 so each biome keeps its hue
     // (adobe stays warm, town blocks stay grey). Small structures get a 4px
     // floor so clusters merge into readable blocks.
-    if (f.buildings) {
-      let bFill = 'rgb(56,50,42)'; // dark grey-brown fallback
-      if (typeof pal.buildingFill === 'string' && pal.buildingFill[0] === '#' &&
-          pal.buildingFill.length === 7) {
-        const n = parseInt(pal.buildingFill.slice(1), 16);
-        bFill = `rgb(${((n >> 16) & 255) * 0.32 | 0},` +
-          `${((n >> 8) & 255) * 0.32 | 0},${(n & 255) * 0.32 | 0})`;
-      }
-      octx.strokeStyle = 'rgba(198,208,218,0.4)';
-      octx.lineWidth = 0.7;
-      for (const b of f.buildings) {
-        const [px, py] = worldToMap(b.x, b.z, false);
-        octx.save();
-        octx.translate(px, py);
-        octx.rotate(-(b.rot || b.yaw || 0));
-        const bw = Math.max(4, ((b.w ?? 0) / mapWorldSize) * MM);
-        const bd = Math.max(4, ((b.d ?? 0) / mapWorldSize) * MM);
-        octx.globalAlpha = 0.9;
-        octx.fillStyle = bFill;
-        octx.fillRect(-bw / 2, -bd / 2, bw, bd);
-        octx.globalAlpha = 1;
-        if (bw * bd >= 26) octx.strokeRect(-bw / 2, -bd / 2, bw, bd);
-        octx.restore();
-      }
-    }
+    paintMinimapBuildings(octx, f.buildings, pal);
     mmBg = out;
   }
 
@@ -4056,6 +4652,23 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
   }
 
+  function drawMinimapUnderlayTiles(): void {
+    if (!mmBg) return;
+    for (let tileY = -1; tileY <= 1; tileY++) {
+      for (let tileX = -1; tileX <= 1; tileX++) {
+        const flipX = tileX !== 0;
+        const flipY = tileY !== 0;
+        const left = (tileX - 0.5) * MM;
+        const top = (tileY - 0.5) * MM;
+        mmCtx.save();
+        mmCtx.translate(flipX ? left + MM : left, flipY ? top + MM : top);
+        mmCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+        mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+        mmCtx.restore();
+      }
+    }
+  }
+
   function drawMinimapBackground(): void {
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
@@ -4069,19 +4682,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // seam, and leave the central tile/marker coordinates mathematically
       // exact. Draw from the retained Image each repaint so iPadOS cannot
       // purge a second cached canvas behind the live HUD.
-      for (let tileY = -1; tileY <= 1; tileY++) {
-        for (let tileX = -1; tileX <= 1; tileX++) {
-          const flipX = tileX !== 0;
-          const flipY = tileY !== 0;
-          const left = (tileX - 0.5) * MM;
-          const top = (tileY - 0.5) * MM;
-          mmCtx.save();
-          mmCtx.translate(flipX ? left + MM : left, flipY ? top + MM : top);
-          mmCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-          mmCtx.drawImage(mmBg, 0, 0, MM, MM);
-          mmCtx.restore();
-        }
-      }
+      drawMinimapUnderlayTiles();
       mmCtx.restore();
     }
     // Labels stay upright and reverse on the opposite deployment so the
@@ -4263,13 +4864,227 @@ export function initHud(bus: EventBus): HudRuntime {
     c.restore();
   }
 
+  function drawMinimapBases(playerMapX: number, playerMapY: number): void {
+    if (!spawnFlags) return;
+    for (let i = 0; i < spawnFlags.length; i++) {
+      const flag = spawnFlags[i];
+      const point = worldToMap(flag.x, flag.z);
+      const x = point[0];
+      const y = point[1];
+      const dimmed = Math.hypot(x - playerMapX, y - playerMapY) < 15;
+      mmCtx.save();
+      if (dimmed) mmCtx.globalAlpha = 0.55;
+      mmCtx.strokeStyle = 'rgba(6,9,12,0.78)';
+      mmCtx.lineWidth = 4.2;
+      mmCtx.beginPath();
+      mmCtx.arc(x, y, 11, 0, Math.PI * 2);
+      mmCtx.stroke();
+      mmCtx.fillStyle = flag.fill || 'rgba(240,246,252,0.07)';
+      mmCtx.strokeStyle = flag.color;
+      mmCtx.lineWidth = 2.4;
+      mmCtx.beginPath();
+      mmCtx.arc(x, y, 11, 0, Math.PI * 2);
+      mmCtx.fill();
+      mmCtx.stroke();
+      drawSpawnFlag(mmCtx, x, y + 3.5, flag.color);
+      mmCtx.restore();
+    }
+  }
+
+  function drawDestroyedMinimapTank(state: TankState): void {
+    const point = worldToMap(state.pos.x, state.pos.z);
+    mmCtx.strokeStyle = 'rgba(140,140,140,0.85)';
+    mmCtx.lineWidth = 1.4;
+    mmCtx.beginPath();
+    mmCtx.moveTo(point[0] - 3.5, point[1] - 3.5);
+    mmCtx.lineTo(point[0] + 3.5, point[1] + 3.5);
+    mmCtx.moveTo(point[0] + 3.5, point[1] - 3.5);
+    mmCtx.lineTo(point[0] - 3.5, point[1] + 3.5);
+    mmCtx.stroke();
+  }
+
+  function pushTankMinimapBlip(tank: HudTank, state: TankState): void {
+    const ally = tank.team === 'player';
+    const jitter = blipJitter(tank.id);
+    if (ally) {
+      const point = worldToMap(state.pos.x, state.pos.z);
+      pushLiveBlip(
+        point[0] + jitter[0],
+        point[1] + jitter[1],
+        orientMinimapYaw(state.yaw, minimapRotation),
+        PEN_GREEN,
+        5,
+        0.95,
+        false,
+      );
+      return;
+    }
+    const spotted = spotById.get(tank.id);
+    if (spotted?.vis) {
+      const point = worldToMap(state.pos.x, state.pos.z);
+      pushLiveBlip(
+        point[0] + jitter[0],
+        point[1] + jitter[1],
+        orientMinimapYaw(state.yaw, minimapRotation),
+        PEN_RED,
+        5,
+        0.95,
+        false,
+      );
+    } else if (spotted?.ever) {
+      const point = worldToMap(spotted.lastX, spotted.lastZ);
+      drawGhostMarker(mmCtx, point[0], point[1]);
+    }
+  }
+
+  function collectMinimapTankBlips(tanks: HudTank[]): void {
+    _liveBlipCount = 0;
+    for (let i = 0; i < tanks.length; i++) {
+      const tank = tanks[i];
+      const state = tank?.state;
+      if (!tank || !state || tank.isPlayer) continue;
+      if (tank.combat?.destroyed) {
+        drawDestroyedMinimapTank(state);
+        continue;
+      }
+      pushTankMinimapBlip(tank, state);
+    }
+  }
+
+  function drawPlayerMinimapOverlay(
+    state: TankState,
+    camera: THREE.PerspectiveCamera | null | undefined,
+  ): void {
+    const point = worldToMap(state.pos.x, state.pos.z);
+    const x = point[0];
+    const y = point[1];
+    mmCtx.strokeStyle = 'rgba(240,246,252,0.35)';
+    mmCtx.setLineDash([3, 3]);
+    mmCtx.beginPath();
+    mmCtx.arc(x, y, SPOT_RANGE_M * (MM / mapWorldSize), 0, Math.PI * 2);
+    mmCtx.stroke();
+    mmCtx.setLineDash([]);
+    if (camera) {
+      _fwd.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      const cameraAngle = orientMinimapDirection(_fwd.x, _fwd.z, minimapRotation);
+      const wedgeRadius = 36;
+      mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
+      mmCtx.beginPath();
+      mmCtx.moveTo(x, y);
+      mmCtx.arc(x, y, wedgeRadius, cameraAngle - 0.42, cameraAngle + 0.42);
+      mmCtx.closePath();
+      mmCtx.fill();
+      mmCtx.strokeStyle = 'rgba(240,248,255,0.35)';
+      mmCtx.lineWidth = 0.8;
+      mmCtx.beginPath();
+      mmCtx.moveTo(x, y);
+      mmCtx.lineTo(
+        x + Math.cos(cameraAngle - 0.42) * wedgeRadius,
+        y + Math.sin(cameraAngle - 0.42) * wedgeRadius,
+      );
+      mmCtx.moveTo(x, y);
+      mmCtx.lineTo(
+        x + Math.cos(cameraAngle + 0.42) * wedgeRadius,
+        y + Math.sin(cameraAngle + 0.42) * wedgeRadius,
+      );
+      mmCtx.stroke();
+    }
+    const turretAngle = orientMinimapYaw(state.yaw + state.turretYaw, minimapRotation);
+    mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
+    mmCtx.lineWidth = 1.2;
+    mmCtx.beginPath();
+    mmCtx.moveTo(x, y);
+    mmCtx.lineTo(x + Math.sin(turretAngle) * 15, y - Math.cos(turretAngle) * 15);
+    mmCtx.stroke();
+    pushLiveBlip(
+      x,
+      y,
+      orientMinimapYaw(state.yaw, minimapRotation),
+      '#f2f8ff',
+      6.6,
+      1,
+      true,
+    );
+  }
+
+  function relaxMinimapBlipPair(
+    first: MinimapBlip,
+    second: MinimapBlip,
+    firstIndex: number,
+    secondIndex: number,
+  ): boolean {
+    const minSeparation = 13.5;
+    let dx = second.x - first.x;
+    let dy = second.y - first.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance >= minSeparation) return false;
+    if (distance < 0.01) {
+      const angle = (firstIndex * 2.399 + secondIndex) % (Math.PI * 2);
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+    } else {
+      dx /= distance;
+      dy /= distance;
+    }
+    const push = minSeparation - distance;
+    if (first.fixed && !second.fixed) {
+      second.x += dx * push;
+      second.y += dy * push;
+    } else if (second.fixed && !first.fixed) {
+      first.x -= dx * push;
+      first.y -= dy * push;
+    } else if (!first.fixed && !second.fixed) {
+      first.x -= dx * push / 2;
+      first.y -= dy * push / 2;
+      second.x += dx * push / 2;
+      second.y += dy * push / 2;
+    }
+    return true;
+  }
+
+  function relaxMinimapBlips(): void {
+    for (let iteration = 0; iteration < 6; iteration++) {
+      let moved = false;
+      for (let i = 0; i < _liveBlipCount; i++) {
+        for (let j = i + 1; j < _liveBlipCount; j++) {
+          if (relaxMinimapBlipPair(_liveBlipPool[i], _liveBlipPool[j], i, j)) moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  function paintMinimapBlips(): void {
+    let playerBlip: MinimapBlip | null = null;
+    for (let i = 0; i < _liveBlipCount; i++) {
+      const blip = _liveBlipPool[i];
+      if (blip.fixed) {
+        playerBlip = blip;
+        continue;
+      }
+      blip.x = Math.max(21, Math.min(MM - 5, blip.x));
+      blip.y = Math.max(14, Math.min(MM - 5, blip.y));
+      drawArrowBlip(mmCtx, blip.x, blip.y, blip.yaw, blip.fill, blip.s, blip.a);
+    }
+    if (!playerBlip) return;
+    drawArrowBlip(
+      mmCtx,
+      playerBlip.x,
+      playerBlip.y,
+      playerBlip.yaw,
+      playerBlip.fill,
+      playerBlip.s,
+      playerBlip.a,
+    );
+  }
+
   function drawMinimap(frame: HudFrame): void {
     drawMinimapBackground();
     const tanks = frame.tanks || [];
     const player = frame.player;
     // player map position first — base rings fade while the arrow sits on them
     let plMapX = NaN, plMapY = NaN;
-    if (player && player.state) {
+    if (player?.state) {
       const pm = worldToMap(player.state.pos.x, player.state.pos.z);
       plMapX = pm[0]; plMapY = pm[1];
     }
@@ -4293,26 +5108,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // player drops to 55% so the arrow cluster reads ON TOP of it — the
       // r6-2 85% floor kept the ring at nearly full weight exactly where
       // four green markers stack on it.
-      for (const fl of spawnFlags) {
-        const [fx, fy] = worldToMap(fl.x, fl.z);
-        const dimmed = Math.hypot(fx - plMapX, fy - plMapY) < 15;
-        mmCtx.save();
-        if (dimmed) mmCtx.globalAlpha = 0.55;
-        mmCtx.strokeStyle = 'rgba(6,9,12,0.78)'; // dark keyline under the ring
-        mmCtx.lineWidth = 4.2;
-        mmCtx.beginPath();
-        mmCtx.arc(fx, fy, 11, 0, Math.PI * 2);
-        mmCtx.stroke();
-        mmCtx.fillStyle = fl.fill || 'rgba(240,246,252,0.07)';
-        mmCtx.strokeStyle = fl.color;
-        mmCtx.lineWidth = 2.4;
-        mmCtx.beginPath();
-        mmCtx.arc(fx, fy, 11, 0, Math.PI * 2);
-        mmCtx.fill();
-        mmCtx.stroke();
-        drawSpawnFlag(mmCtx, fx, fy + 3.5, fl.color);
-        mmCtx.restore();
-      }
+      drawMinimapBases(plMapX, plMapY);
     }
     // enemy / ally blips (spotting-gated for live enemies)
     // r5: live arrow blips are COLLECTED first, then relaxed to a minimum
@@ -4323,138 +5119,20 @@ export function initHud(bus: EventBus): HudRuntime {
     // at 20 Hz and the array + per-blip objects were the last steady
     // allocations in the HUD hot loop (worldToMap/blipJitter already return
     // reused module tuples). Pool indexes are stable within one redraw.
-    _liveBlipCount = 0;
-    const liveBlips = _liveBlipPool;
-    for (let i = 0; i < tanks.length; i++) {
-      const t = tanks[i];
-      if (!t || !t.state || t.isPlayer) continue;
-      const ally = t.team === 'player';
-      if (t.combat && t.combat.destroyed) {
-        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        mmCtx.strokeStyle = 'rgba(140,140,140,0.85)';
-        mmCtx.lineWidth = 1.4;
-        mmCtx.beginPath();
-        mmCtx.moveTo(px - 3.5, py - 3.5); mmCtx.lineTo(px + 3.5, py + 3.5);
-        mmCtx.moveTo(px + 3.5, py - 3.5); mmCtx.lineTo(px - 3.5, py + 3.5);
-        mmCtx.stroke();
-        continue;
-      }
-      const [jx, jy] = blipJitter(t.id);
-      if (ally) {
-        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        pushLiveBlip(px + jx, py + jy,
-          orientMinimapYaw(t.state.yaw, minimapRotation), PEN_GREEN, 5, 0.95, false);
-        continue;
-      }
-      const sp = spotById.get(t.id);
-      if (sp && sp.vis) {
-        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        pushLiveBlip(px + jx, py + jy,
-          orientMinimapYaw(t.state.yaw, minimapRotation), PEN_RED, 5, 0.95, false);
-      } else if (sp && sp.ever) {
-        // last-known-position ghost marker (neutral diamond — deliberately a
-        // DIFFERENT shape from the live arrows: "stale intel" at a glance)
-        const [px, py] = worldToMap(sp.lastX, sp.lastZ);
-        // camo_spotting r6 (supersedes content_breadth r4): the 21 px tinted
-        // top silhouette read as an anonymous red-brown box ambiguous with
-        // map furniture. One ghosted mark provides a clear last-seen state
-        // without reintroducing a vehicle category.
-        drawGhostMarker(mmCtx, px, py);
-      }
-      // never spotted -> nothing on the map
-    }
+    collectMinimapTankBlips(tanks);
     // player: spot-range circle + view wedge + arrow. r4: the white
     // render-range SQUARE is gone — at 500 m on a 1 km map its edges sliced
     // across the terrain and read as a stray playable-bounds frame floating
     // inset from the map border (the panel frame IS the map bound).
-    if (player && player.state) {
-      const st = player.state;
-      const [px, py] = worldToMap(st.pos.x, st.pos.z);
-      const pxPerM = MM / mapWorldSize;
-      // dashed max-spot circle
-      mmCtx.strokeStyle = 'rgba(240,246,252,0.35)';
-      mmCtx.setLineDash([3, 3]);
-      mmCtx.beginPath();
-      mmCtx.arc(px, py, SPOT_RANGE_M * pxPerM, 0, Math.PI * 2);
-      mmCtx.stroke();
-      mmCtx.setLineDash([]);
-      if (frame.camera) {
-        // view-direction cone from camera yaw (WoT's minimap identity):
-        // translucent fill + faint edge rays so the wedge reads even over
-        // bright terrain
-        _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
-        const camAng = orientMinimapDirection(_fwd.x, _fwd.z, minimapRotation);
-        const wr = 36;
-        mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
-        mmCtx.beginPath();
-        mmCtx.moveTo(px, py);
-        mmCtx.arc(px, py, wr, camAng - 0.42, camAng + 0.42);
-        mmCtx.closePath();
-        mmCtx.fill();
-        mmCtx.strokeStyle = 'rgba(240,248,255,0.35)';
-        mmCtx.lineWidth = 0.8;
-        mmCtx.beginPath();
-        for (const a of [camAng - 0.42, camAng + 0.42]) {
-          mmCtx.moveTo(px, py);
-          mmCtx.lineTo(px + Math.cos(a) * wr, py + Math.sin(a) * wr);
-        }
-        mmCtx.stroke();
-      }
-      // turret direction line (under the self arrow)
-      const tAng = orientMinimapYaw(st.yaw + st.turretYaw, minimapRotation);
-      mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
-      mmCtx.lineWidth = 1.2;
-      mmCtx.beginPath();
-      mmCtx.moveTo(px, py);
-      mmCtx.lineTo(px + Math.sin(tAng) * 15, py - Math.cos(tAng) * 15);
-      mmCtx.stroke();
-      // self marker: the classic WHITE hull-direction arrow (WoT self read),
-      // larger than any teammate blip — FIXED anchor for the relaxation pass
-      pushLiveBlip(px, py, orientMinimapYaw(st.yaw, minimapRotation),
-        '#f2f8ff', 6.6, 1, true);
-    }
+    if (player?.state) drawPlayerMinimapOverlay(player.state, frame.camera);
     // r7: relax overlapping blips to a minimum separation (radial nudge,
     // the player arrow never moves), clamp inside the map frame, and draw
     // the player arrow LAST so it always sits on top. r7-2: 11 → 13.5 px —
     // at 11 the four spawn arrows still touched tail-to-nose on the base
     // ring and fused into a wreath; 13.5 leaves a visible seam of map
     // between every pair (arrow footprint is ~10 px at s=5).
-    const MIN_SEP = 13.5;
-    for (let it = 0; it < 6; it++) {
-      let moved = false;
-      for (let i = 0; i < _liveBlipCount; i++) {
-        for (let j = i + 1; j < _liveBlipCount; j++) {
-          const a = liveBlips[i], b = liveBlips[j];
-          let dx = b.x - a.x, dy = b.y - a.y;
-          const d = Math.hypot(dx, dy);
-          if (d >= MIN_SEP) continue;
-          if (d < 0.01) { const ang = (i * 2.399 + j) % (Math.PI * 2); dx = Math.cos(ang); dy = Math.sin(ang); }
-          else { dx /= d; dy /= d; }
-          const push = MIN_SEP - d;
-          moved = true;
-          if (a.fixed && !b.fixed) { b.x += dx * push; b.y += dy * push; }
-          else if (b.fixed && !a.fixed) { a.x -= dx * push; a.y -= dy * push; }
-          else if (!a.fixed && !b.fixed) {
-            a.x -= dx * push / 2; a.y -= dy * push / 2;
-            b.x += dx * push / 2; b.y += dy * push / 2;
-          }
-        }
-      }
-      if (!moved) break;
-    }
-    let playerBlip: MinimapBlip | null = null;
-    for (let bi = 0; bi < _liveBlipCount; bi++) {
-      const b = liveBlips[bi];
-      if (!b.fixed) {
-        b.x = Math.max(21, Math.min(MM - 5, b.x));
-        b.y = Math.max(14, Math.min(MM - 5, b.y));
-        drawArrowBlip(mmCtx, b.x, b.y, b.yaw, b.fill, b.s, b.a);
-      } else playerBlip = b;
-    }
-    if (playerBlip) {
-      drawArrowBlip(mmCtx, playerBlip.x, playerBlip.y, playerBlip.yaw,
-        playerBlip.fill, playerBlip.s, playerBlip.a);
-    }
+    relaxMinimapBlips();
+    paintMinimapBlips();
   }
 
   // ---------- bus feeds ----------
@@ -4542,31 +5220,74 @@ export function initHud(bus: EventBus): HudRuntime {
    * counter-rotates as the camera turns, like the minimap wedge.
    * When neither source exists the arc is OMITTED rather than lied about.
    */
-  function pushHitDirection(hit: HudHitEvent, playerEnt: HudTank | null): void {
-    if (!playerEnt || !playerEnt.state) return;
-    const pp = playerEnt.state.pos;
-    let wx: number | null = null;
-    let wz: number | null = null;
-    const att = hit.attackerId != null && lastTanksRef
-      ? lastTanksRef.find((t) => t && t.id === hit.attackerId && t.state) : null;
-    if (att?.state) {
-      wx = att.state.pos.x;
-      wz = att.state.pos.z;
-    } else if (hit.localDir) {
-      // hull-local shell travel direction -> world (yaw only), reversed:
-      // world = Ry(yaw)·local, shooter sits opposite the travel direction
-      const yaw = playerEnt.state.yaw || 0;
-      const cy = Math.cos(yaw);
-      const sy = Math.sin(yaw);
-      const tx = hit.localDir[0] * cy + hit.localDir[2] * sy;
-      const tz = -hit.localDir[0] * sy + hit.localDir[2] * cy;
-      const L = Math.hypot(tx, tz);
-      if (L > 1e-4) {
-        wx = pp.x - (tx / L) * 180;
-        wz = pp.z - (tz / L) * 180;
+  function resolveIncomingHitOrigin(
+    hit: HudHitEvent,
+    playerState: TankState,
+    out: IncomingHitOrigin,
+  ): boolean {
+    if (hit.attackerId != null && lastTanksRef) {
+      for (let i = 0; i < lastTanksRef.length; i++) {
+        const attacker = lastTanksRef[i];
+        if (attacker?.id !== hit.attackerId || !attacker.state) continue;
+        out.x = attacker.state.pos.x;
+        out.z = attacker.state.pos.z;
+        return true;
       }
     }
-    if (wx === null || wz === null) return; // no honest bearing — draw nothing
+    if (!hit.localDir) return false;
+    const yaw = playerState.yaw || 0;
+    const cosYaw = Math.cos(yaw);
+    const sinYaw = Math.sin(yaw);
+    const travelX = hit.localDir[0] * cosYaw + hit.localDir[2] * sinYaw;
+    const travelZ = -hit.localDir[0] * sinYaw + hit.localDir[2] * cosYaw;
+    const length = Math.hypot(travelX, travelZ);
+    if (length <= 1e-4) return false;
+    out.x = playerState.pos.x - (travelX / length) * 180;
+    out.z = playerState.pos.z - (travelZ / length) * 180;
+    return true;
+  }
+
+  function mergeIncomingHitDirection(
+    kind: HitDirection['kind'],
+    mergeKey: string,
+    origin: IncomingHitOrigin,
+    playerState: TankState,
+    damage: number,
+    amount: number,
+    numeric: boolean,
+    critical: boolean,
+  ): boolean {
+    const angle = Math.atan2(
+      origin.x - playerState.pos.x,
+      origin.z - playerState.pos.z,
+    );
+    for (let i = 0; i < hitDirs.length; i++) {
+      const existing = hitDirs[i];
+      if (existing.kind !== kind || existing.mergeKey !== mergeKey) continue;
+      const existingAngle = Math.atan2(
+        existing.wx - playerState.pos.x,
+        existing.wz - playerState.pos.z,
+      );
+      let separation = Math.abs(angle - existingAngle) % (Math.PI * 2);
+      if (separation > Math.PI) separation = Math.PI * 2 - separation;
+      if (separation >= 0.35) continue;
+      existing.wx = origin.x;
+      existing.wz = origin.z;
+      existing.dmg += damage;
+      existing.amount += amount;
+      if (numeric) existing.label = `-${existing.amount}`;
+      existing.crit = existing.crit || critical;
+      existing.t0 = lastTimeS;
+      existing.re = true;
+      return true;
+    }
+    return false;
+  }
+
+  function pushHitDirection(hit: HudHitEvent, playerEnt: HudTank | null): void {
+    if (!playerEnt?.state) return;
+    const playerState = playerEnt.state;
+    if (!resolveIncomingHitOrigin(hit, playerState, incomingHitOrigin)) return;
     // visual language tiers (drawHitIndicators): red damage wedge / thin
     // steel deflect arc / amber splash wedge; crits ride the damage wedge
     // as a hot core flash
@@ -4580,26 +5301,20 @@ export function initHud(bus: EventBus): HudRuntime {
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
-    const ang = Math.atan2(wx - pp.x, wz - pp.z);
-    for (const e of hitDirs) {
-      if (e.kind !== kind || e.mergeKey !== feedback.mergeKey) continue;
-      const ea = Math.atan2(e.wx - pp.x, e.wz - pp.z);
-      let d = Math.abs(ang - ea) % (Math.PI * 2);
-      if (d > Math.PI) d = Math.PI * 2 - d;
-      if (d < 0.35) {
-        e.wx = wx;
-        e.wz = wz;
-        e.dmg = (e.dmg || 0) + dmg; // pooled total — the wedge number re-pulses with it
-        e.amount += amount;
-        if (e.numeric) e.label = `-${e.amount}`;
-        e.crit = e.crit || feedback.critical;
-        e.t0 = lastTimeS; // decay timer restarts
-        e.re = true;      // attack re-runs as a flash, not a full re-grow
-        return;
-      }
-    }
+    if (mergeIncomingHitDirection(
+      kind,
+      feedback.mergeKey,
+      incomingHitOrigin,
+      playerState,
+      dmg,
+      amount,
+      feedback.numeric,
+      feedback.critical,
+    )) return;
     hitDirs.push({
-      wx, wz, kind,
+      wx: incomingHitOrigin.x,
+      wz: incomingHitOrigin.z,
+      kind,
       outcomeId: feedback.outcomeId,
       mergeKey: feedback.mergeKey,
       label: feedback.label,
@@ -4846,47 +5561,67 @@ export function initHud(bus: EventBus): HudRuntime {
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
 
-  function assembleAimView(
-    camera: THREE.PerspectiveCamera | null | undefined,
-    aim: HudAimInput,
-  ): void {
-    aimView.dispRadM = aim.dispersionRadM != null ? aim.dispersionRadM : null;
-    aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
-    aimView.gunDistM = aim.gunDistM != null ? aim.gunDistM : null;
-    aimView.gunTargetId = aim.gunTargetId != null ? aim.gunTargetId : null;
+  function copyAimViewState(aim: HudAimInput): void {
+    aimView.dispRadM = aim.dispersionRadM ?? null;
+    aimView.penRatio = aim.penRatio ?? null;
+    aimView.gunDistM = aim.gunDistM ?? null;
+    aimView.gunTargetId = aim.gunTargetId ?? null;
     aimView.singleReticle = !!aim.singleReticle;
-    aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
+    aimView.blockedDistM = aim.blockedDistM ?? null;
     aimView.blockedLabel = !!aim.blockedLabel;
-    aimView.distM = aim.distM != null ? aim.distM : null;
+    aimView.distM = aim.distM ?? null;
     aimView.atGunLimit = !!aim.atGunLimit;
     aimView.gunLimitSpec = !!aim.gunLimitSpec;
     aimView.reload = aim.reload || aimView.reload;
     aimView.magazine = aim.magazine || null;
     aimView.zoom = aim.zoom || 1;
-    aimView.gunX = null; aimView.gunY = null;
-    let placed = false;
-    if (camera && aim.point && aim.point.isVector3) {
-      project(camera, aim.point.x, aim.point.y, aim.point.z);
-      if (_sVisible) {
-        aimView.cx = _sx; aimView.cy = _sy;
-        const dist = aim.distM != null ? aim.distM : _sDist;
-        const ppm = pxPerMeterAt(camera, dist);
-        aimView.radPx = (aim.dispersionRadM != null ? aim.dispersionRadM : 1.5) * ppm;
-        placed = true;
-      }
-    }
-    if (!placed) {
-      aimView.cx = w / 2; aimView.cy = h / 2;
-      if (aim.dispersionRadM != null && aim.distM != null) {
-        aimView.radPx = aim.dispersionRadM * pxPerMeterAt(camera, aim.distM);
-      } else {
-        aimView.radPx = Math.min(w, h) * 0.05;
-      }
-    }
-    if (camera && aim.gunMarker && aim.gunMarker.isVector3) {
-      project(camera, aim.gunMarker.x, aim.gunMarker.y, aim.gunMarker.z);
-      if (_sVisible) { aimView.gunX = _sx; aimView.gunY = _sy; }
-    }
+    aimView.gunX = null;
+    aimView.gunY = null;
+  }
+
+  function projectAimPoint(
+    camera: THREE.PerspectiveCamera | null | undefined,
+    aim: HudAimInput,
+  ): boolean {
+    if (!camera || !aim.point?.isVector3) return false;
+    project(camera, aim.point.x, aim.point.y, aim.point.z);
+    if (!_sVisible) return false;
+    aimView.cx = _sx;
+    aimView.cy = _sy;
+    const distance = aim.distM ?? _sDist;
+    aimView.radPx = (aim.dispersionRadM ?? 1.5) * pxPerMeterAt(camera, distance);
+    return true;
+  }
+
+  function placeFallbackAimPoint(
+    camera: THREE.PerspectiveCamera | null | undefined,
+    aim: HudAimInput,
+  ): void {
+    aimView.cx = w / 2;
+    aimView.cy = h / 2;
+    aimView.radPx = aim.dispersionRadM != null && aim.distM != null
+      ? aim.dispersionRadM * pxPerMeterAt(camera, aim.distM)
+      : Math.min(w, h) * 0.05;
+  }
+
+  function projectGunMarker(
+    camera: THREE.PerspectiveCamera | null | undefined,
+    aim: HudAimInput,
+  ): void {
+    if (!camera || !aim.gunMarker?.isVector3) return;
+    project(camera, aim.gunMarker.x, aim.gunMarker.y, aim.gunMarker.z);
+    if (!_sVisible) return;
+    aimView.gunX = _sx;
+    aimView.gunY = _sy;
+  }
+
+  function assembleAimView(
+    camera: THREE.PerspectiveCamera | null | undefined,
+    aim: HudAimInput,
+  ): void {
+    copyAimViewState(aim);
+    if (!projectAimPoint(camera, aim)) placeFallbackAimPoint(camera, aim);
+    projectGunMarker(camera, aim);
   }
 
   function renderCanvas(dt: number, force = false): void {
@@ -4926,6 +5661,88 @@ export function initHud(bus: EventBus): HudRuntime {
     scopePrevMode = mode;
     const sc = sceneCanvas();
     if (sc && sc.style.filter) sc.style.filter = '';
+  }
+
+  function updateDamagePanelPose(camera: THREE.PerspectiveCamera | null): void {
+    if (!dmgPanelRef || !playerRef?.state) return;
+    const activeCamera = camera || lastCamera;
+    const elements = activeCamera?.matrixWorld?.elements ?? null;
+    const cameraYaw = elements ? Math.atan2(-elements[8], -elements[10]) : 0;
+    dmgPanelRef.setPose(
+      playerRef.state.yaw || 0,
+      playerRef.state.turretYaw || 0,
+      cameraYaw,
+    );
+  }
+
+  function indexHudTankNames(tanks: HudTank[]): void {
+    for (let i = 0; i < tanks.length; i++) {
+      const tank = tanks[i];
+      if (!tank?.spec) continue;
+      nameById.set(tank.id, tank.spec.name);
+      specIdById.set(tank.id, tank.spec.id);
+    }
+  }
+
+  function prepareHudFrame(frame: HudFrame): HudFrameUpdateState {
+    const state = hudFrameUpdateScratch;
+    state.advancing = frame.timeS !== lastTimeS;
+    if (state.advancing) {
+      forced = null;
+      forcedStill = false;
+    }
+    state.camera = frame.camera ?? null;
+    lastCamera = state.camera || lastCamera;
+    lastTanksRef = frame.tanks || lastTanksRef;
+    state.dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
+    lastTimeS = frame.timeS;
+    updateConsumableCooldowns(lastTimeS);
+    if (frame.mode && frame.mode !== mode) {
+      mode = frame.mode;
+      applyMode();
+      mmDirty = true;
+    }
+    playerRef = frame.player || playerRef;
+    if (frame.player) playerId = frame.player.id;
+    updateSpecialAction(frame.player || playerRef);
+    updateDriveReadout(frame.player || playerRef, frame.timeS);
+    updateDamagePanelPose(state.camera);
+    shotInfo.setPlayer(playerId);
+    indexHudTankNames(frame.tanks || []);
+    return state;
+  }
+
+  function updateHudWorldPanels(frame: HudFrame, camera: THREE.PerspectiveCamera | null): void {
+    if (camera) {
+      camera.updateMatrixWorld();
+      _mInv.copy(camera.matrixWorld).invert();
+    }
+    if (!spawnFlags) captureSpawnFlags(frame);
+    updateSpotting(frame);
+    updateTeams(frame);
+    updateNetReadout(frame);
+    updateSixthSense(frame.timeS);
+    updateCamoIndicator(frame.spotting?.player ?? null);
+  }
+
+  function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
+    const aim = (!state.advancing && forced) ? forced : (frame.aim || {});
+    assembleAimView(state.camera, aim);
+    if (aim.shells) lastShells = aim.shells;
+    const slot = aim.shellSlot ?? localSlot;
+    renderShells(lastShells, slot);
+    updateShellCooldown(aim.reload, slot);
+    updateTargetPlate();
+    renderCanvas(state.dt);
+    if (state.camera) updateHpBars(frame);
+  }
+
+  function updateMinimapIfDue(frame: HudFrame): void {
+    const nowMs = performance.now();
+    if (!mmDirty && nowMs - mmLastPaintMs < 50) return;
+    drawMinimap(frame);
+    mmDirty = false;
+    mmLastPaintMs = nowMs;
   }
 
   // ---------- public API ----------
@@ -5070,13 +5887,15 @@ export function initHud(bus: EventBus): HudRuntime {
         sixthUntilS = -1;
         sixthOn = false;
         sixthEl.classList.remove('on');
-        for (const [, row] of earRows) row.root.remove();
+        for (const row of earRows.values()) row.root.remove();
         earRows.clear();
-        rosterSig = ''; // content_breadth r2: keep the rebuild signature in sync
+        rosterIds.length = 0;
+        rosterPlayers.length = 0;
         for (const [, bar] of hpPool) bar.root.remove();
         hpPool.clear();
         lastScore = '';
         lastTimer = '';
+        lastTimerLabel = '';
       }
     },
 
@@ -5091,74 +5910,11 @@ export function initHud(bus: EventBus): HudRuntime {
       // forceAimDisplay state, or the staged over-target plate hides (the
       // frozen spotting sim never saw the teleported target). Live battles
       // always advance timeS, so real frames still supersede immediately.
-      const advancing = frame.timeS !== lastTimeS;
-      if (advancing) {
-        forced = null;
-        forcedStill = false;
-      }
-      const camera = frame.camera;
-      lastCamera = camera || lastCamera;
-      lastTanksRef = frame.tanks || lastTanksRef;
-      const dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
-      lastTimeS = frame.timeS;
-      updateConsumableCooldowns(lastTimeS);
-      if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
-      playerRef = frame.player || playerRef;
-      if (frame.player) playerId = frame.player.id;
-      updateSpecialAction(frame.player || playerRef);
-      updateDriveReadout(frame.player || playerRef, frame.timeS);
-      // damage panel: live pose for its rotating plan view (main.ts calls
-      // damagePanel.update right after hud.update each frame). The panel is
-      // CAMERA-UP — its top is the camera's forward bearing — so it needs
-      // hull yaw, hull-relative turret yaw AND the camera yaw. Camera yaw
-      // comes from the world matrix -Z column (camera looks down -Z) in the
-      // project convention forwardAxis(yaw) = [sin yaw, 0, cos yaw].
-      if (dmgPanelRef && playerRef && playerRef.state) {
-        const cm = camera || lastCamera;
-        const e = cm && cm.matrixWorld ? cm.matrixWorld.elements : null;
-        const camYaw = e ? Math.atan2(-e[8], -e[10]) : 0;
-        dmgPanelRef.setPose(
-          playerRef.state.yaw || 0, playerRef.state.turretYaw || 0, camYaw);
-      }
-      shotInfo.setPlayer(playerId); // SHOT-INFO SECTION: identity forwarding
-      const tanks = frame.tanks || [];
-      for (let i = 0; i < tanks.length; i++) {
-        const t = tanks[i];
-        if (t && t.spec) { nameById.set(t.id, t.spec.name); specIdById.set(t.id, t.spec.id); }
-      }
+      const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
-      if (camera) { camera.updateMatrixWorld(); _mInv.copy(camera.matrixWorld).invert(); }
-
-      if (!spawnFlags) captureSpawnFlags(frame); // tanks still on their spawns
-      updateSpotting(frame);
-      updateTeams(frame);
-      updateNetReadout(frame);
-      // SPOTTING SECTION: sixth-sense fuse/lamp + camo/eye indicator
-      updateSixthSense(frame.timeS);
-      updateCamoIndicator(frame.spotting ? frame.spotting.player : null);
-
-      // frozen shot re-runs keep rendering the staged aim (see above)
-      const aim = (!advancing && forced) ? forced : (frame.aim || {});
-      assembleAimView(camera, aim);
-      if (aim.shells) lastShells = aim.shells;
-      const slot = aim.shellSlot != null ? aim.shellSlot : localSlot;
-      renderShells(lastShells, slot);
-      updateShellCooldown(aim.reload, slot);
-      updateTargetPlate(); // before renderCanvas: hairlines gap around the
-                           // plate rect; before updateHpBars: the target's
-                           // ambient plate yields
-      renderCanvas(dt);
-      if (camera) updateHpBars(frame);
-      // PERF: the minimap is a full 2D-canvas repaint (bg blit + blips +
-      // ranges); 20 Hz is visually indistinguishable for map blips. mmDirty
-      // (mode switches, forced screenshot frames, minimap rebuilds) always
-      // paints immediately so single-shot updates never show a stale map.
-      const mmNowMs = performance.now();
-      if (mmDirty || mmNowMs - mmLastPaintMs >= 50) { // 20 Hz on EVERY refresh rate
-        drawMinimap(frame);
-        mmDirty = false;
-        mmLastPaintMs = mmNowMs;
-      }
+      updateHudWorldPanels(frame, state.camera);
+      updateAimPresentation(frame, state);
+      updateMinimapIfDue(frame);
     },
 
     /**

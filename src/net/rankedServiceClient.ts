@@ -1,12 +1,13 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 const IDENTITY_KEY = 'cot.ranked.identity.v1';
 
-type JsonObject = Record<string, unknown>;
+type JsonObject = Record<string, RuntimeValue>;
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 interface StorageLike {
   getItem(key: string): string | null;
-  setItem(key: string, value: string): unknown;
-  removeItem(key: string): unknown;
+  setItem(key: string, value: string): RuntimeValue;
+  removeItem(key: string): RuntimeValue;
 }
 
 export interface RankedIdentity extends JsonObject {
@@ -70,12 +71,12 @@ export interface RankedServiceClient {
 }
 
 export interface RankedServiceClientOptions {
-  url?: unknown;
+  url?: RuntimeValue;
   fetchImpl?: FetchLike;
   storage?: StorageLike;
 }
 
-function isRecord(value: unknown): value is JsonObject {
+function isRecord(value: RuntimeValue): value is JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
@@ -84,7 +85,7 @@ function stringField(value: JsonObject, key: string): string | null {
   return typeof field === 'string' && field ? field : null;
 }
 
-function endpoint(value: unknown): URL {
+function endpoint(value: RuntimeValue): URL {
   const url = new URL(String(value || ''));
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new TypeError('ranked service URL must use http or https');
@@ -96,8 +97,8 @@ function endpoint(value: unknown): URL {
 }
 
 async function responseJson(response: Response): Promise<JsonObject> {
-  let body: unknown = null;
-  try { body = await response.json() as unknown; } catch { /* response may be empty */ }
+  let body: RuntimeValue = null;
+  try { body = await response.json() as RuntimeValue; } catch { /* response may be empty */ }
   const object = isRecord(body) ? body : null;
   if (!response.ok) {
     const message = object && (stringField(object, 'message') || stringField(object, 'error'));
@@ -115,7 +116,7 @@ async function responseJson(response: Response): Promise<JsonObject> {
   return object;
 }
 
-function readIdentity(value: unknown): RankedIdentity | null {
+function readIdentity(value: RuntimeValue): RankedIdentity | null {
   if (!isRecord(value)) return null;
   const playerId = stringField(value, 'playerId');
   const token = stringField(value, 'token');
@@ -124,7 +125,7 @@ function readIdentity(value: unknown): RankedIdentity | null {
 
 function storageRead(storage: StorageLike | undefined, key: string): RankedIdentity | null {
   try {
-    return readIdentity(JSON.parse(storage?.getItem(key) || 'null') as unknown);
+    return readIdentity(JSON.parse(storage?.getItem(key) || 'null') as RuntimeValue);
   } catch { return null; }
 }
 
@@ -165,7 +166,7 @@ function queueState(value: JsonObject): RankedQueueState {
   return { ...value, status };
 }
 
-export function rankedMatchWebSocketUrl(serviceUrl: unknown): string {
+export function rankedMatchWebSocketUrl(serviceUrl: RuntimeValue): string {
   const url = endpoint(serviceUrl);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.pathname = `${url.pathname}/match`.replace(/\/+/g, '/');

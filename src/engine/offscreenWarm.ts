@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * offscreenWarm.ts — real scene renders for shader/texture warm-up without
  * ever presenting the warm frame on the game canvas.
@@ -111,7 +112,7 @@ export function createOffscreenSceneWarmer(
     const priorTarget = renderer.getRenderTarget();
     const priorFace = renderer.getActiveCubeFace ? renderer.getActiveCubeFace() : 0;
     const priorMip = renderer.getActiveMipmapLevel ? renderer.getActiveMipmapLevel() : 0;
-    let compilation: Promise<unknown>;
+    let compilation: Promise<RuntimeValue>;
     try {
       // compileAsync() calls compile() synchronously before it returns its
       // KHR_parallel_shader_compile readiness promise. Set the private target

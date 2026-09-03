@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 type MaybePromise<T> = T | PromiseLike<T>;
 
 export interface MinimapWorldRef {
@@ -91,7 +92,7 @@ export function createMinimapAssetRuntime<World extends MinimapWorldRef>({
       trace.state = 'ready';
       trace.totalMs = Math.round(now() - trace.startedAt);
       return true;
-    })().catch((error: unknown) => {
+    })().catch((error: RuntimeValue) => {
       trace.state = 'fallback';
       trace.error = String(error);
       if (isCurrent(world, candidateGeneration)) buildFallback(world);

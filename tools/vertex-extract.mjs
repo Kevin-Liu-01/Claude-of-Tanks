@@ -1056,6 +1056,44 @@ function eulerXYZ(x, y, z) {
 // ------------------------------------------------------------- scene model --
 // Flattened list of prim INSTANCES: { nodeIdx, name, meshName, world, pos:
 // Float64Array xyz triplets (glb world), tris: Uint32Array }
+function primitiveInstance(gltf, bin, node, nodeIndex, mesh, world, prim) {
+  if ((prim.mode ?? 4) !== 4 || prim.attributes.POSITION === undefined) return null;
+  if (prim.extensions?.KHR_draco_mesh_compression) throw new Error('draco unsupported');
+  const positions = accArray(gltf, bin, prim.attributes.POSITION);
+  const pos = new Float64Array(positions.count * 3);
+  for (let i = 0; i < positions.count; i++) {
+    const point = xfp(world,
+      positions.arr[i * 3], positions.arr[i * 3 + 1], positions.arr[i * 3 + 2]);
+    pos[i * 3] = point[0];
+    pos[i * 3 + 1] = point[1];
+    pos[i * 3 + 2] = point[2];
+  }
+  let tris;
+  if (prim.indices !== undefined) {
+    tris = Uint32Array.from(accArray(gltf, bin, prim.indices).arr);
+  } else {
+    tris = new Uint32Array(positions.count);
+    for (let i = 0; i < positions.count; i++) tris[i] = i;
+  }
+  const refd = new Uint8Array(positions.count);
+  for (const vertexIndex of tris) refd[vertexIndex] = 1;
+  const accessor = gltf.accessors[prim.attributes.POSITION];
+  const localBox = accessor.min && accessor.max
+    ? { lo: accessor.min.slice(0, 3), hi: accessor.max.slice(0, 3) }
+    : null;
+  return {
+    nodeIdx: nodeIndex,
+    name: node.name || '',
+    meshName: mesh.name || '',
+    world,
+    pos,
+    tris,
+    vcount: positions.count,
+    refd,
+    localBox,
+  };
+}
+
 function buildScene(gltf, bin) {
   const sceneDef = gltf.scenes[gltf.scene ?? 0];
   const nodes = gltf.nodes;
@@ -1072,39 +1110,8 @@ function buildScene(gltf, bin) {
     if (node.mesh !== undefined) {
       const mesh = gltf.meshes[node.mesh];
       for (const prim of mesh.primitives) {
-        if ((prim.mode ?? 4) !== 4) continue; // triangles only
-        if (prim.attributes.POSITION === undefined) continue;
-        if (prim.extensions?.KHR_draco_mesh_compression) throw new Error('draco unsupported');
-        const P = accArray(gltf, bin, prim.attributes.POSITION);
-        const world3 = world;
-        const pos = new Float64Array(P.count * 3);
-        for (let i = 0; i < P.count; i++) {
-          const p = xfp(world3, P.arr[i * 3], P.arr[i * 3 + 1], P.arr[i * 3 + 2]);
-          pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1]; pos[i * 3 + 2] = p[2];
-        }
-        let tris;
-        if (prim.indices !== undefined) {
-          const I = accArray(gltf, bin, prim.indices);
-          tris = Uint32Array.from(I.arr);
-        } else {
-          tris = new Uint32Array(P.count);
-          for (let i = 0; i < P.count; i++) tris[i] = i;
-        }
-        // referenced-verts mask: index surgery (repair_oracles batches) leaves
-        // stale unreferenced verts in the buffer — they never render and must
-        // never count in measurements.
-        const refd = new Uint8Array(P.count);
-        for (const vi of tris) refd[vi] = 1;
-        // GLTFLoader parity: geometry.boundingBox comes from the accessor's
-        // authored min/max (NOT the raw array) — repairs rebuild these.
-        const accPos = gltf.accessors[prim.attributes.POSITION];
-        const localBox = (accPos.min && accPos.max)
-          ? { lo: accPos.min.slice(0, 3), hi: accPos.max.slice(0, 3) }
-          : null;
-        inst.push({
-          nodeIdx: ni, name: node.name || '', meshName: mesh.name || '',
-          world, pos, tris, vcount: P.count, refd, localBox,
-        });
+        const instance = primitiveInstance(gltf, bin, node, ni, mesh, world, prim);
+        if (instance) inst.push(instance);
       }
     }
     for (const ci of node.children || []) visit(ci, world, ni);
@@ -1137,6 +1144,23 @@ function subtreeSet(scene, rootIdx) {
   }
   return set;
 }
+
+function subtreeBounds(instances, nodeIndices) {
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (const instance of instances) {
+    if (!nodeIndices.has(instance.nodeIdx)) continue;
+    for (let i = 0; i < instance.pos.length; i += 3) {
+      if (instance.refd && !instance.refd[i / 3]) continue;
+      for (let axis = 0; axis < 3; axis++) {
+        lo[axis] = Math.min(lo[axis], instance.pos[i + axis]);
+        hi[axis] = Math.max(hi[axis], instance.pos[i + axis]);
+      }
+    }
+  }
+  return { lo, hi };
+}
+
 // findBestGunNode parity: all regex hits, pick largest corner-box span
 function findBestGunIdx(scene, instances, reStr, withinSet = null) {
   const re = new RegExp(reStr, 'i');
@@ -1148,22 +1172,38 @@ function findBestGunIdx(scene, instances, reStr, withinSet = null) {
   if (hits.length < 2) return hits[0] ?? -1;
   let best = hits[0]; let bestSpan = -Infinity;
   for (const ni of hits) {
-    const sub = subtreeSet(scene, ni);
-    let lo = [Infinity, Infinity, Infinity]; let hi = [-Infinity, -Infinity, -Infinity];
-    for (const it of instances) {
-      if (!sub.has(it.nodeIdx)) continue;
-      for (let i = 0; i < it.pos.length; i += 3) {
-        if (it.refd && !it.refd[i / 3]) continue;
-        for (let k = 0; k < 3; k++) {
-          if (it.pos[i + k] < lo[k]) lo[k] = it.pos[i + k];
-          if (it.pos[i + k] > hi[k]) hi[k] = it.pos[i + k];
-        }
-      }
-    }
+    const { lo, hi } = subtreeBounds(instances, subtreeSet(scene, ni));
     const span = lo[0] === Infinity ? 0 : Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
     if (span > bestSpan) { best = ni; bestSpan = span; }
   }
   return best;
+}
+
+function instanceCornerBounds(instance, extraMatrix) {
+  if (instance.localBox) {
+    return {
+      lo: instance.localBox.lo,
+      hi: instance.localBox.hi,
+      matrix: matMul(extraMatrix, instance.world),
+    };
+  }
+  const bounds = subtreeBounds([instance], new Set([instance.nodeIdx]));
+  if (bounds.lo[0] === Infinity) return null;
+  return { lo: bounds.lo, hi: bounds.hi, matrix: extraMatrix };
+}
+
+function expandByTransformedCorners(lo, hi, bounds) {
+  for (const cx of [bounds.lo[0], bounds.hi[0]]) {
+    for (const cy of [bounds.lo[1], bounds.hi[1]]) {
+      for (const cz of [bounds.lo[2], bounds.hi[2]]) {
+        const point = xfp(bounds.matrix, cx, cy, cz);
+        for (let axis = 0; axis < 3; axis++) {
+          lo[axis] = Math.min(lo[axis], point[axis]);
+          hi[axis] = Math.max(hi[axis], point[axis]);
+        }
+      }
+    }
+  }
 }
 
 // corner-box (three Box3/GLTFLoader parity: the prim's ACCESSOR min/max box
@@ -1172,31 +1212,8 @@ function cornerBox(instances, filter, extraM = IDENT) {
   const lo = [Infinity, Infinity, Infinity]; const hi = [-Infinity, -Infinity, -Infinity];
   for (const it of instances) {
     if (filter && !filter(it)) continue;
-    let l; let h; let M;
-    if (it.localBox) { l = it.localBox.lo; h = it.localBox.hi; M = matMul(extraM, it.world); }
-    else {
-      // runtime kit boxes: pos is glb-world already
-      l = [Infinity, Infinity, Infinity]; h = [-Infinity, -Infinity, -Infinity];
-      for (let i = 0; i < it.pos.length; i += 3) {
-        for (let k = 0; k < 3; k++) {
-          if (it.pos[i + k] < l[k]) l[k] = it.pos[i + k];
-          if (it.pos[i + k] > h[k]) h[k] = it.pos[i + k];
-        }
-      }
-      if (l[0] === Infinity) continue;
-      M = extraM;
-    }
-    for (const cx of [l[0], h[0]]) {
-      for (const cy of [l[1], h[1]]) {
-        for (const cz of [l[2], h[2]]) {
-          const p = xfp(M, cx, cy, cz);
-          for (let k = 0; k < 3; k++) {
-            if (p[k] < lo[k]) lo[k] = p[k];
-            if (p[k] > hi[k]) hi[k] = p[k];
-          }
-        }
-      }
-    }
+    const bounds = instanceCornerBounds(it, extraM);
+    if (bounds) expandByTransformedCorners(lo, hi, bounds);
   }
   return lo[0] === Infinity ? null : { lo, hi };
 }
@@ -1325,6 +1342,192 @@ function bodyExtent96(curve) {
     h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]),
     top, bot, z0: body[0][0], z1: body[body.length - 1][0],
   };
+}
+
+function orientationTriangle(entry, triangleOffset, box, span, zmid) {
+  const positions = entry.pos;
+  const indices = entry.tris;
+  const a = indices[triangleOffset] * 3;
+  const b = indices[triangleOffset + 1] * 3;
+  const c = indices[triangleOffset + 2] * 3;
+  const ux = positions[b] - positions[a];
+  const uy = positions[b + 1] - positions[a + 1];
+  const uz = positions[b + 2] - positions[a + 2];
+  const vx = positions[c] - positions[a];
+  const vy = positions[c + 1] - positions[a + 1];
+  const vz = positions[c + 2] - positions[a + 2];
+  let nx = uy * vz - uz * vy;
+  let ny = uz * vx - ux * vz;
+  let nz = ux * vy - uy * vx;
+  const area2 = Math.hypot(nx, ny, nz);
+  if (area2 < 1e-8) return null;
+  const cy = (positions[a + 1] + positions[b + 1] + positions[c + 1]) / 3;
+  const cz = (positions[a + 2] + positions[b + 2] + positions[c + 2]) / 3;
+  if (cy < box.hi[1] * 0.30) return null;
+  if (ny < 0) {
+    nx = -nx;
+    ny = -ny;
+    nz = -nz;
+  }
+  const inverseArea = 1 / area2;
+  const normalizedY = ny * inverseArea;
+  const normalizedZ = nz * inverseArea;
+  if (normalizedY < 0.85 || normalizedY > 0.975) return null;
+  if (Math.abs(normalizedZ) < 0.22 || Math.abs(normalizedZ) > 0.55) return null;
+  if (Math.abs(cz - zmid) < span * 0.18) return null;
+  if (Math.sign(nz) !== Math.sign(cz - zmid)) return null;
+  return { area2, cy, cz, normalizedY, normalizedZ, sign: Math.sign(nz), name: entry.name };
+}
+
+function orientationBands(parts, box) {
+  const band = {
+    1: { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
+    '-1': { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
+  };
+  const debug = [];
+  const span = box.hi[2] - box.lo[2];
+  const zmid = (box.hi[2] + box.lo[2]) / 2;
+  for (const entry of parts.hull) {
+    for (let triangle = 0; triangle < entry.tris.length; triangle += 3) {
+      const sample = orientationTriangle(entry, triangle, box, span, zmid);
+      if (!sample) continue;
+      const bucket = band[sample.sign];
+      bucket.area += sample.area2;
+      bucket.z0 = Math.min(bucket.z0, sample.cz);
+      bucket.z1 = Math.max(bucket.z1, sample.cz);
+      bucket.y0 = Math.min(bucket.y0, sample.cy);
+      bucket.y1 = Math.max(bucket.y1, sample.cy);
+      if (process.env.ORIENT_DEBUG) {
+        debug.push([
+          sample.sign * sample.area2,
+          +sample.cz.toFixed(2),
+          +sample.cy.toFixed(2),
+          +sample.normalizedY.toFixed(2),
+          +sample.normalizedZ.toFixed(2),
+          sample.name,
+        ]);
+      }
+    }
+  }
+  return { band, debug };
+}
+
+function printOrientationDebug(id, debug) {
+  if (!process.env.ORIENT_DEBUG) return;
+  debug.sort((a, b) => Math.abs(b[0]) - Math.abs(a[0]));
+  console.log(`[orient-debug ${id}] top contributors [signedArea, cz, cy, ny, nz, node]:`);
+  for (const entry of debug.slice(0, 15)) console.log('   ', JSON.stringify(entry));
+}
+
+function orientationScore(bucket) {
+  return bucket.area <= 0
+    ? 0 : (bucket.z1 - bucket.z0) * (bucket.y1 - bucket.y0) * Math.sqrt(bucket.area);
+}
+
+function deckDescentOrientation(curves, band) {
+  const hullTops = curves.side_hull.filter(Boolean);
+  if (hullTops.length <= 10) return 0;
+  const tops = hullTops.map((column) => column[1]).sort((a, b) => a - b);
+  const plateau = tops[Math.floor(tops.length * 0.9)];
+  const runFrom = (columns) => {
+    const z0 = columns[0][0];
+    for (const column of columns) {
+      if (column[1] >= plateau * 0.94) return Math.abs(column[0] - z0);
+    }
+    return Math.abs(columns[columns.length - 1][0] - z0);
+  };
+  const runFront = runFrom([...hullTops].reverse());
+  const runRear = runFrom(hullTops);
+  band.runs = { runFront: +runFront.toFixed(2), runRear: +runRear.toFixed(2) };
+  if (runFront > runRear * 1.15) return 1;
+  if (runRear > runFront * 1.15) return -1;
+  return 0;
+}
+
+function analyzeOrientation(id, cfg, parts, box, curves, hullMask) {
+  const { band, debug } = orientationBands(parts, box);
+  printOrientationDebug(id, debug);
+  const vote = orientationScore(band[1]) - orientationScore(band['-1']);
+  const descentBow = deckDescentOrientation(curves, band);
+  const glacisSign = descentBow !== 0 ? descentBow : (Math.sign(vote) || 0);
+  const whole = curves.side_whole.filter(Boolean);
+  const wholeZ = whole.length ? [whole[0][0], whole[whole.length - 1][0]] : [0, 0];
+  const forwardOverhang = hullMask ? wholeZ[1] - hullMask.z1 : 0;
+  const rearOverhang = hullMask ? hullMask.z0 - wholeZ[0] : 0;
+  const gunSign = Math.abs(forwardOverhang - rearOverhang) < 0.3
+    ? 0 : (forwardOverhang > rearOverhang ? 1 : -1);
+  const turret = curves.side_turret ? curves.side_turret.filter(Boolean) : [];
+  const turretMid = turret.length ? (turret[0][0] + turret[turret.length - 1][0]) / 2 : null;
+  const hullMid = hullMask ? (hullMask.z0 + hullMask.z1) / 2 : 0;
+  const turretSeatSign = turretMid === null ? null : (Math.sign(turretMid - hullMid) || 0);
+  const rawAgree = glacisSign !== 0 && gunSign !== 0 ? glacisSign === gunSign : null;
+  const adjudicated = rawAgree === false ? (cfg.orientationAdjudicated || null) : null;
+  return {
+    glacisSign,
+    descentRuns: band.runs || null,
+    normalVote: +vote.toFixed(2),
+    gunSign,
+    turretSeatSign,
+    rawAgree,
+    agree: adjudicated ? true : rawAgree,
+    ...(adjudicated ? { adjudicated } : {}),
+  };
+}
+
+function hullDeckMap(parts, box, cell) {
+  const deckMap = new Map();
+  for (const entry of parts.hull) {
+    for (let i = 0; i < entry.pos.length; i += 3) {
+      if (entry.refd && !entry.refd[i / 3]) continue;
+      const y = entry.pos[i + 1];
+      if (y < box.hi[1] * 0.35) continue;
+      const key = `${Math.round(entry.pos[i] / cell)},${Math.round(entry.pos[i + 2] / cell)}`;
+      if (!deckMap.has(key) || deckMap.get(key) < y) deckMap.set(key, y);
+    }
+  }
+  return deckMap;
+}
+
+function turretPlanCenter(parts) {
+  let x = 0;
+  let z = 0;
+  let count = 0;
+  for (const entry of parts.turret) {
+    if (parts.gun.includes(entry)) continue;
+    for (let i = 0; i < entry.pos.length; i += 3) {
+      if (entry.refd && !entry.refd[i / 3]) continue;
+      x += entry.pos[i];
+      z += entry.pos[i + 2];
+      count++;
+    }
+  }
+  return count ? { x: x / count, z: z / count } : null;
+}
+
+function analyzeInterpenetration(parts, box) {
+  if (!parts.turret.length) return null;
+  const cell = 0.12;
+  const deckMap = hullDeckMap(parts, box, cell);
+  const center = turretPlanCenter(parts);
+  if (!center) return null;
+  let worst = 0;
+  let count = 0;
+  for (const entry of parts.turret) {
+    if (parts.gun.includes(entry)) continue;
+    for (let i = 0; i < entry.pos.length; i += 3) {
+      if (entry.refd && !entry.refd[i / 3]) continue;
+      const radius = Math.hypot(entry.pos[i] - center.x, entry.pos[i + 2] - center.z);
+      if (radius < 1.05) continue;
+      const key = `${Math.round(entry.pos[i] / cell)},${Math.round(entry.pos[i + 2] / cell)}`;
+      const deck = deckMap.get(key);
+      if (deck === undefined) continue;
+      const dip = deck - entry.pos[i + 1];
+      if (dip <= 0.06) continue;
+      count++;
+      worst = Math.max(worst, dip);
+    }
+  }
+  return { violations: count, worstDipM: +worst.toFixed(3), ringExemptR: 1.05 };
 }
 
 // ------------------------------------------------------------------ main ---
@@ -1686,100 +1889,7 @@ for (const id of ids) {
   // it lives at; engine-deck slopes vote the other way and live aft).
   // A sign mismatch = the print's hull faces away from its gun (the
   // t62_bergman bake bug) — flagged loudly, never silently scored past.
-  const orientation = (() => {
-    let vote = 0;
-    const dbg = [];
-    // per-end slope-band accumulators: the GLACIS is a LONG, TALL band of
-    // 30-70 deg plates; tail rakes are short — net tri area alone inverted
-    // the vote on every print (rear-rake tris are individually larger)
-    const band = {
-      1: { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
-      '-1': { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
-    };
-    const span = box.hi[2] - box.lo[2];
-    const zmid = (box.hi[2] + box.lo[2]) / 2;
-    for (const e of parts.hull) {
-      const Pp = e.pos; const I = e.tris;
-      for (let t = 0; t < I.length; t += 3) {
-        const a = I[t] * 3; const b = I[t + 1] * 3; const c = I[t + 2] * 3;
-        const ux = Pp[b] - Pp[a]; const uy = Pp[b + 1] - Pp[a + 1]; const uz = Pp[b + 2] - Pp[a + 2];
-        const vx = Pp[c] - Pp[a]; const vy = Pp[c + 1] - Pp[a + 1]; const vz = Pp[c + 2] - Pp[a + 2];
-        let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
-        const area2 = Math.hypot(nx, ny, nz);
-        if (area2 < 1e-8) continue;
-        const cy = (Pp[a + 1] + Pp[b + 1] + Pp[c + 1]) / 3;
-        const cz = (Pp[a + 2] + Pp[b + 2] + Pp[c + 2]) / 3;
-        if (cy < box.hi[1] * 0.30) continue;              // upper works only
-        // outward orientation: winding is unreliable in these prints — point
-        // the normal up (glacis/deck plates face up; belly excluded above)
-        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
-        const n = 1 / area2;
-        // SOVIET GLACIS BAND: the upper glacis runs ~20-30 deg from
-        // horizontal (ny 0.85-0.97, |nz| 0.22-0.55). The first two cuts
-        // (30-70 deg) selected TAIL RAKES instead on every print — the
-        // Soviet glacis is shallower than a western one.
-        if (ny * n < 0.85 || ny * n > 0.975) continue;
-        if (Math.abs(nz * n) < 0.22 || Math.abs(nz * n) > 0.55) continue;
-        if (Math.abs(cz - zmid) < span * 0.18) continue;  // outer thirds only
-        if (Math.sign(nz) !== Math.sign(cz - zmid)) continue; // slope faces its own end
-        const sgn = Math.sign(nz);
-        const bk = band[sgn];
-        bk.area += area2;
-        if (cz < bk.z0) bk.z0 = cz; if (cz > bk.z1) bk.z1 = cz;
-        if (cy < bk.y0) bk.y0 = cy; if (cy > bk.y1) bk.y1 = cy;
-        if (process.env.ORIENT_DEBUG) {
-          dbg.push([sgn * area2, +cz.toFixed(2), +cy.toFixed(2),
-            +(ny * n).toFixed(2), +(nz * n).toFixed(2), e.name]);
-        }
-      }
-    }
-    if (process.env.ORIENT_DEBUG) {
-      dbg.sort((a, b) => Math.abs(b[0]) - Math.abs(a[0]));
-      console.log(`[orient-debug ${id}] top contributors [signedArea, cz, cy, ny, nz, node]:`);
-      for (const d of dbg.slice(0, 15)) console.log('   ', JSON.stringify(d));
-    }
-    const score = (bk) => (bk.area <= 0 ? 0
-      : (bk.z1 - bk.z0) * (bk.y1 - bk.y0) * Math.sqrt(bk.area));
-    const sPlus = score(band[1]);
-    const sMinus = score(band['-1']);
-    vote = sPlus - sMinus;
-    // PRIMARY glacis signal — mask deck-descent run (normals-free): the bow
-    // climbs from a low nose to the deck plateau over a LONG run (Soviet
-    // glacis 1.0-1.4 m); the tail tops out within a short drop (tail plate,
-    // drums/log sit high immediately). Longer terminal descent = bow.
-    const hullTops = curves.side_hull.filter(Boolean);
-    let descentBow = 0;
-    if (hullTops.length > 10) {
-      const tops = hullTops.map((c) => c[1]).sort((a, b) => a - b);
-      const plateau = tops[Math.floor(tops.length * 0.9)];
-      const runFrom = (arr) => {
-        const z0 = arr[0][0];
-        for (const c of arr) if (c[1] >= plateau * 0.94) return Math.abs(c[0] - z0);
-        return Math.abs(arr[arr.length - 1][0] - z0);
-      };
-      const runFront = runFrom([...hullTops].reverse());
-      const runRear = runFrom(hullTops);
-      descentBow = runFront > runRear * 1.15 ? 1 : (runRear > runFront * 1.15 ? -1 : 0);
-      band.runs = { runFront: +runFront.toFixed(2), runRear: +runRear.toFixed(2) };
-    }
-    const glacisSign = descentBow !== 0 ? descentBow : (Math.sign(vote) || 0);
-    // gun-forward sign: the barrel overhang end (thin span beyond the hull
-    // mask); works for split-gun AND fused-tube prints
-    const wl = curves.side_whole.filter(Boolean);
-    const wz = wl.length ? [wl[0][0], wl[wl.length - 1][0]] : [0, 0];
-    const overF = hullMask ? wz[1] - hullMask.z1 : 0;
-    const overR = hullMask ? hullMask.z0 - wz[0] : 0;
-    const gunSign = Math.abs(overF - overR) < 0.3 ? 0 : (overF > overR ? 1 : -1);
-    const tl = curves.side_turret ? curves.side_turret.filter(Boolean) : [];
-    const tmid = tl.length ? (tl[0][0] + tl[tl.length - 1][0]) / 2 : null;
-    const hmid = hullMask ? (hullMask.z0 + hullMask.z1) / 2 : 0;
-    const turretSeatSign = tmid === null ? null : (Math.sign(tmid - hmid) || 0);
-    const rawAgree = glacisSign !== 0 && gunSign !== 0 ? glacisSign === gunSign : null;
-    const adjudicated = rawAgree === false ? (cfg.orientationAdjudicated || null) : null;
-    return { glacisSign, descentRuns: band.runs || null, normalVote: +vote.toFixed(2),
-      gunSign, turretSeatSign, rawAgree, agree: adjudicated ? true : rawAgree,
-      ...(adjudicated ? { adjudicated } : {}) };
-  })();
+  const orientation = analyzeOrientation(id, cfg, parts, box, curves, hullMask);
   if (orientation.adjudicated) {
     console.warn(`[vertex ${id}] ORIENTATION HEURISTIC MISFIRE ADJUDICATED: ${orientation.adjudicated}`);
   } else if (orientation.agree === false) {
@@ -1790,46 +1900,7 @@ for (const id of ids) {
 
   // ---- INTERPENETRATION ASSERT: turret underside vs hull deck (outside the
   // ring/race annulus the dome must not dip below the local deck line) ----
-  const interpen = (() => {
-    if (!parts.turret.length) return null;
-    const cell = 0.12;
-    const deckMap = new Map();
-    for (const e of parts.hull) {
-      for (let i = 0; i < e.pos.length; i += 3) {
-        if (e.refd && !e.refd[i / 3]) continue;
-        const y = e.pos[i + 1];
-        if (y < box.hi[1] * 0.35) continue; // upper hull only
-        const key = `${Math.round(e.pos[i] / cell)},${Math.round(e.pos[i + 2] / cell)}`;
-        if (!deckMap.has(key) || deckMap.get(key) < y) deckMap.set(key, y);
-      }
-    }
-    // turret plan center from its own extent
-    let cx = 0; let cz = 0; let n = 0;
-    for (const e of parts.turret) {
-      if (parts.gun.includes(e)) continue;
-      for (let i = 0; i < e.pos.length; i += 3) {
-        if (e.refd && !e.refd[i / 3]) continue;
-        cx += e.pos[i]; cz += e.pos[i + 2]; n++;
-      }
-    }
-    if (!n) return null;
-    cx /= n; cz /= n;
-    let worst = 0; let count = 0;
-    for (const e of parts.turret) {
-      if (parts.gun.includes(e)) continue;
-      for (let i = 0; i < e.pos.length; i += 3) {
-        if (e.refd && !e.refd[i / 3]) continue;
-        const r = Math.hypot(e.pos[i] - cx, e.pos[i + 2] - cz);
-        if (r < 1.05) continue; // ring/race annulus exempt
-        const key = `${Math.round(e.pos[i] / cell)},${Math.round(e.pos[i + 2] / cell)}`;
-        const deck = deckMap.get(key);
-        if (deck === undefined) continue;
-        const dip = deck - e.pos[i + 1];
-        if (dip > 0.06) { count++; if (dip > worst) worst = dip; }
-      }
-    }
-    return { violations: count, worstDipM: +worst.toFixed(3), ringExemptR: 1.05 };
-  })();
+  const interpen = analyzeInterpenetration(parts, box);
   if (interpen && interpen.violations > 50) {
     console.error(`[vertex ${id}] INTERPENETRATION: ${interpen.violations} turret verts dip up to ` +
       `${interpen.worstDipM} m below the hull deck outside the ring annulus.`);

@@ -116,40 +116,52 @@ try {
       const px = sx + dx * t, pz = sz + dz * t;
       return (c.x - px) ** 2 + (c.z - pz) ** 2 <= c.r * c.r;
     };
-    let setup = null;
-    outer:
-    for (const b of bushes) {
-      if (Math.max(Math.abs(b.x), Math.abs(b.z)) > 360) continue;
-      for (let a = 0; a < 24; a++) {
-        const ang = (a / 24) * Math.PI * 2;
-        const ox = b.x + Math.sin(ang) * DIST;
-        const oz = b.z + Math.cos(ang) * DIST;
-        if (Math.max(Math.abs(ox), Math.abs(oz)) > 430) continue;
-        // the firing test needs a reveal-capable line: every concealer on the
-        // observer->bush segment must sit within 15 m of the target so the
-        // muzzle-flash rule clears them ALL (a second bush/canopy further up
-        // the line legitimately keeps concealing after a shot — authentic
-        // WoT double-bush — but it would fail check 3 by design)
-        if (allConceal.some((c) => segCross(ox, oz, b.x, b.z, c) &&
-            Math.hypot(c.x - b.x, c.z - b.z) - c.r >= 14)) continue;
-        place(player, b.x, b.z);
-        place(observer, ox, oz);
-        if (!los(eyeOf(observer, 0.9), eyeOf(player, 0.85))) continue;
-        // open control spot: perpendicular offset, LOS clear, NO foliage bonus
-        for (const side of [1, -1]) {
-          const px = Math.cos(ang) * side, pz = -Math.sin(ang) * side;
-          for (const off of [22, 30, 40]) {
-            const cx2 = b.x + px * off, cz2 = b.z + pz * off;
-            if (Math.max(Math.abs(cx2), Math.abs(cz2)) > 430) continue;
-            place(player, cx2, cz2);
-            if (!los(eyeOf(observer, 0.9), eyeOf(player, 0.85))) continue;
-            if (sp.bushBonusBetween(observer, player, 0) > 0) continue;
-            setup = { bush: b, open: { x: cx2, z: cz2 }, obs: { x: ox, z: oz } };
-            break outer;
-          }
+    const openControlSpot = (bush, angle) => {
+      for (const side of [1, -1]) {
+        const perpendicularX = Math.cos(angle) * side;
+        const perpendicularZ = -Math.sin(angle) * side;
+        for (const offset of [22, 30, 40]) {
+          const x = bush.x + perpendicularX * offset;
+          const z = bush.z + perpendicularZ * offset;
+          if (Math.max(Math.abs(x), Math.abs(z)) > 430) continue;
+          place(player, x, z);
+          if (!los(eyeOf(observer, 0.9), eyeOf(player, 0.85))) continue;
+          if (sp.bushBonusBetween(observer, player, 0) > 0) continue;
+          return { x, z };
         }
       }
-    }
+      return null;
+    };
+    const setupAtBearing = (bush, angle) => {
+      const observerX = bush.x + Math.sin(angle) * DIST;
+      const observerZ = bush.z + Math.cos(angle) * DIST;
+      if (Math.max(Math.abs(observerX), Math.abs(observerZ)) > 430) return null;
+      const hasDistantConcealer = allConceal.some((concealer) =>
+        segCross(observerX, observerZ, bush.x, bush.z, concealer)
+        && Math.hypot(concealer.x - bush.x, concealer.z - bush.z) - concealer.r >= 14);
+      if (hasDistantConcealer) return null;
+      place(player, bush.x, bush.z);
+      place(observer, observerX, observerZ);
+      if (!los(eyeOf(observer, 0.9), eyeOf(player, 0.85))) return null;
+      const open = openControlSpot(bush, angle);
+      return open ? { bush, open, obs: { x: observerX, z: observerZ } } : null;
+    };
+    const setupForBush = (bush) => {
+      if (Math.max(Math.abs(bush.x), Math.abs(bush.z)) > 360) return null;
+      for (let angleIndex = 0; angleIndex < 24; angleIndex++) {
+        const setup = setupAtBearing(bush, (angleIndex / 24) * Math.PI * 2);
+        if (setup) return setup;
+      }
+      return null;
+    };
+    const findSetup = () => {
+      for (const bush of bushes) {
+        const setup = setupForBush(bush);
+        if (setup) return setup;
+      }
+      return null;
+    };
+    const setup = findSetup();
     if (!setup) return { error: 'no bush/observer/open-spot arrangement found' };
 
     const out = { error: null };

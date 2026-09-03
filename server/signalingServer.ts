@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
@@ -30,7 +31,7 @@ interface StoreJoinResponse {
 }
 
 export interface SignalingStore {
-  rooms?: Map<unknown, unknown>;
+  rooms?: Map<RuntimeValue, RuntimeValue>;
   create(connection: SignalingConnection, options?: CreateRoomOptions):
     MaybePromise<SignalingJoinResult>;
   join(connection: SignalingConnection, options?: JoinRoomOptions):
@@ -45,7 +46,7 @@ export interface SignalingStore {
   setDeliveryHandler?(
     handler: (connection: SignalingConnection, message: SignalingMessage) => boolean,
   ): void;
-  health?(timeoutMs?: number): Promise<unknown>;
+  health?(timeoutMs?: number): Promise<RuntimeValue>;
   start?(): Promise<void>;
   close?(): Promise<void>;
 }
@@ -67,10 +68,10 @@ export interface SignalingServerService {
   close(): Promise<void>;
 }
 
-interface SignalingEnvelope extends Record<string, unknown> {
+interface SignalingEnvelope extends Record<string, RuntimeValue> {
   type: string;
-  requestId?: unknown;
-  payload?: unknown;
+  requestId?: RuntimeValue;
+  payload?: RuntimeValue;
 }
 
 interface RateWindow {
@@ -82,18 +83,18 @@ interface SignalingHealth {
   ok: boolean;
   rooms: number | null;
   distributed?: boolean;
-  redis?: Record<string, unknown>;
+  redis?: Record<string, RuntimeValue>;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
 }
 
-function errorCode(value: unknown, fallback: string): string {
+function errorCode(value: RuntimeValue, fallback: string): string {
   return isRecord(value) && typeof value.code === 'string' ? value.code : fallback;
 }
 
-function safeSend(connection: SignalingConnection | null | undefined, message: unknown): boolean {
+function safeSend(connection: SignalingConnection | null | undefined, message: RuntimeValue): boolean {
   if (!connection) return false;
   const socket = connection as WebSocket;
   if (socket.readyState !== WebSocket.OPEN) return false;
@@ -101,7 +102,7 @@ function safeSend(connection: SignalingConnection | null | undefined, message: u
   return true;
 }
 
-function errorMessage(error: unknown, requestId: unknown = null): SignalingMessage {
+function errorMessage(error: RuntimeValue, requestId: RuntimeValue = null): SignalingMessage {
   return {
     type: 'error',
     ...(requestId ? { requestId: String(requestId) } : {}),
@@ -112,7 +113,7 @@ function errorMessage(error: unknown, requestId: unknown = null): SignalingMessa
   };
 }
 
-function validateSignal(signal: unknown): Record<string, unknown> {
+function validateSignal(signal: RuntimeValue): Record<string, RuntimeValue> {
   if (!isRecord(signal)) throw new Error('invalid RTC signal');
   if (signal.kind === 'restart') return { kind: 'restart' };
   if (signal.kind === 'description') {
@@ -134,7 +135,7 @@ function validateSignal(signal: unknown): Record<string, unknown> {
   throw new Error('unknown RTC signal');
 }
 
-function originAllowed(origin: unknown, allowedOrigins: readonly string[] | null): boolean {
+function originAllowed(origin: RuntimeValue, allowedOrigins: readonly string[] | null): boolean {
   if (!allowedOrigins || allowedOrigins.length === 0) return true;
   return typeof origin === 'string' && allowedOrigins.includes(origin);
 }
@@ -170,7 +171,7 @@ export function createSignalingServer({
           const result = await store.health();
           health.redis = isRecord(result) ? result : { ok: false, code: 'redis_invalid_health' };
           health.ok = health.redis.ok === true;
-        } catch (error: unknown) {
+        } catch (error) {
           health.ok = false;
           health.redis = {
             ok: false,
@@ -235,7 +236,7 @@ export function createSignalingServer({
         }
         let message: SignalingEnvelope | null = null;
         try {
-          const parsed: unknown = JSON.parse(data.toString());
+          const parsed: RuntimeValue = JSON.parse(data.toString());
           if (!isRecord(parsed) || typeof parsed.type !== 'string') {
             throw new Error('invalid message');
           }
@@ -286,7 +287,7 @@ export function createSignalingServer({
             default:
               throw Object.assign(new Error('unknown signaling message'), { code: 'unknown_message' });
           }
-        } catch (error: unknown) {
+        } catch (error) {
           safeSend(connection, errorMessage(error, message?.requestId));
         }
       }).catch((error) => {

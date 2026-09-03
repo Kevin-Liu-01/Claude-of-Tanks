@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /** Retryable owner for the battle-only mobile control surface. */
 import type { ActionId } from '../game/input.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -56,7 +57,7 @@ export function createTouchControlsAccess(
     const request = loaders.controls().then((module) => {
       current = module.createTouchControls(options);
       return current;
-    }).catch((error: unknown) => {
+    }).catch((error: RuntimeValue) => {
       if (pending === request) pending = null;
       throw error;
     });

@@ -838,94 +838,107 @@ function synthesize(only) {
 }
 
 // ---------------------------------------------------------------- verify ----
-async function verify() {
-  const problems = [];
-  // Runtime mapping is the source of truth — import it (make-voices pattern).
-  let SFX_FILES = null;
+async function loadSfxMapping(problems) {
   try {
-    ({ SFX_FILES } = await import(path.join(ROOT, 'src', 'audio', 'audioPolicy.ts')));
-  } catch (err) {
-    problems.push(`could not import SFX_FILES from src/audio/audioPolicy.ts: ${err.message}`);
+    const policy = await import(path.join(ROOT, 'src', 'audio', 'audioPolicy.ts'));
+    return policy.SFX_FILES;
+  } catch (error) {
+    problems.push(`could not import SFX_FILES from src/audio/audioPolicy.ts: ${error.message}`);
+    return null;
   }
-  const tableIds = new Set(MANIFEST.map((r) => `${r.name}.ogg`));
-  if (SFX_FILES) {
-    const mapped = new Set(Object.values(SFX_FILES));
-    for (const f of mapped) if (!tableIds.has(f)) problems.push(`audioPolicy.ts maps ${f} but generator table lacks it`);
-    for (const f of tableIds) if (!mapped.has(f)) problems.push(`generator produces ${f} but audioPolicy.ts never plays it`);
-  }
-  for (const f of readdirSync(OUT_DIR)) {
-    if (f.endsWith('.ogg') && !tableIds.has(f)) problems.push(`${f}: orphan in ${OUT_DIR}`);
-  }
+}
 
-  // Per-file gates.
+function validateSfxMappings(sfxFiles, tableIds, problems) {
+  if (sfxFiles) {
+    const mapped = new Set(Object.values(sfxFiles));
+    for (const file of mapped) {
+      if (!tableIds.has(file)) problems.push(`audioPolicy.ts maps ${file} but generator table lacks it`);
+    }
+    for (const file of tableIds) {
+      if (!mapped.has(file)) problems.push(`generator produces ${file} but audioPolicy.ts never plays it`);
+    }
+  }
+  for (const file of readdirSync(OUT_DIR)) {
+    if (file.endsWith('.ogg') && !tableIds.has(file)) problems.push(`${file}: orphan in ${OUT_DIR}`);
+  }
+}
+
+function verifySfxFiles(problems) {
   let total = 0;
-  console.log(`\nverify: ${MANIFEST.length} files (true peak <= ${PEAK_CEIL_DB} dBTP, dur ±25%)`);
-  const fileInfo = new Map();
   for (const row of MANIFEST) {
     const file = path.join(OUT_DIR, `${row.name}.ogg`);
-    if (!existsSync(file)) { problems.push(`${row.name}.ogg: MISSING`); continue; }
+    if (!existsSync(file)) {
+      problems.push(`${row.name}.ogg: MISSING`);
+      continue;
+    }
     const { dur, codec } = probeMeta(file);
     const tp = measureTruePeakDb(file);
     const size = statSync(file).size;
     total += size;
-    fileInfo.set(row.name, { dur, tp, size });
-    try { decodeCheck(file); } catch (e) { problems.push(String(e.message)); }
+    try { decodeCheck(file); } catch (error) { problems.push(String(error.message)); }
     const flags = [];
     if (!codec.startsWith('opus')) flags.push(`codec=${codec}`);
-    if (dur < row.durS * 0.75 || dur > row.durS * 1.25 + 0.15) flags.push(`dur=${dur.toFixed(2)}s (want ~${row.durS.toFixed(2)})`);
+    if (dur < row.durS * 0.75 || dur > row.durS * 1.25 + 0.15) {
+      flags.push(`dur=${dur.toFixed(2)}s (want ~${row.durS.toFixed(2)})`);
+    }
     if (tp > PEAK_CEIL_DB) flags.push(`truePeak=${tp.toFixed(2)}dBTP`);
     if (flags.length) problems.push(`${row.name}.ogg: ${flags.join(' ')}`);
   }
-  console.log(`[sfx] payload: ${MANIFEST.length} files, ${(total / 1024).toFixed(1)} KiB (budget ${(PAYLOAD_BUDGET_B / 1024).toFixed(0)} KiB)`);
-  if (total > PAYLOAD_BUDGET_B) problems.push(`payload ${(total / 1024).toFixed(1)} KiB exceeds budget`);
+  return total;
+}
 
-  // Preview mixes + perceptual balance gates. These are regression contracts:
-  // every shipped event must retain low-end scale, low-mid physical body, and
-  // restrained presence energy after the same layering used at runtime.
-  mkdirSync(PREVIEW_DIR, { recursive: true });
-  console.log(`\npreview mixes (runtime-default layer gains):`);
-  console.log(`name                    LUFS      bass<120   body120-1.2k  harsh2-6.5k  air>6.5k`);
-  const previewInfo = new Map();
-  for (const pv of PREVIEWS) {
-    let n = 0;
-    const decoded = [];
-    for (const [name, gain, atS] of pv.layers) {
-      const f = path.join(OUT_DIR, `${name}.ogg`);
-      if (!existsSync(f)) { decoded.length = 0; break; }
-      const pcm = decodeToF32(f);
-      decoded.push([pcm, gain, atS]);
-      n = Math.max(n, Math.ceil(atS * SR) + pcm.length);
-    }
-    if (!decoded.length) { problems.push(`${pv.name}: layer file(s) missing`); continue; }
-    const mix = new Float32Array(n);
-    for (const [pcm, gain, atS] of decoded) mixAt(mix, pcm, atS, gain);
-    // renormalize the preview only if it clips as a naive sum
-    let p = 0;
-    for (let i = 0; i < mix.length; i++) { const a = Math.abs(mix[i]); if (a > p) p = a; }
-    if (p > 0.99) scale(mix, 0.99 / p);
-    const wav = path.join(PREVIEW_DIR, `${pv.name}.wav`);
-    writeWavF32(wav, mix);
-    const lufs = measureLufs(wav);
-    const bass = bassEnergyPct(wav);
-    const body = bodyEnergyPct(wav);
-    const harsh = harshEnergyPct(wav);
-    const air = airEnergyPct(wav);
-    previewInfo.set(pv.name, { lufs, bass, body, harsh, air, duration: mix.length / SR });
-    const flags = [];
-    if (pv.lufs && (lufs < pv.lufs[0] || lufs > pv.lufs[1])) flags.push(`LUFS ${lufs.toFixed(1)} outside [${pv.lufs}]`);
-    if (pv.bass && (bass < pv.bass[0] || bass > pv.bass[1])) flags.push(`bass ${bass.toFixed(1)}% outside [${pv.bass}]`);
-    if (pv.bodyMin != null && body < pv.bodyMin) flags.push(`body ${body.toFixed(1)}% < ${pv.bodyMin}% MIN`);
-    if (pv.harsh && (harsh < pv.harsh[0] || harsh > pv.harsh[1])) flags.push(`harsh ${harsh.toFixed(1)}% outside [${pv.harsh}]`);
-    if (pv.harshMax != null && harsh > pv.harshMax) flags.push(`harsh ${harsh.toFixed(1)}% > ${pv.harshMax}% MAX`);
-    console.log(`  ${flags.length ? 'FAIL' : ' ok '} ${pv.name.padEnd(20)} ${lufs.toFixed(1).padStart(6)}   ${bass.toFixed(1).padStart(7)}%     ${body.toFixed(1).padStart(7)}%       ${harsh.toFixed(1).padStart(7)}%    ${air.toFixed(1).padStart(7)}%`);
-    if (flags.length) problems.push(`${pv.name}: ${flags.join('; ')}`);
+function decodePreviewLayers(preview) {
+  let sampleCount = 0;
+  const decoded = [];
+  for (const [name, gain, atS] of preview.layers) {
+    const file = path.join(OUT_DIR, `${name}.ogg`);
+    if (!existsSync(file)) return null;
+    const pcm = decodeToF32(file);
+    decoded.push([pcm, gain, atS]);
+    sampleCount = Math.max(sampleCount, Math.ceil(atS * SR) + pcm.length);
   }
+  return { decoded, sampleCount };
+}
 
-  // Family contrast gates. Safe per-event ranges alone allowed earlier
-  // revisions to converge on one generic report. These relative contracts
-  // preserve the audible hierarchy and event identity players actually need:
-  // caliber adds pressure + decay; ricochets stay bright against penetrations;
-  // and every explosion recipe occupies a deliberately different envelope.
+function renderPreview(preview, problems) {
+  const layers = decodePreviewLayers(preview);
+  if (!layers) {
+    problems.push(`${preview.name}: layer file(s) missing`);
+    return null;
+  }
+  const mix = new Float32Array(layers.sampleCount);
+  for (const [pcm, gain, atS] of layers.decoded) mixAt(mix, pcm, atS, gain);
+  let peak = 0;
+  for (let i = 0; i < mix.length; i++) peak = Math.max(peak, Math.abs(mix[i]));
+  if (peak > 0.99) scale(mix, 0.99 / peak);
+  const wav = path.join(PREVIEW_DIR, `${preview.name}.wav`);
+  writeWavF32(wav, mix);
+  const result = {
+    lufs: measureLufs(wav),
+    bass: bassEnergyPct(wav),
+    body: bodyEnergyPct(wav),
+    harsh: harshEnergyPct(wav),
+    air: airEnergyPct(wav),
+    duration: mix.length / SR,
+  };
+  const flags = [];
+  if (preview.lufs && (result.lufs < preview.lufs[0] || result.lufs > preview.lufs[1])) {
+    flags.push(`LUFS ${result.lufs.toFixed(1)} outside [${preview.lufs}]`);
+  }
+  if (preview.bass && (result.bass < preview.bass[0] || result.bass > preview.bass[1])) {
+    flags.push(`bass ${result.bass.toFixed(1)}% outside [${preview.bass}]`);
+  }
+  if (preview.bodyMin != null && result.body < preview.bodyMin) flags.push(`body ${result.body.toFixed(1)}% < ${preview.bodyMin}% MIN`);
+  if (preview.harsh && (result.harsh < preview.harsh[0] || result.harsh > preview.harsh[1])) {
+    flags.push(`harsh ${result.harsh.toFixed(1)}% outside [${preview.harsh}]`);
+  }
+  if (preview.harshMax != null && result.harsh > preview.harshMax) flags.push(`harsh ${result.harsh.toFixed(1)}% > ${preview.harshMax}% MAX`);
+  console.log(`  ${flags.length ? 'FAIL' : ' ok '} ${preview.name.padEnd(20)} ${result.lufs.toFixed(1).padStart(6)}   ${result.bass.toFixed(1).padStart(7)}%     ${result.body.toFixed(1).padStart(7)}%       ${result.harsh.toFixed(1).padStart(7)}%    ${result.air.toFixed(1).padStart(7)}%`);
+  if (flags.length) problems.push(`${preview.name}: ${flags.join('; ')}`);
+  return result;
+}
+
+function verifyPreviewContrasts(previewInfo, problems) {
   const contrasts = [];
   function contrast(aName, bName, metric, minDelta, label) {
     const a = previewInfo.get(aName);
@@ -933,8 +946,9 @@ async function verify() {
     if (!a || !b) return;
     const delta = a[metric] - b[metric];
     const ok = delta >= minDelta;
-    contrasts.push({ ok, label, delta, minDelta, unit: metric === 'duration' ? 's' : '%' });
-    if (!ok) problems.push(`${label}: ${delta.toFixed(1)}${metric === 'duration' ? 's' : '%'} < ${minDelta}${metric === 'duration' ? 's' : '%'} MIN`);
+    const unit = metric === 'duration' ? 's' : '%';
+    contrasts.push({ ok, label, delta, minDelta, unit });
+    if (!ok) problems.push(`${label}: ${delta.toFixed(1)}${unit} < ${minDelta}${unit} MIN`);
   }
   contrast('mix_fire_medium', 'mix_fire_small', 'bass', 12, 'medium vs small cannon bass');
   contrast('mix_fire_large', 'mix_fire_medium', 'bass', 8, 'large vs medium cannon bass');
@@ -952,9 +966,41 @@ async function verify() {
   contrast('mix_dirt', 'mix_burnout', 'body', 12, 'dirt impact vs burnout body');
   contrast('mix_era', 'mix_dirt', 'harsh', 1, 'ERA vs dirt fracture');
   console.log(`\ncontrast gates (minimum family separation):`);
-  for (const c of contrasts) {
-    console.log(`  ${c.ok ? ' ok ' : 'FAIL'} ${c.label.padEnd(43)} +${c.delta.toFixed(1)}${c.unit} (min +${c.minDelta}${c.unit})`);
+  for (const result of contrasts) {
+    console.log(`  ${result.ok ? ' ok ' : 'FAIL'} ${result.label.padEnd(43)} +${result.delta.toFixed(1)}${result.unit} (min +${result.minDelta}${result.unit})`);
   }
+}
+
+async function verify() {
+  const problems = [];
+  const sfxFiles = await loadSfxMapping(problems);
+  const tableIds = new Set(MANIFEST.map((r) => `${r.name}.ogg`));
+  validateSfxMappings(sfxFiles, tableIds, problems);
+
+  // Per-file gates.
+  console.log(`\nverify: ${MANIFEST.length} files (true peak <= ${PEAK_CEIL_DB} dBTP, dur ±25%)`);
+  const total = verifySfxFiles(problems);
+  console.log(`[sfx] payload: ${MANIFEST.length} files, ${(total / 1024).toFixed(1)} KiB (budget ${(PAYLOAD_BUDGET_B / 1024).toFixed(0)} KiB)`);
+  if (total > PAYLOAD_BUDGET_B) problems.push(`payload ${(total / 1024).toFixed(1)} KiB exceeds budget`);
+
+  // Preview mixes + perceptual balance gates. These are regression contracts:
+  // every shipped event must retain low-end scale, low-mid physical body, and
+  // restrained presence energy after the same layering used at runtime.
+  mkdirSync(PREVIEW_DIR, { recursive: true });
+  console.log(`\npreview mixes (runtime-default layer gains):`);
+  console.log(`name                    LUFS      bass<120   body120-1.2k  harsh2-6.5k  air>6.5k`);
+  const previewInfo = new Map();
+  for (const preview of PREVIEWS) {
+    const result = renderPreview(preview, problems);
+    if (result) previewInfo.set(preview.name, result);
+  }
+
+  // Family contrast gates. Safe per-event ranges alone allowed earlier
+  // revisions to converge on one generic report. These relative contracts
+  // preserve the audible hierarchy and event identity players actually need:
+  // caliber adds pressure + decay; ricochets stay bright against penetrations;
+  // and every explosion recipe occupies a deliberately different envelope.
+  verifyPreviewContrasts(previewInfo, problems);
 
   if (problems.length) {
     console.error(`\n[sfx] VERIFY FAILED:`);

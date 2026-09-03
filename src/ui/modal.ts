@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared accessible modal shell for Garage, Scene Studio, Gallery, and HUD UI.
 // Content remains owned by callers; this module owns focus, dismissal, scroll
 // locking, and the visual treatment so dialogs do not drift into bespoke
@@ -32,9 +33,9 @@ export interface ModalController {
   footer: HTMLElement;
   closeButton: HTMLButtonElement;
   isOpen(): boolean;
-  setTitle(value: unknown): void;
-  setEyebrow(value: unknown): void;
-  setSubtitle(value: unknown): void;
+  setTitle(value: RuntimeValue): void;
+  setEyebrow(value: RuntimeValue): void;
+  setSubtitle(value: RuntimeValue): void;
   open(options?: ModalOpenOptions): void;
   close(options?: ModalCloseOptions): void;
   dispose(): void;
@@ -61,7 +62,7 @@ export function isAnyModalOpen() {
   return !!activeModal || now < modalDismissGuardUntil;
 }
 
-export function normalizeModalSize(value: unknown): ModalSize {
+export function normalizeModalSize(value: RuntimeValue): ModalSize {
   return typeof value === 'string' && MODAL_SIZES.has(value) ? value as ModalSize : 'medium';
 }
 
@@ -197,9 +198,9 @@ export function createModal({
   const controller: ModalController = {
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
-    setTitle(value: unknown) { titleEl.textContent = String(value || 'Details'); },
-    setEyebrow(value: unknown) { eyebrowEl.textContent = String(value || 'Field manual'); },
-    setSubtitle(value: unknown) {
+    setTitle(value: RuntimeValue) { titleEl.textContent = String(value || 'Details'); },
+    setEyebrow(value: RuntimeValue) { eyebrowEl.textContent = String(value || 'Field manual'); },
+    setSubtitle(value: RuntimeValue) {
       subtitleEl.textContent = String(value || '');
       subtitleEl.hidden = !value;
       if (value) panel.setAttribute('aria-describedby', subtitleEl.id);

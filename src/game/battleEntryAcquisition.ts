@@ -1,4 +1,5 @@
-export type BattleEntryTask<T = unknown> = () => T | PromiseLike<T>;
+import type { RuntimeValue } from '../runtimeTypes.ts';
+export type BattleEntryTask<T = RuntimeValue> = () => T | PromiseLike<T>;
 
 export interface BattleEntryTimings {
   modulesMs?: number;

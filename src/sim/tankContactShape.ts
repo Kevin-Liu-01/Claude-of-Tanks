@@ -21,37 +21,65 @@ interface ContactSpec {
   armor?: { bodyContactPoints?: { hull?: readonly number[] } };
 }
 
-const cache = new WeakMap<object, { source: unknown; rect: TankContactRect }>();
+interface ContactBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+}
 
-export function tankContactRect(spec: ContactSpec): TankContactRect {
-  const points = spec?.armor?.bodyContactPoints?.hull;
-  const source = Array.isArray(points) && points.length >= 12 ? points : spec.dims;
-  const previous = cache.get(spec as object);
-  if (previous?.source === source) return previous.rect;
+type ContactBoundsSource = ContactSpec['dims'] | readonly number[];
 
-  let minX = -spec.dims.widthM * 0.5;
-  let maxX = spec.dims.widthM * 0.5;
-  let minY = 0;
-  let maxY = spec.dims.heightM;
-  let minZ = -spec.dims.hullLengthM * 0.5;
-  let maxZ = spec.dims.hullLengthM * 0.5;
-  const exact = source === points;
-  if (exact) {
-    minX = minY = minZ = Infinity;
-    maxX = maxY = maxZ = -Infinity;
-    for (let index = 0; index < points.length; index += 3) {
-      const x = points[index];
-      const y = points[index + 1];
-      const z = points[index + 2];
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      if (z < minZ) minZ = z;
-      if (z > maxZ) maxZ = z;
-    }
+const cache = new WeakMap<ContactSpec, {
+  source: ContactBoundsSource;
+  rect: TankContactRect;
+}>();
+
+function hasExactContactPoints(
+  points: readonly number[] | undefined,
+): points is readonly number[] {
+  return Array.isArray(points) && points.length >= 12;
+}
+
+function publishedContactBounds(dims: ContactSpec['dims']): ContactBounds {
+  return {
+    minX: -dims.widthM * 0.5,
+    maxX: dims.widthM * 0.5,
+    minY: 0,
+    maxY: dims.heightM,
+    minZ: -dims.hullLengthM * 0.5,
+    maxZ: dims.hullLengthM * 0.5,
+  };
+}
+
+function exactContactBounds(points: readonly number[]): ContactBounds {
+  const bounds: ContactBounds = {
+    minX: Infinity,
+    maxX: -Infinity,
+    minY: Infinity,
+    maxY: -Infinity,
+    minZ: Infinity,
+    maxZ: -Infinity,
+  };
+  for (let index = 0; index < points.length; index += 3) {
+    const x = points[index];
+    const y = points[index + 1];
+    const z = points[index + 2];
+    bounds.minX = Math.min(bounds.minX, x);
+    bounds.maxX = Math.max(bounds.maxX, x);
+    bounds.minY = Math.min(bounds.minY, y);
+    bounds.maxY = Math.max(bounds.maxY, y);
+    bounds.minZ = Math.min(bounds.minZ, z);
+    bounds.maxZ = Math.max(bounds.maxZ, z);
   }
-  const rect = Object.freeze({
+  return bounds;
+}
+
+function contactRectFromBounds(bounds: ContactBounds, exact: boolean): TankContactRect {
+  const { minX, maxX, minY, maxY, minZ, maxZ } = bounds;
+  return Object.freeze({
     centerX: (minX + maxX) * 0.5,
     centerZ: (minZ + maxZ) * 0.5,
     halfWidth: Math.max(0.05, (maxX - minX) * 0.5),
@@ -61,6 +89,17 @@ export function tankContactRect(spec: ContactSpec): TankContactRect {
     height: Math.max(0.1, maxY - minY),
     exact,
   });
-  cache.set(spec as object, { source, rect });
+}
+
+export function tankContactRect(spec: ContactSpec): TankContactRect {
+  const points = spec?.armor?.bodyContactPoints?.hull;
+  const exact = hasExactContactPoints(points);
+  const source: ContactBoundsSource = exact ? points : spec.dims;
+  const previous = cache.get(spec);
+  if (previous?.source === source) return previous.rect;
+
+  const bounds = exact ? exactContactBounds(points) : publishedContactBounds(spec.dims);
+  const rect = contactRectFromBounds(bounds, exact);
+  cache.set(spec, { source, rect });
   return rect;
 }

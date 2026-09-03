@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 import type {
@@ -40,7 +41,7 @@ export interface NetworkBattleLoadTrace {
   modulesMs?: number;
   worldMs?: number;
   connectMs?: number;
-  blackCheck?: unknown;
+  blackCheck?: RuntimeValue;
   totalMs?: number;
 }
 
@@ -74,14 +75,14 @@ export interface NetworkBattlePresentationOptions {
   load: {
     battleLoad: BattleLoadScreen;
     audio: {
-      resume(): unknown;
-      loadingOn(active: boolean): unknown;
-      ambientOn(active: boolean): unknown;
+      resume(): RuntimeValue;
+      loadingOn(active: boolean): RuntimeValue;
+      ambientOn(active: boolean): RuntimeValue;
     };
     lighting: { setFarCascadeDormant(dormant: boolean): void };
-    ensureBattleVisuals(): MaybePromise<unknown>;
-    nextFrame(): MaybePromise<unknown>;
-    primeReveal(): Promise<unknown>;
+    ensureBattleVisuals(): MaybePromise<RuntimeValue>;
+    nextFrame(): MaybePromise<RuntimeValue>;
+    primeReveal(): Promise<RuntimeValue>;
     now?: () => number;
     recordTrace?: (trace: NetworkBattleLoadTrace) => void;
     setAdaptiveSuspended(suspended: boolean): void;
@@ -100,7 +101,7 @@ export interface NetworkBattlePresentationOptions {
   entry: {
     acquire(options: {
       loadModules: () => MaybePromise<NetworkEntryModules>;
-      loadWorld: () => MaybePromise<unknown>;
+      loadWorld: () => MaybePromise<RuntimeValue>;
       connect: () => MaybePromise<NetworkMatchPort>;
       publishMatch: (match: NetworkMatchPort) => void;
       connectAfterWorld: boolean;
@@ -110,7 +111,7 @@ export interface NetworkBattlePresentationOptions {
     loadWorld(
       mapId: string,
       onProgress: (fraction: number, label: string) => void,
-    ): MaybePromise<unknown>;
+    ): MaybePromise<RuntimeValue>;
     publishMatch(match: NetworkMatchPort): void;
     getMatch(): NetworkMatchPort | null;
   };
@@ -118,35 +119,35 @@ export interface NetworkBattlePresentationOptions {
     installInputRuntime(factory: typeof createBrowserInputRuntime): void;
     createStatus(factory: typeof createNetworkStatus): NetworkStatusPort;
     publishStatus(status: NetworkStatusPort): void;
-    attachRecovery(client: unknown, status: NetworkStatusPort): void;
+    attachRecovery(client: RuntimeValue, status: NetworkStatusPort): void;
     create(
       factory: typeof createBrowserBattleBridge,
       request: NetworkBattlePresentationRequest,
       spectator: boolean,
     ): NetworkBridgePort;
     publish(bridge: NetworkBridgePort): void;
-    groundSampler(x: number, z: number): unknown;
+    groundSampler(x: number, z: number): RuntimeValue;
     waitForInitialSnapshot(
       request: { viewerId: string; spectator: boolean },
     ): Promise<SampledSnapshotFrame>;
-    waitForPeerReadiness(): Promise<unknown>;
+    waitForPeerReadiness(): Promise<RuntimeValue>;
   };
   warm: {
     getFx(): NetworkBattleFxPort;
-    terrain(bridge: NetworkBridgePort): MaybePromise<unknown>;
-    wrecks(bridge: NetworkBridgePort): MaybePromise<unknown>;
+    terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
+    wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     openingEffects(
       fx: NetworkBattleFxPort,
       bridge: NetworkBridgePort,
-    ): MaybePromise<unknown>;
+    ): MaybePromise<RuntimeValue>;
     shotCards(specIds: string[]): void;
-    compile(): MaybePromise<unknown>;
+    compile(): MaybePromise<RuntimeValue>;
   };
   presentation: {
     resetRoundState(): void;
     setGarageLighting(active: boolean): void;
     activate(request: NetworkBattleActivationRequest): void;
-    runBlackWatchdog(): unknown;
+    runBlackWatchdog(): RuntimeValue;
   };
 }
 

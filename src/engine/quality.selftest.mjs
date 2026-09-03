@@ -37,7 +37,16 @@ const desktop = await import('./quality.ts?quality-desktop-contract');
 assert.equal(desktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');
 assert.equal(desktop.resolvePresetName(), 'high');
 assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
-assert.deepEqual(desktop.PRESETS.high.shadowMapSizes, [2048, 2048, 2048, 1024]);
+for (const name of desktop.PRESET_ORDER) {
+  assert.deepEqual(desktop.PRESETS[name].shadowMapSizes,
+    desktop.DESKTOP_SHADOW_MAP_SIZES,
+    `${name} uses the stable desktop shadow-map layout`);
+  assert.equal(desktop.PRESETS[name].shadowMaxFar,
+    desktop.DESKTOP_SHADOW_MAX_FAR,
+    `${name} keeps cascade splits stable during live quality switches`);
+  assert.equal(desktop.PRESETS[name].aoScale, 0,
+    `${name} cannot re-enable the grainy temporal GTAO path`);
+}
 
 let notified = null;
 const unsubscribe = desktop.onPresetChange((preset) => { notified = preset.label; });

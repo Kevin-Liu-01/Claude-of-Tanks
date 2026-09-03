@@ -200,7 +200,7 @@ try {
         const heightAt = debug.world?.heightField?.getHeightAt?.bind(debug.world.heightField);
         if (!heightAt) failures.push('battlefield height sampler unavailable');
 
-        for (const unitId of unitIds) {
+        const analyzeUnit = (unitId) => {
           const pads = objects.find((object) => object.name === 'gearTrackPads'
             && object.userData.runningGearUnitId === unitId);
           const bands = objects.filter((object) => /^gearTrackBand[LR]$/.test(object.name)
@@ -212,13 +212,15 @@ try {
           const suspensionJoints = objects.find((object) => object.name === 'gearSuspensionJointBosses'
             && object.userData.runningGearUnitId === unitId);
           const unitFailures = [];
-          if (!pads) unitFailures.push('missing live shoe course');
-          if (bands.length !== 2) unitFailures.push(`live belt count ${bands.length}`);
-          if (!tires.length) unitFailures.push('missing live wheel train');
-          if (!suspension) unitFailures.push('missing live suspension linkage layer');
-          if (!suspensionJoints) unitFailures.push('missing live suspension joint layer');
-          let suspensionMaxAxleGap = null;
-          if (suspension) {
+          const validatePresence = () => {
+            if (!pads) unitFailures.push('missing live shoe course');
+            if (bands.length !== 2) unitFailures.push(`live belt count ${bands.length}`);
+            if (!tires.length) unitFailures.push('missing live wheel train');
+            if (!suspension) unitFailures.push('missing live suspension linkage layer');
+            if (!suspensionJoints) unitFailures.push('missing live suspension joint layer');
+          };
+          const measureSuspensionMaxAxleGap = () => {
+            if (!suspension) return null;
             const expectedLinks = suspension.userData.suspensionStationCount * 2;
             if (suspension.count !== expectedLinks) {
               unitFailures.push(`live suspension link count ${suspension.count} != ${expectedLinks}`);
@@ -255,12 +257,13 @@ try {
               }
               maxGap = Math.max(maxGap, nearest);
             }
-            suspensionMaxAxleGap = maxGap;
             if (!Number.isFinite(maxGap) || maxGap > 0.035) {
               unitFailures.push(`live suspension-to-wheel axle gap ${maxGap.toFixed(3)} m`);
             }
-          }
-          if (suspensionJoints) {
+            return maxGap;
+          };
+          const validateSuspensionJoints = () => {
+            if (!suspensionJoints) return;
             const expectedJoints = suspensionJoints.userData.suspensionStationCount * 4;
             if (suspensionJoints.count !== expectedJoints) {
               unitFailures.push(`live suspension joint count ${suspensionJoints.count} != ${expectedJoints}`);
@@ -274,8 +277,15 @@ try {
             if (suspensionJoints.castShadow) {
               unitFailures.push('live suspension joint layer casts dynamic shadows');
             }
-          }
-          if (pads) {
+          };
+          validatePresence();
+          const suspensionMaxAxleGap = measureSuspensionMaxAxleGap();
+          validateSuspensionJoints();
+          const analyzePads = () => {
+            if (!pads) {
+              units.push({ unitId, failures: unitFailures });
+              return;
+            }
             pads.geometry.computeBoundingBox();
             const count = pads.userData.trackShoeCountPerSide;
             const pitch = pads.userData.trackShoePitchM;
@@ -283,7 +293,6 @@ try {
             const expectedCenterOffset = pads.userData.trackShoeCenterOffsetM;
             const instance = new THREE.Matrix4();
             const world = new THREE.Matrix4();
-            const bandWorldInverse = new THREE.Matrix4();
             const position = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
             const scale = new THREE.Vector3();
@@ -301,65 +310,75 @@ try {
             const nearGroundBySide = [0, 0];
             let minClearance = Infinity;
             let maxNearClearance = -Infinity;
-            for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
-              const poses = [];
+            const buildBandSegments = (sideIndex) => {
               const band = bands.find((candidate) =>
                 candidate.userData.runningGearSide === (sideIndex ? 1 : -1));
               const bandSegments = [];
-              if (band) {
-                bandWorldInverse.copy(band.matrixWorld).invert();
-                const layerRelative = bandWorldInverse.clone().multiply(pads.matrixWorld);
-                const layerOffsetYZ = Math.hypot(
-                  layerRelative.elements[13], layerRelative.elements[14]);
-                shoeLayerRelativeOffsetYZMBySide.push(Number(layerOffsetYZ.toFixed(5)));
-                if (layerOffsetYZ > 0.002) {
-                  const sideName = sideIndex ? 'right' : 'left';
-                  unitFailures.push(`${sideName} shoe layer wrapper offset ${layerOffsetYZ.toFixed(3)} m`);
-                }
-                const attr = band.geometry.getAttribute('position');
-                const localSegments = [];
-                let courseMinY = Infinity;
-                let courseMaxY = -Infinity;
-                // trackBandGeo emits four non-indexed quads (24 vertices) per
-                // course segment; the first quad is the outer face. Average
-                // its outer/inner width endpoints to recover the LIVE
-                // deformed center course in belt-local coordinates.
-                for (let offset = 0; offset + 23 < attr.count; offset += 24) {
-                  // Midpoint between outer and inner faces recovers the belt
-                  // centerline. Comparing against the authored radial center
-                  // offset avoids a false error at sharp mitered wrap joints,
-                  // where the nearest point on one outer face is not the
-                  // originating segment's normal projection.
-                  bandA.set(0,
-                    (attr.getY(offset + 2) + attr.getY(offset + 6)) / 2,
-                    (attr.getZ(offset + 2) + attr.getZ(offset + 6)) / 2);
-                  bandB.set(0,
-                    (attr.getY(offset) + attr.getY(offset + 8)) / 2,
-                    (attr.getZ(offset) + attr.getZ(offset + 8)) / 2);
-                  courseMinY = Math.min(courseMinY, bandA.y, bandB.y);
-                  courseMaxY = Math.max(courseMaxY, bandA.y, bandB.y);
-                  localSegments.push([bandA.clone(), bandB.clone()]);
-                }
-                const lowerRunCeiling = courseMinY + (courseMaxY - courseMinY) * 0.38;
-                for (const [localA, localB] of localSegments) {
-                  const dz = localB.z - localA.z;
-                  const dy = localB.y - localA.y;
-                  const midpointY = (localA.y + localB.y) / 2;
-                  // The screenshot failure is a second, independently
-                  // flattened SHOE course along the loaded run. End wraps
-                  // deliberately miter between neighboring segment normals,
-                  // so nearest-line distance is ambiguous there even when
-                  // the render is correct. Gate only low, mostly-horizontal
-                  // loaded spans; they have one unambiguous belt centerline.
-                  const lowerRun = midpointY <= lowerRunCeiling
-                    && Math.abs(dy) <= Math.abs(dz) * 0.85;
-                  bandSegments.push({
-                    a: localA,
-                    b: localB,
-                    lowerRun,
-                  });
-                }
+              const bandWorldInverse = new THREE.Matrix4();
+              if (!band) return { bandSegments, bandWorldInverse };
+              bandWorldInverse.copy(band.matrixWorld).invert();
+              const layerRelative = bandWorldInverse.clone().multiply(pads.matrixWorld);
+              const layerOffsetYZ = Math.hypot(
+                layerRelative.elements[13], layerRelative.elements[14]);
+              shoeLayerRelativeOffsetYZMBySide.push(Number(layerOffsetYZ.toFixed(5)));
+              if (layerOffsetYZ > 0.002) {
+                const sideName = sideIndex ? 'right' : 'left';
+                unitFailures.push(`${sideName} shoe layer wrapper offset ${layerOffsetYZ.toFixed(3)} m`);
               }
+              const attr = band.geometry.getAttribute('position');
+              const localSegments = [];
+              let courseMinY = Infinity;
+              let courseMaxY = -Infinity;
+              // The first of four non-indexed quads recovers the live belt center course.
+              for (let offset = 0; offset + 23 < attr.count; offset += 24) {
+                bandA.set(0,
+                  (attr.getY(offset + 2) + attr.getY(offset + 6)) / 2,
+                  (attr.getZ(offset + 2) + attr.getZ(offset + 6)) / 2);
+                bandB.set(0,
+                  (attr.getY(offset) + attr.getY(offset + 8)) / 2,
+                  (attr.getZ(offset) + attr.getZ(offset + 8)) / 2);
+                courseMinY = Math.min(courseMinY, bandA.y, bandB.y);
+                courseMaxY = Math.max(courseMaxY, bandA.y, bandB.y);
+                localSegments.push([bandA.clone(), bandB.clone()]);
+              }
+              const lowerRunCeiling = courseMinY + (courseMaxY - courseMinY) * 0.38;
+              for (const [localA, localB] of localSegments) {
+                const dz = localB.z - localA.z;
+                const dy = localB.y - localA.y;
+                const midpointY = (localA.y + localB.y) / 2;
+                bandSegments.push({
+                  a: localA,
+                  b: localB,
+                  lowerRun: midpointY <= lowerRunCeiling && Math.abs(dy) <= Math.abs(dz) * 0.85,
+                });
+              }
+              return { bandSegments, bandWorldInverse };
+            };
+            const analyzeShoeSide = (sideIndex) => {
+              const poses = [];
+              const { bandSegments, bandWorldInverse } = buildBandSegments(sideIndex);
+              const nearestBandSegment = (shoeCenter) => {
+                let nearest = Infinity;
+                let nearestSegment = null;
+                for (const segment of bandSegments) {
+                  const { a, b } = segment;
+                  bandDelta.subVectors(b, a);
+                  const denom = Math.max(bandDelta.lengthSq(), 1e-9);
+                  const t = Math.max(0, Math.min(1,
+                    shoeDelta.subVectors(shoeCenter, a).dot(bandDelta) / denom));
+                  shoeDelta.copy(a).addScaledVector(bandDelta, t);
+                  // Radial seating is a side-elevation (Y/Z) relationship.
+                  const distance = Math.hypot(
+                    shoeCenter.y - shoeDelta.y,
+                    shoeCenter.z - shoeDelta.z,
+                  );
+                  if (distance < nearest) {
+                    nearest = distance;
+                    nearestSegment = segment;
+                  }
+                }
+                return { nearest, nearestSegment };
+              };
               for (let i = 0; i < count; i++) {
                 pads.getMatrixAt(sideIndex * count + i, instance);
                 instance.decompose(position, quaternion, scale);
@@ -370,30 +389,9 @@ try {
                 const box = pads.geometry.boundingBox.clone().applyMatrix4(world);
                 const center = box.getCenter(new THREE.Vector3());
                 if (Number.isFinite(expectedCenterOffset) && bandSegments.length) {
-                  let nearest = Infinity;
-                  let nearestSegment = null;
                   const shoeCenter = position.setFromMatrixPosition(world)
                     .applyMatrix4(bandWorldInverse);
-                  for (const segment of bandSegments) {
-                    const { a, b } = segment;
-                    bandDelta.subVectors(b, a);
-                    const denom = Math.max(bandDelta.lengthSq(), 1e-9);
-                    const t = Math.max(0, Math.min(1,
-                      shoeDelta.subVectors(shoeCenter, a).dot(bandDelta) / denom));
-                    shoeDelta.copy(a).addScaledVector(bandDelta, t);
-                    // Radial seating is a side-elevation (Y/Z) relationship.
-                    // A family may deliberately move shoes a few centimetres
-                    // outboard in X to expose end pins; counting that lateral
-                    // lane offset as belt separation produces a false gap.
-                    const distance = Math.hypot(
-                      shoeCenter.y - shoeDelta.y,
-                      shoeCenter.z - shoeDelta.z,
-                    );
-                    if (distance < nearest) {
-                      nearest = distance;
-                      nearestSegment = segment;
-                    }
-                  }
+                  const { nearest, nearestSegment } = nearestBandSegment(shoeCenter);
                   if (nearestSegment?.lowerRun) {
                     const courseError = Math.abs(nearest - expectedCenterOffset);
                     minShoeBandDistance = Math.min(minShoeBandDistance, nearest);
@@ -419,32 +417,37 @@ try {
                 const gap = poses[i].distanceTo(poses[(i + 1) % poses.length]);
                 maxGapRatio = Math.max(maxGapRatio, gap / pitch);
               }
-            }
-            if (collapsed) unitFailures.push(`${collapsed} live shoes collapsed`);
-            if (maxGapRatio > 2.15) unitFailures.push(`terrain course gap ${maxGapRatio.toFixed(2)}× pitch`);
-            shoeBandGapErrors.sort((a, b) => a - b);
-            const p95ShoeBandGapError = shoeBandGapErrors.length
-              ? shoeBandGapErrors[Math.min(shoeBandGapErrors.length - 1,
-                Math.floor(shoeBandGapErrors.length * 0.95))]
-              : Infinity;
-            if (!Number.isFinite(expectedBandGap) || !Number.isFinite(expectedCenterOffset)) {
-              unitFailures.push('shoe-to-belt clearance receipt missing');
-            } else if (shoeBandGapErrors.length < 4) {
-              unitFailures.push(`only ${shoeBandGapErrors.length} loaded-run shoes measurable`);
-            } else if (p95ShoeBandGapError > 0.025) {
-              unitFailures.push(`shoe-to-belt p95 course error ${p95ShoeBandGapError.toFixed(3)} m`);
-            }
-            if (Number.isFinite(minClearance) && minClearance < -0.085) {
-              unitFailures.push(`shoe penetrates map terrain ${(-minClearance).toFixed(3)} m`);
-            }
-            if (heightAt) {
-              for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
-                if (nearGroundBySide[sideIndex] < 2) {
-                  const side = sideIndex ? 'right' : 'left';
-                  unitFailures.push(`${side} track has only ${nearGroundBySide[sideIndex]} terrain-seated shoes`);
+            };
+            for (let sideIndex = 0; sideIndex < 2; sideIndex++) analyzeShoeSide(sideIndex);
+            const validateShoeMeasurements = () => {
+              if (collapsed) unitFailures.push(`${collapsed} live shoes collapsed`);
+              if (maxGapRatio > 2.15) unitFailures.push(`terrain course gap ${maxGapRatio.toFixed(2)}× pitch`);
+              shoeBandGapErrors.sort((a, b) => a - b);
+              const p95 = shoeBandGapErrors.length
+                ? shoeBandGapErrors[Math.min(shoeBandGapErrors.length - 1,
+                  Math.floor(shoeBandGapErrors.length * 0.95))]
+                : Infinity;
+              if (!Number.isFinite(expectedBandGap) || !Number.isFinite(expectedCenterOffset)) {
+                unitFailures.push('shoe-to-belt clearance receipt missing');
+              } else if (shoeBandGapErrors.length < 4) {
+                unitFailures.push(`only ${shoeBandGapErrors.length} loaded-run shoes measurable`);
+              } else if (p95 > 0.025) {
+                unitFailures.push(`shoe-to-belt p95 course error ${p95.toFixed(3)} m`);
+              }
+              if (Number.isFinite(minClearance) && minClearance < -0.085) {
+                unitFailures.push(`shoe penetrates map terrain ${(-minClearance).toFixed(3)} m`);
+              }
+              if (heightAt) {
+                for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+                  if (nearGroundBySide[sideIndex] < 2) {
+                    const side = sideIndex ? 'right' : 'left';
+                    unitFailures.push(`${side} track has only ${nearGroundBySide[sideIndex]} terrain-seated shoes`);
+                  }
                 }
               }
-            }
+              return p95;
+            };
+            const p95ShoeBandGapError = validateShoeMeasurements();
             units.push({
               unitId, shoeCountPerSide: count,
               maxGapRatio: Number(maxGapRatio.toFixed(3)),
@@ -470,11 +473,11 @@ try {
                 ? Number(suspensionMaxAxleGap.toFixed(4)) : null,
               failures: unitFailures,
             });
-          } else {
-            units.push({ unitId, failures: unitFailures });
-          }
+          };
+          analyzePads();
           failures.push(...unitFailures.map((failure) => `unit ${unitId}: ${failure}`));
-        }
+        };
+        for (const unitId of unitIds) analyzeUnit(unitId);
         return {
           id: tankId,
           mapId: battlefield,

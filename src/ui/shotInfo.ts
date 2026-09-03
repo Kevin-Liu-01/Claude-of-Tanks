@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/shotInfo.ts — combat-intelligence panels (WoT damage-log/armor-info
 // mod class). Everything rendered here traces 1:1 to RESOLVED sim events on
 // the bus (shell:hit / shell:fired / tank:destroyed / battle:ended) — no
@@ -75,7 +76,7 @@ interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
   readonly timeS?: number;
   readonly targetHpAfter?: number;
   readonly destroyed?: boolean;
-  readonly eraPlate?: unknown;
+  readonly eraPlate?: string | null;
   readonly fireStarted?: boolean;
   readonly modulesHit?: readonly ModuleHit[];
   readonly crewHit?: readonly string[];
@@ -211,7 +212,7 @@ export interface ShotInfoRuntime {
   reset(): void;
 }
 
-function eventPayload<Payload>(payload: unknown): Payload {
+function eventPayload<Payload>(payload: RuntimeValue): Payload {
   return payload as Payload;
 }
 
@@ -615,6 +616,107 @@ const schemCache = new Map<string, Promise<string | null>>();
 // cache keys the live cards request).
 const CARD_TOP_S = 96;
 const CARD_SIDE_W = 184, CARD_SIDE_H = 92;
+
+function normalizeSchematicSource(img: HTMLImageElement): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const context = requireCanvasContext(canvas);
+  context.drawImage(img, 0, 0);
+  const image = context.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = image.data;
+  let sum = 0;
+  let count = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 3] < 16) continue;
+    sum += pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+    count += 1;
+  }
+  const mean = count ? sum / count : 128;
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 3] === 0) continue;
+    const luminance = pixels[index] * 0.2126
+      + pixels[index + 1] * 0.7152
+      + pixels[index + 2] * 0.0722;
+    const value = Math.max(24, Math.min(250, 178 + (luminance - mean) * 2.1));
+    pixels[index] = pixels[index + 1] = pixels[index + 2] = value;
+  }
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
+function sharpenSchematic(
+  pixels: Uint8ClampedArray,
+  source: Uint8ClampedArray,
+  width: number,
+  height: number,
+): void {
+  const amount = 0.55;
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const index = (y * width + x) * 4;
+      if (source[index + 3] < 8) continue;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const center = source[index + channel];
+        const neighbor = (offset: number): number => (
+          source[index + offset + 3] >= 8 ? source[index + offset + channel] : center
+        );
+        pixels[index + channel] = center * (1 + 4 * amount)
+          - amount * (
+            neighbor(-4) + neighbor(4)
+            + neighbor(-width * 4) + neighbor(width * 4)
+          );
+      }
+    }
+  }
+}
+
+function outlineSchematic(
+  pixels: Uint8ClampedArray,
+  source: Uint8ClampedArray,
+  width: number,
+  height: number,
+): void {
+  const outlineRadius = 2;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      if (source[index + 3] < 8) continue;
+      let edge = false;
+      for (let dy = -outlineRadius; dy <= outlineRadius && !edge; dy += 1) {
+        for (let dx = -outlineRadius; dx <= outlineRadius && !edge; dx += 1) {
+          const neighborX = x + dx;
+          const neighborY = y + dy;
+          edge = neighborX < 0 || neighborY < 0 || neighborX >= width || neighborY >= height
+            || source[(neighborY * width + neighborX) * 4 + 3] < 8;
+        }
+      }
+      if (!edge) continue;
+      pixels[index] = pixels[index + 1] = pixels[index + 2] = 36;
+      pixels[index + 3] = Math.max(pixels[index + 3], 216);
+    }
+  }
+}
+
+function bakeSchematic(img: HTMLImageElement, outW: number, outH: number): string {
+  const sourceCanvas = normalizeSchematicSource(img);
+  const target = document.createElement('canvas');
+  target.width = outW;
+  target.height = outH;
+  const context = requireCanvasContext(target);
+  const fit = Math.min(outW / sourceCanvas.width, outH / sourceCanvas.height);
+  const width = sourceCanvas.width * fit;
+  const height = sourceCanvas.height * fit;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(sourceCanvas, (outW - width) / 2, (outH - height) / 2, width, height);
+  const image = context.getImageData(0, 0, outW, outH);
+  const source = new Uint8ClampedArray(image.data);
+  sharpenSchematic(image.data, source, outW, outH);
+  outlineSchematic(image.data, source, outW, outH);
+  context.putImageData(image, 0, 0);
+  return target.toDataURL();
+}
+
 function schematicUrl(
   id: string,
   view: string,
@@ -628,84 +730,7 @@ function schematicUrl(
       const img = new Image();
       img.onload = () => {
         try {
-          const c = document.createElement('canvas');
-          c.width = img.naturalWidth;
-          c.height = img.naturalHeight;
-          const x = requireCanvasContext(c);
-          x.drawImage(img, 0, 0);
-          const d = x.getImageData(0, 0, c.width, c.height);
-          const px = d.data;
-          let sum = 0;
-          let n = 0;
-          for (let i = 0; i < px.length; i += 4) {
-            if (px[i + 3] < 16) continue;
-            sum += px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
-            n++;
-          }
-          const mean = n ? sum / n : 128;
-          // r3: contrast stretch raised 1.5 -> 2.1 — at the card's 84 px the
-          // 1.5 bake still averaged to a soft gray blur (r2 critique)
-          for (let i = 0; i < px.length; i += 4) {
-            if (px[i + 3] === 0) continue;
-            const lum = px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
-            const v = Math.max(24, Math.min(250, 178 + (lum - mean) * 2.1));
-            px[i] = px[i + 1] = px[i + 2] = v;
-          }
-          x.putImageData(d, 0, 0);
-          // r3: bake DOWN to exactly 2x the display box, then unsharp at that
-          // scale — detail that survives the 2x raster survives the final CSS
-          // downscale, instead of the 512->84 jump averaging edges away.
-          const t = document.createElement('canvas');
-          t.width = outW;
-          t.height = outH;
-          const tx = requireCanvasContext(t);
-          const fit = Math.min(outW / c.width, outH / c.height);
-          const fw = c.width * fit;
-          const fh = c.height * fit;
-          tx.imageSmoothingQuality = 'high';
-          tx.drawImage(c, (outW - fw) / 2, (outH - fh) / 2, fw, fh);
-          const d2 = tx.getImageData(0, 0, outW, outH);
-          const p2 = d2.data;
-          const src = new Uint8ClampedArray(p2);
-          const A = 0.55; // unsharp amount (3x3 laplacian)
-          for (let y = 1; y < outH - 1; y++) {
-            for (let xx = 1; xx < outW - 1; xx++) {
-              const i = (y * outW + xx) * 4;
-              if (src[i + 3] < 8) continue;
-              for (let ch = 0; ch < 3; ch++) {
-                const cv = src[i + ch];
-                const nb = (off: number) => (src[i + off + 3] >= 8 ? src[i + off + ch] : cv);
-                p2[i + ch] = cv * (1 + 4 * A)
-                  - A * (nb(-4) + nb(4) + nb(-outW * 4) + nb(outW * 4));
-              }
-            }
-          }
-          // r4: dark outline traced around the silhouette edge (2 px at the
-          // 2x bake = 1 px on the card) — the neutral-gray bake alone still
-          // averaged into a soft blob on busy camo at 84 px; the rim keeps
-          // the hull/turret plan boundary through the final CSS downscale.
-          const OUT = 2;
-          for (let y = 0; y < outH; y++) {
-            for (let xx = 0; xx < outW; xx++) {
-              const i = (y * outW + xx) * 4;
-              if (src[i + 3] < 8) continue;
-              let edge = false;
-              for (let dy = -OUT; dy <= OUT && !edge; dy++) {
-                for (let dx = -OUT; dx <= OUT && !edge; dx++) {
-                  const nx2 = xx + dx;
-                  const ny2 = y + dy;
-                  if (nx2 < 0 || ny2 < 0 || nx2 >= outW || ny2 >= outH ||
-                      src[(ny2 * outW + nx2) * 4 + 3] < 8) edge = true;
-                }
-              }
-              if (edge) {
-                p2[i] = p2[i + 1] = p2[i + 2] = 36;
-                p2[i + 3] = Math.max(p2[i + 3], 216);
-              }
-            }
-          }
-          tx.putImageData(d2, 0, 0);
-          resolve(t.toDataURL());
+          resolve(bakeSchematic(img, outW, outH));
         } catch (_) { resolve(null); }
       };
       img.onerror = () => resolve(null);
@@ -733,6 +758,215 @@ function planForm(
     }
   });
   return pf;
+}
+
+interface PenetrationPresentation {
+  readonly html: string;
+  readonly qualifier: string;
+  readonly legend: string;
+}
+
+function setShotCardTrace(
+  card: HTMLDivElement,
+  ev: ShotHitEvent,
+  cls: HitOutcomePresentation,
+): void {
+  card.dataset.kind = ev.kind;
+  card.dataset.damage = String(Math.round(ev.damage || 0));
+  card.dataset.dmgroll = String(Math.round(ev.dmgRoll || 0));
+  card.dataset.eff = String(Math.round(ev.effectiveMm || 0));
+  card.dataset.pen = String(Math.round(ev.penRollMm || 0));
+  card.dataset.nominal = String(Math.round(ev.nominalMm || 0));
+  card.dataset.dist = String(Math.round(ev.flightDistM || 0));
+  card.dataset.angle = String(Math.round(ev.impactAngleDeg || 0));
+  card.dataset.zone = ev.zone || '';
+  card.dataset.outcome = cls.id;
+  card.style.borderRightColor = cls.color;
+}
+
+function appendShotCardHeader(
+  card: HTMLDivElement,
+  ev: ShotHitEvent,
+  cls: HitOutcomePresentation,
+): void {
+  const header = el('div', 'cot-si-hd', card);
+  const state = el('div', 'cot-si-state', header);
+  const kicker = el('span', 'cot-si-kicker', state);
+  kicker.innerHTML = `${GLYPH.ballistic}<span>Ballistic readout</span>`;
+  const badge = el('span', 'cot-si-badge', state);
+  badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
+  badge.style.color = cls.color;
+  const damage = el('span', 'cot-si-dmg', header);
+  damage.innerHTML = `${GLYPH.damage}<span>${ev.damage > 0 ? `−${Math.round(ev.damage)}` : '0'}</span>`;
+  if (!(ev.damage > 0)) damage.style.color = COL.dim;
+}
+
+function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
+  const subtitle = el('div', 'cot-si-sub', card);
+  const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
+  subtitle.innerHTML =
+    `<span><span class="ty" style="color:${typeColor}">${GLYPH.shell}${ev.shellType}</span>` +
+    `<span class="cot-si-subtext">${shellDisplayName(ev)}</span></span>` +
+    `<span>${GLYPH.target}<span class="cot-si-subtext">${ev.targetName || ''}</span></span>`;
+}
+
+function armorPresentation(ev: ShotHitEvent): string {
+  if (ev.kind === 'screen_pierce') {
+    return ev.physicalMm && ev.physicalMm > 0
+      ? `${Math.round(ev.physicalMm)} mm screen`
+      : 'screen';
+  }
+  const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
+  if (hasArmor) {
+    return `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`;
+  }
+  const external = !!ev.zone
+    && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
+  return external ? 'external — no armor' : '—';
+}
+
+function penetrationQualifier(
+  ev: ShotHitEvent,
+  nominal: number,
+  roll: number,
+  fresh: number,
+): string {
+  if (ev.eraPlate) return 'ERA';
+  const cut = fresh > roll + 1;
+  return roll > 0 && (cut || (nominal > 0 && roll < nominal * 0.75 - 2))
+    ? 'SCREENS'
+    : '';
+}
+
+function penetrationPresentation(
+  card: HTMLDivElement,
+  ev: ShotHitEvent,
+): PenetrationPresentation {
+  if (ev.kind === 'screen_pierce') {
+    return { html: 'passed through', qualifier: '', legend: '' };
+  }
+  const nominal = nominalPenFor(ev);
+  const roll = Math.round(ev.penRollMm || 0);
+  const fresh = Math.round(ev.penRollFreshMm || 0);
+  card.dataset.pennom = String(nominal);
+  card.dataset.penfresh = String(fresh);
+  const cut = fresh > roll + 1;
+  const qualifier = penetrationQualifier(ev, nominal, roll, fresh);
+  const arrow = cut ? `${fresh} → ` : '';
+  const legend = cut
+    ? `fresh → after ${qualifier === 'ERA' ? 'ERA' : 'screens'} / nominal`
+    : roll > 0 && nominal > 0 ? 'roll / nominal' : '';
+  if (roll <= 0 || nominal <= 0) {
+    return {
+      html: roll > 0 ? `${arrow}${roll} mm` : '—',
+      qualifier,
+      legend,
+    };
+  }
+  const verdict = (cut ? fresh : roll) >= nominal ? COL.green : COL.red;
+  return {
+    html: `<span style="color:${verdict}">${arrow}${roll}</span> / ${nominal} mm`,
+    qualifier,
+    legend,
+  };
+}
+
+function addDiagramZoneTint(
+  parent: HTMLElement,
+  specId: string,
+  view: string,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+): void {
+  const tint = el('div', 'sil', parent);
+  maskIcon(tint, specId, view, 'transparent');
+  tint.style.background =
+    `radial-gradient(circle ${radius}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
+    `${color}ff 0%,${color}c0 55%,${color}00 100%)`;
+}
+
+function diagramImpactWedge(
+  direction: readonly number[] | null,
+  hitX: number,
+  hitY: number,
+  color: string,
+): string {
+  if (!direction) return '';
+  const length = Math.hypot(direction[0], direction[2]);
+  if (length <= 1e-4) return '';
+  const x = direction[0] / length;
+  const y = direction[2] / length;
+  const radius = 17;
+  const rotate = (vx: number, vy: number, angle: number): [number, number] => [
+    vx * Math.cos(angle) - vy * Math.sin(angle),
+    vx * Math.sin(angle) + vy * Math.cos(angle),
+  ];
+  const [x1, y1] = rotate(x, y, 0.46);
+  const [x2, y2] = rotate(x, y, -0.46);
+  return `<path class="wdg" d="M${hitX.toFixed(1)} ${hitY.toFixed(1)}` +
+    ` L${(hitX + x1 * radius).toFixed(1)} ${(hitY + y1 * radius).toFixed(1)}` +
+    ` L${(hitX + x * radius * 1.12).toFixed(1)} ${(hitY + y * radius * 1.12).toFixed(1)}` +
+    ` L${(hitX + x2 * radius).toFixed(1)} ${(hitY + y2 * radius).toFixed(1)} Z"` +
+    ` fill="${color}" fill-opacity="0.5" stroke="${color}" stroke-width="0.8"/>`;
+}
+
+function clampDiagramArrowTail(
+  hitX: number,
+  hitY: number,
+  tailX: number,
+  tailY: number,
+  size: number,
+): readonly [number, number] {
+  const padding = 2;
+  const dx = tailX - hitX;
+  const dy = tailY - hitY;
+  let scale = 1;
+  if (dx > 0) scale = Math.min(scale, (size - padding - hitX) / dx);
+  else if (dx < 0) scale = Math.min(scale, (padding - hitX) / dx);
+  if (dy > 0) scale = Math.min(scale, (size - padding - hitY) / dy);
+  else if (dy < 0) scale = Math.min(scale, (padding - hitY) / dy);
+  scale = Math.max(0, scale);
+  return [hitX + dx * scale, hitY + dy * scale];
+}
+
+function diagramImpactArrow(
+  direction: readonly number[] | null,
+  point: readonly number[],
+  hitX: number,
+  hitY: number,
+  topPoint: (x: number, z: number) => number[],
+  size: number,
+): string {
+  if (!direction) return '';
+  const tail = topPoint(point[0] - direction[0] * 2.2, point[2] - direction[2] * 2.2);
+  const [x, y] = clampDiagramArrowTail(hitX, hitY, tail[0], tail[1], size);
+  return `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" ` +
+    `x2="${hitX.toFixed(1)}" y2="${hitY.toFixed(1)}" ` +
+    'stroke="#ff8a5c" stroke-width="2.2" marker-end="url(#cotsiarw)"/>';
+}
+
+function diagramFacingCue(
+  armor: PresentationTankSpec['armor'] | null,
+  dims: PresentationTankSpec['dims'],
+  topPoint: (x: number, z: number) => number[],
+  topScale: number,
+): string {
+  if (!armor?.turretPivot) return '';
+  const [centerX, centerY] = topPoint(armor.turretPivot[0], armor.turretPivot[2]);
+  const ringRadius = Math.min(dims.widthM * 0.3, 1.05) * topScale;
+  const barrelLength = armor.gunBarrel?.lengthM || dims.overallLengthM * 0.45;
+  const [gunX, gunY] = topPoint(
+    armor.turretPivot[0],
+    armor.turretPivot[2] + barrelLength,
+  );
+  return `<circle cx="${centerX.toFixed(1)}" cy="${centerY.toFixed(1)}" ` +
+    `r="${ringRadius.toFixed(1)}" fill="none" stroke="rgba(232,242,252,0.8)" ` +
+    'stroke-width="1.6"/>' +
+    `<line x1="${centerX.toFixed(1)}" y1="${centerY.toFixed(1)}" ` +
+    `x2="${gunX.toFixed(1)}" y2="${gunY.toFixed(1)}" ` +
+    'stroke="rgba(232,242,252,0.8)" stroke-width="2.5" stroke-linecap="round"/>';
 }
 
 /**
@@ -905,23 +1139,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const SIL_FILL = 'rgba(206,222,236,0.55)';
     const SIL_OUTLINE =
       'drop-shadow(0 0 1px rgba(232,242,250,0.9)) drop-shadow(0 0 1px rgba(150,175,195,0.5))';
-    /** Badge-colored glow clipped to the silhouette mask at the hit point. */
-    const zoneTint = (
-      parent: HTMLElement,
-      view: string,
-      x: number,
-      y: number,
-      r: number,
-    ): void => {
-      const tint = el('div', 'sil', parent);
-      maskIcon(tint, specId, view, 'transparent');
-      // r4: inner/mid stops raised again (ee/88 -> ff/c0) — under the .86
-      // plan-form layer the r3 glow still sat faint enough that the zone
-      // read depended on the text label instead of the diagram
-      tint.style.background =
-        `radial-gradient(circle ${r}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
-        `${badgeCol}ff 0%,${badgeCol}c0 55%,${badgeCol}00 100%)`;
-    };
 
     // --- top view (96x96; icon: forward = up, screen right = -X world) ---
     const TS = CARD_TOP_S;
@@ -937,71 +1154,18 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // zone glow UNDER the plan-form (r2: painted over it, the orange radial
     // muddied the schematic into a blob); the translucent plan layer lets
     // the tint breathe through while the plan shape stays crisp
-    zoneTint(top, 'top_silhouette', hx, hy, 24);
+    addDiagramZoneTint(top, specId, 'top_silhouette', hx, hy, 24, badgeCol);
     // per-tank plan-form over glow + mask (r7: the flat silhouette read as a
     // generic rounded box) — neutral-gray baked schematic, see schematicUrl
     planForm(top, specId, 'top', TS, TS);
     // hit-sector flash (r3, WoT-mod style): a pulsing wedge opening from the
     // hit point back toward where the shell came FROM (event localDir) — the
     // zone reads from geometry before the text label is even parsed
-    let wedge = '';
-    if (ld) {
-      const wl = Math.hypot(ld[0], ld[2]);
-      if (wl > 1e-4) {
-        const ux = ld[0] / wl; // screen dir toward the shooter (both axes of
-        const uy = ld[2] / wl; // topPx negate, so -localDir maps to +ld here)
-        const WR = 17;
-        const rot = (vx: number, vy: number, a: number): [number, number] => [
-          vx * Math.cos(a) - vy * Math.sin(a),
-          vx * Math.sin(a) + vy * Math.cos(a),
-        ];
-        const [ax1, ay1] = rot(ux, uy, 0.46);
-        const [ax2, ay2] = rot(ux, uy, -0.46);
-        wedge =
-          `<path class="wdg" d="M${hx.toFixed(1)} ${hy.toFixed(1)}` +
-          ` L${(hx + ax1 * WR).toFixed(1)} ${(hy + ay1 * WR).toFixed(1)}` +
-          ` L${(hx + ux * WR * 1.12).toFixed(1)} ${(hy + uy * WR * 1.12).toFixed(1)}` +
-          ` L${(hx + ax2 * WR).toFixed(1)} ${(hy + ay2 * WR).toFixed(1)} Z"` +
-          ` fill="${badgeCol}" fill-opacity="0.5" stroke="${badgeCol}" stroke-width="0.8"/>`;
-      }
-    }
-    let arrow = '';
-    if (ld) {
-      // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
-      // overshot the 72px box (svg.ov has overflow:visible) and clipped into
-      // the card rows above. Shrink along the arrow direction, never bend it.
-      let [ax, ay] = topPx(lp[0] - ld[0] * 2.2, lp[2] - ld[2] * 2.2);
-      const PAD = 2;
-      const dx = ax - hx;
-      const dy = ay - hy;
-      let k = 1;
-      if (dx > 0) k = Math.min(k, (TS - PAD - hx) / dx);
-      else if (dx < 0) k = Math.min(k, (PAD - hx) / dx);
-      if (dy > 0) k = Math.min(k, (TS - PAD - hy) / dy);
-      else if (dy < 0) k = Math.min(k, (PAD - hy) / dy);
-      k = Math.max(0, k);
-      ax = hx + dx * k;
-      ay = hy + dy * k;
-      arrow = `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"
-        stroke="#ff8a5c" stroke-width="2.2" marker-end="url(#cotsiarw)"/>`;
-    }
+    const wedge = diagramImpactWedge(ld, hx, hy, badgeCol);
+    const arrow = diagramImpactArrow(ld, lp, hx, hy, topPx, TS);
     // facing cues over the (turretless-reading) baked mask: turret ring +
     // gun-barrel line so the top view communicates orientation at a glance
-    let facing = '';
-    if (arm && arm.turretPivot) {
-      const [tcx, tcy] = topPx(arm.turretPivot[0], arm.turretPivot[2]);
-      const ringR = Math.min(dims.widthM * 0.3, 1.05) * sT;
-      const barrelLen = (arm.gunBarrel && arm.gunBarrel.lengthM)
-        ? arm.gunBarrel.lengthM : dims.overallLengthM * 0.45;
-      const [gx, gy] = topPx(arm.turretPivot[0], arm.turretPivot[2] + barrelLen);
-      // 2.5px barrel + brighter ring (r6 minor: at compact sizes the facing cue was
-      // the only readable orientation signal and it sat too faint to carry)
-      facing =
-        `<circle cx="${tcx.toFixed(1)}" cy="${tcy.toFixed(1)}" r="${ringR.toFixed(1)}"
-          fill="none" stroke="rgba(232,242,252,0.8)" stroke-width="1.6"/>` +
-        `<line x1="${tcx.toFixed(1)}" y1="${tcy.toFixed(1)}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}"
-          stroke="rgba(232,242,252,0.8)" stroke-width="2.5" stroke-linecap="round"/>`;
-    }
+    const facing = diagramFacingCue(arm, dims, topPx, sT);
     const ovT = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovT.setAttribute('class', 'ov');
     ovT.setAttribute('viewBox', `0 0 ${TS} ${TS}`);
@@ -1024,7 +1188,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
     sideSil.style.filter = SIL_OUTLINE;
     const [sx, sy] = projection.sidePoint(lp[1], lp[2]);
-    zoneTint(side, 'side_silhouette', sx, sy, 20); // glow under the plan-form
+    addDiagramZoneTint(side, specId, 'side_silhouette', sx, sy, 20, badgeCol);
     planForm(side, specId, 'side', SW, SH);
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovS.setAttribute('class', 'ov');
@@ -1039,36 +1203,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // ---------- 1. outgoing shot card ----------
   function buildCard(ev: ShotHitEvent, cls: HitOutcomePresentation): HTMLDivElement {
     const card = el('div', 'cot-si-card');
-    // machine-checkable trace back to the sim event (verification harness)
-    card.dataset.kind = ev.kind;
-    card.dataset.damage = String(Math.round(ev.damage || 0));
-    card.dataset.dmgroll = String(Math.round(ev.dmgRoll || 0));
-    card.dataset.eff = String(Math.round(ev.effectiveMm || 0));
-    card.dataset.pen = String(Math.round(ev.penRollMm || 0));
-    card.dataset.nominal = String(Math.round(ev.nominalMm || 0));
-    card.dataset.dist = String(Math.round(ev.flightDistM || 0));
-    card.dataset.angle = String(Math.round(ev.impactAngleDeg || 0));
-    card.dataset.zone = ev.zone || '';
-    card.dataset.outcome = cls.id;
-    card.style.borderRightColor = cls.color;
-
-    const hd = el('div', 'cot-si-hd', card);
-    const state = el('div', 'cot-si-state', hd);
-    const kicker = el('span', 'cot-si-kicker', state);
-    kicker.innerHTML = `${GLYPH.ballistic}<span>Ballistic readout</span>`;
-    const badge = el('span', 'cot-si-badge', state);
-    badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
-    badge.style.color = cls.color;
-    const dmg = el('span', 'cot-si-dmg', hd);
-    dmg.innerHTML = `${GLYPH.damage}<span>${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0'}</span>`;
-    if (!(ev.damage > 0)) dmg.style.color = COL.dim;
-
-    const sub = el('div', 'cot-si-sub', card);
-    const tyCol = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
-    sub.innerHTML =
-      `<span><span class="ty" style="color:${tyCol}">${GLYPH.shell}${ev.shellType}</span>` +
-      `<span class="cot-si-subtext">${shellDisplayName(ev)}</span></span>` +
-      `<span>${GLYPH.target}<span class="cot-si-subtext">${ev.targetName || ''}</span></span>`;
+    setShotCardTrace(card, ev, cls);
+    appendShotCardHeader(card, ev, cls);
+    appendShotCardSubtitle(card, ev);
 
     const body = el('div', 'cot-si-body', card);
     const rows = el('div', 'cot-si-rows', body);
@@ -1077,74 +1214,17 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       r.innerHTML = `<span class="cot-si-k">${GLYPH[k.toLowerCase()] || ''}<span>${k}</span></span><b>${v}</b>`;
       return r;
     };
-    const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
     kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
-    // screen_pierce has no main-armor interaction: show the pierced screen's
-    // physical thickness instead of misleading em-dashes / 0→0
-    let penHtml = '—';
-    let penQual = '';
-    let penLegend = '';
-    if (ev.kind === 'screen_pierce') {
-      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm || 0)} mm screen` : 'screen', 'w armor');
-      penHtml = 'passed through';
-    } else {
-      // 'N → M mm eff.' labels the angle-adjusted number (r5: nothing said
-      // which figure was nominal and which effective — the card's single most
-      // educational stat was opaque); hits that resolved on an external
-      // module (optics, gun barrel, track gear) state that truth instead of
-      // an em-dash armor story (r5 major: 'a AAA damage panel never shows a
-      // pen with no armor story'). Dataset fields are untouched.
-      const extNoArmor = !hasArmor && !!ev.zone
-        && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
-      kv('Armor', hasArmor
-        ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
-        : extNoArmor ? 'external — no armor' : '—', 'w armor');
-      // roll / nominal baseline: a bare '986 mm' beside a 63 mm plate looks
-      // like a bug to anyone who knows the shell's paper pen (r4 critique).
-      // Roll colored green/red vs the nominal it was rolled from.
-      // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen
-      // — ERA tiles / spaced screens already cut it in-event before the main
-      // plate test (damage.ts: pen *= 1 - era.keReduction) — and a bare
-      // '461 / 898 mm' on an ERA'd T-80U glacis read as a broken ±25% RNG.
-      // When the payload carries the pre-degradation roll (penRollFreshMm,
-      // additive damage.ts stamp per docs/GUNNERY-CAMERA-SPEC.md)
-      // the row prints the cut explicitly: '894 → 461 / 896 mm'. Payloads
-      // without the field still get the qualifier whenever the event itself
-      // proves a cut (eraPlate set, or a residual impossible from a ±25%
-      // roll); the roll's green/red verdict is judged on the FRESH roll when
-      // known — RNG luck, not ERA, is what it grades.
-      // r8 presentation (critic: the row wrapped into a mangled two-line
-      // label/value jumble and its three numbers carried no legend): the
-      // pen row is emitted below as a FULL-WIDTH one-line row ('Pen' label,
-      // nowrap value), the qualifier rides as an unbreakable suffix chip,
-      // and a dim caption states the format once.
-      const penNom = nominalPenFor(ev);
-      const roll = Math.round(ev.penRollMm || 0);
-      const fresh = Math.round(ev.penRollFreshMm || 0);
-      card.dataset.pennom = String(penNom);
-      card.dataset.penfresh = String(fresh);
-      const cut = fresh > roll + 1;
-      penQual = ev.eraPlate ? 'ERA'
-        : (roll > 0 && (cut
-          || (penNom > 0 && roll < penNom * 0.75 - 2))) ? 'SCREENS' : '';
-      const arrow = cut ? `${fresh} → ` : '';
-      penLegend = cut
-        ? `fresh → after ${penQual === 'ERA' ? 'ERA' : 'screens'} / nominal`
-        : roll > 0 && penNom > 0 ? 'roll / nominal' : '';
-      if (roll > 0 && penNom > 0) {
-        const verdict = (cut ? fresh : roll) >= penNom ? COL.green : COL.red;
-        penHtml = `<span style="color:${verdict}">${arrow}${roll}</span>` +
-          ` / ${penNom} mm`;
-      } else {
-        penHtml = roll > 0 ? `${arrow}${roll} mm` : '—';
-      }
-    }
+    kv('Armor', armorPresentation(ev), 'w armor');
+    const penetration = penetrationPresentation(card, ev);
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
     {
-      const r = kv('Pen', penHtml + (penQual
-        ? `<span class="q" style="color:${penQual === 'ERA' ? COL.yellow : '#9fb0bf'}">${penQual}</span>`
+      const r = kv('Pen', penetration.html + (penetration.qualifier
+        ? `<span class="q" style="color:${penetration.qualifier === 'ERA' ? COL.yellow : '#9fb0bf'}">${penetration.qualifier}</span>`
         : ''), 'w pen');
-      r.title = penLegend ? `Penetration (mm): ${penLegend}` : 'Penetration roll at impact';
+      r.title = penetration.legend
+        ? `Penetration (mm): ${penetration.legend}`
+        : 'Penetration roll at impact';
     }
     const diag = diagramFor(ev, cls);
     if (diag) {
@@ -1266,70 +1346,130 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // full-battle allShots ledger. Nothing recomputed, nothing invented:
   // side-unconfirmed contacts are OMITTED rather than guessed onto a team,
   // and there is no base-capture stat because the sim has no capture.
-  function buildSummary(result: EndScreenResult): EndScreenSummary {
+  function summaryRows(): Map<EntityId, SummaryTeamRow> {
     const rows = new Map<EntityId, SummaryTeamRow>();
-    for (const [id, c] of combatants) {
+    for (const [id, combatantRow] of combatants) {
       rows.set(id, {
         id,
-        name: c.name,
-        specId: c.specId,
-        dmg: Math.round(c.dmg),
-        kills: c.kills,
-        dead: c.dead,
+        name: combatantRow.name,
+        specId: combatantRow.specId,
+        dmg: Math.round(combatantRow.dmg),
+        kills: combatantRow.kills,
+        dead: combatantRow.dead,
         side: sideOf(id),
         isPlayer: id === playerId,
       });
     }
-    if (endRoster) {
-      for (const r of endRoster) {
-        let row = rows.get(r.id);
-        if (!row) {
-          row = { id: r.id, name: null, specId: null, dmg: 0, kills: 0, dead: false, side: null, isPlayer: false };
-          rows.set(r.id, row);
-        }
-        if (!row.name && (r.vehicle || r.name)) row.name = r.vehicle || r.name;
-        if (!row.specId && r.specId) row.specId = r.specId;
-        if (r.team) row.side = r.team === 'enemy' ? 'enemy' : 'ally';
-        if (r.alive === false) row.dead = true;
-        if (r.isPlayer) row.isPlayer = true;
-      }
+    for (const rosterRow of endRoster || []) {
+      mergeEndRosterRow(rows, rosterRow);
     }
+    return rows;
+  }
+
+  function mergeEndRosterRow(
+    rows: Map<EntityId, SummaryTeamRow>,
+    rosterRow: EndRosterRow,
+  ): void {
+    let row = rows.get(rosterRow.id);
+    if (!row) {
+      row = {
+        id: rosterRow.id,
+        name: null,
+        specId: null,
+        dmg: 0,
+        kills: 0,
+        dead: false,
+        side: null,
+        isPlayer: false,
+      };
+      rows.set(rosterRow.id, row);
+    }
+    if (!row.name && (rosterRow.vehicle || rosterRow.name)) {
+      row.name = rosterRow.vehicle || rosterRow.name || null;
+    }
+    if (!row.specId && rosterRow.specId) row.specId = rosterRow.specId;
+    if (rosterRow.team) row.side = rosterRow.team === 'enemy' ? 'enemy' : 'ally';
+    if (rosterRow.alive === false) row.dead = true;
+    if (rosterRow.isPlayer) row.isPlayer = true;
+  }
+
+  function summaryTeams(rows: Map<EntityId, SummaryTeamRow>): Readonly<{
+    allies: EndScreenTeamRow[];
+    enemies: EndScreenTeamRow[];
+  }> {
     const allies: EndScreenTeamRow[] = [];
     const enemies: EndScreenTeamRow[] = [];
-    for (const r of rows.values()) {
-      if (r.side === 'ally') allies.push(r);
-      else if (r.side === 'enemy') enemies.push(r);
+    for (const row of rows.values()) {
+      if (row.side === 'ally') allies.push(row);
+      else if (row.side === 'enemy') enemies.push(row);
     }
-    const bySort = (a: EndScreenTeamRow, b: EndScreenTeamRow): number => (
-      (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0) || b.dmg - a.dmg
+    const bySort = (left: EndScreenTeamRow, right: EndScreenTeamRow): number => (
+      (right.isPlayer ? 1 : 0) - (left.isPlayer ? 1 : 0) || right.dmg - left.dmg
     );
     allies.sort(bySort);
     enemies.sort(bySort);
+    return { allies, enemies };
+  }
+
+  function summaryKills(): Array<{ id: string; name: string; specId: string; dmg: number }> {
     const kills: Array<{ id: string; name: string; specId: string; dmg: number }> = [];
-    for (const [id, t] of stats.perTarget) {
-      if (t.killed) kills.push({ id, name: t.name || id, specId: t.specId || id, dmg: Math.round(t.dmg) });
+    for (const [id, target] of stats.perTarget) {
+      if (!target.killed) continue;
+      kills.push({
+        id,
+        name: target.name || id,
+        specId: target.specId || id,
+        dmg: Math.round(target.dmg),
+      });
     }
-    kills.sort((a, b) => b.dmg - a.dmg);
+    kills.sort((left, right) => right.dmg - left.dmg);
+    return kills;
+  }
+
+  function bestShot(): ShotEntry | null {
     let best: ShotEntry | null = null;
-    for (const sh of allShots) {
-      if ((sh.ev.damage || 0) > 0 && (!best || sh.ev.damage > best.ev.damage)) best = sh;
+    for (const shot of allShots) {
+      if (shot.ev.damage > 0 && (!best || shot.ev.damage > best.ev.damage)) best = shot;
     }
+    return best;
+  }
+
+  function summaryMapName(): string | null {
+    let mapName = endInfo?.map || null;
+    if (!mapName) return null;
+    try {
+      mapName = getMapConfig(mapName).name || mapName;
+    } catch (_) {
+      // Preserve the raw id when a replay references a removed map.
+    }
+    return mapName;
+  }
+
+  function summaryTime(): number {
+    if (typeof endInfo?.timeS === 'number' && Number.isFinite(endInfo.timeS)) {
+      return endInfo.timeS;
+    }
+    return Math.max(
+      0,
+      ...stats.timeline.map((entry) => entry.t),
+      ...receivedLog.map((entry) => entry.t),
+    );
+  }
+
+  function buildSummary(result: EndScreenResult): EndScreenSummary {
+    const rows = summaryRows();
+    const { allies, enemies } = summaryTeams(rows);
+    const kills = summaryKills();
+    const best = bestShot();
     const me = playerId === null ? undefined : rows.get(playerId);
-    let mapName = endInfo && endInfo.map ? endInfo.map : null;
-    if (mapName) {
-      try { mapName = getMapConfig(mapName).name || mapName; } catch (_) { /* raw id */ }
-    }
-    const timeS = endInfo && typeof endInfo.timeS === 'number' && Number.isFinite(endInfo.timeS)
-      ? endInfo.timeS
-      : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
     return {
       result,
       reason: endInfo?.reason || null,
       playerVehicle: me?.name || '',
       playerSpecId: me?.specId || null,
       playerDead: !!me?.dead,
-      map: mapName,
-      timeS,
+      map: summaryMapName(),
+      timeS: summaryTime(),
       stats: {
         dealt: stats.dealt,
         received: stats.received,
@@ -1375,6 +1515,78 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     return t;
   }
 
+  function recordHitCombatants(ev: ShotHitEvent): void {
+    if (ev.attackerId == null || ev.targetId == null || ev.attackerId === ev.targetId) return;
+    const attacker = combatant(ev.attackerId, ev.attackerName, ev.attackerSpecId);
+    attacker.dmg += ev.damage || 0;
+    const target = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
+    if (ev.destroyed) target.dead = true;
+    if (ev.kind !== 'he_splash') linkOpposed(ev.attackerId, ev.targetId);
+  }
+
+  function recordSpottingAssist(ev: ShotHitEvent): void {
+    const spottedAt = spotWindow.get(ev.targetId);
+    if (ev.attackerId === playerId || ev.targetId === playerId || ev.damage <= 0) return;
+    if (spottedAt === undefined || (ev.timeS || 0) - spottedAt > ASSIST_WINDOW_S) return;
+    if (ev.attackerId != null && sideOf(ev.attackerId) === 'ally') stats.assist += ev.damage;
+  }
+
+  function recordOutgoingHit(ev: ShotHitEvent): void {
+    if (ev.attackerId !== playerId || !ev.targetId || ev.targetId === playerId) return;
+    const outcome = hitOutcomeFor(ev);
+    stats.hits += 1;
+    if (outcome.penetrated) stats.pens += 1;
+    stats.dealt += ev.damage || 0;
+    const shell = perShell(ev.shellType || '—');
+    shell.hits += 1;
+    if (outcome.penetrated) shell.pens += 1;
+    shell.dmg += ev.damage || 0;
+    if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
+    stats.modulesDestroyed += (ev.modulesHit || [])
+      .filter((module) => module.newState === 'red').length;
+    const target = perTarget(ev);
+    target.dmg += ev.damage || 0;
+    target.hits += 1;
+    if (outcome.penetrated) target.pens += 1;
+    if (ev.zone) target.lastZone = ev.zone;
+    if (typeof ev.targetHpAfter === 'number' && Number.isFinite(ev.targetHpAfter)) {
+      target.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
+    }
+    if (ev.destroyed) {
+      target.killed = true;
+      target.hpLeft = 0;
+    }
+    shotLog.unshift({ ev, cls: outcome });
+    if (shotLog.length > 6) shotLog.pop();
+    allShots.push({ ev, cls: outcome });
+    showCard(ev, outcome);
+    if (logOpen) renderLog();
+  }
+
+  function recordIncomingHit(ev: ShotHitEvent): void {
+    if (ev.targetId !== playerId) return;
+    const outcome = hitOutcomeFor(ev);
+    stats.received += ev.damage || 0;
+    if ((ev.damage || 0) <= 0 && outcome.blocked) stats.blocked += ev.dmgRoll || 0;
+    const mods = (ev.modulesHit || [])
+      .filter((module) => module.newState === 'red')
+      .map((module) => registryLabel(MODULE_LABEL, module.module))
+      .join(', ');
+    receivedLog.push({
+      t: ev.timeS || 0,
+      dmg: ev.damage || 0,
+      kind: ev.kind,
+      aid: ev.attackerId,
+      attacker: ev.attackerName || 'Enemy',
+      shellType: ev.shellType || '',
+      mods,
+      outcome,
+      zone: ev.zone || '',
+    });
+    showToast(ev, outcome);
+    if (logOpen) renderLog();
+  }
+
   bus.on('shell:fired', (payload) => {
     const p = eventPayload<ShellFiredEvent>(payload);
     if (!p.isPlayer) return;
@@ -1406,68 +1618,11 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   bus.on('shell:hit', (payload) => {
     const ev = eventPayload<ShotHitEvent>(payload);
-    // team-wide roster bookkeeping (every combatant, incl. AI-vs-AI)
-    if (ev.attackerId != null && ev.targetId != null && ev.attackerId !== ev.targetId) {
-      const a = combatant(ev.attackerId, ev.attackerName, ev.attackerSpecId);
-      a.dmg += ev.damage || 0;
-      const t = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
-      if (ev.destroyed) t.dead = true; // kill CREDIT counted once, in tank:destroyed
-      // splash can catch a teammate — only DIRECT hits assert opposing teams
-      if (ev.kind !== 'he_splash') linkOpposed(ev.attackerId, ev.targetId);
-    }
+    recordHitCombatants(ev);
     if (playerId == null) return;
-    // spotting assist (r3): ally (non-player) damage on an enemy the PLAYER
-    // lit within the last ASSIST_WINDOW_S — summed only from resolved events
-    // (damage from the payload, the spot edge from the sim's tank:spotted)
-    const spottedAt = spotWindow.get(ev.targetId);
-    if (ev.attackerId !== playerId && ev.targetId !== playerId
-        && ev.damage > 0 && spottedAt !== undefined
-        && (ev.timeS || 0) - spottedAt <= ASSIST_WINDOW_S
-        && ev.attackerId != null && sideOf(ev.attackerId) === 'ally') {
-      stats.assist += ev.damage;
-    }
-    if (ev.attackerId === playerId && ev.targetId && ev.targetId !== playerId) {
-      const cls = hitOutcomeFor(ev);
-      stats.hits += 1;
-      if (cls.penetrated) stats.pens += 1;
-      stats.dealt += ev.damage || 0;
-      const sh = perShell(ev.shellType || '—');
-      sh.hits += 1;
-      if (cls.penetrated) sh.pens += 1;
-      sh.dmg += ev.damage || 0;
-      if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
-      stats.modulesDestroyed += (ev.modulesHit || []).filter((m) => m.newState === 'red').length;
-      const t = perTarget(ev);
-      t.dmg += ev.damage || 0;
-      t.hits += 1;
-      if (cls.penetrated) t.pens += 1;
-      if (ev.zone) t.lastZone = ev.zone;
-      // remaining HP straight from the sim payload (report roster shows it)
-      if (typeof ev.targetHpAfter === 'number' && Number.isFinite(ev.targetHpAfter)) {
-        t.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
-      }
-      if (ev.destroyed) { t.killed = true; t.hpLeft = 0; }
-      shotLog.unshift({ ev, cls });
-      if (shotLog.length > 6) shotLog.pop();
-      allShots.push({ ev, cls }); // full-battle ledger (report expansion, r4)
-      showCard(ev, cls);
-      if (logOpen) renderLog();
-    }
-    if (ev.targetId === playerId) {
-      const cls = hitOutcomeFor(ev);
-      stats.received += ev.damage || 0;
-      if ((ev.damage || 0) <= 0 && cls.blocked) stats.blocked += ev.dmgRoll || 0;
-      const mods = (ev.modulesHit || []).filter((m) => m.newState === 'red')
-        .map((m) => registryLabel(MODULE_LABEL, m.module)).join(', ');
-      receivedLog.push({
-        t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind, aid: ev.attackerId,
-        attacker: ev.attackerName || 'Enemy', shellType: ev.shellType || '', mods,
-        outcome: cls,
-        zone: ev.zone || '', // r4: expandable roster ledger prints the zone
-      });
-      showToast(ev, cls);
-      if (logOpen) renderLog();
-    }
+    recordSpottingAssist(ev);
+    recordOutgoingHit(ev);
+    recordIncomingHit(ev);
   });
 
   bus.on('tank:destroyed', (payload) => {

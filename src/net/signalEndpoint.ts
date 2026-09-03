@@ -1,10 +1,11 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 export interface SignalEndpointOptions {
-  configured?: unknown;
-  protocol?: unknown;
-  hostname?: unknown;
+  configured?: RuntimeValue;
+  protocol?: RuntimeValue;
+  hostname?: RuntimeValue;
 }
 
-function isLocalNetworkHost(hostname: unknown): boolean {
+function isLocalNetworkHost(hostname: RuntimeValue): boolean {
   const host = String(hostname || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
   if (host === 'localhost' || host === '::1' || host.endsWith('.local')) return true;
   if (/^127(?:\.\d{1,3}){3}$/.test(host)) return true;

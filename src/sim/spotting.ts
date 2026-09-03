@@ -642,6 +642,55 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     return hardLos(spotter, target);
   }
 
+  function resetSeenVia(): void {
+    for (const team of teams) _seenVia[team] = null;
+  }
+
+  function considerSpotter(
+    spotter: SpottingTank,
+    target: SpottingTank,
+    timeS: number,
+  ): number {
+    if (spotter === target || !alive(spotter) || spotter.team === target.team) return Infinity;
+    const distance = Math.hypot(spotter.state.pos.x - target.state.pos.x,
+      spotter.state.pos.z - target.state.pos.z);
+    const current = _seenVia[spotter.team];
+    if (current?.shareM === SIGNAL_RANGE_M) return distance;
+    if (!canSpot(spotter, target, timeS)) return distance;
+    const shareM = signalRangeM(spotter);
+    if (!current || shareM > current.shareM) {
+      _seenVia[spotter.team] = {
+        id: spotter.id,
+        x: spotter.state.pos.x,
+        z: spotter.state.pos.z,
+        shareM,
+      };
+    }
+    return distance;
+  }
+
+  function updateTeamSpotState(
+    target: SpottingTank,
+    record: SpottingRecord,
+    team: string,
+    timeS: number,
+  ): void {
+    if (team === target.team) return;
+    const state = record.byTeam[team];
+    const spotter = _seenVia[team];
+    if (!spotter) {
+      if (state.spotted && timeS - state.lastPassS > SPOT_LINGER_S) state.spotted = false;
+      return;
+    }
+    if (!state.spotted) {
+      state.spottedAtS = timeS;
+      events.push({ id: target.id, team, timeS, spotterId: spotter.id });
+    }
+    state.spotted = true;
+    state.lastPassS = timeS;
+    state.spotter = spotter;
+  }
+
   /** Run the spot checks for one target against every live opposing tank. */
   function checkTarget(
     target: SpottingTank,
@@ -654,41 +703,11 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     // A healthy-radio spotter shares team-wide (SIGNAL_RANGE_M); a spot known
     // only through a damaged-radio spotter travels half as far (§9 radio
     // debuff), so we keep checking spotters until a full-share one passes.
-    const seenVia = _seenVia;
-    for (const team of teams) seenVia[team] = null;
+    resetSeenVia();
     for (let i = 0; i < tanks.length; i++) {
-      const sp = tanks[i];
-      if (sp === target || !alive(sp) || sp.team === target.team) continue;
-      const d = Math.hypot(sp.state.pos.x - target.state.pos.x,
-        sp.state.pos.z - target.state.pos.z);
-      if (d < nearest) nearest = d;
-      const cur = seenVia[sp.team];
-      if (cur && cur.shareM >= SIGNAL_RANGE_M) continue; // full share already
-      if (canSpot(sp, target, timeS)) {
-        const shareM = signalRangeM(sp);
-        if (!cur || shareM > cur.shareM) {
-          seenVia[sp.team] = { id: sp.id, x: sp.state.pos.x, z: sp.state.pos.z, shareM };
-        }
-      }
+      nearest = Math.min(nearest, considerSpotter(tanks[i], target, timeS));
     }
-    for (const team of teams) {
-      if (team === target.team) continue;
-      const st = rec.byTeam[team];
-      if (seenVia[team]) {
-        if (!st.spotted) {
-          st.spottedAtS = timeS; // rising edge — starts the sixth-sense fuse
-          // SHOT-INFO ENRICHMENT (killcam_shotinfo r3): attribute the spotter
-          // so results-screen assist tiles can credit "damage upon your
-          // spotting" (shotInfo feature-detects spotterId).
-          events.push({ id: target.id, team, timeS, spotterId: seenVia[team].id });
-        }
-        st.spotted = true;
-        st.lastPassS = timeS;
-        st.spotter = seenVia[team];
-      } else if (st.spotted && timeS - st.lastPassS > SPOT_LINGER_S) {
-        st.spotted = false;
-      }
-    }
+    for (const team of teams) updateTeamSpotState(target, rec, team, timeS);
     rec.nextCheckS = timeS + checkIntervalS(isFinite(nearest) ? nearest : 1e9);
   }
 
@@ -697,6 +716,97 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     camo: 0, base: 0, paint: 0, equip: 0, bush: 0, bloom: 0,
     moving: false, fired: false, inBush: false, spotted: false,
   };
+
+  function hullBushBonus(position: SpottingVector3, bloom: number): number {
+    let bush = 0;
+    for (let i = 0; i < concealers.length; i++) {
+      const concealer = concealers[i];
+      const dx = concealer.x - position.x;
+      const dz = concealer.z - position.z;
+      const radius = concealer.r + 1.2;
+      if (dx * dx + dz * dz > radius * radius) continue;
+      const flashExposesBush = bloom > 0
+        && Math.hypot(dx, dz) - concealer.r < BUSH_FIRE_TRANSPARENT_M;
+      if (flashExposesBush) continue;
+      bush += concealer.add;
+      if (bush >= MAX_BUSH_BONUS) return MAX_BUSH_BONUS;
+    }
+    return bush;
+  }
+
+  function spottedSightlineBushBonus(
+    tank: SpottingTank,
+    position: SpottingVector3,
+  ): number {
+    const tanks = deps.getTanks();
+    let nearestX = 0;
+    let nearestZ = 0;
+    let nearestDistanceSq = Infinity;
+    for (let i = 0; i < tanks.length; i++) {
+      const enemy = tanks[i];
+      if (enemy === tank || enemy.id === tank.id || !alive(enemy) || enemy.team === tank.team) continue;
+      if (!recs.get(enemy.id)?.byTeam[tank.team]?.spotted) continue;
+      const dx = enemy.state.pos.x - position.x;
+      const dz = enemy.state.pos.z - position.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (distanceSq >= nearestDistanceSq) continue;
+      nearestDistanceSq = distanceSq;
+      nearestX = enemy.state.pos.x;
+      nearestZ = enemy.state.pos.z;
+    }
+    return nearestDistanceSq < Infinity
+      ? bushBonusBetween(concealers, nearestX, nearestZ, position.x, position.z, true)
+      : 0;
+  }
+
+  function concealmentBushBonus(
+    tank: SpottingTank,
+    position: SpottingVector3,
+    bloom: number,
+  ): number {
+    const ownBush = hullBushBonus(position, bloom);
+    if (bloom <= 0 || !concealers.length) return ownBush;
+    return Math.max(ownBush, spottedSightlineBushBonus(tank, position));
+  }
+
+  function sixthSenseVisible(
+    tank: SpottingTank,
+    record: SpottingRecord,
+    timeS: number,
+  ): boolean {
+    const opposingTeam = teams.find((team) => team !== tank.team);
+    const state = opposingTeam ? record.byTeam[opposingTeam] : undefined;
+    const knownAge = state?.spotted ? timeS - state.spottedAtS : -1;
+    return knownAge >= SIXTH_SENSE_DELAY_S
+      && knownAge <= SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S;
+  }
+
+  function fillConcealmentSnapshot(
+    tank: SpottingTank,
+    record: SpottingRecord,
+    timeS: number,
+    moving: boolean,
+    bloom: number,
+    bush: number,
+  ): ConcealmentSnapshot {
+    _conc.base = baseCamoOf(tank.spec, moving);
+    _conc.paint = getCamoBonus(tank);
+    _conc.equip = equipCamoBonus(getEquipment(tank), moving);
+    _conc.bloom = bloom;
+    _conc.bush = bush;
+    _conc.moving = moving;
+    _conc.fired = bloom > 0;
+    _conc.inBush = bush > 0 || (bloom > 0 && bushNearby(tank.state.pos));
+    _camoArgs.base = _conc.base;
+    _camoArgs.paint = _conc.paint;
+    _camoArgs.equip = _conc.equip;
+    _camoArgs.bloom = bloom;
+    _camoArgs.bush = bush;
+    _camoArgs.fireLoss = record.fireLoss ?? FIRE_CAMO_LOSS;
+    _conc.camo = combineCamo(_camoArgs);
+    _conc.spotted = sixthSenseVisible(tank, record, timeS);
+    return _conc;
+  }
 
   const sys: SpottingSystem = {
     /**
@@ -800,22 +910,6 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       const p = ent.state.pos;
       const moving = Math.abs(ent.state.speed || 0) > MOVING_SPEED_MPS;
       const bloom = fireBloomAt(rec.firedAtS, timeS);
-      // "in bush": concealers overlapping the hull position (any direction)
-      let bush = 0;
-      for (let i = 0; i < concealers.length; i++) {
-        const c = concealers[i];
-        const dx = c.x - p.x, dz = c.z - p.z;
-        if (dx * dx + dz * dz > (c.r + 1.2) * (c.r + 1.2)) continue;
-        // 15 m rule — the SAME per-disc edge test bushBonusBetween applies
-        // (r7: the old blanket `if (bloom > 0) continue` zeroed every
-        // hull-overlapping disc while the bloom was hot regardless of its
-        // radius; a large concealer whose edge sits beyond the flash radius
-        // keeps concealing here exactly as it does on the sim sightline).
-        if (bloom > 0 &&
-            Math.hypot(dx, dz) - c.r < BUSH_FIRE_TRANSPARENT_M) continue;
-        bush += c.add;
-        if (bush >= MAX_BUSH_BONUS) { bush = MAX_BUSH_BONUS; break; }
-      }
       // Double-bush ambush truth (r7): while the bloom is hot the loop above
       // burns the OWN bush (15 m rule) but canSpot still honors screening
       // foliage farther down the sightline (bushBonusBetween keeps any disc
@@ -825,52 +919,8 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       // real sightline bonus toward the nearest enemy THIS TEAM HAS SPOTTED
       // (minimap-known contacts only, so no hidden enemy's bearing leaks
       // into a HUD number) and keep the larger term.
-      if (bloom > 0 && concealers.length) {
-        const tanks = deps.getTanks();
-        let nx = 0, nz = 0, nd = Infinity;
-        for (let i = 0; i < tanks.length; i++) {
-          const e = tanks[i];
-          if (e === ent || e.id === ent.id || !alive(e) || e.team === ent.team) continue;
-          const er = recs.get(e.id);
-          const st2 = er && er.byTeam[ent.team];
-          if (!st2 || !st2.spotted) continue;
-          const ex = e.state.pos.x - p.x, ez = e.state.pos.z - p.z;
-          const d2 = ex * ex + ez * ez;
-          if (d2 < nd) { nd = d2; nx = e.state.pos.x; nz = e.state.pos.z; }
-        }
-        if (nd < Infinity) {
-          const line = bushBonusBetween(concealers, nx, nz, p.x, p.z, true);
-          if (line > bush) bush = line;
-        }
-      }
-      _conc.base = baseCamoOf(ent.spec, moving);
-      _conc.paint = getCamoBonus(ent);
-      _conc.equip = equipCamoBonus(getEquipment(ent), moving);
-      _conc.bloom = bloom;
-      _conc.bush = bush;
-      _conc.moving = moving;
-      _conc.fired = bloom > 0;
-      _conc.inBush = bush > 0 || (bloom > 0 && bushNearby(p));
-      _camoArgs.base = _conc.base;
-      _camoArgs.paint = _conc.paint;
-      _camoArgs.equip = _conc.equip;
-      _camoArgs.bloom = bloom;
-      _camoArgs.bush = bush;
-      _camoArgs.fireLoss = rec.fireLoss ?? FIRE_CAMO_LOSS;
-      _conc.camo = combineCamo(_camoArgs);
-      // Sixth-sense display gate (r8 major): the HUD eye flipped red the
-      // instant the enemy check passed, leaking exactly the information the
-      // 3 s lamp fuse exists to hide. The snapshot's `spotted` is now the
-      // player's KNOWLEDGE, not the server state: it lights SIXTH_SENSE_DELAY_S
-      // after the rising edge and holds only for the lamp's SIXTH_SENSE_SHOW_S
-      // window (WoT: after the bulb dies you do NOT know you are still seen).
-      // Raw state stays on isSpotted() for enemies/minimap/AI.
-      const opp = teams.find((team) => team !== ent.team);
-      const st = opp ? rec.byTeam[opp] : undefined;
-      const knownAge = st?.spotted ? timeS - st.spottedAtS : -1;
-      _conc.spotted = knownAge >= SIXTH_SENSE_DELAY_S &&
-        knownAge <= SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S;
-      return _conc;
+      const bush = concealmentBushBonus(ent, p, bloom);
+      return fillConcealmentSnapshot(ent, rec, timeS, moving, bloom, bush);
     },
 
     /** Bush bonus along the observer→target LOS (debug/tests). */

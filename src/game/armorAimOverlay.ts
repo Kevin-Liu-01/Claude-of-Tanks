@@ -306,6 +306,61 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     visibleEntries.push(entry);
   }
 
+  function collectScopedTargets(
+    targets: ArmorOverlayTarget[] | readonly ArmorOverlayTarget[] | null | undefined,
+    target: ArmorOverlayTarget | null | undefined,
+  ): void {
+    visibleEntries.length = 0;
+    for (const entry of entries.values()) entry.inScope = false;
+    if (Array.isArray(targets)) {
+      for (const candidate of targets) addScopedTarget(candidate);
+    } else {
+      addScopedTarget(target);
+    }
+    for (const entry of entries.values()) {
+      if (entry.inScope) continue;
+      setVisible(entry, false);
+      entry.sampling = false;
+    }
+  }
+
+  function prepareScopedSamples(
+    shellSpec: DamageShellSpec | null | undefined,
+    sampleNowMs: number,
+  ): void {
+    for (const entry of visibleEntries) {
+      if (entry.lastShellSpec !== shellSpec) {
+        entry.lastShellSpec = shellSpec ?? null;
+        entry.nextSampleMs = -Infinity;
+        entry.sampling = false;
+      }
+      if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
+      entry.sampling = true;
+      entry.sampleFrameIndex = 0;
+      entry.samplePointIndex = 0;
+    }
+  }
+
+  function sampleNextScopedEntry(
+    shellSpec: DamageShellSpec | null | undefined,
+    muzzle: THREE.Vector3 | null | undefined,
+    sampleNowMs: number,
+  ): void {
+    // Keep the original global one-batch-per-frame query budget while
+    // rotating across every visible scoped enemy.
+    for (let offset = 0; offset < visibleEntries.length; offset++) {
+      const index = (sampleCursor + offset) % visibleEntries.length;
+      const entry = visibleEntries[index];
+      if (!entry.sampling) continue;
+      if (sampleBatch(entry, shellSpec, muzzle)) {
+        entry.sampling = false;
+        entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS;
+      }
+      sampleCursor = (index + 1) % visibleEntries.length;
+      return;
+    }
+  }
+
   function update({
     enabled,
     scoped,
@@ -320,49 +375,12 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       return;
     }
 
-    visibleEntries.length = 0;
-    for (const entry of entries.values()) entry.inScope = false;
-    if (Array.isArray(targets)) {
-      for (const candidate of targets) addScopedTarget(candidate);
-    } else {
-      addScopedTarget(target);
-    }
-    for (const entry of entries.values()) {
-      if (!entry.inScope) {
-        setVisible(entry, false);
-        entry.sampling = false;
-      }
-    }
+    collectScopedTargets(targets, target);
     if (!visibleEntries.length) return;
 
     const sampleNowMs = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : 0;
-    for (const entry of visibleEntries) {
-      if (entry.lastShellSpec !== shellSpec) {
-        entry.lastShellSpec = shellSpec ?? null;
-        entry.nextSampleMs = -Infinity;
-        entry.sampling = false;
-      }
-      if (!entry.sampling && sampleNowMs >= entry.nextSampleMs) {
-        entry.sampling = true;
-        entry.sampleFrameIndex = 0;
-        entry.samplePointIndex = 0;
-      }
-    }
-
-    // The old single-target overlay spent one 48-query batch per frame. Keep
-    // that exact global budget while rotating through every scoped enemy, so
-    // broader visibility cannot turn a seven-vehicle sightline into a spike.
-    for (let offset = 0; offset < visibleEntries.length; offset++) {
-      const index = (sampleCursor + offset) % visibleEntries.length;
-      const entry = visibleEntries[index];
-      if (!entry.sampling) continue;
-      if (sampleBatch(entry, shellSpec, muzzle)) {
-        entry.sampling = false;
-        entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS;
-      }
-      sampleCursor = (index + 1) % visibleEntries.length;
-      break;
-    }
+    prepareScopedSamples(shellSpec, sampleNowMs);
+    sampleNextScopedEntry(shellSpec, muzzle, sampleNowMs);
   }
 
   function clear(): void {

@@ -570,31 +570,35 @@ function edgeInside(a: Vector3, b: Vector3): boolean {
  * @returns {number} entry parameter t in [0,1] (0 when starting inside), or -1
  */
 let _aabbExitT = 1;
+let _slabEntryT = 0;
+let _slabExitT = 1;
+
+function vectorAxis(vector: Vector3, axis: number): number {
+  if (axis === 0) return vector.x;
+  if (axis === 1) return vector.y;
+  return vector.z;
+}
+
+function clipSlabAxis(origin: number, direction: number, min: number, max: number): boolean {
+  if (Math.abs(direction) < 1e-12) return origin >= min && origin <= max;
+  let near = (min - origin) / direction;
+  let far = (max - origin) / direction;
+  if (near > far) [near, far] = [far, near];
+  _slabEntryT = Math.max(_slabEntryT, near);
+  _slabExitT = Math.min(_slabExitT, far);
+  return _slabEntryT <= _slabExitT;
+}
+
 function intersectAABB(frame: FrameIndex, min: Vec3Tuple, max: Vec3Tuple): number {
   const f = _fromL[frame];
   const d = _dirL[frame];
-  let t0 = 0;
-  let t1 = 1;
+  _slabEntryT = 0;
+  _slabExitT = 1;
   for (let ax = 0; ax < 3; ax++) {
-    const fa = ax === 0 ? f.x : ax === 1 ? f.y : f.z;
-    const da = ax === 0 ? d.x : ax === 1 ? d.y : d.z;
-    if (Math.abs(da) < 1e-12) {
-      if (fa < min[ax] || fa > max[ax]) return -1;
-    } else {
-      let ta = (min[ax] - fa) / da;
-      let tb = (max[ax] - fa) / da;
-      if (ta > tb) {
-        const s = ta;
-        ta = tb;
-        tb = s;
-      }
-      if (ta > t0) t0 = ta;
-      if (tb < t1) t1 = tb;
-      if (t0 > t1) return -1;
-    }
+    if (!clipSlabAxis(vectorAxis(f, ax), vectorAxis(d, ax), min[ax], max[ax])) return -1;
   }
-  _aabbExitT = t1;
-  return t0;
+  _aabbExitT = _slabExitT;
+  return _slabEntryT;
 }
 
 let _shapeExitT = 1;
@@ -628,54 +632,73 @@ function intersectEllipsoid(frame: FrameIndex, shape: EllipsoidShape): number {
   return Math.max(0, t0);
 }
 
-function intersectEllipticCylinder(frame: FrameIndex, shape: EllipticCylinderShape): number {
-  const f = _fromL[frame];
-  const d = _dirL[frame];
-  const center = shape.center;
-  const axis = shape.axis;
-  const fx = f.x - center[0];
-  const fy = f.y - center[1];
-  const fz = f.z - center[2];
-  const r0f = axis === 0 ? fy : fx;
-  const r1f = axis === 2 ? fy : fz;
-  const r0d = axis === 0 ? d.y : d.x;
-  const r1d = axis === 2 ? d.y : d.z;
-  let t0 = 0;
-  let t1 = 1;
-  const o0 = r0f / shape.radii[0];
-  const o1 = r1f / shape.radii[1];
-  const q0 = r0d / shape.radii[0];
-  const q1 = r1d / shape.radii[1];
+let _cylinderEntryT = 0;
+let _cylinderExitT = 1;
+
+function clipEllipticCylinderRadius(
+  radialOrigin0: number,
+  radialOrigin1: number,
+  radialDirection0: number,
+  radialDirection1: number,
+  radii: readonly [number, number],
+): boolean {
+  const o0 = radialOrigin0 / radii[0];
+  const o1 = radialOrigin1 / radii[1];
+  const q0 = radialDirection0 / radii[0];
+  const q1 = radialDirection1 / radii[1];
   const qa = q0 * q0 + q1 * q1;
   const qb = 2 * (o0 * q0 + o1 * q1);
   const qc = o0 * o0 + o1 * o1 - 1;
-  if (qa < 1e-14) {
-    if (qc > 0) return -1;
-  } else {
-    const discriminant = qb * qb - 4 * qa * qc;
-    if (discriminant < 0) return -1;
-    const root = Math.sqrt(discriminant);
-    let a = (-qb - root) / (2 * qa);
-    let b = (-qb + root) / (2 * qa);
-    if (a > b) [a, b] = [b, a];
-    t0 = Math.max(t0, a);
-    t1 = Math.min(t1, b);
-  }
-  const half = shape.halfLength;
-  const da = axis === 0 ? d.x : axis === 1 ? d.y : d.z;
-  const fa = axis === 0 ? fx : axis === 1 ? fy : fz;
-  if (Math.abs(da) < 1e-12) {
-    if (Math.abs(fa) > half) return -1;
-  } else {
-    let a = (-half - fa) / da;
-    let b = (half - fa) / da;
-    if (a > b) [a, b] = [b, a];
-    t0 = Math.max(t0, a);
-    t1 = Math.min(t1, b);
-  }
-  if (t0 > t1 || t1 < 0 || t0 > 1) return -1;
-  _shapeExitT = Math.min(1, t1);
-  return Math.max(0, t0);
+  if (qa < 1e-14) return qc <= 0;
+  const discriminant = qb * qb - 4 * qa * qc;
+  if (discriminant < 0) return false;
+  const root = Math.sqrt(discriminant);
+  let near = (-qb - root) / (2 * qa);
+  let far = (-qb + root) / (2 * qa);
+  if (near > far) [near, far] = [far, near];
+  _cylinderEntryT = Math.max(_cylinderEntryT, near);
+  _cylinderExitT = Math.min(_cylinderExitT, far);
+  return true;
+}
+
+function clipEllipticCylinderLength(origin: number, direction: number, half: number): boolean {
+  if (Math.abs(direction) < 1e-12) return Math.abs(origin) <= half;
+  let near = (-half - origin) / direction;
+  let far = (half - origin) / direction;
+  if (near > far) [near, far] = [far, near];
+  _cylinderEntryT = Math.max(_cylinderEntryT, near);
+  _cylinderExitT = Math.min(_cylinderExitT, far);
+  return true;
+}
+
+function intersectEllipticCylinder(frame: FrameIndex, shape: EllipticCylinderShape): number {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  const axis = shape.axis;
+  const fx = f.x - shape.center[0];
+  const fy = f.y - shape.center[1];
+  const fz = f.z - shape.center[2];
+  const radialOrigin0 = axis === 0 ? fy : fx;
+  const radialOrigin1 = axis === 2 ? fy : fz;
+  const radialDirection0 = axis === 0 ? d.y : d.x;
+  const radialDirection1 = axis === 2 ? d.y : d.z;
+  _cylinderEntryT = 0;
+  _cylinderExitT = 1;
+  if (!clipEllipticCylinderRadius(
+    radialOrigin0,
+    radialOrigin1,
+    radialDirection0,
+    radialDirection1,
+    shape.radii,
+  )) return -1;
+  if (!clipEllipticCylinderLength(
+    axis === 0 ? fx : axis === 1 ? fy : fz,
+    vectorAxis(d, axis),
+    shape.halfLength,
+  )) return -1;
+  if (_cylinderEntryT > _cylinderExitT || _cylinderExitT < 0 || _cylinderEntryT > 1) return -1;
+  _shapeExitT = Math.min(1, _cylinderExitT);
+  return Math.max(0, _cylinderEntryT);
 }
 
 let _intervalT0 = 0;
@@ -798,53 +821,70 @@ let _prismExitT = 1;
 let _pnx = 0;
 let _pny = 0;
 let _pnz = 0;
-function intersectTrackPrism(frame: FrameIndex, shape: TrackPrismShape): number {
-  const f = _fromL[frame];
-  const d = _dirL[frame];
-  let t0 = 0;
-  let t1 = 1;
-  let nx = 0;
-  let ny = 0;
-  let nz = 0;
-  if (Math.abs(d.x) < 1e-12) {
-    if (f.x < shape.x0 || f.x > shape.x1) return -1;
-  } else {
-    let ta = (shape.x0 - f.x) / d.x;
-    let tb = (shape.x1 - f.x) / d.x;
-    let na = -1; // entering through the x0 face → outward normal -X
-    if (ta > tb) { const s = ta; ta = tb; tb = s; na = 1; }
-    if (ta > t0) { t0 = ta; nx = na; ny = 0; nz = 0; }
-    if (tb < t1) t1 = tb;
-    if (t0 > t1) return -1;
+let _prismEntryT = 0;
+
+function clipTrackPrismWidth(f: Vector3, d: Vector3, shape: TrackPrismShape): boolean {
+  if (Math.abs(d.x) < 1e-12) return f.x >= shape.x0 && f.x <= shape.x1;
+  let near = (shape.x0 - f.x) / d.x;
+  let far = (shape.x1 - f.x) / d.x;
+  let normalX = -1;
+  if (near > far) {
+    [near, far] = [far, near];
+    normalX = 1;
   }
-  const poly = shape.poly;
-  const n = poly.length;
-  for (let i = 0; i < n; i++) {
-    const a = poly[i];
-    const b = poly[(i + 1) % n];
+  if (near > _prismEntryT) {
+    _prismEntryT = near;
+    _pnx = normalX;
+    _pny = 0;
+    _pnz = 0;
+  }
+  _prismExitT = Math.min(_prismExitT, far);
+  return _prismEntryT <= _prismExitT;
+}
+
+function clipTrackPrismEdge(
+  f: Vector3,
+  d: Vector3,
+  a: readonly [number, number],
+  b: readonly [number, number],
+): boolean {
     const ez = b[0] - a[0];
     const ey = b[1] - a[1];
     const len = Math.hypot(ez, ey);
-    if (len < 1e-9) continue;
+    if (len < 1e-9) return true;
     const onz = ey / len;  // outward normal of a CCW edge in (z,y)
     const ony = -ez / len;
     const d0 = (f.z - a[0]) * onz + (f.y - a[1]) * ony;
     const dd = d.z * onz + d.y * ony;
-    if (Math.abs(dd) < 1e-12) {
-      if (d0 > 1e-9) return -1; // parallel to the facet and outside it
-      continue;
-    }
+    if (Math.abs(dd) < 1e-12) return d0 <= 1e-9;
     const tc = -d0 / dd;
     if (dd < 0) {
-      if (tc > t0) { t0 = tc; nx = 0; ny = ony; nz = onz; }
-    } else if (tc < t1) {
-      t1 = tc;
+      if (tc > _prismEntryT) {
+        _prismEntryT = tc;
+        _pnx = 0;
+        _pny = ony;
+        _pnz = onz;
+      }
+    } else {
+      _prismExitT = Math.min(_prismExitT, tc);
     }
-    if (t0 > t1) return -1;
+    return _prismEntryT <= _prismExitT;
+}
+
+function intersectTrackPrism(frame: FrameIndex, shape: TrackPrismShape): number {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  _prismEntryT = 0;
+  _prismExitT = 1;
+  _pnx = 0;
+  _pny = 0;
+  _pnz = 0;
+  if (!clipTrackPrismWidth(f, d, shape)) return -1;
+  const poly = shape.poly;
+  for (let index = 0; index < poly.length; index++) {
+    if (!clipTrackPrismEdge(f, d, poly[index], poly[(index + 1) % poly.length])) return -1;
   }
-  _prismExitT = t1;
-  _pnx = nx; _pny = ny; _pnz = nz;
-  return t0;
+  return _prismEntryT;
 }
 
 /**
@@ -869,6 +909,188 @@ function intersectBarrel(lengthM: number, radiusM: number): number {
   const z = f.z + d.z * t;
   if (z < 0 || z > lengthM) return -1;
   return t;
+}
+
+function hasTrackShape(
+  trackShapes: readonly TrackPrismShape[] | null,
+  module: ModuleId | null | undefined,
+): boolean {
+  if (!trackShapes || !module) return false;
+  for (const shape of trackShapes) {
+    if (shape.module === module) return true;
+  }
+  return false;
+}
+
+function tracePlates(
+  plates: readonly ArmorPlate[] | undefined,
+  frame: FrameIndex,
+  replaceMain: boolean,
+  eraSpent: ReadonlySet<string>,
+  trackShapes: readonly TrackPrismShape[] | null,
+  out: ArmorIntersection[],
+): void {
+  if (!plates) return;
+  for (const plate of plates) {
+    if (replaceMain && (plate.kind || 'main') === 'main') continue;
+    if (plate.kind === 'era' && eraSpent.has(plate.name)) continue;
+    if (plate.kind === 'external' && hasTrackShape(trackShapes, plate.moduleLink)) continue;
+    const frameForPlate = plate.gunFollow ? FR_GUN : frame;
+    const t = intersectQuad(frameForPlate, plate.verts);
+    if (t < 0) continue;
+    const cosI = Math.min(1, Math.max(0, -_dirN[frameForPlate].dot(_n)));
+    out.push(finishFrameHit({
+      t,
+      kind: 'plate',
+      plate,
+      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+    }, frameForPlate, t, _n.x, _n.y, _n.z));
+  }
+}
+
+function pushTrackSpan(
+  module: TrackModuleId,
+  t: number,
+  tExit: number,
+  out: ArmorIntersection[],
+): void {
+  if (!Number.isFinite(t)) return;
+  out.push(finishFrameHit({
+    t,
+    tExit,
+    kind: 'module',
+    module,
+    external: false,
+  }, FR_HULL, t));
+}
+
+function traceTrackShapes(
+  trackShapes: readonly TrackPrismShape[],
+  out: ArmorIntersection[],
+): void {
+  let leftT = Infinity;
+  let leftExitT = -Infinity;
+  let rightT = Infinity;
+  let rightExitT = -Infinity;
+  for (const shape of trackShapes) {
+    const t = intersectTrackPrism(FR_HULL, shape);
+    if (t < 0) continue;
+    if (t > 0) {
+      const cosI = Math.min(1, Math.max(0,
+        -(_dirN[FR_HULL].x * _pnx + _dirN[FR_HULL].y * _pny + _dirN[FR_HULL].z * _pnz)));
+      out.push(finishFrameHit({
+        t,
+        kind: 'plate',
+        plate: shape.plate,
+        impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+      }, FR_HULL, t, _pnx, _pny, _pnz));
+    }
+    if (shape.module === 'trackL') {
+      if (t < leftT) leftT = t;
+      if (_prismExitT > leftExitT) leftExitT = _prismExitT;
+    } else {
+      if (t < rightT) rightT = t;
+      if (_prismExitT > rightExitT) rightExitT = _prismExitT;
+    }
+  }
+  pushTrackSpan('trackL', leftT, leftExitT, out);
+  pushTrackSpan('trackR', rightT, rightExitT, out);
+}
+
+let _volumeExitT = -Infinity;
+function intersectShapeGroup(frame: FrameIndex, shapes: readonly ArmorVolumeShape[]): number {
+  let t = Infinity;
+  _volumeExitT = -Infinity;
+  for (const shape of shapes) {
+    const shapeT = intersectVolumeShape(frame, shape);
+    if (shapeT < 0) continue;
+    if (shapeT < t) t = shapeT;
+    if (_shapeExitT > _volumeExitT) _volumeExitT = _shapeExitT;
+  }
+  return t;
+}
+
+function intersectAabbGroup(frame: FrameIndex, parts: readonly AabbPart[]): number {
+  let t = Infinity;
+  _volumeExitT = -Infinity;
+  for (const part of parts) {
+    const partT = intersectAABB(frame, part.min, part.max);
+    if (partT < 0) continue;
+    if (partT < t) t = partT;
+    if (_aabbExitT > _volumeExitT) _volumeExitT = _aabbExitT;
+  }
+  return t;
+}
+
+function intersectModuleVolume(frame: FrameIndex, volume: ArmorModuleVolume): number {
+  if (volume.shapes?.length) return intersectShapeGroup(frame, volume.shapes);
+  if (volume.parts?.length) return intersectAabbGroup(frame, volume.parts);
+  const t = intersectAABB(frame, volume.min, volume.max);
+  _volumeExitT = _aabbExitT;
+  return t;
+}
+
+function traceModuleVolumes(
+  volumes: readonly ArmorModuleVolume[] | undefined,
+  trackShapes: readonly TrackPrismShape[] | null,
+  out: ArmorIntersection[],
+): void {
+  if (!volumes) return;
+  for (const volume of volumes) {
+    if (hasTrackShape(trackShapes, volume.module)) continue;
+    const frame = volume.turretLocal ? FR_TURRET : FR_HULL;
+    const t = intersectModuleVolume(frame, volume);
+    if (t < 0 || !Number.isFinite(t)) continue;
+    out.push(finishFrameHit({
+      t,
+      tExit: _volumeExitT,
+      kind: 'module',
+      module: volume.module,
+      external: volume.external !== undefined ? !!volume.external : volume.module === 'optics',
+    }, frame, t));
+  }
+}
+
+function intersectCrewVolume(frame: FrameIndex, volume: ArmorCrewVolume): number {
+  if (volume.shapes?.length) return intersectShapeGroup(frame, volume.shapes);
+  const t = intersectAABB(frame, volume.min, volume.max);
+  _volumeExitT = _aabbExitT;
+  return t;
+}
+
+function traceCrewVolumes(
+  volumes: readonly ArmorCrewVolume[] | undefined,
+  out: ArmorIntersection[],
+): void {
+  if (!volumes) return;
+  for (const volume of volumes) {
+    const frame = volume.turretLocal ? FR_TURRET : FR_HULL;
+    const t = intersectCrewVolume(frame, volume);
+    if (t < 0 || !Number.isFinite(t)) continue;
+    out.push(finishFrameHit({
+      t,
+      tExit: _volumeExitT,
+      kind: 'crew',
+      crew: volume.crew,
+    }, frame, t));
+  }
+}
+
+function traceGunBarrel(
+  gunBarrel: ArmorModel['gunBarrel'],
+  out: ArmorIntersection[],
+): void {
+  if (!gunBarrel) return;
+  const t = intersectBarrel(gunBarrel.lengthM, gunBarrel.radiusM);
+  if (t < 0) return;
+  out.push(finishFrameHit({
+    t,
+    kind: 'module',
+    module: 'gun',
+    external: true,
+    barrel: true,
+    barrelRadiusM: gunBarrel.radiusM,
+  }, FR_BARREL, t));
 }
 
 /**
@@ -902,170 +1124,21 @@ export function traceTank(
   // The legacy entries stay in the model for their non-ray consumers
   // (HE blast targets, hull AABB, killcam bands) — models without
   // trackShapes keep the legacy path bit-identical.
-  const trackShapes = Array.isArray(armorModel.trackShapes) && armorModel.trackShapes.length
-    ? armorModel.trackShapes
-    : null;
-  const trackCovered = (name: ModuleId | null | undefined): boolean => {
-    if (!trackShapes || !name) return false;
-    for (const s of trackShapes) if (s.module === name) return true;
-    return false;
-  };
+  const trackShapes = armorModel.trackShapes?.length ? armorModel.trackShapes : null;
 
   const collisionShells = armorModel.collisionShells || null;
-  const testPlates = (
-    plates: ArmorPlate[] | undefined,
-    frame: FrameIndex,
-    replaceMain: boolean,
-  ): void => {
-    if (!plates) return;
-    for (const plate of plates) {
-      if (replaceMain && (plate.kind || 'main') === 'main') continue;
-      if (plate.kind === 'era' && eraSpent.has(plate.name)) continue;
-      if (plate.kind === 'external' && trackCovered(plate.moduleLink)) continue;
-      const fr = plate.gunFollow ? FR_GUN : frame;
-      const t = intersectQuad(fr, plate.verts);
-      if (t < 0) continue;
-      const cosI = Math.min(1, Math.max(0, -_dirN[fr].dot(_n)));
-      out.push(finishFrameHit({
-        t,
-        kind: 'plate',
-        plate,
-        impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
-      }, fr, t, _n.x, _n.y, _n.z));
-    }
-  };
 
   const hullCells = collisionShells?.hull;
   const turretCells = collisionShells?.turret;
-  testPlates(armorModel.hullPlates, FR_HULL, !!hullCells?.length);
-  testPlates(armorModel.turretPlates, FR_TURRET, !!turretCells?.length);
+  tracePlates(armorModel.hullPlates, FR_HULL, !!hullCells?.length, eraSpent, trackShapes, out);
+  tracePlates(armorModel.turretPlates, FR_TURRET, !!turretCells?.length, eraSpent, trackShapes, out);
   traceCollisionShell(hullCells, FR_HULL, out);
   traceCollisionShell(turretCells, FR_TURRET, out);
 
-  if (trackShapes) {
-    // one module record per module name (min entry / max exit across the
-    // side's prisms — exact single-AABB record semantics for damage.ts's
-    // straddler/post-pen sweep); one PLATE record per crossed prism face
-    // (the external track screen, with the true face normal).
-    let spanL: { t: number; tExit: number } | null = null;
-    let spanR: { t: number; tExit: number } | null = null;
-    for (const shape of trackShapes) {
-      const t = intersectTrackPrism(FR_HULL, shape);
-      if (t < 0) continue;
-      if (t > 0) {
-        const cosI = Math.min(1, Math.max(0,
-          -(_dirN[FR_HULL].x * _pnx + _dirN[FR_HULL].y * _pny + _dirN[FR_HULL].z * _pnz)));
-        out.push(finishFrameHit({
-          t,
-          kind: 'plate',
-          plate: shape.plate,
-          impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
-        }, FR_HULL, t, _pnx, _pny, _pnz));
-      }
-      const span = shape.module === 'trackL' ? spanL : spanR;
-      if (!span) {
-        const rec = { t, tExit: _prismExitT };
-        if (shape.module === 'trackL') spanL = rec; else spanR = rec;
-      } else {
-        if (t < span.t) span.t = t;
-        if (_prismExitT > span.tExit) span.tExit = _prismExitT;
-      }
-    }
-    const spans: Array<[TrackModuleId, { t: number; tExit: number } | null]> = [
-      ['trackL', spanL], ['trackR', spanR],
-    ];
-    for (const [module, span] of spans) {
-      if (!span) continue;
-      out.push(finishFrameHit({
-        t: span.t,
-        tExit: span.tExit,
-        kind: 'module',
-        module,
-        external: false, // parity with the legacy track AABB record
-      }, FR_HULL, span.t));
-    }
-  }
-
-  if (armorModel.modules) {
-    for (const volume of armorModel.modules) {
-      if (trackCovered(volume.module)) continue;
-      const fr = volume.turretLocal ? FR_TURRET : FR_HULL;
-      let t = Infinity;
-      let tExit = -Infinity;
-      if (Array.isArray(volume.shapes) && volume.shapes.length) {
-        for (const shape of volume.shapes) {
-          const shapeT = intersectVolumeShape(fr, shape);
-          if (shapeT < 0) continue;
-          if (shapeT < t) t = shapeT;
-          if (_shapeExitT > tExit) tExit = _shapeExitT;
-        }
-      } else if (Array.isArray(volume.parts) && volume.parts.length) {
-        for (const part of volume.parts) {
-          const partT = intersectAABB(fr, part.min, part.max);
-          if (partT < 0) continue;
-          if (partT < t) t = partT;
-          if (_aabbExitT > tExit) tExit = _aabbExitT;
-        }
-      } else {
-        // Compatibility for hand-built probes. Every playable vehicle is
-        // finalized with precise shapes and fleet tests reject this fallback.
-        t = intersectAABB(fr, volume.min, volume.max);
-        tExit = _aabbExitT;
-      }
-      if (t < 0 || !Number.isFinite(t)) continue;
-      out.push(finishFrameHit({
-        t,
-        tExit,
-        kind: 'module',
-        module: volume.module,
-        // Damageable without hull penetration (armor doc §12: viewports are
-        // external). Explicit box.external overrides the by-name default.
-        external: volume.external !== undefined ? !!volume.external : volume.module === 'optics',
-      }, fr, t));
-    }
-  }
-
-  if (armorModel.crew) {
-    for (const volume of armorModel.crew) {
-      const fr = volume.turretLocal ? FR_TURRET : FR_HULL;
-      let t = Infinity;
-      let tExit = -Infinity;
-      if (Array.isArray(volume.shapes) && volume.shapes.length) {
-        for (const shape of volume.shapes) {
-          const shapeT = intersectVolumeShape(fr, shape);
-          if (shapeT < 0) continue;
-          if (shapeT < t) t = shapeT;
-          if (_shapeExitT > tExit) tExit = _shapeExitT;
-        }
-      } else {
-        t = intersectAABB(fr, volume.min, volume.max);
-        tExit = _aabbExitT;
-      }
-      if (t < 0 || !Number.isFinite(t)) continue;
-      out.push(finishFrameHit({
-        t,
-        tExit,
-        kind: 'crew',
-        crew: volume.crew,
-      }, fr, t));
-    }
-  }
-
-  if (armorModel.gunBarrel) {
-    const t = intersectBarrel(armorModel.gunBarrel.lengthM, armorModel.gunBarrel.radiusM);
-    if (t >= 0) {
-      out.push(finishFrameHit({
-        t,
-        kind: 'module',
-        module: 'gun',
-        external: true,
-        // The barrel doubles as spaced armor (armor doc §4/§7): damage.ts
-        // charges a radius-scaled screen thickness against crossing shells.
-        barrel: true,
-        barrelRadiusM: armorModel.gunBarrel.radiusM,
-      }, FR_BARREL, t));
-    }
-  }
+  if (trackShapes) traceTrackShapes(trackShapes, out);
+  traceModuleVolumes(armorModel.modules, trackShapes, out);
+  traceCrewVolumes(armorModel.crew, out);
+  traceGunBarrel(armorModel.gunBarrel, out);
 
   out.sort((a, b) => a.t - b.t);
   return out;
@@ -1135,41 +1208,58 @@ export function queryAimArmor(
 export function blastTargets(pose: TankArmorPose, armorModel: ArmorModel): BlastTarget[] {
   buildFrames(pose, armorModel);
   const out: BlastTarget[] = [];
-  if (armorModel.modules) {
-    for (const box of armorModel.modules) {
-      const m = box.turretLocal ? _turretM : _hullM;
-      const shapes = Array.isArray(box.shapes) && box.shapes.length ? box.shapes : null;
-      const parts = !shapes && Array.isArray(box.parts) && box.parts.length ? box.parts : null;
-      const shapeCount = shapes ? shapes.length : parts ? parts.length : 1;
-      for (let index = 0; index < shapeCount; index++) {
-        const shape = shapes ? shapes[index] : parts ? parts[index] : box;
-        const center = volumeCenter(shape);
-        out.push({
-          kind: 'module',
-          name: box.module,
-          external:
-            box.external !== undefined
-              ? !!box.external
-              : box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR',
-          point: new Vector3(center[0], center[1], center[2]).applyMatrix4(m),
-        });
-      }
-    }
-  }
-  if (armorModel.crew) {
-    for (const box of armorModel.crew) {
-      const m = box.turretLocal ? _turretM : _hullM;
-      const shapes = Array.isArray(box.shapes) && box.shapes.length ? box.shapes : [box];
-      for (const shape of shapes) {
-        const center = volumeCenter(shape);
-        out.push({
-          kind: 'crew',
-          name: box.crew,
-          external: false,
-          point: new Vector3(center[0], center[1], center[2]).applyMatrix4(m),
-        });
-      }
-    }
-  }
+  appendBlastModuleTargets(armorModel.modules, out);
+  appendBlastCrewTargets(armorModel.crew, out);
   return out;
+}
+
+function blastModuleShapes(box: ArmorModuleVolume): readonly (AabbPart | ArmorVolumeShape)[] {
+  if (box.shapes?.length) return box.shapes;
+  if (box.parts?.length) return box.parts;
+  return [box];
+}
+
+function blastModuleExternal(box: ArmorModuleVolume): boolean {
+  if (box.external !== undefined) return box.external;
+  return box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR';
+}
+
+function appendBlastModuleTargets(
+  modules: readonly ArmorModuleVolume[] | undefined,
+  out: BlastTarget[],
+): void {
+  if (!modules) return;
+  for (const box of modules) {
+    const matrix = box.turretLocal ? _turretM : _hullM;
+    const external = blastModuleExternal(box);
+    for (const shape of blastModuleShapes(box)) {
+      const center = volumeCenter(shape);
+      out.push({
+        kind: 'module',
+        name: box.module,
+        external,
+        point: new Vector3(center[0], center[1], center[2]).applyMatrix4(matrix),
+      });
+    }
+  }
+}
+
+function appendBlastCrewTargets(
+  crew: readonly ArmorCrewVolume[] | undefined,
+  out: BlastTarget[],
+): void {
+  if (!crew) return;
+  for (const box of crew) {
+    const matrix = box.turretLocal ? _turretM : _hullM;
+    const shapes = box.shapes?.length ? box.shapes : [box];
+    for (const shape of shapes) {
+      const center = volumeCenter(shape);
+      out.push({
+        kind: 'crew',
+        name: box.crew,
+        external: false,
+        point: new Vector3(center[0], center[1], center[2]).applyMatrix4(matrix),
+      });
+    }
+  }
 }

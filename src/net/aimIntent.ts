@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 const DEFAULT_AIM_DISTANCE_M = 1000;
 
 export const MIN_AIM_DISTANCE_M = 0.01;
@@ -10,9 +11,9 @@ export interface Vector3Like {
 }
 
 export interface AimIntentInput {
-  aimYaw?: unknown;
-  aimPitch?: unknown;
-  aimDistance?: unknown;
+  aimYaw?: RuntimeValue;
+  aimPitch?: RuntimeValue;
+  aimDistance?: RuntimeValue;
 }
 
 export interface AimIntent {

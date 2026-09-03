@@ -17,6 +17,7 @@ interface GarageReturnTransitionOptions {
   mapId: string;
   progress: boolean;
   minShowMs: number;
+  pace?: 'standard' | 'quick';
 }
 
 interface GarageReturnTransitionPort {
@@ -113,6 +114,7 @@ export interface GarageReturnRuntimeOptions<Visual = object> {
   transition: GarageReturnTransitionPort;
   restoreGaragePresentation(): Promise<NonNullable<GarageReturnTrace['presentationRestore']>>;
   isBattleEntryPending(): boolean;
+  isBattleEntryCovering(): boolean;
   nowMs?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
   publishTrace?: (trace: GarageReturnTrace) => void;
@@ -190,13 +192,14 @@ function validateGarageReturnPorts<Visual>(
         getSelectedSpecId: options.getSelectedSpecId,
         restoreGaragePresentation: options.restoreGaragePresentation,
         isBattleEntryPending: options.isBattleEntryPending,
+        isBattleEntryCovering: options.isBattleEntryCovering,
         nowMs: options.nowMs ?? (() => performance.now()),
         sleep: options.sleep ?? (() => Promise.resolve()),
         publishTrace: options.publishTrace ?? (() => {}),
       },
       'garage return lifecycle',
       ['getSelectedSpecId', 'restoreGaragePresentation', 'isBattleEntryPending',
-        'nowMs', 'sleep', 'publishTrace'],
+        'isBattleEntryCovering', 'nowMs', 'sleep', 'publishTrace'],
     );
   } catch {
     throw new TypeError('garage return runtime requires every lifecycle port');
@@ -227,6 +230,7 @@ export function createGarageReturnRuntime<Visual = object>(
     transition,
     restoreGaragePresentation,
     isBattleEntryPending,
+    isBattleEntryCovering,
     nowMs = () => performance.now(),
     sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
     publishTrace = () => {},
@@ -346,18 +350,26 @@ export function createGarageReturnRuntime<Visual = object>(
       title: 'Garage',
       mapId: world.currentMapId() || game.mapId,
       progress: false,
-      minShowMs: 250,
+      minShowMs: 150,
+      pace: 'quick',
     });
   });
 
   const battleAgain = (): Promise<void> => {
     if (activeTransition) return activeTransition;
-    const returnToGarage = beginTransition(async () => {
+    return beginTransition(async () => {
       const waitStartedAt = nowMs();
       while (isBattleEntryPending() && nowMs() - waitStartedAt < 15_000) {
         await sleep(150);
       }
-      await transition.run(() => enter(), {
+      await transition.run(async () => {
+        await enter();
+        ui.triggerBattle();
+        const handoffStartedAt = nowMs();
+        while (!isBattleEntryCovering() && nowMs() - handoffStartedAt < 15_000) {
+          await sleep(16);
+        }
+      }, {
         kicker: 'Regrouping',
         title: 'Next battle',
         mapId: world.currentMapId() || game.mapId,
@@ -365,9 +377,6 @@ export function createGarageReturnRuntime<Visual = object>(
         minShowMs: 420,
       });
     });
-    // Match the old lifecycle exactly: release the transition latch before
-    // driving the canonical Battle action for the next round.
-    return returnToGarage.then(() => { ui.triggerBattle(); });
   };
 
   return {

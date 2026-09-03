@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Pure audio catalogs and timing policy.
  *
@@ -31,7 +32,7 @@ export function mulberry32(seed: number): () => number {
 }
 
 /** Web Audio rejects negative/past automation times, including at startup. */
-export function safeAudioStart(now: unknown, scheduled: unknown, leadS = 0.001): number {
+export function safeAudioStart(now: RuntimeValue, scheduled: RuntimeValue, leadS = 0.001): number {
   return Math.max(0, Number(now) + leadS, Number(scheduled));
 }
 
@@ -126,14 +127,14 @@ export const ENGINE_SOUND_PROFILES: Readonly<Record<string, Readonly<EngineSound
 });
 
 interface VehicleAudioSpec {
-  role?: unknown;
-  weightTons?: unknown;
-  era?: unknown;
+  role?: RuntimeValue;
+  weightTons?: RuntimeValue;
+  era?: RuntimeValue;
 }
 
 /** Resolve an audible powertrain family without adding fields to simulation. */
 export function resolveEngineSoundProfile(
-  specId: unknown,
+  specId: RuntimeValue,
   spec: VehicleAudioSpec | null = null,
 ): Readonly<EngineSoundProfile> {
   const id = String(specId || '').toLowerCase();
@@ -150,18 +151,18 @@ export function resolveEngineSoundProfile(
   return ENGINE_SOUND_PROFILES.legacyDiesel;
 }
 
-export function worldDistanceGain(distanceM: unknown): number {
+export function worldDistanceGain(distanceM: RuntimeValue): number {
   const distance = Math.max(0.5, Number(distanceM) || 0.5);
   const gain = Math.min(AUDIO_DISTANCE_MODEL.referenceM / distance, 1);
   return Math.pow(gain, AUDIO_DISTANCE_MODEL.rolloff);
 }
 
-export function distanceLowpassHz(distanceM: unknown): number {
+export function distanceLowpassHz(distanceM: RuntimeValue): number {
   const distance = Math.max(0, Number(distanceM) || 0);
   return Math.max(450, Math.min(18000, 18000 * (40 / (40 + distance))));
 }
 
-export function engineAudibleAtDistance(distanceM: unknown, alreadyActive = false): boolean {
+export function engineAudibleAtDistance(distanceM: RuntimeValue, alreadyActive = false): boolean {
   if (typeof distanceM !== 'number' || !Number.isFinite(distanceM)) return false;
   const limit = alreadyActive
     ? AUDIO_DISTANCE_MODEL.engineHearOutM
@@ -226,7 +227,7 @@ export const WEAPON_REPORT_PROFILES: Readonly<Record<string, Readonly<WeaponRepo
   'ataka-launch': Object.freeze({ kind: 'launcher', rate: 0.95, gain: 0.98, crackGain: 0, tailGain: 0, mechanicalHz: 300, mechanicalGain: 0.18, toneHz: 126, hissGain: 0.88, durationS: 1.18, twin: true }),
 });
 
-export function resolveWeaponReportProfile(id: unknown): Readonly<WeaponReportProfile> {
+export function resolveWeaponReportProfile(id: RuntimeValue): Readonly<WeaponReportProfile> {
   return WEAPON_REPORT_PROFILES[String(id || '')] || DEFAULT_WEAPON_REPORT;
 }
 
@@ -246,9 +247,9 @@ export interface ReloadCuePlan {
 
 /** Build the mechanical cue sequence for one authoritative reload cycle. */
 export function resolveReloadCuePlan(
-  totalS: unknown,
+  totalS: RuntimeValue,
   kind = 'shell',
-  caliberMm: unknown = 100,
+  caliberMm: RuntimeValue = 100,
 ): ReloadCuePlan {
   const total = Math.max(0.05, Number(totalS) || 0.05);
   const caliber = Math.max(12, Number(caliberMm) || 100);

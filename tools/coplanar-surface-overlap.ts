@@ -62,6 +62,23 @@ interface InternalFinding {
   exteriorSample?: Vec3Tuple | null;
 }
 
+interface TriangleCollection {
+  readonly groups: Map<string, SurfaceTriangle[]>;
+  readonly skipped: { instancedMeshes: number; batchedMeshes: number; mitigatedMaterials: number };
+  readonly rasterMeshes: THREE.Mesh[];
+  objects: number;
+  triangles: number;
+}
+
+interface TriangleScratch {
+  readonly a: THREE.Vector3;
+  readonly b: THREE.Vector3;
+  readonly c: THREE.Vector3;
+  readonly edgeA: THREE.Vector3;
+  readonly edgeB: THREE.Vector3;
+  readonly faceNormal: THREE.Vector3;
+}
+
 export type CoplanarFinding = Omit<InternalFinding, '_objectRefs' | '_samples'>;
 
 export interface CoplanarAuditResult {
@@ -317,177 +334,286 @@ function exteriorSamples(
   return raycasts;
 }
 
+function createTriangleScratch(): TriangleScratch {
+  return {
+    a: new THREE.Vector3(),
+    b: new THREE.Vector3(),
+    c: new THREE.Vector3(),
+    edgeA: new THREE.Vector3(),
+    edgeB: new THREE.Vector3(),
+    faceNormal: new THREE.Vector3(),
+  };
+}
+
+function auditMesh(
+  object: THREE.Object3D,
+  root: THREE.Object3D,
+  collection: TriangleCollection,
+): THREE.Mesh | null {
+  if (!(object instanceof THREE.Mesh) || !effectivelyVisible(object, root)) return null;
+  if (object instanceof THREE.InstancedMesh) {
+    collection.skipped.instancedMeshes += 1;
+    return null;
+  }
+  if (object instanceof THREE.BatchedMesh) {
+    collection.skipped.batchedMeshes += 1;
+    return null;
+  }
+  if (object.userData?.vehicleMarking || object.userData?.authoredShadowProxy) return null;
+  return object.geometry.getAttribute('position') ? object : null;
+}
+
+function triangleDepthKey(object: THREE.Mesh, material: THREE.Material): string {
+  const layer = object.userData?.coplanarDepthLayer;
+  if (Number.isFinite(layer)) return `object:${layer}`;
+  if (material.polygonOffset) {
+    return `material:${material.polygonOffsetFactor || 0}:${material.polygonOffsetUnits || 0}`;
+  }
+  return 'base:0';
+}
+
+function readSurfaceTriangle(
+  object: THREE.Mesh,
+  objectId: number,
+  path: string,
+  offset: number,
+  settings: AuditSettings,
+  collection: TriangleCollection,
+  scratch: TriangleScratch,
+): { readonly planeKey: string; readonly triangle: SurfaceTriangle } | null {
+  const geometry = object.geometry;
+  const position = geometry.getAttribute('position');
+  const index = geometry.index;
+  const materialIndex = materialIndexAt(geometry, offset);
+  const material = materialAt(object, materialIndex);
+  if (!materialIsRasterRelevant(material)) {
+    collection.skipped.mitigatedMaterials += 1;
+    return null;
+  }
+  const vertexIndex = (vertexOffset: number): number =>
+    index ? index.getX(vertexOffset) : vertexOffset;
+  scratch.a.fromBufferAttribute(position, vertexIndex(offset)).applyMatrix4(object.matrixWorld);
+  scratch.b.fromBufferAttribute(position, vertexIndex(offset + 1)).applyMatrix4(object.matrixWorld);
+  scratch.c.fromBufferAttribute(position, vertexIndex(offset + 2)).applyMatrix4(object.matrixWorld);
+  scratch.edgeA.subVectors(scratch.b, scratch.a);
+  scratch.edgeB.subVectors(scratch.c, scratch.a);
+  scratch.faceNormal.crossVectors(scratch.edgeA, scratch.edgeB);
+  const twiceArea = scratch.faceNormal.length();
+  if (twiceArea <= settings.areaEpsilonM2 * 2) return null;
+  scratch.faceNormal.multiplyScalar(1 / twiceArea);
+  const plane = canonicalPlane(
+    scratch.faceNormal,
+    scratch.a,
+    settings.planeEpsilonM,
+    settings.normalEpsilon,
+  );
+  const points: readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple] = [
+    [scratch.a.x, scratch.a.y, scratch.a.z],
+    [scratch.b.x, scratch.b.y, scratch.b.z],
+    [scratch.c.x, scratch.c.y, scratch.c.z],
+  ];
+  const droppedAxis = projectionAxis(plane.normal);
+  return {
+    planeKey: plane.key,
+    triangle: {
+      objectId,
+      surfaceId: `${objectId}:${materialIndex}`,
+      object: object.name || '(unnamed)',
+      path,
+      material: material.name || material.type || '(unnamed)',
+      materialIndex,
+      depthLayer: object.userData?.coplanarDepthLayer ?? null,
+      depthKey: triangleDepthKey(object, material),
+      normal: [scratch.faceNormal.x, scratch.faceNormal.y, scratch.faceNormal.z],
+      planeNormal: plane.normal,
+      planeDistance: plane.distance,
+      objectRef: object,
+      points,
+      areaM2: twiceArea * 0.5,
+      droppedAxis,
+      ...projectedTriangle(points, droppedAxis),
+    },
+  };
+}
+
+function collectMeshTriangles(
+  object: THREE.Mesh,
+  root: THREE.Object3D,
+  settings: AuditSettings,
+  collection: TriangleCollection,
+  scratch: TriangleScratch,
+): void {
+  const geometry = object.geometry;
+  const position = geometry.getAttribute('position');
+  const fullCount = geometry.index?.count || position.count;
+  const start = Math.max(0, geometry.drawRange?.start || 0);
+  const requestedCount = geometry.drawRange?.count;
+  const end = Number.isFinite(requestedCount)
+    ? Math.min(fullCount, start + requestedCount)
+    : fullCount;
+  const objectId = collection.objects++;
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  if (materials.some(materialIsRasterRelevant)) collection.rasterMeshes.push(object);
+  const path = objectPath(object, root);
+  for (let offset = start; offset + 2 < end; offset += 3) {
+    const result = readSurfaceTriangle(
+      object, objectId, path, offset, settings, collection, scratch);
+    if (!result) continue;
+    const bucket = collection.groups.get(result.planeKey) || [];
+    bucket.push(result.triangle);
+    collection.groups.set(result.planeKey, bucket);
+    collection.triangles += 1;
+  }
+}
+
+function collectSurfaceTriangles(root: THREE.Object3D, settings: AuditSettings): TriangleCollection {
+  const collection: TriangleCollection = {
+    groups: new Map(),
+    skipped: { instancedMeshes: 0, batchedMeshes: 0, mitigatedMaterials: 0 },
+    rasterMeshes: [],
+    objects: 0,
+    triangles: 0,
+  };
+  const scratch = createTriangleScratch();
+  root.updateMatrixWorld(true);
+  root.traverse((object) => {
+    const mesh = auditMesh(object, root, collection);
+    if (mesh) collectMeshTriangles(mesh, root, settings, collection, scratch);
+  });
+  return collection;
+}
+
+function preliminaryOverlap(
+  other: SurfaceTriangle,
+  current: SurfaceTriangle,
+  settings: AuditSettings,
+): boolean {
+  if (!settings.includeSameObject && other.objectId === current.objectId) return false;
+  if (other.surfaceId === current.surfaceId) return false;
+  if (other.maxV < current.minV - settings.planeEpsilonM) return false;
+  if (current.maxV < other.minV - settings.planeEpsilonM) return false;
+  const facingDot = other.normal[0] * current.normal[0]
+    + other.normal[1] * current.normal[1]
+    + other.normal[2] * current.normal[2];
+  return facingDot >= 1 - settings.normalEpsilon * 4;
+}
+
+function intersectionSample(
+  other: SurfaceTriangle,
+  current: SurfaceTriangle,
+  settings: AuditSettings,
+): { readonly polygon: Vec2Tuple[]; readonly areaM2: number } | null {
+  const polygon = triangleIntersectionPolygon2D(
+    other.projected,
+    current.projected,
+    settings.planeEpsilonM * 0.01,
+  );
+  const projectedArea = polygon.length ? Math.abs(signedArea2D(polygon)) : 0;
+  if (projectedArea <= settings.areaEpsilonM2) return null;
+  const normalScale = Math.max(
+    Math.abs(current.normal[current.droppedAxis]),
+    settings.normalEpsilon,
+  );
+  const areaM2 = projectedArea / normalScale;
+  return areaM2 > settings.areaEpsilonM2 ? { polygon, areaM2 } : null;
+}
+
+function addFindingSample(
+  finding: InternalFinding,
+  polygon: readonly Vec2Tuple[],
+  triangle: SurfaceTriangle,
+): void {
+  if (finding._samples.length >= 32) return;
+  let sumU = 0;
+  let sumV = 0;
+  for (const point of polygon) {
+    sumU += point[0];
+    sumV += point[1];
+  }
+  const centroid: Vec2Tuple = [sumU / polygon.length, sumV / polygon.length];
+  finding._samples.push({
+    point: liftPoint(
+      centroid,
+      triangle.droppedAxis,
+      triangle.planeNormal,
+      triangle.planeDistance,
+    ),
+    normal: triangle.normal,
+  });
+}
+
+function recordOverlap(
+  overlaps: Map<string, InternalFinding>,
+  planeKey: string,
+  other: SurfaceTriangle,
+  current: SurfaceTriangle,
+  sample: { readonly polygon: Vec2Tuple[]; readonly areaM2: number },
+): void {
+  const ordered = other.surfaceId < current.surfaceId ? [other, current] : [current, other];
+  const pairKey = `${ordered[0].surfaceId}|${ordered[1].surfaceId}|${planeKey}`;
+  const finding = overlaps.get(pairKey) || {
+    plane: planeKey,
+    surfaces: ordered.map(surfaceDescription),
+    areaM2: 0,
+    trianglePairs: 0,
+    sampleTriangle: ordered.map((triangle) => triangle.points),
+    _objectRefs: ordered.map((triangle) => triangle.objectRef),
+    _samples: [],
+    depthMitigated: ordered[0].depthKey !== ordered[1].depthKey,
+  };
+  finding.areaM2 += sample.areaM2;
+  finding.trianglePairs += 1;
+  addFindingSample(finding, sample.polygon, current);
+  overlaps.set(pairKey, finding);
+}
+
+function pruneInactiveTriangles(
+  active: SurfaceTriangle[],
+  minimumU: number,
+  epsilon: number,
+): void {
+  for (let index = active.length - 1; index >= 0; index -= 1) {
+    if (active[index].maxU < minimumU - epsilon) active.splice(index, 1);
+  }
+}
+
+function findSurfaceOverlaps(
+  groups: ReadonlyMap<string, SurfaceTriangle[]>,
+  settings: AuditSettings,
+): { readonly overlaps: Map<string, InternalFinding>; readonly candidatePairs: number } {
+  const overlaps = new Map<string, InternalFinding>();
+  let candidatePairs = 0;
+  for (const [planeKey, triangles] of groups) {
+    if (triangles.length < 2) continue;
+    triangles.sort((left, right) => left.minU - right.minU);
+    const active: SurfaceTriangle[] = [];
+    for (const current of triangles) {
+      pruneInactiveTriangles(active, current.minU, settings.planeEpsilonM);
+      for (const other of active) {
+        if (!preliminaryOverlap(other, current, settings)) continue;
+        candidatePairs += 1;
+        const sample = intersectionSample(other, current, settings);
+        if (sample) recordOverlap(overlaps, planeKey, other, current, sample);
+      }
+      active.push(current);
+    }
+  }
+  return { overlaps, candidatePairs };
+}
+
 export function findCoplanarSurfaceOverlaps(
   root: THREE.Object3D,
   options: Partial<AuditSettings> = {},
 ): CoplanarAuditResult {
   const settings = { ...DEFAULTS, ...options };
-  const groups = new Map<string, SurfaceTriangle[]>();
-  const skipped = { instancedMeshes: 0, batchedMeshes: 0, mitigatedMaterials: 0 };
-  const a = new THREE.Vector3();
-  const b = new THREE.Vector3();
-  const c = new THREE.Vector3();
-  const edgeA = new THREE.Vector3();
-  const edgeB = new THREE.Vector3();
-  const faceNormal = new THREE.Vector3();
-  let triangleCount = 0;
-  let objectOrdinal = 0;
-  const rasterMeshes: THREE.Mesh[] = [];
-
-  root.updateMatrixWorld(true);
-  root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || !effectivelyVisible(object, root)) return;
-    if (object instanceof THREE.InstancedMesh) {
-      skipped.instancedMeshes += 1;
-      return;
-    }
-    if (object instanceof THREE.BatchedMesh) {
-      skipped.batchedMeshes += 1;
-      return;
-    }
-    if (object.userData?.vehicleMarking || object.userData?.authoredShadowProxy) return;
-    const geometry = object.geometry;
-    const position = geometry.getAttribute('position');
-    if (!position) return;
-    const index = geometry.index;
-    const fullCount = index?.count || position.count;
-    const start = Math.max(0, geometry.drawRange?.start || 0);
-    const requestedCount = geometry.drawRange?.count;
-    const end = Number.isFinite(requestedCount)
-      ? Math.min(fullCount, start + requestedCount)
-      : fullCount;
-    const objectId = objectOrdinal++;
-    if ((Array.isArray(object.material) ? object.material : [object.material])
-      .some(materialIsRasterRelevant)) rasterMeshes.push(object);
-    const path = objectPath(object, root);
-    const vertexIndex = (offset: number): number => index ? index.getX(offset) : offset;
-
-    for (let offset = start; offset + 2 < end; offset += 3) {
-      const materialIndex = materialIndexAt(geometry, offset);
-      const material = materialAt(object, materialIndex);
-      if (!materialIsRasterRelevant(material)) {
-        skipped.mitigatedMaterials += 1;
-        continue;
-      }
-      a.fromBufferAttribute(position, vertexIndex(offset)).applyMatrix4(object.matrixWorld);
-      b.fromBufferAttribute(position, vertexIndex(offset + 1)).applyMatrix4(object.matrixWorld);
-      c.fromBufferAttribute(position, vertexIndex(offset + 2)).applyMatrix4(object.matrixWorld);
-      edgeA.subVectors(b, a);
-      edgeB.subVectors(c, a);
-      faceNormal.crossVectors(edgeA, edgeB);
-      const twiceArea = faceNormal.length();
-      if (twiceArea <= settings.areaEpsilonM2 * 2) continue;
-      faceNormal.multiplyScalar(1 / twiceArea);
-      const plane = canonicalPlane(faceNormal, a, settings.planeEpsilonM, settings.normalEpsilon);
-      const points: readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple] = [
-        [a.x, a.y, a.z],
-        [b.x, b.y, b.z],
-        [c.x, c.y, c.z],
-      ];
-      const droppedAxis = projectionAxis(plane.normal);
-      const projected = projectedTriangle(points, droppedAxis);
-      const entry: SurfaceTriangle = {
-        objectId,
-        surfaceId: `${objectId}:${materialIndex}`,
-        object: object.name || '(unnamed)',
-        path,
-        material: material.name || material.type || '(unnamed)',
-        materialIndex,
-        depthLayer: object.userData?.coplanarDepthLayer ?? null,
-        depthKey: Number.isFinite(object.userData?.coplanarDepthLayer)
-          ? `object:${object.userData.coplanarDepthLayer}`
-          : material.polygonOffset
-            ? `material:${material.polygonOffsetFactor || 0}:${material.polygonOffsetUnits || 0}`
-            : 'base:0',
-        normal: [faceNormal.x, faceNormal.y, faceNormal.z],
-        planeNormal: plane.normal,
-        planeDistance: plane.distance,
-        objectRef: object,
-        points,
-        areaM2: twiceArea * 0.5,
-        droppedAxis,
-        ...projected,
-      };
-      const bucket = groups.get(plane.key) || [];
-      bucket.push(entry);
-      groups.set(plane.key, bucket);
-      triangleCount += 1;
-    }
-  });
-
-  const overlaps = new Map<string, InternalFinding>();
-  let candidatePairs = 0;
-  for (const [planeKey, triangles] of groups) {
-    if (triangles.length < 2) continue;
-    triangles.sort((lhs, rhs) => lhs.minU - rhs.minU);
-    const active = [];
-    for (const current of triangles) {
-      for (let index = active.length - 1; index >= 0; index -= 1) {
-        if (active[index].maxU < current.minU - settings.planeEpsilonM) active.splice(index, 1);
-      }
-      for (const other of active) {
-        if (!settings.includeSameObject && other.objectId === current.objectId) continue;
-        if (other.surfaceId === current.surfaceId) continue;
-        if (other.maxV < current.minV - settings.planeEpsilonM
-          || current.maxV < other.minV - settings.planeEpsilonM) continue;
-        const facingDot = other.normal[0] * current.normal[0]
-          + other.normal[1] * current.normal[1]
-          + other.normal[2] * current.normal[2];
-        if (facingDot < 1 - settings.normalEpsilon * 4) continue;
-        candidatePairs += 1;
-        const intersectionPolygon = triangleIntersectionPolygon2D(
-          other.projected, current.projected, settings.planeEpsilonM * 0.01);
-        const projectedArea = intersectionPolygon.length
-          ? Math.abs(signedArea2D(intersectionPolygon)) : 0;
-        if (projectedArea <= settings.areaEpsilonM2) continue;
-        const normalScale = Math.max(
-          Math.abs(current.normal[current.droppedAxis]),
-          settings.normalEpsilon,
-        );
-        const areaM2 = projectedArea / normalScale;
-        if (areaM2 <= settings.areaEpsilonM2) continue;
-        const ordered = other.surfaceId < current.surfaceId ? [other, current] : [current, other];
-        const pairKey = `${ordered[0].surfaceId}|${ordered[1].surfaceId}|${planeKey}`;
-        const finding = overlaps.get(pairKey) || {
-          plane: planeKey,
-          surfaces: ordered.map(surfaceDescription),
-          areaM2: 0,
-          trianglePairs: 0,
-          sampleTriangle: ordered.map((triangle) => triangle.points),
-          _objectRefs: ordered.map((triangle) => triangle.objectRef),
-          _samples: [],
-          depthMitigated: ordered[0].depthKey !== ordered[1].depthKey,
-        };
-        finding.areaM2 += areaM2;
-        finding.trianglePairs += 1;
-        if (finding._samples.length < 32) {
-          let sumU = 0;
-          let sumV = 0;
-          for (const point of intersectionPolygon) {
-            sumU += point[0];
-            sumV += point[1];
-          }
-          const centroid: Vec2Tuple = [
-            sumU / intersectionPolygon.length,
-            sumV / intersectionPolygon.length,
-          ];
-          finding._samples.push({
-            point: liftPoint(centroid, current.droppedAxis,
-              current.planeNormal, current.planeDistance),
-            normal: current.normal,
-          });
-        }
-        overlaps.set(pairKey, finding);
-      }
-      active.push(current);
-    }
-  }
+  const collection = collectSurfaceTriangles(root, settings);
+  const { overlaps, candidatePairs } = findSurfaceOverlaps(collection.groups, settings);
 
   const rawFindings = [...overlaps.values()]
     .map((finding) => ({ ...finding, areaM2: Number(finding.areaM2.toFixed(9)) }))
     .filter((finding) => finding.areaM2 > settings.areaEpsilonM2)
     .sort((lhs, rhs) => rhs.areaM2 - lhs.areaM2);
-  const raycasts = exteriorSamples(rawFindings, rasterMeshes,
+  const raycasts = exteriorSamples(rawFindings, collection.rasterMeshes,
     Math.max(settings.planeEpsilonM * 8, 1e-4));
   const visibleFindings = rawFindings.filter((finding) => finding.exteriorSample);
   const cleanFinding = (
@@ -500,9 +626,9 @@ export function findCoplanarSurfaceOverlaps(
   return {
     settings,
     stats: {
-      objects: objectOrdinal,
-      triangles: triangleCount,
-      planeGroups: groups.size,
+      objects: collection.objects,
+      triangles: collection.triangles,
+      planeGroups: collection.groups.size,
       candidatePairs,
       findings: findings.length,
       rawFindings: rawFindings.length,
@@ -513,7 +639,7 @@ export function findCoplanarSurfaceOverlaps(
         .reduce((sum, finding) => sum + finding.areaM2, 0).toFixed(9)),
       visibilityRaycasts: raycasts,
       overlapAreaM2: Number(findings.reduce((sum, finding) => sum + finding.areaM2, 0).toFixed(9)),
-      skipped,
+      skipped: collection.skipped,
     },
     findings,
     mitigatedFindings,

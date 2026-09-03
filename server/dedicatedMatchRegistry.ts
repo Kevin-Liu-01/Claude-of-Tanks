@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 // The full authored fleet registers through tankFactory's module graph. No
 // visual is instantiated here, but loading this side-effect boundary ensures
@@ -39,13 +40,13 @@ export interface DedicatedMatchCreateOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
   seed?: number;
-  metadata?: Record<string, unknown> | null;
+  metadata?: Record<string, RuntimeValue> | null;
 }
 
 export interface DedicatedMatchCredentials {
-  matchId?: unknown;
-  playerId?: unknown;
-  token?: unknown;
+  matchId?: RuntimeValue;
+  playerId?: RuntimeValue;
+  token?: RuntimeValue;
 }
 
 export interface DedicatedMatchAttachOptions extends DedicatedMatchCredentials {
@@ -64,7 +65,7 @@ export interface DedicatedMatchRecord {
   id: string;
   mapId: string;
   seed: number;
-  metadata: Record<string, unknown> | null;
+  metadata: Record<string, RuntimeValue> | null;
   players: Map<string, DedicatedPlayerState>;
   simulation: AuthoritativeMatch;
   runtime: AuthoritativeMatchRuntime;
@@ -88,11 +89,11 @@ export interface DedicatedMatchRegistryStats {
   connectedPlayers: number;
 }
 
-function hashToken(token: unknown): Buffer {
+function hashToken(token: RuntimeValue): Buffer {
   return createHash('sha256').update(String(token)).digest();
 }
 
-function tokenMatches(expected: Buffer, received: unknown): boolean {
+function tokenMatches(expected: Buffer, received: RuntimeValue): boolean {
   const actual = hashToken(received);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
@@ -241,7 +242,7 @@ export class DedicatedMatchRegistry {
     return steps;
   }
 
-  removeMatch(matchId: unknown, reason = 'match_removed'): boolean {
+  removeMatch(matchId: RuntimeValue, reason = 'match_removed'): boolean {
     const match = this.matches.get(String(matchId));
     if (!match) return false;
     this.matches.delete(match.id);

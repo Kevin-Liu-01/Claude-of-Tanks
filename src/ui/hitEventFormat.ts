@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared presentation rules for resolved shell-hit events. Keep these rules
 // out of individual panels so the kill-cam and shot report cannot drift.
 
@@ -8,7 +9,7 @@ export interface HitEventPresentation {
   readonly kind?: string;
   readonly damage?: number;
   readonly modulesHit?: readonly { readonly newState?: string }[];
-  readonly crewHit?: readonly unknown[];
+  readonly crewHit?: readonly RuntimeValue[];
   readonly zone?: string;
   readonly shellType?: string;
   readonly shellName?: string;
@@ -162,6 +163,34 @@ function shellsForSpec(id: string): readonly PresentationShell[] | undefined {
   return spec.gun?.shells;
 }
 
+function matchingPresentationShell(
+  shells: readonly PresentationShell[] | undefined,
+  event: HitEventPresentation,
+): PresentationShell | null {
+  if (!shells) return null;
+  return shells.find((candidate) => (
+    candidate.name === event.shellName && candidate.type === event.shellType
+  )) || shells.find((candidate) => candidate.type === event.shellType) || null;
+}
+
+function globallyUnambiguousShell(event: HitEventPresentation): PresentationShell | null {
+  if (!event.shellName) return null;
+  let resolvedPen = -1;
+  let resolvedShell: PresentationShell | null = null;
+  for (const id of RUNTIME_TANK_IDS) {
+    const candidates = shellsForSpec(id);
+    if (!candidates) continue;
+    for (const candidate of candidates) {
+      if (candidate.name !== event.shellName || candidate.type !== event.shellType) continue;
+      const pen = Math.round(penAtDistanceMm(candidate, event.flightDistM || 0));
+      if (resolvedPen !== -1 && pen !== resolvedPen) return null;
+      resolvedPen = pen;
+      resolvedShell = candidate;
+    }
+  }
+  return resolvedShell;
+}
+
 /** Convert a simulation zone id into its player-facing label. */
 export function zoneLabel(zone: string | null | undefined): string {
   if (!zone) return '—';
@@ -192,30 +221,7 @@ export function shellDisplayName(ev: HitEventPresentation): string {
 export function nominalPenFor(ev: HitEventPresentation): number {
   try {
     const shells = ev.attackerSpecId ? shellsForSpec(ev.attackerSpecId) : undefined;
-    let shell = shells
-      ? (shells.find((candidate) => (
-        candidate.name === ev.shellName && candidate.type === ev.shellType
-      )) || shells.find((candidate) => candidate.type === ev.shellType))
-      : null;
-
-    if (!shell && ev.shellName) {
-      let resolvedPen = -1;
-      for (const id of RUNTIME_TANK_IDS) {
-        const candidates = shellsForSpec(id);
-        if (!candidates) continue;
-        for (const candidate of candidates) {
-          if (candidate.name !== ev.shellName || candidate.type !== ev.shellType) continue;
-          const pen = Math.round(penAtDistanceMm(candidate, ev.flightDistM || 0));
-          if (resolvedPen === -1) {
-            resolvedPen = pen;
-            shell = candidate;
-          } else if (pen !== resolvedPen) {
-            return 0;
-          }
-        }
-      }
-    }
-
+    const shell = matchingPresentationShell(shells, ev) || globallyUnambiguousShell(ev);
     return shell ? Math.round(penAtDistanceMm(shell, ev.flightDistM || 0)) : 0;
   } catch {
     return 0;

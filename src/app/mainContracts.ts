@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import type * as THREE from 'three';
 import type { EventBus, GameState } from '../game/stateCore.ts';
 import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
@@ -25,12 +26,12 @@ export interface MainFxRuntime extends Omit<
   'bindBus' | 'preloadTextures' | 'update'
 > {
   bindBus(bus: EventBus): void;
-  preloadTextures(): Promise<unknown>;
+  preloadTextures(): Promise<RuntimeValue>;
   update(
     dt: number,
-    shells: unknown[],
+    shells: RuntimeValue[],
     camera: THREE.Camera,
-    resolveSubject?: ((id: string) => unknown) | null,
+    resolveSubject?: ((id: string) => RuntimeValue) | null,
   ): void;
 }
 
@@ -63,7 +64,7 @@ export type MainGameState = Omit<
   player: MainEntity | null;
   spotting: MainSpottingRuntime | null;
   matchModeState: HudMatchModeState | null;
-  killcam?: unknown;
+  killcam?: RuntimeValue;
 };
 
 export type MainWorld = WorldRuntime;
@@ -77,25 +78,25 @@ export type MainMobileAutoAimRuntime = MobileAutoAimRuntime;
 
 declare global {
   interface Window {
-    __BATTLE_REVEAL?: unknown;
+    __BATTLE_REVEAL?: RuntimeValue;
     __BOOT_MS?: number;
     __BOOT_TIMINGS?: Record<string, number>;
     __GAME_READY?: boolean;
-    __GARAGE_ENTRY?: unknown;
-    __GARAGE_IDLE_WORK?: unknown;
-    __MINIMAP_LOAD?: unknown;
-    __NETWORK_ENTRY_FAILURE?: unknown;
-    __NETWORK_LOAD?: unknown;
-    __PERF_HUD?: unknown;
-    __SHOTS?: unknown;
-    __SWITCH_TIMINGS?: Array<Record<string, unknown>>;
-    __PED_TRACE?: Array<Record<string, unknown>>;
-    __START_BATTLE_TIMINGS?: unknown;
-    __STUDIO?: unknown;
-    __STUDIO_LOAD?: unknown;
-    __STUDIO_WARM?: unknown;
-    __VISUAL_LOAD_TIMINGS?: unknown[];
-    __WORLD_LOAD?: unknown;
-    __WORLD_PREFETCH?: unknown;
+    __GARAGE_ENTRY?: RuntimeValue;
+    __GARAGE_IDLE_WORK?: RuntimeValue;
+    __MINIMAP_LOAD?: RuntimeValue;
+    __NETWORK_ENTRY_FAILURE?: RuntimeValue;
+    __NETWORK_LOAD?: RuntimeValue;
+    __PERF_HUD?: RuntimeValue;
+    __SHOTS?: RuntimeValue;
+    __SWITCH_TIMINGS?: Array<Record<string, RuntimeValue>>;
+    __PED_TRACE?: Array<Record<string, RuntimeValue>>;
+    __START_BATTLE_TIMINGS?: RuntimeValue;
+    __STUDIO?: RuntimeValue;
+    __STUDIO_LOAD?: RuntimeValue;
+    __STUDIO_WARM?: RuntimeValue;
+    __VISUAL_LOAD_TIMINGS?: RuntimeValue[];
+    __WORLD_LOAD?: RuntimeValue;
+    __WORLD_PREFETCH?: RuntimeValue;
   }
 }

@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
  *
@@ -128,7 +129,7 @@ export interface StudioEffectRecipe {
   readonly to?: readonly number[];
   readonly at?: readonly number[];
   readonly hFrac?: number;
-  readonly params?: Readonly<Record<string, unknown>>;
+  readonly params?: Readonly<Record<string, RuntimeValue>>;
 }
 
 export interface StudioPanelApi {
@@ -157,39 +158,39 @@ export interface StudioPanelApi {
   getStoryboard(): StudioStoryboard;
   listEffects(): readonly StudioEffect[];
   recordingStatus(): StudioRecordingStatus;
-  state(): Record<string, unknown>;
+  state(): Record<string, RuntimeValue>;
   exit(): void;
-  setMap(id: string): Promise<unknown> | unknown;
-  addActor(config: Readonly<Record<string, unknown>>): unknown;
-  removeActor(actor: StudioActor): unknown;
-  updateActor(actor: StudioActor, patch: Readonly<Record<string, unknown>>): unknown;
-  setActorState(actor: StudioActor, state: string, ageS?: number | null): unknown;
-  selectActor(uid: string): unknown;
-  effect(recipe: StudioEffectRecipe): unknown;
-  clearEffects(): unknown;
-  advanceFx(milliseconds: number): unknown;
-  setStoryboardDuration(milliseconds: number): unknown;
-  setTimeScale(scale: number): unknown;
-  stop(): unknown;
-  pause(): unknown;
-  play(): unknown;
-  seek(milliseconds: number): unknown;
-  addCameraShot(): unknown;
-  keyActor(actor: StudioActor): unknown;
-  setRailVisible(visible: boolean): unknown;
-  clearActorTrack(actor: StudioActor): unknown;
-  directDuel(): unknown;
-  setCamera(config: Readonly<Record<string, unknown>>): unknown;
+  setMap(id: string): Promise<RuntimeValue> | RuntimeValue;
+  addActor(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
+  removeActor(actor: StudioActor): RuntimeValue;
+  updateActor(actor: StudioActor, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
+  setActorState(actor: StudioActor, state: string, ageS?: number | null): RuntimeValue;
+  selectActor(uid: string): RuntimeValue;
+  effect(recipe: StudioEffectRecipe): RuntimeValue;
+  clearEffects(): RuntimeValue;
+  advanceFx(milliseconds: number): RuntimeValue;
+  setStoryboardDuration(milliseconds: number): RuntimeValue;
+  setTimeScale(scale: number): RuntimeValue;
+  stop(): RuntimeValue;
+  pause(): RuntimeValue;
+  play(): RuntimeValue;
+  seek(milliseconds: number): RuntimeValue;
+  addCameraShot(): RuntimeValue;
+  keyActor(actor: StudioActor): RuntimeValue;
+  setRailVisible(visible: boolean): RuntimeValue;
+  clearActorTrack(actor: StudioActor): RuntimeValue;
+  directDuel(): RuntimeValue;
+  setCamera(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
-  stopRecording(): unknown;
-  capture(options: { readonly width: number; readonly download: boolean }): unknown;
-  load(state: unknown): Promise<unknown>;
-  updateEffect(id: string, patch: Readonly<Record<string, unknown>>): unknown;
-  removeEffect(id: string): unknown;
-  selectEffect(id: string): unknown;
-  selectCameraShot(id: string): unknown;
-  updateCameraShot(id: string, patch: Readonly<Record<string, unknown>>): unknown;
-  removeCameraShot(id: string): unknown;
+  stopRecording(): RuntimeValue;
+  capture(options: { readonly width: number; readonly download: boolean }): RuntimeValue;
+  load(state: RuntimeValue): Promise<RuntimeValue>;
+  updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
+  removeEffect(id: string): RuntimeValue;
+  selectEffect(id: string): RuntimeValue;
+  selectCameraShot(id: string): RuntimeValue;
+  updateCameraShot(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
+  removeCameraShot(id: string): RuntimeValue;
 }
 
 interface SliderControl {
@@ -204,7 +205,7 @@ interface PanelGroup {
   readonly body: HTMLDivElement;
 }
 
-type StudioEffectAction = readonly [string, () => unknown, boolean?];
+type StudioEffectAction = readonly [string, () => RuntimeValue, boolean?];
 
 function imageFor(
   catalog: Readonly<Record<string, string>>,
@@ -213,7 +214,7 @@ function imageFor(
   return catalog[id];
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -648,7 +649,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (!id || id === S.mapId) return;
     setMapLoading(true);
     Promise.resolve(S.setMap(id))
-      .catch((error: unknown) => flashBusy(`MAP FAILED: ${errorMessage(error)}`))
+      .catch((error: RuntimeValue) => flashBusy(`MAP FAILED: ${errorMessage(error)}`))
       .finally(() => {
         setMapLoading(false);
         api.refreshMap();
@@ -861,7 +862,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     return fn();
   };
-  const fireProjectile = (effect: StudioEffectRecipe): unknown => {
+  const fireProjectile = (effect: StudioEffectRecipe): RuntimeValue => {
     const fired = S.effect(effect);
     // A shell born on a frozen timeline is still at its muzzle. Advance one
     // real simulation frame so the button immediately shows the projectile
@@ -1028,7 +1029,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     try {
       S.directDuel();
       flashBusy('12 SECOND DUEL STORYBOARD READY');
-    } catch (error: unknown) {
+    } catch (error) {
       flashBusy(errorMessage(error));
     }
   });
@@ -1085,7 +1086,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     S.recordVideo({ fps: Number(fpsSel.value), download: true })
       .then((result) => flashBusy(`VIDEO SAVED · ${(result.size / 1048576).toFixed(1)} MB`))
-      .catch((error: unknown) => flashBusy(`RECORD FAILED: ${errorMessage(error)}`));
+      .catch((error: RuntimeValue) => flashBusy(`RECORD FAILED: ${errorMessage(error)}`));
     api.refreshStoryboard();
   });
   secCap.appendChild(recordBtn);
@@ -1134,7 +1135,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     f.text().then((txt) => S.load(JSON.parse(txt)))
-      .catch((error: unknown) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
+      .catch((error: RuntimeValue) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
     fileIn.value = '';
   });
   loadBtn.addEventListener('click', () => fileIn.click());
@@ -1162,7 +1163,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       } else {
         const txt = localStorage.getItem(key);
         if (!txt) { flashBusy(`SLOT ${i} EMPTY (shift-click saves)`); return; }
-        S.load(JSON.parse(txt)).catch((error: unknown) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
+        S.load(JSON.parse(txt)).catch((error: RuntimeValue) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
       }
     });
     slotRow.appendChild(b);
@@ -1194,7 +1195,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
     if (!archiveRoot) throw new Error('[studio] missing production archive root');
     mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 })
-      .catch((error: unknown) => flashBusy(errorMessage(error)));
+      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   });
   secArchive.append(archiveCopy, archiveBtn);
   outputGroup.body.appendChild(secArchive);
@@ -1326,7 +1327,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     n.addEventListener('change', () => onChange(parseFloat(n.value) || 0));
     return n;
   }
-  function patchSel(patch: Readonly<Record<string, unknown>>): void {
+  function patchSel(patch: Readonly<Record<string, RuntimeValue>>): void {
     const a = S._internal.selected;
     if (a) { S.updateActor(a, patch); }
   }

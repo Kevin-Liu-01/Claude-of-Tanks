@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -33,7 +34,7 @@ interface GalleryVisual {
   dispose(): void;
   centerOnPresentationPoint?(x: number, z: number): void;
   seatOnFloor?(floorY: number): void;
-  presentationAnchorWorld?(target: THREE.Vector3): unknown;
+  presentationAnchorWorld?(target: THREE.Vector3): RuntimeValue;
 }
 
 interface GallerySelectController {
@@ -49,7 +50,7 @@ interface GalleryLoadOptions {
 declare global {
   interface Window {
     __TANK_GALLERY_READY?: boolean;
-    __TANK_GALLERY?: Record<string, unknown>;
+    __TANK_GALLERY?: Record<string, RuntimeValue>;
   }
 }
 
@@ -621,7 +622,7 @@ async function loadTank(
 }
 
 function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): void {
-  const data = hit?.object?.userData?.inspection as Record<string, unknown> | undefined;
+  const data = hit?.object?.userData?.inspection as Record<string, RuntimeValue> | undefined;
   const readout = $('#inspectionReadout');
   if (!data || !hit) {
     readout.hidden = true;

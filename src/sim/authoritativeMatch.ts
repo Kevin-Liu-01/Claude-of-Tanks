@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Headless authoritative battle simulation.
  *
@@ -137,7 +138,7 @@ interface AuthoritativeInput {
   shellSlot: number;
   actionBits: number;
   aimPoint: Vector3;
-  [name: string]: unknown;
+  [name: string]: RuntimeValue;
 }
 
 export type AuthoritativeSpec = FleetTankSpec;
@@ -231,7 +232,7 @@ export interface AuthoritativeMatchOptions {
   worldCollision?: AuthoritativeWorldCollision | null;
 }
 
-export interface AuthoritativeEvent extends Record<string, unknown> {
+export interface AuthoritativeEvent extends Record<string, RuntimeValue> {
   type: string;
   timeS: number;
 }
@@ -333,7 +334,7 @@ function sharedTerrain(mapId: string): SharedTerrain {
   // Height fields are immutable after construction, so dedicated matches can
   // safely share this expensive 1 km terrain bake while keeping combat state
   // and future destructible overlays match-local.
-  const configuredSeed = (config as { seed?: unknown }).seed;
+  const configuredSeed = (config as { seed?: RuntimeValue }).seed;
   const terrainSeed = typeof configuredSeed === 'number' && Number.isSafeInteger(configuredSeed)
     ? configuredSeed : 1337;
   cached = {
@@ -356,11 +357,11 @@ function mulberry32(seed: number): Rng {
   };
 }
 
-function finite(value: unknown, fallback = 0): number {
+function finite(value: RuntimeValue, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function normalizeTeam(value: unknown): LobbyTeam {
+function normalizeTeam(value: RuntimeValue): LobbyTeam {
   return value === TEAM_BRAVO ? TEAM_BRAVO
     : value === TEAM_SPECTATOR ? TEAM_SPECTATOR : TEAM_ALPHA;
 }
@@ -595,6 +596,7 @@ export function createAuthoritativeMatch({
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
   const entityById = new Map<string, AuthoritativeEntity>();
+  const playerRecordById = new Map<string, AuthoritativePlayerRecord>();
   const teamIndex: Record<Team, number> = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
   const pendingEvents: AuthoritativeEvent[] = [];
   const destroyedObstacleIndices: number[] = [];
@@ -616,26 +618,32 @@ export function createAuthoritativeMatch({
   );
   const obstacleByPropIdx = new Map<number, AuthoritativeObstacle>();
   const obstacleByTreeIdx = new Map<number, AuthoritativeObstacle>();
-  for (const obstacle of staticObstacles) {
-    if (obstacle.propIdx != null && !obstacleByPropIdx.has(obstacle.propIdx)) {
-      obstacleByPropIdx.set(obstacle.propIdx, obstacle);
-    }
-    if (obstacle.treeIdx != null && !obstacleByTreeIdx.has(obstacle.treeIdx)) {
-      obstacleByTreeIdx.set(obstacle.treeIdx, obstacle);
-    }
-  }
   const pendingCrush: PendingCrush[] = [];
   const pendingCrushSet = new Set<AuthoritativeObstacle>();
   const pendingRams: PendingRam[] = [];
   const ramPairTime = new Map<string, number>();
+  const bestRamPairs = new Map<string, PendingRam>();
   const activeBodyEntities: AuthoritativeEntity[] = [];
+  const survivingTeams: Record<Team, number> = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
 
-  for (const record of players) {
+  function indexWorldObstacles(): void {
+    for (const obstacle of staticObstacles) {
+      if (obstacle.propIdx != null && !obstacleByPropIdx.has(obstacle.propIdx)) {
+        obstacleByPropIdx.set(obstacle.propIdx, obstacle);
+      }
+      if (obstacle.treeIdx != null && !obstacleByTreeIdx.has(obstacle.treeIdx)) {
+        obstacleByTreeIdx.set(obstacle.treeIdx, obstacle);
+      }
+    }
+  }
+
+  function createPlayerEntity(record: AuthoritativePlayerRecord): void {
     const id = String(record && record.id || '').trim();
     if (!id || ids.has(id)) throw new TypeError('player ids must be non-empty and unique');
     ids.add(id);
+    playerRecordById.set(id, record);
     const team = normalizeTeam(record.team);
-    if (team === TEAM_SPECTATOR) continue;
+    if (team === TEAM_SPECTATOR) return;
     const spec = getSpec(String(record.specId || ''));
     if (!spec) throw new TypeError(`unknown vehicle spec: ${String(record.specId)}`);
     const pad = spawnFor(teamIndex[team]++, team, layout, record.spawn);
@@ -675,6 +683,13 @@ export function createAuthoritativeMatch({
     for (let n = 0; n < 30; n++) updateTank(entity, heightField, SIM_DT);
   }
 
+  function createPlayerEntities(): void {
+    for (const record of players) createPlayerEntity(record);
+  }
+
+  indexWorldObstacles();
+  createPlayerEntities();
+
   const spottingRaycast: (
     origin: SpottingVector3,
     direction: SpottingVector3,
@@ -708,14 +723,12 @@ export function createAuthoritativeMatch({
     })
     : null;
 
-  for (let index = 0; index < entities.length; index++) {
-    const entity = entities[index];
-    if (!entity.bot) continue;
+  function initializeBot(entity: AuthoritativeEntity, index: number): void {
     const opponents = entities.filter((entry) => entry.team !== entity.team);
     const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
     const botRng = mulberry32(seed + 41000 + index * 997);
     entity.aiCtl = createAI(entity, {
-      difficulty: players.find((record) => String(record.id) === entity.id)?.difficulty || 'normal',
+      difficulty: playerRecordById.get(entity.id)?.difficulty || 'normal',
       rng: botRng,
       deps: {
         heightField,
@@ -734,19 +747,27 @@ export function createAuthoritativeMatch({
     const goal = opponents.length
       ? botOpeningGoal(entity, teamSlot, entities, opponents)
       : null;
-    if (goal) {
-      entity.aiCtl.setWaypoints(planBotRoute({
-        start: entity.state.pos,
-        goal,
-        navigation: botNavigation,
-        rng: botRng,
-        role: roleOf(entity.spec),
-        spec: entity.spec,
-      }), { loop: false });
+    if (!goal) return;
+    entity.aiCtl.setWaypoints(planBotRoute({
+      start: entity.state.pos,
+      goal,
+      navigation: botNavigation,
+      rng: botRng,
+      role: roleOf(entity.spec),
+      spec: entity.spec,
+    }), { loop: false });
+  }
+
+  function initializeBots(): void {
+    for (let index = 0; index < entities.length; index++) {
+      const entity = entities[index]!;
+      if (entity.bot) initializeBot(entity, index);
     }
   }
 
-  function emit(type: string, payload: Record<string, unknown>): void {
+  initializeBots();
+
+  function emit(type: string, payload: Record<string, RuntimeValue>): void {
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
     pendingEvents.push({ type, timeS, ...payload });
   }
@@ -826,6 +847,141 @@ export function createAuthoritativeMatch({
     entity.input.aimPoint.copy(_aim);
   }
 
+  function obstacleCandidates(
+    centerX: number,
+    centerZ: number,
+    broadRadius: number,
+  ): AuthoritativeObstacle[] {
+    if (!worldCollision?.queryObstacles) return staticObstacles;
+    return worldCollision.queryObstacles(
+      centerX - broadRadius,
+      centerZ - broadRadius,
+      centerX + broadRadius,
+      centerZ + broadRadius,
+      nearbyObstacles,
+    );
+  }
+
+  function obstacleIsPressedThrough(
+    entity: AuthoritativeEntity,
+    obstacle: AuthoritativeObstacle,
+  ): boolean {
+    if (Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
+    if (Math.abs(entity.input.throttle || 0) <= 0.35) return false;
+    if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
+    obstacle._pressT = timeS;
+    obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
+    return obstacle._pressS >= CRUSH_PRESS_S;
+  }
+
+  function queueCrushedObstacle(
+    entity: AuthoritativeEntity,
+    obstacle: AuthoritativeObstacle,
+  ): void {
+    if (pendingCrushSet.has(obstacle)) return;
+    pendingCrushSet.add(obstacle);
+    pendingCrush.push({ obstacle, entity, cause: 'ram' });
+  }
+
+  function collideWithObstacles(
+    entity: AuthoritativeEntity,
+    pos: Vector3,
+    centerX: number,
+    centerZ: number,
+    fx: number,
+    fz: number,
+    rx: number,
+    rz: number,
+    halfL: number,
+    halfW: number,
+    outPush: Vector3,
+  ): void {
+    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
+      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
+      const dx = centerX - closestX;
+      const dz = centerZ - closestZ;
+      if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      const beforeX = outPush.x;
+      const beforeZ = outPush.z;
+      const pushed = pushHullFromObstacle(
+        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+      );
+      if (!pushed || !obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) continue;
+      outPush.x = beforeX;
+      outPush.z = beforeZ;
+      queueCrushedObstacle(entity, obstacle);
+    }
+  }
+
+  function queueRamFromPush(
+    entity: AuthoritativeEntity,
+    other: AuthoritativeEntity,
+    fx: number,
+    fz: number,
+    ofx: number,
+    ofz: number,
+    pushX: number,
+    pushZ: number,
+  ): void {
+    const pushLength = Math.hypot(pushX, pushZ);
+    if (pushLength <= 1e-6) return;
+    const nx = pushX / pushLength;
+    const nz = pushZ / pushLength;
+    const relativeX = fx * entity.state.speed - ofx * other.state.speed;
+    const relativeZ = fz * entity.state.speed - ofz * other.state.speed;
+    const closing = -(relativeX * nx + relativeZ * nz);
+    if (closing > 0) pendingRams.push({ a: entity, b: other, closing });
+  }
+
+  function collideWithEntities(
+    entity: AuthoritativeEntity,
+    centerX: number,
+    centerZ: number,
+    fx: number,
+    fz: number,
+    rx: number,
+    rz: number,
+    halfL: number,
+    halfW: number,
+    outPush: Vector3,
+  ): void {
+    // Match the local simulation's exact-shell OBB contact. Shared geometry
+    // keeps private rooms and solo from disagreeing at rectangular shoulders.
+    for (const other of entities) {
+      if (other === entity || other.modeActive === false || !other.state) continue;
+      const otherRect = tankContactRect(other.spec);
+      const otherHalfW = otherRect.halfWidth;
+      const otherHalfL = otherRect.halfLength;
+      const ofx = Math.sin(other.state.yaw);
+      const ofz = Math.cos(other.state.yaw);
+      const orx = ofz;
+      const orz = -ofx;
+      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
+      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
+      const dx = centerX - otherCenterX;
+      const dz = centerZ - otherCenterZ;
+      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
+      if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)) {
+        continue;
+      }
+      const beforeX = outPush.x;
+      const beforeZ = outPush.z;
+      const pushed = pushHullFromHull(
+        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
+        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
+        outPush,
+      );
+      if (!pushed) continue;
+      queueRamFromPush(
+        entity, other, fx, fz, ofx, ofz,
+        outPush.x - beforeX, outPush.z - beforeZ,
+      );
+    }
+  }
+
   function collideFor(
     entity: AuthoritativeEntity,
     pos: Vector3,
@@ -847,82 +1003,12 @@ export function createAuthoritativeMatch({
     pushHullInsidePlayableBounds(
       centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
-    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
-    const candidates = worldCollision && typeof worldCollision.queryObstacles === 'function'
-      ? worldCollision.queryObstacles(
-        centerX - broadRadius, centerZ - broadRadius,
-        centerX + broadRadius, centerZ + broadRadius,
-        nearbyObstacles,
-      )
-      : staticObstacles;
-    for (const obstacle of candidates) {
-      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-      const dx = centerX - closestX;
-      const dz = centerZ - closestZ;
-      if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
-      const beforeX = outPush.x;
-      const beforeZ = outPush.z;
-      if (!pushHullFromObstacle(
-        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
-      )) continue;
-      if (obstacle.crushable) {
-        let crushNow = Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS);
-        if (!crushNow && Math.abs(entity.input.throttle || 0) > 0.35) {
-          if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
-          obstacle._pressT = timeS;
-          obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-          crushNow = obstacle._pressS >= CRUSH_PRESS_S;
-        }
-        if (crushNow) {
-          outPush.x = beforeX;
-          outPush.z = beforeZ;
-          if (!pendingCrushSet.has(obstacle)) {
-            pendingCrushSet.add(obstacle);
-            pendingCrush.push({ obstacle, entity, cause: 'ram' });
-          }
-        }
-      }
-    }
-
-    // Match the local simulation's exact-shell OBB contact. Shared geometry
-    // keeps private rooms and solo from disagreeing at rectangular shoulders.
-    for (const other of entities) {
-      if (other === entity || other.modeActive === false || !other.state) continue;
-      const otherRect = tankContactRect(other.spec);
-      const otherHalfW = otherRect.halfWidth;
-      const otherHalfL = otherRect.halfLength;
-      const ofx = Math.sin(other.state.yaw);
-      const ofz = Math.cos(other.state.yaw);
-      const orx = ofz;
-      const orz = -ofx;
-      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
-      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
-      const dx = centerX - otherCenterX;
-      const dz = centerZ - otherCenterZ;
-      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
-      if (dx * dx + dz * dz > outer * outer) continue;
-      if (prefersVerticalTankContact(entity, other)) continue;
-      const beforeX = outPush.x;
-      const beforeZ = outPush.z;
-      if (!pushHullFromHull(
-        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
-        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
-        outPush,
-      )) continue;
-      const pushX = outPush.x - beforeX;
-      const pushZ = outPush.z - beforeZ;
-      const pushLength = Math.hypot(pushX, pushZ);
-      if (pushLength > 1e-6) {
-        const nx = pushX / pushLength;
-        const nz = pushZ / pushLength;
-        const relativeX = fx * entity.state.speed - ofx * other.state.speed;
-        const relativeZ = fz * entity.state.speed - ofz * other.state.speed;
-        const closing = -(relativeX * nx + relativeZ * nz);
-        if (closing > 0) pendingRams.push({ a: entity, b: other, closing });
-      }
-    }
+    collideWithObstacles(
+      entity, pos, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+    );
+    collideWithEntities(
+      entity, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+    );
     return outPush.x !== 0 || outPush.z !== 0;
   }
 
@@ -975,141 +1061,254 @@ export function createAuthoritativeMatch({
     pendingCrushSet.clear();
   }
 
-  function resolvePendingRams(): void {
-    if (!pendingRams.length) return;
-    const best = new Map<string, PendingRam>();
+  function ramPairKey(contact: PendingRam): string {
+    return contact.a.id < contact.b.id
+      ? `${contact.a.id}|${contact.b.id}` : `${contact.b.id}|${contact.a.id}`;
+  }
+
+  function collectBestRamPairs(): void {
+    bestRamPairs.clear();
     for (const contact of pendingRams) {
-      const key = contact.a.id < contact.b.id
-        ? `${contact.a.id}|${contact.b.id}` : `${contact.b.id}|${contact.a.id}`;
-      const current = best.get(key);
-      if (!current || contact.closing > current.closing) best.set(key, contact);
+      const key = ramPairKey(contact);
+      const current = bestRamPairs.get(key);
+      if (!current || contact.closing > current.closing) bestRamPairs.set(key, contact);
     }
     pendingRams.length = 0;
-    for (const [key, contact] of best) {
-      const last = ramPairTime.get(key);
-      if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) continue;
-      const a = contact.a;
-      const b = contact.b;
-      if (!a.combat || !b.combat || a.combat.destroyed) continue;
-      // Teammates still resolve physical separation, but contact can never
-      // become friendly-fire damage or a kill credit.
-      if (a.team === b.team) continue;
-      const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
-      if (damage.total <= 0) continue;
-      ramPairTime.set(key, timeS);
-      const bWasDestroyed = b.combat.destroyed;
-      const damageA = damage.toA;
-      const damageB = bWasDestroyed ? 0 : damage.toB;
-      a.combat.hp = Math.max(0, a.combat.hp - damageA);
-      if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-      a.combat.destroyed = a.combat.hp <= 0;
-      if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
-      emit('tank_ram', {
-        aId: a.id,
-        bId: b.id,
-        damageA,
-        damageB,
-        closingMps: contact.closing,
-        x: (a.state.pos.x + b.state.pos.x) * 0.5,
-        y: (a.state.pos.y + b.state.pos.y) * 0.5,
-        z: (a.state.pos.z + b.state.pos.z) * 0.5,
-      });
-      if (!bWasDestroyed && b.combat.destroyed) {
-        a.kills += 1;
-        emit('tank_destroyed', { id: b.id, killerId: a.id, cause: 'ram' });
-      }
-      if (a.combat.destroyed) {
-        if (!bWasDestroyed) b.kills += 1;
-        emit('tank_destroyed', { id: a.id, killerId: bWasDestroyed ? null : b.id, cause: 'ram' });
-      }
+  }
+
+  function ramPairCanDamage(key: string, contact: PendingRam): boolean {
+    const last = ramPairTime.get(key);
+    if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) return false;
+    const { a, b } = contact;
+    if (!a.combat || !b.combat || a.combat.destroyed) return false;
+    // Teammates still resolve physical separation, but contact can never
+    // become friendly-fire damage or a kill credit.
+    return a.team !== b.team;
+  }
+
+  function recordRamDestructions(
+    a: AuthoritativeEntity,
+    b: AuthoritativeEntity,
+    bWasDestroyed: boolean,
+  ): void {
+    if (!bWasDestroyed && b.combat.destroyed) {
+      a.kills += 1;
+      emit('tank_destroyed', { id: b.id, killerId: a.id, cause: 'ram' });
     }
+    if (!a.combat.destroyed) return;
+    if (!bWasDestroyed) b.kills += 1;
+    emit('tank_destroyed', {
+      id: a.id,
+      killerId: bWasDestroyed ? null : b.id,
+      cause: 'ram',
+    });
+  }
+
+  function resolveRamPair(key: string, contact: PendingRam): void {
+    if (!ramPairCanDamage(key, contact)) return;
+    const { a, b } = contact;
+    const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
+    if (damage.total <= 0) return;
+    ramPairTime.set(key, timeS);
+    const bWasDestroyed = b.combat.destroyed;
+    const damageA = damage.toA;
+    const damageB = bWasDestroyed ? 0 : damage.toB;
+    a.combat.hp = Math.max(0, a.combat.hp - damageA);
+    if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
+    a.combat.destroyed = a.combat.hp <= 0;
+    if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
+    emit('tank_ram', {
+      aId: a.id,
+      bId: b.id,
+      damageA,
+      damageB,
+      closingMps: contact.closing,
+      x: (a.state.pos.x + b.state.pos.x) * 0.5,
+      y: (a.state.pos.y + b.state.pos.y) * 0.5,
+      z: (a.state.pos.z + b.state.pos.z) * 0.5,
+    });
+    recordRamDestructions(a, b, bWasDestroyed);
+  }
+
+  function resolvePendingRams(): void {
+    if (!pendingRams.length) return;
+    collectBestRamPairs();
+    for (const [key, contact] of bestRamPairs) {
+      resolveRamPair(key, contact);
+    }
+  }
+
+  function reloadMagazine(entity: AuthoritativeEntity): void {
+    const reason = magazineReloadDenialReason(entity.combat);
+    if (!reason && startMagazineReload(entity.combat, entity.spec)) {
+      emit('magazine_reload', { id: entity.id });
+      return;
+    }
+    emit('magazine_reload_denied', {
+      id: entity.id,
+      reason: reason || 'NO_MAGAZINE',
+    });
+  }
+
+  function useSpecialAction(entity: AuthoritativeEntity): void {
+    const action = activateSpecialAction(entity);
+    emit(action.ok ? 'special_action' : 'special_action_denied', {
+      id: entity.id,
+      kind: action.kind,
+      active: !!action.active,
+      slot: action.slot ?? null,
+      reason: action.reason || null,
+    });
+  }
+
+  function repairConsumable(entity: AuthoritativeEntity): boolean {
+    const modules = repairAllModules(entity.combat);
+    for (const module of modules) emit('module_state', {
+      id: entity.id,
+      module,
+      state: 'ok',
+    });
+    return modules.length > 0;
+  }
+
+  function firstAidConsumable(entity: AuthoritativeEntity): boolean {
+    let used = false;
+    for (const crew of Object.keys(entity.combat.crew)) {
+      if (entity.combat.crew[crew] !== false) continue;
+      entity.combat.crew[crew] = true;
+      used = true;
+    }
+    return used;
+  }
+
+  function extinguisherConsumable(entity: AuthoritativeEntity): boolean {
+    if (!entity.combat.fire.burning) return false;
+    entity.combat.fire.burning = false;
+    entity.combat.fire.ticksLeft = 0;
+    entity.combat.fire.tickTimer = 0;
+    emit('tank_fire', { id: entity.id, burning: false });
+    return true;
+  }
+
+  function applyConsumable(entity: AuthoritativeEntity, bit: number): boolean {
+    if (bit === PLAYER_ACTION_BITS.REPAIR) return repairConsumable(entity);
+    if (bit === PLAYER_ACTION_BITS.FIRST_AID) return firstAidConsumable(entity);
+    if (bit === PLAYER_ACTION_BITS.EXTINGUISHER) return extinguisherConsumable(entity);
+    return false;
+  }
+
+  function useConsumableSlot(
+    entity: AuthoritativeEntity,
+    bits: number,
+    slot: number,
+  ): void {
+    const bit = 1 << slot;
+    if (!(bits & bit)) return;
+    const remainingS = cooldownRemaining(timeS, entity.consumableReadyAt[slot]);
+    if (remainingS > 0) {
+      emit('consumable_denied', { id: entity.id, slot, reason: 'COOLDOWN', remainingS });
+      return;
+    }
+    if (!applyConsumable(entity, bit)) {
+      emit('consumable_denied', { id: entity.id, slot, reason: 'NOTHING' });
+      return;
+    }
+    const cooldownS = CONSUMABLE_RULES[slot].cooldownS;
+    const readyAt = timeS + cooldownS;
+    entity.consumableReadyAt[slot] = readyAt;
+    emit('consumable_used', { id: entity.id, slot, cooldownS, readyAt });
   }
 
   function useConsumables(entity: AuthoritativeEntity): void {
     const bits = entity.input.actionBits | 0;
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
-    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
-      const reason = magazineReloadDenialReason(entity.combat);
-      if (!reason && startMagazineReload(entity.combat, entity.spec)) {
-        emit('magazine_reload', { id: entity.id });
-      } else emit('magazine_reload_denied', {
-        id: entity.id,
-        reason: reason || 'NO_MAGAZINE',
-      });
-    }
-    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) {
-      const result = activateSpecialAction(entity);
-      emit(result.ok ? 'special_action' : 'special_action_denied', {
-        id: entity.id,
-        kind: result.kind,
-        active: !!result.active,
-        slot: result.slot ?? null,
-        reason: result.reason || null,
-      });
-    }
+    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
+    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
-      const bit = 1 << slot;
-      if (!(bits & bit)) continue;
-      const remainingS = cooldownRemaining(timeS, entity.consumableReadyAt[slot]);
-      if (remainingS > 0) {
-        emit('consumable_denied', { id: entity.id, slot, reason: 'COOLDOWN', remainingS });
-        continue;
-      }
-      let used = false;
-      if (bit === PLAYER_ACTION_BITS.REPAIR) {
-        const modules = repairAllModules(entity.combat);
-        used = modules.length > 0;
-        for (const module of modules) emit('module_state', {
-          id: entity.id, module, state: 'ok',
-        });
-      } else if (bit === PLAYER_ACTION_BITS.FIRST_AID) {
-        for (const crew of Object.keys(entity.combat.crew)) {
-          if (entity.combat.crew[crew] === false) {
-            entity.combat.crew[crew] = true;
-            used = true;
-          }
-        }
-      } else if (bit === PLAYER_ACTION_BITS.EXTINGUISHER && entity.combat.fire.burning) {
-        entity.combat.fire.burning = false;
-        entity.combat.fire.ticksLeft = 0;
-        entity.combat.fire.tickTimer = 0;
-        used = true;
-        emit('tank_fire', { id: entity.id, burning: false });
-      }
-      if (!used) {
-        emit('consumable_denied', { id: entity.id, slot, reason: 'NOTHING' });
-        continue;
-      }
-      const cooldownS = CONSUMABLE_RULES[slot].cooldownS;
-      const readyAt = timeS + cooldownS;
-      entity.consumableReadyAt[slot] = readyAt;
-      emit('consumable_used', { id: entity.id, slot, cooldownS, readyAt });
+      useConsumableSlot(entity, bits, slot);
     }
   }
 
-  function tryFire(entity: AuthoritativeEntity): void {
+  function selectedShellForFire(
+    entity: AuthoritativeEntity,
+  ): AuthoritativeSpec['gun']['shells'][number] | null {
     const combat = entity.combat;
-    if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
-    if (combat.modules.gun && combat.modules.gun.state === 'red') return;
+    if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
+    if (combat.modules.gun?.state === 'red') return null;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
-    if (!shellSpec) return;
-    if (shellSpec.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return;
+    if (!shellSpec) return null;
+    if (shellSpec.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return null;
     if (!hasAmmunition(combat, combat.shellSlot)) {
       if (!entity.bot) emit('ammo_empty', { id: entity.id, slot: combat.shellSlot });
-      return;
+      return null;
     }
-    if (entity.bot) {
-      const friendlyRisk = botFriendlyFireRisk(
-        entity, entity.input.aimPoint, shellSpec, entities,
-      );
-      if (friendlyRisk) {
-        if (entity.aiCtl?.notifyFriendlyBlocked) {
-          entity.aiCtl.notifyFriendlyBlocked(friendlyRisk);
-        }
-        return;
-      }
+    return shellSpec;
+  }
+
+  function botShotIsClear(
+    entity: AuthoritativeEntity,
+    shellSpec: AuthoritativeSpec['gun']['shells'][number],
+  ): boolean {
+    if (!entity.bot) return true;
+    const friendlyRisk = botFriendlyFireRisk(
+      entity, entity.input.aimPoint, shellSpec, entities,
+    );
+    if (!friendlyRisk) return true;
+    entity.aiCtl?.notifyFriendlyBlocked?.(friendlyRisk);
+    return false;
+  }
+
+  function selectFallbackAfterShot(
+    entity: AuthoritativeEntity,
+    firedSlot: number,
+  ): void {
+    if (hasAmmunition(entity.combat, firedSlot)) return;
+    const fallbackSlot = selectFirstAvailableShell(entity.combat, entity.spec);
+    if (fallbackSlot >= 0) entity.input.shellSlot = fallbackSlot;
+    entity._deniedShellSlot = undefined;
+    if (!entity.bot) emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
+  }
+
+  function notifyEnemyBotsOfPlayerShot(entity: AuthoritativeEntity): void {
+    if (entity.bot) return;
+    const respondingBots = entities
+      .filter((entry) => entry.bot && entry.team !== entity.team && entry.aiCtl)
+      .sort((a, b) => a.state.pos.distanceToSquared(entity.state.pos) -
+        b.state.pos.distanceToSquared(entity.state.pos));
+    for (let index = 0; index < respondingBots.length; index++) {
+      respondingBots[index]?.aiCtl?.notifyPlayerFired(entity, index);
     }
+  }
+
+  function emitShellFired(
+    entity: AuthoritativeEntity,
+    shell: DamageShell,
+    shellSpec: AuthoritativeSpec['gun']['shells'][number],
+    muzzle: Vector3,
+    direction: Vector3,
+  ): void {
+    emit('shell_fired', {
+      shellId: shell.id,
+      shooterId: entity.id,
+      shellType: shellSpec.type,
+      shellName: shellSpec.name,
+      weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
+      caliberMm: shellSpec.caliberMm,
+      velocityMps: shellSpec.velocityMps,
+      x: muzzle.x,
+      y: muzzle.y,
+      z: muzzle.z,
+      dx: direction.x,
+      dy: direction.y,
+      dz: direction.z,
+    });
+  }
+
+  function tryFire(entity: AuthoritativeEntity): void {
+    const shellSpec = selectedShellForFire(entity);
+    if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
+    const combat = entity.combat;
     const gun = gunWorldPose(entity);
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -1119,60 +1318,34 @@ export function createAuthoritativeMatch({
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
-    if (!hasAmmunition(combat, firedSlot)) {
-      const fallbackSlot = selectFirstAvailableShell(combat, entity.spec);
-      if (fallbackSlot >= 0) entity.input.shellSlot = fallbackSlot;
-      entity._deniedShellSlot = undefined;
-      if (!entity.bot) {
-        emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
-      }
-    }
+    selectFallbackAfterShot(entity, firedSlot);
     fireRecoil(entity.state, entity.spec, shellSpec);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
-    if (!entity.bot) {
-      const respondingBots = entities
-        .filter((entry) => entry.bot && entry.team !== entity.team && entry.aiCtl)
-        .sort((a, b) => a.state.pos.distanceToSquared(entity.state.pos) -
-          b.state.pos.distanceToSquared(entity.state.pos));
-      for (let index = 0; index < respondingBots.length; index++) {
-        const responder = respondingBots[index];
-        responder?.aiCtl?.notifyPlayerFired(entity, index);
-      }
-    }
-    emit('shell_fired', {
-      shellId: shell.id,
-      shooterId: entity.id,
-      shellType: shellSpec.type,
-      shellName: shellSpec.name,
-      weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
-      caliberMm: shellSpec.caliberMm,
-      velocityMps: shellSpec.velocityMps,
-      x: gun.muzzle.x,
-      y: gun.muzzle.y,
-      z: gun.muzzle.z,
-      dx: _gunDir.x,
-      dy: _gunDir.y,
-      dz: _gunDir.z,
-    });
+    notifyEnemyBotsOfPlayerShot(entity);
+    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir);
   }
 
-  function recordShellHit(
-    shell: DamageShell,
+  function notifyShellHitAI(
+    shooter: AuthoritativeEntity | undefined,
+    target: AuthoritativeEntity | null | undefined,
     hit: HitEvent,
-    wasDestroyed = false,
   ): void {
-    const target = hit.targetId ? entityById.get(hit.targetId) : null;
-    const shooter = entityById.get(shell.shooterId);
     if (shooter && hit.damage > 0) shooter.damage += hit.damage;
     if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
       ...hit,
       targetId: target?.id || null,
     });
-    if (shooter && target && hit.damage > 0) {
-      for (const ally of entities) {
-        if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter);
-      }
+    if (!shooter || !target || hit.damage <= 0) return;
+    for (const ally of entities) {
+      if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter);
     }
+  }
+
+  function emitShellHitEvent(
+    shell: DamageShell,
+    hit: HitEvent,
+    target: AuthoritativeEntity | null | undefined,
+  ): void {
     emit('shell_hit', {
       ...hit,
       shooterId: shell.shooterId,
@@ -1183,23 +1356,153 @@ export function createAuthoritativeMatch({
       damage: Math.max(0, Math.round(hit.damage || 0)),
       targetHp: Math.max(0, Math.round(target?.combat.hp || 0)),
     });
-    if (target && Array.isArray(hit.modulesHit)) {
-      for (const module of hit.modulesHit) emit('module_state', {
-        id: target.id,
-        module: module.module,
-        state: module.newState,
-        source: 'hit',
-      });
+  }
+
+  function emitShellDamageState(
+    target: AuthoritativeEntity | null | undefined,
+    hit: HitEvent,
+  ): void {
+    if (!target) return;
+    for (const module of hit.modulesHit || []) emit('module_state', {
+      id: target.id,
+      module: module.module,
+      state: module.newState,
+      source: 'hit',
+    });
+    if (hit.fireStarted) emit('tank_fire', { id: target.id, burning: true });
+  }
+
+  function recordShotDestruction(
+    shell: DamageShell,
+    hit: HitEvent,
+    shooter: AuthoritativeEntity | undefined,
+    target: AuthoritativeEntity | null | undefined,
+    wasDestroyed: boolean,
+  ): void {
+    if (!target || wasDestroyed || !target.combat.destroyed) return;
+    if (shooter) shooter.kills += 1;
+    emit('tank_destroyed', {
+      id: target.id,
+      killerId: shell.shooterId,
+      cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
+    });
+  }
+
+  function recordShellHit(
+    shell: DamageShell,
+    hit: HitEvent,
+    wasDestroyed = false,
+  ): void {
+    const target = hit.targetId ? entityById.get(hit.targetId) : null;
+    const shooter = entityById.get(shell.shooterId);
+    notifyShellHitAI(shooter, target, hit);
+    emitShellHitEvent(shell, hit, target);
+    emitShellDamageState(target, hit);
+    recordShotDestruction(shell, hit, shooter, target, wasDestroyed);
+  }
+
+  function captureDestroyedBeforeBurst(): void {
+    destroyedBeforeBurst.clear();
+    for (const entity of entities) {
+      destroyedBeforeBurst.set(entity.id, entity.combat.destroyed);
     }
-    if (target && hit.fireStarted) emit('tank_fire', { id: target.id, burning: true });
-    if (target && !wasDestroyed && target.combat.destroyed) {
-      if (shooter) shooter.kills += 1;
-      emit('tank_destroyed', {
-        id: target.id,
-        killerId: shell.shooterId,
-        cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
-      });
+  }
+
+  function resolveHeImpact(
+    shell: DamageShell,
+    burstPoint: Vector3,
+    directTarget: AuthoritativeEntity | null,
+    directHits: ArmorIntersection[] | null,
+  ): void {
+    captureDestroyedBeforeBurst();
+    const hits = resolveHeBurst(
+      shell,
+      burstPoint,
+      entities,
+      directTarget,
+      directHits,
+      rng,
+    );
+    for (const hit of hits) {
+      const wasDestroyed = hit.targetId
+        ? destroyedBeforeBurst.get(hit.targetId) ?? false
+        : false;
+      recordShellHit(shell, hit, wasDestroyed);
     }
+  }
+
+  function obstacleForWorldHit(worldHit: WorldTrace): AuthoritativeObstacle | null {
+    const record = worldHit.record;
+    if (record?.treeIdx != null) return obstacleByTreeIdx.get(record.treeIdx) || null;
+    if (record?.propIdx != null) return obstacleByPropIdx.get(record.propIdx) || null;
+    return null;
+  }
+
+  function destroyShellObstacle(shell: DamageShell, worldHit: WorldTrace): void {
+    const obstacle = obstacleForWorldHit(worldHit);
+    if (!obstacle?.crushable) return;
+    const shotX = shell.pos.x - shell.prevPos.x;
+    const shotZ = shell.pos.z - shell.prevPos.z;
+    const shotLength = Math.hypot(shotX, shotZ) || 1;
+    destroyObstacle(
+      obstacle,
+      null,
+      'shell',
+      shotX / shotLength,
+      shotZ / shotLength,
+      shell.spec.velocityMps,
+    );
+  }
+
+  function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace): void {
+    emit('shell_impact', {
+      shellId: shell.id,
+      shooterId: shell.shooterId,
+      kind: worldHit.kind,
+      surfaceKind: worldHit.record?.kind || worldHit.kind,
+      x: shell.pos.x,
+      y: shell.pos.y,
+      z: shell.pos.z,
+      nx: worldHit.normal?.x || 0,
+      ny: worldHit.normal?.y || 1,
+      nz: worldHit.normal?.z || 0,
+      shellType: shell.spec.type,
+      caliberMm: shell.spec.caliberMm,
+    });
+  }
+
+  function resolveWorldShellHit(shell: DamageShell, worldHit: WorldTrace): void {
+    shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
+    if (isHeClass(shell.spec.type)) resolveHeImpact(shell, shell.pos, null, null);
+    else shell.dead = true;
+    destroyShellObstacle(shell, worldHit);
+    emitWorldShellImpact(shell, worldHit);
+  }
+
+  function worldHitPrecedesTank(
+    worldHit: WorldTrace | null,
+    tankHit: TankTrace | null,
+    segmentLength: number,
+  ): worldHit is WorldTrace {
+    return !!worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance);
+  }
+
+  function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
+    if (isHeClass(shell.spec.type)) {
+      resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
+      return;
+    }
+    const wasDestroyed = tankHit.target.combat.destroyed;
+    const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
+    recordShellHit(shell, hit, wasDestroyed);
+  }
+
+  function compactLiveShells(): void {
+    let live = 0;
+    for (const shell of shells) {
+      if (!shell.dead) shells[live++] = shell;
+    }
+    shells.length = live;
   }
 
   function stepShells(dt: number): void {
@@ -1214,76 +1517,14 @@ export function createAuthoritativeMatch({
       const worldHit = segmentWorldHit(worldCollision, heightField, shell.prevPos, shell.pos);
       const tankHit = firstTankTrace(shell, entities);
       const segmentLength = shell.prevPos.distanceTo(shell.pos);
-      if (worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance)) {
-        shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
-        if (isHeClass(shell.spec.type)) {
-          destroyedBeforeBurst.clear();
-          for (const entity of entities) {
-            destroyedBeforeBurst.set(entity.id, entity.combat.destroyed);
-          }
-          const hits = resolveHeBurst(shell, shell.pos, entities, null, null, rng);
-          for (const hit of hits) recordShellHit(
-            shell, hit, hit.targetId ? destroyedBeforeBurst.get(hit.targetId) : false,
-          );
-        } else {
-          shell.dead = true;
-        }
-        const hitObstacle = worldHit.record?.treeIdx != null
-          ? obstacleByTreeIdx.get(worldHit.record.treeIdx)
-          : worldHit.record?.propIdx != null
-            ? obstacleByPropIdx.get(worldHit.record.propIdx)
-            : null;
-        if (hitObstacle?.crushable) {
-          const shotX = shell.pos.x - shell.prevPos.x;
-          const shotZ = shell.pos.z - shell.prevPos.z;
-          const shotLength = Math.hypot(shotX, shotZ) || 1;
-          destroyObstacle(
-            hitObstacle,
-            null,
-            'shell',
-            shotX / shotLength,
-            shotZ / shotLength,
-            shell.spec.velocityMps,
-          );
-        }
-        emit('shell_impact', {
-          shellId: shell.id,
-          shooterId: shell.shooterId,
-          kind: worldHit.kind,
-          surfaceKind: worldHit.record?.kind || worldHit.kind,
-          x: shell.pos.x,
-          y: shell.pos.y,
-          z: shell.pos.z,
-          nx: worldHit.normal?.x || 0,
-          ny: worldHit.normal?.y || 1,
-          nz: worldHit.normal?.z || 0,
-          shellType: shell.spec.type,
-          caliberMm: shell.spec.caliberMm,
-        });
+      if (worldHitPrecedesTank(worldHit, tankHit, segmentLength)) {
+        resolveWorldShellHit(shell, worldHit);
         continue;
       }
       if (!tankHit) continue;
-      if (isHeClass(shell.spec.type)) {
-        const burstPoint = tankHit.hits[0]!.point;
-        destroyedBeforeBurst.clear();
-        for (const entity of entities) {
-          destroyedBeforeBurst.set(entity.id, entity.combat.destroyed);
-        }
-        const hits = resolveHeBurst(
-          shell, burstPoint, entities, tankHit.target, tankHit.hits, rng,
-        );
-        for (const hit of hits) recordShellHit(
-          shell, hit, hit.targetId ? destroyedBeforeBurst.get(hit.targetId) : false,
-        );
-      } else {
-        const wasDestroyed = tankHit.target.combat.destroyed;
-        const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
-        recordShellHit(shell, hit, wasDestroyed);
-      }
+      resolveTankShellHit(shell, tankHit);
     }
-    let live = 0;
-    for (const shell of shells) if (!shell.dead) shells[live++] = shell;
-    shells.length = live;
+    compactLiveShells();
   }
 
   function updateVisibility(): void {
@@ -1292,34 +1533,203 @@ export function createAuthoritativeMatch({
     }
   }
 
-  function determineResult(modeResult: MatchModeResult | null = null): void {
-    if (modeResult) {
-      result = modeResult.result;
-      resultReason = modeResult.reason;
-      emit('match_ended', { result, reason: resultReason });
-      return;
-    }
-    if (!modeController.usesElimination) {
-      if (normalizedGameMode === 'endless_horde' || timeS < battleLimitS) return;
-      resultReason = 'time_limit';
-      const modeScore = modeController.state.score;
-      result = modeScore.alpha === modeScore.bravo
-        ? 'draw' : modeScore.alpha > modeScore.bravo ? TEAM_ALPHA : TEAM_BRAVO;
-      emit('match_ended', { result, reason: resultReason });
-      return;
-    }
-    let alpha = 0;
-    let bravo = 0;
+  function finishMatch(nextResult: MatchResult, reason: string): void {
+    result = nextResult;
+    resultReason = reason;
+    emit('match_ended', { result, reason: resultReason });
+  }
+
+  function winnerFromScores(alpha: number, bravo: number): MatchResult {
+    if (alpha === bravo) return 'draw';
+    return alpha > bravo ? TEAM_ALPHA : TEAM_BRAVO;
+  }
+
+  function determineModeResult(): void {
+    if (normalizedGameMode === 'endless_horde' || timeS < battleLimitS) return;
+    const score = modeController.state.score;
+    finishMatch(winnerFromScores(score.alpha, score.bravo), 'time_limit');
+  }
+
+  function countSurvivingTeams(): void {
+    survivingTeams.alpha = 0;
+    survivingTeams.bravo = 0;
     for (const entity of entities) {
       if (entity.combat.destroyed) continue;
-      if (entity.team === TEAM_ALPHA) alpha++;
-      else if (entity.team === TEAM_BRAVO) bravo++;
+      survivingTeams[entity.team]++;
     }
-    if (alpha === 0 || bravo === 0 || timeS >= battleLimitS) {
-      resultReason = alpha === 0 || bravo === 0 ? 'elimination' : 'time_limit';
-      result = alpha === bravo ? 'draw' : alpha > bravo ? TEAM_ALPHA : TEAM_BRAVO;
-      emit('match_ended', { result, reason: resultReason });
+  }
+
+  function determineEliminationResult(): void {
+    countSurvivingTeams();
+    const alpha = survivingTeams.alpha;
+    const bravo = survivingTeams.bravo;
+    const eliminated = alpha === 0 || bravo === 0;
+    if (!eliminated && timeS < battleLimitS) return;
+    finishMatch(
+      winnerFromScores(alpha, bravo),
+      eliminated ? 'elimination' : 'time_limit',
+    );
+  }
+
+  function determineResult(modeResult: MatchModeResult | null = null): void {
+    if (modeResult) {
+      finishMatch(modeResult.result, modeResult.reason);
+      return;
     }
+    if (!modeController.usesElimination) determineModeResult();
+    else determineEliminationResult();
+  }
+
+  function stepCountdown(dt: number): boolean {
+    if (phase !== 'countdown') return false;
+    countdownRemainingS = Math.max(0, countdownRemainingS - dt);
+    for (const entity of entities) applyNetworkInput(entity, null);
+    if (countdownRemainingS === 0) {
+      phase = 'playing';
+      emit('match_started', { countdownMs: 0 });
+    }
+    updateVisibility();
+    return true;
+  }
+
+  function isFastRouteMode(): boolean {
+    return normalizedGameMode === 'turbo_ball' || normalizedGameMode === 'endless_horde';
+  }
+
+  function refreshModeBotRoutes(): void {
+    if (normalizedGameMode === 'standard' || timeS < nextModeRouteS) return;
+    const fastRouteMode = isFastRouteMode();
+    nextModeRouteS = timeS + (fastRouteMode ? 1.25 : 3);
+    for (const entity of entities) {
+      if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
+      const target = modeController.botTarget(entity);
+      if (!target) continue;
+      const moved = Math.hypot(
+        target.x - (entity._modeTargetX ?? Infinity),
+        target.z - (entity._modeTargetZ ?? Infinity),
+      );
+      if (moved < 12 && !fastRouteMode) continue;
+      entity._modeTargetX = target.x;
+      entity._modeTargetZ = target.z;
+      entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
+    }
+  }
+
+  function reconcileBotShell(entity: AuthoritativeEntity): void {
+    const shellSlot = Math.max(0, Math.min(
+      entity.spec.gun.shells.length - 1,
+      entity.input.shellSlot | 0,
+    ));
+    if (shellSlot === entity.combat.shellSlot) return;
+    if (!selectShell(entity.combat, shellSlot, entity.spec)) {
+      entity.input.shellSlot = entity.combat.shellSlot;
+    }
+  }
+
+  function updateEntityControls(
+    dt: number,
+    inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
+  ): void {
+    for (const entity of entities) {
+      if (entity.modeActive === false) continue;
+      if (entity.bot) {
+        entity.aiCtl?.update(dt, timeS);
+        reconcileBotShell(entity);
+      } else {
+        applyNetworkInput(entity, inputs.get(entity.id));
+      }
+      useConsumables(entity);
+    }
+  }
+
+  let movingEntity: AuthoritativeEntity | null = null;
+  function collideMovingEntity(pos: Vector3, radius: number, out: Vector3): boolean {
+    return movingEntity ? collideFor(movingEntity, pos, radius, out) : false;
+  }
+
+  function advanceTankMovement(dt: number): void {
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      movingEntity = entity;
+      updateTank(entity, heightField, dt, collideMovingEntity);
+    }
+    movingEntity = null;
+  }
+
+  function queueBodyImpact(
+    upper: AuthoritativeEntity,
+    lower: AuthoritativeEntity,
+    closing: number,
+  ): void {
+    pendingRams.push({ a: upper, b: lower, closing });
+  }
+
+  function advanceTankContacts(dt: number): void {
+    activeBodyEntities.length = 0;
+    for (const entity of entities) {
+      if (entity.modeActive !== false) activeBodyEntities.push(entity);
+    }
+    resolveTankBodyContacts(activeBodyEntities, dt, queueBodyImpact);
+    resolvePendingCrushes();
+    resolvePendingRams();
+  }
+
+  function advanceRollover(dt: number): void {
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
+    }
+  }
+
+  function advanceWeapons(dt: number): void {
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      tickReload(entity.combat, dt);
+      tryFire(entity);
+    }
+    stepShells(dt);
+  }
+
+  function advanceFires(dt: number): void {
+    fireTickAcc += dt;
+    if (fireTickAcc < FIRE_TICK_S) return;
+    fireTickAcc -= FIRE_TICK_S;
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      const fire = tickFire(entity, rng);
+      if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
+      if (fire.destroyed) emit('tank_destroyed', {
+        id: entity.id,
+        killerId: entity.id,
+        cause: 'fire',
+      });
+    }
+  }
+
+  function advanceRepairs(dt: number): void {
+    for (const entity of entities) {
+      if (entity.modeActive === false) continue;
+      for (const module of tickModuleRepairs(entity.combat, dt)) {
+        emit('module_state', { id: entity.id, module, state: 'yellow', repaired: true });
+      }
+    }
+  }
+
+  function stepPlaying(
+    dt: number,
+    inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
+  ): void {
+    timeS += dt;
+    refreshModeBotRoutes();
+    updateEntityControls(dt, inputs);
+    advanceTankMovement(dt);
+    advanceTankContacts(dt);
+    advanceRollover(dt);
+    advanceWeapons(dt);
+    advanceFires(dt);
+    advanceRepairs(dt);
+    updateVisibility();
+    determineResult(modeController.step(dt, timeS));
   }
 
   const simulation: AuthoritativeMatch = {
@@ -1364,109 +1774,9 @@ export function createAuthoritativeMatch({
       if (Math.abs(dt - SIM_DT) > 1e-9) {
         throw new Error(`authoritative match requires ${SIM_DT}s fixed steps`);
       }
-      if (phase === 'countdown') {
-        countdownRemainingS = Math.max(0, countdownRemainingS - dt);
-        for (const entity of entities) applyNetworkInput(entity, null);
-        if (countdownRemainingS === 0) {
-          phase = 'playing';
-          emit('match_started', { countdownMs: 0 });
-        }
-        updateVisibility();
-        return;
-      }
+      if (stepCountdown(dt)) return;
       if (phase !== 'playing') return;
-      timeS += dt;
-      if (normalizedGameMode !== 'standard' && timeS >= nextModeRouteS) {
-        nextModeRouteS = timeS + (normalizedGameMode === 'turbo_ball' ||
-          normalizedGameMode === 'endless_horde' ? 1.25 : 3);
-        for (const entity of entities) {
-          if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
-          const target = modeController.botTarget(entity);
-          if (!target) continue;
-          const moved = Math.hypot(
-            target.x - (entity._modeTargetX ?? Infinity),
-            target.z - (entity._modeTargetZ ?? Infinity),
-          );
-          if (moved < 12 && normalizedGameMode !== 'turbo_ball' &&
-              normalizedGameMode !== 'endless_horde') continue;
-          entity._modeTargetX = target.x;
-          entity._modeTargetZ = target.z;
-          entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
-        }
-      }
-      for (const entity of entities) {
-        if (entity.modeActive === false) continue;
-        if (entity.bot) {
-          entity.aiCtl?.update(dt, timeS);
-          // Bot controllers write the same input shell slot as clients, but
-          // do not pass through applyNetworkInput. Reconcile it here so the
-          // authoritative combat state can leave a depleted type and load the
-          // remaining ammunition instead of holding fire on an empty slot.
-          const shellSlot = Math.max(0, Math.min(
-            entity.spec.gun.shells.length - 1,
-            entity.input.shellSlot | 0,
-          ));
-          if (shellSlot !== entity.combat.shellSlot) {
-            if (!selectShell(entity.combat, shellSlot, entity.spec)) {
-              entity.input.shellSlot = entity.combat.shellSlot;
-            }
-          }
-        } else applyNetworkInput(entity, inputs.get(entity.id));
-        useConsumables(entity);
-      }
-      for (const entity of entities) {
-        if (entity.modeActive === false || entity.combat.destroyed) continue;
-        updateTank(entity, heightField, dt,
-          (pos, radius, out) => collideFor(entity, pos, radius, out));
-      }
-      activeBodyEntities.length = 0;
-      for (const entity of entities) {
-        if (entity.modeActive !== false) activeBodyEntities.push(entity);
-      }
-      resolveTankBodyContacts(activeBodyEntities, dt,
-        (upper, lower, closing) => {
-          const a = upper.id ? entityById.get(upper.id) : undefined;
-          const b = lower.id ? entityById.get(lower.id) : undefined;
-          if (a && b) pendingRams.push({ a, b, closing });
-        });
-      resolvePendingCrushes();
-      resolvePendingRams();
-      for (const entity of entities) {
-        if (entity.modeActive === false || entity.combat.destroyed ||
-            !stepRolloverLifecycle(entity.state, dt)) continue;
-        emit('tank_autoflip', { id: entity.id });
-      }
-      for (const entity of entities) {
-        if (entity.modeActive === false || entity.combat.destroyed) continue;
-        // Every weapon channel advances even when it is not selected. This is
-        // what lets an external missile launcher reload in the background
-        // while the crew returns to the cannon.
-        tickReload(entity.combat, dt);
-        tryFire(entity);
-      }
-      stepShells(dt);
-      fireTickAcc += dt;
-      if (fireTickAcc >= FIRE_TICK_S) {
-        fireTickAcc -= FIRE_TICK_S;
-        for (const entity of entities) {
-          if (entity.modeActive === false || entity.combat.destroyed) continue;
-          const fire = tickFire(entity, rng);
-          if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
-          if (fire.destroyed) emit('tank_destroyed', {
-            id: entity.id,
-            killerId: entity.id,
-            cause: 'fire',
-          });
-        }
-      }
-      for (const entity of entities) {
-        if (entity.modeActive === false) continue;
-        for (const module of tickModuleRepairs(entity.combat, dt)) {
-          emit('module_state', { id: entity.id, module, state: 'yellow', repaired: true });
-        }
-      }
-      updateVisibility();
-      determineResult(modeController.step(dt, timeS));
+      stepPlaying(dt, inputs);
     },
 
     snapshot({
@@ -1486,10 +1796,10 @@ export function createAuthoritativeMatch({
         const shooter = entityById.get(String(shell.shooterId));
         return !shooter || canObserve(viewerId, shooter);
       };
-      const canObserveEvent = (_id: string, value: unknown): boolean => {
+      const canObserveEvent = (_id: string, value: RuntimeValue): boolean => {
         if (!viewer) return true;
         if (!value || typeof value !== 'object') return false;
-        const event = value as Record<string, unknown>;
+        const event = value as Record<string, RuntimeValue>;
         const eventType = typeof event.type === 'string' ? event.type : '';
         if (eventType === 'world_prop_destroyed' || eventType.startsWith('mode_')) return true;
         for (const id of [

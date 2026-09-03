@@ -238,6 +238,40 @@ export function createVoiceRadio(rng: () => number): VoiceRadio {
       now - groupLast.t < line.groupCdS);
   }
 
+  function replaceQueuedGroup(group: string, priority: number) {
+    for (let i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].group !== group) continue;
+      if (queue[i].pri > priority) return false;
+      queue.splice(i, 1); // newest equal/higher call is the relevant one
+    }
+    return true;
+  }
+
+  function removeLowerPriorityCalls(priority: number) {
+    for (let i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].pri < priority) queue.splice(i, 1);
+    }
+  }
+
+  function worstQueuedCallIndex() {
+    let worst = 0;
+    for (let i = 1; i < queue.length; i++) {
+      const candidate = queue[i];
+      const incumbent = queue[worst];
+      if (candidate.pri < incumbent.pri ||
+          (candidate.pri === incumbent.pri && candidate.atReq < incumbent.atReq)) worst = i;
+    }
+    return worst;
+  }
+
+  function reserveQueueSlot(priority: number) {
+    if (queue.length < QUEUE_MAX) return true;
+    const worst = worstQueuedCallIndex();
+    if (queue[worst].pri >= priority) return false;
+    queue.splice(worst, 1);
+    return true;
+  }
+
   function enqueue(
     id: string,
     line: VoiceLine,
@@ -246,25 +280,9 @@ export function createVoiceRadio(rng: () => number): VoiceRadio {
     staleS: number | undefined,
   ) {
     const group = line.group || id;
-    for (let i = queue.length - 1; i >= 0; i--) {
-      if (queue[i].group !== group) continue;
-      if (queue[i].pri > line.pri) return false;
-      queue.splice(i, 1); // newest equal/higher call is the relevant one
-    }
-    if (line.pri >= 3) {
-      for (let i = queue.length - 1; i >= 0; i--) {
-        if (queue[i].pri < line.pri) queue.splice(i, 1);
-      }
-    }
-    if (queue.length >= QUEUE_MAX) {
-      let worst = 0;
-      for (let i = 1; i < queue.length; i++) {
-        if (queue[i].pri < queue[worst].pri ||
-            (queue[i].pri === queue[worst].pri && queue[i].atReq < queue[worst].atReq)) worst = i;
-      }
-      if (queue[worst].pri >= line.pri) return false;
-      queue.splice(worst, 1);
-    }
+    if (!replaceQueuedGroup(group, line.pri)) return false;
+    if (line.pri >= 3) removeLowerPriorityCalls(line.pri);
+    if (!reserveQueueSlot(line.pri)) return false;
     const readyAt = now + Math.max(0, delayS || 0);
     queue.push({ id, pri: line.pri, group, atReq: now, readyAt,
       expiresAt: readyAt + (staleS ?? line.staleS ?? QUEUE_STALE_S) });
@@ -274,6 +292,20 @@ export function createVoiceRadio(rng: () => number): VoiceRadio {
   function canInterrupt(pri: number, now: number): boolean {
     return !!currentSrc && currentEnd - now > 0.12 &&
       ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1));
+  }
+
+  function forcePlay(id: string) {
+    queue.length = 0;
+    stopCurrent();
+    return playNow(id);
+  }
+
+  function playImmediately(id: string, line: VoiceLine, now: number, busyUntil: number) {
+    if (now >= busyUntil) return playNow(id);
+    if (!canInterrupt(line.pri, now)) return null;
+    stopCurrent();
+    removeLowerPriorityCalls(line.pri);
+    return playNow(id);
   }
 
   /**
@@ -287,21 +319,17 @@ export function createVoiceRadio(rng: () => number): VoiceRadio {
     if (!loaded || !ctx || !dest) return false;
     const line = VOICE_LINES[id];
     if (!line) return false;
-    if (opts && opts.force) { queue.length = 0; stopCurrent(); return playNow(id); }
-    if (opts && typeof opts.prob === 'number' && rng() > opts.prob) return false;
+    if (opts?.force) return forcePlay(id);
+    if (typeof opts?.prob === 'number' && rng() > opts.prob) return false;
     const now = ctx.currentTime;
     if (cooldownActive(id, line, now)) return false;
-    const delayS = Math.max(0, (opts && opts.delayS) || 0);
+    const delayS = Math.max(0, opts?.delayS || 0);
     const busyUntil = currentEnd + GLOBAL_GAP_S;
     if (currentGroup === (line.group || id) && now < currentEnd && line.pri <= currentPri) return false;
-    if (delayS === 0 && now >= busyUntil) {
-      return playNow(id);
-    }
-    // Urgent survival/result speech may cut clearly lower-priority chatter.
-    if (delayS === 0 && canInterrupt(line.pri, now)) {
-      stopCurrent();
-      for (let i = queue.length - 1; i >= 0; i--) if (queue[i].pri < line.pri) queue.splice(i, 1);
-      return playNow(id);
+    if (delayS === 0) {
+      // Urgent survival/result speech may cut clearly lower-priority chatter.
+      const played = playImmediately(id, line, now, busyUntil);
+      if (played !== null) return played;
     }
     if (line.pri === 0 && now < busyUntil) return false; // flavor never backlogs
     return enqueue(id, line, now, delayS, opts?.staleS);

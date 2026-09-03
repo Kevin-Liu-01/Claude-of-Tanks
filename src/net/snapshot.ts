@@ -1,3 +1,4 @@
+import type { RuntimeValue } from '../runtimeTypes.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
@@ -49,36 +50,36 @@ type ReloadKindName = 'ready' | 'shell' | 'intraClip' | 'magazine';
 type VectorAxis = 0 | 1 | 2;
 
 interface SnapshotStateSource {
-  pos?: unknown;
-  speed?: unknown;
-  yaw?: unknown;
-  verticalSpeed?: unknown;
-  visualPitch?: unknown;
-  visualRoll?: unknown;
-  turretYaw?: unknown;
-  gunPitch?: unknown;
+  pos?: RuntimeValue;
+  speed?: RuntimeValue;
+  yaw?: RuntimeValue;
+  verticalSpeed?: RuntimeValue;
+  visualPitch?: RuntimeValue;
+  visualRoll?: RuntimeValue;
+  turretYaw?: RuntimeValue;
+  gunPitch?: RuntimeValue;
   grounded?: boolean;
-  _ride?: { v?: unknown } | null;
+  _ride?: { v?: RuntimeValue } | null;
 }
 
 interface SnapshotCombatSource {
   destroyed?: boolean;
   fire?: { burning?: boolean } | null;
-  hp?: unknown;
-  maxHp?: unknown;
-  reload?: { t?: unknown; totalS?: unknown; kind?: unknown } | null;
-  gunReload?: { t?: unknown; totalS?: unknown; kind?: unknown } | null;
-  magazine?: { rounds?: unknown; capacity?: unknown } | null;
-  shellSlot?: unknown;
-  ammo?: unknown[] | null;
+  hp?: RuntimeValue;
+  maxHp?: RuntimeValue;
+  reload?: { t?: RuntimeValue; totalS?: RuntimeValue; kind?: RuntimeValue } | null;
+  gunReload?: { t?: RuntimeValue; totalS?: RuntimeValue; kind?: RuntimeValue } | null;
+  magazine?: { rounds?: RuntimeValue; capacity?: RuntimeValue } | null;
+  shellSlot?: RuntimeValue;
+  ammo?: RuntimeValue[] | null;
   eraSpent?: Set<string> | null;
 }
 
 export interface SnapshotEntitySource {
-  id?: unknown;
-  specId?: unknown;
-  spec?: { id?: unknown } | null;
-  team?: unknown;
+  id?: RuntimeValue;
+  specId?: RuntimeValue;
+  spec?: { id?: RuntimeValue } | null;
+  team?: RuntimeValue;
   spotted?: boolean;
   state?: SnapshotStateSource | null;
   combat?: SnapshotCombatSource | null;
@@ -87,12 +88,12 @@ export interface SnapshotEntitySource {
 }
 
 export interface SnapshotShellSource {
-  id?: unknown;
-  shooterId?: unknown;
+  id?: RuntimeValue;
+  shooterId?: RuntimeValue;
   dead?: boolean;
-  pos?: unknown;
-  vel?: unknown;
-  spec?: { type?: unknown; guided?: boolean } | null;
+  pos?: RuntimeValue;
+  vel?: RuntimeValue;
+  spec?: { type?: RuntimeValue; guided?: boolean } | null;
 }
 
 export interface QuantizedEntitySnapshot {
@@ -147,8 +148,8 @@ export interface WorldSnapshot {
   ackInputSeq: number | null;
   entities: QuantizedEntitySnapshot[];
   shells: QuantizedShellSnapshot[];
-  events: unknown[];
-  meta: Record<string, unknown> | null;
+  events: RuntimeValue[];
+  meta: Record<string, RuntimeValue> | null;
 }
 
 export interface SnapshotPacket extends WorldSnapshot {
@@ -212,8 +213,8 @@ export interface SampledSnapshotFrame {
   ackInputSeq: number | null;
   entities: DecodedEntitySnapshot[];
   shells: QuantizedShellSnapshot[];
-  events: unknown[];
-  meta: Record<string, unknown> | null;
+  events: RuntimeValue[];
+  meta: Record<string, RuntimeValue> | null;
   immediateAuthority: ImmediateAuthoritySnapshot | null;
 }
 
@@ -222,24 +223,24 @@ export interface CaptureWorldSnapshotOptions {
   serverTimeMs?: number;
   entities?: Iterable<SnapshotEntitySource> | null;
   shells?: Iterable<SnapshotShellSource> | null;
-  events?: unknown[] | null;
-  viewerId?: unknown;
+  events?: RuntimeValue[] | null;
+  viewerId?: RuntimeValue;
   ackInputSeq?: number | null;
   canObserve?: (viewerId: string, entity: SnapshotEntitySource) => boolean;
   canObserveShell?: (viewerId: string, shell: SnapshotShellSource) => boolean;
-  canObserveEvent?: (viewerId: string, event: unknown) => boolean;
-  meta?: Record<string, unknown> | null;
+  canObserveEvent?: (viewerId: string, event: RuntimeValue) => boolean;
+  meta?: Record<string, RuntimeValue> | null;
 }
 
-function finite(value: unknown, fallback = 0): number {
+function finite(value: RuntimeValue, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function quantize(value: unknown, scale: number): number {
+function quantize(value: RuntimeValue, scale: number): number {
   return Math.round(finite(value) * scale);
 }
 
-function quantizeAngle(value: unknown): number {
+function quantizeAngle(value: RuntimeValue): number {
   let angle = finite(value);
   while (angle > Math.PI) angle -= Math.PI * 2;
   while (angle < -Math.PI) angle += Math.PI * 2;
@@ -250,10 +251,10 @@ function dequantizeAngle(value: number): number {
   return value / ANGLE_SCALE;
 }
 
-function vectorAxis(vector: unknown, axis: VectorAxis): number {
+function vectorAxis(vector: RuntimeValue, axis: VectorAxis): number {
   if (Array.isArray(vector)) return finite(vector[axis]);
   if (!vector || typeof vector !== 'object') return 0;
-  return finite((vector as Record<string, unknown>)[axis === 0 ? 'x' : axis === 1 ? 'y' : 'z']);
+  return finite((vector as Record<string, RuntimeValue>)[axis === 0 ? 'x' : axis === 1 ? 'y' : 'z']);
 }
 
 function entityFlags(entity: SnapshotEntitySource): number {
@@ -339,6 +340,48 @@ function captureShellSnapshot(
   };
 }
 
+function requireUnsignedTick(tick: number | undefined): asserts tick is number {
+  if (typeof tick !== 'number' || !Number.isSafeInteger(tick) || tick < 0) {
+    throw new TypeError('tick must be unsigned');
+  }
+}
+
+function requireServerTime(serverTimeMs: number | undefined): asserts serverTimeMs is number {
+  if (typeof serverTimeMs !== 'number' || !Number.isFinite(serverTimeMs) || serverTimeMs < 0) {
+    throw new TypeError('serverTimeMs must be non-negative');
+  }
+}
+
+function captureVisibleEntities(
+  entities: Iterable<SnapshotEntitySource> | null | undefined,
+  viewer: string,
+  canObserve: (viewerId: string, entity: SnapshotEntitySource) => boolean,
+): QuantizedEntitySnapshot[] {
+  const visible: QuantizedEntitySnapshot[] = [];
+  for (const entity of entities || []) {
+    if (visible.length >= MAX_ENTITIES) break;
+    if (!entity || (entity.id !== viewer && !canObserve(viewer, entity))) continue;
+    const captured = captureEntitySnapshot(entity);
+    if (captured) visible.push(captured);
+  }
+  return visible;
+}
+
+function captureVisibleShells(
+  shells: Iterable<SnapshotShellSource> | null | undefined,
+  viewer: string,
+  canObserveShell: (viewerId: string, shell: SnapshotShellSource) => boolean,
+): QuantizedShellSnapshot[] {
+  const visible: QuantizedShellSnapshot[] = [];
+  for (const shell of shells || []) {
+    if (visible.length >= MAX_SHELLS) break;
+    if (!canObserveShell(viewer, shell)) continue;
+    const captured = captureShellSnapshot(shell);
+    if (captured) visible.push(captured);
+  }
+  return visible;
+}
+
 /**
  * Build a viewer-specific authoritative snapshot.
  *
@@ -358,38 +401,24 @@ export function captureWorldSnapshot({
   canObserveEvent = () => true,
   meta = null,
 }: CaptureWorldSnapshotOptions = {}): WorldSnapshot {
-  if (typeof tick !== 'number' || !Number.isSafeInteger(tick) || tick < 0) {
-    throw new TypeError('tick must be unsigned');
-  }
-  if (typeof serverTimeMs !== 'number' || !Number.isFinite(serverTimeMs) ||
-      serverTimeMs < 0) {
-    throw new TypeError('serverTimeMs must be non-negative');
-  }
+  requireUnsignedTick(tick);
+  requireServerTime(serverTimeMs);
   const viewer = String(viewerId || '');
-  const visibleEntities = [];
-  for (const entity of entities || []) {
-    if (visibleEntities.length >= MAX_ENTITIES) break;
-    if (!entity) continue;
-    if (entity.id !== viewer && !canObserve(viewer, entity)) continue;
-    const captured = captureEntitySnapshot(entity);
-    if (captured) visibleEntities.push(captured);
-  }
-  const visibleShells = [];
-  for (const shell of shells || []) {
-    if (visibleShells.length >= MAX_SHELLS) break;
-    if (!canObserveShell(viewer, shell)) continue;
-    const captured = captureShellSnapshot(shell);
-    if (captured) visibleShells.push(captured);
-  }
   return {
     tick,
     serverTimeMs: Math.round(serverTimeMs),
     ackInputSeq,
-    entities: visibleEntities,
-    shells: visibleShells,
+    entities: captureVisibleEntities(entities, viewer, canObserve),
+    shells: captureVisibleShells(shells, viewer, canObserveShell),
     events: (events || []).filter((event) => canObserveEvent(viewer, event)),
     meta: meta && typeof meta === 'object' ? { ...meta } : null,
   };
+}
+
+function sameStringArray(a: string[] | undefined, b: string[] | undefined): boolean {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
 }
 
 function sameEntitySnapshot(
@@ -399,21 +428,36 @@ function sameEntitySnapshot(
   if (!a || !b) return false;
   for (const field of ENTITY_DELTA_FIELDS) {
     if (field === 'eraSpent') {
-      const aSpent = a.eraSpent;
-      const bSpent = b.eraSpent;
-      if (aSpent === bSpent) continue;
-      if (!Array.isArray(aSpent) || !Array.isArray(bSpent) ||
-          aSpent.length !== bSpent.length) return false;
-      let same = true;
-      for (let index = 0; index < aSpent.length; index++) {
-        if (aSpent[index] !== bSpent[index]) { same = false; break; }
-      }
-      if (!same) return false;
+      if (!sameStringArray(a.eraSpent, b.eraSpent)) return false;
       continue;
     }
     if (a[field] !== b[field]) return false;
   }
   return true;
+}
+
+function requireSnapshotPacket(packetValue: object): SnapshotPacket {
+  const candidate = packetValue as { tick?: number; entities?: object[] };
+  if (!Number.isSafeInteger(candidate.tick) || !Array.isArray(candidate.entities)) {
+    throw new TypeError('invalid snapshot packet');
+  }
+  return packetValue as SnapshotPacket;
+}
+
+function requireBaselineTick(baseTick: number, packetTick: number): void {
+  if (!Number.isSafeInteger(baseTick) || baseTick < 0 || baseTick >= packetTick) {
+    throw new TypeError('invalid snapshot baseline tick');
+  }
+}
+
+function applyEntityDelta(
+  baseline: WorldSnapshot,
+  packet: SnapshotPacket,
+): QuantizedEntitySnapshot[] {
+  const byId = new Map(baseline.entities.map((entity) => [entity.id, entity]));
+  for (const id of packet.removedEntityIds || []) byId.delete(String(id));
+  for (const entity of packet.entities) byId.set(entity.id, entity);
+  return [...byId.values()];
 }
 
 /**
@@ -466,32 +510,23 @@ export class SnapshotAssembler {
     this.capacity = capacity;
   }
 
-  accept(packetValue: unknown): WorldSnapshot | null {
+  accept(packetValue: RuntimeValue): WorldSnapshot | null {
     if (!packetValue || typeof packetValue !== 'object' || Array.isArray(packetValue)) {
-      throw new TypeError('invalid snapshot packet');
-    }
-    const candidate = packetValue as Record<string, unknown>;
-    if (!Number.isSafeInteger(candidate.tick) || !Array.isArray(candidate.entities)) {
       throw new TypeError('invalid snapshot packet');
     }
     // The packet is an untrusted transport boundary. The assembler validates
     // the framing fields it consumes before adopting the typed wire shape;
     // entity decoding performs the remaining finite/range normalization.
-    const packet = packetValue as SnapshotPacket;
+    const packet = requireSnapshotPacket(packetValue);
     const baseTick = packet.baseTick == null ? -1 : packet.baseTick;
     let entities: QuantizedEntitySnapshot[];
     if (baseTick === -1) {
       entities = packet.entities.slice();
     } else {
-      if (!Number.isSafeInteger(baseTick) || baseTick < 0 || baseTick >= packet.tick) {
-        throw new TypeError('invalid snapshot baseline tick');
-      }
+      requireBaselineTick(baseTick, packet.tick);
       const baseline = this.history.get(baseTick);
       if (!baseline) return null;
-      const byId = new Map(baseline.entities.map((entity) => [entity.id, entity]));
-      for (const id of packet.removedEntityIds || []) byId.delete(String(id));
-      for (const entity of packet.entities) byId.set(entity.id, entity);
-      entities = [...byId.values()];
+      entities = applyEntityDelta(baseline, packet);
     }
     const full = {
       tick: packet.tick,
@@ -503,12 +538,16 @@ export class SnapshotAssembler {
       meta: packet.meta && typeof packet.meta === 'object' ? packet.meta : null,
     };
     this.history.set(full.tick, full);
+    this.trimHistory();
+    return full;
+  }
+
+  private trimHistory(): void {
     while (this.history.size > this.capacity) {
       const oldestTick = this.history.keys().next().value;
-      if (oldestTick == null) break;
+      if (oldestTick == null) return;
       this.history.delete(oldestTick);
     }
-    return full;
   }
 
   clear(): void { this.history.clear(); }
@@ -931,41 +970,44 @@ export class SnapshotBuffer {
     return entity;
   }
 
-  sample(localServerTimeMs: number): SampledSnapshotFrame | null {
-    if (!this.snapshots.length) return null;
-    this.sampleCount++;
-    if (this.adaptiveDelay) {
-      if (this.lastSampleServerTimeMs != null) {
-        const elapsedMs = Math.max(0, Math.min(
-          MAX_SAMPLE_DELTA_MS,
-          localServerTimeMs - this.lastSampleServerTimeMs,
-        ));
-        const delayErrorMs = this.targetInterpolationDelayMs - this.interpolationDelayMs;
-        if (delayErrorMs > 0) {
-          // Grow the safety buffer by slowing presentation, never by seeking
-          // backward through already-rendered authority poses.
-          this.interpolationDelayMs += Math.min(
-            delayErrorMs,
-            elapsedMs * DELAY_ATTACK_FRACTION,
-          );
-        } else if (delayErrorMs < 0) {
-          // Recover latency more gently than it is acquired. The render clock
-          // runs at at most 1.1x until it reaches the new target.
-          this.interpolationDelayMs += Math.max(
-            delayErrorMs,
-            -elapsedMs * DELAY_RELEASE_FRACTION,
-          );
-        }
+  private advanceInterpolationDelay(localServerTimeMs: number): void {
+    if (!this.adaptiveDelay) return;
+    if (this.lastSampleServerTimeMs != null) {
+      const elapsedMs = Math.max(0, Math.min(
+        MAX_SAMPLE_DELTA_MS,
+        localServerTimeMs - this.lastSampleServerTimeMs,
+      ));
+      const delayErrorMs = this.targetInterpolationDelayMs - this.interpolationDelayMs;
+      if (delayErrorMs > 0) {
+        // Grow the safety buffer by slowing presentation, never by seeking
+        // backward through already-rendered authority poses.
+        this.interpolationDelayMs += Math.min(
+          delayErrorMs,
+          elapsedMs * DELAY_ATTACK_FRACTION,
+        );
+      } else if (delayErrorMs < 0) {
+        // Recover latency more gently than it is acquired. The render clock
+        // runs at at most 1.1x until it reaches the new target.
+        this.interpolationDelayMs += Math.max(
+          delayErrorMs,
+          -elapsedMs * DELAY_RELEASE_FRACTION,
+        );
       }
-      this.lastSampleServerTimeMs = localServerTimeMs;
     }
-    let renderTime = localServerTimeMs - this.interpolationDelayMs;
-    if (this.lastRenderTimeMs != null && renderTime < this.lastRenderTimeMs) {
-      renderTime = this.lastRenderTimeMs;
-    }
+    this.lastSampleServerTimeMs = localServerTimeMs;
+  }
+
+  private resolveRenderTime(localServerTimeMs: number): number {
+    const desiredTime = localServerTimeMs - this.interpolationDelayMs;
+    const renderTime = this.lastRenderTimeMs == null
+      ? desiredTime : Math.max(desiredTime, this.lastRenderTimeMs);
     this.lastRenderTimeMs = renderTime;
-    let older: WorldSnapshot | null = null;
-    let newer: WorldSnapshot | null = null;
+    return renderTime;
+  }
+
+  private findSnapshotPair(renderTime: number): [WorldSnapshot, WorldSnapshot] {
+    let older: WorldSnapshot | undefined;
+    let newer: WorldSnapshot | undefined;
     for (const snapshot of this.snapshots) {
       if (snapshot.serverTimeMs <= renderTime) older = snapshot;
       if (snapshot.serverTimeMs >= renderTime) {
@@ -973,82 +1015,128 @@ export class SnapshotBuffer {
         break;
       }
     }
-    if (!older) older = this.snapshots[0];
-    if (!newer) newer = this.snapshots[this.snapshots.length - 1];
+    return [older || this.snapshots[0], newer || this.snapshots[this.snapshots.length - 1]];
+  }
 
-    const frame = this.sampleFrame;
-    const entities = frame.entities;
+  private presentEntity(
+    id: string,
+    sampled: DecodedEntitySnapshot,
+  ): DecodedEntitySnapshot {
+    return id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled);
+  }
+
+  private extrapolateEntities(
+    snapshot: WorldSnapshot,
+    renderTime: number,
+    entities: DecodedEntitySnapshot[],
+  ): void {
+    const extraMs = Math.max(0, Math.min(
+      this.maxExtrapolationMs,
+      renderTime - snapshot.serverTimeMs,
+    ));
+    if (extraMs > 0) this.extrapolatedSamples++;
+    for (const raw of snapshot.entities) {
+      const sampled = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
+      entities.push(this.presentEntity(raw.id, sampled));
+    }
+  }
+
+  private interpolateEntities(
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+    entities: DecodedEntitySnapshot[],
+  ): void {
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
+    this.olderById.clear();
+    for (const entity of older.entities) this.olderById.set(entity.id, entity);
+    for (const current of newer.entities) {
+      const previous = this.olderById.get(current.id);
+      const sampled = previous
+        ? interpolateEntity(previous, current, t, durationMs / 1000,
+          this.sampleEntity(current.id), this.decodeScratchA, this.decodeScratchB)
+        : decodeEntitySnapshot(current, this.sampleEntity(current.id));
+      entities.push(this.presentEntity(current.id, sampled));
+    }
+  }
+
+  private sampleBufferedEntities(
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+    entities: DecodedEntitySnapshot[],
+  ): void {
     entities.length = 0;
     if (older === newer || newer.serverTimeMs === older.serverTimeMs) {
-      const extraMs = Math.max(0, Math.min(this.maxExtrapolationMs,
-        renderTime - newer.serverTimeMs));
-      if (extraMs > 0) this.extrapolatedSamples++;
-      for (const raw of newer.entities) {
-        const sampled = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
-        entities.push(raw.id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled));
-      }
-    } else {
-      const durationMs = newer.serverTimeMs - older.serverTimeMs;
-      const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
-      const olderById = this.olderById;
-      olderById.clear();
-      for (const entity of older.entities) olderById.set(entity.id, entity);
-      for (const current of newer.entities) {
-        const previous = olderById.get(current.id);
-        const sampled = previous
-          ? interpolateEntity(previous, current, t, durationMs / 1000,
-            this.sampleEntity(current.id), this.decodeScratchA, this.decodeScratchB)
-          : decodeEntitySnapshot(current, this.sampleEntity(current.id));
-        entities.push(current.id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled));
-      }
+      this.extrapolateEntities(newer, renderTime, entities);
+      return;
     }
+    this.interpolateEntities(older, newer, renderTime, entities);
+  }
+
+  private resetImmediatePresentation(): null {
+    this.immediatePresentationReady = false;
+    this.lastImmediatePresentationTimeMs = null;
+    return null;
+  }
+
+  private sampleImmediateAuthority(
+    localServerTimeMs: number,
+    entities: DecodedEntitySnapshot[],
+  ): ImmediateAuthoritySnapshot | null {
+    if (!this.immediateEntityId) return null;
+    const latest = this.snapshots[this.snapshots.length - 1];
+    const raw = latest.entities.find((entity) => entity.id === this.immediateEntityId);
+    if (!raw) return this.resetImmediatePresentation();
+    const extraMs = Math.max(0, Math.min(
+      this.maxExtrapolationMs,
+      localServerTimeMs - latest.serverTimeMs,
+    ));
+    const target = extrapolateEntity(raw, extraMs / 1000, this.immediateScratch);
+    const elapsedMs = this.lastImmediatePresentationTimeMs == null
+      ? 0 : localServerTimeMs - this.lastImmediatePresentationTimeMs;
+    limitImmediatePresentation(
+      target,
+      this.immediatePresentation,
+      elapsedMs,
+      this.immediatePresentationReady,
+    );
+    this.immediatePresentationReady = true;
+    this.lastImmediatePresentationTimeMs = localServerTimeMs;
+    const immediate = this.immediatePresentation;
+    const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
+    if (index >= 0) entities[index] = immediate;
+    else entities.push(immediate);
+    const authority = this.immediateAuthority;
+    authority.tick = latest.tick;
+    authority.serverTimeMs = latest.serverTimeMs;
+    authority.ackInputSeq = latest.ackInputSeq;
+    decodeEntitySnapshot(raw, authority.entity);
+    return authority;
+  }
+
+  sample(localServerTimeMs: number): SampledSnapshotFrame | null {
+    if (!this.snapshots.length) return null;
+    this.sampleCount++;
+    this.advanceInterpolationDelay(localServerTimeMs);
+    const renderTime = this.resolveRenderTime(localServerTimeMs);
+    const [older, newer] = this.findSnapshotPair(renderTime);
+    const frame = this.sampleFrame;
+    this.sampleBufferedEntities(older, newer, renderTime, frame.entities);
 
     // The locally controlled tank must not inherit the remote-entity jitter
     // delay. Render it from the newest authority sample with the same bounded
     // extrapolator; opponents and teammates remain safely buffered. This is
     // still server truth—there is no client-side collision or damage sim—and
     // corrections remain small because snapshots arrive at 20 Hz.
-    let immediateAuthority: ImmediateAuthoritySnapshot | null = null;
-    if (this.immediateEntityId) {
-      const latest = this.snapshots[this.snapshots.length - 1];
-      const raw = latest.entities.find((entity) => entity.id === this.immediateEntityId);
-      if (raw) {
-        const extraMs = Math.max(0, Math.min(
-          this.maxExtrapolationMs,
-          localServerTimeMs - latest.serverTimeMs,
-        ));
-        const target = extrapolateEntity(raw, extraMs / 1000, this.immediateScratch);
-        const elapsedMs = this.lastImmediatePresentationTimeMs == null
-          ? 0 : localServerTimeMs - this.lastImmediatePresentationTimeMs;
-        limitImmediatePresentation(
-          target,
-          this.immediatePresentation,
-          elapsedMs,
-          this.immediatePresentationReady,
-        );
-        this.immediatePresentationReady = true;
-        this.lastImmediatePresentationTimeMs = localServerTimeMs;
-        const immediate = this.immediatePresentation;
-        const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
-        if (index >= 0) entities[index] = immediate;
-        else entities.push(immediate);
-        immediateAuthority = this.immediateAuthority;
-        immediateAuthority.tick = latest.tick;
-        immediateAuthority.serverTimeMs = latest.serverTimeMs;
-        immediateAuthority.ackInputSeq = latest.ackInputSeq;
-        decodeEntitySnapshot(raw, immediateAuthority.entity);
-      } else {
-        this.immediatePresentationReady = false;
-        this.lastImmediatePresentationTimeMs = null;
-      }
-    }
     frame.tick = newer.tick;
     frame.serverTimeMs = renderTime;
     frame.ackInputSeq = newer.ackInputSeq;
     frame.shells = newer.shells || [];
     frame.events = newer.events || [];
     frame.meta = newer.meta || null;
-    frame.immediateAuthority = immediateAuthority;
+    frame.immediateAuthority = this.sampleImmediateAuthority(localServerTimeMs, frame.entities);
     return frame;
   }
 }
