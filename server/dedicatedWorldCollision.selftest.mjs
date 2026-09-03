@@ -7,11 +7,11 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {
-  verdant: [6634, 6377, 6920],
+  verdant: [6628, 6377, 6920],
   desert: [2381, 2337, 1823],
-  winter: [5177, 4965, 4380],
+  winter: [5180, 4965, 4380],
   urban: [3588, 5300, 2399],
-  coastal: [3402, 3190, 2741],
+  coastal: [3406, 3190, 2741],
   autumn: [5992, 5718, 6200],
   steppe: [2236, 1952, 1394],
   railyard: [2683, 2547, 1973],
@@ -21,7 +21,7 @@ const expected = {
   badlands: [2843, 2679, 1890],
   monsoon: [9839, 9598, 11597],
   alpine: [8535, 8338, 7574],
-  caldera: [4388, 4271, 3265],
+  caldera: [4389, 4271, 3265],
   foundry: [3911, 3768, 2939],
   ruinspires: [2827, 5281, 1159],
   blackglass: [3528, 4359, 2270],
@@ -59,6 +59,9 @@ assert.equal(world.getObstacles().length, expected.verdant[0]);
 assert.equal(world.getColliders().length, expected.verdant[1]);
 assert.equal(world.getConcealment().length, expected.verdant[2]);
 assert.ok(world.getObstacles().some((record) => record.shape2?.kind === 'convex'));
+const compoundStructure = world.getObstacles().find((record) => record.shape2?.kind === 'compound');
+assert.ok(compoundStructure && compoundStructure.shape2.parts.length >= 2,
+  'dedicated manifest preserves exact compound structure parts behind one broad-phase record');
 assert.ok(world.getObstacles().some((record) => record.crushable));
 const destructible = world.getObstacles().find((record) => record.crushable &&
   record.propIdx != null && world.getColliders().some((entry) => entry.propIdx === record.propIdx));

@@ -15,13 +15,20 @@ const passing = {
     operationalMachines: 3,
     facilityStations: 2,
     openingSightlineIntrusions: 0,
-    distinctiveElements: Array.from({ length: 8 }, (_, index) => `layer-${index}`),
-    structures: 7,
+    distinctiveElements: Array.from({ length: 10 }, (_, index) => `layer-${index}`),
+    structures: 8,
+    structurePerimeterSectors: 5,
+    collisionAuditedStructures: 8,
+    collisionFootprints: 32,
+    collisionEnvelopeFill: 0.62,
+    openCollisionMaxFill: 0.40,
     sourceBeat: 'authored-source-beat',
     serviceFrame: 'connected service frame',
     terrainProfile: 'battlefield-derived terrain excerpt',
     signature: 'distinct-signature',
     treeSpecies: ['oak', 'birch'],
+    treeTrunkMinRadialSegments: 10,
+    treeTrunksRooted: true,
     landmarkHeightM: 9,
     facilityMaterialClasses: 4,
     connectedExteriorParts: 140,
@@ -45,8 +52,8 @@ const floating = scoreGarageQuality({
   ...passing,
   architecture: { ...passing.architecture, unsupportedParts: 1 },
 });
-assert.equal(floating.total, 90,
-  'one floating component must consume the complete ten-point support criterion');
+assert.equal(floating.total, 93,
+  'one floating component must consume the complete support criterion');
 assert.ok(floating.failures.includes('unsupported structure part'));
 
 const proxy = scoreGarageQuality({

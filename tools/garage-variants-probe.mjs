@@ -60,7 +60,10 @@ try {
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, { waitUntil: 'networkidle0', timeout: 60_000 });
   await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
     { timeout: 60_000 });
-  await page.waitForFunction(() => window.__GARAGE_WORKSHOP.stats().architecture?.ready === true,
+  await page.waitForFunction(() => {
+    const architecture = window.__GARAGE_WORKSHOP.stats().architecture;
+    return architecture?.ready === true && architecture.presented === true;
+  },
     { timeout: 60_000 });
   const variants = await page.evaluate(() => window.__GARAGE_WORKSHOP.variants);
   if (shotsDir) await mkdir(shotsDir, { recursive: true });
@@ -76,6 +79,23 @@ try {
       })));
   });
   await page.click('.cot-garage-variant-trigger');
+
+  // Reproduce the real selector race: hover starts one pack's offscreen
+  // preparation, then a different card becomes selected while the first is
+  // still compiling. The selected build must be pinned until its atomic
+  // reveal instead of being evicted into an empty clear-color frame.
+  const intentRaceTarget = variants[1].id;
+  const intentRaceDecoy = variants[2].id;
+  await page.click('.cot-garage-variant-trigger');
+  await page.hover(`[data-variant-id="${intentRaceDecoy}"]`);
+  await new Promise((resolve) => setTimeout(resolve, 8));
+  await page.click(`[data-variant-id="${intentRaceTarget}"]`);
+  await page.waitForFunction((id) => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return stats.selected === id && stats.architecture?.ready === true
+      && stats.architecture.presented === true;
+  }, { timeout: 30_000 }, intentRaceTarget);
+  const intentRace = await page.evaluate(() => window.__GARAGE_WORKSHOP.stats());
 
   // The modern four-bay maintenance layer is demand-loaded after readiness.
   // Let the production quiet-window scheduler build it exactly as a player
@@ -95,7 +115,8 @@ try {
     await page.click(`[data-variant-id="${variant.id}"]`);
     await page.waitForFunction((id) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
-      return stats.selected === id && stats.architecture?.ready === true;
+      return stats.selected === id && stats.architecture?.ready === true
+        && stats.architecture.presented === true;
     }, { timeout: 30_000 }, variant.id);
     await new Promise((resolve) => setTimeout(resolve, 180));
     const frames = await stopFrameProbe('__GARAGE_SWITCH_PROBE');
@@ -161,7 +182,8 @@ try {
         window.__GARAGE_WORKSHOP.set(id);
         const started = performance.now();
         while (window.__GARAGE_WORKSHOP.stats().selected !== id
-            || window.__GARAGE_WORKSHOP.stats().architecture?.ready !== true) {
+            || window.__GARAGE_WORKSHOP.stats().architecture?.ready !== true
+            || window.__GARAGE_WORKSHOP.stats().architecture?.presented !== true) {
           if (performance.now() - started > 5_000) throw new Error(`Garage cycle timeout: ${id}`);
           await new Promise((resolve) => setTimeout(resolve, 4));
         }
@@ -214,7 +236,8 @@ try {
   await page.waitForFunction((id) => {
     const stats = window.__GARAGE_WORKSHOP?.stats();
     return window.__GAME_READY === true && stats?.selected === id
-      && stats?.architecture?.ready === true;
+      && stats?.architecture?.ready === true
+      && stats.architecture.presented === true;
   }, { timeout: 60_000 }, persistedOutdoorId);
   const persistedReload = await page.evaluate((id, elapsedMs) => {
     const stats = window.__GARAGE_WORKSHOP.stats();
@@ -223,6 +246,7 @@ try {
       elapsedMs,
       selected: stats.selected,
       ready: stats.architecture?.ready === true,
+      presented: stats.architecture?.presented === true,
       drawCalls: stats.architecture?.drawCalls || 0,
       triangles: stats.architecture?.triangles || 0,
       sceneMode: stats.sceneMode,
@@ -272,6 +296,12 @@ try {
   }
 
   const failures = [];
+  if (intentRace.selected !== intentRaceTarget
+      || intentRace.architecture?.presented !== true
+      || intentRace.architecture?.drawCalls <= 0
+      || intentRace.sceneMode !== 'authentic-scene-pack') {
+    failures.push(`selector intent race exposed an incomplete Garage: ${JSON.stringify(intentRace)}`);
+  }
   if (variants.length !== 10 || results.length !== 10) failures.push('expected ten Garage variants');
   if (new Set(results.map((row) => row.stats.architecture.signature)).size !== 10) {
     failures.push('environment signatures are not unique');
@@ -368,6 +398,7 @@ try {
     failures.push(`30-cycle residency growth failed: ${heapGrowth} bytes`);
   }
   if (persistedReload.selected !== persistedOutdoorId || !persistedReload.ready
+      || !persistedReload.presented
       || persistedReload.drawCalls < 8 || persistedReload.triangles <= 0
       || persistedReload.sceneMode !== 'authentic-scene-pack') {
     failures.push(`persisted outdoor Garage failed: ${JSON.stringify(persistedReload)}`);
@@ -384,6 +415,12 @@ try {
   console.log(JSON.stringify({
     cpuRate,
     maxGapMs,
+    intentRace: {
+      selected: intentRace.selected,
+      ready: intentRace.architecture?.ready === true,
+      presented: intentRace.architecture?.presented === true,
+      drawCalls: intentRace.architecture?.drawCalls || 0,
+    },
     variants: results.map(({ id, frames, stats }) => ({
       id,
       frames,

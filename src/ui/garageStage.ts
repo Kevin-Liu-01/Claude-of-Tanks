@@ -1400,6 +1400,10 @@ export function createGarageStage(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
   let variantPresentationGeneration = 0;
+  const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
+  const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
+    new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)))
+  );
 
   const applyVariantSceneMode = (
     variantId: string,
@@ -1449,11 +1453,33 @@ export function createGarageStage(
       // clear frame, missing horizon, or half-compiled material can appear.
       queueMicrotask(() => {
         if (presentationGeneration !== variantPresentationGeneration) return;
-        void architecture.whenReady().then((readyStats) => {
-          if (presentationGeneration === variantPresentationGeneration && readyStats.ready) {
-            applyVariantSceneMode(variant.id, readyStats);
+        void (async () => {
+          let lastError = '';
+          for (let attempt = 0; attempt < ENVIRONMENT_REVEAL_ATTEMPTS; attempt += 1) {
+            try {
+              const readyStats = await architecture.whenReady();
+              if (presentationGeneration !== variantPresentationGeneration) return;
+              if (readyStats.ready) {
+                applyVariantSceneMode(variant.id, readyStats);
+                group.userData.garageArchitectureError = '';
+                group.userData.garageArchitectureAttempts = attempt + 1;
+                return;
+              }
+            } catch (error) {
+              lastError = error instanceof Error ? error.message : String(error);
+            }
+            if (presentationGeneration !== variantPresentationGeneration) return;
+            if (attempt + 1 < ENVIRONMENT_REVEAL_ATTEMPTS) {
+              await waitForEnvironmentRetry(attempt);
+            }
           }
-        });
+          // Preserve the last complete Garage instead of exposing the clear
+          // color. Diagnostics retain the failure so a later selection can
+          // retry rather than silently declaring the empty frame ready.
+          group.userData.garageArchitectureError = lastError || 'environment did not become ready';
+          group.userData.garageArchitectureAttempts = ENVIRONMENT_REVEAL_ATTEMPTS;
+          requestRender();
+        })();
       });
     }
     return variant.id;

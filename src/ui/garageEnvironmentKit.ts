@@ -13,6 +13,11 @@ import {
   addCatalogExterior,
   type GeometryBuckets,
 } from '../world/maps/exteriorDetailKit.ts';
+import {
+  auditStructureCollision,
+  structureCollisionOpenIds,
+} from '../world/maps/structureCollision.ts';
+import { auditStructureAssembly } from '../world/maps/structureAssemblyAudit.ts';
 import type { TreeSpecies } from '../world/treeSpecies.ts';
 import { createGarageTreeKit } from '../world/vegetation.ts';
 import {
@@ -72,6 +77,15 @@ export interface GarageEnvironmentStats {
   readonly connectedExteriorParts: number;
   readonly connectedExteriorBuildings: number;
   readonly maxExteriorSupportGapM: number;
+  readonly collisionAuditedStructures: number;
+  readonly collisionFootprints: number;
+  readonly collisionEnvelopeFill: number;
+  readonly openCollisionMaxFill: number;
+  readonly structurePerimeterSectors: number;
+  readonly treeTrunkMinRadialSegments: number;
+  readonly treeTrunksRooted: boolean;
+  readonly structureUnsupportedParts: number;
+  readonly maxStructureConnectionGapM: number;
   readonly looseParts: number;
   readonly railSegments: number;
   readonly placementZones: number;
@@ -179,6 +193,7 @@ function buildSharedGarageTreeGrove(
   };
   const trunk = mergeGrove(source.trunk);
   const foliage = mergeGrove(source.foliage);
+  trunk.userData.trunkQuality = source.trunk.userData.trunkQuality;
   const trunkMaterial = source.trunkMaterial;
   const foliageMaterial = source.foliageMaterial;
   const foliageTexture = foliageMaterial.map;
@@ -423,22 +438,56 @@ function createBackdropGeometry(
       const broad = Math.sin(angle * 2 + phase) * 0.22
         + Math.sin(angle * 5 - phase * 0.6) * 0.12
         + Math.sin(angle * 9 + phase * 0.34) * 0.055;
+      const wrappedSegment = segment === segments ? 0 : segment;
+      const skylineCell = Math.floor(wrappedSegment / segments * 24);
+      const skylineHash = (() => {
+        let value = Math.imul(skylineCell + 17 + layerIndex * 29, 0x45d9f3b);
+        value = Math.imul(value ^ value >>> 16, 0x45d9f3b);
+        return ((value ^ value >>> 16) >>> 0) / 4294967295;
+      })();
       const profile = (() => {
         switch (recipe.horizonStyle) {
           case 'alpine': {
             const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
             const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
-            return broad * 1.55 + peakA * 0.52 + peakB * 0.30;
+            const crag = Math.pow(Math.max(0, Math.sin(angle * 11 + phase * 1.4)), 5.0);
+            const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
+            return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.20 - passCut * 0.18;
           }
           case 'mesa': {
             const shelf = Math.sin(angle * 2 + phase) * 0.52
               + Math.sin(angle * 4 - phase) * 0.20;
-            return Math.round(shelf * 3) / 3 + broad * 0.34;
+            const canyon = Math.pow(Math.max(0, Math.sin(angle * 3 - phase * 0.7)), 10);
+            const butte = Math.pow(Math.max(0, Math.cos(angle * 5 + phase)), 14);
+            return Math.round(shelf * 3) / 3 + broad * 0.28 - canyon * 0.30 + butte * 0.42;
           }
-          case 'rolling': return broad * 1.22;
-          case 'urban': return Math.round((broad + 0.18) * 5) / 8;
-          case 'coastal': return broad * 0.34 - 0.08;
-          default: return broad * 0.42;
+          case 'rolling': {
+            const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
+            return broad * 1.30 + woodedShoulder;
+          }
+          case 'urban': {
+            const tower = 0.08 + skylineHash * 0.62;
+            const ruined = skylineCell % 7 === 0 ? -0.18 : 0;
+            const aerial = skylineCell % 11 === 0 ? 0.22 : 0;
+            return tower + ruined + aerial + broad * 0.12;
+          }
+          case 'coastal': {
+            const headland = Math.pow(Math.max(0, Math.sin(angle * 2.2 + phase)), 4) * 0.38;
+            return broad * 0.25 - 0.12 + headland;
+          }
+          default: {
+            if (recipe.approach.style === 'rail-fan') {
+              const shedRoof = skylineCell % 5 < 3 ? 0.22 : 0.05;
+              const waterTower = skylineCell % 13 === 0 ? 0.66 : 0;
+              return shedRoof + waterTower + broad * 0.16;
+            }
+            if (recipe.approach.style === 'foundry-haul-road') {
+              const sawtooth = skylineCell % 3 === 0 ? 0.34 : 0.15;
+              const stack = skylineCell % 9 === 0 ? 0.78 : 0;
+              return sawtooth + stack + broad * 0.12;
+            }
+            return broad * 0.42;
+          }
         }
       })();
       const nominal = recipe.horizonHeightM * layer.height;
@@ -686,8 +735,13 @@ export function buildGarageEnvironment(
     }
     const exteriorParts = supports.length;
     const exteriorSupportGap = Math.max(0, ...supports.map((support) => support.gap));
+    const collisionAudit = auditStructureCollision(local, dimensions, 'movement', placement.catalogId);
+    const assemblyAudit = auditStructureAssembly(local);
     const y = samplePatch(patch, heights, x, z);
-    return { placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap };
+    return {
+      placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap,
+      collisionAudit, assemblyAudit,
+    };
   });
 
   // Cut a compact, feathered service terrace beneath each real structure.
@@ -1107,6 +1161,13 @@ export function buildGarageEnvironment(
 
   const landmarkView = legacyGaragePointToView(recipe.landmark[0], recipe.landmark[2]);
   const landmarkWorld = cameraPoint(landmarkView.side, landmarkView.depth);
+  const perimeterSectors = new Set(structureRecords.map(({ x, z }) => {
+    const angle = Math.atan2(z, x) + Math.PI;
+    return Math.floor((angle / (Math.PI * 2)) * 8) % 8;
+  })).size;
+  const treeTrunkQualities = treeKits.map((kit) => (
+    kit.trunk.userData.trunkQuality as { radialSegments?: number; rootFlare?: boolean } | undefined
+  ));
   const stats: GarageEnvironmentStats = Object.freeze({
     distinctiveElements: Object.freeze([
       ...recipe.distinctiveElements,
@@ -1147,6 +1208,36 @@ export function buildGarageEnvironment(
       0,
       ...structureRecords.map((record) => record.exteriorSupportGap),
     ).toFixed(4)),
+    collisionAuditedStructures: structureRecords.filter(
+      (record) => record.collisionAudit.sourceParts > 0 && record.collisionAudit.footprints.length > 0,
+    ).length,
+    collisionFootprints: structureRecords.reduce(
+      (sum, record) => sum + record.collisionAudit.footprints.length, 0,
+    ),
+    collisionEnvelopeFill: Number((structureRecords.reduce(
+      (sum, record) => sum + record.collisionAudit.tightness, 0,
+    ) / Math.max(1, structureRecords.length)).toFixed(4)),
+    openCollisionMaxFill: Number(structureRecords.reduce(
+      (maxFill, record) => structureCollisionOpenIds.has(record.placement.catalogId)
+        ? Math.max(maxFill, record.collisionAudit.tightness)
+        : maxFill,
+      0,
+    ).toFixed(4)),
+    structurePerimeterSectors: perimeterSectors,
+    treeTrunkMinRadialSegments: Math.min(
+      ...treeTrunkQualities.map((quality) => Number(quality?.radialSegments || 0)),
+    ),
+    treeTrunksRooted: treeTrunkQualities.every((quality) => quality?.rootFlare === true),
+    structureUnsupportedParts: structureRecords.reduce(
+      (sum, record) => sum + record.assemblyAudit.unsupportedParts, 0,
+    ),
+    maxStructureConnectionGapM: Number(Math.max(
+      0,
+      ...structureRecords.map((record) => record.assemblyAudit.maxConnectionGapM),
+    ).toFixed(4)),
+    unsupportedParts: facilityDetails.unsupportedParts + structureRecords.reduce(
+      (sum, record) => sum + record.assemblyAudit.unsupportedParts, 0,
+    ),
     placementOverlaps,
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),

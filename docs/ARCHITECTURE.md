@@ -905,8 +905,8 @@ outdoor Standard/CSM, instancing, vertex-color, glass, sky, and horizon program
 variants during the covered first frame, so a browser without parallel shader
 compile cannot move its first link stall onto an environment click.
 The outdoor packs use generated 41x37 height excerpts from their real battlefield
-spawn terrain, seven connected map structures distributed around the full
-perimeter, full battlefield-near tree geometry in static instanced batches,
+spawn terrain, nine or ten connected map structures distributed through six or
+more perimeter sectors, full battlefield-near tree geometry in static instanced batches,
 static biome ground cover, and three map-specific relief bands. Flat rail,
 factory, drydock, and urban yards keep a low skyline; rolling, mesa, coastal,
 and alpine destinations receive bounded silhouettes authored to their biome.
@@ -946,6 +946,16 @@ seeds the exact alpha-tested, double-sided instanced foliage program used by
 those groves, keeping its first driver link out of the first outdoor switch.
 No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.
+
+Garage approval is a reproducible contract, not a screenshot-only judgment.
+`garageArchitecture.selftest.mjs` audits structure support, perimeter coverage,
+platform clearance, tree rooting, and biome identity. `garageQualityRubric.ts`
+then scores every location against the same strict receipt, while
+`garage-variants-probe.mjs` captures the default, left, rear, and right views
+plus tablet and phone layouts. Release requires every location to score at
+least 90/100, no unsupported part gap above 9 cm, no ground intersection with
+the hero platform, and no retained renderer-resource growth after a complete
+variant cycle.
 
 `garageEnvironmentPresentationRuntime.ts` keeps any retained battle world
 dormant and applies the fixed anchor and canonical camera pose.

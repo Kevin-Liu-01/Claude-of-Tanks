@@ -217,8 +217,8 @@ export function makeGantry(
   mk(cab);
   // Twin hangers physically seat the operator cabin under the girder.
   for (const x of [-span / 2 + 0.95, -span / 2 + 1.85]) {
-    const hanger = box(0.12, 0.42, 0.12, 1.0);
-    hanger.translate(x, legH + 0.15, 0.62);
+    const hanger = box(0.12, 0.54, 0.12, 1.0);
+    hanger.translate(x, legH + 0.08, 0.62);
     mk(hanger);
   }
   if (buckets.glass) {

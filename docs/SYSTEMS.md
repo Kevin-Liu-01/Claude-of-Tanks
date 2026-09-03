@@ -651,6 +651,23 @@ its packed debris slot. Complete structures,
 cover, walls, fences, and toppling actors cast dynamic shadows, while only small
 ground clutter is exempted from separate CSM submissions.
 
+Collision for authored structures is derived from the same unmerged geometry
+before visual batching. `src/world/structureCollision.ts` welds connected solids,
+derives convex contact footprints and height-banded shell volumes, and preserves
+recesses, courtyards, bays, and underpasses as exact compound shapes. One compound
+remains one broad-phase record; the allocation-free movement, navigation,
+raycast, loose-prop, and headless paths inspect its authored parts only in the
+narrow phase. Dedicated authority consumes the identical version-2 nested shape
+format from the packed 20-map collision manifest.
+
+`structureCollision.selftest.mjs` builds all 111 heavyweight, site, small-building,
+blocking-item, and sourced structure families across deterministic variants and
+requires source-triangle precision above 90/100. Garage presentation adds a
+separate, build-time-only receipt: `structureAssemblyAudit.ts` proves every wall,
+roof, and fixture reaches terrain through a support chain no wider than 9 cm,
+while `maps/structureCollision.ts` measures visible envelope fill without adding
+runtime colliders to the Garage scene.
+
 Large baked sandbag and utility-pole streams have two representations with one
 owner. `props-models.json` is the attributed, reviewable authoring source.
 `propsModelStore.ts` owns the deterministic packed runtime archive, transfer,

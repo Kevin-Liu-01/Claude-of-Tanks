@@ -167,6 +167,14 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.ok(meta.hw > 1 && meta.hl > 1 && meta.h > 3, `${id}: building-scale footprint`);
   const intact = meta.build(seeded());
   const broken = meta.broken(seeded(0x71f00d));
+  intact.computeBoundingBox();
+  const bounds = intact.boundingBox;
+  const visualHalfWidth = (bounds.max.x - bounds.min.x) * 0.5;
+  const visualHalfLength = (bounds.max.z - bounds.min.z) * 0.5;
+  assert.ok(meta.hw <= visualHalfWidth + 0.10,
+    `${id}: movement collision width does not exceed intact structure geometry`);
+  assert.ok(meta.hl <= visualHalfLength + 0.10,
+    `${id}: movement collision length does not exceed intact structure geometry`);
   const connectivity = intact.userData.structureConnectivity;
   assert.equal(connectivity.id, id, `${id}: connectivity receipt follows the family id`);
   assert.equal(connectivity.connected, connectivity.parts,

@@ -662,11 +662,12 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
-  // Constrained/mobile devices trade the inactive showroom's buffers for a
-  // lower VRAM ceiling. Desktop keeps the bounded static stage resident, so
-  // battle exit refreshes only camera-dependent shadows instead of uploading
-  // the same immutable geometry again.
-  shouldReleaseGpuOnBattle: () => getDeviceTier() === 'mobile',
+  // The Garage stage now owns nine outdoor scene packs plus the full-detail
+  // workshop. None of those allocations can contribute to a battle frame, so
+  // keeping them resident on desktop only steals GPU budget from vehicles,
+  // structures, effects, and coherent shadow cascades. The covered phase
+  // transition already restores the exact pack before Garage reveal.
+  shouldReleaseGpuOnBattle: () => true,
   posePedestal: () => pedestal.poseCurrent(),
   poseCamera: () => {
     if (!resetGarageShowroom?.()) garageEnvironmentPresentation.poseCamera();

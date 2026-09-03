@@ -40,12 +40,16 @@ export function scoreGarageQuality(input: GarageQualityInput): GarageQualityScor
   };
 
   const structuralIntegrity =
-    award(number(architecture.unsupportedParts) === 0, 10, 'unsupported structure part')
+    award(number(architecture.unsupportedParts) === 0, 7, 'unsupported structure part')
     + award(number(architecture.maxGroundContactErrorM) <= 0.065,
-      5, 'terrain contact exceeds 6.5 cm')
-    + award(number(architecture.placementOverlaps) === 0, 5, 'structure/facility overlap')
+      4, 'terrain contact exceeds 6.5 cm')
+    + award(number(architecture.placementOverlaps) === 0, 4, 'structure/facility overlap')
     + award(number(architecture.structuralConnections) >= 60,
-      5, 'insufficient certified structural connections');
+      4, 'insufficient certified structural connections')
+    + award(number(architecture.collisionAuditedStructures) === number(architecture.structures),
+      3, 'not every structure has a geometry-derived collision envelope')
+    + award(number(architecture.openCollisionMaxFill) <= 0.82,
+      3, 'an open structure hitbox still fills too much intentional space');
 
   const functionalStory =
     award(rows(architecture.servicePurposeTags).length >= 5,
@@ -64,10 +68,11 @@ export function scoreGarageQuality(input: GarageQualityInput): GarageQualityScor
       6, 'opening hero sightline is obstructed')
     + award(number(workshop.workshopOrbitCoverageDegrees) === 360,
       6, 'service story does not survive a full orbit')
-    + award(rows(architecture.distinctiveElements).length >= (isVerdant ? 4 : 8),
+    + award(rows(architecture.distinctiveElements).length >= (isVerdant ? 4 : 10),
       4, 'insufficient readable scene layers')
-    + award(number(architecture.structures) >= (isVerdant ? 1 : 7),
-      4, 'perimeter is not fully composed');
+    + award(number(architecture.structures) >= (isVerdant ? 1 : 8)
+      && number(architecture.structurePerimeterSectors) >= 4,
+    4, 'perimeter is not fully composed across four or more sectors');
 
   const environmentIdentity =
     award(text(architecture.sourceBeat).length >= 8
@@ -83,13 +88,16 @@ export function scoreGarageQuality(input: GarageQualityInput): GarageQualityScor
 
   const materialDetail =
     award(number(architecture.facilityMaterialClasses) >= 4,
-      3, 'facility material language is too flat')
+      2, 'facility material language is too flat')
     + award(isVerdant || number(architecture.connectedExteriorParts) >= 120,
-      3, 'map buildings lack supported facade detail')
+      2, 'map buildings lack supported facade detail')
     + award(rows(architecture.textureSets).length >= (isVerdant ? 3 : 6),
       2, 'insufficient PBR surface variety')
     + award(text(workshop.modelMode) === 'actual-fleet',
-      2, 'proxy tank or proxy component path is active');
+      2, 'proxy tank or proxy component path is active')
+    + award(isVerdant || (number(architecture.treeTrunkMinRadialSegments) >= 10
+      && architecture.treeTrunksRooted === true),
+    2, 'near-tree trunks are faceted or lack grounded root flares');
 
   const performance =
     award(isVerdant || number(architecture.drawCalls) <= 25,

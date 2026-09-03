@@ -99,5 +99,7 @@ query(-5, -5, 5, 5, out);
 assert.equal(out.includes(far), false, 'grid excludes distant environment props');
 assert.equal(new Set(out).size, out.length, 'grid deduplicates multi-cell props');
 assert.ok(out.includes(building) && out.includes(rock), 'grid keeps nearby exact shapes');
+assert.equal(out.filter((record) => record === lBuilding).length, 1,
+  'compound structure occupies one deduplicated broad-phase record');
 
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');

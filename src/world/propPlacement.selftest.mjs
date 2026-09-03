@@ -129,4 +129,35 @@ assert.equal(DESTRUCTIBLE_TYPES.roadsign.shape, 'circle',
 assert.ok(DESTRUCTIBLE_TYPES.roadsign.collisionR < DESTRUCTIBLE_TYPES.roadsign.r * 0.5,
   'roadside-post collision follows the post rather than the elevated sign face');
 
-console.log('propPlacement.selftest: footprint grounding and compound hedgehog collision passed');
+// Every obstacle-class small prop must publish a deliberate geometry-shaped
+// footprint. This prevents a future decorative radius from silently becoming
+// a square force field around gates, fences, carts or street furniture.
+let auditedObstacleProps = 0;
+for (const [id, meta] of Object.entries(DESTRUCTIBLE_TYPES)) {
+  const geometry = meta.build(() => 0.5);
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  assert.ok(bounds, `${id}: intact geometry has measurable bounds`);
+  const visualHalfWidth = (bounds.max.x - bounds.min.x) * 0.5;
+  const visualHalfLength = (bounds.max.z - bounds.min.z) * 0.5;
+  if (meta.contact === 'ob') {
+    auditedObstacleProps += 1;
+    assert.ok(meta.shape === 'circle' || (meta.hw > 0 && meta.hl > 0),
+      `${id}: hard obstacle has an explicit circle or oriented footprint`);
+    if (meta.shape === 'circle') {
+      assert.ok(meta.collisionR > 0
+        && meta.collisionR <= Math.hypot(visualHalfWidth, visualHalfLength) + 0.08,
+      `${id}: round collision does not exceed visible geometry`);
+    } else {
+      assert.ok(meta.hw <= visualHalfWidth + 0.10,
+        `${id}: collision width follows visible geometry (${meta.hw} vs ${visualHalfWidth})`);
+      assert.ok(meta.hl <= visualHalfLength + 0.10,
+        `${id}: collision length follows visible geometry (${meta.hl} vs ${visualHalfLength})`);
+    }
+  }
+  geometry.dispose();
+}
+assert.ok(auditedObstacleProps >= 30,
+  'strict small-prop footprint audit covers the full hard-obstacle catalog');
+
+console.log(`propPlacement.selftest: footprint grounding, compound collision and ${auditedObstacleProps} obstacle props passed`);

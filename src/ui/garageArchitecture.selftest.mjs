@@ -113,7 +113,7 @@ for (const variant of GARAGE_VARIANTS) {
   assert.ok(stats.terrainProfile.length > 24,
     `${variant.id} must identify the battlefield-derived terrain`);
   assert.ok(stats.serviceFrame.length > 16);
-  assert.ok(stats.distinctiveElements.length >= 4);
+  assert.ok(stats.distinctiveElements.length >= 10);
   assert.ok(stats.landmarkHeightM >= 7);
   assert.equal(stats.sourceLandmarkLocal?.[1], stats.landmarkHeightM);
   assert.ok(stats.textureSets.length >= 6,
@@ -129,8 +129,20 @@ for (const variant of GARAGE_VARIANTS) {
     'headless Garage audits must retain the DOM-free battlefield tree fallback');
   assert.ok(stats.groundCover >= 48,
     `${variant.id} must retain bounded static biome ground cover`);
-  assert.equal(stats.structures, 7,
-    `${variant.id} must surround the hero with seven connected map structures`);
+  assert.ok(stats.structures >= 9,
+    `${variant.id} must surround the hero with at least nine connected map structures`);
+  assert.equal(stats.collisionAuditedStructures, stats.structures,
+    `${variant.id} must derive every hitbox from its real structure geometry`);
+  assert.ok(stats.collisionEnvelopeFill > 0 && stats.collisionEnvelopeFill <= 1,
+    `${variant.id} collision coverage receipt must remain normalized`);
+  assert.ok(stats.openCollisionMaxFill >= 0 && stats.openCollisionMaxFill <= 0.82,
+    `${variant.id} open-structure compounds must preserve intentional free space`);
+  assert.equal(stats.structureUnsupportedParts, 0,
+    `${variant.id} every wall, roof and fixture must connect into a grounded assembly`);
+  assert.ok(stats.maxStructureConnectionGapM <= 0.09,
+    `${variant.id} structure contact chains must stay inside the strict nine-centimetre gate`);
+  assert.ok(stats.structurePerimeterSectors >= 4,
+    `${variant.id} structure composition must survive at least four orbit sectors`);
   assert.ok(stats.connectedExteriorBuildings >= 3,
     `${variant.id} must apply connected exterior detail to its building district`);
   assert.ok(stats.connectedExteriorParts >= 120,
@@ -175,10 +187,18 @@ for (const variant of GARAGE_VARIANTS) {
     assert.ok(stats.railSegments >= 80,
       'Cinder Junction must be a real rail facility with three complete roads');
   }
-  if (['brick_arsenal', 'naval_drydock', 'rail_roundhouse', 'factory_line']
-    .includes(variant.architecture)) {
-    assert.ok(stats.horizonMaxHeightM <= 3.8,
-      `${variant.id} flat facility must not inherit a mountain wall`);
+  if (variant.architecture === 'brick_arsenal') {
+    assert.equal(stats.horizonStyle, 'urban');
+    assert.ok(stats.horizonMaxHeightM >= 8 && stats.horizonMaxHeightM <= 10,
+      `${variant.id} must retain a readable but bounded city skyline`);
+  }
+  if (['naval_drydock', 'rail_roundhouse'].includes(variant.architecture)) {
+    assert.ok(stats.horizonMaxHeightM <= 6.5,
+      `${variant.id} flat facility must keep its low working horizon`);
+  }
+  if (variant.architecture === 'factory_line') {
+    assert.ok(stats.horizonMaxHeightM <= 8.5,
+      `${variant.id} industrial stacks must stay below a mountain-scale wall`);
   }
   if (variant.architecture === 'rock_cavern') {
     assert.equal(stats.horizonStyle, 'alpine');
@@ -200,5 +220,102 @@ assert.ok(maxColdTransactionMs < 750,
   `cold asynchronous Garage module transaction exceeded budget (${maxColdTransactionMs.toFixed(1)} ms)`);
 controller.dispose();
 assert.equal(scene.children.length, 0);
+
+// Reproduce the production white-void race: one selector prewarm is still
+// compiling while a newly selected pack finishes. The cache may temporarily
+// contain three builds, but the selected handoff target must never be the one
+// retired between preparation completion and presentation.
+const verdant = GARAGE_VARIANTS[0];
+const selectedVariant = GARAGE_VARIANTS[1];
+const blockedPrewarmVariant = GARAGE_VARIANTS[2];
+let releaseBlockedCompile;
+let reportBlockedCompile;
+const blockedCompile = new Promise((resolve) => { releaseBlockedCompile = resolve; });
+const blockedCompileStarted = new Promise((resolve) => { reportBlockedCompile = resolve; });
+const disposedArchitectures = [];
+const fakeAssets = {
+  retainedTextures: () => [],
+  diagnostics: () => ({ residentSets: 0, referencedSets: 0 }),
+  dispose() {},
+};
+const fakeKit = {
+  createGarageEnvironmentAssetLibrary: () => fakeAssets,
+  prepareGarageEnvironmentAssets: async () => {},
+  buildGarageEnvironment: (_engineCtx, _assets, variant) => {
+    const root = new THREE.Group();
+    root.add(new THREE.Group());
+    Object.assign(root.userData, {
+      architectureKey: variant.architecture,
+      ready: true,
+      mode: 'garage-environment',
+      source: 'authentic-garage-scene-pack',
+      signature: `fake:${variant.architecture}`,
+      objects: 1,
+      drawCalls: 1,
+      triangles: 1,
+    });
+    return {
+      root,
+      stats: root.userData,
+      dispose() {
+        disposedArchitectures.push(variant.architecture);
+        root.removeFromParent();
+        root.clear();
+      },
+    };
+  },
+};
+const originalDocument = globalThis.document;
+globalThis.document = {};
+try {
+  const raceScene = new THREE.Group();
+  const raceController = createGarageArchitectureController({
+    renderer: {
+      initTexture() {},
+      compileAsync(root) {
+        if (root.userData.architectureKey === blockedPrewarmVariant.architecture) {
+          reportBlockedCompile();
+          return blockedCompile;
+        }
+        return Promise.resolve();
+      },
+    },
+    scene: new THREE.Scene(),
+    camera: new THREE.PerspectiveCamera(),
+  }, raceScene, () => {}, async () => fakeKit);
+  raceController.setVariant(verdant);
+  await raceController.whenReady();
+  const blockedPrewarm = raceController.prepareVariant(blockedPrewarmVariant);
+  await blockedCompileStarted;
+  raceController.setVariant(selectedVariant);
+  const selectedStats = await raceController.whenReady();
+  assert.equal(selectedStats.ready, true);
+  assert.equal(selectedStats.presented, true,
+    'selected pack must remain mounted and visible through concurrent cache trim');
+  assert.equal(disposedArchitectures.includes(selectedVariant.architecture), false,
+    'cache trim must pin the selected async handoff target');
+  releaseBlockedCompile();
+  await blockedPrewarm;
+  raceController.dispose();
+} finally {
+  if (originalDocument === undefined) delete globalThis.document;
+  else globalThis.document = originalDocument;
+}
+
+// A rejected lazy chunk must be retryable; retaining the rejected import
+// promise would strand every later Garage selection until a page refresh.
+let kitLoadAttempts = 0;
+const retryScene = new THREE.Group();
+const retryController = createGarageArchitectureController({}, retryScene, () => {}, async () => {
+  kitLoadAttempts += 1;
+  if (kitLoadAttempts === 1) throw new Error('transient Garage chunk failure');
+  return fakeKit;
+});
+retryController.setVariant(selectedVariant);
+await assert.rejects(retryController.whenReady(), /transient Garage chunk failure/);
+const retryStats = await retryController.whenReady();
+assert.equal(kitLoadAttempts, 2, 'failed Garage kit imports must be requested again');
+assert.equal(retryStats.ready, true);
+retryController.dispose();
 
 console.log('garageArchitecture.selftest: ok');

@@ -29,6 +29,7 @@ export interface GarageArchitectureStats {
   referencedTextureSets: number;
   enclosingSurfaces: number;
   ready: boolean;
+  presented: boolean;
   source: 'verdant-workshop' | 'authentic-garage-scene-pack';
   sourceBeat: string;
   sourceStructure: string;
@@ -60,6 +61,15 @@ export interface GarageArchitectureStats {
   connectedExteriorParts: number;
   connectedExteriorBuildings: number;
   maxExteriorSupportGapM: number;
+  collisionAuditedStructures: number;
+  collisionFootprints: number;
+  collisionEnvelopeFill: number;
+  openCollisionMaxFill: number;
+  structurePerimeterSectors: number;
+  treeTrunkMinRadialSegments: number;
+  treeTrunksRooted: boolean;
+  structureUnsupportedParts: number;
+  maxStructureConnectionGapM: number;
   looseParts: number;
   railSegments: number;
   serviceVehicles: number;
@@ -81,6 +91,7 @@ export interface GarageArchitectureStats {
 
 const CACHE_LIMIT = 2;
 const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
+type GarageEnvironmentKitLoader = typeof loadEnvironmentKit;
 
 function numericStat(value: number | string | null | undefined): number {
   return Number(value) || 0;
@@ -166,6 +177,15 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     connectedExteriorParts: 0,
     connectedExteriorBuildings: 0,
     maxExteriorSupportGapM: 0,
+    collisionAuditedStructures: 1,
+    collisionFootprints: 12,
+    collisionEnvelopeFill: 0.68,
+    openCollisionMaxFill: 0.68,
+    structurePerimeterSectors: 4,
+    treeTrunkMinRadialSegments: 0,
+    treeTrunksRooted: false,
+    structureUnsupportedParts: 0,
+    maxStructureConnectionGapM: 0,
     looseParts: 0,
     railSegments: 0,
     placementZones: 4,
@@ -210,6 +230,7 @@ export function createGarageArchitectureController(
   engineCtx: ArchitectureEngineContext,
   parent: THREE.Object3D,
   requestRender: () => void = () => {},
+  loadKit: GarageEnvironmentKitLoader = loadEnvironmentKit,
 ) {
   const group = new THREE.Group();
   group.name = 'garage_variant_architecture';
@@ -227,11 +248,22 @@ export function createGarageArchitectureController(
   let environmentKitPromise: ReturnType<typeof loadEnvironmentKit> | null = null;
   let selectionGeneration = 0;
   const warmedArchitectures = new Set<GarageVariant['architecture']>();
+  const retiredBuilds = new WeakSet<GarageEnvironmentBuild>();
   let disposed = false;
 
-  const getEnvironmentKit = (): ReturnType<typeof loadEnvironmentKit> => (
-    environmentKitPromise ||= loadEnvironmentKit()
-  );
+  const getEnvironmentKit = (): ReturnType<GarageEnvironmentKitLoader> => {
+    if (!environmentKitPromise) {
+      const request = loadKit();
+      const retryable = request.catch((error) => {
+        // A transient chunk/network failure must not poison every subsequent
+        // Garage selection for the lifetime of the page.
+        if (environmentKitPromise === retryable) environmentKitPromise = null;
+        throw error;
+      });
+      environmentKitPromise = retryable;
+    }
+    return environmentKitPromise;
+  };
 
   const ensureAssets = (
     kit: Awaited<ReturnType<typeof loadEnvironmentKit>>,
@@ -248,26 +280,51 @@ export function createGarageArchitectureController(
     cache.set(key, build);
   };
 
+  const retire = (
+    key: GarageVariant['architecture'],
+    build: GarageEnvironmentBuild,
+  ): void => {
+    if (cache.get(key) === build) cache.delete(key);
+    warmedArchitectures.delete(key);
+    if (active === build) active = null;
+    retiredBuilds.add(build);
+    build.dispose();
+  };
+
   const trim = (): void => {
     while (cache.size > CACHE_LIMIT) {
       const oldest = [...cache.entries()].find(([key, build]) => (
         build !== active
+        // A selected build can finish its preparation promise one microtask
+        // before the caller presents it. Never let a concurrent selector
+        // prewarm evict that handoff target in the gap.
+        && key !== selected?.architecture
         && !pending.has(key)
         && !warmPending.has(key)
         && !preparationPending.has(key)
       ));
       if (!oldest) return;
       const [key, build] = oldest;
-      cache.delete(key);
-      warmedArchitectures.delete(key);
-      build.dispose();
+      retire(key, build);
     }
   };
 
   const collectStats = (): GarageArchitectureStats => {
     const root = active?.root;
     const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
-    const selectedReady = !!selected && root?.userData.architectureKey === selected.architecture;
+    const selectedBuild = selected ? cache.get(selected.architecture) : null;
+    const selectedReady = !!selected
+      && !!selectedBuild
+      && active === selectedBuild
+      && root === selectedBuild?.root
+      && root?.parent === group
+      && !retiredBuilds.has(selectedBuild)
+      && root.userData.architectureKey === selected.architecture
+      && root.userData.ready === true;
+    const selectedPresented = selectedReady && (
+      selected?.architecture === 'field_shed'
+      || (group.visible && root.visible && root.children.length > 0)
+    );
     const data = selectedReady ? root?.userData || {} : {};
     return {
       key: selected?.architecture || 'field_shed',
@@ -283,7 +340,8 @@ export function createGarageArchitectureController(
       residentTextureSets: textureStats.residentSets,
       referencedTextureSets: textureStats.referencedSets,
       enclosingSurfaces: numericStat(data.enclosingSurfaces),
-      ready: data.ready === true,
+      ready: selectedReady,
+      presented: selectedPresented,
       source: data.source === 'verdant-workshop'
         ? 'verdant-workshop' : 'authentic-garage-scene-pack',
       sourceBeat: textStat(data.sourceBeat),
@@ -316,6 +374,15 @@ export function createGarageArchitectureController(
       connectedExteriorParts: numericStat(data.connectedExteriorParts),
       connectedExteriorBuildings: numericStat(data.connectedExteriorBuildings),
       maxExteriorSupportGapM: numericStat(data.maxExteriorSupportGapM),
+      collisionAuditedStructures: numericStat(data.collisionAuditedStructures),
+      collisionFootprints: numericStat(data.collisionFootprints),
+      collisionEnvelopeFill: numericStat(data.collisionEnvelopeFill),
+      openCollisionMaxFill: numericStat(data.openCollisionMaxFill),
+      structurePerimeterSectors: numericStat(data.structurePerimeterSectors),
+      treeTrunkMinRadialSegments: numericStat(data.treeTrunkMinRadialSegments),
+      treeTrunksRooted: data.treeTrunksRooted === true,
+      structureUnsupportedParts: numericStat(data.structureUnsupportedParts),
+      maxStructureConnectionGapM: numericStat(data.maxStructureConnectionGapM),
       looseParts: numericStat(data.looseParts),
       railSegments: numericStat(data.railSegments),
       serviceVehicles: numericStat(data.serviceVehicles),
@@ -343,7 +410,12 @@ export function createGarageArchitectureController(
     return stats;
   };
 
-  const show = (variant: GarageVariant, build: GarageEnvironmentBuild): void => {
+  const show = (variant: GarageVariant, build: GarageEnvironmentBuild): boolean => {
+    if (retiredBuilds.has(build)
+      || cache.get(variant.architecture) !== build
+      || build.root.parent !== group) {
+      return false;
+    }
     if (active && active !== build) active.root.visible = false;
     active = build;
     active.root.visible = true;
@@ -353,6 +425,7 @@ export function createGarageArchitectureController(
     trim();
     publish();
     requestRender();
+    return true;
   };
 
   const attach = (
@@ -489,10 +562,15 @@ export function createGarageArchitectureController(
     selected = variant;
     const generation = ++selectionGeneration;
     const cached = cache.get(variant.architecture);
-    if (cached && warmedArchitectures.has(variant.architecture)) {
+    const shown = !!cached
+      && warmedArchitectures.has(variant.architecture)
+      && show(variant, cached);
+    if (shown) {
       lastBuildMs = 0;
-      show(variant, cached);
     } else {
+      if (cached && (retiredBuilds.has(cached) || cached.root.parent !== group)) {
+        retire(variant.architecture, cached);
+      }
       publish();
       // UI selection can change several times in one task (keyboard repeat,
       // rapid cards, automated convergence). Start only the final requested
@@ -503,6 +581,11 @@ export function createGarageArchitectureController(
           void prepare(variant).then((build) => {
             if (build && !disposed && generation === selectionGeneration
                 && selected?.architecture === variant.architecture) show(variant, build);
+          }).catch(() => {
+            // The stage owns bounded retry/fallback presentation. Keep this
+            // background convenience path from turning the same recoverable
+            // load failure into an unhandled rejection.
+            if (!disposed && generation === selectionGeneration) publish();
           });
         }
       });
@@ -524,14 +607,22 @@ export function createGarageArchitectureController(
       const target = selected;
       if (target) {
         const build = await prepare(target);
-        if (build && selected === target) show(target, build);
+        if (build && selected === target && !show(target, build)) {
+          // Defensive recovery for any future lifecycle path that retires a
+          // build while an async caller still owns its completion value.
+          const replacement = await ensure(target);
+          if (replacement && selected === target) show(target, replacement);
+        }
       }
       return collectStats();
     },
     dispose() {
       disposed = true;
       group.removeFromParent();
-      for (const build of cache.values()) build.dispose();
+      for (const build of cache.values()) {
+        retiredBuilds.add(build);
+        build.dispose();
+      }
       cache.clear();
       pending.clear();
       warmPending.clear();

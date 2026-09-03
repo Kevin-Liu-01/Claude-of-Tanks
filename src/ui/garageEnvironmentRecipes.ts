@@ -1,8 +1,10 @@
 import type { StructureBuilder } from '../world/maps/exteriorDetailKit.ts';
 import {
   makeBathhouse, makeCaravanserai, makeCivicHall, makeFireStation, makeFishery,
-  makeFoundryOffice, makeParkingDeck, makeRangerLodge, makeTavern,
+  makeFoundryOffice, makeMegatower, makeParkingDeck, makeRangerLodge, makeSchoolhouse,
+  makeTavern,
 } from '../world/maps/structureKit.ts';
+import { MARKET_BUILDERS } from '../world/maps/mapKits.ts';
 import {
   makeBoatshed, makeContainerRow, makeGantry, makeLighthouse, makeShed, makeStack,
   makeNetYard, makeWarehouse, makeWaterTower,
@@ -84,6 +86,9 @@ const STRUCTURE_CATALOG_IDS = new Map<StructureBuilder, string>([
   [makeParkingDeck, 'parkingdeck'], [makeRangerLodge, 'rangerlodge'], [makeShed, 'shed'],
   [makeStack, 'stack'], [makeTavern, 'tavern'], [makeWarehouse, 'warehouse'],
   [makeWaterTower, 'watertower'], [makeWoodshed, 'woodshed'],
+  [MARKET_BUILDERS.market, 'market'], [MARKET_BUILDERS.marketRow, 'marketRow'],
+  [MARKET_BUILDERS.compound, 'compound'], [MARKET_BUILDERS.compoundSouk, 'compoundSouk'],
+  [makeMegatower, 'megatower'], [makeSchoolhouse, 'schoolhouse'],
 ]);
 
 const at = (builder: StructureBuilder, label: string, x: number, z: number,
@@ -105,6 +110,13 @@ const at = (builder: StructureBuilder, label: string, x: number, z: number,
   };
 };
 
+const atView = (builder: StructureBuilder, label: string, side: number, depth: number,
+  scale = 1): GarageStructurePlacement => {
+  const catalogId = STRUCTURE_CATALOG_IDS.get(builder);
+  if (!catalogId) throw new Error(`Garage structure has no stable catalog id: ${label}`);
+  return { builder, catalogId, label, side, depth, yaw: GARAGE_HERO_HEADING_RAD, scale };
+};
+
 export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnvironmentRecipe>>({
   field_shed: {
     terrainSurface: 'grass', terrainTint: 0xb1bd83, hardstandTint: 0x8d8a78, buildingTint: 0xd2c8a4,
@@ -114,9 +126,12 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeShed, 'maintenance shed', -7, -36, 0.82),
       at(makeGranary, 'hedgerow granary', 18, -34, 0.68),
       at(makeWoodshed, 'field stores', 36, -14, 0.70),
+      at(makeMill, 'working field mill', -40, 23, 0.58),
+      at(makeSchoolhouse, 'village operations school', 31, 29, 0.48),
+      at(makeChapel, 'crossroads memorial', -9, 40, 0.48),
     ],
     treeSpecies: ['oak', 'poplar'], treeCount: 24,
-    horizonStyle: 'rolling', horizonHeightM: 7.2,
+    horizonStyle: 'rolling', horizonHeightM: 8.6,
     approach: {
       style: 'farm-lane', label: 'hedgerow motor-pool lane', surface: 'grass', width: 6.8,
       waypoints: [[0, 10], [-2, 24], [-7, 44]],
@@ -136,9 +151,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
       at(makeBathhouse, 'wadi crew hammam', 40, -11, 0.66),
       at(makeMinaret, 'outer-route watchtower', 6, 38, 0.58),
+      at(MARKET_BUILDERS.marketRow, 'covered quartermaster souk', -41, 23, 0.72),
+      at(MARKET_BUILDERS.compoundSouk, 'outer convoy compound', 30, 31, 0.48),
     ],
     treeSpecies: ['palm', 'acacia'], treeCount: 20,
-    horizonStyle: 'mesa', horizonHeightM: 5.6,
+    horizonStyle: 'mesa', horizonHeightM: 9.8,
     approach: {
       style: 'desert-convoy', label: 'compacted convoy approach', surface: 'sand', width: 8.4,
       waypoints: [[1, 10], [3, 25], [-5, 46]], lanes: [-2.6, 2.6],
@@ -146,7 +163,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Sirocco Wadi spawn excerpt with dune and mesa shoulder',
     serviceFrame: 'adobe forward depot and open service shade',
     sourceBeat: 'sirocco-wadi-logistics', sourceStructure: 'caravanserai + field shade', landmark: [-22, 7.4, -30],
-    distinctiveElements: ['real sand PBR', 'fortified adobe court', 'connected shade bay', 'palm and acacia oasis'],
+    distinctiveElements: ['real sand PBR', 'fortified adobe court', 'connected shade bay', 'palm and acacia oasis',
+      'covered quartermaster souk', 'convoy compound wall', 'minaret navigation pair'],
   },
   repair_bunker: {
     terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3, buildingTint: 0xc2c8c6,
@@ -158,9 +176,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeWoodshed, 'winter stores', 36, -14, 0.68),
       at(makeOnionChurch, 'frostline chapel', 40, -11, 0.56),
       at(makeMill, 'snowfield utility mill', 6, 38, 0.54),
+      at(makeSchoolhouse, 'heated recovery schoolhouse', -41, 23, 0.50),
+      at(makeRangerLodge, 'avalanche command lodge', 30, 31, 0.48),
     ],
     treeSpecies: ['spruce', 'birch'], treeCount: 26, reliefScale: 0.58,
-    horizonStyle: 'rolling', horizonHeightM: 7.8,
+    horizonStyle: 'rolling', horizonHeightM: 10.2,
     approach: {
       style: 'snow-road', label: 'ploughed recovery road', surface: 'snow', width: 7.4,
       waypoints: [[0, 10], [-3, 26], [2, 46]], lanes: [-2.2, 2.2],
@@ -168,7 +188,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Frosthollow spawn excerpt with snowbank relief',
     serviceFrame: 'snowbound lodge yard and sheltered repair chalet',
     sourceBeat: 'frosthollow-recovery', sourceStructure: 'ranger lodge + alpine chalet', landmark: [-20, 10.7, -28],
-    distinctiveElements: ['real snow PBR', 'deep-roof lodge', 'alpine service chalet', 'spruce and birch windbreak'],
+    distinctiveElements: ['real snow PBR', 'deep-roof lodge', 'alpine service chalet', 'spruce and birch windbreak',
+      'heated recovery schoolhouse', 'avalanche command post', 'snowbound chapel cluster'],
   },
   brick_arsenal: {
     terrainSurface: 'cobble', terrainTint: 0x8a8881, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
@@ -180,9 +201,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeFactory, 'arsenal annex', 36, -14, 0.56),
       at(makeCivicHall, 'arsenal administration', 40, -11, 0.50),
       at(makeParkingDeck, 'armored vehicle depot', 6, 38, 0.58),
+      at(makeMegatower, 'damaged arsenal high-rise', -42, 24, 0.34),
+      at(makeCornerShop, 'munition street frontage', 31, 31, 0.54),
     ],
     treeSpecies: ['poplar', 'oak'], treeCount: 18,
-    horizonStyle: 'urban', horizonHeightM: 3.8,
+    horizonStyle: 'urban', horizonHeightM: 9.4,
     approach: {
       style: 'urban-street', label: 'cobbled arsenal boulevard', surface: 'cobble', width: 9.2,
       waypoints: [[0, 10], [1, 28], [-4, 47]], lanes: [-3.1, 3.1],
@@ -190,7 +213,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Steinburg spawn excerpt beneath a cobbled arsenal apron',
     serviceFrame: 'city appliance bay and brick industrial loading road',
     sourceBeat: 'steinburg-arsenal', sourceStructure: 'fire station + urban factory', landmark: [-21, 14.1, -29],
-    distinctiveElements: ['real cobble PBR', 'hose tower fire station', 'brick factory facade', 'restrained city tree line'],
+    distinctiveElements: ['real cobble PBR', 'hose tower fire station', 'brick factory facade', 'restrained city tree line',
+      'damaged high-rise skyline', 'munition street frontage', 'armored parking depot'],
   },
   naval_drydock: {
     terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x829a9b, buildingTint: 0xc8d2cd,
@@ -202,9 +226,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeBoatshed, 'breakwater boatshed', 36, -14, 0.62),
       at(makeNetYard, 'rigging and net yard', 40, -11, 0.66),
       at(makeWarehouse, 'harbor stores', 6, 38, 0.52),
+      at(makeFishery, 'breakwater repair fishery', -41, 23, 0.46),
+      at(makeLighthouse, 'outer approach light', 31, 31, 0.56),
     ],
     treeSpecies: ['cedar', 'pine'], treeCount: 22,
-    horizonStyle: 'coastal', horizonHeightM: 3.2,
+    horizonStyle: 'coastal', horizonHeightM: 5.8,
     approach: {
       style: 'drydock-lane', label: 'reinforced drydock causeway', surface: 'cobble', width: 8.6,
       waypoints: [[0, 10], [-2, 27], [-1, 47]], lanes: [-3.0, 3.0],
@@ -212,7 +238,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Saltmere Bay spawn excerpt with wind-cut maritime ground',
     serviceFrame: 'harbor work apron, fishery dock and drydock service shelter',
     sourceBeat: 'saltmere-harbor-service', sourceStructure: 'fishery + lighthouse + shed', landmark: [25, 16.2, -31],
-    distinctiveElements: ['maritime grass PBR', 'working fishery dock', 'harbor lighthouse', 'cedar and pine breakwater'],
+    distinctiveElements: ['maritime grass PBR', 'working fishery dock', 'harbor lighthouse', 'cedar and pine breakwater',
+      'twin approach lights', 'rigging yard', 'breakwater repair frontage'],
   },
   rail_roundhouse: {
     terrainSurface: 'cobble', terrainTint: 0x817a6c, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
@@ -224,9 +251,12 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeWarehouse, 'roundhouse annex', 36, -14, 0.58),
       at(makeDepot, 'Cinder Junction station', 40, -11, 0.72),
       at(makeFactory, 'locomotive machine shop', 6, 38, 0.54),
+      atView(makeShed, 'three-road engine shed', -42, -24, 0.76),
+      atView(makeGantry, 'roundhouse transfer crane', 30, -42, 0.60),
+      atView(makeDepot, 'junction passenger depot', 42, 31, 0.50),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 16,
-    horizonStyle: 'flat', horizonHeightM: 3.4,
+    horizonStyle: 'flat', horizonHeightM: 5.8,
     approach: {
       style: 'rail-fan', label: 'three-road roundhouse fan', surface: 'cobble', width: 4.2,
       waypoints: [[0, 9], [0, 27], [-1, 49]], lanes: [-6.2, 0, 6.2],
@@ -234,7 +264,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Cinder Junction spawn excerpt with cinder and rail-yard grades',
     serviceFrame: 'rail-served overhaul apron beneath a connected gantry',
     sourceBeat: 'cinder-junction-overhaul', sourceStructure: 'warehouse + gantry + containers', landmark: [19, 11.6, -19],
-    distinctiveElements: ['cinder cobble PBR', 'freight warehouse', 'connected crane gantry', 'authored container rank'],
+    distinctiveElements: ['cinder cobble PBR', 'freight warehouse', 'connected crane gantry', 'authored container rank',
+      'three-road engine shed', 'roundhouse transfer crane', 'station frontage', 'water-tower skyline'],
   },
   rain_canopy: {
     terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079, buildingTint: 0xa4af99,
@@ -246,9 +277,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeLogCabin, 'ridge crew lodge', 36, -14, 0.64),
       at(makeGranary, 'raised ration store', 40, -11, 0.64),
       at(makeNetYard, 'monsoon cable yard', 6, 38, 0.62),
+      at(makeBoatshed, 'flood-response boathouse', -41, 23, 0.58),
+      at(makeBathhouse, 'ridge operations hall', 31, 31, 0.48),
     ],
     treeSpecies: ['eucalyptus', 'palm'], treeCount: 30, reliefScale: 0.72,
-    horizonStyle: 'rolling', horizonHeightM: 8.4,
+    horizonStyle: 'rolling', horizonHeightM: 10.4,
     approach: {
       style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
       waypoints: [[0, 10], [4, 25], [-2, 46]], lanes: [-3.3, 3.3],
@@ -256,7 +289,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Monsoon Ridge spawn excerpt with drainage relief',
     serviceFrame: 'raised depot terrace and connected rain-service shelter',
     sourceBeat: 'monsoon-ridge-field-bay', sourceStructure: 'bathhouse + field depot + shed', landmark: [-21, 7.7, -28],
-    distinctiveElements: ['wet green PBR ground', 'domed field bathhouse', 'raised supply depot', 'eucalyptus and palm canopy'],
+    distinctiveElements: ['wet green PBR ground', 'domed field bathhouse', 'raised supply depot', 'eucalyptus and palm canopy',
+      'flood-response boathouse', 'drainage causeway', 'cable and manifold yard'],
   },
   rock_cavern: {
     terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
@@ -268,6 +302,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeLogCabin, 'glacier outpost', 36, -14, 0.62),
       at(makeOnionChurch, 'high-pass memorial', 40, -11, 0.52),
       at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.62),
+      at(makeAlpine, 'cliff rescue chalet', -41, 23, 0.56),
+      at(makeChapel, 'high-pass rescue chapel', 31, 31, 0.52),
     ],
     treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
@@ -278,7 +314,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Glacier Pass spawn excerpt with steep alpine shoulder',
     serviceFrame: 'high-pass recovery terrace between lodge and chalet',
     sourceBeat: 'glacier-pass-service', sourceStructure: 'ranger lodge + chalet + chapel', landmark: [28, 13.6, -33],
-    distinctiveElements: ['snow and rock terrain', 'deep-roof lodge', 'alpine chalet', 'spruce and fir ridge line'],
+    distinctiveElements: ['snow and rock terrain', 'deep-roof lodge', 'alpine chalet', 'spruce and fir ridge line',
+      'cliff rescue station', 'avalanche portal', 'high-pass chapel cluster'],
   },
   recovery_yard: {
     terrainSurface: 'rock', terrainTint: 0xb16d4f, hardstandTint: 0x8d6e5e, buildingTint: 0xb69678,
@@ -290,9 +327,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
       at(makeShed, 'recovery fabrication shed', 40, -11, 0.72),
       at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.54),
+      at(MARKET_BUILDERS.compound, 'salvage fortification', -41, 23, 0.50),
+      at(makeGantry, 'canyon recovery bridge', 31, 31, 0.56),
     ],
     treeSpecies: ['acacia', 'cedar'], treeCount: 16, reliefScale: 0.72,
-    horizonStyle: 'mesa', horizonHeightM: 7.2,
+    horizonStyle: 'mesa', horizonHeightM: 11.8,
     approach: {
       style: 'recovery-trail', label: 'tracked recovery trail', surface: 'rock', width: 8.0,
       waypoints: [[0, 10], [3, 26], [-5, 46]], lanes: [-2.7, 2.7],
@@ -300,7 +339,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Redrock Divide spawn excerpt with terraced mesa relief',
     serviceFrame: 'mesa recovery compound and heavy-lift frame',
     sourceBeat: 'redrock-recovery-yard', sourceStructure: 'compound + warehouse + gantry', landmark: [18, 10.7, -16],
-    distinctiveElements: ['warm rock PBR', 'fortified recovery compound', 'freight warehouse', 'connected heavy-lift gantry'],
+    distinctiveElements: ['warm rock PBR', 'fortified recovery compound', 'freight warehouse', 'connected heavy-lift gantry',
+      'salvage fortification', 'canyon recovery bridge', 'mesa water-tower silhouette'],
   },
   factory_line: {
     terrainSurface: 'cobble', terrainTint: 0x716a60, hardstandTint: 0x65615b, buildingTint: 0x91857b,
@@ -312,9 +352,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeWarehouse, 'works warehouse', 36, -14, 0.58),
       at(makeParkingDeck, 'works vehicle depot', 40, -11, 0.48),
       at(makeGantry, 'foundry transfer gantry', 6, 38, 0.66),
+      atView(makeFireStation, 'works emergency hall', -42, -24, 0.52),
+      atView(makeContainerRow, 'rail-fed component rank', 30, -42, 0.60),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 14,
-    horizonStyle: 'flat', horizonHeightM: 3.1,
+    horizonStyle: 'flat', horizonHeightM: 7.8,
     approach: {
       style: 'foundry-haul-road', label: 'rail-served foundry haul road', surface: 'cobble', width: 9.0,
       waypoints: [[0, 10], [-2, 27], [2, 48]], lanes: [-3.2, 3.2],
@@ -322,6 +364,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Ironworks spawn excerpt beneath a worn factory hardstand',
     serviceFrame: 'sawtooth works road with foundry service line',
     sourceBeat: 'ironworks-heavy-service', sourceStructure: 'foundry office + factory + stack', landmark: [29, 18.4, -20],
-    distinctiveElements: ['industrial cobble PBR', 'sawtooth foundry office', 'heavy factory hall', 'stack and water-tower skyline'],
+    distinctiveElements: ['industrial cobble PBR', 'sawtooth foundry office', 'heavy factory hall', 'stack and water-tower skyline',
+      'works emergency hall', 'rail-fed component rank', 'transfer gantry line'],
   },
 });
