@@ -22,6 +22,12 @@ import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import {
+  collisionFootprintContainsPoint,
+  rayCollisionFootprintEntry2,
+  type CollisionRecord,
+  type CollisionShape,
+} from '../world/collision.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
 import type {
@@ -191,6 +197,7 @@ export function chooseAiSupportActionBits(
 interface AiObstacle {
   min: [number, number, number];
   max: [number, number, number];
+  shape2?: CollisionShape;
   crushed?: boolean;
   crushable?: boolean;
 }
@@ -481,44 +488,6 @@ const _hullQuat = new Quaternion();
 // ---------------------------------------------------------------------------
 
 function clamp(x: number, lo: number, hi: number): number { return x < lo ? lo : x > hi ? hi : x; }
-
-function slabNear(origin: number, direction: number, min: number, max: number): number {
-  if (Math.abs(direction) < 1e-9) {
-    return origin >= min && origin <= max ? -Infinity : Infinity;
-  }
-  return Math.min((min - origin) / direction, (max - origin) / direction);
-}
-
-function slabFar(origin: number, direction: number, min: number, max: number): number {
-  if (Math.abs(direction) < 1e-9) {
-    return origin >= min && origin <= max ? Infinity : -Infinity;
-  }
-  return Math.max((min - origin) / direction, (max - origin) / direction);
-}
-
-function rayBoxEntryDistance(
-  sourceX: number,
-  sourceZ: number,
-  directionX: number,
-  directionZ: number,
-  maxDistance: number,
-  minX: number,
-  maxX: number,
-  minZ: number,
-  maxZ: number,
-): number | null {
-  const entry = Math.max(
-    0,
-    slabNear(sourceX, directionX, minX, maxX),
-    slabNear(sourceZ, directionZ, minZ, maxZ),
-  );
-  const exit = Math.min(
-    maxDistance,
-    slabFar(sourceX, directionX, minX, maxX),
-    slabFar(sourceZ, directionZ, minZ, maxZ),
-  );
-  return entry <= exit && exit > 0 && entry < maxDistance ? entry : null;
-}
 
 function wrapAngle(a: number): number {
   a = (a + Math.PI) % TAU;
@@ -1643,8 +1612,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
       if (o.crushed) continue; // gameplay_feel r6: felled crushables don't block
-      if (px < o.min[0] - margin || px > o.max[0] + margin) continue;
-      if (pz < o.min[2] - margin || pz > o.max[2] + margin) continue;
+      if (!collisionFootprintContainsPoint(o as CollisionRecord, px, pz, margin)) continue;
       // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
       // and with authority. The old ×0.6 damping (and the ease-in) parked
       // bots at 0.4 throttle against saplings forever, just under the
@@ -1983,11 +1951,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       if (o.crushed || o.crushable) continue;
-      const minX = o.min[0] - margin, maxX = o.max[0] + margin;
-      const minZ = o.min[2] - margin, maxZ = o.max[2] + margin;
-      const entry = rayBoxEntryDistance(
+      const entry = rayCollisionFootprintEntry2(
+        o as CollisionRecord,
         sourceX, sourceZ, directionX, directionZ,
-        limit, minX, maxX, minZ, maxZ,
+        limit, margin,
       );
       if (entry != null && entry < bestT) { bestT = entry; box = o; }
     }
@@ -2005,16 +1972,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let ddx = endX - sourceX, ddz = endZ - sourceZ;
       const len = Math.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
-      return rayBoxEntryDistance(
+      return rayCollisionFootprintEntry2(
+        box as CollisionRecord,
         sourceX,
         sourceZ,
         ddx,
         ddz,
         len,
-        box.min[0] - margin * 0.85,
-        box.max[0] + margin * 0.85,
-        box.min[2] - margin * 0.85,
-        box.max[2] + margin * 0.85,
+        margin * 0.85,
       ) != null;
   }
 
@@ -2124,10 +2089,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       for (let i = 0; i < obstacles.length; i++) {
         const o = obstacles[i];
         if (o.crushed || o.crushable) continue;
-        const minX = o.min[0] - margin, maxX = o.max[0] + margin;
-        const minZ = o.min[2] - margin, maxZ = o.max[2] + margin;
-        const entry = rayBoxEntryDistance(
-          sx, sz, ux, uz, clear, minX, maxX, minZ, maxZ,
+        const entry = rayCollisionFootprintEntry2(
+          o as CollisionRecord, sx, sz, ux, uz, clear, margin,
         );
         if (entry != null) clear = entry;
       }

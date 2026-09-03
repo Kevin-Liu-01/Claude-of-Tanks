@@ -5,6 +5,11 @@ import {
   terrainTravelCostFactor,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
+import {
+  collisionFootprintContainsPoint,
+  type CollisionRecord,
+  type CollisionShape,
+} from '../world/collision.ts';
 
 const WORLD_MIN = -500;
 const WORLD_MAX = 500;
@@ -35,6 +40,7 @@ interface NavigationHeightField {
 interface NavigationObstacle {
   min: readonly number[];
   max: readonly number[];
+  shape2?: CollisionShape;
   crushed?: boolean;
   crushable?: boolean;
 }
@@ -176,8 +182,9 @@ function isSolidObstacleAt(
 ): boolean {
   for (const obstacle of obstacles) {
     if (obstacle.crushed || obstacle.crushable) continue;
-    if (x >= obstacle.min[0] - 3.5 && x <= obstacle.max[0] + 3.5
-      && z >= obstacle.min[2] - 3.5 && z <= obstacle.max[2] + 3.5) return true;
+    if (x < obstacle.min[0] - 3.5 || x > obstacle.max[0] + 3.5
+      || z < obstacle.min[2] - 3.5 || z > obstacle.max[2] + 3.5) continue;
+    if (collisionFootprintContainsPoint(obstacle as CollisionRecord, x, z, 3.5)) return true;
   }
   return false;
 }

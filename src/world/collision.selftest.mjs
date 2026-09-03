@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
-  convexHull2, createObstacleGrid, pushHullFromObstacle,
-  pushHullFromHull, rayCollisionRecord, setCircleShape, setCompoundShape,
-  setConvexShape, setObbShape,
+  collisionFootprintContainsPoint, convexHull2, createObstacleGrid,
+  pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
+  rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -82,6 +82,14 @@ assert.equal(rayCollisionRecord(
 assert.ok(rayCollisionRecord(
   new Vector3(-1.5, 5, 0.8), new Vector3(0, -1, 0), lBuilding, 10, n) >= 0,
   'shell ray hits a compound structure arm');
+assert.equal(collisionFootprintContainsPoint(lBuilding, 0.8, 0.8, 0.1), false,
+  'navigation point query keeps the compound recess open');
+assert.equal(collisionFootprintContainsPoint(lBuilding, -1.5, 0.8, 0.1), true,
+  'navigation point query detects a real compound arm');
+assert.equal(rayCollisionFootprintEntry2(lBuilding, 0.8, 0.8, 1, 0, 5, 0.1), null,
+  'navigation ray traverses an open compound recess');
+assert.ok(rayCollisionFootprintEntry2(lBuilding, -4, 0.8, 1, 0, 5, 0.1) >= 1.8,
+  'navigation ray finds the first real compound arm');
 
 // Static-grid broad phase returns local records once, including multi-cell props.
 const far = setCircleShape(rec(), 80, 80, 2);

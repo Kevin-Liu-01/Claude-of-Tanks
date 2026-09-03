@@ -47,6 +47,27 @@ assert.ok(routeA.every(([x, z]) => !(x > -23.5 && x < 23.5 && z > -88.5 && z < 8
   'no waypoint occupies solid cover');
 assert.deepEqual(routeA.at(-1), [150, 0], 'route still hunts the opposing spawn');
 
+// Navigation must use the same tight compound footprint as movement. The
+// broad-phase bounds span both wings, but the central courtyard is open and
+// must not become an invisible 50 m wall in the bot grid.
+const courtyard = {
+  min: [-29, -2, -30], max: [29, 12, 30],
+  shape2: {
+    kind: 'compound', cx: 0, cz: 0,
+    parts: [
+      { kind: 'obb', cx: -25, cz: 0, hw: 4, hl: 30, yaw: 0 },
+      { kind: 'obb', cx: 25, cz: 0, hw: 4, hl: 30, yaw: 0 },
+    ],
+  },
+};
+const courtyardNavigation = createBotNavigationGrid({
+  heightField: { getHeightAt: () => 0 },
+  getObstacles: () => [courtyard],
+});
+const centerCell = 20 * 41 + 20;
+assert.equal(courtyardNavigation.blocked[centerCell], 0,
+  'compound footprint keeps the open courtyard navigable');
+
 // Vehicle capability must change the route over the same immutable terrain
 // grid. A strong, high-grip tank can cross the short central ridge; a weak
 // engine cannot sustain that climb and must use either end of the ridge.

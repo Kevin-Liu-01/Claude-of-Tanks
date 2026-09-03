@@ -203,6 +203,207 @@ export function setCompoundShape(rec: CollisionRecord, parts: SimpleCollisionSha
   return rec;
 }
 
+function simpleFootprintContainsPoint(
+  shape: SimpleCollisionShape,
+  x: number,
+  z: number,
+  margin: number,
+) {
+  if (shape.kind === 'circle') {
+    const dx = x - shape.cx, dz = z - shape.cz;
+    const radius = shape.r + margin;
+    return dx * dx + dz * dz <= radius * radius;
+  }
+  if (shape.kind === 'obb') {
+    const dx = x - shape.cx, dz = z - shape.cz;
+    const forwardX = Math.sin(shape.yaw), forwardZ = Math.cos(shape.yaw);
+    const rightX = forwardZ, rightZ = -forwardX;
+    return Math.abs(dx * rightX + dz * rightZ) <= shape.hw + margin
+      && Math.abs(dx * forwardX + dz * forwardZ) <= shape.hl + margin;
+  }
+  for (let index = 0; index < shape.points.length; index += 2) {
+    const next = (index + 2) % shape.points.length;
+    const edgeX = shape.points[next] - shape.points[index];
+    const edgeZ = shape.points[next + 1] - shape.points[index + 1];
+    const cross = edgeX * (z - shape.points[index + 1])
+      - edgeZ * (x - shape.points[index]);
+    if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
+  }
+  return true;
+}
+
+/** Exact point/clearance query shared by navigation and runtime collision. */
+export function collisionFootprintContainsPoint(
+  record: CollisionRecord,
+  x: number,
+  z: number,
+  margin = 0,
+) {
+  const shape = record.shape2;
+  if (!shape) {
+    return x >= record.min[0] - margin && x <= record.max[0] + margin
+      && z >= record.min[2] - margin && z <= record.max[2] + margin;
+  }
+  if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, margin);
+  return shape.parts.some((part) => simpleFootprintContainsPoint(part, x, z, margin));
+}
+
+function rayCircleEntry2(
+  shape: Extract<SimpleCollisionShape, { kind: 'circle' }>,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin: number,
+) {
+  const ox = sourceX - shape.cx, oz = sourceZ - shape.cz;
+  const radius = shape.r + margin;
+  const along = -(ox * directionX + oz * directionZ);
+  const closestSq = ox * ox + oz * oz - along * along;
+  const radiusSq = radius * radius;
+  if (closestSq > radiusSq) return null;
+  const halfChord = Math.sqrt(Math.max(0, radiusSq - closestSq));
+  const entry = Math.max(0, along - halfChord);
+  const exit = along + halfChord;
+  return exit >= 0 && entry < maxDistance ? entry : null;
+}
+
+function raySlabNear(origin: number, direction: number, min: number, max: number) {
+  if (Math.abs(direction) < EPS) return origin >= min && origin <= max ? -Infinity : Infinity;
+  return Math.min((min - origin) / direction, (max - origin) / direction);
+}
+
+function raySlabFar(origin: number, direction: number, min: number, max: number) {
+  if (Math.abs(direction) < EPS) return origin >= min && origin <= max ? Infinity : -Infinity;
+  return Math.max((min - origin) / direction, (max - origin) / direction);
+}
+
+function rayObbEntry2(
+  shape: Extract<SimpleCollisionShape, { kind: 'obb' }>,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin: number,
+) {
+  const forwardX = Math.sin(shape.yaw), forwardZ = Math.cos(shape.yaw);
+  const rightX = forwardZ, rightZ = -forwardX;
+  const dx = sourceX - shape.cx, dz = sourceZ - shape.cz;
+  const localX = dx * rightX + dz * rightZ;
+  const localZ = dx * forwardX + dz * forwardZ;
+  const localDirectionX = directionX * rightX + directionZ * rightZ;
+  const localDirectionZ = directionX * forwardX + directionZ * forwardZ;
+  const entry = Math.max(
+    0,
+    raySlabNear(localX, localDirectionX, -shape.hw - margin, shape.hw + margin),
+    raySlabNear(localZ, localDirectionZ, -shape.hl - margin, shape.hl + margin),
+  );
+  const exit = Math.min(
+    maxDistance,
+    raySlabFar(localX, localDirectionX, -shape.hw - margin, shape.hw + margin),
+    raySlabFar(localZ, localDirectionZ, -shape.hl - margin, shape.hl + margin),
+  );
+  return entry <= exit && exit >= 0 && entry < maxDistance ? entry : null;
+}
+
+function rayConvexEntry2(
+  shape: Extract<SimpleCollisionShape, { kind: 'convex' }>,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin: number,
+) {
+  let entry = 0, exit = maxDistance;
+  for (let index = 0; index < shape.points.length; index += 2) {
+    const next = (index + 2) % shape.points.length;
+    const edgeX = shape.points[next] - shape.points[index];
+    const edgeZ = shape.points[next + 1] - shape.points[index + 1];
+    const offset = edgeX * (sourceZ - shape.points[index + 1])
+      - edgeZ * (sourceX - shape.points[index])
+      + margin * Math.hypot(edgeX, edgeZ);
+    const velocity = edgeX * directionZ - edgeZ * directionX;
+    if (Math.abs(velocity) < EPS) {
+      if (offset < 0) return null;
+      continue;
+    }
+    const crossing = -offset / velocity;
+    if (velocity > 0) entry = Math.max(entry, crossing);
+    else exit = Math.min(exit, crossing);
+    if (entry > exit) return null;
+  }
+  return exit >= 0 && entry < maxDistance ? Math.max(0, entry) : null;
+}
+
+function raySimpleFootprintEntry2(
+  shape: SimpleCollisionShape,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin: number,
+) {
+  if (shape.kind === 'circle') {
+    return rayCircleEntry2(
+      shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+    );
+  }
+  if (shape.kind === 'obb') {
+    return rayObbEntry2(
+      shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+    );
+  }
+  return rayConvexEntry2(
+    shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+  );
+}
+
+/** First 2D ray entry into the exact footprint, optionally inflated for clearance. */
+export function rayCollisionFootprintEntry2(
+  record: CollisionRecord,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin = 0,
+) {
+  const length = Math.hypot(directionX, directionZ);
+  if (length < EPS || maxDistance <= 0) return null;
+  directionX /= length; directionZ /= length;
+  const shape = record.shape2;
+  if (!shape) {
+    const entry = Math.max(
+      0,
+      raySlabNear(sourceX, directionX, record.min[0] - margin, record.max[0] + margin),
+      raySlabNear(sourceZ, directionZ, record.min[2] - margin, record.max[2] + margin),
+    );
+    const exit = Math.min(
+      maxDistance,
+      raySlabFar(sourceX, directionX, record.min[0] - margin, record.max[0] + margin),
+      raySlabFar(sourceZ, directionZ, record.min[2] - margin, record.max[2] + margin),
+    );
+    return entry <= exit && exit >= 0 && entry < maxDistance ? entry : null;
+  }
+  if (shape.kind !== 'compound') {
+    return raySimpleFootprintEntry2(
+      shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+    );
+  }
+  let best: number | null = null;
+  for (const part of shape.parts) {
+    const entry = raySimpleFootprintEntry2(
+      part, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+    );
+    if (entry != null && (best == null || entry < best)) best = entry;
+  }
+  return best;
+}
+
 /** Copy a shape record without sharing mutable min/max arrays. */
 export function cloneCollisionRecord(rec: CollisionRecord): CollisionRecord {
   const out: CollisionRecord = { ...rec, min: [...rec.min], max: [...rec.max] };

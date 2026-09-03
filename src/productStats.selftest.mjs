@@ -46,7 +46,9 @@ const htmlTemplates = [
 for (const file of htmlTemplates) {
   const source = readFileSync(join(ROOT, file), 'utf8');
   const rendered = renderProductStats(source);
-  assert.doesNotMatch(rendered, /\{\{COT_[A-Z_]+\}\}/, `${file} has an unresolved product-stat token`);
+  for (const token of Object.keys(PRODUCT_STAT_TOKENS)) {
+    assert.equal(rendered.includes(token), false, `${file} has an unresolved product-stat token`);
+  }
 }
 
 const currentFacts = [
