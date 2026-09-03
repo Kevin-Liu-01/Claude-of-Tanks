@@ -203,7 +203,7 @@ function addSmokeBanks(
   }
 }
 
-function addRearFuelDrums(P: ChinaBuilderPort, y: number, z: number, seed: number): void {
+export function addRearFuelDrums(P: ChinaBuilderPort, y: number, z: number, seed: number): void {
   const { cylX, box } = KIT;
   for (const side of [-1, 1]) {
     P.add('hull', cylX(0.17, 0.76, 16), side * 0.78, y, z);
@@ -689,49 +689,6 @@ function crownRimTrim(
       [ao[0], ao[1] - 0.016, ao[2]], [bo[0], bo[1] - 0.016, bo[2]],
       [bi[0], bi[1] + 0.014, bi[2]], [ai[0], ai[1] + 0.014, ai[2]]));
   }
-}
-
-function addZTZ99AOraclePackage(P: ChinaBuilderPort): void {
-  const { box, cylY } = KIT;
-  // Reference-specific rear drums and open basket cadence.  These live on
-  // the hull powerpack, so they stay fixed when the turret yaws.
-  addRearFuelDrums(P, 1.67, -3.72, 9910);
-
-  // The base builder now owns the 99A2-style two-course arrow cheeks.  Keep
-  // this resident package to low-profile seam hardware instead of stacking
-  // four cuboid cassettes over those diagonals and blunting the new rake.
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const x = side * (0.52 + i * 0.30);
-      const z = 1.30 - i * 0.29;
-      P.add('turretDark', box(0.19, 0.026, 0.035), x, 0.795 - i * 0.012, z,
-        -0.24, side * 0.70, 0);
-      P.add('turretDetail', cylY(0.018, 0.018, 0.024, 8), x, 0.816 - i * 0.012, z);
-    }
-  }
-
-  // The second crew-served QJC-88 sits ahead of the left cupola.  This low
-  // bridge closes the visual load path to the hatch rim; the gun's spade
-  // grips extend aft over the opening for a standing operator.
-  P.add('turretDetail', box(0.19, 0.035, 0.22), -0.50, 1.097, -0.30);
-
-  // Compact panoramic station, left-cupola weapon and backed warning pair.
-  addChineseRoofSuite(P, { y: 1.09, panoX: -0.64, panoZ: -0.84,
-    mgX: -0.50, mgZ: -0.24, mgScale: 1.08, mgYaw: 0, elev: 0.04,
-    seed: 9920, whipZ: -1.78 });
-  for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.32, 0.045, 0.19), side * 1.00, 0.825, 0.35,
-      0, side * 0.30, 0);                                                      // cheek-to-LWR bracket
-    P.addEquipment('turret', box(0.20, 0.08, 0.19), side * 1.06, 0.87, 0.35,
-      0, side * 0.30, 0);
-    P.add('turretGlass', box(0.12, 0.07, 0.022), side * 1.06, 0.88, 0.455,
-      0, side * 0.30, 0);
-  }
-  P.add('turretDetail', cylY(0.035, 0.045, 0.30, 10), 0.20, 1.16, -1.06);
-  P.add('turretDark', box(0.16, 0.05, 0.05), 0.20, 1.32, -1.06);
-  P.addGunExtra(box(0.66, 0.48, 0.22), 0, 0.00, 0.40);
-  P.decal('turret', 'number', '99A', 0.24, [1.70, 0.42, -0.72], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.48);
 }
 
 // ===========================================================================
@@ -1478,10 +1435,8 @@ function buildType59(P: ChinaBuilderPort): void {
 export const CHINA_PROFILES = {
   // §5.248 ground-up builds — no donor constructor in either call chain.
   ztz85_iii: { build: buildZTZ85III },
-  // Same-id canonical donor is safe: buildDonorVariant calls the frozen
-  // pre-profile Type-99A constructor, then applies this oracle package.
-  // (GUARD-HELD resident — byte-identical through the §5.248 rebuild round.)
-  type99a: { base: 'type99a', kit: addZTZ99AOraclePackage },
+  // Type 99A is registered by chineseFrontline.ts so its certified hull can
+  // receive the VT-derived rotating assembly from the same authored family.
   ztz99a2: { build: buildZTZ99A2 },
   // §5.304 redesign: Type 59 on the widened obr-1975 chassis (owner order).
   type59: { build: buildType59 },

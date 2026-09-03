@@ -134,6 +134,66 @@ function splitFace(
   ];
 }
 
+interface VtFamilyArmorConfig {
+  readonly heightScale: number;
+  readonly widthScale: number;
+  readonly depthScale: number;
+  readonly chevronDepthScale: number;
+}
+
+// Combat counterpart to the VT-family visual turret. Both variants share
+// the same welded chevron load path, while their station scales remain
+// independent so a Type 99A hit shell never silently aliases VT-4A1 geometry.
+function vtFamilyTurretPlates(config: VtFamilyArmorConfig): ArmorPlate[] {
+  const h = config.heightScale / 0.75;
+  const x = (value: number): number => value * config.widthScale;
+  const y = (value: number): number => value * h;
+  const z = (value: number): number => value * config.depthScale;
+  const cz = (value: number): number => value * config.chevronDepthScale;
+  return [
+    ...splitFace('turret_era_R', 15, [
+      [x(0.22), y(0.03), cz(0.80)], [x(1.62), y(0.07), cz(0.24)],
+      [x(1.20), y(0.56), cz(-0.52)], [x(0.22), y(0.63), cz(0.48)],
+    ], { kind: 'era', era: FY4 }),
+    ...splitFace('turret_era_L', 15, [
+      [x(-1.62), y(0.07), cz(0.24)], [x(-0.22), y(0.03), cz(0.80)],
+      [x(-0.22), y(0.63), cz(0.48)], [x(-1.20), y(0.56), cz(-0.52)],
+    ], { kind: 'era', era: FY4 }),
+    ...splitFace('turret_cheek_R', 700, [
+      [x(0.20), y(0.03), cz(0.78)], [x(1.60), y(0.075), cz(0.22)],
+      [x(1.18), y(0.54), cz(-0.55)], [x(0.20), y(0.615), cz(0.46)],
+    ], { keMm: 600, ceMm: 850 }),
+    ...splitFace('turret_cheek_L', 700, [
+      [x(-1.60), y(0.075), cz(0.22)], [x(-0.20), y(0.03), cz(0.78)],
+      [x(-0.20), y(0.615), cz(0.46)], [x(-1.18), y(0.54), cz(-0.55)],
+    ], { keMm: 600, ceMm: 850 }),
+    frontPlate('mantlet', 380, x(-0.25), x(0.25),
+      [y(0.10), z(0.82)], [y(0.50), z(0.62)],
+      { keMm: 380, ceMm: 450, gunFollow: true }),
+    ...sidePlatePair('turret_side_forward', 300,
+      [z(0.18), y(0.04), y(0.62), x(1.52)],
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_side_rear', 300,
+      [z(-1.52), y(0.08), y(0.66), x(1.54)],
+      [z(-2.48), y(0.12), y(0.64), x(0.82)],
+      { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_bustle_side', 55,
+      [z(-1.68), y(0.10), y(0.60), x(1.38)],
+      [z(-2.68), y(0.10), y(0.57), x(1.24)],
+      { keMm: 55, ceMm: 55 }),
+    ...sidePlatePair('turret_stowage_screen', 10,
+      [z(-0.35), y(0.22), y(0.62), x(1.68)],
+      [z(-2.72), y(0.18), y(0.58), x(1.42)],
+      { kind: 'spaced' }),
+    rearPlate('turret_rear', 55, x(1.24), z(-2.68), y(0.10), y(0.57)),
+    deckPlate('turret_roof_forward', 45,
+      [z(0.42), y(0.69), x(0.68)], [z(-1.76), y(0.70), x(1.03)]),
+    deckPlate('turret_roof_bustle', 45,
+      [z(-1.76), y(0.70), x(1.03)], [z(-2.66), y(0.57), x(0.46)]),
+  ];
+}
+
 function moduleBox(
   module: ModuleId,
   min: Vec3Tuple,
@@ -213,66 +273,35 @@ function type99AArmor(): ArmorEnvelope {
     deckPlate('hull_roof_engine', 45, [-1.48, 1.78, 1.60], [-3.52, 1.78, 1.58]),
   ];
 
-  const turretPlates: ArmorPlate[] = [
-    // ERA follows the same swept cheek courses visible on the authored
-    // welded shell instead of the former 0.8 m-deep rectangular cap.
-    ...splitFace('turret_era_R', 15, [
-      [0.42, 0.05, 1.56], [1.36, 0.05, 0.55],
-      [1.34, 0.80, 0.48], [0.42, 0.84, 1.48],
-    ], { kind: 'era', era: FY4 }, true),
-    ...splitFace('turret_era_L', 15, [
-      [-1.36, 0.05, 0.55], [-0.42, 0.05, 1.56],
-      [-0.42, 0.84, 1.48], [-1.34, 0.80, 0.48],
-    ], { kind: 'era', era: FY4 }, true),
-    ...splitFace('turret_cheek_R', 700, [
-      [0.24, 0.05, 1.68], [1.36, 0.05, 0.55],
-      [1.34, 0.80, 0.48], [0.24, 0.84, 1.60],
-    ], { keMm: 600, ceMm: 850 }),
-    ...splitFace('turret_cheek_L', 700, [
-      [-1.36, 0.05, 0.55], [-0.24, 0.05, 1.68],
-      [-0.24, 0.84, 1.60], [-1.34, 0.80, 0.48],
-    ], { keMm: 600, ceMm: 850 }),
-    frontPlate('mantlet', 380, -0.27, 0.27, [0.10, 1.70], [0.50, 1.62],
-      { keMm: 380, ceMm: 450, gunFollow: true }),
-    ...sidePlatePair('turret_side_forward', 300,
-      [0.55, 0.08, 1.02, 1.30], [-1.18, 0.16, 1.05, 1.30],
-      { keMm: 300, ceMm: 420 }),
-    ...sidePlatePair('turret_side_rear', 300,
-      [-1.18, 0.16, 1.05, 1.30], [-1.96, 0.28, 1.05, 1.12],
-      { keMm: 300, ceMm: 420 }),
-    ...sidePlatePair('turret_bustle_side', 55,
-      [-1.40, 0.54, 1.05, 1.58], [-2.22, 0.54, 1.05, 1.58],
-      { keMm: 55, ceMm: 55 }),
-    ...sidePlatePair('turret_stowage_screen', 10,
-      [0.55, 0.20, 0.86, 1.73], [-2.18, 0.20, 0.86, 1.73],
-      { kind: 'spaced' }),
-    rearPlate('turret_rear', 55, 1.58, -2.22, 0.54, 1.05),
-    deckPlate('turret_roof_forward', 45, [1.60, 1.05, 0.36], [-1.40, 1.05, 1.18]),
-    deckPlate('turret_roof_bustle', 45, [-1.40, 1.05, 1.55], [-2.22, 1.05, 1.55]),
-  ];
+  const turretPlates = vtFamilyTurretPlates({
+    heightScale: 1.12, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
+  });
 
   return {
     boundingRadiusM: 7.7,
-    turretPivot: [0, 1.40, -0.02],
-    gunPivot: [0, 0.46, 0.70],
-    gunBarrel: { lengthM: 6.25, radiusM: 0.068 },
+    turretPivot: [0, 1.48, 0.22],
+    gunPivot: [0, 0.4368, 0.74],
+    gunBarrel: { lengthM: 6.454, radiusM: 0.071 },
     hullPlates,
     turretPlates,
     modules: [
       moduleBox('engine', [-1.10, 0.45, -3.42], [1.10, 1.74, -1.60]),
       moduleBox('fuelTank', [0.48, 0.48, -1.58], [1.08, 1.24, -0.62]),
       moduleBox('ammoRack', [-0.95, 0.46, -0.62], [0.95, 1.15, 0.70]),
-      moduleBox('turretRing', [-1.05, 1.39, -1.02], [1.05, 1.52, 0.98]),
-      moduleBox('radio', [-0.92, 0.38, -1.68], [-0.30, 0.82, -0.82], true),
-      moduleBox('optics', [0.18, 0.70, 0.45], [1.12, 1.50, 1.48], true),
-      moduleBox('gun', [-0.24, 0.18, -0.55], [0.24, 0.76, 1.62], true),
+      moduleBox('turretRing', [-1.05, 1.43, -0.78], [1.05, 1.57, 1.22]),
+      moduleBox('radio', [-0.90, 0.34, -2.45], [-0.28, 0.82, -1.34], true),
+      moduleBox('optics', [-0.82, 0.92, -1.30], [1.02, 2.24, 0.62], true),
+      // Internal breech only. The external barrel is traced separately from
+      // gunBarrel and must not make the damage volume protrude through the
+      // newly integrated chevron nose.
+      moduleBox('gun', [-0.24, 0.20, -0.58], [0.24, 0.96, 0.70], true),
       moduleBox('trackL', [-1.78, 0.0, -3.47], [-1.10, 1.28, 3.45]),
       moduleBox('trackR', [1.10, 0.0, -3.47], [1.78, 1.28, 3.45]),
     ],
     crew: [
       crewBox('driver', [-0.42, 0.62, 1.20], [0.42, 1.42, 2.34]),
-      crewBox('gunner', [0.12, 0.10, 0.12], [0.88, 0.92, 1.12], true),
-      crewBox('commander', [0.14, 0.12, -1.18], [0.96, 0.98, -0.24], true),
+      crewBox('gunner', [0.10, 0.18, 0.02], [0.86, 1.02, 0.70], true),
+      crewBox('commander', [0.12, 0.18, -1.36], [0.94, 1.08, -0.34], true),
     ],
   };
 }
@@ -394,10 +423,51 @@ function ztz99A2Armor(): ArmorEnvelope {
   };
 }
 
+function vt4A1Armor(): ArmorEnvelope {
+  const chassis = ztz99A2Armor();
+  const modules = chassis.modules.map((box): ModuleBox => {
+    if (box.module === 'turretRing') {
+      return moduleBox('turretRing', [-1.08, 1.51, -0.68], [1.08, 1.65, 1.32]);
+    }
+    if (box.module === 'radio') {
+      return moduleBox('radio', [-0.94, 0.32, -2.54], [-0.26, 0.78, -1.44], true);
+    }
+    if (box.module === 'optics') {
+      return moduleBox('optics', [-0.78, 0.66, -1.68], [1.10, 1.40, 0.64], true);
+    }
+    if (box.module === 'gun') {
+      return moduleBox('gun', [-0.24, 0.12, -0.58], [0.24, 0.72, 0.74], true);
+    }
+    return box;
+  });
+  const crew = chassis.crew.map((box): CrewBox => {
+    if (box.crew === 'gunner') {
+      return crewBox('gunner', [0.10, 0.10, 0.02], [0.86, 0.82, 0.74], true);
+    }
+    if (box.crew === 'commander') {
+      return crewBox('commander', [0.12, 0.12, -1.42], [0.94, 0.88, -0.34], true);
+    }
+    return box;
+  });
+  return {
+    ...chassis,
+    boundingRadiusM: 7.5,
+    turretPivot: [0, 1.56, 0.32],
+    gunPivot: [0, 0.3198, 0.75],
+    gunBarrel: { lengthM: 5.95, radiusM: 0.071 },
+    turretPlates: vtFamilyTurretPlates({
+      heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
+    }),
+    modules,
+    crew,
+  };
+}
+
 export function createType99Armor(
-  variant: 'type99a' | 'ztz99a2',
+  variant: 'type99a' | 'ztz99a2' | 'vt4a1',
 ): ArmorEnvelope {
   if (variant === 'type99a') return type99AArmor();
   if (variant === 'ztz99a2') return ztz99A2Armor();
+  if (variant === 'vt4a1') return vt4A1Armor();
   throw new Error(`Unknown Type 99 armor variant: ${variant}`);
 }

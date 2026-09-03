@@ -49,19 +49,30 @@ const type99a = inspect('type99a');
 const ztz99a2 = inspect('ztz99a2');
 const vt4a1 = inspect('vt4a1');
 
-// Restoring the original profile route is observable in its canonical Type
-// 99 running gear and pivots, and in the absence of the retired frontline
-// replacement receipts.
-assert.equal(type99a.hullRig.userData.type99aFrontlineReceipt, undefined,
-  'Type 99A: retired Chinese-frontline hull override is not registered');
-assert.equal(type99a.turretRig.userData.type99aFrontlineTurretReceipt, undefined,
-  'Type 99A: retired Chinese-frontline turret override is not registered');
+// Type 99A keeps the certified native hull and running gear while replacing
+// the entire old rotating assembly with an independently scaled derivative
+// of the VT chevron architecture.
 assert.equal(type99a.hullRig.userData.runningGearReceipts[0].trackW, 0.629,
-  'Type 99A: canonical pre-pass running gear is restored');
-assert.deepEqual(type99a.turretRig.position.toArray(), [0, 1.40, -0.02],
-  'Type 99A: canonical turret seat is restored');
-assert.deepEqual(type99a.gunRig.position.toArray(), [0, 0.46, 0.70],
-  'Type 99A: canonical gun seat is restored');
+  'Type 99A: certified native running gear is retained');
+assert.deepEqual(type99a.turretRig.position.toArray(), [0, 1.48, 0.22],
+  'Type 99A: VT-derived turret is seated at its authored ring datum');
+assert.deepEqual(type99a.gunRig.position.toArray(), [0, 0.4368, 0.74],
+  'Type 99A: gun is re-seated inside the new chevron throat');
+assert.equal(type99a.turretRig.userData.type99aVtDerivativeReceipt?.derivativeOf, 'vt4a1',
+  'Type 99A: receipt declares the VT-4A1 design relationship');
+assert.equal(type99a.turretRig.userData.type99aVtDerivativeReceipt?.legacyType99aTurretRemoved, true,
+  'Type 99A: old rotating assembly is absent');
+assert.equal(type99a.turretRig.userData.type99aVtDerivativeReceipt?.turretEquipmentReseated, true,
+  'Type 99A: all roof and side equipment is re-seated');
+assert.equal(type99a.turretRig.userData.type99aVtDerivativeReceipt?.turretHeightScale, 1.12,
+  'Type 99A: VT-derived shell is raised to the Type 99A combat-station envelope');
+assert.equal(type99a.turretRig.userData.type99aVtDerivativeReceipt?.continuousCommanderSightStack, true,
+  'Type 99A: commander sight is continuously seated from roof to optic head');
+assert.notEqual(type99a.turretSignature, vt4a1.turretSignature,
+  'Type 99A: derivative is not a duplicate VT-4A1 mesh');
+assert.equal(type99a.turretRig.userData.vtFamilyTurretReceipt?.architecture,
+  vt4a1.turretRig.userData.vtFamilyTurretReceipt?.architecture,
+  'Type 99A and VT-4A1 share one authored chevron architecture');
 
 // VT-4A1 and ZTZ-99A2 intentionally share one exact hull builder.
 assert.equal(vt4a1.hullSignature, ztz99a2.hullSignature,
@@ -83,6 +94,10 @@ assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.sourceGeometryImported
 // the shell substantially farther aft.
 assert.notEqual(vt4a1.turretSignature, ztz99a2.turretSignature,
   'VT-4A1: new turret does not reuse ZTZ-99A2 turret geometry');
+assert.deepEqual(vt4a1.turretRig.position.toArray(), [0, 1.56, 0.32],
+  'VT-4A1: turret moves 0.47 m forward to the centered ring station');
+assert.deepEqual(vt4a1.gunRig.position.toArray(), [0, 0.3198, 0.75],
+  'VT-4A1: gun remains centered in the slightly taller throat');
 const a2TurretSize = ztz99a2.armoredTurretBounds.getSize(new Vector3());
 const vtTurretSize = vt4a1.armoredTurretBounds.getSize(new Vector3());
 assert(vtTurretSize.y < a2TurretSize.y,
@@ -94,19 +109,19 @@ const chevronBounds = new Box3().setFromObject(vt4a1.chevrons);
 const gunWorld = vt4a1.gunRig.getWorldPosition(new Vector3());
 assert(chevronBounds.max.x >= 1.67 && chevronBounds.min.x <= -1.67,
   'VT-4A1: chevrons terminate inside both full-width turret shoulders');
-assert(chevronBounds.max.z >= gunWorld.z + 0.90,
+assert(chevronBounds.max.z >= gunWorld.z + 0.60,
   'VT-4A1: chevrons close the gun-throat/front-shell junction');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.integratedChevronFront, true,
   'VT-4A1: turret receipt records the merged chevron front');
-assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale, 0.75,
-  'VT-4A1: primary turret shell is authored at three-quarter height');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale, 0.82,
+  'VT-4A1: primary turret shell is raised slightly from its old 0.75 scale');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.legacyFrontalWedgeRemoved, true,
   'VT-4A1: legacy protruding frontal shell is absent');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronsArePrimaryFront, true,
   'VT-4A1: chevrons are the primary front rather than applique');
 assert(vt4a1.turretRig.userData.vt4a1TurretReceipt.primaryShellHeightM
-    / vt4a1.turretRig.userData.vt4a1TurretReceipt.previousPrimaryShellHeightM <= 0.751,
-  'VT-4A1: primary shell height is reduced to three quarters');
+    > vt4a1.turretRig.userData.vt4a1TurretReceipt.previousPrimaryShellHeightM,
+  'VT-4A1: primary shell is measurably taller than the previous revision');
 assert(vt4a1.turretRig.userData.vt4a1TurretReceipt?.armoredBustleRearZM <= -2.68,
   'VT-4A1: integral armored bustle reaches the requested deep rear station');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.giantIntegratedBustle, true,
@@ -139,4 +154,4 @@ assert.equal(ztz99a2.turretRig.userData.ztz99a2TurretIntegrationReceipt?.mirrore
 type99a.tank.dispose();
 ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: Type 99A rollback, attached A2 service armor, lower primary-chevron VT-4A1 turret and deep bustle verified');
+console.log('type99AAngularTurret.selftest: forward/taller VT-4A1 and independent VT-derived Type 99A turret, equipment and deep bustle verified');

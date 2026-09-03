@@ -128,22 +128,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "insignia",
+        "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.23,
         "pos": [
-          -1.302853,
-          0.688,
-          -0.424775
+          -1.5339248,
+          0.5376,
+          -0.677167
         ],
         "quaternion": [
           0,
-          -0.705632,
+          -0.7284099,
           0,
-          0.7085785
+          0.6851416
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "type99a",
+        "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -152,17 +152,39 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.23,
         "pos": [
-          -1.3481984,
-          0.6881721,
-          0.023985
+          1.5339248,
+          0.5376,
+          -0.677167
         ],
         "quaternion": [
-          -0.0101551,
-          -0.7079153,
-          -0.0101298,
-          0.7061517
+          0,
+          0.7284099,
+          0,
+          0.6851416
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.5067275,
+          0.581935,
+          -1.1210109
+        ],
+        "quaternion": [
+          0,
+          -0.7284099,
+          0,
+          0.6851416
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type99a",
@@ -253,7 +275,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "size": 0.23,
         "pos": [
           -1.5975892,
-          0.36,
+          0.3936,
           -0.7203594
         ],
         "quaternion": [
@@ -267,7 +289,29 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0064327
+        "maximumSurfaceErrorM": 0.0019703
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.23,
+        "pos": [
+          1.5975892,
+          0.3936,
+          -0.7203594
+        ],
+        "quaternion": [
+          0,
+          0.727974,
+          0,
+          0.6856047
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0016744
       },
       {
         "kind": "insignia",
@@ -275,7 +319,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "size": 0.24,
         "pos": [
           -1.5686812,
-          0.36325,
+          0.387547,
           -1.2021594
         ],
         "quaternion": [

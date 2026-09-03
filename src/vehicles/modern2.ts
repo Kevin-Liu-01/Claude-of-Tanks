@@ -80,7 +80,7 @@ interface Modern2BuilderPort {
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material> & { readonly dark: THREE.Material };
   readonly spec: FleetTankSpec;
-  readonly __type99HullOnly?: boolean;
+  __type99HullOnly?: boolean;
   postAssemble: (() => unknown) | null;
   muzzleZ: number;
   topY?: number;
@@ -568,12 +568,10 @@ const MODERN2_SPECS: TankSpecRegistry = {
       // rear U-cable.  Keep gameplay on the full physical envelope while
       // letting the silhouette gate compare like with like.
       silhouetteHullLengthM: 7.08,
-      // P95 normalization only: the oracle's connected secondary stabilized
-      // station reaches 3.49 m while the broad primary sight cabinet ends at
-      // 3.14 m. Keep the published combat-station height for gameplay/UI,
-      // but compare the authored and oracle silhouettes on the same P95
-      // connected-station envelope; thin whip tips remain excluded.
-      silhouetteHeightM: 3.49,
+      // P95 normalization only: the finished VT-derived turret and the fused
+      // oracle both reach about 3.60 m through their connected stabilized
+      // command station. Thin whip tips remain excluded from this datum.
+      silhouetteHeightM: 3.60,
     },
     // Type 99-specific segmented combat envelope. The rendered vehicle is a
     // measured multi-course hull/welded-arrow turret; the old generic MBT
@@ -1748,12 +1746,6 @@ function buildType99A(P: Modern2BuilderPort) {
   // rendered as a solid Minecraft wall and hid the characteristic six-wheel
   // cadence.  These remain real destructible ERA instances, but the larger
   // unequal panels open the lower wheel arcs and match the reference's broad
-  // The full-native 2026 rebuild deliberately reuses this authored hull and
-  // track datum, but supplies its own complete turret.  Stop here so no
-  // legacy cheek ERA, roof fitting, decal, or direct-group weapon can survive
-  // invisibly under (or become fused to) the replacement fighting compartment.
-  if (P.__type99HullOnly) return;
-
   // cassette rhythm.
   const skirtPanels = [
     [2.42, 0.62, 0.60], [1.80, 0.60, 0.58], [1.18, 0.61, 0.61],
@@ -1794,6 +1786,13 @@ function buildType99A(P: Modern2BuilderPort) {
   P.decal('hull', 'number', num, 0.22, [1.845, 1.345, 1.60], Math.PI / 2);
   P.decal('hull', 'number', num, 0.22, [-1.845, 1.345, 1.60], -Math.PI / 2);
   P.topY = 1.40;
+
+  // The VT-family Type 99A replacement deliberately reuses this complete,
+  // certified hull, running gear and FY-4 field while supplying an entirely
+  // new rotating assembly. Stop at the ring only after all hull-owned ERA,
+  // decals and fittings have been authored so no old cheek, roof fitting,
+  // direct-group weapon or turret-local ERA can survive under the replacement.
+  if (P.__type99HullOnly) return;
 
   // ================= WELDED ANGULAR TURRET, PRINT-LOFTED (never the
   // russia dome): UNDERCUT single loft — narrow base ring (print ±1.17-1.2)
@@ -2079,6 +2078,20 @@ function buildType99A(P: Modern2BuilderPort) {
   // local 6.734 = 7.414 m, paired with the supported -4.242 m rear loop.
   muzzleBore99(P, 6.734, 0.108, 0.060, 14);
   P.muzzleZ = 6.734;
+}
+
+// Profile-facing hull-only route for the VT-derived Type 99A turret. This is
+// intentionally separate from MODERN2_BUILDERS.type99a so the frozen
+// canonical constructor remains available to historical diagnostics while
+// the active profile can retain its exact hull without inheriting its old
+// rotating assembly.
+export function buildType99AHullOnly(P: Modern2BuilderPort): void {
+  P.__type99HullOnly = true;
+  try {
+    buildType99A(P);
+  } finally {
+    P.__type99HullOnly = false;
+  }
 }
 
 // Type 99A2 native reference-guided rebuild (2026-08-11). The supplied

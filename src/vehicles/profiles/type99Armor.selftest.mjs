@@ -24,7 +24,7 @@ function assertPlanar(id, plate) {
   assert(deviationM < 1e-8, `${id}/${plate.name}: planar within tolerance (${deviationM} m)`);
 }
 
-for (const [id, authoredPivotY] of [['type99a', 1.40], ['ztz99a2', 1.56]]) {
+for (const [id, authoredPivotY] of [['type99a', 1.48], ['ztz99a2', 1.56], ['vt4a1', 1.56]]) {
   const armor = createType99Armor(id);
   assert(armor.hullPlates.length >= 30, `${id}: segmented hull envelope`);
   assert(armor.turretPlates.length >= 20, `${id}: segmented turret envelope`);
@@ -40,8 +40,8 @@ for (const [id, authoredPivotY] of [['type99a', 1.40], ['ztz99a2', 1.56]]) {
   assert.deepEqual(hull.slice(0, 2), ['skirt_front_R', 'hull_side_upper_center_R'],
     'Type 99A flank crosses the visible skirt and outer sponson before the interior');
   const turret = plateHits(armor, [4, 2.10, 0], [-4, 2.10, 0]).map((hit) => hit.plate.name);
-  assert.deepEqual(turret.slice(0, 2), ['turret_stowage_screen_R', 'turret_side_forward_R'],
-    'Type 99A turret flank carries a deep outer screen and welded main wall');
+  assert.deepEqual(turret.slice(0, 2), ['turret_side_forward_R', 'turret_era_R'],
+    'Type 99A turret flank crosses the welded wall and integrated chevron layer');
   const roof = plateHits(armor, [0, 4, -2.40], [0, -1, -2.40]);
   assert.equal(roof[0].plate.name, 'hull_roof_engine', 'Type 99A raised engine deck is the roof surface');
   assert(Math.abs(roof[0].point.y - 1.78) < 1e-8, 'Type 99A engine deck sits at the rendered 1.78 m line');
@@ -58,7 +58,7 @@ for (const [id, authoredPivotY] of [['type99a', 1.40], ['ztz99a2', 1.56]]) {
 
 // Integration: registration uses each distinct envelope, keeps the A2 armor
 // factor, and publishes the runtime-derived track prisms used by shell traces.
-for (const id of ['type99a', 'ztz99a2']) {
+for (const id of ['type99a', 'ztz99a2', 'vt4a1']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   const calibration = combatAnatomyCalibration(id);

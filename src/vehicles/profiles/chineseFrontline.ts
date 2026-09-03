@@ -6,7 +6,8 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
-import { buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
+import { buildType99AHullOnly } from '../modern2.ts';
+import { addRearFuelDrums, buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3 = [number, number, number];
@@ -255,12 +256,48 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   buildZTZ99A2Hull(P as unknown as ChinaBuilderPort);
 }
 
-function buildVT4A1Turret(P: FrontlinePort): void {
+type VtFamilyVariant = 'vt4a1' | 'type99a';
+
+interface VtFamilyTurretConfig {
+  readonly variant: VtFamilyVariant;
+  readonly pivotY: number;
+  readonly pivotZ: number;
+  readonly heightScale: number;
+  readonly widthScale: number;
+  readonly depthScale: number;
+  readonly chevronDepthScale: number;
+  readonly gunY: number;
+  readonly gunZ: number;
+  readonly gunLength: number;
+}
+
+const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>> = Object.freeze({
+  vt4a1: Object.freeze({
+    variant: 'vt4a1', pivotY: 1.56, pivotZ: 0.32,
+    heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
+    gunY: 0.3198,
+    gunZ: 0.75, gunLength: 5.95,
+  }),
+  type99a: Object.freeze({
+    variant: 'type99a', pivotY: 1.48, pivotZ: 0.22,
+    heightScale: 1.12, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
+    gunY: 0.4368,
+    gunZ: 0.74, gunLength: 6.454,
+  }),
+});
+
+function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConfig): void {
   const { box, cylY, polyMultiLoft, torus } = KIT;
-  const turretHeightScale = 0.75;
-  P.turretG.position.set(0, 1.56, -0.15);
-  P.gunG.position.set(0, 0.39 * turretHeightScale, 0.75);
-  const plan: [number, number][] = [
+  const { variant, heightScale, widthScale, depthScale } = config;
+  const heightRatio = heightScale / 0.75;
+  const roofLift = 0.89 * heightScale - 0.6675;
+  const sx = (value: number): number => value * widthScale;
+  const sz = (value: number): number => value * depthScale;
+  const cz = (value: number): number => value * config.chevronDepthScale;
+  const sy = (value: number): number => value * heightRatio;
+  P.turretG.position.set(0, config.pivotY, config.pivotZ);
+  P.gunG.position.set(0, config.gunY, config.gunZ);
+  const basePlan: [number, number][] = [
     // The armored shell stops behind the arrow ridge so the chevrons are the
     // actual turret front, not applique over a second protruding nose. The
     // long rear stations form a proper integral bustle at the same time.
@@ -269,26 +306,31 @@ function buildVT4A1Turret(P: FrontlinePort): void {
     [-0.52, -2.52], [-0.82, -2.48], [-1.38, -2.22], [-1.54, -1.58],
     [-1.60, -0.58], [-1.46, -0.10], [-1.08, 0.22], [-0.52, 0.48],
   ];
+  const plan: [number, number][] = basePlan.map(([x, z]) => [sx(x), sz(z)]);
+  const midHeights = [0.34, 0.40, 0.48, 0.55, 0.62, 0.66, 0.67, 0.67,
+    0.67, 0.67, 0.66, 0.62, 0.55, 0.48, 0.40, 0.34].map((height) => height * heightScale);
+  const shellHeight = 0.89 * heightScale;
   P.add('turretDark', KIT.polyTurret(plan, 0.09, 0.97, 0.98), 0, -0.04, 0);
   P.add('turret', polyMultiLoft(plan, [
     { height: 0.02, inset: 1.00 },
-    { height: [0.255, 0.30, 0.36, 0.4125, 0.465, 0.495, 0.5025, 0.5025,
-      0.5025, 0.5025, 0.495, 0.465, 0.4125, 0.36, 0.30, 0.255], inset: 1.00 },
-    { height: 0.6675,
+    { height: midHeights, inset: 1.00 },
+    { height: shellHeight,
       inset: [0.66, 0.72, 0.80, 0.87, 0.91, 0.94, 0.95, 0.95,
         0.95, 0.95, 0.94, 0.91, 0.87, 0.80, 0.72, 0.66],
-      centerHeight: 0.6675 },
+      centerHeight: shellHeight },
   ]));
-  P.add('turret', cylY(1.10, 1.16, 0.11, P.q ? 20 : 14), 0, -0.04, -0.30);
+  P.add('turret', cylY(sx(1.10), sx(1.16), 0.11, P.q ? 20 : 14), 0, -0.04, sz(-0.30));
   // A low roof bridge overlaps the primary shell and the inner chevron roots.
   P.add('turret', orientedSlab(
-    [-0.80, 0.59, 0.48], [0.80, 0.59, 0.48], [1.18, 0.60, -2.30], [-1.18, 0.60, -2.30],
-    [-0.68, 0.69, 0.34], [0.68, 0.69, 0.34], [1.03, 0.70, -2.26], [-1.03, 0.70, -2.26],
+    [sx(-0.80), sy(0.59), sz(0.48)], [sx(0.80), sy(0.59), sz(0.48)],
+    [sx(1.18), sy(0.60), sz(-2.30)], [sx(-1.18), sy(0.60), sz(-2.30)],
+    [sx(-0.68), sy(0.69), sz(0.34)], [sx(0.68), sy(0.69), sz(0.34)],
+    [sx(1.03), sy(0.70), sz(-2.26)], [sx(-1.03), sy(0.70), sz(-2.26)],
   ));
   // Leopard-style chevrons now provide the complete frontal volume. Their
   // outer stations penetrate the shell shoulder and their inner stations
   // close around the gun throat, leaving no legacy frontal wedge underneath.
-  const chevronStations = Object.freeze([
+  const chevronStations = Object.freeze(([
     { x: 0.22, upperX: 0.22, ridgeX: 0.22, lowerX: 0.22,
       upperY: 0.615, upperZ: 0.46, ridgeY: 0.300, ridgeZ: 1.68, lowerY: 0.030, lowerZ: 0.78 },
     { x: 0.38, upperX: 0.34, ridgeX: 0.38, lowerX: 0.40,
@@ -301,11 +343,17 @@ function buildVT4A1Turret(P: FrontlinePort): void {
       upperY: 0.570, upperZ: -0.40, ridgeY: 0.255, ridgeZ: 0.82, lowerY: 0.053, lowerZ: 0.30 },
     { x: 1.68, upperX: 1.18, ridgeX: 1.68, lowerX: 1.60,
       upperY: 0.540, upperZ: -0.55, ridgeY: 0.225, ridgeZ: 0.62, lowerY: 0.075, lowerZ: 0.22 },
-  ] satisfies readonly ChevronStation[]);
+  ] satisfies readonly ChevronStation[]).map((station) => ({
+    ...station,
+    x: sx(station.x),
+    upperX: sx(station.upperX), ridgeX: sx(station.ridgeX), lowerX: sx(station.lowerX),
+    upperY: sy(station.upperY), ridgeY: sy(station.ridgeY), lowerY: sy(station.lowerY),
+    upperZ: cz(station.upperZ), ridgeZ: cz(station.ridgeZ), lowerZ: cz(station.lowerZ),
+  })));
   const panelBands = Object.freeze([
     [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
   ] as const);
-  P.visualEraCluster('vt4a1-integrated-chevron-front', 'turret', () => {
+  P.visualEraCluster(`${variant}-integrated-chevron-front`, 'turret', () => {
     for (const side of [-1, 1] as const) {
       P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, side));
       for (const [startT, endT] of panelBands) {
@@ -321,59 +369,151 @@ function buildVT4A1Turret(P: FrontlinePort): void {
       }
     }
   });
-  addChinese125Gun(P, { length: 6.42, rootR: 0.25, sleeveStart: 1.60, sleeveEnd: 3.75 });
+  addChinese125Gun(P, {
+    length: config.gunLength,
+    rootR: variant === 'type99a' ? 0.26 : 0.25,
+    sleeveStart: variant === 'type99a' ? 1.68 : 1.55,
+    sleeveEnd: variant === 'type99a' ? 3.86 : 3.62,
+  });
 
   // The bustle is structural volume, not a detached basket. These overlapping
   // armored panniers continue the primary shell to a deep rear service wall;
   // the racks and bins below are all seated on those volumes.
-  P.visualEraCluster('vt4a1-integral-bustle', 'turret', () => {
+  P.visualEraCluster(`${variant}-integral-bustle`, 'turret', () => {
     for (const side of [-1, 1] as const) {
       P.addExternalArmor('turret', orientedSlab(
-        [side * 0.54, 0.08, -1.76], [side * 1.38, 0.10, -1.66],
-        [side * 1.42, 0.12, -2.56], [side * 0.52, 0.10, -2.68],
-        [side * 0.48, 0.60, -1.76], [side * 1.20, 0.58, -1.72],
-        [side * 1.24, 0.54, -2.52], [side * 0.46, 0.57, -2.66],
+        [side * sx(0.54), sy(0.08), sz(-1.76)], [side * sx(1.38), sy(0.10), sz(-1.66)],
+        [side * sx(1.42), sy(0.12), sz(-2.56)], [side * sx(0.52), sy(0.10), sz(-2.68)],
+        [side * sx(0.48), sy(0.60), sz(-1.76)], [side * sx(1.20), sy(0.58), sz(-1.72)],
+        [side * sx(1.24), sy(0.54), sz(-2.52)], [side * sx(0.46), sy(0.57), sz(-2.66)],
       ));
-      P.addEquipment('turret', box(0.30, 0.34, 0.58), side * 1.22, 0.40, -2.28);
-      P.add('turretDark', box(0.32, 0.036, 0.62), side * 1.22, 0.58, -2.28);
-      P.add('turretDetail', box(0.035, 0.42, 0.035), side * 1.40, 0.35, -2.58);
+      P.addEquipment('turret', box(sx(0.30), sy(0.34), sz(0.58)),
+        side * sx(1.22), sy(0.40), sz(-2.28));
+      P.add('turretDark', box(sx(0.32), 0.036, sz(0.62)),
+        side * sx(1.22), sy(0.58), sz(-2.28));
+      P.add('turretDetail', box(0.035, sy(0.42), 0.035),
+        side * sx(1.40), sy(0.35), sz(-2.58));
     }
-    P.addExternalArmor('turret', box(1.30, 0.46, 0.54), 0, 0.34, -2.50);
+    P.addExternalArmor('turret', box(sx(1.30), sy(0.46), sz(0.54)),
+      0, sy(0.34), sz(-2.50));
   });
   mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 2.65, d: 0.62, h: 0.48, posts: 8,
-    fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0], seed: 438,
-  }), [0, 0.18, -2.78]);
+    mats: P.mats, w: sx(2.65), d: sz(0.62), h: sy(0.48), posts: 8,
+    fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
+    seed: variant === 'type99a' ? 9940 : 438,
+  }), [0, sy(0.18), sz(-2.78)]);
 
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer
   // hover at the old full-height roof datum.
-  P.addEquipment('turret', box(0.44, 0.34, 0.40), -0.50, 0.83, 0.16, 0, -0.05, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.17, 0.020), -0.50, 0.85, 0.37, 0, -0.05, 0);
-  P.addEquipment('turret', box(0.48, 0.18, 0.43), 0.47, 0.78, -0.02);
-  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 0.88, -0.02, Math.PI / 2, 0, 0);
+  const sightX = variant === 'type99a' ? -0.56 : -0.50;
+  const sightZ = variant === 'type99a' ? 0.06 : 0.16;
+  P.addEquipment('turret', box(0.44, 0.34, 0.40), sightX, 0.83 + roofLift, sightZ, 0, -0.05, 0);
+  P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.17, 0.020),
+    sightX, 0.85 + roofLift, sightZ + 0.21, 0, -0.05, 0);
+  P.addEquipment('turret', box(0.48, 0.18, 0.43), 0.47, 0.78 + roofLift, -0.02);
+  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 0.88 + roofLift, -0.02,
+    Math.PI / 2, 0, 0);
   addSmokeAndWarningSuite(P, {
-    warningX: 1.02, warningZ: -1.52, warningY: 0.72,
-    smokeX: 1.18, smokeZ: -0.08, smokeY: 0.39,
+    warningX: sx(variant === 'type99a' ? 1.08 : 1.02),
+    warningZ: sz(variant === 'type99a' ? -1.38 : -1.52),
+    warningY: 0.72 + roofLift,
+    smokeX: sx(variant === 'type99a' ? 1.24 : 1.18),
+    smokeZ: sz(variant === 'type99a' ? -0.18 : -0.08),
+    smokeY: sy(variant === 'type99a' ? 0.42 : 0.39),
   });
-  mount(P, 'turret', FITTINGS.openYokeRws({
-    mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
-    scale: 0.70, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
-    sensorMount: 'roof', weapon: true, caliberMm: 12.7,
-    weaponName: 'QJC-88 remote weapon station', seed: 430,
-  }), [0.38, 0.73, -0.86], [0, 0.03, 0]);
-  P.addEquipment('turret', box(0.38, 0.15, 0.32), 0.38, 0.69, -0.86);
+  if (variant === 'vt4a1') {
+    mount(P, 'turret', FITTINGS.openYokeRws({
+      mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
+      scale: 0.70, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
+      sensorMount: 'roof', weapon: true, caliberMm: 12.7,
+      weaponName: 'QJC-88 remote weapon station', seed: 430,
+    }), [0.38, 0.73 + roofLift, -0.86], [0, 0.03, 0]);
+    P.addEquipment('turret', box(0.38, 0.15, 0.32), 0.38, 0.69 + roofLift, -0.86);
+  } else {
+    // Type 99A derivative keeps the same roof load path but a distinct PLA
+    // commander station. The broad pedestal, armored panoramic cabinet and
+    // cap are one continuous seated stack; this restores the Type 99A's tall
+    // command silhouette without reintroducing its discarded legacy turret.
+    P.addEquipment('turret', box(0.42, 0.12, 0.40), 0.48, 0.75 + roofLift, -0.72);
+    P.add('turretDark', torus(0.19, 0.014, 18), 0.48, 0.83 + roofLift, -0.72,
+      Math.PI / 2, 0, 0);
+    mount(P, 'turret', FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 0.72,
+      ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944,
+    }), [0.48, 0.82 + roofLift, -0.62]);
+    P.addEquipment('turret', box(0.48, 0.30, 0.44), 0.72, 0.82 + roofLift, -1.06);
+    P.addEquipment('turret', box(0.46, 0.36, 0.42), 0.72, 1.12 + roofLift, -1.06,
+      0, -0.03, 0);
+    P.add('turretDark', box(0.38, 0.11, 0.035), 0.72, 1.12 + roofLift, -0.835);
+    P.addModuleVisual('optics', 'turretGlass', box(0.30, 0.075, 0.018),
+      0.72, 1.12 + roofLift, -0.814);
+    P.addEquipment('turret', cylY(0.055, 0.065, 0.31, 12),
+      0.72, 1.47 + roofLift, -1.06);
+    P.addEquipment('turret', box(0.34, 0.18, 0.34),
+      0.72, 1.65 + roofLift, -1.06, 0, -0.03, 0);
+    P.addModuleVisual('optics', 'turretGlass', box(0.22, 0.075, 0.018),
+      0.72, 1.65 + roofLift, -0.878);
+    P.add('turretDetail', cylY(0.025, 0.032, 0.22, 10),
+      0.72, 1.85 + roofLift, -1.06);
+  }
   for (const side of [-1, 1] as const) {
     mount(P, 'turret', FITTINGS.stowageRack({
-      mats: P.mats, w: 1.38, d: 0.42, h: 0.34, rails: 3, fill: 0.58,
-      seed: 432 + side,
-    }), [side * 1.28, 0.35, -1.94], [0, side * Math.PI / 2, 0]);
+      mats: P.mats, w: sz(1.38), d: sx(0.42), h: sy(0.34), rails: 3, fill: 0.58,
+      seed: (variant === 'type99a' ? 9950 : 432) + side,
+    }), [side * sx(1.28), sy(0.35), sz(-1.94)], [0, side * Math.PI / 2, 0]);
     mount(P, 'turret', FITTINGS.antennaWhip({
-      mats: P.mats, h: side < 0 ? 1.18 : 1.05, r: 0.011, seed: 434 + side,
-    }), [side * 0.76, 0.70, -2.12]);
+      mats: P.mats, h: side < 0 ? 1.18 : 1.05, r: 0.011,
+      seed: (variant === 'type99a' ? 9960 : 434) + side,
+    }), [side * sx(0.76), 0.70 + roofLift, sz(-2.12)]);
   }
-  P.decal('turret', 'number', 'VT4', 0.23, [-1.59, 0.36, -0.72], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.20);
+  const marking = variant === 'type99a' ? '99A' : 'VT4';
+  P.decal('turret', 'number', marking, 0.23,
+    [-sx(1.59), sy(0.36), sz(-0.72)], -Math.PI / 2);
+  P.decal('turret', 'number', marking, 0.23,
+    [sx(1.59), sy(0.36), sz(-0.72)], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, variant === 'type99a' ? 2.12 : 1.28);
+
+  const commonReceipt = Object.freeze({
+    architecture: 'vt-integrated-chevron-family-r2',
+    variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
+    pivotShiftForwardM: variant === 'vt4a1' ? 0.47 : 0.24,
+    turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
+    widthScale, depthScale, chevronDepthScale: config.chevronDepthScale,
+    integratedChevronFront: true,
+    chevronsArePrimaryFront: true, chevronTerminalBuriedInSideBelt: true,
+    chevronProfile: 'leopard-2a6-derived', sharedPhysicalRidge: true,
+    surfacePanelsPerSide: 4, compoundShoulderTerminal: true,
+    gunCenterlineLocalY: config.gunY,
+    muzzleWorldZM: config.pivotZ + config.gunZ + config.gunLength,
+    warningSensorPedestals: 2, reseatedRoofEquipment: true,
+    armoredBustleRearZM: sz(-2.68), giantIntegratedBustle: true,
+  });
+  P.turretG.userData.vtFamilyTurretReceipt = commonReceipt;
+  if (variant === 'vt4a1') {
+    P.turretG.userData.vt4a1TurretReceipt = Object.freeze({
+      ...commonReceipt,
+      independentTurret: true, previousTurretHeightScale: 0.75,
+      previousPrimaryShellHeightM: 0.6675, slightlyTallerTurret: true,
+      forwardCenteredTurret: true, legacyFrontalWedgeRemoved: true,
+      upperSlopeDeg: 19, dominantUpperChevron: true,
+      upperRootSetbackM: 1.22, lowerReturnMaxSetbackM: 0.90,
+      roofRws: true, supportedBustleCages: true,
+    });
+  } else {
+    P.turretG.userData.type99aVtDerivativeReceipt = Object.freeze({
+      ...commonReceipt,
+      derivativeOf: 'vt4a1', independentGeometry: true,
+      legacyType99aTurretRemoved: true, oldTurretEquipmentRemoved: true,
+      turretEquipmentReseated: true, dedicatedPlaCommanderStation: true,
+      continuousCommanderSightStack: true, commandSightTopWorldYM: 3.55,
+      exactHullRetained: true,
+    });
+  }
+}
+
+function buildVT4A1Turret(P: FrontlinePort): void {
+  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.vt4a1);
 }
 
 function buildVT4A1(P: FrontlinePort): void {
@@ -391,22 +531,16 @@ function buildVT4A1(P: FrontlinePort): void {
       fenderRunsJoined: true, comparisonRegistry: 'ztz99a2',
       qualityGateFloor: 92, duplicateTrackMeshes: 0,
     });
-    P.turretG.userData.vt4a1TurretReceipt = Object.freeze({
-      independentTurret: true, turretHeightScale: 0.75,
-      primaryShellHeightM: 0.6675, previousPrimaryShellHeightM: 0.89,
-      legacyFrontalWedgeRemoved: true, chevronsArePrimaryFront: true,
-      integratedChevronFront: true, chevronTerminalBuriedInSideBelt: true,
-      chevronProfile: 'leopard-2a6-derived', upperSlopeDeg: 19,
-      sharedPhysicalRidge: true, dominantUpperChevron: true,
-      surfacePanelsPerSide: 4, compoundShoulderTerminal: true,
-      upperRootSetbackM: 1.22, lowerReturnMaxSetbackM: 0.90,
-      gunCenterlineLocalY: 0.2925, warningSensorPedestals: 2,
-      armoredBustleRearZM: -2.68, giantIntegratedBustle: true,
-      roofRws: true, supportedBustleCages: true, reseatedRoofEquipment: true,
-    });
   }
+}
+
+function buildType99AWithVtDerivative(P: FrontlinePort): void {
+  buildType99AHullOnly(P as never);
+  addRearFuelDrums(P as unknown as ChinaBuilderPort, 1.67, -3.72, 9910);
+  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.type99a);
 }
 
 export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),
+  type99a: Object.freeze({ build: buildType99AWithVtDerivative }),
 }) satisfies VehicleProfileRecord;
