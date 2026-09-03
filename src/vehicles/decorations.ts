@@ -96,6 +96,7 @@ interface DecorPartList extends Array<DecorPart> {
 interface DecorKitArgs {
   rng: Rng;
   v?: string;
+  nation?: string;
   shield?: boolean;
   ring?: boolean;
   helmet?: boolean;
@@ -120,6 +121,36 @@ interface DecorKitArgs {
 }
 
 type DecorKitBuilder = (args: DecorKitArgs) => DecorPartList;
+
+export type FleetEquipmentNationStyle =
+  | 'american'
+  | 'british'
+  | 'east-asian'
+  | 'french'
+  | 'german'
+  | 'israeli'
+  | 'italian'
+  | 'nordic'
+  | 'polish'
+  | 'soviet'
+  | 'ukrainian'
+  | 'neutral';
+
+interface FleetEquipmentPalette {
+  canvas: number;
+  burlap: number;
+  steel: number;
+  net: number;
+  mesh: number;
+  accent: readonly [number, number, number];
+  fuelA: readonly [number, number, number];
+  fuelB: readonly [number, number, number];
+  waterA: readonly [number, number, number];
+  waterB: readonly [number, number, number];
+  extinguisher: readonly [number, number, number];
+  toolCan: readonly [number, number, number];
+  ammoCase: readonly [number, number, number];
+}
 
 /**
  * Fleet-wide loose-equipment vocabulary.  These are named visual variants,
@@ -603,10 +634,113 @@ interface DecorMaterials {
   all(): Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>>;
 }
 
+const BASE_EQUIPMENT_PALETTE = Object.freeze({
+  canvas: 0x746f58,
+  burlap: 0x8a7857,
+  steel: 0x34383a,
+  net: 0x626b4e,
+  mesh: 0x62665e,
+  accent: [0.34, 0.34, 0.25],
+  fuelA: [0.48, 0.40, 0.23],
+  fuelB: [0.35, 0.38, 0.22],
+  waterA: [0.12, 0.28, 0.42],
+  waterB: [0.10, 0.24, 0.36],
+  extinguisher: [0.58, 0.10, 0.065],
+  toolCan: [0.34, 0.39, 0.23],
+  ammoCase: [0.28, 0.34, 0.20],
+} satisfies FleetEquipmentPalette);
+
+const EQUIPMENT_PALETTE_OVERRIDES: Record<
+  FleetEquipmentNationStyle,
+  Partial<FleetEquipmentPalette>
+> = Object.freeze({
+  american: {
+    canvas: 0x777158, burlap: 0x8d7854, steel: 0x3b3d3d, net: 0x687052,
+    accent: [0.38, 0.35, 0.22], fuelA: [0.50, 0.40, 0.21], fuelB: [0.38, 0.36, 0.18],
+    extinguisher: [0.62, 0.085, 0.055], ammoCase: [0.30, 0.35, 0.18],
+  },
+  british: {
+    canvas: 0x696a50, burlap: 0x817052, steel: 0x343938, net: 0x59634a,
+    accent: [0.29, 0.34, 0.22], fuelA: [0.34, 0.38, 0.22], fuelB: [0.27, 0.32, 0.19],
+    toolCan: [0.29, 0.34, 0.21],
+  },
+  'east-asian': {
+    canvas: 0x5d674f, burlap: 0x786b4d, steel: 0x303634, net: 0x536047,
+    accent: [0.25, 0.34, 0.22], fuelA: [0.29, 0.36, 0.20], fuelB: [0.22, 0.30, 0.18],
+    waterA: [0.10, 0.26, 0.34], waterB: [0.08, 0.22, 0.31],
+  },
+  french: {
+    canvas: 0x746b55, burlap: 0x88765b, steel: 0x363a3d, net: 0x616951,
+    accent: [0.31, 0.33, 0.27], fuelA: [0.41, 0.38, 0.25], fuelB: [0.31, 0.34, 0.24],
+    waterA: [0.12, 0.26, 0.38], waterB: [0.10, 0.23, 0.34],
+  },
+  german: {
+    canvas: 0x62665a, burlap: 0x7a705d, steel: 0x35393b, net: 0x59624f,
+    accent: [0.28, 0.31, 0.27], fuelA: [0.34, 0.35, 0.25], fuelB: [0.26, 0.31, 0.23],
+    extinguisher: [0.54, 0.075, 0.055], toolCan: [0.30, 0.34, 0.25],
+  },
+  israeli: {
+    canvas: 0x80765f, burlap: 0x918064, steel: 0x3a3b38, net: 0x6d7058,
+    accent: [0.38, 0.36, 0.28], fuelA: [0.44, 0.40, 0.27], fuelB: [0.36, 0.36, 0.25],
+    waterA: [0.13, 0.27, 0.35], waterB: [0.11, 0.23, 0.31],
+  },
+  italian: {
+    canvas: 0x6b6b4d, burlap: 0x857454, steel: 0x353936, net: 0x5c6449,
+    accent: [0.31, 0.35, 0.22], fuelA: [0.38, 0.39, 0.21], fuelB: [0.29, 0.34, 0.18],
+    toolCan: [0.31, 0.37, 0.20],
+  },
+  nordic: {
+    canvas: 0x59645f, burlap: 0x716f5d, steel: 0x303638, net: 0x4f5f55,
+    accent: [0.24, 0.31, 0.29], fuelA: [0.30, 0.35, 0.28], fuelB: [0.24, 0.31, 0.25],
+    waterA: [0.11, 0.26, 0.37], waterB: [0.09, 0.23, 0.33],
+  },
+  polish: {
+    canvas: 0x626751, burlap: 0x7c7154, steel: 0x333837, net: 0x566149,
+    accent: [0.27, 0.34, 0.22], fuelA: [0.32, 0.37, 0.20], fuelB: [0.25, 0.32, 0.18],
+    toolCan: [0.28, 0.35, 0.19],
+  },
+  soviet: {
+    canvas: 0x596047, burlap: 0x75694c, steel: 0x303532, net: 0x505b42,
+    accent: [0.24, 0.32, 0.18], fuelA: [0.28, 0.35, 0.18], fuelB: [0.22, 0.29, 0.16],
+    waterA: [0.09, 0.25, 0.31], waterB: [0.075, 0.21, 0.27],
+    extinguisher: [0.48, 0.105, 0.065], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
+  },
+  ukrainian: {
+    canvas: 0x636b50, burlap: 0x7e7251, steel: 0x343836, net: 0x58654a,
+    accent: [0.29, 0.35, 0.20], fuelA: [0.39, 0.38, 0.19], fuelB: [0.27, 0.34, 0.17],
+    waterA: [0.10, 0.27, 0.42], waterB: [0.085, 0.23, 0.37],
+    extinguisher: [0.51, 0.12, 0.065], toolCan: [0.27, 0.35, 0.18],
+  },
+  neutral: {},
+});
+
+export function fleetEquipmentNationStyle(nation = ''): FleetEquipmentNationStyle {
+  if (/Ukraine/i.test(nation)) return 'ukrainian';
+  if (/USSR|Russia/i.test(nation)) return 'soviet';
+  if (/USA/i.test(nation)) return 'american';
+  if (/UK/i.test(nation)) return 'british';
+  if (/Germany/i.test(nation)) return 'german';
+  if (/France/i.test(nation)) return 'french';
+  if (/Italy/i.test(nation)) return 'italian';
+  if (/Sweden/i.test(nation)) return 'nordic';
+  if (/Poland/i.test(nation)) return 'polish';
+  if (/Israel/i.test(nation)) return 'israeli';
+  if (/China|Japan|South Korea/i.test(nation)) return 'east-asian';
+  return 'neutral';
+}
+
+function equipmentPaletteForNation(nation = ''): FleetEquipmentPalette {
+  return {
+    ...BASE_EQUIPMENT_PALETTE,
+    ...EQUIPMENT_PALETTE_OVERRIDES[fleetEquipmentNationStyle(nation)],
+  };
+}
+
 function buildDecorMaterials(
   spec: FleetTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
 ): DecorMaterials {
+  const equipmentPalette = equipmentPaletteForNation(spec.nation || '');
   const setup = isRealShadowCtx(engineCtx)
     ? (m: THREE.MeshStandardMaterial) => {
       engineCtx?.setupShadowMaterial?.(m, vehicleAmbientFloorHook);
@@ -631,7 +765,7 @@ function buildDecorMaterials(
     }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
     steel: () => ({
-      color: 0x33363a, roughness: 0.62, metalness: 0.35,
+      color: equipmentPalette.steel, roughness: 0.62, metalness: 0.35,
       roughnessMap: getSharedRoughnessTexture(spec),
       vertexColors: true, envMapIntensity: 0.35,
     }),
@@ -640,11 +774,11 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.15,
     }),
     canvas: () => ({
-      map: weaveTex(), color: 0x8a8560, roughness: 0.96, metalness: 0.0,
+      map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.12,
     }),
     burlap: () => ({
-      map: weaveTex(), color: 0xab9468, roughness: 0.98, metalness: 0.0,
+      map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.1,
     }),
     rubber: () => ({
@@ -657,11 +791,11 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.2,
     }),
     net: () => ({
-      map: netTex(), color: 0xb0b68c, roughness: 0.95, metalness: 0.0,
+      map: netTex(), color: equipmentPalette.net, roughness: 0.95, metalness: 0.0,
       alphaTest: 0.35, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
     }),
     mesh: () => ({ // wire-grid panels (baskets, cages)
-      map: gridTex(), color: 0x7c7e74, roughness: 0.7, metalness: 0.35,
+      map: gridTex(), color: equipmentPalette.mesh, roughness: 0.7, metalness: 0.35,
       alphaTest: 0.3, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.25,
     }),
     lens: () => ({ // optic faces / vision blocks / searchlight glass
@@ -1061,26 +1195,34 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // Small pieces are deliberately a little graphic at gameplay distance: lids,
   // handles, straps and latches remain separate instead of becoming one grey
   // cuboid after merging.  Every geometry still originates at its physical seat.
-  cargo({ rng, v = 'beer-cooler-blue', scale = 1 }) {
+  cargo({ rng, v = 'beer-cooler-blue', scale = 1, nation = '', flat }) {
     const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
       ? v as FleetEquipmentVariant : 'beer-cooler-blue';
+    const equipmentPalette = equipmentPaletteForNation(nation);
     const parts: DecorPartList = [];
     const paint = (geo: THREE.BufferGeometry, rgb: readonly [number, number, number], ao = 0.26) => {
       // Cargo is seen beneath the same sun/IBL as the tank. Raw near-primary
       // tints therefore read as glossy toys even on a weathered armor shell.
       // Keep the hue identity, but lower its value and pull only the brightest
       // colors slightly toward their neutral luminance (paint fade + grime).
-      const peak = Math.max(rgb[0], rgb[1], rgb[2], 0.0001);
+      const countryTint = equipmentPalette.accent;
+      const countryMix = nation ? 0.16 : 0;
+      const themed: readonly [number, number, number] = [
+        rgb[0] * (1 - countryMix) + countryTint[0] * countryMix,
+        rgb[1] * (1 - countryMix) + countryTint[1] * countryMix,
+        rgb[2] * (1 - countryMix) + countryTint[2] * countryMix,
+      ];
+      const peak = Math.max(themed[0], themed[1], themed[2], 0.0001);
       // Values here are linear-space vertex multipliers; a seemingly modest
       // 0.4 displays much brighter after output transfer. Keep peaks down in
       // the painted-hardware range so red/blue pieces do not glow against camo.
       const scale = Math.min(0.72, 0.18 / peak);
-      const neutral = ((rgb[0] + rgb[1] + rgb[2]) / 3) * scale;
+      const neutral = ((themed[0] + themed[1] + themed[2]) / 3) * scale;
       const fade = peak > 0.48 ? 0.28 : 0;
       const muted: readonly [number, number, number] = [
-        rgb[0] * scale * (1 - fade) + neutral * fade,
-        rgb[1] * scale * (1 - fade) + neutral * fade,
-        rgb[2] * scale * (1 - fade) + neutral * fade,
+        themed[0] * scale * (1 - fade) + neutral * fade,
+        themed[1] * scale * (1 - fade) + neutral * fade,
+        themed[2] * scale * (1 - fade) + neutral * fade,
       ];
       parts.push({ mat: 'cans', geo: bakeTint(geo, muted[0], muted[1], muted[2], ao) });
     };
@@ -1185,30 +1327,30 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         break;
       }
       case 'nato-fuel-can':
-        jerryCan(-0.105, [0.62, 0.48, 0.22], 0.92);
-        jerryCan(0.105, [0.57, 0.44, 0.20], 0.92);
+        jerryCan(-0.105, equipmentPalette.fuelA, 0.92);
+        jerryCan(0.105, equipmentPalette.fuelB, 0.92);
         steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
         for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
         break;
       case 'blue-water-can':
-        jerryCan(-0.105, [0.10, 0.32, 0.60], 0.92);
-        jerryCan(0.105, [0.08, 0.28, 0.53], 0.92);
+        jerryCan(-0.105, equipmentPalette.waterA, 0.92);
+        jerryCan(0.105, equipmentPalette.waterB, 0.92);
         steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
         for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
         break;
       case 'twin-can-cradle':
-        jerryCan(-0.11, [0.55, 0.43, 0.20], 0.90);
-        jerryCan(0.11, [0.26, 0.38, 0.20], 0.90);
+        jerryCan(-0.11, equipmentPalette.fuelA, 0.90);
+        jerryCan(0.11, equipmentPalette.fuelB, 0.90);
         steel(xform(box(0.46, 0.025, 0.34), 0, 0.015, 0), 0.48);
         for (const side of [-1, 1]) steel(xform(box(0.025, 0.38, 0.34), side * 0.22, 0.19, 0), 0.48);
         break;
       case 'soviet-tool-can':
-        paint(xform(cylX(0.13, 0.60, 12), 0, 0.13, 0), [0.36, 0.43, 0.22]);
+        paint(xform(cylX(0.13, 0.60, 12), 0, 0.13, 0), equipmentPalette.toolCan);
         for (const x of [-0.26, 0.26]) steel(xform(torusV(0.135, 0.012, 12, 4), x, 0.13, 0, 0, Math.PI / 2, 0));
         steel(xform(box(0.18, 0.025, 0.045), 0, 0.28, 0));
         break;
       case 'fifty-cal-ammo-can':
-        hardCase([0.28, 0.36, 0.18], 0.36, 0.24, 0.20, [0.35, 0.43, 0.22]);
+        hardCase(equipmentPalette.ammoCase, 0.36, 0.24, 0.20, equipmentPalette.toolCan);
         break;
       case 'wood-ammo-crate':
         wood(xform(box(0.58, 0.28, 0.34), 0, 0.14, 0), 0.76);
@@ -1229,10 +1371,19 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         for (const x of [-0.16, 0.16]) steel(xform(box(0.045, 0.055, 0.025), x, 0.19, 0.15), 0.64);
         break;
       case 'fire-extinguisher':
-        paint(xform(cylY(0.105, 0.115, 0.44, 12), 0, 0.22, 0), [0.82, 0.08, 0.05]);
-        paint(xform(cylY(0.07, 0.10, 0.08, 10), 0, 0.48, 0), [0.70, 0.07, 0.04]);
+        paint(xform(cylY(0.105, 0.115, 0.44, 12), 0, 0.22, 0), equipmentPalette.extinguisher);
+        paint(xform(cylY(0.07, 0.10, 0.08, 10), 0, 0.48, 0), equipmentPalette.extinguisher);
         steel(xform(box(0.19, 0.025, 0.035), 0.06, 0.54, 0), 0.54);
         steel(xform(torusV(0.11, 0.014, 12, 4), 0, 0.25, 0, Math.PI / 2, 0, 0), 0.48);
+        // Fleet cargo bottles are normally transported on their side in a
+        // low retaining cradle. Profile-authored emergency bottles may still
+        // opt into the upright silhouette with `flat:false`.
+        if (flat !== false) {
+          xformParts(parts, -0.27, 0.16, 0, 0, 0, -Math.PI / 2);
+          for (const x of [-0.14, 0.14]) {
+            steel(xform(box(0.025, 0.025, 0.25), x, 0.025, 0), 0.45);
+          }
+        }
         break;
       case 'cable-reel':
         for (const x of [-0.14, 0.14]) wood(xform(cylX(0.18, 0.035, 12), x, 0.18, 0), 0.68);
@@ -2010,7 +2161,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const curated = TANK_MANIFESTS[spec.id];
-  const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
   // Give every playable a visible, deterministic field load rather than one
   // tiny hash-selected object that can disappear behind a bustle. Seven
   // station-aware pieces occupy the bustle, rear turret roof, engine deck,
@@ -2035,14 +2185,26 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   const pairedCans = [
     'nato-fuel-can', 'blue-water-can', 'twin-can-cradle',
   ] as const satisfies readonly FleetEquipmentVariant[];
+  const nationStyle = fleetEquipmentNationStyle(spec.nation || '');
+  const nationPhase = [
+    'american', 'british', 'east-asian', 'french', 'german', 'israeli',
+    'italian', 'nordic', 'polish', 'soviet', 'ukrainian', 'neutral',
+  ].indexOf(nationStyle);
   const choose = <T extends readonly FleetEquipmentVariant[]>(pool: T, salt: string, offset = 0) =>
-    pool[(fnv1a(`${spec.id}:${salt}`) + offset) % pool.length];
+    pool[(fnv1a(`${spec.id}:${salt}`) + nationPhase + offset) % pool.length];
   // Challenger 3 already fills the Garage card with its long gun, bustle and
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
   // out-of-family portrait crop.
-  const cargoScale = spec.id === 'challenger_3' ? 0.85 : 1;
-  const cargoVariant = (v: FleetEquipmentVariant) => ({ v, scale: cargoScale });
+  const cargoScale = spec.id === 'challenger_3' ? 0.85
+    : spec.id === 'ztz85_iii' ? 0.94
+      : 1;
+  const cargoVariant = (v: FleetEquipmentVariant) => ({
+    v,
+    scale: cargoScale,
+    nation: spec.nation || '',
+    ...(v === 'fire-extinguisher' ? { flat: true } : {}),
+  });
   const aftRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => [
     ['turretRear', { side: seatSide }],
     ['turretRoof', { rear: true, side: seatSide }],
@@ -2052,11 +2214,40 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     ['turretSide', { side: seatSide, rear: true }],
     ['fender', { side: seatSide, zFrac: -0.30, small: true }],
   ];
+  const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => (
+    spec.id === 'm48'
+      ? [
+        ['hullRearRack', { x: seatSide * (0.12 + xOffset) }],
+        ['rearDeck', { corner: seatSide, back: true, small: true }],
+        ['rearDeck', { center: true, back: true, small: true }],
+        ['fender', { side: seatSide, zFrac: -0.30, small: true }],
+      ]
+      : aftRoutes(seatSide, xOffset)
+  );
+
+  // The Ukrainian M1A1's field-built anti-drone cage and profile-authored
+  // fittings already define its silhouette. Keep only one paired fuel-can
+  // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
+  // tools and duplicate roof equipment would clutter or snag on the cage.
+  if (spec.id === 'ua_m1a1') {
+    return [{
+      kit: 'cargo', p: 1,
+      v: cargoVariant('twin-can-cradle'),
+      slot: ['fleetCargo', { routes: [
+        ['hullRearRack', { x: side * 0.22 }],
+        ['rearDeck', { corner: side, back: true, small: true }],
+        ['rearDeck', { center: true, back: true, small: true }],
+        ['fender', { side, zFrac: -0.32, small: true }],
+      ] }],
+    }];
+  }
+
+  const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
   const cargo: DecorManifestRow[] = [
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case')),
-      slot: ['fleetCargo', { routes: aftRoutes(side, 0.12) }],
+      slot: ['fleetCargo', { routes: hardCaseRoutes(side, 0.12) }],
     },
     {
       kit: 'cargo', p: 1,
@@ -2084,7 +2275,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case', 3)),
-      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.02) }],
+      slot: ['fleetCargo', { routes: hardCaseRoutes(-side, 0.02) }],
     },
     {
       kit: 'cargo', p: 1,
