@@ -1177,16 +1177,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeMapPicker();
-  // garage_polish r9: the scroll fade masks only make sense when the list
-  // actually overflows — on tall viewports the whole roster fits and the
-  // fade would dim the last row for no reason. Toggle per resize.
+  // Scroll masks are affordances, not decoration: only show one while content
+  // remains below the viewport. The dossier depth collapses over its final
+  // pixels so the last loadout card resolves to full opacity instead of
+  // ending behind a permanent dark shelf.
   const syncScrollFades = () => {
     const mapScroll = mapsEl.querySelector('.cot-map-scroll');
     if (mapScroll) mapScroll.classList.toggle('can-scroll', mapScroll.scrollHeight > mapScroll.clientHeight + 1);
     const cg = root.querySelector('.cot-camos .cgrid.camo');
     if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
+    const dossierRemaining = Math.max(0,
+      statsEl.scrollHeight - statsEl.clientHeight - statsEl.scrollTop);
+    const hasDossierTail = statsEl.scrollHeight > statsEl.clientHeight + 1 && dossierRemaining > 1;
+    statsEl.classList.toggle('has-scroll-tail', hasDossierTail);
+    if (hasDossierTail) {
+      statsEl.style.setProperty('--cot-dossier-fade-depth', `${Math.min(64, dossierRemaining)}px`);
+    } else {
+      statsEl.style.removeProperty('--cot-dossier-fade-depth');
+    }
   };
   window.addEventListener('resize', syncScrollFades);
+  statsEl.addEventListener('scroll', syncScrollFades, { passive: true });
   requestAnimationFrame(syncScrollFades);
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
@@ -1196,6 +1207,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const scrollFadeObserver = new ResizeObserver(syncScrollFades);
     const mapScroll = mapsEl.querySelector('.cot-map-scroll');
     if (mapScroll) scrollFadeObserver.observe(mapScroll);
+    scrollFadeObserver.observe(statsEl);
   }
   observeScrollFadeSize();
 
@@ -2125,6 +2137,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       images: garageInfoImages(spec, 'Equipment'),
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
+    requestAnimationFrame(syncScrollFades);
   }
 
   function applySelection(specId: string, { remember = true } = {}): boolean {

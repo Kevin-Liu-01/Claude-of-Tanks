@@ -54,6 +54,12 @@ assert.match(garage,
   /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
   'tablet and phone side panels must stay out of the tank stage until requested');
 assert.match(garage,
+  /\.cot-garage \.stats\.has-scroll-tail\{[\s\S]*mask-image:linear-gradient\(180deg,#000 0,[\s\S]*var\(--cot-dossier-fade-depth,64px\)[\s\S]*transparent 100%\)/,
+  'the dossier must fade overflowing cards into the garage instead of clipping them at a hard bottom edge');
+assert.match(garageSource,
+  /const dossierRemaining = Math\.max\(0,[\s\S]*statsEl\.scrollHeight - statsEl\.clientHeight - statsEl\.scrollTop\)[\s\S]*Math\.min\(64, dossierRemaining\)[\s\S]*statsEl\.addEventListener\('scroll', syncScrollFades, \{ passive: true \}\)/,
+  'the dossier fade must track remaining content and disappear progressively at the true scroll end');
+assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
   'portrait phones must place Battle below the brand and global controls instead of overlapping them');
 assert.match(garage,
