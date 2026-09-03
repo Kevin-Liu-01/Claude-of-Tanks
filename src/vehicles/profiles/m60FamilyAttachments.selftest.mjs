@@ -49,6 +49,10 @@ for (const id of ['m60a1', 'm60a3']) {
     `${id}: glacis armor does not paint high-contrast frames over the camouflage`);
   assert.equal(shoulders?.mirroredClosedVolumes, 2,
     `${id}: closed bow shoulders extend from both fenders`);
+  assert(shoulders?.trackClearanceFloorY >= 1.40,
+    `${id}: bow-shoulder floor remains above the animated front track wrap`);
+  assert(shoulders?.innerX <= 0.42,
+    `${id}: bow shoulders overlap the central glacis instead of leaving plan-view holes`);
   assert.equal(shoulders?.texturedCamouflage, true,
     `${id}: bow shoulders use the hull camouflage material`);
   assert.equal(compact?.vehicleScale, 0.9, `${id}: complete vehicle is reduced by ten percent`);

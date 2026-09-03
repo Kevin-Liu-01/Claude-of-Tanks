@@ -3593,8 +3593,14 @@ function pattonSideCassette(
     P.add('hullDetail', box(0.008, h * 0.78, len * 0.84), faceX, y, z);
     return;
   }
-  const x = side * (variant === 'a2' ? 1.775 : 1.765);
-  const depth = 0.075;
+  // The Starship course has to fit between the 1.8155 m published outer
+  // envelope and the animated shoe face.  The former 75 mm-deep carrier
+  // crossed that narrow lane by roughly 20 mm after the family 0.90 scale,
+  // so the strict sweep saw the complete row inside the moving track.  A
+  // 40 mm applique shell at the real fender edge preserves the same visible
+  // height/length while keeping its inner face clear of both band and shoes.
+  const x = side * 1.795;
+  const depth = 0.040;
   P.add('hull', box(depth, h, len), x, y, z);
   const faceX = side * (depth / 2 + 0.004);
   P.add('hullDetail', xform(box(0.008, h * 0.78, len * 0.84), faceX, 0, 0), x, y, z);
@@ -4214,12 +4220,14 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Broad armored bow shoulders continue the outer fenders into the curved
   // glacis. Closed wedge volumes replace the old narrow ledge, so the front
   // now has the characteristic M60 shoulder mass in head-on and quarter
-  // views without widening beyond the native 1.8075 m fender envelope.
+  // views without widening beyond the native 1.8075 m fender envelope.  Its
+  // floor stays above the forward track crown; the former low nose points
+  // entered the animated wrap even though the outer face looked correct.
   for (const side of [-1, 1]) {
     P.add('hull', slab(
-      [side * 0.64, 1.22, 3.18], [side * 1.79, 1.15, 3.34],
-      [side * 1.79, 1.66, 2.08], [side * 1.07, 1.72, 2.10],
-      [side * 0.67, 1.40, 3.10], [side * 1.76, 1.33, 3.28],
+      [side * 0.42, 1.40, 3.18], [side * 1.79, 1.40, 3.34],
+      [side * 1.79, 1.42, 2.08], [side * 0.90, 1.44, 2.10],
+      [side * 0.48, 1.53, 3.10], [side * 1.76, 1.53, 3.28],
       [side * 1.75, 1.79, 2.04], [side * 1.08, 1.82, 2.06]));
     P.add('hullDark', box(0.035, 0.055, 1.05), side * 1.765, 1.67, 2.58, 0, 0, side * 0.04);
     for (const z of [2.28, 2.62, 2.96]) {
@@ -4230,6 +4238,8 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     designFamily: 'cot-m60-closed-fender-shoulder-v1',
     mirroredClosedVolumes: 2,
     outerX: 1.79,
+    innerX: 0.42,
+    trackClearanceFloorY: 1.40,
     fenderJoinY: 1.79,
     forwardZ: 3.34,
     rearJoinZ: 2.04,
@@ -4593,13 +4603,12 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // torus + recessed shadow disc, mask/frame-excluded by construction.
   muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
   finishM60Variant(P, cfg.a3 ? 'a3' : 'a1', cfg.hull.deck);
-  if (cfg.a3) {
-    // The two front modernization carriers meet the cast glacis around a
-    // recessed service pocket.  Back each pocket with a thin hull-owned
-    // plate so the course is closed without widening the nose casting.
-    for (const side of [-1, 1]) {
-      P.add('hull', box(0.36, 0.025, 0.72), side * 0.965, 1.40, 3.22);
-    }
+  // The broad front shoulders meet the cast glacis around two recessed
+  // service pockets on both marks. Back each pocket with a thin hull-owned
+  // plate so neither A1 nor A3 leaves an enclosed plan-view hole, while the
+  // 1.40 m seat remains safely above the animated forward track wrap.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.36, 0.025, 0.72), side * 0.965, 1.40, 3.22);
   }
   // Uniformly reduce the complete articulated vehicle. The hull owns the
   // running gear and side protection; the turret owner contains its gun and
@@ -4644,6 +4653,9 @@ function finishM60A2Variant(
     supportRailCenterY: 1.70,
     hangerCount: sideStations.length * 2,
     previousCenterY: 1.42,
+    cassetteDepthM: 0.040,
+    trackClearanceInnerX: 1.775,
+    exteriorX: 1.815,
     blackOutlineStrips: 0,
   });
   for (const row of [

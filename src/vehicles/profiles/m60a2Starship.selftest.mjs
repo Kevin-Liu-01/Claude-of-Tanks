@@ -74,6 +74,12 @@ try {
   assert.ok(sideCassettes, 'Starship publishes its lowered side-armor seating receipt');
   assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
     'Starship side ERA hangs below the fender datum');
+  assert(sideCassettes.trackClearanceInnerX >= 1.775,
+    'Starship side ERA remains outside the animated track and shoe envelope');
+  assert(sideCassettes.exteriorX <= 1.8155,
+    'Starship side ERA remains inside the published fender width');
+  assert(sideCassettes.cassetteDepthM <= 0.040,
+    'Starship uses a thin applique shell in the narrow track-to-fender lane');
   assert.equal(sideCassettes.blackOutlineStrips, 0,
     'Starship side ERA uses subdued inset faces instead of black frames');
   const glacis = hullRig.userData.m60GlacisArmorReceipt;
