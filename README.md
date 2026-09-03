@@ -178,6 +178,23 @@ Every playable hull, turret, gun, fitting, suspension, road wheel, and track run
 first-party vehicle pipeline. Vehicle changes pass combat-anatomy receipts, generated technical diagrams, geometry
 checks, visual fingerprints, and a targeted release gate.
 
+### Ten Garage environments
+
+<p align="center">
+  <a href="public/media/garage-environments-r1/ten-garage-environments.png"><img src="public/media/garage-environments-r1/ten-garage-environments.png" alt="All ten Claude of Tanks Garage environments shown with the same Abrams and production Garage interface"></a>
+</p>
+
+The Garage is its own authored presentation system. Verdant retains the enclosed Motor Pool; the other nine locations
+use lightweight scene packs derived from a real battlefield's terrain, structures, PBR materials, detailed trees,
+approach route, horizon, sky, and atmosphere without loading that battlefield. One immutable hero pose keeps the tank
+and camera comparable across the complete set, while connected maintenance stations, heavy-lift equipment, real fleet
+exhibits, and full-detail tank parts establish a distinct service story around every platform.
+
+The release gate reviews every location from four orbit angles and responsive layouts, rejects unsupported or floating
+parts, certifies geometry-derived structure collision, and requires a score of at least 90/100 with bounded draw calls,
+triangles, transitions, cache residency, and repeated-cycle memory. See the
+[Garage environments guide](docs/GARAGE-ENVIRONMENTS.md) for the complete visual, lifecycle, and verification contract.
+
 ## Renderer, drivers, and performance
 
 <p>

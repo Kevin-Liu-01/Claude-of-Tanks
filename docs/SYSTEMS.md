@@ -403,6 +403,12 @@ Covered entry first drains or cancels the hover bake, applies the chosen map's
 camouflage, and resumes exact-roster baking with the loading-screen yielder.
 Changing tank/map or starting a new round invalidates the reservation.
 
+[GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) is the maintained visual and
+verification guide for this subsystem. It records all ten destinations, the
+canonical composition, scene-pack limits, structure/collision gates, and the
+owner-approved comparison sheet without duplicating lifecycle ownership from
+this document.
+
 ### Battle entry
 
 Solo Battle intent begins downloading the solo authority chunk and the exact

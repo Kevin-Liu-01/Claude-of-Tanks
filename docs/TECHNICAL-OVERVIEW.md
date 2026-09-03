@@ -253,7 +253,9 @@ The active and previous packs are the only cached scene graphs, and Garage-only
 textures and geometry leave GPU residency during battle. One immutable
 Verdant-style presentation pose owns hero heading, camera offset, look height,
 and FOV in every location. Optional network code and high-cost tooling remain
-dynamically reachable.
+dynamically reachable. [GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) records
+the complete destination roster, owner-approved contact sheet, visual contract,
+resource ownership, and release gates.
 
 ### 5.3 Battle activation
 

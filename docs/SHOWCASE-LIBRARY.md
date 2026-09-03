@@ -59,6 +59,16 @@ The published manifest records all six sheets, their frame IDs, and the review
 sequence: scene JSON → review capture → contact-sheet inspection → 4K export →
 automated grade → owner approval.
 
+### Garage environment overview
+
+[![All ten current Garage environments](../public/media/garage-environments-r1/ten-garage-environments.png)](../public/media/garage-environments-r1/ten-garage-environments.png)
+
+This owner-approved contact sheet compares the ten current in-engine Garage
+locations with one vehicle and one production interface. It is maintained as
+system documentation rather than counted as an R1 campaign frame. See
+[GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) for the location roster and
+acceptance contract.
+
 ## Rebuild
 
 Generate and grade the campaign masters, render the Studio sequence, then

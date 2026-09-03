@@ -253,6 +253,31 @@ stores fingerprints and hashes so stale presentation assets fail verification.
 
 See docs/TANK-ASSET-PIPELINE.md and docs/BUILD-STANDARD.md.
 
+## Ten Garage environments
+
+The vehicle-selection Garage has ten persistent locations rather than one
+background swap. Verdant Motor Pool retains its enclosed authored workshop;
+Sirocco, Frosthollow, Steinburg, Saltmere, Cinder, Monsoon, Glacier, Redrock,
+and Ironworks use bounded Garage-only scene packs derived from the terrain,
+structures, materials, trees, skies, and atmosphere of their named
+battlefields.
+
+[![Ten current in-engine Garage locations](../public/media/garage-environments-r1/ten-garage-environments.png)](../public/media/garage-environments-r1/ten-garage-environments.png)
+
+Every destination keeps the same tank heading and camera composition. The
+environment changes around that fixed presentation frame with a custom-colored
+platform, connected map structures, a terrain-following approach, biome
+horizon, detailed vegetation, two maintenance stations, heavy-lift equipment,
+and four real fleet service exhibits. No environment uses tank-shaped proxy
+geometry or imports the battlefield update and collision runtime.
+
+Environment switches retain the previous complete scene until the requested
+pack is ready, cache no more than two packs, and release Garage-only GPU
+resources before battle. Four-angle browser captures, responsive layouts,
+structure support and collision audits, transition timing, and repeated-cycle
+memory checks enforce the release contract. See the
+[Garage environments guide](GARAGE-ENVIRONMENTS.md).
+
 ## Multiplayer and persistent rooms
 
 ### Four authority arrangements

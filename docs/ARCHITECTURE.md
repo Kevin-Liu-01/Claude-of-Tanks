@@ -957,6 +957,10 @@ least 90/100, no unsupported part gap above 9 cm, no ground intersection with
 the hero platform, and no retained renderer-resource growth after a complete
 variant cycle.
 
+[GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) is the visual companion to
+this contract: it records the ten-location roster, owner-approved comparison
+sheet, scene-pack boundaries, and focused verification commands.
+
 `garageEnvironmentPresentationRuntime.ts` keeps any retained battle world
 dormant and applies the fixed anchor and canonical camera pose.
 `garagePhasePresentationRuntime.ts` owns the global Garage lights and the complete
