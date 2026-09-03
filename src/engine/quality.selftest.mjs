@@ -30,12 +30,16 @@ assert.equal(mobile.resolveDeviceTier({ capabilities: { maxTextureSize: 8192 } }
 assert.equal(mobile.resolvePresetName(), 'mobile');
 assert.equal(mobile.texSize(4096, 'vehicle'), 2048,
   'mobile vehicle textures retain their tier cap');
+assert.equal(mobile.shouldReleaseInactivePhaseGpu(), true,
+  'mobile devices release phase-exclusive GPU resources');
 assert.deepEqual(mobile.MOBILE_PRESET_ORDER, ['mobile-low', 'mobile', 'mobile-high']);
 
 const desktopBrowser = installBrowser('?tier=desktop');
 const desktop = await import('./quality.ts?quality-desktop-contract');
 assert.equal(desktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');
 assert.equal(desktop.resolvePresetName(), 'high');
+assert.equal(desktop.shouldReleaseInactivePhaseGpu(), false,
+  'normal desktops retain detached Garage resources for fast battle exits');
 assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
 for (const name of desktop.PRESET_ORDER) {
   assert.deepEqual(desktop.PRESETS[name].shadowMapSizes,
@@ -79,6 +83,13 @@ assert.equal(resetDesktop.canRecoverAutoTier(), false,
   'automatic recovery stops at the hardware-derived ceiling');
 assert.equal(resetDesktop.reportSustainedRecovery(), false);
 
+installBrowser('?tier=desktop', { memory: 4, cores: 8 });
+const constrainedDesktop = await import('./quality.ts?quality-constrained-desktop-contract');
+assert.equal(constrainedDesktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');
+assert.equal(constrainedDesktop.shouldReleaseInactivePhaseGpu(), true,
+  'low-memory desktops favor GPU safety over retained transition speed');
+
+installBrowser('?tier=desktop');
 const freshDesktop = await import('./quality.ts?quality-fresh-session-contract');
 assert.equal(freshDesktop.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } }), 'desktop');
 assert.equal(freshDesktop.resolvePresetName(), 'high',

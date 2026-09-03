@@ -158,6 +158,7 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 
 {
   let warmCalls = 0;
+  const residentProgramCalls = [];
   const receipt = await restoreGarageGpuPipeline({
     renderer,
     scene,
@@ -173,16 +174,17 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     programRoot,
     forwardPrograms: {
       *initializeSteps() {
-        assert.fail('resident programs must not be submitted again');
+        residentProgramCalls.push('initialize');
       },
       *linkerBreathingSlices() {
-        assert.fail('resident programs need no linker drain');
+        residentProgramCalls.push('linker');
       },
       compile() { assert.fail('resident programs must not be compiled again'); },
     },
     post: { render() {} },
     simDt: 1 / 60,
     resourcesReleased: false,
+    programsNeedWarm: true,
     createYielder: () => async () => {},
     warmScene: async () => {
       warmCalls += 1;
@@ -190,6 +192,8 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     },
     now: () => 50,
   });
+  assert.deepEqual(residentProgramCalls, ['initialize', 'linker'],
+    'the current hero is submitted even when static Garage resources remain resident');
   assert.equal(warmCalls, 0, 'resident desktop Garage buffers are never uploaded again');
   assert.deepEqual(receipt, {
     totalMs: 0,

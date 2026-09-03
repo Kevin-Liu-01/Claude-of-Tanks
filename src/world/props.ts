@@ -42,7 +42,8 @@ import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.ts';
 import {
-  appendStructureCollisionBand, applyStructureCollisionBand, deriveStructureCollisionProfile,
+  appendStructureCollisionBand, applyStructureCollisionBand,
+  deriveRuntimeStructureCollisionProfile,
 } from './structureCollision.ts';
 import {
   hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
@@ -2272,7 +2273,7 @@ export async function createPropsAsync(
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
   let r = g.next();
   let i = 0;
-  const total = fineSlices ? 60 : 9;
+  const total = fineSlices ? 180 : 9;
   while (!r.done) {
     const step = r.value;
     if (step?.tankBuilder) await ensureTankBuilder(step.tankBuilder);
@@ -2715,7 +2716,7 @@ ${snowCap ? `
   ): void {
     let profile;
     try {
-      profile = deriveStructureCollisionProfile(tmp);
+      profile = deriveRuntimeStructureCollisionProfile(tmp);
     } catch (error) {
       throw new Error(`${id}: unable to derive structure collision`, { cause: error });
     }
@@ -2887,7 +2888,7 @@ ${snowCap ? `
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
     placePlannedBuilding(px, pz, rot);
   }
-  function placeRoadBuildings(): void {
+  function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
     // rowhouse strips knit dense street walls around those reserved masses.
     if (P.streetRows && !P.streetRowsAfterLandmarks) return;
@@ -2896,10 +2897,11 @@ ${snowCap ? `
       for (const side of [-1, 1]) {
         if (bi >= builders.length) return;
         placeRoadBuilding(cand, side);
+        yield { fine: true };
       }
     }
   }
-  placeRoadBuildings();
+  yield* placeRoadBuildings();
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
@@ -2969,7 +2971,7 @@ ${snowCap ? `
   // --- contiguous rowhouse strips along the streets (town maps): buildings
   // butt against each other with shared walls, doors on the street, varied
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
-  function placeStreetRows(): void {
+  function* placeStreetRows(): Generator<PropsBuildSlice, void, void> {
     if (!P.streetRows) return;
     const srng = mulberry32(seed + 505);
     interface StreetBounds { x: number; z: number; hx: number; hz: number }
@@ -3069,26 +3071,27 @@ ${snowCap ? `
       addStreetRubble(ruined, rx, rz, nx, nz, offset, depth);
       return distance + width - 0.25;
     };
-    const placeStreetSide = (
+    function* placeStreetSide(
       roadIndex: number,
       side: number,
       total: number,
       pointAt: RoadPointSampler,
-    ): void => {
+    ): Generator<PropsBuildSlice, void, void> {
       let distance = 3 + srng() * 9;
       while (distance < total - 10) {
         distance = placeStreetRowSlot(distance, roadIndex, side, pointAt);
+        yield { fine: true };
       }
-    };
-    const placeStreetRoad = (roadIndex: number): void => {
+    }
+    function* placeStreetRoad(roadIndex: number): Generator<PropsBuildSlice, void, void> {
       if (roadIndex % Math.max(1, P.streetRowRoadStride || 1) !== 0) return;
       const { total, pointAt } = createRoadSampler(roads[roadIndex]);
       for (const side of [-1, 1]) {
-        placeStreetSide(roadIndex, side, total, pointAt);
+        yield* placeStreetSide(roadIndex, side, total, pointAt);
       }
-    };
+    }
     for (let roadIndex = 0; roadIndex < roads.length; roadIndex++) {
-      placeStreetRoad(roadIndex);
+      yield* placeStreetRoad(roadIndex);
     }
 
     // --- street furniture + battle litter (town maps) --------------------
@@ -3151,12 +3154,12 @@ ${snowCap ? `
     }
     placeStreetFurniture();
   }
-  placeStreetRows();
+  yield* placeStreetRows();
 
   yield;
   // --- town block fill (urban): place remaining plan buildings on a coarse
   // grid BETWEEN the streets so blocks read built-up, not just road-fronted ---
-  function placeTownBlockFill(): void {
+  function* placeTownBlockFill(): Generator<PropsBuildSlice, void, void> {
     if (!P.blockFill || bi >= builders.length) return;
     const brng = mulberry32(seed + 404);
     const step = 27;
@@ -3174,17 +3177,18 @@ ${snowCap ? `
     for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
         tryPlaceTownBuilding(gx, gz);
+        yield { fine: true };
       }
     }
   }
-  placeTownBlockFill();
+  yield* placeTownBlockFill();
 
   // Map-specific strongpoints. Random dressing is still valuable between
   // lanes, but critical cover cannot be left to a scatter pass: these beats
   // deliberately anchor the brawl, scout and support routes authored by each
   // expansion map. Structures and redoubts reuse destructible pools, so the
   // pass adds no new material or draw-call family.
-  function placeTacticalBeats(): void {
+  function* placeTacticalBeats(): Generator<PropsBuildSlice, void, void> {
     if (!P.tacticalBeats?.length) return;
     type TacticalBeat = NonNullable<typeof P.tacticalBeats>[number];
     const placeTacticalStructure = (beat: TacticalBeat, yaw: number): boolean => {
@@ -3225,16 +3229,17 @@ ${snowCap ? `
         id: beat.id, role: beat.role, x: beat.x, z: beat.z,
         structurePlaced, redoubt: !!beat.redoubt,
       });
+      yield { fine: true };
     }
   }
-  placeTacticalBeats();
+  yield* placeTacticalBeats();
 
   // Light-building pass: huts, shelters, tents and camp infrastructure are
   // individually destructible, unlike the heavyweight merged landmarks.
   // A separate seeded stream keeps the established village layout stable.
   // Each type becomes one intact InstancedMesh plus an empty broken-state
   // pool, bounded to the handful of families authored by the active map.
-  function placeDestructibleBuildings(): void {
+  function* placeDestructibleBuildings(): Generator<PropsBuildSlice, void, void> {
     if (!P.destructibleBuildings?.length) return;
     const srng = mulberry32(seed + 17041);
     const lateral = P.destructibleBuildingLat || [9.5, 9.0];
@@ -3280,9 +3285,10 @@ ${snowCap ? `
     };
     for (const kind of P.destructibleBuildings) {
       placeDestructibleBuilding(kind);
+      yield { fine: true };
     }
   }
-  placeDestructibleBuildings();
+  yield* placeDestructibleBuildings();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -5617,7 +5623,7 @@ ${snowCap ? `
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.
-    const contactBand = deriveStructureCollisionProfile({ baked: [geometry] }).contact;
+    const contactBand = deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledBand = record.sc === 1 ? contactBand : {

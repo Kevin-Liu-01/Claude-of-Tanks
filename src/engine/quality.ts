@@ -160,6 +160,21 @@ export function resolveDeviceTier(renderer?: WebGLRenderer): DeviceTier {
 export function getDeviceTier(): DeviceTier { return _deviceTier || 'desktop'; }
 
 /**
+ * Detached phase roots have no draw cost, so normal desktops retain their GPU
+ * allocations for fast transitions. Phones, tablets, and low-memory desktops
+ * release them to stay within the browser's smaller graphics-memory budget.
+ */
+export function shouldReleaseInactivePhaseGpu(): boolean {
+  if (getDeviceTier() === 'mobile') return true;
+  try {
+    const memoryGb = (navigator as DeviceNavigator).deviceMemory;
+    return typeof memoryGb === 'number' && Number.isFinite(memoryGb) && memoryGb <= 4;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * CENTRAL texture-resolution lever. Texture/canvas creation sites pass their
  * authored dimension through this: desktop tiers return it unchanged; the
  * mobile tier scales it (textureScale) and clamps to both the tier cap and

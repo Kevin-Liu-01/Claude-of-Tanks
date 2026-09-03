@@ -104,6 +104,7 @@ export interface GarageGpuRestoreOptions {
   post: GaragePostRenderPort;
   simDt: number;
   resourcesReleased: boolean;
+  programsNeedWarm?: boolean;
   createYielder?: (budgetMs: number) => WarmYield;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
@@ -151,6 +152,7 @@ export async function restoreGarageGpuPipeline({
   post,
   simDt,
   resourcesReleased,
+  programsNeedWarm = resourcesReleased,
   createYielder = createGarageReturnYielder,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
@@ -168,7 +170,12 @@ export async function restoreGarageGpuPipeline({
   lighting.setStaticPresentationDormant(false);
   try {
     lighting.update(true);
-    if (resourcesReleased) {
+    // The Garage can adopt a newly deployed player visual even when its static
+    // environment stayed resident. Submit a changed hero against the real
+    // Garage light/target combination; subsequent returns reuse that program,
+    // while a new lighting variant links in small covered slices instead of
+    // blocking the exact settle frame.
+    if (programsNeedWarm) {
       const programWarmAt = now();
       try {
         programWarmSlices = await drainWarmSteps(

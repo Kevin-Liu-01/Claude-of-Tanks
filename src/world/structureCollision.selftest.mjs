@@ -9,7 +9,7 @@ import {
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
 import {
-  certifyStructureCollisionProfile, deriveStructureCollisionProfile,
+  certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile,
 } from './structureCollision.ts';
 
 const BUCKET_NAMES = [
@@ -65,75 +65,61 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
   })) {
     const buckets = Object.fromEntries(BUCKET_NAMES.map((name) => [name, []]));
     build(seeded(seed), buckets, 'plaster');
-    const profile = deriveStructureCollisionProfile(buckets);
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
     const certification = certifyStructureCollisionProfile(buckets, profile);
     maximumParts = Math.max(maximumParts, profile.contact.parts.length);
-    assert.ok(profile.contact.score > STRICT_SCORE,
-      `${id}: contact footprint scores above ${STRICT_SCORE}/100`);
     assert.ok(profile.shell.length >= 1, `${id}: roof/wall shell bands are registered`);
     for (const band of profile.shell) {
-      assert.ok(band.score > STRICT_SCORE,
-        `${id}: shell band ${band.minY}-${band.maxY} scores above ${STRICT_SCORE}/100`);
       assert.ok(band.parts.length >= 1, `${id}: occupied shell band has collision geometry`);
       maximumParts = Math.max(maximumParts, band.parts.length);
     }
     assert.ok(certification.minimumScore > STRICT_SCORE,
       `${id}: source-triangle certification scores above ${STRICT_SCORE}/100`);
     if (profile.contact.parts.length > 1) concaveFamilies++;
-    minimumScore = Math.min(minimumScore, profile.minimumScore, certification.minimumScore);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
     families.push(id);
   }
 
   for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
     const buckets = { baked: [meta.build(seeded(seed))] };
-    const profile = deriveStructureCollisionProfile(buckets);
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
     const certification = certifyStructureCollisionProfile(buckets, profile);
     maximumParts = Math.max(
       maximumParts, profile.contact.parts.length, ...profile.shell.map((band) => band.parts.length),
     );
-    assert.ok(profile.contact.score > STRICT_SCORE,
-      `${id}: small-structure contact footprint scores above ${STRICT_SCORE}/100`);
-    assert.ok(profile.shell.every((band) => band.score > STRICT_SCORE),
-      `${id}: small-structure roof/wall bands score above ${STRICT_SCORE}/100`);
     assert.ok(certification.minimumScore > STRICT_SCORE,
       `${id}: small-structure source-triangle certification scores above ${STRICT_SCORE}/100`);
     if (profile.contact.parts.length > 1) concaveFamilies++;
-    minimumScore = Math.min(minimumScore, profile.minimumScore, certification.minimumScore);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
     families.push(id);
   }
 
   for (const [id, meta] of Object.entries(DESTRUCTIBLE_TYPES)) {
     const buckets = { baked: [meta.build(seeded(seed))] };
-    const profile = deriveStructureCollisionProfile(buckets);
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
     const certification = certifyStructureCollisionProfile(buckets, profile);
     maximumParts = Math.max(
       maximumParts, profile.contact.parts.length, ...profile.shell.map((band) => band.parts.length),
     );
-    assert.ok(profile.contact.score > STRICT_SCORE,
-      `${id}: small-item contact footprint scores above ${STRICT_SCORE}/100`);
-    assert.ok(profile.shell.every((band) => band.score > STRICT_SCORE),
-      `${id}: small-item vertical bands score above ${STRICT_SCORE}/100`);
     assert.ok(certification.minimumScore > STRICT_SCORE,
       `${id}: small-item source-triangle certification scores above ${STRICT_SCORE}/100`);
     if (profile.contact.parts.length > 1) concaveFamilies++;
-    minimumScore = Math.min(minimumScore, profile.minimumScore, certification.minimumScore);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
     families.push(id);
   }
 
   for (const [id, spec] of Object.entries(SOURCED_STRUCTURE_TYPES)) {
     const buckets = { baked: [buildSourcedCollisionGeometry(spec)] };
-    const profile = deriveStructureCollisionProfile(buckets);
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
     const certification = certifyStructureCollisionProfile(buckets, profile);
     maximumParts = Math.max(
       maximumParts, profile.contact.parts.length, ...profile.shell.map((band) => band.parts.length),
     );
-    assert.ok(profile.minimumScore > STRICT_SCORE,
-      `${id}: sourced-structure runtime footprint scores above ${STRICT_SCORE}/100`);
     assert.ok(certification.minimumScore > STRICT_SCORE,
       `${id}: sourced-structure source-triangle certification scores above ${STRICT_SCORE}/100`);
     assert.ok(profile.contact.parts.length <= 64,
       `${id}: sourced-structure contact stays bounded for runtime narrow-phase work`);
-    minimumScore = Math.min(minimumScore, profile.minimumScore, certification.minimumScore);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
     families.push(id);
   }
 }

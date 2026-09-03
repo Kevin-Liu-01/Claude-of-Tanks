@@ -229,14 +229,16 @@ interface SkirtBandOptions {
   readonly firstLipY?: number;
 }
 
-interface FlapOptions {
+interface FlapBaseOptions {
   readonly x: number;
   readonly w: number;
-  readonly front?: Vec2Tuple;
-  readonly frontZ: number;
-  readonly rear?: Vec2Tuple;
-  readonly rearZ?: number;
 }
+
+type FlapOptions = FlapBaseOptions & (
+  | { readonly front: Vec2Tuple; readonly frontZ: number; readonly rear?: never; readonly rearZ?: never }
+  | { readonly front?: never; readonly frontZ?: never; readonly rear: Vec2Tuple; readonly rearZ: number }
+  | { readonly front: Vec2Tuple; readonly frontZ: number; readonly rear: Vec2Tuple; readonly rearZ: number }
+);
 
 interface T62BowServiceOptions {
   readonly stiffenerY?: number;
@@ -1009,7 +1011,7 @@ export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.014, frontCut: o.front[1] * 0.11,
     });
     if (o.rear) MUDGUARDS.add(P, {
-      label: `ru-rear-flap-${s}`, x: xf, y: o.rear[0], z: o.rearZ!,
+      label: `ru-rear-flap-${s}`, x: xf, y: o.rear[0], z: o.rearZ,
       thickness: 0.045, length: o.w, height: o.rear[1], material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, rearCut: o.rear[1] * 0.09,
     });

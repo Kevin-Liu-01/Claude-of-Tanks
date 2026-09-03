@@ -35,10 +35,18 @@ export interface StructureFootprintReceipt {
   score: number;
 }
 
-export interface StructureCollisionBand extends StructureFootprintReceipt {
+export interface StructureCollisionRuntimeBand {
   minY: number;
   maxY: number;
   parts: SimpleCollisionShape[];
+}
+
+export interface StructureCollisionBand
+  extends StructureCollisionRuntimeBand, StructureFootprintReceipt {}
+
+export interface StructureCollisionRuntimeProfile {
+  contact: StructureCollisionRuntimeBand;
+  shell: StructureCollisionRuntimeBand[];
 }
 
 export interface StructureCollisionProfile {
@@ -374,29 +382,7 @@ function shapePolygon(shape: SimpleCollisionShape) {
 function makeBand(
   solids: LocalSolid[], minY: number, maxY: number, groundContact = false,
 ): StructureCollisionBand {
-  // Open-ended decorative cylinders high on towers (rails, collars and trim)
-  // have no projected cap area. Treating their outer hull as a solid disc
-  // blocks shells in visibly empty air. Ground-bearing open solids remain
-  // physical because they can be structural walls or posts.
-  const collisionSolids = groundContact
-    ? solids
-    : solids.filter((solid) => solid.projectedTriangles.length > 0 || solid.minY <= CONTACT_TOP);
-  const activeSolids = collisionSolids.length ? collisionSolids : solids;
-  const projectedCount = activeSolids.reduce(
-    (total, solid) => total + solid.projectedTriangles.length, 0,
-  );
-  // Triangle-pair merging is valuable for ordinary authored primitives, but
-  // quadratic on scanned/curved meshes. Dense meshes go straight to the
-  // bounded raster union below; occupancy scoring already treats overlaps as
-  // one silhouette.
-  const source = projectedCount > 512
-    ? activeSolids.flatMap((solid) => solid.projectedTriangles.length
-      ? solid.projectedTriangles
-      : [solid.points])
-    : uniquePolygons(activeSolids.flatMap((solid) => {
-    const projected = mergeProjectedTriangles(solid.projectedTriangles);
-    return projected.length ? projected : [solid.points];
-    }));
+  const source = collisionSource(solids, groundContact);
   const collision = collapseDenseFootprint(source);
   return {
     minY,
@@ -404,6 +390,55 @@ function makeBand(
     parts: collision.map(polygonShape),
     ...scoreFootprint(source, collision),
   };
+}
+
+function makeRuntimeBand(
+  solids: LocalSolid[], minY: number, maxY: number, groundContact = false,
+): StructureCollisionRuntimeBand {
+  const source = collisionSource(solids, groundContact);
+  const collision = source.length <= 64 ? source : collapseRuntimeFootprint(source);
+  return { minY, maxY, parts: collision.map(polygonShape) };
+}
+
+function collisionSource(solids: LocalSolid[], groundContact: boolean): number[][] {
+  // Open-ended decorative cylinders high on towers (rails, collars and trim)
+  // have no projected cap area. Ground-bearing open solids remain physical
+  // because they can be structural walls or posts. Triangle-pair merging is
+  // useful for ordinary primitives but quadratic on dense scanned meshes.
+  const collisionSolids = groundContact
+    ? solids
+    : solids.filter((solid) => solid.projectedTriangles.length > 0 || solid.minY <= CONTACT_TOP);
+  const activeSolids = collisionSolids.length ? collisionSolids : solids;
+  const projectedCount = activeSolids.reduce(
+    (total, solid) => total + solid.projectedTriangles.length, 0,
+  );
+  if (projectedCount > 512) {
+    return activeSolids.flatMap((solid) => solid.projectedTriangles.length
+      ? solid.projectedTriangles
+      : [solid.points]);
+  }
+  return uniquePolygons(activeSolids.flatMap((solid) => {
+    const projected = mergeProjectedTriangles(solid.projectedTriangles);
+    return projected.length ? projected : [solid.points];
+  }));
+}
+
+function collapseRuntimeFootprint(source: number[][]): number[][] {
+  // Runtime construction needs the already-certified collision geometry, not
+  // another 72x72 quality measurement for every placed building. Preserve
+  // ordinary authored polygons exactly; only dense scanned silhouettes use a
+  // single bounded raster pass before falling back to their enclosing hull.
+  for (const resolution of [32, 24, 16]) {
+    const polygons = rasterFootprintRectangles(source, resolution);
+    if (polygons.length > 0 && polygons.length <= 64) return polygons;
+  }
+  const points: Array<[number, number]> = [];
+  for (const polygon of source) {
+    for (let index = 0; index < polygon.length; index += 2) {
+      points.push([polygon[index], polygon[index + 1]]);
+    }
+  }
+  return [convexHull2(points)];
 }
 
 function collectSolids(buckets: StructureGeometryBuckets) {
@@ -415,34 +450,53 @@ function collectSolids(buckets: StructureGeometryBuckets) {
   return solids;
 }
 
-export function deriveStructureCollisionProfile(
-  buckets: StructureGeometryBuckets,
-): StructureCollisionProfile {
-  const solids = collectSolids(buckets);
+function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
+  solids: LocalSolid[],
+  createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
+): { contact: T; shell: T[] } {
   const contactSolids = solids.filter((solid) =>
     solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   if (!contactSolids.length) throw new Error('structure has no ground-contact collision solids');
-  const contact = makeBand(
+  const contact = createBand(
     contactSolids,
     Math.min(...contactSolids.map((solid) => solid.minY)),
     Math.max(...contactSolids.map((solid) => solid.maxY)),
     true,
   );
-
   const minY = Math.min(...solids.map((solid) => solid.minY));
   const maxY = Math.max(...solids.map((solid) => solid.maxY));
-  const shell: StructureCollisionBand[] = [];
+  const shell: T[] = [];
   for (let bandMin = Math.floor(minY / SHELL_BAND_HEIGHT) * SHELL_BAND_HEIGHT;
     bandMin < maxY; bandMin += SHELL_BAND_HEIGHT) {
     const bandMax = Math.min(maxY, bandMin + SHELL_BAND_HEIGHT);
-    const active = solids.filter((solid) => solid.maxY > bandMin + 1e-4 && solid.minY < bandMax - 1e-4);
-    if (active.length) shell.push(makeBand(active, bandMin, bandMax));
+    const active = solids.filter((solid) =>
+      solid.maxY > bandMin + 1e-4 && solid.minY < bandMax - 1e-4);
+    if (active.length) shell.push(createBand(active, bandMin, bandMax, false));
   }
+  return { contact, shell };
+}
+
+export function deriveStructureCollisionProfile(
+  buckets: StructureGeometryBuckets,
+): StructureCollisionProfile {
+  const solids = collectSolids(buckets);
+  const { contact, shell } = deriveCollisionBands(solids, makeBand);
   return {
     contact,
     shell,
     minimumScore: Math.min(contact.score, ...shell.map((band) => band.score)),
   };
+}
+
+/**
+ * Build the certified runtime shape without re-running the expensive quality
+ * sampler embedded in authoring audits. The release gate independently scores
+ * this exact fast-path output for every structure family.
+ */
+export function deriveRuntimeStructureCollisionProfile(
+  buckets: StructureGeometryBuckets,
+): StructureCollisionRuntimeProfile {
+  return deriveCollisionBands(collectSolids(buckets), makeRuntimeBand);
 }
 
 /**
@@ -452,10 +506,10 @@ export function deriveStructureCollisionProfile(
  */
 export function certifyStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
-  profile = deriveStructureCollisionProfile(buckets),
+  profile: StructureCollisionRuntimeProfile = deriveStructureCollisionProfile(buckets),
 ): StructureCollisionCertification {
   const solids = collectSolids(buckets);
-  const scoreSolids = (active: LocalSolid[], band: StructureCollisionBand) => {
+  const scoreSolids = (active: LocalSolid[], band: StructureCollisionRuntimeBand) => {
     const source = active.flatMap((solid) => solid.projectedTriangles);
     if (!source.length) throw new Error('structure band has no projected source surface');
     return scoreFootprint(source, band.parts.map(shapePolygon));
@@ -502,7 +556,7 @@ function transformParts(
 }
 
 export function applyStructureCollisionBand(
-  record: CollisionRecord, band: StructureCollisionBand,
+  record: CollisionRecord, band: StructureCollisionRuntimeBand,
   x: number, z: number, yaw: number,
 ) {
   setCompoundShape(record, transformParts(band.parts, x, z, yaw));
@@ -510,7 +564,7 @@ export function applyStructureCollisionBand(
 }
 
 export function appendStructureCollisionBand(
-  list: CollisionRecord[], band: StructureCollisionBand,
+  list: CollisionRecord[], band: StructureCollisionRuntimeBand,
   x: number, baseY: number, z: number, yaw: number,
 ) {
   const record: CollisionRecord = {

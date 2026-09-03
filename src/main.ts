@@ -57,7 +57,7 @@ import {
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
-  noteGpuRenderer, getDeviceTier,
+  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu,
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
@@ -649,6 +649,7 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
+let lastGarageProgramRoot: THREE.Object3D | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -662,12 +663,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
-  // The Garage stage now owns nine outdoor scene packs plus the full-detail
-  // workshop. None of those allocations can contribute to a battle frame, so
-  // keeping them resident on desktop only steals GPU budget from vehicles,
-  // structures, effects, and coherent shadow cascades. The covered phase
-  // transition already restores the exact pack before Garage reveal.
-  shouldReleaseGpuOnBattle: () => true,
+  // Detached Garage roots have no render cost. Retain their uploaded programs
+  // on normal desktops for an immediate battle exit; constrained/mobile
+  // devices still reclaim them to protect the browser's smaller GPU budget.
+  shouldReleaseGpuOnBattle: shouldReleaseInactivePhaseGpu,
   posePedestal: () => pedestal.poseCurrent(),
   poseCamera: () => {
     if (!resetGarageShowroom?.()) garageEnvironmentPresentation.poseCamera();
@@ -675,17 +674,22 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
   restorePresentationGpu: async ({ resourcesReleased }) => {
-    return restoreGarageGpuPipeline({
+    const programRoot = pedestal.current?.root ?? scene;
+    const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
+    const receipt = await restoreGarageGpuPipeline({
       renderer,
       scene,
       camera,
       lighting,
-      programRoot: pedestal.current?.root ?? scene,
+      programRoot,
       forwardPrograms: forwardProgramWarm,
       post,
       simDt: SIM_DT,
       resourcesReleased,
+      programsNeedWarm,
     });
+    lastGarageProgramRoot = programRoot;
+    return receipt;
   },
 });
 const setGarageSpots = garagePhasePresentation.setActive;
