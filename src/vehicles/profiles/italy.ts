@@ -420,11 +420,26 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   }
   // ---- skirts (plan: heavy applique run z -0.41..+3.09 ONLY; stations rear
   // 3.04-3.07 = no wide rear skirt. WIDTH GUARD: max |x| = 1.80) -------------
+  // The old skirt faces stopped below the hull-side sill and were connected
+  // only by a narrow outboard rail. That left the C1 rear apron visibly
+  // floating and made both marks read as if their guards were suspended off
+  // the tracks. Preserve the accepted lower edges, but carry the inboard
+  // apron and outer carriers upward into two real fender shelves: a level
+  // aft course overlapping the side wall and a forward course raked with the
+  // glacis. Both shelves overlap the hull inboard and the skirts outboard.
   const skirtRear = c2 ? -2.92 : -0.41;                                        // C2 package: full-run heavy skirts (photo-class)
+  const skirtSeatRear = -2.92;
+  const sideWallFront = 1.67;
+  const baseSkirtBottomY = 0.54;
+  const baseSkirtTopY = 1.38;
+  const heavySkirtBottomY = 0.60;
+  const heavySkirtTopY = 1.42;
   for (const s of [-1, 1]) {
     const skirtBucket = s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
     const skirtDarkBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-    P.add(skirtBucket, box(0.03, 0.59, 5.82), s * 1.665, 0.835, -0.01);        // base thin skirt re-wrapped just outside the wider native course
+    P.add(skirtBucket,
+      box(0.03, baseSkirtTopY - baseSkirtBottomY, 5.82),
+      s * 1.665, (baseSkirtTopY + baseSkirtBottomY) / 2, -0.01);              // full-height inboard apron: lower edge held, upper edge buried in the fender seat
     // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
     // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
     // marks. 0.50 pitch < the 0.54 station slab (edge-on prism law holds);
@@ -438,11 +453,15 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     const panelCarrierX = c2 ? 1.760 : 1.7975;
     for (let k = 0; k < panels; k++) {
       const zc = z0 - panelD * (k + 0.5);
-      P.add(skirtBucket, box(0.035, 0.68, panelD - 0.025), s * panelCenterX, 0.94, zc); // heavy applique carrier, physically joined to the hanger rail
-      P.add(skirtDarkBucket, box(0.012, 0.60, 0.02), s * (panelCarrierX - 0.008), 0.94, zc - panelD / 2 + 0.012); // panel seams stay on the carrier face
+      P.add(skirtBucket,
+        box(0.035, heavySkirtTopY - heavySkirtBottomY, panelD - 0.025),
+        s * panelCenterX, (heavySkirtTopY + heavySkirtBottomY) / 2, zc);       // outer carrier reaches through the fender shelf without lowering its hem
+      P.add(skirtDarkBucket, box(0.012, 0.74, 0.02),
+        s * (panelCarrierX - 0.008), 1.01, zc - panelD / 2 + 0.012);          // panel seams span the newly complete carrier face
       P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 1.09, zc - panelD * 0.22);
       P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 0.79, zc + panelD * 0.22);
-      if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07), s * (panelCenterX + 0.004), 1.245, zc + panelD / 2 - 0.0125); // hinge straps rail->panel at every interior seam
+      if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07),
+        s * (panelCenterX + 0.004), 1.35, zc + panelD / 2 - 0.0125);          // hinge straps now bridge the panel crown into the fender seat
       if (c2) {
         for (const y of [0.79, 1.09]) {
           const face = {
@@ -457,7 +476,13 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       }
     }
     P.add(skirtBucket, box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);        // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
-    P.add(skirtBucket, box(0.14, 0.10, 3.09 - skirtRear), s * 1.72, 1.315, (3.09 + skirtRear) / 2); // hanger rail tying panels to the sponson
+    P.add(skirtBucket, box(0.275, 0.06, sideWallFront - skirtSeatRear),
+      s * 1.6525, 1.39, (sideWallFront + skirtSeatRear) / 2);                 // aft fender shelf: 20 mm hull overlap, 30+ mm skirt overlap
+    P.add(skirtBucket, slab(                                                   // forward shelf follows the glacis instead of hovering over it
+      [s * 1.48, 1.36, sideWallFront], [s * 1.79, 1.36, sideWallFront],
+      [s * 1.79, 1.20, 3.09], [s * 1.48, 1.20, 3.09],
+      [s * 1.48, 1.42, sideWallFront], [s * 1.79, 1.42, sideWallFront],
+      [s * 1.79, 1.26, 3.09], [s * 1.48, 1.26, 3.09]));
     // front mudguards (plan ±1.545..1.795 -> z 3.005..3.093; front-view
     // crest 1.33, outer droop 1.22)
     P.add(skirtBucket, box(0.14, 0.10, 0.46), s * 1.72, 1.275, 2.86);
@@ -917,6 +942,23 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   });
   P.hullG.userData.arieteFamilyScaleReceipt = scaleReceipt;
   P.turretG.userData.arieteFamilyScaleReceipt = scaleReceipt;
+  P.hullG.userData.arieteSideSkirtFenderSeatReceipt = Object.freeze({
+    revision: 'full-height-fender-seat-r1',
+    sides: 2,
+    fenderBridgeCoursesPerSide: 2,
+    skirtPanelsPerSide: c2 ? 13 : 7,
+    lowerEdgesPreserved: true,
+    skirtSeatRearM: skirtSeatRear * scale,
+    skirtSeatFrontM: 3.09 * scale,
+    baseSkirtBottomYM: (baseSkirtBottomY + BODY_RIDE_LIFT) * scale,
+    baseSkirtTopYM: (baseSkirtTopY + BODY_RIDE_LIFT) * scale,
+    heavySkirtBottomYM: (heavySkirtBottomY + BODY_RIDE_LIFT) * scale,
+    heavySkirtTopYM: (heavySkirtTopY + BODY_RIDE_LIFT) * scale,
+    sideWallBottomYM: (1.36 + BODY_RIDE_LIFT) * scale,
+    verticalSeatOverlapM: (heavySkirtTopY - 1.36) * scale,
+    inboardHullOverlapM: (1.535 - 1.48) * scale,
+    maxSupportGapM: 0,
+  });
 }
 
 function buildArieteC1(P: ItalyBuilderPort): void { buildArieteMk(P, 'c1'); }

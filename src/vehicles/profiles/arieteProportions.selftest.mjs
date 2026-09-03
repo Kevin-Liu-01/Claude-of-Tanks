@@ -76,6 +76,8 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   const turretArmor = turret.getObjectByName('turret');
   const hull = tank.root.getObjectByName('hull');
   const hullRig = tank.root.getObjectByName('rig_hull');
+  const leftSkirt = hullRig.getObjectByName('hullTrackGuardL');
+  const rightSkirt = hullRig.getObjectByName('hullTrackGuardR');
   assert.ok(leftBand?.geometry, `${id}: one native smart track band exists`);
   leftBand.geometry.computeBoundingBox();
   const bandWorldBounds = new THREE.Box3().setFromObject(leftBand);
@@ -98,6 +100,35 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     trackContactMetadataScaled: true,
     trackHitGeometryScaled: true,
   }, `${id}: render, armor and external movement metadata share one enlarged frame`);
+  const skirtSeat = hullRig.userData.arieteSideSkirtFenderSeatReceipt;
+  assert.equal(skirtSeat.revision, 'full-height-fender-seat-r1',
+    `${id}: skirt/fender closure uses the full-height seat`);
+  assert.equal(skirtSeat.sides, 2, `${id}: both skirt runs receive fender bridges`);
+  assert.equal(skirtSeat.fenderBridgeCoursesPerSide, 2,
+    `${id}: each side has level aft and raked forward fender courses`);
+  assert.equal(skirtSeat.skirtPanelsPerSide, id === 'ariete_c1' ? 7 : 13,
+    `${id}: fender closure preserves the mark-specific panel count`);
+  assert.equal(skirtSeat.lowerEdgesPreserved, true,
+    `${id}: attaching the skirts does not lower their accepted hems`);
+  assert.ok(skirtSeat.verticalSeatOverlapM >= 0.06,
+    `${id}: outer skirt carriers overlap the hull-side fender seat by at least 60 mm`);
+  assert.ok(skirtSeat.inboardHullOverlapM >= 0.055,
+    `${id}: fender bridges overlap the structural hull inboard by at least 55 mm`);
+  assert.equal(skirtSeat.maxSupportGapM, 0,
+    `${id}: skirt-to-fender attachment permits no unsupported gap`);
+  hull.geometry.computeBoundingBox();
+  for (const [side, skirt] of [['left', leftSkirt], ['right', rightSkirt]]) {
+    assert.ok(skirt?.geometry, `${id}: ${side} structural skirt mesh exists`);
+    skirt.geometry.computeBoundingBox();
+    assert.ok(skirt.geometry.boundingBox.max.y >= skirtSeat.sideWallBottomYM,
+      `${id}: ${side} skirt reaches the hull-side fender sill`);
+    assert.ok(skirt.geometry.boundingBox.min.z <= skirtSeat.skirtSeatRearM + 1e-5,
+      `${id}: ${side} fender seat spans the rear apron instead of stopping at the heavy panels`);
+  }
+  assert.ok(leftSkirt.geometry.boundingBox.max.x > hull.geometry.boundingBox.min.x,
+    `${id}: left fender bridge physically overlaps the hull`);
+  assert.ok(rightSkirt.geometry.boundingBox.min.x < hull.geometry.boundingBox.max.x,
+    `${id}: right fender bridge physically overlaps the hull`);
   assert.equal(hullRig.userData.nativeRoadWheelStations, 7,
     `${id}: exactly seven suspension-driven road-wheel stations`);
   const gear = hullRig.userData.runningGearReceipts.at(-1);
