@@ -14,8 +14,8 @@ const CASES = {
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.80,
     installedEnvelopeHeightM: 0.88,
-    hullMinY: 0.54,
-    hullMaxY: 1.596,
+    hullMinY: 0.48,
+    hullMaxY: 1.536,
     turretZ: 0.14,
     armorCenterZ: [-0.20, -0.16],
   },
@@ -29,8 +29,8 @@ const CASES = {
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.79,
     installedEnvelopeHeightM: 0.87,
-    hullMinY: 0.54,
-    hullMaxY: 2.09,
+    hullMinY: 0.48,
+    hullMaxY: 2.03,
     turretZ: -0.06,
     armorCenterZ: [-0.34, -0.30],
   },
@@ -98,8 +98,8 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: receipt preserves the authored course height`);
     near(tallTrack.installedEnvelopeHeightM, expected.installedEnvelopeHeightM,
       `${id}: installed track envelope is 80 mm taller`);
-    near(tallTrack.hullRideHeightIncreaseM, 0.24,
-      `${id}: hull retains the moderated 240 mm ride-height increase`);
+    near(tallTrack.hullRideHeightIncreaseM, 0.18,
+      `${id}: hull retains the tightened 180 mm ride-height increase`);
     near(tallTrack.lowerHullDropM, 0.08,
       `${id}: belly and lower-glacis underside drop by 80 mm`);
     near(tallTrack.upperHullShiftM, 0,
@@ -162,8 +162,8 @@ for (const [id, expected] of Object.entries(CASES)) {
 
     assert.ok(turretRig && gunRig?.parent === turretRig,
       `${id}: gun and turret remain one articulated assembly`);
-    near(turretRig.position.y, 1.54,
-      `${id}: turret and gun assembly rises with the hull`);
+    near(turretRig.position.y, 1.48,
+      `${id}: turret and gun assembly follows the lowered hull seating`);
     near(turretRig.position.z, expected.turretZ,
       `${id}: complete turret rig moves 200 mm forward`);
     const armor = turretRig.getObjectByName('turret');

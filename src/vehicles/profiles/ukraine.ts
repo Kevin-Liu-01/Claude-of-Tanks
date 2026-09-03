@@ -621,10 +621,10 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the course upward by 10% while keeping the lower run grounded and
   // seating the road wheels just above its shoe crest. The body retains a
-  // 240 mm lift above its legacy seating, producing a proportionate \____/
+  // 180 mm lift above its legacy seating, producing a proportionate \____/
   // silhouette without the oversized gap.
   const trackHeightIncreaseM = 0.08;
-  const hullRideHeightIncreaseM = 0.24;
+  const hullRideHeightIncreaseM = 0.18;
   const turretForwardShiftM = 0.20;
   const roadWheelRadiusM = 0.285;
   const roadWheelCenterY = 0.49;

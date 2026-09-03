@@ -1791,11 +1791,11 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   // Grow the authored 0.80 m course upward by 10%. The loaded lower run stays
   // on its ground datum while the road wheels clear its shoe crest; the
   // terminal wheels, return rollers and upper run rise. The body retains a
-  // 240 mm lift above the legacy seating so the result is a proportionate
+  // 180 mm lift above the legacy seating so the result is a proportionate
   // \____/ course rather
   // than suspension translated upward into the old hull bay.
   const trackHeightIncreaseM = 0.08;
-  const hullRideHeightIncreaseM = 0.24;
+  const hullRideHeightIncreaseM = 0.18;
   const turretForwardShiftM = 0.20;
   const roadWheelRadiusM = 0.285;
   const roadWheelCenterY = 0.49;
