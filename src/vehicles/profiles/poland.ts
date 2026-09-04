@@ -39,7 +39,7 @@ interface DisposableResource {
   dispose(): void;
 }
 
-interface PolishBuilderMaterials extends Record<string, THREE.MeshStandardMaterial> {
+interface PolishBuilderMaterials extends Record<string, THREE.Material> {
   canvasCloth: THREE.MeshStandardMaterial;
   wood: THREE.MeshStandardMaterial;
 }
@@ -57,12 +57,12 @@ interface PolishBuilderPort {
   };
   muzzleZ?: number;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addCupola(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -70,12 +70,12 @@ interface PolishBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
   visualEraCluster(
     key: string,
     owner: VehicleAssemblyOwner,
     build: () => void,
-  ): unknown;
+  ): void;
 }
 
 interface EraCourseOptions {

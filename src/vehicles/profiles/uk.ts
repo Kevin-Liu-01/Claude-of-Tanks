@@ -25,7 +25,7 @@ const {
 // to TypeScript and bundlers.
 const slab = orientedSlab;
 const xform = KIT.xform as (
-  geometry: unknown,
+  geometry: THREE.BufferGeometry,
   x?: number,
   y?: number,
   z?: number,
@@ -54,7 +54,7 @@ interface UKGeometryPort {
   topY?: number;
   add(
     slot: string,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     x?: number,
     y?: number,
     z?: number,
@@ -62,10 +62,10 @@ interface UKGeometryPort {
     rotationY?: number,
     rotationZ?: number,
     scale?: number | readonly number[],
-  ): unknown;
+  ): void;
   addEquipment(
     slot: string,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     x?: number,
     y?: number,
     z?: number,
@@ -73,20 +73,20 @@ interface UKGeometryPort {
     rotationY?: number,
     rotationZ?: number,
     scale?: number | readonly number[],
-  ): unknown;
+  ): void;
   decal(
     owner: 'hull' | 'turret',
     kind: string,
     label: string | null,
     scale: number,
-    position: readonly number[],
+    position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 interface UKGunPort extends UKGeometryPort {
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface UKMaterialSet {
@@ -219,7 +219,7 @@ function applyCompleteVehicleScale(
 
 interface UKCenturionPort extends UKMaterialPort {
   readonly rng: () => number;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface TrackWheel {
@@ -340,11 +340,11 @@ interface ClassicUKProfileOptions {
 
 const buildRunningGear = KIT.buildRunningGear as (
   builder: UKGeometryPort,
-  options: Record<string, unknown>,
+  options: object,
 ) => void;
 const buildGun = KIT.buildGun as (
   builder: UKGeometryPort,
-  options: Record<string, unknown>,
+  options: object,
 ) => void;
 
 // ---------------------------------------------------------------------------
@@ -623,8 +623,12 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
   // geometry, so a default position off the body's silhouette band costs
   // gate columns (chieftain5 vertex r3 finding). Defaults byte-identical.
   const numS = g.numberSize ?? 0.38;
-  const numR = g.numberR ?? [bw + 0.01, (g.beltTop + (g.fenderY ?? g.beltTop)) / 2, g.nose - 2.0];
-  const numL = g.numberL ?? [-(bw + 0.01), (g.beltTop + (g.fenderY ?? g.beltTop)) / 2, g.nose - 2.0];
+  const numR: Vec3Tuple = g.numberR
+    ? [g.numberR[0], g.numberR[1], g.numberR[2]]
+    : [bw + 0.01, (g.beltTop + (g.fenderY ?? g.beltTop)) / 2, g.nose - 2.0];
+  const numL: Vec3Tuple = g.numberL
+    ? [g.numberL[0], g.numberL[1], g.numberL[2]]
+    : [-(bw + 0.01), (g.beltTop + (g.fenderY ?? g.beltTop)) / 2, g.nose - 2.0];
   P.decal('hull', 'number', P.spec.visual.number || '', numS, numR, Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '', numS, numL, -Math.PI / 2);
 }
@@ -2185,7 +2189,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   P.gunG.position.set(0, 0.125, 0.6);
   const gunHousing = (
     bucket: string,
-    geo: unknown,
+    geo: THREE.BufferGeometry,
     x: number,
     y: number,
     z: number,
@@ -4554,18 +4558,28 @@ function buildChieftainUpper2026(
     readonly [number, number, number], readonly [number, number, number],
     readonly [number, number, number], readonly [number, number, number],
   ];
+  const mapArmorPanel = (
+    panel: ArmorPanel,
+    mapPoint: (point: ArmorPanel[number]) => ArmorPanel[number],
+  ): ArmorPanel => [
+    mapPoint(panel[0]), mapPoint(panel[1]), mapPoint(panel[2]), mapPoint(panel[3]),
+    mapPoint(panel[4]), mapPoint(panel[5]), mapPoint(panel[6]), mapPoint(panel[7]),
+  ];
   const shellOutboard = stillbrew ? 0.13 : 0.07;
   const shellForward = stillbrew ? 0.15 : 0.09;
   const shellLift = stillbrew ? 0.055 : 0.025;
   const mirrorPanel = (panel: ArmorPanel, side: number, yOffset = 0): ArmorPanel => {
-    const mirrored = panel.map(([x, y, z]) => [side * x, y + shellLift + yOffset, z] as const);
-    if (side > 0) return mirrored as unknown as ArmorPanel;
+    const mirrored = mapArmorPanel(
+      panel,
+      ([x, y, z]) => [side * x, y + shellLift + yOffset, z],
+    );
+    if (side > 0) return mirrored;
     return [mirrored[0], mirrored[3], mirrored[2], mirrored[1],
       mirrored[4], mirrored[7], mirrored[6], mirrored[5]] as ArmorPanel;
   };
   const addArmorPanel = (panel: ArmorPanel, side = 1, yOffset = 0): void => {
     const points = mirrorPanel(panel, side, yOffset);
-    const backing = points.map(([x, y, z]) => [x, y - 0.038, z] as const) as unknown as ArmorPanel;
+    const backing = mapArmorPanel(points, ([x, y, z]) => [x, y - 0.038, z]);
     P.add('turretDark', slab(...backing));
     P.add('turretExternalArmor', slab(...points));
   };
