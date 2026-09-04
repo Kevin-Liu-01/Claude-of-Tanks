@@ -282,8 +282,159 @@ function addZTZ99A2RearServiceComplex(P: ChinaBuilderPort): void {
 // overhang — published wins, type59 muzzle-law).  The print runs ~9% tall
 // against its own width datum (hull LOW-CONF instrument): published heights
 // rule every horizontal line.
+function buildZTZ85IIIHullEdges(P: ChinaBuilderPort): void {
+  const { box, cylX } = KIT;
+  // Stern service shelf, gearbox plate, lights, guard tips, and deep corner
+  // flaps all remain above the final-drive wrap and inside the published aft
+  // envelope.
+  P.add('hull', box(1.86, 0.14, 0.12), 0, 1.30, -3.90);
+  P.add('hullDetail', box(1.60, 0.26, 0.09), 0, 1.06, -3.90);
+  P.add('hullDark', box(0.34, 0.12, 0.04), 0, 0.86, -3.935);
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(0.12, 0.06, 0.05), side * 0.98, 1.20, -3.94);
+    P.add('hullDark', box(0.10, 0.11, 0.12),
+      side * 0.66, 0.58, -3.82, 0.3, 0, 0);
+    P.add('hull', box(0.50, 0.055, 0.30), side * 1.45, 1.155, -3.82);
+    P.add('hullRubber', box(0.52, 0.46, 0.045), side * 1.45, 0.90, -3.97);
+  }
+  ruFlaps(P, { x: 1.45, w: 0.55, front: [0.94, 0.46], frontZ: 2.47 });
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(0.04, 0.07, 0.20),
+      side * 1.30, 1.13, 2.40, -0.32, 0, 0);
+    P.add('hullDark', box(0.04, 0.08, 0.15), side * 1.42, 1.06, -3.90);
+    P.add('hullDark', cylX(0.045, 0.46, 10), side * 1.45, 0.41, 2.46);
+    P.add('hullDark', box(0.04, 0.22, 0.045), side * 1.45, 0.55, 2.46);
+  }
+
+  // The segmented shelf and raised lip carry the 3.45-m width datum from
+  // bow to stern while the shallow skirt leaves all six wheels visible.
+  for (const side of [-1, 1]) {
+    for (let index = 0; index < 12; index++) {
+      P.add('hull', box(0.185, 0.030, 0.48),
+        side * 1.635, 1.115, -3.60 + index * 0.518);
+    }
+    for (let index = 0; index < 8; index++) {
+      P.add('hull', box(0.045, 0.16, 0.46),
+        side * 1.70, 1.20, -3.38 + index * 0.78);
+    }
+  }
+  widthAnchor(P, 1.725, 1.06, -0.55);
+  ruSkirtBand(P, {
+    x: 1.70, th: 0.05, z0: -3.50, z1: 2.15, yTop: 1.10, yBot: 0.80,
+    panels: 7, lipY: 0.78, dressIn: 0.012,
+  });
+}
+
+function buildZTZ85IIIDeckFurniture(P: ChinaBuilderPort): void {
+  const { box, cylY, cylZ, headlight, periscope, towCable, liftEye } = KIT;
+  // Fender bins and fuel cells follow the recovered 1.41–1.48-m deck line.
+  P.add('hull', box(0.28, 0.30, 1.00), -1.40, 1.295, -0.95);
+  P.add('hull', box(0.28, 0.26, 0.72), -1.40, 1.275, 0.35);
+  P.add('hull', box(0.28, 0.22, 0.50), -1.40, 1.25, 1.05);
+  P.add('hullDark', box(0.24, 0.02, 0.03), -1.40, 1.45, -0.60);
+  P.add('hullDetail', cylZ(0.10, 0.80, 10), -1.42, 1.245, -2.55);
+  P.add('hullDark', cylZ(0.055, 0.20, 8), -1.42, 1.285, -3.02);
+  P.add('hullDark', box(0.05, 0.04, 0.30), -1.42, 1.20, -2.55);
+  P.add('hullDetail', box(0.28, 0.24, 0.90), 1.40, 1.25, -1.10);
+  P.add('hullDetail', box(0.28, 0.24, 0.90), 1.40, 1.25, -0.05);
+  P.add('hullDark', box(0.24, 0.02, 0.03), 1.40, 1.375, -0.58);
+  P.add('hull', box(0.28, 0.28, 0.66), 1.40, 1.28, 1.05);
+
+  for (let index = 0; index < 5; index++) {
+    P.add('hullDark', box(1.46, 0.018, 0.075),
+      0, 1.412, -2.42 - index * 0.24);
+    P.add('hullDetail', box(1.46, 0.028, 0.026),
+      0, 1.44, -2.54 - index * 0.24);
+  }
+  for (const [x, z] of [[-0.62, -1.72], [0.55, -1.86], [0.95, -2.10]]) {
+    P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), x, 1.452, z);
+  }
+  P.add('hull', box(1.78, 0.045, 0.20), 0, 1.415, 0.58, -0.32, 0, 0);
+  P.add('hull', cylY(0.25, 0.25, 0.045, 14), -0.42, 1.455, 0.28);
+  P.add('hullDark', cylY(0.256, 0.256, 0.014, 14), -0.42, 1.468, 0.28);
+  periscope(P, 'hullDetail', -0.56, 1.475, 0.52);
+  periscope(P, 'hullDetail', -0.28, 1.475, 0.52);
+
+  P.add('hullDetail', cylZ(0.115, 0.20, 12),
+    0.46, 1.20, 1.52, -0.30, 0, 0);
+  P.add('hullDark', cylZ(0.119, 0.02, 12),
+    0.46, 1.23, 1.615, -0.30, 0, 0);
+  P.add('hullDark', box(0.06, 0.13, 0.06),
+    0.46, 1.10, 1.47, -0.30, 0, 0);
+  headlight(P, -0.44, 1.19, 1.55, -0.30, 0.055);
+  headlight(P, -0.66, 1.15, 1.60, -0.30, 0.05);
+  for (const [x0, x1, yc, zc] of [
+    [-0.78, -0.32, 1.17, 1.66],
+    [0.30, 0.62, 1.21, 1.63],
+  ]) {
+    const xm = (x0 + x1) / 2;
+    P.add('hullDark', box(0.022, 0.20, 0.022), x0, yc, zc, -0.30, 0, 0);
+    P.add('hullDark', box(0.022, 0.20, 0.022), x1, yc, zc, -0.30, 0, 0);
+    P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022),
+      xm, yc + 0.085, zc + 0.026, -0.30, 0, 0);
+    P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022),
+      xm, yc - 0.045, zc + 0.065, -0.30, 0, 0);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(0.10, 0.12, 0.14),
+      side * 0.85, 0.62, 2.30, -0.3, 0, 0);
+    liftEye(P, 'hullDetail', side * 1.10, 1.30, 1.10);
+  }
+  towCable(P, [[-0.95, 1.06, 1.72], [0, 1.24, 1.30], [0.95, 1.06, 1.72]]);
+}
+
+function buildZTZ85IIIStorageBaskets(P: ChinaBuilderPort): number {
+  const { box } = KIT;
+  // The -III identity uses slat frames wrapping the side walls into a deep
+  // rear basket. Every rail remains tied to the welded turret shell.
+  for (const side of [-1, 1]) {
+    for (const y of [0.18, 0.34, 0.50]) {
+      P.add('turretDetail', box(0.032, 0.026, 2.62),
+        side * 1.16, y, -1.04, 0, -side * 0.04, 0);
+    }
+    for (const z of [0.24, -0.34, -0.92, -1.50, -2.08, -2.34]) {
+      P.add('turretDetail', box(0.035, 0.40, 0.035),
+        side * 1.155, 0.34, z, 0, -side * 0.05, 0);
+    }
+    // Open-slat backing keeps the basket see-through like the reference.
+    for (const y of [0.205, 0.295, 0.385, 0.475]) {
+      P.add('turretDark', box(0.020, 0.058, 2.54),
+        side * 1.135, y, -1.05, 0, -side * 0.04, 0);
+    }
+    P.add('turretDark', box(0.09, 0.030, 0.030),
+      side * 1.06, 0.50, 0.22, 0, -side * 0.05, 0);
+    P.add('turretDark', box(0.09, 0.030, 0.030),
+      side * 1.08, 0.50, -1.04, 0, -side * 0.05, 0);
+    P.add('turretDark', box(0.09, 0.030, 0.030),
+      side * 0.99, 0.50, -2.24, 0, -side * 0.05, 0);
+  }
+
+  const rearBasketZ = -3.16;
+  for (const y of [0.16, 0.33, 0.50]) {
+    P.add('turretDetail', box(1.84, 0.028, 0.034), 0, y, rearBasketZ);
+  }
+  for (let index = 0; index < 7; index++) {
+    P.add('turretDetail', box(0.032, 0.40, 0.034),
+      -0.90 + index * 0.30, 0.33, rearBasketZ);
+  }
+  // The reference's rear bustle band is solid; the tarped fill remains
+  // visible through the open flank baskets.
+  P.add('turretDark', box(1.80, 0.36, 0.022),
+    0, 0.33, rearBasketZ + 0.025);
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.034, 0.028, 0.46),
+      side * 0.92, 0.50, -2.94);
+    P.add('turretDetail', box(0.034, 0.028, 0.46),
+      side * 0.92, 0.16, -2.94);
+  }
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.56, d: 0.40, h: 0.20, fill: 0.35, rails: 2, seed: 8552,
+  }), 0, 0.40, -2.94);
+  return rearBasketZ;
+}
+
 function buildZTZ85III(P: ChinaBuilderPort): void {
-  const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye, stowage } = KIT;
+  const { box, cylY, cylZ, torus, buildRunningGear, periscope, liftEye } = KIT;
   const seg = P.q ? 18 : 12;
 
   // ---- six-station running gear phased to the print's own contact line
@@ -313,104 +464,8 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
     wLo: [[-3.90, 0.92], [2.50, 0.92]],
     sponsonY: 1.13,
   });
-  // Stern transom kit: raised service shelf (the print holds its 1.41 stern
-  // band to -4.3), recessed gearbox plate, taillights and high guard tips —
-  // everything above the sprocket wrap, nothing past z -3.99.
-  P.add('hull', box(1.86, 0.14, 0.12), 0, 1.30, -3.90);
-  P.add('hullDetail', box(1.60, 0.26, 0.09), 0, 1.06, -3.90);
-  P.add('hullDark', box(0.34, 0.12, 0.04), 0, 0.86, -3.935);
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.12, 0.06, 0.05), s * 0.98, 1.20, -3.94);
-    P.add('hullDark', box(0.10, 0.11, 0.12), s * 0.66, 0.58, -3.82, 0.3, 0, 0);
-    // stern guard tips + deep corner flaps: full-width plan closure ABOVE
-    // the sprocket wrap, hanging past the exposed wheel band (§5.266 skirt
-    // raise opened the rear corners; the flap face sits 2 cm behind the
-    // shoe wrap end, §B4-clear)
-    P.add('hull', box(0.50, 0.055, 0.30), s * 1.45, 1.155, -3.82);
-    P.add('hullRubber', box(0.52, 0.46, 0.045), s * 1.45, 0.90, -3.97);
-  }
-  ruFlaps(P, { x: 1.45, w: 0.55, front: [0.94, 0.46], frontZ: 2.47 });
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.04, 0.07, 0.20), s * 1.30, 1.13, 2.40, -0.32, 0, 0);
-    P.add('hullDark', box(0.04, 0.08, 0.15), s * 1.42, 1.06, -3.90);
-    // flap stiffener bar: real low kit armoring the bow trace anchor column
-    // against the mast-raised 12% threshold (whip-rough coupling law)
-    P.add('hullDark', KIT.cylX(0.045, 0.46, 10), s * 1.45, 0.41, 2.46);
-    P.add('hullDark', box(0.04, 0.22, 0.045), s * 1.45, 0.55, 2.46);
-  }
-  // (a stern unditching log chasing the print's -4.32 stern mass was built,
-  // measured -0.7 on the whole gate — its 1.28 line sits under the print's
-  // 1.41 stern band — and REVERTED; receipt in the round packet)
-
-  // ---- fender shelf carries the 3.45 width datum: segmented shelf plates
-  // from the sponson edge to the skirt hanger at ±1.725, bow to stern
-  // (last plate ends inside the bow-flap trace anchor).
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 12; i++) {
-      P.add('hull', box(0.185, 0.030, 0.48), s * 1.635, 1.115, -3.60 + i * 0.518);
-    }
-    // raised fender lip wall (segmented, §C prism law)
-    for (let i = 0; i < 8; i++) {
-      P.add('hull', box(0.045, 0.16, 0.46), s * 1.70, 1.20, -3.38 + i * 0.78);
-    }
-  }
-  widthAnchor(P, 1.725, 1.06, -0.55);
-  // Full-length Type 85 skirt band under the shelf (outer face = ±1.725).
-  // §5.266 critic fix 1: the deep 0.45 band buried ~80% of the six-wheel
-  // gear — the print, the resident type99a and the type59 donor all run
-  // wheels proud.  The band now stops at 0.80 (fender-to-wheel-top class)
-  // and the whole running gear reads side-on.
-  ruSkirtBand(P, { x: 1.70, th: 0.05, z0: -3.50, z1: 2.15, yTop: 1.10, yBot: 0.80,
-    panels: 7, lipY: 0.78, dressIn: 0.012 });
-
-  // ---- fender stowage per the print's undulating 1.41-1.48 bin line:
-  // long bins LEFT with the muffler, flat fuel cells + bin RIGHT (bins sit
-  // ON the shelf and top out on the print's own 1.40-1.45 line).
-  P.add('hull', box(0.28, 0.30, 1.00), -1.40, 1.295, -0.95);
-  P.add('hull', box(0.28, 0.26, 0.72), -1.40, 1.275, 0.35);
-  P.add('hull', box(0.28, 0.22, 0.50), -1.40, 1.25, 1.05);
-  P.add('hullDark', box(0.24, 0.02, 0.03), -1.40, 1.45, -0.60);
-  P.add('hullDetail', cylZ(0.10, 0.80, 10), -1.42, 1.245, -2.55);
-  P.add('hullDark', cylZ(0.055, 0.20, 8), -1.42, 1.285, -3.02);
-  P.add('hullDark', box(0.05, 0.04, 0.30), -1.42, 1.20, -2.55);
-  P.add('hullDetail', box(0.28, 0.24, 0.90), 1.40, 1.25, -1.10);
-  P.add('hullDetail', box(0.28, 0.24, 0.90), 1.40, 1.25, -0.05);
-  P.add('hullDark', box(0.24, 0.02, 0.03), 1.40, 1.375, -0.58);
-  P.add('hull', box(0.28, 0.28, 0.66), 1.40, 1.28, 1.05);
-  // ---- engine deck furniture: transverse louvres, filler caps, splash board
-  // and the driver station LEFT (WZ-1227 layout).
-  for (let i = 0; i < 5; i++) {
-    P.add('hullDark', box(1.46, 0.018, 0.075), 0, 1.412, -2.42 - i * 0.24);
-    P.add('hullDetail', box(1.46, 0.028, 0.026), 0, 1.44, -2.54 - i * 0.24);
-  }
-  for (const [x, z] of [[-0.62, -1.72], [0.55, -1.86], [0.95, -2.10]]) {
-    P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), x, 1.452, z);
-  }
-  P.add('hull', box(1.78, 0.045, 0.20), 0, 1.415, 0.58, -0.32, 0, 0);
-  P.add('hull', cylY(0.25, 0.25, 0.045, 14), -0.42, 1.455, 0.28);
-  P.add('hullDark', cylY(0.256, 0.256, 0.014, 14), -0.42, 1.468, 0.28);
-  periscope(P, 'hullDetail', -0.56, 1.475, 0.52);
-  periscope(P, 'hullDetail', -0.28, 1.475, 0.52);
-  // glacis lights (§5.266 critic fix 5): twin guarded pods per the print —
-  // big IR drum right of the driver line + white pair left, each cluster
-  // wrapped in a real brush-guard frame (uprights + wrap bars).
-  P.add('hullDetail', cylZ(0.115, 0.20, 12), 0.46, 1.20, 1.52, -0.30, 0, 0);
-  P.add('hullDark', cylZ(0.119, 0.02, 12), 0.46, 1.23, 1.615, -0.30, 0, 0);
-  P.add('hullDark', box(0.06, 0.13, 0.06), 0.46, 1.10, 1.47, -0.30, 0, 0);
-  headlight(P, -0.44, 1.19, 1.55, -0.30, 0.055);
-  headlight(P, -0.66, 1.15, 1.60, -0.30, 0.05);
-  for (const [x0, x1, yc, zc] of [[-0.78, -0.32, 1.17, 1.66], [0.30, 0.62, 1.21, 1.63]]) {
-    const xm = (x0 + x1) / 2;
-    P.add('hullDark', box(0.022, 0.20, 0.022), x0, yc, zc, -0.30, 0, 0);
-    P.add('hullDark', box(0.022, 0.20, 0.022), x1, yc, zc, -0.30, 0, 0);
-    P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022), xm, yc + 0.085, zc + 0.026, -0.30, 0, 0);
-    P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022), xm, yc - 0.045, zc + 0.065, -0.30, 0, 0);
-  }
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.10, 0.12, 0.14), s * 0.85, 0.62, 2.30, -0.3, 0, 0);
-    liftEye(P, 'hullDetail', s * 1.10, 1.30, 1.10);
-  }
-  towCable(P, [[-0.95, 1.06, 1.72], [0, 1.24, 1.30], [0.95, 1.06, 1.72]]);
+  buildZTZ85IIIHullEdges(P);
+  buildZTZ85IIIDeckFurniture(P);
 
   // ---- WELDED TURRET (the -III identity): one connected multi-ring shell —
   // near-vertical lower belt through a weld shoulder into the raked flat
@@ -503,46 +558,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // smoke banks: 2x4 on the upper cheek flanks (Type 85 signature)
   addSmokeBanks(P, 1.00, 0.52, 0.62, 4, 8530);
 
-  // ---- storage baskets (the -III identity): slat frames wrapping the side
-  // walls into a deep rear basket, every rail tied to the shell.
-  for (const s of [-1, 1]) {
-    for (const y of [0.18, 0.34, 0.50]) {
-      P.add('turretDetail', box(0.032, 0.026, 2.62), s * 1.16, y, -1.04, 0, -s * 0.04, 0);
-    }
-    for (const z of [0.24, -0.34, -0.92, -1.50, -2.08, -2.34]) {
-      P.add('turretDetail', box(0.035, 0.40, 0.035), s * 1.155, 0.34, z, 0, -s * 0.05, 0);
-    }
-    // open-slat backing (§5.266 fix 6): four dark slats replace the solid
-    // panel — the shell wall behind keeps the side mask, the basket reads
-    // see-through like the print's.
-    for (const y of [0.205, 0.295, 0.385, 0.475]) {
-      P.add('turretDark', box(0.020, 0.058, 2.54), s * 1.135, y, -1.05, 0, -s * 0.04, 0);
-    }
-    // basket-to-shell tie straps
-    P.add('turretDark', box(0.09, 0.030, 0.030), s * 1.06, 0.50, 0.22, 0, -s * 0.05, 0);
-    P.add('turretDark', box(0.09, 0.030, 0.030), s * 1.08, 0.50, -1.04, 0, -s * 0.05, 0);
-    P.add('turretDark', box(0.09, 0.030, 0.030), s * 0.99, 0.50, -2.24, 0, -s * 0.05, 0);
-  }
-  // rear basket: rails + verticals + dark mesh backing, top 1.95 world
-  const rearBasketZ = -3.16;
-  for (const y of [0.16, 0.33, 0.50]) {
-    P.add('turretDetail', box(1.84, 0.028, 0.034), 0, y, rearBasketZ);
-  }
-  for (let i = 0; i < 7; i++) {
-    P.add('turretDetail', box(0.032, 0.40, 0.034), -0.90 + i * 0.30, 0.33, rearBasketZ);
-  }
-  // rear backing stays SOLID (a slatted rear was built and measured -0.3 on
-  // the rear gate view — the print's own bustle band is solid there; the
-  // critic's open-slat ask is carried by the flank baskets, receipt in the
-  // fix packet); the tarped stowage fill reads through the side openings.
-  P.add('turretDark', box(1.80, 0.36, 0.022), 0, 0.33, rearBasketZ + 0.025);
-  for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.50, -2.94);
-    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.16, -2.94);
-  }
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.56, d: 0.40, h: 0.20, fill: 0.35, rails: 2, seed: 8552,
-  }), 0, 0.40, -2.94);
+  const rearBasketZ = buildZTZ85IIIStorageBaskets(P);
 
   // command-variant RADIO MAST on the basket's rear-left corner — the
   // print's dominant vertical: staged tube on a planted collar bridging the
