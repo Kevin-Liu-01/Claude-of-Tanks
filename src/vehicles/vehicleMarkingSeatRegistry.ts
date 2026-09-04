@@ -5,9 +5,11 @@
 // keeps exact, pre-solved paint placement while avoiding an all-fleet payload
 // on the first garage visit.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
-export type VehicleMarkingSeat = Readonly<Record<string, unknown>>;
+export type VehicleMarkingSeat = Readonly<Record<string, RuntimeValue>>;
 
 export interface VehicleMarkingSeatRecord {
   schemaVersion: typeof VEHICLE_MARKING_SEAT_SCHEMA_VERSION;
@@ -15,16 +17,16 @@ export interface VehicleMarkingSeatRecord {
 }
 
 interface VehicleMarkingSeatSpec {
-  id?: unknown;
+  id?: RuntimeValue;
 }
 
 const records = new Map<string, VehicleMarkingSeatRecord>();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isSeatRecord(value: unknown): value is VehicleMarkingSeatRecord {
+function isSeatRecord(value: RuntimeValue): value is VehicleMarkingSeatRecord {
   return isRecord(value)
     && value.schemaVersion === VEHICLE_MARKING_SEAT_SCHEMA_VERSION
     && Array.isArray(value.seats)
@@ -32,7 +34,7 @@ function isSeatRecord(value: unknown): value is VehicleMarkingSeatRecord {
 }
 
 export function registerVehicleMarkingSeatRecords(
-  nextRecords: Readonly<Record<string, unknown>> | null | undefined,
+  nextRecords: Readonly<Record<string, RuntimeValue>> | null | undefined,
 ): void {
   for (const [id, record] of Object.entries(nextRecords || {})) {
     if (!isSeatRecord(record)) {

@@ -2,7 +2,9 @@
 // Browser play registers only the families it is about to construct; fleet
 // tools and the dedicated server register the complete generated set.
 
-export interface AnatomyCalibrationBounds extends Record<string, unknown> {
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
+export interface AnatomyCalibrationBounds extends Record<string, RuntimeValue> {
   readonly min: readonly number[];
   readonly max: readonly number[];
 }
@@ -20,13 +22,13 @@ export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {
   readonly index?: number;
 }
 
-export interface AnatomyModuleShapeReceipt extends Record<string, unknown> {
+export interface AnatomyModuleShapeReceipt extends Record<string, RuntimeValue> {
   readonly module: string;
   readonly turretLocal?: boolean;
   readonly parts: readonly AnatomyCalibrationBounds[];
 }
 
-export interface AnatomyEraPlateReceipt extends Record<string, unknown> {
+export interface AnatomyEraPlateReceipt extends Record<string, RuntimeValue> {
   readonly name: string;
   readonly owner: 'hull' | 'turret';
   /** Exact visible cassette faces sharing one gameplay depletion id. */
@@ -36,7 +38,7 @@ export interface AnatomyEraPlateReceipt extends Record<string, unknown> {
   readonly visualSectors?: readonly string[];
 }
 
-export interface CombatAnatomyCalibration extends Record<string, unknown> {
+export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly hull: AnatomyCalibrationBounds;
   readonly turret?: AnatomyCalibrationBounds;
   readonly hullCollision?: readonly AnatomyCalibrationCell[];
@@ -55,17 +57,17 @@ export interface CombatAnatomyCalibration extends Record<string, unknown> {
 
 const calibrations = new Map<string, CombatAnatomyCalibration>();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isCalibration(value: unknown): value is CombatAnatomyCalibration {
+function isCalibration(value: RuntimeValue): value is CombatAnatomyCalibration {
   if (!isRecord(value) || !isRecord(value.hull) || !isRecord(value.tracks)) return false;
   return isRecord(value.tracks.left) && isRecord(value.tracks.right);
 }
 
 export function registerCombatAnatomyCalibrations(
-  nextCalibrations: Readonly<Record<string, unknown>> | null | undefined,
+  nextCalibrations: Readonly<Record<string, RuntimeValue>> | null | undefined,
 ): void {
   for (const [id, calibration] of Object.entries(nextCalibrations || {})) {
     if (!isCalibration(calibration)) {

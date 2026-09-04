@@ -4,6 +4,8 @@
 // mechanics that genuinely need a platform distinction (AI doctrine, spotting
 // baselines, weapon-feed behavior); it is not a gallery or garage category.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const VEHICLE_ERAS = Object.freeze({
   INTERWAR: 'interwar',
   WORLD_WAR_II: 'ww2',
@@ -91,11 +93,11 @@ export type VehicleRole = typeof VEHICLE_ROLES[number];
 
 const VEHICLE_ROLE_SET = new Set<string>(VEHICLE_ROLES);
 
-export function vehicleEraForId(id: unknown): VehicleEra | null {
+export function vehicleEraForId(id: RuntimeValue): VehicleEra | null {
   return ERA_BY_VEHICLE_ID.get(String(id || '')) || null;
 }
 
-export function vehicleEraLabel(era: unknown, { short = false }: { short?: boolean } = {}): string {
+export function vehicleEraLabel(era: RuntimeValue, { short = false }: { short?: boolean } = {}): string {
   const meta = typeof era === 'string'
     ? VEHICLE_ERA_META[era as VehicleEra]
     : undefined;
@@ -107,26 +109,26 @@ export function compareVehicleEras(a: VehicleEra, b: VehicleEra): number {
 }
 
 /** Postwar vehicle technologies shared by Cold War and newer platforms. */
-export function isPostwarVehicleEra(era: unknown): boolean {
+export function isPostwarVehicleEra(era: RuntimeValue): boolean {
   return era === VEHICLE_ERAS.COLD_WAR
     || era === VEHICLE_ERAS.MODERN
     || era === VEHICLE_ERAS.NEXT_GENERATION;
 }
 
 /** Modern presentation family used by contemporary and demonstrator designs. */
-export function isContemporaryVehicleEra(era: unknown): boolean {
+export function isContemporaryVehicleEra(era: RuntimeValue): boolean {
   return era === VEHICLE_ERAS.MODERN || era === VEHICLE_ERAS.NEXT_GENERATION;
 }
 
-export function isVehicleRole(role: unknown): role is VehicleRole {
+export function isVehicleRole(role: RuntimeValue): role is VehicleRole {
   return typeof role === 'string' && VEHICLE_ROLE_SET.has(role);
 }
 
 export interface VehicleTaxonomySpec {
-  id?: unknown;
-  role?: unknown;
-  era?: unknown;
-  class?: unknown;
+  id?: RuntimeValue;
+  role?: RuntimeValue;
+  era?: RuntimeValue;
+  class?: RuntimeValue;
 }
 
 /**
