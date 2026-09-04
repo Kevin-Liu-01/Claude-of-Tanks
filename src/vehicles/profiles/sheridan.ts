@@ -52,14 +52,14 @@ interface SheridanBuilderPort {
   };
   readonly geometryReceipt?: boolean;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addExternalArmor(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addHatch(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addHatch(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -67,8 +67,8 @@ interface SheridanBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
-  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): unknown;
+  ): void;
+  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): void;
 }
 
 interface AntennaStage {
@@ -85,7 +85,7 @@ interface ArmorSurfaceFrame {
 }
 
 const nonUniformXform = KIT.xform as (
-  geometry: unknown,
+  geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   z: number,

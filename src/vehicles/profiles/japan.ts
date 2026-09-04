@@ -28,7 +28,7 @@ interface JapaneseBuilderPort {
     readonly shadow: THREE.Material;
   };
   readonly q?: boolean;
-  readonly rng: unknown;
+  readonly rng: () => number;
   readonly disposables: THREE.BufferGeometry[];
   readonly gear: {
     readonly roadWheelLayout?: {
@@ -57,12 +57,12 @@ interface JapaneseBuilderPort {
   readonly geometryReceipt?: boolean;
   topY: number;
   muzzleZ: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(id: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(id: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   eraCluster(
     key: string,
     build: (place: (
@@ -85,14 +85,14 @@ interface JapaneseBuilderPort {
     scale: number,
     position: Vec3Tuple,
     yaw: number,
-  ): unknown;
-  scaleBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+  ): void;
+  scaleBuckets(names: readonly string[], x: number, y: number, z: number): void;
   offsetBuckets(names: readonly string[], x?: number, y?: number, z?: number): void;
   visualEraCluster(
     key: string,
     owner: VehicleAssemblyOwner,
     build: () => void,
-  ): unknown;
+  ): void;
 }
 
 interface FaceSample {

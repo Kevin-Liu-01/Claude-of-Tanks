@@ -56,12 +56,12 @@ interface AfvBuilderPort {
   };
   topY?: number;
   muzzleZ: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(id: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(id: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   clear(...slots: string[]): void;
   clearDecals(owner: VehicleAssemblyOwner): void;
   decal(
@@ -71,8 +71,8 @@ interface AfvBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
-  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): unknown;
+  ): void;
+  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): void;
   forEachBucketPart(
     slots: readonly string[],
     visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
@@ -82,11 +82,11 @@ interface AfvBuilderPort {
     key: string,
     owner: VehicleAssemblyOwner,
     build: () => void,
-  ): unknown;
+  ): void;
 }
 
 const nonUniformXform = KIT.xform as (
-  geometry: unknown,
+  geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   z: number,
@@ -94,7 +94,7 @@ const nonUniformXform = KIT.xform as (
   rotationY: number,
   rotationZ: number,
   scale: number | readonly number[],
-) => unknown;
+) => THREE.BufferGeometry;
 
 function mount(
   P: AfvBuilderPort,

@@ -143,7 +143,7 @@ interface PattonBuilderPort {
   topY: number;
   add(
     slot: string,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     x?: number,
     y?: number,
     z?: number,
@@ -151,16 +151,16 @@ interface PattonBuilderPort {
     rotationY?: number,
     rotationZ?: number,
     scale?: GeometryScale,
-  ): unknown;
+  ): void;
   addEquipment(
     owner: ProfileOwner,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     ...transform: Array<number | readonly number[]>
-  ): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: ProfileOwner,
     kind: string,
@@ -168,7 +168,7 @@ interface PattonBuilderPort {
     scale: number,
     position: readonly number[],
     ...rotation: number[]
-  ): unknown;
+  ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
 }
 
@@ -792,7 +792,7 @@ function loftBody(
       xB0: number, xB1: number, yB: number,
       x2A0: number, x2A1: number, y2A: number,
       x2B0: number, x2B1: number, y2B: number,
-    ): unknown => P.add(bucket, slab(
+    ): void => P.add(bucket, slab(
       [xA0 + sx, yA - oy, az], [xA1 + sx, yA - oy, az], [xB1 + sx, yB - oy, bz], [xB0 + sx, yB - oy, bz],
       [x2A0 + sx, y2A - oy, az], [x2A1 + sx, y2A - oy, az], [x2B1 + sx, y2B - oy, bz], [x2B0 + sx, y2B - oy, bz]));
     // wall band (vertical cheeks)
@@ -2310,7 +2310,7 @@ function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
     P.addGunExtra(box(S.lip.w, S.lip.y1 - S.lip.y0, S.lip.z1 - S.lip.z0),
       0, (S.lip.y0 + S.lip.y1) / 2 - G.axisY, w2l((S.lip.z0 + S.lip.z1) / 2));
   }
-  const sq = (r: number, l: number, at: number, sy = 1, sx = 1): unknown => P.add(
+  const sq = (r: number, l: number, at: number, sy = 1, sx = 1): void => P.add(
     'gun', geometryXform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at,
   );
   if (G.device === 'm3') {
