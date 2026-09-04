@@ -32,63 +32,17 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
 type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 type ArieteMark = 'c1' | 'c2';
 
-interface ItalyBuilderPort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
-  readonly gunG: THREE.Group;
-  readonly mats: unknown;
-  readonly rng: unknown;
-  readonly q?: boolean;
-  readonly geometryReceipt?: boolean;
-  readonly gear?: {
-    contactGeom: {
-      halfLenM: number;
-      zCenterM: number;
-      halfWidM: number;
-      bottomYM: number;
-      endRise?: { dzM: number; frontM: number; rearM: number };
-    };
-    trackHitbox: Array<{ x0: number; x1: number; poly: Array<[number, number]> }>;
-  } | null;
-  muzzleZ: number;
-  topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addCupola(
-    owner: VehicleAssemblyOwner,
-    geometry: unknown,
-    ...transform: number[]
-  ): unknown;
-  addEquipment(
-    owner: VehicleAssemblyOwner,
-    geometry: unknown,
-    ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(key: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
-  decal(
-    owner: VehicleAssemblyOwner,
-    kind: string,
-    label: string,
-    scale: number,
-    position: Vec3Tuple,
-    ...orientation: number[]
-  ): unknown;
-  scaleAllBuckets(x?: number, y?: number, z?: number): void;
-  scaleDecals(scale: number): void;
-  offsetBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
-  visualEraCluster(
-    key: string,
-    owner: VehicleAssemblyOwner,
-    build: () => void,
-  ): unknown;
-}
+type ItalyBuilderPort = Omit<TankBuilderPort, 'addGunExtra' | 'addGunExtraDark'> & {
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+};
 
 interface ArmorFaceSample {
   point: THREE.Vector3;

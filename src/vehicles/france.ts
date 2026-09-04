@@ -13,42 +13,13 @@
 import { KIT } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import './franceSpecs.ts';
-import type { BufferGeometry, Object3D } from 'three';
+import type { TankBuilderPort } from './tankFactoryCore.ts';
+import type { BufferGeometry } from 'three';
 
 type Vec3Tuple = [number, number, number];
 
-interface RoadWheelLayerOptions {
-  outset: number;
-  name: string;
-}
-
-interface FranceBuilderPort {
-  readonly hullG: { add(object: Object3D): unknown };
-  readonly turretG: { add(object: Object3D): unknown; userData: Record<string, unknown> };
-  readonly mats: { detail: unknown; dark: unknown; [role: string]: unknown };
-  readonly q?: boolean;
-  readonly gear: {
-    addRoadWheelLayer(
-      geometry: unknown,
-      material: unknown,
-      options: RoadWheelLayerOptions,
-    ): unknown;
-  };
-  muzzleZ?: number;
-  topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(owner: 'hull' | 'turret', geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  decal(
-    owner: 'hull' | 'turret',
-    kind: string,
-    label: string | null,
-    scale: number,
-    position: Vec3Tuple,
-    ...orientation: number[]
-  ): unknown;
-  scaleBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+interface FranceBuilderPort extends TankBuilderPort {
+  gear: NonNullable<TankBuilderPort['gear']>;
 }
 
 function xformWithScale<T extends BufferGeometry>(
@@ -80,7 +51,7 @@ function orientedSlab(
   t1: Vec3Tuple,
   t2: Vec3Tuple,
   t3: Vec3Tuple,
-): unknown {
+): BufferGeometry {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
   const cen: Vec3Tuple = [
     c8.reduce((sum, point) => sum + point[0], 0) / 8,

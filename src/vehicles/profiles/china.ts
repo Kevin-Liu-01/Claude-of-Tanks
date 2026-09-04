@@ -23,6 +23,8 @@ import {
   ruBoot,
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { BufferGeometry, Object3D } from 'three';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -44,76 +46,10 @@ interface ChineseRoofOptions {
   whipZ?: number;
 }
 
-interface TrackContactGeometry {
-  halfLenM: number;
-  zCenterM: number;
-  halfWidM: number;
-  bottomYM: number;
-  endRise?: {
-    dzM: number;
-    frontM: number;
-    rearM: number;
-  };
-}
-
-interface TrackHitboxLane {
-  x0: number;
-  x1: number;
-  poly: Vec2Tuple[];
-}
-
-export interface ChinaBuilderPort {
-  readonly hullG: import('three').Group;
-  readonly turretG: import('three').Group;
-  readonly gunG: import('three').Group;
-  readonly mats: unknown;
-  readonly rng: unknown;
-  readonly q?: boolean;
-  readonly spec: { visual: { number?: string } };
-  readonly gear?: {
-    contactGeom?: TrackContactGeometry;
-    trackHitbox?: TrackHitboxLane[];
-  };
-  muzzleZ?: number;
-  topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(
-    slot: string,
-    geometry: unknown,
-    ...transform: number[]
-  ): unknown;
-  addExternalArmor(
-    owner: VehicleAssemblyOwner,
-    geometry: unknown,
-    ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addModuleVisual(
-    module: string,
-    slot: string,
-    geometry: unknown,
-    ...transform: number[]
-  ): unknown;
-  decal(
-    owner: VehicleAssemblyOwner,
-    kind: string,
-    label: string | null,
-    scale: number,
-    position: Vec3Tuple,
-    ...orientation: number[]
-  ): unknown;
-  visualEraCluster(
-    key: string,
-    owner: VehicleAssemblyOwner,
-    build: () => void,
-  ): unknown;
-  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
-}
+export interface ChinaBuilderPort extends TankBuilderPort {}
 
 const nonUniformXform = KIT.xform as (
-  geometry: unknown,
+  geometry: BufferGeometry,
   x: number,
   y: number,
   z: number,
@@ -121,12 +57,12 @@ const nonUniformXform = KIT.xform as (
   rotationY: number,
   rotationZ: number,
   scale: number | readonly number[],
-) => unknown;
+) => BufferGeometry;
 
 function mount(
   P: ChinaBuilderPort,
   owner: VehicleAssemblyOwner,
-  fitting: import('three').Object3D,
+  fitting: Object3D,
   x: number,
   y: number,
   z: number,
