@@ -317,6 +317,8 @@ const enUS = {
   'hud.rammed': 'RAMMED',
   'hud.allies': 'Allies',
   'hud.enemy': 'Enemy',
+  'hud.wave': 'Wave',
+  'hud.hostiles': 'Hostiles',
   'hud.net.local': 'LOCAL',
   'hud.net.link': 'LINK',
   'hud.net.ms': 'MS',
@@ -325,6 +327,7 @@ const enUS = {
   'hud.net.perfAria': 'Performance and network status',
   'hud.drive.aria': 'Vehicle speedometer',
   'hud.spec.unknownVehicle': 'Unknown vehicle',
+  'hud.tankFallback': 'Tank',
   'hud.score.format': '{team} {score}',
 
   // chat -----------------------------------------------------------------------
@@ -681,6 +684,8 @@ const zhCN: Record<keyof typeof enUS, string> = {
   'hud.rammed': '撞击',
   'hud.allies': '友军',
   'hud.enemy': '敌军',
+  'hud.wave': '波次',
+  'hud.hostiles': '敌方',
   'hud.net.local': '本地',
   'hud.net.link': '链路',
   'hud.net.ms': '毫秒',
@@ -689,6 +694,7 @@ const zhCN: Record<keyof typeof enUS, string> = {
   'hud.net.perfAria': '性能与网络状态',
   'hud.drive.aria': '战车速度表',
   'hud.spec.unknownVehicle': '未知战车',
+  'hud.tankFallback': '战车',
   'hud.score.format': '{team} {score}',
 
   // chat -----------------------------------------------------------------------

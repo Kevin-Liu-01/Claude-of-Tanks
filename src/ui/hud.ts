@@ -10,6 +10,7 @@ import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { t } from './i18n.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
@@ -645,7 +646,7 @@ export function aimWarningState(
   } else if (view?.gunLimitSpec) {
     state.kind = 'limit';
     state.visible = true;
-    state.text = 'GUN TRAVEL LIMIT';
+    state.text = t('hud.gunTravelLimit');
   }
   return state;
 }
@@ -924,8 +925,14 @@ function shellCount(shell: HudShellCard): number {
 }
 
 const CAUSE_LABEL: Readonly<Record<string, string>> = {
-  shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED',
+  shot: '', fire: '', ammorack: '', ram: '',
 };
+function causeLabel(key: string): string {
+  if (key === 'fire') return t('hud.fire');
+  if (key === 'ammorack') return t('hud.ammorack');
+  if (key === 'ram') return t('hud.rammed');
+  return '';
+}
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
 // Bot nicknames are assigned deterministically per battle from this pool
@@ -1766,8 +1773,8 @@ export function initHud(bus: EventBus): HudRuntime {
     const ping = Math.max(0, Math.min(999, Math.round(Number(frame?.pingMs) || 0)));
     netFpsValue.textContent = String(fps);
     netFpsUnit.className = `cot-net-unit fps ${fps >= 50 ? 'good' : fps >= 28 ? 'warn' : 'bad'}`;
-    netPingValue.textContent = ping > 0 ? String(ping) : 'LOCAL';
-    netPingLabel.textContent = ping > 0 ? 'MS' : 'LINK';
+    netPingValue.textContent = ping > 0 ? String(ping) : t('hud.net.local');
+    netPingLabel.textContent = ping > 0 ? t('hud.net.ms') : t('hud.net.link');
     netPingUnit.className = `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`;
     netEl.setAttribute('aria-label', ping > 0
       ? `${fps} frames per second, ${ping} milliseconds latency`
@@ -1925,7 +1932,7 @@ export function initHud(bus: EventBus): HudRuntime {
     specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
-    specVeh.textContent = `${tier}${p.vehicle || 'Unknown vehicle'}`;
+    specVeh.textContent = `${tier}${p.vehicle || t('hud.spec.unknownVehicle')}`;
     specIndex.textContent = card.position;
     specIndex.hidden = !card.position;
     specPortrait.src = card.icon;
@@ -1966,7 +1973,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
   const preBattleEl = el('div', 'cot-prebattle', root);
   const pbKick = el('div', 'k', preBattleEl);
-  pbKick.textContent = 'BATTLE BEGINS IN';
+  pbKick.textContent = t('hud.battleBeginsIn');
   const pbNum = el('div', 'n', preBattleEl);
   let pbShownSec = -1;
   let pbHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2714,8 +2721,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
       feEl.textContent = String(enemyScore);
-      allyLabelEl.textContent = horde ? 'Wave' : 'Allies';
-      enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
+      allyLabelEl.textContent = horde ? t('hud.wave') : t('hud.allies');
+      enemyLabelEl.textContent = horde ? t('hud.hostiles') : t('hud.enemy');
       wedgeL.textContent = '';
       wedgeR.textContent = '';
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
@@ -2739,8 +2746,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (score !== lastScore) {
       fgEl.textContent = String(allyKills);
       feEl.textContent = String(enemyKills);
-      allyLabelEl.textContent = 'Allies';
-      enemyLabelEl.textContent = 'Enemy';
+      allyLabelEl.textContent = t('hud.allies');
+      enemyLabelEl.textContent = t('hud.enemy');
       const slots = Math.max(tally.allyTotal, tally.enemyTotal);
       syncWedge(wedgeL, slots, tally.deadEnemies, false);
       syncWedge(wedgeR, slots, tally.deadAllies, true);
@@ -5091,10 +5098,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- bus feeds ----------
   function pushKill(payload: HudEventPayload): void {
-    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || 'Enemy';
-    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || 'Tank';
+    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
+    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
     const item = el('div', 'cot-kf', killfeed);
-    const cause = CAUSE_LABEL[payload.cause || ''] || '';
+    const cause = causeLabel(payload.cause || '');
     // side-profile silhouettes of the actual tanks flank the names
     const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
