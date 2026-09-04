@@ -57,6 +57,7 @@ import {
 import { RoomSignalingClient } from './signalingClient.ts';
 import { resolveMatchServiceUrl, resolveSignalUrl } from './signalEndpoint.ts';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.ts';
+import { snapshotPresentationProfile } from './snapshotPresentationProfile.ts';
 
 function input(overrides = {}) {
   return {
@@ -72,6 +73,22 @@ function input(overrides = {}) {
     ...overrides,
   };
 }
+
+assert.deepEqual(snapshotPresentationProfile('lan'), {
+  interpolationDelayMs: 65,
+  maxInterpolationDelayMs: 180,
+  maxExtrapolationMs: 250,
+}, 'same-LAN peers keep just over one snapshot interval of base latency');
+assert.deepEqual(snapshotPresentationProfile('private'), {
+  interpolationDelayMs: 85,
+  maxInterpolationDelayMs: 220,
+  maxExtrapolationMs: 250,
+}, 'internet P2P starts conservatively and retains the full adaptive ceiling');
+assert.deepEqual(snapshotPresentationProfile('lan', { loopback: true }), {
+  interpolationDelayMs: 50,
+  maxInterpolationDelayMs: 120,
+  maxExtrapolationMs: 250,
+}, 'the browser host loopback stays exactly one snapshot behind authority');
 
 function entity(id, specId, team, x, {
   visible = false, yaw = 0, speed = 0, y = 2, verticalSpeed = 0, grounded = true,
@@ -1153,6 +1170,139 @@ assert.equal(interpolation.sample(27), reusedFrame,
   'render sampling reuses its frame object instead of allocating at 120 Hz');
 assert.equal(interpolation.sample(28).entities[0], reusedEntity,
   'render sampling reuses entity objects while updating their values');
+
+// A collision can stop authority inside one snapshot interval while the older
+// sample still carries its pre-impact speed. Unconstrained cubic tangents then
+// overshoot the new pose and visibly pull a remote tank backward.
+{
+  const impact = new SnapshotBuffer({ interpolationDelayMs: 0 });
+  impact.push(captureWorldSnapshot({
+    tick: 0,
+    serverTimeMs: 0,
+    entities: [entity('impact', 'm1a2', 'bravo', 0, {
+      yaw: Math.PI / 2,
+      speed: 20,
+    })],
+    viewerId: 'observer',
+  }));
+  impact.push(captureWorldSnapshot({
+    tick: 3,
+    serverTimeMs: 50,
+    entities: [entity('impact', 'm1a2', 'bravo', 0.05, {
+      yaw: Math.PI / 2,
+      speed: 0,
+    })],
+    viewerId: 'observer',
+  }));
+  let priorX = -Infinity;
+  for (let timeMs = 0; timeMs <= 50; timeMs += 2) {
+    const x = impact.sample(timeMs).entities[0].x;
+    assert.ok(x >= -1e-8 && x <= 0.05000001,
+      `remote collision interpolation stays inside authority poses at ${timeMs} ms (${x})`);
+    assert.ok(x + 1e-8 >= priorX,
+      `remote collision interpolation never vibrates backward at ${timeMs} ms (${x})`);
+    priorX = x;
+  }
+}
+
+// Objective physics shares the authoritative snapshot clock with tanks. It
+// must use the same presentation timeline instead of exposing raw 20 Hz mode
+// state to a 60/120 Hz renderer (the Turbo Ball otherwise visibly stair-steps).
+{
+  const objectiveMotion = new SnapshotBuffer({
+    interpolationDelayMs: 0,
+    maxExtrapolationMs: 250,
+  });
+  const modeState = (x) => ({
+    id: 'turbo_ball',
+    label: 'Turbo Ball',
+    perspectiveTeam: 'alpha',
+    respawns: true,
+    target: 5,
+    score: { alpha: 0, bravo: 0 },
+    flags: [],
+    zones: [],
+    ball: { x, y: 4, z: 8, vx: 10, vy: 0, vz: 0, lastTouchId: 'driver' },
+    goals: [],
+    horde: null,
+    pickups: [],
+    playerAmmo: 12,
+    playerAmmoCapacity: 30,
+  });
+  const shell = (x) => ({
+    id: 7,
+    shooterId: 'driver',
+    pos: { x, y: 4, z: 8 },
+    vel: { x: 10, y: 0, z: 0 },
+    spec: { type: 'ATGM', guided: true },
+  });
+  objectiveMotion.push(captureWorldSnapshot({
+    tick: 0,
+    serverTimeMs: 0,
+    entities: [],
+    shells: [shell(0)],
+    meta: { phase: 'playing', battleTimeMs: 0, modeState: modeState(0) },
+  }));
+  objectiveMotion.push(captureWorldSnapshot({
+    tick: 3,
+    serverTimeMs: 50,
+    entities: [],
+    shells: [shell(0.5)],
+    meta: { phase: 'playing', battleTimeMs: 50, modeState: modeState(0.5) },
+  }));
+  const mid = objectiveMotion.sample(25);
+  assert.ok(Math.abs(mid.meta.modeState.ball.x - 0.25) < 1e-6,
+    `Turbo Ball follows the render timeline between packets (${mid.meta.modeState.ball.x})`);
+  assert.equal(mid.meta.battleTimeMs, 25,
+    'render-driven objective animation time advances between packets');
+  assert.ok(Math.abs(mid.shells[0].x / 100 - 0.25) < 1e-6,
+    `missiles share the smooth render timeline (${mid.shells[0].x / 100})`);
+  const reusedMeta = mid.meta;
+  const reusedModeState = mid.meta.modeState;
+  const reusedBall = mid.meta.modeState.ball;
+  const reusedShell = mid.shells[0];
+  const extrapolated = objectiveMotion.sample(100);
+  assert.equal(extrapolated.meta, reusedMeta,
+    'mode sampling reuses its metadata object instead of allocating every frame');
+  assert.equal(extrapolated.meta.modeState, reusedModeState,
+    'mode sampling reuses its mode-state object instead of allocating every frame');
+  assert.equal(extrapolated.meta.modeState.ball, reusedBall,
+    'Turbo Ball sampling reuses its presentation object instead of allocating every frame');
+  assert.equal(extrapolated.shells[0], reusedShell,
+    'missile sampling reuses projectile objects instead of allocating every frame');
+  assert.ok(Math.abs(extrapolated.meta.modeState.ball.x - 1) < 1e-6,
+    `Turbo Ball advances during a bounded packet gap (${extrapolated.meta.modeState.ball.x})`);
+  assert.equal(extrapolated.meta.battleTimeMs, 100,
+    'playing battle time advances through a bounded packet gap');
+  assert.ok(Math.abs(extrapolated.shells[0].x / 100 - 1) < 1e-6,
+    `missiles advance during a bounded packet gap (${extrapolated.shells[0].x / 100})`);
+}
+
+// Discrete objective resets snap instead of drawing the ball across the arena,
+// while a countdown clock continues smoothly through a short packet gap.
+{
+  const objectiveReset = new SnapshotBuffer({
+    interpolationDelayMs: 0,
+    maxExtrapolationMs: 250,
+  });
+  const resetMode = (x, score) => ({
+    id: 'turbo_ball',
+    score: { alpha: score, bravo: 0 },
+    ball: { x, y: 4, z: 0, vx: 0, vy: 0, vz: 0 },
+  });
+  objectiveReset.push({
+    tick: 0, serverTimeMs: 0, ackInputSeq: 0, entities: [], shells: [], events: [],
+    meta: { phase: 'countdown', countdownMs: 3_000, modeState: resetMode(30, 0) },
+  });
+  objectiveReset.push({
+    tick: 3, serverTimeMs: 50, ackInputSeq: 0, entities: [], shells: [], events: [],
+    meta: { phase: 'countdown', countdownMs: 2_950, modeState: resetMode(0, 1) },
+  });
+  assert.equal(objectiveReset.sample(25).meta.modeState.ball.x, 0,
+    'a scored goal snaps to the authoritative reset instead of sweeping across the pitch');
+  assert.equal(objectiveReset.sample(100).meta.countdownMs, 2_900,
+    'countdown time advances smoothly through a bounded packet gap');
+}
 
 // Vertical motion uses the same velocity-aware Hermite path as X/Z and
 // bounded extrapolation, so a networked jump does not become a sequence of

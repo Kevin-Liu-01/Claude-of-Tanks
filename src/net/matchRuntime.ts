@@ -178,6 +178,7 @@ export interface MatchClientOptions {
   transport?: MatchTransport;
   playerId?: string;
   interpolationDelayMs?: number;
+  maxInterpolationDelayMs?: number;
   maxExtrapolationMs?: number;
   pingIntervalMs?: number;
   clock?: () => number;
@@ -1098,6 +1099,7 @@ export class MatchClientRuntime {
     transport,
     playerId,
     interpolationDelayMs = 100,
+    maxInterpolationDelayMs = Math.max(interpolationDelayMs, 220),
     maxExtrapolationMs = 250,
     pingIntervalMs = 1000,
     clock = defaultClock,
@@ -1110,6 +1112,7 @@ export class MatchClientRuntime {
     this.playerId = String(playerId || '');
     this.buffer = new SnapshotBuffer({
       interpolationDelayMs,
+      maxInterpolationDelayMs,
       maxExtrapolationMs,
       immediateEntityId: this.playerId,
     });

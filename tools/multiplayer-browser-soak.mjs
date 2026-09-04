@@ -232,6 +232,8 @@ try {
     });
     state.sampleDurations = [];
     state.sampleIdentityStable = true;
+    state.motionSamples = { own: [], remote: [] };
+    state.remoteMotionId = null;
     state.match.ready();
     return { playerId: state.match.playerId, mapId: state.match.mapId };
   });
@@ -352,6 +354,28 @@ try {
           state.sampleIdentityStable = false;
         }
         state.sample = nextSample;
+        const own = nextSample?.entities?.find((entity) => entity.id === state.match.playerId);
+        if (own) {
+          state.motionSamples.own.push({
+            timeMs: nextSample.serverTimeMs,
+            x: own.x,
+            z: own.z,
+            vx: own.vx,
+            vz: own.vz,
+          });
+          if (!state.remoteMotionId) {
+            state.remoteMotionId = nextSample.entities.find((entity) =>
+              entity.id !== own.id && entity.team === own.team)?.id || null;
+          }
+          const remote = nextSample.entities.find((entity) => entity.id === state.remoteMotionId);
+          if (remote) state.motionSamples.remote.push({
+            timeMs: nextSample.serverTimeMs,
+            x: remote.x,
+            z: remote.z,
+            vx: remote.vx,
+            vz: remote.vz,
+          });
+        }
       }),
     ]);
     await new Promise((resolve) => setTimeout(resolve, 16));
@@ -360,6 +384,35 @@ try {
     const state = globalThis.__COT_SOAK;
     const stats = state.match.client.getStats();
     const own = state.sample?.entities?.find((entity) => entity.id === state.match.playerId);
+    const summarizeMotion = (samples) => {
+      let backwardFrames = 0;
+      let movingFrames = 0;
+      let maxStepM = 0;
+      const steps = [];
+      for (let index = 1; index < samples.length; index++) {
+        const previous = samples[index - 1];
+        const current = samples[index];
+        const dx = current.x - previous.x;
+        const dz = current.z - previous.z;
+        const stepM = Math.hypot(dx, dz);
+        maxStepM = Math.max(maxStepM, stepM);
+        steps.push(stepM);
+        const vx = (previous.vx + current.vx) * 0.5;
+        const vz = (previous.vz + current.vz) * 0.5;
+        const speed = Math.hypot(vx, vz);
+        if (speed <= 0.5 || stepM <= 0.002 || stepM >= 3) continue;
+        movingFrames++;
+        if (dx * vx + dz * vz < -0.002) backwardFrames++;
+      }
+      steps.sort((a, b) => a - b);
+      return {
+        samples: samples.length,
+        movingFrames,
+        backwardFrames,
+        maxStepM,
+        stepP95M: steps[Math.floor(Math.max(0, steps.length - 1) * 0.95)] || 0,
+      };
+    };
     return {
       connected: state.match.client.connected,
       ownEntityVisible: !!own,
@@ -370,6 +423,10 @@ try {
       transport: stats.transport,
       errors: state.match.client.errors,
       sampleIdentityStable: state.sampleIdentityStable,
+      motion: {
+        own: summarizeMotion(state.motionSamples.own),
+        remote: summarizeMotion(state.motionSamples.remote),
+      },
       averageSampleMs: state.sampleDurations.reduce((sum, value) => sum + value, 0) /
         Math.max(1, state.sampleDurations.length),
     };
@@ -397,6 +454,12 @@ try {
   assert.equal(authority.entityCount, 4, '2v2 authority retains all four tanks during play');
   assert.equal(report.sampleIdentityStable, true,
     'client presentation sampling reuses its output frame across the soak');
+  assert.equal(report.motion.own.backwardFrames, 0,
+    `local presentation moved against its authority velocity on ` +
+    `${report.motion.own.backwardFrames}/${report.motion.own.movingFrames} moving frames`);
+  assert.equal(report.motion.remote.backwardFrames, 0,
+    `remote presentation moved against its authority velocity on ` +
+    `${report.motion.remote.backwardFrames}/${report.motion.remote.movingFrames} moving frames`);
   assert.ok(report.snapshots >= 20, `expected at least 20 snapshots, received ${report.snapshots}`);
   assert.equal(report.missingBaselines, 0, 'periodic keyframes must recover every dropped delta');
   assert.ok(report.transport?.delayedIncoming > 0 && report.transport?.delayedOutgoing > 0,
@@ -717,6 +780,7 @@ try {
     extrapolatedSamples: report.buffer.extrapolatedSamples,
     averageAuthorityAdvanceMs: Number(authority.averageAdvanceMs.toFixed(3)),
     averageClientSampleMs: Number(report.averageSampleMs.toFixed(3)),
+    motion: report.motion,
     transport: {
       delayedIncoming: report.transport.delayedIncoming,
       delayedOutgoing: report.transport.delayedOutgoing,

@@ -18,6 +18,7 @@ import {
   type RoomChatMessage,
 } from './matchRuntime.ts';
 import type { SampledSnapshotFrame } from './snapshot.ts';
+import { snapshotPresentationProfile } from './snapshotPresentationProfile.ts';
 import type { NetworkInputFrame } from './networkFramePump.ts';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.ts';
 import {
@@ -372,6 +373,7 @@ export function beginPrivateHostMatch({
     transport: localLink.client,
     playerId: hostId,
     clock: () => wallTimeMs,
+    ...snapshotPresentationProfile(lobby.mode, { loopback: true }),
   });
   const playerById = new Map(lobby.players.map((player) => [player.id, player]));
   host.attachPeer({ peerId: hostId, transport: localLink.host,
@@ -468,7 +470,11 @@ export async function beginPrivateClientMatch({
     const transport = maybeCreateAdverseNetworkTransport(
       await takeMatchTransport.call(session),
     );
-    client = new MatchClientRuntime({ transport, playerId: id });
+    client = new MatchClientRuntime({
+      transport,
+      playerId: id,
+      ...snapshotPresentationProfile(session.roomInfo?.mode),
+    });
     client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
   }
   return {

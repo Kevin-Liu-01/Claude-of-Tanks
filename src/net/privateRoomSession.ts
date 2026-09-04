@@ -19,6 +19,7 @@ import {
   type MatchRoomState,
   type MatchTransport as RuntimeMatchTransport,
 } from './matchRuntime.ts';
+import { snapshotPresentationProfile } from './snapshotPresentationProfile.ts';
 import {
   maybeCreateAdverseNetworkTransport,
 } from './adverseNetworkTransport.ts';
@@ -634,6 +635,7 @@ export class PrivateRoomClientSession {
     const client = new MatchClientRuntime({
       transport,
       playerId: this.roomInfo.peerId,
+      ...snapshotPresentationProfile(this.roomInfo.mode),
     });
     this.runtimeConnectionUnsubscribe?.();
     this.runtimeConnectedOnce = false;

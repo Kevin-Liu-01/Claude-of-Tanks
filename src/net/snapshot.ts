@@ -15,6 +15,8 @@ const MAX_SAMPLE_DELTA_MS = 250;
 const IMMEDIATE_CORRECTION_RATE_MPS = 6;
 const IMMEDIATE_CORRECTION_STEP_M = 0.2;
 const IMMEDIATE_TELEPORT_M = 8;
+const OBJECTIVE_TELEPORT_FLOOR_M = 8;
+const OBJECTIVE_TELEPORT_SPEED_MULTIPLIER = 3;
 const REST_POSE = Symbol('networkRestPose');
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
@@ -238,6 +240,22 @@ export interface CaptureWorldSnapshotOptions {
 
 function finite(value: RuntimeValue, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function runtimeRecord(value: RuntimeValue): Record<string, RuntimeValue> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, RuntimeValue>
+    : null;
+}
+
+function overwriteRecord(
+  target: Record<string, RuntimeValue>,
+  source: Record<string, RuntimeValue>,
+): void {
+  for (const key in target) {
+    if (!Object.hasOwn(source, key)) delete target[key];
+  }
+  Object.assign(target, source);
 }
 
 function quantize(value: RuntimeValue, scale: number): number {
@@ -630,6 +648,37 @@ function hermite(
   return h00 * p0 + h10 * durationS * v0 + h01 * p1 + h11 * durationS * v1;
 }
 
+function sameObjectiveScore(
+  a: Record<string, RuntimeValue>,
+  b: Record<string, RuntimeValue>,
+): boolean {
+  const aScore = runtimeRecord(a.score);
+  const bScore = runtimeRecord(b.score);
+  return !!aScore && !!bScore && finite(aScore.alpha) === finite(bScore.alpha) &&
+    finite(aScore.bravo) === finite(bScore.bravo);
+}
+
+function canInterpolateBall(
+  a: Record<string, RuntimeValue>,
+  b: Record<string, RuntimeValue>,
+  durationS: number,
+): boolean {
+  if (!(durationS > 0)) return false;
+  const distance = Math.hypot(
+    finite(b.x) - finite(a.x),
+    finite(b.y) - finite(a.y),
+    finite(b.z) - finite(a.z),
+  );
+  const speed = Math.max(
+    Math.hypot(finite(a.vx), finite(a.vy), finite(a.vz)),
+    Math.hypot(finite(b.vx), finite(b.vy), finite(b.vz)),
+  );
+  return distance <= Math.max(
+    OBJECTIVE_TELEPORT_FLOOR_M,
+    speed * durationS * OBJECTIVE_TELEPORT_SPEED_MULTIPLIER,
+  );
+}
+
 // Grounded support samples can change which wheel/track probe owns the
 // chassis floor. Their reported vertical velocity remains useful as a tangent
 // but is not allowed to overshoot the two authoritative heights. Airborne
@@ -670,13 +719,17 @@ function interpolateEntity(
   const a = decodeEntitySnapshot(aRaw, scratchA);
   const b = decodeEntitySnapshot(bRaw, scratchB);
   const out = decodeEntitySnapshot(bRaw, target);
-  out.x = hermite(a.x, a.vx, b.x, b.vx, t, durationS);
+  // Snapshot velocity is a tangent, not permission to leave the interval.
+  // Contacts can stop or redirect a tank between packets while the older
+  // sample still carries its pre-impact speed. Monotone axes prevent that
+  // stale tangent from overshooting and then visibly reversing the chassis.
+  out.x = monotoneHermite(a.x, a.vx, b.x, b.vx, t, durationS);
   const grounded = !(a.flags & SNAPSHOT_FLAGS.AIRBORNE) &&
     !(b.flags & SNAPSHOT_FLAGS.AIRBORNE);
   out.y = grounded
     ? monotoneHermite(a.y, a.vy, b.y, b.vy, t, durationS)
     : hermite(a.y, a.vy, b.y, b.vy, t, durationS);
-  out.z = hermite(a.z, a.vz, b.z, b.vz, t, durationS);
+  out.z = monotoneHermite(a.z, a.vz, b.z, b.vz, t, durationS);
   out.vx = a.vx + (b.vx - a.vx) * t;
   out.vy = a.vy + (b.vy - a.vy) * t;
   out.vz = a.vz + (b.vz - a.vz) * t;
@@ -850,10 +903,18 @@ export class SnapshotBuffer {
   private readonly sampleFrame: SampledSnapshotFrame;
   private readonly sampleEntities = new Map<string, DecodedEntitySnapshot>();
   private readonly olderById = new Map<string, QuantizedEntitySnapshot>();
+  private readonly sampleShells: QuantizedShellSnapshot[] = [];
+  private readonly olderShellById = new Map<number, QuantizedShellSnapshot>();
   private readonly decodeScratchA = {} as DecodedEntitySnapshot;
   private readonly decodeScratchB = {} as DecodedEntitySnapshot;
   private readonly immediateScratch = {} as DecodedEntitySnapshot;
   private readonly immediatePresentation = {} as DecodedEntitySnapshot;
+  private readonly sampleMeta: Record<string, RuntimeValue> = {};
+  private readonly sampleModeState: Record<string, RuntimeValue> = {};
+  private readonly sampleModeBall: Record<string, RuntimeValue> = {};
+  private readonly sampleModeFlags: Record<string, RuntimeValue>[] = [];
+  private readonly sampleModeZones: Record<string, RuntimeValue>[] = [];
+  private readonly sampleModeHorde: Record<string, RuntimeValue> = {};
   private immediatePresentationReady = false;
   private lastImmediatePresentationTimeMs: number | null = null;
   private readonly immediateAuthority: ImmediateAuthoritySnapshot;
@@ -950,6 +1011,10 @@ export class SnapshotBuffer {
     this.lastRenderTimeMs = null;
     this.sampleEntities.clear();
     this.olderById.clear();
+    this.sampleShells.length = 0;
+    this.olderShellById.clear();
+    this.sampleModeFlags.length = 0;
+    this.sampleModeZones.length = 0;
     this.immediatePresentationReady = false;
     this.lastImmediatePresentationTimeMs = null;
   }
@@ -1081,6 +1146,239 @@ export class SnapshotBuffer {
     this.interpolateEntities(older, newer, renderTime, entities);
   }
 
+  private sampleBufferedShells(
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): QuantizedShellSnapshot[] {
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    const interpolating = older !== newer && durationMs > 0;
+    const t = interpolating
+      ? Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs))
+      : 1;
+    const extraS = interpolating ? 0 : Math.max(0, Math.min(
+      this.maxExtrapolationMs,
+      renderTime - newer.serverTimeMs,
+    )) / 1000;
+    this.olderShellById.clear();
+    if (interpolating) {
+      for (const shell of older.shells || []) this.olderShellById.set(shell.id, shell);
+    }
+    let count = 0;
+    for (const current of newer.shells || []) {
+      let target = this.sampleShells[count];
+      if (!target) target = this.sampleShells[count] = {} as QuantizedShellSnapshot;
+      Object.assign(target, current);
+      const previous = interpolating ? this.olderShellById.get(current.id) : null;
+      if (previous && previous.shooterId === current.shooterId &&
+          previous.type === current.type) {
+        const durationS = durationMs / 1000;
+        target.x = hermite(previous.x, previous.vx, current.x, current.vx, t, durationS);
+        target.y = hermite(previous.y, previous.vy, current.y, current.vy, t, durationS);
+        target.z = hermite(previous.z, previous.vz, current.z, current.vz, t, durationS);
+        target.vx = previous.vx + (current.vx - previous.vx) * t;
+        target.vy = previous.vy + (current.vy - previous.vy) * t;
+        target.vz = previous.vz + (current.vz - previous.vz) * t;
+      } else if (extraS > 0) {
+        target.x = current.x + current.vx * extraS;
+        target.y = current.y + current.vy * extraS;
+        target.z = current.z + current.vz * extraS;
+      }
+      count++;
+    }
+    this.sampleShells.length = count;
+    return this.sampleShells;
+  }
+
+  private sampleMetadataClock(
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+    key: 'battleTimeMs' | 'countdownMs',
+  ): void {
+    const newerMeta = newer.meta;
+    if (!newerMeta || typeof newerMeta[key] !== 'number' ||
+        !Number.isFinite(newerMeta[key])) return;
+    const newerValue = newerMeta[key] as number;
+    const olderValue = older.meta?.[key];
+    if (older !== newer && newer.serverTimeMs > older.serverTimeMs &&
+        typeof olderValue === 'number' && Number.isFinite(olderValue) &&
+        older.meta?.phase === newerMeta.phase) {
+      const t = Math.max(0, Math.min(1,
+        (renderTime - older.serverTimeMs) /
+          (newer.serverTimeMs - older.serverTimeMs),
+      ));
+      this.sampleMeta[key] = olderValue + (newerValue - olderValue) * t;
+      return;
+    }
+    const clockAdvances = key === 'battleTimeMs'
+      ? newerMeta.phase === 'playing'
+      : newerMeta.phase === 'countdown';
+    if (renderTime > newer.serverTimeMs && clockAdvances) {
+      const extraMs = Math.min(this.maxExtrapolationMs, renderTime - newer.serverTimeMs);
+      this.sampleMeta[key] = key === 'countdownMs'
+        ? Math.max(0, newerValue - extraMs)
+        : newerValue + extraMs;
+    }
+  }
+
+  private sampleModeBallState(
+    olderMode: Record<string, RuntimeValue> | null,
+    newerMode: Record<string, RuntimeValue>,
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): void {
+    const current = runtimeRecord(newerMode.ball);
+    if (!current) return;
+    overwriteRecord(this.sampleModeBall, current);
+    const previous = runtimeRecord(olderMode?.ball);
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    if (previous && olderMode && sameObjectiveScore(olderMode, newerMode) &&
+        older !== newer && canInterpolateBall(previous, current, durationMs / 1000)) {
+      const durationS = durationMs / 1000;
+      const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
+      this.sampleModeBall.x = hermite(
+        finite(previous.x), finite(previous.vx), finite(current.x), finite(current.vx), t, durationS,
+      );
+      this.sampleModeBall.y = hermite(
+        finite(previous.y), finite(previous.vy), finite(current.y), finite(current.vy), t, durationS,
+      );
+      this.sampleModeBall.z = hermite(
+        finite(previous.z), finite(previous.vz), finite(current.z), finite(current.vz), t, durationS,
+      );
+      this.sampleModeBall.vx = finite(previous.vx) +
+        (finite(current.vx) - finite(previous.vx)) * t;
+      this.sampleModeBall.vy = finite(previous.vy) +
+        (finite(current.vy) - finite(previous.vy)) * t;
+      this.sampleModeBall.vz = finite(previous.vz) +
+        (finite(current.vz) - finite(previous.vz)) * t;
+    } else if (renderTime > newer.serverTimeMs) {
+      const extraS = Math.min(this.maxExtrapolationMs,
+        renderTime - newer.serverTimeMs) / 1000;
+      this.sampleModeBall.x = finite(current.x) + finite(current.vx) * extraS;
+      this.sampleModeBall.y = finite(current.y) + finite(current.vy) * extraS;
+      this.sampleModeBall.z = finite(current.z) + finite(current.vz) * extraS;
+    }
+    this.sampleModeState.ball = this.sampleModeBall;
+  }
+
+  private sampleModeFlagsState(
+    olderMode: Record<string, RuntimeValue> | null,
+    newerMode: Record<string, RuntimeValue>,
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): void {
+    if (!Array.isArray(newerMode.flags)) return;
+    const previousFlags = Array.isArray(olderMode?.flags) ? olderMode.flags : [];
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    const t = older !== newer && durationMs > 0
+      ? Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs))
+      : 1;
+    let count = 0;
+    for (const rawFlag of newerMode.flags) {
+      const current = runtimeRecord(rawFlag);
+      if (!current) continue;
+      let target = this.sampleModeFlags[count];
+      if (!target) target = this.sampleModeFlags[count] = {};
+      overwriteRecord(target, current);
+      const previous = runtimeRecord(previousFlags[count]);
+      if (previous && t < 1 && previous.team === current.team &&
+          previous.status === current.status && previous.carrierId === current.carrierId &&
+          Math.hypot(
+            finite(current.x) - finite(previous.x),
+            finite(current.y) - finite(previous.y),
+            finite(current.z) - finite(previous.z),
+          ) <= OBJECTIVE_TELEPORT_FLOOR_M) {
+        target.x = finite(previous.x) + (finite(current.x) - finite(previous.x)) * t;
+        target.y = finite(previous.y) + (finite(current.y) - finite(previous.y)) * t;
+        target.z = finite(previous.z) + (finite(current.z) - finite(previous.z)) * t;
+      }
+      count++;
+    }
+    this.sampleModeFlags.length = count;
+    this.sampleModeState.flags = this.sampleModeFlags;
+  }
+
+  private sampleModeZonesState(
+    olderMode: Record<string, RuntimeValue> | null,
+    newerMode: Record<string, RuntimeValue>,
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): void {
+    if (!Array.isArray(newerMode.zones)) return;
+    const previousZones = Array.isArray(olderMode?.zones) ? olderMode.zones : [];
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    const t = older !== newer && durationMs > 0
+      ? Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs))
+      : 1;
+    let count = 0;
+    for (const rawZone of newerMode.zones) {
+      const current = runtimeRecord(rawZone);
+      if (!current) continue;
+      let target = this.sampleModeZones[count];
+      if (!target) target = this.sampleModeZones[count] = {};
+      overwriteRecord(target, current);
+      const previous = runtimeRecord(previousZones[count]);
+      if (previous && t < 1 && previous.id === current.id) {
+        target.control = finite(previous.control) +
+          (finite(current.control) - finite(previous.control)) * t;
+      }
+      count++;
+    }
+    this.sampleModeZones.length = count;
+    this.sampleModeState.zones = this.sampleModeZones;
+  }
+
+  private sampleModeHordeState(
+    olderMode: Record<string, RuntimeValue> | null,
+    newerMode: Record<string, RuntimeValue>,
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): void {
+    const current = runtimeRecord(newerMode.horde);
+    if (!current) return;
+    overwriteRecord(this.sampleModeHorde, current);
+    const previous = runtimeRecord(olderMode?.horde);
+    const durationMs = newer.serverTimeMs - older.serverTimeMs;
+    if (previous && older !== newer && durationMs > 0 && previous.wave === current.wave) {
+      const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
+      this.sampleModeHorde.nextWaveInS = finite(previous.nextWaveInS) +
+        (finite(current.nextWaveInS) - finite(previous.nextWaveInS)) * t;
+    } else if (renderTime > newer.serverTimeMs) {
+      const extraS = Math.min(this.maxExtrapolationMs,
+        renderTime - newer.serverTimeMs) / 1000;
+      this.sampleModeHorde.nextWaveInS = Math.max(0,
+        finite(current.nextWaveInS) - extraS);
+    }
+    this.sampleModeState.horde = this.sampleModeHorde;
+  }
+
+  private sampleMetadata(
+    older: WorldSnapshot,
+    newer: WorldSnapshot,
+    renderTime: number,
+  ): Record<string, RuntimeValue> | null {
+    if (!newer.meta) return null;
+    overwriteRecord(this.sampleMeta, newer.meta);
+    this.sampleMetadataClock(older, newer, renderTime, 'battleTimeMs');
+    this.sampleMetadataClock(older, newer, renderTime, 'countdownMs');
+
+    const newerMode = runtimeRecord(newer.meta.modeState);
+    if (!newerMode) return this.sampleMeta;
+    const olderMode = runtimeRecord(older.meta?.modeState);
+    overwriteRecord(this.sampleModeState, newerMode);
+    this.sampleModeBallState(olderMode, newerMode, older, newer, renderTime);
+    this.sampleModeFlagsState(olderMode, newerMode, older, newer, renderTime);
+    this.sampleModeZonesState(olderMode, newerMode, older, newer, renderTime);
+    this.sampleModeHordeState(olderMode, newerMode, older, newer, renderTime);
+    this.sampleMeta.modeState = this.sampleModeState;
+    return this.sampleMeta;
+  }
+
   private resetImmediatePresentation(): null {
     this.immediatePresentationReady = false;
     this.lastImmediatePresentationTimeMs = null;
@@ -1139,9 +1437,9 @@ export class SnapshotBuffer {
     frame.tick = newer.tick;
     frame.serverTimeMs = renderTime;
     frame.ackInputSeq = newer.ackInputSeq;
-    frame.shells = newer.shells || [];
+    frame.shells = this.sampleBufferedShells(older, newer, renderTime);
     frame.events = newer.events || [];
-    frame.meta = newer.meta || null;
+    frame.meta = this.sampleMetadata(older, newer, renderTime);
     frame.immediateAuthority = this.sampleImmediateAuthority(localServerTimeMs, frame.entities);
     return frame;
   }

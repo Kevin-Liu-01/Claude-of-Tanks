@@ -145,9 +145,16 @@ order therefore cannot strand either peer at the readiness barrier.
 
 ## Client smoothness
 
-Remote tanks use Hermite position interpolation, shortest-path angle blending,
-an adaptive 100–220 ms jitter buffer, and at most 250 ms of bounded
-extrapolation. The local tank predicts the exact shared 60 Hz movement code,
+Remote tanks use contact-safe monotone Hermite position interpolation,
+shortest-path angle blending, and at most 250 ms of bounded extrapolation.
+Direct-room presentation starts at 50 ms for the host loopback, 65 ms for LAN,
+and 85 ms for private Internet peers; the adaptive jitter buffer can grow to
+120, 180, or 220 ms respectively without ever running its render clock
+backward. Ranked/dedicated clients retain the conservative 100–220 ms defaults.
+The same sampled timeline drives authoritative shells, missiles, match clocks,
+and moving mode objectives such as Turbo Ball, while score/reset transitions
+snap instead of interpolating across the arena. The local tank predicts the
+exact shared 60 Hz movement code,
 terrain contact, map bounds, and nearby static collision, then replays
 unacknowledged inputs after each authority snapshot. Presentation correction is
 grouped by physical role: horizontal hull motion uses an 110 ms envelope,
