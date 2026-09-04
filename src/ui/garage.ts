@@ -571,7 +571,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const panel = document.createElement('div');
     panel.className = 'cot-featured';
     panel.innerHTML =
-      `<div class="ftitle"><span>${uiIconSVG('gallery', 13)}Battle gallery</span><span class="fdots">` +
+      `<div class="ftitle cot-sidebar-section-title"><span>${uiIconSVG('gallery', 13)}Battle gallery</span><span class="fdots">` +
       FEATURED_SHOTS.map(() => '<span></span>').join('') +
       `</span></div>` +
       `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
@@ -1115,7 +1115,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function initializeMapPicker(): void {
     if (!maps.length) return;
     const title = document.createElement('div');
-    title.className = 'mtitle';
+    title.className = 'mtitle cot-sidebar-section-title';
     title.innerHTML = `${uiIconSVG('map', 13)}<span>Battlefield</span>`;
     title.appendChild(createInfoButton({
       label: 'About battlefield selection',
@@ -1250,7 +1250,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
     const title = document.createElement('div');
-    title.className = 'ctitle';
+    title.className = 'ctitle cot-sidebar-section-title';
     title.innerHTML = `${uiIconSVG('camouflage', 13)}<span>Camouflage</span>`;
     const titleActions = document.createElement('div');
     titleActions.className = 'cot-camo-title-actions';
@@ -1871,7 +1871,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   function statSectionTitle(icon: string, label: string, meta = ''): string {
-    return `<div class="cot-stat-title" data-stat-info="${label}">${uiIconSVG(icon, 13)}` +
+    return `<div class="cot-stat-title cot-sidebar-section-title" data-stat-info="${label}">${uiIconSVG(icon, 13)}` +
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
@@ -2086,8 +2086,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const slotBoxes = equipmentSlots(eqIds);
     const equipmentSection =
       `<section class="cot-stat-section cot-loadout-section">` +
-      `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment loadout</span>` +
-      `<i>${eqIds.length}/${EQUIP_SLOTS} mounted</i></div>` +
+      `<div class="eqhead cot-sidebar-section-title">${uiIconSVG('repair', 13)}` +
+      `<span>Equipment loadout</span></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
     statsEl.innerHTML =
       technicalSection +

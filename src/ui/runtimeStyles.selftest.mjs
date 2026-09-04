@@ -41,6 +41,37 @@ assert.match(garageCss,
   'Garage setup column must consume the shared sidebar top and bottom anchors');
 assert.doesNotMatch(garageCss, /\.cot-garage \.stats\{max-height:max\(/,
   'Garage dossier must not retain an independent height cap that shortens the right rail');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar\{width:3px;\}/,
+  'Garage dossier scrollbar must remain visually minimal');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar-track\{background:transparent;\}/,
+  'Garage dossier scrollbar must not draw a permanent track');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar-thumb\{background:rgba\(146,164,180,\.28\);border-radius:999px;\}/,
+  'Garage dossier scrollbar thumb must stay quiet and rounded');
+assert.match(garageCss,
+  /@media \(hover:hover\) and \(pointer:fine\)\{\s*\.cot-garage \.stats:hover::-webkit-scrollbar-thumb/,
+  'Garage dossier hover affordance must only run on hover-capable pointers');
+assert.doesNotMatch(garageSource,
+  /\$\{eqIds\.length\}\/\$\{EQUIP_SLOTS\} mounted/,
+  'Garage equipment section must not repeat a mounted-slot counter');
+assert.match(garageCss,
+  /\.cot-sidebar-section-title\{[^}]*font:700 10px[^}]*letter-spacing:\.24em[^}]*text-transform:uppercase;/,
+  'Garage sidebars must share one section-heading typography contract');
+for (const headerClass of [
+  'ftitle cot-sidebar-section-title',
+  'mtitle cot-sidebar-section-title',
+  'ctitle cot-sidebar-section-title',
+  'cot-stat-title cot-sidebar-section-title',
+  'eqhead cot-sidebar-section-title',
+]) {
+  assert.match(garageSource, new RegExp(headerClass),
+    `Garage header ${headerClass} must consume the shared section-heading contract`);
+}
+assert.match(garageCss,
+  /\.cot-sidebar-section-title > span\{[^}]*white-space:nowrap;/,
+  'Garage sidebar headings must remain on one readable line');
 assert.match(motionCss, /--cot-ease-out:\s*cubic-bezier\(/,
   'motion contract must publish the standard responsive easing');
 for (const band of ['instant', 'fast', 'base', 'slow', 'scene']) {

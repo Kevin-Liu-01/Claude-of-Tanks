@@ -155,8 +155,15 @@
 .cot-record-dialog::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
 .cot-record-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;
   padding:22px 24px 18px;border-bottom:1px solid rgba(146,164,180,.18);}
-.cot-record-head .eyebrow,.cot-stat-title{font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+.cot-record-head .eyebrow{font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
+.cot-sidebar-section-title{display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:7px;
+  color:#8a97a3;font:700 10px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.24em;text-transform:uppercase;}
+.cot-sidebar-section-title > svg{width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
+.cot-sidebar-section-title > span{min-width:0;flex:1 1 auto;white-space:nowrap;}
+.cot-sidebar-section-title .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px;
+  flex:0 0 24px;margin-left:0;letter-spacing:0;}
 .cot-record-head h2{margin-top:5px;font-size:24px;letter-spacing:.025em;color:#f3f7fa;}
 .cot-record-head p{margin-top:5px;font:700 9px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.12em;
   text-transform:uppercase;color:#8293a1;}
@@ -344,10 +351,7 @@
   background:linear-gradient(155deg,rgba(16,22,28,.96),rgba(7,10,13,.96) 76%);
   border:1px solid rgba(146,164,180,.2);box-shadow:0 10px 28px rgba(0,0,0,.36);}
 .cot-stat-section:last-child{margin-bottom:0;}
-.cot-stat-title{margin-bottom:10px;color:#8fa0ad;display:flex;align-items:center;gap:7px;}
-.cot-stat-title svg{width:13px;height:13px;color:#f0a030;flex:0 0 auto;}
-.cot-stat-title span{min-width:0;}
-.cot-stat-title small{margin-left:auto;color:#596975;font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+.cot-stat-title small{flex:0 0 auto;color:#596975;font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.1em;text-transform:uppercase;}
 .cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
 .cot-garage .srow{position:relative;min-width:0;min-height:50px;padding:8px 8px 8px 36px;
@@ -806,7 +810,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
    Both desktop sidebars consume the root's shared top/bottom anchors, so the
    dossier ends on the same rail as Battle Gallery and scrolls within it. */
 .cot-garage .stats{max-height:none;overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.28) transparent;}
 .cot-garage .stats.has-scroll-mask{
   -webkit-mask-image:linear-gradient(180deg,transparent 0,
     #000 var(--cot-dossier-head-fade,0px),
@@ -815,21 +819,19 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
     #000 var(--cot-dossier-head-fade,0px),
     #000 calc(100% - var(--cot-dossier-tail-fade,0px)),transparent 100%);
 }
-.cot-garage .stats::-webkit-scrollbar{width:5px;}
-.cot-garage .stats::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
-.cot-garage .stats::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-garage .stats::-webkit-scrollbar{width:3px;}
+.cot-garage .stats::-webkit-scrollbar-track{background:transparent;}
+.cot-garage .stats::-webkit-scrollbar-thumb{background:rgba(146,164,180,.28);border-radius:999px;}
+@media (hover:hover) and (pointer:fine){
+  .cot-garage .stats:hover::-webkit-scrollbar-thumb{background:rgba(177,194,207,.46);}
+}
+.cot-garage .stats::-webkit-scrollbar-thumb:active{background:rgba(240,176,74,.62);}
 /* stat values boosted by equipment tint green (base value in the tooltip) */
 .cot-garage .srow .lr b.eqmod{color:#9fd8a0;}
-.cot-garage .eqhead{display:flex;justify-content:space-between;align-items:baseline;
-  font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
-  text-transform:uppercase;margin-bottom:7px;}
-.cot-garage .eqhead span{display:flex;align-items:center;gap:7px;}
-.cot-garage .eqhead svg{width:13px;height:13px;color:#f0a030;}
-.cot-garage .eqhead i{font-style:normal;color:#6d7a86;letter-spacing:.08em;}
-.cot-garage .cot-stat-title .cot-info-trigger{order:3;margin-left:auto;letter-spacing:0}
-.cot-garage .cot-stat-title small{order:4;margin-left:0}
-.cot-garage .eqhead .cot-info-trigger{margin-left:6px;letter-spacing:0}
-.cot-garage .eqhead i{margin-left:auto}
+.cot-garage .eqhead{justify-content:space-between;}
+.cot-garage .cot-stat-title .cot-info-trigger{margin-left:0;}
+.cot-garage .cot-stat-title small{margin-left:0;}
+.cot-garage .eqhead .cot-info-trigger{margin-left:0;}
 .cot-garage .cot-dossier-head > .cot-info-trigger{position:absolute;z-index:3;right:11px;top:11px}
 .cot-garage .eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .cot-garage .eqslot{cursor:pointer;height:58px;display:flex;flex-direction:column;
