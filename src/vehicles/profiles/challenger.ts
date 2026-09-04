@@ -2559,43 +2559,64 @@ interface WeaponTowerReceipt {
   readonly verticalOverlapM: number;
 }
 
-function buildChallenger2WeaponTower(
+function addChallenger2WeaponTowerCradle(
   P: ChallengerBuilderPort,
-  { centerX = 0.7095, seatY = 0.690, roofCarrierY = null }: WeaponTowerOptions = {},
-): WeaponTowerReceipt {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
-  const stationX = (x: number): number => x + centerX - 0.7095;
-  const stationY = (y: number): number => y + seatY - 0.690;
-
-  P.add('turretDark', box(0.111, 0.110, 0.110), stationX(0.7095), stationY(0.7126), 0.136);
-  P.addEquipment('turret', box(0.081, 0.080, 0.080), stationX(0.7095), stationY(0.7226), 0.136);
-  for (const x of [0.605, 0.824]) P.addEquipment('turret', box(0.035, 0.129, 0.380),
-    stationX(x), stationY(0.7775), 0.515);
-  for (const z of [0.412, 0.695]) P.add('turretDetail', box(0.264, 0.030, 0.026),
-    stationX(0.7095), stationY(0.810), z);
-  P.add('turretGlass', box(0.19, 0.055, 0.014), stationX(0.7095), stationY(0.790), 0.713);
+  stationX: (value: number) => number,
+  stationY: (value: number) => number,
+): void {
+  const { box, cylX, cylY, torus } = KIT;
+  P.add('turretDark', box(0.111, 0.110, 0.110),
+    stationX(0.7095), stationY(0.7126), 0.136);
+  P.addEquipment('turret', box(0.081, 0.080, 0.080),
+    stationX(0.7095), stationY(0.7226), 0.136);
+  for (const x of [0.605, 0.824]) {
+    P.addEquipment('turret', box(0.035, 0.129, 0.380),
+      stationX(x), stationY(0.7775), 0.515);
+  }
+  for (const z of [0.412, 0.695]) {
+    P.add('turretDetail', box(0.264, 0.030, 0.026),
+      stationX(0.7095), stationY(0.810), z);
+  }
+  P.add('turretGlass', box(0.19, 0.055, 0.014),
+    stationX(0.7095), stationY(0.790), 0.713);
   P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14),
     stationX(0.77), stationY(0.690), 0.20);
   P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14),
     stationX(0.77), stationY(0.730), 0.20);
   for (const x of [0.70, 0.85]) {
-    P.addEquipment('turret', box(0.032, 0.18, 0.12), stationX(x), stationY(0.805), 0.20);
-    P.add('turretDetail', box(0.018, 0.15, 0.018), stationX(x), stationY(0.805), 0.20);
+    P.addEquipment('turret', box(0.032, 0.18, 0.12),
+      stationX(x), stationY(0.805), 0.20);
+    P.add('turretDetail', box(0.018, 0.15, 0.018),
+      stationX(x), stationY(0.805), 0.20);
   }
   for (const x of [0.685, 0.865]) {
-    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10), stationX(x), stationY(0.835), 0.20);
+    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10),
+      stationX(x), stationY(0.835), 0.20);
   }
-  P.add('turretDetail', box(0.024, 0.18, 0.030), stationX(0.725), stationY(0.815), 0.18,
-    0, 0, -0.38);
-  P.add('turretDetail', box(0.024, 0.18, 0.030), stationX(0.825), stationY(0.815), 0.18,
-    0, 0, 0.38);
-  P.add('turretDark', box(0.105, 0.090, 0.13), stationX(0.655), stationY(0.825), 0.15);
-  P.add('turretDetail', box(0.075, 0.018, 0.10), stationX(0.655), stationY(0.878), 0.15);
-  P.add('turretGlass', box(0.11, 0.055, 0.012), stationX(0.775), stationY(0.855), 0.282);
-  P.addEquipment('turret', box(0.11, 0.105, 0.20), stationX(0.80), stationY(0.865), 0.20);
-  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), stationX(0.98), stationY(0.910), 0.20);
-  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), stationX(1.16), stationY(0.830), 0.20);
+  P.add('turretDetail', box(0.024, 0.18, 0.030),
+    stationX(0.725), stationY(0.815), 0.18, 0, 0, -0.38);
+  P.add('turretDetail', box(0.024, 0.18, 0.030),
+    stationX(0.825), stationY(0.815), 0.18, 0, 0, 0.38);
+  P.add('turretDark', box(0.105, 0.090, 0.13),
+    stationX(0.655), stationY(0.825), 0.15);
+  P.add('turretDetail', box(0.075, 0.018, 0.10),
+    stationX(0.655), stationY(0.878), 0.15);
+  P.add('turretGlass', box(0.11, 0.055, 0.012),
+    stationX(0.775), stationY(0.855), 0.282);
+  P.addEquipment('turret', box(0.11, 0.105, 0.20),
+    stationX(0.80), stationY(0.865), 0.20);
+  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10),
+    stationX(0.98), stationY(0.910), 0.20);
+  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10),
+    stationX(1.16), stationY(0.830), 0.20);
+}
 
+function addChallenger2WeaponTowerMg(
+  P: ChallengerBuilderPort,
+  stationX: (value: number) => number,
+  stationY: (value: number) => number,
+): void {
+  const { box, cylX } = KIT;
   const stationMg = new THREE.Group();
   const stationPart = (
     geometry: THREE.BufferGeometry,
@@ -2622,12 +2643,12 @@ function buildChallenger2WeaponTower(
   for (const sleeveX of [0.62, 0.69, 0.76]) {
     stationPart(cylX(0.022, 0.020, P.q ? 16 : 12), sleeveX, 0.925, 0.20);
   }
-  // Neutral ammunition box and a visible linked feed terminating at the
-  // receiver. These remain gunmetal even when the Challenger camo changes.
+  // Neutral ammunition box and a visible linked feed terminate at the
+  // receiver and remain gunmetal regardless of the vehicle camouflage.
   stationPart(box(0.13, 0.12, 0.16), 0.755, 0.892, 0.33);
   stationPart(box(0.12, 0.012, 0.15), 0.755, 0.958, 0.33);
-  for (let i = 0; i < 5; i++) {
-    const t = i / 4;
+  for (let index = 0; index < 5; index++) {
+    const t = index / 4;
     stationPart(box(0.024, 0.022, 0.018), 0.785,
       0.928 - Math.sin(t * Math.PI) * 0.010, 0.285 - t * 0.065);
   }
@@ -2640,6 +2661,18 @@ function buildChallenger2WeaponTower(
   stationMg.userData.weaponClass = 'mag58';
   FITTINGS.markExact(stationMg, 'pintleMG');
   P.turretG.add(stationMg);
+}
+
+function buildChallenger2WeaponTower(
+  P: ChallengerBuilderPort,
+  { centerX = 0.7095, seatY = 0.690, roofCarrierY = null }: WeaponTowerOptions = {},
+): WeaponTowerReceipt {
+  const { box, cylX, cylZ } = KIT;
+  const stationX = (x: number): number => x + centerX - 0.7095;
+  const stationY = (y: number): number => y + seatY - 0.690;
+
+  addChallenger2WeaponTowerCradle(P, stationX, stationY);
+  addChallenger2WeaponTowerMg(P, stationX, stationY);
 
   for (const x of [0.685, 0.735]) {
     P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), stationX(x), stationY(0.902), 0.015);
