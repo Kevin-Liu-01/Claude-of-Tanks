@@ -2257,117 +2257,160 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
  * Envelope: x ±w/2, y 0..~1.35h with fill (0..h bare), z ±d/2 — see
  * group.userData.aabb.
  */
-function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, sph, xform } = KIT;
-  const w = opts.w || 1.2, d = opts.d || 0.45, h = opts.h || 0.30;
-  const rails = Math.min(3, Math.max(1, opts.rails || 2));
-  const rng = fitRng(opts.seed ?? 1);
-  const parts = fitParts();
+interface StowageRackFrameReceipt {
+  readonly floorCross: number;
+  readonly floorStrings: number;
+  readonly nPosts: number;
+}
 
-  const rod = Math.max(0.018, Math.min(0.032, Math.min(w, d, h) * 0.085));
-  const rail = rod * 1.18;
-  const zMount = -d / 2 + rod / 2;
-  const zFace = d / 2 - rod / 2;
-  const addSideBrace = (x: number, y0: number, z0: number, y1: number, z1: number): void => {
-    const dy = y1 - y0;
-    const dz = z1 - z0;
-    parts.add('dark', box(rod, rod, Math.hypot(dy, dz) + rod), x,
-      (y0 + y1) / 2, (z0 + z1) / 2, Math.atan2(-dy, dz), 0, 0);
+function addStowageRackFrame(
+  parts: FittingParts,
+  opts: FittingOptions,
+  w: number,
+  d: number,
+  h: number,
+  rails: number,
+  rod: number,
+): StowageRackFrameReceipt {
+  const {box}=KIT;
+  const rail=rod * 1.18;
+  const zMount=-d / 2 + rod / 2;
+  const zFace=d / 2 - rod / 2;
+  const addSideBrace=(x: number,y0: number,z0: number,y1: number,z1: number): void => {
+    const dy=y1 - y0;
+    const dz=z1 - z0;
+    parts.add('dark',box(rod,rod,Math.hypot(dy,dz) + rod),x,
+      (y0 + y1) / 2,(z0 + z1) / 2,Math.atan2(-dy,dz),0,0);
   };
 
   // Floor lattice: cross-ribs and longitudinal stringers leave actual open
   // air between members. This is the silhouette the old full-size floor/back
   // boxes erased at rear and elevated three-quarter views.
-  const floorY = rod / 2;
-  const floorCross = Math.max(3, Math.min(8, Math.round(d / 0.12) + 1));
-  const floorStrings = Math.max(3, Math.min(9, Math.round(w / 0.22) + 1));
-  parts.add('dark', KIT.openRackGrid(w, d, rod, floorCross, floorStrings), 0, floorY, 0);
+  const floorY=rod / 2;
+  const floorCross=Math.max(3,Math.min(8,Math.round(d / 0.12) + 1));
+  const floorStrings=Math.max(3,Math.min(9,Math.round(w / 0.22) + 1));
+  parts.add('dark',KIT.openRackGrid(w,d,rod,floorCross,floorStrings),0,floorY,0);
 
   // Fence: posts + rails on the outer face, short end rails closing the bay.
-  const nPosts = Math.min(10, Math.max(2, opts.posts || Math.round(w / 0.22)));
-  for (let i = 0; i < nPosts; i++) {
-    const x = -w / 2 + 0.02 + i * ((w - 0.04) / (nPosts - 1));
-    parts.add('dark', box(rod, h, rod), x, h / 2, zFace);
+  const nPosts=Math.min(10,Math.max(2,opts.posts || Math.round(w / 0.22)));
+  for (let i=0;i<nPosts;i++) {
+    const x=-w / 2 + 0.02 + i * ((w - 0.04) / (nPosts - 1));
+    parts.add('dark',box(rod,h,rod),x,h / 2,zFace);
   }
-  const railYs = rails === 1 ? [h * 0.95] : rails === 2 ? [h * 0.95, h * 0.45] : [h * 0.95, h * 0.70, h * 0.45];
+  const railYs=rails === 1
+    ? [h * 0.95]
+    : rails === 2 ? [h * 0.95,h * 0.45] : [h * 0.95,h * 0.70,h * 0.45];
   for (const ry of railYs) {
-    parts.add('dark', box(w, rail, rail), 0, ry, zFace);
-    for (const sx of [-1, 1]) parts.add('dark', box(rail, rail, d),
-      sx * (w / 2 - rail / 2), ry, 0);
+    parts.add('dark',box(w,rail,rail),0,ry,zFace);
+    for (const sx of [-1,1]) parts.add('dark',box(rail,rail,d),
+      sx * (w / 2 - rail / 2),ry,0);
   }
-  for (const sx of [-1, 1]) {
-    const x = sx * (w / 2 - rod / 2);
-    parts.add('dark', box(rod, h, rod), x, h / 2, zMount);
+  for (const sx of [-1,1]) {
+    const x=sx * (w / 2 - rod / 2);
+    parts.add('dark',box(rod,h,rod),x,h / 2,zMount);
     // Triangulated end returns and two real mounting feet make the basket
     // visibly load-bearing instead of a floating rectangle.
-    addSideBrace(x, rod, zFace, h * 0.94, zMount);
-    addSideBrace(x, rod, zMount, h * 0.94, zFace);
-    parts.add('hull', box(0.12, 0.055, rod * 1.4), sx * (w * 0.31),
-      0.035, zMount - rod * 0.25);
+    addSideBrace(x,rod,zFace,h * 0.94,zMount);
+    addSideBrace(x,rod,zMount,h * 0.94,zFace);
+    parts.add('hull',box(0.12,0.055,rod * 1.4),sx * (w * 0.31),
+      0.035,zMount - rod * 0.25);
   }
   if (opts.mesh !== false) {
     // Open wire grid at the outer face. The former single box here was the
     // fleet-wide "gray square" proxy called out in visual review.
-    const gridCols = Math.max(3, Math.min(12, Math.round(w / 0.14)));
-    const gridRows = Math.max(2, Math.min(6, Math.round(h / 0.11)));
-    for (let i = 1; i < gridCols; i++) {
-      const x = -w / 2 + i * (w / gridCols);
-      parts.add('dark', box(rod * 0.55, h * 0.82, rod * 0.55), x, h * 0.52, zFace - rod * 0.62);
+    const gridCols=Math.max(3,Math.min(12,Math.round(w / 0.14)));
+    const gridRows=Math.max(2,Math.min(6,Math.round(h / 0.11)));
+    for (let i=1;i<gridCols;i++) {
+      const x=-w / 2 + i * (w / gridCols);
+      parts.add('dark',box(rod * 0.55,h * 0.82,rod * 0.55),x,h * 0.52,zFace - rod * 0.62);
     }
-    for (let i = 1; i < gridRows; i++) {
-      const y = h * 0.12 + i * (h * 0.76 / gridRows);
-      parts.add('dark', box(w * 0.97, rod * 0.55, rod * 0.55), 0, y, zFace - rod * 0.62);
+    for (let i=1;i<gridRows;i++) {
+      const y=h * 0.12 + i * (h * 0.76 / gridRows);
+      parts.add('dark',box(w * 0.97,rod * 0.55,rod * 0.55),0,y,zFace - rod * 0.62);
     }
   }
+  return {floorCross,floorStrings,nPosts};
+}
 
-  // soft fill: tone-varied bundles (cloth / wood / pale) with seeded jitter.
-  const fill = opts.fill ?? 0.75;
-  let softBundleCount = 0;
-  if (fill > 0) {
-    const n = Math.max(1, Math.round(fill * w / 0.26));
-    const slots = ['canvasCloth', 'wood', 'canvasCloth', 'detail'];
-    for (let i = 0; i < n; i++) {
-      const x = (n === 1 ? 0 : -w / 2 + 0.18 + i * ((w - 0.36) / (n - 1))) + (rng() - 0.5) * 0.03;
-      const slot = slots[i % slots.length];
-      const yaw = (rng() - 0.5) * 0.16;
-      if (slot === 'wood') {
-        const bw = 0.24 + rng() * 0.06, bh = 0.16 + rng() * 0.05;
-        parts.add('wood', box(bw, bh, d * 0.62), x, bh / 2 + 0.02, d * 0.02, 0, yaw, 0);
-        parts.add('dark', box(bw * 1.03, bh * 0.16, 0.02), x, bh * 0.5 + 0.02, d * 0.33, 0, yaw, 0);
-      } else if (i % 3 === 0) {
-        const r = 0.10 + rng() * 0.035, len = 0.22 + rng() * 0.10;
-        parts.add(slot, cylX(r, len, 10), x, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
-        parts.add('dark', cylX(r * 1.05, 0.022, 10), x - len * 0.22, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
-        parts.add('dark', cylX(r * 1.05, 0.022, 10), x + len * 0.22, r * 0.92 + 0.02, d * 0.04, 0, yaw, 0);
-        softBundleCount++;
-      } else {
-        const bw = 0.22 + rng() * 0.08;
-        const bh = 0.16 + rng() * 0.06;
-        const bd = d * (0.46 + rng() * 0.16);
-        // A low-poly ellipsoid produces an irregular, compressible duffel
-        // silhouette. A raised flap, pockets and real straps explain how the
-        // load stays in the lattice instead of reading as another gray box.
-        parts.add(slot, xform(sph(0.5, 10), 0, 0, 0, 0, yaw, 0, [bw, bh, bd]),
-          x, bh * 0.48 + 0.02, d * 0.04);
-        parts.add(slot, box(bw * 0.76, 0.026, bd * 0.54),
-          x, bh * 0.88 + 0.02, d * 0.02, 0, yaw, 0);
-        parts.add(slot, box(bw * 0.56, bh * 0.34, 0.024),
-          x, bh * 0.46 + 0.02, d * 0.18, 0, yaw, 0);
-        for (const sx of [-0.24, 0.24]) {
-          parts.add('dark', box(0.018, bh * 1.06, bd * 1.02),
-            x + sx * bw, bh * 0.49 + 0.02, d * 0.04, 0, yaw, 0);
-        }
-        softBundleCount++;
-      }
-    }
-    // one long tarp roll across wide racks, over the bundles.
-    if (w > 0.8 && fill >= 0.5) {
-      const r = 0.085;
-      parts.add('canvasCloth', cylX(r, w * 0.55, 10), 0, h * 0.9 + r * 0.4, d * 0.02);
-      parts.add('dark', cylX(r * 1.06, 0.024, 10), -w * 0.16, h * 0.9 + r * 0.4, d * 0.02);
-      parts.add('dark', cylX(r * 1.06, 0.024, 10), w * 0.16, h * 0.9 + r * 0.4, d * 0.02);
-    }
+function addStowageRackBundle(
+  parts: FittingParts,
+  rng: () => number,
+  w: number,
+  d: number,
+  index: number,
+  count: number,
+): boolean {
+  const {box,cylX,sph,xform}=KIT;
+  const x=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
+    + (rng() - 0.5) * 0.03;
+  const slots=['canvasCloth','wood','canvasCloth','detail'];
+  const slot=slots[index % slots.length];
+  const yaw=(rng() - 0.5) * 0.16;
+  if (slot === 'wood') {
+    const bw=0.24 + rng() * 0.06;
+    const bh=0.16 + rng() * 0.05;
+    parts.add('wood',box(bw,bh,d * 0.62),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    parts.add('dark',box(bw * 1.03,bh * 0.16,0.02),x,bh * 0.5 + 0.02,d * 0.33,0,yaw,0);
+    return false;
   }
+  if (index % 3 === 0) {
+    const r=0.10 + rng() * 0.035;
+    const len=0.22 + rng() * 0.10;
+    parts.add(slot,cylX(r,len,10),x,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
+    parts.add('dark',cylX(r * 1.05,0.022,10),x - len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
+    parts.add('dark',cylX(r * 1.05,0.022,10),x + len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
+    return true;
+  }
+  const bw=0.22 + rng() * 0.08;
+  const bh=0.16 + rng() * 0.06;
+  const bd=d * (0.46 + rng() * 0.16);
+  // A low-poly ellipsoid produces an irregular, compressible duffel
+  // silhouette. A raised flap, pockets and real straps explain how the
+  // load stays in the lattice instead of reading as another gray box.
+  parts.add(slot,xform(sph(0.5,10),0,0,0,0,yaw,0,[bw,bh,bd]),x,bh * 0.48 + 0.02,d * 0.04);
+  parts.add(slot,box(bw * 0.76,0.026,bd * 0.54),x,bh * 0.88 + 0.02,d * 0.02,0,yaw,0);
+  parts.add(slot,box(bw * 0.56,bh * 0.34,0.024),x,bh * 0.46 + 0.02,d * 0.18,0,yaw,0);
+  for (const sx of [-0.24,0.24]) {
+    parts.add('dark',box(0.018,bh * 1.06,bd * 1.02),
+      x + sx * bw,bh * 0.49 + 0.02,d * 0.04,0,yaw,0);
+  }
+  return true;
+}
+
+function addStowageRackFill(
+  parts: FittingParts,
+  opts: FittingOptions,
+  w: number,
+  d: number,
+  h: number,
+  rng: () => number,
+): number {
+  const {cylX}=KIT;
+  const fill=opts.fill ?? 0.75;
+  if (fill <= 0) return 0;
+  const count=Math.max(1,Math.round(fill * w / 0.26));
+  let softBundleCount=0;
+  for (let index=0;index<count;index++) {
+    if (addStowageRackBundle(parts,rng,w,d,index,count)) softBundleCount++;
+  }
+  // One long tarp roll across wide racks, over the bundles.
+  if (w > 0.8 && fill >= 0.5) {
+    const r=0.085;
+    parts.add('canvasCloth',cylX(r,w * 0.55,10),0,h * 0.9 + r * 0.4,d * 0.02);
+    parts.add('dark',cylX(r * 1.06,0.024,10),-w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
+    parts.add('dark',cylX(r * 1.06,0.024,10),w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
+  }
+  return softBundleCount;
+}
+
+function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
+  const w = opts.w || 1.2, d = opts.d || 0.45, h = opts.h || 0.30;
+  const rails = Math.min(3, Math.max(1, opts.rails || 2));
+  const rng = fitRng(opts.seed ?? 1);
+  const parts = fitParts();
+  const rod = Math.max(0.018, Math.min(0.032, Math.min(w, d, h) * 0.085));
+  const {floorCross,floorStrings,nPosts}=addStowageRackFrame(parts,opts,w,d,h,rails,rod);
+  const softBundleCount=addStowageRackFill(parts,opts,w,d,h,rng);
   const fitting = fitAssemble('stowageRack', parts, opts);
   fitting.userData.designFamily = 'cot-open-lattice-bustle-v2';
   fitting.userData.openLattice = true;
