@@ -470,6 +470,15 @@ interface SmoothBustleOptions {
   readonly tailBulge?: { readonly z0: number; readonly z1: number; readonly b: number };
 }
 
+interface SmoothBustleRing extends BustleSection {
+  t: number;
+}
+
+interface SmoothBustleRow {
+  z: number;
+  pts: number[][];
+}
+
 interface ShieldConfig {
   w: number;
   h: number;
@@ -1780,6 +1789,193 @@ function smoothLoft(
 //   - floor + front face stay separate flat soups (hard edges: the crisp
 //     under-bustle shadow line and the dome-buried front cap)
 // ---------------------------------------------------------------------------
+function smoothBustleRings(
+  sections: readonly BustleSection[],
+  opts: SmoothBustleOptions,
+): SmoothBustleRing[] {
+  const taper = 0.96;
+  const rings: SmoothBustleRing[] = sections.map((section) => ({ ...section, t: taper }));
+  rings[rings.length - 1].t = 0.94;
+  for (const wrap of opts.wrapRings || []) {
+    let index = 0;
+    while (index < sections.length - 1
+      && !(wrap.z <= sections[index].z && wrap.z >= sections[index + 1].z)) index++;
+    if (index >= sections.length - 1) continue;
+    const a = sections[index];
+    const b = sections[index + 1];
+    const ratio = (wrap.z - a.z) / (b.z - a.z);
+    const lerp = (start: number, end: number): number => start + (end - start) * ratio;
+    rings.push({
+      z: wrap.z,
+      t: taper,
+      xL: lerp(a.xL, b.xL) - (wrap.b ?? 0),
+      xR: lerp(a.xR, b.xR) + (wrap.b ?? 0),
+      top: lerp(a.top, b.top),
+      floor: lerp(a.floor, b.floor),
+    });
+  }
+  for (const [z, taperOverride] of opts.tapers || []) {
+    const ring = rings.find((section) => Math.abs(section.z - z) < 1e-6);
+    if (ring) ring.t = taperOverride;
+  }
+  for (const [z, floorLift] of opts.tailFloorEase || []) {
+    const ring = rings.find((section) => Math.abs(section.z - z) < 1e-6);
+    if (ring) ring.floor += floorLift;
+  }
+  rings.sort((a, b) => b.z - a.z);
+  return rings;
+}
+
+function smoothBustleSectionPoints(
+  section: SmoothBustleRing,
+  opts: SmoothBustleOptions,
+  bulge: number,
+): number[][] {
+  const wallX = (baseX: number, topX: number, y: number): number => (
+    baseX + (topX - baseX) * ((y - section.floor) / (section.top - section.floor))
+  );
+  const leftTopX = section.xL * section.t;
+  const rightTopX = section.xR * section.t;
+  const tail = opts.tailBulge
+    ? Math.max(0, Math.min(1,
+      (opts.tailBulge.z0 - section.z) / (opts.tailBulge.z0 - opts.tailBulge.z1)))
+    : 0;
+  const bulgeAt = (fraction: number): number => (
+    bulge + (opts.tailBulge ? tail * (opts.tailBulge.b - bulge) : 0)
+  ) * (fraction === 0.30 ? 0.52 : fraction === 0.55 ? 1.0 : 0.50);
+  const point = (
+    baseX: number,
+    topX: number,
+    sign: number,
+    fraction: number,
+  ): number[] => {
+    const y = section.floor + (section.top - section.floor) * fraction;
+    const x = wallX(baseX, topX, y);
+    let pointBulge = bulgeAt(fraction);
+    if (tail <= 0) {
+      pointBulge = Math.max(0, Math.min(pointBulge, Math.abs(baseX) - 0.001 - Math.abs(x)));
+    }
+    return [x + sign * pointBulge, y];
+  };
+  return [
+    [section.xL, section.floor],
+    point(section.xL, leftTopX, -1, 0.30),
+    point(section.xL, leftTopX, -1, 0.55),
+    point(section.xL, leftTopX, -1, 0.80),
+    [leftTopX, section.top],
+    [(leftTopX + rightTopX) / 2, section.top],
+    [rightTopX, section.top],
+    point(section.xR, rightTopX, 1, 0.80),
+    point(section.xR, rightTopX, 1, 0.55),
+    point(section.xR, rightTopX, 1, 0.30),
+    [section.xR, section.floor],
+  ];
+}
+
+function appendSmoothBustleTailCap(rows: SmoothBustleRow[]): boolean {
+  const last = rows[rows.length - 1];
+  if (!last) return false;
+  const centerX = last.pts.reduce((total, point) => total + point[0], 0) / last.pts.length;
+  const centerY = last.pts.reduce((total, point) => total + point[1], 0) / last.pts.length;
+  for (const factor of [0.52, 0]) {
+    rows.push({
+      z: last.z,
+      pts: last.pts.map(([x, y]) => [
+        centerX + (x - centerX) * factor,
+        centerY + (y - centerY) * factor,
+      ]),
+    });
+  }
+  return true;
+}
+
+function emitSmoothBustleMesh(
+  P: PattonBuilderPort,
+  positions: number[],
+  indices: number[] | null,
+): void {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2,
+  ));
+  if (indices) geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  P.add('turret', geometry);
+}
+
+function emitSmoothBustleOuterSkin(
+  P: PattonBuilderPort,
+  rows: readonly SmoothBustleRow[],
+  yl: HeightMap,
+  zl: HeightMap,
+): void {
+  const pointsPerRow = 11;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const row of rows) {
+    for (const point of row.pts) positions.push(point[0], yl(point[1]), zl(row.z));
+  }
+  for (let row = 0; row < rows.length - 1; row++) {
+    for (let point = 0; point < pointsPerRow - 1; point++) {
+      const a0 = row * pointsPerRow + point;
+      const a1 = a0 + 1;
+      const b0 = a0 + pointsPerRow;
+      const b1 = b0 + 1;
+      indices.push(a0, a1, b1, a0, b1, b0);
+    }
+  }
+  emitSmoothBustleMesh(P, positions, indices);
+}
+
+function emitSmoothBustleUnderside(
+  P: PattonBuilderPort,
+  rows: readonly SmoothBustleRow[],
+  ringCount: number,
+  yl: HeightMap,
+  zl: HeightMap,
+): void {
+  const pointsPerRow = 11;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const row of rows.slice(0, ringCount)) {
+    positions.push(
+      row.pts[pointsPerRow - 1][0], yl(row.pts[pointsPerRow - 1][1]), zl(row.z),
+      row.pts[0][0], yl(row.pts[0][1]), zl(row.z),
+    );
+  }
+  for (let row = 0; row < ringCount - 1; row++) {
+    const a0 = row * 2;
+    const a1 = a0 + 1;
+    const b0 = a0 + 2;
+    const b1 = b0 + 1;
+    indices.push(a0, a1, b1, a0, b1, b0);
+  }
+  emitSmoothBustleMesh(P, positions, indices);
+}
+
+function emitSmoothBustleFrontCap(
+  P: PattonBuilderPort,
+  row: SmoothBustleRow,
+  yl: HeightMap,
+  zl: HeightMap,
+): void {
+  const pointsPerRow = 11;
+  const positions: number[] = [];
+  const centerX = row.pts.reduce((total, point) => total + point[0], 0) / row.pts.length;
+  const centerY = row.pts.reduce((total, point) => total + point[1], 0) / row.pts.length;
+  for (let index = 0; index < pointsPerRow - 1; index++) {
+    const a = row.pts[index];
+    const b = row.pts[index + 1];
+    positions.push(centerX, yl(centerY), zl(row.z),
+      b[0], yl(b[1]), zl(row.z), a[0], yl(a[1]), zl(row.z));
+  }
+  positions.push(centerX, yl(centerY), zl(row.z),
+    row.pts[0][0], yl(row.pts[0][1]), zl(row.z),
+    row.pts[pointsPerRow - 1][0], yl(row.pts[pointsPerRow - 1][1]), zl(row.z));
+  emitSmoothBustleMesh(P, positions, null);
+}
+
 function smoothBustle(
   P: PattonBuilderPort,
   BS: readonly BustleSection[],
@@ -1787,38 +1983,8 @@ function smoothBustle(
   zl: HeightMap,
   opts: SmoothBustleOptions = {},
 ): void {
-  const taper = 0.96, taperEnd = 0.94;
   const bulge = opts.bulge ?? 0.010;    // wall-zone outward sagitta (m)
-  // ring list: sections + interpolated wrap rings (sorted front -> rear)
-  const rings = BS.map((s) => ({ ...s, t: taper }));
-  rings[rings.length - 1].t = taperEnd;
-  for (const W of opts.wrapRings || []) {
-    let i = 0;
-    while (i < BS.length - 1 && !(W.z <= BS[i].z && W.z >= BS[i + 1].z)) i++;
-    if (i >= BS.length - 1) continue;
-    const a = BS[i], b = BS[i + 1], f = (W.z - a.z) / (b.z - a.z);
-    const lerp = (ka: number, kb: number): number => ka + (kb - ka) * f;
-    rings.push({
-      z: W.z, t: taper,
-      xL: lerp(a.xL, b.xL) - (W.b ?? 0), xR: lerp(a.xR, b.xR) + (W.b ?? 0),
-      top: lerp(a.top, b.top), floor: lerp(a.floor, b.floor),
-    });
-  }
-  // r8 S2: per-ring top-taper overrides (wrap rings included) — the front
-  // rings tuck their roof corners toward the dome's own shoulder line, the
-  // tail rings tighten so the trailing 45° corner sheds its proud shoulder
-  // (the B1-class 91.9°/0.65 m tangent-vertical finding). Roof y and plan
-  // (floor) unchanged. tailFloorEase lifts the LAST rings' floor corners
-  // (egg-end underside; <=2.7 cm on the final half-column, B1-priced class).
-  for (const [tz, tt] of opts.tapers || []) {
-    const r = rings.find((s) => Math.abs(s.z - tz) < 1e-6);
-    if (r) r.t = tt;
-  }
-  for (const [fz, dy] of opts.tailFloorEase || []) {
-    const r = rings.find((s) => Math.abs(s.z - fz) < 1e-6);
-    if (r) r.floor += dy;
-  }
-  rings.sort((a, b) => b.z - a.z);
+  const rings = smoothBustleRings(BS, opts);
   // 13-point cross section: floor, three barrel points (30/55/80% height),
   // crown corner each side + crown centre (left wall up over the roof and
   // down the right). Wall-zone rings clamp the bulge INSIDE the floor plan
@@ -1827,79 +1993,16 @@ function smoothBustle(
   // genuine tangent swing to stop fitting as one 0.64 m vertical (the
   // B1-class finding both quarters). Chord-limit: tail sagitta <= 2.4 cm,
   // the B1-priced <=4.7 cm class.
-  const sec = (s: BustleSection & { t: number }): number[][] => {
-    const wallX = (x0: number, xt: number, y: number): number => x0 + (xt - x0) * ((y - s.floor) / (s.top - s.floor));
-    const xLt = s.xL * s.t, xRt = s.xR * s.t;
-    const tail = opts.tailBulge
-      ? Math.max(0, Math.min(1, (opts.tailBulge.z0 - s.z) / (opts.tailBulge.z0 - opts.tailBulge.z1)))
-      : 0;
-    const bAt = (f: number): number => (bulge + (opts.tailBulge ? tail * (opts.tailBulge.b - bulge) : 0)) *
-      (f === 0.30 ? 0.52 : f === 0.55 ? 1.0 : 0.50);
-    const pt = (sideX: number, sideT: number, sign: number, f: number): number[] => {
-      const y = s.floor + (s.top - s.floor) * f;
-      const xw = wallX(sideX, sideT, y);
-      let b = bAt(f);
-      if (tail <= 0) b = Math.max(0, Math.min(b, Math.abs(sideX) - 0.001 - Math.abs(xw)));
-      return [xw + sign * b, y];
-    };
-    return [
-      [s.xL, s.floor], pt(s.xL, xLt, -1, 0.30), pt(s.xL, xLt, -1, 0.55), pt(s.xL, xLt, -1, 0.80), [xLt, s.top],
-      [(xLt + xRt) / 2, s.top],
-      [xRt, s.top], pt(s.xR, xRt, 1, 0.80), pt(s.xR, xRt, 1, 0.55), pt(s.xR, xRt, 1, 0.30), [s.xR, s.floor],
-    ];
-  };
-  const rows = rings.map((s) => ({ z: s.z, pts: sec(s) }));
+  const rows = rings.map((ring) => ({
+    z: ring.z,
+    pts: smoothBustleSectionPoints(ring, opts, bulge),
+  }));
   // tail cap: two collapsing rings ON the tail plane (z anchor untouched) —
   // shared grid vertices grade the wrap into the face; interior stays -z flat
-  const last = rows[rows.length - 1];
-  if (!last) return;
-  const cx = last.pts.reduce((t: number, p: number[]) => t + p[0], 0) / last.pts.length;
-  const cy = last.pts.reduce((t: number, p: number[]) => t + p[1], 0) / last.pts.length;
-  for (const f of [0.52, 0]) {
-    rows.push({ z: last.z, pts: last.pts.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]) });
-  }
-  const M = 11;
-  const emit = (pos: number[], idx: number[] | null): void => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
-    if (idx) g.setIndex(idx);
-    g.computeVertexNormals();
-    P.add('turret', g);
-  };
-  { // outer skin + graded tail cap (one shared-normal grid)
-    const pos = [], idx = [];
-    for (const r of rows) for (const p of r.pts) pos.push(p[0], yl(p[1]), zl(r.z));
-    for (let i = 0; i < rows.length - 1; i++) {
-      for (let j = 0; j < M - 1; j++) {
-        const a0 = i * M + j, a1 = a0 + 1, b0 = a0 + M, b1 = b0 + 1;
-        idx.push(a0, a1, b1, a0, b1, b0);
-      }
-    }
-    emit(pos, idx);
-  }
-  { // flat underside strip (hard bottom edges, follows the wrap plan)
-    const pos = [], idx = [];
-    for (const r of rows.slice(0, rings.length)) {
-      pos.push(r.pts[M - 1][0], yl(r.pts[M - 1][1]), zl(r.z), r.pts[0][0], yl(r.pts[0][1]), zl(r.z));
-    }
-    for (let i = 0; i < rings.length - 1; i++) {
-      const a0 = i * 2, a1 = a0 + 1, b0 = a0 + 2, b1 = b0 + 1;
-      idx.push(a0, a1, b1, a0, b1, b0);
-    }
-    emit(pos, idx);
-  }
-  { // flush front cap (dome-buried; hard edges like the old slab face)
-    const r = rows[0], pos = [];
-    const fx = r.pts.reduce((t, p) => t + p[0], 0) / r.pts.length;
-    const fy = r.pts.reduce((t, p) => t + p[1], 0) / r.pts.length;
-    for (let k = 0; k < M - 1; k++) {
-      const a = r.pts[k], b = r.pts[k + 1];
-      pos.push(fx, yl(fy), zl(r.z), b[0], yl(b[1]), zl(r.z), a[0], yl(a[1]), zl(r.z));
-    }
-    pos.push(fx, yl(fy), zl(r.z), r.pts[0][0], yl(r.pts[0][1]), zl(r.z), r.pts[M - 1][0], yl(r.pts[M - 1][1]), zl(r.z));
-    emit(pos, null);
-  }
+  if (!appendSmoothBustleTailCap(rows)) return;
+  emitSmoothBustleOuterSkin(P, rows, yl, zl);
+  emitSmoothBustleUnderside(P, rows, rings.length, yl, zl);
+  emitSmoothBustleFrontCap(P, rows[0], yl, zl);
 }
 
 // ---------------------------------------------------------------------------
