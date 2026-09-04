@@ -1352,8 +1352,33 @@ function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | 
  * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
  * authoritative per-build box in group.userData.aabb.
  */
-function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY, cylZ, torus, xform } = KIT;
+type MgClassKey = keyof typeof MG_CLASSES;
+type MgClassDefinition = (typeof MG_CLASSES)[MgClassKey];
+
+interface PintleMgBuildContext {
+  readonly opts: FittingOptions;
+  readonly classKey: MgClassKey;
+  readonly cls: MgClassDefinition;
+  readonly s: number;
+  readonly tone: string;
+  readonly weaponSlot: string;
+  readonly supportSlot: string;
+  readonly ammoSlot: string;
+  readonly parts: FittingParts;
+  readonly rw: number;
+  readonly rh: number;
+  readonly rd: number;
+  readonly colTop: number;
+  readonly recY: number;
+  readonly recZ: number;
+  readonly trunY: number;
+  readonly trunZ: number;
+  readonly shieldVariant: FittingOptions['shield'];
+  readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
+}
+
+function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
+  const { xform } = KIT;
   const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
   const cls = MG_CLASSES[classKey];
   const s = (opts.scale || 1) * cls.s;
@@ -1362,101 +1387,145 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   // Weapons and ammunition stay neutral gunmetal. Tone now controls only the
   // support/shield finish; letting the host camouflage color receiver caps and
   // ammo cans produced the miniature green/tan guns the fleet pass removes.
-  const B = 'dark';
-  const SUPPORT = tone === 'pale' ? 'detail' : 'dark';
+  const weaponSlot = 'dark';
+  const supportSlot = tone === 'pale' ? 'detail' : 'dark';
   const ammoSlot = opts.ammoSlot || 'gunmetalAmmo';
   const parts = fitParts();
   const [rw, rh, rd] = cls.rec.map((v) => v * s);
+  const colH = 0.16 * s;
+  const colTop = 0.014 + colH;
+  const recY = colTop + 0.080 * s + rh / 2;
+  const recZ = 0.06 * s;
+  const trunY = recY + 0.004;
+  const trunZ = recZ + rd / 2;
+  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
+  const aim = (geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry =>
+    xform(xform(geometry, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
 
+  return {
+    opts,
+    classKey,
+    cls,
+    s,
+    tone,
+    weaponSlot,
+    supportSlot,
+    ammoSlot,
+    parts,
+    rw,
+    rh,
+    rd,
+    colTop,
+    recY,
+    recZ,
+    trunY,
+    trunZ,
+    shieldVariant,
+    aim,
+  };
+}
+
+function addPintleMgMount(context: PintleMgBuildContext): void {
+  const { box, cylX, cylY, torus } = KIT;
+  const { colTop, parts, s, supportSlot, weaponSlot } = context;
   // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
   // load path. The old single post made every gun look like a block on a rod.
   const colH = 0.16 * s;
-  parts.add(SUPPORT, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
-  parts.add(B, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
-  parts.add(B, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
-  const colTop = 0.014 + colH;
-  parts.add(B, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
+  parts.add(supportSlot, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
+  parts.add(weaponSlot, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
+  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
+  parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
   for (const side of [-1, 1]) {
-    parts.add(B, box(0.020 * s, 0.095 * s, 0.105 * s),
+    parts.add(weaponSlot, box(0.020 * s, 0.095 * s, 0.105 * s),
       side * 0.052 * s, colTop + 0.070 * s, 0.045 * s, side * 0.05, 0, 0);
   }
-  parts.add(B, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
+  parts.add(weaponSlot, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
+}
 
+function addPintleMgReceiver(context: PintleMgBuildContext): void {
+  const { box } = KIT;
+  const { parts, rd, recY, recZ, rh, rw, s, weaponSlot } = context;
   // Browning-family receiver: service box, hinged top cover, side plate,
   // buffer head, charging handle, rear sight and dual spade grips.
-  const recY = colTop + 0.080 * s + rh / 2;
-  const recZ = 0.06 * s;
-  parts.add(B, box(rw, rh, rd), 0, recY, recZ);
-  parts.add(B, box(rw * 0.92, 0.018 * s, rd * 0.88),
+  parts.add(weaponSlot, box(rw, rh, rd), 0, recY, recZ);
+  parts.add(weaponSlot, box(rw * 0.92, 0.018 * s, rd * 0.88),
     0, recY + rh / 2 + 0.009 * s, recZ + 0.005 * s);
-  parts.add(B, box(0.020 * s, rh * 0.70, rd * 0.54),
+  parts.add(weaponSlot, box(0.020 * s, rh * 0.70, rd * 0.54),
     rw / 2 + 0.010 * s, recY, recZ - 0.025 * s);
-  parts.add(B, box(rw * 0.72, rh * 0.58, 0.050 * s),
+  parts.add(weaponSlot, box(rw * 0.72, rh * 0.58, 0.050 * s),
     0, recY - 0.005 * s, recZ - rd / 2 - 0.025 * s);
-  parts.add(B, box(0.052 * s, 0.017 * s, 0.075 * s),
+  parts.add(weaponSlot, box(0.052 * s, 0.017 * s, 0.075 * s),
     -rw / 2 - 0.026 * s, recY + 0.018 * s, recZ - 0.015 * s);
-  parts.add(B, box(0.044 * s, 0.045 * s, 0.018 * s),
+  parts.add(weaponSlot, box(0.044 * s, 0.045 * s, 0.018 * s),
     0, recY + rh / 2 + 0.030 * s, recZ - rd * 0.22);
   for (const side of [-1, 1]) {
-    parts.add(B, box(0.018 * s, 0.026 * s, 0.095 * s),
+    parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.095 * s),
       side * 0.036 * s, recY - 0.012 * s, recZ - rd / 2 - 0.080 * s,
       side * 0.08, 0, 0);
-    parts.add(B, box(0.035 * s, 0.018 * s, 0.018 * s),
+    parts.add(weaponSlot, box(0.035 * s, 0.018 * s, 0.018 * s),
       side * 0.045 * s, recY - 0.042 * s, recZ - rd / 2 - 0.122 * s);
   }
-  parts.add(B, box(0.012 * s, 0.020 * s, 0.020 * s),
+  parts.add(weaponSlot, box(0.012 * s, 0.020 * s, 0.020 * s),
     0, recY + rh / 2 + 0.022 * s, recZ + rd * 0.28);
+}
 
+function addPintleMgBarrel(context: PintleMgBuildContext): void {
+  const { box, cylZ, torus } = KIT;
+  const { aim, cls, opts, parts, s, trunY, trunZ, weaponSlot } = context;
   // barrel group, elevated about the trunnion at the receiver front.
-  const trunY = recY + 0.004;
-  const trunZ = recZ + rd / 2;
-  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry =>
-    xform(xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
   if (cls.jacket === 'sleeve') {
-    parts.add(B, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
+    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
     for (let k = 0; k < 4; k++) {
-      parts.add(B, aim(torus(cls.barrelR * s * 1.88, 0.0035 * s, 12),
+      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.88, 0.0035 * s, 12),
         (0.030 + k * 0.034) * s), 0, trunY, trunZ);
     }
   } else if (cls.jacket === 'fins') {
     for (let k = 0; k < 5; k++) {
-      parts.add(B, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
+      parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
     }
   } else if (cls.jacket === 'ribbed') {
-    parts.add(B, aim(cylZ(cls.barrelR * s * 1.32, 0.13 * s, 12), 0.065 * s), 0, trunY, trunZ);
+    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.32, 0.13 * s, 12), 0.065 * s), 0, trunY, trunZ);
     for (let k = 0; k < 4; k++) {
-      parts.add(B, aim(torus(cls.barrelR * s * 1.34, 0.003 * s, 12),
+      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.34, 0.003 * s, 12),
         (0.026 + k * 0.030) * s), 0, trunY, trunZ);
     }
   } else if (opts.barrelBridge) {
     // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
     // of the receiver.  Let callers request the missing breech-to-barrel run
     // without changing the certified silhouettes of existing fittings.
-    parts.add(B, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
+    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
   }
   const bl = cls.barrelL * s;
-  parts.add(B, aim(cylZ(cls.barrelR * s, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
-  parts.add(B, aim(cylZ(cls.flashR * s, cls.flashL * s, 12), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
-  parts.add(B, aim(cylZ(cls.barrelR * s * 0.55, 0.010, 10), 0.10 * s + bl + cls.flashL * s + 0.006), 0, trunY, trunZ);
-  parts.add(B, aim(box(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s,
+  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
+  parts.add(weaponSlot, aim(cylZ(cls.flashR * s, cls.flashL * s, 12), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
+  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 0.55, 0.010, 10), 0.10 * s + bl + cls.flashL * s + 0.006), 0, trunY, trunZ);
+  parts.add(weaponSlot, aim(box(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s,
     cls.barrelR * s + 0.014 * s), 0, trunY, trunZ);
+}
 
+function addPintleMgAmmo(context: PintleMgBuildContext): void {
+  const { box } = KIT;
+  const { ammoSlot, opts, parts, recY, recZ, rw, s, weaponSlot } = context;
   if (opts.ammo !== false) {
     const ax = -(rw / 2 + 0.055 * s);
     parts.add(ammoSlot, box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
-    parts.add(B, box(0.079 * s, 0.008 * s, 0.158 * s), ax, recY + 0.058 * s, recZ - 0.02);
-    parts.add(B, box(0.018 * s, 0.060 * s, 0.020 * s),
+    parts.add(weaponSlot, box(0.079 * s, 0.008 * s, 0.158 * s), ax, recY + 0.058 * s, recZ - 0.02);
+    parts.add(weaponSlot, box(0.018 * s, 0.060 * s, 0.020 * s),
       ax - 0.050 * s, recY + 0.002 * s, recZ - 0.020 * s);
     // Short visible feed run; links stay gunmetal and terminate at the
     // receiver instead of floating between unrelated boxes.
     for (let index = 0; index < 5; index++) {
       const t = index / 4;
-      parts.add(B, box(0.018 * s, 0.026 * s, 0.024 * s),
+      parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.024 * s),
         ax * (1 - t) - rw * 0.36 * t, recY + (0.020 + t * 0.012) * s,
         recZ + (0.065 + t * 0.070) * s, 0, 0, -0.10 + t * 0.16);
     }
   }
-  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
+}
+
+function addPintleMgShield(context: PintleMgBuildContext): void {
+  const { box, cylZ } = KIT;
+  const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
   if (shieldVariant) {
     const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
     const shieldZ = trunZ + 0.035 * s;
@@ -1466,9 +1535,9 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
       parts.add(shieldSlot, box(sideW * s, shieldH * s, 0.022 * s),
         side * (0.075 + sideW / 2) * s, recY + 0.018 * s, shieldZ,
         0, -side * 0.055, side * 0.035);
-      parts.add(B, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
+      parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
         side * (0.148 + sideW * 0.45) * s, recY + 0.006 * s, shieldZ - 0.020 * s);
-      parts.add(B, box(0.020 * s, 0.020 * s, 0.14 * s),
+      parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
         side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
         -0.22, 0, side * 0.08);
     }
@@ -1495,6 +1564,11 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
         0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
     }
   }
+}
+
+function addPintleMgRing(context: PintleMgBuildContext): void {
+  const { box, torus } = KIT;
+  const { opts, parts, s, tone } = context;
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.20) * s;
@@ -1506,6 +1580,10 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
       parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
     }
   }
+}
+
+function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
+  const { classKey, cls, opts, parts, shieldVariant } = context;
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = `fitting_browningDerived_${classKey}`;
   fitting.userData.barrelBridge = Boolean(opts.barrelBridge);
@@ -1527,6 +1605,17 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   return fitting;
 }
 
+function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
+  const context = createPintleMgBuildContext(opts);
+  addPintleMgMount(context);
+  addPintleMgReceiver(context);
+  addPintleMgBarrel(context);
+  addPintleMgAmmo(context);
+  addPintleMgShield(context);
+  addPintleMgRing(context);
+  return assemblePintleMg(context);
+}
+
 /**
  * Detailed US M2HB installation shared by the Sheridan, Patton and M60
  * families. The generic `pintleMG({ cls: 'm2' })` is the compact fleet
@@ -1536,15 +1625,36 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
  *
  * Origin: mounting foot on the roof. +Z is the firing direction.
  */
-function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
+interface AmericanM2BuildContext {
+  readonly opts: FittingOptions;
+  readonly s: number;
+  readonly ammoSide: number;
+  readonly parts: FittingParts;
+  readonly recY: number;
+  readonly recZ: number;
+  readonly trunZ: number;
+  readonly shieldVariant: FittingOptions['shield'];
+  readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
+}
+
+function createAmericanM2BuildContext(opts: FittingOptions): AmericanM2BuildContext {
   const s = opts.scale || 1;
   const elev = opts.elev ?? 0.035;
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const parts = fitParts();
-  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
-    KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  const aim = (geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
+    KIT.xform(geometry, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  const recY = 0.345 * s;
+  const recZ = 0.195 * s;
+  const trunZ = recZ + 0.250 * s;
+  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
 
+  return { opts, s, ammoSide, parts, recY, recZ, trunZ, shieldVariant, aim };
+}
+
+function addAmericanM2Mount(context: AmericanM2BuildContext): void {
+  const { box, cylX, cylY } = KIT;
+  const { parts, s } = context;
   // Roof bearing -> spindle -> fork -> trunnion: one unbroken load path.
   parts.add('dark', cylY(0.070 * s, 0.082 * s, 0.026 * s, 16), 0, 0.013 * s, 0);
   parts.add('dark', cylY(0.032 * s, 0.045 * s, 0.180 * s, 14), 0, 0.116 * s, 0);
@@ -1554,10 +1664,12 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
       side * 0.073 * s, 0.278 * s, 0.070 * s, side * 0.08, 0, 0);
   }
   parts.add('dark', cylX(0.046 * s, 0.205 * s, 14), 0, 0.330 * s, 0.105 * s);
+}
 
+function addAmericanM2Receiver(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { parts, recY, recZ, s } = context;
   // M2 receiver and recognizable top-cover/charging-handle grammar.
-  const recY = 0.345 * s;
-  const recZ = 0.195 * s;
   parts.add('dark', box(0.155 * s, 0.145 * s, 0.500 * s), 0, recY, recZ);
   parts.add('dark', box(0.145 * s, 0.022 * s, 0.445 * s),
     0, recY + 0.083 * s, recZ + 0.005 * s);
@@ -1570,7 +1682,11 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
       side * 0.053 * s, recY - 0.005 * s, recZ - 0.315 * s,
       side * 0.06, 0, 0);
   }
+}
 
+function addAmericanM2Ammo(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { ammoSide, opts, parts, recY, recZ, s } = context;
   // Closed ammunition chest, proud lid, retaining rack and receiver bridge.
   // This is part of the weapon installation rather than vehicle armor, so it
   // stays in neutral gunmetal and never inherits the host camouflage.
@@ -1594,11 +1710,14 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
         recY + (0.052 + t * 0.015) * s,
         recZ + (0.120 + t * 0.095) * s,
         0, 0, ammoSide * (0.10 - t * 0.16));
-    }
+      }
   }
+}
 
+function addAmericanM2Barrel(context: AmericanM2BuildContext): void {
+  const { cylZ, torus } = KIT;
+  const { aim, opts, parts, recY, s, trunZ } = context;
   // Jacket, barrel and flash hider share the receiver trunnion and elevation.
-  const trunZ = recZ + 0.250 * s;
   parts.add('dark', aim(cylZ(0.043 * s, 0.220 * s, 16), 0.110 * s),
     0, recY, trunZ);
   for (let index = 0; index < 5; index++) {
@@ -1612,7 +1731,11 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     0.220 * s + barrelLength + 0.0525 * s), 0, recY, trunZ);
   parts.add('dark', aim(cylZ(0.014 * s, 0.018 * s, 10),
     0.220 * s + barrelLength + 0.114 * s), 0, recY, trunZ);
+}
 
+function addAmericanM2Ring(context: AmericanM2BuildContext): void {
+  const { box, torus } = KIT;
+  const { opts, parts, s } = context;
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.235) * s;
@@ -1621,73 +1744,103 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
       parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
         Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
-    }
-  }
-  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
-  if (shieldVariant === 'low') {
-    for (const side of [-1, 1]) {
-      parts.add('hull', box(0.215 * s, 0.21 * s, 0.030 * s),
-        side * 0.125 * s, recY - 0.015 * s, trunZ + 0.085 * s,
-        0, -side * 0.045, side * 0.025);
-      parts.add('dark', box(0.022 * s, 0.175 * s, 0.034 * s),
-        side * 0.235 * s, recY - 0.018 * s, trunZ + 0.072 * s);
-    }
-    parts.add('dark', box(0.15 * s, 0.075 * s, 0.035 * s),
-      0, recY - 0.015 * s, trunZ + 0.108 * s);
-  } else if (shieldVariant === 'split') {
-    for (const side of [-1, 1]) {
-      parts.add('hull', box(0.205 * s, 0.30 * s, 0.032 * s),
-        side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
-        0, -side * 0.055, 0);
-      parts.add('dark', box(0.022 * s, 0.275 * s, 0.040 * s),
-        side * 0.252 * s, recY + 0.010 * s, trunZ + 0.080 * s);
-    }
-    parts.add('hull', box(0.36 * s, 0.040 * s, 0.045 * s),
-      0, recY + 0.175 * s, trunZ + 0.085 * s);
-  } else if (shieldVariant === 'armored') {
-    parts.add('hull', box(0.58 * s, 0.34 * s, 0.040 * s),
-      0, recY + 0.020 * s, trunZ + 0.090 * s);
-    for (const side of [-1, 1]) {
-      parts.add('hull', box(0.035 * s, 0.30 * s, 0.23 * s),
-        side * 0.272 * s, recY + 0.005 * s, trunZ - 0.010 * s,
-        0, -side * 0.10, 0);
-    }
-    parts.add('hull', box(0.57 * s, 0.035 * s, 0.25 * s),
-      0, recY + 0.205 * s, trunZ - 0.005 * s);
-    parts.add('dark', box(0.18 * s, 0.115 * s, 0.045 * s),
-      0, recY, trunZ + 0.120 * s);
-  } else if (shieldVariant) {
-    for (const side of [-1, 1]) {
-      parts.add('hull', box(0.245 * s, 0.30 * s, 0.035 * s),
-        side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
-        0, -side * 0.055, side * 0.035);
-      parts.add('dark', box(0.023 * s, 0.268 * s, 0.040 * s),
-        side * 0.274 * s, recY + 0.005 * s, trunZ + 0.076 * s);
-      parts.add('dark', box(0.024 * s, 0.024 * s, 0.18 * s),
-        side * 0.175 * s, recY - 0.115 * s, trunZ + 0.005 * s,
-        -0.28, 0, side * 0.08);
-    }
-    parts.add('hull', box(0.36 * s, 0.038 * s, 0.040 * s),
-      0, recY + 0.178 * s, trunZ + 0.085 * s);
-    parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
-      0, recY, trunZ + 0.115 * s);
-  }
-  if (shieldVariant) {
-    const shieldH = shieldVariant === 'low' ? 0.21 : shieldVariant === 'armored' ? 0.34 : 0.30;
-    const lipW = shieldVariant === 'armored' ? 0.58 : 0.49;
-    parts.add('hull', box(lipW * s, 0.026 * s, 0.055 * s),
-      0, recY + shieldH * 0.56 * s, trunZ + 0.065 * s, 0.10, 0, 0);
-    for (const side of [-1, 1]) {
-      parts.add('shadow', box(0.095 * s, 0.036 * s, 0.014 * s),
-        side * 0.145 * s, recY + 0.070 * s, trunZ + 0.112 * s,
-        0, -side * 0.055, 0);
-      for (const sy of [-0.075, 0.125]) {
-        parts.add('dark', cylZ(0.010 * s, 0.014 * s, 8),
-          side * 0.235 * s, recY + sy * s, trunZ + 0.116 * s);
       }
+  }
+}
+
+function addAmericanM2LowShield(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { parts, recY, s, trunZ } = context;
+  for (const side of [-1, 1]) {
+    parts.add('hull', box(0.215 * s, 0.21 * s, 0.030 * s),
+      side * 0.125 * s, recY - 0.015 * s, trunZ + 0.085 * s,
+      0, -side * 0.045, side * 0.025);
+    parts.add('dark', box(0.022 * s, 0.175 * s, 0.034 * s),
+      side * 0.235 * s, recY - 0.018 * s, trunZ + 0.072 * s);
+  }
+  parts.add('dark', box(0.15 * s, 0.075 * s, 0.035 * s),
+    0, recY - 0.015 * s, trunZ + 0.108 * s);
+}
+
+function addAmericanM2SplitShield(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { parts, recY, s, trunZ } = context;
+  for (const side of [-1, 1]) {
+    parts.add('hull', box(0.205 * s, 0.30 * s, 0.032 * s),
+      side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
+      0, -side * 0.055, 0);
+    parts.add('dark', box(0.022 * s, 0.275 * s, 0.040 * s),
+      side * 0.252 * s, recY + 0.010 * s, trunZ + 0.080 * s);
+  }
+  parts.add('hull', box(0.36 * s, 0.040 * s, 0.045 * s),
+    0, recY + 0.175 * s, trunZ + 0.085 * s);
+}
+
+function addAmericanM2ArmoredShield(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { parts, recY, s, trunZ } = context;
+  parts.add('hull', box(0.58 * s, 0.34 * s, 0.040 * s),
+    0, recY + 0.020 * s, trunZ + 0.090 * s);
+  for (const side of [-1, 1]) {
+    parts.add('hull', box(0.035 * s, 0.30 * s, 0.23 * s),
+      side * 0.272 * s, recY + 0.005 * s, trunZ - 0.010 * s,
+      0, -side * 0.10, 0);
+  }
+  parts.add('hull', box(0.57 * s, 0.035 * s, 0.25 * s),
+    0, recY + 0.205 * s, trunZ - 0.005 * s);
+  parts.add('dark', box(0.18 * s, 0.115 * s, 0.045 * s),
+    0, recY, trunZ + 0.120 * s);
+}
+
+function addAmericanM2StandardShield(context: AmericanM2BuildContext): void {
+  const { box } = KIT;
+  const { parts, recY, s, trunZ } = context;
+  for (const side of [-1, 1]) {
+    parts.add('hull', box(0.245 * s, 0.30 * s, 0.035 * s),
+      side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
+      0, -side * 0.055, side * 0.035);
+    parts.add('dark', box(0.023 * s, 0.268 * s, 0.040 * s),
+      side * 0.274 * s, recY + 0.005 * s, trunZ + 0.076 * s);
+    parts.add('dark', box(0.024 * s, 0.024 * s, 0.18 * s),
+      side * 0.175 * s, recY - 0.115 * s, trunZ + 0.005 * s,
+      -0.28, 0, side * 0.08);
+  }
+  parts.add('hull', box(0.36 * s, 0.038 * s, 0.040 * s),
+    0, recY + 0.178 * s, trunZ + 0.085 * s);
+  parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
+    0, recY, trunZ + 0.115 * s);
+}
+
+function addAmericanM2ShieldDetails(context: AmericanM2BuildContext): void {
+  const { box, cylZ } = KIT;
+  const { parts, recY, s, shieldVariant, trunZ } = context;
+  const shieldH = shieldVariant === 'low' ? 0.21 : shieldVariant === 'armored' ? 0.34 : 0.30;
+  const lipW = shieldVariant === 'armored' ? 0.58 : 0.49;
+  parts.add('hull', box(lipW * s, 0.026 * s, 0.055 * s),
+    0, recY + shieldH * 0.56 * s, trunZ + 0.065 * s, 0.10, 0, 0);
+  for (const side of [-1, 1]) {
+    parts.add('shadow', box(0.095 * s, 0.036 * s, 0.014 * s),
+      side * 0.145 * s, recY + 0.070 * s, trunZ + 0.112 * s,
+      0, -side * 0.055, 0);
+    for (const sy of [-0.075, 0.125]) {
+      parts.add('dark', cylZ(0.010 * s, 0.014 * s, 8),
+        side * 0.235 * s, recY + sy * s, trunZ + 0.116 * s);
     }
   }
+}
 
+function addAmericanM2Shield(context: AmericanM2BuildContext): void {
+  const { shieldVariant } = context;
+  if (!shieldVariant) return;
+  if (shieldVariant === 'low') addAmericanM2LowShield(context);
+  else if (shieldVariant === 'split') addAmericanM2SplitShield(context);
+  else if (shieldVariant === 'armored') addAmericanM2ArmoredShield(context);
+  else addAmericanM2StandardShield(context);
+  addAmericanM2ShieldDetails(context);
+}
+
+function assembleAmericanM2(context: AmericanM2BuildContext): THREE.Group {
+  const { ammoSide, opts, parts, shieldVariant } = context;
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = 'fitting_americanM2HB';
   const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === 'gunmetalAmmo');
@@ -1713,6 +1866,17 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.hasConnectedFeed = opts.ammo !== false;
   fitting.userData.hasEngineeredCradle = true;
   return fitting;
+}
+
+function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
+  const context = createAmericanM2BuildContext(opts);
+  addAmericanM2Mount(context);
+  addAmericanM2Receiver(context);
+  addAmericanM2Ammo(context);
+  addAmericanM2Barrel(context);
+  addAmericanM2Ring(context);
+  addAmericanM2Shield(context);
+  return assembleAmericanM2(context);
 }
 
 /**
