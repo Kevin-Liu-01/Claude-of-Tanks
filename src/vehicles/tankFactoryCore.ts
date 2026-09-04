@@ -1712,6 +1712,158 @@ const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
 // conformance, steering phase and wrap tangents all come from the belt course.
 const TRACK_SHOE_BAND_GAP_M = 0.012;
 
+function appendTrackArc(
+  points: TrackPoint[],
+  endpoint: GearEndpoint,
+  fromDeg: number,
+  toDeg: number,
+  steps: number,
+): void {
+  for (let step = 0; step <= steps; step++) {
+    const angle = (fromDeg + ((toDeg - fromDeg) * step) / steps) * D2R;
+    const radius = endpoint.r + TRACK_WRAP_CLEARANCE_M;
+    points.push([
+      endpoint.z + Math.sin(angle) * radius,
+      endpoint.y + Math.cos(angle) * radius,
+    ]);
+  }
+}
+
+function trackTangentDeg(
+  endpoint: GearEndpoint,
+  pointZ: number,
+  pointY: number,
+  sign: number,
+): number | null {
+  const radius = endpoint.r + TRACK_WRAP_CLEARANCE_M;
+  const deltaZ = pointZ - endpoint.z;
+  const deltaY = pointY - endpoint.y;
+  const distance = Math.hypot(deltaZ, deltaY);
+  if (distance <= radius + 1e-4) return null;
+  const pointAngle = Math.atan2(deltaZ, deltaY);
+  let angle = (pointAngle - sign * Math.acos(radius / distance)) / D2R;
+  if (angle < 0) angle += 360;
+  return angle;
+}
+
+function orderedTrackSupports(
+  supports: readonly TrackSupportPoint[] | null,
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+): TrackPoint[] {
+  if (!supports?.length) return [];
+  const direction = Math.sign(idler.z - sprocket.z) || 1;
+  return supports
+    .filter((support) => (support.z - sprocket.z) * direction > 0.12
+      && (idler.z - support.z) * direction > 0.12)
+    .sort((a, b) => (a.z - b.z) * direction)
+    .map((support) => [support.z, support.y]);
+}
+
+function rearTopExit(
+  sprocket: GearEndpoint,
+  innerSupports: readonly TrackPoint[],
+  smoothTangent: boolean,
+): { angleDeg: number; point: TrackPoint } {
+  const defaultExit = {
+    angleDeg: 0,
+    point: [
+      sprocket.z,
+      sprocket.y + sprocket.r + TRACK_WRAP_CLEARANCE_M,
+    ] as TrackPoint,
+  };
+  if (!smoothTangent || !innerSupports.length) return defaultExit;
+  const candidate = trackTangentDeg(
+    sprocket, innerSupports[0][0], innerSupports[0][1], 1,
+  );
+  if (candidate == null || candidate <= 0 || candidate >= 90) return defaultExit;
+  const angle = candidate * D2R;
+  return {
+    angleDeg: candidate,
+    point: [
+      sprocket.z + Math.sin(angle) * (sprocket.r + TRACK_WRAP_CLEARANCE_M),
+      sprocket.y + Math.cos(angle) * (sprocket.r + TRACK_WRAP_CLEARANCE_M),
+    ],
+  };
+}
+
+function topTrackSupports(
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+  topY: number,
+  supports: readonly TrackSupportPoint[] | null,
+  innerSupports: readonly TrackPoint[],
+  rearExit: TrackPoint,
+): TrackPoint[] {
+  const result: TrackPoint[] = [rearExit];
+  if (supports?.length) {
+    result.push(...innerSupports);
+  } else {
+    const sprocketTopY = sprocket.y + sprocket.r + TRACK_WRAP_CLEARANCE_M;
+    const idlerTopY = idler.y + idler.r + TRACK_WRAP_CLEARANCE_M;
+    result.push([
+      sprocket.z + (idler.z - sprocket.z) * 0.5,
+      Math.max(topY, (sprocketTopY + idlerTopY) / 2),
+    ]);
+  }
+  result.push([idler.z, idler.y + idler.r + TRACK_WRAP_CLEARANCE_M]);
+  return result;
+}
+
+function appendSaggingTopRun(
+  points: TrackPoint[],
+  supports: readonly TrackPoint[],
+  sag: number,
+  tautRearSpan: boolean,
+  tautFrontSpan: boolean,
+): void {
+  for (let spanIndex = 0; spanIndex < supports.length - 1; spanIndex++) {
+    const [z0, y0] = supports[spanIndex];
+    const [z1, y1] = supports[spanIndex + 1];
+    const span = Math.abs(z1 - z0);
+    const taut = (tautRearSpan && spanIndex === 0)
+      || (tautFrontSpan && spanIndex === supports.length - 2);
+    const dip = taut ? 0 : Math.min(sag, sag * span * 1.6);
+    const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
+    for (let step = spanIndex === 0 ? 0 : 1; step <= steps; step++) {
+      const progress = step / steps;
+      points.push([
+        z0 + (z1 - z0) * progress,
+        y0 + (y1 - y0) * progress - dip * Math.sin(progress * Math.PI),
+      ]);
+    }
+  }
+}
+
+function trackGroundAngle(endpoint: GearEndpoint, bottomY: number): number {
+  const cosine = (bottomY - endpoint.y) / (endpoint.r + TRACK_WRAP_CLEARANCE_M);
+  return cosine <= -1 ? Infinity : Math.acos(Math.min(1, cosine)) / D2R;
+}
+
+function appendTrackGroundRun(
+  points: TrackPoint[],
+  contact: TrackContactSpan | null,
+  frontContactZ: number,
+  rearContactZ: number,
+  frontEntryZ: number,
+  rearEntryZ: number,
+  idlerZ: number,
+  sprocketZ: number,
+  bottomY: number,
+): void {
+  if (contact) {
+    const frontZ = Math.min(frontContactZ, frontEntryZ);
+    const rearZ = Math.max(rearContactZ, rearEntryZ);
+    for (let step = 0; step <= 5; step++) {
+      points.push([frontZ + (rearZ - frontZ) * (step / 5), bottomY]);
+    }
+    return;
+  }
+  for (let step = 1; step <= 5; step++) {
+    points.push([idlerZ + (sprocketZ - idlerZ) * (step / 6), bottomY]);
+  }
+}
+
 function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
@@ -1721,79 +1873,26 @@ function trackLoopPoints({
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
   // this radial clearance the wrap is buried in the wheel geometry and the
   // front/rear rises never read (r5 track-gate critique).
-  const CLEAR = TRACK_WRAP_CLEARANCE_M;
-  const arc = (c: GearEndpoint, from: number, to: number, steps: number): void => {
-    for (let k = 0; k <= steps; k++) {
-      const a = (from + ((to - from) * k) / steps) * D2R;
-      pts.push([c.z + Math.sin(a) * (c.r + CLEAR), c.y + Math.cos(a) * (c.r + CLEAR)]);
-    }
-  };
   // r5 TRAPEZOID hard gate: exit angle where the wrap band leaves an end
   // wheel tangentially toward an external ground-contact point (deg, in the
   // arc() convention: 0 = straight up, 90 = +z). Raised end wheels get a
   // real APPROACH/DEPARTURE rise instead of the old flat bottom run poking
   // past both wraps at ground level (the "band wraps empty space" read).
-  const tangentDeg = (c: GearEndpoint, pz: number, py: number, sgn: number): number | null => {
-    const R = c.r + CLEAR;
-    const uz = pz - c.z, uy = py - c.y;
-    const d = Math.hypot(uz, uy);
-    if (d <= R + 1e-4) return null;              // contact point inside the wrap
-    const phi = Math.atan2(uz, uy);              // angle of the point from +y
-    let a = (phi - sgn * Math.acos(R / d)) / D2R;
-    if (a < 0) a += 360;
-    return a;
-  };
   // top run: sprocket top -> idler top. r7 sag rework: the run RESTS on real
   // support points (return rollers, or the wheel tops on dead-track WWII
   // rigs) and hangs a shallow catenary dip in EVERY unsupported span —
   // the old fixed-frequency ripple averaged out to a ruler line.
   const zs = sprocket.z, zi = idler.z;
-  const ys = sprocket.y + sprocket.r + CLEAR, yi = idler.y + idler.r + CLEAR;
-  const dir = Math.sign(zi - zs) || 1;
-  const inner = supports && supports.length
-    ? supports
-      .filter((s) => (s.z - zs) * dir > 0.12 && (zi - s.z) * dir > 0.12)
-      .sort((a, b) => (a.z - b.z) * dir)
-      .map((s): TrackPoint => [s.z, s.y])
-    : [] as TrackPoint[];
+  const inner = orderedTrackSupports(supports, sprocket, idler);
   // Raised rear drives need to leave the crown on a real tangent. Closing
   // the wrap at 12 o'clock and immediately descending toward the first
   // return roller creates a visible pointed vertex where the two courses
   // meet. This is opt-in so established fleet loops remain byte-identical.
-  let rearTopDeg = 0;
-  let rearTop: TrackPoint = [zs, ys];
-  if (smoothRearTopTangent && inner.length) {
-    const candidate = tangentDeg(sprocket, inner[0][0], inner[0][1], 1);
-    if (candidate != null && candidate > 0 && candidate < 90) {
-      rearTopDeg = candidate;
-      const a = rearTopDeg * D2R;
-      rearTop = [
-        sprocket.z + Math.sin(a) * (sprocket.r + CLEAR),
-        sprocket.y + Math.cos(a) * (sprocket.r + CLEAR),
-      ];
-    }
-  }
-  const sup: TrackPoint[] = [rearTop];
-  if (supports && supports.length) {
-    sup.push(...inner);
-  } else {
-    // no explicit supports: hold the line up at topY mid-run
-    sup.push([zs + (zi - zs) * 0.5, Math.max(topY, (ys + yi) / 2)]);
-  }
-  sup.push([zi, yi]);
-  for (let k = 0; k < sup.length - 1; k++) {
-    const [z0, y0] = sup[k], [z1, y1] = sup[k + 1];
-    const span = Math.abs(z1 - z0);
-    const dip = (tautRearSpan && k === 0)
-      || (tautFrontSpan && k === sup.length - 2)
-      ? 0
-      : Math.min(sag, sag * span * 1.6);
-    const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
-    for (let j = k === 0 ? 0 : 1; j <= steps; j++) {
-      const t = j / steps;
-      pts.push([z0 + (z1 - z0) * t, y0 + (y1 - y0) * t - dip * Math.sin(t * Math.PI)]);
-    }
-  }
+  const rearExit = rearTopExit(sprocket, inner, smoothRearTopTangent);
+  const topSupports = topTrackSupports(
+    sprocket, idler, topY, supports, inner, rearExit.point,
+  );
+  appendSaggingTopRun(pts, topSupports, sag, tautRearSpan, tautFrontSpan);
   // ground-contact span: only between the outer ROAD wheels does the run lie
   // flat at botY; outside it the band rises straight to its wrap tangents.
   // The previous clamp forced both ground-contact endpoints *inside* the end
@@ -1805,8 +1904,8 @@ function trackLoopPoints({
   const cR = contact ? contact.zR : zs;
   // clamped: degenerate rigs (end wheel wrap at/below ground) keep the old
   // near-full wrap instead of an open or crossed loop
-  const aIdler = Math.max((contact && tangentDeg(idler, cF, botY, 1)) || 170, 120);
-  const aSprk = Math.min((contact && tangentDeg(sprocket, cR, botY, -1)) || 190, 244);
+  const aIdler = Math.max((contact && trackTangentDeg(idler, cF, botY, 1)) || 170, 120);
+  const aSprk = Math.min((contact && trackTangentDeg(sprocket, cR, botY, -1)) || 190, 244);
   // GROUND TERMINATION (geo-gate round-2 clamp, reworked): a wrap whose
   // bottom dips below the ground run used to emit sub-ground arc samples
   // that the final clamp FLATTENED IN PLACE — several points collapsed onto
@@ -1817,29 +1916,22 @@ function trackLoopPoints({
   // above ground (every currently-passing rig — audited: no verification
   // tank emits a sub-ground point) have no crossing, so their loops are
   // bit-identical to the pre-rework output.
-  const groundDeg = (c: GearEndpoint): number => {
-    const cosA = (botY - c.y) / (c.r + CLEAR);
-    return cosA <= -1 ? Infinity : Math.acos(Math.min(1, cosA)) / D2R;
-  };
-  const gF = groundDeg(idler);                 // front wrap ground crossing (deg)
-  const gR = groundDeg(sprocket);              // rear wrap ground crossing (deg)
+  const gF = trackGroundAngle(idler, botY);     // front wrap ground crossing (deg)
+  const gR = trackGroundAngle(sprocket, botY);  // rear wrap ground crossing (deg)
   const aF = Math.min(aIdler, 176, gF);        // front arc end
   const aGR = 360 - gR;                        // rear crossing in arc() angles
   const aR = Math.max(aSprk, 184, aGR);        // rear arc start
-  arc(idler, 0, aF, frontArcSteps);             // around the idler (front)
+  appendTrackArc(pts, idler, 0, aF, frontArcSteps); // around the idler (front)
   // bottom run: approach point -> flat contact span -> departure point.
   // A ground-terminated wrap enters the ground at its own crossing point —
   // never emit a flat-run endpoint past it (a contact span reaching beyond a
   // sunken wrap would double the run back under the wheel).
-  const zEnterF = aF === gF ? idler.z + Math.sin(aF * D2R) * (idler.r + CLEAR) : cF;
-  const zEnterR = aR === aGR ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + CLEAR) : cR;
-  if (contact) {
-    const zf = Math.min(cF, zEnterF), zr = Math.max(cR, zEnterR);
-    for (let k = 0; k <= 5; k++) pts.push([zf + (zr - zf) * (k / 5), botY]);
-  } else {
-    for (let k = 1; k <= 5; k++) pts.push([zi + (zs - zi) * (k / 6), botY]);
-  }
-  arc(sprocket, aR, 360 + rearTopDeg, rearArcSteps); // around the sprocket (rear)
+  const zEnterF = aF === gF
+    ? idler.z + Math.sin(aF * D2R) * (idler.r + TRACK_WRAP_CLEARANCE_M) : cF;
+  const zEnterR = aR === aGR
+    ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + TRACK_WRAP_CLEARANCE_M) : cR;
+  appendTrackGroundRun(pts, contact, cF, cR, zEnterF, zEnterR, zi, zs, botY);
+  appendTrackArc(pts, sprocket, aR, 360 + rearExit.angleDeg, rearArcSteps);
   // drop duplicate closing point
   pts.pop();
   // ground clamp, kept as the last-resort safety net (pathological cfgs
