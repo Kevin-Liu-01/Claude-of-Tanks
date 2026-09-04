@@ -6596,7 +6596,7 @@ function buildT90MS(P: T90BuilderPort): void {
     [-1.06, 1.46, 1.75], [1.06, 1.46, 1.75], [1.06, 0.84, 3.43], [-1.06, 0.84, 3.43]));
   // rear transom rack row + sliver bars (shared t90-print tail read);
   // §B2 cell closures per the critic's standard-check coordinates
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hull', box(0.98, 0.30, 0.30), s * 0.60, 1.50, -3.26);
     P.add('hullDark', box(0.90, 0.014, 0.03), s * 0.60, 1.652, -3.14);
     P.add('hull', box(0.30, 0.26, 0.26), s * 1.42, 1.44, -3.24);
@@ -6604,17 +6604,19 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('hull', box(0.16, 0.20, 0.18), s * 1.53, 1.21, -3.05);    // corner bracket (§B2 cell -1.56,-3.05)
     P.add('hull', box(0.07, 0.14, 0.16), s * 0.60, 1.235, -3.50);
     P.add('hullDark', box(0.05, 0.10, 0.03), s * 0.60, 1.235, -3.49);  // cap face -3.505 (gate r1 overall trim)
-  }
+  });
   // Unequal strapped rear fuel drums convert the old square proxy row into
   // the source's rounded service silhouette. The existing boxes remain
   // buried as cradles, giving both cylinders a visible hull load path.
-  for (const [x, len, r] of [[-0.64, 0.82, 0.150], [0.57, 0.70, 0.135]]) {
+  ([[-0.64, 0.82, 0.150], [0.57, 0.70, 0.135]] as const).forEach(([x, len, r]) => {
     P.add('hull', cylX(r, len, 14), x, 1.49, -3.40);
     for (const sx of [-0.28, 0.28]) P.add('hullDark', cylX(r + 0.009, 0.035, 14), x + sx * len, 1.49, -3.40);
-  }
-  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
-    P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
-  }
+  });
+  ([-1, 1] as const).forEach((s) => {
+    for (let i = 0; i < 11; i++) {
+      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
+    }
+  });
   // Forward fender/mudguard assemblies carry the print's falling bow-side
   // band (1.40 @ 2.90 -> 1.26 @ 3.23 -> 1.10 @ 3.40) over the dropped
   // glacis.  The old six-box chain hit those stations but read as thin craft
@@ -6624,7 +6626,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // so the Tagil now has a sloped armored brow rather than shelves and open
   // risers.  Both floors remain above the native return/terminal shoe crown.
   const tagilFrontGuardLabels: string[] = [];
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     const side = s < 0 ? 'left' : 'right';
     const addGuardPart = (
       segment: string,
@@ -6673,7 +6675,7 @@ function buildT90MS(P: T90BuilderPort): void {
     addGuardPart('sloped-outer-shell', orientedSlab(
       ...shellLower as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple],
       ...shellUpper as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]), 0, 0, 0);
-  }
+  });
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, hlX: 1.02 });
   // Relikt glacis cassette courses — CRITIC FIX (defect 3): per-segment
@@ -6732,7 +6734,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // authored to -3.62 sliver-class, hullLengthM sovereign)
   // CRITIC FIX (defect 11 "one pipe railing"): the real MULTI-BAR field —
   // five bars per flank + dense verticals, same weave on the transom
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     for (let r = 0; r < 5; r++) {
       P.add('hullDark', box(0.028, 0.028, 1.55), s * 1.868, 0.60 + r * 0.17, -2.12);
     }
@@ -6744,38 +6746,42 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -1.50);
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -2.10);
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -2.70);
-  }
+  });
   // (gate r1: the -3.60 transom cage owned the hullLengthM body span —
   // the column ROUGH spans the bar gaps, so thin bars still count; pulled
   // to face -3.47, the -4.05 print reach stays the documented cap)
-  for (let r = 0; r < 5; r++) P.add('hullDark', box(3.40, 0.028, 0.028), 0, 0.60 + r * 0.16, -3.455);   // LADDER-R1: transom weave to ±1.70 (ref st0 width carrier)
-  for (const cx of [-1.62, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.62]) P.add('hullDark', box(0.024, 0.68, 0.024), cx, 0.92, -3.45);
+  Array.from({ length: 5 }, (_, index) => index).forEach((r) => {
+    P.add('hullDark', box(3.40, 0.028, 0.028), 0, 0.60 + r * 0.16, -3.455);
+  });   // LADDER-R1: transom weave to ±1.70 (ref st0 width carrier)
+  [-1.62, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.62].forEach((cx) => {
+    P.add('hullDark', box(0.024, 0.68, 0.024), cx, 0.92, -3.45);
+  });
   // Unequal backed service bays sit behind the open recovery weave. The
   // split widths, offset louvres and low fittings reproduce the source's
   // irregular transom without turning the external cage into a loose wall.
-  for (const [x, w, h, y, n] of [
+  ([
     [-1.20, 0.34, 0.19, 1.11, 3], [-0.69, 0.48, 0.25, 1.01, 4],
     [-0.12, 0.30, 0.17, 1.14, 3], [0.48, 0.44, 0.22, 1.03, 4],
-  ]) {
+  ] as const).forEach(([x, w, h, y, n]) => {
     P.add('hullDark', box(w, h, 0.025), x, y, -3.425);
     for (let i = 0; i < n; i++) P.add('hull', box(0.025, h * 0.62, 0.018), x - w * 0.36 + i * (w * 0.72 / Math.max(1, n - 1)), y, -3.445);
     P.add('hull', box(0.035, h * 0.80, 0.020), x + w * 0.42, y, -3.448);
-  }
+  });
   P.add('hull', box(0.34, 0.12, 0.05), -1.18, 0.72, -3.46);
   P.add('hullDark', box(0.24, 0.09, 0.052), 1.20, 0.80, -3.46);
   P.add('hullDark', cylZ(0.11, 0.048, 14), 1.06, 1.13, -3.47);
   P.add('hull', cylZ(0.068, 0.050, 14), 1.06, 1.13, -3.502);
-  for (const x of [-0.58, 0.52]) {
+  [-0.58, 0.52].forEach((x) => {
     P.add('hullDark', cylZ(0.085, 0.045, 12), x, 0.69, -3.48);
     P.add('hull', cylZ(0.052, 0.048, 12), x, 0.69, -3.505);
-  }
+  });
   P.add('hullDark', box(0.055, 0.30, 0.050), 1.34, 0.78, -3.46);
   // cage stays run FORWARD to the hull's upper-band rake face (the lower
   // band pinches to halfW 0.93 back here — a y-0.66 stay lands in air)
-  for (const s of [-1, 1]) P.add('hullDark', box(0.03, 0.03, 0.50), s * 1.30, 0.95, -3.21);
+  [-1, 1].forEach((s) => P.add('hullDark', box(0.03, 0.03, 0.50), s * 1.30, 0.95, -3.21));
   widthAnchor(P, 1.89, 0.95, -1.60);
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
     const side = s < 0 ? 'left' : 'right';
     const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
@@ -6789,7 +6795,7 @@ function buildT90MS(P: T90BuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.075,
     });
     P.add('hullDark', box(0.38, 0.035, 0.060), s * 1.53, 1.075, 3.345);
-  }
+  });
   P.hullG.userData.t90MSFrontMudguardReceipt = Object.freeze({
     labels: Object.freeze(tagilFrontGuardLabels),
     sides: 2,
@@ -6865,12 +6871,12 @@ function buildT90MS(P: T90BuilderPort): void {
   P.add('turretDark', box(0.54, 0.40, 0.04), 0, 0.20, 1.42, -0.32, 0, 0);   // V-vertex gap plate (§B2)
   });
   // smoke banks behind the cheek shoulder (print smokecaps seat)
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     const sb = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040, len: 0.26, pitch: -0.42, splay: 0.30, arc: 0.5, spacing: 0.10 });
     sb.position.set(s * 1.44, 0.62, -0.42);
     sb.rotation.y = s * 1.05;
     P.turretG.add(sb);
-  }
+  });
   // ---- the BIG removable bustle — CRITIC FIX (defect 12 "invisible in
   // plan"): widened to the print's ±1.08 body (roof 2.14w, underside
   // 1.70w, to world -2.79) with SEAMED/LATCHED module rows down both
@@ -6881,7 +6887,7 @@ function buildT90MS(P: T90BuilderPort): void {
     [-2.70, 0.26, 0.62, -0.99, 0.99, -0.96, 0.96, -0.90, 0.90],
   ]));
   P.add('turretDark', box(1.90, 0.32, 0.03), 0, 0.44, -2.72);
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     // LADDER-R1 (plan receipts x ±1.06..±1.32): the print's module row
     // TAPERS with the bustle — a 3-step cascade (outer faces 1.35 -> 1.275
     // -> 1.135) replaces the uniform ±1.35 run; seam/latch grammar kept
@@ -6899,16 +6905,16 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('turretDark', box(0.09, 0.02, 0.012), s * 1.295, 0.42, -1.135);   // row end seam
     P.add('turretDark', box(0.14, 0.06, 0.06), s * 1.12, 0.42, -1.85);      // B-step mount brackets onto the bustle wall (§B2)
     P.add('turretDark', box(0.14, 0.06, 0.06), s * 1.12, 0.42, -2.12);
-  }
+  });
   // rear slat cage — CRITIC FIX (defect 10 "louver grille inset"): the
   // dark backdrop plate is GONE; the lattice STANDS OFF the bustle tail
   // with open air/shadow behind (print cage -3.27 behind bustle -2.79;
   // merkava authored-open-structure class), carried on four struts.
   P.add('turretDetail', box(1.70, 0.028, 0.05), 0, 0.62, -3.03);
   P.add('turretDetail', box(1.70, 0.028, 0.05), 0, 0.24, -3.03);
-  for (const by of [0.335, 0.43, 0.525]) P.add('turretDetail', box(1.66, 0.022, 0.044), 0, by, -3.025);
-  for (const bx of [-0.80, -0.40, 0, 0.40, 0.80]) P.add('turretDetail', box(0.024, 0.40, 0.05), bx, 0.43, -3.03);
-  for (const bx of [-0.72, -0.24, 0.24, 0.72]) P.add('turretDark', box(0.03, 0.03, 0.34), bx, 0.43, -2.86);   // standoff struts onto the bustle tail (LADDER-R1: reach the moved-forward tail plate)
+  [0.335, 0.43, 0.525].forEach((by) => P.add('turretDetail', box(1.66, 0.022, 0.044), 0, by, -3.025));
+  [-0.80, -0.40, 0, 0.40, 0.80].forEach((bx) => P.add('turretDetail', box(0.024, 0.40, 0.05), bx, 0.43, -3.03));
+  [-0.72, -0.24, 0.24, 0.72].forEach((bx) => P.add('turretDark', box(0.03, 0.03, 0.34), bx, 0.43, -2.86));   // standoff struts onto the bustle tail (LADDER-R1: reach the moved-forward tail plate)
   // ---- roof ensemble ON the bustle (the Tagil read): UDP T05BV-1 RWS
   // center-right as a LOW-PROFILE station (pintle sunk into the bustle,
   // receiver top at the 2.25w dims line — the t90a Kord recipe; the
