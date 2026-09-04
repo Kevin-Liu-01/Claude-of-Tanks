@@ -2375,6 +2375,186 @@ function simplifiedTrackShoeGeometry(
   return geometry;
 }
 
+interface TrackShoeAssembly {
+  parts: THREE.BufferGeometry[];
+  trackW: number;
+  pitch: number;
+  padH: number;
+  grouserH: number;
+}
+
+function appendTrackShoeBox(
+  assembly: TrackShoeAssembly,
+  w: number,
+  h: number,
+  d: number,
+  x = 0,
+  y = 0,
+  z = 0,
+  ry = 0,
+  omittedFaces: readonly number[] | null = null,
+): void {
+  assembly.parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
+}
+
+function appendTrackShoeBar(
+  assembly: TrackShoeAssembly,
+  w: number,
+  d: number,
+  x = 0,
+  z = 0,
+  ry = 0,
+  height = assembly.grouserH,
+): void {
+  appendTrackShoeBox(assembly, w, height, d, x,
+    assembly.padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
+}
+
+function appendTrackShoeChevron(
+  assembly: TrackShoeAssembly,
+  z: number,
+  direction = 1,
+  height = assembly.grouserH,
+): void {
+  const { trackW, pitch } = assembly;
+  appendTrackShoeBar(assembly, trackW * 0.47, pitch * 0.12,
+    -trackW * 0.225, z, direction * 0.28, height);
+  appendTrackShoeBar(assembly, trackW * 0.47, pitch * 0.12,
+    trackW * 0.225, z, -direction * 0.28, height);
+}
+
+function appendTrackShoePad(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+  const { trackW, pitch, padH } = assembly;
+  if (pattern.surface !== 'paired-pad' && pattern.surface !== 'rubber-block'
+      && pattern.surface !== 'split-chevron') {
+    appendTrackShoeBox(assembly, trackW * 0.97, padH, pitch * pattern.padCoverage);
+    return;
+  }
+  const gap = trackW * 0.055;
+  const halfW = (trackW * 0.97 - gap) / 2;
+  appendTrackShoeBox(assembly, halfW, padH, pitch * pattern.padCoverage,
+    -(halfW + gap) / 2);
+  appendTrackShoeBox(assembly, halfW, padH, pitch * pattern.padCoverage,
+    (halfW + gap) / 2);
+}
+
+function appendTrackShoeSurface(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+  const { trackW, pitch, grouserH } = assembly;
+  switch (pattern.surface) {
+    case 'triple-bar':
+      for (const z of [-0.28, 0, 0.28]) {
+        appendTrackShoeBar(assembly, trackW * 0.88, pitch * 0.10, 0, pitch * z);
+      }
+      return;
+    case 'cast-block':
+      appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.13, 0, pitch * 0.25);
+      appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.13, 0, -pitch * 0.25);
+      appendTrackShoeBar(assembly, trackW * 0.24, pitch * 0.34, 0, 0, 0, grouserH * 0.72);
+      return;
+    case 'chevron':
+      appendTrackShoeChevron(assembly, pitch * 0.17, 1);
+      appendTrackShoeChevron(assembly, -pitch * 0.17, -1);
+      return;
+    case 'paired-pad':
+      for (const x of [-trackW * 0.245, trackW * 0.245]) {
+        appendTrackShoeBar(assembly, trackW * 0.40, pitch * 0.12, x, pitch * 0.25);
+        appendTrackShoeBar(assembly, trackW * 0.40, pitch * 0.12, x, -pitch * 0.25);
+      }
+      return;
+    case 'heavy-chevron':
+      appendTrackShoeChevron(assembly, pitch * 0.18, 1, grouserH * 1.08);
+      appendTrackShoeChevron(assembly, -pitch * 0.18, -1, grouserH * 1.08);
+      appendTrackShoeBar(assembly, trackW * 0.22, pitch * 0.18,
+        0, 0, 0, grouserH * 0.72);
+      return;
+    case 'fine-rib':
+      for (const z of [-0.25, 0, 0.25]) {
+        appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.08, 0, pitch * z);
+      }
+      return;
+    case 'open-chevron':
+      appendTrackShoeChevron(assembly, pitch * 0.18, 1, grouserH * 1.04);
+      appendTrackShoeChevron(assembly, -pitch * 0.18, -1, grouserH * 1.04);
+      for (const side of [-1, 1]) {
+        appendTrackShoeBar(assembly, trackW * 0.18, pitch * 0.13,
+          side * trackW * 0.37, 0, 0, grouserH * 0.72);
+      }
+      return;
+    case 'rubber-block':
+      for (const x of [-trackW * 0.245, trackW * 0.245]) {
+        for (const z of [-pitch * 0.23, pitch * 0.23]) {
+          appendTrackShoeBar(assembly, trackW * 0.37, pitch * 0.25, x, z);
+        }
+      }
+      return;
+    case 'split-chevron':
+      appendTrackShoeChevron(assembly, pitch * 0.19, 1);
+      appendTrackShoeChevron(assembly, -pitch * 0.19, -1);
+      appendTrackShoeBar(assembly, trackW * 0.16, pitch * 0.16,
+        0, 0, 0, grouserH * 0.65);
+      return;
+    case 'staggered-rib':
+      for (let rib = 0; rib < 4; rib++) {
+        const side = rib % 2 ? 1 : -1;
+        appendTrackShoeBar(assembly, trackW * 0.53, pitch * 0.075,
+          side * trackW * 0.205, pitch * (-0.30 + rib * 0.20), side * 0.08);
+      }
+      return;
+    case 'dead-track':
+      appendTrackShoeBar(assembly, trackW * 0.90, pitch * 0.18);
+      appendTrackShoeBar(assembly, trackW * 0.76, pitch * 0.08,
+        0, pitch * 0.31, 0, grouserH * 0.65);
+      appendTrackShoeBar(assembly, trackW * 0.76, pitch * 0.08,
+        0, -pitch * 0.31, 0, grouserH * 0.65);
+      return;
+    default:
+      throw new Error('Unsupported track shoe surface');
+  }
+}
+
+function appendTrackShoeStructure(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+  const { trackW, pitch, padH } = assembly;
+  const shoulderLift = pattern.shoulderHeight;
+  for (const side of [-1, 1]) {
+    appendTrackShoeBox(assembly, trackW * 0.085, shoulderLift, pitch * 0.80,
+      side * trackW * 0.442, padH / 2 + shoulderLift / 2, 0, 0,
+      [SHOE_BOX_BOTTOM]);
+  }
+  const webH = pattern.webHeight;
+  appendTrackShoeBox(assembly, trackW * 0.78, webH, pitch * pattern.webDepth,
+    0, -(padH + webH) / 2 + 0.004, 0, 0, [SHOE_BOX_TOP]);
+
+  const hornH = pattern.hornHeight;
+  const hornBaseH = hornH * 0.58;
+  const hornTipH = hornH - hornBaseH;
+  const hornBaseY = -(padH / 2 + webH + hornBaseH / 2 - 0.006);
+  appendTrackShoeBox(assembly, Math.min(trackW * 0.16, 0.082), hornBaseH, pitch * 0.34,
+    0, hornBaseY, 0, 0, [SHOE_BOX_TOP]);
+  appendTrackShoeBox(assembly, Math.min(trackW * 0.09, 0.046), hornTipH, pitch * 0.21,
+    0, hornBaseY - hornBaseH / 2 - hornTipH / 2, 0, 0, [SHOE_BOX_TOP]);
+}
+
+function appendTrackShoePins(
+  assembly: TrackShoeAssembly,
+  pattern: TrackPattern,
+  pinCapOuter: number | null,
+): void {
+  if (pattern.pinStyle !== 'end-caps') return;
+  const { trackW, pitch, padH, parts } = assembly;
+  const outer = pinCapOuter ?? trackW * 0.48;
+  const capLength = Math.min(0.058, trackW * 0.15);
+  const capX = Math.max(0, outer - capLength / 2);
+  const pinY = -(padH / 2 + pattern.webHeight * 0.38);
+  for (const side of [-1, 1] as const) {
+    for (const z of [-pitch * 0.30, pitch * 0.30]) {
+      parts.push(xform(
+        oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
+        side * capX, pinY, z,
+      ));
+    }
+  }
+}
+
 function trackShoeGeometry(
   trackW: number,
   pitch: number,
@@ -2387,147 +2567,24 @@ function trackShoeGeometry(
   // closed course. Surface casting, connector web, transverse pins and guide
   // horn remain mechanically distinct within that shoe, but none can become
   // an independently offset or differently animated second track layer.
-  const padCoverage = pattern.padCoverage;
-  const padH = pattern.padHeight;
-  const grouserH = pattern.grouserHeight;
   const parts: THREE.BufferGeometry[] = [];
-  const addBox = (
-    w: number,
-    h: number,
-    d: number,
-    x = 0,
-    y = 0,
-    z = 0,
-    ry = 0,
-    omittedFaces: readonly number[] | null = null,
-  ): void => {
-    parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
+  const assembly: TrackShoeAssembly = {
+    parts,
+    trackW,
+    pitch,
+    padH: pattern.padHeight,
+    grouserH: pattern.grouserHeight,
   };
-  const addBar = (
-    w: number,
-    d: number,
-    x = 0,
-    z = 0,
-    ry = 0,
-    height: number = grouserH,
-  ): void => {
-    addBox(w, height, d, x, padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
-  };
-  const addChevron = (z: number, direction = 1, height: number = grouserH): void => {
-    addBar(trackW * 0.47, pitch * 0.12, -trackW * 0.225, z, direction * 0.28, height);
-    addBar(trackW * 0.47, pitch * 0.12, trackW * 0.225, z, -direction * 0.28, height);
-  };
-
-  if (pattern.surface === 'paired-pad' || pattern.surface === 'rubber-block'
-      || pattern.surface === 'split-chevron') {
-    const gap = trackW * 0.055;
-    const halfW = (trackW * 0.97 - gap) / 2;
-    addBox(halfW, padH, pitch * padCoverage, -(halfW + gap) / 2);
-    addBox(halfW, padH, pitch * padCoverage, (halfW + gap) / 2);
-  } else {
-    addBox(trackW * 0.97, padH, pitch * padCoverage);
-  }
-
-  switch (pattern.surface) {
-    case 'triple-bar':
-      for (const z of [-0.28, 0, 0.28]) addBar(trackW * 0.88, pitch * 0.10, 0, pitch * z);
-      break;
-    case 'cast-block':
-      addBar(trackW * 0.86, pitch * 0.13, 0, pitch * 0.25);
-      addBar(trackW * 0.86, pitch * 0.13, 0, -pitch * 0.25);
-      addBar(trackW * 0.24, pitch * 0.34, 0, 0, 0, grouserH * 0.72);
-      break;
-    case 'chevron':
-      addChevron(pitch * 0.17, 1);
-      addChevron(-pitch * 0.17, -1);
-      break;
-    case 'paired-pad':
-      for (const x of [-trackW * 0.245, trackW * 0.245]) {
-        addBar(trackW * 0.40, pitch * 0.12, x, pitch * 0.25);
-        addBar(trackW * 0.40, pitch * 0.12, x, -pitch * 0.25);
-      }
-      break;
-    case 'heavy-chevron':
-      addChevron(pitch * 0.18, 1, grouserH * 1.08);
-      addChevron(-pitch * 0.18, -1, grouserH * 1.08);
-      addBar(trackW * 0.22, pitch * 0.18, 0, 0, 0, grouserH * 0.72);
-      break;
-    case 'fine-rib':
-      for (const z of [-0.25, 0, 0.25]) addBar(trackW * 0.86, pitch * 0.08, 0, pitch * z);
-      break;
-    case 'open-chevron':
-      addChevron(pitch * 0.18, 1, grouserH * 1.04);
-      addChevron(-pitch * 0.18, -1, grouserH * 1.04);
-      for (const side of [-1, 1]) {
-        addBar(trackW * 0.18, pitch * 0.13, side * trackW * 0.37, 0, 0, grouserH * 0.72);
-      }
-      break;
-    case 'rubber-block':
-      for (const x of [-trackW * 0.245, trackW * 0.245]) {
-        for (const z of [-pitch * 0.23, pitch * 0.23]) {
-          addBar(trackW * 0.37, pitch * 0.25, x, z, 0, grouserH);
-        }
-      }
-      break;
-    case 'split-chevron':
-      addChevron(pitch * 0.19, 1);
-      addChevron(-pitch * 0.19, -1);
-      addBar(trackW * 0.16, pitch * 0.16, 0, 0, 0, grouserH * 0.65);
-      break;
-    case 'staggered-rib':
-      for (let rib = 0; rib < 4; rib++) {
-        const side = rib % 2 ? 1 : -1;
-        addBar(trackW * 0.53, pitch * 0.075, side * trackW * 0.205,
-          pitch * (-0.30 + rib * 0.20), side * 0.08);
-      }
-      break;
-    case 'dead-track':
-      addBar(trackW * 0.90, pitch * 0.18, 0, 0);
-      addBar(trackW * 0.76, pitch * 0.08, 0, pitch * 0.31, 0, grouserH * 0.65);
-      addBar(trackW * 0.76, pitch * 0.08, 0, -pitch * 0.31, 0, grouserH * 0.65);
-      break;
-    default:
-      throw new Error('Unsupported track shoe surface');
-  }
+  appendTrackShoePad(assembly, pattern);
+  appendTrackShoeSurface(assembly, pattern);
 
   // Raised shoulders and a shallow central web keep the shoe legible from
   // oblique angles without recreating the old full-length lower rails.
-  const shoulderLift = pattern.shoulderHeight;
-  for (const side of [-1, 1]) {
-    addBox(trackW * 0.085, shoulderLift, pitch * 0.80,
-      side * trackW * 0.442, padH / 2 + shoulderLift / 2, 0, 0,
-      [SHOE_BOX_BOTTOM]);
-  }
-  const webH = pattern.webHeight;
-  addBox(trackW * 0.78, webH, pitch * pattern.webDepth,
-    0, -(padH + webH) / 2 + 0.004, 0, 0, [SHOE_BOX_TOP]);
-
   // The center guide is a two-stage tooth between paired wheel discs. It is
   // deliberately centered: side connector rails were the visual source of
   // the historical parallel-course bug.
-  const hornH = pattern.hornHeight;
-  const hornBaseH = hornH * 0.58;
-  const hornTipH = hornH - hornBaseH;
-  const hornBaseY = -(padH / 2 + webH + hornBaseH / 2 - 0.006);
-  addBox(Math.min(trackW * 0.16, 0.082), hornBaseH, pitch * 0.34,
-    0, hornBaseY, 0, 0, [SHOE_BOX_TOP]);
-  addBox(Math.min(trackW * 0.09, 0.046), hornTipH, pitch * 0.21,
-    0, hornBaseY - hornBaseH / 2 - hornTipH / 2, 0, 0, [SHOE_BOX_TOP]);
-
-  if (pattern.pinStyle === 'end-caps') {
-    const outer = pinCapOuter ?? trackW * 0.48;
-    const capLength = Math.min(0.058, trackW * 0.15);
-    const capX = Math.max(0, outer - capLength / 2);
-    const pinY = -(padH / 2 + webH * 0.38);
-    for (const side of [-1, 1] as const) {
-      for (const z of [-pitch * 0.30, pitch * 0.30]) {
-        parts.push(xform(
-          oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
-          side * capX, pinY, z,
-        ));
-      }
-    }
-  }
+  appendTrackShoeStructure(assembly, pattern);
+  appendTrackShoePins(assembly, pattern, pinCapOuter);
 
   const geometry = mergeAll(parts);
   if (radialScale !== 1) geometry.scale(1, radialScale, 1);
