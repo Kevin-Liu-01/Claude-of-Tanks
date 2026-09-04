@@ -2269,8 +2269,158 @@ function addCageBar(
   P.add('turretDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
-function addAbramsDroneCage(P: UkraineBuilderPort): void {
+const ABRAMS_DRONE_CAGE_STATIONS: readonly CageStation[] = Object.freeze([
+  Object.freeze({ z: 2.62, x: 1.94, base: 0.20, roof: 1.16 }),
+  Object.freeze({ z: 0.28, x: 1.98, base: 0.10, roof: 1.30 }),
+  Object.freeze({ z: -1.28, x: 2.04, base: 0.08, roof: 1.34 }),
+  Object.freeze({ z: -3.34, x: 2.06, base: 0.14, roof: 1.28 }),
+]);
+
+function addPitchedAbramsCageBar(
+  P: UkraineBuilderPort,
+  side: number,
+  a: CageStation,
+  b: CageStation,
+  yKey: 'base' | 'roof' | 'rail',
+  thickness: number,
+): void {
+  const dz = b.z - a.z;
+  const aY = yKey === 'rail' ? a.rail! : a[yKey];
+  const bY = yKey === 'rail' ? b.rail! : b[yKey];
+  const dy = bY - aY;
+  const len = Math.hypot(dz, dy);
+  addCageBar(P, thickness, thickness, len,
+    side * (a.x + b.x) * 0.5, (aY + bY) * 0.5, (a.z + b.z) * 0.5,
+    -Math.atan2(dy, dz), 0, 0);
+}
+
+function addAbramsCageSideFrames(P: UkraineBuilderPort, thickness: number): void {
+  const { box } = KIT;
+  const stations = ABRAMS_DRONE_CAGE_STATIONS;
+  for (const side of [-1, 1]) {
+    for (const station of stations) {
+      const footDepth = station === stations[0] ? 0.56 : 0.30;
+      P.addEquipment('turret', box(0.48, 0.11, footDepth),
+        side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      addCageBar(P, thickness, station.roof - station.base, thickness,
+        side * station.x, (station.roof + station.base) * 0.5, station.z);
+      for (const fraction of [0.32, 0.62]) {
+        addCageBar(P, thickness * 0.70, thickness * 0.70, 0.34,
+          side * station.x,
+          THREE.MathUtils.lerp(station.base, station.roof, fraction),
+          station.z);
+      }
+    }
+    for (let index = 0; index < stations.length - 1; index++) {
+      const a = stations[index];
+      const b = stations[index + 1];
+      addPitchedAbramsCageBar(P, side, a, b, 'base', thickness);
+      addPitchedAbramsCageBar(P, side, a, b, 'roof', thickness);
+      for (const fraction of [0.34, 0.66]) {
+        const aRail = { ...a, rail: THREE.MathUtils.lerp(a.base, a.roof, fraction) };
+        const bRail = { ...b, rail: THREE.MathUtils.lerp(b.base, b.roof, fraction) };
+        addPitchedAbramsCageBar(P, side, aRail, bRail, 'rail', thickness * 0.70);
+      }
+      const dz = b.z - a.z;
+      const dy = b.roof - a.base;
+      addCageBar(P, thickness * 0.76, thickness * 0.76, Math.hypot(dz, dy),
+        side * (a.x + b.x) * 0.5, (a.base + b.roof) * 0.5, (a.z + b.z) * 0.5,
+        -Math.atan2(dy, dz), 0, 0);
+    }
+  }
+}
+
+function addAbramsCageRoof(P: UkraineBuilderPort, thickness: number): void {
+  const stations = ABRAMS_DRONE_CAGE_STATIONS;
+  const frontTieOverlap = thickness * 0.50;
+  const frontTieSpan = 0.50 + frontTieOverlap * 2;
+  for (let index = 0; index < stations.length; index++) {
+    const station = stations[index];
+    if (index === 0) {
+      for (const side of [-1, 1]) {
+        addCageBar(P, station.x - 0.50, thickness, thickness,
+          side * (0.50 + (station.x - 0.50) * 0.5), station.roof, station.z);
+      }
+    } else {
+      addCageBar(P, station.x * 2, thickness, thickness, 0, station.roof, station.z);
+    }
+  }
+  for (const x of [-1.38, -0.69, 0, 0.69, 1.38]) {
+    for (let index = 0; index < stations.length - 1; index++) {
+      const a = stations[index];
+      const b = stations[index + 1];
+      const dz = b.z - a.z;
+      const dy = b.roof - a.roof;
+      addCageBar(P, thickness * 0.76, thickness * 0.76, Math.hypot(dz, dy), x,
+        (a.roof + b.roof) * 0.5, (a.z + b.z) * 0.5,
+        -Math.atan2(dy, dz), 0, 0);
+    }
+  }
+  for (const side of [-1, 1]) {
+    addCageBar(P, frontTieSpan, thickness * 0.76, thickness * 0.76,
+      side * 0.25, stations[0].roof, stations[0].z);
+  }
+  P.turretG.userData.uaM1A1CageRailReceipt = Object.freeze({
+    centerRailHalfWidthM: thickness * 0.76 * 0.5,
+    frontRibInnerXM: 0.50,
+    connectorSpanM: frontTieSpan,
+    connectorCenterXM: 0.25,
+    overlapM: frontTieOverlap,
+    yM: stations[0].roof,
+    zM: stations[0].z,
+  });
+}
+
+function addAbramsCageShoulders(P: UkraineBuilderPort, thickness: number): void {
+  const front = ABRAMS_DRONE_CAGE_STATIONS[0];
+  for (const side of [-1, 1]) {
+    const width = front.x - 0.50;
+    for (const fraction of [0, 0.33, 0.66, 1]) {
+      const y = THREE.MathUtils.lerp(front.base, front.roof, fraction);
+      addCageBar(P, width, thickness * 0.72, thickness * 0.72,
+        side * (0.50 + width * 0.5), y, front.z - fraction * 0.16);
+    }
+    for (const x of [0.50, 0.97, 1.44, front.x]) {
+      addCageBar(P, thickness * 0.72, front.roof - front.base, thickness * 0.72,
+        side * x, (front.roof + front.base) * 0.5, front.z - 0.08,
+        -0.17, 0, 0);
+    }
+  }
+}
+
+function addAbramsCageRearPayload(P: UkraineBuilderPort, thickness: number): void {
   const { box, cylY } = KIT;
+  const rear = ABRAMS_DRONE_CAGE_STATIONS.at(-1)!;
+  addCageBar(P, rear.x * 2, thickness, thickness, 0, rear.base, rear.z);
+  addCageBar(P, rear.x * 2, thickness, thickness, 0, rear.roof, rear.z);
+  for (let index = 0; index <= 8; index++) {
+    addCageBar(P, thickness, rear.roof - rear.base, thickness,
+      -rear.x + index * rear.x * 0.25, (rear.roof + rear.base) * 0.5, rear.z);
+  }
+  for (const fraction of [0.28, 0.55, 0.80]) {
+    addCageBar(P, rear.x * 2, thickness * 0.70, thickness * 0.70,
+      0, THREE.MathUtils.lerp(rear.base, rear.roof, fraction), rear.z);
+  }
+
+  const rack = FITTINGS.stowageRack({
+    mats: P.mats, w: 2.62, d: 0.62, h: 0.38, rails: 4, fill: 0.82, seed: 1101,
+  });
+  rack.position.set(0, 0.52, -2.86);
+  P.turretG.add(rack);
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.48, 0.30, 0.42), side * 0.94, 0.72, -2.86);
+    P.add('turretDark', box(0.42, 0.025, 0.36), side * 0.94, 0.89, -2.86);
+    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), side * 0.58, 0.96, -2.74,
+      0, 0, Math.PI / 2);
+    seat(P, 'turret', FITTINGS.antennaWhip({
+      mats: P.mats, h: 0.72, r: 0.011,
+      rake: -side * 0.10, seed: 1110 + (side > 0 ? 1 : 0),
+    }), side * 1.32, 0.92, -2.78);
+  }
+}
+
+function addAbramsDroneCage(P: UkraineBuilderPort): void {
+  const { box } = KIT;
   const t = 0.032;
   // The Ukrainian field cage follows the Abrams turret's wedge instead of
   // enclosing it in a cuboid.  Four frame stations create a low front brow,
@@ -2280,140 +2430,20 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   // Keep the cage outside that envelope instead of using the armor skin as
   // its centerline. The front remains shorter for the gun aperture, while
   // the bustle station clears the ammunition compartment and rear rack.
-  const stations: readonly CageStation[] = [
-    { z: 2.62, x: 1.94, base: 0.20, roof: 1.16 },
-    { z: 0.28, x: 1.98, base: 0.10, roof: 1.30 },
-    { z: -1.28, x: 2.04, base: 0.08, roof: 1.34 },
-    { z: -3.34, x: 2.06, base: 0.14, roof: 1.28 },
-  ];
-  const pitchedZBar = (
-    s: number,
-    a: CageStation,
-    b: CageStation,
-    yKey: 'base' | 'roof' | 'rail',
-    thickness = t,
-  ): void => {
-    const dz = b.z - a.z;
-    const aY = yKey === 'rail' ? a.rail! : a[yKey];
-    const bY = yKey === 'rail' ? b.rail! : b[yKey];
-    const dy = bY - aY;
-    const len = Math.hypot(dz, dy);
-    addCageBar(P, thickness, thickness, len,
-      s * (a.x + b.x) * 0.5, (aY + bY) * 0.5, (a.z + b.z) * 0.5,
-      -Math.atan2(dy, dz), 0, 0);
-  };
-
-  for (const s of [-1, 1]) {
-    // Broad, armored feet overlap the real cheek/bustle side and carry each
-    // post.  They are fittings, not extra hit armor or track-side geometry.
-    for (const st of stations) {
-      const footDepth = st === stations[0] ? 0.56 : 0.30;
-      P.addEquipment('turret', box(0.48, 0.11, footDepth), s * (st.x - 0.25), st.base, st.z,
-        0, 0, s * 0.08);
-      addCageBar(P, t, st.roof - st.base, t,
-        s * st.x, (st.roof + st.base) * 0.5, st.z);
-      // Mid rails break up each cell without turning the cage into opaque
-      // slab armor.
-      for (const q of [0.32, 0.62]) {
-        addCageBar(P, t * 0.70, t * 0.70, 0.34,
-          s * st.x, THREE.MathUtils.lerp(st.base, st.roof, q), st.z);
-      }
-    }
-    for (let i = 0; i < stations.length - 1; i++) {
-      const a = stations[i]; const b = stations[i + 1];
-      pitchedZBar(s, a, b, 'base');
-      pitchedZBar(s, a, b, 'roof');
-      for (const q of [0.34, 0.66]) {
-        const aq = { ...a, rail: THREE.MathUtils.lerp(a.base, a.roof, q) };
-        const bq = { ...b, rail: THREE.MathUtils.lerp(b.base, b.roof, q) };
-        pitchedZBar(s, aq, bq, 'rail', t * 0.70);
-      }
-      // One planted diagonal per bay makes the screen read field-built yet
-      // structurally continuous.
-      const dz = b.z - a.z;
-      const dy = b.roof - a.base;
-      addCageBar(P, t * 0.76, t * 0.76, Math.hypot(dz, dy),
-        s * (a.x + b.x) * 0.5, (a.base + b.roof) * 0.5, (a.z + b.z) * 0.5,
-        -Math.atan2(dy, dz), 0, 0);
-    }
-  }
+  addAbramsCageSideFrames(P, t);
 
   // Transverse roof ribs join both side frames.  The front rib is split at
   // x ±0.50 to preserve the gun/elevation corridor; aft ribs cross the full
   // canopy above the turret equipment.
-  const frontTieOverlap = t * 0.50;
-  const frontTieSpan = 0.50 + frontTieOverlap * 2;
-  for (let k = 0; k < stations.length; k++) {
-    const st = stations[k];
-    if (k === 0) {
-      for (const s of [-1, 1]) addCageBar(P, st.x - 0.50, t, t,
-        s * (0.50 + (st.x - 0.50) * 0.5), st.roof, st.z);
-    } else addCageBar(P, st.x * 2, t, t, 0, st.roof, st.z);
-  }
-  for (const xf of [-1.38, -0.69, 0, 0.69, 1.38]) {
-    for (let i = 0; i < stations.length - 1; i++) {
-      const a = stations[i]; const b = stations[i + 1];
-      const dz = b.z - a.z; const dy = b.roof - a.roof;
-      addCageBar(P, t * 0.76, t * 0.76, Math.hypot(dz, dy), xf,
-        (a.roof + b.roof) * 0.5, (a.z + b.z) * 0.5,
-        -Math.atan2(dy, dz), 0, 0);
-    }
-  }
-
-  // The longitudinal centre rail used to end unsupported inside the split
-  // front rib.  Two slim lap-jointed ties now bridge it to the left/right
-  // rib halves.  Each tie overlaps both the centre rail and its outer rib,
-  // eliminating the visible floating prong while retaining a light cage.
-  for (const s of [-1, 1]) addCageBar(P, frontTieSpan, t * 0.76, t * 0.76,
-    s * 0.25, stations[0].roof, stations[0].z);
-  P.turretG.userData.uaM1A1CageRailReceipt = Object.freeze({
-    centerRailHalfWidthM: t * 0.76 * 0.5,
-    frontRibInnerXM: 0.50,
-    connectorSpanM: frontTieSpan,
-    connectorCenterXM: 0.25,
-    overlapM: frontTieOverlap,
-    yM: stations[0].roof,
-    zM: stations[0].z,
-  });
+  addAbramsCageRoof(P, t);
 
   // Tapered front shoulder screens frame the mantlet rather than crossing
   // it. Their upper rail follows the pitched first bay.
-  for (const s of [-1, 1]) {
-    const w = stations[0].x - 0.50;
-    for (const q of [0, 0.33, 0.66, 1]) {
-      const y = THREE.MathUtils.lerp(stations[0].base, stations[0].roof, q);
-      addCageBar(P, w, t * 0.72, t * 0.72,
-        s * (0.50 + w * 0.5), y, stations[0].z - q * 0.16);
-    }
-    for (const xq of [0.50, 0.97, 1.44, stations[0].x]) {
-      addCageBar(P, t * 0.72, stations[0].roof - stations[0].base, t * 0.72,
-        s * xq, (stations[0].roof + stations[0].base) * 0.5, stations[0].z - 0.08,
-        -0.17, 0, 0);
-    }
-  }
+  addAbramsCageShoulders(P, t);
 
   // Connected rear wall and filled bustle payload.  The rack, spare aerial
   // boxes, EW heads and rolled covers eliminate the former empty black cage.
-  const rear = stations.at(-1)!;
-  addCageBar(P, rear.x * 2, t, t, 0, rear.base, rear.z);
-  addCageBar(P, rear.x * 2, t, t, 0, rear.roof, rear.z);
-  for (let i = 0; i <= 8; i++) addCageBar(P, t, rear.roof - rear.base, t,
-    -rear.x + i * rear.x * 0.25, (rear.roof + rear.base) * 0.5, rear.z);
-  for (const q of [0.28, 0.55, 0.80]) addCageBar(P, rear.x * 2, t * 0.70, t * 0.70,
-    0, THREE.MathUtils.lerp(rear.base, rear.roof, q), rear.z);
-
-  const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.62, d: 0.62, h: 0.38,
-    rails: 4, fill: 0.82, seed: 1101 });
-  rack.position.set(0, 0.52, -2.86);
-  P.turretG.add(rack);
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.48, 0.30, 0.42), s * 0.94, 0.72, -2.86);
-    P.add('turretDark', box(0.42, 0.025, 0.36), s * 0.94, 0.89, -2.86);
-    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), s * 0.58, 0.96, -2.74,
-      0, 0, Math.PI / 2);
-    seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 0.72, r: 0.011,
-      rake: -s * 0.10, seed: 1110 + (s > 0 ? 1 : 0) }), s * 1.32, 0.92, -2.78);
-  }
+  addAbramsCageRearPayload(P, t);
   // Forward EO/EW cluster is planted on a real crossmember and remains
   // below the canopy crown.
   addCageBar(P, 0.72, 0.10, 0.20, 0, 1.15, 0.74);
