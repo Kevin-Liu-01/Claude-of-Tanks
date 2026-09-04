@@ -3115,6 +3115,25 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     const E = (rx = 0, ry = 0, rz = 0) => new THREE.Euler(rx, ry, rz);
 
+    const placeHullRearDeck: SlotPlacer = (args, parts, name) => {
+      const bounds = partsBBox(parts);
+      const depth = bounds.max.z - bounds.min.z;
+      const centerX = parts.metaCx || 0.35;
+      for (const offsetZ of [0, 0.25, 0.5]) {
+        const z = sternZ + depth / 2 + 0.12 + offsetZ;
+        const leftSeat = seatProbe(hullP, -centerX, z, 0.4, depth * 0.7, topFrom, 0.42);
+        const rightSeat = seatProbe(hullP, centerX, z, 0.4, depth * 0.7, topFrom, 0.42);
+        if (!leftSeat || !rightSeat) continue;
+        const seatY = Math.max(leftSeat.y, rightSeat.y);
+        const normal = leftSeat.y > rightSeat.y ? leftSeat.n : rightSeat.n;
+        const pitch = normal ? Math.atan2(normal.z, Math.max(normal.y, 0.4)) : 0;
+        if (commit(name, parts, 'hull', V(0, seatY - 0.012, z), E(pitch * 0.8, 0, 0),
+          placedHull, { seatY, zExtra: 0.3 })) return true;
+      }
+      disposePartList(parts);
+      return false;
+    };
+
     // fender line: walk inboard from the width guard until a fender-height
     // top face answers (sponson/fender tops live in [0.35H, 0.85H])
     const fenderX = (side: number): number | null => {
@@ -3325,26 +3344,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       },
       hullRear(args, parts, name) {
         const meta = parts.meta || {};
-        if (meta.mount === 'deck') { // twin longitudinal drums at the deck edges
-          const bb = partsBBox(parts);
-          const d = bb.max.z - bb.min.z;
-          const cx = parts.metaCx || 0.35;
-          for (const dz of [0, 0.25, 0.5]) {
-            const z = sternZ + d / 2 + 0.12 + dz;
-            // per-drum footprints (the raised center hatch line stays out of
-            // the probe); sloped soviet decks pitch the whole rack
-            const sL = seatProbe(hullP, -cx, z, 0.4, d * 0.7, topFrom, 0.42);
-            const sR = seatProbe(hullP, cx, z, 0.4, d * 0.7, topFrom, 0.42);
-            if (!sL || !sR) continue;
-            const seatY = Math.max(sL.y, sR.y);
-            const n = sL.y > sR.y ? sL.n : sR.n;
-            const pitch = n ? Math.atan2(n.z, Math.max(n.y, 0.4)) : 0;
-            if (commit(name, parts, 'hull', V(0, seatY - 0.012, z), E(pitch * 0.8, 0, 0), placedHull,
-              { seatY, zExtra: 0.3 })) return true;
-          }
-          disposePartList(parts);
-          return false;
-        }
+        if (meta.mount === 'deck') return placeHullRearDeck(args, parts, name);
         // single transverse drum cantilevered off the rear plate (piece origin
         // at bracket base -> drum axis rides meta.centerY above the commit y)
         const cY = meta.centerY || 0.29;

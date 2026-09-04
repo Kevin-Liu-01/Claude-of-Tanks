@@ -2848,6 +2848,29 @@ function buildLeo1A5(P: Modern2BuilderPort) {
 // launcher, bustle and raised commander station. No source vertices or
 // materials enter runtime.
 // ---------------------------------------------------------------------------
+function buildMBT70BareHull(P: Modern2BuilderPort): void {
+  const { box } = KIT;
+  buildM1A1BareHull(P, {
+    returnRollerZs: [1.46, 0, -1.46],
+    returnTrackTopY: 1.06,
+    returnRollerR: 0.11,
+  });
+  for (const side of [-1, 1]) {
+    P.addMudguard(`mbt70_m1_front_fender_${side}`, 'hull',
+      box(0.42, 0.09, 1.18), side * 1.54, 1.37, 3.10, -0.055, 0, 0);
+    P.addMudguard(`mbt70_m1_rear_fender_${side}`, 'hull',
+      box(0.42, 0.09, 1.32), side * 1.54, 1.64, -3.16, 0.035, 0, 0);
+    P.add('hullDetail', box(0.06, 0.08, 5.46), side * 1.69, 1.39, 0.10);
+    P.add('hull', box(0.12, 0.48, 1.38), side * 0.96, 1.41, -3.05, 0.025 * side, 0, 0);
+    P.add('hull', box(0.48, 0.10, 1.34), side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
+    P.add('hullDetail', box(0.035, 0.34, 1.18), side * 1.00, 1.43, -3.05,
+      0.025 * side, 0, 0);
+    for (const z of [-3.48, -3.05, -2.62]) {
+      P.add('hullDetail', box(0.11, 0.035, 0.035), side * 1.20, 1.66, z);
+    }
+  }
+}
+
 function buildMBT70(P: Modern2BuilderPort) {
   const {
     xform, box, polyMultiLoft, cylY, cylZ, sph, torus,
@@ -2857,29 +2880,7 @@ function buildMBT70(P: Modern2BuilderPort) {
   const seg = P.q ? 24 : 14;
 
   // ---- certified M1A1 hull, intentionally without side skirts ------------
-  buildM1A1BareHull(P, {
-    returnRollerZs: [1.46, 0, -1.46],
-    returnTrackTopY: 1.06,
-    returnRollerR: 0.11,
-  });
-  for (const s of [-1, 1]) {
-    P.addMudguard(`mbt70_m1_front_fender_${s}`, 'hull',
-      box(0.42, 0.09, 1.18), s * 1.54, 1.37, 3.10, -0.055, 0, 0);
-    P.addMudguard(`mbt70_m1_rear_fender_${s}`, 'hull',
-      box(0.42, 0.09, 1.32), s * 1.54, 1.64, -3.16, 0.035, 0, 0);
-    // A short attached rub rail terminates clear of both end-wheel sweeps.
-    P.add('hullDetail', box(0.06, 0.08, 5.46), s * 1.69, 1.39, 0.10);
-
-    // Close the open stern shoulder behind the final drive without turning
-    // the skirtless MBT-70 back into a full-skirt Abrams. Seat the wall
-    // inboard and keep the shelf above the complete sprocket/shoe sweep.
-    P.add('hull', box(0.12, 0.48, 1.38), s * 0.96, 1.41, -3.05, 0.025 * s, 0, 0);
-    P.add('hull', box(0.48, 0.10, 1.34), s * 1.31, 1.69, -3.05, 0.025 * s, 0, 0);
-    P.add('hullDetail', box(0.035, 0.34, 1.18), s * 1.00, 1.43, -3.05, 0.025 * s, 0, 0);
-    for (const z of [-3.48, -3.05, -2.62]) {
-      P.add('hullDetail', box(0.11, 0.035, 0.035), s * 1.20, 1.66, z);
-    }
-  }
+  buildMBT70BareHull(P);
 
   // ---- low cast turret with the source model's rounded front -------------
   const TH = 0.80;
