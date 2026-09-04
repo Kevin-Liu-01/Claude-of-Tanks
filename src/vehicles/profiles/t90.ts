@@ -8131,8 +8131,8 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   P.hullG.add(rearCable);
 }
 
-function replaceT90MProryvTurret(P: T90BuilderPort): void {
-  const { box, cylY, polyTurret, torus } = KIT;
+function addT90MProryvTurretFoundation(P: T90BuilderPort): void {
+  const { box, polyTurret } = KIT;
   P.turretG.clear();
   P.turretG.add(P.gunG);
   P.clear(
@@ -8218,7 +8218,10 @@ function replaceT90MProryvTurret(P: T90BuilderPort): void {
       [s * 0.24, 0.45, 1.16], [s * 1.54, 0.40, 0.43], [s * 1.48, 0.37, -0.12], [s * 0.31, 0.49, 0.50],
     ));
   }
+}
 
+function addT90MProryvEra(P: T90BuilderPort): void {
+  const { box } = KIT;
   const usesChevronFront = P.spec.id === 't90m_proryv';
   // Proryv Relikt fan: seven unequal, deeply planted modules per cheek plus
   // a staggered inner brow and broken flank course. Width, pitch and depth
@@ -8264,7 +8267,10 @@ function replaceT90MProryvTurret(P: T90BuilderPort): void {
     });
   }
   P.add('turretDark', box(0.54, 0.30, 0.07), 0, 0.24, 1.38, -0.29, 0, 0);
+}
 
+function addT90MProryvBustleAndRoof(P: T90BuilderPort): void {
+  const { box, cylY, torus } = KIT;
   // Shallow tapered bustle, authored as one connected loft with supported
   // lids, side bins and an open terminal frame. It preserves Proryv's rear
   // service volume without creating a second turret or a floating cage.
@@ -8397,6 +8403,12 @@ function replaceT90MProryvTurret(P: T90BuilderPort): void {
 
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.55, 0.28, -0.40], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.55, 0.28, -0.40], -Math.PI / 2);
+}
+
+function replaceT90MProryvTurret(P: T90BuilderPort): void {
+  addT90MProryvTurretFoundation(P);
+  addT90MProryvEra(P);
+  addT90MProryvBustleAndRoof(P);
 }
 
 function enhanceT90MProryvSurface2026(P: T90BuilderPort): void {
