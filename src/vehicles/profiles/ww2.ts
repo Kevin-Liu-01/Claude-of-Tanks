@@ -274,8 +274,8 @@ function buildQHeavy(P: Ww2BuilderPort): void {
 // full-length fenders at ±1.45, 6 small rubber-tired wheels + 3 return
 // rollers, FRONT sprocket. o parametrizes the two oracles' frames.
 // ---------------------------------------------------------------------------
-function pziiiHull(P: Ww2BuilderPort, o: PanzerThreeHullOptions) {
-  const { box, cylY, slab, buildRunningGear, sph, cylZ } = KIT;
+function addPziiiHullStructure(P: Ww2BuilderPort, o: PanzerThreeHullOptions): void {
+  const { box, slab, buildRunningGear } = KIT;
   const zc = o.zc;                          // hull center (konserwa is rear-shifted)
   const roof = o.roofY;                     // superstructure roof height
   const front = zc + o.len / 2, rear = zc - o.len / 2;
@@ -337,6 +337,15 @@ function pziiiHull(P: Ww2BuilderPort, o: PanzerThreeHullOptions) {
   P.add('hull', slab(                                                        // tail undercut wedge (between tracks)
     [-0.80, 0.70, rear + 0.35], [0.80, 0.70, rear + 0.35], [0.75, 0.98, rear + 0.06], [-0.75, 0.98, rear + 0.06],
     [-0.80, 1.06, rear + 0.35], [0.80, 1.06, rear + 0.35], [0.75, 1.10, rear + 0.06], [-0.75, 1.10, rear + 0.06]));
+}
+
+function addPziiiHullDressing(P: Ww2BuilderPort, o: PanzerThreeHullOptions): void {
+  const { box, cylY, slab, sph, cylZ } = KIT;
+  const zc = o.zc;
+  const roof = o.roofY;
+  const front = zc + o.len / 2;
+  const rear = zc - o.len / 2;
+  const deckY = o.noseDeckY ?? 1.27;
 
   // fenders: full-length flat track guards, outer edge = width max ±1.45.
   // r2: the flat run stops 0.22 short of the bow and a DROOPING TIP slab
@@ -404,6 +413,14 @@ function pziiiHull(P: Ww2BuilderPort, o: PanzerThreeHullOptions) {
   P.add('hull', box(0.26, 0.14, 0.40), -1.22, o.fenderY + 0.10, zc - 1.35);  // jack block
   towHook(P, -0.72, 0.98, front - 0.18); towHook(P, 0.72, 0.98, front - 0.18);
   KIT.spareTrackStrip(P, 'hull', 0, 0.96, front - 0.28, 3);                  // spare links on the nose
+}
+
+function pziiiHull(P: Ww2BuilderPort, o: PanzerThreeHullOptions) {
+  addPziiiHullStructure(P, o);
+  addPziiiHullDressing(P, o);
+  const front = o.zc + o.len / 2;
+  const rear = o.zc - o.len / 2;
+  const roof = o.roofY;
   return { front, rear, roof };
 }
 
