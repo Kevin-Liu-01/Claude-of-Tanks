@@ -1259,6 +1259,14 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
 // crown 2.19; mast+cupola spikes <=4 columns at the ref's own zones).
 // ===========================================================================
 
+function addPt91PowerpackLouvres(P: PolishBuilderPort): void {
+  for (let index = 0; index < 5; index++) {
+    const z = -1.06 - index * 0.21;
+    P.add('hullDark', KIT.box(1.46, 0.016, 0.14), 0, 1.494, z);
+    P.add('hullDetail', KIT.box(1.50, 0.030, 0.038), 0, 1.498, z + 0.09);
+  }
+}
+
 function buildPT91Twardy(P: PolishBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
 
@@ -1338,11 +1346,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     grilles: 4, gw: 1.48, periY: 1.45, gY: 1.50 });
   // §5.267 fix 3: real louvre relief over the powerpack run (sunk wells +
   // rib bars; relief tops +0.012 over the local deck line — mask-safe)
-  for (let k = 0; k < 5; k++) {
-    const z = -1.06 - k * 0.21;
-    P.add('hullDark', box(1.46, 0.016, 0.14), 0, 1.494, z);
-    P.add('hullDetail', box(1.50, 0.030, 0.038), 0, 1.498, z + 0.09);
-  }
+  addPt91PowerpackLouvres(P);
   for (const s of [-1, 1]) P.add('hull', box(0.06, 0.034, 1.15), s * 0.77, 1.496, -1.48);
 
   // Malaysian-lineage powerpack stack cadence over the rear deck

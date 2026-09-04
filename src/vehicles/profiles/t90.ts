@@ -6949,6 +6949,12 @@ function buildT90MS(P: T90BuilderPort): void {
 }
 
 
+function addT90MSCrownFacetSeams(P: T90BuilderPort): void {
+  for (const x of [-0.18, 0.48]) {
+    P.add('turretDark', KIT.box(0.025, 0.055, 0.72), x, 0.662, -0.34);
+  }
+}
+
 function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   const { box, cylY, cylZ, polyTurret, torus } = KIT;
 
@@ -7141,7 +7147,7 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   P.add('turret', box(0.72, 0.075, 0.92), -0.55, 0.615, -0.30, -0.055, -0.08, 0);
   P.add('turret', box(0.68, 0.075, 0.96), 0.16, 0.625, -0.30, -0.045, 0.02, 0);
   P.add('turret', box(0.50, 0.070, 0.82), 0.74, 0.590, -0.42, -0.065, 0.10, 0);
-  for (const x of [-0.18, 0.48]) P.add('turretDark', box(0.025, 0.055, 0.72), x, 0.662, -0.34);
+  addT90MSCrownFacetSeams(P);
 
   // Main frontal Relikt chevrons. Each cheek has TWO genuinely separate ERA
   // rows: a lower arm climbing forward to the ridge and an upper arm falling
