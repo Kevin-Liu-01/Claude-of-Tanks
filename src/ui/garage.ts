@@ -27,6 +27,7 @@ import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
 } from '../game/equipment.ts';
+import type { EquipmentItem } from '../game/equipment.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
@@ -194,6 +195,94 @@ function escapeHtmlAttribute(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character] || character);
+}
+
+function equipmentAvailabilityCopy(
+  itemId: string,
+  locked: boolean,
+  spec: GarageTankSpec | undefined,
+  openSlot: number,
+): string {
+  if (!locked) return `Equip in Slot ${openSlot + 1}`;
+  if (itemId === 'rammer' && spec?.gun?.autoloader) {
+    return 'Unavailable · autoloaders cannot mount a gun rammer';
+  }
+  return 'Unavailable · modern vehicles only';
+}
+
+function equipmentCategoryButtons(activeCategory: string): string {
+  return EQUIP_CATEGORIES.map((category) => (
+    `<button type="button" class="chip${category.id === activeCategory ? ' sel' : ''}" ` +
+    `data-cat="${category.id}">${category.label}</button>`
+  )).join('');
+}
+
+function equipmentTileClass(locked: boolean, fittedAt: number, openSlot: number): string[] {
+  const classes = ['cot-eqtile'];
+  if (locked) classes.push('locked');
+  else if (fittedAt === openSlot) classes.push('sel');
+  else if (fittedAt >= 0) classes.push('inother');
+  return classes;
+}
+
+function equipmentTileTag(item: EquipmentItem, locked: boolean, fittedAt: number, openSlot: number): string {
+  if (locked) return `<span class="tag">${item.era}</span>`;
+  if (fittedAt === openSlot) return '<span class="tag">Fitted</span>';
+  if (fittedAt >= 0) return `<span class="tag">Slot ${fittedAt + 1}</span>`;
+  return '';
+}
+
+function equipmentTileActionCopy(
+  item: EquipmentItem,
+  locked: boolean,
+  fittedAt: number,
+  openSlot: number,
+  spec: GarageTankSpec | undefined,
+): string {
+  if (locked) return equipmentAvailabilityCopy(item.id, true, spec, openSlot);
+  if (fittedAt === openSlot) return 'Currently fitted; activate to remove';
+  if (fittedAt >= 0) return `Fitted in Slot ${fittedAt + 1}; activate to move to Slot ${openSlot + 1}`;
+  return `Activate to equip in Slot ${openSlot + 1}`;
+}
+
+function equipmentTileMarkup(
+  item: EquipmentItem,
+  spec: GarageTankSpec | undefined,
+  currentLoadout: readonly string[],
+  openSlot: number,
+): string {
+  const locked = !equipEligible(item, spec);
+  const fittedAt = currentLoadout.indexOf(item.id);
+  const cls = equipmentTileClass(locked, fittedAt, openSlot);
+  const tag = equipmentTileTag(item, locked, fittedAt, openSlot);
+  const availability = equipmentTileActionCopy(item, locked, fittedAt, openSlot, spec);
+  const ariaLabel = escapeHtmlAttribute(`${item.name}. ${item.desc}. ${availability}`);
+  return `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : item.id}" ` +
+    `data-eq-id="${item.id}" data-eq-cat="${item.cat}" aria-label="${ariaLabel}" ` +
+    `aria-pressed="${fittedAt === openSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
+    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${item.name}</span>` +
+    `<span class="e">${item.desc}</span></button>`;
+}
+
+function equipmentPickerTiles(
+  spec: GarageTankSpec | undefined,
+  currentLoadout: readonly string[],
+  openSlot: number,
+  activeCategory: string,
+): string {
+  const emptyLabel = escapeHtmlAttribute(
+    `Empty Slot — remove the equipment fitted in Slot ${openSlot + 1}`,
+  );
+  const emptyTile =
+    `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
+    `aria-label="${emptyLabel}">` +
+    `${uiIconSVG('close', 34, 'rgba(238,244,250,.86)')}` +
+    '<span class="n">Empty</span><span class="e">remove equipment from this slot</span></button>';
+  const itemTiles = EQUIPMENT_CATALOG
+    .filter((item) => activeCategory === 'all' || item.cat === activeCategory)
+    .map((item) => equipmentTileMarkup(item, spec, currentLoadout, openSlot))
+    .join('');
+  return emptyTile + itemTiles;
 }
 
 const NATION_LABEL: Readonly<Record<string, string>> = {
@@ -1457,15 +1546,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
 
-  function eqAvailabilityCopy(itemId: string, locked: boolean): string {
-    if (!locked) return `Equip in Slot ${eqOpenSlot + 1}`;
-    const spec = selectedId ? specById.get(selectedId) : null;
-    if (itemId === 'rammer' && spec?.gun?.autoloader) {
-      return 'Unavailable · autoloaders cannot mount a gun rammer';
-    }
-    return 'Unavailable · modern vehicles only';
-  }
-
   function hideEqTooltip(primeNext = true): void {
     if (eqTooltipTimer !== null) {
       clearTimeout(eqTooltipTimer);
@@ -1504,18 +1584,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
     const locked = anchor.classList.contains('locked');
     const fittedAt = item ? curLoadout().indexOf(item.id) : -1;
+    const spec = selectedId ? specById.get(selectedId) : undefined;
     const category = item
       ? EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment'
       : 'Slot action';
     const state = !item
       ? `Clear Slot ${eqOpenSlot + 1}`
       : locked
-        ? eqAvailabilityCopy(item.id, true)
+        ? equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot)
         : fittedAt === eqOpenSlot
           ? 'Currently fitted · click to remove'
           : fittedAt >= 0
             ? `Fitted in Slot ${fittedAt + 1} · click to move here`
-            : eqAvailabilityCopy(item.id, false);
+            : equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
 
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
@@ -1575,41 +1656,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     hideEqTooltip(false);
     const spec = specById.get(selectedId);
     const cur = curLoadout();
-    let chips = '';
-    for (const c of EQUIP_CATEGORIES) {
-      chips += `<button type="button" class="chip${c.id === eqCat ? ' sel' : ''}" data-cat="${c.id}">${c.label}</button>`;
-    }
-    const emptyLabel = escapeHtmlAttribute(
-      `Empty Slot — remove the equipment fitted in Slot ${eqOpenSlot + 1}`,
-    );
-    let tiles =
-      `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
-      `aria-label="${emptyLabel}">` +
-      `${uiIconSVG('close', 34, 'rgba(238,244,250,.86)')}` +
-      `<span class="n">Empty</span><span class="e">remove equipment from this slot</span></button>`;
-    for (const it of EQUIPMENT_CATALOG) {
-      if (eqCat !== 'all' && it.cat !== eqCat) continue;
-      const locked = !equipEligible(it, spec);
-      const at = cur.indexOf(it.id);
-      const cls = ['cot-eqtile'];
-      let tag = '';
-      if (locked) { cls.push('locked'); tag = `<span class="tag">${it.era}</span>`; }
-      else if (at === eqOpenSlot) { cls.push('sel'); tag = `<span class="tag">Fitted</span>`; }
-      else if (at >= 0) { cls.push('inother'); tag = `<span class="tag">Slot ${at + 1}</span>`; }
-      const availability = locked
-        ? eqAvailabilityCopy(it.id, true)
-        : at === eqOpenSlot
-          ? 'Currently fitted; activate to remove'
-          : at >= 0
-            ? `Fitted in Slot ${at + 1}; activate to move to Slot ${eqOpenSlot + 1}`
-            : `Activate to equip in Slot ${eqOpenSlot + 1}`;
-      const ariaLabel = escapeHtmlAttribute(`${it.name}. ${it.desc}. ${availability}`);
-      tiles += `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : it.id}" ` +
-        `data-eq-id="${it.id}" data-eq-cat="${it.cat}" aria-label="${ariaLabel}" ` +
-        `aria-pressed="${at === eqOpenSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
-        `${tag}${equipIconSVG(it.id, 38)}<span class="n">${it.name}</span>` +
-        `<span class="e">${it.desc}</span></button>`;
-    }
+    const chips = equipmentCategoryButtons(eqCat);
+    const tiles = equipmentPickerTiles(spec, cur, eqOpenSlot, eqCat);
     eqpickEl.innerHTML =
       `<div class="ph"><span class="t">Equipment &middot; <i>Slot ${eqOpenSlot + 1}</i></span>` +
       `<button type="button" class="x" aria-label="Close">&#10005;</button></div>` +
