@@ -1552,6 +1552,52 @@ function buildSturmtiger(P: CasemateBuilderPort): void {
 // raised platform 2.17, cupola 2.50, quad runs xc ±1.091/±1.598 (band top
 // ~0.96, exposed upper runs), width datum on the ±1.932 fender lips.
 // ---------------------------------------------------------------------------
+function addT95Sponsons(P: CasemateBuilderPort): void {
+  const { box, cylZ, torus } = KIT;
+  // The full-width plate bridges both track units; its shadow lip stays above
+  // the exposed upper runs rather than closing the wheel channels.
+  P.add('hull', box(3.74, 0.085, 6.02), 0, 1.4825, 0.03);
+  P.add('hullDark', box(3.60, 0.05, 5.90), 0, 1.415, 0.03);
+  for (const side of [-1, 1]) {
+    // The fender edge falls outward to the published ±1.932 m width datum.
+    P.add('hull', orientedSlab(
+      [side * 1.70, 1.435, 3.04], [side * 1.932, 1.24, 3.04],
+      [side * 1.932, 1.24, -2.98], [side * 1.70, 1.435, -2.98],
+      [side * 1.70, 1.525, 3.04], [side * 1.932, 1.31, 3.04],
+      [side * 1.932, 1.31, -2.98], [side * 1.70, 1.525, -2.98]));
+    P.add('hull', box(0.05, 0.91, 5.90), side * 1.84, 0.985, -0.01);
+    P.add('hullDetail', box(0.055, 0.06, 5.90), side * 1.842, 1.40, -0.01);
+    P.add('hullDetail', box(0.055, 0.06, 5.90), side * 1.842, 0.575, -0.01);
+    // Vertical ribs and dark wheel-reveal arches reproduce the unit aprons
+    // without turning the lower plate into a solid shadow band.
+    for (const ribZ of [2.2, 0.75, -0.75, -2.2]) {
+      P.add('hullDetail', box(0.055, 0.86, 0.07), side * 1.842, 0.985, ribZ);
+    }
+    for (const archZ of [2.2, 1.1, 0.0, -1.1, -2.2]) {
+      P.add('hullDark', box(0.03, 0.20, 0.48), side * 1.852, 0.62, archZ);
+    }
+    loft(P, [
+      { z: 3.04, b: 1.40, t: 1.525, w: 0.58, x: side * 1.30 },
+      { z: 3.41, b: 0.95, t: 1.05, w: 0.54, x: side * 1.28 },
+    ]);
+    loft(P, [
+      { z: -2.98, b: 1.40, t: 1.525, w: 0.50, x: side * 1.36 },
+      { z: -3.02, b: 1.30, t: 1.40, w: 0.48, x: side * 1.35 },
+    ]);
+    // Both inner and outer track units expose their drive/idler drum noses.
+    for (const trackX of [1.091, 1.598]) {
+      P.add('hull', cylZ(0.185, 0.18, 14), side * trackX, 0.38, 2.90);
+      P.add('hullDark', cylZ(0.075, 0.055, 10), side * trackX, 0.38, 3.00);
+      P.add('hullDetail', torus(0.150, 0.013, 14),
+        side * trackX, 0.38, 2.992, Math.PI / 2, 0, 0);
+      P.add('hull', cylZ(0.185, 0.16, 14), side * trackX, 0.40, -2.94);
+      P.add('hullDark', cylZ(0.075, 0.05, 10), side * trackX, 0.40, -3.03);
+      P.add('hullDetail', box(0.05, 0.16, 0.05),
+        side * trackX, 1.16, -2.99, 0.5, 0, 0);
+    }
+  }
+}
+
 function buildT95(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable } = KIT;
   // §5.313 (task_3d06d29a): the fleet fallback bore seats on the muzzle
@@ -1668,53 +1714,7 @@ function buildT95(P: CasemateBuilderPort): void {
   }
 
   // ---- sponsons, fenders, unit plates (print apron reads) -----------------
-  P.add('hull', box(3.74, 0.085, 6.02), 0, 1.4825, 0.03);      // sponson plate ±1.87
-  P.add('hullDark', box(3.60, 0.05, 5.90), 0, 1.415, 0.03);    // underlip shadow
-  for (const s of [-1, 1]) {
-    // fender-edge chamfer -> ±1.932 (widthM datum): the print's sponson edge
-    // FALLS outboard (front tops 1.53 @ 1.66 -> ~1.31 @ 1.93; iter3-5 flat
-    // lip read +0.14..+0.43 on every edge column)
-    P.add('hull', orientedSlab(
-      [s * 1.70, 1.435, 3.04], [s * 1.932, 1.24, 3.04], [s * 1.932, 1.24, -2.98], [s * 1.70, 1.435, -2.98],
-      [s * 1.70, 1.525, 3.04], [s * 1.932, 1.31, 3.04], [s * 1.932, 1.31, -2.98], [s * 1.70, 1.525, -2.98]));
-    // unit side plates hung 0.53..1.44 at the print's ±1.84 wall (iter3
-    // receipt: ±1.90 plates read as full-height cyan strips in every
-    // side/rear mask — the print's 1.86-1.93 content is only sparse hub
-    // caps + the fender flare, not a plate)
-    P.add('hull', box(0.05, 0.91, 5.90), s * 1.84, 0.985, -0.01);
-    P.add('hullDetail', box(0.055, 0.06, 5.90), s * 1.842, 1.40, -0.01);  // top frame rail
-    P.add('hullDetail', box(0.055, 0.06, 5.90), s * 1.842, 0.575, -0.01); // bottom frame rail
-    for (const rz of [2.2, 0.75, -0.75, -2.2]) {
-      P.add('hullDetail', box(0.055, 0.86, 0.07), s * 1.842, 0.985, rz);  // vertical ribs
-    }
-    // wheel-reveal arches along the plate bottom edge (print D-cutouts;
-    // the §5.317-iter1 full recessed panels read as a solid dark band and
-    // are DROPPED — receipts in the packet)
-    for (const az of [2.2, 1.1, 0.0, -1.1, -2.2]) {
-      P.add('hullDark', box(0.03, 0.20, 0.48), s * 1.852, 0.62, az);
-    }
-    // fender noses: slope from the sponson down to the bow tips (per side;
-    // widened inboard to x 0.72 — the print's wings reach ~0.7)
-    loft(P, [
-      { z: 3.04, b: 1.40, t: 1.525, w: 0.58, x: s * 1.30 },
-      { z: 3.41, b: 0.95, t: 1.05, w: 0.54, x: s * 1.28 },
-    ]);
-    // rear fender tips (trimmed to the band end -3.0; iter5 plan receipts
-    // read the old -3.10 tips +0.23 past the ref tail)
-    loft(P, [
-      { z: -2.98, b: 1.40, t: 1.525, w: 0.50, x: s * 1.36 },
-      { z: -3.02, b: 1.30, t: 1.40, w: 0.48, x: s * 1.35 },
-    ]);
-    // final-drive / idler drum noses on the unit ends (§5.247 fix 3 carried)
-    for (const xc of [1.091, 1.598]) {
-      P.add('hull', cylZ(0.185, 0.18, 14), s * xc, 0.38, 2.90);            // bow drum noses
-      P.add('hullDark', cylZ(0.075, 0.055, 10), s * xc, 0.38, 3.00);       // hub caps
-      P.add('hullDetail', KIT.torus(0.150, 0.013, 14), s * xc, 0.38, 2.992, Math.PI / 2, 0, 0);
-      P.add('hull', cylZ(0.185, 0.16, 14), s * xc, 0.40, -2.94);           // rear drum noses
-      P.add('hullDark', cylZ(0.075, 0.05, 10), s * xc, 0.40, -3.03);
-      P.add('hullDetail', box(0.05, 0.16, 0.05), s * xc, 1.16, -2.99, 0.5, 0, 0); // mud scrapers
-    }
-  }
+  addT95Sponsons(P);
 
   // ---- raised roof platform + crew stations (print roof cluster) ----------
   // platform (print 2.55 raw → 2.17): z −0.76..+0.21; the 2.17 plateau ends
