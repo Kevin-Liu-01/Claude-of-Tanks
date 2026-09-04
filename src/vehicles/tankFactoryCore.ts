@@ -3722,49 +3722,38 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Bodywork now performs the occlusion; every shoe remains seated on the
   // closed loop. `coveredTop` is retained only in authoring receipts so old
   // profiles do not need a flag migration.
-  const placeLinks = (l: number, r: number): void => {
-    // Link distances are monotonic around each side's loop. Walk the segment
-    // cursor with them instead of restarting a linear nP search for every
-    // shoe. The cursor resets once when distance wraps.
-    for (const side of [-1, 1] as const) {
-      const baseI = side < 0 ? 0 : nLinks;
-      const scroll = side < 0 ? l : r;
-      const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
-      const s0 = ((scroll % loopLen) + loopLen) % loopLen;
-      let segIx = 0;
-      while (segIx < nP - 1 && s0 >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
-      let prevS = s0;
-      for (let linkI = 0; linkI < nLinks; linkI++) {
-        const i = baseI + linkI;
-        let s = s0 + linkI * lp;
-        if (s >= loopLen) s -= loopLen;
-        if (linkI && s < prevS) segIx = 0;
-        while (segIx < nP - 1 && s >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
-        prevS = s;
-        const sg = segsT[segIx];
-        const u = s - sg.c0;
-        const t = Math.max(0, Math.min(1, u / Math.max(sg.l, 1e-6)));
-        const vertexBase = segIx * 24;
-        // Recover this LIVE belt segment's f0/f1 centerline directly from
-        // the deformed outer/inner face vertices. Shoes no longer evaluate a
-        // parallel suspension curve: the visible casting belt is their sole
-        // position/tangent source, with only rOut added along its normal.
-        const y0 = (bandPosition.getY(vertexBase + 2)
-          + bandPosition.getY(vertexBase + 6)) / 2;
-        const z0 = (bandPosition.getZ(vertexBase + 2)
-          + bandPosition.getZ(vertexBase + 6)) / 2;
-        const y1 = (bandPosition.getY(vertexBase)
-          + bandPosition.getY(vertexBase + 8)) / 2;
-        const z1 = (bandPosition.getZ(vertexBase)
-          + bandPosition.getZ(vertexBase + 8)) / 2;
-        const y = y0 + (y1 - y0) * t;
-        const z = z0 + (z1 - z0) * t;
-        const invLen = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
-        const tz = (z1 - z0) * invLen;
-        const ty = (y1 - y0) * invLen;
-        _q.setFromAxisAngle(_X, Math.atan2(-ty, tz));
-        _v.set(side * (xcForSide(side) + shoeOutboardOffset),
-          y + tz * rOut, z - ty * rOut);
+  const findTrackSegment = (distance: number, fromIndex = 0): number => {
+    let index = fromIndex;
+    while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
+    return index;
+  };
+  const writeTrackLinkMatrix = (
+    side: -1 | 1,
+    instanceIndex: number,
+    bandPosition: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+    segmentIndex: number,
+    progress: number,
+  ): void => {
+    const vertexBase = segmentIndex * 24;
+    // Recover this LIVE belt segment's f0/f1 centerline directly from the
+    // deformed outer/inner face vertices. The visible casting belt is the
+    // shoe's sole position/tangent source, with only rOut along its normal.
+    const y0 = (bandPosition.getY(vertexBase + 2)
+      + bandPosition.getY(vertexBase + 6)) / 2;
+    const z0 = (bandPosition.getZ(vertexBase + 2)
+      + bandPosition.getZ(vertexBase + 6)) / 2;
+    const y1 = (bandPosition.getY(vertexBase)
+      + bandPosition.getY(vertexBase + 8)) / 2;
+    const z1 = (bandPosition.getZ(vertexBase)
+      + bandPosition.getZ(vertexBase + 8)) / 2;
+    const y = y0 + (y1 - y0) * progress;
+    const z = z0 + (z1 - z0) * progress;
+    const inverseLength = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
+    const tangentZ = (z1 - z0) * inverseLength;
+    const tangentY = (y1 - y0) * inverseLength;
+    _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
+    _v.set(side * (xcForSide(side) + shoeOutboardOffset),
+      y + tangentZ * rOut, z - tangentY * rOut);
       // The shoe stays on this exact deformed belt normal. A historical
       // hull-local floor clamp moved only the gray shoe layer upward on
       // slopes / turn roll, creating the visibly detached second course.
@@ -3772,18 +3761,38 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // contactGeom, so no post-course transform is permitted here.
       // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
       // ground ribbon carry the read) — collapse that side's pads to zero
-      const broken = side < 0 ? brokenL : brokenR;
-      if (broken) {
-        _s.set(0, 0, 0);
-        _m.compose(_v, _q, _s);
-        for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
-        continue;
-      }
-      _s.set(1, 1, 1);
-      _m.compose(_v, _q, _s);
-      for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
-      }
+    const broken = side < 0 ? brokenL : brokenR;
+    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
+    _m.compose(_v, _q, _s);
+    for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
+  };
+  const placeTrackSide = (side: -1 | 1, scroll: number): void => {
+    const baseIndex = side < 0 ? 0 : nLinks;
+    const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
+    const startDistance = ((scroll % loopLen) + loopLen) % loopLen;
+    let segmentIndex = findTrackSegment(startDistance);
+    let previousDistance = startDistance;
+    for (let linkIndex = 0; linkIndex < nLinks; linkIndex++) {
+      let distance = startDistance + linkIndex * lp;
+      if (distance >= loopLen) distance -= loopLen;
+      if (linkIndex && distance < previousDistance) segmentIndex = 0;
+      segmentIndex = findTrackSegment(distance, segmentIndex);
+      previousDistance = distance;
+      const segment = segsT[segmentIndex];
+      const segmentDistance = distance - segment.c0;
+      const progress = Math.max(0, Math.min(
+        1, segmentDistance / Math.max(segment.l, 1e-6),
+      ));
+      writeTrackLinkMatrix(
+        side, baseIndex + linkIndex, bandPosition, segmentIndex, progress,
+      );
     }
+  };
+  const placeLinks = (leftScroll: number, rightScroll: number): void => {
+    // Link distances are monotonic around each side's loop. Walk the segment
+    // cursor with them instead of restarting a linear search for every shoe.
+    placeTrackSide(-1, leftScroll);
+    placeTrackSide(1, rightScroll);
     for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
 
