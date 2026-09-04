@@ -22,6 +22,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orien
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -41,7 +42,7 @@ interface RussiaGeometryPort {
   topY?: number;
   add(
     slot: string,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     x?: number,
     y?: number,
     z?: number,
@@ -49,7 +50,7 @@ interface RussiaGeometryPort {
     rotationY?: number,
     rotationZ?: number,
     scale?: GeometryScale,
-  ): unknown;
+  ): void;
   decal(
     owner: 'hull' | 'turret',
     kind: string,
@@ -57,7 +58,7 @@ interface RussiaGeometryPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 interface RussiaGunPort extends RussiaGeometryPort {
@@ -65,12 +66,12 @@ interface RussiaGunPort extends RussiaGeometryPort {
 }
 
 interface RussiaGunMountPort extends RussiaGeometryPort {
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface RussiaMudguardPort extends RussiaGeometryPort {
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface RussiaOffsetPort extends RussiaGeometryPort {
@@ -78,7 +79,7 @@ interface RussiaOffsetPort extends RussiaGeometryPort {
 }
 
 interface RussiaChassisPort extends RussiaGeometryPort {
-  readonly mats: unknown;
+  readonly mats: RuntimeValue;
 }
 
 interface RussiaEraPort extends RussiaGeometryPort {
@@ -251,7 +252,7 @@ interface T62BowServiceOptions {
 
 interface T62ChassisOptions {
   readonly bowService?: T62BowServiceOptions;
-  readonly gear?: Readonly<Record<string, unknown>>;
+  readonly gear?: Readonly<Record<string, RuntimeValue>>;
 }
 
 interface TallTrackLiftOptions {

@@ -19,6 +19,7 @@ import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -300,11 +301,11 @@ interface RoofPlateReceipt {
   readonly seat: number;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isAbramsBuilder(value: unknown): value is AbramsBuilderPort {
+function isAbramsBuilder(value: RuntimeValue): value is AbramsBuilderPort {
   return isRecord(value)
     && value.hullG instanceof THREE.Group
     && value.turretG instanceof THREE.Group
@@ -326,7 +327,7 @@ function isAbramsBuilder(value: unknown): value is AbramsBuilderPort {
     && typeof value.visualEraCluster === 'function';
 }
 
-function requireAbramsBuilder(value: unknown): AbramsBuilderPort {
+function requireAbramsBuilder(value: RuntimeValue): AbramsBuilderPort {
   if (!isAbramsBuilder(value)) {
     throw new TypeError('Abrams profile requires the complete procedural builder contract');
   }
@@ -338,7 +339,7 @@ function isRenderableMesh(object: THREE.Object3D): object is THREE.Mesh | THREE.
 }
 
 function abramsProfile(build: (builder: AbramsBuilderPort) => void) {
-  return { build: (builder: unknown): void => build(requireAbramsBuilder(builder)) };
+  return { build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder)) };
 }
 
 function configuredAbramsProfile(
@@ -347,7 +348,7 @@ function configuredAbramsProfile(
 ) {
   return {
     ...options,
-    build: (builder: unknown): void => build(requireAbramsBuilder(builder), options),
+    build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder), options),
   };
 }
 
@@ -2090,7 +2091,7 @@ const TEJAS_TURRET = {
 // shares the certified M1A1 loft and suspension instead of maintaining a
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
-export function buildM1A1BareHull(builder: unknown, {
+export function buildM1A1BareHull(builder: RuntimeValue, {
   returnRollerZs, returnTrackTopY, returnRollerR,
 }: BareHullOptions = {}): void {
   const P = requireAbramsBuilder(builder);

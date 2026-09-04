@@ -20,6 +20,7 @@ import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type Side = -1 | 1;
 type Vec2Tuple = readonly [number, number];
@@ -46,16 +47,16 @@ type UnionValue<Value, Key extends PropertyKey> = Value extends Value
   : never;
 type DefinedValue<Value> = NonNullable<Value>;
 type NullablePart<Value> = Extract<Value, null | undefined>;
-type DeepMergedArray<Value extends readonly unknown[]> = [Value[number]] extends [readonly unknown[]]
+type DeepMergedArray<Value extends readonly RuntimeValue[]> = [Value[number]] extends [readonly RuntimeValue[]]
   ? Value
   : [Value[number]] extends [object]
     ? readonly DeepMergedUnion<Value[number]>[]
     : Value;
 type DeepMergedValue<Value> = [DefinedValue<Value>] extends [never]
   ? undefined
-  : [DefinedValue<Value>] extends [(...args: never[]) => unknown]
+  : [DefinedValue<Value>] extends [(...args: never[]) => RuntimeValue | void]
     ? DefinedValue<Value> | NullablePart<Value>
-    : [DefinedValue<Value>] extends [readonly unknown[]]
+    : [DefinedValue<Value>] extends [readonly RuntimeValue[]]
       ? DeepMergedArray<DefinedValue<Value>> | NullablePart<Value>
       : [DefinedValue<Value>] extends [object]
         ? DeepMergedUnion<DefinedValue<Value>> | NullablePart<Value>
@@ -63,7 +64,7 @@ type DeepMergedValue<Value> = [DefinedValue<Value>] extends [never]
 type DeepMergedUnion<Value> = {
   readonly [Key in UnionKeys<Value>]: DeepMergedValue<UnionValue<Value, Key>>;
 };
-type DeepDefined<Value> = Value extends (...args: never[]) => unknown
+type DeepDefined<Value> = Value extends (...args: never[]) => RuntimeValue | void
   ? Value
   : Value extends readonly (infer Item)[]
     ? readonly DeepDefined<Item>[]
@@ -9050,7 +9051,7 @@ function merkavaSourceFinish(
     if (earlyOracle) {
       for (const cell of eraCells.filter((candidate) => candidate.sourceConformal)) {
         if (!cell.surface || !cell.sourceSurface) continue;
-        const seat: Record<string, unknown> = {
+        const seat: Record<string, RuntimeValue> = {
           side: s,
           centerLocal: Object.freeze([cell.x, cell.y, cell.z]),
           surfaceLocal: Object.freeze(cell.surface.toArray()),
@@ -10718,20 +10719,19 @@ function merkava3cKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
 function applyMerkavaTurretKit(
   P: TankBuilderPort,
   p: MerkavaProfileData,
-  turret: unknown,
+  turret: MerkavaTurretConfig,
 ): void {
   // This dispatcher is only called with createMerkavaTurretConfig's frozen
-  // result. Keeping the boundary opaque avoids coupling profile-table union
-  // expansion to every kit call while the named kit helpers remain strict.
-  const typedTurret = turret as MerkavaTurretConfig;
+  // result. Preserve that strict contract so every mark-specific kit receives
+  // the same normalized turret configuration.
   switch (P.spec.id) {
-    case 'merkava1b': merkava1bKit(P, p, typedTurret); break;
-    case 'merkava2d': merkava2dKit(P, p, typedTurret); break;
-    case 'merkava3b': merkava3bKit(P, p, typedTurret); break;
-    case 'merkava3c': merkava3cKit(P, p, typedTurret); break;
-    case 'merkava3d': merkava3dKit(P, p, typedTurret); break;
-    case 'merkava4': merkava4Kit(P, p, typedTurret); break;
-    case 'merkava4b': merkava4bKit(P, p, typedTurret); break;
+    case 'merkava1b': merkava1bKit(P, p, turret); break;
+    case 'merkava2d': merkava2dKit(P, p, turret); break;
+    case 'merkava3b': merkava3bKit(P, p, turret); break;
+    case 'merkava3c': merkava3cKit(P, p, turret); break;
+    case 'merkava3d': merkava3dKit(P, p, turret); break;
+    case 'merkava4': merkava4Kit(P, p, turret); break;
+    case 'merkava4b': merkava4bKit(P, p, turret); break;
     default: break;
   }
 }

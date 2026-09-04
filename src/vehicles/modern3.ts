@@ -19,7 +19,7 @@ type VehicleAssemblyOwner = 'hull' | 'turret';
 
 export interface Modern3BuilderPort {
   readonly q?: boolean;
-  readonly rng: unknown;
+  readonly rng: () => number;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -33,20 +33,20 @@ export interface Modern3BuilderPort {
   readonly geometryReceipt?: boolean;
   muzzleZ: number;
   topY?: number;
-  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(
     owner: VehicleAssemblyOwner,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(
     id: string,
     slot: string,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
+  ): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -54,7 +54,7 @@ export interface Modern3BuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 interface Type10BuildOptions {

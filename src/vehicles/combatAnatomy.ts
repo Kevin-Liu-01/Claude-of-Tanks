@@ -4,6 +4,8 @@
 // Pure array math: no DOM, WebGL or Three dependency.
 
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
+import type { EraProtection } from '../sim/armor.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   combatAnatomyCalibration,
   type AnatomyCalibrationBounds,
@@ -39,7 +41,7 @@ interface ArmorPlate {
   keMm: number;
   ceMm: number;
   kind?: string;
-  era?: unknown | null;
+  era?: EraProtection | null;
   moduleLink?: string | null;
   gunFollow?: boolean;
 }
@@ -123,7 +125,7 @@ export interface CombatAnatomySpec {
   role: string;
   gun?: { reloadS: number; shells?: CombatShell[] };
   armor?: ArmorAnatomy;
-  [key: symbol]: unknown;
+  [key: symbol]: RuntimeValue;
 }
 
 interface LegacyInternalLayout {
@@ -155,11 +157,11 @@ interface ShellSegment {
   bounds: Bounds;
 }
 
-function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+function isRecord(value: RuntimeValue): value is Record<PropertyKey, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isCombatAnatomySpec(value: unknown): value is CombatAnatomySpec & { armor: ArmorAnatomy } {
+function isCombatAnatomySpec(value: RuntimeValue): value is CombatAnatomySpec & { armor: ArmorAnatomy } {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.role !== 'string') return false;
   const armor = value.armor;
   return isRecord(armor)
@@ -1218,9 +1220,9 @@ export function finalizeCombatAnatomy<T>(
   calibration?: CombatAnatomyCalibration | null,
 ): T;
 export function finalizeCombatAnatomy(
-  spec: unknown,
+  spec: RuntimeValue,
   requestedCalibration?: CombatAnatomyCalibration | null,
-): unknown {
+): RuntimeValue {
   if (!isCombatAnatomySpec(spec)) return spec;
   const calibration = requestedCalibration === undefined
     ? combatAnatomyCalibration(spec.id)

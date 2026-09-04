@@ -47,6 +47,7 @@ import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkin
 import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
 import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
 import type { SuspensionPatternId } from './suspensionPatterns.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 
 const D2R = Math.PI / 180;
@@ -59,7 +60,8 @@ type VehicleOwner = 'hull' | 'turret';
 type VehicleMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 type VehicleInstancedMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
 type DisposableVehicleResource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
-type TankBuilder = (...args: never[]) => unknown;
+type TankBuilder = (...args: never[]) => void;
+type FactoryFitting = (...args: never[]) => RuntimeValue;
 type TankBuilderRecord = Record<string, TankBuilder>;
 
 interface TankMaterials {
@@ -97,7 +99,7 @@ interface TankFittings {
 interface FactoryConfiguration {
   canonicalBuilderPacks: Array<readonly [string, TankBuilderRecord]>;
   profiledBuilders?: TankBuilderRecord;
-  fittings: Record<string, TankBuilder>;
+  fittings: Record<string, FactoryFitting>;
 }
 
 interface FactoryGunSpec extends FleetGunSpec {
@@ -453,7 +455,7 @@ interface RunningGearUnit {
   ): boolean;
   setBroken?(module: 'trackL' | 'trackR', broken: boolean): void;
   addRoadWheelLayer(
-    geometry: unknown,
+    geometry: RuntimeValue,
     material: THREE.Material,
     layer?: Omit<WheelFaceLayer, 'geometry' | 'material'>,
   ): THREE.InstancedMesh | null;
@@ -561,11 +563,11 @@ function requireEquipmentBuilderPort(value: object): EquipmentBuilderPort {
   return value;
 }
 
-function isRng(value: unknown): value is Rng {
+function isRng(value: RuntimeValue): value is Rng {
   return typeof value === 'function';
 }
 
-function requireRng(value: unknown): Rng {
+function requireRng(value: RuntimeValue): Rng {
   if (!isRng(value)) throw new TypeError('Procedural detail requires a seeded RNG');
   return value;
 }
@@ -597,7 +599,7 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   muzzleZ: number;
   topY: number;
   fixedMount: boolean;
-  postAssemble: ((rig: TankRig) => unknown) | null;
+  postAssemble: ((rig: TankRig) => void) | null;
   addMudguard(
     label: string,
     bucket: string,
@@ -687,7 +689,7 @@ interface TankEngineContext {
   releaseShadowMaterial?: (material: THREE.Material) => boolean;
 }
 
-function normalizeTankEngineContext(value: unknown): TankEngineContext | null | undefined {
+function normalizeTankEngineContext(value: RuntimeValue): TankEngineContext | null | undefined {
   if (value == null) return value;
   if (typeof value !== 'object') throw new TypeError('Tank engine context must be an object');
   const context = value as Partial<TankEngineContext>;
@@ -734,10 +736,10 @@ interface TankVisual {
   presentationAnchorWorld(out: THREE.Vector3): THREE.Vector3;
   prepareForSimulation(): TankContactGeometry | null;
   syncFromState(
-    state: unknown,
+    state: RuntimeValue,
     dt?: number,
     viewDistM?: number,
-    presentationState?: unknown,
+    presentationState?: RuntimeValue,
     detailVisible?: boolean,
   ): void;
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): THREE.Vector3;
@@ -745,7 +747,7 @@ interface TankVisual {
   gunPivotWorld(out: THREE.Vector3): THREE.Vector3;
   turretTopWorld(out: THREE.Vector3): THREE.Vector3;
   recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number): number | null;
-  setGroundSampler(sampler?: unknown): void;
+  setGroundSampler(sampler?: RuntimeValue): void;
   hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
   setTrackState(module: 'trackL' | 'trackR', broken: boolean): void;
   stripEra(plateName: string): boolean;
@@ -841,7 +843,7 @@ type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasC
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
-function requireTankPoseState(value: unknown): TankPoseState {
+function requireTankPoseState(value: RuntimeValue): TankPoseState {
   if (!value || typeof value !== 'object') throw new TypeError('Tank visual requires a pose state');
   const state = value as Partial<TankPoseState>;
   if (!state.pos || typeof state.yaw !== 'number' || typeof state.visualPitch !== 'number'
@@ -2729,7 +2731,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     return im;
   };
   const addRoadWheelLayer = (
-    geometry: unknown,
+    geometry: RuntimeValue,
     material: THREE.Material,
     layer: WheelLayerOptions = {},
   ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null => {
@@ -4390,7 +4392,7 @@ function openRackGrid(
 function stowage(
   builder: object,
   bucket: string,
-  rngSource: unknown,
+  rngSource: RuntimeValue,
   spots: readonly StowageSpot[],
 ): void {
   const P = requireEquipmentBuilderPort(builder);
@@ -7443,7 +7445,7 @@ function finalizeVehicleMarkingSeats(
   }
 }
 
-function isVerifiedMarkingSeat(value: unknown): value is VerifiedMarkingSeat {
+function isVerifiedMarkingSeat(value: RuntimeValue): value is VerifiedMarkingSeat {
   if (!value || typeof value !== 'object') return false;
   return 'parent' in value && (value.parent === 'hull' || value.parent === 'turret')
     && 'kind' in value && typeof value.kind === 'string'
@@ -7500,7 +7502,7 @@ function applyVerifiedVehicleMarkingSeats(
 
 export function createTank(
   specId: string,
-  engineContext: unknown,
+  engineContext: RuntimeValue,
   opts: TankFactoryOptions = {},
 ): TankVisual {
   if (!factoryConfigured) {
