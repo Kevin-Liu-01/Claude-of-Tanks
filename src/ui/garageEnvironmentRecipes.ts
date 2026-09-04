@@ -280,7 +280,12 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeBoatshed, 'flood-response boathouse', -41, 23, 0.58),
       at(makeBathhouse, 'ridge operations hall', 31, 31, 0.48),
     ],
-    treeSpecies: ['eucalyptus', 'palm'], treeCount: 30, reliefScale: 0.72,
+    // Fourteen shared three-tree groves still read as a dense wet perimeter,
+    // while staying below the strict 50k Garage geometry budget.
+    // Eleven shared three-tree groves retain a dense 33-tree tropical ring;
+    // higher counts duplicated off-axis canopy detail that was invisible from
+    // the Garage stage while pushing the environment beyond its 50k budget.
+    treeSpecies: ['eucalyptus', 'palm'], treeCount: 22, reliefScale: 0.72,
     horizonStyle: 'rolling', horizonHeightM: 10.4,
     approach: {
       style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,

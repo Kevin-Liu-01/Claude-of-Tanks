@@ -74,10 +74,12 @@ export interface GarageWorkshopStats {
   readonly mapImageCount: number;
   readonly battleScreenMode: string;
   readonly battleScreenWallBay: string;
+  readonly battleScreenDisplayCount: number;
   readonly battleScreenImageCount: number;
   readonly battleScreenResidentImageLimit: number;
   readonly battleScreenResidentImageCount: number;
   readonly battleScreenCurrentImage: string;
+  readonly battleScreenSecondaryImage: string;
   readonly battleScreenVisible: boolean;
   readonly modelMode: string;
   readonly exhibitCount: number;
@@ -264,10 +266,12 @@ export function createGarageWorkshopDiagnostics({
         mapImageCount: data.mapImageCount ?? -1,
         battleScreenMode: stringValue(data.battleScreenMode),
         battleScreenWallBay: stringValue(data.battleScreenWallBay),
+        battleScreenDisplayCount: numberValue(data.battleScreenDisplayCount),
         battleScreenImageCount: numberValue(data.battleScreenImageCount),
         battleScreenResidentImageLimit: numberValue(data.battleScreenResidentImageLimit),
         battleScreenResidentImageCount: numberValue(data.battleScreenResidentImageCount),
         battleScreenCurrentImage: stringValue(data.battleScreenCurrentImage),
+        battleScreenSecondaryImage: stringValue(data.battleScreenSecondaryImage),
         battleScreenVisible: trueValue(data.battleScreenVisible),
         modelMode: stringValue(data.workshopModelMode),
         exhibitCount: numberValue(data.workshopExhibitCount),

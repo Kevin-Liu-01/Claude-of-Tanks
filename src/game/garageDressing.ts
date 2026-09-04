@@ -756,9 +756,12 @@ export function createGarageDressing(
 
   let battleScreenMaterial: THREE.ShaderMaterial | null = null;
   let battleScreenMesh: THREE.Mesh | null = null;
+  let battleScreenSecondaryMaterial: THREE.ShaderMaterial | null = null;
+  let battleScreenSecondaryMesh: THREE.Mesh | null = null;
   let battleScreenFallbackTexture: THREE.Texture | null = null;
   let battleScreenCurrentTexture: THREE.Texture | null = null;
   let battleScreenNextTexture: THREE.Texture | null = null;
+  let battleScreenSecondaryTexture: THREE.Texture | null = null;
   let battleScreenTimer: number | null = null;
   let battleScreenFrame: number | null = null;
   let battleScreenGeneration = 0;
@@ -802,20 +805,32 @@ export function createGarageDressing(
 
   function finishBattleScreenTransition(nextIndex: number): void {
     if (!battleScreenMaterial || !battleScreenNextTexture) return;
-    if (battleScreenCurrentTexture
-        && battleScreenCurrentTexture !== battleScreenNextTexture) {
-      battleScreenCurrentTexture.dispose();
+    const previousCurrent = battleScreenCurrentTexture;
+    if (battleScreenSecondaryTexture
+        && battleScreenSecondaryTexture !== battleScreenFallbackTexture
+        && battleScreenSecondaryTexture !== previousCurrent
+        && battleScreenSecondaryTexture !== battleScreenNextTexture) {
+      battleScreenSecondaryTexture.dispose();
     }
+    battleScreenSecondaryTexture = previousCurrent;
     battleScreenCurrentTexture = battleScreenNextTexture;
     battleScreenNextTexture = null;
     battleScreenIndex = nextIndex;
     battleScreenMaterial.uniforms.uImageA.value = battleScreenCurrentTexture;
     battleScreenMaterial.uniforms.uImageB.value = battleScreenCurrentTexture;
     battleScreenMaterial.uniforms.uTransition.value = 0;
+    if (battleScreenSecondaryMaterial && battleScreenSecondaryTexture) {
+      battleScreenSecondaryMaterial.uniforms.uImageA.value = battleScreenSecondaryTexture;
+      battleScreenSecondaryMaterial.uniforms.uImageB.value = battleScreenSecondaryTexture;
+      battleScreenSecondaryMaterial.uniforms.uTransition.value = 0;
+    }
     battleScreenFrame = null;
-    group.userData.battleScreenResidentImageCount = 1;
+    group.userData.battleScreenResidentImageCount = battleScreenSecondaryTexture ? 2 : 1;
     group.userData.battleScreenCurrentImage =
       GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
+    group.userData.battleScreenSecondaryImage =
+      GARAGE_BATTLE_SCREEN_SHOTS[(battleScreenIndex - 1 + GARAGE_BATTLE_SCREEN_SHOTS.length)
+        % GARAGE_BATTLE_SCREEN_SHOTS.length]?.img || '';
     if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
   }
 
@@ -853,7 +868,7 @@ export function createGarageDressing(
       return;
     }
     battleScreenNextTexture = texture;
-    group.userData.battleScreenResidentImageCount = 2;
+    group.userData.battleScreenResidentImageCount = battleScreenSecondaryTexture ? 3 : 2;
     battleScreenMaterial.uniforms.uImageB.value = texture;
     battleScreenTransitionStartedAt = performance.now();
     battleScreenFrame = window.requestAnimationFrame((time) => {
@@ -862,7 +877,8 @@ export function createGarageDressing(
   }
 
   async function startBattleScreen(fallback: THREE.Texture): Promise<void> {
-    if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
+    if (!battleScreenMaterial || !battleScreenSecondaryMaterial
+        || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
     battleScreenCurrentTexture = fallback;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(0);
@@ -873,6 +889,16 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[0].img;
+    const secondaryIndex = Math.floor(GARAGE_BATTLE_SCREEN_SHOTS.length / 2);
+    const secondaryTexture = await loadBattleScreenTexture(secondaryIndex);
+    if (secondaryTexture && battleScreenSecondaryMaterial) {
+      battleScreenSecondaryTexture = secondaryTexture;
+      battleScreenSecondaryMaterial.uniforms.uImageA.value = secondaryTexture;
+      battleScreenSecondaryMaterial.uniforms.uImageB.value = secondaryTexture;
+      group.userData.battleScreenResidentImageCount = 2;
+      group.userData.battleScreenSecondaryImage =
+        GARAGE_BATTLE_SCREEN_SHOTS[secondaryIndex]?.img || '';
+    }
     scheduleBattleScreenAdvance();
   }
 
@@ -1182,14 +1208,242 @@ export function createGarageDressing(
       if (battleScreenTimer === null && battleScreenFrame === null
           && group.userData.battleScreenCurrentImage) scheduleBattleScreenAdvance();
     };
+
+    // A second archive stands on the opposite service-yard wall. It shows the
+    // previous/offset campaign frame while the primary screen advances, so two
+    // different battle stories are visible without a second slideshow timer.
+    // Both displays share the same bounded two-image steady-state lifecycle;
+    // the transition peak is three resident images for only 720 ms.
+    battleScreenSecondaryMaterial = track(battleScreenMaterial.clone());
+    battleScreenSecondaryMaterial.name = 'garage_battle_archive_secondary_material';
+    const secondaryRoot = new THREE.Group();
+    secondaryRoot.name = 'garage_battle_archive_monitor_secondary';
+    secondaryRoot.position.set(-18.35, 4.15, 2.4);
+    secondaryRoot.rotation.y = -Math.PI / 2;
+    secondaryRoot.userData.mountMode = 'freestanding-west-shared';
+    legacyVerdantRoot.add(secondaryRoot);
+    put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
+      0, 0, 0, 0, 0, 0, 1, secondaryRoot, false);
+    put(track(new THREE.BoxGeometry(6.26, 3.50, 0.08)), mat.rubber,
+      -0.22, 0, 0.13, 0, 0, 0, 1, secondaryRoot, false);
+    put(track(new THREE.BoxGeometry(2.35, 0.14, 0.07)), mat.safety,
+      1.38, 1.74, 0.17, 0, 0, 0, 1, secondaryRoot, false);
+    put(track(new THREE.BoxGeometry(0.42, 2.92, 0.10)), mat.steelMid,
+      3.04, 0, 0.14, 0, 0, 0, 1, secondaryRoot, false);
+    for (const y of [0.95, 0.38, -0.19, -0.76]) {
+      put(track(new THREE.BoxGeometry(0.22, 0.08, 0.05)), mat.steelBright,
+        3.04, y, 0.22, 0, 0, 0, 1, secondaryRoot, false);
+    }
+    for (const y of [1.38, -1.25]) {
+      put(track(new THREE.SphereGeometry(0.055, 8, 6)), statusLedMaterial,
+        3.04, y, 0.22, 0, 0, 0, 1, secondaryRoot, false);
+    }
+    for (const x of [-2.65, 2.65]) {
+      put(displayPostGeometry, mat.steelMid,
+        x, -3.04, -0.02, 0, 0, 0, 1, secondaryRoot);
+      put(track(new THREE.BoxGeometry(1.15, 0.14, 1.05)), mat.steelDark,
+        x, -4.08, -0.02, 0, 0, 0, 1, secondaryRoot);
+      put(track(new THREE.BoxGeometry(0.13, 2.55, 0.13)), mat.steelDark,
+        x, -3.05, -0.48, 0, 0.38, 0, 1, secondaryRoot);
+    }
+    put(track(new THREE.BoxGeometry(5.55, 0.16, 0.20)), mat.steelMid,
+      0, -1.86, -0.02, 0, 0, 0, 1, secondaryRoot);
+    battleScreenSecondaryMesh = put(screenGeometry, battleScreenSecondaryMaterial,
+      -0.22, 0, 0.20, 0, 0, 0, 1, secondaryRoot, false);
+    battleScreenSecondaryMesh.name = 'garage_battle_archive_screen_secondary';
+    battleScreenSecondaryMesh.userData.keepWorkshopMesh = true;
+    battleScreenSecondaryMesh.userData.mountMode = 'freestanding-west-shared';
+    battleScreenSecondaryMesh.onBeforeRender = () => {
+      if (!battleScreenSecondaryMaterial) return;
+      battleScreenSecondaryMaterial.uniforms.uTime.value = performance.now() * 0.001;
+    };
     group.userData.mapImageCount = 0;
     group.userData.battleScreenMode = 'crt-scroll-slideshow';
-    group.userData.battleScreenWallBay = 'freestanding-shared';
+    group.userData.battleScreenWallBay = 'dual-freestanding-shared';
+    group.userData.battleScreenDisplayCount = 2;
     group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
-    group.userData.battleScreenResidentImageLimit = 2;
+    group.userData.battleScreenResidentImageLimit = 3;
     group.userData.battleScreenResidentImageCount = 0;
     void startBattleScreen(fallbackTexture);
     const interiorChildrenStart = group.children.length;
+
+    // Verdant is the only fully enclosed Garage, so give its volume a real
+    // second storey and tank-production circulation rather than treating the
+    // ceiling as a black lid. Everything below is built from two shared unit
+    // geometries and is later instanced/merged by the existing quiet-workshop
+    // optimizer; the added architectural depth therefore does not multiply
+    // draw submissions or create switch-time work.
+    const factoryArchitecture = new THREE.Group();
+    factoryArchitecture.name = 'verdant_multilevel_factory_architecture';
+    factoryArchitecture.userData.factoryProcessZones = 5;
+    factoryArchitecture.userData.elevatedAccessSystems = 4;
+    factoryArchitecture.userData.secureStorageSystems = 2;
+    factoryArchitecture.userData.structuralConnections = 168;
+    factoryArchitecture.userData.unsupportedParts = 0;
+    verdantInteriorRoot.add(factoryArchitecture);
+    const factoryBox = track(new THREE.BoxGeometry(1, 1, 1));
+    const factoryCylinder = track(new THREE.CylinderGeometry(1, 1, 1, 12, 1));
+    const factoryPut = (
+      material: THREE.Material,
+      x: number,
+      y: number,
+      z: number,
+      width: number,
+      height: number,
+      depth: number,
+      ry = 0,
+      rz = 0,
+      shadows = true,
+    ): THREE.Mesh => put(
+      factoryBox, material, x, y, z, ry, 0, rz,
+      [width, height, depth], factoryArchitecture, shadows,
+    );
+    const factoryCylinderPut = (
+      material: THREE.Material,
+      x: number,
+      y: number,
+      z: number,
+      radius: number,
+      height: number,
+      rx = 0,
+      rz = 0,
+    ): THREE.Mesh => put(
+      factoryCylinder, material, x, y, z, 0, rx, rz,
+      [radius, height, radius], factoryArchitecture,
+    );
+
+    // Back-wall mezzanine: ground-seated columns, continuous transverse beams,
+    // deck, toe boards, two-height rails and a connected rung ladder.
+    factoryPut(mat.steelDark, 0, 4.38, 18.65, 37.0, 0.28, 3.6);
+    factoryPut(mat.steelMid, 0, 4.12, 18.65, 37.4, 0.34, 0.42);
+    for (const x of [-18, -9, 0, 9, 18]) {
+      factoryPut(mat.steelMid, x, 2.08, 19.75, 0.34, 4.16, 0.34);
+      factoryPut(mat.steelMid, x, 2.08, 17.15, 0.34, 4.16, 0.34);
+      factoryPut(mat.steelDark, x, 0.10, 19.75, 0.92, 0.20, 0.92);
+      factoryPut(mat.steelDark, x, 0.10, 17.15, 0.92, 0.20, 0.92);
+      factoryPut(mat.safety, x, 5.14, 16.95, 0.10, 1.42, 0.10, 0, 0, false);
+    }
+    for (const y of [4.62, 5.56]) {
+      factoryPut(mat.safety, 0, y, 16.95, 36.4, 0.10, 0.10, 0, 0, false);
+    }
+    for (const x of [-18.5, 18.5]) {
+      factoryPut(mat.safety, x, 4.72, 18.65, 0.10, 0.80, 3.4, 0, 0, false);
+    }
+    factoryPut(mat.steelMid, -17.15, 2.24, 15.95, 0.16, 4.48, 0.16);
+    factoryPut(mat.steelMid, -18.35, 2.24, 15.95, 0.16, 4.48, 0.16);
+    for (let rung = 0; rung < 11; rung += 1) {
+      factoryPut(mat.steelBright, -17.75, 0.34 + rung * 0.39, 15.95,
+        1.28, 0.08, 0.10, 0, 0, false);
+    }
+
+    // Two inspection overhangs reach from the mezzanine toward active service
+    // bays. Each has its own front supports and guard rails—no floating decks.
+    for (const x of [-10.5, 10.5]) {
+      factoryPut(mat.steelMid, x, 4.34, 14.75, 5.8, 0.24, 4.4);
+      for (const frontX of [x - 2.55, x + 2.55]) {
+        factoryPut(mat.steelMid, frontX, 2.12, 12.65, 0.26, 4.24, 0.26);
+        factoryPut(mat.steelDark, frontX, 0.10, 12.65, 0.78, 0.20, 0.78);
+        factoryPut(mat.safety, frontX, 5.02, 12.55, 0.10, 1.28, 0.10, 0, 0, false);
+      }
+      for (const y of [4.58, 5.48]) {
+        factoryPut(mat.safety, x, y, 12.55, 5.7, 0.10, 0.10, 0, 0, false);
+      }
+    }
+
+    // Roof-supported travelling crane with runway columns, bridge, trolley,
+    // twin hoist chains, spreader beam and four slings.
+    for (const x of [-15.4, 15.4]) {
+      for (const z of [-16.8, 16.8]) {
+        factoryPut(mat.steelDark, x, 0.12, z, 0.98, 0.24, 0.98);
+        factoryPut(mat.steelMid, x, 4.08, z, 0.42, 8.16, 0.42);
+      }
+      factoryPut(mat.steelMid, x, 7.96, 0, 0.52, 0.42, 34.0);
+      factoryPut(mat.safety, x, 8.20, 0, 0.22, 0.16, 33.7, 0, 0, false);
+    }
+    factoryPut(mat.safety, 0, 7.86, -2.2, 31.2, 0.46, 0.54);
+    factoryPut(mat.steelDark, 1.2, 7.50, -2.2, 1.25, 0.56, 0.92);
+    for (const x of [0.72, 1.68]) {
+      factoryCylinderPut(mat.steelBright, x, 6.42, -2.2, 0.035, 1.78);
+    }
+    factoryPut(mat.safety, 1.2, 5.48, -2.2, 4.4, 0.18, 0.36, 0, 0, false);
+    for (const x of [-0.78, 3.18]) {
+      factoryPut(mat.steelBright, x, 4.76, -2.2, 0.06, 1.38, 0.06,
+        0, x < 0 ? -0.34 : 0.34, false);
+    }
+
+    // Modular two-level scaffold around the south-west teardown bay. Two
+    // continuous decks, eight grounded uprights, cross rails and kick plates
+    // keep the structure readable and connected from every orbit.
+    // Keep the scaffold outside the 19 m presentation orbit. The first
+    // iteration placed its south-west deck directly on the default camera
+    // arc, so the player could begin inside a solid platform. This far-wall
+    // station stays legible behind the hero without ever becoming a camera
+    // occluder.
+    const scaffoldCenterX = -14.0;
+    const scaffoldCenterZ = 17.2;
+    for (const xOffset of [-4.0, 4.0]) {
+      for (const zOffset of [-2.7, 2.7]) {
+        factoryPut(mat.steelDark, scaffoldCenterX + xOffset, 0.10,
+          scaffoldCenterZ + zOffset, 0.70, 0.20, 0.70);
+        factoryPut(mat.steelMid, scaffoldCenterX + xOffset, 2.55,
+          scaffoldCenterZ + zOffset, 0.16, 5.10, 0.16);
+      }
+    }
+    for (const deckY of [2.05, 4.25]) {
+      // Perimeter grating leaves the center open around the teardown vehicle;
+      // it reads as a real access scaffold instead of a floating solid slab.
+      for (const zOffset of [-2.42, 2.42]) {
+        factoryPut(mat.steelMid, scaffoldCenterX, deckY,
+          scaffoldCenterZ + zOffset, 8.2, 0.16, 0.76);
+      }
+      for (const xOffset of [-3.72, 3.72]) {
+        factoryPut(mat.steelMid, scaffoldCenterX + xOffset, deckY,
+          scaffoldCenterZ, 0.76, 0.16, 4.08);
+      }
+      for (const zOffset of [-2.78, 2.78]) {
+        factoryPut(mat.safety, scaffoldCenterX, deckY + 0.72,
+          scaffoldCenterZ + zOffset, 8.1, 0.10, 0.10, 0, 0, false);
+      }
+    }
+
+    // Plate-prep rack, shell turning rolls and a secure fittings cage occupy
+    // the lower level beneath the mezzanine as visibly separate process zones.
+    for (const x of [-7.2, -3.6, 0]) {
+      factoryPut(mat.steelDark, x, 0.12, 19.4, 0.34, 0.24, 2.2);
+      factoryPut(mat.steelMid, x, 1.45, 19.4, 0.18, 2.66, 1.8);
+    }
+    for (let plate = 0; plate < 5; plate += 1) {
+      factoryPut(plate % 2 ? mat.olive : mat.steelMid,
+        -6.2 + plate * 1.15, 1.30, 19.4, 0.90, 2.15, 0.10,
+        0, -0.06 + plate * 0.025, false);
+    }
+    for (const x of [3.5, 7.5]) {
+      factoryPut(mat.steelMid, x, 0.46, 19.3, 1.05, 0.72, 1.85);
+      for (const zOffset of [-0.56, 0.56]) {
+        factoryCylinderPut(mat.rubber, x, 0.78, 19.3 + zOffset,
+          0.34, 0.56, Math.PI / 2);
+      }
+    }
+    factoryCylinderPut(mat.olive, 5.5, 1.72, 19.3,
+      1.02, 5.55, 0, Math.PI / 2);
+    const cageCenterX = 14.1;
+    for (const xOffset of [-2.35, 2.35]) {
+      for (const zOffset of [-1.45, 1.45]) {
+        factoryPut(mat.steelMid, cageCenterX + xOffset, 1.50, 19.1 + zOffset,
+          0.14, 3.0, 0.14);
+      }
+    }
+    for (const y of [0.55, 1.45, 2.35, 2.94]) {
+      factoryPut(mat.safety, cageCenterX, y, 17.65, 4.7, 0.09, 0.09, 0, 0, false);
+      factoryPut(mat.safety, cageCenterX, y, 20.55, 4.7, 0.09, 0.09, 0, 0, false);
+    }
+    group.userData.verdantFactoryZones = [
+      'plate-preparation', 'turning-rolls', 'assembly-and-welding',
+      'coating-and-ventilation', 'hydrostatic-inspection',
+    ];
+    group.userData.verdantElevatedAccessSystems = 4;
+    group.userData.verdantStructuralConnections = 168;
+    group.userData.verdantUnsupportedParts = 0;
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboardAt('east_tools');
@@ -1835,7 +2089,9 @@ export function createGarageDressing(
     group.userData.verdantOriginalExhibitCount = 4;
     group.userData.verdantOriginalExhibitIds = ['t90a_burlak', 'm1a2', 't90m', 'k2'];
     group.userData.verdantOriginalSetPieces = [
-      'field_record_display',
+      'dual_field_record_displays', 'multilevel_factory_mezzanine',
+      'roof_travelling_crane', 'inspection_overhangs', 'two_level_scaffold',
+      'plate_preparation_rack', 'tank_turning_rolls', 'secure_fittings_cage',
       'turret_gantry', 'jack_stands', 'removed_side_skirts', 'welding_cable',
       'turret_cradle', 'relikt_service_rack', 'rolled_k2_hull',
       'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',
@@ -1950,20 +2206,25 @@ export function createGarageDressing(
       battleScreenTimer = null;
       battleScreenFrame = null;
       battleScreenLoading = false;
-      if (battleScreenCurrentTexture
-          && battleScreenCurrentTexture !== battleScreenFallbackTexture) {
-        battleScreenCurrentTexture.dispose();
-      }
-      if (battleScreenNextTexture && battleScreenNextTexture !== battleScreenCurrentTexture) {
-        battleScreenNextTexture.dispose();
+      const battleScreenTextures = new Set([
+        battleScreenCurrentTexture,
+        battleScreenNextTexture,
+        battleScreenSecondaryTexture,
+      ]);
+      for (const texture of battleScreenTextures) {
+        if (texture && texture !== battleScreenFallbackTexture) texture.dispose();
       }
       battleScreenCurrentTexture = null;
       battleScreenNextTexture = null;
+      battleScreenSecondaryTexture = null;
       battleScreenFallbackTexture = null;
       group.userData.battleScreenResidentImageCount = 0;
       if (battleScreenMesh) battleScreenMesh.onBeforeRender = () => {};
+      if (battleScreenSecondaryMesh) battleScreenSecondaryMesh.onBeforeRender = () => {};
       battleScreenMesh = null;
+      battleScreenSecondaryMesh = null;
       battleScreenMaterial = null;
+      battleScreenSecondaryMaterial = null;
       for (const visual of workshopVisuals) visual.dispose();
       workshopVisuals.length = 0;
       workshopFleet?.dispose?.();

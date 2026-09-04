@@ -1032,7 +1032,7 @@ function buildBroadleafTrunk(
   const merged = mergeParts(parts);
   merged.userData.trunkQuality = {
     family: 'broadleaf', radialSegments: 12, verticalSegments: 4,
-    rootButtresses: 5, organicWarp: true,
+    rootButtresses: 5, rootFlare: true, organicWarp: true,
   };
   return merged;
 }
@@ -1206,7 +1206,7 @@ function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
   const merged = mergeParts(parts);
   merged.userData.trunkQuality = {
     family: 'conifer', radialSegments: 11, verticalSegments: 4,
-    rootButtresses: 4, organicWarp: true,
+    rootButtresses: 4, rootFlare: true, organicWarp: true,
   };
   return merged;
 }
@@ -1300,7 +1300,7 @@ function buildPalmGeometry(
     const x1 = Math.cos(leanA) * lean * t1 * t1, z1 = Math.sin(leanA) * lean * t1 * t1;
     const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
     const seg = new THREE.CylinderGeometry(
-      (0.13 + (1 - t1) * 0.10) * rMul, (0.14 + (1 - t0) * 0.10) * rMul, segLen, 9, 2);
+      (0.13 + (1 - t1) * 0.10) * rMul, (0.14 + (1 - t0) * 0.10) * rMul, segLen, 10, 2);
     organicizeTrunk(seg, i * 0.73 + leanA, 0, 0, 0.045);
     // ring-band illusion: alternating leaf-scar bands in warm brown
     _c.setHSL(0.072, 0.30, (i % 2 ? 0.34 : 0.43) + rng() * 0.03, THREE.SRGBColorSpace); // r2: bark-map compensation
@@ -1311,7 +1311,7 @@ function buildPalmGeometry(
     px = x1; pz = z1;
   }
   // fiber collar under the crown
-  const collar = new THREE.CylinderGeometry(0.30 * rMul, 0.19 * rMul, 0.6, 9, 2);
+  const collar = new THREE.CylinderGeometry(0.30 * rMul, 0.19 * rMul, 0.6, 10, 2);
   collar.translate(px, H - 0.15, pz);
   _c.setHSL(0.082, 0.32, 0.29, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(collar, _c.clone(), 0.2));
@@ -1416,8 +1416,8 @@ function buildPalmGeometry(
   }
   const trunk = mergeParts(trunkParts);
   trunk.userData.trunkQuality = {
-    family: 'palm', radialSegments: 9, verticalSegments: 2,
-    rootButtresses: 4, organicWarp: true,
+    family: 'palm', radialSegments: 10, verticalSegments: 2,
+    rootButtresses: 4, rootFlare: true, organicWarp: true,
   };
   return { trunk, cards: mergeParts(cardParts) };
 }
@@ -1575,7 +1575,7 @@ function buildBirchGeometry(
   const trunk = mergeParts(trunkParts);
   trunk.userData.trunkQuality = {
     family: 'birch', radialSegments: 10, verticalSegments: 5,
-    rootButtresses: 4, organicWarp: true,
+    rootButtresses: 4, rootFlare: true, organicWarp: true,
   };
   return { trunk, cards: mergeParts(cardParts) };
 }

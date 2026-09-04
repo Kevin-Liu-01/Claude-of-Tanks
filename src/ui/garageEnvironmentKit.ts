@@ -94,6 +94,10 @@ export interface GarageEnvironmentStats {
   readonly unsupportedParts: number;
   readonly heavyLiftSystems: number;
   readonly operationalMachines: number;
+  readonly factoryProcessZones: number;
+  readonly elevatedAccessSystems: number;
+  readonly secureStorageSystems: number;
+  readonly environmentSpecificAssemblies: number;
   readonly servicePurposeTags: readonly string[];
   readonly facilityMaterialClasses: number;
   readonly openingSightlineIntrusions: number;
@@ -416,7 +420,7 @@ function createBackdropGeometry(
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
 ): THREE.BufferGeometry {
-  // Three map-derived bands close the terrain without becoming the opaque,
+  // Five map-derived bands close the terrain without becoming the opaque,
   // one-height wall that previously swallowed half the outdoor view. Relief
   // is authored by biome: rail/coastal/urban facilities stay low and broad,
   // mesas terrace, and only the alpine recipe receives a mountain skyline.
@@ -424,9 +428,11 @@ function createBackdropGeometry(
   // grounded in its source battlefield rather than becoming generic scenery.
   const segments = 96;
   const layers = [
-    { radius: 45, base: -5.8, height: 0.36, relief: 0.16 },
-    { radius: 58, base: -6.8, height: 0.64, relief: 0.24 },
-    { radius: 73, base: -8.0, height: 1.00, relief: 0.32 },
+    { radius: 44, base: -5.4, height: 0.26, relief: 0.10 },
+    { radius: 54, base: -6.2, height: 0.44, relief: 0.16 },
+    { radius: 66, base: -7.0, height: 0.62, relief: 0.22 },
+    { radius: 80, base: -8.0, height: 0.82, relief: 0.28 },
+    { radius: 96, base: -9.2, height: 1.00, relief: 0.34 },
   ] as const;
   const verticesPerLayer = (segments + 1) * 2;
   const positions = new Float32Array(verticesPerLayer * layers.length * 3);
@@ -1054,6 +1060,10 @@ export function buildGarageEnvironment(
           unsupportedParts: 0,
           heavyLiftSystems: 0,
           operationalMachines: 0,
+          factoryProcessZones: 0,
+          elevatedAccessSystems: 0,
+          secureStorageSystems: 0,
+          environmentSpecificAssemblies: 0,
           servicePurposeTags: Object.freeze([]),
           facilityMaterialClasses: 0,
           openingSightlineIntrusions: 0,
@@ -1257,11 +1267,11 @@ export function buildGarageEnvironment(
       ...recipe.distinctiveElements,
       recipe.approach.label,
       'connected high-detail map facades',
-      `three-layer ${recipe.horizonStyle} terrain horizon`,
+      `five-layer ${recipe.horizonStyle} terrain horizon`,
       'shared full-detail fleet service exhibits',
       'static biome ground cover',
     ]),
-    backdropLayers: 3,
+    backdropLayers: 5,
     horizonStyle: recipe.horizonStyle,
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
     drawCalls: objects,

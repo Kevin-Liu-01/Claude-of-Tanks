@@ -86,7 +86,11 @@ for (const variant of GARAGE_VARIANTS) {
     assert.equal(stats.unsupportedParts, 0);
     assert.ok(stats.heavyLiftSystems >= 2);
     assert.ok(stats.operationalMachines >= 3);
-    assert.ok(stats.servicePurposeTags.length >= 5);
+    assert.ok(stats.factoryProcessZones >= 1);
+    assert.ok(stats.elevatedAccessSystems >= 2);
+    assert.ok(stats.secureStorageSystems >= 1);
+    assert.ok(stats.environmentSpecificAssemblies >= 2);
+    assert.ok(stats.servicePurposeTags.length >= 8);
     assert.ok(stats.facilityMaterialClasses >= 4);
     assert.equal(stats.openingSightlineIntrusions, 0);
     assert.ok(stats.platformGroundClearanceM >= 0.02,
@@ -120,8 +124,8 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must use real PBR surface sets`);
   assert.ok(stats.treeSpecies.length >= 2 && stats.trees >= 5,
     `${variant.id} must use battlefield tree geometry`);
-  assert.equal(stats.backdropLayers, 3,
-    `${variant.id} must close the view with three map-derived terrain bands`);
+  assert.equal(stats.backdropLayers, 5,
+    `${variant.id} must close the view with five map-derived terrain bands`);
   assert.notEqual(stats.horizonStyle, 'none');
   assert.ok(stats.horizonMaxHeightM > 0 && stats.horizonMaxHeightM <= 13.2,
     `${variant.id} skyline must stay inside its authored biome ceiling`);
@@ -169,7 +173,15 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must present working heavy-lift equipment`);
   assert.ok(stats.operationalMachines >= 3,
     `${variant.id} must present at least three assembled service machines`);
-  assert.ok(stats.servicePurposeTags.length >= 5,
+  assert.ok(stats.factoryProcessZones >= 1,
+    `${variant.id} must present a fabrication or inspection process zone`);
+  assert.ok(stats.elevatedAccessSystems >= 2,
+    `${variant.id} must retain connected elevated inspection access`);
+  assert.ok(stats.secureStorageSystems >= 1,
+    `${variant.id} must retain a secured parts-and-fittings cage`);
+  assert.ok(stats.environmentSpecificAssemblies >= 2,
+    `${variant.id} must pair shared service hardware with signature machinery`);
+  assert.ok(stats.servicePurposeTags.length >= 8,
     `${variant.id} must communicate a real maintenance workflow`);
   assert.ok(stats.facilityMaterialClasses >= 4,
     `${variant.id} facility must retain steel, paint, equipment and masonry readings`);

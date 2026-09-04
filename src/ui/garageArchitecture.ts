@@ -79,6 +79,10 @@ export interface GarageArchitectureStats {
   unsupportedParts: number;
   heavyLiftSystems: number;
   operationalMachines: number;
+  factoryProcessZones: number;
+  elevatedAccessSystems: number;
+  secureStorageSystems: number;
+  environmentSpecificAssemblies: number;
   servicePurposeTags: readonly string[];
   facilityMaterialClasses: number;
   openingSightlineIntrusions: number;
@@ -224,9 +228,14 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     unsupportedParts: 0,
     heavyLiftSystems: 3,
     operationalMachines: 7,
+    factoryProcessZones: 5,
+    elevatedAccessSystems: 4,
+    secureStorageSystems: 2,
+    environmentSpecificAssemblies: 10,
     servicePurposeTags: Object.freeze([
       'heavy-lift', 'welding', 'component-rebuild', 'rollover-teardown',
-      'enclosed-workshop',
+      'enclosed-workshop', 'plate-preparation', 'elevated-inspection',
+      'secured-parts-storage',
     ]),
     facilityMaterialClasses: 8,
     openingSightlineIntrusions: 0,
@@ -421,6 +430,10 @@ export function createGarageArchitectureController(
       unsupportedParts: numericStat(data.unsupportedParts),
       heavyLiftSystems: numericStat(data.heavyLiftSystems),
       operationalMachines: numericStat(data.operationalMachines),
+      factoryProcessZones: numericStat(data.factoryProcessZones),
+      elevatedAccessSystems: numericStat(data.elevatedAccessSystems),
+      secureStorageSystems: numericStat(data.secureStorageSystems),
+      environmentSpecificAssemblies: numericStat(data.environmentSpecificAssemblies),
       servicePurposeTags: listStat<string>(data.servicePurposeTags),
       facilityMaterialClasses: numericStat(data.facilityMaterialClasses),
       openingSightlineIntrusions: numericStat(data.openingSightlineIntrusions),

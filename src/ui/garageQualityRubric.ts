@@ -6,6 +6,10 @@ interface GarageArchitectureQualityReceipt {
   readonly servicePurposeTags?: readonly string[];
   readonly operationalMachines?: number;
   readonly heavyLiftSystems?: number;
+  readonly factoryProcessZones?: number;
+  readonly elevatedAccessSystems?: number;
+  readonly secureStorageSystems?: number;
+  readonly environmentSpecificAssemblies?: number;
   readonly facilityStations?: number;
   readonly openingSightlineIntrusions?: number;
   readonly distinctiveElements?: readonly string[];
@@ -89,13 +93,17 @@ export function scoreGarageQuality(input: GarageQualityInput): GarageQualityScor
       3, 'an open structure hitbox still fills too much intentional space');
 
   const functionalStory =
-    award(rows(architecture.servicePurposeTags).length >= 5,
+    award(rows(architecture.servicePurposeTags).length >= 8
+      && number(architecture.factoryProcessZones) >= 1,
       5, 'maintenance purpose is not legible')
-    + award(number(architecture.operationalMachines) >= 3,
+    + award(number(architecture.operationalMachines) >= 3
+      && number(architecture.secureStorageSystems) >= 1,
       3, 'fewer than three visibly assembled service machines')
-    + award(number(architecture.heavyLiftSystems) >= 2,
+    + award(number(architecture.heavyLiftSystems) >= 2
+      && number(architecture.elevatedAccessSystems) >= 2,
       5, 'fewer than two working heavy-lift systems')
-    + award(number(architecture.facilityStations) >= 2,
+    + award(number(architecture.facilityStations) >= 2
+      && number(architecture.environmentSpecificAssemblies) >= 2,
       4, 'fewer than two complete service bays')
     + award(number(workshop.exhibitCount) === 4,
       3, 'four real fleet exhibits are not present');

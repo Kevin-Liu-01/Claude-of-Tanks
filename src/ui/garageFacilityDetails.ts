@@ -23,6 +23,10 @@ export interface GarageFacilityDetailStats {
   readonly unsupportedParts: number;
   readonly heavyLiftSystems: number;
   readonly operationalMachines: number;
+  readonly factoryProcessZones: number;
+  readonly elevatedAccessSystems: number;
+  readonly secureStorageSystems: number;
+  readonly environmentSpecificAssemblies: number;
   readonly servicePurposeTags: readonly string[];
   readonly facilityMaterialClasses: number;
   readonly openingSightlineIntrusions: number;
@@ -183,6 +187,10 @@ export function addGarageFacilityDetails({
   let structuralConnections = 0;
   let heavyLiftSystems = 0;
   let operationalMachines = 0;
+  let factoryProcessZones = 0;
+  let elevatedAccessSystems = 0;
+  let secureStorageSystems = 0;
+  let environmentSpecificAssemblies = 0;
   let openingSightlineIntrusions = 0;
   const servicePurposeTags = new Set<string>();
   const accent = new THREE.Color(variant.accent).lerp(new THREE.Color(0xd7b66a), 0.24);
@@ -410,6 +418,7 @@ export function addGarageFacilityDetails({
     structuralConnections += 34;
     heavyLiftSystems += 1;
     operationalMachines += 1;
+    elevatedAccessSystems += 1;
     servicePurposeTags.add(pose.role);
     servicePurposeTags.add('overhead-travelling-crane');
     servicePurposeTags.add('grounded-service-pit');
@@ -475,6 +484,40 @@ export function addGarageFacilityDetails({
       0.035, 1.78, steel, 0, 8);
     clusterBox(cluster, mirror * 0.8, mirror * 0.55, 2.84,
       0.42, 0.20, 0.18, steel, 'equipment', 0.48);
+
+    // A real spreader beam and paired slings distribute the lift over a tank
+    // assembly instead of terminating in one implausible point hook.
+    clusterBox(cluster, mirror * 0.8, mirror * 0.55, 3.24,
+      2.8, 0.16, 0.20, safety, 'painted');
+    for (const lateralOffset of [-1.22, 1.22]) {
+      clusterBeam(cluster,
+        [mirror * 0.8, mirror * 0.55, 3.24],
+        [mirror * 0.8 + lateralOffset, mirror * 0.55, 2.48],
+        0.035, steel, 'equipment');
+    }
+    structuralConnections += 6;
+
+    // Column-supported inspection overhang. Its floor, toe board, rails and
+    // ladder all terminate at the service-bay frame, making the elevated
+    // access believable from the rear and side orbit views.
+    const deckSide = -mirror * 3.55;
+    clusterBox(cluster, deckSide, 1.55, 3.36,
+      1.35, 0.18, 3.2, steel, 'structure');
+    for (const longitudinal of [0.25, 2.85]) {
+      clusterBox(cluster, deckSide, longitudinal, 1.72,
+        0.16, 3.36, 0.16, steel, 'structure');
+      clusterBox(cluster, deckSide, longitudinal, 4.02,
+        0.12, 1.18, 0.12, safety, 'painted');
+    }
+    for (const y of [3.60, 4.36]) {
+      clusterBox(cluster, deckSide, 1.55, y,
+        0.12, 0.10, 3.28, safety, 'painted');
+    }
+    for (let rung = 0; rung < 7; rung += 1) {
+      clusterBox(cluster, deckSide - mirror * 0.72, 0.30,
+        0.48 + rung * 0.43, 1.15, 0.08, 0.10, steel, 'structure');
+    }
+    structuralConnections += 18;
 
     // Rear service wall, tool board, connected bench and cabinet. This gives
     // the bay a clear repair purpose without inventing another fake vehicle.
@@ -669,6 +712,176 @@ export function addGarageFacilityDetails({
         width, 0.10, 0.10, safety, 'painted');
     }
     structuralConnections += 10;
+  };
+
+  const addPlatePreparationRack = (
+    cluster: FacilityCluster,
+    lateral: number,
+    longitudinal: number,
+    tint: THREE.Color,
+  ): void => {
+    factoryProcessZones += 1;
+    environmentSpecificAssemblies += 1;
+    servicePurposeTags.add('plate-preparation-and-rolling');
+    clusterBox(cluster, lateral, longitudinal, 0.10,
+      6.4, 0.20, 2.2, dark, 'masonry');
+    for (const offset of [-2.65, 2.65]) {
+      clusterBox(cluster, lateral + offset, longitudinal, 1.40,
+        0.22, 2.60, 1.78, steel, 'structure');
+      clusterBeam(cluster,
+        [lateral + offset, longitudinal - 0.72, 0.22],
+        [lateral + offset, longitudinal, 2.55],
+        0.14, safety, 'painted');
+      clusterBeam(cluster,
+        [lateral + offset, longitudinal + 0.72, 0.22],
+        [lateral + offset, longitudinal, 2.55],
+        0.14, safety, 'painted');
+    }
+    for (let plate = 0; plate < 5; plate += 1) {
+      clusterBox(cluster, lateral - 1.75 + plate * 0.88, longitudinal, 1.30,
+        0.68, 2.15, 0.10, plate % 2 ? tint : steel, 'equipment', -0.05 + plate * 0.025);
+      looseParts += 1;
+    }
+    structuralConnections += 14;
+  };
+
+  const addTurningRollStation = (
+    cluster: FacilityCluster,
+    lateral: number,
+    longitudinal: number,
+    shellTint: THREE.Color,
+  ): void => {
+    factoryProcessZones += 1;
+    operationalMachines += 1;
+    environmentSpecificAssemblies += 1;
+    servicePurposeTags.add('motorized-tank-turning-rolls');
+    clusterBox(cluster, lateral, longitudinal, 0.10,
+      7.2, 0.20, 3.2, dark, 'masonry');
+    for (const stationOffset of [-1.95, 1.95]) {
+      clusterBox(cluster, lateral + stationOffset, longitudinal, 0.46,
+        1.05, 0.72, 1.85, steel, 'structure');
+      for (const rollerDepth of [-0.56, 0.56]) {
+        clusterCylinder(cluster, lateral + stationOffset, longitudinal + rollerDepth, 0.78,
+          0.34, 0.56, rubber, Math.PI / 2, 12);
+      }
+    }
+    clusterCylinder(cluster, lateral, longitudinal, 1.72,
+      1.02, 5.55, shellTint, 0, 16, Math.PI / 2);
+    for (const capOffset of [-2.74, 2.74]) {
+      clusterCylinder(cluster, lateral + capOffset, longitudinal, 1.72,
+        1.06, 0.10, accent, 0, 16, Math.PI / 2);
+    }
+    clusterBox(cluster, lateral + 2.72, longitudinal - 1.18, 0.62,
+      1.05, 1.04, 0.76, primer, 'painted');
+    structuralConnections += 12;
+  };
+
+  const addPartsAndFittingsCage = (
+    cluster: FacilityCluster,
+    lateral: number,
+    longitudinal: number,
+    cageTint: THREE.Color,
+    stocked = true,
+  ): void => {
+    secureStorageSystems += 1;
+    environmentSpecificAssemblies += 1;
+    servicePurposeTags.add('secured-parts-and-fittings-cage');
+    const width = 4.6;
+    const length = 2.8;
+    clusterBox(cluster, lateral, longitudinal, 0.10,
+      width + 0.6, 0.20, length + 0.6, dark, 'masonry');
+    for (const sideOffset of [-width / 2, width / 2]) {
+      for (const depthOffset of [-length / 2, length / 2]) {
+        clusterBox(cluster, lateral + sideOffset, longitudinal + depthOffset, 1.45,
+          0.16, 2.90, 0.16, steel, 'structure');
+      }
+    }
+    for (const y of [0.55, 1.42, 2.30, 2.86]) {
+      clusterBox(cluster, lateral, longitudinal - length / 2, y,
+        width, 0.10, 0.10, cageTint, 'painted');
+      clusterBox(cluster, lateral, longitudinal + length / 2, y,
+        width, 0.10, 0.10, cageTint, 'painted');
+    }
+    for (let divider = -2; divider <= 2; divider += 1) {
+      const x = lateral + divider * width / 4;
+      clusterBox(cluster, x, longitudinal - length / 2, 1.45,
+        0.08, 2.70, 0.08, steel, 'structure');
+      clusterBox(cluster, x, longitudinal + length / 2, 1.45,
+        0.08, 2.70, 0.08, steel, 'structure');
+    }
+    if (stocked) {
+      for (const x of [-1.35, 0, 1.35]) {
+        clusterBox(cluster, lateral + x, longitudinal, 0.62,
+          0.88, 0.82, 0.82, x === 0 ? accent : timber, 'equipment');
+        looseParts += 1;
+      }
+    }
+    structuralConnections += 28;
+  };
+
+  const addHydrostaticInspectionDock = (
+    cluster: FacilityCluster,
+    lateral: number,
+    longitudinal: number,
+    tankTint: THREE.Color,
+  ): void => {
+    factoryProcessZones += 1;
+    operationalMachines += 1;
+    environmentSpecificAssemblies += 1;
+    servicePurposeTags.add('hydrostatic-and-weld-inspection');
+    clusterBox(cluster, lateral, longitudinal, 0.12,
+      7.4, 0.24, 4.2, new THREE.Color(0x5b6668), 'masonry');
+    for (const channel of [-1.55, 1.55]) {
+      clusterBox(cluster, lateral, longitudinal + channel, 0.28,
+        6.8, 0.10, 0.22, dark, 'equipment');
+    }
+    clusterCylinder(cluster, lateral - 1.4, longitudinal, 1.52,
+      0.95, 2.75, tankTint, 0, 14);
+    clusterCylinder(cluster, lateral - 1.4, longitudinal, 2.94,
+      0.34, 0.12, accent, 0, 12);
+    clusterBox(cluster, lateral + 1.35, longitudinal, 1.12,
+      1.25, 2.05, 1.18, primer, 'painted');
+    for (const depthOffset of [-0.36, 0, 0.36]) {
+      clusterCylinder(cluster, lateral + 2.30, longitudinal + depthOffset, 0.92,
+        0.11, 1.55, steel, 0, 10);
+      clusterCylinder(cluster, lateral + 2.30, longitudinal + depthOffset, 1.64,
+        0.22, 0.10, safety, 0, 10);
+    }
+    structuralConnections += 13;
+  };
+
+  const addVentilatedCoatingBooth = (
+    cluster: FacilityCluster,
+    lateral: number,
+    longitudinal: number,
+    boothTint: THREE.Color,
+  ): void => {
+    factoryProcessZones += 1;
+    elevatedAccessSystems += 1;
+    environmentSpecificAssemblies += 1;
+    servicePurposeTags.add('blast-and-coating-booth');
+    const width = 7.0;
+    for (const sideOffset of [-width / 2, width / 2]) {
+      for (const depthOffset of [-2.25, 2.25]) {
+        clusterBox(cluster, lateral + sideOffset, longitudinal + depthOffset, 0.12,
+          0.72, 0.24, 0.72, dark, 'masonry');
+        clusterBox(cluster, lateral + sideOffset, longitudinal + depthOffset, 2.62,
+          0.28, 5.0, 0.28, steel, 'structure');
+      }
+    }
+    clusterBox(cluster, lateral, longitudinal + 2.25, 2.48,
+      width, 4.75, 0.18, boothTint, 'painted');
+    clusterBox(cluster, lateral, longitudinal, 5.05,
+      width + 0.6, 0.28, 5.0, dark, 'painted');
+    clusterBox(cluster, lateral, longitudinal - 2.08, 4.55,
+      width, 0.18, 0.18, safety, 'painted');
+    for (const sideOffset of [-2.55, 0, 2.55]) {
+      clusterCylinder(cluster, lateral + sideOffset, longitudinal + 1.95, 5.85,
+        0.30, 1.60, steel, 0, 12);
+      clusterCylinder(cluster, lateral + sideOffset, longitudinal + 1.95, 6.68,
+        0.42, 0.10, dark, 0, 12);
+    }
+    structuralConnections += 19;
   };
 
   const addTrackOnCluster = (
@@ -892,6 +1105,12 @@ export function addGarageFacilityDetails({
   addDrums(rightLogistics[0], rightLogistics[1], 6);
   addWheelRack(leftParts[0], leftParts[1]);
   addTrackRack(rightParts[0], rightParts[1]);
+  // The track inventory now lives inside an actual connected secure cage.
+  // Its wall bars sit outside the rack envelope, so the detail reads as one
+  // purposeful store rather than intersecting piles of workshop props.
+  addPartsAndFittingsCage(
+    fixedCluster(rightParts[0], rightParts[1]), 0, 0, accent, false,
+  );
   const burlakView = garageWorldPointToView(burlakBay.x, burlakBay.z);
   const t90View = garageWorldPointToView(t90Bay.x, t90Bay.z);
   addToolCart(burlakView.side - 5.8, burlakView.depth + 1.2);
@@ -901,6 +1120,7 @@ export function addGarageFacilityDetails({
   const featureCluster = fixedCluster(featureSide, featureDepth);
 
   const addShadeDepot = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('desert-convoy-refit');
       servicePurposeTags.add('heat-shade-logistics');
       addShadeHall(featureSide, 17, featureDepth, new THREE.Color(0x8e6a42));
@@ -909,8 +1129,10 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, -4.8, -2.45, 4.2);
       addPoweredWinch(featureCluster, 5.4, -2.4, new THREE.Color(0xb98536));
       addPartsPallet(featureCluster, 0.4, -2.65, 2);
+      addTurningRollStation(featureCluster, -2.0, 0.30, new THREE.Color(0x8f6d43));
   };
   const addRepairBunker = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('winter-recovery');
       servicePurposeTags.add('heated-component-bay');
       addShadeHall(featureSide, 18, featureDepth, new THREE.Color(0x77858c));
@@ -923,8 +1145,10 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, 0, -2.45, 5.2);
       addPoweredWinch(featureCluster, 6.5, -2.35, new THREE.Color(0x758b9a));
       addPartsPallet(featureCluster, -6.1, -2.55, 2);
+      addHydrostaticInspectionDock(featureCluster, -1.4, 0.35, new THREE.Color(0x73848c));
   };
   const addBrickArsenal = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('urban-arsenal-loading');
       servicePurposeTags.add('armored-parts-store');
       // The source factory and fire-station facades already provide the
@@ -947,8 +1171,10 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -7.2, -1.45, new THREE.Color(0x9a6542));
       addPartsPallet(featureCluster, 6.8, -1.15, 3);
       addSafetyRail(featureCluster, 0, -1.75, 8.5);
+      addPlatePreparationRack(featureCluster, 0, -3.25, new THREE.Color(0x8a614f));
   };
   const addNavalDrydock = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('drydock-heavy-lift');
       servicePurposeTags.add('saltwater-recovery');
       addPortalCrane(featureSide, featureDepth + 1.4, 19, 7.3,
@@ -964,8 +1190,10 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -6.1, -3.9, new THREE.Color(0x3e7c88));
       addPoweredWinch(featureCluster, 6.1, -3.9, new THREE.Color(0x3e7c88));
       addSafetyRail(featureCluster, 0, 4.2, 15.5);
+      addTurningRollStation(featureCluster, 0, 0, new THREE.Color(0x477d82));
   };
   const addRailRoundhouse = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('rail-served-overhaul');
       servicePurposeTags.add('roundhouse-transfer');
       heavyLiftSystems += 1;
@@ -975,8 +1203,10 @@ export function addGarageFacilityDetails({
       addCrates(featureSide + 9, featureDepth + 1, 2);
       addPoweredWinch(featureCluster, -8.4, -2.7, new THREE.Color(0xa56b34));
       addPartsPallet(featureCluster, 8.1, -2.65, 3);
+      addPlatePreparationRack(featureCluster, 0, 3.35, new THREE.Color(0x8d5a3d));
   };
   const addRainCanopy = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('monsoon-drainage');
       servicePurposeTags.add('covered-field-repair');
       addShadeHall(featureSide, 19, featureDepth, new THREE.Color(0x4d6a58));
@@ -989,8 +1219,10 @@ export function addGarageFacilityDetails({
       addServiceManifold(featureCluster, -5.5, -2.45, 4.2);
       addPoweredWinch(featureCluster, 5.9, -2.4, new THREE.Color(0x4e8065));
       addSafetyRail(featureCluster, 0, 3.9, 12.5);
+      addHydrostaticInspectionDock(featureCluster, 0, 0.40, new THREE.Color(0x456d5c));
   };
   const addRockCavern = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('alpine-cavern-repair');
       servicePurposeTags.add('avalanche-recovery');
       // Open, load-bearing tunnel mouth. The earlier version was one solid
@@ -1032,8 +1264,11 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, -6.8, -2.1, new THREE.Color(0x758692));
       addPartsPallet(featureCluster, 6.4, -2.15, 3);
       addSafetyRail(featureCluster, 0, 3.8, 12.8);
+      addPartsAndFittingsCage(featureCluster, 0, 1.45, new THREE.Color(0x82909a));
+      addPlatePreparationRack(featureCluster, 0, -2.45, new THREE.Color(0x6f7d86));
   };
   const addRecoveryYard = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('battle-damage-recovery');
       servicePurposeTags.add('rollover-heavy-lift');
       addRecoveryCrane(featureSide, featureDepth - 1.0);
@@ -1052,8 +1287,10 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, 0, -3.8, new THREE.Color(0xa75f3e));
       addPartsPallet(featureCluster, 0, 2.0, 3);
       addSafetyRail(featureCluster, 0, 3.25, 13.6);
+      addTurningRollStation(featureCluster, 0, -0.75, new THREE.Color(0x885844));
   };
   const addFactoryLine = (): void => {
+      environmentSpecificAssemblies += 1;
       servicePurposeTags.add('factory-line-assembly');
       servicePurposeTags.add('rail-fed-component-transfer');
       // The real map-authored transfer gantry already supplies Foundry's
@@ -1083,6 +1320,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(featureCluster, 0, -4.0, new THREE.Color(0x9a5439));
       addPartsPallet(featureCluster, 0, 3.8, 3);
       addSafetyRail(featureCluster, 0, 5.0, 13.5);
+      addTurningRollStation(featureCluster, 0, -0.55, new THREE.Color(0x8b4d3b));
+      addVentilatedCoatingBooth(featureCluster, 0, 7.35, new THREE.Color(0x5d4a45));
   };
   const variantBuilders: Partial<Record<GarageVariant['architecture'], () => void>> = {
     shade_depot: addShadeDepot,
@@ -1207,6 +1446,10 @@ export function addGarageFacilityDetails({
     unsupportedParts: 0,
     heavyLiftSystems,
     operationalMachines,
+    factoryProcessZones,
+    elevatedAccessSystems,
+    secureStorageSystems,
+    environmentSpecificAssemblies,
     servicePurposeTags: Object.freeze([...servicePurposeTags]),
     facilityMaterialClasses: new Set([
       ...boxInstances.map((instance) => instance.materialClass),

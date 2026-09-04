@@ -113,10 +113,16 @@ assert.doesNotMatch(dressing, /legacyVerdantRoot\.rotation\.y = Math\.PI/,
   'the shared bays and archive display must not rotate with the Verdant room');
 assert.match(dressing, /legacyVerdantRoot\.add\(screenRoot\)/,
   'the rotating battle display must share the all-Garage workshop owner');
+assert.match(dressing, /legacyVerdantRoot\.add\(secondaryRoot\)/,
+  'the second battle display must live on the shared all-Garage workshop owner');
 assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
   'the tank rear must point toward the shared physical display');
 assert.match(dressing, /battleScreenVisible = true/,
   'the rotating battle display must remain visible in every Garage');
+assert.match(dressing, /battleScreenDisplayCount = 2/,
+  'two physically separate battle displays must surround the Garage');
+assert.match(dressing, /battleScreenResidentImageLimit = 3/,
+  'dual displays must keep a bounded three-image transition peak');
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
   'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,

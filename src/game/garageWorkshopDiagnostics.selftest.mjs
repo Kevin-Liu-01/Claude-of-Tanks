@@ -14,6 +14,8 @@ dressingGroup.userData = {
   workshopFamilies: ['abrams'],
   workshopSourceVehicleIds: ['m1a2_sep_v3'],
   battleScreenVisible: true,
+  battleScreenDisplayCount: 2,
+  battleScreenSecondaryImage: '/media/battle-secondary.webp',
   optimizationReceipt: { drawCallsRemoved: 22 },
   optimizedWorkshopTriangleCount: 4321,
   optimizedWorkshopTriangleParity: true,
@@ -91,6 +93,8 @@ assert.equal(stats.optimizedTriangles, 4321);
 assert.equal(stats.optimizedTriangleParity, true);
 assert.equal(stats.environment.worldMounted, true);
 assert.equal(stats.environment.retainedWorldMapId, 'verdant');
+assert.equal(stats.battleScreenDisplayCount, 2);
+assert.equal(stats.battleScreenSecondaryImage, '/media/battle-secondary.webp');
 assert.deepEqual(stats.families, ['abrams']);
 assert.deepEqual(stats.renderer, { calls: 17, triangles: 2300 });
 

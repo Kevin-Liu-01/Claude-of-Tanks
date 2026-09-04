@@ -330,10 +330,11 @@ try {
     }
     if (!result.stats.battleScreenVisible
         || result.stats.battleScreenMode !== 'crt-scroll-slideshow'
-        || result.stats.battleScreenWallBay !== 'freestanding-shared'
+        || result.stats.battleScreenWallBay !== 'dual-freestanding-shared'
+        || result.stats.battleScreenDisplayCount !== 2
         || result.stats.battleScreenImageCount < 2
-        || result.stats.battleScreenResidentImageLimit !== 2) {
-      failures.push(`${result.id}: shared field-record display is missing`);
+        || result.stats.battleScreenResidentImageLimit !== 3) {
+      failures.push(`${result.id}: dual field-record displays are missing`);
     }
     if (result.stats.sceneMode !== (isVerdant ? 'verdant-workshop' : 'authentic-scene-pack')
         || result.stats.roofMode !== (isVerdant ? 'enclosed-original' : 'open-environment')
