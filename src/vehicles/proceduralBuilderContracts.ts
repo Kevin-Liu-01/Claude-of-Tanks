@@ -1,15 +1,10 @@
+import type { BufferGeometry, Group, Object3D } from 'three';
+
 export type Vec3Tuple = [number, number, number];
 export type VehicleAssemblyOwner = 'hull' | 'turret';
 
-export interface TransformObjectPort {
-  readonly position: { set(x: number, y: number, z: number): unknown };
-  readonly rotation: { set(x: number, y: number, z: number): unknown };
-}
-
-export interface AssemblyGroupPort {
-  readonly userData: Record<string, unknown>;
-  add(object: TransformObjectPort): unknown;
-}
+export type TransformObjectPort = Object3D;
+export type AssemblyGroupPort = Group;
 
 /** Shared structural port for authored procedural profile adapters. It
  * describes assembly ownership and transform operations without coupling the
@@ -17,11 +12,11 @@ export interface AssemblyGroupPort {
 export interface ProceduralBuilderPort {
   readonly hullG: AssemblyGroupPort;
   readonly turretG: AssemblyGroupPort;
-  readonly mats: unknown;
+  readonly mats: object;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -29,5 +24,5 @@ export interface ProceduralBuilderPort {
     scale: number,
     position: Vec3Tuple,
     yaw: number,
-  ): unknown;
+  ): void;
 }

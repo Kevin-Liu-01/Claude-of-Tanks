@@ -11,6 +11,7 @@
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { buildLeo2A4 } from './leopard.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { BufferGeometry } from 'three';
 import type {
   ProceduralBuilderPort,
   TransformObjectPort,
@@ -54,7 +55,7 @@ function plate(
     x, y + h * 0.5 + 0.008, z + d * 0.20, r[0], r[1], r[2]);
 }
 
-function mirroredSlab(side: number, lower: Quad, upper: Quad): unknown {
+function mirroredSlab(side: number, lower: Quad, upper: Quad): BufferGeometry {
   const row = (points: Quad): Quad => {
     const mapped: Quad = [
       [side * points[0][0], points[0][1], points[0][2]],
