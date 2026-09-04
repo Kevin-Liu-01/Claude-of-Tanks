@@ -6011,11 +6011,63 @@ function replaceT90ModernWeldedTurret(
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.53, 0.28, -0.30], -Math.PI / 2);
 }
 
-function replaceT90BurlakTurret(
-  P: T90BuilderPort,
-  { preserveGun = false }: { preserveGun?: boolean } = {},
-): void {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+function addT90BurlakArmorEnvelope(P: T90BuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.24, -0.02, 1.38], [side * 1.70, -0.01, 0.50],
+      [side * 1.58, -0.01, -0.34], [side * 0.28, -0.02, 0.46],
+      [side * 0.25, 0.43, 1.02], [side * 1.48, 0.43, 0.40],
+      [side * 1.42, 0.40, -0.34], [side * 0.30, 0.51, 0.40],
+    ));
+    for (const [x, y, z, yaw, roll, width, depth] of [
+      [0.42, 0.40, 1.10, 0.38, -0.12, 0.48, 0.28],
+      [0.72, 0.38, 0.92, 0.52, -0.15, 0.50, 0.31],
+      [1.02, 0.35, 0.65, 0.66, -0.10, 0.56, 0.34],
+      [1.30, 0.30, 0.31, 0.42, -0.05, 0.46, 0.38],
+      [1.47, 0.27, -0.11, 0.12, 0.00, 0.34, 0.40],
+    ]) {
+      P.add('turret', box(width, 0.19, depth), side * x, y, z, roll, -side * yaw, 0);
+      P.add('turretDark', box(width * 0.86, 0.012, depth * 0.82),
+        side * x, y + 0.101, z, roll, -side * yaw, 0);
+    }
+    P.add('turret', orientedSlab(
+      [side * 0.16, 0.02, 1.42], [side * 0.50, 0.03, 1.42],
+      [side * 0.66, 0.02, 1.10], [side * 0.24, 0.01, 1.12],
+      [side * 0.17, 0.38, 1.20], [side * 0.48, 0.38, 1.20],
+      [side * 0.58, 0.38, 1.02], [side * 0.26, 0.40, 1.02],
+    ));
+  }
+
+  // Chunky inner modules and wrap-around wings continue the clipped armor
+  // envelope around each width break.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.76, 0.36, 0.36), side * 0.58, 0.30, 1.18,
+      -0.28, -side * 0.48, 0);
+    P.add('turret', box(0.80, 0.34, 0.32), side * 1.18, 0.27, 0.70,
+      -0.26, -side * 0.76, 0);
+    P.add('turret', orientedSlab(
+      [side * 0.96, -0.01, 0.82], [side * 1.89, 0.10, 1.87],
+      [side * 1.89, 0.04, 1.52], [side * 0.96, -0.01, 0.32],
+      [side * 0.96, 0.53, 0.82], [side * 1.89, 0.42, 1.87],
+      [side * 1.89, 0.48, 1.52], [side * 0.96, 0.53, 0.32],
+    ));
+    P.add('turretDark', box(0.028, 0.31, 0.50), side * 1.875, 0.26, 1.69);
+    P.add('turret', orientedSlab(
+      [side * 1.43, 0.12, 0.93], [side * 1.82, 0.15, 1.35],
+      [side * 1.82, 0.18, 1.62], [side * 1.38, 0.10, 1.35],
+      [side * 1.43, 0.46, 0.93], [side * 1.82, 0.40, 1.35],
+      [side * 1.82, 0.36, 1.62], [side * 1.38, 0.48, 1.35],
+    ));
+    P.add('turretDark', box(0.026, 0.20, 0.30), side * 1.81, 0.28, 1.48,
+      0, -side * 0.18, 0);
+    P.add('turret', box(0.16, 0.34, 0.98), side * 1.57, 0.23, -0.36);
+    P.add('turretDark', box(0.018, 0.28, 0.90), side * 1.66, 0.23, -0.36);
+  }
+  P.add('turretDark', box(0.54, 0.31, 0.08), 0, 0.24, 1.34, -0.28, 0, 0);
+}
+
+function clearT90BurlakTurret(P: T90BuilderPort, preserveGun: boolean): void {
   P.turretG.clear();
   P.turretG.add(P.gunG);
   const rotatingBuckets = [
@@ -6023,6 +6075,14 @@ function replaceT90BurlakTurret(
   ];
   if (!preserveGun) rotatingBuckets.push('gun', 'gunDark', 'gunMount', 'gunMountDark');
   P.clear(...rotatingBuckets);
+}
+
+function replaceT90BurlakTurret(
+  P: T90BuilderPort,
+  { preserveGun = false }: { preserveGun?: boolean } = {},
+): void {
+  const { box, cylY, cylZ, polyTurret } = KIT;
+  clearT90BurlakTurret(P, preserveGun);
   P.turretG.position.set(0, 1.39, -0.25);
   const outline = [
     [-0.40, 1.30], [0.40, 1.30], [0.94, 1.08], [1.54, 0.48],
@@ -6038,45 +6098,7 @@ function replaceT90BurlakTurret(
   // armor envelope.  These joined cheek skins overlap both the core and the
   // gun-root court; their long buried returns make the Burlak front read as
   // one protected fighting compartment rather than isolated wedge boxes.
-  for (const s of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [s * 0.24, -0.02, 1.38], [s * 1.70, -0.01, 0.50], [s * 1.58, -0.01, -0.34], [s * 0.28, -0.02, 0.46],
-      [s * 0.25, 0.43, 1.02], [s * 1.48, 0.43, 0.40], [s * 1.42, 0.40, -0.34], [s * 0.30, 0.51, 0.40],
-    ));
-    for (const [x, y, z, yaw, roll, w, d] of [
-      [0.42, 0.40, 1.10, 0.38, -0.12, 0.48, 0.28],
-      [0.72, 0.38, 0.92, 0.52, -0.15, 0.50, 0.31],
-      [1.02, 0.35, 0.65, 0.66, -0.10, 0.56, 0.34],
-      [1.30, 0.30, 0.31, 0.42, -0.05, 0.46, 0.38],
-      [1.47, 0.27, -0.11, 0.12, 0.00, 0.34, 0.40],
-    ]) {
-      P.add('turret', box(w, 0.19, d), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turretDark', box(w * 0.86, 0.012, d * 0.82), s * x, y + 0.101, z, roll, -s * yaw, 0);
-    }
-    P.add('turret', orientedSlab(
-      [s * 0.16, 0.02, 1.42], [s * 0.50, 0.03, 1.42], [s * 0.66, 0.02, 1.10], [s * 0.24, 0.01, 1.12],
-      [s * 0.17, 0.38, 1.20], [s * 0.48, 0.38, 1.20], [s * 0.58, 0.38, 1.02], [s * 0.26, 0.40, 1.02],
-    ));
-  }
-
-  // Chunky '<' module pair and wrap-around wings at the width court.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.76, 0.36, 0.36), s * 0.58, 0.30, 1.18, -0.28, -s * 0.48, 0);
-    P.add('turret', box(0.80, 0.34, 0.32), s * 1.18, 0.27, 0.70, -0.26, -s * 0.76, 0);
-    P.add('turret', orientedSlab(
-      [s * 0.96, -0.01, 0.82], [s * 1.89, 0.10, 1.87], [s * 1.89, 0.04, 1.52], [s * 0.96, -0.01, 0.32],
-      [s * 0.96, 0.53, 0.82], [s * 1.89, 0.42, 1.87], [s * 1.89, 0.48, 1.52], [s * 0.96, 0.53, 0.32],
-    ));
-    P.add('turretDark', box(0.028, 0.31, 0.50), s * 1.875, 0.26, 1.69);
-    P.add('turret', orientedSlab(
-      [s * 1.43, 0.12, 0.93], [s * 1.82, 0.15, 1.35], [s * 1.82, 0.18, 1.62], [s * 1.38, 0.10, 1.35],
-      [s * 1.43, 0.46, 0.93], [s * 1.82, 0.40, 1.35], [s * 1.82, 0.36, 1.62], [s * 1.38, 0.48, 1.35],
-    ));
-    P.add('turretDark', box(0.026, 0.20, 0.30), s * 1.81, 0.28, 1.48, 0, -s * 0.18, 0);
-    P.add('turret', box(0.16, 0.34, 0.98), s * 1.57, 0.23, -0.36);
-    P.add('turretDark', box(0.018, 0.28, 0.90), s * 1.66, 0.23, -0.36);
-  }
-  P.add('turretDark', box(0.54, 0.31, 0.08), 0, 0.24, 1.34, -0.28, 0, 0);
+  addT90BurlakArmorEnvelope(P);
 
   // The casting's roof is a stepped modular field, not one smooth dome.
   for (const s of [-1, 1]) {
