@@ -8185,10 +8185,10 @@ function merkavaSourceOracleTurret(
 
   const addArmorSlab = (points: readonly Vec3Tuple[]): void => P.add('turret', slab(...points.map(M)));
   if (cfg.applique || cfg.modular) {
-    for (const side of [-1, 1] as const) {
+    ([-1, 1] as const).forEach((side) => {
       const armorPoints = merkavaEarlySecondaryArmorPoints(id, side);
       if (armorPoints) addArmorSlab(armorPoints);
-    }
+    });
   }
 
   // The source applique is built from long, individually serviced armor
@@ -8200,7 +8200,7 @@ function merkavaSourceOracleTurret(
     const faceX = cfg.applique ? 1.405 : (id === 'merkava3d' ? 1.555 : 1.305);
     const seamY = cfg.applique ? 2.10 : 2.12;
     const seamZs = cfg.applique ? [0.46, -0.18, -0.82, -1.43] : [0.28, -0.30, -0.90, -1.46];
-    for (const s of [-1, 1] as const) {
+    ([-1, 1] as const).forEach((s) => {
       if (id === 'merkava3c' || id === 'merkava3d') {
         // The Mk.3 service rails used to sit on one constant-X plane even
         // though their modular carrier sweeps inward fore/aft and upward at
@@ -8209,12 +8209,22 @@ function merkavaSourceOracleTurret(
         // into four overlapping courses follows that sweep without adding a
         // runtime object or draw bucket: every piece still merges into the
         // existing turretDark/turretDetail meshes.
-        const railSeats = [];
-        for (const z of seamZs) {
+        type RailSeatReceipt = Readonly<{
+          side: -1 | 1;
+          kind: 'vertical-seam' | 'longitudinal-rail';
+          segment?: number;
+          worldZ: number;
+          centerLocal: readonly number[];
+          surfaceLocal: readonly number[];
+          normalLocal: readonly number[];
+          innerFaceOverlapM: number;
+        }>;
+        const railSeats: RailSeatReceipt[] = [];
+        seamZs.forEach((z) => {
           const frame = merkavaEarlySurfaceFrame(P, p, {
             side: s, worldY: seamY, worldZ: z, outermost: true,
           });
-          if (!frame) continue;
+          if (!frame) return;
           const seamCenter = addMerkavaEarlyFrameBox(P, 'turretDark', frame,
             0.026, 0.39, 0.020, 0.010 - 0.006);
           const shoeFrame = {
@@ -8234,19 +8244,19 @@ function merkavaSourceOracleTurret(
             normalLocal: Object.freeze(frame.normal.toArray()),
             innerFaceOverlapM: 0.006,
           }));
-        }
+        });
 
         const railFrontZ = 0.31;
         const railRearZ = -1.47;
         const railSegments = 4;
-        for (let segment = 0; segment < railSegments; segment++) {
+        Array.from({ length: railSegments }, (_, segment) => segment).forEach((segment) => {
           const z0 = THREE.MathUtils.lerp(railFrontZ, railRearZ, segment / railSegments);
           const z1 = THREE.MathUtils.lerp(railFrontZ, railRearZ, (segment + 1) / railSegments);
           const z = (z0 + z1) * 0.5;
           const frame = merkavaEarlySurfaceFrame(P, p, {
             side: s, worldY: seamY + 0.18, worldZ: z, outermost: true,
           });
-          if (!frame) continue;
+          if (!frame) return;
           const tangentZ = Math.max(0.55, Math.abs(frame.tangent.z));
           const width = Math.abs(z1 - z0) / tangentZ + 0.024;
           const center = addMerkavaEarlyFrameBox(P, 'turretDark', frame,
@@ -8261,7 +8271,7 @@ function merkavaSourceOracleTurret(
             normalLocal: Object.freeze(frame.normal.toArray()),
             innerFaceOverlapM: 0.006,
           }));
-        }
+        });
         const receiptKey = `${id}TurretRailSeatReceipt`;
         const existing = P.turretG.userData[receiptKey]?.seats ?? [];
         P.turretG.userData[receiptKey] = Object.freeze({
@@ -8274,32 +8284,36 @@ function merkavaSourceOracleTurret(
           seats: Object.freeze([...existing, ...railSeats]),
         });
       } else {
-        for (const z of seamZs) {
+        seamZs.forEach((z) => {
           P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
           P.add('turretDetail', box(0.026, 0.020, 0.055), s * (faceX + 0.004), V(seamY - 0.12), L(z - 0.08));
-        }
+        });
         P.add('turretDark', box(0.022, 0.025, 1.78), s * faceX, V(seamY + 0.18), L(-0.58), -0.02, 0, 0);
       }
       P.add('turretDetail', box(0.16, 0.13, 0.34), s * (faceX - 0.06), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
       P.add('turretDark', box(0.024, 0.14, 0.28), s * (faceX + 0.018), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
-    }
+    });
   }
   if (cfg.mk4) {
     // The Mk.4B's defining armor is a pair of broad arrowhead modules, not
     // a cuboid shell plus decorative squares.  Their bounds follow the two
     // source external-turret armor groups (front and long side course).
-    for (const s of [-1, 1]) addArmorSlab([
+    [-1, 1].forEach((s) => addArmorSlab([
       [s * 0.20, 1.66, 1.52], [s * 1.75, 1.65, 0.12], [s * 1.80, 1.72, -2.02], [s * 0.84, 1.88, -2.08],
       [s * 0.28, 2.60, 1.48], [s * 1.58, 2.25, 0.10], [s * 1.48, 2.28, -2.00], [s * 0.76, 2.62, -2.05],
-    ]);
+    ]));
     // Connected rear lattice and stowage shoes: real negative space, with
     // every post returning into the bustle rather than a giant solid wall.
-    for (const s of [-1, 1]) {
+    [-1, 1].forEach((s) => {
       P.add('turretDark', box(0.045, 0.045, 1.12), s * 1.12, V(2.56), L(-2.98));
-      for (const z of [-2.45, -2.82, -3.18, -3.50]) P.add('turretDark', box(0.045, 0.48, 0.045), s * 1.12, V(2.32), L(z));
+      [-2.45, -2.82, -3.18, -3.50].forEach((z) => {
+        P.add('turretDark', box(0.045, 0.48, 0.045), s * 1.12, V(2.32), L(z));
+      });
       P.add('turretDetail', box(0.32, 0.18, 0.42), s * 0.84, V(2.53), L(-2.55), 0, s * 0.08, 0);
-    }
-    for (const x of [-0.72, 0, 0.72]) P.add('turretDark', box(0.045, 0.045, 0.58), x, V(2.54), L(-3.20));
+    });
+    [-0.72, 0, 0.72].forEach((x) => {
+      P.add('turretDark', box(0.045, 0.045, 0.58), x, V(2.54), L(-3.20));
+    });
   } else if (t.basket) {
     const rearTargets = {
       merkava1b: -3.62,
