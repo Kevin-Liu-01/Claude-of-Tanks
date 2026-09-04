@@ -480,74 +480,113 @@ function moduleShapeForBounds(module: string, bounds: Bounds): AnatomyShape {
   return ellipsoidForBounds(bounds);
 }
 
-function addPreciseInternalShapes(armor: ArmorAnatomy): void {
-  for (const volume of armor.modules || []) {
-    const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
-    const cells = volume.turretLocal
-      ? armor.collisionShells?.turret
-      : armor.collisionShells?.hull;
-    const internal = volume.external !== true && volume.module !== 'trackL' && volume.module !== 'trackR'
-      && volume.module !== 'gun' && volume.module !== 'optics';
-    volume.shapes = [];
-    for (const part of parts) {
-      const segments = internal ? splitBoundsAcrossShell(part, cells) : [];
-      if (!segments.length) {
-        volume.shapes.push(moduleShapeForBounds(volume.module, part));
-        continue;
-      }
-      const candidates: Array<{ shape: AnatomyShape; fit: number }> = [];
-      for (const segment of segments) {
-        const shape = moduleShapeForBounds(volume.module, segment.bounds);
-        const fit = fitShapeInsideShell(shape, [segment.cell]);
-        candidates.push({ shape, fit });
-      }
-      const fitted = candidates.filter((candidate) => candidate.fit >= 0.06);
-      const keep = fitted.length ? fitted : [candidates.reduce<{ shape: AnatomyShape; fit: number } | null>(
-        (best, candidate) => !best || candidate.fit > best.fit ? candidate : best, null,
-      )].filter((candidate): candidate is { shape: AnatomyShape; fit: number } => candidate !== null);
-      volume.shapes.push(...keep.map((candidate) => candidate.shape));
-    }
+interface FittedShape {
+  shape: AnatomyShape;
+  fit: number;
+}
+
+function collisionCellsForVolume(
+  armor: ArmorAnatomy,
+  volume: AnatomyVolume,
+): CollisionCell[] | undefined {
+  return volume.turretLocal
+    ? armor.collisionShells?.turret
+    : armor.collisionShells?.hull;
+}
+
+function selectFittedShapes(candidates: FittedShape[]): AnatomyShape[] {
+  const fitted = candidates.filter((candidate) => candidate.fit >= 0.06);
+  if (fitted.length) return fitted.map((candidate) => candidate.shape);
+  let best = candidates[0];
+  for (let index = 1; index < candidates.length; index++) {
+    if (candidates[index].fit > best.fit) best = candidates[index];
   }
-  for (const volume of armor.crew || []) {
-    const { center, half } = centeredBounds(volume);
-    const body: AnatomyShapeEllipsoid = {
+  return best ? [best.shape] : [];
+}
+
+function fitModulePartToShell(
+  module: string,
+  part: Bounds,
+  cells: CollisionCell[] | undefined,
+  internal: boolean,
+): AnatomyShape[] {
+  const segments = internal ? splitBoundsAcrossShell(part, cells) : [];
+  if (!segments.length) return [moduleShapeForBounds(module, part)];
+  const candidates = segments.map((segment): FittedShape => {
+    const shape = moduleShapeForBounds(module, segment.bounds);
+    return { shape, fit: fitShapeInsideShell(shape, [segment.cell]) };
+  });
+  return selectFittedShapes(candidates);
+}
+
+function moduleUsesInternalShell(volume: ModuleVolume): boolean {
+  return volume.external !== true
+    && volume.module !== 'trackL'
+    && volume.module !== 'trackR'
+    && volume.module !== 'gun'
+    && volume.module !== 'optics';
+}
+
+function addPreciseModuleShapes(armor: ArmorAnatomy, volume: ModuleVolume): void {
+  const parts = Array.isArray(volume.parts) && volume.parts.length
+    ? volume.parts
+    : [volume];
+  const cells = collisionCellsForVolume(armor, volume);
+  const internal = moduleUsesInternalShell(volume);
+  volume.shapes = [];
+  for (const part of parts) {
+    volume.shapes.push(...fitModulePartToShell(volume.module, part, cells, internal));
+  }
+}
+
+function crewBodyShapes(volume: CrewVolume): AnatomyShapeEllipsoid[] {
+  const { center, half } = centeredBounds(volume);
+  const headRadius = Math.max(0.07, Math.min(0.19, half[0] * 0.58, half[2] * 0.58));
+  return [
+    {
       kind: 'ellipsoid',
       center: [center[0], center[1] - half[1] * 0.12, center[2]],
       radii: [half[0] * 0.78, half[1] * 0.72, half[2] * 0.72],
-    };
-    const headRadius = Math.max(0.07, Math.min(0.19, half[0] * 0.58, half[2] * 0.58));
-    const head: AnatomyShapeEllipsoid = {
+    },
+    {
       kind: 'ellipsoid',
       center: [center[0], center[1] + half[1] * 0.67, center[2]],
       radii: [headRadius, Math.max(0.08, half[1] * 0.19), headRadius],
-    };
-    const cells = volume.turretLocal
-      ? armor.collisionShells?.turret
-      : armor.collisionShells?.hull;
-    volume.shapes = [];
-    for (const base of [body, head]) {
-      const bounds = {
-        min: base.center.map((value, axis) => value - base.radii[axis]),
-        max: base.center.map((value, axis) => value + base.radii[axis]),
-      };
-      const segments = splitBoundsAcrossShell(bounds, cells);
-      if (!segments.length) {
-        volume.shapes.push(base);
-        continue;
-      }
-      const candidates: Array<{ shape: AnatomyShapeEllipsoid; fit: number }> = [];
-      for (const segment of segments) {
-        const shape = ellipsoidForBounds(segment.bounds, [1, 1, 1]);
-        const fit = fitShapeInsideShell(shape, [segment.cell]);
-        candidates.push({ shape, fit });
-      }
-      const fitted = candidates.filter((candidate) => candidate.fit >= 0.06);
-      const keep = fitted.length ? fitted : [candidates.reduce<{ shape: AnatomyShapeEllipsoid; fit: number } | null>(
-        (best, candidate) => !best || candidate.fit > best.fit ? candidate : best, null,
-      )].filter((candidate): candidate is { shape: AnatomyShapeEllipsoid; fit: number } => candidate !== null);
-      volume.shapes.push(...keep.map((candidate) => candidate.shape));
-    }
+    },
+  ];
+}
+
+function shapeBounds(shape: AnatomyShapeEllipsoid): Bounds {
+  return {
+    min: shape.center.map((value, axis) => value - shape.radii[axis]),
+    max: shape.center.map((value, axis) => value + shape.radii[axis]),
+  };
+}
+
+function fitCrewShapeToShell(
+  base: AnatomyShapeEllipsoid,
+  cells: CollisionCell[] | undefined,
+): AnatomyShape[] {
+  const segments = splitBoundsAcrossShell(shapeBounds(base), cells);
+  if (!segments.length) return [base];
+  const candidates = segments.map((segment): FittedShape => {
+    const shape = ellipsoidForBounds(segment.bounds, [1, 1, 1]);
+    return { shape, fit: fitShapeInsideShell(shape, [segment.cell]) };
+  });
+  return selectFittedShapes(candidates);
+}
+
+function addPreciseCrewShapes(armor: ArmorAnatomy, volume: CrewVolume): void {
+  const cells = collisionCellsForVolume(armor, volume);
+  volume.shapes = [];
+  for (const shape of crewBodyShapes(volume)) {
+    volume.shapes.push(...fitCrewShapeToShell(shape, cells));
   }
+}
+
+function addPreciseInternalShapes(armor: ArmorAnatomy): void {
+  for (const volume of armor.modules || []) addPreciseModuleShapes(armor, volume);
+  for (const volume of armor.crew || []) addPreciseCrewShapes(armor, volume);
 }
 
 function shapeCenter(shape: AnatomyShape): Vec3 {
