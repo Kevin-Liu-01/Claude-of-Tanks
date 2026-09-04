@@ -71,8 +71,8 @@ assert.match(garageCss,
   /@media \(hover:hover\) and \(pointer:fine\)\{[\s\S]*\.cot-eqtile:not\(\.locked\):hover/,
   'Garage equipment hover motion must only run on hover-capable pointers');
 assert.match(garageCss,
-  /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*position:fixed;[^}]*left:max\([^}]*right:max\([^}]*max-width:430px;[^}]*display:flex;/,
-  'Compact Garage equipment picker must stay centered inside the safe viewport');
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*left:auto;[^}]*right:calc\(max\([^}]*var\(--cot-compact-stats-width\)[^}]*width:min\(420px,calc\(100vw - var\(--cot-compact-stats-width\)[^}]*display:flex;/,
+  'Compact Garage equipment picker must stay beside the dossier and inside the safe viewport');
 assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
   'Compact Garage equipment choices must scroll inside the bounded picker');
