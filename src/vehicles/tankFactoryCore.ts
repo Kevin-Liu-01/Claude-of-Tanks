@@ -2071,6 +2071,216 @@ function radialRibs(
   }
 }
 
+function steelWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  const discs: THREE.BufferGeometry[] = [cylX(r, w, seg)];
+  radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
+  discs.push(cylX(r * 0.24, w * 1.3, 10));
+  discs.push(cylX(r * 0.14, w * 1.44, 8));
+  boltRing(discs, r, w, patternFasteners);
+  return { tire: null, disc: mergeAll(discs), dark: null };
+}
+
+function perforatedWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // T-34 Christie wheel (r7 rebuild): the painted dish spans nearly the
+  // full radius with a THIN rubber rim, and the six big stamped lightening
+  // holes are dark inserts — the "spider" face that makes the wheel read
+  // full-size instead of a small disc floating in shadow.
+  const tire = mergeAll([cylX(r, w, seg)]);
+  const discs: THREE.BufferGeometry[] = [
+    cylX(r * 0.86, w * 1.10, seg),
+    cylX(r * 0.28, w * 1.32, 12),
+    cylX(r * 0.15, w * 1.5, 8),
+  ];
+  boltRing(discs, r * 0.72, w, patternFasteners);
+  const dark: THREE.BufferGeometry[] = [];
+  const pocketCount = pattern?.pockets || 6;
+  for (let index = 0; index < pocketCount; index += 1) {
+    const angle = (index / pocketCount) * Math.PI * 2 + 0.3;
+    dark.push(xform(cylX(r * 0.185, w * 1.16, 10),
+      0, Math.sin(angle) * r * 0.55, Math.cos(angle) * r * 0.55));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function dishedWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
+  // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
+  // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
+  // + cap, and a 16-bolt ring standing dark on the dish slope. Reads as a
+  // dished pressed-steel wheel at closeup instead of a flat painted disc.
+  // r7b ("flat pancake discs — no dish, no rubber/steel rim separation" on
+  // the judged Tiger closeup): the painted rim ring pulls in to 0.86 r so a
+  // REAL dark tire band (14% of radius) separates rubber from steel, the
+  // dish cones deepen (0.34 w -> 0.46 w span, proud of the face ring) and
+  // the dish-bottom shadow annulus widens so the concavity survives flat
+  // camo paint at closeup range.
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.92, w * 1.02, seg),
+  ]);
+  const discs: THREE.BufferGeometry[] = [cylX(r * 0.86, w * 1.06, seg)];
+  for (const side of [-1, 1]) {
+    discs.push(xform(
+      cylX(side < 0 ? r * 0.82 : r * 0.28, w * 0.46, seg,
+        side < 0 ? r * 0.28 : r * 0.82),
+      side * w * 0.42, 0, 0));
+  }
+  discs.push(cylX(r * 0.26, w * 1.34, 12));
+  discs.push(cylX(r * 0.15, w * 1.52, 10));
+  const dark = [cylX(r * 0.50, w * 0.52, seg)];
+  for (let index = 0; index < patternFasteners; index += 1) {
+    const angle = (index / patternFasteners) * Math.PI * 2 + 0.1;
+    dark.push(xform(cylX(r * 0.042, w * 1.12, 6),
+      0, Math.sin(angle) * r * 0.60, Math.cos(angle) * r * 0.60));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function customFaceWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+): WheelGeometrySet {
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.30, w * 1.20, seg),
+  ]);
+  const discs: THREE.BufferGeometry[] = [
+    cylX(r * dishR, w * 1.14, seg),
+    cylX(r * 0.24, w * 1.38, 10),
+    cylX(r * 0.14, w * 1.54, 8),
+  ];
+  boltRing(discs, r * dishR / 0.9, w, 8);
+  const dark = [
+    cylX(r * 0.46, w * 1.08, seg),
+    cylX(r * 0.205, w * 1.40, 10),
+  ];
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (index / 12) * Math.PI * 2 + 0.13;
+    dark.push(xform(cylX(r * 0.045, w * 1.20, 6),
+      0, Math.sin(angle) * r * dishR * 0.72, Math.cos(angle) * r * dishR * 0.72));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function addWheelFaceMotif(
+  motif: WheelPattern['motif'],
+  discs: THREE.BufferGeometry[],
+  dark: THREE.BufferGeometry[],
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+  pattern: WheelPattern | null,
+): void {
+  switch (motif) {
+    case 'split-rim':
+      dark.push(cylX(r * 0.70, w * 1.17, seg));
+      discs.push(cylX(r * 0.53, w * 1.23, seg));
+      dark.push(cylX(r * 0.32, w * 1.27, 12));
+      return;
+    case 'rib':
+      dark.push(cylX(r * 0.67, w * 1.17, seg));
+      radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
+        0.12, 1.24, 0.08);
+      return;
+    case 'spoke':
+    case 'solid-spoke':
+      dark.push(cylX(r * 0.69, w * 1.17, seg));
+      radialRibs(discs, r, w, pattern?.pockets || 5, 0.18, dishR * 0.86,
+        motif === 'solid-spoke' ? 0.24 : 0.20, 1.24, 0.06);
+      return;
+    case 'scalloped':
+    case 'perforated': {
+      const count = pattern?.pockets || 6;
+      dark.push(cylX(r * 0.39, w * 1.17, 14));
+      for (let index = 0; index < count; index += 1) {
+        const angle = (index / count) * Math.PI * 2 + 0.28;
+        dark.push(xform(cylX(r * (motif === 'perforated' ? 0.15 : 0.125), w * 1.21, 10),
+          0, Math.sin(angle) * r * 0.56, Math.cos(angle) * r * 0.56));
+      }
+      return;
+    }
+    case 'flanged':
+      dark.push(cylX(r * 0.61, w * 1.17, seg));
+      discs.push(cylX(r * 0.45, w * 1.23, 16));
+      dark.push(cylX(r * 0.29, w * 1.27, 12));
+      return;
+    case 'deep-dish':
+      dark.push(cylX(r * 0.57, w * 1.17, seg));
+      for (const side of [-1, 1]) {
+        discs.push(xform(cylX(
+          side < 0 ? r * 0.78 : r * 0.31,
+          w * 0.16, seg,
+          side < 0 ? r * 0.31 : r * 0.78,
+        ), side * w * 0.62, 0, 0));
+      }
+      return;
+    case 'armored-hub':
+      dark.push(cylX(r * 0.52, w * 1.17, seg));
+      discs.push(cylX(r * 0.38, w * 1.25, 14));
+      return;
+    default:
+      dark.push(cylX(r * 0.48, w * 1.17, seg));
+  }
+}
+
+function standardWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // Rubber band + a dark hub-well ring: the well sits between dish and hub so
+  // the hub reads against shadow (r5: wheels merged into one flat plate).
+  // camo_spotting r3: tire rim <=10% of radius and hub well slimmed — the
+  // wide dark annuli rendered as high-contrast black/base BULLSEYE rings on
+  // the Tiger under every scheme ("toy targets" critique). The thin rim +
+  // recessed well + bolt ring keep the wheel reading as a wheel (the r6
+  // "body-green disc" concern) without the target-ring geometry.
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.94, w * 1.03, seg),
+  ]);
+  // Painted dish stands PROUD of the tire caps and covers `dishR` of the
+  // radius (default 90%) — real road wheels read as painted steel discs with
+  // a visible dark rubber rim, never as full-face painted circles (r3/r5)
+  // and never as wide-ringed bullseyes (camo_spotting r3). Russian/modern
+  // rigs pass a smaller dishR for their fat rubber tires (r5: "uniform green
+  // discs with no rubber/hub separation").
+  const discs: THREE.BufferGeometry[] = [cylX(r * dishR, w * 1.12, seg)];
+  const dark: THREE.BufferGeometry[] = [];
+  addWheelFaceMotif(pattern?.motif || 'split-rim', discs, dark, r, w, seg, dishR, pattern);
+  discs.push(cylX(r * 0.24, w * 1.34, 12));
+  discs.push(cylX(r * 0.14, w * 1.48, 10));
+  for (let index = 0; index < patternFasteners; index += 1) {
+    const angle = (index / patternFasteners) * Math.PI * 2 + 0.13;
+    dark.push(xform(cylX(r * 0.040, w * 1.40, 6),
+      0, Math.sin(angle) * r * dishR * 0.70, Math.cos(angle) * r * dishR * 0.70));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
 function wheelGeo(
   style: string,
   r: number,
@@ -2081,157 +2291,23 @@ function wheelGeo(
   customFace = false,
 ): WheelGeometrySet {
   const patternFasteners = pattern?.fasteners ?? 8;
-  const discs: THREE.BufferGeometry[] = [];
   if (style === 'steel') {
-    discs.push(cylX(r, w, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
-    discs.push(cylX(r * 0.24, w * 1.3, 10));
-    discs.push(cylX(r * 0.14, w * 1.44, 8));            // hub cap
-    boltRing(discs, r, w, patternFasteners);
-    return { tire: null, disc: mergeAll(discs), dark: null };
+    return steelWheelGeometry(r, w, seg, pattern, patternFasteners);
   }
   if (style === 'holes' && (!pattern || pattern.motif === 'perforated')) {
-    // T-34 Christie wheel (r7 rebuild): the painted dish spans nearly the
-    // full radius with a THIN rubber rim, and the six big stamped lightening
-    // holes are dark inserts — the "spider" face that makes the wheel read
-    // full-size instead of a small disc floating in shadow.
-    const tire = mergeAll([cylX(r, w, seg)]);
-    discs.push(cylX(r * 0.86, w * 1.10, seg));           // near-full dish
-    discs.push(cylX(r * 0.28, w * 1.32, 12));            // hub drum
-    discs.push(cylX(r * 0.15, w * 1.5, 8));              // hub cap
-    boltRing(discs, r * 0.72, w, patternFasteners);
-    const dk: THREE.BufferGeometry[] = [];
-    const pocketCount = pattern?.pockets || 6;
-    for (let k = 0; k < pocketCount; k++) {
-      const a = (k / pocketCount) * Math.PI * 2 + 0.3;
-      dk.push(xform(cylX(r * 0.185, w * 1.16, 10),
-        0, Math.sin(a) * r * 0.55, Math.cos(a) * r * 0.55));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return perforatedWheelGeometry(r, w, seg, pattern, patternFasteners);
   }
   if (style === 'dished' && (!pattern || pattern.motif === 'deep-dish')) {
-    // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
-    // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
-    // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
-    // + cap, and a 16-bolt ring standing dark on the dish slope. Reads as a
-    // dished pressed-steel wheel at closeup instead of a flat painted disc.
-    // r7b ("flat pancake discs — no dish, no rubber/steel rim separation" on
-    // the judged Tiger closeup): the painted rim ring pulls in to 0.86 r so a
-    // REAL dark tire band (14% of radius) separates rubber from steel, the
-    // dish cones deepen (0.34 w -> 0.46 w span, proud of the face ring) and
-    // the dish-bottom shadow annulus widens so the concavity survives flat
-    // camo paint at closeup range.
-    const tire = mergeAll([
-      cylX(r, w, seg),                                   // rubber tire band
-      cylX(r * 0.92, w * 1.02, seg),                     // tire shoulder rounds the edge
-    ]);
-    discs.push(cylX(r * 0.86, w * 1.06, seg));           // proud outer face ring
-    for (const sgn of [-1, 1]) {                          // concave dish cones
-      discs.push(xform(
-        cylX(sgn < 0 ? r * 0.82 : r * 0.28, w * 0.46, seg, sgn < 0 ? r * 0.28 : r * 0.82),
-        sgn * w * 0.42, 0, 0));
-    }
-    discs.push(cylX(r * 0.26, w * 1.34, 12));            // raised hub drum
-    discs.push(cylX(r * 0.15, w * 1.52, 10));            // hub cap
-    const dk = [cylX(r * 0.50, w * 0.52, seg)];          // dish-bottom shadow annulus
-    for (let k = 0; k < patternFasteners; k++) {          // rim bolts on the dish slope
-      const a = (k / patternFasteners) * Math.PI * 2 + 0.1;
-      dk.push(xform(cylX(r * 0.042, w * 1.12, 6),
-        0, Math.sin(a) * r * 0.60, Math.cos(a) * r * 0.60));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return dishedWheelGeometry(r, w, seg, patternFasteners);
   }
   // Recent profile builders already supply source-measured, suspension-bound
   // face layers. Preserve their proven base stack so the shared fleet motif
   // cannot sit proud of and occlude those authored rings/recesses. They still
   // receive the family-specific idler, sprocket, roller, paint, and receipt.
   if (customFace) {
-    const tire = mergeAll([
-      cylX(r, w, seg),
-      cylX(r * 0.30, w * 1.20, seg),
-    ]);
-    discs.push(cylX(r * dishR, w * 1.14, seg));
-    discs.push(cylX(r * 0.24, w * 1.38, 10));
-    discs.push(cylX(r * 0.14, w * 1.54, 8));
-    boltRing(discs, r * dishR / 0.9, w, 8);
-    const dk = [
-      cylX(r * 0.46, w * 1.08, seg),
-      cylX(r * 0.205, w * 1.40, 10),
-    ];
-    for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * Math.PI * 2 + 0.13;
-      dk.push(xform(cylX(r * 0.045, w * 1.20, 6),
-        0, Math.sin(a) * r * dishR * 0.72, Math.cos(a) * r * dishR * 0.72));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return customFaceWheelGeometry(r, w, seg, dishR);
   }
-  // Rubber band + a dark hub-well ring: the well sits between dish and hub so
-  // the hub reads against shadow (r5: wheels merged into one flat plate).
-  // camo_spotting r3: tire rim <=10% of radius and hub well slimmed — the
-  // wide dark annuli rendered as high-contrast black/base BULLSEYE rings on
-  // the Tiger under every scheme ("toy targets" critique). The thin rim +
-  // recessed well + bolt ring keep the wheel reading as a wheel (the r6
-  // "body-green disc" concern) without the target-ring geometry.
-  const tire = mergeAll([
-    cylX(r, w, seg),
-    cylX(r * 0.94, w * 1.03, seg),                       // rounded tire shoulder
-  ]);
-  // Painted dish stands PROUD of the tire caps and covers `dishR` of the
-  // radius (default 90%) — real road wheels read as painted steel discs with
-  // a visible dark rubber rim, never as full-face painted circles (r3/r5)
-  // and never as wide-ringed bullseyes (camo_spotting r3). Russian/modern
-  // rigs pass a smaller dishR for their fat rubber tires (r5: "uniform green
-  // discs with no rubber/hub separation").
-  discs.push(cylX(r * dishR, w * 1.12, seg));            // painted outer dish
-  const dk = [];
-  const motif = pattern?.motif || 'split-rim';
-  if (motif === 'split-rim') {
-    dk.push(cylX(r * 0.70, w * 1.17, seg));
-    discs.push(cylX(r * 0.53, w * 1.23, seg));
-    dk.push(cylX(r * 0.32, w * 1.27, 12));
-  } else if (motif === 'rib') {
-    dk.push(cylX(r * 0.67, w * 1.17, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
-      0.12, 1.24, 0.08);
-  } else if (motif === 'spoke' || motif === 'solid-spoke') {
-    dk.push(cylX(r * 0.69, w * 1.17, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 5, 0.18, dishR * 0.86,
-      motif === 'solid-spoke' ? 0.24 : 0.20, 1.24, 0.06);
-  } else if (motif === 'scalloped' || motif === 'perforated') {
-    const count = pattern?.pockets || 6;
-    dk.push(cylX(r * 0.39, w * 1.17, 14));
-    for (let k = 0; k < count; k++) {
-      const a = (k / count) * Math.PI * 2 + 0.28;
-      dk.push(xform(cylX(r * (motif === 'perforated' ? 0.15 : 0.125), w * 1.21, 10),
-        0, Math.sin(a) * r * 0.56, Math.cos(a) * r * 0.56));
-    }
-  } else if (motif === 'flanged') {
-    dk.push(cylX(r * 0.61, w * 1.17, seg));
-    discs.push(cylX(r * 0.45, w * 1.23, 16));
-    dk.push(cylX(r * 0.29, w * 1.27, 12));
-  } else if (motif === 'deep-dish') {
-    dk.push(cylX(r * 0.57, w * 1.17, seg));
-    for (const side of [-1, 1]) {
-      discs.push(xform(cylX(
-        side < 0 ? r * 0.78 : r * 0.31,
-        w * 0.16, seg,
-        side < 0 ? r * 0.31 : r * 0.78,
-      ), side * w * 0.62, 0, 0));
-    }
-  } else if (motif === 'armored-hub') {
-    dk.push(cylX(r * 0.52, w * 1.17, seg));
-    discs.push(cylX(r * 0.38, w * 1.25, 14));
-  } else {
-    dk.push(cylX(r * 0.48, w * 1.17, seg));
-  }
-  discs.push(cylX(r * 0.24, w * 1.34, 12));              // raised hub drum
-  discs.push(cylX(r * 0.14, w * 1.48, 10));              // removable hub cap
-  for (let k = 0; k < patternFasteners; k++) {
-    const a = (k / patternFasteners) * Math.PI * 2 + 0.13;
-    dk.push(xform(cylX(r * 0.040, w * 1.40, 6),
-      0, Math.sin(a) * r * dishR * 0.70, Math.cos(a) * r * dishR * 0.70));
-  }
-  return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+  return standardWheelGeometry(r, w, seg, dishR, pattern, patternFasteners);
 }
 
 // Idler (r9 rework — judged-shot hard fail): the r8 stack buried its dished
