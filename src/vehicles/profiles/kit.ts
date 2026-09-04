@@ -1720,8 +1720,26 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
  * drum, armored cradle, M2HB receiver/feed system and forward EO face while
  * changing the protection and sensor silhouette for each host vehicle.
  */
-function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY, cylZ, torus } = KIT;
+interface AmericanRwsBuildContext {
+  readonly opts: FittingOptions;
+  readonly variant: string;
+  readonly s: number;
+  readonly standard: boolean;
+  readonly armored: boolean;
+  readonly hunter: boolean;
+  readonly low: boolean;
+  readonly parts: FittingParts;
+  readonly body: string;
+  readonly baseR: number;
+  readonly pedestalH: number;
+  readonly headY: number;
+  readonly headW: number;
+  readonly headH: number;
+  readonly headD: number;
+  readonly recY: number;
+}
+
+function createAmericanRwsBuildContext(opts: FittingOptions): AmericanRwsBuildContext {
   const variant = opts.variant || 'compact';
   const s = opts.scale || 1;
   const standard = variant === 'standard';
@@ -1739,6 +1757,31 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
   const headW = (low ? 0.52 : armored ? 0.48 : 0.42) * s;
   const headH = (low ? 0.22 : armored ? 0.36 : 0.30) * s;
   const headD = (low ? 0.48 : 0.44) * s;
+  const recY = headY + headH / 2 + 0.090 * s;
+
+  return {
+    opts,
+    variant,
+    s,
+    standard,
+    armored,
+    hunter,
+    low,
+    parts,
+    body,
+    baseR,
+    pedestalH,
+    headY,
+    headW,
+    headH,
+    headD,
+    recY,
+  };
+}
+
+function addAmericanRwsPedestal(context: AmericanRwsBuildContext): void {
+  const { box, cylY, torus } = KIT;
+  const { baseR, body, parts, pedestalH, s } = context;
 
   parts.add(body, cylY(baseR * 0.92, baseR, 0.105 * s, 20), 0, 0.0525 * s, 0);
   parts.add('dark', torus(baseR * 0.88, 0.025 * s, 24), 0, 0.108 * s, 0);
@@ -1756,7 +1799,11 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
       side * 0.105 * s, 0.095 * s + pedestalH * 0.52, -0.065 * s,
       0, 0, side * 0.090);
   }
+}
 
+function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
+  const { box, cylZ } = KIT;
+  const { body, headD, headH, headW, headY, parts, s } = context;
   // Armored sensor/weapon head and serviceable top cover.
   parts.add(body, box(headW, headH, headD), 0, headY, 0.04 * s);
   parts.add('detail', box(headW - 0.025 * s, 0.026 * s, headD - 0.035 * s),
@@ -1774,10 +1821,13 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
     parts.add('glass', cylZ(0.024 * s, 0.006 * s, 12),
       x * s, headY - 0.075 * s, headD / 2 + 0.075 * s);
   }
+}
 
+function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
+  const { box, cylZ } = KIT;
+  const { body, headH, headY, parts, recY, s } = context;
   // M2 receiver is nested into the head roof; side coffin and feed are one
   // connected protected assembly rather than a floating generic gun.
-  const recY = headY + headH / 2 + 0.090 * s;
   parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
   parts.add('dark', box(0.215 * s, 0.018 * s, 0.41 * s),
     0, recY + 0.080 * s, 0.16 * s);
@@ -1821,7 +1871,13 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
     0, recY, 1.1525 * s);
   parts.add('dark', cylZ(0.017 * s, 0.018 * s, 10),
     0, recY, 1.214 * s);
+}
 
+function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
+  const { box, cylY } = KIT;
+  const {
+    armored, body, headD, headH, headW, headY, hunter, low, parts, recY, s, standard,
+  } = context;
   if (standard) {
     // Baseline M1A2 station: open service cheeks and a narrow sensor brow.
     // It keeps the TTS-derived gun/head anatomy while remaining visibly
@@ -1852,9 +1908,12 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
     for (const side of [-1, 1]) {
       parts.add(body, box(0.030 * s, headH + 0.08 * s, headD + 0.04 * s),
         side * (headW / 2 + 0.015 * s), headY, 0.04 * s);
-    }
+      }
   }
+}
 
+function assembleAmericanRws(context: AmericanRwsBuildContext): THREE.Group {
+  const { opts, parts, variant } = context;
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = `fitting_americanRws_${variant}`;
   fitting.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
@@ -1876,6 +1935,15 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
     weaponMesh.userData.appearanceRole = 'machineGun';
   }
   return fitting;
+}
+
+function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
+  const context = createAmericanRwsBuildContext(opts);
+  addAmericanRwsPedestal(context);
+  addAmericanRwsSensorHead(context);
+  addAmericanRwsWeaponSystem(context);
+  addAmericanRwsVariantArmor(context);
+  return assembleAmericanRws(context);
 }
 
 /**
