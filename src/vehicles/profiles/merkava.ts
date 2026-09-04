@@ -8443,7 +8443,8 @@ function merkavaSourceGunCradle(
     ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035),
   ]));
 
-  if (id === 'merkava4b') {
+  const recordGunSeatReceipt = (): void => {
+    if (id !== 'merkava4b') return;
     const throatHW = p.cheek?.pts?.[0]?.[0] ?? p.notchHW;
     P.gunG.userData.merkava4bGunSeatReceipt = Object.freeze({
       revision: 'closed-throat-r1',
@@ -8455,7 +8456,8 @@ function merkavaSourceGunCradle(
       mouthHalfWidthM: cfg.mouthHW,
       taperBeginsBeyondTurretThroat: true,
     });
-  }
+  };
+  recordGunSeatReceipt();
 
   // Surface finish for the broad mask planes. These are shallow gun-owned
   // reliefs, not turret decals: every seam, stamp and fastener therefore
@@ -8482,9 +8484,9 @@ function merkavaSourceGunCradle(
   addSkin(box(0.018, 0.007, seamLen), 0, hhAt(seamMid) + 0.004, zAt(seamMid), topPitch, 0, 0, true);
   addSkin(box(0.016, 0.006, seamLen * 0.62), 0, -hhAt(seamMid) - 0.004,
     zAt(seamMid + 0.04), -topPitch, 0, 0, true);
-  for (const f of [0.30, 0.66]) {
+  [0.30, 0.66].forEach((f) => {
     addSkin(box(hwAt(f) * 1.46, 0.007, 0.020), 0, hhAt(f) + 0.004, zAt(f), topPitch, 0, 0, true);
-  }
+  });
 
   const hatchF = id === 'merkava4b' ? 0.54 : 0.48;
   const hatchX = -hwAt(hatchF) * 0.36;
@@ -8493,12 +8495,16 @@ function merkavaSourceGunCradle(
   addSkin(box(hatchW, 0.009, hatchD), hatchX, hhAt(hatchF) + 0.009, zAt(hatchF), topPitch, 0, 0, true);
   addSkin(box(hatchW * 0.84, 0.010, hatchD * 0.82), hatchX,
     hhAt(hatchF) + 0.014, zAt(hatchF), topPitch);
-  if (P.q) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    addSkin(cylY(0.012, 0.012, 0.010, 8), hatchX + sx * hatchW * 0.34,
-      hhAt(hatchF) + 0.021, zAt(hatchF) + sz * hatchD * 0.31, topPitch, 0, 0, true);
+  if (P.q) {
+    [-1, 1].forEach((sx) => {
+      [-1, 1].forEach((sz) => {
+        addSkin(cylY(0.012, 0.012, 0.010, 8), hatchX + sx * hatchW * 0.34,
+          hhAt(hatchF) + 0.021, zAt(hatchF) + sz * hatchD * 0.31, topPitch, 0, 0, true);
+      });
+    });
   }
 
-  for (const side of [-1, 1]) {
+  [-1, 1].forEach((side) => {
     const sideYaw = -side * sideAngle;
 
     // A recessed longitudinal joint and a compact inspection-frame break up
@@ -8512,26 +8518,28 @@ function merkavaSourceGunCradle(
     const frameF = side < 0 ? 0.47 : 0.40;
     const frameH = hhAt(frameF) * 0.72;
     const frameD = Math.min(0.22, span * 0.16);
-    for (const sy of [-1, 1]) {
+    [-1, 1].forEach((sy) => {
       addSkin(box(0.007, 0.018, frameD), side * (hwAt(frameF) + 0.004),
         sy * frameH * 0.5, zAt(frameF), 0, sideYaw, 0, true);
-    }
-    for (const sf of [-0.5, 0.5]) {
+    });
+    [-0.5, 0.5].forEach((sf) => {
       const f = frameF + sf * frameD / span;
       addSkin(box(0.007, frameH, 0.018), side * (hwAt(f) + 0.004), 0,
         zAt(f), 0, sideYaw, 0, true);
-    }
+    });
 
     // Edge washer/bolt course: dark recessed washer under a small painted
     // cap. The stagger changes per side, retaining the hand-fitted Israeli
     // armor character instead of a mirrored procedural grid.
-    if (P.q) for (const [i, f] of [0.21, 0.43, 0.69, 0.84].entries()) {
-      const by = (i % 2 ? -1 : 1) * hhAt(f) * (side < 0 ? 0.58 : 0.62);
-      const bx = side * (hwAt(f) + 0.006);
-      addSkin(cylX(0.023, 0.008, 10), bx, by, zAt(f), 0, sideYaw, 0, true);
-      addSkin(cylX(0.013, 0.012, 8), bx + side * 0.005, by, zAt(f), 0, sideYaw);
+    if (P.q) {
+      [0.21, 0.43, 0.69, 0.84].forEach((f, index) => {
+        const by = (index % 2 ? -1 : 1) * hhAt(f) * (side < 0 ? 0.58 : 0.62);
+        const bx = side * (hwAt(f) + 0.006);
+        addSkin(cylX(0.023, 0.008, 10), bx, by, zAt(f), 0, sideYaw, 0, true);
+        addSkin(cylX(0.013, 0.012, 8), bx + side * 0.005, by, zAt(f), 0, sideYaw);
+      });
     }
-  }
+  });
 
   // Mark-specific stamped service code on the right mask face. The tiny
   // seven-segment strokes are dark inlays seated directly on the armor (not
@@ -8577,12 +8585,12 @@ function merkavaSourceGunCradle(
   // Low lifting/tie-down bosses at the buried end provide a supported load
   // path into the turret cheek. They stay inside the root width and are too
   // shallow to resurrect the wide-wing silhouette that this round replaced.
-  for (const side of [-1, 1]) {
+  [-1, 1].forEach((side) => {
     const f = 0.16;
     const lugX = side * hwAt(f) * 0.56;
     addSkin(box(0.075, 0.022, 0.075), lugX, hhAt(f) + 0.014, zAt(f), topPitch, 0, 0, true);
     addSkin(box(0.052, 0.027, 0.052), lugX, hhAt(f) + 0.028, zAt(f), topPitch);
-  }
+  });
 
   const oval = (r: number, len: number, z: number, scaleY = 1, taper: number | undefined = undefined, dark = false): void => {
     const geo = xform(cylZ(r, len, P.q ? 24 : 16, taper), 0, 0, 0, 0, 0, 0,
@@ -8611,10 +8619,10 @@ function merkavaSourceGunCradle(
   oval(bootHW * 0.68, 0.026, bootFront + 0.068, bootAspect * 0.96, undefined, true);
 
   // Canvas cinches follow the boot inside the mask.
-  for (const f of [0.28, 0.66]) {
+  [0.28, 0.66].forEach((f) => {
     const r = bootHW * (1 - f * 0.27);
     oval(r + 0.004, 0.022, bootStart + cfg.bootLen * f, bootAspect, undefined, true);
-  }
+  });
   return true;
 }
 
