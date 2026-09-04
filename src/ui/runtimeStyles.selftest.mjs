@@ -30,8 +30,17 @@ assert.doesNotMatch(garageCss, /\$\{/,
   'Garage stylesheet must not retain template interpolation');
 assert.match(responsiveCss, /:root\{\s*--cot-edge:/,
   'shared responsive tokens remain present');
-assert.match(garageCss, /\.cot-garage\{--cot-garage-sidebar-width:/,
-  'Garage root rules remain present');
+assert.match(garageCss,
+  /\.cot-garage\{--cot-garage-sidebar-width:280px;--cot-garage-sidebar-top:86px;--cot-garage-sidebar-bottom:210px/,
+  'Garage root must own one shared desktop sidebar rail');
+assert.match(garageCss,
+  /\.cot-garage \.stats\{position:absolute;right:22px;top:var\(--cot-garage-sidebar-top\);bottom:var\(--cot-garage-sidebar-bottom\)/,
+  'Garage dossier must consume the shared sidebar top and bottom anchors');
+assert.match(garageCss,
+  /\.cot-leftcol\{position:absolute;left:34px;top:var\(--cot-garage-sidebar-top\);bottom:var\(--cot-garage-sidebar-bottom\)/,
+  'Garage setup column must consume the shared sidebar top and bottom anchors');
+assert.doesNotMatch(garageCss, /\.cot-garage \.stats\{max-height:max\(/,
+  'Garage dossier must not retain an independent height cap that shortens the right rail');
 assert.match(motionCss, /--cot-ease-out:\s*cubic-bezier\(/,
   'motion contract must publish the standard responsive easing');
 for (const band of ['instant', 'fast', 'base', 'slow', 'scene']) {

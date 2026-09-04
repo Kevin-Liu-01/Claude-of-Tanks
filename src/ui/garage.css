@@ -1,4 +1,5 @@
-.cot-garage{--cot-garage-sidebar-width:280px;position:fixed;inset:0;z-index:60;display:none;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+.cot-garage{--cot-garage-sidebar-width:280px;--cot-garage-sidebar-top:86px;--cot-garage-sidebar-bottom:210px;
+  position:fixed;inset:0;z-index:60;display:none;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
 .cot-garage.awaiting-boot{visibility:hidden;}
 .cot-garage *{box-sizing:border-box;margin:0;padding:0;}
@@ -307,7 +308,8 @@
   color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
 .cot-battle-menu-label{padding:8px 9px 5px;color:#6f818f;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.18em;
   text-transform:uppercase;border-top:1px solid rgba(146,164,180,.14)}
-.cot-garage .stats{position:absolute;right:22px;top:86px;width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
+.cot-garage .stats{position:absolute;right:22px;top:var(--cot-garage-sidebar-top);bottom:var(--cot-garage-sidebar-bottom);
+  width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
   background:transparent;border:0;box-shadow:none;}
 .cot-garage .stats::before{display:none;}
 .cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:70px;margin-bottom:8px;
@@ -625,7 +627,7 @@
 /* The column runs down to just above the country chips. The battlefield
    plate is content-height on roomy screens, but may shrink and scroll when
    the viewport is short so it never collides with the sections below. */
-.cot-leftcol{position:absolute;left:34px;top:86px;bottom:210px;
+.cot-leftcol{position:absolute;left:34px;top:var(--cot-garage-sidebar-top);bottom:var(--cot-garage-sidebar-bottom);
   width:var(--cot-garage-sidebar-width);display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
    plate treatment (translucent backdrop + hairline + amber title tick) so
@@ -801,11 +803,9 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 /* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
    plate/border language as the camo cards; equipped slots carry the item's
    white-silhouette glyph (equipIcons.js), empty ones a quiet dashed +.
-   garage polish (spacing): the card now also stops ABOVE the carousel band —
-   the old 100vh-148px cap let its equipment tail run underneath the last
-   carousel cards at ≤850px-tall viewports (peeking through the card gaps);
-   content past the cap scrolls inside the card as designed. */
-.cot-garage .stats{max-height:max(320px,calc(100vh - 316px));overflow-y:auto;overflow-x:hidden;
+   Both desktop sidebars consume the root's shared top/bottom anchors, so the
+   dossier ends on the same rail as Battle Gallery and scrolls within it. */
+.cot-garage .stats{max-height:none;overflow-y:auto;overflow-x:hidden;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
 .cot-garage .stats.has-scroll-mask{
   -webkit-mask-image:linear-gradient(180deg,transparent 0,
