@@ -9544,6 +9544,55 @@ export function createTank(
     gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
   }
 
+  function captureWreckMaterials(): void {
+    // Capture at the intact -> destroyed edge so later-added decoration and
+    // GLB-swapped meshes participate in the burn and can be restored exactly.
+    originalMats.length = 0;
+    if (geometryOnly) return;
+    root.traverse((object) => {
+      if (!isVehicleMesh(object)) return;
+      originalMats.push([object, object.material, object.visible]);
+    });
+  }
+
+  function applyWreckMaterials(): void {
+    if (geometryOnly) return;
+    for (const [mesh] of originalMats) {
+      if (!mesh.visible) continue;
+      // Shadow proxies retain their colorWrite:false material so they keep
+      // casting the wreck silhouette without rendering an opaque proxy.
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      if (!materials[0] || materials[0].colorWrite === false) continue;
+      if (materials.length > 1) {
+        for (const material of materials) applyBurnHook(material, burnU);
+      } else if (!applyBurnHook(materials[0], burnU)) {
+        mesh.material = mats.burnt;
+      }
+    }
+  }
+
+  function startWreckPresentation(ageS: number): void {
+    burnU.uBurnLo.value = root.position.y + 0.15;
+    burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
+    for (const decal of decalMeshes) decal.visible = false;
+    wreckAge = ageS;
+    burnU.uBurnT.value = ageS;
+    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
+    burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
+    mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
+    gunG.rotation.x = 0.12;
+    wreckSeat.copy(turretG.position);
+    popYaw0 = turretG.rotation.y;
+  }
+
+  function launchDestroyedTurret(pop: boolean, ageS: number): void {
+    popScale = pop ? 1 : 0.22;
+    popActive = true;
+    popT = ageS;
+    popTrailAcc = 0;
+    applyPop();
+  }
+
   const visual: TankVisual = {
     root,
     specId,
@@ -10154,22 +10203,7 @@ export function createTank(
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
       destroyed = true;
-      // lazy capture (see originalMats note): traverse NOW so GLB-swapped
-      // meshes are included in the burnt swap and restorable on rematch.
-      // r4: each entry also records the mesh's CURRENT visibility —
-      // resetDestroyed used to force `visible = true` on everything, which
-      // resurrected the hidden procedural placeholder hull over the GLB on
-      // any rematch (giant black/camo box enclosing the real model).
-      originalMats.length = 0;
-      if (!geometryOnly) {
-        root.traverse((o) => {
-          if (!isVehicleMesh(o)) return;
-          // never char meshes that are not currently rendered (hidden
-          // placeholder hulls, retracted proxies) — charring them was harmless
-          // only until any code path toggled their visibility
-          originalMats.push([o, o.material, o.visible]);
-        });
-      }
+      captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
       // "half-and-half wreck split on a mesh seam" at 1.5 s, and could fly a
@@ -10180,59 +10214,14 @@ export function createTank(
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
-      if (!geometryOnly) {
-        for (const rec of originalMats) {
-          const [mesh] = rec;
-          if (!mesh.visible) continue;
-          // r7 CRITICAL (critic: every GLB wreck renders a bone-white-topped /
-          // void-black-bottomed cutout "missing texture" box): the GLB swap's
-          // SHADOW PROXIES (modelLoader buildShadowProxy — merged low-poly
-          // hull/turret/gun silhouettes) are visible-but-colorWrite:false
-          // meshes sharing one module-level MeshBasicMaterial. applyBurnHook
-          // rejects Basic materials, so the old fallback swapped them to the
-          // OPAQUE shared burnt material — the whole procedural silhouette box
-          // rendered over the wreck (cream where sunlit, lightless black in
-          // shade), and the popped turret flew as a black slab with a pale
-          // proxy gun tube. Never touch a mesh that writes no color: it keeps
-          // casting the wreck's shadow exactly as before.
-          const mm = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          if (!mm[0] || mm[0].colorWrite === false) continue;
-          if (mm.length > 1) {
-            // multi-slot meshes (camo alt-material kits): hook each slot in
-            // place — never collapse the array to the shared burnt swap.
-            for (const sm of mm) applyBurnHook(sm, burnU);
-          } else if (!applyBurnHook(mm[0], burnU)) {
-            mesh.material = mats.burnt;
-          }
-        }
-      }
-      // world-height window for the top-down front (root sits at track level)
-      burnU.uBurnLo.value = root.position.y + 0.15;
-      burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
+      applyWreckMaterials();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
-      for (const d of decalMeshes) d.visible = false;
-      // fresh wreck: front starts sweeping, embers pulse via syncFromState
-      wreckAge = ageS0;
-      burnU.uBurnT.value = ageS0;
-      burnU.uBurnGlow.value = Math.exp(-ageS0 / 0.9) * 1.35; // r7: faster hand-back to char
-      burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS0 / 8);
-      mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS0 / 8);
-      gunG.rotation.x = 0.12; // gun droops on any death
-      // capture the LIVE turret seat on the intact->destroyed edge (GLB
-      // swaps re-seat turretG off the spec pivot; see wreckSeat note). The
-      // early `if (destroyed) return` guarantees this runs once per wreck,
-      // before the pop mutates the position.
-      wreckSeat.copy(turretG.position);
-      popYaw0 = turretG.rotation.y;
+      startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence
       // (the GLB turret node is re-parented into turretG at swap time).
-      popScale = (opts && opts.pop) ? 1 : 0.22;
-      popActive = true;
-      popT = Math.max(0, (opts && opts.ageS) || 0);
-      popTrailAcc = 0;
-      applyPop();
+      launchDestroyedTurret(!!(opts && opts.pop), ageS0);
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 
