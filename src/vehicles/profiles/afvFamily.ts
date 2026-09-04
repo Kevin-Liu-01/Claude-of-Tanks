@@ -1589,6 +1589,41 @@ function buildPumaOracle(P: AfvBuilderPort): void {
 // post+head, gunner hood, LWR pair, met mast), doubled smoke banks, bustle
 // stowage + cans + spare links, grab rails, cable runs — and K-5 class
 // wedge/brick ERA on the station face + cheeks ("even some era").
+function addTerminatorT90MissileRacks(P: AfvBuilderPort): void {
+  const { box, cylZ } = KIT;
+  // Quad Ataka racks on both flanks use separated tubes, hanger webs,
+  // clamp collars, proud end caps, and recessed mouth rings.
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.52, 0.14, 0.46), side * 0.76, 0.46, 0.16,
+      0, 0, side * 0.07);
+    P.addEquipment('turret', box(0.50, 0.08, 0.60), side * 0.70, 0.585, 0.20,
+      0, side * 0.03, 0);
+    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 0.90, 0.47, 0.20,
+      0, side * 0.03, 0);
+    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 1.13, 0.47, 0.20,
+      0, side * 0.03, 0);
+    P.addEquipment('turret', box(0.44, 0.07, 0.48), side * 1.065, 0.71, 0.20,
+      0, side * 0.03, 0);
+    for (const columnX of [1.005, 1.245]) {
+      for (let row = 0; row < 2; row++) {
+        const tubeY = 0.35 + row * 0.25;
+        P.add('turretDark', cylZ(0.085, 0.85, 14), side * columnX, tubeY, 0.26,
+          0, side * 0.03, 0);
+        for (const collarZ of [0.06, 0.40]) {
+          P.add('turretDetail', cylZ(0.094, 0.03, 14),
+            side * columnX, tubeY, collarZ, 0, side * 0.03, 0);
+        }
+        P.add('turretDetail', cylZ(0.092, 0.035, 14),
+          side * columnX, tubeY, 0.70, 0, side * 0.03, 0);
+        P.add('turretDark', cylZ(0.062, 0.022, 14),
+          side * columnX, tubeY, 0.724, 0, side * 0.03, 0);
+        P.add('turretDark', cylZ(0.088, 0.02, 14),
+          side * columnX, tubeY, -0.165, 0, side * 0.03, 0);
+      }
+    }
+  }
+}
+
 function addTerminatorT90Station(P: AfvBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
@@ -1640,35 +1675,7 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // hanger webs, 2 columns × 2 rows of SEPARATED tubes (real air between
   // every pair), clamp collars, PROUD light end caps with recessed dark
   // mouth rings, rear end plates, and a top strap clamping both columns.
-  for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.52, 0.14, 0.46), side * 0.76, 0.46, 0.16,
-      0, 0, side * 0.07);                                                      // underslung mount block
-    P.addEquipment('turret', box(0.50, 0.08, 0.60), side * 0.70, 0.585, 0.20,
-      0, side * 0.03, 0);                                                      // rack arm off the wall
-    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 0.90, 0.47, 0.20,
-      0, side * 0.03, 0);                                                      // inner hanger web
-    P.addEquipment('turret', box(0.06, 0.40, 0.48), side * 1.13, 0.47, 0.20,
-      0, side * 0.03, 0);                                                      // outer hanger web
-    P.addEquipment('turret', box(0.44, 0.07, 0.48), side * 1.065, 0.71, 0.20,
-      0, side * 0.03, 0);                                                      // top strap over both columns
-    for (const colX of [1.005, 1.245]) {
-      for (let row = 0; row < 2; row++) {
-        const ty = 0.35 + row * 0.25;                                          // 8 cm air between rows
-        P.add('turretDark', cylZ(0.085, 0.85, 14), side * colX, ty, 0.26,
-          0, side * 0.03, 0);
-        for (const cz of [0.06, 0.40]) {
-          P.add('turretDetail', cylZ(0.094, 0.03, 14), side * colX, ty, cz,
-            0, side * 0.03, 0);                                                // clamp collars onto the webs
-        }
-        P.add('turretDetail', cylZ(0.092, 0.035, 14), side * colX, ty, 0.70,
-          0, side * 0.03, 0);                                                  // PROUD light end cap
-        P.add('turretDark', cylZ(0.062, 0.022, 14), side * colX, ty, 0.724,
-          0, side * 0.03, 0);                                                  // recessed dark mouth ring
-        P.add('turretDark', cylZ(0.088, 0.02, 14), side * colX, ty, -0.165,
-          0, side * 0.03, 0);                                                  // rear end plate
-      }
-    }
-  }
+  addTerminatorT90MissileRacks(P);
 
   // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
   // front cheeks (the t90a eraRuCheeks read, station-local), a staggered
