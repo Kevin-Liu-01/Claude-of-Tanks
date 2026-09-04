@@ -2610,6 +2610,119 @@ function runningGearContactPatch(
   return { zF, zR };
 }
 
+function trackCourseSupports(
+  rollers: GearEndpoint[],
+  rollerR: number,
+  trackTh: number,
+  wheelZs: number[],
+  wheelY: number,
+  wheelR: number,
+  layers: number[][] | null,
+): Array<{ z: number; y: number }> {
+  if (rollers.length) {
+    return rollers.map((roller) => ({
+      z: roller.z,
+      y: roller.y + (roller.r ?? rollerR) + trackTh / 2,
+    }));
+  }
+  const maxOffset = layers ? Math.max(...layers.flat()) : 0;
+  return wheelZs
+    .filter((z, index) => !layers || layers[index % layers.length].includes(maxOffset))
+    .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+}
+
+function orderedTrackEndpoints(
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+): { frontEnd: GearEndpoint; rearEnd: GearEndpoint } {
+  const frontRaw = sprocket.z >= idler.z ? sprocket : idler;
+  const rearRaw = sprocket.z >= idler.z ? idler : sprocket;
+  return {
+    frontEnd: { ...frontRaw, r: frontRaw.trackR ?? frontRaw.r },
+    rearEnd: { ...rearRaw, r: rearRaw.trackR ?? rearRaw.r },
+  };
+}
+
+function dedupeTrackLoopPoints(points: TrackPoint[]): void {
+  for (let index = points.length - 1; index > 0; index--) {
+    const point = points[index];
+    const previous = points[index - 1];
+    if (Math.abs(point[0] - previous[0]) < 1e-7
+        && Math.abs(point[1] - previous[1]) < 1e-7) {
+      points.splice(index, 1);
+    }
+  }
+}
+
+function orientTrackCourseClockwise(points: TrackPoint[]): void {
+  let doubledArea = 0;
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    doubledArea += point[0] * next[1] - next[0] * point[1];
+  }
+  if (doubledArea > 0) points.reverse();
+}
+
+function loadedRunStations(
+  wheelZs: number[],
+  segmentStartZ: number,
+  segmentEndZ: number,
+): number[] {
+  const lowZ = Math.min(segmentStartZ, segmentEndZ);
+  const highZ = Math.max(segmentStartZ, segmentEndZ);
+  const wheelMinZ = Math.min(...wheelZs);
+  const wheelMaxZ = Math.max(...wheelZs);
+  return [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
+    .filter((z) => z > lowZ + 1e-5 && z < highZ - 1e-5)
+    .sort((first, second) => segmentEndZ > segmentStartZ
+      ? first - second
+      : second - first);
+}
+
+function insertLoadedRunStations(
+  points: TrackPoint[],
+  wheelZs: number[],
+  botY: number,
+): void {
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    if (Math.abs(point[1] - botY) > 1e-6 || Math.abs(next[1] - botY) > 1e-6) {
+      continue;
+    }
+    const stations = loadedRunStations(wheelZs, point[0], next[0]);
+    if (!stations.length) continue;
+    points.splice(index + 1, 0, ...stations.map((z): TrackPoint => [z, botY]));
+    index += stations.length;
+  }
+}
+
+function trackCourseSegments(points: TrackPoint[]): {
+  segments: TrackCourseSegment[];
+  loopLengthM: number;
+} {
+  const segments: TrackCourseSegment[] = [];
+  let loopLengthM = 0;
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    const deltaZ = next[0] - point[0];
+    const deltaY = next[1] - point[1];
+    const lengthM = Math.hypot(deltaZ, deltaY) || 1e-6;
+    segments.push({
+      z: point[0],
+      y: point[1],
+      tz: deltaZ / lengthM,
+      ty: deltaY / lengthM,
+      l: lengthM,
+      c0: loopLengthM,
+    });
+    loopLengthM += lengthM;
+  }
+  return { segments, loopLengthM };
+}
+
 /**
  * Resolve the one closed course shared by the belt, shoes, sprocket teeth,
  * hit volume and runtime animation. Keeping this in one receipt prevents a
@@ -2634,19 +2747,13 @@ function buildTrackCourse({
   cfg: RunningGearConfig;
 }): TrackCourse {
   const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
-  const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
-  const supports = rollers.length
-    ? rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 }))
-    : wheelZs
-      .filter((z, i) => !layers || layers[i % layers.length].includes(maxOffSup))
-      .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+  const supports = trackCourseSupports(
+    rollers, rollerR, trackTh, wheelZs, wheelY, wheelR, layers,
+  );
 
   // trackLoopPoints always receives the geometrically front (+Z) end first;
   // drive location is independent of course winding.
-  const frontEndRaw = sprocket.z >= idler.z ? sprocket : idler;
-  const rearEndRaw = sprocket.z >= idler.z ? idler : sprocket;
-  const frontEnd = { ...frontEndRaw, r: frontEndRaw.trackR ?? frontEndRaw.r };
-  const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
+  const { frontEnd, rearEnd } = orderedTrackEndpoints(sprocket, idler);
   const contact = runningGearContactPatch(wheelZs, wheelR, cfg);
   const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
     ? cfg.loopPoints.map((p): TrackPoint => [p[0], p[1]])
@@ -2664,51 +2771,16 @@ function buildTrackCourse({
   // and an end-wheel arc at the same crown. Drop only exact consecutive
   // duplicates for opted-in profiles so the belt never emits a zero-length
   // segment or a stacked pair of shoes at that join.
-  if (cfg.dedupeLoopPoints) {
-    for (let i = pts.length - 1; i > 0; i--) {
-      if (Math.abs(pts[i][0] - pts[i - 1][0]) < 1e-7
-          && Math.abs(pts[i][1] - pts[i - 1][1]) < 1e-7) {
-        pts.splice(i, 1);
-      }
-    }
-  }
+  if (cfg.dedupeLoopPoints) dedupeTrackLoopPoints(pts);
 
   // Band normals and shoe orientation use a clockwise (z,y) course.
-  let loopArea2 = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    loopArea2 += a[0] * b[1] - b[0] * a[1];
-  }
-  if (loopArea2 > 0) pts.reverse();
+  orientTrackCourseClockwise(pts);
 
   // Add articulation vertices to the loaded run at every road-wheel station
   // and at the tension-fade shoulders.
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    if (Math.abs(a[1] - botY) > 1e-6 || Math.abs(b[1] - botY) > 1e-6) continue;
-    const lo = Math.min(a[0], b[0]), hi = Math.max(a[0], b[0]);
-    const wheelMinZ = Math.min(...wheelZs), wheelMaxZ = Math.max(...wheelZs);
-    const stations = [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
-      .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
-      .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
-    if (stations.length) {
-      pts.splice(i + 1, 0, ...stations.map((z): TrackPoint => [z, botY]));
-      i += stations.length;
-    }
-  }
+  insertLoadedRunStations(pts, wheelZs, botY);
 
-  const segments: TrackCourseSegment[] = [];
-  let loopLengthM = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    const dz = b[0] - a[0], dy = b[1] - a[1];
-    const lengthM = Math.hypot(dz, dy) || 1e-6;
-    segments.push({
-      z: a[0], y: a[1], tz: dz / lengthM, ty: dy / lengthM,
-      l: lengthM, c0: loopLengthM,
-    });
-    loopLengthM += lengthM;
-  }
+  const { segments, loopLengthM } = trackCourseSegments(pts);
   const shoeCount = Math.max(24, Math.round(loopLengthM / (cfg.linkPitchM ?? 0.165)));
   const shoePitchM = loopLengthM / shoeCount;
   return {
