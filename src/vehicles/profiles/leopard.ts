@@ -8125,6 +8125,67 @@ function buildLeo2A7V(P: TankBuilderPort) {
   P.topY = 1.24;
 }
 
+function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
+  const { box, cylX } = KIT;
+  for (const side of [-1, 1] as const) {
+    // Close the exposed sponson bay inside the inner track face.
+    P.add('hullShadow', box(0.02, 0.78, 6.90), side * 1.01, 0.93, -0.25);
+  }
+
+  const hubPale = P.mats.shadow.clone();
+  hubPale.color.setHex(0x767963);
+  hubPale.roughness = 0.9;
+  hubPale.envMapIntensity = 0.18;
+  hubPale.onBeforeCompile = vehicleAmbientFloorHook;
+  hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  P.disposables.push(hubPale);
+  const gear = P.gear;
+  if (!gear) throw new Error('Leopard prototype running gear must exist before adding hub caps');
+  gear.addRoadWheelLayer(cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
+    outset: 1.486 - 1.37,
+    name: 'gearRoadWheelPaleHubCaps',
+  });
+}
+
+function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1] as const) {
+    P.add('hull', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
+    P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
+    P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
+    P.add('hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.78, 3.849);
+  }
+  for (const side of [-1, 1] as const) {
+    P.add('hullRubber', box(0.38, 0.64, 0.032), side * 1.53, 1.24, -3.80);
+    P.add('hullDetail', box(0.07, 0.06, 0.20), side * 1.53, 1.60, -3.72);
+    P.add('hullDetail', box(0.30, 0.035, 0.05), side * 1.53, 1.585, -3.795);
+  }
+}
+
+function addLeo2PrototypeSponsonRails(P: TankBuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1] as const) {
+    P.add('hull', box(0.1075, 0.30, 6.575), side * 1.76125, 1.47, -0.3675);
+    P.add('hull', orientedSlab(
+      [side * 1.7075, 1.24, 2.92], [side * 1.815, 1.24, 2.92], [side * 1.815, 1.24, 3.64], [side * 1.7075, 1.24, 3.64],
+      [side * 1.7075, 1.47, 2.92], [side * 1.815, 1.47, 2.92], [side * 1.815, 1.36, 3.64], [side * 1.7075, 1.36, 3.64]));
+    P.add('hullDark', box(0.012, 0.03, 6.50), side * 1.8145, 1.38, -0.3675);
+
+    const rearZ = -3.60;
+    const frontZ = 3.40;
+    const segmentCount = 16;
+    const segmentLength = (frontZ - rearZ) / segmentCount;
+    for (let index = 0; index < segmentCount; index++) {
+      P.add('hull', box(0.045, 0.45, segmentLength - 0.012), side * 1.8275, 1.135,
+        rearZ + segmentLength * (index + 0.5));
+    }
+    for (let index = 1; index < segmentCount; index++) {
+      P.add('hullDark', box(0.047, 0.40, 0.014), side * 1.8275, 1.135,
+        rearZ + segmentLength * index);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Leopard 2 Prototype — docs/references/tanks/leopard2_proto.md. §B8 BUILD-UP
 // (owner order 2026-08-06: "the leopard 2 prototype and leopard 2a4 need a
@@ -8187,45 +8248,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
     // §B8 wheel-read (a4 lineage): hooked gear floor + dark hooked tire
     gearFloor: true, tireHex: 0x24261f,
   });
-  // §SRCFIX-0808 GEAR-BAY BACK WALLS: with the skirts gone the sponson bay
-  // (band top 0.97 .. sponson floor 1.32) opened a side sightline onto the
-  // far tub wall's lit camo — a hollow read. Near-black AO walls at the tub
-  // faces close the bay the way the real shadowed sponson underside reads
-  // (the buildRunningGear bayShadow mechanism, seated per-tank). Fully
-  // inside the silhouette: |x| 1.01 < track inner face 1.0525.
-  for (const s of [-1, 1] as const) {
-    P.add('hullShadow', box(0.02, 0.78, 6.90), s * 1.01, 0.93, -0.25);
-  }
-  // Retain the early vehicle's pale hub cadence on the moving wheel train.
-  {
-    const hubPale = P.mats.shadow.clone();
-    hubPale.color.setHex(0x767963);
-    hubPale.roughness = 0.9;
-    hubPale.envMapIntensity = 0.18;
-    hubPale.onBeforeCompile = vehicleAmbientFloorHook;
-    hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    P.disposables.push(hubPale);
-    const gear = P.gear;
-    if (!gear) throw new Error('Leopard prototype running gear must exist before adding hub caps');
-    gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
-      outset: 1.486 - 1.37,
-      name: 'gearRoadWheelPaleHubCaps',
-    });
-  }
-  // front mudguard assembly (the a4's §B4-certified pieces — identical gear
-  // geometry, proven z-planes past the 3.905 idler shoe orbit).
-  for (const s of [-1, 1] as const) {
-    P.add('hull', box(0.09, 0.21, 0.42), s * 1.775, 1.155, 3.74);              // mudguard post
-    P.add('hull', box(0.90, 0.20, 0.04), s * 1.35, 1.14, 3.93);                // mudguard lip
-    P.add('hullDetail', box(0.86, 0.022, 0.024), s * 1.35, 1.033, 3.926);      // hinge line
-    P.add('hullRubber', box(0.66, 0.40, 0.024), s * 1.36, 0.78, 3.849);        // rubber flap (top 0.02 under the 1.00 orbit line)
-  }
-  // rear mudflaps hung from the fender ends (production pattern)
-  for (const s of [-1, 1] as const) {
-    P.add('hullRubber', box(0.38, 0.64, 0.032), s * 1.53, 1.24, -3.80);
-    P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.53, 1.60, -3.72);
-    P.add('hullDetail', box(0.30, 0.035, 0.05), s * 1.53, 1.585, -3.795);
-  }
+  addLeo2PrototypeRunningGearFinish(P);
+  addLeo2PrototypeMudguards(P);
   // §5.35a SPONSON RAIL (landed corridor closure — KEPT per the §SRCFIX
   // brief). Originally it roofed the 6.8 cm fender-to-skirt air corridor;
   // with the skirts retired (§SRCFIX-0808 unskirted early hull) the same
@@ -8235,45 +8259,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // the real unskirted PTs show. Faces unchanged (inner 1.7075 keeps the
   // §B4 2.0 cm band annulus, shoes 1.678 clear; top inside the fender and
   // glacis side lines — §B1 silhouette-neutral).
-  for (const s of [-1, 1] as const) {
-    // main rail: laps the fender underside (bottoms 1.595..1.61) and the
-    // skirt top band (1.32..1.36) — §B2 no-air: skirt->rail->fender->body.
-    // Bottom AT the 1.32 sponson-floor line: the skirt-uncovered columns
-    // (rear cap -3.60..-3.655, segRun joints) stay inside the body line
-    P.add('hull', box(0.1075, 0.30, 6.575), s * 1.76125, 1.47, -0.3675);
-    // front run past the fender end: ONE raked top falling WITH the glacis
-    // side line (1.491@2.92 / 1.381@3.64 — stays 1.4-3.4 cm under it, §B1
-    // silhouette-neutral); bottom 1.24 laps the mudguard post top (1.26)
-    P.add('hull', slab(
-      [s * 1.7075, 1.24, 2.92], [s * 1.815, 1.24, 2.92], [s * 1.815, 1.24, 3.64], [s * 1.7075, 1.24, 3.64],
-      [s * 1.7075, 1.47, 2.92], [s * 1.815, 1.47, 2.92], [s * 1.815, 1.36, 3.64], [s * 1.7075, 1.36, 3.64]));
-    // §SRCFIX-0808: the §5.35a skirt-line JOINT FILLER retired WITH its
-    // host skirts (it filled a 5 cm gap between two skirt courses that no
-    // longer exist; kept, it would be a floating §B3 mystery plank). The
-    // RAIL pieces above STAY per the landing — unskirted they ARE the real
-    // sponson side / empty skirt-mounting rail the trials photos show.
-    // hanger-rail seam line (§B3 tell — the skirt-mount bolt line), pulled
-    // 2 mm inboard so it rides ON the rail face instead of the old skirt.
-    P.add('hullDark', box(0.012, 0.03, 6.50), s * 1.8145, 1.38, -0.3675);
-    // §SRCFIX-0808 SHALLOW SIDE BAND (gate work-order + photo class AGREE):
-    // the print's own front profile carries a 0.42 m band at ±1.85
-    // (ref 0.91..1.33 at the extreme columns — its sponson-level side
-    // strip), and the trials photos show the same shallow plate riding
-    // above the exposed wheels. Hung from the rail (top 1.36 laps rail
-    // bottom 1.32 — §B2), bottom 0.91 keeps wheels (top 0.765) AND return
-    // rollers fully in the open — the ordered exposed-gear read stands.
-    // Station-law segments + dark joints; §B4: inner face 1.805 keeps
-    // 12.7 cm off the shoe plane (1.678).
-    {
-      const z0 = -3.60, z1 = 3.40, n = 16, L = (z1 - z0) / n;
-      for (let k = 0; k < n; k++) {
-        P.add('hull', box(0.045, 0.45, L - 0.012), s * 1.8275, 1.135, z0 + L * (k + 0.5));
-      }
-      for (let k = 1; k < n; k++) {
-        P.add('hullDark', box(0.047, 0.40, 0.014), s * 1.8275, 1.135, z0 + L * k);
-      }
-    }
-  }
+  addLeo2PrototypeSponsonRails(P);
   // §B8 BOW shade overlay (a4 lineage — same beak underside plane)
   {
     const bowShade = P.mats.shadow.clone();
