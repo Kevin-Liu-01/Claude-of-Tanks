@@ -297,6 +297,49 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     'airborne replay preserves authoritative horizontal momentum');
 }
 
+// Authority lifecycle flags are independent bits. Verify every meaningful
+// overturned/auto-righting combination through the predictor's public
+// reconciliation boundary so presentation cannot silently invent or drop a
+// recovery phase.
+{
+  const recoveryStateFor = (flags) => {
+    const recoveryState = createTankState(SPEC, new Vector3(), 0);
+    const recoveryEntity = { spec: SPEC, state: recoveryState };
+    const recovery = new LocalTankPredictor({
+      entity: recoveryEntity,
+      heightField: FIELD,
+    });
+    recovery.reconcile(authority(0, null, 0, 0,
+      flags === undefined ? {} : { flags }));
+    return {
+      overturned: recoveryEntity.state.overturned,
+      tumbling: recoveryEntity.state._body.tumbling,
+      autoRighting: recoveryEntity.state._body.autoRighting,
+    };
+  };
+
+  assert.deepEqual(
+    recoveryStateFor(undefined),
+    { overturned: false, tumbling: false, autoRighting: false },
+    'an omitted flag field keeps a stable resting tank out of recovery',
+  );
+  assert.deepEqual(
+    recoveryStateFor(SNAPSHOT_FLAGS.OVERTURNED),
+    { overturned: true, tumbling: true, autoRighting: false },
+    'overturned authority tumbles without inventing an auto-righting phase',
+  );
+  assert.deepEqual(
+    recoveryStateFor(SNAPSHOT_FLAGS.AUTO_RIGHTING),
+    { overturned: false, tumbling: true, autoRighting: true },
+    'auto-righting authority tumbles even after the overturned bit clears',
+  );
+  assert.deepEqual(
+    recoveryStateFor(SNAPSHOT_FLAGS.OVERTURNED | SNAPSHOT_FLAGS.AUTO_RIGHTING),
+    { overturned: true, tumbling: true, autoRighting: true },
+    'combined recovery flags preserve every authority state channel',
+  );
+}
+
 // Collision/contact corrections should never dump terrain support-height error
 // into one rendered frame. The collision owner records the contact; authority
 // and replay stay exact while presentation adopts the heavier contact decay.
