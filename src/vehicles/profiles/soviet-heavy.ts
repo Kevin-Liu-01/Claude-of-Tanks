@@ -81,10 +81,10 @@ interface SovietHeavyBuilderPort {
   readonly spec: { visual: { number?: string } };
   readonly disposables: THREE.Material[];
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -92,7 +92,7 @@ interface SovietHeavyBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 interface SovietGearOptions {
@@ -112,14 +112,14 @@ interface SovietGearOptions {
   idlerDz?: number;
   idlerY?: number;
   idlerR?: number;
-  rollers?: readonly unknown[];
+  rollers?: readonly { z: number; y: number; r: number }[];
   botY?: number;
   corridorOwned?: boolean;
 }
 
 interface RunningGearPort {
   addRoadWheelLayer(
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     material: THREE.Material,
     options?: { name?: string; outset?: number },
   ): void;
@@ -156,7 +156,7 @@ interface MaterialSceneObject extends THREE.Object3D {
 }
 
 const nonUniformXform = KIT.xform as (
-  geometry: unknown,
+  geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   z: number,
@@ -164,7 +164,7 @@ const nonUniformXform = KIT.xform as (
   rotationY: number,
   rotationZ: number,
   scale: number | readonly number[],
-) => unknown;
+) => THREE.BufferGeometry;
 
 // ---------------------------------------------------------------------------
 // Family machinery

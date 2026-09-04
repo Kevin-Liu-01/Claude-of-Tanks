@@ -34,16 +34,16 @@ interface T80BuilderPort {
   readonly gunG: THREE.Group;
   readonly mats: {
     canvasCloth: THREE.MeshStandardMaterial;
-    [role: string]: unknown;
+    [role: string]: THREE.Material;
   };
   readonly spec: { id: string; visual: { number?: string } };
   readonly disposables: DisposableResource[];
   muzzleZ?: number;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): void;
-  addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -51,7 +51,7 @@ interface T80BuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
   visualEraCluster(
     key: string,
     owner: VehicleAssemblyOwner,
@@ -66,7 +66,7 @@ interface EraSurfaceSeat {
 }
 
 const nonUniformXform = KIT.xform as (
-  geometry: unknown,
+  geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   z: number,
@@ -74,7 +74,7 @@ const nonUniformXform = KIT.xform as (
   rotationY: number,
   rotationZ: number,
   scale: number | readonly number[],
-) => unknown;
+) => THREE.BufferGeometry;
 
 function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   // v: 0 = T-80 (no ERA), 1 = T-80B (brow applique + 902 smokes),

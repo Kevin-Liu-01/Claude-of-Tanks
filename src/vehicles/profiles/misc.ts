@@ -66,7 +66,7 @@ interface MiscBuilderPort {
     readonly shadow: THREE.Material;
   };
   readonly disposables: THREE.BufferGeometry[];
-  readonly rng: unknown;
+  readonly rng: () => number;
   readonly q?: boolean;
   readonly gear: {
     readonly roadWheelLayout?: {
@@ -97,25 +97,25 @@ interface MiscBuilderPort {
     rotationY?: number,
     rotationZ?: number,
     scale?: GeometryScale,
-  ): unknown;
+  ): void;
   addCupola(
     owner: VehicleAssemblyOwner,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
+  ): void;
   addEquipment(
     owner: VehicleAssemblyOwner,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(
     label: string,
     slot: ProfileSlot,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
+  ): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -123,7 +123,7 @@ interface MiscBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...rotation: number[]
-  ): unknown;
+  ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
   offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
@@ -1719,7 +1719,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // LOW FIELDS: inboard flat (0.36 -> 0.44 over z 1.837..1.10); the right
     // field splits around the sight-well opening and carries the bay
     // ceiling strip (the well stays cut through strip + rake)
-    const field = (x0: number, x1: number, zF: number, yF = FR.rkT): unknown => P.add('turret', slab(
+    const field = (x0: number, x1: number, zF: number, yF = FR.rkT): void => P.add('turret', slab(
       [m(x0), yF, zF], [m(x1), yF, zF], [m(x1), yF, FR.fZ], [m(x0), yF, FR.fZ],
       [m(x0), FR.fT, FR.fZ + 0.02], [m(x1), FR.fT, FR.fZ + 0.02], [m(x1), FR.fT, FR.fZ], [m(x0), FR.fT, FR.fZ]));
     const fZin = FR.inZ - FR.rkD;                                              // 1.837

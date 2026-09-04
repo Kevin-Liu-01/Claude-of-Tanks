@@ -50,7 +50,7 @@ interface SwedishBuilderPort {
     trackR: THREE.MeshStandardMaterial;
     spareTrack: THREE.MeshStandardMaterial;
     shadow: THREE.MeshStandardMaterial;
-    [role: string]: unknown;
+    [role: string]: THREE.Material;
   };
   readonly rng: () => number;
   readonly q?: boolean;
@@ -59,14 +59,14 @@ interface SwedishBuilderPort {
   fixedMount?: boolean;
   muzzleZ?: number;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(
     owner: VehicleAssemblyOwner,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -74,7 +74,7 @@ interface SwedishBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 function mount(

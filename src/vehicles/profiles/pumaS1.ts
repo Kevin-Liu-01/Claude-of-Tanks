@@ -23,16 +23,16 @@ interface PumaS1BuilderPort extends AdvancedIfvScalePort {
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
-  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addCupola(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addExternalArmor(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry,
-    ...transform: number[]): unknown;
+    ...transform: number[]): void;
   decal(owner: Owner, kind: string, label: string | null, scale: number,
-    position: Vec3, ...orientation: number[]): unknown;
+    position: Vec3, ...orientation: number[]): void;
 }
 
 function mount(

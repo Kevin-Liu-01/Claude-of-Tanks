@@ -61,7 +61,7 @@ interface UkraineBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, unknown> & {
+  readonly mats: Record<string, THREE.Material> & {
     readonly canvasCloth: THREE.MeshStandardMaterial;
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
@@ -71,12 +71,12 @@ interface UkraineBuilderPort {
   readonly disposables: DisposableResource[];
   muzzleZ?: number;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): void;
-  addEquipment(slot: string, geometry: unknown, ...transform: number[]): void;
-  addExternalArmor(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): void;
-  addGunExtra(geometry: unknown, ...transform: number[]): void;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): void;
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): void;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
