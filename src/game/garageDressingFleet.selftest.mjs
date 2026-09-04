@@ -5,6 +5,7 @@ const dressing = await readFile(new URL('./garageDressing.ts', import.meta.url),
 const access = await readFile(new URL('./garageDressingAccess.ts', import.meta.url), 'utf8');
 const worker = await readFile(new URL('./garageWorkshopGeometryWorker.ts', import.meta.url), 'utf8');
 const transfer = await readFile(new URL('./garageWorkshopTransfer.ts', import.meta.url), 'utf8');
+const workshopLayout = await readFile(new URL('./garageWorkshopLayout.ts', import.meta.url), 'utf8');
 const stage = await readFile(new URL('../ui/garageStage.ts', import.meta.url), 'utf8');
 
 assert.doesNotMatch(dressing,
@@ -86,7 +87,19 @@ for (const signature of [
   assert.match(dressing, new RegExp(signature));
 }
 assert.match(dressing, /tank\.position\.set\(17\.8, 0\.42, -15\.5\)/,
-  'Burlak gantry bay retains its original transform');
+  'Burlak geometry retains its authored local transform inside the bay owner');
+assert.match(dressing, /garage_burlak_gantry_forward/,
+  'the complete Burlak service story must have one movable bay owner');
+assert.match(dressing,
+  /burlakBayRoot\.position\.set\([\s\S]*BURLAK_SCAFFOLD_CLEARANCE_OFFSET\.x,[\s\S]*BURLAK_SCAFFOLD_CLEARANCE_OFFSET\.z/,
+  'the Burlak tank, stands, gantry, tools and floor dressing must advance together');
+assert.match(dressing, /foregroundOfVerdantScaffold = true/,
+  'the Burlak assembly must remain in front of Verdant scaffold uprights');
+assert.match(workshopLayout,
+  /id: 'burlak_gantry', role: 'heavy-lift', x: 18\.8, z: -12\.0, yaw: -0\.55/,
+  'outdoor service structures must follow the Burlak assembly final pose');
+assert.match(workshopLayout, /cameraAdvanceM: 3\.18/,
+  'the Burlak foreground correction must remain large enough to clear the scaffold silhouette');
 assert.match(dressing, /tank\.position\.set\(16\.9, 0, 17\.7\)/,
   'Abrams welding bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
@@ -176,11 +189,15 @@ assertWorkshopSignature('verdant_lamp_feed_north');
 assertWorkshopSignature('verdant_lamp_feed_south');
 assertWorkshopSignature('verdant_lamp_feed_welding_bay');
 assertWorkshopSignature('verdant_rear_chain_fall_');
-assert.match(dressing, /verdantHeroHoistOffsetM = 4\.8/,
-  'the center lift must park to the side instead of above the hero tank');
-assertWorkshopSignature("['front', 0, -9.2, 'final-drive']");
-assertWorkshopSignature("['center', 4.8, 0, 'powerpack']");
-assertWorkshopSignature("['rear', 0, 9.2, 'turret-basket']");
+assert.match(dressing, /verdantHeroHoistOffsetM = 12\.0/,
+  'every lift must park well clear of the hero tank');
+assertWorkshopSignature("['front', 12.0, -9.2, 'final-drive']");
+assertWorkshopSignature("['center', 14.4, 0, 'powerpack']");
+assertWorkshopSignature("['rear', 13.2, 9.2, 'turret-basket']");
+assert.match(dressing, /verdantFlammableWallHoistGapM = 5\.91/,
+  'the wall-side hoist cluster must retain a usable inspection aisle');
+assert.match(dressing, /verdantHoistsParkedAtFlammableWall = true/,
+  'all three trolleys must stay parked toward the FLAMMABLE wall');
 assert.match(dressing, /verdantHoistStationCount = 3/,
   'the workshop must retain front, center, and rear lift stations');
 assert.match(dressing, /verdantHoistChainRuns = 20/,

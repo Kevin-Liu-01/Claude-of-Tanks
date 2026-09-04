@@ -14,13 +14,23 @@ export interface GarageWorkshopBayPose {
   readonly yaw: number;
 }
 
-// These are the final world-space poses after the two legacy half-turn bay
-// owners are applied. Facility scenery consumes the same contract as the real
-// fleet dressing, so a canopy, crane or service pit cannot drift away from the
-// tank/component it is meant to support.
+// Move the complete Burlak service story toward the opening camera, ahead of
+// Verdant's fixed two-level scaffold. Dressing and outdoor facility scenery
+// consume the same offset so the tank, gantry and support pad cannot separate.
+export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
+  x: 1.0,
+  z: 3.5,
+  cameraAdvanceM: 3.18,
+  scaffoldCenterSeparationM: 7.08,
+});
+
+// These are the final world-space poses after the Burlak clearance translation
+// and two legacy half-turn bay owners are applied. Facility scenery consumes
+// the same contract as the real fleet dressing, so a canopy, crane or service
+// pit cannot drift away from the tank/component it is meant to support.
 const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
   Object.freeze({
-    id: 'burlak_gantry', role: 'heavy-lift', x: 17.8, z: -15.5, yaw: -0.55,
+    id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -12.0, yaw: -0.55,
   }),
   Object.freeze({
     id: 'abrams_welding', role: 'welding', x: -16.9, z: -17.7,

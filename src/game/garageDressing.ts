@@ -35,7 +35,10 @@ import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
-import { getGarageWorkshopLayoutPose } from './garageWorkshopLayout.ts';
+import {
+  BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
+  getGarageWorkshopLayoutPose,
+} from './garageWorkshopLayout.ts';
 
 export interface GarageDressingEngineContext {
   readonly anisotropy?: number;
@@ -1463,8 +1466,8 @@ export function createGarageDressing(
       factoryPut(mat.steelMid, x, 7.96, 0, 0.52, 0.42, 41.2);
       factoryPut(mat.safety, x, 8.20, 0, 0.22, 0.16, 40.9, 0, 0, false);
     }
-    // Three working lift stations span the service lane. The center station's
-    // trolley parks to one side of the hero instead of above it; each has
+    // Three working lift stations span the service lane. Every trolley parks
+    // toward the east FLAMMABLE wall instead of above the hero; each has
     // its own bridge, four-wheel trolley, drum block, reinforced spreader,
     // twin lift chains, four connected slings, and a believable workshop load.
     // Reusing the factory primitives keeps this detail static-batch friendly.
@@ -1615,10 +1618,14 @@ export function createGarageDressing(
       }
       addSuspendedWorkshopLoad(stationId, stationX, stationZ, loadKind);
     };
+    // Slightly stagger the trolleys along their bridges so the three suspended
+    // assemblies do not collapse into one silhouette from the opening camera.
+    // The farthest spreader edge remains 5.91 m off the wall and 4.05 m inside
+    // the crane runway, preserving a believable working/inspection aisle.
     for (const [stationId, stationX, stationZ, loadKind] of [
-      ['front', 0, -9.2, 'final-drive'],
-      ['center', 4.8, 0, 'powerpack'],
-      ['rear', 0, 9.2, 'turret-basket'],
+      ['front', 12.0, -9.2, 'final-drive'],
+      ['center', 14.4, 0, 'powerpack'],
+      ['rear', 13.2, 9.2, 'turret-basket'],
     ] as const) {
       addFactoryHoistStation(stationId, stationX, stationZ, loadKind);
     }
@@ -1793,7 +1800,9 @@ export function createGarageDressing(
     group.userData.verdantElevatedAccessSystems = 4;
     group.userData.verdantStructuralConnections = 354;
     group.userData.verdantUnsupportedParts = 0;
-    group.userData.verdantHeroHoistOffsetM = 4.8;
+    group.userData.verdantHeroHoistOffsetM = 12.0;
+    group.userData.verdantFlammableWallHoistGapM = 5.91;
+    group.userData.verdantHoistsParkedAtFlammableWall = true;
     group.userData.verdantHoistStationCount = 3;
     group.userData.verdantHoistChainRuns = 20;
     group.userData.verdantSuspendedLoadCount = 3;
@@ -2052,6 +2061,7 @@ export function createGarageDressing(
   // turret lifted under the gantry. Positions are the pre-overhaul coordinates.
   // ==========================================================================
   chunks.push(async function buildOriginalVerdantBurlakBay() {
+    const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('t90a_burlak', 777);
     const tank = markModernPart(visual.root, 't90a_burlak', 'gantry_repair_vehicle');
     tank.name = 'dressing_tank_a';
@@ -2170,6 +2180,29 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.06, wheelZ,
         0, 0, Math.PI / 2, 1, jack, false);
     }
+
+    // This bay used to be six independent root children, which made a safe
+    // clearance correction impossible: moving only the tank detached it from
+    // its jack stands and gantry. Re-parent the complete service story under
+    // one owner, then advance it ahead of Verdant's fixed scaffold uprights.
+    const burlakBayChildren = legacyVerdantRoot.children.slice(firstBayChildIndex);
+    const burlakBayRoot = markModernPart(
+      new THREE.Group(), 't90a_burlak', 'burlak_gantry_service_bay',
+    );
+    burlakBayRoot.name = 'garage_burlak_gantry_forward';
+    burlakBayRoot.position.set(
+      BURLAK_SCAFFOLD_CLEARANCE_OFFSET.x,
+      0,
+      BURLAK_SCAFFOLD_CLEARANCE_OFFSET.z,
+    );
+    burlakBayRoot.userData.cameraAdvanceM =
+      BURLAK_SCAFFOLD_CLEARANCE_OFFSET.cameraAdvanceM;
+    burlakBayRoot.userData.scaffoldCenterSeparationM =
+      BURLAK_SCAFFOLD_CLEARANCE_OFFSET.scaffoldCenterSeparationM;
+    burlakBayRoot.userData.foregroundOfVerdantScaffold = true;
+    for (const child of burlakBayChildren) burlakBayRoot.add(child);
+    legacyVerdantRoot.add(burlakBayRoot);
+    burlakBayRoot.updateMatrix();
   });
 
   // ==========================================================================
