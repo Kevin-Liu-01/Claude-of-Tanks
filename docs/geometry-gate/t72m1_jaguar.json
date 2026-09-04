@@ -1,11 +1,11 @@
 {
  "id": "t72m1_jaguar",
- "geoMin": 90,
+ "geoMin": 90.1,
  "requiredMinimum": 90,
  "qualityBar": "fleet",
  "gatePassed": true,
  "components": {
-  "wholeCurves": 90,
+  "wholeCurves": 90.1,
   "dims": 97.8,
   "floaters": 100
  },
@@ -13,12 +13,12 @@
  "curveRows": {
   "side_hull": {
    "score": 0,
-   "meanPct": 9.72,
+   "meanPct": 9.73,
    "p95Pct": 17.07,
    "coverPct": 14.67,
    "reg": {
     "dAlong": 0.333,
-    "dy": 0.239
+    "dy": 0.24
    },
    "worst": [
     {
@@ -86,20 +86,20 @@
      "errM": 0.489
     },
     {
-     "at": 0.72,
-     "refTop": 0.98,
-     "refBot": -1.44,
-     "procTop": 0.27,
-     "procBot": -1.21,
-     "errM": 0.474
-    },
-    {
      "at": 1.39,
      "refTop": 0.99,
      "refBot": -1.44,
      "procTop": 0.28,
      "procBot": -1.21,
      "errM": 0.474
+    },
+    {
+     "at": 0.72,
+     "refTop": 0.98,
+     "refBot": -1.44,
+     "procTop": 0.28,
+     "procBot": -1.21,
+     "errM": 0.468
     },
     {
      "at": 0.83,
@@ -120,30 +120,22 @@
    ]
   },
   "side_whole": {
-   "score": 60.05081315401976,
-   "meanPct": 2.83,
-   "p95Pct": 8.54,
+   "score": 63.59551872241825,
+   "meanPct": 2.66,
+   "p95Pct": 6.05,
    "coverPct": 0.58,
    "reg": {
     "dAlong": 0.333,
-    "dy": -0.002
+    "dy": -0.001
    },
    "worst": [
     {
      "at": 3.61,
      "refTop": -0.01,
      "refBot": -1.35,
-     "procTop": 0.57,
-     "procBot": -1.45,
-     "errM": 0.338
-    },
-    {
-     "at": 3.72,
-     "refTop": 0.03,
-     "refBot": -1.3,
      "procTop": 0.51,
-     "procBot": -1.46,
-     "errM": 0.328
+     "procBot": -1.45,
+     "errM": 0.312
     },
     {
      "at": 3.5,
@@ -162,12 +154,12 @@
      "errM": 0.297
     },
     {
-     "at": 2.72,
-     "refTop": 0.52,
+     "at": 2.61,
+     "refTop": 0.59,
      "refBot": -1.44,
      "procTop": 1,
      "procBot": -1.45,
-     "errM": 0.25
+     "errM": 0.213
     },
     {
      "at": 4.61,
@@ -178,14 +170,6 @@
      "errM": 0.177
     },
     {
-     "at": 2.61,
-     "refTop": 0.59,
-     "refBot": -1.44,
-     "procTop": 0.92,
-     "procBot": -1.45,
-     "errM": 0.172
-    },
-    {
      "at": 4.39,
      "refTop": 0.01,
      "refBot": -0.79,
@@ -194,41 +178,57 @@
      "errM": 0.172
     },
     {
+     "at": 2.5,
+     "refTop": 0.61,
+     "refBot": -1.44,
+     "procTop": 0.92,
+     "procBot": -1.45,
+     "errM": 0.161
+    },
+    {
      "at": -1.72,
      "refTop": 0.3,
      "refBot": -1.01,
      "procTop": 0.33,
-     "procBot": -0.73,
+     "procBot": -0.72,
      "errM": 0.16
     },
     {
      "at": 4.5,
      "refTop": -0.02,
      "refBot": -0.66,
-     "procTop": 0.03,
+     "procTop": 0.04,
      "procBot": -0.92,
      "errM": 0.156
     },
     {
-     "at": 0.72,
-     "refTop": 0.98,
+     "at": 0.95,
+     "refTop": 1.06,
      "refBot": -1.44,
-     "procTop": 0.69,
+     "procTop": 0.76,
      "procBot": -1.45,
-     "errM": 0.153
+     "errM": 0.152
     },
     {
-     "at": 0.83,
-     "refTop": 0.98,
+     "at": 1.06,
+     "refTop": 1.06,
      "refBot": -1.44,
-     "procTop": 0.69,
+     "procTop": 0.77,
      "procBot": -1.45,
-     "errM": 0.153
+     "errM": 0.147
+    },
+    {
+     "at": 2.28,
+     "refTop": 1.07,
+     "refBot": -1.44,
+     "procTop": 0.78,
+     "procBot": -1.45,
+     "errM": 0.147
     }
    ]
   },
   "plan_hull": {
-   "score": 56.305710352349514,
+   "score": 56.30570987386704,
    "meanPct": 2.79,
    "p95Pct": 13.18,
    "coverPct": 1.52,
@@ -336,13 +336,13 @@
    ]
   },
   "plan_whole": {
-   "score": 74.85464115676184,
-   "meanPct": 1.6,
-   "p95Pct": 6.12,
+   "score": 74.30557950565208,
+   "meanPct": 1.63,
+   "p95Pct": 6.45,
    "coverPct": 1.52,
    "reg": {
     "dAlong": 0.057,
-    "dy": 0.463
+    "dy": 0.465
    },
    "worst": [
     {
@@ -351,37 +351,37 @@
      "refBot": -4.46,
      "procTop": 5.02,
      "procBot": -3.12,
-     "errM": 0.715
+     "errM": 0.717
     },
     {
      "at": 0.28,
      "refTop": 4.93,
      "refBot": -1.66,
      "procTop": 5.02,
-     "procBot": -2.72,
-     "errM": 0.575
+     "procBot": -2.78,
+     "errM": 0.606
     },
     {
      "at": 0.17,
      "refTop": 4.93,
      "refBot": -3.18,
      "procTop": 5.02,
-     "procBot": -4.03,
-     "errM": 0.472
+     "procBot": -4.09,
+     "errM": 0.501
     },
     {
      "at": -1.72,
      "refTop": 4.93,
      "refBot": -2.02,
      "procTop": 4.38,
-     "procBot": -1.95,
+     "procBot": -1.94,
      "errM": 0.315
     },
     {
      "at": 1.72,
      "refTop": 4.93,
      "refBot": -2.02,
-     "procTop": 4.62,
+     "procTop": 4.63,
      "procBot": -1.96,
      "errM": 0.186
     },
@@ -703,9 +703,9 @@
    "refW": 3.503,
    "procW": 3.587,
    "refTop": 1.32,
-   "procTop": 0.722,
+   "procTop": 0.623,
    "wPct": 2.41,
-   "topPct": 20.43
+   "topPct": 23.84
   },
   {
    "i": 4,
@@ -739,9 +739,9 @@
    "refW": 3.365,
    "procW": 3.587,
    "refTop": 0.439,
-   "procTop": 0.807,
+   "procTop": 0.811,
    "wPct": 6.61,
-   "topPct": 12.57
+   "topPct": 12.7
   },
   {
    "i": 8,
@@ -757,9 +757,9 @@
    "refW": 3.503,
    "procW": 3.587,
    "refTop": -0.194,
-   "procTop": 0.458,
+   "procTop": 0.531,
    "wPct": 2.41,
-   "topPct": 22.26
+   "topPct": 24.75
   },
   {
    "i": 10,
@@ -837,7 +837,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133608,
+     "area": 133576,
      "minX": 154,
      "minY": 354,
      "maxX": 943,
@@ -851,11 +851,11 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 130534,
+     "area": 130751,
      "minX": 215,
      "minY": 354,
      "maxX": 1023,
-     "maxY": 619
+     "maxY": 618
     }
    ]
   },
@@ -865,7 +865,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133078,
+     "area": 133645,
      "minX": 215,
      "minY": 354,
      "maxX": 1023,
@@ -879,7 +879,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 127493,
+     "area": 127857,
      "minX": 156,
      "minY": 354,
      "maxX": 943,
@@ -893,11 +893,11 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 134654,
+     "area": 134790,
      "minX": 166,
      "minY": 354,
      "maxX": 943,
-     "maxY": 664
+     "maxY": 661
     }
    ]
   }

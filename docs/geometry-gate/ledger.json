@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-04T19:20:25.805Z",
+ "generatedAt": "2026-09-04T21:11:24.169Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar); min is the headline",
  "passed": 34,
  "total": 124,
@@ -1113,18 +1113,6 @@
    }
   },
   {
-   "id": "t72m1_jaguar",
-   "geoMin": 90,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 90,
-    "dims": 97.8,
-    "floaters": 100
-   }
-  },
-  {
    "id": "t90sm",
    "geoMin": 90,
    "gatePassed": true,
@@ -1170,6 +1158,18 @@
    "components": {
     "wholeCurves": 90,
     "dims": 97,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t72m1_jaguar",
+   "geoMin": 90.1,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.1,
+    "dims": 97.8,
     "floaters": 100
    }
   },

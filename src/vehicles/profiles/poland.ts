@@ -363,6 +363,23 @@ function polishWhips(P: PolishBuilderPort, list: PolishWhip[], seedBase: number)
 
 const JAGUAR_HULL_LIFT_M = 0.02;
 const JAGUAR_END_WHEEL_LIFT_M = 0.04;
+const JAGUAR_UPPER_GLACIS_REAR_Z = 1.65;
+const JAGUAR_UPPER_GLACIS_REAR_Y = 1.47;
+const JAGUAR_UPPER_GLACIS_FRONT_Z = 3.66;
+const JAGUAR_UPPER_GLACIS_FRONT_Y = 0.90;
+const JAGUAR_UPPER_GLACIS_PITCH = (
+  JAGUAR_UPPER_GLACIS_REAR_Y - JAGUAR_UPPER_GLACIS_FRONT_Y
+) / (
+  JAGUAR_UPPER_GLACIS_FRONT_Z - JAGUAR_UPPER_GLACIS_REAR_Z
+);
+const JAGUAR_UPPER_GLACIS_ANGLE = Math.atan(JAGUAR_UPPER_GLACIS_PITCH);
+const JAGUAR_GLACIS_ERAWA_CENTER_Z = 2.43;
+const JAGUAR_DRIVER_HATCH_Z = 1.92;
+
+function jaguarUpperGlacisYAt(z: number): number {
+  return JAGUAR_UPPER_GLACIS_REAR_Y
+    - JAGUAR_UPPER_GLACIS_PITCH * (z - JAGUAR_UPPER_GLACIS_REAR_Z);
+}
 
 function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
@@ -371,15 +388,23 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   loftHull(P, {
     // rear fall 1.46 -> 0.96 over -2.66..-3.24 (ref side -3.08 reads
     // 1.35..0.79, -3.19 reads 1.22); deck plateau 1.46-1.48; glacis line
-    // under the printed tube: fold at z 1.30 falling to the 0.88 nose tip.
+    // under the printed tube: the rear fold is brought forward to z 1.65,
+    // then one steeper plane falls cleanly to the 0.90 nose tip.
     deck: [[-3.26, 1.02], [-3.10, 1.35], [-2.94, 1.46], [-2.70, 1.50],
       [-2.30, 1.515], [-1.95, 1.515], [-1.70, 1.50], [0.60, 1.48],
-      [1.30, 1.46], [2.10, 1.27], [2.90, 1.08], [3.36, 0.971], [3.66, 0.90]],
+      [1.30, 1.475], [JAGUAR_UPPER_GLACIS_REAR_Z, JAGUAR_UPPER_GLACIS_REAR_Y],
+      [2.10, jaguarUpperGlacisYAt(2.10)], [2.90, jaguarUpperGlacisYAt(2.90)],
+      [3.36, jaguarUpperGlacisYAt(3.36)],
+      [JAGUAR_UPPER_GLACIS_FRONT_Z, JAGUAR_UPPER_GLACIS_FRONT_Y]],
     belly: [[-3.26, 0.80], [-3.02, 0.56], [-2.58, 0.43], [2.30, 0.43],
       [2.70, 0.52], [3.20, 0.68], [3.66, 0.82]],
     // full-width sponson band; nose narrows to the center glacis V (plan
     // center 3.32-3.48, outer 3.69 carried by the fender corners below)
-    wUp: [[-3.26, 1.62], [2.55, 1.62], [3.20, 1.30], [3.66, 0.94]],
+    // Pull the centre glacis inside the ascending idler course before the
+    // plate drops through track height. The outboard width is carried by
+    // the separate fender/shoulder solids below, preserving a joined bow
+    // without burying the animated shoes in the armor skin.
+    wUp: [[-3.26, 1.62], [2.50, 1.62], [2.68, 1.04], [3.20, 0.98], [3.66, 0.92]],
     wLo: [[-3.26, 0.97], [2.48, 0.97], [3.66, 0.80]],
     sponsonY: 1.16,
   });
@@ -488,7 +513,8 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
 
   // ---- bow furniture -------------------------------------------------------
   // §5.267 fix 5: guarded headlight pods replace the flat bucket lamps
-  ruGlacisKit(P, { w: 3.30, y: 1.17, z: 2.62, eyeX: 0.95, eyeZ: 2.92,
+  ruGlacisKit(P, { w: 3.30, y: jaguarUpperGlacisYAt(2.62), z: 2.62,
+    eyeX: 0.95, eyeZ: 2.92,
     eyeSplit: true, hookY: 0.90, hookZ: 3.05, lights: false });
   for (const s of [-1, 1]) {
     // (r-fix receipt: pods proud of the glacis at y 1.20 cost the FRONT
@@ -497,11 +523,24 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.085, r: 0.038,
       shield: true, seed: 7351 + (s > 0 ? 1 : 0),
-    }), s * 0.96, 1.19 + JAGUAR_HULL_LIFT_M, 2.56, [0.233, 0, 0]);
+    }), s * 0.96,
+    jaguarUpperGlacisYAt(2.56) + JAGUAR_HULL_LIFT_M + 0.030, 2.56,
+    [JAGUAR_UPPER_GLACIS_ANGLE, 0, 0]);
   }
-  P.add('hull', box(2.20, 0.045, 0.15), 0, 1.225, 2.42, 0.233, 0, 0); // splash ridge
-  ruDeck(P, { deckY: 1.48, hatchX: -0.42, hatchZ: 1.78, gz: -1.55,
-    grilles: 4, gw: 1.46, periY: 1.46, gY: 1.505 });
+  P.add('hull', box(2.20, 0.045, 0.15), 0,
+    jaguarUpperGlacisYAt(2.42) + 0.030, 2.42,
+    JAGUAR_UPPER_GLACIS_ANGLE, 0, 0); // splash ridge
+  ruDeck(P, {
+    deckY: 1.48,
+    hatchX: -0.42,
+    hatchY: jaguarUpperGlacisYAt(JAGUAR_DRIVER_HATCH_Z),
+    hatchZ: JAGUAR_DRIVER_HATCH_Z,
+    gz: -1.55,
+    grilles: 4,
+    gw: 1.46,
+    periY: jaguarUpperGlacisYAt(JAGUAR_DRIVER_HATCH_Z) + 0.040,
+    gY: 1.505,
+  });
   // §5.267 fix 4: REAL louvre relief on the powerpack deck — sunk dark
   // wells + raised rib bars + end cheeks (relief tops +0.012 over the
   // deck line: sub-pixel for the side masks, real shadow for the eye)
@@ -520,9 +559,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   // upper-glacis plane. The old course sat below a multi-kink deck and read
   // as a loose dark grid. This course shares the exact plate tangent and its
   // shallow bodies overlap the armor skin by half their depth.
-  const jaguarGlacisCenterZ = 2.18;
-  const jaguarGlacisCenterY = 1.251;
-  const jaguarGlacisPitch = 0.237;
+  const jaguarGlacisCenterZ = JAGUAR_GLACIS_ERAWA_CENTER_Z;
+  const jaguarGlacisCenterY = jaguarUpperGlacisYAt(jaguarGlacisCenterZ);
+  const jaguarGlacisPitch = JAGUAR_UPPER_GLACIS_PITCH;
   const jaguarGlacisRise = 1 / Math.sqrt(1 + jaguarGlacisPitch ** 2);
   const jaguarGlacisFall = jaguarGlacisPitch * jaguarGlacisRise;
   const jaguarGlacisRx = -Math.atan2(jaguarGlacisRise, jaguarGlacisFall);
@@ -531,14 +570,14 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     right: [1, 0, 0],
     up: [0, jaguarGlacisFall, -jaguarGlacisRise],
     out: [0, jaguarGlacisRise, jaguarGlacisFall],
-    cols: 8, rows: 3, pitchU: 0.315, pitchV: 0.29,
-    tileW: 0.29, tileH: 0.27, tileD: 0.050, rx: jaguarGlacisRx,
+    cols: 8, rows: 3, pitchU: 0.250, pitchV: 0.29,
+    tileW: 0.235, tileH: 0.27, tileD: 0.050, rx: jaguarGlacisRx,
     seams: false,
     skip: (r, c) => r === 2 && (c === 3 || c === 4),
   });
   for (let row = 0; row < 3; row++) for (let col = 0; col < 8; col++) {
     if (row === 2 && (col === 3 || col === 4)) continue;
-    const u = (col - 3.5) * 0.315;
+    const u = (col - 3.5) * 0.250;
     const v = (row - 1) * 0.29;
     const x = u;
     const y = jaguarGlacisCenterY + jaguarGlacisFall * v
@@ -549,9 +588,15 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
       jaguarGlacisRx, 0, 0);
   }
   P.hullG.userData.jaguarGlacisReceipt = Object.freeze({
-    revision: 'single-plane-glacis-erawa-r3',
-    upperRear: Object.freeze({ z: 1.30, y: 1.46 }),
-    upperFront: Object.freeze({ z: 3.66, y: 0.90 }),
+    revision: 'forward-fold-track-clear-glacis-erawa-r5',
+    upperRear: Object.freeze({
+      z: JAGUAR_UPPER_GLACIS_REAR_Z,
+      y: JAGUAR_UPPER_GLACIS_REAR_Y,
+    }),
+    upperFront: Object.freeze({
+      z: JAGUAR_UPPER_GLACIS_FRONT_Z,
+      y: JAGUAR_UPPER_GLACIS_FRONT_Y,
+    }),
     lowerRear: Object.freeze({ z: 2.30, y: 0.43 }),
     lowerFront: Object.freeze({ z: 3.66, y: 0.82 }),
     bowClosure: Object.freeze({ rearZ: 3.58, frontZ: 3.66, lowerY: 0.82, upperY: 0.90 }),
@@ -559,6 +604,11 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
       rearZ: 3.16, frontZ: 3.60, rearHalfWidthM: 1.28, frontHalfWidthM: 0.97,
     }),
     upperGlacisPitch: jaguarGlacisPitch,
+    erawaCenterZ: jaguarGlacisCenterZ,
+    erawaCenterY: jaguarGlacisCenterY,
+    erawaFieldWidthM: 1.985,
+    driverHatchZ: JAGUAR_DRIVER_HATCH_Z,
+    rearFoldForwardM: JAGUAR_UPPER_GLACIS_REAR_Z - 1.30,
     erawaCassettes: 22,
     erawaCenterSurfaceGapM: 0,
     joinedUpperAndLowerGlacis: true,
@@ -762,9 +812,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   polishWhips(P, [[-0.92, 0.60, -1.10, 0.32, -0.05], [0.96, 0.60, -1.02, 0.24, 0.06]], 7341);
 
   // ---- gun: sleeved 2A46M with evacuator + measured muzzle ----------------
-  // root raised 0.02 inside the casting (axis world 1.66); tube local z to
-  // 5.74 (muzzle world
-  // 6.24 = rear extreme -3.29 + published overall 9.53)
+  // root raised 0.02 inside the casting (axis world 1.66). The moved turret
+  // seats the tube 0.12 m deeper, so local z 5.62 still gives muzzle world
+  // 6.24 = rear extreme -3.29 + published overall 9.53.
   // §5.267 fix 1: REAL mantlet mass at the root — sealed trunnion saddle
   // roll + flanking mantlet cheeks behind the canvas boot (the r1 bare
   // cone was the critic's dominant family-read defect)
@@ -787,9 +837,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // stays under the 12% body filter so hullLengthM cannot read the tube
     // as body (r1 printed 8.55 with the 0.34 evacuator)
     [4.35, 4.82, 0.140, 0.135],
-    [4.82, 5.62, 0.108, 0.104],
-    [5.62, 5.74, 0.112, 0.112],          // muzzle collar
-  ], { rings: [[2.45, 0.122], [3.85, 0.116], [4.35, 0.144], [4.82, 0.112]], muzzle: 5.74 });
+    [4.82, 5.50, 0.108, 0.104],
+    [5.50, 5.62, 0.112, 0.112],          // muzzle collar
+  ], { rings: [[2.45, 0.122], [3.85, 0.116], [4.35, 0.144], [4.82, 0.112]], muzzle: 5.62 });
   muzzleBore(P, { r: 0.098, boreR: 0.062 });
   P.addGunExtraDark(cylZ(0.032, 0.10, 10), 0.30, 0.10, 0.55); // coax port
   P.decal('hull', 'number', 'PL-721', 0.26, [-1.797, 1.02, 0.90], -Math.PI / 2);
@@ -892,7 +942,9 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
 
   // Backed driver/splash detail and unequal engine-deck service cells add
   // current-family articulation without altering the certified hull loft.
-  P.add('hull', box(2.16, 0.040, 0.13), 0, 1.315, 2.43, -0.30, 0, 0);
+  P.add('hull', box(2.16, 0.040, 0.13), 0,
+    jaguarUpperGlacisYAt(2.43) + 0.030, 2.43,
+    JAGUAR_UPPER_GLACIS_ANGLE, 0, 0);
   for (const [x, z, w, d] of [
     [-0.52, -1.55, 0.62, 0.34], [0.18, -1.62, 0.52, 0.30], [0.73, -1.74, 0.42, 0.26],
   ]) {
@@ -982,8 +1034,8 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     }
     hullEquipmentPieces += 3;
   }
-  const spareLinkSeatY = 1.15;
-  const spareLinkRx = Math.atan(0.237);
+  const spareLinkSeatY = jaguarUpperGlacisYAt(2.72) + 0.030;
+  const spareLinkRx = JAGUAR_UPPER_GLACIS_ANGLE;
   for (let i = 0; i < 5; i++) {
     const x = -0.48 + i * 0.24;
     P.addEquipment('hullDetail', box(0.20, 0.055, 0.16), x, spareLinkSeatY, 2.72,

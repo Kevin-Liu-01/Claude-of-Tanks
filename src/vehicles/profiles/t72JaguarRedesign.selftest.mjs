@@ -87,6 +87,11 @@ assert.equal(hull.userData.jaguarRunningGearReceipt?.hullDeckLiftM, 0.02,
   'Jaguar connected hull body rises 20 mm above the former low silhouette');
 assert.equal(turret.position.y, 1.40,
   'Jaguar turret remains on its established world datum while the hull rises to meet it');
+assert.equal(turret.position.z, 0.10,
+  'Jaguar turret ring moves 120 mm forward behind the shortened upper glacis');
+assert.ok(Math.abs(turret.position.z + gun.position.z
+  + spec.armor.gunBarrel.lengthM - 6.24) <= 1e-9,
+  'deeper tube seat preserves the certified muzzle endpoint after the turret move');
 const jaguarHullBounds = new THREE.Box3().setFromObject(hull);
 const twardyHullBounds = new THREE.Box3().setFromObject(twardyHull);
 assert.ok(jaguarHullBounds.max.y >= twardyHullBounds.max.y - 0.10,
@@ -118,7 +123,11 @@ assert.ok(mantlet && mantlet.parent === gun,
 assert.ok(recoil && recoil.parent === gun,
   'Jaguar recoiling barrel assembly remains attached to the lifted weapon root');
 const glacis = hull.userData.jaguarGlacisReceipt;
-assert.equal(glacis?.revision, 'single-plane-glacis-erawa-r3');
+assert.equal(glacis?.revision, 'forward-fold-track-clear-glacis-erawa-r5');
+assert.equal(glacis?.upperRear?.z, 1.65,
+  'upper-glacis rear fold moves 350 mm forward instead of running beneath the turret');
+assert.ok(Math.abs(glacis?.rearFoldForwardM - 0.35) <= 1e-9,
+  'Jaguar publishes the forward rear-fold correction');
 assert.equal(glacis?.joinedUpperAndLowerGlacis, true,
   'upper and lower glacis terminate in one closed bow');
 assert.equal(glacis?.bowClosure?.rearZ, 3.58,
@@ -133,6 +142,14 @@ assert.ok(glacis?.shoulderBridge?.rearHalfWidthM >= 1.28,
   'glacis shoulder bridge reaches both full-width fender roots');
 assert.equal(glacis?.erawaCassettes, 22,
   'all 22 upper-glacis ERAWA cassettes remain in the conformal course');
+assert.equal(glacis?.erawaCenterZ, 2.43,
+  'upper-glacis ERAWA moves forward with the shortened plate');
+assert.equal(glacis?.driverHatchZ, 1.92,
+  'driver hatch and periscopes are reseated on the new plate start');
+const solvedEraCenterY = glacis.upperRear.y
+  - glacis.upperGlacisPitch * (glacis.erawaCenterZ - glacis.upperRear.z);
+assert.ok(Math.abs(glacis.erawaCenterY - solvedEraCenterY) <= 1e-9,
+  'ERAWA center remains solved directly on the steeper upper-glacis plane');
 assert.equal(glacis?.erawaCenterSurfaceGapM, 0,
   'upper-glacis ERAWA centers lie exactly on the solved plate plane');
 const wkm = tank.root.getObjectByName('jaguar_wkm_b');
