@@ -643,8 +643,54 @@ function buildUdes03(P: SwedishBuilderPort): void {
   P.topY = 1.34;
 }
 
+function addStrv103ADeckVentilation(P: SwedishBuilderPort): void {
+  const { box, cylY } = KIT;
+  P.add('hullDark', box(2.40, 0.022, 0.72), 0, 1.868, 0.30);
+  for (let index = 0; index < 6; index++) {
+    P.add('hullDetail', box(2.32, 0.030, 0.055),
+      0, 1.888, 0.58 - index * 0.12);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(1.00, 0.025, 0.88), side * 0.60, 1.895, -2.30);
+    for (let index = 0; index < 5; index++) {
+      P.add('hullDetail', box(0.92, 0.026, 0.04),
+        side * 0.60, 1.915, -2.62 + index * 0.16);
+    }
+    P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10),
+      side * 1.12, 1.885, -1.48);
+  }
+  P.add('hull', box(0.38, 0.10, 0.40), 0.10, 1.90, -1.66);
+}
+
+function addStrv103ARunningGear(P: SwedishBuilderPort): void {
+  const { box, frustum } = KIT;
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.06, 0.20, 4.70), side * 1.71, 1.34, 0.10);
+    for (let index = 0; index < 7; index++) {
+      const z = 1.95 - index * 0.66;
+      P.add('hull', box(0.07, 0.32, 0.60), side * 1.70, 1.13, z);
+      P.add('hullDark', box(0.016, 0.24, 0.52), side * 1.745, 1.13, z);
+    }
+    P.add('hullRunningGearDark', box(0.02, 0.72, 4.5),
+      side * 1.00, 0.56, 0.05);
+  }
+  KIT.buildRunningGear(P, {
+    style: 'rubber', dishR: 0.74, wheelR: 0.40, wheelW: 0.24,
+    wheelY: 0.45, xc: 1.29,
+    wheelZs: [1.40, 0.47, -0.30, -1.28],
+    sprocket: { z: 2.16, y: 0.89, r: 0.32 },
+    idler: { z: -2.01, y: 0.83, r: 0.26 },
+    rollers: [{ z: 0.77, y: 1.06, r: 0.10 }, { z: -0.63, y: 1.06, r: 0.10 }],
+    trackW: 0.65, trackTh: 0.075, topY: 1.20, botY: 0.04,
+    arms: true, coveredTop: false, deadSag: 0.028,
+  });
+  // No recess drums are needed inside the shoe sweep; the bay wall owns the
+  // depth read. The tail wedge rises cleanly from the elevated rear idler.
+  P.add('hull', frustum(1.16, -2.55, -3.50, 1.18, -2.53, -3.52, 1.10, 1.24));
+}
+
 function buildStrv103A(P: SwedishBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, torus, sph, liftEye, periscope } = KIT;
+  const { box, cylY, cylZ, torus, sph, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
   // ---- primary silhouette loft (print z-profile mapped to the published
@@ -744,18 +790,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // ---- deck grammar per the A-read: the central louvre field behind the
   // glacis break (print identity) + plain twin engine grilles behind the
   // cluster; NO flotation rim, NO stowage-box rows (simpler first engine fit).
-  P.add('hullDark', box(2.40, 0.022, 0.72), 0, 1.868, 0.30);                  // central louvre well (seated on the deck line)
-  for (let i = 0; i < 6; i++) {
-    P.add('hullDetail', box(2.32, 0.030, 0.055), 0, 1.888, 0.58 - i * 0.12);  // transverse louvre ribs
-  }
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(1.00, 0.025, 0.88), s * 0.60, 1.895, -2.30);        // twin radiator wells
-    for (let i = 0; i < 5; i++) {
-      P.add('hullDetail', box(0.92, 0.026, 0.04), s * 0.60, 1.915, -2.62 + i * 0.16);
-    }
-    P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), s * 1.12, 1.885, -1.48);  // fuel fillers
-  }
-  P.add('hull', box(0.38, 0.10, 0.40), 0.10, 1.90, -1.66);                    // central vent crown
+  addStrv103ADeckVentilation(P);
   // fenders: thin over-track plates (print fender band x 1.48-1.72 runs
   // z ~+3.3..-1.6 and STOPS before the stern — plan-row receipt)
   for (const s of [-1, 1]) {
@@ -829,29 +864,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // ---- running gear (§B9 single native course; print measured): four 0.40 m
   // road wheels at the print stations, FRONT drive sprocket (+2.16, r 0.32),
   // raised rear idler (-2.01, r 0.26), two return rollers, track outer 1.62.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.06, 0.20, 4.70), s * 1.71, 1.34, 0.10);               // shallow upper backing
-    for (let k = 0; k < 7; k++) {
-      const z = 1.95 - k * 0.66;
-      // shallow skirt band — the print exposes near-full wheel discs
-      // (bottom line 0.92; deep panels buried the course, pair receipt)
-      P.add('hull', box(0.07, 0.32, 0.60), s * 1.70, 1.13, z);
-      P.add('hullDark', box(0.016, 0.24, 0.52), s * 1.745, 1.13, z);
-    }
-    P.add('hullRunningGearDark', box(0.02, 0.72, 4.5), s * 1.00, 0.56, 0.05); // bay shadow wall
-  }
-  KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.74, wheelR: 0.40, wheelW: 0.24, wheelY: 0.45, xc: 1.29,
-    wheelZs: [1.40, 0.47, -0.30, -1.28],
-    sprocket: { z: 2.16, y: 0.89, r: 0.32 }, idler: { z: -2.01, y: 0.83, r: 0.26 },
-    rollers: [{ z: 0.77, y: 1.06, r: 0.10 }, { z: -0.63, y: 1.06, r: 0.10 }],
-    trackW: 0.65, trackTh: 0.075, topY: 1.20, botY: 0.04,
-    arms: true, coveredTop: false, deadSag: 0.028,
-  });
-  // (no recess drums: at xc 1.29 they sit inside the instanced shoe sweep —
-  // strict-audit receipt; the ±1.00 bay shadow wall owns the recess read)
-  // tail underside wedge from the raised idler to the high stern
-  P.add('hull', frustum(1.16, -2.55, -3.50, 1.18, -2.53, -3.52, 1.10, 1.24));
+  addStrv103ARunningGear(P);
 
   P.decal('hull', 'number', P.spec.visual.number || '103A', 0.28, [1.685, 1.62, -1.35], Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '103A', 0.28, [-1.685, 1.62, -1.35], -Math.PI / 2, 0, 0);
