@@ -12235,8 +12235,30 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   for (const [z, radius] of [[1.37, 0.112], [2.70, 0.108], [4.42, 0.098]] as const) {
     P.add('gunDark', cylZ(radius, 0.052, kf51bGunSegments), 0, 0.008, z);
   }
-  P.add('gun', box(0.15, 0.10, 0.31), -0.105, 0.105, 4.60, 0, -0.08, 0);       // muzzle-reference sensor
-  P.add('gunDark', box(0.105, 0.036, 0.20), -0.105, 0.158, 4.60, 0, -0.08, 0);
+  // Center the muzzle-reference housing over the bore and clamp it into the
+  // 80 mm tube crown.  Preserve the shallow yaw and the inset top window,
+  // but retire the former left-side perch that read as a floating box.
+  const kf51bMrsSupportRadiusM = 0.080;
+  const kf51bMrsSupportEmbedM = 0.010;
+  const kf51bMrsHeightM = 0.10;
+  const kf51bMrsCenterYM = kf51bMrsSupportRadiusM
+    + kf51bMrsHeightM / 2 - kf51bMrsSupportEmbedM;
+  P.add('gun', box(0.15, kf51bMrsHeightM, 0.31), 0, kf51bMrsCenterYM, 4.60, 0, -0.08, 0);
+  P.add('gunDark', box(0.105, 0.036, 0.20), 0, kf51bMrsCenterYM + 0.053, 4.60, 0, -0.08, 0);
+  P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
+    designFamily: 'cot-top-mounted-gun-fixture-v1',
+    owner: 'rig_recoil',
+    alignment: 'barrel-top-centerline',
+    bodyBucket: 'gun',
+    faceBucket: 'gunDark',
+    facePlacement: 'top-inset',
+    centerX: 0,
+    centerY: kf51bMrsCenterYM,
+    stationZ: 4.60,
+    supportRadiusM: kf51bMrsSupportRadiusM,
+    undersideY: kf51bMrsCenterYM - kf51bMrsHeightM / 2,
+    supportEmbedM: kf51bMrsSupportEmbedM,
+  });
   P.add('gun', cylZ(0.082, 0.36, kf51bGunSegments, 0.071), 0, 0, 5.10);       // reinforced muzzle transition
   P.add('gunDark', cylZ(0.086, 0.040, kf51bGunSegments), 0, 0, 5.275);       // crisp muzzle rim
   muzzleBore(P, { len: 5.30, r: 0.064 });

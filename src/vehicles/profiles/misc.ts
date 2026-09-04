@@ -2028,14 +2028,32 @@ function buildAMX56(P: MiscBuilderPort): void {
   }
 
   // Distinct AMX 56 gun plant: armored root shoulders, thermal-section
-  // clamps and an off-axis muzzle-reference unit, all gun-owned.
+  // clamps and a top-mounted muzzle-reference unit, all gun-owned.
   P.addGunExtra(box(1.02, 0.22, 0.32), 0, -0.02, 0.78);
   P.addGunExtraDark(torus(0.145, 0.022, 14), 0, -0.01, 1.02, 0, 0, 0);
   for (const z of [1.55, 2.42, 3.34, 4.28, 5.06]) {
     P.addGunExtraDark(cylZ(0.112, 0.035, 12), 0, 0, z);
   }
-  P.addGunExtra(box(0.18, 0.15, 0.36), 0.15, 0.10, 5.02);
-  P.addGunExtraDark(box(0.11, 0.08, 0.025), 0.15, 0.11, 5.21);
+  const muzzleReferenceSupportRadiusM = 0.112;
+  const muzzleReferenceEmbedM = 0.010;
+  const muzzleReferenceHeightM = 0.15;
+  const muzzleReferenceCenterY = muzzleReferenceSupportRadiusM
+    + muzzleReferenceHeightM / 2 - muzzleReferenceEmbedM;
+  P.addGunExtra(box(0.18, muzzleReferenceHeightM, 0.36), 0, muzzleReferenceCenterY, 5.02);
+  P.addGunExtraDark(box(0.11, 0.08, 0.025), 0, muzzleReferenceCenterY, 5.21);
+  P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
+    designFamily: 'cot-top-mounted-gun-fixture-v1',
+    owner: 'rig_gun',
+    alignment: 'barrel-top-centerline',
+    bodyBucket: 'gunMount',
+    faceBucket: 'gunMountDark',
+    centerX: 0,
+    centerY: muzzleReferenceCenterY,
+    stationZ: 5.02,
+    supportRadiusM: muzzleReferenceSupportRadiusM,
+    undersideY: muzzleReferenceCenterY - muzzleReferenceHeightM / 2,
+    supportEmbedM: muzzleReferenceEmbedM,
+  });
 
   // Gunner/commander plant: low dual sight boxes and a shielded forward RWS.
   P.add('turret', box(0.42, 0.23, 0.40), 0.62, 0.725, 0.18, 0, -0.08, 0);
@@ -3412,7 +3430,29 @@ export function buildType90(P: MiscBuilderPort): void {
   P.addGunExtra(box(0.20, 0.12, 0.45), 0, -0.106, 0.475);                      // under-tube recuperator fairing (y 1.52..1.64 w, z_w 1.55..2.00; §B2 against the housing underside)
   P.addGunExtraDark(box(0.035, 0.030, 0.58), 0, 0.163, 0.82);                  // sight-cable conduit riding the housing top (§B3 tell: thin square-section cable run)
   P.addGunExtraDark(box(0.030, 0.026, 0.28), 0, 0.148, 1.95);                  // conduit saddle over the evacuator swell
-  P.addGunExtra(box(0.335, 0.05, 0.24), 0.0525, 0, 4.3994);                    // off-axis MRS housing PLATE x −0.115..0.22 (z_w 5.58..5.82 — the r7 certified plan-tube-col station, re-expressed in the trunnion frame: 5.35 − 0.9506)
+  // Seat the MRS plate on the thermal tube crown.  Its old y=0 centerline
+  // placement bisected the barrel and left the broad square reading as a
+  // stray side fin.  The 10 mm overlap makes the attachment intentional
+  // without swallowing the shallow housing.
+  const type90MrsSupportRadiusM = 0.08125;
+  const type90MrsSupportEmbedM = 0.010;
+  const type90MrsHeightM = 0.05;
+  const type90MrsCenterYM = type90MrsSupportRadiusM
+    + type90MrsHeightM / 2 - type90MrsSupportEmbedM;
+  P.addGunExtra(box(0.335, type90MrsHeightM, 0.24), 0, type90MrsCenterYM, 4.3994);
+  P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
+    designFamily: 'cot-top-mounted-gun-fixture-v1',
+    owner: 'rig_gun',
+    alignment: 'barrel-top-centerline',
+    bodyBucket: 'gunMount',
+    faceBucket: null,
+    centerX: 0,
+    centerY: type90MrsCenterYM,
+    stationZ: 4.3994,
+    supportRadiusM: type90MrsSupportRadiusM,
+    undersideY: type90MrsCenterYM - type90MrsHeightM / 2,
+    supportEmbedM: type90MrsSupportEmbedM,
+  });
   // the fixed SLOT the mantlet rides in: a dark reveal frame flush on the
   // face plane (4 mm proud, 3 cm larger than the plate all around). The slot
   // stays CLOSED behind the plate through the whole arc because the prow

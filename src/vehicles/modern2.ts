@@ -2529,10 +2529,29 @@ function buildMBT70(P: Modern2BuilderPort) {
   });
   // Near-muzzle reference/sensor assembly: a clamp ring supports the small
   // housing instead of leaving another box suspended above the tube.
-  P.addGunExtraDark(cylZ(0.128, 0.075, seg), 0, 0, 3.38);
-  P.addGunExtra(box(0.18, 0.14, 0.28), 0.14, 0.14, 3.38);
-  P.addGunExtraDark(box(0.10, 0.065, 0.025), 0.14, 0.16, 3.525);
+  const muzzleReferenceSupportRadiusM = 0.128;
+  const muzzleReferenceEmbedM = 0.010;
+  const muzzleReferenceHeightM = 0.14;
+  const muzzleReferenceCenterY = muzzleReferenceSupportRadiusM
+    + muzzleReferenceHeightM / 2 - muzzleReferenceEmbedM;
+  P.addGunExtraDark(cylZ(muzzleReferenceSupportRadiusM, 0.075, seg), 0, 0, 3.38);
+  P.addGunExtra(box(0.18, muzzleReferenceHeightM, 0.28), 0, muzzleReferenceCenterY, 3.38);
+  P.addGunExtraDark(box(0.10, 0.065, 0.025), 0, muzzleReferenceCenterY, 3.525);
   muzzleBore(P, { len: 3.88, r: 0.098 });
+
+  P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
+    designFamily: 'cot-top-mounted-gun-fixture-v1',
+    owner: 'rig_gun',
+    alignment: 'barrel-top-centerline',
+    bodyBucket: 'gunMount',
+    faceBucket: 'gunMountDark',
+    centerX: 0,
+    centerY: muzzleReferenceCenterY,
+    stationZ: 3.38,
+    supportRadiusM: muzzleReferenceSupportRadiusM,
+    undersideY: muzzleReferenceCenterY - muzzleReferenceHeightM / 2,
+    supportEmbedM: muzzleReferenceEmbedM,
+  });
 
   P.gunG.userData.mbt70MantletReceipt = {
     profile: 'parabolic-arrow',

@@ -4161,8 +4161,26 @@ function finishM60Variant(
     P.add('turretDetail', box(0.18, 0.06, 0.16), -0.92, 1.45, -1.12);
     P.add('turretGlass', box(0.10, 0.035, 0.018), -0.92, 1.45, -1.03);
     for (const z of [1.46, 2.26, 3.08]) P.add('gun', cylZ(0.096, 0.035, 16), 0, 0, z);
-    P.add('gunDark', box(0.16, 0.12, 0.26), 0.13, 0.10, 3.56);
-    P.add('gunDark', box(0.10, 0.07, 0.018), 0.13, 0.10, 3.70);
+    const muzzleReferenceSupportRadiusM = 0.096;
+    const muzzleReferenceEmbedM = 0.010;
+    const muzzleReferenceHeightM = 0.12;
+    const muzzleReferenceCenterY = muzzleReferenceSupportRadiusM
+      + muzzleReferenceHeightM / 2 - muzzleReferenceEmbedM;
+    P.add('gunDark', box(0.16, muzzleReferenceHeightM, 0.26), 0, muzzleReferenceCenterY, 3.56);
+    P.add('gunDark', box(0.10, 0.07, 0.018), 0, muzzleReferenceCenterY, 3.70);
+    P.gunG.userData.muzzleReferenceSeatReceipt = Object.freeze({
+      designFamily: 'cot-top-mounted-gun-fixture-v1',
+      owner: 'rig_recoil',
+      alignment: 'barrel-top-centerline',
+      bodyBucket: 'gunDark',
+      faceBucket: 'gunDark',
+      centerX: 0,
+      centerY: muzzleReferenceCenterY,
+      stationZ: 3.56,
+      supportRadiusM: muzzleReferenceSupportRadiusM,
+      undersideY: muzzleReferenceCenterY - muzzleReferenceHeightM / 2,
+      supportEmbedM: muzzleReferenceEmbedM,
+    });
   } else {
     for (const z of [1.56, 2.30, 3.18]) P.add('gun', cylZ(0.096, 0.032, 16), 0, 0, z);
   }
