@@ -393,74 +393,151 @@ function loft(P: CasemateBuilderPort, sts: readonly LoftStation[], bucket = 'hul
 // so no span straddles a window edge. loft() itself is untouched — the other
 // casemate builders stay byte-identical.
 // cut = { x, front?: {z0, z1?, floor}, rear?: {z0?, z1, floor} }
+function lerpLoftCorridorRow(
+  a: LoftStation,
+  c: LoftStation,
+  z: number,
+): LoftStation {
+  const ratio = (z - a.z) / (c.z - a.z);
+  const aTopWidth = a.wt ?? a.w;
+  const cTopWidth = c.wt ?? c.w;
+  return {
+    z,
+    b: a.b + (c.b - a.b) * ratio,
+    t: a.t + (c.t - a.t) * ratio,
+    w: a.w + (c.w - a.w) * ratio,
+    wt: aTopWidth + (cTopWidth - aTopWidth) * ratio,
+  };
+}
+
+function loftCorridorRows(
+  stations: readonly LoftStation[],
+  cut: LoftCorridorCut,
+): LoftStation[] {
+  const rows: LoftStation[] = [];
+  for (let index = 0; index < stations.length; index++) {
+    rows.push(stations[index]);
+    const a = stations[index];
+    const c = stations[index + 1];
+    if (!c) break;
+    const cuts: number[] = [];
+    for (const boundary of [cut.front?.z0, cut.front?.z1, cut.rear?.z0, cut.rear?.z1]) {
+      if (boundary != null && a.z > boundary + 1e-6 && c.z < boundary - 1e-6) {
+        cuts.push(boundary);
+      }
+    }
+    for (const boundary of cuts.sort((p, q) => q - p)) {
+      rows.push(lerpLoftCorridorRow(a, c, boundary));
+    }
+  }
+  return rows;
+}
+
+function loftCorridorZoneAt(cut: LoftCorridorCut, z: number): LoftCorridorZone | null {
+  const front = cut.front;
+  const rear = cut.rear;
+  if (front && z >= front.z0 - 1e-6 && z <= (front.z1 ?? Infinity) + 1e-6) return front;
+  if (rear && z <= rear.z1 + 1e-6 && z >= (rear.z0 ?? -Infinity) - 1e-6) return rear;
+  return null;
+}
+
+function addFullLoftCorridorSpan(
+  P: CasemateBuilderPort,
+  a: LoftStation,
+  c: LoftStation,
+  bucket: string,
+): void {
+  const aTopWidth = a.wt ?? a.w;
+  const cTopWidth = c.wt ?? c.w;
+  const ax = a.x ?? 0;
+  const cx = c.x ?? 0;
+  P.add(bucket, orientedSlab(
+    [ax - a.w, a.b, a.z], [ax + a.w, a.b, a.z],
+    [cx + c.w, c.b, c.z], [cx - c.w, c.b, c.z],
+    [ax - aTopWidth, a.t, a.z], [ax + aTopWidth, a.t, a.z],
+    [cx + cTopWidth, c.t, c.z], [cx - cTopWidth, c.t, c.z],
+  ));
+}
+
+function loftCorridorWingEnd(
+  row: LoftStation,
+  topWidth: number,
+  coreHalfWidth: number,
+  floor: number,
+): { readonly top: number; readonly wTop: number; readonly wBot: number } {
+  if (row.t <= floor + 0.012) {
+    return { top: floor, wTop: coreHalfWidth, wBot: coreHalfWidth };
+  }
+  const ratio = Math.min(1, Math.max(0, (floor - row.b) / (row.t - row.b)));
+  return {
+    top: row.t,
+    wTop: Math.max(topWidth, coreHalfWidth),
+    wBot: Math.max(row.w + (topWidth - row.w) * ratio, coreHalfWidth),
+  };
+}
+
+function addCutLoftCorridorSpan(
+  P: CasemateBuilderPort,
+  a: LoftStation,
+  c: LoftStation,
+  cut: LoftCorridorCut,
+  zone: LoftCorridorZone,
+  bucket: string,
+): void {
+  const slab = orientedSlab;
+  const aTopWidth = a.wt ?? a.w;
+  const cTopWidth = c.wt ?? c.w;
+  const ax = a.x ?? 0;
+  const cx = c.x ?? 0;
+  const coreHalfWidth = cut.x;
+  const floor = zone.floor;
+  const aWidth = Math.min(a.w, coreHalfWidth);
+  const cWidth = Math.min(c.w, coreHalfWidth);
+  const aCrownWidth = Math.min(aTopWidth, coreHalfWidth);
+  const cCrownWidth = Math.min(cTopWidth, coreHalfWidth);
+  P.add(bucket, slab(
+    [ax - aWidth, a.b, a.z], [ax + aWidth, a.b, a.z],
+    [cx + cWidth, c.b, c.z], [cx - cWidth, c.b, c.z],
+    [ax - aCrownWidth, a.t, a.z], [ax + aCrownWidth, a.t, a.z],
+    [cx + cCrownWidth, c.t, c.z], [cx - cCrownWidth, c.t, c.z],
+  ));
+  const aEnd = loftCorridorWingEnd(a, aTopWidth, coreHalfWidth, floor);
+  const cEnd = loftCorridorWingEnd(c, cTopWidth, coreHalfWidth, floor);
+  if (aEnd.wBot <= coreHalfWidth + 0.002 && cEnd.wBot <= coreHalfWidth + 0.002) return;
+  if (aEnd.top <= floor + 0.012 && cEnd.top <= floor + 0.012) return;
+  for (const side of [-1, 1]) {
+    const coreX = side * coreHalfWidth;
+    const aBottomX = side * aEnd.wBot;
+    const cBottomX = side * cEnd.wBot;
+    const aTopX = side * aEnd.wTop;
+    const cTopX = side * cEnd.wTop;
+    P.add(bucket, side > 0
+      ? slab([coreX, floor, a.z], [aBottomX, floor, a.z],
+        [cBottomX, floor, c.z], [coreX, floor, c.z],
+        [coreX, aEnd.top, a.z], [aTopX, aEnd.top, a.z],
+        [cTopX, cEnd.top, c.z], [coreX, cEnd.top, c.z])
+      : slab([aBottomX, floor, a.z], [coreX, floor, a.z],
+        [coreX, floor, c.z], [cBottomX, floor, c.z],
+        [aTopX, aEnd.top, a.z], [coreX, aEnd.top, a.z],
+        [coreX, cEnd.top, c.z], [cTopX, cEnd.top, c.z]));
+  }
+}
+
 function loftCorridor(
   P: CasemateBuilderPort,
   sts: readonly LoftStation[],
   cut: LoftCorridorCut,
   bucket = 'hull',
 ): void {
-  const slab = orientedSlab;                                // §C.1 winding guard
-  const lerpRow = (a: LoftStation, c: LoftStation, z: number): LoftStation => {
-    const t = (z - a.z) / (c.z - a.z);
-    const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
-    return { z, b: a.b + (c.b - a.b) * t, t: a.t + (c.t - a.t) * t,
-      w: a.w + (c.w - a.w) * t, wt: awt + (cwt - awt) * t };
-  };
-  const rows: LoftStation[] = [];
-  for (let i = 0; i < sts.length; i++) {
-    rows.push(sts[i]);
-    const a = sts[i], c = sts[i + 1];
-    if (!c) break;
-    const cuts = [];
-    for (const zb of [cut.front?.z0, cut.front?.z1, cut.rear?.z0, cut.rear?.z1]) {
-      if (zb != null && a.z > zb + 1e-6 && c.z < zb - 1e-6) cuts.push(zb);
-    }
-    for (const zb of cuts.sort((p, q) => q - p)) rows.push(lerpRow(a, c, zb));
-  }
-  const zoneOf = (z: number): LoftCorridorZone | null => {
-    const F = cut.front, R = cut.rear;
-    if (F && z >= F.z0 - 1e-6 && z <= (F.z1 ?? Infinity) + 1e-6) return F;
-    if (R && z <= R.z1 + 1e-6 && z >= (R.z0 ?? -Infinity) - 1e-6) return R;
-    return null;
-  };
+  const rows = loftCorridorRows(sts, cut);
   for (let i = 0; i < rows.length - 1; i++) {
     const a = rows[i], c = rows[i + 1];
-    const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
-    const ax = a.x ?? 0, cx = c.x ?? 0;
-    const zone = zoneOf((a.z + c.z) / 2);
+    const zone = loftCorridorZoneAt(cut, (a.z + c.z) / 2);
     if (!zone) {
-      P.add(bucket, slab(
-        [ax - a.w, a.b, a.z], [ax + a.w, a.b, a.z], [cx + c.w, c.b, c.z], [cx - c.w, c.b, c.z],
-        [ax - awt, a.t, a.z], [ax + awt, a.t, a.z], [cx + cwt, c.t, c.z], [cx - cwt, c.t, c.z]));
+      addFullLoftCorridorSpan(P, a, c, bucket);
       continue;
     }
-    // corridor core: same slab, half-widths clamped to the inter-track body
-    const X = cut.x, F = zone.floor;
-    const aw = Math.min(a.w, X), cw = Math.min(c.w, X);
-    const awc = Math.min(awt, X), cwc = Math.min(cwt, X);
-    P.add(bucket, slab(
-      [ax - aw, a.b, a.z], [ax + aw, a.b, a.z], [cx + cw, c.b, c.z], [cx - cw, c.b, c.z],
-      [ax - awc, a.t, a.z], [ax + awc, a.t, a.z], [cx + cwc, c.t, c.z], [cx - cwc, c.t, c.z]));
-    // over-track wings: original outer surface kept above the floor only.
-    // Per-end: outer width at the floor height (lerp along the leaned side);
-    // ends whose top sits at/under the floor pinch to a line at (X, floor).
-    const end = (r: LoftStation, rwt: number) => {
-      if (r.t <= F + 0.012) return { top: F, wTop: X, wBot: X };
-      const k = Math.min(1, Math.max(0, (F - r.b) / (r.t - r.b)));
-      return { top: r.t, wTop: Math.max(rwt, X), wBot: Math.max(r.w + (rwt - r.w) * k, X) };
-    };
-    const ea = end(a, awt), ec = end(c, cwt);
-    if (ea.wBot <= X + 0.002 && ec.wBot <= X + 0.002) continue;   // no over-track span
-    if (ea.top <= F + 0.012 && ec.top <= F + 0.012) continue;      // fully under the floor
-    for (const s of [-1, 1]) {
-      const w0 = s * X, wa = s * ea.wBot, wc = s * ec.wBot;
-      const ta = s * ea.wTop, tc = s * ec.wTop;
-      P.add(bucket, s > 0
-        ? slab([w0, F, a.z], [wa, F, a.z], [wc, F, c.z], [w0, F, c.z],
-          [w0, ea.top, a.z], [ta, ea.top, a.z], [tc, ec.top, c.z], [w0, ec.top, c.z])
-        : slab([wa, F, a.z], [w0, F, a.z], [w0, F, c.z], [wc, F, c.z],
-          [ta, ea.top, a.z], [w0, ea.top, a.z], [w0, ec.top, c.z], [tc, ec.top, c.z]));
-    }
+    addCutLoftCorridorSpan(P, a, c, cut, zone, bucket);
   }
 }
 
