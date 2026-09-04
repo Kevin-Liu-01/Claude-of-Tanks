@@ -471,6 +471,50 @@ interface WheelConformFrame {
   wheelW: number;
 }
 
+interface BandWheelWeights {
+  a: number;
+  b: number;
+  wa: number;
+  wb: number;
+}
+
+function resolveBandWheelWeights(
+  wheels: readonly WheelEntry[],
+  z: number,
+  weights: BandWheelWeights,
+): void {
+  weights.a = -1;
+  weights.b = -1;
+  weights.wa = 0;
+  weights.wb = 0;
+  if (z <= wheels[0].z) {
+    const distance = wheels[0].z - z;
+    if (distance <= 0.5) {
+      weights.a = 0;
+      weights.wa = 1 - distance / 0.5;
+    }
+    return;
+  }
+  if (z >= wheels[wheels.length - 1].z) {
+    const distance = z - wheels[wheels.length - 1].z;
+    if (distance <= 0.5) {
+      weights.a = wheels.length - 1;
+      weights.wa = 1 - distance / 0.5;
+    }
+    return;
+  }
+  for (let i = 1; i < wheels.length; i++) {
+    if (z > wheels[i].z) continue;
+    const t = (z - wheels[i - 1].z)
+      / Math.max(wheels[i].z - wheels[i - 1].z, 1e-4);
+    weights.a = i - 1;
+    weights.b = i;
+    weights.wa = 1 - t;
+    weights.wb = t;
+    return;
+  }
+}
+
 function sampleWheelGroundDeviation(
   wheel: WheelEntry,
   sampler: GroundSampler,
@@ -3779,6 +3823,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const weightB: number[] = [];
     const dirtyVertex = new Uint8Array(bandBasePos.length / 3);
     const span = Math.max(wheelY - botY, 1e-3);
+    const weights: BandWheelWeights = { a: -1, b: -1, wa: 0, wb: 0 };
     for (let vi = 0, j = 0; j < bandBasePos.length; vi++, j += 3) {
       const segmentBase = Math.floor(vi / 24) * 24;
       const usesF1 = bandVertexUsesF1[vi % 24] === 1;
@@ -3790,24 +3835,15 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       const vertical = Math.min((wheelY - by) / span, 1) ** 2;
       const z = (bandBasePos[outerVertex * 3 + 2]
         + bandBasePos[innerVertex * 3 + 2]) / 2;
-      let a = -1, b = -1, wa = 0, wb = 0;
-      if (z <= ws[0].z) {
-        const d = ws[0].z - z;
-        if (d <= 0.5) { a = 0; wa = 1 - d / 0.5; }
-      } else if (z >= ws[ws.length - 1].z) {
-        const d = z - ws[ws.length - 1].z;
-        if (d <= 0.5) { a = ws.length - 1; wa = 1 - d / 0.5; }
-      } else {
-        for (let k = 1; k < ws.length; k++) {
-          if (z > ws[k].z) continue;
-          const t = (z - ws[k - 1].z) / Math.max(ws[k].z - ws[k - 1].z, 1e-4);
-          a = k - 1; b = k; wa = 1 - t; wb = t;
-          break;
-        }
-      }
-      wa *= vertical; wb *= vertical;
-      if (a < 0 || (Math.abs(wa) + Math.abs(wb) < 1e-8)) continue;
-      vertices.push(vi); wheelA.push(a); wheelB.push(b); weightA.push(wa); weightB.push(wb);
+      resolveBandWheelWeights(ws, z, weights);
+      weights.wa *= vertical;
+      weights.wb *= vertical;
+      if (weights.a < 0 || (Math.abs(weights.wa) + Math.abs(weights.wb) < 1e-8)) continue;
+      vertices.push(vi);
+      wheelA.push(weights.a);
+      wheelB.push(weights.b);
+      weightA.push(weights.wa);
+      weightB.push(weights.wb);
       dirtyVertex[vi] = 1;
     }
     const triangles: number[] = [];
