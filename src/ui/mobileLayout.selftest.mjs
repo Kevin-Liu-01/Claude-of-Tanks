@@ -36,23 +36,51 @@ assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
   'laptop navigation must collapse through the shared width-band contract');
 assert.match(garage,
-  /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"[\s\S]*data-garage-panel="dossier"/,
-  'overlay garages must expose explicit Battlefield, Appearance, and Dossier drawers');
+  /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"/,
+  'overlay garages must expose explicit map and camouflage drawers');
+assert.match(garageSource,
+  /<nav class="cot-garage-tools" aria-label="Garage setup previews">[\s\S]*aria-label="Open battlefield selection"[\s\S]*cot-garage-map-preview[\s\S]*aria-label="Open camouflage selection"[\s\S]*cot-garage-camo-preview/,
+  'compact garages must expose real map and camouflage preview cards without a disclosure step');
+assert.equal((garageSource.match(/<canvas width="64" height="44">/g) || []).length, 4,
+  'the compact camouflage card must mirror the map card with four live previews');
+assert.doesNotMatch(garage, /cot-garage-tools-(?:trigger|menu)/,
+  'compact garage panel actions must not regress to a single setup dropdown');
 assert.match(garage,
-  /cot-garage-tools-trigger[^>]*aria-haspopup="menu"[^>]*aria-controls="cot-garage-tools-menu"[\s\S]*cot-garage-tools-menu[^>]*role="menu"[^>]*hidden/,
-  'mobile and tablet garages must consolidate drawer choices behind one accessible setup launcher');
+  /\.cot-garage-preview-card\{[^}]*height:var\(--cot-preview-card-height,150px\)[^}]*grid-template-rows:18px auto 22px[\s\S]*\.cot-garage-map-preview,\.cot-garage-camo-preview\{[^}]*aspect-ratio:16\/9;[^}]*background-size:cover[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-tools\{\s*display:flex;left:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-left\)\);right:auto;\s*top:76px;bottom:auto[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-preview-card\{\s*height:var\(--cot-preview-card-height\);min-height:0;flex:0 0 auto/,
+  'map and camouflage cards must share one bounded anatomy and preserve widescreen preview proportions');
 assert.match(garage,
-  /body\[data-cot-panels='overlay'\] \.cot-garage-tools\{[\s\S]*display:block;left:50%;bottom:var\(--cot-tools-bottom\)[\s\S]*body\[data-cot-height='short'\]\[data-cot-panels='overlay'\] \.cot-garage-tools\{[\s\S]*width:142px/,
-  'the setup launcher must own one stable roster-adjacent lane instead of three persistent phone controls');
+  /--cot-roster-bottom:max\(8px,env\(safe-area-inset-bottom\)\);[\s\S]*--cot-country-bottom:calc\(var\(--cot-roster-bottom\) \+ var\(--cot-roster-height\) \+ var\(--cot-stack-gap\)\);[\s\S]*--cot-side-panel-bottom:calc\(var\(--cot-country-bottom\) \+ var\(--cot-country-height\) \+ var\(--cot-stack-gap\)\)/,
+  'the roster, country rail, and side panels must share one non-overlapping stack contract');
 assert.match(garage,
-  /\.cot-garage-tools-menu\{[\s\S]*max-height:calc\(100dvh - 124px\);overflow-y:auto;[\s\S]*scrollbar-width:none/,
-  'the setup action sheet must remain bounded and scrollable without exposing a browser scrollbar');
+  /function refreshCompactMapPreview\(\): void[\s\S]*selected\.thumb[\s\S]*backgroundImage[\s\S]*function refreshCompactCamoPreview\(spec: GarageTankSpec, selectedPatternId: string\): void[\s\S]*compactCamoPreviews\.forEach[\s\S]*paintAutoCamoSwatch\(canvas, spec\)[\s\S]*paintCamoSwatch\(canvas, spec, previewPattern\)/,
+  'compact preview cards must render the selected map art and four deterministic camouflage swatches');
 assert.match(garage,
-  /\.cot-garage-tool\{[\s\S]*min-height:52px[\s\S]*grid-template-columns:30px minmax\(0,1fr\) 14px/,
-  'garage setup actions must retain generous touch targets and readable icon-copy hierarchy');
+  /class="cot-compact-equipment-trigger"[\s\S]*data-garage-panel="equipment"[\s\S]*aria-controls="cot-garage-dossier"[\s\S]*data-garage-panel='equipment'\] \.stats>\.cot-loadout-section\{[\s\S]*display:block/,
+  'compact garages must expose the real tank loadout slots through an accessible equipment drawer');
 assert.match(garage,
-  /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
-  'tablet and phone side panels must stay out of the tank stage until requested');
+  /data-cot-panels='overlay'\] \.cot-eqpick\.open\{[\s\S]*left:max\(var\(--cot-overlay-edge\)[\s\S]*right:max\(var\(--cot-overlay-edge\)[\s\S]*bottom:max\(8px,env\(safe-area-inset-bottom\)\)/,
+  'the compact equipment picker must stay inside the usable viewport');
+assert.match(garageSource,
+  /cot-cards" role="listbox" tabindex="0" aria-label="Vehicle catalog"[\s\S]*card\.setAttribute\('role', 'option'\)[\s\S]*cardsEl\.setAttribute\('aria-activedescendant', card\.id\)/,
+  'the horizontally scrolling vehicle catalog must stay keyboard-focusable and expose its active option');
+assert.match(garage,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\]\[data-cot-panels='overlay'\] \.cot-garage\{[\s\S]*--cot-compact-left-width:clamp\(112px,21vw,132px\)[\s\S]*left:calc\(max\(8px,env\(safe-area-inset-left\)\) \+ var\(--cot-compact-left-width\) \+ 8px\)/,
+  'short landscape drawers must open beside the live preview stack instead of covering it');
+assert.match(garage,
+  /body\[data-cot-panels='overlay'\] \.cot-leftcol\{display:none\}[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage \.stats\{[\s\S]*display:block;z-index:8;right:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-right\)\)[\s\S]*\.cot-performance-grid>\.srow:nth-child\(n\+5\)\{display:none\}/,
+  'compact layouts must keep a four-item vehicle summary fixed to the right');
+assert.match(garage,
+  /--cot-compact-stats-width:clamp\(196px,22vw,230px\)[\s\S]*container:garage-dossier \/ inline-size[\s\S]*stats>:is\(\.cot-technical-section,\.cot-performance-section,\.cot-loadout-section\)\{display:block\}/,
+  'tablet overlays must render one legible dossier with identity, loadout, and combat stats');
+assert.match(garage,
+  /data-cot-width='tablet'\]\[data-cot-panels='overlay'\] \.cot-header-nav \.cot-github\{\s*width:78px;min-width:78px[\s\S]*data-cot-width='compact'\]\[data-cot-panels='overlay'\] \.cot-nav \.github-stars,[\s\S]*min-width:24px;height:14px/,
+  'repository stars must retain a readable inline slot on tablets and a bounded badge on tighter headers');
+assert.match(garage,
+  /@container garage-dossier \(max-width:205px\)\{[\s\S]*\.cot-performance-grid\{grid-template-columns:1fr\}[\s\S]*data-cot-height='short'[\s\S]*\.cot-performance-grid\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
+  'narrow tablet dossiers must switch to readable stat rows while short landscape retains its 2x2 summary');
+assert.match(garage,
+  /data-cot-width='phone'\]\[data-cot-orientation='portrait'\][\s\S]*\.cot-garage:not\(\[data-garage-panel='equipment'\]\) \.stats>\.cot-loadout-section\{\s*display:none[\s\S]*data-cot-height='short'[\s\S]*\.cot-garage:not\(\[data-garage-panel='equipment'\]\) \.stats>\.cot-loadout-section\{\s*display:none/,
+  'only true phone and short-landscape rails may collapse loadout slots behind the equipment trigger');
 assert.match(garage,
   /\.cot-garage \.stats\.has-scroll-mask\{[\s\S]*mask-image:linear-gradient\(180deg,transparent 0,[\s\S]*var\(--cot-dossier-head-fade,0px\)[\s\S]*var\(--cot-dossier-tail-fade,0px\)[\s\S]*transparent 100%\)/,
   'the dossier must fade scrolled cards into the garage at both viewport edges instead of clipping them');
@@ -66,10 +94,10 @@ assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='maps'\] \.cot-leftcol,[\s\S]*top:max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\)/,
   'portrait garage drawers must begin below the lowered Battle control');
 assert.match(garage,
-  /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*closeGarageTools\(\);[\s\S]*setGaragePanel\(''\);/,
+  /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*setGaragePanel\(''\);/,
   'page navigation must close garage disclosures instead of stacking over them');
 assert.match(garage,
-  /function openBattleMenu\(\) \{[\s\S]*closeMobileNavigation\(\);[\s\S]*closeGarageTools\(\);[\s\S]*setGaragePanel\(''\);/,
+  /function openBattleMenu\(\) \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
   'battle selection must close garage disclosures instead of stacking over them');
 assert.match(garage,
   /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
