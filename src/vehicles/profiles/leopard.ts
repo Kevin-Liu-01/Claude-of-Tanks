@@ -10060,6 +10060,111 @@ function mudflapRect(P: TankBuilderPort, x: number, y: number, z: number) {
   });
 }
 
+function finishKf51RubberInstance(
+  mesh: THREE.InstancedMesh,
+  boundsMaterial: VehicleMaterial,
+  tireMaterial: VehicleMaterial,
+): boolean {
+  if (mesh.material !== boundsMaterial) return false;
+
+  // r6 #1a WHEEL-FACE DE-INVENT: the two rubber instance sets are either
+  // full tire rings or invented inner inserts. Collapse only the inserts;
+  // keep the tire instance matrices and give their rings a private finish.
+  mesh.geometry.computeBoundingBox();
+  const bounds = mesh.geometry.boundingBox;
+  if (bounds && bounds.max.y < 0.30) {
+    mesh.geometry.scale(0.001, 0.001, 0.001);
+  } else {
+    mesh.material = tireMaterial;
+  }
+  return true;
+}
+
+function configureKf51TrackShoeMaterial(material: VehicleMaterial): void {
+  material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
+    vehicleAmbientFloorHook(shader);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      `{
+		float kfPadL = dot( outgoingLight, vec3( 0.299, 0.587, 0.114 ) );
+		if ( kfPadL > 0.0545 ) outgoingLight *= 0.0545 / kfPadL;
+	}
+	#include <opaque_fragment>`,
+    );
+  };
+  material.customProgramCacheKey = () => 'kf51-shoe-hicap-r8';
+  material.color.setHex(0x45402a);
+  material.envMapIntensity = 0.05;
+  material.roughness = 1.0;
+  material.metalness = 0.04;
+}
+
+function finishKf51TrackInstance(
+  mesh: THREE.InstancedMesh,
+  material: VehicleMaterial,
+): boolean {
+  const color = material.color.getHex();
+  if (color === 0x171614) {
+    // The pad/grouser stack stood 85 mm proud of the track band. Preserve
+    // pitch and phase while shortening only the proud geometry axis.
+    mesh.geometry.scale(1, 0.45, 1);
+    configureKf51TrackShoeMaterial(material);
+    return true;
+  }
+  if (color !== 0x27251f) return false;
+
+  material.onBeforeCompile = vehicleAmbientFloorHook;
+  material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  material.color.setHex(0x020202);
+  material.envMapIntensity = 0.02;
+  return true;
+}
+
+function crushKf51RoadWheelBoltRing(mesh: THREE.InstancedMesh): void {
+  // Bolt vertices occupy a private radial band between the hub and dish.
+  // Pulling that band inward removes the invented dots without changing the
+  // authoritative wheel instance transforms or outer running-gear profile.
+  const positions = mesh.geometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) {
+    const y = positions.getY(index);
+    const z = positions.getZ(index);
+    const radius = Math.hypot(y, z);
+    if (radius <= 0.10 || radius >= 0.14) continue;
+    positions.setY(index, y * 0.45);
+    positions.setZ(index, z * 0.45);
+  }
+  positions.needsUpdate = true;
+}
+
+function finishKf51WheelMesh(
+  P: TankBuilderPort,
+  mesh: THREE.Mesh,
+  material: VehicleMaterial,
+  dishMaterial: VehicleMaterial,
+  drumMaterial: VehicleMaterial,
+): void {
+  if (material !== P.mats.wheels) return;
+  mesh.material = mesh instanceof THREE.InstancedMesh ? dishMaterial : drumMaterial;
+  if (mesh instanceof THREE.InstancedMesh) crushKf51RoadWheelBoltRing(mesh);
+}
+
+function finishKf51RunningGearMesh(
+  P: TankBuilderPort,
+  dishMaterial: VehicleMaterial,
+  drumMaterial: VehicleMaterial,
+  tireMaterial: VehicleMaterial,
+  object: THREE.Object3D,
+): void {
+  if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)) return;
+  const material = object.material;
+  if (!(material instanceof THREE.MeshStandardMaterial)) return;
+  if (object instanceof THREE.InstancedMesh) {
+    if (finishKf51RubberInstance(object, P.mats.rubber, tireMaterial)) return;
+    if (finishKf51TrackInstance(object, material)) return;
+  }
+  finishKf51WheelMesh(P, object, material, dishMaterial, drumMaterial);
+}
+
 function addKF51ClosedShoulderMudguards(
   P: TankBuilderPort,
   profile: 'kf51' | 'kf51b',
@@ -11756,84 +11861,8 @@ function buildKF51(P: TankBuilderPort) {
     tireMat.color.setHex(0x010101);                      // r6 #1c: 16.0 -> the 25.8 class. MEASURED THIS ROUND: 0x020202 FLOORS to ~52 on the instanced tire faces (the r5 comment was right for this surface — the ring vanished entirely, zone p5 51.8 vs ref 25.8); 0x010101 rides the collapse step one up from 16 and AA-lifts the thin ring into the ref's 25-35 tail
     tireMat.envMapIntensity = 0.0;
     P.disposables.push(wornDish, wornDrum, tireMat);
-    P.hullG.traverse((ob) => {
-      if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
-      const m = ob.material;
-      if (!(m instanceof THREE.MeshStandardMaterial)) return;
-      if (ob instanceof THREE.InstancedMesh && m === P.mats.rubber) {
-        // r6 #1a WHEEL-FACE DE-INVENT (critic r5: "ref wheels PLAIN" — the
-        // 12-bolt ring + recess annulus + hub sidewall were invented; the
-        // ref wheel zone is FLAT 51-58, p10 51.1). TWO instanced meshes
-        // share mats.rubber: the tire rings (bbox y ±0.355) and the dark
-        // insert set (bbox y ±0.215). The insert collapses to a buried
-        // point (strictly interior furniture: annulus/bolts sat inside the
-        // dish/hub axial envelope — mask-inert); the tires keep tireMat.
-        ob.geometry.computeBoundingBox();
-        const bounds = ob.geometry.boundingBox;
-        if (bounds && bounds.max.y < 0.30) {
-          ob.geometry.scale(0.001, 0.001, 0.001);        // dark insert: annulus + sidewall + 12 bolt dots deleted
-        } else {
-          ob.material = tireMat;                         // instanced tire rings (identity test: the color-value tests below can't tell them from the inner chain)
-        }
-      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x171614) {
-        // r3 #2 — SAW-TOOTH CUT (geometry, kf51-private: shoe.pad is built
-        // per rig). The pad/grouser stack stood 85 mm proud of the band and
-        // fringed the whole loop as a sawblade; pitch is mask-locked but
-        // HEIGHT is not. Scaling the pad geometry's proud axis 0.45 keeps
-        // pitch/phase byte-identical (instance matrices untouched); grouser
-        // tips land INSIDE the band bottom on the ground run (0.045 vs
-        // 0.013 — smooth ground line) and the wrap fringe pulls from +34 mm
-        // PROUD of the ref wrap rows to ~on them (gf-base: plan front 3.760
-        // vs ref 3.726 at x 1.38..1.50; side top 1.278 vs ref 1.245).
-        ob.geometry.scale(1, 0.45, 1);
-        // r8 #3 (the REAL zipper): the front-column bright rib rows are the
-        // PAD STACK's fore-facing faces on the ramp/wrap — a dead-uniform
-        // (92,86,60) plateau = pad albedo (69,64,42) x1.85 linear (sun +
-        // fill on +z faces), immune to the band-texture route and to any
-        // n.y-keyed grime (these faces are NOT up-facing; a first n.y cut
-        // measured zero movement on the plateau). Same output ceiling as
-        // the band material: linear 601-luma capped at 0.0545 (sRGB 66 =
-        // the ref's flat 63.8 leg class), hue-preserving scalar — R>G
-        // warmth lock intact; side faces render 45-60 and never engage
-        // (locked side-strip parity byte-identical).
-        m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-          vehicleAmbientFloorHook(shader);
-          shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <opaque_fragment>',
-            `{
-		float kfPadL = dot( outgoingLight, vec3( 0.299, 0.587, 0.114 ) );
-		if ( kfPadL > 0.0545 ) outgoingLight *= 0.0545 / kfPadL;
-	}
-	#include <opaque_fragment>`,
-          );
-        };
-        m.customProgramCacheKey = () => 'kf51-shoe-hicap-r8';
-        m.color.setHex(0x45402a);                        // link pads — r7: olive-iron ROTATED WARM at held luma (0x3f4433 was G-heavy; the pads are the visible ground-run surface, so the band multiplier alone could not kill the lavender cast; B cut with the band's second pass)
-        m.envMapIntensity = 0.05;
-        m.roughness = 1.0;
-        m.metalness = 0.04;
-      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x020202);                // r5 #3: inner chain / tread recess into the sub-floor ramp — the between-shoe gaps carry the ref's p10-32 dark tail (0x2c2f26 and 0x040404 both floor at 52; the collapse needs <0x04)
-        m.envMapIntensity = 0.02;
-      } else if (m === P.mats.wheels) {
-        ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
-        if (ob instanceof THREE.InstancedMesh) {
-          // r6 #1a: crush the painted 8-bolt ring out of the road-wheel
-          // disc (the pale bolt-dot circles around the hub — invented; ref
-          // wheels plain). Bolt verts live alone in the radial band
-          // 0.10..0.14 (dish rim 0.277, hub 0.085, cap 0.050) — pulled to
-          // 45% radius they bury inside the hub drum (axial span ±0.1226 <
-          // hub ±0.1458): invisible, and strictly interior to the certified
-          // dish/hub union in every view.
-          const pos = ob.geometry.attributes.position;
-          for (let i = 0; i < pos.count; i++) {
-            const ry = pos.getY(i), rz = pos.getZ(i);
-            const rr = Math.hypot(ry, rz);
-            if (rr > 0.10 && rr < 0.14) { pos.setY(i, ry * 0.45); pos.setZ(i, rz * 0.45); }
-          }
-          pos.needsUpdate = true;
-        }
-      }
+    P.hullG.traverse((object) => {
+      finishKf51RunningGearMesh(P, wornDish, wornDrum, tireMat, object);
     });
     // ---- r5 tone-block furniture (LAW CORRECTION applied). Two material
     // regimes measured on the r4 pairs: (a) sub-0x06 albedos collapse the
