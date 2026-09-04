@@ -4905,7 +4905,7 @@ function buildT72BUNative(
 ): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
 
-  if (!turretOnly) {
+  const buildHull = (): void => {
   // Compact low hull with raised terminal sponson windows. The central belly
   // stays between the two native shoe corridors rather than intersecting the
   // idler/sprocket wraps.
@@ -5009,6 +5009,9 @@ function buildT72BUNative(
   P.add('hullDark', cylX(0.042, 0.58, 10), -0.78, 1.14, -2.98);
   P.add('hullDark', cylX(0.040, 0.42, 10), 0.00, 1.22, -2.98);
   P.add('hullDark', cylX(0.043, 0.62, 10), 0.74, 1.17, -2.98);
+  };
+  if (!turretOnly) {
+    buildHull();
   } else {
     // Hybrid mode preserves the stronger measured hull, calibrated gun and
     // native running gear, replacing only the complete rotating package.
