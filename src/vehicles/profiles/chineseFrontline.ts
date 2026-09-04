@@ -150,8 +150,8 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
   }),
 });
 
-function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  const { box, cylY, polyMultiLoft, torus } = KIT;
+function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretConfig): void {
+  const { box, cylY, polyMultiLoft } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
   const roofLift = 0.89 * heightScale - 0.6675;
@@ -325,6 +325,29 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
     fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
     seed: variant === 'type99a' ? 9940 : 438,
   }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
+}
+
+function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig): void {
+  const { box, cylY, torus } = KIT;
+  const { variant, heightScale, widthScale, depthScale } = config;
+  const heightRatio = heightScale / 0.75;
+  const roofLift = 0.89 * heightScale - 0.6675;
+  const sx = (value: number): number => value * widthScale;
+  const sz = (value: number): number => value * depthScale;
+  const sy = (value: number): number => value * heightRatio;
+  const rearProgress = (value: number): number => THREE.MathUtils.clamp(
+    (-value - 1.58) / (2.68 - 1.58), 0, 1,
+  );
+  const shellZ = (value: number): number => sz(value >= -0.58
+    ? -0.58 + (value + 0.58) * config.frontShellLengthScale
+    : value);
+  const rearZ = (value: number): number => (
+    shellZ(value) - config.rearExtensionM * rearProgress(value)
+  );
+  const rearTopY = (value: number, z: number): number => (
+    sy(value) + config.rearCrownLiftM * rearProgress(z)
+  );
+  const shellHeight = 0.89 * heightScale;
 
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer
@@ -397,6 +420,21 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
   P.decal('turret', 'number', marking, 0.23,
     [sx(1.59), sy(0.36), sz(-0.72)], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, variant === 'type99a' ? 2.12 : 1.28);
+}
+
+function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfig): void {
+  const { variant, heightScale, widthScale, depthScale } = config;
+  const sz = (value: number): number => value * depthScale;
+  const rearProgress = (value: number): number => THREE.MathUtils.clamp(
+    (-value - 1.58) / (2.68 - 1.58), 0, 1,
+  );
+  const shellZ = (value: number): number => sz(value >= -0.58
+    ? -0.58 + (value + 0.58) * config.frontShellLengthScale
+    : value);
+  const rearZ = (value: number): number => (
+    shellZ(value) - config.rearExtensionM * rearProgress(value)
+  );
+  const shellHeight = 0.89 * heightScale;
 
   const commonReceipt = Object.freeze({
     architecture: 'vt-integrated-chevron-family-r4',
@@ -447,6 +485,12 @@ function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConf
       chevronsReseatedForward: true,
     });
   }
+}
+
+function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConfig): void {
+  addVtFamilyChevronFoundation(P, config);
+  addVtFamilyChevronRoof(P, config);
+  addVtFamilyChevronReceipt(P, config);
 }
 
 function buildVT4A1Turret(P: FrontlinePort): void {
