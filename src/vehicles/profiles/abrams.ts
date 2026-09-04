@@ -241,12 +241,6 @@ interface AbramsProfileOptions {
   readonly noCable?: boolean;
 }
 
-interface LoaderGunOptions {
-  readonly x: number; readonly y: number; readonly z: number;
-  readonly barrelLength: number; readonly outDeg: number; readonly upDeg: number;
-  readonly barrelRadius?: number; readonly hiderRadius?: number; readonly hiderLength?: number;
-}
-
 interface BareHullOptions {
   readonly returnRollerZs?: readonly number[];
   readonly returnTrackTopY?: number;
@@ -385,33 +379,6 @@ function lineAt(pts: readonly Vec2Tuple[], z: number): number {
     }
   }
   return (Math.abs(z - pts[0][0]) < Math.abs(z - pts[pts.length - 1][0]) ? pts[0] : pts[pts.length - 1])[1];
-}
-
-// Loader-gun run authored from a rear seat point instead of three unrelated
-// world-axis cylinders.  This keeps the jacket, barrel collar and flash hider
-// coaxial when a variant gives the right-side weapon its own traverse/elevation
-// pose.  Positive outDeg aims away from the turret centre on the +x side;
-// positive upDeg raises the muzzle.
-function angledLoaderGunRun(P: AbramsBuilderPort, {
-  x, y, z, barrelLength, outDeg, upDeg,
-  barrelRadius = 0.019, hiderRadius = 0.028, hiderLength = 0.15,
-}: LoaderGunOptions): void {
-  const rx = -THREE.MathUtils.degToRad(upDeg);
-  const ry = THREE.MathUtils.degToRad(outDeg);
-  const aim = new THREE.Vector3(0, 0, 1)
-    .applyEuler(new THREE.Euler(rx, ry, 0, 'XYZ')).normalize();
-  const base = new THREE.Vector3(x, y, z);
-  const addSegment = (bucket: string, radius: number, length: number, start: number): void => {
-    const center = base.clone().addScaledVector(aim, start + length / 2);
-    P.add(bucket, cylZ(radius, length, 10), center.x, center.y, center.z, rx, ry, 0);
-  };
-
-  const jacketLength = 0.34;
-  const barrelStart = 0.30; // 4 cm overlap keeps the barrel buried in jacket.
-  addSegment('turretDark', 0.026, jacketLength, 0);
-  addSegment('turretDark', barrelRadius, barrelLength, barrelStart);
-  addSegment('turretDetail', 0.030, 0.035, barrelStart + barrelLength - 0.035);
-  addSegment('turretDark', hiderRadius, hiderLength, barrelStart + barrelLength);
 }
 
 // Loft full-width slabs between cross-section stations: top edge follows
@@ -986,31 +953,6 @@ function turretHatch(
     P.add('turretDark', box(0.082, 0.05, 0.05), px, y + 0.035, pz, 0, a, 0);
     P.add('turretGlass', box(0.06, 0.024, 0.052), px, y + 0.048, pz, 0, a, 0);
   }
-}
-
-// M2 HB on a cradle. Carried TRANSVERSE (travel position) so its long axis
-// spans 1-2 mask columns. Top ≈ y + 0.06*s.
-function m2hb(P: AbramsBuilderPort, x: number, y: number, z: number, s = 1): void {
-  P.add('turretDark', box(0.6 * s, 0.12 * s, 0.09 * s), x, y, z);
-  P.add('turretDark', cylX(0.022 * s, 0.42 * s, 8), x + 0.48 * s, y + 0.012 * s, z);
-  P.add('turretDark', cylX(0.038 * s, 0.22 * s, 8), x + 0.35 * s, y + 0.012 * s, z);
-  P.add('turretDark', box(0.1 * s, 0.05 * s, 0.05 * s), x - 0.34 * s, y - 0.01 * s, z);
-  P.add('turretDark', box(0.05 * s, 0.16 * s, 0.03 * s), x + 0.02 * s, y - 0.12 * s, z);
-  P.add('turretDetail', box(0.3 * s, 0.15 * s, 0.07 * s), x - 0.04 * s, y - 0.03 * s, z);
-}
-
-// Loader's M240 on the skate rail around his hatch + low shield (all under
-// the published-height plateau).
-function m240Skate(P: AbramsBuilderPort, x: number, y: number, z: number, s = 1): void {
-  P.add('turretDark', torus(0.27 * s, 0.016, 18), x, y + 0.05 * s, z);
-  P.add('turretDark', box(0.05 * s, 0.06 * s, 0.08 * s), x + 0.1 * s, y + 0.07 * s, z + 0.22 * s);
-  P.addEquipment('turret', box(0.5 * s, 0.14 * s, 0.04),
-    x + 0.1 * s, y + 0.08 * s, z + 0.3 * s);
-  P.add('turretDark', box(0.4 * s, 0.07 * s, 0.075 * s), x + 0.14 * s, y + 0.08 * s, z + 0.05 * s);
-  // Barrel seated LOW (post-warp front row x 1.34..1.43: the +0.09s barrel
-  // rode 2.41 world where the ref reads 2.31).
-  P.add('turretDark', cylX(0.014 * s, 0.4 * s, 8), x + 0.42 * s, y + 0.02 * s, z + 0.05 * s);
-  P.add('turretDetail', box(0.07 * s, 0.1 * s, 0.14 * s), x - 0.02 * s, y + 0.04 * s, z - 0.02 * s);
 }
 
 // M250 six-tube smoke bank (2x3) on a bracket, seated on the cheek plate.
@@ -1868,31 +1810,6 @@ function abramsBustleRack(
     for (const f of [-0.27, 0.27]) {
       P.add(t.rackDress ? 'turretDetail' : rackDark, box(0.024, (rkT - rkB) * 0.88, clothD * 1.15), x + f * w, (rkT + rkB) / 2 - 0.01, clothZ);
     }
-  }
-}
-
-// Shell-side sponson boxes + rails + tarp roll. xOut must stay inside the
-// committed width plane.
-function shellSponsons(
-  P: AbramsBuilderPort,
-  t: AbramsTurretConfig,
-  s = 1,
-  xOut: number | null = null,
-  yBot: number | null = null,
-  yTop: number | null = null,
-): void {
-  const xo = xOut ?? (t.tw + 0.095 * s);
-  const b = yBot ?? (t.yBot + 0.17);
-  const tp = yTop ?? (t.roofMain - 0.15);
-  for (const side of [-1, 1]) {
-    P.add('turret', box(xo - t.tw + 0.06, tp - b, 1.75 * s), side * (t.tw + (xo - t.tw) / 2 - 0.02), (tp + b) / 2, t.zRear + 1.55 * s);
-    P.add('turretDark', box(xo - t.tw + 0.07, 0.02, 1.7 * s), side * (t.tw + (xo - t.tw) / 2 - 0.02), tp - 0.06, t.zRear + 1.55 * s);
-    P.add('turretDetail', box(0.035, 0.035, 2.4 * s), side * (xo - 0.02), tp + 0.02, t.zRear + 1.9 * s);
-    for (const zc of [0.9, 2.6]) {
-      P.add('turretDark', box(xo - t.tw + 0.08, (tp - b) * 0.8, 0.024), side * (t.tw + (xo - t.tw) / 2 - 0.02), (tp + b) / 2, t.zRear + zc * s);
-    }
-    P.add('turretCloth', cylZ(0.075 * s, 0.6 * s, 10), side * (t.tw - 0.05), t.roofMain - 0.09 * s, t.zRear + 0.75 * s);
-    P.add('turretDark', cylZ(0.079 * s, 0.03, 10), side * (t.tw - 0.05), t.roofMain - 0.09 * s, t.zRear + 0.75 * s);
   }
 }
 

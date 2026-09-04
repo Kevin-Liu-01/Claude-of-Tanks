@@ -161,19 +161,6 @@ interface LeopardGearConfig {
 }
 
 
-interface LeopardWedgeTurretConfig {
-  readonly tw: number;
-  readonly boxW: number;
-  readonly boxFront: number;
-  readonly boxRear: number;
-  readonly h: number;
-  readonly apexY?: number;
-  readonly apexZ: number;
-  readonly baseY?: number;
-  readonly gunW: number;
-  readonly slotZ?: number;
-}
-
 interface LeopardTurretRoofConfig {
   readonly h: number;
   readonly boxW: number;
@@ -1206,45 +1193,6 @@ function deckYAt(deck: readonly Vec2Tuple[], z: number): number {
     }
   }
   return deck[deck.length - 1][1];
-}
-
-// Arrowhead wedge turret (A5/A6/A7V): core welded box fully behind TWO thin
-// spaced wedge shells with a dark standoff gap, meeting in a plan-view arrow
-// ahead of a plate mantlet slot. All coordinates are turret-local.
-// T: { tw (wedge tip half-width), boxW, h, boxFront, boxRear, apexZ,
-//     gunY (mantlet slot center), sideModules? }
-function wedgeTurretShell(P: TankBuilderPort, T: LeopardWedgeTurretConfig): void {
-  const { box, frustum } = KIT;
-  const slab = orientedSlab;                                  // §C.1 winding guard
-  const tw = T.tw, h = T.h;
-  const aB = T.apexY ?? 0.04;                 // apex tier base (a7v rides high)
-  P.add('turret', frustum(T.boxW, T.boxFront, T.boxRear, T.boxW * 0.96, T.boxFront - 0.03, T.boxRear + 0.03, T.baseY ?? 0.0, h));
-  const aZ = T.apexZ, aF = T.boxFront;
-  // apex tier: thin near-horizontal arrow plates sweeping under the gun
-  for (const s of [-1, 1] as const) {
-    P.add('turret', slab(
-      [s * 0.03, aB, aZ], [s * tw, aB, aF + 0.02], [s * tw, aB, aF - 0.14], [s * 0.03, aB, aZ - 0.16],
-      [s * 0.03, aB + 0.16, aZ - 0.08], [s * tw, aB + 0.16, aF - 0.06], [s * tw, aB + 0.16, aF - 0.22], [s * 0.03, aB + 0.16, aZ - 0.24]));
-    // upper tier: the big wedge planes cresting the roofline
-    P.add('turret', slab(
-      [s * T.gunW, aB + 0.16, aZ - 0.38], [s * tw, aB + 0.16, aF - 0.06], [s * tw, aB + 0.16, aF - 0.22], [s * T.gunW, aB + 0.16, aZ - 0.54],
-      [s * T.gunW, h + 0.06, aZ - 0.86], [s * tw, h + 0.06, aF - 0.56], [s * tw, h + 0.06, aF - 0.72], [s * T.gunW, h + 0.06, aZ - 1.02]));
-    // dark standoff wall behind the upper shell (spaced-armor shadow gap)
-    P.add('turretDark', slab(
-      [s * (T.gunW - 0.02), aB + 0.26, aZ - 0.62], [s * (tw - 0.06), aB + 0.26, aF - 0.30], [s * (tw - 0.06), aB + 0.26, aF - 0.38], [s * (T.gunW - 0.02), aB + 0.26, aZ - 0.70],
-      [s * (T.gunW - 0.02), h - 0.04, aZ - 0.94], [s * (tw - 0.06), h - 0.04, aF - 0.62], [s * (tw - 0.06), h - 0.04, aF - 0.70], [s * (T.gunW - 0.02), h - 0.04, aZ - 1.02]));
-  }
-  // mantlet slot: painted back wall + dark cheek walls
-  const slotZ = T.slotZ ?? (aZ - 1.02);
-  P.add('turret', box(T.gunW * 2 + 0.06, h * 0.8, 0.06), 0, h * 0.42, slotZ);
-  for (const s of [-1, 1] as const) {
-    P.add('turretDark', box(0.05, h * 0.74, 0.9), s * (T.gunW + 0.03), h * 0.42, slotZ + 0.42);
-  }
-  // side armor modules continuing the wedge mass around the corners
-  for (const s of [-1, 1] as const) {
-    P.add('turret', box(0.10, h * 0.64, (T.boxFront - T.boxRear) * 0.42), s * (T.boxW + 0.05), h * 0.44, (T.boxFront + T.boxRear) / 2 + 0.35);
-    P.add('turretDark', box(0.02, h * 0.56, 0.025), s * (T.boxW + 0.105), h * 0.44, (T.boxFront + T.boxRear) / 2 + 0.35);
-  }
 }
 
 // Leopard 2 roof furniture + bustle. Turret-local coordinates.
