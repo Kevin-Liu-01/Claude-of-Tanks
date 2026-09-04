@@ -9,6 +9,7 @@
 // contain, decode, or reproduce source mesh topology.
 import * as THREE from 'three';
 import { KIT } from '../tankFactoryCore.ts';
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type GeometryScale = number | readonly number[];
@@ -79,6 +80,22 @@ export interface ShapedMudguardOptions {
   readonly support?: boolean;
 }
 
+interface SharedMudguardReceipt {
+  label: string;
+  designFamily: 'cot-shaped-mudguard-v1';
+  material: 'painted-steel' | 'rubber' | 'wood-stained';
+  bucket: string;
+  x: number;
+  y: number;
+  z: number;
+  thicknessM: number;
+  lengthM: number;
+  heightM: number;
+  outlinePoints?: number;
+  customFamilyGeometry: boolean;
+  attachedSupport: boolean;
+}
+
 interface ProfileConfig {
   turretWidth: number;
   turretHeight: number;
@@ -146,7 +163,7 @@ interface ProfileConfig {
   muzzleBore?: boolean | MuzzleBoreOptions;
 }
 
-interface DonorProfileConfig extends Record<string, unknown> {
+interface DonorProfileConfig extends Record<string, RuntimeValue> {
   base: string;
   kit?: (builder: ProfileBuilderPort, profile: DonorProfileConfig) => void;
 }
@@ -171,7 +188,7 @@ interface MuzzleTipOptions {
 }
 
 interface FittingOptions {
-  mats?: unknown;
+  mats?: RuntimeValue;
   shadows?: boolean;
   rotation?: Vec3Tuple;
   seed?: number;
@@ -245,11 +262,11 @@ interface FittingParts {
   ): void;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isProfileBuilder(value: unknown): value is ProfileBuilderPort {
+function isProfileBuilder(value: RuntimeValue): value is ProfileBuilderPort {
   return isRecord(value) && typeof value.add === 'function' &&
     typeof value.addGunExtra === 'function' && typeof value.decal === 'function' &&
     value.hullG instanceof THREE.Group && value.turretG instanceof THREE.Group &&
@@ -257,14 +274,14 @@ function isProfileBuilder(value: unknown): value is ProfileBuilderPort {
     Array.isArray(value.disposables) && isRecord(value.spec);
 }
 
-function requireProfileBuilder(value: unknown): ProfileBuilderPort {
+function requireProfileBuilder(value: RuntimeValue): ProfileBuilderPort {
   if (!isProfileBuilder(value)) {
     throw new TypeError('profile builder is missing the procedural builder contract');
   }
   return value;
 }
 
-function isProfileConfig(value: unknown): value is ProfileConfig {
+function isProfileConfig(value: RuntimeValue): value is ProfileConfig {
   if (!isRecord(value)) return false;
   for (const key of [
     'turretWidth', 'turretHeight', 'turretDepth', 'turretFront', 'turretRear',
@@ -274,19 +291,19 @@ function isProfileConfig(value: unknown): value is ProfileConfig {
   return true;
 }
 
-function isDonorProfileConfig(value: unknown): value is DonorProfileConfig {
+function isDonorProfileConfig(value: RuntimeValue): value is DonorProfileConfig {
   return isRecord(value) && typeof value.base === 'string' &&
     (value.kit === undefined || typeof value.kit === 'function');
 }
 
-function requireDonorProfileConfig(value: unknown): DonorProfileConfig {
+function requireDonorProfileConfig(value: RuntimeValue): DonorProfileConfig {
   if (!isDonorProfileConfig(value)) {
     throw new TypeError('donor profile requires a canonical base and optional kit callback');
   }
   return value;
 }
 
-function requireProfileConfig(value: unknown): ProfileConfig {
+function requireProfileConfig(value: RuntimeValue): ProfileConfig {
   if (!isProfileConfig(value)) {
     throw new TypeError('vehicle profile requires finite turret, gun, and envelope dimensions');
   }
@@ -335,8 +352,27 @@ function addEra(P: ProfileBuilderPort, width: number, frontZ: number, roofY: num
   }
 }
 
-function buildHull(P: ProfileBuilderPort, p: ProfileConfig) {
-  const { box,cylY,cylZ,torus,frustum,buildRunningGear,fenders,headlight,towCable }=KIT;
+interface HullBuildDimensions {
+  readonly width: number;
+  readonly length: number;
+  readonly halfL: number;
+  readonly roofY: number;
+  readonly trackTop: number;
+  readonly trackW: number;
+  readonly innerW: number;
+  readonly lowerH: number;
+  readonly style: string;
+}
+
+interface HullBuildResult {
+  readonly width: number;
+  readonly length: number;
+  readonly halfL: number;
+  readonly roofY: number;
+  readonly trackTop: number;
+}
+
+function resolveHullDimensions(P: ProfileBuilderPort, p: ProfileConfig): HullBuildDimensions {
   const d=P.spec.dims;
   const width=p.width || d.widthM;
   const length=p.hullLength || d.hullLengthM;
@@ -347,133 +383,200 @@ function buildHull(P: ProfileBuilderPort, p: ProfileConfig) {
   const innerW=Math.max(width-trackW*1.95,width*0.58);
   const lowerH=Math.max(0.46,trackTop*0.76);
   const style=p.hull || 'western';
+  return {width,length,halfL,roofY,trackTop,trackW,innerW,lowerH,style};
+}
 
-  P.add('hull',box(innerW,lowerH,length*0.91),0,0.22+lowerH/2,0);
-  fenders(P,innerW/2,width/2+0.02,Math.min(roofY-0.16,trackTop+0.25),-halfL*0.96,halfL*0.94,0.025);
+function addMerkavaHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.86,roofY-trackTop,length*0.60),0,trackTop+(roofY-trackTop)/2,-halfL*0.19);
+  P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.02,width*0.40,halfL*0.50,-halfL*0.02,
+    trackTop,roofY));
+  P.add('hull',frustum(width*0.42,halfL*0.74,halfL*0.98,width*0.48,halfL*0.98,halfL*0.98,
+    0.35,trackTop));
+  P.add('hullDetail',box(width*0.36,0.035,length*0.22),width*0.18,roofY+0.025,halfL*0.14);
+}
 
-  if (style === 'merkava') {
-    P.add('hull',box(width*0.86,roofY-trackTop,length*0.60),0,trackTop+(roofY-trackTop)/2,-halfL*0.19);
-    P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.02,width*0.40,halfL*0.50,-halfL*0.02,
-      trackTop,roofY));
-    P.add('hull',frustum(width*0.42,halfL*0.74,halfL*0.98,width*0.48,halfL*0.98,halfL*0.98,
-      0.35,trackTop));
-    P.add('hullDetail',box(width*0.36,0.035,length*0.22),width*0.18,roofY+0.025,halfL*0.14);
-  } else if (style === 'soviet') {
-    P.add('hull',box(width*0.86,roofY-trackTop,length*0.61),0,trackTop+(roofY-trackTop)/2,-halfL*0.18);
-    P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.06,width*0.40,halfL*0.42,0,
-      trackTop*0.96,roofY));
-    P.add('hull',frustum(width*0.39,halfL*0.77,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
-      0.31,trackTop*0.96));
-    if (p.era) addEra(P,width,halfL*0.48,roofY,p.eraRows || 2);
-  } else if (style === 'type90') {
-    // Type 90: low two-level engine deck, very shallow glacis and broad
-    // fender shoulders.  The old generic western hull was almost a metre too
-    // tall at the nose and read as a rectangular troop carrier in profile.
-    P.add('hull',box(width*0.82,roofY-trackTop,length*0.52),0,trackTop+(roofY-trackTop)/2,-halfL*0.23);
-    P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.02,width*0.38,halfL*0.48,halfL*0.02,
-      trackTop*0.78,roofY));
-    P.add('hull',frustum(width*0.40,halfL*0.81,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
-      0.31,trackTop*0.80));
-    P.add('hull',box(width*0.94,0.11,length*0.43),0,trackTop+0.17,-halfL*0.22);
-    P.add('hullDetail',box(width*0.32,0.035,length*0.26),-width*0.18,roofY+0.025,halfL*0.15);
-  } else if (style === 'warrior') {
-    // FV510 Warrior: tall but strongly chamfered troop hull, a long shallow
-    // glacis and a near-vertical rear door.  A single full-height box erased
-    // all three of those cues and hid the complete six-wheel suspension.
-    P.add('hull',frustum(width*0.46,halfL*0.46,-halfL*0.94,width*0.39,halfL*0.34,-halfL*0.91,
-      trackTop*0.93,roofY));
-    P.add('hull',frustum(width*0.46,halfL*0.97,halfL*0.31,width*0.38,halfL*0.46,halfL*0.27,
-      trackTop*0.72,roofY));
-    P.add('hull',frustum(width*0.41,halfL*0.81,halfL*0.98,width*0.46,halfL*0.98,halfL*0.98,
-      0.30,trackTop*0.78));
-    P.add('hull',box(width*0.92,0.12,length*0.61),0,trackTop+0.17,-halfL*0.12);
-    P.add('hullDetail',box(width*0.56,roofY*0.58,0.045),0,roofY*0.61,-halfL*0.985);
-    P.add('hullDark',box(width*0.23,roofY*0.44,0.052),0,roofY*0.59,-halfL*0.995);
-  } else if (style === 'ifv') {
-    P.add('hull',box(width*0.86,roofY-trackTop,length*0.69),0,trackTop+(roofY-trackTop)/2,-halfL*0.12);
-    P.add('hull',frustum(width*0.46,halfL*0.98,halfL*0.16,width*0.40,halfL*0.55,halfL*0.04,
-      trackTop*0.82,roofY));
-    P.add('hull',box(width*0.80,roofY*0.56,0.10),0,roofY*0.62,-halfL*0.96);
-  } else if (style === 'classic') {
-    P.add('hull',box(width*0.88,roofY-trackTop,length*0.58),0,trackTop+(roofY-trackTop)/2,-halfL*0.18);
-    P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.03,width*0.39,halfL*0.42,-halfL*0.02,
-      trackTop,roofY));
-    P.add('hull',frustum(width*0.39,halfL*0.78,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
-      0.30,trackTop));
-  } else if (style === 'casemate') {
-    P.add('hull',box(width*0.88,roofY-trackTop,length*0.58),0,trackTop+(roofY-trackTop)/2,-halfL*0.16);
-    P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.08,width*0.40,halfL*0.48,0,
-      trackTop,Math.min(roofY,trackTop+0.42)));
-    const cW=p.casemateWidth || width*0.72;
-    const cH=p.casemateHeight || Math.max(0.62,roofY-trackTop+0.28);
-    const cD=p.casemateDepth || length*0.48;
-    P.add('hull',frustum(cW/2,cD*0.48,-cD*0.52,cW*0.44,cD*0.35,-cD*0.46,
-      roofY-cH,roofY));
-    if (p.casemateRoof) P.add('hullDetail',box(cW*0.82,0.035,cD*0.72),0,roofY+0.025,-cD*0.08);
-  } else {
-    P.add('hull',box(width*0.87,roofY-trackTop,length*0.64),0,trackTop+(roofY-trackTop)/2,-halfL*0.16);
-    P.add('hull',frustum(width*0.47,halfL*0.97,halfL*0.06,width*0.41,halfL*0.42,0,
-      trackTop,roofY));
-    P.add('hull',frustum(width*0.40,halfL*0.77,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
-      0.34,trackTop));
+function addSovietHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.86,roofY-trackTop,length*0.61),0,trackTop+(roofY-trackTop)/2,-halfL*0.18);
+  P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.06,width*0.40,halfL*0.42,0,
+    trackTop*0.96,roofY));
+  P.add('hull',frustum(width*0.39,halfL*0.77,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
+    0.31,trackTop*0.96));
+  if (p.era) addEra(P,width,halfL*0.48,roofY,p.eraRows || 2);
+}
+
+function addType90HullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  // Type 90: low two-level engine deck, very shallow glacis and broad
+  // fender shoulders.  The old generic western hull was almost a metre too
+  // tall at the nose and read as a rectangular troop carrier in profile.
+  P.add('hull',box(width*0.82,roofY-trackTop,length*0.52),0,trackTop+(roofY-trackTop)/2,-halfL*0.23);
+  P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.02,width*0.38,halfL*0.48,halfL*0.02,
+    trackTop*0.78,roofY));
+  P.add('hull',frustum(width*0.40,halfL*0.81,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
+    0.31,trackTop*0.80));
+  P.add('hull',box(width*0.94,0.11,length*0.43),0,trackTop+0.17,-halfL*0.22);
+  P.add('hullDetail',box(width*0.32,0.035,length*0.26),-width*0.18,roofY+0.025,halfL*0.15);
+}
+
+function addWarriorHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  // FV510 Warrior: tall but strongly chamfered troop hull, a long shallow
+  // glacis and a near-vertical rear door.  A single full-height box erased
+  // all three of those cues and hid the complete six-wheel suspension.
+  P.add('hull',frustum(width*0.46,halfL*0.46,-halfL*0.94,width*0.39,halfL*0.34,-halfL*0.91,
+    trackTop*0.93,roofY));
+  P.add('hull',frustum(width*0.46,halfL*0.97,halfL*0.31,width*0.38,halfL*0.46,halfL*0.27,
+    trackTop*0.72,roofY));
+  P.add('hull',frustum(width*0.41,halfL*0.81,halfL*0.98,width*0.46,halfL*0.98,halfL*0.98,
+    0.30,trackTop*0.78));
+  P.add('hull',box(width*0.92,0.12,length*0.61),0,trackTop+0.17,-halfL*0.12);
+  P.add('hullDetail',box(width*0.56,roofY*0.58,0.045),0,roofY*0.61,-halfL*0.985);
+  P.add('hullDark',box(width*0.23,roofY*0.44,0.052),0,roofY*0.59,-halfL*0.995);
+}
+
+function addIfvHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.86,roofY-trackTop,length*0.69),0,trackTop+(roofY-trackTop)/2,-halfL*0.12);
+  P.add('hull',frustum(width*0.46,halfL*0.98,halfL*0.16,width*0.40,halfL*0.55,halfL*0.04,
+    trackTop*0.82,roofY));
+  P.add('hull',box(width*0.80,roofY*0.56,0.10),0,roofY*0.62,-halfL*0.96);
+}
+
+function addClassicHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.88,roofY-trackTop,length*0.58),0,trackTop+(roofY-trackTop)/2,-halfL*0.18);
+  P.add('hull',frustum(width*0.47,halfL*0.96,halfL*0.03,width*0.39,halfL*0.42,-halfL*0.02,
+    trackTop,roofY));
+  P.add('hull',frustum(width*0.39,halfL*0.78,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
+    0.30,trackTop));
+}
+
+function addCasemateHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.88,roofY-trackTop,length*0.58),0,trackTop+(roofY-trackTop)/2,-halfL*0.16);
+  P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.08,width*0.40,halfL*0.48,0,
+    trackTop,Math.min(roofY,trackTop+0.42)));
+  const cW=p.casemateWidth || width*0.72;
+  const cH=p.casemateHeight || Math.max(0.62,roofY-trackTop+0.28);
+  const cD=p.casemateDepth || length*0.48;
+  P.add('hull',frustum(cW/2,cD*0.48,-cD*0.52,cW*0.44,cD*0.35,-cD*0.46,
+    roofY-cH,roofY));
+  if (p.casemateRoof) P.add('hullDetail',box(cW*0.82,0.035,cD*0.72),0,roofY+0.025,-cD*0.08);
+}
+
+function addWesternHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,frustum }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  P.add('hull',box(width*0.87,roofY-trackTop,length*0.64),0,trackTop+(roofY-trackTop)/2,-halfL*0.16);
+  P.add('hull',frustum(width*0.47,halfL*0.97,halfL*0.06,width*0.41,halfL*0.42,0,
+    trackTop,roofY));
+  P.add('hull',frustum(width*0.40,halfL*0.77,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
+    0.34,trackTop));
+}
+
+function addHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
+  if (d.style === 'merkava') addMerkavaHullShell(P,d);
+  else if (d.style === 'soviet') addSovietHullShell(P,p,d);
+  else if (d.style === 'type90') addType90HullShell(P,d);
+  else if (d.style === 'warrior') addWarriorHullShell(P,d);
+  else if (d.style === 'ifv') addIfvHullShell(P,d);
+  else if (d.style === 'classic') addClassicHullShell(P,d);
+  else if (d.style === 'casemate') addCasemateHullShell(P,p,d);
+  else addWesternHullShell(P,d);
+}
+
+function addMerkavaDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box }=KIT;
+  const {width,length,halfL,roofY}=d;
+  // Front-mounted powerpack: offset louvre bank, intake lip and the rear
+  // troop/ammunition hatch that distinguish a Merkava hull in side view.
+  P.add('hullDark',box(width*0.31,0.025,length*0.19),width*0.20,roofY+0.035,halfL*0.34);
+  for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.28,0.032,0.032),width*0.20,roofY+0.055,halfL*(0.48-i*0.052));
+  P.add('hull',box(width*0.32,0.12,0.16),-width*0.18,roofY+0.06,halfL*0.23,-0.18,0,0);
+  P.add('hullDark',box(width*0.34,roofY*0.38,0.025),0,roofY*0.64,-halfL*0.985);
+  P.add('hullDetail',box(width*0.36,0.035,0.05),0,roofY*0.83,-halfL*0.995);
+}
+
+function addSovietDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,cylY,cylZ }=KIT;
+  const {width,length,halfL,roofY}=d;
+  // Circular driver hatch/periscopes, transverse engine grilles and the
+  // familiar right-fender external fuel/stowage run.
+  P.add('hull',cylY(0.25,0.25,0.045,16),0,roofY+0.03,halfL*0.27);
+  for (const x of [-0.18,0,0.18]) P.add('hullDark',box(0.12,0.04,0.035),x,roofY+0.075,halfL*0.38);
+  for (let i=0;i<6;i++) P.add('hullDetail',box(width*0.42,0.028,0.045),0,roofY+0.05,-halfL*(0.40+i*0.07));
+  P.add('hull',box(0.34,0.18,length*0.30),width*0.40,roofY-0.07,-halfL*0.20);
+  P.add('hullDark',cylZ(0.075,length*0.23,10),-width*0.39,roofY+0.09,-halfL*0.28,Math.PI/2,0,0);
+}
+
+function addType90DeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,cylY }=KIT;
+  const {width,length,halfL,roofY,trackTop}=d;
+  // The Japanese tank's rear deck is dominated by two rectangular cooling
+  // banks and a transverse louvre row; the driver sits front-left beneath a
+  // flush, polygonal hatch.  These are important in top and rear views.
+  for (const side of [-1,1]) {
+    P.add('hullDark',box(width*0.29,0.024,length*0.21),side*width*0.19,roofY+0.035,-halfL*0.53);
+    for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.26,0.026,0.030),side*width*0.19,roofY+0.055,-halfL*(0.40+i*0.055));
+    P.add('hullDark',box(0.035,0.13,0.62),side*width*0.43,roofY-0.04,-halfL*0.54);
   }
+  P.add('hull',cylY(0.28,0.28,0.045,8),-width*0.18,roofY+0.03,halfL*0.22,0,0.18,0);
+  for (const x of [-0.76,-0.57,-0.38]) P.add('hullDark',box(0.13,0.035,0.038),x,roofY+0.08,halfL*0.36);
+  P.add('hullDark',box(width*0.57,0.34,0.025),0,trackTop+0.31,-halfL*0.995);
+  for(let i=0;i<8;i++) P.add('hullDetail',box(width*0.52,0.026,0.028),0,trackTop+0.18+i*0.035,-halfL*1.002);
+  P.add('hullDetail',box(0.22,0.28,0.04),width*0.36,trackTop+0.27,-halfL*1.01);
+}
 
-  P.add('hull',box(width*0.82,Math.max(0.30,roofY-trackTop),0.10),0,trackTop+(roofY-trackTop)/2,-halfL*0.96);
-  P.add('hullDark',box(width*0.49,0.025,length*0.18),0,roofY+0.025,-halfL*0.66);
-  for (let i=0;i<4;i++) P.add('hullDetail',box(width*0.46,0.025,0.045),0,roofY+0.04,-halfL*(0.78-i*0.075));
-
-  // Family-specific deck furniture. These remain in the existing merged
-  // material buckets, so a much richer close-up does not add draw calls.
-  if (style === 'merkava') {
-    // Front-mounted powerpack: offset louvre bank, intake lip and the rear
-    // troop/ammunition hatch that distinguish a Merkava hull in side view.
-    P.add('hullDark',box(width*0.31,0.025,length*0.19),width*0.20,roofY+0.035,halfL*0.34);
-    for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.28,0.032,0.032),width*0.20,roofY+0.055,halfL*(0.48-i*0.052));
-    P.add('hull',box(width*0.32,0.12,0.16),-width*0.18,roofY+0.06,halfL*0.23,-0.18,0,0);
-    P.add('hullDark',box(width*0.34,roofY*0.38,0.025),0,roofY*0.64,-halfL*0.985);
-    P.add('hullDetail',box(width*0.36,0.035,0.05),0,roofY*0.83,-halfL*0.995);
-  } else if (style === 'soviet') {
-    // Circular driver hatch/periscopes, transverse engine grilles and the
-    // familiar right-fender external fuel/stowage run.
-    P.add('hull',cylY(0.25,0.25,0.045,16),0,roofY+0.03,halfL*0.27);
-    for (const x of [-0.18,0,0.18]) P.add('hullDark',box(0.12,0.04,0.035),x,roofY+0.075,halfL*0.38);
-    for (let i=0;i<6;i++) P.add('hullDetail',box(width*0.42,0.028,0.045),0,roofY+0.05,-halfL*(0.40+i*0.07));
-    P.add('hull',box(0.34,0.18,length*0.30),width*0.40,roofY-0.07,-halfL*0.20);
-    P.add('hullDark',cylZ(0.075,length*0.23,10),-width*0.39,roofY+0.09,-halfL*0.28,Math.PI/2,0,0);
-  } else if (style === 'type90') {
-    // The Japanese tank's rear deck is dominated by two rectangular cooling
-    // banks and a transverse louvre row; the driver sits front-left beneath a
-    // flush, polygonal hatch.  These are important in top and rear views.
-    for (const side of [-1,1]) {
-      P.add('hullDark',box(width*0.29,0.024,length*0.21),side*width*0.19,roofY+0.035,-halfL*0.53);
-      for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.26,0.026,0.030),side*width*0.19,roofY+0.055,-halfL*(0.40+i*0.055));
-      P.add('hullDark',box(0.035,0.13,0.62),side*width*0.43,roofY-0.04,-halfL*0.54);
-    }
-    P.add('hull',cylY(0.28,0.28,0.045,8),-width*0.18,roofY+0.03,halfL*0.22,0,0.18,0);
-    for (const x of [-0.76,-0.57,-0.38]) P.add('hullDark',box(0.13,0.035,0.038),x,roofY+0.08,halfL*0.36);
-    P.add('hullDark',box(width*0.57,0.34,0.025),0,trackTop+0.31,-halfL*0.995);
-    for(let i=0;i<8;i++) P.add('hullDetail',box(width*0.52,0.026,0.028),0,trackTop+0.18+i*0.035,-halfL*1.002);
-    P.add('hullDetail',box(0.22,0.28,0.04),width*0.36,trackTop+0.27,-halfL*1.01);
-  } else if (style === 'warrior') {
-    for (const side of [-1,1]) {
-      P.add('hullDark',box(width*0.29,0.024,length*0.23),side*width*0.19,roofY+0.035,-halfL*0.51);
-      for(let i=0;i<6;i++) P.add('hullDetail',box(width*0.26,0.025,0.030),side*width*0.19,roofY+0.052,-halfL*(0.37+i*0.065));
-      P.add('hullDetail',box(0.18,0.30,0.10),side*width*0.36,roofY*0.70,halfL*0.74);
-    }
-    P.add('hull',cylY(0.26,0.26,0.045,8),-width*0.19,roofY+0.025,halfL*0.18);
-    for(const x of [-0.72,-0.52,-0.32]) P.add('hullDark',box(0.12,0.035,0.035),x,roofY+0.075,halfL*0.34);
-  } else if (style === 'western' || style === 'ifv') {
-    // Twin cooling banks, driver's hatch and rear exhaust louvres.
-    for (const side of [-1,1]) {
-      P.add('hullDark',box(width*0.27,0.025,length*0.16),side*width*0.20,roofY+0.035,-halfL*0.52);
-      for (let i=0;i<4;i++) P.add('hullDetail',box(width*0.24,0.03,0.035),side*width*0.20,roofY+0.055,-halfL*(0.42+i*0.07));
-    }
-    P.add('hull',cylY(0.27,0.27,0.045,16),width*0.18,roofY+0.03,halfL*0.20);
-    P.add('hullDark',box(width*0.54,Math.max(0.18,roofY*0.20),0.025),0,roofY*0.66,-halfL*0.995);
-  } else {
-    P.add('hull',cylY(0.25,0.25,0.04,14),width*0.16,roofY+0.03,halfL*0.16);
+function addWarriorDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,cylY }=KIT;
+  const {width,length,halfL,roofY}=d;
+  for (const side of [-1,1]) {
+    P.add('hullDark',box(width*0.29,0.024,length*0.23),side*width*0.19,roofY+0.035,-halfL*0.51);
+    for(let i=0;i<6;i++) P.add('hullDetail',box(width*0.26,0.025,0.030),side*width*0.19,roofY+0.052,-halfL*(0.37+i*0.065));
+    P.add('hullDetail',box(0.18,0.30,0.10),side*width*0.36,roofY*0.70,halfL*0.74);
   }
+  P.add('hull',cylY(0.26,0.26,0.045,8),-width*0.19,roofY+0.025,halfL*0.18);
+  for(const x of [-0.72,-0.52,-0.32]) P.add('hullDark',box(0.12,0.035,0.035),x,roofY+0.075,halfL*0.34);
+}
 
+function addWesternDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { box,cylY }=KIT;
+  const {width,length,halfL,roofY}=d;
+  // Twin cooling banks, driver's hatch and rear exhaust louvres.
+  for (const side of [-1,1]) {
+    P.add('hullDark',box(width*0.27,0.025,length*0.16),side*width*0.20,roofY+0.035,-halfL*0.52);
+    for (let i=0;i<4;i++) P.add('hullDetail',box(width*0.24,0.03,0.035),side*width*0.20,roofY+0.055,-halfL*(0.42+i*0.07));
+  }
+  P.add('hull',cylY(0.27,0.27,0.045,16),width*0.18,roofY+0.03,halfL*0.20);
+  P.add('hullDark',box(width*0.54,Math.max(0.18,roofY*0.20),0.025),0,roofY*0.66,-halfL*0.995);
+}
+
+function addClassicDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  const { cylY }=KIT;
+  P.add('hull',cylY(0.25,0.25,0.04,14),d.width*0.16,d.roofY+0.03,d.halfL*0.16);
+}
+
+function addHullDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
+  if (d.style === 'merkava') addMerkavaDeckFurniture(P,d);
+  else if (d.style === 'soviet') addSovietDeckFurniture(P,d);
+  else if (d.style === 'type90') addType90DeckFurniture(P,d);
+  else if (d.style === 'warrior') addWarriorDeckFurniture(P,d);
+  else if (d.style === 'western' || d.style === 'ifv') addWesternDeckFurniture(P,d);
+  else addClassicDeckFurniture(P,d);
+}
+
+function addHullServiceDetails(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
+  const { cylZ,headlight,torus,towCable }=KIT;
+  const {width,length,halfL,roofY,trackTop,style}=d;
   // Side-skirt panel fasteners and towing eyes give scale in every family.
   if (p.skirts !== false) for (const side of [-1,1]) for (let i=0;i<(p.skirtPanels || (style === 'ifv'?6:7));i++) {
     const z=length*0.37-i*(length*0.74/Math.max(1,(p.skirtPanels || (style === 'ifv'?6:7))-1));
@@ -483,7 +586,11 @@ function buildHull(P: ProfileBuilderPort, p: ProfileConfig) {
   headlight(P,-width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
   headlight(P,width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
   towCable(P,[[-width*0.34,roofY-0.15,halfL*0.72],[0,roofY-0.01,halfL*0.48],[width*0.34,roofY-0.15,halfL*0.72]]);
+}
 
+function addHullRunningGear(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
+  const { buildRunningGear }=KIT;
+  const {width,length,halfL,trackTop,trackW,style}=d;
   const wheelCount=p.wheels || (style === 'ifv' ? 6 : 7);
   const wheelR=p.wheelR || Math.min(0.40,length/(wheelCount*3.2));
   const wheelSpan=p.wheelSpan || length*0.74;
@@ -499,6 +606,23 @@ function buildHull(P: ProfileBuilderPort, p: ProfileConfig) {
   });
   if (p.skirts !== false) addSegmentedSkirts(P,width,p.skirtLength ?? length*0.86,
     p.skirtY ?? trackTop*0.72,p.skirtHeight ?? trackTop*0.60,p.skirtPanels || wheelCount);
+}
+
+function buildHull(P: ProfileBuilderPort, p: ProfileConfig): HullBuildResult {
+  const { box,fenders }=KIT;
+  const d=resolveHullDimensions(P,p);
+  const {width,length,halfL,roofY,trackTop,trackW,innerW,lowerH}=d;
+
+  P.add('hull',box(innerW,lowerH,length*0.91),0,0.22+lowerH/2,0);
+  fenders(P,innerW/2,width/2+0.02,Math.min(roofY-0.16,trackTop+0.25),-halfL*0.96,halfL*0.94,0.025);
+  addHullShell(P,p,d);
+
+  P.add('hull',box(width*0.82,Math.max(0.30,roofY-trackTop),0.10),0,trackTop+(roofY-trackTop)/2,-halfL*0.96);
+  P.add('hullDark',box(width*0.49,0.025,length*0.18),0,roofY+0.025,-halfL*0.66);
+  for (let i=0;i<4;i++) P.add('hullDetail',box(width*0.46,0.025,0.045),0,roofY+0.04,-halfL*(0.78-i*0.075));
+  addHullDeckFurniture(P,d);
+  addHullServiceDetails(P,p,d);
+  addHullRunningGear(P,p,d);
   return {width,length,halfL,roofY,trackTop};
 }
 
@@ -742,7 +866,7 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
 //   muzzleBore(P,{z,r,...})      explicit face plane for hand-authored
 //     tubes (x/y for offset bores). MG muzzles do NOT take the ring — the
 //     law gives them pinhole-class dark tips (see muzzleTipDot).
-export function muzzleBore(builder: unknown, o: MuzzleBoreOptions = {}): void {
+export function muzzleBore(builder: RuntimeValue, o: MuzzleBoreOptions = {}): void {
   const P = requireProfileBuilder(builder);
   const { cylZ, torus, xform } = KIT;
   const r = o.r ?? Math.max(0.05, P.spec.armor.gunBarrel.radiusM * 0.82);
@@ -819,7 +943,7 @@ export function orientedSlab(
 // the P group the MG lives in ('turretG'|'hullG'|'gunG', default turretG);
 // pos is that group's frame; rx/ry aim the disc with the tube.
 export function muzzleTipDot(
-  builder: unknown,
+  builder: RuntimeValue,
   x: number,
   y: number,
   z: number,
@@ -838,7 +962,7 @@ export function muzzleTipDot(
   P.disposables.push(dot.geometry);
 }
 
-export function buildProfile(builder: unknown, profile: unknown): void {
+export function buildProfile(builder: RuntimeValue, profile: RuntimeValue): void {
   const P = requireProfileBuilder(builder);
   const p = requireProfileConfig(profile);
   const hull=buildHull(P,p);
@@ -880,19 +1004,23 @@ export function buildProfile(builder: unknown, profile: unknown): void {
  * owning family module apply its own kit deltas via `profile.kit(P, p)`.
  * (The old central variantKit switch is dissolved into the family modules.)
  */
-export function buildDonorVariant(builder: unknown, profile: unknown): void {
+export function buildDonorVariant(builder: RuntimeValue, profile: RuntimeValue): void {
   const P = requireProfileBuilder(builder);
   const p = requireDonorProfileConfig(profile);
   KIT.buildCanonical(P, p.base);
   if (p.kit) p.kit(P, p);
 }
 
-function requireMudguardBuilder(value: unknown): MudguardBuilderPort {
-  if (!isRecord(value) || !(value.hullG instanceof THREE.Group) ||
-      typeof value.add !== 'function' || typeof value.addMudguard !== 'function') {
+function isMudguardBuilder(value: RuntimeValue): value is MudguardBuilderPort {
+  return isRecord(value) && value.hullG instanceof THREE.Group
+    && typeof value.add === 'function' && typeof value.addMudguard === 'function';
+}
+
+function requireMudguardBuilder(value: RuntimeValue): MudguardBuilderPort {
+  if (!isMudguardBuilder(value)) {
     throw new TypeError('shared mudguard builder is missing add/addMudguard/hullG');
   }
-  return value as unknown as MudguardBuilderPort;
+  return value;
 }
 
 /**
@@ -949,7 +1077,7 @@ function shapedMudguardGeometry(options: ShapedMudguardOptions): THREE.BufferGeo
   return geometry;
 }
 
-function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): void {
+function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions): void {
   const P = requireMudguardBuilder(builder);
   // An unspecified/detail-bucket mudguard is exterior sheet steel, not a
   // neutral gray fitting. Keep rubber and wood explicit; route every painted
@@ -989,7 +1117,7 @@ function addShapedMudguard(builder: unknown, options: ShapedMudguardOptions): vo
   }
 
   const receipts = Array.isArray(P.hullG.userData.sharedMudguards)
-    ? P.hullG.userData.sharedMudguards as unknown[] : [];
+    ? P.hullG.userData.sharedMudguards as SharedMudguardReceipt[] : [];
   receipts.push({
     label: options.label,
     designFamily: 'cot-shaped-mudguard-v1',
@@ -1089,11 +1217,11 @@ function fitParts(): FittingParts {
   };
 }
 
-function isMaterial(value: unknown): value is THREE.Material {
+function isMaterial(value: RuntimeValue): value is THREE.Material {
   return isRecord(value) && value.isMaterial === true;
 }
 
-function fitMat(mats: Record<string, unknown>, slot: string): THREE.Material {
+function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Material {
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
   const m = mats[slot] || mats.dark;
   if (isMaterial(m)) return m;
@@ -1101,7 +1229,7 @@ function fitMat(mats: Record<string, unknown>, slot: string): THREE.Material {
   throw new Error(`KIT.fittings: no material is available for slot ${slot}`);
 }
 
-function requireMaterialMap(value: unknown, type: string): Record<string, unknown> {
+function requireMaterialMap(value: RuntimeValue, type: string): Record<string, RuntimeValue> {
   if (!isRecord(value)) {
     throw new Error(`KIT.fittings.${type}: opts.mats (family material set, e.g. P.mats) is required`);
   }
