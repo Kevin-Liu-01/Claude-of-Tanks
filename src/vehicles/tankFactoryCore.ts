@@ -7445,23 +7445,38 @@ function finalizeVehicleMarkingSeats(
   }
 }
 
+function isRuntimeRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
+  return value !== null && typeof value === 'object';
+}
+
+function isNumberTuple(entry: RuntimeValue, length: number): boolean {
+  return Array.isArray(entry)
+    && entry.length === length
+    && entry.every((component) => typeof component === 'number');
+}
+
+function hasVerifiedMarkingSeatIdentity(value: Record<string, RuntimeValue>): boolean {
+  return (value.parent === 'hull' || value.parent === 'turret')
+    && typeof value.kind === 'string'
+    && typeof value.size === 'number'
+    && typeof value.surfaceMesh === 'string'
+    && typeof value.anchorProfile === 'string';
+}
+
+function hasVerifiedMarkingSeatVisibility(value: Record<string, RuntimeValue>): boolean {
+  return typeof value.visibilitySamples === 'number'
+    && typeof value.visibilityClearSamples === 'number'
+    && typeof value.visibilityRatio === 'number'
+    && (value.maximumSurfaceErrorM === null
+      || typeof value.maximumSurfaceErrorM === 'number');
+}
+
 function isVerifiedMarkingSeat(value: RuntimeValue): value is VerifiedMarkingSeat {
-  if (!value || typeof value !== 'object') return false;
-  return 'parent' in value && (value.parent === 'hull' || value.parent === 'turret')
-    && 'kind' in value && typeof value.kind === 'string'
-    && 'size' in value && typeof value.size === 'number'
-    && 'pos' in value && Array.isArray(value.pos) && value.pos.length === 3
-    && value.pos.every((entry) => typeof entry === 'number')
-    && 'quaternion' in value && Array.isArray(value.quaternion)
-    && value.quaternion.length === 4
-    && value.quaternion.every((entry) => typeof entry === 'number')
-    && 'surfaceMesh' in value && typeof value.surfaceMesh === 'string'
-    && 'anchorProfile' in value && typeof value.anchorProfile === 'string'
-    && 'visibilitySamples' in value && typeof value.visibilitySamples === 'number'
-    && 'visibilityClearSamples' in value && typeof value.visibilityClearSamples === 'number'
-    && 'visibilityRatio' in value && typeof value.visibilityRatio === 'number'
-    && 'maximumSurfaceErrorM' in value
-    && (value.maximumSurfaceErrorM === null || typeof value.maximumSurfaceErrorM === 'number');
+  return isRuntimeRecord(value)
+    && hasVerifiedMarkingSeatIdentity(value)
+    && isNumberTuple(value.pos, 3)
+    && isNumberTuple(value.quaternion, 4)
+    && hasVerifiedMarkingSeatVisibility(value);
 }
 
 function applyVerifiedVehicleMarkingSeats(

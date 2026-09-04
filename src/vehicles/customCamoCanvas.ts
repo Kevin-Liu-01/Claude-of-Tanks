@@ -36,6 +36,41 @@ function pointXY(point: ReadonlyArray<number>, width: number, height: number): [
   return [(point[0] / 100) * width, (point[1] / 100) * height];
 }
 
+type CustomCamoAssetPainter = (ctx: CanvasRenderingContext2D) => void;
+
+const CUSTOM_CAMO_ASSET_PAINTERS: Readonly<Record<CustomCamoAsset, CustomCamoAssetPainter>> = {
+  chevron(ctx) {
+    ctx.moveTo(-.52, -.45); ctx.lineTo(0, 0); ctx.lineTo(.52, -.45);
+    ctx.lineTo(.52, -.08); ctx.lineTo(0, .38); ctx.lineTo(-.52, -.08);
+  },
+  leaf(ctx) {
+    ctx.moveTo(-.52, .38); ctx.bezierCurveTo(-.34, -.5, .32, -.58, .54, -.42);
+    ctx.bezierCurveTo(.38, .34, -.12, .58, -.52, .38);
+    ctx.moveTo(-.42, .35); ctx.lineTo(.38, -.36);
+  },
+  hex(ctx) {
+    for (let index = 0; index < 6; index += 1) {
+      const angle = Math.PI / 3 * index - Math.PI / 6;
+      const px = Math.cos(angle) * .54;
+      const py = Math.sin(angle) * .54;
+      if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+  },
+  cross(ctx) {
+    ctx.rect(-.16, -.55, .32, 1.1);
+    ctx.rect(-.55, -.16, 1.1, .32);
+  },
+  star(ctx) {
+    for (let index = 0; index < 10; index += 1) {
+      const radius = index % 2 ? .22 : .56;
+      const angle = -Math.PI / 2 + Math.PI * 2 * index / 10;
+      const px = Math.cos(angle) * radius;
+      const py = Math.sin(angle) * radius;
+      if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+  },
+};
+
 function drawAsset(
   ctx: CanvasRenderingContext2D,
   asset: CustomCamoAsset,
@@ -49,29 +84,7 @@ function drawAsset(
   ctx.rotate(rotation * Math.PI / 180);
   ctx.scale(size, size);
   ctx.beginPath();
-  if (asset === 'chevron') {
-    ctx.moveTo(-.52, -.45); ctx.lineTo(0, 0); ctx.lineTo(.52, -.45);
-    ctx.lineTo(.52, -.08); ctx.lineTo(0, .38); ctx.lineTo(-.52, -.08);
-  } else if (asset === 'leaf') {
-    ctx.moveTo(-.52, .38); ctx.bezierCurveTo(-.34, -.5, .32, -.58, .54, -.42);
-    ctx.bezierCurveTo(.38, .34, -.12, .58, -.52, .38);
-    ctx.moveTo(-.42, .35); ctx.lineTo(.38, -.36);
-  } else if (asset === 'hex') {
-    for (let i = 0; i < 6; i++) {
-      const angle = Math.PI / 3 * i - Math.PI / 6;
-      const px = Math.cos(angle) * .54, py = Math.sin(angle) * .54;
-      if (!i) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-  } else if (asset === 'cross') {
-    ctx.rect(-.16, -.55, .32, 1.1); ctx.rect(-.55, -.16, 1.1, .32);
-  } else {
-    for (let i = 0; i < 10; i++) {
-      const radius = i % 2 ? .22 : .56;
-      const angle = -Math.PI / 2 + Math.PI * 2 * i / 10;
-      const px = Math.cos(angle) * radius, py = Math.sin(angle) * radius;
-      if (!i) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-  }
+  CUSTOM_CAMO_ASSET_PAINTERS[asset](ctx);
   ctx.closePath();
   ctx.fill();
   ctx.restore();

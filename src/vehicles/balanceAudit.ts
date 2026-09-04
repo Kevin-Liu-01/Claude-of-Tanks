@@ -67,6 +67,14 @@ export interface FleetBalanceOutlier {
   ratio: number;
 }
 
+type BalanceMetric = FleetBalanceOutlier['metric'];
+type BalanceRow = { id: string; spec: FleetTankSpec };
+type BalanceValues = Readonly<Record<BalanceMetric, number>>;
+
+const BALANCE_METRICS = Object.freeze([
+  'hp', 'dpm', 'penetration', 'powerWeight', 'fireControl',
+] as const satisfies readonly BalanceMetric[]);
+
 export function sustainedPrimaryDpm(spec: FleetTankSpec): number {
   const round = spec.gun.shells[0];
   const autoloader = spec.gun.autoloader;
@@ -82,6 +90,67 @@ function median(values: number[]): number {
   return values[Math.floor(values.length / 2)] || 0;
 }
 
+function balanceValues(spec: FleetTankSpec): BalanceValues {
+  return {
+    hp: spec.hp,
+    dpm: sustainedPrimaryDpm(spec),
+    penetration: spec.gun.shells[0].pen100Mm,
+    powerWeight: spec.enginePowerHp / spec.weightTons,
+    fireControl: 1 / (spec.gun.baseAccuracy * spec.gun.aimTimeS),
+  };
+}
+
+function groupFleetBalanceRows(
+  ids: readonly string[],
+  specs: TankSpecRegistry,
+  tierOf: (id: string) => number,
+): Map<string, BalanceRow[]> {
+  const groups = new Map<string, BalanceRow[]>();
+  for (const id of ids) {
+    const spec = specs[id];
+    if (!spec) continue;
+    const key = `${spec.era}/${tierOf(id)}/${spec.role}`;
+    const group = groups.get(key) || [];
+    group.push({ id, spec });
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+function groupBalanceMedians(rows: readonly BalanceRow[]): BalanceValues {
+  const values = rows.map(({ spec }) => balanceValues(spec));
+  return Object.fromEntries(BALANCE_METRICS.map((metric) => [
+    metric, median(values.map((entry) => entry[metric])),
+  ])) as BalanceValues;
+}
+
+function outlierDirection(ratio: number): FleetBalanceOutlier['direction'] | null {
+  if (ratio < 0.65) return 'low';
+  if (ratio > 1.55) return 'high';
+  return null;
+}
+
+function appendGroupOutliers(
+  outliers: FleetBalanceOutlier[],
+  group: string,
+  rows: readonly BalanceRow[],
+): void {
+  if (rows.length < 4) return;
+  const medians = groupBalanceMedians(rows);
+  for (const { id, spec } of rows) {
+    const values = balanceValues(spec);
+    for (const metric of BALANCE_METRICS) {
+      const ratio = values[metric] / Math.max(1, medians[metric]);
+      const direction = outlierDirection(ratio);
+      if (!direction) continue;
+      outliers.push({
+        id, group, metric, direction,
+        value: values[metric], median: medians[metric], ratio,
+      });
+    }
+  }
+}
+
 /**
  * Detect severe floor and ceiling drift among real peers. Small groups are
  * left to explicit family and simulated-matchup tests because a two-vehicle
@@ -92,47 +161,9 @@ export function auditFleetBalance(
   specs: TankSpecRegistry,
   tierOf: (id: string) => number,
 ): FleetBalanceOutlier[] {
-  const groups = new Map<string, Array<{ id: string; spec: FleetTankSpec }>>();
-  for (const id of ids) {
-    const spec = specs[id];
-    if (!spec) continue;
-    const key = `${spec.era}/${tierOf(id)}/${spec.role}`;
-    const group = groups.get(key) || [];
-    group.push({ id, spec });
-    groups.set(key, group);
-  }
-
   const outliers: FleetBalanceOutlier[] = [];
-  for (const [group, rows] of groups) {
-    if (rows.length < 4) continue;
-    const medians = {
-      hp: median(rows.map(({ spec }) => spec.hp)),
-      dpm: median(rows.map(({ spec }) => sustainedPrimaryDpm(spec))),
-      penetration: median(rows.map(({ spec }) => spec.gun.shells[0].pen100Mm)),
-      powerWeight: median(rows.map(({ spec }) => spec.enginePowerHp / spec.weightTons)),
-      fireControl: median(rows.map(({ spec }) =>
-        1 / (spec.gun.baseAccuracy * spec.gun.aimTimeS))),
-    };
-    for (const { id, spec } of rows) {
-      const values = {
-        hp: spec.hp,
-        dpm: sustainedPrimaryDpm(spec),
-        penetration: spec.gun.shells[0].pen100Mm,
-        powerWeight: spec.enginePowerHp / spec.weightTons,
-        fireControl: 1 / (spec.gun.baseAccuracy * spec.gun.aimTimeS),
-      };
-      for (const metric of [
-        'hp', 'dpm', 'penetration', 'powerWeight', 'fireControl',
-      ] as const) {
-        const ratio = values[metric] / Math.max(1, medians[metric]);
-        const direction = ratio < 0.65 ? 'low' : ratio > 1.55 ? 'high' : null;
-        if (!direction) continue;
-        outliers.push({
-          id, group, metric, direction,
-          value: values[metric], median: medians[metric], ratio,
-        });
-      }
-    }
+  for (const [group, rows] of groupFleetBalanceRows(ids, specs, tierOf)) {
+    appendGroupOutliers(outliers, group, rows);
   }
   return outliers.sort((a, b) => a.id.localeCompare(b.id) || a.metric.localeCompare(b.metric));
 }

@@ -119,29 +119,30 @@ function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
+const T90_BUILDER_GROUP_KEYS = Object.freeze(['hullG', 'turretG', 'gunG'] as const);
+const T90_BUILDER_FUNCTION_KEYS = Object.freeze([
+  'add', 'addGunExtra', 'addGunExtraDark', 'addCupola', 'addEquipment',
+  'addHatch', 'addMudguard', 'clear', 'destructibleCluster',
+  'visualEraCluster', 'decal', 'offsetBuckets', 'scaleBuckets',
+  'forEachBucketPart',
+] as const);
+
+function hasT90BuilderGroups(value: Record<string, RuntimeValue>): boolean {
+  return T90_BUILDER_GROUP_KEYS.every((key) => value[key] instanceof THREE.Group);
+}
+
+function hasT90BuilderFunctions(value: Record<string, RuntimeValue>): boolean {
+  return T90_BUILDER_FUNCTION_KEYS.every((key) => typeof value[key] === 'function');
+}
+
 function isT90Builder(value: RuntimeValue): value is T90BuilderPort {
   if (!isRecord(value)) return false;
-  return value.hullG instanceof THREE.Group
-    && value.turretG instanceof THREE.Group
-    && value.gunG instanceof THREE.Group
+  return hasT90BuilderGroups(value)
     && isRecord(value.mats)
     && isRecord(value.spec)
     && Array.isArray(value.disposables)
     && typeof value.rng === 'function'
-    && typeof value.add === 'function'
-    && typeof value.addGunExtra === 'function'
-    && typeof value.addGunExtraDark === 'function'
-    && typeof value.addCupola === 'function'
-    && typeof value.addEquipment === 'function'
-    && typeof value.addHatch === 'function'
-    && typeof value.addMudguard === 'function'
-    && typeof value.clear === 'function'
-    && typeof value.destructibleCluster === 'function'
-    && typeof value.visualEraCluster === 'function'
-    && typeof value.decal === 'function'
-    && typeof value.offsetBuckets === 'function'
-    && typeof value.scaleBuckets === 'function'
-    && typeof value.forEachBucketPart === 'function';
+    && hasT90BuilderFunctions(value);
 }
 
 function requireT90Builder(value: RuntimeValue): T90BuilderPort {

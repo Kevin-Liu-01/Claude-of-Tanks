@@ -28,6 +28,11 @@ interface BarrelLane {
   expectedCenterXM: number;
 }
 
+interface BarrelLaneBounds {
+  minZ: number;
+  maxZ: number;
+}
+
 export interface BarrelCircularitySample {
   zM: number;
   widthM: number;
@@ -160,51 +165,67 @@ function appendGeometrySlice(
   }
 }
 
+function barrelLaneMeshGroups(meshes: readonly THREE.Mesh[]): Map<string, THREE.Mesh[]> {
+  const laneMeshes = new Map<string, THREE.Mesh[]>([['main', []]]);
+  for (const mesh of meshes) {
+    const numbered = mesh.name.match(NUMBERED_BARREL_NAME);
+    const lane = numbered ? `barrel-${numbered[1]}` : 'main';
+    const group = laneMeshes.get(lane) || [];
+    group.push(mesh);
+    laneMeshes.set(lane, group);
+  }
+  return laneMeshes;
+}
+
+function barrelLaneBounds(
+  meshes: readonly THREE.Mesh[],
+  gunWorldInverse: THREE.Matrix4,
+): BarrelLaneBounds | null {
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const mesh of meshes) {
+    const position = mesh.geometry?.attributes?.position;
+    if (!position) continue;
+    _meshToGun.multiplyMatrices(gunWorldInverse, mesh.matrixWorld);
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      _a.fromBufferAttribute(position, vertex).applyMatrix4(_meshToGun);
+      minZ = Math.min(minZ, _a.z);
+      maxZ = Math.max(maxZ, _a.z);
+    }
+  }
+  return Number.isFinite(minZ) && Number.isFinite(maxZ) ? { minZ, maxZ } : null;
+}
+
+function expectedBarrelLaneCenterX(
+  name: string,
+  gunWorldInverse: THREE.Matrix4,
+  gunRig: THREE.Object3D,
+): number {
+  const numbered = name.match(/^barrel-(\d+)$/);
+  const muzzleName = numbered ? `rig_muzzle_tip_${numbered[1]}` : 'rig_muzzle';
+  const muzzle = gunRig.getObjectByName(muzzleName);
+  if (!muzzle) return 0;
+  muzzle.getWorldPosition(_muzzleWorld);
+  return _muzzleWorld.applyMatrix4(gunWorldInverse).x;
+}
+
 function barrelLanes(
   meshes: THREE.Mesh[],
   gunWorldInverse: THREE.Matrix4,
   gunRig: THREE.Object3D,
 ): BarrelLane[] {
-  const laneMeshes = new Map<string, THREE.Mesh[]>([['main', []]]);
-  for (const mesh of meshes) {
-    const numbered = mesh.name.match(NUMBERED_BARREL_NAME);
-    const lane = numbered ? `barrel-${numbered[1]}` : 'main';
-    if (!laneMeshes.has(lane)) laneMeshes.set(lane, []);
-    laneMeshes.get(lane)!.push(mesh);
-  }
   const lanes: BarrelLane[] = [];
-  for (const [name, meshesForLane] of laneMeshes) {
+  for (const [name, meshesForLane] of barrelLaneMeshGroups(meshes)) {
     if (!meshesForLane.length) continue;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
-    for (const mesh of meshesForLane) {
-      const position = mesh.geometry?.attributes?.position;
-      if (!position) continue;
-      _meshToGun.multiplyMatrices(gunWorldInverse, mesh.matrixWorld);
-      for (let vertex = 0; vertex < position.count; vertex++) {
-        _a.fromBufferAttribute(position, vertex).applyMatrix4(_meshToGun);
-        minZ = Math.min(minZ, _a.z);
-        maxZ = Math.max(maxZ, _a.z);
-      }
-    }
-    if (Number.isFinite(minZ) && Number.isFinite(maxZ)) {
-      let expectedCenterXM = 0;
-      const numbered = name.match(/^barrel-(\d+)$/);
-      const muzzleName = numbered ? `rig_muzzle_tip_${numbered[1]}` : 'rig_muzzle';
-      const muzzle = gunRig.getObjectByName(muzzleName);
-      if (muzzle) {
-        muzzle.getWorldPosition(_muzzleWorld);
-        expectedCenterXM = _muzzleWorld.applyMatrix4(gunWorldInverse).x;
-      }
-      lanes.push({
-        name,
-        meshes: meshesForLane,
-        minZ,
-        maxZ,
-        allowOffset: name !== 'main',
-        expectedCenterXM,
-      });
-    }
+    const bounds = barrelLaneBounds(meshesForLane, gunWorldInverse);
+    if (!bounds) continue;
+    lanes.push({
+      name,
+      meshes: meshesForLane,
+      ...bounds,
+      allowOffset: name !== 'main',
+      expectedCenterXM: expectedBarrelLaneCenterX(name, gunWorldInverse, gunRig),
+    });
   }
   return lanes;
 }

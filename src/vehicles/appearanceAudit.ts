@@ -130,6 +130,75 @@ function materialColorRecord(material: Material): AppearanceColorRecord | null {
   };
 }
 
+function appendRunningGearColorIssue(
+  issues: VehicleAppearanceIssue[],
+  object: Object3D,
+  role: string,
+  color: AppearanceColorRecord | null,
+): void {
+  if (FIXED_ROLE_COLOR[role] == null || !color || color.saturation <= 0.14) return;
+  issues.push({
+    code: 'saturated-running-gear', object: object.name || object.type,
+    role, color,
+  });
+}
+
+function appendTrackGuardMaterialIssue(
+  issues: VehicleAppearanceIssue[],
+  object: Object3D,
+  materialRole: RuntimeValue,
+  color: AppearanceColorRecord | null,
+): void {
+  if (dataValue(object, 'trackGuard') !== true
+      || typeof materialRole !== 'string'
+      || !GEAR_MATERIAL_ROLES.has(materialRole)) return;
+  issues.push({
+    code: 'track-guard-uses-gear-material', object: object.name || object.type,
+    role: materialRole, color,
+  });
+}
+
+function appendArmorMaterialIssue(
+  issues: VehicleAppearanceIssue[],
+  object: Object3D,
+  materialRole: RuntimeValue,
+  color: AppearanceColorRecord | null,
+): void {
+  const plateLike = /(?:armor|armour|plate|skirt|guard|glacis|^hull$|^turret$)/i
+    .test(object.name || '');
+  const documentedTrackPart = dataValue(object, 'runningGear') === true
+    || /(?:spare|hullTrack|turretTrack)/i.test(object.name || '');
+  if (!plateLike || documentedTrackPart
+      || typeof materialRole !== 'string'
+      || !GEAR_MATERIAL_ROLES.has(materialRole)) return;
+  issues.push({
+    code: 'armor-uses-gear-material', object: object.name || object.type,
+    role: materialRole, color,
+  });
+}
+
+function auditAppearanceObject(
+  object: Object3D,
+  issues: VehicleAppearanceIssue[],
+  roles: Record<string, number>,
+  seen: Set<string>,
+): void {
+  const renderObject = object as RenderObject;
+  if (!renderObject.isMesh && !renderObject.isInstancedMesh) return;
+  for (const material of materialsOf(object)) {
+    const role = roleOf(object, material) || 'unclassified';
+    roles[role] = (roles[role] || 0) + 1;
+    const color = materialColorRecord(material);
+    const key = `${object.uuid}:${material.uuid}:${role}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const materialRole = dataValue(material, 'appearanceRole');
+    appendRunningGearColorIssue(issues, object, role, color);
+    appendTrackGuardMaterialIssue(issues, object, materialRole, color);
+    appendArmorMaterialIssue(issues, object, materialRole, color);
+  }
+}
+
 /** Browser/release-facing detector for accidental olive/tan working gear and
  * armor panels routed through rubber/track materials. */
 export function auditTankAppearance(root: Object3D | null | undefined): VehicleAppearanceAudit {
@@ -137,45 +206,7 @@ export function auditTankAppearance(root: Object3D | null | undefined): VehicleA
   const roles: Record<string, number> = {};
   const seen = new Set<string>();
   root?.traverse((object) => {
-    const renderObject = object as RenderObject;
-    if (!renderObject.isMesh && !renderObject.isInstancedMesh) return;
-    for (const material of materialsOf(object)) {
-      const role = roleOf(object, material) || 'unclassified';
-      roles[role] = (roles[role] || 0) + 1;
-      const color = materialColorRecord(material);
-      const key = `${object.uuid}:${material.uuid}:${role}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      if (FIXED_ROLE_COLOR[role] != null && color && color.saturation > 0.14) {
-        issues.push({
-          code: 'saturated-running-gear', object: object.name || object.type,
-          role, color,
-        });
-      }
-
-      const materialRole = dataValue(material, 'appearanceRole');
-      if (dataValue(object, 'trackGuard') === true
-        && typeof materialRole === 'string'
-        && GEAR_MATERIAL_ROLES.has(materialRole)) {
-        issues.push({
-          code: 'track-guard-uses-gear-material', object: object.name || object.type,
-          role: materialRole, color,
-        });
-      }
-
-      const plateLike = /(?:armor|armour|plate|skirt|guard|glacis|^hull$|^turret$)/i.test(object.name || '');
-      const documentedTrackPart = dataValue(object, 'runningGear') === true
-        || /(?:spare|hullTrack|turretTrack)/i.test(object.name || '');
-      if (plateLike && !documentedTrackPart
-        && typeof materialRole === 'string'
-        && GEAR_MATERIAL_ROLES.has(materialRole)) {
-        issues.push({
-          code: 'armor-uses-gear-material', object: object.name || object.type,
-          role: materialRole, color,
-        });
-      }
-    }
+    auditAppearanceObject(object, issues, roles, seen);
   });
   return { version: 1, issues, roles };
 }
