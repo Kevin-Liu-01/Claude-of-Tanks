@@ -1616,8 +1616,87 @@ function buildT90ALegacy(P: T90BuilderPort, {
 }
 
 
+function buildT90AVladimirStern(P: T90BuilderPort): void {
+  const { box, cylX, cylZ, stowage } = KIT;
+  // Segmented fender shelves and their continuous rear roots tie the narrowed
+  // transom into the full-width track guards.
+  for (const side of [-1, 1]) {
+    for (let index = 0; index < 10; index++) {
+      P.add('hull', box(0.16, 0.05, 0.48),
+        side * 1.70, 1.32, -3.90 + index * 0.545);
+    }
+  }
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.50, 0.04, 0.54), side * 1.40, 1.30, -3.86);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hull', cylZ(0.14, 0.44, 12), side * 0.62, 1.53, -4.40);
+    P.add('hullDark', cylZ(0.144, 0.03, 12), side * 0.62, 1.53, -4.20);
+    P.add('hullDark', box(0.05, 0.13, 0.05), side * 0.62, 1.53, -4.63);
+  }
+  stowage(P, 'hull', P.rng, [[0, 1.50, -4.45, 1.4, 0.15, 0.40]]);
+  P.add('hull', box(2.12, 0.22, 0.08), 0, 1.50, -4.20);
+
+  // Layered stern service face on the real rear rake. Every piece overlaps
+  // the transom/rack plane so the doors and louvres have real shaded depth.
+  P.add('hull', box(1.42, 0.38, 0.040), 0, 1.38, -4.43);
+  P.add('hullDark', box(1.18, 0.26, 0.014), 0, 1.38, -4.458);
+  P.add('hullDark', box(0.44, 0.19, 0.020), -0.31, 1.37, -4.645);
+  P.add('hullDark', box(0.34, 0.16, 0.020), 0.39, 1.35, -4.645);
+  for (const y of [1.31, 1.37, 1.43]) {
+    P.add('hullDetail', box(0.39, 0.024, 0.040), -0.31, y, -4.665);
+  }
+  for (const y of [1.32, 1.39]) {
+    P.add('hullDetail', box(0.29, 0.024, 0.040), 0.39, y, -4.665);
+  }
+  P.add('hullDetail', box(0.045, 0.030, 0.042), -0.50, 1.37, -4.666);
+  P.add('hullDetail', box(0.045, 0.030, 0.042), 0.25, 1.35, -4.666);
+  P.add('hullDark', box(0.020, 0.24, 0.012), 0, 1.38, -4.469);
+  for (const y of [1.30, 1.38, 1.46]) {
+    P.add('hullDark', box(1.04, 0.018, 0.012), 0, y, -4.471);
+  }
+  P.add('hullDark', box(0.018, 0.23, 0.010), -0.36, 1.38, -4.472);
+  P.add('hullDark', box(0.018, 0.20, 0.010), 0.41, 1.36, -4.472);
+  P.add('hullDetail', box(0.055, 0.035, 0.010), -0.50, 1.39, -4.473);
+  P.add('hullDetail', box(0.055, 0.035, 0.010), 0.24, 1.34, -4.473);
+
+  // The recovered unditching log uses the same dark protective finish as
+  // the rack instead of the bright wood palette.
+  P.add('hullDark', cylX(0.095, 1.62, 12), 0, 1.12, -4.43);
+  for (const x of [-0.56, 0.56]) {
+    P.add('hullDark', cylX(0.102, 0.045, 12), x, 1.12, -4.43);
+    P.add('hullDark', box(0.07, 0.18, 0.05), x, 1.23, -4.42);
+  }
+  ruDeck(P, { deckY: 1.46, hatchZ: 0.50, gz: -3.35, grilles: 5, gw: 1.5, periY: 1.37 });
+
+  // Small asymmetric service heads preserve the recovered deck stations
+  // without recreating the fixed duplicate-turret silhouette.
+  P.add('hull', box(0.245, 0.185, 0.004), -0.6425, 1.8975, -1.52);
+  P.add('hull', box(0.045, 0.32, 0.004), -0.6425, 1.66, -1.52);
+  P.add('hull', box(0.14, 0.20, 0.004), 1.093, 1.84, -0.919);
+  P.add('hull', box(0.045, 0.25, 0.004), 1.093, 1.625, -0.919);
+}
+
+function addT90AVladimirSmokeBanks(P: T90BuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.22, 0.22, 0.46),
+      side * 1.18, 0.45, 0.32, 0, 0, -side * 0.16);
+    P.add('turretDark', box(0.16, 0.18, 0.025),
+      side * 1.305, 0.47, 0.32, 0, 0, -side * 0.16);
+    const smoke = FITTINGS.smokeBank({
+      mats: P.mats, count: 6, r: 0.042, len: 0.30,
+      pitch: -0.40, splay: 0.30, arc: 0.55, spacing: 0.10,
+    });
+    smoke.name = `t90aVladimirSmokeBank${side < 0 ? 'L' : 'R'}`;
+    smoke.position.set(side * 1.21, 0.51, 0.35);
+    smoke.rotation.y = side * 1.04;
+    P.turretG.add(smoke);
+  }
+}
+
 function buildT90AVladimirLegacy(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear, polyTurret } = KIT;
   const vladimirBow = Object.freeze({
     rearZ: 1.68,
     upperRearY: 1.29,
@@ -1677,76 +1756,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   // The terminal hull stations now form one continuous wedge.  The former
   // stack of square corner prongs only disguised a vertical bow wall and
   // left the upper/lower plates disconnected in frontal views.
-  // fender lips: segmented shelves at the tub edge (family constant)
-  for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
-    P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, 1.32, -3.90 + i * 0.545);
-  }
-  // Rear fender roots: the source's first lip is a continuous plate from
-  // the narrowed transom to the outer shelf.  Leaving only the outer rail
-  // produced a pair of enclosed plan-view voids at z=-3.81.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.50, 0.04, 0.54), s * 1.40, 1.30, -3.86);
-  }
-  // tail rack: drums + stowage ON the plate (ref deck bumps 1.655-1.671)
-  for (const s of [-1, 1]) {
-    P.add('hull', cylZ(0.14, 0.44, 12), s * 0.62, 1.53, -4.40);
-    P.add('hullDark', cylZ(0.144, 0.03, 12), s * 0.62, 1.53, -4.20);
-    P.add('hullDark', box(0.05, 0.13, 0.05), s * 0.62, 1.53, -4.63);
-  }
-  stowage(P, 'hull', P.rng, [[0, 1.50, -4.45, 1.4, 0.15, 0.40]]);
-  P.add('hull', box(2.12, 0.22, 0.08), 0, 1.50, -4.20);                 // source-narrow rack back plate
-  // Layered stern service face on the real rear rake: inset doors, louvres,
-  // tow brackets, and the transverse unditching log.  Every layer overlaps
-  // the transom/rack plane; none is an isolated billboard or envelope fill.
-  P.add('hull', box(1.42, 0.38, 0.040), 0, 1.38, -4.43);
-  P.add('hullDark', box(1.18, 0.26, 0.014), 0, 1.38, -4.458);
-  P.add('hullDark', box(0.44, 0.19, 0.020), -0.31, 1.37, -4.645);
-  P.add('hullDark', box(0.34, 0.16, 0.020), 0.39, 1.35, -4.645);
-  // Proud door lips and louvre blades sit 18 mm ahead of those recessed
-  // fields, still far inside the certified tail envelope.  This supplies
-  // real shaded depth rather than trying to paint detail onto a flat slab.
-  for (const y of [1.31, 1.37, 1.43]) {
-    P.add('hullDetail', box(0.39, 0.024, 0.040), -0.31, y, -4.665);
-  }
-  for (const y of [1.32, 1.39]) {
-    P.add('hullDetail', box(0.29, 0.024, 0.040), 0.39, y, -4.665);
-  }
-  P.add('hullDetail', box(0.045, 0.030, 0.042), -0.50, 1.37, -4.666);
-  P.add('hullDetail', box(0.045, 0.030, 0.042), 0.25, 1.35, -4.666);
-  P.add('hullDark', box(0.020, 0.24, 0.012), 0, 1.38, -4.469);
-  for (const y of [1.30, 1.38, 1.46]) {
-    P.add('hullDark', box(1.04, 0.018, 0.012), 0, y, -4.471);
-  }
-  // Inset asymmetry is carried on the existing terminal plane, so the
-  // source-certified mass stays unchanged while the doors, louvre fields
-  // and latch hierarchy remain legible in the shaded rear views.
-  P.add('hullDark', box(0.018, 0.23, 0.010), -0.36, 1.38, -4.472);
-  P.add('hullDark', box(0.018, 0.20, 0.010), 0.41, 1.36, -4.472);
-  P.add('hullDetail', box(0.055, 0.035, 0.010), -0.50, 1.39, -4.473);
-  P.add('hullDetail', box(0.055, 0.035, 0.010), 0.24, 1.34, -4.473);
-  // The recovered tank carries its log in the same dark protective finish
-  // as the rack.  Keeping the wood palette here turned the cylindrical mass
-  // into a false bright horizontal billboard in the direct-rear render.
-  P.add('hullDark', cylX(0.095, 1.62, 12), 0, 1.12, -4.43);
-  for (const x of [-0.56, 0.56]) {
-    P.add('hullDark', cylX(0.102, 0.045, 12), x, 1.12, -4.43);
-    P.add('hullDark', box(0.07, 0.18, 0.05), x, 1.23, -4.42);
-  }
-  ruDeck(P, { deckY: 1.46, hatchZ: 0.50, gz: -3.35, grilles: 5, gw: 1.5, periY: 1.37 });
-  // The former 1.82 m centre plateau and two 1.90+ m sliver frames were the
-  // fixed duplicate turret visible in the owner's yaw screenshot. They are
-  // deliberately absent; real shallow engine-deck fittings remain below.
-  // The recovered high side frame was once reproduced in rig_hull.  The
-  // source silhouette is turret stowage hardware, so its rotating rebuild
-  // is authored after the turret pivot below; leaving even the transverse
-  // tie here would create a fixed bar through the casting at non-zero yaw.
-  // Two small asymmetric source service heads keep their measured stations.
-  // Each receives a narrow post buried through the local deck, so the
-  // high, thin source silhouette is preserved without a floating plate.
-  P.add('hull', box(0.245, 0.185, 0.004), -0.6425, 1.8975, -1.52);
-  P.add('hull', box(0.045, 0.32, 0.004), -0.6425, 1.66, -1.52);
-  P.add('hull', box(0.14, 0.20, 0.004), 1.093, 1.84, -0.919);
-  P.add('hull', box(0.045, 0.25, 0.004), 1.093, 1.625, -0.919);
+  buildT90AVladimirStern(P);
   // The print's tow eyes sit on the lower center plate, inside the idler
   // lanes; its lamps sit on the upper glacis just above the live wrap.  The
   // old generic seats put both fittings through the front track envelope.
@@ -2249,18 +2259,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   // Mirrored 902B smoke batteries grow from armored shoes on the connected
   // cheek course. The roots enter the side facets while the tubes clear the
   // Shtora heads and the frontal K-5 fan.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.22, 0.22, 0.46), s * 1.18, 0.45, 0.32, 0, 0, -s * 0.16);
-    P.add('turretDark', box(0.16, 0.18, 0.025), s * 1.305, 0.47, 0.32, 0, 0, -s * 0.16);
-    const smoke = FITTINGS.smokeBank({
-      mats: P.mats, count: 6, r: 0.042, len: 0.30,
-      pitch: -0.40, splay: 0.30, arc: 0.55, spacing: 0.10,
-    });
-    smoke.name = `t90aVladimirSmokeBank${s < 0 ? 'L' : 'R'}`;
-    smoke.position.set(s * 1.21, 0.51, 0.35);
-    smoke.rotation.y = s * 1.04;
-    P.turretG.add(smoke);
-  }
+  addT90AVladimirSmokeBanks(P);
   // Vladimir receives the taller armored Kord tower rather than the former
   // gun floating above a ring and three disconnected boxes. Its foundation
   // penetrates the crown and the complete station fires on local +Z.
