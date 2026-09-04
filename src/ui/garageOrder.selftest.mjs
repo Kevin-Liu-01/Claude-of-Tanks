@@ -17,8 +17,11 @@ assert.match(garageSource,
   /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*width:98px;height:52px;[^}]*--cot-thumb-scale,1\.2[^}]*\}/,
   'compact garage cards preserve the lifted, enlarged portrait treatment');
 assert.match(garageSource,
-  /\.cot-card \.ti\{[^}]*opacity:1;[^}]*\}/,
-  'tank portraits paint immediately with a safe default frame while exact normalization idles');
+  /\.cot-card \.ti\{[^}]*width:140px;height:88px;[^}]*opacity:0;[^}]*transition:opacity[^}]*\}/,
+  'tank portraits reserve their final card footprint while load and normalization stay hidden');
+assert.match(garageSource,
+  /\.cot-card \.ti\[data-cot-portrait-ready='true'\]\{opacity:1;\}/,
+  'tank portraits fade in only after their final normalized frame is ready');
 assert.match(garageSource,
   /const cardsByCountry = new Map<string, HTMLElement\[\]>\(\);/,
   'nation switches update indexed card groups instead of rescanning the fleet');

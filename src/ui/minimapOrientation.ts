@@ -1,5 +1,4 @@
 export const MINIMAP_NORTH_UP = 0;
-export const MINIMAP_SPAWN_FLIPPED = Math.PI;
 
 const TAU = Math.PI * 2;
 
@@ -12,17 +11,17 @@ export function normalizeMinimapAngle(angle: number): number {
 }
 
 /**
- * Keep the tactical map stable for the whole round while making the local
- * deployment direction read as screen-up. Map spawn axes are not all due
- * north/south, so a binary 0/180-degree flip is not sufficient.
+ * Rotate the tactical map so the local vehicle's current hull heading is
+ * always screen-up. This is intentionally continuous rather than a spawn-side
+ * flip: turning the vehicle must turn the map and every overlay with it.
  */
-export function minimapRotationForSpawnYaw(yaw: number): number {
+export function minimapRotationForHeading(yaw: number): number {
   const value = Number(yaw);
   if (!Number.isFinite(value)) return MINIMAP_NORTH_UP;
   return normalizeMinimapAngle(-value);
 }
 
-/** Rotate a north-up canvas point around the map center into deployment-up. */
+/** Rotate a north-up canvas point around the map center into heading-up. */
 export function orientMinimapPoint(
   x: number,
   y: number,

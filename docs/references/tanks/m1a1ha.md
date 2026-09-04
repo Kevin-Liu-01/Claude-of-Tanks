@@ -16,6 +16,11 @@ and is not wired as a playable source.
 
 ## Notes / mismatches
 - Same oracle-vs-history conflict as m1a1 (CROWS mass present on the oracle).
+- The live M1A1HA deliberately retains its hard-surface armor, sensors,
+  stowage, and cable silhouette. Its former dedicated vegetation builder was
+  disconnected in the 2026-08-13 armor-strengthening pass and removed as
+  unreachable source in September 2026; configured suits use the shared
+  physical-ghillie system instead.
 
 ## Outcome (final lab state)
 Shares the tejas oracle/geometry: 75.4 -> ~87 (H92 T78 G87 R88). See

@@ -71,6 +71,12 @@ assert.match(garageCss,
   /@media \(hover:hover\) and \(pointer:fine\)\{[\s\S]*\.cot-eqtile:not\(\.locked\):hover/,
   'Garage equipment hover motion must only run on hover-capable pointers');
 assert.match(garageCss,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*position:fixed;[^}]*left:max\([^}]*right:max\([^}]*max-width:430px;[^}]*display:flex;/,
+  'Compact Garage equipment picker must stay centered inside the safe viewport');
+assert.match(garageCss,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
+  'Compact Garage equipment choices must scroll inside the bounded picker');
+assert.match(garageCss,
   /\.cot-sidebar-section-title\{[^}]*font:700 10px[^}]*letter-spacing:\.24em[^}]*text-transform:uppercase;/,
   'Garage sidebars must share one section-heading typography contract');
 for (const headerClass of [

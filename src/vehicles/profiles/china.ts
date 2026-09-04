@@ -739,7 +739,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // fender shelf: the print carries its full 3.7 width at deck height from
   // stern to bow shoulder — segmented plates bridge sponson edge to the
   // skirt hanger line.
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     for (let i = 0; i < 12; i++) {
       P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575);
     }
@@ -769,7 +769,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       { height: shoulderLower, inset: 1 },
       { height: shoulderUpper, inset: 1 },
     ]));
-  }
+  });
 
   // ---- glacis chevron armor: three raked panel courses with real seam
   // breaks (slope motivates the mass — no tile blanket, no stair steps).
@@ -790,9 +790,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // driver center station behind the chevron crest
   P.add('hull', box(0.54, 0.05, 0.46), 0, 1.685, 0.62);
   P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.715, 0.60);
-  for (const x of [-0.17, 0.17]) periscope(P, 'hullDetail', x, 1.72, 0.86);
+  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.72, 0.86));
   // bow lights on riser pods + tow points + routed cable
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.045, rake: -0.22, seed: 9950 + s,
     }), s * 0.95, 1.13, 3.06);
@@ -805,13 +805,13 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     headlight(P, s * 1.02, 1.18, 3.14, -0.24, 0.042);
     P.add('hullDark', box(0.10, 0.12, 0.15), s * 0.72, 0.66, 3.30, -0.3, 0, 0);
     liftEye(P, 'hullDetail', s * 1.30, 1.42, 2.30);
-  }
+  });
   towCable(P, [[-1.10, 1.18, 3.06], [-0.42, 1.32, 2.30], [0.48, 1.30, 2.26], [1.10, 1.18, 3.06]]);
   // Broad transverse steel guards replace the detached rubber bow flaps.
   // Their complete rear face is buried 47.5 mm into the new shoulder loft;
   // top and bottom datums exactly match its front stations, so the guard,
   // upper glacis and skirt read as one connected armored shoulder.
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     MUDGUARDS.add(P, {
       label: `ztz99a2-front-mudguard-${s < 0 ? 'left' : 'right'}`,
       x: s * 1.47, y: 1.19, z: 3.46,
@@ -819,14 +819,14 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.026,
       frontCut: 0.09, rearCut: 0.025, rake: 0.08,
     });
-  }
+  });
   ruFlaps(P, { x: 1.47, w: 0.50, rear: [0.86, 0.46], rearZ: -4.02 });
 
   // ---- heavy side modules: four rigid forward bays with cassette blocks +
   // two rubber rear bays, outer faces on the 3.70 width datum.  §5.266
   // critic fix 1: bay bottoms raised 0.44 -> 0.62 so ~half the wheel run
   // reads side-on (the print's own proportion).
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hull', box(0.06, 0.16, 6.60), s * 1.79, 1.48, -0.20);
     for (let i = 0; i < 6; i++) {
       const z = 2.42 - i * 1.02;
@@ -840,25 +840,25 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
         P.add('hullDark', box(0.020, 0.030, 0.62), s * 1.887, 1.27, z);
       }
     }
-  }
+  });
   widthAnchor(P, 1.85, 1.05, 0.40);
 
   // ---- rear deck + transom: louvre field, service transom, twin fuel drums
   // on real angle brackets and a center rack (print band 1.5..2.1 at the
   // stern — the silhouette rows in specs carry this overhang).
-  for (let i = 0; i < 7; i++) {
+  Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24);
     P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24);
-  }
-  for (const [x, z] of [[-0.85, -1.75], [0.72, -1.88]]) {
+  });
+  ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
     P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
-  }
+  });
   P.add('hull', box(3.26, 0.94, 0.12), 0, 1.06, -3.99);
   P.add('hullDark', box(2.20, 0.50, 0.035), 0, 1.12, -4.055);
-  for (let i = 0; i < 8; i++) {
+  Array.from({ length: 8 }, (_, index) => index).forEach((i) => {
     P.add('hullDetail', box(0.035, 0.44, 0.042), -1.00 + i * 0.286, 1.12, -4.07);
-  }
-  for (const s of [-1, 1]) {
+  });
+  ([-1, 1] as const).forEach((s) => {
     // drum + dark end caps + straps + twin angle brackets into the transom
     // (print band: y 1.5..2.1 hanging aft — the isolated aft-stretch A/B
     // measured +0.4 on the whole gate; the short-whip change in the same
@@ -872,7 +872,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     }
     P.add('hullDark', box(0.12, 0.06, 0.05), s * 1.02, 1.30, -4.06);
     P.add('hullDetail', torus(0.10, 0.021, 12), s * 0.55, 0.92, -4.06, Math.PI / 2, 0, 0);
-  }
+  });
   mount(P, 'hull', FITTINGS.stowageRack({
     mats: P.mats, w: 1.30, d: 0.34, h: 0.22, fill: 0.34, rails: 2, seed: 9955,
   }), 0, 1.88, -4.30);
@@ -880,9 +880,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // These bridge plates close the paired stern service-deck wells. They are
   // hull structure and must travel with the hull when another vehicle uses
   // this exact chassis, rather than being coupled to the A2 turret package.
-  for (const side of [-1, 1]) {
+  ([-1, 1] as const).forEach((side) => {
     P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
-  }
+  });
   P.hullG.userData.ztz99a2HullIntegrationReceipt = Object.freeze({
     architecture: 'ztz99a2-production-chassis-r3',
     shoulderVolumes: 2,

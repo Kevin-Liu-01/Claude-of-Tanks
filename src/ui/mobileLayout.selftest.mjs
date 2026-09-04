@@ -35,6 +35,8 @@ assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
   'Garage composition must consume semantic orientation attributes instead of media-query guesses');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
   'laptop navigation must collapse through the shared width-band contract');
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
+  'laptop garages must hide the decorative Battle Gallery instead of crowding the vehicle stage');
 assert.match(garage,
   /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"/,
   'overlay garages must expose explicit map and camouflage drawers');
