@@ -165,20 +165,6 @@ const geometryXform = KIT.xform as (
 // Family machinery
 // ---------------------------------------------------------------------------
 
-// Dark recess field behind every road wheel so hubs/rims read out of the
-// wheel-bay shadow (soviet-heavy r2 lesson — merged, zero extra draws).
-function wheelRecess(
-  P: MiscBuilderPort,
-  wheelZs: readonly number[],
-  xc: number,
-  r: number,
-  w: number,
-): void {
-  const { cylX } = KIT;
-  for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(r * 0.72, w * 1.06, 12), s * xc, 0, z, 0, 0, 0);
-  }
-}
 // (positioned variant — recess at wheel height y)
 function wheelRecessAt(
   P: MiscBuilderPort,
@@ -260,21 +246,6 @@ function basket(
   }
   P.add('turretDark', box(halfW * 1.96, (yTop - yBot) * 0.9, 0.014), 0, (yBot + yTop) / 2, z1 + 0.018);
   if (load) P.add('turretCloth', box(halfW * 1.82, (yTop - yBot) * load, d * 0.88), 0, yBot + (yTop - yBot) * load * 0.55, zm);
-}
-
-// Whip antenna on a base block, raked (turret frame).
-function whip(
-  P: MiscBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  len: number,
-  rzOut = 0,
-  rxAft = 0,
-): void {
-  const { box } = KIT;
-  P.add('turretDetail', box(0.06, 0.07, 0.06), x, y + 0.03, z);
-  P.add('turretDetail', box(0.022, len, 0.022), x + Math.sin(rzOut) * len * -0.5, y + Math.cos(Math.max(Math.abs(rzOut), Math.abs(rxAft))) * len * 0.5, z + Math.sin(rxAft) * len * 0.5, rxAft, 0, rzOut);
 }
 
 // GALIX-style discharger bank: n dark tubes splayed on a mount wedge.

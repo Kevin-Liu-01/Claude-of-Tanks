@@ -855,11 +855,6 @@ export function buildT72B87Native(P: ProfileBuilderPort, variant: T72Variant = '
   buildT72B87NativeTyped(P as T72BuilderPort, variant);
 }
 
-function buildT72B3Native(P: T72BuilderPort): void {
-  buildT72B87NativeTyped(P, 'b3');
-}
-
-
 function buildT72B3M(P: T72BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): corner-driven re-anchor to

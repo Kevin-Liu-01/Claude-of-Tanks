@@ -113,18 +113,6 @@ interface Cr2HullSection {
   readonly top: number;
 }
 
-interface Cr2TurretSection {
-  readonly z: number;
-  readonly w: number;
-  readonly bot: number;
-  readonly top: number;
-  readonly tw?: number;
-  readonly twL?: number;
-  readonly twR?: number;
-  readonly topL?: number;
-  readonly topR?: number;
-}
-
 interface Cr2FacetedSection {
   readonly z: number;
   readonly w: number;
@@ -1708,19 +1696,6 @@ function cr2HullCrossLoft(P: ChallengerBuilderPort, sections: readonly Cr2HullSe
     for (const side of [-1, 1]) {
       addCr2HullCrossSection(P, a, b, side);
     }
-  }
-}
-
-function cr2TurretLoft(P: ChallengerBuilderPort, sections: readonly Cr2TurretSection[]): void {
-  for (let i = 0; i < sections.length - 1; i++) {
-    const a = sections[i], b = sections[i + 1];
-    const atwL = a.twL ?? a.tw ?? a.w, atwR = a.twR ?? a.tw ?? a.w;
-    const btwL = b.twL ?? b.tw ?? b.w, btwR = b.twR ?? b.tw ?? b.w;
-    const atopL = a.topL ?? a.top, atopR = a.topR ?? a.top;
-    const btopL = b.topL ?? b.top, btopR = b.topR ?? b.top;
-    P.add('turret', slab(
-      [-a.w, a.bot, a.z], [a.w, a.bot, a.z], [b.w, b.bot, b.z], [-b.w, b.bot, b.z],
-      [-atwL, atopL, a.z], [atwR, atopR, a.z], [btwR, btopR, b.z], [-btwL, btopL, b.z]));
   }
 }
 

@@ -229,20 +229,6 @@ function capCanvasLuma(ctx: CanvasRenderingContext2D, size: number, maxLuma: num
   ctx.putImageData(image, 0, 0);
 }
 
-// Irregular blob path around (x,y) with radius r.
-function blobPath(ctx: CanvasRenderingContext2D, rng: Rng, x: number, y: number, r: number, lobes = 7, jitter = 0.45): void {
-  ctx.beginPath();
-  const offs = [];
-  for (let i = 0; i < lobes; i++) offs.push(1 - jitter / 2 + rng() * jitter);
-  for (let i = 0; i <= lobes; i++) {
-    const a = (i / lobes) * Math.PI * 2;
-    const rr = r * offs[i % lobes];
-    const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * 0.8;
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-}
-
 // Smooth rounded organic blob as a reusable Path2D (quadratic midpoint spline),
 // horizontally stretched like real NATO splotches.
 function blobPath2D(rng: Rng, x: number, y: number, r: number, lobes = 9, jitter = 0.55): Path2D {

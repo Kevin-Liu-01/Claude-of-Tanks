@@ -858,18 +858,6 @@ function seatFittingOnHorizontalPlate(
   return seatedY;
 }
 
-function seatArmorOnHorizontalPlane(
-  planeY: number,
-  height: number,
-  depth: number,
-  pitch: number,
-  embed = 0.012,
-): number {
-  const verticalHalfExtent = Math.abs(Math.cos(pitch)) * height * 0.5
-    + Math.abs(Math.sin(pitch)) * depth * 0.5;
-  return planeY + verticalHalfExtent - embed;
-}
-
 const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
 const T90A_TURRET_SEAT_Z_M = -0.06;
 const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;

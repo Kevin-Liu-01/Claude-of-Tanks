@@ -1302,11 +1302,6 @@ function addLeoTurretRoofBustle(
   for (const s of [-1, 1] as const) liftEye(P, 'turretDetail', s * (R.boxW * 0.8), h + 0.02, R.emes.z - 0.55, s * 0.4);
 }
 
-function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
-  addLeoTurretRoofSensorsAndHatches(P, R);
-  addLeoTurretRoofBustle(P, R);
-}
-
 // Plate mantlet sealed by a trunnion-axis roll (rotation-invariant about the
 // gun pivot — no void can open at min/max elevation) + Rh 120/130 tube.
 // G: { rollR, rollW, plateW, plateH, len, r, evac, evacR, sleeve, mrs }
@@ -9736,16 +9731,6 @@ function buildLeo2Revolution(P: TankBuilderPort) {
   P.topY = 1.9;
 }
 
-// small rectangular mud flap helper (leopard family)
-function mudflapRect(P: TankBuilderPort, x: number, y: number, z: number) {
-  MUDGUARDS.add(P, {
-    label: `leopard-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
-    x, y, z, thickness: 0.03, length: 0.34, height: 0.44,
-    material: 'rubber', rotation: [0, Math.PI / 2, 0],
-    crown: 0.014, frontCut: 0.045, rearCut: 0.03,
-  });
-}
-
 function finishKf51RubberInstance(
   mesh: THREE.InstancedMesh,
   boundsMaterial: VehicleMaterial,
@@ -15185,12 +15170,6 @@ function buildLeo2A4M(P: TankBuilderPort) {
   leoMantletGun(P, { rollR: 0.28, rollW: 0.66, plateW: 0.64, plateH: 0.48, len: 4.81, r: 0.084, evac: 0.56, evacR: 1.78 });
   P.decal('turret', 'number', 'A4M', 0.21, [1.60, 0.42, -0.74], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.47);
-}
-
-// FITTINGS mount helper (position + attach to the turret group).
-function mountFit(P: TankBuilderPort, fitting: THREE.Object3D, x: number, y: number, z: number): void {
-  fitting.position.set(x, y, z);
-  P.turretG.add(fitting);
 }
 
 export const LEOPARD_PROFILES = {
