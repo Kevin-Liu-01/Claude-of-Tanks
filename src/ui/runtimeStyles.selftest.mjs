@@ -56,6 +56,20 @@ assert.match(garageCss,
 assert.doesNotMatch(garageSource,
   /\$\{eqIds\.length\}\/\$\{EQUIP_SLOTS\} mounted/,
   'Garage equipment section must not repeat a mounted-slot counter');
+assert.ok(garageSource.includes("eqTooltipEl.setAttribute('role', 'tooltip')"),
+  'Garage equipment explanations must use an accessible tooltip contract');
+assert.ok(garageSource.includes('eqpickEl.addEventListener(\'pointerover\'') &&
+  garageSource.includes('eqpickEl.addEventListener(\'focusin\''),
+  'Garage equipment tooltips must work with pointer hover and keyboard focus');
+assert.ok(garageSource.includes('<button type="button" class="${cls.join(\' \')}"'),
+  'Garage equipment choices must render as semantic buttons');
+assert.doesNotMatch(garageSource, /title="\$\{it\.name\}/,
+  'Garage equipment choices must not fall back to inconsistent native title bubbles');
+assert.match(garageCss, /\.cot-eqtooltip\{position:fixed;[^}]*pointer-events:none;/,
+  'Garage equipment tooltip must escape the scrolling picker without intercepting input');
+assert.match(garageCss,
+  /@media \(hover:hover\) and \(pointer:fine\)\{[\s\S]*\.cot-eqtile:not\(\.locked\):hover/,
+  'Garage equipment hover motion must only run on hover-capable pointers');
 assert.match(garageCss,
   /\.cot-sidebar-section-title\{[^}]*font:700 10px[^}]*letter-spacing:\.24em[^}]*text-transform:uppercase;/,
   'Garage sidebars must share one section-heading typography contract');

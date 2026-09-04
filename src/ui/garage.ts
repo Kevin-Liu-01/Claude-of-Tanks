@@ -190,6 +190,12 @@ function eventElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character] || character);
+}
+
 const NATION_LABEL: Readonly<Record<string, string>> = {
   USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
   Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
@@ -1436,11 +1442,111 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const eqpickEl = document.createElement('div');
   eqpickEl.className = 'cot-eqpick';
   root.appendChild(eqpickEl);
+  const eqTooltipEl = document.createElement('div');
+  eqTooltipEl.id = 'cot-equipment-tooltip';
+  eqTooltipEl.className = 'cot-eqtooltip';
+  eqTooltipEl.setAttribute('role', 'tooltip');
+  eqTooltipEl.setAttribute('aria-hidden', 'true');
+  root.appendChild(eqTooltipEl);
   let eqOpenSlot = -1;   // -1 = picker closed
   let eqCat = 'all';     // active category chip
+  let eqTooltipTimer: ReturnType<typeof setTimeout> | null = null;
+  let eqTooltipAnchor: HTMLElement | null = null;
+  let eqTooltipWarmUntil = 0;
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
+
+  function eqAvailabilityCopy(itemId: string, locked: boolean): string {
+    if (!locked) return `Equip in Slot ${eqOpenSlot + 1}`;
+    const spec = selectedId ? specById.get(selectedId) : null;
+    if (itemId === 'rammer' && spec?.gun?.autoloader) {
+      return 'Unavailable · autoloaders cannot mount a gun rammer';
+    }
+    return 'Unavailable · modern vehicles only';
+  }
+
+  function hideEqTooltip(primeNext = true): void {
+    if (eqTooltipTimer !== null) {
+      clearTimeout(eqTooltipTimer);
+      eqTooltipTimer = null;
+    }
+    if (eqTooltipAnchor) eqTooltipAnchor.removeAttribute('aria-describedby');
+    if (primeNext && eqTooltipEl.classList.contains('show')) {
+      eqTooltipWarmUntil = performance.now() + 900;
+    }
+    eqTooltipAnchor = null;
+    eqTooltipEl.classList.remove('show');
+    eqTooltipEl.setAttribute('aria-hidden', 'true');
+  }
+
+  function positionEqTooltip(anchor: HTMLElement): void {
+    const anchorRect = anchor.getBoundingClientRect();
+    const pickerRect = eqpickEl.getBoundingClientRect();
+    const tipRect = eqTooltipEl.getBoundingClientRect();
+    const gap = 12;
+    const viewportPad = 10;
+    const fitsLeft = pickerRect.left - tipRect.width - gap >= viewportPad;
+    let left = fitsLeft
+      ? pickerRect.left - tipRect.width - gap
+      : pickerRect.right + gap;
+    let top = anchorRect.top + anchorRect.height / 2 - tipRect.height / 2;
+    left = Math.max(viewportPad, Math.min(left, window.innerWidth - tipRect.width - viewportPad));
+    top = Math.max(viewportPad, Math.min(top, window.innerHeight - tipRect.height - viewportPad));
+    eqTooltipEl.dataset.side = fitsLeft ? 'left' : 'right';
+    eqTooltipEl.style.left = `${Math.round(left)}px`;
+    eqTooltipEl.style.top = `${Math.round(top)}px`;
+  }
+
+  function showEqTooltip(anchor: HTMLElement): void {
+    if (!eqpickEl.classList.contains('open') || !anchor.isConnected) return;
+    const itemId = anchor.dataset.eqId || '';
+    const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
+    const locked = anchor.classList.contains('locked');
+    const fittedAt = item ? curLoadout().indexOf(item.id) : -1;
+    const category = item
+      ? EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment'
+      : 'Slot action';
+    const state = !item
+      ? `Clear Slot ${eqOpenSlot + 1}`
+      : locked
+        ? eqAvailabilityCopy(item.id, true)
+        : fittedAt === eqOpenSlot
+          ? 'Currently fitted · click to remove'
+          : fittedAt >= 0
+            ? `Fitted in Slot ${fittedAt + 1} · click to move here`
+            : eqAvailabilityCopy(item.id, false);
+
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'eyebrow';
+    eyebrow.textContent = category;
+    const name = document.createElement('strong');
+    name.textContent = item?.name || 'Empty Slot';
+    const detail = document.createElement('span');
+    detail.className = 'detail';
+    detail.textContent = item?.desc || 'Remove the equipment fitted in this slot.';
+    const action = document.createElement('span');
+    action.className = 'action';
+    action.textContent = state;
+    eqTooltipEl.replaceChildren(eyebrow, name, detail, action);
+    eqTooltipEl.dataset.category = item?.cat || 'action';
+    eqTooltipEl.setAttribute('aria-hidden', 'false');
+    eqTooltipEl.classList.add('show');
+    eqTooltipAnchor = anchor;
+    anchor.setAttribute('aria-describedby', eqTooltipEl.id);
+    positionEqTooltip(anchor);
+  }
+
+  function queueEqTooltip(anchor: HTMLElement, keyboard = false): void {
+    if (eqTooltipAnchor === anchor && eqTooltipEl.classList.contains('show')) return;
+    hideEqTooltip(false);
+    eqTooltipAnchor = anchor;
+    const delay = performance.now() < eqTooltipWarmUntil ? 0 : keyboard ? 160 : 360;
+    eqTooltipTimer = setTimeout(() => {
+      eqTooltipTimer = null;
+      if (eqTooltipAnchor === anchor) showEqTooltip(anchor);
+    }, delay);
+  }
 
   /** Assign/remove an item in the open slot, persist, refresh the card. */
   function eqAssign(itemId: string | null): void {
@@ -1466,16 +1572,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function renderEqPicker() {
     if (!selectedId || eqOpenSlot < 0) return;
+    hideEqTooltip(false);
     const spec = specById.get(selectedId);
     const cur = curLoadout();
     let chips = '';
     for (const c of EQUIP_CATEGORIES) {
       chips += `<button type="button" class="chip${c.id === eqCat ? ' sel' : ''}" data-cat="${c.id}">${c.label}</button>`;
     }
+    const emptyLabel = escapeHtmlAttribute(
+      `Empty Slot — remove the equipment fitted in Slot ${eqOpenSlot + 1}`,
+    );
     let tiles =
-      `<div class="cot-eqtile remove" data-eq="">` +
+      `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
+      `aria-label="${emptyLabel}">` +
       `${uiIconSVG('close', 34, 'rgba(238,244,250,.86)')}` +
-      `<div class="n">Empty</div><div class="e">remove equipment from this slot</div></div>`;
+      `<span class="n">Empty</span><span class="e">remove equipment from this slot</span></button>`;
     for (const it of EQUIPMENT_CATALOG) {
       if (eqCat !== 'all' && it.cat !== eqCat) continue;
       const locked = !equipEligible(it, spec);
@@ -1485,10 +1596,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (locked) { cls.push('locked'); tag = `<span class="tag">${it.era}</span>`; }
       else if (at === eqOpenSlot) { cls.push('sel'); tag = `<span class="tag">Fitted</span>`; }
       else if (at >= 0) { cls.push('inother'); tag = `<span class="tag">Slot ${at + 1}</span>`; }
-      tiles += `<div class="${cls.join(' ')}" data-eq="${locked ? '' : it.id}" ` +
-        `title="${it.name} — ${it.desc}${locked ? ' (modern vehicles only)' : ''}">` +
-        `${tag}${equipIconSVG(it.id, 34)}<div class="n">${it.name}</div>` +
-        `<div class="e">${it.desc}</div></div>`;
+      const availability = locked
+        ? eqAvailabilityCopy(it.id, true)
+        : at === eqOpenSlot
+          ? 'Currently fitted; activate to remove'
+          : at >= 0
+            ? `Fitted in Slot ${at + 1}; activate to move to Slot ${eqOpenSlot + 1}`
+            : `Activate to equip in Slot ${eqOpenSlot + 1}`;
+      const ariaLabel = escapeHtmlAttribute(`${it.name}. ${it.desc}. ${availability}`);
+      tiles += `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : it.id}" ` +
+        `data-eq-id="${it.id}" data-eq-cat="${it.cat}" aria-label="${ariaLabel}" ` +
+        `aria-pressed="${at === eqOpenSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
+        `${tag}${equipIconSVG(it.id, 38)}<span class="n">${it.name}</span>` +
+        `<span class="e">${it.desc}</span></button>`;
     }
     eqpickEl.innerHTML =
       `<div class="ph"><span class="t">Equipment &middot; <i>Slot ${eqOpenSlot + 1}</i></span>` +
@@ -1511,6 +1631,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   function closeEqPicker() {
     if (eqOpenSlot < 0) return;
+    hideEqTooltip(false);
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
     for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
@@ -1537,9 +1658,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (target?.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
     const tile = target?.closest<HTMLElement>('.cot-eqtile');
     if (!tile || tile.classList.contains('locked')) return;
+    hideEqTooltip(false);
     emit('ui:click', {});
     eqAssign(tile.dataset.eq || null);
   });
+
+  eqpickEl.addEventListener('pointerover', (e) => {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
+    if (!tile) return;
+    const from = e.relatedTarget;
+    if (from instanceof Node && tile.contains(from)) return;
+    queueEqTooltip(tile);
+  });
+  eqpickEl.addEventListener('pointerout', (e) => {
+    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
+    if (!tile) return;
+    const to = e.relatedTarget;
+    if (to instanceof Node && tile.contains(to)) return;
+    hideEqTooltip();
+  });
+  eqpickEl.addEventListener('focusin', (e) => {
+    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
+    if (tile) queueEqTooltip(tile, true);
+  });
+  eqpickEl.addEventListener('focusout', (e) => {
+    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
+    if (!tile) return;
+    const to = e.relatedTarget;
+    if (to instanceof Node && tile.contains(to)) return;
+    hideEqTooltip();
+  });
+  eqpickEl.addEventListener('scroll', () => hideEqTooltip(false), true);
 
   // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
