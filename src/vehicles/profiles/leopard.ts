@@ -1498,10 +1498,37 @@ function wedgeTurretShell(P: TankBuilderPort, T: LeopardWedgeTurretConfig): void
 // Leopard 2 roof furniture + bustle. Turret-local coordinates.
 // R: { h, boxW, boxRear, emes:{x,z}, peri:{x,z,top}, cmdr:{x,z}, loader:{x,z},
 //     mastZ, antennaZ/antennaTop, rackZ, rackTop, basketZ0?, smoke:{z,y} }
-function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
-  const { box, cylY, cylZ, openRackGrid, periscope, liftEye, smokeCluster,
-    stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
-  const slab = orientedSlab;                                  // §C.1 winding guard
+function addLeoTurretRoofHatch(
+  P: TankBuilderPort,
+  h: number,
+  station: LeopardTurretRoofConfig['cmdr'],
+  isLoader: boolean,
+): void {
+  const { box, cylY } = KIT;
+  const outerRadius = isLoader ? 0.22 : 0.24;
+  const innerRadius = isLoader ? 0.19 : 0.21;
+  P.add('turret', cylY(outerRadius, outerRadius, 0.05, 14),
+    station.x, h + 0.025, station.z);
+  P.add('turret', cylY(innerRadius, innerRadius, 0.028, 14),
+    station.x, h + 0.066, station.z);
+  P.add('turretDark', box(isLoader ? 0.34 : 0.38, 0.014, 0.035),
+    station.x, h + 0.085, station.z);
+  if (isLoader) return;
+  for (let index = 0; index < 6; index++) {
+    const angle = (index / 6) * Math.PI * 2;
+    P.add('turretDark', box(0.06, 0.045, 0.02),
+      station.x + Math.sin(angle) * 0.20,
+      h + 0.045,
+      station.z + Math.cos(angle) * 0.20,
+      0, angle, 0);
+  }
+}
+
+function addLeoTurretRoofSensorsAndHatches(
+  P: TankBuilderPort,
+  R: LeopardTurretRoofConfig,
+): void {
+  const { box, cylY, periscope } = KIT;
   const h = R.h;
   // EMES 15 gunner sight: rectangular cutout recessed into the right wedge
   // roof edge — dark well, armored head, brow lid, shutter face + glass
@@ -1519,14 +1546,8 @@ function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
   const hatchStations: ReadonlyArray<readonly [LeopardTurretRoofConfig['cmdr'], boolean]> = [
     [R.cmdr, false], [R.loader, true],
   ];
-  for (const [st, lo] of hatchStations) {
-    P.add('turret', cylY(lo ? 0.22 : 0.24, lo ? 0.22 : 0.24, 0.05, 14), st.x, h + 0.025, st.z);
-    P.add('turret', cylY(lo ? 0.19 : 0.21, lo ? 0.19 : 0.21, 0.028, 14), st.x, h + 0.066, st.z);
-    P.add('turretDark', box((lo ? 0.34 : 0.38), 0.014, 0.035), st.x, h + 0.085, st.z);
-    if (!lo) for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2;
-      P.add('turretDark', box(0.06, 0.045, 0.02), st.x + Math.sin(a) * 0.20, h + 0.045, st.z + Math.cos(a) * 0.20, 0, a, 0);
-    }
+  for (const [station, isLoader] of hatchStations) {
+    addLeoTurretRoofHatch(P, h, station, isLoader);
   }
   periscope(P, 'turretDetail', R.cmdr.x, h + 0.01, R.cmdr.z + 0.33);
   // crosswind sensor mast at the rear roof + whip antennas at the bustle
@@ -1540,6 +1561,15 @@ function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
       s * (R.boxW - 0.18), h + (R.antennaTop - h) / 2, R.antennaZ, 0, 0, s * 0.05);
     P.add('turretDetail', box(0.06, 0.14, 0.06), s * (R.boxW - 0.18), h + 0.06, R.antennaZ); // antenna base pot
   }
+}
+
+function addLeoTurretRoofBustle(
+  P: TankBuilderPort,
+  R: LeopardTurretRoofConfig,
+): void {
+  const { box, openRackGrid, liftEye, smokeCluster, stowage, jerryCan,
+    tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const h = R.h;
   // full-width slatted bustle stowage rack with mesh floor + strapped kit
   const rackZ = R.rackZ, rackT = R.rackTop, rackB = R.rackBottom ?? 0.02;
   P.add('turretDetail', box(2 * R.boxW + 0.26, 0.045, 0.045), 0, rackT, rackZ);
@@ -1570,6 +1600,11 @@ function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
     smokeCluster(P, s * (R.boxW + 0.04), R.smoke.y - 0.05, R.smoke.z - 0.04, 4, s * 1.2, 0.85);
   }
   for (const s of [-1, 1] as const) liftEye(P, 'turretDetail', s * (R.boxW * 0.8), h + 0.02, R.emes.z - 0.55, s * 0.4);
+}
+
+function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
+  addLeoTurretRoofSensorsAndHatches(P, R);
+  addLeoTurretRoofBustle(P, R);
 }
 
 // Plate mantlet sealed by a trunnion-axis roll (rotation-invariant about the
