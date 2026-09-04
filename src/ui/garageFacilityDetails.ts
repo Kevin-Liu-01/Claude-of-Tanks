@@ -107,7 +107,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
-      parts: [[-22, -16], [2, -36]], floods: [[-39, 1], [39, 1]],
+      // Keep the wheel inventory outside the nearby T-90M rebuild island.
+      // The former -22/-16 placement overlapped both the service terrace and
+      // its full-detail vehicle, which also let the two terrain pads fight.
+      parts: [[-31, -17], [2, -36]], floods: [[-39, 1], [39, 1]],
       feature: [4, 18], featureRadius: [13, 9],
     },
     rain_canopy: {
@@ -519,26 +522,52 @@ export function addGarageFacilityDetails({
     }
     structuralConnections += 18;
 
-    // Rear service wall, tool board, connected bench and cabinet. This gives
-    // the bay a clear repair purpose without inventing another fake vehicle.
-    clusterBox(cluster, 0, 3.58, 1.20,
-      9.1, 2.25, 0.20, new THREE.Color(0x30363a), 'painted');
-    for (const lateral of [-3.0, -1.5, 0, 1.5, 3.0]) {
-      clusterBox(cluster, lateral, 3.43, 1.25,
-        0.08, 1.78, 0.06, lateral === 0 ? accent : steel, 'painted');
+    // Camera-facing opening convention: local +longitudinal points toward the
+    // opening camera, so the service backplane belongs on the negative side
+    // of the real tank. The old +3.58 placement put a solid dark wall between
+    // Frosthollow's camera and its Abrams. Split panels and open gaps retain a
+    // readable tool wall without ever becoming one vehicle-height occluder.
+    for (const lateral of [-3.05, 0, 3.05]) {
+      clusterBox(cluster, lateral, -4.08, 1.28,
+        2.38, 2.16, 0.18, new THREE.Color(0x30363a), 'painted');
+      for (const toolOffset of [-0.72, 0, 0.72]) {
+        clusterBox(cluster, lateral + toolOffset, -3.96, 1.30,
+          0.07, 1.62, 0.05, toolOffset === 0 ? accent : steel, 'painted');
+      }
     }
-    clusterBox(cluster, mirror * 2.25, 2.92, 0.82,
+    for (const lateral of [-4.48, -1.53, 1.53, 4.48]) {
+      clusterBox(cluster, lateral, -4.08, 1.25,
+        0.15, 2.50, 0.22, steel, 'structure');
+    }
+    clusterBox(cluster, 0, -4.08, 2.48,
+      9.1, 0.18, 0.24, steel, 'structure');
+    clusterBox(cluster, mirror * 2.25, -3.36, 0.82,
       3.2, 0.18, 1.05, timber, 'equipment');
     for (const lateral of [mirror * 0.85, mirror * 3.65]) {
-      clusterBox(cluster, lateral, 2.92, 0.42,
+      clusterBox(cluster, lateral, -3.36, 0.42,
         0.16, 0.82, 0.72, steel, 'structure');
     }
-    clusterBox(cluster, -mirror * 3.30, 2.92, 0.92,
+    clusterBox(cluster, -mirror * 3.30, -3.36, 0.92,
       1.18, 1.72, 0.88, primer, 'painted');
     for (const y of [0.48, 0.82, 1.16]) {
-      clusterBox(cluster, -mirror * 3.30, 2.45, y,
+      clusterBox(cluster, -mirror * 3.30, -2.89, y,
         0.92, 0.04, 0.03, dark, 'equipment');
     }
+    // Connected overhead utility run, junction cabinet, two drops and work
+    // lamps bring Verdant's believable wiring language into every outdoor bay.
+    clusterBox(cluster, 0, -4.02, 4.62,
+      8.8, 0.10, 0.10, dark, 'equipment');
+    clusterBox(cluster, mirror * 3.85, -3.96, 3.62,
+      0.72, 1.08, 0.28, primer, 'painted');
+    for (const lateral of [-2.15, 2.15]) {
+      clusterBeam(cluster,
+        [lateral, -4.02, 4.62],
+        [lateral, -1.35, 4.08],
+        0.045, dark, 'equipment');
+      clusterCylinder(cluster, lateral, -1.35, 3.94,
+        0.24, 0.16, accent, 0, 10);
+    }
+    structuralConnections += 18;
   };
 
   const addFloodTower = (side: number, depth: number, height = 7.2): void => {
@@ -869,16 +898,19 @@ export function addGarageFacilityDetails({
           0.28, 5.0, 0.28, steel, 'structure');
       }
     }
-    clusterBox(cluster, lateral, longitudinal + 2.25, 2.48,
+    // Closed extraction wall is behind the workpiece; the positive side stays
+    // open toward the Garage camera so the booth reads as an interior process,
+    // never as a bare painted wall.
+    clusterBox(cluster, lateral, longitudinal - 2.25, 2.48,
       width, 4.75, 0.18, boothTint, 'painted');
     clusterBox(cluster, lateral, longitudinal, 5.05,
       width + 0.6, 0.28, 5.0, dark, 'painted');
-    clusterBox(cluster, lateral, longitudinal - 2.08, 4.55,
+    clusterBox(cluster, lateral, longitudinal + 2.08, 4.55,
       width, 0.18, 0.18, safety, 'painted');
     for (const sideOffset of [-2.55, 0, 2.55]) {
-      clusterCylinder(cluster, lateral + sideOffset, longitudinal + 1.95, 5.85,
+      clusterCylinder(cluster, lateral + sideOffset, longitudinal - 1.95, 5.85,
         0.30, 1.60, steel, 0, 12);
-      clusterCylinder(cluster, lateral + sideOffset, longitudinal + 1.95, 6.68,
+      clusterCylinder(cluster, lateral + sideOffset, longitudinal - 1.95, 6.68,
         0.42, 0.10, dark, 0, 12);
     }
     structuralConnections += 19;
@@ -919,34 +951,34 @@ export function addGarageFacilityDetails({
     const platform = new THREE.Color(0x77726a);
     // Five open, connected portals give Cinder a strong rail identity without
     // the old 45 m slab cutting through both map warehouses and tree line.
-    clusterBox(cluster, 0, 5.4, 0.58, 25.5, 1.16, 0.9, masonryDark, 'masonry');
-    clusterBox(cluster, 0, 5.4, 7.22, 25.5, 1.56, 0.9, masonryDark, 'masonry');
+    clusterBox(cluster, 0, -5.4, 0.58, 25.5, 1.16, 0.9, masonryDark, 'masonry');
+    clusterBox(cluster, 0, -5.4, 7.22, 25.5, 1.56, 0.9, masonryDark, 'masonry');
     clusterBox(cluster, 0, 1.0, 7.75, 26.2, 0.45, 9.4, dark, 'painted');
-    clusterBox(cluster, 0, -3.7, 0.32, 26.4, 0.60, 1.1, platform, 'masonry');
+    clusterBox(cluster, 0, 3.7, 0.32, 26.4, 0.60, 1.1, platform, 'masonry');
     for (let bay = -2; bay <= 2; bay += 1) {
       const side = bay * 4.7;
       // Rear facade: separated masonry bays with a recessed service door,
       // clerestory window and steel mullions instead of one featureless wall.
-      clusterBox(cluster, side, 5.4, 3.88,
+      clusterBox(cluster, side, -5.4, 3.88,
         4.22, 5.48, 0.74, masonry, 'masonry');
-      clusterBox(cluster, side, 4.99, 2.16,
+      clusterBox(cluster, side, -4.99, 2.16,
         2.72, 3.58, 0.08, dark, 'painted');
-      clusterBox(cluster, side, 4.94, 5.52,
+      clusterBox(cluster, side, -4.94, 5.52,
         3.22, 1.12, 0.06, bay % 2 ? accent : steel, 'painted');
-      clusterBox(cluster, side, 4.88, 5.52,
+      clusterBox(cluster, side, -4.88, 5.52,
         0.10, 1.08, 0.08, dark, 'structure');
-      clusterBox(cluster, side, 4.88, 5.52,
+      clusterBox(cluster, side, -4.88, 5.52,
         3.18, 0.10, 0.08, dark, 'structure');
-      clusterBox(cluster, side, -3.4, 3.85,
+      clusterBox(cluster, side, 3.4, 3.85,
         0.38, 7.7, 0.56, steel, 'structure');
       clusterBox(cluster, side, 1.0, 7.42,
         0.36, 0.28, 9.2, steel, 'structure');
       if (bay < 2) {
         const center = centerSide + side + 2.35;
         const localCenter = center - centerSide;
-        clusterBox(cluster, localCenter, 5.9, 6.52,
+        clusterBox(cluster, localCenter, -5.9, 6.52,
           4.05, 0.28, 0.18, safety, 'painted');
-        clusterBox(cluster, localCenter, 5.98, 3.25,
+        clusterBox(cluster, localCenter, -5.98, 3.25,
           3.8, 6.1, 0.14, dark, 'structure');
       }
     }
@@ -996,13 +1028,13 @@ export function addGarageFacilityDetails({
       0.18, 5.2, 0.18, dark, 'structure');
     // Connected rear work wall and waist-high bench give the shelter a real
     // operating face while preserving the open hero sightline.
-    clusterBox(cluster, 0, 4.22, 1.12,
+    clusterBox(cluster, 0, -4.22, 1.12,
       width - 1.3, 2.05, 0.22, dark, 'painted');
     for (const lateral of [-width * 0.30, -width * 0.10, width * 0.10, width * 0.30]) {
-      clusterBox(cluster, lateral, 4.08, 1.16,
+      clusterBox(cluster, lateral, -4.08, 1.16,
         0.08, 1.72, 0.06, lateral === width * 0.10 ? accent : steel, 'painted');
     }
-    clusterBox(cluster, 0, 3.55, 0.76,
+    clusterBox(cluster, 0, -3.55, 0.76,
       width * 0.56, 0.18, 0.95, timber, 'equipment');
   };
 
@@ -1156,16 +1188,16 @@ export function addGarageFacilityDetails({
       // second roof frame competing with those real map buildings.
       clusterBox(featureCluster, 0, 2, 0.16,
         22, 0.32, 3.0, new THREE.Color(0x58534d), 'masonry');
-      clusterBox(featureCluster, 0, 3.25, 1.15,
+      clusterBox(featureCluster, 0, -3.25, 1.15,
         22, 2.25, 0.34, new THREE.Color(0x6b5850), 'masonry');
-      clusterBox(featureCluster, 0, 3.02, 2.36,
+      clusterBox(featureCluster, 0, -3.02, 2.36,
         22.8, 0.18, 0.70, new THREE.Color(0x4c5358), 'painted');
       for (let index = -4; index <= 4; index += 1) {
         clusterBox(featureCluster, index * 2.4, 0.4, 0.56,
           1.9, 1.12, 0.7,
           index % 2 ? new THREE.Color(0x8a7e68) : new THREE.Color(0x756e5e),
           'equipment');
-        clusterBox(featureCluster, index * 2.4, 3.00, 1.22,
+        clusterBox(featureCluster, index * 2.4, -3.00, 1.22,
           1.54, 1.62, 0.06, index % 2 ? dark : primer, 'painted');
       }
       addPoweredWinch(featureCluster, -7.2, -1.45, new THREE.Color(0x9a6542));
@@ -1231,14 +1263,14 @@ export function addGarageFacilityDetails({
       // inner steel portal give the opening real depth and connected support.
       const cavernRock = new THREE.Color(0x686b6b);
       for (const offset of [-7.5, 7.5]) {
-        clusterBox(featureCluster, offset, 3.0, 3.4,
+        clusterBox(featureCluster, offset, -3.0, 3.4,
           5.0, 6.8, 3.0, cavernRock, 'masonry');
         clusterBox(featureCluster, offset, 0.7, 3.3,
           1.1, 6.6, 1.0, steel, 'structure');
       }
-      clusterBox(featureCluster, 0, 3.0, 6.30,
+      clusterBox(featureCluster, 0, -3.0, 6.30,
         10.2, 1.00, 3.0, cavernRock, 'masonry');
-      clusterBox(featureCluster, 0, 5.10, 2.75,
+      clusterBox(featureCluster, 0, -5.10, 2.75,
         10.0, 5.35, 0.20, new THREE.Color(0x252b2f), 'painted');
       clusterBox(featureCluster, 0, 1.05, 0.16,
         12.5, 0.32, 8.5, new THREE.Color(0x626b70), 'masonry');
@@ -1257,7 +1289,7 @@ export function addGarageFacilityDetails({
           1.20, 0.18, 0.10, accent, 'painted');
       }
       for (let index = -3; index <= 3; index += 1) {
-        clusterBox(featureCluster, index * 3.0, 6,
+        clusterBox(featureCluster, index * 3.0, -6,
           1.2 + Math.abs(index) * 0.08, 2.8, 2.4, 1.8,
           new THREE.Color(0x6a6964), 'masonry');
       }

@@ -58,6 +58,8 @@ export interface GarageArchitectureStats {
   approachDetails: number;
   approachConnected: boolean;
   approachGroundErrorM: number;
+  approachTerrainGraded: boolean;
+  approachMaxGrade: number;
   connectedExteriorParts: number;
   connectedExteriorBuildings: number;
   maxExteriorSupportGapM: number;
@@ -208,6 +210,8 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     approachDetails: 0,
     approachConnected: true,
     approachGroundErrorM: 0,
+    approachTerrainGraded: true,
+    approachMaxGrade: 0,
     connectedExteriorParts: 0,
     connectedExteriorBuildings: 0,
     maxExteriorSupportGapM: 0,
@@ -409,6 +413,8 @@ export function createGarageArchitectureController(
       approachDetails: numericStat(data.approachDetails),
       approachConnected: data.approachConnected === true,
       approachGroundErrorM: numericStat(data.approachGroundErrorM),
+      approachTerrainGraded: data.approachTerrainGraded === true,
+      approachMaxGrade: numericStat(data.approachMaxGrade),
       connectedExteriorParts: numericStat(data.connectedExteriorParts),
       connectedExteriorBuildings: numericStat(data.connectedExteriorBuildings),
       maxExteriorSupportGapM: numericStat(data.maxExteriorSupportGapM),

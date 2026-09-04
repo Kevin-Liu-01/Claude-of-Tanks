@@ -6,7 +6,7 @@
 //        --out shots/marketing/sheets [--tile 640]
 //   node tools/marketing-shots/contact.mjs --all \
 //        --dir shots/marketing-modern/raw --out shots/marketing-modern/sheets \
-//        --tile 320 --cols 5
+//        --tile 320 --cols 5 [--rows 2] [--no-labels]
 
 import puppeteer from 'puppeteer';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
@@ -22,6 +22,8 @@ const out = resolve(opt('out', 'shots/marketing/sheets'));
 const TILE_W = parseInt(opt('tile', '640'), 10);
 const ALL = args.includes('--all');
 const COLS = parseInt(opt('cols', '5'), 10);
+const ROWS = parseInt(opt('rows', '2'), 10);
+const NO_LABELS = args.includes('--no-labels');
 const CONTAINS = opt('contains', '');
 mkdirSync(out, { recursive: true });
 
@@ -35,7 +37,7 @@ const files = readdirSync(dir)
   .sort((a, b) => numericPrefix(a) - numericPrefix(b) || a.localeCompare(b));
 const groups = new Map();
 if (ALL) {
-  const pageSize = Math.max(COLS, COLS * 2);
+  const pageSize = Math.max(COLS, COLS * ROWS);
   for (let start = 0; start < files.length; start += pageSize) {
     const page = String(start / pageSize + 1).padStart(2, '0');
     groups.set(`all_${page}`, files.slice(start, start + pageSize));
@@ -62,7 +64,9 @@ for (const [base, names] of groups) {
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext;
     return `data:image/${mime};base64,${readFileSync(join(dir, n)).toString('base64')}`;
   });
-  const dataURL = await page.evaluate(async (srcs, labels, tw, requestedCols) => {
+  const dataURL = await page.evaluate(async (
+    srcs, labels, tw, requestedCols, showLabels,
+  ) => {
     const imgs = [];
     for (const s of srcs) {
       const im = new Image();
@@ -73,21 +77,24 @@ for (const [base, names] of groups) {
     const c = document.getElementById('c');
     const cols = Math.max(1, Math.min(requestedCols, imgs.length));
     const rows = Math.ceil(imgs.length / cols);
+    const labelHeight = showLabels ? 26 : 0;
     c.width = tw * cols;
-    c.height = (th + 26) * rows;
+    c.height = (th + labelHeight) * rows;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, c.width, c.height);
     imgs.forEach((im, i) => {
       const x = (i % cols) * tw;
-      const y = Math.floor(i / cols) * (th + 26);
-      ctx.drawImage(im, x, y + 26, tw, th);
-      ctx.fillStyle = '#ffd27a';
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText(labels[i], x + 8, y + 18);
+      const y = Math.floor(i / cols) * (th + labelHeight);
+      ctx.drawImage(im, x, y + labelHeight, tw, th);
+      if (showLabels) {
+        ctx.fillStyle = '#ffd27a';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText(labels[i], x + 8, y + 18);
+      }
     });
     return c.toDataURL('image/png');
-  }, uris, names, TILE_W, ALL ? COLS : names.length);
+  }, uris, names, TILE_W, ALL ? COLS : names.length, !NO_LABELS);
   const file = join(out, `${base}_SHEET.png`);
   writeFileSync(file, Buffer.from(dataURL.split(',')[1], 'base64'));
   console.log(`[contact] ${file}`);

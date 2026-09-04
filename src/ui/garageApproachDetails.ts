@@ -32,7 +32,6 @@ interface CameraPoint {
 
 const VIEW_YAW = GARAGE_CAMERA_AZIMUTH_RAD;
 const LOCAL_UP = new THREE.Vector3(0, 1, 0);
-const LOCAL_FORWARD = new THREE.Vector3(0, 0, 1);
 
 function cameraToWorld(side: number, depth: number): THREE.Vector2 {
   const point = garageViewPoint(side, depth);
@@ -65,9 +64,14 @@ function scaledBox(
 }
 
 /**
- * Add a terrain-following approach panel. The long axis follows the sampled
- * endpoint vector, so every panel meets its neighbours instead of bridging a
- * slope as a floating horizontal slab.
+ * Add one terrain-conforming closed ribbon segment.
+ *
+ * The previous route used a BoxGeometry whose entire local frame rotated from
+ * one sampled endpoint to the next. A steep dune or snow-bank delta therefore
+ * tipped the box's full width upright and exposed a several-metre "card" in
+ * the Garage. Sampling all four deck corners keeps the road horizontal across
+ * its width, follows the terrain along its length, and limits every visible
+ * side wall to the authored curb thickness.
  */
 function pathPanel(
   bucket: THREE.BufferGeometry[],
@@ -80,21 +84,59 @@ function pathPanel(
 ): number {
   const aw = cameraToWorld(a.side, a.depth);
   const bw = cameraToWorld(b.side, b.depth);
-  const start = new THREE.Vector3(aw.x, groundAtWorld(aw.x, aw.y) + lift, aw.y);
-  const end = new THREE.Vector3(bw.x, groundAtWorld(bw.x, bw.y) + lift, bw.y);
-  const direction = end.clone().sub(start);
-  const length = direction.length();
+  const dx = bw.x - aw.x;
+  const dz = bw.y - aw.y;
+  const length = Math.hypot(dx, dz);
   if (length < 0.01) return 0;
-  const rotation = new THREE.Quaternion().setFromUnitVectors(
-    LOCAL_FORWARD, direction.clone().normalize(),
-  );
-  const center = start.clone().lerp(end, 0.5);
-  const matrix = new THREE.Matrix4().compose(center, rotation, new THREE.Vector3(1, 1, 1));
-  bucket.push(scaledBox(width, thickness, length + 0.12, matrix));
-  return Math.max(
-    Math.abs(start.y - groundAtWorld(start.x, start.z) - lift),
-    Math.abs(end.y - groundAtWorld(end.x, end.z) - lift),
-  );
+  const alongX = dx / length;
+  const alongZ = dz / length;
+  const acrossX = -alongZ * width / 2;
+  const acrossZ = alongX * width / 2;
+  const overlap = 0.06;
+  const startX = aw.x - alongX * overlap;
+  const startZ = aw.y - alongZ * overlap;
+  const endX = bw.x + alongX * overlap;
+  const endZ = bw.y + alongZ * overlap;
+  const top = [
+    new THREE.Vector3(startX + acrossX, 0, startZ + acrossZ),
+    new THREE.Vector3(endX + acrossX, 0, endZ + acrossZ),
+    new THREE.Vector3(endX - acrossX, 0, endZ - acrossZ),
+    new THREE.Vector3(startX - acrossX, 0, startZ - acrossZ),
+  ];
+  for (const point of top) point.y = groundAtWorld(point.x, point.z) + lift;
+  const bottom = top.map((point) => new THREE.Vector3(point.x, point.y - thickness, point.z));
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const addQuad = (
+    p0: THREE.Vector3,
+    p1: THREE.Vector3,
+    p2: THREE.Vector3,
+    p3: THREE.Vector3,
+    uScale = 1,
+    vScale = 1,
+  ): void => {
+    for (const point of [p0, p1, p2, p0, p2, p3]) positions.push(point.x, point.y, point.z);
+    uvs.push(
+      0, 0, 0, vScale, uScale, vScale,
+      0, 0, uScale, vScale, uScale, 0,
+    );
+  };
+  addQuad(top[0], top[1], top[2], top[3], width, length);
+  addQuad(bottom[3], bottom[2], bottom[1], bottom[0], width, length);
+  addQuad(top[0], bottom[0], bottom[1], top[1], thickness, length);
+  addQuad(top[1], bottom[1], bottom[2], top[2], thickness, width);
+  addQuad(top[2], bottom[2], bottom[3], top[3], thickness, length);
+  addQuad(top[3], bottom[3], bottom[0], top[0], thickness, width);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+  geometry.userData.garageApproachSurface = 'terrain-conforming-ribbon';
+  geometry.userData.maxVisibleEdgeHeightM = thickness;
+  bucket.push(geometry);
+  return Math.max(...top.map((point) => (
+    Math.abs(point.y - groundAtWorld(point.x, point.z) - lift)
+  )));
 }
 
 function subdividePath(

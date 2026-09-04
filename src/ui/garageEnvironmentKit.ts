@@ -74,6 +74,8 @@ export interface GarageEnvironmentStats {
   readonly approachDetails: number;
   readonly approachConnected: boolean;
   readonly approachGroundErrorM: number;
+  readonly approachTerrainGraded: boolean;
+  readonly approachMaxGrade: number;
   readonly connectedExteriorParts: number;
   readonly connectedExteriorBuildings: number;
   readonly maxExteriorSupportGapM: number;
@@ -813,7 +815,14 @@ export function buildGarageEnvironment(
   const facilityTerraces = getGarageFacilityTerraces(variant);
   const terraceRecords = facilityTerraces.map((terrace) => {
     const center = cameraPoint(terrace.side, terrace.depth);
-    return { ...terrace, ...center, y: samplePatch(patch, heights, center.x, center.z) };
+    // The shared fleet exhibits are authored and seated at the canonical
+    // Garage datum. Their outdoor service frames and local terrain must use
+    // that same plane; sampling a dune/snowbank here previously raised the
+    // frame through the tank while leaving the actual fleet graph at y=0.
+    const y = terrace.label.startsWith('fleet-service-')
+      ? 0
+      : samplePatch(patch, heights, center.x, center.z);
+    return { ...terrace, ...center, y };
   });
   const shapeFacilityTerraces = (): void => {
     for (const terrace of terraceRecords) {
@@ -834,6 +843,83 @@ export function buildGarageEnvironment(
       }
     }
   };
+
+  // Cut one continuous, bounded road grade into the sampled battlefield
+  // excerpt before the visible route ribbon is emitted. This preserves the
+  // source terrain outside the lane but prevents a route from inheriting a
+  // near-vertical dune, snow-bank, or urban rubble edge. The first waypoint
+  // meets the canonical podium apron and each later waypoint is clamped to a
+  // believable ten-percent service-road grade.
+  const approachMaxGrade = 0.10;
+  const gradeApproachTerrain = (): void => {
+    const waypoints = recipe.approach.waypoints.map(([side, depth]) => {
+      const world = cameraPoint(side, depth);
+      return { side, depth, ...world };
+    });
+    const targetHeights: number[] = [];
+    waypoints.forEach((point, index) => {
+      const sampled = samplePatch(patch, heights, point.x, point.z);
+      if (index === 0) {
+        targetHeights.push(Math.min(sampled, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM));
+        return;
+      }
+      const previous = waypoints[index - 1];
+      const distance = Math.hypot(point.side - previous.side, point.depth - previous.depth);
+      const previousHeight = targetHeights[index - 1];
+      const delta = distance * approachMaxGrade;
+      targetHeights.push(THREE.MathUtils.clamp(
+        sampled,
+        previousHeight - delta,
+        previousHeight + delta,
+      ));
+    });
+    const railFanExtent = recipe.approach.style === 'rail-fan'
+      ? Math.max(0, ...(recipe.approach.lanes || []).map((lane) => Math.abs(lane)))
+      : 0;
+    const innerRadius = recipe.approach.width / 2 + railFanExtent;
+    const feather = 2.2;
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const view = garageWorldPointToView(x, z);
+        let closestDistance = Number.POSITIVE_INFINITY;
+        let targetHeight = heights[row * patch.width + column];
+        for (let index = 0; index < waypoints.length - 1; index += 1) {
+          const a = waypoints[index];
+          const b = waypoints[index + 1];
+          const sideDelta = b.side - a.side;
+          const depthDelta = b.depth - a.depth;
+          const lengthSquared = sideDelta * sideDelta + depthDelta * depthDelta;
+          const along = THREE.MathUtils.clamp(
+            ((view.side - a.side) * sideDelta + (view.depth - a.depth) * depthDelta)
+              / Math.max(0.001, lengthSquared),
+            0,
+            1,
+          );
+          const nearestSide = a.side + sideDelta * along;
+          const nearestDepth = a.depth + depthDelta * along;
+          const distance = Math.hypot(view.side - nearestSide, view.depth - nearestDepth);
+          if (distance >= closestDistance) continue;
+          closestDistance = distance;
+          targetHeight = THREE.MathUtils.lerp(
+            targetHeights[index], targetHeights[index + 1], along,
+          );
+        }
+        if (closestDistance >= innerRadius + feather) continue;
+        const blend = THREE.MathUtils.smoothstep(
+          closestDistance,
+          innerRadius,
+          innerRadius + feather,
+        );
+        const sampleIndex = row * patch.width + column;
+        heights[sampleIndex] = THREE.MathUtils.lerp(targetHeight, heights[sampleIndex], blend);
+      }
+    }
+  };
+  gradeApproachTerrain();
+  // Service islands win over the graded road wherever the two intentionally
+  // meet, keeping every gantry foot and real fleet exhibit on its own datum.
   shapeFacilityTerraces();
 
   // The podium is a physical object with its bottom at y=0. Re-apply one
@@ -1296,6 +1382,8 @@ export function buildGarageEnvironment(
     structures: recipe.structures.length,
     ...facilityDetails,
     ...approachDetails,
+    approachTerrainGraded: true,
+    approachMaxGrade,
     connectedExteriorParts: structureRecords.reduce((sum, record) => sum + record.exteriorParts, 0),
     connectedExteriorBuildings: structureRecords.filter((record) => record.exteriorParts > 0).length,
     maxExteriorSupportGapM: Number(Math.max(

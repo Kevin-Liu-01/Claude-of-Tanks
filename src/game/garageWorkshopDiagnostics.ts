@@ -88,8 +88,11 @@ export interface GarageWorkshopStats {
   readonly sharedMaintenanceBayIds: readonly string[];
   readonly sharedMaintenanceBayQuadrants: readonly string[];
   readonly workshopOrbitCoverageDegrees: number;
-  readonly verdantHoistCentered: boolean;
+  readonly verdantHeroHoistOffsetM: number;
+  readonly verdantHoistStationCount: number;
   readonly verdantHoistChainRuns: number;
+  readonly verdantSuspendedLoadCount: number;
+  readonly verdantConnectedLiftPointCount: number;
   readonly verdantRoutedUtilityCircuits: number;
   readonly verdantJunctionBoxes: number;
   readonly heroTrackContactErrorM: number | null;
@@ -287,8 +290,11 @@ export function createGarageWorkshopDiagnostics({
           data.sharedMaintenanceBayQuadrants,
         ),
         workshopOrbitCoverageDegrees: numberValue(data.workshopOrbitCoverageDegrees),
-        verdantHoistCentered: trueValue(data.verdantHoistCentered),
+        verdantHeroHoistOffsetM: numberValue(data.verdantHeroHoistOffsetM),
+        verdantHoistStationCount: numberValue(data.verdantHoistStationCount),
         verdantHoistChainRuns: numberValue(data.verdantHoistChainRuns),
+        verdantSuspendedLoadCount: numberValue(data.verdantSuspendedLoadCount),
+        verdantConnectedLiftPointCount: numberValue(data.verdantConnectedLiftPointCount),
         verdantRoutedUtilityCircuits: numberValue(data.verdantRoutedUtilityCircuits),
         verdantJunctionBoxes: numberValue(data.verdantJunctionBoxes),
         heroTrackContactErrorM: heroTrackContactError(

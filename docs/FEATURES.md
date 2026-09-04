@@ -262,7 +262,7 @@ and Ironworks use bounded Garage-only scene packs derived from the terrain,
 structures, materials, trees, skies, and atmosphere of their named
 battlefields.
 
-[![Ten current in-engine Garage locations](../public/media/garage-environments-r1/ten-garage-environments.png)](../public/media/garage-environments-r1/ten-garage-environments.png)
+[![Ten current in-engine Garage locations](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
 
 Every destination keeps the same tank heading and camera composition. The
 environment changes around that fixed presentation frame with a custom-colored

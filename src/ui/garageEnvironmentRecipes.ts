@@ -97,15 +97,16 @@ const at = (builder: StructureBuilder, label: string, x: number, z: number,
   const catalogId = STRUCTURE_CATALOG_IDS.get(builder);
   if (!catalogId) throw new Error(`Garage structure has no stable catalog id: ${label}`);
   // Catalog structures author their primary facade on local +Z. Keep every
-  // facility parallel to the hero tank instead of turning each building
-  // radially toward the podium; the latter produced the splayed Frosthollow
-  // layout and made background walls cross the tank at arbitrary angles.
+  // facility on the hero's orthogonal yard grid, but reverse the foreground
+  // row by 180 degrees so its doors/working face point back into the motor
+  // pool. This avoids both radial "staring" buildings and bare rear walls in
+  // alternate orbit views.
   return {
     builder,
     catalogId,
     label,
     ...point,
-    yaw: GARAGE_HERO_HEADING_RAD,
+    yaw: GARAGE_HERO_HEADING_RAD + (point.depth < 0 ? Math.PI : 0),
     scale,
   };
 };
@@ -114,7 +115,15 @@ const atView = (builder: StructureBuilder, label: string, side: number, depth: n
   scale = 1): GarageStructurePlacement => {
   const catalogId = STRUCTURE_CATALOG_IDS.get(builder);
   if (!catalogId) throw new Error(`Garage structure has no stable catalog id: ${label}`);
-  return { builder, catalogId, label, side, depth, yaw: GARAGE_HERO_HEADING_RAD, scale };
+  return {
+    builder,
+    catalogId,
+    label,
+    side,
+    depth,
+    yaw: GARAGE_HERO_HEADING_RAD + (depth < 0 ? Math.PI : 0),
+    scale,
+  };
 };
 
 export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnvironmentRecipe>>({

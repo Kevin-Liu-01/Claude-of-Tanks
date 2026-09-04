@@ -61,7 +61,7 @@ automated grade → owner approval.
 
 ### Garage environment overview
 
-[![All ten current Garage environments](../public/media/garage-environments-r1/ten-garage-environments.png)](../public/media/garage-environments-r1/ten-garage-environments.png)
+[![All ten current Garage environments](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
 
 This owner-approved contact sheet compares the ten current in-engine Garage
 locations with one vehicle and one production interface. It is maintained as

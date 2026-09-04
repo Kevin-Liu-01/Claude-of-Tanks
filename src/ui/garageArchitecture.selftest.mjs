@@ -5,9 +5,13 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_HERO_HEADING_RAD } from '../game/garagePresentationPose.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
-import { GARAGE_FACILITY_AXIS_YAW_RAD } from './garageFacilityDetails.ts';
+import {
+  GARAGE_FACILITY_AXIS_YAW_RAD,
+  getGarageFacilityTerraces,
+} from './garageFacilityDetails.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
+const approachSource = await readFile(new URL('./garageApproachDetails.ts', import.meta.url), 'utf8');
 const facilitySource = await readFile(new URL('./garageFacilityDetails.ts', import.meta.url), 'utf8');
 const recipeSource = await readFile(new URL('./garageEnvironmentRecipes.ts', import.meta.url), 'utf8');
 const stageSource = await readFile(new URL('./garageStage.ts', import.meta.url), 'utf8');
@@ -21,6 +25,10 @@ assert.doesNotMatch(`${kitSource}\n${facilitySource}`,
   'Garage scene packs must not retain silhouette-only vehicle or component proxies');
 assert.doesNotMatch(kitSource, /createSkyGeometry|garage_shared_sky/,
   'outdoor Garage packs must expose the shared engine sky, not occlude it with a local sphere');
+assert.match(approachSource, /garageApproachSurface = 'terrain-conforming-ribbon'/,
+  'Garage approaches must use bounded terrain-conforming ribbons');
+assert.doesNotMatch(approachSource, /setFromUnitVectors\(LOCAL_FORWARD/,
+  'a terrain delta must never rotate a complete road panel upright');
 assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
   'Garage recipes must use the real connected map structure builders');
 assert.doesNotMatch(kitSource, /builder\.name/,
@@ -36,12 +44,12 @@ assert.match(kitSource,
   'Garage structure buckets must retain their surface-specific albedo and normal textures');
 for (const [architecture, recipe] of Object.entries(GARAGE_ENVIRONMENT_RECIPES)) {
   for (const placement of recipe.structures) {
-    const axisDelta = Math.atan2(
-      Math.sin(placement.yaw - GARAGE_HERO_HEADING_RAD),
-      Math.cos(placement.yaw - GARAGE_HERO_HEADING_RAD),
-    );
-    assert.ok(Math.abs(axisDelta) < 1e-9,
-      `${architecture}/${placement.label}: structure shares the immutable hero axis`);
+    const axisDelta = placement.yaw - GARAGE_HERO_HEADING_RAD;
+    assert.ok(Math.abs(Math.sin(axisDelta)) < 1e-9,
+      `${architecture}/${placement.label}: structure stays parallel to the immutable hero axis`);
+    const expectedYaw = GARAGE_HERO_HEADING_RAD + (placement.depth < 0 ? Math.PI : 0);
+    assert.ok(Math.abs(Math.cos(placement.yaw - expectedYaw) - 1) < 1e-9,
+      `${architecture}/${placement.label}: working facade faces the service yard`);
   }
 }
 assert.equal(GARAGE_FACILITY_AXIS_YAW_RAD, GARAGE_HERO_HEADING_RAD,
@@ -67,6 +75,21 @@ const signatures = new Set();
 let maxBuildMs = 0;
 let maxColdTransactionMs = 0;
 for (const variant of GARAGE_VARIANTS) {
+  if (variant.id !== 'verdant_motor_pool') {
+    const terraces = getGarageFacilityTerraces(variant);
+    for (let left = 0; left < terraces.length; left += 1) {
+      for (let right = left + 1; right < terraces.length; right += 1) {
+        const a = terraces[left];
+        const b = terraces[right];
+        const clearance = Math.hypot(
+          (a.side - b.side) / (a.radiusSide + b.radiusSide),
+          (a.depth - b.depth) / (a.radiusDepth + b.radiusDepth),
+        );
+        assert.ok(clearance >= 1,
+          `${variant.id}: ${a.label} must not overlap ${b.label}`);
+      }
+    }
+  }
   const startedAt = performance.now();
   controller.setVariant(variant);
   const stats = await controller.whenReady();
@@ -159,6 +182,10 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} approach must include route-specific infrastructure`);
   assert.ok(stats.approachGroundErrorM <= 0.01,
     `${variant.id} approach must follow the sampled battlefield terrain`);
+  assert.equal(stats.approachTerrainGraded, true,
+    `${variant.id} approach must cut a bounded grade through the terrain excerpt`);
+  assert.ok(stats.approachMaxGrade <= 0.10,
+    `${variant.id} approach must stay within a ten-percent service-road grade`);
   assert.ok(stats.facilityProps >= 100,
     `${variant.id} must distribute a complete service facility around the hero`);
   assert.equal(stats.facilityStations, 2,

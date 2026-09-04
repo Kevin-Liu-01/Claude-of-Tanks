@@ -6,9 +6,9 @@ authored indoor workshop, while the other nine locations use compact,
 renderer-only scene packs that borrow the terrain, structures, vegetation,
 materials, sky, and atmosphere of a specific battlefield.
 
-[![All ten Garage environments shown with the production Garage interface](../public/media/garage-environments-r1/ten-garage-environments.png)](../public/media/garage-environments-r1/ten-garage-environments.png)
+[![All ten Garage environments shown with the production Garage interface](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
 
-*Owner-approved contact sheet, 3 September 2026. Every panel is an in-engine
+*Production contact sheet, 4 September 2026. Every panel is an in-engine
 Garage capture using the same selected vehicle and interface, which makes
 environment, structure, lighting, platform, and framing differences directly
 comparable.*
@@ -45,10 +45,15 @@ All ten locations share one presentation coordinate system:
 - the bow and gun read toward screen-left while the glacis remains visible;
 - buildings and maintenance frames align with the tank axis instead of turning
   independently toward the camera;
+- perimeter structures remain axis-parallel, with the working facade reversed
+  only across the foreground row so doors and open bays face into the yard;
 - the ground and sampled terrain remain below the complete turntable, so no
   biome can cover the platform rim;
 - the rear-axis field-record display and four full-detail service exhibits are
   recomposed around the destination without becoming tank-shaped proxies.
+- Verdant's three overhead lift stations keep their compact loads above the
+  work floor, with the center trolley parked beside the hero silhouette; all
+  twelve slings terminate on visible frame-mounted eyes.
 
 [`src/game/garagePresentationPose.ts`](../src/game/garagePresentationPose.ts)
 owns these invariants. Environment code
@@ -57,9 +62,11 @@ vehicle-orientation path.
 
 Each outdoor scene pack contains a generated 41x37 excerpt of its source
 battlefield terrain, nine or ten connected map structures across at least four
-perimeter sectors, a continuous terrain-following approach, detailed trees,
+perimeter sectors, a continuous terrain-graded approach made from closed
+surface ribbons rather than tilted rigid slabs, detailed trees,
 bounded ground cover, two complete maintenance stations, operating machinery,
-heavy-lift equipment, and three biome-specific horizon layers. Shared
+heavy-lift equipment, grounded freestanding service signs, and five
+biome-specific horizon layers. Shared
 procedural sky, cloud, fog, and sun presets reproduce the source map without
 mounting its battlefield runtime.
 
@@ -93,8 +100,8 @@ failed criterion. The rubric checks:
 - connected walls, roofs, braces, cranes, fixtures, and ground contacts;
 - geometry-derived collision envelopes for every structure, including open
   compounds that preserve intentional drive-through space;
-- no scenery overlap, floating parts, platform intersections, or opening-view
-  obstruction;
+- no scenery overlap, floating parts, platform intersections, route grades
+  above ten percent, or opening-view obstruction;
 - readable maintenance purpose, four real fleet exhibits, and a full 360-degree
   service story;
 - map-specific terrain, vegetation, structures, materials, skyline, and route;

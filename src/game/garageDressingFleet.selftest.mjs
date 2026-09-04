@@ -99,12 +99,28 @@ assert.match(dressing,
 assert.match(dressing,
   /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
   'the complete K2 teardown section must move into the former Abrams quadrant');
+assert.match(dressing, /const forwardAdvance = bayId === 'abrams_welding' \? 0\.35 : -0\.35/,
+  'both swapped service bays must remain outside the showroom orbit');
+assert.match(dressing, /perimeterCraneClearance = true/,
+  'the complete bay owner must receipt its corrected crane clearance');
 assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
   'the rolled K2 hull must identify its connected load-bearing support');
 assert.match(dressing, /swappedServiceBayIds = \['abrams_welding', 'rolled_k2'\]/,
   'Garage diagnostics must receipt the requested bay swap');
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
+for (const signature of [
+  "mountMode = parent === legacyVerdantRoot",
+  "'grounded-freestanding-frame'",
+  'garage_service_sign_ground_post',
+  'garage_service_sign_ground_foot',
+  'garage_service_sign_connected_brace',
+  'garage_service_sign_lower_tie',
+  'supportConnections = 9',
+]) {
+  assert.ok(dressing.includes(signature),
+    `outdoor service labels must retain their grounded support: ${signature}`);
+}
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
 assert.match(dressing, /verdantInteriorRoot\.rotation\.y = Math\.PI/,
@@ -138,29 +154,45 @@ assert.match(dressing, /const craneRunwayX = 21\.0/,
   'the travelling-crane columns must clear the authored fleet service bays');
 assert.match(dressing, /const craneColumnZ = 20\.4/,
   'the travelling-crane feet must stay on the workshop perimeter');
-for (const signature of [
-  'verdant_center_hoist_chain_left',
-  'verdant_center_hoist_chain_right',
-  'verdant_center_spreader_sling_',
-  'verdant_routed_workshop_utilities',
-  'verdant_power_run_south',
-  'verdant_air_run_north',
-  'verdant_welder_power_drop',
-  'verdant_teardown_air_drop',
-  'verdant_center_lamp_feed',
-  'verdant_lamp_feed_east',
-  'verdant_lamp_feed_north',
-  'verdant_lamp_feed_south',
-  'verdant_lamp_feed_welding_bay',
-  'verdant_rear_chain_fall_',
-]) {
-  assert.match(dressing, new RegExp(signature),
-    `the connected overhead and utility pass must retain ${signature}`);
-}
-assert.match(dressing, /verdantHoistCentered = true/,
-  'the hero lift must remain centered above the presentation stage');
-assert.match(dressing, /verdantHoistChainRuns = 8/,
-  'the lifting assembly must retain its load-bearing chain choreography');
+const assertWorkshopSignature = (signature) => assert.ok(dressing.includes(signature),
+  `the connected overhead and utility pass must retain ${signature}`);
+assertWorkshopSignature('verdant_${stationId}_hoist_chain_left');
+assertWorkshopSignature('verdant_${stationId}_hoist_chain_right');
+assertWorkshopSignature('verdant_${stationId}_spreader_sling_');
+assertWorkshopSignature('verdant_${stationId}_reinforced_spreader');
+assertWorkshopSignature('suspended_powerpack');
+assertWorkshopSignature('suspended_final_drive');
+assertWorkshopSignature('suspended_turret_basket');
+assertWorkshopSignature('connected_lift_eye');
+assertWorkshopSignature('lifting_lug');
+assertWorkshopSignature('verdant_routed_workshop_utilities');
+assertWorkshopSignature('verdant_power_run_south');
+assertWorkshopSignature('verdant_air_run_north');
+assertWorkshopSignature('verdant_welder_power_drop');
+assertWorkshopSignature('verdant_teardown_air_drop');
+assertWorkshopSignature('verdant_center_lamp_feed');
+assertWorkshopSignature('verdant_lamp_feed_east');
+assertWorkshopSignature('verdant_lamp_feed_north');
+assertWorkshopSignature('verdant_lamp_feed_south');
+assertWorkshopSignature('verdant_lamp_feed_welding_bay');
+assertWorkshopSignature('verdant_rear_chain_fall_');
+assert.match(dressing, /verdantHeroHoistOffsetM = 4\.8/,
+  'the center lift must park to the side instead of above the hero tank');
+assertWorkshopSignature("['front', 0, -9.2, 'final-drive']");
+assertWorkshopSignature("['center', 4.8, 0, 'powerpack']");
+assertWorkshopSignature("['rear', 0, 9.2, 'turret-basket']");
+assert.match(dressing, /verdantHoistStationCount = 3/,
+  'the workshop must retain front, center, and rear lift stations');
+assert.match(dressing, /verdantHoistChainRuns = 20/,
+  'the three lifting stations and parked falls must retain their chain choreography');
+assert.match(dressing, /verdantSuspendedLoadCount = 3/,
+  'every active lifting station must carry a purposeful mechanical load');
+assert.match(dressing, /verdantConnectedLiftPointCount = 12/,
+  'every spreader sling must terminate on one of four visible lifting eyes per load');
+assert.match(dressing, /stationX \+ Math\.sign\(x\) \* suspendedLoadAttachX/,
+  'sling endpoints must share the lifting-frame x coordinates');
+assert.match(dressing, /Math\.sign\(zOffset\) \* suspendedLoadAttachZ/,
+  'sling endpoints must share the lifting-frame z coordinates');
 assert.match(dressing, /verdantRoutedUtilityCircuits = 12/,
   'organized wall and floor utilities must remain part of Verdant');
 assert.match(dressing, /workshopModelMode = 'actual-fleet'/,

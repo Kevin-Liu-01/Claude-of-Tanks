@@ -8,6 +8,10 @@ const passing = {
   architecture: {
     unsupportedParts: 0,
     maxGroundContactErrorM: 0.02,
+    approachConnected: true,
+    approachGroundErrorM: 0,
+    approachTerrainGraded: true,
+    approachMaxGrade: 0.10,
     placementOverlaps: 0,
     structuralConnections: 68,
     servicePurposeTags: [
@@ -61,6 +65,14 @@ const floating = scoreGarageQuality({
 assert.equal(floating.total, 93,
   'one floating component must consume the complete support criterion');
 assert.ok(floating.failures.includes('unsupported structure part'));
+
+const ungradedApproach = scoreGarageQuality({
+  ...passing,
+  architecture: { ...passing.architecture, approachTerrainGraded: false },
+});
+assert.equal(ungradedApproach.total, 96,
+  'an ungraded route must consume the complete terrain-contact criterion');
+assert.ok(ungradedApproach.failures.includes('terrain contact or approach grade is unsafe'));
 
 const proxy = scoreGarageQuality({
   ...passing,

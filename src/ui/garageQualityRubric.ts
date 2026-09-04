@@ -1,6 +1,10 @@
 interface GarageArchitectureQualityReceipt {
   readonly unsupportedParts?: number;
   readonly maxGroundContactErrorM?: number;
+  readonly approachConnected?: boolean;
+  readonly approachGroundErrorM?: number;
+  readonly approachTerrainGraded?: boolean;
+  readonly approachMaxGrade?: number;
   readonly placementOverlaps?: number;
   readonly structuralConnections?: number;
   readonly servicePurposeTags?: readonly string[];
@@ -82,8 +86,12 @@ export function scoreGarageQuality(input: GarageQualityInput): GarageQualityScor
 
   const structuralIntegrity =
     award(number(architecture.unsupportedParts) === 0, 7, 'unsupported structure part')
-    + award(number(architecture.maxGroundContactErrorM) <= 0.065,
-      4, 'terrain contact exceeds 6.5 cm')
+    + award(number(architecture.maxGroundContactErrorM) <= 0.065
+      && (isVerdant || (architecture.approachConnected === true
+        && architecture.approachTerrainGraded === true
+        && number(architecture.approachGroundErrorM) <= 0.01
+        && number(architecture.approachMaxGrade) <= 0.10)),
+    4, 'terrain contact or approach grade is unsafe')
     + award(number(architecture.placementOverlaps) === 0, 4, 'structure/facility overlap')
     + award(number(architecture.structuralConnections) >= 60,
       4, 'insufficient certified structural connections')

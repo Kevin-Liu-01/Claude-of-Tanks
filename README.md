@@ -181,7 +181,7 @@ checks, visual fingerprints, and a targeted release gate.
 ### Ten Garage environments
 
 <p align="center">
-  <a href="public/media/garage-environments-r1/ten-garage-environments.png"><img src="public/media/garage-environments-r1/ten-garage-environments.png" alt="All ten Claude of Tanks Garage environments shown with the same Abrams and production Garage interface"></a>
+  <a href="public/media/garage-environments-r2/ten-garage-environments.png"><img src="public/media/garage-environments-r2/ten-garage-environments.png" alt="All ten Claude of Tanks Garage environments shown with the same Abrams and production Garage interface"></a>
 </p>
 
 The Garage is its own authored presentation system. Verdant retains the enclosed Motor Pool; the other nine locations

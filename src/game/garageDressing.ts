@@ -578,15 +578,50 @@ export function createGarageDressing(
       map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
       roughness: 0.6, metalness: 0.2,
     })));
+    const mount = new THREE.Group();
+    mount.position.set(x, 0, z);
+    mount.rotation.y = ry;
+    mount.name = parent === legacyVerdantRoot
+      ? `garage_freestanding_service_sign_${text.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`
+      : `garage_wall_sign_${wallBayId || 'panel'}`;
+    mount.userData.mountMode = parent === legacyVerdantRoot
+      ? 'grounded-freestanding-frame'
+      : 'wall-supported';
+    parent.add(mount);
     const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
-      x, y, z, ry, 0, 0, 1, parent, false);
+      0, y, 0, 0, 0, 0, 1, mount, false);
     back.userData.wallBayId = wallBayId;
     const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
-    board.position.set(x, y, z);
-    board.rotation.y = ry;
+    board.position.set(0, y, 0.032);
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
-    parent.add(board);
+    mount.add(board);
+    if (parent === legacyVerdantRoot) {
+      // These three labels used to borrow Verdant's wall even when the shared
+      // fleet graph moved outdoors. Two posts, feet, a lower tie and diagonal
+      // braces make each sign a self-contained yard fixture in all ten
+      // Garages. Their bay terraces share y=0, so the supports cannot float.
+      const postHeight = Math.max(0.8, y - h / 2 + 0.08);
+      const postGeometry = track(new THREE.BoxGeometry(0.10, postHeight, 0.10));
+      const footGeometry = track(new THREE.BoxGeometry(0.62, 0.08, 0.46));
+      const braceGeometry = track(new THREE.BoxGeometry(0.08, 1.18, 0.08));
+      const supportOffset = Math.max(0.38, w / 2 - 0.22);
+      for (const side of [-1, 1]) {
+        const post = put(postGeometry, mat.steelDark,
+          side * supportOffset, postHeight / 2, 0, 0, 0, 0, 1, mount, false);
+        post.name = 'garage_service_sign_ground_post';
+        const foot = put(footGeometry, mat.steelMid,
+          side * supportOffset, 0.04, 0, 0, 0, 0, 1, mount, false);
+        foot.name = 'garage_service_sign_ground_foot';
+        const brace = put(braceGeometry, mat.safety,
+          side * (supportOffset - 0.16), 0.72, 0, 0, 0, side * 0.24, 1, mount, false);
+        brace.name = 'garage_service_sign_connected_brace';
+      }
+      const tie = put(track(new THREE.BoxGeometry(w - 0.18, 0.10, 0.10)), mat.steelMid,
+        0, Math.max(0.48, postHeight * 0.42), 0, 0, 0, 0, 1, mount, false);
+      tie.name = 'garage_service_sign_lower_tie';
+      mount.userData.supportConnections = 9;
+    }
   }
 
   function wallSignAt(text: string, wallBayId: string): void {
@@ -671,7 +706,18 @@ export function createGarageDressing(
     );
     bayRoot.name = `garage_${bayId}_half_turn`;
     bayRoot.rotation.y = Math.PI;
+    // Keep the correction outside the 19 m showroom orbit. A previous 2.15 m
+    // shift cleared the perimeter crane but pulled the complete service frame
+    // through the camera path, creating a dark foreground wedge in several
+    // outdoor Garages. This bounded owner nudge preserves the bay assembly and
+    // its crane clearance without letting any support become foreground UI.
+    const forwardAdvance = bayId === 'abrams_welding' ? 0.35 : -0.35;
+    bayRoot.position.set(forwardAdvance, 0, forwardAdvance);
     bayRoot.userData.layoutRotationRad = Math.PI;
+    bayRoot.userData.inwardAdvanceM = Number(Math.hypot(
+      forwardAdvance, forwardAdvance,
+    ).toFixed(2));
+    bayRoot.userData.perimeterCraneClearance = true;
     bayRoot.userData.swappedWith = bayId === 'abrams_welding' ? 'rolled_k2' : 'abrams_welding';
     for (const child of authoredChildren) bayRoot.add(child);
     legacyVerdantRoot.add(bayRoot);
@@ -1284,7 +1330,7 @@ export function createGarageDressing(
     factoryArchitecture.userData.factoryProcessZones = 5;
     factoryArchitecture.userData.elevatedAccessSystems = 4;
     factoryArchitecture.userData.secureStorageSystems = 2;
-    factoryArchitecture.userData.structuralConnections = 244;
+    factoryArchitecture.userData.structuralConnections = 354;
     factoryArchitecture.userData.unsupportedParts = 0;
     verdantInteriorRoot.add(factoryArchitecture);
     const factoryBox = track(new THREE.BoxGeometry(1, 1, 1));
@@ -1411,30 +1457,165 @@ export function createGarageDressing(
       factoryPut(mat.steelMid, x, 7.96, 0, 0.52, 0.42, 41.2);
       factoryPut(mat.safety, x, 8.20, 0, 0.22, 0.16, 40.9, 0, 0, false);
     }
-    // The bridge and lifting head sit on the hero centerline. Four visible
-    // trolley rollers, a reinforced spreader and eight real alternating chain
-    // runs make the suspended assembly read as a usable lifting system.
-    factoryPut(mat.safety, 0, 7.86, 0, 42.2, 0.46, 0.54);
-    factoryPut(mat.steelDark, 0, 7.50, 0, 1.35, 0.56, 1.08);
-    for (const x of [-0.44, 0.44]) {
-      for (const z of [-0.48, 0.48]) {
-        factoryCylinderPut(mat.steelBright, x, 7.72, z, 0.16, 0.13, Math.PI / 2);
+    // Three working lift stations span the service lane. The center station's
+    // trolley parks to one side of the hero instead of above it; each has
+    // its own bridge, four-wheel trolley, drum block, reinforced spreader,
+    // twin lift chains, four connected slings, and a believable workshop load.
+    // Reusing the factory primitives keeps this detail static-batch friendly.
+    const hoistRing = track(new THREE.TorusGeometry(0.48, 0.075, 7, 18));
+    const suspendedLoadAttachX = 1.38;
+    const suspendedLoadAttachZ = 0.58;
+    const suspendedLoadFrameY = 4.64;
+    const suspendedLoadEyeY = 4.79;
+    // Torus outer radius: (0.48 + 0.075) * 0.25 = 0.13875 m.
+    const suspendedLoadChainY = 4.93;
+    const addSuspendedWorkshopLoad = (
+      stationId: string,
+      stationX: number,
+      stationZ: number,
+      loadKind: 'final-drive' | 'powerpack' | 'turret-basket',
+    ): void => {
+      if (loadKind === 'powerpack') {
+        const body = factoryPut(
+          mat.steelMid, stationX, 4.18, stationZ, 1.92, 0.42, 1.02,
+        );
+        body.name = `verdant_${stationId}_suspended_powerpack`;
+        factoryPut(mat.oily, stationX, 3.94, stationZ, 1.48, 0.14, 0.80);
+        for (const [x, roll] of [[-0.54, -0.16], [0.54, 0.16]] as const) {
+          factoryPut(mat.blueSteel, stationX + x, 4.46, stationZ, 0.70, 0.30, 0.88,
+            0, roll);
+          factoryPut(mat.steelBright, stationX + x, 4.63, stationZ, 0.56, 0.08, 0.72,
+            0, roll, false);
+        }
+        factoryPut(mat.steelDark, stationX, 4.48, stationZ, 0.42, 0.26, 0.64);
+        for (const x of [-0.76, -0.26, 0.26, 0.76]) {
+          factoryCylinderPut(mat.brass, stationX + x, 4.65, stationZ, 0.075, 0.14);
+        }
+        put(hoistRing, mat.steelDark, stationX, 4.20, stationZ + 0.54,
+          0, 0, 0, [0.62, 0.62, 0.62], factoryArchitecture);
+        factoryCylinderPut(mat.steelBright, stationX, 4.20, stationZ + 0.56,
+          0.13, 0.18, Math.PI / 2);
+        for (const x of [-1.02, 1.02]) {
+          factoryCylinderPut(mat.steelDark, stationX + x, 4.18, stationZ,
+            0.16, 0.22, 0, Math.PI / 2);
+        }
+      } else if (loadKind === 'final-drive') {
+        const caseMesh = factoryPut(
+          mat.steelMid, stationX, 4.28, stationZ, 2.04, 0.62, 1.08,
+        );
+        caseMesh.name = `verdant_${stationId}_suspended_final_drive`;
+        for (const x of [-1.12, 1.12]) {
+          factoryCylinderPut(mat.oily, stationX + x, 4.28, stationZ, 0.42, 0.32,
+            0, Math.PI / 2);
+          factoryCylinderPut(mat.steelBright, stationX + x * 1.18, 4.28, stationZ,
+            0.13, 0.28, 0, Math.PI / 2);
+        }
+        factoryPut(mat.steelDark, stationX, 4.62, stationZ, 1.34, 0.14, 0.72);
+      } else {
+        const basket = factoryPut(
+          mat.steelDark, stationX, 4.20, stationZ, 1.36, 0.48, 1.06,
+        );
+        basket.name = `verdant_${stationId}_suspended_turret_basket`;
+        put(hoistRing, mat.steelBright, stationX, 4.50, stationZ,
+          0, Math.PI / 2, 0, [1.52, 1.52, 1.52], factoryArchitecture);
+        for (const x of [-0.78, 0.78]) {
+          factoryPut(mat.steelMid, stationX + x, 3.98, stationZ, 0.14, 0.88, 0.14);
+        }
+        factoryCylinderPut(mat.oily, stationX, 3.92, stationZ, 0.32, 0.58);
       }
-    }
-    addFactoryChain('verdant_center_hoist_chain_left',
-      new THREE.Vector3(-0.34, 7.22, -0.18), new THREE.Vector3(-0.34, 5.66, -0.18));
-    addFactoryChain('verdant_center_hoist_chain_right',
-      new THREE.Vector3(0.34, 7.22, 0.18), new THREE.Vector3(0.34, 5.66, 0.18));
-    factoryPut(mat.safety, 0, 5.48, 0, 5.0, 0.20, 0.42, 0, 0, false);
-    for (const x of [-2.34, 2.34]) {
-      factoryPut(mat.steelDark, x, 5.38, 0, 0.34, 0.34, 0.90, 0, 0, false);
-      for (const z of [-0.32, 0.32]) {
-        addFactoryChain(`verdant_center_spreader_sling_${x}_${z}`,
-          new THREE.Vector3(x, 5.28, z),
-          new THREE.Vector3(x * 0.66, 4.20, z * 2.15));
+
+      // Every workshop component is carried by the same explicit lifting
+      // frame. The sling endpoints below meet the tops of these four visible
+      // eyes exactly, so no chain ends in empty air or appears to pierce the
+      // load. Keeping the compact components above the hero silhouette makes
+      // the machinery legible without competing with the selected tank.
+      for (const zOffset of [-suspendedLoadAttachZ, suspendedLoadAttachZ]) {
+        factoryPut(mat.steelBright, stationX, suspendedLoadFrameY, stationZ + zOffset,
+          suspendedLoadAttachX * 2 + 0.18, 0.12, 0.14, 0, 0, false);
       }
+      for (const x of [-suspendedLoadAttachX, suspendedLoadAttachX]) {
+        factoryPut(mat.steelBright, stationX + x, suspendedLoadFrameY, stationZ,
+          0.14, 0.12, suspendedLoadAttachZ * 2 + 0.18, 0, 0, false);
+        for (const zOffset of [-suspendedLoadAttachZ, suspendedLoadAttachZ]) {
+          const lug = factoryPut(mat.safety, stationX + x, suspendedLoadFrameY + 0.07,
+            stationZ + zOffset, 0.16, 0.26, 0.16, 0, 0, false);
+          lug.name = `verdant_${stationId}_lifting_lug_${x}_${zOffset}`;
+          const eye = put(hoistRing, mat.steelBright, stationX + x, suspendedLoadEyeY,
+            stationZ + zOffset, 0, 0, 0, [0.25, 0.25, 0.25],
+            factoryArchitecture, false);
+          eye.name = `verdant_${stationId}_connected_lift_eye_${x}_${zOffset}`;
+        }
+      }
+    };
+    const addFactoryHoistStation = (
+      stationId: string,
+      stationX: number,
+      stationZ: number,
+      loadKind: 'final-drive' | 'powerpack' | 'turret-basket',
+    ): void => {
+      const bridge = factoryPut(mat.safety, 0, 7.86, stationZ, 42.2, 0.46, 0.54);
+      bridge.name = `verdant_${stationId}_crane_bridge`;
+      const trolley = factoryPut(
+        mat.steelDark, stationX, 7.50, stationZ, 1.52, 0.62, 1.12,
+      );
+      trolley.name = `verdant_${stationId}_hoist_trolley`;
+      for (const x of [-0.50, 0.50]) {
+        for (const zOffset of [-0.48, 0.48]) {
+          factoryCylinderPut(mat.steelBright, stationX + x, 7.72, stationZ + zOffset,
+            0.16, 0.13, Math.PI / 2);
+        }
+      }
+      addFactoryChain(`verdant_${stationId}_hoist_chain_left`,
+        new THREE.Vector3(stationX - 0.36, 7.22, stationZ - 0.18),
+        new THREE.Vector3(stationX - 0.36, 6.34, stationZ - 0.18));
+      addFactoryChain(`verdant_${stationId}_hoist_chain_right`,
+        new THREE.Vector3(stationX + 0.36, 7.22, stationZ + 0.18),
+        new THREE.Vector3(stationX + 0.36, 6.34, stationZ + 0.18));
+      const hookBlock = factoryPut(
+        mat.steelDark, stationX, 6.04, stationZ, 1.16, 0.58, 0.84,
+      );
+      hookBlock.name = `verdant_${stationId}_hoist_hook_block`;
+      for (const x of [-0.66, 0.66]) {
+        factoryPut(
+          mat.safety, stationX + x, 6.04, stationZ, 0.16, 0.72, 0.92, 0, 0, false,
+        );
+      }
+      factoryCylinderPut(mat.steelBright, stationX, 6.07, stationZ,
+        0.24, 0.86, 0, Math.PI / 2);
+      factoryPut(
+        mat.steelBright, stationX, 5.64, stationZ, 0.18, 0.28, 0.18, 0, 0, false,
+      );
+      const spreader = factoryPut(
+        mat.safety, stationX, 5.58, stationZ, 5.10, 0.28, 0.50,
+      );
+      spreader.name = `verdant_${stationId}_reinforced_spreader`;
+      factoryPut(
+        mat.steelDark, stationX, 5.36, stationZ, 3.20, 0.16, 0.76, 0, 0, false,
+      );
+      for (const x of [-2.38, 2.38]) {
+        factoryPut(
+          mat.steelDark, stationX + x, 5.48, stationZ, 0.38, 0.42, 0.94,
+          0, 0, false,
+        );
+        for (const zOffset of [-0.30, 0.30]) {
+          addFactoryChain(`verdant_${stationId}_spreader_sling_${x}_${zOffset}`,
+            new THREE.Vector3(stationX + x, 5.32, stationZ + zOffset),
+            new THREE.Vector3(
+              stationX + Math.sign(x) * suspendedLoadAttachX,
+              suspendedLoadChainY,
+              stationZ + Math.sign(zOffset) * suspendedLoadAttachZ,
+            ));
+        }
+      }
+      addSuspendedWorkshopLoad(stationId, stationX, stationZ, loadKind);
+    };
+    for (const [stationId, stationX, stationZ, loadKind] of [
+      ['front', 0, -9.2, 'final-drive'],
+      ['center', 4.8, 0, 'powerpack'],
+      ['rear', 0, 9.2, 'turret-basket'],
+    ] as const) {
+      addFactoryHoistStation(stationId, stationX, stationZ, loadKind);
     }
-    factoryPut(mat.steelBright, 0, 4.22, 0, 0.36, 0.18, 0.18, 0, 0, false);
 
     // Purposeful electrical and pneumatic distribution: perimeter trays feed
     // labeled junction boxes, then organized drops follow walls and floor
@@ -1594,10 +1775,13 @@ export function createGarageDressing(
       'coating-and-ventilation', 'hydrostatic-inspection',
     ];
     group.userData.verdantElevatedAccessSystems = 4;
-    group.userData.verdantStructuralConnections = 244;
+    group.userData.verdantStructuralConnections = 354;
     group.userData.verdantUnsupportedParts = 0;
-    group.userData.verdantHoistCentered = true;
-    group.userData.verdantHoistChainRuns = 8;
+    group.userData.verdantHeroHoistOffsetM = 4.8;
+    group.userData.verdantHoistStationCount = 3;
+    group.userData.verdantHoistChainRuns = 20;
+    group.userData.verdantSuspendedLoadCount = 3;
+    group.userData.verdantConnectedLiftPointCount = 12;
     group.userData.verdantRoutedUtilityCircuits = 12;
     group.userData.verdantJunctionBoxes = 8;
     // --- EAST WALL (left of frame from the hero cam) ------------------------
