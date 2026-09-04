@@ -2901,57 +2901,82 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     const _gray = new THREE.Ray();
     const _ghit = new THREE.Vector3();
     const guardRay = new THREE.Raycaster();
-    const gunGuardOK: GunGuard = (boxes, seatY = null) => {
-      void seatY;
-      // analytic quick-accept: every PART fully under the depressed bore cone
-      let clear = true;
+    const gunGuardYaws = casemate
+      ? [0]
+      : Array.from({ length: 24 }, (_, index) => (index / 24) * Math.PI * 2);
+    const gunGuardOffsets: Array<[number, number]> = [
+      [0, 0], [boreR, 0], [-boreR, 0], [0, boreR], [0, -boreR],
+    ];
+    const sinDepression = Math.sin(dep);
+    const cosDepression = Math.cos(dep);
+    const analyticallyClearsGun = (boxes: readonly THREE.Box3[]): boolean => {
       for (const bb of boxes) {
         for (const x of [bb.min.x, bb.max.x, (bb.min.x + bb.max.x) / 2]) {
           for (const z of [bb.min.z, bb.max.z, (bb.min.z + bb.max.z) / 2]) {
             const r = Math.hypot(x - pivot[0], z - pivot[2]);
             if (r > boreReach || r < boreRho * 0.5) continue;
-            if (bb.max.y > boreYAt(r) - boreR - 0.03) { clear = false; break; }
+            if (bb.max.y > boreYAt(r) - boreR - 0.03) return false;
           }
-          if (!clear) break;
         }
-        if (!clear) break;
       }
-      if (clear) return true;
-      // first-hit ray test: bore bundle (center + 4 sleeve-radius offsets)
-      const yaws = casemate ? [0] : Array.from({ length: 24 }, (_, i) => (i / 24) * Math.PI * 2);
-      const sinD = Math.sin(dep), cosD = Math.cos(dep);
+      return true;
+    };
+    const nearestDecorHit = (boxes: readonly THREE.Box3[]): number => {
+      let distance = Infinity;
+      for (const bb of boxes) {
+        const hit = _gray.intersectBox(bb, _ghit);
+        if (hit) distance = Math.min(distance, _ghit.distanceTo(_gray.origin));
+      }
+      return distance;
+    };
+    const hullBlocksGuardRay = (distance: number, toWorld: THREE.Matrix4): boolean => {
+      guardRay.ray.origin.copy(_gray.origin).applyMatrix4(toWorld);
+      guardRay.ray.direction.copy(_gray.direction).transformDirection(toWorld);
+      guardRay.far = distance - 0.02;
+      guardRay.near = 0.1;
+      return guardRay.intersectObjects(hullTargets, false).length > 0;
+    };
+    const gunClearAtYaw = (
+      boxes: readonly THREE.Box3[],
+      yaw: number,
+      toWorld: THREE.Matrix4,
+    ): boolean => {
+      const sinYaw = Math.sin(yaw);
+      const cosYaw = Math.cos(yaw);
+      const originX = pivot[0] + gunPiv[0] * cosYaw + gunPiv[2] * sinYaw;
+      const originZ = pivot[2] - gunPiv[0] * sinYaw + gunPiv[2] * cosYaw;
+      const directionX = sinYaw * cosDepression;
+      const directionY = -sinDepression;
+      const directionZ = cosYaw * cosDepression;
+      const sideX = cosYaw;
+      const sideZ = -sinYaw;
+      // up = direction × side; both inputs are unit and orthogonal.
+      const upX = directionY * sideZ;
+      const upY = directionZ * sideX - directionX * sideZ;
+      const upZ = -directionY * sideX;
+      for (const [sideOffset, upOffset] of gunGuardOffsets) {
+        _gray.origin.set(
+          originX + sideX * sideOffset + upX * upOffset,
+          boreY0 + upY * upOffset,
+          originZ + sideZ * sideOffset + upZ * upOffset,
+        );
+        _gray.direction.set(directionX, directionY, directionZ);
+        const decorDistance = nearestDecorHit(boxes);
+        if (!Number.isFinite(decorDistance) || decorDistance > boreLen + 0.15) continue;
+        if (!hullBlocksGuardRay(decorDistance, toWorld)) return false;
+      }
+      return true;
+    };
+    const gunGuardOK: GunGuard = (boxes, seatY = null) => {
+      void seatY;
+      if (analyticallyClearsGun(boxes)) return true;
+      // First-hit ray test: bore bundle (center + 4 sleeve-radius offsets).
       hullG.updateWorldMatrix(true, false);
       const toWorld = hullG.matrixWorld;
-      for (const yaw of yaws) {
-        const sy = Math.sin(yaw), cy = Math.cos(yaw);
-        const ox = pivot[0] + gunPiv[0] * cy + gunPiv[2] * sy;
-        const oz = pivot[2] - gunPiv[0] * sy + gunPiv[2] * cy;
-        const oy = boreY0;
-        const dx = sy * cosD, dyy = -sinD, dz = cy * cosD;
-        const sideV = [cy, 0, -sy];                       // ⟂ bearing, horizontal
-        // up = dir × side (unit: dir and side are unit and orthogonal)
-        const ux = dyy * sideV[2], uy = dz * sideV[0] - dx * sideV[2], uz = -dyy * sideV[0];
-        for (const [a, b] of [[0, 0], [boreR, 0], [-boreR, 0], [0, boreR], [0, -boreR]]) {
-          _gray.origin.set(
-            ox + sideV[0] * a + ux * b,
-            oy + uy * b,
-            oz + sideV[2] * a + uz * b,
-          );
-          _gray.direction.set(dx, dyy, dz);
-          let tBox = Infinity;
-          for (const bb of boxes) {
-            const hit = _gray.intersectBox(bb, _ghit);
-            if (hit) tBox = Math.min(tBox, _ghit.distanceTo(_gray.origin));
-          }
-          if (!Number.isFinite(tBox) || tBox > boreLen + 0.15) continue;
-          // does the tank's own geometry eat the ray first?
-          guardRay.ray.origin.copy(_gray.origin).applyMatrix4(toWorld);
-          guardRay.ray.direction.copy(_gray.direction).transformDirection(toWorld);
-          guardRay.far = tBox - 0.02;
-          guardRay.near = 0.1;
-          const blocked = guardRay.intersectObjects(hullTargets, false).length > 0;
-          if (!blocked) { gunGuardOK.lastYaw = Math.round(yaw / D2R); return false; } // decor first-hit
-        }
+      for (const yaw of gunGuardYaws) {
+        if (gunClearAtYaw(boxes, yaw, toWorld)) continue;
+        gunGuardOK.lastYaw = Math.round(yaw / D2R);
+        return false;
       }
       return true;
     };
