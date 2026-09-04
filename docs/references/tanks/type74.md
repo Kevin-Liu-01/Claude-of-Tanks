@@ -392,7 +392,7 @@ critic's order-1 option (b) applies — the r5 round PASSES as-landed
 at 9.0. Detail-class note banked (non-blocking): track band tone one
 step + shorter grouser horns at the next open round.
 
-## OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+## RETIRED OWNER-SOURCE REBUILD (2026-08-11)
 
 The owner-supplied `/Users/kevinliu/Downloads/type_74.glb` receipt is
 SHA-256 `8cd9eb1a915a4bcba402ba86032a6111cdd8c7e1f5cc1698a5fe50bdbd7c726e`.
@@ -437,4 +437,8 @@ basket load paths, hull ownership, the lower bridge, five-wheel native track,
 and winding with no fused mass, stranded fitting, empty-air decoration or
 visible wound. All eight presentation assets, metadata and muzzle-bore proof
 were regenerated and pass; `npm test` and `npm run build:private` pass.
-**KEEP `8319dbb8`; all earlier Type 74 fallback/freezes are retired.**
+The `8319dbb8` Native2026 experiment was superseded by the authoritative
+`buildType74` fidelity restoration on 2026-08-15. It has not been registered
+since that restoration and was removed from source as dead code in September
+2026. The measurements above remain as historical authoring evidence; the
+playable continues to use original first-party procedural geometry.
