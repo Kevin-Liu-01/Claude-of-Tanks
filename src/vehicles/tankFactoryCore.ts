@@ -1710,7 +1710,12 @@ function trackLoopPoints({
  * @param {number} [maxV] vertex budget for the hit-test polygon
  * @returns {Array<[number,number]>} convex CCW polygon in (z,y), mm-rounded
  */
-function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): TrackPoint[] {
+function trackPointCross(origin: TrackPoint, a: TrackPoint, b: TrackPoint): number {
+  return (a[0] - origin[0]) * (b[1] - origin[1])
+    - (a[1] - origin[1]) * (b[0] - origin[0]);
+}
+
+function expandedTrackHitboxCloud(pts: readonly TrackPoint[], r: number): TrackPoint[] {
   const cloud: TrackPoint[] = [];
   const N = 8; // disc facets: max inward facet sag = r·(1-cos(π/8)) ≈ 0.076·r
   for (const p of pts) {
@@ -1720,20 +1725,27 @@ function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): Trac
     }
   }
   cloud.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o: TrackPoint, a: TrackPoint, b: TrackPoint): number =>
-    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  return cloud;
+}
+
+function convexTrackHitboxHull(cloud: readonly TrackPoint[]): TrackPoint[] {
   const lo: TrackPoint[] = [];
   for (const p of cloud) {
-    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+    while (lo.length >= 2
+      && trackPointCross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
     lo.push(p);
   }
   const hi: TrackPoint[] = [];
   for (let i = cloud.length - 1; i >= 0; i--) {
     const p = cloud[i];
-    while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop();
+    while (hi.length >= 2
+      && trackPointCross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop();
     hi.push(p);
   }
-  const hull = lo.slice(0, -1).concat(hi.slice(0, -1)); // CCW in (z,y)
+  return lo.slice(0, -1).concat(hi.slice(0, -1)); // CCW in (z,y)
+}
+
+function pruneTrackHitboxHull(hull: TrackPoint[], maxV: number): void {
   // prune to budget OUTWARD-ONLY (containment guarantee): merge the vertex
   // pair whose outer edge lines meet with the least added area — the hull
   // only ever GROWS, so no loop point can leak outside the hit volume (the
@@ -1758,9 +1770,9 @@ function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): Trac
       if (Math.abs(den) < 1e-9) continue; // parallel support lines
       const t = ((b0[0] - a1[0]) * d2y - (b0[1] - a1[1]) * d2z) / den;
       if (t < 0) continue; // intersection behind the edge — reflex-safe guard
-      const P: TrackPoint = [a1[0] + d1z * t, a1[1] + d1y * t];
-      const added = Math.abs(cross(a1, P, b0)) / 2;
-      if (added < ba) { ba = added; bi = i; bp = P; }
+      const intersection: TrackPoint = [a1[0] + d1z * t, a1[1] + d1y * t];
+      const added = Math.abs(trackPointCross(a1, intersection, b0)) / 2;
+      if (added < ba) { ba = added; bi = i; bp = intersection; }
     }
     if (bi < 0 || !bp) break; // nothing safely mergeable — keep the larger hull
     if (bi === n - 1) {
@@ -1773,6 +1785,12 @@ function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): Trac
       hull.splice(bi, 2, bp);
     }
   }
+}
+
+function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): TrackPoint[] {
+  const cloud = expandedTrackHitboxCloud(pts, r);
+  const hull = convexTrackHitboxHull(cloud);
+  pruneTrackHitboxHull(hull, maxV);
   return hull.map((p) => [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]);
 }
 
