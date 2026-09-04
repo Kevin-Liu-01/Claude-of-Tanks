@@ -133,6 +133,15 @@ interface DonbasEraSeat {
   readonly contactEmbedM: number;
 }
 
+interface DonbasEraReceipt {
+  readonly family: string;
+  readonly carrierDerivedTransforms: boolean;
+  readonly contactEmbedM: number;
+  readonly maxSupportGapM: number;
+  totalCassettes: number;
+  seats: readonly DonbasEraSeat[];
+}
+
 interface CageStation {
   readonly z: number;
   readonly x: number;
@@ -345,6 +354,94 @@ function uaSmoke(P: UkraineBuilderPort, o: SmokeOptions): void {
       seed: (o.seed ?? 90) + (s > 0 ? 1 : 0) }),
       s * o.x, o.y, o.z);
   }
+}
+
+function addDonbasDomeCassette(
+  P: UkraineBuilderPort,
+  rings: readonly DomeRing[],
+  receipt: DonbasEraReceipt,
+  seats: DonbasEraSeat[],
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  thickness: number,
+  courseLength: number,
+): void {
+  const face = sampleDomeFace(rings, 1.08, y, x, z);
+  const cassette = faceSeatedCassette(P, 'turret', face.point.toArray(),
+    face.normal.toArray(), face.vertical.toArray(), width, thickness, courseLength, {
+      embed: receipt.contactEmbedM,
+      painted: true,
+      external: true,
+    });
+  receipt.totalCassettes += 1;
+  seats.push(Object.freeze({
+    supportLocal: Object.freeze(cassette.support.toArray()),
+    centerLocal: Object.freeze(cassette.center.toArray()),
+    normalLocal: Object.freeze(cassette.normal.toArray()),
+    contactEmbedM: cassette.embed,
+  }));
+}
+
+function addDonbasTurretEra(P: UkraineBuilderPort, rings: readonly DomeRing[]): void {
+  const seats: DonbasEraSeat[] = [];
+  const receipt: DonbasEraReceipt = {
+    family: 'ua-t64bv-donbas-k1-surface-r1',
+    carrierDerivedTransforms: true,
+    contactEmbedM: 0.04,
+    maxSupportGapM: 0,
+    totalCassettes: 0,
+    seats,
+  };
+  const addCassette = (...args: readonly [number, number, number, number, number, number]): void => {
+    addDonbasDomeCassette(P, rings, receipt, seats, ...args);
+  };
+
+  for (const side of [-1, 1]) {
+    const sweep = [
+      [0.38, 1.065, 0.44, 0.44],
+      [0.75, 0.815, 0.50, 0.44],
+      [1.11, 0.545, 0.46, 0.42],
+    ] as const;
+    for (const [x, z, width, courseLength] of sweep) {
+      addCassette(side * x, 0.30, z, width, 0.20, courseLength);
+    }
+    // Chevron wrap extends toward the mantlet, with one lower-row cassette
+    // beside the boot and one upper-row block riding the dome slope.
+    addCassette(side * 0.255, 0.295, 1.175, 0.30, 0.20, 0.42);
+    addCassette(side * 0.14, 0.615, 0.74, 0.26, 0.075, 0.24);
+    for (let i = 0; i < 3; i++) {
+      addCassette(side * (0.40 + i * 0.31), 0.565 - i * 0.065,
+        0.585 - i * 0.145, 0.30, 0.075, 0.26);
+    }
+    const flankX = side < 0 ? 1.243 : 1.285;
+    for (let i = 0; i < 3; i++) {
+      addCassette(side * flankX, 0.30, 0.06 - i * 0.33,
+        0.15, 0.31, 0.33 - i * 0.02);
+    }
+  }
+
+  receipt.seats = Object.freeze(seats);
+  P.turretG.userData.uaT64DonbasERAReceipt = Object.freeze(receipt);
+}
+
+function addT64BVFenderStowage(P: UkraineBuilderPort): void {
+  const { box, cylX } = KIT;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const z = 2.10 - i * 0.585;
+      P.add('hull', box(0.40, 0.115, 0.56), side * 1.245, 1.22, z);
+      P.add('hullDark', box(0.34, 0.028, 0.46), side * 1.245, 1.287, z);
+      P.add('hullDetail', cylX(0.018, 0.05, 8), side * 1.452, 1.24, z + 0.14);
+    }
+  }
+  P.add('hullDark', box(0.24, 0.17, 0.90), -1.315, 1.30, -2.14);
+  P.add('hullDetail', box(0.20, 0.13, 0.76), -1.315, 1.40, -2.14);
+  KIT.towCable(P, [[-1.18, 1.30, 0.55], [-0.42, 1.35, 0.05], [0.44, 1.35, 0.03], [1.16, 1.30, 0.51]]);
+  const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 5, width: 0.46, seed: 8641 });
+  links.position.set(-0.62, 1.335, 0.60);
+  P.hullG.add(links);
 }
 
 function modernT80CheekCarrier(s: number): { bottom: FaceQuad; top: FaceQuad; front: FaceQuad } {
@@ -707,22 +804,7 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
   KIT.periscope(P, 'hullDetail', 0.15, 1.345, 1.44);
 
   // Segmented fender bins (edge-on prism law) + the LEFT exhaust duct.
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 7; i++) {
-      const z = 2.10 - i * 0.585;
-      P.add('hull', box(0.40, 0.115, 0.56), s * 1.245, 1.22, z);
-      P.add('hullDark', box(0.34, 0.028, 0.46), s * 1.245, 1.287, z);
-      P.add('hullDetail', cylX(0.018, 0.05, 8), s * 1.452, 1.24, z + 0.14);
-    }
-  }
-  P.add('hullDark', box(0.24, 0.17, 0.90), -1.315, 1.30, -2.14);
-  P.add('hullDetail', box(0.20, 0.13, 0.76), -1.315, 1.40, -2.14);
-  KIT.towCable(P, [[-1.18, 1.30, 0.55], [-0.42, 1.35, 0.05], [0.44, 1.35, 0.03], [1.16, 1.30, 0.51]]);
-  {
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 5, width: 0.46, seed: 8641 });
-    links.position.set(-0.62, 1.335, 0.60);
-    P.hullG.add(links);
-  }
+  addT64BVFenderStowage(P);
 
   // Raised engine run + louvres.
   for (const s of [-1, 1]) {
@@ -864,71 +946,7 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
   // three flank returns each side. Every visible cassette is projected to
   // the measured dome and authored as external armor; the previous generic
   // track-steel boxes sat as much as 230 mm inside the cast turret.
-  const donbasEraSeats: DonbasEraSeat[] = [];
-  const donbasEraReceipt = {
-    family: 'ua-t64bv-donbas-k1-surface-r1',
-    carrierDerivedTransforms: true,
-    contactEmbedM: 0.04,
-    maxSupportGapM: 0,
-    totalCassettes: 0,
-    seats: donbasEraSeats as readonly DonbasEraSeat[],
-  };
-  const addDonbasDomeCassette = (
-    x: number,
-    y: number,
-    z: number,
-    width: number,
-    thickness: number,
-    courseLength: number,
-  ): void => {
-    const face = sampleDomeFace(rings, 1.08, y, x, z);
-    const cassette = faceSeatedCassette(P, 'turret', face.point.toArray(),
-      face.normal.toArray(), face.vertical.toArray(), width, thickness, courseLength, {
-        embed: donbasEraReceipt.contactEmbedM,
-        painted: true,
-        external: true,
-      });
-    donbasEraReceipt.totalCassettes += 1;
-    donbasEraSeats.push(Object.freeze({
-      supportLocal: Object.freeze(cassette.support.toArray()),
-      centerLocal: Object.freeze(cassette.center.toArray()),
-      normalLocal: Object.freeze(cassette.normal.toArray()),
-      contactEmbedM: cassette.embed,
-    }));
-  };
-  for (const s of [-1, 1]) {
-    const sweep = [
-      [0.38, 1.065, 0.44, 0.44],
-      [0.75, 0.815, 0.50, 0.44],
-      [1.11, 0.545, 0.46, 0.42],
-    ];
-    for (let i = 0; i < sweep.length; i++) {
-      const [x, z, w, h] = sweep[i];
-      addDonbasDomeCassette(s * x, 0.30, z, w, 0.20, h);
-    }
-    // §5.272 fix (3): chevron wrap extended toward the mantlet — one more
-    // lower-row cassette flanking the boot + one upper-row block riding the
-    // dome slope (+2 per cheek).
-    addDonbasDomeCassette(s * 0.255, 0.295, 1.175, 0.30, 0.20, 0.42);
-    addDonbasDomeCassette(s * 0.14, 0.615, 0.74, 0.26, 0.075, 0.24);
-    // second (upper) cheek row following the dome slope — the print's
-    // denser Donbas fit reaches the roof arc.
-    for (let i = 0; i < 3; i++) {
-      addDonbasDomeCassette(s * (0.40 + i * 0.31), 0.565 - i * 0.065,
-        0.585 - i * 0.145, 0.30, 0.075, 0.26);
-    }
-    const fxr = s < 0 ? 1.243 : 1.285;
-    for (let i = 0; i < 3; i++) {
-      addDonbasDomeCassette(s * fxr, 0.30, 0.06 - i * 0.33,
-        0.15, 0.31, 0.33 - i * 0.02);
-    }
-    // (owner-absorb outer-return corner module measured -1.2 on the binding
-    // turret row and was withdrawn — receipt in the fix report; the ordered
-    // toward-the-mantlet extension above carries the chevron-completion
-    // intent at zero gate cost.)
-  }
-  donbasEraReceipt.seats = Object.freeze(donbasEraSeats);
-  P.turretG.userData.uaT64DonbasERAReceipt = Object.freeze(donbasEraReceipt);
+  addDonbasTurretEra(P, rings);
   P.add('turretDark', box(0.40, 0.14, 0.06), 0, 0.03, 1.10);
   P.add('turretDark', box(0.34, 0.22, 0.10), 0, 0.16, 0.96, -0.16, 0, 0);
 
