@@ -5733,6 +5733,36 @@ function buildM1A2(P: TankBuilderPort): void {
   P.topY = 0.88;
 }
 
+function addT90MRearSlatCage(P: TankBuilderPort): void {
+  for (const side of [-1, 1]) {
+    // Side rails and vertical bars wrap the rear third of each skirt.
+    P.add('hullDetail', box(0.03, 0.045, 1.05), side * 1.99, 1.08, -2.72);
+    P.add('hullDetail', box(0.03, 0.045, 1.05), side * 1.99, 0.64, -2.72);
+    for (let slat = 0; slat < 9; slat++) {
+      P.add('hullDark', box(0.024, 0.40, 0.032),
+        side * 1.99, 0.86, -2.24 - slat * 0.12);
+    }
+    for (const z of [-2.35, -3.15]) {
+      P.add('hullDetail', box(0.12, 0.05, 0.05), side * 1.93, 1.08, z);
+    }
+    // Corner rails turn the cage onto the rear plate.
+    P.add('hullDetail', box(0.42, 0.045, 0.03), side * 1.78, 1.08, -3.68);
+    P.add('hullDetail', box(0.42, 0.045, 0.03), side * 1.78, 0.64, -3.68);
+    for (let slat = 0; slat < 4; slat++) {
+      P.add('hullDark', box(0.032, 0.40, 0.026),
+        side * (1.94 - slat * 0.12), 0.86, -3.68);
+    }
+  }
+  P.add('hullDetail', box(2.9, 0.045, 0.03), 0, 1.08, -3.74);
+  P.add('hullDetail', box(2.9, 0.045, 0.03), 0, 0.64, -3.74);
+  for (let slat = 0; slat < 20; slat++) {
+    P.add('hullDark', box(0.024, 0.40, 0.026), -1.33 + slat * 0.14, 0.86, -3.74);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.05, 0.05, 0.14), side * 1.1, 1.08, -3.62);
+  }
+}
+
 function buildT90M(P: TankBuilderPort): void {
   const { rng } = P;
   // r7 hull rebuild (barge-hull critical): the real T-90M side is essentially
@@ -5816,28 +5846,7 @@ function buildT90M(P: TankBuilderPort): void {
   // "the armor model HAS a slat_cage plate with no visual counterpart"):
   // proper standoff cage — top/bottom rails on standoff arms with dense
   // vertical slat bars, wrapping the rear plate and both rear corners.
-  for (const s of [-1, 1]) {
-    // side segments over the rear third of the skirts
-    P.add('hullDetail', box(0.03, 0.045, 1.05), s * 1.99, 1.08, -2.72);          // top rail
-    P.add('hullDetail', box(0.03, 0.045, 1.05), s * 1.99, 0.64, -2.72);          // bottom rail
-    for (let k = 0; k < 9; k++) {
-      P.add('hullDark', box(0.024, 0.40, 0.032), s * 1.99, 0.86, -2.24 - k * 0.12);
-    }
-    for (const zc of [-2.35, -3.15]) {
-      P.add('hullDetail', box(0.12, 0.05, 0.05), s * 1.93, 1.08, zc);           // standoff arms
-    }
-    // corner wrap segments
-    P.add('hullDetail', box(0.42, 0.045, 0.03), s * 1.78, 1.08, -3.68);
-    P.add('hullDetail', box(0.42, 0.045, 0.03), s * 1.78, 0.64, -3.68);
-    for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.032, 0.40, 0.026), s * (1.94 - k * 0.12), 0.86, -3.68);
-    }
-  }
-  // rear plate cage across the grille doors
-  P.add('hullDetail', box(2.9, 0.045, 0.03), 0, 1.08, -3.74);
-  P.add('hullDetail', box(2.9, 0.045, 0.03), 0, 0.64, -3.74);
-  for (let k = 0; k < 20; k++) P.add('hullDark', box(0.024, 0.40, 0.026), -1.33 + k * 0.14, 0.86, -3.74);
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.05, 0.14), s * 1.1, 1.08, -3.62); // standoffs
+  addT90MRearSlatCage(P);
   // turret (r5 FULL REBUILD — critic critical: "turret ~40% under-scale,
   // nearly flush with the deck on a fictional plinth, zero Relikt ERA on the
   // cheeks — not recognizable as a T-90M"). Per roster §7.5: a WELDED
