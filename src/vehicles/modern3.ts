@@ -3752,6 +3752,63 @@ function buildM2A2Bradley(P: Modern3BuilderPort) {
   bradleyFlankDressing(P);
 }
 
+function addBMP2Fenders(P: Modern3BuilderPort): void {
+  const { box, slab } = KIT;
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.21, 0.055, 1.16), s * 1.42, 1.23, 2.44);
+    P.add('hull', box(0.23, 0.055, 1.14), s * 1.43, 1.23, -2.685);
+    P.add('hull', box(0.15, 0.08, 0.46), s * 1.4975, 0.9925, -0.24);
+    P.add('hullRubber', box(0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);
+    P.add('hullRubber', box(0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);
+    P.add('hull', box(0.025, 0.21, 0.44), s * 1.5625, 0.955, 2.64);
+    P.add('hull', box(0.05, 0.06, 0.20), s * 1.5475, 0.955, 1.80);
+    for (const [zc, zl] of [[-2.885, 0.43], [-2.44, 0.44], [-2.055, 0.31], [-1.675, 0.44]]) {
+      P.add('hull', box(0.03, 0.21, zl), s * 1.535, 0.955, zc);
+    }
+    for (const zc of [-3.15, -2.35, 2.05, 2.75]) {
+      P.add('hullDark', box(0.215, 0.03, 0.03), s * 1.42, 1.198, zc);
+    }
+    P.add('hull', box(0.29, 0.03, 0.42), s * 1.185, 1.20, 2.79);
+    P.add('hull', orientedSlab(
+      [s * 0.99, 0.88, 2.90], [s * 1.15, 0.88, 2.90], [s * 1.15, 0.98, 3.06], [s * 0.99, 0.98, 3.06],
+      [s * 0.99, 1.28, 2.90], [s * 1.15, 1.28, 2.90], [s * 1.15, 1.28, 3.06], [s * 0.99, 1.28, 3.06]));
+    P.add('hull', s > 0 ? slab(
+      [1.29, 1.30, -0.01], [1.365, 1.30, -0.01], [1.365, 1.30, -0.47], [1.29, 1.30, -0.47],
+      [1.29, 1.52, -0.01], [1.365, 1.42, -0.01], [1.365, 1.42, -0.47], [1.29, 1.52, -0.47],
+    ) : slab(
+      [-1.365, 1.30, -0.01], [-1.29, 1.30, -0.01], [-1.29, 1.30, -0.47], [-1.365, 1.30, -0.47],
+      [-1.365, 1.42, -0.01], [-1.29, 1.52, -0.01], [-1.29, 1.52, -0.47], [-1.365, 1.42, -0.47],
+    ), 0, 0, 0);
+    P.add('hullRubber', box(0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
+    P.add('hullRubber', box(0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
+  }
+}
+
+function addBMP2TurretProtection(P: Modern3BuilderPort): void {
+  const { box } = KIT;
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) {
+      P.add('turret', box(0.205, 0.145, 0.27),
+        s * (0.27 + k * 0.225), 0.255 - k * 0.012, 0.79 - k * 0.085,
+        0, -s * (0.16 + k * 0.12), 0);
+      P.add('turretDark', box(0.16, 0.022, 0.22),
+        s * (0.27 + k * 0.225), 0.329 - k * 0.012, 0.79 - k * 0.085,
+        0, -s * (0.16 + k * 0.12), 0);
+    }
+    for (const zc of [0.32, 0.01, -0.30]) {
+      P.add('turret', box(0.13, 0.17, 0.25), s * 0.91, 0.22, zc, 0, 0, s * 0.04);
+    }
+    P.add('turret', box(0.34, 0.20, 0.34), s * 0.73, 0.16, -0.72,
+      0, -s * 0.12, 0);
+    P.add('turretDetail', box(0.10, 0.12, 0.38), s * 0.55, 0.14, -0.72,
+      0, -s * 0.12, 0);
+    P.add('turret', box(0.16, 0.13, 0.14), s * 0.73, 0.43, 0.43,
+      -0.10, -s * 0.30, 0);
+    P.add('turretGlass', box(0.105, 0.06, 0.025), s * 0.73, 0.445, 0.505,
+      -0.10, -s * 0.30, 0);
+  }
+}
+
 // ==================================== BMP-2 =================================
 // AFV r2 RE-ANCHOR against the batch-39 WARPED m_bergman print (uniform z
 // x1.0613 about the mask mid; docs/references/vertex/bmp2.json regenerated
@@ -3893,73 +3950,7 @@ export function buildBMP2(P: Modern3BuilderPort) {
   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.44, 2.50, -0.22, 0, 0);
   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.407, 2.656, -0.22, 0, 0);
   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.385, 2.78, -0.22, 0, 0);
-  // ---- fenders: FRONT + REAR SECTIONS ONLY (warped bands: front plank
-  // 1.86..3.02, rear -3.255..-2.115, tops 1.258, dust skirts down to 0.675;
-  // short MID stubs at z -0.47..-0.01 carry the print's own st6 full-width
-  // slab; outer rails +-1.575 hold the 3.15 width datum) --------------------
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.21, 0.055, 1.16), s * 1.42, 1.23, 2.44);                // front plank z 1.86..3.02
-    P.add('hull', box(0.23, 0.055, 1.14), s * 1.43, 1.23, -2.685);              // rear plank z -3.255..-2.115
-    P.add('hull', box(0.15, 0.08, 0.46), s * 1.4975, 0.9925, -0.24);             // mid fender stub (ref st6 band;
-                                                                                //   r3b: dropped into the rail band
-                                                                                //   y 0.95..1.03 — its 1.24 top owned
-                                                                                //   the ±1.57 front cols once the
-                                                                                //   st10 bump moved; st6 width keeps)
-    P.add('hullRubber', box(0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);          // front dust skirt (0.675..1.235;
-    P.add('hullRubber', box(0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);         //   ref front band spans x 1.40..1.56
-                                                                                //   rear skirt fwd to -1.70: carries
-                                                                                //   the rail chunks (floater bridge)
-                                                                                //   and its side line caps the front
-                                                                                //   skirt at z ~2.5)
-    P.add('hull', box(0.025, 0.21, 0.44), s * 1.5625, 0.955, 2.64);
-    P.add('hull', box(0.05, 0.06, 0.20), s * 1.5475, 0.955, 1.80);               // st10 width bump, dropped INTO the
-                                                                                //   rail band (r3: at 1.225 it broke
-                                                                                //   the front rows ±1.55-1.58 — ref
-                                                                                //   band there is 0.84..1.06)
-    // rear outer rail (0.85..1.06): r3 SEGMENTED ≤0.48 m (§C station end-cap
-    // law: long thin boxes paint only their z-caps in slice renders — the
-    // one-piece rail read x±1.55 in NO mid station). Chunks put caps inside
-    // st1/st2/st3 so the ref's 3.09-3.15-wide rear-skirt band (the st3 wPct
-    // 10.55 finding, instrumented) is finally measured on the proc side too.
-    // Aft end pulled -3.25 -> -3.10 (the +0.114-mapped stern re-phase).
-    for (const [zc, zl] of [[-2.885, 0.43], [-2.44, 0.44], [-2.055, 0.31], [-1.675, 0.44]]) {
-      P.add('hull', box(0.03, 0.21, zl), s * 1.535, 0.955, zc);
-    }                                                                           //   spans -3.10..-1.455; holds the
-                                                                                //   ref's 3.10 band + st3 width
-    for (const zc of [-3.15, -2.35, 2.05, 2.75]) {
-      P.add('hullDark', box(0.215, 0.03, 0.03), s * 1.42, 1.198, zc);           // support ribs
-    }
-    // bow fender web: closes the top-down corner slit between plank, wedge
-    // and glacis edge (SS-B2 - the r2 standard-check flood found 11 cells)
-    P.add('hull', box(0.29, 0.03, 0.42), s * 1.185, 1.20, 2.79);
-    // §B2 bow-corner gusset (see-through round 2026-08-08): the §5.18
-    // closure left two 2-3 cm ray slits at the plane-A / web / wedge /
-    // nose-plate junction (garage-view 27+18px at z~2.95, y 1.02..1.24 —
-    // the tilted side ray grazes under the wedge over the plane-A top).
-    // One corner block fuses all four: bottom chord rides INSIDE plane A's
-    // raked slab (0.88@2.90 -> 0.98@3.06, band 0.837..0.923 / 0.949..1.03),
-    // top 1.28 laps web (1.185+), wedge foot (1.10-1.12) and nose-plate
-    // band (1.272+); z 2.90..3.06 stays 0.38 m clear of the sprocket
-    // wrap's 2.52 reach (§B4) and inside the 3.365 length datum.
-    P.add('hull', orientedSlab(
-      [s * 0.99, 0.88, 2.90], [s * 1.15, 0.88, 2.90], [s * 1.15, 0.98, 3.06], [s * 0.99, 0.98, 3.06],
-      [s * 0.99, 1.28, 2.90], [s * 1.15, 1.28, 2.90], [s * 1.15, 1.28, 3.06], [s * 0.99, 1.28, 3.06]));
-    // r3 fender-root chamfer: the ref's front trace falls 1.59@±1.32 ->
-    // 1.42-1.47@±1.36-1.40 (deck-edge camber my flat 1.30-roof lacked, -0.11
-    // to -0.15 on 2 cols/side). Confined to the st6 z-band so the matched
-    // 2.75-wide stations st4/5/7/8 stay untouched.
-    P.add('hull', s > 0 ? slab(
-      [1.29, 1.30, -0.01], [1.365, 1.30, -0.01], [1.365, 1.30, -0.47], [1.29, 1.30, -0.47],
-      [1.29, 1.52, -0.01], [1.365, 1.42, -0.01], [1.365, 1.42, -0.47], [1.29, 1.52, -0.47],
-    ) : slab(
-      [-1.365, 1.30, -0.01], [-1.29, 1.30, -0.01], [-1.29, 1.30, -0.47], [-1.365, 1.30, -0.47],
-      [-1.365, 1.42, -0.01], [-1.29, 1.52, -0.01], [-1.29, 1.52, -0.47], [-1.365, 1.42, -0.47],
-    ), 0, 0, 0);
-    // tucked front flap; stern flap re-seated to -3.165 (its 0.96 bottom
-    // carries the +0.114-mapped ref cliff-top line at proc -3.14..-3.19)
-    P.add('hullRubber', box(0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
-    P.add('hullRubber', box(0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
-  }
+  addBMP2Fenders(P);
   // ---- deck furniture (warped deck reads FLUSH: bumps <=1.64 forward of
   // the ring; driver furniture sinks to the ref's own 1.60-1.63 micro-band) -
   P.add('hull', cylY(0.24, 0.24, 0.022, 16), -0.62, 1.6265, 1.576);              // driver hatch, top 1.638
@@ -4300,34 +4291,7 @@ export function buildBMP2(P: Modern3BuilderPort) {
                                                                                 //   the ±0.49-0.65 cols by 0.2)
     P.turretG.add(bank);
   }
-  // Low, faceted turret protection follows the existing cone instead of
-  // replacing it.  The three frontal leaves per cheek are progressively
-  // yawed and buried; side leaves overlap the casting and the rear bins have
-  // broad inner roots.  All are turret-owned and therefore rotate at yaw.
-  for (const s of [-1, 1]) {
-    for (let k = 0; k < 3; k++) {
-      P.add('turret', box(0.205, 0.145, 0.27),
-        s * (0.27 + k * 0.225), 0.255 - k * 0.012, 0.79 - k * 0.085,
-        0, -s * (0.16 + k * 0.12), 0);
-      P.add('turretDark', box(0.16, 0.022, 0.22),
-        s * (0.27 + k * 0.225), 0.329 - k * 0.012, 0.79 - k * 0.085,
-        0, -s * (0.16 + k * 0.12), 0);
-    }
-    for (const zc of [0.32, 0.01, -0.30]) {
-      P.add('turret', box(0.13, 0.17, 0.25), s * 0.91, 0.22, zc, 0, 0, s * 0.04);
-    }
-    P.add('turret', box(0.34, 0.20, 0.34), s * 0.73, 0.16, -0.72,
-      0, -s * 0.12, 0);                                                         // unequal rear equipment cell
-    P.add('turretDetail', box(0.10, 0.12, 0.38), s * 0.55, 0.14, -0.72,
-      0, -s * 0.12, 0);                                                         // broad cell-to-casting return
-
-    // Four-quadrant laser-warning/EO heads: armored body, dark glass face,
-    // and a short pedestal sunk into the shoulder.
-    P.add('turret', box(0.16, 0.13, 0.14), s * 0.73, 0.43, 0.43,
-      -0.10, -s * 0.30, 0);
-    P.add('turretGlass', box(0.105, 0.06, 0.025), s * 0.73, 0.445, 0.505,
-      -0.10, -s * 0.30, 0);
-  }
+  addBMP2TurretProtection(P);
   // Independent commander's thermal head, seated on a broad ring at the
   // right-rear roof.  It complements rather than obscures the 9M113 cradle.
   P.add('turret', cylY(0.14, 0.16, 0.08, 14), 0.57, 0.45, -0.39);
