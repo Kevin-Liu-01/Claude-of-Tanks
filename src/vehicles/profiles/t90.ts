@@ -5461,6 +5461,53 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
   }
 }
 
+function addT90AFamilySightStation(P: T90BuilderPort, vladimir: boolean): void {
+  const { box, cylY } = KIT;
+  P.add('turret', box(vladimir ? 0.50 : 0.43, 0.075, 0.58), -0.57, 0.605, 0.15);
+  P.add('turret', box(vladimir ? 0.40 : 0.34, 0.22, 0.42), -0.57, 0.68, 0.17, -0.08, 0, 0);
+  P.add('turretGlass', box(vladimir ? 0.31 : 0.26, 0.115, 0.020), -0.57, 0.69, 0.391, -0.08, 0, 0);
+  P.add('turretDark', box(vladimir ? 0.43 : 0.37, 0.025, 0.065), -0.57, 0.805, 0.38, -0.08, 0, 0);
+  P.add('turret', cylY(0.12, 0.15, 0.09, 12), 0.18, 0.635, -0.06);
+  P.add('turretDark', cylY(0.062, 0.070, 0.36, 10), 0.18, 0.825, -0.06);
+  P.add('turretGlass', box(0.12, 0.10, 0.018), 0.18, 0.935, 0.013);
+}
+
+function addT90AFamilyServiceRack(P: T90BuilderPort, vladimir: boolean): void {
+  const { box } = KIT;
+  const rackZ = vladimir ? -1.62 : -1.36;
+  const rackW = vladimir ? 1.48 : 1.28;
+  for (const sx of [-1, 1]) {
+    P.add('turret', box(0.09, 0.18, 0.38), sx * rackW * 0.45, 0.34, rackZ + 0.12);
+    P.add('turretDetail', box(0.030, 0.28, 0.030), sx * rackW * 0.48, 0.45, rackZ + 0.12);
+    P.add('turretDetail', box(0.030, 0.030, 0.68), sx * rackW * 0.48, 0.58, rackZ - 0.02);
+  }
+  P.add('turretDetail', box(rackW, 0.030, 0.030), 0, 0.58, rackZ - 0.35);
+  P.add('turretDetail', box(rackW, 0.030, 0.030), 0, 0.58, rackZ + 0.31);
+}
+
+function addT90AFamilyVladimirBins(P: T90BuilderPort): void {
+  const { box } = KIT;
+  P.add('turret', box(0.32, 0.20, 0.42), 1.08, 0.45, -0.72);
+  P.add('turretDark', box(0.27, 0.025, 0.36), 1.08, 0.565, -0.72);
+  P.add('turret', box(0.26, 0.16, 0.34), -1.12, 0.44, -0.55);
+  P.add('turretDark', box(0.21, 0.020, 0.29), -1.12, 0.535, -0.55);
+}
+
+function addT90AFamilyAntenna(P: T90BuilderPort, vladimir: boolean): void {
+  const { cylY, cylZ } = KIT;
+  const antenna = FITTINGS.antennaWhip({
+    mats: P.mats,
+    h: vladimir ? 1.55 : 1.32,
+    r: 0.012,
+    rake: vladimir ? 0.06 : -0.04,
+    seed: vladimir ? 12 : 10,
+  });
+  antenna.position.set(vladimir ? -0.92 : 0.88, 0.47, vladimir ? -1.30 : -1.23);
+  P.turretG.add(antenna);
+  P.add('turretDark', cylY(0.035, 0.050, 0.12, 8), vladimir ? -0.92 : 0.88, 0.47, vladimir ? -1.30 : -1.23);
+  P.add('turretDetail', cylZ(0.014, 0.46, 8), vladimir ? -0.81 : 0.78, 0.56, vladimir ? -1.12 : -1.08, -0.24, 0, 0);
+}
+
 // FAMILY FINISH (2026-08-09): the former T-90A and Vladimir builders had
 // drifted into a tall welded box that contradicted both local prints.  Their
 // real shared identity is the low cast T-90 shell, K-5 clamshell and planted
@@ -5472,54 +5519,28 @@ function addT90AFamilyFinish(
   P: T90BuilderPort,
   { vladimir = false, base = false }: { vladimir?: boolean; base?: boolean } = {},
 ): void {
-  const { box, cylY, cylZ } = KIT;
-
   // ESSA/1G46 sight station: a half-buried foundation follows the crown and
   // the hood intersects it.  The older candidate exposed daylight below the
   // optic in quarter views.
   if (!base) {
-    P.add('turret', box(vladimir ? 0.50 : 0.43, 0.075, 0.58), -0.57, 0.605, 0.15);
-    P.add('turret', box(vladimir ? 0.40 : 0.34, 0.22, 0.42), -0.57, 0.68, 0.17, -0.08, 0, 0);
-    P.add('turretGlass', box(vladimir ? 0.31 : 0.26, 0.115, 0.020), -0.57, 0.69, 0.391, -0.08, 0, 0);
-    P.add('turretDark', box(vladimir ? 0.43 : 0.37, 0.025, 0.065), -0.57, 0.805, 0.38, -0.08, 0, 0);
-
-    // Cross-wind sensor and commander's station both receive visible collar
-    // stacks.  These are intentionally sunk into the cast crown by 25-35 mm.
-    P.add('turret', cylY(0.12, 0.15, 0.09, 12), 0.18, 0.635, -0.06);
-    P.add('turretDark', cylY(0.062, 0.070, 0.36, 10), 0.18, 0.825, -0.06);
-    P.add('turretGlass', box(0.12, 0.10, 0.018), 0.18, 0.935, 0.013);
+    addT90AFamilySightStation(P, vladimir);
   }
 
   // A low, open rear service rack is a mounted mechanism, not a second
   // turret.  Feet penetrate the cast tail, rails stay below the hatch line.
   // Base rack follows the compact cast-tail datum.  Its old -1.54 center
   // pushed the rear face to -1.89, 16 cm beyond the comparison envelope.
-  const rackZ = vladimir ? -1.62 : -1.36;
-  const rackW = vladimir ? 1.48 : 1.28;
-  for (const sx of [-1, 1]) {
-    P.add('turret', box(0.09, 0.18, 0.38), sx * rackW * 0.45, 0.34, rackZ + 0.12);
-    P.add('turretDetail', box(0.030, 0.28, 0.030), sx * rackW * 0.48, 0.45, rackZ + 0.12);
-    P.add('turretDetail', box(0.030, 0.030, 0.68), sx * rackW * 0.48, 0.58, rackZ - 0.02);
-  }
-  P.add('turretDetail', box(rackW, 0.030, 0.030), 0, 0.58, rackZ - 0.35);
-  P.add('turretDetail', box(rackW, 0.030, 0.030), 0, 0.58, rackZ + 0.31);
+  addT90AFamilyServiceRack(P, vladimir);
 
   if (vladimir) {
     // Vladimir's unmistakable asymmetric roof package.  The common cast
     // helper already owns its Kord; these are the variant-only bins.
-    P.add('turret', box(0.32, 0.20, 0.42), 1.08, 0.45, -0.72);
-    P.add('turretDark', box(0.27, 0.025, 0.36), 1.08, 0.565, -0.72);
-    P.add('turret', box(0.26, 0.16, 0.34), -1.12, 0.44, -0.55);
-    P.add('turretDark', box(0.21, 0.020, 0.29), -1.12, 0.535, -0.55);
+    addT90AFamilyVladimirBins(P);
   }
 
   // Variant bustle antenna, with a real socket and diagonal stay.
   if (!base) {
-    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: vladimir ? 1.55 : 1.32, r: 0.012, rake: vladimir ? 0.06 : -0.04, seed: vladimir ? 12 : 10 });
-    antenna.position.set(vladimir ? -0.92 : 0.88, 0.47, vladimir ? -1.30 : -1.23);
-    P.turretG.add(antenna);
-    P.add('turretDark', cylY(0.035, 0.050, 0.12, 8), vladimir ? -0.92 : 0.88, 0.47, vladimir ? -1.30 : -1.23);
-    P.add('turretDetail', cylZ(0.014, 0.46, 8), vladimir ? -0.81 : 0.78, 0.56, vladimir ? -1.12 : -1.08, -0.24, 0, 0);
+    addT90AFamilyAntenna(P, vladimir);
   }
 }
 
