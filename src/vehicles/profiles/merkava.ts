@@ -3538,18 +3538,15 @@ function merkavaSmokeCluster(
 // the camo bucket, per-rod pitch jitter (±28%), drop jitter (±18%), slight
 // lean, skipped rods (gaps), tiny dark balls only every other rod. Default
 // path is byte-identical for the frozen 3B/3C graduates.
-function chainCurtain(
+function addChainCurtainSupports(
   P: TankBuilderPort,
   halfW: number,
   z: number,
   topY: number,
-  drop: number,
   backZ: number,
-  fine = false,
-  soft = false,
-  extraSkips?: readonly number[],
+  soft: boolean,
 ): void {
-  const { box, sph } = KIT;
+  const { box } = KIT;
   // r6 (soft marks): the full-width dark hanger rail was the darkest line
   // in both rears' rim bands (ref rim pipes read ~95, tone-on-tone) — soft
   // rails ride the detail bucket with a hairline dark parting line.
@@ -3561,37 +3558,47 @@ function chainCurtain(
         s * halfW * 0.72, topY + 0.01, (backZ + z) / 2);
     }
   }
-  if (soft) {
-    // r6 (critic r5 shared order 4: "ball-chain fringe missing on BOTH
-    // tails"): the soft row reads as a REAL ball-and-chain fringe — rods a
-    // hair thicker, and BALLS on most rods (mixed tone/size, off-grid jitter
-    // kept) instead of the r4 every-fifth sprinkle that read as bare wires.
-    const n = 16;
-    const pitch = halfW * 2 / (n - 1);
-    for (let i = 0; i < n; i++) {
-      if ((i * 7) % 5 === 0 && i > 0 && i < n - 1) continue; // gaps in the row
-      // extraSkips (r7, 1B vane call only): the pocket floor retone moved
-      // the rear-strip p5 pointer past the ~4.3% background-air pixels —
-      // three more see-through gaps keep the holder-1 void class (p5 ~24)
-      // measurable in all three critic strips. Other callers pass nothing.
-      if (extraSkips && extraSkips.includes(i)) continue;
-      const jx = ((i * 11) % 7 - 3) / 3 * pitch * 0.28;
-      const x = -halfW + i * pitch + jx;
-      const d = drop * (0.82 + ((i * 5) % 4) * 0.12);
-      const lean = ((i * 3) % 3 - 1) * 0.055;
-      // extraSkips callers also run hairline rods: the critic's rear-strip
-      // rects INCLUDE background — the holder-1 void class is the >=5%
-      // see-through air fraction (ref strips run 8-13% air; fat rods +
-      // full row read 1-4%).
-      P.add('turret', box(extraSkips ? 0.008 : 0.0105, d, 0.011), x, topY - d / 2, z, 0, 0, lean);
-      if ((i * 5) % 7 !== 2) { // balls on most rods (uneven skips)
-        P.add((i * 3) % 4 === 1 ? 'turretDark' : 'turretDetail',
-          sph(0.016 + ((i * 3) % 3) * 0.0035, 6),
-          x - lean * d * 0.5, topY - d - 0.014, z);
-      }
+}
+
+function addSoftChainCurtainDrops(
+  P: TankBuilderPort,
+  halfW: number,
+  z: number,
+  topY: number,
+  drop: number,
+  extraSkips?: readonly number[],
+): void {
+  const { box, sph } = KIT;
+  // The soft row reads as a real ball-and-chain fringe: rods vary in pitch,
+  // drop and lean, while uneven gaps keep the basket visibly open.
+  const n = 16;
+  const pitch = halfW * 2 / (n - 1);
+  for (let i = 0; i < n; i++) {
+    if ((i * 7) % 5 === 0 && i > 0 && i < n - 1) continue;
+    if (extraSkips && extraSkips.includes(i)) continue;
+    const jx = ((i * 11) % 7 - 3) / 3 * pitch * 0.28;
+    const x = -halfW + i * pitch + jx;
+    const d = drop * (0.82 + ((i * 5) % 4) * 0.12);
+    const lean = ((i * 3) % 3 - 1) * 0.055;
+    P.add('turret', box(extraSkips ? 0.008 : 0.0105, d, 0.011),
+      x, topY - d / 2, z, 0, 0, lean);
+    if ((i * 5) % 7 !== 2) {
+      P.add((i * 3) % 4 === 1 ? 'turretDark' : 'turretDetail',
+        sph(0.016 + ((i * 3) % 3) * 0.0035, 6),
+        x - lean * d * 0.5, topY - d - 0.014, z);
     }
-    return;
   }
+}
+
+function addStandardChainCurtainDrops(
+  P: TankBuilderPort,
+  halfW: number,
+  z: number,
+  topY: number,
+  drop: number,
+  fine: boolean,
+): void {
+  const { box, sph } = KIT;
   // fine (3B/3C r8, critic item 2 "chains are thick sticks"): thinner rods,
   // MORE of them, smaller balls, per-rod drop jitter — the fine-chain read.
   const n = fine ? 18 : 13;
@@ -3605,6 +3612,25 @@ function chainCurtain(
     P.add('turretDark', box(rodW, d, rodW), x, topY - d / 2, z);
     P.add('turretDark', sph(ballR, 8), x, topY - d - 0.02, z);
   }
+}
+
+function chainCurtain(
+  P: TankBuilderPort,
+  halfW: number,
+  z: number,
+  topY: number,
+  drop: number,
+  backZ: number,
+  fine = false,
+  soft = false,
+  extraSkips?: readonly number[],
+): void {
+  addChainCurtainSupports(P, halfW, z, topY, backZ, soft);
+  if (soft) {
+    addSoftChainCurtainDrops(P, halfW, z, topY, drop, extraSkips);
+    return;
+  }
+  addStandardChainCurtainDrops(P, halfW, z, topY, drop, fine);
 }
 
 // Open pipe-frame stowage basket + packed cloth kit + chain curtain.
