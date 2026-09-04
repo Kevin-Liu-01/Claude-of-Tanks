@@ -7421,6 +7421,80 @@ function requireMerkava4bPanelFrame(
   return frame;
 }
 
+function addMerkava4bCheekSupports(
+  supportGeometries: THREE.BufferGeometry[],
+  profile: MerkavaProfileData,
+  localZ: (worldZ: number) => number,
+  localY: (worldY: number) => number,
+) {
+  const cheek = profile.cheek;
+  if (!cheek) return;
+  for (const side of [-1, 1]) {
+    const points = cheek.pts;
+    for (let index = 0; index < points.length - 1; index++) {
+      const fraction0 = index / (points.length - 1);
+      const fraction1 = (index + 1) / (points.length - 1);
+      const top0 = localY(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, fraction0));
+      const top1 = localY(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, fraction1));
+      const bottom0 = localY(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, fraction0));
+      const bottom1 = localY(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, fraction1));
+      const frontZ = localZ(points[index][1]);
+      const rearZ = localZ(points[index + 1][1]);
+      const returnFrontZ = Math.min(frontZ - 0.55, localZ(profile.maxWZ) + 0.3);
+      const returnRearZ = Math.min(rearZ - 0.55, localZ(profile.maxWZ) + 0.3);
+      supportGeometries.push(orientedSlab(
+        [side * points[index][0], bottom0, frontZ],
+        [side * points[index + 1][0], bottom1, rearZ],
+        [side * points[index + 1][0], bottom1 - 0.02, returnRearZ],
+        [side * points[index][0], bottom0 - 0.02, returnFrontZ],
+        [side * points[index][0], top0, frontZ - (profile.cheekRake ?? 0.06)],
+        [side * points[index + 1][0], top1, rearZ - (profile.cheekRake ?? 0.06)],
+        [side * points[index + 1][0], top1, returnRearZ],
+        [side * points[index][0], top0, returnFrontZ],
+      ));
+    }
+  }
+}
+
+function merkava4bSupportGeometries(
+  profile: MerkavaProfileData,
+  localZ: (worldZ: number) => number,
+  localY: (worldY: number) => number,
+): THREE.BufferGeometry[] {
+  const rearWidth = profile.rearWide ?? 0.94;
+  const plan = [
+    [-profile.noseHW, localZ(profile.noseZ)], [profile.noseHW, localZ(profile.noseZ)],
+    [profile.hwMax * 0.90, localZ(profile.noseZ)
+      - (localZ(profile.noseZ) - localZ(profile.maxWZ)) * 0.55],
+    [profile.hwMax, localZ(profile.maxWZ)],
+    [profile.hwMax * (rearWidth + 0.02), localZ(profile.shellRearZ) + 0.55],
+    [profile.hwMax * rearWidth, localZ(profile.shellRearZ)],
+    [-profile.hwMax * rearWidth, localZ(profile.shellRearZ)],
+    [-profile.hwMax * (rearWidth + 0.02), localZ(profile.shellRearZ) + 0.55],
+    [-profile.hwMax, localZ(profile.maxWZ)],
+    [-profile.hwMax * 0.90, localZ(profile.noseZ)
+      - (localZ(profile.noseZ) - localZ(profile.maxWZ)) * 0.55],
+  ];
+  const supportGeometries = [KIT.xform(KIT.polyTurret(
+    plan,
+    profile.shellTopY - profile.shellBotY,
+    1.0,
+    profile.roofInset ?? 0.96,
+  ), 0, localY(profile.shellBotY), 0)];
+  addMerkava4bCheekSupports(supportGeometries, profile, localZ, localY);
+  supportGeometries.push(KIT.frustum(
+    profile.hwMax * rearWidth,
+    localZ(profile.shellRearZ) + 0.30,
+    localZ(profile.bustleZ1),
+    profile.hwMax * rearWidth - 0.05,
+    localZ(profile.shellRearZ) + 0.26,
+    localZ(profile.bustleZ1) + 0.05,
+    localY(profile.bustleBot),
+    localY(profile.roofLine.at(-1)![1]) - 0.02,
+  ));
+  return supportGeometries;
+}
+
 // Mk.4B source-specific modular armor.  The supplied reference does not use
 // the tall rectangular Trophy-era side doors fitted by `merkavaSidePanels`;
 // it has a continuous arrowhead cheek followed by two swept side courses.
@@ -7429,7 +7503,6 @@ function requireMerkava4bPanelFrame(
 function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
   const L = (z: number) => z - p.pivotZ;
   const V = (y: number) => y - (p.deckY + 0.02);
-  const slab = orientedSlab;
   const flankPanelEmbedM = 0.012;
   const flankPanelSeats: Merkava4bPanelReceiptSeat[] = [];
   const extensionBackerDepthM = 0.18;
@@ -7438,56 +7511,7 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
   // main faceted casting, the forward cheek wedges, and the bustle root.
   // Raycasting these tiny temporary authoring meshes lets every course follow
   // facet changes in all three axes instead of assuming a vertical X offset.
-  const rw = p.rearWide ?? 0.94;
-  const plan = [
-    [-p.noseHW, L(p.noseZ)], [p.noseHW, L(p.noseZ)],
-    [p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
-    [p.hwMax, L(p.maxWZ)], [p.hwMax * (rw + 0.02), L(p.shellRearZ) + 0.55],
-    [p.hwMax * rw, L(p.shellRearZ)], [-p.hwMax * rw, L(p.shellRearZ)],
-    [-p.hwMax * (rw + 0.02), L(p.shellRearZ) + 0.55], [-p.hwMax, L(p.maxWZ)],
-    [-p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
-  ];
-  const supportGeometries = [KIT.xform(KIT.polyTurret(
-    plan,
-    p.shellTopY - p.shellBotY,
-    1.0,
-    p.roofInset ?? 0.96,
-  ), 0, V(p.shellBotY), 0)];
-  const cheek = p.cheek;
-  if (cheek) {
-    for (const s of [-1, 1]) {
-      const points = cheek.pts;
-      for (let index = 0; index < points.length - 1; index++) {
-        const f0 = index / (points.length - 1);
-        const f1 = (index + 1) / (points.length - 1);
-        const top0 = V(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, f0));
-        const top1 = V(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, f1));
-        const bot0 = V(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, f0));
-        const bot1 = V(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, f1));
-        const p0z = L(points[index][1]);
-        const p1z = L(points[index + 1][1]);
-        const zR0 = Math.min(p0z - 0.55, L(p.maxWZ) + 0.3);
-        const zR1 = Math.min(p1z - 0.55, L(p.maxWZ) + 0.3);
-        supportGeometries.push(slab(
-          [s * points[index][0], bot0, p0z], [s * points[index + 1][0], bot1, p1z],
-          [s * points[index + 1][0], bot1 - 0.02, zR1], [s * points[index][0], bot0 - 0.02, zR0],
-          [s * points[index][0], top0, p0z - (p.cheekRake ?? 0.06)],
-          [s * points[index + 1][0], top1, p1z - (p.cheekRake ?? 0.06)],
-          [s * points[index + 1][0], top1, zR1], [s * points[index][0], top0, zR0],
-        ));
-      }
-    }
-  }
-  supportGeometries.push(KIT.frustum(
-    p.hwMax * rw,
-    L(p.shellRearZ) + 0.30,
-    L(p.bustleZ1),
-    p.hwMax * rw - 0.05,
-    L(p.shellRearZ) + 0.26,
-    L(p.bustleZ1) + 0.05,
-    V(p.bustleBot),
-    V(p.roofLine.at(-1)![1]) - 0.02,
-  ));
+  const supportGeometries = merkava4bSupportGeometries(p, L, V);
   const supportMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   const supportMeshes = supportGeometries.map(geometry => {
     const mesh = new THREE.Mesh(geometry, supportMaterial);
@@ -7545,7 +7569,7 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
     let backedSegments = 0;
     for (let index = 0; index < stations.length - 1; index++) {
       const a = stations[index], b = stations[index + 1];
-      P.add('turret', slab(
+      P.add('turret', orientedSlab(
         a.bottomInner.toArray(), b.bottomInner.toArray(), b.topInner.toArray(), a.topInner.toArray(),
         a.bottomOuter.toArray(), b.bottomOuter.toArray(), b.topOuter.toArray(), a.topOuter.toArray(),
       ));
@@ -7555,7 +7579,7 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
         const bBottomBack = b.bottom.point.clone().addScaledVector(b.bottom.normal, -extensionBackerDepthM);
         const bTopBack = b.top.point.clone().addScaledVector(b.top.normal, -extensionBackerDepthM);
         const aTopBack = a.top.point.clone().addScaledVector(a.top.normal, -extensionBackerDepthM);
-        P.add('turret', slab(
+        P.add('turret', orientedSlab(
           vectorTuple(aBottomBack), vectorTuple(bBottomBack), vectorTuple(bTopBack), vectorTuple(aTopBack),
           vectorTuple(a.bottom.point), vectorTuple(b.bottom.point), vectorTuple(b.top.point), vectorTuple(a.top.point),
         ));
