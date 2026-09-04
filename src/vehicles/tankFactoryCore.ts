@@ -450,6 +450,61 @@ interface TankPoseState {
 
 type GroundSampler = (x: number, z: number) => number;
 
+interface WheelConformFrame {
+  cb: number;
+  sb: number;
+  ca: number;
+  sa: number;
+  cr: number;
+  sr: number;
+  px: number;
+  py: number;
+  pz: number;
+  hsx: number;
+  hsy: number;
+  hsz: number;
+  hpx: number;
+  hpy: number;
+  hpz: number;
+  invHsy: number;
+  conformPlaneY: number;
+  wheelW: number;
+}
+
+function sampleWheelGroundDeviation(
+  wheel: WheelEntry,
+  sampler: GroundSampler,
+  frame: WheelConformFrame,
+): number {
+  const hx = wheel.x * frame.hsx + frame.hpx;
+  const hy = frame.conformPlaneY * frame.hsy + frame.hpy;
+  const hz = wheel.z * frame.hsz + frame.hpz;
+  const x1 = hx * frame.cr - hy * frame.sr;
+  const y1 = hx * frame.sr + hy * frame.cr;
+  const z1 = hz;
+  const y2 = y1 * frame.ca - z1 * frame.sa;
+  const z2 = y1 * frame.sa + z1 * frame.ca;
+  const wx = frame.px + x1 * frame.cb + z2 * frame.sb;
+  const wy = frame.py + y2;
+  const wz = frame.pz - x1 * frame.sb + z2 * frame.cb;
+  const halfWheelWidth = 0.5 * frame.wheelW * Math.abs(frame.hsx);
+  const halfRadius = 0.55 * wheel.r * Math.abs(frame.hsz);
+  const gxX = frame.cb * frame.cr;
+  const gxZ = -frame.sb * frame.cr;
+  const gzX = frame.sb * frame.ca;
+  const gzZ = frame.cb * frame.ca;
+  let ground = sampler(wx, wz);
+  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth);
+  if (sample > ground) ground = sample;
+  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth);
+  if (sample > ground) ground = sample;
+  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius) - 0.17 * wheel.r;
+  if (sample > ground) ground = sample;
+  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius) - 0.17 * wheel.r;
+  if (sample > ground) ground = sample;
+  return (ground - wy) * frame.invHsy;
+}
+
 interface RunningGearUnit {
   __units?: RunningGearUnit[];
   contactGeom: GearContactGeometry;
@@ -3673,6 +3728,17 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
   // train by that same deviation at rest.
   const conformPlaneY = gearContactGeom.bottomYM;
+  // Reused on every conformance update. Keeping this frame outside the hot
+  // method avoids allocating a transform object per render cadence.
+  const wheelConformFrame: WheelConformFrame = {
+    cb: 1, sb: 0, ca: 1, sa: 0, cr: 1, sr: 0,
+    px: 0, py: 0, pz: 0,
+    hsx: 1, hsy: 1, hsz: 1,
+    hpx: 0, hpy: 0, hpz: 0,
+    invHsy: 1,
+    conformPlaneY,
+    wheelW,
+  };
 
   // r1 per-bogie articulation: per-side sorted PROUD road wheels drive a
   // piecewise-linear offset field the deformable band bottom run and the
@@ -3900,22 +3966,28 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // states without it fall back to the raw sim attitude.
       const pEff = pitchEff !== undefined ? pitchEff : state.visualPitch;
       const rEff = rollEff !== undefined ? rollEff : state.visualRoll;
-      const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
-      const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
-      const cr = Math.cos(rEff), sr = Math.sin(rEff);
-      const px = state.pos.x, py = state.pos.y, pz = state.pos.z;
+      const frame = wheelConformFrame;
+      frame.cb = Math.cos(state.yaw);
+      frame.sb = Math.sin(state.yaw);
+      frame.ca = Math.cos(-pEff);
+      frame.sa = Math.sin(-pEff);
+      frame.cr = Math.cos(rEff);
+      frame.sr = Math.sin(rEff);
+      frame.px = state.pos.x;
+      frame.py = state.pos.y;
+      frame.pz = state.pos.z;
       // Some profile builders reshape/re-seat a certified donor hull after
       // its running gear is built (MBT-70 shortens and shifts the M1A1 donor).
       // Wheel records remain in hullG-local space, so fold that persistent
       // transform into both the sampled station and its physical footprint.
       // The solved offset stays hullG-local and therefore divides by scaleY.
-      const hsx = hullG.scale.x;
-      const hsy = hullG.scale.y;
-      const hsz = hullG.scale.z;
-      const hpx = hullG.position.x;
-      const hpy = hullG.position.y;
-      const hpz = hullG.position.z;
-      const invHsy = 1 / Math.max(Math.abs(hsy), 1e-6);
+      frame.hsx = hullG.scale.x;
+      frame.hsy = hullG.scale.y;
+      frame.hsz = hullG.scale.z;
+      frame.hpx = hullG.position.x;
+      frame.hpy = hullG.position.y;
+      frame.hpz = hullG.position.z;
+      frame.invHsy = 1 / Math.max(Math.abs(frame.hsy), 1e-6);
       let settling = false;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
@@ -3927,16 +3999,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           if (e.suspensionSource) continue;
           // world position of the CONTACT-plane point under this wheel (YXZ;
           // hull-local y = conformPlaneY — see the contact-metadata note)
-          const hx = e.x * hsx + hpx;
-          const hy = conformPlaneY * hsy + hpy;
-          const hz = e.z * hsz + hpz;
-          const x1 = hx * cr - hy * sr;
-          const y1 = hx * sr + hy * cr;
-          const z1 = hz;
-          const y2 = y1 * ca - z1 * sa, z2 = y1 * sa + z1 * ca;
-          const wx = px + x1 * cb + z2 * sb;
-          const wy = py + y2;
-          const wz = pz - x1 * sb + z2 * cb;
           // gameplay_feel r5 (terrain-contact hard gate): the wheel is a DISC,
           // not a point — resting its center on the center-point ground buried
           // the rim edge by halfWidth × lateral slope on cross slopes (parked
@@ -3944,21 +4006,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // hollows. Rest the wheel on the HIGHEST ground under its footprint:
           // rim edges across the width (±0.5 w along the axle, in hull-local
           // X) and half-radius fore/aft along the roll direction.
-          const hwW = 0.5 * wheelW * Math.abs(hsx);
-          const hrZ = 0.55 * e.r * Math.abs(hsz);
-          let g = sampler(wx, wz);
-          const gxX = cb * cr, gxZ = -sb * cr;       // hull-local +X in world XZ
-          const gzX = sb * ca, gzZ = cb * ca;        // hull-local +Z in world XZ
-          let g2 = sampler(wx + gxX * hwW, wz + gxZ * hwW);
-          if (g2 > g) g = g2;
-          g2 = sampler(wx - gxX * hwW, wz - gxZ * hwW);
-          if (g2 > g) g = g2;
-          g2 = sampler(wx + gzX * hrZ, wz + gzZ * hrZ);
-          // fore/aft rim points sit r−sqrt(r²−hrZ²) ≈ 0.17 r above the bottom
-          if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
-          g2 = sampler(wx - gzX * hrZ, wz - gzZ * hrZ);
-          if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
-          const dev = (g - wy) * invHsy;
+          const dev = sampleWheelGroundDeviation(e, sampler, frame);
           // Real suspension travel: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep.
           // Hydraulic siege vehicles opt into their larger physical envelope
