@@ -1008,48 +1008,62 @@ export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
 // Segmented rubber skirt band with dark inset lip (r3 language, explicit y).
 // o.th: panel thickness (default 0.04) — front-view columns only register
 // the band when the face is >1-2 mask pixels deep (t62mv1 r6 lesson).
-export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
+function addRuSkirtPanel(
+  P: RussiaGeometryPort,
+  options: SkirtBandOptions,
+  side: number,
+  index: number,
+  panelD: number,
+): void {
   const { box } = KIT;
+  const z = options.z0 + panelD * (index + 0.5);
+  const panelYBot = index === 0 && options.firstYBot !== undefined
+    ? options.firstYBot
+    : options.yBot;
+  const panelH = options.yTop - panelYBot;
+  const panelYMid = (options.yTop + panelYBot) / 2;
+  // rubberBotH (pt91m r27, opt-in): split each panel into an upper camo
+  // box + a lower hullRubber band at the SAME faces (the two boxes
+  // partition [yBot, yTop] exactly — mask-identical, material-only).
+  // The pt91m ref's legit warm class lives in this lower band (critic
+  // r25 order 2); default 0 keeps the single-box call byte-identical.
+  const rubberBottomH = options.rubberBotH ?? 0;
+  if (rubberBottomH > 0) {
+    P.add('hull', box(options.th ?? 0.04, panelH - rubberBottomH, panelD * 0.94),
+      side * options.x, panelYMid + rubberBottomH / 2, z);
+    P.add('hullRubber', box(options.th ?? 0.04, rubberBottomH, panelD * 0.94),
+      side * options.x, panelYBot + rubberBottomH / 2, z);
+  } else {
+    P.add('hull', box(options.th ?? 0.04, panelH, panelD * 0.94),
+      side * options.x, panelYMid, z);
+  }
+  // dressIn (pt91m r25, opt-in): pull the seam battens/bolt heads inboard
+  // so the panel FACE is the station-widest course (the default battens
+  // print o.x+0.027 and owned five station slices at +1.9 cm/side).
+  const dressIn = options.dressIn ?? 0;
+  P.add('hullDark', box(0.048, panelH * 0.9, 0.02),
+    side * (options.x + 0.003 - dressIn), panelYMid, z + panelD / 2);
+  P.add('hullDark', KIT.cylZ(0.014, 0.014, 8),
+    side * (options.x + 0.015 - dressIn), options.yTop - 0.07, z,
+    0, side * Math.PI / 2, 0);
+  // bottom lip segmented per panel (edge-on prism law: a full-length strip
+  // has no station-visible faces mid-span). Explicit seats let individual
+  // family builds retain their measured plan columns and vertical lines.
+  P.add('hullDark', box(0.042, 0.09, panelD * 0.92),
+    side * ((side < 0 ? options.lipXL : undefined) ?? options.lipX ?? (options.x - 0.002)),
+    (index === 0 ? options.firstLipY : undefined)
+      ?? (side < 0 ? options.lipYL : undefined)
+      ?? options.lipY
+      ?? (panelYBot - 0.03),
+    z);
+}
+
+export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
   const panels = o.panels ?? 7;
   const panelD = (o.z1 - o.z0) / panels;
-  const yMid = (o.yTop + o.yBot) / 2, h = o.yTop - o.yBot;
   for (const s of [-1, 1]) {
     for (let i = 0; i < panels; i++) {
-      const z = o.z0 + panelD * (i + 0.5);
-      const panelYBot = i === 0 && o.firstYBot !== undefined ? o.firstYBot : o.yBot;
-      const panelH = o.yTop - panelYBot;
-      const panelYMid = (o.yTop + panelYBot) / 2;
-      // rubberBotH (pt91m r27, opt-in): split each panel into an upper camo
-      // box + a lower hullRubber band at the SAME faces (the two boxes
-      // partition [yBot, yTop] exactly — mask-identical, material-only).
-      // The pt91m ref's legit warm class lives in this lower band (critic
-      // r25 order 2); default 0 keeps the single-box call byte-identical.
-      const rbH = o.rubberBotH ?? 0;
-      if (rbH > 0) {
-        P.add('hull', box(o.th ?? 0.04, panelH - rbH, panelD * 0.94), s * o.x, panelYMid + rbH / 2, z);
-        P.add('hullRubber', box(o.th ?? 0.04, rbH, panelD * 0.94), s * o.x, panelYBot + rbH / 2, z);
-      } else {
-        P.add('hull', box(o.th ?? 0.04, panelH, panelD * 0.94), s * o.x, panelYMid, z);
-      }
-      // dressIn (pt91m r25, opt-in): pull the seam battens/bolt heads inboard
-      // so the panel FACE is the station-widest course (the default battens
-      // print o.x+0.027 and owned five station slices at +1.9 cm/side).
-      const dIn = o.dressIn ?? 0;
-      P.add('hullDark', box(0.048, panelH * 0.9, 0.02), s * (o.x + 0.003 - dIn), panelYMid, z + panelD / 2);
-      P.add('hullDark', KIT.cylZ(0.014, 0.014, 8), s * (o.x + 0.015 - dIn), o.yTop - 0.07, z, 0, s * Math.PI / 2, 0);
-      // bottom lip segmented per panel (edge-on prism law: a full-length
-      // strip has no station-visible faces mid-span). o.lipX lets a build
-      // pin the lip's outer face to a measured plan column (t72bu r3);
-      // o.lipXL overrides the LEFT side (r9: the t72bu ref only crosses the
-      // outer plan column with its RIGHT skirt — a symmetric 1.807 lip put
-      // a full-length run in the left -1.87 column where the ref carries
-      // only its K-5 course, err 2.0).
-      // lipY (pt91m r25, opt-in): seat the lip band explicitly — the
-      // default hangs 3 cm under yBot and printed a 0.747 floor where the
-      // pt91m ref reads its 0.818 skirt line.
-      P.add('hullDark', box(0.042, 0.09, panelD * 0.92),
-        s * ((s < 0 ? o.lipXL : undefined) ?? o.lipX ?? (o.x - 0.002)),
-        (i === 0 ? o.firstLipY : undefined) ?? (s < 0 ? o.lipYL : undefined) ?? o.lipY ?? (panelYBot - 0.03), z);
+      addRuSkirtPanel(P, o, s, i, panelD);
     }
   }
 }
