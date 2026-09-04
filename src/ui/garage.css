@@ -915,7 +915,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 /* The picker tooltip lives outside the scrolling grid so it never clips.
    First hover is deliberately delayed in garage.ts; moving between nearby
    equipment buttons keeps the tooltip primed for instant comparison. */
-.cot-eqtooltip{position:fixed;z-index:90;width:222px;box-sizing:border-box;
+.cot-eqtooltip{position:fixed;z-index:90;width:286px;box-sizing:border-box;
   pointer-events:none;padding:10px 11px 9px;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   color:#dce6ed;background:linear-gradient(180deg,rgba(13,18,23,.985),rgba(7,10,13,.99));
   border:1px solid rgba(146,164,180,.44);border-left:2px solid rgba(240,176,74,.82);
@@ -936,9 +936,33 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
 .cot-eqtooltip .detail{display:block;margin-top:5px;color:#aebbc5;font-size:9px;
   font-weight:600;line-height:1.42;letter-spacing:.015em;}
+.cot-eqtooltip .summary{display:block;margin-top:7px;padding:6px 7px;color:#c8d3db;
+  background:rgba(111,132,147,.08);border-left:1px solid rgba(146,164,180,.3);
+  font-size:7.5px;font-weight:650;line-height:1.4;letter-spacing:.025em;}
+.cot-eqtooltip .metrics{display:grid;gap:4px;margin-top:8px;}
+.cot-eqtooltip .metrics:empty{display:none;}
+.cot-eqtooltip .metrics-heading{padding-bottom:3px;color:#7f8d98;font-size:6.5px;
+  font-weight:800;letter-spacing:.13em;text-transform:uppercase;}
+.cot-eqtooltip .metric{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:1px 6px;
+  align-items:center;
+  padding:4px 6px;background:rgba(4,7,10,.46);border:1px solid rgba(146,164,180,.12);}
+.cot-eqtooltip .metric-icon{width:12px;height:12px;display:grid;place-items:center;color:#738491;}
+.cot-eqtooltip .metric-icon svg{display:block;}
+.cot-eqtooltip .metric-label{min-width:0;color:#aebbc5;font-size:7.5px;font-weight:700;
+  line-height:1.25;letter-spacing:.025em;}
+.cot-eqtooltip .metric-values{display:flex;align-items:baseline;justify-content:flex-end;
+  gap:5px;color:#aebbc5;font-size:8px;white-space:nowrap;}
+.cot-eqtooltip .metric-values .arrow{color:#61717e;}
+.cot-eqtooltip .metric-values b{color:#dce6ed;font-size:9px;font-weight:800;}
+.cot-eqtooltip .metric.improved .metric-icon{color:#79b87b;}
+.cot-eqtooltip .metric.degraded .metric-icon{color:#c97979;}
+.cot-eqtooltip .metric.improved .metric-values b{color:#9fd8a0;}
+.cot-eqtooltip .metric.degraded .metric-values b{color:#e6a0a0;}
 .cot-eqtooltip .action{display:block;margin-top:7px;padding-top:6px;
   border-top:1px solid rgba(146,164,180,.18);color:#d6a655;font-size:7.5px;
   font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;}
+body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
+@media (hover:none) and (pointer:coarse){.cot-eqtooltip{display:none!important;}}
 
 /* garage polish (spacing/focus only): keyboard-visible focus affordance on
    the interactive chrome — one quiet amber ring, outline-based so nothing

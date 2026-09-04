@@ -28,6 +28,7 @@ import {
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
 } from '../game/equipment.ts';
 import type { EquipmentItem } from '../game/equipment.ts';
+import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
@@ -89,6 +90,7 @@ interface GarageGunSpec extends FleetGunSpec {
   readonly autoloader?: {
     readonly magazineSize: number;
     readonly intraClipS: number;
+    readonly fullReloadS?: number;
   };
   readonly primaryGuided?: boolean;
   readonly shells: GarageShellSpec[];
@@ -208,6 +210,28 @@ function equipmentAvailabilityCopy(
     return 'Unavailable · autoloaders cannot mount a gun rammer';
   }
   return 'Unavailable · modern vehicles only';
+}
+
+function equipmentMetricIcon(metricId: string): string {
+  const icons: Readonly<Record<string, string>> = {
+    reload: 'clock',
+    aim: 'scope',
+    bloom: 'aimSmoothing',
+    hullTraverse: 'speed',
+    turretTraverse: 'turretRing',
+    view: 'optics',
+    camo: 'camouflage',
+    repair: 'repair',
+    trackDurability: 'track',
+    heSplash: 'shield',
+    crewHe: 'crew',
+    ammoRackDurability: 'ammoRack',
+    fuelTankDurability: 'fuelTank',
+    engineFire: 'engine',
+    fireDuration: 'extinguisher',
+    extinguish: 'extinguisher',
+  };
+  return icons[metricId] || 'performance';
 }
 
 function equipmentCategoryButtons(activeCategory: string): string {
@@ -1548,11 +1572,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   function showEqTooltip(anchor: HTMLElement): void {
-    if (!eqpickEl.classList.contains('open') || !anchor.isConnected) return;
+    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return;
     const itemId = anchor.dataset.eqId || '';
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
     const locked = anchor.classList.contains('locked');
-    const fittedAt = item ? curLoadout().indexOf(item.id) : -1;
+    const currentLoadout = curLoadout();
+    const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
     const category = item
       ? EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment'
@@ -1575,10 +1600,54 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const detail = document.createElement('span');
     detail.className = 'detail';
     detail.textContent = item?.desc || 'Remove the equipment fitted in this slot.';
+    const preview = spec
+      ? equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
+      : null;
+    const summary = document.createElement('span');
+    summary.className = 'summary';
+    summary.textContent = preview?.summary || 'Select a vehicle to calculate its equipment values.';
+    const metrics = document.createElement('span');
+    metrics.className = 'metrics';
+    metrics.setAttribute('aria-label', 'Projected vehicle statistics');
+    if (preview?.metrics.length) {
+      const metricHeading = document.createElement('span');
+      metricHeading.className = 'metrics-heading';
+      metricHeading.textContent = `Vehicle values · ${spec?.name || 'selected tank'}`;
+      metrics.appendChild(metricHeading);
+      for (const metric of preview.metrics) {
+        const row = document.createElement('span');
+        row.className = `metric ${metric.outcome}`;
+        const icon = document.createElement('span');
+        icon.className = 'metric-icon';
+        icon.innerHTML = uiIconSVG(equipmentMetricIcon(metric.id), 12);
+        const label = document.createElement('span');
+        label.className = 'metric-label';
+        label.textContent = metric.label;
+        const values = document.createElement('span');
+        values.className = 'metric-values';
+        if (metric.changed) {
+          const current = document.createElement('span');
+          current.className = 'current';
+          current.textContent = metric.current;
+          const arrow = document.createElement('span');
+          arrow.className = 'arrow';
+          arrow.textContent = '→';
+          const projected = document.createElement('b');
+          projected.textContent = metric.projected;
+          values.append(current, arrow, projected);
+        } else {
+          const active = document.createElement('b');
+          active.textContent = metric.projected;
+          values.appendChild(active);
+        }
+        row.append(icon, label, values);
+        metrics.appendChild(row);
+      }
+    }
     const action = document.createElement('span');
     action.className = 'action';
     action.textContent = state;
-    eqTooltipEl.replaceChildren(eyebrow, name, detail, action);
+    eqTooltipEl.replaceChildren(eyebrow, name, detail, summary, metrics, action);
     eqTooltipEl.dataset.category = item?.cat || 'action';
     eqTooltipEl.setAttribute('aria-hidden', 'false');
     eqTooltipEl.classList.add('show');
@@ -1587,7 +1656,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     positionEqTooltip(anchor);
   }
 
+  function equipmentTooltipAllowed(): boolean {
+    if (document.body.dataset.cotWidth === 'phone') return false;
+    return !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  }
+
   function queueEqTooltip(anchor: HTMLElement, keyboard = false): void {
+    if (!equipmentTooltipAllowed()) {
+      hideEqTooltip(false);
+      return;
+    }
     if (eqTooltipAnchor === anchor && eqTooltipEl.classList.contains('show')) return;
     hideEqTooltip(false);
     eqTooltipAnchor = anchor;
@@ -1604,18 +1682,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const spec = specById.get(selectedId);
     if (!spec) return;
     const cur = curLoadout();
-    const prev = itemId ? cur.indexOf(itemId) : -1;
-    if (itemId && prev === eqOpenSlot) {
-      // re-picking the item already in this slot = unequip it
-      cur.splice(eqOpenSlot, 1);
-    } else if (itemId) {
-      if (prev >= 0) cur.splice(prev, 1); // moving from another slot
-      if (eqOpenSlot < cur.length) cur.splice(eqOpenSlot, 1, itemId);
-      else cur.push(itemId);
-    } else if (eqOpenSlot < cur.length) {
-      cur.splice(eqOpenSlot, 1); // REMOVE tile
-    }
-    saveEquipment(selectedId, cur, spec);
+    const projected = projectEquipmentLoadout(cur, itemId, eqOpenSlot);
+    saveEquipment(selectedId, projected, spec);
     closeEqPicker();
     renderStats(spec); // slots + modified stat bars
   }
@@ -2219,8 +2287,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const eqIds = loadEquipment(spec.id, spec);
     const eqM = computeEquipMults(eqIds);
     const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id)?.name || id).join(', ');
-    const reloadS = spec.gun.reloadS * eqM.reload;
     const autoloader = spec.gun.autoloader;
+    const stockReloadS = autoloader?.fullReloadS || spec.gun.reloadS;
+    const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? 'Magazine reload' : 'Reload';
     const magazineSpec = autoloader
       ? `<div class="magazine-spec"><span>Magazine autoloader</span>` +
@@ -2302,7 +2371,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
-        { icon: 'clock', mod: eqM.reload !== 1, title: eqTitle(`${spec.gun.reloadS.toFixed(1)} s`) }) +
+        { icon: 'clock', mod: eqM.reload !== 1, title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
       statBar('Aim time', `${aimS.toFixed(1)} s`, statFrac(grp, 'aim', aimS, true),
         { icon: 'scope', mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
       statBar('Damage', `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
