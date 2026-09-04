@@ -86,13 +86,16 @@ function variant(
 }
 
 const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
-  name: 'T-72M1 Jaguar', number: 'PL-721', scheme: 'woodland',
-  base: '#39453a', weather: '#505b4a', patches: ['#202820', '#665b43', '#77705a'],
-  camoScale: 0.48,
+  name: 'T-72M1 Jaguar', number: 'PL-721', scheme: 'nato',
+  // High-contrast Polish woodland: olive CARC ground with broad earth-brown
+  // and near-black organic bands. Keep this brighter than the former muted
+  // blue-gray recipe so the national finish reads through AO and weathering.
+  base: '#46533a', weather: '#60694d', patches: ['#5a4534', '#1c211c'],
+  camoScale: 0.44,
   dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
-  // Gun root rises two centimetres inside the casting, clearing its former
-  // cheek line while the turret remains centered on the authored ring.
-  turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.26, 0.52],
+  // Gun axis now lands on the same 1.70 m world datum as the PT-91A while
+  // the turret remains centered on the authored Jaguar ring.
+  turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.27, 0.52],
   gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
   stats: { hp: 2050, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
     reverseSpeedKmh: 18, turretTraverseDegS: 34, gunPitchDegS: 27 },

@@ -379,7 +379,7 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('sig_pt91m', 'pt91m', signatureTags('pl', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#394b3c', weather: '#53604a', patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42 }),
   preset('sig_t72m1_jaguar', 't72m1_jaguar', signatureTags('pl', 'woodland', 'organic'),
-    { scheme: 'woodland', base: '#39453a', weather: '#505b4a', patches: ['#202820', '#665b43', '#77705a'], camoScale: 0.48 }),
+    { scheme: 'nato', base: '#46533a', weather: '#60694d', patches: ['#5a4534', '#1c211c'], camoScale: 0.44, patchK: 1.35 }),
   preset('sig_pt91_twardy', 'pt91_twardy', signatureTags('pl', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'], camoScale: 0.46 }),
   preset('sig_pl01_105', 'pl01_105', signatureTags('pl', 'woodland', 'digital'),

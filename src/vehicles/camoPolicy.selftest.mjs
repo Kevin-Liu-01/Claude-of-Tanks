@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '2420947e101057eee0ef6c184e37834b1d5bee44a4a980b0c83b547086022af8',
+  '3e4c8d4a617a9b21823e2fb06a92ed7e11e8df9b3985f5d1db589c413b34791c',
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 
