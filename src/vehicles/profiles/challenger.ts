@@ -2381,17 +2381,26 @@ function cr2ProfileStrip(
 // their side trace but leaves a broad rectangular face in end views.  This
 // closed loft preserves that exact side curve while pulling the lower armor
 // inward at each measured cross-section.
+function addCr2HullCrossSection(
+  P: ChallengerBuilderPort,
+  a: Cr2HullSection,
+  b: Cr2HullSection,
+  side: number,
+): void {
+  const ai = side < 0 ? -a.bw : 0.33, ao = side < 0 ? -0.33 : a.bw;
+  const bi = side < 0 ? -b.bw : 0.33, bo = side < 0 ? -0.33 : b.bw;
+  const ati = side < 0 ? -a.tw : 0.33, ato = side < 0 ? -0.33 : a.tw;
+  const bti = side < 0 ? -b.tw : 0.33, bto = side < 0 ? -0.33 : b.tw;
+  P.add('hull', slab(
+    [ai, a.bot, a.z], [ao, a.bot, a.z], [bo, b.bot, b.z], [bi, b.bot, b.z],
+    [ati, a.top, a.z], [ato, a.top, a.z], [bto, b.top, b.z], [bti, b.top, b.z]));
+}
+
 function cr2HullCrossLoft(P: ChallengerBuilderPort, sections: readonly Cr2HullSection[]): void {
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     for (const side of [-1, 1]) {
-      const ai = side < 0 ? -a.bw : 0.33, ao = side < 0 ? -0.33 : a.bw;
-      const bi = side < 0 ? -b.bw : 0.33, bo = side < 0 ? -0.33 : b.bw;
-      const ati = side < 0 ? -a.tw : 0.33, ato = side < 0 ? -0.33 : a.tw;
-      const bti = side < 0 ? -b.tw : 0.33, bto = side < 0 ? -0.33 : b.tw;
-      P.add('hull', slab(
-        [ai, a.bot, a.z], [ao, a.bot, a.z], [bo, b.bot, b.z], [bi, b.bot, b.z],
-        [ati, a.top, a.z], [ato, a.top, a.z], [bto, b.top, b.z], [bti, b.top, b.z]));
+      addCr2HullCrossSection(P, a, b, side);
     }
   }
 }
