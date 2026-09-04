@@ -97,6 +97,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
+    'src/ui/i18n.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
     'src/dev/driveTestAccess.selftest.mjs',
     'src/dev/driveTestController.selftest.mjs',
