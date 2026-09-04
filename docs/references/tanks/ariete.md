@@ -804,7 +804,7 @@ turret-fix adjudications ✓; standard-check clip ✓ contig 0 ✓ mg1+3d ✓;
 winding 22 slabs REVERSED 0 ✓; npm test green. Evidence:
 shots/misc-ladders/{before,after}/ariete*.png.
 
-## NATIVE-PROCEDURAL REBUILD (2026-08-11)
+## RETIRED NATIVE-PROCEDURAL REBUILD (2026-08-11)
 
 A local comparison file, `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`, is
 (112,070,992 bytes; SHA-256
@@ -814,15 +814,12 @@ measurement reference only. No source mesh, texture, material, animation or
 derivative payload byte ships. The retired quarantined model swap remains
 disabled; gameplay uses the original procedural build.
 
-`buildArieteNative2026` replaces the old slab-heavy fallback with a long low
-hull, shallow layered bow, broad low connected turret, integrated rounded
-mantlet and corrected 4.38 m gun run. The roof has asymmetric cupola, TURMS,
-optic, MG/RWS and antenna stations on explicit collars or plinths. Both smoke
-banks meet cheek brackets. A shallow open basket returns into the bustle
-through continuous side, transverse and diagonal rails. Unequal backed rear
-service bays, horizontal courses, exhaust/recovery hardware, lamps and tow
-points stay hull-owned. The final 14 x 10 x 14 cm dark service seat closes the
-last single-cell recovery-rail pocket without changing the visible envelope.
+The unregistered `buildArieteNative2026` experiment produced a long, low hull,
+shallow layered bow, broad connected turret, rounded mantlet, and corrected
+4.38 m gun run. It was never part of the playable profile registry and was
+removed from source in September 2026 as dead code. Runtime Ariete vehicles
+continue to use the stronger first-party `buildAriete` construction. The
+measurements below are retained only as an historical authoring record.
 
 Exactly seven large road wheels per side retain distinct tire, dish and hub
 faces inside one fleet-native linked-shoe course. Exact band clips are 7/0 and
