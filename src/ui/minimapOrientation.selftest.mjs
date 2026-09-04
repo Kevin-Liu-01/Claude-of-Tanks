@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   MINIMAP_NORTH_UP,
+  minimapHeadingForDirection,
   minimapRotationForHeading,
   normalizeMinimapAngle,
   orientMinimapDirection,
@@ -19,6 +20,12 @@ assert.equal(minimapRotationForHeading(Number.NaN), MINIMAP_NORTH_UP,
   'invalid presentation state fails closed to north-up');
 assert.equal(normalizeMinimapAngle(Math.PI * 4), 0,
   'equivalent full turns normalize to the stable north-up identity');
+assert.equal(minimapHeadingForDirection(-1, 0), -Math.PI / 2,
+  'a live camera looking world-left resolves the matching view yaw');
+assert.equal(minimapHeadingForDirection(0, 1), 0,
+  'a live camera looking world-north resolves the authored map heading');
+assert.equal(minimapHeadingForDirection(0, 0), null,
+  'a vertical or degenerate camera ray has no horizontal heading');
 
 const point = [0, 0];
 assert.deepEqual(orientMinimapPoint(24, 46, 220, MINIMAP_NORTH_UP, point), [24, 46]);
@@ -82,8 +89,8 @@ const worldActivationSource = await readFile(
   new URL('../world/worldActivationRuntime.ts', import.meta.url), 'utf8',
 );
 assert.match(hudSource,
-  /const playerYaw = frame\.player\?\.state\?\.yaw;[\s\S]{0,240}minimapRotationForHeading\(playerYaw\);[\s\S]{0,120}drawMinimap\(frame\)/,
-  'every minimap repaint derives its orientation from the current player hull heading');
+  /transformDirection\(frame\.camera\.matrixWorld\)[\s\S]{0,360}minimapHeadingForDirection\(_fwd\.x, _fwd\.z\)[\s\S]{0,360}minimapRotationForHeading\(minimapViewHeadingYaw\)[\s\S]{0,800}drawMinimap\(frame\)/,
+  'every minimap repaint derives its orientation from the active camera view');
 assert.doesNotMatch(hudSource, /minimapDeploymentYaw|minimapOrientationLocked/,
   'the old round-long deployment orientation lock is fully removed');
 assert.match(hudSource,

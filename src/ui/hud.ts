@@ -27,6 +27,7 @@ import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
   MINIMAP_NORTH_UP,
+  minimapHeadingForDirection,
   minimapRotationForHeading,
   normalizeMinimapAngle,
   orientMinimapDirection,
@@ -492,6 +493,8 @@ interface HudMinimapDebugState {
   rotationRad: number;
   rotationDeg: number;
   playerHeadingYawRad: number | null;
+  viewHeadingYawRad: number | null;
+  orientationSource: 'camera' | 'hull' | 'north-up';
   headingUp: true;
   backgroundKind: 'none' | 'image' | 'canvas';
   backgroundReady: boolean;
@@ -2264,6 +2267,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
   let minimapRotation = MINIMAP_NORTH_UP;
   let minimapPlayerHeadingYaw: number | null = null;
+  let minimapViewHeadingYaw: number | null = null;
+  let minimapOrientationSource: HudMinimapDebugState['orientationSource'] = 'north-up';
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
@@ -5743,7 +5748,27 @@ export function initHud(bus: EventBus): HudRuntime {
     const playerYaw = frame.player?.state?.yaw;
     if (typeof playerYaw === 'number' && Number.isFinite(playerYaw)) {
       minimapPlayerHeadingYaw = normalizeMinimapAngle(playerYaw);
-      minimapRotation = minimapRotationForHeading(playerYaw);
+    }
+
+    // The tactical map is view-up, not hull-up. Arcade free look, turret aim,
+    // touch aim, and the opposite spawn can all point the camera away from the
+    // hull. Keying the map to state.yaw made a rightward look appear leftward
+    // until the hull caught up. Derive the heading from the same camera ray
+    // that drives the reticle, with hull yaw only as the degenerate fallback.
+    minimapViewHeadingYaw = null;
+    if (frame.camera) {
+      _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
+      minimapViewHeadingYaw = minimapHeadingForDirection(_fwd.x, _fwd.z);
+    }
+    if (minimapViewHeadingYaw !== null) {
+      minimapRotation = minimapRotationForHeading(minimapViewHeadingYaw);
+      minimapOrientationSource = 'camera';
+    } else if (minimapPlayerHeadingYaw !== null) {
+      minimapRotation = minimapRotationForHeading(minimapPlayerHeadingYaw);
+      minimapOrientationSource = 'hull';
+    } else {
+      minimapRotation = MINIMAP_NORTH_UP;
+      minimapOrientationSource = 'north-up';
     }
     drawMinimap(frame);
     mmDirty = false;
@@ -5886,6 +5911,8 @@ export function initHud(bus: EventBus): HudRuntime {
         spawnFlags = null; // re-capture from the new battle's spawn frame
         minimapRotation = MINIMAP_NORTH_UP;
         minimapPlayerHeadingYaw = null;
+        minimapViewHeadingYaw = null;
+        minimapOrientationSource = 'north-up';
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -6021,6 +6048,8 @@ export function initHud(bus: EventBus): HudRuntime {
         rotationRad: minimapRotation,
         rotationDeg: minimapRotation * 180 / Math.PI,
         playerHeadingYawRad: minimapPlayerHeadingYaw,
+        viewHeadingYawRad: minimapViewHeadingYaw,
+        orientationSource: minimapOrientationSource,
         headingUp: true,
         backgroundKind: !mmBg ? 'none'
           : mmBg instanceof HTMLImageElement ? 'image' : 'canvas',

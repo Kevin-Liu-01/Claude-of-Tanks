@@ -10,15 +10,24 @@ export function normalizeMinimapAngle(angle: number): number {
   return Math.abs(wrapped) < 1e-10 ? MINIMAP_NORTH_UP : wrapped;
 }
 
-/**
- * Rotate the tactical map so the local vehicle's current hull heading is
- * always screen-up. This is intentionally continuous rather than a spawn-side
- * flip: turning the vehicle must turn the map and every overlay with it.
- */
+/** Rotate the tactical map so a world heading is screen-up. */
 export function minimapRotationForHeading(yaw: number): number {
   const value = Number(yaw);
   if (!Number.isFinite(value)) return MINIMAP_NORTH_UP;
   return normalizeMinimapAngle(-value);
+}
+
+/**
+ * Resolve the yaw of a horizontal world direction. The live camera ray is the
+ * canonical heading for a view-up minimap; a zero-length horizontal ray (for
+ * example a camera looking straight down) deliberately has no heading so the
+ * caller can fall back to the vehicle hull.
+ */
+export function minimapHeadingForDirection(worldX: number, worldZ: number): number | null {
+  const x = Number(worldX);
+  const z = Number(worldZ);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || x * x + z * z < 1e-10) return null;
+  return normalizeMinimapAngle(Math.atan2(x, z));
 }
 
 /** Rotate a north-up canvas point around the map center into heading-up. */
