@@ -3571,6 +3571,99 @@ export function buildBradley(P: Modern3BuilderPort) {
 // m3a3_bradley + ua_m2a3_bradley via their family wrappers). marder1a3
 // rides the same donor hull but is HARD-GATED (59cb105c) and does NOT take
 // this dressing — its own bow window stays a fenced future round.
+function addBradleySkirtPanels(
+  P: Modern3BuilderPort,
+  side: number,
+  cuts: readonly number[],
+) {
+  const { box } = KIT;
+  for (let panel = 0; panel + 1 < cuts.length; panel++) {
+    const lowered = panel >= 6;
+    P.add('hull', box(0.075, lowered ? 0.63 : 0.80, cuts[panel + 1] - cuts[panel]),
+      side * 1.6145, lowered ? 0.935 : 1.02, (cuts[panel] + cuts[panel + 1]) / 2);
+  }
+}
+
+function addBradleySkirtJoints(
+  P: Modern3BuilderPort,
+  side: number,
+  cuts: readonly number[],
+) {
+  const { box } = KIT;
+  for (let joint = 1; joint + 1 < cuts.length; joint++) {
+    const lowered = joint >= 6;
+    P.add('hullDark', box(0.05, lowered ? 0.56 : 0.70, 0.024),
+      side * 1.655, lowered ? 0.92 : 1.00, cuts[joint]);
+    P.add('hullDetail', box(0.085, 0.10, 0.06),
+      side * 1.6125, lowered ? 1.30 : 1.46, cuts[joint]);
+  }
+}
+
+function addBradleySkirtApron(
+  P: Modern3BuilderPort,
+  segments: Array<{ side: number; rearZ: number; frontZ: number }>,
+  side: number,
+  rearZ: number,
+  frontZ: number,
+) {
+  P.add('hull', orientedSlab(
+    [side * 1.50, 1.565, frontZ], [side * 1.649, 1.40, frontZ],
+    [side * 1.649, 1.40, rearZ], [side * 1.50, 1.565, rearZ],
+    [side * 1.50, 1.605, frontZ], [side * 1.649, 1.44, frontZ],
+    [side * 1.649, 1.44, rearZ], [side * 1.50, 1.605, rearZ]));
+  segments.push({ side, rearZ, frontZ });
+}
+
+function addBradleySkirtApronCourse(
+  P: Modern3BuilderPort,
+  segments: Array<{ side: number; rearZ: number; frontZ: number }>,
+  side: number,
+) {
+  if (side > 0) {
+    addBradleySkirtApron(P, segments, side, -2.90, 0.93);
+    return;
+  }
+  addBradleySkirtApron(P, segments, side, -2.90, -2.55);
+  addBradleySkirtApron(P, segments, side, -1.95, 1.55);
+  // The left donor flank has no exhaust housing to bridge its forward
+  // skirt course. Continue the same raked mounting plane into the bow
+  // shoulder so the upper-glacis edge and its ERA backing cannot expose
+  // two open cells at z~1.95/2.73. The front 0.31 m deliberately nests
+  // behind the bow-corner closure; y>=1.40 remains clear of the track.
+  addBradleySkirtApron(P, segments, side, 1.55, 3.11);
+}
+
+function addBradleySkirtMountCourse(P: Modern3BuilderPort) {
+  const { box } = KIT;
+  const cuts = [-2.97, -2.21, -1.45, -0.69, 0.07, 0.83, 1.59, 2.35, 3.11];
+  const apronSegments: Array<{ side: number; rearZ: number; frontZ: number }> = [];
+
+  for (const side of [-1, 1]) {
+    addBradleySkirtPanels(P, side, cuts);
+    addBradleySkirtJoints(P, side, cuts);
+    addBradleySkirtApronCourse(P, apronSegments, side);
+    // Course end caps close the axial panel-to-hull mounting pockets into
+    // the bow fender and stern corner content.
+    P.add('hull', box(0.076, 0.63, 0.05), side * 1.576, 0.935, 3.085);
+    P.add('hull', box(0.076, 0.80, 0.05), side * 1.576, 1.02, -2.945);
+  }
+
+  P.hullG.userData.bradleySkirtApronReceipt = Object.freeze({
+    revision: 'continuous-left-front-glacis-shoulder-r1',
+    segments: apronSegments.map((segment) => Object.freeze({ ...segment })),
+    leftFront: Object.freeze({
+      side: -1,
+      rearZ: 1.55,
+      frontZ: 3.11,
+      innerX: -1.50,
+      outerX: -1.649,
+      lowestY: 1.40,
+      bowClosureRearZ: 2.80,
+      bowOverlapM: 3.11 - 2.80,
+    }),
+  });
+}
+
 export function bradleyFlankDressing(P: Modern3BuilderPort) {
   const { box, slab, cylY, polyMultiLoft } = KIT;
   // All three Bradley playables share the donor's compact bearing beneath
@@ -3651,61 +3744,7 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
   // gear which closes its own band (right exhaust z 0.975..1.925; left
   // stern bag box z -2.52..-1.98). All course content |x| >= 1.4425,
   // clear of the 1.395 shoe reach (§B4).
-  {
-    const cuts = [-2.97, -2.21, -1.45, -0.69, 0.07, 0.83, 1.59, 2.35, 3.11];
-    const apronSegments: Array<{ side: number; rearZ: number; frontZ: number }> = [];
-    for (const s of [-1, 1]) {
-      for (let k = 0; k + 1 < cuts.length; k++) {
-        const lo = k >= 6;
-        P.add('hull', box(0.075, lo ? 0.63 : 0.80, cuts[k + 1] - cuts[k]),
-          s * 1.6145, lo ? 0.935 : 1.02, (cuts[k] + cuts[k + 1]) / 2);
-      }
-      for (let k = 1; k + 1 < cuts.length; k++) {
-        const lo = k >= 6;
-        P.add('hullDark', box(0.05, lo ? 0.56 : 0.70, 0.024),
-          s * 1.655, lo ? 0.92 : 1.00, cuts[k]);
-        P.add('hullDetail', box(0.085, 0.10, 0.06),
-          s * 1.6125, lo ? 1.30 : 1.46, cuts[k]);
-      }
-      const apron = (z0: number, z1: number) => {
-        P.add('hull', orientedSlab(
-          [s * 1.50, 1.565, z1], [s * 1.649, 1.40, z1], [s * 1.649, 1.40, z0], [s * 1.50, 1.565, z0],
-          [s * 1.50, 1.605, z1], [s * 1.649, 1.44, z1], [s * 1.649, 1.44, z0], [s * 1.50, 1.605, z0]));
-        apronSegments.push({ side: s, rearZ: z0, frontZ: z1 });
-      };
-      if (s > 0) { apron(-2.90, 0.93); }
-      else {
-        apron(-2.90, -2.55);
-        apron(-1.95, 1.55);
-        // The left donor flank has no exhaust housing to bridge its forward
-        // skirt course. Continue the same raked mounting plane into the bow
-        // shoulder so the upper-glacis edge and its ERA backing cannot expose
-        // two open cells at z~1.95/2.73. The front 0.31 m deliberately nests
-        // behind the bow-corner closure; y>=1.40 remains clear of the track.
-        apron(1.55, 3.11);
-      }
-      // course END CAPS: the panel-to-hull mounting lane read as an
-      // enclosed axial pocket from front-low once the tops were sealed
-      // (3518px, left lane) — transverse caps close both ends of the lane
-      // into the bow fender / stern corner content.
-      P.add('hull', box(0.076, 0.63, 0.05), s * 1.576, 0.935, 3.085);
-      P.add('hull', box(0.076, 0.80, 0.05), s * 1.576, 1.02, -2.945);
-    }
-    P.hullG.userData.bradleySkirtApronReceipt = Object.freeze({
-      revision: 'continuous-left-front-glacis-shoulder-r1',
-      segments: apronSegments.map((segment) => Object.freeze({ ...segment })),
-      leftFront: Object.freeze({
-        side: -1,
-        rearZ: 1.55,
-        frontZ: 3.11,
-        innerX: -1.50,
-        outerX: -1.649,
-        lowestY: 1.40,
-        bowClosureRearZ: 2.80,
-        bowOverlapM: 3.11 - 2.80,
-      }),
-    });
-  }
+  addBradleySkirtMountCourse(P);
 }
 
 function buildM2A2Bradley(P: Modern3BuilderPort) {
