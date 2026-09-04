@@ -374,6 +374,181 @@ function ring(
   ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
 }
 
+interface InsigniaPainterArgs {
+  ctx: CanvasRenderingContext2D;
+  cx: number;
+  cy: number;
+  size: number;
+  radius: number;
+}
+
+type InsigniaPainter = (args: InsigniaPainterArgs) => void;
+
+function drawUsStar({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#e2dfd2';
+  ctx.lineWidth = size * 0.07;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.9, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#e2dfd2';
+  starPath(ctx, cx, cy, radius * 0.72);
+  ctx.fill();
+}
+
+function drawGermanCross({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#d6d2c5';
+  ctx.lineWidth = size * 0.13;
+  ctx.fillStyle = '#1d1f1d';
+  crossPath(ctx, cx, cy, size * 0.9, 0.36);
+  ctx.stroke();
+  ctx.fill();
+}
+
+function drawRedStar(
+  { ctx, cx, cy, size, radius }: InsigniaPainterArgs,
+  outline: string,
+): void {
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = size * 0.07;
+  ctx.fillStyle = '#b6322e';
+  starPath(ctx, cx, cy, radius * 0.86);
+  ctx.stroke();
+  ctx.fill();
+}
+
+function drawRoundel(
+  { ctx, cx, cy, radius }: InsigniaPainterArgs,
+  colors: readonly [string, string, string],
+): void {
+  ring(ctx, cx, cy, radius * 0.9, colors[0]);
+  ring(ctx, cx, cy, radius * 0.61, colors[1]);
+  ring(ctx, cx, cy, radius * 0.31, colors[2]);
+}
+
+function drawIsraelStar({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#5677a8';
+  ctx.lineWidth = size * 0.075;
+  for (const flip of [0, Math.PI]) {
+    ctx.beginPath();
+    for (let index = 0; index < 3; index++) {
+      const angle = flip - Math.PI / 2 + index * Math.PI * 2 / 3;
+      const x = cx + Math.cos(angle) * radius * 0.85;
+      const y = cy + Math.sin(angle) * radius * 0.85;
+      if (index) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
+function drawItalyShield({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ctx.beginPath();
+  ctx.moveTo(cx - radius * 0.72, cy - radius * 0.8);
+  ctx.lineTo(cx + radius * 0.72, cy - radius * 0.8);
+  ctx.lineTo(cx + radius * 0.58, cy + radius * 0.48);
+  ctx.lineTo(cx, cy + radius * 0.9);
+  ctx.lineTo(cx - radius * 0.58, cy + radius * 0.48);
+  ctx.closePath();
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = '#318351';
+  ctx.fillRect(cx - radius, cy - radius, radius * 0.67, size);
+  ctx.fillStyle = '#ece8db';
+  ctx.fillRect(cx - radius * 0.33, cy - radius, radius * 0.67, size);
+  ctx.fillStyle = '#b93636';
+  ctx.fillRect(cx + radius * 0.34, cy - radius, radius * 0.67, size);
+  ctx.restore();
+  ctx.strokeStyle = '#d7d3c6';
+  ctx.lineWidth = size * 0.05;
+  ctx.stroke();
+}
+
+function drawJapanRoundel({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.82, '#b63838');
+}
+
+function drawPolandChecker({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  const side = radius * 0.82;
+  ctx.fillStyle = '#e7e2d5';
+  ctx.fillRect(cx - side, cy - side, side, side);
+  ctx.fillRect(cx, cy, side, side);
+  ctx.fillStyle = '#bb3b40';
+  ctx.fillRect(cx, cy - side, side, side);
+  ctx.fillRect(cx - side, cy, side, side);
+  ctx.strokeStyle = '#e7e2d5';
+  ctx.lineWidth = size * 0.05;
+  ctx.strokeRect(cx - side, cy - side, side * 2, side * 2);
+}
+
+function drawKoreaTaeguk({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.78, '#ece8dc');
+  ctx.fillStyle = '#b63b3f';
+  ctx.beginPath(); ctx.arc(cx, cy, radius * 0.62, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#345888';
+  ctx.beginPath(); ctx.arc(cx, cy, radius * 0.62, 0, Math.PI); ctx.fill();
+  ring(ctx, cx - radius * 0.31, cy, radius * 0.31, '#345888');
+  ring(ctx, cx + radius * 0.31, cy, radius * 0.31, '#b63b3f');
+}
+
+function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ctx.fillStyle = '#dfbd55';
+  for (const [dx, dy] of [[-0.34, -0.28], [0.34, -0.28], [0, 0.35]]) {
+    const x = cx + dx * radius;
+    const y = cy + dy * radius;
+    const width = radius * 0.54;
+    ctx.beginPath();
+    ctx.moveTo(x - width / 2, y + width * 0.22);
+    ctx.lineTo(x - width * 0.42, y - width * 0.25);
+    ctx.lineTo(x, y + width * 0.02);
+    ctx.lineTo(x + width * 0.42, y - width * 0.25);
+    ctx.lineTo(x + width / 2, y + width * 0.22);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ctx.strokeStyle = '#e0bd4c';
+  ctx.lineWidth = size * 0.09;
+  ctx.beginPath();
+  ctx.moveTo(cx - radius * 0.55, cy - radius * 0.62);
+  ctx.lineTo(cx - radius * 0.32, cy + radius * 0.4);
+  ctx.lineTo(cx, cy + radius * 0.78);
+  ctx.lineTo(cx + radius * 0.32, cy + radius * 0.4);
+  ctx.lineTo(cx + radius * 0.55, cy - radius * 0.62);
+  ctx.moveTo(cx, cy - radius * 0.72);
+  ctx.lineTo(cx, cy + radius * 0.78);
+  ctx.stroke();
+}
+
+function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  ctx.fillStyle = '#d6a74f';
+  ctx.beginPath();
+  ctx.moveTo(cx - radius * 0.72, cy - radius * 0.78);
+  ctx.lineTo(cx + radius * 0.72, cy - radius * 0.78);
+  ctx.lineTo(cx + radius * 0.52, cy + radius * 0.48);
+  ctx.lineTo(cx, cy + radius * 0.88);
+  ctx.lineTo(cx - radius * 0.52, cy + radius * 0.48);
+  ctx.closePath();
+  ctx.fill();
+}
+
+const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Object.freeze({
+  'us-star': drawUsStar,
+  'de-cross': drawGermanCross,
+  'ru-star': (args) => drawRedStar(args, '#eee9db'),
+  'cn-star': (args) => drawRedStar(args, '#f1d45f'),
+  'gb-roundel': (args) => drawRoundel(args, ['#2d4d83', '#e9e5d8', '#b93838']),
+  'fr-roundel': (args) => drawRoundel(args, ['#b93838', '#e9e5d8', '#31548b']),
+  'il-star': drawIsraelStar,
+  'it-shield': drawItalyShield,
+  'jp-roundel': drawJapanRoundel,
+  'pl-checker': drawPolandChecker,
+  'kr-taeguk': drawKoreaTaeguk,
+  'se-crowns': drawSwedenCrowns,
+  'ua-trident': drawUkraineTrident,
+});
+
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */
 export function drawNationalInsignia(
   ctx: CanvasRenderingContext2D,
@@ -382,72 +557,11 @@ export function drawNationalInsignia(
   cy: number,
   size: number,
 ): void {
-  const r = size / 2;
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  if (insignia === 'us-star') {
-    ctx.strokeStyle = '#e2dfd2'; ctx.lineWidth = size * 0.07;
-    ctx.beginPath(); ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#e2dfd2'; starPath(ctx, cx, cy, r * 0.72); ctx.fill();
-  } else if (insignia === 'de-cross') {
-    ctx.strokeStyle = '#d6d2c5'; ctx.lineWidth = size * 0.13;
-    ctx.fillStyle = '#1d1f1d'; crossPath(ctx, cx, cy, size * 0.9, 0.36); ctx.stroke(); ctx.fill();
-  } else if (insignia === 'ru-star' || insignia === 'cn-star') {
-    ctx.strokeStyle = insignia === 'cn-star' ? '#f1d45f' : '#eee9db';
-    ctx.lineWidth = size * 0.07; ctx.fillStyle = '#b6322e';
-    starPath(ctx, cx, cy, r * 0.86); ctx.stroke(); ctx.fill();
-  } else if (insignia === 'gb-roundel' || insignia === 'fr-roundel') {
-    const colors = insignia === 'gb-roundel' ? ['#2d4d83', '#e9e5d8', '#b93838'] : ['#b93838', '#e9e5d8', '#31548b'];
-    ring(ctx, cx, cy, r * 0.9, colors[0]); ring(ctx, cx, cy, r * 0.61, colors[1]); ring(ctx, cx, cy, r * 0.31, colors[2]);
-  } else if (insignia === 'il-star') {
-    ctx.strokeStyle = '#5677a8'; ctx.lineWidth = size * 0.075;
-    for (const flip of [0, Math.PI]) {
-      ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const a = flip - Math.PI / 2 + i * Math.PI * 2 / 3;
-        const x = cx + Math.cos(a) * r * 0.85, y = cy + Math.sin(a) * r * 0.85;
-        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-      }
-      ctx.closePath(); ctx.stroke();
-    }
-  } else if (insignia === 'it-shield') {
-    ctx.beginPath(); ctx.moveTo(cx - r * 0.72, cy - r * 0.8); ctx.lineTo(cx + r * 0.72, cy - r * 0.8);
-    ctx.lineTo(cx + r * 0.58, cy + r * 0.48); ctx.lineTo(cx, cy + r * 0.9); ctx.lineTo(cx - r * 0.58, cy + r * 0.48); ctx.closePath();
-    ctx.save(); ctx.clip();
-    ctx.fillStyle = '#318351'; ctx.fillRect(cx - r, cy - r, r * 0.67, size);
-    ctx.fillStyle = '#ece8db'; ctx.fillRect(cx - r * 0.33, cy - r, r * 0.67, size);
-    ctx.fillStyle = '#b93636'; ctx.fillRect(cx + r * 0.34, cy - r, r * 0.67, size);
-    ctx.restore(); ctx.strokeStyle = '#d7d3c6'; ctx.lineWidth = size * 0.05; ctx.stroke();
-  } else if (insignia === 'jp-roundel') {
-    ring(ctx, cx, cy, r * 0.82, '#b63838');
-  } else if (insignia === 'pl-checker') {
-    const s = r * 0.82;
-    ctx.fillStyle = '#e7e2d5'; ctx.fillRect(cx - s, cy - s, s, s); ctx.fillRect(cx, cy, s, s);
-    ctx.fillStyle = '#bb3b40'; ctx.fillRect(cx, cy - s, s, s); ctx.fillRect(cx - s, cy, s, s);
-    ctx.strokeStyle = '#e7e2d5'; ctx.lineWidth = size * 0.05; ctx.strokeRect(cx - s, cy - s, s * 2, s * 2);
-  } else if (insignia === 'kr-taeguk') {
-    ring(ctx, cx, cy, r * 0.78, '#ece8dc');
-    ctx.fillStyle = '#b63b3f'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#345888'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, Math.PI); ctx.fill();
-    ring(ctx, cx - r * 0.31, cy, r * 0.31, '#345888'); ring(ctx, cx + r * 0.31, cy, r * 0.31, '#b63b3f');
-  } else if (insignia === 'se-crowns') {
-    ctx.fillStyle = '#dfbd55';
-    for (const [dx, dy] of [[-0.34, -0.28], [0.34, -0.28], [0, 0.35]]) {
-      const x = cx + dx * r, y = cy + dy * r, w = r * 0.54;
-      ctx.beginPath(); ctx.moveTo(x - w / 2, y + w * 0.22); ctx.lineTo(x - w * 0.42, y - w * 0.25);
-      ctx.lineTo(x, y + w * 0.02); ctx.lineTo(x + w * 0.42, y - w * 0.25); ctx.lineTo(x + w / 2, y + w * 0.22); ctx.closePath(); ctx.fill();
-    }
-  } else if (insignia === 'ua-trident') {
-    ctx.strokeStyle = '#e0bd4c'; ctx.lineWidth = size * 0.09;
-    ctx.beginPath(); ctx.moveTo(cx - r * 0.55, cy - r * 0.62); ctx.lineTo(cx - r * 0.32, cy + r * 0.4);
-    ctx.lineTo(cx, cy + r * 0.78); ctx.lineTo(cx + r * 0.32, cy + r * 0.4); ctx.lineTo(cx + r * 0.55, cy - r * 0.62);
-    ctx.moveTo(cx, cy - r * 0.72); ctx.lineTo(cx, cy + r * 0.78); ctx.stroke();
-  } else {
-    ctx.fillStyle = '#d6a74f';
-    ctx.beginPath(); ctx.moveTo(cx - r * 0.72, cy - r * 0.78); ctx.lineTo(cx + r * 0.72, cy - r * 0.78);
-    ctx.lineTo(cx + r * 0.52, cy + r * 0.48); ctx.lineTo(cx, cy + r * 0.88); ctx.lineTo(cx - r * 0.52, cy + r * 0.48); ctx.closePath(); ctx.fill();
-  }
+  const painter = NATIONAL_INSIGNIA_PAINTERS[insignia] || drawFallbackShield;
+  painter({ ctx, cx, cy, size, radius: size / 2 });
   ctx.restore();
 }
 
