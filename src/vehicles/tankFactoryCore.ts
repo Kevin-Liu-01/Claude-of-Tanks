@@ -42,7 +42,7 @@ import { attachTankDecorations } from './decorations.ts';
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
-import type { ArmorEnvelope } from './specHelpers.ts';
+import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
 import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
@@ -63,6 +63,17 @@ type DisposableVehicleResource = THREE.BufferGeometry | THREE.Material | THREE.T
 type TankBuilder = (...args: never[]) => void;
 type FactoryFitting = (...args: never[]) => RuntimeValue;
 type TankBuilderRecord = Record<string, TankBuilder>;
+type EraSurface = number[][];
+
+interface EraSurfaceFrame {
+  authoredU: THREE.Vector3;
+  authoredNormal: THREE.Vector3;
+}
+
+interface EraSurfaceCollection {
+  surfaces: EraSurface[];
+  allPoints: THREE.Vector3[];
+}
 
 interface TankMaterials {
   hull: THREE.MeshStandardMaterial;
@@ -7688,6 +7699,244 @@ function applyVerifiedVehicleMarkingSeats(
   }
 }
 
+function createEraSurfaceFrame(plate: ArmorPlate): EraSurfaceFrame | null {
+  const origin = new THREE.Vector3().fromArray(plate.verts[0]);
+  const authoredU = new THREE.Vector3().fromArray(plate.verts[1]).sub(origin).normalize();
+  const authoredV = new THREE.Vector3().fromArray(plate.verts[plate.verts.length - 1]).sub(origin);
+  const authoredNormal = new THREE.Vector3().crossVectors(authoredU, authoredV).normalize();
+  if (authoredU.lengthSq() < 0.99 || authoredNormal.lengthSq() < 0.99) return null;
+  return { authoredU, authoredNormal };
+}
+
+function pointCloudCovariance(
+  points: readonly THREE.Vector3[],
+  centroid: THREE.Vector3,
+): number[][] {
+  let xx = 0;
+  let xy = 0;
+  let xz = 0;
+  let yy = 0;
+  let yz = 0;
+  let zz = 0;
+  for (const value of points) {
+    const dx = value.x - centroid.x;
+    const dy = value.y - centroid.y;
+    const dz = value.z - centroid.z;
+    xx += dx * dx;
+    xy += dx * dy;
+    xz += dx * dz;
+    yy += dy * dy;
+    yz += dy * dz;
+    zz += dz * dz;
+  }
+  return [[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]];
+}
+
+function selectJacobiAxes(covariance: number[][]): [number, number] {
+  let row = 0;
+  let column = 1;
+  if (Math.abs(covariance[0][2]) > Math.abs(covariance[row][column])) {
+    [row, column] = [0, 2];
+  }
+  if (Math.abs(covariance[1][2]) > Math.abs(covariance[row][column])) {
+    [row, column] = [1, 2];
+  }
+  return [row, column];
+}
+
+function rotateJacobiBasis(
+  covariance: number[][],
+  eigenvectors: number[][],
+  row: number,
+  column: number,
+): void {
+  const angle = 0.5 * Math.atan2(
+    2 * covariance[row][column], covariance[column][column] - covariance[row][row],
+  );
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  const app = covariance[row][row];
+  const aqq = covariance[column][column];
+  const apq = covariance[row][column];
+  covariance[row][row] = cosine * cosine * app - 2 * sine * cosine * apq + sine * sine * aqq;
+  covariance[column][column] = sine * sine * app + 2 * sine * cosine * apq + cosine * cosine * aqq;
+  covariance[row][column] = 0;
+  covariance[column][row] = 0;
+
+  for (let index = 0; index < 3; index++) {
+    if (index === row || index === column) continue;
+    const akp = covariance[index][row];
+    const akq = covariance[index][column];
+    covariance[index][row] = cosine * akp - sine * akq;
+    covariance[row][index] = covariance[index][row];
+    covariance[index][column] = sine * akp + cosine * akq;
+    covariance[column][index] = covariance[index][column];
+  }
+  for (let index = 0; index < 3; index++) {
+    const vrp = eigenvectors[index][row];
+    const vrq = eigenvectors[index][column];
+    eigenvectors[index][row] = cosine * vrp - sine * vrq;
+    eigenvectors[index][column] = sine * vrp + cosine * vrq;
+  }
+}
+
+function diagonalizePointCloud(covariance: number[][], eigenvectors: number[][]): void {
+  for (let iteration = 0; iteration < 18; iteration++) {
+    const [row, column] = selectJacobiAxes(covariance);
+    if (Math.abs(covariance[row][column]) < 1e-10) break;
+    rotateJacobiBasis(covariance, eigenvectors, row, column);
+  }
+}
+
+function extremeEigenAxis(eigenvalues: readonly number[], findMinimum: boolean): number {
+  let selected = 0;
+  for (let index = 1; index < eigenvalues.length; index++) {
+    const replacesSelected = findMinimum
+      ? eigenvalues[index] < eigenvalues[selected]
+      : eigenvalues[index] > eigenvalues[selected];
+    if (replacesSelected) selected = index;
+  }
+  return selected;
+}
+
+function orientEraSurfaceNormal(
+  normal: THREE.Vector3,
+  centroid: THREE.Vector3,
+  authoredNormal: THREE.Vector3,
+): void {
+  const seedAlignment = normal.dot(authoredNormal);
+  if (Math.abs(seedAlignment) > 0.05) {
+    if (seedAlignment < 0) normal.negate();
+  } else if (normal.dot(centroid) < 0) {
+    normal.negate();
+  }
+}
+
+function createEraSurfaceBasis(
+  eigenvectors: number[][],
+  maximumAxis: number,
+  normal: THREE.Vector3,
+  authoredU: THREE.Vector3,
+): [THREE.Vector3, THREE.Vector3] {
+  const maximumVector = new THREE.Vector3(
+    eigenvectors[0][maximumAxis], eigenvectors[1][maximumAxis], eigenvectors[2][maximumAxis],
+  );
+  const u = maximumVector.clone().addScaledVector(normal, -maximumVector.dot(normal)).normalize();
+  if (u.lengthSq() < 0.99) {
+    u.copy(authoredU).addScaledVector(normal, -authoredU.dot(normal)).normalize();
+    if (u.lengthSq() < 0.99) {
+      u.set(1, 0, 0).addScaledVector(normal, -normal.x).normalize();
+    }
+  }
+  return [u, new THREE.Vector3().crossVectors(normal, u).normalize()];
+}
+
+function fitEraPointCloud(
+  points: THREE.Vector3[],
+  frame: EraSurfaceFrame,
+): EraSurface | null {
+  if (points.length < 4) return null;
+  const centroid = points.reduce((sum, value) => sum.add(value), new THREE.Vector3())
+    .multiplyScalar(1 / points.length);
+  const covariance = pointCloudCovariance(points, centroid);
+  const eigenvectors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  diagonalizePointCloud(covariance, eigenvectors);
+
+  const eigenvalues = [covariance[0][0], covariance[1][1], covariance[2][2]];
+  const minimumAxis = extremeEigenAxis(eigenvalues, true);
+  const maximumAxis = extremeEigenAxis(eigenvalues, false);
+  const normal = new THREE.Vector3(
+    eigenvectors[0][minimumAxis], eigenvectors[1][minimumAxis], eigenvectors[2][minimumAxis],
+  ).normalize();
+  orientEraSurfaceNormal(normal, centroid, frame.authoredNormal);
+  const [u, v] = createEraSurfaceBasis(eigenvectors, maximumAxis, normal, frame.authoredU);
+
+  let uMin = Infinity;
+  let uMax = -Infinity;
+  let vMin = Infinity;
+  let vMax = -Infinity;
+  let outwardN = -Infinity;
+  for (const value of points) {
+    const projectedU = value.dot(u);
+    const projectedV = value.dot(v);
+    const projectedNormal = value.dot(normal);
+    uMin = Math.min(uMin, projectedU);
+    uMax = Math.max(uMax, projectedU);
+    vMin = Math.min(vMin, projectedV);
+    vMax = Math.max(vMax, projectedV);
+    outwardN = Math.max(outwardN, projectedNormal);
+  }
+  if (![uMin, uMax, vMin, vMax, outwardN].every(Number.isFinite)
+      || uMax - uMin < 0.02 || vMax - vMin < 0.02) return null;
+  const pointAt = (projectedU: number, projectedV: number): number[] => new THREE.Vector3()
+    .addScaledVector(u, projectedU)
+    .addScaledVector(v, projectedV)
+    .addScaledVector(normal, outwardN)
+    .toArray();
+  return [pointAt(uMin, vMin), pointAt(uMax, vMin), pointAt(uMax, vMax), pointAt(uMin, vMax)];
+}
+
+function collectEraSurfaces(
+  parts: readonly THREE.BufferGeometry[],
+  sideSuffix: number,
+  frame: EraSurfaceFrame,
+): EraSurfaceCollection {
+  const point = new THREE.Vector3();
+  const surfaces: EraSurface[] = [];
+  const allPoints: THREE.Vector3[] = [];
+  for (const part of parts) {
+    const positions = part.getAttribute('position');
+    if (!positions) continue;
+    const partPoints: THREE.Vector3[] = [];
+    for (let index = 0; index < positions.count; index++) {
+      point.fromBufferAttribute(positions, index);
+      if (sideSuffix > 0 && point.x < -1e-4) continue;
+      if (sideSuffix < 0 && point.x > 1e-4) continue;
+      const value = point.clone();
+      partPoints.push(value);
+      allPoints.push(value);
+    }
+    const surface = fitEraPointCloud(partPoints, frame);
+    if (surface) surfaces.push(surface);
+  }
+  return { surfaces, allPoints };
+}
+
+function describeEraSurface(surface: EraSurface): {
+  center: THREE.Vector3;
+  normal: THREE.Vector3;
+} {
+  const center = surface.reduce(
+    (sum, value) => sum.add(new THREE.Vector3().fromArray(value)), new THREE.Vector3(),
+  ).multiplyScalar(1 / surface.length);
+  const origin = new THREE.Vector3().fromArray(surface[0]);
+  const normal = new THREE.Vector3().fromArray(surface[1]).sub(origin)
+    .cross(new THREE.Vector3().fromArray(surface[3]).sub(origin)).normalize();
+  return { center, normal };
+}
+
+function deduplicateEraSurfaces(surfaces: readonly EraSurface[]): EraSurface[] {
+  const deduplicated: EraSurface[] = [];
+  for (const surface of surfaces) {
+    const descriptor = describeEraSurface(surface);
+    const duplicateIndex = deduplicated.findIndex((candidate) => {
+      const candidateDescriptor = describeEraSurface(candidate);
+      return descriptor.normal.dot(candidateDescriptor.normal) > 0.995
+        && descriptor.center.distanceTo(candidateDescriptor.center) < 0.05;
+    });
+    if (duplicateIndex < 0) {
+      deduplicated.push(surface);
+      continue;
+    }
+    const candidateDescriptor = describeEraSurface(deduplicated[duplicateIndex]);
+    if (descriptor.center.dot(descriptor.normal)
+        > candidateDescriptor.center.dot(descriptor.normal)) {
+      deduplicated[duplicateIndex] = surface;
+    }
+  }
+  return deduplicated;
+}
+
 export function createTank(
   specId: string,
   engineContext: RuntimeValue,
@@ -8191,176 +8440,24 @@ export function createTank(
   const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
     const parts = eraBoundPartsByPlate.get(plate.name) || [];
     if (!parts.length || plate.verts.length < 3) return [];
-    const a = new THREE.Vector3().fromArray(plate.verts[0]);
-    const authoredU = new THREE.Vector3().fromArray(plate.verts[1]).sub(a).normalize();
-    const authoredV = new THREE.Vector3().fromArray(plate.verts[plate.verts.length - 1]).sub(a);
-    const authoredNormal = new THREE.Vector3().crossVectors(authoredU, authoredV).normalize();
-    if (authoredU.lengthSq() < 0.99 || authoredNormal.lengthSq() < 0.99) return [];
+    const frame = createEraSurfaceFrame(plate);
+    if (!frame) return [];
     const sideSuffix = /(?:^|_)R$/i.test(plate.name)
       ? 1 : /(?:^|_)L$/i.test(plate.name) ? -1 : 0;
-    const point = new THREE.Vector3();
-    const fitPointCloud = (points: THREE.Vector3[]): number[][] | null => {
-      if (points.length < 4) return null;
-      const centroid = points.reduce((sum, value) => sum.add(value), new THREE.Vector3())
-        .multiplyScalar(1 / points.length);
-      let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
-      for (const value of points) {
-      const dx = value.x - centroid.x;
-      const dy = value.y - centroid.y;
-      const dz = value.z - centroid.z;
-      xx += dx * dx; xy += dx * dy; xz += dx * dz;
-      yy += dy * dy; yz += dy * dz; zz += dz * dz;
-      }
-      const covariance = [[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]];
-      const eigenvectors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-      for (let iteration = 0; iteration < 18; iteration++) {
-      let p = 0, q = 1;
-      if (Math.abs(covariance[0][2]) > Math.abs(covariance[p][q])) [p, q] = [0, 2];
-      if (Math.abs(covariance[1][2]) > Math.abs(covariance[p][q])) [p, q] = [1, 2];
-      if (Math.abs(covariance[p][q]) < 1e-10) break;
-      const angle = 0.5 * Math.atan2(
-        2 * covariance[p][q], covariance[q][q] - covariance[p][p],
-      );
-      const cosine = Math.cos(angle);
-      const sine = Math.sin(angle);
-      const app = covariance[p][p];
-      const aqq = covariance[q][q];
-      const apq = covariance[p][q];
-      covariance[p][p] = cosine * cosine * app - 2 * sine * cosine * apq
-        + sine * sine * aqq;
-      covariance[q][q] = sine * sine * app + 2 * sine * cosine * apq
-        + cosine * cosine * aqq;
-      covariance[p][q] = covariance[q][p] = 0;
-      for (let k = 0; k < 3; k++) {
-        if (k === p || k === q) continue;
-        const akp = covariance[k][p];
-        const akq = covariance[k][q];
-        covariance[k][p] = covariance[p][k] = cosine * akp - sine * akq;
-        covariance[k][q] = covariance[q][k] = sine * akp + cosine * akq;
-      }
-      for (let row = 0; row < 3; row++) {
-        const vrp = eigenvectors[row][p];
-        const vrq = eigenvectors[row][q];
-        eigenvectors[row][p] = cosine * vrp - sine * vrq;
-        eigenvectors[row][q] = sine * vrp + cosine * vrq;
-      }
-      }
-      const eigenvalues = [covariance[0][0], covariance[1][1], covariance[2][2]];
-      let minimumAxis = 0;
-      if (eigenvalues[1] < eigenvalues[minimumAxis]) minimumAxis = 1;
-      if (eigenvalues[2] < eigenvalues[minimumAxis]) minimumAxis = 2;
-      let maximumAxis = 0;
-      if (eigenvalues[1] > eigenvalues[maximumAxis]) maximumAxis = 1;
-      if (eigenvalues[2] > eigenvalues[maximumAxis]) maximumAxis = 2;
-      const normal = new THREE.Vector3(
-        eigenvectors[0][minimumAxis], eigenvectors[1][minimumAxis],
-        eigenvectors[2][minimumAxis],
-      ).normalize();
-      const seedAlignment = normal.dot(authoredNormal);
-      if (Math.abs(seedAlignment) > 0.05) {
-        if (seedAlignment < 0) normal.negate();
-      } else if (normal.dot(centroid) < 0) {
-        normal.negate();
-      }
-      const maximumVector = new THREE.Vector3(
-        eigenvectors[0][maximumAxis], eigenvectors[1][maximumAxis],
-        eigenvectors[2][maximumAxis],
-      );
-      const u = maximumVector.clone()
-        .addScaledVector(normal, -maximumVector.dot(normal)).normalize();
-      if (u.lengthSq() < 0.99) {
-        u.copy(authoredU).addScaledVector(normal, -authoredU.dot(normal)).normalize();
-        if (u.lengthSq() < 0.99) u.set(1, 0, 0).addScaledVector(normal, -normal.x).normalize();
-      }
-      const v = new THREE.Vector3().crossVectors(normal, u).normalize();
-      let uMin = Infinity, uMax = -Infinity;
-      let vMin = Infinity, vMax = -Infinity;
-      let outwardN = -Infinity;
-      for (const value of points) {
-      const pu = value.dot(u);
-      const pv = value.dot(v);
-      const pn = value.dot(normal);
-      uMin = Math.min(uMin, pu); uMax = Math.max(uMax, pu);
-      vMin = Math.min(vMin, pv); vMax = Math.max(vMax, pv);
-      outwardN = Math.max(outwardN, pn);
-      }
-      if (![uMin, uMax, vMin, vMax, outwardN].every(Number.isFinite)
-          || uMax - uMin < 0.02 || vMax - vMin < 0.02) return null;
-      const pointAt = (pu: number, pv: number): number[] => new THREE.Vector3()
-        .addScaledVector(u, pu)
-        .addScaledVector(v, pv)
-        .addScaledVector(normal, outwardN)
-        .toArray();
-      return [pointAt(uMin, vMin), pointAt(uMax, vMin),
-        pointAt(uMax, vMax), pointAt(uMin, vMax)];
-    };
 
     // A wrapped bank needs one collision face per authored cassette/slab.
     // Collapsing cheek, side and roof-edge parts into a single best-fit plane
     // creates false armor across empty space. All faces still share the same
     // plate name, so one activation atomically spends the correct visual bank.
-    const surfaces: number[][][] = [];
-    const allPoints: THREE.Vector3[] = [];
-    for (const part of parts) {
-      const positions = part.getAttribute('position');
-      if (!positions) continue;
-      const partPoints: THREE.Vector3[] = [];
-      for (let index = 0; index < positions.count; index++) {
-        point.fromBufferAttribute(positions, index);
-        // Never let a mirrored carrier lip expand an L/R gameplay zone into
-        // the opposite bank.
-        if (sideSuffix > 0 && point.x < -1e-4) continue;
-        if (sideSuffix < 0 && point.x > 1e-4) continue;
-        const value = point.clone();
-        partPoints.push(value);
-        allPoints.push(value);
-      }
-      const surface = fitPointCloud(partPoints);
-      if (surface) surfaces.push(surface);
-    }
+    const { surfaces, allPoints } = collectEraSurfaces(parts, sideSuffix, frame);
     if (!surfaces.length) {
-      const fallback = fitPointCloud(allPoints);
+      const fallback = fitEraPointCloud(allPoints, frame);
       if (fallback) surfaces.push(fallback);
     }
     // Many builders author a cassette body and a thinner painted face as two
     // coincident parts. Retain only the outer face so one physical tile does
     // not become two nearly identical collision surfaces.
-    const deduplicated: number[][][] = [];
-    for (const surface of surfaces) {
-      const center = surface.reduce(
-        (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
-        new THREE.Vector3(),
-      ).multiplyScalar(1 / surface.length);
-      const normal = new THREE.Vector3().fromArray(surface[1])
-        .sub(new THREE.Vector3().fromArray(surface[0]))
-        .cross(new THREE.Vector3().fromArray(surface[3])
-          .sub(new THREE.Vector3().fromArray(surface[0])))
-        .normalize();
-      const duplicateIndex = deduplicated.findIndex((candidate) => {
-        const candidateCenter = candidate.reduce(
-          (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
-          new THREE.Vector3(),
-        ).multiplyScalar(1 / candidate.length);
-        const candidateNormal = new THREE.Vector3().fromArray(candidate[1])
-          .sub(new THREE.Vector3().fromArray(candidate[0]))
-          .cross(new THREE.Vector3().fromArray(candidate[3])
-            .sub(new THREE.Vector3().fromArray(candidate[0])))
-          .normalize();
-        return normal.dot(candidateNormal) > 0.995
-          && center.distanceTo(candidateCenter) < 0.05;
-      });
-      if (duplicateIndex < 0) {
-        deduplicated.push(surface);
-        continue;
-      }
-      const candidate = deduplicated[duplicateIndex];
-      const candidateCenter = candidate.reduce(
-        (sum, value) => sum.add(new THREE.Vector3().fromArray(value)),
-        new THREE.Vector3(),
-      ).multiplyScalar(1 / candidate.length);
-      if (center.dot(normal) > candidateCenter.dot(normal)) deduplicated[duplicateIndex] = surface;
-    }
-    return deduplicated;
+    return deduplicateEraSurfaces(surfaces);
   };
 
   // Preserve the builder's unmerged semantic parts only for offline geometry
