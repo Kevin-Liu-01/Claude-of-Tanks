@@ -62,6 +62,7 @@ interface PolishBuilderPort {
   addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
@@ -360,6 +361,9 @@ function polishWhips(P: PolishBuilderPort, list: PolishWhip[], seedBase: number)
 // 2.25 + <=4 spike columns).
 // ===========================================================================
 
+const JAGUAR_HULL_LIFT_M = 0.02;
+const JAGUAR_END_WHEEL_LIFT_M = 0.04;
+
 function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
 
@@ -384,8 +388,8 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   // inside the certified side silhouette while giving the upper glacis one
   // continuous load path into both bow shoulders.
   P.add('hull', orientedSlab(
-    [-1.28, 0.95, 3.16], [1.28, 0.95, 3.16], [0.97, 0.84, 3.60], [-0.97, 0.84, 3.60],
-    [-1.28, 1.035, 3.16], [1.28, 1.035, 3.16], [0.97, 0.93, 3.60], [-0.97, 0.93, 3.60]));
+    [-1.28, 0.98, 3.16], [1.28, 0.98, 3.16], [0.97, 0.87, 3.60], [-0.97, 0.87, 3.60],
+    [-1.28, 1.065, 3.16], [1.28, 1.065, 3.16], [0.97, 0.96, 3.60], [-0.97, 0.96, 3.60]));
   // One buried bow key closes the final 80 mm where the upper and lower
   // loft bands pinch together. It follows both tapering width lines and
   // removes the hairline daylight seam the segmented loft left at the nose.
@@ -406,7 +410,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // This preserves the dark bow recess without letting a static floor cut
     // through the linked shoes after the tension wheel moves forward.
     P.add('hullDark', box(0.64, 0.01, 0.34), s * 1.30, 1.06, 3.48);
-    P.add('hullDark', box(0.24, 0.01, 0.70), s * 0.96, 1.10, 2.95);
+    P.add('hullDark', box(0.24, 0.01, 0.70), s * 0.96, 1.14, 2.95);
     // §5.267 fix 3: seat the bow corner boxes — the webs live INSIDE the
     // box/slot-floor union (r-fix receipt: deep webs at y 0.91 printed
     // -0.28 bottoms on three bow side columns and cost whole 0.3)
@@ -417,9 +421,13 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
 
   // ---- running gear: T-72 family stance (six dished pairs) ---------------
   const wheelZs = [-2.01, -1.19, -0.37, 0.45, 1.27, 2.09];
-  const frontIdler = Object.freeze({ z: 2.83, y: 0.69, r: 0.30 });
+  const frontIdler = Object.freeze({
+    z: 2.83, y: 0.69 + JAGUAR_END_WHEEL_LIFT_M, r: 0.30,
+  });
   const frontContactZ = 2.53;
-  const rearSprocket = Object.freeze({ z: -2.42, y: 0.68, r: 0.32 });
+  const rearSprocket = Object.freeze({
+    z: -2.42, y: 0.68 + JAGUAR_END_WHEEL_LIFT_M, r: 0.32,
+  });
   const rearContactZ = -2.14;
   buildRunningGear(P, {
     ...t72TrackFinishFor(P),
@@ -429,10 +437,10 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     idler: frontIdler,
     contactZF: frontContactZ, contactZR: rearContactZ,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.91, r: 0.082 })),
-    // The Jaguar shares the PT-91A wheel and upper-run datums, but its loaded
-    // shoe course is raised 75 mm to give the requested taller stance rather
-    // than hanging below the Polish reference silhouette.
-    trackW: 0.56, topY: 1.00, botY: 0.10, paintedEnds: true,
+    // Preserve the existing road-wheel centers and loaded contact line. The
+    // taller upper course follows the raised idler/sprocket pair so the belt
+    // gains height without moving the six road wheels or lowering the tank.
+    trackW: 0.56, topY: 1.04, botY: 0.10, paintedEnds: true,
     coveredTop: true, arms: true,
     // §5.267 fix 2 (§5.262 gearFloor/tireHex law): exposed gear gets the
     // re-hooked tire/dish clones so the six dished pairs read crisply
@@ -440,7 +448,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
   });
   P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
-    revision: 'pt91a-raised-stance-and-end-wheel-course-r4',
+    revision: 'fixed-road-wheels-raised-hull-and-track-course-r5',
     frontIdlerZ: frontIdler.z,
     frontContactZ,
     rearSprocketZ: rearSprocket.z,
@@ -452,9 +460,12 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     bowSlotClearedForWrap: true,
     rearPlateClearedForWrap: true,
     loadedRunYM: 0.10,
-    raisedTrackRunM: 0.075,
+    raisedTrackTopM: 0.04,
+    endWheelLiftM: JAGUAR_END_WHEEL_LIFT_M,
     pt91aWheelCenterMatched: true,
-    hullDeckLiftM: 0.04,
+    roadWheelCentersPreserved: true,
+    trackReseatedAroundRaisedEndpoints: true,
+    hullDeckLiftM: JAGUAR_HULL_LIFT_M,
   });
   // The smart running-gear builder above owns the complete dished wheel
   // train.  Do not add a second static face course here: it cannot follow the
@@ -486,7 +497,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.085, r: 0.038,
       shield: true, seed: 7351 + (s > 0 ? 1 : 0),
-    }), s * 0.96, 1.19, 2.56, [0.233, 0, 0]);
+    }), s * 0.96, 1.19 + JAGUAR_HULL_LIFT_M, 2.56, [0.233, 0, 0]);
   }
   P.add('hull', box(2.20, 0.045, 0.15), 0, 1.225, 2.42, 0.233, 0, 0); // splash ridge
   ruDeck(P, { deckY: 1.48, hatchX: -0.42, hatchZ: 1.78, gz: -1.55,
@@ -566,7 +577,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // this scheme — the log body takes a re-hooked olive-timber clone
     mats: { ...P.mats, wood: rehookClone(P.mats.wood, 0x4a4636, 0x0a0906) },
     len: 2.30, r: 0.125, straps: 3, seed: 7301,
-  }), 0, 0.95, -3.165);
+  }), 0, 0.95 + JAGUAR_HULL_LIFT_M, -3.165);
   for (const s of [-1, 1]) {
     P.add('hullDetail', KIT.cylZ(0.105, 0.02, 14), s * 1.16, 0.95, -3.165);
     P.add('hullDark', box(0.04, 0.10, 0.05), s * 0.90, 0.93, -3.20);
@@ -917,8 +928,10 @@ function buildT72M1JaguarCurrentPrototype(P: PolishBuilderPort): void {
   }
   P.addGunExtra(box(0.58, 0.10, 0.30), 0, -0.19, 0.04);
 
-  P.decal('hull', 'number', 'PL-721', 0.24, [-1.84, 1.08, 0.72], -Math.PI / 2);
-  P.decal('hull', 'number', 'PL-721', 0.24, [1.84, 1.08, 0.72], Math.PI / 2);
+  P.decal('hull', 'number', 'PL-721', 0.24,
+    [-1.84, 1.08 + JAGUAR_HULL_LIFT_M, 0.72], -Math.PI / 2);
+  P.decal('hull', 'number', 'PL-721', 0.24,
+    [1.84, 1.08 + JAGUAR_HULL_LIFT_M, 0.72], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.16);
 }
 
@@ -1233,6 +1246,18 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     fuelBarrelRearZ: fuelBarrelZ - fuelBarrelRadius,
     fuelBarrelMount: 'twin-transverse-rear-cradles-r3',
   });
+
+  // Raise every authored hull, fender, skirt, ERA and equipment bucket as one
+  // connected body. Running-gear-owned buckets are intentionally excluded:
+  // the six road wheels and their suspension keep their measured centers,
+  // while buildRunningGear has already rebuilt the belt around the higher
+  // idler and sprocket endpoints.
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+    'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullGlass',
+    'hullTrack', 'hullShadow', 'hullTrackTrimL', 'hullTrackTrimR',
+    'hullTrackDetailL', 'hullTrackDetailR', 'hullTrackGuardL', 'hullTrackGuardR',
+  ], 0, JAGUAR_HULL_LIFT_M, 0);
 }
 
 // ===========================================================================

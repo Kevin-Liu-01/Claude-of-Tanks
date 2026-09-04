@@ -15,6 +15,9 @@ const spec = getSpec('t72m1_jaguar');
 const hull = tank.root.getObjectByName('rig_hull');
 const turret = tank.root.getObjectByName('rig_turret');
 const gun = tank.root.getObjectByName('rig_gun');
+const mantlet = gun?.getObjectByName('gunMount');
+const recoil = gun?.getObjectByName('rig_recoil');
+const roadWheelTires = hull.getObjectByName('gearRoadWheelTires');
 const twardyHull = twardy.root.getObjectByName('rig_hull');
 const twardyGun = twardy.root.getObjectByName('rig_gun');
 
@@ -52,24 +55,42 @@ assert.ok(runningGear.sprocket.z <= -2.41,
 assert.ok(Math.min(...runningGear.loopPoints.map(([z]) => z)) < -2.72,
   'linked track course wraps naturally around the relocated rear sprocket');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
-  'pt91a-raised-stance-and-end-wheel-course-r4',
-  'Jaguar records the PT-91A-height end-wheel running-gear revision');
+  'fixed-road-wheels-raised-hull-and-track-course-r5',
+  'Jaguar records the fixed-road-wheel, taller-track running-gear revision');
 assert.equal(runningGear.botY, 0.10,
-  'Jaguar loaded track run is raised 75 mm from the PT-91A datum');
+  'Jaguar loaded track run keeps its established ground contact while the upper course rises');
 assert.equal(runningGear.wheelY, twardyHull.userData.runningGearReceipts[0].wheelY,
   'Jaguar and PT-91A share the same road-wheel center height');
-assert.equal(runningGear.topY, twardyHull.userData.runningGearReceipts[0].topY,
-  'Jaguar and PT-91A share the same upper track-run height');
+assert.equal(runningGear.topY, twardyHull.userData.runningGearReceipts[0].topY + 0.04,
+  'Jaguar upper track course rises 40 mm above the PT-91A datum');
+assert.equal(runningGear.idler.y,
+  twardyHull.userData.runningGearReceipts[0].idler.y + 0.04,
+  'Jaguar idler rises with the taller upper track course');
+assert.equal(runningGear.sprocket.y,
+  twardyHull.userData.runningGearReceipts[0].sprocket.y + 0.04,
+  'Jaguar rear sprocket rises with the taller upper track course');
+assert.ok(Math.max(...runningGear.loopPoints.map(([, y]) => y)) >= 1.05,
+  'reseated Jaguar track loop reaches the raised endpoint crowns');
 assert.ok(tank.presentationTrackFloorYM >= twardy.presentationTrackFloorYM + 0.07,
-  'Jaguar rendered shoe course rises at least 70 mm above the PT-91A datum');
+  'Jaguar loaded shoes keep their established raised presentation floor');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.pt91aWheelCenterMatched, true,
   'Jaguar publishes the PT-91A wheel-center stance match');
-assert.ok(hull.userData.jaguarRunningGearReceipt?.hullDeckLiftM >= 0.04,
-  'Jaguar hull deck rises materially above the former low silhouette');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.roadWheelCentersPreserved, true,
+  'Jaguar explicitly preserves all six road-wheel center stations');
+const firstRoadWheelMatrix = new THREE.Matrix4();
+const firstRoadWheelPosition = new THREE.Vector3();
+roadWheelTires.getMatrixAt(0, firstRoadWheelMatrix);
+firstRoadWheelPosition.setFromMatrixPosition(firstRoadWheelMatrix);
+assert.ok(Math.abs(firstRoadWheelPosition.y - 0.47) <= 1e-6,
+  'rendered road-wheel instances remain at the original 0.47 m centerline');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.hullDeckLiftM, 0.02,
+  'Jaguar connected hull body rises 20 mm above the former low silhouette');
+assert.equal(turret.position.y, 1.40,
+  'Jaguar turret remains on its established world datum while the hull rises to meet it');
 const jaguarHullBounds = new THREE.Box3().setFromObject(hull);
 const twardyHullBounds = new THREE.Box3().setFromObject(twardyHull);
-assert.ok(jaguarHullBounds.max.y >= twardyHullBounds.max.y - 0.14,
-  'Jaguar structural hull roof stays within 140 mm of the taller PT-91A package');
+assert.ok(jaguarHullBounds.max.y >= twardyHullBounds.max.y - 0.10,
+  'Jaguar structural hull roof now sits within 100 mm of the PT-91A package');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.frontContactZ, 2.53,
   'loaded track run extends forward to meet the relocated idler naturally');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.bowSlotClearedForWrap, true,
@@ -87,11 +108,15 @@ assert.deepEqual(turret.position.toArray(), spec.armor.turretPivot,
   'rendered turret ring matches the combat/anatomy datum');
 assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
   'rendered gun root matches the combat/anatomy datum');
-assert.equal(spec.armor.gunPivot[1], 0.27,
-  'Jaguar cannon root rises another centimetre inside the casting');
+assert.equal(spec.armor.gunPivot[1], 0.28,
+  'Jaguar complete weapon root is lifted another 10 mm inside the casting');
 assert.ok(gun.getWorldPosition(new THREE.Vector3()).y >=
-  twardyGun.getWorldPosition(new THREE.Vector3()).y - 0.03,
-  'Jaguar cannon axis sits within 30 mm of the PT-91A datum');
+  twardyGun.getWorldPosition(new THREE.Vector3()).y - 0.02,
+  'Jaguar cannon axis sits within 20 mm of the PT-91A datum');
+assert.ok(mantlet && mantlet.parent === gun,
+  'Jaguar mantlet remains attached directly to the lifted weapon root');
+assert.ok(recoil && recoil.parent === gun,
+  'Jaguar recoiling barrel assembly remains attached to the lifted weapon root');
 const glacis = hull.userData.jaguarGlacisReceipt;
 assert.equal(glacis?.revision, 'single-plane-glacis-erawa-r3');
 assert.equal(glacis?.joinedUpperAndLowerGlacis, true,
