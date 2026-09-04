@@ -1256,6 +1256,58 @@ for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
   SHADOW_SUPPORT_Z[i] = direction.z;
 }
 
+function uniqueShadowSupportPoints(
+  bestDots: Float64Array,
+  bestPoints: Float64Array,
+): Map<string, THREE.Vector3> {
+  const unique = new Map<string, THREE.Vector3>();
+  for (let index = 0; index < SHADOW_SUPPORT_DIRECTIONS.length; index++) {
+    if (!Number.isFinite(bestDots[index])) continue;
+    const offset = index * 3;
+    const x = bestPoints[offset];
+    const y = bestPoints[offset + 1];
+    const z = bestPoints[offset + 2];
+    const key = `${Math.round(x * 10000)},${Math.round(y * 10000)},${Math.round(z * 10000)}`;
+    if (!unique.has(key)) unique.set(key, new THREE.Vector3(x, y, z));
+  }
+  return unique;
+}
+
+function shadowAxisScale(axisSize: number, insetM: number): number {
+  return Math.max(
+    PROC_SHADOW_MIN_AXIS_SCALE,
+    axisSize > 1e-4 ? 1 - (2 * insetM) / axisSize : 1,
+  );
+}
+
+function finalizeAuthoredShadowHull(
+  supportPoints: Map<string, THREE.Vector3>,
+  sourceTriangles: number,
+  insetM: number,
+): THREE.BufferGeometry | null {
+  if (supportPoints.size < 4) return null;
+  const geometry = new ConvexGeometry([...supportPoints.values()]);
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  if (!bounds) return null;
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const scaleX = shadowAxisScale(size.x, insetM);
+  const scaleY = shadowAxisScale(size.y, insetM);
+  const scaleZ = shadowAxisScale(size.z, insetM);
+  geometry.translate(-center.x, -center.y, -center.z);
+  geometry.scale(scaleX, scaleY, scaleZ);
+  geometry.translate(center.x, center.y, center.z);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData.authoredShadowHull = true;
+  geometry.userData.shadowSourceTriangles = sourceTriangles;
+  geometry.userData.shadowSupportPoints = supportPoints.size;
+  geometry.userData.shadowInsetM = insetM;
+  geometry.userData.shadowAxisScale = [scaleX, scaleY, scaleZ];
+  return geometry;
+}
+
 function authoredShadowHull(
   owner: THREE.Object3D,
   sourceMeshes: readonly (THREE.Object3D | undefined)[],
@@ -1315,39 +1367,8 @@ function authoredShadowHull(
     }
   }
 
-  const unique = new Map<string, THREE.Vector3>();
-  for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
-    if (!Number.isFinite(bestDots[i])) continue;
-    const offset = i * 3;
-    const x = bestPoints[offset];
-    const y = bestPoints[offset + 1];
-    const z = bestPoints[offset + 2];
-    const key = `${Math.round(x * 10000)},${Math.round(y * 10000)},${Math.round(z * 10000)}`;
-    if (!unique.has(key)) unique.set(key, new THREE.Vector3(x, y, z));
-  }
-  if (unique.size < 4) return null;
-  const geometry = new ConvexGeometry([...unique.values()]);
-  geometry.computeBoundingBox();
-  const bounds = geometry.boundingBox;
-  if (!bounds) return null;
-  const center = bounds.getCenter(new THREE.Vector3());
-  const size = bounds.getSize(new THREE.Vector3());
-  const axisScale = (axisSize: number): number => Math.max(PROC_SHADOW_MIN_AXIS_SCALE,
-    axisSize > 1e-4 ? 1 - (2 * insetM) / axisSize : 1);
-  const scaleX = axisScale(size.x);
-  const scaleY = axisScale(size.y);
-  const scaleZ = axisScale(size.z);
-  geometry.translate(-center.x, -center.y, -center.z);
-  geometry.scale(scaleX, scaleY, scaleZ);
-  geometry.translate(center.x, center.y, center.z);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  geometry.userData.authoredShadowHull = true;
-  geometry.userData.shadowSourceTriangles = sourceTriangles;
-  geometry.userData.shadowSupportPoints = unique.size;
-  geometry.userData.shadowInsetM = insetM;
-  geometry.userData.shadowAxisScale = [scaleX, scaleY, scaleZ];
-  return geometry;
+  const supportPoints = uniqueShadowSupportPoints(bestDots, bestPoints);
+  return finalizeAuthoredShadowHull(supportPoints, sourceTriangles, insetM);
 }
 
 function installProceduralShadowProxies(
@@ -6866,6 +6887,30 @@ function materialWritesColor(material: THREE.Material | THREE.Material[]): boole
   return materials.some((entry) => entry.colorWrite !== false);
 }
 
+function centerSpanningMeshBottomY(
+  mesh: VehicleMesh,
+  invRoot: THREE.Matrix4,
+): number | null {
+  if (isVehicleInstancedMesh(mesh)) return null;
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  const bounds = mesh.geometry.boundingBox;
+  if (!bounds) return null;
+  _rcM2.multiplyMatrices(invRoot, mesh.matrixWorld);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  for (let corner = 0; corner < 8; corner++) {
+    const x = corner & 1 ? bounds.max.x : bounds.min.x;
+    const y = corner & 2 ? bounds.max.y : bounds.min.y;
+    const z = corner & 4 ? bounds.max.z : bounds.min.z;
+    _rcV.set(x, y, z).applyMatrix4(_rcM2);
+    if (_rcV.x < minX) minX = _rcV.x;
+    if (_rcV.x > maxX) maxX = _rcV.x;
+    if (_rcV.y < minY) minY = _rcV.y;
+  }
+  return minX < -0.2 && maxX > 0.2 ? minY : null;
+}
+
 function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
   try {
     root.updateMatrixWorld(true);
@@ -6884,32 +6929,18 @@ function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
     // strip has all its vertices at the ±corners, outside any strip). Track
     // bands/skirts sit one-sided; wheels/pads are instanced — excluded.
     let panYM: number | null = null;
-    const panConsider = (o: VehicleMesh): void => {
-      if (isVehicleInstancedMesh(o)) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      const bb = o.geometry.boundingBox;
-      if (!bb) return;
-      _rcM2.multiplyMatrices(invRoot, o.matrixWorld);
-      let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
-      for (const cx of [bb.min.x, bb.max.x]) {
-        for (const cy of [bb.min.y, bb.max.y]) {
-          for (const cz of [bb.min.z, bb.max.z]) {
-            _rcV.set(cx, cy, cz).applyMatrix4(_rcM2);
-            if (_rcV.x < mnX) mnX = _rcV.x;
-            if (_rcV.x > mxX) mxX = _rcV.x;
-            if (_rcV.y < mnY) mnY = _rcV.y;
-          }
-        }
-      }
-      if (mnX < -0.2 && mxX > 0.2 && (panYM === null || mnY < panYM)) panYM = mnY;
-    };
     root.traverse((o) => {
       if (!isVehicleMesh(o) && !isVehicleInstancedMesh(o)) return;
       if (!materialWritesColor(o.material)) return; // shadow proxies
       if (!isVisible(o)) return;
       const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
       if (!pa || !pa.count) return;
-      if (isVehicleMesh(o)) panConsider(o);
+      if (isVehicleMesh(o)) {
+        const meshBottomY = centerSpanningMeshBottomY(o, invRoot);
+        if (meshBottomY !== null && (panYM === null || meshBottomY < panYM)) {
+          panYM = meshBottomY;
+        }
+      }
       if (isVehicleInstancedMesh(o)) {
         const per = Math.max(1, Math.floor(pa.count / 48));
         for (let i = 0; i < o.count; i++) {
