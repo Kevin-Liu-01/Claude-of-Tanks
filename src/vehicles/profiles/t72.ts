@@ -490,6 +490,83 @@ function buildT72B87(P: T72BuilderPort): void {
 // This builder is repository-authored from visual measurements and retains
 // the fleet-native linked track, articulated gun and explicit turret/hull
 // ownership rules. No reference vertices or runtime asset are used.
+function addT72B87K1FrontCourses(
+  P: T72BuilderPort,
+  side: number,
+  jitter: readonly number[],
+) {
+  const { box } = KIT;
+  for (let row = 0; row < 4; row++) {
+    for (let tile = 0; tile < 6; tile++) {
+      const index = (row * 2 + tile + (side < 0 ? 1 : 0)) % jitter.length;
+      const x = side * (0.16 + tile * 0.225 + row * 0.018 + jitter[index]);
+      const z = 1.08 - tile * 0.102 - row * 0.115 + jitter[(index + 2) % jitter.length];
+      const y = 0.065 + row * 0.116 + tile * 0.010
+        + jitter[(index + 3) % jitter.length] * 0.45;
+      const width = 0.205 + ((tile + row) % 3) * 0.012;
+      const height = 0.112 + ((tile + row) % 2) * 0.016;
+      const depth = 0.205 + ((tile * 2 + row) % 3) * 0.018;
+      const yaw = side * (0.35 + tile * 0.075 + row * 0.020);
+      P.add('turretTrack', box(width, height, depth), x, y, z,
+        -0.10 - row * 0.012, yaw, side * ((tile % 3 - 1) * 0.018));
+      P.add('turretDark', box(width * 0.78, 0.012, 0.022), x,
+        y + height / 2 + 0.007, z + depth * 0.44, -0.10, yaw, 0);
+    }
+  }
+}
+
+function addT72B87K1RoofBridge(P: T72BuilderPort, side: number) {
+  const { box } = KIT;
+  for (let row = 0; row < 2; row++) {
+    for (let tile = 0; tile < 5; tile++) {
+      const x = side * (0.20 + tile * 0.20 + row * 0.012);
+      const z = 0.78 - tile * 0.102 - row * 0.105 + (tile % 2 ? 0.014 : -0.009);
+      P.add('turretTrack', box(0.175 + (tile % 2) * 0.012, 0.095, 0.165 + row * 0.015),
+        x, 0.43 + row * 0.085 - tile * 0.006, z, -0.14,
+        side * (0.24 + tile * 0.095 + row * 0.025), -0.06);
+    }
+  }
+}
+
+function addT72B87K1FlankCourses(
+  P: T72BuilderPort,
+  side: number,
+  jitter: readonly number[],
+) {
+  const { box } = KIT;
+  for (let row = 0; row < 3; row++) {
+    for (let tile = 0; tile < 7; tile++) {
+      const index = (row + tile * 2) % jitter.length;
+      const x = side * (1.18 + tile * 0.045 + jitter[index]);
+      const z = 0.33 - tile * 0.205 - row * 0.030
+        + jitter[(index + 1) % jitter.length];
+      const width = 0.205 + ((tile + row) % 3) * 0.014;
+      const height = 0.125 + ((tile + row) % 2) * 0.018;
+      P.add('turretTrack', box(width, height, 0.23 + (tile % 2) * 0.02), x,
+        0.08 + row * 0.14 - tile * 0.006, z, -0.04,
+        side * (0.60 + tile * 0.13 + row * 0.022), 0);
+    }
+  }
+}
+
+function addT72B87K1TurretEra(P: T72BuilderPort) {
+  const jitter = [0.0, 0.018, -0.013, 0.027, -0.020, 0.010, -0.008];
+  for (const side of [-1, 1]) {
+    // Broad shallow carriers provide an explicit armor-to-casting load path.
+    P.add('turretDark', orientedSlab(
+      [side * 0.08, 0.00, 1.12], [side * 0.83, 0.00, 1.02],
+      [side * 1.47, 0.00, 0.46], [side * 0.77, 0.00, 0.42],
+      [side * 0.10, 0.10, 1.08], [side * 0.79, 0.10, 0.98],
+      [side * 1.40, 0.10, 0.44], [side * 0.74, 0.10, 0.39]));
+    addT72B87K1FrontCourses(P, side, jitter);
+    // Smaller tiles bridge the roof to the cheek while leaving hatches and
+    // sights clear of the protection course.
+    addT72B87K1RoofBridge(P, side);
+    // Three flank courses descend around the shoulder toward the rear bins.
+    addT72B87K1FlankCourses(P, side, jitter);
+  }
+}
+
 function buildT72B87NativeTyped(P: T72BuilderPort, variant: T72Variant = 'b87'): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
@@ -837,53 +914,9 @@ function buildT72B87NativeTyped(P: T72BuilderPort, variant: T72Variant = 'b87'):
   P.add('turretDark', cylY(b3 ? 1.53 : 1.62, b3 ? 1.53 : 1.62, 0.05, 28), 0, -0.025, b3 ? -0.02 : -0.09);
 
   if (!b3 && !jaguar) {
-  P.visualEraCluster('t72b87-k1-turret-era', 'turret', () => {
-  // Kontakt-1 is planted directly into the new casting.  Four staggered
-  // frontal courses descend over the cheek, a tighter inner horseshoe fills
-  // the crown transition, and three mixed flank courses turn around the
-  // shoulder.  Unequal pitch/size prevents the old decorative necklace.
-  const k1J = [0.0, 0.018, -0.013, 0.027, -0.020, 0.010, -0.008];
-  for (const s of [-1, 1]) {
-    // Broad shallow carriers provide an explicit armor-to-casting load path.
-    P.add('turretDark', orientedSlab(
-      [s * 0.08, 0.00, 1.12], [s * 0.83, 0.00, 1.02], [s * 1.47, 0.00, 0.46], [s * 0.77, 0.00, 0.42],
-      [s * 0.10, 0.10, 1.08], [s * 0.79, 0.10, 0.98], [s * 1.40, 0.10, 0.44], [s * 0.74, 0.10, 0.39]));
-    for (let row = 0; row < 4; row++) for (let i = 0; i < 6; i++) {
-      const q = (row * 2 + i + (s < 0 ? 1 : 0)) % k1J.length;
-      const x = s * (0.16 + i * 0.225 + row * 0.018 + k1J[q]);
-      const z = 1.08 - i * 0.102 - row * 0.115 + k1J[(q + 2) % k1J.length];
-      const y = 0.065 + row * 0.116 + i * 0.010 + k1J[(q + 3) % k1J.length] * 0.45;
-      const w = 0.205 + ((i + row) % 3) * 0.012;
-      const h = 0.112 + ((i + row) % 2) * 0.016;
-      const d = 0.205 + ((i * 2 + row) % 3) * 0.018;
-      const yaw = s * (0.35 + i * 0.075 + row * 0.020);
-      P.add('turretTrack', box(w, h, d), x, y, z, -0.10 - row * 0.012, yaw,
-        s * ((i % 3 - 1) * 0.018));
-      P.add('turretDark', box(w * 0.78, 0.012, 0.022), x, y + h / 2 + 0.007,
-        z + d * 0.44, -0.10, yaw, 0);
-    }
-    // Inner roof-to-cheek bridge: smaller tiles leave the hatches and sights
-    // open while eliminating the large smooth cast valley of the old model.
-    for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
-      const x = s * (0.20 + i * 0.20 + row * 0.012);
-      const z = 0.78 - i * 0.102 - row * 0.105 + (i % 2 ? 0.014 : -0.009);
-      P.add('turretTrack', box(0.175 + (i % 2) * 0.012, 0.095, 0.165 + row * 0.015),
-        x, 0.43 + row * 0.085 - i * 0.006, z, -0.14,
-        s * (0.24 + i * 0.095 + row * 0.025), -0.06);
-    }
-    // Three flank courses descend around the shoulder toward the rear bins.
-    for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) {
-      const q = (row + i * 2) % k1J.length;
-      const x = s * (1.18 + i * 0.045 + k1J[q]);
-      const z = 0.33 - i * 0.205 - row * 0.030 + k1J[(q + 1) % k1J.length];
-      const w = 0.205 + ((i + row) % 3) * 0.014;
-      const h = 0.125 + ((i + row) % 2) * 0.018;
-      P.add('turretTrack', box(w, h, 0.23 + (i % 2) * 0.02), x,
-        0.08 + row * 0.14 - i * 0.006, z, -0.04,
-        s * (0.60 + i * 0.13 + row * 0.022), 0);
-    }
-  }
-  });
+    // Kontakt-1 is planted directly into the casting in irregular front,
+    // roof-bridge and flank courses rather than as a decorative necklace.
+    P.visualEraCluster('t72b87-k1-turret-era', 'turret', () => addT72B87K1TurretEra(P));
   } else if (b3) {
     // B3 turret protection: two large Kontakt-5 arrow leaves meet around
     // the armored gun tunnel, with clipped flank cassettes and a restrained
@@ -2293,7 +2326,7 @@ function buildT72B3M(P: T72BuilderPort): void {
   // the SECRET hullLengthM pin (6.76) + the dAlong 0.108 source; x 1.75 so
   // only the ref's own plate column (1.76) reads them, bags own 1.79-1.80
   P.visualEraCluster('t72b3m-relikt-skirt-era', 'hull', () => {
-  for (const s of [-1, 1]) {
+  const addReliktSkirtSide = (s: number) => {
     // r10e: bag i0 split flat — its pitched top corner (1.315 @ z 1.686)
     // owned six glacis side cols where the ref line is 1.261-1.288
     // r22 item 4c: every skirt-course piece thins 0.05 -> 0.03 with the
@@ -2403,7 +2436,8 @@ function buildT72B3M(P: T72BuilderPort): void {
     P.add('hullTrack', box(0.0185, 0.60, 0.47), s * 1.7625, 0.775, 1.485);
     P.add('hullTrack', box(0.0185, 0.475, 0.10), s * 1.7625, 0.8375, 1.77);
     for (let i = 1; i < 3; i++) P.add('hullTrack', box(0.0185, 0.60, 0.48), s * 1.7625, 0.775, 1.58 - i * 0.56);
-  }
+  };
+  for (const side of [-1, 1]) addReliktSkirtSide(side);
   });
   // soft-band aft step (ref hull side carries 1.717 out to z -3.04; r9: the
   // rear face pulled off the -3.09 column edge — it read 1.66 vs ref 1.42)
