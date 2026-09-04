@@ -161,24 +161,6 @@ interface LeopardGearConfig {
 }
 
 
-interface LeopardTurretRoofConfig {
-  readonly h: number;
-  readonly boxW: number;
-  readonly boxRear: number;
-  readonly emes: { readonly x: number; readonly z: number };
-  readonly peri: { readonly x: number; readonly z: number; readonly top: number };
-  readonly cmdr: { readonly x: number; readonly z: number };
-  readonly loader: { readonly x: number; readonly z: number };
-  readonly mastZ?: number;
-  readonly mastTop?: number;
-  readonly antennaZ: number;
-  readonly antennaTop: number;
-  readonly rackZ: number;
-  readonly rackTop: number;
-  readonly rackBottom?: number;
-  readonly smoke: { readonly y: number; readonly z: number };
-}
-
 interface LeopardMantletGunConfig {
   readonly rollR: number;
   readonly rollW: number;
@@ -1193,113 +1175,6 @@ function deckYAt(deck: readonly Vec2Tuple[], z: number): number {
     }
   }
   return deck[deck.length - 1][1];
-}
-
-// Leopard 2 roof furniture + bustle. Turret-local coordinates.
-// R: { h, boxW, boxRear, emes:{x,z}, peri:{x,z,top}, cmdr:{x,z}, loader:{x,z},
-//     mastZ, antennaZ/antennaTop, rackZ, rackTop, basketZ0?, smoke:{z,y} }
-function addLeoTurretRoofHatch(
-  P: TankBuilderPort,
-  h: number,
-  station: LeopardTurretRoofConfig['cmdr'],
-  isLoader: boolean,
-): void {
-  const { box, cylY } = KIT;
-  const outerRadius = isLoader ? 0.22 : 0.24;
-  const innerRadius = isLoader ? 0.19 : 0.21;
-  P.add('turret', cylY(outerRadius, outerRadius, 0.05, 14),
-    station.x, h + 0.025, station.z);
-  P.add('turret', cylY(innerRadius, innerRadius, 0.028, 14),
-    station.x, h + 0.066, station.z);
-  P.add('turretDark', box(isLoader ? 0.34 : 0.38, 0.014, 0.035),
-    station.x, h + 0.085, station.z);
-  if (isLoader) return;
-  for (let index = 0; index < 6; index++) {
-    const angle = (index / 6) * Math.PI * 2;
-    P.add('turretDark', box(0.06, 0.045, 0.02),
-      station.x + Math.sin(angle) * 0.20,
-      h + 0.045,
-      station.z + Math.cos(angle) * 0.20,
-      0, angle, 0);
-  }
-}
-
-function addLeoTurretRoofSensorsAndHatches(
-  P: TankBuilderPort,
-  R: LeopardTurretRoofConfig,
-): void {
-  const { box, cylY, periscope } = KIT;
-  const h = R.h;
-  // EMES 15 gunner sight: rectangular cutout recessed into the right wedge
-  // roof edge — dark well, armored head, brow lid, shutter face + glass
-  P.add('turretDark', box(0.56, 0.22, 0.48), R.emes.x, h - 0.10, R.emes.z);
-  P.add('turret', box(0.46, 0.22, 0.38), R.emes.x, h - 0.06, R.emes.z - 0.02);
-  P.add('turretDetail', box(0.50, 0.04, 0.42), R.emes.x, h + 0.055, R.emes.z - 0.04);
-  P.add('turretDark', box(0.34, 0.16, 0.035), R.emes.x, h - 0.05, R.emes.z + 0.19);
-  P.add('turretGlass', box(0.26, 0.10, 0.018), R.emes.x, h - 0.05, R.emes.z + 0.21);
-  // PERI R17 panoramic periscope on its stalk (tallest fixed point)
-  P.add('turretDetail', cylY(0.055, 0.065, R.peri.top - h - 0.30, 12), R.peri.x, (h + R.peri.top - 0.30) / 2, R.peri.z);
-  P.add('turretDetail', cylY(0.08, 0.08, 0.06, 12), R.peri.x, R.peri.top - 0.26, R.peri.z);
-  P.add('turretDark', box(0.17, 0.20, 0.19), R.peri.x, R.peri.top - 0.12, R.peri.z);
-  P.add('turretGlass', box(0.11, 0.10, 0.018), R.peri.x, R.peri.top - 0.10, R.peri.z + 0.10);
-  // commander + loader hatch rings with lids and periscope blocks
-  const hatchStations: ReadonlyArray<readonly [LeopardTurretRoofConfig['cmdr'], boolean]> = [
-    [R.cmdr, false], [R.loader, true],
-  ];
-  for (const [station, isLoader] of hatchStations) {
-    addLeoTurretRoofHatch(P, h, station, isLoader);
-  }
-  periscope(P, 'turretDetail', R.cmdr.x, h + 0.01, R.cmdr.z + 0.33);
-  // crosswind sensor mast at the rear roof + whip antennas at the bustle
-  // (mastTop/antennaTop are LOCAL absolutes — the published-height p95 rule
-  // allows only 1-2 spike columns, so masts/whips stay near the roofline)
-  const mTop = R.mastTop ?? (h + 0.34);
-  P.add('turretDetail', cylY(0.014, 0.018, mTop - h - 0.06, 8), R.mastZ != null ? -0.85 : 0, (h + mTop - 0.06) / 2, R.mastZ ?? R.boxRear + 0.4);
-  P.add('turretDark', box(0.04, 0.04, 0.11), R.mastZ != null ? -0.85 : 0, mTop - 0.02, R.mastZ ?? R.boxRear + 0.4);
-  for (const s of [-1, 1] as const) {
-    P.add('turretDetail', box(0.03, R.antennaTop - h, 0.03),
-      s * (R.boxW - 0.18), h + (R.antennaTop - h) / 2, R.antennaZ, 0, 0, s * 0.05);
-    P.add('turretDetail', box(0.06, 0.14, 0.06), s * (R.boxW - 0.18), h + 0.06, R.antennaZ); // antenna base pot
-  }
-}
-
-function addLeoTurretRoofBustle(
-  P: TankBuilderPort,
-  R: LeopardTurretRoofConfig,
-): void {
-  const { box, openRackGrid, liftEye, smokeCluster, stowage, jerryCan,
-    tarpRoll, ammoCan, spareTrackStrip } = KIT;
-  const h = R.h;
-  // full-width slatted bustle stowage rack with mesh floor + strapped kit
-  const rackZ = R.rackZ, rackT = R.rackTop, rackB = R.rackBottom ?? 0.02;
-  P.add('turretDetail', box(2 * R.boxW + 0.26, 0.045, 0.045), 0, rackT, rackZ);
-  P.add('turretDetail', box(2 * R.boxW + 0.26, 0.045, 0.045), 0, rackB, rackZ);
-  for (let k = 0; k <= 12; k++) {
-    P.add('turretDetail', box(0.032, rackT - rackB, 0.032), -R.boxW - 0.08 + k * ((2 * R.boxW + 0.16) / 12), (rackT + rackB) / 2, rackZ);
-  }
-  for (const s of [-1, 1] as const) {
-    P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackT, (R.boxRear + rackZ) / 2);
-    P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackB, (R.boxRear + rackZ) / 2);
-  }
-  P.add('turretDark', openRackGrid(2 * R.boxW + 0.1, R.boxRear - rackZ, 0.018, 5, 12),
-    0, rackB + 0.03, (R.boxRear + rackZ) / 2);
-  const bz = (R.boxRear + rackZ) / 2;
-  stowage(P, 'turretCloth', P.rng, [
-    [-R.boxW * 0.55, 0.40, bz, 0.72, 0.42, 0.38], [R.boxW * 0.15, 0.36, bz - 0.02, 0.62, 0.36, 0.36],
-    [R.boxW * 0.72, 0.38, bz, 0.5, 0.40, 0.34],
-  ]);
-  jerryCan(P, 'turretCloth', -R.boxW * 0.92, 0.36, bz, 0.15);
-  tarpRoll(P, 'turretCloth', R.boxW * 0.45, 0.58, bz, 1.05, 0.095, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', R.boxW * 0.95, 0.32, bz, 0.2);
-  spareTrackStrip(P, 'turret', -R.boxW * 0.3, 0.60, bz, 2, 0, 0);
-  // 2x4 Wegmann smoke mortars per side on mount plates, rear cheeks
-  // (held inside the wedge-tip width so the turret front mask stays honest)
-  for (const s of [-1, 1] as const) {
-    P.add('turret', box(0.05, 0.24, 0.58), s * (R.boxW - 0.01), R.smoke.y, R.smoke.z, 0, s * 0.22, 0);
-    smokeCluster(P, s * (R.boxW + 0.02), R.smoke.y + 0.11, R.smoke.z + 0.16, 4, s * 1.05, 0.85);
-    smokeCluster(P, s * (R.boxW + 0.04), R.smoke.y - 0.05, R.smoke.z - 0.04, 4, s * 1.2, 0.85);
-  }
-  for (const s of [-1, 1] as const) liftEye(P, 'turretDetail', s * (R.boxW * 0.8), h + 0.02, R.emes.z - 0.55, s * 0.4);
 }
 
 // Plate mantlet sealed by a trunnion-axis roll (rotation-invariant about the
