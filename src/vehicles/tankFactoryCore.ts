@@ -350,6 +350,12 @@ interface MarkingCandidate extends MarkingHit, MarkingVisibilityReceipt {
   searchDistance: number;
 }
 
+interface ProfileMarkingSeat {
+  candidate: MarkingCandidate;
+  owner: VehicleOwner;
+  size: number;
+}
+
 interface VerifiedMarkingSeat {
   parent: VehicleOwner;
   kind: string;
@@ -7436,6 +7442,113 @@ function reseatAuthoredMarking(
   return size >= SURFACE_MARKING_STYLE.minimumReadableSizeM && receipt.visibilityVerified;
 }
 
+function bestProfileMarkingSeatForOwner(
+  profile: VehicleMarkingAnchor,
+  ownerName: VehicleOwner,
+  sideOrder: readonly VehicleMarkingAnchor['side'][],
+  owners: Record<VehicleOwner, THREE.Group>,
+  surfaces: Record<VehicleOwner, VehicleMesh[]>,
+  occluders: VehicleMesh[],
+  longitudinal: number,
+  candidateSize: number,
+  avoid: readonly VehicleDecal[],
+  current: ProfileMarkingSeat | null,
+): ProfileMarkingSeat | null {
+  let selected = current;
+  for (const side of sideOrder) {
+    const candidate = solveProfileMarkingSeat(
+      { ...profile, owner: ownerName, side },
+      owners[ownerName],
+      ownerName,
+      surfaces[ownerName],
+      occluders,
+      longitudinal,
+      candidateSize,
+      avoid,
+    );
+    if (!candidate) continue;
+    if (!selected
+        || candidate.visibilityClearSamples > selected.candidate.visibilityClearSamples) {
+      selected = { candidate, owner: ownerName, size: candidateSize };
+    }
+    if (candidate.visibilityVerified) break;
+  }
+  return selected;
+}
+
+function findProfileMarkingSeat(
+  profile: VehicleMarkingAnchor,
+  owners: Record<VehicleOwner, THREE.Group>,
+  surfaces: Record<VehicleOwner, VehicleMesh[]>,
+  occluders: VehicleMesh[],
+  longitudinal: number,
+  size: number,
+  avoid: readonly VehicleDecal[],
+): ProfileMarkingSeat | null {
+  const readableSize = Math.max(size, SURFACE_MARKING_STYLE.minimumReadableSizeM);
+  const candidateSizes = [...new Set([
+    readableSize,
+    Math.max(SURFACE_MARKING_STYLE.minimumReadableSizeM, readableSize * 0.88),
+    SURFACE_MARKING_STYLE.minimumReadableSizeM,
+  ])];
+  const ownerOrder: VehicleOwner[] = [
+    profile.owner, profile.owner === 'turret' ? 'hull' : 'turret',
+  ];
+  const sideOrder: Array<VehicleMarkingAnchor['side']> = [
+    profile.side, profile.side === 'right' ? 'left' : 'right',
+  ];
+  let selected: ProfileMarkingSeat | null = null;
+  for (const candidateSize of candidateSizes) {
+    for (const ownerName of ownerOrder) {
+      selected = bestProfileMarkingSeatForOwner(
+        profile, ownerName, sideOrder, owners, surfaces, occluders,
+        longitudinal, candidateSize, avoid, selected);
+      if (selected?.candidate.visibilityVerified) break;
+    }
+    if (selected?.candidate.visibilityVerified) break;
+  }
+  return selected;
+}
+
+function addProfileVehicleDecal(
+  spec: FactoryTankSpec,
+  marking: VehicleMarkingRecord,
+  decals: VehicleDecal[],
+  profile: VehicleMarkingAnchor,
+  owners: Record<VehicleOwner, THREE.Group>,
+  surfaces: Record<VehicleOwner, VehicleMesh[]>,
+  occluders: VehicleMesh[],
+  kind: string,
+  longitudinal: number,
+  size: number,
+): boolean {
+  const avoid = decals.filter((decal) => decal.kind === 'insignia'
+    || decal.kind === 'designation');
+  const selected = findProfileMarkingSeat(
+    profile, owners, surfaces, occluders, longitudinal, size, avoid);
+  if (!selected) return false;
+  const seat = selected.candidate;
+  decals.push({
+    parent: selected.owner,
+    kind,
+    text: kind === 'designation' ? marking.tacticalNumber : null,
+    size: selected.size,
+    pos: seat.position.toArray(),
+    rotY: 0, rotX: 0, rotZ: 0,
+    quaternion: seat.quaternion,
+    surfaceSupported: true,
+    supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
+    surfaceMesh: seat.object.name,
+    anchorProfile: spec.id,
+    visibilitySamples: seat.visibilitySamples,
+    visibilityClearSamples: seat.visibilityClearSamples,
+    visibilityRatio: seat.visibilityRatio,
+    maximumSurfaceErrorM: seat.maximumSurfaceErrorM,
+    visibilityVerified: seat.visibilityVerified,
+  });
+  return true;
+}
+
 function finalizeVehicleMarkingSeats(
   spec: FactoryTankSpec,
   marking: VehicleMarkingRecord,
@@ -7470,77 +7583,17 @@ function finalizeVehicleMarkingSeats(
 
   const profile = vehicleMarkingAnchor(spec.id);
   if (!profile) return;
-  const addProfileDecal = (kind: string, longitudinal: number, size: number): boolean => {
-    const readableSize = Math.max(size, SURFACE_MARKING_STYLE.minimumReadableSizeM);
-    const candidateSizes = [...new Set([
-      readableSize,
-      Math.max(SURFACE_MARKING_STYLE.minimumReadableSizeM, readableSize * 0.88),
-      SURFACE_MARKING_STYLE.minimumReadableSizeM,
-    ])];
-    const avoid = decals.filter((decal) => decal.kind === 'insignia'
-      || decal.kind === 'designation');
-    const ownerOrder: VehicleOwner[] = [
-      profile.owner, profile.owner === 'turret' ? 'hull' : 'turret',
-    ];
-    const sideOrder: Array<VehicleMarkingAnchor['side']> = [
-      profile.side, profile.side === 'right' ? 'left' : 'right',
-    ];
-    let seat: MarkingCandidate | null = null;
-    let selectedOwnerName: VehicleOwner = profile.owner;
-    let selectedSize = readableSize;
-    for (const candidateSize of candidateSizes) {
-      for (const ownerName of ownerOrder) {
-        for (const side of sideOrder) {
-          const candidate = solveProfileMarkingSeat(
-            { ...profile, owner: ownerName, side },
-            owners[ownerName],
-            ownerName,
-            surfaces[ownerName],
-            occluders,
-            longitudinal,
-            candidateSize,
-            avoid,
-          );
-          if (!candidate) continue;
-          if (!seat || candidate.visibilityClearSamples > seat.visibilityClearSamples) {
-            seat = candidate;
-            selectedOwnerName = ownerName;
-            selectedSize = candidateSize;
-          }
-          if (candidate.visibilityVerified) break;
-        }
-        if (seat?.visibilityVerified) break;
-      }
-      if (seat?.visibilityVerified) break;
-    }
-    if (!seat) return false;
-    decals.push({
-      parent: selectedOwnerName,
-      kind,
-      text: kind === 'designation' ? marking.tacticalNumber : null,
-      size: selectedSize,
-      pos: seat.position.toArray(),
-      rotY: 0, rotX: 0, rotZ: 0,
-      quaternion: seat.quaternion,
-      surfaceSupported: true,
-      supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
-      surfaceMesh: seat.object.name,
-      anchorProfile: spec.id,
-      visibilitySamples: seat.visibilitySamples,
-      visibilityClearSamples: seat.visibilityClearSamples,
-      visibilityRatio: seat.visibilityRatio,
-      maximumSurfaceErrorM: seat.maximumSurfaceErrorM,
-      visibilityVerified: seat.visibilityVerified,
-    });
-    return true;
-  };
   if (!decals.some((decal) => decal.kind === 'insignia')) {
-    addProfileDecal('insignia', profile.longitudinal, profile.sizeM);
+    addProfileVehicleDecal(
+      spec, marking, decals, profile, owners, surfaces, occluders,
+      'insignia', profile.longitudinal, profile.sizeM);
   }
   if (!decals.some((decal) => decal.kind === 'designation')) {
     const textZ = THREE.MathUtils.clamp(
       profile.longitudinal + profile.designationDirection * 0.11, 0.10, 0.90);
-    addProfileDecal('designation', textZ, profile.sizeM);
+    addProfileVehicleDecal(
+      spec, marking, decals, profile, owners, surfaces, occluders,
+      'designation', textZ, profile.sizeM);
   }
   } finally {
     restoreMaterialSides();
