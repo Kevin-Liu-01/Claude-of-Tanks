@@ -25,6 +25,8 @@ export interface StructureAttachmentRecord {
   part: string;
   support: string;
   gap: number;
+  contactAxes: number;
+  minContactSpan: number;
 }
 
 export interface StructureAttachmentReceipt {
@@ -35,11 +37,33 @@ export interface StructureAttachmentReceipt {
   records: StructureAttachmentRecord[];
 }
 
-function boundsGap(a: Box3, b: Box3): number {
+export interface BoundsJoint {
+  gap: number;
+  contactAxes: number;
+  minContactSpan: number;
+  overlaps: readonly [number, number, number];
+}
+
+export function measureBoundsJoint(a: Box3, b: Box3): BoundsJoint {
   const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
   const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
   const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
-  return Math.hypot(dx, dy, dz);
+  const overlaps = [
+    Math.max(0, Math.min(a.max.x, b.max.x) - Math.max(a.min.x, b.min.x)),
+    Math.max(0, Math.min(a.max.y, b.max.y) - Math.max(a.min.y, b.min.y)),
+    Math.max(0, Math.min(a.max.z, b.max.z) - Math.max(a.min.z, b.min.z)),
+  ] as const;
+  const meaningful = overlaps.filter((span) => span >= 0.012).sort((left, right) => right - left);
+  return {
+    gap: Math.hypot(dx, dy, dz),
+    contactAxes: meaningful.length,
+    minContactSpan: meaningful.length >= 2 ? meaningful[1] : 0,
+    overlaps,
+  };
+}
+
+function boundsGap(a: Box3, b: Box3): number {
+  return measureBoundsJoint(a, b).gap;
 }
 
 /**
@@ -69,12 +93,19 @@ export function certifyStructureAttachments(
     part.geometry.computeBoundingBox();
     if (!part.geometry.boundingBox) throw new Error(`${id}: attachment ${part.id} has no finite bounds`);
     const bounds = part.geometry.boundingBox.clone();
-    const gap = boundsGap(bounds, support);
+    const joint = measureBoundsJoint(bounds, support);
+    const { gap } = joint;
     if (gap > epsilon) {
       throw new Error(`${id}: attachment ${part.id} floats ${gap.toFixed(3)} m from ${part.support}`);
     }
+    if (joint.contactAxes < 2) {
+      throw new Error(`${id}: attachment ${part.id} only grazes ${part.support} without a stable joint`);
+    }
     maxGap = Math.max(maxGap, gap);
-    records.push({ part: part.id, support: part.support, gap });
+    records.push({
+      part: part.id, support: part.support, gap,
+      contactAxes: joint.contactAxes, minContactSpan: joint.minContactSpan,
+    });
     supports.set(part.id, bounds);
   }
   return { id, parts: records.length + 1, maxGap, epsilon, records };

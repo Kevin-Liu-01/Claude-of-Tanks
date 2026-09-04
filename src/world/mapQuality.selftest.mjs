@@ -128,6 +128,34 @@ for (const mapId of MAP_IDS) {
   }
 }
 
+const cityMaterialMaps = ['urban', 'foundry', 'ruinspires', 'blackglass', 'skybridge', 'caldera'];
+const repairedHeavyFamilies = ['factory', 'foundryoffice', 'depot', 'warehouse', 'firestation'];
+const repairedLightFamilies = ['transformershed', 'motorpool', 'securityoffice', 'servicegarage', 'relaystation'];
+for (const mapId of cityMaterialMaps) {
+  const config = getMapConfig(mapId);
+  const tones = config.props.tones;
+  assert.ok(tones, `${mapId}: city structures have an authored material palette`);
+  const samples = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof']
+    .map((bucket) => tones[bucket](0.5, 0.34, 0.55));
+  assert.ok(samples.every(([hue, saturation, lightness]) => (
+    Number.isFinite(hue) && saturation >= 0.07 && lightness >= 0.12 && lightness <= 0.62
+  )), `${mapId}: city materials retain restrained real color instead of collapsing to flat grey`);
+  assert.ok(new Set(samples.map(([hue]) => hue.toFixed(3))).size >= 4,
+    `${mapId}: plaster, masonry, weathered accent, and roof families remain visually distinct`);
+}
+for (const family of repairedHeavyFamilies) {
+  const maps = cityMaterialMaps.filter((mapId) => getMapConfig(mapId).props.plan.includes(family));
+  assert.ok(maps.length >= 5,
+    `${family}: repaired heavyweight family is exercised across at least five city/industrial maps`);
+}
+for (const family of repairedLightFamilies) {
+  const maps = cityMaterialMaps.filter((mapId) => (
+    getMapConfig(mapId).props.destructibleBuildings.includes(family)
+  ));
+  assert.ok(maps.length >= 5,
+    `${family}: repaired light-building family is exercised across at least five city/industrial maps`);
+}
+
 assert.ok(polePolicyByMap.get('verdant').pairs > 0 && polePolicyByMap.get('verdant').singles > 0,
   'Verdant Fields keeps flat-ground pairs while its uneven stations become single posts');
 assert.ok(polePolicyByMap.get('titan_gorge').singles >= 20

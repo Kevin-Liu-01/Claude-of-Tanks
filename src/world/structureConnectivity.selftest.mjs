@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { STRUCTURE_BUILDERS } from './maps/structureKit.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS } from './maps/structureKit.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
-import { auditSkillionRoofPitch } from './propGeometry.ts';
-import { certifyGroundedStructureParts } from './structureConnectivity.ts';
+import { auditRoofPlanePitch } from './propGeometry.ts';
+import {
+  certifyGroundedStructureParts, certifyStructureAttachments,
+} from './structureConnectivity.ts';
 
 const BUCKET_NAMES = [
   'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark',
@@ -33,7 +35,15 @@ assert.equal(new Set(entries.map(([id]) => id)).size, entries.length,
   'structure registries cannot silently replace a duplicate family id');
 
 const pitchedFamilies = new Set();
+const pitchedKinds = new Set();
 let upwardConeSpireCount = 0;
+
+function isTiltedThinRoof(geometry) {
+  if (geometry.type !== 'BoxGeometry' || !(geometry.parameters?.height <= 0.35)) return false;
+  geometry.computeBoundingBox();
+  const verticalSpan = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+  return verticalSpan > geometry.parameters.height + 0.01;
+}
 
 function endSpan(geometry, upper) {
   const position = geometry.attributes.position;
@@ -68,17 +78,24 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
       `${id}: fixture gaps stay within the construction tolerance`);
     assert.ok(dimensions.w > 1 && dimensions.d > 1 && dimensions.h > 2,
       `${id}: finite battlefield-scale dimensions`);
-    for (const geometry of geometries) {
+    for (const [bucket, bucketGeometries] of Object.entries(buckets)) for (const geometry of bucketGeometries) {
       if (geometry.type === 'ConeGeometry') {
         assert.ok(endSpan(geometry, false) > endSpan(geometry, true) + 0.1,
           `${id}: conical roof spire has its broad base below its point`);
         upwardConeSpireCount++;
       }
-      if (!geometry.userData.skillionRoofPitch) continue;
-      const pitch = auditSkillionRoofPitch(geometry);
+      if (bucket === 'roof' && isTiltedThinRoof(geometry)) {
+        assert.ok(geometry.userData.roofPlanePitch,
+          `${id}: every intact tilted roof slab uses the shared orientation helper`);
+      }
+      if (!geometry.userData.roofPlanePitch) continue;
+      const pitch = auditRoofPlanePitch(geometry);
       assert.ok(pitch.drop > 0.01,
-        `${id}: wall-mounted roof drains toward its unsupported edge`);
+        `${id}: declared roof drainage edge is below its supported edge`);
+      assert.ok(Math.abs(pitch.measuredAngleRad - pitch.angleRad) < 0.004,
+        `${id}: roof receipt agrees with the authored geometry`);
       pitchedFamilies.add(id);
+      pitchedKinds.add(pitch.kind);
     }
   }
 }
@@ -135,8 +152,34 @@ for (const support of arcologyCrownSupports) {
     `${receipt.id}: exposed crown joints stay within construction tolerance`);
 }
 
-for (const id of ['farmhouse', 'compound', 'tavern', 'schoolhouse', 'caravanserai', 'rangerlodge']) {
+for (const id of [
+  'farmhouse', 'granary', 'chapel', 'woodshed', 'depot',
+  'church', 'factory', 'warehouse', 'shed', 'boatshed', 'fishery',
+  'foundryoffice', 'compound', 'tavern', 'schoolhouse', 'caravanserai', 'rangerlodge',
+]) {
   assert.ok(pitchedFamilies.has(id), `${id}: side-roof orientation participates in the map-wide audit`);
+}
+assert.deepEqual([...pitchedKinds].sort(), ['gable', 'sawtooth', 'skillion'],
+  'gable, sawtooth, and wall-canopy roofs share one orientation contract');
+
+const destructiblePitched = new Set();
+for (const [id, spec] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
+  const geometry = spec.build(seeded(0x51a7c7));
+  const pitches = geometry.userData.roofPlanePitches || [];
+  for (const pitch of pitches) {
+    assert.ok(pitch.drop > 0.01, `${id}: merged roof receipt retains its downhill edge`);
+    assert.ok(Math.abs(pitch.measuredAngleRad - pitch.angleRad) < 0.004,
+      `${id}: merged roof receipt retains its measured slope`);
+    destructiblePitched.add(id);
+  }
+  geometry.dispose();
+}
+for (const id of [
+  'fieldhut', 'leanto', 'huntingblind', 'fishershack', 'saunahut',
+  'alpinerefuge', 'stilthouse', 'longhouse', 'motorpool', 'transformershed',
+  'checkpointhut', 'servicegarage',
+]) {
+  assert.ok(destructiblePitched.has(id), `${id}: merged building keeps its roof orientation receipt`);
 }
 
 const streetlamp = DESTRUCTIBLE_TYPES.lamp.build(seeded(0x1a4f));
@@ -152,6 +195,9 @@ assert.equal(lampAttachments.parts, 8,
   'streetlight attachment receipt covers pole, collar, elbow, arm, neck, housing, cap, and lens');
 assert.ok(lampAttachments.records.every(({ gap }) => gap <= lampAttachments.epsilon),
   'every named streetlight fixture reaches its intended local support');
+assert.ok(lampAttachments.records.every(({ contactAxes, minContactSpan }) => (
+  contactAxes >= 2 && minContactSpan >= 0.012
+)), 'every named streetlight fixture forms a stable area joint instead of grazing a support corner');
 assert.deepEqual(lampAttachments.records.map(({ part, support }) => [part, support]), [
   ['base-collar', 'pole'], ['elbow', 'pole'], ['arm', 'elbow'],
   ['drop-neck', 'arm'], ['housing', 'drop-neck'],
@@ -167,5 +213,14 @@ assert.throws(
   /1 floating authored part \(1\)/,
   'the authoring gate rejects a fixture that cannot reach ground or another support',
 );
+const supportCube = new THREE.BoxGeometry(1, 1, 1);
+const cornerGraze = new THREE.BoxGeometry(0.2, 0.2, 0.2).translate(0.6, 0.6, 0.6);
+assert.throws(
+  () => certifyStructureAttachments('corner-graze', {
+    id: 'support', geometry: supportCube,
+  }, [{ id: 'fixture', geometry: cornerGraze, support: 'support' }]),
+  /only grazes support without a stable joint/,
+  'a coincident AABB corner cannot certify a visibly detached fixture',
+);
 
-console.log(`structureConnectivity.selftest: 41 heavyweight/site families × 2 variants grounded; ${pitchedFamilies.size} pitched families + streetlight load path audited`);
+console.log(`structureConnectivity.selftest: 41 heavyweight/site families × 2 variants grounded; ${pitchedFamilies.size} heavyweight and ${destructiblePitched.size} destructible pitched families + streetlight load path audited`);

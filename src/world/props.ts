@@ -51,7 +51,7 @@ import {
 } from './propPlacement.ts';
 import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry,
-  pitchSkillionRoof, scaleUV, slabBox,
+  pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
@@ -1100,7 +1100,7 @@ function makeCottage(
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
     const slab = slabBox(slope + 0.15, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
   }
@@ -1159,7 +1159,7 @@ function makeBarn(rng: Rng, buckets: PropsBuckets): StructureDimensions {
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
     const slab = slabBox(slope + 0.15, 0.14, d + over * 2, 0.35); // r2: real tile rows
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.07, 0);
     parts.roof.push(slab);
   }
@@ -1374,7 +1374,7 @@ function addRowhouseRoof(
   const angle = Math.atan2(roofH + 0.1, w / 2 + over);
   if (!flatRoof) for (const side of [-1, 1]) {
     const slab = slabBox(slope + 0.15, 0.13, d + over * 2, 0.35);
-    slab.rotateZ(side * angle);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, angle, 'gable');
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
   }
@@ -1494,7 +1494,7 @@ function addRowhouseDormers(
     parts.wood.push(box(0.05, 0.72, 0.10)
       .translate(x + side * 0.51, y + 0.14, z + 0.31));
     const cap = slabBox(1.24, 0.09, 1.04, 0.4);
-    cap.rotateZ(side * roofAngle * 0.5);
+    pitchRoofPlane(cap, 'x', -side as -1 | 1, roofAngle * 0.5, 'dormer');
     cap.translate(x - side * 0.06, y + 0.72, z);
     parts.roof.push(cap);
   }

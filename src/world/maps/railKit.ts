@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import {
-  box, gablePrism as createGablePrism, jitterUV, scaleUV,
+  box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV,
 } from '../propGeometry.ts';
 import type {
   GeometryBuckets,
@@ -70,7 +70,7 @@ export function makeWarehouse(
   const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
   for (const side of [-1, 1]) {
     const slab = box(slope + 0.15, 0.13, d + 0.7, 0.35);
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
   }
@@ -293,17 +293,25 @@ export function makeShed(
   buckets: GeometryBuckets,
 ): StructureDimensions {
   const w = 9 + rng() * 2, d = 6.4, ph = 3.4 + rng() * 0.4;
+  const roofAngle = 0.09;
+  const roofCenterY = 0.55 + ph + 0.06;
+  const roofBottomOffset = 0.07;
   const plat = box(w, 0.55, d, 0.6);
   plat.translate(0, 0.27, 0);
   buckets.stone.push(jitterUV(plat, rng));
   for (const [sx, sz] of [[-1, -1], [0, -1], [1, -1], [-1, 1], [0, 1], [1, 1]]) {
-    const post = box(0.22, ph, 0.22, 1.2);
-    post.translate(sx * (w / 2 - 0.5), 0.55 + ph / 2, sz * (d / 2 - 0.5));
+    const z = sz * (d / 2 - 0.5);
+    // Follow the actual mono-pitch underside. Equal-height posts left the
+    // uphill row visibly short and drove the downhill row through the roof.
+    const roofUndersideY = roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;
+    const postH = roofUndersideY - 0.55;
+    const post = box(0.22, postH, 0.22, 1.2);
+    post.translate(sx * (w / 2 - 0.5), 0.55 + postH / 2, z);
     buckets.wood.push(jitterUV(post, rng));
   }
   const roof = box(w + 0.8, 0.12, d + 0.8, 0.35);
-  roof.rotateX(-0.09);
-  roof.translate(0, 0.55 + ph + 0.06, 0);
+  pitchRoofPlane(roof, 'z', -1, roofAngle, 'skillion');
+  roof.translate(0, roofCenterY, 0);
   buckets.roof.push(jitterUV(roof, rng));
   for (let k = 0, n = 3 + ((rng() * 4) | 0); k < n; k++) {
     const cs = 0.55 + rng() * 0.5;
@@ -376,7 +384,7 @@ export function makeBoatshed(
   const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
   for (const side of [-1, 1]) {
     const slab = box(slope + 0.15, 0.11, d + 0.7, 0.35);
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + 0.2), wallH + 0.2 + roofH / 2 + 0.05, 0);
     buckets.roof.push(slab);
   }

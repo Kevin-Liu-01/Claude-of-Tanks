@@ -2,14 +2,16 @@
 // towers are bucket-merged by props.ts, preserving the ordinary map draw-call
 // shape while the six-lane street plan creates true urban canyons.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const PLAN = [
-  'megatower', 'parkingdeck', 'ruin', 'needletower', 'factory', 'broadcasttower',
+  'megatower', 'parkingdeck', 'ruin', 'needletower', 'firestation', 'broadcasttower',
   'civichall', 'parkingdeck', 'ruin', 'foundryoffice', 'terracetower', 'warehouse',
   'arcology', 'ruin', 'parkingdeck', 'factory', 'civichall', 'megatower',
   'containerRow', 'ruin', 'parkingdeck', 'broadcasttower', 'foundryoffice', 'needletower',
-  'factory', 'ruin', 'civichall', 'parkingdeck', 'terracetower', 'warehouse',
+  'depot', 'ruin', 'civichall', 'parkingdeck', 'terracetower', 'warehouse',
   'arcology', 'ruin', 'factory', 'parkingdeck', 'megatower', 'civichall',
   'foundryoffice', 'ruin', 'needletower', 'parkingdeck', 'factory', 'broadcasttower',
   'warehouse', 'ruin', 'civichall', 'parkingdeck', 'terracetower', 'arcology',
@@ -58,8 +60,8 @@ export default {
   props: {
     plan: PLAN,
     destructibleBuildings: [
-      'guardpost', 'transformershed', 'fieldhospital', 'quonsethut',
-      'securityoffice', 'relaystation', 'corneroffice',
+      'guardpost', 'transformershed', 'fieldhospital', 'quonsethut', 'motorpool',
+      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
     ],
     tacticalBeats: [
       { id: 'ministry-steps', role: 'brawl', x: -184, z: 82, yawDeg: 90,
@@ -71,14 +73,9 @@ export default {
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
     streetRowRoadStride: 2, ruinChance: 0.48, curbs: true, lampposts: true,
-    tones: {
-      plaster: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.34 + 0.06), clamp01(l * 0.64)],
-      plaster2: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.30 + 0.05), clamp01(l * 0.58)],
-      plaster3: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.22), clamp01(l * 0.55)],
-      stone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.20), clamp01(l * 0.67)],
-      roof: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.28), clamp01(l * 0.52)],
-      wood: null, straw: null,
-    },
+    tones: makeRealisticCityBuildingTones({
+      value: 0.80, saturation: 0.86, soot: 0.045, roofValue: 0.78, coolAccent: 0.01,
+    }),
     wallStyle: 'brick', wallStoneChance: 0.74, buildingLat: [14, 5],
     sideSkip: 0.04, spacingPad: 4.5, maxSpread: 4.2,
     wallRuns: [

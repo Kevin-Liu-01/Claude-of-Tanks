@@ -17,6 +17,10 @@ for (let i = 0; i < 108; i++) {
   else if (i === 15) PLAN.push('firestation');
   else if (i === 25) PLAN.push('tavern');
   else if (i === 37) PLAN.push('schoolhouse');
+  else if (i === 49) PLAN.push('foundryoffice');
+  else if (i === 61) PLAN.push('depot');
+  else if (i === 73) PLAN.push('warehouse');
+  else if (i === 85) PLAN.push('civichall');
   else if (i === 9 || i === 41) PLAN.push('tower');
   // world-dressing r1: corner shops (chamfered corner entrance, display
   // glass both faces) salt the block interiors — a third street archetype
@@ -111,7 +115,10 @@ export default {
 
   props: {
     plan: PLAN, // consumed by blockFill for the block interiors
-    destructibleBuildings: ['guardpost', 'checkpointhut', 'fieldhospital', 'transformershed'],
+    destructibleBuildings: [
+      'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
+      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+    ],
     tacticalBeats: [
       { id: 'western-ringroad-gate', role: 'brawl', x: -250, z: -60, yawDeg: 2,
         structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },

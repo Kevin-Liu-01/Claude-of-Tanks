@@ -12,7 +12,9 @@ import {
   certifyGroundedStructureParts,
   certifyStructureAttachments,
 } from '../structureConnectivity.ts';
-import { auditSkillionRoofPitch, pitchSkillionRoof } from '../propGeometry.ts';
+import {
+  auditRoofPlanePitch, pitchRoofPlane, pitchSkillionRoof,
+} from '../propGeometry.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -178,6 +180,19 @@ function gable(w: number, h: number, d: number): THREE.ExtrudeGeometry {
   return scaleUV(geo, 0.5, 0.5);
 }
 
+/** A true one-way sawtooth bay: low at -Z, high at +Z, extruded across X. */
+function sawtoothBay(w: number, rise: number, d: number): THREE.ExtrudeGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(-d / 2, 0);
+  shape.lineTo(d / 2, 0);
+  shape.lineTo(-d / 2, rise);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: w, bevelEnabled: false });
+  geo.translate(0, 0, -w / 2);
+  geo.rotateY(Math.PI / 2);
+  return scaleUV(geo, 0.5, 0.5);
+}
+
 function archShell(w: number, h: number, d: number): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   const r = w / 2;
@@ -229,13 +244,16 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
  */
 function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const connectivity = certifyGroundedStructureParts(id, parts);
-  const skillionRoofPitches = [];
+  const roofPlanePitches = [];
   for (const part of parts) {
-    if (part.userData.skillionRoofPitch) skillionRoofPitches.push(auditSkillionRoofPitch(part));
+    if (part.userData.roofPlanePitch) roofPlanePitches.push(auditRoofPlanePitch(part));
   }
   const geometry = merge(parts);
   geometry.userData.structureConnectivity = connectivity;
-  geometry.userData.skillionRoofPitches = skillionRoofPitches;
+  geometry.userData.roofPlanePitches = roofPlanePitches;
+  geometry.userData.skillionRoofPitches = roofPlanePitches
+    .filter((pitch) => pitch.kind === 'skillion')
+    .map(({ kind: _kind, ...pitch }) => pitch);
   return geometry;
 }
 
@@ -406,7 +424,7 @@ function addGableRoof(
   const angle = Math.atan2(roofH + 0.08, w / 2 + over);
   for (const side of [-1, 1]) {
     const roof = slab(slope + 0.14, 0.13, d + over * 2);
-    roof.rotateZ(side * angle);
+    pitchRoofPlane(roof, 'x', -side as -1 | 1, angle, 'gable');
     roof.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     out.roof.push(roof);
   }
@@ -529,7 +547,8 @@ export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimens
   out.dark.push(box(0.22, 6.2, 0.22).rotateZ(-0.38).translate(5.6, 3.35, d / 2 + 1.0));
   out.dark.push(box(0.06, 3.0, 0.06).translate(6.75, 1.5, d / 2 + 1.0));
   out.stone.push(box(4.2, 3.4, 5.0).translate(-w / 2 - 1.5, 1.7, -2.4));
-  out.roof.push(slab(4.6, 0.16, 5.4).rotateZ(0.12).translate(-w / 2 - 1.5, 3.75, -2.4));
+  out.roof.push(pitchRoofPlane(slab(4.6, 0.16, 5.4), 'x', -1, 0.12, 'skillion')
+    .translate(-w / 2 - 1.5, 3.75, -2.4));
   for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
   addConnectedExterior(out, { id: 'fishery', w, d, wallH: wallH + 0.35, profile: 'timber', variant: 1 });
   finish(buckets, out);
@@ -585,24 +604,38 @@ export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket 
 }
 
 export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
-  const out = parts(), w = 13.0, d = 14.0, wallH = 5.8;
+  const out = parts(), w = 13.0, d = 14.0, wallH = 5.8, roofRise = 1.65;
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
-  // A three-bay sawtooth roof preserves the industrial silhouette.
+  // Three connected one-way bays replace the former gable/no-op rotation and
+  // oversized cross-pitched sheet. Every sheet now drains along the bay run,
+  // lands on its triangular end walls, and terminates at a framed clerestory.
+  const bayDepth = d / 3;
+  const roofAngle = Math.atan2(roofRise, bayDepth + 0.10);
+  const roofSlope = Math.hypot(bayDepth + 0.10, roofRise);
   for (let i = 0; i < 3; i++) {
-    const z = -d / 2 + (i + 0.5) * d / 3;
-    const tooth = gable(w, 2.0, d / 3 - 0.12).rotateY(Math.PI / 2);
-    tooth.rotateY(-Math.PI / 2); // keep extrusion along z; explicit for authoring clarity
-    tooth.translate(0, wallH, z); out.plaster3.push(tooth);
-    const roof = slab(w + 0.4, 0.14, d / 3 + 0.15);
-    roof.rotateZ(-0.27); roof.translate(0.8, wallH + 1.0, z); out.roof.push(roof);
-    addWindow(out, -w / 2 - 0.04, wallH + 0.95, z, 'x', d / 3 - 0.55, 1.45);
+    const z = -d / 2 + (i + 0.5) * bayDepth;
+    out[wallBucket].push(sawtoothBay(w, roofRise, bayDepth - 0.04)
+      .translate(0, wallH, z));
+    out.roof.push(pitchRoofPlane(
+      slab(w + 0.50, 0.14, roofSlope + 0.10), 'z', -1, roofAngle, 'sawtooth',
+    ).translate(0, wallH + roofRise / 2 + 0.07, z));
+
+    const clerestoryZ = -d / 2 + (i + 1) * bayDepth - 0.035;
+    out.glass.push(box(w - 0.55, roofRise - 0.30, 0.07)
+      .translate(0, wallH + roofRise / 2, clerestoryZ));
+    out.dark.push(box(w + 0.10, 0.13, 0.16)
+      .translate(0, wallH + roofRise - 0.04, clerestoryZ));
+    for (let x = -w / 2 + 0.4; x <= w / 2 - 0.4; x += 2.05) {
+      out.dark.push(box(0.11, roofRise, 0.14)
+        .translate(x, wallH + roofRise / 2, clerestoryZ));
+    }
   }
   for (const x of [-3.7, -1.2, 1.3, 3.8]) addWindow(out, x, 2.9, d / 2 + 0.05, 'z', 1.25, 1.8);
   out.dark.push(box(3.2, 3.5, 0.12).translate(0, 1.75, -d / 2 - 0.05));
   out.stone.push(box(1.0, 4.5, 1.0).translate(4.6, wallH + 1.7, -4.0));
   addConnectedExterior(out, { id: 'foundryoffice', w, d, wallH, profile: 'industrial', variant: 2 });
   finish(buckets, out);
-  return { w: w + 0.4, d: d + 0.4, h: wallH + 4.0 };
+  return { w: w + 0.5, d: d + 0.4, h: wallH + 4.0 };
 }
 
 export function makeRangerLodge(rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
@@ -1116,7 +1149,7 @@ function addLightGableRoof(
   const angle = Math.atan2(roofH + 0.05, w / 2 + 0.28);
   for (const side of [-1, 1]) {
     const roof = slab(slope + 0.12, 0.10, d + 0.6);
-    roof.rotateZ(side * angle);
+    pitchRoofPlane(roof, 'x', -side as -1 | 1, angle, 'gable');
     roof.translate(-side * (w / 4 + 0.14), y0 + wallH + roofH / 2 + 0.04, 0);
     colored(out, roof, dark, rng);
   }
@@ -1272,10 +1305,18 @@ function makeFieldHut(rng: Rng): THREE.BufferGeometry {
 
 function makeLeanTo(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.paleWood;
-  for (const x of [-2.4, 2.4]) for (const z of [-2.0, 2.0]) colored(out, box(0.16, 2.8, 0.16).translate(x, 1.4, z), p[2], rng);
+  const roofAngle = 0.18;
+  const roofCenterY = 2.75;
+  const roofBottomOffset = 0.07;
+  for (const x of [-2.4, 2.4]) for (const z of [-2.0, 2.0]) {
+    // The roof falls toward +Z. Cut each upright to its local underside so
+    // the back posts carry the high edge and the front posts do not pierce it.
+    const postH = roofCenterY - Math.tan(roofAngle) * z - roofBottomOffset;
+    colored(out, box(0.16, postH, 0.16).translate(x, postH / 2, z), p[2], rng);
+  }
   colored(out, box(5.2, 2.3, 0.18).translate(0, 1.15, -2.05), p[0], rng);
-  const roof = pitchSkillionRoof(slab(5.8, 0.12, 5.0), 'z', 1, 0.18);
-  colored(out, roof.translate(0, 2.75, 0), p[1], rng);
+  const roof = pitchSkillionRoof(slab(5.8, 0.12, 5.0), 'z', 1, roofAngle);
+  colored(out, roof.translate(0, roofCenterY, 0), p[1], rng);
   for (let i = 0; i < 3; i++) colored(out, box(1.1, 0.85, 0.8).translate(-1.5 + i * 1.45, 0.43, -1.45), p[0], rng);
   return mergeConnectedStructure('leanto', out);
 }
@@ -1284,7 +1325,8 @@ function makeHuntingBlind(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.timber, y = 3.1;
   for (const x of [-1.15, 1.15]) for (const z of [-1.15, 1.15]) colored(out, box(0.16, y, 0.16).translate(x, y / 2, z), p[2], rng);
   colored(out, box(2.8, 2.2, 2.8).translate(0, y + 1.1, 0), p[0], rng);
-  colored(out, slab(3.2, 0.12, 3.3).rotateZ(0.10).translate(0, y + 2.3, 0), p[1], rng);
+  colored(out, pitchRoofPlane(slab(3.2, 0.12, 3.3), 'x', -1, 0.10, 'skillion')
+    .translate(0, y + 2.3, 0), p[1], rng);
   for (const side of [-1, 1]) colored(out, box(0.08, 0.45, 1.5).translate(side * 1.43, y + 1.35, 0), p[2], rng);
   for (let i = 0; i < 6; i++) colored(out, box(0.75, 0.08, 0.12).translate(1.7, 0.35 + i * 0.45, 1.15), p[1], rng);
   return mergeConnectedStructure('huntingblind', out);
@@ -1384,8 +1426,17 @@ function makeGuardPost(rng: Rng): THREE.BufferGeometry {
 
 function makeMotorPool(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 9.0, d = 11.5;
-  for (const x of [-w / 2, 0, w / 2]) for (const z of [-d / 2, d / 2]) colored(out, box(0.22, 3.8, 0.22).translate(x, 1.9, z), p[2], rng);
-  const roof = slab(w + 0.8, 0.16, d + 0.8); roof.rotateZ(0.11); colored(out, roof.translate(0, 3.9, 0), p[0], rng);
+  const roofAngle = 0.11;
+  const roofCenterY = 3.9;
+  const roofBottomOffset = 0.09;
+  for (const x of [-w / 2, 0, w / 2]) for (const z of [-d / 2, d / 2]) {
+    // The +X edge is high. Match every column to the pitched underside;
+    // fixed 3.8 m columns previously floated on one side and clipped on the other.
+    const postH = roofCenterY + Math.tan(roofAngle) * x - roofBottomOffset;
+    colored(out, box(0.22, postH, 0.22).translate(x, postH / 2, z), p[2], rng);
+  }
+  const roof = pitchRoofPlane(slab(w + 0.8, 0.16, d + 0.8), 'x', -1, roofAngle, 'skillion');
+  colored(out, roof.translate(0, roofCenterY, 0), p[0], rng);
   colored(out, box(2.0, 0.25, 7.0).translate(0, 0.05, 0), p[2], rng);
   for (const x of [-3.1, 3.1]) for (const z of [-3.7, 0, 3.7]) colored(out, cylinder(0.38, 0.38, 0.85, 10).translate(x, 0.43, z), p[1], rng);
   colored(out, box(2.5, 1.0, 0.7).translate(-3.0, 0.5, -4.8), PAL.timber[0], rng);
@@ -1406,7 +1457,8 @@ function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
 function makeTransformerShed(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 5.4, d = 5.0, h = 3.4;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
-  colored(out, slab(w + 0.5, 0.18, d + 0.5).rotateZ(-0.09).translate(0, h + 0.1, 0), p[2], rng);
+  colored(out, pitchRoofPlane(slab(w + 0.5, 0.18, d + 0.5), 'x', 1, 0.09, 'skillion')
+    .translate(0, h + 0.1, 0), p[2], rng);
   for (const x of [-1.55, 0, 1.55]) for (let y = 1.0; y <= 2.5; y += 0.38) colored(out, box(0.95, 0.08, 0.08).translate(x, y, d / 2 + 0.08), p[1], rng);
   for (const x of [-1.4, 1.4]) {
     colored(out, box(0.28, 1.0, 0.28).translate(x, h + 0.6, -1.1), 0x5f4f3a, rng);
@@ -1419,7 +1471,8 @@ function makeTransformerShed(rng: Rng): THREE.BufferGeometry {
 function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
-  colored(out, slab(w + 0.7, 0.16, d + 1.1).rotateZ(0.08).translate(0, h + 0.08, 0), p[2], rng);
+  colored(out, pitchRoofPlane(slab(w + 0.7, 0.16, d + 1.1), 'x', -1, 0.08, 'skillion')
+    .translate(0, h + 0.08, 0), p[2], rng);
   for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
   colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
   for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
@@ -1453,7 +1506,7 @@ function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
 function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 9.6, d = 11.2, h = 5.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
-  const roof = slab(w + 0.7, 0.22, d + 0.7); roof.rotateZ(-0.055);
+  const roof = pitchRoofPlane(slab(w + 0.7, 0.22, d + 0.7), 'x', 1, 0.055, 'skillion');
   colored(out, roof.translate(0, h + 0.10, 0), p[1], rng);
   for (const x of [-2.55, 2.0]) {
     colored(out, box(3.6, 3.55, 0.12).translate(x, 1.78, d / 2 + 0.07), p[2], rng);

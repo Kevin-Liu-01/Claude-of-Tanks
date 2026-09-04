@@ -4,17 +4,24 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 type RandomSource = () => number;
 type Rgb = readonly [number, number, number];
 
-export interface SkillionRoofPitchReceipt {
+export type RoofPlaneKind = 'gable' | 'skillion' | 'sawtooth' | 'dormer';
+
+export interface RoofPlanePitchReceipt {
   axis: 'x' | 'z';
   outwardSign: -1 | 1;
   angleRad: number;
+  kind: RoofPlaneKind;
 }
 
-export interface SkillionRoofPitchAudit extends SkillionRoofPitchReceipt {
+export interface RoofPlanePitchAudit extends RoofPlanePitchReceipt {
   wallEdgeY: number;
   outwardEdgeY: number;
   drop: number;
+  measuredAngleRad: number;
 }
+
+export type SkillionRoofPitchReceipt = Omit<RoofPlanePitchReceipt, 'kind'>;
+export type SkillionRoofPitchAudit = Omit<RoofPlanePitchAudit, 'kind'>;
 
 export function scaleUV<T extends THREE.BufferGeometry>(
   geometry: T,
@@ -67,31 +74,34 @@ export function slabBox(
  * leaves an authoring receipt that deterministic structure audits can inspect
  * before the geometry is merged into a map-wide material bucket.
  */
-export function pitchSkillionRoof<T extends THREE.BufferGeometry>(
+export function pitchRoofPlane<T extends THREE.BufferGeometry>(
   geometry: T,
   axis: 'x' | 'z',
   outwardSign: -1 | 1,
   angleRad: number,
+  kind: RoofPlaneKind,
 ): T {
   if ((outwardSign !== -1 && outwardSign !== 1)
       || !Number.isFinite(angleRad) || angleRad <= 0 || angleRad >= Math.PI / 2) {
-    throw new TypeError('skillion roof requires a finite outward sign and acute positive pitch');
+    throw new TypeError('roof plane requires a finite outward sign and acute positive pitch');
   }
   if (axis === 'z') geometry.rotateX(outwardSign * angleRad);
   else if (axis === 'x') geometry.rotateZ(-outwardSign * angleRad);
-  else throw new TypeError(`unsupported skillion roof axis: ${String(axis)}`);
-  geometry.userData.skillionRoofPitch = { axis, outwardSign, angleRad } satisfies SkillionRoofPitchReceipt;
+  else throw new TypeError(`unsupported roof plane axis: ${String(axis)}`);
+  geometry.userData.roofPlanePitch = {
+    axis, outwardSign, angleRad, kind,
+  } satisfies RoofPlanePitchReceipt;
   return geometry;
 }
 
-/** Measure the authored high wall edge and low free edge from actual vertices. */
-export function auditSkillionRoofPitch(
+/** Measure the authored high supported edge and low drainage edge from actual vertices. */
+export function auditRoofPlanePitch(
   geometry: THREE.BufferGeometry,
-): SkillionRoofPitchAudit {
-  const receipt = geometry.userData.skillionRoofPitch as SkillionRoofPitchReceipt | undefined;
-  if (!receipt) throw new Error('geometry has no skillion-roof pitch receipt');
+): RoofPlanePitchAudit {
+  const receipt = geometry.userData.roofPlanePitch as RoofPlanePitchReceipt | undefined;
+  if (!receipt) throw new Error('geometry has no roof-plane pitch receipt');
   const position = geometry.getAttribute('position');
-  if (!position?.count) throw new Error('skillion roof has no vertices');
+  if (!position?.count) throw new Error('roof plane has no vertices');
   const coordinate = receipt.axis === 'x'
     ? (index: number) => position.getX(index)
     : (index: number) => position.getZ(index);
@@ -103,7 +113,7 @@ export function auditSkillionRoofPitch(
     max = Math.max(max, value);
   }
   const span = max - min;
-  if (!(span > 0)) throw new Error('skillion roof has no outward span');
+  if (!(span > 0)) throw new Error('roof plane has no outward span');
   // Regress the broad slab's centre plane rather than comparing its absolute
   // AABB corners. On shallow roofs, the thickness itself moves the extreme
   // corner farther than the pitch and can falsely report the correct slope
@@ -123,7 +133,7 @@ export function auditSkillionRoofPitch(
     covariance += dx * (position.getY(index) - meanY);
     variance += dx * dx;
   }
-  if (!(variance > 0)) throw new Error('skillion roof has no measurable pitch axis');
+  if (!(variance > 0)) throw new Error('roof plane has no measurable pitch axis');
   const slope = covariance / variance;
   const wallCoordinate = receipt.outwardSign > 0 ? min : max;
   const outwardCoordinate = receipt.outwardSign > 0 ? max : min;
@@ -134,7 +144,32 @@ export function auditSkillionRoofPitch(
     wallEdgeY,
     outwardEdgeY,
     drop: wallEdgeY - outwardEdgeY,
+    measuredAngleRad: Math.atan(Math.abs(slope)),
   };
+}
+
+export function pitchSkillionRoof<T extends THREE.BufferGeometry>(
+  geometry: T,
+  axis: 'x' | 'z',
+  outwardSign: -1 | 1,
+  angleRad: number,
+): T {
+  pitchRoofPlane(geometry, axis, outwardSign, angleRad, 'skillion');
+  geometry.userData.skillionRoofPitch = { axis, outwardSign, angleRad } satisfies SkillionRoofPitchReceipt;
+  return geometry;
+}
+
+/** Compatibility wrapper for older wall-canopy audits. */
+export function auditSkillionRoofPitch(
+  geometry: THREE.BufferGeometry,
+): SkillionRoofPitchAudit {
+  const legacy = geometry.userData.skillionRoofPitch as SkillionRoofPitchReceipt | undefined;
+  if (!legacy) throw new Error('geometry has no skillion-roof pitch receipt');
+  if (!geometry.userData.roofPlanePitch) {
+    geometry.userData.roofPlanePitch = { ...legacy, kind: 'skillion' } satisfies RoofPlanePitchReceipt;
+  }
+  const { kind: _kind, ...audit } = auditRoofPlanePitch(geometry);
+  return audit;
 }
 
 export function gablePrism(

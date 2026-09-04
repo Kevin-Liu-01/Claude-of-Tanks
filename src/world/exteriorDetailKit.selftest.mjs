@@ -19,6 +19,9 @@ for (const [profile, minimum] of [
   assert.ok(receipt.added >= minimum, `${profile}: substantial exterior detail set`);
   assert.ok(receipt.maxSupportGap <= exteriorSupportEpsilon(),
     `${profile}: every exterior part touches a declared support`);
+  assert.ok(receipt.records.every(({ contactAxes, minContactSpan }) => (
+    contactAxes >= 2 && minContactSpan >= 0.012
+  )), `${profile}: every exterior part forms an area joint instead of grazing a support corner`);
   const authored = Object.values(parts).flat()
     .filter((geo) => geo.userData.structureSupport);
   assert.equal(authored.length, receipt.added, `${profile}: every added geometry has a support receipt`);
