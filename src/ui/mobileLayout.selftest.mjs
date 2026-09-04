@@ -177,6 +177,9 @@ assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
 
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
+assert.match(hud,
+  /\.cot-kf\{[^}]*max-width:100%;[^}]*overflow:hidden;white-space:nowrap;[^}]*\}[\s\S]*\.cot-kf \.k,\.cot-kf \.v\{[^}]*min-width:0;[^}]*text-overflow:ellipsis;white-space:nowrap;/,
+  'tank destruction readouts must remain one line and truncate long names within the team-list gap');
 assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
   'ricochets must not create a second generic toast beside the hit marker and combat record');
 assert.match(hud,
