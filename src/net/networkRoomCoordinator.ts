@@ -101,7 +101,7 @@ export interface NetworkRoomCoordinator {
   startRound(): boolean;
   claimRematch(state: NetworkRoomState, blocked?: boolean): boolean;
   finishRematch(): void;
-  shouldPreserveAfterResult(): boolean;
+  shouldPreserveOnBattleExit(): boolean;
   readonly activeRoom: NetworkRoomState | null;
   readonly pendingLobby: NetworkLobbyContext | null;
   readonly activePlayer: NetworkRoomPlayer | null;
@@ -452,9 +452,9 @@ export function createNetworkRoomCoordinator({
 
     finishRematch() { rematchPending = false; },
 
-    shouldPreserveAfterResult() {
+    shouldPreserveOnBattleExit() {
       const match = getMatch();
-      return !!(activeRoom && match && !match.client?.closed && hasResult());
+      return !!(activeRoom && match && !match.client?.closed);
     },
 
     get activeRoom() { return activeRoom; },

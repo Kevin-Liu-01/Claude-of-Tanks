@@ -54,6 +54,12 @@ export interface PlayMenuMap {
   hero?: string;
 }
 
+export interface PlayMenuVehicle {
+  id: string;
+  name: string;
+  tier?: number;
+}
+
 export interface PlayMenuSelection {
   specId: string;
   mapId: string;
@@ -77,7 +83,9 @@ export interface ActiveRoomAdapter {
 
 export interface PlayMenuOptions {
   maps?: PlayMenuMap[];
+  vehicles?: PlayMenuVehicle[];
   getSelection(): PlayMenuSelection;
+  getVehicleLoadout?(specId: string): Pick<PlayMenuSelection, 'equipment' | 'camo'>;
   onSolo?(request?: { gameMode?: GameModeId }): RuntimeValue;
   onNetworkStart?(request: {
     role: RoomRole;
@@ -244,6 +252,9 @@ const CSS = `
 .cot-play .menu-select--map .menu-select-option{min-height:58px;padding-left:7px}.cot-play .menu-select--map .menu-select-option .menu-select-thumb{
   width:76px;height:44px;flex-basis:76px}.cot-play .menu-select.disabled .menu-select-trigger{cursor:not-allowed;opacity:.62;
   border-color:rgba(161,180,195,.22);background:#090d12}.cot-play .menu-select.disabled .menu-select-trigger::after{opacity:.45}
+.cot-play .menu-select--vehicle .menu-select-trigger{height:50px;padding-left:8px}.cot-play .menu-select--vehicle .menu-select-option{
+  min-height:52px;padding-left:7px}.cot-play .menu-select--vehicle .menu-select-thumb{width:62px;height:38px;flex-basis:62px;
+  object-fit:contain;background-color:#11171c;background-size:contain;background-repeat:no-repeat}
 .cot-play .menu-select-trigger:focus-visible,.cot-play .menu-select-option:focus-visible,.cot-play .mode:focus-visible,
 .cot-play .close:focus-visible,.cot-play button.action:focus-visible{outline:2px solid #ffb452;outline-offset:2px}
 .cot-play .code-input{font:900 17px ${FONT_COND}!important;letter-spacing:.16em;text-transform:uppercase}
@@ -308,7 +319,8 @@ const CSS = `
   letter-spacing:.1em}.cot-play .player .wait{color:#e4aa58;text-align:right;font:800 9px ${FONT_COND};letter-spacing:.1em}
 .cot-play .controls{display:flex;align-items:end;gap:8px;margin-top:12px}.cot-play .control-options,.cot-play .control-actions{
   display:flex;flex-wrap:wrap;align-items:end;gap:8px}.cot-play .control-actions{margin-left:auto;justify-content:flex-end}
-.cot-play .control-options .field{width:140px}.cot-play .control-actions .action{min-width:128px}
+.cot-play .control-options .field{width:140px}.cot-play .control-options .vehicle-field{width:230px}
+.cot-play .control-actions .action{min-width:128px}
 .cot-play .leave-room{border-color:rgba(230,113,94,.4)!important;color:#efaaa0!important}
 @keyframes cot-ready-attention{0%,100%{box-shadow:0 0 0 0 rgba(230,154,54,0),0 0 0 rgba(230,154,54,0)}
   48%{box-shadow:0 0 0 4px rgba(230,154,54,.16),0 0 24px rgba(230,154,54,.48);transform:translateY(-1px)}}
@@ -580,7 +592,14 @@ async function iceServers(mode: string): Promise<IceConfiguration> {
 
 export function createPlayMenu({
   maps = [],
+  vehicles = [],
   getSelection,
+  getVehicleLoadout = (specId) => {
+    const selection = getSelection();
+    return specId === selection.specId
+      ? { equipment: selection.equipment, camo: selection.camo }
+      : { equipment: [], camo: 'factory' };
+  },
   onSolo,
   onNetworkStart,
   onNetworkClose = () => {},
@@ -653,7 +672,16 @@ export function createPlayMenu({
               <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
             </div></div></div></div>
       <div class="players"></div><div class="controls">
-        <div class="control-options"><div class="field"><span class="field-label" id="cot-room-team-label">Deployment</span>
+        <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">Vehicle</span>
+          <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
+            <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
+              aria-controls="cot-room-vehicle-list" aria-labelledby="cot-room-vehicle-label cot-room-vehicle-value">
+              <span class="menu-select-thumb" data-select-thumb aria-hidden="true"></span>
+              <span class="menu-select-trigger-copy"><span id="cot-room-vehicle-value" data-select-value>Select vehicle</span>
+                <small data-select-meta>Ready-up loadout</small></span></button>
+            <div class="menu-select-list" id="cot-room-vehicle-list" role="listbox" aria-labelledby="cot-room-vehicle-label"></div>
+          </div></div>
+        <div class="field"><span class="field-label" id="cot-room-team-label">Deployment</span>
           <div class="menu-select" data-control="team" data-value="alpha">
             <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
               aria-controls="cot-room-team-list" aria-labelledby="cot-room-team-label cot-room-team-value">
@@ -702,11 +730,13 @@ export function createPlayMenu({
   const signalInput = requiredElement<HTMLInputElement>(root, '[data-field="signal"]');
   const codeInput = requiredElement<HTMLInputElement>(root, '[data-field="code"]');
   const createSizeSelect = requiredElement<MenuSelectElement>(root, '[data-field="create-size"]');
+  const vehicleSelect = requiredElement<MenuSelectElement>(root, '[data-control="vehicle"]');
   const teamSelect = requiredElement<MenuSelectElement>(root, '[data-control="team"]');
   const sizeSelect = requiredElement<MenuSelectElement>(root, '[data-control="size"]');
   const mapSelect = requiredElement<MenuSelectElement>(root, '[data-control="map"]');
   const ruleButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
   const mapList = requiredElement<HTMLElement>(mapSelect, '[role="listbox"]');
+  const vehicleList = requiredElement<HTMLElement>(vehicleSelect, '[role="listbox"]');
   const mapById = new Map<string, PlayMenuMap>();
   const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
   for (const map of maps) {
@@ -734,6 +764,41 @@ export function createPlayMenu({
     option.append(thumb, copy);
     mapList.appendChild(option);
   }
+  const initialSelection = getSelection();
+  const selectableVehicles = vehicles.length > 0 ? vehicles : [{
+    id: initialSelection.specId,
+    name: getVehicleName(initialSelection.specId),
+  }];
+  for (const vehicle of selectableVehicles) {
+    const option = document.createElement('button');
+    option.className = 'menu-select-option';
+    option.type = 'button';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', 'false');
+    option.dataset.value = vehicle.id;
+    option.dataset.label = vehicle.name;
+    option.dataset.meta = Number.isFinite(vehicle.tier) ? `Tier ${vehicle.tier}` : 'Combat vehicle';
+    option.dataset.thumb = iconUrl(vehicle.id, 'angle');
+    const thumb = document.createElement('img');
+    thumb.className = 'menu-select-thumb';
+    thumb.src = option.dataset.thumb;
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+    thumb.decoding = 'async';
+    thumb.addEventListener('error', markMissingVehicleIcon, { once: true });
+    const copy = document.createElement('span');
+    copy.className = 'menu-select-option-copy';
+    const name = document.createElement('b');
+    name.textContent = vehicle.name;
+    const detail = document.createElement('small');
+    detail.textContent = option.dataset.meta;
+    copy.append(name, detail);
+    option.append(thumb, copy);
+    vehicleList.appendChild(option);
+  }
+  vehicleSelect.dataset.value = selectableVehicles.some((vehicle) => vehicle.id === initialSelection.specId)
+    ? initialSelection.specId
+    : selectableVehicles[0]?.id || '';
   const menuBindings: MenuBinding[] = [];
   function closeMenuSelects(except: MenuSelectElement | null = null): void {
     for (const binding of menuBindings) {
@@ -747,6 +812,7 @@ export function createPlayMenu({
     return controller;
   }
   bindRoomMenu(createSizeSelect);
+  bindRoomMenu(vehicleSelect);
   bindRoomMenu(teamSelect);
   bindRoomMenu(sizeSelect);
   bindRoomMenu(mapSelect);
@@ -1131,6 +1197,7 @@ export function createPlayMenu({
       readyBtn.removeAttribute('aria-pressed');
       return;
     }
+    if (player.specId) vehicleSelect.value = player.specId;
     teamSelect.value = player.team;
     if (nameInput.value !== player.name) {
       nameInput.value = player.name;
@@ -1150,6 +1217,8 @@ export function createPlayMenu({
     next: SerializedLobby,
     player: LobbyPlayer | undefined,
   ): void {
+    vehicleSelect.disabled = !player || next.phase !== 'waiting' || !!player.ready ||
+      player?.team === 'spectator';
     teamSelect.disabled = next.phase !== 'waiting' || !!player?.ready ||
       next.gameMode === 'endless_horde';
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
@@ -1419,6 +1488,14 @@ export function createPlayMenu({
     }
   });
   teamSelect.addEventListener('change', () => command({ type: 'set_team', team: teamSelect.value }));
+  vehicleSelect.addEventListener('change', () => {
+    const specId = vehicleSelect.value;
+    if (!specId || !isVehicleAllowed(specId)) return;
+    const loadout = getVehicleLoadout(specId);
+    command({ type: 'select_vehicle', specId });
+    command({ type: 'select_equipment', equipment: loadout.equipment });
+    command({ type: 'select_camo', camo: loadout.camo });
+  });
   sizeSelect.addEventListener('change', () => {
     createSizeSelect.value = sizeSelect.value;
     remember(ROOM_SIZE_KEY, sizeSelect.value);
@@ -1495,8 +1572,10 @@ export function createPlayMenu({
   function hide(closeSession = true): void {
     closeMenuSelects();
     root.classList.remove('show');
-    const parkedInGarage = !!(session && state?.phase === 'waiting');
-    if (closeSession && !handedOff && !activeRoom && !parkedInGarage) {
+    // Closing the presentation must never mean leaving an established room.
+    // The live lobby state remains authoritative while the player browses the
+    // Garage and is rendered unchanged when this modal is opened again.
+    if (closeSession && !handedOff && !activeRoom && !session) {
       closeCurrentSession('menu_closed');
     }
   }
@@ -1546,7 +1625,6 @@ export function createPlayMenu({
     room.classList.add('show');
     root.classList.add('show');
     renderLobby(next);
-    syncGarageSelection();
     return true;
   }
   function syncGarageSelection(): boolean {

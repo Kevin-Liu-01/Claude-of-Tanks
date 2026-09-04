@@ -287,6 +287,16 @@ assert.match(hud,
 
 assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
   'live room controls must use the game listbox component instead of browser-native selects');
+assert.match(playMenu, /menu-select menu-select--vehicle[^>]*data-control="vehicle"[\s\S]*cot-room-vehicle-list[^>]*role="listbox"/,
+  'ready-up must expose the production vehicle roster through the shared accessible listbox');
+assert.match(playMenu, /vehicleSelect\.addEventListener\('change',[\s\S]*type: 'select_vehicle'[\s\S]*type: 'select_equipment'[\s\S]*type: 'select_camo'/,
+  'in-lobby tank changes must submit the complete vehicle loadout');
+const showCurrentRoomBody = playMenu.match(
+  /function showCurrentRoom\(\): boolean \{([\s\S]*?)\n  \}\n  function syncGarageSelection/,
+)?.[1] || '';
+assert.ok(showCurrentRoomBody, 'the current-room presentation body remains inspectable');
+assert.doesNotMatch(showCurrentRoomBody, /syncGarageSelection\(\)/,
+  'reopening a room must not overwrite its retained map or tank with stale Garage state');
 assert.match(playMenu, /menu-select menu-select--map[^>]*data-control="map"[\s\S]*cot-room-map-list[^>]*role="listbox"/,
   'the battlefield picker must expose the complete map roster through an accessible styled listbox');
 assert.match(playMenu, /menu-select--map \.menu-select-list\{grid-template-columns:repeat\(2,/,

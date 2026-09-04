@@ -111,8 +111,12 @@ assert.ok(calls.some(([name, round]) => name === 'rematch' && round === 2));
 assert.equal(coordinator.claimRematch(room(2, 'starting')), true);
 coordinator.finishRematch();
 
+assert.equal(result, false, 'fixture exits before a result exists');
+assert.equal(coordinator.shouldPreserveOnBattleExit(), true,
+  'manual battle exit retains a healthy private room before the round result');
 result = true;
-assert.equal(coordinator.shouldPreserveAfterResult(), true);
+assert.equal(coordinator.shouldPreserveOnBattleExit(), true,
+  'result-screen exit retains the same room for rematches');
 coordinator.clear();
 await Promise.resolve();
 assert.equal(coordinator.activeRoom, null);

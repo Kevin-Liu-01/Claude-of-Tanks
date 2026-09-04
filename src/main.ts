@@ -206,7 +206,7 @@ import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRunt
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { createRosterPresentation } from './game/rosterPresentation.ts';
-import { tierNumeral } from './vehicles/tier.ts';
+import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
@@ -930,11 +930,19 @@ const playSurface = createPlaySurfaceRuntime({
   loadMenuModule: loadPlayMenuModule,
   createMenuOptions: () => ({
       maps: garageMaps,
+      vehicles: VISIBLE_TANK_IDS.map((id) => {
+        const spec = getSpec(id);
+        return { id, name: spec.name, tier: tankTier(id) };
+      }),
       getSelection: () => ({
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
+      }),
+      getVehicleLoadout: (specId: string) => ({
+        equipment: loadSelectedEquipment(specId, getSpec(specId)),
+        camo: getMultiplayerCamoSelection(specId),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
@@ -2121,7 +2129,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     resetHudFrame: () => battleHudFrame.reset(),
   },
   network: {
-    shouldPreserveRoom: () => currentNetworkRoom()?.shouldPreserveAfterResult() ?? false,
+    shouldPreserveRoom: () => currentNetworkRoom()?.shouldPreserveOnBattleExit() ?? false,
     disposePresentation: () => networkComposition.current?.round.disposePresentation(),
     closeMatch: (reason: string) => {
       const current = networkComposition.current;
