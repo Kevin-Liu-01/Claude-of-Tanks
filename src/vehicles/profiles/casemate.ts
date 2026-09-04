@@ -145,9 +145,9 @@ interface CasemateBuilderPort {
   fixedMount?: boolean;
   muzzleZ?: number;
   topY?: number;
-  add(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): unknown;
-  addEquipment(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): unknown;
-  addModuleVisual?(module: string, slot: string, geometry: BufferGeometry, ...transform: number[]): unknown;
+  add(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): void;
+  addEquipment(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): void;
+  addModuleVisual?(module: string, slot: string, geometry: BufferGeometry, ...transform: number[]): void;
   decal(
     owner: 'hull' | 'turret',
     kind: string,
@@ -155,7 +155,7 @@ interface CasemateBuilderPort {
     scale: number,
     position: readonly number[],
     ...rotation: number[]
-  ): unknown;
+  ): void;
 }
 
 interface IsuCommonOptions {

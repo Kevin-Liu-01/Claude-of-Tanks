@@ -68,12 +68,12 @@ interface T72BuilderPort {
   muzzleZ?: number;
   topY?: number;
   postAssemble?: (() => void) | null;
-  add(slot: string, geometry: unknown, ...transform: number[]): void;
-  addEquipment(slot: string, geometry: unknown, ...transform: number[]): void;
-  addGunExtra(geometry: unknown, ...transform: number[]): void;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): void;
-  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): void;
-  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): void;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   clear(...slots: string[]): void;
   decal(
     owner: VehicleAssemblyOwner,

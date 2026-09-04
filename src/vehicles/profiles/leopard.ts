@@ -49,6 +49,19 @@ type Side = -1 | 1;
 type VehicleOwner = 'hull' | 'turret';
 type NumericSeries = number | readonly number[];
 
+function orderedMirroredFourPointRing(side: Side, ring: FourPointRing): FourPointRing {
+  const mirror = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
+  const mirrored: FourPointRing = [
+    mirror(ring[0]),
+    mirror(ring[1]),
+    mirror(ring[2]),
+    mirror(ring[3]),
+  ];
+  return side < 0
+    ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+    : mirrored;
+}
+
 function isTankBuilderPort(value: object): value is TankBuilderPort {
   return 'spec' in value
     && 'rng' in value
@@ -2277,12 +2290,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
         upperOuterX: F.x1,
       });
     };
-    const orderedRing = (side: Side, ring: FourPointRing): FourPointRing => {
-      const mirrored = ring.map(([x, y, z]) => [side * x, y, z] as Vec3Tuple) as unknown as FourPointRing;
-      return side < 0
-        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
-        : mirrored;
-    };
+    const orderedRing = orderedMirroredFourPointRing;
     const addClosureRun = (course: string, run: LeopardSkirtRun): void => {
       const z0 = Math.max(F.z0, run.z0);
       const z1 = Math.min(F.z1, run.z1);
@@ -3003,12 +3011,7 @@ function addLeopardClosedShoulderMudguards(
 
   for (const side of [-1, 1] as const) {
     const sideName = side < 0 ? 'left' : 'right';
-    const order = (ring: readonly Vec3Tuple[]): FourPointRing => {
-      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [side * x, y, z]) as unknown as FourPointRing;
-      return side < 0
-        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
-        : mirrored;
-    };
+    const order = (ring: FourPointRing): FourPointRing => orderedMirroredFourPointRing(side, ring);
     const shoulderLabel = `leopard-${family}-front-mudguard-${sideName}-closed-shoulder`;
     labels.push(shoulderLabel);
     MUDGUARDS.add(P, {
@@ -10042,12 +10045,7 @@ function addKF51ClosedShoulderMudguards(
 
   for (const side of [-1, 1] as const) {
     const sideName = side < 0 ? 'left' : 'right';
-    const order = (ring: readonly Vec3Tuple[]): FourPointRing => {
-      const mirrored = ring.map(([x, y, z]): Vec3Tuple => [side * x, y, z]) as unknown as FourPointRing;
-      return side < 0
-        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
-        : mirrored;
-    };
+    const order = (ring: FourPointRing): FourPointRing => orderedMirroredFourPointRing(side, ring);
     const shoulderLabel = `${profile}-front-mudguard-${sideName}-closed-shoulder`;
     labels.push(shoulderLabel);
     MUDGUARDS.add(P, {

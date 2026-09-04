@@ -40,7 +40,7 @@ interface Ww2BuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: unknown;
+  readonly mats: Record<string, THREE.Material>;
   readonly q?: boolean;
   readonly rng: () => number;
   readonly spec: { readonly visual: { readonly number?: string } };

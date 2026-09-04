@@ -4,6 +4,7 @@ import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzz
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { RuntimeValue } from '../../runtimeTypes.ts';
 import {
   loftHull,
   meshDome,
@@ -114,11 +115,11 @@ const T90M_2A46M5_VISUAL_DATUM = Object.freeze({
   fumeExtractorRadiusM: 0.128,
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object';
 }
 
-function isT90Builder(value: unknown): value is T90BuilderPort {
+function isT90Builder(value: RuntimeValue): value is T90BuilderPort {
   if (!isRecord(value)) return false;
   return value.hullG instanceof THREE.Group
     && value.turretG instanceof THREE.Group
@@ -143,7 +144,7 @@ function isT90Builder(value: unknown): value is T90BuilderPort {
     && typeof value.forEachBucketPart === 'function';
 }
 
-function requireT90Builder(value: unknown): T90BuilderPort {
+function requireT90Builder(value: RuntimeValue): T90BuilderPort {
   if (!isT90Builder(value)) {
     throw new TypeError('T-90 profile requires the complete procedural builder contract');
   }
@@ -151,7 +152,7 @@ function requireT90Builder(value: unknown): T90BuilderPort {
 }
 
 function t90Profile(build: (builder: T90BuilderPort) => void) {
-  return { build: (builder: unknown): void => build(requireT90Builder(builder)) };
+  return { build: (builder: RuntimeValue): void => build(requireT90Builder(builder)) };
 }
 
 // Faceted turret shell with a source-defined lower ring.  The top ring and

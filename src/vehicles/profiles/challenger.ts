@@ -75,8 +75,8 @@ interface ChallengerBuilderPort extends UKBuilderPort {
     };
   };
   readonly gear: ChallengerGearPort;
-  addEquipment(owner: EquipmentOwner, geometry: unknown, ...transform: number[]): unknown;
-  addMudguard(key: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: EquipmentOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(key: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   eraCluster(key: string, build: (place: EraPlacer) => void, turretOwned?: boolean): void;
   postAssemble?: (assembly: { readonly turretG: THREE.Group }) => void;
 }
