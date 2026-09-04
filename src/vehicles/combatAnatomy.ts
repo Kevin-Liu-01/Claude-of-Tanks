@@ -657,57 +657,68 @@ function splitBoundsAcrossShell(
   return [{ cell: nearest, bounds }];
 }
 
-function fitShapeInsideShell(shape: AnatomyShape, cells: readonly CollisionCell[]): number {
-  if (!cells?.length) return 1;
-  let center = shapeCenter(shape);
-  let cell = cells[0];
-  let best = Infinity;
-  for (const candidate of cells) {
-    const outside = cellOutsideDistance(candidate, center);
-    if (outside < best) {
-      best = outside;
-      cell = candidate;
-    }
+function closestCollisionCell(
+  cells: readonly CollisionCell[], center: readonly number[],
+): CollisionCell {
+  let closest = cells[0];
+  let bestDistance = Infinity;
+  for (const cell of cells) {
+    const distance = cellOutsideDistance(cell, center);
+    if (distance >= bestDistance) continue;
+    bestDistance = distance;
+    closest = cell;
   }
-  const margin = 0.006;
-  // Seat the whole smooth volume, not only its center, inside the chosen
-  // convex component. Repeating handles corners where one inward move
-  // slightly violates a neighboring plane; scaling is the last resort.
+  return closest;
+}
+
+function seatShapeInsideCell(
+  shape: AnatomyShape,
+  cell: CollisionCell,
+  margin: number,
+  includeShapeRadius: boolean,
+): void {
   for (let iteration = 0; iteration < 10; iteration++) {
     let moved = false;
-    center = shapeCenter(shape);
+    let center = shapeCenter(shape);
     for (const face of cell.faces) {
-      const excess = dot(face.normal, center) + face.constant
-        + shapeSupportRadius(shape, face.normal) + margin;
+      const support = includeShapeRadius ? shapeSupportRadius(shape, face.normal) : 0;
+      const excess = dot(face.normal, center) + face.constant + support + margin;
       if (excess <= 0) continue;
       moveShape(shape, face.normal.map((value) => -value * excess));
       moved = true;
       center = shapeCenter(shape);
     }
-    if (!moved) break;
+    if (!moved) return;
   }
-  // An oversized authoring box can oscillate between opposite facets. Seat
-  // its center unconditionally before deriving the final uniform shrink.
-  for (let iteration = 0; iteration < 10; iteration++) {
-    let moved = false;
-    center = shapeCenter(shape);
-    for (const face of cell.faces) {
-      const signed = dot(face.normal, center) + face.constant;
-      if (signed <= -margin) continue;
-      moveShape(shape, face.normal.map((value) => -value * (signed + margin)));
-      moved = true;
-      center = shapeCenter(shape);
-    }
-    if (!moved) break;
-  }
-  center = shapeCenter(shape);
+}
+
+function shapeScaleInsideCell(
+  shape: AnatomyShape,
+  cell: CollisionCell,
+  center: readonly number[],
+  margin: number,
+): number {
   let scale = 1;
   for (const face of cell.faces) {
     const available = -margin - (dot(face.normal, center) + face.constant);
     const support = shapeSupportRadius(shape, face.normal);
     if (support > EPS) scale = Math.min(scale, available / support);
   }
-  const appliedScale = Math.max(0.001, Math.min(1, scale));
+  return Math.max(0.001, Math.min(1, scale));
+}
+
+function fitShapeInsideShell(shape: AnatomyShape, cells: readonly CollisionCell[]): number {
+  if (!cells?.length) return 1;
+  const margin = 0.006;
+  const cell = closestCollisionCell(cells, shapeCenter(shape));
+  // Seat the whole smooth volume, not only its center, inside the chosen
+  // convex component. Repeating handles corners where one inward move
+  // slightly violates a neighboring plane; scaling is the last resort.
+  seatShapeInsideCell(shape, cell, margin, true);
+  // An oversized authoring box can oscillate between opposite facets. Seat
+  // its center unconditionally before deriving the final uniform shrink.
+  seatShapeInsideCell(shape, cell, margin, false);
+  const appliedScale = shapeScaleInsideCell(shape, cell, shapeCenter(shape), margin);
   scaleShape(shape, appliedScale);
   return appliedScale;
 }

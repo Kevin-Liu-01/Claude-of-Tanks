@@ -564,6 +564,91 @@ export function meshDome(P: RussiaGeometryPort, rings: readonly DomeRing[], sz: 
   P.add('turret', KIT.lathe(rings, P.q ? 30 : 16, sz), cx, 0, cz);
 }
 
+function curvedDomeVertexAngles(rings: readonly DomeRing[]): number[] {
+  const segmentAngles: number[] = [];
+  for (let index = 0; index < rings.length - 1; index++) {
+    const deltaRadius = rings[index + 1][0] - rings[index][0];
+    const deltaY = rings[index + 1][1] - rings[index][1];
+    segmentAngles.push(Math.atan2(deltaY, -deltaRadius));
+  }
+  const vertexAngles = [segmentAngles[0]];
+  for (let index = 1; index < rings.length - 1; index++) {
+    vertexAngles.push((segmentAngles[index - 1] + segmentAngles[index]) / 2);
+  }
+  vertexAngles.push(segmentAngles[rings.length - 2]);
+  return vertexAngles;
+}
+
+function interpolateCurvedDomeProfile(
+  rings: readonly DomeRing[], vertexAngles: readonly number[],
+): { points: Vec2Tuple[]; angles: number[] } {
+  const points: Vec2Tuple[] = [];
+  const angles: number[] = [];
+  for (let index = 0; index < rings.length - 1; index++) {
+    const [radiusStart, yStart] = rings[index];
+    const [radiusEnd, yEnd] = rings[index + 1];
+    const cuts = Math.max(
+      1,
+      Math.ceil(Math.hypot(radiusEnd - radiusStart, yEnd - yStart) / 0.055),
+    );
+    for (let cut = 0; cut < cuts; cut++) {
+      const t = cut / cuts;
+      points.push([
+        radiusStart + (radiusEnd - radiusStart) * t,
+        yStart + (yEnd - yStart) * t,
+      ]);
+      angles.push(vertexAngles[index]
+        + (vertexAngles[index + 1] - vertexAngles[index]) * t);
+    }
+  }
+  points.push([rings.at(-1)![0], rings.at(-1)![1]]);
+  angles.push(vertexAngles.at(-1)!);
+  return { points, angles };
+}
+
+function curvedDomeNormalAngle(
+  authoredAngle: number,
+  radius: number,
+  capRadius: number,
+  roofTiltScale: number | undefined,
+): number {
+  let angle = authoredAngle;
+  if (capRadius && angle < 0.8) {
+    const capAngle = Math.min(0.8, Math.asin(Math.min(1, radius / capRadius)));
+    if (capAngle > angle) angle = capAngle;
+  }
+  if (roofTiltScale && angle < 0.8) angle *= roofTiltScale;
+  return angle;
+}
+
+function applyCurvedDomeNormals(
+  geometry: THREE.BufferGeometry,
+  points: readonly Vec2Tuple[],
+  angles: readonly number[],
+  planScaleZ: number,
+  options: CurvedDomeOptions,
+): void {
+  const position = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+  for (let vertex = 0; vertex < position.count; vertex++) {
+    const profileIndex = vertex % points.length;
+    const angle = curvedDomeNormalAngle(
+      angles[profileIndex], points[profileIndex][0], options.capR ?? 0, options.roofTiltScale,
+    );
+    const x = position.getX(vertex);
+    const z = position.getZ(vertex) / planScaleZ;
+    const radius = Math.hypot(x, z);
+    const unitX = radius > 1e-4 ? x / radius : 0;
+    const unitZ = radius > 1e-4 ? z / radius : 0;
+    const normalX = unitX * Math.sin(angle);
+    const normalY = Math.cos(angle);
+    const normalZ = (unitZ * Math.sin(angle)) / planScaleZ;
+    const length = Math.hypot(normalX, normalY, normalZ) || 1;
+    normal.setXYZ(vertex, normalX / length, normalY / length, normalZ / length);
+  }
+  normal.needsUpdate = true;
+}
+
 // r15 CURVED DOME SHELL (t72b3m visual r4 item 1, opt-in — siblings keep
 // meshDome). The certified ring polyline is geometrically near-flat across
 // the crown (4 cm rise over 0.84 m), so the lathe renders as conical plates
@@ -590,55 +675,11 @@ export function meshDomeCurved(
   o: CurvedDomeOptions = {},
 ): void {
   const seg = P.q ? 30 : 16;
-  const n0 = rings.length;
-  const segTh: number[] = [];
-  for (let i = 0; i < n0 - 1; i++) {
-    const dr = rings[i + 1][0] - rings[i][0], dy = rings[i + 1][1] - rings[i][1];
-    segTh.push(Math.atan2(dy, -dr)); // outward profile-normal angle from +y
-  }
-  const vTh = [segTh[0]];
-  for (let i = 1; i < n0 - 1; i++) vTh.push((segTh[i - 1] + segTh[i]) / 2);
-  vTh.push(segTh[n0 - 2]);
-  const pts: Vec2Tuple[] = [], ths: number[] = [];
-  for (let i = 0; i < n0 - 1; i++) {
-    const [r0, y0] = rings[i], [r1, y1] = rings[i + 1];
-    const cuts = Math.max(1, Math.ceil(Math.hypot(r1 - r0, y1 - y0) / 0.055));
-    for (let c = 0; c < cuts; c++) {
-      const t = c / cuts;
-      pts.push([r0 + (r1 - r0) * t, y0 + (y1 - y0) * t]);
-      ths.push(vTh[i] + (vTh[i + 1] - vTh[i]) * t);
-    }
-  }
-  pts.push([rings[n0 - 1][0], rings[n0 - 1][1]]);
-  ths.push(vTh[n0 - 1]);
-  const capR = o.capR ?? 0;
-  const geo = KIT.lathe(pts, seg, sz);
-  const pos = geo.attributes.position, nor = geo.attributes.normal;
-  const nP = pts.length;
-  for (let vi = 0; vi < pos.count; vi++) {
-    const j = vi % nP;
-    let th = ths[j];
-    // cap floor only on the roof zone (crown/shoulder, th < ~46deg) so the
-    // certified wall/foot-bulge normals stay geometric.
-    if (capR && th < 0.8) {
-      const capTh = Math.min(0.8, Math.asin(Math.min(1, pts[j][0] / capR)));
-      if (capTh > th) th = capTh;
-    }
-    // r20 item 4 (t72b3m, opt-in — critic r8 "kill the ball-crescent top
-    // shading; ref crown reads FLAT-PLATEAU from top"): scale the roof-zone
-    // tilt back down AFTER the cap floor — from-top the normals read near
-    // flat while the wall/terminator zone (th >= 0.8) stays geometric.
-    // Shading-only: silhouette bytes identical. Siblings never pass this.
-    if (o.roofTiltScale && th < 0.8) th *= o.roofTiltScale;
-    const x = pos.getX(vi), zs = pos.getZ(vi) / sz;
-    const rr = Math.hypot(x, zs);
-    const ux = rr > 1e-4 ? x / rr : 0, uz = rr > 1e-4 ? zs / rr : 0;
-    const nx = ux * Math.sin(th), ny = Math.cos(th), nz = (uz * Math.sin(th)) / sz;
-    const L = Math.hypot(nx, ny, nz) || 1;
-    nor.setXYZ(vi, nx / L, ny / L, nz / L);
-  }
-  nor.needsUpdate = true;
-  P.add(o.bucket ?? 'turret', geo, cx, 0, cz);
+  const vertexAngles = curvedDomeVertexAngles(rings);
+  const profile = interpolateCurvedDomeProfile(rings, vertexAngles);
+  const geometry = KIT.lathe(profile.points, seg, sz);
+  applyCurvedDomeNormals(geometry, profile.points, profile.angles, sz, o);
+  P.add(o.bucket ?? 'turret', geometry, cx, 0, cz);
 }
 
 // Dome-skin radius at height y for a measured ring profile (fitting seats).
