@@ -2693,6 +2693,225 @@ function paintCamo(
 // casting noise, plate offsets, panel-line grooves, weld beads, bolt domes,
 // chips, optional zimmerit ridging.
 // ---------------------------------------------------------------------------
+function paintSteelHeightUndulation(
+  ctx: CanvasRenderingContext2D, size: number, rng: Rng,
+): void {
+  for (let index = 0; index < 200; index++) {
+    const x = rng() * size;
+    const y = rng() * size;
+    const radius = size * (0.02 + rng() * 0.09);
+    const raised = rng() < 0.5;
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(
+      0,
+      raised ? 'rgba(255,255,255,0.085)' : 'rgba(0,0,0,0.085)',
+    );
+    gradient.addColorStop(1, 'rgba(128,128,128,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  }
+}
+
+function paintPanelHeightOffsets(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  features: PlateFeatures,
+  rng: Rng,
+): void {
+  const horizontal = [0, ...features.hLines.map((line) => line.p), 1]
+    .sort((a, b) => a - b);
+  const vertical = [0, ...features.vLines.map((line) => line.p), 1]
+    .sort((a, b) => a - b);
+  for (let y = 0; y < horizontal.length - 1; y++) {
+    for (let x = 0; x < vertical.length - 1; x++) {
+      const offset = (rng() - 0.5) * 12;
+      ctx.fillStyle = offset > 0
+        ? `rgba(255,255,255,${offset / 255})`
+        : `rgba(0,0,0,${-offset / 255})`;
+      ctx.fillRect(
+        vertical[x] * size,
+        horizontal[y] * size,
+        (vertical[x + 1] - vertical[x]) * size,
+        (horizontal[y + 1] - horizontal[y]) * size,
+      );
+    }
+  }
+}
+
+function paintZimmeritHeight(
+  ctx: CanvasRenderingContext2D, size: number, rng: Rng,
+): void {
+  const pitch = Math.max(2, (size / 450) | 0);
+  const columns: Array<[number, number, number]> = [];
+  let x = 0;
+  while (x < size) {
+    const width = (size / 22) * (0.7 + rng() * 0.8);
+    columns.push([x, Math.min(x + width, size), (rng() * pitch) | 0]);
+    x += width;
+  }
+  for (const [start, end, phase] of columns) {
+    for (let y = -pitch; y < size; y += pitch) {
+      ctx.fillStyle = 'rgba(255,255,255,0.20)';
+      ctx.fillRect(start, y + phase, end - start, Math.max(1, pitch >> 1));
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(
+        start, y + phase + (pitch >> 1), end - start, Math.max(1, pitch >> 1),
+      );
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(end - 1, 0, 1.5, size);
+  }
+  for (let index = 0; index < 10; index++) {
+    ctx.fillStyle = 'rgba(110,110,110,0.9)';
+    ctx.fillRect(
+      rng() * size,
+      rng() * size,
+      size * (0.015 + rng() * 0.035),
+      size * (0.012 + rng() * 0.02),
+    );
+  }
+}
+
+function paintHeightGroove(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  horizontal: boolean,
+  line: PlateLine,
+): void {
+  const width = Math.max(2, size / 480);
+  const position = line.p * size;
+  for (const [start, end] of lineSegs(line)) {
+    const segmentStart = start * size;
+    const segmentLength = (end - start) * size;
+    ctx.fillStyle = 'rgba(0,0,0,0.36)';
+    if (horizontal) ctx.fillRect(segmentStart, position, segmentLength, width);
+    else ctx.fillRect(position, segmentStart, width, segmentLength);
+    ctx.fillStyle = 'rgba(0,0,0,0.13)';
+    if (horizontal) {
+      ctx.fillRect(segmentStart, position - width, segmentLength, width);
+      ctx.fillRect(segmentStart, position + width, segmentLength, width);
+    } else {
+      ctx.fillRect(position - width, segmentStart, width, segmentLength);
+      ctx.fillRect(position + width, segmentStart, width, segmentLength);
+    }
+  }
+}
+
+function paintHeightGrooves(
+  ctx: CanvasRenderingContext2D, size: number, features: PlateFeatures,
+): void {
+  for (const line of features.hLines) paintHeightGroove(ctx, size, true, line);
+  for (const line of features.vLines) paintHeightGroove(ctx, size, false, line);
+}
+
+function paintHeightWeldLine(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  horizontal: boolean,
+  line: PlateLine,
+  rng: Rng,
+): void {
+  const step = size / 160;
+  const radius = Math.max(1.6, size / 620);
+  for (let distance = 0; distance < size; distance += step) {
+    if (inGap(line, distance / size)) continue;
+    ctx.fillStyle = `rgba(255,255,255,${0.30 + rng() * 0.25})`;
+    ctx.beginPath();
+    const jittered = distance + (rng() - 0.5) * step * 0.4;
+    if (horizontal) ctx.arc(jittered, line.p * size, radius, 0, Math.PI * 2);
+    else ctx.arc(line.p * size, jittered, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function paintHeightWelds(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  features: PlateFeatures,
+  rng: Rng,
+): void {
+  for (const line of features.hLines) {
+    if (line.weld) paintHeightWeldLine(ctx, size, true, line, rng);
+  }
+  for (const line of features.vLines) {
+    if (line.weld) paintHeightWeldLine(ctx, size, false, line, rng);
+  }
+}
+
+function paintHeightBolt(
+  ctx: CanvasRenderingContext2D, x: number, y: number, radius: number,
+): void {
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 1.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function paintHeightLineBolts(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  horizontal: boolean,
+  line: PlateLine,
+  radius: number,
+): void {
+  const step = size / 26;
+  for (let distance = step / 2; distance < size; distance += step) {
+    if (inGap(line, distance / size)) continue;
+    const offset = line.p * size + radius * 2.4;
+    if (horizontal) paintHeightBolt(ctx, distance, offset, radius);
+    else paintHeightBolt(ctx, offset, distance, radius);
+  }
+}
+
+function paintHeightBolts(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  features: PlateFeatures,
+  modernWelds: boolean,
+): void {
+  const radius = Math.max(2, size / 340);
+  if (!modernWelds) {
+    for (const line of features.hLines) {
+      if (line.bolts) paintHeightLineBolts(ctx, size, true, line, radius);
+    }
+    for (const line of features.vLines) {
+      if (line.bolts) paintHeightLineBolts(ctx, size, false, line, radius);
+    }
+  }
+  for (const ring of features.rings) {
+    for (let index = 0; index < ring.n; index++) {
+      const angle = (index / ring.n) * Math.PI * 2;
+      paintHeightBolt(
+        ctx,
+        (ring.x + Math.cos(angle) * ring.r) * size,
+        (ring.y + Math.sin(angle) * ring.r) * size,
+        radius,
+      );
+    }
+  }
+}
+
+function paintHeightChips(
+  ctx: CanvasRenderingContext2D, size: number, features: PlateFeatures,
+): void {
+  for (const chip of features.chips) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.arc(
+      chip.x * size,
+      chip.y * size,
+      Math.max(0.8, chip.r * size * 0.8),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+}
+
 function paintHeight(
   canvas: HTMLCanvasElement,
   visual: MaterialVisual,
@@ -2704,121 +2923,13 @@ function paintHeight(
   const S = canvas.width;
   ctx.fillStyle = 'rgb(128,128,128)';
   ctx.fillRect(0, 0, S, S);
-
-  // rolled-steel / casting undulation: large soft bumps. r9: count/amplitude
-  // up so light visibly breaks across big flat plates (cast/rolled-steel
-  // normal noise — Tiger papercraft critique).
-  for (let i = 0; i < 200; i++) {
-    const x = rng() * S, y = rng() * S, r = S * (0.02 + rng() * 0.09);
-    const up = rng() < 0.5;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, up ? 'rgba(255,255,255,0.085)' : 'rgba(0,0,0,0.085)');
-    g.addColorStop(1, 'rgba(128,128,128,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-
-  // subtle per-panel height offsets so plates read as separate facets
-  const px = (v: number): number => v * S;
-  const hs = [0, ...feats.hLines.map((l) => l.p), 1].sort((a, b) => a - b);
-  const vs = [0, ...feats.vLines.map((l) => l.p), 1].sort((a, b) => a - b);
-  for (let i = 0; i < hs.length - 1; i++) {
-    for (let j = 0; j < vs.length - 1; j++) {
-      const o = (rng() - 0.5) * 12;
-      ctx.fillStyle = o > 0 ? `rgba(255,255,255,${o / 255})` : `rgba(0,0,0,${-o / 255})`;
-      ctx.fillRect(px(vs[j]), px(hs[i]), px(vs[j + 1] - vs[j]), px(hs[i + 1] - hs[i]));
-    }
-  }
-
-  // zimmerit: fine horizontal ridging broken into hand-worked vertical strips
-  // (waffle sections with phase offsets), plus chipped-off patches — subtle
-  // high-frequency normal relief, not albedo stripes (r5 critique)
-  if (visual.zimmerit) {
-    // r7 scale fix: ~1/3 the old ridge pitch (real rows ~1 cm) and softer
-    // relief — the coating should read as fine trowel texture, not cardboard.
-    const pitch = Math.max(2, (S / 450) | 0);
-    // vertical strip plan: ~22 hand-worked columns (~15 cm at hull scale)
-    const cols = [];
-    let cx = 0;
-    while (cx < S) {
-      const w = (S / 22) * (0.7 + rng() * 0.8);
-      cols.push([cx, Math.min(cx + w, S), (rng() * pitch) | 0]);
-      cx += w;
-    }
-    for (const [x0, x1, phase] of cols) {
-      for (let y = -pitch; y < S; y += pitch) {
-        ctx.fillStyle = 'rgba(255,255,255,0.20)';
-        ctx.fillRect(x0, y + phase, x1 - x0, Math.max(1, pitch >> 1));
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
-        ctx.fillRect(x0, y + phase + (pitch >> 1), x1 - x0, Math.max(1, pitch >> 1));
-      }
-      // groove between strips
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fillRect(x1 - 1, 0, 1.5, S);
-    }
-    for (let i = 0; i < 10; i++) {                      // chipped-off patches
-      ctx.fillStyle = 'rgba(110,110,110,0.9)';
-      ctx.fillRect(rng() * S, rng() * S, S * (0.015 + rng() * 0.035), S * (0.012 + rng() * 0.02));
-    }
-  }
-
-  // grooves (dark) with soft shoulders, honoring the gap plan
-  const groove = (horiz: boolean, l: PlateLine): void => {
-    const w = Math.max(2, S / 480);
-    for (const [a, b] of lineSegs(l)) {
-      ctx.fillStyle = 'rgba(0,0,0,0.36)';
-      if (horiz) ctx.fillRect(px(a), px(l.p), px(b - a), w); else ctx.fillRect(px(l.p), px(a), w, px(b - a));
-      ctx.fillStyle = 'rgba(0,0,0,0.13)';
-      if (horiz) { ctx.fillRect(px(a), px(l.p) - w, px(b - a), w); ctx.fillRect(px(a), px(l.p) + w, px(b - a), w); }
-      else { ctx.fillRect(px(l.p) - w, px(a), w, px(b - a)); ctx.fillRect(px(l.p) + w, px(a), w, px(b - a)); }
-    }
-  };
-  for (const l of feats.hLines) groove(true, l);
-  for (const l of feats.vLines) groove(false, l);
-
-  // weld beads: bright stitch bumps
-  const weld = (horiz: boolean, l: PlateLine): void => {
-    const step = S / 160, r = Math.max(1.6, S / 620);
-    for (let t = 0; t < S; t += step) {
-      if (inGap(l, t / S)) continue;
-      ctx.fillStyle = `rgba(255,255,255,${0.30 + rng() * 0.25})`;
-      ctx.beginPath();
-      if (horiz) ctx.arc(t + (rng() - 0.5) * step * 0.4, px(l.p), r, 0, Math.PI * 2);
-      else ctx.arc(px(l.p), t + (rng() - 0.5) * step * 0.4, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
-  for (const l of feats.hLines) if (l.weld) weld(true, l);
-  for (const l of feats.vLines) if (l.weld) weld(false, l);
-
-  // bolt domes: bright circles with dark rim
-  const boltR = Math.max(2, S / 340);
-  const bolt = (x: number, y: number): void => {
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.arc(x, y, boltR * 1.25, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath(); ctx.arc(x, y, boltR * 0.7, 0, Math.PI * 2); ctx.fill();
-  };
-  const lineBolts = !visual.modernWelds;   // r10: no rivet rows on modern MBTs
-  for (const l of feats.hLines) if (l.bolts && lineBolts) {
-    const step = S / 26;
-    for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(t, px(l.p) + boltR * 2.4);
-  }
-  for (const l of feats.vLines) if (l.bolts && lineBolts) {
-    const step = S / 26;
-    for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(px(l.p) + boltR * 2.4, t);
-  }
-  for (const ring of feats.rings) {
-    for (let k = 0; k < ring.n; k++) {
-      const a = (k / ring.n) * Math.PI * 2;
-      bolt(px(ring.x) + Math.cos(a) * px(ring.r), px(ring.y) + Math.sin(a) * px(ring.r));
-    }
-  }
-  // chips: small pits
-  for (const c of feats.chips) {
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath(); ctx.arc(px(c.x), px(c.y), Math.max(0.8, px(c.r) * 0.8), 0, Math.PI * 2); ctx.fill();
-  }
+  paintSteelHeightUndulation(ctx, S, rng);
+  paintPanelHeightOffsets(ctx, S, feats, rng);
+  if (visual.zimmerit) paintZimmeritHeight(ctx, S, rng);
+  paintHeightGrooves(ctx, S, feats);
+  paintHeightWelds(ctx, S, feats, rng);
+  paintHeightBolts(ctx, S, feats, visual.modernWelds === true);
+  paintHeightChips(ctx, S, feats);
   applyGrain(ctx, S, seed ^ 0x77e1, 0.05);
   return canvas;
 }
