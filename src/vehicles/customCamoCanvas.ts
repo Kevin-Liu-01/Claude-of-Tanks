@@ -90,6 +90,144 @@ function drawAsset(
   ctx.restore();
 }
 
+function resolveBrush(value: RuntimeValue): CustomCamoBrush {
+  return CUSTOM_CAMO_BRUSHES.includes(value as CustomCamoBrush)
+    ? value as CustomCamoBrush
+    : CUSTOM_CAMO_BRUSHES[0];
+}
+
+function resolveAsset(value: RuntimeValue): CustomCamoAsset {
+  return CUSTOM_CAMO_ASSETS.includes(value as CustomCamoAsset)
+    ? value as CustomCamoAsset
+    : 'star';
+}
+
+function paintStampStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: CamoStrokeInput,
+  points: ReadonlyArray<ReadonlyArray<number>>,
+  width: number,
+  height: number,
+  lineWidth: number,
+): void {
+  const asset = resolveAsset(stroke.asset);
+  const rotation = Number(stroke.rotation) || 0;
+  for (const point of points) {
+    const [x, y] = pointXY(point, width, height);
+    drawAsset(ctx, asset, x, y, lineWidth, rotation);
+  }
+}
+
+function paintSprayStroke(
+  ctx: CanvasRenderingContext2D,
+  points: ReadonlyArray<ReadonlyArray<number>>,
+  width: number,
+  height: number,
+  lineWidth: number,
+  strokeIndex: number,
+): void {
+  const count = Math.max(7, Math.min(24, Math.round(lineWidth * .7)));
+  for (let pointIndex = 0; pointIndex < points.length; pointIndex++) {
+    const point = points[pointIndex];
+    const [x, y] = pointXY(point, width, height);
+    for (let dot = 0; dot < count; dot++) {
+      const seed = strokeIndex * 73856093 + pointIndex * 19349663
+        + dot * 83492791 + point[0] * 97 + point[1];
+      const angle = seededUnit(seed) * Math.PI * 2;
+      const radius = Math.sqrt(seededUnit(seed + 31)) * lineWidth * .52;
+      const dotRadius = Math.max(
+        .65,
+        lineWidth * (.035 + seededUnit(seed + 73) * .065),
+      );
+      ctx.beginPath();
+      ctx.arc(
+        x + Math.cos(angle) * radius,
+        y + Math.sin(angle) * radius,
+        dotRadius,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+  }
+}
+
+function paintPixelStroke(
+  ctx: CanvasRenderingContext2D,
+  points: ReadonlyArray<ReadonlyArray<number>>,
+  width: number,
+  height: number,
+  lineWidth: number,
+): void {
+  const side = Math.max(2, lineWidth * .72);
+  for (const point of points) {
+    const [x, y] = pointXY(point, width, height);
+    ctx.fillRect(
+      Math.round(x / side) * side - side / 2,
+      Math.round(y / side) * side - side / 2,
+      side,
+      side,
+    );
+  }
+}
+
+function paintSinglePoint(
+  ctx: CanvasRenderingContext2D,
+  brush: CustomCamoBrush,
+  point: ReadonlyArray<number>,
+  width: number,
+  height: number,
+  lineWidth: number,
+): void {
+  const [x, y] = pointXY(point, width, height);
+  if (brush === 'flat') {
+    ctx.fillRect(x - lineWidth / 2, y - lineWidth / 2, lineWidth, lineWidth);
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, lineWidth / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function paintLineStroke(
+  ctx: CanvasRenderingContext2D,
+  points: ReadonlyArray<ReadonlyArray<number>>,
+  width: number,
+  height: number,
+): void {
+  const [x, y] = pointXY(points[0], width, height);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  for (let index = 1; index < points.length; index++) {
+    const [px, py] = pointXY(points[index], width, height);
+    ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+}
+
+function paintStrokeGeometry(
+  ctx: CanvasRenderingContext2D,
+  stroke: CamoStrokeInput,
+  brush: CustomCamoBrush,
+  points: ReadonlyArray<ReadonlyArray<number>>,
+  width: number,
+  height: number,
+  lineWidth: number,
+  strokeIndex: number,
+): void {
+  if (brush === 'stamp') {
+    paintStampStroke(ctx, stroke, points, width, height, lineWidth);
+  } else if (brush === 'spray') {
+    paintSprayStroke(ctx, points, width, height, lineWidth, strokeIndex);
+  } else if (brush === 'pixel') {
+    paintPixelStroke(ctx, points, width, height, lineWidth);
+  } else if (points.length === 1) {
+    paintSinglePoint(ctx, brush, points[0], width, height, lineWidth);
+  } else {
+    paintLineStroke(ctx, points, width, height);
+  }
+}
+
 /** Paint normalized vector strokes into one tile-sized canvas region. */
 export function paintCustomCamoStrokes(
   ctx: CanvasRenderingContext2D,
@@ -98,15 +236,13 @@ export function paintCustomCamoStrokes(
   width, height, colorA, colorB, eraseColor,
   }: CustomCamoPaintOptions,
 ): void {
+  if (!strokes) return;
   const minSide = Math.min(width, height);
-  const sourceStrokes = strokes || [];
-  for (let strokeIndex = 0; strokeIndex < sourceStrokes.length; strokeIndex++) {
-    const stroke = sourceStrokes[strokeIndex];
+  for (let strokeIndex = 0; strokeIndex < strokes.length; strokeIndex++) {
+    const stroke = strokes[strokeIndex];
     const points = stroke.points || [];
     if (!points.length) continue;
-    const brush: CustomCamoBrush = CUSTOM_CAMO_BRUSHES.includes(stroke.brush as CustomCamoBrush)
-      ? stroke.brush as CustomCamoBrush
-      : 'round';
+    const brush = resolveBrush(stroke.brush);
     const color = brush === 'eraser' ? eraseColor : stroke.color === 1 ? colorB : colorA;
     const lineWidth = Math.max(1, (Number(stroke.size) || 8) / 100 * minSide);
     ctx.save();
@@ -115,49 +251,16 @@ export function paintCustomCamoStrokes(
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = brush === 'flat' ? 'bevel' : 'round';
     ctx.lineCap = brush === 'flat' ? 'butt' : 'round';
-    if (brush === 'stamp') {
-      for (const point of points) {
-        const [x, y] = pointXY(point, width, height);
-        const asset: CustomCamoAsset = CUSTOM_CAMO_ASSETS.includes(stroke.asset as CustomCamoAsset)
-          ? stroke.asset as CustomCamoAsset
-          : 'star';
-        drawAsset(ctx, asset, x, y, lineWidth, Number(stroke.rotation) || 0);
-      }
-    } else if (brush === 'spray') {
-      for (let pointIndex = 0; pointIndex < points.length; pointIndex++) {
-        const [x, y] = pointXY(points[pointIndex], width, height);
-        const count = Math.max(7, Math.min(24, Math.round(lineWidth * .7)));
-        for (let dot = 0; dot < count; dot++) {
-          const seed = strokeIndex * 73856093 + pointIndex * 19349663 + dot * 83492791 + points[pointIndex][0] * 97 + points[pointIndex][1];
-          const angle = seededUnit(seed) * Math.PI * 2;
-          const radius = Math.sqrt(seededUnit(seed + 31)) * lineWidth * .52;
-          const dotRadius = Math.max(.65, lineWidth * (.035 + seededUnit(seed + 73) * .065));
-          ctx.beginPath();
-          ctx.arc(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, dotRadius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    } else if (brush === 'pixel') {
-      const side = Math.max(2, lineWidth * .72);
-      for (const point of points) {
-        const [x, y] = pointXY(point, width, height);
-        ctx.fillRect(Math.round(x / side) * side - side / 2, Math.round(y / side) * side - side / 2, side, side);
-      }
-    } else if (points.length === 1) {
-      const [x, y] = pointXY(points[0], width, height);
-      if (brush === 'flat') ctx.fillRect(x - lineWidth / 2, y - lineWidth / 2, lineWidth, lineWidth);
-      else {
-        ctx.beginPath(); ctx.arc(x, y, lineWidth / 2, 0, Math.PI * 2); ctx.fill();
-      }
-    } else {
-      const [x, y] = pointXY(points[0], width, height);
-      ctx.beginPath(); ctx.moveTo(x, y);
-      for (let i = 1; i < points.length; i++) {
-        const [px, py] = pointXY(points[i], width, height);
-        ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
+    paintStrokeGeometry(
+      ctx,
+      stroke,
+      brush,
+      points,
+      width,
+      height,
+      lineWidth,
+      strokeIndex,
+    );
     ctx.restore();
   }
 }

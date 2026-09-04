@@ -96,6 +96,8 @@
     "quality:mutation:graphics": "stryker run stryker.graphics.config.mjs",
     "quality:coverage:camo-policy": "c8 --include src/vehicles/camoPolicy.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/vehicles/camoPolicy.selftest.mjs",
     "quality:mutation:camo-policy": "stryker run stryker.camo-policy.config.mjs",
+    "quality:coverage:custom-camo-canvas": "c8 --include src/vehicles/customCamoCanvas.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/vehicles/customCamoCanvas.selftest.mjs",
+    "quality:mutation:custom-camo-canvas": "stryker run stryker.custom-camo-canvas.config.mjs",
     "quality:coverage:prediction": "c8 --include src/net/localTankPrediction.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/net/localTankPrediction.selftest.mjs",
     "quality:mutation:prediction": "stryker run stryker.prediction.config.mjs",
     "quality:coverage:match-mode-world": "c8 --include src/game/matchModeWorldPresentation.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/game/matchModeWorldPresentation.selftest.mjs",

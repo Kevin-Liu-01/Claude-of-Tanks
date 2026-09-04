@@ -160,6 +160,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
+    'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
