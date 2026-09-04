@@ -33,6 +33,18 @@ interface BarrelLaneBounds {
   maxZ: number;
 }
 
+interface BarrelSamplingContext {
+  gunRig: THREE.Object3D;
+  gunWorldInverse: THREE.Matrix4;
+  muzzleZ: number;
+  maxRadiusM: number;
+  maxCenterOffsetM: number;
+  minimumSpanM: number;
+  maxAspectRatio: number;
+  maxLateralAxisOffsetM: number;
+  samples: BarrelCircularitySample[];
+}
+
 export interface BarrelCircularitySample {
   zM: number;
   widthM: number;
@@ -313,6 +325,91 @@ function componentReceipt(
   };
 }
 
+function matchingBarrelMeshes(gunRig: THREE.Object3D, pattern: RegExp): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = [];
+  gunRig.traverse((object) => {
+    if (isMeshObject(object) && object.visible !== false && pattern.test(object.name)) {
+      meshes.push(object);
+    }
+  });
+  return meshes;
+}
+
+function measureBarrelStation(
+  context: BarrelSamplingContext,
+  lane: BarrelLane,
+  zM: number,
+  fraction: number,
+  source: string,
+): BarrelCircularitySample[] {
+  const segments: SliceSegment[] = [];
+  for (const mesh of lane.meshes) {
+    appendGeometrySlice(segments, mesh, context.gunWorldInverse, zM, context.maxRadiusM);
+  }
+  const stationSamples: BarrelCircularitySample[] = [];
+  for (const component of sliceComponents(segments)) {
+    const receipt = componentReceipt(component, zM);
+    if (!receipt) continue;
+    if (receipt.widthM < context.minimumSpanM || receipt.heightM < context.minimumSpanM) continue;
+    if (!lane.allowOffset
+      && Math.hypot(receipt.centerXM, receipt.centerYM) > context.maxCenterOffsetM) continue;
+    receipt.fraction = fraction;
+    receipt.lane = lane.name;
+    receipt.source = source;
+    receipt.pass = receipt.aspectRatio <= context.maxAspectRatio + EPSILON;
+    stationSamples.push(receipt);
+  }
+  return stationSamples;
+}
+
+function primaryAxisSample(
+  samples: readonly BarrelCircularitySample[],
+  maxAspectRatio: number,
+): BarrelCircularitySample | null {
+  return samples
+    .filter((sample) => sample.aspectRatio <= maxAspectRatio + EPSILON)
+    .reduce<BarrelCircularitySample | null>((current, sample) => (
+      !current || Math.min(sample.widthM, sample.heightM) > Math.min(current.widthM, current.heightM)
+        ? sample
+        : current
+    ), null);
+}
+
+function appendAxisSample(
+  context: BarrelSamplingContext,
+  lane: BarrelLane,
+  stationSamples: readonly BarrelCircularitySample[],
+): void {
+  const primary = primaryAxisSample(stationSamples, context.maxAspectRatio);
+  if (!primary) return;
+  primary.expectedCenterXM = lane.expectedCenterXM;
+  primary.lateralAxisOffsetM = Math.abs(primary.centerXM - lane.expectedCenterXM);
+  primary.axisPass = primary.lateralAxisOffsetM <= context.maxLateralAxisOffsetM + EPSILON;
+  primary.pass = primary.pass && primary.axisPass;
+  context.samples.push(primary);
+}
+
+function sampleBarrelPattern(
+  context: BarrelSamplingContext,
+  pattern: RegExp,
+  source: string,
+  fractions: readonly number[],
+  axisAudit: boolean,
+): void {
+  const meshes = matchingBarrelMeshes(context.gunRig, pattern);
+  for (const lane of barrelLanes(meshes, context.gunWorldInverse, context.gunRig)) {
+    const startZ = Math.max(0, lane.minZ);
+    const endZ = Math.min(context.muzzleZ, lane.maxZ);
+    if (endZ - startZ <= context.minimumSpanM) continue;
+    for (const fraction of fractions) {
+      const zM = startZ + (endZ - startZ) * fraction;
+      const stationSamples = measureBarrelStation(context, lane, zM, fraction, source);
+      if (axisAudit) appendAxisSample(context, lane, stationSamples);
+      else context.samples.push(...stationSamples);
+    }
+  }
+}
+
 /**
  * Measures actual main-gun cross-sections in rig_gun local space. This sees
  * both baked vertex distortion and inherited scene transforms, unlike checks
@@ -352,77 +449,30 @@ export function measureTurretBarrelCircularity(
 
   _gunWorldInverse.copy(gunRig.matrixWorld).invert();
   const samples: BarrelCircularitySample[] = [];
-  const samplePattern = (
-    pattern: RegExp,
-    source: string,
-    fractions: readonly number[] = sampleFractions,
-    axisAudit = false,
-  ): void => {
-    const meshes: THREE.Mesh[] = [];
-    gunRig.traverse((object) => {
-      if (isMeshObject(object) && object.visible !== false && pattern.test(object.name)) {
-        meshes.push(object);
-      }
-    });
-    for (const lane of barrelLanes(meshes, _gunWorldInverse, gunRig)) {
-      const startZ = Math.max(0, lane.minZ);
-      const endZ = Math.min(muzzleZ, lane.maxZ);
-      if (endZ - startZ <= minimumSpanM) continue;
-      for (const fraction of fractions) {
-        const zM = startZ + (endZ - startZ) * fraction;
-        const segments: SliceSegment[] = [];
-        for (const mesh of lane.meshes) {
-          appendGeometrySlice(segments, mesh, _gunWorldInverse, zM, maxRadiusM);
-        }
-        const stationSamples: BarrelCircularitySample[] = [];
-        for (const component of sliceComponents(segments)) {
-          const receipt = componentReceipt(component, zM);
-          if (!receipt) continue;
-          if (receipt.widthM < minimumSpanM || receipt.heightM < minimumSpanM) continue;
-          if (!lane.allowOffset
-            && Math.hypot(receipt.centerXM, receipt.centerYM) > maxCenterOffsetM) continue;
-          receipt.fraction = fraction;
-          receipt.lane = lane.name;
-          receipt.source = source;
-          receipt.pass = receipt.aspectRatio <= maxAspectRatio + EPSILON;
-          stationSamples.push(receipt);
-        }
-        if (!axisAudit) {
-          samples.push(...stationSamples);
-          continue;
-        }
-        // Gun mounts can also contain coaxial or secondary weapons. The
-        // widest round contour at a station is the primary barrel envelope;
-        // only that envelope must follow the declared muzzle axis. Numbered
-        // twin-cannon lanes are evaluated independently against their own
-        // rig_muzzle_tip_N anchors.
-        const primary = stationSamples
-          .filter((sample) => sample.aspectRatio <= maxAspectRatio + EPSILON)
-          .reduce<BarrelCircularitySample | null>((current, sample) => (
-            !current
-              || Math.min(sample.widthM, sample.heightM) > Math.min(current.widthM, current.heightM)
-              ? sample
-              : current
-          ), null);
-        if (primary) {
-          primary.expectedCenterXM = lane.expectedCenterXM;
-          primary.lateralAxisOffsetM = Math.abs(primary.centerXM - lane.expectedCenterXM);
-          primary.axisPass = primary.lateralAxisOffsetM <= maxLateralAxisOffsetM + EPSILON;
-          primary.pass = primary.pass && primary.axisPass;
-          samples.push(primary);
-        }
-      }
-    }
+  const samplingContext: BarrelSamplingContext = {
+    gunRig,
+    gunWorldInverse: _gunWorldInverse,
+    muzzleZ,
+    maxRadiusM,
+    maxCenterOffsetM,
+    minimumSpanM,
+    maxAspectRatio,
+    maxLateralAxisOffsetM,
+    samples,
   };
-  samplePattern(meshNamePattern, 'barrel');
+  sampleBarrelPattern(samplingContext, meshNamePattern, 'barrel', sampleFractions, false);
   // A few legacy builders merge their tube into gunMount. Only fall back to
   // that batched mesh when no dedicated gun contour exists; otherwise an
   // intentionally non-circular mantlet tunnel could be mistaken for a tube.
   if (!samples.length && fallbackMeshNamePattern) {
-    samplePattern(fallbackMeshNamePattern, 'gunMount-fallback');
+    sampleBarrelPattern(
+      samplingContext, fallbackMeshNamePattern, 'gunMount-fallback', sampleFractions, false,
+    );
   }
   if (checkAxisAlignment) {
-    samplePattern(axisMeshNamePattern, 'forward-axis', axisSampleFractions, true);
+    sampleBarrelPattern(
+      samplingContext, axisMeshNamePattern, 'forward-axis', axisSampleFractions, true,
+    );
   }
   if (!samples.length) {
     const reason = 'no measurable turret-barrel contour';
