@@ -3499,6 +3499,115 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
 // now-closed skin) and both end caps are FLUSH full-ring faces at the exact
 // end-section planes (inside the old rim + end-annulus footprint).
 // ---------------------------------------------------------------------------
+function m60LoftPoint(
+  section: M60Section,
+  profilePoint: readonly [number, number],
+): Vec2Tuple {
+  return [
+    profilePoint[0] * (profilePoint[0] > 0 && section.hwR ? section.hwR : section.hw),
+    section.bot + (section.top - section.bot) * profilePoint[1],
+  ];
+}
+
+function m60LoftRuns(profileLength: number, creases: readonly number[]): number[][] {
+  const normalizedCreases = [...new Set(creases.map((index) => (
+    (index % profileLength) + profileLength
+  ) % profileLength))].sort((first, second) => first - second);
+  const runs: number[][] = [];
+  for (let creaseIndex = 0; creaseIndex < normalizedCreases.length; creaseIndex += 1) {
+    const start = normalizedCreases[creaseIndex];
+    const end = normalizedCreases[(creaseIndex + 1) % normalizedCreases.length];
+    if (start == null || end == null) throw new Error('M60 loft crease index is invalid');
+    const run = [start];
+    for (let index = (start + 1) % profileLength; ; index = (index + 1) % profileLength) {
+      run.push(index);
+      if (index === end) break;
+    }
+    runs.push(run);
+  }
+  return runs;
+}
+
+function emitM60LoftGeometry(
+  P: PattonBuilderPort,
+  bucket: string,
+  positions: number[],
+  indices: number[] | null,
+): void {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0),
+    2,
+  ));
+  if (indices) geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  P.add(bucket, geometry);
+}
+
+function emitM60LoftRun(
+  P: PattonBuilderPort,
+  bucket: string,
+  sections: readonly M60Section[],
+  profile: CrossProfile,
+  run: readonly number[],
+  oy: number,
+  oz: number,
+): void {
+  const rowLength = run.length;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
+    for (let runIndex = 0; runIndex < rowLength; runIndex += 1) {
+      const section = sections[sectionIndex];
+      const profileIndex = run[runIndex];
+      const profilePoint = profileIndex == null ? undefined : profile[profileIndex];
+      if (!section || !profilePoint) throw new Error('M60 loft grid index is invalid');
+      const point = m60LoftPoint(section, profilePoint);
+      positions.push(point[0], point[1] - oy, section.z - oz);
+    }
+  }
+  for (let sectionIndex = 0; sectionIndex < sections.length - 1; sectionIndex += 1) {
+    for (let runIndex = 0; runIndex < rowLength - 1; runIndex += 1) {
+      const a0 = sectionIndex * rowLength + runIndex;
+      const a1 = a0 + 1;
+      const b0 = a0 + rowLength;
+      const b1 = b0 + 1;
+      indices.push(a0, a1, b1, a0, b1, b0);
+    }
+  }
+  emitM60LoftGeometry(P, bucket, positions, indices);
+}
+
+function emitM60LoftEndCap(
+  P: PattonBuilderPort,
+  bucket: string,
+  section: M60Section,
+  profile: CrossProfile,
+  oy: number,
+  oz: number,
+  sign: number,
+): void {
+  const ring = profile.map((profilePoint) => m60LoftPoint(section, profilePoint));
+  const centerX = ring.reduce((total, point) => total + point[0], 0) / profile.length;
+  const centerY = ring.reduce((total, point) => total + point[1], 0) / profile.length;
+  const z = section.z - oz;
+  const positions: number[] = [];
+  for (let index = 0; index < profile.length; index += 1) {
+    const first = ring[index];
+    const second = ring[(index + 1) % profile.length];
+    if (!first || !second) throw new Error('M60 loft cap index is invalid');
+    if (sign > 0) {
+      positions.push(centerX, centerY - oy, z,
+        second[0], second[1] - oy, z, first[0], first[1] - oy, z);
+    } else {
+      positions.push(centerX, centerY - oy, z,
+        first[0], first[1] - oy, z, second[0], second[1] - oy, z);
+    }
+  }
+  emitM60LoftGeometry(P, bucket, positions, null);
+}
+
 function m60Loft(
   P: PattonBuilderPort,
   bucket: string,
@@ -3511,74 +3620,18 @@ function m60Loft(
   if (secs.length === 0 || profile.length === 0) {
     throw new Error('M60 loft requires at least one section and profile point');
   }
-  const pt = (s: M60Section, f: readonly [number, number]): Vec2Tuple => [
-    f[0] * (f[0] > 0 && s.hwR ? s.hwR : s.hw),
-    s.bot + (s.top - s.bot) * f[1],
-  ];
-  const M = profile.length, nS = secs.length;
-  const cs = [...new Set(creases.map((k) => ((k % M) + M) % M))].sort((a, b) => a - b);
   // smooth runs of consecutive ring indices between creases (ring wraps
   // k(M-1) -> k0 along the flat underside)
-  const runs: number[][] = [];
-  for (let c = 0; c < cs.length; c++) {
-    const start = cs[c];
-    const end = cs[(c + 1) % cs.length];
-    if (start == null || end == null) throw new Error('M60 loft crease index is invalid');
-    const run = [start];
-    for (let k = (start + 1) % M; ; k = (k + 1) % M) {
-      run.push(k);
-      if (k === end) break;
-    }
-    runs.push(run);
-  }
-  const emit = (pos: number[], idx: number[] | null): void => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
-    if (idx) g.setIndex(idx);
-    g.computeVertexNormals();
-    P.add(bucket, g);
-  };
-  for (const run of runs) {
-    const nR = run.length, pos = [], idx = [];
-    for (let i = 0; i < nS; i++) {
-      for (let j = 0; j < nR; j++) {
-        const section = secs[i];
-        const profileIndex = run[j];
-        const profilePoint = profileIndex == null ? undefined : profile[profileIndex];
-        if (!section || !profilePoint) throw new Error('M60 loft grid index is invalid');
-        const p = pt(section, profilePoint);
-        pos.push(p[0], p[1] - oy, section.z - oz);
-      }
-    }
-    for (let i = 0; i < nS - 1; i++) {
-      for (let j = 0; j < nR - 1; j++) {
-        const a0 = i * nR + j, a1 = a0 + 1, b0 = a0 + nR, b1 = b0 + 1;
-        idx.push(a0, a1, b1, a0, b1, b0); // outward for front->rear sections
-      }
-    }
-    emit(pos, idx);
-  }
+  const runs = m60LoftRuns(profile.length, creases);
+  for (const run of runs) emitM60LoftRun(P, bucket, secs, profile, run, oy, oz);
   // FLUSH end caps: flat full-ring fans in the exact end-section planes.
   // Own geometry -> flat normals -> a hard cast rim edge (correct), and the
   // bustle tail stops reading as an open-backed box.
   const firstSection = secs[0];
-  const lastSection = secs[nS - 1];
+  const lastSection = secs[secs.length - 1];
   if (!firstSection || !lastSection) throw new Error('M60 loft end section is missing');
-  const endCaps: ReadonlyArray<readonly [M60Section, number]> = [[firstSection, 1], [lastSection, -1]];
-  for (const [s, sign] of endCaps) {
-    const ring = profile.map((f) => pt(s, f));
-    const cx = ring.reduce((t, p) => t + p[0], 0) / M;
-    const cy = ring.reduce((t, p) => t + p[1], 0) / M;
-    const z = s.z - oz, pos = [];
-    for (let k = 0; k < M; k++) {
-      const a = ring[k], b = ring[(k + 1) % M];
-      if (!a || !b) throw new Error('M60 loft cap index is invalid');
-      if (sign > 0) pos.push(cx, cy - oy, z, b[0], b[1] - oy, z, a[0], a[1] - oy, z);
-      else pos.push(cx, cy - oy, z, a[0], a[1] - oy, z, b[0], b[1] - oy, z);
-    }
-    emit(pos, null);
-  }
+  emitM60LoftEndCap(P, bucket, firstSection, profile, oy, oz, 1);
+  emitM60LoftEndCap(P, bucket, lastSection, profile, oy, oz, -1);
 }
 
 // ---------------------------------------------------------------------------
