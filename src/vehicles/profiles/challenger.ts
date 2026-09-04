@@ -1875,12 +1875,46 @@ function towHook2(P: ChallengerBuilderPort, x: number, y: number, z: number): vo
 // the ch1 r8 WHEEL-RING GRAMMAR: pale discs read against DARK-drawn tire
 // rings, never the inverse).
 // ---------------------------------------------------------------------------
+function installVehicleAmbientFloorHook(
+  material: THREE.MeshStandardMaterial,
+): THREE.MeshStandardMaterial {
+  material.onBeforeCompile = vehicleAmbientFloorHook;
+  material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  return material;
+}
+
+function applyChallengerGearTone(
+  object: THREE.Object3D,
+  P: ChallengerBuilderPort,
+  options: ChallengerToneOptions,
+  wheelTone: THREE.MeshStandardMaterial,
+  drumTone: THREE.MeshStandardMaterial,
+): void {
+  if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.InstancedMesh)) return;
+  const isInstanced = object instanceof THREE.InstancedMesh;
+  const material = object.material;
+  if (!material || !material.color || !material.color.getHex) return;
+  const hex = material.color.getHex();
+  if (isInstanced && hex === 0x171614) {
+    installVehicleAmbientFloorHook(material).color.setHex(options.padHex ?? 0x272b20);
+    material.envMapIntensity = options.padEnv ?? 0.18;
+    return;
+  }
+  if (isInstanced && hex === 0x27251f) {
+    installVehicleAmbientFloorHook(material).color.setHex(options.chainHex ?? 0x2f3427);
+    material.envMapIntensity = options.chainEnv ?? 0.22;
+    return;
+  }
+  if (isInstanced && hex === 0x565c50) {
+    installVehicleAmbientFloorHook(material).color.setHex(options.ringHex ?? 0x2b2f1f);
+    material.envMapIntensity = options.ringEnv ?? 0.10;
+    if (material.emissive) material.emissive.setHex(0x000000);
+    return;
+  }
+  if (material === P.mats.wheels) object.material = isInstanced ? wheelTone : drumTone;
+}
+
 function ch1BaseToneKit(P: ChallengerBuilderPort, o: ChallengerToneOptions = {}): void {
-  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-    m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return m;
-  };
   // Blue-glass calm (ch1 r8 O4c lineage): smoked dark-olive, b-r <= 0.
   P.mats.glass.color.setHex(o.glassHex ?? 0x3d443c);
   P.mats.glass.roughness = 0.48;
@@ -1891,32 +1925,15 @@ function ch1BaseToneKit(P: ChallengerBuilderPort, o: ChallengerToneOptions = {})
     P.mats.canvasCloth.envMapIntensity = o.clothEnv ?? 0.10;
   }
   if (o.dark) P.mats.dark.color.setHex(o.dark);
-  const wheelTone = rehook(P.mats.wheels.clone());
+  const wheelTone = installVehicleAmbientFloorHook(P.mats.wheels.clone());
   wheelTone.color.setHex(o.wheelHex ?? 0x3e4531);
   wheelTone.envMapIntensity = o.wheelEnv ?? 0.13;
-  const drumTone = rehook(P.mats.wheels.clone());
+  const drumTone = installVehicleAmbientFloorHook(P.mats.wheels.clone());
   drumTone.color.setHex(o.drumHex ?? 0x373d2c);
   drumTone.envMapIntensity = o.drumEnv ?? 0.14;
   P.disposables.push(wheelTone, drumTone);
-  P.hullG.traverse((ob: THREE.Object3D) => {
-    if (!(ob instanceof THREE.Mesh) && !(ob instanceof THREE.InstancedMesh)) return;
-    const isInstanced = ob instanceof THREE.InstancedMesh;
-    const m = ob.material;
-    if (!m || !m.color || !m.color.getHex) return;
-    const hex = m.color.getHex();
-    if (isInstanced && hex === 0x171614) {
-      rehook(m).color.setHex(o.padHex ?? 0x272b20);            // shoe pads
-      m.envMapIntensity = o.padEnv ?? 0.18;
-    } else if (isInstanced && hex === 0x27251f) {
-      rehook(m).color.setHex(o.chainHex ?? 0x2f3427);          // inner chain/horns
-      m.envMapIntensity = o.chainEnv ?? 0.22;
-    } else if (isInstanced && hex === 0x565c50) {
-      rehook(m).color.setHex(o.ringHex ?? 0x2b2f1f);           // tire ring (dark-drawn, ch1 r8 grammar)
-      m.envMapIntensity = o.ringEnv ?? 0.10;
-      if (m.emissive) m.emissive.setHex(0x000000);
-    } else if (m === P.mats.wheels) {
-      ob.material = isInstanced ? wheelTone : drumTone; // discs / end-drum spinners
-    }
+  P.hullG.traverse((object: THREE.Object3D) => {
+    applyChallengerGearTone(object, P, o, wheelTone, drumTone);
   });
   const bm = o.bandMul ?? [0.92, 0.98, 0.82];
   for (const tm of [P.mats.trackL, P.mats.trackR]) {
@@ -3115,28 +3132,11 @@ function scaleChallenger3Family(P: ChallengerBuilderPort): void {
   P.turretG.userData.challenger3FamilyScaleReceipt = receipt;
 }
 
-function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, torus, tarpRoll, jerryCan, ammoCan } = KIT;
-  const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
-  const receipt: Challenger3XReceipt = {
-    variant: 'challenger_3x',
-    enhancedSkirtPanels: 0,
-    skirtHangers: 0,
-    glacisEraCassettes: 0,
-    skirtEraCassettes: 0,
-    cheekEraCassettes: 0,
-    turretSideEraCassettes: 0,
-    autocannonStations: 0,
-    radarArrays: 0,
-    searchlights: 0,
-    bustleCageRails: 0,
-    stowageItems: 0,
-    equipmentSeatsFlush: true,
-  };
-
-  // A real carrier and discrete hangers turn the enlarged skirts into one
-  // continuous protection assembly. The ERA sits outside the carrier and
-  // remains clear of the live linked-shoe sweep.
+function buildChallenger3XSkirts(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
+  const { box } = KIT;
   for (const side of [-1, 1]) {
     P.add('hull', box(0.16, 0.82, 7.18), side * 1.82, 1.05, -0.10);
     P.add('hullDark', box(0.035, 0.09, 7.22), side * 1.91, 1.43, -0.10);
@@ -3161,9 +3161,12 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
       }
     });
   }
+}
 
-  // Four shallow courses follow the actual Challenger glacis normal. Split
-  // left/right sector names keep the damage and depletion state honest.
+function buildChallenger3XGlacisEra(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
   const glacisFrame = cr2SurfaceFrame([0, 0.9718, 0.2358], [1, 0, 0]);
   for (const side of [-1, 1]) {
     const sector = `c3x_glacis_era_${side > 0 ? 'R' : 'L'}`;
@@ -3180,9 +3183,14 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
       }
     });
   }
+}
 
-  // The cheek courses are individual cassettes laid in the ruled cheek
-  // plane, rather than a pair of rectangular applique slabs.
+function buildChallenger3XTurretEra(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
+  const { box } = KIT;
+  const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
   for (const side of [-1, 1]) {
     const frame = cr2SurfaceFrame([side * 0.42, 0.66, 0.62], [side, 0, -0.56]);
     const sector = `c3x_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
@@ -3219,10 +3227,13 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
       }
     }, true);
   }
+}
 
-  // Two independent 30 mm stations key into the turret shoulders. Their
-  // roots overlap the armor wall and their barrels overlap their receivers,
-  // so the pair reads as machinery carried by the turret instead of props.
+function buildChallenger3XRemoteWeapons(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
+  const { box, cylY, cylZ, frustum } = KIT;
   for (const side of [-1, 1]) {
     const x = side * 1.48;
     P.addEquipment('turret', box(0.32, 0.36, 0.52), side * 1.38, 0.48, -0.78);
@@ -3232,11 +3243,17 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
     P.add('turretDark', cylZ(0.052, 1.30, 12), x, 0.73, 0.35);
     P.add('turretDetail', cylZ(0.072, 0.24, 12), x, 0.73, -0.16);
     P.add('turretDark', box(0.13, 0.13, 0.09), x, 0.73, 1.03);
-    P.add('turretGlass', box(0.13, 0.09, 0.014), x - side * 0.17, 0.67, -0.29, 0, side * Math.PI / 2, 0);
+    P.add('turretGlass', box(0.13, 0.09, 0.014), x - side * 0.17, 0.67, -0.29,
+      0, side * Math.PI / 2, 0);
     receipt.autocannonStations++;
   }
+}
 
-  // Oversized left-cheek searchlight with a buried shoe and protected lens.
+function buildChallenger3XSensors(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
   P.addEquipment('turret', box(0.58, 0.42, 0.42), -0.67, 0.36, 1.28);
   P.add('turretDetail', box(0.68, 0.10, 0.52), -0.67, 0.18, 1.14);
   P.add('turretDark', cylZ(0.205, 0.15, 18), -0.67, 0.36, 1.52);
@@ -3244,20 +3261,26 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   P.add('turretDetail', torus(0.205, 0.018, 18), -0.67, 0.36, 1.605);
   receipt.searchlights = 1;
 
-  // A wide AESA panel sits on a two-stage, cross-braced rear roof mast.
   P.addEquipment('turret', box(0.64, 0.15, 0.58), 0, 0.70, -2.18);
   P.add('turretDark', cylY(0.19, 0.23, 0.12, 12), 0, 0.82, -2.18);
   P.addEquipment('turret', box(0.13, 0.56, 0.13), 0, 1.08, -2.18);
   for (const side of [-1, 1]) {
-    P.add('turretDetail', cylX(0.022, 0.58, 8), side * 0.16, 1.08, -2.18, 0, 0, side * 0.48);
+    P.add('turretDetail', cylX(0.022, 0.58, 8), side * 0.16, 1.08, -2.18,
+      0, 0, side * 0.48);
   }
   P.addEquipment('turret', box(0.90, 0.52, 0.08), 0, 1.39, -2.14, -0.08, 0, 0);
   P.add('turretDark', box(0.78, 0.40, 0.018), 0, 1.39, -2.095, -0.08, 0, 0);
-  for (const x of [-0.30, 0, 0.30]) P.add('turretDetail', box(0.018, 0.44, 0.014), x, 1.39, -2.083, -0.08, 0, 0);
+  for (const x of [-0.30, 0, 0.30]) {
+    P.add('turretDetail', box(0.018, 0.44, 0.014), x, 1.39, -2.083, -0.08, 0, 0);
+  }
   receipt.radarArrays = 1;
+}
 
-  // A deeper bustle cage and mixed field kit distinguish the X from the
-  // production Challenger 3 without turning the roof into one solid block.
+function buildChallenger3XBustle(
+  P: ChallengerBuilderPort,
+  receipt: Challenger3XReceipt,
+): void {
+  const { box, tarpRoll, jerryCan, ammoCan } = KIT;
   for (const side of [-1, 1]) {
     for (const y of [0.25, 0.48, 0.71]) {
       P.add('turretDetail', box(0.035, 0.035, 1.72), side * 1.58, y, -2.45);
@@ -3277,6 +3300,46 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
     receipt.stowageItems++;
   }
   receipt.stowageItems += 4;
+}
+
+function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
+  const receipt: Challenger3XReceipt = {
+    variant: 'challenger_3x',
+    enhancedSkirtPanels: 0,
+    skirtHangers: 0,
+    glacisEraCassettes: 0,
+    skirtEraCassettes: 0,
+    cheekEraCassettes: 0,
+    turretSideEraCassettes: 0,
+    autocannonStations: 0,
+    radarArrays: 0,
+    searchlights: 0,
+    bustleCageRails: 0,
+    stowageItems: 0,
+    equipmentSeatsFlush: true,
+  };
+
+  buildChallenger3XSkirts(P, receipt);
+
+  // Four shallow courses follow the actual Challenger glacis normal. Split
+  // left/right sector names keep the damage and depletion state honest.
+  buildChallenger3XGlacisEra(P, receipt);
+
+  // The cheek courses are individual cassettes laid in the ruled cheek
+  // plane, rather than a pair of rectangular applique slabs.
+  buildChallenger3XTurretEra(P, receipt);
+
+  // Two independent 30 mm stations key into the turret shoulders. Their
+  // roots overlap the armor wall and their barrels overlap their receivers,
+  // so the pair reads as machinery carried by the turret instead of props.
+  buildChallenger3XRemoteWeapons(P, receipt);
+
+  // Oversized left-cheek searchlight with a buried shoe and protected lens.
+  buildChallenger3XSensors(P, receipt);
+
+  // A deeper bustle cage and mixed field kit distinguish the X from the
+  // production Challenger 3 without turning the roof into one solid block.
+  buildChallenger3XBustle(P, receipt);
 
   receipt.totalEraCassettes = receipt.glacisEraCassettes + receipt.skirtEraCassettes
     + receipt.cheekEraCassettes + receipt.turretSideEraCassettes;
