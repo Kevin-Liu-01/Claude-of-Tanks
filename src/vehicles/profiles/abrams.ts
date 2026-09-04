@@ -4043,8 +4043,8 @@ function publishAmericanArmorFinish(P: AbramsBuilderPort): void {
     decorativeTurretStraps: 0,
     highContrastOutlineMaterial: false,
     mechanicalGunmetalPreserved: true,
-    mechanicalGunmetalTone: 'neutral-service-gray',
-    exposedGunHardwareTone: 'neutral-service-gray',
+    mechanicalGunmetalTone: 'm1a3-browning-gray',
+    exposedGunHardwareTone: 'm1a3-browning-gray',
     nonMuzzleBlackVoids: 0,
   });
   P.gunG.userData.americanGunFinishReceipt = Object.freeze({
@@ -4082,23 +4082,12 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   P.mats.wood.color.setHex(0x757d5f);
   P.mats.wood.roughness = 0.92;
   P.mats.wood.envMapIntensity = 0.25;
-  // Exposed weapons, ammunition chests and roof mechanisms share this
-  // channel.  Keep it a subdued neutral service gray across every Abrams
-  // mark; olive/near-black overrides made those real objects read as camo
-  // leaks or empty holes.  Actual recesses remain on mats.shadow and muzzle
-  // openings retain their dedicated bore material.
-  P.mats.dark.color.setHex(0x484a49);
-  P.mats.dark.roughness = 0.90;
-  P.mats.dark.metalness = 0.14;
-  P.mats.dark.envMapIntensity = 0.16;
-  P.mats.dark.onBeforeCompile = (shader) => {
-    vehicleAmbientFloorHook(shader);
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <opaque_fragment>',
-      'outgoingLight *= 0.95;\n\t#include <opaque_fragment>',
-    );
-  };
-  P.mats.dark.customProgramCacheKey = () => 'abrams-neutral-service-gunmetal-v1';
+  // Exposed weapons, ammunition chests and roof mechanisms deliberately keep
+  // the canonical fleet gunmetal unchanged.  The M1A3 Browning uses that
+  // material directly, so inheriting it here preserves the same warm-gray
+  // albedo, roughness, metalness and environment response in every renderer
+  // and in the non-rendering anatomy palette.  Actual recesses remain on
+  // mats.shadow and muzzle openings retain their dedicated bore material.
   // Track band: warm brown-gray multiplier over the manganese canvas.
   // Iteration 2 (sampled): r1 multipliers rendered wrap (106,99,82) L37 vs
   // ref (69,64,54) L24 and pads (76,70,60) vs ref (55,51,43) — x0.65/0.72.

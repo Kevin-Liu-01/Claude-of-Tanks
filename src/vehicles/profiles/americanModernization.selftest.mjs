@@ -16,10 +16,20 @@ const fittings = (root, predicate) => {
   return found;
 };
 
-const ABRAMS_SERVICE_GUNMETAL = 0x484a49;
-const materialHexes = (object) => (Array.isArray(object.material)
-  ? object.material
-  : [object.material]).map((material) => material?.color?.getHex());
+const materialFinish = (material) => ({
+  color: material?.color?.getHex(),
+  roughness: material?.roughness,
+  metalness: material?.metalness,
+  envMapIntensity: material?.envMapIntensity,
+  roughnessMap: Boolean(material?.roughnessMap),
+  programKey: material?.customProgramCacheKey?.(),
+});
+
+const m1a3ReferenceTank = make('m1a3');
+const m1a3Browning = m1a3ReferenceTank.root.getObjectByName('browningDerivedMachineGunBody');
+assert.ok(m1a3Browning?.isMesh, 'M1A3 exposes the canonical Browning gunmetal reference');
+const M1A3_BROWNING_GUNMETAL = Object.freeze(materialFinish(m1a3Browning.material));
+m1a3ReferenceTank.dispose();
 
 for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
   const tank = make(id);
@@ -238,28 +248,25 @@ for (const id of [
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
   assert.equal(turret?.userData.americanArmorFinishReceipt?.mechanicalGunmetalTone,
-    'neutral-service-gray', `${id}: publishes the neutral Abrams equipment finish`);
+    'm1a3-browning-gray', `${id}: publishes the M1A3 Browning equipment finish`);
   assert.equal(turret?.userData.americanArmorFinishReceipt?.exposedGunHardwareTone,
-    'neutral-service-gray', `${id}: publishes the neutral Abrams gun-hardware finish`);
+    'm1a3-browning-gray', `${id}: publishes the M1A3 Browning gun-hardware finish`);
   assert.equal(turret?.userData.americanArmorFinishReceipt?.nonMuzzleBlackVoids, 0,
     `${id}: equipment surfaces cannot masquerade as black voids`);
 
   const serviceParts = [];
   tank.root.traverse((object) => {
     if (!object.isMesh) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    const usesServiceGunmetal = materials.some((material) => material?.customProgramCacheKey?.()
-      === 'abrams-neutral-service-gunmetal-v1');
     if (object.name === 'turretDark'
       || object.userData.fittingSlot === 'dark'
-      || object.userData.fittingSlot === 'gunmetalAmmo'
-      || usesServiceGunmetal) serviceParts.push(object);
+      || object.userData.fittingSlot === 'gunmetalAmmo') serviceParts.push(object);
   });
   assert.ok(serviceParts.length > 0, `${id}: exposes auditable gray weapon/equipment surfaces`);
   for (const part of serviceParts) {
-    for (const color of materialHexes(part)) {
-      assert.equal(color, ABRAMS_SERVICE_GUNMETAL,
-        `${id}/${part.name || 'equipment'}: gunmetal is subdued neutral gray`);
+    const materials = Array.isArray(part.material) ? part.material : [part.material];
+    for (const material of materials) {
+      assert.deepEqual(materialFinish(material), M1A3_BROWNING_GUNMETAL,
+        `${id}/${part.name || 'equipment'}: gunmetal matches the M1A3 Browning finish`);
     }
   }
   tank.dispose();

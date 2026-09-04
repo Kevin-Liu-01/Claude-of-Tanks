@@ -117721,24 +117721,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102425,
-          "sha256": "e9383ca23eb227fd68be66dc499258bc67947f15fffae13132926c2e67928cde"
+          "bytes": 102224,
+          "sha256": "a7d75fcb2b5bada3151bb5f29d5961adf6d1d0f51e420e58d309c36519e9b531"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104067,
-          "sha256": "a59b4a9ca3f8a1e4e1f64585f69f301a663fd78d99073ef09e545bc6a64359c5"
+          "bytes": 103756,
+          "sha256": "2fcf4b64d1cf6f4d28068ab7cc3f2cda8fb4cde2820a1f33365715203fb509be"
         },
         "crewSide": {
           "file": "m1a1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94513,
-          "sha256": "32df5d913494b1d48db3441472c73af2d043a5d795183875b93684ba8c9ee748"
+          "bytes": 94735,
+          "sha256": "77bc44ff181edceb52459bec353404d659ac3ae338f1e5347e8f728262d9ce97"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -119209,24 +119209,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 101612,
-          "sha256": "782a28a0c7c9169f04fc5efb174f7837c111756937b1a3d35a6d6ce5bc46bcc2"
+          "bytes": 101847,
+          "sha256": "b35b05a237b3323eb5a2e36340d5da67e894fa40b667e059fdc99632905e286e"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102553,
-          "sha256": "cb1301ee1fe9501ebb73f5ed3ba52b817db8cf0fc2f5b948715f0b09cbcfc380"
+          "bytes": 102479,
+          "sha256": "9c2e76ddacf37466411d627e5a2c8fcd61c8c851848a2590804fee23846eff28"
         },
         "crewSide": {
           "file": "m1a1ha_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93518,
-          "sha256": "0c0dcde4db11838b3ad92f190e184fa50075760285e3afd02b4eb8eff2e719fc"
+          "bytes": 93311,
+          "sha256": "73e373f1739c9ed3a6ea67082605d8e16c0428f911263048a64287c9bcca44c8"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
@@ -124108,24 +124108,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107235,
-          "sha256": "e95340e30cd079a314499b722ce30afeb6bf70d2112280714662e972a55a72ce"
+          "bytes": 107267,
+          "sha256": "0b353e7c89e899321bc82e38bcac813f1c00175f44b425a6ab46d3c7c80d4721"
         },
         "modulesSide": {
           "file": "m1a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107478,
-          "sha256": "2ca4ad7ca75ff54cd4883e7ebac75bd716240f69a6b4ed5ca766bd540cddce06"
+          "bytes": 107382,
+          "sha256": "4e23990c1de09696c1d5b47f61fe543ec6ed09b061e120b3733da639f7ac5f22"
         },
         "crewSide": {
           "file": "m1a2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98107,
-          "sha256": "c8772ca47e64c35db56603e913a367b0c0069cb9dac004c6d006aa9af4dfe5f7"
+          "bytes": 97925,
+          "sha256": "c3ede281c452c8f9947d23486a50c3fd5b120eb104726a29ecfec5b7af654583"
         },
         "markings": {
           "file": "m1a2_markings.png",
@@ -129832,24 +129832,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 106858,
-          "sha256": "e731bf918bb39703b047018951483a2666e0296f1c6721f43c8fa5497018ddb6"
+          "bytes": 106723,
+          "sha256": "6a45fcc0cc12bcd9806de589e61f94b089df6c513ee232cd4869a21c8614adbf"
         },
         "modulesSide": {
           "file": "m1a2_sepv2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107069,
-          "sha256": "91eabac7554c686047f78d37cba8de446370703bfddf0310835d4266d521860c"
+          "bytes": 107315,
+          "sha256": "94aaa64523af505f5866fd0d6de4521cb61d60719e4449ab06eccc0712aa1b41"
         },
         "crewSide": {
           "file": "m1a2_sepv2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 97919,
-          "sha256": "f340b31d26c83162184e3caaa20c53982ebdbab33d4cca791ef47ff0cf741d9c"
+          "bytes": 98254,
+          "sha256": "57367822a8b665d9733c5b151675078e0394c5e63878074b4875bd9665ea45ad"
         },
         "markings": {
           "file": "m1a2_sepv2_markings.png",
@@ -135134,24 +135134,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 119677,
-          "sha256": "aed8a323226fb5b6bd3e7ad7eb74f344b60587f947bfce25073cfa805bfe3e0f"
+          "bytes": 119572,
+          "sha256": "9d8a263f298642d0f2aa489db9f1ba8f1d3371786a816aba77dc758c3b5175d1"
         },
         "modulesSide": {
           "file": "m1a2_sepv3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 118286,
-          "sha256": "f52ae14bf4dfca669ccaaa52ed239eb6e486695c816c639006afd1515fca6803"
+          "bytes": 118564,
+          "sha256": "2f0dd0ee432f0966cfb59b290cf869af1b54efdf247c5345af7fa730132724fd"
         },
         "crewSide": {
           "file": "m1a2_sepv3_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 110786,
-          "sha256": "0a826a5d6e59ef6de6534263b644ac1e4992310db9426df055a1f3d7ffa1c6f7"
+          "bytes": 110936,
+          "sha256": "8e4ec87efe09125e5e23fea2a1e2cd95a6e3c049b37377e59fcb759eca805140"
         },
         "markings": {
           "file": "m1a2_sepv3_markings.png",
@@ -139779,24 +139779,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 105677,
-          "sha256": "6c4c7e4a1256730ef01a585249a067acbc4a55c3eb26fd6dc5a9cf7aba1f4324"
+          "bytes": 105645,
+          "sha256": "f871039a6c23665b1166d010784efb0d66bda3fb2c8beb72dc6d056f7ed1ad84"
         },
         "modulesSide": {
           "file": "m1a2_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 105553,
-          "sha256": "abc3b48a0f3349a12b612e3bbea39aa2927bb1a3c2445d5b07fa8a30df699bfe"
+          "bytes": 105867,
+          "sha256": "d1622edf729dcdc44bd575d4a566db8b4ff758bf08b7d173b2785efef6252afb"
         },
         "crewSide": {
           "file": "m1a2_tusk_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95733,
-          "sha256": "ea019c8512721a831c145efe41746e80ed0b237fd554eca9c1a6643f6be39271"
+          "bytes": 95894,
+          "sha256": "bd9eac31500b069ac4501af0dbce6d89167233456a6f8c85a35cfd67960335a2"
         },
         "markings": {
           "file": "m1a2_tusk_markings.png",
