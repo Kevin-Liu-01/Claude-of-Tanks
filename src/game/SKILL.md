@@ -107,21 +107,22 @@ silhouettes—for every readable vehicle or tank component.
 Never add a world-loading
 or per-frame update port to a Garage environment module. `garageDressingAccess.ts`
 demand-loads one shared, optimized four-bay modern maintenance layer after
-Garage readiness. Its Burlak, Abrams, T-90M, and K2 exhibits surround all ten
+Garage readiness. Its Burlak, Abrams, Leopard 2A5/A5NL, T-90M, and K2
+exhibits surround all ten
 environments. Keep each service section under one static bay owner when moving
 it between quadrants so its tank, tools, floor dressing, signage, and support
 equipment cannot separate. Rolled hulls require grounded connected cradles with
 visible contact pads. Its connected freestanding field-record display remains on
 the tank's rear axis in every opening composition. Verdant alone may show the
 remaining wall-mounted interior clutter. Keep the
-fleet load behind the quiet-window scheduler, build the four full-detail static
+fleet load behind the quiet-window scheduler, build the five full-detail static
 meshes in `garageWorkshopGeometryWorker.ts`, reconstruct them with the ordinary
-vehicle PBR role contract but three shared map-free solid national-service
+vehicle PBR role contract but four shared map-free solid national-service
 palettes in cooperative frame slices, reuse one graph across variants, and never
 duplicate it per scene pack. Background exhibits must not inherit player paint
 or allocate camouflage canvases. Transfer worker-computed bounds and only the
 position/normal attributes these materials consume; never rescan the full vertex
-stream on the render thread. The worker entry may import only those four exhibit
+stream on the render thread. The worker entry may import only those five exhibit
 families. A selector-menu intent may warm one non-selected outdoor scene inside
 the two-pack LRU, never all nine packs.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:

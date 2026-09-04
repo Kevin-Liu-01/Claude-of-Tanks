@@ -19,10 +19,16 @@ export interface GarageWorkshopBayPose {
 // consume the same offset so the tank, gantry and support pad cannot separate.
 export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
   x: 1.0,
-  z: 3.5,
-  cameraAdvanceM: 3.18,
-  scaffoldCenterSeparationM: 7.08,
+  z: 5.2,
+  cameraAdvanceM: 4.38,
+  scaffoldCenterSeparationM: 8.41,
 });
+
+// Seat the complete Abrams service owner on the center of its painted bay
+// instead of leaving the vehicle and its tools behind the scaffold uprights.
+// The same diagonal correction is consumed by the all-environment facility
+// layout so exterior shelters remain aligned with the actual tank.
+export const ABRAMS_BAY_FORWARD_ADVANCE_M = 1.65;
 
 // These are the final world-space poses after the Burlak clearance translation
 // and two legacy half-turn bay owners are applied. Facility scenery consumes
@@ -30,10 +36,10 @@ export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
 // pit cannot drift away from the tank/component it is meant to support.
 const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
   Object.freeze({
-    id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -12.0, yaw: -0.55,
+    id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -10.3, yaw: -0.55,
   }),
   Object.freeze({
-    id: 'abrams_welding', role: 'welding', x: -16.9, z: -17.7,
+    id: 'abrams_welding', role: 'welding', x: -15.25, z: -16.05,
     yaw: -2.03 + Math.PI,
   }),
   Object.freeze({
