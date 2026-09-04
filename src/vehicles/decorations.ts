@@ -262,6 +262,18 @@ interface AxisSurfaceIndex {
   cast(origin: THREE.Vector3, direction: THREE.Vector3): SurfaceHit | null;
 }
 
+interface SurfaceIndexPreparation {
+  records: SurfaceRecord[];
+  bounds: THREE.Box3;
+  triangleTotal: number;
+}
+
+interface AxisProjectedGrids {
+  xz: ProjectedGrid;
+  yz: ProjectedGrid;
+  xy: ProjectedGrid;
+}
+
 interface SurfaceProber {
   top(x: number, z: number, fromY: number): SurfaceHit | null;
   side(y: number, z: number, side: number, fromX: number): SurfaceHit | null;
@@ -1336,7 +1348,8 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       steel(xform(cylY(0.025 * scale, 0.029 * scale, 0.045 * scale, 7), x - w * 0.27, h + 0.055 * scale, -d * 0.28));
     };
 
-    switch (variant) {
+    const buildCargoGroupOne = (): void => {
+      switch (variant) {
       case 'beer-cooler-blue': { // weathered field cooler, not a clean/emissive toy block
         const w = 0.50, h = 0.28, d = 0.34;
         const body: readonly [number, number, number] = [0.08, 0.19, 0.29];
@@ -1389,6 +1402,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
           for (const x of [-0.15, 0.15]) strap(x, 0.088, z, 0.018, 0.17, 0.18);
         }
         break;
+      }
+    };
+    const buildCargoGroupTwo = (): void => {
+      switch (variant) {
       case 'folded-tarp-pack':
         for (let i = 0; i < 3; i++) cloth(xform(box(0.50 - i * 0.035, 0.065, 0.34 - i * 0.02), 0, 0.035 + i * 0.064, 0), 0.70 + i * 0.06);
         for (const x of [-0.15, 0.15]) strap(x, 0.11, 0, 0.025, 0.22, 0.36);
@@ -1424,6 +1441,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         for (const x of [-0.26, 0.26]) steel(xform(torusV(0.135, 0.012, 12, 4), x, 0.13, 0, 0, Math.PI / 2, 0));
         steel(xform(box(0.18, 0.025, 0.045), 0, 0.28, 0));
         break;
+      }
+    };
+    const buildCargoGroupThree = (): void => {
+      switch (variant) {
       case 'fifty-cal-ammo-can':
         hardCase(equipmentPalette.ammoCase, 0.36, 0.24, 0.20, equipmentPalette.toolCan);
         break;
@@ -1460,6 +1481,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
           }
         }
         break;
+      }
+    };
+    const buildCargoGroupFour = (): void => {
+      switch (variant) {
       case 'cable-reel':
         for (const x of [-0.14, 0.14]) wood(xform(cylX(0.18, 0.035, 12), x, 0.18, 0), 0.68);
         wood(xform(cylX(0.08, 0.30, 10), 0, 0.18, 0), 0.58);
@@ -1499,7 +1524,13 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         }
         for (const x of [-0.22, 0.22]) wood(xform(box(0.035, 0.26, 0.36), x, 0.13, 0), 0.56);
         break;
-    }
+      }
+    };
+    const variantIndex = FLEET_EQUIPMENT_VARIANTS.indexOf(variant);
+    if (variantIndex < 6) buildCargoGroupOne();
+    else if (variantIndex < 12) buildCargoGroupTwo();
+    else if (variantIndex < 18) buildCargoGroupThree();
+    else buildCargoGroupFour();
     const safeScale = THREE.MathUtils.clamp(Number(scale) || 1, 0.72, 1);
     if (safeScale !== 1) {
       for (const part of parts) part.geo.scale(safeScale, safeScale, safeScale);
@@ -1971,64 +2002,103 @@ const US_RE = /USA/i;
 // Entries: { kit, p:probability, v:params, slot:[name, args] }. `p` rolls are
 // drawn deterministically IN ORDER for every entry whether or not the piece
 // lands, so one skip never reshuffles the rest of the tank.
-function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
-  const era = decorEra(spec);
-  const sov = SOVIET_RE.test(spec.nation || '');
-  const us = US_RE.test(spec.nation || '');
-  const casemate = !!(spec.armor && spec.armor.turretless);
-  const M: DecorManifestRow[] = [];
+interface DefaultManifestContext {
+  era: string;
+  soviet: boolean;
+  american: boolean;
+  casemate: boolean;
+}
 
-  // ---- turret / roof kit ----
-  if (!casemate) {
-    M.push({ kit: 'packs', p: 0.85, v: { n: 2 + ((rng() * 2) | 0) }, slot: ['turretRear', {}] });
-    M.push({ kit: 'tarp', p: 0.6, v: { v: rng() < 0.5 ? 'fat' : 'thin', len: 0.7 }, slot: ['turretSide', { side: rng() < 0.5 ? -1 : 1 }] });
-    M.push({ kit: 'antenna', p: 0.9, v: { v: rng() < 0.25 && era !== 'ww2' ? 'whip_long' : 'whip_short', helmet: us && era === 'ww2' && rng() < 0.18 }, slot: ['turretRoof', { rear: true, side: 1 }] });
-    if (era !== 'ww2') {
-      M.push({ kit: 'smoke', p: 0.75, v: { v: rng() < 0.4 ? '4' : '6' }, slot: ['turretCheekPair', {}] });
-      M.push({ kit: 'aamg', p: era === 'cold-war' ? 0.75 : 0.5, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.4, ring: !sov && rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
-      M.push({ kit: 'light', p: 0.35, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] });
-    } else {
-      M.push({ kit: 'aamg', p: us ? 0.65 : 0.2, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
-      M.push({ kit: 'hatch', p: 0.4, v: { v: rng() < 0.6 ? 'round' : 'rect' }, slot: ['turretRoof', { rear: false, side: -1 }] });
-    }
-    M.push({ kit: 'tracks', p: era === 'ww2' ? 0.5 : 0.3, v: { n: 4, linkW: Math.min(0.5, spec.dims.widthM * 0.13) }, slot: ['turretSidePlate', { side: -1 }] });
-    M.push({ kit: 'camonet', p: 0.45, v: { v: 'roll', len: 0.9 }, slot: ['turretRear', { low: true }] });
+function appendDefaultTurretedManifest(
+  manifest: DecorManifestRow[],
+  spec: FleetTankSpec,
+  rng: Rng,
+  context: DefaultManifestContext,
+): void {
+  const { era, soviet, american } = context;
+  manifest.push({ kit: 'packs', p: 0.85, v: { n: 2 + ((rng() * 2) | 0) }, slot: ['turretRear', {}] });
+  manifest.push({ kit: 'tarp', p: 0.6, v: { v: rng() < 0.5 ? 'fat' : 'thin', len: 0.7 }, slot: ['turretSide', { side: rng() < 0.5 ? -1 : 1 }] });
+  manifest.push({ kit: 'antenna', p: 0.9, v: { v: rng() < 0.25 && era !== 'ww2' ? 'whip_long' : 'whip_short', helmet: american && era === 'ww2' && rng() < 0.18 }, slot: ['turretRoof', { rear: true, side: 1 }] });
+  if (era !== 'ww2') {
+    manifest.push({ kit: 'smoke', p: 0.75, v: { v: rng() < 0.4 ? '4' : '6' }, slot: ['turretCheekPair', {}] });
+    manifest.push({ kit: 'aamg', p: era === 'cold-war' ? 0.75 : 0.5, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.4, ring: !soviet && rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
+    manifest.push({ kit: 'light', p: 0.35, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] });
   } else {
-    M.push({ kit: 'antenna', p: 0.9, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] });
-    M.push({ kit: 'aamg', p: era === 'ww2' ? 0.35 : 0.7, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.5 }, slot: ['turretRoof', { rear: true, side: -1 }] });
-    M.push({ kit: 'packs', p: 0.8, v: { n: 2 }, slot: ['rearDeck', { spread: 0.4 }] });
-    M.push({ kit: 'camonet', p: 0.5, v: { v: 'roll', len: 1.1 }, slot: ['rearDeck', {}] });
-    // fixed-bore vehicles: the rear deck sits outside any gun sweep — the
-    // stowed travel lock is period kit on long-gun TDs
-    M.push({ kit: 'travelLock', p: 0.6, v: {}, slot: ['rearDeck', { center: true, back: true, small: true }] });
+    manifest.push({ kit: 'aamg', p: american ? 0.65 : 0.2, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
+    manifest.push({ kit: 'hatch', p: 0.4, v: { v: rng() < 0.6 ? 'round' : 'rect' }, slot: ['turretRoof', { rear: false, side: -1 }] });
   }
+  manifest.push({ kit: 'tracks', p: era === 'ww2' ? 0.5 : 0.3, v: { n: 4, linkW: Math.min(0.5, spec.dims.widthM * 0.13) }, slot: ['turretSidePlate', { side: -1 }] });
+  manifest.push({ kit: 'camonet', p: 0.45, v: { v: 'roll', len: 0.9 }, slot: ['turretRear', { low: true }] });
+}
 
-  // ---- hull kit ----
-  M.push({ kit: 'cable', p: 0.85, v: { len: Math.min(2.6, spec.dims.hullLengthM * 0.36) }, slot: ['hullSideTop', { side: 1 }] });
-  M.push({ kit: 'bin', p: 0.8, v: { v: era === 'ww2' ? 'crate' : 'long', w: era === 'ww2' ? 0.55 : 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] });
-  M.push({ kit: 'tools', p: 0.75, v: { set: rng() < 0.5 ? ['shovel', 'axe'] : ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] });
-  M.push({ kit: 'jerry', p: era === 'ww2' ? 0.6 : 0.45, v: { n: 2 + (rng() < 0.4 ? 1 : 0) }, slot: ['rearDeck', { corner: 1 }] });
-  M.push({ kit: 'tarp', p: 0.7, v: { v: 'fat', len: Math.min(1.2, spec.dims.widthM * 0.35) }, slot: ['rearDeck', { corner: -1 }] });
-  M.push({ kit: 'shackles', p: 0.9, v: { v: rng() < 0.5 ? 'hook' : 'shackle' }, slot: ['bowPair', {}] });
-  M.push({ kit: 'tracks', p: era === 'ww2' ? 0.6 : 0.4, v: { n: 5, linkW: Math.min(0.5, spec.dims.widthM * 0.14) }, slot: ['glacis', {}] });
-  if (sov && era !== 'modern') {
-    M.push({ kit: 'drums', p: 0.75, v: { v: rng() < 0.6 ? 'twin' : 'single' }, slot: ['hullRear', {}] });
-    M.push({ kit: 'log', p: 0.6, v: { len: Math.min(2.8, spec.dims.widthM * 0.82) }, slot: ['hullRearLow', {}] });
+function appendDefaultCasemateManifest(
+  manifest: DecorManifestRow[],
+  rng: Rng,
+  context: DefaultManifestContext,
+): void {
+  const { era, soviet } = context;
+  manifest.push({ kit: 'antenna', p: 0.9, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] });
+  manifest.push({ kit: 'aamg', p: era === 'ww2' ? 0.35 : 0.7, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.5 }, slot: ['turretRoof', { rear: true, side: -1 }] });
+  manifest.push({ kit: 'packs', p: 0.8, v: { n: 2 }, slot: ['rearDeck', { spread: 0.4 }] });
+  manifest.push({ kit: 'camonet', p: 0.5, v: { v: 'roll', len: 1.1 }, slot: ['rearDeck', {}] });
+  // Fixed-bore vehicles keep the rear-deck travel lock outside the gun sweep.
+  manifest.push({ kit: 'travelLock', p: 0.6, v: {}, slot: ['rearDeck', { center: true, back: true, small: true }] });
+}
+
+function appendDefaultTurretManifest(
+  manifest: DecorManifestRow[],
+  spec: FleetTankSpec,
+  rng: Rng,
+  context: DefaultManifestContext,
+): void {
+  if (context.casemate) appendDefaultCasemateManifest(manifest, rng, context);
+  else appendDefaultTurretedManifest(manifest, spec, rng, context);
+}
+
+function appendDefaultHullManifest(
+  manifest: DecorManifestRow[],
+  spec: FleetTankSpec,
+  rng: Rng,
+  context: DefaultManifestContext,
+): void {
+  const { era, soviet, american } = context;
+  manifest.push({ kit: 'cable', p: 0.85, v: { len: Math.min(2.6, spec.dims.hullLengthM * 0.36) }, slot: ['hullSideTop', { side: 1 }] });
+  manifest.push({ kit: 'bin', p: 0.8, v: { v: era === 'ww2' ? 'crate' : 'long', w: era === 'ww2' ? 0.55 : 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] });
+  manifest.push({ kit: 'tools', p: 0.75, v: { set: rng() < 0.5 ? ['shovel', 'axe'] : ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] });
+  manifest.push({ kit: 'jerry', p: era === 'ww2' ? 0.6 : 0.45, v: { n: 2 + (rng() < 0.4 ? 1 : 0) }, slot: ['rearDeck', { corner: 1 }] });
+  manifest.push({ kit: 'tarp', p: 0.7, v: { v: 'fat', len: Math.min(1.2, spec.dims.widthM * 0.35) }, slot: ['rearDeck', { corner: -1 }] });
+  manifest.push({ kit: 'shackles', p: 0.9, v: { v: rng() < 0.5 ? 'hook' : 'shackle' }, slot: ['bowPair', {}] });
+  manifest.push({ kit: 'tracks', p: era === 'ww2' ? 0.6 : 0.4, v: { n: 5, linkW: Math.min(0.5, spec.dims.widthM * 0.14) }, slot: ['glacis', {}] });
+  if (soviet && era !== 'modern') {
+    manifest.push({ kit: 'drums', p: 0.75, v: { v: rng() < 0.6 ? 'twin' : 'single' }, slot: ['hullRear', {}] });
+    manifest.push({ kit: 'log', p: 0.6, v: { len: Math.min(2.8, spec.dims.widthM * 0.82) }, slot: ['hullRearLow', {}] });
   } else {
-    M.push({ kit: 'wheel', p: 0.4, v: {}, slot: ['rearDeck', { corner: 1, back: true }] });
+    manifest.push({ kit: 'wheel', p: 0.4, v: {}, slot: ['rearDeck', { corner: 1, back: true }] });
   }
-  if (us && era === 'ww2') {
-    M.push({ kit: 'sandbags', p: 0.45, v: { rows: 2, perRow: 4, w: spec.dims.widthM * 0.5 }, slot: ['glacisLow', {}] });
+  if (american && era === 'ww2') {
+    manifest.push({ kit: 'sandbags', p: 0.45, v: { rows: 2, perRow: 4, w: spec.dims.widthM * 0.5 }, slot: ['glacisLow', {}] });
   }
   if (era === 'modern') {
-    M.push({ kit: 'camonet', p: 0.4, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] });
-    M.push({ kit: 'bin', p: 0.5, v: { v: 'steel', w: 0.5, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] });
-    M.push({ kit: 'applique', p: 0.3, v: { v: 'rect', w: 0.8, h: 0.42 }, slot: ['hullSide', { side: 1, zFrac: -0.05 }] });
+    manifest.push({ kit: 'camonet', p: 0.4, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] });
+    manifest.push({ kit: 'bin', p: 0.5, v: { v: 'steel', w: 0.5, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] });
+    manifest.push({ kit: 'applique', p: 0.3, v: { v: 'rect', w: 0.8, h: 0.42 }, slot: ['hullSide', { side: 1, zFrac: -0.05 }] });
   }
-  M.push({ kit: 'bucket', p: era === 'modern' ? 0.15 : 0.35, v: {}, slot: ['hullRearHang', {}] });
-  M.push({ kit: 'rations', p: 0.35, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] });
-  M.push({ kit: 'chain', p: 0.3, v: { links: 5 }, slot: ['bowChain', {}] });
-  return M;
+  manifest.push({ kit: 'bucket', p: era === 'modern' ? 0.15 : 0.35, v: {}, slot: ['hullRearHang', {}] });
+  manifest.push({ kit: 'rations', p: 0.35, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] });
+  manifest.push({ kit: 'chain', p: 0.3, v: { links: 5 }, slot: ['bowChain', {}] });
+}
+
+function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  const context: DefaultManifestContext = {
+    era: decorEra(spec),
+    soviet: SOVIET_RE.test(spec.nation || ''),
+    american: US_RE.test(spec.nation || ''),
+    casemate: !!(spec.armor && spec.armor.turretless),
+  };
+  const manifest: DecorManifestRow[] = [];
+  appendDefaultTurretManifest(manifest, spec, rng, context);
+  appendDefaultHullManifest(manifest, spec, rng, context);
+  return manifest;
 }
 
 // Curated per-tank manifests: marquee/composition tanks get an authored,
@@ -2493,19 +2563,29 @@ function addProjectedTriangle(
   }
 }
 
-function buildAxisSurfaceIndex(
+function expandTransformedBounds(
+  bounds: THREE.Box3,
+  box: THREE.Box3,
+  transform: THREE.Matrix4,
+  corner: THREE.Vector3,
+): void {
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        bounds.expandByPoint(corner.set(x, y, z).applyMatrix4(transform));
+      }
+    }
+  }
+}
+
+function collectSurfaceRecords(
   group: THREE.Group,
   targets: SurfaceMesh[],
-): AxisSurfaceIndex | null {
-  if (!targets.length || targets.length >= 2048) return null;
-  group.updateWorldMatrix(true, false);
-  const groupInverse = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  groupInverse: THREE.Matrix4,
+): SurfaceIndexPreparation | null {
   const records: SurfaceRecord[] = [];
   const bounds = new THREE.Box3();
   const corner = new THREE.Vector3();
-  const a = new THREE.Vector3();
-  const b = new THREE.Vector3();
-  const c = new THREE.Vector3();
   let triangleTotal = 0;
   for (const mesh of targets) {
     if (Array.isArray(mesh.material)) return null;
@@ -2522,26 +2602,29 @@ function buildAxisSurfaceIndex(
     const worldNormalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
     if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
-    if (box && !box.isEmpty()) {
-      for (const x of [box.min.x, box.max.x]) {
-        for (const y of [box.min.y, box.max.y]) {
-          for (const z of [box.min.z, box.max.z]) {
-            bounds.expandByPoint(corner.set(x, y, z).applyMatrix4(toGroup));
-          }
-        }
-      }
-    }
+    if (box && !box.isEmpty()) expandTransformedBounds(bounds, box, toGroup, corner);
     const index = mesh.geometry.index?.array || null;
     const triangleCount = Math.floor((index ? index.length : position.count) / 3);
     records.push({ mesh, position, index, triangleCount, toGroup, toLocal, worldNormalMatrix });
     triangleTotal += triangleCount;
   }
   if (!records.length || bounds.isEmpty()) return null;
+  return { records, bounds, triangleTotal };
+}
+
+function indexSurfaceTriangles(
+  records: SurfaceRecord[],
+  bounds: THREE.Box3,
+  triangleTotal: number,
+): AxisProjectedGrids | null {
   const size = Math.max(AXIS_GRID_MIN, Math.min(AXIS_GRID_MAX,
     Math.ceil(Math.sqrt(triangleTotal / 24))));
   const xz = projectedGrid(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, size);
   const yz = projectedGrid(bounds.min.y, bounds.max.y, bounds.min.z, bounds.max.z, size);
   const xy = projectedGrid(bounds.min.x, bounds.max.x, bounds.min.y, bounds.max.y, size);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
   for (let targetIndex = 0; targetIndex < records.length; targetIndex++) {
     const record = records[targetIndex];
     if (record.triangleCount >= 0x100000) return null;
@@ -2565,6 +2648,22 @@ function buildAxisSurfaceIndex(
         Math.min(a.y, b.y, c.y), Math.max(a.y, b.y, c.y), encoded);
     }
   }
+  return { xz, yz, xy };
+}
+
+function buildAxisSurfaceIndex(
+  group: THREE.Group,
+  targets: SurfaceMesh[],
+): AxisSurfaceIndex | null {
+  if (!targets.length || targets.length >= 2048) return null;
+  group.updateWorldMatrix(true, false);
+  const groupInverse = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const prepared = collectSurfaceRecords(group, targets, groupInverse);
+  if (!prepared) return null;
+  const { records, bounds, triangleTotal } = prepared;
+  const grids = indexSurfaceTriangles(records, bounds, triangleTotal);
+  if (!grids) return null;
+  const { xz, yz, xy } = grids;
 
   const rayGroup = new THREE.Ray();
   const rayLocal = new THREE.Ray();
@@ -2807,9 +2906,12 @@ function disposePartList(parts: DecorPartList): void {
 export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary | null {
   const { root, hullG, turretG, spec, engineCtx, disposables = [], opts = {} } = a;
   try {
-    if (!root || root.userData.__decorApplied) return null;
-    if (!resolveDecorMode(opts, engineCtx)) return null;
-    if (a.isDestroyed && a.isDestroyed()) return null;
+    function shouldSkipAttachment(): boolean {
+      if (!root || root.userData.__decorApplied) return true;
+      if (!resolveDecorMode(opts, engineCtx)) return true;
+      return !!(a.isDestroyed && a.isDestroyed());
+    }
+    if (shouldSkipAttachment()) return null;
     root.userData.__decorApplied = true;
 
     const rng = mulberry32(fnv1a(`decor:${spec.id}`));
@@ -2835,10 +2937,14 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     // (the real Tiger's cables) for a mantlet it can never touch. Hull decor
     // inside the sweep only needs to clear the bands it actually sits under.
     // Casemates skip the sweep (nothing yaws).
-    let sweepR = 0;
-    let turretMinY = 0.10;                    // global (relative to pivot)
-    const bandMinY = [Infinity, Infinity, Infinity]; // r/sweepR: <0.5, 0.5-0.8, >0.8
-    {
+    function measureTurretSweep(): {
+      sweepR: number;
+      turretMinY: number;
+      bandMinY: number[];
+    } {
+      let sweepR = 0;
+      let turretMinY = 0.10;
+      const bandMinY = [Infinity, Infinity, Infinity];
       const v = new THREE.Vector3();
       const bb = new THREE.Box3();
       const inv = new THREE.Matrix4();
@@ -2846,31 +2952,46 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       const samples: Array<[number, number]> = [];
       turretG.updateWorldMatrix(true, false);
       inv.copy(turretG.matrixWorld).invert();
-      for (const o of turretTargets) {
-        let underGun = false; // gun subtree pitches — the gun guard owns it
-        for (let p: THREE.Object3D | null = o; p && p !== turretG; p = p.parent) {
-          if (p.name === 'rig_gun') { underGun = true; break; }
+
+      function belongsToGunRig(object: THREE.Object3D): boolean {
+        // Gun-subtree geometry pitches; the gun guard owns its envelope.
+        for (let p: THREE.Object3D | null = object; p && p !== turretG; p = p.parent) {
+          if (p.name === 'rig_gun') return true;
         }
-        if (underGun) continue;
-        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-        if (!o.geometry.boundingBox) continue;
-        bb.copy(o.geometry.boundingBox);
-        m.multiplyMatrices(inv, o.matrixWorld);
-        for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
-          v.set(x, y, z).applyMatrix4(m);
-          const r = Math.hypot(v.x, v.z);
-          sweepR = Math.max(sweepR, r);
-          if (v.y < turretMinY) turretMinY = v.y;
-          samples.push([r, v.y]);
+        return false;
+      }
+
+      function appendTargetSamples(object: SurfaceMesh): void {
+        if (belongsToGunRig(object)) return;
+        if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+        if (!object.geometry.boundingBox) return;
+        bb.copy(object.geometry.boundingBox);
+        m.multiplyMatrices(inv, object.matrixWorld);
+        for (const x of [bb.min.x, bb.max.x]) {
+          for (const y of [bb.min.y, bb.max.y]) {
+            for (const z of [bb.min.z, bb.max.z]) {
+              v.set(x, y, z).applyMatrix4(m);
+              const r = Math.hypot(v.x, v.z);
+              sweepR = Math.max(sweepR, r);
+              if (v.y < turretMinY) turretMinY = v.y;
+              samples.push([r, v.y]);
+            }
+          }
         }
       }
+
+      for (const object of turretTargets) appendTargetSamples(object);
       sweepR = Math.min(sweepR || W * 0.45, dims.overallLengthM * 0.5); // sanity
       for (const [r, y] of samples) {
         const i = r < sweepR * 0.5 ? 0 : (r < sweepR * 0.8 ? 1 : 2);
         if (y < bandMinY[i]) bandMinY[i] = y;
       }
-      for (let i = 0; i < 3; i++) if (!Number.isFinite(bandMinY[i])) bandMinY[i] = 0.12;
+      for (let i = 0; i < 3; i++) {
+        if (!Number.isFinite(bandMinY[i])) bandMinY[i] = 0.12;
+      }
+      return { sweepR, turretMinY, bandMinY };
     }
+    const { sweepR, turretMinY, bandMinY } = measureTurretSweep();
 
     // Gun full-depression bore envelope, swept across every yaw. Hull decor
     // within reach must clear the bore cylinder.
@@ -3011,8 +3132,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       ledger.some((other) => bb.intersectsBox(other));
 
     // --- spare-wheel radius: measured off the real gear ---------------------
-    let wheelR = 0.31;
-    {
+    function measureWheelRadius(): number {
       let best: number | null = null;
       const s = new THREE.Vector3();
       hullG.traverse((o) => {
@@ -3028,23 +3148,26 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
           if (!best || r > best) best = r;
         }
       });
-      if (best !== null) wheelR = Math.min(0.45, best);
+      return best === null ? 0.31 : Math.min(0.45, best);
     }
+    const wheelR = measureWheelRadius();
 
     // --- deck landmarks ------------------------------------------------------
     const topFrom = H + 1.5;
     const deckProbe = (x: number, z: number) => hullP.top(x, z, topFrom);
     const sternZ = -L / 2;
-    let rearDeckY = H * 0.6;
-    {
+    function measureRearDeckY(): number {
       const ys: number[] = [];
       for (let i = 0; i <= 6; i++) {
         const z = sternZ + 0.2 + (i / 6) * Math.max(0.4, (pivot[2] - sweepR - 0.25) - sternZ - 0.3);
         const h = deckProbe(0, z);
         if (h) ys.push(h.p.y);
       }
-      if (ys.length) { ys.sort((p, q) => p - q); rearDeckY = ys[(ys.length / 2) | 0]; }
+      if (!ys.length) return H * 0.6;
+      ys.sort((p, q) => p - q);
+      return ys[(ys.length / 2) | 0];
     }
+    const rearDeckY = measureRearDeckY();
 
     // --- placement bookkeeping ----------------------------------------------
     // Seven visible fleet-equipment stations plus the per-vehicle curated kit
@@ -3058,6 +3181,91 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
+    function rejectCommit(
+      name: string,
+      parts: DecorPartList,
+      reason: string,
+    ): false {
+      summary.skipped.push([name, reason]);
+      disposePartList(parts);
+      return false;
+    }
+
+    function guardHullCommit(
+      name: string,
+      parts: DecorPartList,
+      bb: THREE.Box3,
+      pos: THREE.Vector3,
+      rot: THREE.Euler,
+      seatY: number | null,
+      zExtra: number,
+    ): boolean {
+      if (!widthGuardOK(bb, zExtra)) return rejectCommit(name, parts, 'width');
+      if (!gunGuardOK(placedPartBoxes(parts, pos, rot), seatY)) {
+        const reason = `gun@${gunGuardOK.lastYaw ?? 'cone'}`;
+        gunGuardOK.lastYaw = null;
+        return rejectCommit(name, parts, reason);
+      }
+      if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
+      return true;
+    }
+
+    function guardTurretCommit(
+      name: string,
+      parts: DecorPartList,
+      bb: THREE.Box3,
+    ): boolean {
+      let rMax = 0;
+      for (const x of [bb.min.x, bb.max.x]) {
+        for (const z of [bb.min.z, bb.max.z]) {
+          rMax = Math.max(rMax, Math.hypot(x, z));
+        }
+      }
+      if (Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) > W / 2 + 0.048) {
+        return rejectCommit(name, parts, 'turret-width');
+      }
+      if (rMax > sweepR + 0.55) return rejectCommit(name, parts, 'turret-reach');
+      sweepRLive = Math.max(sweepRLive, rMax);
+      turretMinYLive = Math.min(turretMinYLive, bb.min.y);
+      for (const x of [bb.min.x, bb.max.x]) {
+        for (const z of [bb.min.z, bb.max.z]) {
+          const rn = Math.hypot(x, z) / Math.max(sweepR, 1e-3);
+          const bi = rn < 0.5 ? 0 : (rn < 0.8 ? 1 : 2);
+          if (bb.min.y < bandMinY[bi]) bandMinY[bi] = bb.min.y;
+        }
+      }
+      return true;
+    }
+
+    function attachmentReceipt(
+      parts: DecorPartList,
+      pos: THREE.Vector3,
+      rot: THREE.Euler,
+      attachment: DecorAttachmentIntent,
+    ): NonNullable<DecorPieceSummary['attachment']> {
+      const localBounds = partsBBox(parts);
+      const supportNormal = attachment.supportNormal.clone().normalize();
+      const mountAxis = attachment.mountAxis === 'y'
+        ? new THREE.Vector3(0, 1, 0)
+        : new THREE.Vector3(0, 0, 1);
+      const mountNormal = mountAxis
+        .applyQuaternion(new THREE.Quaternion().setFromEuler(rot)).normalize();
+      const baseOffset = attachment.mountAxis === 'y'
+        ? localBounds.min.y
+        : localBounds.min.z;
+      const basePoint = pos.clone().addScaledVector(mountNormal, baseOffset);
+      return {
+        slot: attachment.slot,
+        supportPoint: attachment.supportPoint.toArray() as [number, number, number],
+        supportNormal: supportNormal.toArray() as [number, number, number],
+        mountNormal: mountNormal.toArray() as [number, number, number],
+        alignmentDot: mountNormal.dot(supportNormal),
+        supportGapM: basePoint.sub(attachment.supportPoint).dot(supportNormal),
+        embedM: attachment.embedM,
+        continuousCarrier: parts.meta?.continuousCarrier === true,
+      };
+    }
+
     /** Commit one built kit at pos/rot under hull|turret. */
     function commit(
       name: string,
@@ -3070,39 +3278,21 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     ): boolean {
       let tris = 0;
       for (const p of parts) tris += triCount(p.geo);
-      if (budget.tris + tris > budget.max) { summary.skipped.push([name, 'budget']); disposePartList(parts); return false; }
+      if (budget.tris + tris > budget.max) return rejectCommit(name, parts, 'budget');
       const bb = placedBox(parts, pos, rot);
-      if (frame === 'hull') {
-        if (!widthGuardOK(bb, zExtra)) { summary.skipped.push([name, 'width']); disposePartList(parts); return false; }
-        if (!gunGuardOK(placedPartBoxes(parts, pos, rot), seatY)) { summary.skipped.push([name, `gun@${gunGuardOK.lastYaw ?? 'cone'}`]); gunGuardOK.lastYaw = null; disposePartList(parts); return false; }
-        if (!sweepGuardOK(bb)) { summary.skipped.push([name, 'sweep']); disposePartList(parts); return false; }
-      } else {
-        // turret frame: the WIDTH guard applies to the yaw-0 footprint (the
-        // committed plan width the loader measures); radial reach may extend
-        // the existing bustle envelope a bounded amount (baskets), since a
-        // yawed turret legally overhangs the hull like the bustle itself.
-        let rMax = 0;
-        for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) {
-          rMax = Math.max(rMax, Math.hypot(x, z));
-        }
-        if (Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) > W / 2 + 0.048) {
-          summary.skipped.push([name, 'turret-width']); disposePartList(parts); return false;
-        }
-        if (rMax > sweepR + 0.55) {
-          summary.skipped.push([name, 'turret-reach']); disposePartList(parts); return false;
-        }
-        sweepRLive = Math.max(sweepRLive, rMax);
-        turretMinYLive = Math.min(turretMinYLive, bb.min.y);
-        for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) {
-          const rn = Math.hypot(x, z) / Math.max(sweepR, 1e-3);
-          const bi = rn < 0.5 ? 0 : (rn < 0.8 ? 1 : 2);
-          if (bb.min.y < bandMinY[bi]) bandMinY[bi] = bb.min.y;
-        }
+      // Turret-frame reach can exceed the hull width only within the bounded
+      // authored bustle envelope; hull-frame pieces retain the width, gun,
+      // and turret-sweep guards.
+      const guarded = frame === 'hull'
+        ? guardHullCommit(name, parts, bb, pos, rot, seatY, zExtra)
+        : guardTurretCommit(name, parts, bb);
+      if (!guarded) return false;
+      if (!allowOverlap && overlaps(bb, ledger)) {
+        return rejectCommit(name, parts, 'overlap');
       }
-      if (!allowOverlap && overlaps(bb, ledger)) { summary.skipped.push([name, 'overlap']); disposePartList(parts); return false; }
+      const receipt = attachment ? attachmentReceipt(parts, pos, rot, attachment) : null;
       ledger.push(bb);
       budget.tris += tris;
-      const localBounds = attachment ? partsBBox(parts).clone() : null;
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const map = buckets[frame];
       for (const p of parts) {
@@ -3111,28 +3301,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         map.get(p.mat)!.push(p.geo);
       }
       const piece: DecorPieceSummary = { kit: name, frame, tris };
-      if (attachment) {
-        const supportNormal = attachment.supportNormal.clone().normalize();
-        const mountAxis = attachment.mountAxis === 'y'
-          ? new THREE.Vector3(0, 1, 0)
-          : new THREE.Vector3(0, 0, 1);
-        const mountNormal = mountAxis
-          .applyQuaternion(new THREE.Quaternion().setFromEuler(rot)).normalize();
-        const baseOffset = attachment.mountAxis === 'y'
-          ? localBounds!.min.y
-          : localBounds!.min.z;
-        const basePoint = pos.clone().addScaledVector(mountNormal, baseOffset);
-        piece.attachment = {
-          slot: attachment.slot,
-          supportPoint: attachment.supportPoint.toArray() as [number, number, number],
-          supportNormal: supportNormal.toArray() as [number, number, number],
-          mountNormal: mountNormal.toArray() as [number, number, number],
-          alignmentDot: mountNormal.dot(supportNormal),
-          supportGapM: basePoint.sub(attachment.supportPoint).dot(supportNormal),
-          embedM: attachment.embedM,
-          continuousCarrier: parts.meta?.continuousCarrier === true,
-        };
-      }
+      if (receipt) piece.attachment = receipt;
       summary.pieces.push(piece);
       return true;
     }
@@ -3565,46 +3734,78 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       return _pivotTopY;
     }
 
-    // ---- resolve the manifest ---------------------------------------------
-    const manifest = decorManifestFor(spec, rng);
-    for (const row of manifest) {
-      // deterministic dice: EVERY row draws its roll + jitter seed up front,
-      // so a failed placement can never reshuffle later pieces
-      const roll = rng();
-      const jitterSeed = (rng() * 0x7fffffff) | 0;
-      if (roll > (row.p ?? 1)) continue;
-      const kitFn = DECOR_KITS[row.kit];
-      const slotFn = SLOTS[row.slot[0]];
-      if (!kitFn || !slotFn) continue;
-      let parts: DecorPartList;
+    function createManifestParts(
+      row: DecorManifestRow,
+      kitFn: DecorKitBuilder,
+      jitterSeed: number,
+    ): DecorPartList | null {
       try {
-        const localRng = mulberry32(fnv1a(`${spec.id}:${row.kit}:${row.slot[0]}`) ^ jitterSeed);
-        const v = { ...(row.v || {}) };
-        if (row.kit === 'wheel') v.r = wheelR;
-        if (row.kit === 'drums') v._W = W;
-        parts = kitFn({ rng: localRng, ...v });
-      } catch (e) { continue; }
+        const localRng = mulberry32(
+          fnv1a(`${spec.id}:${row.kit}:${row.slot[0]}`) ^ jitterSeed,
+        );
+        const values = { ...(row.v || {}) };
+        if (row.kit === 'wheel') values.r = wheelR;
+        if (row.kit === 'drums') values._W = W;
+        return kitFn({ rng: localRng, ...values });
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function placeManifestParts(
+      row: DecorManifestRow,
+      slotFn: SlotPlacer,
+      parts: DecorPartList,
+    ): void {
       try {
         const before = summary.skipped.length;
         const pieceName = row.kit === 'cargo'
           ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit;
         const ok = slotFn(row.slot[1] || {}, parts, pieceName);
-        // slots log commit-guard skips themselves; a silent false is a probe
-        // miss (no anchor surface answered) — record it so nothing hides
-        if (!ok && summary.skipped.length === before) summary.skipped.push([row.kit, 'probe']);
-      } catch (e) {
-        summary.skipped.push([row.kit, `slot:${errorMessage(e)}`]);
-        try { disposePartList(parts); } catch (_) { /* already consumed */ }
+        // Slots log guard failures themselves; a silent false is a probe miss
+        // where no anchor surface answered.
+        if (!ok && summary.skipped.length === before) {
+          summary.skipped.push([row.kit, 'probe']);
+        }
+      } catch (error) {
+        summary.skipped.push([row.kit, `slot:${errorMessage(error)}`]);
+        try {
+          disposePartList(parts);
+        } catch (_) {
+          // The slot may already have consumed the part list.
+        }
       }
     }
 
+    function attachManifestRows(): void {
+      const manifest = decorManifestFor(spec, rng);
+      for (const row of manifest) {
+        // Deterministic dice: every row draws its roll and jitter seed before
+        // eligibility checks, so one failed placement cannot reshuffle later
+        // equipment.
+        const roll = rng();
+        const jitterSeed = (rng() * 0x7fffffff) | 0;
+        if (roll > (row.p ?? 1)) continue;
+        const kitFn = DECOR_KITS[row.kit];
+        const slotFn = SLOTS[row.slot[0]];
+        if (!kitFn || !slotFn) continue;
+        const parts = createManifestParts(row, kitFn, jitterSeed);
+        if (!parts) continue;
+        placeManifestParts(row, slotFn, parts);
+      }
+    }
+    attachManifestRows();
+
     // ---- merge per family per frame + attach --------------------------------
-    let drawCalls = 0;
-    for (const [frame, map] of Object.entries(buckets)) {
-      if (!map.size) continue;
+    function mergeDecorationBucket(
+      frame: DecorFrame,
+      map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
+    ): number {
+      if (!map.size) return 0;
       const parent = frame === 'hull' ? hullG : turretG;
       const g = new THREE.Group();
       g.name = frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
+      let drawCalls = 0;
       for (const [matKey, geos] of map) {
         const nonIndexed = geos.map((x) => (x.index ? x.toNonIndexed() : x));
         const merged = mergeGeometries(nonIndexed, false);
@@ -3630,7 +3831,17 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       }
       parent.add(g);
       g.userData.combatHitboxRole = 'equipment';
+      return drawCalls;
     }
+
+    function mergeDecorationBuckets(): number {
+      let drawCalls = 0;
+      for (const [frame, map] of Object.entries(buckets)) {
+        drawCalls += mergeDecorationBucket(frame as DecorFrame, map);
+      }
+      return drawCalls;
+    }
+    const drawCalls = mergeDecorationBuckets();
     for (const m of Object.values(mats.all())) if (m) disposables.push(m);
 
     summary.tris = budget.tris;
