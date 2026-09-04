@@ -26,13 +26,9 @@ import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
-  MINIMAP_NORTH_UP,
-  minimapHeadingForDirection,
-  minimapRotationForHeading,
+  minimapAngleForDirection,
   normalizeMinimapAngle,
-  orientMinimapDirection,
-  orientMinimapPoint,
-  orientMinimapYaw,
+  projectWorldToMinimap,
 } from './minimapOrientation.ts';
 
 export type HudMode = 'battle' | 'sniper' | 'hidden';
@@ -492,10 +488,9 @@ export interface HudRuntime {
 interface HudMinimapDebugState {
   rotationRad: number;
   rotationDeg: number;
-  playerHeadingYawRad: number | null;
-  viewHeadingYawRad: number | null;
-  orientationSource: 'camera' | 'hull' | 'north-up';
-  headingUp: true;
+  orientationSource: 'north-up';
+  headingUp: false;
+  northUp: true;
   backgroundKind: 'none' | 'image' | 'canvas';
   backgroundReady: boolean;
   backingWidth: number;
@@ -2267,10 +2262,6 @@ export function initHud(bus: EventBus): HudRuntime {
   // Keeping the decoded baked image as the draw source avoids iPad Safari's
   // memory-pressure canvas purge, which left live blips over a blank panel.
   let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
-  let minimapRotation = MINIMAP_NORTH_UP;
-  let minimapPlayerHeadingYaw: number | null = null;
-  let minimapViewHeadingYaw: number | null = null;
-  let minimapOrientationSource: HudMinimapDebugState['orientationSource'] = 'north-up';
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
@@ -4201,14 +4192,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // every 20 Hz repaint; every call site destructures immediately (verified),
   // so a shared 2-element array is safe and allocation-free.
   const _wm: [number, number] = [0, 0];
-  function worldToMap(x: number, z: number, oriented = true): [number, number] {
-    // +X right, +Z up (north)
-    const half = mapWorldSize / 2;
-    _wm[0] = ((x + half) / mapWorldSize) * MM;
-    _wm[1] = ((half - z) / mapWorldSize) * MM;
-    if (oriented) {
-      orientMinimapPoint(_wm[0], _wm[1], MM, minimapRotation, _wm);
-    }
+  function worldToMap(x: number, z: number): [number, number] {
+    projectWorldToMinimap(x, z, mapWorldSize, MM, _wm);
     return _wm;
   }
 
@@ -4375,7 +4360,7 @@ export function initHud(bus: EventBus): HudRuntime {
     context.lineWidth = 0.8;
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
-      const point = worldToMap(patch.x, patch.z, false);
+      const point = worldToMap(patch.x, patch.z);
       context.beginPath();
       context.arc(point[0], point[1], (patch.r / mapWorldSize) * MM, 0, Math.PI * 2);
       context.fill();
@@ -4418,7 +4403,7 @@ export function initHud(bus: EventBus): HudRuntime {
     captured: boolean,
     forestFill: string,
   ): void {
-    const point = worldToMap(cluster.x, cluster.z, false);
+    const point = worldToMap(cluster.x, cluster.z);
     const centerX = point[0];
     const centerY = point[1];
     const seed = Math.abs(Math.sin(cluster.x * 12.9898 + cluster.z * 78.233) * 43758.5453);
@@ -4479,7 +4464,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const road = roads[roadIndex];
       context.beginPath();
       for (let pointIndex = 0; pointIndex < road.length; pointIndex++) {
-        const point = worldToMap(road[pointIndex][0], road[pointIndex][1], false);
+        const point = worldToMap(road[pointIndex][0], road[pointIndex][1]);
         if (pointIndex === 0) context.moveTo(point[0], point[1]);
         else context.lineTo(point[0], point[1]);
       }
@@ -4518,7 +4503,7 @@ export function initHud(bus: EventBus): HudRuntime {
     context.lineWidth = 0.7;
     for (let i = 0; i < buildings.length; i++) {
       const building = buildings[i];
-      const point = worldToMap(building.x, building.z, false);
+      const point = worldToMap(building.x, building.z);
       const width = Math.max(4, ((building.w ?? 0) / mapWorldSize) * MM);
       const depth = Math.max(4, ((building.d ?? 0) / mapWorldSize) * MM);
       context.save();
@@ -4671,41 +4656,15 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
   }
 
-  function drawMinimapUnderlayTiles(): void {
-    if (!mmBg) return;
-    for (let tileY = -1; tileY <= 1; tileY++) {
-      for (let tileX = -1; tileX <= 1; tileX++) {
-        const flipX = tileX !== 0;
-        const flipY = tileY !== 0;
-        const left = (tileX - 0.5) * MM;
-        const top = (tileY - 0.5) * MM;
-        mmCtx.save();
-        mmCtx.translate(flipX ? left + MM : left, flipY ? top + MM : top);
-        mmCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-        mmCtx.drawImage(mmBg, 0, 0, MM, MM);
-        mmCtx.restore();
-      }
-    }
-  }
-
   function drawMinimapBackground(): void {
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
     if (mmBg) {
-      mmCtx.save();
-      mmCtx.translate(MM * 0.5, MM * 0.5);
-      mmCtx.rotate(minimapRotation);
-      // A rotated square otherwise exposes black corner wedges on maps with
-      // a strongly angled deployment axis. Reflected neighbor tiles extend
-      // only the outside-of-bounds scenery, meet the real map edge without a
-      // seam, and leave the central tile/marker coordinates mathematically
-      // exact. Draw from the retained Image each repaint so iPadOS cannot
-      // purge a second cached canvas behind the live HUD.
-      drawMinimapUnderlayTiles();
-      mmCtx.restore();
+      // The battlefield raster is a fixed north-up survey. Keep it in the
+      // exact coordinate system used by worldToMap; only tank arrows and the
+      // camera cone rotate as the player looks around.
+      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
     }
-    // Chrome stays upright as a screen-relative tactical grid while the map,
-    // bases, contacts, camera wedge, and headings rotate together beneath it.
     drawMinimapChrome(mmCtx);
   }
 
@@ -4913,7 +4872,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        orientMinimapYaw(state.yaw, minimapRotation),
+        normalizeMinimapAngle(state.yaw),
         PEN_GREEN,
         5,
         0.95,
@@ -4927,7 +4886,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        orientMinimapYaw(state.yaw, minimapRotation),
+        normalizeMinimapAngle(state.yaw),
         PEN_RED,
         5,
         0.95,
@@ -4968,7 +4927,7 @@ export function initHud(bus: EventBus): HudRuntime {
     mmCtx.setLineDash([]);
     if (camera) {
       _fwd.set(0, 0, -1).transformDirection(camera.matrixWorld);
-      const cameraAngle = orientMinimapDirection(_fwd.x, _fwd.z, minimapRotation);
+      const cameraAngle = minimapAngleForDirection(_fwd.x, _fwd.z);
       const wedgeRadius = 36;
       mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
       mmCtx.beginPath();
@@ -4991,7 +4950,7 @@ export function initHud(bus: EventBus): HudRuntime {
       );
       mmCtx.stroke();
     }
-    const turretAngle = orientMinimapYaw(state.yaw + state.turretYaw, minimapRotation);
+    const turretAngle = normalizeMinimapAngle(state.yaw + state.turretYaw);
     mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
     mmCtx.lineWidth = 1.2;
     mmCtx.beginPath();
@@ -5001,7 +4960,7 @@ export function initHud(bus: EventBus): HudRuntime {
     pushLiveBlip(
       x,
       y,
-      orientMinimapYaw(state.yaw, minimapRotation),
+      normalizeMinimapAngle(state.yaw),
       '#f2f8ff',
       6.6,
       1,
@@ -5747,31 +5706,6 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateMinimapIfDue(frame: HudFrame): void {
     const nowMs = performance.now();
     if (!mmDirty && nowMs - mmLastPaintMs < 50) return;
-    const playerYaw = frame.player?.state?.yaw;
-    if (typeof playerYaw === 'number' && Number.isFinite(playerYaw)) {
-      minimapPlayerHeadingYaw = normalizeMinimapAngle(playerYaw);
-    }
-
-    // The tactical map is view-up, not hull-up. Arcade free look, turret aim,
-    // touch aim, and the opposite spawn can all point the camera away from the
-    // hull. Keying the map to state.yaw made a rightward look appear leftward
-    // until the hull caught up. Derive the heading from the same camera ray
-    // that drives the reticle, with hull yaw only as the degenerate fallback.
-    minimapViewHeadingYaw = null;
-    if (frame.camera) {
-      _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
-      minimapViewHeadingYaw = minimapHeadingForDirection(_fwd.x, _fwd.z);
-    }
-    if (minimapViewHeadingYaw !== null) {
-      minimapRotation = minimapRotationForHeading(minimapViewHeadingYaw);
-      minimapOrientationSource = 'camera';
-    } else if (minimapPlayerHeadingYaw !== null) {
-      minimapRotation = minimapRotationForHeading(minimapPlayerHeadingYaw);
-      minimapOrientationSource = 'hull';
-    } else {
-      minimapRotation = MINIMAP_NORTH_UP;
-      minimapOrientationSource = 'north-up';
-    }
     drawMinimap(frame);
     mmDirty = false;
     mmLastPaintMs = nowMs;
@@ -5911,10 +5845,6 @@ export function initHud(bus: EventBus): HudRuntime {
         spotById.clear();
         nickById.clear();
         spawnFlags = null; // re-capture from the new battle's spawn frame
-        minimapRotation = MINIMAP_NORTH_UP;
-        minimapPlayerHeadingYaw = null;
-        minimapViewHeadingYaw = null;
-        minimapOrientationSource = 'north-up';
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -6047,12 +5977,11 @@ export function initHud(bus: EventBus): HudRuntime {
       getMinimapBackgroundDataUrl: (type, quality) =>
         hud.exportMinimapBackground(type, quality),
       getMinimapState: () => ({
-        rotationRad: minimapRotation,
-        rotationDeg: minimapRotation * 180 / Math.PI,
-        playerHeadingYawRad: minimapPlayerHeadingYaw,
-        viewHeadingYawRad: minimapViewHeadingYaw,
-        orientationSource: minimapOrientationSource,
-        headingUp: true,
+        rotationRad: 0,
+        rotationDeg: 0,
+        orientationSource: 'north-up',
+        headingUp: false,
+        northUp: true,
         backgroundKind: !mmBg ? 'none'
           : mmBg instanceof HTMLImageElement ? 'image' : 'canvas',
         backgroundReady: !!mmBg && (mmBg instanceof HTMLImageElement

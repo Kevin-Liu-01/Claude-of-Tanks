@@ -232,7 +232,7 @@ const camoPatternLabels: Readonly<Record<string, string>> = CAMO_PATTERN_LABEL;
 const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
 const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
-  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=heading-up-v3`
+  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=north-up-v4`
 );
 const isShotViewName = (value: string): value is ShotViewName => (
   SHOT_VIEWS.some((name) => name === value)

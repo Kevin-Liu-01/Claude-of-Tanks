@@ -1,64 +1,34 @@
-export const MINIMAP_NORTH_UP = 0;
-
 const TAU = Math.PI * 2;
 
-/** Normalize an angle so equivalent headings produce one stable transform. */
+/** Normalize a marker angle so equivalent headings produce stable canvas paths. */
 export function normalizeMinimapAngle(angle: number): number {
   const value = Number(angle);
-  if (!Number.isFinite(value)) return MINIMAP_NORTH_UP;
+  if (!Number.isFinite(value)) return 0;
   const wrapped = ((value + Math.PI) % TAU + TAU) % TAU - Math.PI;
-  return Math.abs(wrapped) < 1e-10 ? MINIMAP_NORTH_UP : wrapped;
-}
-
-/** Rotate the tactical map so a world heading is screen-up. */
-export function minimapRotationForHeading(yaw: number): number {
-  const value = Number(yaw);
-  if (!Number.isFinite(value)) return MINIMAP_NORTH_UP;
-  return normalizeMinimapAngle(-value);
+  return Math.abs(wrapped) < 1e-10 ? 0 : wrapped;
 }
 
 /**
- * Resolve the yaw of a horizontal world direction. The live camera ray is the
- * canonical heading for a view-up minimap; a zero-length horizontal ray (for
- * example a camera looking straight down) deliberately has no heading so the
- * caller can fall back to the vehicle hull.
+ * Project a world-space point onto the fixed north-up tactical map.
+ * World +X is east/right and world +Z is north/up. This is also the raster
+ * contract used by the offline top-down bake, so landmarks and live markers
+ * cannot acquire independent mirroring or heading transforms.
  */
-export function minimapHeadingForDirection(worldX: number, worldZ: number): number | null {
-  const x = Number(worldX);
-  const z = Number(worldZ);
-  if (!Number.isFinite(x) || !Number.isFinite(z) || x * x + z * z < 1e-10) return null;
-  return normalizeMinimapAngle(Math.atan2(x, z));
-}
-
-/** Rotate a north-up canvas point around the map center into heading-up. */
-export function orientMinimapPoint(
-  x: number,
-  y: number,
-  size: number,
-  rotation: number,
+export function projectWorldToMinimap(
+  worldX: number,
+  worldZ: number,
+  worldSize: number,
+  mapSize: number,
   out?: number[],
 ): number[] {
   const target = out || [0, 0];
-  const half = size * 0.5;
-  const dx = x - half;
-  const dy = y - half;
-  const c = Math.cos(rotation);
-  const s = Math.sin(rotation);
-  target[0] = half + c * dx - s * dy;
-  target[1] = half + s * dx + c * dy;
+  const half = worldSize * 0.5;
+  target[0] = ((worldX + half) / worldSize) * mapSize;
+  target[1] = ((half - worldZ) / worldSize) * mapSize;
   return target;
 }
 
-/** A world yaw needs the same rotation as the map beneath its marker. */
-export function orientMinimapYaw(yaw: number, rotation: number): number {
-  return normalizeMinimapAngle(yaw + rotation);
-}
-
-/** Canvas polar angle for a horizontal world direction vector. */
-export function orientMinimapDirection(
-  worldX: number,
-  worldZ: number,
-  rotation: number,
-): number {
-  return normalizeMinimapAngle(Math.atan2(-worldZ, worldX) + rotation);
+/** Canvas polar angle for a horizontal world direction on a north-up map. */
+export function minimapAngleForDirection(worldX: number, worldZ: number): number {
+  return normalizeMinimapAngle(Math.atan2(-worldZ, worldX));
 }

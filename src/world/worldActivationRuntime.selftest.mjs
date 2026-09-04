@@ -101,7 +101,7 @@ assert.deepEqual(runtime.raycast('o', 'd', 5), {
   origin: 'o', direction: 'd', maxDistance: 5, mapId: 'desert',
 });
 await runtime.queueMinimap();
-assert.deepEqual(minimapUrls.at(-1), ['desert', '/game/minimaps/desert.webp?v=heading-up-v3']);
+assert.deepEqual(minimapUrls.at(-1), ['desert', '/game/minimaps/desert.webp?v=north-up-v4']);
 assert.ok(events.some(([kind, preset]) => kind === 'sky' && preset === 'desert'));
 assert.ok(!events.some(([kind]) => kind === 'shadow'), 'fast activation skips exhaustive shadow warm');
 
