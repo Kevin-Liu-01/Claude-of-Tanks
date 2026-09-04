@@ -5,6 +5,8 @@
 // roster. This keeps registration history intact while ensuring garage,
 // battles, asset generation and release gates all consume the same policy.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const DEV_FLEET_ENV_KEY = 'VITE_COT_DEV_FLEET_KEY';
 export const DEV_FLEET_KEY = 'claude-of-tanks-local-dev';
 export const DEV_FLEET_LABEL = 'DEV';
@@ -22,13 +24,13 @@ export const PRODUCTION_HIDDEN_TANK_IDS = new Set<string>([
 export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set<string>(['recon_tank', 'q_heavy']);
 
 interface DevelopmentFleetEnvironment {
-  DEV?: unknown;
-  [key: string]: unknown;
+  DEV?: RuntimeValue;
+  [key: string]: RuntimeValue;
 }
 
 interface RosterPolicySpec {
-  id?: unknown;
-  era?: unknown;
+  id?: RuntimeValue;
+  era?: RuntimeValue;
 }
 
 /**
@@ -48,7 +50,7 @@ const VITE_ENV = typeof import.meta !== 'undefined' && import.meta.env
 
 export const DEV_FLEET_ACTIVE = developmentFleetEnabled(VITE_ENV);
 
-export function isProductionHiddenTankId(id: unknown): boolean {
+export function isProductionHiddenTankId(id: RuntimeValue): boolean {
   return typeof id === 'string' && PRODUCTION_HIDDEN_TANK_IDS.has(id);
 }
 

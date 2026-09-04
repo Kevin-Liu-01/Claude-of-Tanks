@@ -1,5 +1,6 @@
 import type { EraProtection } from '../sim/armor.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 // Pure constructors shared by fleet spec packs. Keep this module free of
 // registry imports so extension packs can use it without creating cycles.
@@ -42,7 +43,7 @@ export interface CrewBox {
   turretLocal: boolean;
 }
 
-export interface ShellSpec extends Record<string, unknown> {
+export interface ShellSpec extends Record<string, RuntimeValue> {
   name: string;
   type: string;
   caliberMm: number;
@@ -180,7 +181,7 @@ export const shell = (
   pen1000Mm: number,
   dmg: number,
   velocityMps: number,
-  extra: Readonly<Record<string, unknown>> | null = null,
+  extra: Readonly<Record<string, RuntimeValue>> | null = null,
 ): ShellSpec => ({
     name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
     moduleDmg: caliberMm, tracer: type, ...(extra || {}),

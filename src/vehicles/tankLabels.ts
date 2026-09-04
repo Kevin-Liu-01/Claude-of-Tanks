@@ -5,9 +5,11 @@
 // consume this one label record instead of inventing their own punctuation or
 // abbreviations.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export interface TankLabelSpec {
-  id?: unknown;
-  name?: unknown;
+  id?: RuntimeValue;
+  name?: RuntimeValue;
 }
 
 export interface TankLabelRecord {
@@ -221,18 +223,18 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   ua_m1a1: { displayName: 'M1A1 Abrams UA', shortName: 'M1A1 UA' },
 });
 
-function cleanDisplayName(value: unknown): string {
+function cleanDisplayName(value: RuntimeValue): string {
   return String(value || '')
     .replace(/\bMk\.(?=\s*\d)/g, 'Mk')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function humanizeId(id: unknown): string {
+function humanizeId(id: RuntimeValue): string {
   return String(id || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function uniqueStrings(values: readonly unknown[]): string[] {
+function uniqueStrings(values: readonly RuntimeValue[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const value of values) {

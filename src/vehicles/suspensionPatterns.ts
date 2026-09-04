@@ -4,6 +4,8 @@
 // hull mechanically reaches those stations so every procedural vehicle shows
 // a suspension connection without reviving per-profile swing-arm switches.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const SUSPENSION_PATTERN_DEFINITIONS = Object.freeze({
   'torsion-swing-arm': Object.freeze({
     label: 'tapered trailing torsion swing arm',
@@ -49,11 +51,11 @@ export type SuspensionPattern = Readonly<{
 } & SuspensionPatternDefinition>;
 
 interface SuspensionPatternSpec {
-  id?: unknown;
+  id?: RuntimeValue;
 }
 
 interface WheelPatternReference {
-  id?: unknown;
+  id?: RuntimeValue;
 }
 
 export const SUSPENSION_PATTERN_IDS = Object.freeze(

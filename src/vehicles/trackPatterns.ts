@@ -6,6 +6,8 @@
 // of `innerLinks`, `integratedLinks` and profile-local exceptions with one
 // explicit, testable contract while preserving era-specific track identity.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
   'interleaved-cleat': Object.freeze({
     label: 'wide interleaved cleat shoe',
@@ -110,11 +112,11 @@ export type TrackPatternDefinition = typeof TRACK_PATTERN_DEFINITIONS[TrackPatte
 export type TrackPattern = Readonly<{ id: TrackPatternId } & TrackPatternDefinition>;
 
 interface TrackPatternSpec {
-  id?: unknown;
+  id?: RuntimeValue;
 }
 
 interface WheelPatternReference {
-  id?: unknown;
+  id?: RuntimeValue;
 }
 
 export const TRACK_PATTERN_IDS = Object.freeze(

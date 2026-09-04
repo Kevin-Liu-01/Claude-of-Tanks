@@ -5,6 +5,8 @@
 // renderer. Patterns describe mechanical face construction, not paint. Wheel
 // paint continues to come from the active camouflage material.
 
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
 export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
   'christie-six': Object.freeze({
     label: 'six-window Christie disc', motif: 'perforated', fasteners: 8,
@@ -61,8 +63,8 @@ export type WheelPatternDefinition = typeof WHEEL_PATTERN_DEFINITIONS[WheelPatte
 export type WheelPattern = Readonly<{ id: WheelPatternId } & WheelPatternDefinition>;
 
 interface WheelPatternSpec {
-  id?: unknown;
-  nation?: unknown;
+  id?: RuntimeValue;
+  nation?: RuntimeValue;
 }
 
 export const WHEEL_PATTERN_IDS = Object.freeze(
@@ -107,7 +109,7 @@ const NATION_FALLBACKS: Readonly<Record<string, readonly WheelPatternId[]>> = Ob
   ukraine: ['pressed-six', 'deep-dish-eight'],
 });
 
-function stableIndex(value: unknown, length: number): number {
+function stableIndex(value: RuntimeValue, length: number): number {
   let hash = 2166136261;
   for (const ch of String(value || 'wheel')) {
     hash ^= ch.charCodeAt(0);

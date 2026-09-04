@@ -4,6 +4,7 @@ import type {
   ModelSourceRegistry,
   TankSpecRegistry,
 } from './specContracts.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export interface FleetRegistries {
   readonly tankSpecs: TankSpecRegistry;
@@ -18,14 +19,14 @@ export interface VariantIdentity {
   readonly role?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function bindFleetRegistries(
-  tankSpecs: unknown,
-  modelSources: unknown,
-  allTankIds: unknown,
+  tankSpecs: RuntimeValue,
+  modelSources: RuntimeValue,
+  allTankIds: RuntimeValue,
 ): FleetRegistries {
   if (!isRecord(tankSpecs) || !isRecord(modelSources) || !Array.isArray(allTankIds)) {
     throw new TypeError('Fleet registries require spec/source records and an id array');

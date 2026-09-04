@@ -4,15 +4,16 @@
 
 import { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
 import type { CustomCamoAsset, CustomCamoBrush } from './camoPolicy.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
 
 interface CamoStrokeInput {
-  color?: unknown;
-  size?: unknown;
-  brush?: unknown;
-  asset?: unknown;
-  rotation?: unknown;
+  color?: RuntimeValue;
+  size?: RuntimeValue;
+  brush?: RuntimeValue;
+  asset?: RuntimeValue;
+  rotation?: RuntimeValue;
   points?: ReadonlyArray<ReadonlyArray<number>>;
 }
 

@@ -6,11 +6,12 @@
 // color cleanup from deleting or repainting armor, skirts or mudguards.
 
 import type { Material, Object3D } from 'three';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 interface ColorPort {
   getHexString(): string;
   getHSL(target: { h: number; s: number; l: number }): { h: number; s: number; l: number };
-  setHex(hex: number): unknown;
+  setHex(hex: number): ColorPort;
 }
 
 interface AppearanceColorRecord {
@@ -60,8 +61,8 @@ type RenderObject = Object3D & {
   material?: Material | Material[];
 };
 
-function dataValue(owner: Object3D | Material, key: string): unknown {
-  return (owner.userData as Readonly<Record<string, unknown>> | undefined)?.[key];
+function dataValue(owner: Object3D | Material, key: string): RuntimeValue {
+  return (owner.userData as Readonly<Record<string, RuntimeValue>> | undefined)?.[key];
 }
 
 function materialsOf(object: Object3D): Material[] {
