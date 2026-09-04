@@ -1210,6 +1210,140 @@ function applyModuleLayoutMetadata(
   }
 }
 
+type ModuleIndex = Map<string, ModuleVolume>;
+
+function removeIndexedModule(
+  modules: ModuleVolume[],
+  byName: ModuleIndex,
+  module: string,
+): void {
+  const existing = byName.get(module);
+  if (existing) modules.splice(modules.indexOf(existing), 1);
+  byName.delete(module);
+}
+
+function addDerivedTransmission(
+  modules: ModuleVolume[],
+  byName: ModuleIndex,
+  engine: ModuleVolume | undefined,
+): void {
+  if (byName.has('transmission') || !engine) return;
+  const rearward = (engine.min[2] + engine.max[2]) / 2 < 0 ? -1 : 1;
+  const depth = engine.max[2] - engine.min[2];
+  const transmission = shrinkBox(
+    engine, 'transmission', [0.86, 0.72, 0.34], [0, -0.04, rearward * depth * 0.25],
+  );
+  modules.push(transmission);
+  byName.set('transmission', transmission);
+}
+
+function syncAutoloaderModule(
+  modules: ModuleVolume[],
+  byName: ModuleIndex,
+  system: InternalSystemPlacement | null,
+  ammo: ModuleVolume | undefined,
+): void {
+  if (!system) {
+    removeIndexedModule(modules, byName, 'autoloader');
+    return;
+  }
+  if (byName.has('autoloader') || !ammo) return;
+  const autoloader = shrinkBox(ammo, 'autoloader', [0.72, 0.48, 0.72], [0, 0.02, 0]);
+  modules.push(autoloader);
+  byName.set('autoloader', autoloader);
+}
+
+function syncFeedSystemModule(
+  modules: ModuleVolume[],
+  byName: ModuleIndex,
+  system: InternalSystemPlacement | null,
+  source: ModuleVolume | undefined,
+): void {
+  if (!system) {
+    removeIndexedModule(modules, byName, 'feedSystem');
+    return;
+  }
+  if (byName.has('feedSystem') || !source) return;
+  const feed = shrinkBox(source, 'feedSystem', [0.74, 0.55, 0.58], [0, -0.02, -0.04]);
+  modules.push(feed);
+  byName.set('feedSystem', feed);
+}
+
+function syncMissileRackModule(
+  modules: ModuleVolume[],
+  byName: ModuleIndex,
+  system: InternalSystemPlacement | null,
+  ammo: ModuleVolume | undefined,
+): void {
+  if (!system) {
+    removeIndexedModule(modules, byName, 'missileRack');
+    return;
+  }
+  if (byName.has('missileRack') || !ammo) return;
+  const side = (ammo.min[0] + ammo.max[0]) / 2 <= 0 ? 1 : -1;
+  const width = ammo.max[0] - ammo.min[0];
+  const missileRack = shrinkBox(
+    ammo, 'missileRack', [0.42, 0.62, 0.78], [side * width * 0.24, 0.03, 0],
+  );
+  modules.push(missileRack);
+  byName.set('missileRack', missileRack);
+}
+
+function alignPowerpackModule(
+  box: ModuleVolume,
+  system: InternalSystemPlacement,
+  hullBounds: AnatomyCalibrationBounds | Bounds | null,
+): void {
+  if (!hullBounds || (box.module !== 'engine' && box.module !== 'transmission')) return;
+  if (system.placement !== 'front' && system.placement !== 'rear') return;
+  const centerZ = (box.min[2] + box.max[2]) * 0.5;
+  const hullCenterZ = (hullBounds.min[2] + hullBounds.max[2]) * 0.5;
+  const wrongEnd = system.placement === 'front' ? centerZ < hullCenterZ : centerZ > hullCenterZ;
+  if (wrongEnd) moveBoxToPlacement(box, system.placement, hullBounds, false);
+}
+
+function alignTurretSystemModule(
+  box: ModuleVolume,
+  system: InternalSystemPlacement,
+  turretBounds: AnatomyCalibrationBounds | Bounds | null,
+): void {
+  const turretSystem = box.module === 'autoloader'
+    || box.module === 'feedSystem'
+    || box.module === 'missileRack';
+  if (turretSystem && system.placement === 'turret' && !box.turretLocal && turretBounds) {
+    moveBoxToPlacement(box, 'turret', turretBounds, true);
+  }
+}
+
+function applyDerivedModuleMetadata(
+  modules: readonly ModuleVolume[],
+  armor: ArmorAnatomy,
+  layout: CombatInternalLayout,
+  calibration: CombatAnatomyCalibration | null,
+  missileSystem: InternalSystemPlacement | null,
+): void {
+  const hullBounds = calibration?.hull || plateBounds(armor.hullPlates, true);
+  const turretBounds = calibration?.turret || null;
+  for (const box of modules) {
+    const system = moduleSystem(layout, box.module)
+      || (box.module === 'missileRack' ? missileSystem : null);
+    if (!system) continue;
+    box.visualForm = system.form;
+    box.layoutPlacement = system.placement;
+    box.layoutConfidence = layout.confidence;
+    box.layoutSources = layout.sources.slice();
+    alignPowerpackModule(box, system, hullBounds);
+    alignTurretSystemModule(box, system, turretBounds);
+  }
+}
+
+function sortModulesBySystemOrder(modules: ModuleVolume[]): void {
+  // Stable presentation and RNG trace order: core systems first, then the
+  // vehicle-specific mechanisms, while preserving authored boxes.
+  const order = new Map<string, number>(MODULE_IDS.map((id, index) => [id, index]));
+  modules.sort((a, b) => (order.get(a.module) ?? 999) - (order.get(b.module) ?? 999));
+}
+
 function addDerivedModules(
   spec: CombatAnatomySpec & { armor: ArmorAnatomy },
   layout: CombatInternalLayout,
@@ -1221,164 +1355,110 @@ function addDerivedModules(
   const engine = byName.get('engine');
   const ammo = byName.get('ammoRack');
   const gun = byName.get('gun');
-
-  if (!byName.has('transmission') && engine) {
-    const rearward = (engine.min[2] + engine.max[2]) / 2 < 0 ? -1 : 1;
-    const depth = engine.max[2] - engine.min[2];
-    const transmission = shrinkBox(
-      engine, 'transmission', [0.86, 0.72, 0.34], [0, -0.04, rearward * depth * 0.25],
-    );
-    modules.push(transmission);
-    byName.set('transmission', transmission);
-  }
-
+  addDerivedTransmission(modules, byName, engine);
   const autoloaderSystem = moduleSystem(layout, 'autoloader');
   const feedSystem = moduleSystem(layout, 'feedSystem');
   const missileSystem = moduleSystem(layout, 'missileRack')
     || (hasMissile(spec) ? { placement: 'hull', form: 'gunLaunchedRounds' } : null);
-  if (!autoloaderSystem && byName.has('autoloader')) {
-    const remove = byName.get('autoloader');
-    if (remove) modules.splice(modules.indexOf(remove), 1);
-    byName.delete('autoloader');
-  }
-  if (autoloaderSystem && !byName.has('autoloader') && ammo) {
-    const autoloader = shrinkBox(ammo, 'autoloader', [0.72, 0.48, 0.72], [0, 0.02, 0]);
-    modules.push(autoloader);
-    byName.set('autoloader', autoloader);
-  }
-  if (!feedSystem && byName.has('feedSystem')) {
-    const remove = byName.get('feedSystem');
-    if (remove) modules.splice(modules.indexOf(remove), 1);
-    byName.delete('feedSystem');
-  }
-  if (feedSystem && !byName.has('feedSystem') && (gun || ammo)) {
-    const source = gun || ammo;
-    if (source) {
-      const feed = shrinkBox(source, 'feedSystem', [0.74, 0.55, 0.58], [0, -0.02, -0.04]);
-      modules.push(feed);
-      byName.set('feedSystem', feed);
-    }
-  }
-  if (!missileSystem && byName.has('missileRack')) {
-    const remove = byName.get('missileRack');
-    if (remove) modules.splice(modules.indexOf(remove), 1);
-    byName.delete('missileRack');
-  }
-  if (missileSystem && !byName.has('missileRack') && ammo) {
-    const side = (ammo.min[0] + ammo.max[0]) / 2 <= 0 ? 1 : -1;
-    const width = ammo.max[0] - ammo.min[0];
-    const missileRack = shrinkBox(ammo, 'missileRack', [0.42, 0.62, 0.78], [side * width * 0.24, 0.03, 0]);
-    modules.push(missileRack);
-    byName.set('missileRack', missileRack);
-  }
-
-  for (const box of modules) {
-    const system = moduleSystem(layout, box.module)
-      || (box.module === 'missileRack' ? missileSystem : null);
-    if (!system) continue;
-    box.visualForm = system.form;
-    box.layoutPlacement = system.placement;
-    box.layoutConfidence = layout.confidence;
-    box.layoutSources = layout.sources.slice();
-    if ((box.module === 'engine' || box.module === 'transmission')
-        && (system.placement === 'front' || system.placement === 'rear')) {
-      const hullBounds = calibration?.hull || plateBounds(armor.hullPlates, true);
-      if (!hullBounds) continue;
-      const centerZ = (box.min[2] + box.max[2]) * 0.5;
-      const hullCenterZ = (hullBounds.min[2] + hullBounds.max[2]) * 0.5;
-      const wrongEnd = system.placement === 'front' ? centerZ < hullCenterZ : centerZ > hullCenterZ;
-      if (wrongEnd) moveBoxToPlacement(box, system.placement, hullBounds, false);
-    }
-    if ((box.module === 'autoloader' || box.module === 'feedSystem' || box.module === 'missileRack')
-        && system.placement === 'turret' && !box.turretLocal && calibration?.turret) {
-      moveBoxToPlacement(box, 'turret', calibration.turret, true);
-    }
-  }
-
-  // Stable presentation and RNG trace order: core systems first, then the
-  // vehicle-specific mechanisms, while preserving authored boxes.
-  const order = new Map<string, number>(MODULE_IDS.map((id, index) => [id, index]));
-  modules.sort((a, b) => (order.get(a.module) ?? 999) - (order.get(b.module) ?? 999));
+  syncAutoloaderModule(modules, byName, autoloaderSystem, ammo);
+  syncFeedSystemModule(modules, byName, feedSystem, gun || ammo);
+  syncMissileRackModule(modules, byName, missileSystem, ammo);
+  applyDerivedModuleMetadata(modules, armor, layout, calibration, missileSystem);
+  sortModulesBySystemOrder(modules);
 }
 
-export function finalizeCombatAnatomy<T>(
-  spec: T,
-  calibration?: CombatAnatomyCalibration | null,
-): T;
-export function finalizeCombatAnatomy(
-  spec: RuntimeValue,
-  requestedCalibration?: CombatAnatomyCalibration | null,
-): RuntimeValue {
-  if (!isCombatAnatomySpec(spec)) return spec;
-  const calibration = requestedCalibration === undefined
+function resolveCombatCalibration(
+  spec: CombatAnatomySpec,
+  requestedCalibration: CombatAnatomyCalibration | null | undefined,
+): CombatAnatomyCalibration | null {
+  return requestedCalibration === undefined
     ? combatAnatomyCalibration(spec.id)
     : requestedCalibration;
-  if (!spec?.armor || spec[FINALIZED]) return spec;
-  const armor = spec.armor;
-  const hullBoxes = [...(armor.modules || []), ...(armor.crew || [])].filter((box) => !box.turretLocal);
-  const turretBoxes = [...(armor.modules || []), ...(armor.crew || [])].filter((box) => box.turretLocal);
-  if (calibration) {
-    // Preserve the authored lower-belly datum; receipts deliberately own the
-    // side, roof and longitudinal faces that players can actually aim at.
-    const hullFrom = plateBounds(armor.hullPlates, true);
-    const hullTarget = hullFrom && calibration.hull ? {
-      min: [calibration.hull.min[0], hullFrom.min[1], calibration.hull.min[2]],
-      max: calibration.hull.max.slice(),
-    } : null;
-    if (!calibration.turret) {
-      // Fixed-mount/casemate armor still uses the turret-local trace frame,
-      // even though its visible superstructure belongs to the hull mesh.
-      // Scale that child frame through the hull receipt as one rigid anatomy
-      // instead of leaving crew floating at the donor pivot.
-      reconcileChildFrame(armor.turretPlates, turretBoxes, armor.turretPivot, hullFrom, hullTarget);
-      reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
-      const compartment = fixedCompartment(calibration);
-      const fixedModules = (armor.modules || []).filter(
-        (box) => box.turretLocal && box.module !== 'trackL' && box.module !== 'trackR',
-      );
-      fitFixedBoxes(fixedModules, armor.turretPivot, compartment);
-      fitFixedBoxes(armor.crew || [], armor.turretPivot, compartment);
-      const fixedMount = (armor.modules || []).find((box) => box.module === 'turretRing');
-      if (fixedMount) {
-        fixedMount.module = 'gunMount';
-      } else if (!(armor.modules || []).some((box) => box.module === 'gunMount')) {
-        // Purpose-built casemate anatomy has no fictional turret ring to
-        // rename. Derive the fixed trunnion/mount from the authored gun box so
-        // module damage remains available without restoring an invisible
-        // rotating volume. This also keeps new turretless specs on the same
-        // contract as older donor-based tank destroyers.
-        const gun = (armor.modules || []).find((box) => box.module === 'gun');
-        if (gun) {
-          const depth = gun.max[2] - gun.min[2];
-          (armor.modules || (armor.modules = [])).push(shrinkBox(
-            gun, 'gunMount', [1.18, 1.08, 0.42], [0, 0, -depth * 0.25],
-          ));
-        }
-      }
-    } else {
-      reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
-      reconcileFrame(armor.turretPlates, turretBoxes, calibration.turret);
-    }
-    reconcileTracks(armor.modules || [], calibration.tracks || null);
-    alignTurretRing(armor, calibration);
-    applyModuleShapes(armor, calibration.moduleShapes);
-    appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
-    appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
-    // The generator measures authored reactive cassettes. Reapplying its
-    // previous fitted quads here would make ERA calibration self-referential
-    // and allow update/check drift, while the mature hull/module calibration
-    // remains intentionally active during measurement.
-    if (!isCombatAnatomyMeasurementMode()) {
-      applyEraPlateReceipts(armor, calibration.eraPlates);
-    }
+}
+
+function anatomyBoxesByFrame(armor: ArmorAnatomy, turretLocal: boolean): AnatomyVolume[] {
+  return [...(armor.modules || []), ...(armor.crew || [])]
+    .filter((box) => !!box.turretLocal === turretLocal);
+}
+
+function ensureFixedGunMount(armor: ArmorAnatomy): void {
+  const modules = armor.modules || [];
+  const fixedMount = modules.find((box) => box.module === 'turretRing');
+  if (fixedMount) {
+    fixedMount.module = 'gunMount';
+    return;
   }
-  // Non-playable comparison/authoring specs are intentionally outside the
-  // 122-vehicle evidence registry. Keep their authored anatomy usable without
-  // diluting the playable-fleet exact-coverage gate.
-  const layout = internalLayoutFor(spec.id) || legacyInternalLayout(spec);
-  applyPublishedCrewLayout(spec, layout, calibration);
-  applyModuleLayoutMetadata(spec, layout, calibration);
-  addDerivedModules(spec, layout, calibration);
+  if (modules.some((box) => box.module === 'gunMount')) return;
+  // Purpose-built casemate anatomy has no fictional turret ring to rename.
+  // Derive the fixed trunnion/mount from the authored gun box so module damage
+  // remains available without restoring an invisible rotating volume.
+  const gun = modules.find((box) => box.module === 'gun');
+  if (!gun) return;
+  const depth = gun.max[2] - gun.min[2];
+  (armor.modules || (armor.modules = [])).push(shrinkBox(
+    gun, 'gunMount', [1.18, 1.08, 0.42], [0, 0, -depth * 0.25],
+  ));
+}
+
+function reconcileFixedMountAnatomy(
+  armor: ArmorAnatomy,
+  calibration: CombatAnatomyCalibration,
+  hullFrom: Bounds | null,
+  hullTarget: Bounds | null,
+  hullBoxes: readonly AnatomyVolume[],
+  turretBoxes: readonly AnatomyVolume[],
+): void {
+  // Fixed-mount/casemate armor still uses the turret-local trace frame, even
+  // though its visible superstructure belongs to the hull mesh. Scale that
+  // child frame through the hull receipt as one rigid anatomy.
+  reconcileChildFrame(armor.turretPlates, turretBoxes, armor.turretPivot, hullFrom, hullTarget);
+  reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
+  const compartment = fixedCompartment(calibration);
+  const fixedModules = (armor.modules || []).filter(
+    (box) => box.turretLocal && box.module !== 'trackL' && box.module !== 'trackR',
+  );
+  fitFixedBoxes(fixedModules, armor.turretPivot, compartment);
+  fitFixedBoxes(armor.crew || [], armor.turretPivot, compartment);
+  ensureFixedGunMount(armor);
+}
+
+function reconcileCalibratedAnatomy(
+  armor: ArmorAnatomy,
+  calibration: CombatAnatomyCalibration,
+): void {
+  const hullBoxes = anatomyBoxesByFrame(armor, false);
+  const turretBoxes = anatomyBoxesByFrame(armor, true);
+  // Preserve the authored lower-belly datum; receipts deliberately own the
+  // side, roof and longitudinal faces that players can actually aim at.
+  const hullFrom = plateBounds(armor.hullPlates, true);
+  const hullTarget = hullFrom && calibration.hull ? {
+    min: [calibration.hull.min[0], hullFrom.min[1], calibration.hull.min[2]],
+    max: calibration.hull.max.slice(),
+  } : null;
+  if (calibration.turret) {
+    reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
+    reconcileFrame(armor.turretPlates, turretBoxes, calibration.turret);
+  } else {
+    reconcileFixedMountAnatomy(
+      armor, calibration, hullFrom, hullTarget, hullBoxes, turretBoxes,
+    );
+  }
+  reconcileTracks(armor.modules || [], calibration.tracks || null);
+  alignTurretRing(armor, calibration);
+  applyModuleShapes(armor, calibration.moduleShapes);
+  appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
+  appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
+  // The generator measures authored reactive cassettes. Reapplying its
+  // previous fitted quads here would make ERA calibration self-referential.
+  if (!isCombatAnatomyMeasurementMode()) {
+    applyEraPlateReceipts(armor, calibration.eraPlates);
+  }
+}
+
+function assignCollisionOutputs(
+  armor: ArmorAnatomy,
+  calibration: CombatAnatomyCalibration | null,
+): void {
   armor.collisionShells = {
     hull: prepareCollisionCells([
       ...(calibration?.hullCollision || []),
@@ -1393,6 +1473,29 @@ export function finalizeCombatAnatomy(
     hull: collisionContactPoints(armor.collisionShells.hull),
     turret: collisionContactPoints(armor.collisionShells.turret),
   };
+}
+
+export function finalizeCombatAnatomy<T>(
+  spec: T,
+  calibration?: CombatAnatomyCalibration | null,
+): T;
+export function finalizeCombatAnatomy(
+  spec: RuntimeValue,
+  requestedCalibration?: CombatAnatomyCalibration | null,
+): RuntimeValue {
+  if (!isCombatAnatomySpec(spec)) return spec;
+  const calibration = resolveCombatCalibration(spec, requestedCalibration);
+  if (!spec?.armor || spec[FINALIZED]) return spec;
+  const armor = spec.armor;
+  if (calibration) reconcileCalibratedAnatomy(armor, calibration);
+  // Non-playable comparison/authoring specs are intentionally outside the
+  // 122-vehicle evidence registry. Keep their authored anatomy usable without
+  // diluting the playable-fleet exact-coverage gate.
+  const layout = internalLayoutFor(spec.id) || legacyInternalLayout(spec);
+  applyPublishedCrewLayout(spec, layout, calibration);
+  applyModuleLayoutMetadata(spec, layout, calibration);
+  addDerivedModules(spec, layout, calibration);
+  assignCollisionOutputs(armor, calibration);
   addPreciseInternalShapes(armor);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });
   return spec;
