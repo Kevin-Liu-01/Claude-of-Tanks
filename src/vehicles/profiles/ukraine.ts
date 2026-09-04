@@ -446,6 +446,24 @@ function addFacetedT80FrontERA(P: UkraineBuilderPort, variant: T80ModernizationV
 // angular T-90-family read requested by the owner. True armor stays in the
 // structural turret buckets; sights, RWS hardware, basket rails and stowage
 // use the equipment path so they cannot enlarge combat hit volumes.
+function addModernizedT80BustleBasket(P: UkraineBuilderPort): void {
+  const { box, cylX } = KIT;
+  for (const y of [0.28, 0.43, 0.57]) {
+    P.addEquipment('turret', box(1.92, 0.025, 0.035), 0, y, -1.94);
+  }
+  for (const x of [-0.92, -0.46, 0, 0.46, 0.92]) {
+    P.addEquipment('turret', box(0.025, 0.34, 0.035), x, 0.42, -1.94);
+  }
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.035, 0.025, 0.82), side * 0.95, 0.57, -1.58);
+    P.addEquipment('turret', box(0.035, 0.25, 0.025), side * 0.95, 0.43, -1.72);
+    P.addEquipment('turret', box(0.035, 0.25, 0.025), side * 0.95, 0.43, -1.36);
+  }
+  P.addEquipment('turret', box(0.46, 0.20, 0.34), -0.38, 0.39, -1.56);
+  P.addEquipment('turret', box(0.36, 0.16, 0.30), 0.42, 0.37, -1.58);
+  P.addEquipment('turret', cylX(0.08, 0.74, 12), 0.28, 0.61, -1.64);
+}
+
 function addModernizedT80TurretSuite(
   P: UkraineBuilderPort,
   variant: T80ModernizationVariant,
@@ -582,20 +600,7 @@ function addModernizedT80TurretSuite(
   }
 
   // Populated, three-sided bustle basket rooted into the magazine shoulders.
-  for (const y of [0.28, 0.43, 0.57]) {
-    P.addEquipment('turret', box(1.92, 0.025, 0.035), 0, y, -1.94);
-  }
-  for (const x of [-0.92, -0.46, 0, 0.46, 0.92]) {
-    P.addEquipment('turret', box(0.025, 0.34, 0.035), x, 0.42, -1.94);
-  }
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.035, 0.025, 0.82), s * 0.95, 0.57, -1.58);
-    P.addEquipment('turret', box(0.035, 0.25, 0.025), s * 0.95, 0.43, -1.72);
-    P.addEquipment('turret', box(0.035, 0.25, 0.025), s * 0.95, 0.43, -1.36);
-  }
-  P.addEquipment('turret', box(0.46, 0.20, 0.34), -0.38, 0.39, -1.56);
-  P.addEquipment('turret', box(0.36, 0.16, 0.30), 0.42, 0.37, -1.58);
-  P.addEquipment('turret', cylX(0.08, 0.74, 12), 0.28, 0.61, -1.64);
+  addModernizedT80BustleBasket(P);
 
   // Mechanical fasteners, hatch rings and bustle lid break up the otherwise
   // flat crown while remaining attached to their carrier planes.

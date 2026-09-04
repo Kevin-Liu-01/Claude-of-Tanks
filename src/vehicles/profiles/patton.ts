@@ -1731,22 +1731,31 @@ function smoothLoft(
     }
     emit(pos, idx);
   }
-  // flush end caps in the exact end-section planes (m60Loft orientation)
-  for (const [s, sign] of [
-    [sections[0], 1],
-    [sections[nS - 1], -1],
-  ] satisfies ReadonlyArray<readonly [GeometrySection, number]>) {
-    const r = ring(s);
-    const cx2 = r.reduce((t, p) => t + p[0], 0) / M;
-    const cy2 = r.reduce((t, p) => t + p[1], 0) / M;
-    const z = s.z - oz, pos = [];
-    for (let k = 0; k < M; k++) {
-      const a = r[k], b = r[(k + 1) % M];
-      if (sign > 0) pos.push(cx2, cy2 - oy, z, b[0], b[1] - oy, z, a[0], a[1] - oy, z);
-    else pos.push(cx2, cy2 - oy, z, a[0], a[1] - oy, z, b[0], b[1] - oy, z);
+  const emitEndCaps = (): void => {
+    for (const [section, sign] of [
+      [sections[0], 1],
+      [sections[nS - 1], -1],
+    ] satisfies ReadonlyArray<readonly [GeometrySection, number]>) {
+      const sectionRing = ring(section);
+      const centerX = sectionRing.reduce((total, point) => total + point[0], 0) / M;
+      const centerY = sectionRing.reduce((total, point) => total + point[1], 0) / M;
+      const z = section.z - oz;
+      const positions = [];
+      for (let index = 0; index < M; index++) {
+        const current = sectionRing[index];
+        const next = sectionRing[(index + 1) % M];
+        if (sign > 0) {
+          positions.push(centerX, centerY - oy, z,
+            next[0], next[1] - oy, z, current[0], current[1] - oy, z);
+        } else {
+          positions.push(centerX, centerY - oy, z,
+            current[0], current[1] - oy, z, next[0], next[1] - oy, z);
+        }
+      }
+      emit(positions, null);
     }
-    emit(pos, null);
-  }
+  };
+  emitEndCaps();
 }
 
 // ---------------------------------------------------------------------------

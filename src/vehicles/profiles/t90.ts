@@ -4858,6 +4858,15 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
 }
 
 
+function addT90FenderShelves(P: T90BuilderPort): void {
+  for (const side of [-1, 1]) {
+    for (let index = 0; index < 11; index++) {
+      P.add('hull', KIT.box(0.16, 0.05, 0.50),
+        side * 1.70, 1.475, -2.75 + index * 0.545);
+    }
+  }
+}
+
 function buildT90(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   addT90FamilyHull(P);
@@ -4894,9 +4903,7 @@ function buildT90(P: T90BuilderPort): void {
   for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.094, 0.04, 10), s * 0.98, 1.30, -3.44);
   for (const s of [-1, 1]) P.add('hullDark', cylX(0.094, 0.035, 10), s * 0.30, 1.30, -3.44);
   // fender shelves at the print's 1.49 line (segmented, prism law)
-  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
-    P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
-  }
+  addT90FenderShelves(P);
   // forward fender segments carry the print's falling bow-side band
   // (1.37 @ 2.43 -> 1.23 @ 3.12 -> 0.99 @ 3.29) over the dropped glacis
   for (const s of [-1, 1]) {
@@ -7920,6 +7927,24 @@ function buildT90Burlak(P: T90BuilderPort): void {
   P.topY = 0.91;
 }
 
+function addT90MProryvGlacisRelikt(P: T90BuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1]) {
+    P.destructibleCluster(`glacis_era_${side > 0 ? 'R' : 'L'}`, () => {
+      for (const [x, y, z, yaw, width, depth] of [
+        [0.34, 1.275, 2.38, 0.20, 0.58, 0.40],
+        [0.78, 1.245, 2.50, 0.34, 0.54, 0.36],
+        [1.18, 1.205, 2.58, 0.48, 0.46, 0.31],
+      ]) {
+        P.add('hull', box(width, 0.075, depth), side * x, y, z,
+          -0.34, -side * yaw, 0);
+        P.add('hullDark', box(width * 0.76, 0.012, 0.025), side * x,
+          y + 0.045, z - depth * 0.34, -0.34, -side * yaw, 0);
+      }
+    });
+  }
+}
+
 function replaceT90MProryvHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, torus, buildRunningGear } = KIT;
 
@@ -7966,18 +7991,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
 
   // Glacis Relikt: broad V-shaped plates with nested seams, carried by the
   // sloped upper plate rather than standing vertically in front of it.
-  for (const s of [-1, 1]) {
-    P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
-      for (const [x, y, z, yaw, w, d] of [
-        [0.34, 1.275, 2.38, 0.20, 0.58, 0.40],
-        [0.78, 1.245, 2.50, 0.34, 0.54, 0.36],
-        [1.18, 1.205, 2.58, 0.48, 0.46, 0.31],
-      ]) {
-        P.add('hull', box(w, 0.075, d), s * x, y, z, -0.34, -s * yaw, 0);
-        P.add('hullDark', box(w * 0.76, 0.012, 0.025), s * x, y + 0.045, z - d * 0.34, -0.34, -s * yaw, 0);
-      }
-    });
-  }
+  addT90MProryvGlacisRelikt(P);
 
   // One native linked course around six separately readable road
   // wheels.  The end transitions are close-wrapped and the top run remains
