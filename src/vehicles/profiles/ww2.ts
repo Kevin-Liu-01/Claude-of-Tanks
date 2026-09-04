@@ -2171,9 +2171,9 @@ function buildTigerI(P: Ww2BuilderPort): void {
 // SPEC NOTE (packet residual): armor gunBarrel.lengthM 4.64 vs the built
 // 4.00 visible run — shadow-proxy true-up flagged for the orchestrator.
 // ---------------------------------------------------------------------------
-function buildT3485Base(P: Ww2BuilderPort): void {
-  const { box, cylX, cylY, cylZ, sph, slab, lathe, frustum, buildRunningGear, buildGun,
-    fenders, headlight, liftEye, periscope, towCable, shovelTool, tarpRoll } = KIT;
+function addT3485Hull(P: Ww2BuilderPort): void {
+  const { box, cylY, cylZ, sph, slab, frustum, buildRunningGear, fenders,
+    headlight, liftEye, towCable, shovelTool, tarpRoll } = KIT;
 
   // Christie gear (§B6: REAR sprocket 0.60 / front idler 0.55 raised over
   // the 0.465 wheel line): 5 big perforated wheels, no return rollers.
@@ -2347,6 +2347,11 @@ function buildT3485Base(P: Ww2BuilderPort): void {
   towCable(P, [[-1.40, 1.185, -0.9], [-1.435, 1.205, 0.3], [-1.38, 1.185, 1.5]]);
   towCable(P, [[1.40, 1.185, -0.60], [1.435, 1.205, 0.35], [1.38, 1.185, 1.30]]);
   shovelTool(P, 1.41, 1.17, 1.75, 0.85);
+}
+
+function buildT3485Base(P: Ww2BuilderPort): void {
+  const { box, cylX, cylY, cylZ, sph, lathe, frustum, buildGun, periscope } = KIT;
+  addT3485Hull(P);
 
   // ---- composite cast turret (pivot = spec armor rig: world y 1.70, ring
   // z +0.55). §B8 RESIT order 2 (TURRET RESHAPE): the faceted polyTurret
