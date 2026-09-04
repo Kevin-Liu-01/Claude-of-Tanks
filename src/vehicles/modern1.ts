@@ -50,20 +50,20 @@ type EraPlacement = (
 
 interface ModernWaveBuilderPort {
   readonly q?: boolean;
-  readonly rng: unknown;
+  readonly rng: () => number;
   topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(
     owner: VehicleAssemblyOwner,
-    geometry: unknown,
+    geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   eraCluster(
     plateName: string,
     fill: (put: EraPlacement) => void,
     turretLocal?: boolean,
-  ): unknown;
+  ): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -71,7 +71,7 @@ interface ModernWaveBuilderPort {
     scale: number,
     position: Vec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
 }
 
 const D2R = Math.PI / 180;

@@ -19,27 +19,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface FrontlinePort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
-  readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material>;
-  readonly q?: boolean;
-  readonly geometryReceipt?: boolean;
-  readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
-  muzzleZ: number;
-  topY?: number;
-  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addEquipment(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addExternalArmor(owner: Owner, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry,
-    ...transform: number[]): unknown;
-  visualEraCluster(name: string, owner: Owner, fill: () => void): void;
-  decal(owner: Owner, kind: string, label: string | null, scale: number,
-    position: Vec3, ...orientation: number[]): unknown;
-}
+interface FrontlinePort extends ChinaBuilderPort {}
 
 function mount(
   P: FrontlinePort,
@@ -124,7 +104,7 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   // including its running gear, lofted hull, glacis, fenders, skirts, rear
   // deck, transom and fuel-rack structure. Keeping one shared builder makes
   // that relationship exact and prevents either hull from silently drifting.
-  buildZTZ99A2Hull(P as unknown as ChinaBuilderPort);
+  buildZTZ99A2Hull(P);
 }
 
 type VtFamilyVariant = 'vt4a1' | 'type99a';
@@ -493,7 +473,7 @@ function buildVT4A1(P: FrontlinePort): void {
 
 function buildType99AWithVtDerivative(P: FrontlinePort): void {
   buildType99AHullOnly(P as never);
-  addRearFuelDrums(P as unknown as ChinaBuilderPort, 1.56, -3.68, 9910, {
+  addRearFuelDrums(P, 1.56, -3.68, 9910, {
     radius: 0.25, length: 1.12, centerX: 0.61, cradleDepth: 0.34,
     rearPlateZ: -3.52,
   });

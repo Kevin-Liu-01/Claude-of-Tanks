@@ -81,28 +81,28 @@ interface Modern2BuilderPort {
   readonly mats: Record<string, THREE.Material> & { readonly dark: THREE.Material };
   readonly spec: FleetTankSpec;
   __type99HullOnly?: boolean;
-  postAssemble: (() => unknown) | null;
+  postAssemble: (() => void) | null;
   muzzleZ: number;
   topY?: number;
-  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addCupola(
     bucket: string,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
+  ): void;
   addEquipment(
     bucket: string,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(
     id: string,
     slot: string,
     geometry: THREE.BufferGeometry,
     ...transform: number[]
-  ): unknown;
+  ): void;
   clear(...slots: string[]): void;
   decal(
     owner: VehicleAssemblyOwner,
@@ -111,12 +111,12 @@ interface Modern2BuilderPort {
     scale: number,
     position: MutableVec3Tuple,
     ...orientation: number[]
-  ): unknown;
+  ): void;
   eraCluster(
     key: string,
     build: (put: EraPlacement) => void,
     turretLocal?: boolean,
-  ): unknown;
+  ): void;
 }
 
 interface ArmorResistance {

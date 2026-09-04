@@ -1,21 +1,23 @@
-export type ProfileBuilderPort = unknown;
+import type { RuntimeValue } from '../runtimeTypes.ts';
+
+export type ProfileBuilderPort = RuntimeValue;
 
 export type AuthoredProfileBuilder = (
   builder: ProfileBuilderPort,
   profile: VehicleProfile,
-) => unknown;
+) => void;
 
-export interface VehicleProfile extends Record<string, unknown> {
-  readonly build?: unknown;
-  readonly base?: unknown;
+export interface VehicleProfile extends Record<string, RuntimeValue> {
+  readonly build?: RuntimeValue;
+  readonly base?: RuntimeValue;
 }
 
 export type VehicleProfileRecord = Record<string, VehicleProfile>;
-export type ProfileBuilder = (builder: ProfileBuilderPort) => unknown;
+export type ProfileBuilder = (builder: ProfileBuilderPort) => void;
 
 export interface ProfileBuildFunctions {
-  buildDonorVariant(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
-  buildProfile(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
+  buildDonorVariant(builder: ProfileBuilderPort, profile: VehicleProfile): void;
+  buildProfile(builder: ProfileBuilderPort, profile: VehicleProfile): void;
 }
 
 /** Convert authored profile records into the factory's one-argument builder

@@ -1,4 +1,5 @@
 import type { ArmorEnvelope, ShellSpec } from './specHelpers.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export interface AimBloom {
   move: number;
@@ -27,7 +28,7 @@ export interface AutoloaderSpec {
   fullReloadS?: number;
 }
 
-export interface FleetGunSpec extends Record<string, unknown> {
+export interface FleetGunSpec extends Record<string, RuntimeValue> {
   autoloader?: AutoloaderSpec;
   /** Visual-only radial tessellation for unusually small cannon mouths. */
   muzzleBoreSegments?: number;
@@ -39,14 +40,14 @@ export interface FleetGunSpec extends Record<string, unknown> {
   shells: ShellSpec[];
 }
 
-export interface FleetDimensions extends Record<string, unknown> {
+export interface FleetDimensions extends Record<string, RuntimeValue> {
   hullLengthM: number;
   overallLengthM: number;
   widthM: number;
   heightM: number;
 }
 
-export interface FleetVisualSpec extends Record<string, unknown> {
+export interface FleetVisualSpec extends Record<string, RuntimeValue> {
   scheme: string;
   base: string;
   weather: string;
@@ -61,7 +62,7 @@ export interface FleetVisualSpec extends Record<string, unknown> {
 
 /** Combat-authoritative fields shared by every registered fleet row. Family
  * packs may append identity-specific metadata through the extension record. */
-export interface FleetTankSpec extends Record<string, unknown> {
+export interface FleetTankSpec extends Record<string, RuntimeValue> {
   id: string;
   name: string;
   nation: string;
@@ -86,7 +87,7 @@ export interface FleetTankSpec extends Record<string, unknown> {
   visual: FleetVisualSpec;
 }
 
-export interface ModelSourceRecord extends Record<string, unknown> {
+export interface ModelSourceRecord extends Record<string, RuntimeValue> {
   readonly source: string;
 }
 
