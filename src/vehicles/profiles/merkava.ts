@@ -3422,60 +3422,55 @@ function merkavaPlinthMG(P: TankBuilderPort, m: PlinthMachineGun): void {
     m.x, (m.rodY + m.slotTop) / 2, (m.recZ0 + m.recZ1) / 2);                           // mount post
 }
 
-// Compact CL-3030 smoke rosette snugged onto the PORT cheek plane.
-// opts.pale: monochrome-sand refs — the near-black base plate read as a
-// blockout rectangle on the cheek from the top views (3B/3C visual round).
-function merkavaSmokeCluster(
+function addMerkavaFrameSmokeCluster(
+  P: TankBuilderPort,
+  frame: SurfaceFrame,
+  n: number,
+  tubeL: number,
+  soft: boolean,
+): void {
+  const { cylY } = KIT;
+  addMerkava4bFrameBox(P, 'turretDetail', frame, 0.36, 0.20, 0.10, 0.040, true);
+  const tubeAxis = frame.up.clone().multiplyScalar(0.82)
+    .addScaledVector(frame.normal, 0.57).normalize();
+  const tubeEuler = new THREE.Euler().setFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tubeAxis),
+    'XYZ',
+  );
+  const rows = [Math.ceil(n / 2), Math.floor(n / 2)];
+  for (let r = 0; r < 2; r++) {
+    for (let k = 0; k < rows[r]; k++) {
+      const u = (k - (rows[r] - 1) / 2) * 0.088;
+      const v = (r - 0.5) * 0.078;
+      const foot = frame.point.clone()
+        .addScaledVector(frame.tangent, u)
+        .addScaledVector(frame.up, v)
+        .addScaledVector(frame.normal, 0.070);
+      const center = foot.clone().addScaledVector(tubeAxis, tubeL * 0.46);
+      P.addEquipment(soft ? 'turretDetail' : 'turretDark', cylY(0.032, 0.036, tubeL, 8),
+        center.x, center.y, center.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
+      if (soft) {
+        const mouth = foot.clone().addScaledVector(tubeAxis, tubeL * 0.92);
+        P.addEquipment('turretDark', cylY(0.030, 0.030, 0.016, 8),
+          mouth.x, mouth.y, mouth.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
+      }
+    }
+  }
+}
+
+function addMerkavaPlanarSmokeCluster(
   P: TankBuilderPort,
   x: number,
   y: number,
   z: number,
-  yaw = 0,
-  n = 5,
-  opts: SmokeClusterOptions = {},
+  yaw: number,
+  n: number,
+  pitch: number,
+  tubeL: number,
+  lift: number,
+  opts: SmokeClusterOptions,
 ): void {
   const { box, cylY } = KIT;
-  const pitch = opts.pitch ?? -0.30;
-  // r6 (pale marks): discharger pods stand PROUD as small boxes — the r5
-  // 15 mm recessed tubes read as painted dots on the cheek. The lift is
-  // mostly +y (tubes are near-vertical), so plan/front columns move < 4 mm.
-  const tubeL = opts.recessed ? (opts.pale ? 0.125 : 0.09) : 0.15;
-  const lift = opts.recessed ? (opts.pale ? 0.036 : 0.015) : 0.035;
-  if (opts.frame) {
-    // Mk.4B's launchers live on a compound-sloped armor course. The legacy
-    // pitch/yaw placement could only align two axes, leaving the backing shoe
-    // visibly clear of the panel at elevated quarter views. Consume the same
-    // surface frame as the armor/ERA instead: the shoe overlaps the panel,
-    // while each tube grows from that shoe along an outward/upward vector.
-    const frame = opts.frame;
-    addMerkava4bFrameBox(P, 'turretDetail', frame, 0.36, 0.20, 0.10, 0.040, true);
-    const tubeAxis = frame.up.clone().multiplyScalar(0.82)
-      .addScaledVector(frame.normal, 0.57).normalize();
-    const tubeEuler = new THREE.Euler().setFromQuaternion(
-      new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tubeAxis),
-      'XYZ',
-    );
-    const rows = [Math.ceil(n / 2), Math.floor(n / 2)];
-    for (let r = 0; r < 2; r++) {
-      for (let k = 0; k < rows[r]; k++) {
-        const u = (k - (rows[r] - 1) / 2) * 0.088;
-        const v = (r - 0.5) * 0.078;
-        const foot = frame.point.clone()
-          .addScaledVector(frame.tangent, u)
-          .addScaledVector(frame.up, v)
-          .addScaledVector(frame.normal, 0.070);
-        const center = foot.clone().addScaledVector(tubeAxis, tubeL * 0.46);
-        P.addEquipment(opts.soft ? 'turretDetail' : 'turretDark', cylY(0.032, 0.036, tubeL, 8),
-          center.x, center.y, center.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
-        if (opts.soft) {
-          const mouth = foot.clone().addScaledVector(tubeAxis, tubeL * 0.92);
-          P.addEquipment('turretDark', cylY(0.030, 0.030, 0.016, 8),
-            mouth.x, mouth.y, mouth.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
-        }
-      }
-    }
-    return;
-  }
   if (opts.recessed) {
     P.add(opts.pale ? 'turretDetail' : 'turretDark', box(0.30, 0.018, 0.20), x, y, z, pitch, yaw, 0);
   } else {
@@ -3504,6 +3499,31 @@ function merkavaSmokeCluster(
       }
     }
   }
+}
+
+// Compact CL-3030 smoke rosette snugged onto the PORT cheek plane.
+// opts.pale: monochrome-sand refs — the near-black base plate read as a
+// blockout rectangle on the cheek from the top views (3B/3C visual round).
+function merkavaSmokeCluster(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  yaw = 0,
+  n = 5,
+  opts: SmokeClusterOptions = {},
+): void {
+  const pitch = opts.pitch ?? -0.30;
+  // r6 (pale marks): discharger pods stand PROUD as small boxes — the r5
+  // 15 mm recessed tubes read as painted dots on the cheek. The lift is
+  // mostly +y (tubes are near-vertical), so plan/front columns move < 4 mm.
+  const tubeL = opts.recessed ? (opts.pale ? 0.125 : 0.09) : 0.15;
+  const lift = opts.recessed ? (opts.pale ? 0.036 : 0.015) : 0.035;
+  if (opts.frame) {
+    addMerkavaFrameSmokeCluster(P, opts.frame, n, tubeL, opts.soft === true);
+    return;
+  }
+  addMerkavaPlanarSmokeCluster(P, x, y, z, yaw, n, pitch, tubeL, lift, opts);
 }
 
 // Ball-and-chain curtain: hanger rail + irregular drops with ball ends.
