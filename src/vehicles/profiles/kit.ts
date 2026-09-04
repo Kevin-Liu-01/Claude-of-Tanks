@@ -781,8 +781,7 @@ function type90Turret(P: ProfileBuilderPort, p: ProfileConfig): void {
   P.add('turret',cylY(0.24,0.24,0.045,14),-tw*0.38,h+0.025,-0.24);
 }
 
-function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
-  const { box,cylY,cylZ,buildGun,cupola,periscope,pintleMG,smokeCluster }=KIT;
+function addTurretShell(P: ProfileBuilderPort, p: ProfileConfig): void {
   if (p.turret === 'casemate') {
     // The armor/simulation rig still supplies a gun pitch group, but there is
     // no yawing turret shell. The hull superstructure is built above.
@@ -793,7 +792,10 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
   else if (p.turret === 'ifv') ifvTurret(P,p);
   else if (p.turret === 'type90') type90Turret(P,p);
   else westernWedge(P,p);
+}
 
+function addTurretCrewStations(P: ProfileBuilderPort, p: ProfileConfig): void {
+  const { cylY,cupola,periscope }=KIT;
   const h=p.turretHeight;
   if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90') {
     cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,p.commanderZ ?? -p.turretDepth*0.22,
@@ -801,19 +803,32 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
     P.add('turret',cylY(0.19,0.19,0.035,14),p.loaderX ?? -p.turretWidth*0.20,h+0.02,-p.turretDepth*0.18);
   }
   if (p.turret !== 'casemate') periscope(P,'turretDetail',p.sightX ?? p.turretWidth*0.20,h+0.06,p.turretFront*0.28);
-  if (p.pano) {
-    P.add('turretDetail',box(0.16,0.19,0.16),p.panoX ?? 0.32,h+0.10,-p.turretDepth*0.20);
-    P.add('turretDark',cylY(0.12,0.12,0.17,12),p.panoX ?? 0.32,h+0.27,-p.turretDepth*0.20);
-  }
-  if (p.turret === 'western') {
-    // Recessed primary sight on the right cheek and a rear mesh basket make
-    // Leopard/Type-90 style turrets read as authored armor, not a plain box.
-    P.add('turretDark',box(0.34,0.18,0.035),p.turretWidth*0.23,h*0.56,p.turretFront*0.54);
-    P.add('turretGlass',box(0.24,0.10,0.018),p.turretWidth*0.23,h*0.56,p.turretFront*0.57);
-    P.add('turretDetail',box(p.turretWidth*0.74,0.035,0.035),0,h*0.58,p.turretRear-0.22);
-    P.add('turretDetail',box(p.turretWidth*0.74,0.035,0.035),0,0.12,p.turretRear-0.22);
-    for(let i=0;i<8;i++) P.add('turretDetail',box(0.025,h*0.44,0.025),-p.turretWidth*0.32+i*(p.turretWidth*0.64/7),h*0.35,p.turretRear-0.22);
-  }
+}
+
+function addPanoramicSight(P: ProfileBuilderPort, p: ProfileConfig): void {
+  if (!p.pano) return;
+  const { box,cylY }=KIT;
+  const h=p.turretHeight;
+  P.add('turretDetail',box(0.16,0.19,0.16),p.panoX ?? 0.32,h+0.10,-p.turretDepth*0.20);
+  P.add('turretDark',cylY(0.12,0.12,0.17,12),p.panoX ?? 0.32,h+0.27,-p.turretDepth*0.20);
+}
+
+function addWesternTurretFurniture(P: ProfileBuilderPort, p: ProfileConfig): void {
+  if (p.turret !== 'western') return;
+  const { box }=KIT;
+  const h=p.turretHeight;
+  // Recessed primary sight on the right cheek and a rear mesh basket make
+  // Leopard/Type-90 style turrets read as authored armor, not a plain box.
+  P.add('turretDark',box(0.34,0.18,0.035),p.turretWidth*0.23,h*0.56,p.turretFront*0.54);
+  P.add('turretGlass',box(0.24,0.10,0.018),p.turretWidth*0.23,h*0.56,p.turretFront*0.57);
+  P.add('turretDetail',box(p.turretWidth*0.74,0.035,0.035),0,h*0.58,p.turretRear-0.22);
+  P.add('turretDetail',box(p.turretWidth*0.74,0.035,0.035),0,0.12,p.turretRear-0.22);
+  for(let i=0;i<8;i++) P.add('turretDetail',box(0.025,h*0.44,0.025),-p.turretWidth*0.32+i*(p.turretWidth*0.64/7),h*0.35,p.turretRear-0.22);
+}
+
+function addTurretAccessories(P: ProfileBuilderPort, p: ProfileConfig): void {
+  const { box,pintleMG,smokeCluster }=KIT;
+  const h=p.turretHeight;
   if (p.smoke !== false && p.turret !== 'casemate') {
     smokeCluster(P,p.turretWidth*0.43,h*0.52,0,Math.min(6,p.smokeCount || 4),1.12,0.55);
     smokeCluster(P,-p.turretWidth*0.43,h*0.52,0,Math.min(6,p.smokeCount || 4),-1.12,0.55);
@@ -822,11 +837,17 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
   if (p.antennas !== false && p.turret !== 'casemate') for (const side of [-1,1]) {
     P.add('turretDetail',box(0.022,p.antennaHeight || 0.48,0.022),side*p.turretWidth*0.36,h+0.24,p.turretRear*0.78,0,0,side*0.08);
   }
+}
+
+function addMainGun(P: ProfileBuilderPort, p: ProfileConfig): void {
+  const { box,buildGun,cylZ }=KIT;
+  const gunLength=p.gunLength || P.spec.armor.gunBarrel.lengthM;
+  const gunRadius=p.gunRadius || Math.max(0.05,P.spec.armor.gunBarrel.radiusM*0.82);
   P.addGunExtra(box(p.mantletWidth || 0.48,p.mantletHeight || 0.44,0.24),0,0.01,p.turretFront*0.62);
   P.addGunExtra(cylZ(Math.max(0.10,P.spec.armor.gunBarrel.radiusM*1.55),0.28,14),0,0,p.turretFront*0.82);
   buildGun(P,{
-    len:p.gunLength || P.spec.armor.gunBarrel.lengthM,
-    r:p.gunRadius || Math.max(0.05,P.spec.armor.gunBarrel.radiusM*0.82),
+    len:gunLength,
+    r:gunRadius,
     // evacRatio: buildGun's 1.62 default disappears INSIDE a thermal sleeve
     // (r*1.22) — sleeved tubes need the bulge proud of the sleeve to read.
     sleeve:p.sleeve !== false,evac:Object.hasOwn(p,'evac') ? p.evac : 0.55,
@@ -836,11 +857,20 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
   // §B3.1 MUZZLE BORE — OPT-IN per profile (p.muzzleBore true|config);
   // absent = byte-identical build (shared-helper law).
   if (p.muzzleBore) muzzleBore(P,{
-    len:p.gunLength || P.spec.armor.gunBarrel.lengthM,
-    r:p.gunRadius || Math.max(0.05,P.spec.armor.gunBarrel.radiusM*0.82),
+    len:gunLength,
+    r:gunRadius,
     ...(typeof p.muzzleBore === 'object' ? p.muzzleBore : null),
   });
-  P.topY=h+(p.pano?0.46:0.25);
+}
+
+function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
+  addTurretShell(P,p);
+  addTurretCrewStations(P,p);
+  addPanoramicSight(P,p);
+  addWesternTurretFurniture(P,p);
+  addTurretAccessories(P,p);
+  addMainGun(P,p);
+  P.topY=p.turretHeight+(p.pano?0.46:0.25);
 }
 
 // §B3.1 addendum MUZZLE BORE (owner 2026-08-06, banked 32a6946; MANDATORY
