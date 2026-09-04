@@ -39,6 +39,7 @@ import { isPostwarVehicleEra } from './taxonomy.ts';
 // The painters are all canvas.width-relative, so this is a pure resolution
 // change — identical feature plan, quarter the pixels at scale 0.5.
 import { texSize } from '../engine/quality.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type Rng = () => number;
 type Rgb = [number, number, number];
@@ -68,7 +69,6 @@ interface MaterialVisual {
   drawRotation?: number;
   drawMirror?: boolean;
   number?: string;
-  [key: string]: unknown;
 }
 
 export interface MaterialTankSpec {
@@ -76,7 +76,20 @@ export interface MaterialTankSpec {
   nation?: string;
   era?: string;
   visual: MaterialVisual;
-  [key: string]: unknown;
+}
+
+function requireMaterialTankSpec(value: RuntimeValue): MaterialTankSpec {
+  if (value === null || typeof value !== 'object') {
+    throw new TypeError('Vehicle material spec must be an object');
+  }
+  const spec = value as Partial<MaterialTankSpec>;
+  if (typeof spec.id !== 'string'
+      || spec.visual === null
+      || typeof spec.visual !== 'object'
+      || typeof spec.visual.base !== 'string') {
+    throw new TypeError('Vehicle material spec requires an id and visual base color');
+  }
+  return spec as MaterialTankSpec;
 }
 
 interface PlateLine {
@@ -1115,10 +1128,10 @@ function paintCamo(
           const px = cx2 + ex * cosA - ey * sinA;
           const py = cy2 + ex * sinA + ey * cosA;
           if (i === 0) path.moveTo(px, py); else path.lineTo(px, py);
-          if (px < mnx) mnx = px;
-          if (px > mxx) mxx = px;
-          if (py < mny) mny = py;
-          if (py > mxy) mxy = py;
+          mnx = Math.min(mnx, px);
+          mxx = Math.max(mxx, px);
+          mny = Math.min(mny, py);
+          mxy = Math.max(mxy, py);
         }
         path.closePath();
         a += (rng() - 0.5) * 0.55;                   // spine wanders slightly
@@ -3204,7 +3217,7 @@ function exposureTrim(canvas: HTMLCanvasElement, k = 0.86): void {
 
 const TEX_CACHE = new Map<string, SharedTextureEntry>();
 
-function sharedTextureIdentity(specId: string, selection: unknown = null): SharedTextureIdentity {
+function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
   if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
   const patternId = resolveMultiplayerCamoPattern(specId, selection);
   return { key: `${specId}::${patternId}`, patternId, fixed: true };
@@ -3240,13 +3253,13 @@ const QUALITY_SIZES: Readonly<Record<MaterialTextureQuality, { albedo: number; m
   low: { albedo: 256, map: 128 },
 };
 
-export function normalizeMaterialTextureQuality(quality: unknown): MaterialTextureQuality {
+export function normalizeMaterialTextureQuality<Value>(quality: Value): MaterialTextureQuality {
   return typeof quality === 'string' && Object.prototype.hasOwnProperty.call(QUALITY_SIZES, quality)
     ? quality as MaterialTextureQuality
     : 'high';
 }
 
-export function materialTextureDimensions(quality: unknown): { albedo: number; map: number } {
+export function materialTextureDimensions<Value>(quality: Value): { albedo: number; map: number } {
   const sizes = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
   return { albedo: sizes.albedo, map: sizes.map };
 }
@@ -3315,7 +3328,7 @@ function acquireSharedTextures(
   spec: MaterialTankSpec,
   aniso: number,
   quality: MaterialTextureQuality = 'high',
-  selection: unknown = null,
+  selection: string | null = null,
 ): SharedTextureEntry {
   const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
@@ -3363,7 +3376,7 @@ function acquireSharedTextures(
 // size; the THREE.Texture object identity is untouched, so every live
 // material keeps working.
 const QUALITY_RANK: Readonly<Record<MaterialTextureQuality, number>> = { low: -1, ai: 0, preview: 1, high: 2 };
-export function isMaterialTextureQualityUpgrade(current: unknown, requested: unknown): boolean {
+export function isMaterialTextureQualityUpgrade<Current, Requested>(current: Current, requested: Requested): boolean {
   return QUALITY_RANK[normalizeMaterialTextureQuality(requested)]
     > QUALITY_RANK[normalizeMaterialTextureQuality(current)];
 }
@@ -3407,12 +3420,13 @@ function finalizeEntryResize(entry: SharedTextureEntry): void {
  * @param {?function(): (Promise<void>|void)} tick awaited between stages
  */
 export function prebakeSharedTextures(
-  spec: MaterialTankSpec,
+  specValue: RuntimeValue,
   aniso: number,
-  requestedQuality: unknown = 'ai',
+  requestedQuality: string = 'ai',
   tick: BakeYield | null = null,
-  selection: unknown = null,
+  selection: string | null = null,
 ): Promise<void> {
+  const spec = requireMaterialTankSpec(specValue);
   const quality = normalizeMaterialTextureQuality(requestedQuality);
   const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
@@ -3542,7 +3556,7 @@ function ensureBurntTextures(entry: SharedTextureEntry, aniso: number): void {
 export function* prebakeBurntSteps(
   specId: string,
   aniso: number,
-  selection: unknown = null,
+  selection: string | null = null,
 ): Generator<void, void, void> {
   const entry = TEX_CACHE.get(sharedTextureIdentity(specId, selection).key);
   if (!entry || entry.burntTex) return;
@@ -3734,7 +3748,7 @@ export function getCamoSelection(specId: string): MaterialPatternId {
 }
 
 /** Persist a camo pattern selection for a tank. */
-export function setCamoSelection(specId: string, patternId: unknown): void {
+export function setCamoSelection(specId: string, patternId: string): void {
   if (!isBuiltInCamoId(patternId)) return;
   try { localStorage.setItem(CAMO_LS_PREFIX + specId, patternId); } catch (e) { /* private mode */ }
 }
@@ -3748,7 +3762,7 @@ export function getCustomCamoSelection(specId: string): CustomCamo {
 }
 
 /** Save and activate a custom pattern. It is intentionally never match-safe. */
-export function setCustomCamoSelection(specId: string, value: unknown): CustomCamo {
+export function setCustomCamoSelection<Value>(specId: string, value: Value): CustomCamo {
   const next = normalizeCustomCamo(value);
   try {
     localStorage.setItem(CUSTOM_CAMO_LS_PREFIX + specId, JSON.stringify(next));
@@ -3772,7 +3786,7 @@ export function getMultiplayerCamoSelection(specId: string): CamoPatternId {
 // spec is never overridden — setupBattle only rolls for bots, and a spec id
 // appears at most once per battle (entities are keyed by spec id).
 const CAMO_OVERRIDE = new Map<string, MaterialPatternId>(); // specId -> patternId ('auto' allowed)
-export function setCamoOverride(specId: string, patternId: unknown): void {
+export function setCamoOverride(specId: string, patternId: string | null): void {
   if (patternId == null) { CAMO_OVERRIDE.delete(specId); return; }
   if (isBuiltInCamoId(patternId) || patternId === 'urban') {
     CAMO_OVERRIDE.set(specId, patternId);
@@ -3802,7 +3816,7 @@ function resolveCamoPattern(specId: string): MaterialPatternId {
 }
 
 /** Resolve a match-owned built-in choice without consulting local storage. */
-function resolveMultiplayerCamoPattern(specId: string, selection: unknown): MaterialPatternId {
+function resolveMultiplayerCamoPattern<Value>(specId: string, selection: Value): MaterialPatternId {
   const safe = networkCamoId(selection);
   if (safe !== 'auto') return safe;
   const pool = BIOME_PATTERN[activeBiome];
@@ -4494,6 +4508,74 @@ export function applyCamoPatterns(onlySpecId: string | null = null): void {
 // selection instead of painting stale patterns. A newer drain cancels the
 // remainder of an older one outright (the newer pass owns every stale entry).
 let _camoSweepGen = 0;
+
+function camoSweepKeys(opts: CamoApplyOptions | null): string[] {
+  const priorityIds = opts?.priorityIds || [];
+  const onlyIds = opts?.onlySpecIds?.length ? new Set(opts.onlySpecIds) : null;
+  return [...TEX_CACHE.keys()]
+    .filter((key) => {
+      const specId = TEX_CACHE.get(key)?.spec.id;
+      return !onlyIds || (specId !== undefined && onlyIds.has(specId));
+    })
+    .sort((a, b) => {
+      const aId = TEX_CACHE.get(a)?.spec.id;
+      const bId = TEX_CACHE.get(b)?.spec.id;
+      const aRank = !aId || priorityIds.indexOf(aId) < 0 ? 1 : 0;
+      const bRank = !bId || priorityIds.indexOf(bId) < 0 ? 1 : 0;
+      return aRank - bRank;
+    });
+}
+
+interface StaleCamoEntry {
+  entry: SharedTextureEntry;
+  patternId: MaterialPatternId;
+}
+
+function staleCamoEntry(key: string): StaleCamoEntry | null {
+  const entry = TEX_CACHE.get(key);
+  if (!entry || entry.fixedPattern) return null;
+  const patternId = resolveCamoPattern(entry.spec.id);
+  return entry.patternId === patternId ? null : { entry, patternId };
+}
+
+async function yieldCamoSweep(delayMs: number, generation: number): Promise<boolean> {
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+  return generation === _camoSweepGen;
+}
+
+async function repaintCamoEntryChunked(
+  entry: SharedTextureEntry,
+  patternId: MaterialPatternId,
+  generation: number,
+): Promise<boolean> {
+  const visual = {
+    ...patternVisual(entry.spec, patternId),
+    modernWelds: isPostwarVehicleEra(entry.spec.era),
+  };
+  let patternHash = 0;
+  for (const character of patternId) {
+    patternHash = (patternHash * 31 + character.charCodeAt(0)) | 0;
+  }
+  const { feats, camoTex, roughTex } = entry;
+  if (!feats || !camoTex || !roughTex) {
+    throw new Error(`vehicle material cache entry ${entry.cacheKey} is incomplete`);
+  }
+
+  paintCamo(entry.camoCanvas, visual, mulberry32(entry.seed ^ patternHash), feats, entry.seed);
+  if (!await yieldCamoSweep(16, generation)) return false;
+  exposureTrim(entry.camoCanvas);
+  camoTex.needsUpdate = true;
+  if (!await yieldCamoSweep(16, generation)) return false;
+  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats);
+  if (!await yieldCamoSweep(16, generation)) return false;
+  paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, visual);
+  roughTex.needsUpdate = true;
+  entry.patternId = patternId;
+  retintEntryFittings(entry, visual);
+  snapshotBake(entry, patternId);
+  return true;
+}
+
 /**
  * Chunked equivalent of applyCamoPatterns(): one repaint per macrotask.
  * @param {{priorityIds?: string[],onlySpecIds?: string[]}} [opts] specs to
@@ -4504,77 +4586,31 @@ let _camoSweepGen = 0;
  */
 export async function applyCamoPatternsChunked(opts: CamoApplyOptions | null = null): Promise<void> {
   const gen = ++_camoSweepGen;
-  const prio = (opts && opts.priorityIds) || [];
-  const only = opts?.onlySpecIds?.length ? new Set(opts.onlySpecIds) : null;
-  const keys = [...TEX_CACHE.keys()]
-    .filter((key) => {
-      const specId = TEX_CACHE.get(key)?.spec.id;
-      return !only || (specId !== undefined && only.has(specId));
-    })
-    .sort((a, b) => {
-      const ae = TEX_CACHE.get(a), be = TEX_CACHE.get(b);
-      const aId = ae?.spec.id;
-      const bId = be?.spec.id;
-      return (!aId || prio.indexOf(aId) < 0 ? 1 : 0) - (!bId || prio.indexOf(bId) < 0 ? 1 : 0);
-    });
-  for (const key of keys) {
+  for (const key of camoSweepKeys(opts)) {
     if (gen !== _camoSweepGen) return; // superseded — the newer drain finishes
-    const entry = TEX_CACHE.get(key);
-    if (!entry || entry.fixedPattern) continue; // immutable match variants never repaint
-    const pid = resolveCamoPattern(entry.spec.id);
-    if (entry.patternId === pid) continue;
+    if (!staleCamoEntry(key)) continue; // immutable and current entries need no work
     // yield BEFORE painting: the triggering click/frame paints first, and the
     // loading bar gets a frame between consecutive entry repaints.
     await new Promise((r) => setTimeout(r, 32));
     if (gen !== _camoSweepGen) return;
-    const cur = TEX_CACHE.get(key);
-    if (!cur) continue;
-    const nowPid = resolveCamoPattern(cur.spec.id);
-    if (cur.patternId !== nowPid) {
-      // camo r4: memoized bakes short-circuit the painter chain — a biome
-      // flip back onto patterns this session has already worn costs blits,
-      // not repaints. The restore re-checks resolution after its decode
-      // awaits, so a drain that got superseded mid-entry stays correct.
-      if (await restoreBake(cur, nowPid)) continue;
-      if (gen !== _camoSweepGen) return;
-      const c2 = TEX_CACHE.get(key);
-      if (!c2) continue;
-      const p2 = resolveCamoPattern(c2.spec.id);
-      if (c2.patternId !== p2) {
-        const vis = {
-          ...patternVisual(c2.spec, p2),
-          modernWelds: isPostwarVehicleEra(c2.spec.era),
-        };
-        let ph = 0;
-        for (const ch of p2) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+    const current = staleCamoEntry(key);
+    if (!current) continue;
+    // camo r4: memoized bakes short-circuit the painter chain — a biome
+    // flip back onto patterns this session has already worn costs blits,
+    // not repaints. The restore re-checks resolution after its decode
+    // awaits, so a drain that got superseded mid-entry stays correct.
+    if (await restoreBake(current.entry, current.patternId)) continue;
+    if (gen !== _camoSweepGen) return;
+    const pending = staleCamoEntry(key);
+    if (!pending) continue;
 
-        // A repaint used to be one 0.3-2.1 s task: albedo painter, exposure
-        // scan, both roughness passes, fittings, and snapshot all ran without
-        // returning to the browser. Preserve the exact painter/RNG output but
-        // split the independent passes into paintable tasks. A superseding
-        // sweep aborts between passes; its fresh albedo pass then owns the
-        // same canvases from that point onward.
-        const { feats, camoTex, roughTex } = c2;
-        if (!feats || !camoTex || !roughTex) {
-          throw new Error(`vehicle material cache entry ${c2.cacheKey} is incomplete`);
-        }
-        paintCamo(c2.camoCanvas, vis, mulberry32(c2.seed ^ ph), feats, c2.seed);
-        await new Promise((r) => setTimeout(r, 16));
-        if (gen !== _camoSweepGen) return;
-        exposureTrim(c2.camoCanvas);
-        camoTex.needsUpdate = true;
-        await new Promise((r) => setTimeout(r, 16));
-        if (gen !== _camoSweepGen) return;
-        paintRoughness(c2.roughCanvas, mulberry32(c2.seed ^ ph ^ 0x9e37), feats);
-        await new Promise((r) => setTimeout(r, 16));
-        if (gen !== _camoSweepGen) return;
-        paintPatchRoughness(c2.roughCanvas, c2.camoCanvas, vis);
-        roughTex.needsUpdate = true;
-        c2.patternId = p2;
-        retintEntryFittings(c2, vis);
-        snapshotBake(c2, p2);
-      }
-    }
+    // A repaint used to be one 0.3-2.1 s task: albedo painter, exposure
+    // scan, both roughness passes, fittings, and snapshot all ran without
+    // returning to the browser. Preserve the exact painter/RNG output but
+    // split the independent passes into paintable tasks. A superseding
+    // sweep aborts between passes; its fresh albedo pass then owns the
+    // same canvases from that point onward.
+    if (!await repaintCamoEntryChunked(pending.entry, pending.patternId, gen)) return;
   }
 }
 
@@ -4808,8 +4844,8 @@ export function createTankMaterials(
   spec: MaterialTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
   camoSeed: number,
-  quality: unknown = 'high',
-  camoPattern: unknown = null,
+  quality: string = 'high',
+  camoPattern: string | null = null,
 ) {
   const shadowSetup = engineCtx?.setupShadowMaterial;
   const shadowHookSupported = supportsShadowHook(engineCtx);

@@ -6,6 +6,7 @@ import {
   isMaterialTextureQualityUpgrade,
   materialTextureDimensions,
   normalizeMaterialTextureQuality,
+  prebakeSharedTextures,
 } from './materials.ts';
 
 function referencePatchPixels(pixels, size, classes, classSize, offsets) {
@@ -41,6 +42,16 @@ assert.equal(isMaterialTextureQualityUpgrade('ai', 'preview'), true);
 assert.equal(isMaterialTextureQualityUpgrade('preview', 'high'), true);
 assert.equal(isMaterialTextureQualityUpgrade('high', 'preview'), false);
 assert.equal(isMaterialTextureQualityUpgrade('preview', 'preview'), false);
+assert.throws(
+  () => prebakeSharedTextures(null, 4),
+  /Vehicle material spec must be an object/,
+  'prebake rejects invalid runtime specs before touching DOM or WebGL state',
+);
+assert.throws(
+  () => prebakeSharedTextures({ id: 'broken', visual: {} }, 4),
+  /requires an id and visual base color/,
+  'prebake rejects incomplete runtime specs before allocating textures',
+);
 
 const materialsSource = await readFile(new URL('./materials.ts', import.meta.url), 'utf8');
 assert.match(materialsSource,
