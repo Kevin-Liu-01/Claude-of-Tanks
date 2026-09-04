@@ -1011,6 +1011,42 @@ function buildJagdtiger(P: CasemateBuilderPort): void {
 // rising 2.76 @ z 0.76 to 3.29 @ z -3.0 (8 deg), tail chamfer down to
 // (-4.23, 1.77/1.38). Hull span stretched +-0.2 to land published 8.7.
 // ---------------------------------------------------------------------------
+function addJPzE100SideSkirts(P: CasemateBuilderPort): void {
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.09, 0.62, 7.40), side * 2.105, 1.22, -0.10);
+    P.add('hull', box(0.50, 0.06, 7.70), side * 1.81, 1.63, 0.10);
+    for (let panel = 0; panel < 8; panel++) {
+      const z = -3.33 + panel * 0.92;
+      P.add('hull', box(0.012, 0.56, 0.86), side * 2.144, 1.23, z);
+      P.add('hullDark', box(0.014, 0.53, 0.018), side * 2.143, 1.22, z + 0.45);
+      for (const boltY of [1.02, 1.43]) {
+        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), side * 2.149, boltY, z - 0.32);
+        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), side * 2.149, boltY, z + 0.32);
+      }
+    }
+    P.add('hullDark', box(0.03, 0.07, 7.2), side * 2.06, 0.89, -0.10);
+  }
+}
+
+function addJPzE100SlatCage(P: CasemateBuilderPort): void {
+  const cageZs = [-3.62, -2.84, -2.06, -1.28, -0.50];
+  for (const side of [-1, 1]) {
+    for (const z of cageZs) {
+      P.addEquipment('hullDetail', box(0.17, 0.035, 0.035), side * 1.58, 2.22, z);
+      P.addEquipment('hullDark', box(0.035, 0.72, 0.035), side * 1.68, 2.44, z);
+    }
+    for (const y of [2.10, 2.34, 2.58, 2.82]) {
+      P.addEquipment('hullDark', box(0.035, 0.035, 3.20), side * 1.68, y, -2.06);
+    }
+  }
+  for (const x of [-1.40, -0.84, -0.28, 0.28, 0.84, 1.40]) {
+    P.addEquipment('hullDetail', box(0.035, 0.70, 0.035), x, 2.42, -4.26);
+  }
+  for (const y of [2.10, 2.34, 2.58, 2.82]) {
+    P.addEquipment('hullDark', box(2.86, 0.035, 0.035), 0, y, -4.26);
+  }
+}
+
 function buildJPzE100(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable } = KIT;
 
@@ -1056,20 +1092,7 @@ function buildJPzE100(P: CasemateBuilderPort): void {
   // signature).  The old full-face gunmetal overlay turned both sides into
   // featureless black slabs.  Structural panels now retain the vehicle's
   // camouflage while narrow recessed seams and the lower lip provide depth.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.09, 0.62, 7.40), s * 2.105, 1.22, -0.10);
-    P.add('hull', box(0.50, 0.06, 7.70), s * 1.81, 1.63, 0.10);                // fender lip closes hull-to-skirt shoulder
-    for (let k = 0; k < 8; k++) {
-      const z = -3.33 + k * 0.92;
-      P.add('hull', box(0.012, 0.56, 0.86), s * 2.144, 1.23, z);
-      P.add('hullDark', box(0.014, 0.53, 0.018), s * 2.143, 1.22, z + 0.45);
-      for (const by of [1.02, 1.43]) {
-        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), s * 2.149, by, z - 0.32);
-        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), s * 2.149, by, z + 0.32);
-      }
-    }
-    P.add('hullDark', box(0.03, 0.07, 7.2), s * 2.06, 0.89, -0.10);            // lower edge shadow
-  }
+  addJPzE100SideSkirts(P);
 
   // Reference-defining gun mount: a broad trapezoidal bolted frame is
   // planted into the casemate slope and surrounds a massive cast pot.  The
@@ -1225,22 +1248,7 @@ function buildJPzE100(P: CasemateBuilderPort): void {
   }
   // Stand-off slat cage wraps both casemate flanks and the rear wall.  Every
   // rail has a visible load path through short armor-mounted outriggers.
-  const cageZs = [-3.62, -2.84, -2.06, -1.28, -0.50];
-  for (const s of [-1, 1]) {
-    for (const z of cageZs) {
-      P.addEquipment('hullDetail', box(0.17, 0.035, 0.035), s * 1.58, 2.22, z);
-      P.addEquipment('hullDark', box(0.035, 0.72, 0.035), s * 1.68, 2.44, z);
-    }
-    for (const y of [2.10, 2.34, 2.58, 2.82]) {
-      P.addEquipment('hullDark', box(0.035, 0.035, 3.20), s * 1.68, y, -2.06);
-    }
-  }
-  for (const x of [-1.40, -0.84, -0.28, 0.28, 0.84, 1.40]) {
-    P.addEquipment('hullDetail', box(0.035, 0.70, 0.035), x, 2.42, -4.26);
-  }
-  for (const y of [2.10, 2.34, 2.58, 2.82]) {
-    P.addEquipment('hullDark', box(2.86, 0.035, 0.035), 0, y, -4.26);
-  }
+  addJPzE100SlatCage(P);
   steelGear(P, {
     style: 'dished', wheelR: 0.43, wheelW: 0.22, wheelY: 0.47, xc: 1.55,
     wheelZs: stations(8, 5.18, -0.04), layers: [[0.13], [-0.13]],
