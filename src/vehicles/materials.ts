@@ -2940,32 +2940,50 @@ export function applyPatchRoughnessPixels(
 ): Uint8ClampedArray {
   let state = 0x51ab7 ^ size;
   for (let y = 0; y < size; y++) {
-    const cy = y >> 1;
-    const row = cy * classSize;
-    const south = (cy + 2 < classSize ? cy + 2 : cy + 2 - classSize) * classSize;
-    let pixel = y * size * 4;
-    for (let cx = 0; cx < classSize; cx++) {
-      const tone = classes[row + cx];
-      const east = cx + 2 < classSize ? cx + 2 : cx + 2 - classSize;
-      let baseDelta = offsets[tone];
-      if (classes[row + east] !== tone || classes[south + cx] !== tone) baseDelta += 0.035;
-
-      state = (state * 1664525 + 1013904223) >>> 0;
-      let value = pixels[pixel]
-        + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
-      value = value < 0 ? 0 : (value > 255 ? 255 : value);
-      pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
-      pixel += 4;
-
-      state = (state * 1664525 + 1013904223) >>> 0;
-      value = pixels[pixel]
-        + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
-      value = value < 0 ? 0 : (value > 255 ? 255 : value);
-      pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
-      pixel += 4;
-    }
+    state = applyPatchRoughnessRow(
+      pixels, size, classes, classSize, offsets, y, state,
+    );
   }
   return pixels;
+}
+
+function applyPatchRoughnessRow(
+  pixels: Uint8ClampedArray,
+  size: number,
+  classes: Uint8Array,
+  classSize: number,
+  offsets: number[],
+  y: number,
+  initialState: number,
+): number {
+  const classY = y >> 1;
+  const row = classY * classSize;
+  const southY = classY + 2 < classSize ? classY + 2 : classY + 2 - classSize;
+  const south = southY * classSize;
+  let pixel = y * size * 4;
+  let state = initialState;
+  for (let classX = 0; classX < classSize; classX++) {
+    const tone = classes[row + classX];
+    const east = classX + 2 < classSize ? classX + 2 : classX + 2 - classSize;
+    let baseDelta = offsets[tone];
+    if (classes[row + east] !== tone || classes[south + classX] !== tone) {
+      baseDelta += 0.035;
+    }
+    state = (state * 1664525 + 1013904223) >>> 0;
+    let value = pixels[pixel]
+      + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
+    value = value < 0 ? 0 : (value > 255 ? 255 : value);
+    pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
+    pixel += 4;
+
+    state = (state * 1664525 + 1013904223) >>> 0;
+    value = pixels[pixel]
+      + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
+    value = value < 0 ? 0 : (value > 255 ? 255 : value);
+    pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
+    pixel += 4;
+  }
+  return state;
 }
 
 // ===================== CAMO PATTERN SECTION =====================
@@ -3079,112 +3097,135 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
   return c;
 }
 
-// Transparent marking decal canvases.
-function paintDecal(kind: string, text: string | null | undefined, marking: VehicleMarkingRecord): HTMLCanvasElement {
-  const c = makeCanvas(256, 256);
-  const ctx = canvas2d(c);
-  ctx.clearRect(0, 0, 256, 256);
-  if (kind === 'insignia') {
-    drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
-  } else if (kind === 'designation') {
-    const draw = () => {
-      ctx.clearRect(0, 0, 256, 256);
-      drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
-    };
-    draw();
-    if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-      document.fonts.ready.then(draw).catch(() => {});
-    }
-  } else if (kind === 'star') {
-    ctx.fillStyle = 'rgba(238,238,230,0.92)';
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5;
-      const r = i % 2 === 0 ? 110 : 44;
-      const x = 128 + Math.cos(a) * r, y = 128 + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath(); ctx.fill();
-  } else if (kind === 'cross') {
-    // Balkenkreuz REDRAW (tank_models r4 — critic: "malformed brackets
-    // instead of an outlined cross"): the r2 open form's 8 disconnected
-    // flange rectangles never read as a cross at any distance. This is the
-    // classic 1943 vehicle form: BLACK straight-armed cross core with a
-    // white outline border on every edge (including the arm ends). The dark
-    // core stays far under the bloom knee, and the white border area is
-    // smaller than the old solid cross, so the r2 "glowing sticker" concern
-    // stays solved; white clamped to ~0.78 luma worn paint.
-    const W = 'rgba(201,197,186,0.94)';
-    const K = 'rgba(30,30,28,0.92)';
-    const S0 = 38, S1 = 218;   // cross arm span
-    const a0 = 97, a1 = 159;   // arm thickness band (62 px)
-    const b = 15;              // white border width
-    // white cross (full size)
-    ctx.fillStyle = W;
-    ctx.fillRect(S0, a0, S1 - S0, a1 - a0);
-    ctx.fillRect(a0, S0, a1 - a0, S1 - S0);
-    // black core cross (inset by the border on every edge)
-    ctx.fillStyle = K;
-    ctx.fillRect(S0 + b, a0 + b, S1 - S0 - 2 * b, a1 - a0 - 2 * b);
-    ctx.fillRect(a0 + b, S0 + b, a1 - a0 - 2 * b, S1 - S0 - 2 * b);
-    // deterministic wear nicks so it reads as brushed-on field paint
-    ctx.globalCompositeOperation = 'destination-out';
-    for (let i = 0; i < 20; i++) {
-      const px2 = S0 + ((i * 73) % 97) / 97 * (S1 - S0);
-      const py2 = S0 + ((i * 41) % 89) / 89 * (S1 - S0);
-      ctx.globalAlpha = 0.3 + ((i * 29) % 45) / 100;
-      ctx.beginPath();
-      ctx.arc(px2, py2, 1.2 + ((i * 17) % 26) / 10, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-  } else if (kind === 'soot') {
-    // Exhaust soot smudge: dark core fading out plus streak fingers running
-    // down the plate. Deterministic (no rng needed — decals are cached).
-    const g = ctx.createRadialGradient(128, 108, 8, 128, 116, 118);
-    g.addColorStop(0, 'rgba(22,20,17,0.72)');
-    g.addColorStop(0.55, 'rgba(26,23,19,0.36)');
-    g.addColorStop(1, 'rgba(26,23,19,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 12; i++) {
-      const x = 34 + i * 17 + ((i * 37) % 9);
-      const len = 60 + ((i * 53) % 78);
-      const sg = ctx.createLinearGradient(0, 110, 0, 110 + len);
-      sg.addColorStop(0, 'rgba(20,18,15,0.5)');
-      sg.addColorStop(1, 'rgba(20,18,15,0)');
-      ctx.fillStyle = sg;
-      ctx.fillRect(x, 110, 4 + (i % 3) * 3, len);
-    }
-  } else if (kind === 'crossgrey') {
-    ctx.strokeStyle = 'rgba(40,40,40,0.9)';
-    ctx.lineWidth = 20;
-    ctx.strokeRect(48, 108, 160, 40); ctx.strokeRect(108, 48, 40, 160);
-  } else { // number / text
-    const len = Math.max(1, (text || '').length);
-    // font mandate: hull numbers bake in Inter. The canvas holds nothing but
-    // this text, so a clear + redraw on fonts.ready is loss-free if the decal
-    // baked before the webfont resolved (decal() flips needsUpdate).
-    const drawText = () => {
-      ctx.clearRect(0, 0, 256, 256);
-      ctx.font = `bold ${Math.min(120, Math.floor(380 / len))}px 'ABC Monument Grotesk', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 10;
-      ctx.strokeStyle = 'rgba(20,20,20,0.55)';
-      ctx.strokeText(text || '', 128, 128);
-      // ~0.68 gray, not near-white: at 200-400 m white hull numbers resolved to
-      // single blown pixels scattered across the midfield (r2 terrain critique).
-      ctx.fillStyle = 'rgba(174,172,162,0.92)';
-      ctx.fillText(text || '', 128, 128);
-    };
-    drawText();
-    if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-      document.fonts.ready.then(drawText).catch(() => {});
-    }
+function redrawWhenMarkingFontReady(draw: () => void): void {
+  if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
+    document.fonts.ready.then(draw).catch(() => {});
   }
-  return c;
+}
+
+function paintDesignationDecal(
+  ctx: CanvasRenderingContext2D,
+  marking: VehicleMarkingRecord,
+): void {
+  const draw = (): void => {
+    ctx.clearRect(0, 0, 256, 256);
+    drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
+  };
+  draw();
+  redrawWhenMarkingFontReady(draw);
+}
+
+function paintStarDecal(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = 'rgba(238,238,230,0.92)';
+  ctx.beginPath();
+  for (let index = 0; index < 10; index++) {
+    const angle = -Math.PI / 2 + (index * Math.PI) / 5;
+    const radius = index % 2 === 0 ? 110 : 44;
+    const x = 128 + Math.cos(angle) * radius;
+    const y = 128 + Math.sin(angle) * radius;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function paintCrossDecal(ctx: CanvasRenderingContext2D): void {
+  const white = 'rgba(201,197,186,0.94)';
+  const black = 'rgba(30,30,28,0.92)';
+  const spanStart = 38;
+  const spanEnd = 218;
+  const bandStart = 97;
+  const bandEnd = 159;
+  const border = 15;
+  ctx.fillStyle = white;
+  ctx.fillRect(spanStart, bandStart, spanEnd - spanStart, bandEnd - bandStart);
+  ctx.fillRect(bandStart, spanStart, bandEnd - bandStart, spanEnd - spanStart);
+  ctx.fillStyle = black;
+  ctx.fillRect(
+    spanStart + border,
+    bandStart + border,
+    spanEnd - spanStart - 2 * border,
+    bandEnd - bandStart - 2 * border,
+  );
+  ctx.fillRect(
+    bandStart + border,
+    spanStart + border,
+    bandEnd - bandStart - 2 * border,
+    spanEnd - spanStart - 2 * border,
+  );
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let index = 0; index < 20; index++) {
+    const x = spanStart + ((index * 73) % 97) / 97 * (spanEnd - spanStart);
+    const y = spanStart + ((index * 41) % 89) / 89 * (spanEnd - spanStart);
+    ctx.globalAlpha = 0.3 + ((index * 29) % 45) / 100;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.2 + ((index * 17) % 26) / 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function paintSootDecal(ctx: CanvasRenderingContext2D): void {
+  const gradient = ctx.createRadialGradient(128, 108, 8, 128, 116, 118);
+  gradient.addColorStop(0, 'rgba(22,20,17,0.72)');
+  gradient.addColorStop(0.55, 'rgba(26,23,19,0.36)');
+  gradient.addColorStop(1, 'rgba(26,23,19,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 256, 256);
+  for (let index = 0; index < 12; index++) {
+    const x = 34 + index * 17 + ((index * 37) % 9);
+    const length = 60 + ((index * 53) % 78);
+    const streak = ctx.createLinearGradient(0, 110, 0, 110 + length);
+    streak.addColorStop(0, 'rgba(20,18,15,0.5)');
+    streak.addColorStop(1, 'rgba(20,18,15,0)');
+    ctx.fillStyle = streak;
+    ctx.fillRect(x, 110, 4 + (index % 3) * 3, length);
+  }
+}
+
+function paintGreyCrossDecal(ctx: CanvasRenderingContext2D): void {
+  ctx.strokeStyle = 'rgba(40,40,40,0.9)';
+  ctx.lineWidth = 20;
+  ctx.strokeRect(48, 108, 160, 40);
+  ctx.strokeRect(108, 48, 40, 160);
+}
+
+function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
+  const length = Math.max(1, text.length);
+  const draw = (): void => {
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.font = `bold ${Math.min(120, Math.floor(380 / length))}px 'ABC Monument Grotesk', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = 'rgba(20,20,20,0.55)';
+    ctx.strokeText(text, 128, 128);
+    ctx.fillStyle = 'rgba(174,172,162,0.92)';
+    ctx.fillText(text, 128, 128);
+  };
+  draw();
+  redrawWhenMarkingFontReady(draw);
+}
+
+// Transparent marking decal canvases.
+function paintDecal(
+  kind: string,
+  text: string | null | undefined,
+  marking: VehicleMarkingRecord,
+): HTMLCanvasElement {
+  const canvas = makeCanvas(256, 256);
+  const ctx = canvas2d(canvas);
+  ctx.clearRect(0, 0, 256, 256);
+  if (kind === 'insignia') drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
+  else if (kind === 'designation') paintDesignationDecal(ctx, marking);
+  else if (kind === 'star') paintStarDecal(ctx);
+  else if (kind === 'cross') paintCrossDecal(ctx);
+  else if (kind === 'soot') paintSootDecal(ctx);
+  else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
+  else paintTextDecal(ctx, text ?? '');
+  return canvas;
 }
 
 function canvasTex(canvas: HTMLCanvasElement, { srgb = true, aniso = 4, repeat = false }: CanvasTextureOptions = {}): THREE.CanvasTexture {
