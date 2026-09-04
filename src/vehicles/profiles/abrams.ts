@@ -3555,6 +3555,48 @@ function abramsArmorHardware(
 // The final owner scope is deliberately narrow: heavy cover belongs only to
 // M1A1HA. The TUSK/SEP variants remain vegetation-free so their ARAT, Trophy,
 // CROWS and urban-kit silhouettes stay readable as hard-surface technology.
+function abramsGhillieLeafDiamond(w: number, d: number, h = 0.024): THREE.BufferGeometry {
+  return slab(
+    [0, 0, -d], [w, 0, 0], [0, 0, d], [-w, 0, 0],
+    [0, h, -d], [w, h, 0], [0, h, d], [-w, h, 0]);
+}
+
+function addAbramsGhillieHullCurtains(
+  hullLight: THREE.BufferGeometry[],
+  hullDark: THREE.BufferGeometry[],
+  hullNet: THREE.BufferGeometry[],
+): void {
+  for (const side of [-1, 1]) {
+    // WIDTH GUARD: these side curtains sit over the 1.812 m skirt and under
+    // the certified 1.828 m armor carrier. Keep their normals thin and keep
+    // every torn strip in the local YZ plane; even a decorative 0.1 rad
+    // roll around Z turns a 0.3 m tail into width growth, which makes
+    // safeScale shrink the entire tank and falsifies every published datum.
+    hullNet.push(xform(box(0.010, 0.62, 5.10), side * 1.819, 1.08, 0.05));
+    hullDark.push(xform(box(0.008, 0.52, 4.95), side * 1.819, 1.08, 0.05));
+    // Keep the cloth on the long, fully backed side carrier. Earlier
+    // shoulder-extension sheets overlapped the rising idler/sprocket shoe
+    // envelopes at both ends; dense foliage remains on the deck above while
+    // the terminal track arcs stay completely unobstructed.
+    for (let k = 0; k < 10; k++) {
+      const z = -2.18 + k * 0.52;
+      const y = 1.04 + (k % 2) * 0.20;
+      const target = (k + (side > 0 ? 1 : 0)) % 3 ? hullDark : hullLight;
+      for (let l = 0; l < 3; l++) {
+        target.push(xform(abramsGhillieLeafDiamond(0.085 + l * 0.010,
+          0.13 + l * 0.018, 0.008),
+          side * 1.819, y + (l - 1) * 0.055,
+          z + (l - 1) * 0.075, (l - 1) * 0.15,
+          0, side * Math.PI / 2));
+        target.push(xform(box(0.014, 0.24 + l * 0.035, 0.030),
+          side * 1.819, y + 0.035 + l * 0.035,
+          z - 0.075 + l * 0.075, (l - 1) * 0.08,
+          k * 0.32 + l * 0.8, 0));
+      }
+    }
+  }
+}
+
 function abramsGhillie(
   P: AbramsBuilderPort,
   variant: string,
@@ -3637,9 +3679,6 @@ function abramsGhillie(
   const turretA: THREE.BufferGeometry[] = [], turretB: THREE.BufferGeometry[] = [];
   const hullA: THREE.BufferGeometry[] = [], hullB: THREE.BufferGeometry[] = [];
   const turretNet: THREE.BufferGeometry[] = [], hullNet: THREE.BufferGeometry[] = [];
-  const leafDiamond = (w: number, d: number, h = 0.024): THREE.BufferGeometry => slab(
-    [0, 0, -d], [w, 0, 0], [0, 0, d], [-w, 0, 0],
-    [0, h, -d], [w, h, 0], [0, h, d], [-w, h, 0]);
   const flankSheet = (
     side: number,
     xFaceA: number,
@@ -3682,7 +3721,7 @@ function abramsGhillie(
       const dx = Math.sin(a) * r;
       const dz = Math.cos(a) * r;
       const target = (seed + l) % 2 ? outA : outB;
-      target.push(xform(leafDiamond((0.070 + (l % 3) * 0.014) * s,
+      target.push(xform(abramsGhillieLeafDiamond((0.070 + (l % 3) * 0.014) * s,
         (0.12 + (l % 2) * 0.030) * s, 0.030), x + dx, y + 0.040 * s,
         z + dz, (l % 3 - 1) * 0.11, a, (l % 2 ? 1 : -1) * 0.08));
     }
@@ -3748,9 +3787,9 @@ function abramsGhillie(
       const target = (k + (side > 0 ? 1 : 0)) % 2 ? turretA : turretB;
       // Two crossed flattened strips make a torn-leaf curtain on the buried
       // carrier, with a tail that hangs down the armor face.
-      target.push(xform(leafDiamond(0.10, 0.17, 0.026),
+      target.push(xform(abramsGhillieLeafDiamond(0.10, 0.17, 0.026),
         x + side * 0.010, y, z, 0, k * 0.49, side * Math.PI / 2));
-      target.push(xform(leafDiamond(0.085, 0.19, 0.026),
+      target.push(xform(abramsGhillieLeafDiamond(0.085, 0.19, 0.026),
         x + side * 0.012, y + 0.03, z + 0.02,
         side * 0.13, -k * 0.38, side * (Math.PI / 2 - 0.15)));
       target.push(xform(box(0.016, 0.29, 0.045), x + side * 0.004,
@@ -3779,35 +3818,7 @@ function abramsGhillie(
     [0.76, -3.58], [1.20, -3.18]]) {
     topCluster(hullA, hullB, x, 1.69, z, 0.72, Math.round((x + 2) * 9));
   }
-  for (const side of [-1, 1]) {
-    // WIDTH GUARD: these side curtains sit over the 1.812 m skirt and under
-    // the certified 1.828 m armor carrier. Keep their normals thin and keep
-    // every torn strip in the local YZ plane; even a decorative 0.1 rad
-    // roll around Z turns a 0.3 m tail into width growth, which makes
-    // safeScale shrink the entire tank and falsifies every published datum.
-    hullNet.push(xform(box(0.010, 0.62, 5.10), side * 1.819, 1.08, 0.05));
-    hullB.push(xform(box(0.008, 0.52, 4.95), side * 1.819, 1.08, 0.05));
-    // Keep the cloth on the long, fully backed side carrier. Earlier
-    // shoulder-extension sheets overlapped the rising idler/sprocket shoe
-    // envelopes at both ends; dense foliage remains on the deck above while
-    // the terminal track arcs stay completely unobstructed.
-    for (let k = 0; k < 10; k++) {
-      const z = -2.18 + k * 0.52;
-      const y = 1.04 + (k % 2) * 0.20;
-      const target = (k + (side > 0 ? 1 : 0)) % 3 ? hullB : hullA;
-      for (let l = 0; l < 3; l++) {
-        target.push(xform(leafDiamond(0.085 + l * 0.010,
-          0.13 + l * 0.018, 0.008),
-          side * 1.819, y + (l - 1) * 0.055,
-          z + (l - 1) * 0.075, (l - 1) * 0.15,
-          0, side * Math.PI / 2));
-        target.push(xform(box(0.014, 0.24 + l * 0.035, 0.030),
-          side * 1.819, y + 0.035 + l * 0.035,
-          z - 0.075 + l * 0.075, (l - 1) * 0.08,
-          k * 0.32 + l * 0.8, 0));
-      }
-    }
-  }
+  addAbramsGhillieHullCurtains(hullA, hullB, hullNet);
 
   // CWS/CROWS cover. A continuous vine rises from the roof/pedestal into the
   // receiver, then two leaf knots wrap the receiver and one wraps the barrel.
