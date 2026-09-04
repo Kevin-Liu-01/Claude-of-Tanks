@@ -5855,7 +5855,7 @@ function buildIS2(P: TankBuilderPort): void {
   P.topY = 0.72;
 }
 
-function buildPanther(P: TankBuilderPort): void {
+function buildPantherHull(P: TankBuilderPort): void {
   // §5.247 ww2-wave FULL REDESIGN (photo-class, no oracle — FALSE-0 law).
   // Panther Ausf. G, late 1944 (ambush-scheme era, zimmerit discontinued):
   // published dims proven in the authored world — hull 6.87 m = shoe run
@@ -5867,8 +5867,6 @@ function buildPanther(P: TankBuilderPort): void {
   // 30° UNDERCUT y0.55/z-2.68 -> y1.85/z-3.43; turret per turretPlates
   // (front face ±0.45..±0.60 at z0.57..0.72 world, sides 0.95 -> 0.62,
   // roof ±0.62 at +0.75).
-  const { rng } = P;
-
   // ---- lower hull tub + lower glacis (between the track lanes ±1.02)
   P.add('hull', box(2.04, 0.64, 6.00), 0, 0.84, -0.10);                        // tub y 0.52..1.16, z -3.10..2.90
   P.add('hull', slab(                                                          // lower glacis 55° (armor lower_glacis)
@@ -5936,7 +5934,9 @@ function buildPanther(P: TankBuilderPort): void {
   P.add('hull', slab(
     [-1.02, 0.955, -2.854], [1.02, 0.955, -2.854], [1.02, 0.955, -2.914], [-1.02, 0.955, -2.914],
     [-1.32, 1.83, -3.37], [1.32, 1.83, -3.37], [1.32, 1.83, -3.43], [-1.32, 1.83, -3.43]));
+}
 
+function buildPantherForwardDeck(P: TankBuilderPort): void {
   // ---- bow furniture on the glacis plane (n = (0, .819, .574))
   P.add('hullDark', sph(0.135, P.q ? 20 : 12), 0.60, 1.476, 2.369);             // Kugelblende ball
   P.add('hull', cylZ(0.165, 0.055, P.q ? 18 : 10), 0.60, 1.462, 2.395, -0.61, 0, 0); // cast collar ring
@@ -5983,7 +5983,10 @@ function buildPanther(P: TankBuilderPort): void {
   liftEye(P, 'hullDetail', 1.22, 1.868, 1.35);
   liftEye(P, 'hullDetail', -1.22, 1.868, -3.05);
   liftEye(P, 'hullDetail', 1.22, 1.868, -3.05);
+}
 
+function buildPantherRearSides(P: TankBuilderPort): void {
+  const { rng } = P;
   // ---- rear plate furniture ON the 30° lean (plate point p(y): z = -2.68
   // - 0.577(y-0.55); outward n = (0, -0.5, -0.867)).
   for (const s of [-1, 1]) {
@@ -6071,7 +6074,9 @@ function buildPanther(P: TankBuilderPort): void {
   }
   stowage(P, 'hullCloth', rng, [[-1.10, 1.93, -3.18, 0.36, 0.15, 0.44]]);
   tarpRoll(P, 'hullCloth', -1.14, 1.90, -1.32, 0.85, 0.075, false);
+}
 
+function buildPantherTurret(P: TankBuilderPort): void {
   // ---- TURRET: armor-true trapezoid loft — base ±0.95 rear / ±0.60 front,
   // roof ±0.62/±0.44, h 0.75, 12° front plate (z0.97 -> 0.82 local), 6°
   // leaning rear. One slab, §B1 planar walls.
@@ -6152,6 +6157,14 @@ function buildPanther(P: TankBuilderPort): void {
   P.decal('turret', 'number', '435', 0.34, [-0.82, 0.33, -0.10], -Math.PI / 2, 0, -0.415);
   P.topY = 1.10;
 }
+
+function buildPanther(P: TankBuilderPort): void {
+  buildPantherHull(P);
+  buildPantherForwardDeck(P);
+  buildPantherRearSides(P);
+  buildPantherTurret(P);
+}
+
 function buildM1A2(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(2.38, 0.6, 7.6), 0, 0.75, -0.1);                            // lower hull
