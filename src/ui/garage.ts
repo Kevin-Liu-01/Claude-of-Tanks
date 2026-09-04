@@ -50,6 +50,7 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
+import { t, formatNumber } from './i18n.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -477,48 +478,48 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
-    `<div class="cot-brand-utilities cot-header-nav" aria-label="Home and player record">` +
-    `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
+    `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
+    `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Home</span></button>` +
-    `<button class="nv cot-record-trigger" type="button" aria-label="Open local service record" ` +
-    `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
+    `<span class="nav-label">${t('garage.nav.home')}</span></button>` +
+    `<button class="nv cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
+    `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
+    `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span></button>` +
     `<div class="cot-garage-variant-control">` +
-    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="Choose staging area" ` +
-    `title="Garage environment" aria-haspopup="listbox" aria-expanded="false" ` +
+    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
+    `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
     `aria-controls="cot-garage-variant-menu">${uiIconSVG('garage', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label cot-garage-variant-label">Staging Area</span>` +
+    `<span class="nav-label cot-garage-variant-label">${t('garage.tools.environments')}</span>` +
     `${uiIconSVG('chevronRight', 10, 'currentColor', 'cot-garage-variant-chevron')}</button></div>` +
     `</div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
-    `aria-label="Garage environments" hidden></div>` +
-    `<nav class="cot-nav cot-header-nav" aria-label="Garage navigation">` +
-    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
+    `aria-label="${t('garage.tools.environments')}" hidden></div>` +
+    `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Garage</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
+    `<span class="nav-label">${t('garage.nav.garage')}</span></button>` +
+    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" title="${t('garage.nav.studio')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/studio.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Studio</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
+    `<span class="nav-label">${t('garage.nav.studio')}</span></button>` +
+    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" title="${t('garage.nav.gallery')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Gallery</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="Documentation" title="Documentation">` +
+    `<span class="nav-label">${t('garage.nav.gallery')}</span></button>` +
+    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Docs</span></button>` +
+    `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
-    `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
+    `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="${t('garage.nav.github')}">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">GitHub</span><span class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></a>` +
+    `<span class="nav-label">${t('garage.nav.github')}</span><span class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></a>` +
     `<div class="cot-settings-slot"></div>` +
-    `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="Open navigation menu" ` +
-    `title="Menu" aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
-    `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">Menu</span></button>` +
-    `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="Game pages" hidden>` +
+    `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="${t('garage.nav.menu')}" ` +
+    `title="${t('garage.nav.menu')}" aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
+    `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.menu')}</span></button>` +
+    `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
     `<img src="/brand/nav/home.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
-    `<strong>Home</strong><small>Public showcase</small></span></button>` +
+    `<strong>${t('garage.nav.home')}</strong><small>Public showcase</small></span></button>` +
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
     `<img src="/brand/nav/garage.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
     `<strong>Garage</strong><small>Current page</small></span></button>` +

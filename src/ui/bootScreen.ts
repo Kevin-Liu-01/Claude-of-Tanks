@@ -27,6 +27,7 @@
 import { TRANSITION_SHOTS } from './featuredShots.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import { preloadImage } from './imagePreload.ts';
+import { t } from './i18n.ts';
 
 declare global {
   interface Window {
@@ -38,6 +39,43 @@ declare global {
 
 type BootTip = readonly [heading: string, body: string];
 type BootStage = readonly [key: string, label: string, weight: number];
+
+// Tip keys are resolved through i18n at render time so the rotating list
+// stays in sync with the player's chosen locale. Order is hand-curated.
+const TIP_KEYS: ReadonlyArray<readonly [headingKey: string, bodyKey: string]> = [
+  ['boot.tip.angling.heading', 'boot.tip.angling.body'],
+  ['boot.tip.weakspots.heading', 'boot.tip.weakspots.body'],
+  ['boot.tip.camouflage.heading', 'boot.tip.camouflage.body'],
+  ['boot.tip.gunhandling.heading', 'boot.tip.gunhandling.body'],
+  ['boot.tip.hulldown.heading', 'boot.tip.hulldown.body'],
+  ['boot.tip.tracks.heading', 'boot.tip.tracks.body'],
+  ['boot.tip.sniper.heading', 'boot.tip.sniper.body'],
+  ['boot.tip.gunhold.heading', 'boot.tip.gunhold.body'],
+  ['boot.tip.spotting.heading', 'boot.tip.spotting.body'],
+  ['boot.tip.shelltypes.heading', 'boot.tip.shelltypes.body'],
+  ['boot.tip.terrain.heading', 'boot.tip.terrain.body'],
+  ['boot.tip.ammorack.heading', 'boot.tip.ammorack.body'],
+  ['boot.tip.flanking.heading', 'boot.tip.flanking.body'],
+];
+
+// Stage labels are also i18n-resolved at render time.
+const STAGE_KEYS = {
+  renderer: 'boot.stage.renderer',
+  sky: 'boot.stage.sky',
+  lighting: 'boot.stage.lighting',
+  garage: 'boot.stage.garage',
+  vehicle: 'boot.stage.vehicle',
+  hud: 'boot.stage.hud',
+  ui: 'boot.stage.ui',
+  audio: 'boot.stage.audio',
+  post: 'boot.stage.post',
+  ready: 'boot.stage.ready',
+  studio: 'boot.stage.studio',
+} as const;
+
+function resolveStageLabel(key: keyof typeof STAGE_KEYS): string {
+  return t(STAGE_KEYS[key]);
+}
 
 export interface BootScreenOptions {
   readonly mode?: 'garage' | 'studio';
@@ -53,55 +91,41 @@ export interface BootScreen {
   readonly gated: boolean;
 }
 
-const TIPS = [
-  ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
-  ['Weak spots', 'Aim for the lower front plate, the turret ring and the cupola. A tier-X glacis will bounce almost anything; the hatches next to it will not.'],
-  ['Camouflage', 'Standing still in a bush drops your spotting range dramatically. Move, and every bonus you were sitting on disappears.'],
-  ['Gun handling', 'Wait for the reticle to converge before firing. A shot taken on a wide circle is a shot given away — accuracy is the circle, not the crosshair.'],
-  ['Hull-down', 'Park behind a ridge so only your turret shows. Most tanks carry their thickest armour there, and the hull the enemy wants to hit is simply not on screen.'],
-  ['Tracks', 'A tracked vehicle cannot turn or run. De-track a heavy at close range and you own the next twelve seconds of the fight.'],
-  ['Sniper mode', 'Hold RMB with the default aim setting, or wheel inward past the closest arcade zoom, to enter the gunner sight. Scope in for the shot and back out to move.'],
-  ['Gun hold', 'Hold Caps Lock to preserve the current turret rotation and gun elevation while freely moving the live sight. Guided missiles follow that sight; release to let the gun catch up. Left Alt remains a secondary shortcut.'],
-  ['Spotting', 'You only see what your crew sees. A target that vanishes was never killed — it just stopped being spotted, and it is still aiming at you.'],
-  ['Shell types', 'APCR flies flatter and penetrates more; HE never bounces but barely scratches thick plate. Carry both and pick per target.'],
-  ['Terrain', 'Soft ground and steep climbs bleed speed. Read the ground before you commit — the fastest route across a map is rarely the straightest.'],
-  ['Ammo rack', 'Modules and crew take damage separately from your hit points. A "healthy" tank with a damaged gun and a dead gunner has already lost the trade.'],
-  ['Flanking', 'Rear armour is the thinnest plate on every vehicle in the game. Getting behind a heavy is worth more than out-shooting it from the front.'],
-] as const satisfies readonly BootTip[];
+const TIPS: ReadonlyArray<BootTip> = TIP_KEYS.map(([h, b]) => [t(h), t(b)] as const);
 
 // Weighted load stages. Weight = measured share of boot wall-clock, so the bar
 // moves at a roughly constant rate instead of parking at 40% for three seconds.
 // Keep the keys in sync with the main.ts BOOT STAGES block.
-const GARAGE_STAGES = [
-  ['renderer', 'Initialising renderer', 4],
-  ['sky', 'Baking sky and atmosphere', 16],
-  ['lighting', 'Placing sun and shadow cascades', 7],
-  ['garage', 'Assembling the garage bay', 6],
-  ['vehicle', 'Painting your vehicle', 24],
-  ['hud', 'Building combat interface', 10],
-  ['ui', 'Loading vehicle roster', 14],
-  ['audio', 'Priming audio engine', 4],
-  ['post', 'Compiling post-processing chain', 12],
-  ['ready', 'Standing by', 3],
-] as const satisfies readonly BootStage[];
+const GARAGE_STAGES: readonly BootStage[] = [
+  ['renderer', resolveStageLabel('renderer'), 4],
+  ['sky', resolveStageLabel('sky'), 16],
+  ['lighting', resolveStageLabel('lighting'), 7],
+  ['garage', resolveStageLabel('garage'), 6],
+  ['vehicle', resolveStageLabel('vehicle'), 24],
+  ['hud', resolveStageLabel('hud'), 10],
+  ['ui', resolveStageLabel('ui'), 14],
+  ['audio', resolveStageLabel('audio'), 4],
+  ['post', resolveStageLabel('post'), 12],
+  ['ready', resolveStageLabel('ready'), 3],
+] as const;
 
 // Direct Studio navigation keeps the first, already-painted boot surface in
 // charge until the battlefield and focused FX warm are ready.  The previous
 // flow completed this list, briefly revealed the garage, then opened a second
 // loading screen whose work was invisible to this meter.
-const STUDIO_STAGES = [
-  ['renderer', 'Initialising renderer', 3],
-  ['sky', 'Baking sky and atmosphere', 4],
-  ['lighting', 'Placing sun and shadow cascades', 2],
-  ['garage', 'Preparing shared scene', 9],
-  ['vehicle', 'Priming vehicle materials', 7],
-  ['hud', 'Wiring authoring overlays', 2],
-  ['ui', 'Preparing shared controls', 3],
-  ['audio', 'Priming audio engine', 1],
-  ['post', 'Compiling post-processing chain', 14],
-  ['studio', 'Building Scene Studio', 52],
-  ['ready', 'Standing by', 3],
-] as const satisfies readonly BootStage[];
+const STUDIO_STAGES: readonly BootStage[] = [
+  ['renderer', resolveStageLabel('renderer'), 3],
+  ['sky', resolveStageLabel('sky'), 4],
+  ['lighting', resolveStageLabel('lighting'), 2],
+  ['garage', resolveStageLabel('garage'), 9],
+  ['vehicle', resolveStageLabel('vehicle'), 7],
+  ['hud', resolveStageLabel('hud'), 2],
+  ['ui', resolveStageLabel('ui'), 3],
+  ['audio', resolveStageLabel('audio'), 1],
+  ['post', resolveStageLabel('post'), 14],
+  ['studio', resolveStageLabel('studio'), 52],
+  ['ready', resolveStageLabel('ready'), 3],
+] as const;
 
 const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementType | null =>
   document.getElementById(id) as ElementType | null;
@@ -294,7 +318,9 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
 
   function showTip(i: number): void {
     if (!elTip) return;
-    const [head, body] = TIPS[i % TIPS.length];
+    const [headingKey, bodyKey] = TIP_KEYS[i % TIP_KEYS.length];
+    const head = t(headingKey);
+    const body = t(bodyKey);
     elTip.innerHTML = `<b>${head}</b>${body}`;
   }
   function rotateTip() {
