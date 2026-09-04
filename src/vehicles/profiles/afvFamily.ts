@@ -1046,6 +1046,13 @@ function buildM3A3(P: AfvBuilderPort): void {
 // sprocket (rear transmission), full-length sponson band, low two-man
 // turret with the 100 mm 2A70 + 30 mm 2A72 + PKT triple plant, commander
 // sight tower on the roof rear-left.
+function addBmp3WaveBreakerRibs(P: AfvBuilderPort): void {
+  for (let index = 0; index < 4; index++) {
+    P.add('hullDetail', KIT.box(1.90, 0.024, 0.06),
+      0, 1.755 - index * 0.026, 2.46 + index * 0.20, -0.16, 0, 0);
+  }
+}
+
 function buildBMP3(P: AfvBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, slab, lathe, sph, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
@@ -1114,9 +1121,7 @@ function buildBMP3(P: AfvBuilderPort): void {
   }
   P.add('hullDetail', xform(cylX(0.085, 2.05, 12), 0, 0, 0), 0, 1.665, 3.06);  // stowed trim-vane roll ON the
                                                                                 //   vane-plane break line
-  for (let k = 0; k < 4; k++) {                                                // wave-breaker ribs on the glacis
-    P.add('hullDetail', box(1.90, 0.024, 0.06), 0, 1.755 - k * 0.026, 2.46 + k * 0.20, -0.16, 0, 0);
-  }
+  addBmp3WaveBreakerRibs(P);
   // three bow hatches: driver CENTER (print hatch.001 z 1.60..2.12) + flanks
   P.add('hull', cylY(0.24, 0.24, 0.025, 16), -0.04, 1.852, 1.86);
   P.add('hullDark', torus(0.24, 0.010, 18), -0.04, 1.868, 1.86);

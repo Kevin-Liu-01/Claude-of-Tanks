@@ -1830,6 +1830,13 @@ function buildT44(P: RussiaBuilderPort): void {
 // 125 mm at axis 1.466, evac swell z 2.11..3.01, muzzle 4.312. The bergman
 // print parents its rear drum/log rack into the Turret node — matched here
 // (same world seats) so the component masks compare like for like.
+function addT64BV1TransomLouvres(P: RussiaBuilderPort): void {
+  for (let index = 0; index < 6; index++) {
+    P.add('hullDetail', KIT.box(0.24, 0.13, 0.025),
+      -0.75 + index * 0.30, 0.96, -2.995);
+  }
+}
+
 function buildT64BV1(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the authored 0.80 m course upward by 10%. The loaded lower run stays
@@ -1971,9 +1978,7 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   // recovery eyes and the low strapped unditching log. Nothing hangs in air.
   P.add('hull', box(1.84, 0.72, 0.18), 0, 0.82, -2.88, 0.06, 0, 0);
   P.add('hullDark', box(1.80, 0.30, 0.035), 0, 0.96, -2.975);
-  for (let i = 0; i < 6; i++) {
-    P.add('hullDetail', box(0.24, 0.13, 0.025), -0.75 + i * 0.30, 0.96, -2.995);
-  }
+  addT64BV1TransomLouvres(P);
   P.add('hullDark', box(0.40, 0.26, 0.05), -1.10, 1.06, -2.975);
   P.add('hullDetail', box(0.33, 0.18, 0.035), 1.02, 1.05, -2.99);
   for (const s of [-1, 1]) {

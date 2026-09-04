@@ -1206,6 +1206,16 @@ function buildJPzE100(P: CasemateBuilderPort): void {
 // deck 1.79-1.81 z -1.28..-2.05, exhaust shrouds 1.85 z -2.3..-3.0, raised
 // rear idler bottom 0.44-0.75, tail foot (-3.09, 1.64/1.85).
 // ---------------------------------------------------------------------------
+function addSturmtigerMuzzleVentRing(P: CasemateBuilderPort): void {
+  for (let index = 0; index < 20; index++) {
+    const angle = (index / 20) * Math.PI * 2;
+    P.add('hullDark', KIT.cylZ(0.026, 0.07, 6),
+      0.10 + Math.cos(angle) * 0.325,
+      2.00 + Math.sin(angle) * 0.325,
+      2.955);
+  }
+}
+
 function buildSturmtiger(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable, shovelTool, periscope } = KIT;
 
@@ -1281,10 +1291,7 @@ function buildSturmtiger(P: CasemateBuilderPort): void {
   P.add('hullDark', cylZ(0.235, 0.09, 18), 0.10, 2.00, 2.955);                 // bore well walls
   P.add('hullDark', cylZ(0.20, 0.045, 18), 0.10, 2.00, 2.94);                  // deep-set bore face
   P.add('hullDark', KIT.torus(0.245, 0.012, 20), 0.10, 2.00, 3.006, Math.PI / 2, 0, 0); // rim/bore seam
-  for (let k = 0; k < 20; k++) {
-    const a = (k / 20) * Math.PI * 2;                                          // vent ring: 20 deep wells
-    P.add('hullDark', cylZ(0.026, 0.07, 6), 0.10 + Math.cos(a) * 0.325, 2.00 + Math.sin(a) * 0.325, 2.955);
-  }
+  addSturmtigerMuzzleVentRing(P);
   P.add('hull', box(0.10, 0.05, 0.18), 0.10, 2.375, 2.78);                     // pot top guide lug
   P.add('hull', box(0.10, 0.05, 0.18), 0.10, 1.485, 2.78);                     // pot bottom lug
   P.add('hullDetail', KIT.cylX(0.022, 0.12, 8), -0.35, 1.93, 2.77);            // side trunnion pins
