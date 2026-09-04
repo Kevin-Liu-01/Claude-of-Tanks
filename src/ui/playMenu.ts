@@ -22,6 +22,7 @@ import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
+import { t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
 import {
@@ -362,8 +363,8 @@ function leaderboardPlayers(value: RuntimeValue): LeaderboardPlayer[] {
     if (!isRecord(entry)) return [];
     return [{
       place: typeof entry.place === 'number' || typeof entry.place === 'string' ? entry.place : '',
-      name: String(entry.name || 'Commander'),
-      rank: String(entry.rank || 'Unranked'),
+      name: String(entry.name || t('playMenu.commander.fallback')),
+      rank: String(entry.rank || t('playMenu.rank.unranked')),
       rating: typeof entry.rating === 'number' || typeof entry.rating === 'string' ? entry.rating : 0,
     }];
   });
@@ -407,9 +408,9 @@ function clearRoomUrl(): void {
 }
 
 function lobbyTeamLabel(team: LobbyTeam): string {
-  if (team === 'alpha') return 'Team Alpha';
-  if (team === 'bravo') return 'Team Bravo';
-  return 'Spectator';
+  if (team === 'alpha') return t('playMenu.team.alpha');
+  if (team === 'bravo') return t('playMenu.team.bravo');
+  return t('playMenu.team.spectator');
 }
 
 function playerId(): string {
@@ -925,11 +926,11 @@ export function createPlayMenu({
     if (resolvedHost) invitedHostName = resolvedHost;
     const code = normalizeRoomCode(roomCode);
     root.classList.add('invite-entry');
-    eyebrow.textContent = mode === 'lan' ? 'LAN invitation' : 'Private invitation';
+    eyebrow.textContent = mode === 'lan' ? t('playMenu.eyebrow.lan') : t('playMenu.eyebrow.private');
     menuTitle.textContent = roomInviteTitle(invitedHostName);
     menuLead.textContent = connected
-      ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
-      : 'Room ' + code + ' is ready. Connecting you directly to the host.';
+      ? t('playMenu.invite.connected', { code })
+      : t('playMenu.invite.connecting', { code });
     document.title = menuTitle.textContent + ' — Claude of Tanks';
   }
 
@@ -950,13 +951,13 @@ export function createPlayMenu({
   function roomConnectionStatus(action: 'created' | 'joined'): string {
     if (mode === 'private' && roomIce && !roomIce.relayAvailable) {
       const reason = roomIce.degradedReason === 'turn_service_unconfigured'
-        ? 'the production TURN service is not configured'
-        : 'the TURN relay is temporarily unavailable';
-      return `Direct-only room ${action}; ${reason}, so some external networks cannot connect.`;
+        ? t('playMenu.room.turnUnconfigured')
+        : t('playMenu.room.turnUnavailable');
+      return t('playMenu.room.directOnly', { action, reason });
     }
     return action === 'created'
-      ? 'Room ready. Copy the invite link.'
-      : 'Connected. Choose a team and ready up.';
+      ? t('playMenu.room.readyCopy')
+      : t('playMenu.room.connectedChooseTeam');
   }
 
   function notifyLobbyChange(next: SerializedLobby | null = state): void {
@@ -1067,13 +1068,17 @@ export function createPlayMenu({
     if (identity) {
       try {
         const profile = await rankedClient.profile(identity.playerId);
-        rankedProfile.textContent = `${recordText(profile, 'rank', 'Unranked')} · ${recordText(profile, 'rating', '1000')} ELO · ${recordText(profile, 'matches', '0')} matches`;
+        rankedProfile.textContent = t('playMenu.ranked.profileSummary', {
+          rank: recordText(profile, 'rank', t('playMenu.rank.unranked')),
+          rating: recordText(profile, 'rating', '1000'),
+          matches: recordText(profile, 'matches', '0'),
+        });
       } catch (error) {
         if (!isRecord(error) || error.status !== 404) throw error;
         rankedClient.clearIdentity();
-        rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+        rankedProfile.textContent = t('playMenu.ranked.newCommander');
       }
-    } else rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+    } else rankedProfile.textContent = t('playMenu.ranked.newCommander');
     const board = await rankedClient.leaderboard(8);
     renderLeaderboard(leaderboardPlayers(board.players));
   }
@@ -1100,12 +1105,17 @@ export function createPlayMenu({
     });
     const activeTicket = rankedTicket;
     const activeAbort = rankedAbort;
-    setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${recordText(activeTicket, 'rating', '1000')} ELO…`);
+    setStatus(t('playMenu.ranked.searching', {
+      size: String(rankedSize.value),
+      rating: recordText(activeTicket, 'rating', '1000'),
+    }));
     const queueState: RankedQueueState = activeTicket.status === 'matched'
       ? { ...activeTicket, status: 'matched' }
       : await activeTicket.wait({
       signal: activeAbort.signal,
-      onUpdate: (next) => setStatus(`Searching near ${recordText(next, 'rating', '1000')} ELO…`),
+      onUpdate: (next) => setStatus(t('playMenu.ranked.searchingNear', {
+        rating: recordText(next, 'rating', '1000'),
+      })),
     });
     if (activeAbort.signal.aborted) return;
     handedOff = true;
@@ -1274,7 +1284,7 @@ export function createPlayMenu({
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
     const host = document.createElement('span');
     host.className = 'host';
-    host.textContent = player.isHost ? 'HOST' : '';
+    host.textContent = player.isHost ? t('playMenu.lobby.host') : '';
     const playerName = document.createElement('b');
     playerName.className = 'name';
     playerName.textContent = player.name;
@@ -1283,7 +1293,11 @@ export function createPlayMenu({
     team.textContent = lobbyTeamLabel(player.team);
     const ready = document.createElement('span');
     ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-    ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    ready.textContent = player.team === 'spectator'
+      ? t('playMenu.lobby.watching')
+      : player.ready
+        ? t('playMenu.lobby.ready')
+        : t('playMenu.lobby.notReady');
     row.append(host, playerName, createLobbyVehicle(player), team, ready);
     return row;
   }
