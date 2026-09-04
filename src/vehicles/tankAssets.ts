@@ -8,60 +8,70 @@ import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 
 type NumericPoint = Array<number | null>;
+type NumericPointSource = readonly (number | null)[] | null | undefined;
 
 interface AssetShellSpec {
-  name?: unknown;
-  type?: unknown;
-  pen100Mm?: unknown;
-  pen1000Mm?: unknown;
-  pen2000Mm?: unknown;
+  name?: string | null;
+  type?: string | null;
+  pen100Mm?: number | null;
+  pen1000Mm?: number | null;
+  pen2000Mm?: number | null;
 }
 
 interface AssetPlateSpec {
-  name?: unknown;
-  physicalMm?: unknown;
-  keMm?: unknown;
-  ceMm?: unknown;
-  kind?: unknown;
-  verts?: readonly unknown[];
+  name?: string | null;
+  physicalMm?: number | null;
+  keMm?: number | null;
+  ceMm?: number | null;
+  kind?: string | null;
+  verts?: readonly NumericPointSource[];
 }
 
 interface AssetVolumePart {
-  min?: unknown;
-  max?: unknown;
+  min?: NumericPointSource;
+  max?: NumericPointSource;
 }
 
 interface AssetVolumeSpec {
-  module?: unknown;
-  crew?: unknown;
-  min?: unknown;
-  max?: unknown;
+  module?: string | null;
+  crew?: string | null;
+  min?: NumericPointSource;
+  max?: NumericPointSource;
   parts?: readonly AssetVolumePart[];
-  turretLocal?: unknown;
+  turretLocal?: boolean | null;
+}
+
+interface AssetMuzzleSpec {
+  x?: number;
+  y?: number;
+  z?: number;
 }
 
 export interface TankAssetSpec {
   id: string;
-  name?: unknown;
+  name?: string | null;
   nation: string;
-  era?: unknown;
+  era?: string | null;
   dims?: {
-    hullLengthM?: unknown;
-    overallLengthM?: unknown;
-    widthM?: unknown;
-    heightM?: unknown;
+    hullLengthM?: number | null;
+    overallLengthM?: number | null;
+    widthM?: number | null;
+    heightM?: number | null;
   };
   gun?: {
-    caliberMm?: unknown;
-    muzzles?: readonly unknown[];
+    caliberMm?: number | null;
+    muzzles?: readonly AssetMuzzleSpec[];
     shells?: readonly AssetShellSpec[];
   };
   armor?: {
-    turretPivot?: unknown;
+    turretPivot?: NumericPointSource;
     hullPlates?: readonly AssetPlateSpec[];
     turretPlates?: readonly AssetPlateSpec[];
     modules?: readonly AssetVolumeSpec[];
     crew?: readonly AssetVolumeSpec[];
+  };
+  visual?: {
+    number?: string;
   };
 }
 
@@ -127,7 +137,7 @@ function rounded(value: number, digits = 4): number | null {
   return Number.isFinite(value) ? Number(value.toFixed(digits)) : null;
 }
 
-function point3(value: unknown): NumericPoint | null {
+function point3(value: NumericPointSource): NumericPoint | null {
   return Array.isArray(value) ? value.slice(0, 3).map((v) => rounded(Number(v))) : null;
 }
 
@@ -216,11 +226,11 @@ function fnvBytes(hash: number, bytes: Uint8Array): number {
   return hash >>> 0;
 }
 
-function textFingerprint(text: unknown): string {
+function textFingerprint(text: string | undefined): string {
   return fnvBytes(0x811c9dc5, new TextEncoder().encode(String(text))).toString(16).padStart(8, '0');
 }
 
-export function metadataFingerprint(metadata: unknown): string {
+export function metadataFingerprint(metadata: object | null): string {
   return textFingerprint(JSON.stringify(metadata));
 }
 

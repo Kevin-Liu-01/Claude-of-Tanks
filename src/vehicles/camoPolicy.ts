@@ -39,8 +39,11 @@ export interface CustomCamo {
   strokes: CustomCamoStroke[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object';
+/** Values accepted at persistence and network boundaries before validation. */
+type ExternalValue = string | number | boolean | bigint | symbol | object | null | undefined;
+
+function isExternalArray(value: ExternalValue): value is ExternalValue[] {
+  return Array.isArray(value);
 }
 
 export const CAMO_PATTERN_IDS = Object.freeze([
@@ -423,8 +426,8 @@ const SHARED_CAMO_PRESET_BY_ID = new Map(
   SHARED_CAMO_PRESETS.map((entry) => [entry.id, entry] as const),
 );
 
-export function sharedCamoPreset(patternId: unknown): SharedCamoPreset | null {
-  return typeof patternId === 'string' ? SHARED_CAMO_PRESET_BY_ID.get(patternId as CamoPatternId) || null : null;
+export function sharedCamoPreset(patternId: string | null | undefined): SharedCamoPreset | null {
+  return SHARED_CAMO_PRESET_BY_ID.get(patternId as CamoPatternId) || null;
 }
 
 export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPatternId>> = Object.freeze({
@@ -444,15 +447,15 @@ export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPattern
 });
 
 /** Era-aware Factory owner. Soviet vehicles retain period-specific field paint. */
-export function factoryCamoPatternIdFor(nation: unknown, era: unknown): CamoPatternId | null {
-  const nationKey = nation === 'USSR' || nation === 'USSR/Russia' || nation === 'Russia'
+export function factoryCamoPatternIdFor(nation: string | undefined, era: string | null | undefined): CamoPatternId | null {
+  const nationKey = nation === 'USSR' || nation === 'USSR/Russia'
     ? 'Russia'
-    : typeof nation === 'string' ? nation : '';
+    : nation;
   if (nationKey === 'Russia') {
     if (era === 'ww2' || era === 'interwar') return 'service_soviet_ww2';
     if (era === 'cold-war') return 'service_soviet_coldwar';
   }
-  return FACTORY_CAMO_PATTERN_BY_NATION[nationKey] || null;
+  return FACTORY_CAMO_PATTERN_BY_NATION[nationKey as string] || null;
 }
 
 const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTagId[]>>> = Object.freeze({
@@ -506,13 +509,12 @@ const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTag
   signature: ['signature', 'special'],
 });
 
-export function camoNationTag(nation: unknown): CamoTagId | null {
-  return typeof nation === 'string' ? CAMO_NATION_TAG[nation] || null : null;
+export function camoNationTag(nation: string | null): CamoTagId | null {
+  return CAMO_NATION_TAG[nation as string] || null;
 }
 
 /** Tags for one swatch. Factory and Signature inherit the selected tank nation. */
-export function camoPatternTags(patternId: unknown, nation: unknown = null): readonly CamoTagId[] {
-  if (typeof patternId !== 'string') return [];
+export function camoPatternTags(patternId: string, nation: string | null = null): readonly CamoTagId[] {
   const shared = sharedCamoPreset(patternId);
   if (shared) return shared.tags;
   const base = CAMO_PATTERN_TAGS[patternId as CamoPatternId];
@@ -525,8 +527,8 @@ export function camoPatternTags(patternId: unknown, nation: unknown = null): rea
 }
 
 export function camoMatchesTag(
-  patternId: unknown,
-  nation: unknown,
+  patternId: string,
+  nation: string | null,
   tagId: CamoTagId,
 ): boolean {
   return tagId === 'all' || camoPatternTags(patternId, nation).includes(tagId);
@@ -576,12 +578,12 @@ for (const entry of SHARED_CAMO_PRESETS) {
   }
 }
 
-export function hasSignatureCamo(specId: unknown): boolean {
-  return typeof specId === 'string' && SIGNATURE_CAMO_TANK_ID_SET.has(specId);
+export function hasSignatureCamo(specId: string): boolean {
+  return SIGNATURE_CAMO_TANK_ID_SET.has(specId);
 }
 
-export function signatureCamoPatternId(specId: unknown): CamoPatternId | null {
-  return typeof specId === 'string' ? SIGNATURE_CAMO_PATTERN_BY_TANK_ID.get(specId) || null : null;
+export function signatureCamoPatternId(specId: string): CamoPatternId | null {
+  return SIGNATURE_CAMO_PATTERN_BY_TANK_ID.get(specId) || null;
 }
 
 // These legacy American vehicles keep the national US Desert service coat in
@@ -595,8 +597,7 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
 });
 
 /** Initial presentation choice; an explicit player selection always wins. */
-export function defaultCamoPatternId(specId: unknown): CamoPatternId {
-  if (typeof specId !== 'string') return 'factory';
+export function defaultCamoPatternId(specId: string): CamoPatternId {
   return signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId] || 'factory';
 }
 
@@ -619,65 +620,61 @@ const DEFAULT_CUSTOM_CAMO = Object.freeze({
   repeatY: 2,
   rotation: 0,
   mirror: true,
-  strokes: [],
-} satisfies CustomCamo);
+} satisfies Omit<CustomCamo, 'strokes'>);
 
 const BUILT_IN = new Set<CamoPatternId>(CAMO_PATTERN_IDS);
 const HEX = /^#[0-9a-f]{6}$/i;
 
-export function isBuiltInCamoId(value: unknown): value is CamoPatternId {
-  return typeof value === 'string' && BUILT_IN.has(value as CamoPatternId);
+export function isBuiltInCamoId<Value>(value: Value): value is Value & CamoPatternId {
+  return BUILT_IN.has(value as Value & CamoPatternId);
 }
 
 /** Match-safe public camo id. Local custom paint always degrades to Factory. */
-export function networkCamoId(value: unknown): CamoPatternId {
+export function networkCamoId<Value>(value: Value): CamoPatternId {
   return isBuiltInCamoId(value) ? value : 'factory';
 }
 
-function isCustomCamoStyle(value: unknown): value is CustomCamoStyle {
-  return typeof value === 'string'
-    && (CUSTOM_CAMO_STYLES as readonly string[]).includes(value);
+function isCustomCamoStyle<Value>(value: Value): value is Value & CustomCamoStyle {
+  return (CUSTOM_CAMO_STYLES as readonly string[]).includes(value as Value & string);
 }
 
-function isCustomCamoBrush(value: unknown): value is CustomCamoBrush {
-  return typeof value === 'string'
-    && (CUSTOM_CAMO_BRUSHES as readonly string[]).includes(value);
+function isCustomCamoBrush<Value>(value: Value): value is Value & CustomCamoBrush {
+  return (CUSTOM_CAMO_BRUSHES as readonly string[]).includes(value as Value & string);
 }
 
-function isCustomCamoAsset(value: unknown): value is CustomCamoAsset {
-  return typeof value === 'string'
-    && (CUSTOM_CAMO_ASSETS as readonly string[]).includes(value);
+function isCustomCamoAsset<Value>(value: Value): value is Value & CustomCamoAsset {
+  return (CUSTOM_CAMO_ASSETS as readonly string[]).includes(value as Value & string);
 }
 
-export function normalizeCustomCamo(value: unknown = null): CustomCamo {
-  const source: Record<string, unknown> = isRecord(value) ? value : DEFAULT_CUSTOM_CAMO;
+export function normalizeCustomCamo<Value = null>(value: Value = null as Value): CustomCamo {
+  const source = Object.assign({} as Record<string, ExternalValue>, value);
   const style = isCustomCamoStyle(source.style) ? source.style : DEFAULT_CUSTOM_CAMO.style;
-  const color = (candidate: unknown, fallback: string): string => {
-    const next = String(candidate || '').toLowerCase();
+  const color = (candidate: ExternalValue, fallback: string): string => {
+    const next = String(candidate).toLowerCase();
     return HEX.test(next) ? next : fallback;
   };
   const repeat = Math.round(Number(source.repeat));
-  const clamp = (candidate: unknown, min: number, max: number, fallback: number): number => {
+  const clamp = (candidate: ExternalValue, min: number, max: number, fallback: number): number => {
     const number = Math.round(Number(candidate));
     return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
   };
-  const strokes: CustomCamoStroke[] = Array.isArray(source.strokes)
+  const strokes: CustomCamoStroke[] = isExternalArray(source.strokes)
     ? source.strokes.slice(0, 96).flatMap((candidate): CustomCamoStroke[] => {
-      if (!isRecord(candidate)) return [];
-      const points: Array<[number, number]> = Array.isArray(candidate.points)
-        ? candidate.points.slice(0, 96).flatMap((point): Array<[number, number]> => (
-          Array.isArray(point)
+      const stroke = Object.assign({} as Record<string, ExternalValue>, candidate);
+      const points: Array<[number, number]> = isExternalArray(stroke.points)
+        ? stroke.points.slice(0, 96).flatMap((point): Array<[number, number]> => (
+          isExternalArray(point)
             ? [[clamp(point[0], 0, 100, 50), clamp(point[1], 0, 100, 50)]]
             : []
         ))
         : [];
       if (!points.length) return [];
       return [{
-        color: candidate.color === 1 ? 1 : 0,
-        size: clamp(candidate.size, 1, 40, 8),
-        brush: isCustomCamoBrush(candidate.brush) ? candidate.brush : 'round',
-        asset: isCustomCamoAsset(candidate.asset) ? candidate.asset : 'star',
-        rotation: clamp(candidate.rotation, -180, 180, 0),
+        color: stroke.color === 1 ? 1 : 0,
+        size: clamp(stroke.size, 1, 40, 8),
+        brush: isCustomCamoBrush(stroke.brush) ? stroke.brush : 'round',
+        asset: isCustomCamoAsset(stroke.asset) ? stroke.asset : 'star',
+        rotation: clamp(stroke.rotation, -180, 180, 0),
         points,
       }];
     })
@@ -697,7 +694,7 @@ export function normalizeCustomCamo(value: unknown = null): CustomCamo {
 }
 
 /** Encode all painter inputs into the cache key so old bakes stay immutable. */
-export function customCamoPatternId(value: unknown): string {
+export function customCamoPatternId(value: ExternalValue): string {
   const c = normalizeCustomCamo(value);
   if (c.style === 'drawn') {
     const strokes = c.strokes.map((stroke) => `${stroke.color},${stroke.size},${stroke.brush},${stroke.asset},${stroke.rotation},` +
@@ -708,22 +705,21 @@ export function customCamoPatternId(value: unknown): string {
   return `custom~${c.style}~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~${c.repeat}`;
 }
 
-export function parseCustomCamoPatternId(value: unknown): CustomCamo | null {
-  const authored = /^custom3~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)$/i
-    .exec(String(value || ''));
+export function parseCustomCamoPatternId(value: string): CustomCamo | null {
+  const authored = /^custom3~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)/i
+    .exec(value);
   if (authored) {
-    const strokes = authored[8] ? authored[8].split(';').map((encoded) => {
+    const strokes = authored[8].split(';').map((encoded) => {
       const [color, size, brush, asset, rotation, points = ''] = encoded.split(',');
       return {
         color: Number(color), size: Number(size), brush, asset, rotation: Number(rotation),
         points: points.split('_').filter(Boolean).map((point) => point.split('.').map(Number)),
       };
-    }) : [];
+    });
     return normalizeCustomCamo({
-      style: 'drawn',
-      base: `#${authored[1].toLowerCase()}`,
-      colorA: `#${authored[2].toLowerCase()}`,
-      colorB: `#${authored[3].toLowerCase()}`,
+      base: `#${authored[1]}`,
+      colorA: `#${authored[2]}`,
+      colorB: `#${authored[3]}`,
       repeatX: Number(authored[4]),
       repeatY: Number(authored[5]),
       rotation: Number(authored[6]),
@@ -731,22 +727,21 @@ export function parseCustomCamoPatternId(value: unknown): CustomCamo | null {
       strokes,
     });
   }
-  const drawn = /^custom2~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)$/i
-    .exec(String(value || ''));
+  const drawn = /^custom2~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)/i
+    .exec(value);
   if (drawn) {
-    const strokes = drawn[8] ? drawn[8].split(';').map((encoded) => {
+    const strokes = drawn[8].split(';').map((encoded) => {
       const [color, size, points = ''] = encoded.split(',');
       return {
         color: Number(color),
         size: Number(size),
         points: points.split('_').filter(Boolean).map((point) => point.split('.').map(Number)),
       };
-    }) : [];
+    });
     return normalizeCustomCamo({
-      style: 'drawn',
-      base: `#${drawn[1].toLowerCase()}`,
-      colorA: `#${drawn[2].toLowerCase()}`,
-      colorB: `#${drawn[3].toLowerCase()}`,
+      base: `#${drawn[1]}`,
+      colorA: `#${drawn[2]}`,
+      colorB: `#${drawn[3]}`,
       repeatX: Number(drawn[4]),
       repeatY: Number(drawn[5]),
       rotation: Number(drawn[6]),
@@ -755,13 +750,13 @@ export function parseCustomCamoPatternId(value: unknown): CustomCamo | null {
     });
   }
   const match = /^custom~(blotch|digital|stripes|splinter)~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~(\d{2,3})$/i
-    .exec(String(value || ''));
+    .exec(value);
   if (!match) return null;
   return normalizeCustomCamo({
-    style: match[1].toLowerCase(),
-    base: `#${match[2].toLowerCase()}`,
-    colorA: `#${match[3].toLowerCase()}`,
-    colorB: `#${match[4].toLowerCase()}`,
+    style: match[1],
+    base: `#${match[2]}`,
+    colorA: `#${match[3]}`,
+    colorB: `#${match[4]}`,
     repeat: Number(match[5]),
   });
 }
