@@ -73,6 +73,11 @@ function armorWithoutEra(
 
 function abramsReactiveArmor(baseId: string, prefix: string): ArmorEnvelope {
   const armor = copy(requireFleetSpec(baseId).armor);
+  // The donor M1A2 now owns live ERA zones for its visible cassette arrays.
+  // Derivative marks replace those zones with their own namespace rather
+  // than inheriting overlapping copies of the donor registration.
+  armor.hullPlates = armor.hullPlates.filter((plate) => plate.kind !== 'era');
+  armor.turretPlates = armor.turretPlates.filter((plate) => plate.kind !== 'era');
   armor.hullPlates.push(
     reactivePlate(`${prefix}_skirt_era_R`, 'right'),
     reactivePlate(`${prefix}_skirt_era_L`, 'left'),

@@ -554,7 +554,7 @@ function abramsEraOwner(bucket: string): ArmorOwner {
   return bucket.startsWith('hull') ? 'hull' : 'turret';
 }
 
-const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']);
+const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']);
 
 function addAbramsEraLayer(P: AbramsBuilderPort, bucket: string, fill: () => void): void {
   // The same surface helpers also author passive applique, sensor housings,
@@ -2383,22 +2383,24 @@ function tejasRoofKit(
   // the knee in the same column (top 2.4538, no spike).
   // Keep the established commander EO package on every M1A2-family roof,
   // but move it to the marked forward-left carrier seat so the new remote
-  // weapon tower owns the old central mast position. Preserve the previous
-  // CROWS-II / CROWS-LP head envelopes and aperture sizes exactly; only the
-  // pedestal and roof registration change.
+  // weapon tower owns the old central mast position. The base M1A2 and
+  // SEPv2 use a compact 80% head package at this seat; TUSK and SEPv3 retain
+  // their existing envelopes.
   if (station !== 'cws') {
     const opticX = -0.84;
     const opticZ = 0.70;
     const opticSeatY = carrierTopAt(opticZ) - 0.008;
-    const retainedHeadW = lowProfileStation ? 0.46 : 0.36;
-    const retainedHeadH = lowProfileStation ? 0.22 : 0.28;
-    const retainedHeadD = lowProfileStation ? 0.46 : 0.42;
+    const compactRelocatedOptic = P.spec.id === 'm1a2' || P.spec.id === 'm1a2_sepv2';
+    const opticScale = compactRelocatedOptic ? 0.80 : 1.00;
+    const retainedHeadW = (lowProfileStation ? 0.46 : 0.36) * opticScale;
+    const retainedHeadH = (lowProfileStation ? 0.22 : 0.28) * opticScale;
+    const retainedHeadD = (lowProfileStation ? 0.46 : 0.42) * opticScale;
     const retainedNeckH = lowProfileStation ? 0.10 : 0.13;
     const retainedHeadY = opticSeatY + 0.055 + retainedNeckH + retainedHeadH / 2;
     const retainedFaceZ = opticZ + retainedHeadD / 2 + 0.007;
     P.addModuleVisual('optics', 'turretDark', cylY(0.095, 0.11, 0.055, 16),
       opticX, opticSeatY + 0.0275, opticZ);
-    P.addModuleVisual('optics', 'turret', box(0.16, retainedNeckH, 0.14),
+    P.addModuleVisual('optics', 'turret', box(0.16 * opticScale, retainedNeckH, 0.14 * opticScale),
       opticX, opticSeatY + 0.055 + retainedNeckH / 2, opticZ);
     P.addModuleVisual('optics', 'turretDark', box(retainedHeadW, retainedHeadH, retainedHeadD),
       opticX, retainedHeadY, opticZ);
@@ -2406,21 +2408,23 @@ function tejasRoofKit(
       box(retainedHeadW + 0.01, 0.025, retainedHeadD + 0.01),
       opticX, retainedHeadY + retainedHeadH / 2 + 0.0125, opticZ);
     P.addModuleVisual('optics', 'turretGlass',
-      box(0.13, lowProfileStation ? 0.075 : 0.095, 0.014),
-      opticX - 0.075, retainedHeadY + 0.035, retainedFaceZ);
+      box(0.13 * opticScale, (lowProfileStation ? 0.075 : 0.095) * opticScale, 0.014),
+      opticX - 0.075 * opticScale, retainedHeadY + 0.035 * opticScale, retainedFaceZ);
     P.addModuleVisual('optics', 'turretGlass',
-      box(0.10, lowProfileStation ? 0.060 : 0.075, 0.014),
-      opticX + 0.085, retainedHeadY + 0.015, retainedFaceZ);
-    P.addModuleVisual('optics', 'turretDark', box(0.055, 0.050, 0.014),
-      opticX - 0.075, retainedHeadY - 0.075, retainedFaceZ);
-    P.addModuleVisual('optics', 'turretDark', cylZ(0.020, 0.014, 10),
-      opticX + 0.070, retainedHeadY - 0.075, retainedFaceZ + 0.002);
+      box(0.10 * opticScale, (lowProfileStation ? 0.060 : 0.075) * opticScale, 0.014),
+      opticX + 0.085 * opticScale, retainedHeadY + 0.015 * opticScale, retainedFaceZ);
+    P.addModuleVisual('optics', 'turretDark',
+      box(0.055 * opticScale, 0.050 * opticScale, 0.014),
+      opticX - 0.075 * opticScale, retainedHeadY - 0.075 * opticScale, retainedFaceZ);
+    P.addModuleVisual('optics', 'turretDark', cylZ(0.020 * opticScale, 0.014, 10),
+      opticX + 0.070 * opticScale, retainedHeadY - 0.075 * opticScale, retainedFaceZ + 0.002);
     P.turretG.userData.abramsRelocatedCommanderOpticReceipt = Object.freeze({
       host: P.spec.id,
       x: opticX,
       z: opticZ,
       carrierTopY: carrierTopAt(opticZ),
       seatDepthM: carrierTopAt(opticZ) - opticSeatY,
+      scale: opticScale,
       headWidthM: retainedHeadW,
       headHeightM: retainedHeadH,
       headDepthM: retainedHeadD,
@@ -4039,6 +4043,9 @@ function publishAmericanArmorFinish(P: AbramsBuilderPort): void {
     decorativeTurretStraps: 0,
     highContrastOutlineMaterial: false,
     mechanicalGunmetalPreserved: true,
+    mechanicalGunmetalTone: 'neutral-service-gray',
+    exposedGunHardwareTone: 'neutral-service-gray',
+    nonMuzzleBlackVoids: 0,
   });
   P.gunG.userData.americanGunFinishReceipt = Object.freeze({
     decorativeBlackBands: 0,
@@ -4050,8 +4057,6 @@ function publishAmericanArmorFinish(P: AbramsBuilderPort): void {
 }
 
 function tejasToneKit(P: AbramsBuilderPort): void {
-  const reactiveArmor = ['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']
-    .includes(P.spec.id);
   const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = vehicleAmbientFloorHook;
     m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
@@ -4077,47 +4082,23 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   P.mats.wood.color.setHex(0x757d5f);
   P.mats.wood.roughness = 0.92;
   P.mats.wood.envMapIntensity = 0.25;
-  // Visual r3 items 1/3/5 — the warm 0x36342f dark bucket flared maroon-tan
-  // on key-facing faces (the "recessed bay" beside the mantlet sampled
-  // (66,63,56) R>G on view-front) and read mid-gray, not black, on the M2.
-  // Cooler + darker + less metal: black fittings stay black under the 2.2x
-  // warm key. Ref keeps these elements near-black (M2, slot shadow, rack
-  // recess), so the matte-dark bucket is the lawful channel.
-  // Visual r4 item 1 (M2 TRUE BLACK, 3rd claim-vs-render case): albedo
-  // alone CANNOT reach the ref's 14 — the vehicleAmbientFloorHook's
-  // deep-shade luminance floor is albedo-INDEPENDENT below 0.025 luma
-  // (materials.js gameplay_feel r4/r5 block: vehFloorL x0.30 constant), so
-  // 0x262823 -> 0x131411 only moved the sampled darkest M2 pixel 41 -> 33
-  // (view-rear, Rec709 0-255). MEASURED mechanism, not a tone guess.
-  // Fix per the leopard r6 top-grime precedent: chain the fleet floor hook
-  // and scale outgoingLight at opaque_fragment — the floor's lift scales
-  // with everything else, so shaded dark faces land ~16 and the whole
-  // bucket keeps its shading structure. Own cache key; the rehook pattern
-  // on shipped fleet materials is the in-game-safe precedent class.
-  // Every mats.dark element the ref keeps near-black too (slot slit, rack
-  // recess, seams, taillights, hub caps) — same lawful channel.
-  // The reactive-armor marks carry many more rails, retainers, conduits and
-  // weapon parts than the clean M1s.  Sending all of those through the
-  // reference-matching near-black shader turns the added detail into harsh
-  // ink lines.  Keep true black only on the clean reference family; upgraded
-  // tanks use a readable armor-shadow olive with the same rough metal
-  // response.  The previous charcoal still collapsed to black under the
-  // garage key and turned every cassette joint into a drawn ink line.
-  P.mats.dark.color.setHex(reactiveArmor ? 0x414838 : 0x0e0f0c);
-  P.mats.dark.metalness = 0.06;
-  P.mats.dark.envMapIntensity = 0.07;
-  // Scale iterated on the sampled render: 1.0 read darkest 33 (albedo-only
-  // floor limit), 0.52 read 24-26 on view-rear — 0.42 lands the target.
+  // Exposed weapons, ammunition chests and roof mechanisms share this
+  // channel.  Keep it a subdued neutral service gray across every Abrams
+  // mark; olive/near-black overrides made those real objects read as camo
+  // leaks or empty holes.  Actual recesses remain on mats.shadow and muzzle
+  // openings retain their dedicated bore material.
+  P.mats.dark.color.setHex(0x484a49);
+  P.mats.dark.roughness = 0.90;
+  P.mats.dark.metalness = 0.14;
+  P.mats.dark.envMapIntensity = 0.16;
   P.mats.dark.onBeforeCompile = (shader) => {
     vehicleAmbientFloorHook(shader);
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <opaque_fragment>',
-      `outgoingLight *= ${reactiveArmor ? '0.95' : '0.26'};\n\t#include <opaque_fragment>`,
+      'outgoingLight *= 0.95;\n\t#include <opaque_fragment>',
     );
   };
-  P.mats.dark.customProgramCacheKey = () => reactiveArmor
-    ? 'abrams-reactive-armor-shadow-v2'
-    : 'abrams-m2black-v1';
+  P.mats.dark.customProgramCacheKey = () => 'abrams-neutral-service-gunmetal-v1';
   // Track band: warm brown-gray multiplier over the manganese canvas.
   // Iteration 2 (sampled): r1 multipliers rendered wrap (106,99,82) L37 vs
   // ref (69,64,54) L24 and pads (76,70,60) vs ref (55,51,43) — x0.65/0.72.
@@ -4189,25 +4170,18 @@ function tejasToneKit(P: AbramsBuilderPort): void {
       ob.material = wornDrum;                       // end-wheel body drums only
     }
   });
-  // Visual r5 THE LAW (shaded-parity-m1a1-r4): NO NEAR-BLACK (<L35) on any
-  // surface the ref renders FUSED — the r4 deep-shade floor (mats.dark
-  // outgoingLight x0.26) is reserved for elements the ref itself renders
-  // black (M2, embrasure slot, inter-wheel voids, muzzle bores). SECOND
-  // dark tier for the ref-fused recess/seam/ring language at the ref rear
-  // band's own floor (sampled rgb(47-60,53-69,42-54) ~ the fleet hullShadow
-  // ~49/255 class): a shadow clone with a hint of olive and the PLAIN fleet
-  // floor hook — the deep-shade lift lands shaded faces in the L40-55
-  // mid-shadow range instead of the x0.26 bucket's ~20/255.
+  // Keep a second, lower-value tier only for actual recess and bay-shadow
+  // geometry. Exposed weapons and mechanisms stay on mats.dark, which the
+  // service-finish pass above makes neutral gray.
   // POST-MERGE SWAP LAW (leopard r8 #2): bucket meshes do not exist while
   // the builder runs — createTank merges buckets AFTER it returns — so the
   // re-material rides the factory's own guaranteed post-merge call,
   // P.gear.update(0,0) (rest-pose seat), via a one-shot self-restoring
   // wrapper. The otherwise-unused turretTrack bucket carries true turret
   // recesses plus compact hatch/CWS hardware. Decorative bustle straps and
-  // wall seams stay vehicle-painted instead of entering this shadow tier; the
-  // whole gunG dark set (mantlet band seams, coax, evac groove/cinch
-  // rings, MRS seam) is mid-tier by the same law. turretDark keeps the
-  // true-black x0.26 channel for the M2.
+  // wall seams stay vehicle-painted instead of entering this shadow tier.
+  // Gun hardware is deliberately excluded so it cannot regress to olive or
+  // near-black after bucket merging.
   // Albedo iterated ON the render (rects-on-view law): the deep-shade
   // floor is albedo-independent only below 0.025 linear luma — 0x141610
   // still sat ON the ~28/255 floor in the rack recesses (p25 L11). The
@@ -4227,9 +4201,6 @@ function tejasToneKit(P: AbramsBuilderPort): void {
     P.turretG.traverse((ob) => {
       if (!isRenderableMesh(ob)) return;
       if (ob.material === P.mats.spareTrack) ob.material = midShade;
-    });
-    P.gunG.traverse((ob) => {
-      if (isRenderableMesh(ob) && ob.material === P.mats.dark) ob.material = midShade;
     });
     // The hullShadow mesh carries the r5 mid-tier hull set (skirt seams/
     // clips/trim, hem bands, grille beds) merged with the wheel-bay AO

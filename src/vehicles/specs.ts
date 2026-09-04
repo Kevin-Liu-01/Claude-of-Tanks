@@ -27,6 +27,7 @@ import {
   moduleBox as mbox,
   crewBox as cbox,
   shell,
+  reactivePlate,
   apfsdsPenetration as apfsdsPens,
   communityArmor,
 } from './specHelpers.ts';
@@ -806,6 +807,16 @@ TANK_SPECS.m1a2.id = 'm1a2';
 TANK_SPECS.m1a2.name = 'M1A2 Abrams';
 TANK_SPECS.m1a2.dims.heightM = 3.30;
 TANK_SPECS.m1a2.visual.number = '23';
+TANK_SPECS.m1a2.armor.hullPlates.push(
+  reactivePlate('m1a2_skirt_era_R', 'right'),
+  reactivePlate('m1a2_skirt_era_L', 'left'),
+  reactivePlate('m1a2_glacis_era_R', 'front'),
+  reactivePlate('m1a2_glacis_era_L', 'front'),
+);
+TANK_SPECS.m1a2.armor.turretPlates.push(
+  reactivePlate('m1a2_turret_era_R', 'right'),
+  reactivePlate('m1a2_turret_era_L', 'left'),
+);
 
 // T-90M glacis ERA is split into two tiles so strips read locally.
 {

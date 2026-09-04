@@ -378,12 +378,17 @@ const firing = new Map([
   }],
 ]);
 const hp0 = match.entityById.get('bravo-1').combat.hp;
-for (let i = 0; i < 180 && match.entityById.get('bravo-1').combat.hp === hp0; i++) {
+// Base M1A2 now carries fitted reactive zones that can change which armor
+// surface the opening ray encounters. Keep the trigger held through one
+// reload so this general authority-path test remains about eventual shared
+// armor damage; exact ERA activation/depletion is covered by its dedicated
+// fitted-surface audit.
+const followUpWindow = Math.ceil((match.entityById.get('alpha-1').spec.gun.reloadS + 3) * 60);
+for (let i = 0; i < followUpWindow && match.entityById.get('bravo-1').combat.hp === hp0; i++) {
   match.step({ dt: 1 / 60, tick: ++tick, inputs: firing });
-  if (i === 0) firing.get('alpha-1').fire = false;
 }
 assert.ok(match.entityById.get('bravo-1').combat.hp < hp0,
-  'shared armor and damage model resolves an authoritative hit');
+  'shared armor and damage model resolves a follow-up authoritative hit');
 
 const consumableMatch = createAuthoritativeMatch({
   countdownS: 0,

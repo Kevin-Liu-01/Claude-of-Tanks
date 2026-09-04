@@ -214,4 +214,29 @@ for (const id of ['challenger2e', 'ua_challenger2']) {
   }
 }
 
+{
+  const expectedM1a2Zones = new Set([
+    'm1a2_skirt_era_R',
+    'm1a2_skirt_era_L',
+    'm1a2_glacis_era_R',
+    'm1a2_glacis_era_L',
+    'm1a2_turret_era_R',
+    'm1a2_turret_era_L',
+  ]);
+  const registeredM1a2Zones = new Set([
+    ...getSpec('m1a2').armor.hullPlates,
+    ...getSpec('m1a2').armor.turretPlates,
+  ].filter((plate) => plate.kind === 'era').map((plate) => plate.name));
+  assert.deepEqual(registeredM1a2Zones, expectedM1a2Zones,
+    'm1a2: all visible skirt, glacis, and turret cassette families are registered as live ERA');
+  assert.equal(getSpec('m1a1').armor.hullPlates.some((plate) => plate.kind === 'era'), false,
+    'm1a1: does not inherit M1A2 reactive zones');
+  assert.equal(getSpec('m1a1').armor.turretPlates.some((plate) => plate.kind === 'era'), false,
+    'm1a1: does not inherit M1A2 turret reactive zones');
+  assert.equal(getSpec('abramsx').armor.hullPlates.some((plate) => plate.kind === 'era'), false,
+    'abramsx: passive modular hull armor does not inherit M1A2 reactive zones');
+  assert.equal(getSpec('abramsx').armor.turretPlates.some((plate) => plate.kind === 'era'), false,
+    'abramsx: passive modular turret armor does not inherit M1A2 reactive zones');
+}
+
 console.log(`eraGameplayRegistration.selftest: ${eraVehicles} vehicles, ${uniqueZones} depletable zones, ${fittedSurfaces} fitted faces, ${reactiveVisualSectors} reactive visual sectors`);

@@ -16,6 +16,11 @@ const fittings = (root, predicate) => {
   return found;
 };
 
+const ABRAMS_SERVICE_GUNMETAL = 0x484a49;
+const materialHexes = (object) => (Array.isArray(object.material)
+  ? object.material
+  : [object.material]).map((material) => material?.color?.getHex());
+
 for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
   const tank = make(id);
   const guns = fittings(tank.root,
@@ -91,11 +96,11 @@ for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
 }
 
 const abramsStations = new Map();
-for (const [id, expectedVariant, expectedLoader, expectedShield] of [
-  ['m1a2', 'standard', 'm1a2-split-loader', 'split'],
-  ['m1a2_tusk', 'tusk-urban', 'tusk-lags-loader', 'open'],
-  ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored'],
-  ['m1a2_sepv3', 'sepv3-armored', 'sepv3-low-loader', 'low'],
+for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [
+  ['m1a2', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a2_tusk', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
+  ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a2_sepv3', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
@@ -184,6 +189,15 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
   assert.equal(optic?.z, 0.70);
   assert.ok(Math.abs(optic.seatDepthM - 0.008) < 1e-9,
     `${id}: relocated optic is flush-seated on the roof carrier`);
+  const [opticScale, headWidthM, headHeightM, headDepthM] = expectedOptic;
+  assert.ok(Math.abs(optic.scale - opticScale) < 1e-9,
+    `${id}: commander optic uses the mark-specific scale`);
+  assert.ok(Math.abs(optic.headWidthM - headWidthM) < 1e-9,
+    `${id}: commander optic width matches the mark-specific envelope`);
+  assert.ok(Math.abs(optic.headHeightM - headHeightM) < 1e-9,
+    `${id}: commander optic height matches the mark-specific envelope`);
+  assert.ok(Math.abs(optic.headDepthM - headDepthM) < 1e-9,
+    `${id}: commander optic depth matches the mark-specific envelope`);
   abramsStations.set(id,
     `${station[0].userData.designFamily || station[0].userData.americanRwsFamily}:${station[0].userData.stationVariant}`);
   tank.dispose();
@@ -215,6 +229,39 @@ for (const [id, expectedLoader, expectedShield] of [
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
   assert.equal(loader[0].userData.machineGunFinish, 'gunmetal');
+  tank.dispose();
+}
+
+for (const id of [
+  'm1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+]) {
+  const tank = make(id);
+  const turret = tank.root.getObjectByName('rig_turret');
+  assert.equal(turret?.userData.americanArmorFinishReceipt?.mechanicalGunmetalTone,
+    'neutral-service-gray', `${id}: publishes the neutral Abrams equipment finish`);
+  assert.equal(turret?.userData.americanArmorFinishReceipt?.exposedGunHardwareTone,
+    'neutral-service-gray', `${id}: publishes the neutral Abrams gun-hardware finish`);
+  assert.equal(turret?.userData.americanArmorFinishReceipt?.nonMuzzleBlackVoids, 0,
+    `${id}: equipment surfaces cannot masquerade as black voids`);
+
+  const serviceParts = [];
+  tank.root.traverse((object) => {
+    if (!object.isMesh) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    const usesServiceGunmetal = materials.some((material) => material?.customProgramCacheKey?.()
+      === 'abrams-neutral-service-gunmetal-v1');
+    if (object.name === 'turretDark'
+      || object.userData.fittingSlot === 'dark'
+      || object.userData.fittingSlot === 'gunmetalAmmo'
+      || usesServiceGunmetal) serviceParts.push(object);
+  });
+  assert.ok(serviceParts.length > 0, `${id}: exposes auditable gray weapon/equipment surfaces`);
+  for (const part of serviceParts) {
+    for (const color of materialHexes(part)) {
+      assert.equal(color, ABRAMS_SERVICE_GUNMETAL,
+        `${id}/${part.name || 'equipment'}: gunmetal is subdued neutral gray`);
+    }
+  }
   tank.dispose();
 }
 

@@ -47,6 +47,13 @@ function derivedArmor(
   return a;
 }
 
+function withoutEra(baseArmor: ArmorEnvelope): ArmorEnvelope {
+  const armor = structuredClone(baseArmor);
+  armor.hullPlates = armor.hullPlates.filter((plate) => plate.kind !== 'era');
+  armor.turretPlates = armor.turretPlates.filter((plate) => plate.kind !== 'era');
+  return armor;
+}
+
 /** Flat additive bump for side/rear plates (stat-level stand-in for the
  * TUSK ERA/slat kit until per-tile era plates land). */
 function bumpPlates(
@@ -95,7 +102,7 @@ const VARIANT_SPECS = {
     dims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
     // M1A1HA: same envelope as the SEPv3, pre-SEP composite ratings
     // (roster §2.2: turret ~600/1000, hull ~560/700 -> ~0.86 of SEPv3)
-    armor: derivedArmor(m1a2.armor, 0.86),
+    armor: derivedArmor(withoutEra(m1a2.armor), 0.86),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#525f45',
       patches: ['#23261f', '#4a3a2c'],
@@ -173,7 +180,7 @@ const VARIANT_SPECS = {
     // cover measures 3.29 m on the authoritative 1024 mask.
     dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 3.29 },
     armor: (() => {
-      const a = derivedArmor(m1a2.armor, 1.0);
+      const a = derivedArmor(withoutEra(m1a2.armor), 1.0);
       // ARAT rows are single-use reactive zones, not permanent base-armor
       // inflation. Their seed quads are fitted to the visible cassettes by
       // the combat-anatomy generator.

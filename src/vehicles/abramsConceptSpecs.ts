@@ -157,6 +157,11 @@ const m1a3: AbramsConceptSpec = {
 const abramsx: AbramsConceptSpec = clone(tankSpecs.m1a2);
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
+// AbramsX carries its own passive modular armor shell.  Do not inherit the
+// donor M1A2's gameplay ERA zones: the concept builder has no matching
+// reactive visual sectors for those cassettes.
+abramsx.armor.hullPlates = abramsx.armor.hullPlates.filter((plate) => plate.kind !== 'era');
+abramsx.armor.turretPlates = abramsx.armor.turretPlates.filter((plate) => plate.kind !== 'era');
 // The procedural shell spans world z -2.481..2.404, placing its structural
 // center at z=-0.0385.  The inherited M1A2 pivot and the old visual-only
 // -0.39 m override made the turret orbit around a point deep in the bustle.
