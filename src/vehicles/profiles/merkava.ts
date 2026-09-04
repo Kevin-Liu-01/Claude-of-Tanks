@@ -3158,6 +3158,82 @@ function markMerkavaMachineGunFitting(
   P.turretG.add(marker);
 }
 
+function addMerkavaWideMachineGunBody(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  scale: number,
+): void {
+  const { box } = KIT;
+  P.add('turretDark', box(0.10 * scale, 0.08 * scale, 0.15 * scale),
+    x + 0.125 * scale, y + 0.22 * scale, z - 0.03 * scale);
+  P.add('turretDark', box(0.115 * scale, 0.085 * scale, 0.018 * scale),
+    x - 0.063 * scale, y + 0.225 * scale, z + 0.215 * scale, 0, 0.08, 0);
+  P.add('turretDark', box(0.115 * scale, 0.085 * scale, 0.018 * scale),
+    x + 0.063 * scale, y + 0.225 * scale, z + 0.215 * scale, 0, -0.08, 0);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.012 * scale, 0.092 * scale, 0.026 * scale),
+      x + side * 0.119 * scale, y + 0.225 * scale, z + 0.214 * scale,
+      0, -side * 0.08, 0);
+    P.add('turretDark', box(0.018 * scale, 0.095 * scale, 0.018 * scale),
+      x + side * 0.085 * scale, y + 0.185 * scale, z + 0.115 * scale,
+      -0.55, 0, side * 0.12);
+  }
+  P.add('turretDetail', box(0.05 * scale, 0.05 * scale, 0.09 * scale),
+    x - 0.125 * scale, y + 0.235 * scale, z + 0.10 * scale);
+  // Thin tone-on-tone lids retain the low-contrast roof read while every
+  // vertical receiver/feed face remains neutral gunmetal.
+  P.add('turretDark', box(0.15 * scale * 0.92, 0.010, 0.44 * scale * 0.92),
+    x, y + 0.281 * scale, z);
+  P.add('turretDark', box(0.16 * scale * 0.90, 0.010, 0.20 * scale * 0.90),
+    x - 0.13 * scale, y + 0.281 * scale, z - 0.06 * scale);
+  P.add('turretDark', box(0.10 * scale * 0.88, 0.010, 0.15 * scale * 0.88),
+    x + 0.125 * scale, y + 0.256 * scale, z - 0.03 * scale);
+}
+
+function addMerkavaMachineGunBarrel(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  scale: number,
+  wide: boolean,
+  rod: MachineGunRod | null,
+): void {
+  const { box, cylZ } = KIT;
+  if (wide) {
+    // The source-tuned rod override raises selected cupola weapons without
+    // exceeding the certified crown envelope; the booster stays aft of the
+    // sight-band windows so yawed elevation silhouettes remain stable.
+    const rodY = rod?.dy ?? 0.246;
+    const rodZ = rod?.dz ?? 0.51;
+    const length = rod?.len ?? 0.74;
+    P.add('turretDark', cylZ(0.022 * scale, length * scale, 12),
+      x, y + rodY * scale, z + rodZ * scale);
+    for (let index = 0; index < 4; index++) {
+      P.add('turretDark', cylZ(0.026 * scale, 0.020 * scale, 12),
+        x, y + rodY * scale,
+        z + (rodZ - length * 0.28 + index * length * 0.12) * scale);
+    }
+    P.add('turretDark', cylZ(0.030 * scale, 0.09 * scale, 12),
+      x, y + (rodY - 0.008) * scale,
+      z + (rodZ + length / 2 - 0.06) * scale);
+    P.add('turretDark', box(0.012 * scale, 0.034 * scale, 0.02 * scale),
+      x, y + (rodY + 0.016) * scale,
+      z + (rodZ + length / 2 - 0.16) * scale);
+    return;
+  }
+  P.add('turretDark', cylZ(0.02 * scale, 0.5 * scale, 12),
+    x, y + 0.26 * scale, z + 0.42 * scale);
+  for (let index = 0; index < 3; index++) {
+    P.add('turretDark', cylZ(0.024 * scale, 0.018 * scale, 12),
+      x, y + 0.26 * scale, z + (0.26 + index * 0.075) * scale);
+  }
+  P.add('turretDark', cylZ(0.028 * scale, 0.07 * scale, 12),
+    x, y + 0.26 * scale, z + 0.64 * scale);
+}
+
 function merkavaMG(
   P: TankBuilderPort,
   x: number,
@@ -3230,56 +3306,9 @@ function merkavaMG(
     // r3 "bulk the pintle MGs LATERALLY at ring level" — heights untouched
     // (crowns stay under the p95 cap); width is free. Ammo tray on the far
     // side + cradle arms + a low shield plate give the gameplay-distance mass.
-    P.add('turretDark', box(0.10 * s, 0.08 * s, 0.15 * s), x + 0.125 * s, y + 0.22 * s, z - 0.03 * s);
-    // Split, canted shield panels leave a deliberate barrel/feed opening.
-    // Edge ribs and lower braces make the shield read as supported armor, not
-    // a floating slab.  The extents stay within the prior certified envelope.
-    P.add('turretDark', box(0.115 * s, 0.085 * s, 0.018 * s), x - 0.063 * s, y + 0.225 * s, z + 0.215 * s, 0, 0.08, 0);
-    P.add('turretDark', box(0.115 * s, 0.085 * s, 0.018 * s), x + 0.063 * s, y + 0.225 * s, z + 0.215 * s, 0, -0.08, 0);
-    for (const side of [-1, 1]) {
-      P.add('turretDark', box(0.012 * s, 0.092 * s, 0.026 * s),
-        x + side * 0.119 * s, y + 0.225 * s, z + 0.214 * s, 0, -side * 0.08, 0);
-      P.add('turretDark', box(0.018 * s, 0.095 * s, 0.018 * s),
-        x + side * 0.085 * s, y + 0.185 * s, z + 0.115 * s, -0.55, 0, side * 0.12);
-    }
-    P.add('turretDetail', box(0.05 * s, 0.05 * s, 0.09 * s), x - 0.125 * s, y + 0.235 * s, z + 0.10 * s);
-    // r7 roof tone-on-tone (fused-surface law): detail-tone lids on the
-    // receiver/ammo/tray top faces — from the top the wide MGs read as
-    // near-black slabs where the ref's roof is fused low-contrast. The lids
-    // are 1 cm plates riding the dark boxes' crowns; every SIDE face stays
-    // gunmetal dark (the elevation rod reads depend on it).
-    P.add('turretDark', box(0.15 * s * 0.92, 0.010, 0.44 * s * 0.92), x, y + 0.281 * s, z);
-    P.add('turretDark', box(0.16 * s * 0.90, 0.010, 0.20 * s * 0.90), x - 0.13 * s, y + 0.281 * s, z - 0.06 * s);
-    P.add('turretDark', box(0.10 * s * 0.88, 0.010, 0.15 * s * 0.88), x + 0.125 * s, y + 0.256 * s, z - 0.03 * s);
+    addMerkavaWideMachineGunBody(P, x, y, z, s);
   }
-  if (wide) {
-    // r4 "MG barrel silhouettes in elevations": the 0.5s barrel read as a
-    // nub — full-length thin rod + muzzle booster + front-sight blade, all
-    // HORIZONTAL at receiver height (p95-free; tips stop short of the
-    // saddle-dip / sight-band z windows so no side column moves).
-    // barrel line 12 mm under the receiver crown: the forward run crosses
-    // the s7 station window whose ref top is 2.622 — at y+0.26s the rod
-    // read +0.9% there; booster + sight stay on the REAR half (s6 window,
-    // hidden under the sight-band line).
-    // r5 (critic "yaw hides them"): rod { dy, dz, len } re-poses the barrel
-    // line — the cupola rod rides higher so it silhouettes ABOVE the hatch
-    // ring's own 2.60/2.618 top clutter in the right elevation (still under
-    // the plinth line in the gate's max-over-x side mask).
-    const rdy = rod?.dy ?? 0.246, rdz = rod?.dz ?? 0.51, rl = rod?.len ?? 0.74;
-    P.add('turretDark', cylZ(0.022 * s, rl * s, 12), x, y + rdy * s, z + rdz * s);
-    for (let i = 0; i < 4; i++) {
-      P.add('turretDark', cylZ(0.026 * s, 0.020 * s, 12), x, y + rdy * s,
-        z + (rdz - rl * 0.28 + i * rl * 0.12) * s);
-    }
-    P.add('turretDark', cylZ(0.030 * s, 0.09 * s, 12), x, y + (rdy - 0.008) * s, z + (rdz + rl / 2 - 0.06) * s);
-    P.add('turretDark', box(0.012 * s, 0.034 * s, 0.02 * s), x, y + (rdy + 0.016) * s, z + (rdz + rl / 2 - 0.16) * s);
-  } else {
-    P.add('turretDark', cylZ(0.02 * s, 0.5 * s, 12), x, y + 0.26 * s, z + 0.42 * s);
-    for (let i = 0; i < 3; i++) {
-      P.add('turretDark', cylZ(0.024 * s, 0.018 * s, 12), x, y + 0.26 * s, z + (0.26 + i * 0.075) * s);
-    }
-    P.add('turretDark', cylZ(0.028 * s, 0.07 * s, 12), x, y + 0.26 * s, z + 0.64 * s);
-  }
+  addMerkavaMachineGunBarrel(P, x, y, z, s, wide, rod);
 }
 
 // Long pintle MG lying along the plinth band with OPEN AIR under the barrel
