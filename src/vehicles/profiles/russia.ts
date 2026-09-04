@@ -931,33 +931,44 @@ export function rehookClone(
 // FROM-SCRATCH builds (curve-lofted). World frame per module header.
 // ---------------------------------------------------------------------------
 
+function ruGlacisEyeBucket(options: GlacisKitOptions, side: number): string {
+  if (!options.eyeSplit) return 'hullDetail';
+  return side < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
+}
+
+function addRuGlacisSide(
+  P: RussiaGeometryPort,
+  options: GlacisKitOptions,
+  side: number,
+): void {
+  const { box, torus } = KIT;
+  const glacisY = options.y;
+  const glacisZ = options.z;
+  P.add('hullDetail', box(options.w * 0.30, 0.045, 0.05),
+    side * options.w * 0.16, options.barY ?? (glacisY + 0.04), glacisZ,
+    -0.35, side * 0.25, 0);
+  // Explicit hook seats keep wide-hull recovery fittings clear of track
+  // dilation while preserving the legacy proportional default.
+  P.add(options.hookBucket ?? 'hullDark',
+    box(0.10, options.hookH ?? 0.12, options.hookD ?? 0.14),
+    side * (options.hookX ?? options.w * 0.30),
+    options.hookY ?? glacisY - 0.42,
+    options.hookZ ?? glacisZ + 0.42,
+    -0.3, 0, 0);
+  if (options.eyes === false) return;
+  P.add(ruGlacisEyeBucket(options, side), torus(0.085, 0.016, 10),
+    side * (options.eyeX ?? options.w * 0.36),
+    options.eyeY ?? 0.50,
+    options.eyeZ ?? glacisZ + 0.30,
+    Math.PI / 2, 0, 0);
+}
+
 // Shared Russia-family dressing at measured seats.
 export function ruGlacisKit(P: RussiaGeometryPort, o: GlacisKitOptions): void {
-  const { box, torus, headlight } = KIT;
+  const { headlight } = KIT;
   const yG = o.y, zG = o.z;                       // glacis mid reference
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(o.w * 0.30, 0.045, 0.05), s * o.w * 0.16, o.barY ?? (yG + 0.04), zG, -0.35, s * 0.25, 0);
-    // hookBucket/hookX (t84 r32, opt-in): the t84 critic ordered the bow
-    // hooks into the dark-rubber flap class (raw-gray pegs read), and the
-    // default w*0.30 seat turned out to be the r31 audit's "unnamed
-    // proxy-class sliver" — an explicit hookX clears the wrap-zone
-    // dilation. Defaults byte-identical for every other caller.
-    P.add(o.hookBucket ?? 'hullDark', box(0.10, o.hookH ?? 0.12, o.hookD ?? 0.14), s * (o.hookX ?? o.w * 0.30), o.hookY ?? yG - 0.42, o.hookZ ?? zG + 0.42, -0.3, 0, 0);
-    // eyeX/eyeY (t72b3m visual r1, opt-in): the default w*0.36 seat put the
-    // tow-eye tori INSIDE the bow track x-band where they poked through the
-    // idler wrap and read as floating ring outlines over the front tracks
-    // (critic item 4). Re-seated builds pin them on the lower bow plate.
-    // eyes:false (t72b3m r18 item 8): the pale detail tori rendered as two
-    // CHALK RINGS on the dark lower bow (one broke the hem silhouette) —
-    // the shaded critic wants dark shackle fittings, authored by the caller.
-    // eyeSplit (russia §B4 pt91m/t90m round, opt-in): tori that seat INSIDE
-    // the track x-band are per-side in-lane fittings — merged into the
-    // center-spanning hullDetail bucket they defeat track-clip-audit's
-    // lane-local reach skip (merged AABB reach 0). Route them into the
-    // per-side hullTrackDetailL/R buckets (t72b3m hullTrackTrimL/R recipe:
-    // same material slot + LOD path, renders byte-identical) so each merged
-    // mesh keeps an honest one-sided AABB. Default byte-identical.
-    if (o.eyes !== false) P.add(o.eyeSplit ? (s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR') : 'hullDetail', torus(0.085, 0.016, 10), s * (o.eyeX ?? o.w * 0.36), o.eyeY ?? 0.50, o.eyeZ ?? zG + 0.30, Math.PI / 2, 0, 0);
+    addRuGlacisSide(P, o, s);
   }
   // hlX (t90sm r12, opt-in): the default w*0.44 seat lands INSIDE the track
   // lane on wide hulls — with a low hlY the housings share §B4 boundary
