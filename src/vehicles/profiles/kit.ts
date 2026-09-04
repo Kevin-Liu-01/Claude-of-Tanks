@@ -1887,8 +1887,29 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
  * Host-specific variants change protection and sensor layout while retaining
  * the same mechanical load path. Origin is the mounting foot; +Z is fire.
  */
-function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
+interface OpenYokeBuildContext {
+  readonly opts: FittingOptions;
+  readonly variant: string;
+  readonly sizeStandard: string;
+  readonly s: number;
+  readonly elev: number;
+  readonly ammoSide: number;
+  readonly sensorSide: number;
+  readonly body: string;
+  readonly hasWeapon: boolean;
+  readonly parts: FittingParts;
+  readonly yokeCenterY: number;
+  readonly receiverY: number;
+  readonly receiverZ: number;
+  readonly roofSensor: boolean;
+  readonly sensorX: number;
+  readonly classicPanther: boolean;
+  readonly panther: boolean;
+  readonly twinOptics: boolean;
+  readonly sensorY: number;
+}
+
+function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   const variant = opts.variant || 'expeditionary';
   const sizeStandard = opts.sizeStandard || 'custom';
   // The M1A3 tower is the fleet reference: its weapon and open-yoke hardware
@@ -1902,75 +1923,8 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const hasWeapon = opts.weapon !== false;
   const parts = fitParts();
   const yokeCenterY = 0.385 * s;
-  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
-    KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
-
-  // Buried slew bearing and gearbox: every upper member resolves to this
-  // broad roof foot, so the station never reads as a floating gun prop.
-  parts.add(body, cylY(0.245 * s, 0.270 * s, 0.075 * s, 20), 0, 0.0375 * s, 0);
-  parts.add('dark', torus(0.225 * s, 0.018 * s, 22), 0, 0.081 * s, 0);
-  parts.add(body, box(0.34 * s, 0.105 * s, 0.30 * s), 0, 0.1375 * s, -0.015 * s);
-  parts.add('dark', box(0.28 * s, 0.025 * s, 0.24 * s), 0, 0.2025 * s, -0.015 * s);
-
-  // Open fork, exposed cross-shaft and recoil rails are the AbramsX cues.
-  for (const side of [-1, 1]) {
-    parts.add(body, box(0.065 * s, 0.30 * s, 0.105 * s),
-      side * 0.165 * s, 0.34 * s, -0.015 * s,
-      0, 0, side * 0.075);
-    parts.add('dark', box(0.027 * s, 0.25 * s, 0.040 * s),
-      side * 0.213 * s, 0.345 * s, 0.010 * s,
-      0, 0, side * 0.14);
-    parts.add('dark', box(0.032 * s, 0.035 * s, 0.42 * s),
-      side * 0.090 * s, yokeCenterY - 0.045 * s, 0.145 * s);
-  }
-  parts.add('dark', cylX(0.050 * s, 0.41 * s, 14), 0, yokeCenterY, 0.025 * s);
-
-  // M2/K6-class receiver and long, true forward run.
   const receiverY = yokeCenterY + 0.018 * s;
   const receiverZ = 0.185 * s;
-  if (hasWeapon) {
-    parts.add('dark', box(0.170 * s, 0.135 * s, 0.43 * s), 0, receiverY, receiverZ);
-    parts.add('dark', box(0.145 * s, 0.020 * s, 0.37 * s),
-      0, receiverY + 0.078 * s, receiverZ - 0.005 * s);
-    parts.add('dark', box(0.075 * s, 0.045 * s, 0.070 * s),
-      0, receiverY - 0.018 * s, receiverZ - 0.250 * s);
-    const trunnionZ = receiverZ + 0.215 * s;
-    parts.add('dark', aim(cylZ(0.033 * s, 0.18 * s, 14), 0.09 * s),
-      0, receiverY, trunnionZ);
-    for (let index = 0; index < 4; index++) {
-      parts.add('dark', aim(torus(0.034 * s, 0.0045 * s, 12),
-        (0.025 + index * 0.042) * s), 0, receiverY, trunnionZ);
-    }
-    parts.add('dark', aim(cylZ(0.0155 * s, 0.62 * s, 10), 0.49 * s),
-      0, receiverY, trunnionZ);
-    parts.add('dark', aim(cylZ(0.028 * s, 0.085 * s, 12), 0.8425 * s),
-      0, receiverY, trunnionZ);
-    parts.add('dark', aim(cylZ(0.010 * s, 0.015 * s, 10), 0.895 * s),
-      0, receiverY, trunnionZ);
-
-    // Asymmetric ammunition coffin and feed bridge. Individual alternating
-    // links remain legible in the gallery without creating per-link meshes.
-    const ammoX = ammoSide * 0.305 * s;
-    parts.add(body, box(0.245 * s, 0.255 * s, 0.31 * s),
-      ammoX, yokeCenterY - 0.055 * s, 0.015 * s);
-    parts.add('detail', box(0.265 * s, 0.023 * s, 0.33 * s),
-      ammoX, yokeCenterY + 0.084 * s, 0.015 * s);
-    parts.add('dark', box(0.022 * s, 0.22 * s, 0.27 * s),
-      ammoX + ammoSide * 0.133 * s, yokeCenterY - 0.055 * s, 0.015 * s);
-    for (let index = 0; index < 8; index++) {
-      const t = index / 7;
-      const x = (ammoX * (1 - t) + ammoSide * 0.075 * s * t);
-      const y = yokeCenterY + (0.055 + 0.018 * t) * s;
-      const z = (0.13 + 0.085 * t) * s;
-      parts.add(index % 2 ? 'shadow' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
-        x, y, z, 0, 0, -ammoSide * (0.10 + t * 0.12));
-    }
-  }
-
-  // Independent EO/thermal head on the opposite cheek. Hosts with a proper
-  // roof-seated panoramic tower can omit this compact side head so the weapon
-  // has an unobstructed firing lane and the two systems remain visually
-  // distinct.
   const roofSensor = opts.sensorMount === 'roof';
   const sensorX = roofSensor ? 0 : sensorSide * 0.30 * s;
   const classicPanther = variant === 'kf51-panther';
@@ -1979,126 +1933,264 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const sensorY = roofSensor
     ? yokeCenterY + 0.31 * s
     : yokeCenterY + (variant === 'a6m-arctic' || panther ? 0.015 : 0.005) * s;
-  if (opts.sensorHead !== false) {
-    if (roofSensor) {
-      parts.add(body, box(0.34 * s, 0.040 * s, 0.29 * s),
-        0, sensorY - 0.125 * s, 0.025 * s);
-    }
-    parts.add(body, box(0.215 * s, (twinOptics ? 0.20 : 0.24) * s, 0.215 * s),
-      sensorX, sensorY, 0.055 * s);
-    parts.add('dark', box(0.190 * s, 0.024 * s, 0.19 * s),
-      sensorX, sensorY + (twinOptics ? 0.112 : 0.132) * s, 0.055 * s);
-    const opticXs = twinOptics ? [-0.045, 0.045] : [0];
-    for (const dx of opticXs) {
-      parts.add('glass', box((twinOptics ? 0.065 : 0.125) * s,
-        (twinOptics ? 0.075 : 0.105) * s, 0.014 * s),
-      sensorX + dx * s, sensorY + 0.018 * s, 0.170 * s);
-    }
-    parts.add('glass', cylZ(0.026 * s, 0.014 * s, 10),
-      sensorX - sensorSide * 0.055 * s, sensorY - 0.075 * s, 0.171 * s);
-  }
+  return {
+    opts,variant,sizeStandard,s,elev,ammoSide,sensorSide,body,hasWeapon,parts,
+    yokeCenterY,receiverY,receiverZ,roofSensor,sensorX,classicPanther,panther,
+    twinOptics,sensorY,
+  };
+}
 
-  if (variant === 'sepv3-armored') {
-    parts.add(body, box(0.70 * s, 0.035 * s, 0.35 * s),
-      0, yokeCenterY + 0.175 * s, 0.035 * s);
-    for (const side of [-1, 1]) {
-      parts.add(body, box(0.035 * s, 0.24 * s, 0.29 * s),
-        side * 0.355 * s, yokeCenterY + 0.035 * s, 0.035 * s,
-        0, 0, side * 0.07);
-    }
-  } else if (variant === 'tusk-urban') {
-    for (const side of [-1, 1]) {
-      parts.add(body, box(0.25 * s, 0.25 * s, 0.030 * s),
-        side * 0.225 * s, yokeCenterY + 0.015 * s, 0.275 * s,
-        0, -side * 0.08, 0);
-    }
-    for (const x of [-0.095, 0.095]) {
-      parts.add('dark', cylZ(0.032 * s, 0.040 * s, 12),
-        x * s, yokeCenterY - 0.105 * s, 0.265 * s);
-      parts.add('glass', cylZ(0.024 * s, 0.008 * s, 12),
-        x * s, yokeCenterY - 0.105 * s, 0.289 * s);
-    }
-  } else if (variant === 'a6m-arctic') {
-    parts.add(body, box(0.29 * s, 0.030 * s, 0.25 * s),
-      sensorX, sensorY + 0.148 * s, 0.055 * s);
-    parts.add('dark', box(0.030 * s, 0.18 * s, 0.20 * s),
-      -sensorX, yokeCenterY - 0.05 * s, 0.06 * s);
-  } else if (variant === 'a7v-low') {
-    parts.add(body, box(0.58 * s, 0.030 * s, 0.28 * s),
-      0, yokeCenterY + 0.135 * s, 0.035 * s);
-    parts.add('dark', box(0.44 * s, 0.075 * s, 0.028 * s),
-      0, yokeCenterY - 0.105 * s, 0.23 * s);
-  } else if (variant === 'puma-s1-compact') {
-    // Puma S1 signature: a narrow arrow brow, tall faceted yoke cheeks and a
-    // central recoil bridge echo the RCT30 turret without widening the roof
-    // footprint. This station is deliberately independent of the panoramic
-    // optics tower fitted on the opposite side of the roof.
-    parts.add(body, box(0.46 * s, 0.034 * s, 0.27 * s),
-      0, yokeCenterY + 0.145 * s, 0.025 * s);
-    parts.add('detail', box(0.28 * s, 0.026 * s, 0.035 * s),
-      0, yokeCenterY + 0.172 * s, 0.175 * s);
-    for (const side of [-1, 1]) {
-      parts.add(body, box(0.042 * s, 0.23 * s, 0.25 * s),
-        side * 0.265 * s, yokeCenterY + 0.018 * s, 0.020 * s,
-        0, -side * 0.10, side * 0.14);
-    }
-  } else if (variant === 'light-tiger-compact') {
-    // Light Tiger signature: split low shoulders and clipped outer guards
-    // create a lighter Japanese demonstrator silhouette while preserving the
-    // same real bearing/yoke/receiver load path.
-    for (const side of [-1, 1]) {
-      parts.add(body, box(0.20 * s, 0.034 * s, 0.29 * s),
-        side * 0.12 * s, yokeCenterY + 0.140 * s, 0.020 * s,
-        0, 0, -side * 0.08);
-      parts.add('detail', box(0.032 * s, 0.18 * s, 0.22 * s),
-        side * 0.255 * s, yokeCenterY + 0.005 * s, 0.035 * s,
-        0, -side * 0.08, side * 0.12);
-    }
-    parts.add('dark', box(0.30 * s, 0.045 * s, 0.032 * s),
-      0, yokeCenterY - 0.118 * s, 0.235 * s);
-  } else if (variant === 'korean-twin') {
-    for (const side of [-1, 1]) {
-      parts.add('detail', box(0.028 * s, 0.16 * s, 0.27 * s),
-        side * 0.255 * s, yokeCenterY - 0.04 * s, 0.045 * s,
-        0, 0, side * 0.12);
-    }
-  } else if (panther) {
-    // Panther signature: a low arrow brow and two outward-canted armor
-    // cheeks echo the main turret's faceting without hiding the open
-    // mechanism. The base KF51 carries the denser demonstrator package:
-    // three independently readable work lights, an elevated dual-channel
-    // optic hood and two side warning apertures.
-    parts.add(body, box(0.62 * s, 0.035 * s, 0.30 * s),
-      0, yokeCenterY + 0.175 * s, 0.035 * s, 0, 0, 0);
-    parts.add('detail', box(0.44 * s, 0.022 * s, 0.025 * s),
-      0, yokeCenterY + 0.198 * s, 0.188 * s);
-    for (const side of [-1, 1]) {
-      parts.add(body, box(0.040 * s, 0.27 * s, 0.30 * s),
-        side * 0.325 * s, yokeCenterY + 0.035 * s, 0.030 * s,
-        0, -side * 0.10, side * 0.16);
-      parts.add('detail', box(0.026 * s, 0.15 * s, 0.22 * s),
-        side * 0.365 * s, yokeCenterY - 0.015 * s, 0.045 * s,
-        0, -side * 0.10, side * 0.16);
-    }
-    if (classicPanther) {
-      parts.add('dark', box(0.50 * s, 0.105 * s, 0.040 * s),
-        0, yokeCenterY - 0.135 * s, 0.274 * s);
-      for (const x of [-0.155, 0, 0.155]) {
-        parts.add('glass', box(0.105 * s, 0.058 * s, 0.014 * s),
-          x * s, yokeCenterY - 0.135 * s, 0.300 * s);
-      }
-      parts.add(body, box(0.31 * s, 0.075 * s, 0.245 * s),
-        sensorX, sensorY + 0.158 * s, 0.048 * s);
-      for (const side of [-1, 1]) {
-        parts.add('dark', box(0.075 * s, 0.085 * s, 0.032 * s),
-          side * 0.365 * s, yokeCenterY + 0.025 * s, 0.218 * s,
-          0, -side * 0.09, 0);
-        parts.add('glass', box(0.047 * s, 0.050 * s, 0.014 * s),
-          side * 0.365 * s, yokeCenterY + 0.025 * s, 0.239 * s,
-          0, -side * 0.09, 0);
-      }
-    }
+function aimOpenYokeGeometry(
+  context: OpenYokeBuildContext,
+  geometry: THREE.BufferGeometry,
+  dz: number,
+  dy = 0,
+): THREE.BufferGeometry {
+  return KIT.xform(KIT.xform(geometry,0,dy,dz),0,0,0,-context.elev,0,0);
+}
+
+function addOpenYokeBase(context: OpenYokeBuildContext): void {
+  const {box,cylX,cylY,torus}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  // Buried slew bearing and gearbox: every upper member resolves to this
+  // broad roof foot, so the station never reads as a floating gun prop.
+  parts.add(body,cylY(0.245 * s,0.270 * s,0.075 * s,20),0,0.0375 * s,0);
+  parts.add('dark',torus(0.225 * s,0.018 * s,22),0,0.081 * s,0);
+  parts.add(body,box(0.34 * s,0.105 * s,0.30 * s),0,0.1375 * s,-0.015 * s);
+  parts.add('dark',box(0.28 * s,0.025 * s,0.24 * s),0,0.2025 * s,-0.015 * s);
+
+  // Open fork, exposed cross-shaft and recoil rails are the AbramsX cues.
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.065 * s,0.30 * s,0.105 * s),
+      side * 0.165 * s,0.34 * s,-0.015 * s,0,0,side * 0.075);
+    parts.add('dark',box(0.027 * s,0.25 * s,0.040 * s),
+      side * 0.213 * s,0.345 * s,0.010 * s,0,0,side * 0.14);
+    parts.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
+      side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
+  parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
+}
+
+function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
+  if (!context.hasWeapon) return;
+  const {box,cylZ,torus}=KIT;
+  const {ammoSide,body,parts,receiverY,receiverZ,s,yokeCenterY}=context;
+  // M2/K6-class receiver and long, true forward run.
+  parts.add('dark',box(0.170 * s,0.135 * s,0.43 * s),0,receiverY,receiverZ);
+  parts.add('dark',box(0.145 * s,0.020 * s,0.37 * s),
+    0,receiverY + 0.078 * s,receiverZ - 0.005 * s);
+  parts.add('dark',box(0.075 * s,0.045 * s,0.070 * s),
+    0,receiverY - 0.018 * s,receiverZ - 0.250 * s);
+  const trunnionZ=receiverZ + 0.215 * s;
+  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.033 * s,0.18 * s,14),0.09 * s),
+    0,receiverY,trunnionZ);
+  for (let index=0;index<4;index++) {
+    parts.add('dark',aimOpenYokeGeometry(context,torus(0.034 * s,0.0045 * s,12),
+      (0.025 + index * 0.042) * s),0,receiverY,trunnionZ);
+  }
+  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.0155 * s,0.62 * s,10),0.49 * s),
+    0,receiverY,trunnionZ);
+  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.028 * s,0.085 * s,12),0.8425 * s),
+    0,receiverY,trunnionZ);
+  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.010 * s,0.015 * s,10),0.895 * s),
+    0,receiverY,trunnionZ);
+
+  // Asymmetric ammunition coffin and feed bridge. Individual alternating
+  // links remain legible in the gallery without creating per-link meshes.
+  const ammoX=ammoSide * 0.305 * s;
+  parts.add(body,box(0.245 * s,0.255 * s,0.31 * s),
+    ammoX,yokeCenterY - 0.055 * s,0.015 * s);
+  parts.add('detail',box(0.265 * s,0.023 * s,0.33 * s),
+    ammoX,yokeCenterY + 0.084 * s,0.015 * s);
+  parts.add('dark',box(0.022 * s,0.22 * s,0.27 * s),
+    ammoX + ammoSide * 0.133 * s,yokeCenterY - 0.055 * s,0.015 * s);
+  for (let index=0;index<8;index++) {
+    const t=index / 7;
+    const x=ammoX * (1 - t) + ammoSide * 0.075 * s * t;
+    const y=yokeCenterY + (0.055 + 0.018 * t) * s;
+    const z=(0.13 + 0.085 * t) * s;
+    parts.add(index % 2 ? 'shadow' : 'dark',box(0.032 * s,0.041 * s,0.026 * s),
+      x,y,z,0,0,-ammoSide * (0.10 + t * 0.12));
+  }
+}
+
+function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
+  if (context.opts.sensorHead === false) return;
+  const {box,cylZ}=KIT;
+  const {body,parts,roofSensor,s,sensorSide,sensorX,sensorY,twinOptics}=context;
+  // Independent EO/thermal head on the opposite cheek. Hosts with a proper
+  // roof-seated panoramic tower can omit this compact side head so the weapon
+  // has an unobstructed firing lane and the two systems remain visually
+  // distinct.
+  if (roofSensor) {
+    parts.add(body,box(0.34 * s,0.040 * s,0.29 * s),
+      0,sensorY - 0.125 * s,0.025 * s);
+  }
+  parts.add(body,box(0.215 * s,(twinOptics ? 0.20 : 0.24) * s,0.215 * s),
+    sensorX,sensorY,0.055 * s);
+  parts.add('dark',box(0.190 * s,0.024 * s,0.19 * s),
+    sensorX,sensorY + (twinOptics ? 0.112 : 0.132) * s,0.055 * s);
+  const opticXs=twinOptics ? [-0.045,0.045] : [0];
+  for (const dx of opticXs) {
+    parts.add('glass',box((twinOptics ? 0.065 : 0.125) * s,
+      (twinOptics ? 0.075 : 0.105) * s,0.014 * s),
+    sensorX + dx * s,sensorY + 0.018 * s,0.170 * s);
+  }
+  parts.add('glass',cylZ(0.026 * s,0.014 * s,10),
+    sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,0.171 * s);
+}
+
+function addOpenYokeSepv3Armor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  parts.add(body,box(0.70 * s,0.035 * s,0.35 * s),0,yokeCenterY + 0.175 * s,0.035 * s);
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.035 * s,0.24 * s,0.29 * s),
+      side * 0.355 * s,yokeCenterY + 0.035 * s,0.035 * s,0,0,side * 0.07);
+  }
+}
+
+function addOpenYokeTuskArmor(context: OpenYokeBuildContext): void {
+  const {box,cylZ}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.25 * s,0.25 * s,0.030 * s),
+      side * 0.225 * s,yokeCenterY + 0.015 * s,0.275 * s,0,-side * 0.08,0);
+  }
+  for (const x of [-0.095,0.095]) {
+    parts.add('dark',cylZ(0.032 * s,0.040 * s,12),
+      x * s,yokeCenterY - 0.105 * s,0.265 * s);
+    parts.add('glass',cylZ(0.024 * s,0.008 * s,12),
+      x * s,yokeCenterY - 0.105 * s,0.289 * s);
+  }
+}
+
+function addOpenYokeArcticArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,parts,s,sensorX,sensorY,yokeCenterY}=context;
+  parts.add(body,box(0.29 * s,0.030 * s,0.25 * s),
+    sensorX,sensorY + 0.148 * s,0.055 * s);
+  parts.add('dark',box(0.030 * s,0.18 * s,0.20 * s),
+    -sensorX,yokeCenterY - 0.05 * s,0.06 * s);
+}
+
+function addOpenYokeA7vArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  parts.add(body,box(0.58 * s,0.030 * s,0.28 * s),
+    0,yokeCenterY + 0.135 * s,0.035 * s);
+  parts.add('dark',box(0.44 * s,0.075 * s,0.028 * s),
+    0,yokeCenterY - 0.105 * s,0.23 * s);
+}
+
+function addOpenYokePumaArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  // Puma S1 signature: a narrow arrow brow, tall faceted yoke cheeks and a
+  // central recoil bridge echo the RCT30 turret without widening the roof
+  // footprint. This station is deliberately independent of the panoramic
+  // optics tower fitted on the opposite side of the roof.
+  parts.add(body,box(0.46 * s,0.034 * s,0.27 * s),
+    0,yokeCenterY + 0.145 * s,0.025 * s);
+  parts.add('detail',box(0.28 * s,0.026 * s,0.035 * s),
+    0,yokeCenterY + 0.172 * s,0.175 * s);
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.042 * s,0.23 * s,0.25 * s),
+      side * 0.265 * s,yokeCenterY + 0.018 * s,0.020 * s,
+      0,-side * 0.10,side * 0.14);
+  }
+}
+
+function addOpenYokeLightTigerArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,parts,s,yokeCenterY}=context;
+  // Light Tiger signature: split low shoulders and clipped outer guards
+  // create a lighter Japanese demonstrator silhouette while preserving the
+  // same real bearing/yoke/receiver load path.
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.20 * s,0.034 * s,0.29 * s),
+      side * 0.12 * s,yokeCenterY + 0.140 * s,0.020 * s,
+      0,0,-side * 0.08);
+    parts.add('detail',box(0.032 * s,0.18 * s,0.22 * s),
+      side * 0.255 * s,yokeCenterY + 0.005 * s,0.035 * s,
+      0,-side * 0.08,side * 0.12);
+  }
+  parts.add('dark',box(0.30 * s,0.045 * s,0.032 * s),
+    0,yokeCenterY - 0.118 * s,0.235 * s);
+}
+
+function addOpenYokeKoreanArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {parts,s,yokeCenterY}=context;
+  for (const side of [-1,1]) {
+    parts.add('detail',box(0.028 * s,0.16 * s,0.27 * s),
+      side * 0.255 * s,yokeCenterY - 0.04 * s,0.045 * s,
+      0,0,side * 0.12);
+  }
+}
+
+function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
+  const {box}=KIT;
+  const {body,classicPanther,parts,s,sensorX,sensorY,yokeCenterY}=context;
+  // Panther signature: a low arrow brow and two outward-canted armor
+  // cheeks echo the main turret's faceting without hiding the open
+  // mechanism. The base KF51 carries the denser demonstrator package:
+  // three independently readable work lights, an elevated dual-channel
+  // optic hood and two side warning apertures.
+  parts.add(body,box(0.62 * s,0.035 * s,0.30 * s),
+    0,yokeCenterY + 0.175 * s,0.035 * s,0,0,0);
+  parts.add('detail',box(0.44 * s,0.022 * s,0.025 * s),
+    0,yokeCenterY + 0.198 * s,0.188 * s);
+  for (const side of [-1,1]) {
+    parts.add(body,box(0.040 * s,0.27 * s,0.30 * s),
+      side * 0.325 * s,yokeCenterY + 0.035 * s,0.030 * s,
+      0,-side * 0.10,side * 0.16);
+    parts.add('detail',box(0.026 * s,0.15 * s,0.22 * s),
+      side * 0.365 * s,yokeCenterY - 0.015 * s,0.045 * s,
+      0,-side * 0.10,side * 0.16);
+  }
+  if (!classicPanther) return;
+  parts.add('dark',box(0.50 * s,0.105 * s,0.040 * s),
+    0,yokeCenterY - 0.135 * s,0.274 * s);
+  for (const x of [-0.155,0,0.155]) {
+    parts.add('glass',box(0.105 * s,0.058 * s,0.014 * s),
+      x * s,yokeCenterY - 0.135 * s,0.300 * s);
+  }
+  parts.add(body,box(0.31 * s,0.075 * s,0.245 * s),
+    sensorX,sensorY + 0.158 * s,0.048 * s);
+  for (const side of [-1,1]) {
+    parts.add('dark',box(0.075 * s,0.085 * s,0.032 * s),
+      side * 0.365 * s,yokeCenterY + 0.025 * s,0.218 * s,
+      0,-side * 0.09,0);
+    parts.add('glass',box(0.047 * s,0.050 * s,0.014 * s),
+      side * 0.365 * s,yokeCenterY + 0.025 * s,0.239 * s,
+      0,-side * 0.09,0);
+  }
+}
+
+function addOpenYokeVariantArmor(context: OpenYokeBuildContext): void {
+  if (context.variant === 'sepv3-armored') addOpenYokeSepv3Armor(context);
+  else if (context.variant === 'tusk-urban') addOpenYokeTuskArmor(context);
+  else if (context.variant === 'a6m-arctic') addOpenYokeArcticArmor(context);
+  else if (context.variant === 'a7v-low') addOpenYokeA7vArmor(context);
+  else if (context.variant === 'puma-s1-compact') addOpenYokePumaArmor(context);
+  else if (context.variant === 'light-tiger-compact') addOpenYokeLightTigerArmor(context);
+  else if (context.variant === 'korean-twin') addOpenYokeKoreanArmor(context);
+  else if (context.panther) addOpenYokePantherArmor(context);
+}
+
+function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const context=createOpenYokeContext(opts);
+  const {
+    ammoSide,body,classicPanther,hasWeapon,panther,parts,receiverY,receiverZ,
+    roofSensor,s,sensorSide,sensorX,sensorY,sizeStandard,twinOptics,variant,
+    yokeCenterY,
+  }=context;
+  addOpenYokeBase(context);
+  addOpenYokeWeapon(context);
+  addOpenYokeSensorHead(context);
+  addOpenYokeVariantArmor(context);
 
   // The reference M1A3 station stands on a real powered riser rather than a
   // bearing plate alone. Lift the complete working assembly as one unit and
