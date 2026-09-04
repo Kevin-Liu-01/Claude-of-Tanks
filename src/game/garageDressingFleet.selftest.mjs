@@ -115,6 +115,10 @@ assert.match(dressing, /legacyVerdantRoot\.add\(screenRoot\)/,
   'the rotating battle display must share the all-Garage workshop owner');
 assert.match(dressing, /legacyVerdantRoot\.add\(secondaryRoot\)/,
   'the second battle display must live on the shared all-Garage workshop owner');
+assert.match(dressing, /secondaryRoot\.rotation\.y = Math\.PI \/ 2/,
+  'the west CRT must face inward so its live image is visible instead of its rear casing');
+assert.match(dressing, /battleScreenSecondaryFacing = 'inward-to-hero'/,
+  'Garage diagnostics must receipt the corrected second-display orientation');
 assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
   'the tank rear must point toward the shared physical display');
 assert.match(dressing, /battleScreenVisible = true/,
@@ -130,6 +134,35 @@ assert.match(dressing,
   'the shared bays and Verdant-only interior collapse static leaf draws independently');
 assert.match(dressing, /sharedMaintenanceBayCount = 4/);
 assert.match(dressing, /workshopOrbitCoverageDegrees = 360/);
+assert.match(dressing, /const craneRunwayX = 21\.0/,
+  'the travelling-crane columns must clear the authored fleet service bays');
+assert.match(dressing, /const craneColumnZ = 20\.4/,
+  'the travelling-crane feet must stay on the workshop perimeter');
+for (const signature of [
+  'verdant_center_hoist_chain_left',
+  'verdant_center_hoist_chain_right',
+  'verdant_center_spreader_sling_',
+  'verdant_routed_workshop_utilities',
+  'verdant_power_run_south',
+  'verdant_air_run_north',
+  'verdant_welder_power_drop',
+  'verdant_teardown_air_drop',
+  'verdant_center_lamp_feed',
+  'verdant_lamp_feed_east',
+  'verdant_lamp_feed_north',
+  'verdant_lamp_feed_south',
+  'verdant_lamp_feed_welding_bay',
+  'verdant_rear_chain_fall_',
+]) {
+  assert.match(dressing, new RegExp(signature),
+    `the connected overhead and utility pass must retain ${signature}`);
+}
+assert.match(dressing, /verdantHoistCentered = true/,
+  'the hero lift must remain centered above the presentation stage');
+assert.match(dressing, /verdantHoistChainRuns = 8/,
+  'the lifting assembly must retain its load-bearing chain choreography');
+assert.match(dressing, /verdantRoutedUtilityCircuits = 12/,
+  'organized wall and floor utilities must remain part of Verdant');
 assert.match(dressing, /workshopModelMode = 'actual-fleet'/,
   'every Garage must identify its shared service exhibits as real fleet geometry');
 for (const component of [

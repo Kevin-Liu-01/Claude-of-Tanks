@@ -16,6 +16,11 @@ dressingGroup.userData = {
   battleScreenVisible: true,
   battleScreenDisplayCount: 2,
   battleScreenSecondaryImage: '/media/battle-secondary.webp',
+  battleScreenSecondaryFacing: 'inward-to-hero',
+  verdantHoistCentered: true,
+  verdantHoistChainRuns: 8,
+  verdantRoutedUtilityCircuits: 12,
+  verdantJunctionBoxes: 8,
   optimizationReceipt: { drawCallsRemoved: 22 },
   optimizedWorkshopTriangleCount: 4321,
   optimizedWorkshopTriangleParity: true,
@@ -95,6 +100,11 @@ assert.equal(stats.environment.worldMounted, true);
 assert.equal(stats.environment.retainedWorldMapId, 'verdant');
 assert.equal(stats.battleScreenDisplayCount, 2);
 assert.equal(stats.battleScreenSecondaryImage, '/media/battle-secondary.webp');
+assert.equal(stats.battleScreenSecondaryFacing, 'inward-to-hero');
+assert.equal(stats.verdantHoistCentered, true);
+assert.equal(stats.verdantHoistChainRuns, 8);
+assert.equal(stats.verdantRoutedUtilityCircuits, 12);
+assert.equal(stats.verdantJunctionBoxes, 8);
 assert.deepEqual(stats.families, ['abrams']);
 assert.deepEqual(stats.renderer, { calls: 17, triangles: 2300 });
 

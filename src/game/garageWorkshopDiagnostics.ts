@@ -80,6 +80,7 @@ export interface GarageWorkshopStats {
   readonly battleScreenResidentImageCount: number;
   readonly battleScreenCurrentImage: string;
   readonly battleScreenSecondaryImage: string;
+  readonly battleScreenSecondaryFacing: string;
   readonly battleScreenVisible: boolean;
   readonly modelMode: string;
   readonly exhibitCount: number;
@@ -87,6 +88,10 @@ export interface GarageWorkshopStats {
   readonly sharedMaintenanceBayIds: readonly string[];
   readonly sharedMaintenanceBayQuadrants: readonly string[];
   readonly workshopOrbitCoverageDegrees: number;
+  readonly verdantHoistCentered: boolean;
+  readonly verdantHoistChainRuns: number;
+  readonly verdantRoutedUtilityCircuits: number;
+  readonly verdantJunctionBoxes: number;
   readonly heroTrackContactErrorM: number | null;
   readonly verdantOriginalVisible: boolean;
   readonly verdantOriginalLayoutReceipt: string;
@@ -272,6 +277,7 @@ export function createGarageWorkshopDiagnostics({
         battleScreenResidentImageCount: numberValue(data.battleScreenResidentImageCount),
         battleScreenCurrentImage: stringValue(data.battleScreenCurrentImage),
         battleScreenSecondaryImage: stringValue(data.battleScreenSecondaryImage),
+        battleScreenSecondaryFacing: stringValue(data.battleScreenSecondaryFacing),
         battleScreenVisible: trueValue(data.battleScreenVisible),
         modelMode: stringValue(data.workshopModelMode),
         exhibitCount: numberValue(data.workshopExhibitCount),
@@ -281,6 +287,10 @@ export function createGarageWorkshopDiagnostics({
           data.sharedMaintenanceBayQuadrants,
         ),
         workshopOrbitCoverageDegrees: numberValue(data.workshopOrbitCoverageDegrees),
+        verdantHoistCentered: trueValue(data.verdantHoistCentered),
+        verdantHoistChainRuns: numberValue(data.verdantHoistChainRuns),
+        verdantRoutedUtilityCircuits: numberValue(data.verdantRoutedUtilityCircuits),
+        verdantJunctionBoxes: numberValue(data.verdantJunctionBoxes),
         heroTrackContactErrorM: heroTrackContactError(
           visual,
           garagePosition.y,

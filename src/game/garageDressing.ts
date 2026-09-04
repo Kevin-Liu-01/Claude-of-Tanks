@@ -1219,8 +1219,14 @@ export function createGarageDressing(
     const secondaryRoot = new THREE.Group();
     secondaryRoot.name = 'garage_battle_archive_monitor_secondary';
     secondaryRoot.position.set(-18.35, 4.15, 2.4);
-    secondaryRoot.rotation.y = -Math.PI / 2;
+    // Local +Z is the illuminated CRT face. The west-side installation must
+    // point that face back into the service yard (+X), otherwise the camera
+    // sees only the steel rear casing and the live shader reads as a black
+    // panel in outdoor environments.
+    secondaryRoot.rotation.y = Math.PI / 2;
     secondaryRoot.userData.mountMode = 'freestanding-west-shared';
+    secondaryRoot.userData.displayFacing = 'inward-to-hero';
+    group.userData.battleScreenSecondaryFacing = 'inward-to-hero';
     legacyVerdantRoot.add(secondaryRoot);
     put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
       0, 0, 0, 0, 0, 0, 1, secondaryRoot, false);
@@ -1278,7 +1284,7 @@ export function createGarageDressing(
     factoryArchitecture.userData.factoryProcessZones = 5;
     factoryArchitecture.userData.elevatedAccessSystems = 4;
     factoryArchitecture.userData.secureStorageSystems = 2;
-    factoryArchitecture.userData.structuralConnections = 168;
+    factoryArchitecture.userData.structuralConnections = 244;
     factoryArchitecture.userData.unsupportedParts = 0;
     verdantInteriorRoot.add(factoryArchitecture);
     const factoryBox = track(new THREE.BoxGeometry(1, 1, 1));
@@ -1311,6 +1317,46 @@ export function createGarageDressing(
       factoryCylinder, material, x, y, z, 0, rx, rz,
       [radius, height, radius], factoryArchitecture,
     );
+    const factoryChainLink = track(new THREE.TorusGeometry(0.062, 0.014, 5, 10));
+    const chainUp = new THREE.Vector3(0, 1, 0);
+    const addFactoryChain = (
+      name: string,
+      start: THREE.Vector3,
+      end: THREE.Vector3,
+    ): THREE.Group => {
+      const chainRoot = new THREE.Group();
+      chainRoot.name = name;
+      chainRoot.position.copy(start);
+      const delta = end.clone().sub(start);
+      const length = delta.length();
+      chainRoot.quaternion.setFromUnitVectors(chainUp, delta.normalize());
+      const linkCount = Math.max(2, Math.ceil(length / 0.115));
+      const spacing = length / linkCount;
+      for (let index = 0; index < linkCount; index += 1) {
+        put(factoryChainLink, mat.steelBright,
+          0, (index + 0.5) * spacing, 0,
+          index % 2 ? Math.PI / 2 : 0, 0, 0, 1, chainRoot, false);
+      }
+      factoryArchitecture.add(chainRoot);
+      return chainRoot;
+    };
+    const addFactoryCable = (
+      name: string,
+      points: readonly THREE.Vector3[],
+      material: THREE.Material = mat.rubber,
+      radius = 0.034,
+    ): THREE.Mesh => {
+      const path = new THREE.CatmullRomCurve3([...points], false, 'centripetal');
+      const cable = new THREE.Mesh(
+        track(new THREE.TubeGeometry(path, Math.max(8, points.length * 6), radius, 6, false)),
+        material,
+      );
+      cable.name = name;
+      cable.castShadow = false;
+      cable.receiveShadow = false;
+      factoryArchitecture.add(cable);
+      return cable;
+    };
 
     // Back-wall mezzanine: ground-seated columns, continuous transverse beams,
     // deck, toe boards, two-height rails and a connected rung ladder.
@@ -1350,25 +1396,131 @@ export function createGarageDressing(
       }
     }
 
-    // Roof-supported travelling crane with runway columns, bridge, trolley,
-    // twin hoist chains, spreader beam and four slings.
-    for (const x of [-15.4, 15.4]) {
-      for (const z of [-16.8, 16.8]) {
+    // Roof-supported travelling crane with its grounded columns outside every
+    // authored service-bay envelope. The previous +/-15.4 by +/-16.8 corners
+    // landed directly through the Burlak and rolled-K2 displays. Perimeter
+    // columns preserve the same crane silhouette while leaving every tank and
+    // maintenance aisle physically clear.
+    const craneRunwayX = 21.0;
+    const craneColumnZ = 20.4;
+    for (const x of [-craneRunwayX, craneRunwayX]) {
+      for (const z of [-craneColumnZ, craneColumnZ]) {
         factoryPut(mat.steelDark, x, 0.12, z, 0.98, 0.24, 0.98);
         factoryPut(mat.steelMid, x, 4.08, z, 0.42, 8.16, 0.42);
       }
-      factoryPut(mat.steelMid, x, 7.96, 0, 0.52, 0.42, 34.0);
-      factoryPut(mat.safety, x, 8.20, 0, 0.22, 0.16, 33.7, 0, 0, false);
+      factoryPut(mat.steelMid, x, 7.96, 0, 0.52, 0.42, 41.2);
+      factoryPut(mat.safety, x, 8.20, 0, 0.22, 0.16, 40.9, 0, 0, false);
     }
-    factoryPut(mat.safety, 0, 7.86, -2.2, 31.2, 0.46, 0.54);
-    factoryPut(mat.steelDark, 1.2, 7.50, -2.2, 1.25, 0.56, 0.92);
-    for (const x of [0.72, 1.68]) {
-      factoryCylinderPut(mat.steelBright, x, 6.42, -2.2, 0.035, 1.78);
+    // The bridge and lifting head sit on the hero centerline. Four visible
+    // trolley rollers, a reinforced spreader and eight real alternating chain
+    // runs make the suspended assembly read as a usable lifting system.
+    factoryPut(mat.safety, 0, 7.86, 0, 42.2, 0.46, 0.54);
+    factoryPut(mat.steelDark, 0, 7.50, 0, 1.35, 0.56, 1.08);
+    for (const x of [-0.44, 0.44]) {
+      for (const z of [-0.48, 0.48]) {
+        factoryCylinderPut(mat.steelBright, x, 7.72, z, 0.16, 0.13, Math.PI / 2);
+      }
     }
-    factoryPut(mat.safety, 1.2, 5.48, -2.2, 4.4, 0.18, 0.36, 0, 0, false);
-    for (const x of [-0.78, 3.18]) {
-      factoryPut(mat.steelBright, x, 4.76, -2.2, 0.06, 1.38, 0.06,
-        0, x < 0 ? -0.34 : 0.34, false);
+    addFactoryChain('verdant_center_hoist_chain_left',
+      new THREE.Vector3(-0.34, 7.22, -0.18), new THREE.Vector3(-0.34, 5.66, -0.18));
+    addFactoryChain('verdant_center_hoist_chain_right',
+      new THREE.Vector3(0.34, 7.22, 0.18), new THREE.Vector3(0.34, 5.66, 0.18));
+    factoryPut(mat.safety, 0, 5.48, 0, 5.0, 0.20, 0.42, 0, 0, false);
+    for (const x of [-2.34, 2.34]) {
+      factoryPut(mat.steelDark, x, 5.38, 0, 0.34, 0.34, 0.90, 0, 0, false);
+      for (const z of [-0.32, 0.32]) {
+        addFactoryChain(`verdant_center_spreader_sling_${x}_${z}`,
+          new THREE.Vector3(x, 5.28, z),
+          new THREE.Vector3(x * 0.66, 4.20, z * 2.15));
+      }
+    }
+    factoryPut(mat.steelBright, 0, 4.22, 0, 0.36, 0.18, 0.18, 0, 0, false);
+
+    // Purposeful electrical and pneumatic distribution: perimeter trays feed
+    // labeled junction boxes, then organized drops follow walls and floor
+    // channels to the lamps, welding bay and teardown stations. These are
+    // static, shadowless tubes that the workshop optimizer merges by material.
+    factoryArchitecture.userData.utilitySystem = 'verdant_routed_workshop_utilities';
+    factoryArchitecture.userData.circuitCount = 12;
+    factoryArchitecture.userData.junctionBoxCount = 8;
+    factoryArchitecture.userData.floorChannelCount = 4;
+    for (const z of [-21.75, 21.75]) {
+      factoryPut(mat.steelDark, 0, 6.62, z, 40.2, 0.12, 0.34, 0, 0, false);
+      factoryPut(mat.safety, 0, 6.72, z, 40.0, 0.05, 0.20, 0, 0, false);
+    }
+    for (const x of [-21.75, 21.75]) {
+      factoryPut(mat.steelDark, x, 6.62, 0, 0.34, 0.12, 40.2, 0, 0, false);
+      factoryPut(mat.safety, x, 6.72, 0, 0.20, 0.05, 40.0, 0, 0, false);
+    }
+    const junctions = [
+      [-15.8, 4.55, -21.52], [0, 4.55, -21.52], [15.8, 4.55, -21.52],
+      [-15.8, 4.55, 21.52], [0, 4.55, 21.52], [15.8, 4.55, 21.52],
+      [-21.52, 4.55, -7.2], [21.52, 4.55, 7.2],
+    ] as const;
+    for (const [x, y, z] of junctions) {
+      factoryPut(mat.blueSteel, x, y, z, 0.72, 0.92, 0.28, 0, 0, false);
+      factoryPut(mat.steelBright, x, y + 0.08, z * 0.998,
+        0.44, 0.06, 0.03, 0, 0, false);
+      addFactoryCable(`verdant_junction_drop_${x}_${z}`, [
+        new THREE.Vector3(x, 6.62, z),
+        new THREE.Vector3(x, y + 0.65, z),
+        new THREE.Vector3(x, y + 0.30, z),
+      ]);
+    }
+    addFactoryCable('verdant_power_run_south', [
+      new THREE.Vector3(-19.6, 6.56, 21.48), new THREE.Vector3(-5.0, 6.56, 21.48),
+      new THREE.Vector3(8.5, 6.56, 21.48), new THREE.Vector3(19.6, 6.56, 21.48),
+    ], mat.rubber, 0.045);
+    addFactoryCable('verdant_air_run_north', [
+      new THREE.Vector3(-19.6, 6.48, -21.42), new THREE.Vector3(-6.0, 6.48, -21.42),
+      new THREE.Vector3(7.5, 6.48, -21.42), new THREE.Vector3(19.6, 6.48, -21.42),
+    ], mat.blueSteel, 0.038);
+    addFactoryCable('verdant_welder_power_drop', [
+      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 1.10, 21.45),
+      new THREE.Vector3(13.7, 0.18, 20.7), new THREE.Vector3(11.6, 0.16, 19.9),
+    ], mat.rubber, 0.042);
+    addFactoryCable('verdant_teardown_air_drop', [
+      new THREE.Vector3(-15.8, 4.82, -21.45), new THREE.Vector3(-15.8, 1.25, -21.45),
+      new THREE.Vector3(-16.4, 0.18, -19.8), new THREE.Vector3(-16.2, 0.18, -17.8),
+    ], mat.blueSteel, 0.038);
+    addFactoryCable('verdant_center_lamp_feed', [
+      new THREE.Vector3(0, 6.78, 21.45), new THREE.Vector3(0, 8.72, 16.0),
+      new THREE.Vector3(0, 8.72, 5.0), new THREE.Vector3(0, 8.25, 0),
+    ], mat.rubber, 0.038);
+    addFactoryCable('verdant_lamp_feed_east', [
+      new THREE.Vector3(21.45, 4.82, 7.2), new THREE.Vector3(21.45, 8.55, 7.2),
+      new THREE.Vector3(21.60, 8.55, -7.0), new THREE.Vector3(21.60, 7.72, -7.0),
+    ], mat.rubber, 0.036);
+    addFactoryCable('verdant_lamp_feed_north', [
+      new THREE.Vector3(0, 4.82, -21.45), new THREE.Vector3(0, 8.48, -21.45),
+      new THREE.Vector3(3.20, 8.48, -21.20), new THREE.Vector3(3.20, 7.72, -21.20),
+    ], mat.rubber, 0.036);
+    addFactoryCable('verdant_lamp_feed_south', [
+      new THREE.Vector3(0, 4.82, 21.45), new THREE.Vector3(0, 8.48, 21.45),
+      new THREE.Vector3(5.90, 8.48, 20.70), new THREE.Vector3(5.90, 7.72, 20.70),
+    ], mat.rubber, 0.036);
+    addFactoryCable('verdant_lamp_feed_welding_bay', [
+      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 8.42, 21.45),
+      new THREE.Vector3(15.9, 8.42, 16.6), new THREE.Vector3(15.9, 7.72, 16.6),
+    ], mat.rubber, 0.036);
+    for (const [x, z, length] of [
+      [-13.2, -20.9, 2.05], [13.2, -20.9, 2.05],
+      [-13.2, 20.9, 2.05], [13.2, 20.9, 2.05],
+    ] as const) {
+      // Floor-rated cable protector with visible safety shoulders.
+      factoryPut(mat.rubber, x, 0.075, z, length, 0.11, 0.34, 0, 0, false);
+      factoryPut(mat.safety, x, 0.132, z, length, 0.025, 0.20, 0, 0, false);
+    }
+    // Parked chain falls at the rear process line add believable lifting
+    // capacity without hanging loose hardware over the presentation orbit.
+    const parkedHookGeometry = track(
+      new THREE.TorusGeometry(0.12, 0.028, 6, 14, Math.PI * 1.55),
+    );
+    for (const x of [-8.8, 8.8]) {
+      addFactoryChain(`verdant_rear_chain_fall_${x}`,
+        new THREE.Vector3(x, 6.45, 19.0), new THREE.Vector3(x, 3.05, 19.0));
+      put(parkedHookGeometry,
+        mat.steelBright, x, 2.92, 19.0, 0, 0, 0.35, 1, factoryArchitecture, false);
     }
 
     // Modular two-level scaffold around the south-west teardown bay. Two
@@ -1442,8 +1594,12 @@ export function createGarageDressing(
       'coating-and-ventilation', 'hydrostatic-inspection',
     ];
     group.userData.verdantElevatedAccessSystems = 4;
-    group.userData.verdantStructuralConnections = 168;
+    group.userData.verdantStructuralConnections = 244;
     group.userData.verdantUnsupportedParts = 0;
+    group.userData.verdantHoistCentered = true;
+    group.userData.verdantHoistChainRuns = 8;
+    group.userData.verdantRoutedUtilityCircuits = 12;
+    group.userData.verdantJunctionBoxes = 8;
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboardAt('east_tools');
