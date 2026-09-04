@@ -223,6 +223,7 @@ export function createWorldActivationRuntime<
   type BuildDiagnostics = {
     vegetation?: object | null;
     terrain?: object | null;
+    props?: object | null;
   };
 
   const createStageMarker = (trace: WorldActivationTrace): {
@@ -246,6 +247,9 @@ export function createWorldActivationRuntime<
     }
     if (diagnostics.terrain) {
       trace.buildDetail.terrainDetail = { ...diagnostics.terrain };
+    }
+    if (diagnostics.props) {
+      trace.buildDetail.propsDetail = { ...diagnostics.props };
     }
   };
 

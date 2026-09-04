@@ -532,10 +532,10 @@ function sampleHorizonTexturePixel(
   return color;
 }
 
-function makeHorizonTexture(
+function* makeHorizonTextureSteps(
   noi: SimplexNoise,
   options: HorizonTextureOptions,
-): THREE.CanvasTexture {
+): Generator<void, THREE.CanvasTexture, void> {
   const { banding, treeline } = options;
   // Loading-speed r1: this texture is repeated around a backdrop hundreds of
   // metres away. 1536x512 oversampled the projected ridge by ~4x and spent
@@ -558,6 +558,7 @@ function makeHorizonTexture(
       d[offset + 2] = clamp(color.b * 159, 0, 255);
       d[offset + 3] = 255;
     }
+    if ((y & 15) === 15) yield;
   }
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
@@ -595,7 +596,9 @@ function makeHorizonTexture(
 // it tiles with no seam. Isotropic features + low anisotropy keep it from
 // combing into down-slope fiber at grazing angles (the r3/r6 curtain bug).
 // ---------------------------------------------------------------------------
-function makeDetailNoiseTexture(rng: () => number): THREE.CanvasTexture {
+function* makeDetailNoiseTextureSteps(
+  rng: () => number,
+): Generator<void, THREE.CanvasTexture, void> {
   const S = 256;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
@@ -627,6 +630,7 @@ function makeDetailNoiseTexture(rng: () => number): THREE.CanvasTexture {
       const j = (y * S + x) * 4;
       d[j] = L; d[j + 1] = L; d[j + 2] = L; d[j + 3] = 255;
     }
+    if ((y & 31) === 31) yield;
   }
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
@@ -1239,13 +1243,13 @@ interface HorizonMaterialContext {
   maxHeight: number;
 }
 
-function buildHorizonMaterial({
+function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
   sun, maxHeight: maxH,
-}: HorizonMaterialContext): THREE.MeshBasicMaterial {
+}: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
-  const detailTex = makeHorizonTexture(gnoi, {
+  const detailTex = yield* makeHorizonTextureSteps(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
   });
   const mat = new THREE.MeshBasicMaterial({
@@ -1266,7 +1270,7 @@ function buildHorizonMaterial({
   // One u-repeat of the BASE uv covers ~370-800 m of arc and the full v range
   // ~130-200 m of altitude, so (64, 26) lands both overlay axes near 6-8 m.
   {
-    const detail2 = makeDetailNoiseTexture(
+    const detail2 = yield* makeDetailNoiseTextureSteps(
       mulberry32(((seed ^ 0x0D37) ^ idHash(mapId)) >>> 0));
     // r3 terrain_environment: PER-FRAGMENT alpine material pass. The winter
     // wall used to carry all slope/sun response baked per-vertex — across
@@ -1594,11 +1598,11 @@ function resolveHorizonPalette(
  * @param {number} seed base seed (mixed with the map id hash)
  * @returns {THREE.Mesh} unlit vertex-colored ring mesh named 'horizon-ring'
  */
-export function buildHorizonRing(
+export function* buildHorizonRingSteps(
   _engineCtx: object | null,
   cfg: HorizonMapConfig | null | undefined,
   seed: number,
-): THREE.Mesh {
+): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
   const style = resolveHorizonStyle(H, mapId);
@@ -1644,6 +1648,7 @@ export function buildHorizonRing(
   // styles (alpine/mesa) keep the imposing wall — it suits them.
   const rows0 = HORIZON_ROWS_BY_STYLE[style] || HORIZON_ROWS_BY_STYLE.default;
   const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp);
+  yield;
 
   // --- alpine RADIAL SUBDIVISION (content_breadth r5) ------------------------
   // Even with the 9-row ladder + smoothed analytic normals, the wall between
@@ -1659,6 +1664,7 @@ export function buildHorizonRing(
   const ring = subdivideAlpineGeometry(initialRing, style, noi);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH);
+  yield;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
   // --- vertex shading -------------------------------------------------------
@@ -1691,12 +1697,14 @@ export function buildHorizonRing(
     snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
     gradients, sun: [lx, ly, lz],
   });
+  yield;
 
   // DEBUG: paint each row a flat color to identify geometry in screenshots
   const horizonDebug = (globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean })
     .__HORIZON_DEBUG;
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
   const geo = buildHorizonGeometry(ring, col, uvA, style, gradients);
+  yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
   // sky shows through as a pale 'sea sheet' between rim and ridges (the old
@@ -1718,7 +1726,7 @@ export function buildHorizonRing(
   // near walls with vertical fiber under the winter overcast
   // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
   // cut in the snow pass; kills the last of the vertical smear on the wall
-  const mat = buildHorizonMaterial({
+  const mat = yield* buildHorizonMaterialSteps({
     noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
     sun: [lx, ly, lz], maxHeight: maxH,
   });
@@ -1743,4 +1751,16 @@ export function buildHorizonRing(
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
   });
   return mesh;
+}
+
+/** Synchronous authoring/capture wrapper over the frame-sliceable runtime build. */
+export function buildHorizonRing(
+  engineCtx: object | null,
+  cfg: HorizonMapConfig | null | undefined,
+  seed: number,
+): THREE.Mesh {
+  const steps = buildHorizonRingSteps(engineCtx, cfg, seed);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }

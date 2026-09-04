@@ -4,7 +4,7 @@
 // from connected solids in the authored mesh so recesses, courtyards, open
 // frames and narrow supports do not inherit one oversized rectangular box.
 
-import type { BufferGeometry } from 'three';
+import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute } from 'three';
 import {
   convexHull2, setCompoundShape,
   type CollisionRecord, type SimpleCollisionShape,
@@ -23,6 +23,15 @@ interface LocalSolid {
   points: number[];
   projectedTriangles: number[][];
 }
+
+interface SolidComponent {
+  minY: number;
+  maxY: number;
+  vertices: Map<string, [number, number]>;
+  projectedTriangles: number[][];
+}
+
+type PositionAttribute = BufferAttribute | InterleavedBufferAttribute;
 
 type StructureGeometryBuckets = Record<string, BufferGeometry[] | undefined>;
 
@@ -91,31 +100,35 @@ function vertexKey(x: number, y: number, z: number) {
   return `${Math.round(x * WELD_SCALE)},${Math.round(y * WELD_SCALE)},${Math.round(z * WELD_SCALE)}`;
 }
 
-function geometrySolids(geometry: BufferGeometry, bucket: string): LocalSolid[] {
-  const position = geometry.getAttribute('position');
-  if (!position || position.count < 3) return [];
-  const index = geometry.getIndex();
-  const triangleCount = Math.floor((index?.count ?? position.count) / 3);
-  const sets = disjointSet(triangleCount);
-  const owners = new Map<string, number>();
-  const vertexAt = (streamIndex: number) => index ? index.getX(streamIndex) : streamIndex;
+function streamVertex(index: BufferAttribute | null, streamIndex: number): number {
+  return index ? index.getX(streamIndex) : streamIndex;
+}
 
+function joinTrianglesBySharedVertex(
+  position: PositionAttribute,
+  index: BufferAttribute | null,
+  triangleCount: number,
+  sets: DisjointSet,
+): void {
+  const owners = new Map<string, number>();
   for (let triangle = 0; triangle < triangleCount; triangle++) {
     for (let corner = 0; corner < 3; corner++) {
-      const vertex = vertexAt(triangle * 3 + corner);
+      const vertex = streamVertex(index, triangle * 3 + corner);
       const key = vertexKey(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
       const owner = owners.get(key);
       if (owner == null) owners.set(key, triangle);
       else sets.join(triangle, owner);
     }
   }
+}
 
-  const components = new Map<number, {
-    minY: number;
-    maxY: number;
-    vertices: Map<string, [number, number]>;
-    projectedTriangles: number[][];
-  }>();
+function collectSolidComponents(
+  position: PositionAttribute,
+  index: BufferAttribute | null,
+  triangleCount: number,
+  sets: DisjointSet,
+): Map<number, SolidComponent> {
+  const components = new Map<number, SolidComponent>();
   for (let triangle = 0; triangle < triangleCount; triangle++) {
     const root = sets.find(triangle);
     let component = components.get(root);
@@ -130,18 +143,27 @@ function geometrySolids(geometry: BufferGeometry, bucket: string): LocalSolid[] 
     }
     const projected: number[] = [];
     for (let corner = 0; corner < 3; corner++) {
-      const vertex = vertexAt(triangle * 3 + corner);
+      const vertex = streamVertex(index, triangle * 3 + corner);
       const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
       component.minY = Math.min(component.minY, y);
       component.maxY = Math.max(component.maxY, y);
-      component.vertices.set(`${Math.round(x * WELD_SCALE)},${Math.round(z * WELD_SCALE)}`, [x, z]);
+      component.vertices.set(
+        `${Math.round(x * WELD_SCALE)},${Math.round(z * WELD_SCALE)}`,
+        [x, z],
+      );
       projected.push(x, z);
     }
     if (Math.abs(polygonArea(projected)) >= 1e-6) component.projectedTriangles.push(projected);
   }
+  return components;
+}
 
+function solidsFromComponents(
+  components: Iterable<SolidComponent>,
+  bucket: string,
+): LocalSolid[] {
   const solids: LocalSolid[] = [];
-  for (const component of components.values()) {
+  for (const component of components) {
     if (component.maxY - component.minY < 0.025) continue;
     const points = convexHull2([...component.vertices.values()]);
     if (points.length < 6 || Math.abs(polygonArea(points)) < 0.0025) continue;
@@ -154,6 +176,17 @@ function geometrySolids(geometry: BufferGeometry, bucket: string): LocalSolid[] 
     });
   }
   return solids;
+}
+
+function geometrySolids(geometry: BufferGeometry, bucket: string): LocalSolid[] {
+  const position = geometry.getAttribute('position');
+  if (!position || position.count < 3) return [];
+  const index = geometry.getIndex();
+  const triangleCount = Math.floor((index?.count ?? position.count) / 3);
+  const sets = disjointSet(triangleCount);
+  joinTrianglesBySharedVertex(position, index, triangleCount, sets);
+  const components = collectSolidComponents(position, index, triangleCount, sets);
+  return solidsFromComponents(components.values(), bucket);
 }
 
 function polygonArea(points: number[]) {
@@ -203,39 +236,52 @@ function polygonVertexKeys(points: number[]) {
   return keys;
 }
 
-function mergeProjectedTriangles(triangles: number[][]) {
+function dedupeProjectedTriangles(triangles: number[][]): number[][] {
   const deduped = new Map<string, number[]>();
   for (const triangle of triangles) {
     const key = [...polygonVertexKeys(triangle)].sort().join('|');
     if (!deduped.has(key)) deduped.set(key, triangle);
   }
-  const polygons = [...deduped.values()];
-  let changed = true;
-  while (changed) {
-    changed = false;
-    outer: for (let a = 0; a < polygons.length; a++) {
-      const keysA = polygonVertexKeys(polygons[a]);
-      for (let b = a + 1; b < polygons.length; b++) {
-        let shared = 0;
-        for (const key of polygonVertexKeys(polygons[b])) if (keysA.has(key)) shared++;
-        if (shared < 2) continue;
-        const vertices: Array<[number, number]> = [];
-        for (const polygon of [polygons[a], polygons[b]]) {
-          for (let index = 0; index < polygon.length; index += 2) {
-            vertices.push([polygon[index], polygon[index + 1]]);
-          }
-        }
-        const hull = convexHull2(vertices);
-        const sourceArea = Math.abs(polygonArea(polygons[a])) + Math.abs(polygonArea(polygons[b]));
-        const hullArea = Math.abs(polygonArea(hull));
-        if (hullArea > sourceArea + Math.max(1e-5, sourceArea * 1e-4)) continue;
-        polygons[a] = hull;
-        polygons.splice(b, 1);
-        changed = true;
-        break outer;
-      }
+  return [...deduped.values()];
+}
+
+function sharedVertexCount(keys: ReadonlySet<string>, polygon: number[]): number {
+  let shared = 0;
+  for (const key of polygonVertexKeys(polygon)) if (keys.has(key)) shared++;
+  return shared;
+}
+
+function combinedConvexHull(first: number[], second: number[]): number[] | null {
+  const vertices: Array<[number, number]> = [];
+  for (const polygon of [first, second]) {
+    for (let index = 0; index < polygon.length; index += 2) {
+      vertices.push([polygon[index], polygon[index + 1]]);
     }
   }
+  const hull = convexHull2(vertices);
+  const sourceArea = Math.abs(polygonArea(first)) + Math.abs(polygonArea(second));
+  const hullArea = Math.abs(polygonArea(hull));
+  return hullArea <= sourceArea + Math.max(1e-5, sourceArea * 1e-4) ? hull : null;
+}
+
+function mergeFirstProjectedPair(polygons: number[][]): boolean {
+  for (let first = 0; first < polygons.length; first++) {
+    const firstKeys = polygonVertexKeys(polygons[first]);
+    for (let second = first + 1; second < polygons.length; second++) {
+      if (sharedVertexCount(firstKeys, polygons[second]) < 2) continue;
+      const hull = combinedConvexHull(polygons[first], polygons[second]);
+      if (!hull) continue;
+      polygons[first] = hull;
+      polygons.splice(second, 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+function mergeProjectedTriangles(triangles: number[][]) {
+  const polygons = dedupeProjectedTriangles(triangles);
+  while (mergeFirstProjectedPair(polygons)) { /* restart after each exact merge */ }
   return uniquePolygons(polygons);
 }
 

@@ -134,6 +134,13 @@ interface BuildYield {
   rowEnd?: boolean;
 }
 
+interface VegetationBuildDetail {
+  [stage: string]: number | Array<{ stage: string; ms: number }>;
+  sliceCount: number;
+  maxSliceMs: number;
+  slowest: Array<{ stage: string; ms: number }>;
+}
+
 interface TreeGeometryPair {
   trunk: THREE.BufferGeometry;
   cards: THREE.BufferGeometry;
@@ -197,7 +204,7 @@ export interface VegetationRuntime {
   crushTree(record: TreeObstacle, dx: number, dz: number): boolean;
   resetToppled(): void;
   _clusters: VegetationDisc[];
-  _buildDetail?: Record<string, number>;
+  _buildDetail?: VegetationBuildDetail;
 }
 
 export interface GarageTreeKit {
@@ -2168,11 +2175,14 @@ export async function createVegetationAsync(
   // builds still drain every chunk eagerly for their frozen pixel contract.
   const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg, true);
   const stageTimings: Record<string, number> = {};
+  const sliceTimings: Array<{ stage: string; ms: number }> = [];
   let stepStarted = performance.now();
   let r = g.next();
   const recordStep = (result: IteratorResult<BuildYield, VegetationRuntime>): void => {
     const key = result.done ? 'finalize' : (result.value.stage || 'other');
-    stageTimings[key] = (stageTimings[key] || 0) + performance.now() - stepStarted;
+    const ms = performance.now() - stepStarted;
+    stageTimings[key] = (stageTimings[key] || 0) + ms;
+    sliceTimings.push({ stage: key, ms });
   };
   recordStep(r);
   let i = 0;
@@ -2188,8 +2198,14 @@ export async function createVegetationAsync(
     r = g.next();
     recordStep(r);
   }
-  r.value._buildDetail = Object.fromEntries(
-    Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)]));
+  const slowest = sliceTimings.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+  r.value._buildDetail = {
+    ...Object.fromEntries(
+      Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)])),
+    sliceCount: sliceTimings.length,
+    maxSliceMs: slowest[0]?.ms || 0,
+    slowest,
+  };
   return r.value;
 }
 

@@ -163,7 +163,7 @@ export interface WorldRuntime {
     aimDistanceMeters?: number | null,
   ): void;
   group: THREE.Group;
-  _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue };
+  _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue; props: RuntimeValue };
 }
 
 const _pt = new THREE.Vector3();
@@ -250,6 +250,7 @@ export async function createMapAsync(
   world._buildDetail = {
     vegetation: vegetation._buildDetail || null,
     terrain: terrain.userData.streamingStats || null,
+    props: props._buildDetail || null,
   };
   return world;
 }

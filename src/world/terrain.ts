@@ -12,7 +12,7 @@ import {
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain } from './sourcedTextures.ts';
-import { buildHorizonRing, type HorizonMapConfig } from './maps/horizon.ts';
+import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -2810,13 +2810,13 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 }
 `;
 
-function createSplatMaterial(
+function* createSplatMaterialSteps(
   engineCtx: TerrainEngineContext,
   layout: TerrainLayout,
   splatCfg: SplatConfig | null | undefined,
   mapId = 'verdant',
   landformW: HeightField['_mesaW'] = null,
-): THREE.MeshStandardMaterial {
+): Generator<void, THREE.MeshStandardMaterial, void> {
   const S = splatCfg || {};
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
@@ -2827,22 +2827,25 @@ function createSplatMaterial(
   // every steep face seen at grazing angles (mesa flanks, cut banks): past a
   // 4:1 footprint the sampler can only blur along the compressed axis.
   const aniso = Math.max(16, engineCtx.anisotropy ?? 4);
-  const layers = {
-    G: makeGrassLayer(3000, aniso, S.grassTone || null),
-    D: makeDirtLayer(3001, aniso, S.dirtTone || null),
-    // r7: cfg.splat.sandstone routes the R layer to the stratified
-    // sedimentary painter (desert cliffs). The sourced Rock063 set is
-    // disabled for that map in sourcedTextures.ts — its wavy metamorphic
-    // structure was the "wet-sand swirl" artifact on every canyon wall.
-    R: S.sandstone
-      ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
-      : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
-    M: S.iceLake
-      ? makeIceLayer(3003, aniso)
-      : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
-        ? makeSeaLayer(3003, aniso, S.mudTone || null)
-        : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
-  };
+  const grass = makeGrassLayer(3000, aniso, S.grassTone || null);
+  yield;
+  const dirt = makeDirtLayer(3001, aniso, S.dirtTone || null);
+  yield;
+  // r7: cfg.splat.sandstone routes the R layer to the stratified
+  // sedimentary painter (desert cliffs). The sourced Rock063 set is
+  // disabled for that map in sourcedTextures.ts — its wavy metamorphic
+  // structure was the "wet-sand swirl" artifact on every canyon wall.
+  const rock = S.sandstone
+    ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
+    : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null);
+  yield;
+  const wet = S.iceLake
+    ? makeIceLayer(3003, aniso)
+    : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
+      ? makeSeaLayer(3003, aniso, S.mudTone || null)
+      : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
+  yield;
+  const layers = { G: grass, D: dirt, R: rock, M: wet };
   // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
   // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
   // available; procedural stays the synchronous fallback behind the flag in
@@ -2850,7 +2853,9 @@ function createSplatMaterial(
   const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, landformW);
+  yield;
   const noiseTex = makeShaderNoiseTexture(3011);
+  yield;
   const tintA = S.tintA || [1.16, 1.08, 0.76];
   const tintB = S.tintB || [0.78, 0.90, 0.72];
   const tintC = S.tintC || [1.10, 1.04, 0.84];
@@ -3220,10 +3225,27 @@ function* terrainBuildSteps(
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  group.add(buildHorizonRing(engineCtx, cfg, 1337));
+  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337);
+  let horizonStep = horizonSteps.next();
+  while (!horizonStep.done) {
+    yield [0, CHUNKS * CHUNKS + 2, false];
+    horizonStep = horizonSteps.next();
+  }
+  group.add(horizonStep.value);
   yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
-  const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
-    (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
+  const materialSteps = createSplatMaterialSteps(
+    engineCtx,
+    heightField._layout,
+    cfg ? cfg.splat : null,
+    (cfg && cfg.id) || 'verdant',
+    heightField._mesaW || null,
+  );
+  let materialStep = materialSteps.next();
+  while (!materialStep.done) {
+    yield [1, CHUNKS * CHUNKS + 2, false];
+    materialStep = materialSteps.next();
+  }
+  const mat = materialStep.value;
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();
   // Alternative LOD geometries are retained in `chunks` even when another

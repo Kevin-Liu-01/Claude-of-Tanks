@@ -220,9 +220,8 @@ const sampleResources = () => page.evaluate(() => {
       const root = entity?.visual?.root;
       if (!root || vehicleRoots.has(root)) continue;
       vehicleRoots.add(root);
-      markOwner(root, entity.isPlayer
-        ? 'vehicles/player'
-        : `vehicles/${entity.team || 'other'}`);
+      const role = entity.isPlayer ? 'player' : (entity.team || 'other');
+      markOwner(root, `vehicles/${role}/${entity.specId || 'unknown'}`);
     }
   };
   registerOwners();
@@ -377,6 +376,9 @@ const sampleResources = () => page.evaluate(() => {
       visual: !!entity.visual,
       textureQuality: entity.visual?.root?.userData?.textureQuality || null,
       geometryQuality: entity.visual?.root?.userData?.geometryQuality || null,
+      staticBatchSavedDraws: entity.visual?.root?.userData?.staticBatchSavedDraws || 0,
+      battleDetailGroups: entity.visual?.root?.userData?.battleDetailGroupCount || 0,
+      battleDetailObjects: entity.visual?.root?.userData?.battleDetailObjectCount || 0,
     })),
     objects,
     visibleObjects,

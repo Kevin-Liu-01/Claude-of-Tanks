@@ -29,6 +29,13 @@ interface TerrainSample {
   readonly ms: number;
   readonly stats: TerrainStreamingStats;
   readonly streamJobMs: readonly number[];
+  readonly buildSlices: {
+    readonly count: number;
+    readonly maxMs: number;
+    readonly horizonMaxMs: number;
+    readonly materialMaxMs: number;
+    readonly geometryMaxMs: number;
+  };
 }
 
 interface TerrainRun extends TerrainSample {
@@ -36,13 +43,27 @@ interface TerrainRun extends TerrainSample {
 }
 
 interface TerrainStreamBenchmark {
+  readonly cold: {
+    readonly ms: number;
+    readonly maxBuildSliceMs: number;
+    readonly horizonMaxMs: number;
+    readonly materialMaxMs: number;
+    readonly geometryMaxMs: number;
+  };
   readonly eagerMs: number;
   readonly streamedMs: number;
   readonly savingsMs: number;
   readonly savingsPct: number;
   readonly streamedStats: TerrainStreamingStats;
   readonly streamJobs: { readonly count: number; readonly maxMs: number };
-  readonly runs: readonly { readonly streamed: boolean; readonly ms: number }[];
+  readonly runs: readonly {
+    readonly streamed: boolean;
+    readonly ms: number;
+    readonly maxBuildSliceMs: number;
+    readonly horizonMaxMs: number;
+    readonly materialMaxMs: number;
+    readonly geometryMaxMs: number;
+  }[];
 }
 
 declare global {
@@ -115,12 +136,25 @@ function disposeGroup(group: THREE.Group): void {
 
 async function sample(streamFarLods: boolean): Promise<TerrainSample> {
   const startedAt = performance.now();
+  let sliceStartedAt = startedAt;
+  const buildSliceMs: number[] = [];
+  const horizonSliceMs: number[] = [];
+  const materialSliceMs: number[] = [];
+  const geometrySliceMs: number[] = [];
   const group = await buildTerrainMeshesAsync(
     heightField,
     engineCtx,
     terrainConfig,
-    null,
-    false,
+    (completed) => {
+      const sampleNow = performance.now();
+      const elapsedMs = sampleNow - sliceStartedAt;
+      buildSliceMs.push(elapsedMs);
+      if (completed === 0) horizonSliceMs.push(elapsedMs);
+      else if (completed === 1) materialSliceMs.push(elapsedMs);
+      else geometrySliceMs.push(elapsedMs);
+      sliceStartedAt = sampleNow;
+    },
+    true,
     streamFarLods ? { streamFarLods: true, focus: heightField._layout.spawns.player } : null,
   );
   const ms = performance.now() - startedAt;
@@ -147,11 +181,22 @@ async function sample(streamFarLods: boolean): Promise<TerrainSample> {
     }
   }
   disposeGroup(group);
-  return { ms, stats: { ...stats }, streamJobMs };
+  return {
+    ms,
+    stats: { ...stats },
+    streamJobMs,
+    buildSlices: {
+      count: buildSliceMs.length,
+      maxMs: Math.max(...buildSliceMs),
+      horizonMaxMs: Math.max(0, ...horizonSliceMs),
+      materialMaxMs: Math.max(0, ...materialSliceMs),
+      geometryMaxMs: Math.max(0, ...geometrySliceMs),
+    },
+  };
 }
 
 // Alternate order after one warm-up to limit JIT/GC bias.
-await sample(false);
+const cold = await sample(false);
 const runs: TerrainRun[] = [];
 for (const streamed of [true, false, false, true, true, false]) {
   runs.push({ streamed, ...(await sample(streamed)) });
@@ -168,6 +213,13 @@ const streamedRun = runs.find((run) => run.streamed);
 if (!streamedRun) throw new Error('terrain benchmark requires a streamed sample');
 const streamJobSamples = runs.filter((run) => run.streamed).flatMap((run) => run.streamJobMs);
 window.__TERRAIN_STREAM_BENCH = {
+  cold: {
+    ms: cold.ms,
+    maxBuildSliceMs: cold.buildSlices.maxMs,
+    horizonMaxMs: cold.buildSlices.horizonMaxMs,
+    materialMaxMs: cold.buildSlices.materialMaxMs,
+    geometryMaxMs: cold.buildSlices.geometryMaxMs,
+  },
   eagerMs,
   streamedMs,
   savingsMs: eagerMs - streamedMs,
@@ -177,5 +229,12 @@ window.__TERRAIN_STREAM_BENCH = {
     count: streamJobSamples.length,
     maxMs: Math.max(...streamJobSamples),
   },
-  runs: runs.map((r) => ({ streamed: r.streamed, ms: r.ms })),
+  runs: runs.map((r) => ({
+    streamed: r.streamed,
+    ms: r.ms,
+    maxBuildSliceMs: r.buildSlices.maxMs,
+    horizonMaxMs: r.buildSlices.horizonMaxMs,
+    materialMaxMs: r.buildSlices.materialMaxMs,
+    geometryMaxMs: r.buildSlices.geometryMaxMs,
+  })),
 };

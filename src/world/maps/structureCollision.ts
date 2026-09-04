@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import type { Box3 } from 'three';
 import type { GeometryBuckets, StructureDimensions } from './exteriorDetailKit.ts';
 
 /**
@@ -243,6 +243,169 @@ function closedStructureEnvelope(
   };
 }
 
+function footprintFromBounds(bounds: Box3, clampToGround = false): MutableFootprint {
+  const width = bounds.max.x - bounds.min.x;
+  const length = bounds.max.z - bounds.min.z;
+  return {
+    cx: (bounds.min.x + bounds.max.x) * 0.5,
+    cz: (bounds.min.z + bounds.max.z) * 0.5,
+    halfWidth: width * 0.5,
+    halfLength: length * 0.5,
+    minY: clampToGround ? Math.max(0, bounds.min.y) : bounds.min.y,
+    maxY: bounds.max.y,
+  };
+}
+
+function isMovementPart(bounds: Box3): boolean {
+  const height = bounds.max.y - bounds.min.y;
+  const width = bounds.max.x - bounds.min.x;
+  const length = bounds.max.z - bounds.min.z;
+  return bounds.min.y <= 0.62
+    && bounds.max.y >= 0.56
+    && height >= MIN_STRUCTURAL_HEIGHT
+    && width >= MIN_FOOTPRINT_EDGE
+    && length >= MIN_FOOTPRINT_EDGE;
+}
+
+function collectMovementCandidates(
+  buckets: GeometryBuckets,
+): { candidates: MutableFootprint[]; sourceParts: number } {
+  const candidates: MutableFootprint[] = [];
+  let sourceParts = 0;
+  for (const bucket of MOVEMENT_BUCKETS) {
+    for (const geometry of buckets[bucket] || []) {
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      // Foundations, dock decks and paving remain traversable contact surfaces
+      // for tanks. Near-flat ground slabs are owned by terrain instead.
+      if (!bounds || !isMovementPart(bounds)) continue;
+      sourceParts += 1;
+      candidates.push(footprintFromBounds(bounds, true));
+    }
+  }
+  return { candidates, sourceParts };
+}
+
+function mergeDuplicateFootprint(
+  footprints: readonly MutableFootprint[],
+  candidate: MutableFootprint,
+): boolean {
+  const duplicate = footprints.find((footprint) => {
+    const intersection = overlapArea(footprint, candidate);
+    return intersection / Math.max(1e-6, Math.min(area(footprint), area(candidate))) > 0.92;
+  });
+  if (!duplicate) return false;
+  duplicate.minY = Math.min(duplicate.minY, candidate.minY);
+  duplicate.maxY = Math.max(duplicate.maxY, candidate.maxY);
+  return true;
+}
+
+function dedupeMovementCandidates(candidates: MutableFootprint[]): MutableFootprint[] {
+  candidates.sort((a, b) => area(b) - area(a));
+  const footprints: MutableFootprint[] = [];
+  for (const candidate of candidates) {
+    if (footprints.some((footprint) => contains(footprint, candidate))) continue;
+    // Repeated facade layers can differ by a few centimetres. Keep the larger
+    // solid and discard the nearly coincident skin, but never bridge real air.
+    if (mergeDuplicateFootprint(footprints, candidate)) continue;
+    footprints.push(candidate);
+  }
+  return mergeCollinearFootprints(footprints);
+}
+
+function auditMovementCollision(
+  buckets: GeometryBuckets,
+  dimensions: StructureDimensions,
+  structureId: string,
+): StructureCollisionAudit {
+  const { candidates, sourceParts } = collectMovementCandidates(buckets);
+  const footprints = dedupeMovementCandidates(candidates);
+  if (structureId && !structureCollisionOpenIds.has(structureId)) {
+    const envelope = closedStructureEnvelope(buckets, dimensions);
+    if (envelope) return finishAudit('movement', [envelope], dimensions, sourceParts, 1);
+  }
+  // Pathological decorative structures are bounded without reverting to one
+  // giant box: retain the largest pieces, which are always walls/supports.
+  return finishAudit(
+    'movement', footprints, dimensions, sourceParts, MAX_MOVEMENT_FOOTPRINTS,
+  );
+}
+
+function isOverheadPart(bounds: Box3): boolean {
+  const height = bounds.max.y - bounds.min.y;
+  const width = bounds.max.x - bounds.min.x;
+  const length = bounds.max.z - bounds.min.z;
+  return bounds.min.y > 0.62
+    && bounds.max.y >= 0.12
+    && height >= 0.075
+    && width >= MIN_FOOTPRINT_EDGE
+    && length >= MIN_FOOTPRINT_EDGE;
+}
+
+function addOverheadFootprint(
+  movement: MutableFootprint[],
+  overhead: MutableFootprint[],
+  candidate: MutableFootprint,
+): void {
+  const column = movement.find((footprint) => contains(footprint, candidate));
+  if (column) {
+    column.maxY = Math.max(column.maxY, candidate.maxY);
+    return;
+  }
+  if (overhead.some((footprint) => contains(footprint, candidate))) return;
+  if (mergeDuplicateFootprint(overhead, candidate)) return;
+  overhead.push(candidate);
+}
+
+function collectOverheadFootprints(
+  buckets: GeometryBuckets,
+  movement: MutableFootprint[],
+): { overhead: MutableFootprint[]; sourceParts: number } {
+  const overhead: MutableFootprint[] = [];
+  let sourceParts = 0;
+  for (const bucket of RAY_BUCKETS) {
+    for (const geometry of buckets[bucket] || []) {
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      if (!bounds || !isOverheadPart(bounds)) continue;
+      sourceParts += 1;
+      addOverheadFootprint(movement, overhead, footprintFromBounds(bounds));
+    }
+  }
+  return { overhead: mergeCollinearFootprints(overhead), sourceParts };
+}
+
+function auditRayCollision(
+  buckets: GeometryBuckets,
+  dimensions: StructureDimensions,
+  structureId: string,
+): StructureCollisionAudit {
+  // Start with the exact lateral collision volumes. Closed walls therefore
+  // remain solid below their roof instead of being replaced by a broad slab.
+  const movement = auditMovementCollision(buckets, dimensions, structureId);
+  const footprints = movement.footprints.map((footprint) => ({ ...footprint }));
+  if (structureId && !STRUCTURE_OVERHEAD_IDS.has(structureId)) {
+    if (!structureCollisionOpenIds.has(structureId)) {
+      for (const footprint of footprints) {
+        footprint.maxY = Math.max(footprint.maxY, dimensions.h);
+      }
+    }
+    return finishAudit(
+      'ray', footprints, dimensions, movement.sourceParts, MAX_RAY_FOOTPRINTS,
+    );
+  }
+
+  const { overhead, sourceParts } = collectOverheadFootprints(buckets, footprints);
+  overhead.sort((a, b) => area(b) - area(a));
+  return finishAudit(
+    'ray',
+    [...footprints, ...overhead],
+    dimensions,
+    movement.sourceParts + sourceParts,
+    MAX_RAY_FOOTPRINTS,
+  );
+}
+
 /**
  * Derive compound collision from the real authored geometry. Movement audits
  * ignore paving and overhead roofs so tanks retain genuine open passages.
@@ -255,140 +418,9 @@ export function auditStructureCollision(
   purpose: StructureCollisionPurpose = 'movement',
   structureId = '',
 ): StructureCollisionAudit {
-  if (purpose === 'ray') {
-    // Start with the exact lateral collision volumes. Closed walls therefore
-    // remain solid below their roof instead of being replaced by a broad,
-    // high roof slab. Add only high parts whose plan area is not already
-    // covered; parts inside a wall column merely extend that column upward.
-    const movement = auditStructureCollision(buckets, dimensions, 'movement', structureId);
-    const footprints = movement.footprints.map((footprint) => ({ ...footprint }));
-    // Closed structures are not enterable and already expose their exact
-    // exterior plan. Extending that prism to the authored roof height is both
-    // ray-correct and much cheaper than dozens of coplanar facade/roof boxes.
-    // Open structures opt into the overhead pass only when they visibly carry
-    // a canopy, bridge, elevated deck or upper container tier.
-    if (structureId && !STRUCTURE_OVERHEAD_IDS.has(structureId)) {
-      if (!structureCollisionOpenIds.has(structureId)) {
-        for (const footprint of footprints) {
-          footprint.maxY = Math.max(footprint.maxY, dimensions.h);
-        }
-      }
-      return finishAudit('ray', footprints, dimensions, movement.sourceParts,
-        MAX_RAY_FOOTPRINTS);
-    }
-    let sourceParts = movement.sourceParts;
-    const overhead: MutableFootprint[] = [];
-    for (const bucket of RAY_BUCKETS) {
-      for (const geometry of buckets[bucket] || []) {
-        geometry.computeBoundingBox();
-        const bounds = geometry.boundingBox;
-        if (!bounds || bounds.min.y <= 0.62 || bounds.max.y < 0.12) continue;
-        const height = bounds.max.y - bounds.min.y;
-        const width = bounds.max.x - bounds.min.x;
-        const length = bounds.max.z - bounds.min.z;
-        if (height < 0.075 || width < MIN_FOOTPRINT_EDGE || length < MIN_FOOTPRINT_EDGE) continue;
-        sourceParts += 1;
-        const candidate: MutableFootprint = {
-          cx: (bounds.min.x + bounds.max.x) * 0.5,
-          cz: (bounds.min.z + bounds.max.z) * 0.5,
-          halfWidth: width * 0.5,
-          halfLength: length * 0.5,
-          minY: bounds.min.y,
-          maxY: bounds.max.y,
-        };
-        const column = footprints.find((footprint) => contains(footprint, candidate));
-        if (column) {
-          column.maxY = Math.max(column.maxY, candidate.maxY);
-          continue;
-        }
-        if (overhead.some((footprint) => contains(footprint, candidate))) continue;
-        const duplicate = overhead.find((footprint) => {
-          const intersection = overlapArea(footprint, candidate);
-          return intersection / Math.max(1e-6, Math.min(area(footprint), area(candidate))) > 0.92;
-        });
-        if (duplicate) {
-          duplicate.minY = Math.min(duplicate.minY, candidate.minY);
-          duplicate.maxY = Math.max(duplicate.maxY, candidate.maxY);
-          continue;
-        }
-        overhead.push(candidate);
-      }
-    }
-    const mergedOverhead = mergeCollinearFootprints(overhead);
-    mergedOverhead.sort((a, b) => area(b) - area(a));
-    return finishAudit(
-      purpose,
-      [...footprints, ...mergedOverhead],
-      dimensions,
-      sourceParts,
-      MAX_RAY_FOOTPRINTS,
-    );
-  }
-
-  const candidates: MutableFootprint[] = [];
-  let sourceParts = 0;
-  for (const bucket of MOVEMENT_BUCKETS) {
-    for (const geometry of buckets[bucket] || []) {
-      geometry.computeBoundingBox();
-      const bounds = geometry.boundingBox;
-      if (!bounds) continue;
-      const height = bounds.max.y - bounds.min.y;
-      const width = bounds.max.x - bounds.min.x;
-      const length = bounds.max.z - bounds.min.z;
-      // Foundations, dock decks and paving remain traversable contact surfaces
-      // for tanks. Ray queries keep high structural parts but continue to omit
-      // near-flat ground slabs: terrain owns those impacts.
-      if (bounds.min.y > 0.62 || bounds.max.y < 0.56) continue;
-      if (height < MIN_STRUCTURAL_HEIGHT) continue;
-      if (width < MIN_FOOTPRINT_EDGE || length < MIN_FOOTPRINT_EDGE) continue;
-      sourceParts += 1;
-      candidates.push({
-        cx: (bounds.min.x + bounds.max.x) * 0.5,
-        cz: (bounds.min.z + bounds.max.z) * 0.5,
-        halfWidth: width * 0.5,
-        halfLength: length * 0.5,
-        minY: Math.max(0, bounds.min.y),
-        maxY: bounds.max.y,
-      });
-    }
-  }
-
-  candidates.sort((a, b) => area(b) - area(a));
-  const footprints: MutableFootprint[] = [];
-  for (const candidate of candidates) {
-    if (footprints.some((footprint) => contains(footprint, candidate))) continue;
-    // Repeated facade layers can differ by a few centimetres. Keep the larger
-    // solid and discard the nearly coincident skin, but never bridge real air.
-    const duplicate = footprints.find((footprint) => {
-      const intersection = overlapArea(footprint, candidate);
-      return intersection / Math.max(1e-6, Math.min(area(footprint), area(candidate))) > 0.92;
-    });
-    if (duplicate) {
-      duplicate.minY = Math.min(duplicate.minY, candidate.minY);
-      duplicate.maxY = Math.max(duplicate.maxY, candidate.maxY);
-      continue;
-    }
-    footprints.push(candidate);
-  }
-
-  const mergedFootprints = mergeCollinearFootprints(footprints);
-
-  if (structureId && !structureCollisionOpenIds.has(structureId)) {
-    const envelope = closedStructureEnvelope(buckets, dimensions);
-    if (envelope) {
-      return finishAudit(purpose, [envelope], dimensions, sourceParts, 1);
-    }
-  }
-
-  // Pathological decorative structures are bounded without reverting to one
-  // giant box: retain the largest pieces, which are always walls/supports.
-  return finishAudit(
-    purpose,
-    mergedFootprints,
-    dimensions,
-    sourceParts,
-    MAX_MOVEMENT_FOOTPRINTS,
-  );
+  return purpose === 'ray'
+    ? auditRayCollision(buckets, dimensions, structureId)
+    : auditMovementCollision(buckets, dimensions, structureId);
 }
 
 export const structureCollisionLimits = Object.freeze({

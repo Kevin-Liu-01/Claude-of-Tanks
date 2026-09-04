@@ -135,6 +135,35 @@ function horizonStyleStat(value: string | null | undefined): GarageArchitectureS
   }
 }
 
+function selectedBuildIsReady(
+  selected: GarageVariant | null,
+  selectedBuild: GarageEnvironmentBuild | null | undefined,
+  active: GarageEnvironmentBuild | null,
+  group: THREE.Group,
+  retiredBuilds: WeakSet<GarageEnvironmentBuild>,
+): selectedBuild is GarageEnvironmentBuild {
+  return !!selected
+    && !!selectedBuild
+    && active === selectedBuild
+    && active.root === selectedBuild.root
+    && selectedBuild.root.parent === group
+    && !retiredBuilds.has(selectedBuild)
+    && selectedBuild.root.userData.architectureKey === selected.architecture
+    && selectedBuild.root.userData.ready === true;
+}
+
+function selectedBuildIsPresented(
+  selected: GarageVariant | null,
+  selectedBuild: GarageEnvironmentBuild | null | undefined,
+  group: THREE.Group,
+  ready: boolean,
+): boolean {
+  return ready && !!selectedBuild && (
+    selected?.architecture === 'field_shed'
+    || (group.visible && selectedBuild.root.visible && selectedBuild.root.children.length > 0)
+  );
+}
+
 function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
   const root = new THREE.Group();
   root.name = 'garage_environment_field_shed';
@@ -317,22 +346,15 @@ export function createGarageArchitectureController(
   };
 
   const collectStats = (): GarageArchitectureStats => {
-    const root = active?.root;
     const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
     const selectedBuild = selected ? cache.get(selected.architecture) : null;
-    const selectedReady = !!selected
-      && !!selectedBuild
-      && active === selectedBuild
-      && root === selectedBuild?.root
-      && root?.parent === group
-      && !retiredBuilds.has(selectedBuild)
-      && root.userData.architectureKey === selected.architecture
-      && root.userData.ready === true;
-    const selectedPresented = selectedReady && (
-      selected?.architecture === 'field_shed'
-      || (group.visible && root.visible && root.children.length > 0)
+    const selectedReady = selectedBuildIsReady(
+      selected, selectedBuild, active, group, retiredBuilds,
     );
-    const data = selectedReady ? root?.userData || {} : {};
+    const selectedPresented = selectedBuildIsPresented(
+      selected, selectedBuild, group, selectedReady,
+    );
+    const data = selectedReady ? selectedBuild.root.userData : {};
     return {
       key: selected?.architecture || 'field_shed',
       mapId: selected?.mapId || 'verdant',

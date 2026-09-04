@@ -446,6 +446,14 @@ interface ShellImpactSettings {
 interface PropsBuildSlice {
   fine?: boolean;
   tankBuilder?: string;
+  stage?: string;
+}
+
+interface PropsBuildDetail {
+  sliceCount: number;
+  synchronousMs: number;
+  maxSliceMs: number;
+  slowest: Array<{ stage: string; ms: number }>;
 }
 
 interface TankWreckSpot {
@@ -501,6 +509,7 @@ export interface PropsRuntime {
     buildings: PlacedBuilding[];
     tacticalBeats: TacticalBeatFeature[];
   };
+  _buildDetail?: PropsBuildDetail;
 }
 
 const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = DESTRUCTIBLE_TYPES;
@@ -2271,16 +2280,34 @@ export async function createPropsAsync(
   fineSlices = false,
 ): Promise<PropsRuntime> {
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  const slices: Array<{ stage: string; ms: number }> = [];
+  let synchronousMs = 0;
+  let nextStartedAt = performance.now();
   let r = g.next();
   let i = 0;
   const total = fineSlices ? 180 : 9;
   while (!r.done) {
+    const sliceMs = performance.now() - nextStartedAt;
+    synchronousMs += sliceMs;
     const step = r.value;
+    slices.push({ stage: step?.stage || `slice-${i}`, ms: sliceMs });
     if (step?.tankBuilder) await ensureTankBuilder(step.tankBuilder);
     if (tick && (fineSlices || !step || !step.fine)) await tick(++i, total);
+    nextStartedAt = performance.now();
     r = g.next();
   }
-  return r.value;
+  const finalMs = performance.now() - nextStartedAt;
+  synchronousMs += finalMs;
+  slices.push({ stage: 'finalize', ms: finalMs });
+  const runtime = r.value;
+  const slowest = slices.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+  runtime._buildDetail = {
+    sliceCount: slices.length,
+    synchronousMs,
+    maxSliceMs: slowest[0]?.ms || 0,
+    slowest,
+  };
+  return runtime;
 }
 
 function* propsBuildSteps(
@@ -2726,7 +2753,7 @@ ${snowCap ? `
     }
   }
 
-  yield;
+  yield { stage: 'yard-clutter' };
   // --- village buildings along the roads ---
   const roads = L.roads;
   // junction/plaza: the road crossing nearest the village/town center
@@ -3513,6 +3540,8 @@ ${snowCap ? `
   }
   placeBoundaryWalls();
 
+  yield { fine: true, stage: 'boundary-walls' };
+
   // --- village well near the junction ---
   function placeVillageWell(): void {
     if (!P.well) return;
@@ -3538,6 +3567,8 @@ ${snowCap ? `
       { min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
   }
   placeVillageWell();
+
+  yield { fine: true, stage: 'village-well' };
 
   // --- INHABITING OBJECTS (world-dressing r1): themed destructible dressing
   // per map config zones — market ring on the plaza, working clutter through
@@ -3656,7 +3687,7 @@ ${snowCap ? `
   placeInhabitingObjects();
 
   // --- DESTRUCTIBLES r1: soft-vehicle + military-clutter dressing ----------
-  yield;
+  yield { stage: 'settlement-dressing' };
   // Supply trucks and utility 4x4s parked on roadside pull-offs and yards
   // (destructible to burnt hulks), fuel-drum clusters with the rare RED
   // explosive drum, ammo-box stacks, and campsite/supply-dump story clusters
@@ -3877,6 +3908,8 @@ ${snowCap ? `
   }
   placeMilitaryClutter();
 
+  yield { fine: true, stage: 'military-clutter' };
+
   // --- hay bales + crates near buildings (world-dressing r1: instanced
   // DESTRUCTIBLES — a hull crushes them, shells burst them, hay puffs) ---
   function placeHayAndCrates(): void {
@@ -3894,6 +3927,8 @@ ${snowCap ? `
     }
   }
   placeHayAndCrates();
+
+  yield { fine: true, stage: 'hay-and-crates' };
 
   // --- wooden fence runs + telegraph poles along the roads ---
   // world-dressing r1: road fences are now DESTRUCTIBLE fence-kit modules
@@ -4101,6 +4136,8 @@ ${snowCap ? `
   }
   utilityNetwork = placeRoadsideUtilities();
 
+  yield { fine: true, stage: 'roadside-utilities' };
+
   // --- rocks (instanced, 3 displaced-icosahedron variants) ---
   // r3 terrain_environment: REBUILT. The old detail-1 icospheres with one
   // low-frequency displacement octave kept their geodesic facet pattern and
@@ -4175,6 +4212,8 @@ ${snowCap ? `
   }
   }
   buildRockVariants();
+
+  yield { fine: true, stage: 'rock-variants' };
   const rockPlacements: THREE.Matrix4[][] = [[], [], []];
   function tryRock(
     x: number,
@@ -4244,6 +4283,8 @@ ${snowCap ? `
   }
   }
   placeTacticalOutcrops();
+
+  yield { fine: true, stage: 'tactical-outcrops' };
   // r3: per-map surface-rock sink (winter buries boulders deeper so they
   // read as drift-covered rock shoulders, not loose balls ON the snow)
   const surfSink = P.rockSink ?? 0.22;
@@ -4253,6 +4294,8 @@ ${snowCap ? `
     }
   }
   scatterSurfaceRocks();
+
+  yield { fine: true, stage: 'surface-rocks' };
   // r3 terrain_environment: embedded half-buried boulders — sunk to ~60% so
   // the ground reads like it HOLDS rock instead of hosting loose balls; no
   // colliders (drive-over ground clutter), pairs with the new heightfield
@@ -4263,6 +4306,8 @@ ${snowCap ? `
     }
   }
   scatterEmbeddedRocks();
+
+  yield { fine: true, stage: 'embedded-rocks' };
   // boulder outcrop clusters: chunky hull-down cover groups in the open field
   function scatterBoulderOutcrops(): void {
   for (let c = 0, made = 0; c < P.outcrops * 8 && made < P.outcrops; c++) {
@@ -4278,6 +4323,8 @@ ${snowCap ? `
   }
   }
   scatterBoulderOutcrops();
+
+  yield { fine: true, stage: 'boulder-outcrops' };
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
@@ -4291,6 +4338,8 @@ ${snowCap ? `
   }
   }
   instantiateRockVariants();
+
+  yield { fine: true, stage: 'rock-instances' };
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---
   const stackSpots: Array<{ x: number; z: number; r: number }> = []; // r6: fed to the grounding-decal pass below
@@ -4318,6 +4367,8 @@ ${snowCap ? `
   }
   }
   placeFieldHaystacks();
+
+  yield { fine: true, stage: 'field-haystacks' };
 
   // --- field clutter: fallen logs + stumps (visual ground detail) ---
   function placeFieldLogsAndStumps(): void {
@@ -4362,7 +4413,7 @@ ${snowCap ? `
   placeFieldLogsAndStumps();
 
   // --- standing crop fields (r6 terrain_environment) ------------------------
-  yield;
+  yield { stage: 'field-logs-and-stumps' };
   // The open farmland carried no crops at all ("summer fields have no crops"
   // critique) — WoT maps stage their fields with standing grain. Each plot is
   // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
