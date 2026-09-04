@@ -121,6 +121,61 @@ function edgePlaneIntersections(
   ]];
 }
 
+function uniqueSlicePoints(points: readonly SlicePoint[]): SlicePoint[] {
+  const unique: SlicePoint[] = [];
+  for (const point of points) {
+    const duplicate = unique.some(([x, y]) => (
+      Math.hypot(point[0] - x, point[1] - y) <= EPSILON
+    ));
+    if (!duplicate) unique.push(point);
+  }
+  return unique;
+}
+
+function farthestSliceSegment(points: readonly SlicePoint[]): {
+  pair: SliceSegment;
+  distance: number;
+} | null {
+  if (points.length < 2) return null;
+  let pair: SliceSegment = [points[0], points[1]];
+  let distance = 0;
+  for (let left = 0; left < points.length; left++) {
+    for (let right = left + 1; right < points.length; right++) {
+      const candidateDistance = Math.hypot(
+        points[left][0] - points[right][0],
+        points[left][1] - points[right][1],
+      );
+      if (candidateDistance > distance) {
+        pair = [points[left], points[right]];
+        distance = candidateDistance;
+      }
+    }
+  }
+  return { pair, distance };
+}
+
+function trianglePlaneSegment(
+  planeZ: number,
+  maxRadiusM: number,
+): SliceSegment | null {
+  const minZ = Math.min(_a.z, _b.z, _c.z);
+  const maxZ = Math.max(_a.z, _b.z, _c.z);
+  if (planeZ < minZ - EPSILON || planeZ > maxZ + EPSILON) return null;
+  const triangleLiesOnPlane = Math.abs(_a.z - planeZ) <= EPSILON
+    && Math.abs(_b.z - planeZ) <= EPSILON
+    && Math.abs(_c.z - planeZ) <= EPSILON;
+  if (triangleLiesOnPlane) return null;
+  const unique = uniqueSlicePoints([
+    ...edgePlaneIntersections(_a, _b, planeZ),
+    ...edgePlaneIntersections(_b, _c, planeZ),
+    ...edgePlaneIntersections(_c, _a, planeZ),
+  ]);
+  const segment = farthestSliceSegment(unique);
+  if (!segment || segment.distance <= EPSILON) return null;
+  if (segment.pair.some(([x, y]) => Math.hypot(x, y) > maxRadiusM)) return null;
+  return segment.pair;
+}
+
 function appendGeometrySlice(
   segments: SliceSegment[],
   mesh: THREE.Mesh,
@@ -142,38 +197,8 @@ function appendGeometrySlice(
     readVertex(_a, index ? index.getX(offset) : offset);
     readVertex(_b, index ? index.getX(offset + 1) : offset + 1);
     readVertex(_c, index ? index.getX(offset + 2) : offset + 2);
-    const minZ = Math.min(_a.z, _b.z, _c.z);
-    const maxZ = Math.max(_a.z, _b.z, _c.z);
-    if (planeZ < minZ - EPSILON || planeZ > maxZ + EPSILON) continue;
-    if (Math.abs(_a.z - planeZ) <= EPSILON
-      && Math.abs(_b.z - planeZ) <= EPSILON
-      && Math.abs(_c.z - planeZ) <= EPSILON) continue;
-    const intersections = [
-      ...edgePlaneIntersections(_a, _b, planeZ),
-      ...edgePlaneIntersections(_b, _c, planeZ),
-      ...edgePlaneIntersections(_c, _a, planeZ),
-    ];
-    const unique: SlicePoint[] = [];
-    for (const point of intersections) {
-      if (!unique.some(([x, y]) => Math.hypot(point[0] - x, point[1] - y) <= EPSILON)) {
-        unique.push(point);
-      }
-    }
-    if (unique.length < 2) continue;
-    let pair: SliceSegment = [unique[0], unique[1]];
-    let pairDistance = 0;
-    for (let i = 0; i < unique.length; i++) {
-      for (let j = i + 1; j < unique.length; j++) {
-        const distance = Math.hypot(unique[i][0] - unique[j][0], unique[i][1] - unique[j][1]);
-        if (distance > pairDistance) {
-          pair = [unique[i], unique[j]];
-          pairDistance = distance;
-        }
-      }
-    }
-    if (pairDistance <= EPSILON) continue;
-    if (pair.some(([x, y]) => Math.hypot(x, y) > maxRadiusM)) continue;
-    segments.push(pair);
+    const segment = trianglePlaneSegment(planeZ, maxRadiusM);
+    if (segment) segments.push(segment);
   }
 }
 
