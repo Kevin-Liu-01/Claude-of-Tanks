@@ -53,6 +53,7 @@ import {
 } from './materials.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import type { FleetTankSpec } from './specContracts.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type Rng = () => number;
 type GeometryScale = number | readonly [number, number, number];
@@ -329,7 +330,7 @@ type SlotPlacer = (
   name: string,
 ) => boolean;
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 

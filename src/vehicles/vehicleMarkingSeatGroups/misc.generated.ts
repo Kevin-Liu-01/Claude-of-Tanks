@@ -3,7 +3,9 @@
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
-export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.freeze({
+import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
+
+export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
   "t80u": {
     "schemaVersion": 1,
     "seats": [

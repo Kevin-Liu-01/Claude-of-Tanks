@@ -55,18 +55,25 @@ import {
   type ProfileBuildFunctions,
   type VehicleProfileRecord,
 } from './profileBuilderAdapter.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
-type GroupLoader = () => Promise<unknown>;
+type GroupLoader = () => Promise<object | void>;
 type TankVisual = ReturnType<typeof createTankCore>;
 
 export interface CreateTankOptions {
   camo?: string;
+  camoPattern?: string | null;
+  camoSeed?: number;
+  batchStatic?: boolean;
+  battleDetailLod?: boolean;
+  decor?: boolean;
+  deferStaticBatch?: boolean;
   geometryQuality?: 'high' | 'low';
   geometryReceipt?: boolean;
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   quality?: 'high' | 'ai' | 'low' | 'preview';
-  [key: string]: unknown;
+  staticPreview?: boolean;
 }
 
 applyFleetBalancePass(TANK_SPECS);
@@ -224,7 +231,7 @@ export function isTankBuilderReady(specId: string): boolean {
 
 export function createTank(
   specId: string,
-  engineCtx: unknown,
+  engineCtx: RuntimeValue,
   opts: CreateTankOptions = {},
 ): TankVisual {
   if (!isTankBuilderReady(specId)) {

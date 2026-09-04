@@ -381,7 +381,7 @@ export function addInternalModuleModel(
   hullGroup: THREE.Object3D,
   turretGroup: THREE.Object3D,
   disposables: AnatomyResource[],
-  era: unknown,
+  era: string | undefined,
   caliberMm: number,
   steelMaterial: MaterialPort = material,
   armor: InternalArmorModelPort | null = null,

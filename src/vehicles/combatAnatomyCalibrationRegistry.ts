@@ -40,7 +40,7 @@ export interface AnatomyEraPlateReceipt extends Record<string, RuntimeValue> {
 
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly hull: AnatomyCalibrationBounds;
-  readonly turret?: AnatomyCalibrationBounds;
+  readonly turret?: AnatomyCalibrationBounds | null;
   readonly hullCollision?: readonly AnatomyCalibrationCell[];
   readonly turretCollision?: readonly AnatomyCalibrationCell[];
   readonly hullStructureCollision?: readonly AnatomyCalibrationCell[];

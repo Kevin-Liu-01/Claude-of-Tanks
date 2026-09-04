@@ -15,8 +15,11 @@ import type { HeightField } from '../world/terrain.ts';
 
 const SIM_DT = 1 / 60;
 const FLAT_NORMAL = new Vector3(0, 1, 0);
+const FLAT_VILLAGE = Object.freeze({
+  x0: 0, x1: 0, z0: 0, z1: 0, cx: 0, cz: 0, feather: 0, flatten: 0,
+});
 
-const FLAT_RANGE_HEIGHT_FIELD = {
+const FLAT_RANGE_HEIGHT_FIELD: HeightField = {
   getHeightAt: () => 0,
   getHeightAtFast: () => 0,
   *warmFastTilesAround() {},
@@ -29,9 +32,28 @@ const FLAT_RANGE_HEIGHT_FIELD = {
   _roadDist: () => 0,
   _villageMask: () => 0,
   _noVeg: () => true,
-  _layout: {},
+  _layout: {
+    village: FLAT_VILLAGE,
+    marshes: [],
+    lakes: [],
+    spawns: { player: { x: 0, z: 0 }, enemies: [] },
+    roads: [],
+    terrain: {
+      hillScale: 0,
+      microScale: 0,
+      rimH: 0,
+      village: FLAT_VILLAGE,
+      marshes: [],
+      lakes: [],
+      frozenMarshes: false,
+      dunes: null,
+      mesas: null,
+      landforms: [],
+      roads: 'country',
+    },
+  },
   _mesaW: null,
-} as unknown as HeightField;
+};
 
 const FLAT_RANGE_WORLD: AuthoritativeWorldCollision = {
   mapId: 'steppe',

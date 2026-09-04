@@ -26,15 +26,11 @@ interface SourceCredit {
 }
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-const tankSpecs: typeof TANK_SPECS & Record<string, unknown> = TANK_SPECS;
-
-function isFleetSpecRecord(value: unknown): value is FleetTankSpec {
-  return value !== null && typeof value === 'object';
-}
+const tankSpecs: Record<string, FleetTankSpec> = TANK_SPECS;
 
 function requireFleetSpec(id: string): FleetTankSpec {
   const spec = tankSpecs[id];
-  if (!isFleetSpecRecord(spec)) throw new Error(`Supplemental fleet donor missing or incomplete: ${id}`);
+  if (!spec) throw new Error(`Supplemental fleet donor missing or incomplete: ${id}`);
   return spec;
 }
 

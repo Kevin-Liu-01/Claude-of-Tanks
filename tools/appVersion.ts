@@ -15,7 +15,7 @@ const REVISION_ENV_KEYS = Object.freeze([
 
 type BuildEnvironment = Readonly<Record<string, string | undefined>>;
 
-function normalizedRevision(value: unknown): string {
+function normalizedRevision(value: string | undefined): string {
   const match = String(value || '').trim().match(/^[0-9a-f]{7,40}$/i);
   return match ? match[0].toLowerCase().slice(0, 9) : '';
 }
