@@ -4828,6 +4828,91 @@ function openRackGrid(
   return geometry;
 }
 
+function stowageBody(style: number, width: number, height: number, depth: number): THREE.BufferGeometry {
+  const body = style === 0
+    ? box(width, height, depth)
+    : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0, [
+      width * (style === 1 ? 0.98 : 0.92),
+      height * 0.94,
+      depth * (style === 1 ? 0.96 : 0.90),
+    ]);
+  body.userData.designFamily = 'cot-soft-stowage-v2';
+  body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
+  return body;
+}
+
+function addStowageFlap(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const isRuck = style === 2;
+  const flapDepth = isRuck ? depth * 0.64 : depth * 1.04;
+  P.addEquipment(
+    bucket,
+    box(width * (isRuck ? 0.76 : 1.04), height * 0.16, flapDepth),
+    x, y + height * 0.46, z + (isRuck ? depth * 0.08 : 0), 0, yaw, -0.025,
+  );
+}
+
+function addStowageStyleDetails(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  darkBucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  if (style === 2) {
+    for (const side of [-1, 1]) {
+      addEquipmentLocal(P, bucket, box(width * 0.18, height * 0.42, depth * 0.34),
+        x, y, z, yaw, side * width * 0.46, -height * 0.08, -depth * 0.02);
+    }
+  } else if (style === 1) {
+    P.addEquipment(darkBucket, box(width * 0.34, 0.026, 0.026),
+      x, y + height * 0.50, z - depth * 0.02, 0, yaw, 0);
+  }
+}
+
+function addStowageStraps(
+  P: EquipmentBuilderPort,
+  darkBucket: string,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const along = depth >= width;
+  for (const fraction of [-0.28, 0.28]) {
+    const strap = along
+      ? box(width * 1.06, height * 1.04, 0.028)
+      : box(0.028, height * 1.04, depth * 1.06);
+    strap.userData.designFamily = 'cot-webbing-strap-v2';
+    addEquipmentLocal(P, darkBucket, strap, x, y + height * 0.02, z, yaw,
+      along ? 0 : fraction * width, 0, along ? fraction * depth : 0);
+    addEquipmentLocal(P, darkBucket, box(0.07, 0.018, 0.055),
+      x, y + height * 0.54, z, yaw,
+      along ? fraction * width * 0.10 : fraction * width,
+      0,
+      along ? fraction * depth : fraction * depth * 0.10);
+  }
+}
+
 function stowage(
   builder: object,
   bucket: string,
@@ -4842,37 +4927,10 @@ function stowage(
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
     const style = Math.min(2, Math.floor(rng() * 3));
-    const body = style === 0
-      ? box(w, h, d)
-      : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0,
-        [w * (style === 1 ? 0.98 : 0.92), h * 0.94, d * (style === 1 ? 0.96 : 0.90)]);
-    body.userData.designFamily = 'cot-soft-stowage-v2';
-    body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
-    P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-    const flapDepth = style === 2 ? d * 0.64 : d * 1.04;
-    P.addEquipment(bucket, box(w * (style === 2 ? 0.76 : 1.04), h * 0.16, flapDepth),
-      x, y + h * 0.46, z + (style === 2 ? d * 0.08 : 0), 0, yaw, -0.025);      // folded flap / tarp lid
-    if (style === 2) {
-      for (const side of [-1, 1]) {
-        addEquipmentLocal(P, bucket, box(w * 0.18, h * 0.42, d * 0.34),
-          x, y, z, yaw, side * w * 0.46, -h * 0.08, -d * 0.02);                // asymmetric field pockets
-      }
-    } else if (style === 1) {
-      P.addEquipment(dark, box(w * 0.34, 0.026, 0.026),
-        x, y + h * 0.50, z - d * 0.02, 0, yaw, 0);                             // duffel carry handle
-    }
-    const along = d >= w;                                    // straps across the long axis
-    for (const f of [-0.28, 0.28]) {
-      const strap = along
-        ? box(w * 1.06, h * 1.04, 0.028)
-        : box(0.028, h * 1.04, d * 1.06);
-      strap.userData.designFamily = 'cot-webbing-strap-v2';
-      addEquipmentLocal(P, dark, strap, x, y + h * 0.02, z, yaw,
-        along ? 0 : f * w, 0, along ? f * d : 0);
-      addEquipmentLocal(P, dark, box(0.07, 0.018, 0.055),
-        x, y + h * 0.54, z, yaw, along ? f * w * 0.10 : f * w, 0,
-        along ? f * d : f * d * 0.10);                                         // visible strap buckle
-    }
+    P.addEquipment(bucket, stowageBody(style, w, h, d), x, y, z, 0, yaw, 0);
+    addStowageFlap(P, bucket, style, x, y, z, w, h, d, yaw);
+    addStowageStyleDetails(P, bucket, dark, style, x, y, z, w, h, d, yaw);
+    addStowageStraps(P, dark, x, y, z, w, h, d, yaw);
   }
 }
 
