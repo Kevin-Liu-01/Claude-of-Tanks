@@ -126,6 +126,79 @@ function addHull(P: LightTigerBuilderPort): void {
   }
 }
 
+function addRunningGearSide(P: LightTigerBuilderPort, side: number): void {
+  // The layered skirt begins at the real track envelope and folds into the
+  // upper-glacis shoulder, keeping the side profile sealed without shoe clips.
+  P.addExternalArmor('hull', orientedSlab(
+    [side * 1.71, 0.91, 2.42], [side * 1.87, 0.91, 2.42],
+    [side * 1.69, 0.45, 3.27], [side * 1.85, 0.45, 3.27],
+    [side * 1.71, 1.82, 2.42], [side * 1.87, 1.82, 2.42],
+    [side * 1.69, 1.27, 3.27], [side * 1.85, 1.27, 3.27],
+  ));
+  P.addExternalArmor('hull', orientedSlab(
+    // One continuous planar shoulder replaces the detached triangular cap.
+    // Its inner rail overlaps the upper-glacis edge, its outer rail keys
+    // into the folded skirt, and both rails share the same descending bow
+    // line. The deliberate overlap prevents a light leak at either seam.
+    [side * 1.38, 1.77, 1.60], [side * 1.70, 1.68, 2.42],
+    [side * 1.68, 1.24, 3.27], [side * 1.04, 1.19, 3.25],
+    [side * 1.44, 1.91, 1.60], [side * 1.71, 1.82, 2.42],
+    [side * 1.69, 1.38, 3.27], [side * 1.10, 1.32, 3.25],
+  ));
+  for (let index = 0; index < 9; index++) {
+    const z = 2.22 - index * 0.64;
+    const end = index === 8;
+    const moduleH = end ? 0.82 : 0.96;
+    const moduleY = end ? 1.42 : 1.43;
+    const roll = side * (end ? 0.050 : 0.016);
+    P.addExternalArmor('hull', KIT.box(0.10, moduleH, 0.64),
+      side * 1.77, moduleY, z, 0, 0, roll);
+    P.addExternalArmor('hull', KIT.box(0.050, moduleH - 0.08, 0.64),
+      side * 1.84, moduleY, z, 0, 0, roll);
+    for (const [row, y] of [-1, 1].map((row) => [row,
+      moduleY + row * moduleH * 0.225] as const)) {
+      const stagger = row * 0.010 * (index % 2 ? -1 : 1);
+      P.addExternalArmor('hull', KIT.box(0.070, moduleH * 0.42, 0.64),
+        side * 1.895, y, z + stagger, 0, 0, roll - row * side * 0.008);
+      P.add('hullDark', KIT.box(0.012, moduleH * 0.30, 0.55),
+        side * 1.934, y, z + stagger);
+    }
+    P.add('hullDark', KIT.box(0.014, moduleH - 0.15, 0.027),
+      side * 1.933, moduleY, z + 0.292);
+    for (const y of [moduleY - moduleH * 0.26, moduleY + moduleH * 0.26]) {
+      P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 1.940, y, z,
+        0, 0, side * Math.PI / 2);
+    }
+  }
+  for (const y of [1.22, 1.65]) {
+    P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.76),
+      side * 1.895, y, -0.34);
+  }
+  P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 1.930, 0.80, -0.33);
+  // Broad structural shoulders overlap the troop cell, fender and skirt
+  // carrier. From every review angle they read as one body over the tread,
+  // rather than three parallel strips with sky between them.
+  P.add('hull', KIT.box(0.46, 0.23, 5.80), side * 1.43, 1.70, -0.33);
+  P.add('hull', KIT.box(0.25, 0.16, 5.80), side * 1.64, 1.88, -0.33);
+  P.add('hullDark', KIT.box(0.34, 0.035, 5.68), side * 1.48, 1.835, -0.33);
+
+  // Inset EO windows and separate marker lamps provide actual depth cues on
+  // the hull flanks without painting stretched rectangles over the armor.
+  for (const z of [0.88, -1.22]) {
+    P.addEquipment('hull', KIT.box(0.090, 0.24, 0.30),
+      side * 1.64, 1.83, z, 0, 0, side * 0.04);
+    P.addModuleVisual('optics', 'hullDark', KIT.box(0.022, 0.16, 0.22),
+      side * 1.692, 1.83, z);
+    P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.095, 0.14),
+      side * 1.711, 1.83, z);
+  }
+  for (const z of [2.04, -2.53]) {
+    P.addEquipment('hull', KIT.box(0.085, 0.13, 0.19), side * 1.895, 1.88, z);
+    P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.070, 0.100),
+      side * 1.946, 1.88, z);
+  }
+}
+
 function addRunningGear(P: LightTigerBuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.88, wheelR: 0.325, wheelW: 0.225,
@@ -142,78 +215,8 @@ function addRunningGear(P: LightTigerBuilderPort): void {
     // the lower run continue through empty space toward the idler.
     coveredTop: false, contactZF: 2.54, contactZR: -2.17,
   });
-
-  // The layered skirt begins at the real track envelope and folds into the
-  // upper-glacis shoulder, keeping the side profile sealed without shoe clips.
   for (const side of [-1, 1]) {
-    P.addExternalArmor('hull', orientedSlab(
-      [side * 1.71, 0.91, 2.42], [side * 1.87, 0.91, 2.42],
-      [side * 1.69, 0.45, 3.27], [side * 1.85, 0.45, 3.27],
-      [side * 1.71, 1.82, 2.42], [side * 1.87, 1.82, 2.42],
-      [side * 1.69, 1.27, 3.27], [side * 1.85, 1.27, 3.27],
-    ));
-    P.addExternalArmor('hull', orientedSlab(
-      // One continuous planar shoulder replaces the detached triangular cap.
-      // Its inner rail overlaps the upper-glacis edge, its outer rail keys
-      // into the folded skirt, and both rails share the same descending bow
-      // line. The deliberate overlap prevents a light leak at either seam.
-      [side * 1.38, 1.77, 1.60], [side * 1.70, 1.68, 2.42],
-      [side * 1.68, 1.24, 3.27], [side * 1.04, 1.19, 3.25],
-      [side * 1.44, 1.91, 1.60], [side * 1.71, 1.82, 2.42],
-      [side * 1.69, 1.38, 3.27], [side * 1.10, 1.32, 3.25],
-    ));
-    for (let index = 0; index < 9; index++) {
-      const z = 2.22 - index * 0.64;
-      const end = index === 8;
-      const moduleH = end ? 0.82 : 0.96;
-      const moduleY = end ? 1.42 : 1.43;
-      const roll = side * (end ? 0.050 : 0.016);
-      P.addExternalArmor('hull', KIT.box(0.10, moduleH, 0.64),
-        side * 1.77, moduleY, z, 0, 0, roll);
-      P.addExternalArmor('hull', KIT.box(0.050, moduleH - 0.08, 0.64),
-        side * 1.84, moduleY, z, 0, 0, roll);
-      for (const [row, y] of [-1, 1].map((row) => [row,
-        moduleY + row * moduleH * 0.225] as const)) {
-        const stagger = row * 0.010 * (index % 2 ? -1 : 1);
-        P.addExternalArmor('hull', KIT.box(0.070, moduleH * 0.42, 0.64),
-          side * 1.895, y, z + stagger, 0, 0, roll - row * side * 0.008);
-        P.add('hullDark', KIT.box(0.012, moduleH * 0.30, 0.55),
-          side * 1.934, y, z + stagger);
-      }
-      P.add('hullDark', KIT.box(0.014, moduleH - 0.15, 0.027),
-        side * 1.933, moduleY, z + 0.292);
-      for (const y of [moduleY - moduleH * 0.26, moduleY + moduleH * 0.26]) {
-        P.add('hullDetail', KIT.cylX(0.016, 0.025, 8), side * 1.940, y, z,
-          0, 0, side * Math.PI / 2);
-      }
-    }
-    for (const y of [1.22, 1.65]) {
-      P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.76),
-        side * 1.895, y, -0.34);
-    }
-    P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 1.930, 0.80, -0.33);
-    // Broad structural shoulders overlap the troop cell, fender and skirt
-    // carrier. From every review angle they read as one body over the tread,
-    // rather than three parallel strips with sky between them.
-    P.add('hull', KIT.box(0.46, 0.23, 5.80), side * 1.43, 1.70, -0.33);
-    P.add('hull', KIT.box(0.25, 0.16, 5.80), side * 1.64, 1.88, -0.33);
-    P.add('hullDark', KIT.box(0.34, 0.035, 5.68), side * 1.48, 1.835, -0.33);
-
-    // Inset EO windows and separate marker lamps provide actual depth cues on
-    // the hull flanks without painting stretched rectangles over the armor.
-    for (const z of [0.88, -1.22]) {
-      P.addEquipment('hull', KIT.box(0.090, 0.24, 0.30),
-        side * 1.64, 1.83, z, 0, 0, side * 0.04);
-      P.addModuleVisual('optics', 'hullDark', KIT.box(0.022, 0.16, 0.22),
-        side * 1.692, 1.83, z);
-      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.095, 0.14),
-        side * 1.711, 1.83, z);
-    }
-    for (const z of [2.04, -2.53]) {
-      P.addEquipment('hull', KIT.box(0.085, 0.13, 0.19), side * 1.895, 1.88, z);
-      P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.070, 0.100),
-        side * 1.946, 1.88, z);
-    }
+    addRunningGearSide(P, side);
   }
 }
 
