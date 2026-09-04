@@ -411,21 +411,7 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
   };
 
-  const addPurposeBuiltServiceBay = (
-    pose: GarageWorkshopBayPose,
-    mirror: -1 | 1,
-  ): void => {
-    const cluster = bayCluster(pose);
-    facilityStations += 1;
-    openingViewFrames += 1;
-    structuralConnections += 34;
-    heavyLiftSystems += 1;
-    operationalMachines += 1;
-    elevatedAccessSystems += 1;
-    servicePurposeTags.add(pose.role);
-    servicePurposeTags.add('overhead-travelling-crane');
-    servicePurposeTags.add('grounded-service-pit');
-
+  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster): void => {
     // One continuous slab and four explicit reinforced footings establish a
     // common datum. Every column, roof rail, brace and machine below derives
     // from this one baseY; terrain variation can no longer pull joints apart.
@@ -471,6 +457,24 @@ export function addGarageFacilityDetails({
       accent, 'painted');
     clusterBox(cluster, 4.90, 3.40, 2.70, 0.16, 5.45, 0.16,
       dark, 'structure');
+  };
+
+  const addPurposeBuiltServiceBay = (
+    pose: GarageWorkshopBayPose,
+    mirror: -1 | 1,
+  ): void => {
+    const cluster = bayCluster(pose);
+    facilityStations += 1;
+    openingViewFrames += 1;
+    structuralConnections += 34;
+    heavyLiftSystems += 1;
+    operationalMachines += 1;
+    elevatedAccessSystems += 1;
+    servicePurposeTags.add(pose.role);
+    servicePurposeTags.add('overhead-travelling-crane');
+    servicePurposeTags.add('grounded-service-pit');
+
+    addPurposeBuiltServiceBayFrame(cluster);
 
     // Bridge crane: runway rails sit on the column heads, the bridge spans
     // between them, and a visible trolley/chain/hook terminates over the real

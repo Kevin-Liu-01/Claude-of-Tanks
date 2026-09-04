@@ -1129,7 +1129,7 @@ export function createGarageDressing(
   // ==========================================================================
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
-  chunks.push(function buildCore() {
+  function buildBattleArchiveMonitors(): number {
     // One freestanding field-record monitor scrolls through the canonical
     // battle archive in every Garage. It is centered on the hero's local -Z
     // axis, so the tank rear points physically toward it while the camera sees
@@ -1318,7 +1318,10 @@ export function createGarageDressing(
     group.userData.battleScreenResidentImageCount = 0;
     void startBattleScreen(fallbackTexture);
     const interiorChildrenStart = group.children.length;
+    return interiorChildrenStart;
+  }
 
+  function buildVerdantFactoryArchitecture(): void {
     // Verdant is the only fully enclosed Garage, so give its volume a real
     // second storey and tank-production circulation rather than treating the
     // ceiling as a black lid. Everything below is built from two shared unit
@@ -1404,6 +1407,7 @@ export function createGarageDressing(
       return cable;
     };
 
+    function buildFactoryStructure(): void {
     // Back-wall mezzanine: ground-seated columns, continuous transverse beams,
     // deck, toe boards, two-height rails and a connected rung ladder.
     factoryPut(mat.steelDark, 0, 4.38, 18.65, 37.0, 0.28, 3.6);
@@ -1441,7 +1445,9 @@ export function createGarageDressing(
         factoryPut(mat.safety, x, y, 12.55, 5.7, 0.10, 0.10, 0, 0, false);
       }
     }
+    }
 
+    function buildFactoryCraneSystem(): void {
     // Roof-supported travelling crane with its grounded columns outside every
     // authored service-bay envelope. The previous +/-15.4 by +/-16.8 corners
     // landed directly through the Burlak and rolled-K2 displays. Perimeter
@@ -1616,7 +1622,9 @@ export function createGarageDressing(
     ] as const) {
       addFactoryHoistStation(stationId, stationX, stationZ, loadKind);
     }
+    }
 
+    function buildFactoryUtilities(): void {
     // Purposeful electrical and pneumatic distribution: perimeter trays feed
     // labeled junction boxes, then organized drops follow walls and floor
     // channels to the lamps, welding bay and teardown stations. These are
@@ -1703,7 +1711,9 @@ export function createGarageDressing(
       put(parkedHookGeometry,
         mat.steelBright, x, 2.92, 19.0, 0, 0, 0.35, 1, factoryArchitecture, false);
     }
+    }
 
+    function buildFactoryProcessZones(): void {
     // Modular two-level scaffold around the south-west teardown bay. Two
     // continuous decks, eight grounded uprights, cross rails and kick plates
     // keep the structure readable and connected from every orbit.
@@ -1770,6 +1780,12 @@ export function createGarageDressing(
       factoryPut(mat.safety, cageCenterX, y, 17.65, 4.7, 0.09, 0.09, 0, 0, false);
       factoryPut(mat.safety, cageCenterX, y, 20.55, 4.7, 0.09, 0.09, 0, 0, false);
     }
+    }
+
+    buildFactoryStructure();
+    buildFactoryCraneSystem();
+    buildFactoryUtilities();
+    buildFactoryProcessZones();
     group.userData.verdantFactoryZones = [
       'plate-preparation', 'turning-rolls', 'assembly-and-welding',
       'coating-and-ventilation', 'hydrostatic-inspection',
@@ -1784,6 +1800,9 @@ export function createGarageDressing(
     group.userData.verdantConnectedLiftPointCount = 12;
     group.userData.verdantRoutedUtilityCircuits = 12;
     group.userData.verdantJunctionBoxes = 8;
+  }
+
+  function buildWorkshopClutter(interiorChildrenStart: number): void {
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboardAt('east_tools');
@@ -2020,6 +2039,12 @@ export function createGarageDressing(
     for (const child of group.children.slice(interiorChildrenStart)) {
       verdantInteriorRoot.add(child);
     }
+  }
+
+  chunks.push(function buildCore() {
+    const interiorChildrenStart = buildBattleArchiveMonitors();
+    buildVerdantFactoryArchitecture();
+    buildWorkshopClutter(interiorChildrenStart);
   });
 
   // ==========================================================================
