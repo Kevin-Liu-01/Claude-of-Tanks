@@ -6568,8 +6568,7 @@ function buildT90M(P: TankBuilderPort): void {
   P.topY = 0.95;
 }
 
-function buildLeo2A7(P: TankBuilderPort): void {
-  const { rng } = P;
+function buildLeo2A7HullShell(P: TankBuilderPort): void {
   // r7 hull rework (barge critique): the full-width 0.64-tall sponson slab
   // and its long rear overhang are gone — the upper hull is a shallow band
   // whose rear face sits flush over the tracks, the heavy skirts climb to
@@ -6622,6 +6621,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
     }
     P.add('hullDetail', xform(torus(0.19, 0.02, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.86, 1.26, -3.788); // inner ring
   }
+}
+
+function buildLeo2A7Deck(P: TankBuilderPort): void {
   // rear DECK (r10 rework — critic: "completely flat engine deck with zero
   // grilles, blank rear plate, unrecognizable from behind"): twin circular
   // cooling fans with ALWAYS-ON radial slat bars, a full-width transverse
@@ -6679,6 +6681,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
     P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 - 0.22), 1.734, -2.27);     // frame rails
     P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 + 0.22), 1.734, -2.27);
   }
+}
+
+function buildLeo2A7DeckFixtures(P: TankBuilderPort): void {
   // anti-slip deck panels (2A7 signature texture zones): the r5 first pass
   // used the scheme-tinted detail tone and vanished into the paint — real
   // Leo 2A7 anti-slip sheeting is DARK grey-brown matte, clearly offset from
@@ -6717,6 +6722,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
   // r2: jack block tucked low between the fan grilles (it perched on the
   // fender edge as a floating orange cube after the rear-plate rebuild)
   P.add('hullWood', box(0.26, 0.12, 0.10), 0, 0.92, -3.79);
+}
+
+function buildLeo2A7SideArmor(P: TankBuilderPort): void {
   // deck-underside AO pocket over the running gear — r5: narrowed + tucked
   // inboard, and a scheme-painted sponson chamfer strip closes the outboard
   // slot between the deck-band side and the skirt top (the "continuous black
@@ -6787,6 +6795,10 @@ function buildLeo2A7(P: TankBuilderPort): void {
     P.add('hullDetail', box(0.10, 0.075, 0.13), s * 1.15, 1.63, 2.86, -0.15, 0, 0);
   }
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.03, 12), s * 1.28, 1.735, 1.42); // filler caps
+}
+
+function buildLeo2A7Turret(P: TankBuilderPort): void {
+  const { rng } = P;
   // turret (r5 FULL REBUILD — critic critical: "towering slab-sided casemate
   // ~1.5x correct height, floating inverted-pyramid beside the gun, no
   // spaced-armor wedge pair, no EMES cutout, not recognizable as a Leopard
@@ -6941,6 +6953,14 @@ function buildLeo2A7(P: TankBuilderPort): void {
   P.decal('hull', 'number', 'Y-124', 0.30, [0.62, 1.44, -3.775], Math.PI, 0);
   P.decal('hull', 'number', 'Y-124', 0.26, [-1.0, 0.90, 3.63], 0, -0.41);
   P.topY = 1.08;
+}
+
+function buildLeo2A7(P: TankBuilderPort): void {
+  buildLeo2A7HullShell(P);
+  buildLeo2A7Deck(P);
+  buildLeo2A7DeckFixtures(P);
+  buildLeo2A7SideArmor(P);
+  buildLeo2A7Turret(P);
 }
 
 const BUILDERS: TankBuilderRecord = {
