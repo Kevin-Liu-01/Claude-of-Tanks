@@ -1530,8 +1530,51 @@ function buildT30(P: Ww2BuilderPort): void {
 // SPEC NOTE (packet residual): armor gunBarrel.lengthM 3.96 vs the built
 // 3.44 visible run — shadow-proxy true-up flagged for the orchestrator.
 // ---------------------------------------------------------------------------
+function buildShermanE8RunningGear(P: Ww2BuilderPort): void {
+  const { box, cylX, cylZ, buildRunningGear } = KIT;
+  // Six paired wheel stations form three HVSS bogies; both terminal wheels
+  // remain raised to preserve the characteristic trapezoid track course.
+  const wheelZs = [2.115, 1.365, 0.375, -0.375, -1.365, -2.115];
+  buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.33, wheelW: 0.13, wheelY: 0.43, xc: 1.21, wheelZs,
+    layers: [[-0.105, 0.105]], recessDepth: 0.5,
+    sprocket: { z: 2.60, y: 0.56, r: 0.34 },
+    idler: { z: -2.62, y: 0.50, r: 0.30 },
+    rollers: [1.74, 0.87, 0.0, -0.87, -1.74].map((z) => ({ z, y: 1.02, r: 0.08 })),
+    trackW: 0.58, topY: 1.04,
+  });
+  // Suspension-owned bay walls keep the visual backing closed without
+  // misclassifying it as hull armor in the strict track lint.
+  P.clear('hullShadow');
+  for (const side of [-1, 1]) {
+    P.add('hullRunningGearDark', box(0.02, 1.14, 4.89), side * 0.95, 0.60, 0);
+  }
+  wheelShadows(P, 1.21, wheelZs, 0.33, 0.40, -0.06, 'hullRunningGearDark');
+
+  for (const bogieZ of [1.74, 0.0, -1.74]) {
+    for (const side of [-1, 1]) {
+      P.add('hullRunningGearDetail', box(0.34, 0.26, 0.62), side * 1.02, 0.45, bogieZ);
+      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50),
+        side * 1.17, 0.40, bogieZ + 0.30, -0.30, 0, 0);
+      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50),
+        side * 1.17, 0.40, bogieZ - 0.30, 0.30, 0, 0);
+      P.add('hullRunningGearDark', cylZ(0.065, 0.42, 8), side * 1.21, 0.66, bogieZ);
+      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8),
+        side * 1.19, 0.43, bogieZ + 0.375);
+      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8),
+        side * 1.19, 0.43, bogieZ - 0.375);
+    }
+  }
+  for (const rollerZ of [1.74, 0.87, 0.0, -0.87, -1.74]) {
+    for (const side of [-1, 1]) {
+      P.add('hullRunningGearDetail', box(0.06, 0.10, 0.11),
+        side * 1.21, 1.09, rollerZ + 0.05);
+    }
+  }
+}
+
 function buildShermanE8(P: Ww2BuilderPort): void {
-  const { box, cylX, cylY, cylZ, sph, slab, lathe, frustum, buildRunningGear, buildGun,
+  const { box, cylX, cylY, cylZ, sph, slab, lathe, frustum, buildGun,
     fenders, headlight, liftEye, periscope, towCable, stowage, shovelTool } = KIT;
 
   // HVSS gear (§B6 trapezoid: front sprocket 0.56 / rear idler 0.50 both
@@ -1540,48 +1583,7 @@ function buildShermanE8(P: Ww2BuilderPort): void {
   // BOGIE PAIRING, not the count — stations regrouped from even 0.84 pitch
   // to 3 bogie pairs: intra-pair pitch 0.75 (rim gap 0.09), inter-pair rim
   // gap 0.33, bogie centers z ±1.74/0.
-  const wheelZs = [2.115, 1.365, 0.375, -0.375, -1.365, -2.115];
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.33, wheelW: 0.13, wheelY: 0.43, xc: 1.21, wheelZs,
-    layers: [[-0.105, 0.105]], recessDepth: 0.5,                             // HVSS pairs, BOTH painted
-    sprocket: { z: 2.60, y: 0.56, r: 0.34 },                                 // shoe orbit far edge +3.115 (<= +3.135)
-    idler: { z: -2.62, y: 0.50, r: 0.30 },                                   // far edge -3.095
-    rollers: [1.74, 0.87, 0.0, -0.87, -1.74].map((z) => ({ z, y: 1.02, r: 0.08 })),
-    trackW: 0.58, topY: 1.04,
-  });
-  // The HVSS interleave creates a dark wheel-bay wall in buildRunningGear.
-  // It is suspension-owned recess geometry, not hull armor: preserve the
-  // exact closed visual backing while keeping strict track lint focused on
-  // the actual hull/fender envelope.
-  P.clear('hullShadow');
-  for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', box(0.02, 1.14, 4.89), s * 0.95, 0.60, 0);
-  }
-  // (§B2 CLARIFICATION world, post-15a67ea: the factory belly pan is
-  // REVERTED — the ground channel and wheel-train daylight are real. The
-  // factory's layered-gear AO walls at ±0.95 + the ±0.92 belly faces close
-  // the bay per the law; no per-tank pan needed here.)
-  wheelShadows(P, 1.21, wheelZs, 0.33, 0.40, -0.06, 'hullRunningGearDark');
-  // HVSS bogie hardware (§B6/§B8 order 2: the paired-wheel stations hang
-  // from THREE trailing-arm bogies per side — bracket + arms to the axle
-  // stubs at ±0.375 + horizontal volute spring drum seated IN the dual-wheel
-  // gap at x 1.21 so it reads in profile; roller brackets under the sponson;
-  // lane-local, audit-exempt like the wheels).
-  for (const zb of [1.74, 0.0, -1.74]) {
-    for (const s of [-1, 1]) {
-      P.add('hullRunningGearDetail', box(0.34, 0.26, 0.62), s * 1.02, 0.45, zb); // bogie bracket
-      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb + 0.30, -0.30, 0, 0);
-      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb - 0.30, 0.30, 0, 0);
-      P.add('hullRunningGearDark', cylZ(0.065, 0.42, 8), s * 1.21, 0.66, zb);
-      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb + 0.375);
-      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb - 0.375);
-    }
-  }
-  for (const zr of [1.74, 0.87, 0.0, -0.87, -1.74]) {
-    for (const s of [-1, 1]) {
-      P.add('hullRunningGearDetail', box(0.06, 0.10, 0.11), s * 1.21, 1.09, zr + 0.05);
-    }
-  }
+  buildShermanE8RunningGear(P);
 
   // hull: belly between the tracks, full-width sponson body over them.
   // r1 LANE-EDGE COPLANARITY fix (the a7v 378/184 class): the slice-2 belly
