@@ -4029,8 +4029,7 @@ const VICKERS_REAR3 = [   // ±0.55 tier (side silhouette line)
   [-1.45, 1.72], [-1.65, 1.786], [-2.28, 1.786], [-2.42, 1.762], [-2.66, 1.745],
 ];
 
-function vickersMk1Build(P: UKBuilderPort): void {
-  const { rng } = P;
+function addVickersMk1Hull(P: UKBuilderPort): void {
   // Keep the measured deck and full exterior sponson sides, but open the
   // concealed underside over the native return run.  The center body stays
   // closed inside x +/-0.90 and the original outer skin resumes above 1.14 m;
@@ -4200,6 +4199,11 @@ function vickersMk1Build(P: UKBuilderPort): void {
   // ±1.5845 width edge (an edge decal minted phantom front-view columns)
   P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [1.562, 1.28, -0.7], Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-1.562, 1.28, -0.7], -Math.PI / 2);
+}
+
+function vickersMk1Build(P: UKBuilderPort): void {
+  const { rng } = P;
+  addVickersMk1Hull(P);
 
   // ---- turret: low curved casting, wide crown left, cupola right, deep
   // ring collar + basket (side_turret bot: collar 1.05 over ±0.785 of the
