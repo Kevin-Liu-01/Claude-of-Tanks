@@ -4078,6 +4078,100 @@ function buildGun(builder: object, config: object): void {
   buildGunStrict(builder, config);
 }
 
+function addThermalSleeve(
+  painted: THREE.BufferGeometry[],
+  dark: THREE.BufferGeometry[],
+  len: number,
+  radius: number,
+  segments: number,
+  paintBands: boolean,
+): void {
+  const bandBucket = paintBands ? painted : dark;
+  for (const [start, end] of [[0.16, 0.46], [0.52, 0.82]]) {
+    const sleeveLength = (end - start) * len;
+    painted.push(xform(
+      cylZ(radius * 1.22, sleeveLength, segments),
+      0, 0, start * len + sleeveLength / 2,
+    ));
+    bandBucket.push(xform(
+      cylZ(radius * 1.24, 0.045, segments), 0, 0, start * len + 0.02,
+    ));
+    bandBucket.push(xform(
+      cylZ(radius * 1.31, 0.06, segments), 0, 0, end * len + 0.03,
+    ));
+  }
+}
+
+function addBoreEvacuator(
+  geometries: THREE.BufferGeometry[],
+  len: number,
+  radius: number,
+  segments: number,
+  evac: number | boolean,
+  radiusScale: number,
+): void {
+  const fraction = typeof evac === 'number' ? evac : 0;
+  const evacLength = Math.max(0.62, len * 0.13);
+  geometries.push(xform(
+    cylZ(radius * radiusScale, evacLength * 0.55, segments), 0, 0, fraction * len,
+  ));
+  geometries.push(xform(
+    cylZ(radius * radiusScale, evacLength * 0.32, segments, radius * 1.16),
+    0, 0, fraction * len - evacLength * 0.43,
+  ));
+  geometries.push(xform(
+    cylZ(radius * 1.16, evacLength * 0.32, segments, radius * radiusScale),
+    0, 0, fraction * len + evacLength * 0.43,
+  ));
+}
+
+function addDoubleMuzzleBrake(
+  painted: THREE.BufferGeometry[], dark: THREE.BufferGeometry[],
+  len: number, radius: number, segments: number,
+): void {
+  const brakeRadius = radius * 1.60;
+  dark.push(xform(cylZ(radius * 0.78, 0.30, segments), 0, 0, len - 0.30));
+  painted.push(xform(cylZ(radius * 1.02, 0.10, segments), 0, 0, len - 0.60));
+  painted.push(xform(cylZ(brakeRadius, 0.17, segments), 0, 0, len - 0.475));
+  dark.push(xform(cylZ(brakeRadius * 0.99, 0.012, segments), 0, 0, len - 0.386));
+  painted.push(xform(cylZ(brakeRadius * 0.97, 0.15, segments), 0, 0, len - 0.135));
+  dark.push(xform(cylZ(brakeRadius * 0.96, 0.012, segments), 0, 0, len - 0.208));
+  painted.push(xform(cylZ(radius * 1.06, 0.06, segments), 0, 0, len - 0.03));
+}
+
+function addDiscMuzzleBrake(
+  geometries: THREE.BufferGeometry[], len: number, radius: number, segments: number,
+): void {
+  const discRadius = radius * 2.05;
+  geometries.push(xform(cylZ(radius * 0.52, 0.66, segments), 0, 0, len - 0.33));
+  geometries.push(xform(
+    cylZ(discRadius * 0.80, 0.08, segments, radius * 1.02), 0, 0, len - 0.585,
+  ));
+  geometries.push(xform(cylZ(discRadius, 0.075, segments), 0, 0, len - 0.475));
+  geometries.push(xform(cylZ(discRadius * 0.96, 0.075, segments), 0, 0, len - 0.155));
+  geometries.push(xform(cylZ(discRadius * 0.50, 0.12, segments), 0, 0, len - 0.055));
+  geometries.push(xform(box(discRadius * 1.5, 0.045, 0.36), 0, 0, len - 0.315));
+}
+
+function addMuzzleBrake(
+  painted: THREE.BufferGeometry[], dark: THREE.BufferGeometry[],
+  len: number, radius: number, segments: number, brake: string | boolean,
+): void {
+  const brakeRadius = radius * 1.35;
+  if (brake !== 'double') {
+    painted.push(xform(cylZ(radius * 0.72, 0.62, segments), 0, 0, len - 0.31));
+    painted.push(xform(
+      cylZ(brakeRadius * 0.9, 0.1, segments, radius * 1.08), 0, 0, len - 0.52,
+    ));
+  }
+  if (brake === 'double') addDoubleMuzzleBrake(painted, dark, len, radius, segments);
+  else if (brake === 'discs') addDiscMuzzleBrake(painted, len, radius, segments);
+  else {
+    painted.push(xform(cylZ(brakeRadius, 0.2, segments), 0, 0, len - 0.13));
+    painted.push(xform(cylZ(brakeRadius * 0.5, 0.05, segments), 0, 0, len - 0.005));
+  }
+}
+
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
@@ -4088,81 +4182,10 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
   const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
-  if (sleeve) {
-    // r7b (T-90M "zero material separation" major): the thermal sleeve's
-    // clamp rings render DARK (canvas/steel cinch bands) so the sleeved tube
-    // splits into sleeve / ring / bare-steel segments instead of one painted
-    // pipe; a dark seam ring also closes each sleeve start.
-    const sleeveBandBucket = paintSleeveBands ? g : gd;
-    for (const [f0, f1] of [[0.16, 0.46], [0.52, 0.82]]) {
-      const sl = (f1 - f0) * len;
-      g.push(xform(cylZ(r * 1.22, sl, seg), 0, 0, f0 * len + sl / 2));
-      sleeveBandBucket.push(xform(cylZ(r * 1.24, 0.045, seg), 0, 0, f0 * len + 0.02)); // start seam ring
-      sleeveBandBucket.push(xform(cylZ(r * 1.31, 0.06, seg), 0, 0, f1 * len + 0.03));  // clamp ring
-    }
-  }
-  if (evac !== null) {
-    const evacFraction = typeof evac === 'number' ? evac : 0;
-    // Bore evacuator: a clearly readable tapered drum blended into the tube —
-    // the single most identifying feature of a modern gun tube at closeup.
-    // r7b: diameter now per-gun (cfg.evacR) — the 2A46M's fat drum barely
-    // read over the thermal sleeve at the default 1.62x.
-    const el = Math.max(0.62, len * 0.13);
-    g.push(xform(cylZ(r * evacR, el * 0.55, seg), 0, 0, evacFraction * len));
-    g.push(xform(cylZ(r * evacR, el * 0.32, seg, r * 1.16), 0, 0,
-      evacFraction * len - el * 0.43));
-    g.push(xform(cylZ(r * 1.16, el * 0.32, seg, r * evacR), 0, 0,
-      evacFraction * len + el * 0.43));
-  }
+  if (sleeve) addThermalSleeve(g, gd, len, r, seg, paintSleeveBands);
+  if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
-  if (brake) {
-    // Two-chamber baffle brake, CAMO-PAINTED with the tube — crews painted
-    // brakes with the vehicle, and the old bare-black drums at 1.75x tube
-    // read as a rubber toy part (r5). Diameter held to ~1.35x the tube
-    // (~2x bore on the 8.8 cm), with a visible slot between the chambers.
-    const br = r * 1.35;
-    if (brake !== 'double') {
-      g.push(xform(cylZ(r * 0.72, 0.62, seg), 0, 0, len - 0.31));            // core tube through the brake
-      g.push(xform(cylZ(br * 0.9, 0.1, seg, r * 1.08), 0, 0, len - 0.52));   // tapered lead-in cone
-    }
-    if (brake === 'double') {
-      // r7b REWORK (judged Tiger closeup: "muzzle brake is a smooth capsule
-      // bulb instead of the flat twin-baffle drums"): the r5 tapered barrel
-      // profiles melted into one camo-painted capsule at crop range. The KwK
-      // 36/42 brake is TWO FLAT DISC-FACED DRUMS with a visible gap: rear
-      // baffle drum (flat faces, hard edges), open dark slot over a thin
-      // core, front baffle drum, small exit collar. Faces are plain
-      // cylinders — no lead-in cones to round the silhouette — and the slot
-      // core renders DARK so the gap reads from any angle.
-      const bd = r * 1.60;
-      gd.push(xform(cylZ(r * 0.78, 0.30, seg), 0, 0, len - 0.30));           // dark core through the slot
-      g.push(xform(cylZ(r * 1.02, 0.10, seg), 0, 0, len - 0.60));            // brake neck
-      g.push(xform(cylZ(bd, 0.17, seg), 0, 0, len - 0.475));                 // REAR flat drum
-      gd.push(xform(cylZ(bd * 0.99, 0.012, seg), 0, 0, len - 0.386));        // rear face shadow ring
-      // open slot len-0.39..len-0.21 (dark core only)
-      g.push(xform(cylZ(bd * 0.97, 0.15, seg), 0, 0, len - 0.135));          // FRONT flat drum
-      gd.push(xform(cylZ(bd * 0.96, 0.012, seg), 0, 0, len - 0.208));        // front face shadow ring
-      g.push(xform(cylZ(r * 1.06, 0.06, seg), 0, 0, len - 0.03));            // exit collar
-    } else if (brake === 'discs') {
-      // Soviet D-25T style — tank_models r7 ("plain cylinder muzzle-brake
-      // cap ... should be a double-baffle brake with side windows"): the r6
-      // full-height vertical web FILLED the slot between the discs, so the
-      // whole brake read as one solid drum. The web is now a thin HORIZONTAL
-      // mid-plane spine (the real German-pattern brake's gas divider), the
-      // baffle plates are thinner, and the slot is wider — daylight shows
-      // through the side windows above and below the spine.
-      const dr = r * 2.05;
-      g.push(xform(cylZ(r * 0.52, 0.66, seg), 0, 0, len - 0.33));            // thin core through the brake
-      g.push(xform(cylZ(dr * 0.80, 0.08, seg, r * 1.02), 0, 0, len - 0.585)); // tapered lead-in cone
-      g.push(xform(cylZ(dr, 0.075, seg), 0, 0, len - 0.475));                // rear plate baffle
-      g.push(xform(cylZ(dr * 0.96, 0.075, seg), 0, 0, len - 0.155));         // front plate baffle
-      g.push(xform(cylZ(dr * 0.50, 0.12, seg), 0, 0, len - 0.055));          // exit block
-      g.push(xform(box(dr * 1.5, 0.045, 0.36), 0, 0, len - 0.315));          // horizontal gas-divider spine
-    } else {
-      g.push(xform(cylZ(br, 0.2, seg), 0, 0, len - 0.13));
-      g.push(xform(cylZ(br * 0.5, 0.05, seg), 0, 0, len - 0.005));
-    }
-  }
+  if (brake) addMuzzleBrake(g, gd, len, r, seg, brake);
   for (const geo of g) P.add('gun', geo);
   for (const geo of gd) P.add('gunDark', geo);
   Object.assign(builder, { muzzleZ: len });
@@ -6334,6 +6357,65 @@ const BUILDERS: TankBuilderRecord = {
 };
 const CANONICAL_BUILDERS: TankBuilderRecord = { ...BUILDERS };
 
+function collectCanonicalBuilderEntries(
+  canonicalBuilderPacks: FactoryConfiguration['canonicalBuilderPacks'],
+): Array<[string, TankBuilder]> {
+  if (!Array.isArray(canonicalBuilderPacks)) {
+    throw new TypeError('canonicalBuilderPacks must be an array');
+  }
+  const registered = new Set(Object.keys(BUILDERS));
+  const canonicalEntries: Array<[string, TankBuilder]> = [];
+  for (const entry of canonicalBuilderPacks) {
+    if (!Array.isArray(entry) || entry.length !== 2 || !entry[1] || typeof entry[1] !== 'object') {
+      throw new TypeError('Each canonical builder pack must be [name, builders]');
+    }
+    const [packName, builders] = entry;
+    for (const [id, builder] of Object.entries(builders)) {
+      if (typeof builder !== 'function') {
+        throw new TypeError(`Builder ${packName}:${id} must be a function`);
+      }
+      if (registered.has(id)) throw new Error(`Duplicate canonical builder ${id} in ${packName}`);
+      registered.add(id);
+      canonicalEntries.push([id, builder]);
+    }
+  }
+  return canonicalEntries;
+}
+
+function collectProfileBuilderEntries(
+  profiledBuilders: FactoryConfiguration['profiledBuilders'],
+): Array<[string, TankBuilder]> {
+  if (profiledBuilders !== undefined
+      && (profiledBuilders === null || typeof profiledBuilders !== 'object')) {
+    throw new TypeError('profiledBuilders must be an object');
+  }
+  const profileEntries = profiledBuilders ? Object.entries(profiledBuilders) : [];
+  for (const [id, builder] of profileEntries) {
+    if (typeof builder !== 'function') throw new TypeError(`Profiled builder ${id} must be a function`);
+  }
+  return profileEntries;
+}
+
+function requireFactoryFittings(fittings: FactoryConfiguration['fittings']): void {
+  for (const name of ['spareTrackLinks', 'antennaWhip', 'pintleMG'] as const) {
+    if (typeof fittings?.[name] !== 'function') throw new TypeError(`Missing tank fitting ${name}`);
+  }
+}
+
+function registerConfiguredBuilders(
+  canonicalEntries: readonly [string, TankBuilder][],
+  profileEntries: readonly [string, TankBuilder][],
+): void {
+  for (const [id, builder] of canonicalEntries) {
+    BUILDERS[id] = builder;
+    CANONICAL_BUILDERS[id] = builder;
+  }
+  for (const [id, builder] of profileEntries) {
+    BUILDERS[id] = builder;
+    PROFILED_BUILDER_IDS.add(id);
+  }
+}
+
 /**
  * Configure the core once the fleet facade has evaluated every spec and
  * builder pack. Canonical packs must be disjoint; profiled builders are the
@@ -6346,50 +6428,10 @@ export function configureTankFactory({
   fittings,
 }: FactoryConfiguration): void {
   if (factoryConfigured) throw new Error('Tank factory is already configured');
-  if (!Array.isArray(canonicalBuilderPacks)) {
-    throw new TypeError('canonicalBuilderPacks must be an array');
-  }
-
-  const registered = new Set(Object.keys(BUILDERS));
-  const canonicalEntries: Array<[string, TankBuilder]> = [];
-  for (const entry of canonicalBuilderPacks) {
-    if (!Array.isArray(entry) || entry.length !== 2 || !entry[1] || typeof entry[1] !== 'object') {
-      throw new TypeError('Each canonical builder pack must be [name, builders]');
-    }
-    const [packName, builders] = entry;
-    for (const [id, builder] of Object.entries(builders)) {
-      if (typeof builder !== 'function') {
-        throw new TypeError(`Builder ${packName}:${id} must be a function`);
-      }
-      if (registered.has(id)) {
-        throw new Error(`Duplicate canonical builder ${id} in ${packName}`);
-      }
-      registered.add(id);
-      canonicalEntries.push([id, builder]);
-    }
-  }
-
-  if (profiledBuilders !== undefined
-      && (profiledBuilders === null || typeof profiledBuilders !== 'object')) {
-    throw new TypeError('profiledBuilders must be an object');
-  }
-  const profileEntries = profiledBuilders ? Object.entries(profiledBuilders) : [];
-  for (const [id, builder] of profileEntries) {
-    if (typeof builder !== 'function') throw new TypeError(`Profiled builder ${id} must be a function`);
-  }
-
-  for (const name of ['spareTrackLinks', 'antennaWhip', 'pintleMG']) {
-    if (typeof fittings?.[name] !== 'function') throw new TypeError(`Missing tank fitting ${name}`);
-  }
-
-  for (const [id, builder] of canonicalEntries) {
-    BUILDERS[id] = builder;
-    CANONICAL_BUILDERS[id] = builder;
-  }
-  for (const [id, builder] of profileEntries) {
-    BUILDERS[id] = builder;
-    PROFILED_BUILDER_IDS.add(id);
-  }
+  const canonicalEntries = collectCanonicalBuilderEntries(canonicalBuilderPacks);
+  const profileEntries = collectProfileBuilderEntries(profiledBuilders);
+  requireFactoryFittings(fittings);
+  registerConfiguredBuilders(canonicalEntries, profileEntries);
   const fitting = (name: 'spareTrackLinks' | 'antennaWhip' | 'pintleMG') =>
     (options: object): THREE.Object3D => {
       const result = Reflect.apply(fittings[name], undefined, [options]);
@@ -6691,6 +6733,41 @@ function maxHeapReplaceRoot(heap: number[], value: number): void {
   heap[index] = value;
 }
 
+function stridedValueCount(values: ArrayLike<number>, offset: number, stride: number): number {
+  return values.length <= offset
+    ? 0 : Math.floor((values.length - 1 - offset) / stride) + 1;
+}
+
+function lowestStridedValue(
+  values: ArrayLike<number>, offset: number, stride: number,
+): number {
+  let lowest = values[offset];
+  for (let index = offset + stride; index < values.length; index += stride) {
+    if (values[index] < lowest) lowest = values[index];
+  }
+  return lowest;
+}
+
+function collectLowestFloorSamples(
+  values: ArrayLike<number>, offset: number, stride: number, limit: number,
+): void {
+  _floorHeap.length = 0;
+  for (let index = offset; index < values.length; index += stride) {
+    const value = values[index];
+    if (_floorHeap.length < limit) maxHeapPush(_floorHeap, value);
+    else if (value < _floorHeap[0]) maxHeapReplaceRoot(_floorHeap, value);
+  }
+  _floorHeap.sort((a, b) => a - b);
+}
+
+function denseFloorSample(limit: number): number | undefined {
+  for (let index = 0; index + FLOOR_DENSE_SAMPLES - 1 < limit; index++) {
+    const bandTop = _floorHeap[index + FLOOR_DENSE_SAMPLES - 1];
+    if (bandTop - _floorHeap[index] <= FLOOR_DENSE_BAND_M) return _floorHeap[index];
+  }
+  return undefined;
+}
+
 /**
  * Exact lowest dense rest-contact shell without sorting every sampled vertex.
  *
@@ -6708,29 +6785,14 @@ function maxHeapReplaceRoot(heap: number[], value: number): void {
 function robustFloorYStrided(
   values: ArrayLike<number>, offset = 0, stride = 1,
 ): number | undefined {
-  const length = values.length <= offset
-    ? 0 : Math.floor((values.length - 1 - offset) / stride) + 1;
+  const length = stridedValueCount(values, offset, stride);
   if (!length) return undefined;
-  if (length < FLOOR_DENSE_SAMPLES) {
-    let lowest = values[offset];
-    for (let index = offset + stride; index < values.length; index += stride) {
-      if (values[index] < lowest) lowest = values[index];
-    }
-    return lowest;
-  }
+  if (length < FLOOR_DENSE_SAMPLES) return lowestStridedValue(values, offset, stride);
   let limit = Math.min(64, length);
   for (;;) {
-    _floorHeap.length = 0;
-    for (let index = offset; index < values.length; index += stride) {
-      const value = values[index];
-      if (_floorHeap.length < limit) maxHeapPush(_floorHeap, value);
-      else if (value < _floorHeap[0]) maxHeapReplaceRoot(_floorHeap, value);
-    }
-    _floorHeap.sort((a, b) => a - b);
-    for (let i = 0; i + FLOOR_DENSE_SAMPLES - 1 < limit; i++) {
-      if (_floorHeap[i + FLOOR_DENSE_SAMPLES - 1] - _floorHeap[i]
-          <= FLOOR_DENSE_BAND_M) return _floorHeap[i];
-    }
+    collectLowestFloorSamples(values, offset, stride, limit);
+    const sample = denseFloorSample(limit);
+    if (sample !== undefined) return sample;
     if (limit === length) return _floorHeap[0];
     limit = Math.min(length, limit * 4);
   }

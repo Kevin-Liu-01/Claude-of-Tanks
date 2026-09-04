@@ -69,6 +69,19 @@ interface TrackArmorEnvelope extends ArmorEnvelope {
   trackShapes?: TrackShape[];
 }
 
+interface ArmorScale {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+interface ArmorBox {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+
+type TrackSide = -1 | 1;
+
 /** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
 // 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
@@ -1838,35 +1851,52 @@ export function attachTrackShapes<T extends TrackArmorEnvelope>(
     : hulls;
   if (!Array.isArray(src) || !src.length) return armor;
   const shapes: TrackShape[] = [];
-  for (const h of src) {
-    if (!h || !Array.isArray(h.poly) || h.poly.length < 3) continue;
-    const sides = h.module === 'trackL' ? [-1] : h.module === 'trackR' ? [1] : [-1, 1];
-    for (const side of sides) {
-      const module = side < 0 ? 'trackL' : 'trackR';
-      const legacy = (armor.hullPlates || []).find(
-        (p) => p.moduleLink === module && p.kind === 'external');
-      const lo = Math.min(Math.abs(h.x0), Math.abs(h.x1));
-      const hi = Math.max(Math.abs(h.x0), Math.abs(h.x1));
-      shapes.push({
-        module,
-        x0: side < 0 ? -hi : lo,
-        x1: side < 0 ? -lo : hi,
-        poly: h.poly.map((v: readonly [number, number]) => [v[0], v[1]]),
-        plate: {
-          name: legacy ? legacy.name : (side < 0 ? 'track_L' : 'track_R'),
-          physicalMm: legacy ? legacy.physicalMm : 20,
-          keMm: legacy ? legacy.keMm : 20,
-          ceMm: legacy ? legacy.ceMm : 20,
-          kind: 'external',
-          era: null,
-          moduleLink: module,
-          gunFollow: false,
-        },
-      });
+  for (const hull of src) {
+    if (!isUsableTrackHull(hull)) continue;
+    for (const side of trackHullSides(hull)) {
+      shapes.push(trackShapeForSide(armor, hull, side));
     }
   }
   if (shapes.length) armor.trackShapes = shapes;
   return armor;
+}
+
+function isUsableTrackHull(hull: TrackHull | null | undefined): hull is TrackHull {
+  return !!hull && Array.isArray(hull.poly) && hull.poly.length >= 3;
+}
+
+function trackHullSides(hull: TrackHull): readonly TrackSide[] {
+  if (hull.module === 'trackL') return [-1];
+  if (hull.module === 'trackR') return [1];
+  return [-1, 1];
+}
+
+function trackShapeForSide(
+  armor: TrackArmorEnvelope,
+  hull: TrackHull,
+  side: TrackSide,
+): TrackShape {
+  const module: TrackModule = side < 0 ? 'trackL' : 'trackR';
+  const legacy = armor.hullPlates?.find(
+    (plate) => plate.moduleLink === module && plate.kind === 'external');
+  const lowX = Math.min(Math.abs(hull.x0), Math.abs(hull.x1));
+  const highX = Math.max(Math.abs(hull.x0), Math.abs(hull.x1));
+  return {
+    module,
+    x0: side < 0 ? -highX : lowX,
+    x1: side < 0 ? -lowX : highX,
+    poly: hull.poly.map((point) => [point[0], point[1]]),
+    plate: {
+      name: legacy?.name ?? (side < 0 ? 'track_L' : 'track_R'),
+      physicalMm: legacy?.physicalMm ?? 20,
+      keMm: legacy?.keMm ?? 20,
+      ceMm: legacy?.ceMm ?? 20,
+      kind: 'external',
+      era: null,
+      moduleLink: module,
+      gunFollow: false,
+    },
+  };
 }
 
 /**
@@ -1895,34 +1925,69 @@ export function fitArmorToDims<T extends TrackArmorEnvelope>(
   toDims: FleetDimensions,
 ): T {
   if (!armor || !fromDims || !toDims) return armor;
-  const ratio = (a: number, b: number): number => (a > 0 && b > 0 ? b / a : 1);
-  const sx = ratio(fromDims.widthM, toDims.widthM);
-  const sy = ratio(fromDims.heightM, toDims.heightM);
-  const sz = ratio(fromDims.hullLengthM, toDims.hullLengthM);
-  if (Math.abs(sx - 1) < 1e-3 && Math.abs(sy - 1) < 1e-3 && Math.abs(sz - 1) < 1e-3) return armor;
-  const v3 = (v: readonly [number, number, number]): void => {
-    const mutable = v as MutableVec3Tuple;
-    mutable[0] *= sx;
-    mutable[1] *= sy;
-    mutable[2] *= sz;
-  };
-  for (const plates of [armor.hullPlates, armor.turretPlates]) {
-    for (const p of plates || []) for (const v of p.verts) v3(v);
-  }
-  for (const list of [armor.modules, armor.crew]) {
-    for (const b of list || []) { v3(b.min); v3(b.max); }
-  }
-  // derived track prisms scale like every other armor position (plate stats
-  // inside stay design values, same rule as plates)
-  for (const s of armor.trackShapes || []) {
-    s.x0 *= sx; s.x1 *= sx;
-    for (const v of s.poly) { v[0] *= sz; v[1] *= sy; }
-  }
-  if (armor.turretPivot) v3(armor.turretPivot);
-  if (armor.gunPivot) v3(armor.gunPivot);
-  if (armor.gunBarrel) armor.gunBarrel.lengthM *= sz;
-  if (armor.boundingRadiusM) armor.boundingRadiusM *= Math.max(sx, sz);
+  const scale = armorScale(fromDims, toDims);
+  if (isIdentityArmorScale(scale)) return armor;
+  scaleArmorPlates(armor.hullPlates, scale);
+  scaleArmorPlates(armor.turretPlates, scale);
+  scaleArmorBoxes(armor.modules, scale);
+  scaleArmorBoxes(armor.crew, scale);
+  scaleTrackShapes(armor.trackShapes, scale);
+  if (armor.turretPivot) scaleArmorPoint(armor.turretPivot, scale);
+  if (armor.gunPivot) scaleArmorPoint(armor.gunPivot, scale);
+  if (armor.gunBarrel) armor.gunBarrel.lengthM *= scale.z;
+  if (armor.boundingRadiusM) armor.boundingRadiusM *= Math.max(scale.x, scale.z);
   return armor;
+}
+
+function dimensionRatio(from: number, to: number): number {
+  return from > 0 && to > 0 ? to / from : 1;
+}
+
+function armorScale(fromDims: FleetDimensions, toDims: FleetDimensions): ArmorScale {
+  return {
+    x: dimensionRatio(fromDims.widthM, toDims.widthM),
+    y: dimensionRatio(fromDims.heightM, toDims.heightM),
+    z: dimensionRatio(fromDims.hullLengthM, toDims.hullLengthM),
+  };
+}
+
+function isIdentityArmorScale(scale: ArmorScale): boolean {
+  return Math.abs(scale.x - 1) < 1e-3
+    && Math.abs(scale.y - 1) < 1e-3
+    && Math.abs(scale.z - 1) < 1e-3;
+}
+
+function scaleArmorPoint(point: readonly [number, number, number], scale: ArmorScale): void {
+  const mutable = point as MutableVec3Tuple;
+  mutable[0] *= scale.x;
+  mutable[1] *= scale.y;
+  mutable[2] *= scale.z;
+}
+
+function scaleArmorPlates(plates: readonly ArmorPlate[] | undefined, scale: ArmorScale): void {
+  for (const plate of plates ?? []) {
+    for (const vertex of plate.verts) scaleArmorPoint(vertex, scale);
+  }
+}
+
+function scaleArmorBoxes(boxes: readonly ArmorBox[] | undefined, scale: ArmorScale): void {
+  for (const box of boxes ?? []) {
+    scaleArmorPoint(box.min, scale);
+    scaleArmorPoint(box.max, scale);
+  }
+}
+
+function scaleTrackShapes(shapes: readonly TrackShape[] | undefined, scale: ArmorScale): void {
+  // Derived track prisms scale like every other armor position. Plate stats
+  // remain design values, matching the rule applied to hull and turret plates.
+  for (const shape of shapes ?? []) {
+    shape.x0 *= scale.x;
+    shape.x1 *= scale.x;
+    for (const point of shape.poly) {
+      point[0] *= scale.z;
+      point[1] *= scale.y;
+    }
+  }
 }
 
 /**
