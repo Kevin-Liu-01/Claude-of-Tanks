@@ -5327,8 +5327,9 @@ function buildM4A3E8(P: TankBuilderPort): void {
   P.topY = 0.72;
 }
 
-function buildTiger(P: TankBuilderPort): void {
-  const { rng } = P;
+const TIGER_TURRET_HALF_WIDTH = 1.37;
+
+function buildTigerHull(P: TankBuilderPort): void {
   P.add('hull', box(2.26, 0.68, 6.32), 0, 0.81, 0);                             // lower hull
   // ONE continuous overhanging superstructure box reaching down to the track
   // top run — the real Tiger side is a single flat plate from deck to tracks,
@@ -5419,6 +5420,9 @@ function buildTiger(P: TankBuilderPort): void {
   P.add('hullDetail', box(0.13, 0.035, 0.10), 0, 1.325, 2.76);     // hood cap
   P.add('hullDark', box(0.10, 0.018, 0.02), 0, 1.305, 2.815);      // slit
   P.add('hullDark', cylY(0.02, 0.02, 0.06, 8), 0, 1.21, 2.74);     // stalk
+}
+
+function buildTigerDeck(P: TankBuilderPort): void {
   // Feifel air-cleaner canisters flanking the exhaust stacks (roster §2.5 —
   // r4 critic: "signature externals missing"): fat vertical drums on the
   // rear plate corners with ribbed collars and piping up over the deck edge.
@@ -5479,13 +5483,17 @@ function buildTiger(P: TankBuilderPort): void {
   P.add('hullDetail', cylZ(0.06, 0.4, 8), -0.95, 2.0, 2.25);                    // fire extinguisher
   P.add('hullDark', box(0.6, 0.1, 0.14), 0.15, 2.0, -0.9);                      // wire cutters / crank
   spareTrackStrip(P, 'hull', 1.55, 1.98, 0.0, 3);                               // deck-edge spare links
+}
+
+function buildTigerTurret(P: TankBuilderPort): void {
+  const { rng } = P;
   // turret: the iconic horseshoe — ONE extruded profile: flat front plate,
   // straight parallel side walls, continuous semicircular rear. Widened to
   // ~2.5m so it no longer reads as a toy turret on the 3.7m hull (r3).
   // tank_models r2 (critic: "turret reads ~60% hull width, should be ~75%"):
   // widened again 1.26 -> 1.37 half-width (2.74 m on the 3.71 m hull ≈ 74%);
   // the armor shell in specs.ts stays at 1.26 (visual sits a hair proud).
-  const TW = 1.37, TH = 0.80, tZF = 0.62, tZR = -0.52;
+  const TW = TIGER_TURRET_HALF_WIDTH, TH = 0.80, tZF = 0.62, tZR = -0.52;
   const horseshoe = new THREE.Shape();
   horseshoe.moveTo(-TW, -tZF);
   horseshoe.lineTo(TW, -tZF);
@@ -5567,6 +5575,11 @@ function buildTiger(P: TankBuilderPort): void {
   // 8.8cm L/56: muzzle at ~5.3m from hull center = 8.45m overall (the old
   // 4.93m tube read as the Tiger II's L/71 — r3 gun critique)
   buildGun(P, { len: 4.5, r: 0.085, brake: 'double' });
+}
+
+function buildTigerRunningGear(P: TankBuilderPort): void {
+  const { rng } = P;
+  const TW = TIGER_TURRET_HALF_WIDTH;
   // Schachtellaufwerk: 16 axles/side at half pitch cycling through THREE
   // interleave rows (proud / recessed / middle, >=0.13 m between rows) — the
   // recessed rows render with the shadowed wheel material and a near-black AO
@@ -5632,6 +5645,13 @@ function buildTiger(P: TankBuilderPort): void {
   P.decal('hull', 'soot', null, 0.85, [0.5, 1.75, -3.18], Math.PI);
   P.decal('hull', 'soot', null, 0.85, [-0.5, 1.75, -3.18], Math.PI);
   P.topY = 1.05;
+}
+
+function buildTiger(P: TankBuilderPort): void {
+  buildTigerHull(P);
+  buildTigerDeck(P);
+  buildTigerTurret(P);
+  buildTigerRunningGear(P);
 }
 
 function buildT34(P: TankBuilderPort): void {
