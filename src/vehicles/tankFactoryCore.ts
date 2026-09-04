@@ -1057,6 +1057,94 @@ const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 // deliberately stay outside this allowlist.
 const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBay(?:AO|VoidDress)|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus).*|vehicleMarking_.*)$/;
 
+type BatchableStaticMesh = VehicleMesh & { material: THREE.Material };
+
+function isBatchableStaticMesh(object: THREE.Object3D): object is BatchableStaticMesh {
+  if (!isVehicleMesh(object) || isVehicleInstancedMesh(object)) return false;
+  const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(object.name || '');
+  if ((!exactStaticNamed && object.name) || object.children.length || !object.visible) return false;
+  if (Array.isArray(object.material)) return false;
+  if (!exactStaticNamed && Object.keys(object.userData || {}).length) return false;
+  if (Object.keys(object.morphTargetDictionary || {}).length) return false;
+  if (Object.keys(object.geometry?.morphAttributes || {}).length) return false;
+  const geometry = object.geometry;
+  return !!geometry && geometry.drawRange.start === 0
+    && (!Number.isFinite(geometry.drawRange.count) || geometry.drawRange.count === Infinity);
+}
+
+function staticBatchKey(mesh: BatchableStaticMesh): string {
+  const geometry = mesh.geometry;
+  const attributes = Object.entries(
+    geometry.attributes as Record<
+      string,
+      THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+    >,
+  )
+    .map(([name, attribute]) => (
+      `${name}:${attribute.itemSize}:${attribute.normalized ? 1 : 0}`
+    ))
+    .sort()
+    .join(',');
+  return [
+    mesh.material?.uuid || '',
+    attributes,
+    geometry.index ? 1 : 0,
+    mesh.castShadow ? 1 : 0,
+    mesh.receiveShadow ? 1 : 0,
+    mesh.renderOrder,
+    mesh.layers.mask,
+    mesh.frustumCulled ? 1 : 0,
+  ].join('|');
+}
+
+function collectStaticBatchGroups(parent: THREE.Object3D): Map<string, BatchableStaticMesh[]> {
+  const groups = new Map<string, BatchableStaticMesh[]>();
+  for (const object of parent.children) {
+    if (!isBatchableStaticMesh(object)) continue;
+    const key = staticBatchKey(object);
+    const group = groups.get(key) || [];
+    group.push(object);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+function createStaticBatch(
+  group: BatchableStaticMesh[],
+  batchIndex: number,
+  disposables: DisposableVehicleResource[],
+): VehicleMesh | null {
+  const geometries = group.map((mesh) => {
+    mesh.updateMatrix();
+    return mesh.geometry.clone().applyMatrix4(mesh.matrix);
+  });
+  // Preserve indexed geometry instead of expanding every triangle to
+  // non-indexed vertices through mergeAll().
+  const merged = mergeGeometries(geometries, false);
+  for (const geometry of geometries) geometry.dispose();
+  if (!merged) return null;
+  disposables.push(merged);
+  const source = group[0];
+  const batch = new THREE.Mesh(merged, source.material);
+  batch.name = `mobileStaticBatch_${batchIndex}`;
+  batch.userData.mobileStaticBatch = true;
+  batch.castShadow = source.castShadow;
+  batch.receiveShadow = source.receiveShadow;
+  batch.renderOrder = source.renderOrder;
+  batch.layers.mask = source.layers.mask;
+  batch.frustumCulled = source.frustumCulled;
+  return batch;
+}
+
+function replaceStaticBatchSources(
+  parent: THREE.Object3D,
+  group: VehicleMesh[],
+  batch: VehicleMesh,
+): void {
+  for (const mesh of group) parent.remove(mesh);
+  parent.add(batch);
+}
+
 function batchMobileStaticChildren(
   parents: readonly THREE.Object3D[],
   disposables: DisposableVehicleResource[],
@@ -1065,56 +1153,14 @@ function batchMobileStaticChildren(
   let sourceMeshes = 0;
   let batches = 0;
   for (const parent of parents) {
-    const groups = new Map<string, VehicleMesh[]>();
-    for (const object of parent.children) {
-      if (!isVehicleMesh(object)) continue;
-      const mesh = object;
-      const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(mesh.name || '');
-      if (isVehicleInstancedMesh(mesh) || (!exactStaticNamed && mesh.name)
-          || mesh.children.length
-          || !mesh.visible || Array.isArray(mesh.material)
-          || (!exactStaticNamed && Object.keys(mesh.userData || {}).length)
-          || Object.keys(mesh.morphTargetDictionary || {}).length
-          || Object.keys(mesh.geometry?.morphAttributes || {}).length) continue;
-      const geo = mesh.geometry;
-      if (!geo || geo.drawRange.start !== 0
-          || (Number.isFinite(geo.drawRange.count) && geo.drawRange.count !== Infinity)) continue;
-      const attrs = Object.entries(geo.attributes as Record<string, THREE.BufferAttribute | THREE.InterleavedBufferAttribute>)
-        .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
-        .sort().join(',');
-      const key = [mesh.material?.uuid || '', attrs, geo.index ? 1 : 0, mesh.castShadow ? 1 : 0,
-        mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
-        mesh.frustumCulled ? 1 : 0].join('|');
-      const group = groups.get(key) || [];
-      group.push(mesh);
-      groups.set(key, group);
-    }
+    const groups = collectStaticBatchGroups(parent);
     let batchIndex = 0;
     for (const group of groups.values()) {
       if (group.length < 2) continue;
-      const geometries = group.map((mesh) => {
-        mesh.updateMatrix();
-        return mesh.geometry.clone().applyMatrix4(mesh.matrix);
-      });
-      // These groups are now homogeneous by index mode. Preserve indexed
-      // geometry instead of expanding every triangle to non-indexed vertices
-      // through mergeAll(); roster assembly previously spent hundreds of
-      // milliseconds copying 2-3x the vertex data for each battle bot.
-      const merged = mergeGeometries(geometries, false);
-      for (const geometry of geometries) geometry.dispose();
-      if (!merged) continue;
-      disposables.push(merged);
-      const source = group[0];
-      const batch = new THREE.Mesh(merged, source.material);
-      batch.name = `mobileStaticBatch_${batchIndex++}`;
-      batch.userData.mobileStaticBatch = true;
-      batch.castShadow = source.castShadow;
-      batch.receiveShadow = source.receiveShadow;
-      batch.renderOrder = source.renderOrder;
-      batch.layers.mask = source.layers.mask;
-      batch.frustumCulled = source.frustumCulled;
-      for (const mesh of group) parent.remove(mesh);
-      parent.add(batch);
+      const batch = createStaticBatch(group, batchIndex, disposables);
+      if (!batch) continue;
+      batchIndex++;
+      replaceStaticBatchSources(parent, group, batch);
       if (onBatch) onBatch(group, batch);
       sourceMeshes += group.length;
       batches++;
