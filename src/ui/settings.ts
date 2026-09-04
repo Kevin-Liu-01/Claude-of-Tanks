@@ -40,6 +40,14 @@ import {
 import { isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import {
+  getLocale,
+  setLocale,
+  t,
+  type SupportedLocale,
+} from './i18n.ts';
+
+const SUPPORTED_LOCALES: readonly SupportedLocale[] = ['en-US', 'zh-CN'] as const;
 import type {
   ActionId,
   AiDifficulty,
@@ -1067,6 +1075,36 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
         'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
         'Applies instantly.';
+
+    // Language picker. Lives under Graphics tab for now (matches Settings panel
+    // layout); the language only affects UI text, not rendering quality.
+    const langCard = groupCard(body, 'Language');
+    const langRow = el('div', 'cot-set-row', langCard);
+    settingLabel(langRow, 'Language', SETTINGS_OPTION_ICONS.graphicsQuality);
+    const langSeg = el('div', 'cot-set-seg', langRow);
+    const langBtns: HTMLButtonElement[] = [];
+    const currentLocale = getLocale();
+    for (const locale of SUPPORTED_LOCALES) {
+      const b = el('button', '', langSeg);
+      b.type = 'button';
+      b.dataset.locale = locale;
+      b.textContent = t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en'));
+      b.addEventListener('click', () => {
+        setLocale(locale as SupportedLocale);
+        for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === locale);
+        emit('ui:click', {});
+        // Re-render this tab so labels and notes translate in place without
+        // requiring the player to switch tabs and back.
+        renderTab();
+      });
+      langBtns.push(b);
+    }
+    for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === currentLocale);
+    const langNote = el('div', 'cot-set-note', langCard);
+    langNote.textContent = t('settings.tab.language') === 'settings.tab.language'
+      ? 'Switches every UI string between English and Simplified Chinese. ' +
+        'Tank names, nations and map names stay in their original form.'
+      : '切换所有界面文字为英文或简体中文。战车型号、国别、地图名保持原名。';
   }
 
   function renderTab() {
