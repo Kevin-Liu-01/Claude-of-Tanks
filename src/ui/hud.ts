@@ -27,7 +27,8 @@ import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
   MINIMAP_NORTH_UP,
-  minimapRotationForSpawnYaw,
+  minimapRotationForHeading,
+  normalizeMinimapAngle,
   orientMinimapDirection,
   orientMinimapPoint,
   orientMinimapYaw,
@@ -490,9 +491,8 @@ export interface HudRuntime {
 interface HudMinimapDebugState {
   rotationRad: number;
   rotationDeg: number;
-  deploymentYawRad: number | null;
-  flipped: boolean;
-  orientationLocked: boolean;
+  playerHeadingYawRad: number | null;
+  headingUp: true;
   backgroundKind: 'none' | 'image' | 'canvas';
   backgroundReady: boolean;
   backingWidth: number;
@@ -2263,8 +2263,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // memory-pressure canvas purge, which left live blips over a blank panel.
   let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
   let minimapRotation = MINIMAP_NORTH_UP;
-  let minimapDeploymentYaw: number | null = null;
-  let minimapOrientationLocked = false;
+  let minimapPlayerHeadingYaw: number | null = null;
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
@@ -4627,7 +4626,6 @@ export function initHud(bus: EventBus): HudRuntime {
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
   function drawMinimapChrome(octx: CanvasRenderingContext2D): void {
-    const flipped = Math.cos(minimapRotation) < 0;
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
     octx.lineWidth = 0.7;
@@ -4652,11 +4650,10 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
       // column numbers across the top edge (WoT prints "0" for the 10th)
-      const sourceIndex = flipped ? 9 - i : i;
-      octx.fillText(String((sourceIndex + 1) % 10), c, 6);
+      octx.fillText(String((i + 1) % 10), c, 6);
       // row letters down the left edge (skip the corner-sharing squeeze:
       // A's cell also hosts the "1", so it sits a touch lower)
-      octx.fillText(GRID_LETTERS[sourceIndex], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
+      octx.fillText(GRID_LETTERS[i], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
     }
     octx.restore();
     octx.textAlign = 'left';
@@ -4700,8 +4697,8 @@ export function initHud(bus: EventBus): HudRuntime {
       drawMinimapUnderlayTiles();
       mmCtx.restore();
     }
-    // Labels stay upright and reverse on the opposite deployment so the
-    // established battlefield grid identity survives the heading-up view.
+    // Chrome stays upright as a screen-relative tactical grid while the map,
+    // bases, contacts, camera wedge, and headings rotate together beneath it.
     drawMinimapChrome(mmCtx);
   }
 
@@ -4716,23 +4713,6 @@ export function initHud(bus: EventBus): HudRuntime {
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
-    if (!minimapOrientationLocked) {
-      // Derive the stable deployment axis from both team centroids. Locking
-      // the first local yaw was racy in network rooms: the first presentation
-      // frame can still contain the default 0-radian pose before the server's
-      // opposite-side spawn arrives, leaving that client exactly backwards.
-      const ownX = ax / an;
-      const ownZ = az / an;
-      const foeX = ex / en;
-      const foeZ = ez / en;
-      const dx = foeX - ownX;
-      const dz = foeZ - ownZ;
-      if (Math.hypot(dx, dz) < mapWorldSize * 0.2) return;
-      minimapDeploymentYaw = Math.atan2(dx, dz);
-      minimapRotation = minimapRotationForSpawnYaw(minimapDeploymentYaw);
-      minimapOrientationLocked = true;
-      mmDirty = true;
-    }
     // r4: each base carries a team-tinted cap fill so BOTH bases read on the
     // map (the old white 7% fill made the own-base marker invisible under
     // the ally blip cluster at spawn — the map read one-sided).
@@ -5760,6 +5740,11 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateMinimapIfDue(frame: HudFrame): void {
     const nowMs = performance.now();
     if (!mmDirty && nowMs - mmLastPaintMs < 50) return;
+    const playerYaw = frame.player?.state?.yaw;
+    if (typeof playerYaw === 'number' && Number.isFinite(playerYaw)) {
+      minimapPlayerHeadingYaw = normalizeMinimapAngle(playerYaw);
+      minimapRotation = minimapRotationForHeading(playerYaw);
+    }
     drawMinimap(frame);
     mmDirty = false;
     mmLastPaintMs = nowMs;
@@ -5900,8 +5885,7 @@ export function initHud(bus: EventBus): HudRuntime {
         nickById.clear();
         spawnFlags = null; // re-capture from the new battle's spawn frame
         minimapRotation = MINIMAP_NORTH_UP;
-        minimapDeploymentYaw = null;
-        minimapOrientationLocked = false;
+        minimapPlayerHeadingYaw = null;
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -6036,9 +6020,8 @@ export function initHud(bus: EventBus): HudRuntime {
       getMinimapState: () => ({
         rotationRad: minimapRotation,
         rotationDeg: minimapRotation * 180 / Math.PI,
-        deploymentYawRad: minimapDeploymentYaw,
-        flipped: Math.cos(minimapRotation) < 0,
-        orientationLocked: minimapOrientationLocked,
+        playerHeadingYawRad: minimapPlayerHeadingYaw,
+        headingUp: true,
         backgroundKind: !mmBg ? 'none'
           : mmBg instanceof HTMLImageElement ? 'image' : 'canvas',
         backgroundReady: !!mmBg && (mmBg instanceof HTMLImageElement
