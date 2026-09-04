@@ -433,42 +433,92 @@ function requireTankBuilderPort(value: object): TankBuilderPort {
 // Loft machinery: bands of 8-corner slabs that follow measured polylines.
 // Stations run FRONT (+z) to REAR; each entry {z, yT, yB, wT, wB}.
 // ---------------------------------------------------------------------------
+function addFullLoftSlab(
+  P: TankBuilderPort,
+  bucket: BucketName,
+  a: LoftStation,
+  b: LoftStation,
+): void {
+  const ax = a.x ?? 0;
+  const bx = b.x ?? 0;
+  P.add(bucket, orientedSlab(
+    [ax - a.wB, a.yB, a.z], [ax + a.wB, a.yB, a.z],
+    [bx + b.wB, b.yB, b.z], [bx - b.wB, b.yB, b.z],
+    [ax - a.wT, a.yT, a.z], [ax + a.wT, a.yT, a.z],
+    [bx + b.wT, b.yT, b.z], [bx - b.wT, b.yT, b.z],
+  ));
+}
+
+function addClearanceCenterSlab(
+  P: TankBuilderPort,
+  bucket: BucketName,
+  a: LoftStation,
+  b: LoftStation,
+  aHalfWidth: number,
+  bHalfWidth: number,
+): void {
+  const ax = a.x ?? 0;
+  const bx = b.x ?? 0;
+  P.add(bucket, orientedSlab(
+    [ax - aHalfWidth, a.yB, a.z], [ax + aHalfWidth, a.yB, a.z],
+    [bx + bHalfWidth, b.yB, b.z], [bx - bHalfWidth, b.yB, b.z],
+    [ax - aHalfWidth, a.yT, a.z], [ax + aHalfWidth, a.yT, a.z],
+    [bx + bHalfWidth, b.yT, b.z], [bx - bHalfWidth, b.yT, b.z],
+  ));
+}
+
+function addClearanceSideSlab(
+  P: TankBuilderPort,
+  bucket: BucketName,
+  a: LoftStation,
+  b: LoftStation,
+  aHalfWidth: number,
+  bHalfWidth: number,
+  floorY: number,
+  side: number,
+): void {
+  const ax = a.x ?? 0;
+  const bx = b.x ?? 0;
+  const aFloorY = Math.max(a.yB, floorY);
+  const bFloorY = Math.max(b.yB, floorY);
+  const points: Vec3Tuple[] = side > 0
+    ? [
+      [ax + aHalfWidth, aFloorY, a.z], [ax + a.wB, aFloorY, a.z],
+      [bx + b.wB, bFloorY, b.z], [bx + bHalfWidth, bFloorY, b.z],
+      [ax + aHalfWidth, a.yT, a.z], [ax + a.wT, a.yT, a.z],
+      [bx + b.wT, b.yT, b.z], [bx + bHalfWidth, b.yT, b.z],
+    ]
+    : [
+      [ax - a.wB, aFloorY, a.z], [ax - aHalfWidth, aFloorY, a.z],
+      [bx - bHalfWidth, bFloorY, b.z], [bx - b.wB, bFloorY, b.z],
+      [ax - a.wT, a.yT, a.z], [ax - aHalfWidth, a.yT, a.z],
+      [bx - bHalfWidth, b.yT, b.z], [bx - b.wT, b.yT, b.z],
+    ];
+  P.add(bucket, orientedSlab(...points));
+}
+
 function loftBand(
   P: TankBuilderPort,
   bucket: BucketName,
   sts: readonly LoftStation[],
   trackClear: TrackClearance | null = null,
 ): void {
-  const slab = orientedSlab;                                // §C.1 winding guard
   for (let i = 0; i < sts.length - 1; i++) {
-    const a = sts[i], b = sts[i + 1];
-    const ax = a.x ?? 0, bx = b.x ?? 0; // optional plan shear per station
-    if (trackClear) {
-      // Preserve one closed center hull at the measured keel height while
-      // lifting only the concealed outboard sponson floors above the native
-      // return course. The upper/deck stations and exterior side walls stay
-      // on their authored silhouette; this is a three-piece closed loft, not
-      // a subtractive corridor cut or a hidden/removed hull panel.
-      const ah = Math.min(trackClear.hw, a.wB, a.wT);
-      const bh = Math.min(trackClear.hw, b.wB, b.wT);
-      P.add(bucket, slab(
-        [ax - ah, a.yB, a.z], [ax + ah, a.yB, a.z], [bx + bh, b.yB, b.z], [bx - bh, b.yB, b.z],
-        [ax - ah, a.yT, a.z], [ax + ah, a.yT, a.z], [bx + bh, b.yT, b.z], [bx - bh, b.yT, b.z]));
-      for (const side of [-1, 1]) {
-        const ay = Math.max(a.yB, trackClear.y);
-        const by = Math.max(b.yB, trackClear.y);
-        const pts = side > 0
-          ? [[ax + ah, ay, a.z], [ax + a.wB, ay, a.z], [bx + b.wB, by, b.z], [bx + bh, by, b.z],
-            [ax + ah, a.yT, a.z], [ax + a.wT, a.yT, a.z], [bx + b.wT, b.yT, b.z], [bx + bh, b.yT, b.z]]
-          : [[ax - a.wB, ay, a.z], [ax - ah, ay, a.z], [bx - bh, by, b.z], [bx - b.wB, by, b.z],
-            [ax - a.wT, a.yT, a.z], [ax - ah, a.yT, a.z], [bx - bh, b.yT, b.z], [bx - b.wT, b.yT, b.z]];
-        P.add(bucket, slab(...pts));
-      }
+    const a = sts[i];
+    const b = sts[i + 1];
+    if (!trackClear) {
+      addFullLoftSlab(P, bucket, a, b);
       continue;
     }
-    P.add(bucket, slab(
-      [ax - a.wB, a.yB, a.z], [ax + a.wB, a.yB, a.z], [bx + b.wB, b.yB, b.z], [bx - b.wB, b.yB, b.z],
-      [ax - a.wT, a.yT, a.z], [ax + a.wT, a.yT, a.z], [bx + b.wT, b.yT, b.z], [bx - b.wT, b.yT, b.z]));
+    const aHalfWidth = Math.min(trackClear.hw, a.wB, a.wT);
+    const bHalfWidth = Math.min(trackClear.hw, b.wB, b.wT);
+    addClearanceCenterSlab(P, bucket, a, b, aHalfWidth, bHalfWidth);
+    addClearanceSideSlab(
+      P, bucket, a, b, aHalfWidth, bHalfWidth, trackClear.y, -1,
+    );
+    addClearanceSideSlab(
+      P, bucket, a, b, aHalfWidth, bHalfWidth, trackClear.y, 1,
+    );
   }
 }
 
@@ -8580,6 +8630,58 @@ function merkavaSourceFinish(
     }
   };
 
+  const addEarlySaddleGun = (isMark1: boolean): void => {
+    const x = isMark1 ? 0.24 : 0.31;
+    P.addGunExtraDark(box(0.15, 0.11, 0.34), x, 0.035, 0.34);
+    P.addGunExtraDark(box(0.07, 0.13, 0.12), x - 0.10, 0.015, 0.25);
+    P.addGunExtraDark(cylZ(0.018, isMark1 ? 0.66 : 0.78, 10),
+      x, 0.055, isMark1 ? 0.78 : 0.84);
+    P.addGunExtraDark(cylZ(0.027, 0.09, 10), x, 0.055, isMark1 ? 1.08 : 1.18);
+    P.addGunExtra(box(0.11, 0.08, 0.15), x + 0.12, 0.015, 0.31);
+  };
+
+  const addEarlyRoofTieBars = (
+    commanderX: number,
+    commanderRoof: number,
+    commanderZ: number,
+    loaderX: number,
+    loaderRoof: number,
+    loaderZ: number,
+  ): void => {
+    deckRod([
+      [commanderX, commanderRoof, commanderZ],
+      [commanderX * 0.55, roofAt(-1.90), -1.90],
+      [0, roofAt(-2.25), -2.25],
+    ], 'turretDark', 0.026);
+    deckRod([
+      [loaderX, loaderRoof, loaderZ],
+      [0.82 * Math.sign(loaderX), roofAt(-1.95), -1.95],
+    ], 'turretDetail', 0.018, 0.035);
+    for (const side of [-1, 1]) {
+      P.add('turretDetail', box(0.12, 0.075, 0.42),
+        side * 0.92, V(roofAt(-1.78) + 0.025), L(-1.78), 0, side * 0.08, side * -0.05);
+      P.add('turretDark', box(0.018, 0.085, 0.36),
+        side * 0.92, V(roofAt(-1.78) + 0.035), L(-1.78), 0, side * 0.08, side * -0.05);
+    }
+  };
+
+  const addEarlyBasketStowage = (isMark1: boolean): void => {
+    const rackTop = isMark1 ? 2.39 : 2.42;
+    const rackZ = isMark1 ? -2.72 : -2.88;
+    for (const side of [-1, 1]) {
+      P.add('turretCloth', cylX(isMark1 ? 0.14 : 0.16, 0.54, 16),
+        side * 0.57, V(rackTop - 0.18), L(rackZ), 0, 0, side * 0.08);
+      P.add('turretDark', box(0.025, 0.34, 0.38),
+        side * 0.57, V(rackTop - 0.18), L(rackZ), 0, side * 0.03, 0);
+      merkavaTarpLump(P, side * 0.34, V(rackTop - 0.03), L(rackZ - 0.18),
+        0.54, 0.44, 'turretCloth', side * 0.12);
+    }
+    P.add('turretCloth', box(0.48, 0.28, 0.46),
+      0, V(rackTop - 0.20), L(rackZ - 0.08), 0.05, 0.08, 0);
+    P.add('turretDark', box(0.50, 0.020, 0.36),
+      0, V(rackTop - 0.05), L(rackZ - 0.08), 0.05, 0.08, 0);
+  };
+
   const addEarlyRoof = (mark: string): void => {
     const is1 = mark === 'merkava1b';
     const is2d = mark === 'merkava2d';
@@ -8600,34 +8702,16 @@ function merkavaSourceFinish(
     // Source Mk.1/2 vehicles carry a third, low machine gun tied to the
     // main-gun saddle.  Author it inside rig_gun so it follows elevation
     // with the barrel instead of remaining stranded on the turret roof.
-    const twinX = is1 ? 0.24 : 0.31;
-    P.addGunExtraDark(box(0.15, 0.11, 0.34), twinX, 0.035, 0.34);
-    P.addGunExtraDark(box(0.07, 0.13, 0.12), twinX - 0.10, 0.015, 0.25);
-    P.addGunExtraDark(cylZ(0.018, is1 ? 0.66 : 0.78, 10), twinX, 0.055, is1 ? 0.78 : 0.84);
-    P.addGunExtraDark(cylZ(0.027, 0.09, 10), twinX, 0.055, is1 ? 1.08 : 1.18);
-    P.addGunExtra(box(0.11, 0.08, 0.15), twinX + 0.12, 0.015, 0.31);
+    addEarlySaddleGun(is1);
     const sightZ = is1 ? -0.20 : -0.38;
     sight(is1 ? 0.62 : -0.64, sightZ, Math.min(capWorld - 0.18, roofAt(sightZ)), 0.24, 0.21, 0.26, is1 ? -0.12 : 0.12);
     // Low conduit and basket tie bars reproduce the busy, mechanically
     // connected source roofs without creating extra silhouette towers.
-    deckRod([[cmdX, cmdRoof, zCmd], [cmdX * 0.55, roofAt(-1.90), -1.90], [0, roofAt(-2.25), -2.25]], 'turretDark', 0.026);
-    deckRod([[loadX, loadRoof, zLoad], [0.82 * Math.sign(loadX), roofAt(-1.95), -1.95]], 'turretDetail', 0.018, 0.035);
-    for (const s of [-1, 1]) {
-      P.add('turretDetail', box(0.12, 0.075, 0.42), s * 0.92, V(roofAt(-1.78) + 0.025), L(-1.78), 0, s * 0.08, s * -0.05);
-      P.add('turretDark', box(0.018, 0.085, 0.36), s * 0.92, V(roofAt(-1.78) + 0.035), L(-1.78), 0, s * 0.08, s * -0.05);
-    }
+    addEarlyRoofTieBars(cmdX, cmdRoof, zCmd, loadX, loadRoof, zLoad);
     // Dense bustle stow visible through the open basket.  Rolls and tarps
     // sit on the basket floor and remain below its rim; straps visibly tie
     // each mass back to the rotating rear structure.
-    const rackTop = is1 ? 2.39 : 2.42;
-    const rackZ = is1 ? -2.72 : -2.88;
-    for (const s of [-1, 1]) {
-      P.add('turretCloth', cylX(is1 ? 0.14 : 0.16, 0.54, 16), s * 0.57, V(rackTop - 0.18), L(rackZ), 0, 0, s * 0.08);
-      P.add('turretDark', box(0.025, 0.34, 0.38), s * 0.57, V(rackTop - 0.18), L(rackZ), 0, s * 0.03, 0);
-      merkavaTarpLump(P, s * 0.34, V(rackTop - 0.03), L(rackZ - 0.18), 0.54, 0.44, 'turretCloth', s * 0.12);
-    }
-    P.add('turretCloth', box(0.48, 0.28, 0.46), 0, V(rackTop - 0.20), L(rackZ - 0.08), 0.05, 0.08, 0);
-    P.add('turretDark', box(0.50, 0.020, 0.36), 0, V(rackTop - 0.05), L(rackZ - 0.08), 0.05, 0.08, 0);
+    addEarlyBasketStowage(is1);
   };
 
   const addThirdGenRoof = (mark: string): void => {

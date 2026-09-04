@@ -244,6 +244,37 @@ function leafGeometry(scale: number, seed: number, style: GhillieStyle): THREE.B
   );
 }
 
+function topFoliagePointAllowed(panel: TopPanel, x: number, z: number): boolean {
+  if (panel.outline && !insidePoly(x, z, panel.outline)) return false;
+  return !(panel.holes ?? []).some((hole) => insidePoly(x, z, hole));
+}
+
+function appendTopFoliageCluster(
+  outA: THREE.BufferGeometry[],
+  outB: THREE.BufferGeometry[],
+  panel: TopPanel,
+  cfg: GhillieConfig,
+  seed: number,
+  x: number,
+  z: number,
+): void {
+  const { xform } = KIT;
+  const target = seed % 3 ? outA : outB;
+  const count = cfg.style === 'leafy' ? 3 : 2;
+  for (let index = 0; index < count; index++) {
+    const scale = (0.66 + noise01(seed, 20 + index) * 0.44) * cfg.leafScale;
+    target.push(xform(
+      leafGeometry(scale, seed + index * 31, cfg.style),
+      x + (noise01(seed, 30 + index) - 0.5) * 0.12,
+      panel.yAt(x, z) + 0.018 + index * 0.010,
+      z + (noise01(seed, 40 + index) - 0.5) * 0.12,
+      (noise01(seed, 50 + index) - 0.5) * 0.16,
+      noise01(seed, 60 + index) * Math.PI,
+      (noise01(seed, 70 + index) - 0.5) * 0.15,
+    ));
+  }
+}
+
 function addTopFoliage(
   outA: THREE.BufferGeometry[],
   outB: THREE.BufferGeometry[],
@@ -251,7 +282,6 @@ function addTopFoliage(
   cfg: GhillieConfig,
   seedBase: number,
 ): void {
-  const { xform } = KIT;
   const stepX = cfg.style === 'nakidka' ? 0.38 : cfg.style === 'ulcans' ? 0.34 : 0.30;
   const stepZ = cfg.style === 'nakidka' ? 0.42 : 0.34;
   let n = 0;
@@ -260,21 +290,9 @@ function addTopFoliage(
       const seed = seedBase + n++;
       const px = x + (noise01(seed, 6) - 0.5) * stepX * 0.58;
       const pz = z + (noise01(seed, 7) - 0.5) * stepZ * 0.58;
-      if (panel.outline && !insidePoly(px, pz, panel.outline)) continue;
-      if ((panel.holes || []).some((hole) => insidePoly(px, pz, hole))) continue;
+      if (!topFoliagePointAllowed(panel, px, pz)) continue;
       if (noise01(seed, 8) > cfg.density) continue;
-      const target = seed % 3 ? outA : outB;
-      const count = cfg.style === 'leafy' ? 3 : 2;
-      for (let k = 0; k < count; k++) {
-        const s = (0.66 + noise01(seed, 20 + k) * 0.44) * cfg.leafScale;
-        target.push(xform(leafGeometry(s, seed + k * 31, cfg.style),
-          px + (noise01(seed, 30 + k) - 0.5) * 0.12,
-          panel.yAt(px, pz) + 0.018 + k * 0.010,
-          pz + (noise01(seed, 40 + k) - 0.5) * 0.12,
-          (noise01(seed, 50 + k) - 0.5) * 0.16,
-          noise01(seed, 60 + k) * Math.PI,
-          (noise01(seed, 70 + k) - 0.5) * 0.15));
-      }
+      appendTopFoliageCluster(outA, outB, panel, cfg, seed, px, pz);
     }
   }
 }
@@ -515,6 +533,34 @@ const t84HullY = (_x: number, z: number): number => {
   if (z < 0.55) return 1.45;
   return 1.45 - (z - 0.55) * 0.15;
 };
+
+type RoofSupportZone = readonly [
+  minX: number, maxX: number, minZ: number, maxZ: number, supportY: number,
+];
+
+const T84_ROOF_SUPPORT_ZONES: readonly RoofSupportZone[] = [
+  [0.19, 0.67, -1.91, -1.58, 0.8092],
+  [-0.90, -0.20, 0.43, 0.61, 0.815],
+  [0.20, 0.50, 0.43, 0.59, 0.815],
+  [-1.05, -0.84, 0.03, 0.42, 0.6583],
+  [0.14, 0.70, -0.64, -0.06, 0.826],
+  [-1.00, -0.14, -0.34, 0.00, 0.9075],
+];
+
+function pointInsideRoofSupportZone(x: number, z: number, zone: RoofSupportZone): boolean {
+  return x >= zone[0] && x <= zone[1] && z >= zone[2] && z <= zone[3];
+}
+
+function t84BaseRoofSupportY(x: number, z: number): number {
+  const absoluteX = Math.abs(x);
+  if (z < -0.72) return profileY([[-2.09, 0.595], [-0.72, 0.675]], z);
+  if (z < 0.745) {
+    if (absoluteX < 0.22) return 0.717;
+    return absoluteX < 0.73 ? 0.805 : 0.6073;
+  }
+  return 0.59 + THREE.MathUtils.clamp((1.62 - z) * 0.09, 0, 0.08)
+    - Math.max(0, absoluteX - 0.98) * 0.08;
+}
 // T-84 turret carrier surface. The old net was authored as one y=.89 sheet:
 // it floated 80-350 mm above most of the roof while slicing through the
 // commander Kord. That intersection hid the weapon cradle and made its ammo
@@ -523,40 +569,9 @@ const t84HullY = (_x: number, z: number): number => {
 // every proud fitting. The ghillie is added after all hard equipment in the
 // vehicle builder, so it visually lands on the finished assembly.
 const t84RoofHardY = (x: number, z: number): number => {
-  const ax = Math.abs(x);
-  let support: number;
-
-  if (z < -0.72) {
-    support = profileY([[-2.09, 0.595], [-0.72, 0.675]], z); // bustle shell
-  } else if (z < 0.745) {
-    support = ax < 0.22 ? 0.717 : ax < 0.73 ? 0.805 : 0.6073; // split roof lanes / shoulder
-  } else {
-    // Carrier wing and cassette crown over the swept Duplet cheeks.
-    support = 0.59 + THREE.MathUtils.clamp((1.62 - z) * 0.09, 0, 0.08)
-      - Math.max(0, ax - 0.98) * 0.08;
-  }
-
-  // Bustle stowage lid.
-  if (x >= 0.19 && x <= 0.67 && z >= -1.91 && z <= -1.58) {
-    support = Math.max(support, 0.8092);
-  }
-  // Gunner sight, commander sight and the newly seated shoulder enclosure.
-  if (x >= -0.90 && x <= -0.20 && z >= 0.43 && z <= 0.61) {
-    support = Math.max(support, 0.815);
-  }
-  if (x >= 0.20 && x <= 0.50 && z >= 0.43 && z <= 0.59) {
-    support = Math.max(support, 0.815);
-  }
-  if (x >= -1.05 && x <= -0.84 && z >= 0.03 && z <= 0.42) {
-    support = Math.max(support, 0.6583);
-  }
-  // Commander cupola and Kord. The latter is deliberately the highest local
-  // carrier so no part of the weapon is clipped into disconnected islands.
-  if (x >= 0.14 && x <= 0.70 && z >= -0.64 && z <= -0.06) {
-    support = Math.max(support, 0.826);
-  }
-  if (x >= -1.00 && x <= -0.14 && z >= -0.34 && z <= 0.00) {
-    support = Math.max(support, 0.9075);
+  let support = t84BaseRoofSupportY(x, z);
+  for (const zone of T84_ROOF_SUPPORT_ZONES) {
+    if (pointInsideRoofSupportZone(x, z, zone)) support = Math.max(support, zone[4]);
   }
   return support;
 };
@@ -947,6 +962,94 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
 
 const GHILLIE_CONFIG_INDEX: Readonly<Record<string, GhillieConfig>> = GHILLIE_SUIT_CONFIGS;
 
+interface GhillieGeometryBuckets {
+  readonly net: THREE.BufferGeometry[];
+  readonly light: THREE.BufferGeometry[];
+  readonly dark: THREE.BufferGeometry[];
+}
+
+function appendTopGhilliePanels(
+  panels: readonly TopPanel[],
+  cfg: GhillieConfig,
+  buckets: GhillieGeometryBuckets,
+  initialIndex: number,
+): number {
+  let panelIndex = initialIndex;
+  for (const panel of panels) {
+    buckets.net.push(clothTop(panel, cfg.seed));
+    if (cfg.foliage !== false) {
+      addTopFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
+    }
+    panelIndex++;
+  }
+  return panelIndex;
+}
+
+function appendSideGhilliePanels(
+  panels: readonly SidePanel[],
+  cfg: GhillieConfig,
+  buckets: GhillieGeometryBuckets,
+  initialIndex: number,
+): number {
+  let panelIndex = initialIndex;
+  for (const panel of panels) {
+    buckets.net.push(clothSide(panel, cfg.seed));
+    if (cfg.foliage !== false) {
+      addSideFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
+    }
+    panelIndex++;
+  }
+  return panelIndex;
+}
+
+function appendFaceGhilliePanels(
+  panels: readonly FacePanel[],
+  cfg: GhillieConfig,
+  buckets: GhillieGeometryBuckets,
+  initialIndex: number,
+): number {
+  let panelIndex = initialIndex;
+  for (const panel of panels) {
+    buckets.net.push(clothFace(panel, cfg.seed));
+    if (cfg.foliage !== false) {
+      addFaceFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
+    }
+    panelIndex++;
+  }
+  return panelIndex;
+}
+
+function addGhillieOwner(
+  P: GhillieBuilderPort,
+  cfg: GhillieConfig,
+  owner: GhillieOwner,
+  parent: THREE.Group,
+  panels: GhilliePanels,
+): void {
+  const buckets: GhillieGeometryBuckets = { net: [], light: [], dark: [] };
+  let panelIndex = appendTopGhilliePanels(panels.top ?? [], cfg, buckets, 0);
+  panelIndex = appendSideGhilliePanels(panels.side ?? [], cfg, buckets, panelIndex);
+  appendFaceGhilliePanels(panels.face ?? [], cfg, buckets, panelIndex);
+  const netPack = makeNet(P, cfg, owner);
+  addMerged(
+    P, parent, buckets.net, netPack.mat, `${cfg.id}_ghillie_${owner}_net`, [netPack.texture],
+  );
+  addMerged(
+    P,
+    parent,
+    buckets.light,
+    makeCloth(P, cfg, cfg.light, `${owner}-light`),
+    `${cfg.id}_ghillie_${owner}_light`,
+  );
+  addMerged(
+    P,
+    parent,
+    buckets.dark,
+    makeCloth(P, cfg, cfg.dark, `${owner}-dark`),
+    `${cfg.id}_ghillie_${owner}_dark`,
+  );
+}
+
 export function addVehicleGhillieSuit(P: GhillieBuilderPort): boolean {
   const cfg = GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!cfg || cfg.disabled) return false;
@@ -959,38 +1062,7 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort): boolean {
   for (const [owner, parent] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
-    const net: THREE.BufferGeometry[] = [];
-    const light: THREE.BufferGeometry[] = [];
-    const dark: THREE.BufferGeometry[] = [];
-    let panelIndex = 0;
-    for (const panel of panels.top || []) {
-      net.push(clothTop(panel, cfg.seed));
-      if (cfg.foliage !== false) {
-        addTopFoliage(light, dark, panel, cfg, cfg.seed + panelIndex * 1000);
-      }
-      panelIndex++;
-    }
-    for (const panel of panels.side || []) {
-      net.push(clothSide(panel, cfg.seed));
-      if (cfg.foliage !== false) {
-        addSideFoliage(light, dark, panel, cfg, cfg.seed + panelIndex * 1000);
-      }
-      panelIndex++;
-    }
-    for (const panel of panels.face || []) {
-      net.push(clothFace(panel, cfg.seed));
-      if (cfg.foliage !== false) {
-        addFaceFoliage(light, dark, panel, cfg, cfg.seed + panelIndex * 1000);
-      }
-      panelIndex++;
-    }
-
-    const netPack = makeNet(P, cfg, owner);
-    addMerged(P, parent, net, netPack.mat, `${cfg.id}_ghillie_${owner}_net`, [netPack.texture]);
-    addMerged(P, parent, light, makeCloth(P, cfg, cfg.light, `${owner}-light`),
-      `${cfg.id}_ghillie_${owner}_light`);
-    addMerged(P, parent, dark, makeCloth(P, cfg, cfg.dark, `${owner}-dark`),
-      `${cfg.id}_ghillie_${owner}_dark`);
+    addGhillieOwner(P, cfg, owner, parent, panels);
   }
   return true;
 }
