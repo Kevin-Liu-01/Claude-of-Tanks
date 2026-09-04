@@ -30,22 +30,6 @@ type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
 
-interface ChineseRoofOptions {
-  y?: number;
-  panoX?: number;
-  panoZ?: number;
-  mgScale?: number;
-  elev?: number;
-  seed?: number;
-  mgX?: number;
-  mgZ?: number;
-  mgYaw?: number;
-  whipL?: number;
-  whipR?: number;
-  whipX?: number;
-  whipZ?: number;
-}
-
 export interface ChinaBuilderPort extends TankBuilderPort {}
 
 const nonUniformXform = KIT.xform as (
@@ -95,37 +79,6 @@ function armorCassette(
       x, y + h * 0.50 + 0.010, z + d * 0.30, r[0], r[1], r[2]);
   }
   });
-}
-
-function addChineseRoofSuite(P: ChinaBuilderPort, options: ChineseRoofOptions = {}): void {
-  const { box, cylY } = KIT;
-  const y = options.y ?? 1.08;
-  const panoX = options.panoX ?? -0.52;
-  const panoZ = options.panoZ ?? -0.62;
-
-  // Broad planted optical foundation, tapered head and forward glass.
-  P.addEquipment('turret', box(0.42, 0.08, 0.40), panoX, y, panoZ);
-  P.add('turretDetail', cylY(0.14, 0.17, 0.30, 14), panoX, y + 0.20, panoZ);
-  P.add('turretDark', box(0.25, 0.11, 0.055), panoX, y + 0.22, panoZ + 0.18);
-  P.add('turretGlass', box(0.18, 0.075, 0.024), panoX, y + 0.22, panoZ + 0.215);
-
-  // QJC-88 family station on a cupola rather than a floating receiver.
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: options.mgScale ?? 0.82,
-    elev: options.elev ?? 0.08, shield: true, ammo: true,
-    ring: { r: 0.17, stubs: 3 }, seed: options.seed ?? 990,
-  }), options.mgX ?? 0.52, y + 0.01, options.mgZ ?? -0.54,
-  [0, options.mgYaw ?? 0.04, 0]);
-
-  for (const side of [-1, 1]) {
-    const h = side < 0 ? (options.whipL ?? 0.78) : (options.whipR ?? 0.64);
-    P.add('turretDetail', cylY(0.035, 0.045, 0.055, 10),
-      side * (options.whipX ?? 1.02), y - 0.06, options.whipZ ?? -1.52);
-    mount(P, 'turret', FITTINGS.antennaWhip({
-      mats: P.mats, h, r: 0.012, rake: -side * 0.045,
-      seed: (options.seed ?? 990) + 3 + (side > 0 ? 1 : 0),
-    }), side * (options.whipX ?? 1.02), y - 0.03, options.whipZ ?? -1.52);
-  }
 }
 
 function addSmokeBanks(
