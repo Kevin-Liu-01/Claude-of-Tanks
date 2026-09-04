@@ -122,8 +122,11 @@ for (const contract of [
   "from './portraitFraming.ts'",
   'measurePortraitCoreBounds',
   'containedPortraitPlacement',
+  'await img.decode()',
   '--cot-thumb-scale',
   "cotPortraitFramed = 'true'",
+  "cotPortraitReady = 'true'",
+  "cotPortraitReady = 'false'",
 ]) {
   if (!tankThumbs.includes(contract)) {
     throw new Error(`garage portrait framing is missing ${contract}`);
