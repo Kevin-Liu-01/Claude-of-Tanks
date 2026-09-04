@@ -1571,6 +1571,65 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eqTooltipEl.style.top = `${Math.round(top)}px`;
   }
 
+  function populateEquipmentTooltipMetrics(
+    metrics: HTMLElement,
+    preview: ReturnType<typeof equipmentHoverPreview>,
+    specName: string,
+  ): void {
+    if (!preview.metrics.length) return;
+    const metricHeading = document.createElement('span');
+    metricHeading.className = 'metrics-heading';
+    metricHeading.textContent = `Vehicle values · ${specName}`;
+    metrics.appendChild(metricHeading);
+    for (const metric of preview.metrics) {
+      const row = document.createElement('span');
+      row.className = `metric ${metric.outcome}`;
+      const icon = document.createElement('span');
+      icon.className = 'metric-icon';
+      icon.innerHTML = uiIconSVG(equipmentMetricIcon(metric.id), 12);
+      const label = document.createElement('span');
+      label.className = 'metric-label';
+      label.textContent = metric.label;
+      const values = document.createElement('span');
+      values.className = 'metric-values';
+      if (metric.changed) {
+        const current = document.createElement('span');
+        current.className = 'current';
+        current.textContent = metric.current;
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow';
+        arrow.textContent = '→';
+        const projected = document.createElement('b');
+        projected.textContent = metric.projected;
+        values.append(current, arrow, projected);
+      } else {
+        const active = document.createElement('b');
+        active.textContent = metric.projected;
+        values.appendChild(active);
+      }
+      row.append(icon, label, values);
+      metrics.appendChild(row);
+    }
+  }
+
+  function equipmentTooltipCategory(item: EquipmentItem | null | undefined): string {
+    if (!item) return 'Slot action';
+    return EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment';
+  }
+
+  function equipmentTooltipState(
+    item: EquipmentItem | null | undefined,
+    locked: boolean,
+    fittedAt: number,
+    spec: GarageTankSpec | undefined,
+  ): string {
+    if (!item) return `Clear Slot ${eqOpenSlot + 1}`;
+    if (locked) return equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot);
+    if (fittedAt === eqOpenSlot) return 'Currently fitted · click to remove';
+    if (fittedAt >= 0) return `Fitted in Slot ${fittedAt + 1} · click to move here`;
+    return equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
+  }
+
   function showEqTooltip(anchor: HTMLElement): void {
     if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return;
     const itemId = anchor.dataset.eqId || '';
@@ -1579,18 +1638,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
-    const category = item
-      ? EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment'
-      : 'Slot action';
-    const state = !item
-      ? `Clear Slot ${eqOpenSlot + 1}`
-      : locked
-        ? equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot)
-        : fittedAt === eqOpenSlot
-          ? 'Currently fitted · click to remove'
-          : fittedAt >= 0
-            ? `Fitted in Slot ${fittedAt + 1} · click to move here`
-            : equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
+    const category = equipmentTooltipCategory(item);
+    const state = equipmentTooltipState(item, locked, fittedAt, spec);
 
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
@@ -1609,41 +1658,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const metrics = document.createElement('span');
     metrics.className = 'metrics';
     metrics.setAttribute('aria-label', 'Projected vehicle statistics');
-    if (preview?.metrics.length) {
-      const metricHeading = document.createElement('span');
-      metricHeading.className = 'metrics-heading';
-      metricHeading.textContent = `Vehicle values · ${spec?.name || 'selected tank'}`;
-      metrics.appendChild(metricHeading);
-      for (const metric of preview.metrics) {
-        const row = document.createElement('span');
-        row.className = `metric ${metric.outcome}`;
-        const icon = document.createElement('span');
-        icon.className = 'metric-icon';
-        icon.innerHTML = uiIconSVG(equipmentMetricIcon(metric.id), 12);
-        const label = document.createElement('span');
-        label.className = 'metric-label';
-        label.textContent = metric.label;
-        const values = document.createElement('span');
-        values.className = 'metric-values';
-        if (metric.changed) {
-          const current = document.createElement('span');
-          current.className = 'current';
-          current.textContent = metric.current;
-          const arrow = document.createElement('span');
-          arrow.className = 'arrow';
-          arrow.textContent = '→';
-          const projected = document.createElement('b');
-          projected.textContent = metric.projected;
-          values.append(current, arrow, projected);
-        } else {
-          const active = document.createElement('b');
-          active.textContent = metric.projected;
-          values.appendChild(active);
-        }
-        row.append(icon, label, values);
-        metrics.appendChild(row);
-      }
-    }
+    if (preview) populateEquipmentTooltipMetrics(metrics, preview, spec?.name || 'selected tank');
     const action = document.createElement('span');
     action.className = 'action';
     action.textContent = state;
@@ -2255,6 +2270,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return slots.join('');
   }
 
+  function specialSystemSection(spec: GarageTankSpec, reloadS: number): string {
+    const special = garageSpecialSystem(spec, reloadS);
+    if (!special) return '';
+    return `<section class="cot-stat-section cot-special-section">` +
+      statSectionTitle(special.icon, 'Special system', 'E key') +
+      `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
+      `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
+      `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`;
+  }
+
   function renderStats(spec: GarageTankSpec): void {
     if (technicalModal.isOpen()) technicalModal.close({ restoreFocus: false, immediate: true });
     statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
@@ -2307,14 +2332,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       ? `${Math.round(vrMove)} / ${Math.round(vrStill)} m`
       : `${Math.round(vrMove)} m`;
     const eqTitle = (base: string): string => `Stock ${base} &middot; ${eqNames}`;
-    const special = garageSpecialSystem(spec, reloadS);
-    const specialCard = special
-      ? `<section class="cot-stat-section cot-special-section">` +
-        statSectionTitle(special.icon, 'Special system', 'E key') +
-        `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
-        `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
-        `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`
-      : '';
+    const specialCard = specialSystemSection(spec, reloadS);
     const initialTechnicalView = technicalViews[0];
     const technicalTabs = technicalViews.map((view, index) =>
       `<button class="cot-technical-tab" type="button" role="tab" ` +
