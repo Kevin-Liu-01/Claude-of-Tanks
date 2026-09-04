@@ -322,75 +322,111 @@ function nearestPlate(
   return best;
 }
 
+function mainPlateDescriptors(plates: readonly ArmorPlate[]): PlateDescriptor[] {
+  return (plates || [])
+    .filter((plate) => (plate.kind || 'main') === 'main')
+    .map(plateDescriptor)
+    .filter((descriptor): descriptor is PlateDescriptor => descriptor !== null);
+}
+
+function calibrationCellCenter(source: AnatomyCalibrationCell): Vec3 {
+  return [
+    (source.min[0] + source.max[0]) * 0.5,
+    (source.min[1] + source.max[1]) * 0.5,
+    (source.min[2] + source.max[2]) * 0.5,
+  ];
+}
+
+function collisionFaceFromTriangle(
+  sourceIndices: readonly number[],
+  vertices: Vec3[],
+  cellCenter: readonly number[],
+  descriptors: readonly PlateDescriptor[],
+): CollisionFace | null {
+  if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) return null;
+  const indices = sourceIndices.slice();
+  const a = vertices[indices[0]];
+  const b = vertices[indices[1]];
+  const c = vertices[indices[2]];
+  if (!a || !b || !c) return null;
+  let normal = normalize(cross(sub(b, a), sub(c, a)));
+  const faceCenter = [
+    (a[0] + b[0] + c[0]) / 3,
+    (a[1] + b[1] + c[1]) / 3,
+    (a[2] + b[2] + c[2]) / 3,
+  ];
+  if (dot(normal, sub(faceCenter, cellCenter)) < 0) {
+    [indices[1], indices[2]] = [indices[2], indices[1]];
+    normal = [-normal[0], -normal[1], -normal[2]];
+  }
+  const plate = nearestPlate(faceCenter, normal, descriptors);
+  if (!plate) return null;
+  return {
+    indices,
+    normal,
+    constant: -dot(normal, a),
+    center: faceCenter,
+    plate,
+  };
+}
+
+function collisionCellFromCalibration(
+  source: AnatomyCalibrationCell,
+  descriptors: readonly PlateDescriptor[],
+): CollisionCell | null {
+  if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
+  const vertices = source.vertices.map((point: readonly number[]) => point.slice());
+  const center = calibrationCellCenter(source);
+  const faces: CollisionFace[] = [];
+  for (const indices of source.faces) {
+    const face = collisionFaceFromTriangle(indices, vertices, center, descriptors);
+    if (face) faces.push(face);
+  }
+  if (faces.length < 4) return null;
+  return {
+    min: source.min.slice(),
+    max: source.max.slice(),
+    vertices,
+    faces,
+    structureKind: source.structureKind || null,
+  };
+}
+
+function collisionBoundaryCounts(cells: readonly CollisionCell[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const cell of cells) {
+    for (const z of [cell.min[2], cell.max[2]]) {
+      const key = Math.round(z * 10000);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function markInternalCollisionFaces(cells: readonly CollisionCell[]): void {
+  const boundaryCounts = collisionBoundaryCounts(cells);
+  for (const cell of cells) {
+    for (const face of cell.faces) {
+      const key = Math.round(face.center[2] * 10000);
+      face.internal = Math.abs(face.normal[2]) > 0.985
+        && (boundaryCounts.get(key) || 0) > 1;
+    }
+  }
+}
+
 function prepareCollisionCells(
   sourceCells: readonly AnatomyCalibrationCell[] | undefined,
   plates: readonly ArmorPlate[],
 ): CollisionCell[] {
   if (!Array.isArray(sourceCells) || !sourceCells.length) return [];
-  const descriptors = (plates || [])
-    .filter((plate) => (plate.kind || 'main') === 'main')
-    .map(plateDescriptor)
-    .filter((descriptor): descriptor is PlateDescriptor => descriptor !== null);
+  const descriptors = mainPlateDescriptors(plates);
   if (!descriptors.length) return [];
   const cells: CollisionCell[] = [];
   for (const source of sourceCells) {
-    if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) continue;
-    const vertices = source.vertices.map((point: readonly number[]) => point.slice());
-    const center = [
-      (source.min[0] + source.max[0]) * 0.5,
-      (source.min[1] + source.max[1]) * 0.5,
-      (source.min[2] + source.max[2]) * 0.5,
-    ];
-    const faces: CollisionFace[] = [];
-    for (const sourceIndices of source.faces) {
-      if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) continue;
-      const indices = sourceIndices.slice();
-      const a = vertices[indices[0]];
-      const b = vertices[indices[1]];
-      const c = vertices[indices[2]];
-      if (!a || !b || !c) continue;
-      let normal = normalize(cross(sub(b, a), sub(c, a)));
-      const faceCenter = [
-        (a[0] + b[0] + c[0]) / 3,
-        (a[1] + b[1] + c[1]) / 3,
-        (a[2] + b[2] + c[2]) / 3,
-      ];
-      if (dot(normal, sub(faceCenter, center)) < 0) {
-        [indices[1], indices[2]] = [indices[2], indices[1]];
-        normal = [-normal[0], -normal[1], -normal[2]];
-      }
-      const plate = nearestPlate(faceCenter, normal, descriptors);
-      if (!plate) continue;
-      faces.push({
-        indices,
-        normal,
-        constant: -dot(normal, a),
-        center: faceCenter,
-        plate,
-      });
-    }
-    if (faces.length < 4) continue;
-    cells.push({
-      min: source.min.slice(),
-      max: source.max.slice(),
-      vertices,
-      faces,
-      structureKind: source.structureKind || null,
-    });
+    const cell = collisionCellFromCalibration(source, descriptors);
+    if (cell) cells.push(cell);
   }
-  const boundaryCounts = new Map<number, number>();
-  for (const cell of cells) {
-    for (const z of [cell.min[2], cell.max[2]]) {
-      const key = Math.round(z * 10000);
-      boundaryCounts.set(key, (boundaryCounts.get(key) || 0) + 1);
-    }
-  }
-  for (const cell of cells) {
-    for (const face of cell.faces) {
-      const key = Math.round(face.center[2] * 10000);
-      face.internal = Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1;
-    }
-  }
+  markInternalCollisionFaces(cells);
   return cells;
 }
 
