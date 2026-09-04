@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 const cases = Object.freeze({
   t80bv: Object.freeze({ cassetteSeats: 24, minimumSurfaceGapM: -0.06 }),
   t80u: Object.freeze({ cassetteSeats: 20, minimumSurfaceGapM: -0.05 }),
-  t72m1_jaguar: Object.freeze({ cassetteSeats: 28, minimumSurfaceGapM: -0.02 }),
+  t72m1_jaguar: Object.freeze({ cassetteSeats: 34, minimumSurfaceGapM: -0.02 }),
   ua_t80bv: Object.freeze({ cassetteSeats: 33, minimumSurfaceGapM: -0.05 }),
   ua_t80u_kursk: Object.freeze({ cassetteSeats: 36, minimumSurfaceGapM: -0.05 }),
 });

@@ -406,15 +406,17 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   const wheelZs = [-2.01, -1.19, -0.37, 0.45, 1.27, 2.09];
   const frontIdler = Object.freeze({ z: 2.83, y: 0.69, r: 0.30 });
   const frontContactZ = 2.53;
+  const rearSprocket = Object.freeze({ z: -2.42, y: 0.68, r: 0.32 });
+  const rearContactZ = -2.14;
   buildRunningGear(P, {
     ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.455, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
     dishR: 0.79, wheelZs,
-    sprocket: { z: -2.36, y: 0.68, r: 0.32 },
+    sprocket: rearSprocket,
     idler: frontIdler,
-    contactZF: frontContactZ, contactZR: -2.08,
+    contactZF: frontContactZ, contactZR: rearContactZ,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.91, r: 0.082 })),
-    trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
+    trackW: 0.56, topY: 1.00, botY: 0.10, paintedEnds: true,
     coveredTop: true, arms: true,
     // §5.267 fix 2 (§5.262 gearFloor/tireHex law): exposed gear gets the
     // re-hooked tire/dish clones so the six dished pairs read crisply
@@ -422,12 +424,17 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
   });
   P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
-    revision: 'forward-idler-linked-course-r1',
+    revision: 'longer-end-wheel-course-r2',
     frontIdlerZ: frontIdler.z,
     frontContactZ,
+    rearSprocketZ: rearSprocket.z,
+    rearContactZ,
     lastRoadWheelZ: wheelZs.at(-1),
+    firstRoadWheelZ: wheelZs[0],
     idlerRoadWheelCenterGapM: frontIdler.z - wheelZs[5],
+    sprocketRoadWheelCenterGapM: wheelZs[0] - rearSprocket.z,
     bowSlotClearedForWrap: true,
+    rearPlateClearedForWrap: true,
   });
   // The smart running-gear builder above owns the complete dished wheel
   // train.  Do not add a second static face course here: it cannot follow the
@@ -602,12 +609,15 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     lidTop: 0.840, periscopes: 3, arc0: 2.6, arc1: 4.4 });
   // PCO KLW-1 Asteria thermal sight (the Jaguar tell): hooded box with a
   // real brow, side cheeks and lens ring (§5.267 fix 5)
-  P.add('turretDetail', box(0.34, 0.24, 0.33), -0.50, 0.70, 0.28);
-  P.add('turretDetail', box(0.38, 0.045, 0.14), -0.50, 0.835, 0.38);   // hood brow
-  for (const s of [-1, 1]) P.add('turretDetail', box(0.035, 0.20, 0.30), -0.50 + s * 0.20, 0.70, 0.26);
-  P.add('turretDark', box(0.26, 0.14, 0.03), -0.50, 0.72, 0.455);
-  P.add('turretDark', KIT.cylZ(0.075, 0.02, 14), -0.42, 0.72, 0.468, 0, 0, 0);
-  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.52, 0.72, 0.472);
+  P.addEquipment('turret', box(0.38, 0.055, 0.30), -0.50, 0.605, 0.52,
+    -0.11, 0, 0);                                                      // armor shoe
+  P.addEquipment('turretDetail', box(0.34, 0.20, 0.27), -0.50, 0.700, 0.57);
+  P.addEquipment('turretDetail', box(0.38, 0.045, 0.14), -0.50, 0.812, 0.66); // hood brow
+  for (const s of [-1, 1]) P.addEquipment('turretDetail', box(0.035, 0.17, 0.25),
+    -0.50 + s * 0.20, 0.700, 0.56);
+  P.addEquipment('turretDark', box(0.26, 0.13, 0.03), -0.50, 0.700, 0.716);
+  P.addEquipment('turretDark', KIT.cylZ(0.071, 0.02, 14), -0.42, 0.700, 0.730);
+  P.addEquipment('turretGlass', box(0.16, 0.075, 0.02), -0.52, 0.700, 0.734);
   // Shallow roof armor/service panels and periscope cadence.  These remain
   // under the certified crown but break up the formerly empty dome top.
   for (const [x, z, rz] of [[0.12, -0.06, -0.10], [0.20, -0.55, 0.08], [-0.05, -0.92, -0.06]]) {
@@ -628,43 +638,42 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   // columns read 2.33 and owned heightM's p95; at 0.75 the head still rises
   // 6.4 cm proud of the shoe and the lens/glass faces stay exposed, while
   // the p95 hands back to the dome crown tier 2.2594 = the pre-owner read)
-  P.add('turret', box(0.38, 0.055, 0.38), 0.44, 0.755, -0.72);
-  P.add('turret', box(0.30, 0.18, 0.30), 0.44, 0.75, -0.72, -0.04, 0.05, 0);
-  P.add('turretDark', box(0.22, 0.12, 0.026), 0.44, 0.76, -0.553, -0.04, 0.05, 0);
-  P.add('turretGlass', box(0.15, 0.075, 0.018), 0.44, 0.76, -0.537, -0.04, 0.05, 0);
-  P.add('turret', box(0.36, 0.11, 0.24), 0.68, 0.55, 0.62, -0.12, 0.18, 0);
-  P.add('turretDark', cylZ(0.145, 0.15, 18), 0.68, 0.58, 0.73);
-  P.add('turretGlass', cylZ(0.112, 0.018, 18), 0.68, 0.58, 0.817);
+  P.addEquipment('turret', box(0.38, 0.055, 0.38), 0.44, 0.755, -0.72);
+  P.addEquipment('turret', box(0.30, 0.18, 0.30), 0.44, 0.75, -0.72, -0.04, 0.05, 0);
+  P.addEquipment('turretDark', box(0.22, 0.12, 0.026), 0.44, 0.76, -0.553, -0.04, 0.05, 0);
+  P.addEquipment('turretGlass', box(0.15, 0.075, 0.018), 0.44, 0.76, -0.537, -0.04, 0.05, 0);
+  P.addEquipment('turret', box(0.40, 0.10, 0.30), 0.67, 0.57, 0.72,
+    -0.16, 0.18, 0);                                                    // cheek shoe
+  P.addEquipment('turretDark', cylZ(0.145, 0.21, 18), 0.70, 0.61, 0.87);
+  P.addEquipment('turretGlass', cylZ(0.112, 0.018, 18), 0.70, 0.61, 0.986);
   // Two paired roof cassettes continue the ERAWA field over the gun shoulders
   // while leaving the sight and both crew stations unobstructed.
   // (§5.290 dims-recovery receipt: a +0.07 re-seat that surfaced these from
   // the dome casting measured whole 90.9 -> 90.8 — the print carries no mass
   // over the gun shoulders — so the owner's seats stand exactly as landed)
   for (const s of [-1, 1]) for (let row = 0; row < 2; row++) {
-    P.add('turret', box(0.25, 0.060, 0.25), s * 0.20, 0.735 - row * 0.035,
+    P.add('turret', box(0.25, 0.060, 0.25), s * 0.20, 0.745 - row * 0.035,
       0.48 - row * 0.29, -0.12 - row * 0.05, s * 0.06, 0);
-    P.add('turretDark', box(0.19, 0.012, 0.035), s * 0.20, 0.773 - row * 0.035,
+    P.add('turretDark', box(0.19, 0.012, 0.035), s * 0.20, 0.783 - row * 0.035,
       0.55 - row * 0.29, -0.12 - row * 0.05, s * 0.06, 0);
   }
   // commander day/thermal head, low profile (within dome band)
   P.add('turretDetail', box(0.24, 0.14, 0.22), -0.38, 0.76, -0.26);
   P.add('turretDark', box(0.18, 0.08, 0.025), -0.38, 0.77, -0.145);
 
-  // RCWS (Jaguar package, §5.267 fix 5): pedestal + receiver mass + the
-  // MG on top — still low-slung on the dome shoulder (pt91m height-law
-  // precedent; receiver top ~2.25 = the crown line)
-  P.add('turretDark', cylY(0.11, 0.14, 0.10, 12), -0.85, 0.50, -0.80);
-  P.add('turretDetail', box(0.20, 0.11, 0.30), -0.85, 0.60, -0.80);   // cradle/receiver base
-  P.add('turretDark', box(0.06, 0.05, 0.34), -0.85, 0.665, -0.72);    // gun trough
-  // steeper stow (r-fix receipt: scale 0.72 at elev 0.18 spanned 5 side
-  // columns at ~2.3 and read heightM 2.27 — the mass stays, the barrel
-  // rides up so the station keeps <=3 columns)
+  // RCWS (Jaguar package, §5.267 fix 5): a proper WKM-B receiver on a
+  // compact, fully supported roof cradle. Keep the weapon visually legible
+  // without letting its broad M2 receiver become the vehicle's p95 height
+  // envelope; the taller silhouette is reserved for the thin antennae.
+  P.addEquipment('turretDark', cylY(0.12, 0.15, 0.11, 12), -0.78, 0.38, -0.67);
+  P.addEquipment('turretDetail', box(0.22, 0.12, 0.32), -0.78, 0.44, -0.67); // cradle
+  P.addEquipment('turretDark', box(0.07, 0.055, 0.38), -0.78, 0.50, -0.58); // trough
   const jaguarWkm = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.62, elev: 0.35,
+    mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.52, elev: 0.12,
     ammo: true, seed: 7321,
   });
   jaguarWkm.name = 'jaguar_wkm_b';
-  mount(P, 'turret', jaguarWkm, -0.85, 0.60, -0.80, [0, 0.10, 0]);
+  mount(P, 'turret', jaguarWkm, -0.78, 0.44, -0.67, [0, 0.08, 0]);
 
   // smoke banks: 902A Tucha clusters (§5.267: re-seated proud of the dome
   // skin so the tubes READ — the r1 seats sank into the casting)
@@ -681,10 +690,11 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   }
   // low antenna stubs on the bustle shoulders (tops held under the crown —
   // the §C whip-rough coupling law: no mast may re-enter the p95 population)
-  polishWhips(P, [[-0.92, 0.60, -1.10, 0.22, -0.05], [0.96, 0.60, -1.02, 0.19, 0.06]], 7341);
+  polishWhips(P, [[-0.92, 0.60, -1.10, 0.32, -0.05], [0.96, 0.60, -1.02, 0.24, 0.06]], 7341);
 
   // ---- gun: sleeved 2A46M with evacuator + measured muzzle ----------------
-  // axis world 1.64 (pivot 1.40 + 0.24); tube local z to 5.74 (muzzle world
+  // root raised 0.02 inside the casting (axis world 1.66); tube local z to
+  // 5.74 (muzzle world
   // 6.24 = rear extreme -3.29 + published overall 9.53)
   // §5.267 fix 1: REAL mantlet mass at the root — sealed trunnion saddle
   // roll + flanking mantlet cheeks behind the canvas boot (the r1 bare
@@ -862,9 +872,10 @@ function buildT72M1JaguarCurrentPrototype(P: PolishBuilderPort): void {
 // This avoids the short-chassis regression of the donor prototype while still
 // making the playable Jaguar visibly part of the live T-72 family.
 function buildT72M1Jaguar(P: PolishBuilderPort): void {
-  const { box, cylY, cylZ, torus } = KIT;
+  const { box, cylX, cylY, cylZ, torus } = KIT;
   buildT72M1JaguarLegacy(P);
   const eraSurfaceSeats: DomeSurfaceSeat[] = [];
+  const equipmentSurfaceSeats: DomeSurfaceSeat[] = [];
   const seatEra = (
     x: number,
     y: number,
@@ -881,6 +892,24 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
       [0.80, 0.74], [0.44, 0.83], [0.03, 0.85],
     ], 0.96, { x, y, z, w, h, d, rx, ry, overlap, cz: -0.06 });
     eraSurfaceSeats.push(seat);
+    return seat;
+  };
+  const seatEquipment = (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    rx: number,
+    ry: number,
+    overlap = 0.018,
+  ): DomeSurfaceSeat => {
+    const seat: DomeSurfaceSeat = domeBoxPlanSeat([
+      [1.24, 0.045], [1.28, 0.16], [1.22, 0.42], [1.06, 0.60],
+      [0.80, 0.74], [0.44, 0.83], [0.03, 0.85],
+    ], 0.96, { x, y, z, w, h, d, rx, ry, overlap, cz: -0.06 });
+    equipmentSurfaceSeats.push(seat);
     return seat;
   };
 
@@ -943,37 +972,58 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
   P.add('turretDark', torus(0.290, 0.010, 18), -0.38, 0.827, -0.42);
   P.add('turretDark', box(0.055, 0.025, 0.11), -0.10, 0.821, -0.42, 0, 0.22, 0);
 
+  // A larger welded bustle grows directly out of the cast rear. Its forward
+  // edge overlaps the legacy stowage box, while the underside rises aft to
+  // clear the engine deck through a full turret traverse. The rear plate is
+  // therefore a connected structural volume, not a rack hanging in space.
+  const bustleRearZ = -1.90;
+  P.add('turret', orientedSlab(
+    [-0.74, 0.08, -1.30], [0.74, 0.08, -1.30], [0.91, 0.23, bustleRearZ], [-0.91, 0.23, bustleRearZ],
+    [-0.70, 0.62, -1.30], [0.70, 0.62, -1.30], [0.84, 0.59, bustleRearZ], [-0.84, 0.59, bustleRearZ]));
+  P.add('turretDark', box(1.68, 0.31, 0.045), 0, 0.42, bustleRearZ - 0.010);
+  P.add('turretDetail', box(1.54, 0.035, 0.62), 0, 0.615, -1.72);
+  for (const x of [-0.58, 0, 0.58]) {
+    P.add('turretDark', box(0.030, 0.33, 0.72), x, 0.42, -1.71);
+  }
+
   // Deep Polish modernization package. ERAWA wraps the side bins and rear
   // bustle instead of ending at the frontal chevron, while shallow roof
   // singles fill the exposed shoulder quadrants without blocking either
   // hatch, the Drawa sight or the gun-recoil corridor.
   let addedEraTiles = 0;
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const z = -0.94 + i * 0.31;
-      P.add('turret', box(0.055, 0.235, 0.275), s * 1.432, 0.43, z,
-        -0.04, s * (0.10 + i * 0.025), 0);
-      P.add('turretDark', box(0.012, 0.170, 0.225), s * 1.463, 0.43, z,
-        -0.04, s * (0.10 + i * 0.025), 0);
+  P.visualEraCluster('polish-erawa-turret-modernization', 'turret', () => {
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const z = -0.94 + i * 0.31;
+        const yaw = s * (0.10 + i * 0.025);
+        const cassette = seatEra(s * 1.08, 0.43, z,
+          0.055, 0.235, 0.275, -0.04, yaw, 0.012);
+        P.add('turret', box(0.055, 0.235, 0.275), cassette.x, 0.43, cassette.z,
+          -0.04, yaw, 0);
+        P.add('turretDark', box(0.012, 0.170, 0.225),
+          cassette.x + cassette.nx * 0.033, 0.43,
+          cassette.z + cassette.nz * 0.033, -0.04, yaw, 0);
+        addedEraTiles++;
+      }
+      for (let i = 0; i < 3; i++) {
+        const x = s * (0.32 + i * 0.28);
+        const z = 0.24 - i * 0.035;
+        P.add('turret', box(0.245, 0.050, 0.205), x, 0.806 - i * 0.010, z,
+          0.06, s * (0.04 + i * 0.025), 0);
+        P.add('turretDark', box(0.195, 0.012, 0.155), x, 0.837 - i * 0.010, z,
+          0.06, s * (0.04 + i * 0.025), 0);
+        addedEraTiles++;
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      const x = (i - 2) * 0.315;
+      P.add('turret', box(0.285, 0.21, 0.050), x,
+        0.42 + (i % 2) * 0.015, bustleRearZ - 0.036);
+      P.add('turretDark', box(0.225, 0.15, 0.012), x,
+        0.42 + (i % 2) * 0.015, bustleRearZ - 0.068);
       addedEraTiles++;
     }
-    for (let i = 0; i < 3; i++) {
-      const x = s * (0.32 + i * 0.28);
-      const z = 0.24 - i * 0.035;
-      P.add('turret', box(0.245, 0.050, 0.205), x, 0.796 - i * 0.012, z,
-        0.06, s * (0.04 + i * 0.025), 0);
-      P.add('turretDark', box(0.195, 0.012, 0.155), x, 0.827 - i * 0.012, z,
-        0.06, s * (0.04 + i * 0.025), 0);
-      addedEraTiles++;
-    }
-  }
-  for (let i = 0; i < 5; i++) {
-    const x = (i - 2) * 0.275;
-    P.add('turret', box(0.25, 0.19, 0.050), x, 0.44 + (i % 2) * 0.015, -1.676);
-    P.add('turretDark', box(0.195, 0.135, 0.012), x,
-      0.44 + (i % 2) * 0.015, -1.708);
-    addedEraTiles++;
-  }
+  });
 
   // Fender kit: lidded tool lockers, recovery boxes, a strapped canvas roll
   // and spare links. These are equipment buckets, so they add visible field
@@ -1012,24 +1062,34 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
   // is seated on a visible shoe and traverses with the turret.
   let turretEquipmentPieces = 0;
   for (const s of [-1, 1]) {
-    P.addEquipment('turretDark', box(0.035, 0.28, 0.74), s * 1.47, 0.43, -0.70,
-      0, s * 0.10, 0);
+    const basketSeat = seatEquipment(s * 1.04, 0.43, -0.70,
+      0.035, 0.28, 0.74, 0, s * 0.10, 0.020);
+    const rollX = basketSeat.x + basketSeat.nx * 0.075;
+    const rollZ = basketSeat.z + basketSeat.nz * 0.075;
+    P.addEquipment('turret', box(0.16, 0.13, 0.62),
+      basketSeat.x - basketSeat.nx * 0.060, 0.43,
+      basketSeat.z - basketSeat.nz * 0.060, 0, s * 0.10, 0);
+    P.addEquipment('turretDark', box(0.035, 0.28, 0.74),
+      basketSeat.x, 0.43, basketSeat.z, 0, s * 0.10, 0);
     for (const y of [0.32, 0.54]) {
-      P.addEquipment('turretDark', box(0.035, 0.035, 0.78), s * 1.48, y, -0.70,
-        0, s * 0.10, 0);
+      P.addEquipment('turretDark', box(0.035, 0.035, 0.78),
+        basketSeat.x + basketSeat.nx * 0.010, y,
+        basketSeat.z + basketSeat.nz * 0.010, 0, s * 0.10, 0);
     }
-    P.addEquipment('turretCloth', cylZ(0.105, 0.58, 12), s * 1.40, 0.50, -0.72,
+    P.addEquipment('turretCloth', cylZ(0.105, 0.58, 12), rollX, 0.50, rollZ,
       0, s * 0.10, 0);
-    P.addEquipment('turretDark', torus(0.108, 0.012, 12), s * 1.40, 0.50, -0.98,
+    P.addEquipment('turretDark', torus(0.108, 0.012, 12),
+      rollX - basketSeat.nz * 0.26, 0.50, rollZ + basketSeat.nx * 0.26,
       Math.PI / 2, 0, 0);
-    P.addEquipment('turretDark', torus(0.108, 0.012, 12), s * 1.40, 0.50, -0.46,
+    P.addEquipment('turretDark', torus(0.108, 0.012, 12),
+      rollX + basketSeat.nz * 0.26, 0.50, rollZ - basketSeat.nx * 0.26,
       Math.PI / 2, 0, 0);
     P.addEquipment('turret', box(0.13, 0.09, 0.12), s * 1.08, 0.56, -0.92,
       0, s * 2.55, 0);
     P.addEquipment('turretGlass', box(0.075, 0.044, 0.014),
       s * 1.08 + Math.sin(s * 2.55) * 0.066, 0.56,
       -0.92 + Math.cos(s * 2.55) * 0.066, 0, s * 2.55, 0);
-    turretEquipmentPieces += 8;
+    turretEquipmentPieces += 9;
   }
   P.addEquipment('turret', box(0.34, 0.035, 0.32), -0.12, 0.700, -0.70);
   P.addEquipment('turretDark', cylY(0.115, 0.135, 0.055, 14), -0.12, 0.746, -0.70);
@@ -1044,13 +1104,29 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
   turretEquipmentPieces += 6;
 
   // Rear recovery fittings and exhaust service details break up the broad
-  // plate while remaining above the sprocket/track sweep.
+  // plate while remaining above the sprocket/track sweep. Twin transverse
+  // auxiliary fuel drums sit in welded cradles against that plate; their
+  // rear faces stay inside the published overall-length tolerance.
   for (const s of [-1, 1]) {
     P.addEquipment('hullDark', cylZ(0.070, 0.34, 10), s * 1.12, 1.20, -3.18,
       Math.PI / 2, 0, 0);
     P.addEquipment('hullDetail', box(0.18, 0.11, 0.035), s * 1.38, 1.34, -3.17);
     P.addEquipment('hullDark', box(0.09, 0.06, 0.025), s * 1.38, 1.34, -3.193);
     hullEquipmentPieces += 3;
+  }
+  const fuelBarrelZ = -2.98;
+  for (const s of [-1, 1]) {
+    const barrelX = s * 0.52;
+    P.addEquipment('hull', box(0.90, 0.10, 0.16), barrelX, 0.90, -2.95);
+    P.addEquipment('hull', cylX(0.235, 0.96, 18), barrelX, 1.12, fuelBarrelZ);
+    for (const dx of [-0.30, 0.30]) {
+      P.addEquipment('hullDark', cylX(0.243, 0.035, 18), barrelX + dx, 1.12, fuelBarrelZ);
+    }
+    P.addEquipment('hullDark', cylX(0.205, 0.018, 18), s * 1.01, 1.12, fuelBarrelZ);
+    P.addEquipment('hullDetail', cylY(0.060, 0.068, 0.075, 12),
+      barrelX, 1.38, fuelBarrelZ + 0.02);
+    P.addEquipment('hullDark', box(0.055, 0.20, 0.10), s * 1.03, 0.98, -2.96);
+    hullEquipmentPieces += 7;
   }
 
   P.turretG.userData.jaguarModernizationReceipt = Object.freeze({
@@ -1059,6 +1135,10 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     panoramicSight: true,
     sideBaskets: 2,
     rearEraCourse: 5,
+    bustleRearZ,
+    bustleConnectedToCastRear: true,
+    machineGunClass: 'm2',
+    machineGunScale: 0.52,
   });
   P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
     profile: 't72m1_jaguar',
@@ -1068,11 +1148,22 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     minimumSurfaceGapM: Math.min(-0.010,
       ...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
   });
+  P.turretG.userData.jaguarSurfaceEquipmentReceipt = Object.freeze({
+    revision: 'surface-seated-systems-r2',
+    equipmentSeats: equipmentSurfaceSeats.length,
+    maximumSurfaceGapM: Math.max(...equipmentSurfaceSeats.map((seat) => seat.surfaceGapM)),
+    asteriaArmorShoe: true,
+    searchlightArmorShoe: true,
+    searchlightLensZ: 0.986,
+  });
   P.hullG.userData.jaguarModernizationReceipt = Object.freeze({
     hullEquipmentPieces,
     fenderLockers: 6,
     spareLinks: 5,
     canvasRolls: 2,
+    fuelBarrels: 2,
+    fuelBarrelDiameterM: 0.47,
+    fuelBarrelRearZ: fuelBarrelZ - 0.235,
   });
 }
 

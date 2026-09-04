@@ -90,9 +90,9 @@ const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
   base: '#39453a', weather: '#505b4a', patches: ['#202820', '#665b43', '#77705a'],
   camoScale: 0.48,
   dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
-  // Measured gun axis 1.64 m; the 5.74 m tube lands the muzzle on the
-  // published overall line without moving the turret off its ring.
-  turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.24, 0.52],
+  // Gun root rises two centimetres inside the casting, clearing its former
+  // cheek line while the turret remains centered on the authored ring.
+  turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.26, 0.52],
   gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
   stats: { hp: 2050, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
     reverseSpeedKmh: 18, turretTraverseDegS: 34, gunPitchDegS: 27 },

@@ -35,13 +35,21 @@ assert.ok(runningGear.idler.z - runningGear.wheelZs.at(-1) >= 0.73,
   'front idler has a natural full-wheel center spacing from the last road wheel');
 assert.ok(Math.max(...runningGear.loopPoints.map(([z]) => z)) > 3.16,
   'linked track course wraps around the relocated front idler');
+assert.ok(runningGear.sprocket.z <= -2.41,
+  'rear sprocket moves aft instead of crowding the first road wheel');
+assert.ok(Math.min(...runningGear.loopPoints.map(([z]) => z)) < -2.72,
+  'linked track course wraps naturally around the relocated rear sprocket');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
-  'forward-idler-linked-course-r1',
-  'Jaguar records the forward-idler running-gear revision');
+  'longer-end-wheel-course-r2',
+  'Jaguar records the longer end-wheel running-gear revision');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.frontContactZ, 2.53,
   'loaded track run extends forward to meet the relocated idler naturally');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.bowSlotClearedForWrap, true,
   'bow slot floors are trimmed clear of the longer idler wrap');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.rearContactZ, -2.14,
+  'loaded track run reaches the relocated rear sprocket naturally');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.rearPlateClearedForWrap, true,
+  'rear track wrap remains clear of the hull plate');
 assert.equal(tank.root.getObjectByName('hullTrack'), undefined,
   'Jaguar ERAWA inherits hull camouflage rather than generic gray track steel');
 assert.equal(tank.root.getObjectByName('turretTrack'), undefined,
@@ -51,6 +59,8 @@ assert.deepEqual(turret.position.toArray(), spec.armor.turretPivot,
   'rendered turret ring matches the combat/anatomy datum');
 assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
   'rendered gun root matches the combat/anatomy datum');
+assert.equal(spec.armor.gunPivot[1], 0.26,
+  'Jaguar cannon root rises two centimetres inside the casting');
 const wkm = tank.root.getObjectByName('jaguar_wkm_b');
 assert.ok(wkm && wkm.parent === turret,
   'Polish WKM-B is attached to the traversing turret');
@@ -64,10 +74,32 @@ assert.equal(turretModernization?.panoramicSight, true,
   'Jaguar commander receives a compact panoramic sight');
 assert.equal(turretModernization?.sideBaskets, 2,
   'Jaguar has bilateral turret-side stowage baskets');
+assert.ok(turretModernization?.bustleRearZ <= -1.90,
+  'Jaguar receives a materially larger connected rear bustle');
+assert.equal(turretModernization?.bustleConnectedToCastRear, true,
+  'Jaguar bustle overlaps the cast rear instead of floating behind it');
+assert.equal(turretModernization?.machineGunClass, 'm2',
+  'Jaguar receives a visible heavy roof machine gun');
+assert.ok(turretModernization?.machineGunScale >= 0.52,
+  'Jaguar roof machine gun remains legible without exceeding its height envelope');
+const surfaceEquipment = turret.userData.jaguarSurfaceEquipmentReceipt;
+assert.equal(surfaceEquipment?.revision, 'surface-seated-systems-r2');
+assert.ok(surfaceEquipment?.equipmentSeats >= 2,
+  'Jaguar side baskets publish surface-seating receipts');
+assert.ok(surfaceEquipment?.maximumSurfaceGapM <= -0.018,
+  'Jaguar side equipment overlaps its armor shoes instead of floating');
+assert.equal(surfaceEquipment?.asteriaArmorShoe, true,
+  'Asteria sight is carried on a visible armor shoe');
+assert.equal(surfaceEquipment?.searchlightArmorShoe, true,
+  'cheek searchlight is carried on a visible armor shoe');
 assert.ok(hullModernization?.hullEquipmentPieces >= 32,
   'Jaguar hull carries fender lockers, rolls, spare links and rear fittings');
 assert.equal(hullModernization?.fenderLockers, 6,
   'Jaguar has three lidded fender lockers on each side');
+assert.equal(hullModernization?.fuelBarrels, 2,
+  'Jaguar carries two large transverse rear fuel barrels');
+assert.ok(hullModernization?.fuelBarrelDiameterM >= 0.47,
+  'Jaguar rear fuel barrels have a substantial visible diameter');
 
 const bounds = new THREE.Box3().setFromObject(tank.root);
 const size = bounds.getSize(new THREE.Vector3());
