@@ -825,6 +825,45 @@ for (const id of MODERN2_IDS) {
 // plates meeting the mantlet slot, EMES-15 cutout in the right cheek top,
 // flat roof, round hatches, baskets across the whole turret rear, L/44.
 // ---------------------------------------------------------------------------
+function addLeo2A4RearDeck(P: Modern2BuilderPort): void {
+  const { box, cylY, torus } = KIT;
+  // Twin cooling fans, transverse radiator louver, exhaust grilles, and
+  // access caps establish the Leopard 2 family rear-deck silhouette.
+  for (const side of [-1, 1]) {
+    P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14),
+      side * 0.80, 1.725, -2.55);
+    P.add('hullDetail', torus(0.40, 0.025, P.q ? 26 : 14),
+      side * 0.80, 1.73, -2.55);
+    P.add('hullDetail', box(0.76, 0.02, 0.05), side * 0.80, 1.74, -2.55);
+    P.add('hullDetail', box(0.05, 0.02, 0.76), side * 0.80, 1.74, -2.55);
+    for (let index = 0; index < 5; index++) {
+      P.add('hullDetail', box(0.66 - Math.abs(index - 2) * 0.14, 0.018, 0.05),
+        side * 0.80, 1.737, -2.75 + index * 0.10);
+    }
+    P.add('hullDark', box(0.7, 0.4, 0.04), side * 0.95, 1.15, -3.78);
+    for (let index = 0; index < 4; index++) {
+      P.add('hullDetail', box(0.7, 0.05, 0.05),
+        side * 0.95, 1.0 + index * 0.11, -3.795);
+    }
+    for (const z of [-2.0, -1.15, -0.35]) {
+      P.add('hullDetail', cylY(0.10, 0.10, 0.028, 12), side * 1.44, 1.728, z);
+      P.add('hullDark', torus(0.10, 0.012, 12), side * 1.44, 1.733, z);
+    }
+    P.add('hullDark', box(0.16, 0.09, 0.05), side * 1.38, 1.32, -3.775);
+    P.add('hullRubber', box(0.56, 0.34, 0.03),
+      side * 1.5, 0.52, -3.86, 0.12, 0, 0);
+  }
+  P.add('hullDark', box(2.9, 0.022, 0.56), 0, 1.717, -3.32);
+  for (let index = 0; index < 5; index++) {
+    P.add('hullDetail', box(2.74, 0.032, 0.07),
+      0, 1.732, -3.52 + index * 0.10);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hullShadow', new THREE.BoxGeometry(0.5, 0.026, 7.0),
+      side * 1.5, 1.27, 0);
+  }
+}
+
 function buildLeo2A4(P: Modern2BuilderPort) {
   const { box, frustum, cylY, cylX, cylZ, torus, slab,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
@@ -838,32 +877,7 @@ function buildLeo2A4(P: Modern2BuilderPort) {
   P.add('hull', frustum(1.70, 3.83, 1.0, 1.70, 1.00, 1.0, 1.0, 1.72));          // sharp glacis
   P.add('hull', frustum(1.70, 3.45, 3.55, 1.70, 3.83, 3.55, 0.5, 1.0));         // lower front
   P.add('hull', box(3.1, 0.52, 0.12), 0, 1.46, -3.70);                          // rear plate
-  // rear deck: twin cooling fans + transverse radiator louver (family read)
-  for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14), s * 0.80, 1.725, -2.55);
-    P.add('hullDetail', torus(0.40, 0.025, P.q ? 26 : 14), s * 0.80, 1.73, -2.55);
-    P.add('hullDetail', box(0.76, 0.02, 0.05), s * 0.80, 1.74, -2.55);
-    P.add('hullDetail', box(0.05, 0.02, 0.76), s * 0.80, 1.74, -2.55);
-    for (let k = 0; k < 5; k++) {
-      P.add('hullDetail', box(0.66 - Math.abs(k - 2) * 0.14, 0.018, 0.05),
-        s * 0.80, 1.737, -2.75 + k * 0.10);
-    }
-    P.add('hullDark', box(0.7, 0.4, 0.04), s * 0.95, 1.15, -3.78);              // exhaust grille
-    for (let k = 0; k < 4; k++) {
-      P.add('hullDetail', box(0.7, 0.05, 0.05), s * 0.95, 1.0 + k * 0.11, -3.795);
-    }
-    for (const zc of [-2.0, -1.15, -0.35]) {                                    // access caps
-      P.add('hullDetail', cylY(0.10, 0.10, 0.028, 12), s * 1.44, 1.728, zc);
-      P.add('hullDark', torus(0.10, 0.012, 12), s * 1.44, 1.733, zc);
-    }
-    P.add('hullDark', box(0.16, 0.09, 0.05), s * 1.38, 1.32, -3.775);           // taillights
-    P.add('hullRubber', box(0.56, 0.34, 0.03), s * 1.5, 0.52, -3.86, 0.12, 0, 0);
-  }
-  P.add('hullDark', box(2.9, 0.022, 0.56), 0, 1.717, -3.32);                    // radiator inset
-  for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.74, 0.032, 0.07), 0, 1.732, -3.52 + k * 0.10);
-  for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.5, 0.026, 7.0), s * 1.5, 1.27, 0);
-  }
+  addLeo2A4RearDeck(P);
   // skirts (§9.5): PLAIN rubber wavy-bottom panels the full hull length —
   // no 2A7 heavy armor modules. Panel seams + alternating scallop lip.
   // r5 ("leo2a4 is missing its side skirts entirely, exposing a floating
