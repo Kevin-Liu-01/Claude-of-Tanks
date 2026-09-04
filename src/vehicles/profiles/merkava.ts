@@ -10088,18 +10088,21 @@ function merkava3Kit(
   merkavaSmokeCluster(P, -sc.x, sc.y - 0.06, sc.z, -0.45, 5, { recessed: true, pitch: -0.28, pale: opts.pale, soft: opts.m2 });
 }
 
-function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
-  merkava3Kit(P, p, t, { pale: p.paleKit, noMGs: p.paleKit, m2: p.softGoods });
+type DorDaletSegment = readonly [
+  x0: number,
+  x1: number,
+  top0: number,
+  top1: number,
+  front0: number,
+  front1: number,
+  rear0: number,
+  rear1: number,
+];
+
+function addMerkava3dDorDaletArmor(P: TankBuilderPort, p: MerkavaProfileData): void {
   const L = (z: number): number => z - p.pivotZ;
   const V = (y: number): number => y - (p.deckY + 0.02);
-  const km = p.paleKit ? 'turret' : 'turretCloth';
-  // r4: the old mid-cheek applique wedges (x ~0.7, poking to z +1.4) owned
-  // four t_plan front worst rows — the print's Dor-Dalet armor is the SIDE
-  // plate run (x 1.30-1.58 to z -2.55), authored via roofBoxes.
-  KIT.tarpRoll(P, km, -0.15, t.roof.at(-1)![1] - 0.06, t.roof.at(-1)![0] + 0.28, 1.1, 0.09);
-  if (!p.paleKit) return;
   const { box } = KIT;
-  const slab = orientedSlab;                                  // §C.1 winding guard
   // ---- visual r2 item (a): TURRET ZIGGURAT -> smooth Dor-Dalet wedges ----
   // The ~8 stacked slabs per side (dark caps, rib shadows p5 56, crenellated
   // z-end stagger) become THREE swept wedge modules per side: single ruled
@@ -10110,7 +10113,7 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
   // this re-lay is gate-positive). Seam engraving + a mid fitting bump keep
   // the modular read without the organ-pipe ends.
   // segs: [x0, x1, top0, top1, zf0, zf1, zr0, zr1] (x0 < x1; world coords)
-  const dorR = [
+  const dorR: DorDaletSegment[] = [
     [1.300, 1.386, 2.430, 2.360, -0.06, -0.06, -2.87, -2.85],
     [1.386, 1.470, 2.355, 2.285, -0.06, -0.15, -2.85, -2.83],
     [1.470, 1.512, 2.283, 2.256, -0.15, -0.27, -2.83, -2.79],
@@ -10121,7 +10124,7 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
     // tier now steps back to the ref's own module boundary.
     [1.735, 1.790, 2.030, 1.940, -1.12, -1.32, -2.56, -2.50],
   ];
-  const dorL = [
+  const dorL: DorDaletSegment[] = [
     [-1.386, -1.300, 2.400, 2.430, -0.29, -0.30, -3.00, -3.00],
     [-1.413, -1.386, 2.372, 2.398, -0.29, -0.29, -3.00, -3.00],
     [-1.470, -1.413, 2.285, 2.300, -0.40, -0.29, -2.83, -3.00],
@@ -10137,7 +10140,7 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
   const dorBot = V(1.895);
   for (const segs of [dorR, dorL]) {
     for (const [x0, x1, top0, top1, zf0, zf1, zr0, zr1] of segs) {
-      P.add('turret', slab(
+      P.add('turret', orientedSlab(
         [x0, dorBot, L(zf0)], [x1, dorBot, L(zf1)], [x1, dorBot, L(zr1)], [x0, dorBot, L(zr0)],
         [x0, V(top0), L(zf0)], [x1, V(top1), L(zf1)], [x1, V(top1), L(zr1)], [x0, V(top0), L(zr0)]));
     }
@@ -10155,6 +10158,12 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
     // mid fitting bump (the ref's own 2.207 / 2.15 wedge fitting columns)
     P.add('turretDetail', box(0.042, 0.045, 0.30), s * 1.622, V(s > 0 ? 2.182 : 2.126), L(-1.52), 0, 0, s * 0.02);
   }
+}
+
+function addMerkava3dShelfRuns(P: TankBuilderPort, p: MerkavaProfileData): void {
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
+  const { box } = KIT;
   // ---- r9 SHELF PLATES ON LEGS (stand-off round; completes the r9 split of
   // the four "shelf runs behind the modules" out of roofBoxes): the old
   // SOLID full-height boxes (bot 1.94) were pale walls standing in the
@@ -10174,6 +10183,21 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
       P.add('turret', box(Math.min(0.032, sw9 * 0.45), lh9, 0.030), sx9, V(sr.bot) + lh9 / 2, ze9);
     }
   }
+}
+
+function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
+  merkava3Kit(P, p, t, { pale: p.paleKit, noMGs: p.paleKit, m2: p.softGoods });
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
+  const km = p.paleKit ? 'turret' : 'turretCloth';
+  // r4: the old mid-cheek applique wedges (x ~0.7, poking to z +1.4) owned
+  // four t_plan front worst rows — the print's Dor-Dalet armor is the SIDE
+  // plate run (x 1.30-1.58 to z -2.55), authored via roofBoxes.
+  KIT.tarpRoll(P, km, -0.15, t.roof.at(-1)![1] - 0.06, t.roof.at(-1)![0] + 0.28, 1.1, 0.09);
+  if (!p.paleKit) return;
+  const { box } = KIT;
+  addMerkava3dDorDaletArmor(P, p);
+  addMerkava3dShelfRuns(P, p);
   // ---- item 7 (r3 MG round): LEFT plinth MG on the slotted band. The r2
   // read was a 12px dark run with no anatomy — the slot's front wall hid
   // the muzzle and the curb hid the pintles. r3: slot lengthened forward
