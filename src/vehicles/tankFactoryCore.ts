@@ -7096,63 +7096,103 @@ function centerSpanningMeshBottomY(
   return minX < -0.2 && maxX > 0.2 ? minY : null;
 }
 
+interface RestContactSamples {
+  points: number[];
+  absMinYM: number;
+  panYM: number | null;
+}
+
+function isVisibleBelowRoot(object: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let current: THREE.Object3D | null = object;
+    current && current !== root; current = current.parent) {
+    if (!current.visible) return false;
+  }
+  return true;
+}
+
+function appendInstancedRestContactSamples(
+  mesh: VehicleInstancedMesh,
+  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  invRoot: THREE.Matrix4,
+  samples: RestContactSamples,
+): void {
+  const stride = Math.max(1, Math.floor(position.count / 48));
+  for (let instance = 0; instance < mesh.count; instance++) {
+    mesh.getMatrixAt(instance, _rcM);
+    const elements = _rcM.elements;
+    // Covered-top pads and thrown gear use collapsed instances.
+    if (Math.abs(elements[0]) + Math.abs(elements[5]) + Math.abs(elements[10]) < 1e-5) {
+      continue;
+    }
+    _rcM2.multiplyMatrices(mesh.matrixWorld, _rcM);
+    _rcM2.premultiply(invRoot);
+    for (let vertex = 0; vertex < position.count; vertex += stride) {
+      _rcV.fromBufferAttribute(position, vertex).applyMatrix4(_rcM2);
+      samples.points.push(_rcV.x, _rcV.y, _rcV.z);
+      if (_rcV.y < samples.absMinYM) samples.absMinYM = _rcV.y;
+    }
+  }
+}
+
+function appendMeshRestContactSamples(
+  mesh: VehicleMesh,
+  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  invRoot: THREE.Matrix4,
+  samples: RestContactSamples,
+): void {
+  _rcM2.multiplyMatrices(invRoot, mesh.matrixWorld);
+  const stride = Math.max(1, Math.floor(position.count / 20000));
+  for (let vertex = 0; vertex < position.count; vertex += stride) {
+    _rcV.fromBufferAttribute(position, vertex).applyMatrix4(_rcM2);
+    samples.points.push(_rcV.x, _rcV.y, _rcV.z);
+    if (_rcV.y < samples.absMinYM) samples.absMinYM = _rcV.y;
+  }
+}
+
+function collectRestContactSamples(
+  object: THREE.Object3D,
+  root: THREE.Object3D,
+  invRoot: THREE.Matrix4,
+  samples: RestContactSamples,
+): void {
+  if (!isVehicleMesh(object) && !isVehicleInstancedMesh(object)) return;
+  if (!materialWritesColor(object.material)) return;
+  if (!isVisibleBelowRoot(object, root)) return;
+  const position = object.geometry.getAttribute?.('position');
+  if (!position?.count) return;
+  if (isVehicleMesh(object)) {
+    const meshBottomY = centerSpanningMeshBottomY(object, invRoot);
+    if (meshBottomY !== null
+      && (samples.panYM === null || meshBottomY < samples.panYM)) {
+      samples.panYM = meshBottomY;
+    }
+  }
+  if (isVehicleInstancedMesh(object)) {
+    appendInstancedRestContactSamples(object, position, invRoot, samples);
+  } else {
+    appendMeshRestContactSamples(object, position, invRoot, samples);
+  }
+}
+
 function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
   try {
     root.updateMatrixWorld(true);
     const invRoot = _rcM2.copy(root.matrixWorld).invert().clone();
-    const isVisible = (o: THREE.Object3D): boolean => {
-      for (let p: THREE.Object3D | null = o; p && p !== root; p = p.parent) {
-        if (!p.visible) return false;
-      }
-      return true;
+    const samples: RestContactSamples = {
+      points: [],
+      absMinYM: Infinity,
+      panYM: null,
     };
-    const pts: number[] = [];
-    let absMinYM = Infinity;
     // Hull-pan floor candidates: lowest root-local bbox bottom over
     // non-instanced meshes whose bbox SPANS the centerline (vertex sampling
     // cannot see a wide belly plate — a 1.9 m box face crossing the center
     // strip has all its vertices at the ±corners, outside any strip). Track
     // bands/skirts sit one-sided; wheels/pads are instanced — excluded.
-    let panYM: number | null = null;
-    root.traverse((o) => {
-      if (!isVehicleMesh(o) && !isVehicleInstancedMesh(o)) return;
-      if (!materialWritesColor(o.material)) return; // shadow proxies
-      if (!isVisible(o)) return;
-      const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
-      if (!pa || !pa.count) return;
-      if (isVehicleMesh(o)) {
-        const meshBottomY = centerSpanningMeshBottomY(o, invRoot);
-        if (meshBottomY !== null && (panYM === null || meshBottomY < panYM)) {
-          panYM = meshBottomY;
-        }
-      }
-      if (isVehicleInstancedMesh(o)) {
-        const per = Math.max(1, Math.floor(pa.count / 48));
-        for (let i = 0; i < o.count; i++) {
-          o.getMatrixAt(i, _rcM);
-          const el = _rcM.elements;
-          // skip collapsed instances (covered-top pads, thrown gear)
-          if (Math.abs(el[0]) + Math.abs(el[5]) + Math.abs(el[10]) < 1e-5) continue;
-          _rcM2.multiplyMatrices(o.matrixWorld, _rcM);
-          _rcM2.premultiply(invRoot);
-          for (let k = 0; k < pa.count; k += per) {
-            _rcV.fromBufferAttribute(pa, k).applyMatrix4(_rcM2);
-            pts.push(_rcV.x, _rcV.y, _rcV.z);
-            if (_rcV.y < absMinYM) absMinYM = _rcV.y;
-          }
-        }
-      } else if (o.isMesh) {
-        _rcM2.multiplyMatrices(invRoot, o.matrixWorld);
-        const step = Math.max(1, Math.floor(pa.count / 20000));
-        for (let i = 0; i < pa.count; i += step) {
-          _rcV.fromBufferAttribute(pa, i).applyMatrix4(_rcM2);
-          pts.push(_rcV.x, _rcV.y, _rcV.z);
-          if (_rcV.y < absMinYM) absMinYM = _rcV.y;
-        }
-      }
+    root.traverse((object) => {
+      collectRestContactSamples(object, root, invRoot, samples);
     });
-    if (!pts.length) return null;
-    const bottomYM = robustFloorYStrided(pts, 1, 3);
+    if (!samples.points.length) return null;
+    const bottomYM = robustFloorYStrided(samples.points, 1, 3);
     if (bottomYM === undefined) return null;
     // Hull-pan floor (see panConsider above). The movement belly guard used a
     // fixed 0.34 m line on the premise every pan sits ≥ 0.40 m — stale on the
@@ -7161,23 +7201,34 @@ function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
     // pan height the guard clamps HARD at the measured plate. Floored just
     // above the contact plane so keel-seated defects (sepv2) cannot collapse
     // the guard below the seated floor.
-    if (panYM !== null) panYM = Math.max(panYM, bottomYM + 0.05);
+    if (samples.panYM !== null) {
+      samples.panYM = Math.max(samples.panYM, bottomYM + 0.05);
+    }
     const band = bottomYM + 0.05;
     let zMin = Infinity, zMax = -Infinity, xMin = Infinity, xMax = -Infinity, n = 0;
-    for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] > band) continue;
-      const x = pts[i], z = pts[i + 2];
+    for (let i = 0; i < samples.points.length; i += 3) {
+      if (samples.points[i + 1] > band) continue;
+      const x = samples.points[i], z = samples.points[i + 2];
       if (z < zMin) zMin = z;
       if (z > zMax) zMax = z;
       if (x < xMin) xMin = x;
       if (x > xMax) xMax = x;
       n++;
     }
-    if (n < 8) return { bottomYM, absMinYM, panYM, halfLenM: null, halfWidM: null, zCenterM: null };
+    if (n < 8) {
+      return {
+        bottomYM,
+        absMinYM: samples.absMinYM,
+        panYM: samples.panYM,
+        halfLenM: null,
+        halfWidM: null,
+        zCenterM: null,
+      };
+    }
     return {
       bottomYM,
-      absMinYM,
-      panYM,
+      absMinYM: samples.absMinYM,
+      panYM: samples.panYM,
       halfLenM: (zMax - zMin) / 2,
       halfWidM: (xMax - xMin) / 2,
       zCenterM: (zMax + zMin) / 2,
