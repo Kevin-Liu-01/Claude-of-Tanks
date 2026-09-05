@@ -15,6 +15,7 @@
 import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
+import { t } from './i18n.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -186,7 +187,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const root = document.createElement('div');
   root.className = 'cot-bl';
   root.setAttribute('role', 'status');
-  root.setAttribute('aria-label', 'Preparing battle');
+  root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
     `<main class="briefing"><div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +

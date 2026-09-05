@@ -206,6 +206,16 @@ export function __setCatalogForTests(
   if (cached && !cached[currentLocale]) currentLocale = FALLBACK_LOCALE;
 }
 
+/** Register the production catalog. Called once by `./i18nCatalog.ts` at module
+ *  load time. The function name is reused by the test hook for symmetry. */
+export function registerCatalog(
+  ref: { readonly CATALOG: Readonly<Record<SupportedLocale, Dictionary>> },
+): void {
+  catalogRef = ref;
+  cached = ref.CATALOG;
+  if (!cached[currentLocale]) currentLocale = FALLBACK_LOCALE;
+}
+
 /** Reset module state for test isolation. */
 export function __resetForTests(): void {
   currentLocale = FALLBACK_LOCALE;
