@@ -7429,13 +7429,18 @@ const PRESENTATION_TRACK_TIP_ALLOWANCE_M = 0.025;
  * visible cold-garage frame. This tight typed-array walk performs the same XY
  * barycentric triangle test without allocations or subtree traversal.
  */
-function axisGeometryCapZ(
+interface AxisGeometryCapProfile {
+  z: number;
+  outerRadiusM: number;
+}
+
+function axisGeometryCapProfile(
   geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   minZ: number,
   maxZ: number,
-): number | null {
+): AxisGeometryCapProfile | null {
   const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
   if (!position || position.itemSize < 3
     || position instanceof THREE.InterleavedBufferAttribute) return null;
@@ -7443,7 +7448,8 @@ function axisGeometryCapZ(
   const stride = position.itemSize;
   const index = geometry.index && geometry.index.array;
   const triangleCount = Math.floor((index ? index.length : position.count) / 3);
-  let best = -Infinity;
+  let bestZ = -Infinity;
+  let bestRadius = 0;
   const eps = 1e-8;
   for (let t = 0; t < triangleCount; t++) {
     const ia = (index ? index[t * 3] : t * 3) * stride;
@@ -7459,9 +7465,87 @@ function axisGeometryCapZ(
     const wc = 1 - wa - wb;
     if (wa < -eps || wb < -eps || wc < -eps) continue;
     const z = wa * vertices[ia + 2] + wb * vertices[ib + 2] + wc * vertices[ic + 2];
-    if (z >= minZ && z <= maxZ && z > best) best = z;
+    if (z < minZ || z > maxZ) continue;
+    const outerRadiusM = Math.max(
+      Math.hypot(ax - x, ay - y),
+      Math.hypot(bx - x, by - y),
+      Math.hypot(cx - x, cy - y),
+    );
+    if (z > bestZ + eps) {
+      bestZ = z;
+      bestRadius = outerRadiusM;
+    } else if (Math.abs(z - bestZ) <= eps) {
+      bestRadius = Math.max(bestRadius, outerRadiusM);
+    }
   }
-  return Number.isFinite(best) ? best : null;
+  return Number.isFinite(bestZ)
+    ? { z: bestZ, outerRadiusM: bestRadius }
+    : null;
+}
+
+/**
+ * Open tubes have no triangle across the centerline for the cap test above.
+ * Recover their terminal edge from the nearest vertex course outside the
+ * physical caliber. The narrow Z window prevents unrelated gun/hull detail
+ * from becoming a mouth support, while the caliber floor rejects center pins
+ * and triangulation seams.
+ */
+function axisGeometryMouthEdgeProfile(
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  centerZ: number,
+  caliberRadiusM: number,
+): AxisGeometryCapProfile | null {
+  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
+  if (!position || position.itemSize < 3
+    || position instanceof THREE.InterleavedBufferAttribute) return null;
+  const minimumSupportR = Math.max(0.006, caliberRadiusM * 1.15);
+  const maximumSupportR = Math.max(0.24, caliberRadiusM * 2.8);
+  let outerRadiusM = Infinity;
+  for (let index = 0; index < position.count; index++) {
+    const z = position.getZ(index);
+    if (Math.abs(z - centerZ) > 0.12) continue;
+    const radius = Math.hypot(position.getX(index) - x, position.getY(index) - y);
+    if (radius < minimumSupportR || radius > maximumSupportR) continue;
+    outerRadiusM = Math.min(outerRadiusM, radius);
+  }
+  if (!Number.isFinite(outerRadiusM)) return null;
+  const courseToleranceM = Math.max(0.004, outerRadiusM * 0.08);
+  let bestZ = -Infinity;
+  for (let index = 0; index < position.count; index++) {
+    const z = position.getZ(index);
+    if (Math.abs(z - centerZ) > 0.12) continue;
+    const radius = Math.hypot(position.getX(index) - x, position.getY(index) - y);
+    if (Math.abs(radius - outerRadiusM) <= courseToleranceM) bestZ = Math.max(bestZ, z);
+  }
+  return Number.isFinite(bestZ) ? { z: bestZ, outerRadiusM } : null;
+}
+
+/**
+ * Radial extent of one authored muzzle part in another object's local frame.
+ * Legacy profiles already carry carefully sized bore rims; when their merged
+ * barrel has no center-spanning end cap, that hidden rim remains the best
+ * deterministic evidence for the terminal tube diameter.
+ */
+function objectRadialRadiusInFrame(
+  object: THREE.Object3D,
+  frame: THREE.Object3D,
+  x: number,
+  y: number,
+): number | null {
+  if (!isVehicleMesh(object)) return null;
+  const position = object.geometry.getAttribute('position');
+  if (!position || position.itemSize < 3) return null;
+  const toFrame = new THREE.Matrix4().copy(frame.matrixWorld).invert()
+    .multiply(object.matrixWorld);
+  const point = new THREE.Vector3();
+  let radius = 0;
+  for (let index = 0; index < position.count; index++) {
+    point.fromBufferAttribute(position, index).applyMatrix4(toFrame);
+    radius = Math.max(radius, Math.hypot(point.x - x, point.y - y));
+  }
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
 
 interface RestContactReceipt {
@@ -9442,9 +9526,11 @@ export function createTank(
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
   const authoredDiscs: THREE.Object3D[] = [];
+  const legacyTipDots: THREE.Object3D[] = [];
   root.traverse((object) => {
     if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
     else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
+    else if (object.name === 'muzzleTipShadowDot') legacyTipDots.push(object);
   });
   const nearestMuzzlePart = (parts: THREE.Object3D[]): THREE.Object3D | null => parts
     .map((part) => ({
@@ -9459,29 +9545,28 @@ export function createTank(
     part.userData.cannonBorePrimaryPart = false;
     part.userData.cannonBoreSuppressed = true;
   }
-  const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
+  // Some transitional profiles put the MG-scale shadow-dot helper directly
+  // on the main-gun centerline (notably Type 99A/VT-4A1). Keep true coax/MG
+  // dots, but suppress a dot close enough to the main muzzle axis/plane that
+  // it would cap and occlude the measured fleet throat.
+  for (const dot of legacyTipDots) {
+    const local = muzzle.worldToLocal(dot.getWorldPosition(new THREE.Vector3()));
+    if (Math.hypot(local.x, local.y) > 0.045 || Math.abs(local.z) > 0.25) continue;
+    dot.visible = false;
+    dot.userData.cannonBoreSuppressed = true;
+  }
+  const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
-  const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
-    Math.min(muzzleOuterR * 0.72, caliberRadius));
-  const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.12);
   const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
   const boreSegments = Number.isInteger(authoredBoreSegments)
     ? THREE.MathUtils.clamp(authoredBoreSegments, 12, 32)
     : spec.gun.caliberMm <= 40 ? 12 : 18;
-  const boreRimGeo = new THREE.TorusGeometry(
-    muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
-  const boreAnnulusGeo = new THREE.RingGeometry(
-    muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
-  // Slightly overlap the annulus: a hairline gap between separate meshes can
-  // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
-  const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
   // TWIN-BORE KNOB (owner order 2026-08-17, "2 shooting holes for both its
   // barrels"): `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
   // offsets at the muzzle plane) installs one rim/annulus/disc assembly PER
-  // barrel tip, each seated by the same capZ ray at its own axis. ABSENT =>
-  // the exact legacy single-assembly path below runs once at the authored/
-  // center axis — byte-identical geometry, names, seating and disposal
-  // order (§5.279 absent-param loader-law pattern).
+  // barrel tip, each measured and seated independently at its own axis.
+  // ABSENT => one assembly is still created on the authored/center axis, but
+  // it now inherits the physical terminal tube/brake radius and lip plane.
   const muzzleDefs = authoredMuzzles.length ? authoredMuzzles : [null];
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
   // authored bore at its own seated tip, parented under its tube group so a
@@ -9492,17 +9577,175 @@ export function createTank(
   for (let mi = 0; mi < muzzleDefs.length; mi++) {
     const def = muzzleDefs[mi];
     const suffix = mi > 0 ? `_${mi}` : '';
+    const independentBarrel = def && barrelGs[mi] ? barrelGs[mi] : null;
+    const boreParent = independentBarrel || muzzle;
+    const boreBaseZ = independentBarrel ? P.muzzleZ : 0;
+    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
+    // visual gate measured legacy brake caps from behind the nominal anchor to
+    // 5.5 cm beyond it. Seat against the real centerline face instead of using
+    // a fleet-wide offset (which would float in front of already-correct tubes).
+    let boreX = 0, boreY = 0;
+    let authoredFaceParentZ: number | null = null;
+    if (def) {
+      // Spec-driven barrel axis: the assembly seats at its own lateral
+      // offset; authored bore furniture stays suppressed exactly as in the
+      // single-mouth path (nearest-part refinement is a centerline-only law).
+      boreX = def.x || 0;
+      boreY = def.y || 0;
+    } else {
+      const authoredSeat = authoredBore || authoredRim;
+      if (authoredSeat) {
+        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
+        boreX = authoredLocal.x;
+        boreY = authoredLocal.y;
+        // The hidden disc is intentionally recessed; use the authored RIM
+        // plane as the supported face. Seating from the disc plane put the
+        // replacement throat behind retained solid caps on Sheridan-family
+        // launchers and several bespoke muzzle brakes.
+        const authoredFace = authoredRim || authoredSeat;
+        authoredFaceParentZ = muzzle.worldToLocal(
+          authoredFace.getWorldPosition(new THREE.Vector3())).z;
+      }
+    }
+    // Inspect the complete elevating gun subtree, not only the merged `gun`
+    // buckets. Modern profiles also carry discrete muzzle-brake baffles and
+    // front plates as direct meshes (AbramsX/KF51); ignoring those left the
+    // throat behind a still-visible solid face. Casemate families that bake
+    // the long tube into hull-owned buckets get a narrow fallback scan around
+    // the authored muzzle plane.
+    const capSelection: {
+      profile: AxisGeometryCapProfile | null;
+      faceParentZ: number | null;
+      recoilZ: number | null;
+      supportSource: 'terminal-cap' | 'terminal-edge' | null;
+    } = {
+      profile: null,
+      faceParentZ: null,
+      recoilZ: null,
+      supportSource: null,
+    };
+    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
+    const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
+      isVehicleMesh(surface)
+      && surface.visible
+      && !surface.userData.shadowOnly
+      && !surface.userData.cannonBore
+      && !surface.userData.cannonBoreSuppressed
+      && materialWritesColor(surface.material);
+    const acceptProfile = (
+      surface: VehicleMesh,
+      axisLocal: THREE.Vector3,
+      profile: AxisGeometryCapProfile,
+      supportSource: 'terminal-cap' | 'terminal-edge',
+    ) => {
+      const capWorld = surface.localToWorld(
+        new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
+      const candidateRecoilZ = recoilG.worldToLocal(capWorld.clone()).z;
+      if (supportSource === 'terminal-cap'
+          && capSelection.recoilZ != null
+          && candidateRecoilZ <= capSelection.recoilZ) return;
+      capSelection.profile = profile;
+      capSelection.recoilZ = candidateRecoilZ;
+      capSelection.faceParentZ = boreParent.worldToLocal(capWorld.clone()).z;
+      capSelection.supportSource = supportSource;
+    };
+    const scanCapRoot = (surfaceRoot: THREE.Object3D, behindM: number, aheadM: number) => {
+      surfaceRoot.traverse((surface) => {
+        if (!isMouthSurface(surface)) return;
+        const axisLocal = surface.worldToLocal(axisWorld.clone());
+        const profile = axisGeometryCapProfile(surface.geometry, axisLocal.x, axisLocal.y,
+          axisLocal.z - behindM, axisLocal.z + aheadM);
+        if (profile) acceptProfile(surface, axisLocal, profile, 'terminal-cap');
+      });
+    };
+    const primarySurfaceRoot = independentBarrel || gunG;
+    scanCapRoot(primarySurfaceRoot, 2, 1);
+    if (!capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
+    if (!capSelection.profile) {
+      let edgeRadius = Infinity;
+      const scanEdgeRoot = (surfaceRoot: THREE.Object3D) => {
+        surfaceRoot.traverse((surface) => {
+          if (!isMouthSurface(surface)) return;
+          const axisLocal = surface.worldToLocal(axisWorld.clone());
+          const profile = axisGeometryMouthEdgeProfile(
+            surface.geometry, axisLocal.x, axisLocal.y, axisLocal.z, caliberRadius);
+          if (!profile || profile.outerRadiusM >= edgeRadius) return;
+          edgeRadius = profile.outerRadiusM;
+          acceptProfile(surface, axisLocal, profile, 'terminal-edge');
+        });
+      };
+      scanEdgeRoot(primarySurfaceRoot);
+      scanEdgeRoot(hullG);
+    }
+    let capOffset = 0;
+    if (capSelection.recoilZ != null) {
+      capOffset = Math.max(-0.2, Math.min(0.5, capSelection.recoilZ - P.muzzleZ));
+    }
+
+    // Size every visible mouth from the actual terminal surface. The former
+    // fleet-wide radius inherited the donor's main-gun armor value; that made
+    // BMPT's 30 mm mouths 4.3x wider than their 22 mm terminal tubes. A hidden
+    // profile-authored rim is the deterministic fallback when an open or
+    // unusually tessellated barrel has no center-spanning cap triangle.
+    root.updateMatrixWorld(true);
+    const authoredOuterR = !def && authoredRim
+      ? objectRadialRadiusInFrame(authoredRim, muzzle, boreX, boreY)
+      : null;
+    const capOuterR = capSelection.profile
+      && capSelection.profile.outerRadiusM >= 0.005
+      && capSelection.profile.outerRadiusM <= 0.65
+      ? capSelection.profile.outerRadiusM
+      : null;
+    const validAuthoredOuterR = authoredOuterR
+      && authoredOuterR >= 0.005
+      && authoredOuterR <= 0.65
+      ? authoredOuterR
+      : null;
+    const supportOuterR = capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
+    const supportSource = capOuterR ? capSelection.supportSource || 'terminal-cap'
+      : validAuthoredOuterR ? 'authored-rim'
+        : 'nominal-spec';
+    const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
+    const muzzleOuterR = Math.max(0.006, Math.min(
+      capFitOuterR,
+      validAuthoredOuterR || nominalMuzzleOuterR,
+    ));
+    const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
+      Math.min(muzzleOuterR * 0.72, caliberRadius));
+    const muzzleRimR = Math.max(0.001, muzzleOuterR * 0.12);
+    const boreRimGeo = new THREE.TorusGeometry(
+      muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
+    const boreAnnulusGeo = new THREE.RingGeometry(
+      muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
+    // Slightly overlap the annulus: a hairline gap between separate meshes can
+    // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
+    const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
+    disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
+
+    const lipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
+    const annulusForwardM = Math.min(0.0022, lipAdvanceM * 0.55);
+    const discForwardM = Math.min(0.0012, lipAdvanceM * 0.34);
+    const seatedFaceParentZ = capSelection.faceParentZ
+      ?? authoredFaceParentZ
+      ?? boreBaseZ;
     const fallbackBore = new THREE.Group();
     fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
     fallbackBore.userData.cannonBore = true;
     fallbackBore.userData.caliberMm = spec.gun.caliberMm;
+    fallbackBore.userData.capOffsetM = capOffset;
+    fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
+      revision: 'terminal-surface-fit-r1',
+      supportSource,
+      supportOuterRadiusM: supportOuterR,
+      outerRadiusM: muzzleOuterR,
+      radialRatio: muzzleOuterR / supportOuterR,
+      lipAdvanceM,
+      annulusForwardM,
+      discForwardM,
+    });
+    fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
     fallbackBore.visible = true;
-    // The measured seating pass below replaces this nominal 32 mm lip. Keep a
-    // safe default for profiles whose center ray has no renderable cap.
-    const independentBarrel = def && barrelGs[mi] ? barrelGs[mi] : null;
-    const boreParent = independentBarrel || muzzle;
-    const boreBaseZ = independentBarrel ? P.muzzleZ : 0;
-    fallbackBore.position.z = boreBaseZ + 0.032;
+
     const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
     boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
     boreRim.userData.cannonBoreFallbackPart = true;
@@ -9512,71 +9755,21 @@ export function createTank(
     boreAnnulus.name = `muzzleBoreShadowFallbackAnnulus${suffix}`;
     boreAnnulus.userData.cannonBoreFallbackPart = true;
     boreAnnulus.userData.cannonBorePrimaryPart = true;
-    boreAnnulus.position.z = -0.002;
+    boreAnnulus.position.z = annulusForwardM - lipAdvanceM;
     boreAnnulus.visible = true;
     const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
     boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
     boreDisc.userData.cannonBoreFallbackPart = true;
     boreDisc.userData.cannonBorePrimaryPart = true;
-    // The disc sits 14 mm behind the ring center: after seating, the throat is
-    // 18 mm and the lip is 32 mm beyond the actual cap. This preserves the read
-    // as a recess without disabling depth testing (which would leak through
-    // tanks when the cannon points away from the camera).
-    boreDisc.position.z = -0.014;
+    // Keep the dark disc barely proud of retained legacy cap triangles while
+    // recessing it behind the lip. This removes the former 32 mm floating
+    // plate without introducing z-fighting or depth-test leakage.
+    boreDisc.position.z = discForwardM - lipAdvanceM;
     boreDisc.visible = true;
     for (const part of [boreRim, boreAnnulus, boreDisc]) {
       part.castShadow = false;
       part.receiveShadow = true;
       fallbackBore.add(part);
-    }
-    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
-    // visual gate measured legacy brake caps from behind the nominal anchor to
-    // 5.5 cm beyond it. Seat against the real centerline face instead of using
-    // a fleet-wide offset (which would float in front of already-correct tubes).
-    let boreX = 0, boreY = 0;
-    if (def) {
-      // Spec-driven barrel axis: the assembly seats at its own lateral
-      // offset; authored bore furniture stays suppressed exactly as in the
-      // single-mouth path (nearest-part refinement is a centerline-only law).
-      boreX = def.x || 0;
-      boreY = def.y || 0;
-      fallbackBore.position.set(boreX, boreY, boreBaseZ + 0.032);
-    } else {
-      const authoredSeat = authoredBore || authoredRim;
-      if (authoredSeat) {
-        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
-        boreX = authoredLocal.x;
-        boreY = authoredLocal.y;
-        // If the nominal rig anchor is far from a hand-authored tube (M60A2),
-        // retain the authored face as the fallback before the cap ray refines it.
-        fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
-      }
-    }
-    // The muzzle face is authored in recoilG: barrel/brake geometry uses the
-    // `gun` buckets, while mantlet/cradle parts live in gunG and hull/turret
-    // geometry cannot own the bore. Raycasting the entire tank made every cold
-    // garage preview test tens of thousands of unrelated hull/track triangles
-    // (one constrained Leopard switch spent >200 ms here). Restricting the
-    // exact same centerline ray to its semantic owner preserves the measured
-    // cap point while removing that first-use stall. Both merged gun material
-    // buckets count: autocannon tips such as BMP-2 deliberately put their
-    // centerline cap in `gunDark`, exactly as the former generic ray did.
-    let capZ = null;
-    const surfaceNames = independentBarrel
-      ? [`gunBarrel${mi}`, `gunBarrel${mi}Dark`]
-      : ['gun', 'gunDark'];
-    for (const name of surfaceNames) {
-      const surface = (independentBarrel || recoilG).getObjectByName(name);
-      if (!surface || !isVehicleMesh(surface)) continue;
-      const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
-        P.muzzleZ - 2, P.muzzleZ + 1);
-      if (z != null && (capZ == null || z > capZ)) capZ = z;
-    }
-    let capOffset = 0;
-    if (capZ != null) {
-      capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
-      fallbackBore.position.z = boreBaseZ + capOffset + 0.032;
-      fallbackBore.userData.capOffsetM = capOffset;
     }
     boreParent.add(fallbackBore);
     fallbackBore.visible = true;
@@ -9588,7 +9781,6 @@ export function createTank(
       muzzleTips.push(tip);
     }
   }
-  disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);

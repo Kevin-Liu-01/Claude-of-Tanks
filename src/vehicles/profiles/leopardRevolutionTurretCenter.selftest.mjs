@@ -17,6 +17,7 @@ try {
   const gunMount = tank.root.getObjectByName('gunMount');
   const barrel = tank.root.getObjectByName('gun');
   const barrelDark = tank.root.getObjectByName('gunDark');
+  const muzzleSeat = bore?.userData?.muzzleSeatReceipt;
 
   assert.ok(turret, 'Leopard 2 Revolution rotating turret rig exists');
   assert.equal(turret.position.x, 0,
@@ -31,6 +32,10 @@ try {
     'Leopard 2 Revolution keeps gun-owned mantlet and barrel geometry');
   assert.equal(bore?.parent, muzzle,
     'Leopard 2 Revolution bore fallback remains owned by its muzzle anchor');
+  assert.equal(muzzleSeat?.supportSource, 'terminal-cap',
+    'Leopard 2 Revolution bore is measured from its physical terminal cap');
+  assert.ok(muzzleSeat?.lipAdvanceM >= 0.0034 && muzzleSeat?.lipAdvanceM <= 0.0161,
+    'Leopard 2 Revolution bore uses a scale-aware terminal lip');
 
   turretArmor.geometry.computeBoundingBox();
   const turretArmorCenter = turretArmor.geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -153,7 +158,7 @@ try {
     tank.root.updateMatrixWorld(true);
     const faceWorld = recoil.localToWorld(new THREE.Vector3(0, 0, localFaceZ));
     const boreWorld = bore.getWorldPosition(new THREE.Vector3());
-    assert.ok(Math.abs(faceWorld.distanceTo(boreWorld) - 0.032) < 0.002,
+    assert.ok(Math.abs(faceWorld.distanceTo(boreWorld) - muzzleSeat.lipAdvanceM) < 0.002,
       `gun hole stays on the physical muzzle at yaw ${yawDeg}, pitch ${pitchDeg}`);
   }
 } finally {

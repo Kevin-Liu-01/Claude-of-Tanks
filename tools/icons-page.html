@@ -847,7 +847,12 @@ function boreShotOne(id) {
     const muzzle = root.getObjectByName('rig_muzzle');
     if (!muzzle) throw new Error('rig_muzzle missing');
     const spec = getSpec(id);
-    const fallback = muzzle.getObjectByName('muzzleBoreShadowFallback');
+    const fallbackMouths = [];
+    root.traverse((object) => {
+      if (/^muzzleBoreShadowFallback(?:_\d+)?$/.test(object.name || '')
+          && visibleInTree(object, root)) fallbackMouths.push(object);
+    });
+    const fallback = fallbackMouths[0] || null;
     const primaryRim = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Rim$/i);
     const primaryDisc = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Disc$/i);
     const facePart = primaryRim || primaryDisc || (visibleInTree(fallback, root) ? fallback : muzzle);
@@ -887,6 +892,14 @@ function boreShotOne(id) {
       return {
         distance: Number(hit.distance.toFixed(4)),
         name: hit.object.name || hit.object.type,
+        path: (() => {
+          const names = [];
+          for (let node = hit.object; node; node = node.parent) {
+            names.push(node.name || node.type);
+            if (node === root) break;
+          }
+          return names.reverse();
+        })(),
         fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
         bore,
       };
@@ -958,6 +971,10 @@ function boreShotOne(id) {
         fallbackWorld: fallback?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
         authoredWorld: root.getObjectByName('muzzleBoreShadowDisc')?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
         capOffsetM: fallback?.userData.capOffsetM ?? null,
+        muzzleSeatReceipts: fallbackMouths.map((mouth) => ({
+          name: mouth.name,
+          ...(mouth.userData.muzzleSeatReceipt || {}),
+        })),
         primaryRimWorld: rimWorld?.toArray() ?? null,
         primaryDiscWorld: discWorld?.toArray() ?? null,
         concentricOffsetM,
