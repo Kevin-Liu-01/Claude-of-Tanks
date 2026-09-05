@@ -2430,36 +2430,31 @@ function addOpenYokeVariantArmor(context: OpenYokeBuildContext): void {
   else if (context.panther) addOpenYokePantherArmor(context);
 }
 
-function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
-  const context=createOpenYokeContext(opts);
-  const {
-    ammoSide,body,classicPanther,hasWeapon,panther,parts,receiverY,receiverZ,
-    roofSensor,s,sensorSide,sensorX,sensorY,sizeStandard,twinOptics,variant,
-    yokeCenterY,
-  }=context;
-  addOpenYokeBase(context);
-  addOpenYokeWeapon(context);
-  addOpenYokeSensorHead(context);
-  addOpenYokeVariantArmor(context);
-
-  // The reference M1A3 station stands on a real powered riser rather than a
-  // bearing plate alone. Lift the complete working assembly as one unit and
-  // close the load path back to the roof with a broad, contiguous pedestal.
-  // This adds height without inflating the weapon, sensors or side armor.
+function applyOpenYokeTowerRise(context: OpenYokeBuildContext): number {
+  const { cylY, torus } = KIT;
+  const { body, opts, parts, s, sizeStandard } = context;
   const towerRise = opts.towerRise
     ?? (sizeStandard === 'm1a3-full-tower' ? 0.18 : 0);
-  if (towerRise > 0) {
-    for (const geometries of Object.values(parts.bySlot)) {
-      for (const geometry of geometries) geometry.translate(0, towerRise, 0);
-    }
-    parts.add(body, cylY(0.255 * s, 0.285 * s, towerRise, 20),
-      0, towerRise / 2, 0);
-    parts.add('dark', torus(0.245 * s, 0.018 * s, 22),
-      0, towerRise - 0.010, 0);
+  if (towerRise <= 0) return towerRise;
+  for (const geometries of Object.values(parts.bySlot)) {
+    for (const geometry of geometries) geometry.translate(0, towerRise, 0);
   }
+  parts.add(body, cylY(0.255 * s, 0.285 * s, towerRise, 20),
+    0, towerRise / 2, 0);
+  parts.add('dark', torus(0.245 * s, 0.018 * s, 22),
+    0, towerRise - 0.010, 0);
+  return towerRise;
+}
 
-  const fitting = fitAssemble('openYokeRws', parts, opts);
+function stampOpenYokeMetadata(
+  fitting: THREE.Group,
+  context: OpenYokeBuildContext,
+  towerRise: number,
+): void {
+  const {
+    ammoSide, classicPanther, hasWeapon, opts, panther, receiverY, roofSensor,
+    s, sensorSide, sizeStandard, variant,
+  } = context;
   fitting.name = `fitting_openYokeRws_${variant}`;
   fitting.userData.designFamily = 'abramsx-open-yoke-v1';
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
@@ -2486,6 +2481,24 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.sizeStandard = sizeStandard;
   fitting.userData.scale = s;
   fitting.userData.towerRise = towerRise;
+}
+
+function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
+  const context=createOpenYokeContext(opts);
+  const { hasWeapon, parts }=context;
+  addOpenYokeBase(context);
+  addOpenYokeWeapon(context);
+  addOpenYokeSensorHead(context);
+  addOpenYokeVariantArmor(context);
+
+  // The reference M1A3 station stands on a real powered riser rather than a
+  // bearing plate alone. Lift the complete working assembly as one unit and
+  // close the load path back to the roof with a broad, contiguous pedestal.
+  // This adds height without inflating the weapon, sensors or side armor.
+  const towerRise = applyOpenYokeTowerRise(context);
+
+  const fitting = fitAssemble('openYokeRws', parts, opts);
+  stampOpenYokeMetadata(fitting, context, towerRise);
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (hasWeapon && weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';
