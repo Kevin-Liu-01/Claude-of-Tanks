@@ -509,6 +509,7 @@ export const enUS: Record<string, string> = {
   'garage.dossier.special.hydro': 'Press E to toggle precision suspension aiming and control the hull attitude.',
   'garage.dossier.special.autoreload': 'Press E to start an early full-magazine reload when the ready rack is not full.',
   'garage.dossier.special.ekey': 'E key',
+  'garage.dossier.special.activation': 'Press E or its numbered ammo slot to activate.',
   'garage.dossier.shell.carried': '{n} carried',
   'garage.dossier.shell.reload': '{s} s reload',
   'garage.dossier.shell.type': 'Type',
@@ -956,6 +957,8 @@ export const enUS: Record<string, string> = {
   'endScreen.team.ally': 'Your team',
   'endScreen.team.enemy': 'Enemy team',
   'endScreen.team.survived': '{alive} / {total} survived · {damage} damage',
+  'endScreen.bestShot': 'Best shot',
+  'endScreen.returnToGarage': 'Return to garage',
 
   // hud ------------------------------------------------------------------------
   'hud.battleBeginsIn': 'BATTLE BEGINS IN',

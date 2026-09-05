@@ -501,6 +501,7 @@ export const zhCN: Record<string, string> = {
   'garage.dossier.special.hydro': '按 E 切换精密悬挂俯仰，控制车体姿态。',
   'garage.dossier.special.autoreload': '当弹仓不满时按 E 提前开始整仓装填。',
   'garage.dossier.special.ekey': 'E 键',
+  'garage.dossier.special.activation': '按 E 或对应编号弹药槽激活。',
   'garage.dossier.shell.carried': '{n} 携带',
   'garage.dossier.shell.reload': '{s} 秒装填',
   'garage.dossier.shell.type': '类型',
@@ -948,6 +949,8 @@ export const zhCN: Record<string, string> = {
   'endScreen.team.ally': '我方',
   'endScreen.team.enemy': '敌方',
   'endScreen.team.survived': '{alive} / {total} 存活 · {damage} 伤害',
+  'endScreen.bestShot': '最佳一击',
+  'endScreen.returnToGarage': '返回车库',
 
   // hud ------------------------------------------------------------------------
   'hud.battleBeginsIn': '距离开战',
