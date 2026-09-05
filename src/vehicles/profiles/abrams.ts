@@ -1530,15 +1530,38 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
 // recessed embrasure between them, a full-width body with roof tumblehome,
 // and a bustle with an optional undercut bottom (t.yBotRear). Local to ring.
 // ---------------------------------------------------------------------------
-function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
-  const tw = t.tw, thr = t.throat;
-  const inset = t.inset ?? 0.14;                 // roof tumblehome
-  const zMain = t.zMain ?? (t.zWide - 1.2);
-  const faceRake = t.faceRake ?? 0.34;           // cheek face lean-back at the roof
-  const yBotRear = t.yBotRear ?? t.yBot;
-  const roofCheekInnerRearY = t.roofCheekInnerRearY ?? (t.roofTip + 0.06);
-  const roofCheekOuterRearY = t.roofCheekOuterRearY ?? t.roofWide;
-  const roofThroatRearY = t.roofThroatRearY ?? (t.roofTip + 0.05);
+interface AbramsShellLayout {
+  readonly tw: number;
+  readonly thr: number;
+  readonly inset: number;
+  readonly zMain: number;
+  readonly faceRake: number;
+  readonly yBotRear: number;
+  readonly roofCheekInnerRearY: number;
+  readonly roofCheekOuterRearY: number;
+  readonly roofThroatRearY: number;
+}
+
+function createAbramsShellLayout(t: AbramsShellConfig): AbramsShellLayout {
+  return {
+    tw: t.tw,
+    thr: t.throat,
+    inset: t.inset ?? 0.14,
+    zMain: t.zMain ?? (t.zWide - 1.2),
+    faceRake: t.faceRake ?? 0.34,
+    yBotRear: t.yBotRear ?? t.yBot,
+    roofCheekInnerRearY: t.roofCheekInnerRearY ?? (t.roofTip + 0.06),
+    roofCheekOuterRearY: t.roofCheekOuterRearY ?? t.roofWide,
+    roofThroatRearY: t.roofThroatRearY ?? (t.roofTip + 0.05),
+  };
+}
+
+function addAbramsShellCheeks(
+  P: AbramsBuilderPort,
+  t: AbramsShellConfig,
+  layout: AbramsShellLayout,
+): void {
+  const { tw, thr, inset, faceRake, roofCheekInnerRearY, roofCheekOuterRearY } = layout;
 
   // Cheek wedges: bottom sweeps throat->shoulder, top edge falls to the tip.
   // Opt-in asymmetry (t.zTipR / t.zWideR — per-side plan sweep) and tip
@@ -1553,6 +1576,14 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
       [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15],
       t.joinedCheekRoof);
   }
+}
+
+function addAbramsShellThroat(
+  P: AbramsBuilderPort,
+  t: AbramsShellConfig,
+  layout: AbramsShellLayout,
+): void {
+  const { thr, faceRake, roofThroatRearY } = layout;
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
   // t.zFaceSkew rakes the face in PLAN (tejas: ref plan face 2.33w on the
@@ -1583,6 +1614,14 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
   const slotY = (t.roofTip + yBF) / 2 - 0.03;
   P.add('turretDark', box(t.slotW ?? thr * 1.9, t.slotW ? 0.44 : (t.roofTip - yBF) * 0.8, 0.05),
     t.slotX ?? 0, slotY, zFace - skew / 2 - 0.03 - (slotY - yBF) * faceSlope, -Math.atan(faceSlope), 0, 0);
+}
+
+function addAbramsShellBody(
+  P: AbramsBuilderPort,
+  t: AbramsShellConfig,
+  layout: AbramsShellLayout,
+): void {
+  const { tw, inset, zMain, yBotRear } = layout;
   // Cheek->roof transition wedge (roofWide across the shoulders). wedgePull
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
@@ -1610,6 +1649,14 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
         [xt, roofAt(zr), last ? zr + 0.10 : zr], [-xt, roofAt(zr), last ? zr + 0.10 : zr]));
     }
   }
+}
+
+function addAbramsShellRoofCap(
+  P: AbramsBuilderPort,
+  t: AbramsShellConfig,
+  layout: AbramsShellLayout,
+): void {
+  const { tw, inset, zMain } = layout;
   // Roof cap: thin inset plate so the roof reads as a fitted panel.
   // t.roofCapW narrows it (tejas: the 1.9 cap painted the ±1.34-1.43 front
   // bins at 2.37 where the ref's tumblehome reads 2.31). t.noRoofCap (m1a2
@@ -1619,6 +1666,14 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
     P.add('turret', box((tw - inset) * (t.roofCapW ?? 1.9), 0.025, (zMain - t.zRear) * 0.94),
       0, t.roofMain - (t.roofCapW ? 0.035 : 0.005), (zMain + t.zRear) / 2 + 0.04);
   }
+}
+
+function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
+  const layout = createAbramsShellLayout(t);
+  addAbramsShellCheeks(P, t, layout);
+  addAbramsShellThroat(P, t, layout);
+  addAbramsShellBody(P, t, layout);
+  addAbramsShellRoofCap(P, t, layout);
 }
 
 // Bustle stowage rack: rails + posts + dark mesh + strapped duffels.
