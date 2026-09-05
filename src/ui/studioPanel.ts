@@ -1250,8 +1250,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       caption: `${info.name || currentMapId} // current production canvas`,
     }, shot ? {
       src: shot.img,
-      alt: shot.cap,
-      caption: `${shot.cap} // authored Scene Studio output`,
+      alt: t(shot.capKey),
+      caption: `${t(shot.capKey)} // authored Scene Studio output`,
     } : null].filter(Boolean);
   }
   function section(title: string, sub = ''): HTMLDivElement {

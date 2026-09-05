@@ -735,7 +735,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       layers[front].style.backgroundImage = `url("${imageUrl}")`;
       layers[front].classList.add('on');
       layers[front ^ 1].classList.remove('on');
-      capEl.textContent = FEATURED_SHOTS[i].cap;
+      capEl.textContent = t(FEATURED_SHOTS[i].capKey);
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       idx = i;
     };
@@ -1254,8 +1254,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           caption: `${selected.name} // ${t('garage.battlefield.previewAlt')}`,
         }, action ? {
           src: action.img,
-          alt: action.cap,
-          caption: `${action.cap} // live game capture`,
+          alt: t(action.capKey),
+          caption: `${t(action.capKey)} // live game capture`,
         } : null].filter(Boolean);
       },
       sections: [
