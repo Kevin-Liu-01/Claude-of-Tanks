@@ -381,8 +381,8 @@ function jaguarUpperGlacisYAt(z: number): number {
     - JAGUAR_UPPER_GLACIS_PITCH * (z - JAGUAR_UPPER_GLACIS_REAR_Z);
 }
 
-function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
-  const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
+function buildT72M1JaguarHull(P: PolishBuilderPort): void {
+  const { box, buildRunningGear } = KIT;
 
   // ---- hull loft to the measured whole-silhouette lines -------------------
   loftHull(P, {
@@ -510,7 +510,10 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   for (const s of [-1, 1]) for (let k = 0; k < 7; k++) {
     P.add('hullDetail', box(0.055, 0.10, 0.06), s * 1.70, 1.17, -2.30 + k * 0.87);
   }
+}
 
+function buildT72M1JaguarHullDetails(P: PolishBuilderPort): void {
+  const { box, cylZ } = KIT;
   // ---- bow furniture -------------------------------------------------------
   // §5.267 fix 5: guarded headlight pods replace the flat bucket lamps
   ruGlacisKit(P, { w: 3.30, y: jaguarUpperGlacisYAt(2.62), z: 2.62,
@@ -641,7 +644,10 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   P.add('hullDetail', cylZ(0.075, 0.70, 12), 1.685, 1.36, -1.66);
   P.add('hullDark', cylZ(0.079, 0.03, 12), 1.685, 1.36, -1.34);
   P.add('hullDark', box(0.05, 0.06, 0.04), 1.66, 1.28, -1.52);
+}
 
+function buildT72M1JaguarTurretAndGun(P: PolishBuilderPort): void {
+  const { box, cylY, cylZ } = KIT;
   // ---- turret: measured cast dome (crown pinned to the published-height
   // band 2.25; the print's 2.43-2.51 dome band is certified print-tall) ----
   const rings = [
@@ -845,6 +851,12 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   P.decal('hull', 'number', 'PL-721', 0.26, [-1.797, 1.02, 0.90], -Math.PI / 2);
   P.decal('hull', 'number', 'PL-721', 0.26, [1.797, 1.02, 0.90], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.30);
+}
+
+function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
+  buildT72M1JaguarHull(P);
+  buildT72M1JaguarHullDetails(P);
+  buildT72M1JaguarTurretAndGun(P);
 }
 
 
