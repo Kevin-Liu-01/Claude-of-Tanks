@@ -14,6 +14,11 @@ visual parity with that game.
 
 Isolated implementation branch: `codex/environment-pass-r1`.
 Starting production revision: `da5e0cf0a`.
+Release integration is isolated on `codex/environment-release-r1`, based on
+`2c22d203d`; it preserves the later 128-vehicle fleet, owner-approved media,
+HUD role icons and corrected spectator mouse/minimap handedness. The authored
+environment checkpoint is `23b82f0bc`; it has not been pushed while final
+integrated resource/performance and artwork checks remain open.
 
 - Original visual survey: `/private/tmp/cot-environment-baseline/`.
   Its schema-1 timing sampled browser callbacks, including skipped draws, and
@@ -78,6 +83,14 @@ Starting production revision: `da5e0cf0a`.
   textures, about 375 MiB of managed heap and 1,811 MiB of backing storage.
   This is a valid failed baseline, not acceptable warm-up. Candidate cleanup
   must independently demonstrate a bounded plateau before release.
+- The fresh original-twenty-map countdown-acquisition baseline is complete:
+  `/private/tmp/cot-environment-client-residency-pristine20-lookahead-v1.json`.
+  All 60 checkpoints prove the exact production terrain warm queue was drained
+  and stayed unchanged through actual rendered frames. Geometry and program
+  repeat counts are now stable; the baseline still fails all twenty repeated
+  texture/managed/backing/embedder memory checks (80 failures), including
+  another 260 textures per cycle. It is retained as a valid failed baseline,
+  not relabeled as acceptable warm-up.
 
 ## Implementation and required evidence
 
@@ -267,6 +280,11 @@ above have direct current-state evidence; source changes alone are incomplete.
   maps have 9/80 caps; new maps have 5/40. Urban still caps in all four seeds:
   that unresolved route behavior is not hidden by relaxing exact collision.
   No pacing threshold or global vehicle/AI stat changed to hide failure.
+  Independent review also found that a failed flat-cell search retried every
+  simulation tick. Resetting blocked dwell before either outcome now bounds
+  retries to 1.5 seconds. An actual-controller no-flat-ground regression proves
+  the old 1,440-normal-query/second failure, bounded retry spacing, preserved
+  ammunition and eventual relocation when suitable ground becomes available.
 - The remaining core suite found missing exact loading-screen coverage for
   the ten new maps. Maps without a curated action still now use their own
   native 4K overview and canonical name. Existing owner-selected featured
@@ -287,6 +305,11 @@ above have direct current-state evidence; source changes alone are incomplete.
   confirms the intended low-key volcanic grade without a larger texture or
   extra shader sample. Deep basin shadows remain deliberately dark, not a
   claim of uniform ground-level visibility.
+  Independent caller review caught cold Studio requesting an absent world
+  preset before loading its map. Studio now restores battlefield lighting only
+  after awaited activation; a red/green actual-caller regression covers direct
+  boot, first-use F8, replacement of a previous map, failed acquisition and
+  Garage return. Other acquisition callers already have the correct ordering.
 
 - The changed-file React Doctor recheck retains its earlier 49/100 score
   (62 files inspected). Exit 1 is preserved: two test-only source-extraction

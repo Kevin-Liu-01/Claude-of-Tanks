@@ -3483,10 +3483,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Reuse the established gun-limit relocation rather than a new route
     // planner or an accuracy/ammunition bonus. Clear the settle latch so a
     // genuine cover obstruction cannot hold this move in place.
+    // Failed searches also require fresh blocked dwell before scanning again.
+    gunLaneBlockedT = 0;
     if (!pickFlatCell()) return;
     beginScoot(10);
     settleUntilS = -1;
-    gunLaneBlockedT = 0;
     gunLaneMoves++;
   }
 

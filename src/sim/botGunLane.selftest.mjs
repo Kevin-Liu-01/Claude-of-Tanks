@@ -94,4 +94,61 @@ assert.ok(ai.debugInfo().gunLaneChecks <= Math.ceil(8 / 0.14) + 1,
 assert.deepEqual(bot.combat.ammo, [24, 16, 12]);
 bermPresent = false;
 assert.equal(tick(8), true, 'ordinary firing resumes when the same physical gun lane clears');
-console.log('botGunLane.selftest: real Airfield crest, nominal-error independence, relocation and bounded queries pass');
+
+// A failed relocation must wait for another blocked dwell, not rescan all
+// three eight-cell rings at 60 Hz. Keep eye LOS clear but the muzzle blocked;
+// only the current tank footprint is flat, so every relocation candidate fails.
+const upNormal = new Vector3(0, 1, 0);
+const steepNormal = new Vector3(0.4, 0.9, 0).normalize();
+const laneHit = { dist: 0.1 };
+let flatCandidatesAvailable = false;
+let normalQueries = 0;
+const noFlatField = {
+  ...flat,
+  getNormalAt(x, z) {
+    normalQueries++;
+    return flatCandidatesAvailable || Math.hypot(x, z) < 8 ? upNormal : steepNormal;
+  },
+};
+const pocketBot = entity('pocket', 'm1a2', [0, 0, 0]);
+const pocketTarget = entity('target', 'm1a2', [0, 0, 80]);
+const pocketAI = createAI(pocketBot, { difficulty: 'normal', rng: mulberry32(41), deps: {
+  heightField: noFlatField,
+  raycast: (origin) => origin.z > 1 && origin.z < 10 ? laneHit : null,
+  getEnemies: () => [pocketTarget], getAllies: () => [], getObstacles: () => [],
+  spotting: { isSpotted: () => true },
+} });
+let pocketTime = 180;
+const searchTimes = [];
+let searchQueries = 0;
+function tickPocket() {
+  pocketTime += SIM_DT;
+  normalQueries = 0;
+  pocketAI.update(SIM_DT, pocketTime);
+  const queriesThisFrame = normalQueries;
+  pocketBot.input.throttle = 0; pocketBot.input.steer = 0; pocketBot.input.brake = false;
+  updateTank(pocketBot, noFlatField, SIM_DT);
+  return queriesThisFrame;
+}
+for (let frame = 0; frame < 8 / SIM_DT; frame++) {
+  const queriesThisFrame = tickPocket();
+  if (queriesThisFrame) searchTimes.push(pocketTime);
+  searchQueries += queriesThisFrame;
+  assert.equal(pocketBot.input.fire, false, 'failed relocation never bypasses the blocked gun lane');
+}
+assert.ok(searchTimes.length >= 2, 'fixture exercises repeated failed relocation attempts');
+assert.ok(searchQueries <= 24 * Math.ceil(8 / 1.5),
+  'failed relocation terrain queries remain bounded by the 1.5-second blocked dwell');
+for (let i = 1; i < searchTimes.length; i++) {
+  assert.ok(searchTimes[i] - searchTimes[i - 1] >= 1.5 - SIM_DT,
+    'each failed relocation waits for fresh blocked dwell before retrying');
+}
+assert.equal(pocketAI.debugInfo().gunLaneMoves, 0, 'failed searches do not count as moves');
+assert.ok(pocketAI.debugInfo().gunLaneChecks <= Math.ceil(8 / 0.14) + 1,
+  'failed relocation does not accelerate nominal lane probes');
+assert.deepEqual(pocketBot.combat.ammo, [24, 16, 12]);
+flatCandidatesAvailable = true;
+for (let frame = 0; frame < 3 / SIM_DT; frame++) tickPocket();
+assert.ok(pocketAI.debugInfo().gunLaneMoves > 0,
+  'bounded failure retries still relocate when a valid flat cell becomes available');
+console.log('botGunLane.selftest: real crest, nominal-error independence, relocation and bounded failed retries pass');

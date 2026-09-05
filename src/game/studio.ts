@@ -2726,7 +2726,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // Studio visit (or F8 before the first battle) has no HUD runtime yet.
       hud?.setMode?.('hidden');
       setGarageSpots(false);
-      setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
       ensureFxBus();
       active = true;        // tick branch takes the frame from here on
       panel.show();
@@ -2753,6 +2752,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ]);
       mark('worldAndFx');
       setWorldDormant(false);
+      // Cold /studio and first-use F8 have no battlefield preset until the
+      // awaited acquisition has activated its world. Never borrow the Garage
+      // (or previous map's) sun while the requested map is still loading.
+      setGarageSunTrim(false);
       setCamoBiome(mapId);
       // Direct entry has no actors and should not repaint the hidden garage
       // hero. Existing actors can occur only through an API re-entry.
