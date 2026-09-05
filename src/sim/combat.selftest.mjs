@@ -674,6 +674,25 @@ function mkShell(shellSpec, distM = 100) {
   resolveShellHit(shell2, target2, hits2, rng2);
   assert(rng2.consumed() === 2, '§8 sweep limit stops module rolls at 10×caliber');
 
+  const longTraceTarget = mkTarget();
+  const longTraceShellSpec = mkShellSpec({
+    name: '200 mm exact-boundary AP', caliberMm: 200,
+    pen100Mm: 500, pen1000Mm: 500, moduleDmg: 100,
+  });
+  const longTraceEvent = resolveShellHit(
+    mkShell(longTraceShellSpec, 100),
+    longTraceTarget,
+    [
+      mkPlateHit(0.4, mkPlate({
+        name: 'long_trace_entry', physicalMm: 50, keMm: 50, ceMm: 50,
+      }), 0, V(0, 1, 2)),
+      { t: 0.6, kind: 'module', module: 'engine', point: V(2, 1, 2) },
+    ],
+    seqRng([0.5, 0.5, 0.1, 0.5, 0.9]),
+  );
+  assert(longTraceEvent.modulesHit.some((hit) => hit.module === 'engine'),
+    'a 200 mm shell reaches an internal module exactly at its 2 m caliber boundary');
+
   // Crew saving throw on the internal ray.
   const target3 = mkTarget();
   const shell3 = mkShell(AP100, 100);
@@ -1060,6 +1079,16 @@ function mkShell(shellSpec, distM = 100) {
   casemateTarget.combat.modules.gunMount.state = 'yellow';
   assert(mainWeaponModuleState(casemateTarget.combat) === 'yellow',
     'a damaged casemate gun mount contributes the main-weapon accuracy penalty');
+
+  assert(mainWeaponModuleState(null) === 'ok'
+    && mainWeaponModuleState(undefined) === 'ok'
+    && mainWeaponModuleState({}) === 'ok'
+    && mainWeaponModuleState({ modules: {} }) === 'ok',
+  'missing combat and module records retain a healthy main-weapon state');
+  assert(mainWeaponModuleState({
+    modules: { gun: { state: 'red' }, gunMount: { state: 'yellow' } },
+  }) === 'red',
+  'the worse barrel or mount state wins regardless of module traversal order');
 
   const thresholdFireTarget = mkTarget();
   const thresholdFireEvent = moduleTrace(
