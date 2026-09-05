@@ -165,6 +165,7 @@ function buildAMX40(P: FranceBuilderPort): void {
       P.add(bucket, box(w, h, pitch + 0.004), xc2, yc2, zLo + (k + 0.5) * pitch);
     }
   };
+  const buildHullBody = (): void => {
   segZ('hull', 1.70, 0.62, 0, 0.75, -2.95, 2.70);                               // narrow belly tub between the two rising end courses
   for (const s of [-1, 1]) {                                                    // sloped belly shoulder lifts the ±0.92 channel columns
     const n = 12, z0 = -2.65, pitch = (2.64 - z0) / n;                          // both terminal shoulders stop outside the animated wraps
@@ -247,6 +248,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hull', slab(
     [-0.90, 0.44, -2.95], [0.90, 0.44, -2.95], [0.90, 0.60, -3.30], [-0.90, 0.60, -3.30],
     [-0.90, 0.62, -2.95], [0.90, 0.62, -2.95], [0.90, 0.70, -3.382], [-0.90, 0.70, -3.382]));
+  };
+  buildHullBody();
   // ---- skirts (FULL-LENGTH, the §D WIDTH ANCHOR ±1.68 = published 3.36;
   // §B4: inner faces 1.646 vs shoe reach 1.542). Receipt: hem 0.651, top
   // band 1.33, straight run to rear -3.27, raked-hem front panel rising
@@ -260,6 +263,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   const skirtOuterAt = (z: number): number => (
     skirtBands.find(([lo, hi]) => z >= lo && z < hi)?.[2] ?? 1.648
   );
+  const buildSkirts = (): void => {
   for (const s of [-1, 1]) {
     // r2 stations fix: the flat ±1.68 run read +2.6..3.7% width at every
     // slice (ref slice faces vary 1.61..1.675). Main run now sits at the
@@ -304,9 +308,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const zh of [2.46, 2.76, 3.04]) P.add('hullDark', box(0.012, 0.045, 0.22), s * 1.605, 1.315, zh); // bow-fender edge breaks
   }
   P.add('hullDetail', box(0.06, 0.08, 0.22), -1.63, 1.64, -2.60);              // source left stern-fender shoulder cap, seated on the segmented lip
+  };
+  buildSkirts();
   // ---- running gear: 6 wheels behind the skirts, RAISED idler front +
   // sprocket rear (§B6 trapezoid; receipt wraps: front rise 0.28@2.68 ->
   // 0.76@3.18, rear 0.55@-3.17), ground contact ±2.30 ---------------------
+  const buildSuspension = (): void => {
   const amx40WheelZs = [2.15, 1.29, 0.43, -0.43, -1.29, -2.15];
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.24, wheelY: 0.49, xc: 1.27,
@@ -334,7 +341,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     { outset: 1.570 - 1.27, name: 'gearRoadWheelHubCaps' });
   P.gear.addRoadWheelLayer(torus(0.215, 0.013, 18).rotateZ(Math.PI / 2), P.mats.dark,
     { outset: 1.584 - 1.27, name: 'gearRoadWheelRimRings' });
+  };
+  buildSuspension();
   // ---- hull furniture ----
+  const buildHullFurniture = (): void => {
   P.add('hull', cylY(0.26, 0.26, 0.026, 16), -0.52, 1.652, 1.30);               // driver hatch (front-LEFT) on the fore deck
   P.add('hullDark', torus(0.26, 0.012, 16), -0.52, 1.663, 1.30);
   periscope(P, 'hullDetail', -0.70, 1.66, 1.56, -0.25);
@@ -394,6 +404,9 @@ function buildAMX40(P: FranceBuilderPort): void {
   // pioneer tools on the fore-deck right lane
   P.add('hullWood', box(0.035, 0.025, 0.85), 1.10, 1.653, 0.45);                // shovel haft
   P.add('hullDetail', box(0.09, 0.02, 0.16), 1.10, 1.654, -0.02);               // shovel blade
+  };
+  buildHullFurniture();
+  const buildRearHullFurniture = (): void => {
   // rear plate furniture (§B3.2 — no blank walls). r4 length discipline:
   // plate face -3.380, every fitting PROUD only to the -3.395 line — the
   // rear mask signal stays at the plate class (the r1/r3 proud-kit union
@@ -437,6 +450,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.decal('hull', 'number', '675 0102', 0.22, [0.82, 1.30, -3.396], Math.PI);
   P.decal('hull', 'number', 'AMX 40', 0.32, [1.62, 0.95, -0.75], Math.PI / 2);
   P.decal('hull', 'number', 'AMX 40', 0.32, [-1.62, 0.95, -0.75], -Math.PI / 2);
+  };
+  buildRearHullFurniture();
   // ---- turret: LOW WIDE welded wedge authored off the receipt shell
   // curves (plan_turret_96 / side_turret_96 / turretZProfile). Ring pivot
   // at the print's own authored node origin z -0.26 (receipt registration
@@ -446,6 +461,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // rake), LEFT plate sweeps to the wall in ONE plane (the identity
   // face), RIGHT cheek in TWO facets; bustle rear right-deep (-2.31w
   // right / -2.23w left); roof plateau 2.385 raking to 2.32 at the tail.
+  const buildTurretShell = () => {
   P.add('turret', xformWithScale(cylY(1.00, 1.04, 0.10, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.54]), 0, 0.015, 0.26); // oval ring riser, source plan depth
   P.add('turret', box(1.90, 0.14, 1.30), 0, 0.08, 0.35);                        // ring-zone throat bridges continuously into the raised low shell
   // Object_12 primary shell as one continuous loft. A twelve-sided base
@@ -551,9 +567,13 @@ function buildAMX40(P: FranceBuilderPort): void {
     [0.55, 0.785, -1.50], [1.10, 0.785, -1.50], [1.10, 0.73, -1.91], [0.55, 0.73, -1.91]));
   P.add('turretDark', box(0.56, 0.30, 0.10), 0, 0.45, -1.82);                   // rear center bin stays ahead of the thin terminal rail
   P.add('turretDetail', box(0.60, 0.035, 0.035), 0, 0.59, -1.97);               // source terminal recovery rail
+  return { shellWallXAt, shellCrownXAt, attachmentEmbedM };
+  };
+  const { shellWallXAt, shellCrownXAt, attachmentEmbedM } = buildTurretShell();
   // ---- flank stowage boxes (identity; print Object_8: outer ±1.53,
   // y 1.71..2.20, z_w -1.67..+0.63) — two modules per side with lid seams
   // + latches (§B3 equipment grammar) -------------------------------------
+  const buildTurretStowage = (): void => {
   for (const s of [-1, 1]) {
     const innerTop = s > 0 ? 0.70 : 0.64;
     const flankModule = (
@@ -600,9 +620,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     if (s > 0) P.add('turretDetail', box(0.06, 0.06, 0.57), 1.39, 0.58, 0.335); // asymmetric inner flank rail, below the outer cassette lip
   }
   P.add('turretDark', box(0.60, 0.016, 0.40), -1.00, 0.727, -1.72);             // left-wing roof hatch seam (the Object_7 corner reads via the wing mass)
+  };
+  buildTurretStowage();
   // ---- optics band — CAPPED AT 2.40 world (post-warp frame; the print's
   // 2.77 cupola / 3.09 pano tower compress onto this line under the filed
   // knee-2.39 plan). Every top ≤ 0.800 local. -----------------------------
+  const buildRoofSystems = (): void => {
   P.addEquipment('turret', slab(                                                         // compact faceted gunner sight, Object_12 forward-right peak
     [0.57, 0.49, 1.14], [0.84, 0.49, 1.14], [0.84, 0.49, 1.41], [0.57, 0.49, 1.41],
     [0.61, 0.78, 1.16], [0.80, 0.78, 1.16], [0.80, 0.73, 1.39], [0.61, 0.73, 1.39]));
@@ -702,9 +725,12 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.72, 0.762, 0.97);
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 1.00, 0.762, 0.97);
   }
+  };
+  buildRoofSystems();
   // REAR RACK framing the center bin on the bustle face (the print's own
   // rear-rack band: world -2.32..-2.41 at |x| ≤ ~0.4 — its bustle ROOF is
   // bare, so the roof stays the height datum). Rails face world -2.376.
+  const buildRearStowage = (): void => {
   P.add('turretDetail', box(0.60, 0.035, 0.032), 0, 0.59, -1.97);               // terminal recovery rail
   P.add('turretDetail', box(0.60, 0.032, 0.032), 0, 0.30, -1.92);               // inset bottom rail
   for (const vx of [-0.28, 0, 0.28]) P.add('turretDetail', box(0.028, 0.30, 0.028), vx, 0.43, -1.92); // inset posts
@@ -734,6 +760,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDark', box(0.035, 0.18, 0.105), 0.95, 0.45, -1.968, 0, 0, 0.34);
   P.decal('turret', 'number', '02', 0.22, [1.28, 0.40, -0.35], Math.PI / 2, 0, 0.02);
   P.decal('turret', 'number', '02', 0.22, [-1.28, 0.40, -0.35], -Math.PI / 2, 0, -0.02);
+  };
+  buildRearStowage();
   // ---- mantlet + gun (§B3.1; receipt Object_15/5/2/14 cluster +
   // gunContour). Axis world 1.94 (turret-local +0.34); trunnion world z
   // 1.30 (gun-local 0). The PROMINENT full-height mantlet block: face
@@ -742,6 +770,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // ~1.96-2.06 world (plan cols x ±0.38..0.50: 1.978) with only the
   // CENTER course reaching the 2.39 face — the r1 full-width 2.28/2.40
   // fronts read +0.42 on four plan columns.
+  const buildWeaponSystem = (): void => {
   P.addGunExtra(slab(                                                           // source-height canted outer mantlet web; its soft facet encloses the oval tunnel without a rectangular shoulder block
     [-0.72, -0.22, 0.02], [0.62, -0.22, 0.02], [0.58, -0.25, 0.38], [-0.66, -0.25, 0.38],
     [-0.62, 0.43, 0.02], [0.54, 0.43, 0.02], [0.51, 0.29, 0.38], [-0.58, 0.29, 0.38]));
@@ -811,6 +840,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('gun', cylZ(0.100, 0.24, P.q ? 18 : 12), 0, 0, 5.20);                   // muzzle collar run
   muzzleBore(P, 5.34, 0.100, 0.060, 14);                                        // §B3.1 bore; face world 6.64 = overall 10.04
   P.muzzleZ = 5.34;
+  };
+  buildWeaponSystem();
   P.turretG.userData.amx40AttachmentSeatReceipt = Object.freeze({
     revision: 'flush-r1',
     sidePanels: Object.freeze({
