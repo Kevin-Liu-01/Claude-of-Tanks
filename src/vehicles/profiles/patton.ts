@@ -4116,13 +4116,13 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
   };
 }
 
-function finishM60Variant(
+function finishM60HullArmor(
   P: PattonBuilderPort,
   variant: string,
   deck: ProfileCurve,
+  a3: boolean,
 ): void {
-  const { box, cylY, cylZ } = KIT;
-  const a3 = variant === 'a3';
+  const { box } = KIT;
 
   // USMC RISE/P-style side protection hangs below the 1.79 m fender datum.
   // A visible rail and short hangers now carry the course; the previous
@@ -4179,7 +4179,9 @@ function finishM60Variant(
     blackOutlineStrips: 0,
     finish: 'vehicle-paint',
   });
+}
 
+function finishM60TurretArmor(P: PattonBuilderPort, a3: boolean): void {
   // Needle-casting cheek armor.  Every block is turret-owned, buried into
   // the swept cheek and rotates as part of the complete turret package.
   if (a3) {
@@ -4222,7 +4224,10 @@ function finishM60Variant(
       },
     };
   }
+}
 
+function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
+  const { box, cylY, cylZ } = KIT;
   // Variant-specific roof and fire-control grammar taken from the supplied
   // A1/A3 models.  Both retain the low M19/M85 station; the A1 keeps its
   // mantlet searchlight while A3 carries paired M239 banks, TTS head and
@@ -4287,7 +4292,9 @@ function finishM60Variant(
       duplicateHousingRemoved: true,
     } : null,
   };
+}
 
+function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
   const m2 = FITTINGS.americanM2({
@@ -4337,6 +4344,18 @@ function finishM60Variant(
     muzzleBoresDark: true,
     exposedWeaponsGunmetal: true,
   });
+}
+
+function finishM60Variant(
+  P: PattonBuilderPort,
+  variant: string,
+  deck: ProfileCurve,
+): void {
+  const a3 = variant === 'a3';
+  finishM60HullArmor(P, variant, deck, a3);
+  finishM60TurretArmor(P, a3);
+  finishM60VariantFireControl(P, a3);
+  finishM60RoofEquipment(P, a3);
 }
 
 function applyM60CompactScale(
