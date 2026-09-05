@@ -309,24 +309,23 @@ function joinedBasket(
   }), 0, y + 0.14 * s, z - depth * 0.50);
 }
 
-function buildSTB1(P: JapaneseBuilderPort): void {
-  const {
-    box, cylY, cylZ, torus, polyMultiLoft, frustum, xform, buildGun,
-    buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
-  } = KIT;
-  const seg = P.q ? 36 : 18;
+const STB_TURRET_HEIGHT_SCALE = 0.45;
+
+function prepareSTB1Rig(P: JapaneseBuilderPort): void {
   // The STB prototype uses the same low cast-turret height class as the
   // production Type 74.  The shell was previously left at the authoring
   // construction height (almost exactly 2x Type 74), so compress the entire
   // completed turret section in its own local frame.  Width and plan remain
   // untouched; articulated gun geometry stays independently pitchable.
-  const STB_TURRET_HEIGHT_SCALE = 0.45;
-
   // Seat the bearing at the same deck-level datum as the production Type 74
   // and preserve the shared 1.60 m bore axis. The old low pivot buried most
   // of the newly shortened casting inside the STB hull.
   P.turretG.position.set(0, 1.42, 0.22);
   P.gunG.position.set(0, 0.18, 1.10);
+}
+
+function addSTB1HullBody(P: JapaneseBuilderPort): void {
+  const { box, cylZ } = KIT;
 
   // The owner reference is an unusually low, broad STB prototype—not the
   // taller production Type 74.  This is therefore a complete standalone
@@ -399,6 +398,10 @@ function buildSTB1(P: JapaneseBuilderPort): void {
     for (let i = -1; i <= 1; i++) P.add('hullDetail', box(0.68, 0.019, 0.025),
       side * 0.54, 1.374, z + i * 0.10);
   }
+}
+
+function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
+  const { box, cylY, torus, buildRunningGear, fenders, headlight, liftEye, periscope } = KIT;
 
   // Thin broken fenders and fully exposed native track run.  Source has no
   // full-height side skirts; the five suspension stations remain countable.
@@ -443,6 +446,10 @@ function buildSTB1(P: JapaneseBuilderPort): void {
     rollers: [], trackW: 0.42, trackTh: 0.090, topY: 1.13, botY: 0.03,
     deadSag: 0.045, paintedEnds: true, coveredTop: false, arms: true,
   });
+}
+
+function addSTB1CastTurret(P: JapaneseBuilderPort): void {
+  const { box, cylY, torus, polyMultiLoft, frustum, liftEye } = KIT;
 
   // The prototype casting shares the Leopard 1 generation's low, faceted
   // cheek language, but it is still a cast shell rather than a welded box.
@@ -584,6 +591,10 @@ function buildSTB1(P: JapaneseBuilderPort): void {
     P.add('turretDetail', box(0.24, 0.028, 0.045), x, 0.80, z, 0, yaw, 0);
     P.add('turretDetail', box(0.045, 0.12, 0.045), x, 0.75, z, 0, yaw, 0);
   }
+}
+
+function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
+  const { box, cylY, cylZ, torus, cupola, periscope } = KIT;
 
   // Two different roof stations, low hatches, periscopes and the source's
   // commander-mounted machine gun stay planted on the corrected low crown.
@@ -646,6 +657,10 @@ function buildSTB1(P: JapaneseBuilderPort): void {
   P.add('turretDark', box(0.72, 0.030, 0.34), 0, 0.947, -1.15, -0.07, 0, 0);
   for (let i = -3; i <= 3; i++) P.add('turretDetail', box(0.035, 0.020, 0.31),
     i * 0.10, 0.970, -1.15, -0.07, 0, 0);
+}
+
+function addSTB1TurretBasket(P: JapaneseBuilderPort): void {
+  const { box } = KIT;
 
   // Small supported smoke banks and a continuous bustle basket/cage.  Every
   // rail has a visible return into the turret or its backed rear face.
@@ -668,6 +683,11 @@ function buildSTB1(P: JapaneseBuilderPort): void {
     mats: P.mats, w: 1.72, d: 0.55, h: 0.16, fill: 0.50, rails: 3, seed: 1130,
   }), 0, 0.58, -1.58);
   whips(P, 0.72, -1.56, 1140, 0.83);
+}
+
+function addSTB1GunAndFinish(P: JapaneseBuilderPort): void {
+  const { box, cylZ, buildGun } = KIT;
+  const seg = P.q ? 36 : 18;
 
   // Rounded cast saddle and long bare L7 tube.  The gun group remains the
   // only pitch owner; the searchlight and all roof equipment yaw with turret.
@@ -701,6 +721,16 @@ function buildSTB1(P: JapaneseBuilderPort): void {
   P.decal('turret', 'number', 'STB-1', 0.21,
     [-1.23, 0.47 * STB_TURRET_HEIGHT_SCALE, -0.54], -Math.PI / 2);
   P.topY = 0.90;
+}
+
+function buildSTB1(P: JapaneseBuilderPort): void {
+  prepareSTB1Rig(P);
+  addSTB1HullBody(P);
+  addSTB1HullHardwareAndRunningGear(P);
+  addSTB1CastTurret(P);
+  addSTB1RoofEquipment(P);
+  addSTB1TurretBasket(P);
+  addSTB1GunAndFinish(P);
 }
 
 function addType90APackage(P: JapaneseBuilderPort): void {
