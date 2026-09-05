@@ -7434,6 +7434,24 @@ interface AxisGeometryCapProfile {
   outerRadiusM: number;
 }
 
+function axisPositionAttribute(
+  geometry: THREE.BufferGeometry,
+): THREE.BufferAttribute | null {
+  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
+  if (!position || position.itemSize < 3
+    || position instanceof THREE.InterleavedBufferAttribute) return null;
+  return position;
+}
+
+function barycentricWeightsContainPoint(
+  wa: number,
+  wb: number,
+  wc: number,
+  epsilon: number,
+): boolean {
+  return wa >= -epsilon && wb >= -epsilon && wc >= -epsilon;
+}
+
 function axisGeometryCapProfile(
   geometry: THREE.BufferGeometry,
   x: number,
@@ -7441,9 +7459,8 @@ function axisGeometryCapProfile(
   minZ: number,
   maxZ: number,
 ): AxisGeometryCapProfile | null {
-  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
-  if (!position || position.itemSize < 3
-    || position instanceof THREE.InterleavedBufferAttribute) return null;
+  const position = axisPositionAttribute(geometry);
+  if (!position) return null;
   const vertices = position.array;
   const stride = position.itemSize;
   const index = geometry.index && geometry.index.array;
@@ -7463,7 +7480,7 @@ function axisGeometryCapProfile(
     const wa = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den;
     const wb = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
     const wc = 1 - wa - wb;
-    if (wa < -eps || wb < -eps || wc < -eps) continue;
+    if (!barycentricWeightsContainPoint(wa, wb, wc, eps)) continue;
     const z = wa * vertices[ia + 2] + wb * vertices[ib + 2] + wc * vertices[ic + 2];
     if (z < minZ || z > maxZ) continue;
     const outerRadiusM = Math.max(
@@ -7497,9 +7514,8 @@ function axisGeometryMouthEdgeProfile(
   centerZ: number,
   caliberRadiusM: number,
 ): AxisGeometryCapProfile | null {
-  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
-  if (!position || position.itemSize < 3
-    || position instanceof THREE.InterleavedBufferAttribute) return null;
+  const position = axisPositionAttribute(geometry);
+  if (!position) return null;
   const minimumSupportR = Math.max(0.006, caliberRadiusM * 1.15);
   const maximumSupportR = Math.max(0.24, caliberRadiusM * 2.8);
   let outerRadiusM = Infinity;
