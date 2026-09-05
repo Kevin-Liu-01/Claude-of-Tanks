@@ -1,6 +1,8 @@
 // foundry.js — dense heavy-industrial battlefield with a rail fan, factory
 // blocks, container yards, workers' streets and layered hard cover.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 export default {
   id: 'foundry',
   name: 'Ironworks',
@@ -52,7 +54,10 @@ export default {
       'depot', 'gantry', 'warehouse', 'ruin', 'containerRow', 'watertower',
       'factory', 'shed', 'containerRow', 'warehouse', 'stack', 'depot',
       'gantry', 'containerRow', 'ruin', 'warehouse', 'factory', 'shed'],
-    destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'checkpointhut'],
+    destructibleBuildings: [
+      'quonsethut', 'transformershed', 'motorpool', 'checkpointhut',
+      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+    ],
     tacticalBeats: [
       { id: 'western-rail-fan', role: 'brawl', x: -274, z: 86, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
@@ -71,6 +76,9 @@ export default {
     // The authored network mixes worker streets with unpaved freight/rail
     // approaches; a curb on every route outlined the map in orange ribbons.
     blockFill: true, curbs: false, lampposts: true, monument: true, townCraters: true,
+    tones: makeRealisticCityBuildingTones({
+      value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84,
+    }),
     buildingLat: [10, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 142, outcrops: 12, craters: 86, rubblePiles: 48,

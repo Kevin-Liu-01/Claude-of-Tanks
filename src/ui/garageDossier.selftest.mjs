@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
+import './i18nCatalog.ts';
+import { getLocale, setLocale } from './i18n.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageTechnicalViews,
 } from './garageDossier.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
+
+// Lock the test to the en-US catalog so the assertions stay readable while
+// translations continue to live in zh-CN alongside the canonical strings.
+const originalLocale = getLocale();
+setLocale('en-US');
+try {
 
 const anatomy = {
   armor: {
@@ -40,7 +48,7 @@ const magazine = garageSpecialSystem({
   gun: { shells: [], reloadS: 18.5, autoloader: { magazineSize: 3, intraClipS: 2.5 } },
 }, 17.2);
 assert.equal(magazine.icon, 'autoloader');
-assert.match(magazine.meta, /3 rounds.*2\.5 s cycle.*17\.2 s reload/);
+assert.match(magazine.meta, /3 rounds.*2\.5 s cycle.*17\.2 s (full )?reload/);
 
 assert.equal(garageGalleryHref('m1a1'), '/gallery?id=m1a1');
 assert.equal(garageGalleryHref('m1a1', 'modules'), '/gallery?id=m1a1&layer=modules');
@@ -56,6 +64,9 @@ const silhouettes = shellIconTypes().map((type) => shellIconSVG(type));
 assert.equal(new Set(silhouettes).size, shellIconTypes().length, 'each ammunition class has distinct art');
 for (const type of ['AP', 'APCR', 'APFSDS', 'HEAT', 'HE']) {
   assert.match(shellIconSVG(type), new RegExp(`data-shell-type="${type}"`));
+}
+} finally {
+  setLocale(originalLocale);
 }
 
 console.log('garageDossier.selftest: modules, crew, technical schematics, gallery links, and shell art passed');

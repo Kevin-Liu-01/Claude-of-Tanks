@@ -34,6 +34,22 @@ checkLoop('rear drive', {z:3.45,y:0.46,r:0.33}, {z:-3.50,y:0.48,r:0.35});
 checkLoop('front drive', {z:3.38,y:0.50,r:0.37}, {z:-3.42,y:0.44,r:0.32});
 
 {
+  const bottomY = 0.055;
+  const points = KIT.trackLoopPoints({
+    idler: { z: 3.2, y: 0.20, r: 0.20 },
+    sprocket: { z: -3.2, y: 0.20, r: 0.20 },
+    botY: bottomY,
+    topY: 0.72,
+    contact: { zF: 2.5, zR: -2.5 },
+  });
+  assert.ok(points.every((point) => point[1] >= bottomY),
+    'ground-terminated wraps never emit a point below their loaded run');
+  const ground = points.filter((point) => Math.abs(point[1] - bottomY) < 1e-9);
+  assert.ok(ground.length >= 6 && ground.at(-1)[0] < ground[0][0],
+    'sunken end-wheel crossings join one monotonic front-to-rear ground run');
+}
+
+{
   const wheelZs = [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16];
   const legacy = KIT.runningGearContactPatch(wheelZs, 0.385, { contactZR: -1.50 });
   const contained = KIT.runningGearContactPatch(wheelZs, 0.385, {

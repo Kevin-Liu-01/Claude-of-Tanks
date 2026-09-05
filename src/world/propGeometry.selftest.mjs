@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  auditSkillionRoofPitch, box, gablePrism, jitterUV,
-  makeTelephonePoleDistanceGeometry, pitchSkillionRoof, scaleUV, slabBox,
+  auditRoofPlanePitch, auditSkillionRoofPitch, box, gablePrism, jitterUV,
+  makeTelephonePoleDistanceGeometry, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 
 const scaled = new THREE.PlaneGeometry(2, 2);
@@ -40,6 +40,19 @@ reversedRoof.rotateX(-0.32);
 assert.ok(auditSkillionRoofPitch(reversedRoof).drop < 0,
   'the pitch audit rejects a canopy manually flipped back toward the building');
 reversedRoof.dispose();
+
+for (const [kind, axis, lowEdgeSign] of [
+  ['gable', 'x', -1], ['gable', 'x', 1],
+  ['sawtooth', 'z', -1], ['dormer', 'x', 1],
+]) {
+  const roof = pitchRoofPlane(slabBox(2.7, 0.11, 3.4), axis, lowEdgeSign, 0.21, kind);
+  const receipt = auditRoofPlanePitch(roof);
+  assert.equal(receipt.kind, kind);
+  assert.ok(receipt.drop > 0.4, `${kind}: declared low edge is below its supported edge`);
+  assert.ok(Math.abs(receipt.measuredAngleRad - receipt.angleRad) < 1e-3,
+    `${kind}: measured geometry angle agrees with its authoring receipt`);
+  roof.dispose();
+}
 
 const gable = gablePrism(4, 2, 0.6);
 gable.computeBoundingBox();

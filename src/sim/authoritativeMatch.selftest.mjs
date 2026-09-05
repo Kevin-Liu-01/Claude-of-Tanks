@@ -43,6 +43,37 @@ const z0 = match.entityById.get('alpha-1').state.pos.z;
 for (let i = 0; i < 120; i++) match.step({ dt: 1 / 60, tick: ++tick, inputs: drive });
 assert.ok(match.entityById.get('alpha-1').state.pos.z > z0 + 1, 'shared movement model advances');
 
+const casemateMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0,
+  players: [
+    { id: 'mount-a', specId: 'udes03', team: 'alpha', spawn: { x: 0, z: -100, yaw: 0 } },
+    { id: 'mount-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 100, yaw: Math.PI } },
+  ],
+});
+casemateMatch.onMatchReady();
+const mountShooter = casemateMatch.entityById.get('mount-a');
+assert.ok(mountShooter.combat.modules.gunMount,
+  'casemate fixture publishes an authored gun-mount module');
+mountShooter.combat.modules.gunMount.hp = 0;
+mountShooter.combat.modules.gunMount.state = 'red';
+const mountInput = new Map([['mount-a', {
+  throttle: 0, steer: 0, brake: true, fire: true,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0,
+}]]);
+casemateMatch.step({ dt: 1 / 60, tick: 1, inputs: mountInput });
+assert.ok(!casemateMatch.snapshot({
+  tick: 1, serverTimeMs: 1000 / 60, viewerId: 'mount-a', ackInputSeq: 1,
+}).events.some((event) => event.type === 'shell_fired' && event.shooterId === 'mount-a'),
+'authoritative fire control blocks a casemate with a destroyed gun mount');
+casemateMatch.afterSnapshotBroadcast();
+mountShooter.combat.modules.gunMount.hp = mountShooter.combat.modules.gunMount.maxHp * 0.5;
+mountShooter.combat.modules.gunMount.state = 'yellow';
+casemateMatch.step({ dt: 1 / 60, tick: 2, inputs: mountInput });
+assert.ok(casemateMatch.snapshot({
+  tick: 2, serverTimeMs: 2000 / 60, viewerId: 'mount-a', ackInputSeq: 2,
+}).events.some((event) => event.type === 'shell_fired' && event.shooterId === 'mount-a'),
+'authoritative fire control resumes when the gun mount recovers to damaged');
+
 const boundaryMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
@@ -179,6 +210,12 @@ assert.ok(treeCrushReceipt?.directionZ > 0 && treeCrushReceipt?.speedMps > 100,
 assert.ok(treeEvents.some((event) => event.type === 'world_prop_destroyed'
   && event.treeIdx === 17 && event.kind === 'tree' && event.cause === 'shell'),
 'tree shell destruction replicates with stable owner binding');
+assert.ok(!treeEvents.some((event) => event.type === 'shell_impact'
+  && event.surfaceKind === 'tree'),
+'a yielding tree never consumes the authoritative projectile');
+assert.ok(treeEvents.some((event) => event.type === 'shell_hit'
+  && event.targetId === 'tree-b'),
+'the same authoritative projectile continues through a toppled tree into the tank behind it');
 
 const crushWall = {
   ...wall,

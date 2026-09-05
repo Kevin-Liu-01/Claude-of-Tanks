@@ -1,6 +1,8 @@
 // Visual proof for the fleet-wide muzzle-bore fallback. Structural coverage is
 // enforced by tank-assets-check; this probe also renders representative main
-// gun, autocannon and howitzer mouths straight-on and checks dark-center read.
+// gun, autocannon and howitzer mouths straight-on, checks dark-center read,
+// and certifies that every visible fallback lip is sized/seated from a real
+// terminal cap or an authored rim rather than a donor-wide guessed radius.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -105,6 +107,30 @@ try {
     const rimSamplesPass = shot.boreDebug.rimSamples?.every((sample) => sample.pass) === true;
     const concentric = Number.isFinite(shot.boreDebug.concentricOffsetM)
       && shot.boreDebug.concentricOffsetM <= 0.004;
+    const seatReceipts = shot.boreDebug.muzzleSeatReceipts || [];
+    const seatCoverage = seatReceipts.length === expectedBores;
+    const seatSupportMeasured = seatReceipts.every((receipt) =>
+      receipt.supportSource === 'terminal-cap'
+      || receipt.supportSource === 'terminal-edge'
+      || receipt.supportSource === 'authored-rim');
+    const seatRadialFit = seatReceipts.every((receipt) =>
+      Number.isFinite(receipt.supportOuterRadiusM)
+      && Number.isFinite(receipt.outerRadiusM)
+      && Number.isFinite(receipt.radialRatio)
+      && receipt.supportOuterRadiusM >= 0.005
+      && receipt.outerRadiusM >= 0.005
+      && receipt.radialRatio >= 0.35
+      && receipt.radialRatio <= 1.001);
+    const seatAxialFit = seatReceipts.every((receipt) =>
+      Number.isFinite(receipt.lipAdvanceM)
+      && Number.isFinite(receipt.annulusForwardM)
+      && Number.isFinite(receipt.discForwardM)
+      && receipt.lipAdvanceM >= 0.0034
+      && receipt.lipAdvanceM <= 0.0161
+      && receipt.annulusForwardM > receipt.discForwardM
+      && receipt.annulusForwardM < receipt.lipAdvanceM
+      && receipt.discForwardM >= 0.0009
+      && receipt.discForwardM < receipt.lipAdvanceM);
     const pass = shot.muzzleBore.tagged === expectedBores
       && shot.muzzleBore.rims === expectedBores
       && shot.muzzleBore.discs === expectedBores
@@ -112,6 +138,10 @@ try {
       && innerSamplesPass
       && rimSamplesPass
       && concentric
+      && seatCoverage
+      && seatSupportMeasured
+      && seatRadialFit
+      && seatAxialFit
       && (readsRecessed || readsAbsoluteBlack);
     report.tanks[id] = {
       pass,
@@ -130,6 +160,10 @@ try {
     if (!innerSamplesPass) failures.push(`${id}: bore disc is blocked or undersized ${JSON.stringify(shot.boreDebug.innerSamples)}`);
     if (!rimSamplesPass) failures.push(`${id}: rim is incomplete or occluded ${JSON.stringify(shot.boreDebug.rimSamples)}`);
     if (!concentric) failures.push(`${id}: rim/disc are not concentric (${shot.boreDebug.concentricOffsetM})`);
+    if (!seatCoverage) failures.push(`${id}: expected ${expectedBores} muzzle-seat receipt(s), found ${seatReceipts.length}`);
+    if (!seatSupportMeasured) failures.push(`${id}: muzzle fallback still uses unmeasured nominal support ${JSON.stringify(seatReceipts)}`);
+    if (!seatRadialFit) failures.push(`${id}: muzzle lip overhangs or undersizes its terminal support ${JSON.stringify(seatReceipts)}`);
+    if (!seatAxialFit) failures.push(`${id}: muzzle face is axially detached from its terminal support ${JSON.stringify(seatReceipts)}`);
   }
 } finally {
   if (browser) await browser.close();

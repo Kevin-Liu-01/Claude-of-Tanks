@@ -4,6 +4,7 @@ import {
   collisionFootprintContainsPoint, convexHull2, createObstacleGrid,
   pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
   rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
+  shellPassesThroughCollisionRecord,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -27,6 +28,16 @@ assert.equal(hullHit({ x: 0.8, z: 0.8 }, trunk, 0.1, 0.1).hit, false,
   'circle footprint rejects its old square corner');
 assert.equal(hullHit({ x: 0.58, z: 0 }, trunk, 0.1, 0.1).hit, true,
   'circle footprint still contacts at the visible radius');
+
+assert.equal(shellPassesThroughCollisionRecord({
+  min: [-1, 0, -1], max: [1, 4, 1], crushable: true, kind: 'fieldhut',
+}), true, 'destructible small buildings yield without consuming shells');
+assert.equal(shellPassesThroughCollisionRecord({
+  min: [-1, 0, -1], max: [1, 8, 1], kind: 'warehouse',
+}), false, 'non-crushable structures remain hard ballistic cover');
+assert.equal(shellPassesThroughCollisionRecord({
+  min: [-1, 0, -0.4], max: [1, 1.2, 0.4], crushable: true, kind: 'wallstone',
+}), false, 'dense crushable fortifications remain hard ballistic cover');
 
 // Tank interaction boxes are true oriented hull rectangles. The old capsule
 // rounded each shoulder by half the tank width, producing contact where both

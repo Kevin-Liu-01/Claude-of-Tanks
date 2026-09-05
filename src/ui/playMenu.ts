@@ -22,6 +22,7 @@ import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
+import { t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
 import {
@@ -362,8 +363,8 @@ function leaderboardPlayers(value: RuntimeValue): LeaderboardPlayer[] {
     if (!isRecord(entry)) return [];
     return [{
       place: typeof entry.place === 'number' || typeof entry.place === 'string' ? entry.place : '',
-      name: String(entry.name || 'Commander'),
-      rank: String(entry.rank || 'Unranked'),
+      name: String(entry.name || t('playMenu.commander.fallback')),
+      rank: String(entry.rank || t('playMenu.rank.unranked')),
       rating: typeof entry.rating === 'number' || typeof entry.rating === 'string' ? entry.rating : 0,
     }];
   });
@@ -407,9 +408,9 @@ function clearRoomUrl(): void {
 }
 
 function lobbyTeamLabel(team: LobbyTeam): string {
-  if (team === 'alpha') return 'Team Alpha';
-  if (team === 'bravo') return 'Team Bravo';
-  return 'Spectator';
+  if (team === 'alpha') return t('playMenu.team.alpha');
+  if (team === 'bravo') return t('playMenu.team.bravo');
+  return t('playMenu.team.spectator');
 }
 
 function playerId(): string {
@@ -615,105 +616,105 @@ export function createPlayMenu({
   const root = document.createElement('div');
   root.className = 'cot-play';
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${rule.description}">
-      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${rule.label}</b><small>${rule.shortLabel}</small></span></button>`).join('');
-  root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="Close">×</button>
-    <div class="eyebrow">Choose operation</div><h2>Play Claude of Tanks</h2>
-    <p class="lead">One vehicle roster. Four direct ways to deploy.</p>
+    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
+      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small></span></button>`).join('');
+  root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
+    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2>${t('playMenu.title')}</h2>
+    <p class="lead">${t('playMenu.lead')}</p>
     <div class="modes">
-      <button class="mode" data-mode="solo" type="button"><span class="mode-icon">${uiIconSVG('battleBots', 24)}</span><i>Immediate</i><b>Solo vs bots</b><span class="mode-desc">Run the same authoritative combat locally against a full bot roster.</span></button>
-      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>Room code</i><b>Private lobby</b><span class="mode-desc">Create or join a direct WebRTC match with team switching.</span></button>
-      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>Local network</i><b>LAN lobby</b><span class="mode-desc">Use the same lobby over Wi-Fi with minimal route latency.</span></button>
-      <button class="mode" data-mode="ranked" type="button"><span class="mode-icon">${uiIconSVG('battleRanked', 24)}</span><i>Dedicated</i><b>Ranked</b><span class="mode-desc">Server-authoritative queue and rating. Service endpoint required.</span></button>
+      <button class="mode" data-mode="solo" type="button"><span class="mode-icon">${uiIconSVG('battleBots', 24)}</span><i>${t('playMenu.solo.kicker')}</i><b>${t('playMenu.solo.title')}</b><span class="mode-desc">${t('playMenu.solo.desc')}</span></button>
+      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>${t('playMenu.private.kicker')}</i><b>${t('playMenu.private.title')}</b><span class="mode-desc">${t('playMenu.private.desc')}</span></button>
+      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>${t('playMenu.lan.kicker')}</i><b>${t('playMenu.lan.title')}</b><span class="mode-desc">${t('playMenu.lan.desc')}</span></button>
+      <button class="mode" data-mode="ranked" type="button"><span class="mode-icon">${uiIconSVG('battleRanked', 24)}</span><i>${t('playMenu.ranked.kicker')}</i><b>${t('playMenu.ranked.title')}</b><span class="mode-desc">${t('playMenu.ranked.desc')}</span></button>
     </div>
-    <div class="rule-heading"><b>Battle rules</b><span>One deterministic ruleset for solo, private, and LAN play.</span></div>
-    <div class="rules" role="list" aria-label="Battle rules">${ruleCards}</div>
+    <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
+    <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <section class="room"><div class="setup">
-      <div class="identity"><label>Callsign<input data-field="name" maxlength="24" autocomplete="nickname"></label>
-        <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
+      <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
+        <span class="identity-note">${t('playMenu.identity.note')}</span></div>
       <div class="room-actions">
-        <div class="room-action"><div class="room-action-head"><i>Host</i><b>Create a room</b>
-          <span>Choose a format, then send the invite link to another player.</span></div>
-          <div class="room-action-fields"><div class="field"><span class="field-label" id="cot-create-size-label">Battle format</span>
+        <div class="room-action"><div class="room-action-head"><i>${t('playMenu.create.kicker')}</i><b>${t('playMenu.create.title')}</b>
+          <span>${t('playMenu.create.desc')}</span></div>
+          <div class="room-action-fields"><div class="field"><span class="field-label" id="cot-create-size-label">${t('playMenu.advanced.size')}</span>
             <div class="menu-select" data-field="create-size" data-value="2">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-create-size-list" aria-labelledby="cot-create-size-label cot-create-size-value">
-                <span id="cot-create-size-value" data-select-value>2 vs 2</span></button>
+                <span id="cot-create-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 2 })}</span></button>
               <div class="menu-select-list" id="cot-create-size-list" role="listbox" aria-labelledby="cot-create-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="false">1 vs 1</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="true">2 vs 2</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 1 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 2 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
               </div>
             </div></div>
-            <button class="action" data-action="create" type="button">Create room</button></div></div>
-        <div class="room-action"><div class="room-action-head"><i>Join</i><b>Enter a room code</b>
-          <span>Paste the host's code; team and battlefield controls appear after connecting.</span></div>
-          <div class="room-action-fields"><label>Room code<input class="code-input" data-field="code" maxlength="6"
+            <button class="action" data-action="create" type="button">${t('playMenu.create.action')}</button></div></div>
+        <div class="room-action"><div class="room-action-head"><i>${t('playMenu.join.kicker')}</i><b>${t('playMenu.join.title')}</b>
+          <span>${t('playMenu.join.desc')}</span></div>
+          <div class="room-action-fields"><label>${t('playMenu.join.code')}<input class="code-input" data-field="code" maxlength="6"
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
-            <button class="action alt" data-action="join" type="button">Join room</button></div></div>
+            <button class="action alt" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
-      <details class="advanced"><summary>Connection settings</summary>
-        <label>Signaling server<input data-field="signal" spellcheck="false"></label></details>
+      <details class="advanced"><summary>${t('playMenu.advanced.summary')}</summary>
+        <label>${t('playMenu.advanced.signal')}<input data-field="signal" spellcheck="false"></label></details>
     </div><div class="status" aria-live="polite"></div><div class="lobby">
-      <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
-        <button class="action alt" data-action="copy" type="button">Copy invite link</button></div>
-      <div class="battlefield-card"><div class="battlefield-art"><span>Battlefield briefing</span></div>
-        <div class="battlefield-copy"><div class="battlefield-id"><i data-map-role>Host selectable</i><b data-map-name>Random battlefield</b>
-          <span>Changing the operation resets readiness so every commander sees the final choice.</span></div>
-          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">Battlefield</span>
+      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code"></div></div>
+        <button class="action alt" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
+      <div class="battlefield-card"><div class="battlefield-art"><span>${t('playMenu.advanced.battlefieldBriefing')}</span></div>
+        <div class="battlefield-copy"><div class="battlefield-id"><i data-map-role>${t('playMenu.advanced.battlefieldHostSelectable')}</i><b data-map-name>${t('playMenu.advanced.battlefieldRandom')}</b>
+          <span>${t('playMenu.advanced.battlefieldDesc')}</span></div>
+          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
             <div class="menu-select menu-select--map" data-control="map" data-value="random">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-map-list" aria-labelledby="cot-room-map-label cot-room-map-value">
                 <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
-                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>Random</span>
-                  <small data-select-meta>Any battlefield</small></span></button>
+                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>${t('playMenu.advanced.battlefieldRandom')}</span>
+                  <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
               <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
             </div></div></div></div>
       <div class="players"></div><div class="controls">
-        <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">Vehicle</span>
+        <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
             <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
               aria-controls="cot-room-vehicle-list" aria-labelledby="cot-room-vehicle-label cot-room-vehicle-value">
               <span class="menu-select-thumb" data-select-thumb aria-hidden="true"></span>
-              <span class="menu-select-trigger-copy"><span id="cot-room-vehicle-value" data-select-value>Select vehicle</span>
-                <small data-select-meta>Ready-up loadout</small></span></button>
+              <span class="menu-select-trigger-copy"><span id="cot-room-vehicle-value" data-select-value>${t('playMenu.advanced.vehicleSelect')}</span>
+                <small data-select-meta>${t('playMenu.advanced.vehicleDesc')}</small></span></button>
             <div class="menu-select-list" id="cot-room-vehicle-list" role="listbox" aria-labelledby="cot-room-vehicle-label"></div>
           </div></div>
-        <div class="field"><span class="field-label" id="cot-room-team-label">Deployment</span>
+        <div class="field"><span class="field-label" id="cot-room-team-label">${t('playMenu.deployment')}</span>
           <div class="menu-select" data-control="team" data-value="alpha">
             <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
               aria-controls="cot-room-team-list" aria-labelledby="cot-room-team-label cot-room-team-value">
-              <span id="cot-room-team-value" data-select-value>Team Alpha</span></button>
+              <span id="cot-room-team-value" data-select-value>${t('playMenu.team.alpha')}</span></button>
             <div class="menu-select-list" id="cot-room-team-list" role="listbox" aria-labelledby="cot-room-team-label">
-              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="Team Alpha" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>Team Alpha</button>
-              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="Team Bravo" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>Team Bravo</button>
-              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="Spectator" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>Spectator</button>
+              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="${t('playMenu.team.alpha')}" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>${t('playMenu.team.alpha')}</button>
+              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="${t('playMenu.team.bravo')}" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>${t('playMenu.team.bravo')}</button>
+              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="${t('playMenu.team.spectator')}" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>${t('playMenu.team.spectator')}</button>
             </div></div></div>
-          <div class="field"><span class="field-label" id="cot-room-size-label">Battle format</span>
+          <div class="field"><span class="field-label" id="cot-room-size-label">${t('playMenu.advanced.size')}</span>
             <div class="menu-select" data-control="size" data-value="1">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-size-list" aria-labelledby="cot-room-size-label cot-room-size-value">
-                <span id="cot-room-size-value" data-select-value>1 vs 1</span></button>
+                <span id="cot-room-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 1 })}</span></button>
               <div class="menu-select-list" id="cot-room-size-list" role="listbox" aria-labelledby="cot-room-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="true">1 vs 1</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="false">2 vs 2</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 1 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 2 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
               </div></div></div></div>
-        <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">Leave room</button>
-          <button class="action alt" data-action="ready" type="button">I'm ready</button>
-          <button class="action" data-action="start" type="button">Start match</button></div>
+        <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">${t('playMenu.leave')}</button>
+          <button class="action alt" data-action="ready" type="button">${t('playMenu.ready')}</button>
+          <button class="action" data-action="start" type="button">${t('playMenu.start')}</button></div>
       </div><div class="note"></div>
     </div></section>
     <section class="ranked"><div class="ranked-form">
-      <label>Commander name<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
-      <label>Match service<input data-ranked="service" spellcheck="false"></label>
-      <label>Format<select data-ranked="size"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
-      <button class="action" data-ranked="queue" type="button">Find match</button>
-      <button class="action alt" data-ranked="cancel" type="button" disabled>Cancel</button>
+      <label>${t('playMenu.ranked.name')}<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
+      <label>${t('playMenu.ranked.service')}<input data-ranked="service" spellcheck="false"></label>
+      <label>${t('playMenu.ranked.format')}<select data-ranked="size"><option value="1">${t('playMenu.sizeFormat', { size: 1 })}</option><option value="2">${t('playMenu.sizeFormat', { size: 2 })}</option><option value="3">${t('playMenu.sizeFormat', { size: 3 })}</option><option value="5">${t('playMenu.sizeFormat', { size: 5 })}</option><option value="7">${t('playMenu.sizeFormat', { size: 7 })}</option></select></label>
+      <button class="action" data-ranked="queue" type="button">${t('playMenu.ranked.findMatch')}</button>
+      <button class="action alt" data-ranked="cancel" type="button" disabled>${t('playMenu.ranked.cancelQueue')}</button>
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 
@@ -925,12 +926,12 @@ export function createPlayMenu({
     if (resolvedHost) invitedHostName = resolvedHost;
     const code = normalizeRoomCode(roomCode);
     root.classList.add('invite-entry');
-    eyebrow.textContent = mode === 'lan' ? 'LAN invitation' : 'Private invitation';
+    eyebrow.textContent = mode === 'lan' ? t('playMenu.eyebrow.lan') : t('playMenu.eyebrow.private');
     menuTitle.textContent = roomInviteTitle(invitedHostName);
     menuLead.textContent = connected
-      ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
-      : 'Room ' + code + ' is ready. Connecting you directly to the host.';
-    document.title = menuTitle.textContent + ' — Claude of Tanks';
+      ? t('playMenu.invite.connected', { code })
+      : t('playMenu.invite.connecting', { code });
+    document.title = menuTitle.textContent + t('app.titleSuffix');
   }
 
   function resetInvitation(): void {
@@ -939,7 +940,7 @@ export function createPlayMenu({
     eyebrow.textContent = defaultEyebrow;
     menuTitle.textContent = defaultMenuTitle;
     menuLead.textContent = defaultMenuLead;
-    if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
+    if (document.title.startsWith(t('app.titleJoinPrefix'))) document.title = defaultDocumentTitle;
   }
 
   function setStatus(message: RuntimeValue, error = false): void {
@@ -950,13 +951,13 @@ export function createPlayMenu({
   function roomConnectionStatus(action: 'created' | 'joined'): string {
     if (mode === 'private' && roomIce && !roomIce.relayAvailable) {
       const reason = roomIce.degradedReason === 'turn_service_unconfigured'
-        ? 'the production TURN service is not configured'
-        : 'the TURN relay is temporarily unavailable';
-      return `Direct-only room ${action}; ${reason}, so some external networks cannot connect.`;
+        ? t('playMenu.room.turnUnconfigured')
+        : t('playMenu.room.turnUnavailable');
+      return t('playMenu.room.directOnly', { action, reason });
     }
     return action === 'created'
-      ? 'Room ready. Copy the invite link.'
-      : 'Connected. Choose a team and ready up.';
+      ? t('playMenu.room.readyCopy')
+      : t('playMenu.room.connectedChooseTeam');
   }
 
   function notifyLobbyChange(next: SerializedLobby | null = state): void {
@@ -975,7 +976,7 @@ export function createPlayMenu({
   }
 
   function setClosePurpose(inRoom: boolean): void {
-    const label = inRoom ? 'Back to garage — stay in room' : 'Close';
+    const label = inRoom ? t('playMenu.close.backToGarage') : t('playMenu.close');
     closeBtn.setAttribute('aria-label', label);
     closeBtn.title = label;
   }
@@ -1067,13 +1068,17 @@ export function createPlayMenu({
     if (identity) {
       try {
         const profile = await rankedClient.profile(identity.playerId);
-        rankedProfile.textContent = `${recordText(profile, 'rank', 'Unranked')} · ${recordText(profile, 'rating', '1000')} ELO · ${recordText(profile, 'matches', '0')} matches`;
+        rankedProfile.textContent = t('playMenu.ranked.profileSummary', {
+          rank: recordText(profile, 'rank', t('playMenu.rank.unranked')),
+          rating: recordText(profile, 'rating', '1000'),
+          matches: recordText(profile, 'matches', '0'),
+        });
       } catch (error) {
         if (!isRecord(error) || error.status !== 404) throw error;
         rankedClient.clearIdentity();
-        rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+        rankedProfile.textContent = t('playMenu.ranked.newCommander');
       }
-    } else rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+    } else rankedProfile.textContent = t('playMenu.ranked.newCommander');
     const board = await rankedClient.leaderboard(8);
     renderLeaderboard(leaderboardPlayers(board.players));
   }
@@ -1082,7 +1087,7 @@ export function createPlayMenu({
     if (rankedTicket) return;
     const selection = getSelection();
     const name = rankedName.value.trim().replace(/\s+/g, ' ').slice(0, 24);
-    if (!name) throw new Error('Enter a commander name');
+    if (!name) throw new Error(t('playMenu.error.missingCommanderName'));
     remember(PLAYER_NAME_KEY, name);
     nameInput.value = name;
     await refreshRanked();
@@ -1100,12 +1105,17 @@ export function createPlayMenu({
     });
     const activeTicket = rankedTicket;
     const activeAbort = rankedAbort;
-    setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${recordText(activeTicket, 'rating', '1000')} ELO…`);
+    setStatus(t('playMenu.ranked.searching', {
+      size: String(rankedSize.value),
+      rating: recordText(activeTicket, 'rating', '1000'),
+    }));
     const queueState: RankedQueueState = activeTicket.status === 'matched'
       ? { ...activeTicket, status: 'matched' }
       : await activeTicket.wait({
       signal: activeAbort.signal,
-      onUpdate: (next) => setStatus(`Searching near ${recordText(next, 'rating', '1000')} ELO…`),
+      onUpdate: (next) => setStatus(t('playMenu.ranked.searchingNear', {
+        rating: recordText(next, 'rating', '1000'),
+      })),
     });
     if (activeAbort.signal.aborted) return;
     handedOff = true;
@@ -1178,13 +1188,15 @@ export function createPlayMenu({
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
-    battlefieldName.textContent = selectedMap?.name || next.mapId || 'Random battlefield';
+    battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.fallbackMapName');
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
       : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
-    battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
+    battlefieldRole.textContent = role === 'host'
+      ? t('playMenu.role.hostSelectable')
+      : t('playMenu.role.selectedByHost');
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
@@ -1205,12 +1217,18 @@ export function createPlayMenu({
       remember(PLAYER_NAME_KEY, player.name);
     }
     const spectator = player.team === 'spectator';
-    readyBtn.textContent = spectator ? 'Watching' : player.ready ? 'Not ready' : "I'm ready";
+    readyBtn.textContent = spectator
+      ? t('playMenu.ready.watching')
+      : player.ready
+        ? t('playMenu.ready.notReady')
+        : t('playMenu.ready.iAmReady');
     readyBtn.disabled = spectator || next.phase !== 'waiting';
     readyBtn.classList.toggle('needs-ready', !spectator && !player.ready && next.phase === 'waiting');
     readyBtn.classList.toggle('is-ready', !spectator && player.ready);
     readyBtn.setAttribute('aria-pressed', String(!spectator && player.ready));
-    readyBtn.setAttribute('aria-label', player.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
+    readyBtn.setAttribute('aria-label', player.ready
+      ? t('playMenu.ready.markNotReady')
+      : t('playMenu.ready.markReady'));
   }
 
   function updateLobbyControls(
@@ -1244,7 +1262,7 @@ export function createPlayMenu({
     const vehicleName = document.createElement('span');
     vehicleName.className = 'vehicle-name';
     if (!player.specId) {
-      vehicleName.textContent = 'Selecting vehicle';
+      vehicleName.textContent = t('playMenu.lobby.selectingVehicle');
       vehicle.appendChild(vehicleName);
       return vehicle;
     }
@@ -1274,7 +1292,7 @@ export function createPlayMenu({
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
     const host = document.createElement('span');
     host.className = 'host';
-    host.textContent = player.isHost ? 'HOST' : '';
+    host.textContent = player.isHost ? t('playMenu.lobby.host') : '';
     const playerName = document.createElement('b');
     playerName.className = 'name';
     playerName.textContent = player.name;
@@ -1283,7 +1301,11 @@ export function createPlayMenu({
     team.textContent = lobbyTeamLabel(player.team);
     const ready = document.createElement('span');
     ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-    ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    ready.textContent = player.team === 'spectator'
+      ? t('playMenu.lobby.watching')
+      : player.ready
+        ? t('playMenu.lobby.ready')
+        : t('playMenu.lobby.notReady');
     row.append(host, playerName, createLobbyVehicle(player), team, ready);
     return row;
   }
@@ -1344,7 +1366,7 @@ export function createPlayMenu({
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
     const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
-    if (!name) throw new Error('Enter a player name');
+    if (!name) throw new Error(t('playMenu.error.missingPlayerName'));
     nameInput.value = name;
     remember(PLAYER_NAME_KEY, name);
     const signalUrl = signalInput.value.trim();

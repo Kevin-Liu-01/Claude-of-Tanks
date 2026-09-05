@@ -56,7 +56,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
-  repairAllModules, startMagazineReload,
+  repairAllModules, startMagazineReload, mainWeaponModuleState,
 } from '../sim/damage.ts';
 import {
   activateSpecialAction,
@@ -71,7 +71,11 @@ import {
 } from '../sim/ammunition.ts';
 import { createAI, roleOf } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
-import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
+import {
+  pushHullFromHull,
+  pushHullFromObstacle,
+  shellPassesThroughCollisionRecord,
+} from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
@@ -295,7 +299,13 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
-  crushObstacle?(obstacle: SoloObstacle, dirX: number, dirZ: number, speedMps: number): void;
+  crushObstacle?(
+    obstacle: SoloObstacle,
+    dirX: number,
+    dirZ: number,
+    speedMps: number,
+    cause?: 'ram' | 'shell',
+  ): boolean;
 }
 
 interface SetupBattleOptions {
@@ -446,6 +456,7 @@ const ALLY_SPAWN_SLOTS = Object.freeze([
 const _muzzle = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
+const _worldRayOrigin = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
@@ -1648,7 +1659,7 @@ function readyShellForFire(
 ): DamageShellSpec | null {
   const combat = entity.combat;
   if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
-  if (combat.modules.gun?.state === 'red') return null;
+  if (mainWeaponModuleState(combat) === 'red') return null;
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
     0,
@@ -1763,7 +1774,7 @@ function tryFire(
   const muzzleIndex = prepareMuzzleDirection(entity);
   if (muzzleIndex == null) return;
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
-  if (entity.combat.modules.gun?.state === 'yellow') dispersion *= 2;
+  if (mainWeaponModuleState(entity.combat) === 'yellow') dispersion *= 2;
   applyDispersion(_dir, dispersion, game.combatRng);
   const firedSlot = entity.combat.shellSlot;
   if (!consumeAmmunition(entity.combat, firedSlot)) return;
@@ -1881,8 +1892,15 @@ function crushWorldPropFromShell(
   hit: SoloWorldHit,
 ): void {
   const record = hit.record;
-  if (record?.treeIdx == null || !record.crushable || !world.crushObstacle) return;
-  world.crushObstacle(record, _seg.x, _seg.z, shell.spec.velocityMps);
+  if (!record?.crushable || !world.crushObstacle) return;
+  const crushed = world.crushObstacle(
+    record,
+    _seg.x,
+    _seg.z,
+    shell.spec.velocityMps,
+    'shell',
+  );
+  if (!crushed || record.treeIdx == null) return;
   bus.emit('prop:crushed', {
     shooterId: shell.shooterId,
     cause: 'shell',
@@ -1892,6 +1910,46 @@ function crushWorldPropFromShell(
     pos: [hit.point.x, hit.point.y, hit.point.z],
     dir: [_seg.x, 0, _seg.z],
   });
+}
+
+const MAX_SHELL_PASS_THROUGH_HITS_PER_STEP = 32;
+const SHELL_PASS_THROUGH_EPSILON_M = 0.01;
+
+interface BlockingWorldShellHit {
+  hit: SoloWorldHit;
+  distance: number;
+}
+
+function traceBlockingWorldShellHit(
+  world: SoloWorld,
+  bus: EventBus,
+  shell: DamageShell,
+  segmentLength: number,
+  tankDistance: number,
+): BlockingWorldShellHit | null {
+  _worldRayOrigin.copy(shell.prevPos);
+  let travelled = 0;
+  for (let pass = 0; pass < MAX_SHELL_PASS_THROUGH_HITS_PER_STEP; pass++) {
+    const remaining = segmentLength - travelled;
+    if (remaining <= 0) return null;
+    const hit = world.raycast(_worldRayOrigin, _seg, remaining);
+    if (!hit) return null;
+    const localDistance = Math.max(0, hit.dist);
+    const distance = travelled + localDistance;
+    if (distance >= tankDistance) return null;
+    if (!shellPassesThroughCollisionRecord(hit.record)) return { hit, distance };
+
+    crushWorldPropFromShell(world, bus, shell, hit);
+    const advance = Math.min(
+      remaining,
+      Math.max(SHELL_PASS_THROUGH_EPSILON_M, localDistance + SHELL_PASS_THROUGH_EPSILON_M),
+    );
+    travelled += advance;
+    _worldRayOrigin.addScaledVector(_seg, advance);
+  }
+  // Malformed/custom raycasters cannot trap or consume a shell by returning
+  // the same yielding record forever. The next fixed step resumes the sweep.
+  return null;
 }
 
 function resolveWorldShellImpact(
@@ -1942,13 +2000,19 @@ function stepLiveShell(
     return;
   }
   _seg.multiplyScalar(1 / segmentLength);
-  const worldHit = world.raycast(shell.prevPos, _seg, segmentLength);
   const nearest = traceNearestTank(game, shell, segmentLength);
+  const worldTrace = traceBlockingWorldShellHit(
+    world,
+    bus,
+    shell,
+    segmentLength,
+    nearest.distance,
+  );
   if (nearest.entity && nearest.intersections &&
-      nearest.distance <= (worldHit?.dist ?? Infinity)) {
+      nearest.distance <= (worldTrace?.distance ?? Infinity)) {
     resolveTankShellImpact(game, bus, shell, nearest);
-  } else if (worldHit) {
-    resolveWorldShellImpact(game, bus, world, shell, worldHit);
+  } else if (worldTrace) {
+    resolveWorldShellImpact(game, bus, world, shell, worldTrace.hit);
   } else if (shell.dead) {
     emitAirExpiry(bus, shell);
   }

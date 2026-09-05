@@ -119,8 +119,8 @@ function scoreFunctionalStory(
     + ledger.award(number(architecture.facilityStations) >= 2
       && number(architecture.environmentSpecificAssemblies) >= 2,
     4, 'fewer than two complete service bays')
-    + ledger.award(number(workshop.exhibitCount) === 4,
-      3, 'four real fleet exhibits are not present');
+    + ledger.award(number(workshop.exhibitCount) === 5,
+      3, 'five real fleet exhibits are not present');
 }
 
 function scoreComposition(

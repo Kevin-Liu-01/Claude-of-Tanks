@@ -48,7 +48,7 @@ const passing = {
     lastBuildMs: 24,
   },
   workshop: {
-    exhibitCount: 4,
+    exhibitCount: 5,
     workshopOrbitCoverageDegrees: 360,
     modelMode: 'actual-fleet',
   },

@@ -25,6 +25,10 @@ const flagArg = (name) => args.includes(`--${name}`);
 const ROOT = path.resolve(valueArg('root', process.cwd()));
 const outDir = path.resolve(ROOT, valueArg('out', '.qa-structure-certification'));
 const captureShots = flagArg('shots');
+const collisionLayer = valueArg('collision', 'all');
+if (!['none', 'contact', 'shell', 'all'].includes(collisionLayer)) {
+  throw new Error(`unsupported collision layer: ${collisionLayer}`);
+}
 const requestedIds = valueArg('ids', '').split(',').map((id) => id.trim()).filter(Boolean);
 const views = [
   'front', 'rear', 'left', 'right',
@@ -65,7 +69,7 @@ const rows = [];
 try {
   for (const id of ids) {
     const url = `http://127.0.0.1:${port}/tools/structure-visual-audit.html?` +
-      new URLSearchParams({ id, collision: 'all', seed: String(0x51a7c7) });
+      new URLSearchParams({ id, collision: collisionLayer, seed: String(0x51a7c7) });
     await page.goto(url, { waitUntil: 'networkidle0' });
     await page.waitForFunction(() => window.__STRUCTURE_AUDIT?.ready === true);
     const base = await page.evaluate(() => ({

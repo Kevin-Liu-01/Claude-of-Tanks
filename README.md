@@ -112,8 +112,8 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 firing a guided Shillelagh missile"><br><sub><b>Guided weapons:</b> the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike, Konkurs, Arkan, and Jyu-MAT launchers.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t internal modules and crew shown in Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/garage-fleet.webp" alt="Claude of Tanks garage displaying the procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—127 in production or 164 in keyed local development.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/13_gallery_modules.webp" alt="Leclerc XLR internal modules and crew shown in the current Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—127 in production or 164 in keyed local development.</sub></td>
 </tr>
 </table>
 
@@ -137,8 +137,8 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_player_view.webp" alt="Production battle HUD during live armored combat"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/killcam-modules.webp" alt="X-ray killcam showing a T-90M shell path through an M1A2 Abrams SEPv3"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/17_live_player_hud.webp" alt="Current production battle HUD during live armored combat in a K2"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/25_live_killcam_xray.webp" alt="Current X-ray killcam showing the resolved shell path through armor and modules"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
@@ -169,7 +169,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 127 production vehicles or 164 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 127 production vehicles or 164 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>
@@ -181,7 +181,7 @@ checks, visual fingerprints, and a targeted release gate.
 ### Ten Garage environments
 
 <p align="center">
-  <a href="public/media/garage-environments-r2/ten-garage-environments.png"><img src="public/media/garage-environments-r2/ten-garage-environments.png" alt="All ten Claude of Tanks Garage environments shown with the same Abrams and production Garage interface"></a>
+  <a href="public/media/showcase-r2/process/review-01.webp"><img src="public/media/showcase-r2/process/review-01.webp" alt="All ten Claude of Tanks Garage environments shown with a varied non-Abrams fleet and the current Garage interface"></a>
 </p>
 
 The Garage is its own authored presentation system. Verdant retains the enclosed Motor Pool; the other nine locations
@@ -217,7 +217,7 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_sniper_view.webp" alt="Precision sight rendered through the current post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/19_live_sniper.webp" alt="Current Leclerc XLR precision sight rendered through the production post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_battlefield_foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
 </tr>
 </table>
@@ -267,8 +267,8 @@ desktop HUD.
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_studio.webp" alt="Scene Studio composing a shot on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
-<td width="50%"><a href="public/media/landing-r1/studio-leclerc-knockout.webm"><img src="public/media/landing-r1/studio-leclerc-knockout.jpg" alt="Open the Scene Studio film of a Strv 122 firing on and destroying a Leclerc"></a><br><sub><b>Directed destruction:</b> this 1080p timeline moves both actors, fires the Strv 122, resolves impacts, detaches the Leclerc track, and triggers its ammunition-rack blast.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/15_studio_workspace.webp" alt="Current Scene Studio composing a multi-tank action shot"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
+<td width="50%"><a href="public/media/landing-r1/studio-leclerc-knockout.mp4"><img src="public/media/landing-r1/studio-leclerc-knockout.jpg" alt="Open the Scene Studio film of a Strv 122 firing on and destroying a Leclerc"></a><br><sub><b>Directed destruction:</b> this 1080p timeline moves both actors, fires the Strv 122, resolves impacts, detaches the Leclerc track, and triggers its ammunition-rack blast.</sub></td>
 </tr>
 </table>
 

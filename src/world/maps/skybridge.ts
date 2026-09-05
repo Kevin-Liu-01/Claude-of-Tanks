@@ -2,6 +2,8 @@
 // rock shoulders define three vertical lanes while a ruined arcology bridge
 // and industrial control district anchor the center.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
@@ -65,7 +67,7 @@ export default {
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
       'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',
-      'broadcasttower', 'watertower', 'factory', 'parkingdeck', 'gantry', 'ruin',
+      'broadcasttower', 'watertower', 'firestation', 'parkingdeck', 'gantry', 'ruin',
       'foundryoffice', 'warehouse', 'terracetower', 'depot', 'containerRow', 'ruin',
       'civichall', 'factory', 'parkingdeck', 'megatower', 'gantry', 'ruin',
     ],
@@ -82,6 +84,9 @@ export default {
         structure: 'transformershed', redoubt: true, outcrop: { count: 7, radius: 11, scaleMax: 3.5 }, wreck: true, wreckOffsetX: 18 },
     ],
     blockFill: true, extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    tones: makeRealisticCityBuildingTones({
+      value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90,
+    }),
     buildingLat: [13, 7], sideSkip: 0.07, spacingPad: 3.5, maxSpread: 4.2,
     wallRuns: [
       [-312, -148, -214, -112, 2], [-306, 138, -208, 174, 3],

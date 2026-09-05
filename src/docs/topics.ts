@@ -35,7 +35,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Land only integrated proof', 'A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing.', 'The public build then proves route isolation and strips non-distributable comparison material. This keeps the playable site, source tree, documentation, and main branch describing the same game.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_studio.webp', 'Scene Studio and browser tooling used to stage reproducible game states'],
+      ['/media/showcase-r2/15_studio_workspace.webp', 'Current Scene Studio and browser tooling used to stage reproducible game states'],
       ['/media/showcase-r1/process/action-review-02.webp', 'A deterministic contact sheet used for visual comparison and review'],
     ],
   },
@@ -54,7 +54,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Measure, inspect, and graduate', 'Automated gates check geometry fingerprints, dimensions, stations, floaters, track intersections, wheel quality, muzzle bores, materials, armor anatomy, markings, provenance, and deterministic asset freshness. Standard front, quarter, side, rear, top, close, and yaw views then expose defects a numeric score can miss.', 'A model graduates only when every required view clears the visual acceptance floor, attachments have physical load paths, winding and backfaces are healthy, and the clean integrated release check passes. The Tank Gallery is the live inspection surface for that final procedural rig.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_gallery.webp', 'Tank Gallery rendering the current procedural model and diagnostic layers'],
+      ['/media/showcase-r2/11_gallery_hero.webp', 'Current Tank Gallery rendering a T-90M Proryv and its diagnostic layers'],
       ['/media/presentation-r1/ui_tank_closeup_modern.webp', 'A released first-party rig with armor, fittings, markings, and running gear'],
     ],
   },
@@ -93,7 +93,7 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/presentation-r1/04_desert_last_stand.webp', 'Overlapping weapon, impact, engine, and destruction events in battle'],
-      ['/media/feature-evidence-r2/killcam-modules.webp', 'The slowed X-ray killcam with replay-specific listener and timing'],
+      ['/media/showcase-r2/25_live_killcam_xray.webp', 'The current slowed X-ray killcam with replay-specific listener and timing'],
     ],
   },
   performance: {
@@ -111,8 +111,8 @@ export const topics: Record<string, TopicDefinition> = {
       ['Budgets and release evidence', 'Release probes cover cold load, transitions, battle opening, sustained play, map and tank switching, returned garage state, mobile layouts, and constrained CPU/network profiles. Reports include p95 frame gaps, long tasks, program births, draw work, memory, and readiness time.', 'Use `npm run perf:cold`, `npm run perf:dev`, `npm run perf:resources:gate`, `npm run qa:device`, and `npm run build` for the corresponding performance claims.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_player_view.webp', 'The live frame whose pacing, scale, draw work, and simulation debt are measured'],
-      ['/media/presentation-r1/ui_mobile.webp', 'The same game adapted to a compact device and touch-safe presentation'],
+      ['/media/showcase-r2/17_live_player_hud.webp', 'The current K2 live frame whose pacing, scale, draw work, and simulation debt are measured'],
+      ['/media/showcase-r2/16_mobile_garage.webp', 'The current Garage adapted to a compact device and touch-safe presentation'],
     ],
   },
   simulation: {
@@ -130,7 +130,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Verification', 'Node-runnable self-tests cover movement, combat, spotting, missile guidance, special actions, AI aim, and the complete authoritative match. Browser probes add bore parity, projectile travel, live impact effects, and HUD alignment.', 'Run `node src/sim/combat.selftest.mjs`, `node src/sim/authoritativeMatch.selftest.mjs`, and `npm test` after changing shared combat rules.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_killcam_xray.webp', 'Resolved X-ray path through armor, modules, and crew'],
+      ['/media/showcase-r2/25_live_killcam_xray.webp', 'Current resolved X-ray path through armor, modules, and crew'],
       ['/media/presentation-r1/04_desert_last_stand.webp', 'Muzzle flashes, tracers, impacts, and destruction from one staged battle state'],
     ],
   },
@@ -148,7 +148,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Fleet release gate', 'Appearance, bore, material, wheel, recoil, combat anatomy, provenance, and profile-specific checks run before a vehicle is considered current. Playable loading never falls back to a comparison GLB.', 'The Tank Gallery constructs the live builder and overlays the canonical diagnostic volumes, which makes it the fastest manual review surface for a vehicle change.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_gallery.webp', 'Current procedural rig with articulation and diagnostic layers'],
+      ['/media/showcase-r2/11_gallery_hero.webp', 'Current T-90M Proryv rig with articulation and diagnostic layers'],
       ['/media/presentation-r1/ui_tank_closeup_modern.webp', 'Current battle-detail vehicle geometry and running gear'],
     ],
   },
@@ -166,7 +166,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Performance evidence', 'Performance traces record frame categories, renderer counters, dynamic scale, and transition budgets. Browser probes cover cold load, battle entry, map switching, the garage, and multiplayer rendering.', 'Use `npm run perf:dev`, `npm run perf:cold`, `npm run perf:transitions`, and a production build for renderer work.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_sniper_view.webp', 'Precision sight after lighting, depth, anti-aliasing, and output grading'],
+      ['/media/showcase-r2/19_live_sniper.webp', 'Current Leclerc XLR precision sight after lighting, depth, anti-aliasing, and output grading'],
       ['/media/showcase-r1/105_foreground_urban_hero_abramsx.webp', 'Close vehicle material response under the current world lighting'],
     ],
   },
@@ -238,7 +238,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['Still-image campaigns', 'Battle campaigns start from scene JSON, render review captures, tile contact sheets, export 4K frames, run image statistics, and require owner approval. The public archive retains its scene identifiers and review sheets.', 'Run `npm run studio:hero:render`, `npm run studio:hero:publish`, `npm run studio:evidence:capture`, and `npm run showcase:check` to reproduce the current public media.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_studio.webp', 'Scene Studio workspace with actors, effects, storyboard, and camera'],
+      ['/media/showcase-r2/15_studio_workspace.webp', 'Current Scene Studio workspace with actors, effects, storyboard, and camera'],
       ['/media/showcase-r1/process/action-review-02.webp', 'Ten-frame action-campaign contact sheet used for visual review'],
     ],
   },

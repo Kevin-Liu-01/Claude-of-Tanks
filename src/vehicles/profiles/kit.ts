@@ -195,6 +195,9 @@ interface FittingOptions {
   cls?: string;
   scale?: number;
   tone?: string;
+  // Legacy call-site input retained for source compatibility. Machine-gun
+  // barrels must remain collinear with their receivers; elevation belongs on
+  // the complete weapon/trunnion assembly, never on barrel vertices alone.
   elev?: number;
   ring?: boolean | { r?: number; stubs?: number };
   ammo?: boolean;
@@ -1335,6 +1338,20 @@ function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | 
   return typeof options.ring === 'object' ? options.ring : {};
 }
 
+// Machine-gun barrel components are authored on the fitting's local +Z axis.
+// Previous builders rotated only these vertices while leaving the receiver,
+// trunnion and mount untouched. Besides producing visibly crooked barrels,
+// rotating after the forward translation pulled the breech away from its
+// support. Keep every barrel straight and connected; callers that need a
+// different firing attitude rotate a complete fitting or weapon station.
+function placeMachineGunBarrelGeometry(
+  geometry: THREE.BufferGeometry,
+  dz: number,
+  dy = 0,
+): THREE.BufferGeometry {
+  return KIT.xform(geometry, 0, dy, dz);
+}
+
 /**
  * Roof pintle machine gun (MANDATORY §B3 decoration — MG PHYSICS compliant).
  * Origin: pintle FOOT on the roof plate (caller seats it on the deck/cupola).
@@ -1344,7 +1361,7 @@ function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | 
  *            'mag' | 'mag58'                                  (default 'm2')
  *   scale    extra uniform scale on the class                (default 1)
  *   tone     'two-tone' | 'pale' | 'dark'                    (default 'two-tone')
- *   elev     barrel elevation in radians, up positive        (default 0.06)
+ *   elev     legacy no-op; rotate the complete station for elevation
  *   ring     AA ring around the foot: true | {r, stubs}      (default false)
  *   ammo     ammo can on the receiver's left                 (default true)
  *   shield   false | true | 'low' | 'armored'                (default false)
@@ -1378,12 +1395,10 @@ interface PintleMgBuildContext {
 }
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
-  const { xform } = KIT;
   const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
   const cls = MG_CLASSES[classKey];
   const s = (opts.scale || 1) * cls.s;
   const tone = opts.tone || 'two-tone';
-  const elev = opts.elev ?? 0.06;
   // Weapons and ammunition stay neutral gunmetal. Tone now controls only the
   // support/shield finish; letting the host camouflage color receiver caps and
   // ammo cans produced the miniature green/tan guns the fleet pass removes.
@@ -1399,8 +1414,7 @@ function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext 
   const trunY = recY + 0.004;
   const trunZ = recZ + rd / 2;
   const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
-  const aim = (geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry =>
-    xform(xform(geometry, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  const aim = placeMachineGunBarrelGeometry;
 
   return {
     opts,
@@ -1472,7 +1486,7 @@ function addPintleMgReceiver(context: PintleMgBuildContext): void {
 function addPintleMgBarrel(context: PintleMgBuildContext): void {
   const { box, cylZ, torus } = KIT;
   const { aim, cls, opts, parts, s, trunY, trunZ, weaponSlot } = context;
-  // barrel group, elevated about the trunnion at the receiver front.
+  // Barrel group stays collinear with the receiver at the front trunnion.
   if (cls.jacket === 'sleeve') {
     parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
     for (let k = 0; k < 4; k++) {
@@ -1597,6 +1611,9 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
   fitting.userData.hasConnectedFeed = opts.ammo !== false;
   fitting.userData.hasEngineeredCradle = true;
   fitting.userData.machineGunFinish = opts.machineGunFinish || 'gunmetal';
+  fitting.userData.firingAxis = '+Z';
+  fitting.userData.barrelAxisLocal = [0, 0, 1];
+  fitting.userData.barrelElevationRad = 0;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (weaponMesh) {
     weaponMesh.name = 'browningDerivedMachineGunBody';
@@ -1639,11 +1656,9 @@ interface AmericanM2BuildContext {
 
 function createAmericanM2BuildContext(opts: FittingOptions): AmericanM2BuildContext {
   const s = opts.scale || 1;
-  const elev = opts.elev ?? 0.035;
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const parts = fitParts();
-  const aim = (geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
-    KIT.xform(geometry, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  const aim = placeMachineGunBarrelGeometry;
   const recY = 0.345 * s;
   const recZ = 0.195 * s;
   const trunZ = recZ + 0.250 * s;
@@ -1717,7 +1732,7 @@ function addAmericanM2Ammo(context: AmericanM2BuildContext): void {
 function addAmericanM2Barrel(context: AmericanM2BuildContext): void {
   const { cylZ, torus } = KIT;
   const { aim, opts, parts, recY, s, trunZ } = context;
-  // Jacket, barrel and flash hider share the receiver trunnion and elevation.
+  // Jacket, barrel and flash hider share one straight receiver axis.
   parts.add('dark', aim(cylZ(0.043 * s, 0.220 * s, 16), 0.110 * s),
     0, recY, trunZ);
   for (let index = 0; index < 5; index++) {
@@ -1865,6 +1880,9 @@ function assembleAmericanM2(context: AmericanM2BuildContext): THREE.Group {
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.hasConnectedFeed = opts.ammo !== false;
   fitting.userData.hasEngineeredCradle = true;
+  fitting.userData.firingAxis = '+Z';
+  fitting.userData.barrelAxisLocal = [0, 0, 1];
+  fitting.userData.barrelElevationRad = 0;
   return fitting;
 }
 
@@ -2093,6 +2111,9 @@ function assembleAmericanRws(context: AmericanRwsBuildContext): THREE.Group {
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.hasConnectedFeed = true;
   fitting.userData.hasEngineeredCradle = true;
+  fitting.userData.firingAxis = '+Z';
+  fitting.userData.barrelAxisLocal = [0, 0, 1];
+  fitting.userData.barrelElevationRad = 0;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (weaponMesh) {
     weaponMesh.name = 'americanRwsMachineGun';
@@ -2124,7 +2145,6 @@ interface OpenYokeBuildContext {
   readonly variant: string;
   readonly sizeStandard: string;
   readonly s: number;
-  readonly elev: number;
   readonly ammoSide: number;
   readonly sensorSide: number;
   readonly body: string;
@@ -2148,7 +2168,6 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   // are authored at 1.28x. Hosts may change armor, optics and ammunition
   // layout, but a full-size station must not quietly become a miniature.
   const s = sizeStandard === 'm1a3-full-tower' ? 1.28 : (opts.scale || 1);
-  const elev = opts.elev ?? 0.045;
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const sensorSide = Math.sign(opts.sensorSide || -ammoSide);
   const body = opts.bodySlot || 'detail';
@@ -2166,19 +2185,19 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
     ? yokeCenterY + 0.31 * s
     : yokeCenterY + (variant === 'a6m-arctic' || panther ? 0.015 : 0.005) * s;
   return {
-    opts,variant,sizeStandard,s,elev,ammoSide,sensorSide,body,hasWeapon,parts,
+    opts,variant,sizeStandard,s,ammoSide,sensorSide,body,hasWeapon,parts,
     yokeCenterY,receiverY,receiverZ,roofSensor,sensorX,classicPanther,panther,
     twinOptics,sensorY,
   };
 }
 
 function aimOpenYokeGeometry(
-  context: OpenYokeBuildContext,
+  _context: OpenYokeBuildContext,
   geometry: THREE.BufferGeometry,
   dz: number,
   dy = 0,
 ): THREE.BufferGeometry {
-  return KIT.xform(KIT.xform(geometry,0,dy,dz),0,0,0,-context.elev,0,0);
+  return placeMachineGunBarrelGeometry(geometry, dz, dy);
 }
 
 function addOpenYokeBase(context: OpenYokeBuildContext): void {
@@ -2411,36 +2430,31 @@ function addOpenYokeVariantArmor(context: OpenYokeBuildContext): void {
   else if (context.panther) addOpenYokePantherArmor(context);
 }
 
-function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
-  const context=createOpenYokeContext(opts);
-  const {
-    ammoSide,body,classicPanther,hasWeapon,panther,parts,receiverY,receiverZ,
-    roofSensor,s,sensorSide,sensorX,sensorY,sizeStandard,twinOptics,variant,
-    yokeCenterY,
-  }=context;
-  addOpenYokeBase(context);
-  addOpenYokeWeapon(context);
-  addOpenYokeSensorHead(context);
-  addOpenYokeVariantArmor(context);
-
-  // The reference M1A3 station stands on a real powered riser rather than a
-  // bearing plate alone. Lift the complete working assembly as one unit and
-  // close the load path back to the roof with a broad, contiguous pedestal.
-  // This adds height without inflating the weapon, sensors or side armor.
+function applyOpenYokeTowerRise(context: OpenYokeBuildContext): number {
+  const { cylY, torus } = KIT;
+  const { body, opts, parts, s, sizeStandard } = context;
   const towerRise = opts.towerRise
     ?? (sizeStandard === 'm1a3-full-tower' ? 0.18 : 0);
-  if (towerRise > 0) {
-    for (const geometries of Object.values(parts.bySlot)) {
-      for (const geometry of geometries) geometry.translate(0, towerRise, 0);
-    }
-    parts.add(body, cylY(0.255 * s, 0.285 * s, towerRise, 20),
-      0, towerRise / 2, 0);
-    parts.add('dark', torus(0.245 * s, 0.018 * s, 22),
-      0, towerRise - 0.010, 0);
+  if (towerRise <= 0) return towerRise;
+  for (const geometries of Object.values(parts.bySlot)) {
+    for (const geometry of geometries) geometry.translate(0, towerRise, 0);
   }
+  parts.add(body, cylY(0.255 * s, 0.285 * s, towerRise, 20),
+    0, towerRise / 2, 0);
+  parts.add('dark', torus(0.245 * s, 0.018 * s, 22),
+    0, towerRise - 0.010, 0);
+  return towerRise;
+}
 
-  const fitting = fitAssemble('openYokeRws', parts, opts);
+function stampOpenYokeMetadata(
+  fitting: THREE.Group,
+  context: OpenYokeBuildContext,
+  towerRise: number,
+): void {
+  const {
+    ammoSide, classicPanther, hasWeapon, opts, panther, receiverY, roofSensor,
+    s, sensorSide, sizeStandard, variant,
+  } = context;
   fitting.name = `fitting_openYokeRws_${variant}`;
   fitting.userData.designFamily = 'abramsx-open-yoke-v1';
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
@@ -2460,11 +2474,31 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.lightCount = classicPanther ? 5 : (panther ? 2 : 0);
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.firingAxis = hasWeapon ? '+Z' : null;
+  fitting.userData.barrelAxisLocal = hasWeapon ? [0, 0, 1] : null;
+  fitting.userData.barrelElevationRad = hasWeapon ? 0 : null;
   fitting.userData.muzzleLocalZ = hasWeapon ? 1.295 * s : null;
   fitting.userData.barrelAxisLocalY = hasWeapon ? receiverY + towerRise : null;
   fitting.userData.sizeStandard = sizeStandard;
   fitting.userData.scale = s;
   fitting.userData.towerRise = towerRise;
+}
+
+function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
+  const context=createOpenYokeContext(opts);
+  const { hasWeapon, parts }=context;
+  addOpenYokeBase(context);
+  addOpenYokeWeapon(context);
+  addOpenYokeSensorHead(context);
+  addOpenYokeVariantArmor(context);
+
+  // The reference M1A3 station stands on a real powered riser rather than a
+  // bearing plate alone. Lift the complete working assembly as one unit and
+  // close the load path back to the roof with a broad, contiguous pedestal.
+  // This adds height without inflating the weapon, sensors or side armor.
+  const towerRise = applyOpenYokeTowerRise(context);
+
+  const fitting = fitAssemble('openYokeRws', parts, opts);
+  stampOpenYokeMetadata(fitting, context, towerRise);
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (hasWeapon && weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';

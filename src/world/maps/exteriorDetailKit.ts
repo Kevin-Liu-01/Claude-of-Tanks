@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { pitchSkillionRoof } from '../propGeometry.ts';
+import { measureBoundsJoint } from '../structureConnectivity.ts';
 
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
@@ -16,6 +17,8 @@ export interface ExteriorSupportRecord {
   part: string;
   support: string;
   gap: number;
+  contactAxes: number;
+  minContactSpan: number;
 }
 
 export interface ExteriorReceipt {
@@ -109,13 +112,6 @@ function boundsOf(geo: THREE.BufferGeometry): THREE.Box3 {
   return geo.boundingBox.clone();
 }
 
-function aabbGap(a: THREE.Box3, b: THREE.Box3): number {
-  const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
-  const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
-  const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
-  return Math.hypot(dx, dy, dz);
-}
-
 function bucket(
   parts: GeometryBuckets,
   preferred: string,
@@ -151,12 +147,17 @@ function detailAuthor(parts: GeometryBuckets, {
     const support = supports.get(supportId);
     if (!support) throw new Error(`${id}: missing exterior support ${supportId}`);
     const bounds = boundsOf(geo);
-    const gap = aabbGap(bounds, support);
+    const joint = measureBoundsJoint(bounds, support);
+    const { gap } = joint;
     if (gap > SUPPORT_EPSILON) {
       throw new Error(`${id}: floating exterior part ${partId} (${gap.toFixed(3)} m from ${supportId})`);
     }
+    if (joint.contactAxes < 2) {
+      throw new Error(`${id}: exterior part ${partId} only grazes ${supportId} without a stable joint`);
+    }
     const record: ExteriorSupportRecord = {
       building: id, part: partId, support: supportId, gap,
+      contactAxes: joint.contactAxes, minContactSpan: joint.minContactSpan,
     };
     geo.userData.structureSupport = record;
     bucket(parts, preferredBucket).push(geo);

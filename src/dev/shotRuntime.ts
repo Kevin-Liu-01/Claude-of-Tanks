@@ -198,6 +198,7 @@ interface ShotRuntimeContext {
   getFx(): RuntimeShotFx;
   getKillcam(): RuntimeShotKillcam;
   getShellCards(): readonly RuntimeValue[];
+  getSelectedSpecId(): string;
   game: ShotRuntimeGame;
   frameInfo: ShotFrameInfo;
   rig: ShotRig & { aimPoint: Vector3; mode: string; aimDist: number };
@@ -382,10 +383,18 @@ export async function setShotView(
   if (context.settings.isOpen()) context.settings.close();
   context.getKillcam().cancel();
 
+  const selectedPlayerId = context.getSelectedSpecId();
+  const featuredPlayerId = name === 'tank_closeup_t90m'
+      ? 't90m'
+      : name === 'tank_closeup_leo2a7'
+        ? 'leo2a7v'
+        : name === 'tank_closeup_modern'
+          ? 'm1a2'
+          : selectedPlayerId;
   await ensureShotWorld(
     context,
     VIEW_MAP[name] || 'verdant',
-    name.startsWith('killcam_') ? 'm1a2_sepv3' : 'm1a2',
+    featuredPlayerId,
   );
   const helpers = createRecipeHelpers(context);
   const world = context.getWorld();

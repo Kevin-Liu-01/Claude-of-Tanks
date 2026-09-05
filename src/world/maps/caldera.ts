@@ -1,6 +1,8 @@
 // caldera.js — volcanic mining basin: black lava shelves, sulphur grass,
 // extraction works, ash haze and a ruined settlement around the central road.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
@@ -52,11 +54,14 @@ export default {
     bushCount: 0.62, bushSpecies: 'pine',
   },
   props: {
-    plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'ruin',
+    plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',
       'watertower', 'containerRow', 'factory', 'ruin', 'shed', 'warehouse', 'stack', 'depot',
       'containerRow', 'factory', 'warehouse', 'gantry', 'shed', 'stack', 'ruin', 'depot',
       'watertower', 'containerRow', 'factory', 'warehouse', 'shed', 'gantry', 'ruin', 'stack'],
-    destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+    destructibleBuildings: [
+      'quonsethut', 'transformershed', 'motorpool', 'guardpost',
+      'securityoffice', 'servicegarage', 'relaystation',
+    ],
     tacticalBeats: [
       { id: 'western-lava-cut', role: 'brawl', x: -282, z: 84, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.6 }, wreck: true, wreckOffsetZ: -16 },
@@ -66,6 +71,9 @@ export default {
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
     ],
     blockFill: true,
+    tones: makeRealisticCityBuildingTones({
+      value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68,
+    }),
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],

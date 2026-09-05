@@ -7,6 +7,14 @@ casting behind wrap-around armor modules, with the LONG squared rear bustle
 with pano sight left-rear. The turret program was experimental; the §5.38
 print is the authority on its unusual shape (owner order).
 
+## Current runtime authority
+
+The playable route uses `buildT90BurlakHybridNative2026`, which owns the
+complete hull, six-wheel course, clipped turret foundation, shoulder armor,
+autoloading bustle, and roof suite. The earlier `replaceT90BurlakTurret`
+overlay lost its last caller with the retired full Burlak builder and was
+removed as unreachable source in September 2026.
+
 ## Corroborated dimensions
 
 | Measure | Value | Sources |

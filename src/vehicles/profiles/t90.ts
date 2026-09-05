@@ -858,18 +858,6 @@ function seatFittingOnHorizontalPlate(
   return seatedY;
 }
 
-function seatArmorOnHorizontalPlane(
-  planeY: number,
-  height: number,
-  depth: number,
-  pitch: number,
-  embed = 0.012,
-): number {
-  const verticalHalfExtent = Math.abs(Math.cos(pitch)) * height * 0.5
-    + Math.abs(Math.sin(pitch)) * depth * 0.5;
-  return planeY + verticalHalfExtent - embed;
-}
-
 const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
 const T90A_TURRET_SEAT_Z_M = -0.06;
 const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;
@@ -899,19 +887,21 @@ interface T90ALegacyOptions {
   recordSeatReceipt?: boolean;
 }
 
-function buildT90ALegacy(P: T90BuilderPort, {
-  turretSeatZ = T90A_TURRET_SEAT_Z_M,
-  turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
-  shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
-  shtoraLocalForwardShiftM = T90A_SHTORA_LOCAL_FORWARD_SHIFT_M,
-  shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
-  chevronForwardM = T90A_CHEVRON_FORWARD_M,
-  nsvtRaiseM = T90A_NSVT_RAISE_M,
-  gunRadiusScale = T90A_GUN_RADIUS_SCALE,
-  gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
-  adoptT90MFamilyGun = true,
-  recordSeatReceipt = true,
-}: T90ALegacyOptions = {}): void {
+type ResolvedT90ALegacyOptions = Required<T90ALegacyOptions>;
+
+interface T90ALegacyTurretReceiptContext {
+  shtoraHousingRearZ: number;
+  shtoraHousingFrontZ: number;
+  shtoraLensFrontZ: number;
+  shtoraChevronDepthClearanceM: number;
+  shtoraSupportBodyOverlapM: number;
+  roofStations: {
+    left: { x: number; z: number };
+    right: { x: number; z: number };
+  };
+}
+
+function addT90ALegacyHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -1009,6 +999,10 @@ function buildT90ALegacy(P: T90BuilderPort, {
       P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
+}
+
+function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
+  const { box, cylX, cylZ, buildRunningGear, stowage } = KIT;
   ruDeck(P, { deckY: 1.365, hatchY: 1.215, hatchZ: 2.16, gz: -1.74, grilles: 5, gw: 1.5, periY: 1.20, gY: 1.33, ribY: 1.34 });
   // ORACLE-PARITY: the print's hull node carries a low dome ghost (side
   // 1.64@-1.54 falling 1.56@-1.43; front 1.605 across |x|<0.6) — matched
@@ -1168,7 +1162,17 @@ function buildT90ALegacy(P: T90BuilderPort, {
     P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
   }
   });
+}
 
+function addT90ALegacyTurret(P: T90BuilderPort, {
+  turretSeatZ,
+  shtoraEyeZ,
+  shtoraSupportFrontZ,
+  chevronForwardM,
+  adoptT90MFamilyGun,
+  recordSeatReceipt,
+}: ResolvedT90ALegacyOptions): T90ALegacyTurretReceiptContext {
+  const { box, cylY, cylZ, polyTurret } = KIT;
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
   // fitting below is seated into that mass rather than a shared family box.
@@ -1453,6 +1457,36 @@ function buildT90ALegacy(P: T90BuilderPort, {
   // Source-seated flank cassettes replace the old continuous U-shaped wall.
   // Real gaps reveal the buried carrier and preserve the cast-dome outline.
   addT90CastFlankCassettes(P, { y: 0.24, raisedLeftRear: true });
+  return {
+    shtoraHousingRearZ,
+    shtoraHousingFrontZ,
+    shtoraLensFrontZ,
+    shtoraChevronDepthClearanceM,
+    shtoraSupportBodyOverlapM,
+    roofStations: t90aRoofStations,
+  };
+}
+
+function addT90ALegacyGun(P: T90BuilderPort, {
+  gunRadiusScale,
+  gunAssemblyRaiseM,
+  recordSeatReceipt,
+  turretSeatZ,
+  turretRearwardShiftM,
+  shtoraEyeZ,
+  shtoraLocalForwardShiftM,
+  shtoraSupportFrontZ,
+  nsvtRaiseM,
+}: ResolvedT90ALegacyOptions, receiptContext: T90ALegacyTurretReceiptContext): void {
+  const { box, cylZ } = KIT;
+  const {
+    shtoraHousingRearZ,
+    shtoraHousingFrontZ,
+    shtoraLensFrontZ,
+    shtoraChevronDepthClearanceM,
+    shtoraSupportBodyOverlapM,
+    roofStations,
+  } = receiptContext;
   // ---- 2A46M-2 on the normalized contour: axis 1.54, muzzle world +6.10 ----
   // Raise the articulated trunnion as one unit. All gun, gunDark and
   // gunMount buckets are children of rig_gun, so the saddle, cast collar,
@@ -1579,8 +1613,8 @@ function buildT90ALegacy(P: T90BuilderPort, {
       gunAssemblyRaiseM,
       gunAxisY: P.gunG.position.y,
       cupolaCount: 2,
-      leftCupola: [t90aRoofStations.left.x, t90aRoofStations.left.z],
-      rightCupola: [t90aRoofStations.right.x, t90aRoofStations.right.z],
+      leftCupola: [roofStations.left.x, roofStations.left.z],
+      rightCupola: [roofStations.right.x, roofStations.right.z],
       rightCupolaLightCount: 2,
       leftCupolaMannedMg: null,
       leftCupolaRemoteWeapon: 'nsvt',
@@ -1591,6 +1625,10 @@ function buildT90ALegacy(P: T90BuilderPort, {
       rightBustleBridgeOverlapM: 0.03,
     };
   }
+}
+
+function finishT90ALegacy(P: T90BuilderPort): void {
+  const { box } = KIT;
   // T5F-d: numbers on the VERTICAL flank-wall faces — the prism wall is
   // side-occluded by the flank walls (render check), and the old ringSkin
   // dome seat floats inside the welded shell (§5.04 DECAL FLOAT class).
@@ -1613,6 +1651,39 @@ function buildT90ALegacy(P: T90BuilderPort, {
   P.mats.wood.color.setHex(0x473e32);
   if (P.mats.wood.emissive) P.mats.wood.emissive.setHex(0x0c0a07);
   P.topY = 0.90;
+}
+
+function buildT90ALegacy(P: T90BuilderPort, {
+  turretSeatZ = T90A_TURRET_SEAT_Z_M,
+  turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
+  shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
+  shtoraLocalForwardShiftM = T90A_SHTORA_LOCAL_FORWARD_SHIFT_M,
+  shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
+  chevronForwardM = T90A_CHEVRON_FORWARD_M,
+  nsvtRaiseM = T90A_NSVT_RAISE_M,
+  gunRadiusScale = T90A_GUN_RADIUS_SCALE,
+  gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
+  adoptT90MFamilyGun = true,
+  recordSeatReceipt = true,
+}: T90ALegacyOptions = {}): void {
+  const options: ResolvedT90ALegacyOptions = {
+    turretSeatZ,
+    turretRearwardShiftM,
+    shtoraEyeZ,
+    shtoraLocalForwardShiftM,
+    shtoraSupportFrontZ,
+    chevronForwardM,
+    nsvtRaiseM,
+    gunRadiusScale,
+    gunAssemblyRaiseM,
+    adoptT90MFamilyGun,
+    recordSeatReceipt,
+  };
+  addT90ALegacyHull(P);
+  addT90ALegacyHullDeckAndGear(P);
+  const receiptContext = addT90ALegacyTurret(P, options);
+  addT90ALegacyGun(P, options, receiptContext);
+  finishT90ALegacy(P);
 }
 
 
@@ -2385,8 +2456,8 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
 // with ERAWA plates ±1.79 on the front half; dome crown ~2.33 center 0.18,
 // left cluster 2.64, pano 2.85, met mast 3.82 @ (-0.25, -1.0); tube axis
 // 2.008, sleeve r.122, muzzle 6.58.
-function buildPT91M(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
+function buildPT91MHull(P: T90BuilderPort): void {
+  const { box, buildRunningGear, cylX, xform } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/pt91m.json — hull mask +-3.43 (6.856 = published,
   // rear span lip DELETED), powerpack stack tops 1.70-1.72 over -3.29..-3.00
@@ -2487,7 +2558,6 @@ function buildPT91M(P: T90BuilderPort): void {
     nor.needsUpdate = true;
     return geo;
   };
-  const { xform } = KIT;
   for (const s of [-1, 1]) {
     // r12: humps extended forward to -2.90 (fresh grid: the -2.916 col
     // reads the ref's 1.743 plateau; the r10 1.69 side tabs sat one column
@@ -2726,7 +2796,10 @@ function buildPT91M(P: T90BuilderPort): void {
   // (r25b: x 1.020..1.082 — the 0.95 edge painted 0.384 into the ±0.944/
   // ±0.984 cols where the ref floor is 0.434)
   for (const s of [-1, 1]) P.add('hullDark', box(0.062, 0.04, 0.90), s * 1.051, 0.404, 0.50);
+}
 
+function buildPT91MTurret(P: T90BuilderPort): number[][] {
+  const { box, cylY } = KIT;
   // ---- turret r9 (fresh workorder decode): ERAWA WALL front (plan 1.46 at
   // center columns, staircase to 1.05@1.14), SAVAN sight housing LEFT at
   // x -0.36..-0.26 owning the 2.12-2.13 side band z +0.94..+1.42, met mast
@@ -3078,6 +3151,11 @@ function buildPT91M(P: T90BuilderPort): void {
   // ride the footprints, unchanged.
   P.add('turret', box(0.16, 0.05, 0.08), 1.20, 0.2425, -0.575);
   P.add('turret', box(0.11, 0.05, 0.08), 1.325, 0.2425, -0.395);
+  return rings;
+}
+
+function buildPT91MGun(P: T90BuilderPort, rings: readonly number[][]): void {
+  const { box, cylZ } = KIT;
   // ---- 125 mm 2A46MS (r9: axis 1.598, muzzle +6.10) ----
   // r9 tube: ref plan is warp-biased — its LEFT edge (x <= -0.094) runs to
   // the 6.108 muzzle while the RIGHT (x >= +0.120) dies at 4.47. True
@@ -3120,6 +3198,9 @@ function buildPT91M(P: T90BuilderPort): void {
   const dxP = ringSkin(rings, 0.30) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxP, 0.24, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxP, 0.24, -0.30], -Math.PI / 2);
+}
+
+function finishPT91MMaterials(P: T90BuilderPort): void {
   // ---- r27 SHADED-PARITY TONE PASS (critic r25 orders 1-2 + 6) ----
   // Per-tank P.mats instances (t72b3m r13 / merkava refTone precedent —
   // createTankMaterials is per-tank, siblings never see these). Every
@@ -3208,6 +3289,9 @@ function buildPT91M(P: T90BuilderPort): void {
   // ORDER 6: steel-blue glass dashes -> olive-glass (the ref lacks the cold
   // accent class entirely).
   P.mats.glass.color.setHex(0x3d4233);
+}
+
+function finishPT91MDeckLift(P: T90BuilderPort): void {
   // ---- r28 DECK-PLATE FAMILY LIFT (critic r27 order 1) ----
   // The r27 'camo value-split' declaration failed its own sd check (grille
   // window sd 2.43 — a UNIFORM family deficit, not a camo artifact): the
@@ -3265,9 +3349,17 @@ function buildPT91M(P: T90BuilderPort): void {
   P.topY = 1.22;
 }
 
+function buildPT91M(P: T90BuilderPort): void {
+  buildPT91MHull(P);
+  const rings = buildPT91MTurret(P);
+  buildPT91MGun(P, rings);
+  finishPT91MMaterials(P);
+  finishPT91MDeckLift(P);
+}
 
 
-function buildT90MProryv(P: T90BuilderPort): void {
+
+function addT90MProryvHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   loftHull(P, {
     // r26a render re-read: plan bow center is 3.05 (extract corners said
@@ -3488,6 +3580,10 @@ function buildT90MProryv(P: T90BuilderPort): void {
     });
     P.hullG.add(cable);
   }
+}
+
+function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
+  const { box, cylX, buildRunningGear } = KIT;
   buildRunningGear(P, {
     // r26a: ref ground contact spans -1.49..2.52 with the track band at
     // |x| 1.12..1.73 (front view) — wheels re-seated, arms off (the strip
@@ -3607,6 +3703,10 @@ function buildT90MProryv(P: T90BuilderPort): void {
   ]) {
     for (const s of [-1, 1]) P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.58, 0.05, 0.08), s * 1.435, sy + 0.025, sz2);
   }
+}
+
+function addT90MProryvSkirts(P: T90BuilderPort): void {
+  const { box } = KIT;
   // skirts: soft band (thick panels) + the heavy Relikt course OUTBOARD at
   // the ref's ±1.89 plan faces spanning z 2.46..-2.66 (render truth: the
   // widest ref content is the course, nearly full-length), bow mirrors
@@ -3714,7 +3814,15 @@ function buildT90MProryv(P: T90BuilderPort): void {
     P.add('hullTrack', box(0.018, 0.193, 0.377), s * 1.857, 0.6165, 1.955);
     P.add('hullTrack', box(0.018, 0.193, 0.20), s * 1.857, 0.6165, 2.245);
   }
+}
 
+interface T90MProryvLegacyContext {
+  twm: number;
+  hm: number;
+}
+
+function addT90MProryvTurret(P: T90BuilderPort): T90MProryvLegacyContext {
+  const { box, cylY, cylZ, polyTurret } = KIT;
   // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
   // planform w/ chamfered corners, broad flat roof, separated furniture ----
   P.turretG.position.set(0, 1.40, 0.13);
@@ -3872,6 +3980,14 @@ function buildT90MProryv(P: T90BuilderPort): void {
     P.add('turretDetail', box(0.12, 0.10, 0.20), 0.46, 0.72, -0.50);           // RWS ammo bin
     P.add('turretDark', box(0.10, 0.010, 0.18), 0.46, 0.772, -0.50);           // bin lid seam (§B3 tell)
   }
+  return { twm, hm };
+}
+
+function addT90MProryvTurretProtection(
+  P: T90BuilderPort,
+  { twm, hm }: T90MProryvLegacyContext,
+): void {
+  const { box, cylY } = KIT;
   // r30 902B smoke banks on the cheek flanks (§B3 variety + the front
   // ±1.68..1.77 cols: registered ref front tops 1.73-1.82 there, mine read
   // 1.35-1.65 = fender-lip line). Tube tips stay inside x ±1.78 (15 mm law
@@ -4003,6 +4119,13 @@ function buildT90MProryv(P: T90BuilderPort): void {
   // r30: top 1.79 -> 1.74 (ref 1.71 over z 1.87..2.00).
   P.add('turret', box(0.44, 0.20, 0.36), 0, 0.21, 1.53);
   P.add('turret', box(0.44, 0.04, 0.85), 0, 0.56, 0.30);
+}
+
+function addT90MProryvGunAndFinish(
+  P: T90BuilderPort,
+  { twm }: T90MProryvLegacyContext,
+): void {
+  const { box, cylZ } = KIT;
   // ---- 2A46M-5 (axis 1.61): thermal sleeve, evac swell at the ref's 1.75
   // crest (world 3.20..3.44), muzzle +6.20 ----
   P.gunG.position.set(0, 0.21, 1.15);
@@ -4100,8 +4223,17 @@ function buildT90MProryv(P: T90BuilderPort): void {
   P.topY = 1.55;
 }
 
+function buildT90MProryv(P: T90BuilderPort): void {
+  addT90MProryvHull(P);
+  addT90MProryvRunningGearAndSkirts(P);
+  addT90MProryvSkirts(P);
+  const turretContext = addT90MProryvTurret(P);
+  addT90MProryvTurretProtection(P, turretContext);
+  addT90MProryvGunAndFinish(P, turretContext);
+}
 
-function buildT90SMLegacy(P: T90BuilderPort): void {
+
+function addT90SMLegacyHullFront(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
@@ -4232,6 +4364,10 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   // LOW lip segment on the ref's own 1.202-1.256 bow deck line (top 1.225
   // = the line the trim was for; standard-check holes 16 -> 0).
   for (const s of [-1, 1]) P.add('hull', box(0.20, 0.045, 0.55), s * 1.70, 1.2025, 2.7275);
+}
+
+function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
+  const { box, buildRunningGear, stowage } = KIT;
   // r10b: periY near-flush — the default deckY+0.05 periscopes topped 1.50
   // at z 2.42 where the ref nose line is 1.266 (side at=-1.03 col)
   // T5H: hatch on the LOCAL deck line (1.36 @ z 2.12) — the deckY-seated
@@ -4367,7 +4503,22 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   // The former solid outer aft course is likewise removed; the replacement
   // cage is installed after the owner finish so no later skirt pass can fill
   // the open cells again.
+}
 
+interface T90SMLegacyTurretContext {
+  tw: number;
+  h: number;
+  turretRingReceipt: Readonly<{
+    topRadiusM: number;
+    bottomRadiusM: number;
+    heightM: number;
+    yM: number;
+    zM: number;
+  }>;
+}
+
+function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext {
+  const { box, cylY } = KIT;
   // ---- WELDED turret: faceted prism + squared removable bustle ----
   // r6: prism roof shaved to the ref's 1.99 face-roof line; the 2.24-2.26
   // band lives on flank roof boxes at |x| 0.65..1.05 (ref front cols +-0.1..
@@ -4532,6 +4683,14 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     [-1.10, 0.54, -0.125], [-1.185, 0.54, -0.125], [-1.185, 0.54, 0.425], [-1.10, 0.54, 0.425],
   ));
   P.add('turretDark', box(0.075, 0.014, 0.49), -1.1425, 0.547, 0.15);
+  return { tw, h, turretRingReceipt };
+}
+
+function addT90SMLegacyRoof(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylY, cylZ } = KIT;
   // T3R ROOF EQUIPMENT ENSEMBLE (owner punch list 3: "no attachments or
   // decorations or the machine gun turret"). Today's side digest: the ref's
   // tall 2.239 band spans z world -0.44..-1.32 (my old towers sat aft+low —
@@ -4625,6 +4784,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     forwardAligned: true,
     separateManualWeaponStations: 0,
   });
+}
+
+function addT90SMLegacyBustleStructure(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -4664,6 +4830,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   for (const bx of [-0.52, 0.52]) {
     P.add('turretDark', box(0.03, 0.03, 0.05), bx, 0.37, -2.472);        // standoff struts onto step3 (§B2 attached)
   }
+}
+
+function addT90SMLegacyBustleCageAndSystems(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   const cageRailYs = [0.17, 0.27, 0.37, 0.47];
   const addSMBustleSideCell = (
     s: number,
@@ -4774,6 +4947,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   P.add('turretDark', box(0.26, 0.012, 0.26), -0.85, 0.694, -0.27);
   P.add('turretDark', box(0.022, 0.05, 0.014), -0.79, 0.60, -0.123);
   P.add('turretDark', box(0.022, 0.05, 0.014), -0.91, 0.60, -0.123);
+}
+
+function addT90SMLegacyGunAndFinish(
+  P: T90BuilderPort,
+  { tw, turretRingReceipt }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   // ---- 2A46M-5 + MRS bulge (axis 1.70, muzzle +6.20) ----
   // T3R MANTLET RE-SEAT (§B3.1 mantlets law + the nose re-loft): the plug
   // now fronts AT the new turret face (world 1.96-1.98 = the ref's plan
@@ -4854,6 +5034,16 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     turretRing: turretRingReceipt,
   });
   P.topY = 1.55;
+}
+
+function buildT90SMLegacy(P: T90BuilderPort): void {
+  addT90SMLegacyHullFront(P);
+  addT90SMLegacyHullDeckAndGear(P);
+  const turretContext = addT90SMLegacyTurretShell(P);
+  addT90SMLegacyRoof(P, turretContext);
+  addT90SMLegacyBustleStructure(P, turretContext);
+  addT90SMLegacyBustleCageAndSystems(P, turretContext);
+  addT90SMLegacyGunAndFinish(P, turretContext);
 }
 
 
@@ -5543,13 +5733,24 @@ function addT90AFamilyFinish(
   }
 }
 
-function replaceT90ACastTurret(
+interface T90CastTurretOptions {
+  vladimir?: boolean;
+  burlakBase?: boolean;
+}
+
+interface T90CastTurretBuildContext {
+  rings: number[][];
+  frontPackageLift: number;
+  frontPackageForward: number;
+  chevronForwardM: number;
+  shtoraPackageForward: number;
+}
+
+function prepareT90ACastTurret(
   P: T90BuilderPort,
-  { vladimir = false, burlakBase = false }: {
-    vladimir?: boolean; burlakBase?: boolean;
-  } = {},
-): void {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+): T90CastTurretBuildContext {
+  const { polyTurret } = KIT;
 
   // Atomic turret replacement: keep the variant's measured hull, discard the
   // superseded tall welded candidate and rebuild one closed cast assembly.
@@ -5618,6 +5819,29 @@ function replaceT90ACastTurret(
     P.add('turret', polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
     P.add('turretDark', polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
   }
+
+  return {
+    rings,
+    frontPackageLift,
+    frontPackageForward,
+    chevronForwardM,
+    shtoraPackageForward,
+  };
+}
+
+function addT90ACastTurretProtection(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+  context: T90CastTurretBuildContext,
+): void {
+  const { box } = KIT;
+  const {
+    rings,
+    frontPackageLift,
+    frontPackageForward,
+    chevronForwardM,
+    shtoraPackageForward,
+  } = context;
 
   // The production T-90 mounts its frontal protection on the gun-axis band,
   // lower than the Burlak prototype's shoulder course. Keep the exact shared
@@ -5729,10 +5953,22 @@ function replaceT90ACastTurret(
       shtoraClearsChevronDepth: shtoraChevronDepthClearanceM > 0,
     });
   }
+}
+
+function getT90ACastTurretSmokeCount(vladimir: boolean, side: number): number {
+  if (vladimir) return 6;
+  return side < 0 ? 8 : 6;
+}
+
+function addT90ACastTurretSmokeBanks(
+  P: T90BuilderPort,
+  { vladimir = false }: T90CastTurretOptions,
+): void {
+  const { box } = KIT;
 
   // Shoulder-mounted 902B banks, seated on solid armor shoes.
   for (const s of [-1, 1]) {
-    const smokeCount = vladimir ? 6 : (s < 0 ? 8 : 6);
+    const smokeCount = getT90ACastTurretSmokeCount(vladimir, s);
     P.add('turret', box(0.24, 0.24, vladimir ? 0.54 : 0.68), s * (vladimir ? 1.31 : 1.13), 0.31, -0.02, 0, 0, -s * 0.20);
     const smoke = FITTINGS.smokeBank({
       mats: P.mats, count: smokeCount, r: vladimir ? 0.040 : 0.052,
@@ -5744,6 +5980,10 @@ function replaceT90ACastTurret(
     smoke.rotation.y = s * 1.08;
     P.turretG.add(smoke);
   }
+}
+
+function addT90ACastTurretRoofAndBins(P: T90BuilderPort): void {
+  const { box, cylY } = KIT;
 
   // Low cupolas and sight heads are volumetric but remain within the source
   // roof hierarchy.  Each housing overlaps a ring or foundation plate.
@@ -5764,6 +6004,10 @@ function replaceT90ACastTurret(
     P.add('turret', box(0.30, 0.26, 0.48), s * 0.79, 0.38, -1.16);
     P.add('turretDark', box(0.25, 0.022, 0.41), s * 0.79, 0.525, -1.16);
   }
+}
+
+function addT90ACastTurretAftStowage(P: T90BuilderPort): void {
+  const { box, cylZ } = KIT;
 
   // Dense T-90 aft kit on the shared Burlak shoulders.  These are compact
   // unequal service packs, not a Burlak autoloader bustle: broad buried feet
@@ -5793,6 +6037,13 @@ function replaceT90ACastTurret(
     P.add('turretDark', cylZ(r + 0.010, 0.026, 14), x, y, z + len * 0.32);
     P.add('turretDetail', box(r * 1.72, 0.040, 0.14), x, y - r * 0.84, z);
   }
+}
+
+function addT90ACastTurretMachineGunAndOptics(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+): void {
+  const { box, cylY } = KIT;
 
   // Vladimir retains its prominent roof Kord. RU-417 receives the integrated
   // Tagil-derived automated station in its dedicated owner pass below.
@@ -5837,6 +6088,14 @@ function replaceT90ACastTurret(
       P.add('turretGlass', box(0.074, 0.030, 0.010), x, 0.812, z + 0.037, 0, yaw, 0);
     }
   }
+}
+
+function addT90ACastTurretGunAndFinish(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+  { frontPackageLift, frontPackageForward }: T90CastTurretBuildContext,
+): void {
+  const { cylZ } = KIT;
 
   // Continuous 2A46M assembly: buried trunnion, canvas boot, segmented tube,
   // thermal jacket and a true dark bore.
@@ -5868,393 +6127,20 @@ function replaceT90ACastTurret(
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.47, 0.27, -0.18], -Math.PI / 2);
 }
 
-// Modern welded family, rebuilt from the same source-section discipline as
-// the Leclerc graduate: first match the shell/bustle envelopes, then place
-// variant hardware on visible load-bearing shoes.  The T-90SM and Tagil use
-// the same construction grammar without becoming palette-swapped clones.
-function replaceT90ModernWeldedTurret(
+function replaceT90ACastTurret(
   P: T90BuilderPort,
-  { sm = false }: { sm?: boolean } = {},
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions = {},
 ): void {
-  const { box, cylY, cylZ, polyTurret } = KIT;
-  P.turretG.clear();
-  P.turretG.add(P.gunG);
-  P.clear(
-    'turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack',
-    'gun', 'gunDark', 'gunMount', 'gunMountDark',
-  );
-
-  const pivotY = sm ? 1.40 : 1.44;
-  const pivotZ = sm ? 0.09 : 0.16;
-  P.turretG.position.set(0, pivotY, pivotZ);
-  const outline = sm ? [
-    [-0.28, 1.31], [0.28, 1.31], [0.82, 1.16], [1.28, 0.82],
-    [1.58, 0.38], [1.68, -0.08], [1.55, -0.64], [1.25, -1.10],
-    [0.98, -1.39], [-0.98, -1.39], [-1.25, -1.10], [-1.55, -0.64],
-    [-1.68, -0.08], [-1.58, 0.38], [-1.28, 0.82], [-0.82, 1.16],
-  ] : [
-    [-0.24, 0.89], [0.24, 0.89], [0.72, 0.79], [1.18, 0.54],
-    [1.50, 0.16], [1.57, -0.28], [1.48, -0.82], [1.28, -1.28],
-    [1.08, -1.76], [-1.08, -1.76], [-1.28, -1.28], [-1.48, -0.82],
-    [-1.57, -0.28], [-1.50, 0.16], [-1.18, 0.54], [-0.72, 0.79],
-  ];
-  const shellH = sm ? 0.60 : 0.57;
-  P.add('turret', polyTurret(outline, shellH, 1.0, sm ? 0.88 : 0.90));
-  P.add('turret', polyTurret(outline, 0.13, 0.95, 0.92), 0, -0.11, 0);
-  P.add('turretDark', polyTurret(outline, 0.024, 0.955, 0.95), 0, -0.126, 0);
-
-  // Faceted crown courses preserve the flat welded read.  Their rear halves
-  // penetrate the primary shell; seam strips are flush, not floating trim.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.66, 0.09, sm ? 0.82 : 0.64), s * 0.53, shellH - 0.025, sm ? 0.10 : -0.04, -0.08, -s * 0.10, 0);
-    P.add('turret', box(0.52, 0.08, 0.58), s * 1.04, shellH - 0.10, sm ? -0.10 : -0.25, -0.10, -s * 0.18, 0);
-    P.add('turretDark', box(0.58, 0.016, 0.045), s * 0.53, shellH + 0.025, sm ? -0.24 : -0.30, -0.08, -s * 0.10, 0);
-    P.add('turretDark', box(0.44, 0.016, 0.045), s * 1.04, shellH - 0.055, sm ? -0.36 : -0.50, -0.10, -s * 0.18, 0);
-  }
-  P.add('turretDark', box(0.34, 0.018, 0.44), 0.03, shellH + 0.03, -0.38);
-
-  // Relikt arrowhead and side courses.  Every module overlaps its backing
-  // shoe by at least 8 cm; the center chin closes the mantlet valley.
-  for (const s of [-1, 1]) {
-    const z1 = sm ? 1.10 : 0.74;
-    const z2 = sm ? 0.58 : 0.33;
-    P.add('turret', box(0.72, 0.34, 0.36), s * 0.57, 0.28, z1, -0.31, -s * 0.46, 0);
-    P.add('turret', box(0.76, 0.32, 0.32), s * 1.18, 0.24, z2, -0.28, -s * 0.72, 0);
-    P.add('turretDark', KIT.xform(box(0.026, 0.28, 0.010), 0, 0, 0.17), s * 0.57, 0.28, z1, -0.31, -s * 0.46, 0);
-    P.add('turretDark', KIT.xform(box(0.026, 0.26, 0.010), 0, 0, 0.15), s * 1.18, 0.24, z2, -0.28, -s * 0.72, 0);
-    P.add('turret', box(0.16, 0.34, sm ? 1.10 : 0.92), s * 1.51, 0.22, sm ? -0.18 : -0.42);
-    P.add('turretDark', box(0.018, 0.28, sm ? 1.02 : 0.84), s * 1.60, 0.22, sm ? -0.18 : -0.42);
-    P.add('turret', box(0.22, 0.24, 0.42), s * 0.34, 0.24, sm ? 1.26 : 0.87, -0.28, -s * 0.16, 0);
-  }
-  P.add('turretDark', box(0.52, 0.30, 0.075), 0, 0.22, sm ? 1.34 : 0.94, -0.29, 0, 0);
-
-  // The export SM has a shorter, lower box; Tagil carries the removable
-  // magazine at the print's -1.60..-2.79 world span and an open rear cage.
-  if (sm) {
-    P.add('turret', box(2.08, 0.40, 0.82), 0, 0.32, -1.63);
-    P.add('turret', box(1.92, 0.34, 0.54), 0, 0.30, -2.30);
-    P.add('turretDark', box(1.82, 0.024, 0.47), 0, 0.49, -2.30);
-    for (const s of [-1, 1]) for (const [x, z] of [[1.13, -1.46], [1.08, -1.86], [1.00, -2.24]]) {
-      P.add('turret', box(0.18, 0.34, 0.34), s * x, 0.29, z);
-      P.add('turretDark', box(0.016, 0.28, 0.29), s * (x + 0.10), 0.29, z);
-    }
-    for (const y of [0.18, 0.29, 0.40, 0.50]) P.add('turretDetail', box(1.58, 0.022, 0.042), 0, y, -2.70);
-    for (const x of [-0.76, -0.38, 0, 0.38, 0.76]) P.add('turretDetail', box(0.022, 0.34, 0.042), x, 0.34, -2.70);
-  } else {
-    P.add('turret', box(2.16, 0.52, 1.19), 0, 0.44, -2.035);
-    P.add('turretDark', box(2.02, 0.024, 1.05), 0, 0.712, -2.035);
-    for (const s of [-1, 1]) for (const [x, z, d] of [[1.18, -1.56, 0.37], [1.12, -1.96, 0.36], [1.04, -2.35, 0.34]]) {
-      P.add('turret', box(0.24, 0.39, d), s * x, 0.43, z);
-      P.add('turretDark', box(0.016, 0.33, d - 0.05), s * (x + 0.13), 0.43, z);
-      P.add('turretDark', box(0.20, 0.016, 0.035), s * x, 0.635, z + d * 0.34);
-    }
-    for (const s of [-1, 1]) P.add('turretDark', box(0.04, 0.04, 0.42), s * 0.74, 0.38, -3.24);
-    for (const y of [0.20, 0.32, 0.44, 0.56]) P.add('turretDetail', box(1.72, 0.024, 0.045), 0, y, -3.40);
-    for (const x of [-0.82, -0.41, 0, 0.41, 0.82]) P.add('turretDetail', box(0.024, 0.38, 0.045), x, 0.38, -3.40);
-  }
-
-  // Shoulder smoke shoes and low hatch rings are shared family hardware.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.20, 0.23, 0.52), s * 1.27, 0.33, sm ? 0.12 : -0.14, 0, 0, -s * 0.15);
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 5, r: 0.040, len: 0.26, pitch: -0.40, splay: 0.28, arc: 0.52, spacing: 0.095 });
-    smoke.position.set(s * 1.27, 0.43, sm ? 0.15 : -0.10);
-    smoke.rotation.y = s * 1.02;
-    P.turretG.add(smoke);
-  }
-  P.add('turret', cylY(0.24, 0.27, 0.11, 16), -0.42, shellH - 0.04, sm ? -0.25 : -0.62);
-  P.add('turretDark', cylY(0.20, 0.20, 0.022, 14), -0.42, shellH + 0.025, sm ? -0.25 : -0.62);
-  P.add('turret', cylY(0.20, 0.23, 0.10, 16), 0.38, shellH - 0.05, sm ? -0.22 : -0.52);
-  P.add('turretDark', cylY(0.17, 0.17, 0.020, 14), 0.38, shellH + 0.01, sm ? -0.22 : -0.52);
-  P.add('turret', box(0.30, 0.17, 0.22), 0.30, shellH - 0.05, sm ? 0.48 : 0.36);
-  P.add('turretGlass', box(0.22, 0.09, 0.016), 0.30, shellH - 0.02, sm ? 0.598 : 0.478);
-
-  // Panorama and UDP station follow the source's tall, narrow equipment
-  // hierarchy.  Their feet penetrate the bustle roof, while the thin tops
-  // stay within the P95 spike budget rather than inflating the whole shell.
-  const panoZ = sm ? -1.16 : -1.54;
-  P.addEquipment('turret', cylY(0.12, 0.15, 0.22, 14), -0.54, sm ? 0.60 : 0.70, panoZ);
-  P.add('turretDark', cylY(0.028, 0.035, sm ? 0.78 : 0.76, 10), -0.54, sm ? 1.08 : 1.11, panoZ);
-  P.addEquipment('turret', box(0.08, 0.12, 0.13), -0.54, sm ? 1.50 : 1.52, panoZ);
-  P.add('turretGlass', box(0.055, 0.07, 0.012), -0.54, sm ? 1.50 : 1.52, panoZ + 0.071);
-  {
-    const rws = new THREE.Group();
-    const part = (
-      geo: THREE.BufferGeometry,
-      mat: THREE.Material,
-      x: number,
-      y: number,
-      z: number,
-    ): void => {
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      mesh.castShadow = mesh.receiveShadow = true;
-      rws.add(mesh);
-    };
-    const rz = sm ? -1.00 : -1.58;
-    const baseY = sm ? 0.50 : 0.69;
-    const bodyY = sm ? 0.70 : 0.65;
-    part(cylY(0.18, 0.21, 0.11, 16), P.mats.hull, 0.48, baseY, rz);
-    part(cylY(0.20, 0.20, 0.026, 16), P.mats.dark, 0.48, baseY + 0.07, rz);
-    part(box(0.08, 0.32, 0.10), P.mats.hull, 0.29, bodyY - 0.05, rz);
-    part(box(0.08, 0.32, 0.10), P.mats.hull, 0.67, bodyY - 0.05, rz);
-    part(box(0.44, 0.30, 0.50), P.mats.hull, 0.48, bodyY, rz + 0.16);
-    part(box(0.20, 0.22, 0.28), P.mats.hull, 0.20, bodyY - 0.02, rz + 0.08);
-    part(box(0.14, 0.16, 0.14), P.mats.detail, 0.73, bodyY + 0.02, rz + 0.34);
-    part(box(0.095, 0.10, 0.014), P.mats.glass, 0.73, bodyY + 0.02, rz + 0.417);
-    part(cylZ(0.027, 1.05, 10), P.mats.dark, 0.48, bodyY + 0.04, rz + 0.88);
-    part(cylZ(0.042, 0.12, 10), P.mats.dark, 0.48, bodyY + 0.04, rz + 1.45);
-    FITTINGS.markExact(rws, 'pintleMG');
-    P.turretG.add(rws);
-  }
-  for (const [x, z, seed] of sm ? [[-0.98, -1.56, 31], [0.96, -1.58, 32]] : [[0.56, -1.76, 6]]) {
-    const ant = FITTINGS.antennaWhip({ mats: P.mats, h: sm ? 1.56 : 2.47, r: 0.014, rake: x < 0 ? -0.03 : 0.03, seed });
-    ant.position.set(x, sm ? 0.50 : 0.69, z);
-    P.turretG.add(ant);
-    P.add('turretDark', cylY(0.038, 0.052, 0.10, 8), x, sm ? 0.50 : 0.69, z);
-  }
-
-  // One continuous 2A46M-5 assembly.  The world muzzle/axis remain on each
-  // variant's documented datum despite the turret re-proportion.
-  P.gunG.position.set(0, sm ? 0.31 : 0.38, sm ? 1.17 : 0.95);
-  ruSaddle(P, { rollR: 0.20, rollW: 0.62, tubeR: 0.110, rootL: 0.68 });
-  P.addGunExtra(box(0.60, 0.22, 0.34), 0, 0.01, 0.18);
-  P.addGunExtra(box(0.50, 0.17, 0.56), 0, 0.01, 0.46);
-  for (const z of [0.29, 0.44, 0.59, 0.74]) P.addGunExtraDark(KIT.xform(cylZ(0.15, 0.04, 14), 0, 0, 0, 0, 0, 0, [1.25, 0.85, 1]), 0, 0.01, z);
-  tubeGun(P, [
-    [0.44, 1.55, 0.110], [1.55, 2.12, 0.116], [2.12, 2.32, 0.102, 0.094], [2.32, 4.94, 0.089],
-  ], { rings: [[1.05, 0.112], [1.55, 0.118], [2.12, 0.106], [2.80, 0.093], [3.55, 0.092], [4.30, 0.092]], muzzle: 4.94 });
-  muzzleBore(P, { r: 0.089, y: -0.008 });
-  P.add('gun', cylZ(0.128, 0.52, 14, 0.116), 0, 0, 2.92);
-  P.add('gunDark', cylZ(0.130, 0.035, 14), 0, 0, 2.65);
-  P.add('gunDark', cylZ(0.130, 0.035, 14), 0, 0, 3.19);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.53, 0.28, -0.30], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.53, 0.28, -0.30], -Math.PI / 2);
+  const options = { vladimir, burlakBase };
+  const context = prepareT90ACastTurret(P, options);
+  addT90ACastTurretProtection(P, options, context);
+  addT90ACastTurretSmokeBanks(P, options);
+  addT90ACastTurretRoofAndBins(P);
+  addT90ACastTurretAftStowage(P);
+  addT90ACastTurretMachineGunAndOptics(P, options);
+  addT90ACastTurretGunAndFinish(P, options, context);
 }
 
-function addT90BurlakArmorEnvelope(P: T90BuilderPort): void {
-  const { box } = KIT;
-  for (const side of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [side * 0.24, -0.02, 1.38], [side * 1.70, -0.01, 0.50],
-      [side * 1.58, -0.01, -0.34], [side * 0.28, -0.02, 0.46],
-      [side * 0.25, 0.43, 1.02], [side * 1.48, 0.43, 0.40],
-      [side * 1.42, 0.40, -0.34], [side * 0.30, 0.51, 0.40],
-    ));
-    for (const [x, y, z, yaw, roll, width, depth] of [
-      [0.42, 0.40, 1.10, 0.38, -0.12, 0.48, 0.28],
-      [0.72, 0.38, 0.92, 0.52, -0.15, 0.50, 0.31],
-      [1.02, 0.35, 0.65, 0.66, -0.10, 0.56, 0.34],
-      [1.30, 0.30, 0.31, 0.42, -0.05, 0.46, 0.38],
-      [1.47, 0.27, -0.11, 0.12, 0.00, 0.34, 0.40],
-    ]) {
-      P.add('turret', box(width, 0.19, depth), side * x, y, z, roll, -side * yaw, 0);
-      P.add('turretDark', box(width * 0.86, 0.012, depth * 0.82),
-        side * x, y + 0.101, z, roll, -side * yaw, 0);
-    }
-    P.add('turret', orientedSlab(
-      [side * 0.16, 0.02, 1.42], [side * 0.50, 0.03, 1.42],
-      [side * 0.66, 0.02, 1.10], [side * 0.24, 0.01, 1.12],
-      [side * 0.17, 0.38, 1.20], [side * 0.48, 0.38, 1.20],
-      [side * 0.58, 0.38, 1.02], [side * 0.26, 0.40, 1.02],
-    ));
-  }
-
-  // Chunky inner modules and wrap-around wings continue the clipped armor
-  // envelope around each width break.
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.76, 0.36, 0.36), side * 0.58, 0.30, 1.18,
-      -0.28, -side * 0.48, 0);
-    P.add('turret', box(0.80, 0.34, 0.32), side * 1.18, 0.27, 0.70,
-      -0.26, -side * 0.76, 0);
-    P.add('turret', orientedSlab(
-      [side * 0.96, -0.01, 0.82], [side * 1.89, 0.10, 1.87],
-      [side * 1.89, 0.04, 1.52], [side * 0.96, -0.01, 0.32],
-      [side * 0.96, 0.53, 0.82], [side * 1.89, 0.42, 1.87],
-      [side * 1.89, 0.48, 1.52], [side * 0.96, 0.53, 0.32],
-    ));
-    P.add('turretDark', box(0.028, 0.31, 0.50), side * 1.875, 0.26, 1.69);
-    P.add('turret', orientedSlab(
-      [side * 1.43, 0.12, 0.93], [side * 1.82, 0.15, 1.35],
-      [side * 1.82, 0.18, 1.62], [side * 1.38, 0.10, 1.35],
-      [side * 1.43, 0.46, 0.93], [side * 1.82, 0.40, 1.35],
-      [side * 1.82, 0.36, 1.62], [side * 1.38, 0.48, 1.35],
-    ));
-    P.add('turretDark', box(0.026, 0.20, 0.30), side * 1.81, 0.28, 1.48,
-      0, -side * 0.18, 0);
-    P.add('turret', box(0.16, 0.34, 0.98), side * 1.57, 0.23, -0.36);
-    P.add('turretDark', box(0.018, 0.28, 0.90), side * 1.66, 0.23, -0.36);
-  }
-  P.add('turretDark', box(0.54, 0.31, 0.08), 0, 0.24, 1.34, -0.28, 0, 0);
-}
-
-function clearT90BurlakTurret(P: T90BuilderPort, preserveGun: boolean): void {
-  P.turretG.clear();
-  P.turretG.add(P.gunG);
-  const rotatingBuckets = [
-    'turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack',
-  ];
-  if (!preserveGun) rotatingBuckets.push('gun', 'gunDark', 'gunMount', 'gunMountDark');
-  P.clear(...rotatingBuckets);
-}
-
-function replaceT90BurlakTurret(
-  P: T90BuilderPort,
-  { preserveGun = false }: { preserveGun?: boolean } = {},
-): void {
-  const { box, cylY, cylZ, polyTurret } = KIT;
-  clearT90BurlakTurret(P, preserveGun);
-  P.turretG.position.set(0, 1.39, -0.25);
-  const outline = [
-    [-0.40, 1.30], [0.40, 1.30], [0.94, 1.08], [1.54, 0.48],
-    [1.76, -0.22], [1.54, -0.86], [1.06, -1.28],
-    [-1.06, -1.28], [-1.54, -0.86], [-1.76, -0.22], [-1.54, 0.48],
-    [-0.94, 1.08],
-  ];
-  P.add('turret', polyTurret(outline, 0.62, 1.0, 0.84));
-  P.add('turret', polyTurret(outline, 0.13, 0.95, 0.92), 0, -0.11, 0);
-  P.add('turretDark', polyTurret(outline, 0.024, 0.955, 0.95), 0, -0.126, 0);
-
-  // The recovered turret is a rounded core carried inside a broad, clipped
-  // armor envelope.  These joined cheek skins overlap both the core and the
-  // gun-root court; their long buried returns make the Burlak front read as
-  // one protected fighting compartment rather than isolated wedge boxes.
-  addT90BurlakArmorEnvelope(P);
-
-  // The casting's roof is a stepped modular field, not one smooth dome.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.70, 0.11, 0.64), s * 0.62, 0.61, 0.34, -0.16, -s * 0.22, 0);
-    P.add('turret', box(0.54, 0.10, 0.55), s * 1.12, 0.54, -0.02, -0.14, -s * 0.32, 0);
-    P.add('turretDark', box(0.62, 0.016, 0.05), s * 0.62, 0.675, 0.07, -0.16, -s * 0.22, 0);
-    P.add('turretDark', box(0.46, 0.016, 0.05), s * 1.12, 0.60, -0.27, -0.14, -s * 0.32, 0);
-  }
-
-  // Print-measured narrow ammunition bustle: world -1.70..-3.66 and roof
-  // 2.30.  The stepped neck makes the casting/bustle hierarchy explicit.
-  P.add('turret', weldedStationLoft([
-    [-1.28, 0.27, 0.84, -0.98, 0.98, -0.82, 0.82, -0.92, 0.92],
-    [-1.58, 0.30, 0.88, -0.94, 0.94, -0.78, 0.78, -0.88, 0.88],
-    [-2.25, 0.34, 0.89, -0.87, 0.87, -0.68, 0.68, -0.82, 0.82],
-    [-3.02, 0.39, 0.82, -0.76, 0.76, -0.58, 0.58, -0.71, 0.71],
-    [-3.42, 0.44, 0.72, -0.68, 0.68, -0.50, 0.50, -0.64, 0.64],
-  ]));
-  P.add('turretDark', box(1.26, 0.32, 0.020), 0, 0.58, -3.425);
-  P.add('turretDark', box(0.74, 0.018, 1.54), 0.03, 0.895, -2.42);
-  P.add('turretDetail', box(0.80, 0.018, 0.055), 0.03, 0.912, -1.68);
-  P.add('turretDetail', box(0.72, 0.018, 0.055), 0.03, 0.912, -3.14);
-  for (const s of [-1, 1]) for (const [x, z] of [[0.90, -1.52], [0.84, -1.98], [0.78, -2.44]]) {
-    P.add('turret', box(0.25, 0.34, 0.40), s * x, 0.58, z);
-    P.add('turretDark', box(0.016, 0.28, 0.34), s * (x + 0.135), 0.58, z);
-    P.add('turretDark', box(0.21, 0.016, 0.04), s * x, 0.76, z + 0.16);
-  }
-  // Stepped magazine lids, longitudinal ribs and supported side rails give
-  // the autoloader its layered mechanical skin without changing the low
-  // welded envelope or opening a second shell.
-  for (const [z, w, d, y] of [[-1.58, 1.70, 0.46, 0.858], [-2.18, 1.56, 0.58, 0.902], [-2.86, 1.36, 0.54, 0.866]]) {
-    P.add('turretDark', box(w, 0.018, d), 0, y, z);
-    P.add('turretDetail', box(w * 0.86, 0.012, 0.045), 0, y + 0.015, z + d * 0.42);
-  }
-  for (const s of [-1, 1]) {
-    for (const [x, z, len] of [[0.96, -1.62, 0.54], [0.88, -2.20, 0.58], [0.78, -2.83, 0.54]]) {
-      P.add('turretDark', box(0.035, 0.34, len), s * x, 0.58, z);
-      P.add('turretDetail', box(0.12, 0.035, 0.035), s * (x - 0.04), 0.72, z);
-      P.add('turretDetail', box(0.12, 0.035, 0.035), s * (x - 0.04), 0.45, z);
-    }
-  }
-  // Mixed-depth magazine service courses and end hardware prevent the long
-  // autoloader from collapsing into one blank rectangular appliance.
-  for (const [x, w, h, y, n] of [[-0.48, 0.42, 0.22, 0.60, 4], [0.02, 0.30, 0.17, 0.67, 3], [0.43, 0.36, 0.25, 0.58, 4]]) {
-    P.add('turretDark', box(w, h, 0.025), x, y, -3.415);
-    for (let i = 0; i < n; i++) P.add('turretDetail', box(0.024, h * 0.68, 0.018), x - w * 0.35 + i * (w * 0.70 / Math.max(1, n - 1)), y, -3.432);
-  }
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.055, 0.24, 0.055), s * 0.60, 0.57, -3.43);
-    P.add('turretDetail', cylZ(0.060, 0.045, 12), s * 0.48, 0.43, -3.44);
-  }
-
-  // Asymmetric prototype roof: commander left-rear, compact gunner right,
-  // feed hatch centered on the bustle, all with buried rings/feet.
-  P.add('turret', cylY(0.26, 0.29, 0.14, 18), -0.58, 0.64, -0.55);
-  P.add('turretDark', cylY(0.22, 0.22, 0.024, 16), -0.58, 0.725, -0.55);
-  P.add('turret', cylY(0.21, 0.24, 0.11, 16), 0.39, 0.63, -0.30);
-  P.add('turretDark', cylY(0.18, 0.18, 0.022, 14), 0.39, 0.695, -0.30);
-  P.add('turret', box(0.34, 0.18, 0.28), 0.35, 0.62, 0.38);
-  P.add('turretGlass', box(0.25, 0.10, 0.016), 0.35, 0.64, 0.528);
-  P.add('turret', box(0.34, 0.12, 0.30), -0.98, 0.70, -0.70);
-  P.add('turret', cylY(0.14, 0.17, 0.18, 14), -0.98, 0.78, -0.70);
-  P.add('turretDark', cylY(0.075, 0.090, 0.24, 10), -0.98, 1.00, -0.70);
-  P.add('turret', box(0.22, 0.20, 0.19), -0.98, 1.16, -0.70);
-  P.add('turretDark', box(0.17, 0.14, 0.014), -0.98, 1.15, -0.597);
-  P.add('turretGlass', box(0.13, 0.10, 0.008), -0.98, 1.15, -0.589);
-  P.add('turret', box(0.82, 0.16, 0.76), 0.02, 0.88, -2.20);
-  P.add('turretDark', box(0.72, 0.018, 0.66), 0.02, 0.968, -2.20);
-
-  // Source-measured low station cadence: broad buried foundations, an
-  // asymmetric left rail/bin course and compact periscopes around both
-  // hatch rings.  These are roof-owned forms, not antenna-like decoration.
-  P.add('turret', box(0.38, 0.15, 0.92), -1.18, 0.68, -0.34);
-  P.add('turretDark', box(0.32, 0.016, 0.84), -1.18, 0.765, -0.34);
-  for (const [x, z, yaw] of [[-0.80, -0.31, -0.22], [-0.60, -0.24, 0], [-0.40, -0.31, 0.22], [0.22, -0.11, -0.20], [0.43, -0.04, 0.18]]) {
-    P.add('turretDark', box(0.13, 0.08, 0.07), x, 0.77, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.09, 0.045, 0.010), x, 0.78, z + 0.041, 0, yaw, 0);
-  }
-  P.add('turret', box(0.28, 0.18, 0.26), -1.02, 0.80, -0.82);
-  P.add('turretDark', box(0.22, 0.11, 0.016), -1.02, 0.81, -0.679);
-  // Commander shield and compact loader/sight cluster.  The shield returns
-  // directly into the cupola foundation; its unequal leaves frame the MG
-  // instead of creating a freestanding roof wall.
-  P.add('turret', cylY(0.30, 0.33, 0.09, 18), -0.60, 0.75, -0.58);
-  P.add('turretDark', cylY(0.265, 0.265, 0.022, 16), -0.60, 0.805, -0.58);
-  P.add('turret', box(0.08, 0.22, 0.36), -0.88, 0.91, -0.61, 0, 0.20, 0);
-  P.add('turret', box(0.08, 0.19, 0.30), -0.32, 0.89, -0.59, 0, -0.22, 0);
-  P.add('turretDark', box(0.48, 0.07, 0.08), -0.60, 0.82, -0.76);
-  P.add('turret', box(0.30, 0.20, 0.25), 0.36, 0.78, -0.20, 0, -0.14, 0);
-  P.add('turretGlass', box(0.20, 0.11, 0.014), 0.36, 0.79, -0.064, 0, -0.14, 0);
-  P.add('turretDark', box(0.18, 0.07, 0.10), 0.66, 0.75, -0.31);
-  for (const [x, z] of [[-0.82, -0.30], [-0.59, -0.23], [-0.37, -0.29], [0.15, -0.04], [0.53, -0.11]]) {
-    P.add('turretDark', box(0.12, 0.055, 0.075), x, 0.82, z);
-  }
-
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.20, 0.23, 0.54), s * 1.30, 0.36, 0.18, 0, 0, -s * 0.16);
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 6, r: 0.045, len: 0.30, pitch: -0.44, splay: 0.34, arc: 0.62, spacing: 0.10 });
-    smoke.position.set(s * 1.48, 0.48, 0.22);
-    smoke.rotation.y = s * 1.02;
-    P.turretG.add(smoke);
-  }
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.08, ammo: true, shield: true, scale: 1.45 });
-    mg.position.set(-0.55, 0.39, -0.62);
-    mg.rotation.y = 0.30;
-    P.turretG.add(mg);
-    P.add('turret', cylY(0.13, 0.17, 0.14, 12), -0.55, 0.69, -0.62);
-    P.add('turretDark', box(0.42, 0.08, 0.10), -0.55, 0.80, -0.70);
-    const ant = FITTINGS.antennaWhip({ mats: P.mats, h: 2.12, r: 0.015, rake: 0.02, seed: 7 });
-    ant.position.set(-0.17, 0.82, -0.65);
-    P.turretG.add(ant);
-    P.add('turretDark', cylY(0.040, 0.055, 0.12, 8), -0.17, 0.82, -0.65);
-    for (const [x, z, h, seed] of [[0.62, -0.72, 1.25, 17], [-0.90, -0.36, 0.92, 18]]) {
-      const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.012, rake: x < 0 ? -0.018 : 0.018, seed });
-      whip.position.set(x, 0.78, z);
-      P.turretG.add(whip);
-      P.add('turretDark', cylY(0.034, 0.045, 0.09, 8), x, 0.78, z);
-    }
-  }
-
-  if (!preserveGun) {
-    P.gunG.position.set(0, 0.39, 1.10);
-    ruSaddle(P, { rollR: 0.21, rollW: 0.62, tubeR: 0.115, rootL: 0.68 });
-    P.addGunExtra(KIT.xform(cylZ(0.48, 0.30, 18, 0.44), 0, 0, 0, 0, 0, 0, [0.58, 0.42, 1]), 0, 0.02, 0.14);
-    ruBoot(P, { pts: [[0.20, 0.54, 0.42, 0], [0.34, 0.40, 0.32, 0], [0.48, 0.30, 0.26, 0], [0.62, 0.25, 0.22, 0]], creaseD: 0.032 });
-    tubeGun(P, [
-      [0.46, 1.62, 0.115], [1.62, 3.36, 0.118], [3.36, 4.95, 0.073], [4.95, 5.25, 0.066],
-    ], { rings: [[1.62, 0.120], [2.30, 0.120], [3.36, 0.100], [4.10, 0.075], [4.70, 0.075]], muzzle: 5.25 });
-    muzzleBore(P, { r: 0.066, y: 0.004 });
-    P.add('gun', cylZ(0.126, 0.42, 14, 0.118), 0, 0, 2.62);
-    P.add('gunDark', cylZ(0.128, 0.04, 14), 0, 0, 2.83);
-  }
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.67, 0.28, -0.42], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.67, 0.28, -0.42], -Math.PI / 2);
-}
 
 function buildT90A(P: T90BuilderPort, legacyOptions: T90ALegacyOptions = {}): void {
   buildT90ALegacy(P, legacyOptions);
@@ -6596,7 +6482,7 @@ function buildT90MS(P: T90BuilderPort): void {
     [-1.06, 1.46, 1.75], [1.06, 1.46, 1.75], [1.06, 0.84, 3.43], [-1.06, 0.84, 3.43]));
   // rear transom rack row + sliver bars (shared t90-print tail read);
   // §B2 cell closures per the critic's standard-check coordinates
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hull', box(0.98, 0.30, 0.30), s * 0.60, 1.50, -3.26);
     P.add('hullDark', box(0.90, 0.014, 0.03), s * 0.60, 1.652, -3.14);
     P.add('hull', box(0.30, 0.26, 0.26), s * 1.42, 1.44, -3.24);
@@ -6604,17 +6490,19 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('hull', box(0.16, 0.20, 0.18), s * 1.53, 1.21, -3.05);    // corner bracket (§B2 cell -1.56,-3.05)
     P.add('hull', box(0.07, 0.14, 0.16), s * 0.60, 1.235, -3.50);
     P.add('hullDark', box(0.05, 0.10, 0.03), s * 0.60, 1.235, -3.49);  // cap face -3.505 (gate r1 overall trim)
-  }
+  });
   // Unequal strapped rear fuel drums convert the old square proxy row into
   // the source's rounded service silhouette. The existing boxes remain
   // buried as cradles, giving both cylinders a visible hull load path.
-  for (const [x, len, r] of [[-0.64, 0.82, 0.150], [0.57, 0.70, 0.135]]) {
+  ([[-0.64, 0.82, 0.150], [0.57, 0.70, 0.135]] as const).forEach(([x, len, r]) => {
     P.add('hull', cylX(r, len, 14), x, 1.49, -3.40);
     for (const sx of [-0.28, 0.28]) P.add('hullDark', cylX(r + 0.009, 0.035, 14), x + sx * len, 1.49, -3.40);
-  }
-  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
-    P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
-  }
+  });
+  ([-1, 1] as const).forEach((s) => {
+    for (let i = 0; i < 11; i++) {
+      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
+    }
+  });
   // Forward fender/mudguard assemblies carry the print's falling bow-side
   // band (1.40 @ 2.90 -> 1.26 @ 3.23 -> 1.10 @ 3.40) over the dropped
   // glacis.  The old six-box chain hit those stations but read as thin craft
@@ -6624,7 +6512,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // so the Tagil now has a sloped armored brow rather than shelves and open
   // risers.  Both floors remain above the native return/terminal shoe crown.
   const tagilFrontGuardLabels: string[] = [];
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     const side = s < 0 ? 'left' : 'right';
     const addGuardPart = (
       segment: string,
@@ -6673,7 +6561,7 @@ function buildT90MS(P: T90BuilderPort): void {
     addGuardPart('sloped-outer-shell', orientedSlab(
       ...shellLower as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple],
       ...shellUpper as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]), 0, 0, 0);
-  }
+  });
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, hlX: 1.02 });
   // Relikt glacis cassette courses — CRITIC FIX (defect 3): per-segment
@@ -6732,7 +6620,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // authored to -3.62 sliver-class, hullLengthM sovereign)
   // CRITIC FIX (defect 11 "one pipe railing"): the real MULTI-BAR field —
   // five bars per flank + dense verticals, same weave on the transom
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     for (let r = 0; r < 5; r++) {
       P.add('hullDark', box(0.028, 0.028, 1.55), s * 1.868, 0.60 + r * 0.17, -2.12);
     }
@@ -6744,38 +6632,42 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -1.50);
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -2.10);
     P.add('hullDark', box(0.10, 0.05, 0.05), s * 1.828, 0.94, -2.70);
-  }
+  });
   // (gate r1: the -3.60 transom cage owned the hullLengthM body span —
   // the column ROUGH spans the bar gaps, so thin bars still count; pulled
   // to face -3.47, the -4.05 print reach stays the documented cap)
-  for (let r = 0; r < 5; r++) P.add('hullDark', box(3.40, 0.028, 0.028), 0, 0.60 + r * 0.16, -3.455);   // LADDER-R1: transom weave to ±1.70 (ref st0 width carrier)
-  for (const cx of [-1.62, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.62]) P.add('hullDark', box(0.024, 0.68, 0.024), cx, 0.92, -3.45);
+  Array.from({ length: 5 }, (_, index) => index).forEach((r) => {
+    P.add('hullDark', box(3.40, 0.028, 0.028), 0, 0.60 + r * 0.16, -3.455);
+  });   // LADDER-R1: transom weave to ±1.70 (ref st0 width carrier)
+  [-1.62, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.62].forEach((cx) => {
+    P.add('hullDark', box(0.024, 0.68, 0.024), cx, 0.92, -3.45);
+  });
   // Unequal backed service bays sit behind the open recovery weave. The
   // split widths, offset louvres and low fittings reproduce the source's
   // irregular transom without turning the external cage into a loose wall.
-  for (const [x, w, h, y, n] of [
+  ([
     [-1.20, 0.34, 0.19, 1.11, 3], [-0.69, 0.48, 0.25, 1.01, 4],
     [-0.12, 0.30, 0.17, 1.14, 3], [0.48, 0.44, 0.22, 1.03, 4],
-  ]) {
+  ] as const).forEach(([x, w, h, y, n]) => {
     P.add('hullDark', box(w, h, 0.025), x, y, -3.425);
     for (let i = 0; i < n; i++) P.add('hull', box(0.025, h * 0.62, 0.018), x - w * 0.36 + i * (w * 0.72 / Math.max(1, n - 1)), y, -3.445);
     P.add('hull', box(0.035, h * 0.80, 0.020), x + w * 0.42, y, -3.448);
-  }
+  });
   P.add('hull', box(0.34, 0.12, 0.05), -1.18, 0.72, -3.46);
   P.add('hullDark', box(0.24, 0.09, 0.052), 1.20, 0.80, -3.46);
   P.add('hullDark', cylZ(0.11, 0.048, 14), 1.06, 1.13, -3.47);
   P.add('hull', cylZ(0.068, 0.050, 14), 1.06, 1.13, -3.502);
-  for (const x of [-0.58, 0.52]) {
+  [-0.58, 0.52].forEach((x) => {
     P.add('hullDark', cylZ(0.085, 0.045, 12), x, 0.69, -3.48);
     P.add('hull', cylZ(0.052, 0.048, 12), x, 0.69, -3.505);
-  }
+  });
   P.add('hullDark', box(0.055, 0.30, 0.050), 1.34, 0.78, -3.46);
   // cage stays run FORWARD to the hull's upper-band rake face (the lower
   // band pinches to halfW 0.93 back here — a y-0.66 stay lands in air)
-  for (const s of [-1, 1]) P.add('hullDark', box(0.03, 0.03, 0.50), s * 1.30, 0.95, -3.21);
+  [-1, 1].forEach((s) => P.add('hullDark', box(0.03, 0.03, 0.50), s * 1.30, 0.95, -3.21));
   widthAnchor(P, 1.89, 0.95, -1.60);
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
     const side = s < 0 ? 'left' : 'right';
     const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
@@ -6789,7 +6681,7 @@ function buildT90MS(P: T90BuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.075,
     });
     P.add('hullDark', box(0.38, 0.035, 0.060), s * 1.53, 1.075, 3.345);
-  }
+  });
   P.hullG.userData.t90MSFrontMudguardReceipt = Object.freeze({
     labels: Object.freeze(tagilFrontGuardLabels),
     sides: 2,
@@ -6865,12 +6757,12 @@ function buildT90MS(P: T90BuilderPort): void {
   P.add('turretDark', box(0.54, 0.40, 0.04), 0, 0.20, 1.42, -0.32, 0, 0);   // V-vertex gap plate (§B2)
   });
   // smoke banks behind the cheek shoulder (print smokecaps seat)
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     const sb = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040, len: 0.26, pitch: -0.42, splay: 0.30, arc: 0.5, spacing: 0.10 });
     sb.position.set(s * 1.44, 0.62, -0.42);
     sb.rotation.y = s * 1.05;
     P.turretG.add(sb);
-  }
+  });
   // ---- the BIG removable bustle — CRITIC FIX (defect 12 "invisible in
   // plan"): widened to the print's ±1.08 body (roof 2.14w, underside
   // 1.70w, to world -2.79) with SEAMED/LATCHED module rows down both
@@ -6881,7 +6773,7 @@ function buildT90MS(P: T90BuilderPort): void {
     [-2.70, 0.26, 0.62, -0.99, 0.99, -0.96, 0.96, -0.90, 0.90],
   ]));
   P.add('turretDark', box(1.90, 0.32, 0.03), 0, 0.44, -2.72);
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     // LADDER-R1 (plan receipts x ±1.06..±1.32): the print's module row
     // TAPERS with the bustle — a 3-step cascade (outer faces 1.35 -> 1.275
     // -> 1.135) replaces the uniform ±1.35 run; seam/latch grammar kept
@@ -6899,16 +6791,16 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('turretDark', box(0.09, 0.02, 0.012), s * 1.295, 0.42, -1.135);   // row end seam
     P.add('turretDark', box(0.14, 0.06, 0.06), s * 1.12, 0.42, -1.85);      // B-step mount brackets onto the bustle wall (§B2)
     P.add('turretDark', box(0.14, 0.06, 0.06), s * 1.12, 0.42, -2.12);
-  }
+  });
   // rear slat cage — CRITIC FIX (defect 10 "louver grille inset"): the
   // dark backdrop plate is GONE; the lattice STANDS OFF the bustle tail
   // with open air/shadow behind (print cage -3.27 behind bustle -2.79;
   // merkava authored-open-structure class), carried on four struts.
   P.add('turretDetail', box(1.70, 0.028, 0.05), 0, 0.62, -3.03);
   P.add('turretDetail', box(1.70, 0.028, 0.05), 0, 0.24, -3.03);
-  for (const by of [0.335, 0.43, 0.525]) P.add('turretDetail', box(1.66, 0.022, 0.044), 0, by, -3.025);
-  for (const bx of [-0.80, -0.40, 0, 0.40, 0.80]) P.add('turretDetail', box(0.024, 0.40, 0.05), bx, 0.43, -3.03);
-  for (const bx of [-0.72, -0.24, 0.24, 0.72]) P.add('turretDark', box(0.03, 0.03, 0.34), bx, 0.43, -2.86);   // standoff struts onto the bustle tail (LADDER-R1: reach the moved-forward tail plate)
+  [0.335, 0.43, 0.525].forEach((by) => P.add('turretDetail', box(1.66, 0.022, 0.044), 0, by, -3.025));
+  [-0.80, -0.40, 0, 0.40, 0.80].forEach((bx) => P.add('turretDetail', box(0.024, 0.40, 0.05), bx, 0.43, -3.03));
+  [-0.72, -0.24, 0.24, 0.72].forEach((bx) => P.add('turretDark', box(0.03, 0.03, 0.34), bx, 0.43, -2.86));   // standoff struts onto the bustle tail (LADDER-R1: reach the moved-forward tail plate)
   // ---- roof ensemble ON the bustle (the Tagil read): UDP T05BV-1 RWS
   // center-right as a LOW-PROFILE station (pintle sunk into the bustle,
   // receiver top at the 2.25w dims line — the t90a Kord recipe; the
@@ -6916,7 +6808,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // commander sight left as a thin-neck 2-col spike (p95-legal) ----
   {
     const { torus, xform } = KIT;
-    const ax = 0.34, ay = 0.485, az = -1.72, yaw = 0.28, elev = -0.16;
+    const ax = 0.34, ay = 0.485, az = -1.72, yaw = 0.28;
     P.add('turret', cylY(0.17, 0.19, 0.055, 14), ax, 0.725, az);       // slew drum on the 2.14 roof
     P.add('turretDark', torus(0.185, 0.014, 18), ax, 0.703, az);
     P.add('turretDark', xform(box(0.05, 0.20, 0.06), -0.15, 0.13, 0), ax, ay, az, 0, yaw, 0);   // yoke posts (emerge from the drum)
@@ -6924,12 +6816,12 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('turretDetail', xform(box(0.10, 0.12, 0.10), 0.19, 0.22, 0.25), ax, ay, az, 0, yaw, 0);  // sensor pod (top 2.22w)
     P.add('turretDark', xform(box(0.085, 0.09, 0.012), 0.19, 0.22, 0.305), ax, ay, az, 0, yaw, 0);
     P.add('turretGlass', xform(box(0.065, 0.07, 0.008), 0.19, 0.22, 0.308), ax, ay, az, 0, yaw, 0);
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', ammo: true });
     mg.position.set(ax, ay, az);
     mg.rotation.y = yaw;   // MG law §5.29: prominent, forward-biased
     P.turretG.add(mg);
-    const fwd = 0.91 * Math.cos(-elev);
-    muzzleTipDot(P, ax + fwd * Math.sin(yaw), ay + 0.33 + 0.91 * Math.sin(elev), az + fwd * Math.cos(yaw), 0.014, { ry: yaw });
+    const fwd = 0.91;
+    muzzleTipDot(P, ax + fwd * Math.sin(yaw), ay + 0.33, az + fwd * Math.cos(yaw), 0.014, { ry: yaw });
   }
   // LADDER-R1: pano head SUNK to the 2.24w crown line — its two spike
   // columns are re-budgeted to the print-true 4.73 whip mast (heightM p95

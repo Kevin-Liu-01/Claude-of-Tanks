@@ -14,7 +14,7 @@
 export interface FeaturedShot {
   readonly img: string;
   readonly bootImg?: string;
-  readonly cap: string;
+  readonly capKey: string;
   readonly maps?: readonly string[];
   readonly focal: string;
   readonly handmade?: boolean;
@@ -25,90 +25,90 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/featured/f7_studio_t90_column_fire.webp',
     bootImg: '/media/featured/f7_studio_t90_column_fire.boot.webp',
-    cap: 'Scene Studio — T-90 column fire',
+    capKey: 'garage.featuredShot.sceneStudioT90ColumnFire',
     maps: ['verdant', 'frontier'], focal: '50% 48%', handmade: true,
   },
   {
     img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
-    cap: 'Scene Studio — Strv Steinburg duel',
+    capKey: 'garage.featuredShot.sceneStudioStrvSteinburgDuel',
     maps: ['urban', 'foundry', 'railyard', 'caldera', 'ruinspires', 'blackglass'],
     focal: '50% 52%', handmade: true,
   },
   {
     img: '/media/featured/f9_studio_fjord_firefight.webp',
-    cap: 'Scene Studio — Fjord firefight',
+    capKey: 'garage.featuredShot.sceneStudioFjordFirefight',
     maps: ['winter', 'fjord', 'alpine'], focal: '50% 50%', handmade: true,
   },
   {
     img: '/media/featured/f8_studio_m1_firefight.webp',
-    cap: 'Scene Studio — M1 firefight', focal: '50% 50%', handmade: true,
+    capKey: 'garage.featuredShot.sceneStudioM1Firefight', focal: '50% 50%', handmade: true,
   },
   {
     img: '/media/featured/f10_studio_urban_crossfire.webp',
-    cap: 'Scene Studio — urban crossfire', focal: '50% 50%', handmade: true,
+    capKey: 'garage.featuredShot.sceneStudioUrbanCrossfire', focal: '50% 50%', handmade: true,
   },
   {
     img: '/media/presentation-r1/12_urban_crossfire_x.webp',
-    cap: 'Steinburg — crossfire X',
+    capKey: 'garage.featuredShot.steinburgCrossfireX',
     maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/02_desert_rooftop_dive.webp',
-    cap: 'Sirocco Wadi — rooftop dive',
+    capKey: 'garage.featuredShot.siroccoWadiRooftopDive',
     maps: ['desert', 'badlands', 'delta', 'monsoon', 'titan_gorge', 'skybridge'],
     focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/03_desert_muzzle_worm.webp',
-    cap: 'Sirocco Wadi — muzzle worm', focal: '50% 50%',
+    capKey: 'garage.featuredShot.siroccoWadiMuzzleWorm', focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/05_winter_ice_breaker.webp',
-    cap: 'Frosthollow — ice breaker', focal: '50% 52%',
+    capKey: 'garage.featuredShot.frosthollowIceBreaker', focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/08_winter_village_hell.webp',
-    cap: 'Frosthollow — village hell', maps: ['winter', 'fjord', 'alpine'], focal: '50% 50%',
+    capKey: 'garage.featuredShot.frosthollowVillageHell', maps: ['winter', 'fjord', 'alpine'], focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/10_urban_overpass_dive.webp',
-    cap: 'Steinburg — overpass dive', focal: '50% 52%',
+    capKey: 'garage.featuredShot.steinburgOverpassDive', focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/15_verdant_column_massacre.webp',
-    cap: 'Verdant Fields — column massacre', maps: ['verdant', 'frontier'], focal: '50% 50%',
+    capKey: 'garage.featuredShot.verdantFieldsColumnMassacre', maps: ['verdant', 'frontier'], focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/16_verdant_meadow_duel.webp',
-    cap: 'Verdant Fields — meadow duel', maps: ['coastal'], focal: '50% 50%',
+    capKey: 'garage.featuredShot.verdantFieldsMeadowDuel', maps: ['coastal'], focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/23_autumn_gold_inferno.webp',
-    cap: 'Amberford — gold inferno', focal: '50% 52%',
+    capKey: 'garage.featuredShot.amberfordGoldInferno', focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/24_autumn_orchard_stand.webp',
-    cap: 'Amberford — orchard stand', maps: ['autumn'], focal: '50% 50%',
+    capKey: 'garage.featuredShot.amberfordOrchardStand', maps: ['autumn'], focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/25_steppe_horizon_charge.webp',
-    cap: 'Tarkhan Steppe — horizon charge', maps: ['steppe'], focal: '50% 50%',
+    capKey: 'garage.featuredShot.tarkhanSteppeHorizonCharge', maps: ['steppe'], focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/32_desert_ram_abramsx_t90m.webp',
-    cap: 'Sirocco Wadi — AbramsX versus T-90M', focal: '50% 52%',
+    capKey: 'garage.featuredShot.siroccoWadiAbramsxVsT90m', focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/33_desert_overwatch_line.webp',
-    cap: 'Sirocco Wadi — overwatch line', focal: '50% 50%',
+    capKey: 'garage.featuredShot.siroccoWadiOverwatchLine', focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/studio_action_05_5050ms.webp',
-    cap: 'Scene Studio — burning advance', focal: '50% 55%',
+    capKey: 'garage.featuredShot.sceneStudioBurningAdvance', focal: '50% 55%',
   },
   {
     img: '/media/feature-evidence-r2/studio-action.webp',
-    cap: 'Scene Studio — directed urban battle', focal: '50% 52%', handmade: true,
+    capKey: 'garage.featuredShot.sceneStudioDirectedUrbanBattle', focal: '50% 52%', handmade: true,
   },
 ]);
 

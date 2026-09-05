@@ -47,6 +47,7 @@ import type {
   StudioActor as StudioPanelActor,
   StudioPanelApi,
 } from '../ui/studioPanel.ts';
+import { t } from '../ui/i18n.ts';
 import {
   STUDIO_MAX_DURATION_MS,
   normalizeStoryboard,
@@ -2663,9 +2664,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return world?.mapId || id;
     };
     mapChange = transition.run(work, {
-      kicker: 'Scene Studio',
+      kicker: t('transition.kicker.sceneStudio'),
       title: getMapConfig(id).name || id,
-      sub: 'Switching battlefield',
+      sub: t('transition.sub.switchingBattlefield'),
       mapId: id,
       minShowMs: 360,
     });
@@ -2799,9 +2800,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         await work(opts.onProgress || (() => {}));
       } else {
         await transition.run(work, {
-          kicker: 'Scene Studio',
+          kicker: t('transition.kicker.sceneStudio'),
           title: getMapConfig(mapId).name || mapId,
-          sub: 'Staging rig · Free camera',
+          sub: t('transition.sub.stagingRig'),
           mapId,
           minShowMs: 360,
         });
@@ -2829,7 +2830,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!active || exiting) return;
     exiting = true;
     transition.run(() => doExit(), {
-      kicker: 'Scene Studio', title: 'Garage',
+      kicker: t('transition.kicker.sceneStudio'), title: t('transition.title.garage'),
       mapId: getWorld()?.mapId,
       progress: false, minShowMs: 250,
     }).finally(() => { exiting = false; });

@@ -143,10 +143,14 @@ function measurePortraitBounds(img: HTMLImageElement): PortraitBounds | null {
   };
 }
 
-function applyPortraitFrame(img: HTMLImageElement, bounds: PortraitBounds): void {
+function revealPortrait(img: HTMLImageElement): void {
+  img.dataset.cotPortraitReady = 'true';
+}
+
+function applyPortraitFrame(img: HTMLImageElement, bounds: PortraitBounds): boolean {
   const boxWidth = img.clientWidth;
   const boxHeight = img.clientHeight;
-  if (!(boxWidth > 0) || !(boxHeight > 0)) return;
+  if (!(boxWidth > 0) || !(boxHeight > 0)) return false;
   const { x, y, scale } = containedPortraitPlacement(
     bounds,
     bounds.naturalWidth,
@@ -158,19 +162,37 @@ function applyPortraitFrame(img: HTMLImageElement, bounds: PortraitBounds): void
   img.style.setProperty('--cot-thumb-y', `${y.toFixed(2)}px`);
   img.style.setProperty('--cot-thumb-scale', scale.toFixed(4));
   img.dataset.cotPortraitFramed = 'true';
+  revealPortrait(img);
+  return true;
 }
 
 async function normalizePortrait(img: HTMLImageElement): Promise<void> {
   if (!(img.complete && img.naturalWidth > 0)) return;
   const url = img.currentSrc || img.src;
+  try {
+    await img.decode();
+  } catch (_) {
+    // A completed same-origin image can still be measured when decode() is
+    // unavailable or rejects after the load event. The error guard owns true
+    // resource failures and advances to the next packaged portrait.
+  }
+  if (!(img.complete && img.naturalWidth > 0) || (img.currentSrc || img.src) !== url) return;
   let pending = portraitBoundsByUrl.get(url);
   if (!pending) {
     pending = Promise.resolve().then(() => measurePortraitBounds(img)).catch(() => null);
     portraitBoundsByUrl.set(url, pending);
   }
   const bounds = await pending;
-  if (!bounds || (img.currentSrc || img.src) !== url) return;
-  applyPortraitFrame(img, bounds);
+  if ((img.currentSrc || img.src) !== url) return;
+  // Same-origin generated portraits always provide measurable alpha bounds.
+  // If a browser blocks canvas readback, reveal the already loaded image with
+  // the CSS fallback frame rather than leaving a permanent empty card.
+  if (!bounds) {
+    img.dataset.cotPortraitFramed = 'fallback';
+    revealPortrait(img);
+    return;
+  }
+  const framed = applyPortraitFrame(img, bounds);
   if (typeof ResizeObserver === 'function') {
     portraitResizeObserver ||= new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -182,6 +204,12 @@ async function normalizePortrait(img: HTMLImageElement): Promise<void> {
       }
     });
     portraitResizeObserver.observe(img);
+  } else if (!framed) {
+    // Legacy browsers without ResizeObserver cannot retry after a hidden card
+    // gains dimensions, so keep their loaded portrait available at the stable
+    // CSS frame instead of leaving it transparent forever.
+    img.dataset.cotPortraitFramed = 'fallback';
+    revealPortrait(img);
   }
 }
 
@@ -226,6 +254,7 @@ function advanceFallback(img: HTMLImageElement): void {
   const next = Number(img.dataset.cotIconFallback || 0) + 1;
   if (next < PORTRAIT_SOURCES.length) {
     img.dataset.cotPortraitFramed = 'false';
+    img.dataset.cotPortraitReady = 'false';
     img.style.removeProperty('--cot-thumb-x');
     img.style.removeProperty('--cot-thumb-y');
     img.style.removeProperty('--cot-thumb-scale');
@@ -237,6 +266,7 @@ function advanceFallback(img: HTMLImageElement): void {
   // A missing asset should never expose the browser's broken-image glyph or
   // a blank rectangular plate. Preserve layout while hiding only the image.
   img.dataset.cotIconFallback = String(PORTRAIT_SOURCES.length);
+  img.dataset.cotPortraitReady = 'false';
   img.style.visibility = 'hidden';
 }
 
@@ -266,6 +296,8 @@ function revealTankThumb(img: HTMLImageElement): void {
   const expected = portraitUrl(id, fallback);
   if ((img.getAttribute('src') || '') !== expected) {
     img.dataset.cotIconFallback = String(fallback);
+    img.dataset.cotPortraitFramed = 'false';
+    img.dataset.cotPortraitReady = 'false';
     img.style.visibility = '';
     img.src = expected;
   }

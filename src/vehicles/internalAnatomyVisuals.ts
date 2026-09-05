@@ -370,6 +370,390 @@ function proxyGroup(
   return group;
 }
 
+type PutModulePart = (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rx?: number,
+  ry?: number,
+  rz?: number,
+  material?: MaterialPort,
+) => THREE.Mesh;
+
+type AddModuleRounds = (
+  radius: number,
+  caseHeight: number,
+  tipHeight: number,
+  placements: readonly RoundPlacement[],
+  tilt?: number,
+) => void;
+
+interface ModuleGeometryContext {
+  readonly volume: InternalModuleVolumePort;
+  readonly modern: boolean;
+  readonly caliberRadius: number;
+  readonly sx: number;
+  readonly sy: number;
+  readonly sz: number;
+  readonly put: PutModulePart;
+  readonly rounds: AddModuleRounds;
+  readonly steelMaterial: MaterialPort;
+}
+
+function buildCanisterAmmoGeometry(context: ModuleGeometryContext): void {
+  const { caliberRadius, sx, sy, sz, put, rounds, steelMaterial } = context;
+  const rows = Math.max(2, Math.min(5, Math.floor(sy / 0.18)));
+  const columns = Math.max(2, Math.min(7, Math.floor(sx / 0.16)));
+  const radius = Math.min(caliberRadius || 0.05, sx / columns * 0.3, sy / rows * 0.3);
+  const length = sz * 0.72;
+  const placements = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      placements.push({
+        x: -sx / 2 + (column + 0.5) * sx / columns,
+        y: -sy / 2 + (row + 0.5) * sy / rows,
+        z: -length * 0.08,
+        rx: Math.PI / 2,
+      });
+    }
+  }
+  rounds(radius, length * 0.72, Math.min(length * 0.18, radius * 5), placements);
+  for (let row = 1; row < rows; row += 1) {
+    put(new THREE.BoxGeometry(sx * 0.96, 0.025, sz * 0.9),
+      0, -sy / 2 + row * sy / rows, 0, 0, 0, 0, steelMaterial);
+  }
+}
+
+function buildBustleAmmoGeometry(context: ModuleGeometryContext): void {
+  const { caliberRadius, sx, sy, sz, put, rounds, steelMaterial } = context;
+  const targetRadius = caliberRadius > 0 ? caliberRadius : 0.05;
+  const nx = Math.max(2, Math.min(8, Math.floor(sx / Math.max(0.13, targetRadius * 2.7))));
+  const ny = Math.max(1, Math.min(3, Math.floor(sy / Math.max(0.15, targetRadius * 3.1))));
+  const radius = Math.min(targetRadius, (sx / nx) * 0.36, (sy / ny) * 0.36);
+  const caseHeight = sz * 0.52;
+  const tipHeight = Math.min(sz * 0.2, radius * 5.5);
+  const placements = [];
+  for (let ix = 0; ix < nx; ix += 1) {
+    for (let iy = 0; iy < ny; iy += 1) {
+      placements.push({
+        x: -sx / 2 + (ix + 0.5) * (sx / nx),
+        y: -sy / 2 + (iy + 0.5) * (sy / ny),
+        z: -sz * 0.08,
+        rx: Math.PI / 2,
+      });
+    }
+  }
+  rounds(radius, caseHeight, tipHeight, placements);
+  for (let iy = 1; iy < ny; iy += 1) {
+    put(new THREE.BoxGeometry(sx * 0.96, sy * 0.03, sz * 0.7),
+      0, -sy / 2 + iy * (sy / ny), -sz * 0.08);
+  }
+  put(new THREE.BoxGeometry(sx * 0.96, sy * 0.94, 0.05), 0, 0, sz / 2 - 0.03);
+  for (const side of [-1, 1]) {
+    put(new THREE.BoxGeometry(0.03, sy * 0.9, sz * 0.7),
+      side * (sx / 2 - 0.015), 0, -sz * 0.08, 0, 0, 0, steelMaterial);
+  }
+}
+
+function buildHullAmmoGeometry(context: ModuleGeometryContext): void {
+  const { caliberRadius, sx, sy, sz, put, rounds } = context;
+  const targetRadius = caliberRadius > 0 ? caliberRadius : 0.055;
+  const nx = Math.max(2, Math.min(6, Math.floor(sx / Math.max(0.12, targetRadius * 3.0))));
+  const nz = Math.max(2, Math.min(8, Math.floor(sz / Math.max(0.12, targetRadius * 3.0))));
+  const radius = Math.min(targetRadius, (sx / nx) * 0.32, (sz / nz) * 0.32);
+  const caseHeight = sy * 0.62;
+  const tipHeight = Math.min(sy * 0.26, radius * 5.5);
+  const placements = [];
+  for (let ix = 0; ix < nx; ix += 1) {
+    for (let iz = 0; iz < nz; iz += 1) {
+      placements.push({
+        x: -sx / 2 + (ix + 0.5) * (sx / nx),
+        y: -sy / 2 + sy * 0.06 + caseHeight / 2,
+        z: -sz / 2 + (iz + 0.5) * (sz / nz),
+      });
+    }
+  }
+  rounds(radius, caseHeight, tipHeight, placements);
+  put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
+}
+
+function buildAmmoModuleGeometry(context: ModuleGeometryContext, form: string): void {
+  const { volume, caliberRadius, sx, sy, sz, put, rounds, steelMaterial } = context;
+  if (/carousel|fixedGunMagazine/i.test(form)) {
+    const ringRadius = Math.max(0.16, Math.min(sx, sz) * 0.34);
+    const targetRadius = caliberRadius > 0 ? caliberRadius : 0.05;
+    const count = Math.max(8, Math.min(22,
+      Math.round((Math.PI * 2 * ringRadius) / Math.max(0.10, targetRadius * 2.65))));
+    const radius = Math.min(targetRadius, ringRadius * 0.22);
+    const caseHeight = sy * 0.5;
+    const tipHeight = Math.min(sy * 0.2, radius * 5.5);
+    const placements = [];
+    for (let index = 0; index < count; index += 1) {
+      const angle = (index / count) * Math.PI * 2;
+      placements.push({
+        x: Math.cos(angle) * ringRadius,
+        y: -sy / 2 + sy * 0.1 + caseHeight / 2,
+        z: Math.sin(angle) * ringRadius,
+      });
+    }
+    rounds(radius, caseHeight, tipHeight, placements);
+    put(new THREE.CylinderGeometry(ringRadius * 1.28, ringRadius * 1.28, sy * 0.1, 20),
+      0, -sy / 2 + sy * 0.05, 0);
+    put(new THREE.TorusGeometry(ringRadius * 1.2, Math.min(sy * 0.07, 0.04), 8, 24),
+      0, -sy / 2 + sy * 0.17, 0, Math.PI / 2, 0, 0, steelMaterial);
+    return;
+  }
+  if (/individualCanisters/i.test(form)) {
+    buildCanisterAmmoGeometry(context);
+    return;
+  }
+  if (volume.turretLocal || /bustle|blowOff/i.test(form)) {
+    buildBustleAmmoGeometry(context);
+    return;
+  }
+  buildHullAmmoGeometry(context);
+}
+
+function buildLoaderModuleGeometry(
+  context: ModuleGeometryContext,
+  kind: string,
+  form: string,
+): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  if (kind === 'autoloader' && /carousel|basket/i.test(form)) {
+    const radius = Math.max(0.15, Math.min(sx, sz) * 0.38);
+    put(new THREE.CylinderGeometry(radius, radius * 0.92, sy * 0.18, 20),
+      0, -sy * 0.36, 0);
+    put(new THREE.TorusGeometry(radius * 0.82, Math.min(0.045, sy * 0.08), 8, 24),
+      0, -sy * 0.18, 0, Math.PI / 2, 0, 0, steelMaterial);
+    const armLength = Math.min(sz * 0.62, sy * 0.9);
+    put(new THREE.BoxGeometry(sx * 0.12, sy * 0.12, armLength), 0, sy * 0.08, 0, 0, 0, 0, steelMaterial);
+    put(new THREE.BoxGeometry(sx * 0.46, sy * 0.1, sz * 0.14), 0, sy * 0.28, sz * 0.2);
+    return;
+  }
+  if (kind === 'autoloader') {
+    put(new THREE.BoxGeometry(sx * 0.9, sy * 0.82, sz * 0.82));
+    const railY = sy * 0.22;
+    for (const side of [-1, 1]) {
+      put(new THREE.BoxGeometry(sx * 0.05, sy * 0.08, sz * 0.9),
+        side * sx * 0.38, railY, 0, 0, 0, 0, steelMaterial);
+    }
+    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.12, sz * 0.12), 0, railY, sz * 0.28, 0, 0, 0, steelMaterial);
+    return;
+  }
+  if (kind === 'feedSystem') {
+    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.62, sz * 0.6), 0, 0, -sz * 0.08);
+    for (const side of [-1, 1]) {
+      put(new THREE.TorusGeometry(Math.min(sx, sy) * 0.24, Math.min(sx, sy) * 0.06, 6, 16),
+        side * sx * 0.22, sy * 0.08, sz * 0.2, Math.PI / 2, 0, 0, steelMaterial);
+      put(new THREE.BoxGeometry(sx * 0.12, sy * 0.18, sz * 0.74),
+        side * sx * 0.22, -sy * 0.08, 0, 0, 0, 0, steelMaterial);
+    }
+    return;
+  }
+
+  const count = Math.max(2, Math.min(6, Math.floor(sx / Math.max(0.12, sy * 0.32))));
+  const radius = Math.min(sy, sx / count) * 0.28;
+  for (let index = 0; index < count; index += 1) {
+    const x = -sx / 2 + (index + 0.5) * sx / count;
+    put(new THREE.CylinderGeometry(radius, radius, sz * 0.76, 10),
+      x, 0, 0, Math.PI / 2, 0, 0);
+    put(new THREE.ConeGeometry(radius * 0.88, sz * 0.14, 10),
+      x, 0, sz * 0.45, Math.PI / 2, 0, 0, steelMaterial);
+  }
+}
+
+function buildModernFuelGeometry(context: ModuleGeometryContext): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  const count = sx > sy * 1.7 ? 2 : 1;
+  const offsets = count === 2 ? [-0.22, 0.22] : [0];
+  const radius = Math.max(0.07, Math.min(sy * 0.42, (sx / count) * 0.36, sz * 0.4));
+  const cellLength = sz * 0.78;
+  for (const offset of offsets) {
+    const x = sx * offset;
+    put(new THREE.CylinderGeometry(radius, radius, cellLength, 14),
+      x, -sy * 0.03, 0, Math.PI / 2, 0, 0);
+    put(new THREE.SphereGeometry(radius, 12, 8), x, -sy * 0.03, cellLength / 2);
+    put(new THREE.SphereGeometry(radius, 12, 8), x, -sy * 0.03, -cellLength / 2);
+    for (const zScale of [-0.24, 0.24]) {
+      put(new THREE.TorusGeometry(radius * 1.04, radius * 0.11, 6, 18),
+        x, -sy * 0.03, sz * zScale, 0, 0, 0, steelMaterial);
+      put(new THREE.BoxGeometry(radius * 1.7, Math.max(0.04, sy * 0.5 - radius * 0.4), radius * 0.5),
+        x, -sy * 0.03 - radius * 0.78, sz * zScale, 0, 0, 0, steelMaterial);
+    }
+  }
+  const fittingRadius = Math.min(sx, sz) * 0.11;
+  const fittingX = sx * offsets[offsets.length - 1];
+  put(new THREE.CylinderGeometry(fittingRadius * 0.55, fittingRadius * 0.55, sy * 0.24, 8),
+    fittingX, sy * 0.3, sz * 0.1, 0, 0, 0, steelMaterial);
+  put(new THREE.CylinderGeometry(fittingRadius, fittingRadius, sy * 0.07, 10),
+    fittingX, sy * 0.43, sz * 0.1, 0, 0, 0, steelMaterial);
+  put(new THREE.CylinderGeometry(fittingRadius * 0.4, fittingRadius * 0.4, sz * 0.55, 6),
+    -sx * 0.1, -sy * 0.34, 0, Math.PI / 2, 0, 0, steelMaterial);
+}
+
+function buildLegacyFuelGeometry(context: ModuleGeometryContext): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  const radius = Math.max(0.05, Math.min(sy * 0.42, sx * 0.21));
+  put(new THREE.CylinderGeometry(radius, radius, sz * 0.85, 10),
+    -sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
+  put(new THREE.CylinderGeometry(radius, radius, sz * 0.85, 10),
+    sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
+  put(new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, radius * 0.5, 8),
+    -sx * 0.22, radius * 1.05, 0);
+  put(new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, radius * 0.5, 8),
+    sx * 0.22, radius * 1.05, 0);
+  put(new THREE.CylinderGeometry(radius * 0.16, radius * 0.16, sx * 0.44, 6),
+    0, 0, sz * 0.28, 0, 0, Math.PI / 2);
+  for (const zScale of [-0.26, 0.26]) {
+    put(new THREE.TorusGeometry(radius * 1.05, radius * 0.1, 6, 16),
+      -sx * 0.22, 0, sz * zScale, 0, 0, 0, steelMaterial);
+    put(new THREE.TorusGeometry(radius * 1.05, radius * 0.1, 6, 16),
+      sx * 0.22, 0, sz * zScale, 0, 0, 0, steelMaterial);
+  }
+}
+
+function buildGasTurbineGeometry(context: ModuleGeometryContext): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  const radius = Math.min(sx, sy) * 0.28;
+  put(new THREE.CylinderGeometry(radius, radius * 0.88, sz * 0.78, 18),
+    0, 0, 0, Math.PI / 2, 0, 0);
+  for (let index = -2; index <= 2; index += 1) {
+    put(new THREE.TorusGeometry(radius * (1 - Math.abs(index) * 0.035), radius * 0.08, 7, 20),
+      0, 0, index * sz * 0.13, 0, 0, 0, steelMaterial);
+  }
+  put(new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, sz * 0.18, 16),
+    0, 0, sz * 0.42, Math.PI / 2, 0, 0, steelMaterial);
+  for (const side of [-1, 1]) {
+    put(new THREE.BoxGeometry(sx * 0.18, sy * 0.44, sz * 0.66),
+      side * sx * 0.34, -sy * 0.1, 0, 0, 0, 0, steelMaterial);
+  }
+}
+
+function buildTwinPowerpackGeometry(context: ModuleGeometryContext): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  for (const side of [-1, 1]) {
+    put(new THREE.BoxGeometry(sx * 0.4, sy * 0.54, sz * 0.72), side * sx * 0.24, -sy * 0.1, 0);
+    put(new THREE.CylinderGeometry(sy * 0.12, sy * 0.12, sz * 0.62, 10),
+      side * sx * 0.24, sy * 0.2, 0, Math.PI / 2, 0, 0, steelMaterial);
+  }
+  put(new THREE.BoxGeometry(sx * 0.9, sy * 0.12, sz * 0.18), 0, -sy * 0.38, sz * 0.28, 0, 0, 0, steelMaterial);
+}
+
+function buildPistonEngineGeometry(context: ModuleGeometryContext): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  put(new THREE.BoxGeometry(sx * 0.84, sy * 0.42, sz * 0.8), 0, -sy * 0.22, 0);
+  put(new THREE.BoxGeometry(sx * 0.58, sy * 0.14, sz * 0.58),
+    0, -sy * 0.44, 0, 0, 0, 0, steelMaterial);
+  put(new THREE.BoxGeometry(sx * 0.54, sy * 0.3, sz * 0.6), 0, sy * 0.06, 0);
+  put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
+    -sx * 0.15, sy * 0.25, 0, 0, 0, 0, steelMaterial);
+  put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
+    sx * 0.15, sy * 0.25, 0, 0, 0, 0, steelMaterial);
+  for (let index = 0; index < 5; index += 1) {
+    put(new THREE.BoxGeometry(sx * 0.68, sy * 0.4, sz * 0.045),
+      0, sy * 0.04, -sz * 0.26 + index * (sz * 0.52 / 4), 0, 0, 0, steelMaterial);
+  }
+  const fanRadius = Math.min(sx, sz) * 0.27;
+  put(new THREE.TorusGeometry(fanRadius * 1.12, fanRadius * 0.14, 8, 24),
+    -sx * 0.2, sy * 0.34, 0, Math.PI / 2, 0, 0, steelMaterial);
+  put(new THREE.CylinderGeometry(fanRadius, fanRadius, sy * 0.04, 18),
+    -sx * 0.2, sy * 0.31, 0);
+  for (let blade = 0; blade < 5; blade += 1) {
+    put(new THREE.BoxGeometry(fanRadius * 1.9, sy * 0.03, fanRadius * 0.24),
+      -sx * 0.2, sy * 0.345, 0, 0, (blade / 5) * Math.PI, 0, steelMaterial);
+  }
+  put(new THREE.CylinderGeometry(fanRadius * 0.22, fanRadius * 0.22, sy * 0.14, 8),
+    -sx * 0.2, sy * 0.39, 0, 0, 0, 0, steelMaterial);
+  put(new THREE.CylinderGeometry(fanRadius * 0.5, fanRadius * 0.5, sx * 0.3, 10),
+    sx * 0.24, sy * 0.3, -sz * 0.18, 0, 0, Math.PI / 2, steelMaterial);
+  for (const side of [-1, 1]) {
+    put(new THREE.CylinderGeometry(sy * 0.095, sy * 0.095, sz * 0.7, 8),
+      side * sx * 0.38, sy * 0.04, 0, Math.PI / 2, 0, 0, steelMaterial);
+    for (let index = 0; index < 3; index += 1) {
+      put(new THREE.CylinderGeometry(sy * 0.06, sy * 0.06, sx * 0.18, 6),
+        side * sx * 0.3, sy * 0.14, -sz * 0.2 + index * sz * 0.2,
+        0, 0, side * (Math.PI / 2.7), steelMaterial);
+    }
+  }
+}
+
+function buildPowerModuleGeometry(
+  context: ModuleGeometryContext,
+  kind: string,
+  form: string,
+): void {
+  if (kind === 'fuelTank') {
+    if (context.modern) buildModernFuelGeometry(context);
+    else buildLegacyFuelGeometry(context);
+    return;
+  }
+  if (/gasTurbine/i.test(form)) buildGasTurbineGeometry(context);
+  else if (/twinFrontPowerpack/i.test(form)) buildTwinPowerpackGeometry(context);
+  else buildPistonEngineGeometry(context);
+}
+
+function buildAuxiliaryModuleGeometry(context: ModuleGeometryContext, kind: string): void {
+  const { sx, sy, sz, put, steelMaterial } = context;
+  if (kind === 'gun') {
+    const breechRadius = Math.min(sx, sy);
+    put(new THREE.BoxGeometry(sx * 0.6, sy * 0.74, sz * 0.4), 0, 0, -sz * 0.2);
+    put(new THREE.BoxGeometry(sx * 0.36, sy * 0.48, sz * 0.16), 0, -sy * 0.04, -sz * 0.46);
+    put(new THREE.CylinderGeometry(breechRadius * 0.28, breechRadius * 0.28, sz * 0.42, 12),
+      0, 0, sz * 0.2, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(breechRadius * 0.11, breechRadius * 0.11, sz * 0.62, 8),
+      sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(breechRadius * 0.11, breechRadius * 0.11, sz * 0.62, 8),
+      -sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
+    return;
+  }
+  if (kind === 'transmission') {
+    put(new THREE.BoxGeometry(sx * 0.82, sy * 0.66, sz * 0.72));
+    put(new THREE.CylinderGeometry(sy * 0.24, sy * 0.24, sx * 0.94, 12),
+      0, -sy * 0.12, 0, 0, 0, Math.PI / 2, steelMaterial);
+    for (const side of [-1, 1]) {
+      put(new THREE.TorusGeometry(sy * 0.28, sy * 0.07, 8, 18),
+        side * sx * 0.34, -sy * 0.12, 0, 0, Math.PI / 2, 0);
+    }
+    return;
+  }
+  if (kind === 'radio') {
+    put(new THREE.BoxGeometry(sx * 0.75, sy * 0.55, sz * 0.7), 0, -sy * 0.12, 0);
+    put(new THREE.CylinderGeometry(0.012, 0.012, sy * 0.7, 6), sx * 0.2, sy * 0.24, 0);
+    return;
+  }
+  if (kind === 'optics') {
+    put(new THREE.CylinderGeometry(Math.min(sx, sz) * 0.2, Math.min(sx, sz) * 0.2, sy * 0.7, 8),
+      0, -sy * 0.05, 0);
+    put(new THREE.BoxGeometry(sx * 0.5, sy * 0.22, sz * 0.5), 0, sy * 0.34, 0);
+    return;
+  }
+  if (kind === 'turretRing') {
+    const radius = Math.min(sx, sz) * 0.44;
+    put(new THREE.TorusGeometry(radius, Math.min(sy * 0.3, 0.06), 8, 28),
+      0, 0, 0, Math.PI / 2, 0, 0);
+    return;
+  }
+  put(new THREE.BoxGeometry(sx * 0.6, sy * 0.6, sz * 0.6));
+}
+
+function buildModuleGeometry(
+  context: ModuleGeometryContext,
+  kind: string,
+  form: string,
+): void {
+  if (kind === 'ammoRack') {
+    buildAmmoModuleGeometry(context, form);
+  } else if (kind === 'autoloader' || kind === 'feedSystem' || kind === 'missileRack') {
+    buildLoaderModuleGeometry(context, kind, form);
+  } else if (kind === 'fuelTank' || kind === 'engine') {
+    buildPowerModuleGeometry(context, kind, form);
+  } else {
+    buildAuxiliaryModuleGeometry(context, kind);
+  }
+}
+
 /**
  * Canonical recognizable module model used by both the kill cam and Gallery.
  * Geometry is sized from the combat volume, while era and caliber choose the
@@ -458,263 +842,19 @@ export function addInternalModuleModel(
     group.add(cases, tips);
   };
 
-  if (kind === 'ammoRack' && /carousel|fixedGunMagazine/i.test(form)) {
-    const ringRadius = Math.max(0.16, Math.min(sx, sz) * 0.34);
-    const targetRadius = caliberRadius > 0 ? caliberRadius : 0.05;
-    const count = Math.max(8, Math.min(22,
-      Math.round((Math.PI * 2 * ringRadius) / Math.max(0.10, targetRadius * 2.65))));
-    const radius = Math.min(targetRadius, ringRadius * 0.22);
-    const caseHeight = sy * 0.5;
-    const tipHeight = Math.min(sy * 0.2, radius * 5.5);
-    const placements = [];
-    for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2;
-      placements.push({
-        x: Math.cos(angle) * ringRadius,
-        y: -sy / 2 + sy * 0.1 + caseHeight / 2,
-        z: Math.sin(angle) * ringRadius,
-      });
-    }
-    rounds(radius, caseHeight, tipHeight, placements);
-    put(new THREE.CylinderGeometry(ringRadius * 1.28, ringRadius * 1.28, sy * 0.1, 20),
-      0, -sy / 2 + sy * 0.05, 0);
-    put(new THREE.TorusGeometry(ringRadius * 1.2, Math.min(sy * 0.07, 0.04), 8, 24),
-      0, -sy / 2 + sy * 0.17, 0, Math.PI / 2, 0, 0, steelMaterial);
-  } else if (kind === 'ammoRack' && /individualCanisters/i.test(form)) {
-    const rows = Math.max(2, Math.min(5, Math.floor(sy / 0.18)));
-    const columns = Math.max(2, Math.min(7, Math.floor(sx / 0.16)));
-    const radius = Math.min(caliberRadius || 0.05, sx / columns * 0.3, sy / rows * 0.3);
-    const length = sz * 0.72;
-    const placements = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < columns; column += 1) {
-        placements.push({
-          x: -sx / 2 + (column + 0.5) * sx / columns,
-          y: -sy / 2 + (row + 0.5) * sy / rows,
-          z: -length * 0.08,
-          rx: Math.PI / 2,
-        });
-      }
-    }
-    rounds(radius, length * 0.72, Math.min(length * 0.18, radius * 5), placements);
-    for (let row = 1; row < rows; row += 1) {
-      put(new THREE.BoxGeometry(sx * 0.96, 0.025, sz * 0.9),
-        0, -sy / 2 + row * sy / rows, 0, 0, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'ammoRack' && (volume.turretLocal || /bustle|blowOff/i.test(form))) {
-    const targetRadius = caliberRadius > 0 ? caliberRadius : 0.05;
-    const nx = Math.max(2, Math.min(8, Math.floor(sx / Math.max(0.13, targetRadius * 2.7))));
-    const ny = Math.max(1, Math.min(3, Math.floor(sy / Math.max(0.15, targetRadius * 3.1))));
-    const radius = Math.min(targetRadius, (sx / nx) * 0.36, (sy / ny) * 0.36);
-    const caseHeight = sz * 0.52;
-    const tipHeight = Math.min(sz * 0.2, radius * 5.5);
-    const placements = [];
-    for (let ix = 0; ix < nx; ix += 1) {
-      for (let iy = 0; iy < ny; iy += 1) {
-        placements.push({
-          x: -sx / 2 + (ix + 0.5) * (sx / nx),
-          y: -sy / 2 + (iy + 0.5) * (sy / ny),
-          z: -sz * 0.08,
-          rx: Math.PI / 2,
-        });
-      }
-    }
-    rounds(radius, caseHeight, tipHeight, placements);
-    for (let iy = 1; iy < ny; iy += 1) {
-      put(new THREE.BoxGeometry(sx * 0.96, sy * 0.03, sz * 0.7),
-        0, -sy / 2 + iy * (sy / ny), -sz * 0.08);
-    }
-    put(new THREE.BoxGeometry(sx * 0.96, sy * 0.94, 0.05), 0, 0, sz / 2 - 0.03);
-    for (const side of [-1, 1]) {
-      put(new THREE.BoxGeometry(0.03, sy * 0.9, sz * 0.7),
-        side * (sx / 2 - 0.015), 0, -sz * 0.08, 0, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'ammoRack') {
-    const targetRadius = caliberRadius > 0 ? caliberRadius : 0.055;
-    const nx = Math.max(2, Math.min(6, Math.floor(sx / Math.max(0.12, targetRadius * 3.0))));
-    const nz = Math.max(2, Math.min(8, Math.floor(sz / Math.max(0.12, targetRadius * 3.0))));
-    const radius = Math.min(targetRadius, (sx / nx) * 0.32, (sz / nz) * 0.32);
-    const caseHeight = sy * 0.62;
-    const tipHeight = Math.min(sy * 0.26, radius * 5.5);
-    const placements = [];
-    for (let ix = 0; ix < nx; ix += 1) {
-      for (let iz = 0; iz < nz; iz += 1) {
-        placements.push({
-          x: -sx / 2 + (ix + 0.5) * (sx / nx),
-          y: -sy / 2 + sy * 0.06 + caseHeight / 2,
-          z: -sz / 2 + (iz + 0.5) * (sz / nz),
-        });
-      }
-    }
-    rounds(radius, caseHeight, tipHeight, placements);
-    put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
-  } else if (kind === 'autoloader' && /carousel|basket/i.test(form)) {
-    const radius = Math.max(0.15, Math.min(sx, sz) * 0.38);
-    put(new THREE.CylinderGeometry(radius, radius * 0.92, sy * 0.18, 20),
-      0, -sy * 0.36, 0);
-    put(new THREE.TorusGeometry(radius * 0.82, Math.min(0.045, sy * 0.08), 8, 24),
-      0, -sy * 0.18, 0, Math.PI / 2, 0, 0, steelMaterial);
-    const armLength = Math.min(sz * 0.62, sy * 0.9);
-    put(new THREE.BoxGeometry(sx * 0.12, sy * 0.12, armLength), 0, sy * 0.08, 0, 0, 0, 0, steelMaterial);
-    put(new THREE.BoxGeometry(sx * 0.46, sy * 0.1, sz * 0.14), 0, sy * 0.28, sz * 0.2);
-  } else if (kind === 'autoloader') {
-    put(new THREE.BoxGeometry(sx * 0.9, sy * 0.82, sz * 0.82));
-    const railY = sy * 0.22;
-    for (const side of [-1, 1]) {
-      put(new THREE.BoxGeometry(sx * 0.05, sy * 0.08, sz * 0.9),
-        side * sx * 0.38, railY, 0, 0, 0, 0, steelMaterial);
-    }
-    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.12, sz * 0.12), 0, railY, sz * 0.28, 0, 0, 0, steelMaterial);
-  } else if (kind === 'feedSystem') {
-    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.62, sz * 0.6), 0, 0, -sz * 0.08);
-    for (const side of [-1, 1]) {
-      put(new THREE.TorusGeometry(Math.min(sx, sy) * 0.24, Math.min(sx, sy) * 0.06, 6, 16),
-        side * sx * 0.22, sy * 0.08, sz * 0.2, Math.PI / 2, 0, 0, steelMaterial);
-      put(new THREE.BoxGeometry(sx * 0.12, sy * 0.18, sz * 0.74),
-        side * sx * 0.22, -sy * 0.08, 0, 0, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'missileRack') {
-    const count = Math.max(2, Math.min(6, Math.floor(sx / Math.max(0.12, sy * 0.32))));
-    const radius = Math.min(sy, sx / count) * 0.28;
-    for (let index = 0; index < count; index += 1) {
-      const x = -sx / 2 + (index + 0.5) * sx / count;
-      put(new THREE.CylinderGeometry(radius, radius, sz * 0.76, 10),
-        x, 0, 0, Math.PI / 2, 0, 0);
-      put(new THREE.ConeGeometry(radius * 0.88, sz * 0.14, 10),
-        x, 0, sz * 0.45, Math.PI / 2, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'fuelTank' && modern) {
-    const count = sx > sy * 1.7 ? 2 : 1;
-    const offsets = count === 2 ? [-0.22, 0.22] : [0];
-    const radius = Math.max(0.07, Math.min(sy * 0.42, (sx / count) * 0.36, sz * 0.4));
-    const cellLength = sz * 0.78;
-    for (const offset of offsets) {
-      const x = sx * offset;
-      put(new THREE.CylinderGeometry(radius, radius, cellLength, 14),
-        x, -sy * 0.03, 0, Math.PI / 2, 0, 0);
-      put(new THREE.SphereGeometry(radius, 12, 8), x, -sy * 0.03, cellLength / 2);
-      put(new THREE.SphereGeometry(radius, 12, 8), x, -sy * 0.03, -cellLength / 2);
-      for (const zScale of [-0.24, 0.24]) {
-        put(new THREE.TorusGeometry(radius * 1.04, radius * 0.11, 6, 18),
-          x, -sy * 0.03, sz * zScale, 0, 0, 0, steelMaterial);
-        put(new THREE.BoxGeometry(radius * 1.7, Math.max(0.04, sy * 0.5 - radius * 0.4), radius * 0.5),
-          x, -sy * 0.03 - radius * 0.78, sz * zScale, 0, 0, 0, steelMaterial);
-      }
-    }
-    const fittingRadius = Math.min(sx, sz) * 0.11;
-    const fittingX = sx * offsets[offsets.length - 1];
-    put(new THREE.CylinderGeometry(fittingRadius * 0.55, fittingRadius * 0.55, sy * 0.24, 8),
-      fittingX, sy * 0.3, sz * 0.1, 0, 0, 0, steelMaterial);
-    put(new THREE.CylinderGeometry(fittingRadius, fittingRadius, sy * 0.07, 10),
-      fittingX, sy * 0.43, sz * 0.1, 0, 0, 0, steelMaterial);
-    put(new THREE.CylinderGeometry(fittingRadius * 0.4, fittingRadius * 0.4, sz * 0.55, 6),
-      -sx * 0.1, -sy * 0.34, 0, Math.PI / 2, 0, 0, steelMaterial);
-  } else if (kind === 'engine' && /gasTurbine/i.test(form)) {
-    const radius = Math.min(sx, sy) * 0.28;
-    put(new THREE.CylinderGeometry(radius, radius * 0.88, sz * 0.78, 18),
-      0, 0, 0, Math.PI / 2, 0, 0);
-    for (let index = -2; index <= 2; index += 1) {
-      put(new THREE.TorusGeometry(radius * (1 - Math.abs(index) * 0.035), radius * 0.08, 7, 20),
-        0, 0, index * sz * 0.13, 0, 0, 0, steelMaterial);
-    }
-    put(new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, sz * 0.18, 16),
-      0, 0, sz * 0.42, Math.PI / 2, 0, 0, steelMaterial);
-    for (const side of [-1, 1]) {
-      put(new THREE.BoxGeometry(sx * 0.18, sy * 0.44, sz * 0.66),
-        side * sx * 0.34, -sy * 0.1, 0, 0, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'engine' && /twinFrontPowerpack/i.test(form)) {
-    for (const side of [-1, 1]) {
-      put(new THREE.BoxGeometry(sx * 0.4, sy * 0.54, sz * 0.72), side * sx * 0.24, -sy * 0.1, 0);
-      put(new THREE.CylinderGeometry(sy * 0.12, sy * 0.12, sz * 0.62, 10),
-        side * sx * 0.24, sy * 0.2, 0, Math.PI / 2, 0, 0, steelMaterial);
-    }
-    put(new THREE.BoxGeometry(sx * 0.9, sy * 0.12, sz * 0.18), 0, -sy * 0.38, sz * 0.28, 0, 0, 0, steelMaterial);
-  } else if (kind === 'engine') {
-    put(new THREE.BoxGeometry(sx * 0.84, sy * 0.42, sz * 0.8), 0, -sy * 0.22, 0);
-    put(new THREE.BoxGeometry(sx * 0.58, sy * 0.14, sz * 0.58),
-      0, -sy * 0.44, 0, 0, 0, 0, steelMaterial);
-    put(new THREE.BoxGeometry(sx * 0.54, sy * 0.3, sz * 0.6), 0, sy * 0.06, 0);
-    put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
-      -sx * 0.15, sy * 0.25, 0, 0, 0, 0, steelMaterial);
-    put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
-      sx * 0.15, sy * 0.25, 0, 0, 0, 0, steelMaterial);
-    for (let index = 0; index < 5; index += 1) {
-      put(new THREE.BoxGeometry(sx * 0.68, sy * 0.4, sz * 0.045),
-        0, sy * 0.04, -sz * 0.26 + index * (sz * 0.52 / 4), 0, 0, 0, steelMaterial);
-    }
-    const fanRadius = Math.min(sx, sz) * 0.27;
-    put(new THREE.TorusGeometry(fanRadius * 1.12, fanRadius * 0.14, 8, 24),
-      -sx * 0.2, sy * 0.34, 0, Math.PI / 2, 0, 0, steelMaterial);
-    put(new THREE.CylinderGeometry(fanRadius, fanRadius, sy * 0.04, 18),
-      -sx * 0.2, sy * 0.31, 0);
-    for (let blade = 0; blade < 5; blade += 1) {
-      put(new THREE.BoxGeometry(fanRadius * 1.9, sy * 0.03, fanRadius * 0.24),
-        -sx * 0.2, sy * 0.345, 0, 0, (blade / 5) * Math.PI, 0, steelMaterial);
-    }
-    put(new THREE.CylinderGeometry(fanRadius * 0.22, fanRadius * 0.22, sy * 0.14, 8),
-      -sx * 0.2, sy * 0.39, 0, 0, 0, 0, steelMaterial);
-    put(new THREE.CylinderGeometry(fanRadius * 0.5, fanRadius * 0.5, sx * 0.3, 10),
-      sx * 0.24, sy * 0.3, -sz * 0.18, 0, 0, Math.PI / 2, steelMaterial);
-    for (const side of [-1, 1]) {
-      put(new THREE.CylinderGeometry(sy * 0.095, sy * 0.095, sz * 0.7, 8),
-        side * sx * 0.38, sy * 0.04, 0, Math.PI / 2, 0, 0, steelMaterial);
-      for (let index = 0; index < 3; index += 1) {
-        put(new THREE.CylinderGeometry(sy * 0.06, sy * 0.06, sx * 0.18, 6),
-          side * sx * 0.3, sy * 0.14, -sz * 0.2 + index * sz * 0.2,
-          0, 0, side * (Math.PI / 2.7), steelMaterial);
-      }
-    }
-  } else if (kind === 'fuelTank') {
-    const radius = Math.max(0.05, Math.min(sy * 0.42, sx * 0.21));
-    put(new THREE.CylinderGeometry(radius, radius, sz * 0.85, 10),
-      -sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(radius, radius, sz * 0.85, 10),
-      sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, radius * 0.5, 8),
-      -sx * 0.22, radius * 1.05, 0);
-    put(new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, radius * 0.5, 8),
-      sx * 0.22, radius * 1.05, 0);
-    put(new THREE.CylinderGeometry(radius * 0.16, radius * 0.16, sx * 0.44, 6),
-      0, 0, sz * 0.28, 0, 0, Math.PI / 2);
-    for (const zScale of [-0.26, 0.26]) {
-      put(new THREE.TorusGeometry(radius * 1.05, radius * 0.1, 6, 16),
-        -sx * 0.22, 0, sz * zScale, 0, 0, 0, steelMaterial);
-      put(new THREE.TorusGeometry(radius * 1.05, radius * 0.1, 6, 16),
-        sx * 0.22, 0, sz * zScale, 0, 0, 0, steelMaterial);
-    }
-  } else if (kind === 'gun') {
-    const breechRadius = Math.min(sx, sy);
-    put(new THREE.BoxGeometry(sx * 0.6, sy * 0.74, sz * 0.4), 0, 0, -sz * 0.2);
-    put(new THREE.BoxGeometry(sx * 0.36, sy * 0.48, sz * 0.16), 0, -sy * 0.04, -sz * 0.46);
-    put(new THREE.CylinderGeometry(breechRadius * 0.28, breechRadius * 0.28, sz * 0.42, 12),
-      0, 0, sz * 0.2, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(breechRadius * 0.11, breechRadius * 0.11, sz * 0.62, 8),
-      sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(breechRadius * 0.11, breechRadius * 0.11, sz * 0.62, 8),
-      -sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
-  } else if (kind === 'transmission') {
-    put(new THREE.BoxGeometry(sx * 0.82, sy * 0.66, sz * 0.72));
-    put(new THREE.CylinderGeometry(sy * 0.24, sy * 0.24, sx * 0.94, 12),
-      0, -sy * 0.12, 0, 0, 0, Math.PI / 2, steelMaterial);
-    for (const side of [-1, 1]) {
-      put(new THREE.TorusGeometry(sy * 0.28, sy * 0.07, 8, 18),
-        side * sx * 0.34, -sy * 0.12, 0, 0, Math.PI / 2, 0);
-    }
-  } else if (kind === 'radio') {
-    put(new THREE.BoxGeometry(sx * 0.75, sy * 0.55, sz * 0.7), 0, -sy * 0.12, 0);
-    put(new THREE.CylinderGeometry(0.012, 0.012, sy * 0.7, 6), sx * 0.2, sy * 0.24, 0);
-  } else if (kind === 'optics') {
-    put(new THREE.CylinderGeometry(Math.min(sx, sz) * 0.2, Math.min(sx, sz) * 0.2, sy * 0.7, 8),
-      0, -sy * 0.05, 0);
-    put(new THREE.BoxGeometry(sx * 0.5, sy * 0.22, sz * 0.5), 0, sy * 0.34, 0);
-  } else if (kind === 'turretRing') {
-    const radius = Math.min(sx, sz) * 0.44;
-    put(new THREE.TorusGeometry(radius, Math.min(sy * 0.3, 0.06), 8, 28),
-      0, 0, 0, Math.PI / 2, 0, 0);
-  } else {
-    put(new THREE.BoxGeometry(sx * 0.6, sy * 0.6, sz * 0.6));
-  }
+  const geometryContext: ModuleGeometryContext = {
+    volume,
+    modern,
+    caliberRadius,
+    sx,
+    sy,
+    sz,
+    put,
+    rounds,
+    steelMaterial,
+  };
+
+  buildModuleGeometry(geometryContext, kind, form);
   if (armor && volume.external !== true && kind !== 'optics') {
     const bounds = localGeometryBounds(group);
     const floorY = internalTankFloorY(armor, !!volume.turretLocal);

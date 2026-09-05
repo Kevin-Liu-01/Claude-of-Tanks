@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import {
-  box, gablePrism, pitchSkillionRoof, scaleUV, slabBox,
+  box, gablePrism, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from '../propGeometry.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 
@@ -51,7 +51,7 @@ function gableRoof(
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
     const slab = slabBox(slope + 0.15, thick, d + over * 2, 0.35);
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + thick / 2, 0);
     parts.roof.push(slab);
   }
@@ -82,7 +82,7 @@ function addFarmhouseCrossWing(
   for (const side of [-1, 1]) {
     const slab = slabBox(wd + 0.7, 0.12, slope + 0.15, 0.35);
     // The sign opposes the z-offset side so ridge and eave edges meet.
-    slab.rotateX(-side * ang);
+    pitchRoofPlane(slab, 'z', -side as -1 | 1, ang, 'gable');
     slab.translate(wx, wH + wR / 2 + 0.06, -d * 0.16 - side * (ww / 4 + 0.18));
     wing.roof.push(slab);
   }
@@ -185,7 +185,7 @@ export function makeGranary(rng: () => number, buckets: GeometryBuckets): Struct
     const ang = Math.atan2(roofH + 0.1, w / 2 + over);
     for (const side of [-1, 1]) {
       const slab = slabBox(slope + 0.15, 0.11, d + over * 2, 0.35);
-      slab.rotateZ(side * ang);
+      pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
       slab.translate(-side * (w / 4 + over / 2), y0 + wallH + 0.16 + roofH / 2 + 0.05, 0);
       parts.roof.push(slab);
     }
@@ -458,7 +458,7 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
   {
     const slope = Math.hypot(w + 0.7, hHi - hLo);
     const roof = slabBox(slope, 0.11, d + 0.6, 0.35);
-    roof.rotateZ(Math.atan2(hHi - hLo, w + 0.7));
+    pitchRoofPlane(roof, 'x', -1, Math.atan2(hHi - hLo, w + 0.7), 'skillion');
     parts.roof.push(roof.translate(0.1, (hLo + hHi) / 2 + 0.22, 0));
   }
   // firewood fill: two visible stacked rows in the open bay
@@ -655,7 +655,7 @@ export function makeDepot(
   }
   {
     const can = slabBox(pw + 1.0, 0.09, d + 1.6, 0.35);
-    can.rotateZ(0.14);
+    pitchRoofPlane(can, 'x', 1, 0.14, 'skillion');
     parts.roof.push(can.translate(w / 2 + pw / 2 - 0.1, 3.75, 0));
   }
   // doors/windows along the platform face + big end doors

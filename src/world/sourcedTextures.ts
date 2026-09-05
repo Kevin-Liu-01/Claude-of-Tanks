@@ -489,13 +489,21 @@ export function applySourcedTerrain(
 // AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
 // roofs and desert adobe stayed white without these.
 const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint>>> = {
-  urban:  { roof: [0.52, 0.55, 0.62], plaster: [0.88, 0.86, 0.82] }, // slate / sooty render
+  urban:  { plaster: { tint: [0.94, 0.86, 0.74], desat: 0.16 } }, // Steinburg lime render
   ruinspires: {
-    // Keep the megacity in the same bounded, authored-material discipline as
-    // Steinburg. Raw Plaster007/Planks023A bypassed map tones and made facade
-    // trim flash white against the charcoal towers.
-    plaster: { tint: [0.62, 0.63, 0.62], desat: 0.52 },
-    wood: { tint: [0.58, 0.56, 0.52], desat: 0.38 },
+    plaster: { tint: [0.72, 0.62, 0.52], desat: 0.22 },
+    wood: { tint: [0.62, 0.54, 0.44], desat: 0.24 },
+  },
+  blackglass: {
+    plaster: { tint: [0.67, 0.59, 0.50], desat: 0.24 },
+    roof: { tint: [0.56, 0.50, 0.47], desat: 0.36 },
+    wood: { tint: [0.57, 0.50, 0.42], desat: 0.24 },
+    stone: { tint: [0.72, 0.58, 0.47], desat: 0.16 },
+  },
+  skybridge: {
+    plaster: { tint: [0.91, 0.75, 0.59], desat: 0.12 },
+    roof: { tint: [0.72, 0.58, 0.50], desat: 0.22 },
+    wood: [0.73, 0.61, 0.46], stone: [0.94, 0.73, 0.54],
   },
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
   // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
@@ -526,17 +534,24 @@ const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint
   monsoon: { plaster: [0.78, 0.81, 0.72], wood: [0.67, 0.66, 0.54] },
   alpine: { roof: { tint: [0.94, 1.01, 1.14], desat: 0.68, lift: 0.11 } },
   caldera: {
-    plaster: { tint: [0.62, 0.59, 0.55], desat: 0.45 },
-    roof: { tint: [0.57, 0.57, 0.58], desat: 0.78 },
-    wood: [0.58, 0.54, 0.48], stone: [0.67, 0.61, 0.55],
+    plaster: { tint: [0.65, 0.53, 0.42], desat: 0.26 },
+    roof: { tint: [0.52, 0.43, 0.40], desat: 0.42 },
+    wood: [0.57, 0.47, 0.36], stone: [0.71, 0.55, 0.42],
   },
   foundry: {
-    plaster: { tint: [0.75, 0.74, 0.71], desat: 0.32 },
-    roof: { tint: [0.67, 0.70, 0.74], desat: 0.75, lift: 0.025 },
-    wood: { tint: [0.65, 0.63, 0.59], desat: 0.28 },
+    plaster: { tint: [0.82, 0.71, 0.59], desat: 0.20 },
+    roof: { tint: [0.62, 0.55, 0.52], desat: 0.44, lift: 0.018 },
+    wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
     stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
   },
 };
+
+export function sourcedBuildingTintPolicy(
+  mapId: string,
+  bucket: BuildingBucket,
+): BuildingTint | null {
+  return BUILDING_TINTS[mapId]?.[bucket] ?? null;
+}
 
 export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
@@ -546,7 +561,8 @@ export function applySourcedBuildings(
     plaster: 'plaster', roof: 'roof', wood: 'wood',
   };
   // maps r1: the rail yard's industrial halls are brick like the town's
-  if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera')
+  if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
+      || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge')
       && sets.stone) plan.stone = 'brick';
   // Steinburg and Ruinspires keep the PROCEDURAL roof sheet: their tone hooks
   // bake deliberately restrained roof families that a single sourced tint
@@ -558,7 +574,7 @@ export function applySourcedBuildings(
     const bucketKey = bucket as BuildingBucket;
     const layer = sets[bucketKey];
     if (!layer || !setKey) continue;
-    const tint = BUILDING_TINTS[mapId]?.[bucketKey] ?? null;
+    const tint = sourcedBuildingTintPolicy(mapId, bucketKey);
     const opts: ComposeOptions = tint === null
       ? { tint: null }
       : isTint(tint) ? { tint } : tint;

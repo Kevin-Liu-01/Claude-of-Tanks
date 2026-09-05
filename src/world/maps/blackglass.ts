@@ -2,6 +2,8 @@
 // rolling transit cuts. The skyline is deliberately different from Steinburg:
 // fewer buildings, far larger masses, and long diagonal firing corridors.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
@@ -55,10 +57,10 @@ export default {
     plan: [
       'arcology', 'needletower', 'parkingdeck', 'civichall', 'ruin', 'terracetower',
       'factory', 'parkingdeck', 'broadcasttower', 'foundryoffice', 'ruin', 'civichall',
-      'arcology', 'parkingdeck', 'warehouse', 'megatower', 'ruin', 'factory',
+      'arcology', 'parkingdeck', 'warehouse', 'megatower', 'ruin', 'firestation',
       'civichall', 'parkingdeck', 'needletower', 'ruin', 'terracetower', 'foundryoffice',
       'warehouse', 'parkingdeck', 'broadcasttower', 'civichall', 'ruin', 'megatower',
-      'factory', 'parkingdeck', 'arcology', 'ruin', 'civichall', 'needletower',
+      'depot', 'parkingdeck', 'arcology', 'ruin', 'civichall', 'needletower',
     ],
     destructibleBuildings: [
       'motorpool', 'transformershed', 'commandtent', 'checkpointhut',
@@ -74,14 +76,9 @@ export default {
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
-    tones: {
-      plaster: (h: number, s: number, l: number) => [0.61, clamp01(s * 0.18), clamp01(l * 0.56)],
-      plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.25), clamp01(l * 0.52)],
-      plaster3: (h: number, s: number, l: number) => [0.56, clamp01(s * 0.22), clamp01(l * 0.48)],
-      stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.16), clamp01(l * 0.59)],
-      roof: (h: number, s: number, l: number) => [0.03, clamp01(s * 0.23), clamp01(l * 0.42)],
-      wood: null, straw: null,
-    },
+    tones: makeRealisticCityBuildingTones({
+      value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,
+    }),
     wallStyle: 'brick', wallStoneChance: 0.82, buildingLat: [15, 7],
     sideSkip: 0.06, spacingPad: 4.0, maxSpread: 4.6,
     wallRuns: [

@@ -56,6 +56,7 @@ globalThis.Image = TestImage;
 
 const {
   applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
+  sourcedBuildingTintPolicy,
 } = await import('./sourcedTextures.ts');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
@@ -129,7 +130,19 @@ assert.equal(ruinspiresLayers.roof.albedo.disposeCount, 0,
   'Ruinspires preserves the authored procedural roof palette like Steinburg');
 const facadeRgb = [...ruinspiresLayers.plaster.albedo.image.pixels]
   .filter((_, index) => index % 4 !== 3);
-assert.ok(Math.max(...facadeRgb) < 160,
+assert.ok(Math.max(...facadeRgb) < 192,
   'Ruinspires facade source cannot reintroduce near-white texture lines');
+
+for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry', 'caldera']) {
+  const policy = sourcedBuildingTintPolicy(mapId, 'plaster');
+  assert.ok(policy, `${mapId}: sourced city plaster has a deliberate tint policy`);
+  const tint = Array.isArray(policy) ? policy : policy.tint;
+  assert.ok(tint && Math.max(...tint) - Math.min(...tint) >= 0.10,
+    `${mapId}: sourced city plaster retains warm material color instead of neutral grey`);
+  if (!Array.isArray(policy)) {
+    assert.ok((policy.desat || 0) <= 0.45,
+      `${mapId}: sourced city color is not erased by excessive desaturation`);
+  }
+}
 
 console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

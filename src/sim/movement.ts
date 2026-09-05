@@ -888,7 +888,7 @@ function applyModuleDebuffs(
   const ring = modules.turretRing || modules.gunMount;
   if (ring?.state === 'red') out.turretMult = 0.2;
   else if (ring?.state === 'yellow') out.turretMult = 0.5;
-  out.gunYellow = modules.gun?.state === 'yellow';
+  out.gunYellow = modules.gun?.state === 'yellow' || modules.gunMount?.state === 'yellow';
 }
 
 function applyCrewDebuffs(

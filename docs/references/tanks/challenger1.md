@@ -2,11 +2,13 @@
 
 Exact variant: FV4030/4 Challenger 1 Mk.3, Royal Ordnance L11A5 120 mm rifled gun.
 
-## CURRENT FREEZE — 2026-08-11 NATIVE-PROCEDURAL GRADUATION
+## CURRENT AUTHORITY — STRONGER REPOSITORY-AUTHORED BUILD
 
-Current playable freeze is **`cacb1337`**. The complete source-relative and
-gate-cap receipt is preserved in this packet's certification history below.
-All older procedural freezes and the historical 90.2 mask-shaped build are retired.
+The playable vehicle uses `challenger1Build`, the stronger repository-authored
+construction restored after the later fleet-regression recovery. The separate
+2026-08-11 native experiment was superseded and its unreachable constructor was
+removed in September 2026. Its `cacb1337` certification receipt remains below as
+historical evidence; it does not describe the current runtime route.
 
 ## Corroborated real dimensions
 - Overall length gun-forward 11.55–11.56 m; hull ≈ 8.3 m; width 3.51–3.52 m over skirts;
@@ -696,7 +698,7 @@ hull 91.8 whole 90.2 turret 90.3 stations 90.6 dims 95 floaters 100 PASS
 — exact hold. HASH dbe33204 -> 5bf5f2ec. Evidence:
 shots/uk-noair/{before,after}/challenger1--y0-side-l-T*.
 
-## 2026-08-11 NATIVE-PROCEDURAL REBUILD — GRADUATED
+## RETIRED 2026-08-11 NATIVE-PROCEDURAL REBUILD
 
 Local comparison package `challenger-1-mk3.zip` is 25,380,501 bytes, SHA-256
 `eab836f4e2d4b0631f121e8f9fcb876519656ccbb3413616128a723731ef99fe`.
@@ -728,4 +730,6 @@ Fresh independent §B8 used 42 unique r26 images. Vector
 mean 9.13. Source fidelity, genuine yaw, seating/load paths, hull/turret split,
 six-wheel native course, winding and sky-hole checks all PASS. The exact
 containment audit is band 0/0 and shoes 0/0 after the hidden sponson/belly
-clearance repair. Final disposition: **GRADUATED / KEEP `cacb1337`**.
+clearance repair. Historical disposition at the time was **GRADUATED / KEEP
+`cacb1337`**; the experiment was later superseded by `challenger1Build` and is
+no longer present in executable source.

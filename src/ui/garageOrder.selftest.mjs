@@ -17,8 +17,11 @@ assert.match(garageSource,
   /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*width:98px;height:52px;[^}]*--cot-thumb-scale,1\.2[^}]*\}/,
   'compact garage cards preserve the lifted, enlarged portrait treatment');
 assert.match(garageSource,
-  /\.cot-card \.ti\{[^}]*opacity:1;[^}]*\}/,
-  'tank portraits paint immediately with a safe default frame while exact normalization idles');
+  /\.cot-card \.ti\{[^}]*width:140px;height:88px;[^}]*opacity:0;[^}]*transition:opacity[^}]*\}/,
+  'tank portraits reserve their final card footprint while load and normalization stay hidden');
+assert.match(garageSource,
+  /\.cot-card \.ti\[data-cot-portrait-ready='true'\]\{opacity:1;\}/,
+  'tank portraits fade in only after their final normalized frame is ready');
 assert.match(garageSource,
   /const cardsByCountry = new Map<string, HTMLElement\[\]>\(\);/,
   'nation switches update indexed card groups instead of rescanning the fleet');
@@ -26,13 +29,25 @@ assert.match(garageSource,
   /cardsEl\.animate\(\[\{ opacity: 0\.76 \}, \{ opacity: 1 \}\]/,
   'nation switches create one strip animation instead of one animation per vehicle');
 assert.match(garageSource,
-  /cardById\.get\(previousSelectedId\)\?\.classList\.remove\('sel'\);[\s\S]*?card\?\.classList\.add\('sel'\);/,
+  /const previousCard = cardById\.get\(previousSelectedId\);[\s\S]*?previousCard\?\.classList\.remove\('sel'\);[\s\S]*?card\?\.classList\.add\('sel'\);/,
   'selection updates only the previous and next cards');
+assert.match(garageSource,
+  /previousCard\?\.setAttribute\('aria-selected', 'false'\);[\s\S]*?card\?\.setAttribute\('aria-selected', 'true'\);[\s\S]*?aria-activedescendant/,
+  'selection keeps the focusable vehicle catalog accessibility state synchronized');
 assert.match(garageSource, /shellAmmunitionCapacity\(shell\).*carried/,
   'the dossier exposes authoritative per-channel ammunition capacity');
 assert.match(garageSource,
-  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section">\$\{statSectionTitle\('speed', 'Performance'/,
+  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section cot-performance-section">\$\{statSectionTitle\('speed', 'Performance'/,
   'the persistent equipment loadout appears above primary performance instead of below the dossier fold');
+assert.match(garageSource,
+  /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,
+  'equipment slots must remain native keyboard-operable controls');
+assert.match(garageSource,
+  /class="cot-compact-equipment-trigger"[\s\S]*aria-label="Edit equipment loadout"/,
+  'compact equipment affordance labels its selected-tank loadout action');
+assert.match(garageSource,
+  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*setGaragePanel\(openGaragePanel\(\) === 'equipment'/,
+  'compact equipment affordance opens the selected tank loadout instead of becoming a dead summary icon');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;left:10px;right:10px;bottom:8px;/,
   'tank titles use the card padding as a stable bottom inset');

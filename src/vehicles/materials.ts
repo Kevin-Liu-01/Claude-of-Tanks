@@ -229,20 +229,6 @@ function capCanvasLuma(ctx: CanvasRenderingContext2D, size: number, maxLuma: num
   ctx.putImageData(image, 0, 0);
 }
 
-// Irregular blob path around (x,y) with radius r.
-function blobPath(ctx: CanvasRenderingContext2D, rng: Rng, x: number, y: number, r: number, lobes = 7, jitter = 0.45): void {
-  ctx.beginPath();
-  const offs = [];
-  for (let i = 0; i < lobes; i++) offs.push(1 - jitter / 2 + rng() * jitter);
-  for (let i = 0; i <= lobes; i++) {
-    const a = (i / lobes) * Math.PI * 2;
-    const rr = r * offs[i % lobes];
-    const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * 0.8;
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-}
-
 // Smooth rounded organic blob as a reusable Path2D (quadratic midpoint spline),
 // horizontally stretched like real NATO splotches.
 function blobPath2D(rng: Rng, x: number, y: number, r: number, lobes = 9, jitter = 0.55): Path2D {
@@ -561,33 +547,35 @@ function paintCamo(
   ctx.fillStyle = rgb(base);
   ctx.fillRect(0, 0, S, S);
 
-  // Large soft tonal variation toward the weathered tone.
-  for (let i = 0; i < 30; i++) {
-    const x = rng() * S, y = rng() * S, r = S * (0.10 + rng() * 0.22);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    const t = 0.25 + rng() * 0.45;
-    g.addColorStop(0, rgb(mix(base, weather, t), 0.5));
-    g.addColorStop(1, rgb(base, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  // Mid-frequency mottle so large plates never read as one flat color.
-  for (let i = 0; i < 90; i++) {
-    const x = rng() * S, y = rng() * S, r = S * (0.015 + rng() * 0.04);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    const dir = rng() < 0.5 ? 0.92 : 1.07;
-    g.addColorStop(0, rgb(scale3(base, dir), 0.22));
-    g.addColorStop(1, rgb(base, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
+  const paintBaseVariation = (): void => {
+    for (let i = 0; i < 30; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.10 + rng() * 0.22);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const t = 0.25 + rng() * 0.45;
+      g.addColorStop(0, rgb(mix(base, weather, t), 0.5));
+      g.addColorStop(1, rgb(base, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 90; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.015 + rng() * 0.04);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const dir = rng() < 0.5 ? 0.92 : 1.07;
+      g.addColorStop(0, rgb(scale3(base, dir), 0.22));
+      g.addColorStop(1, rgb(base, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  };
+  paintBaseVariation();
   // tank_models r3 (critic major: T-90M factory solid renders as "one flat
   // untextured green — plastic toy response, no roughness/weathering
   // variation"): SOLID schemes lean entirely on the two passes above, which
   // vanish under a bright key. Single-color vehicles get an extra patina
   // quilt — big soft fields of sun-faded and oil-darkened paint at low
   // contrast, the multi-tone base every real monotone tank carries.
-  if ((visual.scheme || 'solid') === 'solid') {
+  const paintSolidBasePatina = (): void => {
+    if ((visual.scheme || 'solid') !== 'solid') return;
     // Per-vehicle control for unusually clean factory finishes. Keep the
     // fleet default byte-for-byte at 1; T-72B3M uses a restrained value so
     // the warm garage key cannot turn the large procedural patina fields
@@ -608,7 +596,8 @@ function paintCamo(
       fillWrapped(ctx, S, p, rgb(tone, 0.15 * solidWeatheringIntensity));
       ctx.filter = 'none';
     }
-  }
+  };
+  paintSolidBasePatina();
 
   const scheme = visual.scheme || 'solid';
   // camo_spotting r2 (close-orbit edge critique): the r8 wide feather made
@@ -629,7 +618,9 @@ function paintCamo(
     strokeWrapped(ctx, S, p, rgb(col, 0.5), 2.2);
     ctx.setLineDash([]);
   };
-  if (scheme === 'drawn' && patches.length) {
+  const paintClassicSchemes = (): void => {
+    const paintDrawnScheme = (): void => {
+      if (scheme === 'drawn' && patches.length) {
     // Device-local vector tile authored in the Garage. The drawing is baked
     // once with the rest of the material, so custom paint adds no draw calls,
     // runtime canvases, or per-frame work.
@@ -656,7 +647,10 @@ function paintCamo(
         ctx.restore();
       }
     }
-  } else if (scheme === 'stripes' && patches.length) {
+      }
+    };
+    const paintStripesScheme = (): void => {
+      if (scheme === 'stripes' && patches.length) {
     // tank_models r5 REWRITE ("2-tone tan/brown leopard spots instead of the
     // roster Dunkelgelb + olive-green + red-brown soft-edge stripes"): the
     // 1943 factory scheme is BROAD sprayed BANDS — 20-40 cm wide sweeping
@@ -716,7 +710,10 @@ function paintCamo(
       const col = mix(patches[i % patches.length], base, 0.14);
       band(col, S * wk * (0.038 + rng() * 0.03), S * wk * (0.35 + rng() * 0.3), 0.66);
     }
-  } else if (scheme === 'ambush' && patches.length) {
+      }
+    };
+    const paintAmbushScheme = (): void => {
+      if (scheme === 'ambush' && patches.length) {
     // Hinterhalt-Tarnung (the Panther 'ambush' factory scheme): angular
     // Olivgruen/Rotbraun patches elongated along one spray direction over
     // Dunkelgelb, with LIGHT Dunkelgelb dots INSIDE the dark patches and dark
@@ -726,17 +723,19 @@ function paintCamo(
     const dirA = rng() * Math.PI;
     const drawn: Array<{ p: Path2D; x: number; y: number; r: number }> = [];
     const nP = Math.round(14 * nK);
-    for (let i = 0; i < nP; i++) {
-      const col = mix(patches[i % patches.length], base, 0.06);
-      const r = S * wk * (i < nP * 0.35 ? 0.080 + rng() * 0.050 : 0.042 + rng() * 0.038);
-      const x = rng() * S, y = rng() * S;
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
-      ctx.filter = `blur(${Math.max(1.5, S * 0.0012).toFixed(1)}px)`;   // r8 soft spray edge
-      strokeWrapped(ctx, S, p, rgb(mix(col, base, 0.35), 0.40), S * 0.005);
-      fillWrapped(ctx, S, p, rgb(col, 0.90));
-      ctx.filter = 'none';
-      drawn.push({ p, x, y, r });
-    }
+    const paintAmbushPatches = (): void => {
+      for (let i = 0; i < nP; i++) {
+        const col = mix(patches[i % patches.length], base, 0.06);
+        const r = S * wk * (i < nP * 0.35 ? 0.080 + rng() * 0.050 : 0.042 + rng() * 0.038);
+        const x = rng() * S, y = rng() * S;
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
+        ctx.filter = `blur(${Math.max(1.5, S * 0.0012).toFixed(1)}px)`;
+        strokeWrapped(ctx, S, p, rgb(mix(col, base, 0.35), 0.40), S * 0.005);
+        fillWrapped(ctx, S, p, rgb(col, 0.90));
+        ctx.filter = 'none';
+        drawn.push({ p, x, y, r });
+      }
+    };
     const dotWrap = (x: number, y: number, r2: number): void => {
       for (const ox of [-S, 0, S]) {
         for (const oy of [-S, 0, S]) {
@@ -744,30 +743,41 @@ function paintCamo(
         }
       }
     };
-    // light dots INSIDE the dark patches (sun dapple on the dark tones)
-    ctx.fillStyle = rgb(mix(base, [235, 224, 178], 0.18), 0.92);
-    for (const d of drawn) {
-      const n = 6 + ((rng() * 6) | 0);
-      let placed = 0, guard = 0;
-      while (placed < n && guard++ < n * 8) {
-        const px2 = d.x + (rng() - 0.5) * d.r * 3.6;
-        const py2 = d.y + (rng() - 0.5) * d.r * 2.6;
-        if (!ctx.isPointInPath(d.p, px2, py2)) continue;
-        dotWrap(px2, py2, S * (0.0040 + rng() * 0.0034));
-        placed++;
+    const paintLightAmbushDots = (): void => {
+      ctx.fillStyle = rgb(mix(base, [235, 224, 178], 0.18), 0.92);
+      for (const d of drawn) {
+        const n = 6 + ((rng() * 6) | 0);
+        let placed = 0, guard = 0;
+        while (placed < n && guard++ < n * 8) {
+          const px2 = d.x + (rng() - 0.5) * d.r * 3.6;
+          const py2 = d.y + (rng() - 0.5) * d.r * 2.6;
+          if (!ctx.isPointInPath(d.p, px2, py2)) continue;
+          dotWrap(px2, py2, S * (0.0040 + rng() * 0.0034));
+          placed++;
+        }
       }
-    }
+    };
     // dark dots on the base BETWEEN patches (never on the patches — dots on
     // everything is what mushed the scheme into confetti)
-    for (let i = 0; i < 110; i++) {
-      const x = rng() * S, y = rng() * S;
-      let inside = false;
-      for (const d of drawn) { if (ctx.isPointInPath(d.p, x, y)) { inside = true; break; } }
-      if (inside) continue;
-      ctx.fillStyle = rgb(patches[(rng() * patches.length) | 0], 0.88);
-      dotWrap(x, y, S * (0.0038 + rng() * 0.0032));
-    }
-  } else if (scheme === 'nato' && patches.length) {
+    const paintDarkAmbushDots = (): void => {
+      for (let i = 0; i < 110; i++) {
+        const x = rng() * S, y = rng() * S;
+        let inside = false;
+        for (const d of drawn) {
+          if (ctx.isPointInPath(d.p, x, y)) { inside = true; break; }
+        }
+        if (inside) continue;
+        ctx.fillStyle = rgb(patches[(rng() * patches.length) | 0], 0.88);
+        dotWrap(x, y, S * (0.0038 + rng() * 0.0032));
+      }
+    };
+    paintAmbushPatches();
+    paintLightAmbushDots();
+    paintDarkAmbushDots();
+      }
+    };
+    const paintNatoScheme = (): void => {
+      if (scheme === 'nato' && patches.length) {
     // NATO 3-colour (Bundeswehr Gefechtstarnung / MERDC family): angular
     // ELONGATED patches swept along one per-vehicle direction at 2-3 scales —
     // brown field patches first, then sparse black riding the brown
@@ -800,36 +810,45 @@ function paintCamo(
     const pk = visual.patchK || 1;
     const black = patches[0], brown = patches[1] || patches[0];
     const dirA = rng() * Math.PI;
-    const centers = [];
+    const centers: Array<[number, number, number]> = [];
     const nBrown = Math.max(4, Math.round(6 * nK / pk));
-    for (let i = 0; i < nBrown; i++) {
-      const r = S * wk * pk * (i < nBrown * 0.4 ? 0.082 + rng() * 0.046 : 0.052 + rng() * 0.034);
-      let x = rng() * S, y = rng() * S;
-      if (i > 0 && rng() < 0.4) {                // anchor on an earlier band
-        const c2 = centers[(rng() * centers.length) | 0];
-        x = c2[0] + (rng() - 0.5) * c2[2] * 2.4;
-        y = c2[1] + (rng() - 0.5) * c2[2] * 1.8;
+    const paintBrownBands = (): void => {
+      for (let i = 0; i < nBrown; i++) {
+        const r = S * wk * pk * (i < nBrown * 0.4 ? 0.082 + rng() * 0.046 : 0.052 + rng() * 0.034);
+        let x = rng() * S, y = rng() * S;
+        if (i > 0 && rng() < 0.4) {
+          const c2 = centers[(rng() * centers.length) | 0];
+          x = c2[0] + (rng() - 0.5) * c2[2] * 2.4;
+          y = c2[1] + (rng() - 0.5) * c2[2] * 1.8;
+        }
+        const lobes = 4 + ((rng() * 3) | 0);
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55, lobes);
+        sprayEdge(p, brown, 0.97, false);
+        centers.push([x, y, r]);
       }
-      const lobes = 4 + ((rng() * 3) | 0);       // 4-6 lobes = one long band
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55, lobes);
-      sprayEdge(p, brown, 0.97, false);          // hard core, no confetti dash
-      centers.push([x, y, r]);
-    }
+    };
     const nBlack = Math.max(3, Math.round(4 * nK * (visual.blackK || 1) / pk));
-    for (let i = 0; i < nBlack; i++) {
-      const r = S * wk * pk * (i < nBlack * 0.4 ? 0.050 + rng() * 0.026 : 0.040 + rng() * 0.020);
-      let x = rng() * S, y = rng() * S;
-      if (centers.length && rng() < 0.75) {      // ride a brown band boundary
-        const c2 = centers[(rng() * centers.length) | 0];
-        const a2 = rng() * Math.PI * 2;
-        x = c2[0] + Math.cos(a2) * c2[2] * 1.15;
-        y = c2[1] + Math.sin(a2) * c2[2] * 0.85;
+    const paintBlackBands = (): void => {
+      for (let i = 0; i < nBlack; i++) {
+        const r = S * wk * pk * (i < nBlack * 0.4 ? 0.050 + rng() * 0.026 : 0.040 + rng() * 0.020);
+        let x = rng() * S, y = rng() * S;
+        if (centers.length && rng() < 0.75) {
+          const c2 = centers[(rng() * centers.length) | 0];
+          const a2 = rng() * Math.PI * 2;
+          x = c2[0] + Math.cos(a2) * c2[2] * 1.15;
+          y = c2[1] + Math.sin(a2) * c2[2] * 0.85;
+        }
+        const lobes = 3 + ((rng() * 2) | 0);
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7, lobes);
+        sprayEdge(p, black, 0.95, false);
       }
-      const lobes = 3 + ((rng() * 2) | 0);       // elongated shadow bars
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7, lobes);
-      sprayEdge(p, black, 0.95, false);
-    }
-  } else if (scheme === 'desert' && patches.length) {
+    };
+    paintBrownBands();
+    paintBlackBands();
+      }
+    };
+    const paintDesertScheme = (): void => {
+      if (scheme === 'desert' && patches.length) {
     // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
     // diagonal wind bands under angular polygon patches at three scales plus
     // thin dark streaks. Replaces the r1 same-size-ellipse "cheetah print".
@@ -842,15 +861,18 @@ function paintCamo(
     const pk = visual.patchK || 1;
     const dark = patches[0], mid2 = patches[1] || patches[0];
     const pale = patches[2] || mix(base, [255, 250, 235], 0.35);
-    for (let i = 0; i < 5; i++) {                                 // band layer
-      const y0 = rng() * S, slope = (rng() - 0.5) * 0.6;
-      const w = S * wk * pk * (0.10 + rng() * 0.10);
-      const path = new Path2D();
-      path.moveTo(-S * 0.1, y0);
-      path.quadraticCurveTo(S * 0.5, y0 + slope * S * 0.5 + (rng() - 0.5) * S * 0.09,
-        S * 1.1, y0 + slope * S);
-      strokeWrapped(ctx, S, path, rgb(mix(rng() < 0.5 ? mid2 : pale, base, 0.45), 0.30), w);
-    }
+    const paintDesertBands = (): void => {
+      for (let i = 0; i < 5; i++) {
+        const y0 = rng() * S, slope = (rng() - 0.5) * 0.6;
+        const w = S * wk * pk * (0.10 + rng() * 0.10);
+        const path = new Path2D();
+        path.moveTo(-S * 0.1, y0);
+        path.quadraticCurveTo(S * 0.5, y0 + slope * S * 0.5 + (rng() - 0.5) * S * 0.09,
+          S * 1.1, y0 + slope * S);
+        strokeWrapped(ctx, S, path, rgb(mix(rng() < 0.5 ? mid2 : pale, base, 0.45), 0.30), w);
+      }
+    };
+    paintDesertBands();
     // Large patches near-opaque at three scales. History: r6 pushed contrast
     // here (darkHC 0.74x, paleHC white lift) so the geometry survived mipping
     // at garage distance — but stacked on the widened r9 palette that became
@@ -868,13 +890,16 @@ function paintCamo(
     // camoPatchPath2D boundaries, so magnified GLB atlas islands stop
     // rendering them as razor-cut vector shards (tank_models r7 lineage).
     const nBig = Math.round(4 * nK / pk);
-    for (let i = 0; i < nBig; i++) {                              // large angular patches
-      const r = S * wk * pk * (0.16 + rng() * 0.10);
-      const x = rng() * S, y = rng() * S;
-      const col = i % 2 ? mid2 : darkHC;
-      fillWrapped(ctx, S, polyPath2D(rng, x, y, r * 1.04, 7, 0.55, 0.8), rgb(mix(col, base, 0.5), 0.5));
-      fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 7, 0.55, 0.8), rgb(col, 0.96));
-    }
+    const paintLargeDesertPatches = (): void => {
+      for (let i = 0; i < nBig; i++) {
+        const r = S * wk * pk * (0.16 + rng() * 0.10);
+        const x = rng() * S, y = rng() * S;
+        const col = i % 2 ? mid2 : darkHC;
+        fillWrapped(ctx, S, polyPath2D(rng, x, y, r * 1.04, 7, 0.55, 0.8), rgb(mix(col, base, 0.5), 0.5));
+        fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 7, 0.55, 0.8), rgb(col, 0.96));
+      }
+    };
+    paintLargeDesertPatches();
     // r8 confetti fix: the pale sand tone used to arrive as ~27 identically
     // sized chips at even density (1/3 of the mid shards + half the small
     // flecks) — leopard-print at garage distance on Tiger/Abrams. The pale
@@ -883,42 +908,66 @@ function paintCamo(
     // around those bands' edges with a 3x+ size spread (overspray language)
     // instead of raining uniformly across the hull.
     const dirD = rng() * Math.PI;
-    const paleBands = [];
+    const paleBands: Array<[number, number, number]> = [];
     // r9: band count 3 -> 2.5 x nK and radius trimmed — pale coverage down
     // ~25% so the highlight reads as sprayed accents, not dazzle chips
-    for (let i = 0; i < Math.max(2, Math.round(2.5 * nK / pk)); i++) { // pale bands
-      const r = S * wk * pk * (0.085 + rng() * 0.07);
-      const x = rng() * S, y = rng() * S;
-      const p = camoPatchPath2D(rng, x, y, r, dirD + (rng() - 0.5) * 0.4);
-      strokeWrapped(ctx, S, p, rgb(mix(paleHC, base, 0.45), 0.4), S * 0.006);
-      fillWrapped(ctx, S, p, rgb(paleHC, 0.93));
-      paleBands.push([x, y, r]);
-    }
-    for (let i = 0; i < Math.round(6 * nK / pk); i++) {           // mid shards (dark/mid only)
-      const r = S * wk * pk * (0.045 + rng() * 0.075);
-      const col = rng() < 0.5 ? darkHC : mid2;
-      fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 5, 0.7, 0.8), rgb(col, 0.94));
-    }
-    for (const [bx, by, br] of paleBands) {                       // clustered flecks
-      const n = 4 + ((rng() * 5) | 0);
-      for (let i = 0; i < n; i++) {
-        const a3 = rng() * Math.PI * 2;
-        const d3 = br * (0.9 + rng() * 1.5);
-        const x = bx + Math.cos(a3) * d3, y = by + Math.sin(a3) * d3 * 0.7;
-        const r = S * wk * pk * (0.010 + rng() * rng() * 0.040);  // ~3-5x size spread
-        fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 4, 0.8, 0.6),
-          rgb(rng() < 0.45 ? darkHC : paleHC, 0.85));
+    const paintPaleDesertBands = (): void => {
+      for (let i = 0; i < Math.max(2, Math.round(2.5 * nK / pk)); i++) {
+        const r = S * wk * pk * (0.085 + rng() * 0.07);
+        const x = rng() * S, y = rng() * S;
+        const p = camoPatchPath2D(rng, x, y, r, dirD + (rng() - 0.5) * 0.4);
+        strokeWrapped(ctx, S, p, rgb(mix(paleHC, base, 0.45), 0.4), S * 0.006);
+        fillWrapped(ctx, S, p, rgb(paleHC, 0.93));
+        paleBands.push([x, y, r]);
       }
-    }
-    for (let i = 0; i < Math.round(14 * nK / pk); i++) {          // thin streaks
-      const x0 = rng() * S, y0 = rng() * S, len = S * wk * pk * (0.05 + rng() * 0.1);
-      const a2 = rng() * Math.PI;
-      const path = new Path2D();
-      path.moveTo(x0, y0);
-      path.lineTo(x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * 0.5);
-      strokeWrapped(ctx, S, path, rgb(dark, 0.6), 1.5 + rng() * 3);
-    }
-  } else if (scheme === 'winter') {
+    };
+    paintPaleDesertBands();
+    const paintDesertShards = (): void => {
+      for (let i = 0; i < Math.round(6 * nK / pk); i++) {
+        const r = S * wk * pk * (0.045 + rng() * 0.075);
+        const col = rng() < 0.5 ? darkHC : mid2;
+        fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 5, 0.7, 0.8), rgb(col, 0.94));
+      }
+    };
+    paintDesertShards();
+    const paintDesertFlecks = (): void => {
+      for (const [bx, by, br] of paleBands) {
+        const n = 4 + ((rng() * 5) | 0);
+        for (let i = 0; i < n; i++) {
+          const a3 = rng() * Math.PI * 2;
+          const d3 = br * (0.9 + rng() * 1.5);
+          const x = bx + Math.cos(a3) * d3, y = by + Math.sin(a3) * d3 * 0.7;
+          const r = S * wk * pk * (0.010 + rng() * rng() * 0.040);
+          fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 4, 0.8, 0.6),
+            rgb(rng() < 0.45 ? darkHC : paleHC, 0.85));
+        }
+      }
+    };
+    paintDesertFlecks();
+    const paintDesertStreaks = (): void => {
+      for (let i = 0; i < Math.round(14 * nK / pk); i++) {
+        const x0 = rng() * S, y0 = rng() * S, len = S * wk * pk * (0.05 + rng() * 0.1);
+        const a2 = rng() * Math.PI;
+        const path = new Path2D();
+        path.moveTo(x0, y0);
+        path.lineTo(x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * 0.5);
+        strokeWrapped(ctx, S, path, rgb(dark, 0.6), 1.5 + rng() * 3);
+      }
+    };
+    paintDesertStreaks();
+      }
+    };
+    paintDrawnScheme();
+    paintStripesScheme();
+    paintAmbushScheme();
+    paintNatoScheme();
+    paintDesertScheme();
+  };
+  paintClassicSchemes();
+
+  const paintFieldSchemes = (): void => {
+    const paintWinterScheme = (): void => {
+      if (scheme === 'winter') {
     // ===================== CAMO PATTERN SECTION =====================
     // Winter wash: streaky hand-brushed whitewash over the factory paint.
     // patches[0] carries the underlying factory color that shows through
@@ -1006,21 +1055,24 @@ function paintCamo(
     // over dark STEEL — scrub streaks and edge rubs read blue-grey, never
     // ochre. Dragged steel-grey runs + short cold dashes give the wash the
     // worn-over-metal read the critic asked for.
-    for (let i = 0; i < 30; i++) {
-      const x0 = rng() * S, y0 = rng() * S, len = S * (0.05 + rng() * 0.13);
-      const path = new Path2D();
-      path.moveTo(x0, y0);
-      path.lineTo(x0 + (rng() - 0.5) * 5, y0 + len);
-      strokeWrapped(ctx, S, path, `rgba(88,96,102,${0.09 + rng() * 0.11})`, 1.5 + rng() * 3.5);
-    }
-    for (let i = 0; i < 26; i++) {
-      const x0 = rng() * S, y0 = rng() * S, len = S * (0.015 + rng() * 0.035);
-      const a2 = rng() * Math.PI;
-      const path = new Path2D();
-      path.moveTo(x0, y0);
-      path.lineTo(x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * 0.4);
-      strokeWrapped(ctx, S, path, `rgba(96,104,110,${0.12 + rng() * 0.12})`, 1.2 + rng() * 2.4);
-    }
+    const paintColdMetalWear = (): void => {
+      for (let i = 0; i < 30; i++) {
+        const x0 = rng() * S, y0 = rng() * S, len = S * (0.05 + rng() * 0.13);
+        const path = new Path2D();
+        path.moveTo(x0, y0);
+        path.lineTo(x0 + (rng() - 0.5) * 5, y0 + len);
+        strokeWrapped(ctx, S, path, `rgba(88,96,102,${0.09 + rng() * 0.11})`, 1.5 + rng() * 3.5);
+      }
+      for (let i = 0; i < 26; i++) {
+        const x0 = rng() * S, y0 = rng() * S, len = S * (0.015 + rng() * 0.035);
+        const a2 = rng() * Math.PI;
+        const path = new Path2D();
+        path.moveTo(x0, y0);
+        path.lineTo(x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * 0.4);
+        strokeWrapped(ctx, S, path, `rgba(96,104,110,${0.12 + rng() * 0.12})`, 1.2 + rng() * 2.4);
+      }
+    };
+    paintColdMetalWear();
     // neutral shadow washes so the wash never reads as flat white (r5: cooled)
     for (let i = 0; i < 18; i++) {
       const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
@@ -1035,7 +1087,10 @@ function paintCamo(
     // ('#99a1a2' since the r5 cooling), which the warm garage key then blew
     // into cream — no texel may exceed the authored base luma +4%.
     capCanvasLuma(ctx, S, luma(base) * 1.04);
-  } else if (scheme === 'fleck' && patches.length) {
+      }
+    };
+    const paintFleckScheme = (): void => {
+      if (scheme === 'fleck' && patches.length) {
     // Flecktarn (camo_spotting r2 legibility rework): the r9 specks (6-22 px,
     // ~12% total coverage) were pedestal-illegible on the Tiger — they read
     // as dirt/mold speckle over a light khaki field, not a scheme, while the
@@ -1077,7 +1132,10 @@ function paintCamo(
     // the authored base under the tonal/mottle lifts.
     capCanvasLuma(ctx, S, Math.max(luma(base), luma(weather)) * 1.04);
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'digital' && patches.length) {
+      }
+    };
+    const paintDigitalScheme = (): void => {
+      if (scheme === 'digital' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // TWO-SCALE digital (camo_spotting r5). The old painter was a single
     // 16x16 lattice of small rect clusters — at garage range it covered the
@@ -1140,57 +1198,66 @@ function paintCamo(
       }
       return { path, mnx, mny, mxx, mxy };
     };
-    for (let pi = 0; pi < patches.length; pi++) {
-      const col = patches[pi];
-      ctx.fillStyle = rgb(col, 0.94);
-      const nP = 3 + (rng() < 0.5 ? 1 : 0);
-      for (let p = 0; p < nP; p++) {
-        const pt = mkPatch();
-        // rasterize onto the cell grid; grid coords may run past the tile
-        // edge — the fill position wraps them back in, which is exactly the
-        // 3x3 seamless-tiling contract the vector painters get from
-        // fillWrapped.
-        const cx0 = Math.floor(pt.mnx / cell), cx1 = Math.ceil(pt.mxx / cell);
-        const cy0 = Math.floor(pt.mny / cell), cy1 = Math.ceil(pt.mxy / cell);
-        for (let gy = cy0; gy <= cy1; gy++) {
-          for (let gx = cx0; gx <= cx1; gx++) {
-            const sx2 = (gx + 0.5) * cell + (rng() - 0.5) * cell * 0.9;
-            const sy2 = (gy + 0.5) * cell + (rng() - 0.5) * cell * 0.9;
-            if (!ctx.isPointInPath(pt.path, sx2, sy2)) continue;
-            const qx = (((gx % cells) + cells) % cells) * cell;
-            const qy = (((gy % cells) + cells) % cells) * cell;
-            ctx.fillRect(qx, qy, cell + 0.5, cell + 0.5);
+    const paintDigitalMacroPatches = (): void => {
+      for (let pi = 0; pi < patches.length; pi++) {
+        const col = patches[pi];
+        ctx.fillStyle = rgb(col, 0.94);
+        const nP = 3 + (rng() < 0.5 ? 1 : 0);
+        for (let p = 0; p < nP; p++) {
+          const pt = mkPatch();
+          const cx0 = Math.floor(pt.mnx / cell), cx1 = Math.ceil(pt.mxx / cell);
+          const cy0 = Math.floor(pt.mny / cell), cy1 = Math.ceil(pt.mxy / cell);
+          for (let gy = cy0; gy <= cy1; gy++) {
+            for (let gx = cx0; gx <= cx1; gx++) {
+              const sx2 = (gx + 0.5) * cell + (rng() - 0.5) * cell * 0.9;
+              const sy2 = (gy + 0.5) * cell + (rng() - 0.5) * cell * 0.9;
+              if (!ctx.isPointInPath(pt.path, sx2, sy2)) continue;
+              const qx = (((gx % cells) + cells) % cells) * cell;
+              const qy = (((gy % cells) + cells) % cells) * cell;
+              ctx.fillRect(qx, qy, cell + 0.5, cell + 0.5);
+            }
           }
         }
       }
-    }
+    };
+    paintDigitalMacroPatches();
     // fine-grain octave: sparse cell noise between the macro patches.
     // camo r2 (starter pattern-quality): ~half the budget now lands as short
     // 2-4 cell RUNS with an occasional perpendicular kink (the L/I dither
     // strokes real pixel schemes quantize into) instead of pure lone pixels —
     // uniform singles read as sensor noise at closeup while runs read as
     // deliberate quantization. Total cell budget unchanged (~170/cellK).
-    {
-      let budget = Math.round(170 / cellK);
-      while (budget > 0) {
-        const col = patches[(rng() * patches.length) | 0];
-        ctx.fillStyle = rgb(col, 0.85);
-        let gx = (rng() * cells) | 0, gy = (rng() * cells) | 0;
-        const run = rng() < 0.5 ? 1 : 2 + ((rng() * 3) | 0);
-        const horiz = rng() < 0.5;
-        for (let k2 = 0; k2 < run && budget > 0; k2++, budget--) {
-          const qx = (((gx % cells) + cells) % cells) * cell;
-          const qy = (((gy % cells) + cells) % cells) * cell;
-          ctx.fillRect(qx, qy, cell + 0.5, cell + 0.5);
-          if (horiz) gx++; else gy++;
-          if (run > 1 && rng() < 0.3) {            // perpendicular kink
-            if (horiz) gy += rng() < 0.5 ? 1 : -1; else gx += rng() < 0.5 ? 1 : -1;
-          }
+    const paintDigitalRun = (remaining: number): number => {
+      const col = patches[(rng() * patches.length) | 0];
+      ctx.fillStyle = rgb(col, 0.85);
+      let gx = (rng() * cells) | 0, gy = (rng() * cells) | 0;
+      const run = rng() < 0.5 ? 1 : 2 + ((rng() * 3) | 0);
+      const horiz = rng() < 0.5;
+      let consumed = 0;
+      for (let k2 = 0; k2 < run && consumed < remaining; k2++, consumed++) {
+        const qx = (((gx % cells) + cells) % cells) * cell;
+        const qy = (((gy % cells) + cells) % cells) * cell;
+        ctx.fillRect(qx, qy, cell + 0.5, cell + 0.5);
+        if (horiz) gx++; else gy++;
+        if (run > 1 && rng() < 0.3) {
+          if (horiz) gy += rng() < 0.5 ? 1 : -1;
+          else gx += rng() < 0.5 ? 1 : -1;
         }
       }
-    }
+      return consumed;
+    };
+    const paintDigitalFineGrain = (): void => {
+      let budget = Math.round(170 / cellK);
+      while (budget > 0) {
+        budget -= paintDigitalRun(budget);
+      }
+    };
+    paintDigitalFineGrain();
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'merdc' && patches.length) {
+      }
+    };
+    const paintMerdcScheme = (): void => {
+      if (scheme === 'merdc' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // MERDC (US 4-color, camo r8): TWO DOMINANT tones split the hull in
     // large flowing multi-lobe fields (base carries one, patches[0] the
@@ -1205,48 +1272,60 @@ function paintCamo(
     const sand = patches[1] || mix(base, [220, 205, 160], 0.5);
     const black = patches[2] || [43, 43, 40];
     const dirA = rng() * Math.PI;
-    const fields = [];
+    const fields: Array<[number, number, number]> = [];
     const nF = Math.max(3, Math.round(5 * nK / pk));
-    for (let i = 0; i < nF; i++) {
-      const r = S * wk * pk * (i < nF * 0.4 ? 0.105 + rng() * 0.055 : 0.065 + rng() * 0.04);
-      let x = rng() * S, y = rng() * S;
-      if (i > 0 && rng() < 0.45) {               // chain onto an earlier field
-        const c2 = fields[(rng() * fields.length) | 0];
-        x = c2[0] + (rng() - 0.5) * c2[2] * 2.6;
-        y = c2[1] + (rng() - 0.5) * c2[2] * 2.0;
+    const paintMerdcFields = (): void => {
+      for (let i = 0; i < nF; i++) {
+        const r = S * wk * pk * (i < nF * 0.4 ? 0.105 + rng() * 0.055 : 0.065 + rng() * 0.04);
+        let x = rng() * S, y = rng() * S;
+        if (i > 0 && rng() < 0.45) {
+          const c2 = fields[(rng() * fields.length) | 0];
+          x = c2[0] + (rng() - 0.5) * c2[2] * 2.6;
+          y = c2[1] + (rng() - 0.5) * c2[2] * 2.0;
+        }
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.5, 4 + ((rng() * 3) | 0));
+        sprayEdge(p, dom, 0.95, false);
+        fields.push([x, y, r]);
       }
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.5, 4 + ((rng() * 3) | 0));
-      sprayEdge(p, dom, 0.95, false);
-      fields.push([x, y, r]);
-    }
+    };
+    paintMerdcFields();
     // sand: few narrow winding bands bridging the field boundaries
-    for (let i = 0; i < Math.max(2, Math.round(3 * nK / pk)); i++) {
-      const r = S * wk * pk * (0.034 + rng() * 0.022);
-      let x = rng() * S, y = rng() * S;
-      if (fields.length && rng() < 0.7) {
-        const c2 = fields[(rng() * fields.length) | 0];
-        const a2 = rng() * Math.PI * 2;
-        x = c2[0] + Math.cos(a2) * c2[2] * 1.2;
-        y = c2[1] + Math.sin(a2) * c2[2] * 0.9;
+    const paintMerdcSand = (): void => {
+      for (let i = 0; i < Math.max(2, Math.round(3 * nK / pk)); i++) {
+        const r = S * wk * pk * (0.034 + rng() * 0.022);
+        let x = rng() * S, y = rng() * S;
+        if (fields.length && rng() < 0.7) {
+          const c2 = fields[(rng() * fields.length) | 0];
+          const a2 = rng() * Math.PI * 2;
+          x = c2[0] + Math.cos(a2) * c2[2] * 1.2;
+          y = c2[1] + Math.sin(a2) * c2[2] * 0.9;
+        }
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.6, 4 + ((rng() * 2) | 0));
+        sprayEdge(p, sand, 0.92, false);
       }
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.6, 4 + ((rng() * 2) | 0));
-      sprayEdge(p, sand, 0.92, false);
-    }
+    };
+    paintMerdcSand();
     // black: thin elongated shadow bars anchored on field boundaries (the
     // nato scheme's proven anti-confetti rule — never free-floating chips)
-    for (let i = 0; i < Math.max(2, Math.round(3 * nK * (visual.blackK || 1) / pk)); i++) {
-      const r = S * wk * pk * (0.028 + rng() * 0.018);
-      let x = rng() * S, y = rng() * S;
-      if (fields.length && rng() < 0.8) {
-        const c2 = fields[(rng() * fields.length) | 0];
-        const a2 = rng() * Math.PI * 2;
-        x = c2[0] + Math.cos(a2) * c2[2] * 1.1;
-        y = c2[1] + Math.sin(a2) * c2[2] * 0.8;
+    const paintMerdcBlack = (): void => {
+      for (let i = 0; i < Math.max(2, Math.round(3 * nK * (visual.blackK || 1) / pk)); i++) {
+        const r = S * wk * pk * (0.028 + rng() * 0.018);
+        let x = rng() * S, y = rng() * S;
+        if (fields.length && rng() < 0.8) {
+          const c2 = fields[(rng() * fields.length) | 0];
+          const a2 = rng() * Math.PI * 2;
+          x = c2[0] + Math.cos(a2) * c2[2] * 1.1;
+          y = c2[1] + Math.sin(a2) * c2[2] * 0.8;
+        }
+        const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7, 3);
+        sprayEdge(p, black, 0.9, false);
       }
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7, 3);
-      sprayEdge(p, black, 0.9, false);
-    }
-  } else if (scheme === 'blotch' && patches.length) {
+    };
+    paintMerdcBlack();
+      }
+    };
+    const paintBlotchScheme = (): void => {
+      if (scheme === 'blotch' && patches.length) {
     // Dense rounded blotch field (tropic/jungle + autumn palettes, camo r8):
     // large SOFT rounded masses at ~50-60% coverage, each with a small
     // satellite-dapple cluster — canopy language, deliberately zero angular
@@ -1285,7 +1364,19 @@ function paintCamo(
         }
       }
     }
-  } else if (scheme === 'blocks' && patches.length) {
+      }
+    };
+    paintWinterScheme();
+    paintFleckScheme();
+    paintDigitalScheme();
+    paintMerdcScheme();
+    paintBlotchScheme();
+  };
+  paintFieldSchemes();
+
+  const paintGeometricSchemes = (): void => {
+    const paintBlocksScheme = (): void => {
+      if (scheme === 'blocks' && patches.length) {
     // Urban block (Berlin-brigade language, camo r8): CRISP axis-aligned
     // rectangles in flat greys — geometry so architectural it can never be
     // mistaken for a foliage scheme. Big panels first, then a course of
@@ -1308,7 +1399,10 @@ function paintCamo(
       rect(rng() * S, rng() * S,
         S * wk * pk * (0.05 + rng() * 0.06), S * wk * pk * (0.04 + rng() * 0.05), col, 0.92);
     }
-  } else if (scheme === 'washworn') {
+      }
+    };
+    const paintWashwornScheme = (): void => {
+      if (scheme === 'washworn') {
     // Field-expedient whitewash, HEAVILY worn (camo r8) — distinct from
     // 'winter' (a maintained near-full wash): this one was slopped on
     // mid-campaign and half scrubbed off. Broad opaque chalk swathes leave
@@ -1342,7 +1436,10 @@ function paintCamo(
       strokeWrapped(ctx, S, path, rgb(tone, 0.10 + rng() * 0.12), 1.5 + rng() * 4);
     }
     capCanvasLuma(ctx, S, luma(base) * 1.04);
-  } else if (scheme === 'caunter' && patches.length) {
+      }
+    };
+    const paintCaunterScheme = (): void => {
+      if (scheme === 'caunter' && patches.length) {
     // British Caunter-family stone scheme (camo r8): PARALLEL hard-edged
     // diagonal bands, all sharing the vehicle's one angle — the disciplined
     // ruler-laid Middle-East look, nothing sprayed. Slate blue-grey + dark
@@ -1378,7 +1475,10 @@ function paintCamo(
       p.closePath();
       fillWrapped(ctx, S, p, rgb(col, 0.94));
     }
-  } else if (scheme === 'splinter' && patches.length) {
+      }
+    };
+    const paintSplinterScheme = (): void => {
+      if (scheme === 'splinter' && patches.length) {
     // Splittertarn (hard-edge WWII German, camo r8): interlocking
     // straight-edged polygon wedges of green + red-brown over the tan base,
     // plus the signature Regenstreifen — short parallel rain strokes in one
@@ -1407,7 +1507,10 @@ function paintCamo(
       path.lineTo(x0 + Math.cos(ra) * len, y0 + Math.sin(ra) * len);
       strokeWrapped(ctx, S, path, rgb(rainCol, 0.55 + rng() * 0.25), 1.2 + rng() * 1.6);
     }
-  } else if (scheme === 'dazzle' && patches.length) {
+      }
+    };
+    const paintDazzleScheme = (): void => {
+      if (scheme === 'dazzle' && patches.length) {
     // Dazzle (camo r8): long straight HARD-EDGE wedge bands crossing the
     // hull at two alternating diagonal families — disruption by geometry,
     // not blending. Bands are tapered polygon strips (no spray blur; the
@@ -1453,7 +1556,19 @@ function paintCamo(
       fillWrapped(ctx, S, p, rgb(col, 0.94));
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'tigerstripe' && patches.length) {
+      }
+    };
+    paintBlocksScheme();
+    paintWashwornScheme();
+    paintCaunterScheme();
+    paintSplinterScheme();
+    paintDazzleScheme();
+  };
+  paintGeometricSchemes();
+
+  const paintIdentitySchemes = (): void => {
+    const paintTigerStripeScheme = (): void => {
+      if (scheme === 'tigerstripe' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Tiger stripe (SEA gunship lineage, camo r2 expansion): long JAGGED
     // near-horizontal bands — thick dark stripes with sharp tapered claw
@@ -1526,7 +1641,10 @@ function paintCamo(
       stripe(dark, S * wk * (0.045 + rng() * 0.04), S * wk * (0.55 + rng() * 0.45), 0.94);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'chip6' && patches.length) {
+      }
+    };
+    const paintChipSixScheme = (): void => {
+      if (scheme === 'chip6' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // US 6-color desert 'chocolate chip' (camo r2 expansion): broad wavy
     // horizontal wind bands in two earth tones over the tan base, then the
@@ -1576,7 +1694,10 @@ function paintCamo(
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'brush' && patches.length) {
+      }
+    };
+    const paintBrushScheme = (): void => {
+      if (scheme === 'brush' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // UK DPM brush-stroke (camo r2 expansion): layered directional strokes —
     // each tone swept along ONE shared flow with occasional perpendicular
@@ -1613,7 +1734,10 @@ function paintCamo(
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'claude' && patches.length) {
+      }
+    };
+    const paintClaudeScheme = (): void => {
+      if (scheme === 'claude' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // The HOUSE SCHEME (camo r5, owner ask: "remove the black and orange
     // dots... massive versions of the claude guys themselves in black and
@@ -1660,7 +1784,10 @@ function paintCamo(
         (rng() - 0.5) * 0.7, rng() < 0.4 ? slate : terra, 0.62);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'spark' && patches.length) {
+      }
+    };
+    const paintSparkScheme = (): void => {
+      if (scheme === 'spark' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // CLAUDE SPARK camo (camo r4, owner ask): the official starburst from
     // sprinkle to hero scale over warm ivory with soft clay wash fields. One
@@ -1701,7 +1828,19 @@ function paintCamo(
         rng() * Math.PI * 2, rng() < 0.3 ? slate : terra, 0.6);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'ducky' && patches.length) {
+      }
+    };
+    paintTigerStripeScheme();
+    paintChipSixScheme();
+    paintBrushScheme();
+    paintClaudeScheme();
+    paintSparkScheme();
+  };
+  paintIdentitySchemes();
+
+  const paintNoveltySchemes = (): void => {
+    const paintDuckyScheme = (): void => {
+      if (scheme === 'ducky' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // RUBBER DUCKY (camo r6, owner ask: fun set): a hero duck and its
     // flotilla in bath-toy gold on pond gray, slate wing/eye/beak accents,
@@ -1745,7 +1884,10 @@ function paintCamo(
       duck(rng() * S, rng() * S, S * (0.045 + rng() * 0.03), rng() < 0.5, 0.8);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'suits' && patches.length) {
+      }
+    };
+    const paintSuitsScheme = (): void => {
+      if (scheme === 'suits' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // HIGH ROLLER (camo r6): playing-card suits scattered over aged ivory —
     // hearts/diamonds in red, spades/clubs in black, casino-felt wash.
@@ -1805,7 +1947,10 @@ function paintCamo(
         S * (0.05 + rng() * 0.04), (rng() - 0.5) * 0.7, 0.65);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'flames' && patches.length) {
+      }
+    };
+    const paintFlamesScheme = (): void => {
+      if (scheme === 'flames' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // HOT ROD (camo r6): flame licks sweeping one shared diagonal over
     // near-black — deep red under orange under gold cores, drawn as chains
@@ -1850,7 +1995,10 @@ function paintCamo(
     drawLayer(fo, 0.66, 0.95);
     drawLayer(fg, 0.34, 0.9);
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'leopardprint' && patches.length) {
+      }
+    };
+    const paintLeopardPrintScheme = (): void => {
+      if (scheme === 'leopardprint' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // LEOPARD PRINT (camo r6): fashion rosettes — amber patch under a broken
     // black ring of arc chips, solid pips between. patches = [amber, black].
@@ -1876,7 +2024,10 @@ function paintCamo(
         S * (0.008 + rng() * 0.01), 6, 0.4), rgb(blk, 0.85));
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'bolt' && patches.length) {
+      }
+    };
+    const paintBoltScheme = (): void => {
+      if (scheme === 'bolt' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // THUNDERBOLT (camo r6): comic lightning bolts, gold heroes with ink
     // counter-bolts on storm gray; soft cloud washes behind.
@@ -1916,7 +2067,19 @@ function paintCamo(
         rng() * Math.PI * 2, rng() < 0.35 ? ink : gold, 0.7);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'stars' && patches.length) {
+      }
+    };
+    paintDuckyScheme();
+    paintSuitsScheme();
+    paintFlamesScheme();
+    paintLeopardPrintScheme();
+    paintBoltScheme();
+  };
+  paintNoveltySchemes();
+
+  const paintGraphicSchemes = (): void => {
+    const paintStarsScheme = (): void => {
+      if (scheme === 'stars' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // STARFALL (camo r6): five-point stars from dust to hero on night navy,
     // cream heroes with gold satellites. patches = [cream, gold].
@@ -1952,7 +2115,10 @@ function paintCamo(
         rng() * Math.PI, rng() < 0.5 ? gold : cream, 0.7);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'daisy' && patches.length) {
+      }
+    };
+    const paintDaisyScheme = (): void => {
+      if (scheme === 'daisy' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // FLOWER POWER (camo r6): sixties daisies — six cream petal ellipses
     // around a terracotta button, hero to sprinkle on olive drab.
@@ -1986,7 +2152,10 @@ function paintCamo(
         rng() * Math.PI, 0.75);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'circuit' && patches.length) {
+      }
+    };
+    const paintCircuitScheme = (): void => {
+      if (scheme === 'circuit' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // CIRCUIT BOARD (camo r6): mint traces with 45-degree jogs, gold via
     // dots and pads, a few IC packages, on PCB green.
@@ -2027,7 +2196,10 @@ function paintCamo(
     }
     for (let i = 0; i < Math.round(10 * nK); i++) via(rng() * S, rng() * S, S * 0.009);
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'racing' && patches.length) {
+      }
+    };
+    const paintRacingScheme = (): void => {
+      if (scheme === 'racing' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // RACING TEAM (camo r6): twin rally stripes with a keyline down one
     // shared diagonal, plus number roundels. patches = [red, black].
@@ -2075,7 +2247,10 @@ function paintCamo(
       fillWrapped(ctx, S, q, rgb(rng() < 0.5 ? red : blk, 0.7));
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'paintball' && patches.length) {
+      }
+    };
+    const paintPaintballScheme = (): void => {
+      if (scheme === 'paintball' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // PAINTBALL (camo r6): multicolor splats — irregular core, radial
     // droplet spray, occasional drip run — on primer gray.
@@ -2104,7 +2279,19 @@ function paintCamo(
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'star' && patches.length) {
+      }
+    };
+    paintStarsScheme();
+    paintDaisyScheme();
+    paintCircuitScheme();
+    paintRacingScheme();
+    paintPaintballScheme();
+  };
+  paintGraphicSchemes();
+
+  const paintHistoricalSchemes = (): void => {
+    const paintStarScheme = (): void => {
+      if (scheme === 'star' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // INVASION STAR (camo r7 loadout set): olive field with ONE hero circled
     // white star + a plain satellite star + registration stencils — the
@@ -2163,7 +2350,10 @@ function paintCamo(
     }
     ctx.restore();
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'idband' && patches.length) {
+      }
+    };
+    const paintIdentificationBandScheme = (): void => {
+      if (scheme === 'idband' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // BERLIN ID BAND (camo r7 loadout set): the white air-recognition band
     // crossing the 4BO field, plus a big white tactical number stencil.
@@ -2218,7 +2408,10 @@ function paintCamo(
     gs.closePath();
     strokeWrapped(ctx, S, gs, rgb(white, 0.85), gr * 0.14);
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'brushwash' && patches.length) {
+      }
+    };
+    const paintBrushWashScheme = (): void => {
+      if (scheme === 'brushwash' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // ARDENNES BRUSH WASH (camo r8): whitewash slopped on with a wide
     // brush — long directional strokes, olive drab dragging through in
@@ -2252,7 +2445,10 @@ function paintCamo(
         0.4 + rng() * 0.25, S * (0.1 + rng() * 0.18));
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'usmc' && patches.length) {
+      }
+    };
+    const paintUsmcScheme = (): void => {
+      if (scheme === 'usmc' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // PACIFIC '45 (camo r8): USMC forest green under HARD-EDGED black wave
     // bands, a white hull number and coral-dust stipple — sharp painted
@@ -2261,48 +2457,60 @@ function paintCamo(
     const dust = patches[1] || patches[0];
     const white = patches[2] || '#e3ded1';
     const flow = -0.4 + rng() * 0.25;
-    for (let i = 0; i < Math.round(5 * nK); i++) {   // black wave bands
-      const x0 = rng() * S, y0b = rng() * S;
-      const len = S * (0.5 + rng() * 0.4);
-      const w = S * wk * (0.045 + rng() * 0.045);
-      const path = new Path2D();
-      path.moveTo(x0, y0b);
-      const seg = 4;
-      for (let k2 = 1; k2 <= seg; k2++) {
-        const t = k2 / seg;
-        path.quadraticCurveTo(
-          x0 + Math.cos(flow) * len * (t - 0.5 / seg) - Math.sin(flow) * w * (k2 % 2 ? 1.4 : -1.4),
-          y0b + Math.sin(flow) * len * (t - 0.5 / seg) + Math.cos(flow) * w * (k2 % 2 ? 1.4 : -1.4),
-          x0 + Math.cos(flow) * len * t, y0b + Math.sin(flow) * len * t);
+    const paintUsmcBands = (): void => {
+      for (let i = 0; i < Math.round(5 * nK); i++) {
+        const x0 = rng() * S, y0b = rng() * S;
+        const len = S * (0.5 + rng() * 0.4);
+        const w = S * wk * (0.045 + rng() * 0.045);
+        const path = new Path2D();
+        path.moveTo(x0, y0b);
+        const seg = 4;
+        for (let k2 = 1; k2 <= seg; k2++) {
+          const t = k2 / seg;
+          path.quadraticCurveTo(
+            x0 + Math.cos(flow) * len * (t - 0.5 / seg) - Math.sin(flow) * w * (k2 % 2 ? 1.4 : -1.4),
+            y0b + Math.sin(flow) * len * (t - 0.5 / seg) + Math.cos(flow) * w * (k2 % 2 ? 1.4 : -1.4),
+            x0 + Math.cos(flow) * len * t, y0b + Math.sin(flow) * len * t);
+        }
+        strokeWrapped(ctx, S, path, rgb(blk, 0.92), w);
       }
-      strokeWrapped(ctx, S, path, rgb(blk, 0.92), w);
-    }
-    for (let i = 0; i < Math.round(6 * nK); i++) {   // coral-dust stipple
-      const cx2 = rng() * S, cy2 = rng() * S, cr = S * (0.05 + rng() * 0.09);
-      const nd = 16 + ((rng() * 22) | 0);
-      for (let k2 = 0; k2 < nd; k2++) {
-        const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
-        const q = new Path2D();
-        q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.8,
-          S * (0.0015 + rng() * 0.004), 0, Math.PI * 2);
-        fillWrapped(ctx, S, q, rgb(dust, 0.4 + rng() * 0.25));
+    };
+    paintUsmcBands();
+    const paintUsmcDust = (): void => {
+      for (let i = 0; i < Math.round(6 * nK); i++) {
+        const cx2 = rng() * S, cy2 = rng() * S, cr = S * (0.05 + rng() * 0.09);
+        const nd = 16 + ((rng() * 22) | 0);
+        for (let k2 = 0; k2 < nd; k2++) {
+          const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
+          const q = new Path2D();
+          q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.8,
+            S * (0.0015 + rng() * 0.004), 0, Math.PI * 2);
+          fillWrapped(ctx, S, q, rgb(dust, 0.4 + rng() * 0.25));
+        }
       }
-    }
-    ctx.save();                                      // hull number
-    const num2 = String(10 + ((rng() * 89) | 0));
-    ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = rgb(white, 0.88);
-    const hx = rng() * S, hy = rng() * S;
-    for (const dx of [-S, 0, S]) {
-      for (const dy of [-S, 0, S]) {
-        ctx.save(); ctx.translate(dx, dy); ctx.fillText(num2, hx, hy); ctx.restore();
+    };
+    paintUsmcDust();
+    const paintUsmcNumber = (): void => {
+      ctx.save();
+      const num2 = String(10 + ((rng() * 89) | 0));
+      ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = rgb(white, 0.88);
+      const hx = rng() * S, hy = rng() * S;
+      for (const dx of [-S, 0, S]) {
+        for (const dy of [-S, 0, S]) {
+          ctx.save(); ctx.translate(dx, dy); ctx.fillText(num2, hx, hy); ctx.restore();
+        }
       }
-    }
-    ctx.restore();
+      ctx.restore();
+    };
+    paintUsmcNumber();
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'erdl' && patches.length) {
+      }
+    };
+    const paintErdlScheme = (): void => {
+      if (scheme === 'erdl' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // ERDL LEAF (camo r8, the anti-blob flagship): interlocking HARD-EDGED
     // organic islands — dark-green masses, brown mids riding their borders,
@@ -2358,7 +2566,19 @@ function paintCamo(
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'mudwash' && patches.length) {
+      }
+    };
+    paintStarScheme();
+    paintIdentificationBandScheme();
+    paintBrushWashScheme();
+    paintUsmcScheme();
+    paintErdlScheme();
+  };
+  paintHistoricalSchemes();
+
+  const paintExperimentalSchemes = (): void => {
+    const paintMudWashScheme = (): void => {
+      if (scheme === 'mudwash' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // RASPUTITSA (camo r8): mud as an EVENT, not blobs — directional
     // spatter clusters (dense core, sparse fringe), dragged smears along
@@ -2368,54 +2588,69 @@ function paintCamo(
     const dry = patches[1] || patches[0];
     const dark = patches[2] || '#332a20';
     const flow = (rng() - 0.5) * 0.5;
-    for (let i = 0; i < Math.round(4 * nK); i++) {   // crusted dry patches
-      const x = rng() * S, y = rng() * S;
-      const r = S * wk * (0.045 + rng() * 0.04);
-      const p = blobPath2D(rng, x, y, r, 10, 0.5);
-      fillWrapped(ctx, S, p, rgb(dry, 0.85));
-      strokeWrapped(ctx, S, p, rgb(dark, 0.7), r * 0.09); // cracked rim
-    }
-    for (let i = 0; i < Math.round(9 * nK); i++) {   // dragged smears
-      const x0 = rng() * S, y0b = rng() * S;
-      const a = flow + (rng() - 0.5) * 0.4;
-      const len = S * (0.08 + rng() * 0.18);
-      const w = S * (0.008 + rng() * 0.018);
-      const path = new Path2D();
-      path.moveTo(x0, y0b);
-      path.quadraticCurveTo(
-        x0 + Math.cos(a) * len * 0.5 - Math.sin(a) * w * 1.5,
-        y0b + Math.sin(a) * len * 0.5 + Math.cos(a) * w * 1.5,
-        x0 + Math.cos(a) * len, y0b + Math.sin(a) * len);
-      strokeWrapped(ctx, S, path, rgb(wet, 0.35 + rng() * 0.3), w);
-      if (rng() < 0.5) {                             // droplet at the tail
-        const q = new Path2D();
-        q.arc(x0 + Math.cos(a) * len * 1.12, y0b + Math.sin(a) * len * 1.12,
-          w * (0.5 + rng() * 0.4), 0, Math.PI * 2);
-        fillWrapped(ctx, S, q, rgb(wet, 0.6));
+    const paintDryMud = (): void => {
+      for (let i = 0; i < Math.round(4 * nK); i++) {
+        const x = rng() * S, y = rng() * S;
+        const r = S * wk * (0.045 + rng() * 0.04);
+        const p = blobPath2D(rng, x, y, r, 10, 0.5);
+        fillWrapped(ctx, S, p, rgb(dry, 0.85));
+        strokeWrapped(ctx, S, p, rgb(dark, 0.7), r * 0.09);
       }
-    }
-    for (let i = 0; i < Math.round(7 * nK); i++) {   // spatter clusters
-      const cx2 = rng() * S, cy2 = rng() * S;
-      const cr = S * (0.03 + rng() * 0.07);
-      const nd = 14 + ((rng() * 20) | 0);
-      for (let k2 = 0; k2 < nd; k2++) {
-        const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
-        const q = new Path2D();
-        q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.85,
-          S * (0.0015 + rng() * 0.005), 0, Math.PI * 2);
-        fillWrapped(ctx, S, q, rgb(rng() < 0.3 ? dark : wet, 0.5 + rng() * 0.3));
+    };
+    paintDryMud();
+    const paintMudSmears = (): void => {
+      for (let i = 0; i < Math.round(9 * nK); i++) {
+        const x0 = rng() * S, y0b = rng() * S;
+        const a = flow + (rng() - 0.5) * 0.4;
+        const len = S * (0.08 + rng() * 0.18);
+        const w = S * (0.008 + rng() * 0.018);
+        const path = new Path2D();
+        path.moveTo(x0, y0b);
+        path.quadraticCurveTo(
+          x0 + Math.cos(a) * len * 0.5 - Math.sin(a) * w * 1.5,
+          y0b + Math.sin(a) * len * 0.5 + Math.cos(a) * w * 1.5,
+          x0 + Math.cos(a) * len, y0b + Math.sin(a) * len);
+        strokeWrapped(ctx, S, path, rgb(wet, 0.35 + rng() * 0.3), w);
+        if (rng() < 0.5) {
+          const q = new Path2D();
+          q.arc(x0 + Math.cos(a) * len * 1.12, y0b + Math.sin(a) * len * 1.12,
+            w * (0.5 + rng() * 0.4), 0, Math.PI * 2);
+          fillWrapped(ctx, S, q, rgb(wet, 0.6));
+        }
       }
-    }
-    for (let i = 0; i < Math.round(6 * nK); i++) {   // panel grime lines
-      const path = new Path2D();
-      const x0 = rng() * S, y0b = rng() * S, len = S * (0.06 + rng() * 0.1);
-      const vert = rng() < 0.5;
-      path.moveTo(x0, y0b);
-      path.lineTo(x0 + (vert ? 0 : len), y0b + (vert ? len : 0));
-      strokeWrapped(ctx, S, path, rgb(dark, 0.4), S * 0.0035);
-    }
+    };
+    paintMudSmears();
+    const paintMudSpatter = (): void => {
+      for (let i = 0; i < Math.round(7 * nK); i++) {
+        const cx2 = rng() * S, cy2 = rng() * S;
+        const cr = S * (0.03 + rng() * 0.07);
+        const nd = 14 + ((rng() * 20) | 0);
+        for (let k2 = 0; k2 < nd; k2++) {
+          const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
+          const q = new Path2D();
+          q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.85,
+            S * (0.0015 + rng() * 0.005), 0, Math.PI * 2);
+          fillWrapped(ctx, S, q, rgb(rng() < 0.3 ? dark : wet, 0.5 + rng() * 0.3));
+        }
+      }
+    };
+    paintMudSpatter();
+    const paintMudPanelLines = (): void => {
+      for (let i = 0; i < Math.round(6 * nK); i++) {
+        const path = new Path2D();
+        const x0 = rng() * S, y0b = rng() * S, len = S * (0.06 + rng() * 0.1);
+        const vert = rng() < 0.5;
+        path.moveTo(x0, y0b);
+        path.lineTo(x0 + (vert ? 0 : len), y0b + (vert ? len : 0));
+        strokeWrapped(ctx, S, path, rgb(dark, 0.4), S * 0.0035);
+      }
+    };
+    paintMudPanelLines();
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'amoeba' && patches.length) {
+      }
+    };
+    const paintAmoebaScheme = (): void => {
+      if (scheme === 'amoeba' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Soviet WW2 amoeba/kumovka (camo r2 expansion): FEW very large rounded
     // masses over 4BO green — each a union of 2-3 overlapping soft blobs so
@@ -2459,7 +2694,10 @@ function paintCamo(
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'hexfield' && patches.length) {
+      }
+    };
+    const paintHexFieldScheme = (): void => {
+      if (scheme === 'hexfield' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Modern experimental hex mesh (camo r2 expansion — Barracuda-net
     // language): a honeycomb cell field where ~55% of cells fill from two
@@ -2470,15 +2708,17 @@ function paintCamo(
     // hexes stretch a few % anisotropically, invisible at paint scale, and
     // the pattern wraps exactly (3x3 fillWrapped contract).
     const tones = [patches[0], patches[1] || patches[0]];
-    // macro disruption first, under the mesh
-    for (let i = 0; i < 3; i++) {
-      const x = rng() * S, y = rng() * S, r = S * (0.16 + rng() * 0.12);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, rgb(mix(base, tones[0], 0.55), 0.5));
-      g.addColorStop(1, rgb(base, 0));
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    }
+    const paintHexMacroFields = (): void => {
+      for (let i = 0; i < 3; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.16 + rng() * 0.12);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, rgb(mix(base, tones[0], 0.55), 0.5));
+        g.addColorStop(1, rgb(base, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+    };
+    paintHexMacroFields();
     const hexR0 = S * wk * 0.034 * (visual.digitalCellK || 1);
     let nCol = Math.max(6, Math.round(S / (hexR0 * 1.5)));
     if (nCol % 2) nCol++;                          // even count: the odd-column
@@ -2488,26 +2728,35 @@ function paintCamo(
     const nRow = Math.max(6, Math.round(S / (hexR0 * Math.sqrt(3))));
     const rh = S / nRow;                           // row pitch (= 2 * hw)
     const hw = rh / 2;
-    for (let gy = 0; gy < nRow; gy++) {
-      for (let gx = 0; gx < nCol; gx++) {
-        const v = rng();
-        if (v < 0.45) continue;                    // base shows through
-        const x = gx * cw;
-        const y = gy * rh + (gx % 2 ? hw : 0);
-        const col = v < 0.75 ? tones[0] : tones[1];
-        const p = new Path2D();
-        for (let k2 = 0; k2 < 6; k2++) {
-          const a2 = (k2 / 6) * Math.PI * 2;
-          const px2 = x + Math.cos(a2) * hexRx * 0.94;
-          const py2 = y + Math.sin(a2) * hw * 1.085;
-          if (k2 === 0) p.moveTo(px2, py2); else p.lineTo(px2, py2);
-        }
-        p.closePath();
-        fillWrapped(ctx, S, p, rgb(col, 0.9));
+    const paintHexCell = (gx: number, gy: number): void => {
+      const value = rng();
+      if (value < 0.45) return;
+      const x = gx * cw;
+      const y = gy * rh + (gx % 2 ? hw : 0);
+      const col = value < 0.75 ? tones[0] : tones[1];
+      const path = new Path2D();
+      for (let k2 = 0; k2 < 6; k2++) {
+        const angle = (k2 / 6) * Math.PI * 2;
+        const px2 = x + Math.cos(angle) * hexRx * 0.94;
+        const py2 = y + Math.sin(angle) * hw * 1.085;
+        if (k2 === 0) path.moveTo(px2, py2); else path.lineTo(px2, py2);
       }
-    }
+      path.closePath();
+      fillWrapped(ctx, S, path, rgb(col, 0.9));
+    };
+    const paintHexLattice = (): void => {
+      for (let gy = 0; gy < nRow; gy++) {
+        for (let gx = 0; gx < nCol; gx++) {
+          paintHexCell(gx, gy);
+        }
+      }
+    };
+    paintHexLattice();
     // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'solid') {
+      }
+    };
+    const paintSolidScheme = (): void => {
+      if (scheme === 'solid') {
     // ===================== CAMO PATTERN SECTION =====================
     // camo_spotting r3 (critic: t90m factory "single flat parade green ...
     // reads as clay render"): monotone factory coats get an explicit
@@ -2541,28 +2790,31 @@ function paintCamo(
         (0.07 + rng() * 0.09) * solidWeatheringIntensity), 1.5 + rng() * 3.5);
     }
     // ===================== END CAMO PATTERN SECTION =================
-  }
+      }
+    };
+    paintMudWashScheme();
+    paintAmoebaScheme();
+    paintHexFieldScheme();
+    paintSolidScheme();
+  };
+  paintExperimentalSchemes();
 
-  // Zimmerit: barely-there albedo modulation only — the ridge relief lives in
-  // the normal map. (Strong albedo stripes read as corduroy/knit fabric at
-  // closeup range — r5 critique.)
-  if (visual.zimmerit) {
-    // r7 scale fix: ridges at ~1/3 the old pitch — real zimmerit rows are
-    // ~1 cm; the S/340 rows read as corrugated cardboard at pedestal range.
+  // Zimmerit is a common post-pattern pass; it is independent of the scheme.
+  const paintZimmeritAlbedo = (): void => {
+    if (!visual.zimmerit) return;
     const pitch = Math.max(2, (S / 900) | 0);
     for (let y = 0; y < S; y += pitch) {
       ctx.fillStyle = `rgba(0,0,0,${0.028 + 0.022 * rng()})`;
       ctx.fillRect(0, y, S, 1);
     }
-    // faint vertical trowel-section seams so the coating reads as applied
-    // in hand-worked strips rather than machine-knit rows
     let x = 0;
     while (x < S) {
       x += (S / 22) * (0.7 + rng() * 0.8);
       ctx.fillStyle = 'rgba(0,0,0,0.035)';
       ctx.fillRect(x, 0, 1.2, S);
     }
-  }
+  };
+  paintZimmeritAlbedo();
 
   // r10: grain trimmed 0.075 -> 0.055 — part of the "flour-dust white
   // speckle" read on top plates under the warm garage key.
@@ -2576,22 +2828,23 @@ function paintCamo(
   // panel lines: dark recess + light catch-edge below
   ctx.lineCap = 'butt';
   const lw = Math.max(2, S / 800);
-  for (const l of feats.hLines) {
-    const y = px(l.p);
-    for (const [a, b] of lineSegs(l)) {
-      // r9: line weight backed off 0.40 -> 0.24 — panel joins should read as
-      // machining, not the unbeveled papercraft creases the critic flagged.
-      ctx.fillStyle = 'rgba(10,10,8,0.24)'; ctx.fillRect(px(a), y, px(b - a), lw);
-      ctx.fillStyle = 'rgba(255,250,235,0.07)'; ctx.fillRect(px(a), y + lw, px(b - a), 1.5);
+  const paintPanelLines = (): void => {
+    for (const line of feats.hLines) {
+      const y = px(line.p);
+      for (const [a, b] of lineSegs(line)) {
+        ctx.fillStyle = 'rgba(10,10,8,0.24)'; ctx.fillRect(px(a), y, px(b - a), lw);
+        ctx.fillStyle = 'rgba(255,250,235,0.07)'; ctx.fillRect(px(a), y + lw, px(b - a), 1.5);
+      }
     }
-  }
-  for (const l of feats.vLines) {
-    const x = px(l.p);
-    for (const [a, b] of lineSegs(l)) {
-      ctx.fillStyle = 'rgba(10,10,8,0.24)'; ctx.fillRect(x, px(a), lw, px(b - a));
-      ctx.fillStyle = 'rgba(255,250,235,0.07)'; ctx.fillRect(x + lw, px(a), 1.5, px(b - a));
+    for (const line of feats.vLines) {
+      const x = px(line.p);
+      for (const [a, b] of lineSegs(line)) {
+        ctx.fillStyle = 'rgba(10,10,8,0.24)'; ctx.fillRect(x, px(a), lw, px(b - a));
+        ctx.fillStyle = 'rgba(255,250,235,0.07)'; ctx.fillRect(x + lw, px(a), 1.5, px(b - a));
+      }
     }
-  }
+  };
+  paintPanelLines();
   // weld beads: dashed light/dark stitch straddling the line
   const weldDash = (horiz: boolean, l: PlateLine): void => {
     const p = l.p;
@@ -2610,8 +2863,11 @@ function paintCamo(
       else ctx.fillRect(px(p) + S / 700, t + jit + step * 0.3, 1.5, step * 0.3);
     }
   };
-  for (const l of feats.hLines) if (l.weld) weldDash(true, l);
-  for (const l of feats.vLines) if (l.weld) weldDash(false, l);
+  const paintWelds = (): void => {
+    for (const line of feats.hLines) if (line.weld) weldDash(true, line);
+    for (const line of feats.vLines) if (line.weld) weldDash(false, line);
+  };
+  paintWelds();
   // bolts along lines: dome highlight + drop shadow
   const bolt = (x: number, y: number, r: number): void => {
     ctx.fillStyle = 'rgba(8,8,6,0.5)';
@@ -2624,55 +2880,80 @@ function paintCamo(
   // the T-90M read "riveted flat panels" (critic). Rows are WW2-only; hatch
   // bolt RINGS stay for everyone.
   const lineBolts = !visual.modernWelds;
-  for (const l of feats.hLines) if (l.bolts && lineBolts) {
-    const step = S / 26;
-    for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(t, px(l.p) + boltR * 2.4, boltR);
-  }
-  for (const l of feats.vLines) if (l.bolts && lineBolts) {
-    const step = S / 26;
-    for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(px(l.p) + boltR * 2.4, t, boltR);
-  }
-  for (const ring of feats.rings) {
-    for (let k = 0; k < ring.n; k++) {
-      const a = (k / ring.n) * Math.PI * 2;
-      bolt(px(ring.x) + Math.cos(a) * px(ring.r), px(ring.y) + Math.sin(a) * px(ring.r), boltR * 0.9);
+  const paintHorizontalLineBolts = (): void => {
+    for (const line of feats.hLines) if (line.bolts && lineBolts) {
+      const step = S / 26;
+      for (let t = step / 2; t < S; t += step) {
+        if (!inGap(line, t / S)) bolt(t, px(line.p) + boltR * 2.4, boltR);
+      }
     }
-  }
+  };
+  const paintVerticalLineBolts = (): void => {
+    for (const line of feats.vLines) if (line.bolts && lineBolts) {
+      const step = S / 26;
+      for (let t = step / 2; t < S; t += step) {
+        if (!inGap(line, t / S)) bolt(px(line.p) + boltR * 2.4, t, boltR);
+      }
+    }
+  };
+  const paintRingBolts = (): void => {
+    for (const ring of feats.rings) {
+      for (let k = 0; k < ring.n; k++) {
+        const angle = (k / ring.n) * Math.PI * 2;
+        bolt(
+          px(ring.x) + Math.cos(angle) * px(ring.r),
+          px(ring.y) + Math.sin(angle) * px(ring.r),
+          boltR * 0.9,
+        );
+      }
+    }
+  };
+  paintHorizontalLineBolts();
+  paintVerticalLineBolts();
+  paintRingBolts();
 
-  // Weathering: soft grime blotches.
-  for (let i = 0; i < 16; i++) {
-    const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, 'rgba(18,16,12,0.13)');
-    g.addColorStop(1, 'rgba(18,16,12,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
+  const paintGrimeBlotches = (): void => {
+    for (let i = 0; i < 16; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(18,16,12,0.13)');
+      g.addColorStop(1, 'rgba(18,16,12,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  };
+  paintGrimeBlotches();
   // dust + dark oil streaks (canvas +y == world down on side plates).
   // Light dust streaks stay near the base hue and low alpha: 240 strokes of
   // brightened weather tone at 0.13 glazed a pastel film over the pattern —
   // desert/summer flanks bleached toward one flat tint (r7 wash critique).
   const dustCol = rgb(scale3(mix(weather, base, 0.4), 1.14), 0.09);
-  for (let i = 0; i < 240; i++) {
-    const x = rng() * S, y = rng() * S, len = S * (0.03 + rng() * 0.12);
-    ctx.strokeStyle = rng() < 0.45 ? 'rgba(30,26,20,0.13)' : dustCol;
-    ctx.lineWidth = 1 + rng() * 3;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - 0.5) * 8, y + len); ctx.stroke();
-  }
+  const paintDustAndOilStreaks = (): void => {
+    for (let i = 0; i < 240; i++) {
+      const x = rng() * S, y = rng() * S, len = S * (0.03 + rng() * 0.12);
+      ctx.strokeStyle = rng() < 0.45 ? 'rgba(30,26,20,0.13)' : dustCol;
+      ctx.lineWidth = 1 + rng() * 3;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - 0.5) * 8, y + len); ctx.stroke();
+    }
+  };
+  paintDustAndOilStreaks();
   // paint chips — dark pit with a worn-metal glint above (from plan).
   // r10 ("flour dust" critique): glints tinted toward dust ochre keyed to the
   // base color and cut ~50% — the old cool near-white pips read as a uniform
   // white powder stipple across every top plate under the garage key.
   const glintCol = rgb(mix(scale3(base, 1.35), [168, 156, 128], 0.55), 0.24);
-  for (const c of feats.chips) {
-    const x = px(c.x), y = px(c.y), r = Math.max(0.8, px(c.r));
-    ctx.fillStyle = c.metal ? 'rgba(96,92,82,0.55)' : 'rgba(25,22,18,0.55)';
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    if (c.metal) {
-      ctx.fillStyle = glintCol;
-      ctx.fillRect(x - r * 0.55, y - r - 1.2, r * 1.1, 1.8);
+  const paintChips = (): void => {
+    for (const chip of feats.chips) {
+      const x = px(chip.x), y = px(chip.y), radius = Math.max(0.8, px(chip.r));
+      ctx.fillStyle = chip.metal ? 'rgba(96,92,82,0.55)' : 'rgba(25,22,18,0.55)';
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+      if (chip.metal) {
+        ctx.fillStyle = glintCol;
+        ctx.fillRect(x - radius * 0.55, y - radius - 1.2, radius * 1.1, 1.8);
+      }
     }
-  }
+  };
+  paintChips();
   // rust weeps from plan sources + below some bolts.
   const weep = (x: number, y: number, len: number, w: number): void => {
     const g = ctx.createLinearGradient(x, y, x, y + len);
@@ -2681,10 +2962,22 @@ function paintCamo(
     ctx.fillStyle = g;
     ctx.fillRect(x, y, Math.max(1.4, w), len);
   };
-  for (const s of feats.streaks) weep(px(s.x), px(s.y), px(s.len), px(s.w));
-  for (const ring of feats.rings) {
-    if (rng() < 0.6) weep(px(ring.x) + px(ring.r) * 0.6, px(ring.y) + px(ring.r), S * (0.02 + rng() * 0.04), 2);
-  }
+  const paintRustWeeps = (): void => {
+    for (const streak of feats.streaks) {
+      weep(px(streak.x), px(streak.y), px(streak.len), px(streak.w));
+    }
+    for (const ring of feats.rings) {
+      if (rng() < 0.6) {
+        weep(
+          px(ring.x) + px(ring.r) * 0.6,
+          px(ring.y) + px(ring.r),
+          S * (0.02 + rng() * 0.04),
+          2,
+        );
+      }
+    }
+  };
+  paintRustWeeps();
   return canvas;
 }
 
@@ -4093,7 +4386,8 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     return factoryVisual(spec, v);
   }
   let o: Partial<MaterialVisual> | null = null;
-  if (patternId === 'summer') {
+  const selectCorePattern = (): void => {
+    if (patternId === 'summer') {
     // brown dropped toward NATO chocolate — '#54402e' flared orange under
     // the warm garage key (r7); r8 pulls it further off red ('#4c3a2a' still
     // leaned warm on the WW2 Dunkelgelb hulls next to Hinterhalt references)
@@ -4191,7 +4485,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     } else {
       o = { scheme: 'digital', base: '#4a5442', weather: '#525c49', patches: ['#333d30', '#79806a', '#23261f'] };
     }
-  } else if (patternId === 'merdc') {
+    }
+  };
+  selectCorePattern();
+
+  const selectFieldPattern = (): void => {
+    if (patternId === 'merdc') {
     // MERDC US 4-color (Summer Verdant table): forest-green field + light
     // green second dominant, sand + black accents. Light green kept muted
     // ('#5f6a4c' family — the calibrated factory-patch value from the m1a2
@@ -4257,7 +4556,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // and inside the matte band after the 0.86 exposure trim.
     o = { scheme: 'dazzle', base: '#667077', weather: '#5d666d',
       patches: ['#2b2e32', '#b4bac0', '#46525f'] };
-  } else if (patternId === 'flecktarn') {
+    }
+  };
+  if (!o) selectFieldPattern();
+
+  const selectTacticalPattern = (): void => {
+    if (patternId === 'flecktarn') {
     // camo r2: universal German spot-cluster dapple (the 'fleck' painter was
     // Germany-only through 'digital' until now). Tones sit half a step off
     // the German digital palette — RAL-B-variant field green a touch darker
@@ -4350,7 +4654,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // style-only, no biome bonus.
     o = { scheme: 'nato', base: '#33373a', weather: '#3a3e41',
       patches: ['#26292c', '#41464a'] };
-  } else if (patternId === 'claude') {
+    }
+  };
+  if (!o) selectTacticalPattern();
+
+  const selectSpecialPattern = (): void => {
+    if (patternId === 'claude') {
     // camo r3/r5 (owner asks): the HOUSE SCHEME — the Claude Code creature
     // itself, sprinkle to hero scale, in terracotta + slate on weathered
     // ivory (r5 dropped the disruptive field masses: they read as dots).
@@ -4400,7 +4709,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
   } else if (patternId === 'paintball') {
     o = { scheme: 'paintball', base: '#b9b9b2', weather: '#a9a9a2',
       patches: ['#3f7fbf', '#c9503f', '#58a05a', '#d9b13f'] };
-  } else if (patternId === 'normandy44') {
+    }
+  };
+  if (!o) selectSpecialPattern();
+
+  const selectHistoricalPattern = (): void => {
+    if (patternId === 'normandy44') {
     // camo r7 loadout set: US olive drab with the white invasion star.
     o = { scheme: 'star', base: '#57603f', weather: '#4e5738',
       patches: ['#ded8c8'] };
@@ -4432,8 +4746,11 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // [wet mud, dry mud, dark spatter].
     o = { scheme: 'mudwash', base: '#575843', weather: '#4e4f3c',
       patches: ['#4a3b2a', '#6b5a42', '#332a20'] };
-  }
-  return o ? { ...v, ...o } : v;
+    }
+  };
+  if (!o) selectHistoricalPattern();
+  const selected = o as Partial<MaterialVisual> | null;
+  return selected ? { ...v, ...selected } : v;
 }
 
 /** Resolved visual (spec.visual with the active pattern applied). */

@@ -130,6 +130,9 @@ export interface LocalPredictionStats {
   restingHullHolds: number;
   maxCorrectionStepM: number;
   maxVerticalCorrectionStepM: number;
+  presentationAdvances: number;
+  maxPresentationAdvanceS: number;
+  maxRecordedInputElapsedS: number;
 }
 
 interface DisplayedPose {
@@ -426,10 +429,32 @@ export class LocalTankPredictor {
       restingHullHolds: 0,
       maxCorrectionStepM: 0,
       maxVerticalCorrectionStepM: 0,
+      presentationAdvances: 0,
+      maxPresentationAdvanceS: 0,
+      maxRecordedInputElapsedS: 0,
     };
   }
 
-  recordInput(input: PredictionInput | null, elapsedS: number, inputSeq: number) {
+  advancePrediction(input: PredictionInput | null, elapsedS: number): boolean {
+    if (!input) return false;
+    this.motionIntent = hasDriveIntent(input);
+    if (this.motionIntent) this.holdRestingHull = false;
+    advance(this.simEntity, input, elapsedS, this.heightField, this.collisionResolver);
+    this.present(elapsedS);
+    this.stats.presentationAdvances++;
+    this.stats.maxPresentationAdvanceS = Math.max(
+      this.stats.maxPresentationAdvanceS,
+      Math.max(0, Math.min(Number(elapsedS) || 0, 0.1)),
+    );
+    return true;
+  }
+
+  recordInput(
+    input: PredictionInput | null,
+    elapsedS: number,
+    inputSeq: number,
+    presentationElapsedS = elapsedS,
+  ) {
     if (!input || !Number.isSafeInteger(inputSeq) || inputSeq < 0) return false;
     // Stryker disable next-line ConditionalExpression: on the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
     if (this.lastRecordedSeq != null) {
@@ -442,15 +467,16 @@ export class LocalTankPredictor {
       }
     }
     this.lastRecordedSeq = inputSeq;
-    this.motionIntent = hasDriveIntent(input);
-    if (this.motionIntent) this.holdRestingHull = false;
     this.history.push({ input: { ...input }, elapsedS, inputSeq });
+    this.stats.maxRecordedInputElapsedS = Math.max(
+      this.stats.maxRecordedInputElapsedS,
+      Math.max(0, Math.min(Number(elapsedS) || 0, 0.1)),
+    );
     if (this.history.length > MAX_INPUT_HISTORY) {
       this.history.shift();
       this.stats.droppedHistory++;
     }
-    advance(this.simEntity, input, elapsedS, this.heightField, this.collisionResolver);
-    this.present(elapsedS);
+    this.advancePrediction(input, presentationElapsedS);
     return true;
   }
 

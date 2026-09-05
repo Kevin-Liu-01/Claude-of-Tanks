@@ -22,7 +22,7 @@ its own prev-state tracker and ignores the flag.
 ## Hit pipeline (sim/damage.ts `resolveShellHit`)
 
 Ordered `traceTank` intersections: ricochet on raw angle → ERA tiles → spaced
-screens (HEAT gap decay) → main-armor pen check → 10-caliber post-pen sweep
+screens (HEAT gap decay) → main-armor pen check → post-pen fragment sweep
 rolling module/crew volumes. Two rules matter for module correctness:
 
 - **Straddling-volume flush** (module_hitbox r1): volumes are reported once at
@@ -32,9 +32,12 @@ rolling module/crew volumes. Two rules matter for module correctness:
   rolled AT the pen, in trace order. Before this rule those modules could
   never be damaged from their natural attack bearing (8 Merkava engines,
   Tiger rack, Leclerc fuel — measured by the probe below).
-- **Post-pen limit**: module/crew volumes further than `10 × caliber` from the
-  entry point do not roll (spall cone dissipates). Straddlers begin AT the
-  pen point, so the limit cannot exclude them.
+- **Post-pen limit**: module/crew volumes further than
+  `max(1.25 m, 10 × caliber)` from the entry point do not roll (the penetrator
+  and fragment corridor dissipates). The floor keeps penetrating autocannon
+  rounds mechanically capable of reaching central modules; full-caliber tank
+  guns retain their caliber-scaled reach. Straddlers begin AT the pen point,
+  so the limit cannot exclude them.
 
 ## Balance tables (source of record: `src/sim/damage.ts`)
 
@@ -48,20 +51,29 @@ Module HP (`MODULE_HP`, ×2.5 on `era: 'modern'` specs):
 | ammoRack | 150 | 375 |
 | gun | 150 | 375 |
 | turretRing | 120 | 300 |
+| gunMount | 120 | 300 |
+| autoloader | 125 | 312.5 |
+| feedSystem | 110 | 275 |
+| missileRack | 120 | 300 |
+| transmission | 140 | 350 |
 | radio | 90 | 225 |
 | optics | 80 | 200 |
 
-Save throws (`SAVE_CHANCE` — chance the module takes damage when its volume is
+Damage rolls (`damageChance` — chance the module takes damage when its volume is
 crossed; per-hit module damage is `moduleDmg ≈ caliberMm` ±25%):
 
 | Module | Chance |
 | --- | --- |
 | tracks | 1.00 |
 | engine / fuelTank / optics / turretRing / radio | 0.45 |
+| transmission / gunMount | 0.45 |
+| feedSystem | 0.38 |
+| autoloader | 0.36 |
 | gun | 0.33 |
+| missileRack | 0.30 |
 | ammoRack | 0.27 |
 
-Fire and consequence rules: engine ignites at 15% per damaging hit (safety
+Fire and consequence rules: engine and transmission ignite at 15% per damaging hit (safety
 fuel tank equipment halves it); a fuel tank NEVER burns while yellow and
 ignites at 100% on red; ammo rack red = detonation (hp→0, turret toss). Fires
 tick every 0.5 s: 0.5% max HP + 10 HP off engine/fuel/ammo, 12%
@@ -73,7 +85,8 @@ to yellow (50% HP) after `REPAIR_S = 10 s` — count-up accumulator, toolbox
 equipment ×1.25 rate. Debuffs: yellow gun σ×2, red gun cannot fire, yellow/red
 ammo rack ×1.5 reload, dead loader ×1.5 reload (multiplicative), red tracks
 immobilize (movement.ts), red engine caps drive power, optics/radio degrade
-spotting (spotting.ts).
+spotting (spotting.ts); a yellow gun mount applies the same accuracy penalty
+as a damaged gun and a red gun mount prevents its casemate weapon from firing.
 
 ## Combat anatomy — where collision and internal volumes come from
 
@@ -141,9 +154,11 @@ spotting (spotting.ts).
   48-face frame batches to avoid periodic render stalls; battle exit disposes
   every generated buffer.
 - Damage panel (`ui/damagePanel.ts`): reads CombatState directly per frame;
-  canvas schematic repaints only when the dirty signature (non-ok module
-  states + quantized turret bearing) changes. Colors/order from
-  `ui/moduleRegistry.ts`.
+  exact module and crew volume centers project through their authored hull or
+  turret frame before a tightly source-bounded screen-space collision pass.
+  The canvas schematic repaints only when the dirty signature (module/crew
+  states + quantized hull/turret bearing) changes. Colors and role vocabulary
+  come from `ui/moduleRegistry.ts`.
 - Kill cam x-ray and shot cards label modules via the same registry
   (`MODULE_LABEL`, `CREW_LABEL` — killcam/shotInfo copies had drifted:
   'Fuel' vs 'Fuel Tank').

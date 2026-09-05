@@ -14,16 +14,45 @@ export interface GarageWorkshopBayPose {
   readonly yaw: number;
 }
 
-// These are the final world-space poses after the two legacy half-turn bay
-// owners are applied. Facility scenery consumes the same contract as the real
-// fleet dressing, so a canopy, crane or service pit cannot drift away from the
-// tank/component it is meant to support.
+// Move the complete Burlak service story toward the opening camera, ahead of
+// Verdant's fixed two-level scaffold. Dressing and outdoor facility scenery
+// consume the same offset so the tank, gantry and support pad cannot separate.
+export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
+  x: 1.0,
+  z: 5.2,
+  cameraAdvanceM: 4.38,
+  scaffoldCenterSeparationM: 8.41,
+});
+
+// Move the complete Abrams welding story beside Verdant's east FLAMMABLE
+// canister station. This is deliberately a two-axis correction: the previous
+// diagonal scalar advanced the bay toward the opening but left it roughly
+// 9.8 m from the drums. Dressing and outdoor facility scenery consume this
+// same offset so the tank, removed skirts, tools and shelter cannot separate.
+export const ABRAMS_FLAMMABLE_BAY_OFFSET = Object.freeze({
+  x: -0.8,
+  z: 7.7,
+  canisterCenterSeparationM: 3.83,
+});
+
+// The Leopard occupies the neighboring mobility square, not the Abrams
+// welding owner. Preserve its established world-space pose when the Abrams
+// service story moves independently toward the canisters.
+export const LEOPARD_MOBILITY_BAY_OFFSET = Object.freeze({
+  x: 1.65,
+  z: 1.65,
+});
+
+// These are the final world-space poses after the Burlak clearance translation
+// and two legacy half-turn bay owners are applied. Facility scenery consumes
+// the same contract as the real fleet dressing, so a canopy, crane or service
+// pit cannot drift away from the tank/component it is meant to support.
 const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
   Object.freeze({
-    id: 'burlak_gantry', role: 'heavy-lift', x: 17.8, z: -15.5, yaw: -0.55,
+    id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -10.3, yaw: -0.55,
   }),
   Object.freeze({
-    id: 'abrams_welding', role: 'welding', x: -16.9, z: -17.7,
+    id: 'abrams_welding', role: 'welding', x: -17.7, z: -10.0,
     yaw: -2.03 + Math.PI,
   }),
   Object.freeze({

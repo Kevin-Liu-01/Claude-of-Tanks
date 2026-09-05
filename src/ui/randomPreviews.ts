@@ -3,6 +3,8 @@
  * The random choice should read as a deliberate collection of real maps,
  * never as a generic four-colour placeholder.
  */
+import { t } from './i18n.ts';
+
 export const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
   'verdant', 'desert', 'winter', 'foundry',
 ] as const);
@@ -50,7 +52,7 @@ export function createRandomMapMosaic(
     const count = (maps || []).filter((map) => map?.id !== 'random').length;
     const badge = document.createElement('div');
     badge.className = 'random-map-count';
-    badge.innerHTML = `<b>${count}</b><span>theatres</span>`;
+    badge.innerHTML = `<b>${count}</b><span>${t('randomPreviews.theatres')}</span>`;
     mosaic.appendChild(badge);
   }
   return mosaic;

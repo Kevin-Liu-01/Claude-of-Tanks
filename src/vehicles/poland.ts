@@ -93,10 +93,13 @@ const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
   base: '#46533a', weather: '#60694d', patches: ['#5a4534', '#1c211c'],
   camoScale: 0.44,
   dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
-  // Gun axis now lands on the same 1.70 m world datum as the PT-91A while
-  // the turret remains centered on the authored Jaguar ring.
-  turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.27, 0.52],
-  gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
+  // Lift the complete articulated weapon group (mantlet, cradle and tube),
+  // and move the complete turret package 120 mm forward so the ring sits
+  // behind the shortened upper-glacis run instead of crowding the rear deck.
+  turretPivot: [0, 1.40, 0.10], gunPivot: [0, 0.28, 0.52],
+  // The tube is seated 120 mm deeper as the turret moves forward, preserving
+  // the certified 6.24 m muzzle endpoint and published overall length.
+  gunBarrel: { lengthM: 5.62, radiusM: 0.112 },
   stats: { hp: 2050, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
     reverseSpeedKmh: 18, turretTraverseDegS: 34, gunPitchDegS: 27 },
   reloadS: 6.7, shellName: 'Pronit APFSDS', armorFactor: 1.06,

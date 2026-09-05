@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.ts';
 import { RAIL_BUILDERS } from './railKit.ts'; // maps r1: railyard + coastal kits
-import { gablePrism as createGablePrism } from '../propGeometry.ts';
+import { gablePrism as createGablePrism, pitchRoofPlane } from '../propGeometry.ts';
 import {
   addConnectedExterior,
   type GeometryBuckets,
@@ -106,7 +106,7 @@ export function makeChurch(_rng: () => number, buckets: GeometryBuckets): Struct
   const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
   for (const side of [-1, 1]) {
     const slab = box(slope + 0.15, 0.13, d + 0.6, 0.35);
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, -1.2);
     parts.roof.push(slab);
   }
@@ -167,7 +167,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
   for (const side of [-1, 1]) {
     const slab = box(slope + 0.15, 0.14, d + 0.7, 0.35);
-    slab.rotateZ(side * ang);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.07, 0);
     parts.roof.push(slab);
   }

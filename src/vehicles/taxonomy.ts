@@ -104,6 +104,30 @@ export function vehicleEraLabel(era: RuntimeValue, { short = false }: { short?: 
   return meta ? (short ? meta.shortLabel : meta.label) : 'Unclassified Era';
 }
 
+// Era-to-i18n-key mapping. The garage and gallery display the era as a short
+// tag on vehicle cards and as a long label in the dossier header. When the
+// i18n catalog has a translation, callers should prefer `vehicleEraLabelI18n`.
+const ERA_I18N: Readonly<Record<string, { short: string; long: string }>> = Object.freeze({
+  'next-generation': Object.freeze({ short: 'garage.era.nextGen', long: 'garage.era.nextGen' }),
+  modern: Object.freeze({ short: 'garage.era.modern', long: 'garage.era.modern' }),
+  'cold-war': Object.freeze({ short: 'garage.era.coldWar', long: 'garage.era.coldWar' }),
+  ww2: Object.freeze({ short: 'garage.era.worldWar2', long: 'garage.era.worldWar2' }),
+  interwar: Object.freeze({ short: 'garage.era.worldWar2', long: 'garage.era.worldWar2' }),
+});
+
+/** Returns a translated era label when an i18n key exists, else falls back
+ *  to the canonical English label. */
+export function vehicleEraLabelI18n(
+  era: RuntimeValue,
+  translate: (key: string) => string,
+  options: { short?: boolean } = {},
+): string {
+  if (typeof era !== 'string') return vehicleEraLabel(era, options);
+  const keyMap = ERA_I18N[era];
+  if (!keyMap) return vehicleEraLabel(era, options);
+  return translate(keyMap[options.short ? 'short' : 'long']);
+}
+
 export function compareVehicleEras(a: VehicleEra, b: VehicleEra): number {
   return VEHICLE_ERA_ORDER.indexOf(a) - VEHICLE_ERA_ORDER.indexOf(b);
 }

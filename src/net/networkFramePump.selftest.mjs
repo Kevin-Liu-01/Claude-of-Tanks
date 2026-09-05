@@ -18,7 +18,14 @@ const match = {
 };
 const bridge = {
   apply(snapshot, dt, events) { calls.push(['apply', snapshot.tick, dt, [...events]]); },
-  recordInput(input, elapsed, sequence) { calls.push(['record', input, elapsed, sequence]); },
+  advancePrediction(input, elapsed) {
+    calls.push(['predict', input, elapsed]);
+    return true;
+  },
+  recordInput(input, elapsed, sequence, presentationElapsed) {
+    calls.push(['record', input, elapsed, sequence, presentationElapsed]);
+    return true;
+  },
   endDisconnected() { calls.push(['disconnected']); },
   getPredictionStats() { return { hardSnaps: 0 }; },
 };
@@ -32,7 +39,7 @@ const recovery = {
 const input = {
   frame() { return { throttle: 1, actionBits: 4 }; },
   advance(dt) { calls.push(['inputAdvance', dt]); },
-  shouldSend() { return true; },
+  shouldSend() { return input.send; },
   commit() { calls.push(['commit']); return 0.025; },
   acknowledge(bits) { calls.push(['ack', bits]); },
   restore(bits) { calls.push(['restore', bits]); },
@@ -40,6 +47,7 @@ const input = {
   reset() { calls.push(['reset']); },
   queueAction(action) { calls.push(['action', action]); },
   queueConsumable(slot) { calls.push(['consumable', slot]); },
+  send: true,
 };
 let nextFrameAction = async () => {};
 
@@ -69,6 +77,21 @@ assert.ok(calls.some(([name]) => name === 'inputAdvance'));
 assert.ok(calls.some(([name]) => name === 'submit'));
 assert.ok(calls.some(([name, , elapsed, sequence]) =>
   name === 'record' && elapsed === 0.025 && sequence === 9));
+assert.ok(calls.some(([name, , , , presentationElapsed]) =>
+  name === 'record' && presentationElapsed === 0.025),
+'accepted uploads advance prediction by the render delta, not a batched interval');
+
+const predictionCallsBeforeHold = calls.filter(([name]) =>
+  name === 'record' || name === 'predict').length;
+input.send = false;
+pump.pump(1 / 120, 758);
+const predictionCallsAfterHold = calls.filter(([name]) =>
+  name === 'record' || name === 'predict');
+assert.equal(predictionCallsAfterHold.length, predictionCallsBeforeHold + 1,
+  'a cadence-held upload still advances local prediction exactly once');
+assert.deepEqual(predictionCallsAfterHold.at(-1).slice(0, 3),
+  ['predict', { throttle: 1, actionBits: 4 }, 1 / 120],
+  'the held frame advances by its own render delta on every pose axis');
 
 client.closed = true;
 pump.pump(0.025, 900);

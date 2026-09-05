@@ -572,9 +572,10 @@ all playable geometry our own. The active `buildType99A` therefore consumes no
 external geometry. It constructs a new tapered hull and two-plane prow, one
 six-station native linked course, one connected low welded turret, buried cheek
 courses, an integrated gun root, a supported open bustle and the complete
-seated roof/service cadence from repository primitives. The historical
-`buildType99AFullNativeRebuild2026` remains inactive and is not the registered
-runtime builder.
+seated roof/service cadence from repository primitives. The inactive
+OwnerRedesign, hull-only, and FullNativeRebuild experiments were removed from
+source as dead code in September 2026. None had been the registered runtime
+builder since the authoritative re-freeze.
 
 The reference SHA-256 remains
 `35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.

@@ -62,6 +62,7 @@ interface PolishBuilderPort {
   addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
@@ -360,22 +361,50 @@ function polishWhips(P: PolishBuilderPort, list: PolishWhip[], seedBase: number)
 // 2.25 + <=4 spike columns).
 // ===========================================================================
 
-function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
-  const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
+const JAGUAR_HULL_LIFT_M = 0.02;
+const JAGUAR_END_WHEEL_LIFT_M = 0.04;
+const JAGUAR_UPPER_GLACIS_REAR_Z = 1.65;
+const JAGUAR_UPPER_GLACIS_REAR_Y = 1.47;
+const JAGUAR_UPPER_GLACIS_FRONT_Z = 3.66;
+const JAGUAR_UPPER_GLACIS_FRONT_Y = 0.90;
+const JAGUAR_UPPER_GLACIS_PITCH = (
+  JAGUAR_UPPER_GLACIS_REAR_Y - JAGUAR_UPPER_GLACIS_FRONT_Y
+) / (
+  JAGUAR_UPPER_GLACIS_FRONT_Z - JAGUAR_UPPER_GLACIS_REAR_Z
+);
+const JAGUAR_UPPER_GLACIS_ANGLE = Math.atan(JAGUAR_UPPER_GLACIS_PITCH);
+const JAGUAR_GLACIS_ERAWA_CENTER_Z = 2.43;
+const JAGUAR_DRIVER_HATCH_Z = 1.92;
+
+function jaguarUpperGlacisYAt(z: number): number {
+  return JAGUAR_UPPER_GLACIS_REAR_Y
+    - JAGUAR_UPPER_GLACIS_PITCH * (z - JAGUAR_UPPER_GLACIS_REAR_Z);
+}
+
+function buildT72M1JaguarHull(P: PolishBuilderPort): void {
+  const { box, buildRunningGear } = KIT;
 
   // ---- hull loft to the measured whole-silhouette lines -------------------
   loftHull(P, {
     // rear fall 1.46 -> 0.96 over -2.66..-3.24 (ref side -3.08 reads
     // 1.35..0.79, -3.19 reads 1.22); deck plateau 1.46-1.48; glacis line
-    // under the printed tube: fold at z 1.30 falling to the 0.88 nose tip.
+    // under the printed tube: the rear fold is brought forward to z 1.65,
+    // then one steeper plane falls cleanly to the 0.90 nose tip.
     deck: [[-3.26, 1.02], [-3.10, 1.35], [-2.94, 1.46], [-2.70, 1.50],
       [-2.30, 1.515], [-1.95, 1.515], [-1.70, 1.50], [0.60, 1.48],
-      [1.30, 1.46], [2.10, 1.27], [2.90, 1.08], [3.36, 0.971], [3.66, 0.90]],
+      [1.30, 1.475], [JAGUAR_UPPER_GLACIS_REAR_Z, JAGUAR_UPPER_GLACIS_REAR_Y],
+      [2.10, jaguarUpperGlacisYAt(2.10)], [2.90, jaguarUpperGlacisYAt(2.90)],
+      [3.36, jaguarUpperGlacisYAt(3.36)],
+      [JAGUAR_UPPER_GLACIS_FRONT_Z, JAGUAR_UPPER_GLACIS_FRONT_Y]],
     belly: [[-3.26, 0.80], [-3.02, 0.56], [-2.58, 0.43], [2.30, 0.43],
       [2.70, 0.52], [3.20, 0.68], [3.66, 0.82]],
     // full-width sponson band; nose narrows to the center glacis V (plan
     // center 3.32-3.48, outer 3.69 carried by the fender corners below)
-    wUp: [[-3.26, 1.62], [2.55, 1.62], [3.20, 1.30], [3.66, 0.94]],
+    // Pull the centre glacis inside the ascending idler course before the
+    // plate drops through track height. The outboard width is carried by
+    // the separate fender/shoulder solids below, preserving a joined bow
+    // without burying the animated shoes in the armor skin.
+    wUp: [[-3.26, 1.62], [2.50, 1.62], [2.68, 1.04], [3.20, 0.98], [3.66, 0.92]],
     wLo: [[-3.26, 0.97], [2.48, 0.97], [3.66, 0.80]],
     sponsonY: 1.16,
   });
@@ -384,8 +413,8 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   // inside the certified side silhouette while giving the upper glacis one
   // continuous load path into both bow shoulders.
   P.add('hull', orientedSlab(
-    [-1.28, 0.95, 3.16], [1.28, 0.95, 3.16], [0.97, 0.84, 3.60], [-0.97, 0.84, 3.60],
-    [-1.28, 1.035, 3.16], [1.28, 1.035, 3.16], [0.97, 0.93, 3.60], [-0.97, 0.93, 3.60]));
+    [-1.28, 0.98, 3.16], [1.28, 0.98, 3.16], [0.97, 0.87, 3.60], [-0.97, 0.87, 3.60],
+    [-1.28, 1.065, 3.16], [1.28, 1.065, 3.16], [0.97, 0.96, 3.60], [-0.97, 0.96, 3.60]));
   // One buried bow key closes the final 80 mm where the upper and lower
   // loft bands pinch together. It follows both tapering width lines and
   // removes the hairline daylight seam the segmented loft left at the nose.
@@ -406,7 +435,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // This preserves the dark bow recess without letting a static floor cut
     // through the linked shoes after the tension wheel moves forward.
     P.add('hullDark', box(0.64, 0.01, 0.34), s * 1.30, 1.06, 3.48);
-    P.add('hullDark', box(0.24, 0.01, 0.70), s * 0.96, 1.10, 2.95);
+    P.add('hullDark', box(0.24, 0.01, 0.70), s * 0.96, 1.14, 2.95);
     // §5.267 fix 3: seat the bow corner boxes — the webs live INSIDE the
     // box/slot-floor union (r-fix receipt: deep webs at y 0.91 printed
     // -0.28 bottoms on three bow side columns and cost whole 0.3)
@@ -417,9 +446,13 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
 
   // ---- running gear: T-72 family stance (six dished pairs) ---------------
   const wheelZs = [-2.01, -1.19, -0.37, 0.45, 1.27, 2.09];
-  const frontIdler = Object.freeze({ z: 2.83, y: 0.69, r: 0.30 });
+  const frontIdler = Object.freeze({
+    z: 2.83, y: 0.69 + JAGUAR_END_WHEEL_LIFT_M, r: 0.30,
+  });
   const frontContactZ = 2.53;
-  const rearSprocket = Object.freeze({ z: -2.42, y: 0.68, r: 0.32 });
+  const rearSprocket = Object.freeze({
+    z: -2.42, y: 0.68 + JAGUAR_END_WHEEL_LIFT_M, r: 0.32,
+  });
   const rearContactZ = -2.14;
   buildRunningGear(P, {
     ...t72TrackFinishFor(P),
@@ -429,10 +462,10 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     idler: frontIdler,
     contactZF: frontContactZ, contactZR: rearContactZ,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.91, r: 0.082 })),
-    // The Jaguar shares the PT-91A wheel and upper-run datums, but its loaded
-    // shoe course is raised 75 mm to give the requested taller stance rather
-    // than hanging below the Polish reference silhouette.
-    trackW: 0.56, topY: 1.00, botY: 0.10, paintedEnds: true,
+    // Preserve the existing road-wheel centers and loaded contact line. The
+    // taller upper course follows the raised idler/sprocket pair so the belt
+    // gains height without moving the six road wheels or lowering the tank.
+    trackW: 0.56, topY: 1.04, botY: 0.10, paintedEnds: true,
     coveredTop: true, arms: true,
     // §5.267 fix 2 (§5.262 gearFloor/tireHex law): exposed gear gets the
     // re-hooked tire/dish clones so the six dished pairs read crisply
@@ -440,7 +473,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
   });
   P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
-    revision: 'pt91a-raised-stance-and-end-wheel-course-r4',
+    revision: 'fixed-road-wheels-raised-hull-and-track-course-r5',
     frontIdlerZ: frontIdler.z,
     frontContactZ,
     rearSprocketZ: rearSprocket.z,
@@ -452,9 +485,12 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     bowSlotClearedForWrap: true,
     rearPlateClearedForWrap: true,
     loadedRunYM: 0.10,
-    raisedTrackRunM: 0.075,
+    raisedTrackTopM: 0.04,
+    endWheelLiftM: JAGUAR_END_WHEEL_LIFT_M,
     pt91aWheelCenterMatched: true,
-    hullDeckLiftM: 0.04,
+    roadWheelCentersPreserved: true,
+    trackReseatedAroundRaisedEndpoints: true,
+    hullDeckLiftM: JAGUAR_HULL_LIFT_M,
   });
   // The smart running-gear builder above owns the complete dished wheel
   // train.  Do not add a second static face course here: it cannot follow the
@@ -474,10 +510,14 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   for (const s of [-1, 1]) for (let k = 0; k < 7; k++) {
     P.add('hullDetail', box(0.055, 0.10, 0.06), s * 1.70, 1.17, -2.30 + k * 0.87);
   }
+}
 
+function buildT72M1JaguarHullDetails(P: PolishBuilderPort): void {
+  const { box, cylZ } = KIT;
   // ---- bow furniture -------------------------------------------------------
   // §5.267 fix 5: guarded headlight pods replace the flat bucket lamps
-  ruGlacisKit(P, { w: 3.30, y: 1.17, z: 2.62, eyeX: 0.95, eyeZ: 2.92,
+  ruGlacisKit(P, { w: 3.30, y: jaguarUpperGlacisYAt(2.62), z: 2.62,
+    eyeX: 0.95, eyeZ: 2.92,
     eyeSplit: true, hookY: 0.90, hookZ: 3.05, lights: false });
   for (const s of [-1, 1]) {
     // (r-fix receipt: pods proud of the glacis at y 1.20 cost the FRONT
@@ -486,11 +526,24 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.085, r: 0.038,
       shield: true, seed: 7351 + (s > 0 ? 1 : 0),
-    }), s * 0.96, 1.19, 2.56, [0.233, 0, 0]);
+    }), s * 0.96,
+    jaguarUpperGlacisYAt(2.56) + JAGUAR_HULL_LIFT_M + 0.030, 2.56,
+    [JAGUAR_UPPER_GLACIS_ANGLE, 0, 0]);
   }
-  P.add('hull', box(2.20, 0.045, 0.15), 0, 1.225, 2.42, 0.233, 0, 0); // splash ridge
-  ruDeck(P, { deckY: 1.48, hatchX: -0.42, hatchZ: 1.78, gz: -1.55,
-    grilles: 4, gw: 1.46, periY: 1.46, gY: 1.505 });
+  P.add('hull', box(2.20, 0.045, 0.15), 0,
+    jaguarUpperGlacisYAt(2.42) + 0.030, 2.42,
+    JAGUAR_UPPER_GLACIS_ANGLE, 0, 0); // splash ridge
+  ruDeck(P, {
+    deckY: 1.48,
+    hatchX: -0.42,
+    hatchY: jaguarUpperGlacisYAt(JAGUAR_DRIVER_HATCH_Z),
+    hatchZ: JAGUAR_DRIVER_HATCH_Z,
+    gz: -1.55,
+    grilles: 4,
+    gw: 1.46,
+    periY: jaguarUpperGlacisYAt(JAGUAR_DRIVER_HATCH_Z) + 0.040,
+    gY: 1.505,
+  });
   // §5.267 fix 4: REAL louvre relief on the powerpack deck — sunk dark
   // wells + raised rib bars + end cheeks (relief tops +0.012 over the
   // deck line: sub-pixel for the side masks, real shadow for the eye)
@@ -509,9 +562,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   // upper-glacis plane. The old course sat below a multi-kink deck and read
   // as a loose dark grid. This course shares the exact plate tangent and its
   // shallow bodies overlap the armor skin by half their depth.
-  const jaguarGlacisCenterZ = 2.18;
-  const jaguarGlacisCenterY = 1.251;
-  const jaguarGlacisPitch = 0.237;
+  const jaguarGlacisCenterZ = JAGUAR_GLACIS_ERAWA_CENTER_Z;
+  const jaguarGlacisCenterY = jaguarUpperGlacisYAt(jaguarGlacisCenterZ);
+  const jaguarGlacisPitch = JAGUAR_UPPER_GLACIS_PITCH;
   const jaguarGlacisRise = 1 / Math.sqrt(1 + jaguarGlacisPitch ** 2);
   const jaguarGlacisFall = jaguarGlacisPitch * jaguarGlacisRise;
   const jaguarGlacisRx = -Math.atan2(jaguarGlacisRise, jaguarGlacisFall);
@@ -520,14 +573,14 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     right: [1, 0, 0],
     up: [0, jaguarGlacisFall, -jaguarGlacisRise],
     out: [0, jaguarGlacisRise, jaguarGlacisFall],
-    cols: 8, rows: 3, pitchU: 0.315, pitchV: 0.29,
-    tileW: 0.29, tileH: 0.27, tileD: 0.050, rx: jaguarGlacisRx,
+    cols: 8, rows: 3, pitchU: 0.250, pitchV: 0.29,
+    tileW: 0.235, tileH: 0.27, tileD: 0.050, rx: jaguarGlacisRx,
     seams: false,
     skip: (r, c) => r === 2 && (c === 3 || c === 4),
   });
   for (let row = 0; row < 3; row++) for (let col = 0; col < 8; col++) {
     if (row === 2 && (col === 3 || col === 4)) continue;
-    const u = (col - 3.5) * 0.315;
+    const u = (col - 3.5) * 0.250;
     const v = (row - 1) * 0.29;
     const x = u;
     const y = jaguarGlacisCenterY + jaguarGlacisFall * v
@@ -538,9 +591,15 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
       jaguarGlacisRx, 0, 0);
   }
   P.hullG.userData.jaguarGlacisReceipt = Object.freeze({
-    revision: 'single-plane-glacis-erawa-r3',
-    upperRear: Object.freeze({ z: 1.30, y: 1.46 }),
-    upperFront: Object.freeze({ z: 3.66, y: 0.90 }),
+    revision: 'forward-fold-track-clear-glacis-erawa-r5',
+    upperRear: Object.freeze({
+      z: JAGUAR_UPPER_GLACIS_REAR_Z,
+      y: JAGUAR_UPPER_GLACIS_REAR_Y,
+    }),
+    upperFront: Object.freeze({
+      z: JAGUAR_UPPER_GLACIS_FRONT_Z,
+      y: JAGUAR_UPPER_GLACIS_FRONT_Y,
+    }),
     lowerRear: Object.freeze({ z: 2.30, y: 0.43 }),
     lowerFront: Object.freeze({ z: 3.66, y: 0.82 }),
     bowClosure: Object.freeze({ rearZ: 3.58, frontZ: 3.66, lowerY: 0.82, upperY: 0.90 }),
@@ -548,6 +607,11 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
       rearZ: 3.16, frontZ: 3.60, rearHalfWidthM: 1.28, frontHalfWidthM: 0.97,
     }),
     upperGlacisPitch: jaguarGlacisPitch,
+    erawaCenterZ: jaguarGlacisCenterZ,
+    erawaCenterY: jaguarGlacisCenterY,
+    erawaFieldWidthM: 1.985,
+    driverHatchZ: JAGUAR_DRIVER_HATCH_Z,
+    rearFoldForwardM: JAGUAR_UPPER_GLACIS_REAR_Z - 1.30,
     erawaCassettes: 22,
     erawaCenterSurfaceGapM: 0,
     joinedUpperAndLowerGlacis: true,
@@ -566,7 +630,7 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // this scheme — the log body takes a re-hooked olive-timber clone
     mats: { ...P.mats, wood: rehookClone(P.mats.wood, 0x4a4636, 0x0a0906) },
     len: 2.30, r: 0.125, straps: 3, seed: 7301,
-  }), 0, 0.95, -3.165);
+  }), 0, 0.95 + JAGUAR_HULL_LIFT_M, -3.165);
   for (const s of [-1, 1]) {
     P.add('hullDetail', KIT.cylZ(0.105, 0.02, 14), s * 1.16, 0.95, -3.165);
     P.add('hullDark', box(0.04, 0.10, 0.05), s * 0.90, 0.93, -3.20);
@@ -580,7 +644,10 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   P.add('hullDetail', cylZ(0.075, 0.70, 12), 1.685, 1.36, -1.66);
   P.add('hullDark', cylZ(0.079, 0.03, 12), 1.685, 1.36, -1.34);
   P.add('hullDark', box(0.05, 0.06, 0.04), 1.66, 1.28, -1.52);
+}
 
+function buildT72M1JaguarTurretAndGun(P: PolishBuilderPort): void {
+  const { box, cylY, cylZ } = KIT;
   // ---- turret: measured cast dome (crown pinned to the published-height
   // band 2.25; the print's 2.43-2.51 dome band is certified print-tall) ----
   const rings = [
@@ -751,9 +818,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   polishWhips(P, [[-0.92, 0.60, -1.10, 0.32, -0.05], [0.96, 0.60, -1.02, 0.24, 0.06]], 7341);
 
   // ---- gun: sleeved 2A46M with evacuator + measured muzzle ----------------
-  // root raised 0.02 inside the casting (axis world 1.66); tube local z to
-  // 5.74 (muzzle world
-  // 6.24 = rear extreme -3.29 + published overall 9.53)
+  // root raised 0.02 inside the casting (axis world 1.66). The moved turret
+  // seats the tube 0.12 m deeper, so local z 5.62 still gives muzzle world
+  // 6.24 = rear extreme -3.29 + published overall 9.53.
   // §5.267 fix 1: REAL mantlet mass at the root — sealed trunnion saddle
   // roll + flanking mantlet cheeks behind the canvas boot (the r1 bare
   // cone was the critic's dominant family-read defect)
@@ -776,9 +843,9 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
     // stays under the 12% body filter so hullLengthM cannot read the tube
     // as body (r1 printed 8.55 with the 0.34 evacuator)
     [4.35, 4.82, 0.140, 0.135],
-    [4.82, 5.62, 0.108, 0.104],
-    [5.62, 5.74, 0.112, 0.112],          // muzzle collar
-  ], { rings: [[2.45, 0.122], [3.85, 0.116], [4.35, 0.144], [4.82, 0.112]], muzzle: 5.74 });
+    [4.82, 5.50, 0.108, 0.104],
+    [5.50, 5.62, 0.112, 0.112],          // muzzle collar
+  ], { rings: [[2.45, 0.122], [3.85, 0.116], [4.35, 0.144], [4.82, 0.112]], muzzle: 5.62 });
   muzzleBore(P, { r: 0.098, boreR: 0.062 });
   P.addGunExtraDark(cylZ(0.032, 0.10, 10), 0.30, 0.10, 0.55); // coax port
   P.decal('hull', 'number', 'PL-721', 0.26, [-1.797, 1.02, 0.90], -Math.PI / 2);
@@ -786,141 +853,12 @@ function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   P.topY = Math.max(P.topY || 0, 1.30);
 }
 
-// Current production Jaguar.  The Polish modernization shares the certified
-// T-72 six-wheel chassis, track course, cast turret and 2A46 articulation with
-// the live Russian T-72 family.  Everything that makes it a Jaguar remains a
-// first-party Polish overlay: shallow camouflaged ERAWA, Drawa/Obra optics,
-// smoke banks, WKM-B, bustle services and external stowage.  The legacy
-// measured build above remains only as an authoring receipt while the fleet
-// migrates; it is deliberately not registered as playable geometry.
-function buildT72M1JaguarCurrentPrototype(P: PolishBuilderPort): void {
-  const { box, cylY, cylZ, torus } = KIT;
-  buildT72B87Native(P, 'jaguar');
-
-  P.hullG.userData.t72FamilyFoundation = 'current-t72b87';
-  P.turretG.userData.polishModernization = 't72m1-jaguar-erawa';
-
-  // ERAWA-1 glacis: a buried camouflaged carrier and three staggered courses
-  // follow the upper-glacis rake.  These are shallow armor cassettes, not gray
-  // spare-track blocks and not cubes floating above the plate.
-  P.add('hull', box(2.54, 0.050, 0.94), 0, 1.245, 1.95, -0.30, 0, 0);
-  for (let row = 0; row < 3; row++) {
-    const z = 1.68 + row * 0.30;
-    const y = 1.305 - row * 0.060;
-    for (let col = -4; col <= 4; col++) {
-      if (row === 2 && Math.abs(col) === 4) continue;
-      const x = col * 0.286 + (row === 1 ? 0.035 : row === 2 ? -0.028 : 0);
-      P.add('hull', box(0.267, 0.090, 0.270), x, y, z, -0.30, 0, 0);
-      P.add('hullDark', box(0.222, 0.012, 0.020), x, y + 0.050, z + 0.122, -0.30, 0, 0);
-    }
-  }
-
-  // Full-length ERAWA side courses sit flush on the existing current-T-72
-  // skirts.  Their back faces overlap the panels by 12 mm, guaranteeing a
-  // visible armor-to-fender load path while preserving the single track run.
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 7; i++) {
-      const z = -2.02 + i * 0.67;
-      const h = 0.255 + (i % 3) * 0.012;
-      P.add('hull', box(0.078, h, 0.585), s * 1.792, 1.075 + (i % 2) * 0.010, z,
-        0, 0, s * ((i % 3) - 1) * 0.010);
-      P.add('hullDark', box(0.014, h * 0.72, 0.505), s * 1.838,
-        1.075 + (i % 2) * 0.010, z);
-      P.add('hullDetail', box(0.016, 0.022, 0.48), s * 1.842,
-        1.075 + h * 0.48, z);
-    }
-    // Polish fender returns and rubber terminals are seated on the shelves.
-    P.add('hull', box(0.18, 0.075, 0.74), s * 1.69, 1.205, 2.52, -0.05, 0, 0);
-    P.add('hullRubber', box(0.42, 0.30, 0.035), s * 1.49, 1.02, 2.82, -0.12, 0, 0);
-    P.add('hullDark', box(0.05, 0.13, 0.46), s * 1.64, 1.16, 2.57, -0.08, 0, 0);
-  }
-
-  // Two connected ERAWA cheek carriers conform to the current cast turret.
-  // Rows taper inward around the mantlet, producing the Jaguar's compact
-  // chevron rather than the old oversized dome or a Russian Kontakt necklace.
-  for (const s of [-1, 1]) {
-    P.add('turretDark', orientedSlab(
-      [s * 0.10, 0.02, 1.10], [s * 0.78, 0.02, 0.98], [s * 1.38, 0.02, 0.45], [s * 0.74, 0.02, 0.38],
-      [s * 0.11, 0.10, 1.07], [s * 0.75, 0.10, 0.95], [s * 1.33, 0.10, 0.44], [s * 0.72, 0.10, 0.37]));
-    for (let row = 0; row < 3; row++) for (let i = 0; i < 5; i++) {
-      const x = s * (0.20 + i * 0.245 + row * 0.014);
-      const z = 1.06 - i * 0.118 - row * 0.135 + (i % 2 ? 0.012 : -0.008);
-      const y = 0.075 + row * 0.120 + i * 0.012;
-      const yaw = s * (0.31 + i * 0.075 + row * 0.018);
-      const w = 0.225 - i * 0.006 + (row === 1 ? 0.010 : 0);
-      P.add('turret', box(w, 0.096 + (i % 2) * 0.010, 0.225), x, y, z,
-        -0.11, yaw, s * ((i % 3) - 1) * 0.012);
-      P.add('turretDark', box(w * 0.78, 0.012, 0.020), x, y + 0.057, z + 0.102,
-        -0.11, yaw, 0);
-    }
-    for (let i = 0; i < 5; i++) {
-      const z = 0.20 - i * 0.245;
-      P.add('turret', box(0.205, 0.135, 0.250), s * (1.25 - i * 0.045),
-        0.19 - i * 0.010, z, -0.05, s * (0.63 + i * 0.12), 0);
-    }
-  }
-
-  // Drawa-T fire-control optics and Obra laser-warning heads remain low on
-  // broad shoes so no sensor or decoration hovers above the casting.
-  P.add('turret', box(0.38, 0.055, 0.34), -0.54, 0.565, 0.32, -0.06, 0, 0);
-  P.add('turret', box(0.28, 0.175, 0.27), -0.54, 0.645, 0.34, -0.04, 0, 0);
-  P.add('turretDark', box(0.225, 0.105, 0.025), -0.54, 0.660, 0.486, -0.04, 0, 0);
-  P.add('turretGlass', box(0.145, 0.075, 0.014), -0.50, 0.666, 0.501, -0.04, 0, 0);
-  P.add('turret', cylY(0.31, 0.33, 0.060, 18), 0.48, 0.635, -0.10);
-  P.add('turretDark', torus(0.255, 0.016, 18), 0.48, 0.672, -0.10);
-  P.add('turret', box(0.20, 0.145, 0.21), 0.75, 0.535, 0.08, 0, -0.08, 0);
-  P.add('turretGlass', box(0.145, 0.070, 0.020), 0.75, 0.55, 0.196, 0, -0.08, 0);
-  for (const [x, y, z, ry] of [
-    [-1.17, 0.39, 0.34, -0.48], [1.17, 0.39, 0.34, 0.48],
-    [-0.86, 0.42, -0.80, -2.60], [0.86, 0.42, -0.80, 2.60],
-  ]) {
-    P.add('turret', box(0.14, 0.095, 0.12), x, y, z, 0, ry, 0);
-    P.add('turretGlass', box(0.085, 0.050, 0.018), x + Math.sin(ry) * 0.068,
-      y, z + Math.cos(ry) * 0.068, 0, ry, 0);
-  }
-
-  // Polish smoke banks: four launchers per connected armored shoe, clear of
-  // the ERAWA cassettes and attached to the traversing turret hierarchy.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.34, 0.075, 0.30), s * 1.00, 0.30, 0.49, 0, s * -0.52, 0);
-    for (let i = 0; i < 4; i++) {
-      P.add('turretDark', cylZ(0.045, 0.235, 10), s * (0.86 + i * 0.078),
-        0.35 + (i % 2) * 0.028, 0.72 - i * 0.080, -0.42, s * -(0.24 + i * 0.09), 0);
-    }
-  }
-
-  // Open rear basket, snorkel and unequal service cells return directly into
-  // the cast rear; all equipment traverses with the turret.
-  P.add('turretDark', box(1.72, 0.045, 0.045), 0, 0.49, -1.46);
-  P.add('turretDark', box(1.72, 0.045, 0.045), 0, 0.25, -1.45);
-  for (const x of [-0.82, -0.42, 0, 0.46, 0.82]) {
-    P.add('turretDark', box(0.038, 0.25, 0.34), x, 0.37, -1.30, 0.18, 0, 0);
-  }
-  for (const [x, w, h] of [[-0.54, 0.42, 0.19], [-0.08, 0.34, 0.23], [0.42, 0.46, 0.17]]) {
-    P.add('turret', box(w, h, 0.28), x, 0.25 + h / 2, -1.18, 0, x * 0.08, 0);
-    P.add('turretDark', box(w - 0.045, 0.018, 0.22), x, 0.26 + h, -1.18, 0, x * 0.08, 0);
-  }
-  P.add('turret', cylZ(0.105, 0.82, 16), 0.72, 0.34, -1.23, Math.PI / 2, 0, 0);
-  P.add('turretDark', torus(0.108, 0.014, 16), 0.72, 0.34, -1.66, Math.PI / 2, 0, 0);
-
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.03, ammo: true });
-  mg.scale.setScalar(0.78);
-  mg.position.set(-0.55, 0.68, -0.18);
-  mg.name = 'jaguar_wkm_b';
-  P.turretG.add(mg);
-  polishWhips(P, [[-0.90, 0.58, -0.56, 0.76, -0.02], [0.88, 0.58, -0.58, 0.64, 0.03]], 7210);
-
-  // A connected, angular Polish mantlet skin closes the gun-root valley.
-  for (const s of [-1, 1]) {
-    P.addGunExtra(box(0.16, 0.28, 0.42), s * 0.26, -0.02, 0.02, 0, s * 0.10, 0);
-    P.addGunExtraDark(box(0.022, 0.22, 0.30), s * 0.35, -0.02, 0.05, 0, s * 0.10, 0);
-  }
-  P.addGunExtra(box(0.58, 0.10, 0.30), 0, -0.19, 0.04);
-
-  P.decal('hull', 'number', 'PL-721', 0.24, [-1.84, 1.08, 0.72], -Math.PI / 2);
-  P.decal('hull', 'number', 'PL-721', 0.24, [1.84, 1.08, 0.72], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.16);
+function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
+  buildT72M1JaguarHull(P);
+  buildT72M1JaguarHullDetails(P);
+  buildT72M1JaguarTurretAndGun(P);
 }
+
 
 // Production Jaguar refit. Preserve the measured Polish hull, native
 // six-wheel course and source-correct cast-turret envelope above, then bring
@@ -1016,7 +954,9 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
 
   // Backed driver/splash detail and unequal engine-deck service cells add
   // current-family articulation without altering the certified hull loft.
-  P.add('hull', box(2.16, 0.040, 0.13), 0, 1.315, 2.43, -0.30, 0, 0);
+  P.add('hull', box(2.16, 0.040, 0.13), 0,
+    jaguarUpperGlacisYAt(2.43) + 0.030, 2.43,
+    JAGUAR_UPPER_GLACIS_ANGLE, 0, 0);
   for (const [x, z, w, d] of [
     [-0.52, -1.55, 0.62, 0.34], [0.18, -1.62, 0.52, 0.30], [0.73, -1.74, 0.42, 0.26],
   ]) {
@@ -1106,8 +1046,8 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     }
     hullEquipmentPieces += 3;
   }
-  const spareLinkSeatY = 1.15;
-  const spareLinkRx = Math.atan(0.237);
+  const spareLinkSeatY = jaguarUpperGlacisYAt(2.72) + 0.030;
+  const spareLinkRx = JAGUAR_UPPER_GLACIS_ANGLE;
   for (let i = 0; i < 5; i++) {
     const x = -0.48 + i * 0.24;
     P.addEquipment('hullDetail', box(0.20, 0.055, 0.16), x, spareLinkSeatY, 2.72,
@@ -1233,6 +1173,18 @@ function buildT72M1Jaguar(P: PolishBuilderPort): void {
     fuelBarrelRearZ: fuelBarrelZ - fuelBarrelRadius,
     fuelBarrelMount: 'twin-transverse-rear-cradles-r3',
   });
+
+  // Raise every authored hull, fender, skirt, ERA and equipment bucket as one
+  // connected body. Running-gear-owned buckets are intentionally excluded:
+  // the six road wheels and their suspension keep their measured centers,
+  // while buildRunningGear has already rebuilt the belt around the higher
+  // idler and sprocket endpoints.
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+    'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullGlass',
+    'hullTrack', 'hullShadow', 'hullTrackTrimL', 'hullTrackTrimR',
+    'hullTrackDetailL', 'hullTrackDetailR', 'hullTrackGuardL', 'hullTrackGuardR',
+  ], 0, JAGUAR_HULL_LIFT_M, 0);
 }
 
 // ===========================================================================
@@ -1576,9 +1528,21 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
 // sprocket (-2.80, 0.732); track band x 1.00..1.56, top 1.286).
 // ===========================================================================
 
-function buildPL01(P: PolishBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
-  const slab = orientedSlab;
+interface PL01BuildContext {
+  readonly is105: boolean;
+  readonly equipmentHeightScale: number;
+  readonly previousRoofLocalY: number;
+  readonly turretHeightScale: number;
+  readonly turretRoofLocalY: number;
+  readonly shellY: (y: number) => number;
+  readonly roofEquipmentY: (y: number) => number;
+  readonly gunAssemblyY: (y: number) => number;
+  readonly upperGlacisY: (z: number) => number;
+  readonly driverDeckY: (z: number) => number;
+  readonly glacisPitch: number;
+}
+
+function createPL01BuildContext(P: PolishBuilderPort): PL01BuildContext {
   const is105 = P.spec.id === 'pl01_105';
   const equipmentHeightScale = 0.60;
   const previousTurretHeightScale = equipmentHeightScale * 1.20;
@@ -1603,7 +1567,25 @@ function buildPL01(P: PolishBuilderPort): void {
   const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
   P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
   P.turretG.userData.pl01RoofLocalY = turretRoofLocalY;
+  return {
+    is105,
+    equipmentHeightScale,
+    previousRoofLocalY,
+    turretHeightScale,
+    turretRoofLocalY,
+    shellY,
+    roofEquipmentY,
+    gunAssemblyY,
+    upperGlacisY,
+    driverDeckY,
+    glacisPitch,
+  };
+}
 
+function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box } = KIT;
+  const { upperGlacisY } = context;
+  const slab = orientedSlab;
   // ---- center hull body (x ±1.616): tub + faceted glacis ------------------
   // deck line = the measured falling top run (side_hull tops 2.07 rear ->
   // 1.98 at the z 1.88 fold; the flat 2.10 plateau lives aft of -1.5 only)
@@ -1686,7 +1668,12 @@ function buildPL01(P: PolishBuilderPort): void {
   P.add('hullDark', box(0.92, 0.26, 0.03), -0.98, 1.60, -3.508); // grille (left wing)
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.86, 0.028, 0.026),
     -0.98, 1.50 + k * 0.075, -3.515);
+}
 
+function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, buildRunningGear } = KIT;
+  const { glacisPitch, is105, upperGlacisY } = context;
+  const slab = orientedSlab;
   // ---- full-height faceted stealth skirts (widthM anchor ±1.90) -----------
   // Measured cross-section (r1/r3 front receipts): inner hanging wall
   // (hem 0.27, x <=1.66), lower out-lean bevel (1.66, 0.60) -> (1.90, 1.30),
@@ -1796,7 +1783,11 @@ function buildPL01(P: PolishBuilderPort): void {
     }
     P.hullG.userData.pl01FrontGlacisPack = 'seated-spare-links-and-camo-era';
   }
+}
 
+function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY, torus } = KIT;
+  const { driverDeckY } = context;
   // ---- hull deck furniture -------------------------------------------------
   // Driver's station: the hatch and each vision block use their own local
   // roof sample. Their lower faces now touch the falling deck instead of
@@ -1860,7 +1851,12 @@ function buildPL01(P: PolishBuilderPort): void {
     for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.28, 0.025, 0.035),
       s * 0.72, 2.135, -2.18 - k * 0.28);
   }
+}
 
+function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
+  const slab = orientedSlab;
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
   // pivot [0, 2.07, -0.90]; stations from the measured plan/side polylines.
   // Turret-local: y0 = world - 2.07, z0 = world + 0.90. The redesigned
@@ -1994,7 +1990,13 @@ function buildPL01(P: PolishBuilderPort): void {
   });
   roofStowage.name = 'pl01_roof_stowage';
   mount(P, 'turret', roofStowage, 0, turretRoofLocalY + 0.01, -2.12);
+}
 
+function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY } = KIT;
+  const {
+    equipmentHeightScale, is105, roofEquipmentY, turretRoofLocalY,
+  } = context;
   // ---- RWS / CROWS -------------------------------------------------------
   // Base PL-01 keeps the print's laterally parked low-observable RWS. The
   // 105-mm demonstrator receives a forward-aimed CROWS-style powered station
@@ -2062,7 +2064,11 @@ function buildPL01(P: PolishBuilderPort): void {
     P.turretG.add(crowsGun);
     P.turretG.userData.pl01RemoteStation = 'forward-crows';
   }
+}
 
+function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY, cylZ, torus } = KIT;
+  const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
   for (const s of [-1, 1]) {
@@ -2146,7 +2152,14 @@ function buildPL01(P: PolishBuilderPort): void {
     revision: 'raised-wedge-r2', upperProwY: 1.46, lowerProwY: 1.29,
     skirtProwY: 1.46, shoulderBridges: 2, aligned: true,
   };
+}
 
+function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylZ } = KIT;
+  const {
+    equipmentHeightScale, gunAssemblyY, is105, previousRoofLocalY, shellY,
+    turretRoofLocalY,
+  } = context;
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
   // axis world 2.38104 (pivot 2.07 + 0.31104); gun pivot world z 0.55.
   // One continuous six-facet shell now begins on the turret's structural
@@ -2218,6 +2231,17 @@ function buildPL01(P: PolishBuilderPort): void {
   P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
   P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48 + (turretRoofLocalY - previousRoofLocalY));
+}
+
+function buildPL01(P: PolishBuilderPort): void {
+  const context = createPL01BuildContext(P);
+  addPL01HullBody(P, context);
+  addPL01SkirtsAndRunningGear(P, context);
+  addPL01HullFurniture(P, context);
+  addPL01TurretShell(P, context);
+  addPL01RemoteWeaponStation(P, context);
+  addPL01RoofSuite(P, context);
+  addPL01Gun(P, context);
 }
 
 export const POLAND_PROFILES = {

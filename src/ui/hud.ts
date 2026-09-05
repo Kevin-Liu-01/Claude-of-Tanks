@@ -10,9 +10,11 @@ import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { t } from './i18n.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
+import { shellTypeLabel } from './garageDossier.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -26,11 +28,9 @@ import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
-  MINIMAP_NORTH_UP,
-  minimapRotationForSpawnYaw,
-  orientMinimapDirection,
-  orientMinimapPoint,
-  orientMinimapYaw,
+  minimapAngleForDirection,
+  minimapYawForHeading,
+  projectWorldToMinimap,
 } from './minimapOrientation.ts';
 
 export type HudMode = 'battle' | 'sniper' | 'hidden';
@@ -490,9 +490,9 @@ export interface HudRuntime {
 interface HudMinimapDebugState {
   rotationRad: number;
   rotationDeg: number;
-  deploymentYawRad: number | null;
-  flipped: boolean;
-  orientationLocked: boolean;
+  orientationSource: 'north-up';
+  headingUp: false;
+  northUp: true;
   backgroundKind: 'none' | 'image' | 'canvas';
   backgroundReady: boolean;
   backingWidth: number;
@@ -639,15 +639,15 @@ export function aimWarningState(
   if (view?.selfRightLabel) {
     state.kind = 'rollover';
     state.visible = true;
-    state.text = `PRESS ${view.selfRightLabel} TO FLIP`;
+    state.text = t('hud.aimWarning.selfRight', { key: view.selfRightLabel });
   } else if (view?.blockedDistM != null) {
     state.kind = 'blocked';
     state.visible = !!view.blockedLabel;
-    state.text = `MUZZLE BLOCKED · ${Math.round(view.blockedDistM)} M`;
+    state.text = t('hud.aimWarning.muzzleBlocked', { dist: Math.round(view.blockedDistM) });
   } else if (view?.gunLimitSpec) {
     state.kind = 'limit';
     state.visible = true;
-    state.text = 'GUN TRAVEL LIMIT';
+    state.text = t('hud.gunTravelLimit');
   }
   return state;
 }
@@ -925,9 +925,12 @@ function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
 }
 
-const CAUSE_LABEL: Readonly<Record<string, string>> = {
-  shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED',
-};
+function causeLabel(key: string): string {
+  if (key === 'fire') return t('hud.fire');
+  if (key === 'ammorack') return t('hud.ammorack');
+  if (key === 'ram') return t('hud.rammed');
+  return '';
+}
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
 // Bot nicknames are assigned deterministically per battle from this pool
@@ -955,17 +958,28 @@ const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 // as mixed-style clip-art next to the shells). Color lives ONLY in the shell
 // type labels and the selected-slot border.
 const TRAY_INK = 'rgba(238,244,250,0.86)';
+// Consumable name translation table — keeps the authoritative
+// `CONSUMABLE_RULES` in `src/game/consumables.ts` free of UI strings
+// (the sim/network layer must not depend on i18n).
+const CONSUMABLE_LABEL_KEYS: Readonly<Record<string, string>> = {
+  repair: 'hud.consumable.repair',
+  first_aid: 'hud.consumable.firstAid',
+  extinguisher: 'hud.consumable.extinguisher',
+};
+const consumableLabel = (id: string): string =>
+  t(CONSUMABLE_LABEL_KEYS[id] || 'hud.consumable.repair');
+
 const CONSUMABLES = [
   {
-    key: '4', label: CONSUMABLE_RULES[0].label, count: CONSUMABLE_READY_MARK,
+    key: '4', label: consumableLabel('repair'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('repair', 20, TRAY_INK),
   },
   {
-    key: '5', label: CONSUMABLE_RULES[1].label, count: CONSUMABLE_READY_MARK,
+    key: '5', label: consumableLabel('first_aid'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('medkit', 20, TRAY_INK),
   },
   {
-    key: '6', label: CONSUMABLE_RULES[2].label, count: CONSUMABLE_READY_MARK,
+    key: '6', label: consumableLabel('extinguisher'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('extinguisher', 20, TRAY_INK),
   },
 ];
@@ -1276,12 +1290,14 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
   letter-spacing:.03em;background:linear-gradient(270deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
   border-left:2px solid #f05a5a;text-shadow:0 1px 2px rgba(0,0,0,.8);
-  transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;}
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
+  box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;}
 .cot-kf.out{opacity:0;}
+.cot-kf .k,.cot-kf .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-kf .k{color:#cfe3f4;font-weight:600;}
 .cot-kf .v{color:#f28f8f;font-weight:600;}
-.cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
-.cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
+.cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
+.cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;flex:0 0 auto;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 /* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
@@ -1704,10 +1720,10 @@ export function initHud(bus: EventBus): HudRuntime {
   // Each score numeral carries per-team frag sockets. The clock occupies its
   // own center bay so all three live values remain legible over bright maps.
   const topPlate = el('div', 'cot-top', root);
-  topPlate.innerHTML = `<div class="sc ally"><span class="team-label">Allies</span>` +
+  topPlate.innerHTML = `<div class="sc ally"><span class="team-label">${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b><div class="wedge l"></div></div>` +
-    `<div class="tm-block"><span class="tm-label">Time</span><span class="tm">15:00</span></div>` +
-    `<div class="sc enemy"><span class="team-label">Enemy</span>` +
+    `<div class="tm-block"><span class="tm-label">${t('hud.team.time')}</span><span class="tm">15:00</span></div>` +
+    `<div class="sc enemy"><span class="team-label">${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b><div class="wedge r"></div></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
   const feEl = requireElement<HTMLElement>(topPlate, '.fe');
@@ -1729,9 +1745,9 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
   netEl.setAttribute('role', 'status');
-  netEl.setAttribute('aria-label', 'Performance and network status');
-  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">FPS</span></span>` +
-    `<span class="cot-net-unit ping"><b class="metric">LOCAL</b><span class="label">LINK</span></span>`;
+  netEl.setAttribute('aria-label', t('hud.net.perfAria'));
+  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+    `<span class="cot-net-unit ping"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
   const netFpsUnit = requireElement<HTMLElement>(netEl, '.fps');
   const netPingUnit = requireElement<HTMLElement>(netEl, '.ping');
   const netFpsValue = requireElement<HTMLElement>(netFpsUnit, '.metric');
@@ -1766,12 +1782,12 @@ export function initHud(bus: EventBus): HudRuntime {
     const ping = Math.max(0, Math.min(999, Math.round(Number(frame?.pingMs) || 0)));
     netFpsValue.textContent = String(fps);
     netFpsUnit.className = `cot-net-unit fps ${fps >= 50 ? 'good' : fps >= 28 ? 'warn' : 'bad'}`;
-    netPingValue.textContent = ping > 0 ? String(ping) : 'LOCAL';
-    netPingLabel.textContent = ping > 0 ? 'MS' : 'LINK';
+    netPingValue.textContent = ping > 0 ? String(ping) : t('hud.net.local');
+    netPingLabel.textContent = ping > 0 ? t('hud.net.ms') : t('hud.net.link');
     netPingUnit.className = `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`;
     netEl.setAttribute('aria-label', ping > 0
-      ? `${fps} frames per second, ${ping} milliseconds latency`
-      : `${fps} frames per second, local battle`);
+      ? t('hud.net.ariaLive', { fps, ping })
+      : t('hud.net.ariaLocal', { fps }));
   }
 
   // Player speedometer: the inexpensive, compositor-owned needle samples at
@@ -1779,7 +1795,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // samples, so motion stays responsive without putting DOM work on every RAF.
   const driveEl = el('div', 'cot-drive', root);
   driveEl.setAttribute('role', 'status');
-  driveEl.setAttribute('aria-label', 'Vehicle speedometer');
+  driveEl.setAttribute('aria-label', t('hud.drive.aria'));
   const driveTicks = Array.from({ length: 21 }, (_, index) =>
     `<i style="--tick:${index}"></i>`).join('');
   driveEl.innerHTML = `<div class="dial"><svg class="arc" viewBox="0 0 100 100" aria-hidden="true">` +
@@ -1788,7 +1804,7 @@ export function initHud(bus: EventBus): HudRuntime {
     `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
     `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
-    `<strong class="speed" data-drive-speed>0</strong><span class="unit">KM/H</span>` +
+    `<strong class="speed" data-drive-speed>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
   const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
@@ -1885,8 +1901,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- team panels ("ears") ---
   const earL = el('div', 'cot-ear l', root);
   const earR = el('div', 'cot-ear r', root);
-  earL.innerHTML = `<div class="hd"><span>Allies</span><span class="al"></span></div>`;
-  earR.innerHTML = `<div class="hd"><span class="al"></span><span>Enemies</span></div>`;
+  earL.innerHTML = `<div class="hd"><span>${t('hud.team.ally')}</span><span class="al"></span></div>`;
+  earR.innerHTML = `<div class="hd"><span class="al"></span><span>${t('hud.team.enemies')}</span></div>`;
   const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
   const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
@@ -1925,7 +1941,7 @@ export function initHud(bus: EventBus): HudRuntime {
     specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
-    specVeh.textContent = `${tier}${p.vehicle || 'Unknown vehicle'}`;
+    specVeh.textContent = `${tier}${p.vehicle || t('hud.spec.unknownVehicle')}`;
     specIndex.textContent = card.position;
     specIndex.hidden = !card.position;
     specPortrait.src = card.icon;
@@ -1966,7 +1982,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
   const preBattleEl = el('div', 'cot-prebattle', root);
   const pbKick = el('div', 'k', preBattleEl);
-  pbKick.textContent = 'BATTLE BEGINS IN';
+  pbKick.textContent = t('hud.battleBeginsIn');
   const pbNum = el('div', 'n', preBattleEl);
   let pbShownSec = -1;
   let pbHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1984,8 +2000,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
   sixthEl.innerHTML = `<span class="sig">${uiIconSVG('lightbulb', 24)}</span>` +
-    `<span class="copy"><span class="lb">Detected</span>` +
-    `<span class="sub">Enemy has visual contact</span></span>`;
+    `<span class="copy"><span class="lb">${t('hud.sixth.label')}</span>` +
+    `<span class="sub">${t('hud.sixth.sub')}</span></span>`;
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
@@ -2132,7 +2148,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   const shellBox = el('div', 'cot-shells', root);
   shellBox.setAttribute('role', 'group');
-  shellBox.setAttribute('aria-label', 'Ammunition selector');
+  shellBox.setAttribute('aria-label', t('hud.ammunition.aria'));
   const slotEls: ShellSlotButton[] = [];
   let touchAmmoOpen = false;
   function setTouchAmmoOpen(open: boolean): void {
@@ -2169,7 +2185,7 @@ export function initHud(bus: EventBus): HudRuntime {
     s.type = 'button';
     s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
       `<div class="clr"></div>` +
-      `<div class="tip"><div class="tnm"></div>PEN <b class="p"></b> &nbsp;&middot;&nbsp; DMG <b class="d"></b></div>` +
+      `<div class="tip"><div class="tnm"></div>${t('hud.shell.pen')} <b class="p"></b> &nbsp;&middot;&nbsp; ${t('hud.shell.dmg')} <b class="d"></b></div>` +
       `<div class="cool"></div>`;
     s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
     s._iconType = null;
@@ -2204,7 +2220,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const s = el('button', 'cot-con', conBox);
     s.type = 'button';
     s.title = c.label;
-    s.setAttribute('aria-label', `${c.label}, ready`);
+    s.setAttribute('aria-label', t('hud.consumable.ready', { name: c.label }));
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
     const activateConsumable = (event: Event): void => {
@@ -2238,12 +2254,12 @@ export function initHud(bus: EventBus): HudRuntime {
         cool.style.setProperty('--cool', `${pct.toFixed(1)}%`);
         count.textContent = String(Math.ceil(remaining));
         s.classList.add('cooling');
-        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready in ${Math.ceil(remaining)} seconds`);
+        s.setAttribute('aria-label', t('hud.consumable.cooling', { name: CONSUMABLES[i].label, seconds: Math.ceil(remaining) }));
       } else {
         cool.style.display = 'none';
         count.textContent = CONSUMABLE_READY_MARK;
         s.classList.remove('cooling');
-        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
+        s.setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
       }
     }
   }
@@ -2262,9 +2278,6 @@ export function initHud(bus: EventBus): HudRuntime {
   // Keeping the decoded baked image as the draw source avoids iPad Safari's
   // memory-pressure canvas purge, which left live blips over a blank panel.
   let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
-  let minimapRotation = MINIMAP_NORTH_UP;
-  let minimapDeploymentYaw: number | null = null;
-  let minimapOrientationLocked = false;
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
@@ -2675,11 +2688,22 @@ export function initHud(bus: EventBus): HudRuntime {
     modeState: HudMatchModeState,
     ownScore: string | number,
   ): string {
-    if (modeState.id === 'capture_the_flag') return `FLAGS ${ownScore} / ${modeState.target || 3}`;
-    if (modeState.id === 'zone_control') return `CONTROL ${ownScore} / ${modeState.target || 1000}`;
-    if (modeState.id === 'turbo_ball') return `GOALS ${ownScore} / ${modeState.target || 5}`;
+    if (modeState.id === 'capture_the_flag') {
+      return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
+    }
+    if (modeState.id === 'zone_control') {
+      return t('hud.modeStatus.control', { own: String(ownScore), target: String(modeState.target || 1000) });
+    }
+    if (modeState.id === 'turbo_ball') {
+      return t('hud.modeStatus.goals', { own: String(ownScore), target: String(modeState.target || 5) });
+    }
     const horde = modeState.horde;
-    return `WAVE ${horde?.wave || 1} · ${horde?.alive || 0} HOSTILES · AMMO ${modeState.playerAmmo ?? '—'} / ${modeState.playerAmmoCapacity ?? '—'}`;
+    return t('hud.modeStatus.horde', {
+      wave: String(horde?.wave || 1),
+      alive: String(horde?.alive || 0),
+      ammo: String(modeState.playerAmmo ?? '—'),
+      capacity: String(modeState.playerAmmoCapacity ?? '—'),
+    });
   }
 
   function modeStatusIconName(modeId: string): string {
@@ -2694,7 +2718,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
     modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
-    modeStatusName.textContent = modeState.label || 'Objective';
+    modeStatusName.textContent = modeState.label || t('hud.modeStatus.objective');
     modeStatusValue.textContent = copy;
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
@@ -2717,8 +2741,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
       feEl.textContent = String(enemyScore);
-      allyLabelEl.textContent = horde ? 'Wave' : 'Allies';
-      enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
+      allyLabelEl.textContent = horde ? t('hud.wave') : t('hud.allies');
+      enemyLabelEl.textContent = horde ? t('hud.hostiles') : t('hud.enemy');
       wedgeL.textContent = '';
       wedgeR.textContent = '';
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
@@ -2742,8 +2766,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (score !== lastScore) {
       fgEl.textContent = String(allyKills);
       feEl.textContent = String(enemyKills);
-      allyLabelEl.textContent = 'Allies';
-      enemyLabelEl.textContent = 'Enemy';
+      allyLabelEl.textContent = t('hud.allies');
+      enemyLabelEl.textContent = t('hud.enemy');
       const slots = Math.max(tally.allyTotal, tally.enemyTotal);
       syncWedge(wedgeL, slots, tally.deadEnemies, false);
       syncWedge(wedgeR, slots, tally.deadAllies, true);
@@ -2751,7 +2775,7 @@ export function initHud(bus: EventBus): HudRuntime {
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
     }
-    updateTimer('Time', fmtTimer(BATTLE_DURATION_S - frame.timeS));
+    updateTimer(t('hud.team.time'), fmtTimer(BATTLE_DURATION_S - frame.timeS));
   }
 
   function updateTeams(frame: HudFrame): void {
@@ -3902,7 +3926,7 @@ export function initHud(bus: EventBus): HudRuntime {
       element._iconType = type;
     }
     const typeEl = requireElement<HTMLElement>(element, '.ty');
-    typeEl.textContent = type;
+    typeEl.textContent = shellTypeLabel(type);
     typeEl.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
     requireElement<HTMLElement>(element, '.clr').style.background =
       SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
@@ -3921,7 +3945,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const name = shell.name || shell.type || `slot ${index + 1}`;
     element.setAttribute(
       'aria-label',
-      `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${name}, ${view.count} rounds${view.empty ? ', empty' : ''}`,
+      view.selected
+        ? t('hud.ammo.selectedAria', { name, count: view.count, empty: view.empty ? t('hud.ammo.empty') : '' })
+        : t('hud.ammo.selectAria', { name, count: view.count, empty: view.empty ? t('hud.ammo.empty') : '' }),
     );
   }
 
@@ -4195,14 +4221,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // every 20 Hz repaint; every call site destructures immediately (verified),
   // so a shared 2-element array is safe and allocation-free.
   const _wm: [number, number] = [0, 0];
-  function worldToMap(x: number, z: number, oriented = true): [number, number] {
-    // +X right, +Z up (north)
-    const half = mapWorldSize / 2;
-    _wm[0] = ((x + half) / mapWorldSize) * MM;
-    _wm[1] = ((half - z) / mapWorldSize) * MM;
-    if (oriented) {
-      orientMinimapPoint(_wm[0], _wm[1], MM, minimapRotation, _wm);
-    }
+  function worldToMap(x: number, z: number): [number, number] {
+    projectWorldToMinimap(x, z, mapWorldSize, MM, _wm);
     return _wm;
   }
 
@@ -4224,11 +4244,9 @@ export function initHud(bus: EventBus): HudRuntime {
       const N = N0 * 2;
       const { renderer, scene, exclude } = snap;
       const half = mapWorldSize / 2;
-      // NOTE: a straight down-look with +Z (north) as screen-up puts world +X
-      // on screen-LEFT (three's lookAt basis). Do NOT mirror the projection —
-      // a negative-determinant projection flips face winding and the whole
-      // front-face-culled terrain disappears. Render as-is and flip the
-      // image horizontally in the 2D copy below.
+      // A straight down-look with +Z as screen-up naturally puts world -X on
+      // screen-right (Three.js's right-handed lookAt basis). Keep that native
+      // handedness: it is also the battle camera's mouse-right direction.
       const cam = new THREE.OrthographicCamera(-half, half, half, -half, 10, 2400);
       cam.position.set(0, 900, 0);
       cam.up.set(0, 0, 1);
@@ -4278,15 +4296,15 @@ export function initHud(bus: EventBus): HudRuntime {
       c.width = N; c.height = N;
       const x2 = requireCanvasContext(c);
       const img = x2.createImageData(N, N);
-      // GL pixel rows come bottom-up (vertical flip) and the down-look basis
-      // mirrors east-west (horizontal flip) — undo both while copying, and
-      // force opaque alpha (background texels write alpha 0)
+      // GL pixel rows come bottom-up, so undo only the vertical readback flip.
+      // Preserve the down-look camera's horizontal basis and force opaque
+      // alpha (background texels write alpha 0).
       const dd = img.data;
       for (let y = 0; y < N; y++) {
         const src = (N - 1 - y) * N * 4;
         const dst = y * N * 4;
         for (let x3 = 0; x3 < N; x3++) {
-          const s = src + (N - 1 - x3) * 4;
+          const s = src + x3 * 4;
           const o = dst + x3 * 4;
           dd[o] = buf[s]; dd[o + 1] = buf[s + 1]; dd[o + 2] = buf[s + 2];
           dd[o + 3] = 255;
@@ -4335,7 +4353,7 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let row = 0; row < size; row++) {
       const z = half - (row + 0.5) * step;
       for (let column = 0; column < size; column++) {
-        const x = -half + (column + 0.5) * step;
+        const x = half - (column + 0.5) * step;
         const height = heightField.getHeightAt(x, z);
         const deltaX = heightField.getHeightAt(x + step * 2, z)
           - heightField.getHeightAt(x - step * 2, z);
@@ -4369,7 +4387,7 @@ export function initHud(bus: EventBus): HudRuntime {
     context.lineWidth = 0.8;
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
-      const point = worldToMap(patch.x, patch.z, false);
+      const point = worldToMap(patch.x, patch.z);
       context.beginPath();
       context.arc(point[0], point[1], (patch.r / mapWorldSize) * MM, 0, Math.PI * 2);
       context.fill();
@@ -4412,7 +4430,7 @@ export function initHud(bus: EventBus): HudRuntime {
     captured: boolean,
     forestFill: string,
   ): void {
-    const point = worldToMap(cluster.x, cluster.z, false);
+    const point = worldToMap(cluster.x, cluster.z);
     const centerX = point[0];
     const centerY = point[1];
     const seed = Math.abs(Math.sin(cluster.x * 12.9898 + cluster.z * 78.233) * 43758.5453);
@@ -4473,7 +4491,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const road = roads[roadIndex];
       context.beginPath();
       for (let pointIndex = 0; pointIndex < road.length; pointIndex++) {
-        const point = worldToMap(road[pointIndex][0], road[pointIndex][1], false);
+        const point = worldToMap(road[pointIndex][0], road[pointIndex][1]);
         if (pointIndex === 0) context.moveTo(point[0], point[1]);
         else context.lineTo(point[0], point[1]);
       }
@@ -4512,7 +4530,7 @@ export function initHud(bus: EventBus): HudRuntime {
     context.lineWidth = 0.7;
     for (let i = 0; i < buildings.length; i++) {
       const building = buildings[i];
-      const point = worldToMap(building.x, building.z, false);
+      const point = worldToMap(building.x, building.z);
       const width = Math.max(4, ((building.w ?? 0) / mapWorldSize) * MM);
       const depth = Math.max(4, ((building.d ?? 0) / mapWorldSize) * MM);
       context.save();
@@ -4627,7 +4645,6 @@ export function initHud(bus: EventBus): HudRuntime {
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
   function drawMinimapChrome(octx: CanvasRenderingContext2D): void {
-    const flipped = Math.cos(minimapRotation) < 0;
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
     octx.lineWidth = 0.7;
@@ -4652,11 +4669,10 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
       // column numbers across the top edge (WoT prints "0" for the 10th)
-      const sourceIndex = flipped ? 9 - i : i;
-      octx.fillText(String((sourceIndex + 1) % 10), c, 6);
+      octx.fillText(String((i + 1) % 10), c, 6);
       // row letters down the left edge (skip the corner-sharing squeeze:
       // A's cell also hosts the "1", so it sits a touch lower)
-      octx.fillText(GRID_LETTERS[sourceIndex], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
+      octx.fillText(GRID_LETTERS[i], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
     }
     octx.restore();
     octx.textAlign = 'left';
@@ -4667,41 +4683,15 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
   }
 
-  function drawMinimapUnderlayTiles(): void {
-    if (!mmBg) return;
-    for (let tileY = -1; tileY <= 1; tileY++) {
-      for (let tileX = -1; tileX <= 1; tileX++) {
-        const flipX = tileX !== 0;
-        const flipY = tileY !== 0;
-        const left = (tileX - 0.5) * MM;
-        const top = (tileY - 0.5) * MM;
-        mmCtx.save();
-        mmCtx.translate(flipX ? left + MM : left, flipY ? top + MM : top);
-        mmCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-        mmCtx.drawImage(mmBg, 0, 0, MM, MM);
-        mmCtx.restore();
-      }
-    }
-  }
-
   function drawMinimapBackground(): void {
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
     if (mmBg) {
-      mmCtx.save();
-      mmCtx.translate(MM * 0.5, MM * 0.5);
-      mmCtx.rotate(minimapRotation);
-      // A rotated square otherwise exposes black corner wedges on maps with
-      // a strongly angled deployment axis. Reflected neighbor tiles extend
-      // only the outside-of-bounds scenery, meet the real map edge without a
-      // seam, and leave the central tile/marker coordinates mathematically
-      // exact. Draw from the retained Image each repaint so iPadOS cannot
-      // purge a second cached canvas behind the live HUD.
-      drawMinimapUnderlayTiles();
-      mmCtx.restore();
+      // The battlefield raster is a fixed north-up survey. Keep it in the
+      // exact coordinate system used by worldToMap; only tank arrows and the
+      // camera cone rotate as the player looks around.
+      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
     }
-    // Labels stay upright and reverse on the opposite deployment so the
-    // established battlefield grid identity survives the heading-up view.
     drawMinimapChrome(mmCtx);
   }
 
@@ -4716,23 +4706,6 @@ export function initHud(bus: EventBus): HudRuntime {
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
-    if (!minimapOrientationLocked) {
-      // Derive the stable deployment axis from both team centroids. Locking
-      // the first local yaw was racy in network rooms: the first presentation
-      // frame can still contain the default 0-radian pose before the server's
-      // opposite-side spawn arrives, leaving that client exactly backwards.
-      const ownX = ax / an;
-      const ownZ = az / an;
-      const foeX = ex / en;
-      const foeZ = ez / en;
-      const dx = foeX - ownX;
-      const dz = foeZ - ownZ;
-      if (Math.hypot(dx, dz) < mapWorldSize * 0.2) return;
-      minimapDeploymentYaw = Math.atan2(dx, dz);
-      minimapRotation = minimapRotationForSpawnYaw(minimapDeploymentYaw);
-      minimapOrientationLocked = true;
-      mmDirty = true;
-    }
     // r4: each base carries a team-tinted cap fill so BOTH bases read on the
     // map (the old white 7% fill made the own-base marker invisible under
     // the ally blip cluster at spawn — the map read one-sided).
@@ -4773,11 +4746,6 @@ export function initHud(bus: EventBus): HudRuntime {
     c.restore();
   }
 
-  // canvas rotation that makes a forward-up sprite/shape point along hull yaw
-  // (same mapping the player arrow has always used)
-  const blipAngle = (yaw: number): number =>
-    Math.atan2(-Math.cos(yaw), Math.sin(yaw)) + Math.PI / 2;
-
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
   // vehicle arrow (nose forward, swept tail notch) rotated to hull heading.
   // Player = larger white arrow, allies = green, enemies = red (r3: tinted
@@ -4793,7 +4761,7 @@ export function initHud(bus: EventBus): HudRuntime {
   ): void {
     c.save();
     c.translate(x, y);
-    c.rotate(blipAngle(yaw));
+    c.rotate(minimapYawForHeading(yaw));
     c.globalAlpha = alpha;
     c.beginPath();
     c.moveTo(0, -s);                       // nose
@@ -4926,7 +4894,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        orientMinimapYaw(state.yaw, minimapRotation),
+        state.yaw,
         PEN_GREEN,
         5,
         0.95,
@@ -4940,7 +4908,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        orientMinimapYaw(state.yaw, minimapRotation),
+        state.yaw,
         PEN_RED,
         5,
         0.95,
@@ -4981,7 +4949,7 @@ export function initHud(bus: EventBus): HudRuntime {
     mmCtx.setLineDash([]);
     if (camera) {
       _fwd.set(0, 0, -1).transformDirection(camera.matrixWorld);
-      const cameraAngle = orientMinimapDirection(_fwd.x, _fwd.z, minimapRotation);
+      const cameraAngle = minimapAngleForDirection(_fwd.x, _fwd.z);
       const wedgeRadius = 36;
       mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
       mmCtx.beginPath();
@@ -5004,7 +4972,7 @@ export function initHud(bus: EventBus): HudRuntime {
       );
       mmCtx.stroke();
     }
-    const turretAngle = orientMinimapYaw(state.yaw + state.turretYaw, minimapRotation);
+    const turretAngle = minimapYawForHeading(state.yaw + state.turretYaw);
     mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
     mmCtx.lineWidth = 1.2;
     mmCtx.beginPath();
@@ -5014,7 +4982,7 @@ export function initHud(bus: EventBus): HudRuntime {
     pushLiveBlip(
       x,
       y,
-      orientMinimapYaw(state.yaw, minimapRotation),
+      state.yaw,
       '#f2f8ff',
       6.6,
       1,
@@ -5152,16 +5120,16 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- bus feeds ----------
   function pushKill(payload: HudEventPayload): void {
-    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || 'Enemy';
-    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || 'Tank';
+    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
+    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
     const item = el('div', 'cot-kf', killfeed);
-    const cause = CAUSE_LABEL[payload.cause || ''] || '';
+    const cause = causeLabel(payload.cause || '');
     // side-profile silhouettes of the actual tanks flank the names
     const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
       (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
-      `<span class="d">destroyed</span>` +
+      `<span class="d">${t('hud.shell.destroyed')}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (cause ? `<span class="c">${cause}</span>` : '');
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
@@ -5184,7 +5152,7 @@ export function initHud(bus: EventBus): HudRuntime {
       d.textContent = `-${Math.round(hit.damage)}`;
       if ((hit.modulesHit && hit.modulesHit.length) || (hit.crewHit && hit.crewHit.length)) {
         const c = el('span', 'crit', d);
-        c.textContent = 'CRIT';
+        c.textContent = t('hud.dmg.crit');
       }
     } else if (document.body.classList.contains('cot-touch-layout')) {
       // Touch hides the detailed ballistic card, so retain one compact result
@@ -5394,17 +5362,19 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-      showAlert(active
-        ? 'ATGM AMMUNITION SELECTED · CLICK TO FIRE'
-        : 'ATGM DESELECTED · PREVIOUS ROUND RESTORED', {
+      showAlert(t(active
+        ? 'hud.alert.atgmSelected'
+        : 'hud.alert.atgmDeselected'), {
         icon: active ? 'missileRack' : 'shell', tone: active ? 'success' : 'info',
       });
     }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
-      showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED',
+      showAlert(t(active
+        ? 'hud.alert.suspensionAimEngaged'
+        : 'hud.alert.suspensionAimDisengaged'),
         { icon: 'gunMount', tone: active ? 'success' : 'info' });
     } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) {
-      showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' });
+      showAlert(t('hud.alert.magazineReloadStarted'), { icon: 'shell' });
     }
   });
   function pulseAmmoDenied(slot: number | null | undefined, includeSpecial = false): void {
@@ -5422,25 +5392,27 @@ export function initHud(bus: EventBus): HudRuntime {
   }
   on('ui:ammoSelectionDenied', ({ slot, guided }) => {
     pulseAmmoDenied(slot, !!guided);
-    showAlert(guided ? 'MISSILES DEPLETED' : 'AMMUNITION TYPE EMPTY', {
+    showAlert(guided
+      ? t('hud.alert.missilesDepleted')
+      : t('hud.alert.ammoTypeEmpty'), {
       icon: guided ? 'missileRack' : 'shell', tone: 'danger',
     });
   });
   on('ui:specialActionDenied', ({ reason, slot }) => {
     if (reason === 'AMMO_EMPTY') {
       pulseAmmoDenied(slot, true);
-      showAlert('MISSILES DEPLETED', { icon: 'missileRack', tone: 'danger' });
+      showAlert(t('hud.alert.missilesDepleted'), { icon: 'missileRack', tone: 'danger' });
       return;
     }
-    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
-        : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-          : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
+    showAlert(reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
+        : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull')
+          : t('hud.alert.specialActionUnavailable'), { icon: 'clock', tone: 'info' });
   });
-  on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' }));
+  on('ui:magazineReloadStarted', () => showAlert(t('hud.alert.magazineReloadStarted'), { icon: 'shell' }));
   on('ui:magazineReloadDenied', ({ reason }) => {
-    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
-      : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-        : 'MAGAZINE RELOAD UNAVAILABLE', { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
+    showAlert(reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
+      : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull')
+        : t('hud.alert.magazineReloadUnavailable'), { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
   });
   on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     if (slot == null || readyAt == null || cooldownS == null) return;
@@ -5450,16 +5422,21 @@ export function initHud(bus: EventBus): HudRuntime {
     conCooldownS[slot] = cooldownS;
     updateConsumableCooldowns(lastTimeS);
     const icons = ['repair', 'medkit', 'extinguisher'];
-    showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, { icon: icons[slot] || 'check', tone: 'success' });
+    showAlert(t('hud.alert.consumableUsed', { name: CONSUMABLES[slot].label }), { icon: icons[slot] || 'check', tone: 'success' });
   });
   on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
     if (slot == null) return;
     if (reason === 'NOTHING') {
       const icons = ['repair', 'medkit', 'extinguisher'];
-      showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR',
+      showAlert(t(slot === 2
+        ? 'hud.alert.noFireToExtinguish'
+        : slot === 1
+          ? 'hud.alert.crewUnharmed'
+          : 'hud.alert.nothingToRepair'),
         { icon: icons[slot] || 'info', tone: 'info' });
     } else if (reason === 'COOLDOWN') {
-      showAlert(`READY IN ${Math.ceil(remainingS || 0)} S`, { icon: 'clock', tone: 'info' });
+      showAlert(t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }),
+        { icon: 'clock', tone: 'info' });
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
@@ -5471,17 +5448,17 @@ export function initHud(bus: EventBus): HudRuntime {
       requireElement<HTMLElement>(conEls[i], '.cnt').textContent = CONSUMABLE_READY_MARK;
       requireElement<HTMLElement>(conEls[i], '.cool').style.display = 'none';
       conEls[i].classList.remove('used', 'deny', 'cooling');
-      conEls[i].setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
+      conEls[i].setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
     }
   });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
-    if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`,
+    if (on) showAlert(t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
   on('ammo:empty', ({ id }) => {
     if (playerId == null || id === playerId) {
-      showAlert('AMMUNITION TYPE EMPTY · SELECT ANOTHER TYPE', {
+      showAlert(t('hud.alert.ammoTypeEmpty'), {
         icon: 'shell', tone: 'danger',
       });
     }
@@ -5490,41 +5467,43 @@ export function initHud(bus: EventBus): HudRuntime {
     if (playerId != null && id !== playerId) return;
     if (fallbackSlot != null && fallbackSlot >= 0) selectSlot(fallbackSlot);
     const guided = slot != null && lastShells?.[slot]?.type === 'ATGM';
-    showAlert(guided ? 'MISSILES DEPLETED · NEXT AMMO SELECTED'
+    showAlert(guided
+      ? t('hud.alert.missilesDepletedNext')
       : fallbackSlot != null && fallbackSlot >= 0
-        ? 'AMMUNITION DEPLETED · NEXT TYPE SELECTED'
-        : 'ALL AMMUNITION DEPLETED', {
+        ? t('hud.alert.ammoDepletedNext')
+        : t('hud.alert.allAmmoDepleted'), {
       icon: guided ? 'missileRack' : 'shell', tone: 'danger',
     });
   });
   on('mode:pickup_collected', ({ by, kind, ammoAdded }) => {
     if (playerId != null && by !== playerId) return;
     const amount = Math.max(0, Number(ammoAdded) || 0);
-    showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED'
-      : `AMMUNITION ACQUIRED${amount > 0 ? ` · +${amount}` : ''}`, {
+    showAlert(kind === 'heal'
+      ? t('hud.alert.fieldRepairAcquired')
+      : t('hud.alert.ammoAcquired', { amount }), {
       icon: kind === 'heal' ? 'repair' : 'shell', tone: 'success',
     });
   });
   on('mode:wave_started', ({ wave }) => {
-    showAlert(`WAVE ${Math.max(1, Number(wave) || 1)} INBOUND`, {
+    showAlert(t('hud.alert.waveInbound', { wave: Math.max(1, Number(wave) || 1) }), {
       icon: 'modeHorde', tone: 'warning',
     });
   });
   on('mode:flag_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'ALLIED FLAG CAPTURE' : 'ENEMY FLAG CAPTURE', {
+    showAlert(t(allied ? 'hud.alert.alliedFlagCapture' : 'hud.alert.enemyFlagCapture'), {
       icon: 'modeFlag', tone: allied ? 'success' : 'danger',
     });
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'SECTOR SECURED' : 'SECTOR LOST', {
+    showAlert(t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), {
       icon: 'modeZones', tone: allied ? 'success' : 'danger',
     });
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'ALLIED GOAL' : 'ENEMY GOAL', {
+    showAlert(t(allied ? 'hud.alert.alliedGoal' : 'hud.alert.enemyGoal'), {
       icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
     });
   });
@@ -5560,8 +5539,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // repaired:true = auto-repair finished (red → yellow). This used to toast
     // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
-    if (p.repaired) { showAlert(`${label} REPAIRED`, { icon, tone: 'success' }); return; }
-    showAlert(p.state === 'red' ? `${label} DESTROYED` : `${label} DAMAGED`,
+    if (p.repaired) { showAlert(t('hud.alert.moduleRepaired', { label }), { icon, tone: 'success' }); return; }
+    showAlert(t(p.state === 'red' ? 'hud.alert.moduleDestroyed' : 'hud.alert.moduleDamaged', { label }),
       { icon, tone: p.state === 'red' ? 'danger' : 'warning' });
   });
 
@@ -5850,7 +5829,7 @@ export function initHud(bus: EventBus): HudRuntime {
         pbShownSec = 0;
         preBattleEl.classList.add('rollout');
         pbNum.classList.remove('tick');
-        pbNum.textContent = 'ROLL OUT!';
+        pbNum.textContent = t('hud.rollout');
         void pbNum.offsetWidth;
         pbNum.classList.add('tick', 'go');
         if (pbHideTimer) clearTimeout(pbHideTimer);
@@ -5899,9 +5878,6 @@ export function initHud(bus: EventBus): HudRuntime {
         spotById.clear();
         nickById.clear();
         spawnFlags = null; // re-capture from the new battle's spawn frame
-        minimapRotation = MINIMAP_NORTH_UP;
-        minimapDeploymentYaw = null;
-        minimapOrientationLocked = false;
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -6034,11 +6010,11 @@ export function initHud(bus: EventBus): HudRuntime {
       getMinimapBackgroundDataUrl: (type, quality) =>
         hud.exportMinimapBackground(type, quality),
       getMinimapState: () => ({
-        rotationRad: minimapRotation,
-        rotationDeg: minimapRotation * 180 / Math.PI,
-        deploymentYawRad: minimapDeploymentYaw,
-        flipped: Math.cos(minimapRotation) < 0,
-        orientationLocked: minimapOrientationLocked,
+        rotationRad: 0,
+        rotationDeg: 0,
+        orientationSource: 'north-up',
+        headingUp: false,
+        northUp: true,
         backgroundKind: !mmBg ? 'none'
           : mmBg instanceof HTMLImageElement ? 'image' : 'canvas',
         backgroundReady: !!mmBg && (mmBg instanceof HTMLImageElement

@@ -982,6 +982,12 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(yellowTransmission.state.speed > damaged.state.speed,
     'yellow transmission retains more drive authority than red transmission');
 
+  const damagedMount = makeEntity(field);
+  damagedMount.combat = { modules: { gunMount: { state: 'yellow' } } };
+  run(damagedMount, field, 30);
+  assert(damagedMount.state.bloomF >= 2,
+    'yellow casemate gun mount enforces the damaged-dispersion floor');
+
   const tracked = makeEntity(field);
   tracked.input.throttle = 1;
   tracked.combat = { modules: { trackL: { state: 'red' } } };

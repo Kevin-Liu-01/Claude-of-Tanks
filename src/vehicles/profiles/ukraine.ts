@@ -1084,6 +1084,7 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
 function buildUAT80BV(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
+  const buildBVHullBase = (): void => {
   // T-80 hull loft to the print lines at the published datum: 1.51 mid
   // deck, 1.503-class engine plateau, stern undercut rising to the 1.32
   // lip, bow glacis 1.40@2.19 -> 1.02@3.39.
@@ -1120,7 +1121,22 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('hullDark', box(1.60, 0.02, 1.05), 0, 1.465, -1.95);
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(1.52, 0.02, 0.05), 0, 1.471, -1.62 - k * 0.15);
   P.add('hull', box(0.95, 0.06, 0.58), 0.40, 1.475, -1.50);
+  };
+  buildBVHullBase();
 
+  const buildBVGlacis = (): void => {
+  const addBVGlacisMainTile = (s: number, row: number, i: number): void => {
+    // Row 2 drops its outermost column: at z 2.88 that tile entered the
+    // strict idler-lane sweep. The final column is also seated 40 mm inboard
+    // to retain the four-column read without overhanging the moving shoe.
+    if (row === 2 && i === 3) return;
+    const proud = (i + row) & 1;
+    const outerColumnInsetM = i === 3 ? 0.09 : 0;
+    kTile(P, 'hull', s * (0.235 + i * 0.285 - outerColumnInsetM),
+      1.328 - row * 0.089 + (proud ? 0.022 : 0),
+      2.34 + row * 0.27 + (proud ? 0.008 : 0),
+      i === 3 ? 0.18 : 0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
+  };
   // Glacis: splash ridge above the raft, K-1 raft centered around the
   // driver, V-board, lights, eyes. §5.272 fix (3): CHUNKIER checker relief
   // — three courses CLIMBING the glacis surface (the old row 1 sat 0.2 m
@@ -1128,18 +1144,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('hull', box(1.90, 0.045, 0.16), 0, 1.40, 2.12);
   ruGlacisKit(P, { w: 3.0, y: 1.16, z: 2.66, eyeX: 0.82, eyeZ: 3.10, eyeY: 0.80, hookY: 0.80, hookZ: 3.20, hlY: 1.28 });
   for (const s of [-1, 1]) for (let row = 0; row < 3; row++) for (let i = 0; i < 4; i++) {
-    // row 2 drops its outermost column — at z 2.88 the i=3 tiles (x to
-    // 1.22) entered the idler-lane strict sweep (44/60 voxel receipt)
-    if (row === 2 && i === 3) continue;
-    const proud = (i + row) & 1;
-    // The final column sits beside the idler wrap. A 40 mm inboard seat
-    // retains the four-column read while clearing the articulated shoe
-    // corner that the old cassette overhung by 17 mm.
-    const outerColumnInsetM = i === 3 ? 0.09 : 0;
-    kTile(P, 'hull', s * (0.235 + i * 0.285 - outerColumnInsetM),
-      1.328 - row * 0.089 + (proud ? 0.022 : 0),
-      2.34 + row * 0.27 + (proud ? 0.008 : 0),
-      i === 3 ? 0.18 : 0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
+    addBVGlacisMainTile(s, row, i);
   }
   // §5.341 "more era": varied low fourth course — staggered half-tiles
   // riding the glacis toe between the raft columns (x <= 1.02, clear of
@@ -1162,7 +1167,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.30, 0.28, 0.045), s * 1.40, 0.99, 3.35);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.53, 1.00, -3.12);
   }
+  };
+  buildBVGlacis();
 
+  const buildBVStern = (): void => {
   // Stern: turbine grille at its measured seat (the proud drums overhang
   // it) + recovery eyes; the transverse bo4ki pair rides ABOVE on open
   // brackets.
@@ -1201,7 +1209,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     log.position.set(0, 0.50, -3.32);
     P.hullG.add(log);
   }
+  };
+  buildBVStern();
 
+  const buildBVRunningGearAndSkirts = (): void => {
   // T-80 running gear (published chassis constants at this frame).
   // §5.272 fix (2): wheel rim/hub contrast lifted (tireHex/wheelHex law —
   // the stock tones read as a black smear behind the old deep skirt).
@@ -1240,7 +1251,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.035, 0.26, 0.58), s * 1.752, 0.90, 2.62 - i * 0.64, 0, 0, -s * 0.015);
   }
   widthAnchor(P, 1.76, 0.82, -2.48);
+  };
+  buildBVRunningGearAndSkirts();
 
+  const buildBVTurretShell = (): DomeProfile => {
   // Canonical family casting: the Ukrainian BV now shares the accepted
   // T-80/T-80B/T-80U Kursk nine-ring shell. Its 0.94 vertical installation
   // preserves this vehicle's roof datum while armor and fittings remain
@@ -1254,11 +1268,15 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.20);
+  return { rings, sz: 0.88, cz: 0.22 };
+  };
+  const bvDome = buildBVTurretShell();
 
   // The frontal package is installed after its welded carrier by
   // addModernizedT80TurretSuite, so every cassette is surface-seated and
   // camouflaged rather than emitted as spare-track steel around the dome.
 
+  const buildBVRoofSystems = (): void => {
   // Commander cupola RIGHT with the NSVT, gunner hatch LEFT, TKN blocks,
   // Luna IR left of the gun — every roof seat recomputed on the rebased
   // casting skin (the resident dome is fuller at mid-radius; old seats
@@ -1313,7 +1331,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // 902 smoke banks on the cheek flank cluster (T-80BV obr. fit) — seated
   // flush on the rebased casting skin.
   uaSmoke(P, { x: 1.36, y: 0.40, z: 0.64, count: 4, seed: 8810, yaw: 0.30 });
+  };
+  buildBVRoofSystems();
 
+  const buildBVBustle = (): void => {
   // Bustle: rack rail, stowage boxes, rolled tarp (UA-era kit), whips —
   // pulled forward to the rebased casting's shorter rear wall.
   P.add('turretDetail', cylX(0.020, 1.46, 12), 0, 0.40, -1.10);
@@ -1331,9 +1352,12 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
       h: 0.30, r: 0.011, rake: -s * 0.55, seed: 8812 + (s > 0 ? 1 : 0) }),
       s * 0.86, 0.33, -0.88);
   }
+  };
+  buildBVBustle();
 
-  addModernizedT80TurretSuite(P, 'bv', { rings, sz: 0.88, cz: 0.22 });
+  addModernizedT80TurretSuite(P, 'bv', bvDome);
 
+  const buildBVWeapon = (): void => {
   // 2A46M-1 at the 1.69 axis: saddle, boot, sleeve, muzzle +6.27, bore
   // (gun local +0.06 compensates the 1.50 -> 1.44 ring drop — the world
   // axis is certified).
@@ -1371,6 +1395,8 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // casting's skin — the old -0.60 station falls off the shorter rear)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.39, 0.36, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.39, 0.36, -0.30], -Math.PI / 2);
+  };
+  buildBVWeapon();
   P.topY = 1.36;
 }
 
@@ -1384,6 +1410,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
 function buildUAT80UKursk(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
+  const buildKurskHull = (): void => {
   // T-80U hull: same turbine chassis lines as the T-80 family at the
   // published 7.01/9.65/3.60/2.20 datum, frame +-3.505.
   loftHull(P, {
@@ -1444,7 +1471,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.34, 0.30, 0.045), s * 1.38, 0.95, 3.43);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 1.00, -3.22);
   }
+  };
+  buildKurskHull();
 
+  const buildKurskStern = (): void => {
   // Stern: grille, eyes, low drum pair + log (UA service fit).
   P.add('hullDark', box(1.80, 0.30, 0.035), 0, 1.35, -3.44);
   for (let i = 0; i < 5; i++) P.add('hullDetail', box(0.30, 0.13, 0.025), -0.72 + i * 0.36, 1.35, -3.46);
@@ -1474,7 +1504,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullDark', box(0.045, 0.52, 0.05), -0.72, 0.95, -3.35, 0.12, 0, 0);
     P.add('hullDark', box(0.045, 0.52, 0.05), 0.72, 0.95, -3.35, 0.12, 0, 0);
   }
+  };
+  buildKurskStern();
 
+  const buildKurskRunningGearAndSkirts = (): void => {
   // T-80U running gear (published chassis constants, frame +-3.505).
   // §5.272 fix (1): wheel rim/hub contrast lifted (tireHex/wheelHex law —
   // the six dished wheels read as a black smear behind the old deep skirt;
@@ -1507,7 +1540,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullDark', box(0.010, 0.022, 0.52), s * 1.7755, 1.235, z, 0, 0, -s * 0.018);
   }
   widthAnchor(P, 1.80, 0.82, -2.55);
+  };
+  buildKurskRunningGearAndSkirts();
 
+  const buildKurskTurretShell = (): DomeProfile => {
   // T-80U turret — §5.341 T-80 DOME REBASE (owner order, same law as
   // ua_t80bv): the odd sz-1.12 ellipse is replaced by the RESIDENT
   // t80-line cast profile (t80.ts buildT80Line v1 ring list — the 9-ring
@@ -1522,11 +1558,15 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.24);
+  return { rings, sz: 0.88, cz: 0.22 };
+  };
+  const kurskDome = buildKurskTurretShell();
 
   // The frontal package is installed after its welded carrier by
   // addModernizedT80TurretSuite, replacing the former steel wedge leaves,
   // mixed dark bricks and detached V tips with one coherent painted array.
 
+  const buildKurskRoofSystems = (): void => {
   // Tall right-forward gunner primary sight — the print's strongest roof
   // tell and this build's ONE budgeted p95 spike window (~3 columns at
   // z 0.07..0.37). The NSVT stows FOLDED on the roof (Challenger 2
@@ -1581,7 +1621,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('turret', box(0.13, 0.045, 0.11), x, gy, z, 0, ry, 0);
     P.add('turretGlass', box(0.09, 0.036, 0.02), x, gy + 0.022, z + 0.05, 0, ry, 0);
   }
+  };
+  buildKurskRoofSystems();
 
+  const buildKurskBustle = (): void => {
   // Asymmetric rear roof crates + rolled snorkel across the bustle
   // (kursk print tells), 902B banks both cheeks, whips — rear kit pulled
   // to the rebased casting's shorter rear wall.
@@ -1606,9 +1649,12 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
       h: 0.18, r: 0.011, rake: -s * 0.9, seed: 8912 + (s > 0 ? 1 : 0) }),
       s * 0.88, 0.31, -0.83);
   }
+  };
+  buildKurskBustle();
 
-  addModernizedT80TurretSuite(P, 'kursk', { rings, sz: 0.88, cz: 0.22 });
+  addModernizedT80TurretSuite(P, 'kursk', kurskDome);
 
+  const buildKurskWeapon = (): void => {
   // 2A46M-1 at the 1.70 axis, muzzle +6.145 world, true bore (gun local
   // +0.06 compensates the 1.50 -> 1.44 ring drop — world axis certified).
   P.gunG.position.set(0, 0.26, 1.05);
@@ -1636,6 +1682,8 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   // casting's skin — the old -0.66 station falls off the shorter rear)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [1.37, 0.36, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [-1.37, 0.36, -0.30], -Math.PI / 2);
+  };
+  buildKurskWeapon();
   P.topY = 1.40;
 }
 
@@ -1666,6 +1714,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     additionalTurretCassettes: 0,
   };
 
+  const buildOplotHull = (): void => {
   // Hull loft (T-80UD lineage): deck plateau 1.42, rear deck fall to the
   // 1.27 tail, glacis break +1.85 falling 1.36 -> 0.84 at the bow tip,
   // 0.45 belly with the stern undercut rising to the 1.15 overhang lip
@@ -1755,7 +1804,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.add('hull', cylY(0.23, 0.23, 0.04, 14), 0, 1.44, 1.55);
   KIT.periscope(P, 'hullDetail', -0.14, 1.45, 1.80);
   KIT.periscope(P, 'hullDetail', 0.14, 1.45, 1.80);
+  };
+  buildOplotHull();
 
+  const buildOplotHullSides = (): void => {
   // Fender runs with bins + tow cable. The bins occupy only the inboard
   // half of the fender. A segmented welded shelf now spans the remaining
   // channel to the Duplet side-skirt root, so the skirt is visibly carried
@@ -1881,7 +1933,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
       [s * 1.60, 1.30, 3.02], [s * 1.885, 1.30, 3.02], [s * 1.885, 1.28, 3.36], [s * 1.60, 1.28, 3.36]));
   }
   widthAnchor(P, 1.8875, 0.80, -2.60);
+  };
+  buildOplotHullSides();
 
+  const buildOplotTurretShell = (): void => {
   // ---- KMDB WELDED TURRET — measured from the WARPED (published-scale)
   // print's TUR subtree (tools/tmp-ua-turprofile.mjs): a long arrowhead —
   // Duplet wedge wings sweeping to world +1.26 at halfW 1.43..1.54, nose
@@ -1980,7 +2035,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     P.add('turretDark', box(0.38, 0.26, 0.46), s * 1.16, 0.20, -1.50, 0, -s * 0.06, 0);
     P.add('turretDetail', box(0.32, 0.05, 0.40), s * 1.16, 0.36, -1.50, 0, -s * 0.06, 0);
   }
+  };
+  buildOplotTurretShell();
 
+  const buildOplotRoofSystems = (): void => {
   // Roof furniture: hatch rings proud of the 0.795 roof plate, vision
   // blocks under the datum, the PNK-6 tower at the ref's own world -1.34
   // spike column (local -1.04).
@@ -2087,7 +2145,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     rotation: [0, 0.40, -0.10],
     seed: 8411 }),
     1.24, 0.40, -0.40);
+  };
+  buildOplotRoofSystems();
 
+  const buildOplotSideFinish = (): void => {
   // ---- §5.319 LEFT-SIDE TURRET FINISH (owner order: "finish the left side
   // of oplots turret"). The print's LEFT carries a full Duplet grammar the
   // §5.288 round only delivered on the wing TOP faces: the left relief
@@ -2220,7 +2281,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
       h: 0.20, r: 0.012, rake: -s * 0.85, seed: 8420 + (s > 0 ? 1 : 0) }),
       s * 0.94, 0.44, -1.98);
   }
+  };
+  buildOplotSideFinish();
 
+  const buildOplotWeapon = (): void => {
   // KBA-3 125 mm: trunnion inside the arrowhead nose, sealed saddle, boot,
   // stepped thermal sleeve, muzzle +6.18 world, true bore.
   P.gunG.position.set(0, 0.30, 1.90);
@@ -2247,6 +2311,8 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.40, 0.32, -0.60], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.40, 0.32, -0.60], -Math.PI / 2);
   addVehicleGhillieSuit(P);
+  };
+  buildOplotWeapon();
   P.topY = 1.42;
 }
 
@@ -2269,8 +2335,158 @@ function addCageBar(
   P.add('turretDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
-function addAbramsDroneCage(P: UkraineBuilderPort): void {
+const ABRAMS_DRONE_CAGE_STATIONS: readonly CageStation[] = Object.freeze([
+  Object.freeze({ z: 2.62, x: 1.94, base: 0.20, roof: 1.16 }),
+  Object.freeze({ z: 0.28, x: 1.98, base: 0.10, roof: 1.30 }),
+  Object.freeze({ z: -1.28, x: 2.04, base: 0.08, roof: 1.34 }),
+  Object.freeze({ z: -3.34, x: 2.06, base: 0.14, roof: 1.28 }),
+]);
+
+function addPitchedAbramsCageBar(
+  P: UkraineBuilderPort,
+  side: number,
+  a: CageStation,
+  b: CageStation,
+  yKey: 'base' | 'roof' | 'rail',
+  thickness: number,
+): void {
+  const dz = b.z - a.z;
+  const aY = yKey === 'rail' ? a.rail! : a[yKey];
+  const bY = yKey === 'rail' ? b.rail! : b[yKey];
+  const dy = bY - aY;
+  const len = Math.hypot(dz, dy);
+  addCageBar(P, thickness, thickness, len,
+    side * (a.x + b.x) * 0.5, (aY + bY) * 0.5, (a.z + b.z) * 0.5,
+    -Math.atan2(dy, dz), 0, 0);
+}
+
+function addAbramsCageSideFrames(P: UkraineBuilderPort, thickness: number): void {
+  const { box } = KIT;
+  const stations = ABRAMS_DRONE_CAGE_STATIONS;
+  for (const side of [-1, 1]) {
+    for (const station of stations) {
+      const footDepth = station === stations[0] ? 0.56 : 0.30;
+      P.addEquipment('turret', box(0.48, 0.11, footDepth),
+        side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      addCageBar(P, thickness, station.roof - station.base, thickness,
+        side * station.x, (station.roof + station.base) * 0.5, station.z);
+      for (const fraction of [0.32, 0.62]) {
+        addCageBar(P, thickness * 0.70, thickness * 0.70, 0.34,
+          side * station.x,
+          THREE.MathUtils.lerp(station.base, station.roof, fraction),
+          station.z);
+      }
+    }
+    for (let index = 0; index < stations.length - 1; index++) {
+      const a = stations[index];
+      const b = stations[index + 1];
+      addPitchedAbramsCageBar(P, side, a, b, 'base', thickness);
+      addPitchedAbramsCageBar(P, side, a, b, 'roof', thickness);
+      for (const fraction of [0.34, 0.66]) {
+        const aRail = { ...a, rail: THREE.MathUtils.lerp(a.base, a.roof, fraction) };
+        const bRail = { ...b, rail: THREE.MathUtils.lerp(b.base, b.roof, fraction) };
+        addPitchedAbramsCageBar(P, side, aRail, bRail, 'rail', thickness * 0.70);
+      }
+      const dz = b.z - a.z;
+      const dy = b.roof - a.base;
+      addCageBar(P, thickness * 0.76, thickness * 0.76, Math.hypot(dz, dy),
+        side * (a.x + b.x) * 0.5, (a.base + b.roof) * 0.5, (a.z + b.z) * 0.5,
+        -Math.atan2(dy, dz), 0, 0);
+    }
+  }
+}
+
+function addAbramsCageRoof(P: UkraineBuilderPort, thickness: number): void {
+  const stations = ABRAMS_DRONE_CAGE_STATIONS;
+  const frontTieOverlap = thickness * 0.50;
+  const frontTieSpan = 0.50 + frontTieOverlap * 2;
+  for (let index = 0; index < stations.length; index++) {
+    const station = stations[index];
+    if (index === 0) {
+      for (const side of [-1, 1]) {
+        addCageBar(P, station.x - 0.50, thickness, thickness,
+          side * (0.50 + (station.x - 0.50) * 0.5), station.roof, station.z);
+      }
+    } else {
+      addCageBar(P, station.x * 2, thickness, thickness, 0, station.roof, station.z);
+    }
+  }
+  for (const x of [-1.38, -0.69, 0, 0.69, 1.38]) {
+    for (let index = 0; index < stations.length - 1; index++) {
+      const a = stations[index];
+      const b = stations[index + 1];
+      const dz = b.z - a.z;
+      const dy = b.roof - a.roof;
+      addCageBar(P, thickness * 0.76, thickness * 0.76, Math.hypot(dz, dy), x,
+        (a.roof + b.roof) * 0.5, (a.z + b.z) * 0.5,
+        -Math.atan2(dy, dz), 0, 0);
+    }
+  }
+  for (const side of [-1, 1]) {
+    addCageBar(P, frontTieSpan, thickness * 0.76, thickness * 0.76,
+      side * 0.25, stations[0].roof, stations[0].z);
+  }
+  P.turretG.userData.uaM1A1CageRailReceipt = Object.freeze({
+    centerRailHalfWidthM: thickness * 0.76 * 0.5,
+    frontRibInnerXM: 0.50,
+    connectorSpanM: frontTieSpan,
+    connectorCenterXM: 0.25,
+    overlapM: frontTieOverlap,
+    yM: stations[0].roof,
+    zM: stations[0].z,
+  });
+}
+
+function addAbramsCageShoulders(P: UkraineBuilderPort, thickness: number): void {
+  const front = ABRAMS_DRONE_CAGE_STATIONS[0];
+  for (const side of [-1, 1]) {
+    const width = front.x - 0.50;
+    for (const fraction of [0, 0.33, 0.66, 1]) {
+      const y = THREE.MathUtils.lerp(front.base, front.roof, fraction);
+      addCageBar(P, width, thickness * 0.72, thickness * 0.72,
+        side * (0.50 + width * 0.5), y, front.z - fraction * 0.16);
+    }
+    for (const x of [0.50, 0.97, 1.44, front.x]) {
+      addCageBar(P, thickness * 0.72, front.roof - front.base, thickness * 0.72,
+        side * x, (front.roof + front.base) * 0.5, front.z - 0.08,
+        -0.17, 0, 0);
+    }
+  }
+}
+
+function addAbramsCageRearPayload(P: UkraineBuilderPort, thickness: number): void {
   const { box, cylY } = KIT;
+  const rear = ABRAMS_DRONE_CAGE_STATIONS.at(-1)!;
+  addCageBar(P, rear.x * 2, thickness, thickness, 0, rear.base, rear.z);
+  addCageBar(P, rear.x * 2, thickness, thickness, 0, rear.roof, rear.z);
+  for (let index = 0; index <= 8; index++) {
+    addCageBar(P, thickness, rear.roof - rear.base, thickness,
+      -rear.x + index * rear.x * 0.25, (rear.roof + rear.base) * 0.5, rear.z);
+  }
+  for (const fraction of [0.28, 0.55, 0.80]) {
+    addCageBar(P, rear.x * 2, thickness * 0.70, thickness * 0.70,
+      0, THREE.MathUtils.lerp(rear.base, rear.roof, fraction), rear.z);
+  }
+
+  const rack = FITTINGS.stowageRack({
+    mats: P.mats, w: 2.62, d: 0.62, h: 0.38, rails: 4, fill: 0.82, seed: 1101,
+  });
+  rack.position.set(0, 0.52, -2.86);
+  P.turretG.add(rack);
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.48, 0.30, 0.42), side * 0.94, 0.72, -2.86);
+    P.add('turretDark', box(0.42, 0.025, 0.36), side * 0.94, 0.89, -2.86);
+    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), side * 0.58, 0.96, -2.74,
+      0, 0, Math.PI / 2);
+    seat(P, 'turret', FITTINGS.antennaWhip({
+      mats: P.mats, h: 0.72, r: 0.011,
+      rake: -side * 0.10, seed: 1110 + (side > 0 ? 1 : 0),
+    }), side * 1.32, 0.92, -2.78);
+  }
+}
+
+function addAbramsDroneCage(P: UkraineBuilderPort): void {
+  const { box } = KIT;
   const t = 0.032;
   // The Ukrainian field cage follows the Abrams turret's wedge instead of
   // enclosing it in a cuboid.  Four frame stations create a low front brow,
@@ -2280,140 +2496,20 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   // Keep the cage outside that envelope instead of using the armor skin as
   // its centerline. The front remains shorter for the gun aperture, while
   // the bustle station clears the ammunition compartment and rear rack.
-  const stations: readonly CageStation[] = [
-    { z: 2.62, x: 1.94, base: 0.20, roof: 1.16 },
-    { z: 0.28, x: 1.98, base: 0.10, roof: 1.30 },
-    { z: -1.28, x: 2.04, base: 0.08, roof: 1.34 },
-    { z: -3.34, x: 2.06, base: 0.14, roof: 1.28 },
-  ];
-  const pitchedZBar = (
-    s: number,
-    a: CageStation,
-    b: CageStation,
-    yKey: 'base' | 'roof' | 'rail',
-    thickness = t,
-  ): void => {
-    const dz = b.z - a.z;
-    const aY = yKey === 'rail' ? a.rail! : a[yKey];
-    const bY = yKey === 'rail' ? b.rail! : b[yKey];
-    const dy = bY - aY;
-    const len = Math.hypot(dz, dy);
-    addCageBar(P, thickness, thickness, len,
-      s * (a.x + b.x) * 0.5, (aY + bY) * 0.5, (a.z + b.z) * 0.5,
-      -Math.atan2(dy, dz), 0, 0);
-  };
-
-  for (const s of [-1, 1]) {
-    // Broad, armored feet overlap the real cheek/bustle side and carry each
-    // post.  They are fittings, not extra hit armor or track-side geometry.
-    for (const st of stations) {
-      const footDepth = st === stations[0] ? 0.56 : 0.30;
-      P.addEquipment('turret', box(0.48, 0.11, footDepth), s * (st.x - 0.25), st.base, st.z,
-        0, 0, s * 0.08);
-      addCageBar(P, t, st.roof - st.base, t,
-        s * st.x, (st.roof + st.base) * 0.5, st.z);
-      // Mid rails break up each cell without turning the cage into opaque
-      // slab armor.
-      for (const q of [0.32, 0.62]) {
-        addCageBar(P, t * 0.70, t * 0.70, 0.34,
-          s * st.x, THREE.MathUtils.lerp(st.base, st.roof, q), st.z);
-      }
-    }
-    for (let i = 0; i < stations.length - 1; i++) {
-      const a = stations[i]; const b = stations[i + 1];
-      pitchedZBar(s, a, b, 'base');
-      pitchedZBar(s, a, b, 'roof');
-      for (const q of [0.34, 0.66]) {
-        const aq = { ...a, rail: THREE.MathUtils.lerp(a.base, a.roof, q) };
-        const bq = { ...b, rail: THREE.MathUtils.lerp(b.base, b.roof, q) };
-        pitchedZBar(s, aq, bq, 'rail', t * 0.70);
-      }
-      // One planted diagonal per bay makes the screen read field-built yet
-      // structurally continuous.
-      const dz = b.z - a.z;
-      const dy = b.roof - a.base;
-      addCageBar(P, t * 0.76, t * 0.76, Math.hypot(dz, dy),
-        s * (a.x + b.x) * 0.5, (a.base + b.roof) * 0.5, (a.z + b.z) * 0.5,
-        -Math.atan2(dy, dz), 0, 0);
-    }
-  }
+  addAbramsCageSideFrames(P, t);
 
   // Transverse roof ribs join both side frames.  The front rib is split at
   // x ±0.50 to preserve the gun/elevation corridor; aft ribs cross the full
   // canopy above the turret equipment.
-  const frontTieOverlap = t * 0.50;
-  const frontTieSpan = 0.50 + frontTieOverlap * 2;
-  for (let k = 0; k < stations.length; k++) {
-    const st = stations[k];
-    if (k === 0) {
-      for (const s of [-1, 1]) addCageBar(P, st.x - 0.50, t, t,
-        s * (0.50 + (st.x - 0.50) * 0.5), st.roof, st.z);
-    } else addCageBar(P, st.x * 2, t, t, 0, st.roof, st.z);
-  }
-  for (const xf of [-1.38, -0.69, 0, 0.69, 1.38]) {
-    for (let i = 0; i < stations.length - 1; i++) {
-      const a = stations[i]; const b = stations[i + 1];
-      const dz = b.z - a.z; const dy = b.roof - a.roof;
-      addCageBar(P, t * 0.76, t * 0.76, Math.hypot(dz, dy), xf,
-        (a.roof + b.roof) * 0.5, (a.z + b.z) * 0.5,
-        -Math.atan2(dy, dz), 0, 0);
-    }
-  }
-
-  // The longitudinal centre rail used to end unsupported inside the split
-  // front rib.  Two slim lap-jointed ties now bridge it to the left/right
-  // rib halves.  Each tie overlaps both the centre rail and its outer rib,
-  // eliminating the visible floating prong while retaining a light cage.
-  for (const s of [-1, 1]) addCageBar(P, frontTieSpan, t * 0.76, t * 0.76,
-    s * 0.25, stations[0].roof, stations[0].z);
-  P.turretG.userData.uaM1A1CageRailReceipt = Object.freeze({
-    centerRailHalfWidthM: t * 0.76 * 0.5,
-    frontRibInnerXM: 0.50,
-    connectorSpanM: frontTieSpan,
-    connectorCenterXM: 0.25,
-    overlapM: frontTieOverlap,
-    yM: stations[0].roof,
-    zM: stations[0].z,
-  });
+  addAbramsCageRoof(P, t);
 
   // Tapered front shoulder screens frame the mantlet rather than crossing
   // it. Their upper rail follows the pitched first bay.
-  for (const s of [-1, 1]) {
-    const w = stations[0].x - 0.50;
-    for (const q of [0, 0.33, 0.66, 1]) {
-      const y = THREE.MathUtils.lerp(stations[0].base, stations[0].roof, q);
-      addCageBar(P, w, t * 0.72, t * 0.72,
-        s * (0.50 + w * 0.5), y, stations[0].z - q * 0.16);
-    }
-    for (const xq of [0.50, 0.97, 1.44, stations[0].x]) {
-      addCageBar(P, t * 0.72, stations[0].roof - stations[0].base, t * 0.72,
-        s * xq, (stations[0].roof + stations[0].base) * 0.5, stations[0].z - 0.08,
-        -0.17, 0, 0);
-    }
-  }
+  addAbramsCageShoulders(P, t);
 
   // Connected rear wall and filled bustle payload.  The rack, spare aerial
   // boxes, EW heads and rolled covers eliminate the former empty black cage.
-  const rear = stations.at(-1)!;
-  addCageBar(P, rear.x * 2, t, t, 0, rear.base, rear.z);
-  addCageBar(P, rear.x * 2, t, t, 0, rear.roof, rear.z);
-  for (let i = 0; i <= 8; i++) addCageBar(P, t, rear.roof - rear.base, t,
-    -rear.x + i * rear.x * 0.25, (rear.roof + rear.base) * 0.5, rear.z);
-  for (const q of [0.28, 0.55, 0.80]) addCageBar(P, rear.x * 2, t * 0.70, t * 0.70,
-    0, THREE.MathUtils.lerp(rear.base, rear.roof, q), rear.z);
-
-  const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.62, d: 0.62, h: 0.38,
-    rails: 4, fill: 0.82, seed: 1101 });
-  rack.position.set(0, 0.52, -2.86);
-  P.turretG.add(rack);
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.48, 0.30, 0.42), s * 0.94, 0.72, -2.86);
-    P.add('turretDark', box(0.42, 0.025, 0.36), s * 0.94, 0.89, -2.86);
-    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), s * 0.58, 0.96, -2.74,
-      0, 0, Math.PI / 2);
-    seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 0.72, r: 0.011,
-      rake: -s * 0.10, seed: 1110 + (s > 0 ? 1 : 0) }), s * 1.32, 0.92, -2.78);
-  }
+  addAbramsCageRearPayload(P, t);
   // Forward EO/EW cluster is planted on a real crossmember and remains
   // below the canopy crown.
   addCageBar(P, 0.72, 0.10, 0.20, 0, 1.15, 0.74);

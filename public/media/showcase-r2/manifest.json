@@ -1,0 +1,878 @@
+{
+  "libraryId": "claude-of-tanks-ui-showcase-r2",
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04",
+  "renderer": "Claude of Tanks production Garage, Tank Gallery, Scene Studio, and deterministic shot runtime",
+  "firstPartyRuntimeOnly": true,
+  "review": "22 current UI frames with image-level gates, 3 visual review sheets, and explicit coverage for every public route",
+  "sourceDimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "counts": {
+    "garage": 10,
+    "interface": 6,
+    "live": 6,
+    "vehicle": 0,
+    "battle": 0,
+    "total": 22
+  },
+  "qualityGate": {
+    "report": "shots/showcase-r2/quality-report.json",
+    "required": {
+      "images": 22,
+      "passed": 22,
+      "failed": 0
+    }
+  },
+  "pageAssignments": {
+    "home": [
+      "01_garage_verdant",
+      "11_gallery_hero",
+      "25_live_killcam_xray"
+    ],
+    "garage": [
+      "01_garage_verdant",
+      "02_garage_sirocco",
+      "03_garage_frosthollow",
+      "04_garage_steinburg",
+      "05_garage_saltmere",
+      "06_garage_cinder",
+      "07_garage_monsoon",
+      "08_garage_glacier",
+      "09_garage_redrock",
+      "10_garage_ironworks",
+      "16_mobile_garage"
+    ],
+    "gallery": [
+      "11_gallery_hero",
+      "12_gallery_armor",
+      "13_gallery_modules",
+      "14_gallery_crew"
+    ],
+    "studio": [
+      "15_studio_workspace"
+    ],
+    "docs": [
+      "11_gallery_hero",
+      "17_live_player_hud",
+      "25_live_killcam_xray",
+      "01_garage_verdant",
+      "15_studio_workspace"
+    ],
+    "docs/build": [
+      "15_studio_workspace"
+    ],
+    "docs/models": [
+      "11_gallery_hero",
+      "12_gallery_armor"
+    ],
+    "docs/simulation": [
+      "24_live_killcam_impact",
+      "25_live_killcam_xray"
+    ],
+    "docs/vehicles": [
+      "11_gallery_hero",
+      "13_gallery_modules"
+    ],
+    "docs/rendering": [
+      "19_live_sniper",
+      "17_live_player_hud"
+    ],
+    "docs/performance": [
+      "17_live_player_hud",
+      "16_mobile_garage"
+    ],
+    "docs/worlds": [
+      "01_garage_verdant",
+      "03_garage_frosthollow"
+    ],
+    "docs/ai": [
+      "17_live_player_hud"
+    ],
+    "docs/multiplayer": [
+      "17_live_player_hud"
+    ],
+    "docs/audio": [
+      "19_live_sniper",
+      "23_live_killcam_fire"
+    ],
+    "docs/interface": [
+      "01_garage_verdant",
+      "16_mobile_garage"
+    ],
+    "docs/studio": [
+      "15_studio_workspace"
+    ]
+  },
+  "process": {
+    "purpose": "Collection-level visual review before public-page admission",
+    "sequence": [
+      "deterministic runtime state",
+      "vehicle-pinned UI capture",
+      "image gate",
+      "contact-sheet review",
+      "web rendition",
+      "page assignment"
+    ],
+    "contactSheets": [
+      {
+        "page": 1,
+        "src": "/media/showcase-r2/process/review-01.webp",
+        "frames": [
+          "01_garage_verdant",
+          "02_garage_sirocco",
+          "03_garage_frosthollow",
+          "04_garage_steinburg",
+          "05_garage_saltmere",
+          "06_garage_cinder",
+          "07_garage_monsoon",
+          "08_garage_glacier",
+          "09_garage_redrock",
+          "10_garage_ironworks"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      },
+      {
+        "page": 2,
+        "src": "/media/showcase-r2/process/review-02.webp",
+        "frames": [
+          "11_gallery_hero",
+          "12_gallery_armor",
+          "13_gallery_modules",
+          "14_gallery_crew",
+          "15_studio_workspace",
+          "16_mobile_garage",
+          "17_live_player_hud",
+          "18_live_spectator",
+          "19_live_sniper",
+          "23_live_killcam_fire"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      },
+      {
+        "page": 3,
+        "src": "/media/showcase-r2/process/review-03.webp",
+        "frames": [
+          "24_live_killcam_impact",
+          "25_live_killcam_xray"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      }
+    ]
+  },
+  "shots": [
+    {
+      "sequence": 1,
+      "id": "01_garage_verdant",
+      "src": "/media/showcase-r2/01_garage_verdant.webp",
+      "title": "Verdant Motor Pool",
+      "alt": "Current production Garage interface around a K2 in the illuminated Verdant Motor Pool",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Verdant Fields",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "garage",
+        "docs",
+        "docs/worlds",
+        "docs/interface"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 44.951,
+          "p05": 6.5788,
+          "p95": 144.7956,
+          "clippedBlack": 0.0042,
+          "clippedWhite": 0,
+          "meanSaturation": 0.372,
+          "edgeMean": 8.0465
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "id": "02_garage_sirocco",
+      "src": "/media/showcase-r2/02_garage_sirocco.webp",
+      "title": "Sirocco Deployment",
+      "alt": "Current production Garage interface around a Leclerc XLR at the Sirocco desert service depot",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Sirocco Wadi",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 55.4281,
+          "p05": 9.8596,
+          "p95": 155.8264,
+          "clippedBlack": 0.0059,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4249,
+          "edgeMean": 8.3112
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "id": "03_garage_frosthollow",
+      "src": "/media/showcase-r2/03_garage_frosthollow.webp",
+      "title": "Frosthollow Deployment",
+      "alt": "Current production Garage interface around a Challenger 3 at the snowbound Frosthollow repair bunker",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Frosthollow",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage",
+        "docs/worlds"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 68.3093,
+          "p05": 12.0132,
+          "p95": 178.2752,
+          "clippedBlack": 0.0035,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2443,
+          "edgeMean": 9.8202
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "id": "04_garage_steinburg",
+      "src": "/media/showcase-r2/04_garage_steinburg.webp",
+      "title": "Steinburg Deployment",
+      "alt": "Current production Garage interface around a Leopard 2A7V inside the Steinburg brick arsenal",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Steinburg",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 55.8144,
+          "p05": 10.5066,
+          "p95": 148.5078,
+          "clippedBlack": 0.0039,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2909,
+          "edgeMean": 8.8555
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "id": "05_garage_saltmere",
+      "src": "/media/showcase-r2/05_garage_saltmere.webp",
+      "title": "Saltmere Deployment",
+      "alt": "Current production Garage interface around a Merkava Mk.4 Barak at the Saltmere naval drydock",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Saltmere Bay",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 66.0154,
+          "p05": 10.2218,
+          "p95": 175.9972,
+          "clippedBlack": 0.0029,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3082,
+          "edgeMean": 9.8417
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "id": "06_garage_cinder",
+      "src": "/media/showcase-r2/06_garage_cinder.webp",
+      "title": "Cinder Deployment",
+      "alt": "Current production Garage interface around a T-90M in the Cinder rail roundhouse",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Cinder Junction",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 50.7676,
+          "p05": 7.5066,
+          "p95": 154.4452,
+          "clippedBlack": 0.0226,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3118,
+          "edgeMean": 9.1439
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "id": "07_garage_monsoon",
+      "src": "/media/showcase-r2/07_garage_monsoon.webp",
+      "title": "Monsoon Deployment",
+      "alt": "Current production Garage interface around a ZTZ-99A2 beneath the Monsoon field canopy",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Monsoon Expanse",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 48.931,
+          "p05": 8.294,
+          "p95": 144.1274,
+          "clippedBlack": 0.0029,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3905,
+          "edgeMean": 8.6048
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "id": "08_garage_glacier",
+      "src": "/media/showcase-r2/08_garage_glacier.webp",
+      "title": "Glacier Deployment",
+      "alt": "Current production Garage interface around a Strv 122 at the Glacier alpine service cavern",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Glacier Pass",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 61.8165,
+          "p05": 10.5788,
+          "p95": 170.219,
+          "clippedBlack": 0.0086,
+          "clippedWhite": 0,
+          "meanSaturation": 0.288,
+          "edgeMean": 9.3317
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "id": "09_garage_redrock",
+      "src": "/media/showcase-r2/09_garage_redrock.webp",
+      "title": "Redrock Deployment",
+      "alt": "Current production Garage interface around an Ariete C2 in the Redrock recovery yard",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Redrock Basin",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 49.1116,
+          "p05": 7.9318,
+          "p95": 168.0408,
+          "clippedBlack": 0.0042,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3718,
+          "edgeMean": 8.2082
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "id": "10_garage_ironworks",
+      "src": "/media/showcase-r2/10_garage_ironworks.webp",
+      "title": "Ironworks Deployment",
+      "alt": "Current production Garage interface around a Type 10B on the Ironworks factory line",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Ironworks",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 45.6393,
+          "p05": 8.5788,
+          "p95": 133.948,
+          "clippedBlack": 0.0032,
+          "clippedWhite": 0,
+          "meanSaturation": 0.341,
+          "edgeMean": 8.5164
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "id": "11_gallery_hero",
+      "src": "/media/showcase-r2/11_gallery_hero.webp",
+      "title": "Tank Gallery hero inspection",
+      "alt": "Current Tank Gallery interface inspecting a T-90M Proryv procedural vehicle",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "gallery",
+        "docs",
+        "docs/models",
+        "docs/vehicles"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 23.6731,
+          "p05": 7.5788,
+          "p95": 59.1536,
+          "clippedBlack": 0.0143,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3783,
+          "edgeMean": 3.4262
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "id": "12_gallery_armor",
+      "src": "/media/showcase-r2/12_gallery_armor.webp",
+      "title": "Tank Gallery armor inspection",
+      "alt": "Current Tank Gallery interface showing the Strv 122 armor diagnostic layer",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs/models"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 25.245,
+          "p05": 7.5788,
+          "p95": 74.5562,
+          "clippedBlack": 0.0143,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3734,
+          "edgeMean": 3.8596
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "id": "13_gallery_modules",
+      "src": "/media/showcase-r2/13_gallery_modules.webp",
+      "title": "Tank Gallery module inspection",
+      "alt": "Current Tank Gallery interface showing the Leclerc XLR internal modules",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs/vehicles"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 23.946,
+          "p05": 7.5788,
+          "p95": 59.5066,
+          "clippedBlack": 0.0147,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3729,
+          "edgeMean": 3.5797
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "id": "14_gallery_crew",
+      "src": "/media/showcase-r2/14_gallery_crew.webp",
+      "title": "Tank Gallery crew inspection",
+      "alt": "Current Tank Gallery interface showing the ZTZ-99A2 crew layout",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 22.6329,
+          "p05": 7.5788,
+          "p95": 52.3072,
+          "clippedBlack": 0.0151,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3705,
+          "edgeMean": 3.3938
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "id": "15_studio_workspace",
+      "src": "/media/showcase-r2/15_studio_workspace.webp",
+      "title": "Scene Studio workspace",
+      "alt": "Current Scene Studio interface directing a multi-tank urban action scene",
+      "kind": "interface",
+      "feature": "Scene Studio",
+      "map": "Scene Studio",
+      "sourceType": "studio",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "studio",
+        "docs",
+        "docs/build",
+        "docs/studio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 135.2298,
+          "p05": 15.5106,
+          "p95": 209.2414,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3331,
+          "edgeMean": 9.3899
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "id": "16_mobile_garage",
+      "src": "/media/showcase-r2/16_mobile_garage.webp",
+      "title": "Responsive Garage",
+      "alt": "Current Garage interface and K2 adapted to a compact touch viewport",
+      "kind": "interface",
+      "feature": "Responsive interface",
+      "map": "Compact viewport",
+      "sourceType": "mobile",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 860,
+        "height": 1864
+      },
+      "pages": [
+        "garage",
+        "docs/performance",
+        "docs/interface"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 71.3907,
+          "p05": 8.5788,
+          "p95": 167.5256,
+          "clippedBlack": 0.0023,
+          "clippedWhite": 0.0014,
+          "meanSaturation": 0.279,
+          "edgeMean": 10.5268
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "id": "17_live_player_hud",
+      "src": "/media/showcase-r2/17_live_player_hud.webp",
+      "title": "Production battle HUD",
+      "alt": "Current third-person battle view from a K2 with ammunition, vehicle state, team status, and minimap",
+      "kind": "live",
+      "feature": "Interface",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.player_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs",
+        "docs/rendering",
+        "docs/performance",
+        "docs/ai",
+        "docs/multiplayer"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 132.3375,
+          "p05": 38.2362,
+          "p95": 206.2454,
+          "clippedBlack": 0.0002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4421,
+          "edgeMean": 10.2891
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "id": "18_live_spectator",
+      "src": "/media/showcase-r2/18_live_spectator.webp",
+      "title": "Allied spectator view",
+      "alt": "Current allied chase camera with the production spectator controls and battle HUD",
+      "kind": "live",
+      "feature": "Multiplayer",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.spectator_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 136.5626,
+          "p05": 42.7212,
+          "p95": 204.2546,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4729,
+          "edgeMean": 11.7533
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "id": "19_live_sniper",
+      "src": "/media/showcase-r2/19_live_sniper.webp",
+      "title": "Precision sight",
+      "alt": "Current Leclerc XLR precision sight aimed at an enemy tank with range and ammunition information",
+      "kind": "live",
+      "feature": "Gunnery",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.sniper_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/rendering",
+        "docs/audio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 110.0437,
+          "p05": 37.2928,
+          "p95": 162.766,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3945,
+          "edgeMean": 8.9646
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "id": "23_live_killcam_fire",
+      "src": "/media/showcase-r2/23_live_killcam_fire.webp",
+      "title": "Killcam firing beat",
+      "alt": "Current killcam presenting a Type 10B firing the resolved shot",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_firing",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/audio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 118.4833,
+          "p05": 7.4384,
+          "p95": 205.0368,
+          "clippedBlack": 0.0389,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2533,
+          "edgeMean": 7.4283
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "id": "24_live_killcam_impact",
+      "src": "/media/showcase-r2/24_live_killcam_impact.webp",
+      "title": "Killcam impact beat",
+      "alt": "Current killcam presenting the shell impact and penetration result",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_collision",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/simulation"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 111.8582,
+          "p05": 8.29,
+          "p95": 172.4528,
+          "clippedBlack": 0.042,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3369,
+          "edgeMean": 8.3315
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "id": "25_live_killcam_xray",
+      "src": "/media/showcase-r2/25_live_killcam_xray.webp",
+      "title": "Resolved-shot X-ray",
+      "alt": "Current X-ray killcam showing the resolved shell path through armor and internal modules",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_xray",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "docs",
+        "docs/simulation"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 52.0623,
+          "p05": 4.5066,
+          "p95": 102.6562,
+          "clippedBlack": 0.054,
+          "clippedWhite": 0.0001,
+          "meanSaturation": 0.3506,
+          "edgeMean": 5.335
+        }
+      }
+    }
+  ]
+}

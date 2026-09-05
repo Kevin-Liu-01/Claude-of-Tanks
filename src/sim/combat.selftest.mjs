@@ -32,6 +32,7 @@ import {
   blastRadiusM,
   isHeClass,
   ramDamage,
+  mainWeaponModuleState,
 } from './damage.ts';
 
 // ---------------------------------------------------------------- harness --
@@ -1000,6 +1001,65 @@ function mkShell(shellSpec, distM = 100) {
   assert(engineEvent.fireStarted && engineTarget.combat.fire.burning
     && engineTarget.combat.fire.ticksLeft === 10,
   'damaging engine hit below the fire threshold starts the full default burn');
+
+  const transmissionTarget = mkTarget();
+  const transmissionEvent = moduleTrace(
+    transmissionTarget, 'transmission', [0.5, 0.5, 0.1, 0.5, 0.1],
+  );
+  assert(transmissionEvent.fireStarted && transmissionTarget.combat.fire.burning,
+    'damaging transmission hits use the documented engine-compartment fire roll');
+
+  const inlineTarget = mkTarget();
+  const inlineEvent = resolveShellHit(
+    mkShell(AP100, 100),
+    inlineTarget,
+    [
+      mkPlateHit(0.1, mkPlate({
+        name: 'inline_entry', physicalMm: 50, keMm: 50, ceMm: 50,
+      }), 0, V(0, 1, 2)),
+      { t: 0.2, tExit: 0.24, kind: 'module', module: 'transmission', point: V(0, 1, 1.8) },
+      { t: 0.4, tExit: 0.44, kind: 'module', module: 'engine', point: V(0, 1, 1.5) },
+      { t: 0.7, tExit: 0.74, kind: 'module', module: 'fuelTank', point: V(0, 1, 1.1) },
+    ],
+    seqRng([
+      0.5, 0.5,
+      0.1, 0.5, 0.9,
+      0.1, 0.5, 0.9,
+      0.1, 0.5, 0.9,
+    ]),
+  );
+  assert(inlineEvent.modulesHit.map((hit) => hit.module).join(',')
+    === 'transmission,engine,fuelTank',
+  'one penetrating path damages every intersected module in deterministic trace order');
+
+  const autocannonTarget = mkTarget();
+  const autocannon40 = mkShellSpec({
+    name: '40 mm APFSDS', type: 'APFSDS', caliberMm: 40,
+    pen100Mm: 500, pen1000Mm: 500, moduleDmg: 140,
+  });
+  const autocannonEvent = resolveShellHit(
+    mkShell(autocannon40, 100),
+    autocannonTarget,
+    [
+      mkPlateHit(0.1, mkPlate({
+        name: 'autocannon_entry', physicalMm: 20, keMm: 20, ceMm: 20,
+      }), 0, V(0, 1, 2)),
+      { t: 0.5, tExit: 0.54, kind: 'module', module: 'turretRing', point: V(0, 1, 1.1) },
+    ],
+    seqRng([0.5, 0.5, 0.1, 0.5]),
+  );
+  assert(autocannonEvent.modulesHit.some((hit) => hit.module === 'turretRing'),
+    'penetrating autocannon spall retains a useful minimum internal module reach');
+
+  const casemateTarget = mkTarget();
+  casemateTarget.combat.modules.gunMount = {
+    hp: 0, maxHp: 120, state: 'red', repairT: 0,
+  };
+  assert(mainWeaponModuleState(casemateTarget.combat) === 'red',
+    'a destroyed casemate gun mount disables the main weapon');
+  casemateTarget.combat.modules.gunMount.state = 'yellow';
+  assert(mainWeaponModuleState(casemateTarget.combat) === 'yellow',
+    'a damaged casemate gun mount contributes the main-weapon accuracy penalty');
 
   const thresholdFireTarget = mkTarget();
   const thresholdFireEvent = moduleTrace(
@@ -3228,7 +3288,7 @@ function mkShell(shellSpec, distM = 100) {
     combat: createCombatState(boundarySpec),
   };
   const boundaryPoint = V(0, 1, 2);
-  const postPenLimitM = OF471.caliberMm * 10 / 1000;
+  const postPenLimitM = Math.max(1.25, OF471.caliberMm * 10 / 1000);
   const boundaryEvent = resolveHeBurst(
     mkShell(OF471, 100), boundaryPoint, [], boundaryTarget,
     [

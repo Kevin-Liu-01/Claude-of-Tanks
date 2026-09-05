@@ -1057,6 +1057,94 @@ const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 // deliberately stay outside this allowlist.
 const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBay(?:AO|VoidDress)|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus).*|vehicleMarking_.*)$/;
 
+type BatchableStaticMesh = VehicleMesh & { material: THREE.Material };
+
+function isBatchableStaticMesh(object: THREE.Object3D): object is BatchableStaticMesh {
+  if (!isVehicleMesh(object) || isVehicleInstancedMesh(object)) return false;
+  const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(object.name || '');
+  if ((!exactStaticNamed && object.name) || object.children.length || !object.visible) return false;
+  if (Array.isArray(object.material)) return false;
+  if (!exactStaticNamed && Object.keys(object.userData || {}).length) return false;
+  if (Object.keys(object.morphTargetDictionary || {}).length) return false;
+  if (Object.keys(object.geometry?.morphAttributes || {}).length) return false;
+  const geometry = object.geometry;
+  return !!geometry && geometry.drawRange.start === 0
+    && (!Number.isFinite(geometry.drawRange.count) || geometry.drawRange.count === Infinity);
+}
+
+function staticBatchKey(mesh: BatchableStaticMesh): string {
+  const geometry = mesh.geometry;
+  const attributes = Object.entries(
+    geometry.attributes as Record<
+      string,
+      THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+    >,
+  )
+    .map(([name, attribute]) => (
+      `${name}:${attribute.itemSize}:${attribute.normalized ? 1 : 0}`
+    ))
+    .sort()
+    .join(',');
+  return [
+    mesh.material?.uuid || '',
+    attributes,
+    geometry.index ? 1 : 0,
+    mesh.castShadow ? 1 : 0,
+    mesh.receiveShadow ? 1 : 0,
+    mesh.renderOrder,
+    mesh.layers.mask,
+    mesh.frustumCulled ? 1 : 0,
+  ].join('|');
+}
+
+function collectStaticBatchGroups(parent: THREE.Object3D): Map<string, BatchableStaticMesh[]> {
+  const groups = new Map<string, BatchableStaticMesh[]>();
+  for (const object of parent.children) {
+    if (!isBatchableStaticMesh(object)) continue;
+    const key = staticBatchKey(object);
+    const group = groups.get(key) || [];
+    group.push(object);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+function createStaticBatch(
+  group: BatchableStaticMesh[],
+  batchIndex: number,
+  disposables: DisposableVehicleResource[],
+): VehicleMesh | null {
+  const geometries = group.map((mesh) => {
+    mesh.updateMatrix();
+    return mesh.geometry.clone().applyMatrix4(mesh.matrix);
+  });
+  // Preserve indexed geometry instead of expanding every triangle to
+  // non-indexed vertices through mergeAll().
+  const merged = mergeGeometries(geometries, false);
+  for (const geometry of geometries) geometry.dispose();
+  if (!merged) return null;
+  disposables.push(merged);
+  const source = group[0];
+  const batch = new THREE.Mesh(merged, source.material);
+  batch.name = `mobileStaticBatch_${batchIndex}`;
+  batch.userData.mobileStaticBatch = true;
+  batch.castShadow = source.castShadow;
+  batch.receiveShadow = source.receiveShadow;
+  batch.renderOrder = source.renderOrder;
+  batch.layers.mask = source.layers.mask;
+  batch.frustumCulled = source.frustumCulled;
+  return batch;
+}
+
+function replaceStaticBatchSources(
+  parent: THREE.Object3D,
+  group: VehicleMesh[],
+  batch: VehicleMesh,
+): void {
+  for (const mesh of group) parent.remove(mesh);
+  parent.add(batch);
+}
+
 function batchMobileStaticChildren(
   parents: readonly THREE.Object3D[],
   disposables: DisposableVehicleResource[],
@@ -1065,56 +1153,14 @@ function batchMobileStaticChildren(
   let sourceMeshes = 0;
   let batches = 0;
   for (const parent of parents) {
-    const groups = new Map<string, VehicleMesh[]>();
-    for (const object of parent.children) {
-      if (!isVehicleMesh(object)) continue;
-      const mesh = object;
-      const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(mesh.name || '');
-      if (isVehicleInstancedMesh(mesh) || (!exactStaticNamed && mesh.name)
-          || mesh.children.length
-          || !mesh.visible || Array.isArray(mesh.material)
-          || (!exactStaticNamed && Object.keys(mesh.userData || {}).length)
-          || Object.keys(mesh.morphTargetDictionary || {}).length
-          || Object.keys(mesh.geometry?.morphAttributes || {}).length) continue;
-      const geo = mesh.geometry;
-      if (!geo || geo.drawRange.start !== 0
-          || (Number.isFinite(geo.drawRange.count) && geo.drawRange.count !== Infinity)) continue;
-      const attrs = Object.entries(geo.attributes as Record<string, THREE.BufferAttribute | THREE.InterleavedBufferAttribute>)
-        .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
-        .sort().join(',');
-      const key = [mesh.material?.uuid || '', attrs, geo.index ? 1 : 0, mesh.castShadow ? 1 : 0,
-        mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
-        mesh.frustumCulled ? 1 : 0].join('|');
-      const group = groups.get(key) || [];
-      group.push(mesh);
-      groups.set(key, group);
-    }
+    const groups = collectStaticBatchGroups(parent);
     let batchIndex = 0;
     for (const group of groups.values()) {
       if (group.length < 2) continue;
-      const geometries = group.map((mesh) => {
-        mesh.updateMatrix();
-        return mesh.geometry.clone().applyMatrix4(mesh.matrix);
-      });
-      // These groups are now homogeneous by index mode. Preserve indexed
-      // geometry instead of expanding every triangle to non-indexed vertices
-      // through mergeAll(); roster assembly previously spent hundreds of
-      // milliseconds copying 2-3x the vertex data for each battle bot.
-      const merged = mergeGeometries(geometries, false);
-      for (const geometry of geometries) geometry.dispose();
-      if (!merged) continue;
-      disposables.push(merged);
-      const source = group[0];
-      const batch = new THREE.Mesh(merged, source.material);
-      batch.name = `mobileStaticBatch_${batchIndex++}`;
-      batch.userData.mobileStaticBatch = true;
-      batch.castShadow = source.castShadow;
-      batch.receiveShadow = source.receiveShadow;
-      batch.renderOrder = source.renderOrder;
-      batch.layers.mask = source.layers.mask;
-      batch.frustumCulled = source.frustumCulled;
-      for (const mesh of group) parent.remove(mesh);
-      parent.add(batch);
+      const batch = createStaticBatch(group, batchIndex, disposables);
+      if (!batch) continue;
+      batchIndex++;
+      replaceStaticBatchSources(parent, group, batch);
       if (onBatch) onBatch(group, batch);
       sourceMeshes += group.length;
       batches++;
@@ -1666,6 +1712,158 @@ const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
 // conformance, steering phase and wrap tangents all come from the belt course.
 const TRACK_SHOE_BAND_GAP_M = 0.012;
 
+function appendTrackArc(
+  points: TrackPoint[],
+  endpoint: GearEndpoint,
+  fromDeg: number,
+  toDeg: number,
+  steps: number,
+): void {
+  for (let step = 0; step <= steps; step++) {
+    const angle = (fromDeg + ((toDeg - fromDeg) * step) / steps) * D2R;
+    const radius = endpoint.r + TRACK_WRAP_CLEARANCE_M;
+    points.push([
+      endpoint.z + Math.sin(angle) * radius,
+      endpoint.y + Math.cos(angle) * radius,
+    ]);
+  }
+}
+
+function trackTangentDeg(
+  endpoint: GearEndpoint,
+  pointZ: number,
+  pointY: number,
+  sign: number,
+): number | null {
+  const radius = endpoint.r + TRACK_WRAP_CLEARANCE_M;
+  const deltaZ = pointZ - endpoint.z;
+  const deltaY = pointY - endpoint.y;
+  const distance = Math.hypot(deltaZ, deltaY);
+  if (distance <= radius + 1e-4) return null;
+  const pointAngle = Math.atan2(deltaZ, deltaY);
+  let angle = (pointAngle - sign * Math.acos(radius / distance)) / D2R;
+  if (angle < 0) angle += 360;
+  return angle;
+}
+
+function orderedTrackSupports(
+  supports: readonly TrackSupportPoint[] | null,
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+): TrackPoint[] {
+  if (!supports?.length) return [];
+  const direction = Math.sign(idler.z - sprocket.z) || 1;
+  return supports
+    .filter((support) => (support.z - sprocket.z) * direction > 0.12
+      && (idler.z - support.z) * direction > 0.12)
+    .sort((a, b) => (a.z - b.z) * direction)
+    .map((support) => [support.z, support.y]);
+}
+
+function rearTopExit(
+  sprocket: GearEndpoint,
+  innerSupports: readonly TrackPoint[],
+  smoothTangent: boolean,
+): { angleDeg: number; point: TrackPoint } {
+  const defaultExit = {
+    angleDeg: 0,
+    point: [
+      sprocket.z,
+      sprocket.y + sprocket.r + TRACK_WRAP_CLEARANCE_M,
+    ] as TrackPoint,
+  };
+  if (!smoothTangent || !innerSupports.length) return defaultExit;
+  const candidate = trackTangentDeg(
+    sprocket, innerSupports[0][0], innerSupports[0][1], 1,
+  );
+  if (candidate == null || candidate <= 0 || candidate >= 90) return defaultExit;
+  const angle = candidate * D2R;
+  return {
+    angleDeg: candidate,
+    point: [
+      sprocket.z + Math.sin(angle) * (sprocket.r + TRACK_WRAP_CLEARANCE_M),
+      sprocket.y + Math.cos(angle) * (sprocket.r + TRACK_WRAP_CLEARANCE_M),
+    ],
+  };
+}
+
+function topTrackSupports(
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+  topY: number,
+  supports: readonly TrackSupportPoint[] | null,
+  innerSupports: readonly TrackPoint[],
+  rearExit: TrackPoint,
+): TrackPoint[] {
+  const result: TrackPoint[] = [rearExit];
+  if (supports?.length) {
+    result.push(...innerSupports);
+  } else {
+    const sprocketTopY = sprocket.y + sprocket.r + TRACK_WRAP_CLEARANCE_M;
+    const idlerTopY = idler.y + idler.r + TRACK_WRAP_CLEARANCE_M;
+    result.push([
+      sprocket.z + (idler.z - sprocket.z) * 0.5,
+      Math.max(topY, (sprocketTopY + idlerTopY) / 2),
+    ]);
+  }
+  result.push([idler.z, idler.y + idler.r + TRACK_WRAP_CLEARANCE_M]);
+  return result;
+}
+
+function appendSaggingTopRun(
+  points: TrackPoint[],
+  supports: readonly TrackPoint[],
+  sag: number,
+  tautRearSpan: boolean,
+  tautFrontSpan: boolean,
+): void {
+  for (let spanIndex = 0; spanIndex < supports.length - 1; spanIndex++) {
+    const [z0, y0] = supports[spanIndex];
+    const [z1, y1] = supports[spanIndex + 1];
+    const span = Math.abs(z1 - z0);
+    const taut = (tautRearSpan && spanIndex === 0)
+      || (tautFrontSpan && spanIndex === supports.length - 2);
+    const dip = taut ? 0 : Math.min(sag, sag * span * 1.6);
+    const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
+    for (let step = spanIndex === 0 ? 0 : 1; step <= steps; step++) {
+      const progress = step / steps;
+      points.push([
+        z0 + (z1 - z0) * progress,
+        y0 + (y1 - y0) * progress - dip * Math.sin(progress * Math.PI),
+      ]);
+    }
+  }
+}
+
+function trackGroundAngle(endpoint: GearEndpoint, bottomY: number): number {
+  const cosine = (bottomY - endpoint.y) / (endpoint.r + TRACK_WRAP_CLEARANCE_M);
+  return cosine <= -1 ? Infinity : Math.acos(Math.min(1, cosine)) / D2R;
+}
+
+function appendTrackGroundRun(
+  points: TrackPoint[],
+  contact: TrackContactSpan | null,
+  frontContactZ: number,
+  rearContactZ: number,
+  frontEntryZ: number,
+  rearEntryZ: number,
+  idlerZ: number,
+  sprocketZ: number,
+  bottomY: number,
+): void {
+  if (contact) {
+    const frontZ = Math.min(frontContactZ, frontEntryZ);
+    const rearZ = Math.max(rearContactZ, rearEntryZ);
+    for (let step = 0; step <= 5; step++) {
+      points.push([frontZ + (rearZ - frontZ) * (step / 5), bottomY]);
+    }
+    return;
+  }
+  for (let step = 1; step <= 5; step++) {
+    points.push([idlerZ + (sprocketZ - idlerZ) * (step / 6), bottomY]);
+  }
+}
+
 function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
@@ -1675,79 +1873,26 @@ function trackLoopPoints({
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
   // this radial clearance the wrap is buried in the wheel geometry and the
   // front/rear rises never read (r5 track-gate critique).
-  const CLEAR = TRACK_WRAP_CLEARANCE_M;
-  const arc = (c: GearEndpoint, from: number, to: number, steps: number): void => {
-    for (let k = 0; k <= steps; k++) {
-      const a = (from + ((to - from) * k) / steps) * D2R;
-      pts.push([c.z + Math.sin(a) * (c.r + CLEAR), c.y + Math.cos(a) * (c.r + CLEAR)]);
-    }
-  };
   // r5 TRAPEZOID hard gate: exit angle where the wrap band leaves an end
   // wheel tangentially toward an external ground-contact point (deg, in the
   // arc() convention: 0 = straight up, 90 = +z). Raised end wheels get a
   // real APPROACH/DEPARTURE rise instead of the old flat bottom run poking
   // past both wraps at ground level (the "band wraps empty space" read).
-  const tangentDeg = (c: GearEndpoint, pz: number, py: number, sgn: number): number | null => {
-    const R = c.r + CLEAR;
-    const uz = pz - c.z, uy = py - c.y;
-    const d = Math.hypot(uz, uy);
-    if (d <= R + 1e-4) return null;              // contact point inside the wrap
-    const phi = Math.atan2(uz, uy);              // angle of the point from +y
-    let a = (phi - sgn * Math.acos(R / d)) / D2R;
-    if (a < 0) a += 360;
-    return a;
-  };
   // top run: sprocket top -> idler top. r7 sag rework: the run RESTS on real
   // support points (return rollers, or the wheel tops on dead-track WWII
   // rigs) and hangs a shallow catenary dip in EVERY unsupported span —
   // the old fixed-frequency ripple averaged out to a ruler line.
   const zs = sprocket.z, zi = idler.z;
-  const ys = sprocket.y + sprocket.r + CLEAR, yi = idler.y + idler.r + CLEAR;
-  const dir = Math.sign(zi - zs) || 1;
-  const inner = supports && supports.length
-    ? supports
-      .filter((s) => (s.z - zs) * dir > 0.12 && (zi - s.z) * dir > 0.12)
-      .sort((a, b) => (a.z - b.z) * dir)
-      .map((s): TrackPoint => [s.z, s.y])
-    : [] as TrackPoint[];
+  const inner = orderedTrackSupports(supports, sprocket, idler);
   // Raised rear drives need to leave the crown on a real tangent. Closing
   // the wrap at 12 o'clock and immediately descending toward the first
   // return roller creates a visible pointed vertex where the two courses
   // meet. This is opt-in so established fleet loops remain byte-identical.
-  let rearTopDeg = 0;
-  let rearTop: TrackPoint = [zs, ys];
-  if (smoothRearTopTangent && inner.length) {
-    const candidate = tangentDeg(sprocket, inner[0][0], inner[0][1], 1);
-    if (candidate != null && candidate > 0 && candidate < 90) {
-      rearTopDeg = candidate;
-      const a = rearTopDeg * D2R;
-      rearTop = [
-        sprocket.z + Math.sin(a) * (sprocket.r + CLEAR),
-        sprocket.y + Math.cos(a) * (sprocket.r + CLEAR),
-      ];
-    }
-  }
-  const sup: TrackPoint[] = [rearTop];
-  if (supports && supports.length) {
-    sup.push(...inner);
-  } else {
-    // no explicit supports: hold the line up at topY mid-run
-    sup.push([zs + (zi - zs) * 0.5, Math.max(topY, (ys + yi) / 2)]);
-  }
-  sup.push([zi, yi]);
-  for (let k = 0; k < sup.length - 1; k++) {
-    const [z0, y0] = sup[k], [z1, y1] = sup[k + 1];
-    const span = Math.abs(z1 - z0);
-    const dip = (tautRearSpan && k === 0)
-      || (tautFrontSpan && k === sup.length - 2)
-      ? 0
-      : Math.min(sag, sag * span * 1.6);
-    const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
-    for (let j = k === 0 ? 0 : 1; j <= steps; j++) {
-      const t = j / steps;
-      pts.push([z0 + (z1 - z0) * t, y0 + (y1 - y0) * t - dip * Math.sin(t * Math.PI)]);
-    }
-  }
+  const rearExit = rearTopExit(sprocket, inner, smoothRearTopTangent);
+  const topSupports = topTrackSupports(
+    sprocket, idler, topY, supports, inner, rearExit.point,
+  );
+  appendSaggingTopRun(pts, topSupports, sag, tautRearSpan, tautFrontSpan);
   // ground-contact span: only between the outer ROAD wheels does the run lie
   // flat at botY; outside it the band rises straight to its wrap tangents.
   // The previous clamp forced both ground-contact endpoints *inside* the end
@@ -1759,8 +1904,8 @@ function trackLoopPoints({
   const cR = contact ? contact.zR : zs;
   // clamped: degenerate rigs (end wheel wrap at/below ground) keep the old
   // near-full wrap instead of an open or crossed loop
-  const aIdler = Math.max((contact && tangentDeg(idler, cF, botY, 1)) || 170, 120);
-  const aSprk = Math.min((contact && tangentDeg(sprocket, cR, botY, -1)) || 190, 244);
+  const aIdler = Math.max((contact && trackTangentDeg(idler, cF, botY, 1)) || 170, 120);
+  const aSprk = Math.min((contact && trackTangentDeg(sprocket, cR, botY, -1)) || 190, 244);
   // GROUND TERMINATION (geo-gate round-2 clamp, reworked): a wrap whose
   // bottom dips below the ground run used to emit sub-ground arc samples
   // that the final clamp FLATTENED IN PLACE — several points collapsed onto
@@ -1771,29 +1916,22 @@ function trackLoopPoints({
   // above ground (every currently-passing rig — audited: no verification
   // tank emits a sub-ground point) have no crossing, so their loops are
   // bit-identical to the pre-rework output.
-  const groundDeg = (c: GearEndpoint): number => {
-    const cosA = (botY - c.y) / (c.r + CLEAR);
-    return cosA <= -1 ? Infinity : Math.acos(Math.min(1, cosA)) / D2R;
-  };
-  const gF = groundDeg(idler);                 // front wrap ground crossing (deg)
-  const gR = groundDeg(sprocket);              // rear wrap ground crossing (deg)
+  const gF = trackGroundAngle(idler, botY);     // front wrap ground crossing (deg)
+  const gR = trackGroundAngle(sprocket, botY);  // rear wrap ground crossing (deg)
   const aF = Math.min(aIdler, 176, gF);        // front arc end
   const aGR = 360 - gR;                        // rear crossing in arc() angles
   const aR = Math.max(aSprk, 184, aGR);        // rear arc start
-  arc(idler, 0, aF, frontArcSteps);             // around the idler (front)
+  appendTrackArc(pts, idler, 0, aF, frontArcSteps); // around the idler (front)
   // bottom run: approach point -> flat contact span -> departure point.
   // A ground-terminated wrap enters the ground at its own crossing point —
   // never emit a flat-run endpoint past it (a contact span reaching beyond a
   // sunken wrap would double the run back under the wheel).
-  const zEnterF = aF === gF ? idler.z + Math.sin(aF * D2R) * (idler.r + CLEAR) : cF;
-  const zEnterR = aR === aGR ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + CLEAR) : cR;
-  if (contact) {
-    const zf = Math.min(cF, zEnterF), zr = Math.max(cR, zEnterR);
-    for (let k = 0; k <= 5; k++) pts.push([zf + (zr - zf) * (k / 5), botY]);
-  } else {
-    for (let k = 1; k <= 5; k++) pts.push([zi + (zs - zi) * (k / 6), botY]);
-  }
-  arc(sprocket, aR, 360 + rearTopDeg, rearArcSteps); // around the sprocket (rear)
+  const zEnterF = aF === gF
+    ? idler.z + Math.sin(aF * D2R) * (idler.r + TRACK_WRAP_CLEARANCE_M) : cF;
+  const zEnterR = aR === aGR
+    ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + TRACK_WRAP_CLEARANCE_M) : cR;
+  appendTrackGroundRun(pts, contact, cF, cR, zEnterF, zEnterR, zi, zs, botY);
+  appendTrackArc(pts, sprocket, aR, 360 + rearExit.angleDeg, rearArcSteps);
   // drop duplicate closing point
   pts.pop();
   // ground clamp, kept as the last-resort safety net (pathological cfgs
@@ -1933,6 +2071,216 @@ function radialRibs(
   }
 }
 
+function steelWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  const discs: THREE.BufferGeometry[] = [cylX(r, w, seg)];
+  radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
+  discs.push(cylX(r * 0.24, w * 1.3, 10));
+  discs.push(cylX(r * 0.14, w * 1.44, 8));
+  boltRing(discs, r, w, patternFasteners);
+  return { tire: null, disc: mergeAll(discs), dark: null };
+}
+
+function perforatedWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // T-34 Christie wheel (r7 rebuild): the painted dish spans nearly the
+  // full radius with a THIN rubber rim, and the six big stamped lightening
+  // holes are dark inserts — the "spider" face that makes the wheel read
+  // full-size instead of a small disc floating in shadow.
+  const tire = mergeAll([cylX(r, w, seg)]);
+  const discs: THREE.BufferGeometry[] = [
+    cylX(r * 0.86, w * 1.10, seg),
+    cylX(r * 0.28, w * 1.32, 12),
+    cylX(r * 0.15, w * 1.5, 8),
+  ];
+  boltRing(discs, r * 0.72, w, patternFasteners);
+  const dark: THREE.BufferGeometry[] = [];
+  const pocketCount = pattern?.pockets || 6;
+  for (let index = 0; index < pocketCount; index += 1) {
+    const angle = (index / pocketCount) * Math.PI * 2 + 0.3;
+    dark.push(xform(cylX(r * 0.185, w * 1.16, 10),
+      0, Math.sin(angle) * r * 0.55, Math.cos(angle) * r * 0.55));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function dishedWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
+  // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
+  // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
+  // + cap, and a 16-bolt ring standing dark on the dish slope. Reads as a
+  // dished pressed-steel wheel at closeup instead of a flat painted disc.
+  // r7b ("flat pancake discs — no dish, no rubber/steel rim separation" on
+  // the judged Tiger closeup): the painted rim ring pulls in to 0.86 r so a
+  // REAL dark tire band (14% of radius) separates rubber from steel, the
+  // dish cones deepen (0.34 w -> 0.46 w span, proud of the face ring) and
+  // the dish-bottom shadow annulus widens so the concavity survives flat
+  // camo paint at closeup range.
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.92, w * 1.02, seg),
+  ]);
+  const discs: THREE.BufferGeometry[] = [cylX(r * 0.86, w * 1.06, seg)];
+  for (const side of [-1, 1]) {
+    discs.push(xform(
+      cylX(side < 0 ? r * 0.82 : r * 0.28, w * 0.46, seg,
+        side < 0 ? r * 0.28 : r * 0.82),
+      side * w * 0.42, 0, 0));
+  }
+  discs.push(cylX(r * 0.26, w * 1.34, 12));
+  discs.push(cylX(r * 0.15, w * 1.52, 10));
+  const dark = [cylX(r * 0.50, w * 0.52, seg)];
+  for (let index = 0; index < patternFasteners; index += 1) {
+    const angle = (index / patternFasteners) * Math.PI * 2 + 0.1;
+    dark.push(xform(cylX(r * 0.042, w * 1.12, 6),
+      0, Math.sin(angle) * r * 0.60, Math.cos(angle) * r * 0.60));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function customFaceWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+): WheelGeometrySet {
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.30, w * 1.20, seg),
+  ]);
+  const discs: THREE.BufferGeometry[] = [
+    cylX(r * dishR, w * 1.14, seg),
+    cylX(r * 0.24, w * 1.38, 10),
+    cylX(r * 0.14, w * 1.54, 8),
+  ];
+  boltRing(discs, r * dishR / 0.9, w, 8);
+  const dark = [
+    cylX(r * 0.46, w * 1.08, seg),
+    cylX(r * 0.205, w * 1.40, 10),
+  ];
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (index / 12) * Math.PI * 2 + 0.13;
+    dark.push(xform(cylX(r * 0.045, w * 1.20, 6),
+      0, Math.sin(angle) * r * dishR * 0.72, Math.cos(angle) * r * dishR * 0.72));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
+function addWheelFaceMotif(
+  motif: WheelPattern['motif'],
+  discs: THREE.BufferGeometry[],
+  dark: THREE.BufferGeometry[],
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+  pattern: WheelPattern | null,
+): void {
+  switch (motif) {
+    case 'split-rim':
+      dark.push(cylX(r * 0.70, w * 1.17, seg));
+      discs.push(cylX(r * 0.53, w * 1.23, seg));
+      dark.push(cylX(r * 0.32, w * 1.27, 12));
+      return;
+    case 'rib':
+      dark.push(cylX(r * 0.67, w * 1.17, seg));
+      radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
+        0.12, 1.24, 0.08);
+      return;
+    case 'spoke':
+    case 'solid-spoke':
+      dark.push(cylX(r * 0.69, w * 1.17, seg));
+      radialRibs(discs, r, w, pattern?.pockets || 5, 0.18, dishR * 0.86,
+        motif === 'solid-spoke' ? 0.24 : 0.20, 1.24, 0.06);
+      return;
+    case 'scalloped':
+    case 'perforated': {
+      const count = pattern?.pockets || 6;
+      dark.push(cylX(r * 0.39, w * 1.17, 14));
+      for (let index = 0; index < count; index += 1) {
+        const angle = (index / count) * Math.PI * 2 + 0.28;
+        dark.push(xform(cylX(r * (motif === 'perforated' ? 0.15 : 0.125), w * 1.21, 10),
+          0, Math.sin(angle) * r * 0.56, Math.cos(angle) * r * 0.56));
+      }
+      return;
+    }
+    case 'flanged':
+      dark.push(cylX(r * 0.61, w * 1.17, seg));
+      discs.push(cylX(r * 0.45, w * 1.23, 16));
+      dark.push(cylX(r * 0.29, w * 1.27, 12));
+      return;
+    case 'deep-dish':
+      dark.push(cylX(r * 0.57, w * 1.17, seg));
+      for (const side of [-1, 1]) {
+        discs.push(xform(cylX(
+          side < 0 ? r * 0.78 : r * 0.31,
+          w * 0.16, seg,
+          side < 0 ? r * 0.31 : r * 0.78,
+        ), side * w * 0.62, 0, 0));
+      }
+      return;
+    case 'armored-hub':
+      dark.push(cylX(r * 0.52, w * 1.17, seg));
+      discs.push(cylX(r * 0.38, w * 1.25, 14));
+      return;
+    default:
+      dark.push(cylX(r * 0.48, w * 1.17, seg));
+  }
+}
+
+function standardWheelGeometry(
+  r: number,
+  w: number,
+  seg: number,
+  dishR: number,
+  pattern: WheelPattern | null,
+  patternFasteners: number,
+): WheelGeometrySet {
+  // Rubber band + a dark hub-well ring: the well sits between dish and hub so
+  // the hub reads against shadow (r5: wheels merged into one flat plate).
+  // camo_spotting r3: tire rim <=10% of radius and hub well slimmed — the
+  // wide dark annuli rendered as high-contrast black/base BULLSEYE rings on
+  // the Tiger under every scheme ("toy targets" critique). The thin rim +
+  // recessed well + bolt ring keep the wheel reading as a wheel (the r6
+  // "body-green disc" concern) without the target-ring geometry.
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.94, w * 1.03, seg),
+  ]);
+  // Painted dish stands PROUD of the tire caps and covers `dishR` of the
+  // radius (default 90%) — real road wheels read as painted steel discs with
+  // a visible dark rubber rim, never as full-face painted circles (r3/r5)
+  // and never as wide-ringed bullseyes (camo_spotting r3). Russian/modern
+  // rigs pass a smaller dishR for their fat rubber tires (r5: "uniform green
+  // discs with no rubber/hub separation").
+  const discs: THREE.BufferGeometry[] = [cylX(r * dishR, w * 1.12, seg)];
+  const dark: THREE.BufferGeometry[] = [];
+  addWheelFaceMotif(pattern?.motif || 'split-rim', discs, dark, r, w, seg, dishR, pattern);
+  discs.push(cylX(r * 0.24, w * 1.34, 12));
+  discs.push(cylX(r * 0.14, w * 1.48, 10));
+  for (let index = 0; index < patternFasteners; index += 1) {
+    const angle = (index / patternFasteners) * Math.PI * 2 + 0.13;
+    dark.push(xform(cylX(r * 0.040, w * 1.40, 6),
+      0, Math.sin(angle) * r * dishR * 0.70, Math.cos(angle) * r * dishR * 0.70));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dark) };
+}
+
 function wheelGeo(
   style: string,
   r: number,
@@ -1943,157 +2291,23 @@ function wheelGeo(
   customFace = false,
 ): WheelGeometrySet {
   const patternFasteners = pattern?.fasteners ?? 8;
-  const discs: THREE.BufferGeometry[] = [];
   if (style === 'steel') {
-    discs.push(cylX(r, w, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
-    discs.push(cylX(r * 0.24, w * 1.3, 10));
-    discs.push(cylX(r * 0.14, w * 1.44, 8));            // hub cap
-    boltRing(discs, r, w, patternFasteners);
-    return { tire: null, disc: mergeAll(discs), dark: null };
+    return steelWheelGeometry(r, w, seg, pattern, patternFasteners);
   }
   if (style === 'holes' && (!pattern || pattern.motif === 'perforated')) {
-    // T-34 Christie wheel (r7 rebuild): the painted dish spans nearly the
-    // full radius with a THIN rubber rim, and the six big stamped lightening
-    // holes are dark inserts — the "spider" face that makes the wheel read
-    // full-size instead of a small disc floating in shadow.
-    const tire = mergeAll([cylX(r, w, seg)]);
-    discs.push(cylX(r * 0.86, w * 1.10, seg));           // near-full dish
-    discs.push(cylX(r * 0.28, w * 1.32, 12));            // hub drum
-    discs.push(cylX(r * 0.15, w * 1.5, 8));              // hub cap
-    boltRing(discs, r * 0.72, w, patternFasteners);
-    const dk: THREE.BufferGeometry[] = [];
-    const pocketCount = pattern?.pockets || 6;
-    for (let k = 0; k < pocketCount; k++) {
-      const a = (k / pocketCount) * Math.PI * 2 + 0.3;
-      dk.push(xform(cylX(r * 0.185, w * 1.16, 10),
-        0, Math.sin(a) * r * 0.55, Math.cos(a) * r * 0.55));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return perforatedWheelGeometry(r, w, seg, pattern, patternFasteners);
   }
   if (style === 'dished' && (!pattern || pattern.motif === 'deep-dish')) {
-    // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
-    // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
-    // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
-    // + cap, and a 16-bolt ring standing dark on the dish slope. Reads as a
-    // dished pressed-steel wheel at closeup instead of a flat painted disc.
-    // r7b ("flat pancake discs — no dish, no rubber/steel rim separation" on
-    // the judged Tiger closeup): the painted rim ring pulls in to 0.86 r so a
-    // REAL dark tire band (14% of radius) separates rubber from steel, the
-    // dish cones deepen (0.34 w -> 0.46 w span, proud of the face ring) and
-    // the dish-bottom shadow annulus widens so the concavity survives flat
-    // camo paint at closeup range.
-    const tire = mergeAll([
-      cylX(r, w, seg),                                   // rubber tire band
-      cylX(r * 0.92, w * 1.02, seg),                     // tire shoulder rounds the edge
-    ]);
-    discs.push(cylX(r * 0.86, w * 1.06, seg));           // proud outer face ring
-    for (const sgn of [-1, 1]) {                          // concave dish cones
-      discs.push(xform(
-        cylX(sgn < 0 ? r * 0.82 : r * 0.28, w * 0.46, seg, sgn < 0 ? r * 0.28 : r * 0.82),
-        sgn * w * 0.42, 0, 0));
-    }
-    discs.push(cylX(r * 0.26, w * 1.34, 12));            // raised hub drum
-    discs.push(cylX(r * 0.15, w * 1.52, 10));            // hub cap
-    const dk = [cylX(r * 0.50, w * 0.52, seg)];          // dish-bottom shadow annulus
-    for (let k = 0; k < patternFasteners; k++) {          // rim bolts on the dish slope
-      const a = (k / patternFasteners) * Math.PI * 2 + 0.1;
-      dk.push(xform(cylX(r * 0.042, w * 1.12, 6),
-        0, Math.sin(a) * r * 0.60, Math.cos(a) * r * 0.60));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return dishedWheelGeometry(r, w, seg, patternFasteners);
   }
   // Recent profile builders already supply source-measured, suspension-bound
   // face layers. Preserve their proven base stack so the shared fleet motif
   // cannot sit proud of and occlude those authored rings/recesses. They still
   // receive the family-specific idler, sprocket, roller, paint, and receipt.
   if (customFace) {
-    const tire = mergeAll([
-      cylX(r, w, seg),
-      cylX(r * 0.30, w * 1.20, seg),
-    ]);
-    discs.push(cylX(r * dishR, w * 1.14, seg));
-    discs.push(cylX(r * 0.24, w * 1.38, 10));
-    discs.push(cylX(r * 0.14, w * 1.54, 8));
-    boltRing(discs, r * dishR / 0.9, w, 8);
-    const dk = [
-      cylX(r * 0.46, w * 1.08, seg),
-      cylX(r * 0.205, w * 1.40, 10),
-    ];
-    for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * Math.PI * 2 + 0.13;
-      dk.push(xform(cylX(r * 0.045, w * 1.20, 6),
-        0, Math.sin(a) * r * dishR * 0.72, Math.cos(a) * r * dishR * 0.72));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+    return customFaceWheelGeometry(r, w, seg, dishR);
   }
-  // Rubber band + a dark hub-well ring: the well sits between dish and hub so
-  // the hub reads against shadow (r5: wheels merged into one flat plate).
-  // camo_spotting r3: tire rim <=10% of radius and hub well slimmed — the
-  // wide dark annuli rendered as high-contrast black/base BULLSEYE rings on
-  // the Tiger under every scheme ("toy targets" critique). The thin rim +
-  // recessed well + bolt ring keep the wheel reading as a wheel (the r6
-  // "body-green disc" concern) without the target-ring geometry.
-  const tire = mergeAll([
-    cylX(r, w, seg),
-    cylX(r * 0.94, w * 1.03, seg),                       // rounded tire shoulder
-  ]);
-  // Painted dish stands PROUD of the tire caps and covers `dishR` of the
-  // radius (default 90%) — real road wheels read as painted steel discs with
-  // a visible dark rubber rim, never as full-face painted circles (r3/r5)
-  // and never as wide-ringed bullseyes (camo_spotting r3). Russian/modern
-  // rigs pass a smaller dishR for their fat rubber tires (r5: "uniform green
-  // discs with no rubber/hub separation").
-  discs.push(cylX(r * dishR, w * 1.12, seg));            // painted outer dish
-  const dk = [];
-  const motif = pattern?.motif || 'split-rim';
-  if (motif === 'split-rim') {
-    dk.push(cylX(r * 0.70, w * 1.17, seg));
-    discs.push(cylX(r * 0.53, w * 1.23, seg));
-    dk.push(cylX(r * 0.32, w * 1.27, 12));
-  } else if (motif === 'rib') {
-    dk.push(cylX(r * 0.67, w * 1.17, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
-      0.12, 1.24, 0.08);
-  } else if (motif === 'spoke' || motif === 'solid-spoke') {
-    dk.push(cylX(r * 0.69, w * 1.17, seg));
-    radialRibs(discs, r, w, pattern?.pockets || 5, 0.18, dishR * 0.86,
-      motif === 'solid-spoke' ? 0.24 : 0.20, 1.24, 0.06);
-  } else if (motif === 'scalloped' || motif === 'perforated') {
-    const count = pattern?.pockets || 6;
-    dk.push(cylX(r * 0.39, w * 1.17, 14));
-    for (let k = 0; k < count; k++) {
-      const a = (k / count) * Math.PI * 2 + 0.28;
-      dk.push(xform(cylX(r * (motif === 'perforated' ? 0.15 : 0.125), w * 1.21, 10),
-        0, Math.sin(a) * r * 0.56, Math.cos(a) * r * 0.56));
-    }
-  } else if (motif === 'flanged') {
-    dk.push(cylX(r * 0.61, w * 1.17, seg));
-    discs.push(cylX(r * 0.45, w * 1.23, 16));
-    dk.push(cylX(r * 0.29, w * 1.27, 12));
-  } else if (motif === 'deep-dish') {
-    dk.push(cylX(r * 0.57, w * 1.17, seg));
-    for (const side of [-1, 1]) {
-      discs.push(xform(cylX(
-        side < 0 ? r * 0.78 : r * 0.31,
-        w * 0.16, seg,
-        side < 0 ? r * 0.31 : r * 0.78,
-      ), side * w * 0.62, 0, 0));
-    }
-  } else if (motif === 'armored-hub') {
-    dk.push(cylX(r * 0.52, w * 1.17, seg));
-    discs.push(cylX(r * 0.38, w * 1.25, 14));
-  } else {
-    dk.push(cylX(r * 0.48, w * 1.17, seg));
-  }
-  discs.push(cylX(r * 0.24, w * 1.34, 12));              // raised hub drum
-  discs.push(cylX(r * 0.14, w * 1.48, 10));              // removable hub cap
-  for (let k = 0; k < patternFasteners; k++) {
-    const a = (k / patternFasteners) * Math.PI * 2 + 0.13;
-    dk.push(xform(cylX(r * 0.040, w * 1.40, 6),
-      0, Math.sin(a) * r * dishR * 0.70, Math.cos(a) * r * dishR * 0.70));
-  }
-  return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+  return standardWheelGeometry(r, w, seg, dishR, pattern, patternFasteners);
 }
 
 // Idler (r9 rework — judged-shot hard fail): the r8 stack buried its dished
@@ -2610,6 +2824,119 @@ function runningGearContactPatch(
   return { zF, zR };
 }
 
+function trackCourseSupports(
+  rollers: GearEndpoint[],
+  rollerR: number,
+  trackTh: number,
+  wheelZs: number[],
+  wheelY: number,
+  wheelR: number,
+  layers: number[][] | null,
+): Array<{ z: number; y: number }> {
+  if (rollers.length) {
+    return rollers.map((roller) => ({
+      z: roller.z,
+      y: roller.y + (roller.r ?? rollerR) + trackTh / 2,
+    }));
+  }
+  const maxOffset = layers ? Math.max(...layers.flat()) : 0;
+  return wheelZs
+    .filter((z, index) => !layers || layers[index % layers.length].includes(maxOffset))
+    .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+}
+
+function orderedTrackEndpoints(
+  sprocket: GearEndpoint,
+  idler: GearEndpoint,
+): { frontEnd: GearEndpoint; rearEnd: GearEndpoint } {
+  const frontRaw = sprocket.z >= idler.z ? sprocket : idler;
+  const rearRaw = sprocket.z >= idler.z ? idler : sprocket;
+  return {
+    frontEnd: { ...frontRaw, r: frontRaw.trackR ?? frontRaw.r },
+    rearEnd: { ...rearRaw, r: rearRaw.trackR ?? rearRaw.r },
+  };
+}
+
+function dedupeTrackLoopPoints(points: TrackPoint[]): void {
+  for (let index = points.length - 1; index > 0; index--) {
+    const point = points[index];
+    const previous = points[index - 1];
+    if (Math.abs(point[0] - previous[0]) < 1e-7
+        && Math.abs(point[1] - previous[1]) < 1e-7) {
+      points.splice(index, 1);
+    }
+  }
+}
+
+function orientTrackCourseClockwise(points: TrackPoint[]): void {
+  let doubledArea = 0;
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    doubledArea += point[0] * next[1] - next[0] * point[1];
+  }
+  if (doubledArea > 0) points.reverse();
+}
+
+function loadedRunStations(
+  wheelZs: number[],
+  segmentStartZ: number,
+  segmentEndZ: number,
+): number[] {
+  const lowZ = Math.min(segmentStartZ, segmentEndZ);
+  const highZ = Math.max(segmentStartZ, segmentEndZ);
+  const wheelMinZ = Math.min(...wheelZs);
+  const wheelMaxZ = Math.max(...wheelZs);
+  return [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
+    .filter((z) => z > lowZ + 1e-5 && z < highZ - 1e-5)
+    .sort((first, second) => segmentEndZ > segmentStartZ
+      ? first - second
+      : second - first);
+}
+
+function insertLoadedRunStations(
+  points: TrackPoint[],
+  wheelZs: number[],
+  botY: number,
+): void {
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    if (Math.abs(point[1] - botY) > 1e-6 || Math.abs(next[1] - botY) > 1e-6) {
+      continue;
+    }
+    const stations = loadedRunStations(wheelZs, point[0], next[0]);
+    if (!stations.length) continue;
+    points.splice(index + 1, 0, ...stations.map((z): TrackPoint => [z, botY]));
+    index += stations.length;
+  }
+}
+
+function trackCourseSegments(points: TrackPoint[]): {
+  segments: TrackCourseSegment[];
+  loopLengthM: number;
+} {
+  const segments: TrackCourseSegment[] = [];
+  let loopLengthM = 0;
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    const deltaZ = next[0] - point[0];
+    const deltaY = next[1] - point[1];
+    const lengthM = Math.hypot(deltaZ, deltaY) || 1e-6;
+    segments.push({
+      z: point[0],
+      y: point[1],
+      tz: deltaZ / lengthM,
+      ty: deltaY / lengthM,
+      l: lengthM,
+      c0: loopLengthM,
+    });
+    loopLengthM += lengthM;
+  }
+  return { segments, loopLengthM };
+}
+
 /**
  * Resolve the one closed course shared by the belt, shoes, sprocket teeth,
  * hit volume and runtime animation. Keeping this in one receipt prevents a
@@ -2634,19 +2961,13 @@ function buildTrackCourse({
   cfg: RunningGearConfig;
 }): TrackCourse {
   const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
-  const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
-  const supports = rollers.length
-    ? rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 }))
-    : wheelZs
-      .filter((z, i) => !layers || layers[i % layers.length].includes(maxOffSup))
-      .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+  const supports = trackCourseSupports(
+    rollers, rollerR, trackTh, wheelZs, wheelY, wheelR, layers,
+  );
 
   // trackLoopPoints always receives the geometrically front (+Z) end first;
   // drive location is independent of course winding.
-  const frontEndRaw = sprocket.z >= idler.z ? sprocket : idler;
-  const rearEndRaw = sprocket.z >= idler.z ? idler : sprocket;
-  const frontEnd = { ...frontEndRaw, r: frontEndRaw.trackR ?? frontEndRaw.r };
-  const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
+  const { frontEnd, rearEnd } = orderedTrackEndpoints(sprocket, idler);
   const contact = runningGearContactPatch(wheelZs, wheelR, cfg);
   const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
     ? cfg.loopPoints.map((p): TrackPoint => [p[0], p[1]])
@@ -2664,51 +2985,16 @@ function buildTrackCourse({
   // and an end-wheel arc at the same crown. Drop only exact consecutive
   // duplicates for opted-in profiles so the belt never emits a zero-length
   // segment or a stacked pair of shoes at that join.
-  if (cfg.dedupeLoopPoints) {
-    for (let i = pts.length - 1; i > 0; i--) {
-      if (Math.abs(pts[i][0] - pts[i - 1][0]) < 1e-7
-          && Math.abs(pts[i][1] - pts[i - 1][1]) < 1e-7) {
-        pts.splice(i, 1);
-      }
-    }
-  }
+  if (cfg.dedupeLoopPoints) dedupeTrackLoopPoints(pts);
 
   // Band normals and shoe orientation use a clockwise (z,y) course.
-  let loopArea2 = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    loopArea2 += a[0] * b[1] - b[0] * a[1];
-  }
-  if (loopArea2 > 0) pts.reverse();
+  orientTrackCourseClockwise(pts);
 
   // Add articulation vertices to the loaded run at every road-wheel station
   // and at the tension-fade shoulders.
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    if (Math.abs(a[1] - botY) > 1e-6 || Math.abs(b[1] - botY) > 1e-6) continue;
-    const lo = Math.min(a[0], b[0]), hi = Math.max(a[0], b[0]);
-    const wheelMinZ = Math.min(...wheelZs), wheelMaxZ = Math.max(...wheelZs);
-    const stations = [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
-      .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
-      .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
-    if (stations.length) {
-      pts.splice(i + 1, 0, ...stations.map((z): TrackPoint => [z, botY]));
-      i += stations.length;
-    }
-  }
+  insertLoadedRunStations(pts, wheelZs, botY);
 
-  const segments: TrackCourseSegment[] = [];
-  let loopLengthM = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    const dz = b[0] - a[0], dy = b[1] - a[1];
-    const lengthM = Math.hypot(dz, dy) || 1e-6;
-    segments.push({
-      z: a[0], y: a[1], tz: dz / lengthM, ty: dy / lengthM,
-      l: lengthM, c0: loopLengthM,
-    });
-    loopLengthM += lengthM;
-  }
+  const { segments, loopLengthM } = trackCourseSegments(pts);
   const shoeCount = Math.max(24, Math.round(loopLengthM / (cfg.linkPitchM ?? 0.165)));
   const shoePitchM = loopLengthM / shoeCount;
   return {
@@ -3512,49 +3798,38 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Bodywork now performs the occlusion; every shoe remains seated on the
   // closed loop. `coveredTop` is retained only in authoring receipts so old
   // profiles do not need a flag migration.
-  const placeLinks = (l: number, r: number): void => {
-    // Link distances are monotonic around each side's loop. Walk the segment
-    // cursor with them instead of restarting a linear nP search for every
-    // shoe. The cursor resets once when distance wraps.
-    for (const side of [-1, 1] as const) {
-      const baseI = side < 0 ? 0 : nLinks;
-      const scroll = side < 0 ? l : r;
-      const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
-      const s0 = ((scroll % loopLen) + loopLen) % loopLen;
-      let segIx = 0;
-      while (segIx < nP - 1 && s0 >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
-      let prevS = s0;
-      for (let linkI = 0; linkI < nLinks; linkI++) {
-        const i = baseI + linkI;
-        let s = s0 + linkI * lp;
-        if (s >= loopLen) s -= loopLen;
-        if (linkI && s < prevS) segIx = 0;
-        while (segIx < nP - 1 && s >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
-        prevS = s;
-        const sg = segsT[segIx];
-        const u = s - sg.c0;
-        const t = Math.max(0, Math.min(1, u / Math.max(sg.l, 1e-6)));
-        const vertexBase = segIx * 24;
-        // Recover this LIVE belt segment's f0/f1 centerline directly from
-        // the deformed outer/inner face vertices. Shoes no longer evaluate a
-        // parallel suspension curve: the visible casting belt is their sole
-        // position/tangent source, with only rOut added along its normal.
-        const y0 = (bandPosition.getY(vertexBase + 2)
-          + bandPosition.getY(vertexBase + 6)) / 2;
-        const z0 = (bandPosition.getZ(vertexBase + 2)
-          + bandPosition.getZ(vertexBase + 6)) / 2;
-        const y1 = (bandPosition.getY(vertexBase)
-          + bandPosition.getY(vertexBase + 8)) / 2;
-        const z1 = (bandPosition.getZ(vertexBase)
-          + bandPosition.getZ(vertexBase + 8)) / 2;
-        const y = y0 + (y1 - y0) * t;
-        const z = z0 + (z1 - z0) * t;
-        const invLen = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
-        const tz = (z1 - z0) * invLen;
-        const ty = (y1 - y0) * invLen;
-        _q.setFromAxisAngle(_X, Math.atan2(-ty, tz));
-        _v.set(side * (xcForSide(side) + shoeOutboardOffset),
-          y + tz * rOut, z - ty * rOut);
+  const findTrackSegment = (distance: number, fromIndex = 0): number => {
+    let index = fromIndex;
+    while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
+    return index;
+  };
+  const writeTrackLinkMatrix = (
+    side: -1 | 1,
+    instanceIndex: number,
+    bandPosition: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+    segmentIndex: number,
+    progress: number,
+  ): void => {
+    const vertexBase = segmentIndex * 24;
+    // Recover this LIVE belt segment's f0/f1 centerline directly from the
+    // deformed outer/inner face vertices. The visible casting belt is the
+    // shoe's sole position/tangent source, with only rOut along its normal.
+    const y0 = (bandPosition.getY(vertexBase + 2)
+      + bandPosition.getY(vertexBase + 6)) / 2;
+    const z0 = (bandPosition.getZ(vertexBase + 2)
+      + bandPosition.getZ(vertexBase + 6)) / 2;
+    const y1 = (bandPosition.getY(vertexBase)
+      + bandPosition.getY(vertexBase + 8)) / 2;
+    const z1 = (bandPosition.getZ(vertexBase)
+      + bandPosition.getZ(vertexBase + 8)) / 2;
+    const y = y0 + (y1 - y0) * progress;
+    const z = z0 + (z1 - z0) * progress;
+    const inverseLength = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
+    const tangentZ = (z1 - z0) * inverseLength;
+    const tangentY = (y1 - y0) * inverseLength;
+    _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
+    _v.set(side * (xcForSide(side) + shoeOutboardOffset),
+      y + tangentZ * rOut, z - tangentY * rOut);
       // The shoe stays on this exact deformed belt normal. A historical
       // hull-local floor clamp moved only the gray shoe layer upward on
       // slopes / turn roll, creating the visibly detached second course.
@@ -3562,18 +3837,38 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // contactGeom, so no post-course transform is permitted here.
       // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
       // ground ribbon carry the read) — collapse that side's pads to zero
-      const broken = side < 0 ? brokenL : brokenR;
-      if (broken) {
-        _s.set(0, 0, 0);
-        _m.compose(_v, _q, _s);
-        for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
-        continue;
-      }
-      _s.set(1, 1, 1);
-      _m.compose(_v, _q, _s);
-      for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
-      }
+    const broken = side < 0 ? brokenL : brokenR;
+    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
+    _m.compose(_v, _q, _s);
+    for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
+  };
+  const placeTrackSide = (side: -1 | 1, scroll: number): void => {
+    const baseIndex = side < 0 ? 0 : nLinks;
+    const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
+    const startDistance = ((scroll % loopLen) + loopLen) % loopLen;
+    let segmentIndex = findTrackSegment(startDistance);
+    let previousDistance = startDistance;
+    for (let linkIndex = 0; linkIndex < nLinks; linkIndex++) {
+      let distance = startDistance + linkIndex * lp;
+      if (distance >= loopLen) distance -= loopLen;
+      if (linkIndex && distance < previousDistance) segmentIndex = 0;
+      segmentIndex = findTrackSegment(distance, segmentIndex);
+      previousDistance = distance;
+      const segment = segsT[segmentIndex];
+      const segmentDistance = distance - segment.c0;
+      const progress = Math.max(0, Math.min(
+        1, segmentDistance / Math.max(segment.l, 1e-6),
+      ));
+      writeTrackLinkMatrix(
+        side, baseIndex + linkIndex, bandPosition, segmentIndex, progress,
+      );
     }
+  };
+  const placeLinks = (leftScroll: number, rightScroll: number): void => {
+    // Link distances are monotonic around each side's loop. Walk the segment
+    // cursor with them instead of restarting a linear search for every shoe.
+    placeTrackSide(-1, leftScroll);
+    placeTrackSide(1, rightScroll);
     for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
 
@@ -4609,6 +4904,91 @@ function openRackGrid(
   return geometry;
 }
 
+function stowageBody(style: number, width: number, height: number, depth: number): THREE.BufferGeometry {
+  const body = style === 0
+    ? box(width, height, depth)
+    : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0, [
+      width * (style === 1 ? 0.98 : 0.92),
+      height * 0.94,
+      depth * (style === 1 ? 0.96 : 0.90),
+    ]);
+  body.userData.designFamily = 'cot-soft-stowage-v2';
+  body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
+  return body;
+}
+
+function addStowageFlap(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const isRuck = style === 2;
+  const flapDepth = isRuck ? depth * 0.64 : depth * 1.04;
+  P.addEquipment(
+    bucket,
+    box(width * (isRuck ? 0.76 : 1.04), height * 0.16, flapDepth),
+    x, y + height * 0.46, z + (isRuck ? depth * 0.08 : 0), 0, yaw, -0.025,
+  );
+}
+
+function addStowageStyleDetails(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  darkBucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  if (style === 2) {
+    for (const side of [-1, 1]) {
+      addEquipmentLocal(P, bucket, box(width * 0.18, height * 0.42, depth * 0.34),
+        x, y, z, yaw, side * width * 0.46, -height * 0.08, -depth * 0.02);
+    }
+  } else if (style === 1) {
+    P.addEquipment(darkBucket, box(width * 0.34, 0.026, 0.026),
+      x, y + height * 0.50, z - depth * 0.02, 0, yaw, 0);
+  }
+}
+
+function addStowageStraps(
+  P: EquipmentBuilderPort,
+  darkBucket: string,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const along = depth >= width;
+  for (const fraction of [-0.28, 0.28]) {
+    const strap = along
+      ? box(width * 1.06, height * 1.04, 0.028)
+      : box(0.028, height * 1.04, depth * 1.06);
+    strap.userData.designFamily = 'cot-webbing-strap-v2';
+    addEquipmentLocal(P, darkBucket, strap, x, y + height * 0.02, z, yaw,
+      along ? 0 : fraction * width, 0, along ? fraction * depth : 0);
+    addEquipmentLocal(P, darkBucket, box(0.07, 0.018, 0.055),
+      x, y + height * 0.54, z, yaw,
+      along ? fraction * width * 0.10 : fraction * width,
+      0,
+      along ? fraction * depth : fraction * depth * 0.10);
+  }
+}
+
 function stowage(
   builder: object,
   bucket: string,
@@ -4623,37 +5003,10 @@ function stowage(
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
     const style = Math.min(2, Math.floor(rng() * 3));
-    const body = style === 0
-      ? box(w, h, d)
-      : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0,
-        [w * (style === 1 ? 0.98 : 0.92), h * 0.94, d * (style === 1 ? 0.96 : 0.90)]);
-    body.userData.designFamily = 'cot-soft-stowage-v2';
-    body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
-    P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-    const flapDepth = style === 2 ? d * 0.64 : d * 1.04;
-    P.addEquipment(bucket, box(w * (style === 2 ? 0.76 : 1.04), h * 0.16, flapDepth),
-      x, y + h * 0.46, z + (style === 2 ? d * 0.08 : 0), 0, yaw, -0.025);      // folded flap / tarp lid
-    if (style === 2) {
-      for (const side of [-1, 1]) {
-        addEquipmentLocal(P, bucket, box(w * 0.18, h * 0.42, d * 0.34),
-          x, y, z, yaw, side * w * 0.46, -h * 0.08, -d * 0.02);                // asymmetric field pockets
-      }
-    } else if (style === 1) {
-      P.addEquipment(dark, box(w * 0.34, 0.026, 0.026),
-        x, y + h * 0.50, z - d * 0.02, 0, yaw, 0);                             // duffel carry handle
-    }
-    const along = d >= w;                                    // straps across the long axis
-    for (const f of [-0.28, 0.28]) {
-      const strap = along
-        ? box(w * 1.06, h * 1.04, 0.028)
-        : box(0.028, h * 1.04, d * 1.06);
-      strap.userData.designFamily = 'cot-webbing-strap-v2';
-      addEquipmentLocal(P, dark, strap, x, y + h * 0.02, z, yaw,
-        along ? 0 : f * w, 0, along ? f * d : 0);
-      addEquipmentLocal(P, dark, box(0.07, 0.018, 0.055),
-        x, y + h * 0.54, z, yaw, along ? f * w * 0.10 : f * w, 0,
-        along ? f * d : f * d * 0.10);                                         // visible strap buckle
-    }
+    P.addEquipment(bucket, stowageBody(style, w, h, d), x, y, z, 0, yaw, 0);
+    addStowageFlap(P, bucket, style, x, y, z, w, h, d, yaw);
+    addStowageStyleDetails(P, bucket, dark, style, x, y, z, w, h, d, yaw);
+    addStowageStraps(P, dark, x, y, z, w, h, d, yaw);
   }
 }
 
@@ -4974,8 +5327,9 @@ function buildM4A3E8(P: TankBuilderPort): void {
   P.topY = 0.72;
 }
 
-function buildTiger(P: TankBuilderPort): void {
-  const { rng } = P;
+const TIGER_TURRET_HALF_WIDTH = 1.37;
+
+function buildTigerHull(P: TankBuilderPort): void {
   P.add('hull', box(2.26, 0.68, 6.32), 0, 0.81, 0);                             // lower hull
   // ONE continuous overhanging superstructure box reaching down to the track
   // top run — the real Tiger side is a single flat plate from deck to tracks,
@@ -5066,6 +5420,9 @@ function buildTiger(P: TankBuilderPort): void {
   P.add('hullDetail', box(0.13, 0.035, 0.10), 0, 1.325, 2.76);     // hood cap
   P.add('hullDark', box(0.10, 0.018, 0.02), 0, 1.305, 2.815);      // slit
   P.add('hullDark', cylY(0.02, 0.02, 0.06, 8), 0, 1.21, 2.74);     // stalk
+}
+
+function buildTigerDeck(P: TankBuilderPort): void {
   // Feifel air-cleaner canisters flanking the exhaust stacks (roster §2.5 —
   // r4 critic: "signature externals missing"): fat vertical drums on the
   // rear plate corners with ribbed collars and piping up over the deck edge.
@@ -5126,13 +5483,17 @@ function buildTiger(P: TankBuilderPort): void {
   P.add('hullDetail', cylZ(0.06, 0.4, 8), -0.95, 2.0, 2.25);                    // fire extinguisher
   P.add('hullDark', box(0.6, 0.1, 0.14), 0.15, 2.0, -0.9);                      // wire cutters / crank
   spareTrackStrip(P, 'hull', 1.55, 1.98, 0.0, 3);                               // deck-edge spare links
+}
+
+function buildTigerTurret(P: TankBuilderPort): void {
+  const { rng } = P;
   // turret: the iconic horseshoe — ONE extruded profile: flat front plate,
   // straight parallel side walls, continuous semicircular rear. Widened to
   // ~2.5m so it no longer reads as a toy turret on the 3.7m hull (r3).
   // tank_models r2 (critic: "turret reads ~60% hull width, should be ~75%"):
   // widened again 1.26 -> 1.37 half-width (2.74 m on the 3.71 m hull ≈ 74%);
   // the armor shell in specs.ts stays at 1.26 (visual sits a hair proud).
-  const TW = 1.37, TH = 0.80, tZF = 0.62, tZR = -0.52;
+  const TW = TIGER_TURRET_HALF_WIDTH, TH = 0.80, tZF = 0.62, tZR = -0.52;
   const horseshoe = new THREE.Shape();
   horseshoe.moveTo(-TW, -tZF);
   horseshoe.lineTo(TW, -tZF);
@@ -5214,6 +5575,11 @@ function buildTiger(P: TankBuilderPort): void {
   // 8.8cm L/56: muzzle at ~5.3m from hull center = 8.45m overall (the old
   // 4.93m tube read as the Tiger II's L/71 — r3 gun critique)
   buildGun(P, { len: 4.5, r: 0.085, brake: 'double' });
+}
+
+function buildTigerRunningGear(P: TankBuilderPort): void {
+  const { rng } = P;
+  const TW = TIGER_TURRET_HALF_WIDTH;
   // Schachtellaufwerk: 16 axles/side at half pitch cycling through THREE
   // interleave rows (proud / recessed / middle, >=0.13 m between rows) — the
   // recessed rows render with the shadowed wheel material and a near-black AO
@@ -5279,6 +5645,13 @@ function buildTiger(P: TankBuilderPort): void {
   P.decal('hull', 'soot', null, 0.85, [0.5, 1.75, -3.18], Math.PI);
   P.decal('hull', 'soot', null, 0.85, [-0.5, 1.75, -3.18], Math.PI);
   P.topY = 1.05;
+}
+
+function buildTiger(P: TankBuilderPort): void {
+  buildTigerHull(P);
+  buildTigerDeck(P);
+  buildTigerTurret(P);
+  buildTigerRunningGear(P);
 }
 
 function buildT34(P: TankBuilderPort): void {
@@ -5482,7 +5855,7 @@ function buildIS2(P: TankBuilderPort): void {
   P.topY = 0.72;
 }
 
-function buildPanther(P: TankBuilderPort): void {
+function buildPantherHull(P: TankBuilderPort): void {
   // §5.247 ww2-wave FULL REDESIGN (photo-class, no oracle — FALSE-0 law).
   // Panther Ausf. G, late 1944 (ambush-scheme era, zimmerit discontinued):
   // published dims proven in the authored world — hull 6.87 m = shoe run
@@ -5494,8 +5867,6 @@ function buildPanther(P: TankBuilderPort): void {
   // 30° UNDERCUT y0.55/z-2.68 -> y1.85/z-3.43; turret per turretPlates
   // (front face ±0.45..±0.60 at z0.57..0.72 world, sides 0.95 -> 0.62,
   // roof ±0.62 at +0.75).
-  const { rng } = P;
-
   // ---- lower hull tub + lower glacis (between the track lanes ±1.02)
   P.add('hull', box(2.04, 0.64, 6.00), 0, 0.84, -0.10);                        // tub y 0.52..1.16, z -3.10..2.90
   P.add('hull', slab(                                                          // lower glacis 55° (armor lower_glacis)
@@ -5563,7 +5934,9 @@ function buildPanther(P: TankBuilderPort): void {
   P.add('hull', slab(
     [-1.02, 0.955, -2.854], [1.02, 0.955, -2.854], [1.02, 0.955, -2.914], [-1.02, 0.955, -2.914],
     [-1.32, 1.83, -3.37], [1.32, 1.83, -3.37], [1.32, 1.83, -3.43], [-1.32, 1.83, -3.43]));
+}
 
+function buildPantherForwardDeck(P: TankBuilderPort): void {
   // ---- bow furniture on the glacis plane (n = (0, .819, .574))
   P.add('hullDark', sph(0.135, P.q ? 20 : 12), 0.60, 1.476, 2.369);             // Kugelblende ball
   P.add('hull', cylZ(0.165, 0.055, P.q ? 18 : 10), 0.60, 1.462, 2.395, -0.61, 0, 0); // cast collar ring
@@ -5610,7 +5983,10 @@ function buildPanther(P: TankBuilderPort): void {
   liftEye(P, 'hullDetail', 1.22, 1.868, 1.35);
   liftEye(P, 'hullDetail', -1.22, 1.868, -3.05);
   liftEye(P, 'hullDetail', 1.22, 1.868, -3.05);
+}
 
+function buildPantherRearSides(P: TankBuilderPort): void {
+  const { rng } = P;
   // ---- rear plate furniture ON the 30° lean (plate point p(y): z = -2.68
   // - 0.577(y-0.55); outward n = (0, -0.5, -0.867)).
   for (const s of [-1, 1]) {
@@ -5698,7 +6074,9 @@ function buildPanther(P: TankBuilderPort): void {
   }
   stowage(P, 'hullCloth', rng, [[-1.10, 1.93, -3.18, 0.36, 0.15, 0.44]]);
   tarpRoll(P, 'hullCloth', -1.14, 1.90, -1.32, 0.85, 0.075, false);
+}
 
+function buildPantherTurret(P: TankBuilderPort): void {
   // ---- TURRET: armor-true trapezoid loft — base ±0.95 rear / ±0.60 front,
   // roof ±0.62/±0.44, h 0.75, 12° front plate (z0.97 -> 0.82 local), 6°
   // leaning rear. One slab, §B1 planar walls.
@@ -5779,6 +6157,14 @@ function buildPanther(P: TankBuilderPort): void {
   P.decal('turret', 'number', '435', 0.34, [-0.82, 0.33, -0.10], -Math.PI / 2, 0, -0.415);
   P.topY = 1.10;
 }
+
+function buildPanther(P: TankBuilderPort): void {
+  buildPantherHull(P);
+  buildPantherForwardDeck(P);
+  buildPantherRearSides(P);
+  buildPantherTurret(P);
+}
+
 function buildM1A2(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(2.38, 0.6, 7.6), 0, 0.75, -0.1);                            // lower hull
@@ -6182,8 +6568,7 @@ function buildT90M(P: TankBuilderPort): void {
   P.topY = 0.95;
 }
 
-function buildLeo2A7(P: TankBuilderPort): void {
-  const { rng } = P;
+function buildLeo2A7HullShell(P: TankBuilderPort): void {
   // r7 hull rework (barge critique): the full-width 0.64-tall sponson slab
   // and its long rear overhang are gone — the upper hull is a shallow band
   // whose rear face sits flush over the tracks, the heavy skirts climb to
@@ -6236,6 +6621,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
     }
     P.add('hullDetail', xform(torus(0.19, 0.02, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.86, 1.26, -3.788); // inner ring
   }
+}
+
+function buildLeo2A7Deck(P: TankBuilderPort): void {
   // rear DECK (r10 rework — critic: "completely flat engine deck with zero
   // grilles, blank rear plate, unrecognizable from behind"): twin circular
   // cooling fans with ALWAYS-ON radial slat bars, a full-width transverse
@@ -6293,6 +6681,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
     P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 - 0.22), 1.734, -2.27);     // frame rails
     P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 + 0.22), 1.734, -2.27);
   }
+}
+
+function buildLeo2A7DeckFixtures(P: TankBuilderPort): void {
   // anti-slip deck panels (2A7 signature texture zones): the r5 first pass
   // used the scheme-tinted detail tone and vanished into the paint — real
   // Leo 2A7 anti-slip sheeting is DARK grey-brown matte, clearly offset from
@@ -6331,6 +6722,9 @@ function buildLeo2A7(P: TankBuilderPort): void {
   // r2: jack block tucked low between the fan grilles (it perched on the
   // fender edge as a floating orange cube after the rear-plate rebuild)
   P.add('hullWood', box(0.26, 0.12, 0.10), 0, 0.92, -3.79);
+}
+
+function buildLeo2A7SideArmor(P: TankBuilderPort): void {
   // deck-underside AO pocket over the running gear — r5: narrowed + tucked
   // inboard, and a scheme-painted sponson chamfer strip closes the outboard
   // slot between the deck-band side and the skirt top (the "continuous black
@@ -6401,6 +6795,10 @@ function buildLeo2A7(P: TankBuilderPort): void {
     P.add('hullDetail', box(0.10, 0.075, 0.13), s * 1.15, 1.63, 2.86, -0.15, 0, 0);
   }
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.03, 12), s * 1.28, 1.735, 1.42); // filler caps
+}
+
+function buildLeo2A7Turret(P: TankBuilderPort): void {
+  const { rng } = P;
   // turret (r5 FULL REBUILD — critic critical: "towering slab-sided casemate
   // ~1.5x correct height, floating inverted-pyramid beside the gun, no
   // spaced-armor wedge pair, no EMES cutout, not recognizable as a Leopard
@@ -6555,6 +6953,14 @@ function buildLeo2A7(P: TankBuilderPort): void {
   P.decal('hull', 'number', 'Y-124', 0.30, [0.62, 1.44, -3.775], Math.PI, 0);
   P.decal('hull', 'number', 'Y-124', 0.26, [-1.0, 0.90, 3.63], 0, -0.41);
   P.topY = 1.08;
+}
+
+function buildLeo2A7(P: TankBuilderPort): void {
+  buildLeo2A7HullShell(P);
+  buildLeo2A7Deck(P);
+  buildLeo2A7DeckFixtures(P);
+  buildLeo2A7SideArmor(P);
+  buildLeo2A7Turret(P);
 }
 
 const BUILDERS: TankBuilderRecord = {
@@ -7023,21 +7429,44 @@ const PRESENTATION_TRACK_TIP_ALLOWANCE_M = 0.025;
  * visible cold-garage frame. This tight typed-array walk performs the same XY
  * barycentric triangle test without allocations or subtree traversal.
  */
-function axisGeometryCapZ(
+interface AxisGeometryCapProfile {
+  z: number;
+  outerRadiusM: number;
+}
+
+function axisPositionAttribute(
+  geometry: THREE.BufferGeometry,
+): THREE.BufferAttribute | null {
+  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
+  if (!position || position.itemSize < 3
+    || position instanceof THREE.InterleavedBufferAttribute) return null;
+  return position;
+}
+
+function barycentricWeightsContainPoint(
+  wa: number,
+  wb: number,
+  wc: number,
+  epsilon: number,
+): boolean {
+  return wa >= -epsilon && wb >= -epsilon && wc >= -epsilon;
+}
+
+function axisGeometryCapProfile(
   geometry: THREE.BufferGeometry,
   x: number,
   y: number,
   minZ: number,
   maxZ: number,
-): number | null {
-  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
-  if (!position || position.itemSize < 3
-    || position instanceof THREE.InterleavedBufferAttribute) return null;
+): AxisGeometryCapProfile | null {
+  const position = axisPositionAttribute(geometry);
+  if (!position) return null;
   const vertices = position.array;
   const stride = position.itemSize;
   const index = geometry.index && geometry.index.array;
   const triangleCount = Math.floor((index ? index.length : position.count) / 3);
-  let best = -Infinity;
+  let bestZ = -Infinity;
+  let bestRadius = 0;
   const eps = 1e-8;
   for (let t = 0; t < triangleCount; t++) {
     const ia = (index ? index[t * 3] : t * 3) * stride;
@@ -7051,11 +7480,88 @@ function axisGeometryCapZ(
     const wa = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den;
     const wb = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
     const wc = 1 - wa - wb;
-    if (wa < -eps || wb < -eps || wc < -eps) continue;
+    if (!barycentricWeightsContainPoint(wa, wb, wc, eps)) continue;
     const z = wa * vertices[ia + 2] + wb * vertices[ib + 2] + wc * vertices[ic + 2];
-    if (z >= minZ && z <= maxZ && z > best) best = z;
+    if (z < minZ || z > maxZ) continue;
+    const outerRadiusM = Math.max(
+      Math.hypot(ax - x, ay - y),
+      Math.hypot(bx - x, by - y),
+      Math.hypot(cx - x, cy - y),
+    );
+    if (z > bestZ + eps) {
+      bestZ = z;
+      bestRadius = outerRadiusM;
+    } else if (Math.abs(z - bestZ) <= eps) {
+      bestRadius = Math.max(bestRadius, outerRadiusM);
+    }
   }
-  return Number.isFinite(best) ? best : null;
+  return Number.isFinite(bestZ)
+    ? { z: bestZ, outerRadiusM: bestRadius }
+    : null;
+}
+
+/**
+ * Open tubes have no triangle across the centerline for the cap test above.
+ * Recover their terminal edge from the nearest vertex course outside the
+ * physical caliber. The narrow Z window prevents unrelated gun/hull detail
+ * from becoming a mouth support, while the caliber floor rejects center pins
+ * and triangulation seams.
+ */
+function axisGeometryMouthEdgeProfile(
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  centerZ: number,
+  caliberRadiusM: number,
+): AxisGeometryCapProfile | null {
+  const position = axisPositionAttribute(geometry);
+  if (!position) return null;
+  const minimumSupportR = Math.max(0.006, caliberRadiusM * 1.15);
+  const maximumSupportR = Math.max(0.24, caliberRadiusM * 2.8);
+  let outerRadiusM = Infinity;
+  for (let index = 0; index < position.count; index++) {
+    const z = position.getZ(index);
+    if (Math.abs(z - centerZ) > 0.12) continue;
+    const radius = Math.hypot(position.getX(index) - x, position.getY(index) - y);
+    if (radius < minimumSupportR || radius > maximumSupportR) continue;
+    outerRadiusM = Math.min(outerRadiusM, radius);
+  }
+  if (!Number.isFinite(outerRadiusM)) return null;
+  const courseToleranceM = Math.max(0.004, outerRadiusM * 0.08);
+  let bestZ = -Infinity;
+  for (let index = 0; index < position.count; index++) {
+    const z = position.getZ(index);
+    if (Math.abs(z - centerZ) > 0.12) continue;
+    const radius = Math.hypot(position.getX(index) - x, position.getY(index) - y);
+    if (Math.abs(radius - outerRadiusM) <= courseToleranceM) bestZ = Math.max(bestZ, z);
+  }
+  return Number.isFinite(bestZ) ? { z: bestZ, outerRadiusM } : null;
+}
+
+/**
+ * Radial extent of one authored muzzle part in another object's local frame.
+ * Legacy profiles already carry carefully sized bore rims; when their merged
+ * barrel has no center-spanning end cap, that hidden rim remains the best
+ * deterministic evidence for the terminal tube diameter.
+ */
+function objectRadialRadiusInFrame(
+  object: THREE.Object3D,
+  frame: THREE.Object3D,
+  x: number,
+  y: number,
+): number | null {
+  if (!isVehicleMesh(object)) return null;
+  const position = object.geometry.getAttribute('position');
+  if (!position || position.itemSize < 3) return null;
+  const toFrame = new THREE.Matrix4().copy(frame.matrixWorld).invert()
+    .multiply(object.matrixWorld);
+  const point = new THREE.Vector3();
+  let radius = 0;
+  for (let index = 0; index < position.count; index++) {
+    point.fromBufferAttribute(position, index).applyMatrix4(toFrame);
+    radius = Math.max(radius, Math.hypot(point.x - x, point.y - y));
+  }
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
 
 interface RestContactReceipt {
@@ -9036,9 +9542,11 @@ export function createTank(
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
   const authoredDiscs: THREE.Object3D[] = [];
+  const legacyTipDots: THREE.Object3D[] = [];
   root.traverse((object) => {
     if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
     else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
+    else if (object.name === 'muzzleTipShadowDot') legacyTipDots.push(object);
   });
   const nearestMuzzlePart = (parts: THREE.Object3D[]): THREE.Object3D | null => parts
     .map((part) => ({
@@ -9053,29 +9561,28 @@ export function createTank(
     part.userData.cannonBorePrimaryPart = false;
     part.userData.cannonBoreSuppressed = true;
   }
-  const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
+  // Some transitional profiles put the MG-scale shadow-dot helper directly
+  // on the main-gun centerline (notably Type 99A/VT-4A1). Keep true coax/MG
+  // dots, but suppress a dot close enough to the main muzzle axis/plane that
+  // it would cap and occlude the measured fleet throat.
+  for (const dot of legacyTipDots) {
+    const local = muzzle.worldToLocal(dot.getWorldPosition(new THREE.Vector3()));
+    if (Math.hypot(local.x, local.y) > 0.045 || Math.abs(local.z) > 0.25) continue;
+    dot.visible = false;
+    dot.userData.cannonBoreSuppressed = true;
+  }
+  const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
-  const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
-    Math.min(muzzleOuterR * 0.72, caliberRadius));
-  const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.12);
   const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
   const boreSegments = Number.isInteger(authoredBoreSegments)
     ? THREE.MathUtils.clamp(authoredBoreSegments, 12, 32)
     : spec.gun.caliberMm <= 40 ? 12 : 18;
-  const boreRimGeo = new THREE.TorusGeometry(
-    muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
-  const boreAnnulusGeo = new THREE.RingGeometry(
-    muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
-  // Slightly overlap the annulus: a hairline gap between separate meshes can
-  // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
-  const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
   // TWIN-BORE KNOB (owner order 2026-08-17, "2 shooting holes for both its
   // barrels"): `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
   // offsets at the muzzle plane) installs one rim/annulus/disc assembly PER
-  // barrel tip, each seated by the same capZ ray at its own axis. ABSENT =>
-  // the exact legacy single-assembly path below runs once at the authored/
-  // center axis — byte-identical geometry, names, seating and disposal
-  // order (§5.279 absent-param loader-law pattern).
+  // barrel tip, each measured and seated independently at its own axis.
+  // ABSENT => one assembly is still created on the authored/center axis, but
+  // it now inherits the physical terminal tube/brake radius and lip plane.
   const muzzleDefs = authoredMuzzles.length ? authoredMuzzles : [null];
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
   // authored bore at its own seated tip, parented under its tube group so a
@@ -9086,17 +9593,175 @@ export function createTank(
   for (let mi = 0; mi < muzzleDefs.length; mi++) {
     const def = muzzleDefs[mi];
     const suffix = mi > 0 ? `_${mi}` : '';
+    const independentBarrel = def && barrelGs[mi] ? barrelGs[mi] : null;
+    const boreParent = independentBarrel || muzzle;
+    const boreBaseZ = independentBarrel ? P.muzzleZ : 0;
+    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
+    // visual gate measured legacy brake caps from behind the nominal anchor to
+    // 5.5 cm beyond it. Seat against the real centerline face instead of using
+    // a fleet-wide offset (which would float in front of already-correct tubes).
+    let boreX = 0, boreY = 0;
+    let authoredFaceParentZ: number | null = null;
+    if (def) {
+      // Spec-driven barrel axis: the assembly seats at its own lateral
+      // offset; authored bore furniture stays suppressed exactly as in the
+      // single-mouth path (nearest-part refinement is a centerline-only law).
+      boreX = def.x || 0;
+      boreY = def.y || 0;
+    } else {
+      const authoredSeat = authoredBore || authoredRim;
+      if (authoredSeat) {
+        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
+        boreX = authoredLocal.x;
+        boreY = authoredLocal.y;
+        // The hidden disc is intentionally recessed; use the authored RIM
+        // plane as the supported face. Seating from the disc plane put the
+        // replacement throat behind retained solid caps on Sheridan-family
+        // launchers and several bespoke muzzle brakes.
+        const authoredFace = authoredRim || authoredSeat;
+        authoredFaceParentZ = muzzle.worldToLocal(
+          authoredFace.getWorldPosition(new THREE.Vector3())).z;
+      }
+    }
+    // Inspect the complete elevating gun subtree, not only the merged `gun`
+    // buckets. Modern profiles also carry discrete muzzle-brake baffles and
+    // front plates as direct meshes (AbramsX/KF51); ignoring those left the
+    // throat behind a still-visible solid face. Casemate families that bake
+    // the long tube into hull-owned buckets get a narrow fallback scan around
+    // the authored muzzle plane.
+    const capSelection: {
+      profile: AxisGeometryCapProfile | null;
+      faceParentZ: number | null;
+      recoilZ: number | null;
+      supportSource: 'terminal-cap' | 'terminal-edge' | null;
+    } = {
+      profile: null,
+      faceParentZ: null,
+      recoilZ: null,
+      supportSource: null,
+    };
+    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
+    const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
+      isVehicleMesh(surface)
+      && surface.visible
+      && !surface.userData.shadowOnly
+      && !surface.userData.cannonBore
+      && !surface.userData.cannonBoreSuppressed
+      && materialWritesColor(surface.material);
+    const acceptProfile = (
+      surface: VehicleMesh,
+      axisLocal: THREE.Vector3,
+      profile: AxisGeometryCapProfile,
+      supportSource: 'terminal-cap' | 'terminal-edge',
+    ) => {
+      const capWorld = surface.localToWorld(
+        new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
+      const candidateRecoilZ = recoilG.worldToLocal(capWorld.clone()).z;
+      if (supportSource === 'terminal-cap'
+          && capSelection.recoilZ != null
+          && candidateRecoilZ <= capSelection.recoilZ) return;
+      capSelection.profile = profile;
+      capSelection.recoilZ = candidateRecoilZ;
+      capSelection.faceParentZ = boreParent.worldToLocal(capWorld.clone()).z;
+      capSelection.supportSource = supportSource;
+    };
+    const scanCapRoot = (surfaceRoot: THREE.Object3D, behindM: number, aheadM: number) => {
+      surfaceRoot.traverse((surface) => {
+        if (!isMouthSurface(surface)) return;
+        const axisLocal = surface.worldToLocal(axisWorld.clone());
+        const profile = axisGeometryCapProfile(surface.geometry, axisLocal.x, axisLocal.y,
+          axisLocal.z - behindM, axisLocal.z + aheadM);
+        if (profile) acceptProfile(surface, axisLocal, profile, 'terminal-cap');
+      });
+    };
+    const primarySurfaceRoot = independentBarrel || gunG;
+    scanCapRoot(primarySurfaceRoot, 2, 1);
+    if (!capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
+    if (!capSelection.profile) {
+      let edgeRadius = Infinity;
+      const scanEdgeRoot = (surfaceRoot: THREE.Object3D) => {
+        surfaceRoot.traverse((surface) => {
+          if (!isMouthSurface(surface)) return;
+          const axisLocal = surface.worldToLocal(axisWorld.clone());
+          const profile = axisGeometryMouthEdgeProfile(
+            surface.geometry, axisLocal.x, axisLocal.y, axisLocal.z, caliberRadius);
+          if (!profile || profile.outerRadiusM >= edgeRadius) return;
+          edgeRadius = profile.outerRadiusM;
+          acceptProfile(surface, axisLocal, profile, 'terminal-edge');
+        });
+      };
+      scanEdgeRoot(primarySurfaceRoot);
+      scanEdgeRoot(hullG);
+    }
+    let capOffset = 0;
+    if (capSelection.recoilZ != null) {
+      capOffset = Math.max(-0.2, Math.min(0.5, capSelection.recoilZ - P.muzzleZ));
+    }
+
+    // Size every visible mouth from the actual terminal surface. The former
+    // fleet-wide radius inherited the donor's main-gun armor value; that made
+    // BMPT's 30 mm mouths 4.3x wider than their 22 mm terminal tubes. A hidden
+    // profile-authored rim is the deterministic fallback when an open or
+    // unusually tessellated barrel has no center-spanning cap triangle.
+    root.updateMatrixWorld(true);
+    const authoredOuterR = !def && authoredRim
+      ? objectRadialRadiusInFrame(authoredRim, muzzle, boreX, boreY)
+      : null;
+    const capOuterR = capSelection.profile
+      && capSelection.profile.outerRadiusM >= 0.005
+      && capSelection.profile.outerRadiusM <= 0.65
+      ? capSelection.profile.outerRadiusM
+      : null;
+    const validAuthoredOuterR = authoredOuterR
+      && authoredOuterR >= 0.005
+      && authoredOuterR <= 0.65
+      ? authoredOuterR
+      : null;
+    const supportOuterR = capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
+    const supportSource = capOuterR ? capSelection.supportSource || 'terminal-cap'
+      : validAuthoredOuterR ? 'authored-rim'
+        : 'nominal-spec';
+    const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
+    const muzzleOuterR = Math.max(0.006, Math.min(
+      capFitOuterR,
+      validAuthoredOuterR || nominalMuzzleOuterR,
+    ));
+    const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
+      Math.min(muzzleOuterR * 0.72, caliberRadius));
+    const muzzleRimR = Math.max(0.001, muzzleOuterR * 0.12);
+    const boreRimGeo = new THREE.TorusGeometry(
+      muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
+    const boreAnnulusGeo = new THREE.RingGeometry(
+      muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
+    // Slightly overlap the annulus: a hairline gap between separate meshes can
+    // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
+    const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
+    disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
+
+    const lipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
+    const annulusForwardM = Math.min(0.0022, lipAdvanceM * 0.55);
+    const discForwardM = Math.min(0.0012, lipAdvanceM * 0.34);
+    const seatedFaceParentZ = capSelection.faceParentZ
+      ?? authoredFaceParentZ
+      ?? boreBaseZ;
     const fallbackBore = new THREE.Group();
     fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
     fallbackBore.userData.cannonBore = true;
     fallbackBore.userData.caliberMm = spec.gun.caliberMm;
+    fallbackBore.userData.capOffsetM = capOffset;
+    fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
+      revision: 'terminal-surface-fit-r1',
+      supportSource,
+      supportOuterRadiusM: supportOuterR,
+      outerRadiusM: muzzleOuterR,
+      radialRatio: muzzleOuterR / supportOuterR,
+      lipAdvanceM,
+      annulusForwardM,
+      discForwardM,
+    });
+    fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
     fallbackBore.visible = true;
-    // The measured seating pass below replaces this nominal 32 mm lip. Keep a
-    // safe default for profiles whose center ray has no renderable cap.
-    const independentBarrel = def && barrelGs[mi] ? barrelGs[mi] : null;
-    const boreParent = independentBarrel || muzzle;
-    const boreBaseZ = independentBarrel ? P.muzzleZ : 0;
-    fallbackBore.position.z = boreBaseZ + 0.032;
+
     const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
     boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
     boreRim.userData.cannonBoreFallbackPart = true;
@@ -9106,71 +9771,21 @@ export function createTank(
     boreAnnulus.name = `muzzleBoreShadowFallbackAnnulus${suffix}`;
     boreAnnulus.userData.cannonBoreFallbackPart = true;
     boreAnnulus.userData.cannonBorePrimaryPart = true;
-    boreAnnulus.position.z = -0.002;
+    boreAnnulus.position.z = annulusForwardM - lipAdvanceM;
     boreAnnulus.visible = true;
     const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
     boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
     boreDisc.userData.cannonBoreFallbackPart = true;
     boreDisc.userData.cannonBorePrimaryPart = true;
-    // The disc sits 14 mm behind the ring center: after seating, the throat is
-    // 18 mm and the lip is 32 mm beyond the actual cap. This preserves the read
-    // as a recess without disabling depth testing (which would leak through
-    // tanks when the cannon points away from the camera).
-    boreDisc.position.z = -0.014;
+    // Keep the dark disc barely proud of retained legacy cap triangles while
+    // recessing it behind the lip. This removes the former 32 mm floating
+    // plate without introducing z-fighting or depth-test leakage.
+    boreDisc.position.z = discForwardM - lipAdvanceM;
     boreDisc.visible = true;
     for (const part of [boreRim, boreAnnulus, boreDisc]) {
       part.castShadow = false;
       part.receiveShadow = true;
       fallbackBore.add(part);
-    }
-    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
-    // visual gate measured legacy brake caps from behind the nominal anchor to
-    // 5.5 cm beyond it. Seat against the real centerline face instead of using
-    // a fleet-wide offset (which would float in front of already-correct tubes).
-    let boreX = 0, boreY = 0;
-    if (def) {
-      // Spec-driven barrel axis: the assembly seats at its own lateral
-      // offset; authored bore furniture stays suppressed exactly as in the
-      // single-mouth path (nearest-part refinement is a centerline-only law).
-      boreX = def.x || 0;
-      boreY = def.y || 0;
-      fallbackBore.position.set(boreX, boreY, boreBaseZ + 0.032);
-    } else {
-      const authoredSeat = authoredBore || authoredRim;
-      if (authoredSeat) {
-        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
-        boreX = authoredLocal.x;
-        boreY = authoredLocal.y;
-        // If the nominal rig anchor is far from a hand-authored tube (M60A2),
-        // retain the authored face as the fallback before the cap ray refines it.
-        fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
-      }
-    }
-    // The muzzle face is authored in recoilG: barrel/brake geometry uses the
-    // `gun` buckets, while mantlet/cradle parts live in gunG and hull/turret
-    // geometry cannot own the bore. Raycasting the entire tank made every cold
-    // garage preview test tens of thousands of unrelated hull/track triangles
-    // (one constrained Leopard switch spent >200 ms here). Restricting the
-    // exact same centerline ray to its semantic owner preserves the measured
-    // cap point while removing that first-use stall. Both merged gun material
-    // buckets count: autocannon tips such as BMP-2 deliberately put their
-    // centerline cap in `gunDark`, exactly as the former generic ray did.
-    let capZ = null;
-    const surfaceNames = independentBarrel
-      ? [`gunBarrel${mi}`, `gunBarrel${mi}Dark`]
-      : ['gun', 'gunDark'];
-    for (const name of surfaceNames) {
-      const surface = (independentBarrel || recoilG).getObjectByName(name);
-      if (!surface || !isVehicleMesh(surface)) continue;
-      const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
-        P.muzzleZ - 2, P.muzzleZ + 1);
-      if (z != null && (capZ == null || z > capZ)) capZ = z;
-    }
-    let capOffset = 0;
-    if (capZ != null) {
-      capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
-      fallbackBore.position.z = boreBaseZ + capOffset + 0.032;
-      fallbackBore.userData.capOffsetM = capOffset;
     }
     boreParent.add(fallbackBore);
     fallbackBore.visible = true;
@@ -9182,7 +9797,6 @@ export function createTank(
       muzzleTips.push(tip);
     }
   }
-  disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);
@@ -9542,6 +10156,55 @@ export function createTank(
     turretG.rotation.y = popYaw0 + POP_SPIN * popScale * t;
     turretG.rotation.z = Math.min(0.16 + t * 0.45, 0.7) * popScale;
     gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
+  }
+
+  function captureWreckMaterials(): void {
+    // Capture at the intact -> destroyed edge so later-added decoration and
+    // GLB-swapped meshes participate in the burn and can be restored exactly.
+    originalMats.length = 0;
+    if (geometryOnly) return;
+    root.traverse((object) => {
+      if (!isVehicleMesh(object)) return;
+      originalMats.push([object, object.material, object.visible]);
+    });
+  }
+
+  function applyWreckMaterials(): void {
+    if (geometryOnly) return;
+    for (const [mesh] of originalMats) {
+      if (!mesh.visible) continue;
+      // Shadow proxies retain their colorWrite:false material so they keep
+      // casting the wreck silhouette without rendering an opaque proxy.
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      if (!materials[0] || materials[0].colorWrite === false) continue;
+      if (materials.length > 1) {
+        for (const material of materials) applyBurnHook(material, burnU);
+      } else if (!applyBurnHook(materials[0], burnU)) {
+        mesh.material = mats.burnt;
+      }
+    }
+  }
+
+  function startWreckPresentation(ageS: number): void {
+    burnU.uBurnLo.value = root.position.y + 0.15;
+    burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
+    for (const decal of decalMeshes) decal.visible = false;
+    wreckAge = ageS;
+    burnU.uBurnT.value = ageS;
+    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
+    burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
+    mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
+    gunG.rotation.x = 0.12;
+    wreckSeat.copy(turretG.position);
+    popYaw0 = turretG.rotation.y;
+  }
+
+  function launchDestroyedTurret(pop: boolean, ageS: number): void {
+    popScale = pop ? 1 : 0.22;
+    popActive = true;
+    popT = ageS;
+    popTrailAcc = 0;
+    applyPop();
   }
 
   const visual: TankVisual = {
@@ -10154,22 +10817,7 @@ export function createTank(
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
       destroyed = true;
-      // lazy capture (see originalMats note): traverse NOW so GLB-swapped
-      // meshes are included in the burnt swap and restorable on rematch.
-      // r4: each entry also records the mesh's CURRENT visibility —
-      // resetDestroyed used to force `visible = true` on everything, which
-      // resurrected the hidden procedural placeholder hull over the GLB on
-      // any rematch (giant black/camo box enclosing the real model).
-      originalMats.length = 0;
-      if (!geometryOnly) {
-        root.traverse((o) => {
-          if (!isVehicleMesh(o)) return;
-          // never char meshes that are not currently rendered (hidden
-          // placeholder hulls, retracted proxies) — charring them was harmless
-          // only until any code path toggled their visibility
-          originalMats.push([o, o.material, o.visible]);
-        });
-      }
+      captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
       // "half-and-half wreck split on a mesh seam" at 1.5 s, and could fly a
@@ -10180,59 +10828,14 @@ export function createTank(
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
-      if (!geometryOnly) {
-        for (const rec of originalMats) {
-          const [mesh] = rec;
-          if (!mesh.visible) continue;
-          // r7 CRITICAL (critic: every GLB wreck renders a bone-white-topped /
-          // void-black-bottomed cutout "missing texture" box): the GLB swap's
-          // SHADOW PROXIES (modelLoader buildShadowProxy — merged low-poly
-          // hull/turret/gun silhouettes) are visible-but-colorWrite:false
-          // meshes sharing one module-level MeshBasicMaterial. applyBurnHook
-          // rejects Basic materials, so the old fallback swapped them to the
-          // OPAQUE shared burnt material — the whole procedural silhouette box
-          // rendered over the wreck (cream where sunlit, lightless black in
-          // shade), and the popped turret flew as a black slab with a pale
-          // proxy gun tube. Never touch a mesh that writes no color: it keeps
-          // casting the wreck's shadow exactly as before.
-          const mm = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          if (!mm[0] || mm[0].colorWrite === false) continue;
-          if (mm.length > 1) {
-            // multi-slot meshes (camo alt-material kits): hook each slot in
-            // place — never collapse the array to the shared burnt swap.
-            for (const sm of mm) applyBurnHook(sm, burnU);
-          } else if (!applyBurnHook(mm[0], burnU)) {
-            mesh.material = mats.burnt;
-          }
-        }
-      }
-      // world-height window for the top-down front (root sits at track level)
-      burnU.uBurnLo.value = root.position.y + 0.15;
-      burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
+      applyWreckMaterials();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
-      for (const d of decalMeshes) d.visible = false;
-      // fresh wreck: front starts sweeping, embers pulse via syncFromState
-      wreckAge = ageS0;
-      burnU.uBurnT.value = ageS0;
-      burnU.uBurnGlow.value = Math.exp(-ageS0 / 0.9) * 1.35; // r7: faster hand-back to char
-      burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS0 / 8);
-      mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS0 / 8);
-      gunG.rotation.x = 0.12; // gun droops on any death
-      // capture the LIVE turret seat on the intact->destroyed edge (GLB
-      // swaps re-seat turretG off the spec pivot; see wreckSeat note). The
-      // early `if (destroyed) return` guarantees this runs once per wreck,
-      // before the pop mutates the position.
-      wreckSeat.copy(turretG.position);
-      popYaw0 = turretG.rotation.y;
+      startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence
       // (the GLB turret node is re-parented into turretG at swap time).
-      popScale = (opts && opts.pop) ? 1 : 0.22;
-      popActive = true;
-      popT = Math.max(0, (opts && opts.ageS) || 0);
-      popTrailAcc = 0;
-      applyPop();
+      launchDestroyedTurret(!!(opts && opts.pop), ageS0);
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 

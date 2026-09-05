@@ -1165,13 +1165,13 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // lofted center nose.  These are inboard armor bridges ahead of the idler
   // sweep—not track covers—and complete the real bow shell without changing
   // the measured outer contour.
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     // §B4 (§5.304 widen): outer face 1.107 = 4 mm inboard of the widened
     // band's inner plane (1.111) — the exact-shared-plane read flagged a
     // one-voxel sheet at the idler wrap rim; the 4 mm shim is sub-voxel and
     // plan-invisible while the inner V-prism/loft seal is unchanged.
     P.add('hull', box(0.172, 0.20, 0.22), s * 1.021, 0.90, 3.44);
-  }
+  });
   // splash-board brow strip on the real glacis deck
   P.add('hull', box(2.75, 0.035, 0.37), 0, 1.43, 1.806, -0.16, 0, 0);
   // Low front service cadence: paired lamps, four lower-plate stiffeners and
@@ -1179,17 +1179,17 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // remains inboard of the front track wraps.
   KIT.headlight(P, -0.506, 1.12, 2.92, -0.28, 0.07);
   KIT.headlight(P, 0.506, 1.12, 2.92, -0.28, 0.07);
-  for (const x of [-0.792, -0.264, 0.264, 0.792]) {
+  [-0.792, -0.264, 0.264, 0.792].forEach((x) => {
     P.add('hullDetail', box(0.13, 0.15, 0.035), x,
       bowService.stiffenerY ?? 0.66, bowService.stiffenerZ ?? 3.555,
       bowService.stiffenerPitch ?? -0.05, 0, 0);
-  }
-  for (const s of [-1, 1]) {
+  });
+  [-1, 1].forEach((s) => {
     P.add('hullDark', box(0.16, 0.10, 0.08), s * 1.012,
       bowService.recoveryY ?? 0.55, bowService.recoveryBodyZ ?? 3.515);
     P.add('hullDetail', cylZ(0.065, 0.035, 10), s * 1.012,
       bowService.recoveryY ?? 0.55, bowService.recoveryEyeZ ?? 3.570);
-  }
+  });
   P.hullG.userData.t62BowServiceReceipt = Object.freeze({
     stiffenerCount: 4,
     stiffenerY: bowService.stiffenerY ?? 0.66,
@@ -1203,29 +1203,31 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   KIT.towCable(P, [[-1.265, 1.43, 1.11], [0, 1.482, 0.65], [1.265, 1.43, 1.11]]);
   // Twin backed engine-deck louvre beds. The shallow ribs are planted on
   // the aft deck and stay below its existing silhouette.
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', box(1.10, 0.025, 0.78), s * 0.682, 1.532, -1.82);
-    for (let i = 0; i < 5; i++) {
+    Array.from({ length: 5 }).forEach((_, i) => {
       P.add('hullDetail', box(1.023, 0.022, 0.045), s * 0.682, 1.550, -2.10 + i * 0.14);
-    }
+    });
     P.add('hull', box(0.418, 0.18, 0.62), s * 1.474, 1.50, -1.70);
     P.add('hullDark', box(0.33, 0.025, 0.50), s * 1.474, 1.603, -1.70);
-  }
+  });
   // fender stowage boxes low on the sponson line
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', box(0.33, 0.09, 1.30), s * 1.364, 1.453, s > 0 ? 0.46 : 1.30);
     P.add('hullDark', box(0.286, 0.02, 0.03), s * 1.364, 1.506, s > 0 ? 1.11 : 0.74);
-  }
+  });
   // ---- TAIL DRUM ROW (decoded): two transverse 200 L drums overhanging the
   // -2.72 rear plate on raked bracket rails; bare center gap |x|<0.078 ----
   // (r 0.30 z_c -3.05, x 0.078..1.06 — ref front-view drum band ends |x|
   // ~1.06 and the ±1.09 column reads its 1.50 deck line)
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', cylX(0.275, 1.080, 14), s * 0.626, 1.68, -3.24);            // drum
-    for (const e of [0.096, 1.156]) P.add('hullDark', cylX(0.279, 0.018, 14), s * e, 1.68, -3.24); // rim caps
+    [0.096, 1.156].forEach((e) => {
+      P.add('hullDark', cylX(0.279, 0.018, 14), s * e, 1.68, -3.24); // rim caps
+    });
     P.add('hullDark', cylX(0.278, 0.016, 14), s * 0.626, 1.68, -3.24);       // mid weld seam
     P.add('hull', box(0.132, 0.45, 0.44), s * 0.682, 1.225, -3.12);            // bracket rails
-  }
+  });
   // center bracket rail, raked bottom 1.02@-2.74 -> 1.40@-3.30 (ref bottom
   // line; also carries the plan center columns to the ref's -3.315 rear)
   P.add('hull', slab(
@@ -1236,25 +1238,29 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // coin-flip; published 6.63 needs that column solidly body). Seated at
   // x ±0.30 UNDER the drums — a center plate topped the front view's bare
   // 1.494 center line.
-  for (const s of [-1, 1]) P.add('hull', box(0.11, 0.27, 0.05), s * 0.33, 1.585, -3.505);
+  [-1, 1].forEach((s) => {
+    P.add('hull', box(0.11, 0.27, 0.05), s * 0.33, 1.585, -3.505);
+  });
   // Backed transom/service panel: unequal vertical bays, tail lamps and
   // recovery points reproduce the source cadence without changing the hull
   // envelope or crossing the track terminal paths.
   P.add('hullDark', box(1.958, 0.34, 0.035), 0, 0.82, -3.192);
-  for (const [x, w] of [[-0.704, 0.374], [-0.242, 0.396], [0.264, 0.462], [0.726, 0.33]]) {
+  [[-0.704, 0.374], [-0.242, 0.396], [0.264, 0.462], [0.726, 0.33]].forEach(([x, w]) => {
     P.add('hullDetail', box(w, 0.28, 0.025), x, 0.82, -3.216);
-  }
-  for (const s of [-1, 1]) {
+  });
+  [-1, 1].forEach((s) => {
     P.add('hullDark', cylZ(0.10, 0.05, 12), s * 1.232, 1.08, -3.205);
     P.add('hullDetail', KIT.torus(0.085, 0.018, 10), s * 0.902, 0.48, -3.225, Math.PI / 2, 0, 0);
-  }
+  });
   // rear flap rails (plan rear -3.13 at |x| 1.20..1.54, ref line)
-  for (const s of [-1, 1]) P.add('hull', box(0.374, 0.05, 0.40), s * 1.507, 1.40, -3.02);
+  [-1, 1].forEach((s) => {
+    P.add('hull', box(0.374, 0.05, 0.40), s * 1.507, 1.40, -3.02);
+  });
   // spare-track-link rows bedded flat on the aft deck (ref top line 1.473)
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullTrack', box(0.946, 0.08, 0.21), s * 0.583, 1.415, -2.55, 0.06, 0, 0);
     P.add('hullTrack', box(0.858, 0.07, 0.17), s * 0.539, 1.425, -2.68, 0.08, 0, 0);
-  }
+  });
   // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->
   // mask-neutral only): common kit strictly inside the certified lines.
   // The tail-drum row carries side 1.92-1.97 over z -2.83..-3.36 and front
@@ -1275,10 +1281,10 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
     P.hullG.add(cable);
   }
   // glacis eye hooks on the lower bow (tow eyes clear of the fwd idler wrap)
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', box(0.10, 0.115, 0.13), s * 1.034, 0.816, 2.519, -0.3, 0, 0);
     P.add('hullDetail', cylZ(0.072, 0.035, 10), s * 1.034, 0.66, 3.30);
-  }
+  });
   buildRunningGear(P, {
     style: 'holes', wheelR: 0.42, wheelW: 0.308, wheelY: 0.455, xc: 1.397, dishR: 0.88,
     wheelZs: [2.235, 1.297, 0.293, -0.791, -1.933],
@@ -1288,13 +1294,13 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
     ...(o.gear || {}),
   });
   // full-length fender runs + segmented outer fender-bin row (r7c prism law)
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', box(0.286, 0.03, 4.46), s * 1.65, 1.482, -0.008);  // ref fender line ends 2.26/-2.24
     P.add('hullDark', box(0.242, 0.012, 0.02), s * 1.65, 1.501, -0.008);
-    for (let i = 0; i < 9; i++) {
+    Array.from({ length: 9 }).forEach((_, i) => {
       P.add('hull', box(0.0605, 0.29, 0.445), s * 1.7732, 1.338, -1.908 + i * 0.4816);
       P.add('hullDark', box(0.055, 0.25, 0.02), s * 1.7754, 1.333, -1.908 + i * 0.4816 + 0.232);
-    }
+    });
     P.add('hull', box(0.0605, 0.25, 0.39), s * 1.7732, 1.26, -2.60, 0.08, 0, 0);  // aft rake bin
     P.add('hull', box(0.055, 0.10, 0.46), s * 1.76, 1.42, -3.00);               // aft fender bracket
     P.add('hull', box(0.0605, 0.24, 0.315), s * 1.7732, 1.325, 2.519, -0.05, 0, 0); // glacis bin
@@ -1302,7 +1308,7 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
     P.add('hull', box(0.484, 0.055, 0.54), s * 1.518, 1.335, 2.75, -0.20, 0, 0);   // front corner guards above shoe crown
     P.add('hull', box(0.638, 0.05, 0.30), s * 1.496, 1.34, 3.16);                  // nose fender tips above shoe crown
     P.add('hull', box(0.0275, 0.25, 0.57), s * 1.76, 1.018, 2.667);
-  }
+  });
   widthAnchor(P, 1.815, 1.344, -0.463);
 }
 

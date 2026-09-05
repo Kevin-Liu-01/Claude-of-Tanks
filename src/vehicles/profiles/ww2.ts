@@ -558,8 +558,8 @@ function buildPziiiKonserwa(P: Ww2BuilderPort): void {
 // sherman_jumbo — docs/references/tanks/sherman_jumbo.md. Slab-sided E2 hull
 // with sand shields, cast transmission nose, huge cast turret, short 75 mm.
 // ---------------------------------------------------------------------------
-function buildShermanJumbo(P: Ww2BuilderPort): void {
-  const { box, cylX, cylY, cylZ, sph, slab, lathe, polyTurret, buildRunningGear, buildGun, periscope, liftEye } = KIT;
+function addShermanJumboRunningGear(P: Ww2BuilderPort): void {
+  const { box, buildRunningGear } = KIT;
   const zc = -0.08;
 
   // VVSS: 3 bogies × 2 wheels + 3 rollers, front sprocket (mostly hidden
@@ -583,7 +583,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
     P.add('hullRunningGearDetail', box(0.14, 0.34, 0.72), s * 1.05, 0.38, z);
     P.add('hullRunningGearDetail', box(0.16, 0.10, 0.30), s * 1.05, 0.62, z - 0.28);
   }
+}
 
+function addShermanJumboHullCore(P: Ww2BuilderPort): void {
+  const { box, slab } = KIT;
   // hull: belly raised between the tracks (ref nose undercut 0.47), slab
   // side band ±1.475 to y 1.80, chamfered sponson tops into the 2.01 roof.
   // DOCUMENTED RESIDENT FIX (ww2 ladder r1, coordinator-sanctioned): the
@@ -678,6 +681,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       [xi, 1.30, -3.05], [xo, 1.30, -3.05], [xo, 1.30, -3.15], [xi, 1.30, -3.15],
       [xi, 1.445, -3.05], [xo, 1.445, -3.05], [xo, 1.445, -3.15], [xi, 1.445, -3.15]));
   }
+}
+
+function addShermanJumboNoseAndShoulders(P: Ww2BuilderPort): void {
+  const { box, cylX, slab } = KIT;
   // cast transmission nose: rounded housing, 3-piece bolted construction —
   // center casting face 2.90, flange plates 2.905, recessed seams at ±0.78.
   P.add('hull', cylX(0.40, 1.46, P.q ? 26 : 12), 0, 0.92, 2.44);            // r2: ends ±0.73 (8cm off the 0.81
@@ -714,6 +721,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       [xi, 1.24, 2.78], [xo, 1.24, 2.78], [xo, 1.30, 2.54], [xi, 1.30, 2.54]));
     P.add('hull', box(0.16, 0.045, 0.30), s * 1.37, 1.27, 2.62);             // tip deck strip over the track
   }
+}
+
+function addShermanJumboSponsonShoulders(P: Ww2BuilderPort): void {
+  const { slab } = KIT;
   // sponson top chamfers: 1.865 at ±1.475 -> 2.012 at ±1.20 (ref front
   // curve); the rear section's top edge FOLLOWS the falling engine deck.
   for (const s of [-1, 1]) {
@@ -727,7 +738,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       s > 0 ? [1.18, 2.00, -0.88] : [-1.475, 1.83, -0.88], s > 0 ? [1.475, 1.83, -0.88] : [1.18, 2.00, -0.88],
       s > 0 ? [1.475, 1.745, -2.44] : [1.18, 1.79, -2.44], s > 0 ? [1.18, 1.79, -2.44] : [-1.475, 1.745, -2.44]));
   }
+}
 
+function addShermanJumboHullFurniture(P: Ww2BuilderPort): void {
+  const { box, cylZ, sph, periscope } = KIT;
   // glacis furniture: hoods, MG ball, lights, shackles, spare links
   for (const [hx, hz] of [[-0.55, 1.72], [0.55, 1.72]]) {
     P.add('hull', box(0.50, 0.12, 0.44), hx, 1.92, hz, -0.45, 0, 0);         // driver/co-driver hoods (ref tops 2.04-2.09)
@@ -759,7 +773,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   }
   P.decal('hull', 'star', null, 0.55, [1.478, 1.30, 0.4], Math.PI / 2);
   P.decal('hull', 'star', null, 0.55, [-1.478, 1.30, 0.4], -Math.PI / 2);
+}
 
+function addShermanJumboTurretShell(P: Ww2BuilderPort): void {
+  const { box, cylY, slab, lathe } = KIT;
   // T23-style cast turret, rebuilt to the print's measured plan/side curves:
   // wall shell on the exact plan polygon, egg-lathe crown capped at 2.98
   // (published heightM 2.95 owns p95 — the print's own crown rides 3.03-3.13,
@@ -839,6 +856,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
     [-0.70, 0.60, 0.40], [0.24, 0.60, 0.40], [0.22, 0.60, -0.78], [-0.66, 0.60, -0.78],   // the grace-free line under
     [-0.70, 0.975, 0.40], [0.24, 0.975, 0.40], [0.22, 0.975, -0.78], [-0.66, 0.975, -0.78])); // the ref's 3.03-3.12 band
                                                                              // (base 0.60 buried in the drum — no slit)
+}
+
+function addShermanJumboTurretFurniture(P: Ww2BuilderPort): void {
+  const { box, cylX, cylY, periscope, liftEye } = KIT;
   // roof furniture — print parity: cupola LEFT (x -0.70), loader oval RIGHT
   P.add('turret', cylY(0.26, 0.28, 0.16, 16), -0.65, 0.865, -1.10);          // commander cupola drum (probe: ref
   P.add('turret', cylY(0.225, 0.225, 0.035, 16), -0.65, 0.9575, -1.10);      //  cupola-zone tops 2.99; ours caps at
@@ -876,7 +897,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   liftEye(P, 'turretDetail', 0.92, 0.62, 0.35, -0.5);
   P.decal('turret', 'number', P.spec.visual.number || 'C-12', 0.28, [1.13, 0.30, -0.35], Math.PI / 2, 0, 0.10);
   P.decal('turret', 'number', P.spec.visual.number || 'C-12', 0.28, [-1.13, 0.30, -0.35], -Math.PI / 2, 0, -0.10);
+}
 
+function addShermanJumboGun(P: Ww2BuilderPort): void {
+  const { box, cylZ, slab, buildGun } = KIT;
   // 75 mm M3 in the huge M62-style combination mount: tapering rotor from
   // the dome front, big flat shield face at z 1.37, sleeve, then the short
   // tube to +3.18 (published overall 6.35 = the print's muzzle exactly).
@@ -912,6 +936,17 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   P.addGunExtraDark(box(0.20, 0.06, 0.028), 0, -0.06, 2.198);                // err against the ref's 2.19..2.42 tube
                                                                              // band (dark hinge line, interior)
   P.topY = 1.30;
+}
+
+function buildShermanJumbo(P: Ww2BuilderPort): void {
+  addShermanJumboRunningGear(P);
+  addShermanJumboHullCore(P);
+  addShermanJumboNoseAndShoulders(P);
+  addShermanJumboSponsonShoulders(P);
+  addShermanJumboHullFurniture(P);
+  addShermanJumboTurretShell(P);
+  addShermanJumboTurretFurniture(P);
+  addShermanJumboGun(P);
 }
 
 // ---------------------------------------------------------------------------
@@ -1848,9 +1883,9 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // reads as a center-crossing audit candidate. Re-authored identically
   // but ending at ±2.50, outside both zone windows.
   P.clear('hullShadow');
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullRunningGearDark', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
-  }
+  });
 
   // hull: belly between the tracks + ONE full-width superstructure box with
   // the pannier floor CLEAR of the shoe run (floor 1.26 vs crest 1.235).
@@ -1872,11 +1907,11 @@ function buildTigerI(P: Ww2BuilderPort): void {
     [-1.855, 1.96, 2.595], [1.855, 1.96, 2.595], [1.855, 1.96, 2.46], [-1.855, 1.96, 2.46]));
   // interlocking-plate weld seams (photo tell): stepped dark engravings at
   // the driver-plate/side joins + nose corner.
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', box(0.022, 0.30, 0.030), s * 1.845, 1.72, 2.575, -0.085, 0, 0);
     P.add('hullDark', box(0.022, 0.16, 0.030), s * 1.845, 1.42, 2.63, -0.085, 0, 0);
     P.add('hullDark', box(0.030, 0.022, 0.26), s * 1.04, 0.90, 3.00);
-  }
+  });
   // rear plate + lower stern chamfer
   P.add('hull', box(3.67, 0.66, 0.06), 0, 1.62, -3.135);
   P.add('hull', slab(
@@ -1885,7 +1920,7 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // pannier floor over the gear + front/rear mudguards (§B4: underside
   // 1.256 over the 1.235 sprocket crest; tips inside ±3.16).
   fenders(P, 1.08, 1.845, 1.27, -3.13, 2.51, 0.028);
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', mslab(s,                                                   // front mudguard over the sprocket
       [1.08, 1.256, 2.51], [1.845, 1.256, 2.51], [1.845, 1.256, 2.49], [1.08, 1.256, 2.49],
       [1.08, 1.30, 3.15], [1.845, 1.30, 3.15], [1.845, 1.35, 2.53], [1.08, 1.35, 2.53]));
@@ -1899,7 +1934,7 @@ function buildTigerI(P: Ww2BuilderPort): void {
       thickness: 0.024, length: 0.70, height: 0.24, material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.010, rearCut: 0.04,
     });                                                                        // rear rubber flaps
-  }
+  });
   // bow furniture: Kugelblende ball MG (right), driver visor (left)
   P.add('hullDark', sph(0.135, P.q ? 22 : 12), 0.55, 1.68, 2.60);
   P.add('hullDark', cylZ(0.05, 0.16, 10), 0.55, 1.68, 2.72);
@@ -1915,21 +1950,21 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // §5.247 r3: lamp conduit down the shelf face (the floating-lamp read) +
   // width-indicator rods with pale tips on both front fender corners.
   P.add('hullDark', box(0.016, 0.30, 0.016), -0.09, 1.15, 2.86, -0.52, 0, 0);
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', cylY(0.008, 0.008, 0.34, 6), s * 1.79, 1.475, 3.08);
     P.add('hullDetail', sph(0.017, 8), s * 1.79, 1.655, 3.08);
-  }
+  });
   // §5.247 r3: bow shackle horns on the interlocked nose corners (pin hole +
   // hanging shackle; everything <= z 3.155 inside the 6.32 m hull law) and
   // matching stern horns at -3.15.
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', box(0.085, 0.16, 0.20), s * 0.97, 0.90, 3.05);
     P.add('hullDark', cylX(0.028, 0.10, 8), s * 0.97, 0.90, 3.10);
     P.add('hullDark', KIT.torus(0.05, 0.013, 10), s * 0.97, 0.845, 3.115, 0.35, 0, 0);
     P.add('hullDetail', cylX(0.014, 0.11, 8), s * 0.97, 0.895, 3.115);
     P.add('hull', box(0.085, 0.16, 0.18), s * 0.97, 0.90, -3.065);
     P.add('hullDark', cylX(0.028, 0.10, 8), s * 0.97, 0.90, -3.11);
-  }
+  });
   // spare links in a mounting frame on the driver plate + deck-edge strip
   P.add('hull', box(0.62, 0.44, 0.04), 0.85, 1.60, 2.625, -0.085, 0, 0);
   {
@@ -1945,7 +1980,7 @@ function buildTigerI(P: Ww2BuilderPort): void {
   spareTrackStrip(P, 'hull', 1.55, 2.005, 0.6, 3);
   // rear plate: twin shrouded stacks SEATED ON the plate (§B2 — the old
   // free-standing drums left enclosed cells behind them) + Feifel cleaners.
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hull', box(0.50, 0.90, 0.22), s * 0.55, 1.90, -3.195);            // shroud box against the plate
     P.add('hullDetail', cylY(0.175, 0.185, 1.00, 14), s * 0.55, 1.86, -3.22);// muffler drum inside the shroud line
     P.add('hull', box(0.54, 0.07, 0.26), s * 0.55, 2.38, -3.19);             // shroud cap lip
@@ -1961,12 +1996,12 @@ function buildTigerI(P: Ww2BuilderPort): void {
     // §5.247 r3: the Feifel CORRUGATED hose read (packet residual) — a short
     // ringed run from each canister top over the deck lip (tube + 4 ribs).
     P.add('hullDark', cylZ(0.038, 0.34, 8), s * 1.26, 1.985, -3.05, -0.165, 0, 0);
-    for (let k = 0; k < 4; k++) {
+    Array.from({ length: 4 }).forEach((_, k) => {
       const f = -0.135 + k * 0.09;
       P.add('hullDark', KIT.torus(0.045, 0.011, 8),
         s * 1.26, 1.985 + 0.164 * f, -3.05 + 0.986 * f, -0.165, 0, 0);
-    }
-  }
+    });
+  });
   // §5.247 r3: rear-plate spare-link column between the shroud faces (±0.30)
   // — flat against the plate (rx 90), inside the certified -3.315 stern
   // envelope: back faces -3.2125.
@@ -1979,23 +2014,25 @@ function buildTigerI(P: Ww2BuilderPort): void {
   P.decal('hull', 'soot', null, 0.85, [0.55, 1.78, -3.34], Math.PI);
   P.decal('hull', 'soot', null, 0.85, [-0.55, 1.78, -3.34], Math.PI);
   // S-mine dischargers on the four superstructure corners
-  for (const s of [-1, 1]) {
-    for (const [zc, lean] of [[2.42, 0.18], [-2.88, -0.18]]) {
+  [-1, 1].forEach((s) => {
+    [[2.42, 0.18], [-2.88, -0.18]].forEach(([zc, lean]) => {
       P.add('hullDetail', cylY(0.068, 0.075, 0.17, 10), s * 1.72, 2.065, zc, lean, 0, s * 0.22);
       P.add('hullDark', cylY(0.052, 0.052, 0.03, 10), s * 1.725, 2.155, zc + lean * 0.05, lean, 0, s * 0.22);
-    }
-  }
+    });
+  });
   // rear deck: radiator wells + louvers + fan rings + engine hatch disc
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', box(0.78, 0.02, 1.28), s * 1.14, 1.99, -2.28);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', box(0.70, 0.028, 0.075), s * 1.14, 2.002, -1.77 - k * 0.195);
+    Array.from({ length: 6 }).forEach((_, k) => {
+      P.add('hullDetail', box(0.70, 0.028, 0.075), s * 1.14, 2.002, -1.77 - k * 0.195);
+    });
     P.add('hull', box(0.045, 0.035, 1.32), s * 0.74, 1.996, -2.28);
     P.add('hull', box(0.045, 0.035, 1.32), s * 1.54, 1.996, -2.28);
     P.add('hullDark', cylY(0.26, 0.26, 0.018, P.q ? 22 : 12), s * 1.02, 1.992, -1.30);
     P.add('hullDetail', KIT.torus(0.26, 0.022, P.q ? 20 : 12), s * 1.02, 1.999, -1.30);
     P.add('hullDetail', box(0.46, 0.02, 0.05), s * 1.02, 2.002, -1.30);
     P.add('hullDetail', box(0.05, 0.02, 0.46), s * 1.02, 2.002, -1.30);
-  }
+  });
   P.add('hull', cylY(0.30, 0.30, 0.035, P.q ? 22 : 12), 0, 1.996, -2.02);
   P.add('hullDark', KIT.torus(0.30, 0.014, P.q ? 22 : 12), 0, 2.006, -2.02);
   // §5.247 r3: engine-hatch furniture (hinge tabs + lift handle) and fuel
@@ -2003,10 +2040,10 @@ function buildTigerI(P: Ww2BuilderPort): void {
   P.add('hullDetail', box(0.06, 0.028, 0.10), -0.30, 2.016, -2.10);
   P.add('hullDetail', box(0.06, 0.028, 0.10), 0.30, 2.016, -2.10);
   P.add('hullDark', box(0.15, 0.022, 0.035), 0, 2.02, -1.85);
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDetail', cylY(0.052, 0.058, 0.025, 10), s * 0.52, 2.008, -1.60);
     P.add('hullDark', box(0.075, 0.012, 0.02), s * 0.52, 2.026, -1.60);
-  }
+  });
   periscope(P, 'hullDetail', -0.50, 2.01, 2.30);
   liftEye(P, 'hullDetail', -1.60, 2.04, 2.30);
   liftEye(P, 'hullDetail', 1.60, 2.04, 2.30);
@@ -2014,11 +2051,11 @@ function buildTigerI(P: Ww2BuilderPort): void {
   towCable(P, [[1.72, 1.92, -2.3], [1.83, 1.98, 0.0], [1.72, 1.92, 2.35]]);
   // §5.247 r3: cable terminations — shackle eyes at the bow ends, clamp
   // blocks at the stern ends (the r2 tubes ended bare in mid-deck).
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('hullDark', KIT.torus(0.042, 0.012, 10), s * 1.70, 1.92, 2.42, Math.PI / 2, 0, 0);
     P.add('hullDetail', box(0.05, 0.03, 0.09), s * 1.72, 1.92, 2.36);
     P.add('hullDark', box(0.06, 0.05, 0.10), s * 1.72, 1.925, -2.34);
-  }
+  });
   // §5.247 r3: 2 m rod antenna, right rear deck (FITTINGS census; raked so
   // the tip stays under the 3.00 m cupola-crest height law).
   {
@@ -2076,13 +2113,13 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // §5.247 r3: the drum cupola's five WALL vision slits (dark + glass, deep
   // enough to read at side range — the r2 rim ring only read at close-up),
   // a brow rain strip over each, and hatch furniture (grab bar + latch).
-  for (let k = 0; k < 5; k++) {
+  Array.from({ length: 5 }).forEach((_, k) => {
     const a = (k / 5) * Math.PI * 2 + 0.35;
     const sx = -0.62 + Math.sin(a) * 0.285, sz = -0.48 + Math.cos(a) * 0.285;
     P.add('turretDark', box(0.105, 0.055, 0.05), sx, TH + 0.145, sz, 0, a, 0);
     P.add('turretGlass', box(0.075, 0.026, 0.052), sx, TH + 0.145, sz, 0, a, 0);
     P.add('turret', box(0.13, 0.022, 0.055), sx, TH + 0.19, sz, 0, a, 0);
-  }
+  });
   P.add('turretDark', box(0.16, 0.02, 0.025), -0.62, TH + 0.285, -0.40);     // lid grab bar
   P.add('turretDetail', box(0.045, 0.03, 0.045), -0.54, TH + 0.275, -0.56);  // latch block
   P.add('turret', cylY(0.21, 0.21, 0.05, 12), 0.55, TH + 0.055, -0.55);
@@ -2120,9 +2157,9 @@ function buildTigerI(P: Ww2BuilderPort): void {
     [px, pz] = at(1.402, -0.15);
     P.add('turretDark', box(0.045, 0.03, 0.09), px, 0.30, pz, 0, ry, 0);     // handle
   }
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.add('turret', box(0.05, 0.06, 0.72), s * (TW + 0.02), 0.58, -0.30);    // hanger rail
-    for (let k = 0; k < 2; k++) {
+    Array.from({ length: 2 }).forEach((_, k) => {
       const jr = (rng() - 0.5) * 0.07;
       const z = -0.08 - k * 0.36;
       P.add('turret', box(0.09, 0.05, 0.05), s * (TW + 0.03), 0.56, z, jr, 0, s * jr);
@@ -2130,23 +2167,23 @@ function buildTigerI(P: Ww2BuilderPort): void {
       P.add('turretTrack', box(0.15, 0.13, 0.055), s * (TW + 0.09), 0.34, z, jr, 0, s * jr);
       P.add('turretTrack', box(0.06, 0.10, 0.10), s * (TW + 0.115), 0.20, z, jr, 0, s * jr);
       P.add('turretTrack', xform2(cylY(0.028, 0.028, 0.44, 8), 0, 0, 0), s * (TW + 0.10), 0.34, z + 0.085, jr, 0, s * jr);
-    }
-  }
+    });
+  });
   // full-arc rear Gepaeckkasten (three wrapped segments)
   // §5.247 r3: straps widened 0.03 -> 0.055 + a top rib per segment so the
   // seams survive the top view (packet residual).
-  for (const [ang, wseg] of [[0, 1.15], [0.72, 1.0], [-0.72, 1.0]]) {
+  [[0, 1.15], [0.72, 1.0], [-0.72, 1.0]].forEach(([ang, wseg]) => {
     const br2 = TW + 0.23;
     const bx = Math.sin(ang) * br2, bz = -0.52 - Math.cos(ang) * br2;
     P.add('turret', box(wseg, 0.44, 0.42), bx, 0.40, bz, 0, -ang, 0);
     P.add('turret', box(wseg * 0.9, 0.10, 0.34), bx, 0.645, bz, 0, -ang, 0);
-    for (const f of [-0.3, 0.3]) {
+    [-0.3, 0.3].forEach((f) => {
       P.add('turretDark', box(0.055, 0.47, 0.44), bx + Math.cos(ang) * f * wseg, 0.40,
         bz + Math.sin(ang) * f * wseg, 0, -ang, 0);
       P.add('turretDark', box(0.055, 0.022, 0.36), bx + Math.cos(ang) * f * wseg, 0.702,
         bz + Math.sin(ang) * f * wseg, 0, -ang, 0);
-    }
-  }
+    });
+  });
   P.decal('turret', 'number', P.spec.visual.number || '212', 0.42, [TW + 0.05, 0.42, 0.3], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '212', 0.42, [-TW - 0.05, 0.42, 0.3], -Math.PI / 2);
 
@@ -2157,9 +2194,9 @@ function buildTigerI(P: Ww2BuilderPort): void {
   P.addGunExtra(box(2.48, 0.78, 0.14), 0, 0, 0.12);                          // sealing backplate
   P.addGunExtra(xform2(cylY(0.37, 0.37, 2.46, msg, false, -1.25, 2.5),
     0, 0, 0, 0, 0, Math.PI / 2), 0, 0, 0.13);                                // curved shield
-  for (const s of [-1, 1]) {
+  [-1, 1].forEach((s) => {
     P.addGunExtra(xform2(cylX(0.16, 0.18, 12), 0, 0, 0), s * 1.15, 0, 0.30); // trunnion bosses
-  }
+  });
   P.addGunExtra(cylZ(0.24, 0.30, msg, 0.215), 0, 0, 0.52);                   // stepped collar
   P.addGunExtra(cylZ(0.185, 0.26, msg, 0.165), 0, 0, 0.74);
   P.addGunExtraDark(cylZ(0.035, 0.14, 8), 0.34, -0.06, 0.44);                // coax bore

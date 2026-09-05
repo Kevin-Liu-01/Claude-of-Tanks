@@ -38,6 +38,22 @@ export interface CollisionRecord {
   __gridStamp?: number;
 }
 
+function isDenseCrushableCover(kind: string | undefined): boolean {
+  return kind === 'wallstone' || kind === 'walladobe' ||
+    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall';
+}
+
+/**
+ * Lightweight world cover reacts to a shell but never consumes it. Dense
+ * masonry/adobe walls and sandbag fortifications remain real ballistic cover
+ * even though a sufficiently forceful hull can eventually crush them.
+ */
+export function shellPassesThroughCollisionRecord(
+  record: CollisionRecord | null | undefined,
+): record is CollisionRecord {
+  return record?.crushable === true && !isDenseCrushableCover(record.kind);
+}
+
 interface Position2 {
   x: number;
   z: number;

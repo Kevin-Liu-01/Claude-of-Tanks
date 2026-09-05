@@ -438,7 +438,7 @@ function resolveShellHit(shell, ray, tank, distanceTraveled):
             hullPenetrated = true
             tank.hp -= dmg                                       # 5. damage roll applied
             pen -= eff
-            limit ray length to 10 * caliber for internal module sweep   # §7
+            limit ray length to max(1.25m, 10 * caliber) for internal sweep # §7
             continue                                             # 6. module/crew rolls happen
         else:
             break                                                # bounce/absorb, 0 damage
@@ -454,6 +454,6 @@ replays: consume RNG in fixed sequence (pen, dmg, then per-intersection module r
 ### Tuning constants quick sheet
 `NORM_AP=5, NORM_APCR=2, RICO_KE=70, RICO_HEAT=85, OVERMATCH_NORICO=3.0,
 OVERMATCH_NORMBOOST=2.0 (factor 1.4*C/T), RNG=±0.25 uniform, HEAT_DECAY=5%/10cm,
-POSTPEN_TRAVEL=10*caliber, FIRE_TICK=0.5s, FIRE_HP_TICK=0.5% maxHP,
+POSTPEN_TRAVEL=max(1.25m,10*caliber), FIRE_TICK=0.5s, FIRE_HP_TICK=0.5% maxHP,
 ENGINE_FIRE=10–20%, FUELTANK_FIRE_ON_DESTROY=100%, CREW_HIT=33% (HE 10%),
 AMMORACK_HIT=27%, ENGINE_HIT=45%, TRACK_HIT=100%.`

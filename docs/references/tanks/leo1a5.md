@@ -22,6 +22,10 @@ and fidelity tools.
   `src/vehicles/profiles/leopard.ts`, selected by
   `LEOPARD_PROFILES.leo1a5`.
 
+The superseded photo-class `buildLeo1A5Profile` implementation was removed
+from source as dead code in September 2026. Its measurements and review
+receipts remain below as historical authoring evidence.
+
 ### Rebuild result
 
 The hull, deck crown, bow, exposed seven-wheel suspension, idler/sprocket
@@ -141,7 +145,7 @@ Spec dims row (modern2.ts TANK_SPECS.leo1a5):
 6. Four-box: overall ≈ 9.54 × 3.37 × 2.62; hull l 7.09 (z ±3.545);
    turretMass l ≤ 3.0 (≤42%); gun bore y ≈ 1.93; muzzle world +6.00.
 
-## Build plan (leopard.js — builder `buildLeo1A5Profile`)
+## Historical build plan (retired `buildLeo1A5Profile`)
 - HULL (bespoke lofts in the builder — leoHullV3 is the Leopard 2 rig
   and stays untouched; zero shared-helper edits, so every leopard.js
   graduate hash holds by construction): lower hull between the tracks,
@@ -173,7 +177,7 @@ Spec dims row (modern2.ts TANK_SPECS.leo1a5):
   merkava r12 / chieftain5 r5 lineage) so the exposed gear reads alive,
   never ambient-black.
 
-## r1 SCAFFOLD BUILD (2026-08-07) — first real build of the id, DELIVERED-PENDING-CRITIC
+## Historical r1 scaffold (2026-08-07)
 
 Builder: `buildLeo1A5Profile` (src/vehicles/profiles/leopard.ts),
 registered `LEOPARD_PROFILES.leo1a5` — overrides the ancient modern2
@@ -255,7 +259,7 @@ the a4-class candidate); EMES lid edge slightly proud at close-roof.
 - Independent §B8 photo-parity critic verdict PENDING (builder
   self-reads are not the bar).
 
-## §5.247 LECLERC-LEVEL REDESIGN (2026-08-17) — r2, DELIVERED-PENDING-CRITIC
+## Historical §5.247 redesign (2026-08-17)
 
 Owner order (§5.247 ten-tank wave): "full leclerc-level redesign based on
 its model and historical references... leave nothing untouched and

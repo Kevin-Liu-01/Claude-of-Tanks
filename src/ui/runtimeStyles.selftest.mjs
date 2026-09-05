@@ -41,6 +41,80 @@ assert.match(garageCss,
   'Garage setup column must consume the shared sidebar top and bottom anchors');
 assert.doesNotMatch(garageCss, /\.cot-garage \.stats\{max-height:max\(/,
   'Garage dossier must not retain an independent height cap that shortens the right rail');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar\{width:3px;\}/,
+  'Garage dossier scrollbar must remain visually minimal');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar-track\{background:transparent;\}/,
+  'Garage dossier scrollbar must not draw a permanent track');
+assert.match(garageCss,
+  /\.cot-garage \.stats::-webkit-scrollbar-thumb\{background:rgba\(146,164,180,\.28\);border-radius:999px;\}/,
+  'Garage dossier scrollbar thumb must stay quiet and rounded');
+assert.match(garageCss,
+  /@media \(hover:hover\) and \(pointer:fine\)\{\s*\.cot-garage \.stats:hover::-webkit-scrollbar-thumb/,
+  'Garage dossier hover affordance must only run on hover-capable pointers');
+assert.doesNotMatch(garageSource,
+  /\$\{eqIds\.length\}\/\$\{EQUIP_SLOTS\} mounted/,
+  'Garage equipment section must not repeat a mounted-slot counter');
+assert.ok(garageSource.includes("eqTooltipEl.setAttribute('role', 'tooltip')"),
+  'Garage equipment explanations must use an accessible tooltip contract');
+assert.ok(garageSource.includes('eqpickEl.addEventListener(\'pointerover\'') &&
+  garageSource.includes('eqpickEl.addEventListener(\'focusin\''),
+  'Garage equipment tooltips must work with pointer hover and keyboard focus');
+assert.match(garageSource,
+  /equipmentHoverPreview\(spec, currentLoadout, item\?\.id \|\| null, eqOpenSlot, !locked\)/,
+  'Garage equipment hover must project values for the selected vehicle and pending click');
+assert.match(garageSource, /projectEquipmentLoadout\(cur, itemId, eqOpenSlot\)/,
+  'Garage click assignment must share the exact projection path used by its tooltip');
+assert.match(garageSource, /icon\.innerHTML = uiIconSVG\(equipmentMetricIcon\(metric\.id\), 12\)/,
+  'Garage equipment projections must pair each adjusted stat with a shared UI icon');
+assert.doesNotMatch(garageSource, /Stock \$\{metric\.stock\}/,
+  'Garage equipment projections must not add repetitive stock-caption lines');
+assert.match(garageSource, /document\.body\.dataset\.cotWidth === 'phone'/,
+  'Garage equipment projections must not open on phone layouts');
+assert.ok(garageSource.includes('<button type="button" class="${cls.join(\' \')}"'),
+  'Garage equipment choices must render as semantic buttons');
+assert.doesNotMatch(garageSource, /title="\$\{it\.name\}/,
+  'Garage equipment choices must not fall back to inconsistent native title bubbles');
+assert.match(garageCss, /\.cot-eqtooltip\{position:fixed;[^}]*pointer-events:none;/,
+  'Garage equipment tooltip must escape the scrolling picker without intercepting input');
+assert.match(garageCss,
+  /\.cot-eqtooltip \.metric\{display:grid;grid-template-columns:14px minmax\(0,1fr\) auto;/,
+  'Garage equipment tooltip must align icons and stat labels with current-to-projected values');
+assert.match(garageCss,
+  /\.cot-eqtooltip \.metric\.improved \.metric-values b\{color:#9fd8a0;\}/,
+  'Garage equipment improvements must be visually distinguishable');
+assert.match(garageCss,
+  /\.cot-eqtooltip \.metric\.degraded \.metric-values b\{color:#e6a0a0;\}/,
+  'Garage equipment replacement tradeoffs must be visually distinguishable');
+assert.match(garageCss,
+  /body\[data-cot-width='phone'\] \.cot-eqtooltip\{display:none!important;\}/,
+  'Garage equipment hover projections must remain absent from phone layouts');
+assert.match(garageCss,
+  /@media \(hover:hover\) and \(pointer:fine\)\{[\s\S]*\.cot-eqtile:not\(\.locked\):hover/,
+  'Garage equipment hover motion must only run on hover-capable pointers');
+assert.match(garageCss,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*left:auto;[^}]*right:calc\(max\([^}]*var\(--cot-compact-stats-width\)[^}]*width:min\(420px,calc\(100vw - var\(--cot-compact-stats-width\)[^}]*display:flex;/,
+  'Compact Garage equipment picker must stay beside the dossier and inside the safe viewport');
+assert.match(garageCss,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
+  'Compact Garage equipment choices must scroll inside the bounded picker');
+assert.match(garageCss,
+  /\.cot-sidebar-section-title\{[^}]*font:700 10px[^}]*letter-spacing:\.24em[^}]*text-transform:uppercase;/,
+  'Garage sidebars must share one section-heading typography contract');
+for (const headerClass of [
+  'ftitle cot-sidebar-section-title',
+  'mtitle cot-sidebar-section-title',
+  'ctitle cot-sidebar-section-title',
+  'cot-stat-title cot-sidebar-section-title',
+  'eqhead cot-sidebar-section-title',
+]) {
+  assert.match(garageSource, new RegExp(headerClass),
+    `Garage header ${headerClass} must consume the shared section-heading contract`);
+}
+assert.match(garageCss,
+  /\.cot-sidebar-section-title > span\{[^}]*white-space:nowrap;/,
+  'Garage sidebar headings must remain on one readable line');
 assert.match(motionCss, /--cot-ease-out:\s*cubic-bezier\(/,
   'motion contract must publish the standard responsive easing');
 for (const band of ['instant', 'fast', 'base', 'slow', 'scene']) {

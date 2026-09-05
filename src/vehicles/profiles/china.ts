@@ -30,22 +30,6 @@ type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
 
-interface ChineseRoofOptions {
-  y?: number;
-  panoX?: number;
-  panoZ?: number;
-  mgScale?: number;
-  elev?: number;
-  seed?: number;
-  mgX?: number;
-  mgZ?: number;
-  mgYaw?: number;
-  whipL?: number;
-  whipR?: number;
-  whipX?: number;
-  whipZ?: number;
-}
-
 export interface ChinaBuilderPort extends TankBuilderPort {}
 
 const nonUniformXform = KIT.xform as (
@@ -95,37 +79,6 @@ function armorCassette(
       x, y + h * 0.50 + 0.010, z + d * 0.30, r[0], r[1], r[2]);
   }
   });
-}
-
-function addChineseRoofSuite(P: ChinaBuilderPort, options: ChineseRoofOptions = {}): void {
-  const { box, cylY } = KIT;
-  const y = options.y ?? 1.08;
-  const panoX = options.panoX ?? -0.52;
-  const panoZ = options.panoZ ?? -0.62;
-
-  // Broad planted optical foundation, tapered head and forward glass.
-  P.addEquipment('turret', box(0.42, 0.08, 0.40), panoX, y, panoZ);
-  P.add('turretDetail', cylY(0.14, 0.17, 0.30, 14), panoX, y + 0.20, panoZ);
-  P.add('turretDark', box(0.25, 0.11, 0.055), panoX, y + 0.22, panoZ + 0.18);
-  P.add('turretGlass', box(0.18, 0.075, 0.024), panoX, y + 0.22, panoZ + 0.215);
-
-  // QJC-88 family station on a cupola rather than a floating receiver.
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: options.mgScale ?? 0.82,
-    elev: options.elev ?? 0.08, shield: true, ammo: true,
-    ring: { r: 0.17, stubs: 3 }, seed: options.seed ?? 990,
-  }), options.mgX ?? 0.52, y + 0.01, options.mgZ ?? -0.54,
-  [0, options.mgYaw ?? 0.04, 0]);
-
-  for (const side of [-1, 1]) {
-    const h = side < 0 ? (options.whipL ?? 0.78) : (options.whipR ?? 0.64);
-    P.add('turretDetail', cylY(0.035, 0.045, 0.055, 10),
-      side * (options.whipX ?? 1.02), y - 0.06, options.whipZ ?? -1.52);
-    mount(P, 'turret', FITTINGS.antennaWhip({
-      mats: P.mats, h, r: 0.012, rake: -side * 0.045,
-      seed: (options.seed ?? 990) + 3 + (side > 0 ? 1 : 0),
-    }), side * (options.whipX ?? 1.02), y - 0.03, options.whipZ ?? -1.52);
-  }
 }
 
 function addSmokeBanks(
@@ -605,7 +558,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // nose line (built shallower/lower) and the brow plate is deleted; the
   // canvas collar and dark recess ring carry the mantlet read.
   P.addGunExtra(box(0.70, 0.46, 0.34), 0, 0.00, 0.08);
-  P.addGunExtra(cylZ(0.23, 0.38, seg, 0.17), 0, 0, 0.32);
+  P.addGunExtra(cylZ(0.17, 0.38, seg, 0.23), 0, 0, 0.32);
   P.addGunExtraDark(cylZ(0.235, 0.040, seg), 0, 0, 0.13);
   P.addGunExtraDark(box(0.62, 0.055, 0.12), 0, -0.225, 0.10);
   // gun-slaved IR illuminator tucked onto the saddle shoulder LEFT
@@ -739,7 +692,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // fender shelf: the print carries its full 3.7 width at deck height from
   // stern to bow shoulder — segmented plates bridge sponson edge to the
   // skirt hanger line.
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     for (let i = 0; i < 12; i++) {
       P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575);
     }
@@ -769,7 +722,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       { height: shoulderLower, inset: 1 },
       { height: shoulderUpper, inset: 1 },
     ]));
-  }
+  });
 
   // ---- glacis chevron armor: three raked panel courses with real seam
   // breaks (slope motivates the mass — no tile blanket, no stair steps).
@@ -790,9 +743,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // driver center station behind the chevron crest
   P.add('hull', box(0.54, 0.05, 0.46), 0, 1.685, 0.62);
   P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.715, 0.60);
-  for (const x of [-0.17, 0.17]) periscope(P, 'hullDetail', x, 1.72, 0.86);
+  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.72, 0.86));
   // bow lights on riser pods + tow points + routed cable
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.045, rake: -0.22, seed: 9950 + s,
     }), s * 0.95, 1.13, 3.06);
@@ -805,13 +758,13 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     headlight(P, s * 1.02, 1.18, 3.14, -0.24, 0.042);
     P.add('hullDark', box(0.10, 0.12, 0.15), s * 0.72, 0.66, 3.30, -0.3, 0, 0);
     liftEye(P, 'hullDetail', s * 1.30, 1.42, 2.30);
-  }
+  });
   towCable(P, [[-1.10, 1.18, 3.06], [-0.42, 1.32, 2.30], [0.48, 1.30, 2.26], [1.10, 1.18, 3.06]]);
   // Broad transverse steel guards replace the detached rubber bow flaps.
   // Their complete rear face is buried 47.5 mm into the new shoulder loft;
   // top and bottom datums exactly match its front stations, so the guard,
   // upper glacis and skirt read as one connected armored shoulder.
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     MUDGUARDS.add(P, {
       label: `ztz99a2-front-mudguard-${s < 0 ? 'left' : 'right'}`,
       x: s * 1.47, y: 1.19, z: 3.46,
@@ -819,14 +772,14 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.026,
       frontCut: 0.09, rearCut: 0.025, rake: 0.08,
     });
-  }
+  });
   ruFlaps(P, { x: 1.47, w: 0.50, rear: [0.86, 0.46], rearZ: -4.02 });
 
   // ---- heavy side modules: four rigid forward bays with cassette blocks +
   // two rubber rear bays, outer faces on the 3.70 width datum.  §5.266
   // critic fix 1: bay bottoms raised 0.44 -> 0.62 so ~half the wheel run
   // reads side-on (the print's own proportion).
-  for (const s of [-1, 1]) {
+  ([-1, 1] as const).forEach((s) => {
     P.add('hull', box(0.06, 0.16, 6.60), s * 1.79, 1.48, -0.20);
     for (let i = 0; i < 6; i++) {
       const z = 2.42 - i * 1.02;
@@ -840,25 +793,25 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
         P.add('hullDark', box(0.020, 0.030, 0.62), s * 1.887, 1.27, z);
       }
     }
-  }
+  });
   widthAnchor(P, 1.85, 1.05, 0.40);
 
   // ---- rear deck + transom: louvre field, service transom, twin fuel drums
   // on real angle brackets and a center rack (print band 1.5..2.1 at the
   // stern — the silhouette rows in specs carry this overhang).
-  for (let i = 0; i < 7; i++) {
+  Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24);
     P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24);
-  }
-  for (const [x, z] of [[-0.85, -1.75], [0.72, -1.88]]) {
+  });
+  ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
     P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
-  }
+  });
   P.add('hull', box(3.26, 0.94, 0.12), 0, 1.06, -3.99);
   P.add('hullDark', box(2.20, 0.50, 0.035), 0, 1.12, -4.055);
-  for (let i = 0; i < 8; i++) {
+  Array.from({ length: 8 }, (_, index) => index).forEach((i) => {
     P.add('hullDetail', box(0.035, 0.44, 0.042), -1.00 + i * 0.286, 1.12, -4.07);
-  }
-  for (const s of [-1, 1]) {
+  });
+  ([-1, 1] as const).forEach((s) => {
     // drum + dark end caps + straps + twin angle brackets into the transom
     // (print band: y 1.5..2.1 hanging aft — the isolated aft-stretch A/B
     // measured +0.4 on the whole gate; the short-whip change in the same
@@ -872,7 +825,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     }
     P.add('hullDark', box(0.12, 0.06, 0.05), s * 1.02, 1.30, -4.06);
     P.add('hullDetail', torus(0.10, 0.021, 12), s * 0.55, 0.92, -4.06, Math.PI / 2, 0, 0);
-  }
+  });
   mount(P, 'hull', FITTINGS.stowageRack({
     mats: P.mats, w: 1.30, d: 0.34, h: 0.22, fill: 0.34, rails: 2, seed: 9955,
   }), 0, 1.88, -4.30);
@@ -880,9 +833,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // These bridge plates close the paired stern service-deck wells. They are
   // hull structure and must travel with the hull when another vehicle uses
   // this exact chassis, rather than being coupled to the A2 turret package.
-  for (const side of [-1, 1]) {
+  ([-1, 1] as const).forEach((side) => {
     P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
-  }
+  });
   P.hullG.userData.ztz99a2HullIntegrationReceipt = Object.freeze({
     architecture: 'ztz99a2-production-chassis-r3',
     shoulderVolumes: 2,
@@ -1054,7 +1007,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // stays the spec/UI overall datum).
   P.gunG.position.set(0, 0.39, 0.75);
   P.addGunExtra(cylZ(0.235, 0.20, seg), 0, 0, 0.28);
-  P.addGunExtra(cylZ(0.20, 0.34, seg, 0.165), 0, 0, 0.55);
+  P.addGunExtra(cylZ(0.165, 0.34, seg, 0.20), 0, 0, 0.55);
   P.addGunExtraDark(torus(0.185, 0.024, seg), 0, 0, 0.735);
   P.addGunExtraDark(box(0.44, 0.05, 0.06), 0, -0.235, 0.38);
   tubeGun(P, [
@@ -1140,9 +1093,14 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   const chevronPanelBands = Object.freeze([
     [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
   ] as const);
+  // The closed arrow is permanent turret structure. Only the four raised
+  // face cassettes per side are ERA and may disappear after detonation.
+  for (const s of [-1, 1] as const) {
+    P.add('turret', closedIntegratedChevron(chevronStations, s));
+    P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
+  }
   P.visualEraCluster('ztz99a2-production-chevron-era', 'turret', () => {
     for (const s of [-1, 1] as const) {
-      P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, s));
       for (const [startT, endT] of chevronPanelBands) {
         const startX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
@@ -1154,7 +1112,6 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           s,
         ));
       }
-      P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
     }
   });
 
@@ -1210,7 +1167,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // the connected nose rather than carried by a separate mantlet shell.
   P.gunG.position.set(0, 0.38, 0.78);
   P.addGunExtra(cylZ(0.23, 0.22, seg), 0, 0, 0.27);
-  P.addGunExtra(cylZ(0.19, 0.32, seg, 0.16), 0, 0, 0.54);
+  P.addGunExtra(cylZ(0.16, 0.32, seg, 0.19), 0, 0, 0.54);
   P.addGunExtraDark(torus(0.18, 0.022, seg), 0, 0, 0.72);
   tubeGun(P, [
     [0.72, 1.58, 0.104], [1.58, 3.03, 0.090], [3.03, 3.72, 0.118],
@@ -1221,12 +1178,16 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
   P.turretG.userData.ztz99a2ProductionReceipt = Object.freeze({
-    architecture: 'ztz99a2-production-arrow-r3',
+    architecture: 'ztz99a2-production-arrow-r4',
     independentProductionTurret: true,
     prototypeGeometryReused: false,
     actualReferenceDerived: true,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true,
+    permanentChevronCarriers: 2,
+    detonatingChevronFacePanels: 8,
+    spentStateRetainsClosedFront: true,
+    permanentArmoredBustle: true,
     chevronSideJoinGapM: 0,
     chevronProfile: 'vt4a1-leopard-2a6-derived',
     chevronStationsPerSide: 6,
@@ -1307,7 +1268,10 @@ function buildType59(P: ChinaBuilderPort): void {
   const vehicleScale = 0.855;
   const browDropM = 0.08;
   const gunRaiseM = 0.08;
+  const rings59 = [[1.43, -0.016], [1.573, 0.10], [1.6225, 0.22], [1.584, 0.36], [1.518, 0.48], [1.43, 0.56], [1.21, 0.63], [1.166, 0.655], [1.10, 0.665], [1.012, 0.72], [0.924, 0.80], [0.792, 0.88], [0.616, 0.95], [0.44, 1.01], [0.022, 1.04]];
+  let turretArmorPanels = 0;
 
+  const buildType59Chassis = (): void => {
   // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,
   // idler, sprocket and both contact tangents rebuilt as one linked course.
   // The donor course's unsupported terminal ramps made the tracks read
@@ -1346,7 +1310,10 @@ function buildType59(P: ChinaBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('hull', box(0.20, 0.35, 0.30), side * 1.04, 0.90, 3.064, -0.12, 0, 0);
   }
+  };
+  buildType59Chassis();
 
+  const buildType59HullEquipment = (): void => {
   // ---- Chinese hull dressing --------------------------------------------
   // Type 69-family glacis IR pod: big IR drum right of the driver line on a
   // planted riser (the chassis keeps its paired white lamps at the bow).
@@ -1404,14 +1371,16 @@ function buildType59(P: ChinaBuilderPort): void {
   spareTrackStrip(P, 'hull', -0.74, 1.515, 1.73, 4, -0.18, 0);
   shovelTool(P, 0.83, 1.565, -1.28, 1.05);
   tarpRoll(P, 'hullCloth', 1.49, 1.63, -0.83, 0.72, 0.095, false, 12);
+  };
+  buildType59HullEquipment();
 
+  const buildType59Turret = (): void => {
   // ---- WZ-120 (T-54A-family) mushroom dome on the widened base ring ------
   // Ring profile = the certified §5.45 type59 dome ×1.10 laterally (the
   // §5.304 widen law), y as authored (apex turret-local 1.04 → world 2.52);
   // meshDomeCurved sz 1.03 ÷ 1.10 = 0.9364 keeps the plan CHORD byte-held
   // so the casting widens with the hull without lengthening.
   P.turretG.position.set(0, 1.4804, 0.676);
-  const rings59 = [[1.43, -0.016], [1.573, 0.10], [1.6225, 0.22], [1.584, 0.36], [1.518, 0.48], [1.43, 0.56], [1.21, 0.63], [1.166, 0.655], [1.10, 0.665], [1.012, 0.72], [0.924, 0.80], [0.792, 0.88], [0.616, 0.95], [0.44, 1.01], [0.022, 1.04]];
   meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54 });
   // flank roof-shoulder pair: the T-54A flat shelf lives on the SIDES only
   // (outer face flush with the local dome skin).
@@ -1494,13 +1463,15 @@ function buildType59(P: ChinaBuilderPort): void {
     P.turretG.add(whip);
   }
   domeRailRu(P, rings59, 1.0, 0.50, 1.1);
+  };
+  buildType59Turret();
 
+  const buildType59TurretArmor = (): void => {
   // ---- modular turret applique and denser crew equipment -----------------
   // Forward cassettes are tangent to the mushroom cheek; the side course is
   // embedded into the cast shoulder by 20-30 mm.  The two courses overlap at
   // the transition so there is no daylight wedge when the camera moves from
   // the front quarter to a true side view.
-  let turretArmorPanels = 0;
   for (const side of [-1, 1]) {
     for (let i = 0; i < 3; i++) {
       const x = side * (0.58 + i * 0.23);
@@ -1540,7 +1511,10 @@ function buildType59(P: ChinaBuilderPort): void {
     whip.position.set(0.94, 0.53, -0.91);
     P.turretG.add(whip);
   }
+  };
+  buildType59TurretArmor();
 
+  const buildType59Weapon = (): void => {
   // ---- 100 mm Type 59 gun (licensed D-10T class): measured tube grammar,
   // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Raise the axis
   // into the lowered brow opening instead of leaving the tube under the
@@ -1597,7 +1571,10 @@ function buildType59(P: ChinaBuilderPort): void {
   const dxT59 = ringSkin(rings59, 0.40) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, -0.21], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT59 * 0.98, 0.40, -0.21], -Math.PI / 2);
+  };
+  buildType59Weapon();
 
+  const scaleType59AndStampReceipts = (): void => {
   // Apply the requested modest overall reduction at the articulated owners,
   // not by baking hundreds of unrelated station constants.  Hull gear,
   // turret armor, equipment and gun therefore retain their exact attachment
@@ -1650,6 +1627,8 @@ function buildType59(P: ChinaBuilderPort): void {
     turretArmorPanels,
     equipmentAttached: true,
   });
+  };
+  scaleType59AndStampReceipts();
   P.topY = 1.035;
 }
 

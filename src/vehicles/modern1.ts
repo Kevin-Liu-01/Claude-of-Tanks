@@ -689,11 +689,8 @@ function buildMerkava4(P: ModernWaveBuilderPort): void {
 // PERI R17 on the LEFT roof, crosswind mast rear RIGHT. Bundeswehr cross +
 // 2-digit tactical number.
 // ---------------------------------------------------------------------------
-function buildLeo2A6(P: ModernWaveBuilderPort): void {
-  const { box, cylX, cylY, cylZ, slab, frustum, fenders, headlight, liftEye,
-    periscope, smokeCluster, towCable, stowage, jerryCan, tarpRoll, ammoCan,
-    openRackGrid, spareTrackStrip, buildGun, buildRunningGear, torus } = KIT;
-  const { rng } = P;
+function addLeo2A6HullShell(P: ModernWaveBuilderPort): void {
+  const { box, frustum, fenders } = KIT;
   // ---- hull: 2A7 family base (mirrors the shipped buildLeo2A7 hull) ----
   P.add('hull', box(2.48, 0.58, 7.5), 0, 0.79, 0);
   P.add('hull', box(3.40, 0.42, 4.66), 0, 1.51, -1.38);
@@ -701,6 +698,10 @@ function buildLeo2A6(P: ModernWaveBuilderPort): void {
   P.add('hull', frustum(1.72, 3.83, 1.0, 1.72, 1.00, 1.0, 1.0, 1.72));          // sharp glacis
   P.add('hull', frustum(1.72, 3.45, 3.55, 1.72, 3.83, 3.55, 0.5, 1.0));
   P.add('hull', box(3.1, 0.52, 0.12), 0, 1.46, -3.70);                          // rear plate
+}
+
+function addLeo2A6HullRearDeck(P: ModernWaveBuilderPort): void {
+  const { box, cylX, cylY, torus } = KIT;
   // rear deck: twin cooling fans + radiator louver + exhaust louvres
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14), s * 0.80, 1.725, -2.55);
@@ -733,6 +734,10 @@ function buildLeo2A6(P: ModernWaveBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.5, 0.026, 7.0), s * 1.5, 1.27, 0);
   }
+}
+
+function addLeo2A6HullForwardAndSkirts(P: ModernWaveBuilderPort): void {
+  const { box, cylY, headlight, liftEye, periscope, towCable, torus } = KIT;
   // skirts: heavy sculpted front third + recessed rubber aft (family base)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.10, 0.62, 3.25), s * 1.85, 0.99, 2.18);
@@ -763,6 +768,19 @@ function buildLeo2A6(P: ModernWaveBuilderPort): void {
   periscope(P, 'hullDetail', 0.62, 1.76, 1.08);
   periscope(P, 'hullDetail', 0.84, 1.76, 1.05, 0.3);
   towCable(P, [[-1.15, 1.42, 2.5], [0, 1.56, 1.7], [1.15, 1.42, 2.5]]);
+}
+
+function addLeo2A6Hull(P: ModernWaveBuilderPort): void {
+  addLeo2A6HullShell(P);
+  addLeo2A6HullRearDeck(P);
+  addLeo2A6HullForwardAndSkirts(P);
+}
+
+function addLeo2A6Turret(P: ModernWaveBuilderPort): void {
+  const { box, cylY, cylZ, slab, frustum, liftEye, periscope, smokeCluster,
+    stowage, jerryCan, tarpRoll, ammoCan, openRackGrid, spareTrackStrip,
+    buildGun, buildRunningGear } = KIT;
+  const { rng } = P;
   // ---- turret: 2A7 wedge family — flat-roofed box + two-tier spaced wedges
   const LTW = 1.22, LTH = 0.88;
   P.add('turret', frustum(LTW, 0.62, -2.05, LTW * 0.94, 0.55, -2.02, 0.0, LTH));
@@ -863,6 +881,11 @@ function buildLeo2A6(P: ModernWaveBuilderPort): void {
   P.decal('hull', 'number', 'Y-224', 0.30, [0.62, 1.44, -3.775], Math.PI, 0);
   P.decal('hull', 'number', 'Y-224', 0.26, [-1.05, 0.72, 3.79], 0, -0.35);
   P.topY = 1.08;
+}
+
+function buildLeo2A6(P: ModernWaveBuilderPort): void {
+  addLeo2A6Hull(P);
+  addLeo2A6Turret(P);
 }
 
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */

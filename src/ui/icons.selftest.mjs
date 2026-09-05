@@ -17,11 +17,21 @@ import {
 } from './portraitFraming.ts';
 
 const equipIds = new Set(equipIconIds());
+const largeEquipmentIcons = new Set();
 for (const item of EQUIPMENT_CATALOG) {
-  if (!equipIds.has(item.id) || !equipIconSVG(item.id, 24).includes('</svg>')) {
+  const svg = equipIconSVG(item.id, 38);
+  if (!equipIds.has(item.id) || !svg.includes('</svg>')) {
     throw new Error(`missing equipment icon: ${item.id}`);
   }
+  assert.match(svg, new RegExp(`data-equipment-icon="${item.id}"`),
+    `${item.id} icon must expose its deterministic visual identity`);
+  const iconCategory = item.cat === 'fire' ? 'firepower' : item.cat;
+  assert.match(svg, new RegExp(`data-icon-category="${iconCategory}"`),
+    `${item.id} icon must carry the correct category cue`);
+  largeEquipmentIcons.add(svg);
 }
+assert.equal(largeEquipmentIcons.size, EQUIPMENT_CATALOG.length,
+  'every equipment item must keep a distinct rendered icon');
 
 for (const id of uiIconIds()) {
   const svg = uiIconSVG(id, 24);
@@ -112,8 +122,11 @@ for (const contract of [
   "from './portraitFraming.ts'",
   'measurePortraitCoreBounds',
   'containedPortraitPlacement',
+  'await img.decode()',
   '--cot-thumb-scale',
   "cotPortraitFramed = 'true'",
+  "cotPortraitReady = 'true'",
+  "cotPortraitReady = 'false'",
 ]) {
   if (!tankThumbs.includes(contract)) {
     throw new Error(`garage portrait framing is missing ${contract}`);

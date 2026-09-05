@@ -61,13 +61,21 @@ automated grade → owner approval.
 
 ### Garage environment overview
 
-[![All ten current Garage environments](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
+[![All ten current Garage environments with a varied non-Abrams fleet](../public/media/showcase-r2/process/review-01.webp)](../public/media/showcase-r2/process/review-01.webp)
 
 This owner-approved contact sheet compares the ten current in-engine Garage
-locations with one vehicle and one production interface. It is maintained as
-system documentation rather than counted as an R1 campaign frame. See
+locations with ten non-Abrams vehicles and the current production interface.
+It is maintained as system documentation rather than counted as an R1 campaign frame. See
 [GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) for the location roster and
 acceptance contract.
+
+### Landing fleet image
+
+The home page's “Choose from 113 tanks” panel uses the owner-selected
+1920×1080 production Garage capture at
+`public/media/home/garage-m1a3-fleet.webp`. It shows the M1A3 Abrams with the
+full battlefield, camouflage, dossier, nation, and vehicle-catalog interface.
+The page serves an optimized WebP rendition of the supplied source frame.
 
 ## Rebuild
 

@@ -1082,7 +1082,10 @@ export function createCameraRig(
      */
     spectateLook(dxPx: number, dyPx: number): void {
       if (!spec) return;
-      spec.yawT += dxPx * SPEC_SENS;
+      // Unlike CameraInputFrame.mouseDX, these are raw screen pixels, not
+      // consumeMouseDelta's world-yaw delta. Mouse-right must decrease yaw
+      // here too so the view and fixed-map cone turn clockwise together.
+      spec.yawT -= dxPx * SPEC_SENS;
       spec.pitchT = THREE.MathUtils.clamp(
         spec.pitchT - dyPx * SPEC_SENS, PITCH_MIN, PITCH_MAX);
     },

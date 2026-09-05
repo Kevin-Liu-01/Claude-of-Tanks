@@ -1,9 +1,9 @@
 // src/ui/equipIcons.ts — EQUIPMENT SYSTEM icon set.
 // One recognizable glyph per catalog item, refreshed into the shared armored
-// UI language: a flat white silhouette inside a quiet clipped-corner equipment
+// UI language: a large white silhouette on a quiet, category-coded steel
 // plate. All paths live on a 24x24 grid and are built from >=1.5px strokes /
 // chunky fills so they stay crisp from 20 to 48 px. The compact 15px battle
-// readout omits the frame to preserve maximum glyph legibility.
+// readout omits the plate to preserve maximum glyph legibility.
 //
 // equipIconSVG(id, size, ink) returns an inline <svg> string (or '' for
 // unknown ids). Consumers: the garage slot boxes + picker grid (garage.ts)
@@ -15,18 +15,45 @@ const EQUIP_INK = 'rgba(238,244,250,0.86)';
 // Each entry is the inner markup of a 24x24 viewBox, as a function of ink.
 type EquipmentGlyph = (ink: string) => string;
 
+type EquipmentIconCategory = 'firepower' | 'recon' | 'mobility' | 'survival';
+
+const ICON_CATEGORY: Readonly<Record<string, EquipmentIconCategory>> = {
+  rammer: 'firepower',
+  vstab: 'firepower',
+  gld: 'firepower',
+  vents: 'firepower',
+  optics: 'recon',
+  binoculars: 'recon',
+  camo_net: 'recon',
+  rotation: 'mobility',
+  susp: 'mobility',
+  toolbox: 'survival',
+  spall_liner: 'survival',
+  wet_rack: 'survival',
+  fuel_safety: 'survival',
+  auto_ext: 'survival',
+};
+
+const CATEGORY_ACCENT: Readonly<Record<EquipmentIconCategory, string>> = {
+  firepower: '#d9a451',
+  recon: '#79afc0',
+  mobility: '#a4b66d',
+  survival: '#c48e70',
+};
+
 const GLYPHS: Readonly<Record<string, EquipmentGlyph>> = {
   // Gun Rammer — shell being driven forward by a double chevron.
   rammer: (I) =>
     `<path fill="${I}" d="M11 8.5h5.2q4.4.5 6.2 3.5-1.8 3-6.2 3.5H11Z"/>` +
     `<path fill="${I}" d="M2.2 7.2 7 12l-4.8 4.8v-2.7L4.3 12 2.2 9.9Zm3.8 0L10.8 12 6 16.8v-2.7L8.1 12 6 9.9Z"/>`,
 
-  // Vertical Stabilizer — gyroscope: axis, outer ring, spinning ellipse.
+  // Vertical Stabilizer — an unmistakable two-axis gun cradle / gyroscope.
   vstab: (I) =>
-    `<circle cx="12" cy="12" r="8.2" fill="none" stroke="${I}" stroke-width="1.6"/>` +
-    `<ellipse cx="12" cy="12" rx="8.2" ry="3.4" fill="none" stroke="${I}" stroke-width="1.5" transform="rotate(-24 12 12)"/>` +
-    `<circle cx="12" cy="12" r="2.2" fill="${I}"/>` +
-    `<path stroke="${I}" stroke-width="1.7" stroke-linecap="round" d="M12 1.6v3.1M12 19.3v3.1"/>`,
+    `<path d="M4 5v4M4 5h4M20 5v4M20 5h-4M4 19v-4M4 19h4M20 19v-4M20 19h-4" ` +
+    `fill="none" stroke="${I}" stroke-width="1.8" stroke-linecap="round"/>` +
+    `<ellipse cx="12" cy="12" rx="7.3" ry="3.3" fill="none" stroke="${I}" stroke-width="1.7" transform="rotate(-28 12 12)"/>` +
+    `<path d="M12 3.2v17.6M6.2 12h11.6" fill="none" stroke="${I}" stroke-width="1.55" stroke-linecap="round"/>` +
+    `<circle cx="12" cy="12" r="2.25" fill="${I}"/>`,
 
   // Gun Laying Drive — settling reticle: ring, center mass, hard outer ticks.
   gld: (I) =>
@@ -34,20 +61,22 @@ const GLYPHS: Readonly<Record<string, EquipmentGlyph>> = {
     `<circle cx="12" cy="12" r="1.9" fill="${I}"/>` +
     `<path stroke="${I}" stroke-width="2" stroke-linecap="round" d="M12 2.2v3.4M12 18.4v3.4M2.2 12h3.4M18.4 12h3.4"/>`,
 
-  // Improved Ventilation — fan: housing ring, three petal blades, hub.
+  // Improved Ventilation — square louvered housing around a three-blade fan.
   vents: (I) => {
-    const petal = `M12 10.9C9.9 10.2 8.7 7.9 9.4 5.5 9.9 3.7 14.1 3.7 14.6 5.5c.7 2.4-.5 4.7-2.6 5.4Z`;
-    return `<circle cx="12" cy="12" r="9.6" fill="none" stroke="${I}" stroke-width="1.6"/>` +
+    const petal = `M12 10.9C10 10.2 9 8.2 9.6 6.1c.5-1.6 4.3-1.6 4.8 0 .6 2.1-.4 4.1-2.4 4.8Z`;
+    return `<rect x="2.6" y="2.6" width="18.8" height="18.8" rx="2.2" fill="none" stroke="${I}" stroke-width="1.6"/>` +
       `<g fill="${I}"><path d="${petal}"/>` +
       `<path d="${petal}" transform="rotate(120 12 12)"/>` +
       `<path d="${petal}" transform="rotate(240 12 12)"/></g>` +
-      `<circle cx="12" cy="12" r="2.1" fill="${I}"/>`;
+      `<circle cx="12" cy="12" r="2" fill="${I}"/>` +
+      `<path d="M5.2 5.8h2.5M16.3 18.2h2.5" stroke="${I}" stroke-width="1.45" stroke-linecap="round"/>`;
   },
 
-  // Coated Optics — objective lens: barrel ring, iris with glint cutout.
+  // Coated Optics — side-on armored sight body with a bright objective lens.
   optics: (I) =>
-    `<circle cx="12" cy="12" r="8.6" fill="none" stroke="${I}" stroke-width="2.1"/>` +
-    `<path fill="${I}" fill-rule="evenodd" d="M12 6.8a5.2 5.2 0 1 1 0 10.4 5.2 5.2 0 0 1 0-10.4Zm-1.8 1.7a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Z"/>`,
+    `<path fill="${I}" fill-rule="evenodd" d="M2.2 8.2h4.2l2.4-2.4h8.7l4.3 4v4.4l-4.3 4H8.8l-2.4-2.4H2.2Zm14.5.5a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z"/>` +
+    `<circle cx="16.7" cy="12" r="1.35" fill="${I}"/>` +
+    `<path d="M5.5 9.1v5.8" stroke="${I}" stroke-width="1.6" opacity=".55"/>`,
 
   // Binocular Telescope — twin barrels flaring into objectives, bridge.
   binoculars: (I) =>
@@ -67,13 +96,13 @@ const GLYPHS: Readonly<Record<string, EquipmentGlyph>> = {
       `</g>`;
   },
 
-  // Improved Rotation — circular arrows around a turret hub.
+  // Improved Rotation — circular arrows around a readable tank turret.
   rotation: (I) =>
-    `<path d="M5.4 8.4a7.6 7.6 0 0 1 13.5 1.2" fill="none" stroke="${I}" stroke-width="2"/>` +
-    `<path fill="${I}" d="M21.6 6.2v5.4l-4.8-2.4Z"/>` +
-    `<path d="M18.6 15.6a7.6 7.6 0 0 1-13.5-1.2" fill="none" stroke="${I}" stroke-width="2"/>` +
-    `<path fill="${I}" d="M2.4 17.8v-5.4l4.8 2.4Z"/>` +
-    `<circle cx="12" cy="12" r="2.4" fill="${I}"/>`,
+    `<path d="M4.8 8.2A8.2 8.2 0 0 1 19 7" fill="none" stroke="${I}" stroke-width="1.8"/>` +
+    `<path fill="${I}" d="M21.3 4.9v5.4l-4.8-2.4Z"/>` +
+    `<path d="M19.2 15.8A8.2 8.2 0 0 1 5 17" fill="none" stroke="${I}" stroke-width="1.8"/>` +
+    `<path fill="${I}" d="M2.7 19.1v-5.4l4.8 2.4Z"/>` +
+    `<path fill="${I}" d="M8.2 11.1h7.6l1.8 2.2v2.2H6.4v-2.2Zm3-2.6h3.7v2.9h-3.7Z"/>`,
 
   // Enhanced Suspension — leaf-spring pack: master leaf with curled end
   // eyes, two shorter leaves, center clamp (the wheel-plus-arcs draft read
@@ -135,15 +164,20 @@ export function equipIconSVG(id: string, size = 24, ink = EQUIP_INK): string {
   const g = GLYPHS[id];
   if (!g) return '';
   if (size < 20) {
-    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${g(ink)}</svg>`;
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" ` +
+      `data-equipment-icon="${id}">${g(ink)}</svg>`;
   }
-  const frame =
-    `<path d="M6 1.5h12L22.5 6v12L18 22.5H6L1.5 18V6Z" fill="none" ` +
-    `stroke="${ink}" stroke-width="1.15" opacity=".28"/>` +
-    `<path d="M2.2 8V6.3L6.3 2.2H8M16 21.8h1.7l4.1-4.1V16" fill="none" ` +
-    `stroke="${ink}" stroke-width="1.35" stroke-linecap="round" opacity=".62"/>`;
-  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">` +
-    `${frame}<g transform="translate(3 3) scale(.75)">${g(ink)}</g></svg>`;
+  const category = ICON_CATEGORY[id];
+  const accent = CATEGORY_ACCENT[category];
+  const plate =
+    `<path d="M4.4 1.25h14.7l3.65 3.65v14.7l-3.15 3.15H4.9L1.25 19.1V4.4Z" ` +
+    `fill="${accent}" fill-opacity=".105" stroke="${accent}" stroke-width="1.25" stroke-opacity=".7"/>` +
+    `<path d="M4.8 3h11.4M3 7.8v8.4M7.8 21h11.1" fill="none" stroke="${ink}" ` +
+    `stroke-width="1.05" stroke-linecap="round" opacity=".28"/>` +
+    `<path d="M5.2 22.15h13.9" stroke="${accent}" stroke-width="1.3" stroke-linecap="round" opacity=".9"/>`;
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" ` +
+    `data-equipment-icon="${id}" data-icon-category="${category}">` +
+    `${plate}<g transform="translate(2.35 2.35) scale(.804)">${g(ink)}</g></svg>`;
 }
 
 /** All catalog ids this set covers (icon-sheet tooling + selftest). */
