@@ -5010,11 +5010,9 @@ function finishM60A2Variant(
 
 }
 
-function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
-  const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
+function addM60A2EngineDeck(P: PattonBuilderPort): void {
+  const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const hull = curveHull(P, cfg.hull);
-  usKit(P, hull, cfg.fit);
   // cambered engine crown (extract: shoulder 2.005 @ -0.66..-0.92 rising to
   // the 2.18 peak @ -2.20, easing 1.98 by the -3.60 rear plate; full height
   // only |x|<=0.45, wings taper to the 1.97 shoulder at +-0.95 — the ref
@@ -5046,6 +5044,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
       }
     }
   }
+}
+
+function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box } = KIT;
+  const slab = orientedSlab;
   // Full Starship upper-side course. The segmented roof plates begin on the
   // glacis shoulder, follow the deck rise and meet the raised rear sponson at
   // z=-0.92. Their inboard edge is buried in the 1.19 m hull band; the
@@ -5123,6 +5126,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
       mergedHullDrawCalls: 0,
     };
   }
+}
+
+function addM60A2HullFurniture(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box, cylZ } = KIT;
+  const slab = orientedSlab;
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
   // full-length side flap panels at 1.79-1.815 (ref front band 0.76..1.40
   // at +-1.81; stations carry the 3.63 width) — segmented <=0.44 m per the
@@ -5218,7 +5226,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
     P.add('hullDetail', box(0.24, 0.055, 0.30), side * 0.90, 1.632, 2.62);
     P.add('hullDetail', box(0.02, 0.10, 0.26), side * 1.00, 1.585, 2.62);
   }
+}
 
+function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
+  const slab = orientedSlab;
   const py = 1.90, pz = 0.38;
   P.turretG.position.set(0, py, pz);
   P.gunG.position.set(0, 2.27 - py, 1.55 - pz);
@@ -5398,6 +5410,15 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
   muzzleBore(P, { z: glen, r: 0.148 });
   finishM60A2Variant(P, glen, cfg.hull.deck);
   applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
+}
+
+function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const hull = curveHull(P, cfg.hull);
+  usKit(P, hull, cfg.fit);
+  addM60A2EngineDeck(P);
+  addM60A2ShoulderArmor(P, cfg);
+  addM60A2HullFurniture(P, cfg);
+  addM60A2TurretAndGun(P, cfg);
 }
 
 // ---------------------------------------------------------------------------
