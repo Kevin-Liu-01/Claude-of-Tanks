@@ -376,7 +376,11 @@ function stagedBattleCandidates(
   game: RosterGameState,
   playerSpecId: string,
 ): RosterEntity[] {
-  return TANK_IDS
+  // The foundational TANK_IDS array can contract when retired historical
+  // vehicles are removed from production. Screenshot/boot staging still
+  // needs a complete eight-vehicle battle, so draw from the authoritative
+  // production roster just like real matchmaking does.
+  return PRODUCTION_TANK_IDS
     .filter((id) => id !== playerSpecId)
     .map((id) => game.tankById.get(id))
     .filter((entity): entity is RosterEntity => !!entity);

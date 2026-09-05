@@ -380,6 +380,10 @@ export function createShotViews({
     const enemies = game.tanks.filter((ent) =>
       // SYMMETRIC TEAMS: allies spawn 22-44 m away — scope must frame an ENEMY
       ent.team === 'enemy' && ent.state && ent.combat && !ent.combat.destroyed);
+    if (!enemies.length) {
+      throw new Error(`Sniper view requires a living enemy; roster=${game.tanks.map((ent) =>
+        `${ent.specId}:${ent.team}:${Boolean(ent.state)}:${Boolean(ent.combat)}:${Boolean(ent.combat?.destroyed)}`).join(',')}`);
+    }
     const closestEnemy = (
       accepts: (entity: ShotEntity) => boolean,
     ): { entity: ShotEntity | null; distance: number } => {
@@ -532,14 +536,15 @@ export function createShotViews({
   },
   tank_closeup_leo2a7() {
     hud.setMode('hidden');
-    closeupStage(game.tankById.get('leo2a7'));
-    orbitPose(game.tankById.get('leo2a7'), 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
+    const leopard = game.tankById.get('leo2a7v');
+    closeupStage(leopard);
+    orbitPose(leopard, 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   detrack() {
     // effects_combat r2: de-track destruction visuals — slumped band, thrown
     // track ribbon, scattered road wheel + fx burst (rubric item).
     hud.setMode('hidden');
-    const ent = game.tankById.get('tiger1');
+    const ent = game.player;
     orbitPose(ent, 10, 120, 10, 45);           // rear-quarter, running gear side
     // effects_combat r1: break the RIGHT track — the 120-deg orbit frames the
     // right flank, and the de-track rework removes the band from the broken
@@ -640,7 +645,9 @@ export function createShotViews({
   killcam_collision() {
     hud.setMode('hidden');
     const target = game.player;
-    const attacker = game.tankById.get('t90m');
+    const attacker = game.tanks.find((entity) => entity.team === 'enemy'
+      && entity.state && entity.combat && entity.visual);
+    if (!attacker) throw new Error('Killcam collision recipe requires a staged enemy');
     const terrainOffset = target.state.pos.y
       - world.heightField.getHeightAt(target.state.pos.x, target.state.pos.z);
     const x = target.state.pos.x;
@@ -715,14 +722,16 @@ export function createShotViews({
       boundingRadiusM: target.spec.armor.boundingRadiusM,
     }, 'collision');
   },
-  // KILL-CAM: deterministic staged x-ray replay frame. A synthetic T-90M
+  // KILL-CAM: deterministic staged x-ray replay frame. A synthetic enemy
   // flank shot into the player's M1A2 SEPv3 is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
   // combat state) and handed to the kill-cam's staged x-ray renderer.
   killcam_xray() {
     hud.setMode('hidden');
     const target = game.player;
-    const shooter = game.tankById.get('t90m');
+    const shooter = game.tanks.find((entity) => entity.team === 'enemy'
+      && entity.state && entity.combat && entity.visual);
+    if (!shooter) throw new Error('Killcam projectile recipe requires a staged enemy');
     const shellSpec = shooter.spec.gun.shells[0]; // 125 mm APFSDS
     // Synthetic flank muzzle (staged frame): a front-right-quarter shot at
     // 440 m guarantees a penetration whose internal ray crosses track/engine/

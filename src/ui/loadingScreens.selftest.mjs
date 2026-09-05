@@ -55,30 +55,23 @@ for (const { mapId, asset } of minimapAssets) {
 }
 
 assert.equal(FEATURED_SHOTS.length, 20, 'the handmade and owner-approved galleries stay available');
-assert.equal(TRANSITION_SHOTS.length, 10, 'only lightweight handmade and owner-approved captures rotate');
+assert.equal(TRANSITION_SHOTS.length, 12, 'the current battlefield campaign must rotate across every map family');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.equal(
   TRANSITION_SHOTS[0].img,
-  '/media/featured/f7_studio_t90_column_fire.webp',
-  'the handmade T-90 frame must remain the first transition-screen option',
+  '/media/showcase-r2/29_battle_sirocco.webp',
+  'the current Sirocco campaign frame must lead the transition-screen options',
 );
-assert.equal(
-  TRANSITION_SHOTS[0].bootImg,
-  '/media/featured/f7_studio_t90_column_fire.boot.webp',
-  'the featured panel must retain its screen-sized preview derivative',
-);
-const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
 const fullHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].img}`, import.meta.url));
-assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
-  'the featured preview must be materially smaller than its gallery source');
+assert.ok(fullHeroAsset.size > 50_000, 'the first boot hero must be a substantive published capture');
 assert.deepEqual(
   TRANSITION_SHOTS.slice(0, 3).map((shot) => shot.img),
   [
-    '/media/featured/f7_studio_t90_column_fire.webp',
-    '/media/featured/f6_studio_strv_steinburg_duel.webp',
-    '/media/featured/f9_studio_fjord_firefight.webp',
+    '/media/showcase-r2/29_battle_sirocco.webp',
+    '/media/showcase-r2/30_battle_frosthollow.webp',
+    '/media/showcase-r2/31_battle_steinburg.webp',
   ],
-  'handmade Studio frames must lead the transition-screen rotation',
+  'the current battlefield campaign must lead the transition-screen rotation',
 );
 const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
 const bootSource = await readFile(new URL('./bootScreen.ts', import.meta.url), 'utf8');
@@ -116,20 +109,19 @@ assert.match(bootHtml,
   /:where\(body\[data-cot-width='compact'\],body\[data-cot-width='phone'\]\) \.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space must follow the centralized width policy rather than an independent breakpoint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => /\/(?:featured\/f\d+_studio_|presentation-r1\/\d+_)/.test(img)),
-  'only handmade Studio or owner-approved presentation captures may enter the loading-screen rotation');
-assert.ok(FEATURED_SHOTS.slice(0, 5).every((shot) => shot.handmade),
-  'the complete handmade set must lead the featured gallery');
+assert.ok(FEATURED_IMAGES.every((img) => /\/media\/showcase-r2\/\d+_battle_[a-z0-9_]+\.webp$/.test(img)),
+  'only the current approved battlefield campaign may enter the loading-screen rotation');
+assert.ok(FEATURED_SHOTS.slice(0, 12).every((shot) => shot.handmade),
+  'the complete current battlefield campaign must lead the featured gallery');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 0,
   'the image-backed garage gallery must not decode animated GIF assets');
-assert.ok(FEATURED_SHOTS.some((shot) => shot.img === '/media/feature-evidence-r2/studio-action.webp'),
-  'the garage gallery keeps the native 4K Studio evidence frame');
+assert.ok(FEATURED_SHOTS.some((shot) => shot.img === '/media/showcase-r2/25_live_killcam_xray.webp'),
+  'the garage gallery keeps the current resolved-shot X-ray frame');
 const approved = [
-  '02_desert_rooftop_dive', '03_desert_muzzle_worm', '05_winter_ice_breaker',
-  '08_winter_village_hell', '10_urban_overpass_dive', '12_urban_crossfire_x',
-  '15_verdant_column_massacre', '16_verdant_meadow_duel', '23_autumn_gold_inferno',
-  '24_autumn_orchard_stand', '25_steppe_horizon_charge',
-  '32_desert_ram_abramsx_t90m', '33_desert_overwatch_line',
+  '29_battle_sirocco', '30_battle_frosthollow', '31_battle_steinburg',
+  '32_battle_verdant', '33_battle_saltmere', '34_battle_amberford',
+  '35_battle_tarkhan', '36_battle_cinder', '37_battle_frontier',
+  '38_battle_nordhavn', '39_battle_jade_delta', '40_battle_urban_hero',
 ];
 for (const id of approved) {
   assert.ok(FEATURED_SHOTS.some((shot) => shot.img.endsWith(`/${id}.webp`)),
@@ -152,13 +144,13 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
 
 assert.equal(
   featuredShotForMap('fjord').img,
-  '/media/featured/f9_studio_fjord_firefight.webp',
-  'the handmade Fjord firefight should headline Glacier Fjord',
+  '/media/showcase-r2/38_battle_nordhavn.webp',
+  'the current Nordhavn capture should headline Glacier Fjord',
 );
 assert.equal(
   featuredShotForMap('urban').img,
-  '/media/featured/f6_studio_strv_steinburg_duel.webp',
-  'the handmade Strv duel should headline Steinburg',
+  '/media/showcase-r2/31_battle_steinburg.webp',
+  'the current Steinburg capture should headline Steinburg',
 );
 
 const cycleSize = TRANSITION_SHOTS.length;

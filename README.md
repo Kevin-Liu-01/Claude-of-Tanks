@@ -24,20 +24,19 @@
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/featured/f10_studio_urban_crossfire.webp" alt="Armored vehicles exchanging fire in an urban battle"></td>
-<td width="50%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Tanks fighting across the Fjord battlefield"></td>
+<td width="50%"><img src="public/media/showcase-r2/31_battle_steinburg.webp" alt="Armored vehicles exchanging fire through Steinburg"></td>
+<td width="50%"><img src="public/media/showcase-r2/38_battle_nordhavn.webp" alt="Modern armor moving and firing along Nordhavn Fjord"></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 Abrams firing during a close-range tank battle"></td>
-<td width="50%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Strv 103 fighting through Steinburg"></td>
+<td width="50%"><img src="public/media/showcase-r2/20_live_gunnery.webp" alt="M1 Abrams firing with the current production battle HUD"></td>
+<td width="50%"><img src="public/media/showcase-r2/40_battle_urban_hero.webp" alt="A Leopard-family tank breaking through Steinburg"></td>
 </tr>
 </table>
 
-These are handmade, deterministic scenes captured with the current game renderer—not concept art. The
-[88-frame showcase archive](public/media/showcase-r1/manifest.json) contains 13 owner-selected scenes, 30 action frames,
-30 close foreground compositions, five directed Studio frames, and ten interface states. The
-[landing selection](public/media/landing-r1/manifest.json) records the six hero frames, feature reel, five camera-rail
-films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now published on the site.
+These are deterministic scenes captured with the current game renderer—not concept art. The
+[40-frame R2 showcase archive](public/media/showcase-r2/manifest.json) contains ten Garage environments, six interface
+surfaces, nine live feature states, three vehicle detail views, and twelve battlefield action frames. Its page map
+covers the landing page, Garage, Tank Gallery, Scene Studio, docs overview, and every focused manual.
 
 ## Fight, inspect, and direct
 
@@ -108,12 +107,12 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 using hydropneumatic suspension to aim on a slope"><br><sub><b>Swedish siege suspension:</b> the Strv 103A, Strv 103B, and UDES 03 aim their fixed guns by pitching the physical hull. Wheels and both loaded track runs reshape around the solved pose.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 firing a guided Shillelagh missile"><br><sub><b>Guided weapons:</b> the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike, Konkurs, Arkan, and Jyu-MAT launchers.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/22_live_detrack.webp" alt="Current battle renderer showing a detached track and damaged running gear"><br><sub><b>Running-gear destruction:</b> track hits can detach the loaded procedural track path while preserving the resolved suspension and wheel geometry.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/24_live_killcam_impact.webp" alt="Current killcam presenting a resolved shell impact"><br><sub><b>Resolved impacts:</b> the killcam presents the authoritative armor contact, shell path, effects, and damage result without simulating a second outcome.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t internal modules and crew shown in Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/garage-fleet.webp" alt="Claude of Tanks garage displaying the procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—127 in production or 164 in keyed local development.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/13_gallery_modules.webp" alt="M1A2 Abrams internal modules shown in the current Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Claude of Tanks Garage displaying the current procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, Garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—127 in production or 164 in keyed local development.</sub></td>
 </tr>
 </table>
 
@@ -137,12 +136,12 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_player_view.webp" alt="Production battle HUD during live armored combat"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/killcam-modules.webp" alt="X-ray killcam showing a T-90M shell path through an M1A2 Abrams SEPv3"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/17_live_player_hud.webp" alt="Production battle HUD during live armored combat"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/25_live_killcam_xray.webp" alt="Current X-ray killcam showing a resolved shell path through armor and internal modules"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_explosion.webp" alt="Tank destruction with fire, sparks, fragments, and smoke"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/20_live_gunnery.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/21_live_destruction.webp" alt="Tank destruction with fire, sparks, fragments, and smoke"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
 </tr>
 </table>
 
@@ -165,12 +164,12 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/07_winter_road_charge.webp" alt="Vehicles charging through Frosthollow"><br><sub><b>Twenty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/30_battle_frosthollow.webp" alt="Vehicles fighting through Frosthollow"><br><sub><b>Twenty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/36_battle_cinder.webp" alt="Armored contact beside the rail infrastructure at Cinder Junction"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 127 production vehicles or 164 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 127 production vehicles or 164 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/26_vehicle_abrams.webp" alt="Close inspection of the current first-party M1A2 Abrams rig"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>
 
@@ -181,7 +180,7 @@ checks, visual fingerprints, and a targeted release gate.
 ### Ten Garage environments
 
 <p align="center">
-  <a href="public/media/garage-environments-r2/ten-garage-environments.png"><img src="public/media/garage-environments-r2/ten-garage-environments.png" alt="All ten Claude of Tanks Garage environments shown with the same Abrams and production Garage interface"></a>
+  <a href="public/media/showcase-r2/process/review-01.webp"><img src="public/media/showcase-r2/process/review-01.webp" alt="All ten current Claude of Tanks Garage environments shown with the production Garage interface"></a>
 </p>
 
 The Garage is its own authored presentation system. Verdant retains the enclosed Motor Pool; the other nine locations
@@ -217,8 +216,8 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_sniper_view.webp" alt="Precision sight rendered through the current post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_battlefield_foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/19_live_sniper.webp" alt="Precision sight rendered through the current post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/34_battle_amberford.webp" alt="Amberford battlefield rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
 </tr>
 </table>
 
@@ -234,7 +233,7 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 7v7 battle responsive without giving the client authority.
 
 <p align="center">
-  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A2 Abrams and T-90M Proryv facing each other from opposing player perspectives">
+  <img src="public/media/showcase-r2/18_live_spectator.webp" alt="Current allied spectator interface following a live armored engagement">
 </p>
 <p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures preserve the real battle HUD, authoritative simulation, filtered snapshots, and each commander's view.</sub></p>
 
@@ -267,7 +266,7 @@ desktop HUD.
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_studio.webp" alt="Scene Studio composing a shot on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/15_studio_workspace.webp" alt="Current Scene Studio composing a multi-tank shot"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
 <td width="50%"><a href="public/media/landing-r1/studio-leclerc-knockout.webm"><img src="public/media/landing-r1/studio-leclerc-knockout.jpg" alt="Open the Scene Studio film of a Strv 122 firing on and destroying a Leclerc"></a><br><sub><b>Directed destruction:</b> this 1080p timeline moves both actors, fires the Strv 122, resolves impacts, detaches the Leclerc track, and triggers its ammunition-rack blast.</sub></td>
 </tr>
 </table>
@@ -279,59 +278,55 @@ be replayed, scrubbed, edited, exported as JSON, captured as a high-resolution s
 Regenerate the current public archive:
 
 ```bash
-npm run shots:battle:generate
-npm run shots:battle:grade -- --root shots/marketing-battles-r3
-node tools/marketing-shots/capture-multiplayer-dual-screen.mjs
-npm run studio:action:render
-npm run showcase:publish
-npm run showcase:check
-npm run landing:media:publish
+npm run shots:r2:capture
+npm run shots:r2:grade
+npm run shots:r2:publish
+npm run shots:r2:check
 ```
 
 The capture harness serializes concurrent jobs, starts a clean local game, verifies the requested state, and records
-current rendering diagnostics. `public/media/showcase-r1/manifest.json` defines the source archive;
-`public/media/landing-r1/manifest.json` records the public hero, rail, mosaic, and Studio selections with their actor,
-effect, duration, dimensions, and byte receipts.
+current rendering diagnostics. `public/media/showcase-r2/manifest.json` defines the 40-frame source archive, public
+page assignments, feature and map labels, dimensions, and quality receipts.
 
 The same run is reviewed in contact sheets before any frame becomes a 4K master. These collection views make weak
 silhouettes, obstructed cameras, repeated compositions, and overpowered effects obvious before automated grading.
 
 <table>
 <tr>
-<td width="50%"><a href="public/media/showcase-r1/process/action-review-02.webp"><img src="public/media/showcase-r1/process/action-review-02.webp" alt="Action campaign contact sheet, frames 71 through 80"></a><br><sub><b>Action review:</b> ten multi-tank compositions inspected together.</sub></td>
-<td width="50%"><a href="public/media/showcase-r1/process/foreground-review-02.webp"><img src="public/media/showcase-r1/process/foreground-review-02.webp" alt="Foreground campaign contact sheet, frames 101 through 110"></a><br><sub><b>Foreground review:</b> anchor-tank readability checked against battle depth.</sub></td>
+<td width="50%"><a href="public/media/showcase-r2/process/review-01.webp"><img src="public/media/showcase-r2/process/review-01.webp" alt="Current Garage environment review sheet, frames 1 through 10"></a><br><sub><b>Garage review:</b> all ten production locations inspected together.</sub></td>
+<td width="50%"><a href="public/media/showcase-r2/process/review-04.webp"><img src="public/media/showcase-r2/process/review-04.webp" alt="Current battlefield action review sheet, frames 31 through 40"></a><br><sub><b>Battlefield review:</b> close action checked against vehicle readability and map identity.</sub></td>
 </tr>
 </table>
 
-[Open all six review sheets](docs/SHOWCASE-LIBRARY.md#review-sheets) and the complete admission contract.
+[Open all four review sheets](docs/SHOWCASE-LIBRARY.md#review-sheets) and the complete admission contract.
 
 ## Selected field frames
 
-The landing page publishes a larger responsive mosaic. This smaller wall samples the action and foreground collections
-without repeating the six hero frames.
+The landing page publishes a larger responsive mosaic. This smaller wall samples current Garage, interface, feature,
+vehicle, and battlefield captures.
 
 <table>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Leclerc duel in the desert"></td>
-<td width="25%"><img src="public/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Desert overwatch line under fire"></td>
-<td width="25%"><img src="public/media/showcase-r1/69_action_winter_village_brawl.webp" alt="Tank battle through a winter village"></td>
-<td width="25%"><img src="public/media/showcase-r1/71_action_urban_street_duel.webp" alt="Close urban street duel"></td>
+<td width="25%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Verdant Motor Pool with the current Garage interface"></td>
+<td width="25%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="M1A2 Abrams in the current Tank Gallery"></td>
+<td width="25%"><img src="public/media/showcase-r2/15_studio_workspace.webp" alt="Current Scene Studio workspace"></td>
+<td width="25%"><img src="public/media/showcase-r2/16_mobile_garage.webp" alt="Current responsive Garage interface"></td>
 </tr>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/76_action_verdant_field_duel.webp" alt="Tank duel across a green field"></td>
-<td width="25%"><img src="public/media/showcase-r1/84_action_steppe_horizon_charge.webp" alt="Armored charge across the steppe"></td>
-<td width="25%"><img src="public/media/showcase-r1/95_foreground_coastal_dune_ambush.webp" alt="Foreground tank entering a coastal dune ambush"></td>
-<td width="25%"><img src="public/media/showcase-r1/97_foreground_winter_lake_duel.webp" alt="Foreground tank fighting on a winter lake"></td>
+<td width="25%"><img src="public/media/showcase-r2/17_live_player_hud.webp" alt="Current production battle HUD"></td>
+<td width="25%"><img src="public/media/showcase-r2/19_live_sniper.webp" alt="Current precision sight"></td>
+<td width="25%"><img src="public/media/showcase-r2/25_live_killcam_xray.webp" alt="Current resolved-shot X-ray killcam"></td>
+<td width="25%"><img src="public/media/showcase-r2/26_vehicle_abrams.webp" alt="Current M1A2 Abrams procedural rig"></td>
 </tr>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/101_foreground_urban_street_duel.webp" alt="Tank filling the foreground of an urban duel"></td>
-<td width="25%"><img src="public/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp" alt="Challenger 1 leading a green battlefield attack"></td>
-<td width="25%"><img src="public/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing through a narrow urban alley"></td>
-<td width="25%"><img src="public/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp" alt="Foreground tank overlooking a ridge battle"></td>
+<td width="25%"><img src="public/media/showcase-r2/29_battle_sirocco.webp" alt="Close armored action in Sirocco Wadi"></td>
+<td width="25%"><img src="public/media/showcase-r2/30_battle_frosthollow.webp" alt="Close armored action in Frosthollow"></td>
+<td width="25%"><img src="public/media/showcase-r2/32_battle_verdant.webp" alt="A multi-tank engagement in Verdant Fields"></td>
+<td width="25%"><img src="public/media/showcase-r2/36_battle_cinder.webp" alt="Armored action at Cinder Junction"></td>
 </tr>
 </table>
 
-[Browse the full showcase manifest](public/media/showcase-r1/manifest.json),
+[Browse the full showcase manifest](public/media/showcase-r2/manifest.json),
 [open the public Tank Gallery](https://cot.kevinliu.studio/gallery), or
 [build a new shot in Scene Studio](https://cot.kevinliu.studio/studio).
 

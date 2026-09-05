@@ -209,7 +209,7 @@ try {
   }
 } catch (err) {
   failed = true;
-  console.error(`[shots] FAILED: ${err.message}`);
+  console.error(`[shots] FAILED: ${err.stack || err.message}`);
 } finally {
   if (consoleErrors.length) {
     console.error(`[shots] page console errors (${consoleErrors.length}):`);

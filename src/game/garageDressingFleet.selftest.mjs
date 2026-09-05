@@ -133,6 +133,15 @@ assert.match(dressing,
 assert.match(dressing, /serviceLandmark = 'east-flammable-canisters'/,
   'the moved Abrams owner must receipt its intended workshop landmark');
 assert.match(dressing,
+  /garage_abrams_welding_service_floor[\s\S]*floorAssetsMoveWithBay = true/,
+  'the Abrams painted square and floor assets must have one explicit movable owner');
+assert.match(dressing,
+  /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*halfTurnAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  'the complete Abrams floor station must enter the same half-turn owner as the vehicle');
+assert.match(dressing,
+  /15\.9 - ABRAMS_FLAMMABLE_BAY_OFFSET\.x,[\s\S]*16\.6 - ABRAMS_FLAMMABLE_BAY_OFFSET\.z/,
+  'the indoor Abrams work lamp must follow the moved floor station');
+assert.match(dressing,
   /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
   'Abrams must carry four exact fleet road wheels on a connected service dolly');
 assert.match(dressing, /perimeterCraneClearance = true/,
@@ -307,8 +316,8 @@ assert.doesNotMatch(dressing, /garage_map_location_preview/,
   'the old location-preview wall mesh must be removed');
 assert.match(dressing, /import \{ FEATURED_SHOTS \} from '\.\.\/ui\/featuredShots\.ts'/,
   'the wall monitor reuses the canonical checked-in battle archive');
-assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => !shot\.handmade && shot\.maps\?\.length\)/,
-  'editor/studio frames must not enter the workshop battle rotation');
+assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => shot\.maps\?\.length\)\.slice\(0, 6\)/,
+  'the CRT rotation must include current battlefield captures while excluding editor/studio frames');
 assert.match(dressing, /garage_battle_archive_screen/);
 assert.match(dressing, /battleScreenMode = 'crt-scroll-slideshow'/);
 assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,

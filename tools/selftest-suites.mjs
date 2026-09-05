@@ -421,6 +421,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-library.selftest.mjs',
+    'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',

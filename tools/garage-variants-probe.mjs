@@ -103,7 +103,7 @@ try {
   await startFrameProbe('__GARAGE_DRESSING_PROBE');
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
-    return stats.built && stats.exhibitCount === 4
+    return stats.built && stats.exhibitCount === 5
       && stats.sharedMaintenanceBayCount === 4;
   }, { timeout: 60_000 });
   const dressingFrames = await stopFrameProbe('__GARAGE_DRESSING_PROBE');
@@ -313,7 +313,7 @@ try {
       failures.push(`${result.id}: selection/persistence/preview failed`);
     }
     if (!result.stats.built || result.stats.triangles <= 0
-        || result.stats.activeWorkshopTriangles <= 0 || result.stats.exhibitCount !== 4
+        || result.stats.activeWorkshopTriangles <= 0 || result.stats.exhibitCount !== 5
         || result.stats.sharedMaintenanceBayCount !== 4
         || result.stats.sharedMaintenanceBayIds?.length !== 4
         || result.stats.sharedMaintenanceBayQuadrants?.length !== 4
@@ -322,10 +322,10 @@ try {
       failures.push(`${result.id}: complete four-bay service layer is missing`);
     }
     if (result.stats.workshopExhibitTextureCount !== 0
-        || result.stats.workshopPaletteCount !== 3
+        || result.stats.workshopPaletteCount !== 4
         || result.stats.workshopOmittedAttributeBytes <= 0
         || result.stats.workshopPresentationFinishes?.join('|')
-          !== 'service_t90m|service_usa_desert|service_bmp3_rok') {
+          !== 'service_t90m|service_usa_desert|service_leo2a6m|service_bmp3_rok') {
       failures.push(`${result.id}: fixed service-finish optimization is missing`);
     }
     if (!result.stats.battleScreenVisible
@@ -406,7 +406,7 @@ try {
   }
   for (const [name, state] of Object.entries(responsive)) {
     if (state.panelMode !== 'overlay' || state.leftDisplay !== 'none'
-        || state.rightDisplay !== 'none' || !state.carouselInside || !state.countriesInside
+        || state.rightDisplay !== 'block' || !state.carouselInside || !state.countriesInside
         || !state.selector.open || state.selector.cards !== 10 || !state.selector.inside) {
       failures.push(`${name}: responsive Garage composition failed: ${JSON.stringify(state)}`);
     }

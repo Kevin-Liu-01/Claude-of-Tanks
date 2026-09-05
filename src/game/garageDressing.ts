@@ -140,7 +140,7 @@ const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze([
 // keep the rotation compact: only one current and one incoming texture are
 // resident at a time.
 const GARAGE_BATTLE_SCREEN_SHOTS = Object.freeze(
-  FEATURED_SHOTS.filter((shot) => !shot.handmade && shot.maps?.length).slice(0, 6),
+  FEATURED_SHOTS.filter((shot) => shot.maps?.length).slice(0, 6),
 );
 const BATTLE_SCREEN_HOLD_MS = 6_500;
 const BATTLE_SCREEN_SCROLL_MS = 720;
@@ -229,6 +229,7 @@ export function createGarageDressing(
   const workshopFleet = existing.workshopFleet;
   const preparedVehicleIds = new Set<string>();
   let pendingTankReveal: THREE.Object3D | null = null;
+  let abramsServiceFloorRoot: THREE.Group | null = null;
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -2091,18 +2092,41 @@ export function createGarageDressing(
     const outlineMat = track(new THREE.MeshBasicMaterial({
       map: track(canvasTexture(makeBayOutlineTexture())), transparent: true, depthWrite: false,
     }));
-    for (const [bx, bz, ry2, w, h] of [[16.4, -13.6, -0.55, 9.4, 7.2], [15.3, 16.2, -2.03, 9.6, 7.4]]) {
+    const addBayOutline = (
+      parent: THREE.Object3D,
+      bx: number,
+      bz: number,
+      ry2: number,
+      w: number,
+      h: number,
+      name: string,
+    ): void => {
       const q = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), outlineMat);
+      q.name = name;
       q.rotation.set(-Math.PI / 2, 0, ry2);
       q.scale.set(w, h, 1);
       q.position.set(bx, 0.024, bz);
-      group.add(q);
-    }
+      parent.add(q);
+    };
+    addBayOutline(group, 16.4, -13.6, -0.55, 9.4, 7.2,
+      'verdant_leopard_mobility_bay_outline');
+    abramsServiceFloorRoot = markModernPart(
+      new THREE.Group(), 'm1a2', 'welding_service_floor',
+    );
+    abramsServiceFloorRoot.name = 'garage_abrams_welding_service_floor';
+    abramsServiceFloorRoot.userData.floorAssetsMoveWithBay = true;
+    group.add(abramsServiceFloorRoot);
+    addBayOutline(abramsServiceFloorRoot, 15.3, 16.2, -2.03, 9.6, 7.4,
+      'verdant_abrams_welding_bay_outline');
     for (const [sx, sz, ss] of [[17.2, -13.2, 3.2], [15.6, 15.8, 3.6], [21.3, -6.4, 2.0], [11.6, 19.2, 1.7], [-14.2, 19.8, 2.2], [3.4, -20.7, 1.9]]) {
       const stain = new THREE.Mesh(track(new THREE.PlaneGeometry(ss, ss)), stainMat);
+      const belongsToAbramsBay = sx === 15.6 && sz === 15.8;
+      stain.name = belongsToAbramsBay
+        ? 'verdant_abrams_welding_floor_stain'
+        : 'verdant_workshop_floor_stain';
       stain.rotation.set(-Math.PI / 2, 0, rng() * Math.PI);
       stain.position.set(sx, 0.021 + rng() * 0.004, sz);
-      group.add(stain);
+      (belongsToAbramsBay ? abramsServiceFloorRoot : group).add(stain);
     }
     const skidMat = track(new THREE.MeshBasicMaterial({
       map: track(canvasTexture(makeSkidTexture())), transparent: true, depthWrite: false,
@@ -2404,7 +2428,25 @@ export function createGarageDressing(
 
     // This fixture hangs from Verdant's roof. Outdoor environments use the
     // stable Garage sun and hero lights, so never leave it in open sky.
-    workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
+    // The lamp remains an indoor roof fixture, but follows the same bay
+    // translation so its cone lands on the moved pad instead of the empty old
+    // scaffold square. The interior already supplies the half-turn, hence the
+    // inverse offset in its authored coordinate space.
+    workLamp(
+      15.9 - ABRAMS_FLAMMABLE_BAY_OFFSET.x,
+      16.6 - ABRAMS_FLAMMABLE_BAY_OFFSET.z,
+      0,
+      7.4,
+      verdantInteriorRoot,
+    );
+    if (!abramsServiceFloorRoot) {
+      throw new Error('Abrams welding service floor was not constructed');
+    }
+    // Reparent the complete painted square immediately before the bay owner
+    // captures its authored children. The outline and oil staining therefore
+    // inherit exactly the same half-turn and FLAMMABLE-wall offset as the tank,
+    // removed skirts, wheel dolly, cable and carts.
+    legacyVerdantRoot.add(abramsServiceFloorRoot);
     halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
 

@@ -43,31 +43,29 @@ MUST uphold this contract at all times or the build is considered broken.
 ## Public showcase archive
 
 The public image system is a larger, reproducible layer above the minimum critic
-views. `tools/marketing-shots/scenes-action-r3/` and
-`scenes-foreground-r3/` contain 60 approved multi-tank campaign compositions.
-The archive leads with 13 owner picks and also preserves five directed Studio
-keyframes and ten deterministic interface/system frames.
+views. `tools/marketing-shots/showcase-r2.json` declares exactly 40 current
+captures: ten Garage environments, six interface surfaces, nine live feature
+states, three vehicle detail views, and twelve battlefield action frames. It
+also assigns current imagery to every public page and focused docs manual.
 
-Visual review is required. The publisher tiles the action and foreground
-campaigns into six ordered contact sheets, ten captures per sheet, so the entire
-set can be checked for camera intersections, weak silhouettes, repetitive
-staging, and effects that erase vehicle readability before individual 4K frames
-are admitted.
+Visual review is required. The publisher tiles the collection into four ordered
+contact sheets, ten captures per sheet, so the whole set can be checked for
+camera intersections, weak silhouettes, repetitive staging, UI defects, and
+effects that erase vehicle readability before the 4K masters are admitted.
 
 ```bash
-npm run shots:battle:generate
-npm run shots:battle:grade -- --root shots/marketing-battles-r3
-npm run studio:action:render
-npm run showcase:publish
-npm run showcase:check
+npm run shots:r2:capture
+npm run shots:r2:grade
+npm run shots:r2:publish
+npm run shots:r2:check
 ```
 
-`public/media/showcase-r1/manifest.json` must report 13 owner picks, 30 action
-frames, 30 foreground frames, five Studio frames, ten interface frames, 88 total
-frames, six process sheets, and `firstPartyRuntimeOnly: true`. Landing, docs,
-Gallery, and Studio consume that manifest through the shared media archive
-component. Raw 4K PNGs remain local capture evidence; compressed WebP frames,
-review sheets, and the manifest are shipped artifacts.
+`public/media/showcase-r2/manifest.json` must report 40 total passing frames,
+the five exact collection counts, four process sheets, all 17 public route
+assignments, and `firstPartyRuntimeOnly: true`. Landing, docs, Gallery, Studio,
+Garage galleries, and loading screens use the current captures. Raw 4K PNGs
+remain local evidence; compressed WebP frames, review sheets, and the manifest
+are shipped artifacts.
 
 ## Public feature loops
 

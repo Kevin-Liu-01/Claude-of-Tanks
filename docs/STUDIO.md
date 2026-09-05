@@ -54,13 +54,13 @@ automatically so headless capture tools can enter Studio.
   tanks as a recordable moving battle. Map previews load when the battlefield
   picker opens. Scene JSON can be downloaded, uploaded, copied, or stored in
   three local slots; Shift-click saves to a slot. The Output section also opens
-  the shared 88-frame archive for composition, lighting, effects, and vehicle
+  the shared 40-frame archive for composition, lighting, effects, and vehicle
   placement reference.
 
 The archive drawer uses the same `src/presentation/mediaArchive.ts` component as
-the landing page, public field manual, and Tank Gallery. It reads the checked-in
-showcase manifest and loads its compact image rail only when opened, so the 88
-reference frames do not add image transfers to Studio startup.
+the landing page and public field manual. It reads the checked-in R2 showcase
+manifest and loads its compact image rail only when opened, so the 40 reference
+frames do not add image transfers to Studio startup.
 
 ## `window.__STUDIO` (scripted-shoot contract)
 

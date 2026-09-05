@@ -3,7 +3,7 @@ import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
-const MANIFEST_URL = '/media/showcase-r1/manifest.json';
+const MANIFEST_URL = '/media/showcase-r2/manifest.json';
 interface PresentationShot {
   src: string;
   alt: string;
@@ -145,7 +145,21 @@ export async function mountMediaArchive(
   const grid = document.createElement('div');
   grid.className = 'media-archive-grid';
 
-  const featureOrder = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
+  const featureOrder = [
+    'all',
+    'garage environments',
+    'tank gallery',
+    'scene studio',
+    'responsive interface',
+    'interface',
+    'multiplayer',
+    'killcam',
+    'gunnery',
+    'destruction',
+    'track physics',
+    'tank design',
+    'battlefield atmosphere',
+  ];
   const available = new Set(source.map((shot) => normalize(shot.feature)));
   const features = featureOrder.filter((feature) => feature === 'all' || available.has(feature));
   function render(): void {

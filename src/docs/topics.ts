@@ -23,7 +23,7 @@ export const topics: Record<string, TopicDefinition> = {
   build: {
     label: 'How the game was built', title: 'A browser game built through verified loops',
     lede: 'Claude of Tanks grew from a direct Three.js prototype into a typed, tested game through short implementation rounds: isolate one problem, change the smallest owner, prove it in the browser, record the result, and land it on main.',
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/showcase-r2/15_studio_workspace.webp',
     icon: 'build',
     sectionIcons: ['architecture', 'workflow', 'isolation', 'evidence', 'memory', 'landing'],
     sections: [
@@ -35,14 +35,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Land only integrated proof', 'A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing.', 'The public build then proves route isolation and strips non-distributable comparison material. This keeps the playable site, source tree, documentation, and main branch describing the same game.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_studio.webp', 'Scene Studio and browser tooling used to stage reproducible game states'],
-      ['/media/showcase-r1/process/action-review-02.webp', 'A deterministic contact sheet used for visual comparison and review'],
+      ['/media/showcase-r2/15_studio_workspace.webp', 'Scene Studio and browser tooling used to stage reproducible game states'],
+      ['/media/showcase-r2/31_battle_steinburg.webp', 'A deterministic current-renderer frame used for visual comparison and review'],
     ],
   },
   models: {
     label: 'Procedural model pipeline', title: 'From reference to playable machine',
     lede: 'Kevin B. Liu authored every playable tank as first-party procedural runtime geometry. References guide proportion and detail, but the shipped machine is rebuilt from code, connected to combat data, rendered into its own icon set, and released through measured and visual gates.',
-    hero: '/media/hero-rails-r2/03_steppe-charge-thread.webm',
+    hero: '/media/showcase-r2/11_gallery_hero.webp',
     icon: 'models',
     sectionIcons: ['research', 'construction', 'rig', 'anatomy', 'iconPipeline', 'critique'],
     sections: [
@@ -54,14 +54,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Measure, inspect, and graduate', 'Automated gates check geometry fingerprints, dimensions, stations, floaters, track intersections, wheel quality, muzzle bores, materials, armor anatomy, markings, provenance, and deterministic asset freshness. Standard front, quarter, side, rear, top, close, and yaw views then expose defects a numeric score can miss.', 'A model graduates only when every required view clears the visual acceptance floor, attachments have physical load paths, winding and backfaces are healthy, and the clean integrated release check passes. The Tank Gallery is the live inspection surface for that final procedural rig.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_gallery.webp', 'Tank Gallery rendering the current procedural model and diagnostic layers'],
-      ['/media/presentation-r1/ui_tank_closeup_modern.webp', 'A released first-party rig with armor, fittings, markings, and running gear'],
+      ['/media/showcase-r2/11_gallery_hero.webp', 'Tank Gallery rendering the current procedural model and diagnostic layers'],
+      ['/media/showcase-r2/12_gallery_armor.webp', 'A released first-party rig with its authored armor surfaces visible'],
     ],
   },
   ai: {
     label: 'Bots and tactical AI', title: 'One bot controller for every battlefield',
     lede: 'Solo and authoritative multiplayer bots use the same renderer-free decision logic. They navigate a seeded battlefield graph, respect team and visibility rules, choose viable shots, use vehicle capabilities, and remain testable without a GPU.',
-    hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
+    hero: '/media/showcase-r2/37_battle_frontier.webp',
     icon: 'ai',
     sectionIcons: ['perception', 'navigation', 'aiming', 'teamwork', 'survival', 'verification'],
     sections: [
@@ -73,14 +73,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Verification', 'Focused AI tests cover aim, friendly-fire rejection, routes, difficulty, deterministic decisions, and authoritative bot integration. Map-wide server tests run the controller without rendering, while browser battles verify that visible movement, firing, and effects match those decisions.', 'Bot changes run `node src/game/ai.selftest.mjs`, `node src/sim/ai.aim.selftest.mjs`, `node src/sim/botRoutePlanner.selftest.mjs`, and `node server/authoritativeBots.selftest.mjs`.'],
     ],
     media: [
-      ['/media/presentation-r1/04_desert_last_stand.webp', 'Mixed vehicles holding lanes and exchanging authoritative fire'],
-      ['/media/presentation-r1/43_frontier_contact.webp', 'An IFV contact showing movement, target pressure, and team spacing'],
+      ['/media/showcase-r2/37_battle_frontier.webp', 'An IFV contact showing movement, target pressure, and team spacing'],
+      ['/media/showcase-r2/32_battle_verdant.webp', 'Mixed vehicles holding lanes and exchanging authoritative fire'],
     ],
   },
   audio: {
     label: 'Audio and battlefield FX', title: 'Every sound begins with a game event',
     lede: 'Weapons, engines, impacts, tracks, ambience, crew radio, destruction, and replay audio are presentation responses to canonical events and listener state. The audio system never decides whether a shell was fired or a target was hit.',
-    hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
+    hero: '/media/showcase-r2/20_live_gunnery.webp',
     icon: 'audio',
     sectionIcons: ['weapons', 'spatial', 'mix', 'radio', 'replay', 'verification'],
     sections: [
@@ -92,14 +92,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Verification', 'Pure timing tests cover scheduling, staleness, priority, and phase teardown. Spatial probes render listener and distance cases to PCM, while the canonical audio probe verifies event coverage and bus routing.', 'Use `node src/audio/audioTiming.selftest.mjs`, `node src/audio/voices.selftest.mjs`, `node tools/audio-spatial-killcam-probe.mjs`, and `node tools/audio-probe.mjs` for audio changes.'],
     ],
     media: [
-      ['/media/presentation-r1/04_desert_last_stand.webp', 'Overlapping weapon, impact, engine, and destruction events in battle'],
-      ['/media/feature-evidence-r2/killcam-modules.webp', 'The slowed X-ray killcam with replay-specific listener and timing'],
+      ['/media/showcase-r2/20_live_gunnery.webp', 'Overlapping weapon, impact, engine, and destruction events in battle'],
+      ['/media/showcase-r2/21_live_destruction.webp', 'A destruction event with spatial effects and persistent aftermath'],
     ],
   },
   performance: {
     label: 'Performance and loading', title: 'Measure the frame that the player actually feels',
     lede: 'Performance work covers cold boot, garage residency, battle acquisition, countdown warmup, the first ten seconds of combat, steady-state frame pacing, device adaptation, and recovery—not just an average frame-rate number.',
-    hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
+    hero: '/media/showcase-r2/17_live_player_hud.webp',
     icon: 'performance',
     sectionIcons: ['loading', 'profiling', 'optimization', 'device', 'budgets', 'verification'],
     sections: [
@@ -111,14 +111,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Budgets and release evidence', 'Release probes cover cold load, transitions, battle opening, sustained play, map and tank switching, returned garage state, mobile layouts, and constrained CPU/network profiles. Reports include p95 frame gaps, long tasks, program births, draw work, memory, and readiness time.', 'Use `npm run perf:cold`, `npm run perf:dev`, `npm run perf:resources:gate`, `npm run qa:device`, and `npm run build` for the corresponding performance claims.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_player_view.webp', 'The live frame whose pacing, scale, draw work, and simulation debt are measured'],
-      ['/media/presentation-r1/ui_mobile.webp', 'The same game adapted to a compact device and touch-safe presentation'],
+      ['/media/showcase-r2/17_live_player_hud.webp', 'The live frame whose pacing, scale, draw work, and simulation debt are measured'],
+      ['/media/showcase-r2/16_mobile_garage.webp', 'The same game adapted to a compact device and touch-safe presentation'],
     ],
   },
   simulation: {
     label: 'Simulation and combat', title: 'Every hit has a path',
     lede: 'The battle simulation advances at 60 Hz. Movement, aim, ballistics, armor, damage, reloads, spotting, and match results are resolved from authoritative state—not from the rendered frame.',
-    hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
+    hero: '/media/showcase-r2/20_live_gunnery.webp',
     icon: 'combat',
     sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'verification'],
     sections: [
@@ -130,14 +130,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Verification', 'Node-runnable self-tests cover movement, combat, spotting, missile guidance, special actions, AI aim, and the complete authoritative match. Browser probes add bore parity, projectile travel, live impact effects, and HUD alignment.', 'Run `node src/sim/combat.selftest.mjs`, `node src/sim/authoritativeMatch.selftest.mjs`, and `npm test` after changing shared combat rules.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_killcam_xray.webp', 'Resolved X-ray path through armor, modules, and crew'],
-      ['/media/presentation-r1/04_desert_last_stand.webp', 'Muzzle flashes, tracers, impacts, and destruction from one staged battle state'],
+      ['/media/showcase-r2/25_live_killcam_xray.webp', 'Resolved X-ray path through armor, modules, and crew'],
+      ['/media/showcase-r2/24_live_killcam_impact.webp', 'A deterministic impact event resolved from one staged battle state'],
     ],
   },
   vehicles: {
     label: 'Vehicles and running gear', title: 'The model moves as one machine',
     lede: 'Every selectable tank is a first-party procedural runtime rig. The same vehicle record drives its geometry, dimensions, armor, internal anatomy, mobility, gun, ammunition, icon set, garage dossier, and battle behavior.',
-    hero: '/media/hero-rails-r2/03_steppe-charge-thread.webm',
+    hero: '/media/showcase-r2/28_vehicle_leopard.webp',
     icon: 'vehicles',
     sectionIcons: ['specification', 'rig', 'vehicles', 'anatomy', 'release'],
     sections: [
@@ -148,14 +148,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Fleet release gate', 'Appearance, bore, material, wheel, recoil, combat anatomy, provenance, and profile-specific checks run before a vehicle is considered current. Playable loading never falls back to a comparison GLB.', 'The Tank Gallery constructs the live builder and overlays the canonical diagnostic volumes, which makes it the fastest manual review surface for a vehicle change.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_gallery.webp', 'Current procedural rig with articulation and diagnostic layers'],
-      ['/media/presentation-r1/ui_tank_closeup_modern.webp', 'Current battle-detail vehicle geometry and running gear'],
+      ['/media/showcase-r2/28_vehicle_leopard.webp', 'Current procedural rig with articulation and battle-detail geometry'],
+      ['/media/showcase-r2/22_live_detrack.webp', 'Current running gear with a detached track and persistent damage'],
     ],
   },
   rendering: {
     label: 'Renderer and graphics', title: 'Rendering can adapt without changing the rules',
     lede: 'Three.js owns presentation only. Adaptive resolution, shadows, vegetation, post-processing, particles, and warmup can change with the device; the 60 Hz battle model remains unchanged.',
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/showcase-r2/19_live_sniper.webp',
     icon: 'rendering',
     sectionIcons: ['rendering', 'measured', 'device', 'loading', 'performance'],
     sections: [
@@ -166,14 +166,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Performance evidence', 'Performance traces record frame categories, renderer counters, dynamic scale, and transition budgets. Browser probes cover cold load, battle entry, map switching, the garage, and multiplayer rendering.', 'Use `npm run perf:dev`, `npm run perf:cold`, `npm run perf:transitions`, and a production build for renderer work.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_sniper_view.webp', 'Precision sight after lighting, depth, anti-aliasing, and output grading'],
-      ['/media/showcase-r1/105_foreground_urban_hero_abramsx.webp', 'Close vehicle material response under the current world lighting'],
+      ['/media/showcase-r2/19_live_sniper.webp', 'Precision sight after lighting, depth, anti-aliasing, and output grading'],
+      ['/media/showcase-r2/26_vehicle_abrams.webp', 'Close vehicle material response under the current world lighting'],
     ],
   },
   worlds: {
     label: 'Battlefields and destruction', title: 'Battlefields are built for armored movement',
     lede: 'Twenty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
-    hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
+    hero: '/media/showcase-r2/38_battle_nordhavn.webp',
     icon: 'worlds',
     sectionIcons: ['battlefields', 'navigation', 'construction', 'damage', 'quality'],
     sections: [
@@ -184,14 +184,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Map quality gates', 'Automated checks audit spawns, bounds, material coverage, structures, utilities, collision, wrecks, loose props, and placement. Deterministic battle captures expose bad silhouettes and obstructed routes that numeric gates cannot.', 'Run `node src/world/mapQuality.selftest.mjs`, the nearby world self-tests, and targeted screenshot views after map changes.'],
     ],
     media: [
-      ['/media/presentation-r1/24_autumn_orchard_stand.webp', 'Authored orchard route with structures, vegetation, terrain, and effects'],
-      ['/media/showcase-r1/116_foreground_coastal_harbor_kill.webp', 'Coastal route, persistent wreck fire, and foreground vehicle'],
+      ['/media/showcase-r2/38_battle_nordhavn.webp', 'Authored fjord route with structures, terrain, atmosphere, and effects'],
+      ['/media/showcase-r2/30_battle_frosthollow.webp', 'Snow route, persistent wreck fire, and a foreground vehicle'],
     ],
   },
   multiplayer: {
     label: 'Multiplayer authority', title: 'Clients request and the server decides',
     lede: 'The multiplayer path keeps hits, damage, reloads, spotting, bots, and match results on the authoritative side. Clients predict local movement and present filtered snapshots.',
-    hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
+    hero: '/media/showcase-r2/18_live_spectator.webp',
     icon: 'multiplayer',
     sectionIcons: ['multiplayer', 'interface', 'perception', 'combat', 'verification'],
     sections: [
@@ -202,14 +202,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Live verification', 'Browser soaks cover guest entry, four-player rooms, 7v7 rosters, adverse transport, reconnect handoff, rendering, and both teams dealing live damage. Headless authority tests cover bots, pacing, results, rankings, and persistence.', 'Run `npm run test:net:seven:live` for the complete moving-and-firing gate.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_spectator_switcher.webp', 'Allied chase camera with the compact target switcher'],
-      ['/media/presentation-r1/ui_roster.webp', 'Team roster and room state before authoritative handoff'],
+      ['/media/showcase-r2/18_live_spectator.webp', 'Allied chase camera with the compact target switcher'],
+      ['/media/showcase-r2/17_live_player_hud.webp', 'Live team and vehicle state after authoritative handoff'],
     ],
   },
   interface: {
     label: 'Interface and controls', title: 'Read the tank without losing the view',
     lede: 'The garage, HUD, sight, killcam, spectator mode, after-action report, settings, keyboard, pointer, controller, and touch input share one control and typography system.',
-    hero: '/media/presentation-r1/ui_spectator_switcher.webp',
+    hero: '/media/showcase-r2/01_garage_verdant.webp',
     icon: 'interface',
     sectionIcons: ['garage', 'interface', 'replay', 'mobile', 'accessibility'],
     sections: [
@@ -220,14 +220,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Accessibility and regression checks', 'Semantic buttons, visible focus, reduced-motion handling, descriptive media alternatives, contrast, and touch sizing are part of the public and in-game surfaces. Responsive QA covers desktop and 390-pixel layouts.', 'Focused self-tests cover keyboard ownership, settings, icons, flags, loading screens, end screens, the spectator switcher, and touch controls.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_spectator_switcher_mobile.webp', '390-pixel spectator layout above the minimap'],
-      ['/media/presentation-r1/ui_mobile.webp', 'Touch-safe garage and mobile control presentation'],
+      ['/media/showcase-r2/01_garage_verdant.webp', 'Production Garage interface at a full desktop viewport'],
+      ['/media/showcase-r2/16_mobile_garage.webp', 'Touch-safe Garage and mobile control presentation'],
     ],
   },
   studio: {
     label: 'Scene Studio and capture', title: 'Every public frame can be reproduced',
     lede: 'Scene Studio uses current maps, vehicle builders, articulation, effects, and camera systems to create deterministic stills and video inside the browser.',
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/showcase-r2/15_studio_workspace.webp',
     icon: 'studio',
     sectionIcons: ['specification', 'workflow', 'weapons', 'studio', 'critique'],
     sections: [
@@ -238,8 +238,8 @@ export const topics: Record<string, TopicDefinition> = {
       ['Still-image campaigns', 'Battle campaigns start from scene JSON, render review captures, tile contact sheets, export 4K frames, run image statistics, and require owner approval. The public archive retains its scene identifiers and review sheets.', 'Run `npm run studio:hero:render`, `npm run studio:hero:publish`, `npm run studio:evidence:capture`, and `npm run showcase:check` to reproduce the current public media.'],
     ],
     media: [
-      ['/media/presentation-r1/ui_studio.webp', 'Scene Studio workspace with actors, effects, storyboard, and camera'],
-      ['/media/showcase-r1/process/action-review-02.webp', 'Ten-frame action-campaign contact sheet used for visual review'],
+      ['/media/showcase-r2/15_studio_workspace.webp', 'Scene Studio workspace with actors, effects, storyboard, and camera'],
+      ['/media/showcase-r2/36_battle_cinder.webp', 'A directed battle frame produced by the current Studio pipeline'],
     ],
   },
 };

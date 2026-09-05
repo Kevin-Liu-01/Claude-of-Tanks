@@ -30,6 +30,11 @@ assert.deepEqual(
   'high-contrast battlefields plan AUTO camouflage for every bot');
 assert.deepEqual(planBattleCamoOverrides(game, 'm1a2', 'verdant', false), [],
   'non-random staged rosters do not invent bot camouflage overrides');
+const staged = planBattleParticipantIds(game, 'm1a2', false);
+assert.equal(staged.length, 8,
+  'deterministic capture staging keeps a complete eight-vehicle roster');
+assert.equal(new Set(staged).size, staged.length,
+  'deterministic capture staging uses unique production vehicles');
 
 game.battleCount++;
 const second = planBattleParticipantIds(game, 'm1a2', true);

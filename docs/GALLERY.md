@@ -36,7 +36,7 @@ the canonical `src/vehicles/` sources.
 - inspect dimensions, mobility, weapon, protection, and ammunition data;
 - copy a shareable vehicle/layer URL;
 - copy a versioned normalized data record;
-- open the shared 88-frame field archive to inspect the same procedural rigs
+- use the current 40-frame field archive to inspect the same procedural rigs
   in combat, destruction, terrain, HUD, mobile, Gallery, and Studio contexts.
 
 ## Architecture
@@ -85,13 +85,10 @@ createTank(id, engineCtx, {
 The viewer constructs a single vehicle at a time. Selecting another vehicle
 removes and disposes the previous model before constructing the replacement.
 
-The viewer header also opens the shared presentation archive. Gallery mounts
-`src/presentation/mediaArchive.ts` only when the dialog is requested; the
-component fetches `public/media/showcase-r1/manifest.json`, lazy-loads its
-WebP frames in a horizontally scrollable compact rail, and reuses the same
-lightbox/filter semantics as the landing page, field manual, and Studio. This
-keeps the public route focused on the selected vehicle until the user opens the
-larger archive.
+The Gallery route stays focused on the selected live vehicle. Its current hero,
+armor, module, and crew states are represented in
+`public/media/showcase-r2/manifest.json`; the landing page, field manual, and
+Studio use the shared archive component for the larger cross-feature collection.
 
 ### Diagnostic overlays
 

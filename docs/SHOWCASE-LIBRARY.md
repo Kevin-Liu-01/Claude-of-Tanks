@@ -1,87 +1,74 @@
 # Showcase library
 
-`public/media/showcase-r1/manifest.json` is the published index of Claude of
-Tanks screenshots. It contains the owner-selected feature set and the complete
-approved campaign in a versioned, searchable library.
+`public/media/showcase-r2/manifest.json` is the current published screenshot
+index for Claude of Tanks. It contains 40 new deterministic captures made with
+the cleaned-up production interface and explicitly assigns media to every
+public page.
 
-## R1 contents
+## R2 contents
 
 | Collection | Frames | Role |
 | --- | ---: | --- |
-| Owner picks | 13 | The named feature shortlist used by the home page and loading rotation. |
-| Action 4K campaign | 30 | Every approved multi-tank action composition. |
-| Foreground 4K campaign | 30 | Every approved close, in-the-fight composition. |
-| Studio action sequence | 5 | Keyframes from a directed, animated battle rendered in the game. |
-| Interface | 10 | Garage, battle, gallery, killcam, mobile, and sight views. |
-| **Total** | **88** | Public showcase frames. |
+| Garage environments | 10 | Every selectable Garage location with the same production presentation. |
+| Interface | 6 | Garage, Tank Gallery, Scene Studio, and responsive UI. |
+| Live game features | 9 | HUD, spectator, sight, firing, destruction, de-track, and killcam states. |
+| Vehicle detail | 3 | Current M1A2 Abrams, T-90M Proryv, and Leopard 2A7V procedural rigs. |
+| Battlefield action | 12 | Selected close action across the battlefield families. |
+| **Total** | **40** | Current public showcase frames. |
 
-The campaign masters are 3840×2160 PNGs under `shots/marketing-battles-r3/`.
-They remain gitignored because of their size. The checked-in site renditions
-are 1920×1080 WebP files under `public/media/showcase-r1/`.
+The reproducible 3840×2160 masters are generated under
+`shots/showcase-r2/raw/` and remain gitignored because of their size. The site
+ships 1920×1080 WebP renditions under `public/media/showcase-r2/`, plus a
+compact portrait rendition for responsive presentation.
+
+## Page coverage
+
+`tools/marketing-shots/showcase-r2.json` assigns at least one current frame to
+the landing page, Garage, Tank Gallery, Scene Studio, docs overview, and all 12
+focused manuals. `showcase-r2.selftest.mjs` fails if any public route loses its
+assignment, if a focused manual has no R2 image, or if the main public and
+loading-screen sources regress to an older screenshot family.
 
 ## Admission contract
 
-A campaign image enters this library only when all of these are true:
+An image enters the R2 library only when all of these are true:
 
-1. A deterministic scene JSON exists in `tools/marketing-shots/scenes-action-r3/`
-   or `tools/marketing-shots/scenes-foreground-r3/`.
-2. The 4K master passes `shots:battle:grade` at the expected dimensions.
-3. The owner approves the complete collection or names the frame explicitly.
-4. The frame comes from the first-party runtime renderer—never a playable GLB
-   or an unrelated external render.
-5. The published manifest records actors, effects, seed, source scene, source
-   master, and the quality receipt.
-
-The 13 owner selections appear first and provide the shorter loading-screen
-rotation. The full manifest contains all 88 published frames.
+1. Its deterministic Garage, interface, shot-view, or Scene Studio source is
+   declared in `showcase-r2.json`.
+2. The capture is a 3840×2160 first-party runtime render.
+3. Automated grading passes the image dimensions, luminance, contrast, edge
+   detail, and clipping checks.
+4. The complete collection is inspected in four ordered ten-frame contact
+   sheets for obstruction, weak silhouettes, repetitive staging, and UI or
+   camera defects.
+5. The publisher records the source, page assignments, feature, battlefield,
+   alt text, quality receipt, and `firstPartyRuntimeOnly: true` in the manifest.
 
 ## Review sheets
 
-The campaign is reviewed as a collection before individual 4K frames are
-admitted. Each sheet places ten deterministic captures side by side with their
-stable scene IDs. This makes camera intersections, weak tank silhouettes,
-repetitive compositions, blown effects, and missing battle depth visible in a
-single pass.
+| Frames 1–10 | Frames 11–20 |
+| --- | --- |
+| [![Garage environment review sheet](../public/media/showcase-r2/process/review-01.webp)](../public/media/showcase-r2/process/review-01.webp) | [![Interface and live-game review sheet](../public/media/showcase-r2/process/review-02.webp)](../public/media/showcase-r2/process/review-02.webp) |
 
-### Action campaign
+| Frames 21–30 | Frames 31–40 |
+| --- | --- |
+| [![Feature and vehicle review sheet](../public/media/showcase-r2/process/review-03.webp)](../public/media/showcase-r2/process/review-03.webp) | [![Battlefield action review sheet](../public/media/showcase-r2/process/review-04.webp)](../public/media/showcase-r2/process/review-04.webp) |
 
-| Frames 61–70 | Frames 71–80 | Frames 81–90 |
-| --- | --- | --- |
-| [![Action campaign review sheet 1](../public/media/showcase-r1/process/action-review-01.webp)](../public/media/showcase-r1/process/action-review-01.webp) | [![Action campaign review sheet 2](../public/media/showcase-r1/process/action-review-02.webp)](../public/media/showcase-r1/process/action-review-02.webp) | [![Action campaign review sheet 3](../public/media/showcase-r1/process/action-review-03.webp)](../public/media/showcase-r1/process/action-review-03.webp) |
-
-### Foreground campaign
-
-| Frames 91–100 | Frames 101–110 | Frames 111–120 |
-| --- | --- | --- |
-| [![Foreground campaign review sheet 1](../public/media/showcase-r1/process/foreground-review-01.webp)](../public/media/showcase-r1/process/foreground-review-01.webp) | [![Foreground campaign review sheet 2](../public/media/showcase-r1/process/foreground-review-02.webp)](../public/media/showcase-r1/process/foreground-review-02.webp) | [![Foreground campaign review sheet 3](../public/media/showcase-r1/process/foreground-review-03.webp)](../public/media/showcase-r1/process/foreground-review-03.webp) |
-
-The published manifest records all six sheets, their frame IDs, and the review
-sequence: scene JSON → review capture → contact-sheet inspection → 4K export →
-automated grade → owner approval.
-
-### Garage environment overview
-
-[![All ten current Garage environments](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
-
-This owner-approved contact sheet compares the ten current in-engine Garage
-locations with one vehicle and one production interface. It is maintained as
-system documentation rather than counted as an R1 campaign frame. See
-[GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) for the location roster and
-acceptance contract.
+The review order is capture → automated grade → contact-sheet inspection →
+publication → route audit. The earlier R1 library remains a historical asset
+set; public static pages and live media drawers use R2.
 
 ## Rebuild
 
-Generate and grade the campaign masters, render the Studio sequence, then
-publish and verify the public library:
+Capture, grade, publish, and verify the complete library:
 
 ```sh
-npm run shots:battle:generate
-npm run shots:battle:grade -- --root shots/marketing-battles-r3
-npm run studio:action:render
-npm run showcase:publish
-npm run showcase:check
+npm run shots:r2:capture
+npm run shots:r2:grade
+npm run shots:r2:publish
+npm run shots:r2:check
 ```
 
-Use `--campaign-root` and `--studio-root` with `showcase:publish` when the
-approved masters live in another checkout. Publishing fails closed unless the
-campaign quality report contains exactly 60 passing frames and no failures.
+Capture starts from a clean raw directory and must produce exactly 40 declared
+masters. Grading and publishing fail closed if a configured source is missing,
+an image misses the quality gate, or the totals differ from the contract.

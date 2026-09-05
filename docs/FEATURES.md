@@ -413,11 +413,11 @@ See docs/GALLERY.md.
 
 ## Public visual archive
 
-`public/media/showcase-r1/manifest.json` is the contract for the current
-88-frame archive: 13 owner-selected features, 30 action compositions, 30
-foreground compositions, five directed Studio keyframes, and ten live interface
-states. The publisher also records six 2400×592 contact sheets that preserve the
-human collection-review pass before 4K admission. Checked-in scene data, the
+`public/media/showcase-r2/manifest.json` is the contract for the current
+40-frame archive: ten Garage environments, six interface surfaces, nine live
+feature states, three vehicle details, and twelve battlefield action frames.
+The publisher also records four ten-frame contact sheets that preserve the
+human collection-review pass before admission. Checked-in scene data, the
 serialized capture harness, automated image grading, owner approval, and the
 publisher keep the archive reproducible and prevent hand-curated imagery from
 drifting away from the game.

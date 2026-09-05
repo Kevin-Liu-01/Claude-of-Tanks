@@ -1,0 +1,1473 @@
+{
+  "libraryId": "claude-of-tanks-showcase-r2",
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04",
+  "renderer": "Claude of Tanks production Garage, Tank Gallery, Scene Studio, and deterministic shot runtime",
+  "firstPartyRuntimeOnly": true,
+  "review": "Forty current-renderer frames with image-level gates, four visual review sheets, and explicit coverage for every public route",
+  "sourceDimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "counts": {
+    "garage": 10,
+    "interface": 6,
+    "live": 9,
+    "vehicle": 3,
+    "battle": 12,
+    "total": 40
+  },
+  "qualityGate": {
+    "report": "shots/showcase-r2/quality-report.json",
+    "required": {
+      "images": 40,
+      "passed": 40,
+      "failed": 0
+    }
+  },
+  "pageAssignments": {
+    "home": [
+      "31_battle_steinburg",
+      "29_battle_sirocco",
+      "30_battle_frosthollow",
+      "32_battle_verdant",
+      "33_battle_saltmere",
+      "40_battle_urban_hero"
+    ],
+    "garage": [
+      "01_garage_verdant",
+      "02_garage_sirocco",
+      "03_garage_frosthollow",
+      "04_garage_steinburg",
+      "05_garage_saltmere",
+      "06_garage_cinder",
+      "07_garage_monsoon",
+      "08_garage_glacier",
+      "09_garage_redrock",
+      "10_garage_ironworks",
+      "16_mobile_garage"
+    ],
+    "gallery": [
+      "11_gallery_hero",
+      "12_gallery_armor",
+      "13_gallery_modules",
+      "14_gallery_crew",
+      "26_vehicle_abrams",
+      "27_vehicle_t90m",
+      "28_vehicle_leopard"
+    ],
+    "studio": [
+      "15_studio_workspace",
+      "29_battle_sirocco",
+      "30_battle_frosthollow",
+      "31_battle_steinburg",
+      "32_battle_verdant"
+    ],
+    "docs": [
+      "31_battle_steinburg",
+      "11_gallery_hero",
+      "17_live_player_hud",
+      "25_live_killcam_xray",
+      "01_garage_verdant",
+      "15_studio_workspace"
+    ],
+    "docs/build": [
+      "15_studio_workspace",
+      "31_battle_steinburg"
+    ],
+    "docs/models": [
+      "11_gallery_hero",
+      "12_gallery_armor"
+    ],
+    "docs/simulation": [
+      "20_live_gunnery",
+      "24_live_killcam_impact"
+    ],
+    "docs/vehicles": [
+      "28_vehicle_leopard",
+      "22_live_detrack"
+    ],
+    "docs/rendering": [
+      "19_live_sniper",
+      "26_vehicle_abrams"
+    ],
+    "docs/performance": [
+      "17_live_player_hud",
+      "16_mobile_garage"
+    ],
+    "docs/worlds": [
+      "38_battle_nordhavn",
+      "30_battle_frosthollow"
+    ],
+    "docs/ai": [
+      "37_battle_frontier",
+      "32_battle_verdant"
+    ],
+    "docs/multiplayer": [
+      "18_live_spectator",
+      "17_live_player_hud"
+    ],
+    "docs/audio": [
+      "20_live_gunnery",
+      "21_live_destruction"
+    ],
+    "docs/interface": [
+      "01_garage_verdant",
+      "16_mobile_garage"
+    ],
+    "docs/studio": [
+      "15_studio_workspace",
+      "36_battle_cinder"
+    ]
+  },
+  "process": {
+    "purpose": "Collection-level visual review before public-page admission",
+    "sequence": [
+      "deterministic runtime state",
+      "4K capture",
+      "image gate",
+      "contact-sheet review",
+      "web rendition",
+      "page assignment"
+    ],
+    "contactSheets": [
+      {
+        "page": 1,
+        "src": "/media/showcase-r2/process/review-01.webp",
+        "frames": [
+          "01_garage_verdant",
+          "02_garage_sirocco",
+          "03_garage_frosthollow",
+          "04_garage_steinburg",
+          "05_garage_saltmere",
+          "06_garage_cinder",
+          "07_garage_monsoon",
+          "08_garage_glacier",
+          "09_garage_redrock",
+          "10_garage_ironworks"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      },
+      {
+        "page": 2,
+        "src": "/media/showcase-r2/process/review-02.webp",
+        "frames": [
+          "11_gallery_hero",
+          "12_gallery_armor",
+          "13_gallery_modules",
+          "14_gallery_crew",
+          "15_studio_workspace",
+          "16_mobile_garage",
+          "17_live_player_hud",
+          "18_live_spectator",
+          "19_live_sniper",
+          "20_live_gunnery"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      },
+      {
+        "page": 3,
+        "src": "/media/showcase-r2/process/review-03.webp",
+        "frames": [
+          "21_live_destruction",
+          "22_live_detrack",
+          "23_live_killcam_fire",
+          "24_live_killcam_impact",
+          "25_live_killcam_xray",
+          "26_vehicle_abrams",
+          "27_vehicle_t90m",
+          "28_vehicle_leopard",
+          "29_battle_sirocco",
+          "30_battle_frosthollow"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      },
+      {
+        "page": 4,
+        "src": "/media/showcase-r2/process/review-04.webp",
+        "frames": [
+          "31_battle_steinburg",
+          "32_battle_verdant",
+          "33_battle_saltmere",
+          "34_battle_amberford",
+          "35_battle_tarkhan",
+          "36_battle_cinder",
+          "37_battle_frontier",
+          "38_battle_nordhavn",
+          "39_battle_jade_delta",
+          "40_battle_urban_hero"
+        ],
+        "dimensions": {
+          "width": 2400,
+          "height": 592
+        }
+      }
+    ]
+  },
+  "shots": [
+    {
+      "sequence": 1,
+      "id": "01_garage_verdant",
+      "src": "/media/showcase-r2/01_garage_verdant.webp",
+      "title": "Verdant Motor Pool",
+      "alt": "Current production Garage interface around an M1 Abrams in the illuminated Verdant Motor Pool",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Verdant Fields",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage",
+        "docs",
+        "docs/interface"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 52.3286,
+          "p05": 6.5788,
+          "p95": 171.2516,
+          "clippedBlack": 0.0036,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3659,
+          "edgeMean": 9.714
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "id": "02_garage_sirocco",
+      "src": "/media/showcase-r2/02_garage_sirocco.webp",
+      "title": "Sirocco Deployment",
+      "alt": "Current production Garage interface and tank platform at the Sirocco desert service depot",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Sirocco Wadi",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 61.5383,
+          "p05": 10.298,
+          "p95": 161.76,
+          "clippedBlack": 0.005,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4292,
+          "edgeMean": 9.7902
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "id": "03_garage_frosthollow",
+      "src": "/media/showcase-r2/03_garage_frosthollow.webp",
+      "title": "Frosthollow Deployment",
+      "alt": "Current production Garage interface and tank platform at the snowbound Frosthollow repair bunker",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Frosthollow",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 74.8916,
+          "p05": 12.4384,
+          "p95": 183.2678,
+          "clippedBlack": 0.0018,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2528,
+          "edgeMean": 10.3804
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "id": "04_garage_steinburg",
+      "src": "/media/showcase-r2/04_garage_steinburg.webp",
+      "title": "Steinburg Deployment",
+      "alt": "Current production Garage interface and tank platform inside the Steinburg brick arsenal",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Steinburg",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 62.8894,
+          "p05": 10.5788,
+          "p95": 170.4592,
+          "clippedBlack": 0.0029,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2788,
+          "edgeMean": 9.8714
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "id": "05_garage_saltmere",
+      "src": "/media/showcase-r2/05_garage_saltmere.webp",
+      "title": "Saltmere Deployment",
+      "alt": "Current production Garage interface and tank platform at the Saltmere naval drydock",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Saltmere Bay",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 69.3865,
+          "p05": 11.2126,
+          "p95": 185.2138,
+          "clippedBlack": 0.0028,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3029,
+          "edgeMean": 10.5764
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "id": "06_garage_cinder",
+      "src": "/media/showcase-r2/06_garage_cinder.webp",
+      "title": "Cinder Deployment",
+      "alt": "Current production Garage interface and tank platform in the Cinder rail roundhouse",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Cinder Junction",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 56.5919,
+          "p05": 7.651,
+          "p95": 178.081,
+          "clippedBlack": 0.0198,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3024,
+          "edgeMean": 9.943
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "id": "07_garage_monsoon",
+      "src": "/media/showcase-r2/07_garage_monsoon.webp",
+      "title": "Monsoon Deployment",
+      "alt": "Current production Garage interface and tank platform beneath the Monsoon field canopy",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Monsoon Expanse",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 56.8001,
+          "p05": 9.5788,
+          "p95": 171.6012,
+          "clippedBlack": 0.0023,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3696,
+          "edgeMean": 10.0875
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "id": "08_garage_glacier",
+      "src": "/media/showcase-r2/08_garage_glacier.webp",
+      "title": "Glacier Deployment",
+      "alt": "Current production Garage interface and tank platform at the Glacier alpine service cavern",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Glacier Pass",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 68.0123,
+          "p05": 10.8728,
+          "p95": 184.3634,
+          "clippedBlack": 0.0083,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2764,
+          "edgeMean": 10.4307
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "id": "09_garage_redrock",
+      "src": "/media/showcase-r2/09_garage_redrock.webp",
+      "title": "Redrock Deployment",
+      "alt": "Current production Garage interface and tank platform in the Redrock recovery yard",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Redrock Basin",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 57.2172,
+          "p05": 9.357,
+          "p95": 177.0248,
+          "clippedBlack": 0.0044,
+          "clippedWhite": 0,
+          "meanSaturation": 0.376,
+          "edgeMean": 9.8348
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "id": "10_garage_ironworks",
+      "src": "/media/showcase-r2/10_garage_ironworks.webp",
+      "title": "Ironworks Deployment",
+      "alt": "Current production Garage interface and tank platform on the Ironworks factory line",
+      "kind": "garage",
+      "feature": "Garage environments",
+      "map": "Ironworks",
+      "sourceType": "garage",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "garage"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 51.436,
+          "p05": 9.5788,
+          "p95": 159.5262,
+          "clippedBlack": 0.0028,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3435,
+          "edgeMean": 9.6996
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "id": "11_gallery_hero",
+      "src": "/media/showcase-r2/11_gallery_hero.webp",
+      "title": "Tank Gallery hero inspection",
+      "alt": "Current Tank Gallery interface inspecting an M1A2 Abrams procedural vehicle",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs",
+        "docs/models"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 27.7409,
+          "p05": 7.5788,
+          "p95": 103.1318,
+          "clippedBlack": 0.0139,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3802,
+          "edgeMean": 3.9499
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "id": "12_gallery_armor",
+      "src": "/media/showcase-r2/12_gallery_armor.webp",
+      "title": "Tank Gallery armor inspection",
+      "alt": "Current Tank Gallery interface showing the M1A2 Abrams armor diagnostic layer",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs/models"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 28.6643,
+          "p05": 7.5788,
+          "p95": 113.9156,
+          "clippedBlack": 0.014,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3775,
+          "edgeMean": 3.9417
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "id": "13_gallery_modules",
+      "src": "/media/showcase-r2/13_gallery_modules.webp",
+      "title": "Tank Gallery module inspection",
+      "alt": "Current Tank Gallery interface showing the M1A2 Abrams internal modules",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 27.9706,
+          "p05": 7.5788,
+          "p95": 106.839,
+          "clippedBlack": 0.014,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3798,
+          "edgeMean": 3.8699
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "id": "14_gallery_crew",
+      "src": "/media/showcase-r2/14_gallery_crew.webp",
+      "title": "Tank Gallery crew inspection",
+      "alt": "Current Tank Gallery interface showing the M1A2 Abrams crew layout",
+      "kind": "interface",
+      "feature": "Tank Gallery",
+      "map": "Tank Gallery",
+      "sourceType": "gallery",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 27.8913,
+          "p05": 7.5788,
+          "p95": 103.5824,
+          "clippedBlack": 0.014,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3797,
+          "edgeMean": 4.0021
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "id": "15_studio_workspace",
+      "src": "/media/showcase-r2/15_studio_workspace.webp",
+      "title": "Scene Studio workspace",
+      "alt": "Current Scene Studio interface directing a multi-tank urban action scene",
+      "kind": "interface",
+      "feature": "Scene Studio",
+      "map": "Scene Studio",
+      "sourceType": "studio",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "studio",
+        "docs",
+        "docs/build",
+        "docs/studio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 134.8068,
+          "p05": 15.5066,
+          "p95": 209.2288,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3338,
+          "edgeMean": 9.3733
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "id": "16_mobile_garage",
+      "src": "/media/showcase-r2/16_mobile_garage.webp",
+      "title": "Responsive Garage",
+      "alt": "Current Garage interface adapted to a compact touch viewport",
+      "kind": "interface",
+      "feature": "Responsive interface",
+      "map": "Compact viewport",
+      "sourceType": "mobile",
+      "source": "tools/marketing-shots/capture-showcase-r2-ui.mjs",
+      "dimensions": {
+        "width": 860,
+        "height": 1864
+      },
+      "pages": [
+        "garage",
+        "docs/performance",
+        "docs/interface"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 81.7099,
+          "p05": 8.651,
+          "p95": 198.6208,
+          "clippedBlack": 0.0025,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3028,
+          "edgeMean": 11.1568
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "id": "17_live_player_hud",
+      "src": "/media/showcase-r2/17_live_player_hud.webp",
+      "title": "Production battle HUD",
+      "alt": "Current third-person battle view with the production HUD, ammunition, vehicle state, and minimap",
+      "kind": "live",
+      "feature": "Interface",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.player_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs",
+        "docs/performance",
+        "docs/multiplayer"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 134.9143,
+          "p05": 39.6836,
+          "p95": 206.3766,
+          "clippedBlack": 0.0002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4473,
+          "edgeMean": 10.7308
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "id": "18_live_spectator",
+      "src": "/media/showcase-r2/18_live_spectator.webp",
+      "title": "Allied spectator view",
+      "alt": "Current allied chase camera with the production spectator controls and battle HUD",
+      "kind": "live",
+      "feature": "Multiplayer",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.spectator_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/multiplayer"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 136.5626,
+          "p05": 42.7212,
+          "p95": 204.2546,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4729,
+          "edgeMean": 11.7533
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "id": "19_live_sniper",
+      "src": "/media/showcase-r2/19_live_sniper.webp",
+      "title": "Precision sight",
+      "alt": "Current precision sight aimed at an enemy tank with range and ammunition information",
+      "kind": "live",
+      "feature": "Gunnery",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.sniper_view",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/rendering"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 125.5224,
+          "p05": 39.0906,
+          "p95": 175.7198,
+          "clippedBlack": 0.0001,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4026,
+          "edgeMean": 9.5381
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "id": "20_live_gunnery",
+      "src": "/media/showcase-r2/20_live_gunnery.webp",
+      "title": "Live firing cycle",
+      "alt": "Current battle renderer showing muzzle flash, recoil, tracer, smoke, and the production HUD",
+      "kind": "live",
+      "feature": "Gunnery",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.combat_firing",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/simulation",
+        "docs/audio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 140.6654,
+          "p05": 32.7328,
+          "p95": 211.4306,
+          "clippedBlack": 0.0007,
+          "clippedWhite": 0,
+          "meanSaturation": 0.498,
+          "edgeMean": 11.8523
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "id": "21_live_destruction",
+      "src": "/media/showcase-r2/21_live_destruction.webp",
+      "title": "Vehicle destruction",
+      "alt": "Current battle renderer showing a vehicle destruction event with debris, fire, and smoke",
+      "kind": "live",
+      "feature": "Destruction",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.explosion",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/audio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 123.6282,
+          "p05": 35.7132,
+          "p95": 172.2112,
+          "clippedBlack": 0.0019,
+          "clippedWhite": 0,
+          "meanSaturation": 0.6034,
+          "edgeMean": 13.6181
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "id": "22_live_detrack",
+      "src": "/media/showcase-r2/22_live_detrack.webp",
+      "title": "Track destruction",
+      "alt": "Current battle renderer showing a detached track and damaged running gear",
+      "kind": "live",
+      "feature": "Track physics",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.detrack",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/vehicles"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 148.2335,
+          "p05": 83.0796,
+          "p95": 203.1142,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4372,
+          "edgeMean": 11.4721
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "id": "23_live_killcam_fire",
+      "src": "/media/showcase-r2/23_live_killcam_fire.webp",
+      "title": "Killcam firing beat",
+      "alt": "Current killcam presenting the attacker firing the resolved shot",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_firing",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 120.8027,
+          "p05": 7.4304,
+          "p95": 204.8242,
+          "clippedBlack": 0.0401,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2972,
+          "edgeMean": 6.9947
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "id": "24_live_killcam_impact",
+      "src": "/media/showcase-r2/24_live_killcam_impact.webp",
+      "title": "Killcam impact beat",
+      "alt": "Current killcam presenting the shell impact and penetration result",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_collision",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/simulation"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 111.9523,
+          "p05": 8.294,
+          "p95": 181.3388,
+          "clippedBlack": 0.0403,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3541,
+          "edgeMean": 8.5376
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "id": "25_live_killcam_xray",
+      "src": "/media/showcase-r2/25_live_killcam_xray.webp",
+      "title": "Resolved-shot X-ray",
+      "alt": "Current X-ray killcam showing the resolved shell path through armor and internal modules",
+      "kind": "live",
+      "feature": "Killcam",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.killcam_xray",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 48.5648,
+          "p05": 4.5066,
+          "p95": 100.4032,
+          "clippedBlack": 0.0542,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3609,
+          "edgeMean": 5.5604
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "id": "26_vehicle_abrams",
+      "src": "/media/showcase-r2/26_vehicle_abrams.webp",
+      "title": "M1A2 Abrams detail",
+      "alt": "Close in-engine inspection of the current first-party M1A2 Abrams procedural rig",
+      "kind": "vehicle",
+      "feature": "Tank design",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.tank_closeup_modern",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs/rendering"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 127.3294,
+          "p05": 52.2516,
+          "p95": 193.8306,
+          "clippedBlack": 0.0003,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5097,
+          "edgeMean": 10.9708
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "id": "27_vehicle_t90m",
+      "src": "/media/showcase-r2/27_vehicle_t90m.webp",
+      "title": "T-90M Proryv detail",
+      "alt": "Close in-engine inspection of the current first-party T-90M Proryv procedural rig",
+      "kind": "vehicle",
+      "feature": "Tank design",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.tank_closeup_t90m",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 119.5738,
+          "p05": 50.2856,
+          "p95": 182.7114,
+          "clippedBlack": 0.0002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4855,
+          "edgeMean": 11.991
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "id": "28_vehicle_leopard",
+      "src": "/media/showcase-r2/28_vehicle_leopard.webp",
+      "title": "Leopard 2A7V detail",
+      "alt": "Close in-engine inspection of the current first-party Leopard 2A7V procedural rig",
+      "kind": "vehicle",
+      "feature": "Tank design",
+      "map": "Live battle",
+      "sourceType": "shot-view",
+      "source": "window.__SHOTS.tank_closeup_leo2a7",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "gallery",
+        "docs/vehicles"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 112.799,
+          "p05": 47.5022,
+          "p95": 179.7234,
+          "clippedBlack": 0.0005,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4532,
+          "edgeMean": 11.3907
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "id": "29_battle_sirocco",
+      "src": "/media/showcase-r2/29_battle_sirocco.webp",
+      "title": "Sirocco wadi gauntlet",
+      "alt": "Tanks fighting at close range around a burning desert outpost in Sirocco Wadi",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Sirocco Wadi",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/01_desert_wadi_gauntlet.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "studio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 120.1615,
+          "p05": 35.783,
+          "p95": 204.5738,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5262,
+          "edgeMean": 7.0506
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "id": "30_battle_frosthollow",
+      "src": "/media/showcase-r2/30_battle_frosthollow.webp",
+      "title": "Frosthollow ice breaker",
+      "alt": "Three tanks exchanging fire and suffering damage in Frosthollow",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Frosthollow",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/05_winter_ice_breaker.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "studio",
+        "docs/worlds"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 170.0573,
+          "p05": 73.8392,
+          "p95": 213.7124,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1315,
+          "edgeMean": 5.5501
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "id": "31_battle_steinburg",
+      "src": "/media/showcase-r2/31_battle_steinburg.webp",
+      "title": "Steinburg alley flash",
+      "alt": "Armored vehicles exchanging fire at street level through a Steinburg industrial block",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Steinburg",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/09_urban_alley_flash.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "studio",
+        "docs",
+        "docs/build"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 161.4555,
+          "p05": 71.5508,
+          "p95": 211.309,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3261,
+          "edgeMean": 8.922
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "id": "32_battle_verdant",
+      "src": "/media/showcase-r2/32_battle_verdant.webp",
+      "title": "Verdant column engagement",
+      "alt": "A multi-tank column fighting through fields, smoke, and impacts in Verdant Fields",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Verdant Fields",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/15_verdant_column_massacre.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home",
+        "studio",
+        "docs/ai"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 147.5903,
+          "p05": 59.1176,
+          "p95": 210.2322,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.391,
+          "edgeMean": 10.1148
+        }
+      }
+    },
+    {
+      "sequence": 33,
+      "id": "33_battle_saltmere",
+      "src": "/media/showcase-r2/33_battle_saltmere.webp",
+      "title": "Saltmere harbor kill",
+      "alt": "Armored vehicles fighting through smoke beside the Saltmere harbor",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Saltmere Bay",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/19_coastal_harbor_kill.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 174.2488,
+          "p05": 60.7004,
+          "p95": 219.0012,
+          "clippedBlack": 0.0015,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2927,
+          "edgeMean": 7.3122
+        }
+      }
+    },
+    {
+      "sequence": 34,
+      "id": "34_battle_amberford",
+      "src": "/media/showcase-r2/34_battle_amberford.webp",
+      "title": "Amberford gold inferno",
+      "alt": "A burning armored engagement among the autumn fields of Amberford",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Amberford",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/23_autumn_gold_inferno.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 113.2918,
+          "p05": 22.655,
+          "p95": 207.6758,
+          "clippedBlack": 0.001,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5071,
+          "edgeMean": 6.7258
+        }
+      }
+    },
+    {
+      "sequence": 35,
+      "id": "35_battle_tarkhan",
+      "src": "/media/showcase-r2/35_battle_tarkhan.webp",
+      "title": "Tarkhan horizon charge",
+      "alt": "Modern tanks charging across the open horizon of Tarkhan Steppe",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Tarkhan Steppe",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/25_steppe_horizon_charge.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 179.2611,
+          "p05": 139.1796,
+          "p95": 210.3766,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.416,
+          "edgeMean": 3.4297
+        }
+      }
+    },
+    {
+      "sequence": 36,
+      "id": "36_battle_cinder",
+      "src": "/media/showcase-r2/36_battle_cinder.webp",
+      "title": "Cinder sodium dusk",
+      "alt": "A close armored firing event beside the rail infrastructure at Cinder Junction",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Cinder Junction",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/30_railyard_sodium_dusk.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/studio"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 173.7839,
+          "p05": 81.7518,
+          "p95": 217.929,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2044,
+          "edgeMean": 4.0361
+        }
+      }
+    },
+    {
+      "sequence": 37,
+      "id": "37_battle_frontier",
+      "src": "/media/showcase-r2/37_battle_frontier.webp",
+      "title": "Frontier contact",
+      "alt": "An infantry fighting vehicle making contact across Frontier Basin",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Frontier Basin",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/43_frontier_contact.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/ai"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 138.0189,
+          "p05": 48.927,
+          "p95": 210.6482,
+          "clippedBlack": 0.0022,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4179,
+          "edgeMean": 7.3123
+        }
+      }
+    },
+    {
+      "sequence": 38,
+      "id": "38_battle_nordhavn",
+      "src": "/media/showcase-r2/38_battle_nordhavn.webp",
+      "title": "Nordhavn contact",
+      "alt": "Modern armor moving and firing along the Nordhavn Fjord",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Nordhavn Fjord",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/44_fjord_contact.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "docs/worlds"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 80.531,
+          "p05": 41.3406,
+          "p95": 187.684,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5827,
+          "edgeMean": 4.6045
+        }
+      }
+    },
+    {
+      "sequence": 39,
+      "id": "39_battle_jade_delta",
+      "src": "/media/showcase-r2/39_battle_jade_delta.webp",
+      "title": "Jade Delta contact",
+      "alt": "Modern armor advancing through the lush Jade River Delta",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Jade River Delta",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/45_delta_contact.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 148.741,
+          "p05": 47.5302,
+          "p95": 214.7032,
+          "clippedBlack": 0.0006,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2458,
+          "edgeMean": 6.2186
+        }
+      }
+    },
+    {
+      "sequence": 40,
+      "id": "40_battle_urban_hero",
+      "src": "/media/showcase-r2/40_battle_urban_hero.webp",
+      "title": "Steinburg breakthrough",
+      "alt": "A Leopard-family tank breaking through a Steinburg street under fire",
+      "kind": "battle",
+      "feature": "Battlefield atmosphere",
+      "map": "Steinburg",
+      "sourceType": "studio-scene",
+      "source": "tools/marketing-shots/scenes-presentation-r1/13_urban_hero_leo2a6.json",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pages": [
+        "home"
+      ],
+      "quality": {
+        "passed": true,
+        "metrics": {
+          "meanLuma": 166.8104,
+          "p05": 74.6324,
+          "p95": 210.4454,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.349,
+          "edgeMean": 8.4019
+        }
+      }
+    }
+  ]
+}
