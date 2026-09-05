@@ -36,7 +36,7 @@ for (const [route, routeIds] of Object.entries(config.pageAssignments)) {
 
 const preserved = config.shots.filter((shot) => shot.preservePublic);
 assert.deepEqual(preserved.map((shot) => shot.id), ['18_live_spectator'],
-  'the approved multiplayer image is the only retained R2 frame');
+  'the archived spectator evidence is the only retained R2 frame');
 const vehicleShots = config.shots.filter((shot) => shot.vehicleId);
 assert.ok(new Set(vehicleShots.map((shot) => shot.vehicleId)).size >= 10,
   'refreshed UI must show a broad vehicle mix');
@@ -74,12 +74,14 @@ const pageText = [
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 for (const restoredFamily of [
   '/media/presentation-r1/', '/media/showcase-r1/', '/media/featured/',
-  '/media/feature-evidence-r2/',
+  '/media/feature-evidence-r2/', '/media/multiplayer-r1/',
 ]) {
   assert.ok(pageText.includes(restoredFamily), `original media family must remain in use: ${restoredFamily}`);
 }
-assert.ok(pageText.includes('/media/showcase-r2/18_live_spectator.webp'),
-  'the approved multiplayer image must remain in use');
+assert.ok(pageText.includes('/media/multiplayer-r1/dual-perspective.webp'),
+  'the original dual-client multiplayer image must remain in use');
+assert.ok(!pageText.includes('/media/showcase-r2/18_live_spectator.webp'),
+  'the replaced spectator frame must not remain on public pages');
 assert.ok(pageText.includes('/media/showcase-r2/'), 'current UI frames must remain in use');
 
-console.log('showcase-r2 selftest: ok (22 UI frames, restored action library, multiplayer retained)');
+console.log('showcase-r2 selftest: ok (22 UI frames, restored action and multiplayer libraries)');

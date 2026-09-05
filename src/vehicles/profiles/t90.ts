@@ -3359,7 +3359,7 @@ function buildPT91M(P: T90BuilderPort): void {
 
 
 
-function buildT90MProryv(P: T90BuilderPort): void {
+function addT90MProryvHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   loftHull(P, {
     // r26a render re-read: plan bow center is 3.05 (extract corners said
@@ -3580,6 +3580,10 @@ function buildT90MProryv(P: T90BuilderPort): void {
     });
     P.hullG.add(cable);
   }
+}
+
+function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
+  const { box, cylX, buildRunningGear } = KIT;
   buildRunningGear(P, {
     // r26a: ref ground contact spans -1.49..2.52 with the track band at
     // |x| 1.12..1.73 (front view) — wheels re-seated, arms off (the strip
@@ -3699,6 +3703,10 @@ function buildT90MProryv(P: T90BuilderPort): void {
   ]) {
     for (const s of [-1, 1]) P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.58, 0.05, 0.08), s * 1.435, sy + 0.025, sz2);
   }
+}
+
+function addT90MProryvSkirts(P: T90BuilderPort): void {
+  const { box } = KIT;
   // skirts: soft band (thick panels) + the heavy Relikt course OUTBOARD at
   // the ref's ±1.89 plan faces spanning z 2.46..-2.66 (render truth: the
   // widest ref content is the course, nearly full-length), bow mirrors
@@ -3806,7 +3814,15 @@ function buildT90MProryv(P: T90BuilderPort): void {
     P.add('hullTrack', box(0.018, 0.193, 0.377), s * 1.857, 0.6165, 1.955);
     P.add('hullTrack', box(0.018, 0.193, 0.20), s * 1.857, 0.6165, 2.245);
   }
+}
 
+interface T90MProryvLegacyContext {
+  twm: number;
+  hm: number;
+}
+
+function addT90MProryvTurret(P: T90BuilderPort): T90MProryvLegacyContext {
+  const { box, cylY, cylZ, polyTurret } = KIT;
   // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
   // planform w/ chamfered corners, broad flat roof, separated furniture ----
   P.turretG.position.set(0, 1.40, 0.13);
@@ -3964,6 +3980,14 @@ function buildT90MProryv(P: T90BuilderPort): void {
     P.add('turretDetail', box(0.12, 0.10, 0.20), 0.46, 0.72, -0.50);           // RWS ammo bin
     P.add('turretDark', box(0.10, 0.010, 0.18), 0.46, 0.772, -0.50);           // bin lid seam (§B3 tell)
   }
+  return { twm, hm };
+}
+
+function addT90MProryvTurretProtection(
+  P: T90BuilderPort,
+  { twm, hm }: T90MProryvLegacyContext,
+): void {
+  const { box, cylY } = KIT;
   // r30 902B smoke banks on the cheek flanks (§B3 variety + the front
   // ±1.68..1.77 cols: registered ref front tops 1.73-1.82 there, mine read
   // 1.35-1.65 = fender-lip line). Tube tips stay inside x ±1.78 (15 mm law
@@ -4095,6 +4119,13 @@ function buildT90MProryv(P: T90BuilderPort): void {
   // r30: top 1.79 -> 1.74 (ref 1.71 over z 1.87..2.00).
   P.add('turret', box(0.44, 0.20, 0.36), 0, 0.21, 1.53);
   P.add('turret', box(0.44, 0.04, 0.85), 0, 0.56, 0.30);
+}
+
+function addT90MProryvGunAndFinish(
+  P: T90BuilderPort,
+  { twm }: T90MProryvLegacyContext,
+): void {
+  const { box, cylZ } = KIT;
   // ---- 2A46M-5 (axis 1.61): thermal sleeve, evac swell at the ref's 1.75
   // crest (world 3.20..3.44), muzzle +6.20 ----
   P.gunG.position.set(0, 0.21, 1.15);
@@ -4190,6 +4221,15 @@ function buildT90MProryv(P: T90BuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [twm * 0.94, 0.30, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-twm * 0.94, 0.30, -0.30], -Math.PI / 2);
   P.topY = 1.55;
+}
+
+function buildT90MProryv(P: T90BuilderPort): void {
+  addT90MProryvHull(P);
+  addT90MProryvRunningGearAndSkirts(P);
+  addT90MProryvSkirts(P);
+  const turretContext = addT90MProryvTurret(P);
+  addT90MProryvTurretProtection(P, turretContext);
+  addT90MProryvGunAndFinish(P, turretContext);
 }
 
 
@@ -5693,13 +5733,24 @@ function addT90AFamilyFinish(
   }
 }
 
-function replaceT90ACastTurret(
+interface T90CastTurretOptions {
+  vladimir?: boolean;
+  burlakBase?: boolean;
+}
+
+interface T90CastTurretBuildContext {
+  rings: number[][];
+  frontPackageLift: number;
+  frontPackageForward: number;
+  chevronForwardM: number;
+  shtoraPackageForward: number;
+}
+
+function prepareT90ACastTurret(
   P: T90BuilderPort,
-  { vladimir = false, burlakBase = false }: {
-    vladimir?: boolean; burlakBase?: boolean;
-  } = {},
-): void {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+): T90CastTurretBuildContext {
+  const { polyTurret } = KIT;
 
   // Atomic turret replacement: keep the variant's measured hull, discard the
   // superseded tall welded candidate and rebuild one closed cast assembly.
@@ -5768,6 +5819,29 @@ function replaceT90ACastTurret(
     P.add('turret', polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
     P.add('turretDark', polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
   }
+
+  return {
+    rings,
+    frontPackageLift,
+    frontPackageForward,
+    chevronForwardM,
+    shtoraPackageForward,
+  };
+}
+
+function addT90ACastTurretProtection(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+  context: T90CastTurretBuildContext,
+): void {
+  const { box } = KIT;
+  const {
+    rings,
+    frontPackageLift,
+    frontPackageForward,
+    chevronForwardM,
+    shtoraPackageForward,
+  } = context;
 
   // The production T-90 mounts its frontal protection on the gun-axis band,
   // lower than the Burlak prototype's shoulder course. Keep the exact shared
@@ -5879,10 +5953,22 @@ function replaceT90ACastTurret(
       shtoraClearsChevronDepth: shtoraChevronDepthClearanceM > 0,
     });
   }
+}
+
+function getT90ACastTurretSmokeCount(vladimir: boolean, side: number): number {
+  if (vladimir) return 6;
+  return side < 0 ? 8 : 6;
+}
+
+function addT90ACastTurretSmokeBanks(
+  P: T90BuilderPort,
+  { vladimir = false }: T90CastTurretOptions,
+): void {
+  const { box } = KIT;
 
   // Shoulder-mounted 902B banks, seated on solid armor shoes.
   for (const s of [-1, 1]) {
-    const smokeCount = vladimir ? 6 : (s < 0 ? 8 : 6);
+    const smokeCount = getT90ACastTurretSmokeCount(vladimir, s);
     P.add('turret', box(0.24, 0.24, vladimir ? 0.54 : 0.68), s * (vladimir ? 1.31 : 1.13), 0.31, -0.02, 0, 0, -s * 0.20);
     const smoke = FITTINGS.smokeBank({
       mats: P.mats, count: smokeCount, r: vladimir ? 0.040 : 0.052,
@@ -5894,6 +5980,10 @@ function replaceT90ACastTurret(
     smoke.rotation.y = s * 1.08;
     P.turretG.add(smoke);
   }
+}
+
+function addT90ACastTurretRoofAndBins(P: T90BuilderPort): void {
+  const { box, cylY } = KIT;
 
   // Low cupolas and sight heads are volumetric but remain within the source
   // roof hierarchy.  Each housing overlaps a ring or foundation plate.
@@ -5914,6 +6004,10 @@ function replaceT90ACastTurret(
     P.add('turret', box(0.30, 0.26, 0.48), s * 0.79, 0.38, -1.16);
     P.add('turretDark', box(0.25, 0.022, 0.41), s * 0.79, 0.525, -1.16);
   }
+}
+
+function addT90ACastTurretAftStowage(P: T90BuilderPort): void {
+  const { box, cylZ } = KIT;
 
   // Dense T-90 aft kit on the shared Burlak shoulders.  These are compact
   // unequal service packs, not a Burlak autoloader bustle: broad buried feet
@@ -5943,6 +6037,13 @@ function replaceT90ACastTurret(
     P.add('turretDark', cylZ(r + 0.010, 0.026, 14), x, y, z + len * 0.32);
     P.add('turretDetail', box(r * 1.72, 0.040, 0.14), x, y - r * 0.84, z);
   }
+}
+
+function addT90ACastTurretMachineGunAndOptics(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+): void {
+  const { box, cylY } = KIT;
 
   // Vladimir retains its prominent roof Kord. RU-417 receives the integrated
   // Tagil-derived automated station in its dedicated owner pass below.
@@ -5987,6 +6088,14 @@ function replaceT90ACastTurret(
       P.add('turretGlass', box(0.074, 0.030, 0.010), x, 0.812, z + 0.037, 0, yaw, 0);
     }
   }
+}
+
+function addT90ACastTurretGunAndFinish(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions,
+  { frontPackageLift, frontPackageForward }: T90CastTurretBuildContext,
+): void {
+  const { cylZ } = KIT;
 
   // Continuous 2A46M assembly: buried trunnion, canvas boot, segmented tube,
   // thermal jacket and a true dark bore.
@@ -6016,6 +6125,20 @@ function replaceT90ACastTurret(
   addT90AFamilyFinish(P, { vladimir, base: !vladimir });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.47, 0.27, -0.18], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.47, 0.27, -0.18], -Math.PI / 2);
+}
+
+function replaceT90ACastTurret(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: T90CastTurretOptions = {},
+): void {
+  const options = { vladimir, burlakBase };
+  const context = prepareT90ACastTurret(P, options);
+  addT90ACastTurretProtection(P, options, context);
+  addT90ACastTurretSmokeBanks(P, options);
+  addT90ACastTurretRoofAndBins(P);
+  addT90ACastTurretAftStowage(P);
+  addT90ACastTurretMachineGunAndOptics(P, options);
+  addT90ACastTurretGunAndFinish(P, options, context);
 }
 
 

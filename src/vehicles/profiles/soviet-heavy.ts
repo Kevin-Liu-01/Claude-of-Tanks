@@ -1035,8 +1035,8 @@ function buildIS6B(P: SovietHeavyBuilderPort): void {
 // slab turret 1.88 wide × 1.45 tall (1.67..3.12) × ~2.45 deep, periscope to
 // 3.27; stubby fat 152 mm at axis 2.57, muzzle +3.60.
 // ---------------------------------------------------------------------------
-function buildKV2(P: SovietHeavyBuilderPort): void {
-  const { box, cylY, cylZ, cylX, sph, frustum, fenders, headlight, towCable, buildGun, slab } = KIT;
+function addKV2HullShellAndSponsons(P: SovietHeavyBuilderPort): void {
+  const { box, cylX, frustum, fenders, slab } = KIT;
   // r3 (geo round-3): full re-lay against the world-coordinate gate trace
   // (tools/tmp-sovr3-worldtrace.mjs; measured ref lines quoted per piece in
   // the packet r3 section). All coordinates below are absolute hull-space.
@@ -1145,6 +1145,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     P.add('hullDark', cylX(0.025, 0.14, 6), s * 0.52, 0.88, -3.55);            // bottom 0.718 = plate bottom, no bot drop)
   }
   fenders(P, 0.99, 1.615, 1.585, -2.88, 2.05, 0.035);                          // fender plane (top 1.6025; ref 1.59-1.62)
+}
+
+function addKV2FenderStowage(P: SovietHeavyBuilderPort): void {
+  const { box, cylY } = KIT;
+
   // §5.247 wave — the KV identity item the build never carried: LONG FLAT
   // FENDERS WITH TOOL/STOWAGE ROWS. The print's own plan view lines both
   // fenders with sheet-metal lockers (side-view lid lines at the rear/mid
@@ -1210,6 +1215,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     P.add('hullDetail', box(0.55, 0.010, 0.014), s * 1.3325, 1.578, 2.065);    // flap hinge lines
     P.add('hullDetail', box(0.55, 0.010, 0.014), s * 1.3225, 1.503, -2.90);
   }
+}
+
+function addKV2HullFrontHardware(P: SovietHeavyBuilderPort): void {
+  const { box, cylX, cylZ, slab, sph, towCable } = KIT;
+
   // driver hatch on the crest plate (seam + hinges + pull) — flush-class
   // relief between the certified periscopes.
   P.add('hullDark', box(0.30, 0.006, 0.24), 0, 1.6975, 1.985);                 // hatch seam ring
@@ -1280,6 +1290,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     P.add('hullDark', box(0.014, 0.006, 0.245), -0.685 + k * 0.09, 1.4405, 2.60); // pin-gap seams (flat on the board —
   }                                                                              // the 1.39-1.44 nose-deck ceiling holds)
   P.add('hullDark', box(0.46, 0.006, 0.05), -0.55, 1.4405, 2.60);               // grouser shadow bar
+}
+
+function addKV2EngineDeckAndRearHardware(P: SovietHeavyBuilderPort): void {
+  const { box, cylY, cylZ, headlight } = KIT;
+
   // engine deck furniture (shaded-parity r3 #5). The old intake boxes and
   // hatch rim topped out BELOW the 1.6775 deck plate — geometrically present,
   // visually buried (the critique's "barely-visible engraving"). Rebuilt as
@@ -1364,6 +1379,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     P.add('hullDetail', box(0.012, 0.085, 0.018), gx, 1.645, 2.035);           // guard legs
   }
   P.add('hullDark', cylZ(0.045, 0.09, 8), -0.30, 1.655, 1.98, -0.3, 0, 0);     // horn stays by the crest
+}
+
+function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
+  const { box, cylX } = KIT;
+
   // gear at the measured wrap span: the band+shoes stand ~0.16 proud of the
   // wheel radius (measured: wrap extremes −3.58/3.32 with z −3.04/2.82), so
   // sprocket (−2.97, 0.70, r.38) puts the wrap rear at the ref −3.51 with
@@ -1509,6 +1529,10 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
       }
     });
   }
+}
+
+function addKV2TurretShell(P: SovietHeavyBuilderPort): void {
+  const { box, cylY, slab } = KIT;
 
   // MT-1 slab turret re-laid on the world-trace (r3). Measured ref lines:
   // skirt bottom 1.67 full width to the well deck; walls x ±0.94 rising to
@@ -1646,6 +1670,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     }
     P.add('turretDark', box(0.030, 0.016, 0.050), hx, 1.512, -0.74 + hr + 0.014);          // latch tongue fwd
   }
+}
+
+function addKV2TurretRearFurniture(P: SovietHeavyBuilderPort): void {
+  const { box, cylY, cylZ, sph } = KIT;
+
   P.add('turretDark', cylY(0.17, 0.17, 0.01, 14), 0.38, 1.458, 0.15);          // fwd round hatch: flush seam only
   for (const dx of [-0.07, 0.07]) {
     P.add('turretDark', box(0.045, 0.008, 0.028), 0.38 + dx, 1.4635, 0.325);   // flush hinge tabs on the fwd hatch seam
@@ -1724,6 +1753,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
   // right rear-corner grab handle (ref plan spike x0.54 / side sliver 2.71)
   P.add('turret', box(0.05, 0.03, 0.32), 0.54, 1.02, -1.86);
   P.add('turret', box(0.03, 0.03, 0.14), 0.54, 1.02, -1.635);
+}
+
+function addKV2TurretSideHardware(P: SovietHeavyBuilderPort): void {
+  const { box, cylX, cylZ } = KIT;
+
   // flank grab handles: two rows (ref front band 2.09..2.60 at x ±1.0)
   for (const s of [-1, 1]) for (const hy of [0.86, 0.49]) {
     P.add('turretDetail', box(0.04, 0.03, 0.145), s * 1.00, hy, 0.375);
@@ -1780,6 +1814,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     }
     P.add('turretDetail', box(0.022, 0.022, 0.21), -(wallX + 0.048), ry, -1.05); // rung rod
   }
+}
+
+function addKV2TurretFastenersAndWeapon(P: SovietHeavyBuilderPort): void {
+  const { box } = KIT;
+
   // roof DShK on the bustle plateau rear-LEFT corner, pointing rearward —
   // the print's own rear-roof MG seat (§B3 mandatory census MG; FITTINGS
   // stamped; parented to turretG so it yaws with the slab).
@@ -1812,6 +1851,11 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
   // reference print carries no number, and the r4 critic flagged the decal
   // as a strict-parity mismatch (packet r3 kept it deliberately; r5 sides
   // with the print).
+}
+
+function addKV2GunAndFinish(P: SovietHeavyBuilderPort): void {
+  const { box, cylX, cylZ, buildGun } = KIT;
+
   // 152 mm M-10T at the REF seat: pivot world (0, 2.57, 1.00), the fat boxy
   // mantlet mass carried out to world 2.16 with the deep chin (ref band
   // 2.12..2.77 at z 2.02-2.10), tube r .115 to the ref muzzle 3.58. Bolted
@@ -1861,6 +1905,19 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
     });
   }
   P.topY = 1.55;
+}
+
+function buildKV2(P: SovietHeavyBuilderPort): void {
+  addKV2HullShellAndSponsons(P);
+  addKV2FenderStowage(P);
+  addKV2HullFrontHardware(P);
+  addKV2EngineDeckAndRearHardware(P);
+  addKV2RunningGear(P);
+  addKV2TurretShell(P);
+  addKV2TurretRearFurniture(P);
+  addKV2TurretSideHardware(P);
+  addKV2TurretFastenersAndWeapon(P);
+  addKV2GunAndFinish(P);
 }
 
 export const SOVIET_HEAVY_PROFILES = {

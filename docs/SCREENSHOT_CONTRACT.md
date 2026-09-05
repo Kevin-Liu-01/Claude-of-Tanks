@@ -71,11 +71,12 @@ review sheets, and the manifest are shipped artifacts.
 
 ### Current UI evidence
 
-The R1 archive remains the source of truth for action, hero, and vehicle
-photography. Current interface evidence is refreshed separately through the
-22-frame R2 UI collection, with explicit non-Abrams vehicle IDs for Garage,
-Gallery, HUD, sight, and killcam captures. The approved multiplayer spectator
-frame is retained rather than regenerated.
+The R1 archive remains the source of truth for action, hero, vehicle, and
+multiplayer photography. Current interface evidence is refreshed separately
+through the 22-frame R2 UI collection, with explicit non-Abrams vehicle IDs for
+Garage, Gallery, HUD, sight, and killcam captures. The R2 spectator frame stays
+in the evidence archive, while public multiplayer presentation uses the original
+dual-client capture.
 
 ```bash
 npm run shots:r2:capture
