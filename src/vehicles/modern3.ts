@@ -306,6 +306,7 @@ export function buildK2(P: Modern3BuilderPort) {
     return m;
   };
 
+  const buildK2RunningGear = (): void => {
   // Six evenly pitched K2 stations, compressed toward the fixed front road
   // wheel so the rear station no longer hangs beneath the boat-tail.  The
   // return rollers and rear track contact follow the same forward seat; the
@@ -355,7 +356,10 @@ export function buildK2(P: Modern3BuilderPort) {
     bayWall(1.50, 0.075, 2.70, 0.15);
     bayWall(2.70, 0.15, 3.10, 0.31);
   }
+  };
+  buildK2RunningGear();
 
+  const buildK2HullBody = (): void => {
   // hull: belly between the tracks, full-width band above the skirt line,
   // §B1 ONE shallow glacis plane (print: 1.20 lip -> 1.66 crest, 10.8°),
   // high pointed prow (nose face over a 42° chin — the K2 sharp chin read).
@@ -417,9 +421,13 @@ export function buildK2(P: Modern3BuilderPort) {
     [-1.08, 0.90, 3.51], [1.08, 0.90, 3.51], [1.08, 0.88, 3.41], [-1.08, 0.88, 3.41]));
   P.add('hull', box(1.50, 0.14, 0.22), 0, 0.49, 3.22);                         // narrow toe beam reveals both fender shoulders
   for (const s of [-1, 1]) P.add('hullDetail', box(0.14, 0.12, 0.16), s * 0.62, 0.55, 3.37); // bow tow hooks
+  };
+  buildK2HullBody();
+  const buildK2RearHull = (): void => {
   // rear: center lane below the band (sprocket lanes stay open), full width
   // above; grilles + louvres + taillights + convoy plate + flaps + the
   // print's stern stowage rack row above the grilles.
+  const buildRearGrilles = (): void => {
   {
     // The oracle reads one grille field, but its service bays are unequal
     // and separated by real vertical breaks.  Build those three fields as
@@ -459,6 +467,8 @@ export function buildK2(P: Modern3BuilderPort) {
       }
     }
   }
+  };
+  buildRearGrilles();
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.15, 0.08, 0.05), s * 1.42, 1.56, -3.725);          // taillights
     hullRubberLane(s, box(0.58, 0.24, 0.026), s * 1.40, 1.46, -3.72);          // compact rear flap inside the high stern band
@@ -487,9 +497,13 @@ export function buildK2(P: Modern3BuilderPort) {
     P.add('hullDark', box(0.28, 0.16, 0.025), s * 1.16, 0.94, -3.50);          // recessed service box
   }
   for (const x of [-0.96, 0, 0.96]) P.add('hullDark', box(0.54, 0.022, 0.028), x, 1.18, -3.56); // broken stern seam
+  };
+  buildK2RearHull();
+  const buildK2Skirts = (): void => {
   // front guard flares — the §D WIDTH ANCHOR at ±1.80 EXACT (print: the
   // only ±1.80 content is the bow mudguard flares; the skirt run sits at
   // ±1.72). Wall face 1.80, top plate ties to the band, struts close §B2.
+  const buildFrontGuards = (): void => {
   for (const s of [-1, 1]) {
     P.add('hull', slab(                                                        // articulated raked fender transition
       [s * 1.77, 0.72, 3.18], [s * 1.80, 0.72, 3.18], [s * 1.80, 0.90, 3.73], [s * 1.77, 0.90, 3.73],
@@ -524,6 +538,8 @@ export function buildK2(P: Modern3BuilderPort) {
   }
   P.add('hull', box(0.22, 0.62, 0.15), 0, 1.01, 3.75);                        // one-column structural bow datum bracket
   P.add('hull', box(0.04, 0.68, 1.76), 1.72, 1.01, 2.50);                    // asymmetric right front skirt stringer
+  };
+  buildFrontGuards();
   // K2 skirts DE-LADDERED to the print-true ±1.72 run (batch-52b, the §5.66
   // ladder-anchor coupling: the r7 "front-half ±1.80" order had anchored on
   // Object_22's fender-FURNITURE band — excised by the batch-52 surgery;
@@ -577,6 +593,9 @@ export function buildK2(P: Modern3BuilderPort) {
   }
   P.add('hullDetail', box(0.03, 0.08, 2.90), 1.785, 1.13, 2.18);               // measured surviving right fender strip
   P.add('hullDetail', box(0.03, 0.06, 0.50), -1.790, 1.13, 1.94);              // left station fender lip closes the measured ±1.80 bow lane
+  };
+  buildK2Skirts();
+  const buildK2HullFurniture = (): void => {
   // glacis furniture ON the plane: driver station front-LEFT (bed wedge
   // under the ring — flat ring on the 10.8° slope), splash V-strips,
   // light clusters on the guard tops (§I fittings), tow cable, links.
@@ -628,6 +647,8 @@ export function buildK2(P: Modern3BuilderPort) {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.08, 0.010, 1.25), s * 1.57, 1.664, -0.35);
   }
+  };
+  buildK2HullFurniture();
 
   // ---- turret: the K2 arrowhead to the PRINT's lines (§B1/§B1.1). Pivot
   // world [0, 1.66, -0.30] = the shell's plan center (spin law); local
@@ -667,6 +688,7 @@ export function buildK2(P: Modern3BuilderPort) {
     P.add(mat, slab(off(q[0], 0), off(q[1], 0), off(q[2], 0), off(q[3], 0),
       off(q[0], out), off(q[1], out), off(q[2], out), off(q[3], out)));
   };
+  const buildK2TurretLoft = (): number => {
   // LECLERC-METHOD CLOSED TURRET LOFT.  Each row is a measured longitudinal
   // station: z, underside half-width/y, then roof half-width/y.  The earlier
   // center box + two outer boxes filled isolated x/z maxima and rendered as
@@ -737,6 +759,10 @@ export function buildK2(P: Modern3BuilderPort) {
   for (const [z, w, y] of [[1.08, 2.10, 0.715], [-0.10, 2.30, 0.705], [-1.75, 2.18, 0.705]]) {
     P.add('turretDark', box(w, 0.014, 0.032), 0, y, z);                       // embedded stage boundary, not a raised cage rail
   }
+  return turretRoofLift;
+  };
+  const turretRoofLift = buildK2TurretLoft();
+  const buildK2TurretNose = (): void => {
   // Cross-width nose stations carry the real K2 plan silhouette.  The
   // central spear, recessed inner cheek and secondary shoulder projection
   // cannot be represented by one averaged fore/aft loft line; these joined
@@ -758,6 +784,9 @@ export function buildK2(P: Modern3BuilderPort) {
       [s * x0, ty + turretRoofLift - 0.10, fz0 - topSetback], [s * x1, ty + turretRoofLift - 0.10, fz1 - topSetback],
       [s * x1, ty + turretRoofLift - 0.10, 1.24], [s * x0, ty + turretRoofLift - 0.10, 1.24]));
   }
+  };
+  buildK2TurretNose();
+  const buildK2TurretSideArmor = (): void => {
   // Separate cheek armor is attached to the loft rather than being used as
   // its structural wall.  The left/right footprints are genuinely unequal
   // in Object_22, so retain that asymmetry and keep every inner face buried.
@@ -825,6 +854,9 @@ export function buildK2(P: Modern3BuilderPort) {
       }
     }
   }
+  };
+  buildK2TurretSideArmor();
+  const buildK2TurretCrown = (): void => {
   // A shallow crown follows Object_21's second roof component.  It is only
   // the center spine, never a turret-width cap.
   const roofSpine = [[-0.30, 0.675], [0.15, 0.705], [0.60, 0.690],
@@ -870,6 +902,10 @@ export function buildK2(P: Modern3BuilderPort) {
     cheekPanel(s, 0.60, 0.82, 0.30, 0.58, 0.046, 'turretDetail');              // KSPAW frame
     cheekPanel(s, 0.635, 0.785, 0.34, 0.54, 0.024, 'turretDark');              // KSPAW panel (recessed)
   }
+  };
+  buildK2TurretCrown();
+  const buildK2RoofSystems = (): void => {
+  const buildK2RoofSensors = (): void => {
   // roof furniture — heightM p95 discipline (pub 2.40 = the sight plane):
   // broad tops ≤ 2.40 world (local 0.74) — batch-52b TIGHTENED from 2.42:
   // the ref surgery re-framed the shared gate camera and the p95 index
@@ -936,6 +972,9 @@ export function buildK2(P: Modern3BuilderPort) {
       }
     }
   }
+  };
+  buildK2RoofSensors();
+  const buildK2RoofStations = (): void => {
   // Two real roof stations.  The broad commander cupola is on the left-rear
   // roof in the reference top view; the smaller gunner hatch is offset right.
   // Both overlap the loft by 20 mm so their contact shadows cannot float.
@@ -1023,6 +1062,9 @@ export function buildK2(P: Modern3BuilderPort) {
   P.add('turretDark', box(0.94, 0.012, 0.03), 0, 0.653, -1.02);
   P.add('turretDark', box(0.03, 0.012, 0.70), 0.46, 0.653, -1.35);
   P.add('turretDark', box(0.03, 0.012, 0.70), -0.46, 0.653, -1.35);
+  };
+  buildK2RoofStations();
+  const buildK2RoofComms = (): void => {
   {
     // Object_18 is not a guessed transverse cupola gun.  Its connected-sheet
     // census is a thin LONGITUDINAL assembly seated over the left-front KCPS
@@ -1064,11 +1106,16 @@ export function buildK2(P: Modern3BuilderPort) {
       P.add('turretDetail', box(0.014, upperH, 0.012), s * 0.79, 0.74 + lowerH + upperH / 2, z);
     }
   }
+  };
+  buildK2RoofComms();
+  };
+  buildK2RoofSystems();
+  const buildK2Bustle = (): void => {
   // Welded bustle baskets: two side cages converge into one full-width rear
   // rack.  Every rail terminates on either the solid loft or another rail;
   // the rejected r3's isolated diagonal cards and zero-thickness extensions
   // are deliberately gone.
-  {
+  const buildK2BustleFrame = (): void => {
     // Layered armored bustle terminus.  The rack is attached to this wall;
     // it is not asked to impersonate the turret's rear volume.
     P.add('turret', box(1.90, 0.30, 0.18), 0, 0.29, -2.05);                   // low armored shoulder behind the central shell
@@ -1089,7 +1136,10 @@ export function buildK2(P: Modern3BuilderPort) {
       P.add('turretDark', topSpoke, -1.098, 0.738, -2.218);
     }
     P.add('turret', box(1.90, 0.04, 0.24), 0, 0.620, -2.05);                  // low armored core roof, clear of the stand-off cage
-    for (const [cx, w, skew] of [[-1.08, 0.84, -0.10], [0.99, 0.62, 0.08]]) {
+  };
+  buildK2BustleFrame();
+  const buildK2BustleCages = (): void => {
+    const buildK2BustleCage = (cx: number, w: number, skew: number): void => {
       // Asymmetric stand-off cage: open air is visible between its tubes and
       // the lower armored core.  The left magazine rack is measurably wider.
       const rearZ = cx < 0 ? -2.60 : -2.30;
@@ -1110,7 +1160,13 @@ export function buildK2(P: Modern3BuilderPort) {
         cx + skew * 0.4, 0.43, rearZ + 0.075);
       P.add('turretDark', box(w * 0.46, 0.026, 0.030), cx + skew * 0.4, 0.43, rearZ - 0.030); // roll retaining strap
       P.add('turretDetail', box(0.12, 0.10, 0.06), cx + w * 0.38, 0.23, rearZ); // rear lamp/connector housing
+    };
+    for (const [cx, w, skew] of [[-1.08, 0.84, -0.10], [0.99, 0.62, 0.08]] as const) {
+      buildK2BustleCage(cx, w, skew);
     }
+  };
+  buildK2BustleCages();
+  const buildK2BustleLoads = (): void => {
     // The print's dominant rear read is two large, rounded soft packs—not a
     // wall of small flat parcels.  Like the Leclerc graduate's bounded rack
     // loads, both cylinders remain wholly inside the existing cage AABB and
@@ -1143,7 +1199,10 @@ export function buildK2(P: Modern3BuilderPort) {
       strap.rotateY(Math.PI);
       P.add('turretDark', strap, x + w * 0.17, y, z - 0.003);
     }
-    for (const [s, x, z] of [[-1, -1.36, -2.649], [1, 1.23, -2.349]]) {
+  };
+  buildK2BustleLoads();
+  const buildK2BustleHardware = (): void => {
+    const buildK2BustleCorner = (s: number, x: number, z: number): void => {
       for (const a of [-0.62, 0.62]) {
         const cornerRail = new THREE.PlaneGeometry(0.44, 0.030);
         cornerRail.rotateY(Math.PI);
@@ -1164,6 +1223,9 @@ export function buildK2(P: Modern3BuilderPort) {
         spoke.rotateZ(a);
         P.add('turretDark', spoke, x - s * 0.02, 0.42, z - 0.009);
       }
+    };
+    for (const [s, x, z] of [[-1, -1.36, -2.649], [1, 1.23, -2.349]] as const) {
+      buildK2BustleCorner(s, x, z);
     }
     P.add('turret', box(1.80, 0.060, 0.12), 0, 0.24, -2.60);                  // low center crossbar ties the corner baskets
     for (const [x, w] of [[-0.63, 0.46], [0, 0.20], [0.63, 0.46]]) {
@@ -1173,6 +1235,9 @@ export function buildK2(P: Modern3BuilderPort) {
       P.add('turretDetail', box(0.055, 0.055, 0.48), -1.18, y, -2.36);         // left stand-off longitudinal tie
       P.add('turretDetail', box(0.055, 0.055, 0.30), 1.18, y, -2.21);          // shorter right tie preserves plan asymmetry
     }
+  };
+  buildK2BustleHardware();
+  const finishK2Bustle = (): void => {
     // Measured dominant left-rear Object_21 component: perimeter and two
     // unequal straps reproduce its exact plan subdivision while leaving the
     // basket center open.  All lines remain beneath the existing roof datum.
@@ -1198,9 +1263,13 @@ export function buildK2(P: Modern3BuilderPort) {
     stowage(P, 'turretCloth', rng, [
       [-0.94, 0.50, -2.45, 0.22, 0.10, 0.14], [0.34, 0.47, -2.48, 0.18, 0.09, 0.12],
     ]);
-  }
+  };
+  finishK2Bustle();
   ammoCan(P, 'turretDark', -1.50, 0.50, 0.30, 0.15);
   ammoCan(P, 'turretDark', -1.50, 0.50, 0.64, -0.12);
+  };
+  buildK2Bustle();
+  const buildK2SmokeBanks = (): void => {
   // twin 6-tube smoke banks seated ON the module tops with base plates
   // (critic r1: the wall-buried banks vanished) — hard outboard yaw keeps
   // every tube ≤ |x| 1.61 (run-A receipt: tubes at ±1.77 paid −7 on
@@ -1223,6 +1292,9 @@ export function buildK2(P: Modern3BuilderPort) {
         0, s * (0.06 + col * 0.018), -s * (0.17 + row * 0.035 - col * 0.012));
     }
   }
+  };
+  buildK2SmokeBanks();
+  const buildK2Weapon = (): void => {
   // gun (§B3.1, no prisms): the print's BIG mantlet (±0.42, rising over the
   // tube line) + boot at the bay, CN08 L/55 — sleeve + clamp rings, evac
   // drum in the print's fat zone, MRS collar. Muzzle +6.95 world = 10.70
@@ -1268,6 +1340,8 @@ export function buildK2(P: Modern3BuilderPort) {
   P.decal('hull', 'number', '325', 0.24, [1.725, 1.00, 2.50], Math.PI / 2);
   P.decal('hull', 'number', '325', 0.24, [-1.725, 1.00, 2.50], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.8, [0.92, 1.30, -3.74], Math.PI);
+  };
+  buildK2Weapon();
   P.topY = 1.20;
 }
 
