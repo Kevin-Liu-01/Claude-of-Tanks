@@ -23,6 +23,7 @@ try {
   run(process.execPath, ['tools/gen-combat-anatomy.mjs', '--check']);
   run(process.execPath, ['tools/presentation-centering.mjs', '--check', `--ids=${ids}`]);
   run(process.execPath, ['tools/module-visual-align-probe.mjs', `--ids=${ids}`, '--gate']);
+  run(process.execPath, ['tools/module-hit-probe.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/tank-assets-check.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/track-duplicate-audit.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/muzzle-bore-probe.mjs', `--ids=${ids}`]);

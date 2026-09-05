@@ -856,9 +856,13 @@ may be absent (acceptable) unless the view recipe seeds them via bus emits.
 export function createDamagePanel() => Panel
 Panel = { root: HTMLElement, setTank(spec), update(combat: CombatState), setState(sample) }
 ```
-Bottom-left tank silhouette (top-down, canvas-drawn from spec.dims — generic hull+turret
-outline is fine) with module dots (green/yellow/red at armor-model module positions
-projected to top-down) + crew row icons + HP bar + fire icon when burning.
+Bottom-left tank silhouette built from the playable vehicle's top-down hull and
+turret masks. Mechanical systems use green square carriers and crew stations use
+cyan circular carriers at the exact centers of their authoritative armor-model
+volumes. Dense markers resolve together only after hull/turret projection and stay
+within a short leader-line tether to the source point. Damaged modules promote to
+yellow/red, incapacitated crew promotes to red, and the panel also carries the HP
+bar plus the fire indicator.
 
 #### 3.7.3 `garage.ts`
 ```js

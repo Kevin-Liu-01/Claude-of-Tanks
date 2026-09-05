@@ -56,7 +56,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
-  repairAllModules, startMagazineReload,
+  repairAllModules, startMagazineReload, mainWeaponModuleState,
 } from '../sim/damage.ts';
 import {
   activateSpecialAction,
@@ -1659,7 +1659,7 @@ function readyShellForFire(
 ): DamageShellSpec | null {
   const combat = entity.combat;
   if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
-  if (combat.modules.gun?.state === 'red') return null;
+  if (mainWeaponModuleState(combat) === 'red') return null;
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
     0,
@@ -1774,7 +1774,7 @@ function tryFire(
   const muzzleIndex = prepareMuzzleDirection(entity);
   if (muzzleIndex == null) return;
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
-  if (entity.combat.modules.gun?.state === 'yellow') dispersion *= 2;
+  if (mainWeaponModuleState(entity.combat) === 'yellow') dispersion *= 2;
   applyDispersion(_dir, dispersion, game.combatRng);
   const firedSlot = entity.combat.shellSlot;
   if (!consumeAmmunition(entity.combat, firedSlot)) return;

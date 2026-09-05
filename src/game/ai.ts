@@ -19,7 +19,12 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
-import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.ts';
+import {
+  blastRadiusM,
+  estimatePenRatio,
+  isHeClass,
+  mainWeaponModuleState,
+} from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import {
@@ -2465,7 +2470,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
     const reload = entity.combat && entity.combat.reload;
     const modules = entity.combat && entity.combat.modules;
-    const gunOut = modules && modules.gun && modules.gun.state === 'red';
+    const gunOut = mainWeaponModuleState(entity.combat) === 'red';
     const shouldReverse = (reload && reload.t > 1.2 && role !== 'brawler' && !casemate) || gunOut;
     if (shouldReverse && distToTarget > 55) {
       reverseFacing(input, bearing, -0.45);
@@ -2904,7 +2909,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateBasicFireGates(distance: number, timeS: number): void {
     const combat = entity.combat;
-    const gunDisabled = combat?.modules?.gun?.state === 'red';
+    const gunDisabled = mainWeaponModuleState(combat) === 'red';
     fireGate.distance = distance;
     fireGate.reactionReady = timeS - acquiredAtS >= tier.reactionS;
     fireGate.reloadReady = !combat || (

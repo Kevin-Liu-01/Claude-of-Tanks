@@ -6,12 +6,12 @@
 //      center pokes outside the armor envelope is unreachable (or reachable
 //      only through the ENVELOPE-SEAM CATCH) and flags OUTSIDE.
 //   2. SCRIPTED SHOTS — fires a rigged mega-pen shell through each module
-//      box center from up to three canonical bearings (side, front/rear,
-//      top) via the REAL traceTank + resolveShellHit pipeline and asserts:
+//      precise authored shape centers from all six canonical bearings via the
+//      REAL traceTank + resolveShellHit pipeline and asserts:
 //        trace   — the box is crossed by the segment at all (geometry sane);
 //        resolve — the module actually ROLLS damage on a penetrating hit
-//                  (externality, plate ordering and the 10-caliber post-pen
-//                  sweep limit all honored — i.e. the module is reachable in
+//                  (externality, plate ordering and the post-pen fragment
+//                  corridor all honored — i.e. the module is reachable in
 //                  gameplay, not just in geometry).
 //   3. TRACK LINKS — side shots at running-gear height must reach trackL/R
 //      via the external track plate's moduleLink (or the track box itself).
@@ -29,8 +29,8 @@ import { writeFileSync } from 'node:fs';
 // same way the game does. tankFactory is node-safe (no DOM at module scope).
 await import('../src/vehicles/tankFactory.ts');
 const { TANK_SPECS, ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const { traceTank } = await import('../src/sim/armor.ts');
-const { resolveShellHit } = await import('../src/sim/damage.ts');
+const { blastTargets, tankPoseFromState, traceTank } = await import('../src/sim/armor.ts');
+const { createCombatState, resolveShellHit } = await import('../src/sim/damage.ts');
 
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
@@ -40,37 +40,36 @@ const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : '';
 
 // Mega-pen probe shell: rigged so armor never stops it and the post-pen
-// sweep length (10 × caliber = 1.25 m) matches the biggest real gun.
-const PROBE_SHELL = {
-  name: 'PROBE', type: 'APFSDS', caliberMm: 125, pen100Mm: 5000, pen1000Mm: 5000,
-  pen2000Mm: 5000, dmg: 100, velocityMps: 1700, moduleDmg: 125, tracer: 'APFSDS',
-};
+// sweep length remains the tank's real largest authored caliber. Penetration
+// is rigged so this gate measures anatomy reachability, not balance values.
+function probeShellFor(spec) {
+  const caliberMm = Math.max(
+    1,
+    ...((spec.gun && spec.gun.shells) || []).map((shell) => Number(shell.caliberMm) || 0),
+    Number(spec.gun && spec.gun.caliberMm) || 0,
+  );
+  return {
+    name: 'MODULE REACHABILITY PROBE', type: 'APFSDS', caliberMm,
+    pen100Mm: 5000, pen1000Mm: 5000, pen2000Mm: 5000,
+    dmg: 100, velocityMps: 1700, moduleDmg: Math.max(125, caliberMm), tracer: 'APFSDS',
+  };
+}
 const rng0 = () => 0;
 
-/** Fresh CombatState-shaped target for one spec (module HP only matters). */
+/** Fresh real CombatState target for one spec. */
 function freshTarget(spec) {
-  const modules = {};
-  for (const n of ['trackL', 'trackR', 'engine', 'fuelTank', 'ammoRack', 'gun', 'radio', 'optics', 'turretRing']) {
-    modules[n] = { hp: 999, maxHp: 999, state: 'ok', repairT: 0 };
-  }
-  const crew = {};
-  for (const c of spec.armor.crew || []) crew[c.crew] = true;
   return {
     id: spec.id,
     spec,
     state: { pos: new Vector3(0, 0, 0), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 },
-    combat: {
-      hp: 99999, maxHp: 99999, destroyed: false, modules, crew,
-      fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
-      eraSpent: new Set(), reload: { t: 0, totalS: 5 }, shellSlot: 0,
-    },
+    combat: createCombatState(spec),
   };
 }
 
-function freshShell(from, to) {
-  const vel = new Vector3().subVectors(to, from).normalize().multiplyScalar(PROBE_SHELL.velocityMps);
+function freshShell(from, to, shellSpec) {
+  const vel = new Vector3().subVectors(to, from).normalize().multiplyScalar(shellSpec.velocityMps);
   return {
-    id: 1, spec: PROBE_SHELL, shooterId: 'probe', isPlayer: false,
+    id: 1, spec: shellSpec, shooterId: 'probe', isPlayer: false,
     pos: to.clone(), prevPos: from.clone(), vel,
     ageS: 0.1, distM: from.distanceTo(to), dead: false,
     penRollDone: false, remainingPenMm: 0, dmgRoll: 0, freshPenRollMm: 0,
@@ -78,7 +77,11 @@ function freshShell(from, to) {
   };
 }
 
-const POSE = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
+const STATE = {
+  pos: new Vector3(0, 0, 0), yaw: 0, visualPitch: 0, visualRoll: 0,
+  turretYaw: 0, gunPitch: 0,
+};
+const POSE = tankPoseFromState(STATE);
 
 /** AABB over a plate list's vertices (module-local frame). */
 function plateEnvelope(plates) {
@@ -96,7 +99,29 @@ function plateEnvelope(plates) {
   return mn ? { mn, mx } : null;
 }
 
-const boxCenter = (b) => [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
+const boxCenter = (b) => [
+  (b.min[0] + b.max[0]) / 2,
+  (b.min[1] + b.max[1]) / 2,
+  (b.min[2] + b.max[2]) / 2,
+];
+
+function shapeCenter(shape) {
+  if (shape.kind === 'capsule') {
+    return [
+      (shape.a[0] + shape.b[0]) / 2,
+      (shape.a[1] + shape.b[1]) / 2,
+      (shape.a[2] + shape.b[2]) / 2,
+    ];
+  }
+  if (shape.center) return [...shape.center];
+  return boxCenter(shape);
+}
+
+function moduleShapes(box) {
+  if (box.shapes && box.shapes.length) return box.shapes;
+  if (box.parts && box.parts.length) return box.parts;
+  return [box];
+}
 
 /** Center-inside-envelope test with tolerance (m). */
 function centerInside(c, env, tol) {
@@ -107,20 +132,14 @@ function centerInside(c, env, tol) {
   return true;
 }
 
-/** World center of a box, honoring turretLocal (turretYaw = 0). */
-function worldCenter(box, armor) {
-  const c = boxCenter(box);
-  if (box.turretLocal) {
-    const tp = armor.turretPivot || [0, 0, 0];
-    return new Vector3(c[0] + tp[0], c[1] + tp[1], c[2] + tp[2]);
-  }
-  return new Vector3(c[0], c[1], c[2]);
-}
-
-// Canonical shot bearings — from 30 m out, through the box center, 5 m past.
-// Side and long directions face the box's OWN side (a left-sponson fuel tank
-// is probed from the left, like a player would shoot it); top is plunging.
-const BEARING_TOP = new Vector3(0, -1, 0);
+// Canonical shot bearings — from 30 m out, through the shape center, 5 m past.
+// Both signs matter: a module near one wall may exceed the real gun's
+// post-penetration corridor when incorrectly tested from only the far side.
+const SHOT_DIRECTIONS = Object.freeze([
+  new Vector3(1, 0, 0), new Vector3(-1, 0, 0),
+  new Vector3(0, 0, 1), new Vector3(0, 0, -1),
+  new Vector3(0, 1, 0), new Vector3(0, -1, 0),
+]);
 
 function shotSegment(centerW, dir) {
   const from = centerW.clone().addScaledVector(dir, -30);
@@ -128,13 +147,10 @@ function shotSegment(centerW, dir) {
   return { from, to };
 }
 
-// Modules the resolve assertion applies to (internal fighting-compartment
-// gear; externals like gun/optics resolve without hull pen and tracks are
-// covered by the moduleLink check).
-const INTERNAL_MODULES = ['engine', 'fuelTank', 'ammoRack', 'radio', 'turretRing'];
-
 const rows = [];
 let hardFails = 0;
+let authoredModuleChecks = 0;
+let trackSideChecks = 0;
 
 const ids = (requested || ALL_TANK_IDS).filter((id) => TANK_SPECS[id] && TANK_SPECS[id].armor);
 for (const id of ids) {
@@ -176,7 +192,7 @@ for (const id of ids) {
     const env = box.turretLocal ? turretEnv : hullEnv;
     // turretRing legitimately straddles the hull roof seam — allow extra slack.
     const tol = box.module === 'turretRing' ? 0.35 : 0.05;
-    if (!centerInside(boxCenter(box), env, tol)) {
+    if (moduleShapes(box).some((shape) => !centerInside(shapeCenter(shape), env, tol))) {
       row.outside.push(box.module + (box.turretLocal ? '(T)' : ''));
     }
   }
@@ -187,51 +203,64 @@ for (const id of ids) {
     }
   }
 
-  // --- 2. scripted shots through each internal module box -------------------
-  for (const name of INTERNAL_MODULES) {
-    const box = (armor.modules || []).find((m) => m.module === name);
-    if (!box) { row.notes.push(`no ${name} box`); continue; }
-    const centerW = worldCenter(box, armor);
-    const dirs = [
-      new Vector3(centerW.x >= 0 ? -1 : 1, 0, 0),
-      new Vector3(0, 0, centerW.z >= 0 ? -1 : 1),
-      BEARING_TOP,
-    ];
-
+  // --- 2. scripted shots through every authored gameplay module ------------
+  // Precise shape centers come from armor.ts itself, so segmented/capsule/
+  // ellipsoid anatomy cannot be failed by the empty center of a broad union.
+  const authoredModules = [...new Set((armor.modules || []).map((box) => box.module))]
+    .filter((name) => name !== 'trackL' && name !== 'trackR');
+  const worldTargets = blastTargets(POSE, armor).filter((target) => target.kind === 'module');
+  const probeShell = probeShellFor(spec);
+  for (const name of authoredModules) {
+    authoredModuleChecks++;
+    const centers = worldTargets
+      .filter((target) => target.name === name)
+      .map((target) => target.point);
+    if (!centers.length) {
+      row.traceMiss.push(name);
+      continue;
+    }
     let traced = false;
     let resolved = false;
-    for (const dir of dirs) {
-      const { from, to } = shotSegment(centerW, dir);
-      const hits = traceTank(from, to, POSE, armor, new Set());
-      if (hits.some((h) => h.kind === 'module' && h.module === name)) traced = true;
-      // resolve on a fresh target each bearing (fires, hull damage reset)
-      const target = freshTarget(spec);
-      const shell = freshShell(from, to);
-      const ev = resolveShellHit(shell, target, hits, rng0);
-      if ((ev.modulesHit || []).some((m) => m.module === name)) { resolved = true; break; }
+    for (const centerW of centers) {
+      for (const dir of SHOT_DIRECTIONS) {
+        const { from, to } = shotSegment(centerW, dir);
+        const hits = traceTank(from, to, POSE, armor, new Set());
+        if (hits.some((hit) => hit.kind === 'module' && hit.module === name)) traced = true;
+        // Resolve on a fresh target each bearing (fires, hull damage reset).
+        const target = freshTarget(spec);
+        const shell = freshShell(from, to, probeShell);
+        const event = resolveShellHit(shell, target, hits, rng0);
+        if ((event.modulesHit || []).some((hit) => hit.module === name)) {
+          resolved = true;
+          break;
+        }
+      }
+      if (resolved) break;
     }
     if (!traced) row.traceMiss.push(name);
     else if (!resolved) row.resolveMiss.push(name);
   }
 
-  // --- 3. track reachability (side shot at gear height) ---------------------
-  {
-    const trk = (armor.modules || []).find((m) => m.module === 'trackR') ||
-      (armor.modules || []).find((m) => m.module === 'trackL');
+  // --- 3. both track sides are reachable at running-gear height -------------
+  for (const trackName of ['trackL', 'trackR']) {
+    const trk = (armor.modules || []).find((module) => module.module === trackName);
     if (trk) {
+      trackSideChecks++;
       const c = boxCenter(trk);
       const y = Math.max(0.12, (trk.min[1] + trk.max[1]) / 2);
       const from = new Vector3(c[0] >= 0 ? 30 : -30, y, c[2]);
       const to = new Vector3(0, y, c[2]);
       const hits = traceTank(from, to, POSE, armor, new Set());
       const linked = hits.some((h) =>
-        (h.kind === 'plate' && h.plate.moduleLink && h.plate.moduleLink.startsWith('track')) ||
-        (h.kind === 'module' && h.module && h.module.startsWith('track')));
-      if (!linked) row.trackLink = 'MISS';
-    } else row.trackLink = 'no box';
+        (h.kind === 'plate' && h.plate.moduleLink === trackName) ||
+        (h.kind === 'module' && h.module === trackName));
+      if (!linked) row.trackLink = row.trackLink === 'ok' ? `MISS:${trackName}` : `${row.trackLink},${trackName}`;
+    } else {
+      row.notes.push(`no ${trackName} box`);
+    }
   }
 
-  const bad = row.traceMiss.length + row.resolveMiss.length + (row.trackLink === 'MISS' ? 1 : 0);
+  const bad = row.traceMiss.length + row.resolveMiss.length + (row.trackLink.startsWith('MISS') ? 1 : 0);
   if (bad > 0) hardFails++;
   rows.push(row);
 
@@ -251,9 +280,24 @@ for (const id of ids) {
 
 const outsideN = rows.filter((r) => r.outside.length).length;
 const driftN = rows.filter((r) => r.dimsDrift.length).length;
-console.log(`\n[module-hit] ${rows.length} tanks: ${hardFails} FAIL, ${outsideN} outside-envelope, ${driftN} dims-drift warnings`);
+console.log(
+  `\n[module-hit] ${rows.length} tanks, ${authoredModuleChecks} authored modules, ` +
+  `${trackSideChecks} track sides: ${hardFails} FAIL, ${outsideN} outside-envelope, ` +
+  `${driftN} dims-drift warnings`,
+);
 if (jsonOut) {
-  writeFileSync(jsonOut, `${JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 1)}\n`);
+  const summary = {
+    tanks: rows.length,
+    authoredModules: authoredModuleChecks,
+    trackSides: trackSideChecks,
+    hardFails,
+    outsideEnvelope: outsideN,
+    dimsDriftWarnings: driftN,
+  };
+  writeFileSync(
+    jsonOut,
+    `${JSON.stringify({ generatedAt: new Date().toISOString(), summary, rows }, null, 1)}\n`,
+  );
   console.log(`[module-hit] wrote ${jsonOut}`);
 }
 process.exit(hardFails > 0 ? 1 : 0);

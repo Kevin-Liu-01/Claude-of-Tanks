@@ -154,6 +154,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/topics.selftest.mjs',
     'src/productStats.selftest.mjs',
     'src/ui/garageDossier.selftest.mjs',
+    'src/ui/damagePanel.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
     'src/ui/camoSwatchAccess.selftest.mjs',
     'src/ui/customCamoStudioAccess.selftest.mjs',

@@ -5,24 +5,25 @@
 export interface ModuleDefinition {
   readonly label: string;
   readonly hp: number;
-  readonly saveChance: number;
+  /** Chance that an intersecting shell actually damages this module. */
+  readonly damageChance: number;
 }
 
 export const MODULE_DEFS = Object.freeze({
-  gun: Object.freeze({ label: 'Gun', hp: 150, saveChance: 0.33 }),
-  turretRing: Object.freeze({ label: 'Turret Ring', hp: 120, saveChance: 0.45 }),
-  gunMount: Object.freeze({ label: 'Gun Mount', hp: 120, saveChance: 0.45 }),
-  autoloader: Object.freeze({ label: 'Autoloader', hp: 125, saveChance: 0.36 }),
-  feedSystem: Object.freeze({ label: 'Weapon Feed', hp: 110, saveChance: 0.38 }),
-  missileRack: Object.freeze({ label: 'Missile Rack', hp: 120, saveChance: 0.30 }),
-  engine: Object.freeze({ label: 'Engine', hp: 160, saveChance: 0.45 }),
-  transmission: Object.freeze({ label: 'Transmission', hp: 140, saveChance: 0.45 }),
-  fuelTank: Object.freeze({ label: 'Fuel Tank', hp: 120, saveChance: 0.45 }),
-  ammoRack: Object.freeze({ label: 'Ammo Rack', hp: 150, saveChance: 0.27 }),
-  radio: Object.freeze({ label: 'Radio', hp: 90, saveChance: 0.45 }),
-  optics: Object.freeze({ label: 'Optics', hp: 80, saveChance: 0.45 }),
-  trackL: Object.freeze({ label: 'Track L', hp: 100, saveChance: 1.0 }),
-  trackR: Object.freeze({ label: 'Track R', hp: 100, saveChance: 1.0 }),
+  gun: Object.freeze({ label: 'Gun', hp: 150, damageChance: 0.33 }),
+  turretRing: Object.freeze({ label: 'Turret Ring', hp: 120, damageChance: 0.45 }),
+  gunMount: Object.freeze({ label: 'Gun Mount', hp: 120, damageChance: 0.45 }),
+  autoloader: Object.freeze({ label: 'Autoloader', hp: 125, damageChance: 0.36 }),
+  feedSystem: Object.freeze({ label: 'Weapon Feed', hp: 110, damageChance: 0.38 }),
+  missileRack: Object.freeze({ label: 'Missile Rack', hp: 120, damageChance: 0.30 }),
+  engine: Object.freeze({ label: 'Engine', hp: 160, damageChance: 0.45 }),
+  transmission: Object.freeze({ label: 'Transmission', hp: 140, damageChance: 0.45 }),
+  fuelTank: Object.freeze({ label: 'Fuel Tank', hp: 120, damageChance: 0.45 }),
+  ammoRack: Object.freeze({ label: 'Ammo Rack', hp: 150, damageChance: 0.27 }),
+  radio: Object.freeze({ label: 'Radio', hp: 90, damageChance: 0.45 }),
+  optics: Object.freeze({ label: 'Optics', hp: 80, damageChance: 0.45 }),
+  trackL: Object.freeze({ label: 'Track L', hp: 100, damageChance: 1.0 }),
+  trackR: Object.freeze({ label: 'Track R', hp: 100, damageChance: 1.0 }),
 } as const satisfies Readonly<Record<string, ModuleDefinition>>);
 
 export type ModuleId = keyof typeof MODULE_DEFS;

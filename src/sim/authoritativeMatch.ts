@@ -43,6 +43,7 @@ import {
   resolveShellHit,
   selectFirstAvailableShell,
   selectShell,
+  mainWeaponModuleState,
   magazineReloadDenialReason,
   startMagazineReload,
   startPostShotReload,
@@ -1243,7 +1244,7 @@ export function createAuthoritativeMatch({
   ): AuthoritativeSpec['gun']['shells'][number] | null {
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
-    if (combat.modules.gun?.state === 'red') return null;
+    if (mainWeaponModuleState(combat) === 'red') return null;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return null;
     if (shellSpec.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return null;

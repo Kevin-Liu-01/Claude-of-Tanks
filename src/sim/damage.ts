@@ -46,7 +46,7 @@ import {
 type Rng = () => number;
 type Vec3Tuple = [number, number, number];
 type ShellClass = 'KE' | 'CE' | 'HE';
-type ModuleStateName = 'ok' | 'yellow' | 'red';
+export type ModuleStateName = 'ok' | 'yellow' | 'red';
 type ReloadKind = 'ready' | 'shell' | 'intraClip' | 'magazine';
 
 interface ShellBehavior {
@@ -129,6 +129,30 @@ export interface CombatState {
   ammo: number[];
   ammoCapacity: number[];
   equipMults?: Partial<Record<string, number>>;
+}
+
+const MODULE_STATE_RANK: Readonly<Record<ModuleStateName, number>> = Object.freeze({
+  ok: 0,
+  yellow: 1,
+  red: 2,
+});
+
+/**
+ * Worst state across the barrel/breech and the authored gun mount. Casemate
+ * vehicles expose a gunMount instead of a turret ring; treating that mount as
+ * decoration let them keep firing after a direct internal hit.
+ */
+export function mainWeaponModuleState(
+  combat: Pick<CombatState, 'modules'> | null | undefined,
+): ModuleStateName {
+  let state: ModuleStateName = 'ok';
+  for (const moduleName of ['gun', 'gunMount'] as const) {
+    const candidate = combat?.modules?.[moduleName]?.state;
+    if (candidate && MODULE_STATE_RANK[candidate] > MODULE_STATE_RANK[state]) {
+      state = candidate;
+    }
+  }
+  return state;
 }
 
 export type DamageTankState = ArmorPoseState;
@@ -282,7 +306,11 @@ const ENGINE_FIRE_CHANCE = 0.15;
 const AMMORACK_RELOAD_MULT = 1.5;
 const OVERMATCH_NO_RICOCHET = 3.0;
 const OVERMATCH_NORM_BOOST = 2.0; // caliber ≥ 2×T ⇒ norm × 1.4·C/T
-const POSTPEN_CALIBERS = 10; // internal sweep length = 10 × caliber
+const POSTPEN_CALIBERS = 10;
+// Autocannon penetrators still create a useful internal fragment corridor.
+// Without this floor, the CV90/FV510 could penetrate but could never reach
+// their own central transmission or turret-ring volumes.
+const POSTPEN_MIN_M = 1.25;
 const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
 const HE_ARMOR_ABSORB = 1.1;
 const RICOCHET_MAX_BOUNCES = 2;
@@ -531,8 +559,9 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
 }
 
 /**
- * Shared per-intersection module damage: saving throw, moduleDmg roll, fire
- * roll (engine/fuel only). RNG order per module: save → moduleDmg → fire.
+ * Shared per-intersection module damage: damage-chance roll, moduleDmg roll,
+ * then an engine-compartment fire roll. RNG order per module is fixed:
+ * chance → moduleDmg → fire.
  *
  * @param {object} ctx resolution context {combat, shellSpec, rng, modulesHit, chanceScale, dmgScale}
  * @param {string} moduleName ModuleName
@@ -545,9 +574,9 @@ function rollModuleDamage(
   const res = { fireStarted: false, ammoRacked: false };
   const m = ctx.combat.modules[moduleName];
   if (!m) return res;
-  const save = ctx.rng(); // always consumed — fixed order
-  const chance = MODULE_DEFS[moduleName].saveChance * ctx.chanceScale;
-  if (save >= Math.min(1, chance) || m.hp <= 0) return res;
+  const damageRoll = ctx.rng(); // always consumed — fixed order
+  const chance = MODULE_DEFS[moduleName].damageChance * ctx.chanceScale;
+  if (damageRoll >= Math.min(1, chance) || m.hp <= 0) return res;
 
   const moduleDmg =
     rollUniform(ctx.rng, ctx.shellSpec.moduleDmg ?? ctx.shellSpec.caliberMm) * ctx.dmgScale;
@@ -559,7 +588,7 @@ function rollModuleDamage(
 
   if (moduleName === 'ammoRack' && newState === 'red') res.ammoRacked = true;
 
-  if (moduleName === 'engine' || moduleName === 'fuelTank') {
+  if (moduleName === 'engine' || moduleName === 'transmission' || moduleName === 'fuelTank') {
     // The draw is ALWAYS consumed to keep the fixed replay RNG order, but the
     // ignition rules differ (armor doc §9/§10 — the implementation authority):
     // engines roll ENGINE_FIRE_CHANCE on every damaging hit; fuel tanks have
@@ -570,7 +599,7 @@ function rollModuleDamage(
     // path to fewer fuel fires is its +50% module HP). Auto extinguishers
     // shorten the burn: fires start with half the tick budget (floor 2 so a
     // fire is never a free no-op).
-    const ignite = moduleName === 'engine'
+    const ignite = moduleName === 'engine' || moduleName === 'transmission'
       ? fireRoll < ENGINE_FIRE_CHANCE * equipMult(ctx.combat, 'engineFire')
       : newState === 'red';
     if (ignite) {
@@ -855,6 +884,10 @@ function mergeModuleOutcome(
 ): void {
   event.fireStarted ||= outcome.fireStarted;
   event.ammoRacked ||= outcome.ammoRacked;
+}
+
+function postPenetrationLimitM(caliberMm: number): number {
+  return Math.max(POSTPEN_MIN_M, (Math.max(0, caliberMm) * POSTPEN_CALIBERS) / 1000);
 }
 
 function processModuleTraceHit(
@@ -1158,8 +1191,9 @@ function resolveCarryThrough(resolution: LiveShellResolution): void {
  * Resolve a kinetic/HEAT (or direct-fire HE) shell against one tank. Walks the
  * ordered traceTank intersections: ricochet on raw angle (3× overmatch
  * suppression), ERA tiles, spaced screens (HEAT air-gap decay), main-armor pen
- * check, hull damage, then the 10×caliber internal module/crew sweep with
- * saving throws and fire rolls. Mutates `target.combat` and the shell
+ * check, hull damage, then the caliber-scaled internal module/crew fragment
+ * sweep (with a 1.25 m autocannon floor), damage rolls and fire rolls. Mutates
+ * `target.combat` and the shell
  * (dead/deflected). Ricochets with bounces < 2 leave the shell alive with a
  * deflected velocity; a KE shell that overpenetrates with pen to spare exits
  * the far side and may strike a second vehicle (one carry-through max).
@@ -1229,7 +1263,7 @@ export function resolveShellHit(
     hullPen: false,
     entryPoint: null,
     decided: false,
-    limitM: (spec.caliberMm * POSTPEN_CALIBERS) / 1000,
+    limitM: postPenetrationLimitM(spec.caliberMm),
     // Stryker disable next-line ArrayDeclaration: the injected string has no hit kind and is an identical no-op when deferred intersections flush.
     straddlers: [],
   };
@@ -1534,7 +1568,7 @@ function applyHePenetration(
   stampShotInfo(event, plateHit, shell.spec, target, shell.vel);
   event.damage = dmgRoll;
   target.combat.hp -= dmgRoll;
-  const limitM = (shell.spec.caliberMm * POSTPEN_CALIBERS) / 1000;
+  const limitM = postPenetrationLimitM(shell.spec.caliberMm);
   for (const hit of hits) {
     const spanEnd = hit.tExit ?? hit.t;
     if (spanEnd <= plateHit.t) continue;
