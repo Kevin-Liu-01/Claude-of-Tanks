@@ -220,6 +220,16 @@ function tintCanvas(src: HTMLCanvasElement, color: string): HTMLCanvasElement {
 const HULL_BODY = '#a2adb6';
 const TURRET_BODY = '#ccd6de';
 const RIM_INK = 'rgba(6,10,14,0.98)';
+export const DAMAGE_PANEL_MARKER_STYLE = Object.freeze({
+  moduleHealthyColor: '#82e6a0',
+  crewHealthyColor: '#5aa9ff',
+  weaponCarrier: 'diamond',
+  movementCarrier: 'hexagon',
+  crewCarrier: 'circle',
+} as const);
+
+const HEALTHY_MODULE_COLOR = DAMAGE_PANEL_MARKER_STYLE.moduleHealthyColor;
+const HEALTHY_CREW_COLOR = DAMAGE_PANEL_MARKER_STYLE.crewHealthyColor;
 
 // ---------------------------------------------------------------------------
 // Vector module icons — each drawn centered at (0,0) in a ~12px box, using
@@ -336,8 +346,76 @@ const MODULE_ICON: Record<string, ModuleIconPainter> = {
 };
 MODULE_ICON.gunMount = MODULE_ICON.turretRing;
 
-// r4: no persistent healthy-module pips — every module icon appears only
-// once damaged (WoT panel behavior; see drawPip).
+export const DAMAGE_PANEL_MODULE_ICON_IDS = Object.freeze(Object.keys(MODULE_ICON));
+
+export type DamagePanelModuleKind = 'weapon' | 'movement';
+
+// The compact HUD needs only two mechanical silhouettes. Powertrain/fuel
+// systems use a broad hexagon; every fighting-system component uses a diamond.
+// Tracks already read through the two exterior rails and do not get a duplicate
+// marker, but remain classified for callers that share this vocabulary.
+export const DAMAGE_PANEL_MODULE_KIND_BY_ID: Readonly<Record<string, DamagePanelModuleKind>> = Object.freeze({
+  gun: 'weapon',
+  turretRing: 'weapon',
+  gunMount: 'weapon',
+  autoloader: 'weapon',
+  feedSystem: 'weapon',
+  missileRack: 'weapon',
+  ammoRack: 'weapon',
+  radio: 'weapon',
+  optics: 'weapon',
+  engine: 'movement',
+  transmission: 'movement',
+  fuelTank: 'movement',
+  trackL: 'movement',
+  trackR: 'movement',
+} as const satisfies Readonly<Record<string, DamagePanelModuleKind>>);
+
+// Role-specific crew symbols. They share the saturated-blue circular carrier
+// so crew never reads as another mechanical module, while their inner marks remain
+// recognizable at the panel's deliberately compact scale.
+const CREW_ICON: Record<string, ModuleIconPainter> = {
+  commander(c, col) {
+    c.fillStyle = col;
+    c.beginPath(); c.arc(-2.6, 0, 2.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(2.6, 0, 2.2, 0, Math.PI * 2); c.fill();
+    c.fillRect(-1.5, -1, 3, 2);
+    c.fillRect(-4.2, -4.6, 2.2, 2.8); c.fillRect(2, -4.6, 2.2, 2.8);
+  },
+  gunner(c, col) {
+    c.strokeStyle = col; c.lineWidth = 1.6;
+    c.beginPath(); c.arc(0, 0, 4.2, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(0, -6); c.lineTo(0, -2.3); c.moveTo(0, 2.3); c.lineTo(0, 6);
+    c.moveTo(-6, 0); c.lineTo(-2.3, 0); c.moveTo(2.3, 0); c.lineTo(6, 0); c.stroke();
+    c.fillStyle = col; c.beginPath(); c.arc(0, 0, 1.4, 0, Math.PI * 2); c.fill();
+  },
+  driver(c, col) {
+    c.strokeStyle = col; c.lineWidth = 1.7;
+    c.beginPath(); c.arc(0, 0, 4.8, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 4.8);
+    c.moveTo(0, 0); c.lineTo(-4.2, -2.3); c.moveTo(0, 0); c.lineTo(4.2, -2.3); c.stroke();
+    c.fillStyle = col; c.beginPath(); c.arc(0, 0, 1.5, 0, Math.PI * 2); c.fill();
+  },
+  loader(c, col) {
+    c.fillStyle = col;
+    c.fillRect(-1.4, -2.5, 2.8, 7.4);
+    c.beginPath(); c.moveTo(-1.4, -2.5); c.lineTo(0, -6); c.lineTo(1.4, -2.5); c.closePath(); c.fill();
+    c.fillRect(-2.2, 4, 4.4, 1.5);
+  },
+  radioOperator(c, col) {
+    c.strokeStyle = col; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(0, 0.5, 3.5, Math.PI * 1.08, Math.PI * 1.92); c.stroke();
+    c.beginPath(); c.moveTo(-3.4, 0); c.lineTo(-3.4, 4); c.moveTo(3.4, 0); c.lineTo(3.4, 4); c.stroke();
+    c.fillStyle = col; c.fillRect(-4.7, 2.2, 2.3, 3.2); c.fillRect(2.4, 2.2, 2.3, 3.2);
+    c.beginPath(); c.arc(0, -1.2, 2.4, 0, Math.PI * 2); c.fill();
+  },
+};
+CREW_ICON.assistantDriver = CREW_ICON.driver;
+CREW_ICON.assistantLoader = CREW_ICON.loader;
+CREW_ICON.weaponOperatorLeft = CREW_ICON.gunner;
+CREW_ICON.weaponOperatorRight = CREW_ICON.gunner;
+
+export const DAMAGE_PANEL_CREW_ICON_IDS = Object.freeze(Object.keys(CREW_ICON));
 
 /**
  * Create the player damage panel (top-down plan layers + modules + crew + HP + fire).
@@ -578,12 +656,74 @@ export function createDamagePanel(): DamagePanelController {
     ctx.translate(px, py);
     roundRect(ctx, -8, -8, 16, 16, 3);
     ctx.fillStyle = 'rgba(24,12,8,0.9)';
+  function traceModuleCarrier(kind: DamagePanelModuleKind, radius: number): void {
+    ctx.beginPath();
+    if (kind === 'weapon') {
+      ctx.moveTo(0, -radius);
+      ctx.lineTo(radius, 0);
+      ctx.lineTo(0, radius);
+      ctx.lineTo(-radius, 0);
+    } else {
+      const shoulder = radius * 0.58;
+      const height = radius * 0.82;
+      ctx.moveTo(-shoulder, -height);
+      ctx.lineTo(shoulder, -height);
+      ctx.lineTo(radius, 0);
+      ctx.lineTo(shoulder, height);
+      ctx.lineTo(-shoulder, height);
+      ctx.lineTo(-radius, 0);
+    }
+    ctx.closePath();
+  }
+
+  // One module chip. Weapon systems use diamonds; movement systems use broad
+  // hexagons. Damage keeps the established orange/red ramp and stronger glow.
+  function drawPip(name: string, px: number, py: number, st: ModuleStateName): void {
+    const icon = MODULE_ICON[name];
+    if (!icon) return;
+    const kind = DAMAGE_PANEL_MODULE_KIND_BY_ID[name] || 'weapon';
+    const healthy = st === 'ok';
+    const col = healthy ? HEALTHY_MODULE_COLOR : STATE_COLOR[st];
+    const radius = healthy ? 5.8 : 6.6;
+    ctx.save();
+    ctx.translate(px, py);
+    if (!healthy) {
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 5;
+    }
+    traceModuleCarrier(kind, radius);
+    ctx.fillStyle = healthy ? 'rgba(5,18,15,0.72)' : 'rgba(24,12,8,0.92)';
     ctx.fill();
     ctx.strokeStyle = col;
     ctx.lineWidth = 1.2;
     ctx.stroke();
     ctx.scale(0.92, 0.92);
     icon(ctx, col);
+    ctx.restore();
+  }
+
+  function drawCrewPip(name: string, px: number, py: number, alive: boolean): void {
+    const icon = CREW_ICON[name];
+    if (!icon) return;
+    const color = alive ? HEALTHY_CREW_COLOR : STATE_COLOR.red;
+    const radius = alive ? 5.6 : 6.5;
+    ctx.save();
+    ctx.translate(px, py);
+    if (!alive) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 5;
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fillStyle = alive ? 'rgba(5,18,40,0.86)' : 'rgba(35,9,12,0.94)';
+    ctx.fill();
+    ctx.strokeStyle = alive ? 'rgba(90,169,255,0.9)' : color;
+    ctx.lineWidth = alive ? 0.9 : 1.3;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alive ? 0.94 : 1;
+    ctx.scale(alive ? 0.58 : 0.68, alive ? 0.58 : 0.68);
+    icon(ctx, color);
     ctx.restore();
   }
 
