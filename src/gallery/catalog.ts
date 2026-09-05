@@ -1,6 +1,7 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
+import { t } from '../ui/i18n.ts';
 
 interface GalleryShellSpec {
   name?: string;
@@ -119,9 +120,9 @@ function primaryShell(spec: GalleryVehicleSpec): GalleryShellSpec | null {
 function protectionFeatures(spec: GalleryVehicleSpec): string[] {
   const plates = [...(spec.armor?.hullPlates || []), ...(spec.armor?.turretPlates || [])];
   const features: string[] = [];
-  if (plates.some((plate) => plate.kind === 'era' || plate.era)) features.push('explosive reactive armor');
-  if (plates.some((plate) => plate.kind === 'spaced')) features.push('spaced armor');
-  if (plates.some((plate) => plate.kind === 'composite')) features.push('composite arrays');
+  if (plates.some((plate) => plate.kind === 'era' || plate.era)) features.push(t('gallery.brief.feature.era'));
+  if (plates.some((plate) => plate.kind === 'spaced')) features.push(t('gallery.brief.feature.spaced'));
+  if (plates.some((plate) => plate.kind === 'composite')) features.push(t('gallery.brief.feature.composite'));
   return features;
 }
 
@@ -132,21 +133,21 @@ function joinTechnicalList(items: readonly string[]): string {
 }
 
 function mobilityAssessment(powerToWeight: number, topSpeed: number): string {
-  if (powerToWeight >= 25 && topSpeed >= 60) return 'a high power-to-weight ratio and high maximum road speed';
-  if (powerToWeight >= 18 || topSpeed >= 55) return 'mobility appropriate to its weight class';
-  if (powerToWeight >= 13) return 'moderate mobility that favors deliberate positioning';
-  return 'low maximum speed and high inertia that require careful route planning';
+  if (powerToWeight >= 25 && topSpeed >= 60) return t('gallery.brief.mobility.veryHigh').length > 0 ? t('gallery.brief.mobility.high') : t('gallery.brief.mobility.high');
+  if (powerToWeight >= 18 || topSpeed >= 55) return t('gallery.brief.mobility.high');
+  if (powerToWeight >= 13) return t('gallery.brief.mobility.moderate');
+  return t('gallery.brief.mobility.low');
 }
 
 function protectionAssessment(bestKe: number): string {
-  if (bestKe >= 700) return 'very high maximum kinetic protection';
-  if (bestKe >= 400) return 'high maximum kinetic protection';
-  if (bestKe >= 180) return 'moderate local kinetic protection';
-  return 'limited kinetic protection, which increases the importance of positioning';
+  if (bestKe >= 700) return t('gallery.brief.protection.veryHigh');
+  if (bestKe >= 400) return t('gallery.brief.protection.high');
+  if (bestKe >= 180) return t('gallery.brief.protection.moderate');
+  return t('gallery.brief.protection.moderate');
 }
 
 export function technicalLabel<T>(value: T): string {
-  return titleCase(value || 'unspecified');
+  return titleCase(value || t('gallery.tier.unknown'));
 }
 
 interface GalleryGunSummary {
@@ -243,11 +244,23 @@ function galleryRatings(
 
 function galleryArmamentSentence(spec: GalleryVehicleSpec, gun: GalleryGunSummary): string {
   const familyCount = gun.shellTypes.length || 1;
-  const familyLabel = gun.shellTypes.length === 1 ? 'family' : 'families';
+  const familyKey = gun.shellTypes.length === 1 ? 'gallery.brief.family.one' : 'gallery.brief.family.other';
+  const familyLabel = t(familyKey);
   if (!gun.autoloader) {
-    return `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${familyCount} ammunition ${familyLabel}.`;
+    return t('gallery.brief.armedFamily', {
+      caliber: Number(spec.gun?.caliberMm || 0),
+      count: familyCount,
+      family: familyLabel,
+    });
   }
-  return `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${gun.magazineSize}-round magazine autoloader with a ${rounded(gun.intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(gun.fullReloadS)} seconds; the modeled ammunition suite comprises ${familyCount} ${familyLabel}.`;
+  return t('gallery.brief.armedAuto', {
+    caliber: Number(spec.gun?.caliberMm || 0),
+    size: gun.magazineSize,
+    cycle: rounded(gun.intraClipS),
+    reload: rounded(gun.fullReloadS),
+    count: familyCount,
+    family: familyLabel,
+  });
 }
 
 function galleryBrief(
@@ -261,12 +274,25 @@ function galleryBrief(
   protection: GalleryProtectionSummary,
 ): string[] {
   const armamentSentence = galleryArmamentSentence(spec, gun);
-  const firstParagraph = `In Claude of Tanks, ${displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} vehicle representing the ${era} era. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
+  const firstParagraph = t('gallery.brief.firstParagraph', {
+    name: displayName,
+    tier: tierNumeral(spec.id) || String(tier),
+    nation,
+    era,
+    armament: armamentSentence,
+    power: rounded(powerToWeight),
+    top: rounded(Number(spec.topSpeedKmh || 0), 0),
+  });
   const featureSentence = protection.features.length
-    ? ` The authored plate set also includes ${joinTechnicalList(protection.features)}.`
+    ? t('gallery.brief.featureSentence', { features: joinTechnicalList(protection.features) })
     : '';
-  const secondParagraph = `The current balance model gives this vehicle ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))}. Its armor model provides ${protectionAssessment(protection.bestKeMm)}. Post-penetration damage can affect ${protection.modules.length} modeled module volumes and ${protection.crew.length} crew stations.${featureSentence}`;
-  return [firstParagraph, secondParagraph];
+  const secondParagraph = t('gallery.brief.secondParagraph', {
+    mobility: mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0)),
+    protection: protectionAssessment(protection.bestKeMm),
+    modules: protection.modules.length,
+    crew: protection.crew.length,
+  });
+  return [firstParagraph, secondParagraph + featureSentence];
 }
 
 function galleryHighlights(
@@ -276,10 +302,25 @@ function galleryHighlights(
   protection: GalleryProtectionSummary,
 ): string[] {
   return [
-    ...(gun.autoloader ? [`${gun.magazineSize}-round magazine: ${gun.burstDamage.toLocaleString('en-US')} burst damage with a ${rounded(gun.intraClipS)} s intra-magazine cycle`] : []),
-    gun.best ? `${gun.best.shell.name || gun.best.shell.type}: ${rounded(gun.best.penetration, 0)} mm penetration at 1,000 m` : 'Ammunition performance is not specified',
-    `${rounded(powerToWeight)} hp/t and ${rounded(Number(spec.hullTraverseDegS || 0), 0)}°/s hull traverse`,
-    `${(spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length} authored armor plates; ${protection.modules.length + protection.crew.length} internal volumes`,
+    ...(gun.autoloader ? [t('gallery.highlight.magazine', {
+      size: gun.magazineSize,
+      damage: gun.burstDamage.toLocaleString('en-US'),
+      cycle: rounded(gun.intraClipS),
+    })] : []),
+    gun.best
+      ? t('gallery.highlight.shell', {
+          name: String(gun.best.shell.name || gun.best.shell.type),
+          penetration: rounded(gun.best.penetration, 0),
+        })
+      : t('gallery.highlight.shellFallback'),
+    t('gallery.highlight.power', {
+      power: rounded(powerToWeight),
+      traverse: rounded(Number(spec.hullTraverseDegS || 0), 0),
+    }),
+    t('gallery.highlight.plates', {
+      plates: (spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length,
+      volumes: protection.modules.length + protection.crew.length,
+    }),
   ];
 }
 
@@ -327,7 +368,7 @@ function galleryDimensions(spec: GalleryVehicleSpec) {
 function galleryShellRecords(spec: GalleryVehicleSpec) {
   return Object.freeze((spec.gun?.shells || []).map((item) => Object.freeze({
     name: item.name || item.type,
-    type: item.type || 'Unknown',
+    type: item.type || t('gallery.shellType.unknown'),
     penetrationMm: Number(item.pen1000Mm ?? item.pen100Mm ?? 0),
     damage: Number(item.dmg || 0),
     velocityMps: Number(item.velocityMps || 0),
@@ -342,7 +383,7 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     ? Number(spec.enginePowerHp || 0) / Number(spec.weightTons)
     : 0;
   const tier = tankTier(spec.id);
-  const nation = String(spec.nation || 'Unknown nation');
+  const nation = String(spec.nation || t('gallery.nation.unknown'));
   const era = vehicleEraLabel(spec.era);
 
   return Object.freeze({
@@ -356,14 +397,14 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     eraKey: spec.era,
     developmentOnly: Boolean(spec.roster?.developmentOnly),
     rosterTag: spec.roster?.tag || '',
-    rosterReason: spec.roster?.reason || 'production',
+    rosterReason: spec.roster?.reason || t('gallery.roster.production'),
     tier,
     tierNumeral: tierNumeral(spec.id) || String(tier),
     image: `/icons/${spec.id}_angle.webp`,
     searchText: [
       label.searchAliases.join(' '), nation, era, tier,
-      gun.autoloader ? 'magazine autoloader' : '',
-      spec.roster?.developmentOnly ? `dev development ${spec.roster.reason || ''}` : 'production',
+      gun.autoloader ? t('gallery.shell.family') : '',
+      spec.roster?.developmentOnly ? t('gallery.roster.dev', { reason: spec.roster.reason || '' }) : t('gallery.roster.production'),
     ].join(' ').toLocaleLowerCase('en-US'),
     ratings: Object.freeze(galleryRatings(spec, powerToWeight, gun, protection)),
     metrics: galleryMetrics(spec, powerToWeight, gun, protection),

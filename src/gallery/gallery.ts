@@ -24,6 +24,8 @@ import { flagIconUrl } from '../ui/flags.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButtonOptions, InfoImage } from '../ui/contextInfo.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
+import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
+import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
 
 type GalleryMode = InspectionMode | 'markup';
 type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
@@ -61,12 +63,12 @@ const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
 };
 
 const GALLERY_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
-  'Operational profile': 'Normalized combat-role ratings derived from the currently selected gameplay specification.',
-  'Technical summary': 'A concise description and authored highlights for the selected first-party procedural vehicle.',
-  Articulation: 'Live controls for the same hull, turret, and gun rig used by the game.',
-  'Surface markup': 'Select exact rendered triangles and export a reproducible geometry review packet.',
-  Specification: 'Canonical dimensions, mobility, firepower, and survivability values from current game data.',
-  'Ammunition suite': 'The selected vehicle’s shell families, 1 km penetration, damage, and ballistic role.',
+  'Operational profile': t('gallery.dossier.ratingHint'),
+  'Technical summary': t('gallery.dossier.summaryHint'),
+  Articulation: t('gallery.dossier.articulationHint'),
+  'Surface markup': t('gallery.dossier.markupHint'),
+  Specification: t('gallery.dossier.specificationHint'),
+  'Ammunition suite': t('gallery.dossier.ammunitionHint'),
 });
 
 function appendGalleryInfo(
@@ -80,7 +82,7 @@ function appendGalleryInfo(
 
 function galleryVehicleImage(
   view = 'angle',
-  caption = 'Procedural vehicle render',
+  caption = t('gallery.about.image.procedural'),
 ): InfoImage {
   if (!selectedId) return null;
   const spec = getSpec(selectedId) as GalleryVehicleSpec;
@@ -89,62 +91,83 @@ function galleryVehicleImage(
     src: iconUrl(spec.id, view),
     alt: `${name} ${caption.toLowerCase()}`,
     fit: 'contain',
-    caption: `${name} // ${caption}`,
+    caption: t('gallery.image.template', { name: String(name), caption: String(caption) }),
   };
 }
 
 function mountGalleryInfo(): void {
   const workspaceHeads = document.querySelectorAll('.workspace-group-head');
   appendGalleryInfo(workspaceHeads[0], {
-    label: 'About the fleet archive', title: 'Fleet archive',
-    text: 'Search and filter the complete public first-party vehicle roster, then select a model for live inspection.',
-    image: () => galleryVehicleImage('angle', 'Selected archive vehicle'),
+    label: t('gallery.about.fleet'), title: t('gallery.about.fleetTitle'),
+    text: t('gallery.about.fleetText'),
+    image: () => galleryVehicleImage('angle', t('gallery.about.image.selectedArchive')),
   });
   appendGalleryInfo(workspaceHeads[1], {
-    label: 'About the technical dossier', title: 'Technical dossier',
-    text: 'Live gameplay data, articulation, diagnostic overlays, and exact-surface review tools for the selected vehicle.',
-    image: () => galleryVehicleImage('side', 'Technical vehicle profile'),
+    label: t('gallery.about.dossier'), title: t('gallery.about.dossierTitle'),
+    text: t('gallery.about.dossierText'),
+    image: () => galleryVehicleImage('side', t('gallery.about.image.technical')),
   });
   appendGalleryInfo(document.querySelector('.view-controls-label'), {
-    label: 'About camera controls', title: 'Camera controls',
-    text: 'Choose a deterministic inspection angle, orbit freely, or enable automatic rotation around the current model.',
-    image: () => galleryVehicleImage('angle', 'Inspection camera reference'),
+    label: t('gallery.about.camera'), title: t('gallery.about.cameraTitle'),
+    text: t('gallery.about.cameraText'),
+    image: () => galleryVehicleImage('angle', t('gallery.about.image.camera')),
   });
   appendGalleryInfo(document.querySelector('.mode-dock > p'), {
-    label: 'About diagnostic layers', title: 'Diagnostic layers',
-    text: 'Switch between rendered appearance, armor volumes, internal modules, crew stations, and exact triangle markup.',
+    label: t('gallery.about.layers'), title: t('gallery.about.layersTitle'),
+    text: t('gallery.about.layersText'),
     image: () => galleryVehicleImage(activeMode === 'modules' ? 'modules_side'
       : (activeMode === 'crew' ? 'crew_side'
-        : (activeMode === 'armor' ? 'armor_side' : 'angle')), 'Active diagnostic layer'),
+        : (activeMode === 'armor' ? 'armor_side' : 'angle')), t('gallery.about.image.layer')),
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
     const label = heading.querySelector('span')?.textContent.trim();
     if (label && GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
-      label: `About ${label}`, title: label, text: GALLERY_SECTION_INFO[label],
+      label: `${t('gallery.about.layersTitle')} · ${label}`,
+      title: label, text: GALLERY_SECTION_INFO[label],
       image: () => galleryVehicleImage(
-        label === 'Specification' || label === 'Ammunition suite' ? 'side' : 'angle',
-        `${label} reference`,
+        label === t('gallery.dossier.section.specification') || label === t('gallery.dossier.section.ammunition') ? 'side' : 'angle',
+        t('gallery.about.image.reference', { label }),
       ),
     });
   });
 }
 
 mountGalleryInfo();
+bindStaticI18nAuto();
 const viewport = $<HTMLElement>('#viewport');
 const vehicleList = $<HTMLElement>('#vehicleList');
 const loadingState = $<HTMLElement>('#loadingState');
 const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-mode]')];
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
-for (const button of viewButtons) {
-  const label = button.textContent.trim();
-  button.replaceChildren();
-  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${label}</span>`);
-  button.title = `${label} camera view`;
+const viewLabelKey: Record<string, string> = {
+  hero: 'gallery.view.view.hero',
+  front: 'gallery.view.view.front',
+  left: 'gallery.view.view.left',
+  right: 'gallery.view.view.right',
+  rear: 'gallery.view.view.rear',
+  top: 'gallery.view.view.top',
+  'elevated-left': 'gallery.view.view.elevatedLeft',
+  'elevated-right': 'gallery.view.view.elevatedRight',
+};
+function refreshViewButtonLabels(): void {
+  for (const button of viewButtons) {
+    const key = viewLabelKey[button.dataset.view || 'hero'];
+    const label = key ? t(key) : button.dataset.view || '';
+    button.replaceChildren();
+    button.insertAdjacentHTML('beforeend',
+      `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${label}</span>`);
+    button.title = t('gallery.view.viewTitle', { name: label });
+  }
 }
+refreshViewButtonLabels();
 const autoRotateButton = $('#autoRotate');
-autoRotateButton.replaceChildren();
-autoRotateButton.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG('auto')}</i><span>Auto</span>`);
-autoRotateButton.title = 'Toggle automatic rotation';
+function refreshAutoRotate(): void {
+  autoRotateButton.replaceChildren();
+  autoRotateButton.insertAdjacentHTML('beforeend',
+    `<i class="view-button-icon">${cameraViewGlyphSVG('auto')}</i><span>${t('gallery.view.auto')}</span>`);
+  autoRotateButton.title = t('gallery.view.autoTitle');
+}
+refreshAutoRotate();
 document.querySelectorAll<HTMLElement>('[data-ui-icon]').forEach((element) => {
   element.innerHTML = uiIconSVG(element.dataset.uiIcon || 'info', 16);
 });
@@ -367,8 +390,11 @@ function updateUrl(): void {
 
 function renderLegend(): void {
   const root = $('#overlayLegend');
-  const legend = activeMode === 'markup'
-    ? [['Selected surface', '#ff5a5f'], ['Hover triangle', '#65a9ff']]
+  const legend: ReadonlyArray<readonly [string, string]> = activeMode === 'markup'
+    ? [
+        [t('gallery.legend.markup.selected'), '#ff5a5f'],
+        [t('gallery.legend.markup.hover'), '#65a9ff'],
+      ]
     : inspectionLegend(activeMode as InspectionMode);
   root.replaceChildren(...legend.map(([label, color]) => {
     const item = document.createElement('span');
@@ -434,17 +460,17 @@ function renderDossier(record: GalleryRecord): void {
   $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship?.creator || 'Kevin B. Liu'}`;
   $('#dossierTankIcon').src = record.image;
   $('#dossierTankIcon').alt = `${record.displayName} side profile`;
-  const ratingPresentation: Readonly<Record<string, { tone: string; icon: string }>> = {
-    firepower: { tone: '#e9a346', icon: 'damage' },
-    protection: { tone: '#67d19a', icon: 'shield' },
-    mobility: { tone: '#64cfdb', icon: 'speed' },
-    survivability: { tone: '#c18cff', icon: 'crew' },
+  const ratingPresentation: Readonly<Record<string, { tone: string; icon: string; key: string }>> = {
+    firepower: { tone: '#e9a346', icon: 'damage', key: 'gallery.dossier.rating.firepower' },
+    protection: { tone: '#67d19a', icon: 'shield', key: 'gallery.dossier.rating.protection' },
+    mobility: { tone: '#64cfdb', icon: 'speed', key: 'gallery.dossier.rating.mobility' },
+    survivability: { tone: '#c18cff', icon: 'crew', key: 'gallery.dossier.rating.survivability' },
   };
   $('#ratingGrid').innerHTML = Object.entries(record.ratings).map(([name, value]) => {
     const presentation = ratingPresentation[name];
     return `<div class="rating" data-rating="${name}" style="--rating:${value};--tone:${presentation.tone}">` +
       `<span class="rating-icon">${uiIconSVG(presentation.icon, 22)}</span>` +
-      `<span class="rating-metric"><small>${name}</small><strong>${value}<span> / 100</span></strong></span></div>`;
+      `<span class="rating-metric"><small>${t(presentation.key)}</small><strong>${value}<span> / 100</span></strong></span></div>`;
   }).join('');
 
   const brief = $('#technicalBrief');
@@ -459,23 +485,40 @@ function renderDossier(record: GalleryRecord): void {
     return item;
   }));
 
-  const loadingMetrics = record.metrics.autoloader
+  const numberLocale = getLocale();
+  const fmt = (value: number): string => new Intl.NumberFormat(numberLocale).format(value);
+  const loadingMetrics: Array<[string, string]> = record.metrics.autoloader
     ? [
-        ['Magazine system', `${record.metrics.magazineSize} × ${record.shells[0]?.damage || 0} damage / ${record.metrics.intraClipS}s cycle`],
-        ['Full reload / DPM', `${record.metrics.reloadS}s / ${record.metrics.dpm.toLocaleString('en-US')}`],
+        [
+          t('gallery.dossier.spec.magazine'),
+          t('gallery.dossier.spec.magazineAuto', {
+            size: record.metrics.magazineSize,
+            damage: record.shells[0]?.damage || 0,
+            cycle: record.metrics.intraClipS,
+          }),
+        ],
+        [
+          t('gallery.dossier.spec.fullReload'),
+          t('gallery.dossier.spec.reloadValue', { reload: record.metrics.reloadS, dpm: fmt(record.metrics.dpm) }),
+        ],
       ]
-    : [['Reload / DPM', `${record.metrics.reloadS}s / ${record.metrics.dpm.toLocaleString('en-US')}`]];
-  const metricRows = [
-    ['Hit points', record.metrics.hp.toLocaleString('en-US')],
-    ['Combat weight', `${record.metrics.weightTons} t`],
-    ['Engine output', `${record.metrics.enginePowerHp.toLocaleString('en-US')} hp`],
-    ['Power / weight', `${record.metrics.powerToWeight} hp/t`],
-    ['Forward / reverse', `${record.metrics.topSpeedKmh} / ${record.metrics.reverseSpeedKmh} km/h`],
-    ['Hull traverse', `${record.metrics.hullTraverseDegS}°/s`],
-    ['Primary caliber', `${record.metrics.caliberMm} mm`],
+    : [
+        [
+          t('gallery.dossier.spec.reload'),
+          t('gallery.dossier.spec.reloadValue', { reload: record.metrics.reloadS, dpm: fmt(record.metrics.dpm) }),
+        ],
+      ];
+  const metricRows: Array<[string, string]> = [
+    [t('gallery.dossier.spec.hp'), fmt(record.metrics.hp)],
+    [t('gallery.dossier.spec.weight'), t('gallery.dossier.spec.weightValue', { value: record.metrics.weightTons })],
+    [t('gallery.dossier.spec.engine'), t('gallery.dossier.spec.engineValue', { value: fmt(record.metrics.enginePowerHp) })],
+    [t('gallery.dossier.spec.powerWeight'), t('gallery.dossier.spec.powerWeightValue', { value: record.metrics.powerToWeight })],
+    [t('gallery.dossier.spec.forwardReverse'), t('gallery.dossier.spec.forwardReverseValue', { forward: record.metrics.topSpeedKmh, reverse: record.metrics.reverseSpeedKmh })],
+    [t('gallery.dossier.spec.hullTraverse'), t('gallery.dossier.spec.hullTraverseValue', { value: record.metrics.hullTraverseDegS })],
+    [t('gallery.dossier.spec.primaryCaliber'), t('gallery.dossier.spec.primaryCaliberValue', { value: record.metrics.caliberMm })],
     ...loadingMetrics,
-    ['Peak KE / CE', `${record.metrics.bestKeMm} / ${record.metrics.bestCeMm} mm`],
-    ['Overall envelope', `${record.dimensions.overallLengthM} × ${record.dimensions.widthM} × ${record.dimensions.heightM} m`],
+    [t('gallery.dossier.spec.peakKeCe'), t('gallery.dossier.spec.peakKeCeValue', { ke: record.metrics.bestKeMm, ce: record.metrics.bestCeMm })],
+    [t('gallery.dossier.spec.envelope'), t('gallery.dossier.spec.envelopeValue', { length: record.dimensions.overallLengthM, width: record.dimensions.widthM, height: record.dimensions.heightM })],
   ];
   $('#specGrid').innerHTML = metricRows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
 
@@ -487,12 +530,12 @@ function renderDossier(record: GalleryRecord): void {
     const name = document.createElement('strong');
     name.textContent = shell.name || shell.type;
     const type = document.createElement('small');
-    type.textContent = `${shell.type} // ${shell.velocityMps.toLocaleString('en-US')} m/s`;
+    type.textContent = t('gallery.dossier.shellTypeVelocity', { type: shell.type, velocity: fmt(shell.velocityMps) });
     identity.append(name, type);
     const performance = document.createElement('span');
-    performance.textContent = `${shell.penetrationMm} mm`;
+    performance.textContent = t('gallery.dossier.shellPenetration', { value: shell.penetrationMm });
     const damage = document.createElement('small');
-    damage.textContent = `${shell.damage} damage`;
+    damage.textContent = t('gallery.dossier.shellDamage', { value: shell.damage });
     performance.append(damage);
     row.append(identity, performance);
     return row;
@@ -546,8 +589,8 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === activeMode));
   $('#inspectionReadout').hidden = true;
   $('#viewerHelp').innerHTML = activeMode === 'markup'
-    ? `${viewerHelpItem('rematch', 'Orbit')}${viewerHelpItem('check', 'Shift-click adds')}${viewerHelpItem('autoAim', 'Select geometry')}`
-    : `${viewerHelpItem('rematch', 'Orbit')}${viewerHelpItem('optics', 'Zoom')}${viewerHelpItem('autoAim', 'Select volume')}`;
+    ? `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('check', t('gallery.view.modeDockHelpShift'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpMarkup'))}`
+    : `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('optics', t('gallery.view.modeDockHelpZoom'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpSelect'))}`;
   if (activeMode === 'markup') {
     controls.autoRotate = false;
     $('#autoRotate').setAttribute('aria-pressed', 'false');
@@ -555,9 +598,9 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   renderLegend();
   updateUrl();
   if (announce) {
-    if (activeMode === 'appearance') showToast('Exterior surface restored');
-    else if (activeMode === 'markup') showToast(`${surfaceMarkup.getState().selectableMeshes} meshes ready for markup`);
-    else showToast(`${overlay.count} ${activeMode} volumes visible`);
+    if (activeMode === 'appearance') showToast(t('gallery.view.toast.appearanceRestored'));
+    else if (activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
+    else showToast(t('gallery.view.toast.modeVisible', { count: overlay.count, mode: t(`gallery.view.mode.${activeMode}`).toLowerCase() }));
   }
 }
 
@@ -634,10 +677,20 @@ function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): 
   $('#inspectionOwner').textContent = String(data.owner || '');
   $('#inspectionTitle').textContent = String(data.title || '');
   if (data.mode === 'armor') {
-    $('#inspectionDetails').textContent = `${technicalLabel(data.kind)} layer · ${data.physicalMm} mm physical · ${data.keMm} mm KE · ${data.ceMm} mm CE`;
+    $('#inspectionDetails').textContent = t('gallery.inspection.armorDetail', {
+      kind: String(technicalLabel(data.kind)),
+      layer: String(t('gallery.inspection.layer')),
+      physical: Number(data.physicalMm || 0),
+      ke: Number(data.keMm || 0),
+      ce: Number(data.ceMm || 0),
+    });
   } else {
     const dimensions = Array.isArray(data.dimensionsM) ? data.dimensionsM : [];
-    $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${dimensions.join(' × ')} m kill-cam anatomy model`;
+    $('#inspectionDetails').textContent = t('gallery.inspection.moduleDetail', {
+      label: String(data.mode === 'crew' ? t('gallery.legend.crew') : t('gallery.legend.module')),
+      dimensions: dimensions.join(' × '),
+      killCam: String(t('gallery.legend.killCam')),
+    });
   }
   readout.hidden = false;
 }

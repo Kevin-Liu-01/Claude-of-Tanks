@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
+import { t } from '../ui/i18n.ts';
 import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
@@ -241,7 +242,7 @@ function addPlate(
     physicalMm: Number(plate.physicalMm || 0),
     keMm: Number(plate.keMm ?? plate.physicalMm ?? 0),
     ceMm: Number(plate.ceMm ?? plate.physicalMm ?? 0),
-    owner: turretLocal ? 'Turret' : 'Hull',
+    owner: turretLocal ? t('gallery.legend.owner.turret') : t('gallery.legend.owner.hull'),
   };
   container.add(mesh);
   pickables.push(mesh);
@@ -509,17 +510,26 @@ export function createInspectionOverlay(
 
 export function inspectionLegend(mode: InspectionMode): Array<readonly [string, string]> {
   if (mode === 'armor') return [
-    ['< 80 mm', '#e96959'], ['80–179 mm', '#f39a45'],
-    ['180–349 mm', '#f2cf5b'], ['350–649 mm', '#a8d85d'],
-    ['650+ mm', '#50d890'], ['ERA', '#c18cff'],
+    [t('gallery.legend.armor.0'), '#e96959'],
+    [t('gallery.legend.armor.1'), '#f39a45'],
+    [t('gallery.legend.armor.2'), '#f2cf5b'],
+    [t('gallery.legend.armor.3'), '#a8d85d'],
+    [t('gallery.legend.armor.4'), '#50d890'],
+    [t('gallery.legend.armor.era'), '#c18cff'],
   ];
   if (mode === 'modules') return [
-    ['Ammunition', '#ff4d5f'], ['Fuel', '#e76f51'], ['Engine', '#f0a23a'],
-    ['Optics', '#5ee1d2'], ['Other', '#78a9ff'],
+    [t('gallery.legend.modules.ammunition'), '#ff4d5f'],
+    [t('gallery.legend.modules.fuel'), '#e76f51'],
+    [t('gallery.legend.modules.engine'), '#f0a23a'],
+    [t('gallery.legend.modules.optics'), '#5ee1d2'],
+    [t('gallery.legend.modules.other'), '#78a9ff'],
   ];
   if (mode === 'crew') return [
-    ['Driver', '#63d6ff'], ['Gunner', '#ffd166'],
-    ['Commander', '#b9f18c'], ['Loader', '#ff8fab'], ['Specialist', '#9eb7ff'],
+    [t('gallery.legend.crew.driver'), '#63d6ff'],
+    [t('gallery.legend.crew.gunner'), '#ffd166'],
+    [t('gallery.legend.crew.commander'), '#b9f18c'],
+    [t('gallery.legend.crew.loader'), '#ff8fab'],
+    [t('gallery.legend.crew.specialist'), '#9eb7ff'],
   ];
   return [];
 }

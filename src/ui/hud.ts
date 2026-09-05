@@ -925,9 +925,6 @@ function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
 }
 
-const CAUSE_LABEL: Readonly<Record<string, string>> = {
-  shot: '', fire: '', ammorack: '', ram: '',
-};
 function causeLabel(key: string): string {
   if (key === 'fire') return t('hud.fire');
   if (key === 'ammorack') return t('hud.ammorack');

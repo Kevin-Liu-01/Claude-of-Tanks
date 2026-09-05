@@ -86,8 +86,10 @@ import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
   MAP_IDS,
   getMapName,
+  getLocalizedMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
+import { t } from './ui/i18n.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
@@ -910,10 +912,10 @@ async function ensureBattleHud() {
 await bootStage('hud');
 
 const garageMaps = [
-  { id: 'random', name: 'Random', thumb: '', hero: '' },
+  { id: 'random', name: t('map.random'), thumb: '', hero: '' },
   ...MAP_IDS.map((id) => ({
     id,
-    name: getMapName(id),
+    name: getLocalizedMapName(id),
     thumb: MAP_THUMBS[id] || '',
     hero: MAP_HEROES[id] || '',
   })),
