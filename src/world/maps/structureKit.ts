@@ -1100,7 +1100,10 @@ export const STRUCTURE_BUILDERS: Record<string, StructureBuilder> = {
 // -------------------------------------------------------------------------
 
 const PAL = {
-  timber: [0x4b3222, 0x74523a, 0x25221f],
+  // Weathered bare timber, not charred wood. These are authored sRGB values;
+  // the former roof/side palette had only ~2–4% linear reflectance and lost
+  // its panel detail in shade even with correctly bounded normal maps.
+  timber: [0x806550, 0xa48a68, 0x514b43],
   paleWood: [0x76634b, 0x9a8768, 0x3a332b],
   canvas: [0x95866a, 0xb7ab8d, 0x605b4d],
   khaki: [0x596044, 0x78805c, 0x2e3529],

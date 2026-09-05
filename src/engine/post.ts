@@ -349,12 +349,12 @@ const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
 // (horizon ring, far hills) carry only low-frequency bakes — at x8 their
 // texel footprint is tens of screen pixels and the wall reads as smooth
 // vinyl. When the FOV drops toward scope range, the aerial pass now overlays
-// a WORLD-SPACE two-octave value noise (reconstructed from scene depth + the
+// a WORLD-SPACE value noise (reconstructed from scene depth + the
 // per-pixel view ray) onto far pixels: a luminance-only modulation, so the
 // backdrop's hue/art direction is untouched but the surface reads as forest/
 // meadow texture at any magnification. World-anchored => no screen-door
-// shimmer while panning, deterministic for captures. Zero effect in arcade
-// cameras (fov >= AERIAL_DETAIL_FOV) and on near geometry (< 220 m).
+// shimmer while panning, deterministic for captures. Scope starts at 90 m;
+// arcade retains a reduced far-field floor beyond 430 m.
 const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
 // r5 ("sniper x8: midfield grass is a flat yellow-green wash with no detail
 // texture; horizon rock band a formless gray gradient smear; far-tree
@@ -373,13 +373,12 @@ const AERIAL_DETAIL_FAR = 320; // m — full strength by here
 // r5: 0.26 → 0.34 — at 0.26 the overlay measurably existed but visually
 // vanished under the haze; x8 needs the full grain to read as surface.
 const AERIAL_DETAIL_AMP = 0.34; // peak luminance modulation (+/-17%)
-// r5 ARCADE FAR-FIELD SHARE ("winter alpine ring faces are untextured flat
-// matte facets at 1:1"): the establishing cameras (fov 45) had uDetailW = 0,
-// so the horizon ring rendered as bare gradients in every wide shot. Far
-// pixels now always carry a fraction of the detail overlay — fading in from
-// 430 m (past all gameplay-range geometry) so only backdrop surfaces (ring
-// walls, far forest combs) get re-textured; the finest octave stays gated to
-// scope FOVs (subpixel at establishing distance = shimmer while panning).
+// Retain the far-field floor in both arcade and scope. The old oblique plane
+// collapsed on certain slopes and painted fibers AFTER the materials/haze.
+// V9 Fjord EN surface samples measured 17.62x p90 projection stretch versus
+// 1.48x in WS; one EN face reached 16,430x. The horizon's own triplanar detail
+// cannot fix that second overlay. Four-corner volumetric noise below removes
+// its fixed blind direction without adding hashes or texture reads.
 const AERIAL_DETAIL_ARCADE = 0.55; // arcade-share of AERIAL_DETAIL_AMP
 const AERIAL_DETAIL_ARCADE_NEAR = 430; // m
 const AERIAL_DETAIL_ARCADE_FAR = 950; // m
@@ -883,9 +882,7 @@ const AerialShader = {
     uniform vec2 uInvSize;
     uniform float uFirefly;
     varying vec2 vUv;
-    // 2D value noise on a hashed integer lattice — smooth (quintic fade),
-    // tileless, cheap enough for a fullscreen pass that only pays it while
-    // scoped (uDetailW gates the whole block).
+    // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
     }
@@ -895,6 +892,32 @@ const AerialShader = {
       vec2 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
       return mix( mix( vhash( i ), vhash( i + vec2( 1.0, 0.0 ) ), u.x ),
                   mix( vhash( i + vec2( 0.0, 1.0 ) ), vhash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+    }
+    // Volumetric detail: interpolate the four corners of the containing
+    // tetrahedron, not eight cube corners or three projected planes. Each
+    // octave still pays four hashes/sines and no texture reads. The weights
+    // form a partition of unity, preserving the old [0,1] range and mean.
+    // Quintic coordinate fade joins cube faces smoothly; tetrahedral joins
+    // are continuous. Explicit x/y/z tie priority avoids degenerate corners.
+    float vhash3( vec3 p ) {
+      return fract( sin( dot( p, vec3( 127.1, 311.7, 74.7 ) ) ) * 43758.5453 );
+    }
+    float vnoise3( vec3 p ) {
+      vec3 i = floor( p );
+      vec3 f = fract( p );
+      vec3 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+      float xy = step( f.y, f.x );
+      float yz = step( f.z, f.y );
+      float xz = step( f.z, f.x );
+      vec3 a = vec3( xy * xz, ( 1.0 - xy ) * yz, ( 1.0 - xz ) * ( 1.0 - yz ) );
+      vec3 b = vec3( max( xy, xz ), max( 1.0 - xy, yz ), max( 1.0 - xz, 1.0 - yz ) );
+      float hi = max( u.x, max( u.y, u.z ) );
+      float lo = min( u.x, min( u.y, u.z ) );
+      float mid = u.x + u.y + u.z - hi - lo;
+      return vhash3( i ) * ( 1.0 - hi )
+           + vhash3( i + a ) * ( hi - mid )
+           + vhash3( i + b ) * ( mid - lo )
+           + vhash3( i + vec3( 1.0 ) ) * lo;
     }
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
@@ -986,27 +1009,25 @@ const AerialShader = {
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
           texel.rgb = mix( texel.rgb, grey, hueW * gDom );
         }
-        // far-field detail (see AERIAL_DETAIL_* const block): world-anchored
-        // value noise re-textures backdrop surfaces the x8 scope magnifies
-        // past their bake frequency — and, at a reduced share, the horizon
-        // ring / far forest in ARCADE establishing shots (bare-gradient fix).
+        // Same arcade/scope amplitude, distances and chroma policy; sample
+        // true world volume so every slope retains two surface dimensions.
         {
           float dwS = uDetailW * smoothstep( ${AERIAL_DETAIL_NEAR.toFixed(1)}, ${AERIAL_DETAIL_FAR.toFixed(1)}, rayT );
           float dw = max( dwS, ${AERIAL_DETAIL_ARCADE.toFixed(2)}
             * smoothstep( ${AERIAL_DETAIL_ARCADE_NEAR.toFixed(1)}, ${AERIAL_DETAIL_ARCADE_FAR.toFixed(1)}, rayT ) );
           if ( dw > 0.003 ) {
             vec3 wp = uCamPos + ray * rayT;
-            // slope-aware planar coords: xz carries flat ground, the y term
-            // keeps texture alive on the near-vertical horizon-ring faces
-            vec2 dp = wp.xz + vec2( wp.y * 0.85, wp.y * 0.37 );
-            float dnM = vnoise( dp * ( 1.0 / 15.0 ) );
+            float dnM = vnoise3( wp * ( 1.0 / 15.0 ) );
             float dn = dnM * 0.42
-                     + vnoise( dp * ( 1.0 / 4.6 ) + vec2( 7.3, 2.9 ) ) * 0.28
-                     + vnoise( dp * ( 1.0 / 1.6 ) + vec2( 3.1, 9.7 ) ) * 0.17
-                     // finest octave is SCOPE-ONLY (subpixel grain shimmers
-                     // in arcade pans; under x8 it reads as grass/leaf grain)
-                     + ( vnoise( dp * ( 1.0 / 0.55 ) + vec2( 9.4, 4.2 ) ) - 0.5 ) * 0.13 * ( dwS / max( dw, 1e-3 ) )
+                     + vnoise3( wp * ( 1.0 / 4.6 ) + vec3( 7.3, 2.9, 5.1 ) ) * 0.28
+                     + vnoise3( wp * ( 1.0 / 1.6 ) + vec3( 3.1, 9.7, 2.3 ) ) * 0.17
                      + 0.065;
+            // Do not evaluate the zero-weight finest octave in arcade:
+            // twelve hashes there, sixteen in scope (previously sixteen).
+            if ( dwS > 0.0 ) {
+              dn += ( vnoise3( wp * ( 1.0 / 0.55 ) + vec3( 9.4, 4.2, 6.7 ) ) - 0.5 )
+                  * 0.13 * ( dwS / max( dw, 1e-3 ) );
+            }
             texel.rgb *= 1.0 + ( dn - 0.5 ) * ${AERIAL_DETAIL_AMP.toFixed(3)} * dw;
             // green-keyed chroma octave: swings far grass/canopy between
             // olive and warm dry-brown at ~15 m patch scale, so magnified

@@ -6,6 +6,10 @@
 //   node tools/map-environment-audit.mjs --maps=verdant,coastal --samples=90
 //   node tools/map-environment-audit.mjs --baseline=/path/to/report.json
 //   node tools/map-environment-audit.mjs --gate --baseline=/path/to/report.json
+//   node tools/map-environment-audit.mjs --poses=/path/to/matched/shots --shots
+//   node tools/map-environment-audit.mjs --maps=fjord,winter --shots --horizon-quadrants
+//   node tools/map-environment-audit.mjs --maps=fjord --shots --horizon-only --horizon-scopes
+//   node tools/map-environment-audit.mjs --tier=mobile --width=1024 --height=768 --shots
 //
 // The report intentionally combines authored intent (config/features), built
 // scene complexity, renderer counters, and steady-frame samples. Screenshots
@@ -14,9 +18,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { MAP_IDS } from '../src/world/maps/index.ts';
+import { sampleRenderedFrames } from './render-frame-sampler.mjs';
+import { selectStandView, stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
+import { evaluateQuality } from './map-environment-quality.mjs';
+import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const valueArg = (name, fallback) => {
@@ -26,6 +35,9 @@ const valueArg = (name, fallback) => {
 };
 const flagArg = (name) => args.includes(`--${name}`);
 const ROOT = path.resolve(valueArg('root', process.cwd()));
+// The repo's Vite warmup plugin resolves its source graph from cwd. A baseline
+// in another worktree must never warm the implementation's module graph.
+process.chdir(ROOT);
 
 const requested = valueArg('maps', MAP_IDS.join(','))
   .split(',').map((id) => id.trim()).filter(Boolean);
@@ -34,8 +46,15 @@ if (unknown.length) throw new Error(`Unknown map ids: ${unknown.join(', ')}`);
 
 const outDir = path.resolve(ROOT, valueArg('out', '.qa-map-environment'));
 const captureShots = flagArg('shots');
+const horizonOnly = flagArg('horizon-only');
+const horizonScopes = flagArg('horizon-scopes');
+const horizonQuadrants = flagArg('horizon-quadrants') || horizonOnly || horizonScopes;
+if ((horizonOnly || horizonScopes) && !captureShots) throw new Error('Horizon capture options require --shots');
 const enforceGate = flagArg('gate');
 const includeInventory = flagArg('inventory');
+const syncGpu = flagArg('sync-gpu');
+const tier = valueArg('tier', 'auto');
+if (!['auto', 'desktop', 'mobile'].includes(tier)) throw new Error('tier must be auto, desktop or mobile');
 const width = Number.parseInt(valueArg('width', '1440'), 10);
 const height = Number.parseInt(valueArg('height', '900'), 10);
 const sampleCount = Math.max(30, Number.parseInt(valueArg('samples', '75'), 10));
@@ -45,7 +64,17 @@ const baselinePath = valueArg('baseline', '');
 const baseline = baselinePath
   ? JSON.parse(fs.readFileSync(path.resolve(ROOT, baselinePath), 'utf8')) : null;
 const baselineById = new Map((baseline?.maps || []).map((row) => [row.id, row]));
+// Timing baselines need no image capture. Keep matched visual viewpoints
+// independently selectable so a clean timing rerun doesn't discard them.
+const poseRootArg = valueArg('poses', '');
+const poseRoot = poseRootArg ? path.resolve(ROOT, poseRootArg)
+  : baselinePath ? path.join(path.dirname(path.resolve(ROOT, baselinePath)), 'shots') : '';
 fs.mkdirSync(outDir, { recursive: true });
+
+await acquireCaptureLock(20 * 60 * 1000);
+process.on('exit', releaseCaptureLock);
+const lockRefresher = setInterval(refreshCaptureLock, 60_000);
+lockRefresher.unref();
 
 const server = await createServer({
   root: ROOT,
@@ -70,9 +99,9 @@ const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : server.config.server.port;
 const browser = await puppeteer.launch({
   headless: 'new',
-  // Uncap rAF for performance certification. Sampling a compositor-locked
-  // 60 Hz cadence only reports host/vsync jitter (16.7 vs 18 ms), not whether
-  // added world detail changed renderer throughput.
+  // Remove compositor throttling, but measure actual post.render calls: the
+  // game's own 60 Hz cap can still skip browser callbacks. --sync-gpu is an
+  // explicitly serialized throughput diagnostic, not native frame cadence.
   args: [
     '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
     '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-renderer-backgrounding',
@@ -91,11 +120,14 @@ page.on('console', (message) => {
 });
 
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
-  revision: process.env.GIT_COMMIT || null,
+  revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
+  dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats,
+  sampleCount, repeats, syncGpu, tier, horizonOnly, horizonScopes,
+  captureLock: 'cot-shots',
+  matchedPoseRoot: poseRoot || null,
   maps: [],
 };
 
@@ -107,25 +139,19 @@ const percentile = (values, fraction) => {
 const round = (value, digits = 3) => Number(Number(value || 0).toFixed(digits));
 
 async function sampleFrames(count) {
-  const frames = await page.evaluate((n) => new Promise((resolve) => {
-    const values = [];
-    let previous = performance.now();
-    let warm = 8;
-    const tick = (now) => {
-      if (warm > 0) warm--;
-      else values.push(now - previous);
-      previous = now;
-      if (values.length >= n) resolve(values);
-      else requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }), count);
+  const result = await page.evaluate(sampleRenderedFrames, { count, syncGpu });
+  const frames = result.samples.map((sample) => sample.intervalMs);
+  const costs = result.samples.map((sample) => sample.renderMs);
   return {
     medianMs: round(percentile(frames, 0.5)),
     p95Ms: round(percentile(frames, 0.95)),
     p99Ms: round(percentile(frames, 0.99)),
     maxMs: round(Math.max(...frames)),
     fpsMedian: round(1000 / Math.max(0.001, percentile(frames, 0.5)), 1),
+    renderMedianMs: round(percentile(costs, 0.5)),
+    renderP95Ms: round(percentile(costs, 0.95)),
+    callsMax: Math.max(...result.samples.map((sample) => sample.calls)),
+    trianglesMax: Math.max(...result.samples.map((sample) => sample.triangles)),
   };
 }
 
@@ -137,6 +163,10 @@ function combineFrameRuns(runs) {
     p99Ms: round(at('p99Ms')),
     maxMs: round(at('maxMs')),
     fpsMedian: round(at('fpsMedian'), 1),
+    renderMedianMs: round(at('renderMedianMs')),
+    renderP95Ms: round(at('renderP95Ms')),
+    callsMax: Math.max(...runs.map((run) => run.callsMax)),
+    trianglesMax: Math.max(...runs.map((run) => run.trianglesMax)),
     runs,
   };
 }
@@ -314,6 +344,10 @@ async function collectMap(mapId, frames) {
       id,
       name: config.name,
       frames: frameStats,
+      sourcedTextureReadiness: world.minimapTextureState ? {
+        settled: world.minimapTextureState.settled,
+        results: world.minimapTextureState.results || null,
+      } : null,
       // The app renders through a compositor. renderer.info at this point is
       // the final post pass, not the world pass; label it honestly and use
       // scene/subtree family counts for stable complexity gates.
@@ -347,6 +381,7 @@ async function collectMap(mapId, frames) {
           destructibleKinds: interactionKinds.size,
           looseProps: world.looseProps.length,
           looseKinds: looseKinds.size,
+          loosePlacement: world.group.getObjectByName('props')?.userData.looseClutterPlacement ?? null,
           wrecks: world.tankWreckSpots.length,
           craters: props.craters || 0,
           rubblePiles: props.rubblePiles || 0,
@@ -366,35 +401,76 @@ async function collectMap(mapId, frames) {
   }, { id: mapId, frameStats: frames, includeInventory });
 }
 
-function evaluateQuality(row) {
-  const q = row.quality;
-  const checks = {
-    mapAuthorship: q.map.landforms >= 5 && q.map.tacticalBeats === 3
-      && q.map.roads >= 2 && q.map.wallRuns >= 6,
-    buildingQuality: q.buildings.placed >= 15 && q.buildings.familyCount >= 11
-      && q.buildings.destructibleFamilies >= 4,
-    decorationQuality: q.decorations.destructibles >= 350
-      && q.decorations.destructibleKinds >= 32 && q.decorations.looseProps >= 50
-      && q.decorations.wrecks >= 4,
-    utilityPoleGrounding: !q.decorations.utilityPoles.enabled
-      || (q.decorations.utilityPoles.stations > 0
-        && q.decorations.utilityPoles.unsupportedPosts === 0
-        && q.decorations.utilityPoles.sourceTrianglesPerPost > 0
-        && q.decorations.utilityPoles.sourceTrianglesPerPost <= 3000
-        && q.decorations.utilityPoles.maxAcceptedPairRelief <= 0.401),
-    decorationGrounding: q.decorations.grounding.unsupportedDestructibles === 0
-      && q.decorations.grounding.unsupportedWideDecorations === 0,
-    foliageQuality: q.foliage.configuredSpecies >= 2 && q.foliage.concealers >= 20,
-    waterQuality: q.water.features === 0 || q.water.liquid || q.water.frozen
-      || q.water.softInteraction,
-  };
-  return { checks, pass: Object.values(checks).every(Boolean) };
+async function captureEvidenceShot(mapId, name, matchSavedPose = true) {
+  const dir = path.join(outDir, 'shots', mapId);
+  const beforePose = matchSavedPose && poseRoot && path.join(poseRoot, mapId, `${name}.pose.json`);
+  if (beforePose && fs.existsSync(beforePose)) {
+    const pose = JSON.parse(fs.readFileSync(beforePose, 'utf8'));
+    await page.evaluate((saved) => {
+      const D = window.__DEBUG;
+      D.camera.position.fromArray(saved.position);
+      D.camera.quaternion.fromArray(saved.quaternion);
+      D.camera.fov = saved.fov;
+      D.camera.updateProjectionMatrix();
+      D.camera.updateMatrixWorld(true);
+      D.world.update(0, D.camera.position);
+      D.lighting.updateFrustums();
+      D.lighting.update(true);
+    }, pose);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
+  const pose = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const hf = D.world.heightField;
+    const p = D.camera.position;
+    const terrainY = (hf.getHeightAtFast || hf.getHeightAt)(p.x, p.z);
+    return {
+      position: p.toArray(), quaternion: D.camera.quaternion.toArray(), fov: D.camera.fov,
+      scoped: D.camera.userData.scoped === true, rigMode: D.rig.mode, rigZoom: D.rig.zoom,
+      terrainClearance: p.y - terrainY,
+      nearGroundWarning: p.y - terrainY < 0.5,
+    };
+  });
+  fs.writeFileSync(path.join(dir, `${name}.pose.json`), `${JSON.stringify(pose, null, 2)}\n`);
+  await page.screenshot({ path: path.join(dir, `${name}.png`) });
+  return { pose, matchedBaseline: Boolean(beforePose && fs.existsSync(beforePose)) };
 }
 
 async function captureMapShots(mapId) {
   const dir = path.join(outDir, 'shots', mapId);
   fs.mkdirSync(dir, { recursive: true });
-  await page.screenshot({ path: path.join(dir, 'establishing.png') });
+  await captureEvidenceShot(mapId, 'establishing');
+
+  if (horizonQuadrants) {
+    for (const [x, z] of [[300, 300], [-300, 300], [-300, -300], [300, -300]]) {
+      await page.evaluate(({ x, z }) => {
+        const D = window.__DEBUG;
+        const hf = D.world.heightField;
+        const hAt = hf.getHeightAtFast || hf.getHeightAt;
+        D.camera.position.set(x, Math.max(50, hAt(x, z) + 12), z);
+        D.camera.fov = 60;
+        D.camera.lookAt(0, 24, 0);
+        D.camera.updateProjectionMatrix();
+        D.camera.updateMatrixWorld(true);
+        D.world.update(0, D.camera.position);
+        D.lighting.updateFrustums();
+        D.lighting.update(true);
+      }, { x, z });
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const name = `horizon-${x > 0 ? 'e' : 'w'}${z > 0 ? 'n' : 's'}`;
+      await captureEvidenceShot(mapId, name, false);
+      if (horizonScopes) {
+        const contract = await page.evaluate(stageHorizonScopeCapture, { mapId });
+        // Scope grade approaches its target over several genuine renders.
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        await captureEvidenceShot(mapId, `${name}-scope`, false);
+        fs.writeFileSync(path.join(dir, `${name}-scope.contract.json`), `${JSON.stringify(contract, null, 2)}\n`);
+        await page.evaluate(restoreHorizonArcadeCapture, contract.arcade);
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    }
+  }
+  if (horizonOnly) return;
 
   const poleDetail = await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -432,7 +508,7 @@ async function captureMapShots(mapId) {
   });
   if (poleDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'utility-poles.png') });
+    await captureEvidenceShot(mapId, 'utility-poles');
     fs.writeFileSync(path.join(dir, 'utility-poles.json'), `${JSON.stringify(poleDetail, null, 2)}\n`);
   }
 
@@ -473,7 +549,7 @@ async function captureMapShots(mapId) {
   });
   if (decorationDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'grounded-decoration.png') });
+    await captureEvidenceShot(mapId, 'grounded-decoration');
     fs.writeFileSync(path.join(dir, 'grounded-decoration.json'),
       `${JSON.stringify(decorationDetail, null, 2)}\n`);
   }
@@ -509,7 +585,7 @@ async function captureMapShots(mapId) {
   });
   if (details.hasDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'detail.png') });
+    await captureEvidenceShot(mapId, 'detail');
   }
   const closeups = await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -545,22 +621,21 @@ async function captureMapShots(mapId) {
   });
   if (closeups.hasBuilding) {
     await new Promise((resolve) => setTimeout(resolve, 320));
-    await page.screenshot({ path: path.join(dir, 'building.png') });
+    await captureEvidenceShot(mapId, 'building');
   }
   if (closeups.hasFoliage) {
-    await page.evaluate(() => {
+    const standInputs = await page.evaluate(() => {
+      const world = window.__DEBUG.world;
+      const features = world.getMinimapFeatures();
+      return { clusters: features.treeClusters, buildings: features.buildings,
+        concealers: world.getConcealment() };
+    });
+    const standView = selectStandView(standInputs);
+    await page.evaluate(({ x, z, target: cluster }) => {
       const D = window.__DEBUG;
       const world = D.world;
       const hf = world.heightField;
       const hAt = hf.getHeightAtFast || hf.getHeightAt;
-      const clusters = world.getMinimapFeatures().treeClusters || [];
-      const cluster = [...clusters].sort((a, b) => (b.r || 0) - (a.r || 0))[0];
-      // Place the camera outside the authored stand radius. A fixed offset
-      // could land inside a large grove and photograph the back of one alpha
-      // card instead of evaluating the tree-line silhouette players see.
-      const standRadius = Math.max(8, cluster.r || 18);
-      const x = cluster.x - standRadius - 14;
-      const z = cluster.z + standRadius * 0.26;
       D.camera.position.set(x, hAt(x, z) + 4.2, z);
       D.camera.fov = 50;
       D.camera.lookAt(cluster.x, hAt(cluster.x, cluster.z) + 3.6, cluster.z);
@@ -569,11 +644,42 @@ async function captureMapShots(mapId) {
       world.update(0, D.camera.position);
       D.lighting.updateFrustums();
       D.lighting.update(true);
-    });
+    }, standView);
     await new Promise((resolve) => setTimeout(resolve, 320));
-    await page.screenshot({ path: path.join(dir, 'foliage.png') });
+    const capture = await captureEvidenceShot(mapId, 'foliage');
+    // Keep the generated selection as a candidate, not a false receipt of
+    // camera placement when the matched baseline pose took precedence.
+    const receipt = { selection: standView, selectionApplied: !capture.matchedBaseline,
+      cameraPose: capture.pose, matchedBaseline: capture.matchedBaseline };
+    fs.writeFileSync(path.join(dir, 'foliage-site.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   }
   if (details.hasWater) {
+    await page.evaluate(() => {
+      const D = window.__DEBUG;
+      const hf = D.world.heightField;
+      const hAt = hf.getHeightAtFast || hf.getHeightAt;
+      const water = D.world.getMinimapFeatures().waterOrSoft;
+      const x0 = Math.min(...water.map((disc) => disc.x - disc.r));
+      const x1 = Math.max(...water.map((disc) => disc.x + disc.r));
+      const z0 = Math.min(...water.map((disc) => disc.z - disc.r));
+      const z1 = Math.max(...water.map((disc) => disc.z + disc.r));
+      const x = (x0 + x1) * 0.5;
+      const z = (z0 + z1) * 0.5;
+      const span = Math.max((x1 - x0) / D.camera.aspect, z1 - z0, 100) * 1.14;
+      const targetY = hAt(x, z);
+      D.camera.position.set(x, targetY + span / (2 * Math.tan(Math.PI / 6)), z);
+      D.camera.fov = 60;
+      D.camera.up.set(0, 0, 1);
+      D.camera.lookAt(x, targetY, z);
+      D.camera.up.set(0, 1, 0);
+      D.camera.updateProjectionMatrix();
+      D.camera.updateMatrixWorld(true);
+      D.world.update(0, D.camera.position);
+      D.lighting.updateFrustums();
+      D.lighting.update(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await captureEvidenceShot(mapId, 'water-overhead');
     await page.evaluate(() => {
       const D = window.__DEBUG;
       const world = D.world;
@@ -597,7 +703,11 @@ async function captureMapShots(mapId) {
       D.lighting.update(true);
     });
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'water.png') });
+    // Terrain corrections can invalidate an old near-bank camera. Preserve
+    // the matched view unchanged, and also retain the current-height view as
+    // explicitly unmatched evidence rather than silently moving the baseline.
+    await captureEvidenceShot(mapId, 'water-current', false);
+    await captureEvidenceShot(mapId, 'water');
 
     // Exercise the same allocation-free track-contact path used by moving
     // vehicles. This verifies that liquid replaces dry dust with spray and
@@ -633,15 +743,21 @@ async function captureMapShots(mapId) {
       D.fx.setFrozen(true);
     });
     await new Promise((resolve) => setTimeout(resolve, 220));
-    await page.screenshot({ path: path.join(dir, 'water-interaction.png') });
+    await captureEvidenceShot(mapId, 'water-interaction');
   }
 }
 
 try {
-  await page.goto(`http://127.0.0.1:${port}/`, {
+  await page.goto(`http://127.0.0.1:${port}/${tier === 'auto' ? '' : `?tier=${tier}`}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  report.browser = await page.evaluate(() => ({
+    userAgent: navigator.userAgent,
+    canvasWidth: window.__DEBUG.renderer.domElement.width,
+    canvasHeight: window.__DEBUG.renderer.domElement.height,
+    maxTextureSize: window.__DEBUG.renderer.capabilities.maxTextureSize,
+  }));
   for (const mapId of requested) {
     process.stdout.write(`[map-audit] ${mapId} ... `);
     await stageMap(mapId);
@@ -652,6 +768,13 @@ try {
     row.gate = evaluateQuality(row);
     const before = baselineById.get(mapId);
     if (before) {
+      if (baseline.schemaVersion !== 2 || baseline.syncGpu !== syncGpu) {
+        throw new Error('Baseline must use schema 2 actual game-frame sampling and the same --sync-gpu mode');
+      }
+      if (baseline.viewport.width !== width || baseline.viewport.height !== height
+          || baseline.viewport.dpr !== 1 || (baseline.tier ?? 'auto') !== tier) {
+        throw new Error('Baseline and candidate must use identical viewport dimensions, DPR and tier');
+      }
       const oldFrames = before.frames;
       const oldScene = before.scene;
       const absoluteBudgetMs = Math.max(0.75, oldFrames.medianMs * 0.08);
@@ -663,7 +786,11 @@ try {
         instancedFamilyDelta: row.scene.instancedMeshNodes - oldScene.instancedMeshNodes,
         materialDelta: row.scene.materials - oldScene.materials,
         textureDelta: row.scene.textures - oldScene.textures,
+        renderMedianDeltaMs: round(frames.renderMedianMs - oldFrames.renderMedianMs),
+        renderP95DeltaMs: round(frames.renderP95Ms - oldFrames.renderP95Ms),
         pass: frames.medianMs <= oldFrames.medianMs + absoluteBudgetMs
+          && frames.renderMedianMs <= oldFrames.renderMedianMs + Math.max(0.25, oldFrames.renderMedianMs * 0.05)
+          && frames.renderP95Ms <= oldFrames.renderP95Ms + Math.max(0.5, oldFrames.renderP95Ms * 0.05)
           && row.scene.meshNodes <= oldScene.meshNodes + 3
           && row.scene.instancedMeshNodes <= oldScene.instancedMeshNodes + 3
           && row.scene.materials <= oldScene.materials
@@ -701,4 +828,6 @@ try {
 } finally {
   await browser.close();
   await server.close();
+  clearInterval(lockRefresher);
+  releaseCaptureLock();
 }

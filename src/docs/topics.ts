@@ -172,7 +172,7 @@ export const topics: Record<string, TopicDefinition> = {
   },
   worlds: {
     label: 'Battlefields and destruction', title: 'Battlefields are built for armored movement',
-    lede: 'Twenty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
+    lede: 'Thirty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
     hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
     icon: 'worlds',
     sectionIcons: ['battlefields', 'navigation', 'construction', 'damage', 'quality'],

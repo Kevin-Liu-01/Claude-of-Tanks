@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createWorldBuildCoordinator } from './worldBuildCoordinator.ts';
+import { registerWorldDestructibles, notifyShellSweep } from './destructibles.ts';
+import { readFileSync } from 'node:fs';
 
 let clock = 2000;
 let moduleLoads = 0;
 let mapBuilds = 0;
 const progress = [];
 const scene = new THREE.Scene();
+const registryChecks = [];
+const disposedBindings = [];
 const coordinator = createWorldBuildCoordinator({
   engineContext: { id: 'engine' },
   scene,
@@ -28,7 +32,12 @@ const coordinator = createWorldBuildCoordinator({
         const group = new THREE.Group();
         group.name = mapId;
         scene.add(group);
-        return { group };
+        const unregister = registerWorldDestructibles({
+          key: mapId,
+          isActive: () => { registryChecks.push(mapId); return group.visible; },
+          sweep() {}, impact() {},
+        });
+        return { group, dispose() { disposedBindings.push(mapId); unregister(); } };
       },
     };
   },
@@ -75,6 +84,26 @@ coordinator.enforceCacheBudget();
 assert.equal(coordinator.cache.size, 2);
 assert.equal(coordinator.lastRelease.id, 'verdant');
 assert.equal(verdant.group.parent, null, 'eviction detaches the released scene graph');
+assert.deepEqual(disposedBindings, ['verdant'], 'eviction releases external callbacks exactly once');
+// Retaining one global closure per visited map defeats the two-world cache
+// even when GPU disposal receipts look healthy. Exercise the real registry.
+for (let index = 0; index < 30; index++) {
+  await coordinator.beginBuild(`lifetime-${index}`).promise;
+  coordinator.enforceCacheBudget();
+  registryChecks.length = 0;
+  notifyShellSweep(0, 0, 0, 1, 1, 1);
+  assert.deepEqual(registryChecks, [...coordinator.cache.keys()],
+    'dispatch inspects only resident worlds, not all thirty historical builds');
+}
+const beforeRepeatedEnforce = disposedBindings.length;
+coordinator.enforceCacheBudget();
+assert.equal(disposedBindings.length, beforeRepeatedEnforce, 'cached dormancy does not release bindings');
+const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+assert.match(propsSource, /const registerDestructibles = \(\): \(\(\) => void\) => registerWorldDestructibles\(/,
+  'partially constructed props expose a deferred registration, not a global retained closure');
+assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*return \{\s*mapId: config\.id,\s*dispose: unregisterDestructibles,/,
+  'only completed assembly installs external bindings and returns their exact disposer');
 
 let grantBlockedLease;
 let lateLeaseReleases = 0;

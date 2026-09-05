@@ -21,12 +21,17 @@ interface FallbackLoadingTone {
 }
 
 interface AudioMixerModule {
-  createAudio(options: { context: AudioContext | null }): AudioMixer;
+  createAudio(options: {
+    context: AudioContext | null;
+    getMapId?: () => string | null;
+    initialPhase?: string;
+  }): AudioMixer;
 }
 
 export interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
+  getMapId?(): string | null;
 }
 
 export interface LazyAudio {
@@ -103,6 +108,7 @@ export function startFallbackLoadingTone(context: AudioContext | null): Fallback
 }
 
 export function createLazyAudio({
+  getMapId,
   loadMixer = () => import('./audio.ts'),
   createContext = () => {
     const scope = globalThis as typeof globalThis & {
@@ -117,6 +123,8 @@ export function createLazyAudio({
   let modulePromise: Promise<AudioMixerModule | null> | null = null;
   let realPromise: Promise<AudioMixer | null> | null = null;
   let bus: EventBus | null = null;
+  let stopPhaseTracking: (() => void) | null = null;
+  let latestPhase = 'garage';
   let fallback: FallbackLoadingTone | null = null;
   let loadingRequested = false;
   let ambientRequested = false;
@@ -167,7 +175,7 @@ export function createLazyAudio({
     if (real) return Promise.resolve(real);
     if (!realPromise) {
       realPromise = preload().then((module) => (
-        module ? settleReal(module.createAudio({ context })) : null
+        module ? settleReal(module.createAudio({ context, getMapId, initialPhase: latestPhase })) : null
       )).finally(() => {
         if (!real) realPromise = null;
       });
@@ -202,6 +210,15 @@ export function createLazyAudio({
     resume,
     bindBus(nextBus: EventBus) {
       bus = nextBus;
+      stopPhaseTracking?.();
+      // The mixer may arrive after the battle phase edge. Carry that state
+      // across the deferred transfer without re-emitting a global event.
+      stopPhaseTracking = nextBus.on('phase:change', (event) => {
+        if (!event || typeof event !== 'object' || !('phase' in event)
+            || typeof event.phase !== 'string') return;
+        latestPhase = event.phase;
+        if (latestPhase !== 'battle') ambientRequested = false;
+      });
       if (real) real.bindBus(nextBus);
     },
     update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]) {

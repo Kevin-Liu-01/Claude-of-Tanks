@@ -1,4 +1,3 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/world/sourcedTextures.ts — sourced CC0 PBR texture hookup (ambientCG /
 // Poly Haven sets committed under public/textures/, see docs/ATTRIBUTION.md).
 //
@@ -21,6 +20,7 @@ import * as THREE from 'three';
 // below were the largest world textures left on the mobile tier (7-10 live
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
 import { texSize } from '../engine/quality.ts';
+import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 
 interface SourceTextureSet {
   color: string;
@@ -108,11 +108,11 @@ const SETS = {
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
 // the procedural roughness field and drives uMarshGloss.
-// Entries may be a set key or { set, tint, roughMul }: tint multiplies the
+// Entries may be a set key or { set, tint, roughMul, desat, lift }: tint multiplies the
 // albedo (Ground071 ships saturated orange — desaturated toward earth brown
 // so dirt roads stop glowing against the graded grass), roughMul raises the
 // packed roughness floor so sourced sets never reintroduce specular sheen.
-const TERRAIN_PLAN: Record<string, TerrainPlan> = {
+const TERRAIN_PLAN = {
   verdant: {
     G: { set: 'grass', roughMul: 1.25 },
     D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
@@ -222,16 +222,34 @@ const TERRAIN_PLAN: Record<string, TerrainPlan> = {
     R: { set: 'rock', tint: [1.48, 1.53, 1.62], roughMul: 1.1 }, M: null,
   },
   caldera: {
-    G: { set: 'dirt', tint: [0.43, 0.40, 0.34], roughMul: 1.34 },
-    D: { set: 'dirt', tint: [0.30, 0.28, 0.27], roughMul: 1.4 },
-    R: { set: 'rock', tint: [0.42, 0.40, 0.39], roughMul: 1.2 }, M: null,
+    // Charcoal ash still needs a diffuse floor: near-black sourced cavities
+    // multiplied by the old tints erased entire shadowed shelves after grade.
+    G: { set: 'dirt', tint: [0.50, 0.47, 0.42], lift: 0.04, roughMul: 1.34 },
+    D: { set: 'dirt', tint: [0.40, 0.38, 0.37], lift: 0.04, roughMul: 1.4 },
+    R: { set: 'rock', tint: [0.52, 0.50, 0.49], lift: 0.04, roughMul: 1.2 }, M: null,
   },
   foundry: {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },
     D: { set: 'dirt', tint: [0.52, 0.51, 0.48], roughMul: 1.38 },
     R: { set: 'cobble', tint: [0.76, 0.77, 0.76], roughMul: 1.52 }, M: null,
   },
-};
+} satisfies Record<string, TerrainPlan>;
+
+export type TerrainPaletteId = keyof typeof TERRAIN_PLAN;
+
+interface SourcedTerrainSettings {
+  mudRough?: number;
+  sourcedPalette?: TerrainPaletteId;
+}
+
+/** Explicit palette inheritance survives the asynchronous photo-texture swap. */
+export function resolveSourcedTerrainPalette(
+  mapId: string,
+  settings: Pick<SourcedTerrainSettings, 'sourcedPalette'> = {},
+): TerrainPaletteId {
+  if (settings.sourcedPalette) return settings.sourcedPalette;
+  return Object.hasOwn(TERRAIN_PLAN, mapId) ? mapId as TerrainPaletteId : 'verdant';
+}
 
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -414,13 +432,19 @@ async function applySet(
   setKey: keyof typeof SETS,
   layer: TextureLayer,
   opts: ComposeOptions,
-): Promise<void> {
+): Promise<Pick<SourcedTextureResult, 'applied' | 'failures'>> {
   const set = SETS[setKey];
+  const failures: string[] = [];
+  const source = (url: string): Promise<HTMLImageElement | null> => loadImage(url).catch((error) => {
+    failures.push(error instanceof Error ? error.message : String(error));
+    return null;
+  });
   const [color, normal, rough, ao] = await Promise.all([
-    loadImage(set.color), loadImage(set.normal),
-    set.rough ? loadImage(set.rough).catch(() => null) : null,
-    set.ao ? loadImage(set.ao).catch(() => null) : null,
+    source(set.color), source(set.normal),
+    set.rough ? source(set.rough) : null,
+    set.ao ? source(set.ao) : null,
   ]);
+  if (!color || !normal) return { applied: false, failures };
   const size = Math.min(color.width, texSize(1024));
   const separateSurface = !!layer.surface;
   const cacheOpts = { ...opts, separateSurface };
@@ -443,6 +467,21 @@ async function applySet(
   }
   touchLru(_normalCache, setKey, normalEntry, NORMAL_CACHE_MAX);
   swapTexture(layer.normal, normalEntry.canvas);
+  return { applied: true, failures };
+}
+
+async function sourceJob(
+  target: string, set: keyof typeof SETS, layer: TextureLayer, opts: ComposeOptions,
+): Promise<SourcedTextureResult> {
+  try {
+    const result = await applySet(set, layer, opts);
+    if (result.failures.length) console.warn(`[sourcedTextures] ${target}: ${result.failures.join('; ')}`);
+    return { target, ...result };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[sourcedTextures] ${target}: ${message}`);
+    return { target, applied: false, failures: [message] };
+  }
 }
 
 /**
@@ -451,16 +490,16 @@ async function applySet(
  * settlement promise so presentation snapshots cannot race the async swap.
  * @param {string} mapId map id ('verdant'|'desert'|'winter'|'urban')
  * @param {object} layers { G, D, R, M } of { albedo, normal } CanvasTextures
- * @param {object} S splat cfg (uses mudRough for the M roughness multiplier)
- * @returns {Promise<void[]>} resolves after every requested layer settled
+ * @param {object} S splat cfg (explicit sourced palette and M roughness multiplier)
+ * Resolves with success/failure receipts after every requested layer settles.
  */
 export function applySourcedTerrain(
   mapId: string,
   layers: Partial<Record<LayerKey, TextureLayer>>,
-  S: { mudRough?: number } = {},
-): Promise<void[]> {
-  const plan = TERRAIN_PLAN[mapId] || TERRAIN_PLAN.verdant;
-  const jobs: Array<Promise<void>> = [];
+  S: SourcedTerrainSettings = {},
+): Promise<SourcedTextureResult[]> {
+  const plan: TerrainPlan = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, S)];
+  const jobs: Array<Promise<SourcedTextureResult>> = [];
   for (const key of ['G', 'D', 'R', 'M'] as const) {
     const planEntry = plan[key];
     const layer = layers[key];
@@ -469,12 +508,10 @@ export function applySourcedTerrain(
       ? { set: planEntry }
       : planEntry;
     const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
-    jobs.push(applySet(entry.set, layer, {
+    jobs.push(sourceJob(`terrain ${mapId}/${key}`, entry.set, layer, {
       roughInAlpha: true, roughMul, tint: entry.tint || null,
-    }).catch((error: RuntimeValue) => console.warn(
-      `[sourcedTextures] terrain ${mapId}/${key}:`,
-      error instanceof Error ? error.message : String(error),
-    )));
+      desat: entry.desat ?? 0, lift: entry.lift ?? 0,
+    }));
   }
   return Promise.all(jobs);
 }
@@ -488,7 +525,7 @@ export function applySourcedTerrain(
 // Per-map albedo tints for the sourced building sets (multiplies RGB after
 // AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
 // roofs and desert adobe stayed white without these.
-const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint>>> = {
+const BUILDING_TINTS = {
   urban:  { plaster: { tint: [0.94, 0.86, 0.74], desat: 0.16 } }, // Steinburg lime render
   ruinspires: {
     plaster: { tint: [0.72, 0.62, 0.52], desat: 0.22 },
@@ -544,19 +581,38 @@ const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint
     wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
     stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
   },
-};
+} satisfies Record<string, Partial<Record<BuildingBucket, BuildingTint>>>;
+
+export type BuildingPaletteId = keyof typeof BUILDING_TINTS;
+
+interface SourcedBuildingSettings {
+  sourcedPalette?: BuildingPaletteId;
+}
+
+export function resolveSourcedBuildingPalette(
+  mapId: string,
+  settings: SourcedBuildingSettings = {},
+): string {
+  return settings.sourcedPalette ?? mapId;
+}
 
 export function sourcedBuildingTintPolicy(
   mapId: string,
   bucket: BuildingBucket,
 ): BuildingTint | null {
-  return BUILDING_TINTS[mapId]?.[bucket] ?? null;
+  if (!Object.hasOwn(BUILDING_TINTS, mapId)) return null;
+  const palette: Partial<Record<BuildingBucket, BuildingTint>> = BUILDING_TINTS[mapId as BuildingPaletteId];
+  return palette[bucket] ?? null;
 }
 
 export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
   mapId: string,
-): Promise<void[]> {
+  settings: SourcedBuildingSettings = {},
+): Promise<SourcedTextureResult[]> {
+  // Inherit color policy only. The actual map keeps its existing sourced
+  // buckets, texture dimensions, and procedural-roof exceptions.
+  const paletteId = resolveSourcedBuildingPalette(mapId, settings);
   const plan: Partial<Record<BuildingBucket, keyof typeof SETS>> = {
     plaster: 'plaster', roof: 'roof', wood: 'wood',
   };
@@ -569,20 +625,16 @@ export function applySourcedBuildings(
   // cannot reproduce. This also prevents the raw orange tile set from
   // overriding Ruinspires' smoke-darkened roof policy.
   if (mapId === 'urban' || mapId === 'ruinspires') delete plan.roof;
-  const jobs: Array<Promise<void>> = [];
+  const jobs: Array<Promise<SourcedTextureResult>> = [];
   for (const [bucket, setKey] of Object.entries(plan)) {
     const bucketKey = bucket as BuildingBucket;
     const layer = sets[bucketKey];
     if (!layer || !setKey) continue;
-    const tint = sourcedBuildingTintPolicy(mapId, bucketKey);
+    const tint = sourcedBuildingTintPolicy(paletteId, bucketKey);
     const opts: ComposeOptions = tint === null
       ? { tint: null }
       : isTint(tint) ? { tint } : tint;
-    jobs.push(applySet(setKey, layer, { roughInAlpha: false, ...opts })
-      .catch((error: RuntimeValue) => console.warn(
-        `[sourcedTextures] building ${bucket}:`,
-        error instanceof Error ? error.message : String(error),
-      )));
+    jobs.push(sourceJob(`building ${mapId}/${bucket}`, setKey, layer, { roughInAlpha: false, ...opts }));
   }
   return Promise.all(jobs);
 }

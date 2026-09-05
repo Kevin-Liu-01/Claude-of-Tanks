@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { Vector3 } from 'three';
 import {
   createDedicatedWorldCollision,
@@ -7,29 +8,43 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {
-  verdant: [6628, 6377, 6920],
+  verdant: [6501, 6250, 6763],
   desert: [2381, 2337, 1823],
-  winter: [5180, 4965, 4380],
-  urban: [3588, 5300, 2399],
-  coastal: [3406, 3190, 2741],
-  autumn: [5992, 5718, 6200],
-  steppe: [2236, 1952, 1394],
-  railyard: [2683, 2547, 1973],
-  frontier: [7434, 7172, 7586],
-  fjord: [6185, 6011, 5400],
-  delta: [7683, 7425, 8970],
-  badlands: [2843, 2679, 1890],
-  monsoon: [9839, 9598, 11597],
-  alpine: [8535, 8338, 7574],
-  caldera: [4389, 4271, 3265],
-  foundry: [3911, 3768, 2939],
-  ruinspires: [2827, 5281, 1159],
-  blackglass: [3528, 4359, 2270],
-  titan_gorge: [2489, 2301, 1161],
-  skybridge: [3021, 3088, 1790],
+  winter: [5085, 4870, 4281],
+  urban: [3590, 5302, 2399],
+  coastal: [3308, 3103, 2648],
+  autumn: [6085, 5811, 6261],
+  steppe: [2234, 1950, 1392],
+  railyard: [2708, 2547, 1973],
+  frontier: [7436, 7174, 7583],
+  fjord: [6377, 6218, 5597],
+  delta: [7119, 6877, 8532],
+  badlands: [2841, 2677, 1888],
+  monsoon: [9269, 9034, 11093],
+  alpine: [8539, 8342, 7575],
+  caldera: [4684, 4579, 3572],
+  foundry: [3946, 3791, 2939],
+  ruinspires: [2822, 5138, 1159],
+  blackglass: [3515, 4371, 2270],
+  titan_gorge: [2472, 2284, 1144],
+  skybridge: [3108, 3161, 1892],
+  polders: [4051, 3823, 3506],
+  copper_mesa: [2560, 2379, 1812],
+  airfield: [3252, 3226, 2823],
+  oasis: [2470, 2257, 1852],
+  whiteout: [1449, 1267, 805],
+  orchard: [4403, 4163, 4454],
+  longleaf: [5631, 5421, 6154],
+  mangrove: [4918, 4740, 5666],
+  saltwind: [3349, 3158, 2723],
+  reservoir: [5932, 5749, 6443],
 };
 const stats = dedicatedCollisionManifestStats();
+assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
+assert.deepEqual(readdirSync(new URL('./world-collision-manifests/', import.meta.url))
+  .filter((file) => file.endsWith('.json') && file !== 'index.json').sort(),
+MAP_IDS.map((id) => `${id}.json`).sort(), 'exactly one collision shard exists for every canonical map');
 for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
   const mapWorld = createDedicatedWorldCollision(mapId);
@@ -97,4 +112,4 @@ assert.ok(compound, 'dedicated manifest retains compound structure footprints');
 assert.ok(compound.shape2.parts.length >= 2 && compound.shape2.parts.length <= 64,
   'dedicated compound remains tight and bounded after inflation');
 
-console.log('dedicatedWorldCollision.selftest: all twenty exact map manifests passed');
+console.log(`dedicatedWorldCollision.selftest: all ${MAP_IDS.length} exact map manifests passed`);

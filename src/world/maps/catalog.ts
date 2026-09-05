@@ -7,6 +7,8 @@ export const MAP_IDS = Object.freeze([
   'frontier', 'fjord', 'delta', 'badlands',
   'monsoon', 'alpine', 'caldera', 'foundry',
   'ruinspires', 'blackglass', 'titan_gorge', 'skybridge',
+  'polders', 'copper_mesa', 'airfield', 'oasis', 'whiteout',
+  'orchard', 'longleaf', 'mangrove', 'saltwind', 'reservoir',
 ] as const);
 
 export type MapId = (typeof MAP_IDS)[number];
@@ -34,6 +36,16 @@ const MAP_NAMES = Object.freeze({
   blackglass: 'Blackglass District',
   titan_gorge: 'Titan Gorge',
   skybridge: 'Skybridge Chasm',
+  polders: 'Tidegate Polders',
+  copper_mesa: 'Copper Mesa Mine',
+  airfield: 'Kestrel Airfield',
+  oasis: 'Sunscar Oasis',
+  whiteout: 'Whiteout Station',
+  orchard: 'Orchard Valley',
+  longleaf: 'Longleaf Crossing',
+  mangrove: 'Mangrove Reach',
+  saltwind: 'Saltwind Narrows',
+  reservoir: 'Highland Reservoir',
 } satisfies Record<MapId, string>);
 
 // The sealed motor-pool Garage uses Verdant's authored neutral light until a

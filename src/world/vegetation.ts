@@ -17,9 +17,13 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
+import { createStructureClearances, excludeStructureVegetation } from './vegetationClearance.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
+import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 
 type RandomSource = () => number;
 type ToneFunction = (
@@ -124,7 +128,7 @@ interface VegetationConfig {
   clusterScrub?: number;
 }
 
-export interface VegetationMapConfig {
+export interface VegetationMapConfig extends Pick<PropsMapConfig, 'props'> {
   vegetation?: Partial<VegetationConfig>;
 }
 
@@ -315,12 +319,59 @@ function useAttributeNormal(shader: MaterialShader): void {
     '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
 }
 
+/** Light-driven DIFFUSE scattering; keep microfacet specular incidence intact. */
+export function applyCanopyDiffuseWrap(
+  shader: MaterialShader,
+  wrap: number,
+  matteCanopy = false,
+): void {
+  if (wrap <= 0) return;
+  const reciprocal = (1 / (1 + wrap)).toFixed(6);
+  let wrappedPhysical = _mustReplace(
+    THREE.ShaderChunk.lights_physical_pars_fragment,
+    'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );',
+    'float canopyRawNL = dot( geometryNormal, directLight.direction );\n\tfloat dotNL = saturate( canopyRawNL );',
+  );
+  // Do not wrap irradiance: GGX uses the original clamped incidence inside
+  // its Smith visibility denominator. Lighting a backface through that term
+  // exposes its 1/EPSILON singularity and turns crowns into white bloom lamps.
+  // Only the Lambert diffuse lobe scatters through the leaf volume.
+  wrappedPhysical = _mustReplace(
+    wrappedPhysical,
+    'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );',
+    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\treflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );`,
+  );
+  if (matteCanopy) {
+    // Volume-bent leaf normals intentionally do not flip toward the camera.
+    // They describe a scattering crown, not a glossy microfacet surface:
+    // GGX at N.V=0 produces a broad white grazing lobe across these cards.
+    // Use the diffuse crown model for direct sun; retain the existing IBL
+    // and hemisphere bounce. Omitting GGX also removes its two DFG lookups.
+    wrappedPhysical = _mustReplace(
+      wrappedPhysical,
+      'reflectedLight.directSpecular += irradiance * BRDF_GGX_Multiscatter( directLight.direction, geometryViewDir, geometryNormal, material );',
+      '// Matte canopy: direct illumination is the volume-diffuse lobe below.',
+    );
+  }
+  // Three renamed this parameter from normal to geometryNormal. The former
+  // unchecked replacement silently disabled scattering, leaving white-facing
+  // cards beside black interiors. Fail explicitly if that contract changes.
+  shader.fragmentShader = _mustReplace(
+    shader.fragmentShader, '#include <lights_physical_pars_fragment>', wrappedPhysical,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Canvas textures (grass blade card, leaf-cluster + needle-spray foliage)
 // ---------------------------------------------------------------------------
 
 const _cc = new THREE.Color();
-function css(h: number, s: number, l: number): string { _cc.setHSL(h, s, l); return _cc.getStyle(); }
+// These legacy palettes specify LINEAR reflectance, not display HSL. Encode
+// once for Canvas; SRGBColorSpace on the atlas decodes it once when sampled.
+function css(h: number, s: number, l: number): string {
+  _cc.setHSL(h, s, l, THREE.LinearSRGBColorSpace);
+  return _cc.getStyle(THREE.SRGBColorSpace);
+}
 
 function finishAlphaTexture(
   c: HTMLCanvasElement,
@@ -359,7 +410,10 @@ function finishAlphaTexture(
 // untextured vertex-tinted cylinders were the "branchless faceted prism"
 // tell: with a striated map + normal relief the trunks read as bark at
 // gameplay range. U wraps the trunk circumference (texture wraps in x);
-// mean luminance sits ~0.72 so the per-species vertex tints keep their role.
+// The last 16 columns are neutral snow: opaque snow loads share this material
+// bucket, but must never inherit bark fissures or their tangent-space normals.
+const TREE_SURFACE_SIZE = 256;
+const TREE_BARK_COLUMNS = 240;
 function _nrmFromHeight(h: Float32Array, s: number, strength: number): THREE.CanvasTexture {
   const px = new Uint8ClampedArray(s * s * 4);
   const H = (x: number, y: number): number => h[((y + s) % s) * s + ((x + s) % s)];
@@ -379,12 +433,18 @@ function _nrmFromHeight(h: Float32Array, s: number, strength: number): THREE.Can
   t.anisotropy = 8;
   return t;
 }
-function makeBarkTexture(seed: number): { albedo: THREE.CanvasTexture; normal: THREE.CanvasTexture } {
-  const s = 256;
+function makeBarkTexture(seed: number): {
+  albedo: THREE.CanvasTexture;
+  normal: THREE.CanvasTexture;
+  meanReflectance: number;
+} {
+  const s = TREE_SURFACE_SIZE;
   const rng = mulberry32(seed);
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = context2d(c, { willReadFrequently: true });
+  ctx.save();
+  ctx.scale(TREE_BARK_COLUMNS / s, 1);
   ctx.fillStyle = '#aea89f'; // near-neutral: species vertex tints own the hue (birch stays pale)
   ctx.fillRect(0, 0, s, s);
   const paintPlates = (): void => {
@@ -452,16 +512,33 @@ function makeBarkTexture(seed: number): { albedo: THREE.CanvasTexture; normal: T
   ctx.globalAlpha = 1;
   paintScars();
   ctx.globalAlpha = 1;
+  ctx.restore();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(TREE_BARK_COLUMNS, 0, s - TREE_BARK_COLUMNS, s);
   const id = ctx.getImageData(0, 0, s, s);
   const hgt = new Float32Array(s * s);
+  const linear = new Float32Array(256);
+  for (let value = 0; value < 256; value++) {
+    _cc.setRGB(value / 255, value / 255, value / 255, THREE.SRGBColorSpace);
+    linear[value] = _cc.r;
+  }
+  let sumReflectance = 0;
   for (let i = 0; i < s * s; i++) {
     hgt[i] = (id.data[i * 4] * 0.5 + id.data[i * 4 + 1] * 0.35 + id.data[i * 4 + 2] * 0.15) / 255;
+    if (i % s < TREE_BARK_COLUMNS) {
+      sumReflectance += linear[id.data[i * 4]] * 0.2126
+        + linear[id.data[i * 4 + 1]] * 0.7152 + linear[id.data[i * 4 + 2]] * 0.0722;
+    }
   }
   const albedo = new THREE.CanvasTexture(c);
   albedo.colorSpace = THREE.SRGBColorSpace;
   albedo.wrapS = albedo.wrapT = THREE.RepeatWrapping;
   albedo.anisotropy = 8;
-  return { albedo, normal: _nrmFromHeight(hgt, s, 2.2) };
+  return {
+    albedo,
+    normal: _nrmFromHeight(hgt, s, 2.2),
+    meanReflectance: sumReflectance / (TREE_BARK_COLUMNS * s),
+  };
 }
 
 // Two tuft variants: 0 = lush meadow tuft, 1 = drier mixed tuft. Dense at the
@@ -565,13 +642,13 @@ function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = n
       // lighting_post r2: cap the bleached family — 0.48 HSL-lightness
       // clipped to lime-white under the 4.5 sun key; ~0.41 rolls off inside
       // the grade shoulder.
-      hue = 0.170 + rng() * 0.035; sat = 0.21 + rng() * 0.07;
-      l = 0.22 + sun * 0.12 + rng() * 0.07;
+      hue = 0.205 + rng() * 0.035; sat = 0.27 + rng() * 0.07;
+      l = 0.18 + sun * 0.10 + rng() * 0.06;
     } else if (famRoll < 0.78) { // mid olive body
-      hue = 0.215 + rng() * 0.045; sat = 0.19 + rng() * 0.08;
+      hue = 0.215 + rng() * 0.045; sat = 0.29 + rng() * 0.09;
       l = 0.17 + sun * 0.15 + rng() * 0.10;
     } else {                     // dark shadow foliage
-      hue = 0.26 + rng() * 0.045; sat = 0.15 + rng() * 0.06;
+      hue = 0.26 + rng() * 0.045; sat = 0.24 + rng() * 0.08;
       l = 0.12 + sun * 0.10 + rng() * 0.07;
     }
     const sizeMul = 0.7 + rng() * 0.9; // per-clump leaf scale spread
@@ -606,7 +683,7 @@ function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = n
       ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI * 2);
       ctx.fill();
       if (rng() < 0.6) {
-        ctx.fillStyle = css(hue - 0.012, sat * 0.85, Math.min(0.62, ll + 0.13 + sun * 0.05));
+        ctx.fillStyle = css(hue - 0.008, sat * 0.95, Math.min(0.42, ll + 0.045 + sun * 0.025));
         ctx.beginPath();
         ctx.ellipse(-lw * 0.18, -lh * 0.30, lw * 0.55, lh * 0.42, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -653,7 +730,10 @@ function makeNeedleSprayTexture(rng: RandomSource, tone: ToneFunction | null = n
     const sun = 1 - y / s;
     const dir = rng() * Math.PI * 2;
     const n = 8 + (rng() * 8) | 0;
-    ctx.strokeStyle = css(0.30 + rng() * 0.035, 0.18 + rng() * 0.08, 0.15 + sun * 0.12 + rng() * 0.07);
+    // Needles retain chlorophyll color under the warm key: the old pale,
+    // low-chroma sprays compressed toward yellow-white after tone mapping.
+    // Keep every stroke, RNG draw and atlas dimension unchanged.
+    ctx.strokeStyle = css(0.30 + rng() * 0.045, 0.32 + rng() * 0.09, 0.13 + sun * 0.07 + rng() * 0.055);
     ctx.lineWidth = 1.5 + rng() * 0.9;
     for (let j = 0; j < n; j++) {
       const na = dir + (rng() - 0.5) * 1.5;
@@ -821,6 +901,67 @@ function paintFlat(
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
   return geo;
+}
+
+/** Bake bark/snow separation into the existing UV/color buffers, once at build. */
+export function prepareTreeBarkSurface(
+  geometry: THREE.BufferGeometry,
+  meanReflectance: number,
+): THREE.BufferGeometry {
+  if (geometry.userData.barkSurfacePrepared) return geometry;
+  const uv = attribute(geometry, 'uv');
+  const color = attribute(geometry, 'color');
+  const compensation = 1 / clamp(meanReflectance, 0.4, 1);
+  for (let index = 0; index < uv.count; index++) {
+    if (uv.getX(index) < 0) {
+      // Constant UV selects the middle of the smooth white strip, including
+      // its flat normal. No snow mask, extra fetch, material or varying.
+      uv.setXY(index, (TREE_BARK_COLUMNS + 8) / TREE_SURFACE_SIZE, 0.5);
+      continue;
+    }
+    uv.setX(index, (2 + uv.getX(index) * (TREE_BARK_COLUMNS - 4)) / TREE_SURFACE_SIZE);
+    const r = color.getX(index), g = color.getY(index), b = color.getZ(index);
+    const luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    // Dark trunk tints predate the bark sheet and were multiplied down twice.
+    // Restore their authored reflectance; bright birch/palm bark was already
+    // authored for the sheet and must retain its existing headroom.
+    const weight = 1 - clamp((luminance - 0.065) / 0.055, 0, 1);
+    const gain = 1 + (compensation - 1) * weight;
+    color.setXYZ(index, r * gain, g * gain, b * gain);
+  }
+  geometry.userData.barkSurfacePrepared = true;
+  return geometry;
+}
+
+/** Preserve joined snow faces on Three's nonindexed ico, with no new vertices. */
+export function shapeTreeSnowLobe(
+  geometry: THREE.BufferGeometry,
+  rng: RandomSource,
+): THREE.BufferGeometry {
+  const position = attribute(geometry, 'position');
+  const normal = attribute(geometry, 'normal');
+  const uv = attribute(geometry, 'uv');
+  const corners = new Map<string, readonly [number, number, number]>();
+  for (let index = 0; index < position.count; index++) {
+    const x = position.getX(index), y = position.getY(index), z = position.getZ(index);
+    const key = `${x},${y},${z}`;
+    // Keep the old jitter's RNG consumption so snow placement/variants do not
+    // move merely because duplicate triangle corners now share one position.
+    const hasRadius = Math.hypot(x, z) > 1e-4;
+    const radial = hasRadius ? rng() : 0.5;
+    const vertical = hasRadius ? rng() : 0.5;
+    let corner = corners.get(key);
+    if (!corner) {
+      const scale = 1 + (radial - 0.5) * 0.24;
+      corner = [x * scale, y + (vertical - 0.5) * Math.hypot(x, y, z) * 0.10, z * scale];
+      corners.set(key, corner);
+    }
+    position.setXYZ(index, corner[0], corner[1], corner[2]);
+    _v3.set(corner[0], corner[1], corner[2]).normalize();
+    normal.setXYZ(index, _v3.x, _v3.y, _v3.z);
+    uv.setXY(index, -1, 0.5); // converted by prepareTreeBarkSurface after merge
+  }
+  return geometry;
 }
 
 // one foliage card: plane transformed into place, vertex colour = AO/tint,
@@ -1119,12 +1260,14 @@ function buildBroadleafCards(
     // bounce in the skirt. Hue jitter widened ±0.025 -> ±0.045: with one
     // shared leaf atlas, per-card hue/value spread is what breaks the
     // "single repeated leaf texture" read.
-    const shade = (0.58 + 0.42 * clamp(distC, 0, 1)) // dark core, lit shell
-      * (0.80 + 0.34 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
+    // Avoid multiplying three independent near-black floors (atlas, core,
+    // skirt). Light-driven wrap supplies form; baked AO keeps the core legible.
+    const shade = (0.66 + 0.34 * clamp(distC, 0, 1)) // dark core, lit shell
+      * (0.87 + 0.27 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
     // r6: upBias 1.55 -> 1.0 — the near-vertical bent normals lit the whole
     // crown one flat tone; a stronger lateral component gives the sun-side /
-    // shade-side gradient a real crown shows (wrap 0.62 keeps the dark side
-    // from crushing)
+    // shade-side gradient a real crown shows (light-driven wrap keeps the
+    // dark side from crushing)
     parts.push(foliageCard(wsz, wsz * 0.82, px, py, pz, _e, shade,
       hue0 + (rng() - 0.5) * 0.09, sat0 + rng() * 0.08, l0 + rad * 0.65, 0, cy, 0,
       1.0, 0.5)); // r5: bowed shell cards — curved leaf masses, not flat splats
@@ -1134,7 +1277,7 @@ function buildBroadleafCards(
     const a = rng() * Math.PI * 2, rr = 0.9 + rng() * 0.9;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
     parts.push(foliageCard(1.3 * sizeMul, 1.0 * sizeMul, Math.cos(a) * rr, 2.9 + rng() * 0.6, Math.sin(a) * rr,
-      _e, 0.5, hue0 + 0.005, sat0 + 0.02, 0.35, 0, cy, 0));
+      _e, 0.62, hue0 + 0.005, sat0 + 0.02, 0.35, 0, cy, 0));
   }
   // r3 terrain_environment: inner DARK FILLER cards — with only the shell
   // cards the crown read as a hollow shell of floating splats wherever the
@@ -1148,7 +1291,7 @@ function buildBroadleafCards(
     parts.push(foliageCard(1.92 * sizeMul, 1.64 * sizeMul,
       lobe[0] + Math.cos(a) * rr * rx, lobe[1] + (rng() - 0.5) * ry * 0.7,
       lobe[2] + Math.sin(a) * rr * rz,
-      _e, 0.40 + rng() * 0.10, hue0 + 0.01, sat0 * 0.8, 0.25, 0, cy, 0));
+      _e, 0.56 + rng() * 0.08, hue0 + 0.01, sat0 * 0.8, 0.25, 0, cy, 0));
   }
   return mergeParts(parts);
 }
@@ -1172,7 +1315,7 @@ function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
   // r6 terrain_environment: OPAQUE snow lobes riding the tier tops (winter
   // maps, pal.snow) — the whitened needle cards alone still averaged toward
   // green at range; real load is a solid white mass sitting ON the boughs.
-  // Same trick as the birch branch-riding lobes (bark material, lifted tint).
+  // Shared material bucket; neutral snow UVs bypass the bark surface atlas.
   const snow = pal.snow ?? 0;
   if (snow > 0.25) {
     const topY = 6.4;
@@ -1185,10 +1328,9 @@ function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
         const a = rng() * Math.PI * 2;
         const lr = 0.30 + rng() * 0.26 + (1 - t) * 0.14;
         const lobe = new THREE.IcosahedronGeometry(lr, 0);
-        jitterRadial(lobe, rng, 0.35);
-        lobe.scale(1.6 + rng() * 0.5, 0.34, 1.0 + rng() * 0.4);
+        shapeTreeSnowLobe(lobe, rng);
+        lobe.scale(1.6 + rng() * 0.5, 0.55, 1.0 + rng() * 0.4);
         lobe.rotateY(a + Math.PI / 2);
-        sphereNormals(lobe, 0, 0, 0, 1.3);
         lobe.translate(Math.cos(a) * rr * 0.62, y + 0.14 + rng() * 0.2, Math.sin(a) * rr * 0.62);
         _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
         parts.push(paintFlat(lobe, _c.clone(), 0.12));
@@ -1196,9 +1338,8 @@ function buildPineTrunk(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
     }
     // leader cap: the topmost load every snowbound spruce carries
     const cap = new THREE.IcosahedronGeometry(0.34, 0);
-    jitterRadial(cap, rng, 0.3);
-    cap.scale(1.1, 0.55, 1.1);
-    sphereNormals(cap, 0, 0, 0, 1.3);
+    shapeTreeSnowLobe(cap, rng);
+    cap.scale(1.1, 0.70, 1.1);
     cap.translate(0, topY - 0.28, 0);
     _c.setHSL(0.585, 0.04, 0.64, THREE.SRGBColorSpace).multiplyScalar(1.55);
     parts.push(paintFlat(cap, _c.clone(), 0.2));
@@ -1237,7 +1378,7 @@ function buildPineCards(
       // across every card was the "model railroad pine" tell at 30-80 m
       // r7: base 0.50 -> 0.42 — lower tiers shade toward the ground plane
       // r8: 0.42 -> 0.48 — bottom tiers went to black paint in chase shadow
-      const shade = 0.48 + t * 0.40 + rng() * 0.26;
+      const shade = 0.60 + t * 0.28 + rng() * 0.18;
       // content_breadth r3: pal.snow lays a SNOW LOAD on the tier tops —
       // upper tiers whiten/brighten most (a loaded spruce is white above,
       // green in the skirt), per-card jitter keeps the load clumpy
@@ -1562,10 +1703,9 @@ function buildBirchGeometry(
       if (rng() > snow * (0.20 + a.dy * 0.45)) continue;
       const lr = a.w * (0.16 + rng() * 0.10);
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
-      jitterRadial(lobe, rng, 0.35);
-      lobe.scale(1.5 + rng() * 0.5, 0.40, 0.85 + rng() * 0.3);
+      shapeTreeSnowLobe(lobe, rng);
+      lobe.scale(1.5 + rng() * 0.5, 0.60, 0.85 + rng() * 0.3);
       lobe.rotateY(rng() * Math.PI * 2);
-      sphereNormals(lobe, 0, 0, 0, 1.15);
       lobe.translate(a.x, a.y + lr * 0.28, a.z);
       _c.setHSL(0.585, 0.05, 0.60, THREE.SRGBColorSpace).multiplyScalar(1.55);
       trunkParts.push(paintFlat(lobe, _c.clone(), 0.10));
@@ -1584,18 +1724,19 @@ function buildBirchGeometry(
 export function buildTreeTrunkAuditGeometry(
   species: TreeSpecies,
   seed = 0x71ee,
+  palette: VegetationPalette = {},
 ): THREE.BufferGeometry {
   const rng = mulberry32(seed);
   const archetype = TREE_ARCHETYPES[species];
   if (archetype.family === 'conifer') {
-    const geometry = buildPineTrunk(rng);
+    const geometry = buildPineTrunk(rng, palette);
     const scale = TREE_GEOMETRY_SCALE[species];
     geometry.scale(scale[0], scale[1], scale[2]);
     return geometry;
   }
   if (archetype.family === 'palm') return buildPalmGeometry(rng).trunk;
   if (archetype.family === 'birch') {
-    const geometry = buildBirchGeometry(rng).trunk;
+    const geometry = buildBirchGeometry(rng, palette).trunk;
     const scale = TREE_GEOMETRY_SCALE[species];
     geometry.scale(scale[0], scale[1], scale[2]);
     return geometry;
@@ -2127,6 +2268,36 @@ export function createGarageTreeKit(
   };
 }
 
+/** Fixed-topology grass cards with a shallow, construction-only normal fan. */
+export function buildGrassTuftGeometry(
+  w: number,
+  h: number,
+  planeCount = 2,
+  widthScale = 1.12,
+): THREE.BufferGeometry {
+  const planes: THREE.BufferGeometry[] = [];
+  for (let plane = 0; plane < planeCount; plane++) {
+    const geometry = new THREE.PlaneGeometry(w * widthScale, h, 1, 1);
+    const uv = attribute(geometry, 'uv');
+    const normal = attribute(geometry, 'normal');
+    for (let vertex = 0; vertex < normal.count; vertex++) {
+      // Straight-up normals made every blade an equally bright horizontal
+      // receiver. A mostly-up fan gives tips/sides their own form shading
+      // without black card backs, a shader branch, or biome recoloring.
+      const tip = uv.getY(vertex);
+      const nx = (uv.getX(vertex) * 2 - 1) * (0.07 + tip * 0.19);
+      const nz = 0.08 + tip * 0.02;
+      normal.setXYZ(vertex, nx, Math.sqrt(1 - nx * nx - nz * nz), nz);
+    }
+    geometry.translate(0, h / 2 - 0.03, 0);
+    geometry.rotateY((plane / 2) * Math.PI);
+    planes.push(geometry);
+  }
+  const merged = mergeGeometries(planes, false) as THREE.BufferGeometry;
+  for (const geometry of planes) geometry.dispose();
+  return merged;
+}
+
 // ---------------------------------------------------------------------------
 // createVegetation
 // ---------------------------------------------------------------------------
@@ -2313,32 +2484,10 @@ function* vegetationBuildSteps(
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
 
-  // Two single-segment crossed cards are sufficient for grass-scale parallax.
-  // The old three 2-segment cards cost 12 triangles per tuft; this costs four
-  // and also avoids the overly busy blade volume the user was seeing.
-  function makeTuftGeometry(
-    w: number,
-    h: number,
-    planeCount = 2,
-    widthScale = 1.12,
-  ): THREE.BufferGeometry {
-    const planes: THREE.BufferGeometry[] = [];
-    for (let k = 0; k < planeCount; k++) {
-      const p = new THREE.PlaneGeometry(w * widthScale, h, 1, 1);
-      p.translate(0, h / 2 - 0.03, 0);
-      p.rotateY((k / 2) * Math.PI);
-      planes.push(p);
-    }
-    const geo = mergeGeometries(planes, false) as THREE.BufferGeometry;
-    const nrm = attribute(geo, 'normal');
-    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
-    return geo;
-  }
-
   // Far tufts collapse to one wider plane. At this range their alpha
   // silhouette supplies the entire read, so a crossed second plane is waste.
   const makeTuftFarGeometry = (w: number, h: number): THREE.BufferGeometry =>
-    makeTuftGeometry(w, h, 1, 1.5);
+    buildGrassTuftGeometry(w, h, 1, 1.5);
 
   const grassTex: THREE.CanvasTexture[] = [];
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
@@ -2372,7 +2521,7 @@ function* vegetationBuildSteps(
       // 2 cm moss carpet
       const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.74 : 0.58;
       grassVariants.push({
-        geo: makeTuftGeometry(w, h),
+        geo: buildGrassTuftGeometry(w, h),
         geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
         matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v6'),
         matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
@@ -2808,6 +2957,7 @@ function* vegetationBuildSteps(
     nearD1: number,
     wrap = 0,
     fullFade = false,
+    matteCanopy = false,
   ): MaterialShaderHook => (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     // SNIPER SCOPE CORRIDOR (controls_gunnery r3): while scoped, EVERY tree
@@ -2947,23 +3097,10 @@ function* vegetationBuildSteps(
           if (dit > fadeKeep) discard;
         }
       }`);
-    // lighting_post r3: wrap-diffuse on canopy materials — crowns get a lit
-    // side -> occluded interior ramp under the CSM sun instead of reading as
-    // unshaded texture at distance. Cards carry canopy-outward normals.
-    if (wrap > 0) {
-      // r8: wrap 0.45 -> 0.62 — shadowed canopy undersides still crushed to
-      // black paint in the chase view; the stronger wrap plays the leaf
-      // translucency/skylight bounce a real crown skirt shows
-      const w = wrap.toFixed(2);
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <lights_physical_pars_fragment>',
-        THREE.ShaderChunk.lights_physical_pars_fragment.replace(
-          'float dotNL = saturate( dot( normal, directLight.direction ) );',
-          `float dotNL = saturate( ( dot( normal, directLight.direction ) + ${w} ) / ${(1 + wrap).toFixed(2)} );`));
-    }
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy);
   };
   const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
-  const canopyWindHook = makeTreeWindHook(2.5, 8.0, 0.62, true);  // canopy sheets + cards
+  const canopyWindHook = makeTreeWindHook(2.5, 8.0, 0.50, true, true); // matte canopy sheets + cards
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
     useAttributeNormal(shader);
@@ -2988,29 +3125,17 @@ function* vegetationBuildSteps(
         vLeafW = fiw.xyz;
       }
       #include <project_vertex>`);
-    // r6 terrain_environment CANOPY VOLUME SHADING — the two shading terms
-    // that separate "flat card collage" from an AAA tree crown:
-    //  (a) world-anchored leaf-clump value mottle shared by every card of a
-    //      crown: neighbouring cards stop rendering as flat one-tone sheets
-    //      and read as one continuous foliage mass with interior clumping;
-    //  (b) VIEW-EDGE TRANSLUCENCY/RIM — fragments near the card silhouette
-    //      (grazing |N.V|) lift toward a warm sun-through-leaves tone, the
-    //      cheap stand-in for SSS/backlit foliage every modern engine ships.
-    //      Keyed by the clump mottle so the rim sparkles at leaf scale
-    //      instead of drawing a uniform halo outline.
+    // World-anchored leaf clumps make intersecting cards read as one crown.
+    // Scattering now follows LIGHT incidence in applyCanopyDiffuseWrap, not
+    // view angle. Removing the two rim normalizations, dot and additive gain
+    // pays for the cheaper wrap arithmetic and stops camera-dependent bleach.
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
       #include <map_fragment>
       {
         float lA = texture2D(uCanopyDet, vLeafW.xz * 0.60).r;
         float lB = texture2D(uCanopyDet, vec2(vLeafW.x * 0.44 + 0.29, vLeafW.y * 0.60)).r;
         float leafM = lA * 0.6 + lB * 0.4;
-        diffuseColor.rgb *= 0.78 + leafM * 0.46;
-        float ndv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
-        float rim = 1.0 - ndv;
-        rim *= rim;
-        // tint MULTIPLIES the card's own color: green crowns rim warm-green,
-        // winter rime cards rim neutral-warm — no species-specific paths
-        diffuseColor.rgb += diffuseColor.rgb * rim * (0.35 + leafM * 0.95) * vec3(0.60, 0.63, 0.40);
+        diffuseColor.rgb *= 0.86 + leafM * 0.28;
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\nvarying float vFolKeep;\nvarying vec3 vLeafW;\nuniform sampler2D uCanopyDet;');
@@ -3028,9 +3153,8 @@ function* vegetationBuildSteps(
         if (fdit >= vFolKeep) discard;
       }`);
   };
-  // r2: striated bark albedo+normal on every trunk/branch (see makeBarkTexture)
-  // — vertex colors still carry the per-species tint, lifted ~1.35x below to
-  // compensate for the ~0.72-mean map multiplying in.
+  // Bark and smooth snow occupy the existing atlas. Dark trunk tints are
+  // calibrated against its measured linear reflectance during geometry prep.
   const barkTex = makeBarkTexture(seed + 97);
   const barkMat = new THREE.MeshStandardMaterial({
     map: barkTex.albedo, normalMap: barkTex.normal,
@@ -3039,7 +3163,7 @@ function* vegetationBuildSteps(
   barkMat.normalScale.set(0.85, 0.85);
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, treeWindHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v7';
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v9';
   yield { stage: 'treePrep', fine: true };
 
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
@@ -3117,7 +3241,7 @@ function* vegetationBuildSteps(
       }`);
   };
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v10';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v13';
   yield { stage: 'treePrep', fine: true };
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far
@@ -3290,7 +3414,7 @@ function* vegetationBuildSteps(
       });
       fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v10-' + sp; // aa-r1: + mip-alpha guard
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v14-' + sp;
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -3306,6 +3430,15 @@ function* vegetationBuildSteps(
     }
   }
   yield* createFoliageMaterials();
+  // Shader-only detail, customDepthMaterial and unselected grass LODs are
+  // invisible to ordinary mesh traversal. Keep the existing library owned
+  // even when a species/LOD has no instances; disposal deduplicates attachments.
+  registerRetainedObject3DResources(group, {
+    geometries: grassVariants.flatMap(variant => [variant.geo, variant.geoFar]),
+    materials: [barkMat, canopyFarMat, ...Object.values(foliageMats), ...Object.values(foliageDepthMats),
+      ...grassVariants.flatMap(variant => [variant.matMid, variant.matNear])],
+    textures: [canopyDetailTex],
+  });
 
   // r7: 3 near variants + 2 far variants per species (was 2/1) — "dozens of
   // identical stacked-cone pines" was a top critique; every stand now mixes
@@ -3318,14 +3451,18 @@ function* vegetationBuildSteps(
     for (const sp of speciesList) {
       treeGeo[sp] = [];
       for (let k = 0; k < NEAR_VARIANTS; k++) {
-        treeGeo[sp].push(SPECIES[sp].near(k, palOf(sp)));
+        const geometry = SPECIES[sp].near(k, palOf(sp));
+        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
+        treeGeo[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };
       }
       treeGeoFar[sp] = [];
       for (let k = 0; k < FAR_VARIANTS; k++) {
-        treeGeoFar[sp].push(SPECIES[sp].far(
+        const geometry = SPECIES[sp].far(
           mulberry32(seed + SPECIES[sp].farSeed + k * 101), palOf(sp), k,
-        ));
+        );
+        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
+        treeGeoFar[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };
       }
     }
@@ -3694,6 +3831,22 @@ function* vegetationBuildSteps(
     }
   }
   placeSaplings();
+
+  // Village trees are already kept 24 m outside its building envelope, but
+  // authored lane structures can sit anywhere on the map. Reserve their real
+  // oriented roof footprints against the complete crown + lean envelope.
+  // This runs after every RNG-driven placement, and before any tree pool or
+  // root decal is built, so no rejected tree survives as collision/spotting.
+  const structureClearances = createStructureClearances(
+    cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
+  );
+  group.userData.structureClearance = {
+    sites: structureClearances.length,
+    rejectedTrees: excludeStructureVegetation(
+      trees, treeObstacles, concealers, structureClearances,
+      (tree) => tree.cr + Math.sin(TREE_ARCHETYPES[tree.species].leanMaxRad) * (tree.fallH ?? 0),
+    ),
+  };
 
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing

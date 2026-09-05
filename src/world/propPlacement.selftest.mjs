@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import { Vector3 } from 'three';
+import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
+import { BufferAttribute, BufferGeometry, Vector3 } from 'three';
 import { pushHullFromObstacle, rayCollisionRecord, setObbShape } from './collision.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import {
   UTILITY_POLE_PAIR_MAX_RELIEF,
+  cropRowSegmentIsSupported,
   hedgehogBeamSpecs,
   planGroundedObbPose,
   planGroundedSegment,
@@ -15,6 +18,65 @@ import {
 const heightField = {
   getHeightAt(x, z) { return x * 0.21 - z * 0.13 + 2; },
 };
+
+const cropField = {
+  ...heightField,
+  getGroundType() { return 'grass'; },
+  _noVeg() { return false; },
+};
+const cropStart = cropField.getHeightAt(-1.7, 0);
+const cropEnd = cropField.getHeightAt(1.7, 0);
+assert.equal(cropRowSegmentIsSupported(cropField, -1.7, 0, cropStart, 1.7, 0, cropEnd), true,
+  'crop cards retain terrain-conformed roots on a dry planar grade');
+assert.equal(cropRowSegmentIsSupported({ ...cropField, _noVeg: x => x > 1.5 },
+  -1.7, 0, cropStart, 1.7, 0, cropEnd), false,
+  'a dry plot center cannot emit a row endpoint in the canonical shoreline buffer');
+assert.equal(cropRowSegmentIsSupported({ ...cropField, _noVeg: x => Math.abs(x) < 0.4 },
+  -1.7, 0, cropStart, 1.7, 0, cropEnd), false,
+  'two dry endpoints cannot bridge a wet cove between their roots');
+assert.equal(cropRowSegmentIsSupported({ ...cropField, getGroundType: () => 'soft' },
+  -1.7, 0, cropStart, 1.7, 0, cropEnd), false,
+  'non-liquid soft bogs remain unsuitable for standing grain');
+assert.equal(cropRowSegmentIsSupported({ ...cropField,
+  getHeightAt: (x, z) => heightField.getHeightAt(x, z) - (Math.abs(x) < 1 ? 0.4 : 0),
+}, -1.7, 0, cropStart, 1.7, 0, cropEnd), false,
+  'a crop root chord cannot float across a dry terrain depression');
+
+// Run the actual construction function without a renderer/DOM: clipping may
+// remove indices but must not change seeded variation or add replacement rows.
+const propsSource = await readFile(new URL('./props.ts', import.meta.url), 'utf8');
+const cropRowStart = propsSource.indexOf('  function appendCropRowGeometry(');
+const cropRowEnd = propsSource.indexOf('  function appendCropRows(', cropRowStart);
+assert.ok(cropRowStart > 0 && cropRowEnd > cropRowStart, 'actual crop row builder is covered');
+const makeCropRow = new Function('THREE', 'heightField', 'cropRowSegmentIsSupported',
+  `${stripTypeScriptTypes(propsSource.slice(cropRowStart, cropRowEnd))}\nreturn appendCropRowGeometry;`);
+function buildTestCropRow(field) {
+  const geos = [];
+  let draws = 0;
+  makeCropRow({ BufferAttribute, BufferGeometry }, field, cropRowSegmentIsSupported)(
+    geos, () => { draws++; return 0.5; }, 0, 0, 10, 1.2, 1, 1, 0);
+  return { geos, draws };
+}
+const dryCrop = buildTestCropRow(cropField);
+const clippedField = { ...cropField, _noVeg: x => x > 0 };
+const clippedCrop = buildTestCropRow(clippedField);
+const rejectedCrop = buildTestCropRow({ ...cropField, _noVeg: () => true });
+assert.equal(dryCrop.geos.length, 1);
+assert.equal(clippedCrop.geos.length, 1);
+assert.equal(rejectedCrop.geos.length, 0, 'fully wet rows allocate no retained geometry');
+assert.equal(clippedCrop.draws, dryCrop.draws);
+assert.equal(rejectedCrop.draws, dryCrop.draws, 'wet clipping preserves every original seeded draw');
+const dryCropGeo = dryCrop.geos[0], clippedCropGeo = clippedCrop.geos[0];
+for (const key of ['position', 'uv', 'color']) {
+  assert.deepEqual(clippedCropGeo.attributes[key].array, dryCropGeo.attributes[key].array,
+    `crop clipping keeps the original ${key} attribute budget and variation`);
+}
+assert.ok(clippedCropGeo.index.count < dryCropGeo.index.count, 'shore clipping only removes original triangles');
+for (const vertex of clippedCropGeo.index.array) {
+  assert.ok(clippedCropGeo.attributes.position.getX(vertex) <= 0,
+    'no emitted crop triangle has a root across the shoreline');
+}
+dryCropGeo.dispose(); clippedCropGeo.dispose();
 
 const disc = sampleDiscGround(heightField, 4, -3, 2.5, 0.04);
 const discSamples = [[4, -3]];

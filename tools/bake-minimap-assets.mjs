@@ -11,6 +11,8 @@ import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { MAP_IDS } from '../src/world/maps/index.ts';
+import { requireMinimapCapture } from './map-art-guards.mjs';
+import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -29,6 +31,10 @@ for (const id of maps) {
 }
 const outDir = resolve(option('out', 'public/minimaps'));
 await mkdir(outDir, { recursive: true });
+await acquireCaptureLock(30 * 60 * 1000);
+process.on('exit', releaseCaptureLock);
+const lockRefresher = setInterval(refreshCaptureLock, 60_000);
+lockRefresher.unref();
 
 const cacheDir = resolve('/tmp', `cot-minimap-vite-${process.pid}`);
 const server = await createServer({
@@ -63,6 +69,7 @@ page.on('console', (message) => {
   if (message.type() === 'error' && !message.text().includes('favicon')) {
     errors.push(message.text());
   }
+  if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
 });
 
 let failed = false;
@@ -70,10 +77,14 @@ try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
   for (const id of maps) {
-    const dataUrl = await page.evaluate((mapId) => window.__DEBUG.bakeMinimapForMap(mapId), id);
-    if (!dataUrl?.startsWith('data:image/webp;base64,')) {
-      throw new Error(`Battlefield '${id}' did not return a WebP tactical map`);
-    }
+    const result = await page.evaluate(async (mapId) => {
+      const dataUrl = await window.__DEBUG.bakeMinimapForMap(mapId);
+      return { dataUrl, mapId: window.__DEBUG.world?.mapId,
+        capture: window.__HUD_DEBUG.getMinimapState().capture };
+    }, id);
+    requireMinimapCapture(result, id);
+    if (errors.length) throw new Error(`Browser errors before ${id} export:\n${errors.join('\n')}`);
+    const { dataUrl } = result;
     const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
     await writeFile(resolve(outDir, `${id}.webp`), bytes);
     console.log(`[minimap-assets] ${id}: ${bytes.length} bytes`);
@@ -85,6 +96,8 @@ try {
 } finally {
   await browser.close();
   await server.close();
+  clearInterval(lockRefresher);
+  releaseCaptureLock();
 }
 
 if (failed) process.exitCode = 1;

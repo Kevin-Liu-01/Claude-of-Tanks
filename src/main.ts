@@ -232,7 +232,7 @@ const camoPatternLabels: Readonly<Record<string, string>> = CAMO_PATTERN_LABEL;
 const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
 const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
-  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=north-up-v5`
+  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=north-up-v6`
 );
 const isShotViewName = (value: string): value is ShotViewName => (
   SHOT_VIEWS.some((name) => name === value)
@@ -427,6 +427,7 @@ worldRuntime = createWorldActivationRuntime<
     : undefined,
   awaitInitialCloudWarm: () => bootCloudWarmP,
   applySkyPreset: (skyConfig) => sky.applyPreset(skyConfig, scene),
+  applySkyPresentation: (skyConfig) => sky.applyPresentationPreset(skyConfig, scene),
   setSun: (skyConfig) => lighting.setSun(sky.sunDir, skyConfig),
   getFogDensity: () => scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0,
   onFogDensityChanged: (density) => { baseFogDensity = density; },
@@ -657,10 +658,11 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   garagePosition: GARAGE_POS,
   lighting,
   sunDirection: sky.sunDir,
-  getSkyConfig: () => {
+  getGarageSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
     return getGarageSkyPreset(variant.mapId);
   },
+  getBattleSkyConfig: () => currentWorld()?.config.sky ?? null,
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
   // Detached Garage roots have no render cost. Retain their uploaded programs
@@ -702,6 +704,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   applySkyPreset: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
     sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
+    worldRuntime.invalidateSkyPresentation();
   },
   placeGarage,
   setGarageSunTrim,
@@ -842,10 +845,6 @@ await bootStage('vehicle', async () => {
 const GARAGE_FRAME_BOX = { hw: 1.95, hh: 1.25, hd: 4.95 };
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
-function buildWorldMinimap(next: MainWorld, textured = true) {
-  worldRuntime.buildMinimap(next, textured);
-}
-
 function prepareBattleWorldServices(next = currentWorld()) {
   worldRuntime.prepareBattleServices(next);
 }
@@ -1129,7 +1128,8 @@ const transition = createTransition();
 
 // --- audio --------------------------------------------------------------------
 const audio = await bootStage('audio', () => {
-  const a = createLazyAudio();
+  const a = createLazyAudio({ getMapId: () => game.phase === 'battle'
+    ? game.mapId : currentWorld()?.mapId ?? game.mapId });
   a.bindBus(bus);
   return a;
 });
@@ -2653,10 +2653,15 @@ if (diagnosticsRequested) {
       slayEnemies: driveTestController.slayEnemies,
       startBattle: debugStartBattle,
       bakeMinimapForMap: async (mapId: string) => {
+        const { awaitMapCaptureReadiness } = await import('./dev/mapCaptureReadiness.ts');
         await ensureBattleHud();
         const next = await ensureWorld(mapId, null, { precompile: false, services: false });
-        buildWorldMinimap(next, true);
-        return currentHud()?.exportMinimapBackground('image/webp', 0.92) || '';
+        await awaitMapCaptureReadiness(next, currentWorld);
+        const hud = currentHud();
+        if (!hud) throw new Error('capture HUD is unavailable');
+        hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
+          { ...minimapSnapCtx(), requireTextured: true });
+        return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
       beginBattleEntry,
       beginSoloBattle,

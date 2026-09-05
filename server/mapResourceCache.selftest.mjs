@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { createMapResourceCache } from './mapResourceCache.ts';
+
+let builds = 0;
+const cache = createMapResourceCache((id) => ({ id, build: ++builds }), 2);
+const first = cache.acquire('verdant');
+const second = cache.acquire('verdant');
+assert.strictEqual(first.value, second.value, 'active same-map leases share one immutable resource');
+for (let index = 0; index < 30; index++) cache.get(`map-${index}`);
+assert.equal(cache.stats().idleMaps, 2, 'roster growth cannot enlarge the idle cache');
+assert.strictEqual(cache.get('verdant'), first.value, 'idle pressure cannot evict an active map');
+first.release(); first.release();
+assert.equal(cache.stats().activeLeases, 1, 'release is idempotent');
+second.release();
+assert.equal(cache.stats().activeMaps, 0);
+assert.equal(cache.stats().idleMaps, 2);
+const bad = createMapResourceCache(() => { throw new Error('build failed'); }, 2);
+assert.throws(() => bad.acquire('broken'), /build failed/);
+assert.equal(bad.stats().activeLeases, 0, 'failed acquisition does not leak a lease');
+assert.throws(() => createMapResourceCache(() => ({}), -1), /idle limit/);
+console.log('mapResourceCache.selftest: active sharing, bounded idle LRU, and release passed');

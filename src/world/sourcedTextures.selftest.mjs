@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 const contextOptions = [];
+const loadedImageUrls = [];
 
 class TestCanvas {
   constructor() {
@@ -50,14 +51,18 @@ class TestImage {
     ]);
   }
 
-  set src(_value) { queueMicrotask(() => this.onload()); }
+  set src(value) {
+    loadedImageUrls.push(value);
+    queueMicrotask(() => this.onload());
+  }
 }
 globalThis.Image = TestImage;
 
 const {
   applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
-  sourcedBuildingTintPolicy,
+  sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
 } = await import('./sourcedTextures.ts');
+const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
 const color = image([
@@ -143,6 +148,92 @@ for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry'
     assert.ok((policy.desat || 0) <= 0.45,
       `${mapId}: sourced city color is not erased by excessive desaturation`);
   }
+}
+
+const newMapPalettes = {
+  polders: ['verdant', 'coastal'],
+  copper_mesa: ['badlands', 'foundry'],
+  airfield: ['railyard', 'railyard'],
+  oasis: ['desert', 'desert'],
+  whiteout: ['winter', 'winter'],
+  orchard: ['verdant', 'autumn'],
+  longleaf: ['verdant', 'frontier'],
+  mangrove: ['delta', 'delta'],
+  saltwind: ['coastal', 'coastal'],
+  reservoir: ['frontier', 'frontier'],
+};
+assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(20),
+  'every new battlefield explicitly inherits its intended sourced palettes');
+for (const [mapId, [terrainPalette, buildingPalette]] of Object.entries(newMapPalettes)) {
+  const config = getMapConfig(mapId);
+  assert.equal(config.splat.sourcedPalette, terrainPalette,
+    `${mapId}: terrain palette is deliberate, not an unknown-id Verdant fallback`);
+  assert.equal(config.props.sourcedPalette, buildingPalette,
+    `${mapId}: building palette is deliberate, not untinted photo defaults`);
+  assert.equal(resolveSourcedTerrainPalette(mapId, config.splat), terrainPalette);
+  assert.equal(resolveSourcedBuildingPalette(mapId, config.props), buildingPalette);
+}
+for (const mapId of MAP_IDS.slice(0, 20)) {
+  assert.equal(resolveSourcedTerrainPalette(mapId), MAP_IDS.indexOf(mapId) < 16 ? mapId : 'verdant',
+    `${mapId}: legacy terrain routing remains unchanged`);
+  assert.equal(resolveSourcedBuildingPalette(mapId), mapId,
+    `${mapId}: legacy building palette remains unchanged`);
+}
+
+const freshLayer = () => ({ albedo: texture(), normal: texture() });
+const volcanicLayers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+await applySourcedTerrain('caldera', volcanicLayers);
+const volcanicPixels = {
+  G: [30, 38, 43, 134, 23, 16, 13, 107, 138, 70, 37, 255, 11, 11, 12, 27],
+  D: [26, 33, 39, 140, 20, 15, 13, 112, 112, 59, 34, 255, 11, 11, 11, 28],
+  R: [31, 40, 49, 120, 23, 16, 13, 96, 143, 74, 42, 255, 11, 11, 12, 24],
+};
+for (const [key, expected] of Object.entries(volcanicPixels)) {
+  assert.deepEqual([...volcanicLayers[key].albedo.image.pixels], expected,
+    `${key}: the live terrain hookup applies Caldera's authored lift after AO/tint without lifting roughness`);
+  assert.equal(volcanicLayers[key].albedo.image.width, 2,
+    `${key}: the lift uses the existing composite rather than a larger texture`);
+}
+const volcanicRepeat = freshLayer();
+await applySourcedTerrain('caldera', { G: volcanicRepeat });
+assert.equal(volcanicRepeat.albedo.image, volcanicLayers.G.albedo.image,
+  'lifted terrain composites retain the existing cache reuse contract');
+const snowLayer = freshLayer();
+await applySourcedTerrain('whiteout', { G: snowLayer }, getMapConfig('whiteout').splat);
+assert.ok(loadedImageUrls.some((url) => url.includes('Snow010A_1K-JPG_Color.jpg')),
+  'Whiteout physically loads the snow source, not summer grass');
+const winterLayer = freshLayer();
+await applySourcedTerrain('winter', { G: winterLayer });
+assert.equal(snowLayer.albedo.image, winterLayer.albedo.image,
+  'Whiteout reuses the existing snow composite with identical texture dimensions');
+for (const mapId of ['oasis', 'copper_mesa']) {
+  const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+  await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
+  assert.equal(layers.G.albedo.disposeCount, 1, `${mapId}: sand replaces the base fallback`);
+  assert.equal(layers.D.albedo.disposeCount, 1, `${mapId}: worn sand replaces the dirt fallback`);
+  assert.equal(layers.R.albedo.disposeCount, 0,
+    `${mapId}: the authored sandstone layer is not overwritten by grey sourced rock`);
+}
+assert.ok(loadedImageUrls.some((url) => url.includes('Ground093C_1K-JPG_Color.jpg')),
+  'the two arid maps physically use the existing sand source');
+
+const whiteoutRoof = freshLayer();
+const whiteoutStone = freshLayer();
+await applySourcedBuildings({ roof: whiteoutRoof, stone: whiteoutStone },
+  'whiteout', getMapConfig('whiteout').props);
+const winterRoof = freshLayer();
+await applySourcedBuildings({ roof: winterRoof }, 'winter');
+assert.equal(whiteoutRoof.albedo.image, winterRoof.albedo.image,
+  'Whiteout roof tint inherits the existing desaturated winter frost composite');
+assert.equal(whiteoutStone.albedo.disposeCount, 0,
+  'building palette inheritance does not add a sourced bucket or enlarge a procedural texture');
+for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['copper_mesa', 'desert']]) {
+  const vegetation = getMapConfig(mapId).vegetation;
+  const parentVegetation = getMapConfig(parent).vegetation;
+  assert.equal(vegetation.grassTexTone, parentVegetation.grassTexTone,
+    `${mapId}: grass cards inherit the authored biome texture tone`);
+  assert.equal(vegetation.tuftTone, parentVegetation.tuftTone,
+    `${mapId}: grass instances inherit the authored biome tuft tone`);
 }
 
 console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

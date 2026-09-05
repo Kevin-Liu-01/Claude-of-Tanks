@@ -531,14 +531,14 @@ async function beginFullEntry(page, renderedRole) {
 async function beginHostLight(page, lobby) {
   await page.evaluate(async ({ lobbyState, complete, battleLimitS }) => {
     const state = globalThis.__COT_LIVE_7V7;
-    const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
+    const [{ beginPrivateHostMatch }, { createBrowserDedicatedWorldCollision }] = await Promise.all([
       import('/src/net/privateMatchHandoff.ts'),
-      import('/server/dedicatedWorldCollision.ts'),
+      import('/server/dedicatedWorldCollisionBrowser.ts'),
       // Side-effect-only fleet registration. The full app imports this chain
       // through main.ts; the lightweight authority page deliberately does not.
       import('/src/vehicles/tankFactory.ts'),
     ]);
-    state.worldCollision = createDedicatedWorldCollision(lobbyState.mapId);
+    state.worldCollision = await createBrowserDedicatedWorldCollision(lobbyState.mapId);
     state.match = beginPrivateHostMatch({
       session: state.session,
       lobbyState: state.startingLobby,

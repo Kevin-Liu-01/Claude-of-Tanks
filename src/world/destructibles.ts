@@ -97,9 +97,15 @@ const worlds: WorldDestructibleEntry[] = [];
  *   sweep:function(number,number,number,number,number,number):void,
  *   impact:function(number,number,number,{r:number,he:boolean}):void}} entry
  */
-export function registerWorldDestructibles(entry: WorldDestructibleEntry): void {
+export function registerWorldDestructibles(entry: WorldDestructibleEntry): () => void {
   const i = worlds.findIndex((w) => w.key === entry.key);
   if (i >= 0) worlds[i] = entry; else worlds.push(entry);
+  // Identity, not key: late disposal of an older build must never unregister
+  // the replacement world with the same map ID. Repeated disposal is inert.
+  return () => {
+    const index = worlds.indexOf(entry);
+    if (index >= 0) worlds.splice(index, 1);
+  };
 }
 
 /**

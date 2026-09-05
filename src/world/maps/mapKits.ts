@@ -23,6 +23,8 @@ import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { planRiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
+import { createSnowDrift } from './snowDrift.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -34,6 +36,7 @@ interface DressingBuckets extends GeometryBuckets {
 
 interface DressingHeightField {
   getHeightAt(x: number, z: number): number;
+  getWaterMaskAt?(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
 }
 
@@ -41,6 +44,7 @@ interface LayoutDisc {
   x: number;
   z: number;
   r: number;
+  level?: number;
 }
 
 interface DressingLayout {
@@ -66,6 +70,7 @@ interface GroundingReceipt {
 interface DressingContext {
   mapId?: string;
   extraKits?: readonly string[] | null;
+  riverLandings?: readonly RiverLandingAnchor[];
   L: DressingLayout;
   heightField: DressingHeightField;
   rng: Rng;
@@ -615,6 +620,8 @@ function jetty(
   ang: number,
   y: number,
   len = 7.5,
+  supportField?: DressingHeightField,
+  groundingReceipts?: GroundingReceipt[] | null,
 ): void {
   const n = Math.round(len / 1.9);
   const dx = Math.cos(ang), dz = Math.sin(ang);
@@ -622,18 +629,26 @@ function jetty(
   for (let k = 0; k <= n; k++) {
     const t = k * 1.9;
     for (const s of [-1, 1]) {
-      const ph = 0.9 - k * 0.04;
+      const x = x0 + dx * t + px * 0.65 * s;
+      const z = z0 + dz * t + pz * 0.65 * s;
+      const support = supportField?.getHeightAt(x, z);
+      const base = support === undefined ? y - 0.05 : support - 0.10;
+      const ph = support === undefined ? 0.9 - k * 0.04 : y + 0.865 - base;
       const pile = box(0.16, ph, 0.16, 1.2);
       pile.rotateY(rng() * 0.3);
-      pile.translate(x0 + dx * t + px * 0.65 * s, y + ph / 2 - 0.05, z0 + dz * t + pz * 0.65 * s);
+      pile.translate(x, base + ph / 2, z);
       buckets.wood.push(jitterUV(pile, rng));
+      if (support !== undefined) groundingReceipts?.push({
+        kind: 'jetty-pile', x, y: base, z, baseClearance: -0.10,
+        supportMin: support, supportMax: support,
+      });
     }
   }
   for (let k = 0; k < n; k++) { // deck segments with a soft sag
     const t = (k + 0.5) * 1.9;
     const deck = box(1.95, 0.09, 1.5, 1.2);
     deck.rotateY(-Math.atan2(dz, dx));
-    deck.translate(x0 + dx * t, y + 0.82 - k * 0.05, z0 + dz * t);
+    deck.translate(x0 + dx * t, y + 0.82 - (supportField ? 0 : k * 0.05), z0 + dz * t);
     buckets.wood.push(jitterUV(deck, rng));
   }
 }
@@ -728,11 +743,11 @@ function addSnowLens(
   height: number,
   streak: boolean,
 ): void {
-  const geometry = new THREE.SphereGeometry(1, 24, 10);
   const elongation = streak ? 3.0 + rng() * 1.8 : 1.4 + rng() * 0.5;
-  geometry.scale(radius * elongation * 0.5, height, radius * (0.55 + rng() * 0.3));
-  geometry.rotateY(WINTER_WIND_YAW + (rng() - 0.5) * 0.24);
-  geometry.translate(x, heightField.getHeightAt(x, z) + height * 0.12, z);
+  const across = radius * (0.55 + rng() * 0.3);
+  const yaw = WINTER_WIND_YAW + (rng() - 0.5) * 0.24;
+  const geometry = createSnowDrift(heightField, x, z,
+    radius * elongation * 0.5, across * 0.72, height, yaw);
   buckets.plaster.push(jitterUV(geometry, rng));
 }
 
@@ -824,13 +839,16 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
-  mapId, extraKits = null, L, heightField, rng, buckets, groundingReceipts = null,
+  mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const focused = { L, heightField, rng, buckets, groundingReceipts };
   if (kits.includes('coastal')) dressCoastalShore(focused);
-  if (kits.includes('river')) dressAutumnRiver(focused);
-  if (kits.includes('rail')) dressRailYard(focused);
+  if (kits.includes('river')) {
+    if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
+    else dressAutumnRiver(focused);
+  }
+  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
 }
 
@@ -1157,9 +1175,44 @@ function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingConte
   addRiverFordMarkers(L.roads, links, heightField, rng, buckets);
 }
 
+function dressLakeRiverLandings(
+  { L, heightField, rng, buckets, groundingReceipts }: FocusedDressingContext,
+  anchors: readonly RiverLandingAnchor[],
+): void {
+  // Authored landing budget is independent of channel interpolation density.
+  // Existing river/coast vocabulary stays in the same wood/straw buckets.
+  for (const anchor of anchors.slice(0, 4)) {
+    const landing = planRiverLanding(heightField, L.lakes ?? [], anchor);
+    if (!landing) continue;
+    beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
+      landing.boatYaw, false, groundingReceipts);
+    jetty(buckets, rng, landing.x, landing.z, landing.angle,
+      landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
+    addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
+  }
+}
+
 // =============================================================================
 // maps r1 — RAIL YARD dressing (track fans, buffers, coal heaps, cable drums)
 // =============================================================================
+
+/** Build-time footprint check against the same liquid mask used by water/wakes. */
+export function railSegmentIsDry(
+  heightField: DressingHeightField, x: number, za: number, zb: number,
+): boolean {
+  const waterAt = heightField.getWaterMaskAt;
+  if (!waterAt) return true;
+  // Cover the 3 m ballast width, not just the rail center. The longitudinal
+  // margin encloses the slab overhang even after its terrain-following tilt.
+  // Quarter points also catch a wet cove between two otherwise dry endpoints.
+  for (let longitudinal = 0; longitudinal <= 4; longitudinal++) {
+    const z = za - 0.20 + (zb - za + 0.40) * longitudinal / 4;
+    for (let lateral = -3; lateral <= 3; lateral++) {
+      if (waterAt(x + lateral * 0.50, z) > 0.01) return false;
+    }
+  }
+  return true;
+}
 
 // One rail line: ballast bed + twin rails + sleepers, laid in ~10 m segments
 // that follow the terrain (the yard is near-flat; segments tilt to match).
@@ -1171,6 +1224,7 @@ function railLine(
   x: number,
   z0: number,
   z1: number,
+  washoutLiquid = false,
 ): void {
   const segL = 10;
   const n = Math.max(1, Math.round((z1 - z0) / segL));
@@ -1180,6 +1234,15 @@ function railLine(
     const zm = (za + zb) / 2, ym = (ya + yb) / 2;
     const len = Math.hypot(zb - za, yb - ya);
     const tilt = Math.atan2(yb - ya, zb - za);
+    const nS = Math.round(len / 1.4);
+    if (washoutLiquid && !railSegmentIsDry(heightField, x, za, zb)) {
+      // A drowned siding ends at the bank; the liquid surface is not ground
+      // that can support a paper-thin ballast slab. Advance the original 24
+      // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
+      // surviving dry rails and all later yard dressing remain identical.
+      for (let draw = 0; draw < 24 + nS; draw++) rng();
+      continue;
+    }
     // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
     // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
     const bal = box(3.0, 0.16, len + 0.35, 0.55);
@@ -1203,7 +1266,6 @@ function railLine(
       buckets.dark.push(rail);
     }
     // sleepers every ~1.4 m
-    const nS = Math.round(len / 1.4);
     for (let sI = 0; sI < nS; sI++) {
       const t = (sI + 0.5) / nS;
       const sz = za + (zb - za) * t, sy = ya + (yb - ya) * t;
@@ -1248,9 +1310,10 @@ function addRailYardLines(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  washoutLiquid: boolean,
 ): void {
   for (const line of RAIL_YARD_LINES) {
-    railLine(buckets, rng, heightField, line.x, line.z0, line.z1);
+    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid);
   }
   for (const line of RAIL_YARD_LINES) {
     if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
@@ -1326,8 +1389,10 @@ function addRailYardSupplies(
   }
 }
 
-function dressRailYard({ L, heightField, rng, buckets }: FocusedDressingContext): void {
-  addRailYardLines(heightField, rng, buckets);
+function dressRailYard(
+  { L, heightField, rng, buckets }: FocusedDressingContext, washoutLiquid = false,
+): void {
+  addRailYardLines(heightField, rng, buckets, washoutLiquid);
   addRailYardCoalHeaps(heightField, rng, buckets);
   addRailYardSupplies(L.village, heightField, rng, buckets);
 }

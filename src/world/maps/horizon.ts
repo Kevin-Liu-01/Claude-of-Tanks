@@ -29,8 +29,16 @@ import type { SkyPreset } from '../../engine/sky.ts';
 import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../../engine/quality.ts';
+import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 
 export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
+
+interface HorizonSeaOpening {
+  azimuthDeg: number;
+  widthDeg: number;
+  level: number;
+  colorHex?: number;
+}
 
 export interface HorizonConfig {
   baseHex?: number;
@@ -45,6 +53,7 @@ export interface HorizonConfig {
   forestHex?: number;
   haze?: number;
   grain?: number;
+  seaOpening?: HorizonSeaOpening;
 }
 
 export interface MapSkyConfig extends Partial<SkyPreset> {
@@ -207,45 +216,57 @@ const PROFILES: Record<HorizonStyle, HorizonProfile> = {
   alpine(a, noi, row) {
     const warp = noi.noise(Math.cos(a) * 1.15 + 55, Math.sin(a) * 1.15 - 41) * 0.13;
     const aw = a + warp;
-    const broad = noi.noise(Math.cos(aw) * row.f0 * 0.52 + 21,
-      Math.sin(aw) * row.f0 * 0.52 - 14) * 0.5 + 0.5;
-    const shoulder = noi.noise(Math.cos(aw) * row.f0 * 1.18 - 37,
-      Math.sin(aw) * row.f0 * 1.18 + 28) * 0.5 + 0.5;
+    const broad = noi.noise(Math.cos(aw) * row.f0 * 0.95 + 21,
+      Math.sin(aw) * row.f0 * 0.95 - 14) * 0.5 + 0.5;
+    const shoulder = noi.noise(Math.cos(aw) * row.f0 * 1.9 - 37,
+      Math.sin(aw) * row.f0 * 1.9 + 28) * 0.5 + 0.5;
     const spur = noi.noise(Math.cos(a) * row.f0 * 2.65 + 83,
       Math.sin(a) * row.f0 * 2.65 - 61) * 0.5 + 0.5;
-    const envelope = 0.58 + smoothstep(0.18, 0.86,
-      noi.noise(Math.cos(a) * 0.58 + 3.1, Math.sin(a) * 0.58 - 8.7) * 0.5 + 0.5) * 0.50;
-    const massif = smoothstep(0.12, 0.92, broad) * 0.68
-      + smoothstep(0.18, 0.88, shoulder) * 0.24
+    // Each range has its own broad low passes. Scaling the pedestal too is
+    // important: a positive base under every summit still extrudes a closed
+    // wall, even when the small peaks on top look individually varied.
+    const envelope = 0.18 + smoothstep(0.22, 0.78,
+      noi.noise(Math.cos(a) * 0.92 + 3.1 + row.f1 * 1.7,
+        Math.sin(a) * 0.92 - 8.7 - row.f0 * 2.3) * 0.5 + 0.5) * 0.90;
+    // Distinct broad summits and saddles, not a saturated smoothstep lid.
+    // The former half-frequency outer range stayed almost level across an
+    // entire camera view and made the annulus look like a continuous wall.
+    const massif = Math.pow(broad, 1.45) * 0.72
+      + shoulder * shoulder * 0.24
       + (spur - 0.5) * 0.08;
-    return row.base + clamp(massif, 0.12, 1.0) * envelope * row.amp;
+    return (row.base + clamp(massif, 0.02, 1.0) * row.amp) * envelope;
   },
   // stepped tablelands: noise pushed through plateau terraces -> long flat
   // caps with cliff edges, plus lone buttes between the tables
   mesa(a, noi, row) {
-    const n0 = noi.noise(Math.cos(a) * row.f0 + 41, Math.sin(a) * row.f0 - 27) * 0.5 + 0.5;
-    const n2 = noi.noise(Math.cos(a) * row.f1 * 2.3 - 13, Math.sin(a) * row.f1 * 2.3 + 33) * 0.5 + 0.5;
+    const n0 = noi.noise(Math.cos(a) * row.f0 + 41 + row.f1 * 1.3,
+      Math.sin(a) * row.f0 - 27 - row.f0 * 2.1) * 0.5 + 0.5;
+    const n2 = noi.noise(Math.cos(a) * row.f1 * 0.7 - 13,
+      Math.sin(a) * row.f1 * 0.7 + 33) * 0.5 + 0.5;
     // r7 terrain_environment: EDGE CRENELLATION — two finer octaves wobble
     // the terrace-threshold field so cap rims read embayed/eroded promontory
     // lines instead of vector-clean prism edges (critique: "flat-faced
     // prisms"). Small amplitude: the wobble bends the PLAN of the cliff
     // line without breaking the flat-cap read.
-    const cren = noi.noise(Math.cos(a) * row.f0 * 4.6 - 71, Math.sin(a) * row.f0 * 4.6 + 15) * 0.042
-      + noi.noise(Math.cos(a) * row.f0 * 9.7 + 133, Math.sin(a) * row.f0 * 9.7 - 55) * 0.018;
+    const cren = noi.noise(Math.cos(a) * row.f0 * 2.1 - 71, Math.sin(a) * row.f0 * 2.1 + 15) * 0.042
+      + noi.noise(Math.cos(a) * row.f0 * 4.8 + 133, Math.sin(a) * row.f0 * 4.8 - 55) * 0.018;
     const n = n0 + cren;
     // two terrace levels with tight smoothstep walls => visible flat tops,
     // over a broad pedestal so inter-table stretches never sag to bare base
     // (bare-base gaps exposed the fog-washed backslope behind as a white
     // 'lake' sheet)
-    const table1 = smoothstep(0.36, 0.45, n);
-    const table2 = smoothstep(0.62, 0.70, n);
-    const butte = smoothstep(0.80, 0.86, n2) * (1 - table2);
+    // Broad shoulders form substantial tablelands. The old narrow thresholds
+    // and high-frequency independent buttes extruded thin pink sheets on
+    // Skybridge. Buttes now rise only from an established lower table.
+    const table1 = smoothstep(0.32, 0.50, n);
+    const table2 = smoothstep(0.60, 0.77, n);
+    const butte = smoothstep(0.70, 0.86, n2) * (1 - table2) * table1;
     const pedestal = smoothstep(0.14, 0.52, n) * 0.17;
     // r7: second cap-relief octave — tops undulate a few meters instead of
     // extruding one dead-flat lid per table
     const capWobble = 1 + 0.05 * noi.noise(Math.cos(a) * 9 + 3, Math.sin(a) * 9 - 8)
       + 0.028 * noi.noise(Math.cos(a) * 23 - 17, Math.sin(a) * 23 + 41);
-    return row.base + (pedestal + table1 * 0.45 + table2 * 0.34 + butte * 0.30) * row.amp * capWobble;
+    return row.base + (pedestal + table1 * 0.45 + table2 * 0.34 + butte * 0.18) * row.amp * capWobble;
   },
   // one long low escarpment line with a couple of gentle high points —
   // reads as far uplands behind a town, distinctly lower than 'rolling'
@@ -257,15 +278,18 @@ const PROFILES: Record<HorizonStyle, HorizonProfile> = {
   },
 };
 
-function softenAlpineRing(
+function softenHorizonRing(
   heights: Float32Array,
   offset: number,
   count: number,
   row: HorizonProfileRow,
   amp: number,
+  style: 'alpine' | 'mesa' = 'alpine',
 ): void {
   const scratch = new Float32Array(count);
-  for (let pass = 0; pass < 8; pass++) {
+  // Mesa keeps broader, firmer cap transitions than glacial mountains, but
+  // a one-column terrace spike must not become an entire vertical sheet.
+  for (let pass = 0; pass < (style === 'mesa' ? 3 : 8); pass++) {
     for (let k = 0; k < count; k++) {
       const km = (k - 1 + count) % count, kp = (k + 1) % count;
       scratch[k] = heights[offset + km] * 0.24
@@ -273,7 +297,7 @@ function softenAlpineRing(
     }
     for (let k = 0; k < count; k++) heights[offset + k] = scratch[k];
   }
-  const maxStep = 1.35 + row.amp * amp * 0.035;
+  const maxStep = 1.35 + row.amp * amp * (style === 'mesa' ? 0.07 : 0.035);
   for (let pass = 0; pass < 3; pass++) {
     for (let k = 0; k < count; k++) {
       const km = (k - 1 + count) % count;
@@ -300,7 +324,7 @@ export function sampleHorizonSilhouette({
     const a = (k / count) * Math.PI * 2;
     heights[k] = profile(a, noi, row) * amp;
   }
-  if (style === 'alpine') softenAlpineRing(heights, 0, count, row, amp);
+  if (style === 'alpine' || style === 'mesa') softenHorizonRing(heights, 0, count, row, amp, style);
   return heights;
 }
 
@@ -442,23 +466,23 @@ function applyForestDetail(
   const crownB = sampleNoise(u, v, 20, 16, 733);
   const crownSlope = sampleNoise(u, v + 0.01, 48, 40, 631)
     - sampleNoise(u, v - 0.01, 48, 40, 631);
-  const crownLight = clamp(1 + (crownA * 0.025 + crownB * 0.05
-    + crownSlope * 0.05) * below, 0.6, 1.5);
+  const crownLight = clamp(1 + (crownA * 0.055 + crownB * 0.08
+    + crownSlope * 0.10) * below, 0.6, 1.5);
   r *= crownLight; g *= crownLight; b *= crownLight;
   const standA = sampleNoise(u, v, 9, 5.5, 217) * 0.5 + 0.5;
   const standB = sampleNoise(u, v, 3.4, 2.1, 305) * 0.5 + 0.5;
   const standC = sampleNoise(u, v, 1.3, 0.9, 419) * 0.5 + 0.5;
-  const warmWeight = smoothstep(0.56, 0.86, standB) * below;
+  const warmWeight = smoothstep(0.48, 0.78, standB) * below;
   r *= 1 + warmWeight * 0.16;
   g *= 1 + warmWeight * 0.10;
   b *= 1 - warmWeight * 0.10;
-  const darkWeight = smoothstep(0.60, 0.88, 1 - standA) * below;
+  const darkWeight = smoothstep(0.53, 0.82, 1 - standA) * below;
   r *= 1 - darkWeight * 0.22;
   g *= 1 - darkWeight * 0.12;
   b *= 1 - darkWeight * 0.08;
   const lift = (standC - 0.5) * 0.14 * below;
   r *= 1 + lift; g *= 1 + lift; b *= 1 + lift;
-  const clearing = smoothstep(0.62, 0.86,
+  const clearing = smoothstep(0.53, 0.82,
     sampleNoise(u, v, 8, 4.6, 841) * 0.5 + 0.5) * below;
   r *= 1 + clearing * 0.22;
   g *= 1 + clearing * 0.20;
@@ -532,6 +556,22 @@ function sampleHorizonTexturePixel(
   return color;
 }
 
+function sampleHorizonBiomeTone(
+  sampleNoise: HorizonNoiseSampler,
+  options: HorizonTextureOptions,
+  altitude: number,
+): HorizonTextureColor {
+  let r = 0, g = 0, b = 0;
+  // Altitude is suitable for biome tint, not surface coordinates. Averaging
+  // sixteen angular samples preserves the existing forest/snow hue policy
+  // without stretching a detailed atlas along a flat crest or low shore.
+  for (let sample = 0; sample < 16; sample++) {
+    const color = sampleHorizonTexturePixel(sampleNoise, options, (sample + 0.5) / 16, altitude);
+    r += color.r; g += color.g; b += color.b;
+  }
+  return { r: r / 16, g: g / 16, b: b / 16 };
+}
+
 function* makeHorizonTextureSteps(
   noi: SimplexNoise,
   options: HorizonTextureOptions,
@@ -548,10 +588,15 @@ function* makeHorizonTextureSteps(
   const img = ctx.createImageData(su, sv);
   const d = img.data;
   const sampleNoise = createHorizonNoiseSampler(noi);
+  // Alpine detail is world-projected in the shader. Its same-sized base
+  // texture now holds only biome tone, with no artificial altitude ledges.
+  // This takes 3,072 pixel-recipe samples instead of 98,304 on desktop.
+  const toneOptions = options.coolRock ? { ...options, coolRock: false, banding: 0 } : null;
   for (let y = 0; y < sv; y++) {
     const v = 1 - y / (sv - 1);
+    const tone = toneOptions ? sampleHorizonBiomeTone(sampleNoise, toneOptions, v) : null;
     for (let x = 0; x < su; x++) {
-      const color = sampleHorizonTexturePixel(sampleNoise, options, x / su, v);
+      const color = tone ?? sampleHorizonTexturePixel(sampleNoise, options, x / su, v);
       const offset = (y * su + x) * 4;
       d[offset] = clamp(color.r * 159, 0, 255);
       d[offset + 1] = clamp(color.g * 159, 0, 255);
@@ -715,58 +760,62 @@ const HORIZON_ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
   default: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
     { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
-    { r: 760, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
-    { r: 990, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
-    // outermost row is a REAL fourth range, not a low taper: a low flat lip
-    // here projected as a dead-straight 'shoreline' and its fog-saturated
-    // backslope read as a blown-out white lake wherever the nearer rows
-    // dipped (loudest on the mesa style's low inter-table stretches)
-    { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
+    { r: 675, base: 22, amp: 42, f0: 4.4, f1: 8.4, aer: 0.14 },
+    { r: 865, base: 48, amp: 142, f0: 3.4, f1: 6.8, aer: 0.28 },
+    { r: 1100, base: 28, amp: 72, f0: 3.8, f1: 7.6, aer: 0.42 },
+    { r: 1470, base: 78, amp: 182, f0: 2.6, f1: 5.4, aer: 0.66 },
   ],
   rolling: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
     { r: 470, base: 22, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 600, base: 32, amp: 38, f0: 3.0, f1: 6.4, aer: 0.12 },
-    { r: 800, base: 45, amp: 72, f0: 2.0, f1: 4.4, aer: 0.32 },
-    { r: 1050, base: 60, amp: 112, f0: 1.4, f1: 3.1, aer: 0.54 },
-    { r: 1330, base: 72, amp: 120, f0: 1.0, f1: 2.2, aer: 0.72 },
+    { r: 660, base: 20, amp: 44, f0: 4.8, f1: 9.6, aer: 0.14 },
+    { r: 850, base: 48, amp: 112, f0: 3.8, f1: 7.8, aer: 0.32 },
+    { r: 1080, base: 28, amp: 70, f0: 4.1, f1: 8.4, aer: 0.48 },
+    // Retain the outer sea-apron radius; only the inland summit profile
+    // changes. The continuous annulus still covers every square-map edge.
+    { r: 1330, base: 78, amp: 160, f0: 2.8, f1: 5.8, aer: 0.72 },
   ],
   escarpment: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
     { r: 470, base: 24, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 600, base: 36, amp: 44, f0: 2.8, f1: 6.0, aer: 0.14 },
-    { r: 800, base: 50, amp: 82, f0: 2.0, f1: 4.4, aer: 0.34 },
-    { r: 1050, base: 66, amp: 116, f0: 1.4, f1: 3.1, aer: 0.54 },
-    { r: 1330, base: 76, amp: 106, f0: 1.0, f1: 2.2, aer: 0.70 },
+    { r: 660, base: 18, amp: 38, f0: 4.3, f1: 8.6, aer: 0.14 },
+    { r: 870, base: 38, amp: 90, f0: 3.5, f1: 7.2, aer: 0.34 },
+    { r: 1110, base: 24, amp: 58, f0: 3.9, f1: 8.0, aer: 0.48 },
+    { r: 1420, base: 66, amp: 136, f0: 2.6, f1: 5.4, aer: 0.70 },
   ],
-  // terrain_environment r3: alpine gets its OWN row table with two extra
-  // intermediate ranges. On the shared 4-ridge table the radial span
-  // between rows reached 230-250 m — each wall was a single quad strip of
-  // ~12 x 150 m triangles whose baked per-vertex shading interpolated into
-  // exactly the "raw planar facets / vertical brush-smear" the critique
-  // called out. Tighter spacing (plus the per-fragment relight below)
-  // turns the wall into overlapping layered ridge lines.
-  // r4 terrain_environment: two MORE intermediate ranges (650/940). The
-  // winter critique's "faceted low-poly triangle mountains" were the huge
-  // radial wall quads between adjacent rows — with only ~5 visible rows a
-  // single triangle spanned 130-200 m and its vertex-color/normal
-  // interpolation read as flat slate facets. Tighter row spacing halves
-  // the facet size and adds two extra overlapping ridge lines.
+  // Same six anchors/ten uploaded rows as the former default, but mesas are
+  // set back beyond low talus foothills. Their attached buttes can retain a
+  // stepped silhouette without towering directly over the playable rim.
+  mesa: [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 612, base: 3, amp: 8, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 780, base: 14, amp: 32, f0: 3.9, f1: 7.7, aer: 0.14 },
+    { r: 1140, base: 45, amp: 130, f0: 2.9, f1: 5.7, aer: 0.28 },
+    { r: 1430, base: 22, amp: 60, f0: 3.5, f1: 7.1, aer: 0.42 },
+    { r: 1810, base: 65, amp: 180, f0: 2.4, f1: 4.9, aer: 0.66 },
+  ],
+  // The same seven non-skirt rows form foothills, a near crest, a saddle,
+  // middle crest, another saddle, distant summits and their outer shoulder.
+  // Raising every successive row beside the map rim formed one enormous
+  // ramp; actual intervening valleys let separate ranges overlap in depth.
   alpine: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.10 },
-    { r: 650, base: 52, amp: 64, f0: 2.8, f1: 5.7, aer: 0.14 },
-    { r: 720, base: 56, amp: 76, f0: 2.6, f1: 5.2, aer: 0.18 },
-    { r: 870, base: 66, amp: 102, f0: 1.9, f1: 4.0, aer: 0.30 },
-    { r: 940, base: 74, amp: 114, f0: 1.7, f1: 3.6, aer: 0.36 },
-    { r: 1040, base: 82, amp: 128, f0: 1.5, f1: 3.3, aer: 0.44 },
-    { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
+    { r: 612, base: 2, amp: 10, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 740, base: 12, amp: 32, f0: 4.4, f1: 8.6, aer: 0.12 },
+    { r: 980, base: 30, amp: 190, f0: 3.6, f1: 7.2, aer: 0.20 },
+    { r: 1160, base: 14, amp: 42, f0: 3.8, f1: 7.6, aer: 0.28 },
+    { r: 1400, base: 55, amp: 260, f0: 3.0, f1: 6.2, aer: 0.40 },
+    { r: 1590, base: 22, amp: 58, f0: 3.3, f1: 6.8, aer: 0.46 },
+    { r: 2000, base: 55, amp: 250, f0: 2.5, f1: 5.4, aer: 0.60 },
+    { r: 2290, base: 48, amp: 110, f0: 2.8, f1: 6.0, aer: 0.70 },
   ],
 };
 
-const HORIZON_SEGMENTS = 520;
+// Spend the existing mesh budget on radial relief rather than hundreds of
+// columns spanning six broad planar strips. One final seam column is emitted
+// at upload: 288 x 10 vertices / 5,166 triangles for rolling/mesa uplands,
+// below the previous 3,120 vertices / 5,200 triangles.
+const HORIZON_SEGMENTS = 287;
 const HORIZON_RIM_HALF_WIDTH = 512;
 
 interface HorizonRingGeometry {
@@ -801,10 +850,39 @@ interface HorizonColorContext {
   noise: SimplexNoise;
   gradients: HorizonGradients;
   sun: readonly [number, number, number];
+  seaOpening?: HorizonSeaOpening;
 }
 
-function horizonRowMargins(rowCount: number): readonly number[] {
-  if (rowCount === 9) return [-34, 22, 95, 150, 200, 340, 430, 540, 800];
+function seaOpeningWeight(angle: number, opening: HorizonSeaOpening | undefined): number {
+  if (!opening) return 0;
+  const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
+  const distance = Math.abs(Math.atan2(Math.sin(angle - direction), Math.cos(angle - direction)));
+  const halfWidth = clamp(opening.widthDeg, 10, 175) * Math.PI / 360;
+  return 1 - smoothstep(halfWidth * 0.58, halfWidth, distance);
+}
+
+function openHorizonToSea(ring: HorizonRingGeometry, opening: HorizonSeaOpening | undefined): void {
+  if (!opening) return;
+  // The existing annulus becomes the distant sea floor inside this aperture,
+  // keeping the square terrain edge covered without another water mesh/pass.
+  // Smooth shoulders retain headlands at either side instead of an enclosing
+  // green wall across the bay. The floor sits just below the authored sea.
+  for (let index = 0; index < ring.heights.length; index++) {
+    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
+    const weight = seaOpeningWeight(angle, opening);
+    const height = ring.heights[index] + (opening.level - 0.04 - ring.heights[index]) * weight;
+    ring.heights[index] = height;
+    ring.positions[index * 3 + 1] = height;
+    const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
+    const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
+    ring.positions[index * 3] *= seaReach;
+    ring.positions[index * 3 + 2] *= seaReach;
+  }
+}
+
+function horizonRowMargins(rowCount: number, style: HorizonStyle): readonly number[] {
+  if (rowCount === 9) return [-34, 100, 190, 280, 440, 560, 720, 940, 1200];
+  if (style === 'mesa') return [-34, 100, 190, 340, 600, 900];
   if (rowCount === 7) return [-34, 22, 95, 200, 340, 540, 800];
   return [-34, 22, 95, 280, 520, 800];
 }
@@ -829,7 +907,7 @@ function buildInitialHorizonGeometry(
 ): HorizonRingGeometry {
   const positions = new Float32Array(HORIZON_SEGMENTS * rows.length * 3);
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
-  const margins = horizonRowMargins(rows.length);
+  const margins = horizonRowMargins(rows.length, style);
   let maxHeight = 1;
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
     const row = rows[rowIndex];
@@ -838,11 +916,32 @@ function buildInitialHorizonGeometry(
       const rim = HORIZON_RIM_HALF_WIDTH
         / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
       const radius = Math.max(row.r, rim + (margins[rowIndex] ?? 300));
-      const jitteredRadius = radius * (1 + 0.03 * noise.noise(
-        Math.cos(angle) * 4 + rowIndex * 13,
-        Math.sin(angle) * 4 - rowIndex * 7,
-      ));
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const previous = (rowIndex - 1) * HORIZON_SEGMENTS + segment;
+      const previousRadius = rowIndex > 0
+        ? positions[previous * 3] * cos + positions[previous * 3 + 2] * sin : 0;
+      // Authored ranges may approach at square-map corners. Preserve a
+      // positive annular span before subdividing, even for a new map seed.
+      // Keep the buried seam exact. Farther alpine ridges meander deeply in
+      // plan, using the existing jitter sample at a broader wavelength; a
+      // crest must not remain a nearly circular contour behind its neighbor.
+      const setback = (style === 'alpine' || style === 'mesa') && rowIndex > 0;
+      const radialNoise = noise.noise(
+        cos * (setback ? 1.7 : 4) + rowIndex * (setback ? 2.31 : 13),
+        sin * (setback ? 1.7 : 4) - rowIndex * (setback ? 1.47 : 7),
+      );
+      const radialVariation = setback ? (row.skirt ? 18 : rowIndex === 2 ? 60 : 100) : radius * 0.03;
       const height = sampleRingRowHeight(row, angle, noise, profile) * amp;
+      // Independent range meanders must not squeeze a tall outer massif
+      // into a near-vertical ramp. Bound this approach by its actual rise,
+      // not only by a positive minimum radius gap (Fjord's EN curtain).
+      const minimumSpan = style === 'alpine' && rowIndex === rows.length - 2
+        ? Math.max(200, (height - heights[previous]) / 0.60)
+        : style === 'mesa' && !row.skirt
+          ? Math.max(96, (height - heights[previous]) / 0.80)
+        : setback ? 64 : 12;
+      const jitteredRadius = Math.max(previousRadius + minimumSpan,
+        setback ? radius + radialVariation * radialNoise : radius * (1 + 0.03 * radialNoise));
       const index = rowIndex * HORIZON_SEGMENTS + segment;
       heights[index] = height;
       if (!row.skirt && height > maxHeight) maxHeight = height;
@@ -850,9 +949,9 @@ function buildInitialHorizonGeometry(
       positions[index * 3 + 1] = height;
       positions[index * 3 + 2] = Math.sin(angle) * jitteredRadius;
     }
-    if (style === 'alpine' && !row.skirt) {
+    if ((style === 'alpine' || style === 'mesa') && !row.skirt) {
       const offset = rowIndex * HORIZON_SEGMENTS;
-      softenAlpineRing(heights, offset, HORIZON_SEGMENTS, row, amp);
+      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp, style);
       for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
         positions[(offset + segment) * 3 + 1] = heights[offset + segment];
       }
@@ -893,6 +992,23 @@ function interpolatedHorizonRow(a: HorizonRingRow, b: HorizonRingRow, fraction: 
   };
 }
 
+function horizonAnchorSlope(
+  source: HorizonRingGeometry, row: number, segment: number, cos: number, sin: number,
+): number {
+  if (row === 0 || row === source.rows.length - 1) return 0;
+  const index = row * HORIZON_SEGMENTS + segment;
+  const before = index - HORIZON_SEGMENTS, after = index + HORIZON_SEGMENTS;
+  const radius = source.positions[index * 3] * cos + source.positions[index * 3 + 2] * sin;
+  const beforeRadius = source.positions[before * 3] * cos + source.positions[before * 3 + 2] * sin;
+  const afterRadius = source.positions[after * 3] * cos + source.positions[after * 3 + 2] * sin;
+  const left = (source.heights[index] - source.heights[before]) / (radius - beforeRadius);
+  const right = (source.heights[after] - source.heights[index]) / (afterRadius - radius);
+  // A monotone cubic rounds crests/saddles without overshooting them. Unlike
+  // a smoothstep on every span, matching harmonic slopes also joins ordinary
+  // uphill anchors continuously instead of leaving a shelf at every row.
+  return left * right > 0 ? 2 * left * right / (left + right) : 0;
+}
+
 function appendInterpolatedRingRow(
   positions: number[],
   heights: number[],
@@ -900,55 +1016,72 @@ function appendInterpolatedRingRow(
   noise: SimplexNoise,
   rowIndex: number,
   subdivision: number,
+  divisions: number,
+  style: HorizonStyle,
 ): void {
-  const fraction = subdivision / 3;
-  const frequency = 6.5 + subdivision * 2.3;
+  const fraction = subdivision / divisions;
+  const shoulder = Math.sin(fraction * Math.PI);
   for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
     const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
     const inner = rowIndex * HORIZON_SEGMENTS + segment;
     const outer = (rowIndex + 1) * HORIZON_SEGMENTS + segment;
     const innerHeight = source.heights[inner];
     const outerHeight = source.heights[outer];
-    const crag = noise.noise(
-      Math.cos(angle) * frequency + rowIndex * 23.7 + subdivision * 17.1,
-      Math.sin(angle) * frequency - rowIndex * 11.3 + subdivision * 7.7,
-    ) * 0.72 + noise.noise(
-      Math.cos(angle) * 14.0 + subdivision * 41.0 + rowIndex * 3.0,
-      Math.sin(angle) * 14.0 - subdivision * 23.0,
-    ) * 0.28;
-    const displacement = crag * (Math.abs(outerHeight - innerHeight) * 0.16 + 7.0);
-    const radiusJitter = 1 + 0.011 * noise.noise(
-      Math.cos(angle) * 9.0 - subdivision * 13.0 + rowIndex * 5.0,
-      Math.sin(angle) * 9.0 + subdivision * 29.0,
-    );
-    const height = innerHeight + (outerHeight - innerHeight) * fraction + displacement;
-    positions.push(
-      (source.positions[inner * 3]
-        + (source.positions[outer * 3] - source.positions[inner * 3]) * fraction) * radiusJitter,
-      height,
-      (source.positions[inner * 3 + 2]
-        + (source.positions[outer * 3 + 2] - source.positions[inner * 3 + 2]) * fraction) * radiusJitter,
-    );
+    const innerRadius = source.positions[inner * 3] * cos + source.positions[inner * 3 + 2] * sin;
+    const outerRadius = source.positions[outer * 3] * cos + source.positions[outer * 3 + 2] * sin;
+    const radialSpan = outerRadius - innerRadius;
+    // One coherent bend per authored span, not independent absolute-radius
+    // jitter per inserted row. Its derivative remains at least 1 - 0.08*pi
+    // of the span: denser rows cannot fold back or become near-vertical ribs.
+    const bend = noise.noise(cos * 9 + rowIndex * 5, sin * 9);
+    const radius = innerRadius + radialSpan * fraction
+      + bend * Math.min(8, radialSpan * 0.08) * shoulder;
+    const x = cos * radius, z = sin * radius;
+    // Fixed world-space frequencies stay continuous across subdivisions.
+    // Span-bounded displacement adds shoulders without inventing tall ledges
+    // in narrow gaps. The same three noise samples and mesh budget are used.
+    const crag = noise.noise(x * 0.0045 + 17.1, z * 0.0045 - 11.3) * 0.72
+      + noise.noise(x * 0.012 - 41, z * 0.012 + 23) * 0.28;
+    const displacement = crag * Math.min(radialSpan * 0.06,
+      Math.abs(outerHeight - innerHeight) * 0.14
+        + (style === 'alpine' ? 7 : style === 'mesa' ? 3 : 4)) * shoulder;
+    const t = (radius - innerRadius) / radialSpan;
+    let height = innerHeight + (outerHeight - innerHeight) * t;
+    if (style === 'alpine') {
+      const t2 = t * t, t3 = t2 * t;
+      const left = horizonAnchorSlope(source, rowIndex, segment, cos, sin);
+      const right = horizonAnchorSlope(source, rowIndex + 1, segment, cos, sin);
+      height = innerHeight + (outerHeight - innerHeight) * (3 * t2 - 2 * t3)
+        + radialSpan * (left * (t3 - 2 * t2 + t) + right * (t3 - t2));
+    }
+    height += displacement;
+    positions.push(x, height, z);
     heights.push(height);
   }
 }
 
-function subdivideAlpineGeometry(
+function subdivideHorizonGeometry(
   source: HorizonRingGeometry,
   style: HorizonStyle,
   noise: SimplexNoise,
 ): HorizonRingGeometry {
-  if (style !== 'alpine') return source;
   const rows: HorizonRingRow[] = [];
   const positions: number[] = [];
   const heights: number[] = [];
   for (let rowIndex = 0; rowIndex < source.rows.length; rowIndex++) {
     appendSourceRingRow(rows, positions, heights, source, rowIndex);
     const next = source.rows[rowIndex + 1];
-    if (!next || source.rows[rowIndex].skirt || next.skirt) continue;
-    for (let subdivision = 1; subdivision <= 2; subdivision++) {
-      rows.push(interpolatedHorizonRow(source.rows[rowIndex], next, subdivision / 3));
-      appendInterpolatedRingRow(positions, heights, source, noise, rowIndex, subdivision);
+    if (!next || next.skirt || (source.rows[rowIndex].skirt && style !== 'alpine')) continue;
+    // Move two subdivisions from the distant outer shoulder into the near
+    // foothill transition. The alpine mesh still uploads exactly 33 rows.
+    const divisions = style === 'alpine'
+      ? (rowIndex === 1 || rowIndex === source.rows.length - 2 ? 3 : 5)
+      : rowIndex === 2 ? 3 : 2;
+    for (let subdivision = 1; subdivision < divisions; subdivision++) {
+      rows.push(interpolatedHorizonRow(source.rows[rowIndex], next, subdivision / divisions));
+      appendInterpolatedRingRow(positions, heights, source, noise, rowIndex, subdivision,
+        divisions, style);
     }
   }
   return {
@@ -959,11 +1092,107 @@ function subdivideAlpineGeometry(
   };
 }
 
-function buildHorizonUvs(heights: Float32Array, maxHeight: number): Float32Array {
+function reshapeSkybridgeTableCaps(ring: HorizonRingGeometry, amp: number): void {
+  // Skybridge's tall mesas need a surface at the summit, not just one crest
+  // row. Reuse the final approach row as the front cap edge in each range.
+  // Only separated high sectors reach a shared rock stratum; low passes and
+  // the existing meandering edges keep these attached landforms irregular.
+  const { positions: p, heights: h } = ring;
+  const n = HORIZON_SEGMENTS;
+  for (let range = 0; range < 2; range++) {
+    const lowRow = range === 0 ? 2 : 7;
+    const crestRow = range === 0 ? 5 : 9;
+    const frontRow = crestRow - 1;
+    const crest = ring.rows[crestRow];
+    const capLevel = (crest.base + crest.amp * 0.64) * amp;
+    const transition = crest.amp * amp * 0.14;
+    const minimumDepth = range === 0 ? 80 : 90;
+    for (let column = 0; column < n; column++) {
+      const low = lowRow * n + column, front = frontRow * n + column;
+      const top = crestRow * n + column;
+      const lowRadius = Math.hypot(p[low * 3], p[low * 3 + 2]);
+      const oldFrontRadius = Math.hypot(p[front * 3], p[front * 3 + 2]);
+      const topRadius = Math.hypot(p[top * 3], p[top * 3 + 2]);
+      const oldTopHeight = h[top];
+      const weight = smoothstep(capLevel - transition, capLevel, oldTopHeight);
+      // Leave room for a real cap and a supported approach. At a tight
+      // meander the cap tapers into its shoulder instead of forcing a sharp
+      // notch into the otherwise coherent angular crest or adding radius.
+      const lastFrontRadius = topRadius - minimumDepth;
+      const topHeight = Math.min(oldTopHeight, capLevel);
+      const frontRadius = Math.min(lastFrontRadius,
+        Math.max(oldFrontRadius, lowRadius + (topHeight - h[low]) / 1.20));
+      const fraction = (frontRadius - lowRadius) / (topRadius - lowRadius);
+      const linearFront = h[low] + (topHeight - h[low]) * fraction;
+      const frontHeight = Math.min(linearFront + (topHeight - linearFront) * weight,
+        h[low] + (frontRadius - lowRadius) * 1.20);
+
+      if (range === 0) {
+        // Preserve small existing weathering on the approach/back slope,
+        // while distributing the rise across the whole foothill shoulder.
+        const approach = 3 * n + column, back = 6 * n + column, valley = 7 * n + column;
+        const approachRadius = Math.hypot(p[approach * 3], p[approach * 3 + 2]);
+        const backRadius = Math.hypot(p[back * 3], p[back * 3 + 2]);
+        const valleyRadius = Math.hypot(p[valley * 3], p[valley * 3 + 2]);
+        const oldApproach = h[low] + (oldTopHeight - h[low])
+          * (approachRadius - lowRadius) / (topRadius - lowRadius);
+        const approachHeight = h[low] + (frontHeight - h[low])
+          * (approachRadius - lowRadius) / (frontRadius - lowRadius)
+          + clamp(h[approach] - oldApproach, -3, 3);
+        h[approach] = clamp(approachHeight,
+          frontHeight - (frontRadius - approachRadius) * 1.25,
+          h[low] + (approachRadius - lowRadius) * 1.25);
+        p[approach * 3 + 1] = h[approach];
+        const backFraction = (backRadius - topRadius) / (valleyRadius - topRadius);
+        const oldBack = oldTopHeight + (h[valley] - oldTopHeight) * backFraction;
+        h[back] = topHeight + (h[valley] - topHeight) * backFraction
+          + clamp(h[back] - oldBack, -3, 3);
+        p[back * 3 + 1] = h[back];
+      }
+      const radiusScale = frontRadius / oldFrontRadius;
+      p[front * 3] *= radiusScale;
+      p[front * 3 + 2] *= radiusScale;
+      h[front] = frontHeight;
+      p[front * 3 + 1] = h[front];
+      h[top] = topHeight;
+      p[top * 3 + 1] = h[top];
+    }
+  }
+}
+
+/** Actual geometry without texture baking, for full-angle headless audits. */
+export function sampleHorizonGeometry(
+  cfg: HorizonMapConfig | null | undefined, seed: number,
+): HorizonRingGeometry {
+  const horizon = cfg?.horizon ?? {};
+  const mapId = cfg?.id ?? 'verdant';
+  const style = resolveHorizonStyle(horizon, mapId);
+  const noise = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
+  const source = buildInitialHorizonGeometry(
+    HORIZON_ROWS_BY_STYLE[style] || HORIZON_ROWS_BY_STYLE.default,
+    style, PROFILES[style], noise, horizon.amp ?? 1,
+  );
+  const ring = subdivideHorizonGeometry(source, style, noise);
+  if (mapId === 'skybridge' && style === 'mesa') reshapeSkybridgeTableCaps(ring, horizon.amp ?? 1);
+  openHorizonToSea(ring, horizon.seaOpening);
+  return ring;
+}
+
+function buildHorizonUvs(
+  heights: Float32Array,
+  maxHeight: number,
+  seaOpening: HorizonSeaOpening | undefined,
+): Float32Array {
   const uv = new Float32Array(heights.length * 2);
   for (let index = 0; index < heights.length; index++) {
     uv[index * 2] = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * 10;
-    uv[index * 2 + 1] = clamp(heights[index] / maxHeight, 0, 1);
+    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
+    const marine = seaOpening ? seaOpeningWeight(angle, seaOpening)
+      * (1 - smoothstep(seaOpening.level + 0.04, seaOpening.level + 1.0, heights[index])) : 0;
+    // The original UV attribute also carries the marine mask. Land altitude
+    // stays nonnegative; negative V denotes only the near-flat sea apron.
+    // No extra vertex attribute, geometry bytes, or draw call is needed.
+    uv[index * 2 + 1] = marine > 0 ? -marine : clamp(heights[index] / maxHeight, 0, 1);
   }
   return uv;
 }
@@ -992,30 +1221,29 @@ function smoothHorizonHeights(
 function rawHorizonGradients(
   rows: readonly HorizonRingRow[],
   heights: Float32Array,
+  positions: Float32Array,
 ): HorizonGradients {
   const count = heights.length;
   const slope = new Float32Array(count);
   const tangent = new Float32Array(count);
   const radial = new Float32Array(count);
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    const row = rows[rowIndex];
     for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
       const index = rowIndex * HORIZON_SEGMENTS + segment;
       const before = rowIndex * HORIZON_SEGMENTS
         + (segment - 1 + HORIZON_SEGMENTS) % HORIZON_SEGMENTS;
       const after = rowIndex * HORIZON_SEGMENTS + (segment + 1) % HORIZON_SEGMENTS;
       const tangentDelta = (heights[after] - heights[before])
-        / (2 * Math.PI * row.r / HORIZON_SEGMENTS * 2);
-      const innerHeight = rowIndex > 0
-        ? heights[(rowIndex - 1) * HORIZON_SEGMENTS + segment] : heights[index];
-      const outerHeight = rowIndex < rows.length - 1
-        ? heights[(rowIndex + 1) * HORIZON_SEGMENTS + segment] : heights[index];
-      const innerRadius = rowIndex > 0 ? rows[rowIndex - 1].r : row.r;
-      const outerRadius = rowIndex < rows.length - 1 ? rows[rowIndex + 1].r : row.r;
-      const radialDelta = (outerHeight - innerHeight) / (outerRadius - innerRadius || 1);
-      slope[index] = clamp(Math.hypot(tangentDelta, radialDelta * 2.2) * 1.6, 0, 1);
+        / Math.max(1, Math.hypot(positions[after * 3] - positions[before * 3],
+          positions[after * 3 + 2] - positions[before * 3 + 2]));
+      const inner = rowIndex > 0 ? index - HORIZON_SEGMENTS : index;
+      const outer = rowIndex < rows.length - 1 ? index + HORIZON_SEGMENTS : index;
+      const innerRadius = Math.hypot(positions[inner * 3], positions[inner * 3 + 2]);
+      const outerRadius = Math.hypot(positions[outer * 3], positions[outer * 3 + 2]);
+      const radialDelta = (heights[outer] - heights[inner]) / (outerRadius - innerRadius || 1);
+      slope[index] = clamp(Math.hypot(tangentDelta, radialDelta) * 1.6, 0, 1);
       tangent[index] = tangentDelta;
-      radial[index] = radialDelta * 2.2;
+      radial[index] = radialDelta;
     }
   }
   return { slope, tangent, radial };
@@ -1049,8 +1277,9 @@ function smoothHorizonGradients(
 function buildHorizonGradients(
   rows: readonly HorizonRingRow[],
   heights: Float32Array,
+  positions: Float32Array,
 ): HorizonGradients {
-  const gradients = rawHorizonGradients(rows, smoothHorizonHeights(heights, rows.length, 3));
+  const gradients = rawHorizonGradients(rows, smoothHorizonHeights(heights, rows.length, 3), positions);
   smoothHorizonGradients(gradients, rows.length, 5);
   return gradients;
 }
@@ -1159,6 +1388,28 @@ function buildHorizonColors(context: HorizonColorContext): Float32Array {
       applyHorizonSurfaceBands(color, scratch, context, row, angle, altitude, slope, rowIndex);
       applyHorizonDirectionalLight(color, scratch, context, row, angle, index);
       applyHorizonToneAndHaze(color, context, row, angle, altitude, rowIndex);
+      if (context.seaOpening) {
+        const seaWeight = seaOpeningWeight(angle, context.seaOpening);
+        if (seaWeight > 0) {
+          // Distant water reflects a mostly neutral low sky, warm toward the
+          // sun and cool away. Do not compensate it for the forest texture:
+          // the shader now bypasses that texture for the sea. The previous
+          // channel compensation produced a saturated cyan annular stripe.
+          const [sunX, , sunZ] = context.sun;
+          const sunFacing = Math.max(0, (Math.cos(angle) * sunX + Math.sin(angle) * sunZ)
+            / Math.max(0.001, Math.hypot(sunX, sunZ)));
+          const warm = Math.pow(sunFacing, 5);
+          const skyLuminance = context.fog.r * 0.2126 + context.fog.g * 0.7152
+            + context.fog.b * 0.0722;
+          const reflection = 0.55 + row.aer * 0.20;
+          scratch.setHex(context.seaOpening.colorHex ?? 0x8b9795);
+          scratch.r += (skyLuminance * (0.92 + warm * 0.16) - scratch.r) * reflection;
+          scratch.g += (skyLuminance * (0.98 + warm * 0.04) - scratch.g) * reflection;
+          scratch.b += (skyLuminance * (1.04 - warm * 0.14) - scratch.b) * reflection;
+          scratch.multiplyScalar(1 / (context.style === 'alpine' ? 1.26 : 1.61));
+          color.lerp(scratch, seaWeight);
+        }
+      }
       colors[index * 3] = color.r;
       colors[index * 3 + 1] = color.g;
       colors[index * 3 + 2] = color.b;
@@ -1182,13 +1433,13 @@ function applyHorizonDebugColors(colors: Float32Array, rowCount: number): void {
 
 function buildHorizonIndices(rowCount: number): number[] {
   const indices: number[] = [];
+  const stride = HORIZON_SEGMENTS + 1;
   for (let rowIndex = 0; rowIndex < rowCount - 1; rowIndex++) {
     for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
-      const next = (segment + 1) % HORIZON_SEGMENTS;
-      const inner = rowIndex * HORIZON_SEGMENTS + segment;
-      const innerNext = rowIndex * HORIZON_SEGMENTS + next;
-      const outer = (rowIndex + 1) * HORIZON_SEGMENTS + segment;
-      const outerNext = (rowIndex + 1) * HORIZON_SEGMENTS + next;
+      const inner = rowIndex * stride + segment;
+      const innerNext = inner + 1;
+      const outer = inner + stride;
+      const outerNext = outer + 1;
       indices.push(inner, outer, innerNext, innerNext, outer, outerNext);
     }
   }
@@ -1197,36 +1448,53 @@ function buildHorizonIndices(rowCount: number): number[] {
 
 function applyAnalyticHorizonNormals(
   geometry: THREE.BufferGeometry,
-  style: HorizonStyle,
   rowCount: number,
   gradients: HorizonGradients,
 ): void {
-  if (style !== 'alpine') return;
-  const normals = geometry.attributes.normal;
+  const normals = new THREE.BufferAttribute(
+    new Float32Array((HORIZON_SEGMENTS + 1) * rowCount * 3), 3);
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
-      const index = rowIndex * HORIZON_SEGMENTS + segment;
-      const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
+    for (let segment = 0; segment <= HORIZON_SEGMENTS; segment++) {
+      const wrapped = segment % HORIZON_SEGMENTS;
+      const index = rowIndex * HORIZON_SEGMENTS + wrapped;
+      const angle = (wrapped / HORIZON_SEGMENTS) * Math.PI * 2;
       const [nx, nz, inverseLength] = horizonNormal(gradients, index, angle);
-      normals.setXYZ(index, nx * inverseLength, inverseLength, nz * inverseLength);
+      normals.setXYZ(rowIndex * (HORIZON_SEGMENTS + 1) + segment,
+        nx * inverseLength, inverseLength, nz * inverseLength);
     }
   }
+  geometry.setAttribute('normal', normals);
+}
+
+function closeHorizonAttribute(data: Float32Array, itemSize: number, rows: number): Float32Array {
+  const stride = HORIZON_SEGMENTS + 1;
+  const closed = new Float32Array(stride * rows * itemSize);
+  for (let row = 0; row < rows; row++) {
+    const source = row * HORIZON_SEGMENTS * itemSize;
+    const target = row * stride * itemSize;
+    closed.set(data.subarray(source, source + HORIZON_SEGMENTS * itemSize), target);
+    closed.set(data.subarray(source, source + itemSize), target + HORIZON_SEGMENTS * itemSize);
+  }
+  return closed;
 }
 
 function buildHorizonGeometry(
   ring: HorizonRingGeometry,
   colors: Float32Array,
   uv: Float32Array,
-  style: HorizonStyle,
   gradients: HorizonGradients,
 ): THREE.BufferGeometry {
+  const rowCount = ring.rows.length;
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(ring.positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  geometry.setIndex(buildHorizonIndices(ring.rows.length));
-  geometry.computeVertexNormals();
-  applyAnalyticHorizonNormals(geometry, style, ring.rows.length, gradients);
+  geometry.setAttribute('position', new THREE.BufferAttribute(closeHorizonAttribute(ring.positions, 3, rowCount), 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(closeHorizonAttribute(colors, 3, rowCount), 3));
+  const closedUv = closeHorizonAttribute(uv, 2, rowCount);
+  for (let row = 0; row < rowCount; row++) {
+    closedUv[(row * (HORIZON_SEGMENTS + 1) + HORIZON_SEGMENTS) * 2] = 10;
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(closedUv, 2));
+  geometry.setIndex(buildHorizonIndices(rowCount));
+  applyAnalyticHorizonNormals(geometry, rowCount, gradients);
   return geometry;
 }
 
@@ -1241,11 +1509,51 @@ interface HorizonMaterialContext {
   mapId: string;
   sun: readonly [number, number, number];
   maxHeight: number;
+  retainedTextures: THREE.Texture[];
 }
+
+// One biome-tint lookup plus the same nine triplanar samples already used by
+// alpine slope shading. The former oblique overlay (two fetches) and partial
+// wall repair (seven more on steep faces) are unnecessary: surface detail
+// never samples the rank-deficient angle/altitude coordinates in this path.
+const ALPINE_HORIZON_MAP_FRAGMENT = /* glsl */`#include <map_fragment>
+float horizonMarine = clamp(-vMapUv.y, 0.0, 1.0);
+float horizonWaterVariation = 0.0;
+{
+  vec3 hn = normalize(vHNrm);
+  vec3 awT = abs(hn);
+  awT /= (awT.x + awT.y + awT.z);
+  #define HTRIP(s, o) (texture2D(uDetail2, vHPos.xz * (s) + (o)).r * awT.y \
+    + texture2D(uDetail2, vHPos.zy * (s) + (o) + vec2(0.41, 0.07)).r * awT.x \
+    + texture2D(uDetail2, vHPos.xy * (s) + (o) + vec2(0.13, 0.61)).r * awT.z)
+  float nB = HTRIP(0.0016, vec2(0.0)) - 0.5;
+  float nC = HTRIP(0.0071, vec2(0.29, 0.53)) - 0.5;
+  float nD = HTRIP(0.0230, vec2(0.71, 0.19)) - 0.5;
+  #undef HTRIP
+  float farAtt = 1.0 - smoothstep(700.0, 1400.0, length(vHPos.xz)) * 0.62;
+  // Broad stands, crown-sized patches and fine rock share the existing
+  // isotropic world fields. Even a horizontal saddle retains radial detail.
+  diffuseColor.rgb *= 1.0 + (nB * 0.22 + nC * 0.40 + nD * 0.32)
+    * (0.44 + farAtt * 0.56);
+  horizonWaterVariation = nC * 0.008 + nB * 0.015;
+  float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
+  float hT = clamp(vHPos.y / max(uMaxH, 1.0), 0.0, 1.0);
+  float rockW = smoothstep(0.30, 0.58, slopeF + nB * 0.34 + nC * 0.20 + nD * 0.14)
+    * (1.0 - smoothstep(0.55, 0.85, hT) * 0.70) * uSlopeSplat * farAtt;
+  vec3 rockCol = diffuseColor.rgb * vec3(0.47, 0.50, 0.58);
+  // Broken patches, not constant-altitude bars across successive ranges.
+  rockCol *= 1.0 + nC * 0.16 + nD * 0.20;
+  diffuseColor.rgb = mix(diffuseColor.rgb, rockCol, rockW * 0.85);
+  float ndl = dot(hn, uSunDirW);
+  float rel = uFragRel * farAtt;
+  diffuseColor.rgb *= 1.0 - rel * 0.85 + rel * 1.6 * max(ndl, 0.0);
+  diffuseColor.rgb = mix(diffuseColor.rgb,
+    diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndl, 0.0) * 0.32 * farAtt);
+}`;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH,
+  sun, maxHeight: maxH, retainedTextures,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -1272,6 +1580,10 @@ function* buildHorizonMaterialSteps({
   {
     const detail2 = yield* makeDetailNoiseTextureSteps(
       mulberry32(((seed ^ 0x0D37) ^ idHash(mapId)) >>> 0));
+    // onBeforeCompile closure textures are not material.uniforms. Explicit
+    // ownership makes them renewable on GPU suspension and disposable on map
+    // eviction, just like the material's discoverable base map.
+    retainedTextures.push(detail2);
     // r3 terrain_environment: PER-FRAGMENT alpine material pass. The winter
     // wall used to carry all slope/sun response baked per-vertex — across
     // 12 x 150 m wall triangles that interpolates as flat planar facets and
@@ -1318,7 +1630,9 @@ function* buildHorizonMaterialSteps({
         + 'uniform float uWallFix;\nuniform float uCapFix;\n'
         + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\n' +
         shader.fragmentShader.replace(
-          '#include <map_fragment>', /* glsl */`#include <map_fragment>
+          '#include <map_fragment>', style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT : /* glsl */`#include <map_fragment>
+        float horizonMarine = clamp(-vMapUv.y, 0.0, 1.0);
+        float horizonWaterVariation = 0.0;
         {
           vec3 hnW0 = normalize(vHNrm);
           float steepF0 = smoothstep(0.30, 0.60, 1.0 - hnW0.y) * uWallFix;
@@ -1337,11 +1651,18 @@ function* buildHorizonMaterialSteps({
                      + texture2D(uDetail2, vHPos.xy * 0.0175 + vec2(0.23, 0.87)).r * awF.z
                      + texture2D(uDetail2, vHPos.xz * 0.0175 + vec2(0.37, 0.61)).r * awF.y;
             vec3 fixCol = mapSmooth * (1.0 + (wA - 0.5) * 0.46 + (wB - 0.5) * 0.34);
-            diffuseColor.rgb = diffuseColor.rgb / max(texture2D(map, vMapUv).rgb, vec3(1e-3))
-              * mix(texture2D(map, vMapUv).rgb, fixCol, fixW * 0.85);
+            diffuseColor.rgb = diffuseColor.rgb / max(sampledDiffuseColor.rgb, vec3(1e-3))
+              * mix(sampledDiffuseColor.rgb, fixCol, fixW * 0.85);
           }
-          float dA = texture2D(uDetail2, vMapUv * vec2(64.0, 26.0)).r - 0.5;
-          float dB = texture2D(uDetail2, vMapUv * vec2(17.0, 7.0) + vec2(0.37, 0.11)).r - 0.5;
+          // World-space oblique projection has vertical and both horizontal
+          // components. It never collapses into the altitude-only streaks of
+          // the old annular UV overlay along a grazing ridge flank.
+          vec2 terrainUv = vec2(vHPos.x + vHPos.z * 0.37,
+            vHPos.y + vHPos.z * 0.81 - vHPos.x * 0.23);
+          terrainUv = mix(terrainUv, vHPos.zx * vec2(0.35, 3.0), horizonMarine);
+          float dA = texture2D(uDetail2, terrainUv * 0.012).r - 0.5;
+          float dB = texture2D(uDetail2, terrainUv * 0.0032 + vec2(0.37, 0.11)).r - 0.5;
+          horizonWaterVariation = dA * 0.008 + dB * 0.015;
           // amplitudes sized to SURVIVE the baked haze lerp + scene fog: the
           // wall multiplies this onto an already fog-flattened vertex color,
           // so ±0.1 authored contrast reads as ~±0.04 on screen (still-flat
@@ -1389,9 +1710,16 @@ function* buildHorizonMaterialSteps({
             diffuseColor.rgb = mix(diffuseColor.rgb,
               diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndl, 0.0) * 0.32 * farAtt);
           }
-        }`);
+        }`)
+        .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
+        // Sea is a sky-reflecting continuation of the bay, not a zero-height
+        // forest. Reuse the existing two detail samples as very quiet wave
+        // breakup, replacing the degenerate altitude-clamped base texture.
+        diffuseColor.rgb = mix(diffuseColor.rgb,
+          diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => 'horizon-ring-r7te-' + style;
+    mat.customProgramCacheKey = () => (style === 'alpine'
+      ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
   }
   return mat;
 }
@@ -1409,11 +1737,12 @@ interface HorizonTreelineContext {
   fog: THREE.Color;
   colors: Float32Array;
   layers: number;
+  seaOpening?: HorizonSeaOpening;
 }
 
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
-  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
+  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, seaOpening,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
   if (treeline < 0.14) return;
@@ -1480,7 +1809,7 @@ function addHorizonTreeline({
         const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 - layer * 5.3,
           Math.sin(a) * 19.7 + ri * 11.9 + layer * 8.9) * 0.5 + 0.5;
         const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
-          (0.88 + hn2 * 0.24) * (1 - layer * 0.045);
+          (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaOpeningWeight(a, seaOpening));
         // All ranks sit just behind the resolved crest. Putting the ribbon on
         // its inner slope lets the ridge's own triangles depth-occlude the
         // canopy completely; the small outward offset keeps the base hidden
@@ -1505,7 +1834,15 @@ function addHorizonTreeline({
       }
       for (let k = 0; k < N; k++) {
         const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;
-        cIdx.push(b0, b1, t0, t0, b1, t1);
+        // Adjacent sightlines can resolve to entirely different mountain
+        // ranges. Connecting them suspends a forest ribbon across the valley
+        // and frames a false "hole" in the skyline. End the two clusters at
+        // their own crests, retaining the exact existing index allocation.
+        if (skylineRows[k] !== skylineRows[(k + 1) % N]) {
+          cIdx.push(b0, b0, b0, b1, b1, b1);
+        } else {
+          cIdx.push(b0, b1, t0, t0, b1, t1);
+        }
       }
       vBase += (N + 1) * 2;
     }
@@ -1628,42 +1965,34 @@ export function* buildHorizonRingSteps(
   const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
   const gnoi = new SimplexNoise({ random: mulberry32(((seed ^ 0x33C7) ^ idHash(mapId)) >>> 0) });
 
-  // Radial rows. The tuck + skirt rows ride just outside the playable rim and
-  // stay LOW but opaque (ground-toned) so the fog-washed outer floor and the
-  // pale sky band can never peek between the rim crest and the ridges — the
-  // old ring showed exactly that gap as a white 'sea' sheet in wide shots.
-  // Ridge bases sit well above any establishing camera (~50 m).
+  // The buried inner anchor and continuously connected annulus close every
+  // map edge. Coverage does not require a tall positive-height skirt: that
+  // former safety wall was plainly visible across Fjord's water. Alpine
+  // foothills now begin low and set back, with separate ranges behind them.
   // ANCHOR row: pinned 22 m underground inside the map rim, so the ring's
   // inner lip is welded to the terrain — without it, any skirt vertex that
   // rises above a rim dip opens a slot where the cream horizon sky pours
   // through as flat white 'ponds' behind the rim forest.
-  // Skirt base 26-40 m + first ridge base 50 m keep the wall itself clear of
-  // the rim crest at the map edge.
   // r6: rows are PER STYLE. The shared table put the first ridge at base 50 /
   // amp 52 only ~100 m past the rim — on the vegetated maps that projected as
   // a near-vertical green wall filling a third of the frame (the "curtain"
   // critique). Vegetated styles now open with a LOW first ridge and recede
   // through progressively taller, much hazier shells, so the ring reads as
-  // 3-4 distinct forested ridgelines instead of one continuous slope. Cliff
-  // styles (alpine/mesa) keep the imposing wall — it suits them.
+  // distinct forested ridgelines instead of one continuous slope. Authored
+  // mesa cliffs keep their terrace language; alpine massifs need foothills.
   const rows0 = HORIZON_ROWS_BY_STYLE[style] || HORIZON_ROWS_BY_STYLE.default;
   const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp);
   yield;
 
-  // --- alpine RADIAL SUBDIVISION (content_breadth r5) ------------------------
-  // Even with the 9-row ladder + smoothed analytic normals, the wall between
-  // two adjacent alpine rows is ONE quad strip spanning 65-200 m radially —
-  // from the establishing camera those quads render as flat "folded paper"
-  // facets with a plain vertex-color gradient (critique, minor). Insert two
-  // interpolated circles per non-skirt gap and displace them with a fractal
-  // crag field scaled to the local wall relief: facet size drops ~3x, and the
-  // sub-row knolls/gullies feed the smoothed-normal relight + per-fragment
-  // rock splat with REAL surface structure instead of an interpolation ramp.
-  // Silhouette is untouched (authored crest circles keep their vertices);
-  // other styles pass through unchanged. Cost: 9 -> 21 rows x 520 verts.
-  const ring = subdivideAlpineGeometry(initialRing, style, noi);
+  // Authored crests keep their silhouette; inserted shoulders and gullies
+  // break the huge planar faces. Rebalancing angular/radial resolution makes
+  // room for this relief within the previous vertex AND triangle ceilings.
+  // Coastal apertures then lower the same annulus into a sea-level apron.
+  const ring = subdivideHorizonGeometry(initialRing, style, noi);
+  if (mapId === 'skybridge' && style === 'mesa') reshapeSkybridgeTableCaps(ring, amp);
+  openHorizonToSea(ring, H.seaOpening);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
-  const uvA = buildHorizonUvs(hs, maxH);
+  const uvA = buildHorizonUvs(hs, maxH, H.seaOpening);
   yield;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -1683,7 +2012,7 @@ export function* buildHorizonRingSteps(
   // SMOOTHED height series for the shading derivatives only (silhouette keeps
   // its sharp vertices): raw per-vertex differences bake into alternating
   // light/dark column striping on the ridge faces.
-  const gradients = buildHorizonGradients(rows, hs);
+  const gradients = buildHorizonGradients(rows, hs, pos);
   // Per-vertex slope/sun response, then SMOOTHED ALONG THE RING before it
   // drives any color: the wall between two radial rows is a single quad
   // strip ~7 m wide and up to 100+ m tall, so any column-to-column jitter in
@@ -1695,7 +2024,7 @@ export function* buildHorizonRingSteps(
     style, rows, heights: hs, maxHeight: maxH,
     base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
     snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
-    gradients, sun: [lx, ly, lz],
+    gradients, sun: [lx, ly, lz], seaOpening: H.seaOpening,
   });
   yield;
 
@@ -1703,7 +2032,7 @@ export function* buildHorizonRingSteps(
   const horizonDebug = (globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean })
     .__HORIZON_DEBUG;
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
-  const geo = buildHorizonGeometry(ring, col, uvA, style, gradients);
+  const geo = buildHorizonGeometry(ring, col, uvA, gradients);
   yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
@@ -1726,9 +2055,10 @@ export function* buildHorizonRingSteps(
   // near walls with vertical fiber under the winter overcast
   // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
   // cut in the snow pass; kills the last of the vertical smear on the wall
+  const retainedTextures: THREE.Texture[] = [];
   const mat = yield* buildHorizonMaterialSteps({
     noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-    sun: [lx, ly, lz], maxHeight: maxH,
+    sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -1738,6 +2068,7 @@ export function* buildHorizonRingSteps(
   // GTAO's depth-edge pass draws dark halo slashes along distant ridge
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
+  registerRetainedObject3DResources(mesh, { textures: retainedTextures });
 
   // --- distant skyline impostor (vegetated styles only) ---------------------
   // One alpha-tested canopy ribbon follows whichever authored ridge actually
@@ -1749,6 +2080,7 @@ export function* buildHorizonRingSteps(
   addHorizonTreeline({
     mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
+    seaOpening: H.seaOpening,
   });
   return mesh;
 }

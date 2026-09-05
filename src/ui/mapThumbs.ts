@@ -23,6 +23,16 @@ export const MAP_THUMBS = Object.freeze({
   blackglass: '/maps/thumbs/blackglass.webp',
   titan_gorge: '/maps/thumbs/titan_gorge.webp',
   skybridge: '/maps/thumbs/skybridge.webp',
+  polders: '/maps/thumbs/polders.webp',
+  copper_mesa: '/maps/thumbs/copper_mesa.webp',
+  airfield: '/maps/thumbs/airfield.webp',
+  oasis: '/maps/thumbs/oasis.webp',
+  whiteout: '/maps/thumbs/whiteout.webp',
+  orchard: '/maps/thumbs/orchard.webp',
+  longleaf: '/maps/thumbs/longleaf.webp',
+  mangrove: '/maps/thumbs/mangrove.webp',
+  saltwind: '/maps/thumbs/saltwind.webp',
+  reservoir: '/maps/thumbs/reservoir.webp',
 });
 
 export const MAP_HEROES = Object.freeze({
@@ -46,6 +56,16 @@ export const MAP_HEROES = Object.freeze({
   blackglass: '/maps/blackglass.webp',
   titan_gorge: '/maps/titan_gorge.webp',
   skybridge: '/maps/skybridge.webp',
+  polders: '/maps/polders.webp',
+  copper_mesa: '/maps/copper_mesa.webp',
+  airfield: '/maps/airfield.webp',
+  oasis: '/maps/oasis.webp',
+  whiteout: '/maps/whiteout.webp',
+  orchard: '/maps/orchard.webp',
+  longleaf: '/maps/longleaf.webp',
+  mangrove: '/maps/mangrove.webp',
+  saltwind: '/maps/saltwind.webp',
+  reservoir: '/maps/reservoir.webp',
 });
 
 export type MapThumbnailId = keyof typeof MAP_THUMBS;

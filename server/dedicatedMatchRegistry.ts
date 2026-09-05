@@ -106,11 +106,23 @@ function randomMatchId(): string {
   return randomBytes(12).toString('base64url');
 }
 
+const releaseSimulationWorld = new WeakMap<AuthoritativeMatch, () => void>();
+
+function releaseDedicatedSimulation(simulation: AuthoritativeMatch): void {
+  releaseSimulationWorld.get(simulation)?.();
+  releaseSimulationWorld.delete(simulation);
+}
+
 function createDedicatedSimulation(options: DedicatedSimulationOptions): AuthoritativeMatch {
-  return createAuthoritativeMatch({
-    ...options,
-    worldCollision: createDedicatedWorldCollision(options.mapId),
-  });
+  const worldCollision = createDedicatedWorldCollision(options.mapId, { retain: true });
+  try {
+    const simulation = createAuthoritativeMatch({ ...options, worldCollision });
+    releaseSimulationWorld.set(simulation, worldCollision.release);
+    return simulation;
+  } catch (error) {
+    worldCollision.release();
+    throw error;
+  }
 }
 
 function createDedicatedRuntime(simulation: AuthoritativeMatch): AuthoritativeMatchRuntime {
@@ -163,7 +175,13 @@ export class DedicatedMatchRegistry {
       tickets.push({ matchId: id, playerId, token });
     }
     const simulation = this.simulationFactory({ players, mapId, seed });
-    const runtime = this.runtimeFactory(simulation);
+    let runtime: AuthoritativeMatchRuntime;
+    try {
+      runtime = this.runtimeFactory(simulation);
+    } catch (error) {
+      releaseDedicatedSimulation(simulation);
+      throw error;
+    }
     const record: DedicatedMatchRecord = {
       id,
       mapId,
@@ -246,12 +264,19 @@ export class DedicatedMatchRegistry {
     const match = this.matches.get(String(matchId));
     if (!match) return false;
     this.matches.delete(match.id);
-    for (const player of match.players.values()) {
-      player.unsubscribeClose?.();
-      player.unsubscribeClose = null;
-      player.connected = false;
+    try {
+      for (const player of match.players.values()) {
+        player.unsubscribeClose?.();
+        player.unsubscribeClose = null;
+        player.connected = false;
+      }
+    } finally {
+      try {
+        match.runtime.close(reason);
+      } finally {
+        releaseDedicatedSimulation(match.simulation);
+      }
     }
-    match.runtime.close(reason);
     return true;
   }
 
@@ -266,6 +291,14 @@ export class DedicatedMatchRegistry {
   close(reason = 'registry_closed'): void {
     if (this.closed) return;
     this.closed = true;
-    for (const match of [...this.matches.values()]) this.removeMatch(match.id, reason);
+    const failures: RuntimeValue[] = [];
+    for (const match of [...this.matches.values()]) {
+      try {
+        this.removeMatch(match.id, reason);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length) throw new AggregateError(failures, 'dedicated registry close failed');
   }
 }

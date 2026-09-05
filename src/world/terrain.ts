@@ -11,11 +11,16 @@ import {
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain } from './sourcedTextures.ts';
+import { applySourcedTerrain, type TerrainPaletteId } from './sourcedTextures.ts';
 import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
+import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
+import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
+import { stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
+import { roadCoreMask } from './roadMaskProfile.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -137,9 +142,11 @@ interface TerrainSettings {
   roads: 'country' | AuthoredRoadConfig;
   softLakes?: boolean;
   clearMarshVeg?: boolean;
+  hardstands?: readonly HardstandConfig[];
 }
 
 interface SplatConfig {
+  sourcedPalette?: TerrainPaletteId;
   grassTone?: ToneFunction | null;
   dirtTone?: ToneFunction | null;
   rockTone?: ToneFunction | null;
@@ -206,6 +213,7 @@ export interface HeightField {
   _noVeg(x: number, z: number): boolean;
   _layout: TerrainLayout;
   _mesaW: ((x: number, z: number) => number) | null;
+  _waterWetnessAt?: (x: number, z: number) => number;
 }
 
 interface TerrainEngineContext {
@@ -607,6 +615,13 @@ export function createHeightField(
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
+  const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
+  const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
+  let liquidSurfaces: Float64Array | null = null;
+  let liquidLakeBanks: Float64Array | null = null;
+  let liquidIndex: Uint32Array | null = null;
+  const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
 
   function applyMacroTerrain(
     x: number,
@@ -619,7 +634,9 @@ export function createHeightField(
     let spawnClear = 1;
     if (T.dunes || T.mesas || T.landforms.length) {
       for (let p = 0; p < padPts.length; p++) {
-        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
+        const dx = x - padPts[p].x, dz = z - padPts[p].z;
+        if (dx * dx + dz * dz >= 90 * 90) continue;
+        const pd = Math.hypot(dx, dz);
         if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
       }
     }
@@ -683,30 +700,55 @@ export function createHeightField(
     padsOn: boolean,
     roadsOn: boolean,
   ): number {
+    let lakeWetness = 0;
     if (lakesOn) {
       for (let li = 0; li < _LAKES.length; li++) {
         const lk = _LAKES[li];
-        const ld = Math.hypot(x - lk.x, z - lk.z);
-        if (ld < lk.r * 1.32) {
-          const w = smoothstep(lk.r * 1.32, lk.r * 0.94, ld);
+        const bankBand = liquidLakeBanks ? liquidLakeBanks[li] : 1.32;
+        const ld = shorelineDistance(lk, x, z, bankBand);
+        if (liquidLakeBanks && lakeWetness < 1 && ld < 0.96) {
+          lakeWetness = Math.max(lakeWetness, shorelineWetnessFromDistance(ld, true));
+        }
+        if (ld < bankBand) {
+          let w = smoothstep(bankBand, 0.94, ld);
+          if (liquidLakeBanks && settlementWeight > 0) {
+            // The extra grading apron yields to authored settlement relief;
+            // the original lake core/bank keeps exactly its former priority.
+            // Otherwise one deep coastal cell can tilt dry harbor frontages
+            // a hundred metres beyond its previous shoreline constraint.
+            const original = smoothstep(1.32, 0.94, ld);
+            w += (original - w) * settlementWeight;
+          }
           h += (lakeLevels[li] - h) * w;
         }
       }
     }
+    let padWetness = 1;
     if (padsOn) {
+      const padRadiusSquared = lakeWetness > 0 ? 26 * 26 : 22 * 22;
       for (let p = 0; p < padPts.length; p++) {
-        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
+        const dx = x - padPts[p].x, dz = z - padPts[p].z;
+        if (dx * dx + dz * dz >= padRadiusSquared) continue;
+        const pd = Math.hypot(dx, dz);
         if (pd < 22) h += (padYs[p] - h) * (1 - smoothstep(9, 22, pd));
+        if (lakeWetness > 0) padWetness *= smoothstep(22, 26, pd);
       }
     }
     if (!roadsOn) return h;
     const rd = gridSample(gRoadDist, x, z);
     if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));
     if (rd > 4 && rd < 22) {
+      // Road detail is dry-ground relief, not a ripple generator for a lake
+      // flattened above. Reuse contour/pad work and the same protected water
+      // ramp as the splat/wake mask; dry shoulders and ice keep every term.
+      const liquidDetail = lakeWetness > 0
+        ? 1 - smoothstep(waterRampStart, waterRampEnd,
+          lakeWetness * smoothstep(14, 18, rd) * padWetness) : 1;
+      if (liquidDetail === 0 || marshWeight === 1) return h;
       const bermA = 0.5 + 0.5 * noi.noise(x * 0.031 + 71, z * 0.031 - 44);
       const berm = Math.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
       const ditch = -Math.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
-      h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight);
+      h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight) * liquidDetail;
     }
     return h;
   }
@@ -719,24 +761,56 @@ export function createHeightField(
     lakesOn = true,
   ): number {
     x = clamp(x, -HALF, HALF); z = clamp(z, -HALF, HALF);
-    const { d, s } = core(x, z);
     const cw = gridSample(gCorridor, x, z);
-    let h = (d + (s - d) * (cw * 0.72)) * T.hillScale;
     const vm = villageMask(x, z);
-    // village.relief (r6): fraction of the smooth terrain variation kept
-    // inside the flattened settlement rect. Default 0.10 (near-billiard).
-    // The urban map raises it so the town sits on gentle elevation drift
-    // (1-3 m across the grid) instead of a perfectly flat pancake.
-    if (vm > 0) h += (villageY * T.hillScale + (s - villageY) * (_VILLAGE.relief ?? 0.10) - h) * vm;
+    const surfaces = lakesOn ? liquidSurfaces : null;
+    const index = surfaces ? liquidIndex : null;
+    const bucket = index ? liquidMarshIndexBucket(x, z, MAP_SIZE, liquidIndexWords) : 0;
+    let word = 0, bits = index ? index[bucket] : 0;
+    let h = surfaces ? 0 : baseTerrainHeight(x, z, cw, vm);
+    let liquidDip = 0;
     let marshW = 0;
-    for (const m of _MARSHES) {
-      const md = Math.hypot(x - m.x, z - m.z);
-      if (md < m.r) {
-        const t = 1 - md / m.r;
-        h -= m.dip * t * t * (3 - 2 * t); // dip normalized to 2.6 in createLayout
+    let waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0;
+    let waterCoreSum = 0, waterCoreCount = 0;
+    for (let mi = 0; mi < _MARSHES.length; mi++) {
+      if (index) {
+        while (!bits && ++word < liquidIndexWords) bits = index[bucket + word];
+        if (!bits) break;
+        const bit = bits & -bits;
+        mi = word * 32 + 31 - Math.clz32(bit);
+        bits ^= bit;
+      }
+      const m = _MARSHES[mi];
+      const surfaceOffset = mi * LIQUID_MARSH_STRIDE;
+      const bankBand = surfaces ? surfaces[surfaceOffset + 3] : 1;
+      const md = shorelineDistance(m, x, z, bankBand);
+      if (md < 1) {
+        const t = 1 - md;
+        const dip = m.dip * t * t * (3 - 2 * t);
+        if (surfaces) liquidDip += dip;
+        else h -= dip; // retain the original dry/frozen arithmetic order
         marshW = Math.max(marshW, t);
       }
+      if (surfaces && md < bankBand) {
+        const weight = smoothstep(bankBand, LIQUID_MARSH_CORE, md);
+        const level = surfaces[surfaceOffset]
+          + surfaces[surfaceOffset + 1] * x + surfaces[surfaceOffset + 2] * z;
+        waterWeight = Math.max(waterWeight, weight);
+        // Bank-only neighbors must lose influence continuously as this sheet
+        // reaches its flat core. Plain normalized weights left a height jump
+        // when switching from an overlapping bank average to the core level.
+        const priority = weight / Math.max(1e-9, 1 - weight);
+        waterWeightSum += priority; waterLevelSum += level * priority;
+        if (md <= LIQUID_MARSH_CORE) { waterCoreSum += level; waterCoreCount++; }
+      }
     }
+    if (waterCoreCount) {
+      // All base/micro/macro relief is overwritten by a fully flat core.
+      // Keep the canonical lake, pad and road constraints, without spending
+      // thirteen simplex evaluations on a value that cannot reach the mesh.
+      return applyHeightConstraints(x, z, waterCoreSum / waterCoreCount, 1, vm, lakesOn, padsOn, roadsOn);
+    }
+    if (surfaces) h = baseTerrainHeight(x, z, cw, vm) - liquidDip;
     // map-specific macro forms: long ridged sand dunes / flat-topped mesas —
     // both attenuated on drive corridors and in the village so play flows.
     // r9 SPAWN CLEARANCE: macro landforms also fade out around every spawn
@@ -770,6 +844,11 @@ export function createHeightField(
     }
     const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));
     h += rim * rim * T.rimH;
+    if (waterWeight > 0) {
+      const target = waterLevelSum / waterWeightSum;
+      h += (target - h) * waterWeight;
+      marshW = Math.max(marshW, waterWeight); // road berm noise cannot ripple liquid cores
+    }
     // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
     // The flat sheet runs almost to the shore (0.94 r), and the grade toward
     // the surrounding terrain extends well OUTSIDE the sheet (1.32 r): the
@@ -777,6 +856,15 @@ export function createHeightField(
     // terrain can sit 10+ m above the sheet — graded over ~35 m that is a
     // snowy bank; over the old few-meter band it was a sheer quarry wall.
     return applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn);
+  }
+
+  function baseTerrainHeight(x: number, z: number, corridorWeight: number, settlementWeight: number): number {
+    const { d, s } = core(x, z);
+    let h = (d + (s - d) * (corridorWeight * 0.72)) * T.hillScale;
+    // Keep authored town relief and the existing dry/frozen operation order.
+    if (settlementWeight > 0) h += (villageY * T.hillScale
+      + (s - villageY) * (_VILLAGE.relief ?? 0.10) - h) * settlementWeight;
+    return h;
   }
 
   function smoothRoadElevations(nodeElev: number[][]): void {
@@ -826,6 +914,10 @@ export function createHeightField(
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
   buildRoadElevationGrid();
+  if (T.hardstands?.length) {
+    stampHardstandRoadGrids(T.hardstands, gRoadDist, gRoadElev, GN, MAP_SIZE,
+      (x, z) => gridSample(gRoadElev, x, z));
+  }
 
   // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---
   function initializeLakeLevels(): void {
@@ -836,8 +928,10 @@ export function createHeightField(
       // lowest bank point, so bank height stays ~depth everywhere instead of
       // stacking the full cross-lake terrain drop onto the near shore
       for (let a = 0; a < 12; a++) {
-        const hh = heightAt(lk.x + Math.cos(a * 0.5236) * lk.r * 0.95,
-          lk.z + Math.sin(a * 0.5236) * lk.r * 0.95, false, false, false);
+        const angle = a * Math.PI / 6;
+        const radius = shorelineRadiusAt(lk, angle) * 0.95;
+        const hh = heightAt(lk.x + Math.cos(angle) * radius,
+          lk.z + Math.sin(angle) * radius, false, false, false);
         if (hh < lo) lo = hh;
       }
       // maps r1 (ADDITIVE): lk.level pins the sheet elevation absolutely — a
@@ -853,6 +947,25 @@ export function createHeightField(
   }
   initializeLakeLevels();
   initializeSpawnPadLevels();
+  // Freeze authored road/pad support first, then resolve liquid joins in the
+  // existing buffer. Frozen sheets retain their original independent levels.
+  if (liquidWater && _LAKES.length) alignLiquidLakeLevels(_LAKES, lakeLevels);
+  const liquidLakes = liquidWater ? _LAKES.map((lake, index) => ({ ...lake, level: lakeLevels[index] })) : [];
+  if (liquidWater && _MARSHES.length) {
+    // Fit against the old dry/road/pad pipeline before activating the policy.
+    // Roads and spawn pads keep their original levels and final priority.
+    liquidSurfaces = buildLiquidMarshSurfaces(_MARSHES,
+      (x, z) => heightAt(x, z, false, false, false),
+      liquidLakes);
+    liquidIndex = buildLiquidMarshIndex(_MARSHES, liquidSurfaces, MAP_SIZE);
+  }
+  if (liquidLakes.length) {
+    // Activate after road/pad heights are fixed. Sample the same pre-sheet
+    // terrain as the marsh policy; tiny connected drainage cells must not
+    // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
+    liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
+      (x, z) => heightAt(x, z, false, false, false));
+  }
 
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
 
@@ -948,11 +1061,10 @@ export function createHeightField(
     for (const lk of _LAKES) {
       // maps r1 (ADDITIVE): terrain.softLakes = liquid-water sheets (coastal
       // shallows) drive as bogged 'soft' ground; default stays 'hard' (ice).
-      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 0.95) return T.softLakes ? 'soft' : 'hard';
+      if (shorelineDistance(lk, x, z, 0.95) < 0.95) return T.softLakes ? 'soft' : 'hard';
     }
     for (const m of _MARSHES) {
-      const md = Math.hypot(x - m.x, z - m.z);
-      if (md < m.r && 1 - md / m.r > 0.35) return T.frozenMarshes ? 'hard' : 'soft';
+      if (shorelineDistance(m, x, z, 0.65) < 0.65) return T.frozenMarshes ? 'hard' : 'soft';
     }
     return 'medium';
   }
@@ -969,36 +1081,52 @@ export function createHeightField(
    * @returns {number} 0 for dry/ice, otherwise a 0..1 liquid coverage mask
    */
   function getWaterMaskAt(x: number, z: number): number {
-    if (T.frozenMarshes || !cfg?.splat?.seaLake) return 0;
-    for (let i = 0; i < _LAKES.length; i++) {
-      const lk = _LAKES[i];
-      const radius = Math.max(0.001, lk.r * 0.95);
-      const d = Math.hypot(x - lk.x, z - lk.z);
-      if (d < radius) return Math.max(0, Math.min(1, (radius - d) / Math.max(2, radius * 0.08)));
+    if (!liquidWater) return 0;
+    const wetness = waterWetnessAt(x, z);
+    // Match the material's authored water ramp, including overlapping sheets.
+    // The renderer additionally rejects steep bank fragments via their normal.
+    return smoothstep(waterRampStart, waterRampEnd, wetness);
+  }
+
+  function waterWetnessAt(x: number, z: number): number {
+    let wetness = liquidIndex
+      ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
+        liquidMarshIndexBucket(x, z, MAP_SIZE, liquidIndexWords), liquidIndexWords, x, z)
+      : sampleShorelineMask(_MARSHES, _LAKES, x, z);
+    if (liquidIndex && wetness < 1) for (const lake of _LAKES) {
+      wetness = Math.max(wetness, shorelineWetness(lake, x, z, true));
+      if (wetness === 1) break;
     }
-    for (let i = 0; i < _MARSHES.length; i++) {
-      const m = _MARSHES[i];
-      const radius = Math.max(0.001, m.r);
-      const d = Math.hypot(x - m.x, z - m.z);
-      // The shader's water body is the marsh core (same threshold used by
-      // getGroundType); feather the final few metres for bank transitions.
-      const core = 1 - d / radius;
-      if (core > 0.35) return Math.max(0, Math.min(1, (core - 0.35) / 0.12));
+    if (wetness <= 0) return 0;
+    // Surface heights deliberately yield to these dry height constraints.
+    // The identical callback feeds the existing mask bake and wake queries;
+    // neither may paint water over the resulting ford/pad ramps.
+    wetness *= smoothstep(14, 18, gridSample(gRoadDist, x, z));
+    if (wetness <= 0) return 0;
+    for (const pad of padPts) {
+      const dx = x - pad.x, dz = z - pad.z;
+      if (dx * dx + dz * dz >= 26 * 26) continue;
+      const distance = Math.hypot(dx, dz);
+      if (distance < 26) wetness *= smoothstep(22, 26, distance);
     }
-    return 0;
+    return wetness;
   }
 
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
     for (const lk of _LAKES) {
-      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 1.04) return true;
+      const dx = x - lk.x, dz = z - lk.z;
+      if (dx * dx + dz * dz < (lk.r * 1.04) ** 2) return true;
     }
     for (const m of _MARSHES) {
-      if (T.frozenMarshes && Math.hypot(x - m.x, z - m.z) < m.r) return true;
+      const dx = x - m.x, dz = z - m.z;
+      const distanceSquared = dx * dx + dz * dz;
+      if (T.frozenMarshes && distanceSquared < m.r * m.r) return true;
       // maps r1 (ADDITIVE): river maps keep the CHANNEL clear — tufts spawned
       // mid-stream read as flooded stubble. The outer soft band keeps its
       // sparse bank reeds. Default off => pre-existing maps unchanged.
-      if (T.clearMarshVeg && Math.hypot(x - m.x, z - m.z) < m.r * 0.55) return true;
+      const clearRadius = m.r * (liquidWater ? 1 : 0.55);
+      if ((T.clearMarshVeg || liquidWater) && distanceSquared < clearRadius * clearRadius) return true;
     }
     return false;
   }
@@ -1043,9 +1171,14 @@ export function createHeightField(
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
-    _noVeg: noVeg,
+    // Only hardstand maps need this wrapper. Their existing road-distance
+    // grid already includes the pavement; no retained footprint/query loop.
+    _noVeg: T.hardstands?.length
+      ? (x, z) => gridSample(gRoadDist, x, z) < 4.3 || noVeg(x, z)
+      : noVeg,
     _layout: layout,
     _mesaW: mesaWeight,
+    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),
   };
 }
 
@@ -1476,25 +1609,18 @@ function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
   };
 }
 
-// Open-water layer (maps r1, ADDITIVE — coastal sea / river channels, routed
-// by cfg.splat.seaLake). Authored DARK so the fresnel sky sheen and foam have
-// value range to play against: broad swell fields (long-wavelength tone
-// drift), fine wind chop, darker deep-water blotches and sparse pale foam
-// streaks. Roughness (packed in alpha) runs LOW on open water — the splat
-// shader's marsh-gloss + fresnel terms give it the specular water identity —
-// and high on the foam streaks so they read matte.
-function makeSeaLayer(
+// Liquid waves are independent of pigment. Painted foam used to become
+// embossed scratches in both the detail normal and its 75-metre reprojection.
+// Bank foam/whitecaps already belong to the shoreline-aware shader below.
+export function makeSeaLayer(
   seed: number,
   anisotropy: number,
   tone: ToneFunction | null = null,
 ): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
-  const rng = mulberry32(seed ^ 0x5EA1);
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  const ctx = require2DContext(c, { willReadFrequently: true });
-  const base = ctx.createImageData(s, s);
+  const px = new Uint8ClampedArray(s * s * 4);
+  const hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
     for (let x = 0; x < s; x++) {
@@ -1509,39 +1635,10 @@ function makeSeaLayer(
         0.545 - s01 * 0.035,             // teal -> blue-green drift
         0.30 + deep * 0.10 - chop * 0.05,
         0.135 + s01 * 0.075 - deep * 0.05 + chop * 0.025);
-      base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
-      base.data[j + 3] = 255;
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255;
+      px[j + 3] = (0.10 + chop * 0.035) * 255;
+      hgt[y * s + x] = swell * 0.075 + (chop - 0.5) * 0.003;
     }
-  }
-  ctx.putImageData(base, 0, 0);
-  // wind-lane foam streaks: sparse pale curved strokes, one global direction
-  const dir = 0.5;
-  ctx.lineCap = 'round';
-  for (let k = 0; k < 42; k++) {
-    const x = rng() * s, y = rng() * s;
-    const len = 24 + rng() * 70, wdt = 1.2 + rng() * 2.6;
-    ctx.globalAlpha = 0.07 + rng() * 0.14;
-    ctx.strokeStyle = _css(0.52, 0.10, 0.62 + rng() * 0.2);
-    ctx.lineWidth = wdt;
-    drawWrapped(ctx, s, () => {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(
-        x + Math.cos(dir) * len * 0.5, y + Math.sin(dir) * len * 0.5 + (rng() - 0.5) * 10,
-        x + Math.cos(dir) * len, y + Math.sin(dir) * len);
-      ctx.stroke();
-    });
-  }
-  ctx.globalAlpha = 1;
-  const out = ctx.getImageData(0, 0, s, s);
-  const px = new Uint8ClampedArray(out.data);
-  const hgt = new Float32Array(s * s);
-  for (let i = 0; i < s * s; i++) {
-    const l = (px[i * 4] * 0.3 + px[i * 4 + 1] * 0.45 + px[i * 4 + 2] * 0.25) / 255;
-    hgt[i] = l * 0.6 + 0.2; // gentle wave-relief normal source
-    // pale texels = foam lanes (matte); dark open water = glossy
-    const foamy = smoothstep(0.40, 0.62, l);
-    px[i * 4 + 3] = clamp(0.08 + foamy * 0.70, 0.05, 1) * 255;
   }
   applyTone(px, tone);
   return {
@@ -1689,15 +1786,15 @@ function makeGroundLayer(
 }
 
 // R = road core, G = wheel ruts, B = marsh wetness, A = village worn ground.
-// 2 texels/m: the rut lanes and road borders actually resolve instead of
-// smearing into 1-texel airbrush mush.
+// Road coverage is filtered to the actual 2–4 metre texel footprint. Keeping
+// sub-texel hard borders here causes repeated scallops after interpolation.
 function makeMaskTexture(
   seedNoi: SimplexNoise,
   layout: TerrainLayout,
   landformW: HeightField['_mesaW'] = null,
+  waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
-  const _MARSHES = [...layout.marshes, ...layout.lakes]; // lakes share the wet/ice channel
   // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
   // bake is resolution-relative; mobile trades 0.5 m/texel road-edge crispness
   // for a 16 MB saving on its ~192 MB budget)
@@ -1741,7 +1838,7 @@ function makeMaskTexture(
         const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
         const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
         for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
-          const { d } = segDist(tx / T - HALF, tz / T - HALF, ax, az, bx, bz);
+          const { d } = segDist((tx + 0.5) / T - HALF, (tz + 0.5) / T - HALF, ax, az, bx, bz);
           const i = tz * s + tx;
           if (d < dist[i]) dist[i] = d;
         }
@@ -1757,9 +1854,7 @@ function makeMaskTexture(
     // along its length instead of running at one constant gauge
     const wob = seedNoi.noise(x * 0.055, z * 0.055) * 0.8 + seedNoi.noise(x * 0.21, z * 0.21) * 0.35;
     const wid = seedNoi.noise(x * 0.011 + 41, z * 0.011 - 17) * 1.5;
-    let core = 1 - smoothstep(3.3 + wob + wid, 4.4 + wob + wid, d);
-    // center grass strip between the wheel tracks
-    core *= 0.34 + 0.66 * smoothstep(0.25, 0.95, d + wob * 0.12);
+    const core = roadCoreMask(d, wob, wid, 1 / T);
     px[j] = core * 255;
     // twin compacted wheel ruts, gaussian profile at +-1.55 m; amplitude
     // wanders along the road so the striping never repeats identically
@@ -1768,21 +1863,8 @@ function makeMaskTexture(
     px[j + 1] = rut * core * 245 * rutAmp;
   }
   function sampleMarshMask(x: number, z: number): number {
-    let marsh = 0;
-    for (const m of _MARSHES) {
-      const md = Math.hypot(x - m.x, z - m.z);
-      if (md >= m.r + 24) continue;
-      if (m.depth !== undefined) { // lake: ice sheet with a drifted-snow bank
-        // ends AT the flat sheet edge (0.94 r): letting it spill to 1.02 r
-        // dressed the graded snow banks in glossy blue ice
-        const re = m.r * (1 + 0.04 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
-        marsh = Math.max(marsh, 1 - smoothstep(re * 0.80, re * 0.96, md));
-      } else {
-        const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
-        marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
-      }
-    }
-    return marsh;
+    return waterWetnessAt ? waterWetnessAt(x, z)
+      : sampleShorelineMask(layout.marshes, layout.lakes, x, z);
   }
   function paintVillageMask(x: number, z: number, j: number): void {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
@@ -1794,9 +1876,9 @@ function makeMaskTexture(
   }
   function paintMaskPixels(): void {
     for (let tz = 0; tz < s; tz++) {
-      const z = tz / T - HALF;
+      const z = (tz + 0.5) / T - HALF;
       for (let tx = 0; tx < s; tx++) {
-        const x = tx / T - HALF, i = tz * s + tx, j = i * 4;
+        const x = (tx + 0.5) / T - HALF, i = tz * s + tx, j = i * 4;
         paintRoadMask(x, z, i, j);
         px[j + 2] = (landGrid ? landAt(x, z) : sampleMarshMask(x, z)) * 255;
         paintVillageMask(x, z, j);
@@ -1804,6 +1886,9 @@ function makeMaskTexture(
     }
   }
   paintMaskPixels();
+  if (layout.terrain.hardstands?.length) {
+    stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
+  }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
   // store is premultiplied, so putImageData ZEROES the road/rut/marsh RGB
@@ -1887,7 +1972,9 @@ vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
   // "painterly swirl" critique on the player_view midfield). A constant
   // +1.6 mip bias melts the stroke shapes into isotropic tonal breakup while
   // the macro clump variation the far variant exists for survives.
-  vec4 farS = texture2D(t, uv * 0.2317 + vec2(0.5), mb + 1.6);
+  // Keep resolved mid-range albedo grains; retain the former horizon blur.
+  // This reuses the same fetch rather than adding another detail octave.
+  vec4 farS = texture2D(t, uv * 0.2317 + vec2(0.5), mb + mix(0.85, 1.6, min(mb * 0.5, 1.0)));
   // r8: past the mid ring, ease the far variant toward its tile MEAN (deep
   // mip). The 16x anisotropic sampler otherwise keeps the ~18 m repeat's
   // blade/clod features crisp to the horizon, where they resolve as periodic
@@ -2167,7 +2254,7 @@ void splatCompute() {
   // r7: meadow tints are planar-projected — on cliff walls they stretched
   // into full-height tint stripes (a big taffy-smear contributor); gate them
   // off steep faces and let the wall macro octave below carry the variation
-  float meadowG = (1.0 - fD) * (1.0 - projW);
+  float meadowG = (1.0 - fD) * (1.0 - projW) * (1.0 - fMs);
   // r4: tint strengths raised ~30% (A 0.22+0.18 -> 0.28+0.20, B 0.14+0.08 ->
   // 0.17+0.09, C 0.16+0.14 -> 0.21+0.16) — the macro dry-straw/clover fields
   // were too subtle to register from the chase camera and the ground read as
@@ -2203,10 +2290,13 @@ void splatCompute() {
     // r5 terrain_environment: planar-noise dapple gated off slopes — its
     // gradient is meaningless down a face and printed streaks (corduroy kin)
     float dapG = (1.0 - triW * 0.85) * (1.0 - roadCore);
-    n.xy -= (ga * 1.4 + gb * 2.0) * dMid * uMidRelief * dapG;
+    // These signed gradients are added before the final normal decode (x2).
+    // Large gains made shallow turf look like crumpled metal. Soil relief
+    // must also stop at the waterline: water owns its own wave normals.
+    n.xy -= (ga * 0.40 + gb * 0.58) * dMid * uMidRelief * dapG * (1.0 - fMs);
     float midN2 = texture2D(uNoise, uv * 0.0089 + vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
-                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG;
+                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * (1.0 - fMs);
     // rock gets its own coarse relief so cliff faces stay craggy at range —
     // wall-plane sample takes over on steep faces (r5). Mix the SAMPLES, not
     // the coordinates: coordinate blending smeared diagonal fur across every
@@ -2214,7 +2304,7 @@ void splatCompute() {
     vec3 dnRa = texture2D(uNrmR, uv * 0.041).xyz;
     vec3 dnRb = wallTex(uNrmR, 0.041);
     vec3 dnR = mix(dnRa, dnRb, steepW) * 2.0 - 1.0;
-    n.xy += dnR.xy * fR * 0.9 * dMid;
+    n.xy += dnR.xy * fR * 0.24 * dMid * (1.0 - fMs);
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
@@ -2269,7 +2359,7 @@ void splatCompute() {
       vec3 rn = mix(texture2D(uNrmR, uv * 0.019).xyz, wallTex(uNrmR, 0.019), steepW) * 2.0 - 1.0;
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
       // rendered far flanks as glittery fur instead of crag
-      n.xy += rn.xy * farRock * 0.55;
+      n.xy += rn.xy * farRock * 0.22;
     }
   }
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
@@ -2288,7 +2378,7 @@ void splatCompute() {
                   * (1.0 - smoothstep(40.0, 150.0, camDist))
               + sin(rphase * 0.55 + texture2D(uNoise, uv * 0.006).g * 4.0) * 1.1
                   * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
-              * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9);
+              * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs);
     n.xy += uRipple.xy * rw;
     // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
     // shot. Both ripple octaves above die by 300 m, so the whole central
@@ -2301,7 +2391,7 @@ void splatCompute() {
     float bedMod = smoothstep(0.30, 0.72, texture2D(uNoise, uvW * 0.0035 + vec2(0.67, 0.23)).r);
     float bed = sin(bedPhase);
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
-               * (1.0 - triW) * smoothstep(60.0, 170.0, effDist);
+               * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - fMs);
     // r4: 0.105 -> 0.15 — the dune trains must survive the establishing shot
     // (the mid-map otherwise reads as one blown "whipped cream" sheet)
     a.rgb *= 1.0 + bed * 0.15 * bedW;
@@ -2314,7 +2404,7 @@ void splatCompute() {
     // flow in the two fixed WALL planes (samples mixed, never coordinates):
     // fine granular normal, down-slope flow streak, and a gentle slip-face
     // albedo darkening so lit faces keep surface definition.
-    float sandFaceW = triW * (1.0 - fR);
+    float sandFaceW = triW * (1.0 - fR) * (1.0 - fMs);
     if (sandFaceW > 0.01) {
       vec3 wg1 = texture2D(uNrmG, gWallUVx * 0.55).xyz;
       vec3 wg2 = texture2D(uNrmG, gWallUVz * 0.55).xyz;
@@ -2353,7 +2443,7 @@ void splatCompute() {
   if (uSandMacro > 0.001) {
     float smA = texture2D(uNoise, uvW * 0.0024 + vec2(0.13, 0.83)).r;
     float smB = texture2D(uNoise, uvW * 0.0009 + vec2(0.77, 0.31)).g;
-    float openW = (1.0 - fR) * (1.0 - roadCore) * (1.0 - projW) * uSandMacro;
+    float openW = (1.0 - fR) * (1.0 - roadCore) * (1.0 - projW) * uSandMacro * (1.0 - fMs);
     float gravelW = smoothstep(0.56, 0.82, smA + (n1 - 0.5) * 0.24) * openW;
     float grainG = texture2D(uNoise, uv * 0.11 + vec2(0.41, 0.09)).r;
     vec3 gravelCol = a.rgb * vec3(0.80, 0.755, 0.70) * (0.90 + grainG * 0.20);
@@ -2391,9 +2481,9 @@ void splatCompute() {
     // Keep every near-detail octave off the carriageway; the dedicated road
     // pass below supplies its own shallow, continuous surface response.
     float openNear = dNear * (1.0 - roadCore);
-    n.xy += dn.xy * 0.85 * openNear;
+    n.xy += dn.xy * 0.22 * openNear * (1.0 - fMs);
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * openNear * uMicroAmp;
+    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * openNear * uMicroAmp * (1.0 - fMs);
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
     // now carries ALBEDO as well as normal — the 5-20 m meadow read as one
@@ -2404,12 +2494,12 @@ void splatCompute() {
     if (dNear2 > 0.001) {
       vec3 dn2 = texture2D(uNrmG, uv * 2.71).xyz * 2.0 - 1.0;
       float openNear2 = dNear2 * (1.0 - roadCore);
-      n.xy += dn2.xy * 0.75 * openNear2;
+      n.xy += dn2.xy * 0.18 * openNear2 * (1.0 - fMs);
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
       float glM = dot(texture2D(uAlbG, uv * 2.71, 6.0).rgb, vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * openNear2;
+      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * openNear2 * (1.0 - fMs);
     }
   }
   {
@@ -2516,7 +2606,7 @@ void splatCompute() {
     // r6: macro contrast up (0.55+0.80 -> 0.45+1.00) so the 75 m-scale
     // pressure cracks and clear-ice fields dominate at range...
     // r4: 0.45+1.00 -> 0.36+1.18 — one more contrast step (see makeIceLayer)
-    a.rgb = mix(a.rgb, a.rgb * (0.36 + iceLum * 1.18), fMs * 0.9);
+    a.rgb = mix(a.rgb, a.rgb * (0.36 + iceLum * 1.18), fMs * 0.9 * (1.0 - uSea));
     // ...and DESATURATE the sheet with distance: the 5 m detail tile can only
     // resolve as blue salt-speckle from the establishing camera — pull the
     // far sheet toward a cool gray so it reads as one ice surface with crack
@@ -2578,7 +2668,7 @@ void splatCompute() {
       vec3 deepTint = mix(vec3(0.74, 0.86, 1.05), vec3(0.34, 0.56, 0.66), uSea);
       a.rgb *= mix(vec3(1.0), deepTint, deepW * mix(0.5, 0.72, uSea));
       vec3 iceN = texture2D(uNrmM, uv * 0.0134).xyz * 2.0 - 1.0;
-      n.xy += iceN.xy * 0.5 * fMs * (1.0 - driftW);
+      n.xy += iceN.xy * mix(0.5, 0.04, uSea) * fMs * (1.0 - driftW);
     }
     {
       vec3 vDirIce = normalize(cameraPosition - wp);
@@ -2597,7 +2687,7 @@ void splatCompute() {
       // Liquid water should reflect the sky without becoming a white sheet.
       // The sea keeps the same draw path as ice, but uses a lower-energy
       // grazing glaze so the authored depth and chop remain visible.
-      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * mix(0.62, 0.24, uSea));
+      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * mix(0.62, 0.16, uSea));
     }
     // >>> maps r1 (uSea-gated): surf line + sparse whitecaps. The surf band
     // rides the RAW fM ramp (it peaks just shoreward of where fMs starts),
@@ -2666,12 +2756,12 @@ void splatCompute() {
     }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
-    float farG = farM * (1.0 - fR) * (1.0 - fM) * (1.0 - projW);
+    float farG = farM * (1.0 - fR) * (1.0 - fMs) * (1.0 - projW);
     if (farG > 0.003) {
-      // 1.5: SPLAT_NORMAL_FRAG rolls detail normals to ~0.29 strength in the
-      // far band — pre-compensate so the coarse relief survives out there
+      // Coarse turf is low relief, not another giant clod normal. Albedo
+      // retains the source detail while the actual hills own broad shading.
       vec3 gnF = texture2D(uNrmG, uv * 0.021).xyz * 2.0 - 1.0;
-      n.xy += gnF.xy * farG * 1.5;
+      n.xy += gnF.xy * farG * 0.24;
       float gLum = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
       a.rgb *= mix(1.0, 0.86 + gLum * 0.30, farG * 0.55);
     }
@@ -2755,7 +2845,7 @@ void splatCompute() {
       vec2 uvFace = vec2(dot(wp.xz, vec2(-hn2.y, hn2.x)),
                          dot(wp.xz, hn2) / max(wn.y, 0.30));
       vec3 dnF = texture2D(uNrmD, uvFace * 1.07).xyz * 2.0 - 1.0;
-      n.xy += dnF.xy * 0.85 * faceW;
+      n.xy += dnF.xy * 0.22 * faceW;
     }
   }
   // <<< gameplay_feel r4 -----------------------------------------------------
@@ -2777,9 +2867,10 @@ void splatCompute() {
   // above; the clear-ice fields need a genuine specular identity (0.13 let
   // the bright overcast env reflection blow the sheet out to snow-white)
   // r4: 0.17 -> 0.14 — one step glossier with the stronger fresnel term
-  // maps r1: water is choppier than clear ice — a higher roughness floor
-  // stops the sun's GGX lobe washing the whole sheet bright (uSea=0: 0.14)
-  rough0 = max(rough0, iceW * mix(0.14, 0.54, uSea));
+  // Liquid keeps a tighter reflected-sun lobe than the old 0.54 satin floor,
+  // which spread a pale leather-like sheen across an entire calm river.
+  // Wind chop is carried by the shallow normal field; clear ice is unchanged.
+  rough0 = max(rough0, iceW * mix(0.14, 0.22, uSea));
   rough0 = max(rough0, gSeaFoam * 0.88); // maps r1: foam is matte (0 off sea maps)
   // Dry terrain stays truly matte. The previous 0.78 floor left a broad GGX
   // sun lobe on dirt/snow at grazing angles, making the ground look wet even
@@ -2810,14 +2901,24 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 }
 `;
 
+/** The shared B channel cannot hold both landform gating and liquid coverage. */
+export function selectTerrainLandformMask(
+  splat: SplatConfig | null | undefined,
+  landform: HeightField['_mesaW'],
+): HeightField['_mesaW'] {
+  return splat?.seaLake || splat?.iceLake ? null : landform;
+}
+
 function* createSplatMaterialSteps(
   engineCtx: TerrainEngineContext,
   layout: TerrainLayout,
   splatCfg: SplatConfig | null | undefined,
   mapId = 'verdant',
   landformW: HeightField['_mesaW'] = null,
-): Generator<void, THREE.MeshStandardMaterial, void> {
+  waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
+): Generator<void, { material: THREE.MeshStandardMaterial; textures: THREE.Texture[] }, void> {
   const S = splatCfg || {};
+  const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
   // or lakes, so B is free there). A dedicated sampler blew the 16-unit
@@ -2852,7 +2953,7 @@ function* createSplatMaterialSteps(
   // sourcedTextures.ts and on any load failure.
   const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
-  const mask = makeMaskTexture(maskNoi, layout, landformW);
+  const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt);
   yield;
   const noiseTex = makeShaderNoiseTexture(3011);
   yield;
@@ -2909,7 +3010,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMidFar = { value: S.midReliefFar ?? 480 };
     // r6: landform rock gate — 1 = rock/strata keyed to the mask-B landform
     // weight (desert), 0 = slope-only legacy behavior (B stays marsh/ice)
-    shader.uniforms.uRockGate = { value: landformW ? 1 : 0 };
+    shader.uniforms.uRockGate = { value: rockMask ? 1 : 0 };
     const rd = S.rippleDir || [0.8, 0.6];
     const rl = Math.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
@@ -2934,9 +3035,15 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v21';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v23';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
-  return mat;
+  // onBeforeCompile closures are invisible to scene resource traversal.
+  // Sourced images replace these Texture objects' backing image in place,
+  // so the same ten identities remain valid through async loading/reupload.
+  return { material: mat, textures: [
+    grass.albedo, grass.normal, dirt.albedo, dirt.normal,
+    rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
+  ] };
 }
 
 // ---------------------------------------------------------------------------
@@ -3239,20 +3346,24 @@ function* terrainBuildSteps(
     cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant',
     heightField._mesaW || null,
+    heightField._waterWetnessAt || null,
   );
   let materialStep = materialSteps.next();
   while (!materialStep.done) {
     yield [1, CHUNKS * CHUNKS + 2, false];
     materialStep = materialSteps.next();
   }
-  const mat = materialStep.value;
+  const { material: mat, textures: splatTextures } = materialStep.value;
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
   const retainedLodGeometries = new Set<THREE.BufferGeometry>();
-  registerRetainedObject3DResources(group, { geometries: retainedLodGeometries });
+  registerRetainedObject3DResources(group, {
+    geometries: retainedLodGeometries,
+    textures: splatTextures,
+  });
   const streamFarLods = streamOpts?.streamFarLods === true;
   const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
   let initialGeometryCount = 0;

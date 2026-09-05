@@ -13,10 +13,13 @@ import {
 import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings } from './sourcedTextures.ts';
+import { applySourcedBuildings, type BuildingPaletteId } from './sourcedTextures.ts';
+import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
+import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
@@ -46,7 +49,7 @@ import {
   deriveRuntimeStructureCollisionProfile,
 } from './structureCollision.ts';
 import {
-  hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
+  cropRowSegmentIsSupported, hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
@@ -208,6 +211,7 @@ interface TankWreckSettings {
 type WallRun = readonly [number, number, number, number, number?];
 
 interface PropsSettings {
+  sourcedPalette?: BuildingPaletteId;
   plan: string[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
@@ -251,6 +255,7 @@ interface PropsSettings {
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   extraKits?: readonly string[] | null;
+  riverLandings?: readonly RiverLandingAnchor[];
 }
 
 export interface PropsMapConfig {
@@ -503,7 +508,9 @@ export interface PropsRuntime {
   utilityNetwork: UtilityNetwork | null;
   utilityPolePlacements: UtilityPolePlacementReceipt[];
   decorationGroundingReceipts: DecorationGroundingReceipt[];
-  sourcedTexturesReady: Promise<void[]>;
+  sourcedTexturesReady: Promise<SourcedTextureResult[]>;
+  /** Register only after assembly succeeds; return an identity-safe disposer. */
+  registerDestructibles(): () => void;
   getLoosePropStats(): { total: number; active: number };
   features: {
     buildings: PlacedBuilding[];
@@ -796,7 +803,7 @@ function sampleStructureDetail(
   }
 }
 
-function makeStructureDetail(
+export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
@@ -812,7 +819,10 @@ function makeStructureDetail(
   }
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, kind === 'canvas' ? 0.9 : 1.45, anisotropy),
+    // The Sobel derivative already sums four neighboring height samples.
+    // The former 1.45 gain bent shallow timber grain/corrugation almost
+    // sideways, creating black-white stripes on otherwise flat walls.
+    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.14 : 0.09, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, kind === 'steel'
       ? { roughMin: 0.52, roughMax: 0.84, aoMin: 0.76 }
       : kind === 'canvas'
@@ -2394,7 +2404,7 @@ function* propsBuildSteps(
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
-  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
+  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId, P);
 
   const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {
@@ -2479,6 +2489,13 @@ function* propsBuildSteps(
   // (macro tone breakup + streaky weathering) that de-grids every tiled
   // hard-surface texture — walls stop reading as a repeated stamp at zoom
   const grimeTex = makeGrimeTexture(noi, aniso);
+  // Empty geometry buckets still have CSM-registered materials; shader-only
+  // uGrime is also invisible to a mesh/material-property traversal. Declare
+  // both on their world owner so eviction releases every shadow registration
+  // and texture, while GPU suspension retains the same reusable CPU objects.
+  registerRetainedObject3DResources(group, {
+    materials: Object.values(mats), textures: [grimeTex],
+  });
   yield { fine: true };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
   // material whitens its UP-FACING fragments toward drifted snow (clumpy,
@@ -3757,10 +3774,13 @@ ${snowCap ? `
     const industrialLoose = ['trashcan', 'gasbottle', 'jerrycan', 'loosewheel', 'bucket', 'drum'];
     const ruralLoose = ['churn', 'bucket', 'jerrycan', 'loosewheel', 'gasbottle', 'trashcan'];
     const dryLoose = ['jerrycan', 'gasbottle', 'bucket', 'loosewheel', 'trashcan', 'cone'];
-    const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera';
-    const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier';
+    const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
+      || mapId === 'copper_mesa' || mapId === 'airfield' || mapId === 'whiteout';
+    const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier' || mapId === 'oasis';
     const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
     const looseCap = inh.looseClutter ?? (P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
+    const loosePlacement = { authoredSites: looseCap, acceptedSites: 0, placedMembers: 0, kinds: [] as string[] };
+    const placedLooseKinds = new Set<string>();
     const placeLooseRoadsideClutter = (): void => {
     for (let k = 0; k < looseCap; k++) {
       const spot = findRoadsideSpot(
@@ -3768,6 +3788,7 @@ ${snowCap ? `
       );
       if (!spot) continue;
       const members = vrng() < 0.42 ? 2 : 1;
+      let acceptedMembers = 0;
       for (let j = 0; j < members; j++) {
         const a = vrng() * Math.PI * 2;
         const rr = j ? 0.65 + vrng() * 0.75 : 0;
@@ -3776,10 +3797,16 @@ ${snowCap ? `
         const kind = looseKinds[(vrng() * looseKinds.length) | 0];
         addDestructible(kind, x, heightField.getHeightAt(x, z) - 0.015, z,
           vrng() * Math.PI * 2, 0.88 + vrng() * 0.18);
+        acceptedMembers++;
+        placedLooseKinds.add(kind);
       }
+      if (acceptedMembers) loosePlacement.acceptedSites++;
+      loosePlacement.placedMembers += acceptedMembers;
     }
     };
     placeLooseRoadsideClutter();
+    loosePlacement.kinds = [...placedLooseKinds].sort();
+    group.userData.looseClutterPlacement = loosePlacement;
     // campsites / supply dumps: tents, firewood, crates, drums — the "life"
     // clusters at village outskirts and along the approach woods
     const placeSupplyCamps = (): void => {
@@ -4440,7 +4467,7 @@ ${snowCap ? `
       const x = crng() * cs;
       const hgt = cs * (0.50 + crng() * 0.42);
       const lean = (crng() - 0.5) * 16;
-      const lum = 0.30 + crng() * 0.20;
+      const lum = 0.17 + crng() * 0.11;
       _col.setHSL(0.115 + crng() * 0.02, 0.34, lum);
       cctx.strokeStyle = _col.getStyle();
       cctx.lineWidth = 1.2 + crng() * 1.1;
@@ -4448,16 +4475,25 @@ ${snowCap ? `
       cctx.moveTo(x, cs + 2);
       cctx.quadraticCurveTo(x + lean * 0.4, cs - hgt * 0.6, x + lean, cs - hgt);
       cctx.stroke();
-      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.62, lum + 0.12));
+      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.35, lum + 0.065));
       cctx.fillStyle = _col.getStyle();
       cctx.beginPath();
       cctx.ellipse(x + lean, cs - hgt, 1.7 + crng(), 4.5 + crng() * 2.5, lean * 0.03, 0, Math.PI * 2);
       cctx.fill();
     }
     const cid = cctx.getImageData(0, 0, cs, cs);
-    for (let i = 0; i < cs * cs; i++) { // mean-tone flood so mips don't halo
+    for (let i = 0; i < cs * cs; i++) {
+      const x = i % cs, y = Math.floor(i / cs);
+      // Dense stalk bases formerly merged into luminous rectangular walls.
+      // Four coarse gaps remain resolved in the existing 64px mip, while
+      // each clump retains the original seeded stems and seed heads. This
+      // pixel-only cut consumes no random draws or extra rows/materials.
+      if (x % 64 < 24) cid.data[i * 4 + 3] = 0;
+      const rootShade = 0.98 - y / cs * 0.18;
+      for (let channel = 0; channel < 3; channel++) cid.data[i * 4 + channel] *= rootShade;
+      // Muted mean-tone flood prevents bright RGB fringes in transparent mips.
       if (cid.data[i * 4 + 3] < 24) {
-        cid.data[i * 4] = 150; cid.data[i * 4 + 1] = 122; cid.data[i * 4 + 2] = 62;
+        cid.data[i * 4] = 126; cid.data[i * 4 + 1] = 110; cid.data[i * 4 + 2] = 66;
       }
     }
     cctx.putImageData(cid, 0, 0);
@@ -4505,9 +4541,17 @@ ${snowCap ? `
       col.push(cshade, cshade, cshade, cshade, cshade, cshade);
       if (sIt > 0) {
         const b0 = (sIt - 1) * 2, b1 = sIt * 2;
-        idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+        // Plot-center qualification cannot see a shoreline crossing its edge.
+        // Keep every seeded draw and original row vertex, but emit only dry,
+        // grounded spans. Clipped plots are not refilled with extra attempts.
+        const p0 = b0 * 3;
+        if (cropRowSegmentIsSupported(heightField,
+          pos[p0], pos[p0 + 2], pos[p0 + 1] - 0.02, sx2, sz2, gy)) {
+          idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+        }
       }
     }
+    if (idx.length === 0) return;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
     geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
@@ -4564,7 +4608,7 @@ ${snowCap ? `
     cropTex: THREE.CanvasTexture,
     cropGeos: THREE.BufferGeometry[],
   ): void {
-    if (cropGeos.length === 0) return;
+    if (cropGeos.length === 0) { cropTex.dispose(); return; }
     const cropMat = new THREE.MeshStandardMaterial({
       map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
@@ -5634,7 +5678,7 @@ ${snowCap ? `
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing only: pushes into the existing material buckets, no colliders.
   dressMapExtras({
-    mapId, extraKits: P.extraKits, L, heightField, rng, buckets,
+    mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
   });
 
@@ -6129,7 +6173,7 @@ ${snowCap ? `
       }
     }
   }
-  registerWorldDestructibles({
+  const registerDestructibles = (): (() => void) => registerWorldDestructibles({
     key: mapId,
     isActive: () => {
       for (let o: THREE.Object3D | null = group; o; o = o.parent) {
@@ -6381,7 +6425,7 @@ ${snowCap ? `
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
-    sourcedTexturesReady,
+    sourcedTexturesReady, registerDestructibles,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
 }

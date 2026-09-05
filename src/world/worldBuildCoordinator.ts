@@ -10,6 +10,8 @@ import {
 
 export interface WorldScene {
   group: THREE.Object3D;
+  /** Final-eviction hook for external bindings, separate from GPU release. */
+  dispose?(): void;
 }
 
 type ProgressListener = (fraction: number, label: string) => void;
@@ -179,6 +181,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       if (cache.size <= limits.worldScenes) break;
       if (cached === dependencies.getCurrentWorld() || builds.has(id)) continue;
       cache.delete(id);
+      cached.dispose?.();
       const preserveRoots = dependencies.scene.children.filter(
         (child) => child !== cached.group,
       );

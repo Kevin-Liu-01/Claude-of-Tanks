@@ -30,10 +30,10 @@ const LAYERED_TREELINES = new Map([
 ]);
 const polePolicyByMap = new Map();
 
-assert.equal(MAP_IDS.length, 20, 'the battlefield roster contains twenty maps');
+assert.equal(MAP_IDS.length, 30, 'the battlefield roster contains thirty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
 assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
-assert.deepEqual(MAP_IDS.slice(-4), EXTREME, 'the extreme-environment expansion stays registered');
+assert.deepEqual(MAP_IDS.slice(16, 20), EXTREME, 'the extreme-environment expansion stays registered');
 assert.equal(resolveHorizonTreelineLayers({ treelineLayers: 99 }), 3,
   'skyline depth clamps to the shared performance ceiling');
 assert.equal(resolveHorizonTreelineLayers({ treelineLayers: -4 }), 1,
@@ -349,5 +349,5 @@ for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
   assert.equal(needlePeaks, 0, 'desert: village backdrop has no one-cell shark-fin peaks');
 }
 
-console.log('mapQuality.selftest: 20 complete maps; extreme terrain/atmosphere and legacy backport passed');
+console.log('mapQuality.selftest: 30 complete maps; extreme terrain/atmosphere and legacy backport passed');
 await import('./sourcedTextures.selftest.mjs');

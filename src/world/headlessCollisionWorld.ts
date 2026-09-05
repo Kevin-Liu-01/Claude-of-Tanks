@@ -3,7 +3,7 @@ import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
-type PackedSimpleShape =
+export type PackedSimpleShape =
   | readonly ['o', number, number, number, number, number]
   | readonly ['c', number, number, number]
   | readonly ['v', ...number[]];

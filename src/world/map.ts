@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createSourcedTextureState, type SourcedTextureResult, type SourcedTextureState } from './sourcedTextureReceipt.ts';
 // src/world/map.ts — composes terrain meshes + vegetation + props into the World.
 // Contract: docs/ARCHITECTURE.md §2.7 (World shape), §3.2 (layout rules).
 // Which battlefield gets built is driven by a map config (src/world/maps/*):
@@ -63,7 +64,7 @@ interface LayoutDisc {
 export type WorldHeightField = HeightField;
 
 interface TerrainUserData {
-  sourcedTexturesReady?: Promise<RuntimeValue>;
+  sourcedTexturesReady?: Promise<SourcedTextureResult[]>;
   streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
@@ -114,9 +115,11 @@ export interface WorldRayHit {
 
 export interface WorldRuntime {
   mapId: string;
+  /** Release external callbacks at final eviction, not temporary dormancy. */
+  dispose(): void;
   config: BattlefieldMapConfig;
   heightField: WorldHeightField;
-  minimapTextureState: { settled: boolean; promise: Promise<void> };
+  minimapTextureState: SourcedTextureState;
   raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): WorldRayHit | null;
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
@@ -320,14 +323,9 @@ function assembleWorld(
   // stable readiness seam so presentation snapshots cannot permanently bake
   // the procedural fallback on a cold hostname while a warm cache captures
   // the final materials.
-  const minimapTextureState: WorldRuntime['minimapTextureState'] = {
-    settled: false,
-    promise: Promise.resolve(),
-  };
-  minimapTextureState.promise = Promise.all([
-    terrain.userData.sourcedTexturesReady || Promise.resolve(),
-    props.sourcedTexturesReady || Promise.resolve(),
-  ]).then(() => { minimapTextureState.settled = true; });
+  const minimapTextureState = createSourcedTextureState(
+    terrain.userData.sourcedTexturesReady, props.sourcedTexturesReady,
+  );
 
   const _aabbNrm = new THREE.Vector3();
   const _bestNrm = new THREE.Vector3();
@@ -423,8 +421,10 @@ function assembleWorld(
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
+  const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
+    dispose: unregisterDestructibles,
     config,
     heightField,
     minimapTextureState,

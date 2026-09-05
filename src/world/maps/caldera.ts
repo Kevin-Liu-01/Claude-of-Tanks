@@ -102,7 +102,7 @@ export default {
     cloudOpacity: 1.28, cloudOpacity2: 1.04, cloudTintHex: 0xc4b7aa,
     // Preserve the smoky low-key grade while keeping direct/ambient
     // separation strong enough for reliable terrain and structure shadows.
-    sunIntensity: 3.5, sunColorHex: 0xffb985, hemiIntensity: 0.40, postExposure: 0.95,
+    sunIntensity: 3.5, sunColorHex: 0xffb985, hemiIntensity: 0.64, postExposure: 0.95,
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],
