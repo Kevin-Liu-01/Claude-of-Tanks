@@ -259,7 +259,6 @@ export const DAMAGE_PANEL_MARKER_STYLE = Object.freeze({
 } as const);
 
 const HEALTHY_MODULE_COLOR = DAMAGE_PANEL_MARKER_STYLE.moduleHealthyColor;
-const HEALTHY_CREW_COLOR = DAMAGE_PANEL_MARKER_STYLE.crewHealthyColor;
 
 // ---------------------------------------------------------------------------
 // Vector module icons — each drawn centered at (0,0) in a ~12px box, using
@@ -804,31 +803,6 @@ export function createDamagePanel(): DamagePanelController {
     ctx.stroke();
     ctx.scale(0.92, 0.92);
     icon(ctx, col);
-    ctx.restore();
-  }
-
-  function drawCrewPip(name: string, px: number, py: number, alive: boolean): void {
-    const icon = CREW_ICON[name];
-    if (!icon) return;
-    const color = alive ? HEALTHY_CREW_COLOR : STATE_COLOR.red;
-    const radius = alive ? 5.6 : 6.5;
-    ctx.save();
-    ctx.translate(px, py);
-    if (!alive) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 5;
-    }
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fillStyle = alive ? 'rgba(5,18,40,0.86)' : 'rgba(35,9,12,0.94)';
-    ctx.fill();
-    ctx.strokeStyle = alive ? 'rgba(90,169,255,0.9)' : color;
-    ctx.lineWidth = alive ? 0.9 : 1.3;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = alive ? 0.94 : 1;
-    ctx.scale(alive ? 0.58 : 0.68, alive ? 0.58 : 0.68);
-    icon(ctx, color);
     ctx.restore();
   }
 

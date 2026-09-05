@@ -57,7 +57,7 @@ import type {
 } from '../game/input.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
-  MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
+  MOBILE_PRESET_ORDER, PRESET_ORDER,
   setMobilePresetName, setPresetName,
   type PresetName,
 } from '../engine/quality.ts';
