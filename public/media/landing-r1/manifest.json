@@ -1,43 +1,43 @@
 {
-  "libraryId": "claude-of-tanks-landing-r2",
+  "libraryId": "claude-of-tanks-landing-r1",
   "schemaVersion": 1,
-  "source": "Current R2 selection from first-party runtime captures and directed Scene Studio media",
+  "source": "Owner-directed selection from first-party Scene Studio and marketing-shot libraries",
   "hero": [
     {
-      "id": "31_battle_steinburg",
-      "title": "Steinburg alley flash",
-      "src": "/media/showcase-r2/31_battle_steinburg.webp",
-      "collection": "battle"
+      "id": "urban-crossfire",
+      "title": "Urban crossfire",
+      "src": "/media/featured/f10_studio_urban_crossfire.webp",
+      "collection": "owner-directed"
     },
     {
-      "id": "29_battle_sirocco",
-      "title": "Sirocco wadi gauntlet",
-      "src": "/media/showcase-r2/29_battle_sirocco.webp",
-      "collection": "battle"
+      "id": "fjord-firefight",
+      "title": "Fjord firefight",
+      "src": "/media/featured/f9_studio_fjord_firefight.webp",
+      "collection": "owner-directed"
     },
     {
-      "id": "30_battle_frosthollow",
-      "title": "Frosthollow ice breaker",
-      "src": "/media/showcase-r2/30_battle_frosthollow.webp",
-      "collection": "battle"
+      "id": "m1-firefight",
+      "title": "M1 firefight",
+      "src": "/media/featured/f8_studio_m1_firefight.webp",
+      "collection": "owner-directed"
     },
     {
-      "id": "32_battle_verdant",
-      "title": "Verdant column engagement",
-      "src": "/media/showcase-r2/32_battle_verdant.webp",
-      "collection": "battle"
+      "id": "strv-steinburg-duel",
+      "title": "Strv 103 Steinburg duel",
+      "src": "/media/featured/f6_studio_strv_steinburg_duel.webp",
+      "collection": "owner-directed"
     },
     {
-      "id": "33_battle_saltmere",
-      "title": "Saltmere harbor kill",
-      "src": "/media/showcase-r2/33_battle_saltmere.webp",
-      "collection": "battle"
+      "id": "desert-armored-contact",
+      "title": "Desert armored contact",
+      "src": "/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp",
+      "collection": "action"
     },
     {
-      "id": "40_battle_urban_hero",
-      "title": "Steinburg breakthrough",
-      "src": "/media/showcase-r2/40_battle_urban_hero.webp",
-      "collection": "battle"
+      "id": "winter-ice-breaker",
+      "title": "Winter ice breaker",
+      "src": "/media/showcase-r1/113_foreground_winter_ice_breaker.webp",
+      "collection": "foreground"
     }
   ],
   "featureReel": {
@@ -77,148 +77,148 @@
   "winterDestructionRail": "/media/hero-rails-r2/02_winter-ice-orbit.webm",
   "mosaic": [
     {
-      "id": "17_live_player_hud",
-      "title": "Production battle HUD",
-      "collection": "live",
-      "src": "/media/showcase-r2/17_live_player_hud.webp"
+      "id": "61_action_desert_duel_leclerc_kill",
+      "title": "desert duel leclerc kill",
+      "collection": "action",
+      "src": "/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp"
     },
     {
-      "id": "18_live_spectator",
-      "title": "Allied spectator view",
-      "collection": "live",
-      "src": "/media/showcase-r2/18_live_spectator.webp"
+      "id": "63_action_desert_overwatch_line",
+      "title": "desert overwatch line",
+      "collection": "action",
+      "src": "/media/showcase-r1/63_action_desert_overwatch_line.webp"
     },
     {
-      "id": "19_live_sniper",
-      "title": "Precision sight",
-      "collection": "live",
-      "src": "/media/showcase-r2/19_live_sniper.webp"
+      "id": "67_action_winter_lake_duel",
+      "title": "winter lake duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/67_action_winter_lake_duel.webp"
     },
     {
-      "id": "20_live_gunnery",
-      "title": "Live firing cycle",
-      "collection": "live",
-      "src": "/media/showcase-r2/20_live_gunnery.webp"
+      "id": "69_action_winter_village_brawl",
+      "title": "winter village brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/69_action_winter_village_brawl.webp"
     },
     {
-      "id": "21_live_destruction",
-      "title": "Vehicle destruction",
-      "collection": "live",
-      "src": "/media/showcase-r2/21_live_destruction.webp"
+      "id": "71_action_urban_street_duel",
+      "title": "urban street duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/71_action_urban_street_duel.webp"
     },
     {
-      "id": "22_live_detrack",
-      "title": "Track destruction",
-      "collection": "live",
-      "src": "/media/showcase-r2/22_live_detrack.webp"
+      "id": "74_action_urban_ruin_brawl",
+      "title": "urban ruin brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/74_action_urban_ruin_brawl.webp"
     },
     {
-      "id": "23_live_killcam_fire",
-      "title": "Killcam firing beat",
-      "collection": "live",
-      "src": "/media/showcase-r2/23_live_killcam_fire.webp"
+      "id": "76_action_verdant_field_duel",
+      "title": "verdant field duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/76_action_verdant_field_duel.webp"
     },
     {
-      "id": "24_live_killcam_impact",
-      "title": "Killcam impact beat",
-      "collection": "live",
-      "src": "/media/showcase-r2/24_live_killcam_impact.webp"
+      "id": "78_action_verdant_village_brawl",
+      "title": "verdant village brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/78_action_verdant_village_brawl.webp"
     },
     {
-      "id": "25_live_killcam_xray",
-      "title": "Resolved-shot X-ray",
-      "collection": "live",
-      "src": "/media/showcase-r2/25_live_killcam_xray.webp"
+      "id": "80_action_desert_wadi_gauntlet",
+      "title": "desert wadi gauntlet",
+      "collection": "action",
+      "src": "/media/showcase-r1/80_action_desert_wadi_gauntlet.webp"
     },
     {
-      "id": "26_vehicle_abrams",
-      "title": "M1A2 Abrams detail",
-      "collection": "vehicle",
-      "src": "/media/showcase-r2/26_vehicle_abrams.webp"
+      "id": "84_action_steppe_horizon_charge",
+      "title": "steppe horizon charge",
+      "collection": "action",
+      "src": "/media/showcase-r1/84_action_steppe_horizon_charge.webp"
     },
     {
-      "id": "27_vehicle_t90m",
-      "title": "T-90M Proryv detail",
-      "collection": "vehicle",
-      "src": "/media/showcase-r2/27_vehicle_t90m.webp"
+      "id": "86_action_coastal_harbor_kill",
+      "title": "coastal harbor kill",
+      "collection": "action",
+      "src": "/media/showcase-r1/86_action_coastal_harbor_kill.webp"
     },
     {
-      "id": "28_vehicle_leopard",
-      "title": "Leopard 2A7V detail",
-      "collection": "vehicle",
-      "src": "/media/showcase-r2/28_vehicle_leopard.webp"
+      "id": "89_action_coastal_beach_storm",
+      "title": "coastal beach storm",
+      "collection": "action",
+      "src": "/media/showcase-r1/89_action_coastal_beach_storm.webp"
     },
     {
-      "id": "29_battle_sirocco",
-      "title": "Sirocco wadi gauntlet",
-      "collection": "battle",
-      "src": "/media/showcase-r2/29_battle_sirocco.webp"
+      "id": "93_foreground_desert_overwatch_line",
+      "title": "desert overwatch line",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/93_foreground_desert_overwatch_line.webp"
     },
     {
-      "id": "30_battle_frosthollow",
-      "title": "Frosthollow ice breaker",
-      "collection": "battle",
-      "src": "/media/showcase-r2/30_battle_frosthollow.webp"
+      "id": "95_foreground_coastal_dune_ambush",
+      "title": "coastal dune ambush",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/95_foreground_coastal_dune_ambush.webp"
     },
     {
-      "id": "31_battle_steinburg",
-      "title": "Steinburg alley flash",
-      "collection": "battle",
-      "src": "/media/showcase-r2/31_battle_steinburg.webp"
+      "id": "97_foreground_winter_lake_duel",
+      "title": "winter lake duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/97_foreground_winter_lake_duel.webp"
     },
     {
-      "id": "32_battle_verdant",
-      "title": "Verdant column engagement",
-      "collection": "battle",
-      "src": "/media/showcase-r2/32_battle_verdant.webp"
+      "id": "99_foreground_winter_village_brawl",
+      "title": "winter village brawl",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/99_foreground_winter_village_brawl.webp"
     },
     {
-      "id": "33_battle_saltmere",
-      "title": "Saltmere harbor kill",
-      "collection": "battle",
-      "src": "/media/showcase-r2/33_battle_saltmere.webp"
+      "id": "101_foreground_urban_street_duel",
+      "title": "urban street duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/101_foreground_urban_street_duel.webp"
     },
     {
-      "id": "34_battle_amberford",
-      "title": "Amberford gold inferno",
-      "collection": "battle",
-      "src": "/media/showcase-r2/34_battle_amberford.webp"
+      "id": "104_foreground_urban_ruin_brawl",
+      "title": "urban ruin brawl",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/104_foreground_urban_ruin_brawl.webp"
     },
     {
-      "id": "35_battle_tarkhan",
-      "title": "Tarkhan horizon charge",
-      "collection": "battle",
-      "src": "/media/showcase-r2/35_battle_tarkhan.webp"
+      "id": "106_foreground_verdant_field_duel",
+      "title": "verdant field duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/106_foreground_verdant_field_duel.webp"
     },
     {
-      "id": "36_battle_cinder",
-      "title": "Cinder sodium dusk",
-      "collection": "battle",
-      "src": "/media/showcase-r2/36_battle_cinder.webp"
+      "id": "109_foreground_verdant_hero_challenger1",
+      "title": "verdant hero challenger1",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp"
     },
     {
-      "id": "37_battle_frontier",
-      "title": "Frontier contact",
-      "collection": "battle",
-      "src": "/media/showcase-r2/37_battle_frontier.webp"
+      "id": "111_foreground_steppe_windbreak_snipe",
+      "title": "steppe windbreak snipe",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp"
     },
     {
-      "id": "38_battle_nordhavn",
-      "title": "Nordhavn contact",
-      "collection": "battle",
-      "src": "/media/showcase-r2/38_battle_nordhavn.webp"
+      "id": "115_foreground_urban_alley_flash",
+      "title": "urban alley flash",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/115_foreground_urban_alley_flash.webp"
     },
     {
-      "id": "39_battle_jade_delta",
-      "title": "Jade Delta contact",
-      "collection": "battle",
-      "src": "/media/showcase-r2/39_battle_jade_delta.webp"
+      "id": "118_foreground_verdant_meadow_duel",
+      "title": "verdant meadow duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/118_foreground_verdant_meadow_duel.webp"
     },
     {
-      "id": "40_battle_urban_hero",
-      "title": "Steinburg breakthrough",
-      "collection": "battle",
-      "src": "/media/showcase-r2/40_battle_urban_hero.webp"
+      "id": "120_foreground_verdant_overwatch_ridge",
+      "title": "verdant overwatch ridge",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp"
     }
   ],
   "studio": {

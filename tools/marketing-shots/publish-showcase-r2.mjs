@@ -1,4 +1,4 @@
-// Publish the 40 approved R2 masters as efficient web renditions plus four
+// Publish the approved UI-only R2 masters as efficient web renditions plus
 // contact sheets and one page-coverage manifest.
 
 import { spawnSync } from 'node:child_process';
@@ -32,8 +32,12 @@ if (report.totals?.images !== config.expectedCount
 mkdirSync(outDir, { recursive: true });
 mkdirSync(processDir, { recursive: true });
 mkdirSync(reviewRawDir, { recursive: true });
+const preservedPublicFiles = new Set(config.shots
+  .filter((shot) => shot.preservePublic)
+  .map((shot) => `${shot.id}.webp`));
 for (const directory of [outDir, processDir, reviewRawDir]) {
   for (const file of readdirSync(directory).filter((name) => /\.(?:png|webp)$/i.test(name))) {
+    if (directory === outDir && preservedPublicFiles.has(file)) continue;
     rmSync(join(directory, file));
   }
 }
@@ -116,7 +120,11 @@ const shots = config.shots.map((shot) => {
   const isMobile = shot.sourceType === 'mobile';
   const dimensions = isMobile ? { width: 860, height: 1864 } : { width: 1920, height: 1080 };
   const output = join(outDir, `${shot.id}.webp`);
-  encodeWebp(join(rawDir, shot.source), output, dimensions.width, dimensions.height, isMobile ? 82 : 84);
+  if (shot.preservePublic) {
+    if (!existsSync(output)) throw new Error(`Missing preserved public image: ${output}`);
+  } else {
+    encodeWebp(join(rawDir, shot.source), output, dimensions.width, dimensions.height, isMobile ? 82 : 84);
+  }
   return {
     sequence: shot.sequence,
     id: shot.id,
@@ -147,7 +155,10 @@ run(process.execPath, [
 const rawSheets = readdirSync(reviewRawDir)
   .filter((file) => /^all_\d+_SHEET\.png$/.test(file))
   .sort();
-if (rawSheets.length !== 4) throw new Error(`Expected four R2 contact sheets, found ${rawSheets.length}`);
+const expectedSheets = Math.ceil(config.expectedCount / 10);
+if (rawSheets.length !== expectedSheets) {
+  throw new Error(`Expected ${expectedSheets} R2 contact sheets, found ${rawSheets.length}`);
+}
 const contactSheets = rawSheets.map((file, index) => {
   const page = index + 1;
   const output = `review-${String(page).padStart(2, '0')}.webp`;
@@ -168,14 +179,14 @@ const manifest = {
   generatedAt: '2026-09-04',
   renderer: 'Claude of Tanks production Garage, Tank Gallery, Scene Studio, and deterministic shot runtime',
   firstPartyRuntimeOnly: true,
-  review: 'Forty current-renderer frames with image-level gates, four visual review sheets, and explicit coverage for every public route',
+  review: `${config.expectedCount} current UI frames with image-level gates, ${expectedSheets} visual review sheets, and explicit coverage for every public route`,
   sourceDimensions: config.sourceDimensions,
   counts: { ...counts, total: shots.length },
-  qualityGate: { report: 'shots/showcase-r2/quality-report.json', required: { images: 40, passed: 40, failed: 0 } },
+  qualityGate: { report: 'shots/showcase-r2/quality-report.json', required: { images: config.expectedCount, passed: config.expectedCount, failed: 0 } },
   pageAssignments: config.pageAssignments,
   process: {
     purpose: 'Collection-level visual review before public-page admission',
-    sequence: ['deterministic runtime state', '4K capture', 'image gate', 'contact-sheet review', 'web rendition', 'page assignment'],
+    sequence: ['deterministic runtime state', 'vehicle-pinned UI capture', 'image gate', 'contact-sheet review', 'web rendition', 'page assignment'],
     contactSheets,
   },
   shots,

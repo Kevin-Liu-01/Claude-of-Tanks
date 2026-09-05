@@ -1,5 +1,5 @@
 // Capture the current Garage, Tank Gallery, Scene Studio, and compact Garage
-// surfaces for the 40-frame R2 showcase. Each product surface is loaded once;
+// surfaces for the UI-only R2 showcase. Each product surface is loaded once;
 // deterministic public hooks then stage every requested state at a 4K backing
 // resolution without changing live gameplay.
 
@@ -23,8 +23,10 @@ const option = (name, fallback) => {
 };
 const outDir = resolve(option('out', join(ROOT, 'shots/showcase-r2/raw')));
 const config = JSON.parse(readFileSync(join(HERE, 'showcase-r2.json'), 'utf8'));
+const onlyIds = new Set((option('ids', '') || '').split(',').filter(Boolean));
 const productShots = config.shots.filter((shot) =>
-  ['garage', 'gallery', 'studio', 'mobile'].includes(shot.sourceType));
+  ['garage', 'gallery', 'studio', 'mobile'].includes(shot.sourceType)
+    && (!onlyIds.size || onlyIds.has(shot.id)));
 mkdirSync(outDir, { recursive: true });
 
 await acquireCaptureLock(30 * 60 * 1000);
@@ -95,12 +97,17 @@ try {
 
   for (const shot of productShots.filter((entry) => entry.sourceType === 'garage')) {
     errors = [];
-    await page.evaluate((id) => window.__GARAGE_WORKSHOP.set(id), shot.variantId);
-    await page.waitForFunction((id) => {
+    await page.evaluate(async ({ variantId, vehicleId }) => {
+      window.__DEBUG.selectGarageTank(vehicleId);
+      await window.__DEBUG.stagePedestalTank(vehicleId);
+      window.__GARAGE_WORKSHOP.set(variantId);
+    }, shot);
+    await page.waitForFunction(({ variantId, vehicleId }) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
-      return stats.selected === id && stats.architecture?.ready === true
+      return window.__DEBUG.selectedSpecId === vehicleId
+        && stats.selected === variantId && stats.architecture?.ready === true
         && stats.architecture.presented === true;
-    }, { timeout: 60000 }, shot.variantId);
+    }, { timeout: 60000 }, shot);
     await capture(shot);
   }
 
@@ -108,30 +115,38 @@ try {
   if (mobileShot) {
     errors = [];
     await page.setViewport({ width: 430, height: 932, deviceScaleFactor: 2 });
-    await page.evaluate(() => window.__GARAGE_WORKSHOP.set('verdant_motor_pool'));
-    await page.waitForFunction(() => {
+    await page.evaluate(async ({ variantId, vehicleId }) => {
+      window.__DEBUG.selectGarageTank(vehicleId);
+      await window.__DEBUG.stagePedestalTank(vehicleId);
+      window.__GARAGE_WORKSHOP.set(variantId);
+    }, mobileShot);
+    await page.waitForFunction(({ variantId, vehicleId }) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
-      return stats.selected === 'verdant_motor_pool' && stats.architecture?.presented === true;
-    }, { timeout: 60000 });
+      return window.__DEBUG.selectedSpecId === vehicleId
+        && stats.selected === variantId && stats.architecture?.presented === true;
+    }, { timeout: 60000 }, mobileShot);
     await capture(mobileShot);
   }
 
   errors = [];
   await page.setViewport(desktopViewport);
-  await page.goto(`${baseUrl}/gallery.html?id=m1a2`, {
+  const galleryShots = productShots.filter((entry) => entry.sourceType === 'gallery');
+  await page.goto(`${baseUrl}/gallery.html?id=${galleryShots[0]?.vehicleId || 'k2'}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true,
     { timeout: 120000 });
-  for (const shot of productShots.filter((entry) => entry.sourceType === 'gallery')) {
+  for (const shot of galleryShots) {
     errors = [];
     const mode = shot.mode === 'hero' ? 'appearance' : shot.mode;
-    await page.evaluate((nextMode) => {
-      window.__TANK_GALLERY.setMode(nextMode, false);
+    await page.evaluate(async ({ vehicleId, nextMode }) => {
+      await window.__TANK_GALLERY.loadTank(vehicleId, { mode: nextMode, view: 'hero' });
       window.__TANK_GALLERY.frameView('hero');
-    }, mode);
-    await page.waitForFunction((nextMode) =>
-      window.__TANK_GALLERY.getState().mode === nextMode, { timeout: 30000 }, mode);
+    }, { vehicleId: shot.vehicleId, nextMode: mode });
+    await page.waitForFunction(({ vehicleId, nextMode }) => {
+      const state = window.__TANK_GALLERY.getState();
+      return state.selectedId === vehicleId && state.mode === nextMode;
+    }, { timeout: 30000 }, { vehicleId: shot.vehicleId, nextMode: mode });
     await capture(shot);
   }
 
@@ -158,4 +173,3 @@ try {
   clearInterval(lockRefresher);
   releaseCaptureLock();
 }
-

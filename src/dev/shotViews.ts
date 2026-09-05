@@ -723,7 +723,7 @@ export function createShotViews({
     }, 'collision');
   },
   // KILL-CAM: deterministic staged x-ray replay frame. A synthetic enemy
-  // flank shot into the player's M1A2 SEPv3 is resolved through the
+  // flank shot into the selected player vehicle is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
   // combat state) and handed to the kill-cam's staged x-ray renderer.
   killcam_xray() {

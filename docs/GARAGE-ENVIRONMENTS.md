@@ -20,9 +20,9 @@ side bays establish an active maintenance facility around it.*
 exhibits: running gear can be removed onto dollies, hull and turret work remains
 physically supported, and lift coverage aligns with the work area.*
 
-[![All ten Garage environments shown with the current production Garage interface](../public/media/showcase-r2/process/review-01.webp)](../public/media/showcase-r2/process/review-01.webp)
+[![All ten Garage environments shown with a varied non-Abrams fleet and the current Garage interface](../public/media/showcase-r2/process/review-01.webp)](../public/media/showcase-r2/process/review-01.webp)
 
-*Current R2 production contact sheet. Every panel is an in-engine
+*Production contact sheet, 4 September 2026. Every panel is an in-engine
 Garage capture using the same selected vehicle and interface, which makes
 environment, structure, lighting, platform, and framing differences directly
 comparable.*

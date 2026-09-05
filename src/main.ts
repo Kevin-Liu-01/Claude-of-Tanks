@@ -2433,6 +2433,7 @@ window.__SHOTS = {
       getFx: () => fxRuntimeAccess.current,
       getKillcam: () => killcam,
       getShellCards: () => playerBattleActions.shellCards,
+      getSelectedSpecId: () => selectedVehicle.id,
       game,
       frameInfo,
       rig,

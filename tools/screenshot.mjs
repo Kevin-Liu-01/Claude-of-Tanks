@@ -2,6 +2,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // Headless screenshot harness for critic agents.
 // Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2]
 //   [--width 1920] [--height 1080] [--dpr 1] [--dyn-scale 0.8]
+//   [--tank k2] [--roster t90m,challenger_3,leo2a7v]
 // Starts a vite dev server, loads the game in headless Chromium, waits for
 // window.__GAME_READY, then iterates window.__SHOTS.views (or --views subset),
 // calling window.__SHOTS.set(name) before each capture.
@@ -48,6 +49,8 @@ const dpr = parseFloat(opt('dpr', '1'));
 const dynScaleArg = opt('dyn-scale', '');
 const dynScale = dynScaleArg === '' ? null : parseFloat(dynScaleArg);
 const onlyViews = opt('views', '') ? opt('views', '').split(',') : null;
+const tankId = opt('tank', '');
+const rosterIds = opt('roster', '') ? opt('roster', '').split(',').filter(Boolean) : null;
 mkdirSync(outDir, { recursive: true });
 
 const port = 5200 + Math.floor(Math.random() * 700);
@@ -117,6 +120,20 @@ try {
   );
   const targets = onlyViews ? views.filter((v) => onlyViews.includes(v)) : views;
   if (targets.length === 0) throw new Error('No screenshot views exposed via window.__SHOTS.views');
+
+  if (tankId) {
+    await page.evaluate(async ({ id, roster }) => {
+      if (roster) {
+        window.__DEBUG.flags.forceRoster = roster;
+        window.__DEBUG.flags.rosterExact = true;
+      }
+      window.__DEBUG.selectGarageTank(id);
+      await window.__DEBUG.stagePedestalTank(id);
+    }, { id: tankId, roster: rosterIds });
+    await page.waitForFunction((id) => window.__DEBUG.selectedSpecId === id,
+      { timeout: 30000 }, tankId);
+    console.log(`[shots] selected capture vehicle ${tankId}${rosterIds ? ` with roster ${rosterIds.join(',')}` : ''}`);
+  }
 
   for (const view of targets) {
     await page.evaluate((v) => window.__SHOTS.set(v), view);
@@ -209,7 +226,7 @@ try {
   }
 } catch (err) {
   failed = true;
-  console.error(`[shots] FAILED: ${err.stack || err.message}`);
+  console.error(`[shots] FAILED: ${err.message}`);
 } finally {
   if (consoleErrors.length) {
     console.error(`[shots] page console errors (${consoleErrors.length}):`);

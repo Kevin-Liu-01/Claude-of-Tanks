@@ -24,7 +24,6 @@ const ALL = args.includes('--all');
 const COLS = parseInt(opt('cols', '5'), 10);
 const ROWS = parseInt(opt('rows', '2'), 10);
 const NO_LABELS = args.includes('--no-labels');
-const CONTAIN = args.includes('--contain');
 const CONTAINS = opt('contains', '');
 mkdirSync(out, { recursive: true });
 
@@ -66,7 +65,7 @@ for (const [base, names] of groups) {
     return `data:image/${mime};base64,${readFileSync(join(dir, n)).toString('base64')}`;
   });
   const dataURL = await page.evaluate(async (
-    srcs, labels, tw, requestedCols, showLabels, contain,
+    srcs, labels, tw, requestedCols, showLabels,
   ) => {
     const imgs = [];
     for (const s of srcs) {
@@ -87,14 +86,7 @@ for (const [base, names] of groups) {
     imgs.forEach((im, i) => {
       const x = (i % cols) * tw;
       const y = Math.floor(i / cols) * (th + labelHeight);
-      if (contain) {
-        const scale = Math.min(tw / im.width, th / im.height);
-        const width = im.width * scale;
-        const height = im.height * scale;
-        ctx.drawImage(im, x + (tw - width) / 2, y + labelHeight + (th - height) / 2, width, height);
-      } else {
-        ctx.drawImage(im, x, y + labelHeight, tw, th);
-      }
+      ctx.drawImage(im, x, y + labelHeight, tw, th);
       if (showLabels) {
         ctx.fillStyle = '#ffd27a';
         ctx.font = 'bold 16px monospace';
@@ -102,7 +94,7 @@ for (const [base, names] of groups) {
       }
     });
     return c.toDataURL('image/png');
-  }, uris, names, TILE_W, ALL ? COLS : names.length, !NO_LABELS, CONTAIN);
+  }, uris, names, TILE_W, ALL ? COLS : names.length, !NO_LABELS);
   const file = join(out, `${base}_SHEET.png`);
   writeFileSync(file, Buffer.from(dataURL.split(',')[1], 'base64'));
   console.log(`[contact] ${file}`);

@@ -347,7 +347,7 @@ several remote destructions cannot monopolize one render frame. Critical state
 events apply immediately; smoke, debris, and other expensive effects can be
 staged over subsequent frames without changing the outcome.
 
-## Scene Studio and the 40-frame field archive
+## Scene Studio and the 88-frame field archive
 
 Scene Studio (`src/game/studio.ts`) runs a live battlefield with combat AI
 paused. It can place any current vehicle, conform it to terrain, pose turret and
@@ -355,19 +355,20 @@ gun within spec limits, apply camouflage/damage states, fire the game's real
 effects, freeze deterministic time, and capture through the full renderer up
 to the GPU's safe output size.
 
-The landing page, public field manual, Gallery, Garage, and Studio use a
-reproducible visual archive rather than hand-retouched art. It preserves ten
-Garage environments, six interface surfaces, nine live feature states, three
-vehicle details, and twelve battlefield action frames. Four contact sheets
-expose the complete 40-frame collection-review pass. The generated manifest
-records route assignments, map, feature, provenance, grading, and review-sheet
-membership for every public frame:
+The landing page, public field manual, Gallery, and Studio use a reproducible
+visual archive rather than hand-retouched art. It leads with 13 owner-selected
+features, then preserves 30 action frames, 30 foreground-led frames, five
+directed Studio keyframes, and ten deterministic game/interface captures. Six
+contact sheets expose all 60 campaign frames in the collection-review pass. The
+generated manifest records map, feature, actors, effects, provenance, grading,
+and review-sheet membership for every public frame:
 
 ```bash
-npm run shots:r2:capture
-npm run shots:r2:grade
-npm run shots:r2:publish
-npm run shots:r2:check
+npm run shots:battle:generate
+npm run shots:battle:grade -- --root shots/marketing-battles-r3
+npm run studio:action:render
+npm run showcase:publish
+npm run showcase:check
 ```
 
 ## Verification
