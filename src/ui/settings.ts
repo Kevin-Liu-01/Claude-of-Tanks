@@ -62,6 +62,16 @@ import {
   type PresetName,
 } from '../engine/quality.ts';
 
+const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
+  ultra: 'settings.preset.ultra',
+  high: 'settings.preset.high',
+  medium: 'settings.preset.medium',
+  low: 'settings.preset.low',
+  'mobile-low': 'settings.preset.mobileLow',
+  mobile: 'settings.preset.mobile',
+  'mobile-high': 'settings.preset.mobileHigh',
+});
+
 type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics';
 type BindingSlotKey = BindingSlot | 'pad';
 type NumericSettingKey =
@@ -1047,7 +1057,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const name of choices) {
       const b = el('button', '', seg);
       b.type = 'button';
-      b.textContent = name === 'auto' ? t('settings.preset.auto') : PRESETS[name].label.toLowerCase();
+      b.textContent = name === 'auto'
+        ? t('settings.preset.auto')
+        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
       b.dataset.name = name;
       b.addEventListener('click', () => {
         if (mobile) setMobilePresetName(name);

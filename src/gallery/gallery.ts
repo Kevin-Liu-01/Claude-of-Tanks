@@ -446,10 +446,13 @@ function renderRoster(): void {
   if (!filteredRecords.length) {
     const empty = document.createElement('p');
     empty.className = 'empty-roster';
-    empty.textContent = 'No archive records match the current filters.';
+    empty.textContent = t('gallery.empty.noMatch');
     vehicleList.append(empty);
   }
-  $('#archiveCount').textContent = `${filteredRecords.length} of ${records.length} records`;
+  $('#archiveCount').textContent = t('gallery.count', {
+    shown: filteredRecords.length,
+    total: records.length,
+  });
 }
 
 function renderDossier(record: GalleryRecord): void {
@@ -901,7 +904,7 @@ async function writeClipboard(text: string, successMessage: string): Promise<voi
     await navigator.clipboard.writeText(text);
     showToast(successMessage);
   } catch (_) {
-    showToast('Clipboard permission unavailable');
+    showToast(t('gallery.toast.clipboardUnavailable'));
   }
 }
 
@@ -925,16 +928,21 @@ $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;
   $('#autoRotate').setAttribute('aria-pressed', String(controls.autoRotate));
-  showToast(controls.autoRotate ? 'Automatic turntable enabled' : 'Automatic turntable disabled');
+  showToast(controls.autoRotate
+    ? t('gallery.toast.turntableOn')
+    : t('gallery.toast.turntableOff'));
 });
-$('#copyLink').addEventListener('click', () => writeClipboard(location.href, 'Gallery link copied'));
+$('#copyLink').addEventListener('click', () => writeClipboard(
+  location.href,
+  t('gallery.toast.linkCopied'),
+));
 $('#copySpec').addEventListener('click', () => {
   if (!selectedId) return;
   writeClipboard(JSON.stringify(
     serializeGallerySpec(getSpec(selectedId) as GalleryVehicleSpec),
     null,
     2,
-  ), 'Vehicle data copied');
+  ), t('gallery.toast.specCopied'));
 });
 renderer.domElement.addEventListener('pointerdown', (event) => {
   pointerStart = { x: event.clientX, y: event.clientY };

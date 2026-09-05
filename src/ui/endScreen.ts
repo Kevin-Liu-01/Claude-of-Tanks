@@ -450,7 +450,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.classList.add('cot-es');
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');
-  host.setAttribute('aria-label', 'Battle results');
+  host.setAttribute('aria-label', t('endScreen.resultsAria'));
   host.setAttribute('aria-hidden', 'true');
 
   let visible = false;
@@ -681,7 +681,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     row.setAttribute('role', 'listitem');
     const vehicle = vehicleName(result.specId);
     const details: string[] = [vehicle];
-    if (result.kills > 0) details.push(`${result.kills} kill${result.kills === 1 ? '' : 's'}`);
+    if (result.kills > 0) {
+      details.push(t(result.kills === 1
+        ? 'endScreen.killsCountOne'
+        : 'endScreen.killsCountMany', { count: result.kills }));
+    }
     row.innerHTML =
       '<span class="si"></span>' +
       `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${result.name || result.id}</span>` +
@@ -691,12 +695,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const damage = Math.max(0, Number(result.dmg) || 0);
     const output = requiredDescendant<HTMLElement>(row, '.output');
     output.setAttribute('role', 'meter');
-    output.setAttribute('aria-label', 'Damage');
+    output.setAttribute('aria-label', t('endScreen.damageAria'));
     output.setAttribute('aria-valuemin', '0');
     output.setAttribute('aria-valuemax', String(Math.max(1, Math.round(maxDamage))));
     output.setAttribute('aria-valuenow', String(Math.round(damage)));
-    output.setAttribute('aria-valuetext', `${fmtN(damage)} damage`);
-    output.title = `${fmtN(damage)} damage`;
+    output.setAttribute('aria-valuetext', t('endScreen.damageValueAria', { value: fmtN(damage) }));
+    output.title = t('endScreen.damageValueAria', { value: fmtN(damage) });
     requiredDescendant<HTMLElement>(row, '.ov').textContent = fmtN(damage);
     requiredDescendant<HTMLElement>(row, '.obar i').style.width =
       `${damageComparisonPercent(damage, maxDamage)}%`;
@@ -793,10 +797,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats): void {
     const penetrationRate = stats.hits > 0
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
-    renderMiniStat(parent, 'penetration', null, 'Penetrations',
-      `${stats.pens} / ${stats.hits}`, `${penetrationRate}% of hits`);
-    renderMiniStat(parent, 'shield', 'blocked', 'Damage blocked', fmtN(stats.blocked));
-    renderMiniStat(parent, 'damage', 'received', 'Damage received', fmtN(stats.received));
+    renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
+      `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
+    renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
+    renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
     host.dataset.hits = String(stats.hits);
     host.dataset.pens = String(stats.pens);
     host.dataset.received = String(Math.round(stats.received));
@@ -811,12 +815,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details = [
       bestShot.zone,
       bestShot.distM ? `${Math.round(bestShot.distM)} m` : '',
-      bestShot.destroyed ? 'Kill confirmed' : '',
+      bestShot.destroyed ? t('endScreen.killConfirmed') : '',
     ].filter(Boolean).join(' · ');
     strip.innerHTML =
       `<span class="bk">${uiIconSVG('autoAim', 16)}<span>${t('endScreen.bestShot')}</span></span>` +
       `<span class="bd">${fmtN(bestShot.damage)}</span>` +
-      `<span class="bt"><b>${bestShot.targetName || 'Enemy vehicle'}</b><small>${details}</small></span>`;
+      `<span class="bt"><b>${bestShot.targetName || t('endScreen.enemyVehicle')}</b><small>${details}</small></span>`;
     host.dataset.bestShot = String(Math.round(bestShot.damage));
   }
 

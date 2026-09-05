@@ -546,7 +546,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const id = S._internal.selected?.spec?.id;
     window.location.href = id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery';
   });
-  const exitBtn = el('button', null, 'EXIT (F8)');
+  const exitBtn = el('button', null, t('studio.exitF8'));
   exitBtn.addEventListener('click', () => S.exit());
   badge.append(badgeMark, badgeTitle, badgeMap, galleryBtn, exitBtn);
   root.appendChild(badge);
@@ -650,7 +650,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (!id || id === S.mapId) return;
     setMapLoading(true);
     Promise.resolve(S.setMap(id))
-      .catch((error: RuntimeValue) => flashBusy(`MAP FAILED: ${errorMessage(error)}`))
+      .catch((error: RuntimeValue) => flashBusy(t('studio.mapFailed', { error: errorMessage(error) })))
       .finally(() => {
         setMapLoading(false);
         api.refreshMap();
@@ -757,8 +757,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const addRow2 = el('div', 'grid');
   addRow2.style.marginTop = '6px';
-  const addAtMarker = el('button', null, 'ADD IN VIEW');
-  addAtMarker.title = 'Uses the terrain marker when set; otherwise places at the camera focus';
+  const addAtMarker = el('button', null, t('studio.addInView'));
+  addAtMarker.title = t('studio.addInViewTitle');
   addAtMarker.addEventListener('click', () => {
     const point = S._internal.markerActive
       ? S._internal.markerPos
@@ -768,7 +768,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       })();
     S.addActor({ id: pickedId, pos: [point.x, point.z] });
   });
-  const placeBtn = el('button', null, 'CLICK TO PLACE');
+  const placeBtn = el('button', null, t('studio.clickToPlace'));
   placeBtn.addEventListener('click', () => {
     S._internal.placeArmed = S._internal.placeArmed ? null : pickedId;
     api.setPlaceArmed(S._internal.placeArmed);
@@ -828,9 +828,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   stateRow.appendChild(stateSel);
   secSel.appendChild(stateRow);
   const delRow = el('div', 'grid');
-  const recoilBtn = el('button', null, 'RECOIL POSE');
+  const recoilBtn = el('button', null, t('studio.recoilPose'));
   recoilBtn.addEventListener('click', () => patchSel({ recoilAgeS: 0.05 }));
-  const delBtn = el('button', 'warn', 'REMOVE');
+  const delBtn = el('button', 'warn', t('studio.remove'));
   delBtn.addEventListener('click', () => { const a = S._internal.selected; if (a) S.removeActor(a); });
   delRow.append(recoilBtn, delBtn);
   secSel.appendChild(delRow);
@@ -842,7 +842,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const secFx = section('Layers & events', 'sel tank · else marker');
   const fxStackBar = el('div', 'fxstackbar');
   fxStackBar.appendChild(el('div', 'hint', 'select a layer · delete removes only it'));
-  const clearStackBtn = el('button', 'warn', 'CLEAR ALL');
+  const clearStackBtn = el('button', 'warn', t('studio.clearAll'));
   clearStackBtn.addEventListener('click', () => S.clearEffects());
   fxStackBar.appendChild(clearStackBtn);
   const fxStack = el('div', 'fxstack');
@@ -853,12 +853,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     fn(S._internal.selected);
   const withSelected = <Result>(fn: (actor: StudioActor) => Result): Result | null => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy('SELECT AN ACTOR FIRST'); return null; }
+    if (!actor) { flashBusy(t('studio.selectActorFirst')); return null; }
     return fn(actor);
   };
   const atMarker = <Result>(fn: () => Result): Result | null => {
     if (!S._internal.markerActive) {
-      flashBusy('CLICK THE BATTLEFIELD TO PLACE THE FX MARKER');
+      flashBusy(t('studio.clickBattlefieldPlaceMarker'));
       return null;
     }
     return fn();
@@ -953,11 +953,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const ts = sliderRow('Speed', 0.25, 2, 0.05, (v) => S.setTimeScale(v));
   secTime.appendChild(ts.row);
   const timeRow = el('div', 'grid3');
-  const restartBtn = el('button', null, 'RESTART');
+  const restartBtn = el('button', null, t('studio.restart'));
   restartBtn.addEventListener('click', () => S.stop());
-  const pauseBtn = el('button', null, 'PLAY');
+  const pauseBtn = el('button', null, t('studio.play'));
   pauseBtn.addEventListener('click', () => (S.playing ? S.pause() : S.play()));
-  const stepBtn = el('button', null, '+1 FRAME');
+  const stepBtn = el('button', null, t('studio.stepOneFrame'));
   stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
   timeRow.append(restartBtn, pauseBtn, stepBtn);
   secTime.appendChild(timeRow);
@@ -973,7 +973,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   scrub.max = String(S.durationMs);
   scrub.step = '10';
   scrub.value = '0';
-  scrub.setAttribute('aria-label', 'Storyboard playhead');
+  scrub.setAttribute('aria-label', t('studio.scrubAria'));
   let scrubFrame = 0;
   scrub.addEventListener('input', () => {
     cancelAnimationFrame(scrubFrame);
@@ -1001,35 +1001,35 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secTime.appendChild(timelineBoard);
 
   const authorRow = el('div', 'grid');
-  const addShotBtn = el('button', null, 'ADD CAMERA SHOT');
+  const addShotBtn = el('button', null, t('studio.addCameraShot'));
   addShotBtn.addEventListener('click', () => S.addCameraShot());
-  const keyActorBtn = el('button', null, 'KEY SELECTED TANK');
+  const keyActorBtn = el('button', null, t('studio.keySelectedTank'));
   keyActorBtn.addEventListener('click', () => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy('SELECT A TANK FIRST'); return; }
+    if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
     S.keyActor(actor);
   });
   authorRow.append(addShotBtn, keyActorBtn);
   secTime.appendChild(authorRow);
   const railRow = el('div', 'grid');
   railRow.style.marginTop = '5px';
-  const railBtn = el('button', null, 'SHOW CAMERA RAIL');
+  const railBtn = el('button', null, t('studio.showCameraRail'));
   railBtn.addEventListener('click', () => S.setRailVisible(!S.railVisible));
-  const clearTrackBtn = el('button', 'warn', 'CLEAR TANK TRACK');
+  const clearTrackBtn = el('button', 'warn', t('studio.clearTankTrack'));
   clearTrackBtn.addEventListener('click', () => {
     const actor = S._internal.selected;
-    if (!actor) { flashBusy('SELECT A TANK FIRST'); return; }
+    if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
     S.clearActorTrack(actor);
   });
   railRow.append(railBtn, clearTrackBtn);
   secTime.appendChild(railRow);
-  const duelBtn = el('button', 'prime', 'DIRECT 12 S DUEL');
+  const duelBtn = el('button', 'prime', t('studio.directDuel'));
   duelBtn.style.marginTop = '6px';
-  duelBtn.title = 'Uses the first two staged tanks and replaces cinematic tracks and effects';
+  duelBtn.title = t('studio.directDuelTitle');
   duelBtn.addEventListener('click', () => {
     try {
       S.directDuel();
-      flashBusy('12 SECOND DUEL STORYBOARD READY');
+      flashBusy(t('studio.duelReady'));
     } catch (error) {
       flashBusy(errorMessage(error));
     }
@@ -1037,7 +1037,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secTime.appendChild(duelBtn);
   const shotboard = el('div', 'shotboard');
   secTime.appendChild(shotboard);
-  const resetFxBtn = el('button', 'warn', 'CLEAR ALL EFFECTS');
+  const resetFxBtn = el('button', 'warn', t('studio.clearAllEffects'));
   resetFxBtn.style.cssText = 'width:100%;margin-top:2px;';
   resetFxBtn.addEventListener('click', () => S.clearEffects());
   secTime.appendChild(resetFxBtn);
@@ -1046,8 +1046,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // === CAMERA section ===
   const secCam = section('Camera');
   const camModeRow = el('div', 'grid');
-  const flyBtn = el('button', null, 'FREE-FLY');
-  const orbBtn = el('button', null, 'ORBIT');
+  const flyBtn = el('button', null, t('studio.freeFly'));
+  const orbBtn = el('button', null, t('studio.orbit'));
   flyBtn.addEventListener('click', () => { S.setCamera({ mode: 'fly' }); api.refreshCamera(); });
   orbBtn.addEventListener('click', () => {
     const a = S._internal.selected;
@@ -1079,19 +1079,19 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   videoRow.appendChild(fpsSel);
   secCap.appendChild(videoRow);
-  const recordBtn = el('button', 'prime', 'RECORD VIDEO');
+  const recordBtn = el('button', 'prime', t('studio.recordVideo'));
   recordBtn.addEventListener('click', () => {
     if (S.recordingStatus().active) {
       S.stopRecording();
       return;
     }
     S.recordVideo({ fps: Number(fpsSel.value), download: true })
-      .then((result) => flashBusy(`VIDEO SAVED · ${(result.size / 1048576).toFixed(1)} MB`))
-      .catch((error: RuntimeValue) => flashBusy(`RECORD FAILED: ${errorMessage(error)}`));
+      .then((result) => flashBusy(t('studio.videoSaved', { size: (result.size / 1048576).toFixed(1) })))
+      .catch((error: RuntimeValue) => flashBusy(t('studio.recordFailed', { error: errorMessage(error) })));
     api.refreshStoryboard();
   });
   secCap.appendChild(recordBtn);
-  const recStatus = el('div', 'recStatus', 'READY · VIDEO FOLLOWS STORYBOARD ONCE');
+  const recStatus = el('div', 'recStatus', t('studio.recordReady'));
   secCap.appendChild(recStatus);
   const capRow = el('div', 'row');
   capRow.style.marginTop = '8px';
@@ -1110,7 +1110,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   capRow.appendChild(capSel);
   secCap.appendChild(capRow);
-  const capBtn = el('button', null, 'CAPTURE PNG');
+  const capBtn = el('button', null, t('studio.capturePng'));
   capBtn.style.width = '100%';
   capBtn.addEventListener('click', () => {
     S.capture({ width: parseInt(capSel.value, 10), download: true });
@@ -1118,7 +1118,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secCap.appendChild(capBtn);
   const svRow = el('div', 'grid3');
   svRow.style.marginTop = '6px';
-  const saveBtn = el('button', null, 'SAVE JSON');
+  const saveBtn = el('button', null, t('studio.saveJson'));
   saveBtn.addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(S.state(), null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -1127,7 +1127,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  const loadBtn = el('button', null, 'LOAD JSON');
+  const loadBtn = el('button', null, t('studio.loadJson'));
   const fileIn = document.createElement('input');
   fileIn.type = 'file';
   fileIn.accept = 'application/json,.json';
@@ -1136,15 +1136,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     f.text().then((txt) => S.load(JSON.parse(txt)))
-      .catch((error: RuntimeValue) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
+      .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })));
     fileIn.value = '';
   });
   loadBtn.addEventListener('click', () => fileIn.click());
-  const copyBtn = el('button', null, 'COPY JSON');
+  const copyBtn = el('button', null, t('studio.copyJson'));
   copyBtn.addEventListener('click', () => {
     const txt = JSON.stringify(S.state());
     if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
-    flashBusy('SCENE JSON COPIED');
+    flashBusy(t('studio.sceneJsonCopied'));
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
   secCap.append(svRow, fileIn);
@@ -1152,19 +1152,23 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const slotRow = el('div', 'grid3');
   slotRow.style.marginTop = '5px';
   for (let i = 1; i <= 3; i++) {
-    const b = el('button', null, `SLOT ${i}`);
-    b.title = 'Click: load · Shift-click: save';
+    const b = el('button', null, t('studio.slot', { n: i }));
+    b.title = t('studio.slotTitle');
     b.addEventListener('click', (e) => {
       const key = `cot.studio.slot${i}.v1`;
       if (e.shiftKey) {
         try {
           localStorage.setItem(key, JSON.stringify(S.state()));
-          flashBusy(`SAVED SLOT ${i}`);
-        } catch (_) { flashBusy('SAVE FAILED'); }
+          flashBusy(t('studio.savedSlot', { n: i }));
+        } catch (_) { flashBusy(t('studio.saveFailed')); }
       } else {
         const txt = localStorage.getItem(key);
-        if (!txt) { flashBusy(`SLOT ${i} EMPTY (shift-click saves)`); return; }
-        S.load(JSON.parse(txt)).catch((error: RuntimeValue) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
+        if (!txt) {
+          flashBusy(t('studio.slotEmpty', { n: i }));
+          return;
+        }
+        S.load(JSON.parse(txt))
+          .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })));
       }
     });
     slotRow.appendChild(b);
@@ -1251,7 +1255,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }, shot ? {
       src: shot.img,
       alt: t(shot.capKey),
-      caption: `${t(shot.capKey)} // authored Scene Studio output`,
+      caption: `${t(shot.capKey)} // ${t('garage.featuredShots.studioOutput')}`,
     } : null].filter(Boolean);
   }
   function section(title: string, sub = ''): HTMLDivElement {
@@ -1530,7 +1534,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     setPlaceArmed(specId) {
       placeBtn.classList.toggle('on', !!specId);
-      placeBtn.textContent = specId ? `CLICK MAP TO PLACE ${specId.toUpperCase()}` : 'CLICK TO PLACE';
+      placeBtn.textContent = specId
+        ? t('studio.clickMapToPlace', { spec: specId.toUpperCase() })
+        : t('studio.clickToPlace');
     },
     setSelected(_actor) {
       api.refreshActors();
@@ -1594,7 +1600,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     refreshTime() {
       const scale = S.timeScale;
       if (scale > 0 && Number(ts.input.value) !== scale) ts.set(scale);
-      const pauseLabel = scale === 0 ? 'PLAY' : 'PAUSE';
+      const pauseLabel = scale === 0 ? t('studio.play') : t('studio.pause');
       if (pauseBtn.textContent !== pauseLabel) pauseBtn.textContent = pauseLabel;
       pauseBtn.classList.toggle('on', S.timeScale === 0);
       const seconds = S.durationMs / 1000;
@@ -1608,17 +1614,23 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         playhead.style.left = left;
       }
       const rec = S.recordingStatus();
-      recordBtn.textContent = rec.active ? 'STOP RECORDING' : 'RECORD VIDEO';
+      recordBtn.textContent = rec.active ? t('studio.stopRecording') : t('studio.recordVideo');
       recordBtn.classList.toggle('on', rec.active);
       recStatus.classList.toggle('on', rec.active);
       recStatus.textContent = rec.active
-        ? `RECORDING ${(rec.elapsedMs / 1000).toFixed(1)} / ${(rec.durationMs / 1000).toFixed(1)} S · ${rec.mimeType || 'VIDEO'}`
-        : (rec.supported ? 'READY · VIDEO FOLLOWS STORYBOARD ONCE' : 'VIDEO RECORDING NOT SUPPORTED');
+        ? t('studio.recordingStatus', {
+          elapsed: (rec.elapsedMs / 1000).toFixed(1),
+          total: (rec.durationMs / 1000).toFixed(1),
+          mime: rec.mimeType || t('studio.videoMime'),
+        })
+        : (rec.supported
+          ? t('studio.recordReady')
+          : t('studio.recordUnsupported'));
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
       railBtn.classList.toggle('on', S.railVisible);
-      railBtn.textContent = S.railVisible ? 'HIDE CAMERA RAIL' : 'SHOW CAMERA RAIL';
+      railBtn.textContent = S.railVisible ? t('studio.hideCameraRail') : t('studio.showCameraRail');
       duration.input.disabled = isRecording;
       scrub.disabled = isRecording;
       restartBtn.disabled = isRecording;

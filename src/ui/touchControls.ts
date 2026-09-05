@@ -669,11 +669,13 @@ export function createTouchControls({
   function renderGraphicsButton(): void {
     const name = graphicsChoice();
     const label = PRESETS[name]?.label || name;
-    const short = label === 'Performance' ? 'Perf' : label === 'Balanced' ? 'Bal' :
-      label === 'Quality' ? 'Qual' : label;
-    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = `GFX ${short}`;
-    graphicsButton.setAttribute('aria-label', `Graphics quality: ${label}. Tap to change level`);
-    graphicsButton.title = `Graphics: ${label}`;
+    const short = label === 'Performance' ? t('touch.gfx.perf')
+      : label === 'Balanced' ? t('touch.gfx.bal')
+        : label === 'Quality' ? t('touch.gfx.qual')
+          : label;
+    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = t('touch.gfx.label', { short });
+    graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
+    graphicsButton.title = t('touch.gfx.title', { label });
   }
   graphicsButton.addEventListener('click', (e) => {
     e.stopPropagation();

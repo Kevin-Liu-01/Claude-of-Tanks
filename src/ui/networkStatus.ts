@@ -1,5 +1,7 @@
 const STYLE_ID = 'cot-network-status-style';
 
+import { t } from './i18n.ts';
+
 export type NetworkConnectionState = 'reconnecting' | 'reconnected' | 'failed' | 'closed' | 'connected';
 
 export interface NetworkStatusState {
@@ -166,9 +168,9 @@ export function createNetworkStatus(): NetworkStatusController {
   }
 
   function set({ state, attempt = 0 }: NetworkStatusState = {}): void {
-    if (state === 'reconnecting') show(`Connection interrupted · reconnecting ${attempt || 1}`);
-    else if (state === 'reconnected') show('Connection restored', false, 1800);
-    else if (state === 'failed') show('Connection lost · return to garage', true);
+    if (state === 'reconnecting') show(t('networkStatus.reconnecting', { attempt: attempt || 1 }));
+    else if (state === 'reconnected') show(t('networkStatus.restored'), false, 1800);
+    else if (state === 'failed') show(t('networkStatus.failed'), true);
     else if (state === 'closed' || state === 'connected') root.classList.remove('show');
   }
 

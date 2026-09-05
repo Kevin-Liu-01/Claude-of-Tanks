@@ -1188,13 +1188,15 @@ export function createPlayMenu({
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
-    battlefieldName.textContent = selectedMap?.name || next.mapId || 'Random battlefield';
+    battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.fallbackMapName');
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
       : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
-    battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
+    battlefieldRole.textContent = role === 'host'
+      ? t('playMenu.role.hostSelectable')
+      : t('playMenu.role.selectedByHost');
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
@@ -1215,12 +1217,18 @@ export function createPlayMenu({
       remember(PLAYER_NAME_KEY, player.name);
     }
     const spectator = player.team === 'spectator';
-    readyBtn.textContent = spectator ? 'Watching' : player.ready ? 'Not ready' : "I'm ready";
+    readyBtn.textContent = spectator
+      ? t('playMenu.ready.watching')
+      : player.ready
+        ? t('playMenu.ready.notReady')
+        : t('playMenu.ready.iAmReady');
     readyBtn.disabled = spectator || next.phase !== 'waiting';
     readyBtn.classList.toggle('needs-ready', !spectator && !player.ready && next.phase === 'waiting');
     readyBtn.classList.toggle('is-ready', !spectator && player.ready);
     readyBtn.setAttribute('aria-pressed', String(!spectator && player.ready));
-    readyBtn.setAttribute('aria-label', player.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
+    readyBtn.setAttribute('aria-label', player.ready
+      ? t('playMenu.ready.markNotReady')
+      : t('playMenu.ready.markReady'));
   }
 
   function updateLobbyControls(

@@ -51,6 +51,9 @@ const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Placing structures': 'battleLoad.stage.placingStructures',
   'Sealing the battlefield': 'battleLoad.stage.sealingBattlefield',
   'Planting vegetation': 'battleLoad.stage.plantingVegetation',
+  'Surveying battlefield': 'battleLoad.stage.surveyingBattlefield',
+  'Settling actors': 'battleLoad.stage.settlingActors',
+  'Studio ready': 'battleLoad.stage.studioReady',
 });
 
 function translateStageLabel(label: string): string {
@@ -164,12 +167,19 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving{transition-duration:1ms;}}
 `;
 
-const BATTLE_TIPS = [
-  ['Opening move', 'Do not drive into the open on the first bounce of the clock — let the scouts spot and pick a flank once the map has told you where the weight went.'],
-  ['Trade', 'Fire, then break line of sight. A shot that costs you two in return is a shot you should not have taken.'],
-  ['Team', 'Allied guns matter more than yours. Fighting beside two friendlies beats fighting alone with the better tank.'],
-  ['Minimap', 'Half of every battle is on the minimap. Check it at every reload.'],
+const BATTLE_TIPS: ReadonlyArray<readonly [string, string]> = [
+  ['battleLoad.tip.opening.heading', 'battleLoad.tip.opening.body'],
+  ['battleLoad.tip.trade.heading', 'battleLoad.tip.trade.body'],
+  ['battleLoad.tip.team.heading', 'battleLoad.tip.team.body'],
+  ['battleLoad.tip.minimap.heading', 'battleLoad.tip.minimap.body'],
 ];
+
+/** Resolve a BATTLE_TIPS entry into its localized heading and body. */
+function localizedTip(
+  entry: readonly [string, string],
+): readonly [string, string] {
+  return [t(entry[0]), t(entry[1])];
+}
 
 export interface BattleLoadRosterRow {
   readonly id: string;
@@ -298,13 +308,15 @@ export function createBattleLoadScreen(): BattleLoadScreen {
      *   mode?:string, allies:Array, enemies:Array}} info
      */
     show(info: BattleLoadInfo) {
-      nameEl.textContent = info.mapName || 'Battlefield';
+      nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
       if (info.mode) kickEl.textContent = info.mode;
       artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
       artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';
       fillTeam(allyRows, allyN, info.allies);
       fillTeam(foeRows, foeN, info.enemies);
-      const [h, b] = BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)];
+      const [h, b] = localizedTip(
+        BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
+      );
       tipEl.innerHTML = `<b>${h}</b>${b}`;
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));

@@ -1212,7 +1212,10 @@ export function createDamagePanel(): DamagePanelController {
       for (const id of Array.isArray(ids) ? ids : []) {
         const it = EQUIPMENT_BY_ID.get(id);
         if (!it) continue;
-        html += `<span class="eq" title="${it.name} — ${it.desc}">${equipIconSVG(id, 15)}</span>`;
+        const name = t(`equipment.${id}.name`);
+        const desc = t(`equipment.${id}.desc`);
+        const tooltip = t('damagePanel.equipmentTooltip', { name, desc });
+        html += `<span class="eq" title="${tooltip}">${equipIconSVG(id, 15)}</span>`;
       }
       equipRow.innerHTML = html;
     },

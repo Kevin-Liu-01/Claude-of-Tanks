@@ -1255,12 +1255,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         }, action ? {
           src: action.img,
           alt: t(action.capKey),
-          caption: `${t(action.capKey)} // live game capture`,
+          caption: `${t(action.capKey)} // ${t('garage.featuredShots.liveCapture')}`,
         } : null].filter(Boolean);
       },
       sections: [
-        { icon: 'map', title: 'Solo deployment', text: 'Your selection is resolved when the battle begins.' },
-        { icon: 'team', title: 'Multiplayer rooms', text: 'The room host owns the final battlefield choice.' },
+        { icon: 'map', title: t('garage.info.soloDeploymentTitle'), text: t('garage.info.soloDeploymentText') },
+        { icon: 'team', title: t('garage.info.multiplayerTitle'), text: t('garage.info.multiplayerText') },
       ],
     }));
     mapsEl.appendChild(title);
@@ -1392,18 +1392,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           ? customCamoPatternId(camoOpts.getCustom(selected.id)) : current);
         return [{
           src: tile.toDataURL('image/png'),
-          alt: 'Selected camouflage pattern tile',
-          caption: 'Current paint // material swatch',
+          alt: t('garage.camo.tileAlt2'),
+          caption: t('garage.camo.tileCaption'),
         }, {
           src: iconUrl(selected.id, 'angle'),
-          alt: `${selected.label?.displayName || selected.name} camouflage reference`,
+          alt: t('garage.camo.referenceAlt2', { name: selected.label?.displayName || selected.name }),
           fit: 'contain',
-          caption: `${selected.label?.displayName || selected.name} // vehicle application`,
+          caption: t('garage.camo.referenceCaption', { name: selected.label?.displayName || selected.name }),
         }];
       },
       sections: [
-        { icon: 'camouflage', title: 'Matching biome', text: 'Compatible seasonal paint adds 3.5% concealment.' },
-        { icon: 'brush', title: 'Local studio', text: 'Custom recipes are device-local and convert to Factory paint online.' },
+        { icon: 'camouflage', title: t('garage.info.matchingBiomeTitle'), text: t('garage.info.matchingBiomeText') },
+        { icon: 'brush', title: t('garage.info.localStudioTitle'), text: t('garage.info.localStudioText') },
       ],
     }));
     let customOpenButton: HTMLButtonElement | null = null;
@@ -1616,7 +1616,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!preview.metrics.length) return;
     const metricHeading = document.createElement('span');
     metricHeading.className = 'metrics-heading';
-    metricHeading.textContent = `Vehicle values · ${specName}`;
+    metricHeading.textContent = t('garage.equipment.valuesHeading', { name: specName });
     metrics.appendChild(metricHeading);
     for (const metric of preview.metrics) {
       const row = document.createElement('span');
@@ -1626,7 +1626,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       icon.innerHTML = uiIconSVG(equipmentMetricIcon(metric.id), 12);
       const label = document.createElement('span');
       label.className = 'metric-label';
-      label.textContent = metric.label;
+      label.textContent = metric.labelKey ? t(metric.labelKey) : metric.label;
       const values = document.createElement('span');
       values.className = 'metric-values';
       if (metric.changed) {
@@ -1650,8 +1650,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   function equipmentTooltipCategory(item: EquipmentItem | null | undefined): string {
-    if (!item) return 'Slot action';
-    return EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || 'Equipment';
+    if (!item) return t('garage.equipment.slotAction');
+    return EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || t('garage.equipment.label');
   }
 
   function equipmentTooltipState(
@@ -1660,10 +1660,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     fittedAt: number,
     spec: GarageTankSpec | undefined,
   ): string {
-    if (!item) return `Clear Slot ${eqOpenSlot + 1}`;
+    if (!item) return t('garage.equipment.clearSlot', { slot: eqOpenSlot + 1 });
     if (locked) return equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot);
-    if (fittedAt === eqOpenSlot) return 'Currently fitted · click to remove';
-    if (fittedAt >= 0) return `Fitted in Slot ${fittedAt + 1} · click to move here`;
+    if (fittedAt === eqOpenSlot) return t('garage.equipment.fittedClickRemove');
+    if (fittedAt >= 0) return t('garage.equipment.fittedInClickMove', { slot: fittedAt + 1 });
     return equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
   }
 
@@ -1682,20 +1682,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eyebrow.className = 'eyebrow';
     eyebrow.textContent = category;
     const name = document.createElement('strong');
-    name.textContent = item?.name || 'Empty Slot';
+    name.textContent = item?.name || t('garage.equipment.emptySlot');
     const detail = document.createElement('span');
     detail.className = 'detail';
-    detail.textContent = item?.desc || 'Remove the equipment fitted in this slot.';
+    detail.textContent = item?.desc || t('garage.equipment.removeFitted');
     const preview = spec
       ? equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
       : null;
     const summary = document.createElement('span');
     summary.className = 'summary';
-    summary.textContent = preview?.summary || 'Select a vehicle to calculate its equipment values.';
+    summary.textContent = preview?.summary || t('garage.equipment.emptyStat');
     const metrics = document.createElement('span');
     metrics.className = 'metrics';
-    metrics.setAttribute('aria-label', 'Projected vehicle statistics');
-    if (preview) populateEquipmentTooltipMetrics(metrics, preview, spec?.name || 'selected tank');
+    metrics.setAttribute('aria-label', t('garage.equipment.projectedStatsAria'));
+    if (preview) populateEquipmentTooltipMetrics(metrics, preview, spec?.name || t('garage.equipment.fallbackTank'));
     const action = document.createElement('span');
     action.className = 'action';
     action.textContent = state;
@@ -2602,16 +2602,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     readonly icon: string;
   }
   const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
-    solo: { short: 'BOTS', label: 'Bots', icon: 'battleBots' },
-    private: { short: 'CODE', label: 'Private', icon: 'battlePrivate' },
-    lan: { short: 'LAN', label: 'LAN', icon: 'battleLan' },
-    ranked: { short: 'RANK', label: 'Ranked', icon: 'battleRanked' },
+    solo: { short: 'BOTS', label: t('garage.battle.soloLabel'), icon: 'battleBots' },
+    private: { short: 'CODE', label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
+    lan: { short: 'LAN', label: t('garage.battle.lanLabel'), icon: 'battleLan' },
+    ranked: { short: 'RANK', label: t('garage.battle.rankedLabel'), icon: 'battleRanked' },
   };
   const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
-    capture_the_flag: { short: 'CTF', label: 'Capture the Flag', icon: 'modeFlag' },
-    zone_control: { short: '1000', label: 'Zone Control', icon: 'modeZones' },
-    turbo_ball: { short: 'BALL', label: 'Turbo Ball', icon: 'modeTurbo' },
-    endless_horde: { short: 'WAVE', label: 'Endless Horde', icon: 'modeHorde' },
+    capture_the_flag: { short: 'CTF', label: t('garage.battle.ctfLabel'), icon: 'modeFlag' },
+    zone_control: { short: '1000', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
+    turbo_ball: { short: 'BALL', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
+    endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
@@ -2638,8 +2638,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
-    battleModeBtn.setAttribute('aria-label', `Battle type: ${meta.label}. Change battle type`);
-    battleBtn.setAttribute('aria-label', `Start ${meta.label} battle`);
+    battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
+    battleBtn.setAttribute('aria-label', t('garage.battle.startBattleAria', { label: meta.label }));
     for (const choice of battleChoices) {
       choice.setAttribute('aria-checked', String(choice.dataset.mode === mode));
     }
@@ -2654,8 +2654,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
     requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
-    battleModeBtn.setAttribute('aria-label', `Battle rules: ${meta.label}. Change battle type`);
-    battleBtn.setAttribute('aria-label', `Start ${meta.label}`);
+    battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
+    battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
     for (const choice of battleChoices) choice.setAttribute('aria-checked', 'false');
     for (const choice of battleRuleChoices) {
       choice.setAttribute('aria-checked', String(choice.dataset.gameMode === id));

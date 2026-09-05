@@ -163,7 +163,7 @@ function resolveValue<T>(value: LiveValue<T>, fallback: T): T {
 
 /** Create an icon button that opens a rich shared modal dossier. */
 export function createInfoButton({
-  label, title, text = '', json = null, className = '', eyebrow = 'Field manual',
+  label, title, text = '', json = null, className = '', eyebrow = '',
   subtitle = '', size = 'large', image = null, images = null,
   imageAlt = '', imageFit = 'cover', imageCaption = '', sections = null,
 }: InfoButtonOptions = {}): InfoButton {
@@ -172,7 +172,7 @@ export function createInfoButton({
   button.type = 'button';
   button.className = `cot-info-trigger${className ? ` ${className}` : ''}`;
   button.innerHTML = uiIconSVG('info', 13, 'currentColor', 'cot-info-trigger__icon');
-  button.setAttribute('aria-label', label || `About ${title || 'this section'}`);
+  button.setAttribute('aria-label', label || t('contextInfo.aboutSection', { title: title || t('contextInfo.thisSection') }));
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-expanded', 'false');
 
@@ -182,8 +182,8 @@ export function createInfoButton({
   const ensureModal = (): ModalController => {
     if (modal) return modal;
     modal = createModal({
-      title: title || 'More information',
-      eyebrow: resolveValue(eyebrow, 'Field manual'),
+      title: title || t('contextInfo.moreInfo'),
+      eyebrow: resolveValue(eyebrow, t('contextInfo.eyebrowDefault')),
       subtitle: resolveValue(subtitle, ''),
       size,
       className: 'cot-info-dialog',
@@ -215,8 +215,8 @@ export function createInfoButton({
 
   const render = () => {
     const dialog = ensureModal();
-    dialog.setTitle(title || 'More information');
-    dialog.setEyebrow(resolveValue(eyebrow, 'Field manual'));
+    dialog.setTitle(title || t('contextInfo.moreInfo'));
+    dialog.setEyebrow(resolveValue(eyebrow, t('contextInfo.eyebrowDefault')));
     dialog.setSubtitle(resolveValue(subtitle, ''));
     dialog.body.textContent = '';
     const root = document.createElement('article');
@@ -269,7 +269,7 @@ export function createInfoButton({
         icon.innerHTML = uiIconSVG(entry.icon || 'info', 24);
         const copy = document.createElement('div');
         const heading = document.createElement('h3');
-        heading.textContent = entry.title || 'Details';
+        heading.textContent = entry.title || t('contextInfo.detailsFallback');
         const paragraph = document.createElement('p');
         paragraph.textContent = entry.text || '';
         copy.append(heading, paragraph);

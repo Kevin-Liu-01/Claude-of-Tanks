@@ -639,11 +639,11 @@ export function aimWarningState(
   if (view?.selfRightLabel) {
     state.kind = 'rollover';
     state.visible = true;
-    state.text = `PRESS ${view.selfRightLabel} TO FLIP`;
+    state.text = t('hud.aimWarning.selfRight', { key: view.selfRightLabel });
   } else if (view?.blockedDistM != null) {
     state.kind = 'blocked';
     state.visible = !!view.blockedLabel;
-    state.text = `MUZZLE BLOCKED · ${Math.round(view.blockedDistM)} M`;
+    state.text = t('hud.aimWarning.muzzleBlocked', { dist: Math.round(view.blockedDistM) });
   } else if (view?.gunLimitSpec) {
     state.kind = 'limit';
     state.visible = true;
@@ -2688,11 +2688,22 @@ export function initHud(bus: EventBus): HudRuntime {
     modeState: HudMatchModeState,
     ownScore: string | number,
   ): string {
-    if (modeState.id === 'capture_the_flag') return `FLAGS ${ownScore} / ${modeState.target || 3}`;
-    if (modeState.id === 'zone_control') return `CONTROL ${ownScore} / ${modeState.target || 1000}`;
-    if (modeState.id === 'turbo_ball') return `GOALS ${ownScore} / ${modeState.target || 5}`;
+    if (modeState.id === 'capture_the_flag') {
+      return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
+    }
+    if (modeState.id === 'zone_control') {
+      return t('hud.modeStatus.control', { own: String(ownScore), target: String(modeState.target || 1000) });
+    }
+    if (modeState.id === 'turbo_ball') {
+      return t('hud.modeStatus.goals', { own: String(ownScore), target: String(modeState.target || 5) });
+    }
     const horde = modeState.horde;
-    return `WAVE ${horde?.wave || 1} · ${horde?.alive || 0} HOSTILES · AMMO ${modeState.playerAmmo ?? '—'} / ${modeState.playerAmmoCapacity ?? '—'}`;
+    return t('hud.modeStatus.horde', {
+      wave: String(horde?.wave || 1),
+      alive: String(horde?.alive || 0),
+      ammo: String(modeState.playerAmmo ?? '—'),
+      capacity: String(modeState.playerAmmoCapacity ?? '—'),
+    });
   }
 
   function modeStatusIconName(modeId: string): string {
@@ -2707,7 +2718,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
     modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
-    modeStatusName.textContent = modeState.label || 'Objective';
+    modeStatusName.textContent = modeState.label || t('hud.modeStatus.objective');
     modeStatusValue.textContent = copy;
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
@@ -5351,17 +5362,19 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-      showAlert(active
-        ? 'ATGM AMMUNITION SELECTED · CLICK TO FIRE'
-        : 'ATGM DESELECTED · PREVIOUS ROUND RESTORED', {
+      showAlert(t(active
+        ? 'hud.alert.atgmSelected'
+        : 'hud.alert.atgmDeselected'), {
         icon: active ? 'missileRack' : 'shell', tone: active ? 'success' : 'info',
       });
     }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
-      showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED',
+      showAlert(t(active
+        ? 'hud.alert.suspensionAimEngaged'
+        : 'hud.alert.suspensionAimDisengaged'),
         { icon: 'gunMount', tone: active ? 'success' : 'info' });
     } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) {
-      showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' });
+      showAlert(t('hud.alert.magazineReloadStarted'), { icon: 'shell' });
     }
   });
   function pulseAmmoDenied(slot: number | null | undefined, includeSpecial = false): void {
@@ -5379,25 +5392,27 @@ export function initHud(bus: EventBus): HudRuntime {
   }
   on('ui:ammoSelectionDenied', ({ slot, guided }) => {
     pulseAmmoDenied(slot, !!guided);
-    showAlert(guided ? 'MISSILES DEPLETED' : 'AMMUNITION TYPE EMPTY', {
+    showAlert(guided
+      ? t('hud.alert.missilesDepleted')
+      : t('hud.alert.ammoTypeEmpty'), {
       icon: guided ? 'missileRack' : 'shell', tone: 'danger',
     });
   });
   on('ui:specialActionDenied', ({ reason, slot }) => {
     if (reason === 'AMMO_EMPTY') {
       pulseAmmoDenied(slot, true);
-      showAlert('MISSILES DEPLETED', { icon: 'missileRack', tone: 'danger' });
+      showAlert(t('hud.alert.missilesDepleted'), { icon: 'missileRack', tone: 'danger' });
       return;
     }
-    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
-        : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-          : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
+    showAlert(reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
+        : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull')
+          : t('hud.alert.specialActionUnavailable'), { icon: 'clock', tone: 'info' });
   });
-  on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' }));
+  on('ui:magazineReloadStarted', () => showAlert(t('hud.alert.magazineReloadStarted'), { icon: 'shell' }));
   on('ui:magazineReloadDenied', ({ reason }) => {
-    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
-      : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-        : 'MAGAZINE RELOAD UNAVAILABLE', { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
+    showAlert(reason === 'MAGAZINE_RELOADING' ? t('hud.alert.magazineReloadInProgress')
+      : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull')
+        : t('hud.alert.magazineReloadUnavailable'), { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
   });
   on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     if (slot == null || readyAt == null || cooldownS == null) return;
@@ -5407,16 +5422,21 @@ export function initHud(bus: EventBus): HudRuntime {
     conCooldownS[slot] = cooldownS;
     updateConsumableCooldowns(lastTimeS);
     const icons = ['repair', 'medkit', 'extinguisher'];
-    showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, { icon: icons[slot] || 'check', tone: 'success' });
+    showAlert(t('hud.alert.consumableUsed', { name: CONSUMABLES[slot].label }), { icon: icons[slot] || 'check', tone: 'success' });
   });
   on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
     if (slot == null) return;
     if (reason === 'NOTHING') {
       const icons = ['repair', 'medkit', 'extinguisher'];
-      showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR',
+      showAlert(t(slot === 2
+        ? 'hud.alert.noFireToExtinguish'
+        : slot === 1
+          ? 'hud.alert.crewUnharmed'
+          : 'hud.alert.nothingToRepair'),
         { icon: icons[slot] || 'info', tone: 'info' });
     } else if (reason === 'COOLDOWN') {
-      showAlert(`READY IN ${Math.ceil(remainingS || 0)} S`, { icon: 'clock', tone: 'info' });
+      showAlert(t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }),
+        { icon: 'clock', tone: 'info' });
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
@@ -5432,13 +5452,13 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
-    if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`,
+    if (on) showAlert(t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
   on('ammo:empty', ({ id }) => {
     if (playerId == null || id === playerId) {
-      showAlert('AMMUNITION TYPE EMPTY · SELECT ANOTHER TYPE', {
+      showAlert(t('hud.alert.ammoTypeEmpty'), {
         icon: 'shell', tone: 'danger',
       });
     }
@@ -5447,41 +5467,43 @@ export function initHud(bus: EventBus): HudRuntime {
     if (playerId != null && id !== playerId) return;
     if (fallbackSlot != null && fallbackSlot >= 0) selectSlot(fallbackSlot);
     const guided = slot != null && lastShells?.[slot]?.type === 'ATGM';
-    showAlert(guided ? 'MISSILES DEPLETED · NEXT AMMO SELECTED'
+    showAlert(guided
+      ? t('hud.alert.missilesDepletedNext')
       : fallbackSlot != null && fallbackSlot >= 0
-        ? 'AMMUNITION DEPLETED · NEXT TYPE SELECTED'
-        : 'ALL AMMUNITION DEPLETED', {
+        ? t('hud.alert.ammoDepletedNext')
+        : t('hud.alert.allAmmoDepleted'), {
       icon: guided ? 'missileRack' : 'shell', tone: 'danger',
     });
   });
   on('mode:pickup_collected', ({ by, kind, ammoAdded }) => {
     if (playerId != null && by !== playerId) return;
     const amount = Math.max(0, Number(ammoAdded) || 0);
-    showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED'
-      : `AMMUNITION ACQUIRED${amount > 0 ? ` · +${amount}` : ''}`, {
+    showAlert(kind === 'heal'
+      ? t('hud.alert.fieldRepairAcquired')
+      : t('hud.alert.ammoAcquired', { amount }), {
       icon: kind === 'heal' ? 'repair' : 'shell', tone: 'success',
     });
   });
   on('mode:wave_started', ({ wave }) => {
-    showAlert(`WAVE ${Math.max(1, Number(wave) || 1)} INBOUND`, {
+    showAlert(t('hud.alert.waveInbound', { wave: Math.max(1, Number(wave) || 1) }), {
       icon: 'modeHorde', tone: 'warning',
     });
   });
   on('mode:flag_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'ALLIED FLAG CAPTURE' : 'ENEMY FLAG CAPTURE', {
+    showAlert(t(allied ? 'hud.alert.alliedFlagCapture' : 'hud.alert.enemyFlagCapture'), {
       icon: 'modeFlag', tone: allied ? 'success' : 'danger',
     });
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'SECTOR SECURED' : 'SECTOR LOST', {
+    showAlert(t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), {
       icon: 'modeZones', tone: allied ? 'success' : 'danger',
     });
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
-    showAlert(allied ? 'ALLIED GOAL' : 'ENEMY GOAL', {
+    showAlert(t(allied ? 'hud.alert.alliedGoal' : 'hud.alert.enemyGoal'), {
       icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
     });
   });
@@ -5517,8 +5539,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // repaired:true = auto-repair finished (red → yellow). This used to toast
     // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
-    if (p.repaired) { showAlert(`${label} REPAIRED`, { icon, tone: 'success' }); return; }
-    showAlert(p.state === 'red' ? `${label} DESTROYED` : `${label} DAMAGED`,
+    if (p.repaired) { showAlert(t('hud.alert.moduleRepaired', { label }), { icon, tone: 'success' }); return; }
+    showAlert(t(p.state === 'red' ? 'hud.alert.moduleDestroyed' : 'hud.alert.moduleDamaged', { label }),
       { icon, tone: p.state === 'red' ? 'danger' : 'warning' });
   });
 
