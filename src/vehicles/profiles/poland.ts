@@ -1528,9 +1528,21 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
 // sprocket (-2.80, 0.732); track band x 1.00..1.56, top 1.286).
 // ===========================================================================
 
-function buildPL01(P: PolishBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
-  const slab = orientedSlab;
+interface PL01BuildContext {
+  readonly is105: boolean;
+  readonly equipmentHeightScale: number;
+  readonly previousRoofLocalY: number;
+  readonly turretHeightScale: number;
+  readonly turretRoofLocalY: number;
+  readonly shellY: (y: number) => number;
+  readonly roofEquipmentY: (y: number) => number;
+  readonly gunAssemblyY: (y: number) => number;
+  readonly upperGlacisY: (z: number) => number;
+  readonly driverDeckY: (z: number) => number;
+  readonly glacisPitch: number;
+}
+
+function createPL01BuildContext(P: PolishBuilderPort): PL01BuildContext {
   const is105 = P.spec.id === 'pl01_105';
   const equipmentHeightScale = 0.60;
   const previousTurretHeightScale = equipmentHeightScale * 1.20;
@@ -1555,7 +1567,25 @@ function buildPL01(P: PolishBuilderPort): void {
   const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
   P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
   P.turretG.userData.pl01RoofLocalY = turretRoofLocalY;
+  return {
+    is105,
+    equipmentHeightScale,
+    previousRoofLocalY,
+    turretHeightScale,
+    turretRoofLocalY,
+    shellY,
+    roofEquipmentY,
+    gunAssemblyY,
+    upperGlacisY,
+    driverDeckY,
+    glacisPitch,
+  };
+}
 
+function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box } = KIT;
+  const { upperGlacisY } = context;
+  const slab = orientedSlab;
   // ---- center hull body (x ±1.616): tub + faceted glacis ------------------
   // deck line = the measured falling top run (side_hull tops 2.07 rear ->
   // 1.98 at the z 1.88 fold; the flat 2.10 plateau lives aft of -1.5 only)
@@ -1638,7 +1668,12 @@ function buildPL01(P: PolishBuilderPort): void {
   P.add('hullDark', box(0.92, 0.26, 0.03), -0.98, 1.60, -3.508); // grille (left wing)
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.86, 0.028, 0.026),
     -0.98, 1.50 + k * 0.075, -3.515);
+}
 
+function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, buildRunningGear } = KIT;
+  const { glacisPitch, is105, upperGlacisY } = context;
+  const slab = orientedSlab;
   // ---- full-height faceted stealth skirts (widthM anchor ±1.90) -----------
   // Measured cross-section (r1/r3 front receipts): inner hanging wall
   // (hem 0.27, x <=1.66), lower out-lean bevel (1.66, 0.60) -> (1.90, 1.30),
@@ -1748,7 +1783,11 @@ function buildPL01(P: PolishBuilderPort): void {
     }
     P.hullG.userData.pl01FrontGlacisPack = 'seated-spare-links-and-camo-era';
   }
+}
 
+function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY, torus } = KIT;
+  const { driverDeckY } = context;
   // ---- hull deck furniture -------------------------------------------------
   // Driver's station: the hatch and each vision block use their own local
   // roof sample. Their lower faces now touch the falling deck instead of
@@ -1812,7 +1851,12 @@ function buildPL01(P: PolishBuilderPort): void {
     for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.28, 0.025, 0.035),
       s * 0.72, 2.135, -2.18 - k * 0.28);
   }
+}
 
+function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
+  const slab = orientedSlab;
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
   // pivot [0, 2.07, -0.90]; stations from the measured plan/side polylines.
   // Turret-local: y0 = world - 2.07, z0 = world + 0.90. The redesigned
@@ -1946,7 +1990,13 @@ function buildPL01(P: PolishBuilderPort): void {
   });
   roofStowage.name = 'pl01_roof_stowage';
   mount(P, 'turret', roofStowage, 0, turretRoofLocalY + 0.01, -2.12);
+}
 
+function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY } = KIT;
+  const {
+    equipmentHeightScale, is105, roofEquipmentY, turretRoofLocalY,
+  } = context;
   // ---- RWS / CROWS -------------------------------------------------------
   // Base PL-01 keeps the print's laterally parked low-observable RWS. The
   // 105-mm demonstrator receives a forward-aimed CROWS-style powered station
@@ -2014,7 +2064,11 @@ function buildPL01(P: PolishBuilderPort): void {
     P.turretG.add(crowsGun);
     P.turretG.userData.pl01RemoteStation = 'forward-crows';
   }
+}
 
+function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylY, cylZ, torus } = KIT;
+  const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
   for (const s of [-1, 1]) {
@@ -2098,7 +2152,14 @@ function buildPL01(P: PolishBuilderPort): void {
     revision: 'raised-wedge-r2', upperProwY: 1.46, lowerProwY: 1.29,
     skirtProwY: 1.46, shoulderBridges: 2, aligned: true,
   };
+}
 
+function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
+  const { box, cylZ } = KIT;
+  const {
+    equipmentHeightScale, gunAssemblyY, is105, previousRoofLocalY, shellY,
+    turretRoofLocalY,
+  } = context;
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
   // axis world 2.38104 (pivot 2.07 + 0.31104); gun pivot world z 0.55.
   // One continuous six-facet shell now begins on the turret's structural
@@ -2170,6 +2231,17 @@ function buildPL01(P: PolishBuilderPort): void {
   P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
   P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48 + (turretRoofLocalY - previousRoofLocalY));
+}
+
+function buildPL01(P: PolishBuilderPort): void {
+  const context = createPL01BuildContext(P);
+  addPL01HullBody(P, context);
+  addPL01SkirtsAndRunningGear(P, context);
+  addPL01HullFurniture(P, context);
+  addPL01TurretShell(P, context);
+  addPL01RemoteWeaponStation(P, context);
+  addPL01RoofSuite(P, context);
+  addPL01Gun(P, context);
 }
 
 export const POLAND_PROFILES = {
