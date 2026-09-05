@@ -1260,7 +1260,10 @@ function buildType59(P: ChinaBuilderPort): void {
   const vehicleScale = 0.855;
   const browDropM = 0.08;
   const gunRaiseM = 0.08;
+  const rings59 = [[1.43, -0.016], [1.573, 0.10], [1.6225, 0.22], [1.584, 0.36], [1.518, 0.48], [1.43, 0.56], [1.21, 0.63], [1.166, 0.655], [1.10, 0.665], [1.012, 0.72], [0.924, 0.80], [0.792, 0.88], [0.616, 0.95], [0.44, 1.01], [0.022, 1.04]];
+  let turretArmorPanels = 0;
 
+  const buildType59Chassis = (): void => {
   // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,
   // idler, sprocket and both contact tangents rebuilt as one linked course.
   // The donor course's unsupported terminal ramps made the tracks read
@@ -1299,7 +1302,10 @@ function buildType59(P: ChinaBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('hull', box(0.20, 0.35, 0.30), side * 1.04, 0.90, 3.064, -0.12, 0, 0);
   }
+  };
+  buildType59Chassis();
 
+  const buildType59HullEquipment = (): void => {
   // ---- Chinese hull dressing --------------------------------------------
   // Type 69-family glacis IR pod: big IR drum right of the driver line on a
   // planted riser (the chassis keeps its paired white lamps at the bow).
@@ -1357,14 +1363,16 @@ function buildType59(P: ChinaBuilderPort): void {
   spareTrackStrip(P, 'hull', -0.74, 1.515, 1.73, 4, -0.18, 0);
   shovelTool(P, 0.83, 1.565, -1.28, 1.05);
   tarpRoll(P, 'hullCloth', 1.49, 1.63, -0.83, 0.72, 0.095, false, 12);
+  };
+  buildType59HullEquipment();
 
+  const buildType59Turret = (): void => {
   // ---- WZ-120 (T-54A-family) mushroom dome on the widened base ring ------
   // Ring profile = the certified §5.45 type59 dome ×1.10 laterally (the
   // §5.304 widen law), y as authored (apex turret-local 1.04 → world 2.52);
   // meshDomeCurved sz 1.03 ÷ 1.10 = 0.9364 keeps the plan CHORD byte-held
   // so the casting widens with the hull without lengthening.
   P.turretG.position.set(0, 1.4804, 0.676);
-  const rings59 = [[1.43, -0.016], [1.573, 0.10], [1.6225, 0.22], [1.584, 0.36], [1.518, 0.48], [1.43, 0.56], [1.21, 0.63], [1.166, 0.655], [1.10, 0.665], [1.012, 0.72], [0.924, 0.80], [0.792, 0.88], [0.616, 0.95], [0.44, 1.01], [0.022, 1.04]];
   meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54 });
   // flank roof-shoulder pair: the T-54A flat shelf lives on the SIDES only
   // (outer face flush with the local dome skin).
@@ -1447,13 +1455,15 @@ function buildType59(P: ChinaBuilderPort): void {
     P.turretG.add(whip);
   }
   domeRailRu(P, rings59, 1.0, 0.50, 1.1);
+  };
+  buildType59Turret();
 
+  const buildType59TurretArmor = (): void => {
   // ---- modular turret applique and denser crew equipment -----------------
   // Forward cassettes are tangent to the mushroom cheek; the side course is
   // embedded into the cast shoulder by 20-30 mm.  The two courses overlap at
   // the transition so there is no daylight wedge when the camera moves from
   // the front quarter to a true side view.
-  let turretArmorPanels = 0;
   for (const side of [-1, 1]) {
     for (let i = 0; i < 3; i++) {
       const x = side * (0.58 + i * 0.23);
@@ -1493,7 +1503,10 @@ function buildType59(P: ChinaBuilderPort): void {
     whip.position.set(0.94, 0.53, -0.91);
     P.turretG.add(whip);
   }
+  };
+  buildType59TurretArmor();
 
+  const buildType59Weapon = (): void => {
   // ---- 100 mm Type 59 gun (licensed D-10T class): measured tube grammar,
   // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Raise the axis
   // into the lowered brow opening instead of leaving the tube under the
@@ -1550,7 +1563,10 @@ function buildType59(P: ChinaBuilderPort): void {
   const dxT59 = ringSkin(rings59, 0.40) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, -0.21], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT59 * 0.98, 0.40, -0.21], -Math.PI / 2);
+  };
+  buildType59Weapon();
 
+  const scaleType59AndStampReceipts = (): void => {
   // Apply the requested modest overall reduction at the articulated owners,
   // not by baking hundreds of unrelated station constants.  Hull gear,
   // turret armor, equipment and gun therefore retain their exact attachment
@@ -1603,6 +1619,8 @@ function buildType59(P: ChinaBuilderPort): void {
     turretArmorPanels,
     equipmentAttached: true,
   });
+  };
+  scaleType59AndStampReceipts();
   P.topY = 1.035;
 }
 
