@@ -10,9 +10,9 @@ export function normalizeMinimapAngle(angle: number): number {
 
 /**
  * Project a world-space point onto the fixed north-up tactical map.
- * World +X is east/right and world +Z is north/up. This is also the raster
- * contract used by the offline top-down bake, so landmarks and live markers
- * cannot acquire independent mirroring or heading transforms.
+ * World +Z is map-up. Looking along +Z in Three.js's right-handed world,
+ * screen-right is world -X, so -X is map-right. This matches the native
+ * top-down camera basis and the battle camera's mouse-right direction.
  */
 export function projectWorldToMinimap(
   worldX: number,
@@ -23,12 +23,17 @@ export function projectWorldToMinimap(
 ): number[] {
   const target = out || [0, 0];
   const half = worldSize * 0.5;
-  target[0] = ((worldX + half) / worldSize) * mapSize;
+  target[0] = ((half - worldX) / worldSize) * mapSize;
   target[1] = ((half - worldZ) / worldSize) * mapSize;
   return target;
 }
 
 /** Canvas polar angle for a horizontal world direction on a north-up map. */
 export function minimapAngleForDirection(worldX: number, worldZ: number): number {
-  return normalizeMinimapAngle(Math.atan2(-worldZ, worldX));
+  return normalizeMinimapAngle(Math.atan2(-worldZ, -worldX));
+}
+
+/** Canvas rotation for an up-facing marker at the supplied world yaw. */
+export function minimapYawForHeading(yaw: number): number {
+  return normalizeMinimapAngle(-Number(yaw));
 }

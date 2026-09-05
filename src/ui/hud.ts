@@ -27,7 +27,7 @@ import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
   minimapAngleForDirection,
-  normalizeMinimapAngle,
+  minimapYawForHeading,
   projectWorldToMinimap,
 } from './minimapOrientation.ts';
 
@@ -4215,11 +4215,9 @@ export function initHud(bus: EventBus): HudRuntime {
       const N = N0 * 2;
       const { renderer, scene, exclude } = snap;
       const half = mapWorldSize / 2;
-      // NOTE: a straight down-look with +Z (north) as screen-up puts world +X
-      // on screen-LEFT (three's lookAt basis). Do NOT mirror the projection —
-      // a negative-determinant projection flips face winding and the whole
-      // front-face-culled terrain disappears. Render as-is and flip the
-      // image horizontally in the 2D copy below.
+      // A straight down-look with +Z as screen-up naturally puts world -X on
+      // screen-right (Three.js's right-handed lookAt basis). Keep that native
+      // handedness: it is also the battle camera's mouse-right direction.
       const cam = new THREE.OrthographicCamera(-half, half, half, -half, 10, 2400);
       cam.position.set(0, 900, 0);
       cam.up.set(0, 0, 1);
@@ -4269,15 +4267,15 @@ export function initHud(bus: EventBus): HudRuntime {
       c.width = N; c.height = N;
       const x2 = requireCanvasContext(c);
       const img = x2.createImageData(N, N);
-      // GL pixel rows come bottom-up (vertical flip) and the down-look basis
-      // mirrors east-west (horizontal flip) — undo both while copying, and
-      // force opaque alpha (background texels write alpha 0)
+      // GL pixel rows come bottom-up, so undo only the vertical readback flip.
+      // Preserve the down-look camera's horizontal basis and force opaque
+      // alpha (background texels write alpha 0).
       const dd = img.data;
       for (let y = 0; y < N; y++) {
         const src = (N - 1 - y) * N * 4;
         const dst = y * N * 4;
         for (let x3 = 0; x3 < N; x3++) {
-          const s = src + (N - 1 - x3) * 4;
+          const s = src + x3 * 4;
           const o = dst + x3 * 4;
           dd[o] = buf[s]; dd[o + 1] = buf[s + 1]; dd[o + 2] = buf[s + 2];
           dd[o + 3] = 255;
@@ -4326,7 +4324,7 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let row = 0; row < size; row++) {
       const z = half - (row + 0.5) * step;
       for (let column = 0; column < size; column++) {
-        const x = -half + (column + 0.5) * step;
+        const x = half - (column + 0.5) * step;
         const height = heightField.getHeightAt(x, z);
         const deltaX = heightField.getHeightAt(x + step * 2, z)
           - heightField.getHeightAt(x - step * 2, z);
@@ -4719,11 +4717,6 @@ export function initHud(bus: EventBus): HudRuntime {
     c.restore();
   }
 
-  // canvas rotation that makes a forward-up sprite/shape point along hull yaw
-  // (same mapping the player arrow has always used)
-  const blipAngle = (yaw: number): number =>
-    Math.atan2(-Math.cos(yaw), Math.sin(yaw)) + Math.PI / 2;
-
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
   // vehicle arrow (nose forward, swept tail notch) rotated to hull heading.
   // Player = larger white arrow, allies = green, enemies = red (r3: tinted
@@ -4739,7 +4732,7 @@ export function initHud(bus: EventBus): HudRuntime {
   ): void {
     c.save();
     c.translate(x, y);
-    c.rotate(blipAngle(yaw));
+    c.rotate(minimapYawForHeading(yaw));
     c.globalAlpha = alpha;
     c.beginPath();
     c.moveTo(0, -s);                       // nose
@@ -4872,7 +4865,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        normalizeMinimapAngle(state.yaw),
+        state.yaw,
         PEN_GREEN,
         5,
         0.95,
@@ -4886,7 +4879,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(
         point[0] + jitter[0],
         point[1] + jitter[1],
-        normalizeMinimapAngle(state.yaw),
+        state.yaw,
         PEN_RED,
         5,
         0.95,
@@ -4950,7 +4943,7 @@ export function initHud(bus: EventBus): HudRuntime {
       );
       mmCtx.stroke();
     }
-    const turretAngle = normalizeMinimapAngle(state.yaw + state.turretYaw);
+    const turretAngle = minimapYawForHeading(state.yaw + state.turretYaw);
     mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
     mmCtx.lineWidth = 1.2;
     mmCtx.beginPath();
@@ -4960,7 +4953,7 @@ export function initHud(bus: EventBus): HudRuntime {
     pushLiveBlip(
       x,
       y,
-      normalizeMinimapAngle(state.yaw),
+      state.yaw,
       '#f2f8ff',
       6.6,
       1,

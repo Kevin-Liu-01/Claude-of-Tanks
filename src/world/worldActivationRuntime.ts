@@ -162,7 +162,7 @@ export function createWorldActivationRuntime<
   }
   const cache = coordinator.cache;
   const baseUrl = options.baseUrl || '/';
-  const assetVersion = options.minimapAssetVersion || 'north-up-v4';
+  const assetVersion = options.minimapAssetVersion || 'north-up-v5';
   const assetUrl = (mapId: string): string => (
     `${baseUrl}minimaps/${encodeURIComponent(mapId)}.webp?v=${assetVersion}`
   );
