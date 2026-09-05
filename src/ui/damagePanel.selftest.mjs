@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 
 import {
   DAMAGE_PANEL_CREW_ICON_IDS,
+  DAMAGE_PANEL_MARKER_STYLE,
   DAMAGE_PANEL_MODULE_ICON_IDS,
+  DAMAGE_PANEL_MODULE_KIND_BY_ID,
   layoutDamagePanelCrewAnchors,
   layoutDamagePanelModuleAnchors,
   layoutDamagePanelScreenAnchors,
@@ -20,6 +22,30 @@ assert.deepEqual(
   [...DAMAGE_PANEL_CREW_ICON_IDS].sort(),
   [...CREW_ORDER].sort(),
   'every authored crew role has a damage-panel location glyph',
+);
+assert.deepEqual(
+  Object.keys(DAMAGE_PANEL_MODULE_KIND_BY_ID).sort(),
+  [...MODULE_IDS].sort(),
+  'every gameplay module has one weapon-or-movement visual kind',
+);
+assert.deepEqual(
+  [...new Set(Object.values(DAMAGE_PANEL_MODULE_KIND_BY_ID))].sort(),
+  ['movement', 'weapon'],
+  'damage-panel modules use exactly the requested weapon and movement kinds',
+);
+assert.notEqual(
+  DAMAGE_PANEL_MARKER_STYLE.moduleHealthyColor,
+  DAMAGE_PANEL_MARKER_STYLE.crewHealthyColor,
+  'crew and mechanical modules use distinct healthy colors',
+);
+assert.equal(
+  new Set([
+    DAMAGE_PANEL_MARKER_STYLE.weaponCarrier,
+    DAMAGE_PANEL_MARKER_STYLE.movementCarrier,
+    DAMAGE_PANEL_MARKER_STYLE.crewCarrier,
+  ]).size,
+  3,
+  'weapon, movement, and crew markers have distinct carrier silhouettes',
 );
 
 const markers = layoutDamagePanelModuleAnchors([

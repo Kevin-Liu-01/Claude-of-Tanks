@@ -225,8 +225,16 @@ function tintCanvas(src: HTMLCanvasElement, color: string): HTMLCanvasElement {
 const HULL_BODY = '#a2adb6';
 const TURRET_BODY = '#ccd6de';
 const RIM_INK = 'rgba(6,10,14,0.98)';
-const HEALTHY_MODULE_COLOR = '#82e6a0';
-const HEALTHY_CREW_COLOR = '#86d9ff';
+export const DAMAGE_PANEL_MARKER_STYLE = Object.freeze({
+  moduleHealthyColor: '#82e6a0',
+  crewHealthyColor: '#5aa9ff',
+  weaponCarrier: 'diamond',
+  movementCarrier: 'hexagon',
+  crewCarrier: 'circle',
+} as const);
+
+const HEALTHY_MODULE_COLOR = DAMAGE_PANEL_MARKER_STYLE.moduleHealthyColor;
+const HEALTHY_CREW_COLOR = DAMAGE_PANEL_MARKER_STYLE.crewHealthyColor;
 
 // ---------------------------------------------------------------------------
 // Vector module icons — each drawn centered at (0,0) in a ~12px box, using
@@ -345,8 +353,31 @@ MODULE_ICON.gunMount = MODULE_ICON.turretRing;
 
 export const DAMAGE_PANEL_MODULE_ICON_IDS = Object.freeze(Object.keys(MODULE_ICON));
 
-// Role-specific crew symbols. They share the cyan circular carrier so crew
-// never reads as another mechanical module, while their inner marks remain
+export type DamagePanelModuleKind = 'weapon' | 'movement';
+
+// The compact HUD needs only two mechanical silhouettes. Powertrain/fuel
+// systems use a broad hexagon; every fighting-system component uses a diamond.
+// Tracks already read through the two exterior rails and do not get a duplicate
+// marker, but remain classified for callers that share this vocabulary.
+export const DAMAGE_PANEL_MODULE_KIND_BY_ID: Readonly<Record<string, DamagePanelModuleKind>> = Object.freeze({
+  gun: 'weapon',
+  turretRing: 'weapon',
+  gunMount: 'weapon',
+  autoloader: 'weapon',
+  feedSystem: 'weapon',
+  missileRack: 'weapon',
+  ammoRack: 'weapon',
+  radio: 'weapon',
+  optics: 'weapon',
+  engine: 'movement',
+  transmission: 'movement',
+  fuelTank: 'movement',
+  trackL: 'movement',
+  trackR: 'movement',
+} as const satisfies Readonly<Record<string, DamagePanelModuleKind>>);
+
+// Role-specific crew symbols. They share the saturated-blue circular carrier
+// so crew never reads as another mechanical module, while their inner marks remain
 // recognizable at the panel's deliberately compact scale.
 const CREW_ICON: Record<string, ModuleIconPainter> = {
   commander(c, col) {
@@ -703,21 +734,42 @@ export function createDamagePanel(): DamagePanelController {
     ];
   }
 
-  // One module chip. Healthy systems use a quiet green locator; damage keeps
-  // the established orange/red ramp and receives a stronger socket/glow.
+  function traceModuleCarrier(kind: DamagePanelModuleKind, radius: number): void {
+    ctx.beginPath();
+    if (kind === 'weapon') {
+      ctx.moveTo(0, -radius);
+      ctx.lineTo(radius, 0);
+      ctx.lineTo(0, radius);
+      ctx.lineTo(-radius, 0);
+    } else {
+      const shoulder = radius * 0.58;
+      const height = radius * 0.82;
+      ctx.moveTo(-shoulder, -height);
+      ctx.lineTo(shoulder, -height);
+      ctx.lineTo(radius, 0);
+      ctx.lineTo(shoulder, height);
+      ctx.lineTo(-shoulder, height);
+      ctx.lineTo(-radius, 0);
+    }
+    ctx.closePath();
+  }
+
+  // One module chip. Weapon systems use diamonds; movement systems use broad
+  // hexagons. Damage keeps the established orange/red ramp and stronger glow.
   function drawPip(name: string, px: number, py: number, st: ModuleStateName): void {
     const icon = MODULE_ICON[name];
     if (!icon) return;
+    const kind = DAMAGE_PANEL_MODULE_KIND_BY_ID[name] || 'weapon';
     const healthy = st === 'ok';
     const col = healthy ? HEALTHY_MODULE_COLOR : STATE_COLOR[st];
-    const radius = healthy ? 5.5 : 6.4;
+    const radius = healthy ? 5.8 : 6.6;
     ctx.save();
     ctx.translate(px, py);
     if (!healthy) {
       ctx.shadowColor = col;
       ctx.shadowBlur = 5;
     }
-    roundRect(ctx, -radius, -radius, radius * 2, radius * 2, 3);
+    traceModuleCarrier(kind, radius);
     ctx.fillStyle = healthy ? 'rgba(5,18,15,0.72)' : 'rgba(24,12,8,0.92)';
     ctx.fill();
     ctx.strokeStyle = healthy ? 'rgba(130,230,160,0.66)' : col;
@@ -743,9 +795,9 @@ export function createDamagePanel(): DamagePanelController {
     }
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fillStyle = alive ? 'rgba(5,16,23,0.78)' : 'rgba(35,9,12,0.94)';
+    ctx.fillStyle = alive ? 'rgba(5,18,40,0.86)' : 'rgba(35,9,12,0.94)';
     ctx.fill();
-    ctx.strokeStyle = alive ? 'rgba(134,217,255,0.76)' : color;
+    ctx.strokeStyle = alive ? 'rgba(90,169,255,0.9)' : color;
     ctx.lineWidth = alive ? 0.9 : 1.3;
     ctx.stroke();
     ctx.shadowBlur = 0;
