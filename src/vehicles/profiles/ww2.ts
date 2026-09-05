@@ -558,8 +558,8 @@ function buildPziiiKonserwa(P: Ww2BuilderPort): void {
 // sherman_jumbo — docs/references/tanks/sherman_jumbo.md. Slab-sided E2 hull
 // with sand shields, cast transmission nose, huge cast turret, short 75 mm.
 // ---------------------------------------------------------------------------
-function buildShermanJumbo(P: Ww2BuilderPort): void {
-  const { box, cylX, cylY, cylZ, sph, slab, lathe, polyTurret, buildRunningGear, buildGun, periscope, liftEye } = KIT;
+function addShermanJumboRunningGear(P: Ww2BuilderPort): void {
+  const { box, buildRunningGear } = KIT;
   const zc = -0.08;
 
   // VVSS: 3 bogies × 2 wheels + 3 rollers, front sprocket (mostly hidden
@@ -583,7 +583,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
     P.add('hullRunningGearDetail', box(0.14, 0.34, 0.72), s * 1.05, 0.38, z);
     P.add('hullRunningGearDetail', box(0.16, 0.10, 0.30), s * 1.05, 0.62, z - 0.28);
   }
+}
 
+function addShermanJumboHullCore(P: Ww2BuilderPort): void {
+  const { box, slab } = KIT;
   // hull: belly raised between the tracks (ref nose undercut 0.47), slab
   // side band ±1.475 to y 1.80, chamfered sponson tops into the 2.01 roof.
   // DOCUMENTED RESIDENT FIX (ww2 ladder r1, coordinator-sanctioned): the
@@ -678,6 +681,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       [xi, 1.30, -3.05], [xo, 1.30, -3.05], [xo, 1.30, -3.15], [xi, 1.30, -3.15],
       [xi, 1.445, -3.05], [xo, 1.445, -3.05], [xo, 1.445, -3.15], [xi, 1.445, -3.15]));
   }
+}
+
+function addShermanJumboNoseAndShoulders(P: Ww2BuilderPort): void {
+  const { box, cylX, slab } = KIT;
   // cast transmission nose: rounded housing, 3-piece bolted construction —
   // center casting face 2.90, flange plates 2.905, recessed seams at ±0.78.
   P.add('hull', cylX(0.40, 1.46, P.q ? 26 : 12), 0, 0.92, 2.44);            // r2: ends ±0.73 (8cm off the 0.81
@@ -714,6 +721,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       [xi, 1.24, 2.78], [xo, 1.24, 2.78], [xo, 1.30, 2.54], [xi, 1.30, 2.54]));
     P.add('hull', box(0.16, 0.045, 0.30), s * 1.37, 1.27, 2.62);             // tip deck strip over the track
   }
+}
+
+function addShermanJumboSponsonShoulders(P: Ww2BuilderPort): void {
+  const { slab } = KIT;
   // sponson top chamfers: 1.865 at ±1.475 -> 2.012 at ±1.20 (ref front
   // curve); the rear section's top edge FOLLOWS the falling engine deck.
   for (const s of [-1, 1]) {
@@ -727,7 +738,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
       s > 0 ? [1.18, 2.00, -0.88] : [-1.475, 1.83, -0.88], s > 0 ? [1.475, 1.83, -0.88] : [1.18, 2.00, -0.88],
       s > 0 ? [1.475, 1.745, -2.44] : [1.18, 1.79, -2.44], s > 0 ? [1.18, 1.79, -2.44] : [-1.475, 1.745, -2.44]));
   }
+}
 
+function addShermanJumboHullFurniture(P: Ww2BuilderPort): void {
+  const { box, cylZ, sph, periscope } = KIT;
   // glacis furniture: hoods, MG ball, lights, shackles, spare links
   for (const [hx, hz] of [[-0.55, 1.72], [0.55, 1.72]]) {
     P.add('hull', box(0.50, 0.12, 0.44), hx, 1.92, hz, -0.45, 0, 0);         // driver/co-driver hoods (ref tops 2.04-2.09)
@@ -759,7 +773,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   }
   P.decal('hull', 'star', null, 0.55, [1.478, 1.30, 0.4], Math.PI / 2);
   P.decal('hull', 'star', null, 0.55, [-1.478, 1.30, 0.4], -Math.PI / 2);
+}
 
+function addShermanJumboTurretShell(P: Ww2BuilderPort): void {
+  const { box, cylY, slab, lathe } = KIT;
   // T23-style cast turret, rebuilt to the print's measured plan/side curves:
   // wall shell on the exact plan polygon, egg-lathe crown capped at 2.98
   // (published heightM 2.95 owns p95 — the print's own crown rides 3.03-3.13,
@@ -839,6 +856,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
     [-0.70, 0.60, 0.40], [0.24, 0.60, 0.40], [0.22, 0.60, -0.78], [-0.66, 0.60, -0.78],   // the grace-free line under
     [-0.70, 0.975, 0.40], [0.24, 0.975, 0.40], [0.22, 0.975, -0.78], [-0.66, 0.975, -0.78])); // the ref's 3.03-3.12 band
                                                                              // (base 0.60 buried in the drum — no slit)
+}
+
+function addShermanJumboTurretFurniture(P: Ww2BuilderPort): void {
+  const { box, cylX, cylY, periscope, liftEye } = KIT;
   // roof furniture — print parity: cupola LEFT (x -0.70), loader oval RIGHT
   P.add('turret', cylY(0.26, 0.28, 0.16, 16), -0.65, 0.865, -1.10);          // commander cupola drum (probe: ref
   P.add('turret', cylY(0.225, 0.225, 0.035, 16), -0.65, 0.9575, -1.10);      //  cupola-zone tops 2.99; ours caps at
@@ -876,7 +897,10 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   liftEye(P, 'turretDetail', 0.92, 0.62, 0.35, -0.5);
   P.decal('turret', 'number', P.spec.visual.number || 'C-12', 0.28, [1.13, 0.30, -0.35], Math.PI / 2, 0, 0.10);
   P.decal('turret', 'number', P.spec.visual.number || 'C-12', 0.28, [-1.13, 0.30, -0.35], -Math.PI / 2, 0, -0.10);
+}
 
+function addShermanJumboGun(P: Ww2BuilderPort): void {
+  const { box, cylZ, slab, buildGun } = KIT;
   // 75 mm M3 in the huge M62-style combination mount: tapering rotor from
   // the dome front, big flat shield face at z 1.37, sleeve, then the short
   // tube to +3.18 (published overall 6.35 = the print's muzzle exactly).
@@ -912,6 +936,17 @@ function buildShermanJumbo(P: Ww2BuilderPort): void {
   P.addGunExtraDark(box(0.20, 0.06, 0.028), 0, -0.06, 2.198);                // err against the ref's 2.19..2.42 tube
                                                                              // band (dark hinge line, interior)
   P.topY = 1.30;
+}
+
+function buildShermanJumbo(P: Ww2BuilderPort): void {
+  addShermanJumboRunningGear(P);
+  addShermanJumboHullCore(P);
+  addShermanJumboNoseAndShoulders(P);
+  addShermanJumboSponsonShoulders(P);
+  addShermanJumboHullFurniture(P);
+  addShermanJumboTurretShell(P);
+  addShermanJumboTurretFurniture(P);
+  addShermanJumboGun(P);
 }
 
 // ---------------------------------------------------------------------------
