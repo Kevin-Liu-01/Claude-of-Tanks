@@ -441,6 +441,35 @@ export function layoutDamagePanelCrewAnchors(
   return points;
 }
 
+function separateDamagePanelScreenAnchors(
+  points: DamagePanelScreenAnchor[],
+  firstIndex: number,
+  secondIndex: number,
+  iteration: number,
+  minDistance: number,
+): void {
+  const first = points[firstIndex];
+  const second = points[secondIndex];
+  let dx = second.x - first.x;
+  let dy = second.y - first.y;
+  let distance = Math.hypot(dx, dy);
+  if (distance >= minDistance) return;
+  if (distance < 0.01) {
+    const angle = ((firstIndex * 5 + secondIndex * 7 + iteration * 3) % 24) * Math.PI / 12;
+    dx = Math.cos(angle);
+    dy = Math.sin(angle);
+    distance = 0;
+  } else {
+    dx /= distance;
+    dy /= distance;
+  }
+  const push = (minDistance - distance) * 0.52;
+  first.x -= dx * push;
+  first.y -= dy * push;
+  second.x += dx * push;
+  second.y += dy * push;
+}
+
 /**
  * Resolve final marker collisions in screen space. The solver has a strong
  * source spring and a hard 14 px tether, so it can separate dense bays without
@@ -469,24 +498,7 @@ export function layoutDamagePanelScreenAnchors(
   for (let iteration = 0; iteration < 22; iteration++) {
     for (let i = 0; i < points.length; i++) {
       for (let j = i + 1; j < points.length; j++) {
-        const a = points[i];
-        const b = points[j];
-        let dx = b.x - a.x;
-        let dy = b.y - a.y;
-        let distance = Math.hypot(dx, dy);
-        if (distance >= minDistance) continue;
-        if (distance < 0.01) {
-          const angle = ((i * 5 + j * 7 + iteration * 3) % 24) * Math.PI / 12;
-          dx = Math.cos(angle);
-          dy = Math.sin(angle);
-          distance = 0;
-        } else {
-          dx /= distance;
-          dy /= distance;
-        }
-        const push = (minDistance - distance) * 0.52;
-        a.x -= dx * push; a.y -= dy * push;
-        b.x += dx * push; b.y += dy * push;
+        separateDamagePanelScreenAnchors(points, i, j, iteration, minDistance);
       }
     }
 
@@ -912,6 +924,36 @@ export function createDamagePanel(): DamagePanelController {
     drawTurretLayer();
   }
 
+  function drawAnatomyAnchor(marker: DamagePanelScreenAnchor): void {
+    const state = marker.kind === 'module' ? moduleState(marker.name) : 'ok';
+    const crewAlive = marker.kind === 'crew'
+      ? (!combat || !combat.crew || combat.crew[marker.name] !== false)
+      : true;
+
+    // Dense bays separate only as far as needed to read. The exact authored
+    // source remains a visible pin joined to its marker.
+    if (Math.hypot(marker.x - marker.sourcePx, marker.y - marker.sourcePy) > 1.5) {
+      const color = marker.kind === 'crew'
+        ? (crewAlive ? HEALTHY_CREW_COLOR : STATE_COLOR.red)
+        : (state === 'ok' ? HEALTHY_MODULE_COLOR : STATE_COLOR[state]);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = (state === 'ok' && crewAlive) ? 0.42 : 0.78;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(marker.sourcePx, marker.sourcePy);
+      ctx.lineTo(marker.x, marker.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(marker.sourcePx, marker.sourcePy, 1.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (marker.kind === 'crew') drawCrewPip(marker.name, marker.x, marker.y, crewAlive);
+    else drawPip(marker.name, marker.x, marker.y, state);
+  }
+
   function drawAnatomyAnchors(): void {
     if (!anchors) computeAnchors();
     if (!anchors) return;
@@ -930,36 +972,7 @@ export function createDamagePanel(): DamagePanelController {
       };
     });
     const screen = layoutDamagePanelScreenAnchors(projected, CW, CH);
-
-    for (const marker of screen) {
-      const state = marker.kind === 'module' ? moduleState(marker.name) : 'ok';
-      const crewAlive = marker.kind === 'crew'
-        ? (!combat || !combat.crew || combat.crew[marker.name] !== false)
-        : true;
-
-      // Dense bays separate only as far as needed to read. The exact authored
-      // source remains a visible pin joined to its marker.
-      if (Math.hypot(marker.x - marker.sourcePx, marker.y - marker.sourcePy) > 1.5) {
-        const color = marker.kind === 'crew'
-          ? (crewAlive ? HEALTHY_CREW_COLOR : STATE_COLOR.red)
-          : (state === 'ok' ? HEALTHY_MODULE_COLOR : STATE_COLOR[state]);
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.globalAlpha = (state === 'ok' && crewAlive) ? 0.42 : 0.78;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(marker.sourcePx, marker.sourcePy);
-        ctx.lineTo(marker.x, marker.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(marker.sourcePx, marker.sourcePy, 1.35, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-      if (marker.kind === 'crew') drawCrewPip(marker.name, marker.x, marker.y, crewAlive);
-      else drawPip(marker.name, marker.x, marker.y, state);
-    }
+    for (const marker of screen) drawAnatomyAnchor(marker);
   }
 
   function draw(): void {
