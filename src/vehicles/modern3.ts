@@ -1289,11 +1289,9 @@ export function buildK2(P: Modern3BuilderPort) {
 // loader MG left, big protruding rotor/gunshield, bare KM256 with mid-tube
 // evacuator. §H.4 vs k2: shorter blunter turret, no KAPS cheek radars, no
 // pano tower, bare tube (k2 carries the sleeved L/55 + arrowhead wedge).
-function buildK1A1(P: Modern3BuilderPort) {
-  const { box, cylX, cylY, cylZ, frustum, polyLoft, polyMultiLoft, buildGun, buildRunningGear,
-    liftEye, periscope, smokeCluster, stowage, ammoCan, torus } = KIT;
+function buildK1A1Hull(P: Modern3BuilderPort) {
+  const { box, buildRunningGear } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
-  const { rng } = P;
   const idler = Object.freeze({ z: 3.00, y: 0.79, r: 0.33 });
   const sprocket = Object.freeze({ z: -2.88, y: 0.85, r: 0.33 });
 
@@ -1388,6 +1386,11 @@ function buildK1A1(P: Modern3BuilderPort) {
   }
   P.add('hullDetail', box(0.28, 0.16, 0.04), 0, 1.10, -3.73);                  // convoy plate
   P.add('hullDark', box(1.32, 0.045, 0.05), 0, 0.98, -3.728);                  // lower service/tow rail
+}
+
+function finishK1A1Hull(P: Modern3BuilderPort) {
+  const { box, cylY, liftEye, periscope, torus } = KIT;
+  const slab = orientedSlab;
   // front guard flares — the §D WIDTH ANCHOR at ±1.80 EXACT (print: the
   // bow mudguard flares are the only ±1.80 content; skirts run ±1.75).
   for (const s of [-1, 1]) {
@@ -1469,7 +1472,10 @@ function buildK1A1(P: Modern3BuilderPort) {
   P.add('hullDark', box(0.29, 0.018, 0.70), -1.38, 1.745, -3.30);              // bin lid seam
   P.add('hullDetail', box(0.06, 0.045, 0.90), 1.30, 1.50, -0.60);              // pioneer tool rail (right deck edge)
   P.add('hullDark', box(0.045, 0.03, 0.80), 1.30, 1.505, -0.60);
+}
 
+function buildK1A1Turret(P: Modern3BuilderPort) {
+  const { box, cylY, periscope, torus } = KIT;
   // ---- turret: one LOW continuous K1A1 weldment. The former center box,
   // outer slabs and stacked cheek wedges produced a tall rectangular
   // cabinet and an overlong roof. This twelve-station loft follows the
@@ -1575,6 +1581,12 @@ function buildK1A1(P: Modern3BuilderPort) {
       P.turretG.add(cans);
     }
   }
+}
+
+function finishK1A1Turret(P: Modern3BuilderPort) {
+  const { box, cylZ, buildGun, smokeCluster, stowage, ammoCan } = KIT;
+  const slab = orientedSlab;
+  const { rng } = P;
   // wrap-around side baskets — OPEN PIPE-FRAME with spaced stowage
   // (critic r1: the solid rail read; the m1a1 basket grammar): three
   // pipe rails + posts + individual duffels/cases with visible gaps.
@@ -1646,6 +1658,13 @@ function buildK1A1(P: Modern3BuilderPort) {
   P.decal('hull', 'number', '110', 0.22, [-1.755, 1.02, 0.60], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.75, [0.88, 1.28, -3.73], Math.PI);
   P.topY = 1.05;
+}
+
+function buildK1A1(P: Modern3BuilderPort) {
+  buildK1A1Hull(P);
+  finishK1A1Hull(P);
+  buildK1A1Turret(P);
+  finishK1A1Turret(P);
 }
 
 // =================================== Type 10 ================================
