@@ -2819,11 +2819,9 @@ function buildT80UNative2026(P: MiscBuilderPort): void {
 // plan nose 1.90; tube axis 1.562, slim r 0.065 (12%-cut LANDMINE: sleeve
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
-export function buildType90(P: MiscBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, openRackGrid, sph, torus,
-    buildGun, buildRunningGear, fenders, headlight, liftEye, periscope } = KIT;
+function buildType90HullStructure(P: MiscBuilderPort): void {
+  const { box, cylY, frustum, fenders, headlight, liftEye, periscope, torus } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
-  const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
   // WIDTH PROFILE (ref stations, profiles extraction): the hull is WIDE at
   // both ends and NARROW amidships — rear ~22%: +-1.693, mid: +-1.55-1.59,
@@ -2938,6 +2936,11 @@ export function buildType90(P: MiscBuilderPort): void {
   P.hullG.add(cable);
   P.decal('hull', 'number', '90-2274', 0.22, [-0.85, 0.95, 3.32], 0, -0.15);
   P.decal('hull', 'soot', null, 0.5, [-0.9, 1.1, -3.7], Math.PI);
+}
+
+function buildType90SkirtsAndRunningGear(P: MiscBuilderPort): void {
+  const { box, buildRunningGear, fenders } = KIT;
+  const slab = orientedSlab;
   // skirts: the ref's 3-zone width profile. FRONT armored panels outer
   // 1.703 + the widthM strip at exactly +-1.715 (WIDTH GUARD, z 1.6..3.2);
   // MID rubber sheet inset to 1.585 (1.545 amidships); REAR course back out
@@ -3057,7 +3060,11 @@ export function buildType90(P: MiscBuilderPort): void {
   // lint can distinguish the intended recess behind each road wheel from a
   // hull plate penetrating the shoe course.
   wheelRecessAt(P, wheelZs, 1.2615, 0.47, 0.37, 0.21, 'hullRunningGearDark');
+}
 
+function buildType90Turret(P: MiscBuilderPort): void {
+  const { box, cylX, cylY, liftEye, openRackGrid, periscope, sph, torus } = KIT;
+  const slab = orientedSlab;
   // ---- turret: §B7 REAL-PROPORTION BAND (owner ruling §5.28, 2026-08-07) ----
   // The print (recovered/type90.glb) is REF-WRONG on turret height: its
   // post-warp roof PLATE reads 1.90 (hatch domes 2.05-2.08, sight ridge
@@ -3365,6 +3372,10 @@ export function buildType90(P: MiscBuilderPort): void {
   // same world flank seats as d4a9410.)
   P.decal('turret', 'number', '2274', 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
   P.decal('turret', 'number', '2274', 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
+}
+
+function buildType90Gun(P: MiscBuilderPort): void {
+  const { box, buildGun, cylY, cylZ, torus } = KIT;
   // Rh 120 L/44 — §5.364 GUN RE-PLANT (owner order verbatim: "fix the type
   // 90s guns. they should properly be attached to the tank and have a proper
   // mantlet and arc up and down porperly"). DIAGNOSIS (receipts
@@ -3500,6 +3511,13 @@ export function buildType90(P: MiscBuilderPort): void {
     turretG.add(shell);
   };
   P.topY = 0.7616;                                                             // turret-top anchor: rig_turretTop seats on the UNSCALED rig_turret after postAssemble — 0.7616 = the a35ac3a7 1.12 × 0.68, same 2.1616 world anchor
+}
+
+export function buildType90(P: MiscBuilderPort): void {
+  buildType90HullStructure(P);
+  buildType90SkirtsAndRunningGear(P);
+  buildType90Turret(P);
+  buildType90Gun(P);
 }
 
 // ---------------------------------------------------------------------------
