@@ -1536,14 +1536,10 @@ function muzzleBore99(
 // QJC-88 12.7 at the commander station FORWARD. Print carries SIX wheel
 // stations (pitch 0.90, r 0.40) — the real ZTZ-99A count.
 // ---------------------------------------------------------------------------
-function buildType99A(P: Modern2BuilderPort) {
-  const { box, frustum, polyMultiLoft, cylY, cylX, cylZ, torus,
-    buildGun, buildRunningGear, fenders, liftEye, periscope,
-    smokeCluster, stowage, tarpRoll, ammoCan } = KIT;
+function buildType99ABaseHull(P: Modern2BuilderPort) {
+  const { box, frustum, cylY, buildRunningGear, fenders, periscope } = KIT;
   const slab = orientedSlab99;                                                  // §C missing-side law
-  const { rng } = P;
   const D2R = Math.PI / 180;
-  const num = P.spec.visual.number || '';
   // ---- GEAR (§B6 trapezoid, print-measured): SIX wheel stations pitch
   // 0.90 (print arm pivots 2.65..-2.05, rim dips at 2.35..-2.15), r 0.40,
   // centers y 0.50; track band x 1.16..1.76 (print 1.15..1.80, outer held
@@ -1718,6 +1714,12 @@ function buildType99A(P: Modern2BuilderPort) {
       pts: [[1.30, 1.52, 2.95], [0.55, 1.58, 2.28], [-0.45, 1.56, 2.55]] });   // draped above the terminal course
     P.hullG.add(tc);
   }
+}
+
+function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
+  const { box, liftEye } = KIT;
+  const D2R = Math.PI / 180;
+  const num = P.spec.visual.number || '';
   // ---- decks: seams, engine grille field on the raised deck, intake,
   // fender bins, shadow strips ---------------------------------------------
   P.add('hullDark', box(1.55, 0.02, 1.30), 0, 1.785, -2.35);                   // engine grille inset (deck 1.78)
@@ -1800,14 +1802,13 @@ function buildType99A(P: Modern2BuilderPort) {
   P.decal('hull', 'number', num, 0.22, [1.845, 1.345, 1.60], Math.PI / 2);
   P.decal('hull', 'number', num, 0.22, [-1.845, 1.345, 1.60], -Math.PI / 2);
   P.topY = 1.40;
+}
 
-  // The VT-family Type 99A replacement deliberately reuses this complete,
-  // certified hull, running gear and FY-4 field while supplying an entirely
-  // new rotating assembly. Stop at the ring only after all hull-owned ERA,
-  // decals and fittings have been authored so no old cheek, roof fitting,
-  // direct-group weapon or turret-local ERA can survive under the replacement.
-  if (P.__type99HullOnly) return;
-
+function buildType99ATurretArmorAndStowage(P: Modern2BuilderPort) {
+  const { box, polyMultiLoft, smokeCluster, stowage, tarpRoll, ammoCan } = KIT;
+  const slab = orientedSlab99;
+  const { rng } = P;
+  const D2R = Math.PI / 180;
   // ================= WELDED ANGULAR TURRET, PRINT-LOFTED (never the
   // russia dome): UNDERCUT single loft — narrow base ring (print ±1.17-1.2)
   // flaring to ±1.66 walls, roof plateau local 0.98 = world 2.40 (§B7 cap
@@ -1981,6 +1982,11 @@ function buildType99A(P: Modern2BuilderPort) {
     links.position.set(-1.05, 0.92, -1.60);                                    // bustle lid left
     P.turretG.add(links);
   }
+}
+
+function buildType99ATurretRoofAndGun(P: Modern2BuilderPort) {
+  const { box, frustum, cylY, cylZ, torus, buildGun } = KIT;
+  const num = P.spec.visual.number || '';
   // ---- ROOF CLUSTER (print positions; §B7 height caps — the <5%-of-body-
   // columns p95 budget lives in the tower's 0.36 m z-band):
   // TALL GUNNER SIGHT TOWER right-of-center-rear (print Object_30 x
@@ -2092,6 +2098,21 @@ function buildType99A(P: Modern2BuilderPort) {
   // local 6.734 = 7.414 m, paired with the supported -4.242 m rear loop.
   muzzleBore99(P, 6.734, 0.108, 0.060, 14);
   P.muzzleZ = 6.734;
+}
+
+function buildType99A(P: Modern2BuilderPort) {
+  buildType99ABaseHull(P);
+  buildType99AHullDeckAndArmor(P);
+
+  // The VT-family Type 99A replacement deliberately reuses this complete,
+  // certified hull, running gear and FY-4 field while supplying an entirely
+  // new rotating assembly. Stop at the ring only after all hull-owned ERA,
+  // decals and fittings have been authored so no old cheek, roof fitting,
+  // direct-group weapon or turret-local ERA can survive under the replacement.
+  if (P.__type99HullOnly) return;
+
+  buildType99ATurretArmorAndStowage(P);
+  buildType99ATurretRoofAndGun(P);
 }
 
 // Profile-facing hull-only route for the VT-derived Type 99A turret. This is
