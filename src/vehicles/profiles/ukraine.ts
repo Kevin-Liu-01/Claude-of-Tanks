@@ -1084,6 +1084,7 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
 function buildUAT80BV(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
+  const buildBVHullBase = (): void => {
   // T-80 hull loft to the print lines at the published datum: 1.51 mid
   // deck, 1.503-class engine plateau, stern undercut rising to the 1.32
   // lip, bow glacis 1.40@2.19 -> 1.02@3.39.
@@ -1120,7 +1121,22 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('hullDark', box(1.60, 0.02, 1.05), 0, 1.465, -1.95);
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(1.52, 0.02, 0.05), 0, 1.471, -1.62 - k * 0.15);
   P.add('hull', box(0.95, 0.06, 0.58), 0.40, 1.475, -1.50);
+  };
+  buildBVHullBase();
 
+  const buildBVGlacis = (): void => {
+  const addBVGlacisMainTile = (s: number, row: number, i: number): void => {
+    // Row 2 drops its outermost column: at z 2.88 that tile entered the
+    // strict idler-lane sweep. The final column is also seated 40 mm inboard
+    // to retain the four-column read without overhanging the moving shoe.
+    if (row === 2 && i === 3) return;
+    const proud = (i + row) & 1;
+    const outerColumnInsetM = i === 3 ? 0.09 : 0;
+    kTile(P, 'hull', s * (0.235 + i * 0.285 - outerColumnInsetM),
+      1.328 - row * 0.089 + (proud ? 0.022 : 0),
+      2.34 + row * 0.27 + (proud ? 0.008 : 0),
+      i === 3 ? 0.18 : 0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
+  };
   // Glacis: splash ridge above the raft, K-1 raft centered around the
   // driver, V-board, lights, eyes. §5.272 fix (3): CHUNKIER checker relief
   // — three courses CLIMBING the glacis surface (the old row 1 sat 0.2 m
@@ -1128,18 +1144,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('hull', box(1.90, 0.045, 0.16), 0, 1.40, 2.12);
   ruGlacisKit(P, { w: 3.0, y: 1.16, z: 2.66, eyeX: 0.82, eyeZ: 3.10, eyeY: 0.80, hookY: 0.80, hookZ: 3.20, hlY: 1.28 });
   for (const s of [-1, 1]) for (let row = 0; row < 3; row++) for (let i = 0; i < 4; i++) {
-    // row 2 drops its outermost column — at z 2.88 the i=3 tiles (x to
-    // 1.22) entered the idler-lane strict sweep (44/60 voxel receipt)
-    if (row === 2 && i === 3) continue;
-    const proud = (i + row) & 1;
-    // The final column sits beside the idler wrap. A 40 mm inboard seat
-    // retains the four-column read while clearing the articulated shoe
-    // corner that the old cassette overhung by 17 mm.
-    const outerColumnInsetM = i === 3 ? 0.09 : 0;
-    kTile(P, 'hull', s * (0.235 + i * 0.285 - outerColumnInsetM),
-      1.328 - row * 0.089 + (proud ? 0.022 : 0),
-      2.34 + row * 0.27 + (proud ? 0.008 : 0),
-      i === 3 ? 0.18 : 0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
+    addBVGlacisMainTile(s, row, i);
   }
   // §5.341 "more era": varied low fourth course — staggered half-tiles
   // riding the glacis toe between the raft columns (x <= 1.02, clear of
@@ -1162,7 +1167,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.30, 0.28, 0.045), s * 1.40, 0.99, 3.35);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.53, 1.00, -3.12);
   }
+  };
+  buildBVGlacis();
 
+  const buildBVStern = (): void => {
   // Stern: turbine grille at its measured seat (the proud drums overhang
   // it) + recovery eyes; the transverse bo4ki pair rides ABOVE on open
   // brackets.
@@ -1201,7 +1209,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     log.position.set(0, 0.50, -3.32);
     P.hullG.add(log);
   }
+  };
+  buildBVStern();
 
+  const buildBVRunningGearAndSkirts = (): void => {
   // T-80 running gear (published chassis constants at this frame).
   // §5.272 fix (2): wheel rim/hub contrast lifted (tireHex/wheelHex law —
   // the stock tones read as a black smear behind the old deep skirt).
@@ -1240,7 +1251,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.035, 0.26, 0.58), s * 1.752, 0.90, 2.62 - i * 0.64, 0, 0, -s * 0.015);
   }
   widthAnchor(P, 1.76, 0.82, -2.48);
+  };
+  buildBVRunningGearAndSkirts();
 
+  const buildBVTurretShell = (): DomeProfile => {
   // Canonical family casting: the Ukrainian BV now shares the accepted
   // T-80/T-80B/T-80U Kursk nine-ring shell. Its 0.94 vertical installation
   // preserves this vehicle's roof datum while armor and fittings remain
@@ -1254,11 +1268,15 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.20);
+  return { rings, sz: 0.88, cz: 0.22 };
+  };
+  const bvDome = buildBVTurretShell();
 
   // The frontal package is installed after its welded carrier by
   // addModernizedT80TurretSuite, so every cassette is surface-seated and
   // camouflaged rather than emitted as spare-track steel around the dome.
 
+  const buildBVRoofSystems = (): void => {
   // Commander cupola RIGHT with the NSVT, gunner hatch LEFT, TKN blocks,
   // Luna IR left of the gun — every roof seat recomputed on the rebased
   // casting skin (the resident dome is fuller at mid-radius; old seats
@@ -1313,7 +1331,10 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // 902 smoke banks on the cheek flank cluster (T-80BV obr. fit) — seated
   // flush on the rebased casting skin.
   uaSmoke(P, { x: 1.36, y: 0.40, z: 0.64, count: 4, seed: 8810, yaw: 0.30 });
+  };
+  buildBVRoofSystems();
 
+  const buildBVBustle = (): void => {
   // Bustle: rack rail, stowage boxes, rolled tarp (UA-era kit), whips —
   // pulled forward to the rebased casting's shorter rear wall.
   P.add('turretDetail', cylX(0.020, 1.46, 12), 0, 0.40, -1.10);
@@ -1331,9 +1352,12 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
       h: 0.30, r: 0.011, rake: -s * 0.55, seed: 8812 + (s > 0 ? 1 : 0) }),
       s * 0.86, 0.33, -0.88);
   }
+  };
+  buildBVBustle();
 
-  addModernizedT80TurretSuite(P, 'bv', { rings, sz: 0.88, cz: 0.22 });
+  addModernizedT80TurretSuite(P, 'bv', bvDome);
 
+  const buildBVWeapon = (): void => {
   // 2A46M-1 at the 1.69 axis: saddle, boot, sleeve, muzzle +6.27, bore
   // (gun local +0.06 compensates the 1.50 -> 1.44 ring drop — the world
   // axis is certified).
@@ -1371,6 +1395,8 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // casting's skin — the old -0.60 station falls off the shorter rear)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.39, 0.36, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.39, 0.36, -0.30], -Math.PI / 2);
+  };
+  buildBVWeapon();
   P.topY = 1.36;
 }
 
