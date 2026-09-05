@@ -148,6 +148,8 @@ export function mainWeaponModuleState(
   let state: ModuleStateName = 'ok';
   for (const moduleName of ['gun', 'gunMount'] as const) {
     const candidate = combat?.modules?.[moduleName]?.state;
+    // Stryker disable next-line EqualityOperator: accepting an equal-rank state
+    // only reassigns the same string and is therefore behaviorally identical.
     if (candidate && MODULE_STATE_RANK[candidate] > MODULE_STATE_RANK[state]) {
       state = candidate;
     }

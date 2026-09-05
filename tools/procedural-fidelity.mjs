@@ -25,6 +25,7 @@ const CHECK = args.includes('--check');
 const PASS = 90;
 const VIEW_FLOOR = 90;
 const EXEMPLAR_PASS = 92;
+const PRESERVATION_PASS = 99;
 const rows = [];
 const browserErrors = [];
 const metric = (value) => Number.isFinite(value) ? value.toFixed(0) : 'NA';
@@ -138,6 +139,7 @@ const summary = {
   passThreshold:PASS,
   perViewFloor:VIEW_FLOOR,
   exemplarThreshold:EXEMPLAR_PASS,
+  preservationThreshold:PRESERVATION_PASS,
   median:Number(median.toFixed(2)),
   worst:scoredRows.toSorted((a,b)=>a.score-b.score)[0]?.id || null,
   best:scoredRows.toSorted((a,b)=>a.score-b.score).at(-1)?.id || null,
@@ -149,27 +151,28 @@ const cell = (value) => Number.isFinite(value) ? value.toFixed(1) : 'N/A';
 const md=[
   '# Procedural tank fidelity report','',
   `Available local comparison references: **${summary.references}/${summary.discovered}**. `+
-    `Passing the per-registration floor (${PASS}/100 fleet; ${EXEMPLAR_PASS}/100 new/rebuilt exemplar, `+
+    `Passing the per-registration floor (${PASS}/100 fleet; ${EXEMPLAR_PASS}/100 new/rebuilt exemplar; ${PRESERVATION_PASS}/100 historical preservation, `+
     `including every view): **${summary.passed}**. `+
     `Below target: **${summary.failed}**. Unavailable references: **${summary.unavailable}**. `+
     `Median: **${summary.median.toFixed(1)}**.`,'',
   'Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, '+
     '20% direct articulated turret tree, 12% cannon overhang, and 8% lower track profile.','',
-  '| Tank | Score | Whole | Hull | Turret | Gun | Tracks | Procedural fallback |',
-  '|---|---:|---:|---:|---:|---:|---:|---|',
+  '| Tank | Score | Whole | Hull | Turret | Gun | Tracks | Comparison purpose | Procedural fallback |',
+  '|---|---:|---:|---:|---:|---:|---:|---|---|',
   ...rows.map((row)=>`| ${row.name} (${row.id}) | ${cell(row.score)} | ${cell(row.scores.overall)} | `+
     `${cell(row.scores.hull)} | ${cell(row.scores.turret)} | ${cell(row.scores.gun)} | `+
-    `${cell(row.scores.tracks)} | ${row.fallback || 'placeholder'} |`),
+    `${cell(row.scores.tracks)} | ${row.comparisonPurpose || 'source-fidelity'} | ${row.fallback || 'placeholder'} |`),
   '',
   'Reference GLBs remain quarantined measurement and visual-review oracles only. '+
     'Every playable must be repository-authored procedural geometry; copied meshes, converted vertices, '+
     'opaque payloads and source-backed wrappers are forbidden.','',
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
+  'Historical first-party preservation compares against a hash-pinned original commit. It makes no real-world source-fidelity claim.','',
 ].join('\n');
 fs.writeFileSync(path.join(REPORT_DIR,'procedural-fidelity.md'),md);
 
 console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} available references pass `+
-  `their ${PASS}+ fleet or ${EXEMPLAR_PASS}+ exemplar floor; ${summary.unavailable} unavailable; `+
+  `their ${PASS}+ fleet, ${EXEMPLAR_PASS}+ exemplar or ${PRESERVATION_PASS}+ preservation floor; ${summary.unavailable} unavailable; `+
   `median ${summary.median.toFixed(1)}; worst ${summary.worst}; best ${summary.best}`);
 if (CHECK && (summary.failed || summary.unavailable)) process.exitCode=1;

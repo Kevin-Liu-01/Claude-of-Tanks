@@ -4,7 +4,8 @@
 // from BOTH models (same pipeline — nothing self-reported) and scores:
 // hull/whole/turret curve deviation, 14-station dimensional error, published
 // spec-dimension anchor, and articulation floater detection. GATE: every
-// component meets its registered floor (90 fleet / 92 exemplar); the MINIMUM
+// component meets its registered floor (90 fleet / 92 exemplar / 99 frozen
+// first-party preservation); the MINIMUM
 // is the headline and nothing averages away.
 //
 // Writes docs/geometry-gate/<id>.json (full deltas — the builder's work
@@ -115,6 +116,8 @@ if (requested && fs.existsSync(ledgerPath)) {
 for (const r of rows) byId.set(r.id, {
   id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
   qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
+  ...(r.comparisonPurpose ? { comparisonPurpose:r.comparisonPurpose } : {}),
+  ...(r.preservationBaseline ? { preservationBaseline:r.preservationBaseline } : {}),
 });
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
@@ -123,7 +126,7 @@ const passed = all.filter((r) => r.gatePassed).length;
 if (rows.length) {
   fs.writeFileSync(ledgerPath, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
-    gate: 'every component >= its registered floor (90 fleet / 92 exemplar); min is the headline',
+    gate: 'every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity',
     passed, total: all.length, rows: all,
   }, null, 1)}\n`);
 }

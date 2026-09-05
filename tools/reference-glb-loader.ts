@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { validatedPreservationOracle, verifyPreservationBytes } from './preservation-oracle.ts';
+import type { PreservationSource } from './preservation-oracle.ts';
 
 type SemanticOwner = 'turret' | 'gun' | 'unclassified';
 
@@ -30,7 +32,7 @@ interface ReferenceGlbConfig {
   readonly brightenOracle?: boolean;
 }
 
-export interface ReferenceGlbSource {
+export interface ReferenceGlbSource extends PreservationSource {
   readonly glb?: ReferenceGlbConfig;
 }
 
@@ -433,7 +435,15 @@ export async function loadReferenceGlb(
   const cfg = source?.glb;
   if (!cfg?.path) throw new Error(`${specId} has no source GLB path`);
 
-  const gltf = await new GLTFLoader().loadAsync(cfg.path);
+  const preservation = validatedPreservationOracle(source, specId);
+  const loader = new GLTFLoader();
+  const gltf = preservation ? await (async () => {
+    const response = await fetch(cfg.path);
+    if (!response.ok) throw new Error(`${specId}: preservation baseline unavailable`);
+    const bytes = await response.arrayBuffer();
+    await verifyPreservationBytes(bytes, preservation);
+    return loader.parseAsync(bytes, '');
+  })() : await loader.loadAsync(cfg.path);
   const rig = createReferenceRig(specId, Number(cfg.yawOffset || 0));
   // Off-origin print class (§5.248 ukraine finds: t80u_kursk diorama at
   // -1124u, t64bv_donbass at +4.2 m). An off-center model breaks every
@@ -442,7 +452,7 @@ export async function loadReferenceGlb(
   // center the RAW footprint INSIDE the authored frame — before any yaw —
   // when its offset is pathological (> 0.35 of the model diagonal; every
   // near-centered print keeps its exact historical transform).
-  centerPathologicalScene(gltf.scene);
+  if (!preservation) centerPathologicalScene(gltf.scene);
   rig.authoredFrame.add(gltf.scene);
   rig.root.updateMatrixWorld(true);
   routeArticulatedComponents(gltf.scene, rig, cfg);
@@ -450,7 +460,9 @@ export async function loadReferenceGlb(
   // Source files arrive in metres, centimetres, millimetres, or arbitrary
   // DCC units. Register on the published vehicle width before any scoring;
   // width is stable and is not inflated by the cannon or roof antennas.
-  normalizeReferenceWidth(rig.root, spec);
+  // A historical first-party baseline already has its exact authored metres,
+  // origin and ground plane. Rescaling it would hide candidate scale drift.
+  if (!preservation) normalizeReferenceWidth(rig.root, spec);
 
   // §5.317 (t95 WoT print): some textured rips carry near-black albedo
   // regions (gun / track bottoms / glacis) that fall under the gate's mask

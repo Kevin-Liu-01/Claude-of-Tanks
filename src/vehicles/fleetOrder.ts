@@ -39,7 +39,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   leopard: Object.freeze([
     'leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m',
     'leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m',
-    'leo2_revolution', 'leo2a7v',
+    'leo2_revolution_proto', 'leo2_revolution', 'leo2a7v',
   ]),
   challenger: Object.freeze([
     'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'challenger2',

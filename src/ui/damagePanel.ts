@@ -49,9 +49,6 @@ interface DamagePanelModuleVolume {
 
 interface DamagePanelCrewVolume {
   crew: string;
-  min: Vec3;
-  max: Vec3;
-  turretLocal?: boolean;
 }
 
 interface DamagePanelTankSpec extends TankMaskSpec {
@@ -111,37 +108,10 @@ interface MaskTints {
 }
 
 interface ModuleAnchor {
-  kind: 'module';
   name: string;
   x: number;
   z: number;
-  sourceX: number;
-  sourceZ: number;
   turretLocal: boolean;
-}
-
-interface CrewAnchor {
-  kind: 'crew';
-  name: string;
-  x: number;
-  z: number;
-  sourceX: number;
-  sourceZ: number;
-  turretLocal: boolean;
-}
-
-type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
-
-interface DamagePanelScreenAnchorInput {
-  kind: 'module' | 'crew';
-  name: string;
-  sourcePx: number;
-  sourcePy: number;
-}
-
-interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
-  x: number;
-  y: number;
 }
 
 type ModuleIconPainter = (context: CanvasRenderingContext2D, color: string) => void;
@@ -448,137 +418,6 @@ CREW_ICON.weaponOperatorRight = CREW_ICON.gunner;
 export const DAMAGE_PANEL_CREW_ICON_IDS = Object.freeze(Object.keys(CREW_ICON));
 
 /**
- * Collect exact module centers from the authoritative combat volumes. Marker
- * separation happens after hull/turret projection so these coordinates never
- * drift away from the simulation truth.
- */
-export function layoutDamagePanelModuleAnchors(
-  modules: readonly DamagePanelModuleVolume[],
-  _pixelsPerMeter?: number,
-): ModuleAnchor[] {
-  const points: ModuleAnchor[] = [];
-  for (const module of modules) {
-    if (module.module === 'trackL' || module.module === 'trackR') continue;
-    if (!module.min || !module.max || !MODULE_ICON[module.module]) continue;
-    const sourceX = (module.min[0] + module.max[0]) / 2;
-    const sourceZ = (module.min[2] + module.max[2]) / 2;
-    points.push({
-      kind: 'module',
-      name: module.module,
-      x: sourceX,
-      z: sourceZ,
-      sourceX,
-      sourceZ,
-      turretLocal: !!module.turretLocal,
-    });
-  }
-  return points;
-}
-
-/** Collect exact crew-seat centers from the same armor model used by hits. */
-export function layoutDamagePanelCrewAnchors(
-  crew: readonly DamagePanelCrewVolume[],
-): CrewAnchor[] {
-  const points: CrewAnchor[] = [];
-  for (const station of crew) {
-    if (!station.min || !station.max || !CREW_ICON[station.crew]) continue;
-    const sourceX = (station.min[0] + station.max[0]) / 2;
-    const sourceZ = (station.min[2] + station.max[2]) / 2;
-    points.push({
-      kind: 'crew',
-      name: station.crew,
-      x: sourceX,
-      z: sourceZ,
-      sourceX,
-      sourceZ,
-      turretLocal: !!station.turretLocal,
-    });
-  }
-  return points;
-}
-
-function separateDamagePanelScreenAnchors(
-  points: DamagePanelScreenAnchor[],
-  firstIndex: number,
-  secondIndex: number,
-  iteration: number,
-  minDistance: number,
-): void {
-  const first = points[firstIndex];
-  const second = points[secondIndex];
-  let dx = second.x - first.x;
-  let dy = second.y - first.y;
-  let distance = Math.hypot(dx, dy);
-  if (distance >= minDistance) return;
-  if (distance < 0.01) {
-    const angle = ((firstIndex * 5 + secondIndex * 7 + iteration * 3) % 24) * Math.PI / 12;
-    dx = Math.cos(angle);
-    dy = Math.sin(angle);
-    distance = 0;
-  } else {
-    dx /= distance;
-    dy /= distance;
-  }
-  const push = (minDistance - distance) * 0.52;
-  first.x -= dx * push;
-  first.y -= dy * push;
-  second.x += dx * push;
-  second.y += dy * push;
-}
-
-/**
- * Resolve final marker collisions in screen space. The solver has a strong
- * source spring and a hard 14 px tether, so it can separate dense bays without
- * making an icon appear to describe a different compartment.
- */
-export function layoutDamagePanelScreenAnchors(
-  inputs: readonly DamagePanelScreenAnchorInput[],
-  width: number,
-  height: number,
-): DamagePanelScreenAnchor[] {
-  const points = inputs.map((point, index) => {
-    // A sub-pixel golden-angle seed prevents exactly coincident volumes from
-    // collapsing into a single repulsion axis. It is presentation-only; the
-    // immutable source remains the real combat coordinate.
-    const angle = index * 2.399963229728653;
-    return {
-      ...point,
-      x: point.sourcePx + Math.cos(angle) * 0.05,
-      y: point.sourcePy + Math.sin(angle) * 0.05,
-    };
-  });
-  const edge = 6.5;
-  const minDistance = 11.5;
-  const maxTether = 14;
-
-  for (let iteration = 0; iteration < 22; iteration++) {
-    for (let i = 0; i < points.length; i++) {
-      for (let j = i + 1; j < points.length; j++) {
-        separateDamagePanelScreenAnchors(points, i, j, iteration, minDistance);
-      }
-    }
-
-    for (const point of points) {
-      // Strong source attraction early; final iterations settle collisions.
-      if (iteration < 17) {
-        point.x += (point.sourcePx - point.x) * 0.12;
-        point.y += (point.sourcePy - point.y) * 0.12;
-      }
-      const ox = point.x - point.sourcePx;
-      const oy = point.y - point.sourcePy;
-      const offset = Math.hypot(ox, oy);
-      if (offset > maxTether) {
-        point.x = point.sourcePx + ox / offset * maxTether;
-        point.y = point.sourcePy + oy / offset * maxTether;
-      }
-      point.x = Math.max(edge, Math.min(width - edge, point.x));
-      point.y = Math.max(edge, Math.min(height - edge, point.y));
-    }
-  }
-  return points;
-}
-
-/**
  * Create the player damage panel (top-down plan layers + modules + crew + HP + fire).
  * The root is not attached to the document — hud.setDamagePanel mounts it.
  * @returns {{root:HTMLElement,setTank:Function,update:Function,setPose:Function,setTurretYaw:Function,setEquipment:Function,setState:Function}} Panel
@@ -643,7 +482,7 @@ export function createDamagePanel(): DamagePanelController {
   let maskSourceVisual: TankMaskVisual | null = null;
   let tints: MaskTints | null = null;       // per-entry tinted copies {hullBody,hullRim,turretRim,turretBody:{state:canvas}}
   let scaleS = 8;         // panel px per meter (fit at mask arrival)
-  let anchors: DamagePanelAnatomyAnchor[] | null = null;     // hull/turret meters, relaxed
+  let anchors: ModuleAnchor[] | null = null;     // hull/turret meters, relaxed
 
   function adoptMasks(entry: TopDownMaskEntry): void {
     masks = entry;
@@ -752,15 +591,71 @@ export function createDamagePanel(): DamagePanelController {
   // Module anchor points in VEHICLE space (meters, relaxed apart so chips
   // stay legible when two modules share a bay). turretLocal boxes keep their
   // turret-relative coordinates and ride the turret layer.
-  function computeAnchors(): void {
-    const modules = (spec && spec.armor && spec.armor.modules) || [];
-    const crew = (spec && spec.armor && spec.armor.crew) || [];
-    anchors = [
-      ...layoutDamagePanelModuleAnchors(modules),
-      ...layoutDamagePanelCrewAnchors(crew),
-    ];
+  function collectModuleAnchors(): ModuleAnchor[] {
+    if (!spec) return [];
+    const mods = (spec.armor && spec.armor.modules) || [];
+    const points: ModuleAnchor[] = [];
+    for (const m of mods) {
+      if (m.module === 'trackL' || m.module === 'trackR') continue; // floods
+      if (!m.min || !m.max || !MODULE_ICON[m.module]) continue;
+      points.push({
+        name: m.module,
+        x: (m.min[0] + m.max[0]) / 2,
+        z: (m.min[2] + m.max[2]) / 2,
+        turretLocal: !!m.turretLocal,
+      });
+    }
+    return points;
   }
 
+  function relaxAnchorPair(a: ModuleAnchor, b: ModuleAnchor, minDistance: number): void {
+    if (a.turretLocal !== b.turretLocal) return;
+    let dx = b.x - a.x;
+    let dz = b.z - a.z;
+    let distance = Math.hypot(dx, dz);
+    if (distance >= minDistance) return;
+    if (distance < 0.01) {
+      dx = 1;
+      dz = 0;
+      distance = 1;
+    }
+    const push = (minDistance - distance) / 2 / distance;
+    a.x -= dx * push;
+    a.z -= dz * push;
+    b.x += dx * push;
+    b.z += dz * push;
+  }
+
+  function relaxModuleAnchors(points: ModuleAnchor[]): void {
+    // relax overlaps in meters (chip ~15 px -> MIN_D px/scale meters); only
+    // pairs within the SAME space relax against each other — cross-space
+    // pairs move relative to each other with the turret anyway.
+    const minDistance = 15 / Math.max(2, scaleS);
+    for (let iteration = 0; iteration < 6; iteration++) {
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          relaxAnchorPair(points[i], points[j], minDistance);
+        }
+      }
+    }
+  }
+
+  function computeAnchors(): void {
+    const points = collectModuleAnchors();
+    relaxModuleAnchors(points);
+    anchors = points;
+  }
+
+  // One damaged-module chip (r4: healthy modules draw NOTHING — the clean
+  // WoT panel; the socket look returns only in the damaged state).
+  function drawPip(name: string, px: number, py: number, st: ModuleStateName): void {
+    const icon = MODULE_ICON[name];
+    if (!icon || st === 'ok') return;
+    const col = STATE_COLOR[st];
+    ctx.save();
+    ctx.translate(px, py);
+    roundRect(ctx, -8, -8, 16, 16, 3);
+    ctx.fillStyle = 'rgba(24,12,8,0.9)';
   function traceModuleCarrier(kind: DamagePanelModuleKind, radius: number): void {
     ctx.beginPath();
     if (kind === 'weapon') {
@@ -1243,4 +1138,159 @@ export function createDamagePanel(): DamagePanelController {
       applyStateSample(sample);
     },
   };
+}
+
+/* ------------------------------------------------------------------ *
+ *  Legacy anchor layout helpers (kept for selftest compatibility).   *
+ *  Production rendering uses the internal collectModuleAnchors /      *
+ *  relaxModuleAnchors pipeline above; these exports mirror that       *
+ *  pipeline for the unit tests in damagePanel.selftest.mjs.           *
+ * ------------------------------------------------------------------ */
+
+interface ModuleAnchorCompat {
+  kind: 'module';
+  name: string;
+  x: number;
+  z: number;
+  sourceX: number;
+  sourceZ: number;
+  turretLocal: boolean;
+}
+
+interface CrewAnchorCompat {
+  kind: 'crew';
+  name: string;
+  x: number;
+  z: number;
+  sourceX: number;
+  sourceZ: number;
+  turretLocal: boolean;
+}
+
+interface DamagePanelScreenAnchorInput {
+  kind: 'module' | 'crew';
+  name: string;
+  sourcePx: number;
+  sourcePy: number;
+}
+
+interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
+  x: number;
+  y: number;
+}
+
+export function layoutDamagePanelModuleAnchors(
+  modules: readonly DamagePanelModuleVolume[],
+  _pixelsPerMeter?: number,
+): ModuleAnchorCompat[] {
+  const points: ModuleAnchorCompat[] = [];
+  for (const module of modules) {
+    if (module.module === 'trackL' || module.module === 'trackR') continue;
+    if (!module.min || !module.max || !MODULE_ICON[module.module]) continue;
+    const sourceX = (module.min[0] + module.max[0]) / 2;
+    const sourceZ = (module.min[2] + module.max[2]) / 2;
+    points.push({
+      kind: 'module',
+      name: module.module,
+      x: sourceX,
+      z: sourceZ,
+      sourceX,
+      sourceZ,
+      turretLocal: !!module.turretLocal,
+    });
+  }
+  return points;
+}
+
+export function layoutDamagePanelCrewAnchors(
+  crew: readonly DamagePanelCrewVolume[],
+): CrewAnchorCompat[] {
+  const points: CrewAnchorCompat[] = [];
+  for (const station of crew) {
+    if (!station.min || !station.max || !CREW_ICON[station.crew]) continue;
+    const sourceX = (station.min[0] + station.max[0]) / 2;
+    const sourceZ = (station.min[2] + station.max[2]) / 2;
+    points.push({
+      kind: 'crew',
+      name: station.crew,
+      x: sourceX,
+      z: sourceZ,
+      sourceX,
+      sourceZ,
+      turretLocal: !!station.turretLocal,
+    });
+  }
+  return points;
+}
+
+function separateDamagePanelScreenAnchors(
+  points: DamagePanelScreenAnchor[],
+  firstIndex: number,
+  secondIndex: number,
+  iteration: number,
+  minDistance: number,
+): void {
+  const first = points[firstIndex];
+  const second = points[secondIndex];
+  let dx = second.x - first.x;
+  let dy = second.y - first.y;
+  let distance = Math.hypot(dx, dy);
+  if (distance >= minDistance) return;
+  if (distance < 0.01) {
+    const angle = ((firstIndex * 5 + secondIndex * 7 + iteration * 3) % 24) * Math.PI / 12;
+    dx = Math.cos(angle);
+    dy = Math.sin(angle);
+    distance = 0;
+  } else {
+    dx /= distance;
+    dy /= distance;
+  }
+  const push = (minDistance - distance) * 0.52;
+  first.x -= dx * push;
+  first.y -= dy * push;
+  second.x += dx * push;
+  second.y += dy * push;
+}
+
+export function layoutDamagePanelScreenAnchors(
+  inputs: readonly DamagePanelScreenAnchorInput[],
+  width: number,
+  height: number,
+): DamagePanelScreenAnchor[] {
+  const points = inputs.map((point, index) => {
+    const angle = index * 2.399963229728653;
+    return {
+      ...point,
+      x: point.sourcePx + Math.cos(angle) * 0.05,
+      y: point.sourcePy + Math.sin(angle) * 0.05,
+    };
+  });
+  const edge = 6.5;
+  const minDistance = 11.5;
+  const maxTether = 14;
+
+  for (let iteration = 0; iteration < 22; iteration++) {
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        separateDamagePanelScreenAnchors(points, i, j, iteration, minDistance);
+      }
+    }
+
+    for (const point of points) {
+      if (iteration < 17) {
+        point.x += (point.sourcePx - point.x) * 0.12;
+        point.y += (point.sourcePy - point.y) * 0.12;
+      }
+      const ox = point.x - point.sourcePx;
+      const oy = point.y - point.sourcePy;
+      const offset = Math.hypot(ox, oy);
+      if (offset > maxTether) {
+        point.x = point.sourcePx + ox / offset * maxTether;
+        point.y = point.sourcePy + oy / offset * maxTether;
+      }
+      point.x = Math.max(edge, Math.min(width - edge, point.x));
+      point.y = Math.max(edge, Math.min(height - edge, point.y));
+    }
+  }
+  return points;
 }
