@@ -77,6 +77,14 @@ interface AntennaStage {
   stages: Array<[number, number, number, 'dark' | 'detail']>;
 }
 
+interface SheridanRoofStation {
+  readonly x: number;
+  readonly z: number;
+  readonly mg: 'm2' | 'mag';
+  readonly scale: number;
+  readonly ammo: boolean;
+}
+
 interface ArmorSurfaceFrame {
   readonly normalAxis: THREE.Vector3;
   readonly alongAxis: THREE.Vector3;
@@ -775,12 +783,10 @@ const hullSection = (
   [bottomHalf, bottomY], [beltHalf, beltY], [sideHalf, sideY], [roofHalf, roofY],
 ];
 
-function buildSheridan(P: SheridanBuilderPort): void {
+function addSheridanHull(P: SheridanBuilderPort): void {
   const {
-    xform, box, cylX, cylY, cylZ, sph, torus, frustum,
-    buildRunningGear, fenders, headlight, liftEye, periscope,
+    box, cylZ, sph, torus, fenders, periscope,
   } = KIT;
-  const isTts = P.spec.id === 'm551a1_tts';
 
   // Amphibious aluminum hull rebuilt from eleven source-derived convex
   // transverse sections. The lower courses form a deliberate recessed track
@@ -902,7 +908,10 @@ function buildSheridan(P: SheridanBuilderPort): void {
         0, side * Math.PI / 2, 0);
     }
   }
+}
 
+function addSheridanRunningGear(P: SheridanBuilderPort): void {
+  const { cylX, torus, xform, buildRunningGear } = KIT;
   // Five road wheels and one continuous closed course.  These stations are
   // the averaged left/right centers measured from the comparison print (the
   // real torsion-bar rows are staggered by roughly 100 mm).  Author-space Y
@@ -964,7 +973,13 @@ function buildSheridan(P: SheridanBuilderPort): void {
         outset: 0.143, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelInset' },
     ],
   });
+}
 
+function addSheridanHullProtectionAndFurniture(
+  P: SheridanBuilderPort,
+  isTts: boolean,
+): void {
+  const { box, cylX, torus, headlight, liftEye } = KIT;
   // Layered, damageable hull ERA. Every cassette has a continuous
   // vehicle-space camouflage projection and a shallow top cover. These are
   // applique fields on the measured armor surfaces, not a second low skirt:
@@ -1020,7 +1035,10 @@ function buildSheridan(P: SheridanBuilderPort): void {
       P.add('hullDark', box(0.055, 0.42, 0.30), x, 1.54, -2.96, -0.20, 0, 0);
     }
   }
+}
 
+function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
+  const { box, sph, torus } = KIT;
   // Low asymmetric cast turret. These are 24 equal-perimeter samples from
   // eight exact horizontal intersections through the five connected source
   // shell components (Object_12 only). ERA, cupolas, rails, internal parts,
@@ -1204,7 +1222,10 @@ function buildSheridan(P: SheridanBuilderPort): void {
   ]) {
     P.addEquipment('turret', box(w, h, d), x, y, z, 0, yaw, 0);
   }
+}
 
+function addSheridanM81Gun(P: SheridanBuilderPort): void {
+  const { box, cylZ, frustum } = KIT;
   // Exact connected-component reconstruction of the M81 gun assembly. Move
   // the marked front receiver out of the turret bucket and into gunMount in
   // gun-pivot coordinates (turret-local pivot Y=.44, Z=1.10). It now pitches
@@ -1311,7 +1332,10 @@ function buildSheridan(P: SheridanBuilderPort): void {
     muzzleBoresDark: true,
     exposedWeaponsGunmetal: true,
   });
+}
 
+function addSheridanTurretProtection(P: SheridanBuilderPort): void {
+  const { box } = KIT;
   // Turret cheek ERA follows the cast tangent, with attachment rails buried
   // into the shell rather than suspended in front of it.
   for (const side of [-1, 1]) {
@@ -1339,134 +1363,117 @@ function buildSheridan(P: SheridanBuilderPort): void {
       ]) put(side * x, y, z, 0, side * yaw, 0, 0.82, 1.34, 0.72);
     }, true);
   }
+}
 
-  // Two usable roof stations. The .50 caliber commander mount and requested
-  // 7.62 mm loader mount sit immediately forward of their measured hatch rim.
-  const cupolas = [
-    { x: -0.50, z: -0.247, mg: 'm2', scale: 1.10, ammo: true },
-    // Object_10 components 3/8 are the second roof station: a flush
-    // 450 x 572 x 25 mm oval plate centered at X=.326, Z=-.168 m. It is not
-    // the tall generic cupola previously placed at X=.48, Z=-.43 m. Keep the
-    // requested second machine gun, but seat it on this measured hatch so the
-    // addition does not rewrite Sheridan's roof silhouette.
-    { x: 0.32622, z: -0.16774, mg: 'mag', scale: 0.72, ammo: false },
-  ];
-  for (const station of cupolas) {
-    if (station.mg === 'm2') {
-      // The commander station is not the same small ring as the loader's.
-      // Its two connected source components span X=-1.056..0.056,
-      // Z=-0.781..0.287 and Y=2.272..2.389 m. The armor collar below is
-      // deliberately buried 79 mm into the cast crown so the larger ring is
-      // both flush and physically supported.
-      // The lower collar's exact source envelope is 1.112 m across X and
-      // 1.068 m across Z. Only its buried base reaches that diameter; the
-      // upper ring remains the measured 0.43 m radius. This tapered/elliptic
-      // reconstruction matches both envelopes without inflating the hatch.
-      // The lower 816 mm collar (Object_11 component 8) starts below the
-      // crown and supports the wider upper bearing. Keeping the two measured
-      // courses separate avoids the swollen single-frustum look.
-      P.addCupola('turret', nonUniformXform(
-        cylY(0.408, 0.408, 0.15605, P.q ? 26 : 18),
-        0, 0, 0, 0, 0, 0, [1, 1, 0.9985]),
-        station.x, 0.79752, station.z);
-      P.addCupola('turret', nonUniformXform(
-        cylY(0.43, 0.556, 0.09530, P.q ? 26 : 18),
-        0, 0, 0, 0, 0, 0, [1, 1, 0.9604]),
-        station.x, 0.85347, station.z);
-      // Eight independently framed direct-vision blocks occupy the measured
-      // 0.82 m cupola perimeter. Their housings intersect the collar by
-      // 18 mm and their glass lies on the outward radial face, so neither
-      // layer reads as a floating decorative ring.
-      for (let index = 0; index < 8; index++) {
-        const angle = index * Math.PI / 4;
-        const radius = 0.405;
-        const x = station.x + Math.sin(angle) * radius;
-        const z = station.z + Math.cos(angle) * radius;
-        P.add('turretDark', box(0.145, 0.082, 0.070),
-          x, 0.827, z, 0, angle, 0);
-        P.add('turretGlass', box(0.104, 0.044, 0.014),
-          x + Math.sin(angle) * 0.041, 0.832,
-          z + Math.cos(angle) * 0.041, 0, angle, 0);
-      }
-      // Object_11 stores the commander's lid as an open annulus. The former
-      // pair of filled cylinders matched its outer bounds but erased the
-      // 430 mm opening and read as a solid billboard in the gallery. Preserve
-      // the surveyed X=.620 m / sloped=.441 m outer spans on the measured
-      // -23.5° plane, then add the central stay from component 58.
-      P.add('turretDark', torus(0.405, 0.018, P.q ? 24 : 16),
-        station.x, 0.944, station.z);
-      P.addHatch('turret', nonUniformXform(
-        torus(0.270, 0.040, P.q ? 30 : 20),
-        0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
-        -0.5002, 1.0114, 0.2745);
-      P.add('turretDark', nonUniformXform(
-        torus(0.238, 0.014, P.q ? 28 : 18),
-        0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
-        -0.5002, 1.025, 0.2685);
-      P.add('turretDark', cylinderOnAxis(
-        [-0.5002, 1.0169, 0.2630], [0, 0.623, 0.782], 0.348, 0.009,
-        P.q ? 14 : 10), 0, 0, 0);
-      // Paired hinge knuckles connect the open lid to the rear edge of the
-      // cupola instead of leaving the accurately tilted plate floating.
-      for (const x of [-0.676, -0.324]) {
-        P.add('turretDark', cylX(0.038, 0.135, P.q ? 16 : 10),
-          x, 0.952, 0.036);
-        P.add('turretDetail', box(0.080, 0.100, 0.150),
-          x, 0.980, 0.072, -0.30, 0, 0);
-      }
-    } else {
-      P.addHatch('turret', nonUniformXform(
-        cylY(0.225, 0.225, 0.02475, P.q ? 24 : 16),
-        0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
-        station.x, 0.75926, station.z);
-      P.add('turretDark', nonUniformXform(
-        torus(0.205, 0.010, P.q ? 24 : 16),
-        0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
-        station.x, 0.7720, station.z);
-    }
-    if (station.mg === 'm2' && !isTts) {
-      // Fleet-standard American hero M2.  Its dimensions and ammo-side
-      // layout are derived from the Sheridan comparison assembly, making
-      // this vehicle the canonical source used by the Patton/M60 families.
-      const m2 = FITTINGS.americanM2({
-        mats: P.mats,
-        tone: 'dark',
-        ammoSide: 1,
-        barrelLength: 0.42,
-        elev: 0,
-        ring: { r: 0.235, stubs: 4 },
-        seed: 551,
-      });
-      m2.position.set(-0.498, 0.965, 0.290);
-      m2.userData.sourceVehicle = 'm551_sheridan';
-      P.turretG.add(m2);
-    } else if (station.mg !== 'm2') {
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats,
-        cls: station.mg,
-        scale: station.scale,
-        tone: 'dark',
-        ammoSlot: 'dark',
-        machineGunFinish: 'gunmetal',
-        elev: 0.035,
-        ammo: station.ammo,
-        ring: { r: 0.21, stubs: 3 },
-        seed: 552,
-      });
-      mg.scale.set(0.92, 0.72, 0.92);
-      mg.position.set(station.x, 0.805, station.z + 0.13);
-      P.turretG.add(mg);
-      // The added loader weapon is intentionally not present in the
-      // historical comparison model, but it must still be a plausible,
-      // connected installation.  A stepped pintle buries into the hatch
-      // ring and reaches the fitting's underside, preventing the complete
-      // weapon from becoming a detached silhouette island during traverse.
-      P.add('turretDark', cylY(0.030, 0.038, 0.205, P.q ? 14 : 10),
-        station.x, 0.850, station.z + 0.030);
-      P.add('turretDark', box(0.060, 0.050, 0.245),
-        station.x, 0.922, station.z + 0.105, -0.66, 0, 0);
-    }
+function addSheridanCommanderStation(
+  P: SheridanBuilderPort,
+  station: SheridanRoofStation,
+  isTts: boolean,
+): void {
+  const { box, cylX, cylY, torus } = KIT;
+  // The commander station is not the same small ring as the loader's. Its
+  // independently measured lower collar, upper bearing, vision blocks, open
+  // annular lid, and hinges remain separate connected mechanical courses.
+  P.addCupola('turret', nonUniformXform(
+    cylY(0.408, 0.408, 0.15605, P.q ? 26 : 18),
+    0, 0, 0, 0, 0, 0, [1, 1, 0.9985]),
+    station.x, 0.79752, station.z);
+  P.addCupola('turret', nonUniformXform(
+    cylY(0.43, 0.556, 0.09530, P.q ? 26 : 18),
+    0, 0, 0, 0, 0, 0, [1, 1, 0.9604]),
+    station.x, 0.85347, station.z);
+  for (let index = 0; index < 8; index++) {
+    const angle = index * Math.PI / 4;
+    const radius = 0.405;
+    const x = station.x + Math.sin(angle) * radius;
+    const z = station.z + Math.cos(angle) * radius;
+    P.add('turretDark', box(0.145, 0.082, 0.070), x, 0.827, z, 0, angle, 0);
+    P.add('turretGlass', box(0.104, 0.044, 0.014),
+      x + Math.sin(angle) * 0.041, 0.832,
+      z + Math.cos(angle) * 0.041, 0, angle, 0);
   }
+  P.add('turretDark', torus(0.405, 0.018, P.q ? 24 : 16),
+    station.x, 0.944, station.z);
+  P.addHatch('turret', nonUniformXform(
+    torus(0.270, 0.040, P.q ? 30 : 20),
+    0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
+    -0.5002, 1.0114, 0.2745);
+  P.add('turretDark', nonUniformXform(
+    torus(0.238, 0.014, P.q ? 28 : 18),
+    0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
+    -0.5002, 1.025, 0.2685);
+  P.add('turretDark', cylinderOnAxis(
+    [-0.5002, 1.0169, 0.2630], [0, 0.623, 0.782], 0.348, 0.009,
+    P.q ? 14 : 10), 0, 0, 0);
+  for (const x of [-0.676, -0.324]) {
+    P.add('turretDark', cylX(0.038, 0.135, P.q ? 16 : 10),
+      x, 0.952, 0.036);
+    P.add('turretDetail', box(0.080, 0.100, 0.150),
+      x, 0.980, 0.072, -0.30, 0, 0);
+  }
+  if (isTts) return;
+  const m2 = FITTINGS.americanM2({
+    mats: P.mats,
+    tone: 'dark',
+    ammoSide: 1,
+    barrelLength: 0.42,
+    elev: 0,
+    ring: { r: 0.235, stubs: 4 },
+    seed: 551,
+  });
+  m2.position.set(-0.498, 0.965, 0.290);
+  m2.userData.sourceVehicle = 'm551_sheridan';
+  P.turretG.add(m2);
+}
+
+function addSheridanLoaderStation(
+  P: SheridanBuilderPort,
+  station: SheridanRoofStation,
+): void {
+  const { box, cylY, torus } = KIT;
+  P.addHatch('turret', nonUniformXform(
+    cylY(0.225, 0.225, 0.02475, P.q ? 24 : 16),
+    0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
+    station.x, 0.75926, station.z);
+  P.add('turretDark', nonUniformXform(
+    torus(0.205, 0.010, P.q ? 24 : 16),
+    0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
+    station.x, 0.7720, station.z);
+  const mg = FITTINGS.pintleMG({
+    mats: P.mats,
+    cls: station.mg,
+    scale: station.scale,
+    tone: 'dark',
+    ammoSlot: 'dark',
+    machineGunFinish: 'gunmetal',
+    elev: 0.035,
+    ammo: station.ammo,
+    ring: { r: 0.21, stubs: 3 },
+    seed: 552,
+  });
+  mg.scale.set(0.92, 0.72, 0.92);
+  mg.position.set(station.x, 0.805, station.z + 0.13);
+  P.turretG.add(mg);
+  // Seat the loader weapon on a connected stepped pintle rather than leaving
+  // the fitting as an isolated silhouette island during traverse.
+  P.add('turretDark', cylY(0.030, 0.038, 0.205, P.q ? 14 : 10),
+    station.x, 0.850, station.z + 0.030);
+  P.add('turretDark', box(0.060, 0.050, 0.245),
+    station.x, 0.922, station.z + 0.105, -0.66, 0, 0);
+}
+
+function addSheridanRoofStations(P: SheridanBuilderPort, isTts: boolean): void {
+  const { periscope } = KIT;
+  const commander: SheridanRoofStation = {
+    x: -0.50, z: -0.247, mg: 'm2', scale: 1.10, ammo: true,
+  };
+  // Object_10 components 3/8 define the flush second station. Seat the
+  // requested loader weapon on that measured oval without changing the roof.
+  const loader: SheridanRoofStation = {
+    x: 0.32622, z: -0.16774, mg: 'mag', scale: 0.72, ammo: false,
+  };
+  addSheridanCommanderStation(P, commander, isTts);
+  addSheridanLoaderStation(P, loader);
   for (const [x, z, yaw] of [[0.18, 0.64, 0], [0.56, 0.32, -0.20], [-0.58, 0.30, 0.20]]) {
     // The cast crown at these stations is Y=0.772 m. The previous 0.960 m
     // center left a 153 mm air gap below every optic; at 90° traverse their
@@ -1475,6 +1482,10 @@ function buildSheridan(P: SheridanBuilderPort): void {
     // mechanically seated while retaining a visible glass face.
     periscope(P, 'turretDetail', x, 0.790, z, yaw);
   }
+}
+
+function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
+  const { cylY } = KIT;
   // Exact Object_10 smoke-bank centerlines. Each body, collar and dark bore
   // uses the same surveyed 3D axis, eliminating the generic fitting's fan
   // angle errors and making all eight tubes terminate on one coherent arc.
@@ -1545,7 +1556,9 @@ function buildSheridan(P: SheridanBuilderPort): void {
         antenna.x, turretY((minY + maxY) * 0.5), antenna.z);
     }
   }
+}
 
+function finishSheridan(P: SheridanBuilderPort, isTts: boolean): void {
   const ttsReceipt = isTts ? buildSheridanTtsUpgrade(P) : null;
 
   // Keep both unit insignia and tactical numbers on clean, mirrored side
@@ -1590,6 +1603,19 @@ function buildSheridan(P: SheridanBuilderPort): void {
       ...(isTts ? { ttsUpgrade: ttsReceipt } : {}),
     };
   }
+}
+
+function buildSheridan(P: SheridanBuilderPort): void {
+  const isTts = P.spec.id === 'm551a1_tts';
+  addSheridanHull(P);
+  addSheridanRunningGear(P);
+  addSheridanHullProtectionAndFurniture(P, isTts);
+  addSheridanTurretShellAndStowage(P);
+  addSheridanM81Gun(P);
+  addSheridanTurretProtection(P);
+  addSheridanRoofStations(P, isTts);
+  addSheridanSmokeAndAntenna(P);
+  finishSheridan(P, isTts);
 }
 
 export const SHERIDAN_PROFILES = Object.freeze({
