@@ -637,6 +637,7 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   const { cylY, cylZ, frustum, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
+  const buildStrv103Hull = (): void => {
   // ---- primary silhouette loft (side top/bot + widths from the work order)
   // lower hull band: belly line ~0.33 between the tracks, sides at deck width
   const primaryHull = [
@@ -700,7 +701,10 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     P.add('hullTrack', box(0.25, 0.055, 0.17), s * (0.34 + i * 0.27), 0.99, 2.79, -0.32, 0, 0);
   }
   P.add('hullDark', KIT.cylX(0.06, 3.06, 12), 0, 0.58, 3.25);                 // full-width dozer crossbar
+  };
+  buildStrv103Hull();
 
+  const buildStrv103Weapon = (): void => {
   // ---- fixed 105 mm L74 in the glacis (hull bucket, fixedMount topology).
   // Bore axis 1.65; muzzle at published overall: tail -3.52 -> muzzle +5.47.
   // §B3.1 MUZZLE BORE (shadow-named, 3fca39b; hull-frame gun -> hullG)
@@ -719,7 +723,10 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   P.turretG.position.set(0, 1.56, 0.40);
   P.gunG.position.set(0, 0, 0);
   P.muzzleZ = 4.86;
+  };
+  buildStrv103Weapon();
 
+  const buildStrv103Deck = (): void => {
   // ---- deck furniture
   // commander cluster rides LEFT-of-center like the print (broad sight block
   // x -0.92..-0.22 + crown drum straddling x 0): crown held at 2.18.
@@ -806,6 +813,10 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   for (const z of [-2.08, -0.86, 0.38, 1.66]) {
     P.add('hullDark', box(0.045, 0.070, 0.095), 1.842, 1.45, z);
   }
+  };
+  buildStrv103Deck();
+
+  const buildStrv103ServiceAndRunningGear = (): void => {
   // raked antenna masts (oracle: symmetric pair rising to 2.80 at z ~ -2.0)
   for (const s of [-1, 1]) {
     P.add('hullDetail', KIT.cylY(0.045, 0.055, 0.10, 10), s * 0.96, 1.86, -1.86);
@@ -857,6 +868,8 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   });
   // tail underside wedge from the raised idler to the high stern
   P.add('hull', frustum(1.18, -2.62, -3.87, 1.20, -2.60, -3.89, 1.20, 1.30));
+  };
+  buildStrv103ServiceAndRunningGear();
 
   P.decal('hull', 'number', P.spec.visual.number || '103', 0.30, [1.755, 1.55, -1.4], Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '103', 0.30, [-1.755, 1.55, -1.4], -Math.PI / 2, 0, 0);
