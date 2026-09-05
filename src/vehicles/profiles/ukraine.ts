@@ -1714,6 +1714,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     additionalTurretCassettes: 0,
   };
 
+  const buildOplotHull = (): void => {
   // Hull loft (T-80UD lineage): deck plateau 1.42, rear deck fall to the
   // 1.27 tail, glacis break +1.85 falling 1.36 -> 0.84 at the bow tip,
   // 0.45 belly with the stern undercut rising to the 1.15 overhang lip
@@ -1803,7 +1804,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.add('hull', cylY(0.23, 0.23, 0.04, 14), 0, 1.44, 1.55);
   KIT.periscope(P, 'hullDetail', -0.14, 1.45, 1.80);
   KIT.periscope(P, 'hullDetail', 0.14, 1.45, 1.80);
+  };
+  buildOplotHull();
 
+  const buildOplotHullSides = (): void => {
   // Fender runs with bins + tow cable. The bins occupy only the inboard
   // half of the fender. A segmented welded shelf now spans the remaining
   // channel to the Duplet side-skirt root, so the skirt is visibly carried
@@ -1929,7 +1933,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
       [s * 1.60, 1.30, 3.02], [s * 1.885, 1.30, 3.02], [s * 1.885, 1.28, 3.36], [s * 1.60, 1.28, 3.36]));
   }
   widthAnchor(P, 1.8875, 0.80, -2.60);
+  };
+  buildOplotHullSides();
 
+  const buildOplotTurretShell = (): void => {
   // ---- KMDB WELDED TURRET — measured from the WARPED (published-scale)
   // print's TUR subtree (tools/tmp-ua-turprofile.mjs): a long arrowhead —
   // Duplet wedge wings sweeping to world +1.26 at halfW 1.43..1.54, nose
@@ -2028,7 +2035,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     P.add('turretDark', box(0.38, 0.26, 0.46), s * 1.16, 0.20, -1.50, 0, -s * 0.06, 0);
     P.add('turretDetail', box(0.32, 0.05, 0.40), s * 1.16, 0.36, -1.50, 0, -s * 0.06, 0);
   }
+  };
+  buildOplotTurretShell();
 
+  const buildOplotRoofSystems = (): void => {
   // Roof furniture: hatch rings proud of the 0.795 roof plate, vision
   // blocks under the datum, the PNK-6 tower at the ref's own world -1.34
   // spike column (local -1.04).
@@ -2135,7 +2145,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     rotation: [0, 0.40, -0.10],
     seed: 8411 }),
     1.24, 0.40, -0.40);
+  };
+  buildOplotRoofSystems();
 
+  const buildOplotSideFinish = (): void => {
   // ---- §5.319 LEFT-SIDE TURRET FINISH (owner order: "finish the left side
   // of oplots turret"). The print's LEFT carries a full Duplet grammar the
   // §5.288 round only delivered on the wing TOP faces: the left relief
@@ -2268,7 +2281,10 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
       h: 0.20, r: 0.012, rake: -s * 0.85, seed: 8420 + (s > 0 ? 1 : 0) }),
       s * 0.94, 0.44, -1.98);
   }
+  };
+  buildOplotSideFinish();
 
+  const buildOplotWeapon = (): void => {
   // KBA-3 125 mm: trunnion inside the arrowhead nose, sealed saddle, boot,
   // stepped thermal sleeve, muzzle +6.18 world, true bore.
   P.gunG.position.set(0, 0.30, 1.90);
@@ -2295,6 +2311,8 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.40, 0.32, -0.60], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.40, 0.32, -0.60], -Math.PI / 2);
   addVehicleGhillieSuit(P);
+  };
+  buildOplotWeapon();
   P.topY = 1.42;
 }
 
