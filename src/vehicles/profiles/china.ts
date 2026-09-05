@@ -558,7 +558,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // nose line (built shallower/lower) and the brow plate is deleted; the
   // canvas collar and dark recess ring carry the mantlet read.
   P.addGunExtra(box(0.70, 0.46, 0.34), 0, 0.00, 0.08);
-  P.addGunExtra(cylZ(0.23, 0.38, seg, 0.17), 0, 0, 0.32);
+  P.addGunExtra(cylZ(0.17, 0.38, seg, 0.23), 0, 0, 0.32);
   P.addGunExtraDark(cylZ(0.235, 0.040, seg), 0, 0, 0.13);
   P.addGunExtraDark(box(0.62, 0.055, 0.12), 0, -0.225, 0.10);
   // gun-slaved IR illuminator tucked onto the saddle shoulder LEFT
@@ -1007,7 +1007,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // stays the spec/UI overall datum).
   P.gunG.position.set(0, 0.39, 0.75);
   P.addGunExtra(cylZ(0.235, 0.20, seg), 0, 0, 0.28);
-  P.addGunExtra(cylZ(0.20, 0.34, seg, 0.165), 0, 0, 0.55);
+  P.addGunExtra(cylZ(0.165, 0.34, seg, 0.20), 0, 0, 0.55);
   P.addGunExtraDark(torus(0.185, 0.024, seg), 0, 0, 0.735);
   P.addGunExtraDark(box(0.44, 0.05, 0.06), 0, -0.235, 0.38);
   tubeGun(P, [
@@ -1093,9 +1093,14 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   const chevronPanelBands = Object.freeze([
     [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
   ] as const);
+  // The closed arrow is permanent turret structure. Only the four raised
+  // face cassettes per side are ERA and may disappear after detonation.
+  for (const s of [-1, 1] as const) {
+    P.add('turret', closedIntegratedChevron(chevronStations, s));
+    P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
+  }
   P.visualEraCluster('ztz99a2-production-chevron-era', 'turret', () => {
     for (const s of [-1, 1] as const) {
-      P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, s));
       for (const [startT, endT] of chevronPanelBands) {
         const startX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
@@ -1107,7 +1112,6 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           s,
         ));
       }
-      P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
     }
   });
 
@@ -1163,7 +1167,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // the connected nose rather than carried by a separate mantlet shell.
   P.gunG.position.set(0, 0.38, 0.78);
   P.addGunExtra(cylZ(0.23, 0.22, seg), 0, 0, 0.27);
-  P.addGunExtra(cylZ(0.19, 0.32, seg, 0.16), 0, 0, 0.54);
+  P.addGunExtra(cylZ(0.16, 0.32, seg, 0.19), 0, 0, 0.54);
   P.addGunExtraDark(torus(0.18, 0.022, seg), 0, 0, 0.72);
   tubeGun(P, [
     [0.72, 1.58, 0.104], [1.58, 3.03, 0.090], [3.03, 3.72, 0.118],
@@ -1174,12 +1178,16 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
   P.turretG.userData.ztz99a2ProductionReceipt = Object.freeze({
-    architecture: 'ztz99a2-production-arrow-r3',
+    architecture: 'ztz99a2-production-arrow-r4',
     independentProductionTurret: true,
     prototypeGeometryReused: false,
     actualReferenceDerived: true,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true,
+    permanentChevronCarriers: 2,
+    detonatingChevronFacePanels: 8,
+    spentStateRetainsClosedFront: true,
+    permanentArmoredBustle: true,
     chevronSideJoinGapM: 0,
     chevronProfile: 'vt4a1-leopard-2a6-derived',
     chevronStationsPerSide: 6,

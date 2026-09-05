@@ -42,10 +42,13 @@ function addChinese125Gun(
   // it reads as a welded Chinese gun cradle instead of a round cast mantlet.
   // (A transverse cylinder here creates the false twin-bar silhouette this
   // replacement is specifically intended to remove.)
-  P.addGunExtraDark(cylZ(config.rootR * 1.05, 0.18, P.q ? 12 : 8,
-    config.rootR * 0.98), 0, 0, 0.09);
-  P.addGunExtra(cylZ(config.rootR * 0.94, 0.68, P.q ? 12 : 8,
-    config.rootR * 0.56), 0, 0, 0.47);
+  // cylZ maps its first radius to the +Z/front cap and its second radius to
+  // the -Z/turret cap. Keep both frustums broad where they enter the turret
+  // and narrow toward the barrel; the former ordering inverted that taper.
+  P.addGunExtraDark(cylZ(config.rootR * 0.98, 0.18, P.q ? 12 : 8,
+    config.rootR * 1.05), 0, 0, 0.09);
+  P.addGunExtra(cylZ(config.rootR * 0.56, 0.68, P.q ? 12 : 8,
+    config.rootR * 0.94), 0, 0, 0.47);
   P.addGunExtraDark(cylZ(config.rootR * 0.59, 0.08, 12), 0, 0, 0.85);
   KIT.buildGun(P, { len: config.length, r: 0.071, sleeve: false, collar: false, baseR: 0.105 });
   P.add('gun', cylZ(0.105, config.sleeveEnd - config.sleeveStart, 18, 0.090),
@@ -264,9 +267,15 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   const panelBands = Object.freeze([
     [0.055, 0.270], [0.300, 0.505], [0.535, 0.755], [0.785, 0.955],
   ] as const);
+  // The closed chevron is the welded carrier/front casting. It must survive
+  // an ERA detonation; only the raised surface cassettes belong to the visual
+  // ERA cluster. Keeping the carrier in the primary turret also prevents the
+  // spent state from exposing the deliberately truncated shell behind it.
+  for (const side of [-1, 1] as const) {
+    P.add('turret', closedIntegratedChevron(chevronStations, side));
+  }
   P.visualEraCluster(`${variant}-integrated-chevron-front`, 'turret', () => {
     for (const side of [-1, 1] as const) {
-      P.addExternalArmor('turret', closedIntegratedChevron(chevronStations, side));
       for (const [startT, endT] of panelBands) {
         const startX = THREE.MathUtils.lerp(chevronStations[0].x,
           chevronStations.at(-1)!.x, startT);
@@ -290,9 +299,9 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   // The bustle is structural volume, not a detached basket. These overlapping
   // armored panniers continue the primary shell to a deep rear service wall;
   // the racks and bins below are all seated on those volumes.
-  P.visualEraCluster(`${variant}-integral-bustle`, 'turret', () => {
+  {
     for (const side of [-1, 1] as const) {
-      P.addExternalArmor('turret', orientedSlab(
+      P.add('turret', orientedSlab(
         [side * sx(0.54), rearBottomY(0.08, -1.76), rearZ(-1.76)],
         [side * sx(1.38), rearBottomY(0.10, -1.66), rearZ(-1.66)],
         [side * sx(1.42), rearBottomY(0.12, -2.56), rearZ(-2.56)],
@@ -309,7 +318,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
       P.add('turretDetail', box(0.035, sy(0.42), 0.035),
         side * sx(1.40), rearBottomY(0.35, -2.58), rearZ(-2.58));
     }
-    P.addExternalArmor('turret', orientedSlab(
+    P.add('turret', orientedSlab(
       [-sx(0.67), rearBottomY(0.11, -2.23), rearZ(-2.23)],
       [sx(0.67), rearBottomY(0.11, -2.23), rearZ(-2.23)],
       [sx(0.64), rearBottomY(0.10, -2.70), rearZ(-2.70)],
@@ -319,7 +328,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
       [sx(0.58), rearTopY(0.57, -2.70), rearZ(-2.70)],
       [-sx(0.58), rearTopY(0.57, -2.70), rearZ(-2.70)],
     ));
-  });
+  }
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: sx(2.65), d: sz(0.62), h: sy(0.48), posts: 8,
     fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
@@ -437,7 +446,7 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
   const shellHeight = 0.89 * heightScale;
 
   const commonReceipt = Object.freeze({
-    architecture: 'vt-integrated-chevron-family-r4',
+    architecture: 'vt-integrated-chevron-family-r5',
     variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
     pivotShiftForwardM: variant === 'vt4a1' ? 0.55 : 0.66,
     turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
@@ -451,6 +460,9 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
     rearCrownLiftM: config.rearCrownLiftM,
     integratedChevronFront: true,
     chevronsArePrimaryFront: true, chevronTerminalBuriedInSideBelt: true,
+    permanentChevronCarriers: 2, detonatingChevronFacePanels: 8,
+    spentStateRetainsClosedFront: true,
+    permanentArmoredBustle: true,
     mirroredChevronSideJoins: true, chevronSideJoinGapM: 0,
     chevronProfile: 'leopard-2a6-derived', sharedPhysicalRidge: true,
     surfacePanelsPerSide: 4, compoundShoulderTerminal: true,

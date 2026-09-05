@@ -164,15 +164,15 @@ assert.deepEqual(vt4a1.gunRig.position.toArray(), [0, 0.3198, 0.75],
 assert.notEqual(vt4a1.turretRig.userData.vtFamilyTurretReceipt?.architecture,
   ztz99a2.turretRig.userData.ztz99a2ProductionReceipt?.architecture,
   'VT-4A1 and production ZTZ-99A2 retain independent turret architectures');
-assert(vt4a1.chevrons, 'VT-4A1: integrated chevron front exists');
+assert(vt4a1.chevrons, 'VT-4A1: raised chevron ERA faces exist');
 assert(vt4a1.chevrons.geometry.attributes.position.count >= 180,
-  'VT-4A1: chevron front uses closed multi-station geometry on both sides');
-const chevronBounds = new Box3().setFromObject(vt4a1.chevrons);
+  'VT-4A1: both chevron carriers retain complete raised ERA face courses');
+const chevronBounds = new Box3().setFromObject(vt4a1.turret);
 const gunWorld = vt4a1.gunRig.getWorldPosition(new Vector3());
 assert(chevronBounds.max.x >= 1.67 && chevronBounds.min.x <= -1.67,
-  'VT-4A1: chevrons terminate inside both full-width turret shoulders');
+  'VT-4A1: permanent chevrons terminate inside both full-width turret shoulders');
 assert(chevronBounds.max.z >= gunWorld.z + 0.60,
-  'VT-4A1: chevrons close the gun-throat/front-shell junction');
+  'VT-4A1: permanent chevrons close the gun-throat/front-shell junction');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.integratedChevronFront, true,
   'VT-4A1: turret receipt records the merged chevron front');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale, 0.82,
@@ -181,6 +181,12 @@ assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.legacyFrontalWedgeRemo
   'VT-4A1: legacy protruding frontal shell is absent');
 assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.chevronsArePrimaryFront, true,
   'VT-4A1: chevrons are the primary front rather than applique');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.permanentChevronCarriers, 2,
+  'VT-4A1: both closed structural chevron carriers remain part of the turret');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.detonatingChevronFacePanels, 8,
+  'VT-4A1: only eight raised face cassettes are assigned to ERA depletion');
+assert.equal(vt4a1.turretRig.userData.vt4a1TurretReceipt?.spentStateRetainsClosedFront, true,
+  'VT-4A1: ERA depletion retains a complete armored front');
 assert(vt4a1.turretRig.userData.vt4a1TurretReceipt.primaryShellHeightM
     > vt4a1.turretRig.userData.vt4a1TurretReceipt.previousPrimaryShellHeightM,
   'VT-4A1: primary shell is measurably taller than the previous revision');
