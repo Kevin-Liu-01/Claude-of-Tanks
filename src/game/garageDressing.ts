@@ -37,9 +37,10 @@ import { getGarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 import {
-  ABRAMS_BAY_FORWARD_ADVANCE_M,
+  ABRAMS_FLAMMABLE_BAY_OFFSET,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getGarageWorkshopLayoutPose,
+  LEOPARD_MOBILITY_BAY_OFFSET,
 } from './garageWorkshopLayout.ts';
 
 export interface GarageDressingEngineContext {
@@ -711,18 +712,19 @@ export function createGarageDressing(
     );
     bayRoot.name = `garage_${bayId}_half_turn`;
     bayRoot.rotation.y = Math.PI;
-    // Keep the correction outside the 19 m showroom orbit. A previous 2.15 m
-    // shift cleared the perimeter crane but pulled the complete service frame
-    // through the camera path, creating a dark foreground wedge in several
-    // outdoor Garages. This bounded owner nudge preserves the bay assembly and
-    // its crane clearance without letting any support become foreground UI.
-    const forwardAdvance = bayId === 'abrams_welding'
-      ? ABRAMS_BAY_FORWARD_ADVANCE_M : -0.35;
-    bayRoot.position.set(forwardAdvance, 0, forwardAdvance);
+    // The Abrams follows Verdant's east canister service station while K2
+    // keeps its small perimeter-crane clearance correction. Both are complete
+    // owner transforms so tools and supports cannot drift away from the hull.
+    const offset = bayId === 'abrams_welding'
+      ? ABRAMS_FLAMMABLE_BAY_OFFSET : { x: -0.35, z: -0.35 };
+    bayRoot.position.set(offset.x, 0, offset.z);
     bayRoot.userData.layoutRotationRad = Math.PI;
-    bayRoot.userData.inwardAdvanceM = Number(Math.hypot(
-      forwardAdvance, forwardAdvance,
-    ).toFixed(2));
+    bayRoot.userData.inwardAdvanceM = Number(Math.hypot(offset.x, offset.z).toFixed(2));
+    if (bayId === 'abrams_welding') {
+      bayRoot.userData.canisterCenterSeparationM =
+        ABRAMS_FLAMMABLE_BAY_OFFSET.canisterCenterSeparationM;
+      bayRoot.userData.serviceLandmark = 'east-flammable-canisters';
+    }
     bayRoot.userData.perimeterCraneClearance = true;
     bayRoot.userData.swappedWith = bayId === 'abrams_welding' ? 'rolled_k2' : 'abrams_welding';
     for (const child of authoredChildren) bayRoot.add(child);
@@ -1056,6 +1058,77 @@ export function createGarageDressing(
     track(wheelDiscs);
   }
 
+  function addServiceRoadWheelDolly(
+    parent: THREE.Object3D,
+    sourceVehicleId: 't90a_burlak' | 'm1a2',
+    tires: THREE.Mesh | undefined,
+    discs: THREE.Mesh | undefined,
+    x: number,
+    z: number,
+    yaw: number,
+  ): void {
+    if (!tires?.geometry || !discs?.geometry) return;
+    if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
+    const tireSize = new THREE.Vector3();
+    tires.geometry.boundingBox?.getSize(tireSize);
+    const wheelRadius = Math.max(0.32, tireSize.y / 2, tireSize.z / 2);
+    const dollyLength = Math.max(3.0, wheelRadius * 8.3);
+    const dolly = markModernPart(
+      new THREE.Group(), sourceVehicleId, 'connected_road_wheel_dolly',
+    );
+    dolly.name = `garage_${sourceVehicleId}_road_wheel_service_dolly`;
+    dolly.position.set(x, 0, z);
+    dolly.rotation.y = yaw;
+    dolly.userData.supportMode = 'connected-caster-wheel-service-dolly';
+    dolly.userData.supportedWheelCount = 4;
+    parent.add(dolly);
+
+    const baseRailGeometry = track(new THREE.BoxGeometry(0.12, 0.12, dollyLength));
+    const crossmemberGeometry = track(new THREE.BoxGeometry(1.08, 0.10, 0.12));
+    const keeperGeometry = track(new THREE.BoxGeometry(0.09, 0.09, dollyLength - 0.3));
+    for (const railX of [-0.42, 0.42]) {
+      put(baseRailGeometry, mat.steelDark, railX, 0.16, 0,
+        0, 0, 0, 1, dolly).name = `${dolly.name}_connected_base_rail`;
+    }
+    for (const crossZ of [-dollyLength / 2 + 0.12, dollyLength / 2 - 0.12]) {
+      put(crossmemberGeometry, mat.safety, 0, 0.17, crossZ,
+        0, 0, 0, 1, dolly).name = `${dolly.name}_connected_crossmember`;
+      for (const casterX of [-0.42, 0.42]) {
+        put(G.caster, mat.rubber, casterX, 0.07, crossZ,
+          0, 0, Math.PI / 2, 0.85, dolly, false).name = `${dolly.name}_caster`;
+      }
+    }
+    put(keeperGeometry, mat.steelMid, -0.20, 0.25 + wheelRadius, 0,
+      0, 0, 0, 1, dolly).name = `${dolly.name}_wheel_keeper`;
+
+    const wheelPositions = [-3, -1, 1, 3].map((slot) => (
+      [0, 0.25 + wheelRadius, slot * wheelRadius * 1.02] as const
+    ));
+    const wheelTires = markModernPart(
+      new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
+      sourceVehicleId,
+      'service_road_wheel_tires',
+    );
+    const wheelDiscs = markModernPart(
+      new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
+      sourceVehicleId,
+      'service_road_wheel_discs',
+    );
+    const wheelMatrix = new THREE.Matrix4();
+    wheelPositions.forEach(([wheelX, wheelY, wheelZ], index) => {
+      wheelMatrix.makeTranslation(wheelX, wheelY, wheelZ);
+      wheelTires.setMatrixAt(index, wheelMatrix);
+      wheelDiscs.setMatrixAt(index, wheelMatrix);
+    });
+    wheelTires.instanceMatrix.needsUpdate = true;
+    wheelDiscs.instanceMatrix.needsUpdate = true;
+    wheelTires.castShadow = wheelTires.receiveShadow = true;
+    wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
+    dolly.add(wheelTires, wheelDiscs);
+    track(wheelTires);
+    track(wheelDiscs);
+  }
+
   function addK2TrackShoePallet(pads: THREE.Mesh | undefined): void {
     if (!pads?.geometry) return;
     const pallet = markModernPart(new THREE.Group(), 'k2', 'track_shoe_pallet');
@@ -1131,7 +1204,6 @@ export function createGarageDressing(
   }
 
   const chunks: Array<() => void | Promise<void>> = [];
-  let abramsServiceBayRoot: THREE.Group | null = null;
 
   // ==========================================================================
   // CHUNK 1 — static workshop clutter on every wall + floor decals
@@ -2087,6 +2159,10 @@ export function createGarageDressing(
     tank.rotation.y = -0.55;
     tank.position.set(17.8, 0.42, -15.5);
     legacyVerdantRoot.add(tank);
+    const roadWheelTires = tank.getObjectByName('gearRoadWheelTires') as
+      THREE.Mesh | undefined;
+    const roadWheelDiscs = (tank.getObjectByName('gearRoadWheelDiscs')
+      || tank.getObjectByName('gearRoadWheelDiscsRecessed')) as THREE.Mesh | undefined;
     const turret = tank.getObjectByName('rig_turret');
     if (turret) {
       turret.position.y += 0.55;
@@ -2199,6 +2275,10 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.06, wheelZ,
         0, 0, Math.PI / 2, 1, jack, false);
     }
+    addServiceRoadWheelDolly(
+      legacyVerdantRoot, 't90a_burlak', roadWheelTires, roadWheelDiscs,
+      12.4, -15.0, -0.55 + Math.PI / 2,
+    );
 
     // This bay used to be six independent root children, which made a safe
     // clearance correction impossible: moving only the tank detached it from
@@ -2236,6 +2316,10 @@ export function createGarageDressing(
     tank.rotation.y = -2.03;
     tank.position.set(16.9, 0, 17.7);
     legacyVerdantRoot.add(tank);
+    const roadWheelTires = tank.getObjectByName('gearRoadWheelTires') as
+      THREE.Mesh | undefined;
+    const roadWheelDiscs = (tank.getObjectByName('gearRoadWheelDiscs')
+      || tank.getObjectByName('gearRoadWheelDiscsRecessed')) as THREE.Mesh | undefined;
     const turret = tank.getObjectByName('rig_turret');
     if (turret) turret.rotation.y -= 0.38;
     const gun = tank.getObjectByName('rig_gun');
@@ -2313,11 +2397,15 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
     legacyVerdantRoot.add(pool);
+    addServiceRoadWheelDolly(
+      legacyVerdantRoot, 'm1a2', roadWheelTires, roadWheelDiscs,
+      12.7, 17.7, -2.03 + Math.PI / 2,
+    );
 
     // This fixture hangs from Verdant's roof. Outdoor environments use the
     // stable Garage sun and hero lights, so never leave it in open sky.
     workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
-    abramsServiceBayRoot = halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
+    halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
 
   // ==========================================================================
@@ -2326,14 +2414,24 @@ export function createGarageDressing(
   // instead of cloning the neighboring Abrams graph.
   // ==========================================================================
   chunks.push(async function buildLeopardA5NlMobilityTeardown() {
-    const serviceBayRoot = abramsServiceBayRoot as THREE.Group | null;
-    if (!serviceBayRoot) {
-      throw new Error('Leopard teardown requires the completed Abrams service owner');
-    }
     const visual = await createLegacyVisual('leo2a5_a5nl', 1475);
     const mobilityTeardownTank = markModernPart(
       visual.root, 'leo2a5_a5nl', 'mobility_teardown_vehicle',
     );
+
+    const leopardServiceBayRoot = markModernPart(
+      new THREE.Group(), 'leo2a5_a5nl', 'mobility_teardown_service_bay_owner',
+    );
+    leopardServiceBayRoot.name = 'garage_leopard_a5nl_independent_service_bay';
+    leopardServiceBayRoot.rotation.y = Math.PI;
+    leopardServiceBayRoot.position.set(
+      LEOPARD_MOBILITY_BAY_OFFSET.x,
+      0,
+      LEOPARD_MOBILITY_BAY_OFFSET.z,
+    );
+    leopardServiceBayRoot.userData.independentFromAbramsBay = true;
+    leopardServiceBayRoot.userData.layoutRotationRad = Math.PI;
+    legacyVerdantRoot.add(leopardServiceBayRoot);
 
     // Preserve the established square and its complete maintenance story, but
     // source the hull, A5 wedge turret and removed road wheels from A5NL itself.
@@ -2343,7 +2441,7 @@ export function createGarageDressing(
     mobilityBay.name = 'garage_leopard_a5nl_mobility_teardown';
     mobilityBay.position.set(18.05, 0, -11.95);
     mobilityBay.rotation.y = -0.55;
-    serviceBayRoot.add(mobilityBay);
+    leopardServiceBayRoot.add(mobilityBay);
 
     mobilityTeardownTank.name = 'dressing_tank_leo2a5_a5nl_mobility_teardown';
     mobilityTeardownTank.position.set(0, 0, 0);
@@ -2366,8 +2464,8 @@ export function createGarageDressing(
     for (const object of removedRunningGear) object.visible = false;
     mobilityTeardownTank.userData.removedRunningGearCount = removedRunningGear.length;
     mobilityBay.add(mobilityTeardownTank);
-    serviceBayRoot.updateMatrixWorld(true);
-    seatVisibleRoot(mobilityTeardownTank, 1.08);
+    leopardServiceBayRoot.updateMatrixWorld(true);
+    seatVisibleRoot(mobilityTeardownTank, 1.04);
 
     const lift = markModernPart(
       new THREE.Group(), 'leo2a5_a5nl', 'connected_hull_lift',
@@ -2656,6 +2754,7 @@ export function createGarageDressing(
       'roof_travelling_crane', 'inspection_overhangs', 'two_level_scaffold',
       'plate_preparation_rack', 'tank_turning_rolls', 'secure_fittings_cage',
       'turret_gantry', 'jack_stands', 'removed_side_skirts', 'welding_cable',
+      'burlak_road_wheel_service_dolly', 'abrams_road_wheel_service_dolly',
       'leopard_a5nl_mobility_teardown', 'removed_leopard_a5nl_road_wheels',
       'turret_cradle', 'relikt_service_rack', 'rolled_k2_hull',
       'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',
@@ -2669,6 +2768,8 @@ export function createGarageDressing(
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
     group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
     group.userData.swappedServiceBayIds = ['abrams_welding', 'rolled_k2'];
+    group.userData.abramsServiceLandmark = 'east-flammable-canisters';
+    group.userData.leopardServiceOwnerIndependent = true;
     group.userData.workshopOrbitCoverageDegrees = 360;
     setVariant(currentVariant.id);
   });

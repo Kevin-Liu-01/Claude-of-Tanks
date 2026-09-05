@@ -24,11 +24,24 @@ export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
   scaffoldCenterSeparationM: 8.41,
 });
 
-// Seat the complete Abrams service owner on the center of its painted bay
-// instead of leaving the vehicle and its tools behind the scaffold uprights.
-// The same diagonal correction is consumed by the all-environment facility
-// layout so exterior shelters remain aligned with the actual tank.
-export const ABRAMS_BAY_FORWARD_ADVANCE_M = 1.65;
+// Move the complete Abrams welding story beside Verdant's east FLAMMABLE
+// canister station. This is deliberately a two-axis correction: the previous
+// diagonal scalar advanced the bay toward the opening but left it roughly
+// 9.8 m from the drums. Dressing and outdoor facility scenery consume this
+// same offset so the tank, removed skirts, tools and shelter cannot separate.
+export const ABRAMS_FLAMMABLE_BAY_OFFSET = Object.freeze({
+  x: -0.8,
+  z: 7.7,
+  canisterCenterSeparationM: 3.83,
+});
+
+// The Leopard occupies the neighboring mobility square, not the Abrams
+// welding owner. Preserve its established world-space pose when the Abrams
+// service story moves independently toward the canisters.
+export const LEOPARD_MOBILITY_BAY_OFFSET = Object.freeze({
+  x: 1.65,
+  z: 1.65,
+});
 
 // These are the final world-space poses after the Burlak clearance translation
 // and two legacy half-turn bay owners are applied. Facility scenery consumes
@@ -39,7 +52,7 @@ const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
     id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -10.3, yaw: -0.55,
   }),
   Object.freeze({
-    id: 'abrams_welding', role: 'welding', x: -15.25, z: -16.05,
+    id: 'abrams_welding', role: 'welding', x: -17.7, z: -10.0,
     yaw: -2.03 + Math.PI,
   }),
   Object.freeze({

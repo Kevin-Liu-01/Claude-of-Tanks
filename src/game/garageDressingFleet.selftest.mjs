@@ -88,6 +88,7 @@ for (const signature of [
   'k2_cradle_contact_saddle',
   'k2_cradle_rubber_contact_pad',
   'k2_cradle_connected_spine',
+  'road_wheel_service_dolly',
 ]) {
   assert.match(dressing, new RegExp(signature));
 }
@@ -100,6 +101,9 @@ assert.match(dressing,
   'the Burlak tank, stands, gantry, tools and floor dressing must advance together');
 assert.match(dressing, /foregroundOfVerdantScaffold = true/,
   'the Burlak assembly must remain in front of Verdant scaffold uprights');
+assert.match(dressing,
+  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*12\.4, -15\.0, -0\.55 \+ Math\.PI \/ 2/,
+  'Burlak must carry four exact fleet road wheels on a connected service dolly');
 assert.match(workshopLayout,
   /id: 'burlak_gantry', role: 'heavy-lift', x: 18\.8, z: -10\.3, yaw: -0\.55/,
   'outdoor service structures must follow the Burlak assembly final pose');
@@ -108,10 +112,11 @@ assert.match(workshopLayout, /cameraAdvanceM: 4\.38/,
 assert.match(dressing, /tank\.position\.set\(16\.9, 0, 17\.7\)/,
   'Abrams welding bay retains its original transform');
 assert.match(workshopLayout,
-  /id: 'abrams_welding', role: 'welding', x: -15\.25, z: -16\.05/,
-  'all-environment structures must follow the advanced Abrams service owner');
-assert.match(workshopLayout, /ABRAMS_BAY_FORWARD_ADVANCE_M = 1\.65/,
-  'the complete Abrams bay must align with its painted service square');
+  /id: 'abrams_welding', role: 'welding', x: -17\.7, z: -10\.0/,
+  'all-environment structures must follow the Abrams service owner beside the canisters');
+assert.match(workshopLayout,
+  /ABRAMS_FLAMMABLE_BAY_OFFSET = Object\.freeze\(\{[\s\S]*x: -0\.8,[\s\S]*z: 7\.7,[\s\S]*canisterCenterSeparationM: 3\.83/,
+  'the complete Abrams bay must advance beside the east FLAMMABLE canisters');
 assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
   'T-90M component bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
@@ -123,8 +128,13 @@ assert.match(dressing,
   /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
   'the complete K2 teardown section must move into the former Abrams quadrant');
 assert.match(dressing,
-  /const forwardAdvance = bayId === 'abrams_welding'[\s\S]*ABRAMS_BAY_FORWARD_ADVANCE_M : -0\.35/,
-  'both swapped service bays must remain outside the showroom orbit');
+  /const offset = bayId === 'abrams_welding'[\s\S]*ABRAMS_FLAMMABLE_BAY_OFFSET : \{ x: -0\.35, z: -0\.35 \}/,
+  'each swapped service owner must use its own explicit two-axis placement');
+assert.match(dressing, /serviceLandmark = 'east-flammable-canisters'/,
+  'the moved Abrams owner must receipt its intended workshop landmark');
+assert.match(dressing,
+  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
+  'Abrams must carry four exact fleet road wheels on a connected service dolly');
 assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');
 assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
@@ -239,6 +249,7 @@ assert.match(dressing, /workshopModelMode = 'actual-fleet'/,
 for (const component of [
   'mobility_teardown_vehicle',
   'mobility_teardown_service_bay',
+  'mobility_teardown_service_bay_owner',
   'connected_hull_lift',
   'removed_road_wheel_rack',
   'removed_road_wheel_tires',
@@ -249,6 +260,9 @@ for (const component of [
   'road_wheel_stacks',
   'track_shoe_pallet',
   'weapon_service_rack',
+  'connected_road_wheel_dolly',
+  'service_road_wheel_tires',
+  'service_road_wheel_discs',
 ]) {
   assert.match(dressing, new RegExp(component),
     `the full-detail shared workshop must retain ${component}`);
@@ -270,6 +284,11 @@ assert.match(dressing, /paintSquareOccupied = true/,
   'the formerly empty painted service square must carry a real teardown story');
 assert.match(dressing, /supportedWheelCount = 8/,
   'removed Leopard road wheels must remain visibly accounted for');
+assert.match(dressing,
+  /garage_leopard_a5nl_independent_service_bay[\s\S]*LEOPARD_MOBILITY_BAY_OFFSET\.x[\s\S]*LEOPARD_MOBILITY_BAY_OFFSET\.z/,
+  'the Leopard mobility square must no longer inherit Abrams placement changes');
+assert.match(dressing, /seatVisibleRoot\(mobilityTeardownTank, 1\.04\)/,
+  'the Leopard hull must sit directly on the 1.04 m lift-pad contact plane');
 assert.match(dressing, /workshopExhibitCount = 5/,
   'all Garage variants must expose the added teardown vehicle');
 assert.match(dressing, /verdantOriginalExhibitCount = 5/,

@@ -6,6 +6,20 @@ authored indoor workshop, while the other nine locations use compact,
 renderer-only scene packs that borrow the terrain, structures, vegetation,
 materials, sky, and atmosphere of a specific battlefield.
 
+[![M1A3 Abrams centered on the illuminated service platform inside Verdant Motor Pool](../public/media/garage-environments-r2/verdant-workshop-floor.webp)](../public/media/garage-environments-r2/verdant-workshop-floor.webp)
+
+*Verdant Motor Pool workshop floor. The selected tank remains the visual anchor
+while the working lights, rails, cranes, screens, service lanes, and occupied
+side bays establish an active maintenance facility around it.*
+
+| Abrams running-gear service | Burlak separated assembly |
+| --- | --- |
+| [![M1 Abrams beside wheel dollies, tool storage, ammunition racks, and flammable-material drums](../public/media/garage-environments-r2/abrams-service-bay.webp)](../public/media/garage-environments-r2/abrams-service-bay.webp) | [![T-90A Burlak hull and turret staged beneath overhead cranes](../public/media/garage-environments-r2/burlak-service-bay.webp)](../public/media/garage-environments-r2/burlak-service-bay.webp) |
+
+*The side bays use complete procedural fleet geometry as believable service
+exhibits: running gear can be removed onto dollies, hull and turret work remains
+physically supported, and lift coverage aligns with the work area.*
+
 [![All ten Garage environments shown with the production Garage interface](../public/media/garage-environments-r2/ten-garage-environments.png)](../public/media/garage-environments-r2/ten-garage-environments.png)
 
 *Production contact sheet, 4 September 2026. Every panel is an in-engine
