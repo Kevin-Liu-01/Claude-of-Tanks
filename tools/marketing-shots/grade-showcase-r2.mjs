@@ -1,4 +1,4 @@
-// Image-level quality gate for the 40-frame R2 showcase. Composition still
+// Image-level quality gate for the UI-only R2 showcase. Composition still
 // receives contact-sheet review; this gate rejects incomplete, blank, clipped,
 // flat, undersized, or incorrectly dimensioned masters.
 
@@ -100,7 +100,10 @@ for (const shot of config.shots) {
   if (metrics.meanLuma < limits.minLuma || metrics.meanLuma > 232) {
     failures.push(`mean luma ${metrics.meanLuma.toFixed(1)}`);
   }
-  if (metrics.p95 - metrics.p05 < 48) failures.push(`dynamic range ${(metrics.p95 - metrics.p05).toFixed(1)}`);
+  const minDynamicRange = shot.minDynamicRange ?? 48;
+  if (metrics.p95 - metrics.p05 < minDynamicRange) {
+    failures.push(`dynamic range ${(metrics.p95 - metrics.p05).toFixed(1)} < ${minDynamicRange}`);
+  }
   if (metrics.clippedBlack > limits.blackMax) failures.push(`black clip ${(metrics.clippedBlack * 100).toFixed(1)}%`);
   if (metrics.clippedWhite > 0.24) failures.push(`white clip ${(metrics.clippedWhite * 100).toFixed(1)}%`);
   if (metrics.meanSaturation < limits.saturationMin) failures.push(`saturation ${metrics.meanSaturation.toFixed(3)}`);
@@ -131,4 +134,3 @@ writeFileSync(outFile, `${JSON.stringify(report, null, 2)}\n`);
 console.log(`[grade-showcase-r2] ${report.totals.passed}/${report.totals.images} passed -> ${outFile}`);
 for (const row of failures) console.error(`FAIL ${row.id}: ${row.failures.join(', ')}`);
 process.exit(failures.length ? 1 : 0);
-

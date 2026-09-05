@@ -26,12 +26,13 @@ The public browser field manual is available at
 https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 
 The current public presentation is image-led and sourced from a reproducible
-40-frame archive: ten Garage environments, six interface surfaces, nine live
-feature states, three vehicle details, and twelve battlefield action captures.
-The manifest lives at `../public/media/showcase-r2/manifest.json`; its page map
-covers the landing page, Garage, Tank Gallery, Scene Studio, docs overview, and
-all focused manuals. Four published contact sheets preserve the human
-collection-review pass.
+88-frame archive: 13 owner-selected features, 60 approved 4K campaign frames,
+five directed Studio keyframes, and ten deterministic interface captures. The
+manifest lives at `../public/media/showcase-r1/manifest.json`; the landing page,
+field manual, Tank Gallery, and Scene Studio share its filtering and inspection
+component. Six published campaign contact sheets preserve the human
+visual-review pass; the owner-approved ten-Garage contact sheet documents the
+complete current environment set.
 
 ## Current subsystem references
 
@@ -48,9 +49,9 @@ collection-review pass.
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |
 | SCREENSHOT_CONTRACT.md | Game-ready and deterministic staged-frame capture contract |
-| SHOWCASE-LIBRARY.md | Published 40-frame archive, page coverage, admission contract, review sheets, and rebuild procedure |
+| SHOWCASE-LIBRARY.md | Published 88-frame archive, admission contract, review sheets, and rebuild procedure |
 | MARKETING-BATTLE-CAMPAIGN.md | 60-frame 4K campaign composition, capture, contact-sheet review, and grading contract |
-| ../public/media/showcase-r2/manifest.json | Current public visual archive, route assignments, provenance, process sheets, maps, and feature tags |
+| ../public/media/showcase-r1/manifest.json | Current public visual archive, provenance, process sheets, maps, actors, effects, and feature tags |
 | DEV-PERF-TRACE.md | Development performance flight recorder |
 | ATTRIBUTION.md | Kevin B. Liu project authorship, asset provenance, third-party licenses, and quarantine record |
 | ../NOTICE.md | Repository-wide authorship rule for every original file, model, and generated asset |
