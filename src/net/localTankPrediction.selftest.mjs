@@ -532,6 +532,9 @@ assert.equal(predictor.getStats().pendingInputs, 1,
       restingHullHolds: 0,
       maxCorrectionStepM: 0,
       maxVerticalCorrectionStepM: 0,
+      presentationAdvances: 0,
+      maxPresentationAdvanceS: 0,
+      maxRecordedInputElapsedS: 0,
       pendingInputs: 0,
       correctionM: 0,
     },
@@ -625,6 +628,8 @@ assert.equal(predictor.getStats().pendingInputs, 1,
   });
   const stableResolver = inputPredictor.collisionResolver;
   const initialAimPoint = inputEntity.state.aimPoint.clone();
+  assert.equal(inputPredictor.advancePrediction(null, 1 / 60), false,
+    'null frame input cannot advance presentation');
   assert.equal(inputPredictor.recordInput(null, 1 / 60, 0), false,
     'null input is rejected');
   assert.equal(inputPredictor.recordInput(driving, 1 / 60, -1), false,
@@ -863,6 +868,63 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     'numerical dust at the replay epsilon performs no simulation step');
   assert.equal(replayDistance(0.2), replayDistance(0.1),
     'replay duration is capped at the 100 ms catch-up budget');
+}
+
+// Network history may batch several display frames, but local presentation
+// must advance only by the current render delta. Otherwise 120/60 Hz clients
+// alternate held poses with oversized jumps and make the camera wobble.
+{
+  const decoupledState = createTankState(SPEC, new Vector3(), 0);
+  const decoupled = new LocalTankPredictor({
+    entity: { spec: SPEC, state: decoupledState },
+    heightField: FIELD,
+  });
+  decoupled.reconcile(authority(0, null));
+  decoupled.recordInput(driving, 1 / 30, 1, 1 / 120);
+
+  const referenceState = createTankState(SPEC, new Vector3(), 0);
+  const reference = new LocalTankPredictor({
+    entity: { spec: SPEC, state: referenceState },
+    heightField: FIELD,
+  });
+  reference.reconcile(authority(0, null));
+  reference.advancePrediction(driving, 1 / 120);
+
+  assert.ok(decoupled.simEntity.state.pos.distanceTo(reference.simEntity.state.pos) < 1e-12,
+    'batched input history cannot enlarge the current presentation step');
+  assert.equal(decoupled.history[0].elapsedS, 1 / 30,
+    'authority replay retains the complete batched input duration');
+  assert.deepEqual(
+    {
+      presentationAdvances: decoupled.getStats().presentationAdvances,
+      maxPresentationAdvanceS: decoupled.getStats().maxPresentationAdvanceS,
+      maxRecordedInputElapsedS: decoupled.getStats().maxRecordedInputElapsedS,
+    },
+    {
+      presentationAdvances: 1,
+      maxPresentationAdvanceS: 1 / 120,
+      maxRecordedInputElapsedS: 1 / 30,
+    },
+    'prediction diagnostics expose display cadence separately from upload cadence',
+  );
+  Object.assign(decoupled.correction, {
+    x: 0.12,
+    y: -0.08,
+    z: 0.09,
+    yaw: -0.06,
+    pitch: 0.05,
+    roll: -0.04,
+    turretYaw: 0.07,
+    gunPitch: -0.03,
+  });
+  const correctionBeforeFrame = { ...decoupled.correction };
+  decoupled.advancePrediction({ ...driving, throttle: 0, steer: 0 }, 1 / 120);
+  for (const axis of [
+    'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
+  ]) {
+    assert.ok(Math.abs(decoupled.correction[axis]) < Math.abs(correctionBeforeFrame[axis]),
+      `render-paced prediction settles ${axis} on cadence-held network frames`);
+  }
 }
 
 // Resting-hull hold admits only truly idle, sub-deadzone authority noise. Each

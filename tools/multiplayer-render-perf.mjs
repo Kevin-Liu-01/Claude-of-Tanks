@@ -50,6 +50,7 @@ if (!['all', 'solo', 'host', 'client'].includes(only)) {
   throw new TypeError('only must be all, solo, host, or client');
 }
 const enforceBudgets = stringOption('enforce', '1') !== '0';
+const verifyEntryReset = stringOption('entry-reset', '1') !== '0';
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
 const contextByPage = new WeakMap();
@@ -264,19 +265,42 @@ async function collectFullRenderer(page, label) {
     `${label} exposed the garage/blank page during network handoff`);
     assert.ok(entryState.blackCheck && !entryState.blackCheck.error,
       `${label} must run the real-scene black watchdog before reveal`);
-    assert.equal(entryState.transition?.result, null,
-      `${label} must clear a prior match result synchronously at handoff`);
+    if (verifyEntryReset) {
+      assert.equal(entryState.transition?.result, null,
+        `${label} must clear a prior match result synchronously at handoff`);
+    }
   }
   await page.evaluate((mode) => {
     const state = globalThis.__COT_RENDER_PERF = globalThis.__COT_RENDER_PERF || {};
     state.syncCalls = 0;
+    state.motionSamples = [];
+    state.motionSampling = true;
+    state.predictionStart = { ...(window.__DEBUG.network?.prediction || {}) };
     for (const entity of window.__DEBUG.game.tanks) {
       const visual = entity.visual;
       if (!visual || visual.__renderPerfSyncWrapped) continue;
       const original = visual.syncFromState.bind(visual);
       visual.syncFromState = (...args) => {
         state.syncCalls++;
-        return original(...args);
+        const result = original(...args);
+        if (entity === window.__DEBUG.game.player && state.motionSampling) {
+          const playerState = entity.state;
+          const camera = window.__DEBUG.camera;
+          state.motionSamples.push({
+            timeMs: performance.now(),
+            x: playerState.pos.x,
+            y: playerState.pos.y,
+            z: playerState.pos.z,
+            yaw: playerState.yaw,
+            pitch: playerState.visualPitch,
+            roll: playerState.visualRoll,
+            speed: playerState.speed,
+            cameraX: camera.position.x,
+            cameraY: camera.position.y,
+            cameraZ: camera.position.z,
+          });
+        }
+        return result;
       };
       visual.__renderPerfSyncWrapped = true;
     }
@@ -291,6 +315,49 @@ async function collectFullRenderer(page, label) {
     window.dispatchEvent(new KeyboardEvent('keyup', {
       code: 'KeyW', key: 'w', bubbles: true,
     }));
+    const state = globalThis.__COT_RENDER_PERF;
+    state.motionSampling = false;
+    const summarizeMotion = (samples) => {
+      const normalizedSteps = [];
+      const cameraRelativeSteps = [];
+      let movingFrames = 0;
+      let stalledFrames = 0;
+      for (let index = 1; index < samples.length; index++) {
+        const previous = samples[index - 1];
+        const current = samples[index];
+        const elapsedS = (current.timeMs - previous.timeMs) / 1000;
+        if (!(elapsedS > 0) || elapsedS > 0.1) continue;
+        const averageSpeed = (Math.abs(previous.speed) + Math.abs(current.speed)) * 0.5;
+        if (averageSpeed < 0.5) continue;
+        movingFrames++;
+        const stepM = Math.hypot(
+          current.x - previous.x,
+          current.y - previous.y,
+          current.z - previous.z,
+        );
+        if (stepM < 0.0005) stalledFrames++;
+        normalizedSteps.push(stepM / Math.max(0.001, averageSpeed * elapsedS));
+        cameraRelativeSteps.push(Math.hypot(
+          (current.cameraX - current.x) - (previous.cameraX - previous.x),
+          (current.cameraY - current.y) - (previous.cameraY - previous.y),
+          (current.cameraZ - current.z) - (previous.cameraZ - previous.z),
+        ));
+      }
+      normalizedSteps.sort((a, b) => a - b);
+      cameraRelativeSteps.sort((a, b) => a - b);
+      const percentile = (values, fraction) => values[
+        Math.floor(Math.max(0, values.length - 1) * fraction)
+      ] || 0;
+      return {
+        samples: samples.length,
+        movingFrames,
+        stalledFrames,
+        stallRatio: stalledFrames / Math.max(1, movingFrames),
+        normalizedStepP05: percentile(normalizedSteps, 0.05),
+        normalizedStepP95: percentile(normalizedSteps, 0.95),
+        cameraRelativeStepP95M: percentile(cameraRelativeSteps, 0.95),
+      };
+    };
     const trace = window.__DEV_TRACE.stats();
     return {
       mode,
@@ -303,6 +370,8 @@ async function collectFullRenderer(page, label) {
         window.__DEBUG.game.tanks.length,
       network: window.__DEBUG.network,
       presentation: window.__DEBUG.networkPresentation,
+      predictionStart: state.predictionStart,
+      motion: summarizeMotion(state.motionSamples || []),
       syncCalls: globalThis.__COT_RENDER_PERF?.syncCalls || 0,
       entry: {
         transition: globalThis.__COT_RENDER_PERF?.entryTransition || null,
@@ -326,9 +395,26 @@ async function collectFullRenderer(page, label) {
     const prediction = report.network?.prediction;
     const predictionDiagnostic = JSON.stringify({
       prediction,
+      predictionStart: report.predictionStart,
+      motion: report.motion,
       inputAckLag: report.network?.inputAckLag,
       transport: report.network?.transport,
     });
+    const predictionAdvances = (prediction?.presentationAdvances || 0) -
+      (report.predictionStart?.presentationAdvances || 0);
+    assert.ok(predictionAdvances >= report.motion.samples - 3,
+      `${label} skipped render-paced local prediction frames: ${predictionDiagnostic}`);
+    assert.ok(report.motion.movingFrames >= seconds * minimumFps * 0.35,
+      `${label} did not capture enough moving local-pose frames: ${predictionDiagnostic}`);
+    assert.ok(report.motion.stallRatio < 0.02,
+      `${label} held and jumped the local tank on ` +
+      `${report.motion.stalledFrames}/${report.motion.movingFrames} moving frames: ` +
+      predictionDiagnostic);
+    assert.ok(report.motion.normalizedStepP05 > 0.25 &&
+      report.motion.normalizedStepP95 < 3,
+      `${label} produced uneven frame-normalized movement steps: ${predictionDiagnostic}`);
+    assert.ok(report.motion.cameraRelativeStepP95M < 0.25,
+      `${label} camera pivot wobbled against the local tank: ${predictionDiagnostic}`);
     assert.equal(prediction?.hardSnaps, 0,
       `${label} hard-snapped during visible network play`);
     assert.ok((prediction?.maxFreePositionErrorM ?? Infinity) < 2,
@@ -457,10 +543,10 @@ async function runNetwork(origin, signalUrl, renderedRole) {
         })().catch((error) => { state.errors.push(error.message); });
         return true;
       });
-      await hostPage.evaluate(() => {
+      await hostPage.evaluate((seedPriorResult) => {
         const state = globalThis.__COT_RENDER_PERF;
         state.entryFrames = [];
-        window.__DEBUG.game.result = 'victory';
+        if (seedPriorResult) window.__DEBUG.game.result = 'victory';
         const sample = () => {
           const loaderVisible = !!document.querySelector('.cot-bl.on');
           const phase = window.__DEBUG.game.phase;
@@ -480,7 +566,7 @@ async function runNetwork(origin, signalUrl, renderedRole) {
           result: window.__DEBUG.game.result,
         };
         return true;
-      });
+      }, verifyEntryReset);
       try {
         return await collectFullRenderer(hostPage, `${roomMode}-host`);
       } catch (error) {
@@ -520,10 +606,10 @@ async function runNetwork(origin, signalUrl, renderedRole) {
       }, 1000);
       state.pumpTimer = setInterval(() => state.match.advance(1000 / 60), 1000 / 60);
     });
-    await guestPage.evaluate(() => {
+    await guestPage.evaluate((seedPriorResult) => {
       const state = globalThis.__COT_RENDER_PERF;
       state.entryFrames = [];
-      window.__DEBUG.game.result = 'victory';
+      if (seedPriorResult) window.__DEBUG.game.result = 'victory';
       const sample = () => {
         const loaderVisible = !!document.querySelector('.cot-bl.on');
         const phase = window.__DEBUG.game.phase;
@@ -543,7 +629,7 @@ async function runNetwork(origin, signalUrl, renderedRole) {
         result: window.__DEBUG.game.result,
       };
       return true;
-    });
+    }, verifyEntryReset);
     return await collectFullRenderer(guestPage, `${roomMode}-client`);
   } finally {
     await Promise.all([closeState(hostPage), closeState(guestPage)]);
@@ -596,7 +682,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     profile: {
-      seconds, cpuRate, minimumFps, cycles, maxColdReadyMs, enforceBudgets,
+      seconds, cpuRate, minimumFps, cycles, maxColdReadyMs, enforceBudgets, verifyEntryReset,
       viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
       freshBrowserContexts: true,
     },

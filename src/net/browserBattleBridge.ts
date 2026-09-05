@@ -285,7 +285,13 @@ export interface BrowserBattleBridge {
   mount(): void;
   apply(snapshot: SampledSnapshotFrame, dt?: number, reliableEvents?: PresentationEvent[]): boolean;
   endDisconnected(): boolean;
-  recordInput(input: PredictionInput | null, dt: number, inputSeq: number): boolean;
+  advancePrediction(input: PredictionInput | null, dt: number): boolean;
+  recordInput(
+    input: PredictionInput | null,
+    elapsedS: number,
+    inputSeq: number,
+    presentationElapsedS?: number,
+  ): boolean;
   getPredictionStats(): LocalPredictionStats | null;
   getPresentationEventStats(): Record<string, RuntimeValue>;
   setPerspective(entityId: RuntimeValue): boolean;
@@ -1207,10 +1213,26 @@ export function createBrowserBattleBridge<
     return true;
   }
 
-  function recordInput(input: PredictionInput | null, dt: number, inputSeq: number): boolean {
+  function advancePrediction(input: PredictionInput | null, dt: number): boolean {
     if (spectator || snapshotPhase !== 'playing') return false;
     const own = entities.get(id);
-    return own?.predictor?.recordInput(input, dt, inputSeq) || false;
+    return own?.predictor?.advancePrediction(input, dt) || false;
+  }
+
+  function recordInput(
+    input: PredictionInput | null,
+    elapsedS: number,
+    inputSeq: number,
+    presentationElapsedS = elapsedS,
+  ): boolean {
+    if (spectator || snapshotPhase !== 'playing') return false;
+    const own = entities.get(id);
+    return own?.predictor?.recordInput(
+      input,
+      elapsedS,
+      inputSeq,
+      presentationElapsedS,
+    ) || false;
   }
 
   function getPredictionStats(): LocalPredictionStats | null {
@@ -1250,6 +1272,7 @@ export function createBrowserBattleBridge<
     mount,
     apply,
     endDisconnected,
+    advancePrediction,
     recordInput,
     getPredictionStats,
     getPresentationEventStats: () => ({

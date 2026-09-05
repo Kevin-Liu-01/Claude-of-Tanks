@@ -45,7 +45,13 @@ export type NetworkMatchLike = NetworkHostMatchLike | NetworkClientMatchLike;
 
 export interface NetworkBridgeLike {
   apply(snapshot: NetworkSnapshot, dt: number, events?: RuntimeValue[]): void;
-  recordInput(input: NetworkInputFrame, elapsedS: number, sequence: number | null): void;
+  advancePrediction(input: NetworkInputFrame, elapsedS: number): boolean;
+  recordInput(
+    input: NetworkInputFrame,
+    elapsedS: number,
+    sequence: number | null,
+    presentationElapsedS?: number,
+  ): boolean;
   endDisconnected?(): void;
   getPredictionStats?(): object | null;
 }
@@ -167,14 +173,24 @@ export function createNetworkFramePump({
   ): void => {
     inputRuntime?.advance(dt);
     const client = match.client;
+    let predictionAdvanced = false;
     if (playerInput && client?.connected && inputRuntime?.shouldSend(playerInput)) {
       if (match.submitInput(playerInput)) {
         const predictionElapsedS = inputRuntime.commit(playerInput);
-        bridge?.recordInput(playerInput, predictionElapsedS, client.lastSubmittedInputSeq);
+        predictionAdvanced = bridge?.recordInput(
+          playerInput,
+          predictionElapsedS,
+          client.lastSubmittedInputSeq,
+          dt,
+        ) || false;
       }
     } else if (!playerInput) {
       inputRuntime?.resetCadence();
     }
+    // Packet upload cadence is intentionally independent from display refresh.
+    // Advance local movement/articulation exactly once per rendered frame so
+    // a 60 Hz display never alternates between a held pose and a batched jump.
+    if (playerInput && !predictionAdvanced) bridge?.advancePrediction(playerInput, dt);
     acceptSnapshot(match.update(nowMs), dt);
   };
 
