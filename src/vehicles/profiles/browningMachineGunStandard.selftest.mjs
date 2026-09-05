@@ -32,6 +32,36 @@ function triangleCount(root) {
   return triangles;
 }
 
+function positionSnapshot(root) {
+  return root.children
+    .filter((node) => node.isMesh)
+    .map((node) => ({
+      slot: node.userData.fittingSlot,
+      positions: Array.from(node.geometry.getAttribute('position').array),
+    }));
+}
+
+function assertStraightSharedBarrel(label, builder, options = {}) {
+  const level = builder({ mats, ...options, elev: 0 });
+  const legacyElevated = builder({ mats, ...options, elev: 0.72 });
+
+  assert.deepEqual(positionSnapshot(legacyElevated), positionSnapshot(level),
+    `${label}: legacy elevation input cannot bend barrel vertices away from the receiver`);
+  assert.equal(legacyElevated.userData.firingAxis, '+Z',
+    `${label}: publishes the straight local firing axis`);
+  assert.deepEqual(legacyElevated.userData.barrelAxisLocal, [0, 0, 1],
+    `${label}: barrel stays collinear with the receiver`);
+  assert.equal(legacyElevated.userData.barrelElevationRad, 0,
+    `${label}: barrel-only elevation is disabled`);
+  assert.ok(legacyElevated.userData.hasEngineeredCradle,
+    `${label}: complete weapon remains carried by an engineered mount`);
+  assert.ok(Math.abs(legacyElevated.userData.aabb.min[1]) <= 1e-6,
+    `${label}: fitting begins at its real support foot instead of floating`);
+
+  level.traverse((node) => node.geometry?.dispose?.());
+  legacyElevated.traverse((node) => node.geometry?.dispose?.());
+}
+
 try {
   for (const [weaponClass, expected] of Object.entries(CLASSES)) {
     const weapon = FITTINGS.pintleMG({
@@ -90,6 +120,13 @@ try {
     assert.equal(fitting.userData.hasEngineeredCradle, true);
     fitting.traverse((node) => node.geometry?.dispose?.());
   }
+
+  assertStraightSharedBarrel('Generic pintle family', FITTINGS.pintleMG,
+    { cls: 'nsvt', ammo: true, shield: 'armored' });
+  assertStraightSharedBarrel('American M2HB hero mount', FITTINGS.americanM2,
+    { ammo: true, shield: 'split' });
+  assertStraightSharedBarrel('Open-yoke remote station', FITTINGS.openYokeRws,
+    { variant: 'sepv3-armored' });
 
   const exactHero = new THREE.Group();
   exactHero.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.5), mats.dark));

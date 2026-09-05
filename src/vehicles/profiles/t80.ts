@@ -695,51 +695,43 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   // (r25e: a whole-tank z-seat was tried and reverted — the fitted view
   // registration re-centers on the body span, so it is seat-invariant;
   // and turretG is NOT a hullG child, so the seat sheared the rig.)
-  if (v !== 2) {
-    // §I decoration law: the AA NSVT rides as a KIT fitting (census). The
-    // carriage is swung INBOARD (barrel sweeps over the roof toward the
-    // gunner's side) so the whole assembly adds only the ref's own 2-col
-    // 2.34 MG band in side view (heightM p95 law) — receiver mass covers
-    // the ref's right-side 2.35 front spike at x 0.38..0.60.
-    // TIP-round §5.29 (owner "more machine guns... PROMINENT" + CROWS
-    // law §5.07): the inboard-swung stow read as no-gun — the NSVT Utyos
-    // now points FORWARD at full posture: receiver top ~2.31w rides the
-    // ref's own 2.29-2.30 MG-spike columns (+0.38..0.46), the drooped
-    // barrel runs 2.18-2.26 over the 2.20-2.25 ref crown plateau (§C
-    // pintle allowance ≤0.4), ammo can on. scale 0.54 -> 0.68.
+  {
+    // The T-80, T-80B and T-80BV share one commander's NSVT installation.
+    // Keep the weapon parallel to local +Z instead of applying per-variant
+    // display yaw or pitch. Its fitting origin is the pintle foot, so seat
+    // that foot 5 mm into the actual commander-hatch top and parent it to a
+    // named station. The hierarchy now records the complete load path:
+    // turret -> commander cupola station -> NSVT cradle -> weapon body.
+    const supportTopY = cupolaTopY + 0.020;
+    const supportEmbedM = 0.005;
+    const station = new THREE.Group();
+    station.name = 'rig_t80CommanderCupolaWeaponStation';
+    station.position.set(0.52, supportTopY - supportEmbedM, -0.42);
+    station.userData.supportAssembly = 'commander-cupola';
+    station.userData.weaponAxis = 'local-positive-z';
+
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.88, tone: 'two-tone', ammo: true,
-      shield: true, elev: -0.08,
+      mats: P.mats, cls: 'nsvt', scale: v === 2 ? 0.84 : 0.88,
+      tone: 'two-tone', ammo: true, shield: true, elev: 0,
     });
-    // (TIP r2: mount 0.62 -> 0.535 — the 2.31w receiver blew heightM
-    // grace on BOTH marks, dims 98.9/100 -> 77.6/77.4 MEASURED: "a cap
-    // never excuses dims". Top now ~2.22w = inside the 1% grace; the
-    // receiver still pokes ~3cm over the 2.19 crown plate, barrel level.)
-    mg.position.set(0.52, roofTopY + 0.105, -0.44);
-    mg.rotation.y = v === 0 ? -0.05 : 0.035;
-    P.turretG.add(mg);
-  } else {
-    // §B3.2 (owner directive 2026-08-06): the T-80BV carries the same
-    // commander's NSVT Utyos — the BV lane was the roster's mg0 backlog.
-    // Seat INTERIOR to the BV's own turret mask: receiver (swung ry -90,
-    // ammo off) lands x 0.277..0.499 / z -0.574..-0.526 INSIDE the cupola
-    // footprint (x 0.26..0.78, z -0.68..-0.16, top 0.76) with receiver top
-    // 0.698 under both the cupola and the 0.727 dome line at its plan
-    // radius; the inboard-swung barrel droops (elev -0.25) under the 0.74+
-    // crown apex zone. Mask-neutral add (gate HOLD verified).
-    // TIP-round §5.29 (owner "more machine guns... PROMINENT" + CROWS
-    // law): the BV's buried inboard-swung NSVT points FORWARD, receiver
-    // raised to poke ~3cm over the cupola/dome lines (top ~0.755 local vs
-    // cupola 0.76 / dome 0.727) — visible posture at minimum mask cost on
-    // the stations-pinned row (its min row is stations 33.7; §C pintle
-    // allowance).
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.84, tone: 'two-tone', ammo: true,
-      shield: true, elev: -0.08,
+    mg.rotation.set(0, 0, 0);
+    mg.userData.supportAssembly = station.name;
+    mg.userData.commandedElevationRad = 0;
+    station.add(mg);
+    P.turretG.add(station);
+
+    P.turretG.userData.t80CommanderNsvtStationReceipt = Object.freeze({
+      profile: v === 0 ? 't80' : v === 1 ? 't80b' : 't80bv',
+      supportAssembly: 'commander-cupola',
+      stationName: station.name,
+      stationYaw: 0,
+      weaponYaw: 0,
+      weaponPitch: 0,
+      cupolaCenter: Object.freeze([0.52, cupolaTopY, -0.42]),
+      supportTopY,
+      fittingFootY: station.position.y,
+      supportEmbedM,
     });
-    mg.position.set(0.52, roofTopY + 0.105, -0.44);
-    mg.rotation.y = 0.07;
-    P.turretG.add(mg);
   }
   P.topY = 1.20;
 }

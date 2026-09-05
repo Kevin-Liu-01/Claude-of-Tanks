@@ -6523,7 +6523,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // commander sight left as a thin-neck 2-col spike (p95-legal) ----
   {
     const { torus, xform } = KIT;
-    const ax = 0.34, ay = 0.485, az = -1.72, yaw = 0.28, elev = -0.16;
+    const ax = 0.34, ay = 0.485, az = -1.72, yaw = 0.28;
     P.add('turret', cylY(0.17, 0.19, 0.055, 14), ax, 0.725, az);       // slew drum on the 2.14 roof
     P.add('turretDark', torus(0.185, 0.014, 18), ax, 0.703, az);
     P.add('turretDark', xform(box(0.05, 0.20, 0.06), -0.15, 0.13, 0), ax, ay, az, 0, yaw, 0);   // yoke posts (emerge from the drum)
@@ -6531,12 +6531,12 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('turretDetail', xform(box(0.10, 0.12, 0.10), 0.19, 0.22, 0.25), ax, ay, az, 0, yaw, 0);  // sensor pod (top 2.22w)
     P.add('turretDark', xform(box(0.085, 0.09, 0.012), 0.19, 0.22, 0.305), ax, ay, az, 0, yaw, 0);
     P.add('turretGlass', xform(box(0.065, 0.07, 0.008), 0.19, 0.22, 0.308), ax, ay, az, 0, yaw, 0);
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', ammo: true });
     mg.position.set(ax, ay, az);
     mg.rotation.y = yaw;   // MG law §5.29: prominent, forward-biased
     P.turretG.add(mg);
-    const fwd = 0.91 * Math.cos(-elev);
-    muzzleTipDot(P, ax + fwd * Math.sin(yaw), ay + 0.33 + 0.91 * Math.sin(elev), az + fwd * Math.cos(yaw), 0.014, { ry: yaw });
+    const fwd = 0.91;
+    muzzleTipDot(P, ax + fwd * Math.sin(yaw), ay + 0.33, az + fwd * Math.cos(yaw), 0.014, { ry: yaw });
   }
   // LADDER-R1: pano head SUNK to the 2.24w crown line — its two spike
   // columns are re-budgeted to the print-true 4.73 whip mast (heightM p95
