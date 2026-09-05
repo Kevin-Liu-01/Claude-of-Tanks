@@ -29,7 +29,6 @@
     "home": [
       "01_garage_verdant",
       "11_gallery_hero",
-      "18_live_spectator",
       "25_live_killcam_xray"
     ],
     "garage": [
@@ -92,7 +91,6 @@
       "17_live_player_hud"
     ],
     "docs/multiplayer": [
-      "18_live_spectator",
       "17_live_player_hud"
     ],
     "docs/audio": [
@@ -735,10 +733,7 @@
         "width": 1920,
         "height": 1080
       },
-      "pages": [
-        "home",
-        "docs/multiplayer"
-      ],
+      "pages": [],
       "quality": {
         "passed": true,
         "metrics": {

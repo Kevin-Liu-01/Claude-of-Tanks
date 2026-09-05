@@ -27,7 +27,7 @@
     { "sequence": 22, "id": "25_live_killcam_xray", "kind": "live", "sourceType": "shot-view", "source": "killcam_xray.png", "view": "killcam_xray", "vehicleId": "type10b", "title": "Resolved-shot X-ray", "alt": "Current X-ray killcam showing the resolved shell path through armor and internal modules" }
   ],
   "pageAssignments": {
-    "home": ["01_garage_verdant", "11_gallery_hero", "18_live_spectator", "25_live_killcam_xray"],
+    "home": ["01_garage_verdant", "11_gallery_hero", "25_live_killcam_xray"],
     "garage": ["01_garage_verdant", "02_garage_sirocco", "03_garage_frosthollow", "04_garage_steinburg", "05_garage_saltmere", "06_garage_cinder", "07_garage_monsoon", "08_garage_glacier", "09_garage_redrock", "10_garage_ironworks", "16_mobile_garage"],
     "gallery": ["11_gallery_hero", "12_gallery_armor", "13_gallery_modules", "14_gallery_crew"],
     "studio": ["15_studio_workspace"],
@@ -40,7 +40,7 @@
     "docs/performance": ["17_live_player_hud", "16_mobile_garage"],
     "docs/worlds": ["01_garage_verdant", "03_garage_frosthollow"],
     "docs/ai": ["17_live_player_hud"],
-    "docs/multiplayer": ["18_live_spectator", "17_live_player_hud"],
+    "docs/multiplayer": ["17_live_player_hud"],
     "docs/audio": ["19_live_sniper", "23_live_killcam_fire"],
     "docs/interface": ["01_garage_verdant", "16_mobile_garage"],
     "docs/studio": ["15_studio_workspace"]
