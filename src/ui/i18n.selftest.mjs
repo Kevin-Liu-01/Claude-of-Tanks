@@ -16,23 +16,65 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const CATALOG_PATH = path.join(HERE, 'i18nCatalog.ts');
 
-const source = fs.readFileSync(CATALOG_PATH, 'utf8');
+// The catalog is split: `i18nCatalog.ts` re-exports per-locale tables
+// declared in `i18nCatalog.<locale>.ts`. The selftest inspects those
+// per-locale files directly so the per-locale declaration remains the
+// single source of truth (the aggregator imports them but does not
+// redefine them).
+const LOCALE_FILES = {
+  enUS: path.join(HERE, 'i18nCatalog.en-US.ts'),
+  zhCN: path.join(HERE, 'i18nCatalog.zh-CN.ts'),
+};
 
 // Crude extraction: locate each `const NAME = { ... }` table, walk braces to
 // find its body, then scrape `'key': 'value'` pairs.
 function extractLocale(name) {
-  // Look for either `const NAME = {` or `const NAME: Type = {`. The catalog
-  // declares `const enUS = {` and `const zhCN: Record<...> = {`.
-  const declStart = source.search(new RegExp('const\\s+' + name + '\\b'));
+  const source = fs.readFileSync(LOCALE_FILES[name], 'utf8');
+  // Look for either `const NAME = {`, `const NAME: Type = {`, or
+  // `export const NAME = {` / `export const NAME: Type = {`. The per-locale
+  // catalogs now use the `export` form so they can be re-imported by the
+  // aggregator.
+  const declStart = source.search(new RegExp('(?:export\\s+)?const\\s+' + name + '\\b'));
   if (declStart < 0) throw new Error('locale table "' + name + '" not found in i18nCatalog.ts');
-  const braceStart = source.indexOf('{', declStart);
-  if (braceStart < 0) throw new Error('opening brace not found for locale "' + name + '"');
+  // The declaration may carry a type annotation (e.g. `: Record<string,string>`)
+  // that itself contains `{` and `}`. Find the opening `{` of the literal by
+  // scanning forward while tracking generic `<...>` and `{...}` type blocks
+  // so we don't latch onto a type body's brace.
+  let cursor = declStart;
+  // Skip past the identifier, optional type annotation, optional `=`.
+  while (cursor < source.length && source[cursor] !== '{') {
+    const ch = source[cursor];
+    if (ch === '<') {
+      // Skip generic params: balanced `<...>`.
+      let depth = 1;
+      cursor++;
+      while (cursor < source.length && depth > 0) {
+        if (source[cursor] === '<') depth++;
+        else if (source[cursor] === '>') depth--;
+        cursor++;
+      }
+    } else {
+      cursor++;
+    }
+  }
+  const braceStart = cursor;
+  if (braceStart >= source.length) throw new Error('opening brace not found for locale "' + name + '"');
+  // String-aware brace counter: catalog values are JS single/double-quoted
+  // strings, and ICU placeholders may contain unbalanced braces inside
+  // strings. Track quotes so we never count braces that live inside a string
+  // literal. (Template literals are not used by the catalog.)
   let depth = 0;
   let end = braceStart;
+  let quote = null;
   for (; end < source.length; end++) {
     const ch = source[end];
+    if (quote !== null) {
+      if (ch === '\\') { end++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') { quote = ch; continue; }
     if (ch === '{') depth++;
     else if (ch === '}') {
       depth--;

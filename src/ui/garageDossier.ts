@@ -164,7 +164,7 @@ export function garageModuleRows(spec: GarageDossierSpec | null | undefined): Ga
     const id = box?.module;
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    rows.push({ id, label: MODULE_LABEL_BY_ID[id] || id, icon: MODULE_ICON[id] || id });
+    rows.push({ id, label: moduleLabel(id), icon: MODULE_ICON[id] || id });
   }
   return rows;
 }
@@ -177,7 +177,7 @@ export function garageCrewRows(spec: GarageDossierSpec | null | undefined): Gara
     const id = box?.crew;
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    rows.push({ id, label: CREW_LABEL_BY_ID[id] || id, icon: CREW_ICON[id] || 'crew' });
+    rows.push({ id, label: crewLabel(id), icon: CREW_ICON[id] || 'crew' });
   }
   return rows;
 }

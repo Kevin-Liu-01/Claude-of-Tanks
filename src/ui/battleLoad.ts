@@ -20,6 +20,44 @@ import { t } from './i18n.ts';
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
 
+// Translate legacy English progress labels written by the various loading
+// runtimes. Each entry pairs a known English string with its i18n key; any
+// unknown label is left as-is so the loading screen still updates.
+const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  'Loading combat interface': 'battleLoad.stage.loadingCombatInterface',
+  'Loading battlefield': 'battleLoad.stage.loadingBattlefield',
+  'Uploading battlefield textures': 'battleLoad.stage.uploadingTextures',
+  'Battlefield ready': 'battleLoad.stage.battlefieldReady',
+  'Assembling rosters': 'battleLoad.stage.assemblingRosters',
+  'Drawing tactical map': 'battleLoad.stage.drawingTacticalMap',
+  'Preparing player vehicle': 'battleLoad.stage.preparingPlayer',
+  'Painting vehicles': 'battleLoad.stage.paintingVehicles',
+  'Preparing deployment': 'battleLoad.stage.preparingDeployment',
+  'Ready': 'battleLoad.stage.ready',
+  'Finishing camouflage': 'battleLoad.stage.finishingCamo',
+  'Warming suspension terrain': 'battleLoad.stage.warmingSuspension',
+  'Priming deployment view': 'battleLoad.stage.primingDeployment',
+  'Priming deployment shadows': 'battleLoad.stage.primingShadows',
+  'Combat effects ready': 'battleLoad.stage.combatEffectsReady',
+  'Loading multiplayer runtime': 'battleLoad.stage.loadingMultiplayer',
+  'Opening battle channel': 'battleLoad.stage.openingBattleChannel',
+  'Preparing the next round': 'battleLoad.stage.preparingNextRound',
+  'Opening dedicated channel': 'battleLoad.stage.openingDedicatedChannel',
+  'Securing match channel': 'battleLoad.stage.securingMatchChannel',
+  'Synchronizing authority': 'battleLoad.stage.synchronizingAuthority',
+  'Priming wreck variants': 'battleLoad.stage.primingWreckVariants',
+  'Surveying terrain': 'battleLoad.stage.surveyingTerrain',
+  'Building terrain meshes': 'battleLoad.stage.buildingTerrain',
+  'Placing structures': 'battleLoad.stage.placingStructures',
+  'Sealing the battlefield': 'battleLoad.stage.sealingBattlefield',
+  'Planting vegetation': 'battleLoad.stage.plantingVegetation',
+});
+
+function translateStageLabel(label: string): string {
+  const key = STAGE_LABEL_KEYS[label];
+  return key ? t(key) : label;
+}
+
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
   --bl-edge:clamp(18px,4vw,64px);--bl-panel:rgba(7,11,15,.9);
@@ -298,7 +336,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       fillEl.style.width = `${(v * 100).toFixed(1)}%`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
       progressEl.setAttribute('aria-valuenow', String(Math.round(v * 100)));
-      if (label) stageEl.textContent = label;
+      if (label) stageEl.textContent = translateStageLabel(label);
     },
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */

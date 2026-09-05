@@ -616,9 +616,9 @@ export function createPlayMenu({
   const root = document.createElement('div');
   root.className = 'cot-play';
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${rule.description}">
-      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${rule.label}</b><small>${rule.shortLabel}</small></span></button>`).join('');
-  root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="Close">×</button>
+    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
+      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small></span></button>`).join('');
+  root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2>${t('playMenu.title')}</h2>
     <p class="lead">${t('playMenu.lead')}</p>
     <div class="modes">
@@ -628,10 +628,10 @@ export function createPlayMenu({
       <button class="mode" data-mode="ranked" type="button"><span class="mode-icon">${uiIconSVG('battleRanked', 24)}</span><i>${t('playMenu.ranked.kicker')}</i><b>${t('playMenu.ranked.title')}</b><span class="mode-desc">${t('playMenu.ranked.desc')}</span></button>
     </div>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
-    <div class="rules" role="list" aria-label="Battle rules">${ruleCards}</div>
+    <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
-        <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
+        <span class="identity-note">${t('playMenu.identity.note')}</span></div>
       <div class="room-actions">
         <div class="room-action"><div class="room-action-head"><i>${t('playMenu.create.kicker')}</i><b>${t('playMenu.create.title')}</b>
           <span>${t('playMenu.create.desc')}</span></div>
@@ -639,13 +639,13 @@ export function createPlayMenu({
             <div class="menu-select" data-field="create-size" data-value="2">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-create-size-list" aria-labelledby="cot-create-size-label cot-create-size-value">
-                <span id="cot-create-size-value" data-select-value>2 vs 2</span></button>
+                <span id="cot-create-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 2 })}</span></button>
               <div class="menu-select-list" id="cot-create-size-list" role="listbox" aria-labelledby="cot-create-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="false">1 vs 1</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="true">2 vs 2</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 1 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 2 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
               </div>
             </div></div>
             <button class="action" data-action="create" type="button">${t('playMenu.create.action')}</button></div></div>
@@ -682,27 +682,27 @@ export function createPlayMenu({
                 <small data-select-meta>${t('playMenu.advanced.vehicleDesc')}</small></span></button>
             <div class="menu-select-list" id="cot-room-vehicle-list" role="listbox" aria-labelledby="cot-room-vehicle-label"></div>
           </div></div>
-        <div class="field"><span class="field-label" id="cot-room-team-label">Deployment</span>
+        <div class="field"><span class="field-label" id="cot-room-team-label">${t('playMenu.deployment')}</span>
           <div class="menu-select" data-control="team" data-value="alpha">
             <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
               aria-controls="cot-room-team-list" aria-labelledby="cot-room-team-label cot-room-team-value">
               <span id="cot-room-team-value" data-select-value>${t('playMenu.team.alpha')}</span></button>
             <div class="menu-select-list" id="cot-room-team-list" role="listbox" aria-labelledby="cot-room-team-label">
-              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="Team Alpha" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>${t('playMenu.team.alpha')}</button>
-              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="Team Bravo" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>${t('playMenu.team.bravo')}</button>
-              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="Spectator" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>${t('playMenu.team.spectator')}</button>
+              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="${t('playMenu.team.alpha')}" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>${t('playMenu.team.alpha')}</button>
+              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="${t('playMenu.team.bravo')}" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>${t('playMenu.team.bravo')}</button>
+              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="${t('playMenu.team.spectator')}" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>${t('playMenu.team.spectator')}</button>
             </div></div></div>
           <div class="field"><span class="field-label" id="cot-room-size-label">${t('playMenu.advanced.size')}</span>
             <div class="menu-select" data-control="size" data-value="1">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-size-list" aria-labelledby="cot-room-size-label cot-room-size-value">
-                <span id="cot-room-size-value" data-select-value>1 vs 1</span></button>
+                <span id="cot-room-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 1 })}</span></button>
               <div class="menu-select-list" id="cot-room-size-list" role="listbox" aria-labelledby="cot-room-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="true">1 vs 1</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="false">2 vs 2</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 1 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 2 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
               </div></div></div></div>
         <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">${t('playMenu.leave')}</button>
           <button class="action alt" data-action="ready" type="button">${t('playMenu.ready')}</button>
@@ -710,11 +710,11 @@ export function createPlayMenu({
       </div><div class="note"></div>
     </div></section>
     <section class="ranked"><div class="ranked-form">
-      <label>Commander name<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
-      <label>Match service<input data-ranked="service" spellcheck="false"></label>
-      <label>Format<select data-ranked="size"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
-      <button class="action" data-ranked="queue" type="button">Find match</button>
-      <button class="action alt" data-ranked="cancel" type="button" disabled>Cancel</button>
+      <label>${t('playMenu.ranked.name')}<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
+      <label>${t('playMenu.ranked.service')}<input data-ranked="service" spellcheck="false"></label>
+      <label>${t('playMenu.ranked.format')}<select data-ranked="size"><option value="1">${t('playMenu.sizeFormat', { size: 1 })}</option><option value="2">${t('playMenu.sizeFormat', { size: 2 })}</option><option value="3">${t('playMenu.sizeFormat', { size: 3 })}</option><option value="5">${t('playMenu.sizeFormat', { size: 5 })}</option><option value="7">${t('playMenu.sizeFormat', { size: 7 })}</option></select></label>
+      <button class="action" data-ranked="queue" type="button">${t('playMenu.ranked.findMatch')}</button>
+      <button class="action alt" data-ranked="cancel" type="button" disabled>${t('playMenu.ranked.cancelQueue')}</button>
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 

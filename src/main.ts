@@ -28,6 +28,9 @@ import * as THREE from 'three';
 // any `t('module.key')` call resolved later in the boot sequence finds a
 // populated dictionary. Keep this line above the rest of the imports.
 import './ui/i18nCatalog.ts';
+// Bind the static-HTML i18n applier so the boot splash copy (credits button,
+// gate prompt, retry) respects the active locale from first paint.
+import { bindStaticI18nAuto } from './presentation/staticI18n.ts';
 import type {
   WorldActivationRuntime,
   WorldActivationOptions,
@@ -289,6 +292,9 @@ const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' }
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
+// Apply static i18n attributes to the boot screen so the credits button,
+// gate prompt, and retry button respect the active locale from first paint.
+bindStaticI18nAuto();
 let bootComplete = false;
 const bootLifecycle = createBootLifecycle({ screen: boot, yieldFrame: nextFrame });
 const BOOT_TIMINGS = bootLifecycle.timings;
@@ -1062,7 +1068,50 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
     patterns: CAMO_CATALOG_PATTERN_IDS,
-    label: CAMO_PATTERN_LABEL,
+    label: {
+      ...CAMO_PATTERN_LABEL,
+      auto: t('garage.camo.auto'),
+      factory: t('camoPattern.factory'),
+      summer: t('camoPattern.summer'),
+      desert: t('camoPattern.desert'),
+      winter: t('camoPattern.winter'),
+      digital: t('camoPattern.digital'),
+      merdc: t('camoPattern.merdc'),
+      tropic: t('camoPattern.tropic'),
+      ambushdot: t('camoPattern.ambushdot'),
+      splinter: t('camoPattern.splinter'),
+      pinkdesert: t('camoPattern.pinkdesert'),
+      autumn: t('camoPattern.autumn'),
+      urbanblock: t('camoPattern.urbanblock'),
+      washworn: t('camoPattern.washworn'),
+      naval: t('camoPattern.naval'),
+      dazzle: t('camoPattern.dazzle'),
+      flecktarn: t('camoPattern.flecktarn'),
+      amoeba: t('camoPattern.amoeba'),
+      dpm: t('camoPattern.dpm'),
+      tigerstripe: t('camoPattern.tigerstripe'),
+      m90: t('camoPattern.m90'),
+      chocchip: t('camoPattern.chocchip'),
+      digitaldesert: t('camoPattern.digitaldesert'),
+      merdcwinter: t('camoPattern.merdcwinter'),
+      winterbands: t('camoPattern.winterbands'),
+      berlin: t('camoPattern.berlin'),
+      oakleaf: t('camoPattern.oakleaf'),
+      hexfield: t('camoPattern.hexfield'),
+      midnight: t('camoPattern.midnight'),
+      claude: t('camoPattern.claude'),
+      spark: t('camoPattern.spark'),
+      ducky: t('camoPattern.ducky'),
+      suits: t('camoPattern.suits'),
+      flames: t('camoPattern.flames'),
+      leopardprint: t('camoPattern.leopardprint'),
+      bolt: t('camoPattern.bolt'),
+      stars: t('camoPattern.stars'),
+      daisy: t('camoPattern.daisy'),
+      circuit: t('camoPattern.circuit'),
+      racing: t('camoPattern.racing'),
+      paintball: t('camoPattern.paintball'),
+    },
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),
     set: (specId: string, patternId: string) => {

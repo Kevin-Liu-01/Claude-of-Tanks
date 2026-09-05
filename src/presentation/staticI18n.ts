@@ -19,17 +19,25 @@
  * `vars` map by the same key on the host element via `data-i18n-vars` (JSON).
  */
 
+import '../ui/i18nCatalog.ts';
 import { onLocaleChange, t } from '../ui/i18n.ts';
 
 type Attr = 'placeholder' | 'title' | 'aria-label';
 
-const APPLIERS: Array<{ attr: string; mode: 'text' | 'html'; key: (el: HTMLElement) => string | null; }> = [
+type Applier = {
+  attr: string;
+  mode: 'text' | 'html' | 'attr';
+  attrName?: Attr;
+  key: (el: HTMLElement) => string | null;
+};
+
+const APPLIERS: Applier[] = [
   { attr: 'data-i18n', mode: 'text', key: (el) => el.dataset.i18n ?? null },
   { attr: 'data-i18n-html', mode: 'html', key: (el) => el.dataset.i18nHtml ?? null },
-  { attr: 'data-i18n-placeholder', mode: 'text', key: (el) => el.dataset.i18nPlaceholder ?? null },
-  { attr: 'data-i18n-title', mode: 'text', key: (el) => el.dataset.i18nTitle ?? null },
-  { attr: 'data-i18n-aria-label', mode: 'text', key: (el) => el.dataset.i18nAriaLabel ?? null },
-  { attr: 'data-i18n-aria', mode: 'text', key: (el) => el.dataset.i18nAria ?? null },
+  { attr: 'data-i18n-placeholder', mode: 'attr', attrName: 'placeholder', key: (el) => el.dataset.i18nPlaceholder ?? null },
+  { attr: 'data-i18n-title', mode: 'attr', attrName: 'title', key: (el) => el.dataset.i18nTitle ?? null },
+  { attr: 'data-i18n-aria-label', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAriaLabel ?? null },
+  { attr: 'data-i18n-aria', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAria ?? null },
 ];
 
 function varsFor(el: HTMLElement): Record<string, string | number> | undefined {
@@ -43,11 +51,12 @@ function varsFor(el: HTMLElement): Record<string, string | number> | undefined {
 }
 
 function applyToElement(el: HTMLElement): void {
-  for (const { mode, key } of APPLIERS) {
+  for (const { mode, attrName, key } of APPLIERS) {
     const translationKey = key(el);
     if (!translationKey) continue;
     const value = t(translationKey, varsFor(el));
     if (mode === 'html') el.innerHTML = value;
+    else if (mode === 'attr' && attrName) el.setAttribute(attrName, value);
     else el.textContent = value;
   }
 }

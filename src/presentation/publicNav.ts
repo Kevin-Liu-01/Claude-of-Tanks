@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import '../ui/i18nCatalog.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { t } from '../ui/i18n.ts';
 

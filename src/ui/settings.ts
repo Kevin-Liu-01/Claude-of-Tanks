@@ -581,9 +581,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   const gear = opts.gear || el('button', 'cot-gear');
   gear.type = 'button';
-  gear.setAttribute('aria-label', 'Settings');
+  gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = GEAR_SVG;
-  gear.title = 'Settings';
+  gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
   const hints = el('div', 'cot-hints');

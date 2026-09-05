@@ -24,6 +24,7 @@ import { flagIconUrl } from '../ui/flags.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButtonOptions, InfoImage } from '../ui/contextInfo.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
+import '../ui/i18nCatalog.ts';
 import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
 
