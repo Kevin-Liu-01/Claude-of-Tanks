@@ -202,14 +202,14 @@ export const topics: Record<string, TopicDefinition> = {
       ['Live verification', 'Browser soaks cover guest entry, four-player rooms, 7v7 rosters, adverse transport, reconnect handoff, rendering, and both teams dealing live damage. Headless authority tests cover bots, pacing, results, rankings, and persistence.', 'Run `npm run test:net:seven:live` for the complete moving-and-firing gate.'],
     ],
     media: [
-      ['/media/showcase-r2/18_live_spectator.webp', 'Current allied chase camera with the compact target switcher'],
-      ['/media/showcase-r2/17_live_player_hud.webp', 'Current team state and battle HUD after authoritative handoff'],
+      ['/media/presentation-r1/ui_spectator_switcher.webp', 'Allied chase camera with the compact target switcher'],
+      ['/media/presentation-r1/ui_roster.webp', 'Team roster and room state before authoritative handoff'],
     ],
   },
   interface: {
     label: 'Interface and controls', title: 'Read the tank without losing the view',
     lede: 'The garage, HUD, sight, killcam, spectator mode, after-action report, settings, keyboard, pointer, controller, and touch input share one control and typography system.',
-    hero: '/media/showcase-r2/18_live_spectator.webp',
+    hero: '/media/presentation-r1/ui_spectator_switcher.webp',
     icon: 'interface',
     sectionIcons: ['garage', 'interface', 'replay', 'mobile', 'accessibility'],
     sections: [
@@ -220,8 +220,8 @@ export const topics: Record<string, TopicDefinition> = {
       ['Accessibility and regression checks', 'Semantic buttons, visible focus, reduced-motion handling, descriptive media alternatives, contrast, and touch sizing are part of the public and in-game surfaces. Responsive QA covers desktop and 390-pixel layouts.', 'Focused self-tests cover keyboard ownership, settings, icons, flags, loading screens, end screens, the spectator switcher, and touch controls.'],
     ],
     media: [
-      ['/media/showcase-r2/18_live_spectator.webp', 'Current spectator layout above the minimap'],
-      ['/media/showcase-r2/16_mobile_garage.webp', 'Current touch-safe Garage and mobile presentation'],
+      ['/media/presentation-r1/ui_spectator_switcher_mobile.webp', '390-pixel spectator layout above the minimap'],
+      ['/media/presentation-r1/ui_mobile.webp', 'Touch-safe garage and mobile control presentation'],
     ],
   },
   studio: {

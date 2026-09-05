@@ -69,6 +69,14 @@ It is maintained as system documentation rather than counted as an R1 campaign f
 [GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) for the location roster and
 acceptance contract.
 
+### Landing fleet image
+
+The home page's “Choose from 113 tanks” panel uses the owner-selected
+1920×1080 production Garage capture at
+`public/media/home/garage-m1a3-fleet.webp`. It shows the M1A3 Abrams with the
+full battlefield, camouflage, dossier, nation, and vehicle-catalog interface.
+The page serves an optimized WebP rendition of the supplied source frame.
+
 ## Rebuild
 
 Generate and grade the campaign masters, render the Studio sequence, then
