@@ -240,6 +240,26 @@ certify a tank again.
 
 ## Current baseline
 
+### Historical first-party preservation (2026-09-04)
+
+A deliberately preserved historical first-party design is not a source-fidelity
+rebuild. The sole current allowlisted case, `leo2_revolution_proto`, compares
+against a hash-pinned export of the original authored `leo2_revolution` at
+commit `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`. Its report must say
+`comparisonPurpose: preservation`, never imply real-world accuracy, and carry
+the original commit and verified baseline hash. See the exact export and
+provenance procedure in [the Revolution source packet](research/leopard-revolution-source.md).
+
+This preservation mode is stricter about change: **every view and component
+must reach 99**. It does not independently normalize either model's scale or
+origin. Dimensions compare actual baseline and candidate masks through the
+same cameras, preserving known historical inaccuracies without labeling them
+accurate. The frozen bytes must match their committed SHA-256 before loading;
+a candidate export cannot substitute for the historical oracle. The rebuilt
+`leo2_revolution` remains a separate source-fidelity comparison at the **92**
+exemplar floor, with published-dimension checks unchanged. No other vehicle
+can opt into preservation without an explicit audited historical baseline.
+
 See `docs/geometry-gate/ledger.json`. At gate freeze the fleet's best tank
 (m60a1) scores min 40 — the gate is deliberately far ahead of the fleet.
 That is the point: it is the definition of done, not a description of today.

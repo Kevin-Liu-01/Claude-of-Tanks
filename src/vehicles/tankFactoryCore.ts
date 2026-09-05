@@ -7434,6 +7434,11 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullHatch: ['hullG', 'hull'],
   hullExternalArmor: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
   hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
+  // Open slat-armor bars and their stand-off frames are equipment, not
+  // continuous body skin. Separate buckets preserve ordinary material,
+  // disposal, LOD, attachment and track-clearance ownership while allowing
+  // the body-continuity raster to retain their intentional exterior air.
+  hullOpenLattice: ['hullG', 'detail'], hullOpenLatticeDark: ['hullG', 'dark'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
@@ -9784,6 +9789,9 @@ export function createTank(
     if (bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') {
       mesh.userData.combatHitboxPart = bucket.endsWith('Hatch') ? 'hatch' : 'cupola';
+    }
+    if (bucket === 'hullOpenLattice' || bucket === 'hullOpenLatticeDark') {
+      mesh.userData.continuityRole = 'open-lattice';
     }
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;

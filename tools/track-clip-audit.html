@@ -22,10 +22,10 @@
                            INSIDE a live shoe instance's oriented solid
                            (per-instance OBB of the shoe geometry, composed
                            from the ACTUAL world-transformed instance
-                           matrices). padIM/innerIM are the only LOD-wrapped
-                           InstancedMeshes in a procedural build — a
-                           structural identifier that survives padHex/
-                           chainHex re-colors. Scale-0 instances (coveredTop
+                           matrices). Native shoe-count metadata identifies
+                           both detailed and simplified shoe instances;
+                           LOD-owned suspension joints are not shoes.
+                           Scale-0 instances (coveredTop
                            return runs, thrown sides) are honestly skipped,
                            so a covered top run never false-flags a fender.
                            SOLID-crossing (not surface-proximity) is the
@@ -60,6 +60,7 @@
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
+import { isTrackShoeMesh } from './track-clip-classification.mjs';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'audit';
@@ -98,11 +99,9 @@ if (mode === 'list') {
       if (pos && pos.usage === THREE.DynamicDrawUsage) bands.push(o);
       else if ((!strict || !o.userData?.runningGear)
           && (!o.material || o.material.colorWrite !== false)) meshes.push(o);
-    } else if (o.isInstancedMesh && o.parent && o.parent.isLOD && o.count >= 8
-        && o.geometry && o.geometry.getAttribute('position')) {
-      // shoe/pad + inner chain layers: buildRunningGear lodWraps exactly
-      // these two InstancedMeshes; wheels/rollers/ERA/crown IMs are added
-      // directly to their groups (see the header note).
+    } else if (isTrackShoeMesh(o)) {
+      // Native shoes publish their semantic receipt independently of LOD
+      // placement, which is also used by legitimate hull-mounted suspension.
       shoeIMs.push(o);
     }
   });
