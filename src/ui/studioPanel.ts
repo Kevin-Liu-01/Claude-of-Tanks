@@ -19,6 +19,7 @@ import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton, type InfoImage } from './contextInfo.ts';
+import { t } from './i18n.ts';
 
 const STUDIO_GROUP_INFO: Readonly<Record<string, string>> = Object.freeze({
   Battlefield: 'Choose the live battlefield, seed, and environmental foundation used by the current composition.',
@@ -540,7 +541,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const badgeTitle = el('div', 't', 'SCENE STUDIO');
   const badgeMap = el('div', 'm', '');
   const galleryBtn = el('button');
-  galleryBtn.innerHTML = '<img src="/brand/nav/tank-gallery.svg" alt="">TANK GALLERY';
+  galleryBtn.innerHTML = `<img src="/brand/nav/tank-gallery.svg" alt="">${t('studioPanel.tankGallery')}`;
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
     window.location.href = id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery';
@@ -1180,7 +1181,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (!dialog) {
       dialog = document.createElement('dialog');
       dialog.className = 'cot-studio-archive';
-      dialog.innerHTML = '<header><div><small>Scene Studio // shared component</small><strong>Field frames.</strong><span>Current renderer references for composition, lighting, effects, and vehicle staging.</span></div><button type="button" aria-label="Close field frames">×</button></header><div class="archiveBody" data-media-archive></div>';
+      dialog.innerHTML = `<header><div><small>${t('studioPanel.fieldFramesEyebrow')}</small><strong>${t('studioPanel.fieldFrames')}</strong><span>${t('studioPanel.fieldFramesSub')}</span></div><button type="button" aria-label="${t('studioPanel.closeArchive')}">×</button></header><div class="archiveBody" data-media-archive></div>`;
       const createdDialog = dialog;
       createdDialog.querySelector<HTMLButtonElement>('button')?.addEventListener(
         'click',
@@ -1558,8 +1559,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const a = S._internal.selected;
       secSel.style.opacity = a ? '1' : '0.35';
       if (!a) {
-        selN1.textContent = 'NONE — CLICK A TANK';
-        selN2.textContent = 'or add one from the roster above';
+        selN1.textContent = t('studioPanel.emptySelected');
+        selN2.textContent = t('studioPanel.emptySelectedSub');
         selIcon.style.visibility = 'hidden';
         return;
       }

@@ -14,6 +14,7 @@ import { t } from './i18n.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
+import { shellTypeLabel } from './garageDossier.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -960,17 +961,28 @@ const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 // as mixed-style clip-art next to the shells). Color lives ONLY in the shell
 // type labels and the selected-slot border.
 const TRAY_INK = 'rgba(238,244,250,0.86)';
+// Consumable name translation table — keeps the authoritative
+// `CONSUMABLE_RULES` in `src/game/consumables.ts` free of UI strings
+// (the sim/network layer must not depend on i18n).
+const CONSUMABLE_LABEL_KEYS: Readonly<Record<string, string>> = {
+  repair: 'hud.consumable.repair',
+  first_aid: 'hud.consumable.firstAid',
+  extinguisher: 'hud.consumable.extinguisher',
+};
+const consumableLabel = (id: string): string =>
+  t(CONSUMABLE_LABEL_KEYS[id] || 'hud.consumable.repair');
+
 const CONSUMABLES = [
   {
-    key: '4', label: CONSUMABLE_RULES[0].label, count: CONSUMABLE_READY_MARK,
+    key: '4', label: consumableLabel('repair'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('repair', 20, TRAY_INK),
   },
   {
-    key: '5', label: CONSUMABLE_RULES[1].label, count: CONSUMABLE_READY_MARK,
+    key: '5', label: consumableLabel('first_aid'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('medkit', 20, TRAY_INK),
   },
   {
-    key: '6', label: CONSUMABLE_RULES[2].label, count: CONSUMABLE_READY_MARK,
+    key: '6', label: consumableLabel('extinguisher'), count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('extinguisher', 20, TRAY_INK),
   },
 ];
@@ -1711,10 +1723,10 @@ export function initHud(bus: EventBus): HudRuntime {
   // Each score numeral carries per-team frag sockets. The clock occupies its
   // own center bay so all three live values remain legible over bright maps.
   const topPlate = el('div', 'cot-top', root);
-  topPlate.innerHTML = `<div class="sc ally"><span class="team-label">Allies</span>` +
+  topPlate.innerHTML = `<div class="sc ally"><span class="team-label">${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b><div class="wedge l"></div></div>` +
-    `<div class="tm-block"><span class="tm-label">Time</span><span class="tm">15:00</span></div>` +
-    `<div class="sc enemy"><span class="team-label">Enemy</span>` +
+    `<div class="tm-block"><span class="tm-label">${t('hud.team.time')}</span><span class="tm">15:00</span></div>` +
+    `<div class="sc enemy"><span class="team-label">${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b><div class="wedge r"></div></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
   const feEl = requireElement<HTMLElement>(topPlate, '.fe');
@@ -1736,9 +1748,9 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
   netEl.setAttribute('role', 'status');
-  netEl.setAttribute('aria-label', 'Performance and network status');
-  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">FPS</span></span>` +
-    `<span class="cot-net-unit ping"><b class="metric">LOCAL</b><span class="label">LINK</span></span>`;
+  netEl.setAttribute('aria-label', t('hud.net.perfAria'));
+  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+    `<span class="cot-net-unit ping"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
   const netFpsUnit = requireElement<HTMLElement>(netEl, '.fps');
   const netPingUnit = requireElement<HTMLElement>(netEl, '.ping');
   const netFpsValue = requireElement<HTMLElement>(netFpsUnit, '.metric');
@@ -1777,8 +1789,8 @@ export function initHud(bus: EventBus): HudRuntime {
     netPingLabel.textContent = ping > 0 ? t('hud.net.ms') : t('hud.net.link');
     netPingUnit.className = `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`;
     netEl.setAttribute('aria-label', ping > 0
-      ? `${fps} frames per second, ${ping} milliseconds latency`
-      : `${fps} frames per second, local battle`);
+      ? t('hud.net.ariaLive', { fps, ping })
+      : t('hud.net.ariaLocal', { fps }));
   }
 
   // Player speedometer: the inexpensive, compositor-owned needle samples at
@@ -1786,7 +1798,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // samples, so motion stays responsive without putting DOM work on every RAF.
   const driveEl = el('div', 'cot-drive', root);
   driveEl.setAttribute('role', 'status');
-  driveEl.setAttribute('aria-label', 'Vehicle speedometer');
+  driveEl.setAttribute('aria-label', t('hud.drive.aria'));
   const driveTicks = Array.from({ length: 21 }, (_, index) =>
     `<i style="--tick:${index}"></i>`).join('');
   driveEl.innerHTML = `<div class="dial"><svg class="arc" viewBox="0 0 100 100" aria-hidden="true">` +
@@ -1795,7 +1807,7 @@ export function initHud(bus: EventBus): HudRuntime {
     `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
     `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
-    `<strong class="speed" data-drive-speed>0</strong><span class="unit">KM/H</span>` +
+    `<strong class="speed" data-drive-speed>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
   const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
@@ -1892,8 +1904,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- team panels ("ears") ---
   const earL = el('div', 'cot-ear l', root);
   const earR = el('div', 'cot-ear r', root);
-  earL.innerHTML = `<div class="hd"><span>Allies</span><span class="al"></span></div>`;
-  earR.innerHTML = `<div class="hd"><span class="al"></span><span>Enemies</span></div>`;
+  earL.innerHTML = `<div class="hd"><span>${t('hud.team.ally')}</span><span class="al"></span></div>`;
+  earR.innerHTML = `<div class="hd"><span class="al"></span><span>${t('hud.team.enemies')}</span></div>`;
   const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
   const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
@@ -1991,8 +2003,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
   sixthEl.innerHTML = `<span class="sig">${uiIconSVG('lightbulb', 24)}</span>` +
-    `<span class="copy"><span class="lb">Detected</span>` +
-    `<span class="sub">Enemy has visual contact</span></span>`;
+    `<span class="copy"><span class="lb">${t('hud.sixth.label')}</span>` +
+    `<span class="sub">${t('hud.sixth.sub')}</span></span>`;
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
@@ -2139,7 +2151,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   const shellBox = el('div', 'cot-shells', root);
   shellBox.setAttribute('role', 'group');
-  shellBox.setAttribute('aria-label', 'Ammunition selector');
+  shellBox.setAttribute('aria-label', t('hud.ammunition.aria'));
   const slotEls: ShellSlotButton[] = [];
   let touchAmmoOpen = false;
   function setTouchAmmoOpen(open: boolean): void {
@@ -2176,7 +2188,7 @@ export function initHud(bus: EventBus): HudRuntime {
     s.type = 'button';
     s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
       `<div class="clr"></div>` +
-      `<div class="tip"><div class="tnm"></div>PEN <b class="p"></b> &nbsp;&middot;&nbsp; DMG <b class="d"></b></div>` +
+      `<div class="tip"><div class="tnm"></div>${t('hud.shell.pen')} <b class="p"></b> &nbsp;&middot;&nbsp; ${t('hud.shell.dmg')} <b class="d"></b></div>` +
       `<div class="cool"></div>`;
     s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
     s._iconType = null;
@@ -2211,7 +2223,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const s = el('button', 'cot-con', conBox);
     s.type = 'button';
     s.title = c.label;
-    s.setAttribute('aria-label', `${c.label}, ready`);
+    s.setAttribute('aria-label', t('hud.consumable.ready', { name: c.label }));
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
     const activateConsumable = (event: Event): void => {
@@ -2245,12 +2257,12 @@ export function initHud(bus: EventBus): HudRuntime {
         cool.style.setProperty('--cool', `${pct.toFixed(1)}%`);
         count.textContent = String(Math.ceil(remaining));
         s.classList.add('cooling');
-        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready in ${Math.ceil(remaining)} seconds`);
+        s.setAttribute('aria-label', t('hud.consumable.cooling', { name: CONSUMABLES[i].label, seconds: Math.ceil(remaining) }));
       } else {
         cool.style.display = 'none';
         count.textContent = CONSUMABLE_READY_MARK;
         s.classList.remove('cooling');
-        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
+        s.setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
       }
     }
   }
@@ -2755,7 +2767,7 @@ export function initHud(bus: EventBus): HudRuntime {
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
     }
-    updateTimer('Time', fmtTimer(BATTLE_DURATION_S - frame.timeS));
+    updateTimer(t('hud.team.time'), fmtTimer(BATTLE_DURATION_S - frame.timeS));
   }
 
   function updateTeams(frame: HudFrame): void {
@@ -3906,7 +3918,7 @@ export function initHud(bus: EventBus): HudRuntime {
       element._iconType = type;
     }
     const typeEl = requireElement<HTMLElement>(element, '.ty');
-    typeEl.textContent = type;
+    typeEl.textContent = shellTypeLabel(type);
     typeEl.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
     requireElement<HTMLElement>(element, '.clr').style.background =
       SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
@@ -3925,7 +3937,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const name = shell.name || shell.type || `slot ${index + 1}`;
     element.setAttribute(
       'aria-label',
-      `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${name}, ${view.count} rounds${view.empty ? ', empty' : ''}`,
+      view.selected
+        ? t('hud.ammo.selectedAria', { name, count: view.count, empty: view.empty ? t('hud.ammo.empty') : '' })
+        : t('hud.ammo.selectAria', { name, count: view.count, empty: view.empty ? t('hud.ammo.empty') : '' }),
     );
   }
 
@@ -5107,7 +5121,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
       (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
-      `<span class="d">destroyed</span>` +
+      `<span class="d">${t('hud.shell.destroyed')}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (cause ? `<span class="c">${cause}</span>` : '');
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
@@ -5130,7 +5144,7 @@ export function initHud(bus: EventBus): HudRuntime {
       d.textContent = `-${Math.round(hit.damage)}`;
       if ((hit.modulesHit && hit.modulesHit.length) || (hit.crewHit && hit.crewHit.length)) {
         const c = el('span', 'crit', d);
-        c.textContent = 'CRIT';
+        c.textContent = t('hud.dmg.crit');
       }
     } else if (document.body.classList.contains('cot-touch-layout')) {
       // Touch hides the detailed ballistic card, so retain one compact result
@@ -5417,7 +5431,7 @@ export function initHud(bus: EventBus): HudRuntime {
       requireElement<HTMLElement>(conEls[i], '.cnt').textContent = CONSUMABLE_READY_MARK;
       requireElement<HTMLElement>(conEls[i], '.cool').style.display = 'none';
       conEls[i].classList.remove('used', 'deny', 'cooling');
-      conEls[i].setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
+      conEls[i].setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
     }
   });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
@@ -5796,7 +5810,7 @@ export function initHud(bus: EventBus): HudRuntime {
         pbShownSec = 0;
         preBattleEl.classList.add('rollout');
         pbNum.classList.remove('tick');
-        pbNum.textContent = 'ROLL OUT!';
+        pbNum.textContent = t('hud.rollout');
         void pbNum.offsetWidth;
         pbNum.classList.add('tick', 'go');
         if (pbHideTimer) clearTimeout(pbHideTimer);

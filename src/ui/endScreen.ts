@@ -517,7 +517,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       if (btn) {
         btn.removeAttribute('style'); // shed the inline amber pill styling
         btn.classList.add('cot-es-btn', 'ghost');
-        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>RETURN TO GARAGE</span></span>`;
+        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>${t('endScreen.returnToGarage')}</span></span>`;
         garageBtn = btn;
       }
       overlay.style.display = 'none';
@@ -684,7 +684,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (result.kills > 0) details.push(`${result.kills} kill${result.kills === 1 ? '' : 's'}`);
     row.innerHTML =
       '<span class="si"></span>' +
-      `<span class="identity"><span class="nm">${result.isPlayer ? '<b class="you">YOU</b>' : ''}${result.name || result.id}</span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${result.name || result.id}</span>` +
       `<span class="veh">${details.filter(Boolean).join(' · ')}</span></span>` +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
@@ -814,7 +814,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       bestShot.destroyed ? 'Kill confirmed' : '',
     ].filter(Boolean).join(' · ');
     strip.innerHTML =
-      `<span class="bk">${uiIconSVG('autoAim', 16)}<span>Best shot</span></span>` +
+      `<span class="bk">${uiIconSVG('autoAim', 16)}<span>${t('endScreen.bestShot')}</span></span>` +
       `<span class="bd">${fmtN(bestShot.damage)}</span>` +
       `<span class="bt"><b>${bestShot.targetName || 'Enemy vehicle'}</b><small>${details}</small></span>`;
     host.dataset.bestShot = String(Math.round(bestShot.damage));
@@ -920,7 +920,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const again = el('button', 'cot-es-btn prime', actions);
       again.type = 'button';
       again.innerHTML = `<span class="btn-inner">${uiIconSVG('rematch', 18)}` +
-        '<span>BATTLE AGAIN</span></span>';
+        `<span>${t('endScreen.battleAgain')}</span></span>`;
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});

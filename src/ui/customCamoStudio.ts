@@ -208,12 +208,12 @@ export function createCustomCamoStudio({
   previewPanel.className = 'cot-camo-lab__panel';
   const previewHeading = document.createElement('div');
   previewHeading.className = 'cot-camo-lab__heading';
-  previewHeading.innerHTML = '<span>Vehicle preview</span><small>Live material bake</small>';
+  previewHeading.innerHTML = `<span>${t('camoStudio.preview')}</span><small>${t('camoStudio.previewSub')}</small>`;
   const preview = document.createElement('div');
   preview.className = 'cot-custom-preview';
   const localOnly = document.createElement('span');
   localOnly.className = 'cot-custom-local';
-  localOnly.textContent = 'Solo · this device only';
+  localOnly.textContent = t('camoStudio.soloLocal');
   preview.append(previewCanvas, localOnly);
   previewPanel.append(previewHeading, preview);
 

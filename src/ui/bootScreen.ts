@@ -261,6 +261,9 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const elTicks = $('cot-boot-ticks');
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
+  const elRetry = $('cot-boot-retry');
+  if (elGate) elGate.textContent = t('boot.gate.prompt');
+  if (elRetry) elRetry.textContent = t('boot.gate.retry');
   mountGitHubStars(document);
 
   const heartbeat = (stage: string): void => {
@@ -416,7 +419,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       shown = Math.max(shown, 0.985);
       schedule();
       for (const t of tickEls) t.classList.add('on');
-      if (elStage) elStage.textContent = mode === 'studio' ? 'Studio ready' : 'Ready for battle';
+      if (elStage) elStage.textContent = mode === 'studio' ? t('boot.stage.studioReady') : t('boot.stage.readyBattle');
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');
       return new Promise<void>((resolve) => {

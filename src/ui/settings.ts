@@ -515,8 +515,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const root = el('div', 'cot-settings');
   root.innerHTML =
     `<div class="cot-set-panel">` +
-    `<div class="cot-set-hdr"><h2>Settings</h2>` +
-    `<span class="cot-set-paused">Paused</span>` +
+    `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
+    `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close" type="button" title="${t('settings.close.title')}">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +
     // settings_ui r2: CONTROLS carries its action count (era-chip .ct read);
@@ -594,8 +594,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // you to the battle). The veil relocks inside its own click gesture.
   const resume = el('div', 'cot-resume');
   resume.innerHTML =
-    '<div class="rz-title">Battle paused</div>' +
-    '<div class="rz-sub">Click to resume &mdash; Esc for settings</div>';
+    `<div class="rz-title">${t('settings.pauseTitle')}</div>` +
+    `<div class="rz-sub">${t('settings.pauseSub')}</div>`;
   document.body.appendChild(resume);
 
   function showResumeVeil() {
@@ -700,9 +700,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
+    const labelText = t(def.label);
     chip.title = slotKey === 'pad'
-      ? `${def.label} — controller button. Right-click to clear.`
-      : `${def.label} — ${SLOT_NAME[slotKey]} key. Right-click to clear.`;
+      ? `${labelText} — ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
+      : `${labelText} — ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       beginCapture(def.id, slotKey, chip);
@@ -728,12 +729,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     let lastGroup = null;
     for (const def of input.actionDefs) {
       if (def.group !== lastGroup) {
-        el('div', 'cot-set-group', body).textContent = def.group;
+        el('div', 'cot-set-group', body).textContent = t(def.group);
         lastGroup = def.group;
       }
       const row = el('div', 'cot-set-row', body);
       row.dataset.action = def.id;
-      settingLabel(row, def.label, SETTINGS_ACTION_ICONS[def.id]);
+      settingLabel(row, t(def.label), SETTINGS_ACTION_ICONS[def.id]);
       const chipsWrap = el('div', 'chips', row);
       const chips = {
         0: makeChip(def, 0, chipsWrap),

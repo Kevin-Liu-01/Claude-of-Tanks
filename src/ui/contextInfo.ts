@@ -6,6 +6,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createModal } from './modal.ts';
 import type { ModalController, ModalSize } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t } from './i18n.ts';
 
 type LiveValue<T> = T | (() => T);
 type InfoImageFit = 'cover' | 'contain';
@@ -193,18 +194,18 @@ export function createInfoButton({
       copyButton = document.createElement('button');
       copyButton.type = 'button';
       copyButton.className = 'cot-modal__button';
-      copyButton.innerHTML = `${uiIconSVG('copy', 16)}<span>Copy JSON</span>`;
+      copyButton.innerHTML = `${uiIconSVG('copy', 16)}<span>${t('contextInfo.copyJson')}</span>`;
       copyButton.addEventListener('click', () => {
         clipboardWrite(content()).then(() => {
           const labelElement = copyButton?.querySelector('span');
-          if (labelElement) labelElement.textContent = 'Copied';
+          if (labelElement) labelElement.textContent = t('contextInfo.copied');
           window.setTimeout(() => {
             const connectedLabel = copyButton?.isConnected ? copyButton.querySelector('span') : null;
-            if (connectedLabel) connectedLabel.textContent = 'Copy JSON';
+            if (connectedLabel) connectedLabel.textContent = t('contextInfo.copyJson');
           }, 1200);
         }).catch(() => {
           const labelElement = copyButton?.querySelector('span');
-          if (labelElement) labelElement.textContent = 'Copy failed';
+          if (labelElement) labelElement.textContent = t('contextInfo.copyFailed');
         });
       });
       modal.footer.appendChild(copyButton);

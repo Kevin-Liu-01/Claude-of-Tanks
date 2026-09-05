@@ -5,6 +5,7 @@
 import { ensureStyle } from './dom.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t as tr } from './i18n.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
 
@@ -281,8 +282,8 @@ export function createPerfHud({
   el.setAttribute('aria-label', 'COT debug telemetry');
   el.innerHTML = `
     <header class="ph-head"><span class="ph-icon" aria-hidden="true">${uiIconSVG('graphics', 18)}</span>
-      <div><div class="ph-title">Battle Diagnostics</div><div class="ph-sub">F8 · Settings → Interface</div></div>
-      <span class="ph-state" data-status>LIVE</span>
+      <div><div class="ph-title">${tr('perfHud.title')}</div><div class="ph-sub">${tr('perfHud.sub')}</div></div>
+      <span class="ph-state" data-status>${tr('perfHud.state.live')}</span>
       <button class="ph-mobile-toggle" type="button" aria-label="Expand diagnostics" aria-expanded="false" aria-controls="cot-perfhud-grid"></button></header>
     <div id="cot-perfhud-grid" data-grid></div>`;
   const gridNode = el.querySelector<HTMLElement>('[data-grid]');
@@ -448,7 +449,7 @@ export function createPerfHud({
     const shadow = t?.shadows || {};
     const network = t?.network || {};
     const memory = t?.memory || {};
-    statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
+    statusEl.textContent = t?.error ? tr('perfHud.state.error') : tr('perfHud.state.live');
     el.classList.toggle('has-error', !!t?.error);
     sectionValue('frame').textContent = frameStatsText(s);
     sectionValue('render').textContent = renderStatsText(s);

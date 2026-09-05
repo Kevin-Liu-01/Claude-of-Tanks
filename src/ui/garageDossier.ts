@@ -191,6 +191,41 @@ const SPECIAL_ACTION_LABEL_I18N: Readonly<Record<string, string>> = Object.freez
   'Reload Magazine': 'garage.special.reloadMagazine',
 });
 
+// Ammunition type tags come from the vehicle spec data as canonical English
+// codes (APFSDS, HEAT, HE, etc.). Translate the codes at the UI layer so the
+// in-garage shell list shows a localized label while the simulation keeps the
+// original enum value.
+const SHELL_TYPE_I18N: Readonly<Record<string, string>> = Object.freeze({
+  APFSDS: 'garage.shellType.APFSDS',
+  'APFSDS-T': 'garage.shellType.APFSDS',
+  APDS: 'garage.shellType.APDS',
+  'APDS-T': 'garage.shellType.APDS',
+  HEAT: 'garage.shellType.HEAT',
+  'HEAT-MP': 'garage.shellType.HEAT',
+  'HEAT-T': 'garage.shellType.HEAT',
+  HESH: 'garage.shellType.HESH',
+  HE: 'garage.shellType.HE',
+  'HE-T': 'garage.shellType.HE',
+  AP: 'garage.shellType.AP',
+  APHE: 'garage.shellType.APHE',
+  'APHE-T': 'garage.shellType.APHE',
+  APCR: 'garage.shellType.APCR',
+  'APCR-T': 'garage.shellType.APCR',
+  GATGM: 'garage.shellType.GATGM',
+  ATGM: 'garage.shellType.ATGM',
+  STAFF: 'garage.shellType.STAFF',
+  AMP: 'garage.shellType.AMP',
+  HEP: 'garage.shellType.HEP',
+});
+
+/** Resolve a shell type code to its localized label, falling back to the
+ *  canonical English code when no translation key is registered. */
+export function shellTypeLabel(type: string): string {
+  if (!type) return '';
+  const key = SHELL_TYPE_I18N[type];
+  return key ? t(key) : type;
+}
+
 /** Rich copy for the vehicle's one context-sensitive E-key system. */
 export function garageSpecialSystem(
   spec: GarageDossierSpec,

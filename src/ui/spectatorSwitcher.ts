@@ -1,4 +1,5 @@
 import { uiIconSVG } from './uiIcons.ts';
+import { t } from './i18n.ts';
 
 const SAFE_SPEC_ID = /^[a-z0-9_]+$/;
 
@@ -33,7 +34,7 @@ export function spectatorSwitcherMarkup(): string {
     '<div class="identity" aria-live="polite">' +
       '<span class="spec-status">' +
         uiIconSVG('scope', 14) +
-        '<span>Spectating</span><b class="idx" hidden></b>' +
+        `<span>${t('spectator.spectating')}</span><b class="idx" hidden></b>` +
       '</span>' +
       '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
     '</div>' +
@@ -47,8 +48,8 @@ export function spectatorSwitcherMarkup(): string {
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
       '</button>' +
     '</div>' +
-    '<button type="button" class="gar" aria-label="Return to garage">' +
+    `<button type="button" class="gar" aria-label="${t('spectator.garageAria')}">` +
       '<span class="gar-icon" aria-hidden="true">' + uiIconSVG('garage', 17) + '</span>' +
-      '<span>Garage</span>' +
+      `<span>${t('spectator.garage')}</span>` +
     '</button>';
 }

@@ -190,18 +190,18 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
-    `<main class="briefing"><div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +
+    `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
-    `<div class="team ally"><div class="thead"><span>Allies</span><span class="n">0</span></div>` +
+    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
-    `<div class="vs">VS</div>` +
-    `<div class="team foe"><div class="thead"><span>Enemies</span><span class="n">0</span></div>` +
+    `<div class="vs">${t('battleLoad.vs')}</div>` +
+    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">Loading battlefield</div>` +
+    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">${t('battleLoad.loading')}</div>` +
     `<div class="fpct">0%</div></div>` +
-    `<div class="fbar" role="progressbar" aria-label="Battlefield loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
+    `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
     `<div class="count"></div><div class="tip"></div></div></main>`;
   document.body.appendChild(root);
 
@@ -269,7 +269,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const [h, b] = BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)];
       tipEl.innerHTML = `<b>${h}</b>${b}`;
       countEl.textContent = '';
-      api.progress(0, 'Loading battlefield');
+      api.progress(0, t('battleLoad.loading'));
       visible = true;
       covering = true;
       // Entry is a safety cover, not an animation: it must own the very next
@@ -304,8 +304,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
     countdown(n: number) {
       countEl.innerHTML = n > 0
-        ? `Battle begins in <b>${n}</b>`
-        : `<b>Battle!</b>`;
+        ? t('battleLoad.countdown', { n }) + ''
+        : `<b>${t('battleLoad.go')}</b>`;
     },
 
     /** Fade out, then drop out of layout. */
