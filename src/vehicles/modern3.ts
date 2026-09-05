@@ -4877,7 +4877,29 @@ export function buildPuma(P: Modern3BuilderPort) {
 // §H.4 tells vs bradley (short steep glacis, TOW left only), puma (low
 // wedge + robot turret) and fv510 (ribbed strakes): the Type 89 reads as a
 // long flat wedge wearing a small square turret with winged missile boxes.
-function buildType89(P: Modern3BuilderPort) {
+function buildType89ProwSide(P: Modern3BuilderPort, side: number) {
+  const { box } = KIT;
+  const slab = orientedSlab;
+  P.add('hull', slab(                                                         // sprocket-wrap glacis facet
+    [side < 0 ? -1.42 : 1.30, 1.82, 1.50], [side < 0 ? -1.30 : 1.42, 1.82, 1.50],
+    [side < 0 ? -1.30 : 1.42, 1.12, 2.90], [side < 0 ? -1.42 : 1.30, 1.12, 2.85],
+    [side < 0 ? -1.42 : 1.345, 1.855, 1.50], [side < 0 ? -1.345 : 1.42, 1.855, 1.50],
+    [side < 0 ? -1.345 : 1.42, 1.155, 2.90], [side < 0 ? -1.42 : 1.345, 1.155, 2.85]));
+  // The prow side follows the glacis bottom edge and closes the wrap bay.
+  const mirror = (x: number) => (side < 0 ? -x : x);
+  P.add('hull', slab(
+    [mirror(1.40), 1.02, 2.90], [mirror(1.44), 1.02, 2.90], [mirror(1.44), 1.26, 1.50], [mirror(1.40), 1.26, 1.50],
+    [mirror(1.40), 1.12, 2.90], [mirror(1.44), 1.12, 2.90], [mirror(1.44), 1.82, 1.50], [mirror(1.40), 1.82, 1.50]));
+  P.add('hull', box(0.04, 0.56, 0.30), mirror(1.42), 1.54, 1.38);
+  P.add('hull', slab(
+    [mirror(1.40), 0.62, 2.90], [mirror(1.44), 0.62, 2.90], [mirror(1.44), 0.62, 3.14], [mirror(1.40), 0.62, 3.14],
+    [mirror(1.40), 1.12, 2.90], [mirror(1.44), 1.12, 2.90], [mirror(1.44), 1.00, 3.14], [mirror(1.40), 1.00, 3.14]));
+  P.add('hull', slab(
+    [mirror(1.10), 0.60, 3.10], [mirror(1.44), 0.60, 3.10], [mirror(1.44), 0.60, 3.16], [mirror(1.10), 0.60, 3.16],
+    [mirror(1.10), 1.00, 3.10], [mirror(1.44), 1.00, 3.10], [mirror(1.44), 1.00, 3.16], [mirror(1.10), 1.00, 3.16]));
+}
+
+function buildType89Hull(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
     liftEye, periscope, stowage, shovelTool, torus, sph, xform } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law
@@ -4909,43 +4931,7 @@ function buildType89(P: Modern3BuilderPort) {
                                                                                //   sprocket wrap reaches z 3.09 at
                                                                                //   the band, §B4); top tucks under
                                                                                //   the nose block bottom 0.60
-  for (const s of [-1, 1]) {                                                   // glacis corner facets over the
-    P.add('hull', slab(                                                        //   sprocket wraps (§B1 the rake
-      [s < 0 ? -1.42 : 1.30, 1.82, 1.50], [s < 0 ? -1.30 : 1.42, 1.82, 1.50],  //   continues; §B4 bottoms 1.12
-      [s < 0 ? -1.30 : 1.42, 1.12, 2.90], [s < 0 ? -1.42 : 1.30, 1.12, 2.85],  //   clear the ~0.95 wrap apex)
-      [s < 0 ? -1.42 : 1.345, 1.855, 1.50], [s < 0 ? -1.345 : 1.42, 1.855, 1.50],
-      [s < 0 ? -1.345 : 1.42, 1.155, 2.90], [s < 0 ? -1.42 : 1.345, 1.155, 2.85]));
-    // PROW SIDE WALLS: the upper-body flank ends at z 1.25 — without these
-    // the profile sees THROUGH under the glacis edge into the sprocket bay
-    // (the r1 slab-bug glacis incidentally filled this). The real hull's
-    // side plates run forward over the track to the nose. Top edge = the
-    // facet's bottom-edge line exactly (no slit); bottom stays 0.12+ over
-    // the wrap arc (§B4; x 1.40 holds 24 mm outside the 1.376 pin-cap
-    // band). The rear box closes the z 1.25..1.53 notch under the crest.
-    const m = (x: number) => (s < 0 ? -x : x);
-    P.add('hull', slab(
-      [m(1.40), 1.02, 2.90], [m(1.44), 1.02, 2.90], [m(1.44), 1.26, 1.50], [m(1.40), 1.26, 1.50],
-      [m(1.40), 1.12, 2.90], [m(1.44), 1.12, 2.90], [m(1.44), 1.82, 1.50], [m(1.40), 1.82, 1.50]));
-    P.add('hull', box(0.04, 0.56, 0.30), m(1.42), 1.54, 1.38);
-    // §B2 BOW-CORNER CLOSURE (IFV see-through sweep §5.326): the prow side
-    // walls ended at z 2.90 while the nose block/bow face plate only start
-    // at 3.15 — every side/quarter view read clean THROUGH the z 2.90..3.15
-    // corner bay over the descending sprocket wrap (309-320px enclosed at
-    // [y 0.82, z 3.03], both sides, all yaws). The real Type 89 bow side
-    // plate runs to the nose. Extension rides the same 1.40..1.44 plane
-    // (outboard of the 1.376 pin-cap band — §B4-clear by construction, the
-    // sprocket disc z<=2.88 stays §B9-readable), top chord tucked under the
-    // glacis plate underside (0.982@3.13), flat bottom 0.62 under the wrap's
-    // forward taper; the transverse corner cap (z 3.10..3.16) seals the
-    // front edge into the nose block (lap to 3.16 vs block rear 3.15) a
-    // full 13 cm forward of the wrap's z 2.97 reach.
-    P.add('hull', slab(
-      [m(1.40), 0.62, 2.90], [m(1.44), 0.62, 2.90], [m(1.44), 0.62, 3.14], [m(1.40), 0.62, 3.14],
-      [m(1.40), 1.12, 2.90], [m(1.44), 1.12, 2.90], [m(1.44), 1.00, 3.14], [m(1.40), 1.00, 3.14]));
-    P.add('hull', slab(
-      [m(1.10), 0.60, 3.10], [m(1.44), 0.60, 3.10], [m(1.44), 0.60, 3.16], [m(1.10), 0.60, 3.16],
-      [m(1.10), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.10), 1.00, 3.16]));
-  }
+  for (const side of [-1, 1]) buildType89ProwSide(P, side);
   // ---- stern: near-vertical face + power door (the Type 89 rear) ---------
   P.add('hull', slab(
     [-0.95, 0.45, -3.02], [0.95, 0.45, -3.02], [0.95, 0.56, -3.30], [-0.95, 0.56, -3.30],
@@ -5079,7 +5065,14 @@ function buildType89(P: Modern3BuilderPort) {
     padHex: 0x32332a, chainHex: 0x2a2b24, gearFloor: true,
   });
   P.topY = 0.95;
+}
 
+function buildType89Turret(P: Modern3BuilderPort) {
+  const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
+    liftEye, periscope, stowage, shovelTool, torus, sph, xform } = KIT;
+  const slab = orientedSlab;
+  const { rng } = P;
+  const num = P.spec.visual.number || '';
   // ================= two-man turret CENTER-RIGHT (pivot +0.25, ring 1.80):
   // §B8 REWORK (owner 2026-08-06): the r1 0.44-tall box read as a recessed
   // sliver — walls now stand 0.56 proud and NEAR-VERTICAL (the real welded
@@ -5184,6 +5177,11 @@ function buildType89(P: Modern3BuilderPort) {
     mg.position.set(-0.32, 0.12, 0.42);                                        // buried at the face — barrel stub
     P.turretG.add(mg);                                                         //   reads at the port only
   }
+}
+
+function buildType89(P: Modern3BuilderPort) {
+  buildType89Hull(P);
+  buildType89Turret(P);
 }
 
 // ================================== C1 Ariete ===============================
