@@ -50,7 +50,7 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
-import { t, formatNumber } from './i18n.ts';
+import { t, formatNumber, formatDate } from './i18n.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -621,14 +621,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshServiceRecord() {
     const record = getPlayerRecord();
     const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
-    if (badge) badge.textContent = record.matches > 999 ? '999+' : record.matches.toLocaleString('en-US');
+    if (badge) badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches);
 
     const body = root.querySelector<HTMLElement>('.cot-record-body');
     if (!body) return;
     const pct = record.matches ? Math.round((record.wins / record.matches) * 100) : 0;
     const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
     const avgKills = record.matches ? record.kills / record.matches : 0;
-    const num = (value: number) => value.toLocaleString('en-US');
+    const num = (value: number) => formatNumber(value);
     const safe = (value: RuntimeValue) => String(value).replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     } as Record<string, string>)[char] ?? char);
@@ -643,7 +643,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const durationS = String(last.durationS % 60).padStart(2, '0');
       const completed = last.completedAt ? new Date(last.completedAt) : null;
       const completedLabel = completed && !Number.isNaN(completed.getTime())
-        ? completed.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        ? formatDate(completed, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
         : 'Local session';
       lastBattle = `<div class="cot-last-battle"><div class="cot-last-battle-head">` +
         `<strong>${safe(last.result)}</strong><time>${safe(completedLabel)}</time></div>` +

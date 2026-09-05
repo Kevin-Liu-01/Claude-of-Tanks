@@ -34,7 +34,7 @@ import { iconUrl, maskIcon } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
-import { t } from './i18n.ts';
+import { t, formatNumber } from './i18n.ts';
 import type {
   NetworkRoomPlayer,
   NetworkRoomState,
@@ -383,7 +383,7 @@ const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-const fmtN = (n: number): string => Math.round(n).toLocaleString('en-US');
+const fmtN = (n: number): string => formatNumber(Math.round(n));
 
 export function summarizeTeam(rows: TeamSummaryInput[] = []): TeamSummary {
   return rows.reduce<TeamSummary>((summary, row) => {
