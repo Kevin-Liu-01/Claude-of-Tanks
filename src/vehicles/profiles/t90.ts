@@ -887,19 +887,21 @@ interface T90ALegacyOptions {
   recordSeatReceipt?: boolean;
 }
 
-function buildT90ALegacy(P: T90BuilderPort, {
-  turretSeatZ = T90A_TURRET_SEAT_Z_M,
-  turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
-  shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
-  shtoraLocalForwardShiftM = T90A_SHTORA_LOCAL_FORWARD_SHIFT_M,
-  shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
-  chevronForwardM = T90A_CHEVRON_FORWARD_M,
-  nsvtRaiseM = T90A_NSVT_RAISE_M,
-  gunRadiusScale = T90A_GUN_RADIUS_SCALE,
-  gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
-  adoptT90MFamilyGun = true,
-  recordSeatReceipt = true,
-}: T90ALegacyOptions = {}): void {
+type ResolvedT90ALegacyOptions = Required<T90ALegacyOptions>;
+
+interface T90ALegacyTurretReceiptContext {
+  shtoraHousingRearZ: number;
+  shtoraHousingFrontZ: number;
+  shtoraLensFrontZ: number;
+  shtoraChevronDepthClearanceM: number;
+  shtoraSupportBodyOverlapM: number;
+  roofStations: {
+    left: { x: number; z: number };
+    right: { x: number; z: number };
+  };
+}
+
+function addT90ALegacyHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -997,6 +999,10 @@ function buildT90ALegacy(P: T90BuilderPort, {
       P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
+}
+
+function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
+  const { box, cylX, cylZ, buildRunningGear, stowage } = KIT;
   ruDeck(P, { deckY: 1.365, hatchY: 1.215, hatchZ: 2.16, gz: -1.74, grilles: 5, gw: 1.5, periY: 1.20, gY: 1.33, ribY: 1.34 });
   // ORACLE-PARITY: the print's hull node carries a low dome ghost (side
   // 1.64@-1.54 falling 1.56@-1.43; front 1.605 across |x|<0.6) — matched
@@ -1156,7 +1162,17 @@ function buildT90ALegacy(P: T90BuilderPort, {
     P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
   }
   });
+}
 
+function addT90ALegacyTurret(P: T90BuilderPort, {
+  turretSeatZ,
+  shtoraEyeZ,
+  shtoraSupportFrontZ,
+  chevronForwardM,
+  adoptT90MFamilyGun,
+  recordSeatReceipt,
+}: ResolvedT90ALegacyOptions): T90ALegacyTurretReceiptContext {
+  const { box, cylY, cylZ, polyTurret } = KIT;
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
   // fitting below is seated into that mass rather than a shared family box.
@@ -1441,6 +1457,36 @@ function buildT90ALegacy(P: T90BuilderPort, {
   // Source-seated flank cassettes replace the old continuous U-shaped wall.
   // Real gaps reveal the buried carrier and preserve the cast-dome outline.
   addT90CastFlankCassettes(P, { y: 0.24, raisedLeftRear: true });
+  return {
+    shtoraHousingRearZ,
+    shtoraHousingFrontZ,
+    shtoraLensFrontZ,
+    shtoraChevronDepthClearanceM,
+    shtoraSupportBodyOverlapM,
+    roofStations: t90aRoofStations,
+  };
+}
+
+function addT90ALegacyGun(P: T90BuilderPort, {
+  gunRadiusScale,
+  gunAssemblyRaiseM,
+  recordSeatReceipt,
+  turretSeatZ,
+  turretRearwardShiftM,
+  shtoraEyeZ,
+  shtoraLocalForwardShiftM,
+  shtoraSupportFrontZ,
+  nsvtRaiseM,
+}: ResolvedT90ALegacyOptions, receiptContext: T90ALegacyTurretReceiptContext): void {
+  const { box, cylZ } = KIT;
+  const {
+    shtoraHousingRearZ,
+    shtoraHousingFrontZ,
+    shtoraLensFrontZ,
+    shtoraChevronDepthClearanceM,
+    shtoraSupportBodyOverlapM,
+    roofStations,
+  } = receiptContext;
   // ---- 2A46M-2 on the normalized contour: axis 1.54, muzzle world +6.10 ----
   // Raise the articulated trunnion as one unit. All gun, gunDark and
   // gunMount buckets are children of rig_gun, so the saddle, cast collar,
@@ -1567,8 +1613,8 @@ function buildT90ALegacy(P: T90BuilderPort, {
       gunAssemblyRaiseM,
       gunAxisY: P.gunG.position.y,
       cupolaCount: 2,
-      leftCupola: [t90aRoofStations.left.x, t90aRoofStations.left.z],
-      rightCupola: [t90aRoofStations.right.x, t90aRoofStations.right.z],
+      leftCupola: [roofStations.left.x, roofStations.left.z],
+      rightCupola: [roofStations.right.x, roofStations.right.z],
       rightCupolaLightCount: 2,
       leftCupolaMannedMg: null,
       leftCupolaRemoteWeapon: 'nsvt',
@@ -1579,6 +1625,10 @@ function buildT90ALegacy(P: T90BuilderPort, {
       rightBustleBridgeOverlapM: 0.03,
     };
   }
+}
+
+function finishT90ALegacy(P: T90BuilderPort): void {
+  const { box } = KIT;
   // T5F-d: numbers on the VERTICAL flank-wall faces — the prism wall is
   // side-occluded by the flank walls (render check), and the old ringSkin
   // dome seat floats inside the welded shell (§5.04 DECAL FLOAT class).
@@ -1601,6 +1651,39 @@ function buildT90ALegacy(P: T90BuilderPort, {
   P.mats.wood.color.setHex(0x473e32);
   if (P.mats.wood.emissive) P.mats.wood.emissive.setHex(0x0c0a07);
   P.topY = 0.90;
+}
+
+function buildT90ALegacy(P: T90BuilderPort, {
+  turretSeatZ = T90A_TURRET_SEAT_Z_M,
+  turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
+  shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
+  shtoraLocalForwardShiftM = T90A_SHTORA_LOCAL_FORWARD_SHIFT_M,
+  shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
+  chevronForwardM = T90A_CHEVRON_FORWARD_M,
+  nsvtRaiseM = T90A_NSVT_RAISE_M,
+  gunRadiusScale = T90A_GUN_RADIUS_SCALE,
+  gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
+  adoptT90MFamilyGun = true,
+  recordSeatReceipt = true,
+}: T90ALegacyOptions = {}): void {
+  const options: ResolvedT90ALegacyOptions = {
+    turretSeatZ,
+    turretRearwardShiftM,
+    shtoraEyeZ,
+    shtoraLocalForwardShiftM,
+    shtoraSupportFrontZ,
+    chevronForwardM,
+    nsvtRaiseM,
+    gunRadiusScale,
+    gunAssemblyRaiseM,
+    adoptT90MFamilyGun,
+    recordSeatReceipt,
+  };
+  addT90ALegacyHull(P);
+  addT90ALegacyHullDeckAndGear(P);
+  const receiptContext = addT90ALegacyTurret(P, options);
+  addT90ALegacyGun(P, options, receiptContext);
+  finishT90ALegacy(P);
 }
 
 
@@ -4110,7 +4193,7 @@ function buildT90MProryv(P: T90BuilderPort): void {
 }
 
 
-function buildT90SMLegacy(P: T90BuilderPort): void {
+function addT90SMLegacyHullFront(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
@@ -4241,6 +4324,10 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   // LOW lip segment on the ref's own 1.202-1.256 bow deck line (top 1.225
   // = the line the trim was for; standard-check holes 16 -> 0).
   for (const s of [-1, 1]) P.add('hull', box(0.20, 0.045, 0.55), s * 1.70, 1.2025, 2.7275);
+}
+
+function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
+  const { box, buildRunningGear, stowage } = KIT;
   // r10b: periY near-flush — the default deckY+0.05 periscopes topped 1.50
   // at z 2.42 where the ref nose line is 1.266 (side at=-1.03 col)
   // T5H: hatch on the LOCAL deck line (1.36 @ z 2.12) — the deckY-seated
@@ -4376,7 +4463,22 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   // The former solid outer aft course is likewise removed; the replacement
   // cage is installed after the owner finish so no later skirt pass can fill
   // the open cells again.
+}
 
+interface T90SMLegacyTurretContext {
+  tw: number;
+  h: number;
+  turretRingReceipt: Readonly<{
+    topRadiusM: number;
+    bottomRadiusM: number;
+    heightM: number;
+    yM: number;
+    zM: number;
+  }>;
+}
+
+function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext {
+  const { box, cylY } = KIT;
   // ---- WELDED turret: faceted prism + squared removable bustle ----
   // r6: prism roof shaved to the ref's 1.99 face-roof line; the 2.24-2.26
   // band lives on flank roof boxes at |x| 0.65..1.05 (ref front cols +-0.1..
@@ -4541,6 +4643,14 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     [-1.10, 0.54, -0.125], [-1.185, 0.54, -0.125], [-1.185, 0.54, 0.425], [-1.10, 0.54, 0.425],
   ));
   P.add('turretDark', box(0.075, 0.014, 0.49), -1.1425, 0.547, 0.15);
+  return { tw, h, turretRingReceipt };
+}
+
+function addT90SMLegacyRoof(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylY, cylZ } = KIT;
   // T3R ROOF EQUIPMENT ENSEMBLE (owner punch list 3: "no attachments or
   // decorations or the machine gun turret"). Today's side digest: the ref's
   // tall 2.239 band spans z world -0.44..-1.32 (my old towers sat aft+low —
@@ -4634,6 +4744,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     forwardAligned: true,
     separateManualWeaponStations: 0,
   });
+}
+
+function addT90SMLegacyBustleStructure(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -4673,6 +4790,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   for (const bx of [-0.52, 0.52]) {
     P.add('turretDark', box(0.03, 0.03, 0.05), bx, 0.37, -2.472);        // standoff struts onto step3 (§B2 attached)
   }
+}
+
+function addT90SMLegacyBustleCageAndSystems(
+  P: T90BuilderPort,
+  { tw, h }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   const cageRailYs = [0.17, 0.27, 0.37, 0.47];
   const addSMBustleSideCell = (
     s: number,
@@ -4783,6 +4907,13 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   P.add('turretDark', box(0.26, 0.012, 0.26), -0.85, 0.694, -0.27);
   P.add('turretDark', box(0.022, 0.05, 0.014), -0.79, 0.60, -0.123);
   P.add('turretDark', box(0.022, 0.05, 0.014), -0.91, 0.60, -0.123);
+}
+
+function addT90SMLegacyGunAndFinish(
+  P: T90BuilderPort,
+  { tw, turretRingReceipt }: T90SMLegacyTurretContext,
+): void {
+  const { box, cylZ } = KIT;
   // ---- 2A46M-5 + MRS bulge (axis 1.70, muzzle +6.20) ----
   // T3R MANTLET RE-SEAT (§B3.1 mantlets law + the nose re-loft): the plug
   // now fronts AT the new turret face (world 1.96-1.98 = the ref's plan
@@ -4863,6 +4994,16 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     turretRing: turretRingReceipt,
   });
   P.topY = 1.55;
+}
+
+function buildT90SMLegacy(P: T90BuilderPort): void {
+  addT90SMLegacyHullFront(P);
+  addT90SMLegacyHullDeckAndGear(P);
+  const turretContext = addT90SMLegacyTurretShell(P);
+  addT90SMLegacyRoof(P, turretContext);
+  addT90SMLegacyBustleStructure(P, turretContext);
+  addT90SMLegacyBustleCageAndSystems(P, turretContext);
+  addT90SMLegacyGunAndFinish(P, turretContext);
 }
 
 
