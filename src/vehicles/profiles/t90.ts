@@ -2373,8 +2373,8 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
 // with ERAWA plates ±1.79 on the front half; dome crown ~2.33 center 0.18,
 // left cluster 2.64, pano 2.85, met mast 3.82 @ (-0.25, -1.0); tube axis
 // 2.008, sleeve r.122, muzzle 6.58.
-function buildPT91M(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
+function buildPT91MHull(P: T90BuilderPort): void {
+  const { box, buildRunningGear, cylX, xform } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/pt91m.json — hull mask +-3.43 (6.856 = published,
   // rear span lip DELETED), powerpack stack tops 1.70-1.72 over -3.29..-3.00
@@ -2475,7 +2475,6 @@ function buildPT91M(P: T90BuilderPort): void {
     nor.needsUpdate = true;
     return geo;
   };
-  const { xform } = KIT;
   for (const s of [-1, 1]) {
     // r12: humps extended forward to -2.90 (fresh grid: the -2.916 col
     // reads the ref's 1.743 plateau; the r10 1.69 side tabs sat one column
@@ -2714,7 +2713,10 @@ function buildPT91M(P: T90BuilderPort): void {
   // (r25b: x 1.020..1.082 — the 0.95 edge painted 0.384 into the ±0.944/
   // ±0.984 cols where the ref floor is 0.434)
   for (const s of [-1, 1]) P.add('hullDark', box(0.062, 0.04, 0.90), s * 1.051, 0.404, 0.50);
+}
 
+function buildPT91MTurret(P: T90BuilderPort): number[][] {
+  const { box, cylY } = KIT;
   // ---- turret r9 (fresh workorder decode): ERAWA WALL front (plan 1.46 at
   // center columns, staircase to 1.05@1.14), SAVAN sight housing LEFT at
   // x -0.36..-0.26 owning the 2.12-2.13 side band z +0.94..+1.42, met mast
@@ -3066,6 +3068,11 @@ function buildPT91M(P: T90BuilderPort): void {
   // ride the footprints, unchanged.
   P.add('turret', box(0.16, 0.05, 0.08), 1.20, 0.2425, -0.575);
   P.add('turret', box(0.11, 0.05, 0.08), 1.325, 0.2425, -0.395);
+  return rings;
+}
+
+function buildPT91MGun(P: T90BuilderPort, rings: readonly number[][]): void {
+  const { box, cylZ } = KIT;
   // ---- 125 mm 2A46MS (r9: axis 1.598, muzzle +6.10) ----
   // r9 tube: ref plan is warp-biased — its LEFT edge (x <= -0.094) runs to
   // the 6.108 muzzle while the RIGHT (x >= +0.120) dies at 4.47. True
@@ -3108,6 +3115,9 @@ function buildPT91M(P: T90BuilderPort): void {
   const dxP = ringSkin(rings, 0.30) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxP, 0.24, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxP, 0.24, -0.30], -Math.PI / 2);
+}
+
+function finishPT91MMaterials(P: T90BuilderPort): void {
   // ---- r27 SHADED-PARITY TONE PASS (critic r25 orders 1-2 + 6) ----
   // Per-tank P.mats instances (t72b3m r13 / merkava refTone precedent —
   // createTankMaterials is per-tank, siblings never see these). Every
@@ -3196,6 +3206,9 @@ function buildPT91M(P: T90BuilderPort): void {
   // ORDER 6: steel-blue glass dashes -> olive-glass (the ref lacks the cold
   // accent class entirely).
   P.mats.glass.color.setHex(0x3d4233);
+}
+
+function finishPT91MDeckLift(P: T90BuilderPort): void {
   // ---- r28 DECK-PLATE FAMILY LIFT (critic r27 order 1) ----
   // The r27 'camo value-split' declaration failed its own sd check (grille
   // window sd 2.43 — a UNIFORM family deficit, not a camo artifact): the
@@ -3251,6 +3264,14 @@ function buildPT91M(P: T90BuilderPort): void {
     });
   }
   P.topY = 1.22;
+}
+
+function buildPT91M(P: T90BuilderPort): void {
+  buildPT91MHull(P);
+  const rings = buildPT91MTurret(P);
+  buildPT91MGun(P, rings);
+  finishPT91MMaterials(P);
+  finishPT91MDeckLift(P);
 }
 
 
