@@ -8,7 +8,7 @@
 //   node tools/marketing-shots/publish-landing-media.mjs
 
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -20,19 +20,12 @@ function opt(name, fallback) {
 
 const sourceDir = resolve(opt('input', 'shots/studio-action-loop-r2'));
 const outputDir = resolve(opt('out', 'public/media/landing-r1'));
-const sourceManifestFile = join(sourceDir, 'manifest.json');
-const sourceManifest = existsSync(sourceManifestFile)
-  ? JSON.parse(readFileSync(sourceManifestFile, 'utf8'))
-  : null;
+const sourceManifest = JSON.parse(readFileSync(join(sourceDir, 'manifest.json'), 'utf8'));
 const promoManifest = JSON.parse(readFileSync(resolve('public/media/promo-v13/manifest.json'), 'utf8'));
-const showcaseManifest = JSON.parse(readFileSync(resolve('public/media/showcase-r2/manifest.json'), 'utf8'));
+const sourceVideo = join(sourceDir, sourceManifest.master);
 const studioVideo = join(outputDir, 'studio-leclerc-knockout.mp4');
 const studioPoster = join(outputDir, 'studio-leclerc-knockout.jpg');
 mkdirSync(outputDir, { recursive: true });
-const existingManifestFile = join(outputDir, 'manifest.json');
-const existingStudio = existsSync(existingManifestFile)
-  ? JSON.parse(readFileSync(existingManifestFile, 'utf8')).studio
-  : null;
 
 function ffmpeg(input) {
   const result = spawnSync('/opt/homebrew/bin/ffmpeg', input, { encoding: 'utf8' });
@@ -47,36 +40,26 @@ function durationMs(file) {
   return Math.round(Number.parseFloat(result.stdout) * 1000);
 }
 
-if (sourceManifest) {
-  const sourceVideo = join(sourceDir, sourceManifest.master);
-  ffmpeg([
-    '-loglevel', 'error', '-y', '-i', sourceVideo, '-an',
-    '-vf', 'fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
-    '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
-    '-g', '60', '-keyint_min', '60', '-movflags', '+faststart',
-    studioVideo,
-  ]);
-  ffmpeg([
-    '-loglevel', 'error', '-y', '-ss', '4.15', '-i', sourceVideo, '-frames:v', '1',
-    '-vf', 'scale=1920:-2:flags=lanczos', '-q:v', '2', studioPoster,
-  ]);
-}
-
-const shotById = new Map(showcaseManifest.shots.map((shot) => [shot.id, shot]));
-function selectShot(id) {
-  const shot = shotById.get(id);
-  if (!shot) throw new Error(`Missing R2 showcase shot: ${id}`);
-  return { id: shot.id, title: shot.title, src: shot.src, collection: shot.kind };
-}
+ffmpeg([
+  '-loglevel', 'error', '-y', '-i', sourceVideo, '-an',
+  '-vf', 'fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
+  '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
+  '-g', '60', '-keyint_min', '60', '-movflags', '+faststart',
+  studioVideo,
+]);
+ffmpeg([
+  '-loglevel', 'error', '-y', '-ss', '4.15', '-i', sourceVideo, '-frames:v', '1',
+  '-vf', 'scale=1920:-2:flags=lanczos', '-q:v', '2', studioPoster,
+]);
 
 const hero = [
-  '31_battle_steinburg',
-  '29_battle_sirocco',
-  '30_battle_frosthollow',
-  '32_battle_verdant',
-  '33_battle_saltmere',
-  '40_battle_urban_hero',
-].map(selectShot);
+  { id: 'urban-crossfire', title: 'Urban crossfire', src: '/media/featured/f10_studio_urban_crossfire.webp', collection: 'owner-directed' },
+  { id: 'fjord-firefight', title: 'Fjord firefight', src: '/media/featured/f9_studio_fjord_firefight.webp', collection: 'owner-directed' },
+  { id: 'm1-firefight', title: 'M1 firefight', src: '/media/featured/f8_studio_m1_firefight.webp', collection: 'owner-directed' },
+  { id: 'strv-steinburg-duel', title: 'Strv 103 Steinburg duel', src: '/media/featured/f6_studio_strv_steinburg_duel.webp', collection: 'owner-directed' },
+  { id: 'desert-armored-contact', title: 'Desert armored contact', src: '/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp', collection: 'action' },
+  { id: 'winter-ice-breaker', title: 'Winter ice breaker', src: '/media/showcase-r1/113_foreground_winter_ice_breaker.webp', collection: 'foreground' },
+];
 
 const relocatedRails = [
   { id: 'desert-ground-rush', title: 'Desert ground rush', video: '/media/hero-rails-r2/01_desert-ground-rush.webm', poster: '/media/hero-rails-r2/01_desert-ground-rush.jpg' },
@@ -94,35 +77,59 @@ const featureReel = {
   fps: promoManifest.fps,
 };
 
-const mosaic = showcaseManifest.shots
-  .filter((shot) => shot.sequence >= 17 && shot.sequence <= 40)
-  .map((shot) => ({ id: shot.id, title: shot.title, collection: shot.kind, src: shot.src }));
-if (mosaic.length !== 24) throw new Error(`Expected 24 R2 mosaic shots, found ${mosaic.length}`);
-
-const studio = sourceManifest ? {
-  video: '/media/landing-r1/studio-leclerc-knockout.mp4',
-  poster: '/media/landing-r1/studio-leclerc-knockout.jpg',
-  width: sourceManifest.renderer.width,
-  height: sourceManifest.renderer.height,
-  durationMs: durationMs(studioVideo),
-  videoBytes: statSync(studioVideo).size,
-  posterBytes: statSync(studioPoster).size,
-  captureMode: sourceManifest.captureMode,
-  actors: sourceManifest.actors,
-  effects: sourceManifest.effects,
-} : existingStudio;
-if (!studio) throw new Error('Studio source and existing landing Studio receipt are both unavailable');
+const mosaic = [
+  '61_action_desert_duel_leclerc_kill',
+  '63_action_desert_overwatch_line',
+  '67_action_winter_lake_duel',
+  '69_action_winter_village_brawl',
+  '71_action_urban_street_duel',
+  '74_action_urban_ruin_brawl',
+  '76_action_verdant_field_duel',
+  '78_action_verdant_village_brawl',
+  '80_action_desert_wadi_gauntlet',
+  '84_action_steppe_horizon_charge',
+  '86_action_coastal_harbor_kill',
+  '89_action_coastal_beach_storm',
+  '93_foreground_desert_overwatch_line',
+  '95_foreground_coastal_dune_ambush',
+  '97_foreground_winter_lake_duel',
+  '99_foreground_winter_village_brawl',
+  '101_foreground_urban_street_duel',
+  '104_foreground_urban_ruin_brawl',
+  '106_foreground_verdant_field_duel',
+  '109_foreground_verdant_hero_challenger1',
+  '111_foreground_steppe_windbreak_snipe',
+  '115_foreground_urban_alley_flash',
+  '118_foreground_verdant_meadow_duel',
+  '120_foreground_verdant_overwatch_ridge',
+].map((id) => ({
+  id,
+  title: id.replace(/^\d+_(?:action|foreground)_/, '').replaceAll('_', ' '),
+  collection: id.includes('_action_') ? 'action' : 'foreground',
+  src: `/media/showcase-r1/${id}.webp`,
+}));
 
 const manifest = {
-  libraryId: 'claude-of-tanks-landing-r2',
+  libraryId: 'claude-of-tanks-landing-r1',
   schemaVersion: 1,
-  source: 'Current R2 selection from first-party runtime captures and directed Scene Studio media',
+  source: 'Owner-directed selection from first-party Scene Studio and marketing-shot libraries',
   hero,
   featureReel,
   relocatedRails,
   winterDestructionRail: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
   mosaic,
-  studio,
+  studio: {
+    video: '/media/landing-r1/studio-leclerc-knockout.mp4',
+    poster: '/media/landing-r1/studio-leclerc-knockout.jpg',
+    width: sourceManifest.renderer.width,
+    height: sourceManifest.renderer.height,
+    durationMs: durationMs(studioVideo),
+    videoBytes: statSync(studioVideo).size,
+    posterBytes: statSync(studioPoster).size,
+    captureMode: sourceManifest.captureMode,
+    actors: sourceManifest.actors,
+    effects: sourceManifest.effects,
+  },
 };
 
 writeFileSync(join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -1131,9 +1131,13 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
 // F: { hatchX?, hatchZ, bowMG?, lights:{x,y,z,rx}, siren?,
 //      shackleZ, shackleY, grille:{z0,z1,y,rx?,x?,w?}, caps?, rearGrilleY? }
 // ---------------------------------------------------------------------------
-function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
-  const { box, cylY, cylZ, sph, torus, headlight, liftEye } = KIT;
-  const { bhw, deckAt, tailZ } = hull;
+function addUsCrewHatchesAndBowGun(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { box, cylY, cylZ, sph } = KIT;
+  const { deckAt } = hull;
   // driver (+ assistant) hatch discs — FLUSH (v6: the reference decks read
   // within ~0.03 m of the plate; the old proud hoods+periscopes cost the
   // whole mid-deck band)
@@ -1167,6 +1171,15 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
       P.add('hullDark', cylZ(0.024, 0.26, 8), F.bowMG[0], F.bowMG[1] + 0.03, F.bowMG[2] + 0.13, F.bowMG[3], 0, 0);
     }
   }
+}
+
+function addUsExteriorHullFittings(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { cylY, headlight, liftEye, torus } = KIT;
+  const { deckAt, tailZ } = hull;
   // headlight pods on the glacis
   for (const side of [-1, 1]) {
     headlight(P, side * F.lights.x, F.lights.y, F.lights.z, F.lights.rx, 0.05);
@@ -1178,6 +1191,15 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
     P.add('hullDetail', torus(0.06, 0.015, 10), side * 0.58, F.shackleY, F.shackleZ, Math.PI / 2, 0, 0);
     if (!F.noRearEyes) liftEye(P, 'hullDetail', side * 0.62, deckAt(tailZ + 0.25) - 0.02, tailZ + 0.15);
   }
+}
+
+function addUsEngineDeckAndRearGrille(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { box, cylY } = KIT;
+  const { deckAt, tailZ } = hull;
   // engine deck: framed louvred grille bays (kept within +0.03 of the plate)
   const gr = F.grille;
   const gm = (gr.z0 + gr.z1) / 2, gd = gr.z0 - gr.z1;
@@ -1204,6 +1226,12 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
   // rear plate: dark exhaust grille (kept on the rear face — never past the
   // tail tip when the hull plan tapers)
   P.add('hullDark', box(F.rearGrilleW ?? 1.24, 0.22, 0.03), 0, (F.rearGrilleY ?? deckAt(tailZ) - 0.32), F.rearGrilleZ ?? (tailZ - 0.02));
+}
+
+function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
+  addUsCrewHatchesAndBowGun(P, hull, F);
+  addUsExteriorHullFittings(P, hull, F);
+  addUsEngineDeckAndRearGrille(P, hull, F);
 }
 
 // ---------------------------------------------------------------------------
@@ -4088,13 +4116,13 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
   };
 }
 
-function finishM60Variant(
+function finishM60HullArmor(
   P: PattonBuilderPort,
   variant: string,
   deck: ProfileCurve,
+  a3: boolean,
 ): void {
-  const { box, cylY, cylZ } = KIT;
-  const a3 = variant === 'a3';
+  const { box } = KIT;
 
   // USMC RISE/P-style side protection hangs below the 1.79 m fender datum.
   // A visible rail and short hangers now carry the course; the previous
@@ -4151,7 +4179,9 @@ function finishM60Variant(
     blackOutlineStrips: 0,
     finish: 'vehicle-paint',
   });
+}
 
+function finishM60TurretArmor(P: PattonBuilderPort, a3: boolean): void {
   // Needle-casting cheek armor.  Every block is turret-owned, buried into
   // the swept cheek and rotates as part of the complete turret package.
   if (a3) {
@@ -4194,7 +4224,10 @@ function finishM60Variant(
       },
     };
   }
+}
 
+function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
+  const { box, cylY, cylZ } = KIT;
   // Variant-specific roof and fire-control grammar taken from the supplied
   // A1/A3 models.  Both retain the low M19/M85 station; the A1 keeps its
   // mantlet searchlight while A3 carries paired M239 banks, TTS head and
@@ -4259,7 +4292,9 @@ function finishM60Variant(
       duplicateHousingRemoved: true,
     } : null,
   };
+}
 
+function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
   const m2 = FITTINGS.americanM2({
@@ -4309,6 +4344,18 @@ function finishM60Variant(
     muzzleBoresDark: true,
     exposedWeaponsGunmetal: true,
   });
+}
+
+function finishM60Variant(
+  P: PattonBuilderPort,
+  variant: string,
+  deck: ProfileCurve,
+): void {
+  const a3 = variant === 'a3';
+  finishM60HullArmor(P, variant, deck, a3);
+  finishM60TurretArmor(P, a3);
+  finishM60VariantFireControl(P, a3);
+  finishM60RoofEquipment(P, a3);
 }
 
 function applyM60CompactScale(
@@ -4963,11 +5010,9 @@ function finishM60A2Variant(
 
 }
 
-function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
-  const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
+function addM60A2EngineDeck(P: PattonBuilderPort): void {
+  const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const hull = curveHull(P, cfg.hull);
-  usKit(P, hull, cfg.fit);
   // cambered engine crown (extract: shoulder 2.005 @ -0.66..-0.92 rising to
   // the 2.18 peak @ -2.20, easing 1.98 by the -3.60 rear plate; full height
   // only |x|<=0.45, wings taper to the 1.97 shoulder at +-0.95 — the ref
@@ -4999,6 +5044,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
       }
     }
   }
+}
+
+function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box } = KIT;
+  const slab = orientedSlab;
   // Full Starship upper-side course. The segmented roof plates begin on the
   // glacis shoulder, follow the deck rise and meet the raised rear sponson at
   // z=-0.92. Their inboard edge is buried in the 1.19 m hull band; the
@@ -5076,6 +5126,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
       mergedHullDrawCalls: 0,
     };
   }
+}
+
+function addM60A2HullFurniture(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box, cylZ } = KIT;
+  const slab = orientedSlab;
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
   // full-length side flap panels at 1.79-1.815 (ref front band 0.76..1.40
   // at +-1.81; stations carry the 3.63 width) — segmented <=0.44 m per the
@@ -5171,7 +5226,11 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
     P.add('hullDetail', box(0.24, 0.055, 0.30), side * 0.90, 1.632, 2.62);
     P.add('hullDetail', box(0.02, 0.10, 0.26), side * 1.00, 1.585, 2.62);
   }
+}
 
+function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
+  const slab = orientedSlab;
   const py = 1.90, pz = 0.38;
   P.turretG.position.set(0, py, pz);
   P.gunG.position.set(0, 2.27 - py, 1.55 - pz);
@@ -5351,6 +5410,15 @@ function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
   muzzleBore(P, { z: glen, r: 0.148 });
   finishM60A2Variant(P, glen, cfg.hull.deck);
   applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
+}
+
+function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+  const hull = curveHull(P, cfg.hull);
+  usKit(P, hull, cfg.fit);
+  addM60A2EngineDeck(P);
+  addM60A2ShoulderArmor(P, cfg);
+  addM60A2HullFurniture(P, cfg);
+  addM60A2TurretAndGun(P, cfg);
 }
 
 // ---------------------------------------------------------------------------

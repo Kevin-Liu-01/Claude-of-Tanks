@@ -39,18 +39,19 @@ assert.match(presentation, /\.v5-maker-mark\{[^}]*width:29px;[^}]*height:29px;/,
 assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
   'the local Three.js asset retains the official icon geometry');
 
-assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r2');
+assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
 assert.equal(manifest.hero.length, 6, 'hero has six reviewed in-engine stills');
-assert.deepEqual(manifest.hero.map((slide) => slide.src), [
-  '/media/showcase-r2/31_battle_steinburg.webp',
-  '/media/showcase-r2/29_battle_sirocco.webp',
-  '/media/showcase-r2/30_battle_frosthollow.webp',
-  '/media/showcase-r2/32_battle_verdant.webp',
-  '/media/showcase-r2/33_battle_saltmere.webp',
-  '/media/showcase-r2/40_battle_urban_hero.webp',
-], 'the six current R2 battle captures lead the hero in priority order');
-assert.ok(manifest.hero.every((slide) => slide.collection === 'battle'));
+assert.deepEqual(manifest.hero.slice(0, 4).map((slide) => slide.src), [
+  '/media/featured/f10_studio_urban_crossfire.webp',
+  '/media/featured/f9_studio_fjord_firefight.webp',
+  '/media/featured/f8_studio_m1_firefight.webp',
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
+], 'the four owner-selected battle captures lead the hero in priority order');
+assert.equal(manifest.hero.some((slide) => slide.src.includes('urban_hero_leo2a6')), false,
+  'the washed-out Leopard frame is retired from the hero');
+assert.ok(manifest.hero.some((slide) => slide.collection === 'action'));
+assert.ok(manifest.hero.some((slide) => slide.collection === 'foreground'));
 
 const heroMarkup = home.match(/<div class="v5-hero-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
 assert.equal(heroMarkup.includes('<video'), false, 'hero uses stills, not video');
@@ -114,13 +115,11 @@ for (const proxy of mobileVideoManifest.files) {
 }
 
 assert.equal(manifest.mosaic.length, 24);
-assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'live').length, 9);
-assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'vehicle').length, 3);
-assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'battle').length, 12);
+assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'action').length, 12);
+assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'foreground').length, 12);
 assert.equal(new Set(manifest.mosaic.map((shot) => shot.src)).size, manifest.mosaic.length);
-const mosaicMarkup = home.match(/<section class="v5-mosaic"[\s\S]*?<\/section>/)?.[0] || '';
 for (const shot of manifest.mosaic) {
-  assert.equal(mosaicMarkup.split(shot.src).length - 1, 1, `${shot.id} appears once in the bottom mosaic`);
+  assert.equal(home.split(shot.src).length - 1, 1, `${shot.id} appears once in the bottom mosaic`);
   const file = resolve(root, 'public', shot.src.replace(/^\//, ''));
   assert.ok((await stat(file)).size > 50_000, `${shot.id} is a substantial image`);
 }
@@ -140,4 +139,4 @@ for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes]
   assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
 }
 
-console.log('landing-media.selftest: single combat reel, R2 hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
+console.log('landing-media.selftest: single combat reel, owner-directed hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
