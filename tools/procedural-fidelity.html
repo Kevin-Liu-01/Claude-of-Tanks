@@ -31,6 +31,8 @@ import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
+import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
+import { requiredMinimumForQualityBar } from '/tools/geometry-gate-policy.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -234,11 +236,22 @@ const LOCAL_REFERENCE_OVERRIDES = {
   challenger1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  // The comparison asset's nominal Hull mesh rises to 2.475 m and contains
-  // upper fighting-compartment geometry, so its Hull/Turret node split is
-  // not a truthful component mask.  Whole silhouettes, stations, dimensions
-  // and articulation remain fully enforced.
-  leo2_revolution: { source:'glb', glb:{ path:'/models/community-candidates/leopard_revolution_repaired.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
+  // Owner-authoritative nested OBJ (2026-09-04). Its chassis_vlo node is a
+  // complete fused vehicle; the nominal chassis also contains upper kit.
+  // Keep the unaltered source topology in a local, ignored comparison GLB,
+  // with only documented real-dimension normalization. Whole silhouettes
+  // must reach the 92-point exemplar floor in every registered view.
+  // Regenerate with tools/revolution-source-oracle.py; see the source packet.
+  leo2_revolution: { source:'glb', qualityBar:'exemplar', glb:{
+    path:'/models/community-candidates/leopard_revolution_owner_2026.glb',
+    fixedMount:true, componentMasks:false, paintUntextured:true } },
+  // This intentionally inaccurate historical design is preserved, not rebuilt.
+  // Compare only to a hash-pinned first-party export of its original commit;
+  // a 99-point preservation pass makes NO real-world source-fidelity claim.
+  leo2_revolution_proto: { source:'glb', qualityBar:'preservation', comparisonPurpose:'preservation',
+    preservation:REVOLUTION_PROTO_BASELINE, glb:{
+      path:'/models/community-candidates/leo2_revolution_proto_preservation.glb',
+      turretNode:'^preserved_turret$', gunNode:'^preserved_gun$', autoPivot:true } },
   m1a1_aim: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a1_aim.glb', turretNode:'^Turret$', autoPivot:false, paintUntextured:true } },
   m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
@@ -637,6 +650,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
+const preservation = validatedPreservationOracle(source, id);
 window.__FIDELITY_SOURCE_PATH = source?.glb?.path || null;
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
 const referenceIds = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
@@ -657,7 +671,8 @@ if (params.has('registry')) {
   // Keep that discovery path independent of optional local GLB availability.
   window.__FIDELITY_READY = true;
 } else {
-document.querySelector('#title').textContent = `${spec.name} — reference vs authored procedural`;
+document.querySelector('#title').textContent = `${spec.name} — ${preservation ? 'historical first-party preservation (not source fidelity)' : 'reference vs authored procedural'}`;
+if (preservation) document.querySelector('.legend .ref').textContent = 'red = frozen first-party baseline';
 document.querySelector('#summary').textContent = source?.glb?.path || 'No sourced reference';
 
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true, powerPreference:'high-performance' });
@@ -777,8 +792,10 @@ const useHullLengthAnchor=source?.glb?.fidelityScaleAnchor === 'hullLength';
 const refAnchor=useHullLengthAnchor ? hullLength(reference) : refWidth;
 const procAnchor=useHullLengthAnchor ? hullLength(procedural) : procWidth;
 const targetAnchor=useHullLengthAnchor ? spec.dims.hullLengthM : spec.dims.widthM;
-reference.root.scale.multiplyScalar(safeScale(targetAnchor,refAnchor));
-procedural.root.scale.multiplyScalar(safeScale(targetAnchor,procAnchor));
+if (!preservation) {
+  reference.root.scale.multiplyScalar(safeScale(targetAnchor,refAnchor));
+  procedural.root.scale.multiplyScalar(safeScale(targetAnchor,procAnchor));
+}
 
 // Some recovered files use -Z as forward after their authored yaw.  Compare
 // the articulated gun centre with the turret centre and rotate the complete
@@ -1237,7 +1254,7 @@ const minView=Math.min(...Object.values(scoredAngleRows).map((row)=>row.score));
 // New or ground-up rebuilt vehicles can opt into the exemplar bar used for
 // AbramsX / Challenger 2 / Leclerc-class work.  It is intentionally stricter
 // than the legacy fleet floor and cannot be averaged away by one strong view.
-const requiredFidelity=source?.qualityBar==='exemplar'?92:90;
+const requiredFidelity=requiredMinimumForQualityBar(source?.qualityBar);
 const gatePassed=totalScore>=requiredFidelity && minView>=requiredFidelity;
 document.querySelector('#score').textContent=totalScore.toFixed(1);
 for (const [name,value] of Object.entries(scores)) {
@@ -1248,6 +1265,8 @@ for (const [name,value] of Object.entries(scores)) {
 
 window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
+  comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
+  ...(preservation ? { preservationBaseline:preservation } : {}),
   fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
   score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),requiredMinimum:requiredFidelity,qualityBar:source?.qualityBar||'fleet',gatePassed,
   angles:Object.fromEntries(Object.entries(scoredAngleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
@@ -1301,7 +1320,7 @@ window.__FIDELITY_REPORT={
     ) : null,
   },
   boxes:{
-    normalization:{ anchor:useHullLengthAnchor?'hullLength':'width', target:rounded(targetAnchor),
+    normalization:{ anchor:preservation?'none (immutable historical metres)':useHullLengthAnchor?'hullLength':'width', target:preservation?null:rounded(targetAnchor),
       referenceRaw:rounded(refAnchor), proceduralRaw:rounded(procAnchor) },
     reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),
     procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded),
@@ -1838,19 +1857,15 @@ if (params.get('geo')) {
     return a === null ? 0 : Math.abs(b - a);
   };
   const dimRows = [];
-  const pub = spec.dims || {};
+  const specDimensions = spec.dims || {};
   const dimCheck = (name, actual, published) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
     dimRows.push({ name, actual: +actual.toFixed(2), published, pct: +pct.toFixed(2) });
   };
-  if (procExt) dimCheck('heightM', procExt.h,
-    pub.silhouetteHeightM ?? pub.heightM);
-  if (procExt) dimCheck('hullLengthM', procExt.len,
-    pub.silhouetteHullLengthM ?? pub.hullLengthM);
-  const pixelSpanZ = (part) => {
+  const pixelSpanZ = (part, visual = procedural, other = reference) => {
     const cam = camsG.side;
-    const m = gMask(procedural, reference, cam, part);
+    const m = gMask(visual, other, cam, part);
     const px = 2 * cam.right / GSIZE;
     let minX = null, maxX = null;
     for (let x = 0; x < GSIZE; x++) {
@@ -1862,15 +1877,13 @@ if (params.get('geo')) {
     }
     return minX === null ? 0 : (maxX - minX + 1) * px;
   };
-  dimCheck('overallLengthM', pixelSpanZ('whole'),
-    pub.silhouetteOverallLengthM ?? pub.overallLengthM);
   // plan columns run across the WIDTH axis; substantial band = the hull body
   // pixel-resolution width: trace columns quantize to ~11cm when a long
   // gun pins the plan frame; lit-pixel extent resolves to ~2-3cm. The
   // 0.35m band rule applies per pixel column so whip antennas don't count.
-  const pixelWidth = (() => {
+  const measurePixelWidth = (visual, other) => {
     const cam = camsG.plan;
-    const m = gMask(procedural, reference, cam, 'whole');
+    const m = gMask(visual, other, cam, 'whole');
     const half = cam.right;
     const px = 2 * half / GSIZE;
     let minX = null, maxX = null;
@@ -1882,8 +1895,19 @@ if (params.get('geo')) {
       maxX = x;
     }
     return minX === null ? 0 : (maxX - minX + 1) * px;
-  })();
-  dimCheck('widthM', pixelWidth, pub.silhouetteWidthM ?? pub.widthM);
+  };
+  // Ordinary source comparisons retain published dimensions. Only the pinned
+  // historical Proto compares physical measurements of the frozen original,
+  // using the identical cameras/masks and no independent width normalization.
+  const pub = preservationDimensionTargets(source, id, preservation ? {
+    heightM:refExt?.h, hullLengthM:refExt?.len,
+    overallLengthM:pixelSpanZ('whole', reference, procedural),
+    widthM:measurePixelWidth(reference, procedural),
+  } : {}, specDimensions);
+  if (procExt) dimCheck('heightM', procExt.h, pub.silhouetteHeightM ?? pub.heightM);
+  if (procExt) dimCheck('hullLengthM', procExt.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
+  dimCheck('overallLengthM', pixelSpanZ('whole'), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+  dimCheck('widthM', measurePixelWidth(procedural, reference), pub.silhouetteWidthM ?? pub.widthM);
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
   const islands = (raw) => {
@@ -1968,6 +1992,9 @@ if (params.get('geo')) {
   window.__GEO_CURVES = curves;                                              // italy §5.248: raw trace export for builder-lane column decode (score-neutral)
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
+    comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
+    dimensionTarget:preservation ? 'hash-pinned historical first-party baseline' : 'published specification',
+    ...(preservation ? { preservationBaseline:preservation } : {}),
     qualityBar: source?.qualityBar || 'fleet', gatePassed: geoMin >= requiredFidelity,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
     wholeShapeMetric: geometryComponentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',

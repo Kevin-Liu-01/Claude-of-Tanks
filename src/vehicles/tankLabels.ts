@@ -127,6 +127,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Leopard 2A6 UA', shortName: 'Leopard 2A6 UA',
     searchAliases: ['Ukrainian Leopard 2A6', 'Leopard 2A6 Ukraine', '2A6 UA'],
   },
+  leo2_revolution_proto: {
+    displayName: 'Leopard 2 Revolution Proto', shortName: 'Revolution Proto',
+    searchAliases: ['Leopard 2 Revolution Prototype', 'Revolution Prototype'],
+  },
   bmp3_rok: {
     displayName: 'BMP-3 (ROK)', shortName: 'BMP-3 ROK',
     searchAliases: ['South Korean BMP-3', 'ROK BMP-3'],

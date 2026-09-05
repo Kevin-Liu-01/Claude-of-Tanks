@@ -2543,7 +2543,7 @@ export function domeRailRu(
 
 // K-5/K-1/relikt/erawa cheek arrays seated on a MEASURED ring profile.
 export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind): void {
-  P.visualEraCluster(`ru-${kind}-turret-era`, 'turret', () => {
+  const buildRussianEraCheekCluster = (): void => {
   const { box } = KIT;
   const skinD = (t: number, y: number): number => {
     const r = ringSkin(p.rings!, y);
@@ -2588,495 +2588,576 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
     P.add(bucket, box(w, hgt, d), x, y, z, tilt, ry, 0);
     if (layered) addCover(x, y, z, w, hgt, d, tilt, ry, 0);
   };
-  if (kind === 'k5') {
-    // Kontakt-5 clamshell: one wedge course per cheek meeting at the mantlet,
-    // welded end caps, dark course seam + proud flank tiles. The wedges own
-    // the measured front-arc wings (tips near the full turret-mask width,
-    // hanging to just above the fender line).
-    for (const s of [1, -1]) {
-      // k5T/k5Out (r10): arc seat + standoff — the t90a clamshell leaves
-      // reach 0.4 m proud of the cheeks toward the mantlet (ref plan front
-      // 2.48-2.53 at |x| 0.7-0.9)
-      const t = Math.PI / 2 + s * (p.k5T ?? 0.55);
-      const yc = p.k5Y ?? 0.16;
-      const D = skinD(t, yc) + (p.k5Out ?? -0.04);
-      const x = Math.cos(t) * D, z = Math.sin(t) * D;
-      // k5Yaw (r12): rake the leaf forward-inboard toward the mantlet
-      // (t90a ref: leaf runs (±1.29, 1.36) -> (±0.61, 2.35)); k5Rise lifts
-      // the inner end (ref upper edge 2.004 at the cheek).
-      const ry = Math.PI / 2 - t - s * (p.k5Yaw ?? 0);
-      const L = p.k5Len ?? 1.30;
-      const H = p.k5H ?? 0.40;
-      const rz = s * (p.k5Rise ?? 0);
-      // k5Pitch / k5TileY (t90a_vladimir rTAIL r13b, opt-in): leaf pitch and
-      // flank-tile seat height — defaults byte-identical for every caller.
-      const px5 = p.k5Pitch ?? -0.40;
-      // k5D (§4.999991 russia fix-round, opt-in): leaf DEPTH along its own
-      // local z — the verdict's "detached planks with unsupported tips"
-      // read comes from the square-section plank floating at its k5Out
-      // standoff. A deep leaf keeps the FRONT face plane byte-identical
-      // (center retreats along local -z by (k5D-H)/2) while the body runs
-      // back INTO the dome skin — a broad plate hugging the casting.
-      // Default k5D = H is byte-identical for every legacy caller.
-      const k5D = p.k5D ?? H;
-      const dGrow = (k5D - H) / 2;
-      // box local +z in world under XYZ Euler (rx=px5, ry, rz~0):
-      // dir = (sin ry, -cos ry * sin px5, cos ry * cos px5)
-      const dzx = Math.sin(ry) * dGrow;
-      const dzy = -Math.cos(ry) * Math.sin(px5) * dGrow;
-      const dzz = Math.cos(ry) * Math.cos(px5) * dGrow;
-      // k5Bucket (§4.999991, opt-in): the real K-5 wedges wear the SCHEME
-      // PAINT (t72b3m rBucket law — the spareTrack slot reads grey-steel);
-      // material-only, mask-identical. Default byte-identical.
-      const k5B = p.k5Bucket ?? 'turretTrack';
-      // TIP §5.29 k5LeafOff (opt-in): the clamshell leaves are replaced by
-      // the 'tip' panel pair — the flank tiles keep their seats EXACTLY.
-      // Absent = byte-identical for every legacy caller.
-      if (!p.k5LeafOff) {
-      P.add(k5B, box(L, H, k5D), x - dzx, yc - dzy, z - dzz, px5, ry, rz);
-      addCover(x - dzx, yc - dzy, z - dzz, L, H, k5D, px5, ry, rz);
-      P.add('turretDark', box(L + 0.01, 0.035, H - 0.04), x, yc + H / 2, z, px5, ry, rz);
-      // k5Seg (§B3.1 prism sweep 2026-08-06, opt-in): the real K-5 clamshell
-      // is SECTIONED — n-1 dark seams across the leaf face plus a lower lip
-      // strip. Seams FLUSH with the leaf face (outer face at exactly H/2 —
-      // zero silhouette growth; the r1 +4 mm proud strips cost front_whole
-      // 0.5 on vladimir). Defaults byte-identical for every legacy caller.
-      if (p.k5Seg) {
-        for (let gi = 1; gi < p.k5Seg; gi++) {
-          const lx = -L / 2 + (L * gi) / p.k5Seg;
-          P.add('turretDark', KIT.xform(box(0.022, H - 0.024, 0.008), lx, 0, H / 2 - 0.004), x, yc, z, px5, ry, rz);
-        }
-        P.add('turretDark', KIT.xform(box(L - 0.03, 0.03, 0.008), 0, -H / 2 + 0.035, H / 2 - 0.004), x, yc, z, px5, ry, rz);
-      }
-      // k5Lower (§4.999991 t90a fix-round, opt-in): the real clamshell is
-      // TWO leaves — a steeper lower plate under the upper one doubles the
-      // wedge face (the verdict's "broad plates" read) while both stay
-      // inside the certified rotated x-envelope (a broad-H single plank
-      // spilled its corners into the guarded ±1.30-1.46 plan cliff, tried
-      // and reverted). Bottom edge holds the certified 1.40-1.42w floor.
-      if (p.k5Lower) {
-        const yl = yc - (p.k5Lower.dy ?? 0.13);
-        const Dl = D - (p.k5Lower.tuck ?? 0.05);
-        const hl = p.k5Lower.h ?? 0.16;
-        P.add(p.k5Bucket ?? 'turretTrack', box(L * 0.94, hl, hl), Math.cos(t) * Dl, yl, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
-        addCover(Math.cos(t) * Dl, yl, Math.sin(t) * Dl,
-          L * 0.94, hl, hl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
-        P.add('turretDark', box(L * 0.94 + 0.01, 0.03, hl - 0.03), Math.cos(t) * Dl, yl - hl / 2, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
-      }
-      const bx = Math.cos(ry), bz = -Math.sin(ry);
-      // k5CapIn (t90a turret-lane 2026-08-06, opt-in): end-cap seat along
-      // the leaf axis — default +0.02 byte-identical; t90a pulls the outer
-      // cap in so its corner stops partial-lighting the ±1.46 plan window.
-      const capIn = p.k5CapIn ?? 0.02;
-      for (const e of [-1, 1]) {
-        P.add(p.k5Bucket ?? 'turretTrack', box(0.06, H - 0.02, H - 0.02),
-          x - e * bx * (L / 2 + capIn), yc + e * Math.sin(rz) * (L / 2), z - e * bz * (L / 2 + capIn), px5, ry, rz);
-      }
-      } // end !k5LeafOff (TIP §5.29)
-      // A faceted casting cannot be fitted from the rounded ring proxy above.
-      // Variant-owned surface seats provide one point and outward normal on
-      // each real carrier face. Build a frame whose local +Z is the carrier
-      // normal and whose local +Y is vehicle-up projected onto that face;
-      // row offsets then run along the armor instead of vertically through it.
-      const surfaceSeats = p.k5FlankSurfaceSeats;
-      if (surfaceSeats) {
-        const rows = p.k5FlankSurfaceRowOffsets ?? [0];
-        const tileWidth = p.k5TileWidth ?? 0.34;
-        const tileHeight = p.k5TileHeight ?? 0.30;
-        const tileDepth = p.k5TileDepth ?? 0.11;
-        const embed = p.k5TileEmbed ?? 0.015;
-        const backerDepth = p.k5TileBackerDepth ?? 0.06;
-        const backerOverlap = p.k5TileBackerOverlap ?? 0.015;
-        const normal = new THREE.Vector3();
-        const upTangent = new THREE.Vector3();
-        const acrossTangent = new THREE.Vector3();
-        const point = new THREE.Vector3();
-        const rotation = new THREE.Matrix4();
-        const euler = new THREE.Euler();
-        for (const seat of surfaceSeats) {
-          normal.set(s * seat.normal[0], seat.normal[1], seat.normal[2]).normalize();
-          upTangent.set(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
-          acrossTangent.crossVectors(upTangent, normal).normalize();
-          rotation.makeBasis(acrossTangent, upTangent, normal);
-          euler.setFromRotationMatrix(rotation, 'XYZ');
-          point.set(s * seat.point[0], seat.point[1], seat.point[2]);
-          for (const rowOffset of rows) {
-            const carrierPoint = point.clone().addScaledVector(upTangent, rowOffset);
-            const bodyCenter = carrierPoint.clone().addScaledVector(
-              normal, tileDepth / 2 - embed,
-            );
-            if (p.k5LayeredFlankTiles) {
-              const backerCenter = carrierPoint.clone().addScaledVector(
-                normal, -(backerDepth / 2 + embed - backerOverlap),
-              );
-              P.add('turretDark', box(tileWidth * 0.88, tileHeight * 0.88, backerDepth),
-                backerCenter.x, backerCenter.y, backerCenter.z,
-                euler.x, euler.y, euler.z);
+  const buildRussianEraCheekClusterTurretStage1 = (): void => {
+    if (kind === 'k5') {
+      // Kontakt-5 clamshell: one wedge course per cheek meeting at the mantlet,
+      // welded end caps, dark course seam + proud flank tiles. The wedges own
+      // the measured front-arc wings (tips near the full turret-mask width,
+      // hanging to just above the fender line).
+      const buildRussianEraCheekClusterTurretCourse1 = (): void => {
+        for (const s of [1, -1]) {
+          // k5T/k5Out (r10): arc seat + standoff — the t90a clamshell leaves
+          // reach 0.4 m proud of the cheeks toward the mantlet (ref plan front
+          // 2.48-2.53 at |x| 0.7-0.9)
+          const buildRussianEraCheekClusterTurretCourse1Iteration1 = (): void => {
+            const t = Math.PI / 2 + s * (p.k5T ?? 0.55);
+            const yc = p.k5Y ?? 0.16;
+            const D = skinD(t, yc) + (p.k5Out ?? -0.04);
+            const x = Math.cos(t) * D, z = Math.sin(t) * D;
+            // k5Yaw (r12): rake the leaf forward-inboard toward the mantlet
+            // (t90a ref: leaf runs (±1.29, 1.36) -> (±0.61, 2.35)); k5Rise lifts
+            // the inner end (ref upper edge 2.004 at the cheek).
+            const ry = Math.PI / 2 - t - s * (p.k5Yaw ?? 0);
+            const L = p.k5Len ?? 1.30;
+            const H = p.k5H ?? 0.40;
+            const rz = s * (p.k5Rise ?? 0);
+            // k5Pitch / k5TileY (t90a_vladimir rTAIL r13b, opt-in): leaf pitch and
+            // flank-tile seat height — defaults byte-identical for every caller.
+            const px5 = p.k5Pitch ?? -0.40;
+            // k5D (§4.999991 russia fix-round, opt-in): leaf DEPTH along its own
+            // local z — the verdict's "detached planks with unsupported tips"
+            // read comes from the square-section plank floating at its k5Out
+            // standoff. A deep leaf keeps the FRONT face plane byte-identical
+            // (center retreats along local -z by (k5D-H)/2) while the body runs
+            // back INTO the dome skin — a broad plate hugging the casting.
+            // Default k5D = H is byte-identical for every legacy caller.
+            const k5D = p.k5D ?? H;
+            const dGrow = (k5D - H) / 2;
+            // box local +z in world under XYZ Euler (rx=px5, ry, rz~0):
+            // dir = (sin ry, -cos ry * sin px5, cos ry * cos px5)
+            const dzx = Math.sin(ry) * dGrow;
+            const dzy = -Math.cos(ry) * Math.sin(px5) * dGrow;
+            const dzz = Math.cos(ry) * Math.cos(px5) * dGrow;
+            // k5Bucket (§4.999991, opt-in): the real K-5 wedges wear the SCHEME
+            // PAINT (t72b3m rBucket law — the spareTrack slot reads grey-steel);
+            // material-only, mask-identical. Default byte-identical.
+            const k5B = p.k5Bucket ?? 'turretTrack';
+            // TIP §5.29 k5LeafOff (opt-in): the clamshell leaves are replaced by
+            // the 'tip' panel pair — the flank tiles keep their seats EXACTLY.
+            // Absent = byte-identical for every legacy caller.
+            if (!p.k5LeafOff) {
+            const buildRussianEraCheekClusterTurretCourse15 = (): void => {
+              const buildRussianEraCheekClusterTurretCourse9 = (): void => {
+                P.add(k5B, box(L, H, k5D), x - dzx, yc - dzy, z - dzz, px5, ry, rz);
+                addCover(x - dzx, yc - dzy, z - dzz, L, H, k5D, px5, ry, rz);
+                P.add('turretDark', box(L + 0.01, 0.035, H - 0.04), x, yc + H / 2, z, px5, ry, rz);
+                // k5Seg (§B3.1 prism sweep 2026-08-06, opt-in): the real K-5 clamshell
+                // is SECTIONED — n-1 dark seams across the leaf face plus a lower lip
+                // strip. Seams FLUSH with the leaf face (outer face at exactly H/2 —
+                // zero silhouette growth; the r1 +4 mm proud strips cost front_whole
+                // 0.5 on vladimir). Defaults byte-identical for every legacy caller.
+                if (p.k5Seg) {
+                  for (let gi = 1; gi < p.k5Seg; gi++) {
+                    const lx = -L / 2 + (L * gi) / p.k5Seg;
+                    P.add('turretDark', KIT.xform(box(0.022, H - 0.024, 0.008), lx, 0, H / 2 - 0.004), x, yc, z, px5, ry, rz);
+                  }
+                  P.add('turretDark', KIT.xform(box(L - 0.03, 0.03, 0.008), 0, -H / 2 + 0.035, H / 2 - 0.004), x, yc, z, px5, ry, rz);
+                }
+                // k5Lower (§4.999991 t90a fix-round, opt-in): the real clamshell is
+                // TWO leaves — a steeper lower plate under the upper one doubles the
+                // wedge face (the verdict's "broad plates" read) while both stay
+                // inside the certified rotated x-envelope (a broad-H single plank
+                // spilled its corners into the guarded ±1.30-1.46 plan cliff, tried
+                // and reverted). Bottom edge holds the certified 1.40-1.42w floor.
+                if (p.k5Lower) {
+                  const yl = yc - (p.k5Lower.dy ?? 0.13);
+                  const Dl = D - (p.k5Lower.tuck ?? 0.05);
+                  const hl = p.k5Lower.h ?? 0.16;
+                  P.add(p.k5Bucket ?? 'turretTrack', box(L * 0.94, hl, hl), Math.cos(t) * Dl, yl, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
+                  addCover(Math.cos(t) * Dl, yl, Math.sin(t) * Dl,
+                    L * 0.94, hl, hl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
+                  P.add('turretDark', box(L * 0.94 + 0.01, 0.03, hl - 0.03), Math.cos(t) * Dl, yl - hl / 2, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
+                }
+                const bx = Math.cos(ry), bz = -Math.sin(ry);
+                // k5CapIn (t90a turret-lane 2026-08-06, opt-in): end-cap seat along
+                // the leaf axis — default +0.02 byte-identical; t90a pulls the outer
+                // cap in so its corner stops partial-lighting the ±1.46 plan window.
+                const capIn = p.k5CapIn ?? 0.02;
+                for (const e of [-1, 1]) {
+                  P.add(p.k5Bucket ?? 'turretTrack', box(0.06, H - 0.02, H - 0.02),
+                    x - e * bx * (L / 2 + capIn), yc + e * Math.sin(rz) * (L / 2), z - e * bz * (L / 2 + capIn), px5, ry, rz);
+                }
+              };
+              buildRussianEraCheekClusterTurretCourse9();
+            };
+            buildRussianEraCheekClusterTurretCourse15();
+            } // end !k5LeafOff (TIP §5.29)
+            // A faceted casting cannot be fitted from the rounded ring proxy above.
+            // Variant-owned surface seats provide one point and outward normal on
+            // each real carrier face. Build a frame whose local +Z is the carrier
+            // normal and whose local +Y is vehicle-up projected onto that face;
+            // row offsets then run along the armor instead of vertically through it.
+            const surfaceSeats = p.k5FlankSurfaceSeats;
+            const addAuthoredFlankSurfaceSeats = (): boolean => {
+              if (!surfaceSeats) return false;
+              const rows = p.k5FlankSurfaceRowOffsets ?? [0];
+              const tileWidth = p.k5TileWidth ?? 0.34;
+              const tileHeight = p.k5TileHeight ?? 0.30;
+              const tileDepth = p.k5TileDepth ?? 0.11;
+              const embed = p.k5TileEmbed ?? 0.015;
+              const backerDepth = p.k5TileBackerDepth ?? 0.06;
+              const backerOverlap = p.k5TileBackerOverlap ?? 0.015;
+              const normal = new THREE.Vector3();
+              const upTangent = new THREE.Vector3();
+              const acrossTangent = new THREE.Vector3();
+              const point = new THREE.Vector3();
+              const rotation = new THREE.Matrix4();
+              const euler = new THREE.Euler();
+              for (const seat of surfaceSeats) {
+                normal.set(s * seat.normal[0], seat.normal[1], seat.normal[2]).normalize();
+                upTangent.set(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+                acrossTangent.crossVectors(upTangent, normal).normalize();
+                rotation.makeBasis(acrossTangent, upTangent, normal);
+                euler.setFromRotationMatrix(rotation, 'XYZ');
+                point.set(s * seat.point[0], seat.point[1], seat.point[2]);
+                for (const rowOffset of rows) {
+                  const carrierPoint = point.clone().addScaledVector(upTangent, rowOffset);
+                  const bodyCenter = carrierPoint.clone().addScaledVector(
+                    normal, tileDepth / 2 - embed,
+                  );
+                  if (p.k5LayeredFlankTiles) {
+                    const backerCenter = carrierPoint.clone().addScaledVector(
+                      normal, -(backerDepth / 2 + embed - backerOverlap),
+                    );
+                    P.add('turretDark', box(tileWidth * 0.88, tileHeight * 0.88, backerDepth),
+                      backerCenter.x, backerCenter.y, backerCenter.z,
+                      euler.x, euler.y, euler.z);
+                  }
+                  P.add(k5B, box(tileWidth, tileHeight, tileDepth),
+                    bodyCenter.x, bodyCenter.y, bodyCenter.z,
+                    euler.x, euler.y, euler.z);
+                  addCover(bodyCenter.x, bodyCenter.y, bodyCenter.z,
+                    tileWidth, tileHeight, tileDepth, euler.x, euler.y, euler.z);
+                }
+              }
+              return true;
+            };
+            if (addAuthoredFlankSurfaceSeats()) return;
+            for (let i = 0; i < 3; i++) {
+              const buildRussianEraCheekClusterTurretCourse16 = (): void => {
+                const buildRussianEraCheekClusterTurretCourse10 = (): void => {
+                  const tileAngle = 0.12 + i * 0.17;
+                  // Some recovered T-90 prints encoded the second flank bank by
+                  // negating the arc angle.  That keeps cos(t) positive, so all six
+                  // blocks land on vehicle-right (three of them behind the trunnion).
+                  // Opt-in mirroring places the opposite bank on the actual left
+                  // cheek while preserving the legacy byte layout for every caller.
+                  const tf = p.k5MirrorFlankTiles
+                    ? (s > 0 ? tileAngle : Math.PI - tileAngle)
+                    : s * tileAngle;
+                  const baseTileY = p.k5TileY ?? 0.26;
+                  const rowOffsets = p.k5FlankRowOffsets ?? [0];
+                  for (const rowOffset of rowOffsets) {
+                    const tY = baseTileY + rowOffset;
+                    const tileDist = skinD(tf, tY) + (p.k5TileOut ?? 0.02);
+                    if (p.k5FlushFlankTiles) {
+                      // Fit the broad rear face to the upper cheek rather than standing
+                      // the cassette vertically beside it.  The pitch/yaw progression
+                      // follows the faceted shoulder normals; a deeper cassette buries
+                      // its inner course through the armor skin and removes the visible
+                      // air seam without increasing the exterior standoff.
+                      const tileYaw = s * ((p.k5TileYaw0 ?? 0.36) + i * (p.k5TileYawStep ?? 0.12));
+                      const tilePitch = p.k5TilePitch ?? -1.05;
+                      const tileDepth = p.k5TileDepth ?? 0.11;
+                      if (p.k5LayeredFlankTiles) {
+                        // A buried backing shoe follows the exact cassette transform.
+                        // Its outer face overlaps the ERA inner face by 15 mm, so the
+                        // visible two-row grid has a real load path into the cheek
+                        // rather than reading as a necklace of hovering blocks.
+                        P.add('turretDark', KIT.xform(box(0.30, 0.26, 0.06), 0, 0, -0.07),
+                          Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
+                          tilePitch, tileYaw, 0);
+                      }
+                      P.add(k5B, box(0.34, 0.30, tileDepth),
+                        Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
+                        tilePitch, tileYaw, 0);
+                      addCover(Math.cos(tf) * tileDist, tY,
+                        Math.sin(tf) * tileDist + (p.rCz ?? 0),
+                        0.34, 0.30, tileDepth, tilePitch, tileYaw, 0);
+                    } else {
+                      put(tf, tY, 0.34, 0.30, 0.07, -0.08, k5B, tileDist);
+                    }
+                  }
+                };
+                buildRussianEraCheekClusterTurretCourse10();
+              };
+              buildRussianEraCheekClusterTurretCourse16();
             }
-            P.add(k5B, box(tileWidth, tileHeight, tileDepth),
-              bodyCenter.x, bodyCenter.y, bodyCenter.z,
-              euler.x, euler.y, euler.z);
-            addCover(bodyCenter.x, bodyCenter.y, bodyCenter.z,
-              tileWidth, tileHeight, tileDepth, euler.x, euler.y, euler.z);
-          }
+          };
+          buildRussianEraCheekClusterTurretCourse1Iteration1();
         }
-        continue;
-      }
-      for (let i = 0; i < 3; i++) {
-        const tileAngle = 0.12 + i * 0.17;
-        // Some recovered T-90 prints encoded the second flank bank by
-        // negating the arc angle.  That keeps cos(t) positive, so all six
-        // blocks land on vehicle-right (three of them behind the trunnion).
-        // Opt-in mirroring places the opposite bank on the actual left
-        // cheek while preserving the legacy byte layout for every caller.
-        const tf = p.k5MirrorFlankTiles
-          ? (s > 0 ? tileAngle : Math.PI - tileAngle)
-          : s * tileAngle;
-        const baseTileY = p.k5TileY ?? 0.26;
-        const rowOffsets = p.k5FlankRowOffsets ?? [0];
-        for (const rowOffset of rowOffsets) {
-          const tY = baseTileY + rowOffset;
-          const tileDist = skinD(tf, tY) + (p.k5TileOut ?? 0.02);
-          if (p.k5FlushFlankTiles) {
-            // Fit the broad rear face to the upper cheek rather than standing
-            // the cassette vertically beside it.  The pitch/yaw progression
-            // follows the faceted shoulder normals; a deeper cassette buries
-            // its inner course through the armor skin and removes the visible
-            // air seam without increasing the exterior standoff.
-            const tileYaw = s * ((p.k5TileYaw0 ?? 0.36) + i * (p.k5TileYawStep ?? 0.12));
-            const tilePitch = p.k5TilePitch ?? -1.05;
-            const tileDepth = p.k5TileDepth ?? 0.11;
-            if (p.k5LayeredFlankTiles) {
-              // A buried backing shoe follows the exact cassette transform.
-              // Its outer face overlaps the ERA inner face by 15 mm, so the
-              // visible two-row grid has a real load path into the cheek
-              // rather than reading as a necklace of hovering blocks.
-              P.add('turretDark', KIT.xform(box(0.30, 0.26, 0.06), 0, 0, -0.07),
-                Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
-                tilePitch, tileYaw, 0);
+      };
+      buildRussianEraCheekClusterTurretCourse1();
+    } else if (kind === 'k1') {
+      // K-1 brick field over the whole front arc, ring to shoulder (the MV
+      // turret wears 3 tall courses wrapping the sight housings).
+      // k1OutI (t62mv1 r3, opt-in): PER-ARC-INDEX skin offsets — the ref K-1
+      // front courses stand proud toward the mantlet (plan 2.03-2.16 at
+      // |x| 0.3-0.6) while the flank arcs tuck to the casting; one scalar
+      // k1Out cannot follow it. Default byte-identical for every caller.
+      // CHEV k1Chevron (§5.14 owner '<' order 2026-08-07, opt-in): the front
+      // cheek bricks leave the ring arc and form TWO STRAIGHT BANKS sweeping
+      // back from the gun center in PLAN — the buildT90A/buildT90AVladimir
+      // k5Yaw arrow grammar, brick-built. Bank anchor = the brick-0 arc seat
+      // (self-derived from the same skinD math, so the certified inner-front
+      // extent holds); every bank brick shares the bank yaw (ry = -s*yaw, k5
+      // sign convention); rows stack plumb on one plan line (the real K-1
+      // cheek walls are planar frames, not skin shingles) with a small
+      // per-row inward tuck. Arc bricks at i >= arcFrom keep their legacy
+      // ring seats (the flank wrap the real fits carry). A thin dark backer
+      // frame bridges the bank to the casting (§B2 attached read) and shows
+      // through the inter-brick gaps as the K-1 seam grammar. Defaults
+      // byte-identical: absent param reproduces the legacy arc exactly.
+      const buildRussianEraCheekClusterTurretCourse2 = (): void => {
+        const C = p.k1Chevron;
+        for (const s of [1, -1]) {
+          const buildRussianEraCheekClusterTurretCourse2Iteration1 = (): void => {
+            const bank = C ? (() => {
+              const y0 = p.k1Y ?? 0.15;
+              const t0 = Math.PI / 2 + s * (C.t0 ?? p.k1T0 ?? 0.22);
+              const d0 = skinD(t0, y0) + (C.out ?? p.k1OutI?.[0] ?? p.k1Out ?? 0.03);
+              return {
+                ax: Math.abs(Math.cos(t0) * d0) + (C.inX ?? 0),
+                z0: Math.sin(t0) * d0 + (p.rCz ?? 0) + (C.inZ ?? 0),
+                a: C.yaw,
+              };
+            })() : null;
+            const rowsN = C?.rows ?? 3;
+            for (let row = 0; row < 3; row++) {
+              const buildRussianEraCheekClusterTurretCourse2Iteration1Iteration1 = (): void => {
+                const y = (p.k1Y ?? 0.15) + row * (p.k1Pitch ?? 0.27);
+                for (let i = 0; i < (p.k1N ?? 4); i++) {
+                  const buildRussianEraCheekClusterTurretCourse2Iteration1Iteration1Iteration1 = (): void => {
+                    const usesChevronBank = (): boolean => Boolean(
+                      C && bank
+                      && i < (C.arcFrom ?? (p.k1N ?? 4))
+                      && !(C.arcTop && row >= rowsN),
+                    );
+                    if (usesChevronBank()) {
+                      const bankConfig = C!;
+                      const bankSeat = bank!;
+                      // TIP §5.29 banksOff (opt-in): the banked bricks are replaced by
+                      // the 'tip' panel pair — arc bricks (i >= arcFrom) and arcTop
+                      // rows keep their seats EXACTLY. Absent = byte-identical.
+                      if (row >= rowsN || bankConfig.banksOff) return;
+                      const along = (bankConfig.d0 ?? 0.06) + i * (bankConfig.pitch ?? 0.30);
+                      const tuck = row * (bankConfig.rowTuck ?? 0.02);
+                      const bx = bankSeat.ax + along * Math.cos(bankSeat.a) - tuck * Math.sin(bankSeat.a);
+                      const bz = bankSeat.z0 - along * Math.sin(bankSeat.a) - tuck * Math.cos(bankSeat.a);
+                      P.add(bankConfig.bucket ?? p.k1Bucket ?? 'turretTrack', box(bankConfig.bw ?? 0.28, bankConfig.bh ?? (p.k1H ?? 0.24), bankConfig.bd ?? 0.15),
+                        -s * bx, y, bz, (bankConfig.tilt ?? -0.20) - row * (bankConfig.tiltRow ?? 0.07), -s * bankSeat.a, 0);
+                      addCover(-s * bx, y, bz,
+                        bankConfig.bw ?? 0.28, bankConfig.bh ?? (p.k1H ?? 0.24), bankConfig.bd ?? 0.15,
+                        (bankConfig.tilt ?? -0.20) - row * (bankConfig.tiltRow ?? 0.07), -s * bankSeat.a, 0);
+                    } else {
+                      const buildRussianEraCheekClusterTurretCourse18 = (): void => {
+                        const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
+                        put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09,
+                          p.k1Bucket ?? 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
+                      };
+                      buildRussianEraCheekClusterTurretCourse18();
+                    }
+                  };
+                  buildRussianEraCheekClusterTurretCourse2Iteration1Iteration1Iteration1();
+                }
+              };
+              buildRussianEraCheekClusterTurretCourse2Iteration1Iteration1();
             }
-            P.add(k5B, box(0.34, 0.30, tileDepth),
-              Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
-              tilePitch, tileYaw, 0);
-            addCover(Math.cos(tf) * tileDist, tY,
-              Math.sin(tf) * tileDist + (p.rCz ?? 0),
-              0.34, 0.30, tileDepth, tilePitch, tileYaw, 0);
-          } else {
-            put(tf, tY, 0.34, 0.30, 0.07, -0.08, k5B, tileDist);
-          }
-        }
-      }
-    }
-  } else if (kind === 'k1') {
-    // K-1 brick field over the whole front arc, ring to shoulder (the MV
-    // turret wears 3 tall courses wrapping the sight housings).
-    // k1OutI (t62mv1 r3, opt-in): PER-ARC-INDEX skin offsets — the ref K-1
-    // front courses stand proud toward the mantlet (plan 2.03-2.16 at
-    // |x| 0.3-0.6) while the flank arcs tuck to the casting; one scalar
-    // k1Out cannot follow it. Default byte-identical for every caller.
-    // CHEV k1Chevron (§5.14 owner '<' order 2026-08-07, opt-in): the front
-    // cheek bricks leave the ring arc and form TWO STRAIGHT BANKS sweeping
-    // back from the gun center in PLAN — the buildT90A/buildT90AVladimir
-    // k5Yaw arrow grammar, brick-built. Bank anchor = the brick-0 arc seat
-    // (self-derived from the same skinD math, so the certified inner-front
-    // extent holds); every bank brick shares the bank yaw (ry = -s*yaw, k5
-    // sign convention); rows stack plumb on one plan line (the real K-1
-    // cheek walls are planar frames, not skin shingles) with a small
-    // per-row inward tuck. Arc bricks at i >= arcFrom keep their legacy
-    // ring seats (the flank wrap the real fits carry). A thin dark backer
-    // frame bridges the bank to the casting (§B2 attached read) and shows
-    // through the inter-brick gaps as the K-1 seam grammar. Defaults
-    // byte-identical: absent param reproduces the legacy arc exactly.
-    const C = p.k1Chevron;
-    for (const s of [1, -1]) {
-      const bank = C ? (() => {
-        const y0 = p.k1Y ?? 0.15;
-        const t0 = Math.PI / 2 + s * (C.t0 ?? p.k1T0 ?? 0.22);
-        const d0 = skinD(t0, y0) + (C.out ?? p.k1OutI?.[0] ?? p.k1Out ?? 0.03);
-        return {
-          ax: Math.abs(Math.cos(t0) * d0) + (C.inX ?? 0),
-          z0: Math.sin(t0) * d0 + (p.rCz ?? 0) + (C.inZ ?? 0),
-          a: C.yaw,
-        };
-      })() : null;
-      const rowsN = C?.rows ?? 3;
-      for (let row = 0; row < 3; row++) {
-        const y = (p.k1Y ?? 0.15) + row * (p.k1Pitch ?? 0.27);
-        for (let i = 0; i < (p.k1N ?? 4); i++) {
-          if (C && bank && i < (C.arcFrom ?? (p.k1N ?? 4)) && !(C.arcTop && row >= rowsN)) {
-            if (row >= rowsN) continue;
-            // TIP §5.29 banksOff (opt-in): the banked bricks are replaced by
-            // the 'tip' panel pair — arc bricks (i >= arcFrom) and arcTop
-            // rows keep their seats EXACTLY. Absent = byte-identical.
-            if (C.banksOff) continue;
-            const along = (C.d0 ?? 0.06) + i * (C.pitch ?? 0.30);
-            const tuck = row * (C.rowTuck ?? 0.02);
-            const bx = bank.ax + along * Math.cos(bank.a) - tuck * Math.sin(bank.a);
-            const bz = bank.z0 - along * Math.sin(bank.a) - tuck * Math.cos(bank.a);
-            P.add(C.bucket ?? p.k1Bucket ?? 'turretTrack', box(C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15),
-              -s * bx, y, bz, (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
-            addCover(-s * bx, y, bz,
-              C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15,
-              (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
-          } else if (row < 3) {
-            const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
-            put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09,
-              p.k1Bucket ?? 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
-          }
-        }
-      }
-      if (C && bank && !C.banksOff) {
-        // backer frame: spans the banked bricks, sits behind their backs
-        // toward the casting (dark slot — reads as the mounting frame in
-        // the brick gaps; its inner half embeds into the dome skin).
-        const nBank = Math.min(C.arcFrom ?? (p.k1N ?? 4), p.k1N ?? 4);
-        const len = (nBank - 1) * (C.pitch ?? 0.30) + (C.bw ?? 0.28) + 0.05;
-        const mid = (C.d0 ?? 0.06) + ((nBank - 1) * (C.pitch ?? 0.30)) / 2;
-        const rowSpan = (rowsN - 1) * (p.k1Pitch ?? 0.27) + (C.bh ?? (p.k1H ?? 0.24)) + 0.03;
-        const yMid = (p.k1Y ?? 0.15) + ((rowsN - 1) * (p.k1Pitch ?? 0.27)) / 2;
-        const nOff = (C.bd ?? 0.15) / 2 + 0.012;
-        const bxm = bank.ax + mid * Math.cos(bank.a) - nOff * Math.sin(bank.a);
-        const bzm = bank.z0 - mid * Math.sin(bank.a) - nOff * Math.cos(bank.a);
-        P.add('turretDark', box(len, rowSpan, 0.024), -s * bxm, yMid, bzm, (C.tilt ?? -0.20), -s * bank.a, 0);
-      }
-    }
-  } else if (kind === 'tip') {
-    // TIP §5.29 CHEVRON-TIP (owner refinement 2026-08-07, REAL T-72B3
-    // obr. 2016 parade photo): "its like two panels of era that meet at a
-    // tip. thats what i wanted dude!" — TWO large flat ERA panels form the
-    // turret front: a shallow V in plan MEETING AT A POINTED TIP at
-    // center-front, the gun emerging above/behind the tip. NOT swept brick
-    // banks, NOT arcs (refines the §5.14 k1Chevron/k5Yaw round). Each
-    // panel is ONE plate whose FACE PLANE holds the measured tip->outer
-    // line exactly (box center retreats half the depth along the face
-    // normal); face grammar (bag/cassette seam grid, rim frame) rides
-    // FLUSH (k5Seg zero-growth law); a dark backer bridges panel ->
-    // casting (§B2 attached) and a dark center gap plate closes the V
-    // vertex under the gun (no see-through at the tip).
-    // p.tip = { x, z (inner/tip end of the face line), ox, oz (outer end —
-    //   seat it AT/INSIDE the cheek skin so the panel closes onto the
-    //   casting), y (band center), h, d, tilt, segs (vertical bag seams),
-    //   rows (horizontal seam rows), bucket, pad (length pad), lip
-    //   {h, dy, dPitch, tuck} (K-5 lower-leaf class), gap:false, gapH,
-    //   noBacker, capW }
-    const T = p.tip!;
-    const tX = T.x ?? 0.12, tZ = T.z, oX = T.ox, oZ = T.oz;
-    const H = T.h ?? 0.42, D = T.d ?? 0.12, yc = T.y ?? 0.18;
-    const tilt = T.tilt ?? -0.12;
-    const segsN = T.segs ?? 4, rowsN = T.rows ?? 0;
-    const bucket = T.bucket ?? 'turretTrack';
-    const ax = oX - tX, az = oZ - tZ;
-    const L = Math.hypot(ax, az) + (T.pad ?? 0.02);
-    const ux = -az / Math.hypot(ax, az), uz = ax / Math.hypot(ax, az); // outward face normal (s=+1 side)
-    const mx = (tX + oX) / 2 - ux * (D / 2), mz = (tZ + oZ) / 2 - uz * (D / 2);
-    const rcz = p.rCz ?? 0;
-    for (const s of [1, -1]) {
-      const ry = Math.atan2(-az, s * ax);
-      const px = s * mx, pz = mz + rcz;
-      P.add(bucket, box(L, H, D), px, yc, pz, tilt, ry, 0);
-      addCover(px, yc, pz, L, H, D, tilt, ry, 0);
-      // flush face grammar (§C zero-growth): vertical bag/cassette seams,
-      // optional row seams, rim frame strips
-      for (let gi = 1; gi < segsN; gi++) {
-        const lx = -L / 2 + (L * gi) / segsN;
-        P.add('turretDark', KIT.xform(box(0.024, H - 0.03, 0.008), lx, 0, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
-      }
-      for (let ri = 1; ri <= rowsN; ri++) {
-        const ly = -H / 2 + (H * ri) / (rowsN + 1);
-        P.add('turretDark', KIT.xform(box(L - 0.03, 0.022, 0.008), 0, ly, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
-      }
-      P.add('turretDark', KIT.xform(box(L - 0.02, 0.028, 0.008), 0, H / 2 - 0.022, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
-      P.add('turretDark', KIT.xform(box(L - 0.02, 0.028, 0.008), 0, -H / 2 + 0.022, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
-      // end caps (inner cap = the tip face; outer cap embeds at the cheek)
-      for (const e of [-1, 1]) {
-        P.add(bucket, KIT.xform(box(T.capW ?? 0.05, H - 0.015, D - 0.015), e * (L / 2 - (T.capW ?? 0.05) / 2 + 0.01), 0, 0), px, yc, pz, tilt, ry, 0);
-      }
-      // dark backer bridging panel -> casting (§B2 attached read)
-      if (!T.noBacker) {
-        const bx2 = mx - ux * (D / 2 + 0.014), bz2 = mz - uz * (D / 2 + 0.014);
-        P.add('turretDark', box(L * 0.92, H * 0.90, 0.03), s * bx2, yc, bz2 + rcz, tilt, ry, 0);
-      }
-      // optional lower lip (the K-5 clamshell second-leaf class)
-      if (T.lip) {
-        const lh = T.lip.h ?? 0.10;
-        const yl = yc - H / 2 - (T.lip.dy ?? 0.0) - lh / 2;
-        const tk = T.lip.tuck ?? 0.03;
-        P.add(bucket, box(L * 0.96, lh, D - 0.02), s * (mx - ux * tk), yl, mz - uz * tk + rcz, tilt + (T.lip.dPitch ?? 0.30), ry, 0);
-      }
-    }
-    // center gap plate: closes the V vertex dark under/behind the gun
-    if (T.gap !== false) {
-      P.add('turretDark', box(tX * 2 + 0.06, H * (T.gapH ?? 0.86), 0.03), 0, yc - H * 0.05, tZ - 0.055 + rcz, tilt, 0, 0);
-    }
-  } else if (kind === 'erawa') {
-    // r9 WALL rework (pt91m workorder): the real ERAWA front is a near-flat
-    // upright wall, not skin-hugging shingles. Ref plan front staircase
-    // 1.46@|x|0.3 -> 1.32@0.8 -> 1.05@1.14; upper rows lean back so the
-    // side silhouette stays inside the ref's 1.42 line above y 1.72; flank
-    // arcs (i>=3) drop the top row (ref front 1.82@|x|1.07).
-    const eD = p.eDists ?? [1.395, 1.438, 1.550, 1.525, 1.470];
-    for (const s of [1, -1]) {
-      for (let row = 0; row < 3; row++) {
-        // r25: base course seated at the ref's 1.475 deck-shadow line (row0
-        // bottoms printed 1.421 vs ref 1.475 at the 1.483/1.59 side cols);
-        // row2 KEEPS 0.40 — its 1.974 top owns the ±0.2..0.6 front cols.
-        const y = [0.13, 0.29, 0.40][row];
-        for (let i = 0; i < 5; i++) {
-          if (row === 2 && i >= 3) continue;
-          const t = Math.PI / 2 + s * (0.12 + i * 0.18);
-          // r25: row1 pulled 2 cm deeper — its center tiles poked 5 mm into
-          // the 1.483 side column (top 1.81 vs the ref's 1.716 sleeve line).
-          // r25c: RIGHT i4 (s=-1) retreats 8 cm — dedicated flank tiles own
-          // the 1.14/1.247 plan cols (ref pinch is asymmetric; left keeps eD)
-          const dist = eD[i] - (row === 1 ? 0.108 : row === 2 ? 0.118 : 0)
-            - (i === 4 && s === -1 ? 0.08 : 0);
-          put(t, y, i === 4 ? 0.20 : 0.28, 0.22, 0.06, -0.10 - row * 0.04, 'turretTrack', dist);
-        }
-      }
-    }
-  } else if (kind === 'relikt') {
-    // optional squeeze params (t72b3m r4): rT0/rStep arc seats, rDist skin
-    // offset, rD depth, rY row base, rH height — defaults = legacy behavior
-    // r11: rTilt (base course tilt — the default -0.34 spread the t72b3m
-    // pair-0/1 top corners 0.08 proud and poked bottoms 0.06 under the
-    // 1.42 skirt line) + rDists (PER-CASSETTE skin offsets: the ref Relikt
-    // front is a flat wedge wall — plan staircase 0.13-0.19 proud at
-    // mid-arc, tucked at center — which no uniform skin offset can follow).
-    const rT0 = p.rT0 ?? 0.28, rStep = p.rStep ?? 0.28, rDist = p.rDist ?? -0.05;
-    const rD = p.rD ?? 0.22, rY = p.rY ?? 0.06, rH = p.rH ?? 0.27;
-    const rTilt = p.rTilt ?? -0.34;
-    // rBucket (t72b3m visual r1, opt-in): the ref Relikt course renders in
-    // the SCHEME PAINT (pale olive like the dome) — the spareTrack steel
-    // bucket read as maroon-brown inset wedges at critic zoom. Legacy
-    // builds (t90sm) keep turretTrack.
-    const rBucket = p.rBucket ?? 'turretTrack';
-    // rGapBucket (t72b3m visual r5, opt-in): the ring GAP plates used to be
-    // hard 'turretDark' — at the flat board light they rendered as void-black
-    // trapezoids flanking the crown (critic r4 item 6: deep-shade floor is
-    // reserved for ref-black elements). Scheme-shadow cloth keeps the
-    // lid-vs-gap swing at the ref's ~12L without reading as holes. Legacy
-    // builds keep turretDark.
-    const rGapBucket = p.rGapBucket ?? 'turretDark';
-    const rowSeats = (p.rRows ?? 2) === 1 ? [[0, rY]] : [[0, rY], [1, 0.34]];
-    // rDeep (t72b3m visual r2, opt-in): deepen each cassette INWARD keeping
-    // the calibrated outer face plane — the extra depth widens the bright
-    // TOP trapezoid so the ring reads from plan/tilt (the r13 0.14-deep
-    // boxes rendered as a thin line; the ref ring reads via wide tops).
-    // Plan-safe (growth is into the lathe) and top-corner rise at tilt
-    // -0.12 is +6mm (still inside the r11 1.663-print row, cap 1.690).
-    const rDeep = p.rDeep ?? 0;
-    for (const s of [1, -1]) {
-      for (let i = 0; i < 3; i++) {
-        const t = Math.PI / 2 + s * (rT0 + i * rStep);
-        const dI = p.rDists ? p.rDists[i] : rDist;
-        for (const [row, y0] of rowSeats) {
-          // rY0 (r10f): the FIRST (front-most) cassette pair can seat lower —
-          // the t72b3m ref's mantlet-dip cols read 1.637-1.663 where a
-          // uniform course crested 1.70-1.72
-          const yc = (i === 0 && p.rY0 != null ? p.rY0 : y0) + 0.13;
-          const dd = skinD(t, yc) + dI;
-          put(t, yc, 0.48, rH, rD + rDeep, rTilt + row * 0.10, rBucket, dd - rDeep / 2);
-          // rChev (t90m r8 ORDER 4, opt-in): Relikt tile-course relief —
-          // the oracle's cheek arrays read bold diagonal chevron courses
-          // (§B3 ERA grammar; the flat cassettes read "faint seams" at
-          // graduation zoom). Face seams/crests ride +0.8 mm proud of the
-          // calibrated face plane (sub-half-pixel, leopard r9 class);
-          // course ribs live on the tilted TOP shoulder (§B3.1
-          // 45°-shoulder free lane; rib crowns stay within +2 mm of the
-          // cassette's own certified corner envelope). Defaults
-          // byte-identical for every legacy caller (only t90m passes it).
-          if (p.rChev) {
-            const tiltR = rTilt + row * 0.10;
-            const D0 = dd - rDeep / 2;
-            const zF = (rD + rDeep) / 2;
-            const px2 = Math.cos(t) * D0, pz2 = Math.sin(t) * D0 + (p.rCz ?? 0);
-            const ry2 = Math.PI / 2 - t;
-            const lean = (p.rChev.lean ?? 0.55) * s;
-            for (const [lx, kind] of [[-0.155, 0], [-0.075, 1], [0.005, 0], [0.085, 1], [0.165, 0]]) {
-              const g = kind === 0
-                ? KIT.xform(box(0.014, rH - 0.05, 0.0026), lx, 0, zF + 0.0008, 0, 0, lean)
-                : KIT.xform(box(0.020, rH - 0.07, 0.0022), lx, 0, zF + 0.0006, 0, 0, lean);
-              P.add(kind === 0 ? 'turretDark' : 'turretCloth', g, px2, yc, pz2, tiltR, ry2, 0);
+            if (C && bank && !C.banksOff) {
+              // backer frame: spans the banked bricks, sits behind their backs
+              // toward the casting (dark slot — reads as the mounting frame in
+              // the brick gaps; its inner half embeds into the dome skin).
+              const buildRussianEraCheekClusterTurretCourse14 = (): void => {
+                const buildRussianEraCheekClusterTurretCourse11 = (): void => {
+                  const nBank = Math.min(C.arcFrom ?? (p.k1N ?? 4), p.k1N ?? 4);
+                  const len = (nBank - 1) * (C.pitch ?? 0.30) + (C.bw ?? 0.28) + 0.05;
+                  const mid = (C.d0 ?? 0.06) + ((nBank - 1) * (C.pitch ?? 0.30)) / 2;
+                  const rowSpan = (rowsN - 1) * (p.k1Pitch ?? 0.27) + (C.bh ?? (p.k1H ?? 0.24)) + 0.03;
+                  const yMid = (p.k1Y ?? 0.15) + ((rowsN - 1) * (p.k1Pitch ?? 0.27)) / 2;
+                  const nOff = (C.bd ?? 0.15) / 2 + 0.012;
+                  const bxm = bank.ax + mid * Math.cos(bank.a) - nOff * Math.sin(bank.a);
+                  const bzm = bank.z0 - mid * Math.sin(bank.a) - nOff * Math.cos(bank.a);
+                  P.add('turretDark', box(len, rowSpan, 0.024), -s * bxm, yMid, bzm, (C.tilt ?? -0.20), -s * bank.a, 0);
+                };
+                buildRussianEraCheekClusterTurretCourse11();
+              };
+              buildRussianEraCheekClusterTurretCourse14();
             }
-            for (const lx of [-0.15, 0, 0.15]) {
-              P.add(rBucket, KIT.xform(box(0.10, 0.010, (rD + rDeep) * 0.68), lx, rH / 2 + 0.0045, -0.012),
-                px2, yc, pz2, tiltR, ry2, 0);
+          };
+          buildRussianEraCheekClusterTurretCourse2Iteration1();
+        }
+      };
+      buildRussianEraCheekClusterTurretCourse2();
+    } else if (kind === 'tip') {
+      // TIP §5.29 CHEVRON-TIP (owner refinement 2026-08-07, REAL T-72B3
+      // obr. 2016 parade photo): "its like two panels of era that meet at a
+      // tip. thats what i wanted dude!" — TWO large flat ERA panels form the
+      // turret front: a shallow V in plan MEETING AT A POINTED TIP at
+      // center-front, the gun emerging above/behind the tip. NOT swept brick
+      // banks, NOT arcs (refines the §5.14 k1Chevron/k5Yaw round). Each
+      // panel is ONE plate whose FACE PLANE holds the measured tip->outer
+      // line exactly (box center retreats half the depth along the face
+      // normal); face grammar (bag/cassette seam grid, rim frame) rides
+      // FLUSH (k5Seg zero-growth law); a dark backer bridges panel ->
+      // casting (§B2 attached) and a dark center gap plate closes the V
+      // vertex under the gun (no see-through at the tip).
+      // p.tip = { x, z (inner/tip end of the face line), ox, oz (outer end —
+      //   seat it AT/INSIDE the cheek skin so the panel closes onto the
+      //   casting), y (band center), h, d, tilt, segs (vertical bag seams),
+      //   rows (horizontal seam rows), bucket, pad (length pad), lip
+      //   {h, dy, dPitch, tuck} (K-5 lower-leaf class), gap:false, gapH,
+      //   noBacker, capW }
+      const buildRussianEraCheekClusterTurretCourse3 = (): void => {
+        const T = p.tip!;
+        const tX = T.x ?? 0.12, tZ = T.z, oX = T.ox, oZ = T.oz;
+        const H = T.h ?? 0.42, D = T.d ?? 0.12, yc = T.y ?? 0.18;
+        const tilt = T.tilt ?? -0.12;
+        const segsN = T.segs ?? 4, rowsN = T.rows ?? 0;
+        const bucket = T.bucket ?? 'turretTrack';
+        const ax = oX - tX, az = oZ - tZ;
+        const L = Math.hypot(ax, az) + (T.pad ?? 0.02);
+        const ux = -az / Math.hypot(ax, az), uz = ax / Math.hypot(ax, az); // outward face normal (s=+1 side)
+        const mx = (tX + oX) / 2 - ux * (D / 2), mz = (tZ + oZ) / 2 - uz * (D / 2);
+        const rcz = p.rCz ?? 0;
+        for (const s of [1, -1]) {
+          const buildRussianEraCheekClusterTurretCourse7 = (): void => {
+            const ry = Math.atan2(-az, s * ax);
+            const px = s * mx, pz = mz + rcz;
+            P.add(bucket, box(L, H, D), px, yc, pz, tilt, ry, 0);
+            addCover(px, yc, pz, L, H, D, tilt, ry, 0);
+            // flush face grammar (§C zero-growth): vertical bag/cassette seams,
+            // optional row seams, rim frame strips
+            for (let gi = 1; gi < segsN; gi++) {
+              const lx = -L / 2 + (L * gi) / segsN;
+              P.add('turretDark', KIT.xform(box(0.024, H - 0.03, 0.008), lx, 0, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
             }
-          }
-          // rSeam (visual r1, LOUDER r2): the r13 slivers/seams declared the
-          // ring but rendered 15-20% of ref loudness. Now: bright crest
-          // sliver + pale face plate + a WIDE dark gap wedge at each pair
-          // boundary + a sunk dark backdrop that owns the gap read from
-          // off-axis. Gap tops capped at yc+rH/2 (the +0.285 world col
-          // prints 1.637, cap 1.664 — a taller wedge would poke it).
-          if (p.rSeam) {
-            // pale TOP LID — the ring's plan/tilt read is alternating bright
-            // trapezoid tops against dark gap tops; the camo top faces were
-            // invisible against the camo dome (r14 close-roof verdict). Lid
-            // rides 4mm INSET below the certified top corner (cap 1.690).
-            put(t, yc + rH * 0.5 - 0.006, 0.46, 0.012, rD + rDeep - 0.01, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2, false);
-            put(t, yc + rH * 0.38, 0.46, 0.05, rD + rDeep - 0.015, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2 + 0.010, false);
-            // pale face plate: the course fronts sit under a dark camo
-            // blotch on this print — the scheme-detail plate restores the
-            // ref's pale-wedge read from dead front (4mm proud of the face)
-            put(t, yc - 0.012, 0.42, rH - 0.05, 0.008, rTilt + row * 0.10, 'turretDetail', dd + rD / 2 + 0.003, false);
-            // GAP = a full-depth DARK standing plate at the pair boundary —
-            // its dark top trapezoid alternates with the pale lids (the r13
-            // thin seam strips + sunk backdrops never reached pixels).
-            // rGapH (t72b3m r24, opt-in): cap the gap-plate heights so the
-            // ring reads lid-over-notch relief instead of a flush collar —
-            // entries without it are byte-identical (Infinity min).
-            const tg = Math.PI / 2 + s * (rT0 + (i + 0.5) * rStep);
-            const gM1 = Math.min(rH - 0.02, p.rGapH ?? Infinity);
-            const gM2 = Math.min(rH - 0.01, p.rGapH ?? Infinity);
-            put(tg, yc - 0.008 - (rH - 0.02 - gM1) / 2, 0.15, gM1, rD + rDeep - 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI - rDeep / 2 - 0.012, false);
-            put(tg, yc - 0.005 - (rH - 0.01 - gM2) / 2, 0.062, gM2, 0.016, rTilt, rGapBucket, skinD(tg, yc) + dI + rD / 2 + 0.005, false);
-          }
+            for (let ri = 1; ri <= rowsN; ri++) {
+              const ly = -H / 2 + (H * ri) / (rowsN + 1);
+              P.add('turretDark', KIT.xform(box(L - 0.03, 0.022, 0.008), 0, ly, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
+            }
+            P.add('turretDark', KIT.xform(box(L - 0.02, 0.028, 0.008), 0, H / 2 - 0.022, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
+            P.add('turretDark', KIT.xform(box(L - 0.02, 0.028, 0.008), 0, -H / 2 + 0.022, D / 2 - 0.004), px, yc, pz, tilt, ry, 0);
+            // end caps (inner cap = the tip face; outer cap embeds at the cheek)
+            for (const e of [-1, 1]) {
+              P.add(bucket, KIT.xform(box(T.capW ?? 0.05, H - 0.015, D - 0.015), e * (L / 2 - (T.capW ?? 0.05) / 2 + 0.01), 0, 0), px, yc, pz, tilt, ry, 0);
+            }
+            // dark backer bridging panel -> casting (§B2 attached read)
+            if (!T.noBacker) {
+              const bx2 = mx - ux * (D / 2 + 0.014), bz2 = mz - uz * (D / 2 + 0.014);
+              P.add('turretDark', box(L * 0.92, H * 0.90, 0.03), s * bx2, yc, bz2 + rcz, tilt, ry, 0);
+            }
+            // optional lower lip (the K-5 clamshell second-leaf class)
+            if (T.lip) {
+              const lh = T.lip.h ?? 0.10;
+              const yl = yc - H / 2 - (T.lip.dy ?? 0.0) - lh / 2;
+              const tk = T.lip.tuck ?? 0.03;
+              P.add(bucket, box(L * 0.96, lh, D - 0.02), s * (mx - ux * tk), yl, mz - uz * tk + rcz, tilt + (T.lip.dPitch ?? 0.30), ry, 0);
+            }
+          };
+          buildRussianEraCheekClusterTurretCourse7();
         }
-        // rStrip:false — on a squat dome the tilted strip corners rise to a
-        // 1.85 canopy 0.2 proud of the roof (t72b3m r7 whatsat verdict)
-        if (p.rStrip !== false) put(t, 0.34, 0.50, 0.032, 0.20, -0.30, 'turretDark', skinD(t, 0.34) - 0.03, false);
-      }
-      // rXPairs (t72b3m visual r1, opt-in; r2 REBUILT): flank/rear ring
-      // continuation — standing cassettes at wider arc seats so every
-      // quarter reads the ref's ~15-cassette dome ring. Plates stay sunk
-      // inside the lathe plan (dI<0); heights are now REAL (0.20-0.27, the
-      // r13 0.11 nubs never reached pixels) with tops still 5+cm under the
-      // local dome/basket side lines; entry [tOff, dI, h, w, yc?].
-      // gapH (7th entry, r22 opt-in): caps the auto-gap plate height where
-      // the gap azimuth lands in a LOWER certified row than the pair itself
-      // (t72b3m 0.62-pair: its 0.465-rad gap sits in the mantlet-dip cols).
-      // Entries without it are byte-identical (only t72b3m passes rXPairs).
-      for (const [tOff, dI, h, w, ycX, lean, gapH] of p.rXPairs ?? []) {
-        const t = Math.PI / 2 + s * tOff;
-        const yc = ycX ?? ((p.rY ?? 0.06) + 0.13);
-        const wd = w ?? 0.44;
-        // lean (6th entry, default -0.08): extra back-tilt for the standing
-        // top-face read. REAR-arc plates pass lean 0 — the tilt swings the
-        // bottom-outer corner radially outward and the aft lathe skin is
-        // already the certified dome-waist overfill (r13 lesson).
-        const tl = rTilt + (lean ?? -0.08);
-        // deepened like the mains (outer face fixed, growth into the lathe)
-        // so the pale top lid is a WIDE trapezoid, not a 12cm sliver.
-        const xDp = 0.26, xShift = (xDp - (rD - 0.02)) / 2;
-        put(t, yc, wd, h, xDp, tl, rBucket, skinD(t, yc) + dI - xShift);
-        if (p.rSeam) {
-          // pale top lid + crest + outer face (the standing-plate read)
-          put(t, yc + h * 0.5 - 0.006, wd - 0.01, 0.012, xDp - 0.01, tl, 'turretDetail', skinD(t, yc) + dI - xShift, false);
-          put(t, yc + h * 0.42, wd - 0.03, 0.045, xDp - 0.02, tl, 'turretDetail', skinD(t, yc) + dI - xShift + 0.008, false);
-          put(t, yc - 0.005, wd - 0.05, h - 0.04, 0.006, tl, 'turretDetail', skinD(t, yc) + dI + (rD - 0.02) / 2 + 0.003, false);
-          // GAP = full-depth dark standing plate (dark top trapezoid between
-          // the pale lids) + a thin proud seam on the face line
-          const tg = Math.PI / 2 + s * (tOff - 0.155);
-          const gH1 = Math.min(h - 0.015, gapH ?? Infinity);
-          const gH2 = Math.min(h, gapH ?? Infinity);
-          put(tg, yc - 0.006 - (h - 0.015 - gH1) / 2, 0.15, gH1, xDp - 0.015, rTilt, rGapBucket, skinD(tg, yc) + dI - xShift - 0.010, false);
-          put(tg, yc + 0.005 - (h - gH2) / 2, 0.07, gH2, 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI + 0.012, false);
+        // center gap plate: closes the V vertex dark under/behind the gun
+        if (T.gap !== false) {
+          const buildRussianEraCheekClusterTurretCourse8 = (): void => {
+            P.add('turretDark', box(tX * 2 + 0.06, H * (T.gapH ?? 0.86), 0.03), 0, yc - H * 0.05, tZ - 0.055 + rcz, tilt, 0, 0);
+          };
+          buildRussianEraCheekClusterTurretCourse8();
         }
-      }
+      };
+      buildRussianEraCheekClusterTurretCourse3();
+    } else if (kind === 'erawa') {
+      // r9 WALL rework (pt91m workorder): the real ERAWA front is a near-flat
+      // upright wall, not skin-hugging shingles. Ref plan front staircase
+      // 1.46@|x|0.3 -> 1.32@0.8 -> 1.05@1.14; upper rows lean back so the
+      // side silhouette stays inside the ref's 1.42 line above y 1.72; flank
+      // arcs (i>=3) drop the top row (ref front 1.82@|x|1.07).
+      const buildRussianEraCheekClusterTurretCourse4 = (): void => {
+        const eD = p.eDists ?? [1.395, 1.438, 1.550, 1.525, 1.470];
+        for (const s of [1, -1]) {
+          const buildRussianEraCheekClusterTurretCourse4Iteration1 = (): void => {
+            for (let row = 0; row < 3; row++) {
+              // r25: base course seated at the ref's 1.475 deck-shadow line (row0
+              // bottoms printed 1.421 vs ref 1.475 at the 1.483/1.59 side cols);
+              // row2 KEEPS 0.40 — its 1.974 top owns the ±0.2..0.6 front cols.
+              const y = [0.13, 0.29, 0.40][row];
+              for (let i = 0; i < 5; i++) {
+                if (row === 2 && i >= 3) continue;
+                const t = Math.PI / 2 + s * (0.12 + i * 0.18);
+                // r25: row1 pulled 2 cm deeper — its center tiles poked 5 mm into
+                // the 1.483 side column (top 1.81 vs the ref's 1.716 sleeve line).
+                // r25c: RIGHT i4 (s=-1) retreats 8 cm — dedicated flank tiles own
+                // the 1.14/1.247 plan cols (ref pinch is asymmetric; left keeps eD)
+                const dist = eD[i] - (row === 1 ? 0.108 : row === 2 ? 0.118 : 0)
+                  - (i === 4 && s === -1 ? 0.08 : 0);
+                put(t, y, i === 4 ? 0.20 : 0.28, 0.22, 0.06, -0.10 - row * 0.04, 'turretTrack', dist);
+              }
+            }
+          };
+          buildRussianEraCheekClusterTurretCourse4Iteration1();
+        }
+      };
+      buildRussianEraCheekClusterTurretCourse4();
+    } else if (kind === 'relikt') {
+      // optional squeeze params (t72b3m r4): rT0/rStep arc seats, rDist skin
+      // offset, rD depth, rY row base, rH height — defaults = legacy behavior
+      // r11: rTilt (base course tilt — the default -0.34 spread the t72b3m
+      // pair-0/1 top corners 0.08 proud and poked bottoms 0.06 under the
+      // 1.42 skirt line) + rDists (PER-CASSETTE skin offsets: the ref Relikt
+      // front is a flat wedge wall — plan staircase 0.13-0.19 proud at
+      // mid-arc, tucked at center — which no uniform skin offset can follow).
+      const buildRussianEraCheekClusterTurretCourse5 = (): void => {
+        const rT0 = p.rT0 ?? 0.28, rStep = p.rStep ?? 0.28, rDist = p.rDist ?? -0.05;
+        const rD = p.rD ?? 0.22, rY = p.rY ?? 0.06, rH = p.rH ?? 0.27;
+        const rTilt = p.rTilt ?? -0.34;
+        // rBucket (t72b3m visual r1, opt-in): the ref Relikt course renders in
+        // the SCHEME PAINT (pale olive like the dome) — the spareTrack steel
+        // bucket read as maroon-brown inset wedges at critic zoom. Legacy
+        // builds (t90sm) keep turretTrack.
+        const rBucket = p.rBucket ?? 'turretTrack';
+        // rGapBucket (t72b3m visual r5, opt-in): the ring GAP plates used to be
+        // hard 'turretDark' — at the flat board light they rendered as void-black
+        // trapezoids flanking the crown (critic r4 item 6: deep-shade floor is
+        // reserved for ref-black elements). Scheme-shadow cloth keeps the
+        // lid-vs-gap swing at the ref's ~12L without reading as holes. Legacy
+        // builds keep turretDark.
+        const rGapBucket = p.rGapBucket ?? 'turretDark';
+        const rowSeats = (p.rRows ?? 2) === 1 ? [[0, rY]] : [[0, rY], [1, 0.34]];
+        // rDeep (t72b3m visual r2, opt-in): deepen each cassette INWARD keeping
+        // the calibrated outer face plane — the extra depth widens the bright
+        // TOP trapezoid so the ring reads from plan/tilt (the r13 0.14-deep
+        // boxes rendered as a thin line; the ref ring reads via wide tops).
+        // Plan-safe (growth is into the lathe) and top-corner rise at tilt
+        // -0.12 is +6mm (still inside the r11 1.663-print row, cap 1.690).
+        const rDeep = p.rDeep ?? 0;
+        for (const s of [1, -1]) {
+          const buildRussianEraCheekClusterTurretCourse6 = (): void => {
+            for (let i = 0; i < 3; i++) {
+              const buildRussianEraCheekClusterTurretCourse12 = (): void => {
+                const t = Math.PI / 2 + s * (rT0 + i * rStep);
+                const dI = p.rDists ? p.rDists[i] : rDist;
+                for (const [row, y0] of rowSeats) {
+                  // rY0 (r10f): the FIRST (front-most) cassette pair can seat lower —
+                  // the t72b3m ref's mantlet-dip cols read 1.637-1.663 where a
+                  // uniform course crested 1.70-1.72
+                  const buildRussianEraCheekClusterTurretCourse17 = (): void => {
+                    const yc = (i === 0 && p.rY0 != null ? p.rY0 : y0) + 0.13;
+                    const dd = skinD(t, yc) + dI;
+                    put(t, yc, 0.48, rH, rD + rDeep, rTilt + row * 0.10, rBucket, dd - rDeep / 2);
+                    // rChev (t90m r8 ORDER 4, opt-in): Relikt tile-course relief —
+                    // the oracle's cheek arrays read bold diagonal chevron courses
+                    // (§B3 ERA grammar; the flat cassettes read "faint seams" at
+                    // graduation zoom). Face seams/crests ride +0.8 mm proud of the
+                    // calibrated face plane (sub-half-pixel, leopard r9 class);
+                    // course ribs live on the tilted TOP shoulder (§B3.1
+                    // 45°-shoulder free lane; rib crowns stay within +2 mm of the
+                    // cassette's own certified corner envelope). Defaults
+                    // byte-identical for every legacy caller (only t90m passes it).
+                    if (p.rChev) {
+                      const tiltR = rTilt + row * 0.10;
+                      const D0 = dd - rDeep / 2;
+                      const zF = (rD + rDeep) / 2;
+                      const px2 = Math.cos(t) * D0, pz2 = Math.sin(t) * D0 + (p.rCz ?? 0);
+                      const ry2 = Math.PI / 2 - t;
+                      const lean = (p.rChev.lean ?? 0.55) * s;
+                      for (const [lx, kind] of [[-0.155, 0], [-0.075, 1], [0.005, 0], [0.085, 1], [0.165, 0]]) {
+                        const g = kind === 0
+                          ? KIT.xform(box(0.014, rH - 0.05, 0.0026), lx, 0, zF + 0.0008, 0, 0, lean)
+                          : KIT.xform(box(0.020, rH - 0.07, 0.0022), lx, 0, zF + 0.0006, 0, 0, lean);
+                        P.add(kind === 0 ? 'turretDark' : 'turretCloth', g, px2, yc, pz2, tiltR, ry2, 0);
+                      }
+                      for (const lx of [-0.15, 0, 0.15]) {
+                        P.add(rBucket, KIT.xform(box(0.10, 0.010, (rD + rDeep) * 0.68), lx, rH / 2 + 0.0045, -0.012),
+                          px2, yc, pz2, tiltR, ry2, 0);
+                      }
+                    }
+                    // rSeam (visual r1, LOUDER r2): the r13 slivers/seams declared the
+                    // ring but rendered 15-20% of ref loudness. Now: bright crest
+                    // sliver + pale face plate + a WIDE dark gap wedge at each pair
+                    // boundary + a sunk dark backdrop that owns the gap read from
+                    // off-axis. Gap tops capped at yc+rH/2 (the +0.285 world col
+                    // prints 1.637, cap 1.664 — a taller wedge would poke it).
+                    if (p.rSeam) {
+                      // pale TOP LID — the ring's plan/tilt read is alternating bright
+                      // trapezoid tops against dark gap tops; the camo top faces were
+                      // invisible against the camo dome (r14 close-roof verdict). Lid
+                      // rides 4mm INSET below the certified top corner (cap 1.690).
+                      put(t, yc + rH * 0.5 - 0.006, 0.46, 0.012, rD + rDeep - 0.01, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2, false);
+                      put(t, yc + rH * 0.38, 0.46, 0.05, rD + rDeep - 0.015, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2 + 0.010, false);
+                      // pale face plate: the course fronts sit under a dark camo
+                      // blotch on this print — the scheme-detail plate restores the
+                      // ref's pale-wedge read from dead front (4mm proud of the face)
+                      put(t, yc - 0.012, 0.42, rH - 0.05, 0.008, rTilt + row * 0.10, 'turretDetail', dd + rD / 2 + 0.003, false);
+                      // GAP = a full-depth DARK standing plate at the pair boundary —
+                      // its dark top trapezoid alternates with the pale lids (the r13
+                      // thin seam strips + sunk backdrops never reached pixels).
+                      // rGapH (t72b3m r24, opt-in): cap the gap-plate heights so the
+                      // ring reads lid-over-notch relief instead of a flush collar —
+                      // entries without it are byte-identical (Infinity min).
+                      const tg = Math.PI / 2 + s * (rT0 + (i + 0.5) * rStep);
+                      const gM1 = Math.min(rH - 0.02, p.rGapH ?? Infinity);
+                      const gM2 = Math.min(rH - 0.01, p.rGapH ?? Infinity);
+                      put(tg, yc - 0.008 - (rH - 0.02 - gM1) / 2, 0.15, gM1, rD + rDeep - 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI - rDeep / 2 - 0.012, false);
+                      put(tg, yc - 0.005 - (rH - 0.01 - gM2) / 2, 0.062, gM2, 0.016, rTilt, rGapBucket, skinD(tg, yc) + dI + rD / 2 + 0.005, false);
+                    }
+                  };
+                  buildRussianEraCheekClusterTurretCourse17();
+                }
+                // rStrip:false — on a squat dome the tilted strip corners rise to a
+                // 1.85 canopy 0.2 proud of the roof (t72b3m r7 whatsat verdict)
+                if (p.rStrip !== false) put(t, 0.34, 0.50, 0.032, 0.20, -0.30, 'turretDark', skinD(t, 0.34) - 0.03, false);
+              };
+              buildRussianEraCheekClusterTurretCourse12();
+            }
+            // rXPairs (t72b3m visual r1, opt-in; r2 REBUILT): flank/rear ring
+            // continuation — standing cassettes at wider arc seats so every
+            // quarter reads the ref's ~15-cassette dome ring. Plates stay sunk
+            // inside the lathe plan (dI<0); heights are now REAL (0.20-0.27, the
+            // r13 0.11 nubs never reached pixels) with tops still 5+cm under the
+            // local dome/basket side lines; entry [tOff, dI, h, w, yc?].
+            // gapH (7th entry, r22 opt-in): caps the auto-gap plate height where
+            // the gap azimuth lands in a LOWER certified row than the pair itself
+            // (t72b3m 0.62-pair: its 0.465-rad gap sits in the mantlet-dip cols).
+            // Entries without it are byte-identical (only t72b3m passes rXPairs).
+            for (const [tOff, dI, h, w, ycX, lean, gapH] of p.rXPairs ?? []) {
+              const buildRussianEraCheekClusterTurretCourse13 = (): void => {
+                const t = Math.PI / 2 + s * tOff;
+                const yc = ycX ?? ((p.rY ?? 0.06) + 0.13);
+                const wd = w ?? 0.44;
+                // lean (6th entry, default -0.08): extra back-tilt for the standing
+                // top-face read. REAR-arc plates pass lean 0 — the tilt swings the
+                // bottom-outer corner radially outward and the aft lathe skin is
+                // already the certified dome-waist overfill (r13 lesson).
+                const tl = rTilt + (lean ?? -0.08);
+                // deepened like the mains (outer face fixed, growth into the lathe)
+                // so the pale top lid is a WIDE trapezoid, not a 12cm sliver.
+                const xDp = 0.26, xShift = (xDp - (rD - 0.02)) / 2;
+                put(t, yc, wd, h, xDp, tl, rBucket, skinD(t, yc) + dI - xShift);
+                if (p.rSeam) {
+                  // pale top lid + crest + outer face (the standing-plate read)
+                  put(t, yc + h * 0.5 - 0.006, wd - 0.01, 0.012, xDp - 0.01, tl, 'turretDetail', skinD(t, yc) + dI - xShift, false);
+                  put(t, yc + h * 0.42, wd - 0.03, 0.045, xDp - 0.02, tl, 'turretDetail', skinD(t, yc) + dI - xShift + 0.008, false);
+                  put(t, yc - 0.005, wd - 0.05, h - 0.04, 0.006, tl, 'turretDetail', skinD(t, yc) + dI + (rD - 0.02) / 2 + 0.003, false);
+                  // GAP = full-depth dark standing plate (dark top trapezoid between
+                  // the pale lids) + a thin proud seam on the face line
+                  const tg = Math.PI / 2 + s * (tOff - 0.155);
+                  const gH1 = Math.min(h - 0.015, gapH ?? Infinity);
+                  const gH2 = Math.min(h, gapH ?? Infinity);
+                  put(tg, yc - 0.006 - (h - 0.015 - gH1) / 2, 0.15, gH1, xDp - 0.015, rTilt, rGapBucket, skinD(tg, yc) + dI - xShift - 0.010, false);
+                  put(tg, yc + 0.005 - (h - gH2) / 2, 0.07, gH2, 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI + 0.012, false);
+                }
+              };
+              buildRussianEraCheekClusterTurretCourse13();
+            }
+          };
+          buildRussianEraCheekClusterTurretCourse6();
+        }
+      };
+      buildRussianEraCheekClusterTurretCourse5();
     }
-  }
-  });
+  };
+  buildRussianEraCheekClusterTurretStage1();
+  };
+  P.visualEraCluster(`ru-${kind}-turret-era`, 'turret', buildRussianEraCheekCluster);
 }
 
 // Shtora dazzler pair seated on the measured skin (THE T-90 cue).

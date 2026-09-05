@@ -5,10 +5,12 @@ import {
   unavailableOracleReport,
 } from './geometry-gate-policy.mjs';
 
-assert.deepEqual(QUALITY_GATE_FLOORS, { fleet: 90, exemplar: 92 },
+assert.deepEqual(QUALITY_GATE_FLOORS, { fleet: 90, exemplar: 92, preservation: 99 },
   'quality policy publishes the fleet and rebuilt-exemplar floors');
 assert.equal(requiredMinimumForQualityBar('exemplar'), 92,
   'ground-up vehicle rebuilds use the stricter 92-point floor');
+assert.equal(requiredMinimumForQualityBar('preservation'), 99,
+  'frozen first-party preservation requires near-identical geometry, not source fidelity');
 assert.equal(requiredMinimumForQualityBar('unknown'), 90,
   'unrecognized legacy registrations retain the fleet floor');
 
@@ -19,4 +21,4 @@ assert.equal(missing.gatePassed, false, 'missing registered oracle fails closed'
 assert.equal(missing.components.oracleAvailability, 0,
   'missing-oracle reason remains machine-readable');
 
-console.log('geometry-gate-policy.selftest: 90/92 floors and fail-closed oracle policy verified');
+console.log('geometry-gate-policy.selftest: 90/92 source floors, 99 preservation floor and fail-closed policy verified');

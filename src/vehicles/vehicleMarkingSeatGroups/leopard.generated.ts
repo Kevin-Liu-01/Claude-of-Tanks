@@ -442,7 +442,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2_revolution": {
+  "leo2_revolution_proto": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -483,11 +483,60 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6745996
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2_revolution",
+        "anchorProfile": "leo2_revolution_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0.0014819
+      }
+    ]
+  },
+  "leo2_revolution": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5899027,
+          0.35844,
+          -1.6185497
+        ],
+        "quaternion": [
+          0,
+          0.7365307,
+          0,
+          0.6764041
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "leo2_revolution",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.5227652,
+          0.35844,
+          -2.4032029
+        ],
+        "quaternion": [
+          0,
+          0.7372812,
+          0,
+          0.675586
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "leo2_revolution",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },

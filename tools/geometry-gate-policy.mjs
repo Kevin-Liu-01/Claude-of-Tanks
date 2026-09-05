@@ -1,6 +1,7 @@
 export const QUALITY_GATE_FLOORS = Object.freeze({
   fleet: 90,
   exemplar: 92,
+  preservation: 99,
 });
 
 export function requiredMinimumForQualityBar(qualityBar) {

@@ -11,12 +11,14 @@
                       or openYokeRws instances (>=1 required by §B3), dressing
                       = every other fitting instance. Hand-authored decoration
                       carries no markers and censuses ZERO by design.
-                    - contiguity: top-down orthographic render over the whole
-                      plan footprint on a magenta key, downsampled to ~6 cm
+                    - contiguity: top-down orthographic render of body skin
+                      and ordinary fittings on a magenta key, downsampled to ~6 cm
                       cells; uncovered cells NOT connected to the frame border
                       are enclosed sky = §B2 holes (0 target). FrontSide
                       materials mean reversed-winding slabs read as holes —
-                      the winding audit is built in.
+                      the winding audit is built in. Explicitly separated
+                      open-lattice equipment is excluded from this scan only:
+                      its exterior stand-off air is present in source models.
                     -> window.__STANDARD + __STANDARD_READY
 
      ?fixture=fittings  KIT.fittings library self-test (no tank, no profile
@@ -32,6 +34,7 @@
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { FITTINGS } from '/src/vehicles/profiles/kit.ts';
+import { isOpenLatticeMesh } from './standard-continuity-policy.mjs';
 
 const params = new URLSearchParams(location.search);
 const CELL_M = 0.06;   // §B2 scan grid (~6 cm)
@@ -75,6 +78,7 @@ function renderedAABB(root) {
   root.traverse((o) => {
     if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
     if (!effectivelyVisible(o, root) || !isColorWriting(o)) return;
+    if (isOpenLatticeMesh(o)) return;
     if (/shadow/i.test(o.name || '')) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
@@ -101,7 +105,9 @@ function topDownScan(root) {
   if (bb.isEmpty()) return { error: 'empty AABB' };
   const hidden = [];
   root.traverse((o) => {
-    if ((o.isMesh || o.isInstancedMesh) && (!isColorWriting(o) || /shadow/i.test(o.name || '')) && o.visible) { o.visible = false; hidden.push(o); }
+    if ((o.isMesh || o.isInstancedMesh)
+        && (!isColorWriting(o) || /shadow/i.test(o.name || '') || isOpenLatticeMesh(o))
+        && o.visible) { o.visible = false; hidden.push(o); }
   });
   const margin = MARGIN_CELLS * CELL_M;
   const x0 = bb.min.x - margin, x1 = bb.max.x + margin;
@@ -268,6 +274,37 @@ function fixtureScan(group) {
   return topDownScan(holder);
 }
 
+function runContinuityFixtures(results, failures) {
+  for (const [name, missingPanel, markedLattice, expectHoles] of [
+    ['external-open-lattice', false, true, false],
+    ['missing-body-panel-with-lattice', true, true, true],
+    ['ordinary-untagged-rails', false, false, true],
+  ]) {
+    const group = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial({ color: 0x808080 });
+    const add = (width, length, x, z, lattice = false) => {
+      const object = new THREE.Mesh(new THREE.BoxGeometry(width, 0.12, length), material);
+      object.position.set(x, lattice ? 0.6 : 0.2, z);
+      object.userData.combatHitboxRole = lattice ? 'equipment' : 'armor';
+      if (lattice && markedLattice) object.userData.continuityRole = 'open-lattice';
+      group.add(object);
+    };
+    if (missingPanel) {
+      for (const x of [-0.7, 0.7]) add(0.6, 2, x, 0);
+      for (const z of [-0.7, 0.7]) add(0.8, 0.6, 0, z);
+    } else add(2, 2, 0, 0);
+    for (const x of [-1.5, 1.5]) add(0.04, 3.04, x, 0, true);
+    for (const z of [-1.5, 1.5]) add(3.04, 0.04, 0, z, true);
+    const scan = fixtureScan(group);
+    const label = `continuity:${name}`;
+    if ((scan.holeCells > 0) !== expectHoles) failures.push(`${label}: unexpected hole count ${scan.holeCells}`);
+    if (group.children.some((object) => !object.visible)) failures.push(`${label}: scan changed rendered visibility`);
+    results.push({ label, meshes: group.children.length, hash: geoHash(group), ...scan });
+    for (const object of group.children) object.geometry.dispose();
+    material.dispose();
+  }
+}
+
 async function runFixture() {
   const cases = [
     ['pintleMG', { cls: 'm2', tone: 'two-tone', ring: true, shield: true }],
@@ -329,6 +366,7 @@ async function runFixture() {
   }
   try { FITTINGS.pintleMG({}); failures.push('pintleMG without mats did not throw'); }
   catch (e) { /* required contract */ }
+  runContinuityFixtures(results, failures);
   window.__FIXTURE = { ok: failures.length === 0, failures, results };
   window.__FIXTURE_READY = true;
 }

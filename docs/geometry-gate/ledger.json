@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-04T21:11:24.169Z",
- "gate": "every component >= its registered floor (90 fleet / 92 exemplar); min is the headline",
- "passed": 34,
- "total": 124,
+ "generatedAt": "2026-09-05T10:09:33.607Z",
+ "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
+ "passed": 35,
+ "total": 125,
  "rows": [
   {
    "id": "recon_tank",
@@ -1233,16 +1233,6 @@
    }
   },
   {
-   "id": "leo2_revolution",
-   "geoMin": 90.2,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 90.2,
-    "dims": 99.5,
-    "floaters": 100
-   }
-  },
-  {
    "id": "leclerc",
    "geoMin": 90.3,
    "gatePassed": true,
@@ -1517,6 +1507,19 @@
    }
   },
   {
+   "id": "leo2_revolution",
+   "geoMin": 92.2,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.2,
+    "dims": 97.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t84",
    "geoMin": 92.5,
    "gatePassed": true,
@@ -1527,6 +1530,28 @@
     "stations": 96.1,
     "dims": 99.1,
     "floaters": 100
+   }
+  },
+  {
+   "id": "leo2_revolution_proto",
+   "geoMin": 99.3,
+   "requiredMinimum": 99,
+   "qualityBar": "preservation",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 99.3,
+    "stations": 100,
+    "turretCurves": 99.7,
+    "wholeCurves": 99.4,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "preservation",
+   "preservationBaseline": {
+    "sourceCommit": "da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b",
+    "sourceId": "leo2_revolution",
+    "glbSha256": "ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7",
+    "geometrySha256": "305ff0250dea38d45a53738d775686727300440890467023e5fb7e8e94711f38"
    }
   }
  ]

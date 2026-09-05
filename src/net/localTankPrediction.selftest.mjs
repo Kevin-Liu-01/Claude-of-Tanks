@@ -630,6 +630,8 @@ assert.equal(predictor.getStats().pendingInputs, 1,
   const initialAimPoint = inputEntity.state.aimPoint.clone();
   assert.equal(inputPredictor.advancePrediction(null, 1 / 60), false,
     'null frame input cannot advance presentation');
+  assert.equal(inputPredictor.advancePrediction({}, 0), true,
+    'valid frame input reports that prediction presentation advanced');
   assert.equal(inputPredictor.recordInput(null, 1 / 60, 0), false,
     'null input is rejected');
   assert.equal(inputPredictor.recordInput(driving, 1 / 60, -1), false,

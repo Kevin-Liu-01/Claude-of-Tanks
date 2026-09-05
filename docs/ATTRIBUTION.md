@@ -985,3 +985,27 @@ owner-authoritative repaired repartition).
   The GLB is a local-only, gitignored comparison instrument. No source mesh,
   material, texture, animation, or derived payload byte ships; `leo1a5`
   remains original first-party procedural geometry.
+
+## Leopard 2 Revolution owner source (2026-09-04)
+
+The owner supplied `leopard-2-mbt-revolution.zip`, SHA-256
+`8577cb2ac53daf369dc2175b045207de4760246ec73f6434bbcfce38a0fc3e4f`.
+Its nested OBJ SHA-256 is
+`d97595be419fee2c474a1cd4cfdc6b502e666070d4c746dda2e7b0d8c2d60481`.
+The archive provides no original author, source URL, or license record;
+Arma-like texture names are an unresolved provenance warning. It remains
+local-only, with no redistribution clearance. The derived neutral comparison
+GLB `public/models/community-candidates/leopard_revolution_owner_2026.glb`
+is ignored by Git and must never enter a playable or public asset path.
+The new Revolution is original first-party procedural geometry attributed
+to Kevin B. Liu; external vertices, indices, textures, and materials do not
+ship. See [the source study](research/leopard-revolution-source.md) for
+normalization, measurements, original-versus-altered-oracle evidence, and
+the 92-point per-view exemplar gate.
+
+The separate `leo2_revolution_proto_preservation.glb` is an ignored, neutral
+export of this repository's own authored model from commit
+`da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`. It is explicitly a historical
+first-party **preservation** instrument, not an external source or evidence
+of real-world fidelity. Its pinned SHA-256 is
+`ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7`.
