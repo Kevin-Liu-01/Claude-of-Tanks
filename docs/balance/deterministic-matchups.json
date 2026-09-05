@@ -1952,15 +1952,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 4,
-      "bWins": 4,
-      "draws": 4,
+      "aWins": 5,
+      "bWins": 5,
+      "draws": 2,
       "aScore": 0.5,
-      "averageDurationS": 31.59,
-      "averageAEndHp": 191,
-      "averageBEndHp": 191,
-      "averageADamage": 2585.58,
-      "averageBDamage": 2585.58
+      "averageDurationS": 43.28,
+      "averageAEndHp": 242.92,
+      "averageBEndHp": 242.92,
+      "averageADamage": 2545.83,
+      "averageBDamage": 2545.83
     },
     {
       "id": "moving-mirror-control",
@@ -1980,15 +1980,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 5,
-      "draws": 2,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
       "aScore": 0.5,
-      "averageDurationS": 29.73,
-      "averageAEndHp": 116.67,
-      "averageBEndHp": 116.67,
-      "averageADamage": 2675.25,
-      "averageBDamage": 2675.25
+      "averageDurationS": 39.63,
+      "averageAEndHp": 399.92,
+      "averageBEndHp": 399.92,
+      "averageADamage": 2374.75,
+      "averageBDamage": 2374.75
     },
     {
       "id": "tier9-rifled-peers",
@@ -2232,15 +2232,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 5,
+      "bWins": 7,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 31.01,
-      "averageAEndHp": 465,
-      "averageBEndHp": 260.75,
-      "averageADamage": 2586.75,
-      "averageBDamage": 2546.17
+      "aScore": 0.417,
+      "averageDurationS": 34.97,
+      "averageAEndHp": 389.75,
+      "averageBEndHp": 597,
+      "averageADamage": 2085.67,
+      "averageBDamage": 2665.08
     },
     {
       "id": "merkava-tier7-peer",
@@ -2260,15 +2260,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 7,
+      "bWins": 5,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 21.06,
-      "averageAEndHp": 189.17,
-      "averageBEndHp": 258.33,
-      "averageADamage": 1736.67,
-      "averageBDamage": 1483.25
+      "aScore": 0.583,
+      "averageDurationS": 21.4,
+      "averageAEndHp": 205.83,
+      "averageBEndHp": 233.08,
+      "averageADamage": 1770.75,
+      "averageBDamage": 1451.5
     },
     {
       "id": "puma-tier8-peer",
@@ -2288,15 +2288,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 46.79,
-      "averageAEndHp": 243.5,
-      "averageBEndHp": 64.42,
-      "averageADamage": 1653,
-      "averageBDamage": 1775.42
+      "aScore": 0.75,
+      "averageDurationS": 49.67,
+      "averageAEndHp": 240.33,
+      "averageBEndHp": 38.92,
+      "averageADamage": 1684.08,
+      "averageBDamage": 1764.25
     },
     {
       "id": "puma-s1-tier10-peer",

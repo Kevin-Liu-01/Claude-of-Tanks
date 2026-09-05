@@ -20,9 +20,10 @@
 //    geometry-gate ledger remains bare and byte-stable.
 //  * In-game builds (garage pedestal, battle, studio, icon generator) get
 //    decor ON by default — no call-site changes required.
-//  * Per-tank selection is DETERMINISTIC, seeded by SPEC ID only (never
-//    camoSeed): the same tank always wears the same kit; variation lives
-//    ACROSS the fleet, stability per vehicle.
+//  * Per-tank selection is DETERMINISTIC, seeded by stable decoration
+//    identity only (never camoSeed): normally the SPEC ID, with the preserved
+//    Revolution Proto retaining its old ID. Variation lives across the
+//    fleet, stability per vehicle.
 //  * Placement guards: WIDTH GUARD (no piece may reach past
 //    dims.widthM/2 + 0.05 m — the loader's width clamp must never fire on
 //    account of cosmetics), GUN GUARD (the full-depression bore swept across
@@ -347,7 +348,7 @@ function errorMessage(error: RuntimeValue): string {
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic seeding — spec id ONLY (mandate: stable per vehicle).
+// Deterministic seeding — stable vehicle identity, never camo or entity ID.
 // ---------------------------------------------------------------------------
 
 function mulberry32(a: number): Rng {a|=0;return function(){a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
@@ -360,6 +361,12 @@ function fnv1a(str: string): number {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
+}
+
+function decorIdentityFor(specId: string): string {
+  // The renamed original must keep its exact old cargo, side and jitter.
+  // The rebuilt Revolution still takes its own explicit manifest below.
+  return specId === 'leo2_revolution_proto' ? 'leo2_revolution' : specId;
 }
 
 const D2R = Math.PI / 180;
@@ -2319,7 +2326,16 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
-  const curated = TANK_MANIFESTS[spec.id];
+  // The source-authored Revolution already carries its complete SEOSS,
+  // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
+  // on this low roof obscure that equipment and the large EMES recess.
+  // Keep only restrained engine-deck tools; Proto retains its old loadout.
+  if (spec.id === 'leo2_revolution') return [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
+      slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
+  ];
+  const decorId = decorIdentityFor(spec.id);
+  const curated = TANK_MANIFESTS[decorId];
   // Give every playable a visible, deterministic field load rather than one
   // tiny hash-selected object that can disappear behind a bustle. Seven
   // station-aware pieces occupy the bustle, rear turret roof, engine deck,
@@ -2327,7 +2343,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // a soft bag belongs on armor, paired cans sit at a rack/fender station,
   // and hard cases remain horizontal. Keeping these first in the manifest
   // guarantees the common fleet vocabulary before optional curated clutter.
-  const side = (fnv1a(`${spec.id}:fleet-cargo-side`) & 1) ? 1 : -1;
+  const side = (fnv1a(`${decorId}:fleet-cargo-side`) & 1) ? 1 : -1;
   const hardCases = [
     'beer-cooler-blue', 'cooler-red', 'insulated-chest-olive',
     'fifty-cal-ammo-can', 'wood-ammo-crate', 'ration-case', 'medical-case',
@@ -2350,7 +2366,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     'italian', 'nordic', 'polish', 'soviet', 'ukrainian', 'neutral',
   ].indexOf(nationStyle);
   const choose = <T extends readonly FleetEquipmentVariant[]>(pool: T, salt: string, offset = 0) =>
-    pool[(fnv1a(`${spec.id}:${salt}`) + nationPhase + offset) % pool.length];
+    pool[(fnv1a(`${decorId}:${salt}`) + nationPhase + offset) % pool.length];
   // Challenger 3 already fills the Garage card with its long gun, bustle and
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
@@ -2914,7 +2930,8 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     if (shouldSkipAttachment()) return null;
     root.userData.__decorApplied = true;
 
-    const rng = mulberry32(fnv1a(`decor:${spec.id}`));
+    const decorId = decorIdentityFor(spec.id);
+    const rng = mulberry32(fnv1a(`decor:${decorId}`));
     const mats = buildDecorMaterials(spec, engineCtx);
     const dims = spec.dims;
     const armor = spec.armor;
@@ -3741,7 +3758,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     ): DecorPartList | null {
       try {
         const localRng = mulberry32(
-          fnv1a(`${spec.id}:${row.kit}:${row.slot[0]}`) ^ jitterSeed,
+          fnv1a(`${decorId}:${row.kit}:${row.slot[0]}`) ^ jitterSeed,
         );
         const values = { ...(row.v || {}) };
         if (row.kit === 'wheel') values.r = wheelR;

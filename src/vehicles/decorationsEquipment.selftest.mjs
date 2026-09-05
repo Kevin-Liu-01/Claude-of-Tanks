@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   DECOR_KITS,
   FLEET_EQUIPMENT_VARIANTS,
+  attachTankDecorations,
   decorManifestFor,
   fleetEquipmentNationStyle,
   resolveDecorMode,
@@ -288,6 +289,90 @@ assert.equal(uaCargo[0].v?.v, 'twin-can-cradle',
   'Ukrainian M1A1 retains only a paired gas-can cradle');
 assert.ok(!uaCargo.some((row) => row.v?.v === 'folding-chair'),
   'Ukrainian M1A1 no longer receives the chair-like field prop');
+
+// Resolve the two real registered variants after the baseline cargo fixture
+// sweep, including their independently authored identity and dimensions.
+await import('./fleetFactory.ts');
+const revolutionManifest = decorManifestFor(getSpec('leo2_revolution'), () => 0.5);
+assert.deepEqual(revolutionManifest, [{
+  kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
+  slot: ['fender', { side: -1, zFrac: -0.31, along: true }],
+}], 'Revolution retains only its paired tools on the aft left fender, clear of the RWS and EMES recess');
+assert.equal(revolutionManifest.some((row) => row.kit === 'cargo'), false,
+  'Revolution has no generic cargo over its source-authored equipment');
+const revolutionProtoCargo = decorManifestFor(getSpec('leo2_revolution_proto'), () => 0.5)
+  .filter((row) => row.kit === 'cargo' && (row.p ?? 1) > 0);
+assert.equal(revolutionProtoCargo.length, 7,
+  'preserved Revolution Proto retains its seven-piece generic field load');
+assert.equal(new Set(revolutionProtoCargo.map((row) => row.v?.v)).size, 7,
+  'preserved Revolution Proto retains seven distinct cargo variants');
+assert.ok(revolutionProtoCargo.every((row) => row.slot[0] === 'fleetCargo'
+  && row.slot[1].routes.length >= 4 && row.v?.nation === 'Germany'),
+'preserved Revolution Proto keeps its German cargo palette and aft placement route network');
+const originalRevolutionCargo = [
+  'cooler-red', 'large-rucksack', 'helmet-bundle', 'nato-fuel-can',
+  'wood-ammo-crate', 'soviet-tool-can', 'folded-tarp-pack',
+];
+assert.deepEqual(revolutionProtoCargo.map((row) => row.v.v), originalRevolutionCargo,
+  'renaming the original Revolution does not reselect its historical cargo');
+assert.deepEqual(revolutionProtoCargo.map((row) => row.slot[1].routes[0]), [
+  ['turretRear', { side: -1 }],
+  ['turretRear', { side: 1 }],
+  ['turretRear', { side: 1 }],
+  ['hullRearRack', { x: -0.22 }],
+  ['turretRear', { side: 1 }],
+  ['turretRear', { side: -1 }],
+  ['turretRear', { side: -1 }],
+], 'Proto retains the original left/right cargo stations, not its new ID hash');
+
+// Probe the actual attachment path before geometry seating. These uint32
+// draws were captured from the original HEAD Revolution implementation, not
+// recomputed with the new identity helper. Tiny boxes avoid a fleet build;
+// kit interception verifies both the manifest RNG and per-piece jitter.
+const decorRoot = new THREE.Group();
+const decorHull = new THREE.Group();
+const decorTurret = new THREE.Group();
+decorRoot.add(decorHull, decorTurret);
+decorTurret.position.fromArray(getSpec('leo2_revolution_proto').armor.turretPivot);
+const decorMaterial = new THREE.MeshBasicMaterial();
+const decorHullGeometry = new THREE.BoxGeometry(4, 1.2, 7.72);
+const decorTurretGeometry = new THREE.BoxGeometry(3, 1, 3.5);
+decorHull.add(new THREE.Mesh(decorHullGeometry, decorMaterial));
+decorTurret.add(new THREE.Mesh(decorTurretGeometry, decorMaterial));
+const originalKits = { ...DECOR_KITS };
+const cargoDraws = [];
+const decorDisposables = [];
+try {
+  for (const key of Object.keys(originalKits)) DECOR_KITS[key] = (args) => {
+    if (key === 'cargo') cargoDraws.push({
+      variant: args.v,
+      jitter: Array.from({ length: 4 }, () => args.rng() * 0x100000000),
+    });
+    return null;
+  };
+  assert.ok(attachTankDecorations({
+    root: decorRoot, hullG: decorHull, turretG: decorTurret,
+    spec: getSpec('leo2_revolution_proto'), engineCtx: null,
+    disposables: decorDisposables, opts: { proceduralOnly: true, decor: true },
+  }), 'the preserved Proto runs the real decoration attachment path');
+  assert.deepEqual(cargoDraws.map((draw) => draw.variant), originalRevolutionCargo,
+    'runtime attachment preserves every original cargo choice');
+  assert.deepEqual(cargoDraws.map((draw) => draw.jitter), [
+    [3051170153, 681719976, 693460696, 2444083599],
+    [1970203995, 1719474071, 308388225, 829907085],
+    [2496884681, 3658897500, 1451979694, 601508063],
+    [2328603109, 724280760, 1891693289, 2754609698],
+    [4200175483, 3017536333, 175097776, 2989193847],
+    [3286343229, 2541665945, 3033237535, 2324828969],
+    [695239294, 1688196995, 856289333, 1276053702],
+  ], 'Proto preserves the historical manifest seed and all seven piece jitter streams');
+} finally {
+  Object.assign(DECOR_KITS, originalKits);
+  for (const disposable of decorDisposables) disposable.dispose?.();
+  decorHullGeometry.dispose();
+  decorTurretGeometry.dispose();
+  decorMaterial.dispose();
+}
 
 console.log(`decorationsEquipment.selftest: ${FLEET_EQUIPMENT_VARIANTS.length} authored variants, `
   + `${signatures.size} geometry signatures, ${distributed.size} playable-fleet variants passed`);

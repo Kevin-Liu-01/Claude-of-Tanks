@@ -197,9 +197,18 @@ const SPECS: FleetTankSpec[] = [
         ],
       },
       dims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 } }),
-  make('leo2a7', 'leo2_revolution', 'Leopard 2 Revolution', 'Germany',
+  // Preserve the original authored Revolution as its own vehicle. Clone the
+  // original donor independently so later Revolution geometry/spec revisions
+  // cannot change the prototype's dimensions, paint or combat data.
+  make('leo2a7', 'leo2_revolution_proto', 'Leopard 2 Revolution Proto', 'Germany',
     { hp: 2550, weightTons: 60, topSpeedKmh: 70,
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00, heightM: 2.64 } }),
+  make('leo2a7', 'leo2_revolution', 'Leopard 2 Revolution', 'Germany',
+    { hp: 2550, weightTons: 60, topSpeedKmh: 70,
+      // Published basic height excludes the elevated weapon-station hood.
+      // Owner source measured hood top is 2.866 m above its track datum.
+      dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00,
+        heightM: 2.64, silhouetteHeightM: 2.866 } }),
   make('leo2a6', 'leo2a5', 'Leopard 2A5', 'Germany',
     { hp: 2350, weightTons: 59.5, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 },

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('leo2_revolution', null, {
+// Preserve the original Revolution's complete articulation and attachment
+// regression under its new Proto identity.
+const tank = createTank('leo2_revolution_proto', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
@@ -19,23 +21,23 @@ try {
   const barrelDark = tank.root.getObjectByName('gunDark');
   const muzzleSeat = bore?.userData?.muzzleSeatReceipt;
 
-  assert.ok(turret, 'Leopard 2 Revolution rotating turret rig exists');
+  assert.ok(turret, 'Leopard 2 Revolution Proto rotating turret rig exists');
   assert.equal(turret.position.x, 0,
-    'Leopard 2 Revolution turret remains centered laterally');
+    'Leopard 2 Revolution Proto turret remains centered laterally');
   assert.ok(Math.abs(turret.position.z - 0.45) < 1e-9,
-    'Leopard 2 Revolution yaw pivot sits at the structural turret center');
+    'Leopard 2 Revolution Proto yaw pivot sits at the structural turret center');
   assert.equal(gun?.parent, turret,
-    'Leopard 2 Revolution gun remains owned by the translated turret rig');
+    'Leopard 2 Revolution Proto gun remains owned by the translated turret rig');
   assert.equal(gun.position.z, 1.45,
-    'Leopard 2 Revolution gun pitches at the visible mantlet trunnion');
+    'Leopard 2 Revolution Proto gun pitches at the visible mantlet trunnion');
   assert.ok(gunMount?.geometry && barrel?.geometry,
-    'Leopard 2 Revolution keeps gun-owned mantlet and barrel geometry');
+    'Leopard 2 Revolution Proto keeps gun-owned mantlet and barrel geometry');
   assert.equal(bore?.parent, muzzle,
-    'Leopard 2 Revolution bore fallback remains owned by its muzzle anchor');
+    'Leopard 2 Revolution Proto bore fallback remains owned by its muzzle anchor');
   assert.equal(muzzleSeat?.supportSource, 'terminal-cap',
-    'Leopard 2 Revolution bore is measured from its physical terminal cap');
+    'Leopard 2 Revolution Proto bore is measured from its physical terminal cap');
   assert.ok(muzzleSeat?.lipAdvanceM >= 0.0034 && muzzleSeat?.lipAdvanceM <= 0.0161,
-    'Leopard 2 Revolution bore uses a scale-aware terminal lip');
+    'Leopard 2 Revolution Proto bore uses a scale-aware terminal lip');
 
   turretArmor.geometry.computeBoundingBox();
   const turretArmorCenter = turretArmor.geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -165,4 +167,4 @@ try {
   tank.dispose();
 }
 
-console.log('leopardRevolutionTurretCenter.selftest: centered turret and gun ownership pass');
+console.log('leopardRevolutionTurretCenter.selftest: preserved Proto centered turret and gun ownership pass');

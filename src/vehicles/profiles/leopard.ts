@@ -35,6 +35,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { buildLeopardRevolution } from './leopardRevolution.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
@@ -15883,7 +15884,10 @@ export const LEOPARD_PROFILES = {
   leo2a5_a5nl: { build: buildLeo2A5A5NL },
   leo2a7v: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
-  leo2_revolution: { build: buildLeo2Revolution },
+  // Preserve the original authored model as Proto while the proper
+  // Revolution has its independent source-based construction.
+  leo2_revolution_proto: { build: buildLeo2Revolution },
+  leo2_revolution: { build: buildLeopardRevolution },
   // Preserve the established KF51 exactly; the owner-source rebuild ships as
   // the additive KF51B variant requested by the project owner.
   kf51: { build: buildKF51 },
