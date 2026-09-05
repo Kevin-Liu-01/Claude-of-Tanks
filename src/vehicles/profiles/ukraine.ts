@@ -1384,6 +1384,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
 function buildUAT80UKursk(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
+  const buildKurskHull = (): void => {
   // T-80U hull: same turbine chassis lines as the T-80 family at the
   // published 7.01/9.65/3.60/2.20 datum, frame +-3.505.
   loftHull(P, {
@@ -1444,7 +1445,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullRubber', box(0.34, 0.30, 0.045), s * 1.38, 0.95, 3.43);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 1.00, -3.22);
   }
+  };
+  buildKurskHull();
 
+  const buildKurskStern = (): void => {
   // Stern: grille, eyes, low drum pair + log (UA service fit).
   P.add('hullDark', box(1.80, 0.30, 0.035), 0, 1.35, -3.44);
   for (let i = 0; i < 5; i++) P.add('hullDetail', box(0.30, 0.13, 0.025), -0.72 + i * 0.36, 1.35, -3.46);
@@ -1474,7 +1478,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullDark', box(0.045, 0.52, 0.05), -0.72, 0.95, -3.35, 0.12, 0, 0);
     P.add('hullDark', box(0.045, 0.52, 0.05), 0.72, 0.95, -3.35, 0.12, 0, 0);
   }
+  };
+  buildKurskStern();
 
+  const buildKurskRunningGearAndSkirts = (): void => {
   // T-80U running gear (published chassis constants, frame +-3.505).
   // §5.272 fix (1): wheel rim/hub contrast lifted (tireHex/wheelHex law —
   // the six dished wheels read as a black smear behind the old deep skirt;
@@ -1507,7 +1514,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullDark', box(0.010, 0.022, 0.52), s * 1.7755, 1.235, z, 0, 0, -s * 0.018);
   }
   widthAnchor(P, 1.80, 0.82, -2.55);
+  };
+  buildKurskRunningGearAndSkirts();
 
+  const buildKurskTurretShell = (): DomeProfile => {
   // T-80U turret — §5.341 T-80 DOME REBASE (owner order, same law as
   // ua_t80bv): the odd sz-1.12 ellipse is replaced by the RESIDENT
   // t80-line cast profile (t80.ts buildT80Line v1 ring list — the 9-ring
@@ -1522,11 +1532,15 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.24);
+  return { rings, sz: 0.88, cz: 0.22 };
+  };
+  const kurskDome = buildKurskTurretShell();
 
   // The frontal package is installed after its welded carrier by
   // addModernizedT80TurretSuite, replacing the former steel wedge leaves,
   // mixed dark bricks and detached V tips with one coherent painted array.
 
+  const buildKurskRoofSystems = (): void => {
   // Tall right-forward gunner primary sight — the print's strongest roof
   // tell and this build's ONE budgeted p95 spike window (~3 columns at
   // z 0.07..0.37). The NSVT stows FOLDED on the roof (Challenger 2
@@ -1581,7 +1595,10 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('turret', box(0.13, 0.045, 0.11), x, gy, z, 0, ry, 0);
     P.add('turretGlass', box(0.09, 0.036, 0.02), x, gy + 0.022, z + 0.05, 0, ry, 0);
   }
+  };
+  buildKurskRoofSystems();
 
+  const buildKurskBustle = (): void => {
   // Asymmetric rear roof crates + rolled snorkel across the bustle
   // (kursk print tells), 902B banks both cheeks, whips — rear kit pulled
   // to the rebased casting's shorter rear wall.
@@ -1606,9 +1623,12 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
       h: 0.18, r: 0.011, rake: -s * 0.9, seed: 8912 + (s > 0 ? 1 : 0) }),
       s * 0.88, 0.31, -0.83);
   }
+  };
+  buildKurskBustle();
 
-  addModernizedT80TurretSuite(P, 'kursk', { rings, sz: 0.88, cz: 0.22 });
+  addModernizedT80TurretSuite(P, 'kursk', kurskDome);
 
+  const buildKurskWeapon = (): void => {
   // 2A46M-1 at the 1.70 axis, muzzle +6.145 world, true bore (gun local
   // +0.06 compensates the 1.50 -> 1.44 ring drop — world axis certified).
   P.gunG.position.set(0, 0.26, 1.05);
@@ -1636,6 +1656,8 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   // casting's skin — the old -0.66 station falls off the shorter rear)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [1.37, 0.36, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [-1.37, 0.36, -0.30], -Math.PI / 2);
+  };
+  buildKurskWeapon();
   P.topY = 1.40;
 }
 
