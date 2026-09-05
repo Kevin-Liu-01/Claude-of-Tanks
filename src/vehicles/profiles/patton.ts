@@ -1131,9 +1131,13 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
 // F: { hatchX?, hatchZ, bowMG?, lights:{x,y,z,rx}, siren?,
 //      shackleZ, shackleY, grille:{z0,z1,y,rx?,x?,w?}, caps?, rearGrilleY? }
 // ---------------------------------------------------------------------------
-function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
-  const { box, cylY, cylZ, sph, torus, headlight, liftEye } = KIT;
-  const { bhw, deckAt, tailZ } = hull;
+function addUsCrewHatchesAndBowGun(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { box, cylY, cylZ, sph } = KIT;
+  const { deckAt } = hull;
   // driver (+ assistant) hatch discs — FLUSH (v6: the reference decks read
   // within ~0.03 m of the plate; the old proud hoods+periscopes cost the
   // whole mid-deck band)
@@ -1167,6 +1171,15 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
       P.add('hullDark', cylZ(0.024, 0.26, 8), F.bowMG[0], F.bowMG[1] + 0.03, F.bowMG[2] + 0.13, F.bowMG[3], 0, 0);
     }
   }
+}
+
+function addUsExteriorHullFittings(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { cylY, headlight, liftEye, torus } = KIT;
+  const { deckAt, tailZ } = hull;
   // headlight pods on the glacis
   for (const side of [-1, 1]) {
     headlight(P, side * F.lights.x, F.lights.y, F.lights.z, F.lights.rx, 0.05);
@@ -1178,6 +1191,15 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
     P.add('hullDetail', torus(0.06, 0.015, 10), side * 0.58, F.shackleY, F.shackleZ, Math.PI / 2, 0, 0);
     if (!F.noRearEyes) liftEye(P, 'hullDetail', side * 0.62, deckAt(tailZ + 0.25) - 0.02, tailZ + 0.15);
   }
+}
+
+function addUsEngineDeckAndRearGrille(
+  P: PattonBuilderPort,
+  hull: BuiltHull,
+  F: HullFurniture,
+): void {
+  const { box, cylY } = KIT;
+  const { deckAt, tailZ } = hull;
   // engine deck: framed louvred grille bays (kept within +0.03 of the plate)
   const gr = F.grille;
   const gm = (gr.z0 + gr.z1) / 2, gd = gr.z0 - gr.z1;
@@ -1204,6 +1226,12 @@ function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
   // rear plate: dark exhaust grille (kept on the rear face — never past the
   // tail tip when the hull plan tapers)
   P.add('hullDark', box(F.rearGrilleW ?? 1.24, 0.22, 0.03), 0, (F.rearGrilleY ?? deckAt(tailZ) - 0.32), F.rearGrilleZ ?? (tailZ - 0.02));
+}
+
+function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
+  addUsCrewHatchesAndBowGun(P, hull, F);
+  addUsExteriorHullFittings(P, hull, F);
+  addUsEngineDeckAndRearGrille(P, hull, F);
 }
 
 // ---------------------------------------------------------------------------
