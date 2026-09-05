@@ -526,7 +526,23 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
 
 function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   const { box, cylY, cylZ, torus, xform } = KIT;
+  const skirtPanelZ = [2.35, 1.39, 0.43, -0.53, -1.49, -2.45];
+  const skirtPanelHeights = [0.66, 0.76, 0.82, 0.82, 0.76, 0.68];
+  const skirtCageStations = [2.75, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59, -3.03];
+  const turretPivot = P.spec.armor.turretPivot;
+  const cheekSeats: ReadonlyArray<{
+    side: -1 | 1;
+    point: ReadonlyVec3Tuple;
+    normal: ReadonlyVec3Tuple;
+  }> = [
+    { side: -1, point: [-0.82, 0.61, 0.70], normal: [-0.36548, 0.91326, 0.17995] },
+    { side: 1, point: [0.84, 0.58, 0.72], normal: [0.60851, 0.78428, 0.12096] },
+  ];
+  const carrierDepthM = 0.10;
+  const contactEmbedM = 0.012;
+  const eraBodyDepthM = 0.07 * 0.90;
 
+  const buildTtsPowerpack = (): void => {
   // The rear deck extension overlaps the original stern by 0.59 m and stays
   // wholly above the unchanged sprocket/track course. Sparse straight
   // stations retain the welded Sheridan language instead of rounding the
@@ -562,7 +578,10 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   for (const x of [-1.08, 0, 1.08]) {
     P.add('hullDark', box(0.055, 0.22, 0.82), x, 1.54, -3.16, 0.05, 0, 0);
   }
+  };
+  buildTtsPowerpack();
 
+  const buildTtsSkirts = (): void => {
   // A second glacis course plus deep, full-length modular skirts. Six backing
   // panels per side overlap at their vertical seams and drop over the upper
   // wheel run. Two ERA courses span the complete track length, while a thin
@@ -577,9 +596,6 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       }
     }
   });
-  const skirtPanelZ = [2.35, 1.39, 0.43, -0.53, -1.49, -2.45];
-  const skirtPanelHeights = [0.66, 0.76, 0.82, 0.82, 0.76, 0.68];
-  const skirtCageStations = [2.75, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59, -3.03];
   for (const side of [-1, 1]) {
     for (let index = 0; index < skirtPanelZ.length; index++) {
       const height = skirtPanelHeights[index];
@@ -620,7 +636,10 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       }
     }
   }
+  };
+  buildTtsSkirts();
 
+  const buildTtsBustle = (): void => {
   // Replace the monolithic rear box with a compact armored core and an open
   // tubular basket. The front of the basket penetrates the cast rear shell;
   // top/floor rails and side diagonals converge on the five rear uprights.
@@ -648,23 +667,14 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   for (const z of [-1.55, -1.90, -2.25]) {
     P.add('turretDetail', box(2.38, 0.040, 0.040), 0, 0.79, z);
   }
+  };
+  buildTtsBustle();
 
+  const buildTtsTurretEra = (): void => {
   // The cheek carriers are seated from the selected armor planes themselves.
   // Their inner faces penetrate those planes by 12 mm; every ERA body then
   // overlaps its carrier by the same amount. This preserves the asymmetric
   // cast-turret normals instead of mirroring a floating rectangular slab.
-  const turretPivot = P.spec.armor.turretPivot;
-  const cheekSeats: ReadonlyArray<{
-    side: -1 | 1;
-    point: ReadonlyVec3Tuple;
-    normal: ReadonlyVec3Tuple;
-  }> = [
-    { side: -1, point: [-0.82, 0.61, 0.70], normal: [-0.36548, 0.91326, 0.17995] },
-    { side: 1, point: [0.84, 0.58, 0.72], normal: [0.60851, 0.78428, 0.12096] },
-  ];
-  const carrierDepthM = 0.10;
-  const contactEmbedM = 0.012;
-  const eraBodyDepthM = 0.07 * 0.90;
   for (const seat of cheekSeats) {
     const frame = armorSurfaceFrame(seat.normal);
     const carrierCenter = pointOnArmorFrame(seat.point, frame, 0, 0,
@@ -692,7 +702,10 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       }
     }
   }, true);
+  };
+  buildTtsTurretEra();
 
+  const buildTtsOpticsAndAutocannon = (): void => {
   // Large protected searchlight to gun-right, as in the supplied silhouette.
   // A deep bracket crosses into the cheek; the lens is proud of the housing.
   P.addEquipment('turret', box(0.48, 0.54, 0.40), 0.66, 0.56, 1.32, 0, -0.04, 0);
@@ -727,6 +740,8 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     -0.96, 2.04, -1.48);
 
   P.turretG.add(sheridanTtsAutocannon(P));
+  };
+  buildTtsOpticsAndAutocannon();
   return {
     rearDeckEndZ: -3.62,
     runningGearReused: true,
