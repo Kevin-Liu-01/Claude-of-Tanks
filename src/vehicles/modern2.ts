@@ -72,6 +72,22 @@ interface T14CheekPocket extends PocketSlab {
   side: -1 | 1;
 }
 
+interface T14TurretStage {
+  readonly roofCrownM: number;
+  readonly knuckleM: number;
+  readonly cheekPockets: T14CheekPocket[];
+  readonly roofPlan: [number, number][];
+}
+
+interface T14SystemStage {
+  readonly rwsPedestalBottomY: number;
+  readonly rwsPedestalTopY: number;
+  readonly rwsRearTierCenterY: number;
+  readonly rwsFrontTierCenterY: number;
+  readonly primaryRwsX: number;
+  readonly primaryRwsDeckY: number;
+}
+
 interface Modern2BuilderPort {
   readonly q?: boolean;
   readonly rng: () => number;
@@ -2637,12 +2653,8 @@ function buildMBT70(P: Modern2BuilderPort) {
 // sawtooth skirts, crew-capsule bow, and the sci-fi faceted unmanned turret
 // shroud with sensor mast, AESA corner panels, APS tubes and a clean gun.
 // ---------------------------------------------------------------------------
-function buildT14(P: Modern2BuilderPort) {
-  const { box, frustum, slab, polyMultiLoft, cylY, cylX, cylZ, torus,
-    xform, mergeAll,
-    buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
-    towCable, stowage } = KIT;
-  const { rng } = P;
+function buildT14HullBody(P: Modern2BuilderPort) {
+  const { box, frustum, slab, cylY, torus, fenders, periscope } = KIT;
   // Fully first-party runtime geometry. The local CC-BY comparison GLB is
   // used only by QA pages for measurements and visual pairs; no source
   // vertices, indices, materials, textures, rig or animation enter here.
@@ -2732,6 +2744,10 @@ function buildT14(P: Modern2BuilderPort) {
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.50, 0.026, 7.6), s * 1.58, 1.655, -0.35);
   }
+}
+
+function buildT14HullExterior(P: Modern2BuilderPort) {
+  const { box, frustum, cylZ, headlight, liftEye } = KIT;
   // ---- skirts (print profile): front half = 3 thick armor panels with the
   // Malachit tile field, faces ±1.86 (the print's front-half width — the
   // ±1.945 anchor lives on the REAR screen, ref plan x ±1.99 rear-only);
@@ -2849,7 +2865,10 @@ function buildT14(P: Modern2BuilderPort) {
   }
   liftEye(P, 'hullDetail', -1.5, 1.66, 0.5);                                    // eyes at the deck line (their 1.79 tops owned 6 front cols vs ref 1.711)
   liftEye(P, 'hullDetail', 1.5, 1.66, 0.5);
+}
 
+function buildT14TurretShell(P: Modern2BuilderPort): T14TurretStage {
+  const { box, slab, polyMultiLoft, cylY, cylZ } = KIT;
   // ---- turret: faceted stealth shroud (§16.5) -------------------------------
   // LADDER r1 RE-PROPORTION (§B8: the oracle is the proportion truth; all
   // stations from tmp-moderns-worldtrace t14-trace-r0, world -> local via
@@ -2951,7 +2970,7 @@ function buildT14(P: Modern2BuilderPort) {
   // made the roof read as a square lid. This ten-station cap instead narrows
   // around the gun throat, follows both cheek breaks, and meets the raised
   // rear bustle at the existing -0.50 m seam.
-  const t14RoofPlan = [
+  const t14RoofPlan: [number, number][] = [
     [-0.90, -0.50], [0.90, -0.50], [0.95, -0.20], [0.95, 0.86],
     [0.66, 1.242], [0.18, 1.413], [-0.18, 1.413], [-0.66, 1.242],
     [-0.95, 0.86], [-0.95, -0.20],
@@ -3018,6 +3037,23 @@ function buildT14(P: Modern2BuilderPort) {
       P.add('turretGlass', cylZ(0.036, 0.304, 10), tx, 0.10, tz, 0.25, s * (0.5 + k * 0.18), 0);
     }
   }
+
+  return {
+    roofCrownM: AH,
+    knuckleM: BK,
+    cheekPockets: t14CheekPockets,
+    roofPlan: t14RoofPlan,
+  };
+}
+
+function buildT14TurretSystems(
+  P: Modern2BuilderPort,
+  turret: T14TurretStage,
+): T14SystemStage {
+  const { box, cylY, cylX, cylZ, xform, mergeAll } = KIT;
+  const AH = turret.roofCrownM;
+  const BK = turret.knuckleM;
+  const t14CheekPockets = turret.cheekPockets;
   // ---- sensor suite at the PRINT's stations --------------------------------
   // FINISH r2 (dims 3.16 datum coupling, packet-filed): the old fat pano
   // head (3 cols at 3.71-3.77) + 2-col meteo tip carried p95 to 3.40 =
@@ -3236,6 +3272,34 @@ function buildT14(P: Modern2BuilderPort) {
     antenna.position.set(x, 0.89, -1.88);
     P.turretG.add(antenna);
   }
+
+  return {
+    rwsPedestalBottomY,
+    rwsPedestalTopY,
+    rwsRearTierCenterY,
+    rwsFrontTierCenterY,
+    primaryRwsX,
+    primaryRwsDeckY,
+  };
+}
+
+function finishT14Assembly(
+  P: Modern2BuilderPort,
+  turret: T14TurretStage,
+  systems: T14SystemStage,
+) {
+  const { box, cylZ, buildGun, buildRunningGear } = KIT;
+  const AH = turret.roofCrownM;
+  const BK = turret.knuckleM;
+  const t14RoofPlan = turret.roofPlan;
+  const {
+    rwsPedestalBottomY,
+    rwsPedestalTopY,
+    rwsRearTierCenterY,
+    rwsFrontTierCenterY,
+    primaryRwsX,
+    primaryRwsDeckY,
+  } = systems;
   // clean 2A82 tube: thermal sleeve, NO evacuator (§16.1 key barrel read).
   // The current reference packet measures a 9.97 m overall envelope over
   // the −4.32 m tail.  Preserve the wholly authored 2A82 construction but
@@ -3356,6 +3420,14 @@ function buildT14(P: Modern2BuilderPort) {
     frontMudguardsSupported: true,
   };
   P.topY = AH + 0.85;                                                           // sensor mast top
+}
+
+function buildT14(P: Modern2BuilderPort) {
+  buildT14HullBody(P);
+  buildT14HullExterior(P);
+  const turret = buildT14TurretShell(P);
+  const systems = buildT14TurretSystems(P, turret);
+  finishT14Assembly(P, turret, systems);
 }
 
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
