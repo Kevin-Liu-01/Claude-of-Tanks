@@ -135,6 +135,7 @@ export interface WorldRuntime {
     dx: number,
     dz: number,
     speedMetersPerSecond?: number,
+    cause?: 'ram' | 'shell',
   ): boolean;
   resetDestructibles(): void;
   spawnPoints: {
@@ -473,6 +474,7 @@ function assembleWorld(
       dx: number,
       dz: number,
       speedMps = 0,
+      cause: 'ram' | 'shell' = 'ram',
     ) => {
       if (!ob) return false;
       if (isTreeObstacle(ob)) {
@@ -485,7 +487,9 @@ function assembleWorld(
       }
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
       // the hull's velocity (props.ts breakRecord scales the throw).
-      if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz, speedMps, 'ram');
+      if (ob.propIdx != null && props.crushDestructible) {
+        return props.crushDestructible(ob.propIdx, dx, dz, speedMps, cause);
+      }
       return false;
     },
     // DESTRUCTIBLES r1: rematch hook — startBattle restores every broken/

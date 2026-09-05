@@ -67,7 +67,11 @@ import type {
   SnapshotShellSource,
   WorldSnapshot,
 } from '../net/snapshot.ts';
-import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
+import {
+  pushHullFromHull,
+  pushHullFromObstacle,
+  shellPassesThroughCollisionRecord,
+} from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
@@ -317,6 +321,7 @@ const _aim = new Vector3();
 const _muzzle = new Vector3();
 const _gunDir = new Vector3();
 const _segmentDir = new Vector3();
+const _worldTraceOrigin = new Vector3();
 const _hullMatrix = new Matrix4();
 const _turretMatrix = new Matrix4();
 const _localMatrix = new Matrix4();
@@ -1457,6 +1462,40 @@ export function createAuthoritativeMatch({
     );
   }
 
+  function traceBlockingWorldShellHit(
+    shell: DamageShell,
+    tankHit: TankTrace | null,
+    segmentLength: number,
+  ): WorldTrace | null {
+    _worldTraceOrigin.copy(shell.prevPos);
+    let travelled = 0;
+    const tankDistance = tankHit?.distance ?? Infinity;
+    for (let pass = 0; pass < 32; pass++) {
+      const remaining = segmentLength - travelled;
+      if (remaining <= 0) return null;
+      const worldHit = segmentWorldHit(
+        worldCollision,
+        heightField,
+        _worldTraceOrigin,
+        shell.pos,
+      );
+      if (!worldHit) return null;
+      const localDistance = Math.max(0, worldHit.t * remaining);
+      const distance = travelled + localDistance;
+      if (distance >= tankDistance) return null;
+      if (!shellPassesThroughCollisionRecord(worldHit.record)) {
+        worldHit.t = distance / segmentLength;
+        return worldHit;
+      }
+
+      destroyShellObstacle(shell, worldHit);
+      const advance = Math.min(remaining, Math.max(0.01, localDistance + 0.01));
+      travelled += advance;
+      _worldTraceOrigin.addScaledVector(_segmentDir, advance);
+    }
+    return null;
+  }
+
   function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace): void {
     emit('shell_impact', {
       shellId: shell.id,
@@ -1480,14 +1519,6 @@ export function createAuthoritativeMatch({
     else shell.dead = true;
     destroyShellObstacle(shell, worldHit);
     emitWorldShellImpact(shell, worldHit);
-  }
-
-  function worldHitPrecedesTank(
-    worldHit: WorldTrace | null,
-    tankHit: TankTrace | null,
-    segmentLength: number,
-  ): worldHit is WorldTrace {
-    return !!worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance);
   }
 
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
@@ -1517,10 +1548,10 @@ export function createAuthoritativeMatch({
       }
       stepShell(shell, dt);
       if (modeController.tryHitBall(shell)) continue;
-      const worldHit = segmentWorldHit(worldCollision, heightField, shell.prevPos, shell.pos);
       const tankHit = firstTankTrace(shell, entities);
       const segmentLength = shell.prevPos.distanceTo(shell.pos);
-      if (worldHitPrecedesTank(worldHit, tankHit, segmentLength)) {
+      const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
+      if (worldHit) {
         resolveWorldShellHit(shell, worldHit);
         continue;
       }

@@ -179,6 +179,12 @@ assert.ok(treeCrushReceipt?.directionZ > 0 && treeCrushReceipt?.speedMps > 100,
 assert.ok(treeEvents.some((event) => event.type === 'world_prop_destroyed'
   && event.treeIdx === 17 && event.kind === 'tree' && event.cause === 'shell'),
 'tree shell destruction replicates with stable owner binding');
+assert.ok(!treeEvents.some((event) => event.type === 'shell_impact'
+  && event.surfaceKind === 'tree'),
+'a yielding tree never consumes the authoritative projectile');
+assert.ok(treeEvents.some((event) => event.type === 'shell_hit'
+  && event.targetId === 'tree-b'),
+'the same authoritative projectile continues through a toppled tree into the tank behind it');
 
 const crushWall = {
   ...wall,
