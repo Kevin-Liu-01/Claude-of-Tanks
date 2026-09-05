@@ -9909,7 +9909,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
 // authored here as a separate configuration. Semantic add* calls keep roof
 // equipment and external protection out of the broad structural hit volumes.
 // ---------------------------------------------------------------------------
-function buildM1A3(P: AbramsBuilderPort): void {
+function createM1A3BuildLayout() {
   const turretForwardShiftM = 0.30;
   const turretZTip = 2.18;
   const turretZWide = 1.08;
@@ -10021,6 +10021,15 @@ function buildM1A3(P: AbramsBuilderPort): void {
     gunR: 0.115,
   } satisfies AbramsTurretConfig;
 
+  return { turretForwardShiftM, mantletRoofRamp, g, t };
+}
+
+type M1A3BuildLayout = ReturnType<typeof createM1A3BuildLayout>;
+
+const M1A3_SKIRT_PANEL_COUNT = 11;
+const M1A3_CAGE_RAIL_YS = Object.freeze([0.78, 1.04, 1.30, 1.56]);
+
+function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   abramsHull(P, g);
 
   // Sharp, integrated glacis shoulders and a central sensor/service spine.
@@ -10043,9 +10052,8 @@ function buildM1A3(P: AbramsBuilderPort): void {
 
   // Eleven physically separated modular skirt cassettes per flank. Their
   // gaps and stepped lower edges keep the running gear legible in motion.
-  const skirtPanelCount = 11;
   for (const side of [-1, 1]) {
-    for (let k = 0; k < skirtPanelCount; k++) {
+    for (let k = 0; k < M1A3_SKIRT_PANEL_COUNT; k++) {
       const z = -3.36 + k * 0.64;
       const frontBias = k > 8 ? (k - 8) * 0.055 : 0;
       const h = 0.80 - frontBias;
@@ -10059,12 +10067,14 @@ function buildM1A3(P: AbramsBuilderPort): void {
     P.addExternalArmor('hull', box(0.20, 0.14, 7.18), side * 1.995, 1.53, -0.02);
     P.add('hullDetail', box(0.04, 0.07, 7.04), side * 2.105, 1.60, -0.02);
   }
+  addM1A3HullCagesAndPowerpack(P);
+}
 
+function addM1A3HullCagesAndPowerpack(P: AbramsBuilderPort): void {
   // Rear flank and stern slat cages. Bars remain individually separated,
   // avoiding coplanar cage sheets and the z-fighting they would create.
-  const cageRailYs = [0.78, 1.04, 1.30, 1.56];
   for (const side of [-1, 1]) {
-    for (const y of cageRailYs) {
+    for (const y of M1A3_CAGE_RAIL_YS) {
       P.addExternalArmor('hull', box(0.035, 0.035, 1.86), side * 2.14, y, -3.02);
     }
     for (const z of [-3.88, -3.58, -3.28, -2.98, -2.68, -2.38, -2.10]) {
@@ -10072,7 +10082,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
     }
     P.addExternalArmor('hull', box(0.25, 0.035, 1.80), side * 2.02, 0.78, -3.02);
   }
-  for (const y of cageRailYs) {
+  for (const y of M1A3_CAGE_RAIL_YS) {
     P.addExternalArmor('hull', box(3.96, 0.035, 0.035), 0, y, -4.16);
   }
   for (const x of [-1.92, -1.38, -0.84, -0.28, 0.28, 0.84, 1.38, 1.92]) {
@@ -10096,7 +10106,9 @@ function buildM1A3(P: AbramsBuilderPort): void {
     P.addHatch('hull', cylY(0.27, 0.29, 0.055, 16), x, 1.66, 1.72);
     P.add('hullDark', torus(0.26, 0.014, 18), x, 1.705, 1.72);
   }
+}
 
+function addM1A3TurretStructure(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): void {
   seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
@@ -10133,7 +10145,10 @@ function buildM1A3(P: AbramsBuilderPort): void {
   for (const x of [-1.72, -1.20, -0.68, 0, 0.68, 1.20, 1.72]) {
     P.addExternalArmor('turret', box(0.035, 0.58, 0.035), x, 0.39, -3.35);
   }
+  addM1A3ProtectionAndSensors(P);
+}
 
+function addM1A3ProtectionAndSensors(P: AbramsBuilderPort): void {
   // Four-corner hard-kill launchers and radar faces correspond to the
   // protection suite on the gameplay spec. Optics receipts hug the lenses.
   for (const side of [-1, 1]) {
@@ -10162,7 +10177,9 @@ function buildM1A3(P: AbramsBuilderPort): void {
   P.addEquipment('turret', box(0.34, 0.22, 0.36), 0.76, 0.92, -1.08);
   P.addEquipment('turret', cylY(0.13, 0.15, 0.30, 12), 0.76, 1.17, -1.08);
   P.addEquipment('turret', box(0.42, 0.045, 0.42), 0.76, 1.35, -1.08);
+}
 
+function addM1A3RemoteWeaponTower(P: AbramsBuilderPort): void {
   // AbramsX-inspired elevated remote weapon tower. This is a new, compact
   // M1A3 assembly rather than copied AbramsX geometry: a buried foundation,
   // armored pedestal, open fork, cross-shaft, forward M2, independent EO
@@ -10207,7 +10224,9 @@ function buildM1A3(P: AbramsBuilderPort): void {
     [0.18, 1.27, -0.05, 0.28], [0.14, 1.18, -0.01, 0.48],
   ]) P.add('turretDark', box(0.028, 0.12, 0.028), towerX + dx, dy,
     towerZ + dz, 0, 0, rz);
+}
 
+function addM1A3AntennasAndGun(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): void {
   for (const [x, z, seed, rake] of [
     [-1.18, -2.82, 101, -0.08], [1.18, -2.82, 102, 0.08],
     [-1.34, -1.58, 103, -0.05], [1.34, -1.58, 104, 0.05],
@@ -10240,6 +10259,10 @@ function buildM1A3(P: AbramsBuilderPort): void {
 
   P.muzzleZ = 5.65;
   P.topY = 1.80;
+}
+
+function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout): void {
+  const { turretForwardShiftM, mantletRoofRamp, t } = layout;
   const receipt = Object.freeze({
     family: 'first-party-m1a3-concept',
     hull: 'new-faceted-hybrid-abrams',
@@ -10248,8 +10271,8 @@ function buildM1A3(P: AbramsBuilderPort): void {
     magazineRounds: 4,
     crewCapsuleStations: 3,
     hybridDrive: true,
-    modularSkirtPanelsPerSide: skirtPanelCount,
-    hullCageRailsPerSide: cageRailYs.length,
+    modularSkirtPanelsPerSide: M1A3_SKIRT_PANEL_COUNT,
+    hullCageRailsPerSide: M1A3_CAGE_RAIL_YS.length,
     turretCageRailsPerSide: 3,
     hardKillLauncherCount: 4,
     radarFaceCount: 4,
@@ -10265,6 +10288,15 @@ function buildM1A3(P: AbramsBuilderPort): void {
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;
   publishAmericanArmorFinish(P);
+}
+
+function buildM1A3(P: AbramsBuilderPort): void {
+  const layout = createM1A3BuildLayout();
+  addM1A3Hull(P, layout.g);
+  addM1A3TurretStructure(P, layout.t);
+  addM1A3RemoteWeaponTower(P);
+  addM1A3AntennasAndGun(P, layout.t);
+  publishM1A3DesignReceipt(P, layout);
 }
 
 // ---------------------------------------------------------------------------
