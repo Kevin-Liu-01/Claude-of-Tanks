@@ -1,3 +1,4 @@
+import { t } from '../ui/i18n.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 
@@ -66,7 +67,7 @@ export function createPointerLockFeedbackRuntime({
   const showToast = (): void => {
     if (disposed || !toastShown) return;
     const element = document.createElement('div');
-    element.textContent = 'Mouse capture unavailable — cursor aim enabled';
+    element.textContent = t('pointerLock.toast.unavailable');
     element.className = 'cot-lock-toast';
     element.style.cssText =
       'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +

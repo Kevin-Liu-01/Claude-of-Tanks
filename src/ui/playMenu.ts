@@ -931,7 +931,7 @@ export function createPlayMenu({
     menuLead.textContent = connected
       ? t('playMenu.invite.connected', { code })
       : t('playMenu.invite.connecting', { code });
-    document.title = menuTitle.textContent + ' — Claude of Tanks';
+    document.title = menuTitle.textContent + t('app.titleSuffix');
   }
 
   function resetInvitation(): void {
@@ -940,7 +940,7 @@ export function createPlayMenu({
     eyebrow.textContent = defaultEyebrow;
     menuTitle.textContent = defaultMenuTitle;
     menuLead.textContent = defaultMenuLead;
-    if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
+    if (document.title.startsWith(t('app.titleJoinPrefix'))) document.title = defaultDocumentTitle;
   }
 
   function setStatus(message: RuntimeValue, error = false): void {
@@ -976,7 +976,7 @@ export function createPlayMenu({
   }
 
   function setClosePurpose(inRoom: boolean): void {
-    const label = inRoom ? 'Back to garage — stay in room' : 'Close';
+    const label = inRoom ? t('playMenu.close.backToGarage') : t('playMenu.close');
     closeBtn.setAttribute('aria-label', label);
     closeBtn.title = label;
   }
@@ -1087,7 +1087,7 @@ export function createPlayMenu({
     if (rankedTicket) return;
     const selection = getSelection();
     const name = rankedName.value.trim().replace(/\s+/g, ' ').slice(0, 24);
-    if (!name) throw new Error('Enter a commander name');
+    if (!name) throw new Error(t('playMenu.error.missingCommanderName'));
     remember(PLAYER_NAME_KEY, name);
     nameInput.value = name;
     await refreshRanked();
@@ -1366,7 +1366,7 @@ export function createPlayMenu({
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
     const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
-    if (!name) throw new Error('Enter a player name');
+    if (!name) throw new Error(t('playMenu.error.missingPlayerName'));
     nameInput.value = name;
     remember(PLAYER_NAME_KEY, name);
     const signalUrl = signalInput.value.trim();

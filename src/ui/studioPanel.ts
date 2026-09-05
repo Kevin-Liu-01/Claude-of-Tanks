@@ -538,7 +538,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   badgeMark.src = '/brand/nav/studio.svg';
   badgeMark.alt = '';
   badgeMark.draggable = false;
-  const badgeTitle = el('div', 't', 'SCENE STUDIO');
+  const badgeTitle = el('div', 't', t('studioPanel.header.title'));
   const badgeMap = el('div', 'm', '');
   const galleryBtn = el('button');
   galleryBtn.innerHTML = `<img src="/brand/nav/tank-gallery.svg" alt="">${t('studioPanel.tankGallery')}`;
@@ -563,15 +563,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
 
   // === BATTLEFIELD group ===
-  const battlefieldGroup = panelGroup('01', 'Battlefield', 'Map & environment');
+  const battlefieldGroup = panelGroup('01', t('studioPanel.panel.battlefield.title'), t('studioPanel.panel.battlefield.sub'));
   dock.appendChild(battlefieldGroup.root);
-  const secScene = section('Map', `${PRODUCT_STATS.battlefields} live battlefields`);
+  const secScene = section(t('studioPanel.section.map'), t('studioPanel.section.mapSub', { count: PRODUCT_STATS.battlefields }));
   const mapPick = el('div', 'mapPick');
   const mapBtn = el('button', 'mapBtn');
   mapBtn.type = 'button';
   mapBtn.setAttribute('aria-haspopup', 'listbox');
   mapBtn.setAttribute('aria-expanded', 'false');
-  mapBtn.setAttribute('aria-label', 'Choose battlefield');
+  mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAria'));
   const mapHero = document.createElement('img');
   mapHero.className = 'mhero';
   mapHero.alt = '';
@@ -585,9 +585,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapBtn.append(mapHero, mapShade, mapCopy, mapId, mapArrow);
   const mapPop = el('div', 'mapPop');
   mapPop.setAttribute('role', 'listbox');
-  mapPop.setAttribute('aria-label', 'Battlefields');
+  mapPop.setAttribute('aria-label', t('studioPanel.map.listAria'));
   const mapPopHead = el('div', 'mapPopHead');
-  mapPopHead.append(el('span', null, 'Choose battlefield'), el('span', null, 'Preview · click to load'));
+  mapPopHead.append(el('span', null, t('studioPanel.map.heading')), el('span', null, t('studioPanel.map.previewHint')));
   const mapGrid = el('div', 'mapGrid');
   const mapCards = new Map<string, HTMLButtonElement>();
   const mapImages: HTMLImageElement[] = [];
@@ -598,7 +598,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     card.dataset.mapId = id;
     card.setAttribute('role', 'option');
     card.setAttribute('aria-selected', 'false');
-    card.setAttribute('aria-label', `Load ${info.name || id}`);
+    card.setAttribute('aria-label', t('studioPanel.map.cardAria', { name: info.name || id }));
     const thumb = document.createElement('img');
     thumb.alt = '';
     thumb.loading = 'lazy';
@@ -669,9 +669,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
 
   // === TANKS group ===
-  const tanksGroup = panelGroup('02', 'Tanks', 'Roster, staging & pose');
+  const tanksGroup = panelGroup('02', t('studioPanel.panel.tanks.title'), t('studioPanel.panel.tanks.sub'));
   dock.appendChild(tanksGroup.root);
-  const secActors = section('Add tanks', 'the shipped roster');
+  const secActors = section(t('studioPanel.section.addTanks'), t('studioPanel.section.addTanksSub'));
   // -- tank picker (icon rows, filterable) --
   let pickedId = 'm1a2';
   const pick = el('div', 'pick');
@@ -684,7 +684,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const pickFlt = document.createElement('input');
   pickFlt.type = 'text';
   pickFlt.className = 'flt';
-  pickFlt.placeholder = 'FILTER…';
+  pickFlt.placeholder = t('studioPanel.picker.filterPlaceholder');
   const pickList = el('div', 'lst');
   pickPop.append(pickFlt, pickList);
   pick.append(pickBtn, pickPop);
@@ -705,8 +705,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     pickList.textContent = '';
     const f = filter.trim().toLowerCase();
     const groups: ReadonlyArray<readonly [string, string[]]> = [
-      ['Production roster', S.TANK_IDS.filter((id) => !specInfo(id).developmentOnly)],
-      ['Development roster', S.TANK_IDS.filter((id) => specInfo(id).developmentOnly)],
+      [t('studioPanel.picker.productionGroup'), S.TANK_IDS.filter((id) => !specInfo(id).developmentOnly)],
+      [t('studioPanel.picker.developmentGroup'), S.TANK_IDS.filter((id) => specInfo(id).developmentOnly)],
     ];
     for (const [label, ids] of groups) {
       const hits = ids.filter((id) => {
@@ -721,7 +721,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         const row = el('div', 'prow' + (id === pickedId ? ' cur' : ''));
         row.appendChild(tankIcon(id));
         row.appendChild(el('span', 'nm', info.name));
-        if (info.developmentOnly) row.appendChild(el('span', 'dev', info.rosterTag || 'DEV'));
+        if (info.developmentOnly) row.appendChild(el('span', 'dev', info.rosterTag || t('studioPanel.picker.devFallback')));
         if (info.era) row.appendChild(el('span', 'era', vehicleEraLabel(info.era, { short: true })));
         row.addEventListener('click', () => {
           setPicked(id);
@@ -781,7 +781,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   tanksGroup.body.appendChild(secActors);
 
   // === SELECTED ACTOR section ===
-  const secSel = section('Selected tank', 'pose, paint & state');
+  const secSel = section(t('studioPanel.section.selectedTank'), t('studioPanel.section.selectedTankSub'));
   const selHead = el('div', 'selhead');
   const selIcon = tankIcon('m1a2');
   const selNames = el('div', 'nm');
@@ -795,25 +795,25 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const gun = sliderRow('Gun', -10, 25, 0.5, (v) => patchSel({ gunDeg: v }));
   secSel.append(facing.row, turret.row, gun.row);
   const posRow = el('div', 'row');
-  posRow.appendChild(el('label', 'k', 'Pos X/Z'));
+  posRow.appendChild(el('label', 'k', t('studioPanel.selected.posLabel')));
   const px = numInput((v) => patchSel({ x: v }));
   const pz = numInput((v) => patchSel({ z: v }));
   posRow.append(px, pz);
   secSel.appendChild(posRow);
   const camoRow = el('div', 'row');
-  camoRow.appendChild(el('label', 'k', 'Camo'));
+  camoRow.appendChild(el('label', 'k', t('studioPanel.selected.camoLabel')));
   const camoSel = document.createElement('select');
   for (const cid of ['inherit', ...S.CAMO_PATTERN_IDS]) {
     const o = document.createElement('option');
     o.value = cid;
-    o.textContent = cid === 'inherit' ? '(garage pick)' : cid.toUpperCase();
+    o.textContent = cid === 'inherit' ? t('studioPanel.selected.camoInherit') : cid.toUpperCase();
     camoSel.appendChild(o);
   }
   camoSel.addEventListener('change', () => patchSel({ camo: camoSel.value === 'inherit' ? null : camoSel.value }));
   camoRow.appendChild(camoSel);
   secSel.appendChild(camoRow);
   const stateRow = el('div', 'row');
-  stateRow.appendChild(el('label', 'k', 'State'));
+  stateRow.appendChild(el('label', 'k', t('studioPanel.selected.stateLabel')));
   const stateSel = document.createElement('select');
   for (const sid of S.ACTOR_STATES) {
     const o = document.createElement('option');
@@ -837,17 +837,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   tanksGroup.body.appendChild(secSel);
 
   // === EFFECTS group ===
-  const effectsGroup = panelGroup('03', 'Effects', 'Game-authentic layers & events');
+  const effectsGroup = panelGroup('03', t('studioPanel.panel.effects.title'), t('studioPanel.panel.effects.sub'));
   dock.appendChild(effectsGroup.root);
-  const secFx = section('Layers & events', 'sel tank · else marker');
+  const secFx = section(t('studioPanel.section.layersEvents'), t('studioPanel.section.layersEventsSub'));
   const fxStackBar = el('div', 'fxstackbar');
-  fxStackBar.appendChild(el('div', 'hint', 'select a layer · delete removes only it'));
+  fxStackBar.appendChild(el('div', 'hint', t('studioPanel.effects.hint')));
   const clearStackBtn = el('button', 'warn', t('studio.clearAll'));
   clearStackBtn.addEventListener('click', () => S.clearEffects());
   fxStackBar.appendChild(clearStackBtn);
   const fxStack = el('div', 'fxstack');
   fxStack.setAttribute('role', 'listbox');
-  fxStack.setAttribute('aria-label', 'Authored effects');
+  fxStack.setAttribute('aria-label', t('studioPanel.effects.listAria'));
   secFx.append(fxStackBar, fxStack);
   const selOr = <Result>(fn: (actor: StudioActor | null) => Result): Result =>
     fn(S._internal.selected);
@@ -888,55 +888,55 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     g.appendChild(grid);
     secFx.appendChild(g);
   }
-  fxGroup('Gunnery', [
-    ['FIRE GUN', () => withSelected((a) => fireProjectile({ type: 'fire', actor: a.uid }))],
-    ['MUZZLE FLASH', () => selOr((a) => S.effect(a
+  fxGroup(t('studioPanel.fxGroup.gunnery'), [
+    [t('studioPanel.fx.fireGun'), () => withSelected((a) => fireProjectile({ type: 'fire', actor: a.uid }))],
+    [t('studioPanel.fx.muzzleFlash'), () => selOr((a) => S.effect(a
       ? { type: 'muzzle_flash', actor: a.uid } : { type: 'muzzle_flash' }))],
-    ['MG BURST', () => withSelected((a) => S.effect({ type: 'mg_burst', actor: a.uid }))],
-    ['RECOIL + FLASH', () => withSelected((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }))],
-    ['TRACER MARKER → ACTOR', () => withSelected((a) => {
+    [t('studioPanel.fx.mgBurst'), () => withSelected((a) => S.effect({ type: 'mg_burst', actor: a.uid }))],
+    [t('studioPanel.fx.recoilFlash'), () => withSelected((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }))],
+    [t('studioPanel.fx.tracerMarker'), () => withSelected((a) => {
       if (!S._internal.markerActive) {
-        flashBusy('CLICK THE BATTLEFIELD TO PLACE THE TRACER ORIGIN');
+        flashBusy(t('studioPanel.fx.placeTracerOrigin'));
         return false;
       }
       const m = S._internal.markerPos;
-      const t = a.state.pos;
+      const actorPos = a.state.pos;
       fireProjectile({
         type: 'tracer',
         from: [m.x, m.y + 1.8, m.z],
-        to: [t.x, t.y + a.spec.dims.heightM * 0.6, t.z],
+        to: [actorPos.x, actorPos.y + a.spec.dims.heightM * 0.6, actorPos.z],
         params: { shellType: 'APFSDS' },
       });
     }), true],
   ]);
-  fxGroup('Strikes · at marker', [
-    ['EXPL SMALL', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'small' } }))],
-    ['EXPL MEDIUM', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'medium' } }))],
-    ['EXPL LARGE', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'large' } }))],
-    ['BARRAGE ×5', () => atMarker(() => S.effect({ type: 'barrage', params: { count: 5, radiusM: 10 } }))],
-    ['DUST BURST', () => atMarker(() => S.effect({ type: 'dust' }))],
-    ['SPARKS', () => atMarker(() => S.effect({ type: 'sparks' }))],
-    ['FROZEN FIREBALL', () => atMarker(() => S.effect({
+  fxGroup(t('studioPanel.fxGroup.strikes'), [
+    [t('studioPanel.fx.explSmall'), () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'small' } }))],
+    [t('studioPanel.fx.explMedium'), () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'medium' } }))],
+    [t('studioPanel.fx.explLarge'), () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'large' } }))],
+    [t('studioPanel.fx.barrage'), () => atMarker(() => S.effect({ type: 'barrage', params: { count: 5, radiusM: 10 } }))],
+    [t('studioPanel.fx.dustBurst'), () => atMarker(() => S.effect({ type: 'dust' }))],
+    [t('studioPanel.fx.sparks'), () => atMarker(() => S.effect({ type: 'sparks' }))],
+    [t('studioPanel.fx.frozenFireball'), () => atMarker(() => S.effect({
       type: 'explosion_moment', params: { ageS: 0.6 },
     })), true],
   ]);
-  fxGroup('Armor hits · sel actor', [
-    ['IMPACT PEN', () => impactFx('pen', 0.55)],
-    ['NON-PEN', () => impactFx('nonpen', 0.5)],
-    ['RICOCHET', () => impactFx('ricochet', 0.72)],
-    ['HE SPLASH', () => impactFx('he_splash', 0.5, 152)],
-    ['ERA POP', () => impactFx('era', 0.45)],
-    ['ARMOR SCARS', () => withSelected((a) => S.effect({ type: 'armor_scar', actor: a.uid }))],
+  fxGroup(t('studioPanel.fxGroup.armorHits'), [
+    [t('studioPanel.fx.impactPen'), () => impactFx('pen', 0.55)],
+    [t('studioPanel.fx.nonPen'), () => impactFx('nonpen', 0.5)],
+    [t('studioPanel.fx.ricochet'), () => impactFx('ricochet', 0.72)],
+    [t('studioPanel.fx.heSplash'), () => impactFx('he_splash', 0.5, 152)],
+    [t('studioPanel.fx.eraPop'), () => impactFx('era', 0.45)],
+    [t('studioPanel.fx.armorScars'), () => withSelected((a) => S.effect({ type: 'armor_scar', actor: a.uid }))],
   ]);
-  fxGroup('Vehicle state', [
-    ['KILL · AMMO-RACK', () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid }))],
-    ['KILL · BURN-OUT', () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid, params: { cause: 'fire', pop: false } }))],
-    ['DETRACK L', () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'L' } }))],
-    ['DETRACK R', () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'R' } }))],
-    ['EXHAUST BELCH', () => withSelected((a) => S.effect({ type: 'exhaust', actor: a.uid }))],
-    ['ENGINE SMOKE', () => withSelected((a) => S.effect({ type: 'engine_smoke', actor: a.uid }))],
-    ['SET BURNING', () => withSelected((a) => S.effect({ type: 'burning', actor: a.uid }))],
-    ['EXTINGUISH', () => withSelected((a) => {
+  fxGroup(t('studioPanel.fxGroup.vehicleState'), [
+    [t('studioPanel.fx.killAmmoRack'), () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid }))],
+    [t('studioPanel.fx.killBurnOut'), () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid, params: { cause: 'fire', pop: false } }))],
+    [t('studioPanel.fx.detrackL'), () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'L' } }))],
+    [t('studioPanel.fx.detrackR'), () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'R' } }))],
+    [t('studioPanel.fx.exhaustBelch'), () => withSelected((a) => S.effect({ type: 'exhaust', actor: a.uid }))],
+    [t('studioPanel.fx.engineSmoke'), () => withSelected((a) => S.effect({ type: 'engine_smoke', actor: a.uid }))],
+    [t('studioPanel.fx.setBurning'), () => withSelected((a) => S.effect({ type: 'burning', actor: a.uid }))],
+    [t('studioPanel.fx.extinguish'), () => withSelected((a) => {
       S.effect({ type: 'burning', actor: a.uid, params: { off: true } });
       S.effect({ type: 'engine_smoke', actor: a.uid, params: { off: true } });
     })],
@@ -944,13 +944,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   effectsGroup.body.appendChild(secFx);
 
   // === GLOBAL group ===
-  const globalGroup = panelGroup('04', 'Cinematics', 'Storyboard, rail & choreography');
+  const globalGroup = panelGroup('04', t('studioPanel.panel.cinematics.title'), t('studioPanel.panel.cinematics.sub'));
   globalGroup.root.dataset.group = 'global'; // stable automation selector
   dock.appendChild(globalGroup.root);
-  const secTime = section('Storyboard', 'camera · actors · effects · 20 s max');
-  const duration = sliderRow('Length', 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
+  const secTime = section(t('studioPanel.section.storyboard'), t('studioPanel.section.storyboardSub'));
+  const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
   secTime.appendChild(duration.row);
-  const ts = sliderRow('Speed', 0.25, 2, 0.05, (v) => S.setTimeScale(v));
+  const ts = sliderRow(t('studioPanel.storyboard.speedLabel'), 0.25, 2, 0.05, (v) => S.setTimeScale(v));
   secTime.appendChild(ts.row);
   const timeRow = el('div', 'grid3');
   const restartBtn = el('button', null, t('studio.restart'));
@@ -962,8 +962,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   timeRow.append(restartBtn, pauseBtn, stepBtn);
   secTime.appendChild(timeRow);
   const clockLine = el('div', 'storyClock');
-  const clockNow = el('span', null, '00.00 / 12.00 S');
-  const clockLimit = el('span', 'limit', 'MAX 20 S');
+  const clockNow = el('span', null, t('studioPanel.storyboard.clockDefault'));
+  const clockLimit = el('span', 'limit', t('studioPanel.storyboard.clockLimit'));
   clockLine.append(clockNow, clockLimit);
   secTime.appendChild(clockLine);
   const scrub = document.createElement('input');
@@ -995,9 +995,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     timelineBoard.appendChild(lane);
     return track;
   }
-  const cameraLane = timelineLane('CAM');
-  const actorLane = timelineLane('TANK');
-  const effectLane = timelineLane('FX');
+  const cameraLane = timelineLane(t('studioPanel.timeline.laneCamera'));
+  const actorLane = timelineLane(t('studioPanel.timeline.laneActors'));
+  const effectLane = timelineLane(t('studioPanel.timeline.laneEffects'));
   secTime.appendChild(timelineBoard);
 
   const authorRow = el('div', 'grid');
@@ -1044,7 +1044,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   globalGroup.body.appendChild(secTime);
 
   // === CAMERA section ===
-  const secCam = section('Camera');
+  const secCam = section(t('studioPanel.section.camera'));
   const camModeRow = el('div', 'grid');
   const flyBtn = el('button', null, t('studio.freeFly'));
   const orbBtn = el('button', null, t('studio.orbit'));
@@ -1065,7 +1065,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   globalGroup.body.appendChild(secCam);
 
   // === OUTPUT group ===
-  const outputGroup = panelGroup('05', 'Output', 'Capture & scene files');
+  const outputGroup = panelGroup('05', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
   dock.appendChild(outputGroup.root);
   const secCap = section('Video · Stills · Scene', 'record, render, save & restore');
   const videoRow = el('div', 'row');
@@ -1176,9 +1176,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secCap.appendChild(slotRow);
   outputGroup.body.appendChild(secCap);
 
-  const secArchive = section('Production archive', '50 new deterministic field frames');
-  const archiveCopy = el('div', 'fxempty', 'Open live gunnery, destruction, terrain, and vehicle references without leaving your scene.');
-  const archiveBtn = el('button', null, 'OPEN FIELD FRAMES · 61');
+  const secArchive = section(t('studioPanel.section.productionArchive'), t('studioPanel.section.productionArchiveSub'));
+  const archiveCopy = el('div', 'fxempty', t('studioPanel.archive.copy'));
+  const archiveBtn = el('button', null, t('studioPanel.archive.button'));
   archiveBtn.style.width = '100%';
   archiveBtn.addEventListener('click', () => {
     let dialog = document.querySelector<HTMLDialogElement>('.cot-studio-archive');
@@ -1384,8 +1384,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       time.max = String(S.durationMs / 1000);
       time.step = '0.05';
       time.value = (effect.tMs / 1000).toFixed(2);
-      time.title = 'Effect time in seconds';
-      time.setAttribute('aria-label', `${effect.type.replaceAll('_', ' ')} time in seconds`);
+      time.title = t('studioPanel.effects.timeTitle');
+      time.setAttribute('aria-label', t('studioPanel.effects.timeAria', { type: effect.type.replaceAll('_', ' ') }));
       time.addEventListener('pointerdown', (event) => event.stopPropagation());
       time.addEventListener('click', (event) => event.stopPropagation());
       time.addEventListener('change', (event) => {
@@ -1394,7 +1394,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       });
       row.appendChild(time);
       const del = el('button', 'del warn', '✕');
-      del.title = `Delete ${effect.type.replaceAll('_', ' ')}`;
+      del.title = t('studioPanel.effects.deleteTitle', { type: effect.type.replaceAll('_', ' ') });
       del.setAttribute('aria-label', del.title);
       del.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -1454,7 +1454,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         cameraLane,
         'camera',
         shot.tMs,
-        `${shot.label} at ${(shot.tMs / 1000).toFixed(2)} seconds`,
+        t('studioPanel.shot.timelineMarkerTitle', { label: shot.label, t: (shot.tMs / 1000).toFixed(2) }),
         () => S.selectCameraShot(shot.id),
         shot.id === S.selectedShotId,
       );
@@ -1468,7 +1468,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       copy.addEventListener('click', () => S.selectCameraShot(shot.id));
       card.appendChild(copy);
       const transition = document.createElement('select');
-      transition.setAttribute('aria-label', `${shot.label} transition`);
+      transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: shot.label }));
       for (const id of ['smooth', 'linear', 'cut']) {
         const option = document.createElement('option');
         option.value = id;
@@ -1481,13 +1481,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }));
       card.appendChild(transition);
       card.appendChild(createInfoButton({
-        label: `Show the Scene Studio JSON for ${shot.label}`,
-        title: `Replicate ${shot.label}`,
+        label: t('studioPanel.shot.showJsonLabel', { label: shot.label }),
+        title: t('studioPanel.shot.replicateTitle', { label: shot.label }),
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
         images: () => studioInfoImages('Storyboard'),
       }));
       const del = el('button', 'del warn', '✕');
-      del.title = `Remove ${shot.label}`;
+      del.title = t('studioPanel.shot.removeTitle', { label: shot.label });
       del.setAttribute('aria-label', del.title);
       del.addEventListener('click', () => S.removeCameraShot(shot.id));
       card.appendChild(del);
@@ -1652,7 +1652,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
       mapName.textContent = info.name || id;
       mapId.textContent = id.toUpperCase();
-      mapBtn.setAttribute('aria-label', `Choose battlefield. Current: ${info.name || id}`);
+      mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
       for (const [cardId, card] of mapCards) {
         card.setAttribute('aria-selected', String(cardId === id));
       }

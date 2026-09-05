@@ -358,7 +358,7 @@ export function createPerfHud({
       const text = JSON.stringify(report, null, 2);
       try {
         await navigator.clipboard.writeText(text);
-        setStatus('Summary copied');
+        setStatus(tr('perfHud.copy.success'));
       } catch (_) {
         const field = document.createElement('textarea');
         field.value = text;
@@ -367,12 +367,12 @@ export function createPerfHud({
         field.select();
         const copied = document.execCommand('copy');
         field.remove();
-        setStatus(copied ? 'Summary copied' : 'Copy unavailable', !copied);
+        setStatus(copied ? tr('perfHud.copy.success') : tr('perfHud.copy.unavailable'), !copied);
       }
     });
     exportButton.addEventListener('click', () => {
       const filename = trace.download();
-      setStatus(filename ? `Saved ${filename}` : 'Export unavailable', !filename);
+      setStatus(filename ? tr('perfHud.export.saved', { filename }) : tr('perfHud.export.unavailable'), !filename);
     });
   }
   document.body.appendChild(el);

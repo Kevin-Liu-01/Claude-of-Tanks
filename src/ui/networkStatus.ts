@@ -134,7 +134,7 @@ export function createNetworkStatus(): NetworkStatusController {
   document.body.appendChild(root);
   const diagnostics = document.createElement('div');
   diagnostics.className = 'cot-network-diagnostics';
-  diagnostics.setAttribute('aria-label', 'Network diagnostics');
+  diagnostics.setAttribute('aria-label', t('networkStatus.diagnosticsAria'));
   document.body.appendChild(diagnostics);
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
   let lastDiagnosticsAt = -Infinity;

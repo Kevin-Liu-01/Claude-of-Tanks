@@ -664,7 +664,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } as Record<string, string>)[char] ?? char);
     const metric = (label: string, value: string, note: string) => `<div class="cot-record-metric"><span>${label}</span>` +
       `<strong>${value}</strong><small>${note}</small></div>`;
-    let lastBattle = `<div class="cot-record-empty">Complete a battle to begin your local service history.</div>`;
+    let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
     if (record.lastBattle) {
       const last = record.lastBattle;
       const vehicle = allSpecs.find((spec) => spec.id === last.vehicleId);
@@ -971,7 +971,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!isMobileNavigationOpen()) return;
     mobileNavMenu.hidden = true;
     mobileNavTrigger.setAttribute('aria-expanded', 'false');
-    mobileNavTrigger.setAttribute('aria-label', 'Open navigation menu');
+    mobileNavTrigger.setAttribute('aria-label', t('garage.mobileNav.openAria'));
     if (restoreFocus) mobileNavTrigger.focus();
   };
   const isOverlayPanelLayout = () => document.body.dataset.cotPanels === 'overlay';
@@ -1008,7 +1008,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   technicalModal.panel.id = 'cot-technical-viewer-dialog';
   technicalModal.body.innerHTML =
-    `<div class="cot-technical-viewer-tabs" role="tablist" aria-label="Expanded vehicle technical schematics">` +
+    `<div class="cot-technical-viewer-tabs" role="tablist" aria-label="${t('garage.dossier.tabs.aria')}">` +
     technicalViews.map((view, index) => {
       const translated = translateTechnicalView(view);
       return `<button class="cot-technical-viewer-tab" type="button" role="tab" ` +
@@ -1092,7 +1092,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel('');
     mobileNavMenu.hidden = false;
     mobileNavTrigger.setAttribute('aria-expanded', 'true');
-    mobileNavTrigger.setAttribute('aria-label', 'Close navigation menu');
+    mobileNavTrigger.setAttribute('aria-label', t('garage.mobileNav.closeAria'));
   };
   mobileNavTrigger.addEventListener('click', () => {
     emit('ui:click', {});
@@ -1503,7 +1503,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           button.removeAttribute('title');
         } catch (error) {
           button.dataset.loadError = 'true';
-          button.title = 'Custom studio could not load. Click to retry.';
+          button.title = t('garage.camo.customStudioRetryTitle');
           console.warn('[garage] custom camouflage studio failed to load', error);
         } finally {
           button.removeAttribute('aria-busy');
@@ -2040,7 +2040,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.className = 'cot-country-chip';
       chip.dataset.country = group.id;
       chip.title = `${group.name} · ${count} vehicles`;
-      chip.setAttribute('aria-label', `Show ${group.name} vehicles`);
+      chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
       chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
         `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
       chip.addEventListener('click', () => {
@@ -2131,7 +2131,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
       card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
-      card.setAttribute('aria-label', `${tierNumeral(spec.id) || ''} ${displayName}${developmentOnly ? ', development vehicle' : ''}`.trim());
+      card.setAttribute('aria-label', `${tierNumeral(spec.id) || ''} ${displayName}${developmentOnly ? t('garage.card.developmentVehicle') : ''}`.trim());
       card.style.setProperty('--nation-flag', `url("${flagIconUrl(spec.nation)}")`);
       // Stable pre-rendered 3/4 portrait generated from the final first-party
       // procedural build; no live renderer or model swap is needed here.
@@ -2247,12 +2247,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const src = tab.dataset.technicalSrc;
     if (src && image.getAttribute('src') !== src) image.src = src;
     const name = specById.get(selectedId || '')?.label?.displayName ||
-      specById.get(selectedId || '')?.name || 'Selected vehicle';
-    image.alt = `${name} ${tab.dataset.technicalAlt || 'technical schematic'}`;
+      specById.get(selectedId || '')?.name || t('garage.dossier.selectedVehicleFallback');
+    image.alt = `${name} ${tab.dataset.technicalAlt || t('garage.dossier.technicalSchematicAlt')}`;
     caption.textContent = tab.dataset.technicalCaption || '';
     galleryLink.dataset.galleryLayer = tab.dataset.technicalLayer || 'appearance';
     expandButton.dataset.technicalExpand = tab.dataset.technicalView || 'armor';
-    expandButton.setAttribute('aria-label', `Expand ${name} ${tab.textContent || 'technical'} schematic`);
+    expandButton.setAttribute('aria-label', t('garage.dossier.expand.aria', { name, view: tab.textContent || t('garage.dossier.technicalFallback') }));
   }
 
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade

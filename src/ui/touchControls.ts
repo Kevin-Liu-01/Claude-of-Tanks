@@ -379,7 +379,7 @@ export function createTouchControls({
   const root = document.createElement('div');
   root.className = 'cot-touch';
   root.setAttribute('role', 'group');
-  root.setAttribute('aria-label', 'Mobile battle controls');
+  root.setAttribute('aria-label', t('touch.rootAria'));
   const aimLayer = document.createElement('div');
   aimLayer.className = 'cot-touch-aim';
   aimLayer.setAttribute('role', 'group');
