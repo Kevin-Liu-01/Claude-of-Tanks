@@ -2541,75 +2541,86 @@ function applyLowProfileTurret(cfg: PershingBuildConfig): void {
   // Pershing/Patton castings retain their broad cheek character after the
   // requested 2:1 height reduction instead of reading as shrunken domes.
   const widthScale = L.widthScale ?? 1;
-  T.sections = T.sections.map((section) => ({
-    ...section,
-    hw: section.hw * widthScale,
-    ...(section.hwL != null ? { hwL: section.hwL * widthScale } : {}),
-    top: sy(section.top),
-    bot: sy(section.bot),
-  }));
-  mapY(T.basket, ['y0', 'y1']);
-  const podWidthScale = L.podWidthScale ?? widthScale;
-  for (const cheek of T.cheekPods || []) {
-    mapY(cheek, ['y0', 'y1']);
-    if (cheek.roll) cheek.roll = cheek.roll.map(([y, x]) => [sy(y), x * podWidthScale]);
-    if (cheek.chamfer) cheek.chamfer[0] *= scale;
-    cheek.x0 *= podWidthScale;
-    cheek.x1 *= podWidthScale;
-  }
-  for (const wedge of [...(T.zWedges || []), ...(T.rollWedges || [])]) {
-    mapY(wedge, ['y0', 'top0', 'top1']);
-    wedge.x0 *= widthScale;
-    wedge.x1 *= widthScale;
-  }
-  if (T.bustleSecs) {
-    for (const section of T.bustleSecs) {
-      mapY(section, ['top', 'floor']);
-      section.xL *= widthScale;
-      section.xR *= widthScale;
-    }
-  }
-  if (T.bustleSmooth?.tailFloorEase) {
-    T.bustleSmooth.tailFloorEase = T.bustleSmooth.tailFloorEase
-      .map(([z, rise]) => [z, rise * scale]);
-  }
-  if (T.tailLip) T.tailLip[0] = sy(T.tailLip[0]);
-  mapY(T.rack, ['floorY', 'railY', 'loadTop', 'sideFloorY']);
-  mapY(T.cupola, ['base']);
-  if (T.cupola?.ring) mapY(T.cupola.ring, ['top']);
-  mapY(T.cupolaCollar, ['top']);
-  mapY(T.loader, ['y']);
-  mapY(T.vent, ['y']);
-  mapY(T.antenna, ['y']);
-  mapY(T.stowBump, ['y']);
-  mapY(T.sideLinks, ['y']);
-  if (T.stowMG) T.stowMG[1] = sy(T.stowMG[1]);
-  if (T.blisterY != null) T.blisterY = sy(T.blisterY);
-  if (T.whip) T.whip.y = sy(T.whip.y);
 
-  // Roof weapons keep their real dimensions; the whole assemblies move
-  // down with their mounting pads.  This avoids the toy-like flattened M2s
-  // that a group-scale would produce.
-  shiftAssembly(T.mg, 'baseY', ['baseY', 'topY', 'canY']);
-  shiftAssembly(T.pedestal, 'baseY', ['baseY', 'top']);
-
-  cfg.gun.axisY = sy(cfg.gun.axisY);
-  const shield = cfg.gun.shield;
-  if (shield) {
-    const mantletScale = L.mantletScale ?? 0.62;
-    shield.w *= L.mantletWidthScale ?? widthScale;
-    shield.h = Math.max(L.minMantletHeight ?? 0.22, shield.h * mantletScale);
-    shield.dy *= scale;
-    if (shield.chinRise != null) shield.chinRise *= scale;
-    if (shield.rotorR != null) shield.rotorR *= Math.max(mantletScale, 0.78);
-    if (shield.rotorW != null) shield.rotorW *= L.mantletWidthScale ?? widthScale;
-    if (shield.wings) {
-      shield.wings.w *= L.mantletWidthScale ?? widthScale;
-      shield.wings.h *= mantletScale;
-      if (shield.wings.dy != null) shield.wings.dy *= scale;
+  const scaleTurretShell = (): void => {
+    T.sections = T.sections.map((section) => ({
+      ...section,
+      hw: section.hw * widthScale,
+      ...(section.hwL != null ? { hwL: section.hwL * widthScale } : {}),
+      top: sy(section.top),
+      bot: sy(section.bot),
+    }));
+    mapY(T.basket, ['y0', 'y1']);
+    const podWidthScale = L.podWidthScale ?? widthScale;
+    for (const cheek of T.cheekPods || []) {
+      mapY(cheek, ['y0', 'y1']);
+      if (cheek.roll) cheek.roll = cheek.roll.map(([y, x]) => [sy(y), x * podWidthScale]);
+      if (cheek.chamfer) cheek.chamfer[0] *= scale;
+      cheek.x0 *= podWidthScale;
+      cheek.x1 *= podWidthScale;
     }
-    if (shield.lip) mapY(shield.lip, ['y0', 'y1']);
-  }
+    for (const wedge of [...(T.zWedges || []), ...(T.rollWedges || [])]) {
+      mapY(wedge, ['y0', 'top0', 'top1']);
+      wedge.x0 *= widthScale;
+      wedge.x1 *= widthScale;
+    }
+    if (T.bustleSecs) {
+      for (const section of T.bustleSecs) {
+        mapY(section, ['top', 'floor']);
+        section.xL *= widthScale;
+        section.xR *= widthScale;
+      }
+    }
+    if (T.bustleSmooth?.tailFloorEase) {
+      T.bustleSmooth.tailFloorEase = T.bustleSmooth.tailFloorEase
+        .map(([z, rise]) => [z, rise * scale]);
+    }
+  };
+  scaleTurretShell();
+
+  const scaleTurretAttachments = (): void => {
+    if (T.tailLip) T.tailLip[0] = sy(T.tailLip[0]);
+    mapY(T.rack, ['floorY', 'railY', 'loadTop', 'sideFloorY']);
+    mapY(T.cupola, ['base']);
+    if (T.cupola?.ring) mapY(T.cupola.ring, ['top']);
+    mapY(T.cupolaCollar, ['top']);
+    mapY(T.loader, ['y']);
+    mapY(T.vent, ['y']);
+    mapY(T.antenna, ['y']);
+    mapY(T.stowBump, ['y']);
+    mapY(T.sideLinks, ['y']);
+    if (T.stowMG) T.stowMG[1] = sy(T.stowMG[1]);
+    if (T.blisterY != null) T.blisterY = sy(T.blisterY);
+    if (T.whip) T.whip.y = sy(T.whip.y);
+
+    // Roof weapons keep their real dimensions; the whole assemblies move
+    // down with their mounting pads.  This avoids the toy-like flattened M2s
+    // that a group-scale would produce.
+    shiftAssembly(T.mg, 'baseY', ['baseY', 'topY', 'canY']);
+    shiftAssembly(T.pedestal, 'baseY', ['baseY', 'top']);
+  };
+  scaleTurretAttachments();
+
+  const scaleGunAndMantlet = (): void => {
+    cfg.gun.axisY = sy(cfg.gun.axisY);
+    const shield = cfg.gun.shield;
+    if (shield) {
+      const mantletScale = L.mantletScale ?? 0.62;
+      shield.w *= L.mantletWidthScale ?? widthScale;
+      shield.h = Math.max(L.minMantletHeight ?? 0.22, shield.h * mantletScale);
+      shield.dy *= scale;
+      if (shield.chinRise != null) shield.chinRise *= scale;
+      if (shield.rotorR != null) shield.rotorR *= Math.max(mantletScale, 0.78);
+      if (shield.rotorW != null) shield.rotorW *= L.mantletWidthScale ?? widthScale;
+      if (shield.wings) {
+        shield.wings.w *= L.mantletWidthScale ?? widthScale;
+        shield.wings.h *= mantletScale;
+        if (shield.wings.dy != null) shield.wings.dy *= scale;
+      }
+      if (shield.lip) mapY(shield.lip, ['y0', 'y1']);
+    }
+  };
+  scaleGunAndMantlet();
 
   T.lowProfile = { ringY, scale };
   cfg.topWorld = sy(cfg.topWorld);
