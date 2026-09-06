@@ -166,6 +166,11 @@ export function createViewportRuntime({
     }
     interval = environment.setInterval(tryRecover, 250);
     tryRecover();
+  } else {
+    // Renderer construction precedes awaited boot work. A resize in that gap
+    // may leave a positive but stale canvas before our listeners exist. Rejoin
+    // all size owners once at startup; unchanged frames still read only DPR.
+    apply();
   }
 
   return {
