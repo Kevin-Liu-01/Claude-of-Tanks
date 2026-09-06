@@ -1,7 +1,8 @@
 # Multiplayer stalled-frame attribution and room scale — September 2026
 
 Follow-up to [response latency](multiplayer-response-latency-2026-09.md).
-Source baseline and verified live frontend: `9afc1d5f5` (`v1.0.0+g9afc1d5f5`).
+Source baseline and pre-change verified live frontend: `9afc1d5f5`
+(`v1.0.0+g9afc1d5f5`).
 The requested remaining work is historical 214–319 ms frame-gap attribution and
 broader multiplayer testing. On September 6 the user explicitly chose testing
 on this workstation instead of supplying another physical device/network.
@@ -312,3 +313,55 @@ npm run perf:terrain-stream -- --map=winter --cpu=4
 Trace loss handling, stop-boundary classification, relay diagnostics and failure
 receipt preservation are harness corrections. Their improved observability must
 not be reported as faster game execution or resolution of the historical stalls.
+
+## Production release verification
+
+Runtime change `f7003cc46d72492341237c8ae31435e34620f83e` was pushed normally to
+`origin/main` and automatically deployed by the existing Git integration.
+Vercel deployment `dpl_5hENMGhtRBKFeucG2xBMRTLoCWTG` reached READY, with
+`cot.kevinliu.studio` serving `v1.0.0+gf7003cc46`. That version was checked both
+before and after the final native room test. No Worker, API, hosting plan,
+database or transport migration was made in this wave.
+
+`production-release-relay.log` records the owned FIFO interval beginning
+September 6 at 20:50:17.898 UTC and native exit at 20:51:42.007 UTC. Functional
+result: PASS. Two fresh profiles joined through the normal private invite,
+readied and launched; 49 bounded polls verified real relay gameplay with two
+open game channels per peer. Both observed successful connectivity checks; the
+guest also traversed a live `in-progress` consent check. All **seven of seven**
+ready firing attempts were confirmed (host three, guest four), and the guest's
+four predicted presentations were exactly deduplicated against confirmation.
+Both native room departures and browser closure were verified. Page errors,
+hard snaps and observer failures were zero. The deployment's bounded Vercel
+error-log query returned no entries; that is not a fleet-wide/Worker log audit.
+
+**Frame performance did not pass a smooth-play standard.**
+
+| Measured role | Frames / sample duration | Frame p50 / p95 / maximum |
+| --- | --- | --- |
+| Host | 398 / 20.086 s | 50.0 / 67.1 / 109.6 ms |
+| Guest | 517 / 20.387 s | 38.9 / 51.1 / 63.5 ms |
+
+This is sustained slow cadence, not merely one outlier. The host's worst frame
+precedes its first click; the guest's worst is more than 3.5 seconds after its
+last click. Their retained windows show stable program/geometry/texture counts,
+scale 1 and only frame-spike events, not first-shot shader growth or an observed
+combat burst. Both windows include heap drops, but no Chrome or CPU-counter trace
+was enabled, so GC, CPU, GPU, weather and external contention cannot be assigned
+as causes. Post-sample context reports low quality, day/snow, intensity 0.661 and
+zero precipitation particles; the earlier fog sample is not a controlled A/B.
+
+The local authority's application RTT is zero and its send buffer remains empty,
+despite slower host frames. Guest RTT median/max is 21.7/56.1 ms, send-buffer
+p95/max 0/219 bytes and input ACK lag p95/max 5/6. This does not show a sustained
+transport backlog or establish that a WebTransport/Bun change would help.
+Guest predicted-event callback median/max is 1.5/13.7 ms, but its next-rAF callback
+median/max is 52.1/59.8 ms—not physical click-to-photon or instant visible firing.
+
+Zero hard snaps does not mean zero motion error: sampled position-error maxima
+are 2.215 m host and 2.096 m guest; cumulative correction-step maxima are
+0.2194/0.2097 m, not measurement-window-only deltas. The functional PASS must not
+be described as single-player-equivalent or consistently smooth performance.
+Historical 214–319 ms attribution and these newly retained production frame
+limits remain open. All owned capture resources were closed; unrelated worktrees,
+processes and Redis were left untouched.
