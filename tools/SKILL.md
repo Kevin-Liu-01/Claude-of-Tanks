@@ -89,5 +89,63 @@ are unavailable on a fused source mesh.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
+Collision-fixture codec changes use the maintained, headless
+`node tools/collision-manifest-codec-bench.mjs <raw-shard-directory> <encoded-shard-directory> 6`
+comparison. Preserve the raw captured per-map corpus and its checksum index
+before recoding; both directories must represent the same geometry and seeds,
+not a stale legacy monolith versus a newly captured world. The release procedure
+runs twelve fresh Node processes in alternating before/after order, loads the
+complete 30-map corpus through the two-map idle cache, and compares elapsed
+decode time plus forced-GC retained heap/array-buffer deltas. Its JSON includes
+each run and median/min/max receipts. Module caches are cold; the operating-system
+file cache is unspecified, and these are not browser/frame-time measurements.
+
 Many `tmp-*` tools and `.qa-dev/` outputs are transient and must not be staged.
 Own and stop every dev server/browser process you start.
+
+## Fixed camera residency acquisition
+
+`world-residency-probe.mjs` requires `--camera-manifest=/absolute/cameras.json`.
+Use the same tool and manifest for baseline and candidate. A camera derived
+from each build's terrain height is not a matched pose. Old reports without
+the manifest and actual camera/render/roster receipts are not v3 baselines.
+
+Create the manifest once from a preserved complete pinned source report.
+The example below preserves its exact, unrounded position/quaternion values
+and source hash; `wx` refuses to overwrite existing evidence. Projection
+values come from `src/main.ts` (`near=0.5`, `far=4000`) and both battlefield
+recipe paths (`fov=55`). The new run verifies live values, native canvas,
+postprocessing settings, and settled terrain before/after actual frames.
+
+```sh
+node --input-type=module - /absolute/source-report.json /absolute/cameras.json <<'NODE'
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+const [reportPath, outputPath] = process.argv.slice(2);
+const raw = fs.readFileSync(reportPath), report = JSON.parse(raw);
+if (report.errors.length || report.samples.length !== report.scenario.maps.length * report.scenario.sweeps) {
+  throw new Error('Require a complete source report without browser errors');
+}
+for (const mapId of report.scenario.maps) {
+  const rows = report.samples.filter(row => row.mapId === mapId);
+  if (rows.length !== report.scenario.sweeps || new Set(rows.map(row =>
+    JSON.stringify(row.terrainWarm.topology.camera))).size !== 1) throw new Error(`Unstable camera: ${mapId}`);
+}
+const content = { schemaVersion: 1, protocol: 'absolute-map-camera-v1', source: {
+  reportPath, reportSha256: createHash('sha256').update(raw).digest('hex'),
+  revision: report.metadata.revision, sourceHash: report.metadata.sourceHash,
+  buildIndexHash: report.metadata.buildIndexHash, acquisitionHash: report.metadata.acquisitionHash,
+  projectionSource: 'src/main.ts PerspectiveCamera near=0.5 far=4000; src/dev/shotViews.ts battlefield and shotRuntime.ts mapEstablishingShot fov=55. Declared from source; v3 must verify actual cameraState receipts.',
+}, maps: report.samples.filter(row => row.sweep === 0).map(row => ({
+  mapId: row.mapId, position: row.terrainWarm.topology.camera.slice(0, 3),
+  quaternion: row.terrainWarm.topology.camera.slice(3), fov: 55, near: 0.5, far: 4000,
+})) };
+fs.writeFileSync(outputPath, `${JSON.stringify(content, null, 2)}\n`, { flag: 'wx' });
+NODE
+node tools/world-residency-probe.mjs --root=/absolute/baseline --production --camera-manifest=/absolute/cameras.json --maps=verdant,coastal,winter --sweeps=3 --out=/absolute/baseline-v3.json
+node tools/world-residency-probe.mjs --root=/absolute/candidate --production --camera-manifest=/absolute/cameras.json --maps=verdant,coastal,winter --sweeps=3 --baseline=/absolute/baseline-v3.json --out=/absolute/candidate-v3.json
+```
+
+Keep the chosen map list/order, viewport, tier, settle time, and three-sweep
+protocol identical. Do not add undeclared warmup cycles, drop failed samples,
+or reinterpret a leaking baseline as passing its own boundedness gate.

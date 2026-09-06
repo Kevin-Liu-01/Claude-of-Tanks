@@ -1,9 +1,12 @@
 // Client world eviction and forced-GC residency. No screenshot or source edits.
 // Run this SAME tool against both worktrees; build each separately beforehand.
 // node tools/world-residency-probe.mjs --root=/path/to/tree --production \
-//   --maps=verdant,coastal,winter,delta,monsoon,autumn --sweeps=3 --out=/tmp/residency.json
+//   --camera-manifest=/tmp/cameras.json --maps=verdant,coastal,winter,delta,monsoon,autumn \
+//   --sweeps=3 --out=/tmp/residency.json
 // Candidate adds --baseline=/tmp/pristine-residency.json. New-map sweeps have
 // no pristine counterpart and certify repeat boundedness, not comparative cost.
+// Create the immutable camera input once using tools/SKILL.md, "Fixed camera
+// residency acquisition". Both processes must receive that exact manifest.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +18,13 @@ import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './ca
 import { sampleRenderedFrames } from './render-frame-sampler.mjs';
 import { evaluateWorldResidency, RESIDENCY_SCHEMA } from './world-residency-policy.mjs';
 import { RESIDENCY_TERRAIN_PROTOCOL, settleResidencyTerrain } from './world-residency-acquisition.mjs';
+import {
+  PINNED_SCENE, primePinnedSceneStorage, configurePinnedScene, capturePinnedScene,
+} from './pinned-scene-acquisition.mjs';
+import {
+  RESIDENCY_CAMERA_PROTOCOL, cameraManifestRecord, cameraManifestValid, cameraForMap,
+  applyResidencyCamera, captureResidencyCameraState, isCameraStateReceipt,
+} from './residency-camera-acquisition.mjs';
 import {
   installResidencyGeometryTracker, warmResidencyTerrain, writeResidencyHeapSnapshot,
   collectResidencyPrograms, writeResidencyPrograms,
@@ -40,6 +50,10 @@ const maps = option('maps', 'verdant,coastal,winter,delta,monsoon,autumn').split
 if (new Set(maps).size !== maps.length || maps.length < 3 || maps.some(id => !/^[a-z][a-z_]*$/.test(id))) {
   throw new Error('--maps requires at least three distinct battlefield IDs');
 }
+const cameraManifestPath = option('camera-manifest', '');
+if (!cameraManifestPath) throw new Error('--camera-manifest is required for matched absolute scene acquisition');
+const cameraManifest = cameraManifestRecord(JSON.parse(fs.readFileSync(path.resolve(cameraManifestPath), 'utf8')));
+if (!cameraManifestValid(cameraManifest, maps)) throw new Error('Invalid or incomplete absolute camera manifest');
 const sweeps = Number(option('sweeps', '3'));
 const settleMs = Number(option('settle-ms', '1500'));
 if (!Number.isInteger(sweeps) || sweeps < 3 || !Number.isFinite(settleMs) || settleMs < 500) {
@@ -59,14 +73,17 @@ const sourceFingerprint = () => {
   }
   return digest.digest('hex');
 };
-const acquisitionFiles = ['world-residency-probe.mjs', 'render-frame-sampler.mjs', 'world-residency-acquisition.mjs'];
+const acquisitionFiles = ['world-residency-probe.mjs', 'render-frame-sampler.mjs',
+  'world-residency-acquisition.mjs', 'pinned-scene-acquisition.mjs', 'residency-camera-acquisition.mjs'];
 const probeFiles = [...acquisitionFiles, 'world-residency-policy.mjs'];
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const report = {
   schemaVersion: RESIDENCY_SCHEMA,
   generatedAt: new Date().toISOString(),
   scenario: { production, viewport, tier, maps, sweeps, settleMs, seed: 1337,
-    acquisition: { terrain: RESIDENCY_TERRAIN_PROTOCOL } },
+    acquisition: { terrain: RESIDENCY_TERRAIN_PROTOCOL, scene: PINNED_SCENE.protocol,
+      camera: RESIDENCY_CAMERA_PROTOCOL },
+    scene: PINNED_SCENE, cameraManifest },
   metadata: {
     root, revision: git(['rev-parse', 'HEAD']), dirtyPaths: git(['status', '--short']).split('\n').filter(Boolean),
     sourceHash: sourceFingerprint(),
@@ -75,6 +92,7 @@ const report = {
     acquisitionHash: hash(acquisitionFiles
       .map(file => fs.readFileSync(path.join(toolDir, file), 'utf8')).join('\n')),
     browserVersion: null, gpuRenderer: null, captureLock: 'cot-shots',
+    cameraManifestPath: path.resolve(cameraManifestPath),
   },
   samples: [], errors: [], failedResponses: [],
 };
@@ -145,6 +163,17 @@ async function collectSettled(page, cdp) {
   return { ...receipt, gcPasses: 2, heap };
 }
 
+async function verifiedCameraState(page, expectedCamera, before = null) {
+  const state = await page.evaluate(captureResidencyCameraState);
+  if (!isCameraStateReceipt(state, expectedCamera, viewport)) {
+    throw new Error(`Absolute camera/native render state mismatch: ${JSON.stringify(state)}`);
+  }
+  if (before && JSON.stringify(before) !== JSON.stringify(state)) {
+    throw new Error('Camera or render quality changed during actual rendered frames');
+  }
+  return state;
+}
+
 let server, browser, lockRefresher;
 try {
   await acquireCaptureLock(30 * 60 * 1000);
@@ -164,6 +193,7 @@ try {
   report.metadata.browserVersion = await browser.version();
   const page = await browser.newPage();
   await page.setViewport(viewport);
+  await page.evaluateOnNewDocument(primePinnedSceneStorage, PINNED_SCENE);
   page.setDefaultTimeout(180_000);
   page.on('pageerror', error => report.errors.push(String(error)));
   page.on('console', message => {
@@ -182,6 +212,7 @@ try {
   await cdp.send('HeapProfiler.enable');
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.renderer && window.__SHOTS?.set);
+  await page.evaluate(configurePinnedScene, PINNED_SCENE);
   if (diagnosticsDir) await page.evaluate(installResidencyGeometryTracker);
   report.metadata.gpuRenderer = await page.evaluate(() => {
     const gl = window.__DEBUG.renderer.getContext();
@@ -192,8 +223,11 @@ try {
     for (const mapId of maps) {
       const started = performance.now();
       const textureReadiness = await activateMap(page, mapId);
+      const expectedCamera = cameraForMap(cameraManifest, mapId);
+      await page.evaluate(applyResidencyCamera, expectedCamera);
       await sleep(settleMs);
       const terrainPrepared = await page.evaluate(settleResidencyTerrain);
+      const cameraPrepared = await verifiedCameraState(page, expectedCamera);
       await page.evaluate(sampleRenderedFrames, { count: 8, syncGpu: false });
       let terrainWarm;
       if (warmTerrain) {
@@ -201,7 +235,9 @@ try {
         await page.evaluate(sampleRenderedFrames, { count: 8, syncGpu: false });
       }
       const terrainSettled = await page.evaluate(settleResidencyTerrain, terrainPrepared);
-      const receipt = { ...await collectSettled(page, cdp), terrainWarm: terrainSettled };
+      const sceneIdentity = await page.evaluate(capturePinnedScene, PINNED_SCENE);
+      const cameraState = await verifiedCameraState(page, expectedCamera, cameraPrepared);
+      const receipt = { ...await collectSettled(page, cdp), terrainWarm: terrainSettled, sceneIdentity, cameraState };
       if (diagnosticsDir) {
         if (terrainWarm) receipt.diagnosticTerrainWarm = terrainWarm;
         receipt.geometryInventory = await page.evaluate(() => window.__RESIDENCY_DIAGNOSTICS.inventory());

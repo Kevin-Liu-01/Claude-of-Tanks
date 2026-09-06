@@ -5682,6 +5682,14 @@ ${snowCap ? `
     groundingReceipts: decorationGroundingReceipts,
   });
 
+  // Delta uses two resident procedural plaster families. Fold the incidental
+  // third paint tone after authoring so river-supported placement cannot add
+  // another uploaded atlas/shader, or change geometry, UV jitter or RNG order.
+  if (mapId === 'delta') {
+    buckets.plaster2.push(...buckets.plaster3);
+    buckets.plaster3.length = 0;
+  }
+
   // --- merge buckets into one mesh per material ---
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {

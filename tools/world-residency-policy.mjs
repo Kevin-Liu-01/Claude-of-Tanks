@@ -1,5 +1,12 @@
 // Numeric evidence policy only; importing this module never starts a browser.
-export const RESIDENCY_SCHEMA = 1;
+import { PINNED_SCENE, isPinnedSceneReceipt } from './pinned-scene-acquisition.mjs';
+import {
+  RESIDENCY_CAMERA_PROTOCOL, cameraManifestValid, isCameraStateReceipt,
+} from './residency-camera-acquisition.mjs';
+
+// v3 requires actual pinned scene and absolute camera identities. Earlier reports remain evidence
+// under their original evaluator, never a matched baseline for this protocol.
+export const RESIDENCY_SCHEMA = 3;
 export const RESIDENCY_LIMITS = Object.freeze({
   repeatHeapBytes: 1_048_576,
   repeatHeapFraction: 0.01,
@@ -8,38 +15,31 @@ export const RESIDENCY_LIMITS = Object.freeze({
 });
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-// The first pristine receipt predates the separate acquisition hash. This
-// exact historical combined hash used the identical default browser/GC
-// driver. Reviewed successors add identity metadata and opt-in diagnostics
-// only; diagnostic scenarios cannot be compared with uninstrumented runs.
-// Unknown old tool hashes are deliberately NOT compatible.
-const LEGACY_ACQUISITION = Object.freeze({
-  '3c71ab1f982f8ceedb79c2c8ea457817f158c7476e6d93dbc16a109f15ce35ad':
-    'b33b02bc32a7b084f0d227278df6a48049b499156ccac2632a2ef1ad7a47b143',
-});
-const DEFAULT_ACQUISITION_COMPATIBILITY = Object.freeze({
-  '563c1f4c0045545893ed14dd5018f210a61aec6ef501b18b86b0faf814ed0926':
-    'b33b02bc32a7b084f0d227278df6a48049b499156ccac2632a2ef1ad7a47b143',
-});
 const check = (checks, name, pass, actual, expected) => {
   checks.push({ name, pass: Boolean(pass), actual, expected });
 };
 const result = checks => ({ pass: checks.every(row => row.pass), checks });
 
-function acquisitionIdentity(metadata) {
-  const hash = metadata.acquisitionHash || LEGACY_ACQUISITION[metadata.probeHash] || null;
-  return DEFAULT_ACQUISITION_COMPATIBILITY[hash] || hash;
-}
-
 function sameAcquisition(before, after) {
-  const oldHash = acquisitionIdentity(before), newHash = acquisitionIdentity(after);
-  if (oldHash || newHash) return oldHash !== null && oldHash === newHash;
-  return typeof before.probeHash === 'string' && before.probeHash === after.probeHash;
+  return typeof before.acquisitionHash === 'string' && before.acquisitionHash.length > 0
+    && before.acquisitionHash === after.acquisitionHash;
 }
 
 function compareSamples(checks, label, before, after, comparison) {
   check(checks, `${label} matched cache`, same(before.worldIds, after.worldIds),
     after.worldIds, before.worldIds);
+  check(checks, `${label} matched actual scene`, same(before.sceneIdentity, after.sceneIdentity),
+    after.sceneIdentity, before.sceneIdentity);
+  check(checks, `${label} matched actual camera and render state`, same(before.cameraState, after.cameraState),
+    after.cameraState, before.cameraState);
+  // Independent browser worlds have different UUIDs. The acquired view and
+  // production LOD counts must still agree; fewer uploaded resources from a
+  // different camera is not a successful memory comparison.
+  for (const key of ['camera', 'initialGeometryCount', 'streamedGeometryCount', 'indexReferences']) {
+    check(checks, `${label} matched terrain ${key}`,
+      same(before.terrainWarm?.topology?.[key], after.terrainWarm?.topology?.[key]),
+      after.terrainWarm?.topology?.[key], before.terrainWarm?.topology?.[key]);
+  }
   for (const key of ['geometries', 'textures', 'programs']) {
     check(checks, `${label} renderer ${key}`, after.renderer[key] <= before.renderer[key],
       after.renderer[key] - before.renderer[key], '<= 0 retained count growth');
@@ -93,8 +93,19 @@ function checkTerrainSettlement(checks, row, label) {
   topology ?? null, 'same world, finite camera pose, actual nonnegative topology counts');
 }
 
+function checkCamera(checks, row, label, manifest, viewport) {
+  const expected = manifest?.content.maps.find(camera => camera.mapId === row.mapId) ?? null;
+  check(checks, `${label} absolute camera and native render state`,
+    isCameraStateReceipt(row.cameraState, expected, viewport),
+    row.cameraState ?? null, 'exact manifest camera and actual native, untrimmed render settings');
+  check(checks, `${label} terrain acquired for manifest camera`, expected
+    && same(row.terrainWarm?.topology?.camera, [...expected.position, ...expected.quaternion]),
+  row.terrainWarm?.topology?.camera ?? null, expected);
+}
+
 function checkSamples(report, checks, unsupported) {
   const { maps, sweeps } = report.scenario;
+  const manifest = cameraManifestValid(report.scenario.cameraManifest, maps) ? report.scenario.cameraManifest : null;
   check(checks, 'complete repeat sweep', report.samples.length === maps.length * sweeps,
     report.samples.length, maps.length * sweeps);
   let previous = null;
@@ -119,7 +130,10 @@ function checkSamples(report, checks, unsupported) {
       row.worldUuid, 'nonempty world root UUID');
     check(checks, `${label} live graphics context`, row.contextLost !== true, row.contextLost ?? null, 'not lost');
     check(checks, `${label} active map`, row.activeMapId === row.mapId, row.activeMapId, row.mapId);
-    if (report.scenario.acquisition) checkTerrainSettlement(checks, row, label);
+    checkTerrainSettlement(checks, row, label);
+    check(checks, `${label} pinned actual scene`, isPinnedSceneReceipt(row.sceneIdentity),
+      row.sceneIdentity ?? null, 'fixed ordered M1A2 player, lineup, teams and visual spec identities');
+    checkCamera(checks, row, label, manifest, report.scenario.viewport);
     checkExpectedCache(report, checks, row, index, label);
     checkEviction(checks, unsupported, row, previous, label);
     const earlier = seenWorlds.get(row.mapId);
@@ -150,7 +164,7 @@ function checkScenario(report, checks) {
     scenario.sweeps, 'integer >= 3');
   check(checks, 'scenario can force world eviction', new Set(scenario.maps).size >= 3
     && new Set(scenario.maps).size === scenario.maps.length, scenario.maps, '>= 3 unique maps');
-  for (const key of ['browserVersion', 'gpuRenderer', 'probeHash', 'revision', 'sourceHash']) {
+  for (const key of ['browserVersion', 'gpuRenderer', 'probeHash', 'acquisitionHash', 'revision', 'sourceHash']) {
     check(checks, `measured metadata ${key}`, typeof metadata[key] === 'string' && metadata[key].length > 0,
       metadata[key] ?? null, 'recorded nonempty identity');
   }
@@ -161,11 +175,14 @@ function checkScenario(report, checks) {
     check(checks, 'diagnostic implementation identity', typeof metadata.diagnosticsHash === 'string'
       && metadata.diagnosticsHash.length > 0, metadata.diagnosticsHash ?? null, 'recorded instrumentation identity');
   }
-  if (scenario.acquisition) {
-    check(checks, 'known terrain acquisition protocol',
-      same(scenario.acquisition, { terrain: 'countdown-lookahead-v1' }), scenario.acquisition,
-      'countdown-lookahead-v1');
-  }
+  check(checks, 'known terrain and scene acquisition protocol',
+    same(scenario.acquisition, { terrain: 'countdown-lookahead-v1', scene: PINNED_SCENE.protocol,
+      camera: RESIDENCY_CAMERA_PROTOCOL }),
+    scenario.acquisition ?? null, 'countdown-lookahead-v1 plus fixed roster and absolute camera');
+  check(checks, 'fixed declared scene', same(scenario.scene, PINNED_SCENE),
+    scenario.scene ?? null, PINNED_SCENE);
+  check(checks, 'immutable absolute camera manifest', cameraManifestValid(scenario.cameraManifest, scenario.maps),
+    scenario.cameraManifest ?? null, 'valid content hash, finite cameras, source provenance and complete map coverage');
 }
 
 function evaluateLocal(report) {
@@ -191,17 +208,21 @@ function compareBaseline(report, baseline, local, checks) {
   check(checks, 'baseline recorded outcome agrees with raw evidence', baseline.ok === recomputedPass
     && baseline.evaluation?.pass === recomputedPass,
   { ok: baseline.ok ?? null, pass: baseline.evaluation?.pass ?? null }, { ok: recomputedPass, pass: recomputedPass });
-  check(checks, 'baseline original gate records retained', Array.isArray(baseline.evaluation?.checks)
-    && baseline.evaluation.checks.length > 0,
-  baseline.evaluation?.checks?.length ?? null, 'original recorded checks, including every failure');
+  const recordedChecks = baseline.evaluation?.checks;
+  const recomputedFailures = [...verified.evidence.checks, ...verified.boundedness.checks]
+    .filter(row => !row.pass);
+  const recordedFailures = Array.isArray(recordedChecks) ? recordedChecks.filter(row => !row?.pass) : [];
+  check(checks, 'baseline original gate records retained', Array.isArray(recordedChecks)
+    && recordedChecks.length > 0 && same(recordedFailures, recomputedFailures),
+  recordedFailures, recomputedFailures);
   const summary = {
     evidence: verified.evidence, boundedness: verified.boundedness,
     recordedOk: baseline.ok ?? null, recordedPass: baseline.evaluation?.pass ?? null,
-    recordedFailures: baseline.evaluation?.checks?.filter(row => !row.pass) || [],
+    recordedFailures,
     unsupported: verified.unsupported,
   };
   if (!verified.evidence.pass || !local.evidence.pass) return summary;
-  for (const key of ['production', 'viewport', 'tier', 'maps', 'sweeps', 'settleMs', 'seed', 'diagnostics', 'acquisition']) {
+  for (const key of ['production', 'viewport', 'tier', 'maps', 'sweeps', 'settleMs', 'seed', 'diagnostics', 'acquisition', 'scene', 'cameraManifest']) {
     check(checks, `baseline matched ${key}`, same(baseline.scenario[key], report.scenario[key]),
       report.scenario[key], baseline.scenario[key]);
   }
@@ -215,8 +236,8 @@ function compareBaseline(report, baseline, local, checks) {
       report.metadata.diagnosticsHash, baseline.metadata.diagnosticsHash);
   }
   check(checks, 'baseline matched acquisition protocol', sameAcquisition(baseline.metadata, report.metadata),
-    { probeHash: report.metadata.probeHash, acquisitionHash: acquisitionIdentity(report.metadata) },
-    { probeHash: baseline.metadata.probeHash, acquisitionHash: acquisitionIdentity(baseline.metadata) });
+    { probeHash: report.metadata.probeHash, acquisitionHash: report.metadata.acquisitionHash },
+    { probeHash: baseline.metadata.probeHash, acquisitionHash: baseline.metadata.acquisitionHash });
   const oldRows = new Map(baseline.samples.map(row => [`${row.sweep}/${row.mapId}`, row]));
   for (const row of report.samples.filter(row => row.sweep >= 1)) {
     const before = oldRows.get(`${row.sweep}/${row.mapId}`);

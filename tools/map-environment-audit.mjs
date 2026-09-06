@@ -4,6 +4,7 @@
 //   node tools/map-environment-audit.mjs
 //   node tools/map-environment-audit.mjs --out=/private/tmp/cot-map-audit --shots
 //   node tools/map-environment-audit.mjs --maps=verdant,coastal --samples=90
+//   node tools/map-environment-audit.mjs --production --root=/path/to/built/tree
 //   node tools/map-environment-audit.mjs --baseline=/path/to/report.json
 //   node tools/map-environment-audit.mjs --gate --baseline=/path/to/report.json
 //   node tools/map-environment-audit.mjs --poses=/path/to/matched/shots --shots
@@ -18,11 +19,21 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { MAP_IDS } from '../src/world/maps/index.ts';
 import { sampleRenderedFrames } from './render-frame-sampler.mjs';
+import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
+import { PINNED_SCENE, primePinnedSceneStorage, configurePinnedScene, capturePinnedScene } from './pinned-scene-acquisition.mjs';
+import {
+  ACQUISITION_PROTOCOL, settleMapTextures, applyTimingCamera, captureTimingState,
+  requireComparableRun, requireTimingReceipt, requireSameTimingState,
+  waitForTimingGarage, warmTimingGarage, captureTimingGarageOwner, captureTimingBackend,
+  requireTimingGarageSetup, requireSameTimingGarageSetup, requireSameTimingGarageOwner,
+  requireTimingBuildProvenance,
+} from './map-environment-acquisition.mjs';
 import { selectStandView, stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
 import { evaluateQuality } from './map-environment-quality.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
@@ -38,6 +49,7 @@ const ROOT = path.resolve(valueArg('root', process.cwd()));
 // The repo's Vite warmup plugin resolves its source graph from cwd. A baseline
 // in another worktree must never warm the implementation's module graph.
 process.chdir(ROOT);
+const { MAP_IDS } = await import(pathToFileURL(path.join(ROOT, 'src/world/maps/index.ts')).href);
 
 const requested = valueArg('maps', MAP_IDS.join(','))
   .split(',').map((id) => id.trim()).filter(Boolean);
@@ -53,6 +65,7 @@ if ((horizonOnly || horizonScopes) && !captureShots) throw new Error('Horizon ca
 const enforceGate = flagArg('gate');
 const includeInventory = flagArg('inventory');
 const syncGpu = flagArg('sync-gpu');
+const production = flagArg('production');
 const tier = valueArg('tier', 'auto');
 if (!['auto', 'desktop', 'mobile'].includes(tier)) throw new Error('tier must be auto, desktop or mobile');
 const width = Number.parseInt(valueArg('width', '1440'), 10);
@@ -69,67 +82,39 @@ const baselineById = new Map((baseline?.maps || []).map((row) => [row.id, row]))
 const poseRootArg = valueArg('poses', '');
 const poseRoot = poseRootArg ? path.resolve(ROOT, poseRootArg)
   : baselinePath ? path.join(path.dirname(path.resolve(ROOT, baselinePath)), 'shots') : '';
+const harnessHash = createHash('sha256');
+for (const file of ['map-environment-audit.mjs', 'map-environment-acquisition.mjs',
+  'pinned-scene-acquisition.mjs', 'world-residency-acquisition.mjs',
+  'render-frame-sampler.mjs', 'map-environment-quality.mjs']) {
+  harnessHash.update(file).update(fs.readFileSync(new URL(file, import.meta.url)));
+}
+const acquisition = {
+  protocol: ACQUISITION_PROTOCOL, harnessHash: harnessHash.digest('hex'),
+  viewport: { width, height, dpr: 1 },
+  sampleCount, repeats, settleMs, syncGpu, tier, captureShots, production, maps: requested,
+};
+if (baseline) requireComparableRun(baseline, acquisition);
 fs.mkdirSync(outDir, { recursive: true });
 
-await acquireCaptureLock(20 * 60 * 1000);
-process.on('exit', releaseCaptureLock);
-const lockRefresher = setInterval(refreshCaptureLock, 60_000);
-lockRefresher.unref();
-
-const server = await createServer({
-  root: ROOT,
-  logLevel: 'error',
-  server: {
-    host: '127.0.0.1', port: 6100 + Math.floor(Math.random() * 500),
-    strictPort: false, hmr: false, watch: null,
-  },
-  optimizeDeps: {
-    entries: ['index.html'],
-    include: [
-      'three',
-      'three/examples/jsm/loaders/GLTFLoader.js',
-      'three/examples/jsm/utils/SkeletonUtils.js',
-      'three/examples/jsm/utils/BufferGeometryUtils.js',
-      'three/examples/jsm/geometries/RoundedBoxGeometry.js',
-    ],
-  },
-});
-await server.listen();
-const address = server.httpServer.address();
-const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-const browser = await puppeteer.launch({
-  headless: 'new',
-  // Remove compositor throttling, but measure actual post.render calls: the
-  // game's own 60 Hz cap can still skip browser callbacks. --sync-gpu is an
-  // explicitly serialized throughput diagnostic, not native frame cadence.
-  args: [
-    '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
-    '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-renderer-backgrounding',
-  ],
-});
-const page = await browser.newPage();
-await page.setViewport({ width, height, deviceScaleFactor: 1 });
-page.setDefaultTimeout(180000);
-
+let server, browser, page, lockRefresher;
 const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon')) {
-    pageErrors.push(message.text());
-  }
-});
+const readBuildIndexHash = () => production
+  ? createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'dist/index.html'))).digest('hex') : null;
 
 const report = {
-  schemaVersion: 2,
+  schemaVersion: 5,
   generatedAt: new Date().toISOString(),
   revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
   dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
   viewport: { width, height, dpr: 1 },
   sampleCount, repeats, syncGpu, tier, horizonOnly, horizonScopes,
+  acquisition,
+  buildIndexHash: readBuildIndexHash(),
   captureLock: 'cot-shots',
   matchedPoseRoot: poseRoot || null,
   maps: [],
 };
+requireTimingBuildProvenance(report);
 
 const percentile = (values, fraction) => {
   if (!values.length) return 0;
@@ -143,6 +128,7 @@ async function sampleFrames(count) {
   const frames = result.samples.map((sample) => sample.intervalMs);
   const costs = result.samples.map((sample) => sample.renderMs);
   return {
+    sampleCount: result.samples.length,
     medianMs: round(percentile(frames, 0.5)),
     p95Ms: round(percentile(frames, 0.95)),
     p99Ms: round(percentile(frames, 0.99)),
@@ -174,13 +160,33 @@ function combineFrameRuns(runs) {
 async function stageMap(mapId) {
   const view = mapId === 'verdant' ? 'battlefield' : `battlefield_${mapId}`;
   await page.evaluate((name) => window.__SHOTS.set(name), view);
+  const readiness = await page.evaluate(settleMapTextures, { mapId });
   await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
+  const prior = baselineById.get(mapId)?.acquisition;
+  if (prior) await page.evaluate(applyTimingCamera, prior.state.camera);
   await new Promise((resolve) => setTimeout(resolve, settleMs));
   await page.evaluate(() => new Promise((resolve) => {
     let left = 5;
     const tick = () => { if (--left <= 0) resolve(); else requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }));
+  const prepared = await page.evaluate(settleResidencyTerrain);
+  await page.evaluate(sampleRenderedFrames, { count: 8, syncGpu });
+  const terrain = await page.evaluate(settleResidencyTerrain, prepared);
+  return { readiness, terrain };
+}
+
+async function timingReceipt(mapId, prepared) {
+  const receipt = {
+    garage: await page.evaluate(captureTimingGarageOwner),
+    scene: await page.evaluate(capturePinnedScene, PINNED_SCENE),
+    state: await page.evaluate(captureTimingState),
+    readiness: prepared.readiness,
+    terrain: await page.evaluate(settleResidencyTerrain, prepared.terrain),
+  };
+  requireTimingReceipt(receipt, mapId, acquisition.viewport);
+  requireSameTimingGarageOwner(report.garageSetup.owner, receipt.garage);
+  return receipt;
 }
 
 async function collectMap(mapId, frames) {
@@ -748,10 +754,66 @@ async function captureMapShots(mapId) {
 }
 
 try {
+  await acquireCaptureLock(20 * 60 * 1000);
+  process.on('exit', releaseCaptureLock);
+  lockRefresher = setInterval(refreshCaptureLock, 60_000);
+  lockRefresher.unref();
+  const selectedPort = 6100 + Math.floor(Math.random() * 500);
+  server = production
+    ? await preview({ root: ROOT, logLevel: 'error',
+      preview: { host: '127.0.0.1', port: selectedPort, strictPort: false } })
+    : await createServer({
+      root: ROOT, logLevel: 'error',
+      server: { host: '127.0.0.1', port: selectedPort, strictPort: false, hmr: false, watch: null },
+      optimizeDeps: {
+        entries: ['index.html'],
+        include: [
+          'three',
+          'three/examples/jsm/loaders/GLTFLoader.js',
+          'three/examples/jsm/utils/SkeletonUtils.js',
+          'three/examples/jsm/utils/BufferGeometryUtils.js',
+          'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        ],
+      },
+    });
+  if (!production) await server.listen();
+  const address = server.httpServer.address();
+  const port = address.port;
+  browser = await puppeteer.launch({
+    headless: 'new',
+    // The natural workshop deadline is 180 s; preserve its own bounded error.
+    protocolTimeout: 240000,
+    // Native submitted cadence; --sync-gpu remains a separate diagnostic.
+    args: [
+      '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
+      '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-renderer-backgrounding',
+    ],
+  });
+  page = await browser.newPage();
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
+  await page.evaluateOnNewDocument(primePinnedSceneStorage, PINNED_SCENE);
+  page.setDefaultTimeout(180000);
+  page.on('pageerror', error => pageErrors.push(String(error)));
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().includes('favicon')) pageErrors.push(message.text());
+  });
   await page.goto(`http://127.0.0.1:${port}/${tier === 'auto' ? '' : `?tier=${tier}`}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await page.evaluate(configurePinnedScene, PINNED_SCENE);
+  await page.evaluate(waitForTimingGarage);
+  await page.evaluate(() => window.__SHOTS.set('garage'));
+  await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
+  const garageOwner = await page.evaluate(captureTimingGarageOwner);
+  const garageWarm = await page.evaluate(warmTimingGarage);
+  const warmedGarageOwner = await page.evaluate(captureTimingGarageOwner);
+  report.garageSetup = {
+    ownerBefore: garageOwner, owner: warmedGarageOwner, warm: garageWarm,
+    backend: await page.evaluate(captureTimingBackend), browserVersion: await browser.version(),
+  };
+  requireTimingGarageSetup(report.garageSetup);
+  if (baseline) requireSameTimingGarageSetup(baseline.garageSetup, report.garageSetup);
   report.browser = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     canvasWidth: window.__DEBUG.renderer.domElement.width,
@@ -760,21 +822,24 @@ try {
   }));
   for (const mapId of requested) {
     process.stdout.write(`[map-audit] ${mapId} ... `);
-    await stageMap(mapId);
+    const prepared = await stageMap(mapId);
+    const acquired = await timingReceipt(mapId, prepared);
+    const before = baselineById.get(mapId);
+    if (before) requireSameTimingState(before.acquisition, acquired);
     const frameRuns = [];
-    for (let repeat = 0; repeat < repeats; repeat++) frameRuns.push(await sampleFrames(sampleCount));
+    for (let repeat = 0; repeat < repeats; repeat++) {
+      const acquisitionBefore = await timingReceipt(mapId, prepared);
+      requireSameTimingState(acquired, acquisitionBefore);
+      const samples = await sampleFrames(sampleCount);
+      const acquisitionAfter = await timingReceipt(mapId, prepared);
+      requireSameTimingState(acquired, acquisitionAfter);
+      frameRuns.push({ ...samples, acquisitionBefore, acquisitionAfter });
+    }
     const frames = combineFrameRuns(frameRuns);
     const row = await collectMap(mapId, frames);
+    row.acquisition = acquired;
     row.gate = evaluateQuality(row);
-    const before = baselineById.get(mapId);
     if (before) {
-      if (baseline.schemaVersion !== 2 || baseline.syncGpu !== syncGpu) {
-        throw new Error('Baseline must use schema 2 actual game-frame sampling and the same --sync-gpu mode');
-      }
-      if (baseline.viewport.width !== width || baseline.viewport.height !== height
-          || baseline.viewport.dpr !== 1 || (baseline.tier ?? 'auto') !== tier) {
-        throw new Error('Baseline and candidate must use identical viewport dimensions, DPR and tier');
-      }
       const oldFrames = before.frames;
       const oldScene = before.scene;
       const absoluteBudgetMs = Math.max(0.75, oldFrames.medianMs * 0.08);
@@ -808,9 +873,11 @@ try {
     maxMeshFamilies: Math.max(...report.maps.map((row) => row.scene.meshNodes)),
     maxSceneTriangles: Math.max(...report.maps.map((row) => row.scene.triangles)),
     baselineFailures: report.maps.filter((row) => row.baseline && !row.baseline.pass).map((row) => row.id),
+    uncomparedMaps: report.maps.filter((row) => !row.baseline).map((row) => row.id),
     qualityFailures: report.maps.filter((row) => !row.gate.pass).map((row) => row.id),
   };
   report.pageErrors = pageErrors;
+  if (readBuildIndexHash() !== report.buildIndexHash) throw new Error('Production build changed during timing');
   fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   console.log(`[map-audit] wrote ${path.join(outDir, 'report.json')}`);
   if (pageErrors.length) {
@@ -825,9 +892,23 @@ try {
     console.error(`[map-audit] environment quality gate failed: ${report.summary.qualityFailures.join(', ')}`);
     process.exitCode = 1;
   }
+} catch (error) {
+  report.acquisitionError = String(error);
+  report.pageErrors = pageErrors;
+  fs.writeFileSync(path.join(outDir, 'report.incomplete.json'), `${JSON.stringify(report, null, 2)}\n`);
+  throw error;
 } finally {
-  await browser.close();
-  await server.close();
-  clearInterval(lockRefresher);
-  releaseCaptureLock();
+  try {
+    if (browser) await browser.close();
+  } finally {
+    try {
+      if (server?.close) await server.close();
+      else if (server) await new Promise((resolve, reject) => {
+        server.httpServer.close(error => error ? reject(error) : resolve());
+      });
+    } finally {
+      clearInterval(lockRefresher);
+      releaseCaptureLock();
+    }
+  }
 }

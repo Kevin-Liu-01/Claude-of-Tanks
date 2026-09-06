@@ -15,10 +15,11 @@ visual parity with that game.
 Isolated implementation branch: `codex/environment-pass-r1`.
 Starting production revision: `da5e0cf0a`.
 Release integration is isolated on `codex/environment-release-r1`, based on
-`2c22d203d`; it preserves the later 128-vehicle fleet, owner-approved media,
+`2c22d203d`; it preserves the later vehicle fleet, owner-approved media,
 HUD role icons and corrected spectator mouse/minimap handedness. The authored
 environment checkpoint is `23b82f0bc`; it has not been pushed while final
-integrated resource/performance and artwork checks remain open.
+integrated resource/performance checks remain open. Final all-map artwork
+generation and native-frame review are complete (V16, below).
 
 - Original visual survey: `/private/tmp/cot-environment-baseline/`.
   Its schema-1 timing sampled browser callbacks, including skipped draws, and
@@ -94,18 +95,18 @@ integrated resource/performance and artwork checks remain open.
 
 ## Implementation and required evidence
 
-| Requirement | Implementation | Completion evidence still required |
+| Requirement | Implementation | Evidence and remaining qualification |
 | --- | --- | --- |
-| Ground/material quality | Bounded normal relief and separation of soil/water | Matched near, mid and grazing captures across biomes |
-| Natural bodies of water | Shared seeded concave shoreline; connected river stations | Overhead and bank views; drive/query alignment; regenerated collision/minimaps |
-| Mountains and horizon | Closed UV seam, redistributed radial topology, smooth normals, coastal opening | All-map skyline review, no gaps or planar wall bands |
+| Ground/material quality | Bounded normal relief and separation of soil/water | Targeted near/mid/grazing reviews and final all-thirty-map native stills pass; motion review remains separate |
+| Natural bodies of water | Shared seeded concave shoreline; connected river stations | Overhead/bank reviews, wet-mask/grade/ford checks and current collision/minimap exports pass |
+| Mountains and horizon | Closed UV seam, redistributed radial topology, smooth normals, coastal opening | All-thirty-map native skyline review passes; simplified distant geometry remains a disclosed visual limit |
 | Sky and atmosphere | Coherent periodic cloud bake and lower cloud bank | Stable pan and horizon captures on desktop/mobile |
 | Vegetation | Matte diffuse-only leaf wrap; compensated bark albedo; coherent snow caps and a smooth strip within the existing atlas | Matched Verdant/winter review passes; all-biome/LOD/motion and resource checks remain |
 | Ambient detail | Existing inhabited prop vocabulary plus eight biome sound profiles | Native Chrome audio passes eight profiles: pre-limiter peak 0.198–0.348, RMS 0.031–0.046, exact silence after teardown. Subjective listening remains unverified; WAVs and report are in `/private/tmp/cot-ambient-native/` |
-| Ten complete new maps | Polders, Copper Mesa, Airfield, Oasis, Whiteout, Orchard, Longleaf, Mangrove, Saltwind, Reservoir | Render each; traverse routes; verify spawns/cover, selection/random, server and assets |
+| Ten complete new maps | Polders, Copper Mesa, Airfield, Oasis, Whiteout, Orchard, Longleaf, Mangrove, Saltwind, Reservoir | All rendered/reviewed; catalogs/random/private/ranked integration, route/cover/spawn and server collision checks pass; canonical pacing passes with disclosed timeouts |
 | No performance regression | Same-size texture families, smaller horizon geometry, no extra terrain samplers | Matched all-map timing, worst-frame and constrained-device results |
 | No memory regression | Explicit shader-only terrain/horizon/prop texture ownership; all CSM-registered prop materials tracked; per-map server JSON and bounded terrain ownership | Final thirty-map server sweep has zero repeated ArrayBuffer growth and 3,176 bytes heap growth; native client phase/eviction plateau remains required |
-| Public readiness | Generated previews, minimaps, collision manifest, metadata | Typecheck/build/tests; no missing resources; push verified |
+| Public readiness | Generated previews, minimaps, collision manifest, metadata | Native artwork and 496 applicable tests pass; production build/typecheck pass; performance/memory gates and verified push remain open |
 
 This is a work ledger. The objective remains active until the requirements
 above have direct current-state evidence; source changes alone are incomplete.
@@ -128,7 +129,8 @@ above have direct current-state evidence; source changes alone are incomplete.
   V4 confirms corrugated sheds no longer alternate black and white. Neutral
   albedo textures and their 128-square dimensions are unchanged. The separate
   charred-looking timber palette has been lifted to weathered wood; its new
-  rendered review is still pending.
+  native V16 review now covers the lifted timber palette without a blocking
+  frontage or texture defect.
 - Tactical structures outside the village could intersect trees because
   vegetation was built first. Construction-only crown/lean/structure-envelope
   compaction now removes matching visuals, spotting and collision together,
@@ -146,7 +148,8 @@ above have direct current-state evidence; source changes alone are incomplete.
   requires actual construction receipts, at least 85% authored-site placement
   and five distinct loose kinds, retaining independent building, destructible,
   wreck and grounding floors. This does not prove equivalence for Fjord's
-  observed 66-to-49 total-body change; final placement/render review is required.
+  observed 66-to-49 total-body change. Final V16 Fjord placement/render review
+  passes, but does not claim numerical equivalence to that old body count.
 - V5 reveals remaining Fjord/winter near-horizon curtains: the buried seam's
   outer skirt, deliberately unchanged in the earlier pass, rises too abruptly.
   V6 confirms a lower, recessed skirt and separated passes. It still shows
@@ -182,8 +185,8 @@ above have direct current-state evidence; source changes alone are incomplete.
   checks generated CPU pixels, not native upload or complete fragment shading.
 - Authoring capture did not await the already-exposed sourced-texture promise.
   Capture-only readiness, strict scene-minimap receipts, and native-4K source
-  guards now pass focused tests and V6 native sourced-texture checks. Public
-  assets are still pending final terrain/configuration freeze.
+  guards now pass focused tests and V6 native sourced-texture checks. The final
+  public asset refresh is complete in V16, with Delta's small V17 update below.
 - The new Oasis, Polders, Mangrove and Reservoir water cells now form distinct
   hooked/branching reaches or irregular engineered compartments. V8 overheads
   are accepted for layout. Polders has five leveled retention compartments,
@@ -262,7 +265,7 @@ above have direct current-state evidence; source changes alone are incomplete.
   shard retains 1,449 obstacles, 1,267 colliders and 805 concealers. The narrow
   generator refresh preserves all 29 sibling shard bytes/entries exactly;
   the full index checksum is `563a5562ed5b79d1ef92500af1960ae2b7b5847330519aabd6e8a4a8d1e46c9c`.
-  Public artwork still needs the final all-map refresh.
+  Final V16 public artwork includes that species correction.
 - The first complete core-suite run reaches the authoritative pacing gate
   but fails with 23/120 time-limit results (the unchanged ceiling is 12.5%).
   Nine are on the new ten maps, including three on Polders and two each on
@@ -289,7 +292,8 @@ above have direct current-state evidence; source changes alone are incomplete.
   the ten new maps. Maps without a curated action still now use their own
   native 4K overview and canonical name. Existing owner-selected featured
   galleries/rotation stay unchanged. Loading-screen tests and the remaining
-  core tail pass after the fix; the complete core run still awaits pacing.
+  core tail pass after the fix; the subsequent canonical pacing rerun also
+  passes as recorded above.
 - Caldera's exposure review identified an actual phase-lighting regression:
   disabling the Garage sun trim restored the selected workshop's preset over
   the active battlefield. Distinct Garage/battle preset ports now preserve
@@ -318,6 +322,172 @@ above have direct current-state evidence; source changes alone are incomplete.
   ordered world builds deliberately test eviction, and sourced-layer awaits
   keep test receipts isolated. No production eval or scanner suppression was
   introduced. Focused changed-module complexity and typecheck pass.
+  The integrated release scan explicitly compares the entire branch against
+  `origin/main`, rather than just its last uncommitted patch: 143 files,
+  49/100, exit 1, seven errors and fifteen warnings. All findings are in
+  selftests. Six errors flag execution of repository-owned source extracts;
+  the camera error is on a rig stub whose caller updates the projection matrix
+  immediately after `snapSniper`. Sequential awaits deliberately isolate
+  lifecycle/painter fixtures. The remaining array/property warnings affect
+  one-time test assertions, not render loops. No suppression or production
+  change was made to improve the numeric score.
+  The preceding tools-inclusive scan covers 147 files and retains 49/100, exit 1:
+  seven errors and seventeen warnings. Its two added warnings are intentional
+  JSON round-trip clones in the new acquisition-policy tests, which emulate
+  reports read from disk and break shared fixture references before adversarial
+  mutation. No new production finding is present.
+  The latest V17 scan covers 150 files and retains 49/100, reporting eight
+  errors and thirty-one warnings (its process exits zero despite those findings).
+  All seven source-execution errors remain repository-owned selftest extracts;
+  the eighth is the already-reviewed camera stub. Newly reported production
+  contexts were inspected individually: roster and roof-receipt filter/map
+  chains run at construction, post-pass and Studio-actor awaits deliberately
+  yield for the frame budget, and the utility-pole map lookup immediately
+  follows a synchronous call that creates that exact entry. The marketing
+  tool's RAF positions its camera; it does not replace the renderer loop.
+  No production hot-loop or security defect was confirmed from these findings.
+  No rules were suppressed and no unrelated production edits were made.
+
+### Integrated release validation (in progress)
+
+- Release `558f0fac1` builds and typechecks successfully. The full pre group
+  passes 88 test files and post passes 28. Core initially found an undocumented
+  maintained codec benchmark and six intentional generated directory guides
+  missing from its ownership list. The actual benchmark invocation is now
+  documented and those exact guide paths registered; the hygiene test passes.
+  Its next run reached the Garage architecture fixture but exceeded the
+  unchanged 100 ms build ceiling (166.4 ms) during concurrent rendering and
+  CPU-heavy verification. The focused quiet rerun passes both unchanged gates
+  (100 ms geometry build and 750 ms cold transaction). Its scene builder and
+  recipes are unchanged from the integrated parent; the concurrent failure is
+  retained. The 56 already-passed core-prefix files plus this focused rerun and
+  the ordered remaining tail provide explicit coverage without erasing failures.
+  The ordered 320-file tail now passes to completion. Together with the prefix,
+  quiet Garage rerun and added timing-acquisition test, all 378 then-registered
+  core checks passed. The camera-acquisition and Delta palette increments also
+  pass: current coverage is 496 files (88 pre, 380 core, 28 post). This is
+  combined explicit coverage, not a claim that one uninterrupted run passed.
+- The first integrated twenty-map residency run has 60 valid double-GC
+  samples, 58 actual evictions, zero browser/resource errors, and stable repeat
+  geometry, texture, shader-program, backing-store and embedder counts. Its
+  strict repeat managed-heap gate fails on Verdant, Desert and Winter by
+  recording roughly 1.8–2.0 MB growth. This remains a failure pending diagnosis.
+- Cross-revision scene comparison additionally exposed an acquisition error:
+  the old capture hardcodes M1A2, while current captures preserve the selected
+  vehicle and a fresh profile defaults to M1A3. Shader-owner evidence confirms
+  that identical unique vehicle-ID sets did not prove identical lineups.
+  Prior reports remain diagnostic; fresh comparisons must pin selection and
+  exact roster and verify ordered actual entity/spec/team/player identities.
+  A clean baseline at the integrated parent `2c22d203d` also isolates these
+  environment changes from unrelated upstream vehicle changes.
+- Fresh integrated canonical pacing passes all 120 runs: median 434.8 s,
+  tenth percentile 282.0 s, zero sub-120-second battles and 14 timeouts under
+  the unchanged maximum of 15. Results match the pre-integration run; Urban's
+  four timeouts in four tested seeds remain an explicit pacing limitation.
+  The all-thirty-map authoritative bot check also passes (72/144 moving hits).
+- Final V16 artwork exports all thirty native 3840×2160 sources at render
+  scale 1 and dynamic scale 1, with each actual CSM sun matching its authored
+  map preset. Thirty 4K WebP heroes total 37,866,322 bytes, thirty 512×288
+  thumbnails total 920,468 bytes, and thirty refreshed native-scene minimaps
+  total 1,704,902 bytes. Loading-screen and map-art guards pass. The final
+  production build succeeds with these assets. Evidence is in
+  `/private/tmp/cot-environment-release-final4k-v16/` and the sibling capture,
+  artwork and minimap V16 logs.
+  Three native-image reviews cover every map. No blocking open seams,
+  airborne scenery or disconnected roads/water were identified in these
+  views. Alpine's road-edge voids and Skybridge's wet rail veneers are absent;
+  Caldera retains distinguishable routes under its deliberately dark grade.
+  Distant conical peaks, simplified cliff/tree LODs and occasional small
+  contour steps remain stylistic limitations. These stills do not establish
+  photoreal parity, panning stability or physical iPad Safari performance.
+- The earlier fixed-camera timing acquisition used schema-3 reports from one identical harness:
+  pinned roster, bounded texture readiness, baseline camera applied before
+  sampling, verified production terrain lookahead and native/untrimmed render
+  settings checked before and after every repeat. Paired runs are timing-only;
+  image tours cannot change scene history between compared samples. Earlier
+  mixed-history reports remain diagnostic, including their failed metrics.
+  The existing timing tolerances are unchanged; fresh paired timing is open.
+  The completed ninety-file artwork set is checkpointed locally as
+  `5b1cabc0b`; no environment commit has been pushed yet.
+- The schema-3 three-map acquisition smoke (Verdant, Delta, Badlands) passes
+  its live camera/roster/readiness/render-state checks without browser errors.
+  Its thirty-frame, single-repeat timing is not release certification. The
+  strict resource gate correctly failed Delta: one incidental farmhouse paint
+  family added one attached material and three uploaded textures. Reusing
+  Delta's existing second plaster family now matches the baseline's 34 scene
+  materials and 43 textures. The actual production-builder regression proves
+  unchanged geometry/UV bytes, collision receipts and random stream. V17 native
+  4K review confirms the farmhouse retains its surface detail; its three public
+  images are refreshed (the minimap remains byte-identical).
+  Updated public totals are 37,865,706 bytes for the thirty heroes, 920,318
+  bytes for their thumbnails and 1,704,902 bytes for the thirty minimaps.
+  This is not a timing pass: the V17 smoke records 85–104 ms frame medians on
+  all three maps, versus 20–22 ms previously, and three extra renderer programs
+  even on Verdant where world geometry, draw counts and triangles are unchanged.
+  Read-only process inspection found concurrent external browser and fleet-test
+  workloads; they were left untouched. The global retained-owner difference
+  still requires diagnosis, and these failed measurements remain preserved.
+  Source inspection identifies an uncontrolled pre-map owner: optional Garage
+  dressing can finish during the capture's fleet/FX imports while the phase is
+  still Garage. The slow V17 run retains 173 more geometries and ten more
+  textures than the preceding candidate even though its Verdant world subtree
+  is identical. A workshop-core census is consistent with that difference,
+  but the old reports cannot prove the exact owner of every extra resource.
+  Final timing acquisition will wait for the normal complete Garage build and
+  warm one fixed Garage view in both roots before the first battlefield;
+  fixed-camera memory acquisition remains unchanged.
+  A final independent harness review found that this timing tool always used
+  Vite development serving: an unrecognized `--production` was ignored. The
+  preceding smoke reports are development-server evidence, not production
+  measurements. Schema 5 (`settled-pinned-map-timing-v3`) now selects actual
+  Vite preview serving for production, records each build-index SHA, rejects
+  mixed build modes and changed build artifacts, and preserves startup/cleanup
+  failures. Regression tests execute both server-selection/cleanup branches
+  and adversarial provenance cases. The frozen combined harness SHA is
+  `0cd84aa58fd0b325ffc0ee93544cf4063390046e337377588d4dd9fbbefefca4`.
+  The production pair is explicitly 180 submitted frames per repeat, five
+  repeats per map, 2,500 ms settle and 1440×900/DPR 1, with identical complete
+  Garage ownership and eight pre-map rendered warmup frames. Neither paired
+  run has started yet; unrelated active host workloads remain outside this
+  task's control and must be disclosed with the timing results.
+- Residency acquisition now separately uses schema 3 with one immutable
+  absolute-camera manifest on both roots. The preceding pinned-roster run
+  exposed terrain-relative camera differences on eight maps, so it is not a
+  matched-view comparison. Raw evidence and failed gates remain preserved.
+  The fixed-manifest run verifies exact pose, FOV, clipping planes, actual
+  render settings and finite production terrain topology. Synthetic camera
+  zoom/view-offset changes are outside this receipt contract: neither tested
+  battlefield path sets those properties, and viewport-driven aspect is
+  unchanged. This is a bounded current-source invariant, not a general claim
+  to detect every possible future projection mutation.
+  The pristine integrated-parent fixed-camera baseline is complete at
+  `/private/tmp/cot-environment-client-residency-origin20-pinned-v3.json`:
+  60 valid checkpoints, 58 actual evictions, zero browser/resource errors and
+  1,314 passing acquisition checks. Its 80 boundedness failures are preserved.
+  At the final Skybridge checkpoint each cycle, uploaded textures rise
+  541 → 801 → 1,061 and backing storage rises 2,008.9 → 3,930.0 → 5,851.6 MB.
+  The updated production build succeeds with Delta's fix; its fixed-camera
+  candidate comparison is the remaining memory gate, not another baseline run.
+  That candidate comparison has now completed all 60 checkpoints with valid
+  evidence and zero browser/resource errors. All repeat GPU counts, backing
+  storage and embedder-memory checks pass. Six strict failures remain: Verdant
+  and Winter managed heap grows by 1,981,596 and 1,989,708 bytes, respectively,
+  beyond their unchanged 1%/1 MiB limits; the two-map cache retains one extra
+  geometry while Monsoon is resident (Monsoon and the following Alpine in both
+  measured cycles). This is not release approval. The exact report is
+  `/private/tmp/cot-environment-client-residency-release20-pinned-v3.json`.
+  The separate, explicitly instrumented current-build run completed all 60
+  checkpoints with zero browser/resource errors. Its only local gate failure
+  is Winter managed heap (+1,786,292 bytes against a 1,567,902-byte limit).
+  Four native heap snapshots cover the same Verdant/Winter checkpoints in
+  the two measured cycles. Weak-reference geometry ownership records 47
+  vegetation, 60 prop and 53 uploaded terrain geometries for Monsoon; without
+  a paired baseline inventory this does not identify the extra upload's owner.
+  The diagnostic report is
+  `/private/tmp/cot-environment-client-residency-release20-heap-v17-d1.json`;
+  native heap-class/retainer analysis remains in progress. This run does not
+  overwrite or compare against the default run, change tolerances, or add
+  warmup cycles. Browser and preview cleanup completed before offline parsing.
 
 ## Integration notes
 
@@ -356,6 +526,6 @@ above have direct current-state evidence; source changes alone are incomplete.
   validates the exposed active world and exact fresh capture receipt.
   All thirty native-4K hero sources, 4K WebP heroes and 512×288 thumbnails
   were generated and visually reviewed. The cache tag is `north-up-v6`.
-  Final road-mask/configuration/phase-lighting corrections require refreshed
-  public images. Skybridge, Caldera and Alpine native rechecks now pass the
-  bounded issues identified above; all-map production refresh remains open.
+  V16 replaces all public images after the final road-mask/configuration/
+  phase-lighting corrections. Its all-map production refresh and independent
+  native-image review are complete, with limitations recorded above.
