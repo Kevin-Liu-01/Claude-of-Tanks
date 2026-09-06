@@ -105,7 +105,7 @@ import {
 import { isBuiltInCamoId } from './vehicles/camoPolicy.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
-  CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
+  CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
   clearCamoOverrides, warmWreckTextures,
@@ -239,7 +239,6 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
-const camoPatternLabels: Readonly<Record<string, string>> = CAMO_PATTERN_LABEL;
 const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
 const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
@@ -960,7 +959,7 @@ const playSurface = createPlaySurfaceRuntime({
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
-      getCamoName: (camo: string) => camoPatternLabels[camo] || 'Factory',
+      getCamoName: (camo: string) => t(`camoPattern.${camo}`) || t('camoPattern.factory'),
       getVehicleName: (specId: string) => getSpec(specId).name,
       onNetworkStart: beginNetworkBattle,
       onNetworkClose: (reason: string) => {
@@ -1073,7 +1072,9 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   camo: {
     patterns: CAMO_CATALOG_PATTERN_IDS,
     label: {
-      ...CAMO_PATTERN_LABEL,
+      // Read each pattern through t() so the active locale decides the
+      // displayed label. The previous `...CAMO_PATTERN_LABEL` spread leaked
+      // English text into zh-CN for every service_* / sig_* pattern.
       auto: t('garage.camo.auto'),
       factory: t('camoPattern.factory'),
       summer: t('camoPattern.summer'),
@@ -1115,6 +1116,81 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       circuit: t('camoPattern.circuit'),
       racing: t('camoPattern.racing'),
       paintball: t('camoPattern.paintball'),
+      // historical / service patterns — must read through t() so the active
+      // locale is used; without these the label dictionary leaks English.
+      service_usa_desert: t('camoPattern.service_usa_desert'),
+      service_marder1a3: t('camoPattern.service_marder1a3'),
+      service_leo2a4m: t('camoPattern.service_leo2a4m'),
+      service_leo2a6m: t('camoPattern.service_leo2a6m'),
+      service_soviet_ww2: t('camoPattern.service_soviet_ww2'),
+      service_soviet_coldwar: t('camoPattern.service_soviet_coldwar'),
+      service_t90m: t('camoPattern.service_t90m'),
+      service_challenger_3: t('camoPattern.service_challenger_3'),
+      service_leclerc_xlr: t('camoPattern.service_leclerc_xlr'),
+      service_type99a: t('camoPattern.service_type99a'),
+      service_ariete_c1: t('camoPattern.service_ariete_c1'),
+      service_type10: t('camoPattern.service_type10'),
+      service_pl01: t('camoPattern.service_pl01'),
+      service_bmp3_rok: t('camoPattern.service_bmp3_rok'),
+      service_strv122: t('camoPattern.service_strv122'),
+      service_merkava2d: t('camoPattern.service_merkava2d'),
+      service_ua_m2a3_bradley: t('camoPattern.service_ua_m2a3_bradley'),
+      sig_abramsx: t('camoPattern.sig_abramsx'),
+      sig_m551_sheridan: t('camoPattern.sig_m551_sheridan'),
+      sig_leo2a4_otco: t('camoPattern.sig_leo2a4_otco'),
+      sig_mbt70: t('camoPattern.sig_mbt70'),
+      sig_kf51b: t('camoPattern.sig_kf51b'),
+      sig_bmpt_t90: t('camoPattern.sig_bmpt_t90'),
+      sig_t90: t('camoPattern.sig_t90'),
+      sig_t90sm: t('camoPattern.sig_t90sm'),
+      sig_t90ms: t('camoPattern.sig_t90ms'),
+      sig_t90a_burlak: t('camoPattern.sig_t90a_burlak'),
+      sig_t90m: t('camoPattern.sig_t90m'),
+      sig_t90m_proryv: t('camoPattern.sig_t90m_proryv'),
+      sig_t90a: t('camoPattern.sig_t90a'),
+      sig_t90a_vladimir: t('camoPattern.sig_t90a_vladimir'),
+      sig_challenger2e: t('camoPattern.sig_challenger2e'),
+      sig_challenger_3x: t('camoPattern.sig_challenger_3x'),
+      sig_amx56: t('camoPattern.sig_amx56'),
+      sig_leclerc: t('camoPattern.sig_leclerc'),
+      sig_ariete_c2: t('camoPattern.sig_ariete_c2'),
+      sig_type10b: t('camoPattern.sig_type10b'),
+      sig_type90: t('camoPattern.sig_type90'),
+      sig_type90a: t('camoPattern.sig_type90a'),
+      sig_type59: t('camoPattern.sig_type59'),
+      sig_ztz85_iii: t('camoPattern.sig_ztz85_iii'),
+      sig_type99a: t('camoPattern.sig_type99a'),
+      sig_ztz99a2_prototype: t('camoPattern.sig_ztz99a2_prototype'),
+      sig_ztz99a2: t('camoPattern.sig_ztz99a2'),
+      sig_pt91m: t('camoPattern.sig_pt91m'),
+      sig_t72m1_jaguar: t('camoPattern.sig_t72m1_jaguar'),
+      sig_pt91_twardy: t('camoPattern.sig_pt91_twardy'),
+      sig_pl01_105: t('camoPattern.sig_pl01_105'),
+      sig_bwp1: t('camoPattern.sig_bwp1'),
+      sig_upior: t('camoPattern.sig_upior'),
+      sig_k2: t('camoPattern.sig_k2'),
+      sig_k1a1: t('camoPattern.sig_k1a1'),
+      sig_k2b: t('camoPattern.sig_k2b'),
+      sig_merkava1b: t('camoPattern.sig_merkava1b'),
+      sig_merkava2b: t('camoPattern.sig_merkava2b'),
+      sig_merkava3c: t('camoPattern.sig_merkava3c'),
+      sig_merkava3d: t('camoPattern.sig_merkava3d'),
+      sig_merkava4b: t('camoPattern.sig_merkava4b'),
+      sig_t84: t('camoPattern.sig_t84'),
+      sig_ua_challenger2: t('camoPattern.sig_ua_challenger2'),
+      sig_ua_t64bv: t('camoPattern.sig_ua_t64bv'),
+      sig_ua_t80bv: t('camoPattern.sig_ua_t80bv'),
+      sig_ua_t80u_kursk: t('camoPattern.sig_ua_t80u_kursk'),
+      sig_ua_t84_oplot_m: t('camoPattern.sig_ua_t84_oplot_m'),
+      sig_ua_m1a1: t('camoPattern.sig_ua_m1a1'),
+      sig_leo2a6_ua: t('camoPattern.sig_leo2a6_ua'),
+      // historical mini-patterns — same reasoning as service_* / sig_* above
+      normandy44: t('camoPattern.normandy44'),
+      berlin45: t('camoPattern.berlin45'),
+      ardennes44: t('camoPattern.ardennes44'),
+      pacific45: t('camoPattern.pacific45'),
+      jungleops: t('camoPattern.jungleops'),
+      rasputitsa: t('camoPattern.rasputitsa'),
     },
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),

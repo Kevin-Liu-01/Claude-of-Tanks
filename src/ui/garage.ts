@@ -494,7 +494,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     count,
     nation: representative.nation,
     label: representative.markings?.filterLabel || NATION_LABEL[representative.nation] || id.toUpperCase(),
-    name: representative.markings?.countryLabel || representative.nation,
+    name: t(`nation.${representative.nation}`),
   }));
   const technicalViews = garageTechnicalViews();
   const technicalViewById = new Map(technicalViews.map((view) => [view.id, view]));
@@ -1018,7 +1018,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-labelledby="cot-technical-viewer-tab-armor">` +
     `<img data-technical-modal-image alt="" draggable="false" decoding="async">` +
     `<figcaption><span data-technical-modal-caption></span>` +
-    `<small>Generated from the playable vehicle anatomy</small></figcaption></figure>`;
+    `<small>${t('garage.dossier.anatomyGenerated')}</small></figcaption></figure>`;
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
   const technicalModalCaption = requiredElement<HTMLElement>(technicalModal.body, '[data-technical-modal-caption]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');

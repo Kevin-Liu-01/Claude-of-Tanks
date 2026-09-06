@@ -59,6 +59,9 @@ function ensureInitialised(): void {
   if (initialised) return;
   initialised = true;
   currentLocale = detectLocale();
+  // CSS variables must mirror the resolved locale on first boot; subsequent
+  // setLocale() calls will re-run this through syncLocaleCssVariables().
+  syncLocaleCssVariables();
 }
 
 function persist(locale: SupportedLocale): void {
@@ -92,7 +95,24 @@ export function setLocale(locale: SupportedLocale): void {
   const previous = currentLocale;
   currentLocale = locale;
   persist(locale);
+  syncLocaleCssVariables();
   broadcast(previous, locale);
+}
+
+/**
+ * Mirror locale-dependent CSS variables onto `document.documentElement` so
+ * CSS `content: var(--cot-garage-variant-label, ...)` pseudo-elements follow
+ * the active locale. Kept here so the sync runs once per setLocale() rather
+ * than requiring every consumer to subscribe.
+ */
+function syncLocaleCssVariables(): void {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  try {
+    root.style.setProperty('--cot-garage-variant-label', t('garage.tools.stagingAreas'));
+  } catch (_) {
+    /* DOM may be temporarily unavailable; the next setLocale() will retry. */
+  }
 }
 
 /** Subscribe to locale changes. Returns an unsubscribe function. */
