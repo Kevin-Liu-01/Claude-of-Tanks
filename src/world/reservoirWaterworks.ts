@@ -249,7 +249,7 @@ function buildBodies(plan: Plan, out: Piece[]): void {
   const faceZ = intake.z + intake.depth / 2;
   piece(out, 'dark', 'intake-screen', 2.8, 5.8, 0.10,
     intake.x, plan.waterLevel + 3.15, faceZ - 0.02);
-  for (let j = 0; j < 3; j++) piece(out, 'stone', 'screen-crossbar', 2.9, 0.10, 0.16,
+  for (let j = 0; j < 3; j++) piece(out, 'stone', 'screen-crossbar', 2.9, 0.24, 0.16,
     intake.x, plan.waterLevel + 1.25 + j * 1.9, faceZ - 0.02);
   piece(out, 'dark', 'intake-screen', 0.10, 5.8, 1.95,
     faceX - 0.02, plan.waterLevel + 3.15, intake.z + 1.35);

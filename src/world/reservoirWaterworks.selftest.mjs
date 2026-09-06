@@ -26,6 +26,25 @@ const fixedPartition = {
   2049: 'de198fa60378d42bec58042783b0da71bcc7ac87d260ed374ee718dd514703b3',
   7719: '0a4508862b4253469e1400708e8cd209a1ac8ce81e9e6c1392421f2961345a9e',
 };
+// V27 / 8d089c51d producer: all 28 pieces except the three +Z approach bars.
+// Includes the +X bars, both screens, closed hood, body, pipe and supports.
+const fixedReadabilityPartition = {
+  1337: 'aaa39aa3acaa91dfc1684354c53a5848d2e69ce0f0f9197711bd5871a127d627',
+  2049: '15e1b1f2c17b02e81c5400c3d5f2e49ea2cc56fcb301ea285e24a9ab6153260b',
+  7719: '20c2552c7ac4ad288881fea88f54d21a62b04a75da5a824c115f4ae2ac564807',
+};
+
+function unchangedReadabilityHash(geometry) {
+  const excluded = new Set(geometry.filter(g => g.name === 'reservoir-screen-crossbar').slice(0, 3));
+  assert.equal(excluded.size, 3);
+  const h = createHash('sha256');
+  for (const g of geometry) if (!excluded.has(g)) {
+    h.update(g.name);
+    for (const a of Object.values(g.attributes)) h.update(bytes(a.array));
+    h.update(bytes(g.index.array));
+  }
+  return h.digest('hex');
+}
 
 function unchangedPartitionHash(geometry) {
   const h = createHash('sha256');
@@ -116,6 +135,8 @@ async function wholeWorld(seed) {
       const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
       assert.equal(unchangedPartitionHash(geometry), fixedPartition[seed],
         'kiosk, bank, pipe and every support remain byte-identical to V25');
+      assert.equal(unchangedReadabilityHash(geometry), fixedReadabilityPartition[seed],
+        'all 28 non-approach-bar pieces remain byte-identical to V27');
       validateIntake(result, geometry, donors[2].collider);
     } else assert.deepEqual(records.map(clone), before);
     seam = { donors: donors.slice(), before, result };
@@ -206,6 +227,9 @@ function validateAssembly(receipt, buckets, field) {
   assert.deepEqual(receipt.after, { geometries: 31, triangles: 456, sourceBytes: 27632, mergedBytes: 43776 },
     'the intake reprofile preserves every current source/merged budget, not just the larger donor allowance');
   const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
+  const bars = geometry.filter(g => g.name === 'reservoir-screen-crossbar');
+  assert.equal(bars.length, 6);
+  assert.ok(bars.every(g => buckets.stone.includes(g)), 'all six crossbars retain the existing stone bucket');
   for (const g of geometry) {
     assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv']);
     for (const a of Object.values(g.attributes)) assert.ok([...a.array].every(Number.isFinite));
@@ -265,13 +289,18 @@ function validateApproachScreen(body, geometry) {
   const b = geometry.boundingBox, uv = geometry.attributes.uv;
   const screen = geometry.name === 'reservoir-intake-screen';
   const width = screen ? 2.8 : 2.9, depth = screen ? 0.10 : 0.16;
+  const height = screen ? 5.8 : 0.24;
   assert.ok(Math.abs(b.max.x - b.min.x - width) < 1e-5, 'exposed screen/bar has its authored along-X width');
   assert.ok(Math.abs(b.max.z - b.min.z - depth) < 1e-5);
+  assert.ok(Math.abs(b.max.y - b.min.y - height) < 1e-5, 'only the three approach bars thicken to 24cm');
   assert.ok(Math.abs((b.max.x + b.min.x) / 2 - body.x) < 1e-5);
   assert.ok(Math.abs((b.max.z + b.min.z) / 2 - (body.z + body.depth / 2 - 0.02)) < 1e-5);
   const faceU = [16, 17, 18, 19].map(i => uv.getX(i));
+  const faceV = [16, 17, 18, 19].map(i => uv.getY(i));
   assert.ok(Math.abs(Math.max(...faceU) - Math.min(...faceU) - width * 0.65) < 1e-5,
     'existing slab primitive rebuilds metric UVs for the widened +Z face');
+  assert.ok(Math.abs(Math.max(...faceV) - Math.min(...faceV) - height * 0.65) < 1e-5,
+    'thicker approach bars retain metric vertical texture density');
 }
 
 function validateIntakeFacade(body, geometry) {
@@ -283,6 +312,12 @@ function validateIntakeFacade(body, geometry) {
   assert.equal(approach.filter(g => g.name === 'reservoir-intake-screen').length, 1);
   assert.equal(approach.filter(g => g.name === 'reservoir-screen-crossbar').length, 3);
   for (const g of approach) validateApproachScreen(body, g);
+  const bars = approach.filter(g => g.name === 'reservoir-screen-crossbar');
+  for (let j = 0; j < bars.length; j++) {
+    const b = bars[j].boundingBox;
+    assert.ok(Math.abs((b.min.y + b.max.y) / 2 - (body.bottom + 2.45 + j * 1.9)) < 1e-5,
+      'all three bar centers retain their original water-level-relative stations');
+  }
   const header = trim.find(g => g.name === 'reservoir-intake-header').boundingBox;
   const piers = trim.filter(g => g.name === 'reservoir-intake-face-pier');
   for (const g of piers) assert.ok(g.boundingBox.intersectsBox(header)
