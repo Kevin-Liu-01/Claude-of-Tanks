@@ -120,12 +120,23 @@ bridge.apply(snapshot);
 const requestedAmmoFrame = new BrowserInputRuntime().frame(game.player);
 assert.equal(requestedAmmoFrame.shellSlot, 1,
   'a stale local snapshot cannot erase a pending ammunition selection');
+bridge.recordInput(requestedAmmoFrame, 1 / 60, 0);
 
 snapshot.entities[1].shellSlot = 1;
+snapshot.ackInputSeq = 0;
 snapshot.tick++;
 bridge.apply(snapshot);
 assert.equal(game.player.input.shellSlot, 1,
-  'the authority acknowledgement settles the requested ammunition slot');
+  'a countdown receipt preserves the requested ammunition slot');
+snapshot.meta.phase = 'playing';
+snapshot.tick++;
+bridge.apply(snapshot);
+bridge.recordInput(requestedAmmoFrame, 1 / 60, 1);
+snapshot.ackInputSeq = 1;
+snapshot.tick++;
+bridge.apply(snapshot);
+assert.equal(game.player._networkAmmoSelectionPending, false,
+  'a playing input receipt settles the requested ammunition slot');
 snapshot.entities[1].shellSlot = 0;
 snapshot.tick++;
 bridge.apply(snapshot);

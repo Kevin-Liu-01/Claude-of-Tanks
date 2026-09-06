@@ -122,6 +122,7 @@ export interface HudAimInput {
   reload?: ReloadView;
   magazine?: MagazineView | null;
   shellSlot?: number;
+  ammoSelectionPending?: boolean;
   shells?: HudShellCard[];
   zoom?: number;
 }
@@ -143,6 +144,7 @@ interface HudAimView {
   gunLimitSpec: boolean;
   selfRightLabel: string | null;
   reload: ReloadView;
+  ammoSelectionPending: boolean;
   magazine: MagazineView | null;
   zoom: number;
   dispRadM: number | null;
@@ -405,6 +407,7 @@ interface ReticlePaintState {
   selfRightLabel: string | null;
   zoom: number;
   reloadKind: string;
+  ammoSelectionPending: boolean;
   magazineCapacity: number;
   magazineRounds: number;
   shellType: string;
@@ -692,12 +695,28 @@ export function hitConfirmVisualState(
   return state;
 }
 
-/** Remaining authoritative reload fraction painted into the reticle dots. */
-export function reloadHudFraction(reload: ReloadView | null | undefined): number {
+/** Remaining reload fraction, or a full unavailable ring while selection is pending. */
+export function reloadHudFraction(reload: ReloadView | null | undefined, pending = false): number {
+  if (pending) return 1;
   const totalS = reload?.totalS ?? 0;
   const remainingS = reload?.t ?? 0;
   if (!(totalS > 0) || !(remainingS > 0.001)) return 0;
   return Math.max(0, Math.min(1, remainingS / totalS));
+}
+
+/** A pending host selection has no truthful countdown yet. */
+export function reloadHudCountdown(reload: ReloadView, pending = false): string {
+  if (pending) return 'SWITCHING';
+  return reload.t >= 10 ? `${Math.ceil(reload.t)}` : reload.t.toFixed(1);
+}
+
+export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, pending = false): boolean {
+  return !pending && wasReloading && !reloading;
+}
+
+export function ammunitionSelectionLabel(name: string, count: number, selected: boolean, pending = false): string {
+  const action = pending && selected ? 'Switching ammunition' : selected ? 'Selected ammunition' : 'Select ammunition';
+  return `${action}: ${name}, ${count} rounds${count <= 0 ? ', empty' : ''}`;
 }
 
 /**
@@ -1460,6 +1479,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
 .cot-shells{position:absolute;z-index:var(--hud-layer-controls);bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
+/* The reticle already prints SWITCHING; this live region must not occupy the
+   special-action control's space above the ammo tray. */
+.cot-ammo-switching{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);
+  white-space:nowrap;pointer-events:none;}
 .cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
@@ -2131,6 +2154,11 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   const shellBox = el('div', 'cot-shells', root);
+  const ammoSwitchingStatus = el('span', 'cot-ammo-switching', shellBox);
+  ammoSwitchingStatus.setAttribute('role', 'status');
+  ammoSwitchingStatus.setAttribute('aria-live', 'polite');
+  ammoSwitchingStatus.setAttribute('aria-label', 'Switching ammunition; waiting for host confirmation');
+  ammoSwitchingStatus.hidden = true;
   shellBox.setAttribute('role', 'group');
   shellBox.setAttribute('aria-label', 'Ammunition selector');
   const slotEls: ShellSlotButton[] = [];
@@ -3385,7 +3413,7 @@ export function initHud(bus: EventBus): HudRuntime {
     gunDistM: null, gunTargetId: null, aimTargetId: null,
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
-    zoom: 1, reloadKind: '', magazineCapacity: 0, magazineRounds: 0,
+    zoom: 1, reloadKind: '', ammoSelectionPending: false, magazineCapacity: 0, magazineRounds: 0,
     shellType: '', shellCount: 0, drawnR: 0,
   };
   const nearPaint = (
@@ -3423,6 +3451,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
     const magazine = view.magazine;
     return reticlePaint.reloadKind === (view.reload?.kind || '')
+      && reticlePaint.ammoSelectionPending === view.ammoSelectionPending
       && reticlePaint.magazineCapacity === ((magazine?.capacity ?? 0) | 0)
       && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
       && reticlePaint.shellType === (shell.type || '')
@@ -3451,6 +3480,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.atGunLimit = !!view.atGunLimit; reticlePaint.gunLimitSpec = !!view.gunLimitSpec;
     reticlePaint.selfRightLabel = view.selfRightLabel;
     reticlePaint.zoom = view.zoom || 1; reticlePaint.reloadKind = view.reload?.kind || '';
+    reticlePaint.ammoSelectionPending = view.ammoSelectionPending;
     reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
@@ -3512,7 +3542,7 @@ export function initHud(bus: EventBus): HudRuntime {
     lastCircleY = state.circleY;
 
     state.sniper = mode === 'sniper';
-    state.reloadFraction = reloadHudFraction(view.reload);
+    state.reloadFraction = reloadHudFraction(view.reload, view.ammoSelectionPending);
     state.reloading = state.reloadFraction > 0;
     state.blocked = view.blockedDistM != null;
     state.limited = !state.blocked && view.atGunLimit;
@@ -3530,7 +3560,8 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function paintAutoloaderMagazine(view: HudAimView, draw: ReticleDrawState): void {
-    const magazine = autoloaderHudState(view.magazine, view.reload, magazineHudScratch);
+    const magazine = view.ammoSelectionPending ? null
+      : autoloaderHudState(view.magazine, view.reload, magazineHudScratch);
     draw.magazine = magazine;
     draw.magazineBottomY = 0;
     if (!magazine) {
@@ -3636,9 +3667,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintReloadCountdown(view: HudAimView, draw: ReticleDrawState): void {
     if (!draw.reloading) return;
-    const text = view.reload.t >= 10
-      ? `${Math.ceil(view.reload.t)}`
-      : `${view.reload.t.toFixed(1)}`;
+    const text = reloadHudCountdown(view.reload, view.ammoSelectionPending);
     const y = draw.magazine
       ? draw.magazineBottomY + 15
       : draw.cy + draw.centerClearanceRadius + 15;
@@ -3646,13 +3675,14 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.font = `700 16px ${FONT_COND}`;
     const textW = ctx.measureText(text).width;
     ctx.font = `500 10.5px ${FONT_COND}`;
-    const unitW = ctx.measureText(' s').width;
+    const unit = view.ammoSelectionPending ? '' : ' s';
+    const unitW = ctx.measureText(unit).width;
     const x = draw.cx - (textW + unitW) / 2;
     ctx.textAlign = 'left';
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillText(text, x, y);
     ctx.font = `500 10.5px ${FONT_COND}`;
-    ctx.fillText(' s', x + textW, y);
+    ctx.fillText(unit, x + textW, y);
     ctx.textAlign = 'center';
   }
 
@@ -3823,8 +3853,9 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
-    if (wasReloading && !isReloading) readyPulseT = lastTimeS;
-    wasReloading = isReloading;
+    if (view.ammoSelectionPending) readyPulseT = -1;
+    else if (reloadHudReadyPulse(wasReloading, isReloading)) readyPulseT = lastTimeS;
+    wasReloading = !view.ammoSelectionPending && isReloading;
     const markLw = draw.markerLineWidth;
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
@@ -3892,6 +3923,7 @@ export function initHud(bus: EventBus): HudRuntime {
     shell: HudShellCard,
     index: number,
     selectedSlot: number,
+    pending = false,
   ): void {
     const type = shell.type || '';
     if (element._iconType !== type) {
@@ -3915,26 +3947,33 @@ export function initHud(bus: EventBus): HudRuntime {
     element.classList.toggle('sel', view.selected);
     element.classList.toggle('empty', view.empty);
     element.setAttribute('aria-pressed', view.selected ? 'true' : 'false');
+    element.setAttribute('aria-busy', pending && view.selected ? 'true' : 'false');
     const name = shell.name || shell.type || `slot ${index + 1}`;
     element.setAttribute(
       'aria-label',
-      `${view.selected ? 'Selected ammunition' : 'Select ammunition'}: ${name}, ${view.count} rounds${view.empty ? ', empty' : ''}`,
+      ammunitionSelectionLabel(name, view.count, view.selected, pending),
     );
   }
 
-  function renderShells(shells: HudShellCard[] | null | undefined, slot: number): void {
+  function renderShells(shells: HudShellCard[] | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
-      renderShellSlot(slotEls[i], shells?.[i] || DEFAULT_SHELLS[i], i, slot);
+      renderShellSlot(slotEls[i], shells?.[i] || DEFAULT_SHELLS[i], i, slot, pending);
+    }
+    if (ammoSwitchingStatus.hidden === pending) {
+      ammoSwitchingStatus.textContent = pending ? 'SWITCHING' : '';
+      ammoSwitchingStatus.hidden = !pending;
     }
     setTouchAmmoOpen(touchAmmoOpen);
     localSlot = slot;
   }
 
   // dim/sweep the active shell plate during reload (WoT ammo-plate feedback)
-  function updateShellCooldown(reload: ReloadView | null | undefined, slot: number): void {
+  function updateShellCooldown(reload: ReloadView | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
       const coolEl = requireElement<HTMLElement>(slotEls[i], '.cool');
-      if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
+      if (i === slot && pending) {
+        coolEl.style.height = '100%';
+      } else if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
         coolEl.style.height = `${((reload.t / reload.totalS) * 100).toFixed(1)}%`;
       } else {
         coolEl.style.height = '0';
@@ -5512,7 +5551,7 @@ export function initHud(bus: EventBus): HudRuntime {
     singleReticle: false,
     atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
-    reload: { t: 0, totalS: 1, kind: 'ready' }, magazine: null, zoom: 1,
+    reload: { t: 0, totalS: 1, kind: 'ready' }, ammoSelectionPending: false, magazine: null, zoom: 1,
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
 
@@ -5528,6 +5567,7 @@ export function initHud(bus: EventBus): HudRuntime {
     aimView.atGunLimit = !!aim.atGunLimit;
     aimView.gunLimitSpec = !!aim.gunLimitSpec;
     aimView.reload = aim.reload || aimView.reload;
+    aimView.ammoSelectionPending = aim.ammoSelectionPending === true;
     aimView.magazine = aim.magazine || null;
     aimView.zoom = aim.zoom || 1;
     aimView.gunX = null;
@@ -5689,8 +5729,8 @@ export function initHud(bus: EventBus): HudRuntime {
       : null;
     if (aim.shells) lastShells = aim.shells;
     const slot = aim.shellSlot ?? localSlot;
-    renderShells(lastShells, slot);
-    updateShellCooldown(aim.reload, slot);
+    renderShells(lastShells, slot, aim.ammoSelectionPending);
+    updateShellCooldown(aim.reload, slot, aim.ammoSelectionPending);
     updateTargetPlate();
     renderCanvas(state.dt);
     if (state.camera) updateHpBars(frame);
@@ -5952,8 +5992,8 @@ export function initHud(bus: EventBus): HudRuntime {
       smoothRadPx = reticleTargetR(aimView);
       if (nextForced.shells) lastShells = nextForced.shells;
       const slot = nextForced.shellSlot != null ? nextForced.shellSlot : localSlot;
-      renderShells(lastShells, slot);
-      updateShellCooldown(nextForced.reload, slot);
+      renderShells(lastShells, slot, nextForced.ammoSelectionPending);
+      updateShellCooldown(nextForced.reload, slot, nextForced.ammoSelectionPending);
       updateTargetPlate(); // over-target marker for the vehicle under the gun
       renderCanvas(1, true); // after the plate: hairlines gap around its rect
     },

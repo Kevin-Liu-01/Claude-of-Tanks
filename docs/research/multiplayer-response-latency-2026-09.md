@@ -2,8 +2,9 @@
 
 Baseline: `b970e9caadb681903b9b35ae1dfecb3650598dfa`, canonical production,
 2026-09-05. This is a follow-up to [the multiplayer reliability audit](multiplayer-smoothness-2026-09.md).
-Runtime release `10ac577de6618a594c3a38b2bb64e0cbd103d109` is deployed and the
-live verification receipts below distinguish measured improvements from an
+The network/room release `10ac577de`, browser warmup follow-ups `6604fbdad` and
+`adbcf2aaf`, and diagnostic checkpoint `a6394192f` are deployed. The live
+verification receipts below distinguish measured improvements from an
 unconditional zero-latency claim.
 
 ## What is being measured
@@ -13,6 +14,11 @@ deployed website, launch Winter, drive/turn and click the canvas. Two fresh
 browser contexts render on the same machine at 1280×800, DPR 1. Each foreground
 role is sampled for 20 seconds while its partner remains connected. The probe
 does not replace the production endpoint, inject tank state or alter ICE policy.
+Here "native controls" means trusted browser keyboard/mouse input, not a
+headed-desktop certification: the committed runner launches Puppeteer's headless
+Chromium with ANGLE/WebGL enabled. Both contexts share one browser and machine.
+Results do not certify another browser/GPU, physical input/display latency or
+geographically separated players.
 
 `tools/production-private-room-ui.mjs --url=https://cot.kevinliu.studio --performance`
 records application input edge → own firing-event callback → next rAF callback.
@@ -396,7 +402,102 @@ raw protocol payloads. Its overhead makes it a diagnostic, not a replacement
 for the uninstrumented performance receipts. A counter interval overlapping a
 frame gap does not by itself establish a causal function or GPU problem.
 
-Both pairs selected host/host UDP on the same machine. These are bounded
+### Native diagnostic checkpoint: pending ammunition is not a lost shot
+
+Canonical production `a6394192f` was READY and inspected on 2026-09-05. Its
+browser runtime is unchanged from `adbcf2aaf`. A fresh native missile pair with
+the opt-in CPU counters confirmed four missiles per player, four exact guest
+predictions/deduplications, zero hard snaps/history drops/page errors, and
+verified room/browser cleanup. Both screenshots were inspected as connected
+Winter battles. This instrumented run is diagnostic evidence, not a clean
+hardware performance certificate.
+
+| Diagnostic measurement | Host | Guest |
+| --- | ---: | ---: |
+| Input → first feedback median / max | 5.6 / 25.1 ms | 1.7 / 13.0 ms (predicted) |
+| Input → accepted callback median / max | 5.6 / 25.1 ms | 25.4 / 37.8 ms |
+| Frame-gap p95 / p99 / max | 31.5 / 35.4 / 46.4 ms | 28.8 / 36.8 / 45.2 ms |
+| Locally reload-ready clicks / accepted shots | 4 / 4 | 5 / 4 |
+
+The unmatched guest click at sample +17.7 ms was focused and pointer-locked,
+with the mouse firing lane available. It requested slot 1 (four missiles),
+while the presented authority still had slot 0 (24 normal shells), reload 0.
+The next four clicks, starting at +3063.6 ms after the real switch/load,
+matched. This proves a pending-ammunition mismatch for **this** diagnostic;
+it does not retroactively establish the cause of any older missing sample.
+
+The optional CPU rows covered the host sample and all but the final 85.4 ms
+of the guest sample (one normal polling interval), including both worst frames.
+The paired baseline spans were 56.3 ms host and 0.7 ms guest; cross-clock
+attribution must respect that uncertainty. The previously observed isolated
+214–319 ms stalls did not recur, so this run cannot assign their cause or
+prove they are fixed.
+
+The probe setup now waits for requested, presented and last-authoritative
+ammunition slots to agree. Its click loop also requires that requested slot
+to remain stocked and genuinely reload-ready; automatic fallback shells do
+not count as missile shots. This changes future scenario admission only.
+Historical aggregate definitions and unmatched click rows remain intact.
+
+### Pending-ammo ownership and HUD follow-up
+
+The diagnostic led to a separate reproducible correctness defect: a rapid
+normal-shell → missile → normal-shell cancellation encoded as slots
+`0, 1, 0, 1`, because the delayed missile acknowledgment overwrote the latest
+normal-shell intent. The actual `BrowserInputRuntime` → `MatchClientRuntime`
+→ compact binary codec → bridge regression now stays `0, 1, 0, 0`.
+
+A bounded per-bridge owner retains only the latest selection and the first
+successfully uploaded sequence carrying it. A fresh authority acknowledgment
+covering that sequence settles the request, including a legitimate denial or
+server-selected fallback. Equal slot values alone are not acknowledgment.
+Failed uploads, unsent cancellation, stale/null/wrapped ACKs and reconnect are
+covered. The slot, reload, ammo and ACK are taken from the same newest own-player
+authority tuple; remote-player interpolation is unchanged. Death, new rounds
+(normal and background handoff), disposal and new sessions clear the owner.
+There is no new protocol field, message cadence, database, client-owned ammo,
+or fabricated reload timer.
+
+An actual authoritative countdown fixture found that received inputs are
+acknowledged without applying controls, including the transition tick that
+first publishes `playing`. Those receipts must not be mistaken for a denied
+ammo selection. Only an input successfully sent after the client observes
+playing authority can settle the deferred selection.
+
+The HUD highlights the requested stocked card and shows **SWITCHING** until
+authority catches up, including an in-flight cancellation to an apparently
+matching old slot. It suppresses the old ready pulse, magazine-ready markers
+and misleading numeric countdown. The accessible live status is visually
+clipped, so it cannot overlap the existing ATGM control or shift mobile layout.
+Presentation never mutates combat or input. The helper/aim/HUD focused tests
+and 51-viewport layout contracts pass; the network regression tests include
+the real encoded-wire and authoritative countdown paths.
+
+The complete release run also exposed a timing-dependent assumption in the
+existing simultaneous-tab signaling test. A legitimately retired tab can receive
+its raw join response and then lose ownership before the join's async continuation
+finishes. Rejecting that call is correct; requiring both competing joins to resolve
+was not. The test now requires the winning join to succeed, permits only terminal
+retirement errors for the loser, and controls native WebSocket delivery to prove
+both before-fulfillment rejection and after-fulfillment retirement. Single-seat
+ownership, exactly one retirement notification, no automatic takeover loop and
+credential-preserving reopen remain asserted. This is a test-only correction,
+not a runtime relaxation. Three complete focused signaling runs and all 14 native
+cleanup cases pass; the original full-run failure log is retained.
+
+Release verification completed across all **486 ordered checks**: the initial
+`npm test` passed all 88 prechecks and the first 236 core checks, then stopped at
+the signaling fixture above. That corrected check passed three complete focused
+runs. The remaining 133 core checks and all 28 postchecks passed in order in a
+separate continuation. This is complete segmented coverage, **not** a claim that
+the original uninterrupted `npm test` was green. The final runtime tree also
+passed typecheck, production build, focused ammo/HUD/probe tests and scoped
+quality checks (440 functions; no complexity, `any` or `unknown` violations).
+Logs remain outside git: `final-ammo-full-test.log`,
+`final-ammo-remaining-test.log`, `final-ammo-typecheck-repaired.log` and
+`final-ammo-build.log` under the isolated release artifact directory.
+
+These runs selected host/host UDP on the same machine. These are bounded
 production-rendering observations, not geographically separated or TURN-path
 gameplay measurements, and they do not establish zero network latency,
 click-to-photon timing or universally single-player-equivalent performance.

@@ -531,45 +531,146 @@ reloadedHost.close('retired_reload');
 secondReload.close('resume_test_complete');
 resumeGuest.close('resume_test_complete');
 
-// Two tabs can recover the same persisted pending capability after a lost
-// reply. Both joins are idempotently authorized, but only the final socket
-// generation owns the seat; its predecessor must not automatically fight it.
-const raceValues = new Map();
-const raceStorage = { getItem: (key) => raceValues.get(key) ?? null,
-  setItem: (key, value) => raceValues.set(key, value) };
-const original = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
-  resumeStorage: raceStorage, eventPollIntervalMs: 20 });
-const raceRoom = await original.createRoom({ player: { id: 'race-host', name: 'Race Host' } });
-new SignalingResumeCredentials(raceStorage).prepare(JSON.stringify([resumeUrl, raceRoom.roomCode, 'race-host']));
-const tabEvents = [[], []];
-const tabs = tabEvents.map((events) => {
-  const client = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
-    resumeStorage: raceStorage, eventPollIntervalMs: 20, reconnectDelaysMs: [10] });
-  client.onEvent((event) => events.push(event));
-  return client;
-});
-await Promise.all(tabs.map((client) => client.joinRoom({ roomCode: raceRoom.roomCode,
-  player: { id: 'race-host', name: 'Race Host' } })));
-await new Promise((resolve) => setTimeout(resolve, 100));
-const finalSession = resumeServer.store.rooms.get(raceRoom.roomCode).peers.get('race-host').sessionId;
-const winner = tabs.findIndex((client) => client.sessionId === finalSession);
-const loser = 1 - winner;
-assert.ok(winner >= 0);
-assert.equal(tabs[loser].roomCode, null);
-assert.equal(tabEvents[loser].some((event) => event.type === 'room_closed'
-  && event.payload.reason === 'resume_denied'), true);
-assert.equal(tabEvents[loser].some((event) => event.type === 'signaling_resumed'), false);
-await new Promise((resolve) => setTimeout(resolve, 100));
-assert.equal(resumeServer.store.rooms.get(raceRoom.roomCode).peers.get('race-host').sessionId,
-  finalSession, 'retired tab never takes the authenticated successor seat back');
-const reopening = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
-  resumeStorage: raceStorage });
-await reopening.joinRoom({ roomCode: raceRoom.roomCode, player: { id: 'race-host', name: 'Reopened' } });
-assert.equal(reopening.hostId, 'race-host', 'terminal predecessor does not erase shared recovery credential');
-original.close('test_done');
-for (const client of tabs) client.close('test_done');
-reopening.close('test_done');
-await resumeServer.close();
+function deferredReceipt() {
+  let resolve;
+  const promise = new Promise((accept) => { resolve = accept; });
+  return { promise, resolve };
+}
+
+async function boundedReceipt(promise) {
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('native resume ordering timed out')), 1000);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
+/** Delay delivery only: both admissions and capability checks use the real server. */
+function orderedResumeSockets(order) {
+  const firstReceipt = deferredReceipt();
+  const secondRequest = deferredReceipt();
+  let count = 0;
+  let releaseSecond;
+  class OrderedSocket extends WebSocket {
+    constructor(url) {
+      super(url);
+      this.orderIndex = count++;
+      this.heldReceipt = null;
+    }
+
+    send(...args) {
+      const message = JSON.parse(String(args[0]));
+      if (this.orderIndex === 1 && message.type === 'room_join' && !releaseSecond) {
+        // Both helpers prepare the identical pending proof before either
+        // acknowledgment can replace shared storage with its accepted state.
+        releaseSecond = () => super.send(...args);
+        secondRequest.resolve();
+        return;
+      }
+      super.send(...args);
+    }
+
+    emit(type, ...args) {
+      if (this.orderIndex !== 0 || type !== 'message') return super.emit(type, ...args);
+      const message = JSON.parse(String(args[0]));
+      if (message.type === 'room_joined') {
+        firstReceipt.resolve();
+        if (order === 'before-fulfillment') { this.heldReceipt = args; return true; }
+      }
+      if (message.type === 'error' && message.payload?.code === 'resume_denied' && this.heldReceipt) {
+        // Deliver response then retirement in ONE native callback stack. The
+        // request promise resolves, but its async continuation sees retirement.
+        const receipt = this.heldReceipt;
+        this.heldReceipt = null;
+        super.emit('message', ...receipt);
+      }
+      return super.emit(type, ...args);
+    }
+  }
+  return { WebSocketImpl: OrderedSocket, firstReceipt, secondRequest,
+    releaseSecond: () => releaseSecond() };
+}
+
+async function duplicateCapabilityRace(order = null) {
+  const values = new Map();
+  const storage = { getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value) };
+  const original = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
+    resumeStorage: storage, eventPollIntervalMs: 20 });
+  const owned = [original];
+  const ordering = order ? orderedResumeSockets(order) : null;
+  try {
+    const room = await original.createRoom({ player: { id: 'race-host', name: 'Race Host' } });
+    new SignalingResumeCredentials(storage).prepare(JSON.stringify([resumeUrl, room.roomCode, 'race-host']));
+    const events = [[], []];
+    const tabs = events.map((log) => {
+      const client = new RoomSignalingClient({ url: resumeUrl,
+        WebSocketImpl: ordering?.WebSocketImpl || WebSocket, resumeStorage: storage,
+        eventPollIntervalMs: 20, reconnectDelaysMs: [10] });
+      owned.push(client);
+      client.onEvent((event) => log.push(event));
+      return client;
+    });
+    const joins = tabs.map((client) => client.joinRoom({ roomCode: room.roomCode,
+      player: { id: 'race-host', name: 'Race Host' } }));
+    // Retirement may legally beat the loser's post-await ownership assertion.
+    // Observe every rejection immediately; require the winning join to succeed.
+    const settled = Promise.allSettled(joins);
+    if (ordering) {
+      await boundedReceipt(ordering.secondRequest.promise);
+      await boundedReceipt(ordering.firstReceipt.promise);
+      if (order === 'after-fulfillment') await boundedReceipt(joins[0]);
+      ordering.releaseSecond();
+    }
+    const outcomes = await settled;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const current = resumeServer.store.rooms.get(room.roomCode);
+    assert.equal(current.peers.size, 1, 'duplicate recovery creates exactly one occupied seat');
+    const finalSession = current.peers.get('race-host').sessionId;
+    const winner = tabs.findIndex((client) => client.sessionId === finalSession);
+    assert.ok(winner >= 0);
+    const loser = 1 - winner;
+    assert.equal(outcomes[winner].status, 'fulfilled', 'the final authenticated owner must finish joining');
+    if (outcomes[loser].status === 'rejected') {
+      assert.ok(['signaling_closed', 'resume_denied'].includes(outcomes[loser].reason?.code),
+        'only terminal ownership retirement may reject the losing join');
+    }
+    if (order) {
+      assert.equal(winner, 1, 'controlled second admission is the only final owner');
+      assert.equal(outcomes[0].status, order === 'before-fulfillment' ? 'rejected' : 'fulfilled');
+      if (order === 'before-fulfillment') assert.equal(outcomes[0].reason.code, 'signaling_closed');
+    }
+    assert.equal(tabs[loser].roomCode, null);
+    assert.equal(events[loser].filter((event) => event.type === 'room_closed'
+      && event.payload.reason === 'resume_denied').length, 1);
+    assert.equal(events[loser].some((event) => event.type === 'signaling_resumed'), false);
+    assert.equal(events[loser].some((event) => event.type === 'signaling_state'
+      && event.payload?.state === 'reconnecting'), false);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(resumeServer.store.rooms.get(room.roomCode).peers.get('race-host').sessionId,
+      finalSession, 'retired tab never takes the authenticated successor seat back');
+    tabs[loser].close('retired_test_owner');
+    const reopening = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
+      resumeStorage: storage });
+    owned.push(reopening);
+    await reopening.joinRoom({ roomCode: room.roomCode, player: { id: 'race-host', name: 'Reopened' } });
+    assert.equal(reopening.hostId, 'race-host', 'retired predecessor cleanup preserves shared recovery proof');
+  } finally {
+    for (const client of owned) client.close('test_done');
+  }
+}
+
+// Two tabs can recover one persisted pending capability after a lost reply.
+// Admission is idempotent, not a guarantee that both public join calls finish
+// before the final socket fences its predecessor. Exercise both orderings.
+try {
+  await duplicateCapabilityRace();
+  await duplicateCapabilityRace('before-fulfillment');
+  await duplicateCapabilityRace('after-fulfillment');
+} finally {
+  await resumeServer.close();
+}
 
 // Pub/sub delivery is intentionally modeled as fully unavailable here. A
 // room_poll must recover the durable notification so an RTC offer is never
