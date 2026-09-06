@@ -72,6 +72,10 @@ import {
   AdaptiveQualityPolicy,
   type AdaptiveQualityAction,
 } from './adaptiveQualityPolicy.ts';
+import {
+  MAX_CALIBRATED_FRAME_BUDGET_MS,
+  presentationFrameBudgetMs,
+} from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 interface ReconstructionTelemetry {
@@ -2162,9 +2166,10 @@ export function createPost(
   // The rebuild keeps the stepped/rate-limited/retina-fenced shape and fixes
   // the decision logic:
   //  - BUDGET-RELATIVE thresholds: the frame budget is the best stable
-  //    display cadence observed this session, never faster than 8.5 ms and
-  //    capped at 34 ms. A 60 Hz panel therefore targets 16.7 ms while a
-  //    120 Hz panel targets 8.5 ms. Keeping the best cadence prevents a live
+  //    display cadence observed this session, bounded by the canonical
+  //    presentation cap and the existing 34 ms slow-display ceiling. Short
+  //    catch-up intervals on a fast panel cannot demand a rate above the
+  //    scheduler's deliberate cap. Keeping the best cadence prevents a live
   //    battle slowdown from redefining 12-30 fps as the new healthy target.
   //  - MISS-RATIO evidence: a step needs the EMA level AND the share of
   //    frames blowing budget x 1.35 to agree (down needs > 15% missed, up
@@ -2200,8 +2205,7 @@ export function createPost(
   // evidence can safely begin sooner. Recovery remains backoff-protected.
   const DYN_INTERVAL_S = 1.5;
   const DYN_WARMUP_S = 3; // ignore boot/shader-compile turbulence
-  const DYN_TARGET_MS = 8.5; // 120 fps budget (+~2% vsync slack)
-  const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
+  const DYN_TARGET_MS = presentationFrameBudgetMs(0);
   const DYN_MISS_AT = 1.12; // a frame > budget x this counts as missed
   const DYN_MIN_WINDOW_FRAMES = 30; // no decision on a thin evidence window
   // High starts at its complete 1.5x configured ratio. Lower/mobile presets
@@ -2222,7 +2226,7 @@ export function createPost(
   let dynWinFrames = 0; // evidence window since the last decision
   let dynWinMisses = 0;
   let dynBudgetMs = DYN_TARGET_MS;
-  let dynBestCadenceMs = DYN_BUDGET_MAX_MS;
+  let dynBestCadenceMs = MAX_CALIBRATED_FRAME_BUDGET_MS;
   let dynLastDecision = 0;
   let dynPin: number | null = null; // QA capture pin (see pinDynScale below); null = live
   // Battlefield/roster construction intentionally monopolizes frames behind
@@ -2351,8 +2355,7 @@ export function createPost(
     const sorted = dynRingScratch.subarray(0, dynRingN).sort();
     const p10 = sorted[Math.floor(dynRingN * 0.10)];
     dynBestCadenceMs = Math.min(dynBestCadenceMs, p10);
-    dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS,
-      Math.max(DYN_TARGET_MS, dynBestCadenceMs));
+    dynBudgetMs = presentationFrameBudgetMs(dynBestCadenceMs);
     const missRatio = dynWinMisses / dynWinFrames;
     // perf-governor r2: achieved fps this window (counted frames over counted
     // time — >250 ms hitch frames are excluded from both, so a uniform
@@ -2388,7 +2391,7 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynBudgetMs = DYN_TARGET_MS;
-    dynBestCadenceMs = DYN_BUDGET_MAX_MS;
+    dynBestCadenceMs = MAX_CALIBRATED_FRAME_BUDGET_MS;
     dynLastDecision = dynClock;
     renderer.domElement.dataset.perfTrim = '0';
     applyAoEnabled();

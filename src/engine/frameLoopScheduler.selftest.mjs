@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
-import { createFrameLoopScheduler } from './frameLoopScheduler.ts';
+import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE,
+  MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs } from './frameLoopScheduler.ts';
+import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
 
 function createHarness() {
   let nowMs = 0;
@@ -228,4 +231,77 @@ function createHarness() {
   assert.equal(harness.frames.size, 0, 'disposed schedulers cannot re-arm');
 }
 
-console.log('frameLoopScheduler.selftest: 60 Hz pacing, background suspension, and hidden-pane recovery passed');
+// Feed actual scheduler deliveries into the actual quality policy. A 60 Hz
+// deadline grid may catch up at 8.3 ms after a late 25 ms callback; p10 is not
+// permission for the governor to demand 120 Hz from this capped producer.
+function deliveredTicks(timestamps) {
+  const harness = createHarness();
+  harness.scheduler.schedule();
+  for (const timestamp of timestamps) {
+    const id = harness.frames.keys().next().value;
+    assert.notEqual(id, undefined);
+    harness.fireFrame(id, timestamp);
+    harness.scheduler.schedule();
+  }
+  harness.scheduler.dispose();
+  return harness.ticks;
+}
+
+function cadenceEvidence(ticks, earlierCadence = Infinity) {
+  const intervals = ticks.slice(1).map((time, index) => time - ticks[index]);
+  const sorted = intervals.toSorted((a, b) => a - b);
+  const p10 = sorted[Math.floor(sorted.length * 0.1)];
+  const frameBudgetMs = presentationFrameBudgetMs(Math.min(earlierCadence, p10));
+  let frameEmaMs = intervals[0];
+  for (const interval of intervals) frameEmaMs += (interval - frameEmaMs) * 0.06;
+  return { p10, window: { clockSeconds: 10, frameEmaMs, frameBudgetMs,
+    missedFrameRatio: intervals.filter(value => value > frameBudgetMs * 1.12).length / intervals.length,
+    achievedFps: 1000 * intervals.length / (ticks.at(-1) - ticks[0]),
+    dynamicScaleFloor: 0.9, maximumTrim: 0, mayRaiseTier: false } };
+}
+
+assert.equal(PRESENTATION_MAX_FRAME_RATE, 60);
+assert.equal(MAX_CALIBRATED_FRAME_BUDGET_MS, 34);
+assert.equal(presentationFrameBudgetMs(0), 1000 / 60);
+assert.equal(presentationFrameBudgetMs(1000 / 120), 1000 / 60);
+assert.equal(presentationFrameBudgetMs(1000 / 30), 1000 / 30);
+assert.equal(presentationFrameBudgetMs(100), 34, 'Starvation cannot redefine a lax target');
+
+const paced60 = cadenceEvidence(deliveredTicks(Array.from({ length: 720 }, (_, i) => i * 1000 / 120)));
+assert.ok(Math.abs(paced60.window.achievedFps - 60) < 0.01);
+assert.equal(new AdaptiveQualityPolicy(1).evaluate(paced60.window), 'none');
+const jittered = cadenceEvidence(deliveredTicks(Array.from({ length: 120 }, (_, i) =>
+  [i * 1000 / 30, i * 1000 / 30 + 1000 / 120, i * 1000 / 30 + 25]).flat()));
+assert.ok(jittered.p10 < 8.5, 'Actual capped scheduler still produces short catch-up intervals');
+assert.ok(Math.abs(jittered.window.achievedFps - 60) < 0.2);
+assert.equal(jittered.window.frameBudgetMs, 1000 / 60);
+assert.equal(new AdaptiveQualityPolicy(1).evaluate(jittered.window), 'none',
+  'Healthy capped delivery must not sacrifice quality to meet an impossible 120 Hz target');
+assert.equal(new AdaptiveQualityPolicy(1).evaluate({ ...jittered.window, frameBudgetMs: 8.5 }), 'resolution-down',
+  'Negative control reproduces the previous budget/producer mismatch');
+
+const overloaded60 = cadenceEvidence(deliveredTicks(Array.from({ length: 240 }, (_, i) => i * 22)), paced60.p10);
+const relief = new AdaptiveQualityPolicy(1);
+assert.equal(relief.evaluate(paced60.window), 'none');
+assert.equal(relief.evaluate({ ...overloaded60.window, clockSeconds: 12 }), 'resolution-down',
+  'A genuine 22 ms workload remains overloaded against the source-owned 60 Hz target');
+assert.equal(relief.dynamicScale, 0.91);
+assert.equal(relief.evaluate({ ...paced60.window, clockSeconds: 14 }), 'resolution-up',
+  'Genuine return to clean capped delivery retains ordinary resolution recovery');
+assert.equal(relief.dynamicScale, 1);
+const paced30 = cadenceEvidence(deliveredTicks(Array.from({ length: 240 }, (_, i) => i * 1000 / 30)));
+assert.ok(Math.abs(paced30.window.frameBudgetMs - 1000 / 30) < 1e-10);
+const slowDisplay = new AdaptiveQualityPolicy(1);
+assert.equal(slowDisplay.evaluate(paced30.window), 'none', 'A genuine 30 Hz display keeps its calibrated budget');
+const overloaded30 = cadenceEvidence(deliveredTicks(Array.from({ length: 240 }, (_, i) => i * 45)), paced30.p10);
+assert.equal(slowDisplay.evaluate({ ...overloaded30.window, clockSeconds: 12 }), 'resolution-down');
+assert.equal(slowDisplay.evaluate({ ...paced30.window, clockSeconds: 14 }), 'resolution-up');
+
+// Wire checks complement the real scheduler/policy regression: duplicating an
+// old literal at either composition seam must not silently bypass this owner.
+const postSource = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
+const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(postSource, /const DYN_TARGET_MS = presentationFrameBudgetMs\(0\)/);
+assert.match(postSource, /dynBudgetMs = presentationFrameBudgetMs\(dynBestCadenceMs\)/);
+assert.match(mainSource, /maximumFrameRate: PRESENTATION_MAX_FRAME_RATE/);
+console.log('frameLoopScheduler.selftest: capped cadence/governor agreement, real overload/recovery, background suspension, and hidden-pane recovery passed');

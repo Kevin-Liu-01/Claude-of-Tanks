@@ -69,7 +69,7 @@ import {
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
-import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
+import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import {
@@ -2354,7 +2354,7 @@ const frameLoop = createFrameLoopScheduler({
   // The authoritative simulation is fixed at 60 Hz. Presenting the complete
   // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
   // ProMotion displays without creating additional simulation states.
-  maximumFrameRate: 60,
+  maximumFrameRate: PRESENTATION_MAX_FRAME_RATE,
   // A settled, room-free Garage is event-driven. CSS/UI transitions remain
   // browser-owned; the complete Three.js clock wakes for camera motion,
   // vehicle swaps, transition coverage, loading, input, or retained network
