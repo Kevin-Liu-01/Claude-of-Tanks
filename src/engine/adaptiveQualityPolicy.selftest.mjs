@@ -369,4 +369,36 @@ assertNoTrimAfterTwoWindows(
     'a material cadence decline decays the learned baseline toward reality');
 }
 
+{
+  const policy = new AdaptiveQualityPolicy(1);
+  policy.evaluate(healthy({ clockSeconds: 10 }));
+  policy.evaluate(overloaded({ clockSeconds: 12 }));
+  policy.evaluate(overloaded({ clockSeconds: 14 }));
+  policy.evaluate(overloaded({ clockSeconds: 16 }));
+  policy.evaluate(healthy({ clockSeconds: 17.5 }));
+  policy.evaluate(overloaded({ clockSeconds: 18 }));
+  assert.ok(Math.abs(policy.dynamicScale - 0.91) < 1e-12);
+  assert.equal(policy.performanceTrim, 1);
+  const { scale, ...evidence } = { ...policy };
+  assert.equal(scale, policy.dynamicScale);
+  assert.equal(policy.reconcileDynamicScaleFloor(0.9), false,
+    'a legal DPR2 relief state must not be raised to the ordinary base');
+  assert.equal(policy.reconcileDynamicScaleFloor(1), true,
+    'DPR1 sizing reconciles the raw scalar with its already-effective floor');
+  assert.equal(policy.dynamicScale, 1);
+  assert.equal(policy.reconcileDynamicScaleFloor(1), false,
+    'repeated sizing is idempotent');
+  assert.equal(policy.reconcileDynamicScaleFloor(0.9), false,
+    'a lower floor neither lowers scale nor resurrects stale relief');
+  const { scale: reconciledScale, ...retainedEvidence } = { ...policy };
+  assert.equal(reconciledScale, 1);
+  assert.deepEqual(retainedEvidence, evidence,
+    'sizing preserves every learned cadence, trim, strike, clock and backoff slot');
+  assert.equal(policy.evaluate(overloaded({ clockSeconds: 19 })), 'resolution-down',
+    'real overload can still reduce resolution immediately after returning to DPR2');
+  assert.equal(policy.evaluate(healthy({ clockSeconds: 23 })), 'none',
+    'the pre-resize flapping history still delays resolution recovery');
+  assert.equal(policy.evaluate(healthy({ clockSeconds: 25 })), 'resolution-up');
+}
+
 console.log('adaptiveQualityPolicy.selftest: ordered relief and recovery policy passed');

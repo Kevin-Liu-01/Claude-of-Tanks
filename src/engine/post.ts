@@ -2545,6 +2545,9 @@ export function createPost(
      * @returns {void}
      */
     setSize(w, h) {
+      qualityPolicy.reconcileDynamicScaleFloor(
+        dynamicScaleFloor(renderer.getPixelRatio(), preset),
+      );
       applySize(w, h);
     },
 

@@ -134,6 +134,13 @@ export class AdaptiveQualityPolicy {
     return true;
   }
 
+  /** Sizing may raise the legal floor without starting a new workload. */
+  reconcileDynamicScaleFloor(floor: number): boolean {
+    // Keep the already-clamped raster and its observable policy in agreement.
+    // This is not a recovery decision: retain every trim/load/backoff record.
+    return this.setDynamicScale(Math.max(floor, this.scale));
+  }
+
   forceTrim(next: number, maximumTrim: number): boolean {
     const clamped = Math.max(0, Math.min(maximumTrim, next));
     if (clamped === this.trim) return false;
