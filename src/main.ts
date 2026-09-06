@@ -2418,6 +2418,11 @@ window.__SHOTS = {
       setShotHudFrame: (value: boolean) => { shotHudFrame = value; },
       setGarageSpots,
       setGarageSunTrim,
+      restoreGarageGpuIfSuspended: async () => {
+        if (garagePhasePresentation.diagnostics().gpu.suspended) {
+          await garagePhasePresentation.restoreGpu();
+        }
+      },
       hideGarage: () => garage.hide(),
       hideEndOverlay: endOverlay.hide,
       setLastFov: mainFrame.noteFovPrimed,

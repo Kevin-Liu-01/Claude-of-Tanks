@@ -210,6 +210,7 @@ interface ShotRuntimeContext {
   setShotHudFrame(enabled: boolean): void;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
+  restoreGarageGpuIfSuspended(): Promise<void>;
   hideGarage(): void;
   hideEndOverlay(): void;
   setLastFov(fov: number): void;
@@ -481,4 +482,7 @@ export async function setShotView(
   context.lighting.updateFrustums();
   context.lighting.update(true);
   context.setLastFov(context.camera.fov);
+  // Constrained devices released this phase on battle entry. Restore only
+  // after the Garage recipe and its final camera/light owners are in place.
+  if (name === 'garage') await context.restoreGarageGpuIfSuspended();
 }
