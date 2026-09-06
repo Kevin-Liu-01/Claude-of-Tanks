@@ -40,7 +40,15 @@ assert.equal(recovery.update(nowMs + 1_000, true, true), false,
   'a closed transport cannot reopen the result flow every frame');
 
 for (const listener of listeners) listener(true);
-assert.deepEqual(events.at(-1), { state: 'reconnected' });
+assert.deepEqual(events.at(-1), { state: 'failed' },
+  'a late connection cannot resurrect a terminal recovery owner');
+assert.equal(recovery.update(nowMs + 2_000, false, true), false);
+assert.equal(recovery.snapshot(nowMs).failed, true);
+recovery.attach(client, status);
+for (const listener of listeners) listener(false);
+for (const listener of listeners) listener(true);
+assert.deepEqual(events.at(-1), { state: 'reconnected' },
+  'a new owner can recover before its own deadline');
 assert.deepEqual(recovery.snapshot(nowMs + 1_000), {
   recovering: false,
   failed: false,

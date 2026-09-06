@@ -16,6 +16,7 @@ type SocketListener = (event: SocketEvent) => void;
 
 interface SocketEvent {
   error?: RuntimeValue;
+  reason?: string;
 }
 
 interface SocketLike {
@@ -52,6 +53,7 @@ export interface DedicatedConnection {
   transport: ChannelTransport | AdverseNetworkTransport;
   client: MatchClientRuntime;
   ready: Promise<MatchClientRuntime>;
+  dispose(): void;
 }
 
 export interface DedicatedStatus extends Record<string, RuntimeValue> {
@@ -127,9 +129,9 @@ function createSocket(constructorValue: RuntimeValue, endpoint: URL): SocketLike
 
 function closeFailedConnection(
   socket: SocketLike,
-  transport: ChannelTransport | AdverseNetworkTransport,
+  dispose: () => void,
 ): void {
-  transport.dispose();
+  dispose();
   try { socket.close(); } catch { /* already closing or not yet open */ }
 }
 
@@ -149,10 +151,17 @@ export function connectDedicatedMatch({
   }
   const socket = createSocket(WebSocketImpl, endpoint);
   socket.binaryType = 'arraybuffer';
-  const transport = maybeCreateAdverseNetworkTransport(createWebSocketTransport(socket, {
+  const rawTransport = createWebSocketTransport(socket, {
     maxMessageBytes: 64 * 1024,
     maxBufferedBytes: 512 * 1024,
-  }));
+  });
+  const transport = maybeCreateAdverseNetworkTransport(rawTransport);
+  // This connection owns both layers. The reusable diagnostic wrapper only
+  // disposes its own subscriptions/timers, not the caller-owned base adapter.
+  const dispose = () => {
+    transport.dispose();
+    if (transport !== rawTransport) rawTransport.dispose();
+  };
   const client = new MatchClientRuntime({
     transport,
     playerId: String(playerId || ''),
@@ -176,7 +185,7 @@ export function connectDedicatedMatch({
       if (settled) return;
       settled = true;
       cleanup();
-      closeFailedConnection(socket, transport);
+      closeFailedConnection(socket, dispose);
       reject(error);
     };
     const timeout = setTimeout(() => fail(new Error('match connection timed out')), timeoutMs);
@@ -201,7 +210,7 @@ export function connectDedicatedMatch({
       resolve(client);
     });
   });
-  return { socket, transport, client, ready };
+  return { socket, transport, client, ready, dispose };
 }
 
 function messageFor(error: RuntimeValue): string {
@@ -249,6 +258,7 @@ export async function beginDedicatedClientMatch({
       closed = true;
       reconnecting = false;
       connection?.client.close(reason);
+      connection?.dispose();
       report('closed', { reason });
     },
   };
@@ -281,12 +291,23 @@ export async function beginDedicatedClientMatch({
     await next.ready;
     if (closed) {
       next.client.close('session_closed');
+      next.dispose();
       return false;
     }
     connection = next;
     if (readySent) next.client.readyForMatch();
-    addListener(next.socket, 'close', () => {
+    addListener(next.socket, 'close', (event) => {
+      // A native close already marks the client closed. Dispose explicitly:
+      // client.close() otherwise returns early and retains native listeners
+      // (or delayed diagnostic packets) on this retired socket generation.
+      next.dispose();
       if (closed || connection !== next || reconnecting) return;
+      if (event?.reason === 'loading_expired') {
+        closed = true;
+        reconnecting = false;
+        report('failed', { reason: 'loading_expired' });
+        return;
+      }
       reconnecting = true;
       void reconnect();
     }, { once: true });

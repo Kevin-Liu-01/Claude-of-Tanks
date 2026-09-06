@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
 import { createIceConfigHandler, type IceConfigHandler } from '../api/ice.ts';
+import { installProcessShutdown } from './processShutdown.ts';
 import {
   SignalingRoomStore,
   type CreateRoomOptions,
@@ -139,7 +140,7 @@ function validateSignal(signal: RuntimeValue): Record<string, RuntimeValue> {
 }
 
 function originAllowed(origin: RuntimeValue, allowedOrigins: readonly string[] | null): boolean {
-  if (!allowedOrigins || allowedOrigins.length === 0) return true;
+  if (allowedOrigins === null) return true;
   return typeof origin === 'string' && allowedOrigins.includes(origin);
 }
 
@@ -153,6 +154,9 @@ export function createSignalingServer({
   iceConfigHandler = createIceConfigHandler(),
   store = new SignalingRoomStore(),
 }: SignalingServerOptions = {}): SignalingServerService {
+  if (allowedOrigins && allowedOrigins.length === 0) {
+    throw new TypeError('COT_ALLOWED_ORIGINS must contain at least one exact origin');
+  }
   const allowedWebSocketPaths = new Set(webSocketPaths);
   const allowedHealthPaths = new Set(healthPaths);
   const allowedIcePaths = new Set(icePaths);
@@ -373,7 +377,7 @@ function cliOptions(argv: string[]): SignalingServerOptions {
   const options: SignalingServerOptions & { host: string; port: number } = {
     host: process.env.COT_SIGNAL_HOST || '127.0.0.1',
     port: Number(process.env.COT_SIGNAL_PORT || 7777),
-    allowedOrigins: process.env.COT_ALLOWED_ORIGINS
+    allowedOrigins: process.env.COT_ALLOWED_ORIGINS !== undefined
       ? process.env.COT_ALLOWED_ORIGINS.split(',').map((value) => value.trim()).filter(Boolean)
       : null,
   };
@@ -387,6 +391,7 @@ function cliOptions(argv: string[]): SignalingServerOptions {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const signaling = createSignalingServer(cliOptions(process.argv.slice(2)));
   signaling.listen().then((address) => {
+    installProcessShutdown(() => signaling.close());
     const shownHost = address.address === '::' ? '0.0.0.0' : address.address;
     console.log(`Claude of Tanks signaling ready at ws://${shownHost}:${address.port}/signal`);
   }).catch((error) => {

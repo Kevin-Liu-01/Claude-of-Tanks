@@ -12,6 +12,9 @@ import {
 } from '@upstash/redis';
 import IORedis, { type RedisOptions } from 'ioredis';
 import { createRoomCode } from './roomCode.ts';
+import {
+  newSignalingConnectionId, newSignalingResumeToken, signalingResumeHash,
+} from './signalingMembership.ts';
 import type {
   CreateRoomOptions,
   JoinRoomOptions,
@@ -28,6 +31,8 @@ const DEFAULT_DELIVERY_TTL_MS = 10 * 60 * 1000;
 const REDIS_READY_TIMEOUT_MS = 6_000;
 const MAX_MAILBOX_MESSAGES = 256;
 const MAX_DRAIN_MESSAGES = 64;
+const ROOM_REFRESH_INTERVAL_MS = 60_000;
+const HEALTH_PROBE_INTERVAL_MS = 5_000;
 
 // Pub/sub is a latency hint, not the source of truth. Serverless Redis
 // subscribers can reconnect between a room mutation and its notification;
@@ -42,13 +47,24 @@ return 1
 `;
 
 const DRAIN_DELIVERY_SCRIPT = `
+local raw = redis.call('GET', KEYS[2])
+if raw then
+  local room = cjson.decode(raw)
+  local current = false
+  for _, peer in ipairs(room.peers) do
+    if peer.peerId == ARGV[2] and peer.connectionId == ARGV[3] then current = true end
+  end
+  if not current then return false end
+end
 local messages = {}
 for index = 1, tonumber(ARGV[1]) do
   local message = redis.call('LPOP', KEYS[1])
   if not message then break end
   table.insert(messages, message)
 end
-if redis.call('LLEN', KEYS[1]) == 0 then redis.call('DEL', KEYS[1]) end
+-- A host departure deletes the room before delivering room_closed. The
+-- generation-specific mailbox still belongs to this authenticated socket.
+if not raw and #messages == 0 then return false end
 return messages
 `;
 
@@ -60,7 +76,13 @@ local member = cjson.decode(ARGV[1])
 local peers = {}
 local replacing = false
 for _, peer in ipairs(room.peers) do
-  if peer.peerId == member.peerId then replacing = true else table.insert(peers, peer) end
+  if peer.peerId == member.peerId then
+    if not peer.resumeTokenHash or (peer.resumeTokenHash ~= ARGV[4] and
+        peer.resumeTokenHash ~= member.resumeTokenHash) then
+      return cjson.encode({ error = 'resume_denied' })
+    end
+    replacing = true
+  else table.insert(peers, peer) end
 end
 if not replacing and #room.peers >= tonumber(room.maxPlayers) then
   return cjson.encode({ error = 'room_full' })
@@ -80,7 +102,10 @@ local leaving = ARGV[1]
 local kept = {}
 local found = false
 for _, peer in ipairs(room.peers) do
-  if peer.peerId == leaving then found = true else table.insert(kept, peer) end
+  if peer.peerId == leaving then
+    if peer.connectionId ~= ARGV[4] then return cjson.encode({ missing = true }) end
+    found = true
+  else table.insert(kept, peer) end
 end
 if not found then return cjson.encode({ missing = true }) end
 room.peers = kept
@@ -133,6 +158,8 @@ interface StoredPeer {
   peerId: string;
   player: SignalingPlayer;
   sessionId: string;
+  connectionId: string;
+  resumeTokenHash: string;
 }
 
 interface StoredRoom {
@@ -148,11 +175,16 @@ interface StoredRoom {
 interface LocalMembership {
   roomCode: string;
   peerId: string;
+  connectionId: string;
+  recipient: string;
+  nextRefreshAtMs: number;
+  refreshing: Promise<void> | null;
 }
 
 export interface DistributedNotification {
   peerId?: string;
   connection?: SignalingConnection | null;
+  recipient?: string;
   message: SignalingMessage;
 }
 
@@ -174,6 +206,8 @@ function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
 }
 
 function errorCode(value: RuntimeValue): string | null {
+  if (isRecord(value) && typeof value.message === 'string' &&
+      /max requests limit exceeded/i.test(value.message)) return 'redis_request_limit_exceeded';
   return isRecord(value) && typeof value.code === 'string' ? value.code : null;
 }
 
@@ -220,7 +254,14 @@ function readStoredPeer(value: RuntimeValue): StoredPeer {
   const player = cleanPlayer(value.player);
   const sessionId = cleanSessionId(value.sessionId, player.id);
   if (!peerId) throw codedError('store_invalid', 'invalid peer in room store response');
-  return { peerId, player, sessionId };
+  return { peerId, player, sessionId,
+    connectionId: typeof value.connectionId === 'string' ? value.connectionId : '',
+    resumeTokenHash: typeof value.resumeTokenHash === 'string' ? value.resumeTokenHash : '',
+  };
+}
+
+function recipientKey(roomCode: string, peer: Pick<StoredPeer, 'peerId' | 'connectionId'>): string {
+  return `${roomCode}:${peer.peerId}:${peer.connectionId}`;
 }
 
 function readStoredRoom(value: RuntimeValue): StoredRoom {
@@ -314,12 +355,16 @@ export class DistributedSignalingRoomStore {
   private _closed = false;
   private readonly _drains = new Map<string, Promise<SignalingMessage[]>>();
   private _lastErrorLogAt = 0;
+  private _healthProbe: Promise<RuntimeValue> | null = null;
+  private _healthProbeUntilMs = -Infinity;
 
   constructor({
     redisUrl,
     restUrl,
     restToken,
-    namespace = 'cot:signaling:v1',
+    // Capability-less v1 records must not be claimed during a rolling upgrade.
+    // This deployment boundary intentionally requires existing rooms to recreate.
+    namespace = 'cot:signaling:v2',
     roomTtlMs = DEFAULT_ROOM_TTL_MS,
     deliveryTtlMs = DEFAULT_DELIVERY_TTL_MS,
     now = () => Date.now(),
@@ -372,9 +417,9 @@ export class DistributedSignalingRoomStore {
       if (channel !== this.channel) return;
       try {
         const delivery: RuntimeValue = JSON.parse(raw);
-        const peerId = String(isRecord(delivery) ? delivery.peerId || '' : '');
-        if (peerId && this.connections.has(peerId)) {
-          this.#flushMailbox(peerId).catch((error) => {
+        const recipient = String(isRecord(delivery) ? delivery.recipient || '' : '');
+        if (recipient && this.connections.has(recipient)) {
+          this.#flushMailbox(recipient).catch((error) => {
             console.error('[signal] Failed to drain Redis delivery mailbox', error);
           });
         }
@@ -428,16 +473,29 @@ export class DistributedSignalingRoomStore {
 
   /** REST is required; pub/sub may degrade to the durable polling mailbox. */
   async health(timeoutMs = REDIS_READY_TIMEOUT_MS): Promise<DistributedStoreHealth> {
+    // PING may succeed after Upstash has rejected ordinary commands for an
+    // exhausted monthly allowance. Prove actual write readiness using one
+    // reserved short-lived key. Coalesce probes, including failures, so a
+    // health checker cannot multiply command usage within this warm instance.
+    if (!this._healthProbe || this.now() >= this._healthProbeUntilMs) {
+      this._healthProbeUntilMs = this.now() + HEALTH_PROBE_INTERVAL_MS;
+      this._healthProbe = this.command.set(`${this.namespace}:health`, 'ready', {
+        px: HEALTH_PROBE_INTERVAL_MS * 2,
+      });
+    }
     const [subscription, command] = await Promise.allSettled([
       this.start(timeoutMs),
-      this.command.ping(),
+      this._healthProbe,
     ]);
     const pong = command.status === 'fulfilled' ? command.value : null;
-    const commandReady = command.status === 'fulfilled' && String(pong).toUpperCase() === 'PONG';
+    const commandReady = command.status === 'fulfilled' && String(pong).toUpperCase() === 'OK';
     const subscriberReady = subscription.status === 'fulfilled' && this._subscribed;
-    const error = subscription.status === 'rejected'
-      ? subscription.reason
-      : command.status === 'rejected' ? command.reason : null;
+    // HTTP availability is decided by the REST command path. When both
+    // connections fail, expose that cause, not an optional subscriber error
+    // which would misdiagnose a production 503 as mere polling degradation.
+    const error = !commandReady
+      ? command.status === 'rejected' ? command.reason : null
+      : subscription.status === 'rejected' ? subscription.reason : null;
     return {
       ok: commandReady,
       command: commandReady ? 'ready' : 'unavailable',
@@ -455,16 +513,18 @@ export class DistributedSignalingRoomStore {
     try {
       return await command();
     } catch (cause) {
-      throw Object.assign(new Error('signaling room store is unavailable'), {
-        code: 'signaling_store_unavailable',
+      const exhausted = errorCode(cause) === 'redis_request_limit_exceeded';
+      throw Object.assign(new Error(exhausted
+        ? 'Multiplayer signaling capacity is exhausted. The service needs its request allowance restored.'
+        : 'signaling room store is unavailable'), {
+        code: exhausted ? 'signaling_capacity_exhausted' : 'signaling_store_unavailable',
         cause,
       });
     }
   }
 
-  async #drainMailbox(peerId: RuntimeValue): Promise<SignalingMessage[]> {
-    const id = String(peerId || '');
-    if (!id) return [];
+  async #drainMailbox(membership: LocalMembership): Promise<SignalingMessage[]> {
+    const id = membership.recipient;
     // Chain drains instead of sharing one result: a pub/sub wake and a client
     // poll can arrive together, and both consumers must not receive the same
     // RTC offer/candidate batch.
@@ -472,9 +532,10 @@ export class DistributedSignalingRoomStore {
     const attempt = previous.catch(() => {}).then(async () => {
       const raw = await this.#runCommand(() => this.command.eval(
         DRAIN_DELIVERY_SCRIPT,
-        [this.mailboxKey(id)],
-        [MAX_DRAIN_MESSAGES],
+        [this.mailboxKey(id), this.roomKey(membership.roomCode)],
+        [MAX_DRAIN_MESSAGES, membership.peerId, membership.connectionId],
       ));
+      if (raw == null || raw === false) throw codedError('resume_denied', 'room connection was replaced');
       if (!Array.isArray(raw)) return [];
       const messages: SignalingMessage[] = [];
       for (const item of raw) {
@@ -494,11 +555,13 @@ export class DistributedSignalingRoomStore {
     }
   }
 
-  async #flushMailbox(peerId: RuntimeValue): Promise<number> {
-    const id = String(peerId || '');
+  async #flushMailbox(recipient: string): Promise<number> {
+    const id = recipient;
     const connection = this.connections.get(id);
     if (!connection || !this.deliveryHandler) return 0;
-    const messages = await this.#drainMailbox(id);
+    const membership = this.membership.get(connection);
+    if (!membership) return 0;
+    const messages = await this.#drainMailbox(membership);
     let delivered = 0;
     for (const message of messages) {
       if (this.connections.get(id) !== connection) break;
@@ -507,16 +570,45 @@ export class DistributedSignalingRoomStore {
     return delivered;
   }
 
-  #remember(connection: SignalingConnection, roomCode: string, peerId: string): void {
-    const previous = this.connections.get(peerId);
-    if (previous && previous !== connection) this.membership.delete(previous);
-    this.membership.set(connection, { roomCode, peerId });
-    this.connections.set(peerId, connection);
+  #remember(connection: SignalingConnection, roomCode: string, peer: StoredPeer): void {
+    for (const [previous, membership] of this.membership) {
+      if (membership.roomCode === roomCode && membership.peerId === peer.peerId) {
+        this.membership.delete(previous);
+        this.connections.delete(membership.recipient);
+      }
+    }
+    const recipient = recipientKey(roomCode, peer);
+    this.membership.set(connection, {
+      roomCode,
+      peerId: peer.peerId,
+      connectionId: peer.connectionId,
+      recipient,
+      nextRefreshAtMs: this.now() + Math.min(ROOM_REFRESH_INTERVAL_MS, this.roomTtlMs / 4),
+      refreshing: null,
+    });
+    this.connections.set(recipient, connection);
+  }
+
+  async #refreshRoom(membership: LocalMembership): Promise<void> {
+    if (membership.refreshing) return membership.refreshing;
+    const now = this.now();
+    if (now < membership.nextRefreshAtMs) return;
+    const renewal = this.#runCommand(() => this.command.pexpire(
+      this.roomKey(membership.roomCode), this.roomTtlMs,
+    )).then(() => {
+      membership.nextRefreshAtMs = now + Math.min(ROOM_REFRESH_INTERVAL_MS, this.roomTtlMs / 4);
+    });
+    membership.refreshing = renewal;
+    try {
+      await renewal;
+    } finally {
+      if (membership.refreshing === renewal) membership.refreshing = null;
+    }
   }
 
   async create(
     connection: SignalingConnection,
-    { player, sessionId, maxPlayers = 14, mode = 'private' }: CreateRoomOptions = {},
+    { player, sessionId, maxPlayers = 14, mode = 'private', nextResumeToken }: CreateRoomOptions = {},
   ): Promise<SignalingJoinResult> {
     this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
@@ -525,6 +617,10 @@ export class DistributedSignalingRoomStore {
     }
     const memberPlayer = cleanPlayer(player);
     const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
+    const token = newSignalingResumeToken(nextResumeToken);
+    const member: StoredPeer = { peerId: memberPlayer.id, player: memberPlayer,
+      sessionId: memberSessionId, connectionId: newSignalingConnectionId(),
+      resumeTokenHash: signalingResumeHash(token) };
     for (let attempt = 0; attempt < 16; attempt++) {
       const roomCode = this.roomCodeFactory();
       const peerId = memberPlayer.id;
@@ -536,7 +632,7 @@ export class DistributedSignalingRoomStore {
         hostId: peerId,
         createdAt: now,
         touchedAt: now,
-        peers: [{ peerId, player: memberPlayer, sessionId: memberSessionId }],
+        peers: [member],
       };
       const created = await this.#runCommand(() => this.command.set(
         this.roomKey(roomCode),
@@ -544,7 +640,7 @@ export class DistributedSignalingRoomStore {
         { px: this.roomTtlMs, nx: true },
       ));
       if (created !== 'OK') continue;
-      this.#remember(connection, roomCode, peerId);
+      this.#remember(connection, roomCode, member);
       return {
         roomCode,
         peerId,
@@ -554,6 +650,7 @@ export class DistributedSignalingRoomStore {
         mode: room.mode,
         maxPlayers,
         peers: [],
+        resumeToken: token,
       };
     }
     throw codedError('room_code_exhausted', 'room code space is busy');
@@ -561,7 +658,7 @@ export class DistributedSignalingRoomStore {
 
   async join(
     connection: SignalingConnection,
-    { roomCode, player, sessionId }: JoinRoomOptions = {},
+    { roomCode, player, sessionId, resumeToken, nextResumeToken }: JoinRoomOptions = {},
   ): Promise<DistributedJoinResponse> {
     this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
@@ -569,11 +666,13 @@ export class DistributedSignalingRoomStore {
     const memberPlayer = cleanPlayer(player);
     const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
-    const member = { peerId, player: memberPlayer, sessionId: memberSessionId };
+    const token = newSignalingResumeToken(nextResumeToken);
+    const member: StoredPeer = { peerId, player: memberPlayer, sessionId: memberSessionId,
+      connectionId: newSignalingConnectionId(), resumeTokenHash: signalingResumeHash(token) };
     const result = parseResult(await this.#runCommand(() => this.command.eval(
       JOIN_ROOM_SCRIPT,
       [this.roomKey(code)],
-      [JSON.stringify(member), this.now(), this.roomTtlMs],
+      [JSON.stringify(member), this.now(), this.roomTtlMs, signalingResumeHash(resumeToken)],
     )));
     if (result.error === 'room_not_found') throw codedError('room_not_found', 'room not found');
     if (result.error === 'room_full') throw codedError('room_full', 'room is full');
@@ -581,7 +680,7 @@ export class DistributedSignalingRoomStore {
     const room = readStoredRoom(result.room);
     const existing = room.peers.filter((peer) => peer.peerId !== peerId);
     const hostName = room.peers.find((peer) => peer.peerId === room.hostId)?.player?.name || '';
-    this.#remember(connection, code, peerId);
+    this.#remember(connection, code, member);
     return {
       result: {
         roomCode: code,
@@ -591,6 +690,7 @@ export class DistributedSignalingRoomStore {
         hostName,
         mode: room.mode,
         maxPlayers: room.maxPlayers,
+        resumeToken: token,
         peers: existing.map((peer) => ({
           peerId: peer.peerId,
           player: { ...peer.player },
@@ -600,6 +700,7 @@ export class DistributedSignalingRoomStore {
       },
       notify: existing.map((peer) => ({
         peerId: peer.peerId,
+        recipient: recipientKey(code, peer),
         message: { type: 'peer_joined', payload: {
           roomCode: code,
           peerId,
@@ -624,7 +725,7 @@ export class DistributedSignalingRoomStore {
     if (!raw) throw codedError('room_not_found', 'room not found');
     const room = readStoredRoom(typeof raw === 'string' ? JSON.parse(raw) as RuntimeValue : raw);
     const sender = room.peers.find((peer) => peer.peerId === membership.peerId);
-    if (!sender) {
+    if (!sender || sender.connectionId !== membership.connectionId) {
       throw codedError('not_in_room', 'not a room member');
     }
     const target = String(toPeerId || '');
@@ -635,12 +736,10 @@ export class DistributedSignalingRoomStore {
     if (toSessionId && targetMember.sessionId !== toSessionId) {
       throw codedError('stale_target_session', 'target page session was replaced');
     }
-    await this.#runCommand(() => this.command.pexpire(
-      this.roomKey(code),
-      this.roomTtlMs,
-    ));
+    await this.#refreshRoom(membership);
     return {
       peerId: target,
+      recipient: recipientKey(code, targetMember),
       message: {
         type: 'room_signal',
         payload: {
@@ -658,19 +757,20 @@ export class DistributedSignalingRoomStore {
     peerId,
     connection,
     message,
+    recipient,
   }: DistributedNotification): Promise<boolean> {
     if (connection && this.deliveryHandler && this.deliveryHandler(connection, message)) return true;
-    const target = this.connections.get(String(peerId || ''));
+    const target = this.connections.get(String(recipient || ''));
     if (target && this.deliveryHandler && this.deliveryHandler(target, message)) return true;
-    const id = String(peerId || '');
-    if (!id || !message || typeof message.type !== 'string') {
+    const id = String(recipient || '');
+    if (!id || !peerId || !message || typeof message.type !== 'string') {
       throw codedError('invalid_delivery', 'invalid signaling delivery');
     }
     this.#warmSubscriber();
     await this.#runCommand(() => this.command.eval(
       ENQUEUE_DELIVERY_SCRIPT,
       [this.mailboxKey(id), this.channel],
-      [JSON.stringify(message), MAX_MAILBOX_MESSAGES, this.deliveryTtlMs, JSON.stringify({ peerId: id })],
+      [JSON.stringify(message), MAX_MAILBOX_MESSAGES, this.deliveryTtlMs, JSON.stringify({ recipient: id })],
     ));
     return true;
   }
@@ -678,12 +778,11 @@ export class DistributedSignalingRoomStore {
   /** Recover durable notifications when Redis pub/sub missed a wake-up. */
   async poll(connection: SignalingConnection): Promise<SignalingNotification[]> {
     const membership = this.membership.get(connection);
-    if (!membership || this.connections.get(membership.peerId) !== connection) return [];
-    await this.#runCommand(() => this.command.pexpire(
-      this.roomKey(membership.roomCode),
-      this.roomTtlMs,
-    ));
-    const messages = await this.#drainMailbox(membership.peerId);
+    if (!membership || this.connections.get(membership.recipient) !== connection) {
+      throw codedError('resume_denied', 'room connection was replaced or expired');
+    }
+    const messages = await this.#drainMailbox(membership);
+    await this.#refreshRoom(membership);
     return messages.map((message) => ({ connection, message }));
   }
 
@@ -692,8 +791,8 @@ export class DistributedSignalingRoomStore {
     const membership = this.membership.get(connection);
     if (!membership) return [];
     this.membership.delete(connection);
-    if (this.connections.get(membership.peerId) === connection) {
-      this.connections.delete(membership.peerId);
+    if (this.connections.get(membership.recipient) === connection) {
+      this.connections.delete(membership.recipient);
     }
     return [];
   }
@@ -704,24 +803,25 @@ export class DistributedSignalingRoomStore {
   ): Promise<DistributedNotification[]> {
     const membership = this.membership.get(connection);
     if (!membership) return [];
-    if (this.connections.get(membership.peerId) !== connection) {
+    if (this.connections.get(membership.recipient) !== connection) {
       this.membership.delete(connection);
       return [];
     }
     this.membership.delete(connection);
-    this.connections.delete(membership.peerId);
+    this.connections.delete(membership.recipient);
     this.#warmSubscriber();
-    await this.#runCommand(() => this.command.del(this.mailboxKey(membership.peerId)));
+    await this.#runCommand(() => this.command.del(this.mailboxKey(membership.recipient)));
     const result = parseResult(await this.#runCommand(() => this.command.eval(
       LEAVE_ROOM_SCRIPT,
       [this.roomKey(membership.roomCode)],
-      [membership.peerId, this.now(), this.roomTtlMs],
+      [membership.peerId, this.now(), this.roomTtlMs, membership.connectionId],
     )));
     if (result.missing) return [];
     if (result.closed) {
       const peers = Array.isArray(result.peers) ? result.peers.map(readStoredPeer) : [];
       return peers.map((peer) => ({
         peerId: peer.peerId,
+        recipient: recipientKey(membership.roomCode, peer),
         message: { type: 'room_closed', payload: {
           roomCode: membership.roomCode,
           reason: 'host_left',
@@ -731,6 +831,7 @@ export class DistributedSignalingRoomStore {
     const peers = Array.isArray(result.peers) ? result.peers.map(readStoredPeer) : [];
     return peers.map((peer) => ({
       peerId: peer.peerId,
+      recipient: recipientKey(membership.roomCode, peer),
       message: { type: 'peer_left', payload: {
         roomCode: membership.roomCode,
         peerId: membership.peerId,

@@ -30,6 +30,7 @@ const REST_SPEED_MPS = 0.08;
 const REST_HORIZONTAL_DEADZONE_M = 0.03;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
+const REST_HULL_YAW_RATE_RAD_S = 0.0035;
 const MAX_INPUT_HISTORY = 240;
 
 export interface PredictionInput {
@@ -69,6 +70,7 @@ export interface PredictionEntity {
   combat?: MovementCombatState | null;
   contactGeom?: MovementContactGeometry | null;
   rigidGear?: boolean;
+  modeSpeedMultiplier?: number;
 }
 
 export interface PredictionSimEntity extends PredictionEntity {
@@ -184,14 +186,22 @@ function writePresentationCorrection(
   old: DisplayedPose,
   predicted: PredictionTankState,
 ): void {
+  writeHullPresentationCorrection(correction, old, predicted);
+  correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
+  correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
+}
+
+function writeHullPresentationCorrection(
+  correction: PredictionCorrection,
+  old: DisplayedPose,
+  predicted: PredictionTankState,
+): void {
   correction.x = old.x - predicted.pos.x;
   correction.y = old.y - predicted.pos.y;
   correction.z = old.z - predicted.pos.z;
   correction.yaw = wrapAngle(old.yaw - predicted.yaw);
   correction.pitch = wrapAngle(old.pitch - predicted.visualPitch);
   correction.roll = wrapAngle(old.roll - predicted.visualRoll);
-  correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
-  correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
 }
 
 function wrapAngle(value: number) {
@@ -213,14 +223,30 @@ function hasDriveIntent(input: PredictionInput) {
   return Math.abs(input.throttle ?? 0) > 0.01 || Math.abs(input.steer ?? 0) > 0.01;
 }
 
+function hasActiveHullMotion(state: PredictionTankState): boolean {
+  return !state.grounded || state.overturned ||
+    state._body.tumbling || state._body.autoRighting ||
+    state.suspensionAim || Math.abs(state.suspensionAimPitch) > 1e-6 ||
+    Math.abs(state.speed) > REST_SPEED_MPS ||
+    Math.abs(state.yawRate) > REST_HULL_YAW_RATE_RAD_S;
+}
+
 function canHoldRestingHull(
   old: DisplayedPose,
   predicted: PredictionTankState,
-  snapshot: PredictionSnapshot,
+  snapshot: PredictionSnapshot | null,
   motionIntent: boolean,
 ) {
-  if (motionIntent || Math.abs(predicted.speed) > REST_SPEED_MPS ||
-      Math.hypot(snapshot.vx ?? 0, snapshot.vz ?? 0) > REST_SPEED_MPS) return false;
+  const activeBodyFlags = SNAPSHOT_FLAGS.AIRBORNE | SNAPSHOT_FLAGS.OVERTURNED |
+    SNAPSHOT_FLAGS.AUTO_RIGHTING;
+  if (motionIntent || hasActiveHullMotion(predicted)) return false;
+  // Grounded contact replay may produce a transient support velocity from
+  // quantized height. Its displacement remains bounded below; authoritative
+  // vertical motion, unlike that replay-only noise, always releases the hold.
+  if (snapshot && (Math.abs(predicted.verticalSpeed) > REST_SPEED_MPS ||
+      !!((snapshot.flags ?? 0) & activeBodyFlags) ||
+      Math.abs(snapshot.vy ?? 0) > REST_SPEED_MPS ||
+      Math.hypot(snapshot.vx ?? 0, snapshot.vz ?? 0) > REST_SPEED_MPS)) return false;
   return Math.hypot(old.x - predicted.pos.x, old.z - predicted.pos.z) <=
       REST_HORIZONTAL_DEADZONE_M &&
     Math.abs(old.y - predicted.pos.y) <= REST_VERTICAL_DEADZONE_M &&
@@ -319,6 +345,7 @@ function copyPresentation(
   target.bloomF = source.bloomF;
   target.atGunLimit = source.atGunLimit;
   target.gunLimitSpec = source.gunLimitSpec;
+  target.suspensionAimPitch = source.suspensionAimPitch;
   target.trackScroll.l = source.trackScroll.l;
   target.trackScroll.r = source.trackScroll.r;
   target.aimPoint.copy(source.aimPoint);
@@ -398,6 +425,7 @@ export class LocalTankPredictor {
       combat: entity.combat || null,
       contactGeom: entity.contactGeom || null,
       rigidGear: !!entity.rigidGear,
+      modeSpeedMultiplier: entity.modeSpeedMultiplier,
       input: {
         throttle: 0,
         steer: 0,
@@ -436,10 +464,32 @@ export class LocalTankPredictor {
   }
 
   advancePrediction(input: PredictionInput | null, elapsedS: number): boolean {
+    if (this.terminalDestroyed) {
+      // Death disables simulation/input authority, not display-clock settling.
+      // Keep the terminal pose fixed while its bounded correction decays even
+      // between snapshots or when the input pump supplies no controls.
+      this.present(elapsedS);
+      return false;
+    }
     if (!input) return false;
+    this.syncMovementPolicy();
     this.motionIntent = hasDriveIntent(input);
     if (this.motionIntent) this.holdRestingHull = false;
+    const heldPose = this.holdRestingHull
+      ? captureDisplayedPose(this.entity.state, this.displayedPose) : null;
     advance(this.simEntity, input, elapsedS, this.heightField, this.collisionResolver);
+    if (heldPose) {
+      // Idle contact integration still runs on every display frame. Holding a
+      // fixed correction alone follows its tiny support/spring changes and
+      // reintroduces the snapshot chatter. Hold the displayed hull instead,
+      // only while the actual prediction remains inside the rest budget.
+      this.holdRestingHull = canHoldRestingHull(
+        heldPose, this.simEntity.state, null, this.motionIntent,
+      );
+      if (this.holdRestingHull) {
+        writeHullPresentationCorrection(this.correction, heldPose, this.simEntity.state);
+      }
+    }
     this.present(elapsedS);
     this.stats.presentationAdvances++;
     this.stats.maxPresentationAdvanceS = Math.max(
@@ -455,7 +505,9 @@ export class LocalTankPredictor {
     inputSeq: number,
     presentationElapsedS = elapsedS,
   ) {
-    if (!input || !Number.isSafeInteger(inputSeq) || inputSeq < 0) return false;
+    if (!input || this.terminalDestroyed || !Number.isSafeInteger(inputSeq) || inputSeq < 0) {
+      return false;
+    }
     // Stryker disable next-line ConditionalExpression: on the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
     if (this.lastRecordedSeq != null) {
       if (inputSeq === this.lastRecordedSeq) return false;
@@ -488,15 +540,34 @@ export class LocalTankPredictor {
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
   }
 
+  resetForPresentationResume(): void {
+    // No visible pose continuity exists while the window was asleep. A life
+    // may have ended and respawned without presentation observing either edge.
+    this.simEntity.state = createTankState(
+      this.entity.spec, this.entity.state.pos, this.entity.state.yaw,
+    );
+    this.history.length = 0;
+    this.lastRecordedSeq = null;
+    this.lastAuthorityTick = -1;
+    this.initialized = false;
+    this.terminalDestroyed = false;
+    this.motionIntent = false;
+    this.holdRestingHull = false;
+    this.contactSmoothingS = 0;
+    clearCorrection(this.correction);
+  }
+
   replayAuthority(
     snapshot: PredictionSnapshot,
     sampledEntity: PredictionSnapshot | null,
+    terminalDestroyed = false,
   ): void {
+    this.syncMovementPolicy();
     applyAuthority(this.simEntity.state, sampledEntity || snapshot);
     // Browser inputs are replaceable held states. A clock-corrected sampled
     // entity already includes their network transit time; deterministic
     // callers without that sample replay the unacknowledged fixed-step input.
-    if (sampledEntity) return;
+    if (sampledEntity || terminalDestroyed) return;
     for (const frame of this.history) {
       advance(
         this.simEntity,
@@ -507,6 +578,13 @@ export class LocalTankPredictor {
       );
       this.stats.replayedInputs++;
     }
+  }
+
+  syncMovementPolicy(): void {
+    // These values have already been admitted by the authoritative snapshot
+    // bridge. Do not infer special-action activation from local action bits.
+    this.simEntity.modeSpeedMultiplier = this.entity.modeSpeedMultiplier;
+    this.simEntity.state.suspensionAim = this.entity.state.suspensionAim;
   }
 
   recordPredictionError(positionError: number): void {
@@ -557,11 +635,11 @@ export class LocalTankPredictor {
       this.motionIntent || historyHasDriveIntent(this.history),
     );
     if (this.holdRestingHull) this.stats.restingHullHolds++;
-    if (terminalDestroyed && !this.terminalDestroyed) this.stats.terminalSyncs++;
   }
 
   finishTerminalAuthority(terminalDestroyed: boolean): void {
     if (terminalDestroyed) {
+      if (!this.terminalDestroyed) this.stats.terminalSyncs++;
       // Death ends local input authority without teleporting presentation to
       // the terminal server pose. The bounded correction settles the wreck.
       this.history.length = 0;
@@ -580,17 +658,31 @@ export class LocalTankPredictor {
     const authorityTick = tick as number;
     if (authorityTick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = authorityTick;
+    const terminalDestroyed = !!(destroyed || snapshot.destroyed ||
+      ((snapshot.flags ?? 0) & SNAPSHOT_FLAGS.DESTROYED));
+    acknowledgeInputs(this.history, ackInputSeq);
     // Roster visuals are created at a harmless staging origin while the load
     // screen is up. The first authority pose is initialization, not a network
     // correction: seed both simulation and presentation directly so latency
     // cannot turn the origin-to-spawn distance into a hard snap/correction.
-    if (!this.initialized) {
+    const respawning = this.terminalDestroyed && !terminalDestroyed;
+    if (!this.initialized || respawning) {
+      if (respawning) {
+        // A new life owns a new drivetrain/contact history, even when its
+        // spawn is inside the normal reconciliation distance budget.
+        this.simEntity.state = createTankState(
+          this.entity.spec, this.entity.state.pos, snapshot.yaw,
+        );
+        this.history.length = 0;
+        this.motionIntent = false;
+        this.contactSmoothingS = 0;
+      }
       this.initializeAuthority(snapshot);
+      this.finishTerminalAuthority(terminalDestroyed);
       return true;
     }
     const old = captureDisplayedPose(this.entity.state, this.displayedPose);
-    acknowledgeInputs(this.history, ackInputSeq);
-    this.replayAuthority(snapshot, sampledEntity);
+    this.replayAuthority(snapshot, sampledEntity, terminalDestroyed);
     const predicted = this.simEntity.state;
     const positionError = Math.hypot(
       old.x - predicted.pos.x,
@@ -598,7 +690,6 @@ export class LocalTankPredictor {
       old.z - predicted.pos.z,
     );
     this.recordPredictionError(positionError);
-    const terminalDestroyed = !!(destroyed || snapshot.destroyed);
     this.stagePresentationError(old, snapshot, positionError, terminalDestroyed);
     this.finishTerminalAuthority(terminalDestroyed);
     this.present(elapsedS);

@@ -4,6 +4,9 @@ import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
 
+const signalOverride = process.argv.find((entry) => entry.startsWith('--signal-url='))?.slice(13);
+if (signalOverride && !/^wss?:\/\//.test(signalOverride)) throw new TypeError('signal-url must be WebSocket');
+
 function numericArg(name, fallback) {
   const prefix = `--${name}=`;
   const raw = process.argv.find((entry) => entry.startsWith(prefix));
@@ -38,15 +41,31 @@ const browserErrors = [];
 const vite = await createViteServer({
   root,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+  server: { host: '127.0.0.1', port: numericArg('port', 0), strictPort: true, hmr: false },
 });
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let browser = null;
 let pages = [];
 let contexts = [];
+let cleaningUp = false;
+let runFailed = false;
+const diagnosticStartedAt = performance.now();
+
+function diagnostic(event, details = {}) {
+  console.error('[multiplayer-soak:diagnostic]', JSON.stringify({
+    event,
+    elapsedMs: Math.round(performance.now() - diagnosticStartedAt),
+    cleaningUp,
+    ...details,
+  }));
+}
 
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
+  page.on('error', (error) => diagnostic('page_crash', { player: label, message: error.message }));
+  page.on('close', () => {
+    if (!cleaningUp) diagnostic('page_closed_before_cleanup', { player: label });
+  });
   page.on('console', (message) => {
     if (message.type() === 'error') browserErrors.push(`${label}: ${message.text()}`);
   });
@@ -98,10 +117,10 @@ async function pumpHost(hostPage, elapsedMs, input) {
 
 try {
   await vite.listen();
-  const signalAddress = await signaling.listen();
+  const signalAddress = signalOverride ? null : await signaling.listen();
   const viteAddress = vite.httpServer.address();
   const origin = `http://127.0.0.1:${viteAddress.port}`;
-  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
+  const signalUrl = signalOverride || `ws://127.0.0.1:${signalAddress.port}/signal`;
   browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -111,6 +130,12 @@ try {
       '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows',
     ],
+  });
+  browser.on('disconnected', () => {
+    if (!cleaningUp) diagnostic('browser_disconnected_before_cleanup');
+  });
+  browser.process()?.once('exit', (code, signal) => {
+    if (!cleaningUp || runFailed) diagnostic('browser_process_exit', { code, signal });
   });
   pages = await Promise.all(Array.from({ length: playerCount }, async (_, index) => {
     // Every participant receives an isolated browser profile. This prevents
@@ -217,6 +242,14 @@ try {
         timeoutMs: rosterTimeoutMs,
       });
     } catch (error) {
+      // Record the original rejection before another browser call can delay
+      // its report or a sibling failure can start shared-browser cleanup.
+      diagnostic('guest_evaluate_rejected', {
+        player: `player-${guestIndex + 2}`,
+        message: error.stack || error.message,
+        pageClosed: page.isClosed(),
+        browserConnected: browser.connected,
+      });
       const details = await page.evaluate(() => ({
         stage: globalThis.__COT_ROSTER_SOAK?.stage || 'unknown',
         errors: globalThis.__COT_ROSTER_SOAK?.errors || [],
@@ -555,7 +588,15 @@ try {
     synchronized: true,
     cleanDeparture: true,
   }, null, 2));
+} catch (error) {
+  runFailed = true;
+  diagnostic('run_failed_before_cleanup', {
+    message: error.stack || error.message,
+    browserErrors: browserErrors.slice(0, 20),
+  });
+  throw error;
 } finally {
+  cleaningUp = true;
   await Promise.all(pages.map(closePageState));
   if (browser) await browser.close().catch(() => {});
   await Promise.all(contexts.map((context) => context?.close().catch(() => {})));

@@ -441,7 +441,9 @@ export function createNetworkBattlePresentationRuntime(
       // final camera/world pose. This is the same reveal barrier as solo entry
       // and prevents both black flashes and a first-frame shader hitch.
       await load.primeReveal();
+      throwIfNetworkBattleEntryAborted(signal);
       await load.battleLoad.hide();
+      throwIfNetworkBattleEntryAborted(signal);
       load.setAdaptiveSuspended(false);
       mark('reveal');
       trace.totalMs = Math.round(now() - loadStartedAt);

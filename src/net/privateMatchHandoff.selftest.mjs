@@ -10,6 +10,8 @@ import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.ts';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.ts';
+import { createEnvelope, MESSAGE_TYPES } from './protocol.ts';
+import { captureWorldSnapshot } from './snapshot.ts';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 
@@ -85,6 +87,152 @@ async function waitUntil(predicate, timeoutMs = 500) {
     if (performance.now() >= deadline) throw new Error('timed out waiting for test condition');
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
+}
+
+function openGuestChannels(session) {
+  const control = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const state = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: control });
+  session.peer.peerConnection.ondatachannel({ channel: state });
+  return { control, state };
+}
+
+function publishGuestLobby(control, sequence = 1) {
+  const lobby = createLobby({ roomCode: 'FAIL22', hostId: 'host', hostName: 'Host' });
+  addLobbyPlayer(lobby, { id: 'guest', name: 'Guest' });
+  const data = JSON.stringify(createEnvelope(MESSAGE_TYPES.LOBBY_STATE,
+    serializeLobby(lobby), { seq: sequence }));
+  for (const listener of control.listeners.get('message') || []) listener({ data });
+}
+
+// Temporary rendezvous loss does not close healthy peer gameplay. Explicit
+// room/membership termination reaches both host and guest exactly once.
+for (const role of ['host', 'client']) {
+  for (const reason of ['host_left', 'expired', 'resume_denied', 'kicked']) {
+    const signaling = new FakeSignaling();
+    const reasons = [];
+    const options = {
+      signaling,
+      hostName: 'Host',
+      roomInfo: { roomCode: 'FAIL22', peerId: role === 'host' ? 'host' : 'guest',
+        hostId: 'host', mode: 'private' },
+      RTCPeerConnectionImpl: role === 'host' ? FakeHostPeerConnection : FakeClientPeerConnection,
+      onClose: (code) => reasons.push(code),
+    };
+    const session = role === 'host'
+      ? new PrivateRoomHostSession(options) : new PrivateRoomClientSession(options);
+    if (role === 'client') { openGuestChannels(session); await session.ready; }
+    signaling.emit({ type: 'signaling_state', payload: { state: 'reconnecting', attempt: 7 } });
+    assert.equal(session.closed, false, 'signaling outage alone preserves peer gameplay');
+    signaling.emit({ type: 'room_closed', payload: { roomCode: 'OTHER2', reason } });
+    assert.equal(session.closed, false, 'another room cannot terminate this session');
+    signaling.emit({ type: 'room_closed', payload: { roomCode: 'FAIL22', reason } });
+    signaling.emit({ type: 'room_closed', payload: { roomCode: 'FAIL22', reason } });
+    assert.equal(session.closed, true);
+    assert.equal(signaling.listeners.size, 0);
+    assert.deepEqual(reasons, [reason]);
+    session.close('duplicate_owner_cleanup');
+    assert.deepEqual(reasons, [reason]);
+  }
+}
+
+// A lobby data lane can close while aggregate RTC remains connected and no
+// match WELCOME has happened. Its replacement must still have a total deadline;
+// merely opening new channels or emitting RTCconnected does not reset it.
+{
+  const signaling = new FakeSignaling();
+  const reasons = [];
+  const session = new PrivateRoomClientSession({
+    signaling, roomInfo: { roomCode: 'FAIL22', peerId: 'guest', hostId: 'host', mode: 'lan' },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+    failedRebuildDelayMs: 0, recoveryTimeoutMs: 40,
+    onClose: (reason) => reasons.push(reason),
+  });
+  const first = openGuestChannels(session);
+  await session.ready;
+  const oldPeer = session.peer;
+  first.state.close();
+  await waitUntil(() => session.peer !== oldPeer);
+  openGuestChannels(session);
+  session.peer.peerConnection.onconnectionstatechange();
+  await waitUntil(() => session.closed);
+  assert.deepEqual(reasons, ['rtc_recovery_exhausted']);
+  assert.equal(session.recoveryTimer, null);
+  assert.equal(signaling.listeners.size, 0);
+}
+
+{
+  const signaling = new FakeSignaling();
+  const reasons = [];
+  const session = new PrivateRoomClientSession({
+    signaling, roomInfo: { roomCode: 'FAIL22', peerId: 'guest', hostId: 'host', mode: 'lan' },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+    failedRebuildDelayMs: 0, recoveryTimeoutMs: 40,
+    onClose: (reason) => reasons.push(reason),
+  });
+  const first = openGuestChannels(session);
+  await session.ready;
+  const oldPeer = session.peer;
+  first.control.close();
+  await waitUntil(() => session.peer !== oldPeer);
+  const next = openGuestChannels(session);
+  await waitUntil(() => !session.replacePromise);
+  publishGuestLobby(next.control);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(session.closed, false, 'validated lobby state completes recovery before its deadline');
+  assert.deepEqual(reasons, []);
+  session.close('test_done');
+}
+
+// Retiring a host while TURN acquisition is pending cannot attach a late peer
+// behind the closed room or publish a stale error into its replacement menu.
+{
+  let releaseIce;
+  const ice = new Promise((resolve) => { releaseIce = resolve; });
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomHostSession({
+    signaling, roomInfo: { roomCode: 'FAIL22', peerId: 'host', hostId: 'host', mode: 'private' },
+    hostName: 'Host',
+    RTCPeerConnectionImpl: FakeHostPeerConnection,
+    refreshIceConfiguration: () => ice,
+  });
+  signaling.emit({ type: 'peer_joined', payload: { roomCode: 'FAIL22', peerId: 'guest',
+    sessionId: 'guest_epoch_1' } });
+  session.close('host_closed');
+  releaseIce({ iceServers: [], relayOnly: false, relayAvailable: false, expiresInSeconds: 60 });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(session.peers.size, 0);
+  assert.equal(signaling.signals.length, 0, 'late ICE acquisition cannot restart a closed host');
+}
+
+// Native ICE can reconnect without replacing its still-open data channels or
+// sending another WELCOME. Fresh accepted snapshots must end that recovery
+// deadline too, or a healthy battle is incorrectly closed a minute later.
+{
+  const signaling = new FakeSignaling();
+  const reasons = [];
+  const session = new PrivateRoomClientSession({
+    signaling, roomInfo: { roomCode: 'FAIL22', peerId: 'guest', hostId: 'host', mode: 'lan' },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+    disconnectedRebuildDelayMs: 1000, recoveryTimeoutMs: 40,
+    onClose: (reason) => reasons.push(reason),
+  });
+  const { control } = openGuestChannels(session);
+  await session.ready;
+  const native = session.peer.peerConnection;
+  native.connectionState = 'disconnected';
+  native.onconnectionstatechange();
+  native.connectionState = 'connected';
+  native.onconnectionstatechange();
+  const snapshot = captureWorldSnapshot({ tick: 1, serverTimeMs: 50,
+    entities: [], viewerId: 'guest' });
+  const data = JSON.stringify(createEnvelope(MESSAGE_TYPES.SNAPSHOT, snapshot, { tick: 1, seq: 1 }));
+  for (const listener of control.listeners.get('message') || []) listener({ data });
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(session.closed, false, 'fresh authority ends natural ICE recovery without a new WELCOME');
+  assert.deepEqual(reasons, []);
+  session.close('test_done');
 }
 
 // A first-visit browser can lose its opening RTC generation while signaling,
@@ -367,7 +515,7 @@ assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bo
   'horde fills only the enemy wave pool with authority-owned bots');
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
-  takeMatchChannels: () => [{ peerId: 'peer-1', transport: remote.host }],
+  takeMatchChannels: () => [],
 };
 const clientSession = {
   roomInfo: { peerId: 'peer-1', mode: 'lan' },
@@ -393,6 +541,11 @@ assert.equal(hosted.host.maxBacklogTicks, 300,
   'browser authority preserves up to five seconds of stalled match time');
 assert.equal(hosted.host.longStallCatchUpTicks, 2,
   'long stalls recover at one extra simulation tick per presented frame');
+hosted.ready();
+hosted.advance(50);
+assert.equal(hosted.host.matchStarted, false,
+  'private authority waits for the lobby human whose RTC channel has not arrived');
+hosted.host.attachPeer({ peerId: 'peer-1', transport: remote.host });
 const joined = await beginPrivateClientMatch({
   session: clientSession,
   lobbyState: liveReloadLobby,
@@ -412,16 +565,29 @@ assert.ok(MAP_IDS.includes(hosted.mapId), 'random map resolves from the shared m
 assert.equal(joined.mapId, hosted.mapId,
   'a client rejoining the playing room restores the authority battlefield');
 
-joined.submitInput({
+const remoteDriveInput = {
   throttle: 1, steer: 0, brake: false, fire: false,
   aimYaw: Math.PI, aimPitch: 0, shellSlot: 0, actionBits: 0,
-}, hosted.host.tick);
+};
+joined.submitInput(remoteDriveInput, hosted.host.tick);
 await Promise.resolve();
-for (let i = 0; i < 120; i++) hosted.host.advance(1000 / 60);
+for (let i = 0; i < 120; i++) {
+  if (i > 0 && i % 10 === 0) {
+    joined.submitInput(remoteDriveInput, hosted.host.tick);
+    await Promise.resolve();
+  }
+  hosted.host.advance(1000 / 60);
+}
 await Promise.resolve();
 assert.ok(joined.client.buffer.snapshots.length > 0, 'remote receives authoritative snapshots');
 assert.ok(hosted.simulation.entityById.get('peer-1').state.speed > 0,
   'remote controls feed host authority');
+const admittedRemoteSequence = hosted.host.peers.get('peer-1').lastInputSeq;
+for (let i = 0; i < 32; i++) hosted.host.advance(1000 / 60);
+assert.equal(hosted.host.peers.get('peer-1').input.throttle, 0,
+  'private host expires silent controls without requiring RTC disconnect');
+assert.equal(hosted.host.peers.get('peer-1').input.brake, true);
+assert.equal(hosted.host.peers.get('peer-1').lastInputSeq, admittedRemoteSequence);
 
 joined.close('test_done');
 hosted.close('test_done');

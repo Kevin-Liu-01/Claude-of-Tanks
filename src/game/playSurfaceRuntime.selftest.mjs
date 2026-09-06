@@ -41,7 +41,6 @@ const runtime = createPlaySurfaceRuntime({
   ],
   preloadNetworkPresentation: () => events.push(['preload', 'network']),
   preloadPrivateMatch: () => events.push(['preload', 'private']),
-  preloadDedicatedMatch: () => events.push(['preload', 'dedicated']),
   reportError: (scope, error) => errors.push([scope, error.message]),
 });
 
@@ -117,12 +116,24 @@ const retryRuntime = createPlaySurfaceRuntime({
   preloadCommon: [],
   preloadNetworkPresentation: () => {},
   preloadPrivateMatch: () => {},
-  preloadDedicatedMatch: () => {},
   reportError: (scope, error) => errors.push([scope, error.message]),
 });
 await assert.rejects(() => retryRuntime.open({ mode: 'private' }), /cold evaluation failed/);
 await retryRuntime.open({ mode: 'private' });
 assert.equal(retryCreates, 2, 'a failed menu construction remains retryable');
+
+menuShowsRoom = false;
+events.length = 0;
+runtime.preload('ranked');
+await Promise.resolve();
+await Promise.resolve();
+assert.ok(events.some((event) => event[0] === 'preload' && event[1] === 'private'),
+  'stale Ranked intent warms the supported private path');
+assert.ok(!events.some((event) => event.includes('ranked') || event.includes('dedicated')),
+  'retired Ranked intent never acquires a ranked or dedicated dependency');
+await runtime.open({ mode: 'ranked' });
+assert.deepEqual(events.at(-1), ['show', 'private', undefined],
+  'stale Ranked selection opens private rooms instead of an unavailable queue');
 
 assert.deepEqual(errors, []);
 console.log('playSurfaceRuntime.selftest: preload, room, solo, dismissal and retry passed');

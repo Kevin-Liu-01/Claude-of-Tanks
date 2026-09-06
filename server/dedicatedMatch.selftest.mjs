@@ -3,6 +3,48 @@ import { WebSocket } from 'ws';
 import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { createDedicatedMatchServer } from './dedicatedMatchServer.ts';
+import { RankedMatchmaker } from './rankedMatchmaker.ts';
+import { MatchClientRuntime } from '../src/net/matchRuntime.ts';
+import { createLoopbackTransportPair } from '../src/net/loopbackTransport.ts';
+
+// Ticketed-but-not-connected commanders remain part of dedicated readiness.
+// A disconnect before release cannot let the other team start alone either.
+{
+  let gateNow = 0;
+  const gateRegistry = new DedicatedMatchRegistry({ now: () => gateNow });
+  const assignment = gateRegistry.createMatch({ matchId: 'dedicated_ready_gate', players: [
+    { id: 'first', specId: 'm1a2', team: 'alpha' },
+    { id: 'late', specId: 'm1a2', team: 'bravo' },
+  ] });
+  const firstLink = createLoopbackTransportPair({ direct: true });
+  const match = gateRegistry.attach({ ...assignment.tickets[0], transport: firstLink.host });
+  const first = new MatchClientRuntime({ playerId: 'first', transport: firstLink.client });
+  first.connect(); first.readyForMatch(); gateRegistry.advance(50);
+  assert.equal(match.runtime.matchStarted, false, 'dedicated countdown waits for the absent ticket');
+  assert.equal(match.simulation.phase, 'loading');
+  const lateLink = createLoopbackTransportPair({ direct: true });
+  gateRegistry.attach({ ...assignment.tickets[1], transport: lateLink.host });
+  const late = new MatchClientRuntime({ playerId: 'late', transport: lateLink.client });
+  late.connect(); gateRegistry.advance(50);
+  assert.equal(match.runtime.matchStarted, false, 'dedicated late join must acknowledge loading');
+  first.close(); late.readyForMatch(); gateRegistry.advance(50);
+  assert.equal(match.runtime.matchStarted, false, 'pre-start departure does not create a one-sided match');
+  gateNow = 179_999;
+  gateRegistry.advance(50);
+  assert.ok(gateRegistry.matches.has(match.id), 'the reserved roster has its full loading grace');
+  const replacement = createLoopbackTransportPair({ direct: true });
+  gateRegistry.attach({ ...assignment.tickets[0], transport: replacement.host });
+  const recovered = new MatchClientRuntime({ playerId: 'first', transport: replacement.client });
+  recovered.connect(); gateRegistry.advance(50);
+  assert.equal(match.runtime.matchStarted, false, 'reconnected ticket must become ready again');
+  recovered.readyForMatch(); gateRegistry.advance(50);
+  assert.equal(match.runtime.matchStarted, true);
+  assert.equal(match.simulation.phase, 'countdown');
+  gateNow = 360_000;
+  gateRegistry.advance(50);
+  assert.ok(gateRegistry.matches.has(match.id), 'started matches are never subject to loading expiry');
+  gateRegistry.close();
+}
 
 let tokenCounter = 0;
 const registry = new DedicatedMatchRegistry({
@@ -57,6 +99,14 @@ assert.equal(registry.matches.get('ranked_test_1').runtime.matchStarted, false,
   'four-player authority waits for every ticketed player, including peers not yet ready');
 for (const connection of [p2, p3, p4]) connection.client.readyForMatch();
 for (let i = 0; i < 480; i++) {
+  // Real clients refresh held controls; a single pre-loading packet is not
+  // authorization to drive indefinitely after the input lease expires.
+  if (i % 10 === 0) {
+    p1.client.submitInput({ throttle: 1, steer: 0, brake: false, fire: false,
+      aimYaw: 0, aimPitch: 0, shellSlot: 0, actionBits: 0 },
+    registry.matches.get('ranked_test_1').runtime.tick);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
   service.advance(1000 / 60);
   if (i % 10 === 0) await new Promise((resolve) => setImmediate(resolve));
 }
@@ -79,6 +129,17 @@ assert.ok(p1.transport.stats.inputSent > 0,
   'dedicated steering uses the backpressure-safe replaceable binary lane');
 assert.equal(p1.client.getStats().inputAckLag, 0,
   'authority acknowledges the latest four-player input without a stale backlog');
+
+const dedicatedRuntime = registry.matches.get('ranked_test_1').runtime;
+const admittedSequence = dedicatedRuntime.peers.get('p1').lastInputSeq;
+for (let i = 0; i < 32; i++) service.advance(1000 / 60);
+const expiredInput = dedicatedRuntime.peers.get('p1').input;
+assert.equal(expiredInput.throttle, 0, 'silent real-WebSocket driver cannot hold throttle forever');
+assert.equal(expiredInput.brake, true);
+assert.equal(expiredInput.fire, false);
+assert.equal(dedicatedRuntime.peers.get('p1').lastInputSeq, admittedSequence,
+  'dedicated input expiry preserves the real admission receipt');
+assert.equal(registry.matches.get('ranked_test_1').players.get('p1').connected, true);
 
 const reconnectStates = [];
 const resilient = await beginDedicatedClientMatch({
@@ -131,6 +192,81 @@ p2.client.close('test_done');
 p3.client.close('test_done');
 p4.client.close('test_done');
 await service.close('test_done');
+
+// A missing ticket must not retain a simulation/reservation forever. Exercise
+// the actual native close frame as well as the browser reconnect owner.
+for (const simulateNetwork of [false, true]) {
+  let now = 0;
+  const previousLocation = globalThis.location;
+  const loadingRegistry = new DedicatedMatchRegistry({ now: () => now });
+  const loadingQueue = new RankedMatchmaker({ registry: loadingRegistry, now: () => now });
+  const waitingIdentity = loadingQueue.createIdentity({ name: 'Waiting' });
+  const absentIdentity = loadingQueue.createIdentity({ name: 'Absent' });
+  const queueTickets = [waitingIdentity, absentIdentity].map((identity) => loadingQueue.join({
+    playerId: identity.playerId, identityToken: identity.token, specId: 'm1a2', teamSize: 1,
+  }));
+  const waitingAssignment = loadingQueue.poll(queueTickets[0].ticketId, queueTickets[0].ticketToken).match;
+  const assignment = { matchId: waitingAssignment.matchId, tickets: [waitingAssignment] };
+  const abandonedMatch = loadingRegistry.matches.get(assignment.matchId);
+  const loadingService = await createDedicatedMatchServer({
+    registry: loadingRegistry, matchmaker: loadingQueue, autoTick: false,
+  });
+  let waiting = null;
+  try {
+    if (simulateNetwork) globalThis.location = {
+      search: '?netSim=1&netLatency=1&netJitter=0&netLoss=0&netInputLoss=0',
+    };
+    const statuses = [];
+    waiting = await beginDedicatedClientMatch({
+      ticket: { ...assignment.tickets[0], mapId: 'verdant', roster: [] },
+      url: `ws://127.0.0.1:${loadingService.address.port}/match`,
+      WebSocketImpl: WebSocket,
+      reconnectDelaysMs: [1, 1],
+      onStatus: (status) => statuses.push(status),
+    });
+    waiting.ready();
+    assert.equal(waiting.client.transport.kind.includes('simulated'), simulateNetwork);
+    await new Promise((resolve) => setImmediate(resolve));
+    now = 179_999;
+    loadingService.advance(50);
+    assert.equal(abandonedMatch.runtime.matchStarted, false);
+    assert.equal(loadingRegistry.stats().matches, 1);
+    const closedFrame = new Promise((resolve) => waiting.socket.addEventListener('close',
+      (event) => resolve({ code: event.code, reason: event.reason }), { once: true }));
+    now = 180_000;
+    loadingService.advance(50);
+    assert.deepEqual(await closedFrame, { code: 4008, reason: 'loading_expired' });
+    assert.deepEqual(loadingRegistry.stats(), { matches: 0, connectedPlayers: 0 });
+    assert.equal(abandonedMatch.simulation.result, null, 'absent player never fabricates a victory');
+    assert.equal(loadingRegistry.authenticate(assignment.tickets[0]), null,
+      'expired credentials cannot revive the abandoned operation');
+    assert.equal(loadingQueue.activeByPlayer.size, 0, 'all exact queue reservations are released');
+    assert.equal(loadingQueue.ratedMatches.size, 0, 'unstarted match tracking is reclaimed');
+    for (const ticket of queueTickets) {
+      assert.equal(loadingQueue.poll(ticket.ticketId, ticket.ticketToken).status, 'expired');
+    }
+    assert.equal(loadingQueue.profile(waitingIdentity.playerId).matches, 0);
+    assert.equal(loadingQueue.profile(absentIdentity.playerId).matches, 0);
+    assert.deepEqual(statuses.at(-1), { state: 'failed', reason: 'loading_expired' });
+    assert.equal(waiting.reconnecting, false);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(statuses.some((status) => status.state === 'reconnecting'), false,
+      'the terminal close reason skips retries of an intentionally dead match');
+    assert.equal(waiting.socket.listenerCount('message'), 0,
+      'terminal native close disposes its transport listeners despite an already closed client');
+    assert.equal(waiting.socket.listenerCount('error'), 0);
+    if (simulateNetwork) assert.equal(waiting.client.transport.stats.pending, 0,
+      'terminal close cancels diagnostic packet timers as well as native listeners');
+    now += 120_001;
+    loadingService.advance(50);
+    assert.equal(loadingQueue.entries.size, 0, 'expired tickets have a bounded replay lifetime');
+  } finally {
+    if (previousLocation === undefined) delete globalThis.location;
+    else globalThis.location = previousLocation;
+    waiting?.close('test_done');
+    await loadingService.close('test_done');
+  }
+}
 
 class NeverOpenSocket {
   constructor() {

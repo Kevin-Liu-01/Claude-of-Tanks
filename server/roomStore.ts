@@ -7,6 +7,9 @@ import type { RuntimeValue } from '../src/runtimeTypes.ts';
  * messages. Gameplay state never enters this store.
  */
 import { createRoomCode } from './roomCode.ts';
+import {
+  newSignalingResumeToken, signalingResumeAllowed, signalingResumeHash,
+} from './signalingMembership.ts';
 
 const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -44,6 +47,7 @@ export interface SignalingJoinResult {
   mode: string;
   maxPlayers: number;
   peers: SignalingPeerSummary[];
+  resumeToken: string;
 }
 
 export interface SignalingJoinResponse {
@@ -62,12 +66,15 @@ export interface CreateRoomOptions {
   sessionId?: RuntimeValue;
   maxPlayers?: number;
   mode?: RuntimeValue;
+  nextResumeToken?: RuntimeValue;
 }
 
 export interface JoinRoomOptions {
   roomCode?: RuntimeValue;
   player?: RuntimeValue;
   sessionId?: RuntimeValue;
+  resumeToken?: RuntimeValue;
+  nextResumeToken?: RuntimeValue;
 }
 
 export interface RelaySignalOptions {
@@ -82,6 +89,7 @@ interface SignalingMember {
   connection: SignalingConnection | null;
   player: SignalingPlayer;
   sessionId: string;
+  resumeTokenHash: string;
   disconnectedAt?: number;
 }
 
@@ -98,6 +106,27 @@ interface SignalingRoom {
 interface SignalingMembership {
   roomCode: string;
   peerId: string;
+}
+
+/** Durable adapter state contains capability hashes, never bearer tokens or RTC payloads. */
+export interface SignalingRoomSnapshot {
+  version: 1;
+  rooms: {
+    roomCode: string;
+    mode: string;
+    maxPlayers: number;
+    hostId: string;
+    createdAt: number;
+    touchedAt: number;
+    peers: {
+      peerId: string;
+      connectionId: string | null;
+      player: SignalingPlayer;
+      sessionId: string;
+      resumeTokenHash: string;
+      disconnectedAt?: number;
+    }[];
+  }[];
 }
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
@@ -128,8 +157,61 @@ function cleanSessionId(value: RuntimeValue, playerId: string): string {
 
 function randomUnit(): number {
   const word = new Uint32Array(1);
-  globalThis.crypto.getRandomValues(word);
+  crypto.getRandomValues(word);
   return word[0] / 0x100000000;
+}
+
+function restoreRoomHeader(entry: RuntimeValue): { room: SignalingRoom; peers: RuntimeValue[] } {
+  if (!isRecord(entry) || typeof entry.roomCode !== 'string' ||
+      !/^[A-Z0-9]{6}$/.test(entry.roomCode) || typeof entry.mode !== 'string' ||
+      entry.mode.length > 24 || !Number.isInteger(entry.maxPlayers) ||
+      Number(entry.maxPlayers) < 2 || Number(entry.maxPlayers) > 14 ||
+      typeof entry.hostId !== 'string' || !Number.isFinite(entry.createdAt) ||
+      !Number.isFinite(entry.touchedAt) || !Array.isArray(entry.peers) ||
+      entry.peers.length > Number(entry.maxPlayers)) throw new Error('invalid signaling room snapshot');
+  return { room: {
+    roomCode: entry.roomCode, mode: entry.mode, maxPlayers: Number(entry.maxPlayers),
+    hostId: entry.hostId, createdAt: Number(entry.createdAt), touchedAt: Number(entry.touchedAt),
+    peers: new Map(),
+  }, peers: entry.peers };
+}
+
+function restoreMember(
+  raw: RuntimeValue,
+  connectionForId: (id: string) => SignalingConnection | null,
+): SignalingMember {
+  if (!isRecord(raw) || typeof raw.peerId !== 'string' ||
+      typeof raw.resumeTokenHash !== 'string' || !/^[a-f0-9]{64}$/.test(raw.resumeTokenHash) ||
+      typeof raw.sessionId !== 'string' ||
+      (raw.connectionId !== null && (typeof raw.connectionId !== 'string' ||
+        !/^[a-zA-Z0-9_-]{1,128}$/.test(raw.connectionId))) ||
+      (raw.disconnectedAt != null && !Number.isFinite(raw.disconnectedAt))) {
+    throw new Error('invalid signaling member snapshot');
+  }
+  const player = cleanPlayer(raw.player);
+  if (player.id !== raw.peerId) throw new Error('signaling snapshot identity mismatch');
+  return {
+    peerId: player.id, player, sessionId: cleanSessionId(raw.sessionId, player.id),
+    connection: raw.connectionId === null ? null : connectionForId(raw.connectionId),
+    resumeTokenHash: raw.resumeTokenHash,
+    ...(raw.disconnectedAt == null ? {} : { disconnectedAt: Number(raw.disconnectedAt) }),
+  };
+}
+
+function restoreRoomPeers(
+  room: SignalingRoom,
+  peers: RuntimeValue[],
+  connectionForId: (id: string) => SignalingConnection | null,
+  membership: Map<SignalingConnection, SignalingMembership>,
+): void {
+  for (const raw of peers) {
+    const peer = restoreMember(raw, connectionForId);
+    if (room.peers.has(peer.peerId)) throw new Error('duplicate signaling member');
+    if (peer.connection && membership.has(peer.connection)) throw new Error('duplicate signaling connection');
+    room.peers.set(peer.peerId, peer);
+    if (peer.connection) membership.set(peer.connection, { roomCode: room.roomCode, peerId: peer.peerId });
+  }
+  if (!room.peers.has(room.hostId)) throw new Error('signaling snapshot host is missing');
 }
 
 export class SignalingRoomStore {
@@ -149,6 +231,43 @@ export class SignalingRoomStore {
     this.roomTtlMs = roomTtlMs;
   }
 
+  exportState(connectionId: (connection: SignalingConnection) => string): SignalingRoomSnapshot {
+    return {
+      version: 1,
+      rooms: [...this.rooms.values()].map((room) => ({
+        roomCode: room.roomCode, mode: room.mode, maxPlayers: room.maxPlayers,
+        hostId: room.hostId, createdAt: room.createdAt, touchedAt: room.touchedAt,
+        peers: [...room.peers.values()].map((peer) => ({
+          peerId: peer.peerId, player: { ...peer.player }, sessionId: peer.sessionId,
+          resumeTokenHash: peer.resumeTokenHash,
+          connectionId: peer.connection ? connectionId(peer.connection) : null,
+          ...(peer.disconnectedAt == null ? {} : { disconnectedAt: peer.disconnectedAt }),
+        })),
+      })),
+    };
+  }
+
+  /** Restore only validated adapter-owned data; missing sockets remain resumable seats. */
+  restoreState(
+    value: RuntimeValue,
+    connectionForId: (id: string) => SignalingConnection | null,
+  ): void {
+    if (this.rooms.size || this.membership.size) throw new Error('restore requires an empty store');
+    if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.rooms)) {
+      throw new Error('invalid signaling snapshot');
+    }
+    const rooms = new Map<string, SignalingRoom>();
+    const membership = new Map<SignalingConnection, SignalingMembership>();
+    for (const entry of value.rooms) {
+      const { room, peers } = restoreRoomHeader(entry);
+      if (rooms.has(room.roomCode)) throw new Error('duplicate signaling room');
+      restoreRoomPeers(room, peers, connectionForId, membership);
+      rooms.set(room.roomCode, room);
+    }
+    for (const [code, room] of rooms) this.rooms.set(code, room);
+    for (const [connection, member] of membership) this.membership.set(connection, member);
+  }
+
   #uniqueRoomCode(): string {
     for (let i = 0; i < 16; i++) {
       const code = this.roomCodeFactory();
@@ -159,7 +278,7 @@ export class SignalingRoomStore {
 
   create(
     connection: SignalingConnection,
-    { player, sessionId, maxPlayers = 14, mode = 'private' }: CreateRoomOptions = {},
+    { player, sessionId, maxPlayers = 14, mode = 'private', nextResumeToken }: CreateRoomOptions = {},
   ): SignalingJoinResult {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
@@ -170,6 +289,7 @@ export class SignalingRoomStore {
     const memberPlayer = cleanPlayer(player);
     const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
+    const token = newSignalingResumeToken(nextResumeToken);
     const roomCode = this.#uniqueRoomCode();
     const room: SignalingRoom = {
       roomCode,
@@ -182,6 +302,7 @@ export class SignalingRoomStore {
     };
     room.peers.set(peerId, {
       peerId, connection, player: memberPlayer, sessionId: memberSessionId,
+      resumeTokenHash: signalingResumeHash(token),
     });
     this.rooms.set(roomCode, room);
     this.membership.set(connection, { roomCode, peerId });
@@ -194,12 +315,13 @@ export class SignalingRoomStore {
       mode: room.mode,
       maxPlayers: room.maxPlayers,
       peers: [],
+      resumeToken: token,
     };
   }
 
   join(
     connection: SignalingConnection,
-    { roomCode, player, sessionId }: JoinRoomOptions = {},
+    { roomCode, player, sessionId, resumeToken, nextResumeToken }: JoinRoomOptions = {},
   ): SignalingJoinResponse {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
@@ -210,12 +332,23 @@ export class SignalingRoomStore {
     const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
     const previous = room.peers.get(peerId);
+    const token = newSignalingResumeToken(nextResumeToken);
+    const nextHash = signalingResumeHash(token);
+    // Accepting the already-installed next token makes a lost rotation reply
+    // retryable. A stale token alone cannot mint a replacement capability.
+    if (previous && !signalingResumeAllowed(previous.resumeTokenHash,
+      signalingResumeHash(resumeToken), nextHash)) {
+      throw Object.assign(new Error('room seat requires its private resume credential'), {
+        code: 'resume_denied',
+      });
+    }
     if (!previous && room.peers.size >= room.maxPlayers) {
       throw Object.assign(new Error('room is full'), { code: 'room_full' });
     }
     if (previous?.connection) this.membership.delete(previous.connection);
     const member: SignalingMember = {
       peerId, connection, player: memberPlayer, sessionId: memberSessionId,
+      resumeTokenHash: nextHash,
     };
     const peers = [...room.peers.values()].filter((peer) => peer.peerId !== peerId).map((peer) => ({
       peerId: peer.peerId,
@@ -237,6 +370,7 @@ export class SignalingRoomStore {
         mode: room.mode,
         maxPlayers: room.maxPlayers,
         peers,
+        resumeToken: token,
       },
       notify: [...room.peers.values()]
         .filter((peer) => peer.peerId !== peerId)
@@ -340,9 +474,10 @@ export class SignalingRoomStore {
   poll(connection: SignalingConnection): SignalingNotification[] {
     const membership = this.membership.get(connection);
     const room = membership && this.rooms.get(membership.roomCode);
-    if (room && room.peers.get(membership.peerId)?.connection === connection) {
-      room.touchedAt = this.now();
+    if (!membership || !room || room.peers.get(membership.peerId)?.connection !== connection) {
+      throw Object.assign(new Error('room connection was replaced or expired'), { code: 'resume_denied' });
     }
+    room.touchedAt = this.now();
     return [];
   }
 
