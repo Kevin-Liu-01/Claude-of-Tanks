@@ -548,3 +548,91 @@ The separate [Colyseus assessment](colyseus-assessment-2026-09.md) explains why
 the current Private/LAN architecture is retained, what its newer netcode can
 teach this implementation, and what a future dedicated-server comparison would
 need to prove. No framework migration was made.
+
+### Follow-up: destruction-history cache evaluated, not shipped
+
+A CPU-only review after `748b120b7` found that each authoritative viewer
+snapshot copied the entire cumulative destroyed-obstacle index list, even when
+its revision was unchanged. The per-peer ACK histories retained those separate
+arrays. A real-authority fixture with 14 players, one successfully
+destroyed obstacle and 80 retained snapshots per player produced **1,120
+distinct arrays containing the same `[7]`** before the fix. This is not a
+browser heap or frame-time measurement.
+
+A candidate published one separate frozen copy per observed destruction
+revision. It copied lazily at the next snapshot, not for each obstacle in a
+destruction burst. Regression tests proved one retained list instead of 1,120,
+with no subsequent unchanged copies. Older snapshots, viewer-specific metadata,
+reconnect keyframes, real destruction and new-world/round isolation passed.
+
+At the default 20 Hz and 14 viewers, this would eliminate 280 array copies per second
+while the revision is unchanged. For a hypothetical 1,000 destroyed obstacles,
+that is 280,000 copied numeric elements per second and up to 1,120,000 retained
+numeric elements across 80 snapshots per peer, replaced by one shared
+1,000-element list for that revision. These are copy/reference counts, **not**
+measured bytes saved or a claimed FPS gain. Serialization still transmits the
+list, so no bandwidth or RTT reduction is claimed.
+
+However, the actual codec comparison caught a CPU cost. On Node 24.13 / V8 13.6,
+eleven alternating warmed batches encoded fourteen viewer packets per broadcast
+(fourteen entities, six shells each), with fresh snapshot metadata. Comparing
+the **old per-view slice plus encoding** against the frozen cached list plus
+encoding produced byte-identical packets but these broadcast medians:
+
+| Destroyed indices | Old copy + encode | Frozen cache + encode |
+| --- | ---: | ---: |
+| 0 | 0.449 ms | 0.449 ms |
+| 1 | 0.434 ms | 0.582 ms |
+| 100 | 0.458 ms | 0.615 ms |
+| 1,000 | 0.770 ms | 1.406 ms |
+
+Concurrent tests make absolute timings non-isolated. Nevertheless, every paired
+nonempty batch was slower with frozen lists. This is a CPU-for-memory tradeoff,
+not a demonstrated lag improvement. With no browser GC benefit established,
+the candidate was **deferred and removed before release**. The existing authority
+copying behavior remains unchanged; an externally mutable shared list was not
+substituted to sidestep the cost or weaken snapshot isolation.
+
+The candidate and proof are preserved outside git in the isolated release
+artifact directory: `deferred-frozen-destruction-cache.patch`,
+`codec-history-broadcast-bench.mjs`, `codec-history-broadcast-receipt.json` and
+`codec-frozen-original-receipt.md`.
+
+The same review did not establish a high-leverage client sampling bottleneck.
+It did find that absent ERA state allocates a new empty array on every entity
+decode: a fourteen-entity interpolated frame plus owned immediate authority
+performs 44 such decodes. At 120 Hz, that is 5,280 empty arrays per second.
+The complete sampler took approximately 0.022 ms in the initial synthetic
+fixture, so this is allocation cleanup, not an explanation for a large stall.
+Neither finding establishes the cause or resolution of the earlier isolated
+214–319 ms production stalls.
+
+### Client empty-ERA reuse
+
+Only the decoded presentation fallback now shares a frozen empty string list.
+The decoded field is typed read-only. Supplied empty or populated source arrays
+retain their existing reference semantics; the sampler does not freeze, copy,
+or mutate them. The fallback never enters the authoritative capture or wire
+representation, so it does not incur the frozen-history serialization cost
+above. Interpolation, input cadence, prediction and collision rules are unchanged.
+
+`src/net/snapshotEraReuse.selftest.mjs` exercises the public sampler, including
+all 44 decodes in the fourteen-entity/immediate-authority fixture, repeated
+sampling, separate buffers, changing depletion, explicit empty and then absent
+state, respawn, visibility re-entry and clear. Mutation attempts cannot
+contaminate another entity, and real binary packets are byte-identical before
+and after sampling. The test is registered in the ordered core suite.
+
+The new fixture failed four of its six cases against the old implementation;
+all six pass after the change, as do the existing snapshot and browser-bridge
+tests. A separate comparison loaded the actual prepatch and patched samplers,
+using fourteen entities, thirty-two frozen raw frames, immediate owned state,
+and real empty-list reads. Eleven alternating batches of 4,000 samples yielded
+0.006570 ms old versus 0.006321 ms new median per sample (paired median change
+−0.000145 ms). This is tiny and noisy under concurrent tests, not an FPS claim
+or a like-for-like comparison with the earlier differently instrumented sampler
+fixture. The concrete gain is 44 fewer empty-array constructions per frame in
+that fourteen-entity scenario, with unchanged decoded values and no observed
+serialization tradeoff. Artifacts are `snapshot-era-reuse-bench.mjs`,
+`snapshot-era-reuse-benchmark.json`, `snapshot-era-before.ts` and
+`snapshot-era-reuse-red.log` in the isolated release artifact directory.

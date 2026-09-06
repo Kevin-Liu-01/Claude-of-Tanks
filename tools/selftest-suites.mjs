@@ -280,6 +280,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/signalingRoomRoute.selftest.mjs',
     'src/net/playMode.selftest.mjs',
     'src/net/snapshot.selftest.mjs',
+    'src/net/snapshotEraReuse.selftest.mjs',
     'src/net/matchRuntimeDelivery.selftest.mjs',
     'src/net/channelTransport.selftest.mjs',
     'src/net/predictionAuthorityState.selftest.mjs',
