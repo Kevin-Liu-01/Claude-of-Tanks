@@ -1,0 +1,42 @@
+{
+  "vehicleId": "t90sm_x",
+  "sourceReference": "/models/community-candidates/t90sm_x_source.glb",
+  "sourceOracleSha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+  "method": "Original closed backing-plate and folded-channel primitives using independently measured scalar planes, dimensions and intermediate section bounds; no source vertex/index buffers or topology are shipped",
+  "sourceComponents": {
+    "backingPlates": [8769,8827,8898],
+    "foldedCarriers": [8760,674,8879],
+    "lowerCouplingStrips": [8789,8853]
+  },
+  "layout": "Asymmetric 3+2+1 left bank, not a mirrored right carrier or six independent floating pedestal boxes",
+  "sourceBackingClosestPointsXYZ": [
+    [-1.328344474,2.247559043,-0.393410534],[-1.240300486,2.257888599,-0.323977686],
+    [-1.143846344,2.261625008,-0.265860884],[-1.335281410,2.196504652,-0.195824267],
+    [-1.229257341,2.200594411,-0.150945267],[-1.345336144,2.115712877,-0.017029506]
+  ],
+  "heldOutBackingEdges": [
+    {"bank":0,"x":-1.30,"low":2.203493,"high":2.295765},
+    {"bank":0,"x":-1.21,"low":2.210131,"high":2.301675},
+    {"bank":1,"x":-1.30,"low":2.143108,"high":2.246726},
+    {"bank":1,"x":-1.20,"low":2.145663,"high":2.247798},
+    {"bank":2,"x":-1.35,"low":2.062744,"high":2.165578},
+    {"bank":2,"x":-1.30,"low":2.063980,"high":2.166058}
+  ],
+  "heldOutWholeModelRay": {
+    "origin": [-1.23113109,2.25189474,-0.33902155],
+    "direction": [0,-1,0],
+    "sourceFirstSurfaceY": 2.226325158,
+    "nativeFirstSurfaceY": 2.223528444,
+    "sourceFreeDepthM": 0.025569582,
+    "requiredFreeDepthM": 0.008,
+    "note": "The upper-bank center retains real stand-off air between backing and carrier; the lower coupling strips join below it. A solid bounding box would fail this witness."
+  },
+  "integratedAttachment": {
+    "commonInteriorPoint": [-1.44,2.070,-0.067],
+    "actualCarrierYInterval": [2.065587,2.082923],
+    "actualCantedCaseYInterval": [1.813440,2.157067],
+    "note": "The measured lower carrier overlaps the existing source-corrected canted case at this point; no extension or waiver is used. The test casts against actual built buffers with back-face culling removed read-only."
+  },
+  "constructionAllowances": "Source-fitted plane normals are rounded to six decimal places. The folded sheets are closed8mm skins and the three backing plates have14/21/27mm authored depth within their measured source envelopes. Narrow lower ties are independently authored inside the source coupling-strip region. Small terminal bevels are simplified; intermediate source lower/upper bounds retain4mm assertions.",
+  "regression": "src/vehicles/profiles/t90SMXLeftSmokeMounts.selftest.mjs checks high/low actual visible turretDetail buffer presence within2µm, six positive rear-stock engagements, held-out source edge and first-surface rays, true stand-off air, and positive case contact. The complete192-ray smoke regression and strict track audit remain separate."
+}

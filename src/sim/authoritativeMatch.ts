@@ -1882,6 +1882,8 @@ export function createAuthoritativeMatch({
         canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: {
           phase,
+          // Stable presentation seed: no draw from the combat RNG stream.
+          weatherSeed: seed >>> 0,
           countdownMs: Math.round(countdownRemainingS * 1000),
           battleTimeMs: Math.round(timeS * 1000),
           result,

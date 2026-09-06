@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "t90sm_x",
+  "measuredAt": "2026-09-06T03:45:30Z",
+  "purpose": "Local-only scalar study of the actual SM bronya front cover and folded lower lip; independently authored primitives, no source vertices, topology, UVs or textures retained",
+  "canonicalSource": {
+    "path": "public/models/community-candidates/t90sm_x_source.glb",
+    "sha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+    "frame": "+Y up, +Z forward, metres; unchanged canonical-source-world registration",
+    "ownership": "OracleHull/bronya; source chasis independently checked to distinguish missing applique from the intact core hull",
+    "provenance": "Same owner-supplied local comparison-only reference and provenance restrictions as t90sm_x.md; no redistribution permission inferred"
+  },
+  "diagnosis": {
+    "sourceCoverAtX05Y093Z": 3.4425323083,
+    "oldNativeCoreAtX05Y093Z": 3.333766,
+    "sourceCoverAtX05Y103Z": 3.204062,
+    "oldGenericEraAtX05Y103Z": 3.469564,
+    "sourceCoverAtX05Y108Z": 3.0764158977,
+    "oldGenericEraAtX05Y108Z": 3.362776,
+    "scope": "Replace only SM generic glacisEra and its interfering bowGear lower crossbar/studs; leave core hull, running gear, hatch, lamp and tow assemblies untouched"
+  },
+  "forwardPlates": [
+    {
+      "side": "left",
+      "boundsXM": [-0.891444564, -0.002264696],
+      "upperRearYZ": [1.158417344, 2.865786791],
+      "upperFrontYZ": [0.939337671, 3.446418285],
+      "topPlaneNormal": [0, 0.935615851, 0.353019801],
+      "topPlaneD": 2.095513112,
+      "frontCapNormal": [0, -0.387076802, 0.922047477],
+      "frontCapD": 2.814165462,
+      "lowerFaceDisplacementYZ": [-0.03769761, -0.01583123]
+    },
+    {
+      "side": "right",
+      "boundsXM": [-0.008304389, 0.880876303],
+      "upperRearYZ": [1.161865234, 2.867419720],
+      "upperFrontYZ": [0.935628712, 3.444985628],
+      "topPlaneNormal": [0, 0.931115545, 0.364724336],
+      "topPlaneD": 2.127648536,
+      "frontCapNormal": [0, -0.399555122, 0.916709171],
+      "frontCapD": 2.784214675,
+      "lowerFaceDisplacementYZ": [-0.03749806, -0.01634383]
+    }
+  ],
+  "lowerFoldedRib": {
+    "boundsXM": [-0.881837130, 0.895545185],
+    "boundsYM": [0.827125967, 0.898902535],
+    "frontLowerYZ": [0.827125967, 3.423683405],
+    "frontUpperYZ": [0.895413637, 3.451048136],
+    "frontNormal": [0, -0.371972561, 0.928243726],
+    "frontPlaneD": 2.870344475,
+    "backLowerYZ": [0.830116928, 3.413158178],
+    "backUpperYZ": [0.898902535, 3.440521717],
+    "airWitness": { "x": -0.33, "y": 0.900, "direction": [0, 0, -1], "bronyaHit": null }
+  },
+  "rearFields": {
+    "centerBaseBoundsXM": [[-0.571243644, 0.021584431], [0.013971441, 0.606799543]],
+    "centerRaisedFaceBoundsXM": [[-0.558145761, -0.288478494], [-0.261548817, 0.008119207], [0.027436664, 0.297103912], [0.324034363, 0.593701661]],
+    "centerRaisedFacePlanes": [
+      { "normal": [0, 0.936089424, 0.351762122], "d": 2.086605055 },
+      { "normal": [0, 0.936067049, 0.351821659], "d": 2.089075591 }
+    ],
+    "outerUpperBoundsXM": [[-0.866372049, -0.571978271], [0.608879805, 0.903397202]],
+    "outerUpperPlanes": [
+      { "normal": [0, 0.878325070, 0.478063878], "d": 2.358975181 },
+      { "normal": [0, 0.878325331, 0.478063398], "d": 2.357649890 }
+    ]
+  },
+  "heldOutFrontRaysXYZ": [
+    [-0.33, 0.852, 3.433651108], [0.27, 0.875, 3.442867835],
+    [-0.33, 0.916, 3.436621099], [0.27, 0.918, 3.437302011],
+    [-0.33, 0.971, 3.362502944], [0.27, 1.025, 3.216827024],
+    [-0.48, 1.095, 3.033863120], [0.42, 1.095, 3.038121954]
+  ],
+  "heldOutTopRaysXZY": [
+    [-0.33, 2.36, 1.342229081], [0.27, 2.63, 1.243270585],
+    [-0.48, 2.78, 1.184402182], [-0.8, 2.42, 1.368582814],
+    [0.8, 2.62, 1.258216912], [0.8, 2.22, 1.415104191]
+  ],
+  "frontDetailRefinement": {
+    "measuredAt": "2026-09-06T04:54:02Z",
+    "reason": "Independent neutral-board review identified source repeated raised panels and small fitting relief absent from native blank covers. Connected-island and source-only triangle-plane measurements distinguish real shallow fixtures from texture details.",
+    "scope": "Only the two former thin overlays are split into four. Nine other armor solids, all core hull geometry and their original held-out surfaces remain unchanged. Sixteen ribs, four two-stage latches and two complete laterally supported upright assemblies use hullDetail equipment ownership.",
+    "overlays": {
+      "sourceIslandsBronya": [3240, 3280, 2163, 2126],
+      "panelBoundsXM": [[-0.558145761, -0.288478494], [-0.261548817, 0.008119207], [0.027436664, 0.297103912], [0.324034363, 0.593701661]],
+      "seamBoundsXM": [[-0.288478494, -0.261548817], [0.297103912, 0.324034363]],
+      "normalDepthM": [0.0064558302, 0.0064378330],
+      "seamFloorWitnessesXZY": [[-0.275, 2.5, 1.2827234506], [0.311, 2.5, 1.2852537226]],
+      "construction": "Separate solid overlays expose the original lower solid bases. No painted seams, transparency or invisible ownership proxies. Physical seam widths are tested on both sides of every edge."
+    },
+    "ribs": {
+      "count": 16,
+      "sourceIslandsBronya": [[3462, 3430], [3477, 3439], [3484, 3445], [3488, 3456], [2212, 2250], [2222, 2255], [2231, 2261], [2242, 2270]],
+      "boundsXM": [[-0.557901382, -0.289090216], [-0.261181474, 0.007629687], [0.027681045, 0.296614408], [0.324523896, 0.593456447]],
+      "topFaceZIntervalsM": [[2.30625105, 2.31418252], [2.42172050, 2.42977405], [2.53754115, 2.54558086], [2.65309095, 2.66112757], [2.31016588, 2.31821132], [2.42562580, 2.43368006], [2.54146314, 2.54950070], [2.65711164, 2.66506577]],
+      "topPlanesNyNzD": [[0.937882852, 0.346952094, 2.082335707], [0.937814217, 0.347137573, 2.082058388], [0.937850709, 0.347038971, 2.081238115], [0.936529980, 0.350587503, 2.088398792], [0.937151750, 0.348922050, 2.088229075], [0.937765502, 0.347269150, 2.084641649], [0.937843191, 0.347059288, 2.083605032], [0.939740366, 0.341888936, 2.071582165]],
+      "representativeNormalProudnessM": [0.0043849484, 0.0043792771],
+      "description": "Actual 269 mm transverse strips with about 4.4 mm exposed normal rise, not large armor blocks. Hidden underside closure uses the measured approximately 5.7 mm down / 2.36 mm aft displacement and penetrates the panel bearing."
+    },
+    "latches": {
+      "count": 4,
+      "sourceBaseIslandsBronya": [3197, 3217, 1951, 2093],
+      "sourceCapIslandsBronya": [3376, 3224, 2110, 2102],
+      "centersXM": [-0.80932963, -0.63771179, 0.67400232, 0.84561941],
+      "baseFootprintM": [0.075404, 0.0721],
+      "capFootprintM": [0.052513, 0.04443],
+      "representativeNormalRiseM": [0.0181609067, 0.0181450226],
+      "basePlanesNyNzD": [[0.878292747, 0.478123259, 2.313489112], [0.878297753, 0.478114063, 2.313319026]],
+      "capPlanesNyNzD": [[0.878331111, 0.478052780, 2.322509105], [0.878332437, 0.478050344, 2.322348527]],
+      "construction": "Two separate closed, clipped-corner, tapered stages; exact crown planes retained. Concealed stage depth is 10.6 mm to provide a sub-millimetre bearing overlap without changing the exterior crown."
+    },
+    "uprights": {
+      "count": 2,
+      "sourceTabIslandsChasis": [6351, 6543],
+      "tabBoundsXM": [[0.878896892, 0.895545185], [-0.875961304, -0.858824313]],
+      "tabBoundsYM": [1.301645041, 1.379402757],
+      "tabBoundsZM": [2.590126276, 2.670115232],
+      "crownPlaneNyNzD": [0.999222752, 0.039419424, 1.481842529],
+      "sourceLeafIslandsChasis": [6343, 2378],
+      "leafBoundsRightXYZ": [[0.897503257, 1.287689447, 2.564867973], [0.993472755, 1.350493073, 2.674324989]],
+      "leafCrownPlaneNyNzD": [0.917289484, 0.398221048, 2.263530144],
+      "sourceFoldedLegIslandsChasis": [2014, 6531],
+      "legBoundsRightXYZ": [[0.920027196, 1.215912104, 2.545922995], [0.972418070, 1.333545685, 2.649066210]],
+      "frontFoldPlanesNxNyNzD": [[0.531998208, -0.365335912, 0.763876677, 2.049094955], [-0.514598400, -0.374508267, 0.771318381, 1.066758023]],
+      "heldOutTopXZY": [[0.887, 2.640, 1.3788469537], [-0.868, 2.640, 1.3788469537], [0.920, 2.620, 1.3302136567], [-0.900, 2.620, 1.3302136567]],
+      "heldOutFrontXYZ": [[0.940, 1.260, 2.6219535099], [0.955, 1.260, 2.6200039544], [-0.920, 1.260, 2.6217698464], [-0.935, 1.260, 2.6201086882]],
+      "support": "Actual source path is upright tab -> lateral inclined leaf -> folded diagonal leg -> hull. The source tab-to-leaf manufacturing seam is about 2 mm; its concealed bearing is closed with about 1 mm native overlap, explicitly inferred. No pedestal fills the actual air under the tab. Source leg ends are uncapped; native closures are concealed inside the leaf and original hull. Minor left fold asymmetry is simplified within the 0.6 mm held-out depth tolerance.",
+      "retainedAirWitnessesXYZ": [[0.887, 1.280, 2.640], [-0.868, 1.280, 2.640]]
+    },
+    "verification": "Actual high/low factory tests retain all original rays; check exact seam widths, source floor and empty depth, all sixteen crown planes, both latch stages and their physical bearing intersections, tab/leaf/leg/hull contacts, exposed support source rays and no-pedestal air. Every new fixture is positive-volume, closed/manifold, UV-complete and hull equipment-owned."
+  },
+  "inferencesAndLimits": [
+    "Concealed closure beneath the rear center covers is mechanical inference where source meshes have no underside; the visible cap thickness and upper planes are measured",
+    "Narrow manufacturing edge variations, latch sculpting and micro-fasteners remain simplified; the exact bounded detail list is documented above",
+    "Thirteen armor pieces retain hullExternalArmor ownership after splitting only the two thin overlays; twenty-four attached ribs/latch solids now follow their damageable cover in hullExternalArmor with no independent hit faces, and six upright/support solids remain permanent hullDetail equipment. The original core hull is not reclassified or enlarged",
+    "No camera, registration, source normalization, dimensions, score, continuity or track threshold is changed"
+  ],
+  "eraBinding": {
+    "names": ["glacis_era_L", "glacis_era_R"],
+    "removableCoverCount": 8,
+    "permanentArmorCount": 5,
+    "attachedDepletingFurnitureCount": 24,
+    "permanentEquipmentCount": 6,
+    "scope": "Two forward covers, four thin center overlays and two upper outer covers retain every existing vertex. The lower folded rib, both central bases and both outer support courses stay permanent. Upright tabs, lateral leaves and diagonal legs stay fixed. Actual positive-Y cover triangles provide exact hit surfaces; rib/latch geometry depletes with its own cover but supplies no independent hit field. No source silhouette, negative space, support, donor ERA value or ordinary hull skin changes.",
+    "verification": "Original high/low source depth/normal, physical seam air and source fixture/contact tests pass after binding. Actual game hit/strip/second-hit/reset and permanent-buffer checks are in sourceXEra.selftest.mjs; final generated anatomy and strict release evidence must be refreshed."
+  },
+  "test": "src/vehicles/profiles/t90SMXFrontEra.selftest.mjs",
+  "status": "SM-only profile wiring complete; actual high/low held-out front/top depth and normal, adjacent-air, core-hull and closed-volume tests pass. Existing four-T90 geometry and SM engine-deck tests also pass. Fresh whole-model shaded, geometry and strict-track proof remains required"
+}

@@ -1465,11 +1465,12 @@ export function createLighting(
      */
     setSun(
       dir: THREE.Vector3,
-      opts: { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number } = {},
+      opts: { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number; fillIntensity?: number } = {},
     ): void {
       csm.lightDirection.copy(dir).negate().normalize();
       const intensity = opts.sunIntensity ?? SUN_INTENSITY;
       const colorHex = opts.sunColorHex ?? SUN_COLOR;
+      fill.intensity = opts.fillIntensity ?? FILL_INTENSITY;
       csm.lightIntensity = intensity;
       for (let k = 0; k < csm.lights.length; k++) {
         csm.lights[k].intensity = intensity;

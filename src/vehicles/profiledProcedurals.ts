@@ -29,6 +29,12 @@ import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.ts';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.ts';
 import { PUMA_S1_PROFILES } from './profiles/pumaS1.ts';
 import { TYPE89_LIGHT_TIGER_PROFILES } from './profiles/type89LightTiger.ts';
+import { LEOPARD_X_PROFILES } from './profiles/leopardX.ts';
+import { T90_X_PROFILES } from './profiles/t90X.ts';
+import { MERKAVA_X_PROFILES } from './profiles/merkavaX.ts';
+import { K2_X_PROFILES } from './profiles/k2X.ts';
+import { KF51_X_PROFILES } from './profiles/kf51X.ts';
+import { T14_X_PROFILES } from './profiles/t14X.ts';
 import {
   createProfileBuilders,
   type VehicleProfileRecord,
@@ -88,6 +94,12 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...SHERIDAN_PROFILES,
   ...PUMA_S1_PROFILES,
   ...TYPE89_LIGHT_TIGER_PROFILES,
+  ...LEOPARD_X_PROFILES,
+  ...T90_X_PROFILES,
+  ...MERKAVA_X_PROFILES,
+  ...K2_X_PROFILES,
+  ...KF51_X_PROFILES,
+  ...T14_X_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {

@@ -143,7 +143,8 @@ for (const spec of Object.values(TANK_SPECS)) {
   }
 }
 assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is covered');
-assert.equal(authoredShellChannels, 494,
+// The preserved 494-channel fleet plus thirteen three-channel source X builds.
+assert.equal(authoredShellChannels, 533,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

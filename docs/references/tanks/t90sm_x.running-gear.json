@@ -1,0 +1,47 @@
+{
+  "purpose": "independent local-source scalar measurements; never source runtime buffers",
+  "sourceOracleSha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+  "sourceObjects": ["details", "wheel_big_1"],
+  "units": "metres in fixed canonical source world",
+  "forgedArm": {
+    "leftAxialInterval": [-1.18298, -1.10577],
+    "rightAxialInterval": [1.10773, 1.18493],
+    "terminalWidthM": 0.0764,
+    "principalWidthM": 0.0772,
+    "principalVerticalInterval": [0.364789, 0.69952],
+    "nativePrincipalPivotDiameterM": 0.161706555,
+    "nativePrincipalAxleDiameterM": 0.194965059,
+    "diameterDerivation": "Measured source upper/lower envelopes about fixedY0.62459 and axleY0.45513, divided by the cosine of the retained native endpoint seat angle. Rounded-end forging reaches both envelopes within3mm."
+  },
+  "raisedCrossShaft": {
+    "leftAxialInterval": [-1.11777, -0.73306],
+    "rightAxialInterval": [0.73501, 1.11972],
+    "verticalInterval": [0.55821, 0.69097],
+    "sourceMiddleAxleY": 0.45513,
+    "derivedMiddlePivotLiftM": 0.16946
+  },
+  "movingAxleBoss": {
+    "leftAxialInterval": [-1.35713, -1.16507],
+    "rightAxialInterval": [1.16702, 1.35909],
+    "verticalInterval": [0.40776, 0.50229]
+  },
+  "sprocketExterior": {
+    "leftOuterX": -1.658217759,
+    "rightOuterX": 1.662045874,
+    "sourceVerticalInterval": [0.474289998, 1.220170980],
+    "sourceLongitudinalInterval": [-3.100302162, -2.290600123]
+  },
+  "authoringNotes": [
+    "The fixed cross-shaft and moving axle boss have different axial widths and seats; a single generic inboard boss envelope is not faithful.",
+    "Original forged primitives remain native suspension-driven geometry; the source specifies scalar dimensions, not imported vertices.",
+    "The source axle bosses meet the inboard wheel hub. They do not move the track lane, pad course or rolling radius.",
+    "The independently measured end-wheel outer faces differ between sides. Optional per-endpoint axial scales affect only native casting depth and retain each rotating axle lane and radial geometry.",
+    "The measured middle pivot lift is used by the native mechanical approximation; source-specific terminal bracket details remain separate equipment, not a claim of exact hidden suspension replication."
+  ],
+  "regressions": [
+    "roadWheelRestHeights.selftest.mjs: eight unchanged original high/low geometry-and-instance hashes",
+    "roadWheelRestHeights.selftest.mjs: actual source arm/boss transformed bounds, load/reset motion and instance upload version",
+    "roadWheelRestHeights.selftest.mjs: source end-wheel outer faces and batched/unbatched spinning radial invariance",
+    "trackShoeDimensions.selftest.mjs: independent tire/shoe/face and native ownership checks"
+  ]
+}

@@ -1,4 +1,7 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { strictTrackClipPassed } from './track-clip-result.mjs';
+import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
+import { runCapturedCommand } from './capture-command.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
 // aggregates the standard's machine-checkable gates per tank:
 //   A.  geometry-gate components (latest docs/geometry-gate/<id>.json,
@@ -12,12 +15,12 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //       build — pintleMG/openYokeRws instances (mg >= 1 required) + other fitting
 //       dressing. Hand-authored decoration carries no markers and censuses
 //       ZERO: migrate the profile to KIT.fittings (kit.js) or carry a packet
-//       justification.
+//       justification for a real hand-authored weapon (never an absent MG).
 // Usage:
 //   node tools/tank-standard-check.mjs --ids=a,b [--gate] [--no-render]
 //   node tools/tank-standard-check.mjs --fixture     # KIT.fittings self-test
 // Own vite 74xx-77xx; cot-shots FIFO lock held around the render phase only
-// (geometry-gate / track-clip-audit manage their own turns).
+// (the fresh geometry phase is wrapped here; track-clip manages its own turn).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 
@@ -35,7 +38,7 @@ const noRender = process.argv.includes('--no-render');
 
 process.on('exit', releaseLock);
 
-// --- phase 0: optional fresh gate run (manages its own lock) ----------------
+// --- phase 0: optional fresh gate run (serialized around its browser child) -
 // A forced run requires every registered comparison oracle to be present and
 // every packet to be freshly measured. geometry-gate --check owns the
 // fail-closed oracle census; the mtime check below prevents a stale packet from
@@ -45,7 +48,7 @@ if (forceGate && ids.length) {
   // --check makes a missing registered oracle or a sub-floor measurement a
   // hard release failure rather than treating it as a procedural-only ID.
   freshGateStartedAt = Date.now();
-  execFileSync('node', ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check'], { stdio: 'inherit' });
+  await runCapturedCommand(process.execPath, ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check']);
 }
 
 // --- phase 1: containment (one batched run; manages its own lock) -----------
@@ -141,6 +144,7 @@ for (const id of ids) {
   let row = 'procedural-only', min = 'N/A', age = '—';
   let gateRequired = 90;
   let gateApplicable = false;
+  let exactGatePassed = false;
   try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
@@ -150,17 +154,17 @@ for (const id of ids) {
     if (gateApplicable) {
       min = j.geoMin;
       gateRequired = Number.isFinite(j.requiredMinimum) ? j.requiredMinimum : 90;
+      exactGatePassed = geometryReceiptPassed(j);
       row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
       age = `${Math.round((Date.now() - packetMtime) / 60000)}m`;
     }
   } catch { /* keep placeholder */ }
   const cl = clip.get(id);
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
-  const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND
-    && Number(cl.sweepBand) <= CLIP_BAND && Number(cl.sweepShoe) <= CLIP_BAND;
+  const clipOk = strictTrackClipPassed(cl);
   const gateOk = forceGate
-    ? gateApplicable && typeof min === 'number' && min >= gateRequired
-    : !gateApplicable || (typeof min === 'number' && min >= gateRequired);
+    ? gateApplicable && exactGatePassed
+    : !gateApplicable || exactGatePassed;
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;
@@ -185,7 +189,7 @@ for (const id of ids) {
       }
     }
   }
-  if (!gateOk || (cl && !clipOk) || !contigOk || !decorOk) fails++;
+  if (!gateOk || !clipOk || !contigOk || !decorOk) fails++;
   console.log(
     `${id.padEnd(19)}| ${String(min).padStart(4)}/${String(gateRequired).padEnd(2)} | ${String(row).padEnd(31)}| ${String(age).padStart(4)} | ` +
     `${clipStr.padStart(14)}${cl ? (clipOk ? ' ✓' : ' ✗') : '  '}| ${contigStr.padStart(6)} | ${decorStr}`);
@@ -196,7 +200,7 @@ if (ids.length) {
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
-      'KIT.fittings.<fn> or carry a packet justification.');
+      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. An absent MG is not a census exception.');
   }
 }
 process.exit(fails || fixtureFailed ? 2 : 0);

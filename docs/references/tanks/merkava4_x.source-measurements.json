@@ -1,0 +1,19 @@
+{
+  "id": "merkava4_x",
+  "measured": "2026-09-05",
+  "purpose": "Local source comparison only; no mesh payload",
+  "sourceSha256": "2ca6d0ef5c096e5975b629dd8e429c88333f63390ab153da293215a10846b7b4",
+  "provenance": "arlassar original artist model, claimed CC-BY 4.0",
+  "normalization": { "rigidTurretIslandRotationYDegrees": -25, "sourceYawPivot": [0, 0, -1.03], "translationBeforeScale": [0, -0.0073919296, 0.5225], "uniformScale": 0.769620253164557, "axes": "+Y up, +Z forward", "heightWarp": "none", "widthWarp": "none" },
+  "dimensionsM": { "width": 3.7768898, "hullLength": 7.6, "overallLength": 8.705041, "broadRearRoof": 2.401, "raisedArmorRoof": 2.565, "cupola": 2.702, "panoramicSight": 2.833, "approxRoofMG": 3.003, "sourceP95BodyHeightAt1536": 2.996, "sourceP95BodyHeightAt1024Gate": 4.655, "highestFitting": 4.9327283 },
+  "turretPivotM": [0, 1.605, -0.3906],
+  "sourceGunAxisXM": 0.0221193,
+  "runtimeGunAxisM": [0, 1.9934619, 1.93],
+  "muzzleZM": 4.805527,
+  "muzzleRadiusM": 0.0811,
+  "roadWheels": { "stationsZM": [-2.062, -1.267, -0.199, 0.739, 1.617, 2.417], "radiusM": 0.3467, "axleYM": 0.387 },
+  "sprocket": { "zM": 3.285, "yM": 0.761, "radiusM": 0.336 },
+  "idler": { "zM": -3.020, "yM": 0.722, "radiusM": 0.314 },
+  "sourceHullRoofRaysM": [[0, -2, 1.604], [0, 0, 1.604], [0, 2.8, 1.347], [0, 3.77, 1.0475]],
+  "notes": ["Roof rays are x,z,upperY", "Former 4.88 m width was a posed-turret whole-object envelope, not a valid chassis measurement", "Corrected equipment width remains 1.5% greater than approximately 3.72 m published width; no axis stretch hides it", "Native bottom-course center .0956 m corrects pad contact without moving wheels"]
+}

@@ -49,6 +49,7 @@ export interface MainFrameRuntimeOptions {
   getFx(): MainFxRuntime | null;
   getWorld(): MainWorld | null;
   getBaseFogDensity(): number;
+  updateAtmosphere?(allowParticles: boolean): void;
   getStudio(): FrameStudio;
   getShotMode(): boolean;
   getShotHudFrame(): boolean;
@@ -98,6 +99,7 @@ export function createMainFrameRuntime({
   getFx,
   getWorld,
   getBaseFogDensity,
+  updateAtmosphere,
   getStudio,
   getShotMode,
   getShotHudFrame,
@@ -214,6 +216,7 @@ export function createMainFrameRuntime({
     fx: MainFxRuntime | null,
   ): void => {
     worldFramePresentation.update(dtSeconds, frame.inBattle, frame.killcamActive);
+    if (frame.inBattle || frame.killcamActive) updateAtmosphere?.(!frame.killcamActive);
     fx?.update(
       frame.livePaused ? 0 : dtSeconds * (frame.killcamActive ? killcam.fxTimeScale : 1),
       game.shells,

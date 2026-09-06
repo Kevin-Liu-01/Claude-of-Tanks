@@ -17,6 +17,7 @@ import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts'
 import { createImpactDecals } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
+import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
@@ -106,6 +107,7 @@ interface JetScratch {
 interface FxVisual {
   root: THREE.Object3D;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
 }
 
 export interface FxDecalVisual {
@@ -4350,7 +4352,10 @@ export function createFx(
         // reliable. All shell:hit marks are authored here from the exact
         // authoritative articulation-local contact data.
         const ent = decalEntityFor(e.targetId);
-        if (ent) impactDecals.stampFromEvent(e, ent);
+        if (ent) {
+          impactDecals.stampFromEvent(e, ent);
+          ent.visual.applyEquipmentDamage?.(e);
+        }
         // ERA is an outer-layer activation, not necessarily the final hit
         // result. A rod/jet may pop the cassette and continue into a pen or
         // non-pen on the base armor; preserve both visual events.
@@ -5109,6 +5114,7 @@ export function createFx(
       for (const r of muzzleRings) { r.bornAt = -1e9; r.mesh.visible = false; r.mat.opacity = 0; }
       muzzleRingCursor = 0;
       impactDecals.clearAll();
+      resetEquipmentDamage();
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
     },
 

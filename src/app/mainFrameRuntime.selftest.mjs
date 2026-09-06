@@ -8,7 +8,9 @@ function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
 } = {}) {
   const calls = [];
+  const atmospherePermissions = [];
   const frameRequests = [];
+  const replay = { active: false };
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 1000);
   const game = { phase, shells: [], matchModeState: null, timeS: 4 };
@@ -34,6 +36,10 @@ function createFixture({
     getFx: () => fx,
     getWorld: () => world,
     getBaseFogDensity: () => 0,
+    updateAtmosphere: (allowParticles) => {
+      atmospherePermissions.push(allowParticles);
+      calls.push('atmosphere');
+    },
     getStudio: () => ({
       active: studioActive,
       tick: () => calls.push('studio'),
@@ -66,10 +72,10 @@ function createFixture({
         calls.push('battle:advance');
         return {
           dtSeconds: 1 / 60,
-          inBattle: phase === 'battle',
+          inBattle: game.phase === 'battle',
           paused: false,
           livePaused: false,
-          killcamActive: false,
+          killcamActive: replay.active,
         };
       },
     },
@@ -83,7 +89,7 @@ function createFixture({
     },
     killcam: {
       fxTimeScale: 1,
-      isActive: () => false,
+      isActive: () => replay.active,
       update: () => calls.push('killcam'),
     },
     veilHud: () => calls.push('veil'),
@@ -98,7 +104,9 @@ function createFixture({
   return {
     runtime,
     calls,
+    atmospherePermissions,
     frameRequests,
+    replay,
     camera,
     game,
     battleEntryLifecycle,
@@ -139,7 +147,34 @@ assert.equal(battle.calls.filter((entry) => entry === 'lighting:fov').length, 1)
 assert.ok(battle.calls.indexOf('battle:advance') < battle.calls.indexOf('rig'));
 assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('world:presentation'));
 assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('post'));
+assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('atmosphere'),
+  'precipitation samples the current camera after live rig motion');
+assert.ok(battle.calls.indexOf('atmosphere') < battle.calls.indexOf('post'),
+  'precipitation is updated before the native scene render');
+assert.equal(battle.calls.filter((entry) => entry === 'atmosphere').length, 2,
+  'one atmosphere update per live frame, without an additional render');
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
+assert.deepEqual(battle.atmospherePermissions, [true, true],
+  'ordinary live battle frames permit the current particle budget');
+
+const replaying = createFixture({ phase: 'battle' });
+replaying.runtime.tick(1000);
+replaying.replay.active = true;
+replaying.runtime.tick(1016);
+replaying.runtime.tick(1032);
+replaying.replay.active = false;
+replaying.runtime.tick(1048);
+assert.deepEqual(replaying.atmospherePermissions, [true, false, false, true],
+  'killcam/replay frames suppress precipitation and live resumption restores permission');
+assert.equal(replaying.calls.filter((entry) => entry === 'killcam').length, 2,
+  'suppression is exercised through actual replay frame updates');
+replaying.game.phase = 'garage';
+replaying.runtime.tick(1064);
+replaying.runtime.tick(1080);
+assert.deepEqual(replaying.atmospherePermissions, [true, false, false, true],
+  'Garage frames make no atmosphere calls after replay/live battle return');
+assert.deepEqual(garage.atmospherePermissions, [],
+  'cold Garage frames never enable or update precipitation');
 
 const returnMarks = [];
 const returning = createFixture({
@@ -161,6 +196,8 @@ assert.deepEqual(Object.keys(returnMarks[0].data), [
 ]);
 assert.ok(Object.values(returnMarks[0].data).every(Number.isFinite),
   'Garage return frame receipt contains finite stage timings');
+assert.equal(returning.calls.filter((entry) => entry === 'atmosphere').length, 1,
+  'returning to Garage stops weather updates on the next frame');
 
 const covered = createFixture({ phase: 'battle' });
 covered.battleEntryLifecycle.renderingCovered = true;

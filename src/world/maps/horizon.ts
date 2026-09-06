@@ -51,6 +51,7 @@ export interface MapSkyConfig extends Partial<SkyPreset> {
   sunIntensity?: number;
   sunColorHex?: number;
   hemiIntensity?: number;
+  fillIntensity?: number;
 }
 
 export interface HorizonMapConfig {

@@ -65,8 +65,11 @@ import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu,
+  onPresetChange,
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
+import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { battleWeatherParticleBudget } from './engine/battleWeatherPolicy.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
 import {
@@ -705,16 +708,26 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     return receipt;
   },
 });
-const setGarageSpots = garagePhasePresentation.setActive;
-const setGarageSunTrim = garagePhasePresentation.setSunTrim;
+const setGarageSpots = (active: boolean): void => {
+  if (active) battleAtmosphere.reset();
+  garagePhasePresentation.setActive(active);
+};
+const setGarageSunTrim = (active: boolean): void => {
+  // Network activation follows covered weather preparation. It must not
+  // replace the match's moonlight with the selected Garage's daylight.
+  if (!active && battleAtmosphere.current?.weather) return;
+  garagePhasePresentation.setSunTrim(active);
+};
 const placeGarage = garagePhasePresentation.place;
 garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   garagePosition: GARAGE_POS,
   getSelectedVariantId: () => selectedGarageVariantId,
   setWorldDormant,
   applySkyPreset: () => {
+    battleAtmosphere.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
+    baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },
   placeGarage,
   setGarageSunTrim,
@@ -1395,6 +1408,21 @@ sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+const battleAtmosphere = createBattleAtmosphereAccess(() => ({
+  scene,
+  getCameraPosition: () => camera.position,
+  getWorldRoot: () => currentWorld()?.group ?? null,
+  getAuthoredPreset: () => currentWorld()?.config.sky ?? {},
+  applyPreset: (preset) => {
+    sky.applyPreset(preset, scene);
+    lighting.setSun(sky.sunDir, preset);
+    baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+  },
+}));
+// The small pool is local presentation only. Low presets omit precipitation;
+// weather identity and shared fog are independent of the local quality choice.
+let battleParticleBudget = battleWeatherParticleBudget(resolvePresetName());
+onPresetChange(() => { battleParticleBudget = battleWeatherParticleBudget(resolvePresetName()); });
 const post = createPost(renderer, scene, camera);
 const viewport = createViewportRuntime({
   container,
@@ -1711,6 +1739,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    prepareAtmosphere: () => battleAtmosphere.prepare(game.battleCount, game.mapId, battleParticleBudget),
     getGeneration: () => battleWarmGeneration,
     advanceGeneration: () => ++battleWarmGeneration,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
@@ -2078,6 +2107,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
         },
         warm: {
+          atmosphere: (initial) => battleAtmosphere.prepare(
+            typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined,
+            currentWorld()?.mapId ?? game.mapId, battleParticleBudget,
+          ),
           getFx: requireFxRuntime,
           terrain: () => {
             const world = currentWorld();
@@ -2499,6 +2532,7 @@ const mainFrame = createMainFrameRuntime({
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
   getBaseFogDensity: () => baseFogDensity,
+  updateAtmosphere: (allowParticles) => battleAtmosphere.update(game.timeS, allowParticles ? battleParticleBudget : 0),
   getStudio: () => studio,
   getShotMode: () => shotMode,
   getShotHudFrame: () => shotHudFrame,
@@ -2817,6 +2851,7 @@ if (diagnosticsRequested) {
     showDebugHud: debugModeRequested() || input.getSettings().showDebugHud,
     debugSurface: {
       scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
+      getBattleAtmosphere: () => battleAtmosphere,
       pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
       killcam, showroom, garageDressing, devTrace,
       quality: {

@@ -5984,8 +5984,8 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     animateBrokenRecord(rec, pool, dx, dz, speed, l);
-    // explosive kinds (red fuel drums): a proper blast next tick — flavored
-    // fireball via the fx seam + chained radius damage onto nearby records
+    // Explosive decoration chains next tick through the cosmetic-only impact
+    // path. Collidable cover still requires an authoritative direct hit/ram.
     if (pool.meta.explosive) {
       pendingBlasts.push({ x: rec.x, y: rec.y + rec.h * 0.4, z: rec.z });
     }
@@ -6037,8 +6037,9 @@ ${snowCap ? `
     return breakRecord(propIdx, dx, dz, speed, cause);
   }
 
-  // shell paths (registered through src/world/destructibles.ts; effects.ts
-  // forwards flight segments + world impact points)
+  // Cosmetic shell paths (effects.ts forwards flight/impact presentation).
+  // Never mutate movement or shell cover here: solo hit resolution and network
+  // destruction events own those records through crushDestructible above.
   const _dCells: number[][] = [];
   function cellsAround(
     x0: number,
@@ -6102,7 +6103,7 @@ ${snowCap ? `
     for (const cell of cellsAround(ax, az, bx, bz, 2.5)) {
       for (const idx of cell) {
         const rec = destructibles[idx];
-        if (rec.state) continue;
+        if (rec.state || rec.ob || rec.col) continue;
         // Slab test: segment vs the record's AABB (x/z ± r, y .. y+h).
         if (shellSegmentHitsRecord(rec, ax, ay, az, dx, dy, dz)
           && breakRecord(idx, dx, dz, 0, 'shell') && ++broke >= 3) return;
@@ -6121,7 +6122,7 @@ ${snowCap ? `
     for (const cell of cellsAround(x, z, x, z, r + 2.5)) {
       for (const idx of cell) {
         const rec = destructibles[idx];
-        if (rec.state) continue;
+        if (rec.state || rec.ob || rec.col) continue;
         const ddx = rec.x - x, ddz = rec.z - z;
         if (Math.hypot(ddx, ddz) > r + rec.r) continue;
         if (y < rec.y - r || y > rec.y + rec.h + r) continue;

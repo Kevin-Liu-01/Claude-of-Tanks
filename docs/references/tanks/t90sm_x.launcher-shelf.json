@@ -1,0 +1,20 @@
+{
+  "vehicleId": "t90sm_x",
+  "sourceReference": "/models/community-candidates/t90sm_x_source.glb",
+  "sourceOracleSha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+  "sourceComponent": "misc_a connected island11916; source-only identifier, not runtime geometry",
+  "method": "Independent scalar surface points and normals define original closed folded sheets; no source positions, indices, buffers or topology enter the runtime",
+  "sourceBounds": {"min": [-1.78619589,1.68422993,-1.51661238],"max": [-0.72711147,2.16666704,0.99458209]},
+  "boundedCorrection": "Replace only the old left flat upper shelf through Z.209 and correct the first two existing forward-carrier upper stations through Z.3653; existing casework, widths, later sections, marking surfaces and running gear are not replaced",
+  "sourceRoofWitnessesXYZ": [
+    [-1.30,2.07604,0.10],[-1.30,2.09608,0.18],[-1.38,2.109895,0.20],
+    [-1.40,2.075208,0.05],[-1.42,2.090070,0.10],[-1.35,2.031790,-0.10],
+    [-1.249473,1.971371,-0.30],[-1.05,2.162947,-1.20],[-1.50,2.161580,0.15],
+    [-1.30,2.10416,0.22],[-1.30,2.10942,0.30],[-1.38,2.11121,0.22],[-1.38,2.11647,0.30],
+    [-1.50,2.163283,0.22],[-1.52,2.163750,0.22],[-1.54,2.156004,0.22],
+    [-1.50,2.162194,0.30],[-1.55,2.156601,0.30]
+  ],
+  "interpretation": "The source has a diagonal rear down-step, rising inner floor and a distinct narrow outer crown. A constant Y2.164 shelf is up to 0.20m too high and buries the lowest left smoke mouth. The fore carrier requires explicit plane breakpoints so its true high outer crown survives while its inboard approach is lowered.",
+  "constructionAllowances": "Original simple planes are rounded to six decimal places; the inner floor is a closed7mm sheet. Rear lip and outer rolled-edge simplifications stay within4mm at independent witnesses. The shelf ends atZ.209 with a0.3mm positive join to the existing forward-carrier startZ.2087.",
+  "regression": "src/vehicles/profiles/t90SMXLauncherShelf.selftest.mjs checks high/low source roof rays, actual floor underside, obsolete shelf air and positive fore attachment; t90SMXSmoke.selftest.mjs checks every complete-model launcher mouth and rim. Geometry/fidelity/standard receipts must be refreshed after all coordinated SM edits."
+}

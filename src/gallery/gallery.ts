@@ -27,6 +27,7 @@ import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import '../ui/i18nCatalog.ts';
 import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
+import { applyGalleryCameraRange, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = InspectionMode | 'markup';
 type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
@@ -193,7 +194,8 @@ renderer.setClearColor(0x0a0d10, 0);
 viewport.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0a0d10, 18, 45);
+const galleryFog = new THREE.Fog(0x0a0d10, 18, 45);
+scene.fog = galleryFog;
 const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 180);
 camera.position.set(-8, 4.6, 8.5);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -326,15 +328,13 @@ function frameView(requestedName = 'hero'): void {
     currentCenter.z = presentationCenter.z;
   }
   viewDirection.fromArray(VIEW_DIRECTIONS[name] || VIEW_DIRECTIONS.hero).normalize();
-  const extentX = Math.max(currentCenter.x - bounds.min.x, bounds.max.x - currentCenter.x);
-  const extentY = Math.max(currentCenter.y - bounds.min.y, bounds.max.y - currentCenter.y);
-  const extentZ = Math.max(currentCenter.z - bounds.min.z, bounds.max.z - currentCenter.z);
-  const radius = Math.max(extentX, extentY * 1.3, extentZ * 0.78) * 1.28;
-  const distance = radius / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
   camera.up.set(0, 1, 0);
   if (name === 'top') camera.up.set(0, 0, -1);
+  const distance = galleryFitDistance(bounds, currentCenter, viewDirection, camera.up,
+    camera.fov, camera.aspect);
   camera.position.copy(currentCenter).addScaledVector(viewDirection, distance);
   controls.target.copy(currentCenter);
+  applyGalleryCameraRange(camera, controls, galleryFog, bounds, distance);
   controls.update();
   viewButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === name));
 }
@@ -914,8 +914,15 @@ function resize(): void {
   const width = Math.max(1, viewport.clientWidth);
   const height = Math.max(1, viewport.clientHeight);
   renderer.setSize(width, height, false);
+  if (visual) {
+    const bounds = visibleBox(visual.root);
+    const fit = resizeGalleryCamera(camera.position, controls.target, camera.up,
+      bounds, camera.fov, camera.aspect, width / height);
+    applyGalleryCameraRange(camera, controls, galleryFog, bounds, fit);
+  }
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+  controls.update();
 }
 
 $('#gallerySearch').addEventListener('input', applyFilters);

@@ -133,6 +133,7 @@ export interface NetworkBattlePresentationOptions {
     waitForPeerReadiness(): Promise<RuntimeValue>;
   };
   warm: {
+    atmosphere?(initial: SampledSnapshotFrame): MaybePromise<void>;
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
@@ -399,6 +400,10 @@ export function createNetworkBattlePresentationRuntime(
       bridge.publish(preparedBridge);
       preparedBridge.apply(initial, 1 / 60);
       presentation.setGarageLighting(false);
+
+      await warm.atmosphere?.(initial);
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('atmosphere');
 
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain(preparedBridge);

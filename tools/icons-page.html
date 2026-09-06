@@ -356,6 +356,27 @@ function sideInspectionCamera(center, size, extentZ) {
   return orthoCam(center, size, [-1, 0, 0], [0, 1, 0], halfHeight * 2, halfHeight);
 }
 
+function technicalInspectionCamera(id, center, size, extentZ, box) {
+  const insetIds = [
+    'merkava3d_x', 'merkava4_x', 'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x',
+    'leo2a5_x', 'k2_x', 'kf51_x', 't14_x', 't90a_x', 't90a_vladimir_x',
+    't90m_x', 't90sm_x',
+  ];
+  if (!insetIds.includes(id)) {
+    return sideInspectionCamera(center, size, extentZ);
+  }
+  // These source X models' long guns enter the label rails in a full-canvas
+  // side camera; tall whips also meet the header or push bodies into the footer.
+  // Fit the complete vehicle to the actual 312×164 px content opening, not
+  // the outer 512×256 canvas. Only this technical camera moves: presentation
+  // anchors, metadata dimensions, ordinary views and comparison rigs remain
+  // unchanged. Include the real whip tips, gun and lowest shoes in the fit.
+  const halfHeight = Math.max(size.y * 128 / 164, size.z * 128 / 312);
+  const target = box.getCenter(new THREE.Vector3());
+  target.y += 5 * halfHeight / 128; // opening center is Y133, not canvas Y128
+  return orthoCam(target, size, [-1, 0, 0], [0, 1, 0], halfHeight * 2, halfHeight);
+}
+
 function visibleInspectionBounds(object, root) {
   const box = new THREE.Box3().makeEmpty();
   object.updateMatrixWorld(true);
@@ -779,7 +800,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       files[`${id}_front.webp`] = capture(frontCam, BASE, BASE).toDataURL('image/webp', 0.9);
     }
     if (wants('armorSide') || wants('modulesSide') || wants('crewSide')) {
-      const sideCam = sideInspectionCamera(center, size, extentZ);
+      const sideCam = technicalInspectionCamera(id, center, size, extentZ, box);
       if (wants('armorSide')) {
         const stage = renderInspectionStage(spec, visual, sideCam, 'armor');
         files[tankAssetFile(id, 'armorSide')] = technicalDiagram(stage, metadata, 'armor')
@@ -808,7 +829,12 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       // portrait a 3% camera cushion instead of weakening the fleet audit.
       const portraitMargin = id === 'challenger_3' ? MARGIN * 1.03 : MARGIN;
       const dist = (radius * portraitMargin) / Math.sin((fov / 2) * Math.PI / 180);
-      const dir = new THREE.Vector3(-0.56, 0.34, 1.0).normalize();
+      // The source-fitted Panther's tall whips exceed the card's full-height
+      // envelope at the fleet's front-biased angle. Show more of its chassis
+      // side in this portrait; preserve the whips, dense-core scale, baseline
+      // and audit limits. This does not affect comparison or technical views.
+      const portraitSideRatio = id === 'kf51_x' ? -0.76 : -0.56;
+      const dir = new THREE.Vector3(portraitSideRatio, 0.34, 1.0).normalize();
       const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
       angleCam.position.copy(center).addScaledVector(dir, dist);
       angleCam.lookAt(center);

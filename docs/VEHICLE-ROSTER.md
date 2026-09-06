@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **167 saved vehicle records**: **128 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **180 saved vehicle records**: **141 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -175,6 +175,19 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 165 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
 | 166 | PROD | `m551_sheridan` | M551 Sheridan | USA | IX | Cold War | Production |
 | 167 | PROD | `m551a1_tts` | M551A1 TTS | USA | X | Next Generation | Production |
+| 168 | PROD | `leo2a7v_x` | Leopard 2A7V X | Germany | X | Modern | Production |
+| 169 | PROD | `leo2a6m_x` | Leopard 2A6M X | Germany | X | Modern | Production |
+| 170 | PROD | `leo2a4m_x` | Leopard 2A4M X | Germany | IX | Modern | Production |
+| 171 | PROD | `leo2a5_x` | Leopard 2A5 X | Germany | IX | Modern | Production |
+| 172 | PROD | `merkava4_x` | Merkava Mk4 X | Israel | IX | Modern | Production |
+| 173 | PROD | `merkava3d_x` | Merkava Mk3D X | Israel | X | Modern | Production |
+| 174 | PROD | `k2_x` | K2 Black Panther X | South Korea | IX | Modern | Production |
+| 175 | PROD | `kf51_x` | KF51 Panther X | Germany | X | Next Generation | Production |
+| 176 | PROD | `t90a_x` | T-90A X | Russia | IX | Modern | Production |
+| 177 | PROD | `t90a_vladimir_x` | T-90A Vladimir X | Russia | IX | Modern | Production |
+| 178 | PROD | `t90m_x` | T-90M X | Russia | IX | Modern | Production |
+| 179 | PROD | `t90sm_x` | T-90SM X | Russia | IX | Modern | Production |
+| 180 | PROD | `t14_x` | T-14 Armata X | Russia | X | Next Generation | Production |
 
 ## Policy ownership
 

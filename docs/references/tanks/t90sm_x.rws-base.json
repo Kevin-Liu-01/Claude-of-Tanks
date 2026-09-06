@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "t90sm_x",
+  "measuredAt": "2026-09-06",
+  "purpose": "Independent local-only scalar measurements of the SM partial RWS rim, bearing plates and clipped housing corners; no source vertex/index/UV/texture buffers retained",
+  "source": {
+    "path": "public/models/community-candidates/t90sm_x_source.glb",
+    "sha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+    "frame": "+Y up, +Z forward, ground0, metres, unchanged source-world registration",
+    "mesh": "misc_a",
+    "provenance": "Owner-supplied comparison-only reference; same unresolved provenance and local-use restrictions as t90sm_x.md"
+  },
+  "partialRim": {
+    "boundsMinM": [0.2514275005, 2.4129049182, -1.2461278141],
+    "boundsMaxM": [0.4852292379, 2.4791989923, -0.9745913446],
+    "topYM": 2.4791989923,
+    "sourceSectionsZOuterXInnerX": [
+      [-1.24, 0.37863763, 0.39205882],
+      [-1.20, 0.34072849, 0.48097646],
+      [-1.15, 0.30153073, 0.41075619],
+      [-1.10, 0.27772223, 0.37063769],
+      [-1.05, 0.26239095, 0.34700099],
+      [-1.00, 0.25512159, 0.33873806],
+      [-0.98, 0.25221385, 0.33579616]
+    ],
+    "authorship": "Original analytic outer/inner elliptic arcs with unequal sweep and a closing oblique end, extruded as a closed positive solid. Not a full circle, bounding-box fill, or source contour transplant"
+  },
+  "bearingPlates": {
+    "upper": {"centerXZ": [0.5539006134, -0.9761689007], "radiiXZ": [0.3088383973, 0.3320549130], "bottomTopY": [2.4034308791, 2.4134059548]},
+    "lower": {"centerXZ": [0.553775, -0.975905], "radiiXZ": [0.288885, 0.310215], "bottomTopY": [2.37951, 2.40443]},
+    "centralCollar": {"centerXZ": [0.55292, -0.97564], "radiiXZ": [0.21483, 0.23049], "bottomTopY": [2.41340, 2.42786]},
+    "pedestal": {"centerXZ": [0.553045, -0.904605], "radiiXZ": [0.299905, 0.251015], "bottomTopY": [2.22748, 2.40094]},
+    "authorship": "Closed elliptic cylinder approximations. The upper/lower plates overlap and the measured collar seats the existing housing; no added hidden support expands the source silhouette"
+  },
+  "housing": {
+    "highRoofYM": 2.775274,
+    "highSideCenterWidthM": 0.391710,
+    "rearFlatZM": -1.146143,
+    "frontFlatZM": -0.807248,
+    "endFlatWidthM": 0.2303,
+    "sourceHighSectionZLeftX": [[-1.12, 0.41807919], [-1.10, 0.40323026], [-1.08, 0.38838134], [-1.06, 0.37811017], [-1.02, 0.36807402], [-0.976, 0.35703427]],
+    "heldOutCorner": {"x": 0.38, "z": -1.10, "sourceTopY": 2.53100, "oldNativeTopY": 2.77527},
+    "authorship": "Original clipped multi-facet housing with four side slopes rather than the old broad constant-width upper box. Existing forward optical recess, receiver and barrel transforms remain intact"
+  },
+  "tests": ["src/vehicles/profiles/t90SMXRwsBase.selftest.mjs", "src/vehicles/profiles/sourceMachineGun.selftest.mjs"],
+  "verification": "Actual high/low complete-tank rays pass: rim top within0.2mm, seven independent outside section rays within8mm, adjacent exposed plate and true exterior-air witnesses, and clipped high housing. Exact weapon endpoint/ownership/disposal tests pass. Fourteenth scoped raw GPU proof passes geometry92.44447466576615/fidelity97.26765174089836 and all official track/continuity/census checks, plus muzzle-bore and barrel circularity. Independent fresh neutral review accepts the RWS/apertures and final bounded fittings. Geometry frozen; mandatory final full-fleet release remains pending",
+  "limits": "Small source manufacturing facet irregularities and plate-edge facets are approximated analytically. These scalar measurements do not authorize shipping any source media or geometry"
+}
