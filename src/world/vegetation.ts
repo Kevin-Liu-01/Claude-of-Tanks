@@ -107,6 +107,15 @@ interface VegetationBelt {
   species?: Species;
 }
 
+interface GrassStubblePatch {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  feather: number;
+  heightScale: number;
+}
+
 type SpeciesMix = ReadonlyArray<readonly [Species, number]>;
 
 interface VegetationConfig {
@@ -128,6 +137,7 @@ interface VegetationConfig {
   belts?: VegetationBelt[];
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
+  stubblePatches?: readonly GrassStubblePatch[];
 }
 
 export interface VegetationMapConfig extends Pick<PropsMapConfig, 'props'> {
@@ -2603,6 +2613,21 @@ function* vegetationBuildSteps(
     _tuftScaleScratch[1] = Math.min(1.35, 0.55 + clump * 0.65 + variantRoll * 0.55);
     return true;
   }
+  // Working bays shorten accepted tufts, not their placement candidates.
+  // This runs only while a chunk/cached carpet cell is constructed: no
+  // shader, draw-time transform, terrain exclusion or RNG change.
+  function stubbleHeightScale(x: number, z: number): number {
+    let scale = 1;
+    if (!veg.stubblePatches) return scale;
+    for (const patch of veg.stubblePatches) {
+      const outside = Math.max(patch.x0 - x, x - patch.x1, patch.z0 - z, z - patch.z1, 0);
+      if (outside >= patch.feather) continue;
+      const factor = patch.heightScale + (1 - patch.heightScale)
+        * smoothstepJs(0, patch.feather, outside);
+      scale = Math.min(scale, factor);
+    }
+    return scale;
+  }
   function makeTuft(
     x: number,
     z: number,
@@ -2670,6 +2695,7 @@ function* vegetationBuildSteps(
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
     t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = sy * syMul;
+    if (veg.stubblePatches) t[5] *= stubbleHeightScale(x, z);
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }

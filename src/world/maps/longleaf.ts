@@ -35,6 +35,12 @@ export default {
     species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 0.70], ['cedar', 0.2], ['oak', 0.1]],
     loneMix: [['pine', 0.64], ['cedar', 0.20], ['oak', 0.16]], rimMix: [['pine', 0.72], ['cedar', 0.22], ['oak', 0.06]],
     clusterCount: 62, loneCount: 86, rimCount: 104, grassDensity: 1.0, bushCount: 1.1, bushSpecies: 'oak', clusterScrub: 1.8,
+    // The two existing west loading bays are worked short. Keep every grass
+    // record and the terrain/prop safety masks; only its height is reduced.
+    stubblePatches: [
+      { x0: -109, x1: -78, z0: 56, z1: 72, feather: 4, heightScale: 0.16 },
+      { x0: -109, x1: -78, z0: 92, z1: 108, feather: 4, heightScale: 0.16 },
+    ],
     // Remove the random grove layer from the harvested swath; the two
     // planted edge belts below remain outside these clearing discs.
     avoid: [{ x: -150, z: -266, r: 70 }, { x: -74, z: -170, r: 70 }, { x: 14, z: -64, r: 70 }, { x: 96, z: 30, r: 70 }, { x: 178, z: 128, r: 70 }, { x: 258, z: 216, r: 70 }],

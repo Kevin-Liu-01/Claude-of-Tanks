@@ -423,6 +423,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainResources.selftest.mjs',
     'src/world/propsResources.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
+    'src/world/loggingYardGrass.selftest.mjs',
     'src/world/reservoirWaterworks.selftest.mjs',
     'src/world/deltaPlasterPalette.selftest.mjs',
     'src/world/liquidSurfaceDetail.selftest.mjs',
