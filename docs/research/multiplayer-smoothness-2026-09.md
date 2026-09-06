@@ -2,7 +2,7 @@
 
 Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 
-Current deployment status: release `10ac577de` is live on the canonical website
+Current deployment status: release `adbcf2aaf` is live on the canonical website
 with Cloudflare room signaling and the existing TURN service. The old canonical
 Redis signaling route returns HTTP 410 and requests a refresh. See the final
 Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
@@ -11,6 +11,10 @@ below describe their historical verification phase, not the current cutover.
 The abandoned-room follow-up at the end records its initial local checkpoint;
 the [subsequent live release receipt](multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements)
 includes production cleanup verification.
+The [firing-response follow-up](multiplayer-response-latency-2026-09.md#production-warmup-follow-up-shells-and-guided-missiles)
+records the subsequent actual-compositor warmup, first-shot improvement and
+retained adverse frame measurements. The Cloudflare room Worker remains the
+verified `10ac577de` backend; these later changes concern browser rendering only.
 
 Pre-cutover verification: focused verification, strict LAN and severe impaired-private rendering,
 four-/14-human capacity, persistent-room reconnect/rematch, natural rendered

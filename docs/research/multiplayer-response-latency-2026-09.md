@@ -298,8 +298,105 @@ restored on failure as well as success. A real-effects regression fails against
 the previous source's muzzle visibility and empty missile pools, then passes
 with the fix; real guided movement, trail and capacity checks still pass.
 
-Production repeat for this follow-up is pending at this source checkpoint.
-The native probe now accepts `--performance --ammo-slot=2` to test an actual
-missile selection with trusted keyboard input. It waits for the selected slot
-and positive ammo before timing; timeout still closes both browsers and the
-owned room. Omission preserves the ordinary-shell baseline configuration.
+### Production warmup follow-up: shells and guided missiles
+
+Follow-up `6604fbdad` was measured on the canonical production frontend in two
+fresh native private 1v1 Winter pairs, with the same 20-second-per-role,
+1280×800/DPR-1 configuration. Receipts are `production-performance-warm.log`
+and `production-performance-missile.log`. The ordinary-shell command remained
+unchanged; the second run added `--performance --ammo-slot=2`. Slot selection
+uses trusted keyboard input and waits for the selected slot and positive ammo
+before timing; it does not alter reloads, ammunition or authority. Both runs
+passed native create/join/ready/launch/progression/exit and verified owned-room
+cleanup and browser closure. The shell run's screenshots were inspected and
+showed the actual live Winter battle.
+
+For ordinary shells, the host frame interval containing the first
+`shell:fired` was **34.6 ms**, versus **133.7 ms** in the preceding traced run.
+This is a frame-gap measurement, not GPU execution time or input-feedback
+latency. Across that first-click window, programs stayed at 337 and textures at
+147; geometries still increased 576→583. The seven additional geometries mean
+this is not an allocation-free first shot. No long-task event appeared in that
+window. All eight shots were authority-confirmed; all four guest predicted
+cues were exact-confirmed and deduplicated.
+
+| Ordinary-shell measurement | Host | Guest |
+|---|---:|---:|
+| Input → first feedback median / maximum | 14.5 / 21.7 ms | 7.1 / 12.7 ms |
+| Input → authoritative confirmation median / maximum | 14.5 / 21.7 ms | 31.6 / 38.4 ms |
+| Frame gap p95 / p99 / maximum | 30.5 / 34.6 / 48.3 ms | 28.4 / 32.8 / 43.9 ms |
+| Hard snaps / dropped history / observer errors | 0 / 0 / 0 | 0 / 0 / 0 |
+
+The guest's 7.1 ms median is its presentation-only predicted cue, not an early
+authoritative shot or damage result. Page errors were also zero.
+
+The guided-missile run likewise had stable program/texture counts in both
+first-click windows: host 337/147, guest 302/152. The host's first firing frame
+was 22.5 ms. All eight missiles were confirmed, with no unmatched or ambiguous
+ready attempts. Three guest cues were predicted and all three were
+exact-confirmed/deduplicated. The unpredicted cue was the **second** guest
+click, whose trace records `fire` followed by `shell:fired` at +36.7 ms; the
+first, third and fourth include `weapon:predicted`. Although all four clicks
+passed the probe's reload-ready check, the receipt does not retain the complete
+fresh-authority readiness, intent and freshness eligibility state. It cannot
+establish why this particular cue used the confirmed path.
+
+| Guided-missile measurement | Host | Guest |
+|---|---:|---:|
+| Input → authoritative confirmation median / maximum | 9.8 / 17.5 ms | 37.5 / 73.4 ms |
+| Input → predicted cue median / maximum | Not used | 14.6 / 20.1 ms (three cues) |
+| Frame gap p95 / p99 / maximum | 31.5 / 37.2 / 319.1 ms | 29.1 / 34.3 / 214.2 ms |
+| Hard snaps / dropped history / observer errors | 0 / 0 / 0 | 0 / 0 / 0 |
+
+The missile run is **not hitch-free**: the host had a 319.1 ms gap at sample
+time 12.752 s followed by 135.2 ms, and the guest had a 214.2 ms gap at 13.802 s.
+The bounded worst-frame windows show no program/texture growth or nearby
+allowlisted combat event; these traces do not establish a cause for the later
+stalls. Page errors were zero, but that does not invalidate the adverse frame
+measurements.
+
+The subsequent source checkpoint `adbcf2aaf` keeps the temporary vehicle-owned
+armor scar attached and visible through the actual covered draw, then returns
+that same mesh to its pool. Previously it was compiled and detached before
+submission. The real-effects regression verifies scene submission and same-pool
+reuse, exact transform/visibility restoration after injected stamp, compile and
+draw failures with both initial visibility states, and final FX reset even if
+scar cleanup throws. Focused tests, typecheck and public build passed.
+
+Fresh production repeats on `adbcf2aaf` retained the same native setup. Ordinary
+shells again confirmed all eight attempts, with four exact guest predictions,
+zero hard snaps/history drops/page errors, and verified room/browser cleanup.
+Host/guest first-feedback medians were 14.3/12.2 ms; frame p95/p99/max were
+31.1/35.5/45.6 ms and 30.8/35.3/46.7 ms respectively. Both shell screenshots
+were inspected as live connected battles.
+
+The missile repeat confirmed four missiles per player, all four guest cues
+exact-predicted/deduplicated. Host first-feedback median was 10.4 ms; guest
+predicted median 9.3 ms and accepted median 32.0 ms. Host frame p95/p99/max were
+29.7/33.4/46.0 ms; guest 27.2/35.4/224.8 ms. The isolated guest gap at 14.850 s
+had no nearby combat or resource growth; the earlier later-stall issue is **not
+proven fixed**. Hard snaps/history drops/page errors remained zero and cleanup
+passed. The guest screenshot was inspected as a live battle with its four
+missiles expended.
+
+That missile receipt includes five locally reload-ready guest clicks but only
+four accepted shots: the initial click was unmatched. The probe's historical
+readiness flag only checks local reload, not pointer capture or pending ammo
+selection. Source and a real input-handler reproduction establish that an
+action callback can run for a mouse-capture click without a fire edge; ammo
+selection also starts a full reload and can temporarily differ from an older
+presented snapshot. Neither explanation is proven for the historical click.
+Subsequent diagnostics retain bounded per-click lock/focus, requested/presented
+ammo slots, ammo/reload and upload counts without changing the old aggregates.
+
+An opt-in `--performance --cpu-timeline` diagnostic adds bounded numeric
+[Chrome runtime counters](https://chromedevtools.github.io/devtools-protocol/tot/Performance/)
+and monotonic alignment with the frame sample. It exports no URLs, peer IDs or
+raw protocol payloads. Its overhead makes it a diagnostic, not a replacement
+for the uninstrumented performance receipts. A counter interval overlapping a
+frame gap does not by itself establish a causal function or GPU problem.
+
+Both pairs selected host/host UDP on the same machine. These are bounded
+production-rendering observations, not geographically separated or TURN-path
+gameplay measurements, and they do not establish zero network latency,
+click-to-photon timing or universally single-player-equivalent performance.

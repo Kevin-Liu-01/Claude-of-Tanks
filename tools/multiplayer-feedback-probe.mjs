@@ -82,7 +82,25 @@ export function startFeedbackSample() {
   const active = () => !document.hidden && document.hasFocus() && debug.game.phase === 'battle' &&
     debug.game.preBattleS <= 0 && !debug.game.result;
   const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const boolean = (value) => typeof value === 'boolean' ? value : null;
   const project = (source, keys) => Object.fromEntries(keys.map((key) => [key, numeric(source?.[key])]));
+  function clickEligibility() {
+    const player = debug.game.player;
+    const combat = player?.combat;
+    const locked = boolean(debug.input.isLocked?.());
+    const cursorAim = boolean(debug.input.isCursorAim?.());
+    return { locked, cursorAim,
+      mouseFireLane: locked === null || cursorAim === null ? null : locked || cursorAim,
+      pointerLocked: !!document.pointerLockElement, focused: document.hasFocus(), hidden: document.hidden,
+      // getState(), isDown() and padActive() poll/consume input. Never invoke
+      // them from an observer; no non-mutating held-fire getter is exposed.
+      fireHeld: null, currentInputFire: boolean(player?.input?.fire),
+      shellSlot: numeric(combat?.shellSlot), requestedShellSlot: numeric(player?.input?.shellSlot),
+      ammo: numeric(combat?.ammo?.[combat?.shellSlot]),
+      requestedAmmo: numeric(combat?.ammo?.[player?.input?.shellSlot]),
+      reloadS: numeric(combat?.reload?.t),
+      inputPacketsSubmitted: numeric(debug.network?.inputPacketsSubmitted) };
+  }
   function diagnostics() {
     if (!active() || sample.diagnostics.length >= 200) return;
     const net = debug.network;
@@ -96,7 +114,7 @@ export function startFeedbackSample() {
   const offInput = debug.input.onAction('fire', () => {
     if (!active() || sample.actions.length >= 128) return;
     sample.actions.push({ at: performance.now(), ready: debug.game.player?.combat?.reload?.t <= 0,
-      matched: false, ambiguous: false });
+      matched: false, ambiguous: false, eligibility: clickEligibility() });
   });
   function feedback(event, target) {
     if (!active() || target.length >= 128 || !event.isPlayer) return;
@@ -195,8 +213,9 @@ export function stopFeedbackSample() {
     window.gapStartedBeforeSample = worst[index('tMs')] - worst[index('gapMs')] < sample.traceStart;
     windows.push(window);
   }
-  const result = { durationMs: performance.now() - sample.started,
-    actions: sample.actions.map(({ ready, matched, ambiguous }) => ({ ready, matched, ambiguous })),
+  const result = { sampleStartedAtMs: sample.started, durationMs: performance.now() - sample.started,
+    actions: sample.actions.map(({ at, ready, matched, ambiguous, eligibility }) => ({
+      atMs: at - sample.started, ready, matched, ambiguous, eligibility })),
     shots: sample.shots, predicted: sample.predicted, diagnostics: sample.diagnostics,
     gapsMs: frames.map((row) => row[index('gapMs')]),
     timingWindows: { halfWidthMs: 250, windows },
@@ -238,6 +257,22 @@ export function metricDistribution(values) {
     max: sorted.at(-1) ?? null };
 }
 
+/** Keep historical readiness/counts unchanged; expose bounded context, not a new admission gate. */
+export function sanitizeFeedbackActions(source) {
+  const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const boolean = (value) => typeof value === 'boolean' ? value : null;
+  const booleans = ['locked', 'cursorAim', 'mouseFireLane', 'pointerLocked', 'focused',
+    'hidden', 'fireHeld', 'currentInputFire'];
+  const numbers = ['shellSlot', 'requestedShellSlot', 'ammo', 'requestedAmmo', 'reloadS', 'inputPacketsSubmitted'];
+  return (Array.isArray(source) ? source : []).slice(0, 128).map((action) => ({
+    atMs: numeric(action?.atMs), ready: boolean(action?.ready), matched: boolean(action?.matched),
+    ambiguous: boolean(action?.ambiguous), eligibility: {
+      ...Object.fromEntries(booleans.map((key) => [key, boolean(action?.eligibility?.[key])])),
+      ...Object.fromEntries(numbers.map((key) => [key, numeric(action?.eligibility?.[key])])),
+    },
+  }));
+}
+
 export function summarizeFeedbackSample(raw, ice = []) {
   const samples = Array.isArray(raw.diagnostics) ? raw.diagnostics : [];
   const distribution = (key) => metricDistribution(samples.map((row) => row[key]));
@@ -252,10 +287,12 @@ export function summarizeFeedbackSample(raw, ice = []) {
     inputToNextRafCallbackMs: metricDistribution(rows.map((row) => row.inputToNextRafMs)),
     authorityReceiptToCallbackMs: metricDistribution(rows.map((row) => row.authorityToFeedbackMs)) });
   const path = (row) => ['host', 'srflx', 'prflx', 'relay'].includes(row) ? row : null;
-  return { durationMs: Number.isFinite(raw.durationMs) ? raw.durationMs : null,
+  return { sampleStartedAtMs: Number.isFinite(raw.sampleStartedAtMs) ? raw.sampleStartedAtMs : null,
+    durationMs: Number.isFinite(raw.durationMs) ? raw.durationMs : null,
     frameGapMs: metricDistribution(raw.gapsMs || []),
     timingWindows: sanitizeFeedbackTimingWindows(raw.timingWindows),
     firing: { attempts: raw.actions?.length || 0,
+      actions: sanitizeFeedbackActions(raw.actions),
       readyAttempts: raw.actions?.filter((row) => row.ready === true).length || 0,
       unmatchedReadyAttempts: raw.actions?.filter((row) => row.ready === true && row.matched !== true).length || 0,
       ambiguousAttempts: raw.actions?.filter((row) => row.ambiguous === true).length || 0,

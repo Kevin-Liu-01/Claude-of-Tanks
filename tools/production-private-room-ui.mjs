@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { isAbsolute, join, normalize, parse } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { installFeedbackPeerObserver, measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
+import { startMultiplayerCpuTimeline } from './multiplayer-cpu-timeline.mjs';
 
 function validateAmmoSelection(ammoSlot, measurePerformance) {
   if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
@@ -10,8 +11,14 @@ function validateAmmoSelection(ammoSlot, measurePerformance) {
   }
 }
 
+function validateCpuTimeline(cpuTimeline, measurePerformance) {
+  if (typeof cpuTimeline !== 'boolean' || (cpuTimeline && !measurePerformance)) {
+    throw new TypeError('CPU timeline requires --performance');
+  }
+}
+
 export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
-  ammoSlot } = {}) {
+  ammoSlot, cpuTimeline = false } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -22,14 +29,32 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
     throw new TypeError('timeout must be an integer from 30000 through 300000 ms');
   }
   validateAmmoSelection(ammoSlot, measurePerformance);
+  validateCpuTimeline(cpuTimeline, measurePerformance);
   if (screenshots !== undefined && (typeof screenshots !== 'string' || !isAbsolute(screenshots) ||
       screenshots.split(/[\\/]/).includes('..') || normalize(screenshots) === parse(screenshots).root ||
       !measurePerformance)) {
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
+    ...(cpuTimeline ? { cpuTimeline: true } : {}),
     ...(ammoSlot === undefined ? {} : { ammoSlot }),
     ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
+}
+
+/** Optional diagnosis has measurable overhead and is not a timing certification. */
+export async function measureProductionFeedback(page, options, {
+  startTimeline = startMultiplayerCpuTimeline, measure = measureNativeFeedback,
+} = {}) {
+  if (!options.cpuTimeline) return measure(page, 20_000, options.ammoSlot);
+  const timeline = await startTimeline(page);
+  let sample;
+  let cpu;
+  try { sample = await measure(page, 20_000, options.ammoSlot); }
+  finally { cpu = await timeline.stop(); }
+  const offset = sample.sampleStartedAtMs - cpu.baselinePageTimeMs;
+  return { ...sample, cpuTimeline: { ...cpu,
+    sampleStartOffsetMs: Number.isFinite(offset) ? offset : null,
+    diagnosticOverhead: true } };
 }
 
 function failure(stage) {
@@ -191,8 +216,9 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError, measur
 
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
-  launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot } = {}) {
-  const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot });
+  launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot,
+  cpuTimeline = false } = {}) {
+  const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot, cpuTimeline });
   const started = performance.now();
   const owners = { browser: null, pages: [], roomCreated: false };
   let stage = 'browser_launch';
@@ -265,7 +291,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       const captures = [];
       for (const [index, page] of owners.pages.entries()) {
         const role = index ? 'guest' : 'host';
-        samples.push({ role, ...await measureNativeFeedback(page, 20_000, options.ammoSlot) });
+        samples.push({ role, ...await measureProductionFeedback(page, options) });
         if (options.screenshots) captures.push(await captureBattleScreenshot(page, options.screenshots, role));
       }
       return { scenario: 'native-private-1v1-winter', sampleMsPerRole: 20_000,
@@ -306,6 +332,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
+      cpuTimeline: process.argv.includes('--cpu-timeline'),
       ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
       screenshots: option('screenshots'),
       timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),

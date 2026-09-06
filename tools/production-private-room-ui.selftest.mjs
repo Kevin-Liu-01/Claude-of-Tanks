@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { productionUiOptions, validateUiProgress, cleanupProductionUi,
-  verifyProductionPrivateRoomUi, battleScreenshotAllowed, captureBattleScreenshot } from './production-private-room-ui.mjs';
+  verifyProductionPrivateRoomUi, battleScreenshotAllowed, captureBattleScreenshot,
+  measureProductionFeedback } from './production-private-room-ui.mjs';
 
 assert.deepEqual(productionUiOptions({ url: 'https://game.example.test' }),
   { origin: 'https://game.example.test', timeoutMs: 300_000 });
@@ -33,6 +34,37 @@ for (const ammoSlot of [0, 4, -1, 1.5, NaN, Infinity, null, true, '2']) {
   assert.throws(() => productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
     ammoSlot }), TypeError);
 }
+
+assert.throws(() => productionUiOptions({ url: 'https://game.example.test', cpuTimeline: true }),
+  /requires --performance/);
+for (const cpuTimeline of [null, 1, 'true']) assert.throws(() => productionUiOptions({
+  url: 'https://game.example.test', measurePerformance: true, cpuTimeline,
+}), TypeError);
+assert.equal(productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
+  cpuTimeline: true }).cpuTimeline, true);
+const timelineCalls = [];
+const timelinePage = {};
+const diagnosticPorts = {
+  async startTimeline(page) {
+    assert.equal(page, timelinePage); timelineCalls.push('start');
+    return { async stop() { timelineCalls.push('stop'); return { baselinePageTimeMs: 100, rows: [] }; } };
+  },
+  async measure(page, duration, slot) {
+    assert.equal(page, timelinePage); assert.equal(duration, 20_000); assert.equal(slot, 2);
+    timelineCalls.push('measure'); return { sampleStartedAtMs: 120, firing: {} };
+  },
+};
+assert.deepEqual(await measureProductionFeedback(timelinePage, { ammoSlot: 2 }, diagnosticPorts),
+  { sampleStartedAtMs: 120, firing: {} });
+assert.deepEqual(timelineCalls.splice(0), ['measure'], 'default native sample has no added CDP work');
+const diagnostic = await measureProductionFeedback(timelinePage, { ammoSlot: 2, cpuTimeline: true }, diagnosticPorts);
+assert.equal(diagnostic.cpuTimeline.sampleStartOffsetMs, 20);
+assert.equal(diagnostic.cpuTimeline.diagnosticOverhead, true);
+assert.deepEqual(timelineCalls.splice(0), ['start', 'measure', 'stop']);
+await assert.rejects(measureProductionFeedback(timelinePage, { cpuTimeline: true }, {
+  ...diagnosticPorts, async measure() { timelineCalls.push('measure'); throw new Error('sample failed'); },
+}), /sample failed/);
+assert.deepEqual(timelineCalls.splice(0), ['start', 'measure', 'stop'], 'failed measurement still closes its CDP owner');
 
 const captureCalls = [];
 const imageBytes = new Uint8Array([1, 2, 3]);
@@ -129,7 +161,7 @@ assert.doesNotMatch(source, /setRequestInterception|\/src\/net\/|signalingClient
 assert.match(source, /if \(measurePerformance\) await page\.evaluateOnNewDocument\(installFeedbackPeerObserver\)/,
   'the optional performance observer is not installed for the unchanged smoke path');
 assert.match(source, /measurePerformance = false/);
-assert.match(source, /await measureNativeFeedback\(page, 20_000, options\.ammoSlot\)[\s\S]{0,150}await captureBattleScreenshot/,
+assert.match(source, /await measureProductionFeedback\(page, options\)[\s\S]{0,150}await captureBattleScreenshot/,
   'each screenshot follows the completed timed role sample, not its measurement loop');
 assert.match(source, /createBrowserContext\(\)/);
 assert.match(source, /page\.click\(selector\)/, 'all room actions use native pointer events');

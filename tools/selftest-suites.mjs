@@ -99,6 +99,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/production-room-webrtc-check.selftest.mjs',
     'tools/production-private-room-ui.selftest.mjs',
     'tools/multiplayer-feedback-probe.selftest.mjs',
+    'tools/multiplayer-cpu-timeline.selftest.mjs',
     'tools/production-room-abandonment.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',

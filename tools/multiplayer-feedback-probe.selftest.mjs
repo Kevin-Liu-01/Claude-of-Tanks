@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createContext, runInContext } from 'node:vm';
 import { metricDistribution, summarizeFeedbackSample, installFeedbackPeerObserver,
   readFeedbackIceStats, startFeedbackSample, stopFeedbackSample,
-  sanitizeFeedbackTimingWindows, selectNativeFeedbackAmmo,
+  sanitizeFeedbackTimingWindows, sanitizeFeedbackActions, selectNativeFeedbackAmmo,
   measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
 
 assert.deepEqual(metricDistribution([0, 10, 20, 30, null, NaN, Infinity, -1, '90']),
@@ -23,6 +23,9 @@ assert.equal(summary.reconciliations, 10);
 assert.equal(summary.firing.readyAttempts, 2);
 assert.equal(summary.firing.unmatchedReadyAttempts, 1);
 assert.equal(summary.firing.predicted.count, 0, 'no speculative feedback is fabricated');
+assert.equal(summary.sampleStartedAtMs, null, 'older reports have no invented browser clock origin');
+assert.equal(summary.firing.actions[0].eligibility.locked, null,
+  'missing historical eligibility is unknown rather than admitted');
 assert.equal(summary.firing.confirmed.predictionSuppressedCount, 0,
   'legacy reports do not invent exact intent confirmations');
 assert.equal(summary.ice.stunRttMs.p50, 4);
@@ -58,11 +61,16 @@ class Peer {
     ]);
   }
 }
-const debug = { input: { onAction(name, callback) {
+const debug = { input: { isLocked: () => false, isCursorAim: () => false,
+  getState() { assert.fail('observation cannot poll input or read its buffered fire state'); },
+  isDown() { assert.fail('observation cannot consume press latches'); },
+  padActive() { assert.fail('observation cannot poll gamepad state'); },
+  onAction(name, callback) {
   assert.equal(name, 'fire'); fire = callback; return () => { unsubscribed++; };
 } }, bus: { on(name, callback) { listeners.set(name, callback); return () => { unsubscribed++; }; } },
-game: { phase: 'battle', preBattleS: 0, result: null, player: { id: 'PRIVATE_PLAYER', combat: { reload: { t: 0 } } } },
-network: { rttMs: 4, transportBufferedBytes: 0, prediction: { hardSnaps: 0 } } };
+game: { phase: 'battle', preBattleS: 0, result: null, player: { id: 'PRIVATE_PLAYER',
+  input: { fire: false, shellSlot: 1 }, combat: { shellSlot: 0, ammo: [12, 4, 0], reload: { t: 0 } } } },
+network: { rttMs: 4, transportBufferedBytes: 0, inputPacketsSubmitted: 52, prediction: { hardSnaps: 0 } } };
 const trace = { enabled: true, stats: () => ({ durationMs: at }), snapshot: () => ({
   frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'], stats: { framesDropped: 0 },
   frames: [[90, 'battle', 0, 0, 999], [120, 'battle', 0, 0, 16], [130, 'battle', 0, 1, 999],
@@ -122,6 +130,15 @@ assert.equal(sample.shots[0].predictionSuppressed, true);
 assert.equal(summarizeFeedbackSample(sample).firing.confirmed.predictionSuppressedCount, 1,
   'production receipt proves the real confirmation matched the predicted shot');
 assert.equal(sample.actions.filter((row) => row.ambiguous).length, 2);
+assert.equal(sample.sampleStartedAtMs, 100, 'clock alignment uses browser performance time, not wall time');
+assert.equal(summarizeFeedbackSample(sample).sampleStartedAtMs, 100);
+assert.deepEqual(JSON.parse(JSON.stringify(sample.actions[0])), {
+  atMs: 0, ready: true, matched: true, ambiguous: false,
+  eligibility: { locked: false, cursorAim: false, mouseFireLane: false,
+    pointerLocked: false, focused: true, hidden: false, fireHeld: null, currentInputFire: false,
+    shellSlot: 0, requestedShellSlot: 1, ammo: 12, requestedAmmo: 4, reloadS: 0, inputPacketsSubmitted: 52 },
+}, 'reload-ready actions retain the observed blocked mouse lane and pending ammo switch');
+assert.equal(summary.firing.readyAttempts, 2, 'new diagnostics do not rewrite historical readiness');
 assert.equal(timerCleared, 1);
 assert.equal(unsubscribed, 3);
 assert.equal(context.window.__COT_FEEDBACK_NETWORK.onAuthority, null);
@@ -159,6 +176,22 @@ assert.equal(projected.windows[0].events.length, 32);
 assert.equal(projected.windows[0].atMs, null);
 assert.doesNotMatch(JSON.stringify(projected), /PRIVATE/);
 assert.equal(sanitizeFeedbackTimingWindows(null), null);
+const actionSecrets = Array.from({ length: 200 }, () => ({ atMs: 'PRIVATE_CLOCK', ready: true,
+  matched: false, ambiguous: false, roomCode: 'PRIVATE_ROOM', eligibility: {
+    locked: 'PRIVATE_BOOL', currentInputFire: true, shellSlot: '1', requestedShellSlot: 1,
+    ammo: Infinity, reloadS: NaN, inputPacketsSubmitted: 9, position: [1, 2, 3], token: 'PRIVATE_TOKEN',
+  } }));
+const safeActions = sanitizeFeedbackActions(actionSecrets);
+assert.equal(safeActions.length, 128);
+assert.equal(safeActions[0].atMs, null);
+assert.equal(safeActions[0].eligibility.locked, null);
+assert.equal(safeActions[0].eligibility.shellSlot, null);
+assert.equal(safeActions[0].eligibility.ammo, null);
+assert.equal(safeActions[0].eligibility.currentInputFire, true);
+assert.equal(safeActions[0].eligibility.requestedShellSlot, 1);
+assert.doesNotMatch(JSON.stringify(safeActions), /PRIVATE|position|token/);
+assert.deepEqual(sanitizeFeedbackActions(null), []);
+assert.equal(sanitizeFeedbackActions([null])[0].ready, null);
 
 // Actual serialized browser observer path: dense trace windows stay bounded,
 // preserve their center frame, and reveal a foreground-gap boundary overlap.
@@ -172,8 +205,11 @@ events: Array.from({ length: 501 }, (_, index) => ({ tMs: 1000 + index,
 });
 evaluate(startFeedbackSample);
 for (let index = 0; index < 8; index++) { at = 1000 + index * 50; fire(); }
+for (let index = 0; index < 150; index++) fire();
 at = 1600;
 const crowded = evaluate(stopFeedbackSample);
+assert.equal(crowded.actions.length, 128, 'the live browser observer also bounds click context');
+assert.equal(summarizeFeedbackSample(crowded).firing.actions.length, 128);
 assert.equal(crowded.timingWindows.windows.length, 5, 'four click windows plus one worst frame');
 for (const window of crowded.timingWindows.windows) {
   assert.ok(window.frames.length <= 48 && window.events.length <= 32);
@@ -208,7 +244,7 @@ assert.equal(await selectNativeFeedbackAmmo(ammoPage), 1);
 assert.deepEqual(ammoCalls, [], 'the default slot-one baseline adds no selection key or wait');
 assert.equal(await selectNativeFeedbackAmmo(ammoPage, 2), 2);
 assert.deepEqual(ammoCalls, [['key', '2'], ['wait', 10000, 2]],
-  'native numeric key selection precedes a bounded authoritative slot/ammo check');
+  'native numeric key selection precedes a bounded presented slot/ammo check, not authority readiness');
 for (const badCount of [0, -1, Infinity, '4', undefined]) {
   ammoCount = badCount;
   await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /^Error: feedback_ammo_selection_timeout$/);
