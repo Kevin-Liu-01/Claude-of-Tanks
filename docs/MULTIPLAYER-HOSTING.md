@@ -194,11 +194,15 @@ churn requires a new room instead of unbounded storage or discarded identity
 fences. Closing the room deletes these fences too; no passwords, SDP, ICE data,
 or raw resume tokens are stored in them.
 
-Verification for the local follow-up: 30 real Workers tests (15 new abandonment
+Verification for the follow-up: 30 real Workers tests (15 new abandonment
 cases), 14 native LAN WebSocket cleanup cases, shared-store and browser-client
 regressions, root/Worker typechecks and public build pass. This cleanup follow-up
-is **not yet deployed**; the production receipt below describes the preceding
-release. See the [audit record](research/multiplayer-smoothness-2026-09.md#abandoned-room-lifecycle-follow-up--local-not-deployed).
+is deployed from `10ac577de6618a594c3a38b2bb64e0cbd103d109`, Worker version
+`af923039-1119-4465-8854-53237e0ee18a`. Live abrupt and silent-open host rooms
+expired after 90,032 and 179,768 ms while guests continued heartbeats; both
+returned `room_not_found` and all owned sockets closed. Native production
+room/RTC/launch/exit checks and real TURN allocation also pass. See the
+[current release evidence](research/multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements).
 
 Keep the new backend available before promoting the frontend. Rollback requires
 a deliberately verified alternative signaling service; simply removing the
@@ -208,7 +212,7 @@ new URL would return players to the exhausted old Redis route.
 
 - Worker: `https://cot-private-rooms.kk23907751.workers.dev`;
   initial version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`;
-  current host-burst correction `119c2871-40b7-4964-8fdb-03de3c82c040`.
+  historical host-burst correction `119c2871-40b7-4964-8fdb-03de3c82c040`.
 - Native production room probe passed create/join, bidirectional signaling,
   authenticated reconnect, signaling after reconnect, guest departure, host
   closure and absence of the closed room. This probe uses temporary owned rooms.

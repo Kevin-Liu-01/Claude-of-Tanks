@@ -313,6 +313,7 @@ export interface FxRuntime {
     normal: THREE.Vector3,
     caliberMm?: number,
   ): void;
+  warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void;
   update(
     dt: number,
     shells: LiveShell[],
@@ -3328,22 +3329,25 @@ export function createFx(
 
   let liveAtgmCount = 0;
 
-  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
-    const shellPos = shell.pos;
+  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3): void {
     if (liveAtgmCount < MAX_ATGM_BODIES) {
-      _atgmObject.position.copy(shellPos).addScaledVector(_v1, -0.65);
-      _atgmObject.quaternion.setFromUnitVectors(_Z, _v1);
+      _atgmObject.position.copy(shellPos).addScaledVector(direction, -0.65);
+      _atgmObject.quaternion.setFromUnitVectors(_Z, direction);
       _atgmObject.scale.set(1, 1, 1);
       _atgmObject.updateMatrix();
       atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
-      _atgmFlareObject.position.copy(shellPos).addScaledVector(_v1, -1.35);
+      _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -1.35);
       _atgmFlareObject.quaternion.identity();
       _atgmFlareObject.scale.setScalar(1.15);
       _atgmFlareObject.updateMatrix();
       atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
       liveAtgmCount++;
     }
+  }
 
+  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
+    const shellPos = shell.pos;
+    writeGuidedBody(shellPos, _v1);
     let trail = guidedTrails.get(shell.id);
     if (!trail) {
       trail = {
@@ -4256,6 +4260,18 @@ export function createFx(
     },
 
     /**
+     * Covered loading only: submit one instance of each missile-only material
+     * through the same body writer as real flight. There is no shell identity,
+     * event, world sweep or persistent trail; resetAll removes both instances.
+     * Call after update(), which normally rebuilds these counts from live shells.
+     */
+    warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void {
+      liveAtgmCount = 0;
+      writeGuidedBody(pos, dir);
+      commitAtgmInstances();
+    },
+
+    /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
      * and tracer ribbons rebuilt from live shell entities.
      * @param {number} dt render delta seconds
@@ -5070,6 +5086,7 @@ export function createFx(
       trails.clear();
       guidedTrails.clear();
       tracerGeo.instanceCount = 0;
+      liveAtgmCount = 0;
       atgmBodies.count = 0;
       atgmFlares.count = 0;
       renderedAtgmBodies = 0;

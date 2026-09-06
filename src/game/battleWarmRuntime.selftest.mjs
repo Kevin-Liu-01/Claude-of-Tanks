@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import {
   BoxGeometry,
   DirectionalLight,
+  Frustum,
   Group,
   Mesh,
   MeshBasicMaterial,
+  Matrix4,
   Object3D,
   PerspectiveCamera,
   Scene,
@@ -19,6 +21,8 @@ import {
   warmNetworkWrecks,
   warmStudioEffects,
 } from './battleWarmRuntime.ts';
+import { createFx } from '../fx/effects.ts';
+import { registerWorldDestructibles } from '../world/destructibles.ts';
 
 let warmedTerrainPoints = null;
 let terrainYieldCount = 0;
@@ -77,6 +81,8 @@ function createFxProbe() {
       await yieldForBudget();
     },
     warmOpeningEffects: () => calls.push('opening'),
+    composeFiringMoment: () => calls.push('firing-moment'),
+    warmProjectilePresentation: () => calls.push('projectile-presentation'),
     impact: (kind) => calls.push(`impact:${kind}`),
     dust: () => calls.push('dust'),
     exhaust: () => calls.push('exhaust'),
@@ -189,6 +195,168 @@ assert.ok(networkFx.calls.includes('clear-scars'),
   'the warm scar is removed before battle reveal');
 assert.equal(decalRoot.visible, false, 'decal warm restores vehicle visibility');
 assert.equal(networkCompiles, 2, 'FX and vehicle-owned decal programs compile under cover');
+
+// Exercise the real FX graph and its actual muzzle angle gate, frustum and
+// tracer instance count. Canvas painting is immaterial to this Node contract;
+// native GPU upload/compile coverage is verified by the covered browser draw.
+function createCanvasProbe() {
+  const canvas = { width: 0, height: 0 };
+  const noop = () => {};
+  const gradient = () => ({ addColorStop: noop });
+  const context = new Proxy({
+    canvas,
+    createRadialGradient: gradient,
+    createLinearGradient: gradient,
+    getImageData: (_x, _y, width, height) => ({
+      data: new Uint8ClampedArray(width * height * 4),
+    }),
+  }, { get: (target, key) => target[key] ?? noop });
+  return Object.assign(canvas, { getContext: () => context });
+}
+
+const priorDocument = globalThis.document;
+const priorWindow = globalThis.window;
+try {
+  globalThis.document = { createElement: createCanvasProbe };
+  globalThis.window = {};
+  const camera = new PerspectiveCamera(55, 1.6, 0.5, 2000);
+  camera.position.set(125, 32, -205);
+  camera.lookAt(150, 32, -190);
+  camera.updateMatrixWorld(true);
+  const initialMask = camera.layers.mask;
+  const fx = createFx({ camera }, { getHeightAt: () => 0 });
+  fx.warmTextures = () => {};
+  fx.group.visible = false;
+  let gameplaySweeps = 0;
+  let gameplayImpacts = 0;
+  registerWorldDestructibles({
+    key: 'covered-network-fx-warm-regression',
+    isActive: () => true,
+    sweep: () => { gameplaySweeps += 1; },
+    impact: () => { gameplayImpacts += 1; },
+  });
+  const liveShell = {
+    id: 'not-a-warm-shell', pos: new Vector3(5, 1, 5),
+    prevPos: new Vector3(0, 1, 0), vel: new Vector3(0, 0, 100),
+    spec: { tracer: 'APFSDS' },
+  };
+  const shells = Object.freeze([liveShell]);
+  const liveShellBefore = JSON.stringify(liveShell);
+  let nativeSubmissionCalls = 0;
+  let submissionValidated = false;
+  let stagedTracer = null;
+  const guidedPools = fx.group.children.filter((mesh) => mesh.isInstancedMesh
+    && (mesh.renderOrder === 25 || mesh.renderOrder === 26));
+  assert.equal(guidedPools.length, 2, 'the real missile body and flare pools are present');
+  const options = {
+    fx,
+    post: { prepareSoftParticles() {} },
+    camera,
+    shells,
+    compilePrograms() {},
+    warmRender() {
+      nativeSubmissionCalls += 1;
+      assert.equal(fx.group.visible, true, 'the actual FX root is drawable during warm');
+      assert.equal(fx.group.userData.softParticles.isActive(), true,
+        'the real late-composite activity gate is open during submission');
+      fx.group.updateMatrixWorld(true);
+      const frustum = new Frustum().setFromProjectionMatrix(
+        new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
+      );
+      const rings = fx.group.children.filter((mesh) =>
+        mesh.geometry?.type === 'PlaneGeometry' && mesh.renderOrder === 23);
+      assert.ok(rings.some((mesh) => mesh.visible && frustum.intersectsObject(mesh)),
+        'a real muzzle ring passes BOTH the angle gate and production camera frustum');
+      stagedTracer = fx.group.children.find((mesh) => mesh.geometry?.getAttribute('aA'));
+      assert.ok(stagedTracer.geometry.instanceCount > 0,
+        'the real tracer issues a nonzero instanced draw, not compile-only zero instances');
+      for (const mesh of guidedPools) {
+        assert.equal(mesh.count, 1, 'guided body AND flare issue a nonzero native draw');
+        assert.equal(mesh.visible, true);
+        assert.equal(mesh.frustumCulled, false);
+        const matrix = new Matrix4();
+        mesh.getMatrixAt(0, matrix);
+        const position = new Vector3().setFromMatrixPosition(matrix);
+        assert.ok(frustum.containsPoint(position), 'guided warm instance lies in the current view');
+      }
+      assert.equal(fx.getGuidedMissileDebug().trailSegments, 0,
+        'guided pool staging creates no synthetic persistent trail');
+      submissionValidated = true;
+    },
+  };
+  invalidateBattleWarmRuntime();
+  await warmNetworkOpeningEffects(options);
+  assert.equal(nativeSubmissionCalls, 1);
+  assert.equal(submissionValidated, true, 'real staged resources satisfy submission assertions');
+  assert.equal(fx.group.visible, false);
+  assert.equal(camera.layers.mask, initialMask);
+  assert.equal(fx.group.userData.softParticles.isActive(), false);
+  assert.equal(stagedTracer.geometry.instanceCount, 0, 'no warm tracer leaks into live battle');
+  assert.ok(guidedPools.every((mesh) => mesh.count === 0), 'no warm missile survives reset');
+  await warmNetworkOpeningEffects(options);
+  assert.equal(nativeSubmissionCalls, 2,
+    'returning from Garage restores resources again after phase GPU release');
+  assert.equal(gameplaySweeps, 0, 'warm never sweeps supplied live shells through world props');
+  assert.equal(gameplayImpacts, 0, 'presentation-only staging never submits a gameplay impact');
+  assert.equal(JSON.stringify(liveShell), liveShellBefore, 'live shell state remains untouched');
+
+  const priorWarn = console.warn;
+  try {
+    console.warn = () => {};
+    await warmNetworkOpeningEffects({
+      ...options,
+      warmRender() { throw new Error('driver submission failed'); },
+    });
+  } finally {
+    console.warn = priorWarn;
+  }
+  assert.equal(fx.group.visible, false, 'failed submission restores exact FX visibility');
+  assert.equal(camera.layers.mask, initialMask, 'failed submission restores camera layers');
+  assert.equal(fx.group.userData.softParticles.isActive(), false, 'failed warm clears staged FX');
+  assert.ok(guidedPools.every((mesh) => mesh.count === 0), 'failed warm clears guided pools too');
+  await warmNetworkOpeningEffects(options);
+  assert.equal(nativeSubmissionCalls, 3, 'failed warm remains retryable on the next entry');
+
+  // The same matrix writer must still position a real moving missile, retain
+  // real trails, honor the existing capacity and clear it all on round reset.
+  const missile = {
+    id: 'real-guided-regression', pos: new Vector3(20, 4, 8),
+    prevPos: new Vector3(20, 4, 7), vel: new Vector3(30, 40, 50),
+    spec: { guided: true, tracer: 'ATGM' },
+  };
+  const missileDirection = missile.vel.clone().normalize();
+  for (let frame = 0; frame < 2; frame += 1) {
+    fx.update(0.016, [missile], camera);
+    for (let index = 0; index < guidedPools.length; index += 1) {
+      const mesh = guidedPools[index];
+      assert.equal(mesh.count, 1, 'live guided projection keeps one body/flare');
+      const matrix = new Matrix4();
+      mesh.getMatrixAt(0, matrix);
+      const actualPosition = new Vector3().setFromMatrixPosition(matrix);
+      const expectedPosition = missile.pos.clone().addScaledVector(missileDirection,
+        index === 0 ? -0.65 : -1.35);
+      assert.ok(actualPosition.distanceTo(expectedPosition) < 2e-6,
+        'live body and flare retain the exact authored direction offsets');
+    }
+    assert.ok(fx.getGuidedMissileDebug().trailSegments > 0, 'real missiles still retain trails');
+    missile.prevPos.copy(missile.pos);
+    missile.pos.addScaledVector(missileDirection, 2);
+  }
+  const capacity = guidedPools[0].instanceMatrix.count;
+  const missiles = Array.from({ length: capacity + 2 }, (_, index) => ({
+    ...missile, id: `capacity-${index}`, prevPos: missile.pos,
+  }));
+  fx.update(0.016, missiles, camera);
+  assert.ok(guidedPools.every((mesh) => mesh.count === capacity), 'live guided pool cap is unchanged');
+  fx.resetAll();
+  assert.ok(guidedPools.every((mesh) => mesh.count === 0));
+  assert.deepEqual(fx.getGuidedMissileDebug(), { bodies: 0, trailSegments: 0 });
+} finally {
+  if (priorDocument === undefined) delete globalThis.document;
+  else globalThis.document = priorDocument;
+  if (priorWindow === undefined) delete globalThis.window;
+  else globalThis.window = priorWindow;
+}
 
 const scene = new Scene();
 const bridgeRoot = new Group();

@@ -2,14 +2,15 @@
 
 Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 
-Current deployment status: release `b970e9caa` is live on the canonical website
+Current deployment status: release `10ac577de` is live on the canonical website
 with Cloudflare room signaling and the existing TURN service. The old canonical
 Redis signaling route returns HTTP 410 and requests a refresh. See the final
 Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
 versions, production checks and limitations. Earlier **not deployed** statements
 below describe their historical verification phase, not the current cutover.
-The abandoned-room follow-up at the end is a separate local change and is not
-included in that production receipt.
+The abandoned-room follow-up at the end records its initial local checkpoint;
+the [subsequent live release receipt](multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements)
+includes production cleanup verification.
 
 Pre-cutover verification: focused verification, strict LAN and severe impaired-private rendering,
 four-/14-human capacity, persistent-room reconnect/rematch, natural rendered
@@ -1558,7 +1559,13 @@ The earlier failed agent-browser session-continuity attempt created no rooms
 and is not counted as gameplay proof. These remain short functional receipts,
 not full-capacity rendered or different-physical-network performance guarantees.
 
-## Abandoned-room lifecycle follow-up — local, not deployed
+## Abandoned-room lifecycle follow-up — initial local audit
+
+The following records the initial local-only checkpoint. The subsequent
+`10ac577de6618a594c3a38b2bb64e0cbd103d109` release is now live, the repaired
+repository test segments pass, and real production 90/180-second expiry was
+verified. See the [current response and cleanup release receipts](multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements)
+for current deployment, measurements and remaining limits.
 
 Base: `b970e9caadb681903b9b35ae1dfecb3650598dfa`. The audit found that the
 old room-wide 24-hour idle timeout did not bound individual disconnected seats.

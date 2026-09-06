@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { createContext, runInContext } from 'node:vm';
 import { metricDistribution, summarizeFeedbackSample, installFeedbackPeerObserver,
-  readFeedbackIceStats, startFeedbackSample, stopFeedbackSample } from './multiplayer-feedback-probe.mjs';
+  readFeedbackIceStats, startFeedbackSample, stopFeedbackSample,
+  sanitizeFeedbackTimingWindows, selectNativeFeedbackAmmo,
+  measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
 
 assert.deepEqual(metricDistribution([0, 10, 20, 30, null, NaN, Infinity, -1, '90']),
   { count: 4, p50: 10, p95: 30, p99: 30, max: 30 });
@@ -65,6 +67,10 @@ const trace = { enabled: true, stats: () => ({ durationMs: at }), snapshot: () =
   frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'], stats: { framesDropped: 0 },
   frames: [[90, 'battle', 0, 0, 999], [120, 'battle', 0, 0, 16], [130, 'battle', 0, 1, 999],
     [140, 'battle', 0, 2, 999], [150, 'battle', 3, 0, 999], [160, 'garage', 0, 0, 999]],
+  events: [{ tMs: 100, kind: 'action', name: 'fire', data: { roomCode: 'PRIVATE_ROOM' } },
+    { tMs: 110, kind: 'bus', name: 'weapon:predicted', data: { playerId: 'PRIVATE_PLAYER' } },
+    { tMs: 120, name: 'PRIVATE_EVENT_NAME', data: 'PRIVATE_TOKEN' },
+    { tMs: 125, name: 'longtask', data: { containerSrc: 'PRIVATE_URL' } }],
 }) };
 const context = createContext({ window: { __DEBUG: debug, __QA_TRACE: trace, RTCPeerConnection: Peer },
   document: { hidden: false, hasFocus: () => true }, performance: { now: () => at },
@@ -120,4 +126,124 @@ assert.equal(timerCleared, 1);
 assert.equal(unsubscribed, 3);
 assert.equal(context.window.__COT_FEEDBACK_NETWORK.onAuthority, null);
 assert.doesNotMatch(JSON.stringify(sample), /PRIVATE|OTHER_PLAYER|AMBIGUOUS/);
+
+const timing = JSON.parse(JSON.stringify(summarizeFeedbackSample(sample).timingWindows));
+assert.equal(timing.halfWidthMs, 250);
+assert.deepEqual(timing.windows.map((row) => row.kind),
+  ['first-click', 'subsequent-click', 'subsequent-click', 'worst-frame']);
+assert.deepEqual(timing.windows.slice(0, 3).map((row) => row.atMs), [0, 110, 120]);
+assert.deepEqual(timing.windows[0].events.map((row) => [row.dtFromCenterMs, row.name]),
+  [[0, 'fire'], [10, 'weapon:predicted'], [25, 'longtask']]);
+assert.equal(timing.windows.at(-1).atMs, 20);
+assert.equal(timing.windows.at(-1).gapStartedBeforeSample, false);
+assert.equal(timing.windows[0].frames[0].dtFromCenterMs, -10,
+  'diagnostic context may precede the click without changing live-only gap aggregates');
+assert.equal(timing.windows[0].frames[0].programs, null, 'absent trace counters remain unavailable');
+
+// The exported function must remain safe even when a stored artifact contains
+// unexpected payload fields, numeric-looking secrets or excessive rows.
+const untrusted = { windows: [
+  { kind: 'PRIVATE_KIND', frames: [], events: [] },
+  ...Array.from({ length: 10 }, () => ({ kind: 'first-click', atMs: 'PRIVATE_CLOCK',
+    token: 'PRIVATE_TOKEN', frames: Array.from({ length: 80 }, () => ({ dtFromCenterMs: 0,
+      programs: 'PRIVATE_PROGRAM', gapMs: 16, room: 'PRIVATE_ROOM' })),
+    events: [{ dtFromCenterMs: 0, name: 'PRIVATE_EVENT' },
+      { dtFromCenterMs: 251, name: 'fire' },
+      ...Array.from({ length: 50 }, () => ({ dtFromCenterMs: 0, name: 'fire', sdp: 'PRIVATE_SDP' }))],
+  })),
+] };
+const projected = sanitizeFeedbackTimingWindows(untrusted);
+assert.equal(projected.windows.length, 5);
+assert.equal(projected.windows[0].frames.length, 48);
+assert.equal(projected.windows[0].events.length, 32);
+assert.equal(projected.windows[0].atMs, null);
+assert.doesNotMatch(JSON.stringify(projected), /PRIVATE/);
+assert.equal(sanitizeFeedbackTimingWindows(null), null);
+
+// Actual serialized browser observer path: dense trace windows stay bounded,
+// preserve their center frame, and reveal a foreground-gap boundary overlap.
+at = 1000;
+trace.snapshot = () => ({ frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs',
+  'programs', 'geometries', 'textures', 'renderScale', 'heapMB'], stats: { framesDropped: 0 },
+frames: Array.from({ length: 2001 }, (_, index) => [1000 + index / 4, 'battle', 0, 0,
+  index === 500 ? 155 : 1 / 4, 19, 300, 25, 1, 88]),
+events: Array.from({ length: 501 }, (_, index) => ({ tMs: 1000 + index,
+  name: 'shell:fired', data: { room: 'PRIVATE_ROOM', address: 'PRIVATE_IP' } })),
+});
+evaluate(startFeedbackSample);
+for (let index = 0; index < 8; index++) { at = 1000 + index * 50; fire(); }
+at = 1600;
+const crowded = evaluate(stopFeedbackSample);
+assert.equal(crowded.timingWindows.windows.length, 5, 'four click windows plus one worst frame');
+for (const window of crowded.timingWindows.windows) {
+  assert.ok(window.frames.length <= 48 && window.events.length <= 32);
+  assert.ok(window.frameRowsOmitted > 0, 'downsampling is explicit rather than silently complete');
+  assert.ok(window.frames.every((row) => Math.abs(row.dtFromCenterMs) <= 250));
+}
+const worst = crowded.timingWindows.windows.at(-1);
+assert.equal(worst.atMs, 125);
+assert.equal(worst.gapStartedBeforeSample, true);
+assert.ok(worst.frames.some((row) => row.dtFromCenterMs === 0 && row.gapMs === 155),
+  'the worst frame is never lost when bounding a dense window');
+assert.equal(worst.frames[0].programs, 19);
+assert.equal(worst.frames[0].heapMB, 88);
+assert.equal(timerCleared, 2);
+assert.equal(unsubscribed, 6);
+assert.equal(rafs.size, 0);
+assert.equal(context.window.__COT_FEEDBACK_NETWORK.onAuthority, null);
+assert.doesNotMatch(JSON.stringify(summarizeFeedbackSample(crowded)), /PRIVATE/);
+
+const ammoCalls = [];
+let selectedSlot = 1;
+let ammoCount = 4;
+const ammoPage = { keyboard: { async press(key) { ammoCalls.push(['key', key]); } },
+  async waitForFunction(predicate, options, slot) {
+    ammoCalls.push(['wait', options.timeout, slot]);
+    const ready = runInContext(`(${predicate.toString()})(${slot})`, createContext({ window: {
+      __DEBUG: { game: { player: { combat: { shellSlot: selectedSlot, ammo: [0, ammoCount, 0] } } } },
+    } }));
+    if (!ready) throw new Error('PRIVATE_WAIT_TOKEN');
+  } };
+assert.equal(await selectNativeFeedbackAmmo(ammoPage), 1);
+assert.deepEqual(ammoCalls, [], 'the default slot-one baseline adds no selection key or wait');
+assert.equal(await selectNativeFeedbackAmmo(ammoPage, 2), 2);
+assert.deepEqual(ammoCalls, [['key', '2'], ['wait', 10000, 2]],
+  'native numeric key selection precedes a bounded authoritative slot/ammo check');
+for (const badCount of [0, -1, Infinity, '4', undefined]) {
+  ammoCount = badCount;
+  await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /^Error: feedback_ammo_selection_timeout$/);
+}
+ammoCount = 4;
+selectedSlot = 0;
+await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /feedback_ammo_selection_timeout/,
+  'available ammunition in a different slot does not admit the sample');
+const beforeInvalidAmmo = ammoCalls.length;
+for (const slot of [0, 4, null, '2', Infinity, 1.5]) {
+  await assert.rejects(selectNativeFeedbackAmmo(ammoPage, slot), TypeError);
+}
+assert.equal(ammoCalls.length, beforeInvalidAmmo, 'invalid slots never issue a key or touch the page');
+
+// Selection timeouts use the same finally cleanup as timed failures, even
+// though no sample listeners or held movement keys have been acquired yet.
+const selectionCleanup = [];
+let waits = 0;
+const timeoutPage = { async bringToFront() { selectionCleanup.push('front'); },
+  async waitForFunction(_predicate, options) {
+    if (++waits === 2) {
+      assert.equal(options.timeout, 10000);
+      throw new Error('PRIVATE_TIMEOUT_DETAILS');
+    }
+  }, keyboard: { async press(key) { selectionCleanup.push(`press:${key}`); },
+    async up(key) { selectionCleanup.push(`up:${key}`); }, async down() { assert.fail('no timed input before selection'); } },
+  mouse: { async up() { selectionCleanup.push('mouse:up'); } },
+  async evaluate(fn) {
+    assert.notEqual(fn, startFeedbackSample, 'selection failure must not install timed listeners');
+    selectionCleanup.push('dispose');
+  } };
+await assert.rejects(measureNativeFeedback(timeoutPage, 0, 2), (error) => {
+  assert.equal(error.message, 'feedback_ammo_selection_timeout');
+  assert.doesNotMatch(String(error), /PRIVATE/);
+  return true;
+});
+assert.deepEqual(selectionCleanup, ['front', 'press:2', 'up:w', 'up:d', 'mouse:up', 'dispose']);
 console.log('multiplayer feedback probe selftest passed (metrics, native observer identity, correlation, privacy, cleanup)');

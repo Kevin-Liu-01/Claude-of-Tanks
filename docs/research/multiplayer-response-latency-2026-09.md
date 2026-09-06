@@ -2,8 +2,9 @@
 
 Baseline: `b970e9caadb681903b9b35ae1dfecb3650598dfa`, canonical production,
 2026-09-05. This is a follow-up to [the multiplayer reliability audit](multiplayer-smoothness-2026-09.md).
-Implementation and release verification are still in progress; measurements below
-must not be mistaken for a deployed fix or an unconditional zero-latency claim.
+Runtime release `10ac577de6618a594c3a38b2bb64e0cbd103d109` is deployed and the
+live verification receipts below distinguish measured improvements from an
+unconditional zero-latency claim.
 
 ## What is being measured
 
@@ -137,8 +138,8 @@ Local Cloudflare runtime with real wall-clock timers and live WebSockets removed
 an abruptly disconnected host's room after 90,005 ms and a silent-open host's
 room after 179,995 ms. A guest kept heartbeating in both cases and did not prolong
 the host lease. Both rooms returned `room_not_found` and all owned sockets closed.
-This is distinct from the accelerated Workers unit tests and still requires
-repetition against the deployed Worker.
+This is distinct from the accelerated Workers unit tests; the subsequent
+deployed-Worker repetition is recorded in the production release receipt below.
 
 The full suite exposed an explicit-Leave race in the LAN adapter: a native
 client sends Leave and immediately starts closing, while an awaited cleanup
@@ -189,8 +190,9 @@ Pre-release validation passed all three repository test segments (88 pre,
 test and the final changed firing/probe tests. Suite discovery now reports
 482 ordered checks. The original core run exposed the Leave race described
 above; the repaired core segment was rerun to completion rather than treating
-the first red run as green. An additional final pre-segment repeat is separate
-from those completed receipts. Root and Workers typechecks, public build,
+the first red run as green. A redundant second pre-segment run was stopped to
+remove owned CPU contention before the repeat production measurement; it is not
+counted as another pass. Root and Workers typechecks, public build,
 30 Workers tests and the 19-runtime-file quality gate pass (1,072 functions,
 zero complexity violations, explicit `any` or `unknown`).
 
@@ -204,7 +206,100 @@ modules). Readiness freshness and one-intent-per-ready-cycle limits bound this;
 they cannot remove that uncertainty without waiting for a round trip. No
 speculative hit marker, projectile or ammunition change conceals a denial.
 
-Before release: focused lifecycle/weapon/movement tests, adverse-network and
-contact fixtures, typecheck/build, live-room closure/abandonment checks, and a
-repeat of the exact production native-control measurement. Record the exact
-shipped revision and measured results here when completed.
+## Production release and repeat measurements
+
+The exact runtime revision above was pushed without force to `origin/main`.
+Vercel deployment `dpl_FiVxemPaQhFUw8bqYjeiFxEbBZof` became READY and canonical
+`https://cot.kevinliu.studio` reports `v1.0.0+g10ac577de`. The existing Worker
+`cot-private-rooms` was deployed as version
+`af923039-1119-4465-8854-53237e0ee18a`. No Redis resource, billing plan, TURN
+credential, unrelated worktree or environment setting was changed.
+
+Real production abandoned-host rooms expired after 90,032 ms (abruptly closed
+socket) and 179,768 ms (silent but open socket). Guests continued heartbeats in
+both cases and could not prolong the host lease. Both rooms became unjoinable
+with `room_not_found`; all test rooms and sockets were removed. Production
+creation, join, bidirectional relay, authenticated resume, guest departure and
+host closure passed. A pristine browser obtained 12 actual TURN relay candidates;
+this allocation check is separate from the host/host UDP gameplay measurements.
+
+The first post-deployment native-control run repeated the baseline configuration
+and matched all eight ready triggers without ambiguity, page errors or observer
+failures. Each of the guest's four predicted cues had an exact matching accepted
+confirmation with its duplicate effect suppressed. Host loopback was confirmed
+before speculation and correctly emitted no speculative duplicate.
+
+| Measurement | Baseline host → new host | Baseline guest → new guest |
+| --- | ---: | ---: |
+| First feedback callback median | 84.8 → 9.5 ms | 53.3 → 3.7 ms |
+| First feedback callback maximum (4 samples each) | 103.0 → 31.3 ms | 126.4 → 14.7 ms |
+| Input → next rAF median for first feedback | 120.0 → 35.4 ms | 86.7 → 35.0 ms |
+| Authority EVENT arrival → confirmed callback maximum | Loopback | 84.9 → 13.8 ms |
+| Frame-gap p95 / p99 | 32.9 / 38.4 → 42.2 / 54.9 ms | 30.6 / 35.7 → 30.5 / 32.5 ms |
+| Hard snaps / dropped history | 0 / 0 → 0 / 0 | 0 / 0 → 0 / 0 |
+
+The guest's accepted-shot callback still waited for authority (27.3 ms median),
+but its local flash/report/recoil did not. The host frame tail regressed in this
+run (maximum 155.8 ms versus baseline 122.7 ms); a redundant fleet test occupied
+one CPU core. This is retained as an adverse receipt, not discarded or attributed
+to a cause without evidence.
+
+After closing that owned CPU test, a second fresh-context run matched all eight
+shots with four correct guest prediction confirmations, no hard snaps, no lost
+history and no page/observer errors. Host first-feedback median/max were
+14.7/23.9 ms; guest 7.3/10.0 ms. Host frame-gap p95/p99/max were
+34.6/39.7/127.4 ms; guest 30.9/34.3/36.9 ms. The rare host spike remains close to
+the baseline tail and is under trace investigation, not described as zero lag.
+Both runs used host/host UDP on one machine; no Internet geography is simulated
+by calling a production URL.
+
+Native screenshots were captured outside the timed intervals and inspected:
+both contain the actual live Winter battle, tank, HUD and connected diagnostics,
+not a loading/blank/menu frame. Room and browser cleanup passed. A bounded
+post-release Vercel error-log query returned zero error rows for this deployment;
+this is a short observation window, not continuous monitoring.
+
+### First-shot frame investigation
+
+A third fresh production run added bounded, sanitized trace windows around the
+four clicks and worst frame. Existing latency/frame distributions were retained,
+including intervals crossing sample boundaries; the new diagnostic explicitly
+marks such overlap rather than silently filtering it. Only relative times,
+numeric resource counters and an allowlist of event names leave the browser.
+
+On `10ac577de`, the host's worst gap was 133.7 ms, entirely inside the sample,
+immediately after the first `shell:fired`. Programs increased 326→328,
+geometries 575→583 and textures 146→147 during that interval, with a long-task
+event and no nearby prop destruction. Later clicks had no program growth.
+Host first-feedback median was 14.8 ms, guest prediction median 13.0 ms; all
+eight clicks matched, all four guest cues were exact-confirmed/deduplicated,
+and both roles had zero hard snaps, dropped history or page/observer errors.
+Host frame p95/p99 were 33.6/40.4 ms; guest 30.2/33.5 ms, maximum 44.2 ms.
+This distinguishes a first-use graphics stall from a delayed authority response,
+but counters alone do not identify the exact two new programs.
+
+Source inspection found missing warm coverage: the network loader submitted a
+combined-layer forward render, whereas live transparent combat effects use the
+layer-30-only late-effects pass with depth copying and composition. Its empty
+shell list also skipped a nonzero tracer draw, and the offscreen fixed-direction
+muzzle ring could be view-angle gated or culled. Merely compiling that forward
+variant does not submit the actual gameplay pipeline. The global network warm
+latch also outlived graphics-resource release on return to Garage. These are
+the bounded first-shot warmup defects targeted by the follow-up below; no
+unproven terrain or prop-destruction change was made.
+
+The follow-up stages the real muzzle ring and static APFSDS ribbon in the
+camera's view immediately before a covered compositor frame. The existing
+missile body/flare matrix writer also submits one instance of each missile-only
+material without creating a shell, flight trail, event or world sweep. Warmup
+repeats on every network entry after Garage resource release. Masks, visibility,
+compositor output policy, active render target/face/mip and temporary FX are
+restored on failure as well as success. A real-effects regression fails against
+the previous source's muzzle visibility and empty missile pools, then passes
+with the fix; real guided movement, trail and capacity checks still pass.
+
+Production repeat for this follow-up is pending at this source checkpoint.
+The native probe now accepts `--performance --ammo-slot=2` to test an actual
+missile selection with trusted keyboard input. It waits for the selected slot
+and positive ammo before timing; timeout still closes both browsers and the
+owned room. Omission preserves the ordinary-shell baseline configuration.

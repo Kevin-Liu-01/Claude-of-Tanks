@@ -23,6 +23,16 @@ for (const screenshots of ['', '.', 'artifacts', '/', '/private/tmp/../battle', 
 }
 assert.throws(() => productionUiOptions({ url: 'https://game.example.test', screenshots: '/private/tmp/artifacts' }),
   /require --performance/, 'screenshots are allowed only after the optional timed measurement');
+for (const ammoSlot of [1, 2, 3]) {
+  assert.equal(productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
+    ammoSlot }).ammoSlot, ammoSlot);
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', ammoSlot }),
+    /requires --performance/);
+}
+for (const ammoSlot of [0, 4, -1, 1.5, NaN, Infinity, null, true, '2']) {
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
+    ammoSlot }), TypeError);
+}
 
 const captureCalls = [];
 const imageBytes = new Uint8Array([1, 2, 3]);
@@ -103,6 +113,9 @@ let launchCalls = 0;
 await assert.rejects(verifyProductionPrivateRoomUi({ url: 'https://PRIVATE:TOKEN@game.example.test',
   launchBrowser: async () => { launchCalls++; } }), TypeError);
 assert.equal(launchCalls, 0, 'unsafe URLs cannot launch browsers or contact production');
+await assert.rejects(verifyProductionPrivateRoomUi({ url: 'https://game.example.test', ammoSlot: 2,
+  launchBrowser: async () => { launchCalls++; } }), TypeError);
+assert.equal(launchCalls, 0, 'ammo selection without performance fails before browser acquisition');
 await assert.rejects(verifyProductionPrivateRoomUi({ url: 'https://game.example.test',
   launchBrowser: async () => { throw new Error('PRIVATE_LAUNCH_TOKEN'); } }), (error) => {
   assert.equal(error.stage, 'browser_launch');
@@ -116,7 +129,7 @@ assert.doesNotMatch(source, /setRequestInterception|\/src\/net\/|signalingClient
 assert.match(source, /if \(measurePerformance\) await page\.evaluateOnNewDocument\(installFeedbackPeerObserver\)/,
   'the optional performance observer is not installed for the unchanged smoke path');
 assert.match(source, /measurePerformance = false/);
-assert.match(source, /await measureNativeFeedback\(page\)[\s\S]{0,150}await captureBattleScreenshot/,
+assert.match(source, /await measureNativeFeedback\(page, 20_000, options\.ammoSlot\)[\s\S]{0,150}await captureBattleScreenshot/,
   'each screenshot follows the completed timed role sample, not its measurement loop');
 assert.match(source, /createBrowserContext\(\)/);
 assert.match(source, /page\.click\(selector\)/, 'all room actions use native pointer events');
@@ -124,4 +137,14 @@ const child = spawnSync(process.execPath, ['tools/production-private-room-ui.mjs
   { encoding: 'utf8', timeout: 5000 });
 assert.equal(child.status, 1);
 assert.equal(JSON.parse(child.stderr).stage, 'configuration');
+for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_TOKEN']
+  .map((slot) => ['--performance', `--ammo-slot=${slot}`]), ['--performance', '--ammo-slot']]) {
+  const invalid = spawnSync(process.execPath, ['tools/production-private-room-ui.mjs',
+    '--url=https://game.example.test', ...args], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(invalid.status, 1);
+  const receipt = JSON.parse(invalid.stderr);
+  assert.equal(receipt.stage, 'configuration');
+  assert.equal(receipt.cleanup, null, 'invalid ammo arguments never acquire a browser or room');
+  assert.doesNotMatch(invalid.stderr, /PRIVATE_TOKEN/);
+}
 console.log('production private-room UI smoke selftest passed (deterministic guards and cleanup; not a live receipt)');

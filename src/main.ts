@@ -1981,7 +1981,20 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               shells: game.shells,
               decalVisual,
               compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
-              warmRender,
+              warmRender: () => {
+                // The loader is opaque. Submit the actual late-FX/depth-copy
+                // passes, not only a combined-layer offscreen scene variant.
+                const renderToScreen = post.composer.renderToScreen;
+                const target = renderer.getRenderTarget();
+                const face = renderer.getActiveCubeFace();
+                const mip = renderer.getActiveMipmapLevel();
+                post.composer.renderToScreen = false;
+                try { post.composer.render(0); }
+                finally {
+                  post.composer.renderToScreen = renderToScreen;
+                  renderer.setRenderTarget(target, face, mip);
+                }
+              },
             });
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),

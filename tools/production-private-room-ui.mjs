@@ -3,7 +3,15 @@ import { isAbsolute, join, normalize, parse } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { installFeedbackPeerObserver, measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
 
-export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false } = {}) {
+function validateAmmoSelection(ammoSlot, measurePerformance) {
+  if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
+      ammoSlot < 1 || ammoSlot > 3)) {
+    throw new TypeError('ammo slot must be 1, 2, or 3 and requires --performance');
+  }
+}
+
+export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
+  ammoSlot } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -13,12 +21,14 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30_000 || timeoutMs > 300_000) {
     throw new TypeError('timeout must be an integer from 30000 through 300000 ms');
   }
+  validateAmmoSelection(ammoSlot, measurePerformance);
   if (screenshots !== undefined && (typeof screenshots !== 'string' || !isAbsolute(screenshots) ||
       screenshots.split(/[\\/]/).includes('..') || normalize(screenshots) === parse(screenshots).root ||
       !measurePerformance)) {
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
+    ...(ammoSlot === undefined ? {} : { ammoSlot }),
     ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
 }
 
@@ -181,8 +191,8 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError, measur
 
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
-  launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots } = {}) {
-  const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance });
+  launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot } = {}) {
+  const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot });
   const started = performance.now();
   const owners = { browser: null, pages: [], roomCreated: false };
   let stage = 'browser_launch';
@@ -255,10 +265,11 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       const captures = [];
       for (const [index, page] of owners.pages.entries()) {
         const role = index ? 'guest' : 'host';
-        samples.push({ role, ...await measureNativeFeedback(page) });
+        samples.push({ role, ...await measureNativeFeedback(page, 20_000, options.ammoSlot) });
         if (options.screenshots) captures.push(await captureBattleScreenshot(page, options.screenshots, role));
       }
       return { scenario: 'native-private-1v1-winter', sampleMsPerRole: 20_000,
+        ammoSlot: options.ammoSlot ?? 1,
         viewport: [1280, 800], deviceScaleFactor: 1, cpuThrottle: 1,
         twoRenderedContextsSameMachine: true, foregroundRolesMeasuredSequentially: true,
         externalGpuContention: 'not-detected-or-controlled-by-this-probe',
@@ -289,8 +300,13 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const option = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   try {
+    const ammoSlot = option('ammo-slot');
+    if ((ammoSlot !== undefined || process.argv.includes('--ammo-slot')) && !/^[123]$/.test(ammoSlot || '')) {
+      throw new TypeError('ammo slot must be 1, 2, or 3');
+    }
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
+      ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
       screenshots: option('screenshots'),
       timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),
       onStage: (stage) => console.log(`[production-ui] ${stage}`) });
