@@ -224,9 +224,20 @@ try {
   camera.lookAt(150, 32, -190);
   camera.updateMatrixWorld(true);
   const initialMask = camera.layers.mask;
-  const fx = createFx({ camera }, { getHeightAt: () => 0 });
+  const fxScene = new Scene();
+  const scarRoot = new Group();
+  scarRoot.position.set(12, 3, -24);
+  scarRoot.rotation.set(0.1, 0.6, -0.05);
+  scarRoot.scale.set(1.1, 0.9, 1.2);
+  scarRoot.add(new Mesh(new BoxGeometry(2, 2, 2), new MeshBasicMaterial()));
+  scarRoot.visible = false;
+  fxScene.add(scarRoot);
+  const scarVisual = { root: scarRoot };
+  const scarTransform = [scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()];
+  const fx = createFx({ camera, scene: fxScene }, { getHeightAt: () => 0 });
   fx.warmTextures = () => {};
   fx.group.visible = false;
+  fxScene.add(fx.group);
   let gameplaySweeps = 0;
   let gameplayImpacts = 0;
   registerWorldDestructibles({
@@ -245,6 +256,8 @@ try {
   let nativeSubmissionCalls = 0;
   let submissionValidated = false;
   let stagedTracer = null;
+  let compiledScarMesh = null;
+  let submittedScarMesh = null;
   const guidedPools = fx.group.children.filter((mesh) => mesh.isInstancedMesh
     && (mesh.renderOrder === 25 || mesh.renderOrder === 26));
   assert.equal(guidedPools.length, 2, 'the real missile body and flare pools are present');
@@ -253,12 +266,25 @@ try {
     post: { prepareSoftParticles() {} },
     camera,
     shells,
-    compilePrograms() {},
+    decalVisual: scarVisual,
+    compilePrograms(root) {
+      if (root === scarRoot) compiledScarMesh = root.getObjectByName('fx_impactDecals');
+    },
     warmRender() {
       nativeSubmissionCalls += 1;
       assert.equal(fx.group.visible, true, 'the actual FX root is drawable during warm');
       assert.equal(fx.group.userData.softParticles.isActive(), true,
         'the real late-composite activity gate is open during submission');
+      const drawnScars = [];
+      fxScene.traverseVisible((object) => {
+        if (object.name === 'fx_impactDecals') drawnScars.push(object);
+      });
+      assert.equal(drawnScars.length, 1,
+        'the actual scene draw sees the compiled scar still attached under a visible vehicle');
+      assert.equal(drawnScars[0] === compiledScarMesh, true,
+        'the drawn scar is the same mesh prepared by the scoped compile');
+      submittedScarMesh = drawnScars[0];
+      assert.equal(submittedScarMesh.frustumCulled, false);
       fx.group.updateMatrixWorld(true);
       const frustum = new Frustum().setFromProjectionMatrix(
         new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
@@ -293,9 +319,20 @@ try {
   assert.equal(fx.group.userData.softParticles.isActive(), false);
   assert.equal(stagedTracer.geometry.instanceCount, 0, 'no warm tracer leaks into live battle');
   assert.ok(guidedPools.every((mesh) => mesh.count === 0), 'no warm missile survives reset');
+  assert.equal(scarRoot.visible, false);
+  assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined);
+  assert.deepEqual([scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()],
+    scarTransform, 'scar staging preserves the exact authored vehicle transform');
+  assert.equal(fx.impactDecalStats().pooled, 1, 'one submitted scar returns to the shared pool');
+  fx.armorScar(scarVisual, new Vector3(12, 4, -24), new Vector3(0, 1, 0), 120);
+  assert.equal(scarRoot.getObjectByName('fx_impactDecals'), submittedScarMesh,
+    'the first real impact reuses the exact submitted mesh, geometry and shared atlas');
+  fx.clearVehicleDecals(scarVisual);
+  submissionValidated = false;
   await warmNetworkOpeningEffects(options);
   assert.equal(nativeSubmissionCalls, 2,
     'returning from Garage restores resources again after phase GPU release');
+  assert.equal(submissionValidated, true);
   assert.equal(gameplaySweeps, 0, 'warm never sweeps supplied live shells through world props');
   assert.equal(gameplayImpacts, 0, 'presentation-only staging never submits a gameplay impact');
   assert.equal(JSON.stringify(liveShell), liveShellBefore, 'live shell state remains untouched');
@@ -303,10 +340,38 @@ try {
   const priorWarn = console.warn;
   try {
     console.warn = () => {};
-    await warmNetworkOpeningEffects({
-      ...options,
-      warmRender() { throw new Error('driver submission failed'); },
-    });
+    const realArmorScar = fx.armorScar;
+    for (const initialVisibility of [false, true]) {
+      scarRoot.visible = initialVisibility;
+      for (const failureAt of ['stamp', 'compile', 'draw']) {
+        let injected = false;
+        fx.armorScar = (...args) => {
+          realArmorScar(...args);
+          if (failureAt === 'stamp') { injected = true; throw new Error('stamp failed after attachment'); }
+        };
+        await warmNetworkOpeningEffects({
+          ...options,
+          compilePrograms(root) {
+            options.compilePrograms(root);
+            if (failureAt === 'compile') { injected = true; throw new Error('compile failed'); }
+          },
+          warmRender() { injected = true; throw new Error('driver submission failed'); },
+        });
+        assert.equal(injected, true, `${failureAt} failure fixture reached its intended boundary`);
+        assert.equal(scarRoot.visible, initialVisibility, `${failureAt} failure restores exact visibility`);
+        assert.equal(scarRoot.parent === fxScene, true, `${failureAt} failure preserves scene ownership`);
+        assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined,
+          `${failureAt} failure detaches the temporary scar`);
+        assert.deepEqual([scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()],
+          scarTransform, `${failureAt} failure preserves the exact vehicle transform`);
+        assert.equal(fx.impactDecalStats().pooled, 1, `${failureAt} failure retains one reusable mesh`);
+        assert.equal(camera.layers.mask, initialMask);
+        assert.equal(fx.group.visible, false);
+        assert.equal(fx.group.userData.softParticles.isActive(), false);
+      }
+    }
+    scarRoot.visible = false;
+    fx.armorScar = realArmorScar;
   } finally {
     console.warn = priorWarn;
   }
@@ -316,6 +381,25 @@ try {
   assert.ok(guidedPools.every((mesh) => mesh.count === 0), 'failed warm clears guided pools too');
   await warmNetworkOpeningEffects(options);
   assert.equal(nativeSubmissionCalls, 3, 'failed warm remains retryable on the next entry');
+
+  const realClearDecals = fx.clearVehicleDecals;
+  const realResetFx = fx.resetAll;
+  let failedCleanupResets = 0;
+  scarRoot.visible = true;
+  try {
+    fx.clearVehicleDecals = () => { throw new Error('decal cleanup failed'); };
+    fx.resetAll = () => { failedCleanupResets += 1; realResetFx(); };
+    await assert.rejects(warmNetworkOpeningEffects(options), /decal cleanup failed/);
+    assert.equal(failedCleanupResets, 1, 'a throwing scar cleanup cannot skip final FX reset');
+    assert.equal(scarRoot.visible, true, 'throwing cleanup restores an originally visible root');
+    assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined, 'FX reset removes the scar anyway');
+    assert.equal(camera.layers.mask, initialMask);
+    assert.equal(fx.group.visible, false);
+  } finally {
+    fx.clearVehicleDecals = realClearDecals;
+    fx.resetAll = realResetFx;
+    scarRoot.visible = false;
+  }
 
   // The same matrix writer must still position a real moving missile, retain
   // real trails, honor the existing capacity and clear it all on round reset.

@@ -735,24 +735,15 @@ export function stageCombatFxProgramSubmission({
   };
 }
 
-async function warmNetworkArmorScar(
+function stageNetworkArmorScar(
   fx: BattleFxPort,
-  visual: { root: Object3D } | null,
+  visual: { root: Object3D },
   compilePrograms: (root: Object3D) => void,
-): Promise<void> {
-  if (!visual || !fx.armorScar) return;
-  const rootWasVisible = visual.root.visible;
-  try {
-    visual.root.visible = true;
-    const position = visual.root.getWorldPosition(new Vector3());
-    position.y += 0.5;
-    fx.armorScar(visual, position, new Vector3(0, 1, 0), 120);
-    compilePrograms(visual.root);
-  } finally {
-    fx.clearVehicleDecals?.(visual);
-    visual.root.visible = rootWasVisible;
-  }
-  await nextFrame();
+): void {
+  const position = visual.root.getWorldPosition(new Vector3());
+  position.y += 0.5;
+  fx.armorScar?.(visual, position, new Vector3(0, 1, 0), 120);
+  compilePrograms(visual.root);
 }
 
 /** Restore first-shot FX on every covered entry, including after GPU suspension. */
@@ -766,11 +757,21 @@ export async function warmNetworkOpeningEffects({
 }: OpeningEffectsWarmOptions): Promise<void> {
   const layerMask = camera.layers.mask;
   const rootWasVisible = fx.group.visible;
+  let stagedScarVisual: { root: Object3D } | null = null;
+  let scarWasVisible = true;
   try {
     fx.warmTextures?.();
-    // Vehicle-owned scars have a separate lazy resource owner. Complete its
-    // cooperative work BEFORE staging short-lived muzzle/tracer presentation.
-    await warmNetworkArmorScar(fx, decalVisual, compilePrograms);
+    await nextFrame();
+    // Keep this one pooled, vehicle-owned mesh scene-attached until the real
+    // draw. Compiling then detaching it left its buffers and shared atlas cold.
+    // Capture ownership before stamping so even a partially failed stamp rolls
+    // back. No yield follows staging; the live bridge cannot hide it mid-warm.
+    if (decalVisual && fx.armorScar) {
+      stagedScarVisual = decalVisual;
+      scarWasVisible = decalVisual.root.visible;
+      decalVisual.root.visible = true;
+      stageNetworkArmorScar(fx, decalVisual, compilePrograms);
+    }
     const direction = camera.getWorldDirection(new Vector3());
     const position = camera.getWorldPosition(new Vector3()).addScaledVector(direction, 10);
     const normal = new Vector3(0, 1, 0);
@@ -803,7 +804,12 @@ export async function warmNetworkOpeningEffects({
   } finally {
     camera.layers.mask = layerMask;
     fx.group.visible = rootWasVisible;
-    fx.resetAll();
+    try {
+      if (stagedScarVisual) fx.clearVehicleDecals?.(stagedScarVisual);
+    } finally {
+      if (stagedScarVisual) stagedScarVisual.root.visible = scarWasVisible;
+      fx.resetAll();
+    }
   }
 }
 
