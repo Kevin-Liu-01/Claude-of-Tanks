@@ -461,7 +461,9 @@ function renderDossier(record: GalleryRecord): void {
   $('#dossierMeta').textContent = `${record.nation} // ${record.era} // Tier ${record.tierNumeral}`;
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
-  $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship?.creator || 'Kevin B. Liu'}`;
+  $('#dossierAuthor').textContent = t('gallery.dossier.authorLine', {
+    creator: record.authorship?.creator || 'Kevin B. Liu',
+  });
   $('#dossierTankIcon').src = record.image;
   $('#dossierTankIcon').alt = `${record.displayName} side profile`;
   const ratingPresentation: Readonly<Record<string, { tone: string; icon: string; key: string }>> = {

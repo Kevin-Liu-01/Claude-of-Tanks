@@ -1361,7 +1361,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     fxStack.textContent = '';
     const effects = S.listEffects();
     if (!effects.length) {
-      fxStack.appendChild(el('div', 'fxempty', 'No effects yet · choose an effect below'));
+      fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;
     }
     for (const effect of effects) {
@@ -1518,7 +1518,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     addPlayhead(actorLane);
     addPlayhead(effectLane);
     if (!board.shots.length) {
-      shotboard.appendChild(el('div', 'fxempty', 'Add two camera shots to create a rail'));
+      shotboard.appendChild(el('div', 'fxempty', t('studioPanel.storyboard.empty')));
     }
   }
 

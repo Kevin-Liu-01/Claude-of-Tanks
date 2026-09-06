@@ -172,6 +172,9 @@ const PATTERNS = [
   { kind: 'title-attr', regex: /\btitle\s*=\s*(["'`])([^"'`\n]{2,}?)\1/g, group: 2 },
   { kind: 'placeholder-attr', regex: /\bplaceholder\s*=\s*(["'`])([^"'`\n]{2,}?)\1/g, group: 2 },
   { kind: 'alt-attr', regex: /\balt\s*=\s*(["'`])([^"'`\n]{2,}?)\1/g, group: 2 },
+  // Helper: el(tag, cls, text) — text is wired into element.textContent.
+  // We only flag the 3-arg form so we don't pick up `el('div')` / `el('div', cls)`.
+  { kind: 'el-helper-text', regex: /\bel\s*\(\s*['"`][a-zA-Z]+['"`]\s*,\s*['"`][^'"`]*?['"`]\s*,\s*(['"`])([^'"`\n]{4,}?)\1\s*\)/g, group: 2 },
 ];
 
 const SKIP_FILE_NAMES = new Set([

@@ -974,9 +974,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
     const note = el('div', 'cot-set-note', body);
     note.textContent = touchLayout
-      ? 'Swipe sensitivity and smoothing apply directly to the battlefield aim pad. Sniper sensitivity stacks with each zoom step.'
-      : 'Sniper sensitivity stacks with the per-zoom reduction, so high zoom always aims finer. ' +
-        'Type exact values in the number fields for precise tuning.';
+      ? t('settings.aim.sniper.touch')
+      : t('settings.aim.sniper.mouse');
   }
 
   // --- SOUND tab ---------------------------------------------------------------
