@@ -1,0 +1,220 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import vm from 'node:vm';
+import { Vector3, PerspectiveCamera } from 'three';
+import { outputResolution } from '../src/engine/resolutionPolicy.ts';
+import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScalePolicy.ts';
+import { PRESETS } from '../src/engine/quality.ts';
+import { MOTION_CASES, MOTION_PROTOCOL, validateMotionReceipt, validateLiveSequence,
+  contextOptions, validateOneCaseGate, captureRenderedFrames, startLivePan, decodeFramePng,
+  bounded, runMotionProbe, closeBrowserOwner, motionAcquisitionHash, validateEffectiveQuality } from './environment-motion-probe.mjs';
+
+assert.equal(MOTION_CASES.length, 9);
+assert.equal(new Set(MOTION_CASES.map(row => `${row.device}/${row.mapId}`)).size, 9);
+assert.deepEqual(MOTION_CASES.filter(row => row.scope).map(row => `${row.device}/${row.mapId}`),
+  ['desktop/winter', 'tablet/mangrove', 'phone/urban']);
+
+function receiptFor(testCase) {
+  const { width, height, dpr } = testCase;
+  const camera = new PerspectiveCamera(55, width / height, 0.5, 4000);
+  const box = { client: [width, height] };
+  const output = outputResolution({ width, height, devicePixelRatio: dpr, mobile: testCase.tier === 'mobile' });
+  const dynScale = baseDynamicScale(output.pixelRatio, PRESETS[testCase.preset]);
+  const renderScale = Number(internalPixelRatio(output.pixelRatio, PRESETS[testCase.preset], dynScale).toFixed(3));
+  return { mapId: testCase.mapId, playerSpecId: 'm1a2', phase: 'battle', shotMode: false,
+    externalActive: true, scoped: false, viewport: [width, height], canvasCss: [width, height], dpr,
+    aspect: camera.aspect, projection: camera.projectionMatrix.toArray(), zoom: 1, view: null, filmOffset: 0,
+    fov: 55, near: 0.5, far: 4000, requested: testCase, preset: testCase.preset, contextLost: false,
+    output, backing: [output.bufferWidth, output.bufferHeight], terrainClearance: 6.2,
+    gpuUnmasked: true, gpu: 'ANGLE (Apple, Apple M2, OpenGL 4.1)',
+    outputPixelRatio: output.pixelRatio, renderScale, dynScale, perfTrim: 0, postAA: 'smaa-high+fsr1',
+    layout: { document: box, app: box, canvas: box,
+      visualViewport: { width, height, scale: 1, offsetLeft: 0, offsetTop: 0 },
+      storedDesktopPreset: 'high', storedMobilePreset: 'mobile-high' } };
+}
+for (const testCase of MOTION_CASES) {
+  assert.deepEqual(validateMotionReceipt(receiptFor(testCase), testCase), []);
+  const options = contextOptions(testCase, 'http://127.0.0.1:5876', '/fresh/video');
+  assert.equal(options.deviceScaleFactor, testCase.dpr);
+  assert.equal(options.storageState.origins[0].localStorage.length, 3);
+  assert.equal(options.recordVideo.dir, '/fresh/video');
+  assert.ok(options.recordVideo.size.width >= testCase.width);
+  assert.equal(options.isMobile, testCase.tier === 'mobile');
+}
+const testCase = MOTION_CASES.find(row => row.device === 'desktop' && row.mapId === 'winter'), receipt = receiptFor(testCase);
+for (const bad of [{ shotMode: true }, { phase: 'shot' }, { externalActive: false },
+  { dpr: 2 }, { aspect: 1 }, { aspect: NaN }, { aspect: undefined }, { playerSpecId: 'm1a3' }, { terrainClearance: -1 },
+  { contextLost: true }, { contextLost: undefined }, { contextLost: 0 }, { shotMode: undefined },
+  { externalActive: 1 }, { view: undefined }, { backing: [2880, 1800] }, { projection: [NaN] },
+  { zoom: 2 }, { filmOffset: 1 }, { view: { enabled: true } }, { fov: 56 },
+  { canvasCss: [1280, 577] }, { layout: {} }, { requested: {} }, { dynScale: NaN },
+  { perfTrim: 1 }, { perfTrim: undefined }, { postAA: 'none' }, { postAA: undefined },
+  { dynScale: 0.99 }, { renderScale: 0.5 }, { outputPixelRatio: undefined },
+  { preset: 'medium' }, { gpu: 'ANGLE (Google, SwiftShader Device)' }, { gpu: 'llvmpipe' },
+  { gpu: 'software' }, { gpu: '' }, { gpuUnmasked: false }, { output: { ...receipt.output, native: false } },
+  { output: { ...receipt.output, bufferWidth: 100 }, backing: [100, 900] }]) {
+  assert.ok(validateMotionReceipt({ ...receipt, ...bad }, testCase).length, JSON.stringify(bad));
+}
+const scopeCamera = new PerspectiveCamera(7.5, 1.6, 0.5, 4000);
+assert.deepEqual(validateMotionReceipt({ ...receipt, fov: 7.5, shotMode: true,
+  projection: scopeCamera.projectionMatrix.toArray() }, testCase, { live: false }), []);
+const mobileCase = MOTION_CASES.find(row => row.device === 'tablet');
+const mobileReceipt = receiptFor(mobileCase);
+assert.equal(mobileReceipt.dynScale, 1.5 / 1.7);
+assert.deepEqual(validateEffectiveQuality(mobileReceipt, mobileCase), []);
+assert.deepEqual(validateEffectiveQuality({ ...mobileReceipt, dynScale: 1, renderScale: 1.7 }, mobileCase), []);
+assert.ok(validateEffectiveQuality({ ...mobileReceipt, dynScale: mobileReceipt.dynScale - 0.001 }, mobileCase).length);
+assert.ok(validateEffectiveQuality({ ...mobileReceipt, dynScale: 1.001 }, mobileCase).length);
+await assert.rejects(runMotionProbe({ root: process.cwd(), output: '/nonexistent-motion-preflight',
+  cases: [testCase], expectedBuildIndexHash: 'wrong' }), /exact --expected-build-index-hash/);
+await assert.rejects(bounded(new Promise(() => {}), 2, 'owned operation'), /owned operation timeout/);
+const ownership = [];
+const closed = await closeBrowserOwner({ close: async () => ownership.push('close'),
+  kill: async () => ownership.push('kill') });
+assert.equal(closed.forced, false); assert.deepEqual(ownership, ['close']);
+const forced = await closeBrowserOwner({ close: () => new Promise(() => {}),
+  kill: async () => ownership.push('owned-kill') }, 2);
+assert.equal(forced.forced, true); assert.deepEqual(ownership, ['close', 'owned-kill']);
+
+// Execute the actual browser callback with an owned fake render loop. No GPU or
+// timing certification: prove dt is forwarded, camera RAF stays live, images are
+// captured in the render callback, and every success/failure restores ownership.
+function fakeBrowser() {
+  let now = 0, nextRaf = 0;
+  const rafs = new Map(), submitted = [];
+  const state = { base: [0, 10, 0], yaw: 0, pitch: 0, durationMs: 8000,
+    yawSpan: 40 * Math.PI / 180, lateralM: 6, progress: 0, frames: 0, done: false };
+  const D = { game: { timeS: 1 }, camera: { position: new Vector3(0, 10, 0) },
+    rig: { setExternalPose(position) { D.camera.position.copy(position); } },
+    quality: { resolvePresetName: () => 'high' }, renderer: { info: { render: { frame: 0 } }, getPixelRatio: () => 1,
+      domElement: { dataset: { renderScale: '1.000', postAa: 'smaa-high+fsr1' },
+        toDataURL() { assert.equal(submitted.at(-1), now); return 'data:image/png;base64,frame'; } } },
+    post: { dynScale: 1, perfTrim: 0, render(dt, extra) { assert.equal(this, D.post); assert.equal(extra, 'forwarded'); submitted.push(now);
+      D.game.timeS += dt; D.renderer.info.render.frame++; } } };
+  const original = D.post.render;
+  const sandbox = { window: { __DEBUG: D, __ENV_MOTION: state }, performance: { now: () => now },
+    setTimeout, clearTimeout, requestAnimationFrame(fn) { rafs.set(++nextRaf, fn); return nextRaf; },
+    cancelAnimationFrame(id) { rafs.delete(id); }, motionReceipt: () => ({ ...receipt,
+      pan: { ...state }, timestamp: now, renderFrame: D.renderer.info.render.frame, gameTimeS: D.game.timeS }) };
+  vm.createContext(sandbox);
+  vm.runInContext(`globalThis.startLivePan = ${startLivePan.toString()};
+    globalThis.capture = ${captureRenderedFrames.toString()};`, sandbox);
+  const advance = (time, dt) => {
+    now = time;
+    const callbacks = [...rafs.values()]; rafs.clear();
+    for (const callback of callbacks) callback(time);
+    D.post.render(dt, 'forwarded');
+  };
+  return { sandbox, D, original, advance, rafs };
+}
+const fake = fakeBrowser();
+const pending = fake.sandbox.capture({ pan: true });
+fake.advance(0, 0.016); fake.advance(4000, 4); fake.advance(8000, 4);
+const captured = await pending;
+assert.deepEqual(Array.from(captured.frames, frame => frame.label), ['start', 'mid', 'end']);
+assert.equal(captured.positiveDtS, 8.016);
+assert.equal(captured.frames[1].receipt.pan.progress, 0.5);
+assert.equal(fake.D.post.render, fake.original);
+assert.equal(fake.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
+assert.equal(fake.rafs.size, 0);
+assert.equal(validateLiveSequence(captured, testCase).length, 0);
+assert.throws(() => fake.sandbox.startLivePan(), /already started/);
+for (const mutate of [value => { value.frames[1].receipt.pan.progress = 1; },
+  value => { value.frames[2].receipt.gameTimeS = value.frames[0].receipt.gameTimeS; },
+  value => { value.positiveDtS = 0; }, value => { value.quality[1].perfTrim = 1; },
+  value => { value.quality[1].dynScale = 0.99; }, value => { value.quality[1].postAA = undefined; },
+  value => { value.submittedFrames = 99; }, value => { value.quality.pop(); },
+  value => { value.quality.push({ preset: 'medium' }); },
+  value => { value.frames[1].capturedAfterRealRender = false; }]) {
+  const bad = structuredClone(captured); mutate(bad);
+  assert.ok(validateLiveSequence(bad, testCase).length);
+}
+const transient = fakeBrowser(), transientCapture = transient.sandbox.capture({ pan: true });
+transient.advance(0, 0.016);
+transient.D.post.perfTrim = 1; transient.advance(2000, 2);
+transient.D.post.perfTrim = 0; transient.advance(4000, 2); transient.advance(8000, 4);
+const transientResult = await transientCapture;
+assert.equal(transientResult.quality.length, 4);
+assert.equal(transientResult.quality[1].perfTrim, 1);
+assert.ok(validateLiveSequence(transientResult, testCase).length, 'Brief relief between PNGs must fail');
+const timed = fakeBrowser();
+await assert.rejects(timed.sandbox.capture({ timeoutMs: 2 }), /rendered-frame acquisition timeout/);
+assert.equal(timed.D.post.render, timed.original);
+const throwing = fakeBrowser();
+throwing.D.post.render = () => { throw new Error('GPU render failure'); };
+const failed = throwing.sandbox.capture(); throwing.D.post.render(0.016);
+await assert.rejects(failed, /GPU render failure/);
+assert.equal(throwing.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
+const owned = fakeBrowser();
+const cancelled = owned.sandbox.capture(); owned.sandbox.window.__ENV_CAPTURE_CLEANUP();
+await assert.rejects(cancelled, /cancelled/); assert.equal(owned.D.post.render, owned.original);
+
+const png = Buffer.alloc(33);
+Buffer.from('89504e470d0a1a0a', 'hex').copy(png); png.writeUInt32BE(1440, 16); png.writeUInt32BE(900, 20);
+const frame = { png: `data:image/png;base64,${png.toString('base64')}`, receipt };
+assert.equal(decodeFramePng(frame).length, 33);
+assert.throws(() => decodeFramePng({ ...frame, receipt: { ...receipt, backing: [1, 1] } }), /dimensions/);
+
+// Bounded temporary artifact fixtures test saved-evidence recomputation, not
+// image/video content or GPU execution. No boolean-only certificate is accepted.
+const evidenceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cot-motion-gate-test-'));
+try {
+  fs.mkdirSync(path.join(evidenceRoot, 'desktop'));
+  const digest = buffer => createHash('sha256').update(buffer).digest('hex');
+  const liveFrames = captured.frames.map(({ label, receipt }) => ({ label, receipt, capturedAfterRealRender: true }));
+  const scope = { ...receipt, shotMode: true, scoped: true, rigMode: 'SNIPER', rigZoom: 8, fov: 7.5,
+    projection: scopeCamera.projectionMatrix.toArray() };
+  const resizes = [receiptFor({ ...testCase, dpr: 2 }), receiptFor(testCase)];
+  const frames = [...liveFrames, { label: 'scope8', receipt: scope, capturedAfterRealRender: true },
+    ...resizes.map((receipt, i) => ({ label: i ? 'resize-restored' : 'resize-alternate', receipt, capturedAfterRealRender: true }))];
+  for (const frame of frames) {
+    const buffer = Buffer.from(png); buffer.writeUInt32BE(frame.receipt.backing[0], 16); buffer.writeUInt32BE(frame.receipt.backing[1], 20);
+    frame.png = { file: `desktop/winter-${frame.label}.png`, bytes: buffer.length, sha256: digest(buffer) };
+    fs.writeFileSync(path.join(evidenceRoot, frame.png.file), buffer);
+  }
+  const video = Buffer.from('CPU-only artifact fixture');
+  fs.writeFileSync(path.join(evidenceRoot, 'desktop/winter.webm'), video);
+  const oneCase = { protocol: MOTION_PROTOCOL, buildIndexHash: 'hash', acquisitionHash: motionAcquisitionHash(),
+    complete: true, errors: [], browserClosed: true, serverClosed: true, lockReleased: true,
+    browserCleanup: { closed: true, forced: false }, cases: [{ id: 'desktop/winter', livePass: true,
+      contextClosed: true, errors: [], receipts: frames, quality: captured.quality,
+      positiveDtS: captured.positiveDtS, submittedFrames: captured.submittedFrames, resizes,
+      scope: { mapId: 'winter', mode: 'SNIPER', zoom: 8, fov: 7.5, scoped: true },
+      video: { file: 'desktop/winter.webm', verified: true, bytes: video.length, sha256: digest(video),
+        metadata: { format: { duration: '8' }, streams: [{ width: 1440, height: 900 }] } } }] };
+  validateOneCaseGate(oneCase, 'hash', evidenceRoot);
+  for (const mutate of [value => { value.acquisitionHash = 'old'; }, value => { value.buildIndexHash = 'other'; },
+    value => { value.cases[0].receipts = []; }, value => { value.browserClosed = undefined; },
+    value => { value.serverClosed = false; }, value => { value.lockReleased = false; },
+    value => { value.cases[0].quality = []; }, value => { value.cases[0].scope.zoom = 1; },
+    value => { value.cases[0].receipts[4].receipt.dpr = 1; }, value => { value.cases[0].resizes.pop(); },
+    value => { value.cases[0].receipts[1].receipt.pan.progress = 1; },
+    value => { value.cases[0].receipts[0].png.sha256 = 'bad'; }, value => { value.cases[0].video.sha256 = 'bad'; }]) {
+    const bad = structuredClone(oneCase); mutate(bad);
+    assert.throws(() => validateOneCaseGate(bad, 'hash', evidenceRoot));
+  }
+  assert.throws(() => validateOneCaseGate({ ...oneCase, cases: [{ id: 'desktop/winter', livePass: true,
+    errors: [], video: { verified: true } }] }, 'hash', evidenceRoot));
+  fs.unlinkSync(path.join(evidenceRoot, 'desktop/winter-mid.png'));
+  assert.throws(() => validateOneCaseGate(oneCase, 'hash', evidenceRoot), /ENOENT/);
+} finally { fs.rmSync(evidenceRoot, { recursive: true }); }
+
+const source = fs.readFileSync(new URL('./environment-motion-probe.mjs', import.meta.url), 'utf8');
+assert.ok(!source.includes('agent-browser'));
+assert.ok(!source.includes('__SHOTS.set'));
+assert.match(source, /beginSoloBattle\(\{ specId: 'm1a2', mapId, randomRoster: false/);
+assert.match(source, /recordVideo: \{ dir: videoDir, size: videoSize \}/);
+assert.ok(source.indexOf('const context = await browser.newContext(options)') < source.indexOf('page = await context.newPage()'));
+assert.match(source, /context.close\(\)/);
+assert.match(source, /video.saveAs\(target\)/);
+assert.ok(!source.includes('await video.path('));
+assert.match(source, /restoreHorizonArcadeCapture, row.scope.arcade/);
+assert.match(source, /if \(row.errors.length\) break/);
+assert.match(source, /message.type\(\) === 'error'/);
+assert.ok(!source.includes('pinDynScale('));
+assert.ok(!source.includes('renderer.setSize('));
+assert.ok(!source.includes('setPresetName('));
+console.log('environment-motion-probe: nine-case policy, real rendered midpoint, live dt, timeout/ownership, PNG and one-case gate PASS (CPU only)');

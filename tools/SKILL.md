@@ -103,6 +103,35 @@ file cache is unspecified, and these are not browser/frame-time measurements.
 Many `tmp-*` tools and `.qa-dev/` outputs are transient and must not be staged.
 Own and stop every dev server/browser process you start.
 
+`node tools/environment-motion-probe.mjs --root=/absolute/release --out=/absolute/fresh-output --expected-build-index-hash=<approved-sha256> --case=desktop/winter`
+is a committed Playwright visual regression. It owns one video-recording context
+per case, with viewport/DPR and normal persisted quality choices applied before
+boot. If Playwright is supplied by a bundled runtime rather than this repo,
+pass `--playwright-module=/absolute/node_modules/playwright/index.mjs`; no package
+installation or runtime rebuild is required. First run the CPU-only
+`node tools/environment-motion-probe.selftest.mjs`, then the single desktop/Winter
+case. Only a passing same-build, same-acquisition receipt unlocks
+`--matrix --one-case-report=/absolute/passing/receipts.json` for all nine cases.
+Raw WebMs include boot/staging at explicit CSS-resolution video dimensions.
+Start/mid/end PNGs read the actual output canvas immediately after a production
+render, preserving native backing dimensions and the actual eight-second pan
+midpoint without remote screenshot latency. Three bounded readbacks are visual
+evidence, never a timing or memory benchmark. The real battle clock and positive
+render dt must advance; scope x8 uses the separate authored helper and is not
+live cadence evidence. Desktop DPR 1→2→1 and mobile orientation round trips use
+browser emulation only, never renderer/CSS forcing or rescue suppression. Keep
+requested/effective quality, console/errors, viewport owners, projection and
+canonical output-policy receipts, including all failures. These are emulated
+Chromium checks, not physical iPad/iPhone Safari certification. Earlier rejected
+native CLI recordings remain historical failures; never overwrite their output.
+New headless Chromium/ANGLE is requested, but only observed unmasked hardware
+renderer evidence is accepted; missing/software/SwiftShader/llvmpipe backends fail.
+Every submitted pan frame records effective preset, trim, AA and internal/output
+ratios. Ordinary source-owned base-to-ceiling adaptation is allowed (mobile-high
+starts at 1.5/1.7 dynamic scale), but below-base relief or trim fails parity; it
+is never disabled. The matrix gate recomputes the raw live/scope/DPR-round-trip
+checks and verifies saved PNG/video hashes plus complete process/lock cleanup.
+
 ## Fixed camera residency acquisition
 
 `world-residency-probe.mjs` requires `--camera-manifest=/absolute/cameras.json`.
