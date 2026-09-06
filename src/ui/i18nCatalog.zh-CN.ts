@@ -65,6 +65,12 @@ export const zhCN: Record<string, string> = {
   'boot.credits': '制作名单',
   'boot.retry': '重试加载',
   'boot.pressAnyKey': '按任意键继续',
+  'credits.kicker': '创作者 / 设计者 / 制作人',
+  'credits.body1': '我设计并开发了《Claude of Tanks》——这是一次实验，尝试看看一个人能在多大程度上凭借持续的多智能体协作，独立完成一款原创浏览器游戏。Claude 和 Codex 只是开发工具，不是共同作者。',
+  'credits.body2': '车辆、模拟、战斗系统、界面、性能、测试、文档与发布流水线，全部通过长期运行的多智能体 Claude 与 Codex 工作流端到端完成。每辆可上场坦克都是 Kevin B. Liu 原创的过程化模型作品。',
+  'credits.links.github': 'Kevin 的 GitHub',
+  'credits.links.source': '源代码',
+  'credits.links.notice': '版权声明',
 
   // battle-load ----------------------------------------------------------------
   'battleLoad.preparing': '正在准备战斗',

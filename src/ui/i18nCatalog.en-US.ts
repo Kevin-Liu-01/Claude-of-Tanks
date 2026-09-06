@@ -73,6 +73,12 @@ export const enUS: Record<string, string> = {
   'boot.credits': 'Credits',
   'boot.retry': 'Retry loading',
   'boot.pressAnyKey': 'Press any key to continue',
+  'credits.kicker': 'Creator / designer / director',
+  'credits.body1': 'I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.',
+  'credits.body2': 'The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.',
+  'credits.links.github': 'Kevin on GitHub',
+  'credits.links.source': 'Source code',
+  'credits.links.notice': 'Authorship notice',
 
   // battle-load ----------------------------------------------------------------
   'battleLoad.preparing': 'Preparing battle',
