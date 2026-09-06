@@ -106,7 +106,7 @@ generation and native-frame review are complete (V16, below).
 | Ten complete new maps | Polders, Copper Mesa, Airfield, Oasis, Whiteout, Orchard, Longleaf, Mangrove, Saltwind, Reservoir | All rendered/reviewed; catalogs/random/private/ranked integration, route/cover/spawn and server collision checks pass; canonical pacing passes with disclosed timeouts |
 | No performance regression | Same-size texture families, smaller horizon geometry, no extra terrain samplers | Matched all-map timing, worst-frame and constrained-device results |
 | No memory regression | Explicit shader-only terrain/horizon/prop texture ownership; all CSM-registered prop materials tracked; per-map server JSON and bounded terrain ownership | Final thirty-map server sweep has zero repeated ArrayBuffer growth and 3,176 bytes heap growth; native client phase/eviction plateau remains required |
-| Public readiness | Generated previews, minimaps, collision manifest, metadata | Native artwork and 496 applicable tests pass; production build/typecheck pass; performance/memory gates and verified push remain open |
+| Public readiness | Generated previews, minimaps, collision manifest, metadata | Native artwork and 497 applicable tests pass through the documented combined runs; production build/typecheck pass; performance/memory gates and verified push remain open |
 
 This is a work ledger. The objective remains active until the requirements
 above have direct current-state evidence; source changes alone are incomplete.
@@ -485,9 +485,65 @@ above have direct current-state evidence; source changes alone are incomplete.
   a paired baseline inventory this does not identify the extra upload's owner.
   The diagnostic report is
   `/private/tmp/cot-environment-client-residency-release20-heap-v17-d1.json`;
-  native heap-class/retainer analysis remains in progress. This run does not
+  native heap-class/retainer analysis is now complete. This run does not
   overwrite or compare against the default run, change tolerances, or add
   warmup cycles. Browser and preview cleanup completed before offline parsing.
+  Winter's native snapshot code self-size rises 1,547,712 bytes, versus
+  35,912 bytes for ordinary objects; Verdant's code rises 849,344 bytes and
+  ordinary objects 38,500 bytes. These are class self-size deltas, not retained
+  sizes, and do not waive or subtract from the failed managed-heap gate.
+  The scalar analysis is
+  `/private/tmp/cot-environment-residency-release20-heap-v17-d1-summary.json`.
+  A separate native retainer trace finds real full-scene CPU retention:
+  `props.ts`'s shared baked-geometry cache keeps a geometry key alive, and
+  `lighting.ts`'s `_geomClaims` weak-key map strongly retains its first mesh.
+  That mesh's parent links retain discarded Verdant and Caldera trees (256
+  and 233 scene objects respectively), not merely empty scene shells. The
+  exact incoming-edge evidence is
+  `/private/tmp/cot-environment-residency-release20-heap-v17-d1-world-shells.json`.
+  The correction now stores weak mesh ownership and a non-owning, permanent
+  shared-geometry sentinel. A native forced-GC regression executes the actual
+  production culling block with real Three.js meshes. It proves collection
+  of the mesh, props parent and full world while shared geometry stays cached;
+  same-owner claim reuse; safe expired-owner replacement; and permanent
+  invalidation of all owners when geometry is shared. Real culling compacts
+  three instances to one, then restores matrix/color/geometry-level attribute
+  bytes exactly. Eight subsequent shadow frames per shared owner leave counts
+  and bytes unchanged. Existing shadow fit/refresh/stability, resource lifetime,
+  phase GPU residency and world-coordinator tests pass, as do typecheck and
+  lighting complexity limits. The registered suite now contains 497 files.
+  The V18 production rebuild passes; rebuilt browser eviction measurements
+  are still required. Its build-index SHA is
+  `745ba3925f44f2348ca872d6c40d05834352d2f863740586642ea09c371335b9`.
+  The required changed-scope React Doctor scan remains 49/100 (151 files),
+  the same score as the preceding scan; no lighting finding is reported.
+  Existing test-extraction diagnostics are retained, not suppressed.
+- A bounded paired production diagnostic now covers Badlands → Monsoon →
+  Alpine over three sweeps in both roots. All eighteen acquisition checkpoints
+  are valid, with zero browser/resource errors. Monsoon has 59 → 60 uploaded
+  prop geometries in every sweep, while vegetation stays at 47 and uploaded
+  terrain at 53. Prop attribute/index storage falls 34,760,072 → 33,408,120
+  bytes. Source/signature reconciliation identifies two added intact pools:
+  `drumred` (330 vertices) and a second sedan/wagon body (2,724 vertices), with
+  one earlier anonymous 216-vertex geometry absent. The six final merged
+  material buckets remain six, and the car shapes are genuinely different;
+  no trivial redundant material split has been established. The additional
+  pool types require independent destruction slots. Fewer bytes alone do not
+  waive the independent geometry-count failure.
+  A bounded consolidation audit hashes all 84 intact/broken kit builders at
+  three fixed RNG inputs, including attributes, indices and groups: no
+  cross-kind intact geometry is identical. Duplicate broken-vehicle builder
+  formulas consume the shared RNG at different positions and start hidden,
+  so sharing them would neither preserve debris nor offset this upload.
+  Packed models are distinct, identical model/options requests already share
+  geometry, and static wrecks intentionally differ in shadow behavior from
+  the ordinary baked bucket. No safe small consolidation was established.
+  Both reports retain their local failures: the original has nine repeated
+  texture/heap/backing-store failures; the candidate has one Badlands heap
+  failure (+1,599,772 bytes against a 1,418,149-byte limit). Reports are
+  `/private/tmp/cot-environment-monsoon-owner-origin-v1.json` and
+  `/private/tmp/cot-environment-monsoon-owner-release-v1.json`. Both owned
+  browser/preview sessions are closed before offline analysis.
 
 ## Integration notes
 

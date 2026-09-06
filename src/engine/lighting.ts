@@ -486,7 +486,10 @@ interface ActiveCullRecord {
 type CullRecord = PendingCullRecord | ActiveCullRecord;
 
 const _cullState = new WeakMap<THREE.InstancedMesh, CullRecord | null>();
-const _geomClaims = new WeakMap<THREE.BufferGeometry, THREE.InstancedMesh>();
+// Shared library geometry can outlive every world that used it. Its claim
+// must not retain a mesh (and that mesh's whole scene through parent links).
+// null permanently marks sharing; a collected sole owner may be replaced.
+const _geomClaims = new WeakMap<THREE.BufferGeometry, WeakRef<THREE.InstancedMesh> | null>();
 const _cullFrustum = new THREE.Frustum();
 const _cullProj = new THREE.Matrix4();
 const _cullSphere = new THREE.Sphere();
@@ -517,15 +520,18 @@ function cullPending(mesh: THREE.InstancedMesh): PendingCullRecord {
 /** Snapshot a stability-proven static instanced caster for per-cascade culling. */
 function buildCullRec(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
   const geo = mesh.geometry;
-  const claimed = _geomClaims.get(geo);
+  const claim = _geomClaims.get(geo);
+  if (claim === null) { _cullState.set(mesh, null); return null; }
+  const claimed = claim?.deref();
   if (claimed && claimed !== mesh) {
     // two meshes share one geometry's instanced attrs — compacting for one
     // would corrupt the other's draw; permanently skip both.
     _cullState.set(mesh, null);
     _cullState.set(claimed, null);
+    _geomClaims.set(geo, null);
     return null;
   }
-  _geomClaims.set(geo, mesh);
+  if (!claimed) _geomClaims.set(geo, new WeakRef(mesh));
   if (!geo.boundingSphere) geo.computeBoundingSphere();
   const bs = geo.boundingSphere;
   if (!bs || !isFinite(bs.radius) || bs.radius <= 0) { _cullState.set(mesh, null); return null; }
