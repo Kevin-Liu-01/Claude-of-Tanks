@@ -45,29 +45,53 @@ const before = {
   'whiteout:7719': [4839, 0.0683232310693711, 16877, 44316, 628696, 542, 383,
     'd009e977a47c2401a14405e2790b5c48631d5fd46ee72303eb51ac880ef24e70'],
 };
-// Native-V23 source ac999b861, recorded before the snow-profile/material change.
-// Exact row sequences fix every berm's topology/storage. The complementary
-// hash includes every bucket header and every byte EXCEPT the named berms;
-// ice wedges, reeds, snow lenses, boats and their bucket ownership cannot drift.
-const bermBefore = {
-  'winter:1337': [[9, 10, 6, 10, 10, 9, 9, 7, 11, 9, 8],
-    '535217f62072c27494a9321832e7afe0682565120871ed0f5394c6d36932f284'],
-  'alpine:1337': [[9, 8, 6, 9, 9, 11, 10, 7, 11],
-    'f19e6f88d2c6aec80a95608a034d4e9813a7d3e9aecb0a619067c6a81cb487c1'],
-  'whiteout:1337': [[7, 6, 10, 11],
-    '02824dc5f476b99f38095464003a6ad18efd558e25ded9b7c2a1b8f84bb09dc9'],
-  'winter:2049': [[9, 7, 7, 7, 9, 6, 11, 11, 8, 8, 9],
-    '89437d40cc7e62b51c3dcf7c92e440511048e41f3494eb9c5824a34283e3a1bb'],
-  'alpine:2049': [[7, 9, 7, 7, 9, 11, 9, 8, 7],
-    '0fa784920f5f3a04a03646661b76a5ff4335fc6f1a172d882ab02d8c846b29b5'],
-  'whiteout:2049': [[8, 9, 6, 7],
-    'b7f451f08501422bd838f3c029e57dca0807cc2fc5207f4b3d18b0a6f80cb536'],
-  'winter:7719': [[11, 10, 7, 10, 10, 12, 9, 10, 9, 12, 10],
-    'a7d06bf3aac084318a49aecfeba1bf4067a1f4cce8bbb9c6bdd65b18f048c9dc'],
-  'alpine:7719': [[7, 8, 6, 7, 11, 6, 11, 10, 8],
-    'dbd5b4260723c84ce1d38b0f024bd9f2ebf1276f7625785b7787ff80e76849d3'],
-  'whiteout:7719': [[6, 11, 11, 9],
-    'e2caf24ad7c17c5586c0767f904ea9bd435347e6323a5396dc54d1de8f561d18'],
+// Native-V23 ac999b861 row sequences still fix every berm's topology/storage.
+// The V25 non-fragment hashes below now preserve the accepted berm geometry
+// too, alongside every reed, boat, drift and its original material ownership.
+const bermRowsBefore = {
+  'winter:1337': [9, 10, 6, 10, 10, 9, 9, 7, 11, 9, 8],
+  'alpine:1337': [9, 8, 6, 9, 9, 11, 10, 7, 11],
+  'whiteout:1337': [7, 6, 10, 11],
+  'winter:2049': [9, 7, 7, 7, 9, 6, 11, 11, 8, 8, 9],
+  'alpine:2049': [7, 9, 7, 7, 9, 11, 9, 8, 7],
+  'whiteout:2049': [8, 9, 6, 7],
+  'winter:7719': [11, 10, 7, 10, 10, 12, 9, 10, 9, 12, 10],
+  'alpine:7719': [7, 8, 6, 7, 11, 6, 11, 10, 8],
+  'whiteout:7719': [6, 11, 11, 9],
+};
+// Captured BEFORE the fragment edit from frozen V25 source68890fe286a6:
+// exact total vertices/indices/bytes/geometries, fragment count, non-fragment
+// named bytes+bucket hash, and all ordered fragment base corners12..15.
+// Only named winter-ice-wedge upper faces/UVs/material may change. Base hashes
+// enforce identical support, placement and yaw, not just a metadata census.
+const fragmentBefore = {
+  'winter:1337': [32107, 112176, 1251776, 1314, 195,
+    '109de858ed32d3109a591fe7b851f716225cf36b945886314672b39a786ae8e5',
+    '60cb5a1306e067a602d648bdf10caa5471855484f3e0f72c928c97e22c2e979f'],
+  'alpine:1337': [26155, 88752, 1014464, 1088, 188,
+    '52b535a6ccc7154144491918c88821873127d6d7569366a40edf80cf016284a3',
+    '405c02c91ffdbefba7d20fa554b073de241ff4f02bb1c3d1bfae289ea56dfa5b'],
+  'whiteout:1337': [12615, 45792, 495264, 515, 56,
+    '71f462ecf68d2fd2642269c5a3783c875789788778f70b8eeca9549c72f42946',
+    '3eed2881f5f9fd054494611c8ee73328ad16523a55dec14377901f3dd7bd7402'],
+  'winter:2049': [31190, 104472, 1207024, 1325, 232,
+    '79b3a7abc48c6e49fd7c592e3a45e2d36939a52990ff0ced82f54cce65d61fd3',
+    '1ba64280f01867178a2ed8abc0e6db834ee7f0fd4522eb4208dd6c4d5ad83f76'],
+  'alpine:2049': [24998, 85620, 971176, 1070, 142,
+    '52988c1c45e95d71dd714aa2e203f236efcba90d37ed40f21c95e3b2128acce4',
+    '05f96cc8aa0b3c43aaf32251377cebdf690004300d077492ded73e7c6bd4bca1'],
+  'whiteout:2049': [12872, 44616, 501136, 524, 96,
+    'f8d129718335deb35d54fac3d93a070a9d6e880b7f038cead96992c8b020dabe',
+    '15aa76e3ee5c8b9f1a1416d2beed0315f642fd606e3ab07ce49ece65aa4a42a2'],
+  'winter:7719': [31586, 108036, 1226824, 1308, 220,
+    '9f60dc3e99e9b5f679a9910b683a7bd0f167dcd856fec730c608cbaf734d50b7',
+    '3fd1bb8d2cfead316c1510e56d75461f2a4eff2b5728612c9ab2385e342c8f38'],
+  'alpine:7719': [24772, 81228, 955160, 1052, 211,
+    'eddc3fce0b27dd32bf93863ab129392d80739d10e60dcca9ad7a6d95693a2a3e',
+    'f7d93b9cbf7c438e97e0d14bd1813f3a042132e64d075a07d1f660943223da39'],
+  'whiteout:7719': [12344, 43776, 482560, 509, 69,
+    '3a11310b2e069474320b083357e99608a1b1872fd309895abde3dc22403b9a65',
+    'bc735136c246f16feae2a620a6656787d9b45b81e949962003b414f2869a4e1d'],
 };
 // Refreshed only for the separately audited beachedBoat heel/contact repair.
 // Replaying the original constructor from 0e1a52ea4 reproduced all three old
@@ -110,22 +134,25 @@ function hashGeometry(geometry, hashes) {
 }
 
 function inventory(buckets) {
-  const hash = createHash('sha256'), later = createHash('sha256'), nonBerm = createHash('sha256');
+  const hash = createHash('sha256'), later = createHash('sha256');
+  const nonFragment = createHash('sha256'), fragmentBases = createHash('sha256');
   let vertices = 0, indices = 0, bytes = 0, geometries = 0;
   for (const name of names) {
     const untouched = !['stone', 'straw'].includes(name);
-    hash.update(name); nonBerm.update(name); if (untouched) later.update(name);
+    hash.update(name); nonFragment.update(name); if (untouched) later.update(name);
     for (const geometry of buckets[name]) {
-      const preserve = geometry.name !== 'winter-pressure-berm';
+      const fragment = geometry.name === 'winter-ice-wedge';
       geometries++; vertices += geometry.attributes.position.count;
       indices += geometry.index?.count ?? geometry.attributes.position.count;
       const hashes = [hash];
-      if (preserve) hashes.push(nonBerm);
-      if (untouched && preserve) hashes.push(later);
+      if (!fragment) { nonFragment.update(geometry.name); hashes.push(nonFragment); }
+      else fragmentBases.update(new Uint8Array(geometry.attributes.position.array.buffer, 12 * 3 * 4, 4 * 3 * 4));
+      if (untouched && !fragment && geometry.name !== 'winter-pressure-berm') hashes.push(later);
       bytes += hashGeometry(geometry, hashes);
     }
   }
-  return { hash: hash.digest('hex'), later: later.digest('hex'), nonBerm: nonBerm.digest('hex'),
+  return { hash: hash.digest('hex'), later: later.digest('hex'), nonFragment: nonFragment.digest('hex'),
+    fragmentBases: fragmentBases.digest('hex'),
     vertices, indices, bytes, geometries };
 }
 
@@ -226,9 +253,57 @@ function auditBerm(geometry, field) {
   }
 }
 
+function iceQuadArea(p, first) {
+  let area = 0;
+  for (const [a, b, c] of [[first, first + 2, first + 1], [first + 2, first + 3, first + 1]]) {
+    area += Math.abs((p.getX(b) - p.getX(a)) * (p.getZ(c) - p.getZ(a))
+      - (p.getZ(b) - p.getZ(a)) * (p.getX(c) - p.getX(a))) * 0.5;
+  }
+  return area;
+}
+
+function auditIceTopology(geometry) {
+  const p = geometry.attributes.position, normal = geometry.attributes.normal;
+  assert.equal(p.count, 24); assert.equal(geometry.index.count, 36);
+  assert.equal(hashGeometry(geometry, []), 840, 'exact pre-V25 per-fragment attribute/index storage');
+  assert.equal(geometry.index.count * 32, 1152, 'exact final nonindexed position/normal/UV storage');
+  assert.ok(geometry.index.array instanceof Uint16Array);
+  const edges = new Map(), key = i => `${p.getX(i)},${p.getY(i)},${p.getZ(i)}`;
+  for (let i = 0; i < geometry.index.count; i += 3) {
+    const triangle = [0, 1, 2].map(j => geometry.index.getX(i + j));
+    for (let j = 0; j < 3; j++) {
+      const a = key(triangle[j]), b = key(triangle[(j + 1) % 3]);
+      assert.notEqual(a, b, 'all twelve triangles retain distinct finite edges');
+      const forward = a < b, id = forward ? `${a}|${b}` : `${b}|${a}`;
+      const entry = edges.get(id) || [0, 0];
+      entry[0]++; entry[1] += forward ? 1 : -1; edges.set(id, entry);
+    }
+  }
+  for (const edge of edges.values()) assert.deepEqual(edge, [2, 0],
+    'actual welded perimeter is closed with opposing triangle winding, not disconnected faces');
+  for (let i = 0; i < p.count; i++) assert.ok(Math.abs(Math.hypot(
+    normal.getX(i), normal.getY(i), normal.getZ(i)) - 1) < 0.000001,
+  'all deformed faces have finite unit lighting normals');
+  const ratio = iceQuadArea(p, 8) / iceQuadArea(p, 12);
+  assert.ok(ratio >= 0.50 && ratio <= 0.80,
+    'broad broken plate occupies50–80% of its base, not the old10% tent crest');
+  for (const end of [13, 14]) {
+    const dx = p.getX(end) - p.getX(12), dz = p.getZ(end) - p.getZ(12);
+    for (let i = 8; i < 12; i++) {
+      const t = ((p.getX(i) - p.getX(12)) * dx + (p.getZ(i) - p.getZ(12)) * dz) / (dx * dx + dz * dz);
+      assert.ok(t > 0.01 && t < 0.99, 'all upper corners stay strictly inside the unchanged support footprint');
+    }
+  }
+  const edgeLength = (a, b) => Math.hypot(p.getX(a) - p.getX(b), p.getZ(a) - p.getZ(b));
+  for (const [a, b, c, d] of [[8, 9, 10, 11], [8, 10, 9, 11]]) {
+    assert.ok(Math.abs(edgeLength(a, b) - edgeLength(c, d)) / edgeLength(a, b) > 0.015,
+      'both pairs of opposing broken edges are unequal, not a repeated rectangle');
+  }
+}
+
 function auditIce(geometry, field) {
   const p = geometry.attributes.position;
-  assert.equal(p.count, 24); assert.equal(geometry.index.count, 36);
+  auditIceTopology(geometry);
   let buried = 0, top = 0, minRise = Infinity, maxRise = -Infinity;
   for (let i = 0; i < p.count; i++) {
     const h = clearance(field, p, i);
@@ -238,23 +313,13 @@ function auditIce(geometry, field) {
       buried++;
     }
     else {
-      assert.ok(h > 0 && h < 0.56); top++;
+      assert.ok(h > 0 && h < 0.30); top++;
       minRise = Math.min(minRise, h); maxRise = Math.max(maxRise, h);
     }
   }
   assert.equal(buried, 12, 'all four repeated logical base corners are buried');
   assert.equal(top, 12, 'wedge has real volume, not a flat sheet hidden below terrain');
-  assert.ok(maxRise - minRise > 0.05, 'the cap is an irregular sloped ice crest, not a rectangular table');
-  const quadArea = first => {
-    let area = 0;
-    for (const [a, b, c] of [[first, first + 2, first + 1], [first + 2, first + 3, first + 1]]) {
-      area += Math.abs((p.getX(b) - p.getX(a)) * (p.getZ(c) - p.getZ(a))
-        - (p.getZ(b) - p.getZ(a)) * (p.getX(c) - p.getX(a))) * 0.5;
-    }
-    return area;
-  };
-  assert.ok(quadArea(8) < quadArea(12) * 0.15,
-    'the finite cap sits inside a broad attached toe instead of a thin vertical tile');
+  assert.ok(maxRise - minRise > 0.05, 'the broad cap has a real tilted edge, not a level table');
   // Twice the construction sampling density: cover full perimeter AND every
   // underside cell, including positions between the production support probes.
   for (let row = 0; row <= 8; row++) for (let column = 0; column <= 8; column++) {
@@ -265,7 +330,7 @@ function auditIce(geometry, field) {
     assert.ok(p.getY(12) - field.getHeightAt(x, z) <= -0.01,
       'no interpolated base edge or underside bridges a curved terrain hollow');
   }
-  // Top UVs must follow the actual cap shrink/shear, not BoxGeometry's old
+  // Top UVs must follow the actual cap shear, not BoxGeometry's old
   // parameters.depth. Preserve the original independent .86–1.16 UV jitter.
   const uv = geometry.attributes.uv;
   for (const [a, b] of [[8, 9], [8, 10], [9, 11], [10, 11], [8, 11]]) {
@@ -336,30 +401,37 @@ for (const seed of [1337, 2049, 7719]) {
         && stats.geometries < old[5], `${mapId}: all actual construction/render geometry budgets decrease`);
       assert.equal(built.buckets.straw.length, old[6], 'the authored reed/head population is not thinned');
       assert.equal(stats.later, old[7], 'later snow lenses and lake landmarks survive byte-identically');
-      const control = bermBefore[`${mapId}:${seed}`];
-      assert.equal(stats.nonBerm, control[1],
-        'every non-berm byte and bucket matches V23, including separate ice wedges and reeds');
+      const control = fragmentBefore[`${mapId}:${seed}`];
+      assert.deepEqual([stats.vertices, stats.indices, stats.bytes, stats.geometries], control.slice(0, 4),
+        'all actual constructor/render totals are exactly unchanged from frozen V25');
+      assert.equal(stats.nonFragment, control[5],
+        'every non-fragment named byte and bucket matches V25: berms, reeds, snow, boats, landmarks');
+      assert.equal(stats.fragmentBases, control[6],
+        'all ordered fragment base corners preserve actual placement, yaw and terrain support');
       const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
-      assert.deepEqual(snowBerms.map(g => g.attributes.position.count / 5), control[0],
+      assert.deepEqual(snowBerms.map(g => g.attributes.position.count / 5), bermRowsBefore[`${mapId}:${seed}`],
         'every named berm keeps its exact ordered topology, indices and attribute-byte budget');
       assert.deepEqual(names.filter(name => built.buckets[name].length),
-        mapId === 'whiteout' ? ['plaster', 'stone', 'straw'] : ['plaster', 'stone', 'wood', 'straw'],
-        'no material/texture/shader bucket or extra draw family is introduced');
+        mapId === 'whiteout' ? ['plaster', 'straw'] : ['plaster', 'wood', 'straw'],
+        'kit reuses the already-populated plaster draw; its obsolete stone batch is eliminated');
       let mapBerms = 0, mapWedges = 0;
       for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
       for (const geometry of built.buckets.stone) {
-        assert.notEqual(geometry.name, 'winter-pressure-berm', 'only continuous berms leave the masonry bucket');
+        assert.notEqual(geometry.name, 'winter-pressure-berm', 'accepted snow berm stays out of masonry');
+        assert.notEqual(geometry.name, 'winter-ice-wedge', 'no snow-dusted fracture retains mortar relief');
+      }
+      for (const geometry of built.buckets.plaster) {
         if (geometry.name === 'winter-ice-wedge') { auditIce(geometry, built.field); mapWedges++; }
       }
       assert.equal(mapBerms, built.field._layout.lakes.reduce((n, lake) => n + (lake.r >= 80 ? 7 : 2), 0),
         `${mapId}: every authored pressure ridge still exists`);
-      assert.ok(mapWedges > 10, `${mapId}: actual shoreline and crest ice remains populated`);
+      assert.equal(mapWedges, control[4], `${mapId}: exact V25 shoreline and crest plate population survives`);
       auditReeds(built.buckets.straw, built.field);
       if (mapId === 'whiteout' && seed === 1337) {
         // Actual prepatch bucket44 edge14→12 at t=.25 floated14.4109cm
         // despite both endpoints being buried. Locate its unchanged seeded
         // width and test the preserved world point independently of grid loops.
-        const wedge = built.buckets.stone.find(geometry => geometry.name === 'winter-ice-wedge'
+        const wedge = built.buckets.plaster.find(geometry => geometry.name === 'winter-ice-wedge'
           && Math.abs(geometry.parameters.width - 1.653848610073328) < 1e-10);
         assert.ok(wedge, 'the real Whiteout shoreline regression case remains populated');
         const terrainY = built.field.getHeightAt(-330.0991668701172, 274.09700775146484);
@@ -376,7 +448,13 @@ for (const seed of [1337, 2049, 7719]) {
       berms += mapBerms; wedges += mapWedges; reducedBytes += old[4] - stats.bytes;
       // props.ts converts each indexed part to nonindexed before bucket merge.
       finalAttributeBytesSaved += (old[3] - stats.indices) * 8 * Float32Array.BYTES_PER_ELEMENT;
-      console.log(`${mapId}/${seed}: geometry bytes ${old[4]}→${stats.bytes}, indices ${old[3]}→${stats.indices}`);
+      if (seed === 1337) {
+        const repeated = build(mapId, seed);
+        try { assert.equal(inventory(repeated.buckets).hash, stats.hash,
+          'an independent production build reproduces every current fragment byte'); }
+        finally { for (const list of Object.values(repeated.buckets)) for (const geometry of list) geometry.dispose(); }
+      }
+      console.log(`${mapId}/${seed}: V25 totals unchanged: ${stats.bytes} bytes, ${stats.indices} indices, ${mapWedges} plates`);
     } finally {
       for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) geometry.dispose();
     }
@@ -384,7 +462,7 @@ for (const seed of [1337, 2049, 7719]) {
   assert.equal(others.digest('hex'), otherHashes[seed],
     'all 27 non-Winter kits match their audited boat-repair baseline with unchanged RNG');
 }
-console.log(`winterLakeGeometry.selftest: ${berms} grounded berms, ${wedges} wedges, ${reducedBytes} fewer premerge bytes; ${finalAttributeBytesSaved} fewer final nonindexed attribute bytes across9map/seed cases`);
+console.log(`winterLakeGeometry.selftest: ${berms} byte-identical berms, ${wedges} plates; zero V25 count/storage/RNG increase. Earlier geometry savings retained: ${reducedBytes} premerge bytes, ${finalAttributeBytesSaved} final nonindexed bytes across9map/seed cases`);
 
 const supportFunctions = [
   () => 0,
@@ -405,7 +483,7 @@ for (const getHeightAt of supportFunctions) {
     for (const geometry of buckets.plaster) {
       if (geometry.name === 'winter-pressure-berm') auditBerm(geometry, field);
     }
-    for (const geometry of buckets.stone) {
+    for (const geometry of buckets.plaster) {
       if (geometry.name === 'winter-ice-wedge') auditIce(geometry, field);
     }
     auditReeds(buckets.straw, field);

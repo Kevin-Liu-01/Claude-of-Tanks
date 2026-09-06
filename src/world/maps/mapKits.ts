@@ -614,33 +614,48 @@ function winterWedgeBaseHeight(
   return low - 0.035;
 }
 
-// A broad irregular upthrust wedge, not a rectangular upright tile. Keep the
-// same24 vertices/12 triangles. The buried bottom is one footprint-supported
-// plane; the four cap corners follow terrain and carry deformed metric UVs.
+function setWinterPlateUV(
+  uv: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, index: number,
+  x: number, rise: number, z: number, scale: number,
+): void {
+  // Box faces are +X,-X,+Y,-Y,+Z,-Z. Use the actual deformed face axes;
+  // jitterUV still runs exactly once at the original production call site.
+  const face = Math.floor(index / 4);
+  const u = face < 2 ? (face ? -z : z) : (face === 5 ? -x : x);
+  const v = face === 2 ? -z : face === 3 ? z : rise;
+  uv.setXY(index, u * scale, v * scale);
+}
+
+// A broad, tilted fracture plate with unequal broken edges, not a narrow
+// masonry tent. Keep the same24 vertices/12 triangles and exact buried base;
+// existing roll/pitch draws vary the cap without consuming more randomness.
 function winterIceWedge(
   heightField: DressingHeightField, x: number, z: number, width: number,
   height: number, depth: number, yaw: number, roll: number, pitch: number, uvScale: number,
 ): THREE.BoxGeometry {
-  const h = Math.min(height, width * 0.30), d = Math.max(depth, width * 0.65);
+  const h = Math.min(height, width * 0.16), d = Math.max(depth, width * 0.65);
   const geometry = slabBox(width, h, d, uvScale);
   geometry.name = 'winter-ice-wedge';
   const p = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
   const ca = Math.cos(yaw), sa = Math.sin(yaw);
   const bottomY = winterWedgeBaseHeight(heightField, x, z, width, d, ca, sa);
+  const tiltX = roll < 0 ? -0.30 : 0.30;
   const capHeights: number[] = [];
   for (let i = 0; i < p.count; i++) {
     const top = p.getY(i) > 0, sx = Math.sign(p.getX(i)), sz = Math.sign(p.getZ(i));
-    const lx = p.getX(i) * (top ? 0.54 + sz * 0.10 : 1) + (top ? roll * width * 0.25 : 0);
-    const lz = p.getZ(i) * (top ? 0.20 : 1) + (top ? pitch * d * 0.22 : 0);
+    let lx = p.getX(i), lz = p.getZ(i);
+    if (top) {
+      lx = lx * (0.80 + sz * (0.06 + roll * 0.08)) + pitch * width * 0.045;
+      lz = lz * (0.81 + sx * (0.045 + pitch * 0.08)) + roll * d * 0.055;
+    }
     const wx = x + ca * lx + sa * lz, wz = z - sa * lx + ca * lz;
     const corner = (sx > 0 ? 1 : 0) + (sz > 0 ? 2 : 0);
     if (top && capHeights[corner] === undefined) {
-      capHeights[corner] = heightField.getHeightAt(wx, wz) + h * (0.66 + sx * 0.20 + sz * 0.10);
+      const tilt = sx * tiltX + sz * (0.10 + pitch * 0.12);
+      capHeights[corner] = heightField.getHeightAt(wx, wz) + 0.025 + h * (0.48 + tilt);
     }
     p.setXYZ(i, wx, top ? capHeights[corner] : bottomY, wz);
-    // BoxGeometry top-face vertices8..11: project the actual shrunken/sheared
-    // footprint before the existing single jitterUV call, not the old slab depth.
-    if (i >= 8 && i < 12) uv.setXY(i, (lx + width * 0.5) * uvScale, (d * 0.5 - lz) * uvScale);
+    setWinterPlateUV(uv, i, lx, p.getY(i) - bottomY, lz, uvScale);
   }
   geometry.computeVertexNormals();
   return geometry;
@@ -755,11 +770,11 @@ function pressureRidge(
       const roll = (rng() - 0.5) * 0.5, pitch = (rng() - 0.5) * 0.4;
       const plate = winterIceWedge(heightField, px, pz, pw, bh + phh * 0.5,
         depth, -aa + (rng() - 0.5) * 0.6, roll, pitch, 0.8);
-      buckets.stone.push(jitterUV(plate, rng));
+      buckets.plaster.push(jitterUV(plate, rng));
     }
   }
-  // Only the continuous snow-filled seam uses the existing plaster/drift
-  // surface. Separate fractured ice plates retain their original stone finish.
+  // Both the snow-filled seam and opaque snow-dusted plates reuse the existing
+  // plaster/drift surface; mortar normals must not print masonry onto ice.
   buckets.plaster.push(winterPressureBerm(heightField, rows));
 }
 
@@ -906,7 +921,7 @@ function addWinterShoreIce(
       const yaw = -angle + (rng() - 0.5) * 0.9;
       const px = x + (rng() - 0.5) * 2.6, pz = z + (rng() - 0.5) * 2.6;
       const slab = winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9);
-      buckets.stone.push(jitterUV(slab, rng));
+      buckets.plaster.push(jitterUV(slab, rng));
     }
   }
 }
