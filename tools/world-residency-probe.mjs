@@ -7,6 +7,8 @@
 // no pristine counterpart and certify repeat boundedness, not comparative cost.
 // Create the immutable camera input once using tools/SKILL.md, "Fixed camera
 // residency acquisition". Both processes must receive that exact manifest.
+// Optional statistical retained allocations (never a heap-gate adjustment):
+//   --diagnostics-dir=/tmp/allocations --allocation-start-at=0:verdant --allocation-stop-at=1:verdant
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +30,7 @@ import {
 import {
   installResidencyGeometryTracker, warmResidencyTerrain, writeResidencyHeapSnapshot,
   collectResidencyPrograms, writeResidencyPrograms,
+  residencyAllocationPlan, createResidencyAllocationSampler,
 } from './world-residency-diagnostics.mjs';
 
 const args = process.argv.slice(2);
@@ -59,6 +62,10 @@ const settleMs = Number(option('settle-ms', '1500'));
 if (!Number.isInteger(sweeps) || sweeps < 3 || !Number.isFinite(settleMs) || settleMs < 500) {
   throw new Error('Require --sweeps>=3 and --settle-ms>=500');
 }
+const allocationPlan = residencyAllocationPlan({
+  startAt: option('allocation-start-at', ''), stopAt: option('allocation-stop-at', ''),
+  maps, sweeps, directory: diagnosticsDir,
+});
 const tier = option('tier', 'desktop');
 if (!['desktop', 'mobile'].includes(tier)) throw new Error('--tier must be desktop or mobile');
 const viewport = { width: Number(option('width', '1280')), height: Number(option('height', '720')), deviceScaleFactor: 1 };
@@ -100,6 +107,7 @@ if (diagnosticsDir || programInventoryDir) {
   if (diagnosticsDir) fs.mkdirSync(path.resolve(diagnosticsDir), { recursive: true });
   report.scenario.diagnostics = { geometryInventory: Boolean(diagnosticsDir), heapSnapshots: snapshotAt,
     warmTerrain, programInventory: Boolean(programInventoryDir) };
+  if (allocationPlan) report.scenario.diagnostics.allocationSampling = allocationPlan;
   report.metadata.diagnosticsHash = hash(fs.readFileSync(path.join(toolDir, 'world-residency-diagnostics.mjs')));
 }
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -174,7 +182,7 @@ async function verifiedCameraState(page, expectedCamera, before = null) {
   return state;
 }
 
-let server, browser, lockRefresher;
+let server, browser, lockRefresher, allocationSampler;
 try {
   await acquireCaptureLock(30 * 60 * 1000);
   lockRefresher = setInterval(refreshCaptureLock, 60_000);
@@ -210,6 +218,10 @@ try {
   });
   const cdp = await page.createCDPSession();
   await cdp.send('HeapProfiler.enable');
+  if (allocationPlan) {
+    allocationSampler = createResidencyAllocationSampler(cdp, allocationPlan, diagnosticsDir);
+    report.allocationSampling = allocationSampler.receipt;
+  }
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.renderer && window.__SHOTS?.set);
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
@@ -238,6 +250,7 @@ try {
       const sceneIdentity = await page.evaluate(capturePinnedScene, PINNED_SCENE);
       const cameraState = await verifiedCameraState(page, expectedCamera, cameraPrepared);
       const receipt = { ...await collectSettled(page, cdp), terrainWarm: terrainSettled, sceneIdentity, cameraState };
+      if (allocationSampler) await allocationSampler.checkpoint(`${sweep}:${mapId}`);
       if (diagnosticsDir) {
         if (terrainWarm) receipt.diagnosticTerrainWarm = terrainWarm;
         receipt.geometryInventory = await page.evaluate(() => window.__RESIDENCY_DIAGNOSTICS.inventory());
@@ -255,9 +268,14 @@ try {
         + `backing=${(receipt.heap.backingStorageSize / 1048576).toFixed(2)}MiB GPU=${receipt.renderer.geometries}/${receipt.renderer.textures}`);
     }
   }
+  if (allocationSampler) allocationSampler.requireComplete();
 } catch (error) {
   report.errors.push(error instanceof Error ? error.message : String(error));
 } finally {
+  if (allocationSampler) {
+    try { await allocationSampler.dispose(); }
+    catch (error) { report.errors.push(`Allocation sampling cleanup: ${error instanceof Error ? error.message : String(error)}`); }
+  }
   if (browser) await browser.close();
   if (server?.close) await server.close();
   else if (server) await new Promise(resolve => server.httpServer.close(resolve));

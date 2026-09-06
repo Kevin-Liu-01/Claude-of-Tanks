@@ -3,6 +3,84 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
+/** Explicit, finite post-GC endpoints; no diagnostic exists without both flags. */
+export function residencyAllocationPlan({ startAt = '', stopAt = '', maps, sweeps, directory }) {
+  if (!startAt && !stopAt) return null;
+  if (!directory) throw new Error('Allocation sampling requires --diagnostics-dir');
+  const ordinal = checkpoint => {
+    const match = /^(0|[1-9]\d*):([a-z][a-z_]*)$/.exec(checkpoint);
+    if (!match || Number(match[1]) >= sweeps || !maps.includes(match[2])) {
+      throw new Error(`Invalid allocation checkpoint ${checkpoint}; use an existing sweep:mapId`);
+    }
+    return Number(match[1]) * maps.length + maps.indexOf(match[2]);
+  };
+  if (ordinal(stopAt) <= ordinal(startAt)) throw new Error('Allocation stop must follow start in the declared sweep order');
+  return {
+    protocol: 'native-retained-allocation-sampling-v1', startAt, stopAt,
+    checkpointPhase: 'After the existing two GC passes and unchanged heap receipt',
+    options: { samplingInterval: 16384, stackDepth: 16,
+      includeObjectsCollectedByMajorGC: false, includeObjectsCollectedByMinorGC: false },
+    interpretation: 'Statistical allocations made after start and still alive at stop; not exact retained heap bytes, not a no-leak proof, and never subtracted from residency gates.',
+  };
+}
+
+/** Native sampling only: no page handles, additional GC, warmup, or fallback. */
+export function createResidencyAllocationSampler(cdp, plan, directory) {
+  const receipt = { ...plan, status: 'pending', startedAt: null, stoppedAt: null };
+  let mayBeSampling = false;
+  let lastCheckpoint = null;
+  const failed = error => {
+    receipt.status = 'failed';
+    receipt.error = error instanceof Error ? error.message : String(error);
+  };
+  const writeProfile = (result, suffix) => {
+    const profile = result?.profile;
+    if (!profile?.head || !Array.isArray(profile.samples)) throw new Error('Native allocation profile unavailable');
+    const filename = `allocations-${plan.startAt.replace(':', '-')}-to-${plan.stopAt.replace(':', '-')}${suffix}.heapprofile.json`;
+    const file = path.resolve(directory, filename);
+    const raw = `${JSON.stringify(profile)}\n`;
+    fs.writeFileSync(file, raw, { flag: 'wx' });
+    return { file, bytes: Buffer.byteLength(raw), sha256: createHash('sha256').update(raw).digest('hex'),
+      samples: profile.samples.length };
+  };
+  return {
+    receipt,
+    async checkpoint(key) {
+      lastCheckpoint = key;
+      try {
+        if (key === plan.startAt) {
+          if (receipt.status !== 'pending') throw new Error('Allocation start checkpoint repeated');
+          // Even a transport error can follow a successful native start. The
+          // finalizer makes one bounded stop attempt before browser teardown.
+          mayBeSampling = true;
+          await cdp.send('HeapProfiler.startSampling', plan.options);
+          receipt.status = 'active'; receipt.startedAt = key;
+        } else if (key === plan.stopAt) {
+          if (receipt.status !== 'active') throw new Error('Allocation stop checkpoint without active sampling');
+          const result = await cdp.send('HeapProfiler.stopSampling');
+          mayBeSampling = false;
+          receipt.profile = writeProfile(result, '');
+          receipt.status = 'complete'; receipt.stoppedAt = key;
+        }
+      } catch (error) { failed(error); throw error; }
+    },
+    requireComplete() {
+      if (receipt.status !== 'complete') throw new Error('Allocation sampling did not reach its declared stop checkpoint');
+    },
+    async dispose() {
+      if (!mayBeSampling) return;
+      mayBeSampling = false;
+      receipt.cleanup = { checkpoint: lastCheckpoint, stopped: false };
+      try {
+        const result = await cdp.send('HeapProfiler.stopSampling');
+        receipt.cleanup.stopped = true;
+        receipt.cleanup.profile = writeProfile(result, '.aborted');
+        if (receipt.status !== 'failed') receipt.status = 'aborted';
+      } catch (error) { failed(error); throw error; }
+    },
+  };
+}
+
 /** Read native linked sources and existing scene-material links; never compile. */
 export function collectResidencyPrograms() {
   const { renderer, scene, world } = window.__DEBUG;
