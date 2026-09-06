@@ -14,11 +14,251 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import process from 'node:process';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
 import { installGlBufferProbe } from './multiplayer-gl-buffer-probe.mjs';
+import { sanitizeFeedbackTimingWindows } from './multiplayer-feedback-probe.mjs';
+import { startMultiplayerFrameTrace } from './multiplayer-frame-trace.mjs';
+
+const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+const boolean = value => typeof value === 'boolean' ? value : null;
+const metrics = (source, names) => Object.fromEntries(names.split(' ').map(name => [name, finite(source?.[name])]));
+const size = value => Array.isArray(value) ? value.length : 0;
+
+/** Same bounded numeric window schema as the native feedback probe; no raw event payloads. */
+export function liveCombatTimingWindows(source) {
+  const schema = Array.isArray(source?.frameSchema) ? source.frameSchema : [];
+  const column = name => schema.indexOf(name);
+  const rows = (Array.isArray(source?.frames) ? source.frames : []).slice(0, 60000)
+    .filter(row => Array.isArray(row) && finite(row[column('tMs')]) !== null);
+  const at = row => row[column('tMs')];
+  const worst = rows.filter(row => finite(row[column('gapMs')]) !== null)
+    .sort((a, b) => b[column('gapMs')] - a[column('gapMs')]).slice(0, 3);
+  const keys = 'gapMs dtMs calls triangles programs geometries textures renderScale heapMB flags'.split(' ');
+  const events = Array.isArray(source?.events) ? source.events.slice(0, 10000) : [];
+  const clock = source?.clock;
+  const traceZero = finite(clock?.pageTimeMs) !== null && finite(clock?.traceTimeMs) !== null
+    ? clock.pageTimeMs - clock.traceTimeMs : null;
+
+  function projectEvent(event, center) {
+    const projected = { name: event.name, dtFromCenterMs: event.tMs - center };
+    if (event.name !== 'longtask' || traceZero === null ||
+        finite(event.data?.startTime) === null || finite(event.data?.duration) === null ||
+        event.data.duration < 0) return projected;
+    const start = event.data.startTime - traceZero;
+    return { ...projected, startAtMs: start, startDtFromCenterMs: start - center,
+      durationMs: event.data.duration };
+  }
+  function windowFor(row, ordinal) {
+    const center = at(row);
+    const previous = rows.filter(candidate => at(candidate) < center)
+      .reduce((last, candidate) => !last || at(candidate) > at(last) ? candidate : last, null);
+    const gapStart = -Math.max(0, row[column('gapMs')]);
+    const previousAt = previous ? at(previous) - center : null;
+    const start = center + Math.min(-250, gapStart, previousAt ?? 0);
+    const nearby = rows.filter(candidate => at(candidate) >= start && at(candidate) <= center + 250);
+    const pinned = previous ? [previous, row] : [row];
+    const selected = [...pinned, ...nearby.filter(candidate => !pinned.includes(candidate))
+      .sort((a, b) => Math.abs(at(a) - center) - Math.abs(at(b) - center)).slice(0, 48 - pinned.length)]
+      .sort((a, b) => at(a) - at(b));
+    const projected = events.filter(event => finite(event?.tMs) !== null)
+      .map(event => projectEvent(event, center));
+    // Reuse the feedback sanitizer's closed event vocabulary and task-overlap
+    // semantics before choosing the bounded closest context rows.
+    const allowed = [];
+    for (let index = 0; index < projected.length; index += 32) {
+      allowed.push(...sanitizeFeedbackTimingWindows({ windows: [{ kind: 'worst-frame',
+        gapStartDtFromCenterMs: gapStart, precedingFrameDtFromCenterMs: previousAt,
+        frames: [], events: projected.slice(index, index + 32) }] }).windows[0].events);
+    }
+    const eventDistance = event => event.name === 'longtask' && finite(event.startDtFromCenterMs) !== null
+      ? Math.abs(Math.min(Math.max(0, event.startDtFromCenterMs), event.startDtFromCenterMs + event.durationMs))
+      : Math.abs(event.dtFromCenterMs);
+    const selectedEvents = allowed.sort((a, b) => eventDistance(a) - eventDistance(b)).slice(0, 32)
+      .sort((a, b) => a.dtFromCenterMs - b.dtFromCenterMs);
+    return { kind: 'worst-frame', ordinal: ordinal + 1, atMs: center,
+      gapStartDtFromCenterMs: gapStart, precedingFrameDtFromCenterMs: previousAt,
+      gapStartedBeforeSample: center + gapStart < 0,
+      frameRowsOmitted: Math.max(0, nearby.length - selected.length),
+      eventRowsOmitted: Math.max(0, allowed.length - selectedEvents.length),
+      frames: selected.map(candidate => ({ dtFromCenterMs: at(candidate) - center,
+        ...Object.fromEntries(keys.map(key => [key, finite(candidate[column(key)])])) })),
+      events: selectedEvents };
+  }
+  return sanitizeFeedbackTimingWindows({ traceClockReadSpanMs: clock?.readSpanMs,
+    windows: worst.map(windowFor) });
+}
+
+function clientHealth(report = {}) {
+  const network = report.network;
+  return {
+    errorCount: size(report.errors),
+    events: { ...metrics(report.events, 'fired hits damage destroyed'),
+      uniqueShooters: Object.keys(report.events?.firedBy || {}).length },
+    motion: metrics(report.motion, 'samples maxStepM maxShortFrameStepM maxExcessStepM maxBackstepM'),
+    network: { connected: boolean(network?.connected),
+      ...metrics(network, 'rttMs rttJitterMs snapshotPacketsReceived estimatedMissingSnapshots estimatedSnapshotLoss inputAckLag pendingInputEdges transportBufferedBytes pendingEventBatches inputPacketsSubmitted'),
+      prediction: metrics(network?.prediction, 'reconciliations hardSnaps terminalSyncs replayedInputs droppedHistory maxPositionErrorM maxFreePositionErrorM maxContactPositionErrorM contactReconciliations lastPositionErrorM maxCorrectionStepM maxVerticalCorrectionStepM pendingInputs correctionM') },
+  };
+}
+
+function renderedHealth(report = {}) {
+  return { ...clientHealth(report),
+    phase: ['battle', 'garage'].includes(report.phase) ? report.phase : null,
+    result: ['victory', 'defeat', 'draw'].includes(report.result) ? report.result : null,
+    ...metrics(report, 'rosterSize visibleRosterSize glError'), errorOverlay: boolean(report.errorOverlay),
+    trace: metrics(report.trace, 'durationMs frames framesDropped events eventsDropped gapP50 gapP95 gapP99 maxGapMs spikes freezes liveSpikes liveFreezes longTasks longTaskMs'),
+    traceClock: metrics(report.traceClock, 'pageTimeMs traceTimeMs readSpanMs'),
+    predictionCombatBaseline: metrics(report.predictionCombatBaseline, 'hardSnaps droppedHistory maxPositionErrorM'),
+    timingWindows: sanitizeFeedbackTimingWindows(report.timingWindows),
+    renderer: metrics(report.renderer, 'calls triangles programs'),
+    newProgramCount: size(report.newPrograms),
+    presentation: metrics(report.presentation, 'pending emitted peakPending visualDestroyCount visualDestroyTotalMs visualDestroyMaxMs'),
+    simulation: metrics(report.telemetry?.simulation, 'tanks'),
+    world: metrics(report.telemetry?.world, 'obstacles colliders'),
+    quality: { ...metrics(report.telemetry?.quality, 'renderScale dynScale dpr outputPixels'),
+      preset: ['low', 'medium', 'high', 'ultra'].includes(report.telemetry?.quality?.preset)
+        ? report.telemetry.quality.preset : null },
+    canvas: metrics(report.canvas, 'width height'),
+    glErrors: metrics(report.glErrors, 'preCombat beforeShadowProbe afterShadowProbe'),
+    glBufferErrorCount: size(report.glBufferDiagnostics?.errors),
+    shadows: { enabled: boolean(report.shadows?.enabled), shaderErrors: finite(report.shadows?.shaderErrors),
+      cascadeCount: size(report.shadows?.cascades) },
+    shadowSample: { skipped: boolean(report.shadowSample?.skipped),
+      ...metrics(report.shadowSample, 'changedPixelRatio darkenedPixelRatio meanAbsLumaDelta') },
+  };
+}
+
+function authorityOutcome(authority) {
+  const movementM = [];
+  const damageByTeam = { alpha: 0, bravo: 0 };
+  for (const [id, before] of Object.entries(authority?.start || {}).slice(0, 14)) {
+    const after = authority?.final?.[id];
+    if (!after || !before) continue;
+    movementM.push(finite(Math.hypot(after.x - before.x, after.y - before.y, after.z - before.z)));
+    if (['alpha', 'bravo'].includes(before.team) && finite(before.hp) !== null && finite(after.hp) !== null) {
+      damageByTeam[before.team] += Math.max(0, before.hp - after.hp);
+    }
+  }
+  return { movementM, damageByTeam };
+}
+
+/** Shareable evidence. Raw local diagnostic files retain their historical private scope. */
+export function sanitizeLiveCombatHealth(source = {}) {
+  const authority = source.authority;
+  const capture = source.frameTrace;
+  return { version: 1, gateState: 'not-evaluated',
+    role: ['host', 'client'].includes(source.role) ? source.role : null,
+    measuredDurationMs: finite(source.measuredDurationMs), diagnosticOverhead: !!capture,
+    profile: { ...metrics(source.profile, 'players teamSize durationMs settleMs latencyMs jitterMs lossPercent inputLossPercent certificationBattleLimitS'),
+      completeMatch: boolean(source.profile?.completeMatch),
+      map: source.profile?.map === 'winter' ? 'winter' : null,
+      roster: source.profile?.roster === 'm60a2' ? 'm60a2' : null },
+    authority: { ...metrics(authority, 'tick averageAdvanceMs maxAdvanceMs'),
+      stats: metrics(authority?.stats, 'invalidMessages droppedCatchUpMs steps'),
+      combatBaseline: metrics(authority?.combatBaseline, 'invalidMessages droppedCatchUpMs steps'),
+      ...authorityOutcome(authority) },
+    rendered: renderedHealth(source.rendered),
+    clients: (Array.isArray(source.clients) ? source.clients : []).slice(0, 14)
+      .map((report, index) => ({ slot: index + 1, ...clientHealth(report) })),
+    browserErrorCount: size(source.browserErrors), browserGlWarningCount: size(source.browserGlWarnings),
+    frameTrace: capture ? { captureComplete: boolean(capture.captureComplete ?? capture.complete),
+      complete: boolean(capture.complete), attributionValid: boolean(capture.attributionValid),
+      clockAligned: boolean(capture.clockAligned), captureLimitMs: 30000,
+      coverage: capture.requestedWindow ? 'delayed diagnostic window; not whole-battle coverage'
+        : 'bounded capture; align intervals with rendered.traceClock',
+      requestedWindow: capture.requestedWindow ? metrics(capture.requestedWindow, 'delayMs durationMs') : null,
+      windowFullyCaptured: boolean(capture.windowFullyCaptured),
+      ...metrics(capture, 'baselinePageTimeMs captureEndPageTimeMs clockDriftMs rowsDropped malformed openDurationEvents'),
+      rowCount: size(capture.rows), dataLossOccurred: boolean(capture.dataLossOccurred) } : null,
+  };
+}
+
+export async function persistLiveCombatHealth(source, path, write = writeFile) {
+  const receipt = sanitizeLiveCombatHealth(source);
+  await write(path, `${JSON.stringify(receipt, null, 2)}\n`);
+  return receipt;
+}
+
+function validateFrameTraceWindow(window, enabled) {
+  if (!window) return;
+  if (!enabled || !Number.isInteger(window.delayMs) || window.delayMs < 0 || window.delayMs > 30000 ||
+      !Number.isInteger(window.durationMs) || window.durationMs < 1 || window.durationMs > 30000) {
+    throw new TypeError('frame_trace_window_invalid');
+  }
+}
+
+export function parseLiveCombatFrameTraceWindow(args) {
+  const values = args.filter(arg => arg.startsWith('--frame-trace-window'));
+  if (!values.length) return null;
+  if (values.length !== 1 || !/^--frame-trace-window=\d+,\d+$/.test(values[0])) {
+    throw new TypeError('frame_trace_window_invalid');
+  }
+  const [delayMs, durationMs] = values[0].slice('--frame-trace-window='.length).split(',').map(Number);
+  const window = { delayMs, durationMs };
+  validateFrameTraceWindow(window, args.includes('--frame-trace'));
+  return window;
+}
+
+const failedFrameTrace = failure => ({ complete: false, failure, diagnosticOverhead: true });
+function qualifyLiveCombatCapture(capture) {
+  const clockAligned = finite(capture.clockDriftMs) !== null && Math.abs(capture.clockDriftMs) <= 2;
+  const complete = capture.complete === true && clockAligned;
+  return { ...capture, captureComplete: capture.complete === true, clockAligned,
+    complete, attributionValid: complete };
+}
+async function stopLiveCombatCapture(capture) {
+  try { return qualifyLiveCombatCapture(await capture.stop()); }
+  catch { return failedFrameTrace('frame_trace_stop_failed'); }
+}
+
+function windowCaptureReceipt(capture, window) {
+  const { baselinePageTimeMs: first, captureEndPageTimeMs: last } = capture;
+  const windowFullyCaptured = finite(first) !== null && finite(last) !== null &&
+    last - first >= window.durationMs;
+  const complete = capture.complete === true && windowFullyCaptured;
+  return { ...capture, captureComplete: capture.captureComplete ?? capture.complete === true,
+    complete, attributionValid: complete && capture.attributionValid === true,
+    requestedWindow: { delayMs: window.delayMs, durationMs: window.durationMs }, windowFullyCaptured,
+    coverage: 'delayed diagnostic window; not whole-battle coverage; align intervals with rendered.traceClock' };
+}
+
+function scheduleLiveCombatCapture(page, start, window, timers) {
+  let finished = false, pending = null;
+  const timer = timers.setTimeout(() => {
+    if (finished) return;
+    // Start owns its bounded admission cleanup. Keep rejection handled even
+    // while measurement continues; a failed capture cannot satisfy the gate.
+    pending = Promise.resolve().then(() => start(page, { durationMs: window.durationMs }))
+      .then(capture => ({ capture }), () => ({ failure: 'frame_trace_start_failed' }));
+  }, window.delayMs);
+  return async () => {
+    finished = true;
+    timers.clearTimeout(timer);
+    const admitted = pending ? await pending : { failure: 'frame_trace_window_not_started' };
+    const capture = admitted.failure ? failedFrameTrace(admitted.failure)
+      : await stopLiveCombatCapture(admitted.capture);
+    return windowCaptureReceipt(capture, window);
+  };
+}
+
+/** Optional tracing has overhead; a delayed window starts relative to measure() invocation. */
+export async function withLiveCombatFrameTrace(page, enabled, measure, start = startMultiplayerFrameTrace,
+  { window = null, timers = { setTimeout, clearTimeout } } = {}) {
+  validateFrameTraceWindow(window, enabled);
+  if (!enabled) return { value: await measure(), frameTrace: null };
+  const capture = window ? null : await start(page, { durationMs: 30000 });
+  const finish = window ? scheduleLiveCombatCapture(page, start, window, timers)
+    : () => stopLiveCombatCapture(capture);
+  let value, failure, failed = false;
+  try { value = await measure(); } catch (error) { failure = error; failed = true; }
+  const frameTrace = await finish();
+  if (failed) throw failure;
+  return { value, frameTrace };
+}
 
 function numericArg(name, fallback) {
   const prefix = `--${name}=`;
@@ -45,6 +285,8 @@ const matchTimeoutMs = numericArg('match-timeout', 90_000);
 const certificationBattleLimitS = numericArg('battle-limit', 60);
 const completeMatch = process.argv.includes('--complete-match');
 const glBufferDiagnostics = process.argv.includes('--gl-buffer-diagnostics');
+const frameTraceDiagnostics = process.argv.includes('--frame-trace');
+const frameTraceWindow = parseLiveCombatFrameTraceWindow(process.argv);
 const onlyRoleArg = process.argv.find((entry) => entry.startsWith('--only='));
 const onlyRole = onlyRoleArg?.slice('--only='.length) || null;
 if (onlyRole && onlyRole !== 'host' && onlyRole !== 'client') {
@@ -56,12 +298,8 @@ const browserErrors = [];
 const browserGlWarnings = [];
 const contextByPage = new WeakMap();
 
-const vite = await createViteServer({
-  root,
-  logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
-});
-const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
+let vite = null;
+let signaling = null;
 let browser = null;
 
 const wait = (ms) => new Promise((resolveWait) => setTimeout(resolveWait, ms));
@@ -985,9 +1223,12 @@ async function stopCombat(pages, renderedRole) {
 }
 
 async function collectFullReport(page, renderedRole) {
-  return page.evaluate(async (role) => {
+  const report = await page.evaluate(async (role) => {
     const state = globalThis.__COT_LIVE_7V7;
+    const clockStartedAt = performance.now();
     const trace = window.__DEV_TRACE.stats();
+    const traceClock = { pageTimeMs: clockStartedAt, traceTimeMs: trace.durationMs,
+      readSpanMs: performance.now() - clockStartedAt };
     const traceAnomalies = window.__DEV_TRACE.tail(2000, 'anomaly');
     const traceTail = window.__DEV_TRACE.tail(240);
     const traceSnapshot = window.__DEV_TRACE.snapshot({ gpu: false });
@@ -1042,9 +1283,12 @@ async function collectFullReport(page, renderedRole) {
       role,
       playerId: state.roomInfo.peerId,
       trace,
+      traceClock,
       traceAnomalies,
       traceTail,
       traceSpikeFrames,
+      timingSource: { frameSchema: traceSnapshot.frameSchema, frames: traceSnapshot.frames,
+        events: traceSnapshot.events, clock: traceClock },
       events: state.eventCounts,
       motion: state.motion,
       network: window.__DEBUG.network,
@@ -1079,6 +1323,8 @@ async function collectFullReport(page, renderedRole) {
       errors: state.errors,
     };
   }, renderedRole);
+  const { timingSource, ...health } = report;
+  return { ...health, timingWindows: liveCombatTimingWindows(timingSource) };
 }
 
 async function collectLightReport(page) {
@@ -1342,41 +1588,64 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
     // resetting the trace, otherwise an encoder GC can masquerade as a live
     // render hitch on the first measured frame.
     await wait(1000);
-    await beginMeasuredCombat(pages, renderedRole);
-    const measuredStartedAt = Date.now();
-    const completion = completeMatch
-      ? await waitForNaturalMatchEnd(pages, renderedRole)
-      : null;
-    if (!completeMatch) await wait(durationMs);
-    const measuredDurationMs = Date.now() - measuredStartedAt;
-    await stopCombat(pages, renderedRole);
-    await wait(settleMs);
+    const measurement = await withLiveCombatFrameTrace(fullPage, frameTraceDiagnostics, async () => {
+      await beginMeasuredCombat(pages, renderedRole);
+      const measuredStartedAt = Date.now();
+      const completion = completeMatch
+        ? await waitForNaturalMatchEnd(pages, renderedRole)
+        : null;
+      if (!completeMatch) await wait(durationMs);
+      const measuredDurationMs = Date.now() - measuredStartedAt;
+      await stopCombat(pages, renderedRole);
+      await wait(settleMs);
+      // Collect the unchanged gate inputs before stopping/flushing Chrome's
+      // optional trace; its cleanup latency must not extend the frame window.
+      const hostAuthority = await pages[0].evaluate((role) => {
+        const state = globalThis.__COT_LIVE_7V7;
+        const runtime = role === 'host' ? state.session.matchRuntime : state.match.host;
+        const simulation = runtime.simulation;
+        return {
+          tick: runtime.tick,
+          stats: runtime.stats,
+          combatBaseline: state.authorityCombatBaseline,
+          averageAdvanceMs: state.advanceDurations.reduce((sum, value) => sum + value, 0) /
+            Math.max(1, state.advanceDurations.length),
+          maxAdvanceMs: Math.max(0, ...state.advanceDurations),
+          start: state.authorityStart,
+          final: Object.fromEntries([...simulation.entityById].map(([id, entity]) => [id, {
+            x: entity.state.pos.x,
+            y: entity.state.pos.y,
+            z: entity.state.pos.z,
+            hp: entity.combat.hp,
+            destroyed: entity.combat.destroyed,
+            team: entity.team,
+          }])),
+        };
+      }, renderedRole);
+      const fullReport = await collectFullReport(fullPage, renderedRole);
+      const clientReports = await Promise.all(pages.map((page, index) =>
+        index === fullIndex ? fullReport : collectLightReport(page)));
+      return { completion, measuredDurationMs, hostAuthority, fullReport, clientReports };
+    }, startMultiplayerFrameTrace, { window: frameTraceWindow });
+    const { completion, measuredDurationMs, hostAuthority, fullReport, clientReports } = measurement.value;
 
-    const hostAuthority = await pages[0].evaluate((role) => {
-      const state = globalThis.__COT_LIVE_7V7;
-      const runtime = role === 'host' ? state.session.matchRuntime : state.match.host;
-      const simulation = runtime.simulation;
-      return {
-        tick: runtime.tick,
-        stats: runtime.stats,
-        combatBaseline: state.authorityCombatBaseline,
-        averageAdvanceMs: state.advanceDurations.reduce((sum, value) => sum + value, 0) /
-          Math.max(1, state.advanceDurations.length),
-        maxAdvanceMs: Math.max(0, ...state.advanceDurations),
-        start: state.authorityStart,
-        final: Object.fromEntries([...simulation.entityById].map(([id, entity]) => [id, {
-          x: entity.state.pos.x,
-          y: entity.state.pos.y,
-          z: entity.state.pos.z,
-          hp: entity.combat.hp,
-          destroyed: entity.combat.destroyed,
-          team: entity.team,
-        }])),
-      };
-    }, renderedRole);
-    const fullReport = await collectFullReport(fullPage, renderedRole);
-    const clientReports = await Promise.all(pages.map((page, index) =>
-      index === fullIndex ? fullReport : collectLightReport(page)));
+    const healthPath = resolve(artifactDir, `${renderedRole}-health.json`);
+    await persistLiveCombatHealth({ role: renderedRole, measuredDurationMs,
+      authority: hostAuthority, rendered: fullReport, clients: clientReports,
+      browserErrors, browserGlWarnings, frameTrace: measurement.frameTrace,
+      profile: { players: PLAYER_COUNT, teamSize: TEAM_SIZE, map: MAP_ID, roster: SPEC_ID,
+        durationMs, settleMs, latencyMs, jitterMs, lossPercent, inputLossPercent,
+        completeMatch, certificationBattleLimitS } }, healthPath);
+    if (measurement.frameTrace) {
+      // The collector has already stripped Chrome names/arguments/identities.
+      // Keep its bounded rows separate from the compact shareable health receipt.
+      await writeFile(resolve(artifactDir, `${renderedRole}-frame-trace.json`),
+        `${JSON.stringify(measurement.frameTrace, null, 2)}\n`);
+    }
+    console.log(`[live-7v7] ${renderedRole}: health receipt saved before gate checks`);
+    if (frameTraceDiagnostics) {
+      assert.equal(measurement.frameTrace?.complete, true, 'bounded Chrome trace completes without data loss');
+    }
 
     const liveInvalidMessages = hostAuthority.stats.invalidMessages -
       hostAuthority.combatBaseline.invalidMessages;
@@ -1438,6 +1707,8 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         matchTimeoutMs,
         certificationBattleLimitS,
         glBufferDiagnostics,
+        frameTraceDiagnostics,
+        frameTraceWindow,
       },
       completion,
       formation,
@@ -1492,37 +1763,46 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
   }
 }
 
-try {
-  await mkdir(artifactDir, { recursive: true });
-  await vite.listen();
-  const signalAddress = await signaling.listen();
-  const viteAddress = vite.httpServer.address();
-  const origin = `http://127.0.0.1:${viteAddress.port}`;
-  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
-  browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows',
-      '--use-gl=angle',
-      '--enable-webgl',
-    ],
-  });
-  const host = onlyRole === 'client' ? null : await runRenderedRole(origin, signalUrl, 'host');
-  const client = onlyRole === 'host' ? null : await runRenderedRole(origin, signalUrl, 'client');
-  const summary = {
-    ok: true,
-    capturedAt: new Date().toISOString(),
-    host: host?.screenshots || null,
-    client: client?.screenshots || null,
-  };
-  await writeFile(resolve(artifactDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
-  console.log(JSON.stringify(summary, null, 2));
-} finally {
-  if (browser) await browser.close().catch(() => {});
-  await signaling.close().catch(() => {});
-  await vite.close().catch(() => {});
+async function runLiveCombat() {
+  try {
+    vite = await createViteServer({ root, logLevel: 'error',
+      server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false } });
+    signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
+    await mkdir(artifactDir, { recursive: true });
+    await vite.listen();
+    const signalAddress = await signaling.listen();
+    const viteAddress = vite.httpServer.address();
+    const origin = `http://127.0.0.1:${viteAddress.port}`;
+    const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-background-timer-throttling',
+        '--disable-renderer-backgrounding',
+        '--disable-backgrounding-occluded-windows',
+        '--use-gl=angle',
+        '--enable-webgl',
+      ],
+    });
+    const host = onlyRole === 'client' ? null : await runRenderedRole(origin, signalUrl, 'host');
+    const client = onlyRole === 'host' ? null : await runRenderedRole(origin, signalUrl, 'client');
+    const summary = {
+      ok: true,
+      capturedAt: new Date().toISOString(),
+      host: host?.screenshots || null,
+      client: client?.screenshots || null,
+    };
+    await writeFile(resolve(artifactDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
+    console.log(JSON.stringify(summary, null, 2));
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    await signaling?.close().catch(() => {});
+    await vite?.close().catch(() => {});
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  await runLiveCombat();
 }

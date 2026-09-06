@@ -237,4 +237,57 @@ finishCreation();
 await flush();
 assertReleased(late);
 
+// Resolve creation just before the command deadline runs, but do not flush its
+// promise reactions first. Ownership must survive a timeout winning while the
+// creation observer still sees startup as active.
+for (const cleanup of ['success', 'disable-fails', 'detach-fails', 'both-stuck']) {
+  let finishBoundaryCreation;
+  const boundary = fixture({
+    create(session) {
+      return new Promise((resolve) => { finishBoundaryCreation = () => resolve(session); });
+    },
+    handle({ method }) {
+      if (method !== 'Performance.disable') return;
+      if (cleanup === 'disable-fails') throw new Error('PRIVATE_DISABLE');
+      if (cleanup === 'both-stuck') return new Promise(() => {});
+    },
+    detach() {
+      if (cleanup === 'detach-fails') throw new Error('PRIVATE_DETACH');
+      if (cleanup === 'both-stuck') return new Promise(() => {});
+    },
+  });
+  const boundaryStart = startMultiplayerCpuTimeline(boundary.page, { commandTimeoutMs: 100 }, boundary.clock);
+  const boundaryRejected = assert.rejects(boundaryStart, /^Error: cpu_timeline_start_failed$/);
+  await flush();
+  const [boundaryTimerId, boundaryTimer] = [...boundary.clock.timers][0];
+  finishBoundaryCreation();
+  await Promise.resolve();
+  boundary.clock.timers.delete(boundaryTimerId);
+  boundaryTimer.callback();
+  await boundary.clock.advance(200);
+  await boundaryRejected;
+  assertReleased(boundary);
+  assert.deepEqual(boundary.calls, ['Performance.disable'], 'timed-out creation never enables or samples');
+}
+
+for (const primary of ['start', 'sample']) {
+  const test = fixture({
+    handle({ method, metricCalls }) {
+      if (method === 'Performance.disable' || (primary === 'start' && method === 'Performance.enable')
+        || (primary === 'sample' && method === 'Performance.getMetrics' && metricCalls === 2)) {
+        throw new Error('PRIVATE_PROTOCOL_FAILURE');
+      }
+    },
+    detach() { throw new Error('PRIVATE_DETACH'); },
+  });
+  if (primary === 'start') {
+    await assert.rejects(startMultiplayerCpuTimeline(test.page, {}, test.clock), /^Error: cpu_timeline_start_failed$/);
+  } else {
+    const sampler = await startMultiplayerCpuTimeline(test.page, {}, test.clock);
+    await test.clock.advance(100);
+    await assert.rejects(sampler.stop(), /^Error: cpu_timeline_sample_failed$/);
+  }
+  assertReleased(test);
+}
+
 console.log('multiplayer CPU timeline selftest passed');

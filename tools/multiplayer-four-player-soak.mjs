@@ -3,6 +3,7 @@ import process from 'node:process';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
+import { parseNetworkSimulationSeed } from '../src/net/adverseNetworkTransport.ts';
 
 const signalOverride = process.argv.find((entry) => entry.startsWith('--signal-url='))?.slice(13);
 if (signalOverride && !/^wss?:\/\//.test(signalOverride)) throw new TypeError('signal-url must be WebSocket');
@@ -34,6 +35,9 @@ const latencyMs = numericArg('latency', 45);
 const jitterMs = numericArg('jitter', 15);
 const lossPercent = numericArg('loss', 5);
 const inputLossPercent = numericArg('input-loss', 3);
+const seedArguments = process.argv.filter((entry) => entry.startsWith('--seed='));
+if (seedArguments.length > 1) throw new TypeError('seed must specify one uint32');
+const seed = seedArguments.length ? parseNetworkSimulationSeed(seedArguments[0].slice(7)) : null;
 const rosterTimeoutMs = 20_000 + playerCount * 2_000;
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
@@ -145,8 +149,12 @@ try {
     contexts[index] = context;
     const page = await context.newPage();
     observePage(page, `player-${index + 1}`);
+    // Independent streams per guest; the same explicit master seed and player
+    // index reproduce draws, not native browser timer/network scheduling.
+    const netSeed = seed === null ? null : (seed + Math.imul(index, 0x9e3779b9)) >>> 0;
     const query = index === 0 ? '' : `?netSim=1&netLatency=${latencyMs}` +
-      `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}`;
+      `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}` +
+      (netSeed === null ? '' : `&netSeed=${netSeed}`);
     await page.goto(`${origin}/tools/multiplayer-browser-soak.html${query}`, {
       waitUntil: 'domcontentloaded',
       timeout: 180_000,
@@ -566,6 +574,9 @@ try {
       jitterMs,
       lossPercent,
       inputLossPercent,
+      seed,
+      seedDerivation: seed === null ? null : 'uint32(seed + playerIndex * 0x9e3779b9)',
+      reorderMeasurement: 'stale sequence completion; outgoing base admission, incoming decoded delivery',
       freshBrowserContexts: true,
     },
     authority: {
@@ -582,6 +593,11 @@ try {
       interpolationDelayMs: Number(report.stats.buffer.interpolationDelayMs.toFixed(1)),
       estimatedLossPercent: Number((report.stats.estimatedSnapshotLoss * 100).toFixed(1)),
       droppedInputs: report.stats.transport?.droppedInput || 0,
+      netSeed: report.stats.transport?.netSeed ?? null,
+      reorderedOutgoingInput: report.stats.transport?.reorderedOutgoingInput || 0,
+      reorderedOutgoingState: report.stats.transport?.reorderedOutgoingState || 0,
+      reorderedIncomingInput: report.stats.transport?.reorderedIncomingInput || 0,
+      reorderedIncomingState: report.stats.transport?.reorderedIncomingState || 0,
       replaceableInputsSent: report.stats.transport?.base?.state?.inputSent || 0,
       averageSampleMs: Number(report.averageSampleMs.toFixed(3)),
     })),

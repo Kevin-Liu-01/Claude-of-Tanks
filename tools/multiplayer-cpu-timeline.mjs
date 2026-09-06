@@ -101,14 +101,21 @@ export async function startMultiplayerCpuTimeline(page, options = {}, clock = re
   const config = settings(options);
   const commands = commandRunner(clock, config.commandTimeoutMs);
   let session;
+  let releasing;
   let previous;
   let baselinePageTimeMs;
   let baselineRequestSpanMs;
   let abandoned = false;
+  function release() {
+    if (!session) return Promise.resolve(false);
+    releasing ??= releaseSession(session, commands);
+    return releasing;
+  }
   const creation = Promise.resolve().then(() => page.target().createCDPSession());
   // A session that arrives after startup timed out still belongs to this probe.
   void creation.then((late) => {
-    if (abandoned) return releaseSession(late, commands);
+    session = late;
+    if (abandoned) return release();
   }, () => {}).catch(() => {});
   try {
     session = await commands.run(() => creation);
@@ -128,7 +135,7 @@ export async function startMultiplayerCpuTimeline(page, options = {}, clock = re
   } catch {
     abandoned = true;
     commands.cancel();
-    if (session) await releaseSession(session, commands);
+    await release();
     throw new Error('cpu_timeline_start_failed');
   }
 
@@ -148,7 +155,7 @@ export async function startMultiplayerCpuTimeline(page, options = {}, clock = re
     clock.clearTimeout(deadlineTimer);
     commands.cancel();
     completion = (async () => {
-      const cleanupFailed = await releaseSession(session, commands);
+      const cleanupFailed = await release();
       if (failure) throw new Error(failure);
       if (cleanupFailed) throw new Error('cpu_timeline_cleanup_failed');
       return { sampleIntervalMs: config.sampleIntervalMs,

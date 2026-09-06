@@ -230,6 +230,90 @@ assert.equal(rafs.size, 0);
 assert.equal(context.window.__COT_FEEDBACK_NETWORK.onAuthority, null);
 assert.doesNotMatch(JSON.stringify(summarizeFeedbackSample(crowded)), /PRIVATE/);
 
+// A frame records its preceding gap at the END. Retain the actual preceding
+// frame even beyond 250ms and even when dense following frames consume the cap.
+// Trace-relative timestamps deliberately differ from PerformanceEntry time.
+at = 5000;
+trace.stats = () => {
+  const durationMs = at - 3000;
+  at += .4;
+  return { durationMs };
+};
+trace.snapshot = () => ({
+  frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs', 'heapMB'],
+  stats: { framesDropped: 0 },
+  frames: [[2680.9, 'battle', 0, 0, 20, 418.22], [3000, 'battle', 0, 0, 319.1, 395.97],
+    ...Array.from({ length: 200 }, (_, i) => [3000.25 + i / 4, 'battle', 0, 0, .25, 396])],
+  events: [
+    { tMs: 3400, name: 'longtask', data: { startTime: 5690, duration: 300,
+      attribution: [{ containerSrc: 'PRIVATE_URL' }], name: 'PRIVATE_NAME' } },
+    { tMs: 3400, name: 'longtask', data: { startTime: 5500, duration: 100 } },
+    { tMs: 3450, name: 'longtask', data: { startTime: 5500, duration: 300 } },
+    { tMs: 3000, name: 'longtask', data: { startTime: 'PRIVATE_CLOCK', duration: -1 } },
+    { tMs: 2990, name: 'fire', data: { startTime: 123, duration: 20, room: 'PRIVATE_ROOM' } },
+  ],
+});
+evaluate(startFeedbackSample);
+at = 7000;
+const expanded = summarizeFeedbackSample(evaluate(stopFeedbackSample));
+const expandedWorst = expanded.timingWindows.windows.at(-1);
+assert.ok(expandedWorst.frames.some((row) => Math.abs(row.dtFromCenterMs + 319.1) < .001),
+  'the exact preceding frame survives expansion and dense-window downsampling');
+assert.ok(expandedWorst.frames.some((row) => row.dtFromCenterMs === 0 && row.gapMs === 319.1));
+assert.ok(Math.abs(expandedWorst.startDtFromCenterMs + 319.1) < .001);
+assert.equal(expandedWorst.endDtFromCenterMs, 250);
+assert.ok(Math.abs(expandedWorst.gapStartDtFromCenterMs + 319.1) < .001);
+assert.ok(Math.abs(expandedWorst.precedingFrameDtFromCenterMs + 319.1) < .001);
+assert.equal(expandedWorst.frames.length, 48);
+assert.equal(expandedWorst.frameRowsOmitted, 154);
+assert.equal(expanded.frameGapMs.max, 319.1, 'diagnostic expansion never rewrites historical aggregates');
+assert.ok(Math.abs(expanded.timingWindows.traceClockReadSpanMs - .4) < .001);
+const delayedTask = expandedWorst.events.find((row) => row.dtFromCenterMs === 400);
+assert.deepEqual(delayedTask, { dtFromCenterMs: 400, name: 'longtask',
+  startAtMs: 690, startDtFromCenterMs: -310, durationMs: 300 },
+'actual task interval selects a delayed observer entry, not its delivery timestamp');
+assert.equal(expandedWorst.events.filter((row) => row.dtFromCenterMs === 400).length, 1,
+  'a completed task outside the expanded interval is excluded');
+assert.deepEqual(expandedWorst.events.find((row) => row.dtFromCenterMs === 450),
+  { dtFromCenterMs: 450, name: 'longtask', startAtMs: 500,
+    startDtFromCenterMs: -500, durationMs: 300 },
+  'a task starting before the window is retained when its actual duration overlaps the gap');
+const unknownTask = expandedWorst.events.find((row) => row.dtFromCenterMs === 0);
+assert.deepEqual(unknownTask, { dtFromCenterMs: 0, name: 'longtask',
+  startAtMs: null, startDtFromCenterMs: null, durationMs: null });
+assert.deepEqual(expandedWorst.events.find((row) => row.name === 'fire'),
+  { dtFromCenterMs: -10, name: 'fire' }, 'other events cannot export arbitrary task payloads');
+assert.doesNotMatch(JSON.stringify(expanded), /PRIVATE|attribution|containerSrc/);
+assert.ok(JSON.stringify(expanded).length < 20000, 'expanded evidence remains bounded JSON');
+
+const corruptIntervals = sanitizeFeedbackTimingWindows({ windows: [{ kind: 'worst-frame',
+  atMs: 1000, gapStartDtFromCenterMs: -319.1, precedingFrameDtFromCenterMs: -319.1,
+  frames: expandedWorst.frames,
+  events: [
+    { dtFromCenterMs: 500, name: 'longtask', startAtMs: 700, startDtFromCenterMs: -300,
+      durationMs: -1, attribution: 'PRIVATE_URL' },
+    { dtFromCenterMs: 500, name: 'longtask', startAtMs: 700, startDtFromCenterMs: -300,
+      durationMs: Infinity },
+    { dtFromCenterMs: 0, name: 'longtask', startAtMs: 'PRIVATE_CLOCK',
+      startDtFromCenterMs: 'PRIVATE_CLOCK', durationMs: '300' },
+  ] }] });
+assert.equal(corruptIntervals.windows[0].events.length, 1,
+  'invalid task durations cannot expand admission beyond the delivery window');
+assert.equal(corruptIntervals.windows[0].events[0].durationMs, null);
+assert.doesNotMatch(JSON.stringify(corruptIntervals), /PRIVATE/);
+
+// A trace ring may have lost the predecessor. Keep the full recorded interval,
+// but report the missing frame rather than constructing a fake heap sample.
+trace.snapshot = () => ({ frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'],
+  stats: { framesDropped: 1 }, frames: [[5000, 'battle', 0, 0, 400]], events: [] });
+evaluate(startFeedbackSample);
+at = 9000;
+const missingPredecessor = summarizeFeedbackSample(evaluate(stopFeedbackSample));
+assert.equal(missingPredecessor.timingWindows.windows[0].precedingFrameDtFromCenterMs, null);
+assert.equal(missingPredecessor.timingWindows.windows[0].startDtFromCenterMs, -400);
+assert.equal(missingPredecessor.timingWindows.windows[0].frames.length, 1);
+assert.equal(missingPredecessor.traceFramesDropped, 1);
+
 const ammoCalls = [];
 let selectedSlot = 1;
 let authoritySlot = 1;
@@ -309,10 +393,49 @@ const timeoutPage = { async bringToFront() { selectionCleanup.push('front'); },
     assert.notEqual(fn, startFeedbackSample, 'selection failure must not install timed listeners');
     selectionCleanup.push('dispose');
   } };
-await assert.rejects(measureNativeFeedback(timeoutPage, 0, 2), (error) => {
+await assert.rejects(measureNativeFeedback(timeoutPage, 0, 2, {
+  beforeSample: () => assert.fail('selection failure must not acquire optional diagnostics'),
+}), (error) => {
   assert.equal(error.message, 'feedback_ammo_selection_timeout');
   assert.doesNotMatch(String(error), /PRIVATE/);
   return true;
 });
 assert.deepEqual(selectionCleanup, ['front', 'press:2', 'up:w', 'up:d', 'mouse:up', 'dispose']);
+function sampleBoundaryPage() {
+  const calls = [];
+  return { calls, page: {
+    async bringToFront() { calls.push('front'); },
+    async waitForFunction(_predicate, _options, args) { calls.push(args ? 'ammo_ready' : 'countdown_ready'); },
+    keyboard: { async press(key) { calls.push(`press:${key}`); },
+      async up(key) { calls.push(`up:${key}`); }, async down(key) { calls.push(`down:${key}`); } },
+    mouse: { async up() { calls.push('mouse:up'); } },
+    async evaluate(fn) {
+      if (fn === startFeedbackSample) { calls.push('sample_start'); return; }
+      if (fn === stopFeedbackSample) { calls.push('sample_stop'); return {
+        durationMs: 0, shots: [], predicted: [], actions: [], diagnostics: [], gapsMs: [],
+      }; }
+      calls.push('dispose');
+    },
+  } };
+}
+const boundary = sampleBoundaryPage();
+await measureNativeFeedback(boundary.page, 0, 2, { async beforeSample() {
+  boundary.calls.push('diagnostic_start');
+  await Promise.resolve();
+  boundary.calls.push('diagnostic_ready');
+} });
+assert.deepEqual(boundary.calls, ['front', 'countdown_ready', 'press:2', 'ammo_ready',
+  'diagnostic_start', 'diagnostic_ready', 'sample_start', 'down:w', 'down:d', 'sample_stop',
+  'up:w', 'up:d', 'mouse:up', 'dispose'],
+'optional diagnostics start exactly once after native readiness, before timed listeners or held movement');
+const rejectedBoundary = sampleBoundaryPage();
+await assert.rejects(measureNativeFeedback(rejectedBoundary.page, 0, 2, {
+  beforeSample: async () => { throw new Error('frame_trace_start_failed'); },
+}), /frame_trace_start_failed/);
+assert.deepEqual(rejectedBoundary.calls, ['front', 'countdown_ready', 'press:2', 'ammo_ready',
+  'up:w', 'up:d', 'mouse:up', 'dispose'], 'failed diagnostic acquisition still releases trusted input');
+const defaultBoundary = sampleBoundaryPage();
+await measureNativeFeedback(defaultBoundary.page, 0);
+assert.deepEqual(defaultBoundary.calls, ['front', 'countdown_ready', 'sample_start', 'down:w', 'down:d',
+  'sample_stop', 'up:w', 'up:d', 'mouse:up', 'dispose'], 'legacy default adds neither selection nor diagnostics');
 console.log('multiplayer feedback probe selftest passed (metrics, native observer identity, correlation, privacy, cleanup)');

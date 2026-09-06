@@ -4,9 +4,9 @@
 
 import * as THREE from 'three';
 import {
+  chooseTerrainLodBuild,
   initialTerrainLods,
   terrainLodForDistance,
-  warmTerrainLodBuilds,
   type TerrainLodBuild,
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
@@ -2964,11 +2964,15 @@ const SKIRT_DROP = 6.5;
 // values at the same world coords). Bonus: 9.8k height evaluations per chunk
 // instead of 12.1k — boot gets slightly faster.
 const FINE_SEGS = 96; // must equal LOD_SEGS[0]; strides 1/2/4 stay integral
+// Live checkpoints reuse one receipt: only covered startup needs progress
+// fractions. A live generator allocates buffers once, not a tuple each row.
+const LIVE_TERRAIN_CHECKPOINT: TerrainBuildProgress = [0, 0, false];
 function* buildFineGridSteps(
   hf: HeightField,
   cx0: number,
   cz0: number,
   progress: TerrainProgressState | null = null,
+  rowsPerSlice = 8,
 ): Generator<TerrainBuildProgress, FineGrid, void> {
   const stepF = CHUNK_SIZE / FINE_SEGS;
   const pn = FINE_SEGS + 3; // +1 vertex row, +2 padding rows
@@ -2984,18 +2988,13 @@ function* buildFineGridSteps(
     // though the outer terrain builder yielded between chunks. Expose exact
     // row checkpoints to the async builder; the synchronous/capture path just
     // drains the same generator and receives byte-identical arrays.
-    if (progress && (gz & 7) === 7) {
-      yield [progress.done + 0.3 * (gz + 1) / pn, progress.total, false];
+    if ((gz + 1) % rowsPerSlice === 0 && (progress || rowsPerSlice === 1)) {
+      yield progress
+        ? [progress.done + 0.3 * (gz + 1) / pn, progress.total, false]
+        : LIVE_TERRAIN_CHECKPOINT;
     }
   }
   return { hgrid, pn, stepF };
-}
-
-function buildFineGrid(hf: HeightField, cx0: number, cz0: number): FineGrid {
-  const g = buildFineGridSteps(hf, cx0, cz0);
-  let r = g.next();
-  while (!r.done) r = g.next();
-  return r.value;
 }
 
 /**
@@ -3080,6 +3079,7 @@ function* buildChunkGeometrySteps(
   fine: FineGrid | null,
   progress: TerrainProgressState | null = null,
   indexPool: TerrainIndexPool | null = null,
+  rowsPerSlice = 8,
 ): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
@@ -3113,8 +3113,10 @@ function* buildChunkGeometrySteps(
     let vi = 0;
     for (let gz = 0; gz < n; gz++) {
       vi = writeSurfaceRow(gz, vi);
-      if (progress && (gz & 7) === 7) {
-        yield [progress.done + 0.8, progress.total, false];
+      if ((gz + 1) % rowsPerSlice === 0 && (progress || rowsPerSlice === 1)) {
+        yield progress
+          ? [progress.done + 0.8, progress.total, false]
+          : LIVE_TERRAIN_CHECKPOINT;
       }
     }
   }
@@ -3149,20 +3151,6 @@ function* buildChunkGeometrySteps(
   geo.setIndex(acquireTerrainChunkIndex(indexPool || new Map(), segs));
   geo.computeBoundingSphere();
   return geo;
-}
-
-function buildChunkGeometry(
-  hf: HeightField,
-  cx0: number,
-  cz0: number,
-  segs: number,
-  fine: FineGrid | null,
-  indexPool: TerrainIndexPool,
-): THREE.BufferGeometry {
-  const g = buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, null, indexPool);
-  let r = g.next();
-  while (!r.done) r = g.next();
-  return r.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -3310,14 +3298,20 @@ function* terrainBuildSteps(
     streamedGeometryCount: 0,
   };
   let streamFrame = 0;
-  const buildStreamJob = (job: TerrainLodBuild): void => {
+  let streamCameraX = 0;
+  let streamCameraZ = 0;
+  const streamJob: TerrainLodBuild = { index: -1, level: 2, distanceM: 0, urgent: false };
+  let pendingStream: Generator<TerrainBuildProgress, void, void> | null = null;
+  function* buildStreamJob(job: TerrainLodBuild): Generator<TerrainBuildProgress, void, void> {
     const c = chunks[job.index];
     if (!c.fine && job.level < 2) {
-      c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
+      c.fine = yield* buildFineGridSteps(heightField, c.cx0, c.cz0, null, 1);
     }
-    const geometry = buildChunkGeometry(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, terrainIndexPool,
+    const geometry = yield* buildChunkGeometrySteps(
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1,
     );
+    // Publish only a complete geometry. Skirts, topology and bounds stay exact;
+    // a camera move while rows were being built cannot mount an obsolete LOD.
     c.lods[job.level] = geometry;
     retainedLodGeometries.add(geometry);
     if (c.lods.every(Boolean)) c.fine = null;
@@ -3329,16 +3323,32 @@ function* terrainBuildSteps(
       c.level = want;
       c.mesh.geometry = geometry;
     }
+  }
+  const startStreamJob = (): boolean => {
+    if (!chooseTerrainLodBuild(chunks, streamCameraX, streamCameraZ, streamJob)) return false;
+    pendingStream = buildStreamJob(streamJob);
+    return true;
   };
-  let streamCameraX = 0;
-  let streamCameraZ = 0;
+  const advanceStreamJob = (): boolean => {
+    if (!pendingStream?.next().done) return false;
+    pendingStream = null;
+    return true;
+  };
   const warmStreamJobs = (camPos: THREE.Vector3, maxJobs: number): number => {
     if (!streamFarLods || !camPos) return 0;
     streamCameraX = camPos.x;
     streamCameraZ = camPos.z;
-    return warmTerrainLodBuilds(
-      chunks, streamCameraX, streamCameraZ, maxJobs, buildStreamJob,
-    );
+    const limit = Math.max(0, Math.floor(Number(maxJobs) || 0));
+    let completed = 0;
+    while (completed < limit) {
+      if (!pendingStream && !startStreamJob()) break;
+      // Countdown callers yield between COMPLETED jobs and stop on zero.
+      // Finish shared partial work rather than restarting it or reporting a
+      // checkpoint as a completion (or zero as a false end-of-work signal).
+      while (!advanceStreamJob()) { /* drain the exact existing generator */ }
+      completed++;
+    }
+    return completed;
   };
   group.userData.updateLOD = (camPos: THREE.Vector3): void => {
     for (const c of chunks) {
@@ -3349,14 +3359,23 @@ function* terrainBuildSteps(
         c.mesh.geometry = c.lods[want];
       }
     }
-    // One geometry every four rendered updates spreads the remaining visual
-    // detail over following seconds instead of replacing the old load stall
-    // with a burst on the first playable frame.
-    if (!streamFarLods || (++streamFrame & 3) !== 0) return;
-    warmStreamJobs(camPos, 1);
+    if (!streamFarLods) return;
+    streamCameraX = camPos.x;
+    streamCameraZ = camPos.z;
+    // Start at the established four-update cadence, then advance ONE pending
+    // job on each update. No independent timer wakes a dormant world. The 2 ms
+    // target is checked between one-row checkpoints, with a 32-checkpoint
+    // ceiling even on a fast clock. A row or final skirt/index/bounds submission
+    // is atomic and may overshoot the target; it is not a hard frame-time cap.
+    const mayStart = (++streamFrame & 3) === 0;
+    if (!pendingStream && (!mayStart || !startStreamJob())) return;
+    const deadline = performance.now() + 2;
+    for (let checkpoint = 0; checkpoint < 32; checkpoint++) {
+      if (advanceStreamJob() || performance.now() >= deadline) break;
+    }
   };
   // Countdown warm seam: the ordinary update path deliberately builds at
-  // most one geometry every four live frames. Deployment can instead call
+  // one pending geometry in bounded row slices. Deployment can instead call
   // this with a one-job budget between painted countdown frames, completing
   // the same exact meshes before controls unlock without a quality change.
   group.userData.warmStreaming = warmStreamJobs;
