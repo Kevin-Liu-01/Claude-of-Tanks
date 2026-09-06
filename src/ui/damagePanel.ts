@@ -7,12 +7,13 @@
 // the camera yaw, the turret+gun layer with hull+turret, so the panel gun
 // points where the real gun points on screen. Module hit-markers are stamped
 // in HULL space (turret modules in TURRET space) so they ride their layer.
-// Kept from r4-r8: the HEALTHY panel is clean (WoT behavior) — module chips
-// (gun/engine/ammo/fuel/optics/radio) and crew chips exist only in their
-// damaged states, hit-zone floods come from the real armor model, crew chips
-// pop red on knock-outs, and the shared module color language + damage-flash
-// pulses are unchanged. No letterforms inside the silhouette, ever (hud_ui
-// r2). HP bar and fire indicator.
+// The healthy panel now keeps a quiet module-location layer visible: every
+// authored damageable system and crew station gets a compact glyph at its real
+// hull/turret volume center. Closely packed markers separate only in final
+// screen space, stay tightly tethered to that exact source point, and resolve
+// across hull/turret ownership. Damage promotes the same marker to the shared
+// orange/red state language; hit-zone floods still come from the real armor
+// model. No letterforms inside the silhouette, ever. HP bar and fire indicator.
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
@@ -27,27 +28,25 @@ import {
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.ts';
-import { uiIconSVG } from './uiIcons.ts';
-import { crewLabel } from './garageDossier.ts';
 import { EQUIPMENT_BY_ID } from '../game/equipment.ts';
 
-// WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come
-// from the shared module registry — one presentation truth across the damage
-// panel, shot cards, killcam and HUD alerts (module_hitbox r1).
-import { STATE_COLOR, CREW_ORDER } from './moduleRegistry.ts';
+// WoT module-state ramp (ORANGE damaged, RED knocked out) comes from the
+// shared module registry — one presentation truth across the damage panel,
+// shot cards, killcam and HUD alerts (module_hitbox r1).
+import { STATE_COLOR } from './moduleRegistry.ts';
 
 type Vec2 = [number, number];
 type Vec3 = readonly [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
 
-interface DamagePanelModuleVolume {
+export interface DamagePanelModuleVolume {
   module: string;
   min: Vec3;
   max: Vec3;
   turretLocal?: boolean;
 }
 
-interface DamagePanelCrewVolume {
+export interface DamagePanelCrewVolume {
   crew: string;
   min: Vec3;
   max: Vec3;
@@ -110,7 +109,7 @@ interface MaskTints {
   turretBody: Record<string, HTMLCanvasElement>;
 }
 
-interface ModuleAnchor {
+export interface ModuleAnchor {
   kind: 'module';
   name: string;
   x: number;
@@ -120,7 +119,7 @@ interface ModuleAnchor {
   turretLocal: boolean;
 }
 
-interface CrewAnchor {
+export interface CrewAnchor {
   kind: 'crew';
   name: string;
   x: number;
@@ -130,16 +129,16 @@ interface CrewAnchor {
   turretLocal: boolean;
 }
 
-type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
+export type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
 
-interface DamagePanelScreenAnchorInput {
+export interface DamagePanelScreenAnchorInput {
   kind: 'module' | 'crew';
   name: string;
   sourcePx: number;
   sourcePy: number;
 }
 
-interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
+export interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
   x: number;
   y: number;
 }
@@ -157,46 +156,23 @@ export interface DamagePanelController {
   setState(sample: DamagePanelStateSample | DamagePanelCombatState): void;
 }
 
-// distinct micro-icon per crew role (WoT reads roles at a glance):
-// commander = binoculars, gunner = crosshair, driver = steering wheel,
-// loader = shell
-const CREW_SVG: Readonly<Record<string, string>> = {
-  commander: uiIconSVG('crewCommander', 14),
-  gunner: uiIconSVG('crewGunner', 14),
-  driver: uiIconSVG('crewDriver', 14),
-  loader: uiIconSVG('crewLoader', 14),
-};
-
 const DP_CSS = `
 .cot-dp{position:absolute;z-index:var(--hud-layer-controls,24);left:12px;bottom:12px;width:136px;pointer-events:none;
   font-family:${FONT_STACK};color:#e6edf3;background:linear-gradient(180deg,rgba(10,14,18,.72),rgba(6,9,12,.8));
   border:1px solid rgba(146,164,180,.25);box-shadow:0 6px 22px rgba(0,0,0,.5);
   padding:7px 8px 8px;-webkit-user-select:none;user-select:none;}
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}
-.cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;
+.cot-dp .hprow{display:flex;align-items:baseline;
   gap:6px;margin-bottom:3px;}
 .cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
   font-family:${FONT_COND};white-space:nowrap;}
 .cot-dp .hpnum{font-size:11px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
-  font-family:${FONT_COND};letter-spacing:-.01em;white-space:nowrap;}
+  font-family:${FONT_COND};letter-spacing:-.01em;white-space:nowrap;margin-left:auto;text-align:right;}
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
-/* crew strip (r6-2, round critique "no ghosted crew affordances"): the four
-   role chips are PERSISTENT ghosts — dim icons in dark sockets under the
-   schematic (good contrast on the panel plate, unlike the r8 bare 25%-alpha
-   icons on the light hull) — and a casualty floods its chip red. */
-.cot-dp .crew{display:flex;justify-content:center;gap:4px;margin-top:5px;}
-.cot-dp .cm{display:flex;width:23px;height:20px;border-radius:2px;
-  align-items:center;justify-content:center;color:rgba(199,211,222,.52);
-  border:1px solid rgba(146,164,180,.3);background:rgba(9,13,17,.5);}
-.cot-dp .cm.dead{color:#f05a5a;
-  border-color:rgba(240,90,90,.7);background:rgba(46,14,14,.75);
-  animation:cotDmgPop .22s ease-out;}
-.cot-dp .cm svg{display:block;width:14px;height:14px;}
-@keyframes cotDmgPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
 /* EQUIPMENT SYSTEM: mounted-loadout readout — three quiet glyphs at healthy-
-   pip alpha under the crew row; hides itself when the tank runs empty. */
+   pip alpha under the schematic; hides itself when the tank runs empty. */
 .cot-dp .equiprow{display:flex;justify-content:center;gap:8px;margin-top:6px;
   padding-top:5px;border-top:1px solid rgba(146,164,180,.16);}
 .cot-dp .equiprow:empty{display:none;}
@@ -578,7 +554,7 @@ export function layoutDamagePanelScreenAnchors(
 }
 
 /**
- * Create the player damage panel (top-down plan layers + modules + crew + HP + fire).
+ * Create the player damage panel (top-down plan layers + modules + HP + fire).
  * The root is not attached to the document — hud.setDamagePanel mounts it.
  * @returns {{root:HTMLElement,setTank:Function,update:Function,setPose:Function,setTurretYaw:Function,setEquipment:Function,setState:Function}} Panel
  */
@@ -589,18 +565,17 @@ export function createDamagePanel(): DamagePanelController {
   const root = document.createElement('div');
   root.className = 'cot-dp';
   root.innerHTML =
-    `<div class="hprow"><span class="hplabel">${t('damagePanel.hp')}</span><span class="hpnum">—</span></div>` +
+    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">—</span></div>` +
     `<div class="hptrack"><div class="hpfill"></div></div>` +
-    `<div class="fire">${t('damagePanel.onFire')}</div>`;
+    `<div class="fire">ON FIRE</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
   const hpFill = requiredElement<HTMLElement>(root, '.hpfill');
   const fireEl = requiredElement<HTMLElement>(root, '.fire');
 
-  // r9: FIXED SQUARE stage — the whole plan rotates (camera-up panel), so the
-  // canvas is sized for the vehicle's rotation circle instead of the old
-  // tight nose-up box. 130px also keeps '1750 / 1750'-class HP lines on one
-  // row of the header above.
-  const CW = 130, CH = 124;
+  // Fixed camera-up stage. Fit the armored vehicle body rather than the full
+  // muzzle sweep: the barrel may reach the canvas edge, while the hull and
+  // internal module map stay large enough to read.
+  const CW = 142, CH = 138;
   const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
   const canvas = document.createElement('canvas');
   canvas.width = CW * dprC; canvas.height = CH * dprC;
@@ -610,11 +585,6 @@ export function createDamagePanel(): DamagePanelController {
   const ctx = canvas2d(canvas);
   ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
   const cx = CW / 2, cy = CH / 2;
-
-  const crewRow = document.createElement('div');
-  crewRow.className = 'crew';
-  root.appendChild(crewRow);
-  const crewEls = new Map<string, HTMLElement>();
 
   // EQUIPMENT SYSTEM: loadout readout row (populated via setEquipment)
   const equipRow = document.createElement('div');
@@ -642,7 +612,7 @@ export function createDamagePanel(): DamagePanelController {
   let maskSourceVisual: TankMaskVisual | null = null;
   let tints: MaskTints | null = null;       // per-entry tinted copies {hullBody,hullRim,turretRim,turretBody:{state:canvas}}
   let scaleS = 8;         // panel px per meter (fit at mask arrival)
-  let anchors: DamagePanelAnatomyAnchor[] | null = null;     // hull/turret meters, relaxed
+  let anchors: DamagePanelAnatomyAnchor[] | null = null; // exact hull/turret centers
 
   function adoptMasks(entry: TopDownMaskEntry): void {
     masks = entry;
@@ -652,11 +622,13 @@ export function createDamagePanel(): DamagePanelController {
       turretRim: tintCanvas(entry.turret.canvas, RIM_INK),
       turretBody: { ok: tintCanvas(entry.turret.canvas, TURRET_BODY) },
     };
-    // fit: hull swept circle AND pivot-offset + turret swept circle
+    // Fit the armored body. Long gun masks intentionally clip at the stage
+    // edge instead of shrinking every module location around the muzzle.
     const po = pivotOffM();
+    const turretBodyRadius = Math.min(entry.turret.radiusM, entry.hull.radiusM * 1.05);
     const reach = Math.max(
       entry.hull.radiusM,
-      Math.hypot(po[0], po[1]) + entry.turret.radiusM);
+      Math.hypot(po[0], po[1]) + turretBodyRadius);
     scaleS = (Math.min(CW, CH) / 2 - 4) / Math.max(1.5, reach);
     anchors = null;
   }
@@ -712,8 +684,8 @@ export function createDamagePanel(): DamagePanelController {
   }
 
   // Canvas dirty signature (module_hitbox r1, extended r9): the plan depends
-  // on the non-ok module states and the (quantized ~0.5°) LAYER rotations —
-  // repaint only when one of them actually changes. null forces a draw.
+  // on module/crew states and the (quantized ~0.5°) LAYER rotations — repaint
+  // only when one of them actually changes. null forces a draw.
   let lastDrawSig: string | null = null;
   function drawSignature(): string {
     let s = `${Math.round(hullPhi() / 0.008)}|${Math.round(gunPhi() / 0.008)}|${masks ? 'm' : 'v'}|`;
@@ -721,6 +693,11 @@ export function createDamagePanel(): DamagePanelController {
       for (const k in combat.modules) {
         const st = combat.modules[k].state;
         if (st && st !== 'ok') s += `${k}:${st};`;
+      }
+    }
+    if (combat && combat.crew) {
+      for (const k in combat.crew) {
+        if (combat.crew[k] === false) s += `crew:${k}:red;`;
       }
     }
     return s;
@@ -748,9 +725,6 @@ export function createDamagePanel(): DamagePanelController {
     c.closePath();
   }
 
-  // Module anchor points in VEHICLE space (meters, relaxed apart so chips
-  // stay legible when two modules share a bay). turretLocal boxes keep their
-  // turret-relative coordinates and ride the turret layer.
   function computeAnchors(): void {
     const modules = (spec && spec.armor && spec.armor.modules) || [];
     const crew = (spec && spec.armor && spec.armor.crew) || [];
@@ -798,10 +772,12 @@ export function createDamagePanel(): DamagePanelController {
     traceModuleCarrier(kind, radius);
     ctx.fillStyle = healthy ? 'rgba(5,18,15,0.72)' : 'rgba(24,12,8,0.92)';
     ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = healthy ? 'rgba(130,230,160,0.66)' : col;
+    ctx.lineWidth = healthy ? 0.9 : 1.3;
     ctx.stroke();
-    ctx.scale(0.92, 0.92);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = healthy ? 0.9 : 1;
+    ctx.scale(healthy ? 0.58 : 0.7, healthy ? 0.58 : 0.7);
     icon(ctx, col);
     ctx.restore();
   }
@@ -912,7 +888,8 @@ export function createDamagePanel(): DamagePanelController {
     const hullL = d.hullLengthM || 6.5;
     const hullW = d.widthM || 3.2;
     const overall = Math.max(d.overallLengthM || hullL, hullL);
-    scaleS = (Math.min(CW, CH) / 2 - 6) / (overall * 0.62);
+    const bodyRadius = Math.hypot(hullW / 2, hullL / 2);
+    scaleS = (Math.min(CW, CH) / 2 - 6) / Math.max(1.5, bodyRadius);
     const hw = hullW * scaleS / 2, hl = hullL * scaleS / 2;
     const rw = Math.max(5, hw * 0.42);
     ctx.save();
@@ -974,19 +951,55 @@ export function createDamagePanel(): DamagePanelController {
     drawTurretLayer();
   }
 
-  function drawDamagedModuleAnchors(): void {
+  function drawAnatomyAnchor(marker: DamagePanelScreenAnchor): void {
+    const state = marker.kind === 'module' ? moduleState(marker.name) : 'ok';
+    const crewAlive = marker.kind === 'crew'
+      ? (!combat || !combat.crew || combat.crew[marker.name] !== false)
+      : true;
+
+    // Dense bays separate only as far as needed to read. The exact authored
+    // source remains a visible pin joined to its marker.
+    if (Math.hypot(marker.x - marker.sourcePx, marker.y - marker.sourcePy) > 1.5) {
+      const color = marker.kind === 'crew'
+        ? (crewAlive ? HEALTHY_CREW_COLOR : STATE_COLOR.red)
+        : (state === 'ok' ? HEALTHY_MODULE_COLOR : STATE_COLOR[state]);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = (state === 'ok' && crewAlive) ? 0.42 : 0.78;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(marker.sourcePx, marker.sourcePy);
+      ctx.lineTo(marker.x, marker.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(marker.sourcePx, marker.sourcePy, 1.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (marker.kind === 'crew') drawCrewPip(marker.name, marker.x, marker.y, crewAlive);
+    else drawPip(marker.name, marker.x, marker.y, state);
+  }
+
+  function drawAnatomyAnchors(): void {
     if (!anchors) computeAnchors();
     if (!anchors) return;
     const point: Vec2 = [0, 0];
-    for (const anchor of anchors) {
-      const state = moduleState(anchor.name);
-      if (state === 'ok') continue;
-      if (anchor.turretLocal) panelPtTurret(anchor.x, anchor.z, point);
-      else panelPtHull(anchor.x, anchor.z, point);
-      point[0] = Math.max(9, Math.min(CW - 9, point[0]));
-      point[1] = Math.max(9, Math.min(CH - 9, point[1]));
-      drawPip(anchor.name, point[0], point[1], state);
-    }
+    const projected = anchors.map((anchor): DamagePanelScreenAnchorInput => {
+      if (anchor.turretLocal) {
+        panelPtTurret(anchor.sourceX, anchor.sourceZ, point);
+      } else {
+        panelPtHull(anchor.sourceX, anchor.sourceZ, point);
+      }
+      return {
+        kind: anchor.kind,
+        name: anchor.name,
+        sourcePx: point[0],
+        sourcePy: point[1],
+      };
+    });
+    const screen = layoutDamagePanelScreenAnchors(projected, CW, CH);
+    for (const marker of screen) drawAnatomyAnchor(marker);
   }
 
   function draw(): void {
@@ -996,30 +1009,15 @@ export function createDamagePanel(): DamagePanelController {
     if (masks && tints) drawHullLayer();
     else drawVectorFallback();
 
-    // de-tracked running gear + module hit-zones flood their REAL armor-model
-    // boxes, stamped in hull space so they ride the hull layer (r9). Zones
-    // are invisible while healthy — the clean panel carries no letterforms.
+    // De-tracked running gear + damaged module hit-zones flood their REAL
+    // armor-model boxes, stamped in hull space so they ride the hull layer.
+    // Healthy location awareness comes from the precise glyph layer below.
     drawDamagedRegions();
 
-    // damaged-module chips at their vehicle-space anchors (hull chips ride
-    // the hull layer, turret chips the turret layer)
-    drawDamagedModuleAnchors();
-  }
-
-  function rebuildCrewRow(): void {
-    crewRow.textContent = '';
-    crewEls.clear();
-    const crewBoxes = (spec && spec.armor && spec.armor.crew) || [];
-    const present = new Set(crewBoxes.map((c) => c.crew));
-    const list = present.size ? CREW_ORDER.filter((c) => present.has(c)) : CREW_ORDER;
-    for (const name of list) {
-      const e = document.createElement('div');
-      e.className = 'cm';
-      e.innerHTML = CREW_SVG[name] || CREW_SVG.loader;
-      e.title = crewLabel(name);
-      crewRow.appendChild(e);
-      crewEls.set(name, e);
-    }
+    // Persistent module and crew chips at their authored vehicle-space
+    // anchors. Hull/turret sources project first; only then does the bounded
+    // screen-space solver separate colliding markers.
+    drawAnatomyAnchors();
   }
 
   function refreshDom(): void {
@@ -1036,11 +1034,6 @@ export function createDamagePanel(): DamagePanelController {
     if (burning !== lastFireOn) {
       fireEl.style.display = burning ? 'block' : 'none';
       lastFireOn = burning;
-    }
-    // crew chips: persistent dim while alive, red pop when knocked out
-    for (const [name, e] of crewEls) {
-      const alive = !combat.crew || combat.crew[name] !== false;
-      e.classList.toggle('dead', !alive);
     }
   }
 
@@ -1127,7 +1120,6 @@ export function createDamagePanel(): DamagePanelController {
       tints = null;
       anchors = null;
       lastDrawSig = null;
-      rebuildCrewRow();
       refreshDom();
       requestMasks();
       draw();
@@ -1135,7 +1127,7 @@ export function createDamagePanel(): DamagePanelController {
 
     /**
      * Refresh the panel from the live combat state (call every frame).
-     * DOM (HP bar, fire, crew chips) refreshes cheaply every call; the canvas
+     * DOM (HP bar and fire state) refreshes cheaply every call; the canvas
      * plan repaints only when its dirty signature (module states + quantized
      * layer rotations) actually changes.
      * @param {CombatState} c

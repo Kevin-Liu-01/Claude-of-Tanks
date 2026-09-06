@@ -41,7 +41,13 @@ Start local signaling:
 
 The default endpoint is ws://127.0.0.1:7777/signal.
 
-Start the dedicated match and ranked HTTP service:
+Private and LAN matches run in the room host's browser. They do not need Redis,
+Supabase, a dedicated game server, or a ratings database. Keep the host tab open
+and foregrounded. See [the multiplayer hosting runbook](MULTIPLAYER-HOSTING.md)
+for LAN access and Internet room-code signaling/TURN setup.
+
+The retained developer-only dedicated match and ranked HTTP service can still
+be exercised independently (Ranked is not a player-facing mode):
 
     npm run server:match
 
@@ -51,7 +57,13 @@ deployment-specific signaling/TURN configuration.
 
 ### Complete self-hosted stack
 
-The repository includes a first-party deployment that serves the static game,
+For a Redis-free backend while retaining the existing Vercel website and TURN
+credential endpoint, use [the multiplayer hosting runbook](MULTIPLAYER-HOSTING.md)
+and the Cloudflare Worker under `cloudflare/signaling`. The optional
+`compose.multiplayer.yaml` alternative contains only the TLS gateway and
+in-memory signaling; neither moves the frontend or requires a separate database.
+
+The repository also retains an optional legacy all-services deployment that serves the static game,
 same-origin signaling and ICE credentials, authoritative ranked service,
 persistent local rating file, and coturn relay without Cloudflare, Vercel,
 hosted Redis, or another application service. The self-host image disables the
@@ -214,6 +226,21 @@ departure.
 Entry-link verification:
 
     npm run test:net:entry
+
+Private/LAN room failures and recovery:
+
+    npm run test:net:errors
+    npm run test:net:host-loss
+    npm run test:net:host-stall
+
+The error fixture checks real menu/native signaling on desktop and mobile,
+explicit retries, terminal membership errors and stale acquisition cleanup.
+The full-application entry rig reloads a real guest, then tests host departure
+or a frozen authority with the RTC channel still open. It requires bounded
+Garage restoration, visible error controls, cleared invites, no fabricated
+progression and zero browser errors. The default entry case interrupts a cold
+reload. These local rigs clean up only their own browsers/servers; they do not
+certify a production endpoint or restricted-network relay connectivity.
 
 Network render and destruction-burst performance:
 

@@ -1,5 +1,8 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { normalizeRoomCode } from './protocol.ts';
+import { SignalingResumeCredentials, type ResumeCredentialStorage } from './signalingResumeCredentials.ts';
+import { createSignalingRoomCode, MAX_ROOM_ROUTE_CANDIDATES,
+  ROOM_ROUTE_POLL_INTERVAL_MS, roomSignalingSocketUrl, usesRoomSignalingRoute } from './signalingRoomRoute.ts';
 
 type Unsubscribe = () => void;
 type Timer = ReturnType<typeof setTimeout>;
@@ -57,6 +60,7 @@ export interface RoomSignalingClientOptions {
   eventPollTimeoutMs?: number;
   reconnectDelaysMs?: number[];
   sessionId?: RuntimeValue;
+  resumeStorage?: ResumeCredentialStorage | null;
 }
 
 export interface CreateSignalingRoomOptions {
@@ -198,8 +202,9 @@ function readRoomInfo(
   if (roomCode.length !== 6 || !peerId || !hostId) {
     throw codedError('invalid_room_response', 'room response is missing canonical identity');
   }
+  const { resumeToken: _resumeToken, ...publicValue } = value;
   return {
-    ...value,
+    ...publicValue,
     roomCode,
     peerId,
     hostId,
@@ -251,6 +256,12 @@ export class RoomSignalingClient {
   private reconnectTimer: Timer | null = null;
   private resumePromise: Promise<boolean> | null = null;
   private readonly signalQueue: QueuedSignalMessage[] = [];
+  private readonly resumeCredentials: SignalingResumeCredentials;
+  private resumeKey: string | null = null;
+  private readonly roomRouted: boolean;
+  private routeRoomCode: string | null = null;
+  private roomRequestGeneration = 0;
+  private roomRequestActive = false;
 
   get queuedSignalCount(): number {
     return this.signalQueue.length;
@@ -265,6 +276,7 @@ export class RoomSignalingClient {
     eventPollTimeoutMs = 10_000,
     reconnectDelaysMs = DEFAULT_RECONNECT_DELAYS_MS,
     sessionId = null,
+    resumeStorage,
   }: RoomSignalingClientOptions = {}) {
     const endpoint = String(url || '').trim();
     if (!endpoint) throw new TypeError('signaling URL is required');
@@ -276,13 +288,17 @@ export class RoomSignalingClient {
       throw new TypeError('signaling request timeout must be positive');
     }
     this.url = endpoint;
+    this.roomRouted = usesRoomSignalingRoute(endpoint);
+    // Validate the direct route before any ICE acquisition or socket creation.
+    roomSignalingSocketUrl(endpoint, null);
     this.createSocket = websocketFactory(WebSocketImpl);
     this.connectTimeoutMs = connectTimeoutMs;
     this.requestTimeoutMs = requestTimeoutMs;
     if (!Number.isFinite(eventPollIntervalMs) || eventPollIntervalMs < 10) {
       throw new TypeError('signaling event poll interval must be at least 10 ms');
     }
-    this.eventPollIntervalMs = eventPollIntervalMs;
+    this.eventPollIntervalMs = this.roomRouted
+      ? Math.max(ROOM_ROUTE_POLL_INTERVAL_MS, eventPollIntervalMs) : eventPollIntervalMs;
     if (!Number.isFinite(eventPollTimeoutMs) || eventPollTimeoutMs < 100) {
       throw new TypeError('signaling event poll timeout must be at least 100 ms');
     }
@@ -293,13 +309,18 @@ export class RoomSignalingClient {
     }
     this.reconnectDelaysMs = [...reconnectDelaysMs];
     this.sessionId = cleanSessionId(sessionId || createSessionId());
+    this.resumeCredentials = new SignalingResumeCredentials(resumeStorage);
   }
 
   connect(): Promise<void> {
     if (this.state === 'open') return Promise.resolve();
     if (this.connectPromise) return this.connectPromise;
+    const socketUrl = roomSignalingSocketUrl(this.url, this.routeRoomCode);
+    // Some callers pre-connect while acquiring ICE. A direct room endpoint
+    // cannot be opened until create/join chooses its Durable Object identity.
+    if (socketUrl === null) return Promise.resolve();
     this.state = 'connecting';
-    const socket = this.createSocket(this.url);
+    const socket = this.createSocket(socketUrl);
     this.socket = socket;
     this.connectPromise = new Promise<void>((resolve, reject) => {
       let settled = false;
@@ -405,9 +426,14 @@ export class RoomSignalingClient {
     });
   }
 
-  async #requestWithStoreRetry(type: string, payload: RuntimeValue): Promise<RuntimeValue> {
+  async #requestWithStoreRetry(
+    type: string,
+    payload: RuntimeValue,
+    generation?: number,
+  ): Promise<RuntimeValue> {
     for (let attempt = 0; ; attempt++) {
       try {
+        if (generation !== undefined) this.#assertRoomRequest(generation);
         return await this.#request(type, payload);
       } catch (error) {
         if (!RETRYABLE_STORE_ERRORS.has(errorCode(error, '')) ||
@@ -417,14 +443,49 @@ export class RoomSignalingClient {
     }
   }
 
-  async #requestRoom(type: string, payload: RuntimeValue): Promise<RuntimeValue> {
+  #assertRoomRequest(generation: number): void {
+    if (this.manualClose || generation !== this.roomRequestGeneration) {
+      throw codedError('signaling_closed', 'room request was cancelled');
+    }
+  }
+
+  #beginRoomRequest(): number {
+    if (this.roomRequestActive || this.roomCode) {
+      throw codedError('already_joined', 'a room request or membership is already active');
+    }
+    this.manualClose = false;
+    this.roomRequestActive = true;
+    return ++this.roomRequestGeneration;
+  }
+
+  #selectRoomRoute(roomCode: string): void {
+    if (!this.roomRouted || this.routeRoomCode === roomCode) return;
+    this.#discardSocket('room_route_changed');
+    this.routeRoomCode = roomCode;
+  }
+
+  #readRoomResult(raw: RuntimeValue, expectedRoomCode = '', requireHost = false): SignalingRoomInfo {
+    const result = readRoomInfo(raw, expectedRoomCode, requireHost);
+    if (this.roomRouted && (!isRecord(raw) || raw.roomCode !== this.routeRoomCode ||
+        typeof raw.resumeToken !== 'string' || result.roomCode !== this.routeRoomCode)) {
+      throw codedError('invalid_room_response', 'room response is missing its route-bound identity or proof');
+    }
+    return result;
+  }
+
+  async #requestRoom(type: string, payload: RuntimeValue, generation: number): Promise<RuntimeValue> {
     for (let attempt = 0; ; attempt++) {
       try {
+        this.#assertRoomRequest(generation);
         await this.connect();
-        return await this.#requestWithStoreRetry(type, payload);
+        this.#assertRoomRequest(generation);
+        const result = await this.#requestWithStoreRetry(type, payload, generation);
+        this.#assertRoomRequest(generation);
+        return result;
       } catch (error) {
         if (!RETRYABLE_CONNECTION_ERRORS.has(errorCode(error, '')) ||
-            attempt >= ROOM_REQUEST_RETRY_DELAYS_MS.length || this.manualClose) throw error;
+            attempt >= ROOM_REQUEST_RETRY_DELAYS_MS.length || this.manualClose ||
+            generation !== this.roomRequestGeneration) throw error;
         this.#discardSocket('room_request_retry');
         await delay(ROOM_REQUEST_RETRY_DELAYS_MS[attempt]);
       }
@@ -443,6 +504,17 @@ export class RoomSignalingClient {
       return;
     }
     for (const listener of [...this.listeners]) listener(message);
+  }
+
+  #roomClosed(message: SignalingEvent): void {
+    const payload = eventPayload(message);
+    if (!this.roomCode || payload?.roomCode !== this.roomCode) return;
+    const reason = typeof payload.reason === 'string' ? payload.reason : 'room_closed';
+    this.#discardSocket(reason);
+    // Expiry frees the seat, not its identity. Keep the bounded private proof
+    // for an explicit later join; stop heartbeats/retries even with no session
+    // subscriber (for example during asynchronous lobby acquisition).
+    this.#releaseRoom(reason, reason !== 'expired');
   }
 
   #receive(raw: RuntimeValue): void {
@@ -470,6 +542,22 @@ export class RoomSignalingClient {
       } else {
         pending.resolve(message.payload);
       }
+      return;
+    }
+    // These are private request receipts, never public events. A late or
+    // duplicate response must not expose its resume capability to subscribers.
+    if (message.type === 'room_created' || message.type === 'room_joined') return;
+    if (message.type === 'room_closed') {
+      this.#roomClosed(message);
+      return;
+    }
+    if (!requestId && message.type === 'error' && eventPayload(message)?.code === 'resume_denied') {
+      // A room actor can fence a replaced socket immediately, before its next
+      // heartbeat. That is terminal ownership loss, not a reconnect trigger.
+      // Identical lost-reply retries may share the winner's valid capability;
+      // never erase it when retiring the old socket or its session callbacks.
+      this.#discardSocket('resume_denied');
+      this.#releaseRoom('resume_denied', false);
       return;
     }
     this.#dispatch(message);
@@ -535,11 +623,29 @@ export class RoomSignalingClient {
     unrefTimer(this.reconnectTimer);
   }
 
+  #releaseRoom(reason: string, forgetCredential = true): void {
+    const roomCode = this.roomCode;
+    if (forgetCredential && this.resumeKey) this.resumeCredentials.forget(this.resumeKey);
+    this.resumeKey = null;
+    this.manualClose = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    this.roomCode = null;
+    this.routeRoomCode = null;
+    this.peerId = null;
+    this.hostId = null;
+    this.player = null;
+    this.signalQueue.length = 0;
+    this.#closed(reason, false);
+    this.#dispatch({ type: 'room_closed', payload: { roomCode, reason } });
+  }
+
   #resumeRoom(): Promise<boolean> {
     if (this.manualClose || !this.roomCode || !this.player) return Promise.resolve(false);
     if (this.resumePromise) return this.resumePromise;
     const roomCode = this.roomCode;
     const player = this.player;
+    const credentialKey = this.resumeKey || this.#credentialKey(roomCode, player.id);
     let retryReason: string | null = null;
     const operation = (async (): Promise<boolean> => {
       try {
@@ -548,8 +654,11 @@ export class RoomSignalingClient {
           roomCode,
           player,
           sessionId: this.sessionId,
+          ...this.resumeCredentials.prepare(credentialKey),
         });
-        const result = readRoomInfo(raw, roomCode, true);
+        const result = this.#readRoomResult(raw, roomCode, true);
+        this.resumeCredentials.accept(credentialKey, isRecord(raw) ? raw.resumeToken : null);
+        this.resumeKey = credentialKey;
         this.roomCode = result.roomCode;
         this.peerId = result.peerId;
         this.hostId = result.hostId;
@@ -577,16 +686,9 @@ export class RoomSignalingClient {
         return true;
       } catch (error) {
         this.#discardSocket('room_resume_retry');
-        if (errorCode(error, '') === 'room_not_found') {
-          this.#dispatch({
-            type: 'room_closed',
-            payload: { roomCode, reason: 'expired' },
-          });
-          this.roomCode = null;
-          this.peerId = null;
-          this.hostId = null;
-          this.player = null;
-          this.signalQueue.length = 0;
+        const code = errorCode(error, '');
+        if (code === 'room_not_found' || code === 'resume_denied' || code === 'invalid_resume_token') {
+          this.#releaseRoom(code === 'room_not_found' ? 'expired' : 'resume_denied');
           return false;
         }
         retryReason = errorCode(error, 'resume_failed');
@@ -642,6 +744,13 @@ export class RoomSignalingClient {
           if (this.manualClose || !this.roomCode || this.state !== 'open') return;
           const reason = errorCode(error, 'signaling_poll_failed');
           this.#discardSocket(reason);
+          if (reason === 'resume_denied') {
+            // Connection fencing is terminal even when two lost-reply
+            // retries temporarily know the same valid token. Do not fight
+            // the replacement tab or erase its shared persistent credential.
+            this.#releaseRoom('resume_denied', false);
+            return;
+          }
           this.#scheduleReconnect(reason);
         })
         .finally(() => {
@@ -658,11 +767,16 @@ export class RoomSignalingClient {
     if (!Number.isFinite(intervalMs) || intervalMs < 10) {
       throw new TypeError('signaling event poll interval must be at least 10 ms');
     }
-    this.eventPollIntervalMs = intervalMs;
+    this.eventPollIntervalMs = this.roomRouted
+      ? Math.max(ROOM_ROUTE_POLL_INTERVAL_MS, intervalMs) : intervalMs;
     if (!this.pollTimer) return;
     clearInterval(this.pollTimer);
     this.pollTimer = null;
     this.#startEventPolling();
+  }
+
+  #credentialKey(roomCode: string, playerId: string): string {
+    return JSON.stringify([this.url, roomCode, playerId]);
   }
 
   async createRoom({
@@ -670,47 +784,83 @@ export class RoomSignalingClient {
     maxPlayers = 14,
     mode = 'private',
   }: CreateSignalingRoomOptions = {}): Promise<SignalingRoomInfo> {
-    this.manualClose = false;
     const clean = cleanPlayer(player);
-    const raw = await this.#requestRoom('room_create', {
-      player: clean,
-      sessionId: this.sessionId,
-      maxPlayers,
-      mode,
-    });
-    const result = readRoomInfo(raw);
-    this.roomCode = result.roomCode;
-    this.peerId = result.peerId;
-    this.hostId = result.hostId;
-    this.player = clean;
-    this.roomAuthenticated = true;
-    this.manualClose = false;
-    this.#startEventPolling();
-    return result;
+    const generation = this.#beginRoomRequest();
+    try {
+      for (let attempt = 0; ; attempt++) {
+        this.#assertRoomRequest(generation);
+        const candidate = this.roomRouted ? createSignalingRoomCode() : '';
+        if (candidate) this.#selectRoomRoute(candidate);
+        const pendingKey = this.#credentialKey(
+          `create:${this.sessionId}${candidate ? `:${candidate}` : ''}`, clean.id,
+        );
+        let raw: RuntimeValue;
+        try {
+          // Connection/store retries reuse this exact candidate and proof. A
+          // lost create receipt must recover that room, not create another one.
+          raw = await this.#requestRoom('room_create', {
+            ...(candidate ? { roomCode: candidate } : {}),
+            player: clean,
+            sessionId: this.sessionId,
+            maxPlayers,
+            mode,
+            ...this.resumeCredentials.prepare(pendingKey),
+          }, generation);
+        } catch (error) {
+          if (!candidate || errorCode(error, '') !== 'room_code_exhausted') throw error;
+          this.resumeCredentials.forget(pendingKey);
+          this.#discardSocket('room_code_collision');
+          if (attempt + 1 >= MAX_ROOM_ROUTE_CANDIDATES) throw error;
+          continue;
+        }
+        this.#assertRoomRequest(generation);
+        const result = this.#readRoomResult(raw);
+        this.resumeKey = this.#credentialKey(result.roomCode, clean.id);
+        this.resumeCredentials.accept(pendingKey, isRecord(raw) ? raw.resumeToken : null, this.resumeKey);
+        this.roomCode = result.roomCode;
+        this.peerId = result.peerId;
+        this.hostId = result.hostId;
+        this.player = clean;
+        this.roomAuthenticated = true;
+        this.#startEventPolling();
+        return result;
+      }
+    } finally {
+      if (generation === this.roomRequestGeneration) this.roomRequestActive = false;
+    }
   }
 
   async joinRoom({
     roomCode,
     player,
   }: JoinSignalingRoomOptions = {}): Promise<SignalingRoomInfo> {
-    this.manualClose = false;
     const code = normalizeRoomCode(roomCode);
     if (code.length !== 6) throw new TypeError('room code must be 6 characters');
     const clean = cleanPlayer(player);
-    const raw = await this.#requestRoom('room_join', {
-      roomCode: code,
-      player: clean,
-      sessionId: this.sessionId,
-    });
-    const result = readRoomInfo(raw, code, true);
-    this.roomCode = code;
-    this.peerId = result.peerId;
-    this.hostId = result.hostId;
-    this.player = clean;
-    this.roomAuthenticated = true;
-    this.manualClose = false;
-    this.#startEventPolling();
-    return { ...result, roomCode: code };
+    const generation = this.#beginRoomRequest();
+    try {
+      this.#selectRoomRoute(code);
+      const credentialKey = this.#credentialKey(code, clean.id);
+      const raw = await this.#requestRoom('room_join', {
+        roomCode: code,
+        player: clean,
+        sessionId: this.sessionId,
+        ...this.resumeCredentials.prepare(credentialKey),
+      }, generation);
+      this.#assertRoomRequest(generation);
+      const result = this.#readRoomResult(raw, code, true);
+      this.resumeCredentials.accept(credentialKey, isRecord(raw) ? raw.resumeToken : null);
+      this.resumeKey = credentialKey;
+      this.roomCode = code;
+      this.peerId = result.peerId;
+      this.hostId = result.hostId;
+      this.player = clean;
+      this.roomAuthenticated = true;
+      this.#startEventPolling();
+      return { ...result, roomCode: code };
+    } finally {
+      if (generation === this.roomRequestGeneration) this.roomRequestActive = false;
+    }
   }
 
   sendSignal(toPeerId: RuntimeValue, signal: RuntimeValue, toSessionId: RuntimeValue = ''): boolean {
@@ -745,22 +895,31 @@ export class RoomSignalingClient {
   }
 
   close(reason = 'client_closed'): void {
+    // The DO may have committed an admission whose receipt has not arrived.
+    // Its serialized leave follows that request, avoiding an orphan host room
+    // when the player explicitly cancels during a lost/late create reply.
+    const leavingRoomCode = this.roomCode || (this.roomRequestActive ? this.routeRoomCode : null);
     this.manualClose = true;
+    this.roomRequestGeneration++;
+    this.roomRequestActive = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
     this.signalQueue.length = 0;
     const socket = this.socket;
     if (socketMayClose(socket)) {
       try {
-        if (this.roomCode && this.peerId && this.state === 'open') {
-          this.#send({ type: 'room_leave', payload: { roomCode: this.roomCode } });
+        if (leavingRoomCode && this.state === 'open') {
+          this.#send({ type: 'room_leave', payload: { roomCode: leavingRoomCode } });
         }
       } finally {
         socket.close(1000, String(reason).slice(0, 120));
       }
     }
     this.eventQueue.length = 0;
+    if (this.resumeKey && reason !== 'expired') this.resumeCredentials.forget(this.resumeKey);
+    this.resumeKey = null;
     this.roomCode = null;
+    this.routeRoomCode = null;
     this.peerId = null;
     this.hostId = null;
     this.player = null;

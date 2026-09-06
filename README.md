@@ -63,7 +63,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Worlds | **20** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | Five battle rules, solo bots, persistent private rooms, LAN rooms, room chat, spectators, respawns, rematches, and dedicated ranked authority |
+| Play | Five battle rules, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
@@ -228,7 +228,7 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
   <img src="public/brand/features/multiplayer.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
 </p>
 
-Local, LAN, browser-hosted private, and dedicated ranked modes share the same renderer-free movement and combat rules.
+LAN and browser-hosted private rooms use the shared renderer-free movement and combat rules. No database or dedicated game server is required; Internet room codes need a lightweight signaling endpoint, and restricted networks may need TURN relay. Ranked tooling remains internal rather than a player-facing mode. See [multiplayer hosting](docs/MULTIPLAYER-HOSTING.md).
 Clients send intent, never trusted hits or damage. Snapshot filtering, local prediction/reconciliation, bounded remote
 interpolation, reliable fire edges, reconnectable room state, and separate control/chat delivery keep a moving and firing
 7v7 battle responsive without giving the client authority.

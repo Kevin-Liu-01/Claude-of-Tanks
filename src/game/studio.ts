@@ -2959,7 +2959,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             l.setAttribute('href', '/brand/nav/studio.svg');
             l.setAttribute('type', 'image/svg+xml');
           }
-          document.title = 'Claude of Tanks — Studio';
+          document.title = t('studio.documentTitle');
         } else if (saved) {
           for (const { l, href, type } of saved.links) {
             if (href != null) l.setAttribute('href', href);

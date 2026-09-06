@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cot-private-rooms",
+  "account_id": "68c9576ef72404494de8d86348404fad",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+  "ratelimits": [{
+    "name": "ROOM_CONNECT_LIMITER",
+    "namespace_id": "2609055511",
+    "simple": { "limit": 120, "period": 60 }
+  }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "PrivateRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PrivateRoom"] }]
+}

@@ -25,6 +25,7 @@ function createHarness(failAt = '', pauseAt = '') {
   let trace = null;
   const connectGate = deferred();
   const rosterGate = deferred();
+  const revealGate = deferred();
   const entity = (specId) => ({
     specId,
     visual: { setGroundSampler: () => events.push(`ground:${specId}`) },
@@ -60,7 +61,10 @@ function createHarness(failAt = '', pauseAt = '') {
         show: () => events.push('show'),
         rosters: () => events.push('rosters'),
         progress: (fraction, label) => progress.push([fraction, label]),
-        hide: async () => { events.push('hide'); },
+        hide: async () => {
+          events.push('hide');
+          if (pauseAt === 'hide') await revealGate.promise;
+        },
       },
       audio: {
         resume: () => events.push('audioResume'),
@@ -70,7 +74,10 @@ function createHarness(failAt = '', pauseAt = '') {
       lighting: { setFarCascadeDormant: (value) => events.push(`far:${value}`) },
       ensureBattleVisuals: async () => events.push('visuals'),
       nextFrame: async () => events.push('frame'),
-      primeReveal: async () => events.push('primeReveal'),
+      primeReveal: async () => {
+        events.push('primeReveal');
+        if (pauseAt === 'primeReveal') await revealGate.promise;
+      },
       now: () => (clock += 10),
       recordTrace: (value) => { trace = value; },
       setAdaptiveSuspended: (value) => events.push(`adaptive:${value}`),
@@ -163,6 +170,7 @@ function createHarness(failAt = '', pauseAt = '') {
     events,
     progress,
     preparedBridge,
+    revealGate,
     get disposed() { return disposed; },
     get publishedBridge() { return publishedBridge; },
     get trace() { return trace; },
@@ -232,6 +240,21 @@ for (const failure of ['roster', 'initial']) {
     'an obsolete bridge never becomes render-visible');
   assert.ok(!harness.events.includes('activate'),
     'an obsolete cold load cannot remount battle presentation');
+}
+
+for (const pauseAt of ['primeReveal', 'hide']) {
+  const harness = createHarness('', pauseAt);
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, pauseAt);
+  controller.abort('host_left');
+  harness.revealGate.resolve();
+  await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error),
+    `${pauseAt}: even a final renderer await must reject obsolete entry`);
+  if (pauseAt === 'primeReveal') assert.ok(!harness.events.includes('hide'));
+  assert.ok(!harness.events.includes('adaptive:false'),
+    'an aborted reveal leaves terminal Garage cleanup to the entry owner');
 }
 
 assert.throws(

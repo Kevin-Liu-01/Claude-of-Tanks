@@ -772,6 +772,12 @@ assert.equal(resolveMatchServiceUrl({
   signaling.onEvent((event) => earlyEvents.push(event));
   assert.equal(earlyEvents[0].payload.signal.description.sdp, 'early-offer',
     'RTC offers received between room_joined and session construction are replayed');
+  socket.receive({ type: 'room_created', requestId: request.requestId,
+    payload: { roomCode: 'ABC234', peerId: 'p1', hostId: 'p1', resumeToken: 'f'.repeat(64) } });
+  socket.receive({ type: 'room_joined', requestId: 'unknown-private-receipt',
+    payload: { roomCode: 'ABC234', peerId: 'p1', hostId: 'p1', resumeToken: 'f'.repeat(64) } });
+  assert.equal(earlyEvents.length, 1,
+    'duplicate/unsolicited private room receipts never expose capabilities as public events');
   socket.receive({
     type: 'room_signal',
     payload: {
@@ -1763,6 +1769,7 @@ function createTestSimulation() {
   await Promise.resolve();
   const replacement = inputEnvelope(400, { throttle: 1 });
   replacement.payload.inputSeq = 0;
+  replacement.payload.clientTick = 0;
   transport.client.send(replacement);
   transport.client.send(createEnvelope(MESSAGE_TYPES.READY, { loaded: true }, {
     seq: 1,

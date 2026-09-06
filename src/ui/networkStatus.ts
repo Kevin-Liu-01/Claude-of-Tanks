@@ -1,12 +1,14 @@
-const STYLE_ID = 'cot-network-status-style';
-
+import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
 import { t } from './i18n.ts';
+
+const STYLE_ID = 'cot-network-status-style';
 
 export type NetworkConnectionState = 'reconnecting' | 'reconnected' | 'failed' | 'closed' | 'connected';
 
 export interface NetworkStatusState {
   readonly state?: NetworkConnectionState;
   readonly attempt?: number;
+  readonly reason?: string;
 }
 
 interface NetworkTransportCounters {
@@ -55,12 +57,18 @@ function ensureStyle(): void {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `.cot-network-status{position:fixed;left:50%;top:24px;z-index:91;transform:translate(-50%,-12px);
-    min-width:220px;padding:10px 18px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);
+    min-width:220px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:10px 18px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);
     box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;font:800 11px system-ui,sans-serif;
     letter-spacing:.12em;text-align:center;text-transform:uppercase;opacity:0;pointer-events:none;
     transition:opacity var(--cot-motion-base) var(--cot-ease-out),
       transform var(--cot-motion-base) var(--cot-ease-out)}.cot-network-status.show{opacity:1;transform:translate(-50%,0)}
     .cot-network-status.failed{color:#ff887b;border-color:rgba(255,103,91,.7)}
+    .cot-network-status button{display:block;margin:8px auto 0;min-height:44px;padding:8px 14px;
+    border:1px solid currentColor;border-radius:0;background:#151c24;color:inherit;
+    font:inherit;letter-spacing:inherit;text-transform:uppercase;cursor:pointer;pointer-events:auto}
+    .cot-network-status button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+    .cot-network-status button[hidden]{display:none}
+    .cot-network-status:not(.show) button{visibility:hidden;pointer-events:none}
     .cot-network-diagnostics{position:fixed;left:8px;top:64px;z-index:89;display:none;
     padding:7px 9px;border-left:1px solid rgba(90,196,255,.55);background:rgba(5,10,16,.72);
     color:#cbeaff;font:10px/1.5 ui-monospace,Menlo,monospace;white-space:pre;
@@ -124,13 +132,34 @@ function formatDiagnostics(stats: NetworkDiagnosticsStats): string {
   ].join('\n');
 }
 
-/** Small fail-visible reconnect banner for dedicated network battles. */
-export function createNetworkStatus(): NetworkStatusController {
+export function networkStatusMessage({ state, attempt = 0, reason }: NetworkStatusState): string {
+  if (state === 'reconnecting') {
+    return reason === 'authority_stalled'
+      ? t('networkStatus.authorityStalled')
+      : t('networkStatus.reconnecting', { attempt: attempt || 1 });
+  }
+  if (state === 'reconnected') return t('networkStatus.restored');
+  if (state === 'failed') return t('networkStatus.failedWithReason', {
+    title: privateRoomFailurePresentation(reason).title,
+  });
+  return '';
+}
+
+/** Bounded private/LAN recovery feedback with an explicit exit. */
+export function createNetworkStatus({ onExit }: { onExit?: () => void } = {}): NetworkStatusController {
   ensureStyle();
   const root = document.createElement('div');
   root.className = 'cot-network-status';
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
+  const message = document.createElement('div');
+  root.appendChild(message);
+  const exit = document.createElement('button');
+  exit.type = 'button';
+  exit.textContent = t('networkStatus.exit');
+  exit.hidden = true;
+  exit.addEventListener('click', () => onExit?.());
+  root.appendChild(exit);
   document.body.appendChild(root);
   const diagnostics = document.createElement('div');
   diagnostics.className = 'cot-network-diagnostics';
@@ -159,19 +188,25 @@ export function createNetworkStatus(): NetworkStatusController {
   };
   window.addEventListener('keydown', onKeyDown);
 
-  function show(message: string, failed = false, hideAfterMs = 0): void {
+  function show(text: string, failed = false, hideAfterMs = 0): void {
     if (hideTimer) clearTimeout(hideTimer);
-    root.textContent = message;
+    message.textContent = text;
     root.classList.toggle('failed', failed);
     root.classList.add('show');
     if (hideAfterMs) hideTimer = setTimeout(() => root.classList.remove('show'), hideAfterMs);
   }
 
-  function set({ state, attempt = 0 }: NetworkStatusState = {}): void {
-    if (state === 'reconnecting') show(t('networkStatus.reconnecting', { attempt: attempt || 1 }));
-    else if (state === 'reconnected') show(t('networkStatus.restored'), false, 1800);
-    else if (state === 'failed') show(t('networkStatus.failed'), true);
-    else if (state === 'closed' || state === 'connected') root.classList.remove('show');
+  function set(update: NetworkStatusState = {}): void {
+    const { state } = update;
+    exit.hidden = !onExit || (state !== 'reconnecting' && state !== 'failed');
+    root.dataset.state = state || 'connected';
+    if (state === 'reconnecting') show(networkStatusMessage(update));
+    else if (state === 'reconnected') show(networkStatusMessage(update), false, 1800);
+    else if (state === 'failed') show(networkStatusMessage(update), true);
+    else if (state === 'closed' || state === 'connected') {
+      if (hideTimer) clearTimeout(hideTimer);
+      root.classList.remove('show');
+    }
   }
 
   function update(stats?: NetworkDiagnosticsStats | null): void {

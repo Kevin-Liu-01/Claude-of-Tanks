@@ -17,13 +17,15 @@ const latencyMs = numericArg('latency', 85);
 const jitterMs = numericArg('jitter', 35);
 const lossPercent = numericArg('loss', 12);
 const inputLossPercent = numericArg('input-loss', 0);
+const signalOverride = process.argv.find((entry) => entry.startsWith('--signal-url='))?.slice(13);
+if (signalOverride && !/^wss?:\/\//.test(signalOverride)) throw new TypeError('signal-url must be WebSocket');
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
 
 const vite = await createViteServer({
   root,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false },
+  server: { host: '127.0.0.1', port: numericArg('port', 0), strictPort: true },
 });
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let browser = null;
@@ -51,10 +53,10 @@ async function closePageState(page) {
 
 try {
   await vite.listen();
-  const signalAddress = await signaling.listen();
+  const signalAddress = signalOverride ? null : await signaling.listen();
   const viteAddress = vite.httpServer.address();
   const origin = `http://127.0.0.1:${viteAddress.port}`;
-  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
+  const signalUrl = signalOverride || `ws://127.0.0.1:${signalAddress.port}/signal`;
   browser = await puppeteer.launch({
     headless: true,
     args: [

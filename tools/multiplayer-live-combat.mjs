@@ -18,6 +18,7 @@ import process from 'node:process';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
+import { installGlBufferProbe } from './multiplayer-gl-buffer-probe.mjs';
 
 function numericArg(name, fallback) {
   const prefix = `--${name}=`;
@@ -43,6 +44,7 @@ const timeoutMs = numericArg('timeout', 180_000);
 const matchTimeoutMs = numericArg('match-timeout', 90_000);
 const certificationBattleLimitS = numericArg('battle-limit', 60);
 const completeMatch = process.argv.includes('--complete-match');
+const glBufferDiagnostics = process.argv.includes('--gl-buffer-diagnostics');
 const onlyRoleArg = process.argv.find((entry) => entry.startsWith('--only='));
 const onlyRole = onlyRoleArg?.slice('--only='.length) || null;
 if (onlyRole && onlyRole !== 'host' && onlyRole !== 'client') {
@@ -51,6 +53,7 @@ if (onlyRole && onlyRole !== 'host' && onlyRole !== 'client') {
 const artifactDir = resolve('.qa-dev/multiplayer-live-7v7');
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
+const browserGlWarnings = [];
 const contextByPage = new WeakMap();
 
 const vite = await createViteServer({
@@ -66,6 +69,12 @@ const wait = (ms) => new Promise((resolveWait) => setTimeout(resolveWait, ms));
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
   page.on('console', (message) => {
+    if (message.type() === 'warn' || message.type() === 'warning') {
+      const text = message.text();
+      if (/WebGL|\bGL_(?:INVALID|OUT_OF_MEMORY|CONTEXT_LOST)|\bGL error\b/i.test(text)) {
+        browserGlWarnings.push(`${label}: ${text}`);
+      }
+    }
     if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
       browserErrors.push(`${label}: ${message.text()}`);
     }
@@ -92,6 +101,7 @@ async function openPlayers(origin, renderedRole) {
     observePage(page, label);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
     if (full) {
+      if (glBufferDiagnostics) await page.evaluateOnNewDocument(installGlBufferProbe);
       await page.evaluateOnNewDocument(() => {
         Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', {
           configurable: true,
@@ -923,6 +933,9 @@ async function beginMeasuredCombat(pages, renderedRole) {
     };
     state.measureMotion = true;
     if (full) {
+      // Preserve pre-measurement errors as a gate failure, not a reset that
+      // makes a clean combat window erase a broken boot/warm-up phase.
+      state.preCombatGlError = window.__DEBUG.renderer.getContext().getError();
       state.predictionCombatBaseline = { ...(window.__DEBUG.network?.prediction || {}) };
       state.programBaseline = new Set(
         (window.__DEBUG.renderer.info.programs || []).map((program) => program.cacheKey),
@@ -1009,9 +1022,18 @@ async function collectFullReport(page, renderedRole) {
         name: program.name || '',
         usedTimes: program.usedTimes,
       }));
+    const gl = window.__DEBUG.renderer.getContext();
+    const glErrors = {
+      preCombat: state.preCombatGlError,
+      beforeShadowProbe: gl.getError(),
+      afterShadowProbe: null,
+    };
     const shadowSample = await window.__DEBUG.sampleShadowContribution();
+    glErrors.afterShadowProbe = gl.getError();
     const telemetry = window.__DEBUG.telemetry();
-    const glError = window.__DEBUG.renderer.getContext().getError();
+    // getError consumes a sticky flag. Keep every phase receipt and expose the
+    // first failure on the legacy field so attribution cannot hide an error.
+    const glError = Object.values(glErrors).find((error) => error !== 0) ?? 0;
     // Vite marks every legitimate development stylesheet with
     // `data-vite-dev-id`; that attribute is not an error signal. Only the
     // actual custom error-overlay surface should fail the rendered gate.
@@ -1044,6 +1066,11 @@ async function collectFullReport(page, renderedRole) {
       },
       shadows: telemetry.shadows,
       glError,
+      glErrors,
+      glBufferDiagnostics: globalThis.__COT_GL_BUFFER_PROBE ? {
+        draws: globalThis.__COT_GL_BUFFER_PROBE.draws,
+        errors: globalThis.__COT_GL_BUFFER_PROBE.errors,
+      } : null,
       errorOverlay: !!overlay,
       canvas: {
         width: window.__DEBUG.renderer.domElement.width,
@@ -1095,6 +1122,16 @@ function assertClientHealth(report, label) {
   assert.ok(report.events.damage > 0, `${label} receives positive live damage`);
 }
 
+function assertGlHealth(report, renderedRole) {
+  assert.equal(report.glBufferDiagnostics?.errors?.length ?? 0, 0,
+    `${renderedRole} instanced GL probe retained errors (${JSON.stringify(report.glBufferDiagnostics)})`);
+  for (const phase of ['preCombat', 'beforeShadowProbe', 'afterShadowProbe']) {
+    assert.equal(report.glErrors?.[phase], 0,
+      `${renderedRole} has no WebGL error at ${phase} (${JSON.stringify(report.glErrors)})`);
+  }
+  assert.equal(report.glError, 0, `${renderedRole} has no WebGL error`);
+}
+
 function assertFullHealth(report, renderedRole, measuredDurationMs) {
   assert.equal(report.phase, 'battle', `${renderedRole} renderer stays in battle`);
   if (completeMatch) {
@@ -1104,7 +1141,7 @@ function assertFullHealth(report, renderedRole, measuredDurationMs) {
     assert.equal(report.result, null, `${renderedRole} capture is live, not a result screen`);
   }
   assert.equal(report.errorOverlay, false, `${renderedRole} has no browser error overlay`);
-  assert.equal(report.glError, 0, `${renderedRole} has no WebGL error`);
+  assertGlHealth(report, renderedRole);
   assert.equal(report.rosterSize, PLAYER_COUNT, `${renderedRole} owns all 14 rendered tank entities`);
   assert.ok(report.visibleRosterSize >= PLAYER_COUNT,
     `${renderedRole} presents the full close-range roster`);
@@ -1371,6 +1408,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         rendered: fullReport,
         clients: clientReports,
         browserErrors,
+        browserGlWarnings,
       }, null, 2)}\n`);
     assert.ok(damageByTeam.alpha > 0 && damageByTeam.bravo > 0,
       `both teams take live damage (${JSON.stringify(damageByTeam)})`);
@@ -1399,6 +1437,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         measuredDurationMs,
         matchTimeoutMs,
         certificationBattleLimitS,
+        glBufferDiagnostics,
       },
       completion,
       formation,
@@ -1427,6 +1466,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         maxBackstepM: client.motion.maxBackstepM,
       })),
       screenshots: { firstVolley: volleyPath, live: livePath },
+      browserGlWarnings,
     };
     await writeFile(resolve(artifactDir, `${renderedRole}-report.json`),
       `${JSON.stringify(report, null, 2)}\n`);

@@ -85,6 +85,7 @@ function harness({ deferClientReady = false } = {}) {
     isMapAllowed: () => true,
     onHostStart: (state, connection) => hostStarts.push([state, connection.role]),
     onClientClose: (reason) => clientCloses.push(reason),
+    onClose: (reason) => clientCloses.push(reason),
     onError: (error) => errors.push(error),
   }, adapters);
   return {
@@ -233,6 +234,63 @@ assert.ok(failed.calls.some(([name, reason]) =>
   name === 'signal-close' && reason === 'connection_failed'));
 
 assert.deepEqual(host.errors, []);
+
+for (const kind of ['create', 'join']) {
+  for (const handoff of [false, true]) {
+    const test = harness();
+    const connecting = test.runtime.connect({ ...request, kind, roomCode: 'ABC123' });
+    test.iceRequest.resolve({ iceServers: [], relayOnly: false });
+    test.roomRequest.resolve({ roomCode: 'ABC123', peerId: kind === 'create' ? 'host' : 'guest',
+      hostId: 'host', mode: 'private' });
+    await connecting;
+    const options = kind === 'create' ? test.hostOptions : test.clientOptions;
+    if (handoff) {
+      test.runtime.forget();
+      test.runtime.forget();
+      test.runtime.forget();
+    }
+    options.onClose('expired');
+    options.onClose('expired');
+    options.onError(new Error('late old session error'));
+    assert.deepEqual(test.clientCloses, ['expired'],
+      `${kind} terminal room event is exactly once${handoff ? ' after repeated retained-room handoff' : ''}`);
+    assert.equal(test.runtime.current, null);
+    assert.equal(test.runtime.connecting, false);
+    assert.deepEqual(test.errors, [], 'a terminal generation cannot overwrite replacement UI');
+  }
+}
+
+{
+  const test = harness();
+  const first = test.runtime.connect(request);
+  test.iceRequest.resolve({ iceServers: [], relayOnly: false });
+  test.roomRequest.resolve({ roomCode: 'ABC123', peerId: 'host', hostId: 'host', mode: 'private' });
+  await first;
+  const oldOptions = test.hostOptions;
+  test.runtime.forget();
+  test.runtime.close('left_room', { transportAlreadyClosed: true });
+  oldOptions.onClose('expired');
+  assert.deepEqual(test.clientCloses, [], 'explicit leave invalidates the released terminal callback');
+  await test.runtime.connect(request);
+  oldOptions.onClose('resume_denied');
+  assert.deepEqual(test.clientCloses, [], 'an old room cannot close a newly acquired room');
+  assert.ok(test.runtime.current);
+  test.runtime.close('test_done');
+}
+
+{
+  const test = harness({ deferClientReady: true });
+  const pending = test.runtime.connect({ ...request, kind: 'join', roomCode: 'ABC123' });
+  test.iceRequest.resolve({ iceServers: [], relayOnly: false });
+  test.roomRequest.resolve({ roomCode: 'ABC123', peerId: 'guest', hostId: 'host', mode: 'private' });
+  for (let index = 0; index < 8; index++) await Promise.resolve();
+  test.clientOptions.onClose('host_left');
+  test.clientReadyRequest.resolve(test.clientRuntime);
+  assert.equal(await pending, null, 'late ready cannot publish a terminal initial acquisition');
+  assert.deepEqual(test.clientCloses, ['host_left']);
+  assert.equal(test.calls.filter(([name]) => name === 'client-command').length, 0);
+}
+
 const playMenuSource = await readFile(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
 assert.match(playMenuSource, /createPrivateRoomConnectionRuntime\(\{/,
   'the play menu delegates private and LAN acquisition to the typed lifecycle owner');
@@ -250,6 +308,6 @@ assert.match(playMenuSource,
   /roomIce && !roomIce\.relayAvailable[\s\S]{0,300}playMenu\.room\.turnUnconfigured/,
   'the real room UI cannot label an uncertified direct-only deployment universally ready');
 assert.match(playMenuSource,
-  /if \(await connectRoom\('create'\)\) setStatus\(roomConnectionStatus\('created'\)\)/,
+  /if \(connected && generation === requestGeneration\)[\s\S]{0,180}setStatus\(roomConnectionStatus/,
   'a superseded room acquisition cannot publish a stale success status');
 console.log('privateRoomConnectionRuntime.selftest: host resume, cold join, cancellation and teardown passed');

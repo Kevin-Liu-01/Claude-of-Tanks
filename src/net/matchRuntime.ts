@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { LocalConfirmedShotQueue } from './localConfirmedShotQueue.ts';
 import {
   MATCH_TICK_HZ,
   MESSAGE_TYPES,
@@ -33,6 +34,7 @@ type ProtocolPayload = ProtocolEnvelope['payload'];
 // extra visual displacement to less than one millisecond per 60 Hz frame.
 const SERVER_CLOCK_SLEW_MS_PER_MS = 0.05;
 const SERVER_CLOCK_MAX_SLEW_WINDOW_MS = 250;
+const HELD_INPUT_LEASE_MS = 500;
 
 export interface MatchTransport {
   readonly kind?: string;
@@ -85,6 +87,10 @@ export interface MatchSimulation {
   requiredPeerIds?: RuntimeValue[];
   result?: RuntimeValue;
   resultReason?: RuntimeValue;
+  readonly pendingEventCount?: number;
+  readonly shotFeedbackVersion?: number;
+  eventsForViewer?(viewerId: string): MatchEvent[];
+  afterEventBroadcast?(): RuntimeValue;
   step(context: SimulationStepContext): RuntimeValue;
   snapshot(options: {
     tick: number;
@@ -122,6 +128,7 @@ interface MatchPeer {
   transport: MatchTransport;
   metadata: Record<string, RuntimeValue> | null;
   input: NormalizedPlayerInput | null;
+  lastInputAtMs: number | null;
   lastInputSeq: number | null;
   lastInputEnvelopeSeq: number | null;
   lastRecvSeq: number | null;
@@ -145,6 +152,7 @@ interface MatchPeer {
 interface EventBatch {
   tick: number;
   events: MatchEvent[];
+  roomRound?: number;
 }
 
 export interface RoomChatMessage extends Record<string, RuntimeValue> {
@@ -262,7 +270,11 @@ function validateEventBatch(payload: RuntimeValue): EventBatch {
       payload.events.some((event) => !isRecord(event))) {
     throw new ProtocolError('invalid_event_batch', 'event batch must include a valid tick and events');
   }
-  return { tick: Number(payload.tick), events: payload.events as MatchEvent[] };
+  if (payload.roomRound != null && (!Number.isSafeInteger(payload.roomRound) || Number(payload.roomRound) < 0)) {
+    throw new ProtocolError('invalid_event_batch', 'event round must be a non-negative integer');
+  }
+  return { tick: Number(payload.tick), events: payload.events as MatchEvent[],
+    ...(payload.roomRound == null ? {} : { roomRound: Number(payload.roomRound) }) };
 }
 
 function validateRoomState(payload: RuntimeValue, { requireRound = true } = {}): MatchRoomState {
@@ -448,6 +460,7 @@ export class AuthoritativeMatchRuntime {
       transport,
       metadata,
       input: null,
+      lastInputAtMs: null,
       lastInputSeq: null,
       lastInputEnvelopeSeq: null,
       lastRecvSeq: null,
@@ -586,7 +599,6 @@ export class AuthoritativeMatchRuntime {
     if (message.type === MESSAGE_TYPES.INPUT) {
       if (peer.lastInputEnvelopeSeq != null &&
           !isSequenceNewer(message.seq, peer.lastInputEnvelopeSeq)) return false;
-      peer.lastInputEnvelopeSeq = message.seq;
       return true;
     }
     if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) return false;
@@ -606,7 +618,7 @@ export class AuthoritativeMatchRuntime {
         this.#receiveRoomChat(peer, message.payload);
         return;
       case MESSAGE_TYPES.INPUT:
-        this.#receiveInput(peer, message.payload);
+        this.#receiveInput(peer, message.payload, message.seq);
         return;
       case MESSAGE_TYPES.READY:
         this.#receiveReady(peer);
@@ -640,6 +652,7 @@ export class AuthoritativeMatchRuntime {
       snapshotHz: this.snapshotHz,
       serverTick: this.tick,
       serverTimeMs: this.timeMs,
+      shotFeedbackVersion: this.simulation.shotFeedbackVersion === 1 ? 1 : 0,
     });
     if (this.roomController) {
       this.#send(peer, MESSAGE_TYPES.ROOM_STATE, this.roomController.state());
@@ -733,6 +746,7 @@ export class AuthoritativeMatchRuntime {
   #resetPeerForRound(peer: MatchPeer): void {
     peer.ready = false;
     peer.input = null;
+    peer.lastInputAtMs = null;
     peer.lastInputSeq = null;
     peer.lastInputEnvelopeSeq = null;
     peer.fireQueued = false;
@@ -818,7 +832,7 @@ export class AuthoritativeMatchRuntime {
     return this.simulation;
   }
 
-  #receiveInput(peer: MatchPeer, payload: RuntimeValue): void {
+  #receiveInput(peer: MatchPeer, payload: RuntimeValue, envelopeSequence: number): void {
     const input = normalizePlayerInput(payload);
     if (peer.lastInputSeq != null && !isSequenceNewer(input.inputSeq, peer.lastInputSeq)) {
       this.stats.staleInputs++;
@@ -828,8 +842,13 @@ export class AuthoritativeMatchRuntime {
       this.stats.futureInputs++;
       throw new ProtocolError('input_too_far_ahead', 'client input tick is too far ahead');
     }
-    peer.lastInputSeq = input.inputSeq;
     this.#recordSnapshotAck(peer, input.snapshotAckTick);
+    // Commit both sequence spaces only after the complete input is admitted.
+    // A rejected future tick or invalid receipt must not suppress the next
+    // legitimate steering packet (or acknowledge an action never consumed).
+    peer.lastInputEnvelopeSeq = envelopeSequence;
+    peer.lastInputSeq = input.inputSeq;
+    peer.lastInputAtMs = this.timeMs;
     if (input.fire) peer.fireQueued = true;
     peer.actionBitsQueued |= input.actionBits & ~peer.actionBitsHeld;
     peer.actionBitsHeld = input.actionBits;
@@ -905,9 +924,19 @@ export class AuthoritativeMatchRuntime {
     }
     this.accumulatorMs -= this.tickMs;
     this.stats.steps++;
+    if (!roundPending) this.#broadcastTickEvents();
     if (!roundPending && this.tick % this.snapshotEveryTicks === 0) {
       this.#broadcastSnapshots();
     }
+  }
+
+  #broadcastTickEvents(): void {
+    if (!this.simulation.eventsForViewer || !this.simulation.afterEventBroadcast ||
+        this.simulation.pendingEventCount === 0) return;
+    for (const peer of this.peers.values()) {
+      if (peer.welcomed) this.#sendReliableEvents(peer, this.tick, this.simulation.eventsForViewer(peer.id));
+    }
+    this.simulation.afterEventBroadcast();
   }
 
   #tryStartMatch(): void {
@@ -915,7 +944,6 @@ export class AuthoritativeMatchRuntime {
     const requiredIds = Array.isArray(this.simulation.requiredPeerIds)
       ? this.simulation.requiredPeerIds
         .map((id) => String(id))
-        .filter((id) => this.peers.has(id))
       : [...this.peers.values()]
         .filter((peer) => !peer.metadata?.spectator)
         .map((peer) => peer.id);
@@ -954,6 +982,7 @@ export class AuthoritativeMatchRuntime {
   #collectInputs(): Map<string, NormalizedPlayerInput | null> {
     const inputs = new Map<string, NormalizedPlayerInput | null>();
     for (const peer of this.peers.values()) {
+      this.#expirePeerInput(peer);
       const currentInput = peer.input;
       const needsEdgeMerge = currentInput !== null && (
         (peer.fireQueued && !currentInput.fire) ||
@@ -972,6 +1001,21 @@ export class AuthoritativeMatchRuntime {
       if (peer.input?.actionBits) peer.input = { ...peer.input, actionBits: 0 };
     }
     return inputs;
+  }
+
+  #expirePeerInput(peer: MatchPeer): void {
+    if (!peer.input || peer.lastInputAtMs == null ||
+        this.timeMs - peer.lastInputAtMs <= HELD_INPUT_LEASE_MS + 1e-9) return;
+    // Use authority time, never packet timestamps or control-channel liveness.
+    // A stalled/blurred client must not hold throttle, steering or fire forever.
+    // Allocate once on expiry and retain aim/ammunition selection for recovery.
+    peer.input = { ...peer.input, throttle: 0, steer: 0, brake: true, fire: false,
+      aimLocked: true, actionBits: 0 };
+    peer.lastInputAtMs = null;
+    peer.fireQueued = false;
+    peer.actionBitsQueued = 0;
+    // Keep held-bit deduplication: an unacknowledged action retransmitted after
+    // a gap is not a second consumable use until an actual release is admitted.
   }
 
   #broadcastSnapshots(): void {
@@ -1031,7 +1075,7 @@ export class AuthoritativeMatchRuntime {
 
   #sendReliableEvents(peer: MatchPeer, tick: number, events: MatchEvent[]): void {
     if (!events.length) return;
-    this.#send(peer, MESSAGE_TYPES.EVENT, { tick, events });
+    this.#send(peer, MESSAGE_TYPES.EVENT, { tick, events, roomRound: this.roomRound });
     this.stats.reliableEventBatches++;
     this.stats.reliableEvents += events.length;
   }
@@ -1067,6 +1111,7 @@ export class MatchClientRuntime {
   lastRecvSeq: number | null = null;
   clientTick = 0;
   lastSnapshotTick = 0;
+  lastSnapshotReceivedAtMs: number | null = null;
   missingSnapshotBaselines = 0;
   snapshotPacketsReceived = 0;
   estimatedMissingSnapshots = 0;
@@ -1080,10 +1125,18 @@ export class MatchClientRuntime {
   lastPingAtMs = -Infinity;
   connected = false;
   closed = false;
+  closeReason: string | null = null;
+  private disposed = false;
   readonly errors: RuntimeValue[] = [];
   private readonly eventListeners = new Set<(event: MatchEvent) => void>();
   private readonly pendingEventBatches: EventBatch[] = [];
+  private readonly localConfirmedShots: LocalConfirmedShotQueue;
+  private localShotFeedbackEnabled = false;
+  private activeFireIntentSeq: number | null = null;
+  lastSubmittedFireIntentSeq: number | null = null;
+  shotFeedbackVersion = 0;
   private readonly connectionListeners = new Set<(connected: boolean) => void>();
+  private readonly authorityProgressListeners = new Set<() => void>();
   private readonly roomListeners = new Set<(state: MatchRoomState) => void>();
   private readonly roomChatListeners = new Set<(message: RoomChatMessage) => void>();
   private readonly roomChatHistory: RoomChatMessage[] = [];
@@ -1110,6 +1163,7 @@ export class MatchClientRuntime {
     }
     this.transport = transport;
     this.playerId = String(playerId || '');
+    this.localConfirmedShots = new LocalConfirmedShotQueue(this.playerId);
     this.buffer = new SnapshotBuffer({
       interpolationDelayMs,
       maxInterpolationDelayMs,
@@ -1121,12 +1175,18 @@ export class MatchClientRuntime {
     this.clock = clock;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
     this.unsubscribeClose = typeof transport.onClose === 'function'
-      ? transport.onClose(() => {
-        this.connected = false;
-        this.closed = true;
-        for (const listener of [...this.connectionListeners]) listener(false);
-      })
+      ? transport.onClose((reason) => this.#transportClosed(reason))
       : null;
+  }
+
+  #transportClosed(reason = 'transport_closed'): void {
+    if (this.closed) return;
+    this.connected = false;
+    this.closed = true;
+    this.closeReason = reason;
+    this.shotFeedbackVersion = 0;
+    this.localConfirmedShots.clearPending();
+    for (const listener of [...this.connectionListeners]) listener(false);
   }
 
   /** Begin the protocol handshake after both transport sides are listening. */
@@ -1152,11 +1212,7 @@ export class MatchClientRuntime {
     this.transport = transport;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
     this.unsubscribeClose = typeof transport.onClose === 'function'
-      ? transport.onClose(() => {
-        this.connected = false;
-        this.closed = true;
-        for (const listener of [...this.connectionListeners]) listener(false);
-      })
+      ? transport.onClose((reason) => this.#transportClosed(reason))
       : null;
     return true;
   }
@@ -1166,6 +1222,10 @@ export class MatchClientRuntime {
     transport: MatchTransport,
     metadata: Record<string, RuntimeValue> | null = null,
   ): boolean {
+    if (this.disposed) {
+      transport.close?.('client_disposed');
+      return false;
+    }
     if (!transport || typeof transport.send !== 'function' ||
         typeof transport.onMessage !== 'function') {
       throw new TypeError('transport must implement send() and onMessage()');
@@ -1175,19 +1235,18 @@ export class MatchClientRuntime {
     this.transport = transport;
     this.connected = false;
     this.closed = false;
+    this.closeReason = null;
+    this.lastSnapshotReceivedAtMs = null;
     this.handshakeSent = false;
     this.readySent = false;
     this.sendSeq = 0;
     this.inputSendSeq = 0;
+    this.clearPendingInputIntent();
     this.lastRecvSeq = null;
     this.errors.length = 0;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
     this.unsubscribeClose = typeof transport.onClose === 'function'
-      ? transport.onClose(() => {
-        this.connected = false;
-        this.closed = true;
-        for (const listener of [...this.connectionListeners]) listener(false);
-      })
+      ? transport.onClose((reason) => this.#transportClosed(reason))
       : null;
     return this.connect({ ...metadata, resumed: true });
   }
@@ -1203,14 +1262,30 @@ export class MatchClientRuntime {
     });
     if (inputLane) this.inputSendSeq = nextSequence(this.inputSendSeq);
     else this.sendSeq = nextSequence(this.sendSeq);
-    return inputLane && typeof this.transport.sendInput === 'function'
-      ? this.transport.sendInput(envelope)
-      : this.transport.send(envelope);
+    try {
+      const accepted = inputLane && typeof this.transport.sendInput === 'function'
+        ? this.transport.sendInput(envelope)
+        : this.transport.send(envelope);
+      if (!accepted) {
+        this.#transportClosed();
+        this.transport.close?.('backpressure_limit');
+      }
+      return accepted;
+    } catch (error) {
+      if (!(error instanceof TransportClosedError)) throw error;
+      this.#transportClosed();
+      this.transport.close?.('transport_closed');
+      return false;
+    }
   }
 
   #acknowledgeInput(rawSequence: RuntimeValue): void {
+    // null means authority has not received any input. It is not sequence 0.
+    // Coercing it to zero retires the first fire/consumable edge after loss.
+    if (rawSequence == null) return;
     const acknowledged = Number(rawSequence);
-    if (!Number.isSafeInteger(acknowledged) || acknowledged < 0) return;
+    if (!Number.isSafeInteger(acknowledged) || acknowledged < 0 ||
+        acknowledged >= SEQUENCE_RANGE) return;
     if (this.lastAckedInputSeq == null ||
         isSequenceNewer(acknowledged, this.lastAckedInputSeq)) {
       this.lastAckedInputSeq = acknowledged;
@@ -1249,9 +1324,11 @@ export class MatchClientRuntime {
         'snapshot envelope tick does not match payload',
       );
     }
+    // A delayed delta from the unordered lane cannot replace the newer
+    // acknowledged baseline with a recovery request, nor retire live edges.
+    if (this.lastSnapshotTick > 0 && message.tick <= this.lastSnapshotTick) return;
     this.clientTick = Math.max(this.clientTick, message.tick);
     this.#recordSnapshotPacket(message.tick);
-    this.#acknowledgeInput(payload.ackInputSeq);
     const snapshot = this.assembler.accept(payload);
     if (!snapshot) {
       this.lastSnapshotTick = 0;
@@ -1262,7 +1339,13 @@ export class MatchClientRuntime {
       this.assembler.clear();
       return;
     }
-    if (this.buffer.push(snapshot, this.clock())) this.lastSnapshotTick = snapshot.tick;
+    const receivedAtMs = this.clock();
+    if (this.buffer.push(snapshot, receivedAtMs)) {
+      this.lastSnapshotTick = snapshot.tick;
+      this.lastSnapshotReceivedAtMs = receivedAtMs;
+      this.#acknowledgeInput(snapshot.ackInputSeq);
+      for (const listener of this.authorityProgressListeners) listener();
+    }
   }
 
   #recordSnapshotPacket(tick: number): void {
@@ -1330,6 +1413,7 @@ export class MatchClientRuntime {
       throw new ProtocolError('invalid_welcome', 'welcome timing is malformed');
     }
     this.connected = true;
+    this.shotFeedbackVersion = rawPayload.shotFeedbackVersion === 1 ? 1 : 0;
     this.clientTick = serverTick;
     if (Number.isFinite(tickHz) && Number.isFinite(snapshotHz) &&
         tickHz > 0 && snapshotHz > 0) {
@@ -1361,16 +1445,27 @@ export class MatchClientRuntime {
 
   #receiveEventBatch(rawPayload: ProtocolPayload): void {
     const batch = validateEventBatch(rawPayload);
+    if (this.roomRound > 0 && batch.roomRound != null && batch.roomRound !== this.roomRound) return;
     if (this.pendingEventBatches.length >= MAX_PENDING_EVENT_BATCHES) {
       throw new ProtocolError(
         'event_backlog_overflow',
         'reliable event backlog exceeded its limit',
       );
     }
-    this.pendingEventBatches.push(batch);
-    for (const event of batch.events) {
+    const events = batch.events;
+    if (this.localShotFeedbackEnabled) this.#extractLocalShots(batch);
+    if (batch.events.length) this.pendingEventBatches.push(batch);
+    for (const event of events) {
       for (const listener of [...this.eventListeners]) listener(event);
     }
+  }
+
+  #extractLocalShots(batch: EventBatch): void {
+    const delayed: MatchEvent[] = [];
+    for (const event of batch.events) {
+      if (!this.localConfirmedShots.take(event)) delayed.push(event);
+    }
+    batch.events = delayed;
   }
 
   #receiveRoomState(rawPayload: ProtocolPayload): void {
@@ -1427,6 +1522,23 @@ export class MatchClientRuntime {
     for (const listener of [...this.roomChatListeners]) listener(chat);
   }
 
+  /** Relinquish local controls without resetting transport or receipt history. */
+  clearPendingInputIntent(): void {
+    this.pendingFireAckSeq = null;
+    this.lastRequestedFire = false;
+    this.activeFireIntentSeq = null;
+    this.lastSubmittedFireIntentSeq = null;
+    this.pendingActionAckSeqs.clear();
+  }
+
+  /** Retire a silent transport generation without leaving its resumable room seat. */
+  requestReconnect(reason = 'authority_stalled'): void {
+    if (this.closed || this.disposed) return;
+    this.clearPendingInputIntent();
+    this.#transportClosed(reason);
+    this.transport.close?.(reason);
+  }
+
   submitInput(input: Record<string, RuntimeValue>, clientTick = this.clientTick): boolean {
     const submittedInputSeq = this.inputSeq;
     const normalized = normalizePlayerInput({
@@ -1437,6 +1549,7 @@ export class MatchClientRuntime {
     });
     if (normalized.fire && !this.lastRequestedFire && this.pendingFireAckSeq == null) {
       this.pendingFireAckSeq = submittedInputSeq;
+      this.activeFireIntentSeq = submittedInputSeq;
     }
     this.lastRequestedFire = normalized.fire;
     for (let bit = 1; bit <= 0x8000; bit *= 2) {
@@ -1445,12 +1558,21 @@ export class MatchClientRuntime {
       }
     }
     normalized.fire = normalized.fire || this.pendingFireAckSeq != null;
+    if (!normalized.fire) this.activeFireIntentSeq = null;
+    // The compact transport's optional 19th column is negotiated. Cached
+    // legacy hosts require exactly 18 columns and must receive no extension.
+    if (this.shotFeedbackVersion === 1 && this.activeFireIntentSeq != null) {
+      normalized.fireIntentSeq = this.activeFireIntentSeq;
+    } else {
+      delete normalized.fireIntentSeq;
+    }
     for (const bit of this.pendingActionAckSeqs.keys()) normalized.actionBits |= bit;
     this.inputSeq = nextSequence(this.inputSeq);
     this.clientTick = Math.max(this.clientTick, clientTick);
     const sent = this.#send(MESSAGE_TYPES.INPUT, normalized);
     if (sent) {
       this.lastSubmittedInputSeq = submittedInputSeq;
+      this.lastSubmittedFireIntentSeq = normalized.fire ? this.activeFireIntentSeq : null;
       this.inputPacketsSubmitted++;
     }
     return sent;
@@ -1519,12 +1641,12 @@ export class MatchClientRuntime {
     this.buffer.clear();
     this.assembler.clear();
     this.pendingEventBatches.length = 0;
+    this.localConfirmedShots.reset();
     this.lastSnapshotTick = 0;
+    this.lastSnapshotReceivedAtMs = null;
     this.lastSnapshotPacketTick = null;
     this.lastAckedInputSeq = null;
-    this.pendingFireAckSeq = null;
-    this.lastRequestedFire = false;
-    this.pendingActionAckSeqs.clear();
+    this.clearPendingInputIntent();
     this.readySent = false;
     return true;
   }
@@ -1571,6 +1693,16 @@ export class MatchClientRuntime {
     return target;
   }
 
+  /** Opt-in browser feedback path; authority accepted these shots already. */
+  drainLocalShotEvents(target: MatchEvent[] = []): MatchEvent[] {
+    if (!this.localShotFeedbackEnabled) {
+      this.localShotFeedbackEnabled = true;
+      for (const batch of this.pendingEventBatches) this.#extractLocalShots(batch);
+    }
+    this.localConfirmedShots.drain(target);
+    return target;
+  }
+
   onConnection(listener: (connected: boolean) => void): Unsubscribe {
     this.connectionListeners.add(listener);
     if (this.connected) queueMicrotask(() => listener(true));
@@ -1582,6 +1714,11 @@ export class MatchClientRuntime {
     const current = this.roomState;
     if (current) queueMicrotask(() => listener(current));
     return () => this.roomListeners.delete(listener);
+  }
+
+  onAuthorityProgress(listener: () => void): Unsubscribe {
+    this.authorityProgressListeners.add(listener);
+    return () => this.authorityProgressListeners.delete(listener);
   }
 
   onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe {
@@ -1622,17 +1759,22 @@ export class MatchClientRuntime {
   }
 
   close(reason = 'client_closed'): void {
-    if (this.closed) return;
-    this.#send(MESSAGE_TYPES.LEAVE, { reason });
-    this.closed = true;
-    this.connected = false;
-    for (const listener of [...this.connectionListeners]) listener(false);
+    if (this.disposed) return;
+    this.disposed = true;
+    if (!this.closed) this.#send(MESSAGE_TYPES.LEAVE, { reason });
+    this.#transportClosed(reason);
+    this.closeReason = reason;
     if (this.unsubscribeMessage) this.unsubscribeMessage();
     if (this.unsubscribeClose) this.unsubscribeClose();
     this.pendingEventBatches.length = 0;
+    this.localConfirmedShots.reset();
     this.roomListeners.clear();
     this.roomChatListeners.clear();
     this.roomChatHistory.length = 0;
+    this.connectionListeners.clear();
+    this.authorityProgressListeners.clear();
+    this.eventListeners.clear();
+    this.clearPendingInputIntent();
     if (typeof this.transport.close === 'function') this.transport.close(reason);
   }
 }

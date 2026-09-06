@@ -378,7 +378,23 @@ export class RankedMatchmaker {
     for (const [matchId, tracked] of this.ratedMatches) {
       if (tracked.settled) continue;
       const match = this.registry.matches.get(matchId);
-      if (!match?.simulation?.result) continue;
+      if (!match) {
+        // Loading expiry is an aborted operation, never a loss/draw. Release
+        // only this operation's reservations; a replacement queue owns its
+        // own ticket even if old match reconciliation runs afterward.
+        for (const entry of tracked.entries) {
+          if (entry.status !== 'matched' || entry.match?.matchId !== matchId) continue;
+          entry.status = 'expired';
+          entry.match = null;
+          entry.completedAtMs = now;
+          if (this.activeByPlayer.get(entry.playerId) === entry.id) {
+            this.activeByPlayer.delete(entry.playerId);
+          }
+        }
+        this.ratedMatches.delete(matchId);
+        continue;
+      }
+      if (!match.simulation.result) continue;
       const result = match.simulation.result;
       if (result !== 'alpha' && result !== 'bravo' && result !== 'draw') continue;
       const updates = this.ratings.recordTeamMatch({

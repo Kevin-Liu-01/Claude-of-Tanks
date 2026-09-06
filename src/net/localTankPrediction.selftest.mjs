@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createTankState } from '../sim/movement.ts';
+import { createTankState, SIM_DT, updateTank } from '../sim/movement.ts';
+import { decodeAimIntent } from './aimIntent.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
 
@@ -186,6 +187,73 @@ predictor.recordInput(driving, 1 / 60, 0);
 assert.equal(predictor.getStats().pendingInputs, 1,
   'fresh reconnect sequence discards history from the dead transport');
 
+// A background interval can contain an unobserved death and nearby respawn.
+// Resetting presentation must relinquish each old-life owner, then accept even
+// the same authority tick as a fresh seed without reporting a visible snap.
+for (const phase of ['resting', 'driving', 'destroyed']) {
+  const resumedEntity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+  const resumed = new LocalTankPredictor({
+    entity: resumedEntity, heightField: FIELD,
+    collide: phase === 'driving' ? (owner, _position, _radius, outPush) => {
+      owner._predictionStaticContacts = (owner._predictionStaticContacts ?? 0) + 1;
+      outPush.set(0, 0, 0);
+      return false;
+    } : null,
+  });
+  resumed.reconcile(authority(0, null));
+  if (phase === 'resting') {
+    resumed.reconcile(authority(3, null, 0.01, 0), 0);
+    assert.equal(resumed.holdRestingHull, true);
+  } else {
+    resumed.recordInput(driving, SIM_DT, 42);
+    resumed.reconcile(authority(3, null, 0.4, 0,
+      { destroyed: phase === 'destroyed' }), 0);
+    if (phase === 'driving') {
+      assert.equal(resumed.getStats().pendingInputs, 1);
+      assert.equal(resumed.motionIntent, true);
+      assert.ok(resumed.contactSmoothingS > 0);
+    } else {
+      assert.equal(resumed.terminalDestroyed, true);
+      assert.equal(resumed.recordInput(driving, SIM_DT, 42), false);
+    }
+  }
+  assert.ok(resumed.getStats().correctionM > 0, `${phase} has old presentation correction`);
+  const oldSimulationState = resumed.simEntity.state;
+  const oldDisplayedPosition = resumedEntity.state.pos.clone();
+  const statsBeforeReset = resumed.getStats();
+  resumed.resetForPresentationResume();
+  assert.notEqual(resumed.simEntity.state, oldSimulationState,
+    `${phase} discards drivetrain/contact state belonging to the unseen life`);
+  assert.deepEqual(resumedEntity.state.pos, oldDisplayedPosition,
+    `${phase} reset does no presentation work during the background boundary`);
+  assert.deepEqual({
+    pendingInputs: resumed.getStats().pendingInputs,
+    lastRecordedSeq: resumed.lastRecordedSeq,
+    lastAuthorityTick: resumed.lastAuthorityTick,
+    initialized: resumed.initialized,
+    terminalDestroyed: resumed.terminalDestroyed,
+    motionIntent: resumed.motionIntent,
+    holdRestingHull: resumed.holdRestingHull,
+    contactSmoothingS: resumed.contactSmoothingS,
+  }, {
+    pendingInputs: 0, lastRecordedSeq: null, lastAuthorityTick: -1,
+    initialized: false, terminalDestroyed: false, motionIntent: false,
+    holdRestingHull: false, contactSmoothingS: 0,
+  }, `${phase} releases stale input, terminal, rest, clock and contact ownership`);
+  assert.deepEqual(resumed.correction,
+    { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 });
+  assert.equal(resumed.reconcile(authority(3, null, 3, 0, { y: 0.017 }), 0), true);
+  assert.deepEqual(resumedEntity.state.pos, new Vector3(3, 0.017, 0),
+    `${phase} resumes exactly at current authority, not the previous visible life`);
+  assert.equal(resumed.simEntity.state.speed, 0, 'the new seed has no old drive momentum');
+  assert.equal(resumed.getStats().correctionM, 0);
+  assert.equal(resumed.getStats().hardSnaps, statsBeforeReset.hardSnaps);
+  assert.equal(resumed.getStats().replayedInputs, statsBeforeReset.replayedInputs,
+    'background reseeding never replays stale held inputs');
+  assert.equal(resumed.recordInput(driving, SIM_DT, 42), true,
+    'the new life admits fresh controls without the old terminal/sequence guard');
+}
+
 // Browser snapshots expose a clock-corrected own-entity sample alongside the
 // raw acknowledged authority row. Inputs are replaceable held states rather
 // than commands with server-owned durations, so that sampled path must not
@@ -266,6 +334,109 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     'real local movement input releases the parked hold immediately');
 }
 
+// The browser advances held idle input even on frames without an upload or a
+// new authority row. A resting presentation hold must survive those actual
+// movement/contact steps, not only correction-only present() calls.
+{
+  for (const refreshHz of [30, 60, 120, 144]) {
+    const parkedEntity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const parked = new LocalTankPredictor({ entity: parkedEntity, heightField: FIELD });
+    parked.reconcile(authority(0, null, 0, 0, { y: 0.017 }));
+    let lastSnapshot = 0;
+    const samples = [];
+    for (let frame = 1; frame <= refreshHz * 3; frame++) {
+      parked.advancePrediction({ ...driving, throttle: 0 }, 1 / refreshHz);
+      const snapshotIndex = Math.floor(frame * 20 / refreshHz);
+      if (snapshotIndex > lastSnapshot) {
+        lastSnapshot = snapshotIndex;
+        const sign = snapshotIndex % 2 ? -1 : 1;
+        const sample = authority(snapshotIndex * 3, null, 0, 0, {
+          y: 0.017 + sign * 0.01,
+          pitch: sign * 0.0015,
+          roll: sign * -0.0012,
+        });
+        sample.sampledEntity = { ...sample.entity };
+        parked.reconcile(sample, 0);
+      }
+      if (frame > refreshHz) samples.push({
+        y: parkedEntity.state.pos.y,
+        pitch: parkedEntity.state.visualPitch,
+        roll: parkedEntity.state.visualRoll,
+      });
+    }
+    for (const [axis, limit] of [['y', 0.001], ['pitch', 0.0002], ['roll', 0.0002]]) {
+      const range = Math.max(...samples.map(sample => sample[axis])) -
+        Math.min(...samples.map(sample => sample[axis]));
+      assert.ok(range < limit,
+        `${refreshHz} Hz idle prediction keeps resting ${axis} stable (${range})`);
+    }
+  }
+}
+
+// Prediction must inherit movement policy already accepted by authority. It
+// never invents the special-action state or the game-mode speed boost itself.
+{
+  const hydraulicSpec = {
+    ...SPEC,
+    hydropneumaticAim: { noseDownDeg: 6, noseUpDeg: 8, rateDegS: 5 },
+  };
+  const hydraulicEntity = {
+    spec: hydraulicSpec,
+    state: createTankState(hydraulicSpec, new Vector3(), 0),
+  };
+  const hydraulic = new LocalTankPredictor({ entity: hydraulicEntity, heightField: FIELD });
+  hydraulic.reconcile(authority(0, null, 0, 0, { y: 0.017 }));
+  hydraulic.reconcile(authority(3, null, 0, 0, { y: 0.018 }));
+  assert.equal(hydraulic.holdRestingHull, true);
+  hydraulicEntity.state.suspensionAim = true;
+  for (let frame = 0; frame < 60; frame++) {
+    hydraulic.advancePrediction({ throttle: 0, aimYaw: 0, aimPitch: 0.25 }, SIM_DT);
+    assert.equal(hydraulic.holdRestingHull, false,
+      'deliberate hydraulic hull aiming is never classified as parked noise');
+  }
+  assert.ok(hydraulic.simEntity.state.suspensionAimPitch > 0.03,
+    'authority-enabled hydraulic suspension remains live in local prediction');
+  assert.equal(hydraulicEntity.state.suspensionAimPitch,
+    hydraulic.simEntity.state.suspensionAimPitch,
+    'presentation receives the predicted suspension lay');
+  hydraulicEntity.state.suspensionAim = false;
+  for (let frame = 0; frame < 120; frame++) {
+    hydraulic.advancePrediction({ throttle: 0, aimYaw: 0, aimPitch: 0.25 }, SIM_DT);
+  }
+  assert.equal(hydraulic.simEntity.state.suspensionAimPitch, 0,
+    'authority-disabled suspension returns to neutral without re-enabling itself');
+
+  const runSpeedPolicy = (multiplier) => {
+    const speedEntity = {
+      spec: SPEC,
+      state: createTankState(SPEC, new Vector3(), 0),
+      modeSpeedMultiplier: multiplier,
+    };
+    const speed = new LocalTankPredictor({ entity: speedEntity, heightField: FIELD });
+    speed.reconcile(authority(0, null));
+    const reference = {
+      spec: SPEC,
+      state: createTankState(SPEC, new Vector3(), 0),
+      modeSpeedMultiplier: multiplier,
+      input: { throttle: 1, steer: 0, aimPoint: new Vector3() },
+    };
+    for (let frame = 0; frame < 120; frame++) {
+      speed.advancePrediction(driving, SIM_DT);
+      decodeAimIntent(driving, reference.state.pos, reference.input.aimPoint);
+      updateTank(reference, FIELD, SIM_DT);
+    }
+    assert.ok(speed.simEntity.state.pos.distanceTo(reference.state.pos) < 1e-9,
+      `mode speed ${multiplier} matches the exact authoritative movement path`);
+    speedEntity.modeSpeedMultiplier = 1;
+    speed.advancePrediction(driving, SIM_DT);
+    assert.equal(speed.simEntity.modeSpeedMultiplier, 1,
+      'a new round can remove the authoritative speed modifier');
+    return speedEntity.state.pos.z;
+  };
+  assert.ok(runSpeedPolicy(1.85) > runSpeedPolicy(1),
+    'Turbo Ball prediction includes the authority-owned mobility boost');
+}
+
 // Reconciliation must seed the complete ballistic state, not just Y. Pending
 // input replay then advances the exact shared gravity integrator while leaving
 // horizontal momentum intact.
@@ -295,6 +466,103 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     `replay integrates gravity into vertical velocity (${flightEntity.state.verticalSpeed})`);
   assert.ok(flightEntity.state.pos.z > 0.7,
     'airborne replay preserves authoritative horizontal momentum');
+}
+
+// Compare complete drive/turn/brake/stop trajectories, not just a final parked
+// pose. Fractional presentation steps remain bounded against the 60 Hz shared
+// movement reference, and control edges must affect the very next frame.
+{
+  const trajectories = new Map();
+  for (const refreshHz of [30, 60, 120, 144]) {
+    const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+    prediction.reconcile(authority(0, null, 0, 0, { y: 0.017 }));
+    const checkpoints = [];
+    for (let frame = 0; frame < refreshHz * 4; frame++) {
+      const timeS = frame / refreshHz;
+      const beforeSpeed = entity.state.speed;
+      const beforeYaw = entity.state.yaw;
+      prediction.advancePrediction({
+        throttle: timeS < 2 ? 1 : 0,
+        steer: timeS >= 1 && timeS < 2 ? 0.4 : 0,
+        brake: timeS >= 2 && timeS < 3,
+        aimYaw: 0.5,
+        aimPitch: 0.1,
+      }, 1 / refreshHz);
+      if (frame === 0) assert.ok(entity.state.pos.z > 0,
+        `${refreshHz} Hz throttle moves on its first render frame`);
+      if (frame === refreshHz) assert.ok(entity.state.yaw > beforeYaw,
+        `${refreshHz} Hz steering turns on its first render frame`);
+      if (frame === refreshHz * 2) assert.ok(entity.state.speed < beforeSpeed,
+        `${refreshHz} Hz braking responds on its first render frame`);
+      if ((frame + 1) % (refreshHz / 2) === 0) checkpoints.push({
+        position: entity.state.pos.clone(),
+        yaw: entity.state.yaw,
+      });
+    }
+    assert.equal(entity.state.speed, 0,
+      `${refreshHz} Hz drive/turn/brake sequence reaches a complete stop`);
+    trajectories.set(refreshHz, checkpoints);
+  }
+  for (const refreshHz of [30, 120, 144]) {
+    for (let index = 0; index < trajectories.get(60).length; index++) {
+      const reference = trajectories.get(60)[index];
+      const actual = trajectories.get(refreshHz)[index];
+      assert.ok(actual.position.distanceTo(reference.position) < 0.05,
+        `${refreshHz} Hz trajectory stays within 5 cm of 60 Hz at ${(index + 1) / 2}s`);
+      assert.ok(Math.abs(actual.yaw - reference.yaw) < 0.003,
+        `${refreshHz} Hz heading stays within 3 mrad of 60 Hz at ${(index + 1) / 2}s`);
+    }
+  }
+}
+
+// Rest means grounded and settled, not merely zero planar velocity. A tank
+// crossing its airborne apex or recovering on its side must keep moving, even
+// when its latest quantized displacement fits the usual parked deadzone.
+{
+  const makeHeld = () => {
+    const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+    prediction.reconcile(authority(0, null, 0, 0, { y: 0.017 }));
+    prediction.reconcile(authority(3, null, 0, 0, { y: 0.018 }), 0);
+    assert.equal(prediction.holdRestingHull, true);
+    return prediction;
+  };
+  for (const flags of [SNAPSHOT_FLAGS.AIRBORNE, SNAPSHOT_FLAGS.OVERTURNED,
+    SNAPSHOT_FLAGS.AUTO_RIGHTING]) {
+    for (const source of ['raw', 'sampled']) {
+      const prediction = makeHeld();
+      const sample = authority(6, null, 0, 0, { y: 0.018 });
+      sample.sampledEntity = { ...sample.entity };
+      (source === 'raw' ? sample.entity : sample.sampledEntity).flags = flags;
+      prediction.reconcile(sample, 0);
+      assert.equal(prediction.holdRestingHull, false,
+        `${source} body phase ${flags} releases the resting hull hold`);
+    }
+  }
+  for (const source of ['raw', 'sampled']) {
+    const prediction = makeHeld();
+    const sample = authority(6, null, 0, 0, { y: 0.018 });
+    sample.sampledEntity = { ...sample.entity };
+    (source === 'raw' ? sample.entity : sample.sampledEntity).vy = 0.3;
+    prediction.reconcile(sample, 0);
+    assert.equal(prediction.holdRestingHull, false,
+      `${source} vertical authority motion releases the resting hull hold`);
+  }
+  const casemateSpec = { ...SPEC, gunArcDeg: 4,
+    armor: { ...SPEC.armor, turretless: true } };
+  const casemate = new LocalTankPredictor({
+    entity: { spec: casemateSpec, state: createTankState(casemateSpec, new Vector3(), 0) },
+    heightField: FIELD,
+  });
+  casemate.reconcile(authority(0, null, 0, 0, { y: 0.017 }));
+  casemate.reconcile(authority(3, null, 0, 0, { y: 0.018 }), 0);
+  assert.equal(casemate.holdRestingHull, true);
+  casemate.advancePrediction({ aimYaw: 0.8, aimPitch: 0 }, SIM_DT);
+  assert.equal(casemate.holdRestingHull, false,
+    'sight-driven casemate auto-traverse releases resting hold without steer input');
+  assert.ok(casemate.entity.state.yaw > 0,
+    'casemate hull traversal is visible on the first aim frame');
 }
 
 // Authority lifecycle flags are independent bits. Verify every meaningful
@@ -1186,6 +1454,30 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     'hard snap clears an existing resting hold');
 }
 
+// Death ends drive integration but not display-clock correction settling.
+// No new snapshots are necessary to smoothly reach the fixed final pose.
+{
+  const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+  const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+  prediction.reconcile(authority(0, null));
+  entity.state.pos.x = 1;
+  prediction.reconcile(authority(3, null, 0, 0, { destroyed: true }));
+  assert.equal(prediction.getStats().correctionM, 1,
+    'death begins from the already displayed hull without a hard snap');
+  const terminalSimulation = prediction.simEntity.state.pos.toArray();
+  for (let frame = 0; frame < 60; frame++) {
+    const before = prediction.getStats().correctionM;
+    assert.equal(prediction.advancePrediction(frame % 2 ? null : driving, SIM_DT), false);
+    assert.ok(prediction.getStats().correctionM < before,
+      'each terminal display frame settles correction even without controls');
+    assert.deepEqual(prediction.simEntity.state.pos.toArray(), terminalSimulation,
+      'terminal correction settling never moves authoritative simulation');
+  }
+  assert.ok(prediction.getStats().correctionM < 0.001,
+    'a one-meter terminal correction settles below one millimeter within one second');
+  assert.equal(prediction.getStats().pendingInputs, 0);
+}
+
 // A terminal lifecycle flag supplied by the caller is authoritative even when
 // the snapshot's compatibility flag is false.
 {
@@ -1197,12 +1489,108 @@ assert.equal(predictor.getStats().pendingInputs, 1,
   terminal.reconcile(authority(0, null));
   terminal.recordInput(driving, 1 / 60, 1);
   terminal.reconcile(authority(3, null, 0, 0, { destroyed: false }), 0, true);
+  assert.deepEqual(terminal.simEntity.state.pos.toArray(), [0, 0, 0],
+    'terminal authority never replays pending drive input past the final pose');
   assert.equal(terminal.terminalDestroyed, true,
     'explicit terminal lifecycle ends local authority');
   assert.equal(terminal.getStats().terminalSyncs, 1,
     'explicit terminal lifecycle records one transition');
   assert.equal(terminal.getStats().pendingInputs, 0,
     'explicit terminal lifecycle clears replay history');
+}
+
+// A reconnect may receive its first authority sample after the local vehicle
+// has died. Initialization owns terminal cleanup too; new local controls stay
+// rejected until a later live authority sample explicitly revives the tank.
+{
+  for (const terminalFields of [{ destroyed: true }, { flags: SNAPSHOT_FLAGS.DESTROYED }]) {
+    const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+    prediction.recordInput(driving, SIM_DT, 1);
+    prediction.reconcile(authority(0, null, 4, 7, terminalFields));
+    assert.equal(prediction.terminalDestroyed, true,
+      'first authority sample admits terminal state including the wire flag');
+    assert.equal(prediction.getStats().pendingInputs, 0,
+      'terminal initialization clears all pre-authority held input');
+    assert.equal(prediction.getStats().terminalSyncs, 1,
+      'terminal initialization records one lifecycle transition');
+    assert.equal(prediction.recordInput(driving, SIM_DT, 2), false,
+      'destroyed prediction rejects new input-history entries');
+    assert.equal(prediction.advancePrediction(driving, SIM_DT), false,
+      'destroyed prediction does not integrate local drive or aim');
+    assert.deepEqual(entity.state.pos.toArray(), [4, 0, 7],
+      'input after terminal initialization cannot move the wreck');
+    prediction.reconcile(authority(3, null, 4, 7, terminalFields));
+    assert.equal(prediction.getStats().terminalSyncs, 1,
+      'repeated wreck samples do not duplicate the death transition');
+    prediction.reconcile(authority(6, null, 4, 10, { y: 0.017 }));
+    assert.equal(prediction.terminalDestroyed, false,
+      'a live authority sample permits mode-owned respawn');
+    assert.deepEqual(entity.state.pos.toArray(), [4, 0.017, 10],
+      'a nearby respawn is a new life, not a smoothed drive from the old wreck');
+    assert.equal(prediction.getStats().correctionM, 0,
+      'respawn clears every old-life presentation correction');
+    assert.equal(prediction.getStats().hardSnaps, 0,
+      'authority-owned respawn is not diagnosed as network rubber-banding');
+    assert.equal(prediction.recordInput(driving, SIM_DT, 2), true,
+      'authority-revived prediction immediately resumes input admission');
+    assert.ok(prediction.simEntity.state.pos.z > 10,
+      'authority-revived tank immediately responds to throttle');
+  }
+}
+
+// Uploaded intervals and unsent display time are separate owners. An ACK may
+// arrive on a cadence-held frame: dropping its current input would reintroduce
+// a refresh-rate-dependent backward correction before the next upload.
+{
+  const make = () => {
+    const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+    prediction.reconcile(authority(0, null));
+    return prediction;
+  };
+  const live = make();
+  const reference = make();
+  for (const prediction of [live, reference]) {
+    prediction.recordInput(driving, 1 / 120, 1);
+    prediction.advancePrediction(driving, 1 / 120);
+  }
+  live.reconcile(authority(1, 1));
+  const sample = authority(1, 1);
+  reference.reconcile({ ...sample, sampledEntity: sample.entity });
+  reference.advancePrediction(driving, 1 / 120);
+  assert.ok(live.simEntity.state.pos.distanceTo(reference.simEntity.state.pos) < 1e-12,
+    'acknowledged upload leaves exactly the unsent current-frame prediction tail');
+  live.recordInput(driving, 1 / 60, 2, 1 / 120);
+  reference.recordInput(driving, 1 / 60, 2, 1 / 120);
+  live.reconcile(authority(2, 1));
+  reference.reconcile({ ...authority(2, 1), sampledEntity: sample.entity });
+  reference.advancePrediction(driving, 1 / 60);
+  assert.ok(live.simEntity.state.pos.distanceTo(reference.simEntity.state.pos) < 1e-12,
+    'committing the next upload absorbs unsent time once, not twice');
+  live.advancePrediction(driving, 1 / 120);
+  live.reconcile(authority(3, 2, 0, 0, { destroyed: true }));
+  live.reconcile(authority(4, 2, 0, 2));
+  live.reconcile(authority(5, 2, 0, 2));
+  assert.equal(live.simEntity.state.pos.z, 2,
+    'terminal/respawn authority cannot replay the old life\'s unsent frame');
+  live.advancePrediction(driving, 1 / 120);
+  live.resetForPresentationResume();
+  live.reconcile(authority(6, 2, 0, 4));
+  live.reconcile(authority(7, 2, 0, 4));
+  assert.equal(live.simEntity.state.pos.z, 4,
+    'visibility resume also releases the unsent-frame owner');
+}
+
+{
+  const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+  const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+  prediction.reconcile(authority(0, null));
+  for (let seq = 0; seq < 120; seq++) prediction.recordInput(driving, 1 / 60, seq);
+  prediction.reconcile(authority(1, null));
+  assert.equal(prediction.history.length, 120, 'a replay cap does not invent input acknowledgements');
+  assert.ok(prediction.simEntity.state.pos.z < 0.25,
+    'a live snapshot stream with lost controls cannot replay seconds of future driving');
 }
 
 console.log('localTankPrediction.selftest: replay, parked stability, correction, and reconnect passed');

@@ -4,10 +4,30 @@ import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
 
 const root = new URL('..', import.meta.url).pathname;
+const failureScenario = process.argv.find((arg) => arg.startsWith('--failure-scenario='))
+  ?.split('=')[1] || 'cold-entry';
+assert.ok(['cold-entry', 'host-left', 'host-stall'].includes(failureScenario),
+  'failure-scenario must be cold-entry, host-left, or host-stall');
 const errors = [];
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let vite = null;
 let browser = null;
+let stage = 'starting';
+function checkpoint(next) {
+  stage = next;
+  console.log(`[guest-entry] ${next}`);
+}
+
+async function boundedPointerAction(action, label) {
+  let timer;
+  try {
+    await Promise.race([action(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} exceeded 10 seconds`)), 10_000);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function observe(page, label) {
   page.on('pageerror', (error) => errors.push(`${label}: ${error.stack || error.message}`));
@@ -107,6 +127,7 @@ try {
     state.unsubscribe = state.session.runtime.onState((lobby) => { state.lobby = lobby; });
     return roomInfo;
   }, { signalUrl });
+  checkpoint('host-room-created');
 
   const inviteUrl = new URL(`${origin}/`);
   inviteUrl.searchParams.set('nosplash', '1');
@@ -122,6 +143,7 @@ try {
     () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage',
     { timeout: 240_000 },
   );
+  checkpoint('guest-garage-ready');
 
   let lobbyEntryError = null;
   try {
@@ -181,6 +203,7 @@ try {
     ),
   ]);
 
+  checkpoint('lobby-close-click');
   await guestPage.click('.cot-play .close');
   await guestPage.waitForFunction(
     () => !document.querySelector('.cot-play')?.classList.contains('show') &&
@@ -202,11 +225,45 @@ try {
     globalThis.__COT_GUEST_ENTRY_HOST?.lobby?.players?.length), 2,
   'guest must remain in the host roster while viewing the garage');
 
+  await guestPage.evaluate(() => {
+    globalThis.__COT_ROOM_REOPEN_CLICKS = [];
+    document.addEventListener('click', (event) => {
+      const clicks = globalThis.__COT_ROOM_REOPEN_CLICKS;
+      if (clicks.length < 8) clicks.push({
+        target: event.target?.className || event.target?.tagName || '',
+        x: event.clientX, y: event.clientY,
+      });
+    }, { capture: true });
+  });
+  checkpoint('room-reminder-click');
   await guestPage.click('.cot-room-reminder');
-  await guestPage.waitForFunction(
-    () => document.querySelector('.cot-play.show .lobby.show .players')?.children.length === 2,
-    { timeout: 10_000 },
-  );
+  try {
+    await guestPage.waitForFunction(
+      () => document.querySelector('.cot-play.show .lobby.show .players')?.children.length === 2,
+      { timeout: 10_000 },
+    );
+  } catch (error) {
+    console.error('room reminder reopen diagnostics', JSON.stringify(await guestPage.evaluate(() => {
+      const reminder = document.querySelector('.cot-room-reminder');
+      const rect = reminder?.getBoundingClientRect();
+      return {
+        phase: window.__DEBUG?.game?.phase || null,
+        garageOpen: window.__DEBUG?.garage?.isOpen || false,
+        menuVisible: document.querySelector('.cot-play')?.classList.contains('show') || false,
+        lobbyVisible: document.querySelector('.cot-play .lobby')?.classList.contains('show') || false,
+        playerCount: document.querySelector('.cot-play .lobby .players')?.children.length || 0,
+        status: document.querySelector('.cot-play .status')?.textContent || '',
+        reminderClass: reminder?.className || '',
+        reminderRect: rect?.toJSON() || null,
+        reminderHit: rect ? document.elementFromPoint(rect.x + rect.width / 2,
+          rect.y + rect.height / 2)?.className || '' : '',
+        clicks: globalThis.__COT_ROOM_REOPEN_CLICKS,
+        focused: document.hasFocus(), visibility: document.visibilityState,
+      };
+    }), null, 2));
+    console.error('room reminder browser errors', JSON.stringify(errors));
+    throw error;
+  }
 
   await guestPage.evaluate(() => {
     globalThis.__COT_GUEST_ENTRY = { frames: [] };
@@ -239,6 +296,7 @@ try {
     requestAnimationFrame(sample);
   });
 
+  checkpoint('starting-first-battle');
   await Promise.all([
     hostPage.evaluate(() => globalThis.__COT_GUEST_ENTRY_HOST.session.command({
       type: 'set_ready', ready: true,
@@ -331,17 +389,21 @@ try {
   }
   assert.equal(initialEntryFailure, null,
     `the pristine invite failed its first authoritative snapshot: ${JSON.stringify(initialEntryFailure)}`);
+  checkpoint('first-battle-connected');
   const beforeReload = await guestPage.evaluate(() => ({
     playerId: localStorage.getItem('cot.player.id.v1'),
     roomCode: new URL(location.href).searchParams.get('room'),
   }));
   const liveReloadStartedAt = performance.now();
+  checkpoint('live-reload');
   await guestPage.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
   let liveReloadWaitError = null;
   try {
     await guestPage.waitForFunction(() =>
       (window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'battle' &&
-        window.__DEBUG?.network?.connected === true) || window.__NETWORK_ENTRY_FAILURE,
+        window.__DEBUG?.network?.connected === true &&
+        !document.querySelector('.cot-bl')?.classList.contains('on') &&
+        !document.querySelector('.cot-play')?.classList.contains('show')) || window.__NETWORK_ENTRY_FAILURE,
     { timeout: 90_000, polling: 50 });
   } catch (error) {
     liveReloadWaitError = error;
@@ -392,6 +454,9 @@ try {
     'the canonical room URL survives a live-match reload');
   assert.equal(liveReload.phase, 'battle');
   assert.equal(liveReload.connected, true);
+  assert.equal(liveReload.loaderOn, false,
+    'live failure injection must follow a fully revealed battle, not a pending loader');
+  assert.equal(liveReload.roomVisible, false);
   assert.equal(liveReload.entryFailure, null,
     'a live room resume does not enter network recovery presentation');
   await hostPage.waitForFunction((playerId) => {
@@ -400,27 +465,79 @@ try {
       (player) => player.id === playerId,
     )?.connected === true;
   }, { timeout: 15_000, polling: 25 }, liveReload.playerId);
+  checkpoint('live-reload-connected');
+
+  const beforeFailureProfile = await guestPage.evaluate(() =>
+    localStorage.getItem('cot.profile.v2'));
 
   // Reload once more and close authority during the covered handoff. This
   // retains the original cancellation regression after the successful live
   // resume above, and proves a late async world cannot remount itself.
-  await guestPage.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await guestPage.waitForFunction(() =>
-    window.__GAME_READY === true && document.querySelector('.cot-bl')?.classList.contains('on') &&
-      !document.querySelector('.cot-play')?.classList.contains('show'),
-  { timeout: 60_000, polling: 25 });
+  if (failureScenario === 'cold-entry') {
+    checkpoint('cold-entry-reload');
+    await guestPage.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await guestPage.waitForFunction(() =>
+      window.__GAME_READY === true && document.querySelector('.cot-bl')?.classList.contains('on') &&
+        !document.querySelector('.cot-play')?.classList.contains('show'),
+    { timeout: 60_000, polling: 25 });
+  }
+
+  checkpoint(`injecting-${failureScenario}`);
 
   // Close the host while the pristine guest is still behind its cold loader.
   // The obsolete async entry must unwind to Garage and remain there; it may
   // not publish its late transport/bridge or remount the battle surface.
-  await hostPage.evaluate(() => {
-    globalThis.__COT_GUEST_ENTRY_HOST.session.close('cold_entry_cancel_test');
-  });
-  await guestPage.waitForFunction(() =>
-    window.__DEBUG?.game?.phase === 'garage'
-      && window.__DEBUG?.garage?.isOpen === true
-      && !document.querySelector('.cot-bl')?.classList.contains('on'),
-  { timeout: 30_000, polling: 25 });
+  const failureStartedAt = performance.now();
+  await hostPage.evaluate((scenario) => {
+    const host = globalThis.__COT_GUEST_ENTRY_HOST;
+    if (scenario === 'host-stall') {
+      // Keep signaling and RTC channels open: only real authority stops.
+      clearInterval(host.timer);
+      host.timer = null;
+    } else host.session.close('host_closed');
+  }, failureScenario);
+  if (failureScenario === 'host-stall') {
+    await guestPage.waitForFunction(() =>
+      document.querySelector('.cot-network-status')?.textContent?.includes('Host not responding'),
+    { timeout: 15_000, polling: 50 });
+  }
+  try {
+    await guestPage.waitForFunction(() =>
+      window.__DEBUG?.game?.phase === 'garage'
+        && window.__DEBUG?.garage?.isOpen === true
+        && !document.querySelector('.cot-bl')?.classList.contains('on')
+        && document.querySelector('.cot-play.show .room-failure')?.hidden === false,
+    { timeout: failureScenario === 'host-stall' ? 90_000 : 30_000, polling: 25 });
+  } catch (error) {
+    console.error('terminal room diagnostics', JSON.stringify({
+      failureScenario,
+      guest: await guestPage.evaluate(() => ({
+        phase: window.__DEBUG?.game?.phase,
+        result: window.__DEBUG?.game?.result,
+        garageOpen: window.__DEBUG?.garage?.isOpen,
+        network: window.__DEBUG?.network,
+        status: document.querySelector('.cot-network-status')?.textContent,
+        statusState: document.querySelector('.cot-network-status')?.dataset.state,
+        loaderOn: document.querySelector('.cot-bl')?.classList.contains('on'),
+        menuVisible: document.querySelector('.cot-play')?.classList.contains('show'),
+        failureReason: document.querySelector('.cot-play .room-failure')?.dataset.reason,
+        failureHidden: document.querySelector('.cot-play .room-failure')?.hidden,
+        entryFailure: window.__NETWORK_ENTRY_FAILURE || null,
+      })),
+      host: await hostPage.evaluate(() => {
+        const host = globalThis.__COT_GUEST_ENTRY_HOST;
+        return { timerRunning: host?.timer != null, startError: host?.startError,
+          tick: host?.match?.host?.tick, stats: host?.match?.host?.stats,
+          roomPhase: host?.lobby?.phase,
+          peers: [...(host?.match?.host?.peers?.values?.() || [])].map((peer) => ({
+            welcomed: peer.welcomed, ready: peer.ready,
+            state: peer.transport?.readyState, inputSequence: peer.lastRecvSeq,
+          })) };
+      }),
+      errors: errors.slice(0, 6),
+    }, null, 2));
+    throw error;
+  }
   await guestPage.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1_500)));
   const cancellation = await guestPage.evaluate(() => ({
     phase: window.__DEBUG?.game?.phase,
@@ -428,6 +545,10 @@ try {
     loaderOn: document.querySelector('.cot-bl')?.classList.contains('on') || false,
     entryFailure: window.__NETWORK_ENTRY_FAILURE || null,
     network: window.__DEBUG?.network || null,
+    roomCode: new URL(location.href).searchParams.get('room'),
+    failureReason: document.querySelector('.cot-play .room-failure')?.dataset.reason,
+    failureVisible: document.querySelector('.cot-play.show .room-failure')?.hidden === false,
+    profile: localStorage.getItem('cot.profile.v2'),
   }));
   assert.equal(cancellation.phase, 'garage',
     'a cancelled pristine entry must remain in Garage after late work settles');
@@ -437,9 +558,42 @@ try {
     'intentional room closure is not presented as a cold-load failure');
   assert.equal(cancellation.network, null,
     'a late cold-entry transport must not regain browser session ownership');
+  assert.equal(cancellation.roomCode, null, 'closed rooms must release the invite URL');
+  assert.equal(cancellation.failureVisible, true, 'room loss needs a visible actionable error');
+  assert.equal(cancellation.failureReason,
+    failureScenario === 'host-stall' ? 'rtc_recovery_exhausted' : 'host_left');
+  assert.equal(cancellation.profile, beforeFailureProfile,
+    'broken rooms must not fabricate a battle result or change progression');
+  const roomRecoveryMs = performance.now() - failureStartedAt;
+  checkpoint('recovered-garage-return-click');
+  const returnTarget = await guestPage.evaluate(() => {
+    const button = document.querySelector('.cot-play [data-room-failure="garage"]');
+    const rect = button.getBoundingClientRect();
+    const x = rect.x + rect.width / 2;
+    const y = rect.y + rect.height / 2;
+    return { x, y, enabled: !button.disabled,
+      hit: document.elementFromPoint(x, y) === button };
+  });
+  assert.equal(returnTarget.enabled && returnTarget.hit, true,
+    'Return to garage must be enabled and physically hit-testable');
+  const pointerStartedAt = performance.now();
+  // Puppeteer waits for IntersectionObserver before its synthetic click sends
+  // any pointer input. Approach the visible control with a real mouse event,
+  // just as a user would; retain the normal click and all exit assertions.
+  await boundedPointerAction(
+    () => guestPage.mouse.move(returnTarget.x, returnTarget.y), 'Return pointer move');
+  await boundedPointerAction(
+    () => guestPage.click('.cot-play [data-room-failure="garage"]'), 'Return button click');
+  await guestPage.waitForFunction(() =>
+    !document.querySelector('.cot-play')?.classList.contains('show') &&
+      window.__DEBUG?.garage?.isOpen === true, { timeout: 10_000 });
   assert.deepEqual(errors, [], `browser errors:\n${errors.join('\n')}`);
   console.log(JSON.stringify({
     ok: true,
+    failureScenario,
+    roomRecoveryMs: Number(roomRecoveryMs.toFixed(1)),
+    returnInteractionMs: Number((performance.now() - pointerStartedAt).toFixed(1)),
+    failureRecoveryMs: Number((performance.now() - failureStartedAt).toFixed(1)),
     report,
     liveReload: {
       ...liveReload,
@@ -449,6 +603,13 @@ try {
   }, null, 2));
 
   await Promise.all([closeState(hostPage), closeState(guestPage)]);
+} catch (error) {
+  // Emit before cleanup: a browser protocol failure must retain its stage even
+  // when disposing a damaged browser takes longer than the failed operation.
+  console.error('guest entry failed', JSON.stringify({
+    stage, failureScenario, message: error.message, browserErrors: errors.slice(0, 8),
+  }));
+  throw error;
 } finally {
   if (browser) await browser.close().catch(() => {});
   await signaling.close().catch(() => {});

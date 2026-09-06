@@ -1,11 +1,12 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { classifyPrivateRoomFailure, isIntentionalRoomCloseReason } from './roomFailure.ts';
 import type {
   NetworkRoomCoordinator,
   NetworkRoomPlayer,
   NetworkRoomState,
 } from './networkRoomCoordinator.ts';
 import type { RankedQueueState } from './rankedServiceClient.ts';
-import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
+import { isNetworkBattleEntryAbortError, throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
 import type {
   NetworkBattlePresentationPlayer,
@@ -111,6 +112,7 @@ export interface NetworkBattleLaunchOptions {
   setNetworkStatus: (status: DedicatedStatus) => void;
   recordEntryFailure: (failure: NetworkEntryFailure | null) => void;
   reportError?: (scope: string, error: RuntimeValue) => void;
+  onPrivateEntryFailure?: (reason: string, mode: 'private' | 'lan') => void | Promise<void>;
 }
 
 export interface PrivateBattleLaunchRequest {
@@ -130,6 +132,7 @@ export interface NetworkBattleLaunchRuntime {
   beginRematch(state: NetworkRoomState): Promise<boolean>;
   beginRanked(request?: RankedBattleLaunchRequest): Promise<void>;
   cancel(reason?: string): void;
+  readonly pending: boolean;
 }
 
 function messageFor(error: RuntimeValue): string {
@@ -191,6 +194,7 @@ export function createNetworkBattleLaunchRuntime({
   enterGarage,
   setNetworkStatus,
   recordEntryFailure,
+  onPrivateEntryFailure = () => {},
   reportError = (scope, error) => console.error(`[${scope}] entry failed`, error),
 }: NetworkBattleLaunchOptions): NetworkBattleLaunchRuntime {
   const required = [lifecycle?.run, battleLoad?.show, battleLoad?.progress,
@@ -257,6 +261,14 @@ export function createNetworkBattleLaunchRuntime({
     lifecycle.uncoverRendering();
     await battleLoad.hide();
     await enterGarage();
+  };
+
+  const presentPrivateEntryFailure = async (
+    reason: RuntimeValue, mode: string | undefined,
+  ) => {
+    if (isIntentionalRoomCloseReason(reason)) return;
+    await onPrivateEntryFailure(classifyPrivateRoomFailure(reason).code,
+      mode === 'lan' ? 'lan' : 'private');
   };
 
   const diagnosticFor = (
@@ -338,6 +350,7 @@ export function createNetworkBattleLaunchRuntime({
               });
             },
           });
+          throwIfNetworkBattleEntryAborted(entryController.signal);
           coordinator().attach(lobbyState);
           entered = true;
         } catch (error) {
@@ -347,7 +360,9 @@ export function createNetworkBattleLaunchRuntime({
             recordEntryFailure(diagnosticFor(error, role));
             reportError('network', error);
           }
+          const failure = cancelled ? entryController.signal.reason : error;
           await stopLoading(cancelled ? 'entry_cancelled' : 'entry_failed');
+          await presentPrivateEntryFailure(failure, lobbyState?.mode);
         } finally {
           finishEntry(entryController);
         }
@@ -397,12 +412,15 @@ export function createNetworkBattleLaunchRuntime({
               return match;
             },
           });
+          throwIfNetworkBattleEntryAborted(entryController.signal);
           return true;
         } catch (error) {
           const cancelled = entryController.signal.aborted
             || isNetworkBattleEntryAbortError(error);
           if (!cancelled) reportError('network rematch', error);
+          const failure = cancelled ? entryController.signal.reason : error;
           await stopLoading(cancelled ? 'entry_cancelled' : 'rematch_entry_failed');
+          await presentPrivateEntryFailure(failure, lobbyState.mode);
           return false;
         } finally {
           finishEntry(entryController);
@@ -454,6 +472,7 @@ export function createNetworkBattleLaunchRuntime({
               onStatus: setNetworkStatus,
             }),
           });
+          throwIfNetworkBattleEntryAborted(entryController.signal);
         } catch (error) {
           const cancelled = entryController.signal.aborted
             || isNetworkBattleEntryAbortError(error);
@@ -466,5 +485,6 @@ export function createNetworkBattleLaunchRuntime({
     },
 
     cancel,
+    get pending() { return activeEntry !== null; },
   };
 }

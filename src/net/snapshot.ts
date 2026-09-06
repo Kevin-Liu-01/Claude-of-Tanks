@@ -15,6 +15,7 @@ const MAX_SAMPLE_DELTA_MS = 250;
 const IMMEDIATE_CORRECTION_RATE_MPS = 6;
 const IMMEDIATE_CORRECTION_STEP_M = 0.2;
 const IMMEDIATE_TELEPORT_M = 8;
+const ENTITY_TELEPORT_SPEED_MULTIPLIER = 3;
 const OBJECTIVE_TELEPORT_FLOOR_M = 8;
 const OBJECTIVE_TELEPORT_SPEED_MULTIPLIER = 3;
 const REST_POSE = Symbol('networkRestPose');
@@ -204,6 +205,7 @@ interface RestPose {
   yaw: number;
   pitch: number;
   roll: number;
+  flags: number;
 }
 
 export interface ImmediateAuthoritySnapshot {
@@ -211,6 +213,7 @@ export interface ImmediateAuthoritySnapshot {
   serverTimeMs: number;
   ackInputSeq: number | null;
   entity: DecodedEntitySnapshot;
+  predictionState: Record<string, RuntimeValue> | null;
 }
 
 export interface SampledSnapshotFrame {
@@ -707,6 +710,44 @@ function monotoneHermite(
   return hermite(p0, m0, p1, m1, t, durationS);
 }
 
+function hasContinuousEntityPose(
+  previous: QuantizedEntitySnapshot,
+  current: QuantizedEntitySnapshot,
+  durationS: number,
+): boolean {
+  if (previous.specId !== current.specId || previous.team !== current.team ||
+      ((previous.flags ^ current.flags) & SNAPSHOT_FLAGS.DESTROYED)) return false;
+  const distanceM = Math.hypot(
+    current.x - previous.x, current.y - previous.y, current.z - previous.z,
+  ) / POSITION_SCALE;
+  const speedMps = Math.max(
+    Math.hypot(previous.vx, previous.vy, previous.vz),
+    Math.hypot(current.vx, current.vy, current.vz),
+  ) / VELOCITY_SCALE;
+  return distanceM <= Math.max(
+    IMMEDIATE_TELEPORT_M,
+    speedMps * Math.max(0, durationS) * ENTITY_TELEPORT_SPEED_MULTIPLIER,
+  );
+}
+
+function groundedExtrapolationVelocity(
+  previous: QuantizedEntitySnapshot | undefined,
+  current: QuantizedEntitySnapshot,
+  durationS: number,
+): number {
+  // A suspension/support derivative is not free-flight velocity. Continue a
+  // ramp's consistent tangent, but bound it by the observed height secant.
+  // A contact-probe spike or a sign reversal cannot throw a grounded chassis
+  // through its support plane when the next packet is late.
+  if (!previous || !(durationS > 0) ||
+      (previous.flags & SNAPSHOT_FLAGS.AIRBORNE) ||
+      !hasContinuousEntityPose(previous, current, durationS)) return 0;
+  const slope = (current.y - previous.y) / POSITION_SCALE / durationS;
+  const velocity = finite(current.vy) / VELOCITY_SCALE;
+  return slope * velocity > 0
+    ? Math.sign(slope) * Math.min(Math.abs(velocity), 3 * Math.abs(slope)) : 0;
+}
+
 function interpolateEntity(
   aRaw: QuantizedEntitySnapshot,
   bRaw: QuantizedEntitySnapshot,
@@ -748,6 +789,11 @@ function extrapolateEntity(
   target: DecodedEntitySnapshot | null = null,
 ): DecodedEntitySnapshot {
   const entity = decodeEntitySnapshot(raw, target);
+  // Authority stops drive integration at death; its retained movement state
+  // can still contain pre-impact speed. That is not a moving wreck command.
+  if (entity.flags & SNAPSHOT_FLAGS.DESTROYED) {
+    entity.vx = entity.vy = entity.vz = 0;
+  }
   entity.x += entity.vx * extraS;
   entity.y += entity.vy * extraS;
   entity.z += entity.vz * extraS;
@@ -773,11 +819,15 @@ function limitImmediatePresentation(
   const priorX = presentation.x;
   const priorY = presentation.y;
   const priorZ = presentation.z;
+  const reset = initialized && (presentation.specId !== target.specId ||
+    presentation.team !== target.team ||
+    ((presentation.flags & SNAPSHOT_FLAGS.DESTROYED) &&
+      !(target.flags & SNAPSHOT_FLAGS.DESTROYED)));
   const priorSpeed = initialized
     ? Math.hypot(presentation.vx || 0, presentation.vy || 0, presentation.vz || 0)
     : 0;
   Object.assign(presentation, target);
-  if (!initialized) return;
+  if (!initialized || reset) return;
 
   const dx = target.x - priorX;
   const dy = target.y - priorY;
@@ -800,7 +850,10 @@ function limitImmediatePresentation(
   presentation.z = priorZ + dz * scale;
 }
 
-function stabilizeRestPose(entity: DecodedEntitySnapshot): DecodedEntitySnapshot {
+function stabilizeRestPose(
+  entity: DecodedEntitySnapshot,
+  reset = false,
+): DecodedEntitySnapshot {
   let rest = entity[REST_POSE];
   if (!rest) {
     rest = {
@@ -810,12 +863,19 @@ function stabilizeRestPose(entity: DecodedEntitySnapshot): DecodedEntitySnapshot
       yaw: entity.yaw,
       pitch: entity.pitch,
       roll: entity.roll,
+      flags: entity.flags,
     };
     Object.defineProperty(entity, REST_POSE, { value: rest });
     return entity;
   }
   const moving = Math.hypot(entity.vx || 0, entity.vy || 0, entity.vz || 0) > REST_SPEED_MPS;
-  if (moving) {
+  const lifecycleChanged = ((rest.flags ^ entity.flags) & (
+    SNAPSHOT_FLAGS.DESTROYED | SNAPSHOT_FLAGS.AIRBORNE |
+    SNAPSHOT_FLAGS.OVERTURNED | SNAPSHOT_FLAGS.AUTO_RIGHTING
+  )) !== 0;
+  rest.flags = entity.flags;
+  if (moving || reset || lifecycleChanged ||
+      (entity.flags & (SNAPSHOT_FLAGS.AIRBORNE | SNAPSHOT_FLAGS.AUTO_RIGHTING))) {
     rest.x = entity.x;
     rest.y = entity.y;
     rest.z = entity.z;
@@ -902,6 +962,7 @@ export class SnapshotBuffer {
   private extrapolatedSamples = 0;
   private readonly sampleFrame: SampledSnapshotFrame;
   private readonly sampleEntities = new Map<string, DecodedEntitySnapshot>();
+  private readonly sampledEntityIds = new Set<string>();
   private readonly olderById = new Map<string, QuantizedEntitySnapshot>();
   private readonly sampleShells: QuantizedShellSnapshot[] = [];
   private readonly olderShellById = new Map<number, QuantizedShellSnapshot>();
@@ -927,7 +988,9 @@ export class SnapshotBuffer {
     adaptiveDelay = interpolationDelayMs > 0,
     maxInterpolationDelayMs = Math.max(interpolationDelayMs, 220),
   }: SnapshotBufferOptions = {}) {
-    if (interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2 ||
+    if (!Number.isFinite(interpolationDelayMs) || !Number.isFinite(maxExtrapolationMs) ||
+        !Number.isFinite(maxInterpolationDelayMs) || !Number.isInteger(capacity) ||
+        interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2 ||
         maxInterpolationDelayMs < interpolationDelayMs) {
       throw new TypeError('invalid snapshot buffer configuration');
     }
@@ -957,15 +1020,19 @@ export class SnapshotBuffer {
       serverTimeMs: 0,
       ackInputSeq: 0,
       entity: {} as DecodedEntitySnapshot,
+      predictionState: null,
     };
   }
 
   push(snapshot: WorldSnapshot, receivedAtMs: number | null = null): boolean {
-    if (!snapshot || !Number.isSafeInteger(snapshot.tick) ||
-        !Number.isFinite(snapshot.serverTimeMs) || !Array.isArray(snapshot.entities)) {
+    if (!snapshot || !Number.isSafeInteger(snapshot.tick) || snapshot.tick < 0 ||
+        !Number.isFinite(snapshot.serverTimeMs) || snapshot.serverTimeMs < 0 ||
+        !Array.isArray(snapshot.entities)) {
       throw new TypeError('invalid snapshot');
     }
-    if (snapshot.tick <= this.latestTick) {
+    const latest = this.snapshots[this.snapshots.length - 1];
+    if (snapshot.tick <= this.latestTick ||
+        (latest && snapshot.serverTimeMs < latest.serverTimeMs)) {
       this.rejectedSnapshots++;
       return false;
     }
@@ -1010,6 +1077,7 @@ export class SnapshotBuffer {
     this.lastSampleServerTimeMs = null;
     this.lastRenderTimeMs = null;
     this.sampleEntities.clear();
+    this.sampledEntityIds.clear();
     this.olderById.clear();
     this.sampleShells.length = 0;
     this.olderShellById.clear();
@@ -1033,6 +1101,7 @@ export class SnapshotBuffer {
   }
 
   private sampleEntity(id: string): DecodedEntitySnapshot {
+    this.sampledEntityIds.add(id);
     let entity = this.sampleEntities.get(id);
     if (!entity) {
       entity = {} as DecodedEntitySnapshot;
@@ -1092,8 +1161,9 @@ export class SnapshotBuffer {
   private presentEntity(
     id: string,
     sampled: DecodedEntitySnapshot,
+    reset = false,
   ): DecodedEntitySnapshot {
-    return id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled);
+    return id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled, reset);
   }
 
   private extrapolateEntities(
@@ -1106,9 +1176,22 @@ export class SnapshotBuffer {
       renderTime - snapshot.serverTimeMs,
     ));
     if (extraMs > 0) this.extrapolatedSamples++;
+    const previous = this.snapshots[this.snapshots.indexOf(snapshot) - 1];
+    this.olderById.clear();
+    if (previous) {
+      for (const raw of previous.entities) this.olderById.set(raw.id, raw);
+    }
+    const durationS = previous ? (snapshot.serverTimeMs - previous.serverTimeMs) / 1000 : 0;
     for (const raw of snapshot.entities) {
       const sampled = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
-      entities.push(this.presentEntity(raw.id, sampled));
+      const previousRaw = this.olderById.get(raw.id);
+      if (extraMs > 0 && raw.id !== this.immediateEntityId &&
+          !(raw.flags & (SNAPSHOT_FLAGS.AIRBORNE | SNAPSHOT_FLAGS.DESTROYED))) {
+        sampled.vy = groundedExtrapolationVelocity(previousRaw, raw, durationS);
+        sampled.y = raw.y / POSITION_SCALE + sampled.vy * extraMs / 1000;
+      }
+      const reset = !previousRaw || !hasContinuousEntityPose(previousRaw, raw, durationS);
+      entities.push(this.presentEntity(raw.id, sampled, reset));
     }
   }
 
@@ -1124,11 +1207,13 @@ export class SnapshotBuffer {
     for (const entity of older.entities) this.olderById.set(entity.id, entity);
     for (const current of newer.entities) {
       const previous = this.olderById.get(current.id);
-      const sampled = previous
+      const continuous = !!previous &&
+        hasContinuousEntityPose(previous, current, durationMs / 1000);
+      const sampled = previous && continuous
         ? interpolateEntity(previous, current, t, durationMs / 1000,
           this.sampleEntity(current.id), this.decodeScratchA, this.decodeScratchB)
         : decodeEntitySnapshot(current, this.sampleEntity(current.id));
-      entities.push(this.presentEntity(current.id, sampled));
+      entities.push(this.presentEntity(current.id, sampled, !continuous));
     }
   }
 
@@ -1417,17 +1502,27 @@ export class SnapshotBuffer {
     authority.serverTimeMs = latest.serverTimeMs;
     authority.ackInputSeq = latest.ackInputSeq;
     decodeEntitySnapshot(raw, authority.entity);
+    // Mobility metadata must share the owned tank's immediate authority tick,
+    // never the older remote-entity presentation pair used by frame.meta.
+    authority.predictionState = runtimeRecord(latest.meta?.localPrediction);
     return authority;
   }
 
   sample(localServerTimeMs: number): SampledSnapshotFrame | null {
+    if (!Number.isFinite(localServerTimeMs)) throw new TypeError('sample time must be finite');
     if (!this.snapshots.length) return null;
     this.sampleCount++;
     this.advanceInterpolationDelay(localServerTimeMs);
     const renderTime = this.resolveRenderTime(localServerTimeMs);
     const [older, newer] = this.findSnapshotPair(renderTime);
     const frame = this.sampleFrame;
+    this.sampledEntityIds.clear();
     this.sampleBufferedEntities(older, newer, renderTime, frame.entities);
+    // Visibility loss ends presentation continuity. Do not let a hidden tank
+    // retain a rest anchor (or a render-object cache) indefinitely.
+    for (const id of this.sampleEntities.keys()) {
+      if (!this.sampledEntityIds.has(id)) this.sampleEntities.delete(id);
+    }
 
     // The locally controlled tank must not inherit the remote-entity jitter
     // delay. Render it from the newest authority sample with the same bounded

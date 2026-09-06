@@ -63,6 +63,7 @@ import type {
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
+import { capturePredictionAuthorityState } from '../net/predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
   SnapshotShellSource,
@@ -129,6 +130,7 @@ export interface AuthoritativePlayerInput extends AimIntentInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  fireIntentSeq?: number | null;
   aimLocked?: boolean;
   shellSlot: number;
   actionBits: number;
@@ -264,12 +266,16 @@ export interface AuthoritativeMatch {
   readonly resultReason: string | null;
   readonly phase: MatchPhase;
   readonly gameMode: GameModeId;
+  readonly pendingEventCount: number;
+  readonly shotFeedbackVersion: 1;
   readonly modeController: MatchModeController<AuthoritativeEntity>;
   onMatchReady(): void;
   onPeerJoin(event: { peerId: string }): void;
   onPeerLeave(event: { peerId: string }): void;
   step(options: AuthoritativeStepOptions): void;
   snapshot(options: AuthoritativeSnapshotOptions): WorldSnapshot;
+  eventsForViewer(viewerId: string): AuthoritativeEvent[];
+  afterEventBroadcast(): void;
   afterSnapshotBroadcast(): void;
 }
 
@@ -821,7 +827,8 @@ export function createAuthoritativeMatch({
       entity.input.steer = 0;
       entity.input.brake = true;
       entity.input.fire = false;
-      entity.input.aimLocked = false;
+      // No driver must also stop sight-driven hull traverse/hydraulic lay.
+      entity.input.aimLocked = true;
       entity.input.actionBits = 0;
       return;
     }
@@ -829,6 +836,7 @@ export function createAuthoritativeMatch({
     entity.input.steer = input.steer;
     entity.input.brake = input.brake;
     entity.input.fire = input.fire;
+    entity.input.fireIntentSeq = Number.isSafeInteger(input.fireIntentSeq) ? input.fireIntentSeq : null;
     entity.input.aimLocked = !!input.aimLocked;
     entity.input.actionBits = input.actionBits | 0;
     const shellSlot = Math.max(0, Math.min(
@@ -1296,10 +1304,13 @@ export function createAuthoritativeMatch({
     shellSpec: AuthoritativeSpec['gun']['shells'][number],
     muzzle: Vector3,
     direction: Vector3,
+    firedSlot: number,
   ): void {
     emit('shell_fired', {
       shellId: shell.id,
       shooterId: entity.id,
+      fireIntentSeq: entity.input.fireIntentSeq ?? null,
+      shellSlot: firedSlot,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
       weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
@@ -1331,7 +1342,7 @@ export function createAuthoritativeMatch({
     fireRecoil(entity.state, entity.spec, shellSpec);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     notifyEnemyBotsOfPlayerShot(entity);
-    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir);
+    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
   }
 
   function notifyShellHitAI(
@@ -1767,7 +1778,27 @@ export function createAuthoritativeMatch({
     determineResult(modeController.step(dt, timeS));
   }
 
+  function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
+    const entity = entityById.get(entityId);
+    return Boolean(entity && entity.modeActive !== false &&
+      (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
+        spotting.isSpotted(entity.id, viewer.team, viewer)));
+  }
+
+  function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
+    if (!viewer) return true;
+    if (!value || typeof value !== 'object') return false;
+    const event = value as Record<string, RuntimeValue>;
+    const eventType = typeof event.type === 'string' ? event.type : '';
+    if (eventType === 'world_prop_destroyed' || eventType.startsWith('mode_')) return true;
+    for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
+      if (id && canObserveEntity(viewer, String(id))) return true;
+    }
+    return eventType === 'match_ended';
+  }
+
   const simulation: AuthoritativeMatch = {
+    shotFeedbackVersion: 1,
     entities,
     entityById,
     requiredPeerIds: entities.filter((entity) => !entity.bot).map((entity) => entity.id),
@@ -1800,7 +1831,8 @@ export function createAuthoritativeMatch({
         entity.input.steer = 0;
         entity.input.brake = true;
         entity.input.fire = false;
-        entity.input.aimLocked = false;
+        entity.input.aimLocked = true;
+        entity.input.actionBits = 0;
       }
     },
 
@@ -1814,6 +1846,15 @@ export function createAuthoritativeMatch({
       stepPlaying(dt, inputs);
     },
 
+    get pendingEventCount(): number { return pendingEvents.length; },
+
+    eventsForViewer(viewerId: string): AuthoritativeEvent[] {
+      const viewer = entityById.get(viewerId);
+      return pendingEvents.filter((event) => canObserveEvent(viewer, event));
+    },
+
+    afterEventBroadcast(): void { pendingEvents.length = 0; },
+
     snapshot({
       tick,
       serverTimeMs,
@@ -1822,30 +1863,11 @@ export function createAuthoritativeMatch({
     }: AuthoritativeSnapshotOptions): WorldSnapshot {
       const viewer = entityById.get(viewerId);
       const canObserve = (_id: string, source: SnapshotEntitySource): boolean => {
-        const entity = entityById.get(String(source.id));
-        return Boolean(entity && entity.modeActive !== false &&
-          (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
-            spotting.isSpotted(entity.id, viewer.team, viewer)));
+        return canObserveEntity(viewer, String(source.id));
       };
       const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean => {
         const shooter = entityById.get(String(shell.shooterId));
         return !shooter || canObserve(viewerId, shooter);
-      };
-      const canObserveEvent = (_id: string, value: RuntimeValue): boolean => {
-        if (!viewer) return true;
-        if (!value || typeof value !== 'object') return false;
-        const event = value as Record<string, RuntimeValue>;
-        const eventType = typeof event.type === 'string' ? event.type : '';
-        if (eventType === 'world_prop_destroyed' || eventType.startsWith('mode_')) return true;
-        for (const id of [
-          event.id, event.shooterId, event.targetId, event.killerId,
-          event.aId, event.bId,
-        ]) {
-          if (!id) continue;
-          const entity = entityById.get(String(id));
-          if (entity && canObserve(viewerId, entity)) return true;
-        }
-        return eventType === 'match_ended';
       };
       return captureWorldSnapshot({
         tick,
@@ -1857,7 +1879,7 @@ export function createAuthoritativeMatch({
         ackInputSeq,
         canObserve,
         canObserveShell,
-        canObserveEvent,
+        canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: {
           phase,
           countdownMs: Math.round(countdownRemainingS * 1000),
@@ -1866,6 +1888,7 @@ export function createAuthoritativeMatch({
           resultReason,
           destructibleRevision,
           destroyedObstacleIndices: destroyedObstacleIndices.slice(),
+          ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
           ...(normalizedGameMode === 'standard' ? {} : {
             gameMode: normalizedGameMode,
             modeState: modeController.serialize(viewerId),

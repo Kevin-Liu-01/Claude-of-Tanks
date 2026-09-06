@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
+import { normalizePlayMode } from '../net/playMode.ts';
 import type {
   PlayMenuInvite,
   PlayMenuOptions,
@@ -38,7 +39,6 @@ interface PlaySurfaceRuntimeOptions {
   preloadCommon: Array<() => MaybePromise<RuntimeValue>>;
   preloadNetworkPresentation(): MaybePromise<RuntimeValue>;
   preloadPrivateMatch(): MaybePromise<RuntimeValue>;
-  preloadDedicatedMatch(): MaybePromise<RuntimeValue>;
   reportError?(scope: string, error: RuntimeValue): void;
 }
 
@@ -78,12 +78,11 @@ export function createPlaySurfaceRuntime({
   preloadCommon,
   preloadNetworkPresentation,
   preloadPrivateMatch,
-  preloadDedicatedMatch,
   reportError = (scope, error) => console.error(`[${scope}]`, error),
 }: PlaySurfaceRuntimeOptions): PlaySurfaceRuntime {
   const required = [loadMenuModule, createMenuOptions, getSelectedSpecId,
     getSelectedMapId, startSolo, showActiveRoom, preloadNetworkPresentation,
-    preloadPrivateMatch, preloadDedicatedMatch, reportError];
+    preloadPrivateMatch, reportError];
   if (required.some((entry) => typeof entry !== 'function')
       || !Array.isArray(preloadCommon)
       || preloadCommon.some((entry) => typeof entry !== 'function')) {
@@ -130,15 +129,14 @@ export function createPlaySurfaceRuntime({
     return request;
   };
 
-  const preload = (mode: PlayMode = 'solo'): void => {
+  const preload = (requestedMode: PlayMode = 'solo'): void => {
+    const mode = normalizePlayMode(requestedMode);
     for (const task of preloadCommon) observe(task, 'play preload failed', reportError);
     if (mode !== 'solo') {
       observe(preloadNetworkPresentation, 'network presentation preload failed', reportError);
     }
     if (mode === 'private' || mode === 'lan') {
       observe(preloadPrivateMatch, 'private match preload failed', reportError);
-    } else if (mode === 'ranked') {
-      observe(preloadDedicatedMatch, 'dedicated match preload failed', reportError);
     }
     observe(async () => {
       const module = await loadMenuModule();
@@ -155,7 +153,7 @@ export function createPlaySurfaceRuntime({
       if (await showActiveRoom()) return;
       if (menuPromise && (await menuPromise).showCurrentRoom()) return;
 
-      const mode = request.mode || 'solo';
+      const mode = normalizePlayMode(request.mode);
       if (mode === 'solo') {
         pendingSoloStart = null;
         if (typeof request.startSolo === 'function') runSolo(request.startSolo);

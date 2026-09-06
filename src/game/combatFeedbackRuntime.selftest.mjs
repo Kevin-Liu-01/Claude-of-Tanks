@@ -70,6 +70,25 @@ assert.deepEqual(calls.slice(-3).map((entry) => entry[0]), ['shell', 'trauma', '
 assert.equal(calls.find((entry) => entry[0] === 'shell')[1], 'M829A4',
   'exact shell name wins over an earlier type fallback');
 
+const predicted = { isPlayer: true, shooterId: 'player', shellName: 'M829A4', shellType: 'APFSDS' };
+let recoilCount = calls.filter(([kind]) => kind === 'recoil').length;
+bus.emit('weapon:predicted', predicted);
+assert.equal(calls.filter(([kind]) => kind === 'recoil').length, ++recoilCount,
+  'admitted local intent delivers camera recoil immediately');
+bus.emit('shell:fired', { ...predicted, shellId: 91, feedbackPredicted: true });
+assert.equal(calls.filter(([kind]) => kind === 'recoil').length, recoilCount,
+  'exact authority echo does not play camera recoil twice');
+bus.emit('weapon:predicted', { ...predicted, shooterId: 'target' });
+bus.emit('weapon:predicted', { ...predicted, isPlayer: false });
+networkMatch = false;
+bus.emit('weapon:predicted', predicted);
+networkMatch = true;
+assert.equal(calls.filter(([kind]) => kind === 'recoil').length, recoilCount,
+  'remote or solo intents cannot enter the network camera feedback path');
+bus.emit('shell:fired', { ...predicted, shellId: 92 });
+assert.equal(calls.filter(([kind]) => kind === 'recoil').length, ++recoilCount,
+  'unpredicted confirmed follow-up still plays normally');
+
 fx = { propCrush: (position, direction, height) => {
   calls.push(['crush', position.toArray(), direction.toArray(), height]);
 } };
@@ -88,6 +107,8 @@ runtime.dispose();
 assert.equal(destroyedSink, null, 'disposal clears the global destruction sink');
 const countAfterDispose = calls.length;
 bus.emit('phase:change', { phase: 'battle' });
+bus.emit('weapon:predicted', predicted);
+bus.emit('shell:fired', predicted);
 assert.equal(calls.length, countAfterDispose, 'disposal removes every bus listener');
 
 console.log('combatFeedbackRuntime.selftest: effects, recoil, damage, and lifecycle passed');
