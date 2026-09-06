@@ -58,6 +58,8 @@ interface ExteriorEnvelope {
   wallH: number;
   id: string;
   profile: string;
+  bathhouseStyle?: 'timber';
+  timberBathhouseEntry?: THREE.BufferGeometry;
 }
 
 interface ExteriorOptions {
@@ -67,6 +69,9 @@ interface ExteriorOptions {
   wallH?: number;
   profile?: string;
   variant?: number;
+  bathhouseStyle?: 'timber';
+  /** Existing authored vestibule: the timber variant attaches to its real bounds. */
+  timberBathhouseEntry?: THREE.BufferGeometry;
 }
 
 interface ExteriorAuthor {
@@ -124,7 +129,7 @@ function bucket(
 }
 
 function detailAuthor(parts: GeometryBuckets, {
-  w, d, wallH, id, profile,
+  w, d, wallH, id, profile, bathhouseStyle, timberBathhouseEntry,
 }: ExteriorEnvelope): ExteriorAuthor {
   const supports = new Map([
     ['wall', new THREE.Box3(
@@ -136,6 +141,7 @@ function detailAuthor(parts: GeometryBuckets, {
       new THREE.Vector3(w, 0.08, d),
     )],
   ]);
+  if (timberBathhouseEntry) supports.set('bathhouse-vestibule', boundsOf(timberBathhouseEntry));
   const records: ExteriorSupportRecord[] = [];
 
   const add = (
@@ -160,7 +166,11 @@ function detailAuthor(parts: GeometryBuckets, {
       contactAxes: joint.contactAxes, minContactSpan: joint.minContactSpan,
     };
     geo.userData.structureSupport = record;
-    bucket(parts, preferredBucket).push(geo);
+    // Keep the stone foundation/plinth and service cap. Only this explicit
+    // bathhouse variant reuses its existing civic frame pieces as timber.
+    const timberFrame = bathhouseStyle === 'timber' && preferredBucket === 'stone'
+      && !partId.startsWith('plinth-') && partId !== 'roof-service-base' && partId !== 'entry-threshold';
+    bucket(parts, timberFrame ? 'wood' : preferredBucket).push(geo);
     supports.set(partId, bounds);
     records.push(record);
     return geo;
@@ -473,6 +483,26 @@ function addUrbanSignature(
     'balcony-post-0');
 }
 
+function addTimberBathhouseEntry(author: ExteriorAuthor, vestibule: THREE.BufferGeometry): void {
+  const bounds = boundsOf(vestibule), x = (bounds.min.x + bounds.max.x) * 0.5;
+  const z = bounds.max.z, headerY = 2.82;
+  // Exactly the five existing balcony boxes, now a usable split hanging
+  // entrance. Its cloth clears the inherited door face by 4 mm, and remains
+  // entirely above the 1.8 m tank-contact band. No cloth simulation/material.
+  for (const side of [-1, 1]) {
+    author.add(`bathhouse-entry-bracket-${side}`, 'wood',
+      box(0.16, 0.20, 0.18).translate(x + side * 0.91, headerY, z - 0.01),
+      'bathhouse-vestibule');
+  }
+  author.add('bathhouse-entry-header', 'wood',
+    box(2.1, 0.16, 0.09).translate(x, headerY, z + 0.045), 'bathhouse-entry-bracket--1');
+  for (const side of [-1, 1]) {
+    author.add(`bathhouse-entry-panel-${side}`, 'curtain',
+      box(0.69, 0.78, 0.016).translate(x + side * 0.405, 2.355, z + 0.082),
+      'bathhouse-entry-header');
+  }
+}
+
 function addIndustrialSignature(
   author: ExteriorAuthor,
   w: number,
@@ -562,6 +592,9 @@ export function addConnectedExterior(
   options: ExteriorOptions = {},
 ): ExteriorReceipt {
   const { variant, ...envelope } = validateExteriorEnvelope(options);
+  if (envelope.timberBathhouseEntry && (!parts.wood || !parts.curtain)) {
+    throw new TypeError('Timber bathhouse requires its existing wood and curtain material buckets');
+  }
   const author = detailAuthor(parts, envelope);
   addPrimaryExterior(author, envelope, variant);
   addSecondaryExterior(author, envelope, variant);
@@ -571,18 +604,23 @@ export function addConnectedExterior(
 function validateExteriorEnvelope(
   options: ExteriorOptions,
 ): ExteriorEnvelope & { variant: number } {
-  const { id = 'building', w, d, wallH, profile = 'rural', variant = 0 } = options;
+  const { id = 'building', w, d, wallH, profile = 'rural', variant = 0,
+    bathhouseStyle, timberBathhouseEntry } = options;
   if (!(typeof w === 'number' && w > 1
       && typeof d === 'number' && d > 1
       && typeof wallH === 'number' && wallH > 1)) {
     throw new TypeError(`${id}: invalid exterior envelope`);
   }
-  return { id, w, d, wallH, profile, variant };
+  if (timberBathhouseEntry && (id !== 'bathhouse' || profile !== 'civic' || bathhouseStyle !== 'timber')) {
+    throw new TypeError('Timber bathhouse frontage requires its explicit timber civic bathhouse owner');
+  }
+  if (bathhouseStyle && id !== 'bathhouse') throw new TypeError('Timber framing requires its explicit bathhouse owner');
+  return { id, w, d, wallH, profile, variant, bathhouseStyle, timberBathhouseEntry };
 }
 
 function addPrimaryExterior(
   author: ExteriorAuthor,
-  { w, d, wallH, profile }: ExteriorEnvelope,
+  { w, d, wallH, profile, timberBathhouseEntry }: ExteriorEnvelope,
   variant: number,
 ): void {
   const masonry = profile !== 'timber' && profile !== 'canvas';
@@ -590,7 +628,8 @@ function addPrimaryExterior(
   addFacadeBayRhythm(author, w, d, wallH, profile, variant);
   if (profile !== 'canvas' && profile !== 'open') {
     addEntryAssembly(author, w, d, wallH, profile, variant);
-    addProfileSignature(author, w, d, wallH, profile, variant);
+    if (timberBathhouseEntry) addTimberBathhouseEntry(author, timberBathhouseEntry);
+    else addProfileSignature(author, w, d, wallH, profile, variant);
     addRoofService(author, w, d, wallH, profile, variant);
   }
 }
@@ -672,14 +711,15 @@ export function addCatalogExterior(
     id,
     info,
     variant = 0,
-  }: { id?: string; info?: BuildingInfo; variant?: number } = {},
+    bathhouseStyle,
+  }: { id?: string; info?: BuildingInfo; variant?: number; bathhouseStyle?: 'timber' } = {},
 ): ExteriorReceipt | null {
   if (parts[EXTERIOR_RECEIPTS]?.length) return parts[EXTERIOR_RECEIPTS][0];
   const profile = id ? CATALOG_PROFILES[id] : undefined;
   if (!profile) return null;
   const envelope = inferCenteredWallEnvelope(parts, info || {});
   if (!envelope) return null;
-  return addConnectedExterior(parts, { id, profile, variant, ...envelope });
+  return addConnectedExterior(parts, { id, profile, variant, ...envelope, bathhouseStyle });
 }
 
 export function exteriorSupportEpsilon(): number { return SUPPORT_EPSILON; }

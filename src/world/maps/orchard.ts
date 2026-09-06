@@ -55,7 +55,7 @@ export default {
     ],
   },
   props: {
-    sourcedPalette: 'autumn',
+    sourcedPalette: 'orchard', bathhouseStyle: 'timber',
     plan: ['bathhouse', 'farmhouse', 'marketRow', 'rangerlodge', 'granary', 'woodshed', 'cottage', 'barn', 'market', 'farmhouse', 'tavern', 'granary', 'woodshed', 'ruin', 'barn', 'cottage', 'farmhouse', 'marketRow'],
     destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'longhouse'],
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,

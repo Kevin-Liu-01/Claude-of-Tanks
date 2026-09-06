@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
 
 const contextOptions = [];
 const loadedImageUrls = [];
+const loadedImages = new Map();
+
+// Exercise actual private cache/applySet paths without adding runtime test APIs.
+const sourcedUrl = new URL('./sourcedTextures.ts', import.meta.url).href;
+const hooks = registerHooks({ load(url, context, nextLoad) {
+  const result = nextLoad(url, context);
+  return url === sourcedUrl ? { ...result, source: `${result.source}\nexport { applySet, _compositeCache };\n` } : result;
+} });
 
 class TestCanvas {
   constructor() {
@@ -53,6 +62,7 @@ class TestImage {
 
   set src(value) {
     loadedImageUrls.push(value);
+    loadedImages.set(value, this);
     queueMicrotask(() => this.onload());
   }
 }
@@ -61,7 +71,9 @@ globalThis.Image = TestImage;
 const {
   applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
   sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
+  applySet, _compositeCache,
 } = await import('./sourcedTextures.ts');
+hooks.deregister();
 const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
@@ -156,7 +168,7 @@ const newMapPalettes = {
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
   whiteout: ['winter', 'winter'],
-  orchard: ['verdant', 'autumn'],
+  orchard: ['verdant', 'orchard'],
   longleaf: ['verdant', 'frontier'],
   mangrove: ['delta', 'delta'],
   saltwind: ['coastal', 'coastal'],
@@ -227,6 +239,28 @@ assert.equal(whiteoutRoof.albedo.image, winterRoof.albedo.image,
   'Whiteout roof tint inherits the existing desaturated winter frost composite');
 assert.equal(whiteoutStone.albedo.disposeCount, 0,
   'building palette inheritance does not add a sourced bucket or enlarge a procedural texture');
+const orchardRoof = { ...freshLayer(), surface: texture() };
+const autumnRoof = { ...freshLayer(), surface: texture() };
+await applySourcedBuildings({ roof: autumnRoof }, 'autumn');
+await applySourcedBuildings({ roof: orchardRoof }, 'orchard', getMapConfig('orchard').props);
+assert.deepEqual([...orchardRoof.albedo.image.pixels], [
+  75, 78, 82, 255, 30, 29, 28, 255,
+  89, 83, 80, 255, 18, 19, 19, 255,
+], 'actual CPU compositor turns the controlled orange tile sample into restrained charcoal, without clipping');
+assert.equal(orchardRoof.normal.image, autumnRoof.normal.image,
+  'Orchard reuses the exact existing roof normal source rather than adding a sampler');
+assert.deepEqual(orchardRoof.surface.image.pixels, autumnRoof.surface.image.pixels,
+  'roof pigment does not modify the existing roughness/AO surface');
+assert.notEqual(orchardRoof.albedo.image, autumnRoof.albedo.image,
+  'Orchard still owns its distinct charcoal pigment canvas');
+assert.equal(orchardRoof.surface.image, autumnRoof.surface.image,
+  'Orchard and Autumn share the same immutable AO/roughness canvas, not duplicate bytes');
+for (const name of ['albedo', 'normal', 'surface']) {
+  assert.equal(orchardRoof[name].image.width, autumnRoof[name].image.width);
+  assert.equal(orchardRoof[name].image.height, autumnRoof[name].image.height);
+}
+for (const bucket of ['plaster', 'wood']) assert.deepEqual(sourcedBuildingTintPolicy('orchard', bucket),
+  sourcedBuildingTintPolicy('autumn', bucket), 'the Orchard-only change does not recolor its other building surfaces');
 for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['copper_mesa', 'desert']]) {
   const vegetation = getMapConfig(mapId).vegetation;
   const parentVegetation = getMapConfig(parent).vegetation;
@@ -235,5 +269,71 @@ for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['co
   assert.equal(vegetation.tuftTone, parentVegetation.tuftTone,
     `${mapId}: grass instances inherit the authored biome tuft tone`);
 }
+
+const building = () => ({ ...freshLayer(), surface: texture() });
+const backingBytes = canvases => [...new Set(canvases)].reduce((sum, c) => sum + c.pixels.byteLength, 0);
+const cacheBytes = () => backingBytes([..._compositeCache.values()].flatMap(entry =>
+  [entry.canvas, entry.surface].filter(Boolean)));
+_compositeCache.clear();
+const paletteRoofs = [];
+for (const mapId of ['autumn', 'orchard', 'winter', 'railyard', 'blackglass', 'skybridge',
+  'fjord', 'alpine', 'caldera', 'foundry']) {
+  const roof = building();
+  await applySourcedBuildings({ roof }, mapId);
+  paletteRoofs.push(roof);
+  assert.ok(_compositeCache.size <= 8, 'sharing never expands the existing eight-entry LRU');
+  const priorDuplicateBytes = [..._compositeCache.values()].reduce((sum, entry) =>
+    sum + entry.canvas.pixels.byteLength + (entry.surface?.pixels.byteLength ?? 0), 0);
+  assert.ok(cacheBytes() <= priorDuplicateBytes,
+    `${mapId}: cached unique pixel bytes cannot exceed prior per-composite surface duplication`);
+}
+assert.equal(_compositeCache.size, 8, 'ten distinct pigments still evict down to exactly eight composites');
+assert.equal(new Set(paletteRoofs.map(roof => roof.surface.image)).size, 1,
+  'the shared surface survives eviction only through remaining composite/live texture owners');
+assert.equal(cacheBytes(), 9 * 2 * 2 * 4,
+  'eight cached albedos plus one shared surface use 144 bytes rather than sixteen canvases / 256 bytes');
+assert.equal(backingBytes(paletteRoofs.flatMap(roof => [roof.albedo.image, roof.surface.image])),
+  11 * 2 * 2 * 4, 'ten live palette pairs retain eleven canvas backings, not twenty');
+const stableSurface = paletteRoofs[0].surface.image;
+const stablePixels = stableSurface.pixels.slice();
+const rougher = building();
+await applySet('roof', rougher, { roughMul: 1.5, tint: [0.9, 0.9, 0.9] });
+assert.notEqual(rougher.surface.image, stableSurface, 'roughness multipliers never alias');
+assert.notDeepEqual(rougher.surface.image.pixels, stablePixels, 'roughness separation changes actual green-channel bytes');
+const rougherTint = building();
+await applySet('roof', rougherTint, { roughMul: 1.5, desat: 0.4, lift: 0.1 });
+assert.equal(rougherTint.surface.image, rougher.surface.image,
+  'tint, desaturation and lift remain albedo-only identity dimensions');
+const plasterSurface = building();
+await applySet('plaster', plasterSurface, { roughMul: 1.5 });
+assert.notEqual(plasterSurface.surface.image, rougher.surface.image,
+  'different source sets never share even when controlled fixture pixels match');
+
+// Change the actual cached image fixtures to a larger source, as a tier/size
+// transition does; keep every RGBA pixel valid without involving a GPU.
+for (const [url, fixture] of loadedImages) {
+  if (!url.includes('RoofingTiles012A')) continue;
+  const previous = fixture.pixels;
+  fixture.width = fixture.height = 4;
+  fixture.pixels = Uint8ClampedArray.from({ length: 4 * 4 * 4 }, (_, i) => previous[i % previous.length]);
+}
+const larger = building();
+await applySet('roof', larger, { roughMul: 1.5 });
+assert.equal(larger.surface.image.width, 4);
+assert.equal(larger.surface.image.pixels.byteLength, 64);
+assert.notEqual(larger.surface.image, rougher.surface.image, 'different output sizes never alias');
+assert.deepEqual(stableSurface.pixels, stablePixels, 'later palettes, roughness and size changes never mutate shared pixels');
+
+_compositeCache.clear();
+const packedLayer = freshLayer();
+await applySet('roof', packedLayer, { roughInAlpha: true, roughMul: 1.5 });
+assert.equal([..._compositeCache.values()][0].surface, null,
+  'terrain packed-alpha composition still creates no separate surface');
+const separateLayer = building();
+await applySet('roof', separateLayer, { roughMul: 1.5 });
+assert.notEqual(separateLayer.albedo.image, packedLayer.albedo.image,
+  'packed terrain and opaque building albedos retain separate cache identities');
+assert.ok(packedLayer.albedo.image.pixels.some((value, i) => i % 4 === 3 && value < 255));
+assert.ok(separateLayer.albedo.image.pixels.every((value, i) => i % 4 !== 3 || value === 255));
 
 console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

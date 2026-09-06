@@ -56,6 +56,8 @@ interface TextureLayer {
 }
 
 interface CompositeCacheEntry {
+  setKey: keyof typeof SETS;
+  roughMul: number;
   size: number;
   canvas: HTMLCanvasElement;
   surface: HTMLCanvasElement | null;
@@ -405,6 +407,22 @@ export function composeSurface(
   return c;
 }
 
+// Pigment variants share immutable AO/roughness pixels. Reuse only surfaces
+// still owned by the bounded composite LRU; there is no second retention cache.
+function cachedSurface(
+  setKey: keyof typeof SETS,
+  ao: HTMLImageElement | null,
+  rough: HTMLImageElement | null,
+  size: number,
+  roughMul: number,
+): HTMLCanvasElement {
+  for (const entry of _compositeCache.values()) {
+    if (entry.surface && entry.setKey === setKey && entry.size === size
+        && entry.roughMul === roughMul) return entry.surface;
+  }
+  return composeSurface(ao, rough, size, roughMul);
+}
+
 function normalCanvas(img: HTMLImageElement): HTMLCanvasElement {
   const s = Math.min(img.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
@@ -451,10 +469,11 @@ async function applySet(
   const key = compositeKey(setKey, cacheOpts);
   let composite = _compositeCache.get(key);
   if (!composite || composite.size !== size) {
+    const roughMul = opts.roughMul ?? 1;
     composite = {
-      size,
+      setKey, roughMul, size,
       canvas: composeAlbedo(color, separateSurface ? null : ao, rough, opts),
-      surface: separateSurface ? composeSurface(ao, rough, size, opts.roughMul ?? 1) : null,
+      surface: separateSurface ? cachedSurface(setKey, ao, rough, size, roughMul) : null,
     };
   }
   touchLru(_compositeCache, key, composite, COMPOSITE_CACHE_MAX);
@@ -551,6 +570,12 @@ const BUILDING_TINTS = {
   // maps r1 (ADDITIVE):
   coastal: { plaster: [1.04, 1.02, 0.96], wood: { tint: [0.82, 0.83, 0.84], desat: 0.30 } }, // whitewash + salt-silvered timber
   autumn:  { plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74] },   // warm farm render + aged oak
+  orchard: {
+    plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74],
+    // Existing tile photograph, not an added sampler: restrained charcoal
+    // roofing separates the cultivated valley from the red-roof farm maps.
+    roof: { tint: [0.48, 0.53, 0.57], desat: 0.90, lift: 0.015 },
+  },
   steppe:  { plaster: [1.06, 1.0, 0.86], wood: [1.0, 0.92, 0.78] },     // sun-baked khutor lime wash
   railyard: {
     plaster: { tint: [0.84, 0.83, 0.80], desat: 0.25 },                 // soot-dulled render

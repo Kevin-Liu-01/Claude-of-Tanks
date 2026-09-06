@@ -33,7 +33,7 @@ import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
@@ -214,6 +214,7 @@ type WallRun = readonly [number, number, number, number, number?];
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  bathhouseStyle?: 'timber';
   loggingYard?: LoggingYardConfig;
   reservoirWaterworks?: ReservoirWaterworksConfig;
   plan: string[];
@@ -2874,6 +2875,7 @@ ${snowCap ? `
     // Map-quality structure pass: eight new heavyweight landmarks. They use
     // the same bucket merge path, so detail rises without one mesh per house.
     ...STRUCTURE_BUILDERS,
+    bathhouse: P.bathhouseStyle === 'timber' ? makeTimberBathhouse : STRUCTURE_BUILDERS.bathhouse,
   };
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
@@ -2912,7 +2914,8 @@ ${snowCap ? `
     };
     const structureId = P.plan[bi] || 'cottage';
     const info = builders[bi](rng, tmp, pickWall(rng));
-    addCatalogExterior(tmp, { id: structureId, info, variant: bi });
+    addCatalogExterior(tmp, { id: structureId, info, variant: bi,
+      bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     const fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);

@@ -439,29 +439,30 @@ function addWindow(
   face: 'x' | 'z' = 'z',
   wide = 0.9,
   tall = 1.15,
+  frameBucket: 'stone' | 'wood' = 'stone',
 ): void {
   const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
   const lit = Math.abs(Math.round(x * 17 + y * 11 + z * 7)) % 5 === 0;
   out[lit ? 'curtain' : 'glass'].push(pane.translate(x, y, z));
-  out.stone.push(sill.translate(x, y - tall / 2 - 0.08, z));
+  out[frameBucket].push(sill.translate(x, y - tall / 2 - 0.08, z));
   // Full recessed surround: the former pane+sill treatment read as a flat
   // dark sticker at street distance. Jambs, lintel and divided glazing reuse
   // the already-required stone bucket, so every facade gains real silhouette
   // depth without activating another material or texture family.
   const jambH = tall + 0.22;
   if (face === 'z') {
-    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x - wide / 2 - 0.07, y, z + 0.01)));
-    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x + wide / 2 + 0.07, y, z + 0.01)));
-    out.stone.push(detailUv(box(wide + 0.32, 0.12, 0.15).translate(x, y + tall / 2 + 0.08, z + 0.01)));
-    out.stone.push(detailUv(box(0.055, tall - 0.08, 0.09).translate(x, y, z + 0.055)));
-    out.stone.push(detailUv(box(wide - 0.06, 0.055, 0.09).translate(x, y, z + 0.055)));
+    out[frameBucket].push(detailUv(box(0.11, jambH, 0.13).translate(x - wide / 2 - 0.07, y, z + 0.01)));
+    out[frameBucket].push(detailUv(box(0.11, jambH, 0.13).translate(x + wide / 2 + 0.07, y, z + 0.01)));
+    out[frameBucket].push(detailUv(box(wide + 0.32, 0.12, 0.15).translate(x, y + tall / 2 + 0.08, z + 0.01)));
+    out[frameBucket].push(detailUv(box(0.055, tall - 0.08, 0.09).translate(x, y, z + 0.055)));
+    out[frameBucket].push(detailUv(box(wide - 0.06, 0.055, 0.09).translate(x, y, z + 0.055)));
   } else {
-    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z - wide / 2 - 0.07)));
-    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z + wide / 2 + 0.07)));
-    out.stone.push(detailUv(box(0.15, 0.12, wide + 0.32).translate(x + 0.01, y + tall / 2 + 0.08, z)));
-    out.stone.push(detailUv(box(0.09, tall - 0.08, 0.055).translate(x + 0.055, y, z)));
-    out.stone.push(detailUv(box(0.09, 0.055, wide - 0.06).translate(x + 0.055, y, z)));
+    out[frameBucket].push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z - wide / 2 - 0.07)));
+    out[frameBucket].push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z + wide / 2 + 0.07)));
+    out[frameBucket].push(detailUv(box(0.15, 0.12, wide + 0.32).translate(x + 0.01, y + tall / 2 + 0.08, z)));
+    out[frameBucket].push(detailUv(box(0.09, tall - 0.08, 0.055).translate(x + 0.055, y, z)));
+    out[frameBucket].push(detailUv(box(0.09, 0.055, wide - 0.06).translate(x + 0.055, y, z)));
   }
 }
 
@@ -555,23 +556,100 @@ export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimens
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeBathhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
-  const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
-  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
-  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
-  out.roof.push(slab(w + 0.2, 0.15, d + 0.2).translate(0, wallH + 0.08, 0));
-  // Three low domes, lantern vents and an arched entry vestibule.
-  for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
-    const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
-    dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
-    out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+function bathhouseRoofPanel(
+  width: number, depth: number, heightAt: (x: number) => number,
+): THREE.BufferGeometry {
+  const geometry = new THREE.BoxGeometry(width, 0.14, depth, 2, 1, 1);
+  const position = geometry.attributes.position, normal = geometry.attributes.normal, uv = geometry.attributes.uv;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), z = position.getZ(i), y = position.getY(i) + heightAt(x);
+    position.setY(i, y);
+    // Project actual deformed faces at the existing tiled-roof density.
+    if (Math.abs(normal.getY(i)) > 0.5) uv.setXY(i, x * 0.45, z * 0.45);
+    else if (Math.abs(normal.getX(i)) > 0.5) uv.setXY(i, z * 0.45, y * 0.45);
+    else uv.setXY(i, x * 0.45, y * 0.45);
   }
-  out[wallBucket].push(box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function bathhouseTimberGable(w: number, span: number, wallH: number, z: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2, 0);
+  shape.lineTo(-span / 2, 0.855);
+  shape.lineTo(0, 1.625);
+  shape.lineTo(span / 2, 0.855);
+  shape.lineTo(w / 2, 0);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false });
+  geometry.translate(0, wallH, z - 0.07);
+  geometry.name = 'orchard-bathhouse-timber-gable';
+  return scaleUV(geometry, 0.5, 0.5);
+}
+
+function addTimberBathhouseRoof(out: StructureParts, w: number, d: number, wallH: number): void {
+  const span = w / 2 + 0.1;
+  const ridge = slab(0.28, 0.16, d + 0.2).translate(0, wallH + 1.705, 0);
+  ridge.name = 'orchard-bathhouse-ridge';
+  out.roof.push(ridge);
+  for (const side of [1, -1]) {
+    const roof = bathhouseRoofPanel(span, d + 0.2, x => {
+      const t = (x + span / 2) / span;
+      return wallH + 0.025 + 1.6 * (1 - t) + 0.12 * t * (1 - t);
+    });
+    roof.translate(span / 2, 0, 0);
+    if (side < 0) roof.rotateY(Math.PI);
+    roof.name = 'orchard-bathhouse-swept-roof';
+    out.roof.push(roof);
+  }
+  const canopy = bathhouseRoofPanel(4.2, 2.12, x => 3.78 + 0.58 * (1 - Math.abs(x) / 2.1));
+  canopy.translate(0, 0, d / 2 + 0.86);
+  canopy.name = 'orchard-bathhouse-entry-roof';
+  out.roof.push(canopy);
+  out.wood.push(bathhouseTimberGable(w, span, wallH, d / 2),
+    bathhouseTimberGable(w, span, wallH, -d / 2));
+  // The existing grounded vestibule carries two short exposed canopy braces.
+  // Keep them above the tank-contact band; its original footprint is intact.
+  const braces = [-1, 1].map(side => box(0.22, 1.14, 0.18).translate(side * 1.82, 3.27, d / 2 + 1.87));
+  const entry = mergeGeometries(braces, false);
+  if (!entry) throw new Error('Orchard bathhouse entry could not be merged');
+  for (const brace of braces) brace.dispose();
+  entry.name = 'orchard-bathhouse-entry-braces';
+  out.wood.push(entry);
+}
+
+export function makeBathhouse(
+  rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
+): StructureDimensions {
+  const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
+  const walls = style === 'timber' ? 'plaster' : wallBucket;
+  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
+  out[walls].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  if (style === 'timber') addTimberBathhouseRoof(out, w, d, wallH);
+  else {
+    out.roof.push(slab(w + 0.2, 0.15, d + 0.2).translate(0, wallH + 0.08, 0));
+    // Three low domes, lantern vents and an arched entry vestibule.
+    for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
+      const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
+      dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
+      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+    }
+  }
+  const vestibule = box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9);
+  out[walls].push(vestibule);
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
-  for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25);
-  addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3 });
+  for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25,
+    style === 'timber' ? 'wood' : 'stone');
+  addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3,
+    bathhouseStyle: style === 'timber' ? 'timber' : undefined,
+    timberBathhouseEntry: style === 'timber' ? vestibule : undefined });
   finish(buckets, out);
   return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
+}
+
+/** Explicit map variant, not an extra catalog family or a material-name signal. */
+export function makeTimberBathhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
+  return makeBathhouse(rng, buckets, wallBucket, 'timber');
 }
 
 export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
