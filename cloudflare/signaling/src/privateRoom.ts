@@ -7,7 +7,8 @@ import {
 import { signalingResumeAllowed, signalingResumeHash } from '../../../server/signalingMembership.ts';
 import {
   ACTIVITY_CHECKPOINT_MS, MAX_PAYLOAD_BYTES, MAX_PENDING_SOCKETS, MAX_SOCKETS,
-  RATE_MAX_MESSAGES, RATE_WINDOW_MS, ROOM_IDLE_TTL_MS, UNAUTHENTICATED_TIMEOUT_MS,
+  RATE_HOST_CONTROL_MESSAGES, RATE_HOST_MESSAGES_PER_PEER, RATE_MAX_MESSAGES,
+  RATE_WINDOW_MS, ROOM_IDLE_TTL_MS, UNAUTHENTICATED_TIMEOUT_MS,
   allowedOrigin, failure, parseEnvelope, publicError, record, roomCodeFromUrl,
   validSignal, type SignalEnvelope,
 } from './protocol.ts';
@@ -71,13 +72,17 @@ export class PrivateRoom extends DurableObject<Env> {
         if (connection && this.#store.membership.has(connection)) {
           attachment.authenticated = true;
           ws.serializeAttachment(attachment);
-          room.touchedAt = Math.max(room.touchedAt, attachment.lastActivity);
+          this.#store.recoverActivity(connection, attachment.lastActivity);
         } else if (attachment.authenticated) this.#retire(ws, 'resume_denied');
       }
     }
     this.#retireReplaced();
     this.ctx.blockConcurrencyWhile(async () => {
       this.#nextAlarm = await this.ctx.storage.getAlarm();
+      // Repair a missing/old alarm after a deploy or an interrupted admission.
+      // Deadlines come from saved activity, never the time this actor woke up.
+      this.#expireRoom();
+      await this.#scheduleAlarm();
     });
   }
 
@@ -155,19 +160,17 @@ export class PrivateRoom extends DurableObject<Env> {
     try { ws.close(1008, reason); } catch { /* already closed */ }
   }
 
-  #retireReplaced(): void {
+  #retireReplaced(reason = 'resume_denied'): void {
     for (const [ws, attachment] of this.#sessions) {
       const connection = this.#connections.get(attachment.id);
       if (attachment.authenticated && (!connection || !this.#store.membership.has(connection))) {
-        this.#retire(ws, 'resume_denied');
+        this.#retire(ws, reason);
       }
     }
   }
 
   async #scheduleAlarm(): Promise<void> {
-    let next: number | null = null;
-    const room = this.#store.rooms.get(this.#roomCode);
-    if (room) next = room.touchedAt + ROOM_IDLE_TTL_MS;
+    let next = this.#store.nextExpiryAt();
     for (const attachment of this.#sessions.values()) {
       if (!attachment.authenticated) next = Math.min(next ?? Infinity,
         attachment.acceptedAt + UNAUTHENTICATED_TIMEOUT_MS);
@@ -192,13 +195,15 @@ export class PrivateRoom extends DurableObject<Env> {
   }
 
   #expireRoom(): void {
-    const room = this.#store.rooms.get(this.#roomCode);
-    if (!room || room.touchedAt + ROOM_IDLE_TTL_MS > Date.now()) return;
+    const deadline = this.#store.nextExpiryAt();
+    if (deadline == null || deadline > Date.now()) return;
     const next = this.#copyStore();
     const notifications = next.sweepExpired();
     this.#persist(next);
     this.#notify(notifications);
-    this.#retireReplaced();
+    // The store sent terminal room_closed/expired receipts first. Do not also
+    // mislabel an expired seat as replaced by another player.
+    this.#retireReplaced('expired');
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -272,7 +277,7 @@ export class PrivateRoom extends DurableObject<Env> {
     ws.serializeAttachment(attachment);
     if (response) this.#send(ws, response);
     this.#notify(notifications);
-    this.#retireReplaced();
+    this.#retireReplaced(message.type === 'room_leave' ? 'client_leave' : 'resume_denied');
     if (message.type === 'room_leave') this.#retire(ws, 'client_leave');
   }
 
@@ -294,6 +299,21 @@ export class PrivateRoom extends DurableObject<Env> {
       payload: { roomCode: this.#roomCode } });
   }
 
+  #messageLimit(attachment: SocketState): number {
+    if (!attachment.authenticated) return RATE_MAX_MESSAGES;
+    const connection = this.#connections.get(attachment.id);
+    const membership = connection && this.#store.membership.get(connection);
+    const room = this.#store.rooms.get(this.#roomCode);
+    // Never trust payload role/capacity or a stale attachment alone. Admission
+    // validates capacity 2..14, making this host-only ceiling at most 448.
+    if (!membership || !room || membership.roomCode !== room.roomCode ||
+        membership.peerId !== room.hostId || room.peers.get(room.hostId)?.connection !== connection) {
+      return RATE_MAX_MESSAGES;
+    }
+    return Math.max(RATE_MAX_MESSAGES,
+      RATE_HOST_CONTROL_MESSAGES + RATE_HOST_MESSAGES_PER_PEER * (room.maxPlayers - 1));
+  }
+
   async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): Promise<void> {
     const attachment = this.#sessions.get(ws);
     if (!attachment) {
@@ -313,7 +333,7 @@ export class PrivateRoom extends DurableObject<Env> {
     }
     attachment.rateCount++;
     ws.serializeAttachment(attachment);
-    if (attachment.rateCount > RATE_MAX_MESSAGES) {
+    if (attachment.rateCount > this.#messageLimit(attachment)) {
       await this.#detach(ws, 'rate_limit');
       return;
     }

@@ -2,16 +2,30 @@
 
 Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 
-Status: focused verification, strict LAN and severe impaired-private rendering,
+Current deployment status: release `adbcf2aaf` is live on the canonical website
+with Cloudflare room signaling and the existing TURN service. The old canonical
+Redis signaling route returns HTTP 410 and requests a refresh. See the final
+Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
+versions, production checks and limitations. Earlier **not deployed** statements
+below describe their historical verification phase, not the current cutover.
+The abandoned-room follow-up at the end records its initial local checkpoint;
+the [subsequent live release receipt](multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements)
+includes production cleanup verification.
+The [firing-response follow-up](multiplayer-response-latency-2026-09.md#production-warmup-follow-up-shells-and-guided-missiles)
+records the subsequent actual-compositor warmup, first-shot improvement and
+retained adverse frame measurements. The Cloudflare room Worker remains the
+verified `10ac577de` backend; these later changes concern browser rendering only.
+
+Pre-cutover verification: focused verification, strict LAN and severe impaired-private rendering,
 four-/14-human capacity, persistent-room reconnect/rematch, natural rendered
 host/client matches, and actual hidden-tab behavior are recorded below. The
 earlier Redis-free hardening boundary passed all 457 ordered tests, typecheck
 and public/private builds. The subsequent user-approved private/LAN-only product
 and broken-room UX slice passed its focused, browser, typecheck and public-build
 gates; the strict suite's responsive-policy failure and successful tail rerun
-are recorded in the final verification section below. Production room creation remains blocked
-by the signaling database's exhausted monthly command quota; these code
-changes have not been deployed.
+are recorded in the final verification section below. At that earlier boundary,
+production room creation was blocked by the signaling database's exhausted
+monthly command quota and those changes had not yet been deployed.
 Hidden-browser hosting slowdown and the failed CPU-rate-4 budget are documented
 limitations. This record does not claim zero network latency or certify an
 untested production deployment.
@@ -41,12 +55,12 @@ consumables, and match results remain authoritative.
 | Ranked/dedicated client | Dedicated Node match | Authenticated WebSocket with replaceable-state coalescing | Same bridge, predictor, and snapshot buffer |
 
 The ranked row documents the retained internal compatibility implementation.
-The current player-facing contract is Solo, Private and LAN only; supported
-deployment uses a single in-memory signaling process and the existing TURN
-service, not ranked/dedicated simulation, Redis, Supabase or rating storage.
-See [the deployment/runbook](../MULTIPLAYER-HOSTING.md). A public signaling
-endpoint and frontend cutover still require actual deployment; local source
-and tests do not provision a backend.
+The current player-facing contract is Solo, Private and LAN only. The selected
+Internet deployment uses Cloudflare per-room Durable Objects and the existing
+TURN service; LAN can use the local in-memory helper. Neither requires
+ranked/dedicated simulation, Redis, Supabase or rating storage. See
+[the deployment/runbook](../MULTIPLAYER-HOSTING.md). The earlier self-hosted
+single-process implementation remains an alternative, not the live backend.
 
 The authoritative match runs at 60 Hz and publishes snapshots at 20 Hz.
 Browser input upload cadence is separate from render cadence. The local tank
@@ -57,10 +71,14 @@ integration at every display refresh rate; the measured difference is recorded
 below. Replacing it with held 60 Hz poses without render interpolation would
 introduce another visible cadence defect.
 
-The browser's own-entity sample already accounts for the sampled network time.
+The first smoothness release's browser own-entity sample already accounted for the sampled network time.
 That path does not replay unacknowledged render durations a second time. The
 raw-authority-only predictor path retains explicit unacknowledged-input replay.
-Both discard confirmed input history using real sequence acknowledgements.
+Both discarded confirmed input history using real sequence acknowledgements.
+The subsequent [response-latency wave](multiplayer-response-latency-2026-09.md)
+supersedes that browser policy: raw own authority plus bounded input replay
+removes the second smoothed/extrapolated reconciliation target. The earlier
+measurements below remain historical, not evidence for the new code path.
 
 `snapshot.ts` pairs the own tank's latest pose and `localPrediction` metadata
 at one authority tick. Remote objects and their presentation metadata remain on
@@ -1507,8 +1525,12 @@ unchanged main base reproduced the same 240,000 ms child timeout and SIGTERM;
 the test is byte-identical. This distinguishes an upstream/host-condition failure
 from this multiplayer diff, but does not establish its underlying cause. No
 timeout was raised and no vehicle code was changed to bypass it. Remaining
-ordered tests are run separately; do not describe the complete `npm test` as
-passing unless that full gate is subsequently rerun successfully.
+ordered tests were resumed separately and passed through the remaining pre
+checks and the early core checks. That optional broad run was deliberately
+stopped during the unrelated `surfaceMarkupFleet` check after more than
+32 minutes, not reported as a passing full suite. All changed/new multiplayer
+checks were run separately. Do not describe the complete `npm test` as passing
+unless that full gate is subsequently rerun successfully.
 
 The deployment procedure, storage lifetime, hibernation boundaries, rate limits,
 rollback constraints and supported LAN setup are in
@@ -1516,3 +1538,91 @@ rollback constraints and supported LAN setup are in
 ends when the host leaves; a backgrounded or suspended host cannot guarantee
 single-player frame pacing. Fourteen rendered players and throttled-device
 performance remain uncertified.
+
+### Final room-capacity and native production follow-up
+
+A deterministic full-room review found a legitimate negotiation burst that
+the initial 120-message/10-second socket budget rejected: 13 guests × (one
+offer + 12 ICE messages) = 169 host messages. The host's canonical authenticated
+room membership now determines a bounded capacity allowance, up to 448 for
+14 seats; guests and unauthenticated sockets retain 120. Payload role claims
+cannot increase it. The 169-message fixture failed before the correction and
+passes after it; all 15 real Workers tests, source/test typechecks and focused
+quality checks pass. The corrected Worker is live at version
+`119c2871-40b7-4964-8fdb-03de3c82c040`.
+
+The deployed frontend was exercised through native controls in two fresh
+browser contexts: create Private 1v1, invite join, select map, both ready,
+start, both connected battles, advancing snapshot/input counters, native exit,
+room closure and guest return to Garage. Zero page errors; owned rooms and
+browsers closed. This passed before and after the capacity correction, and a
+fresh TURN-only production peer-pair check also passed after it. The committed
+`production-private-room-ui` probe and its deterministic guards/cleanup test
+make that same deployed-frontend check reproducible with an explicit origin.
+The earlier failed agent-browser session-continuity attempt created no rooms
+and is not counted as gameplay proof. These remain short functional receipts,
+not full-capacity rendered or different-physical-network performance guarantees.
+
+## Abandoned-room lifecycle follow-up — initial local audit
+
+The following records the initial local-only checkpoint. The subsequent
+`10ac577de6618a594c3a38b2bb64e0cbd103d109` release is now live, the repaired
+repository test segments pass, and real production 90/180-second expiry was
+verified. See the [current response and cleanup release receipts](multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements)
+for current deployment, measurements and remaining limits.
+
+Base: `b970e9caadb681903b9b35ae1dfecb3650598dfa`. The audit found that the
+old room-wide 24-hour idle timeout did not bound individual disconnected seats.
+An active guest could keep a dead host's room touched indefinitely, and restoring
+a room without surviving sockets needed to preserve historical timestamps rather
+than invent new activity at every wake.
+
+The shared store now uses per-member leases: a recorded disconnect has up to
+90 seconds of reconnect grace, capped by the 180-second valid-traffic deadline.
+A host expiry closes the room; a guest expiry frees its seat. Valid traffic from
+one player cannot renew another. Cloudflare restores activity from durable
+snapshots plus surviving server-written socket attachments, repairs alarms on
+wake, and deletes empty actors' SQL metadata, key-value state and alarm. The LAN
+adapter applies the same lease policy with local socket housekeeping. The browser
+client treats expiry as terminal even before a lobby subscriber is installed,
+so no orphan polling/reconnect loop remains after the expired-room event.
+
+Expired guest identities retain bounded capability hashes outside active room
+capacity. This avoids an expired-seat cleanup opening an identity-takeover window
+while the host is disconnected. The original browser can explicitly rejoin with
+its private proof if the room and match still admit it. Proofs are not dropped to
+make room for unlimited identities; the room instead has a bounded identity
+budget. Host closure removes the entire room, including these fences.
+
+The 15 new real workerd regressions cover native socket abandonment, apparently
+open but silent peers, exact grace/deadline boundaries, healthy heartbeats across
+multiple lease windows, invalid traffic, hibernation and missing-alarm repair,
+just-in-time reconnect, late predecessor callbacks, repeated cleanup alarms,
+same-code reuse, expired-ID proof fencing, and failed SQL/deallocation retries.
+All 30 Worker tests (15 existing + 15 new), source/test Cloudflare typechecks,
+root typecheck and public build pass. Shared-store expiry/security and routed
+client lifecycle regression checks also pass. The full fleet-wide root test run
+is not represented as passing; its previously recorded unrelated timeout remains
+outside this targeted verification.
+
+The 14 native LAN WebSocket regressions also pass, including unauthenticated
+15-second admission expiry, shared host/guest lease behavior, a dropped host,
+late renewals rejected before a periodic sweep, stale predecessor closes,
+admission completing after its socket expired, a superseded post-commit join,
+and shutdown during a stalled/rejected optional store sweep. Repeated shutdown
+shares one promise and closes the store once. The old adapter reproduced the
+unauthenticated-socket leak in an isolated in-memory baseline import. Existing
+signaling and dedicated-world-collision tests pass on the final change, as does
+root typecheck; the combined focused quality gate has zero complexity violations,
+`any` or `unknown` annotations. The test registry discovers all 474 ordered
+checks, including both new root cleanup checks; discovery is not an execution
+claim for the unrelated fleet suite.
+
+These are local verification results, not a new production deployment. The
+existing production room/UI/TURN receipts above remain tied to their recorded
+versions. A sleeping actor created before this policy ships can retain its old
+alarm until its first wake; this change does not bulk enumerate/delete existing
+rooms. Cloudflare alarm delivery is at least once and may be delayed or exhaust
+provider retries after repeated failures, so the lease is an admission deadline,
+not an exact wall-clock deletion guarantee. See the
+[cleanup runbook](../MULTIPLAYER-HOSTING.md#abandoned-rooms-and-reconnect-leases).

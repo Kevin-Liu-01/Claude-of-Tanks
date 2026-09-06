@@ -280,6 +280,31 @@ for (const missingField of ['resumeToken', 'roomCode']) {
   assert.equal(events.find((event) => event.type === 'room_closed').payload.reason, 'resume_denied');
 }
 
+{
+  const test = fixture();
+  const room = await test.client.createRoom({ player });
+  const socket = test.sockets[0];
+  const saved = [...test.storage.entries()];
+  socket.receive({ type: 'room_closed', payload: { roomCode: 'OTHER2', reason: 'expired' } });
+  assert.equal(test.client.roomCode, room.roomCode, 'stale/cross-room closure cannot end this room');
+  socket.receive({ type: 'room_closed', payload: { roomCode: room.roomCode, reason: 'expired' } });
+  socket.close();
+  await wait(10);
+  assert.equal(test.client.roomCode, null);
+  assert.equal(test.sockets.length, 1, 'expiry is terminal even before a session subscribes');
+  const events = [];
+  test.client.onEvent((event) => { events.push(event); test.client.close('session_closed'); });
+  assert.equal(events.filter((event) => event.type === 'room_closed').length, 1);
+  assert.deepEqual([...test.storage.entries()], saved,
+    'terminal callbacks retain the expired seat proof without publishing it');
+  await test.client.joinRoom({ roomCode: room.roomCode, player });
+  assert.equal(joins(test).at(-1).payload.resumeToken, creates(test)[0].payload.nextResumeToken,
+    'an explicit new join can authenticate the same player after its seat expired');
+  test.client.close('client_leave');
+  assert.equal(JSON.parse(test.storage.get('cot.signaling.resume.v1')).length, 0,
+    'an explicit departure still forgets its proof');
+}
+
 for (const url of ['ws://localhost:7777/signal', 'wss://game.example.test/api/signal']) {
   const test = fixture(null, { url });
   await test.client.connect();

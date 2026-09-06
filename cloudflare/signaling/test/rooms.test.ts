@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RuntimeValue } from '../../../src/runtimeTypes.ts';
 import type { SignalingRoomSnapshot } from '../../../server/roomStore.ts';
 import { signalingResumeHash } from '../../../server/signalingMembership.ts';
-import { MAX_PENDING_SOCKETS, RATE_MAX_MESSAGES, ROOM_IDLE_TTL_MS } from '../src/protocol.ts';
+import { MAX_PENDING_SOCKETS, RATE_MAX_MESSAGES, ROOM_IDLE_TTL_MS, record } from '../src/protocol.ts';
 
 interface Message { type: string; requestId?: string; payload: Record<string, RuntimeValue> }
 const origin = 'https://cot.kevinliu.studio';
@@ -306,7 +306,8 @@ describe('routed Durable Object signaling', () => {
   });
 
   it('bounds messages and persists per-socket rate accounting across hibernation', async () => {
-    const host = await create('RATES1');
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now());
+    const host = await create('RATES1', 2);
     for (let index = 0; index < 4; index++) await host.request('room_poll');
     await evictDurableObject(env.ROOMS.getByName('RATES1'));
     for (let index = 5; index < RATE_MAX_MESSAGES; index++) await host.request('room_poll');
@@ -321,5 +322,69 @@ describe('routed Durable Object signaling', () => {
     const malformed = await connect('BADMSG');
     malformed.socket.send('{');
     expect((await malformed.next((message) => message.type === 'error')).payload.code).toBe('invalid_payload');
+  });
+
+  it('admits a fourteen-seat host negotiation burst and retains its bounded counter through hibernation', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now());
+    const host = await create('BURST1');
+    const guests: Client[] = [];
+    for (let peer = 1; peer < 14; peer++) {
+      const guest = await connect('BURST1');
+      expect((await guest.request('room_join', identity(`guest${peer}`))).type).toBe('room_joined');
+      guests.push(guest);
+    }
+    expect((await host.request('room_poll')).type).toBe('room_polled');
+    for (let peer = 1; peer < 14; peer++) {
+      const target = { toPeerId: `guest${peer}`, toSessionId: `guest${peer}_session` };
+      host.send('room_signal', { ...target, signal: { kind: 'description',
+        description: { type: 'offer', sdp: 'v=0\r\nnon-secret-burst-fixture' } } });
+      for (let index = 0; index < 12; index++) {
+        host.send('room_signal', { ...target, signal: { kind: 'ice', candidate: {
+          candidate: `candidate:${index} 1 udp 1 192.0.2.1 ${10000 + index} typ relay`,
+          sdpMid: '0', sdpMLineIndex: 0,
+        } } });
+      }
+    }
+    await Promise.all(guests.map((guest) => guest.next((message) => {
+      const signal = message.payload.signal;
+      return message.type === 'room_signal' && record(signal) && signal.kind === 'ice'
+        && record(signal.candidate) && typeof signal.candidate.candidate === 'string'
+        && signal.candidate.candidate.startsWith('candidate:11 ');
+    })));
+    for (const guest of guests) {
+      const signals = guest.messages.filter((message) => message.type === 'room_signal');
+      expect(signals).toHaveLength(13);
+      expect(signals.every((message) => message.payload.fromPeerId === 'host')).toBe(true);
+    }
+    expect((await host.request('room_poll')).type).toBe('room_polled');
+    await evictDurableObject(env.ROOMS.getByName('BURST1'));
+    // Create + initial poll + 169 signals + confirming poll = 172. Eviction
+    // must neither forget that count nor revert the authenticated host budget.
+    for (let index = 172; index < 448; index++) {
+      expect((await host.request('room_poll')).type).toBe('room_polled');
+    }
+    host.send('room_poll');
+    expect((await host.closed).reason).toBe('rate_limit');
+  });
+
+  it('keeps guests and unauthenticated host impersonators at 120 messages per window', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now());
+    const host = await create('GRATE1');
+    const guest = await connect('GRATE1');
+    expect((await guest.request('room_join', identity('guest'))).type).toBe('room_joined');
+    const claimedHost = { peerId: 'host', hostId: 'host', role: 'host', maxPlayers: 14 };
+    for (let index = 1; index < RATE_MAX_MESSAGES; index++) {
+      expect((await guest.request('room_poll', claimedHost)).type).toBe('room_polled');
+    }
+    await evictDurableObject(env.ROOMS.getByName('GRATE1'));
+    guest.send('room_poll', claimedHost);
+    expect((await guest.closed).reason).toBe('rate_limit');
+    const stranger = await connect('GRATE1');
+    for (let index = 0; index < RATE_MAX_MESSAGES; index++) {
+      expect((await stranger.request('room_poll', claimedHost)).payload.code).toBe('resume_denied');
+    }
+    stranger.send('room_poll', claimedHost);
+    expect((await stranger.closed).reason).toBe('rate_limit');
+    expect((await host.request('room_poll')).type).toBe('room_polled');
   });
 });

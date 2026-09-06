@@ -506,6 +506,17 @@ export class RoomSignalingClient {
     for (const listener of [...this.listeners]) listener(message);
   }
 
+  #roomClosed(message: SignalingEvent): void {
+    const payload = eventPayload(message);
+    if (!this.roomCode || payload?.roomCode !== this.roomCode) return;
+    const reason = typeof payload.reason === 'string' ? payload.reason : 'room_closed';
+    this.#discardSocket(reason);
+    // Expiry frees the seat, not its identity. Keep the bounded private proof
+    // for an explicit later join; stop heartbeats/retries even with no session
+    // subscriber (for example during asynchronous lobby acquisition).
+    this.#releaseRoom(reason, reason !== 'expired');
+  }
+
   #receive(raw: RuntimeValue): void {
     let parsed: RuntimeValue;
     try {
@@ -536,6 +547,10 @@ export class RoomSignalingClient {
     // These are private request receipts, never public events. A late or
     // duplicate response must not expose its resume capability to subscribers.
     if (message.type === 'room_created' || message.type === 'room_joined') return;
+    if (message.type === 'room_closed') {
+      this.#roomClosed(message);
+      return;
+    }
     if (!requestId && message.type === 'error' && eventPayload(message)?.code === 'resume_denied') {
       // A room actor can fence a replaced socket immediately, before its next
       // heartbeat. That is terminal ownership loss, not a reconnect trigger.
@@ -901,7 +916,7 @@ export class RoomSignalingClient {
       }
     }
     this.eventQueue.length = 0;
-    if (this.resumeKey) this.resumeCredentials.forget(this.resumeKey);
+    if (this.resumeKey && reason !== 'expired') this.resumeCredentials.forget(this.resumeKey);
     this.resumeKey = null;
     this.roomCode = null;
     this.routeRoomCode = null;

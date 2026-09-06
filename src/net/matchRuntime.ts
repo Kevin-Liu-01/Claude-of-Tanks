@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { LocalConfirmedShotQueue } from './localConfirmedShotQueue.ts';
 import {
   MATCH_TICK_HZ,
   MESSAGE_TYPES,
@@ -86,6 +87,10 @@ export interface MatchSimulation {
   requiredPeerIds?: RuntimeValue[];
   result?: RuntimeValue;
   resultReason?: RuntimeValue;
+  readonly pendingEventCount?: number;
+  readonly shotFeedbackVersion?: number;
+  eventsForViewer?(viewerId: string): MatchEvent[];
+  afterEventBroadcast?(): RuntimeValue;
   step(context: SimulationStepContext): RuntimeValue;
   snapshot(options: {
     tick: number;
@@ -147,6 +152,7 @@ interface MatchPeer {
 interface EventBatch {
   tick: number;
   events: MatchEvent[];
+  roomRound?: number;
 }
 
 export interface RoomChatMessage extends Record<string, RuntimeValue> {
@@ -264,7 +270,11 @@ function validateEventBatch(payload: RuntimeValue): EventBatch {
       payload.events.some((event) => !isRecord(event))) {
     throw new ProtocolError('invalid_event_batch', 'event batch must include a valid tick and events');
   }
-  return { tick: Number(payload.tick), events: payload.events as MatchEvent[] };
+  if (payload.roomRound != null && (!Number.isSafeInteger(payload.roomRound) || Number(payload.roomRound) < 0)) {
+    throw new ProtocolError('invalid_event_batch', 'event round must be a non-negative integer');
+  }
+  return { tick: Number(payload.tick), events: payload.events as MatchEvent[],
+    ...(payload.roomRound == null ? {} : { roomRound: Number(payload.roomRound) }) };
 }
 
 function validateRoomState(payload: RuntimeValue, { requireRound = true } = {}): MatchRoomState {
@@ -642,6 +652,7 @@ export class AuthoritativeMatchRuntime {
       snapshotHz: this.snapshotHz,
       serverTick: this.tick,
       serverTimeMs: this.timeMs,
+      shotFeedbackVersion: this.simulation.shotFeedbackVersion === 1 ? 1 : 0,
     });
     if (this.roomController) {
       this.#send(peer, MESSAGE_TYPES.ROOM_STATE, this.roomController.state());
@@ -913,9 +924,19 @@ export class AuthoritativeMatchRuntime {
     }
     this.accumulatorMs -= this.tickMs;
     this.stats.steps++;
+    if (!roundPending) this.#broadcastTickEvents();
     if (!roundPending && this.tick % this.snapshotEveryTicks === 0) {
       this.#broadcastSnapshots();
     }
+  }
+
+  #broadcastTickEvents(): void {
+    if (!this.simulation.eventsForViewer || !this.simulation.afterEventBroadcast ||
+        this.simulation.pendingEventCount === 0) return;
+    for (const peer of this.peers.values()) {
+      if (peer.welcomed) this.#sendReliableEvents(peer, this.tick, this.simulation.eventsForViewer(peer.id));
+    }
+    this.simulation.afterEventBroadcast();
   }
 
   #tryStartMatch(): void {
@@ -1054,7 +1075,7 @@ export class AuthoritativeMatchRuntime {
 
   #sendReliableEvents(peer: MatchPeer, tick: number, events: MatchEvent[]): void {
     if (!events.length) return;
-    this.#send(peer, MESSAGE_TYPES.EVENT, { tick, events });
+    this.#send(peer, MESSAGE_TYPES.EVENT, { tick, events, roomRound: this.roomRound });
     this.stats.reliableEventBatches++;
     this.stats.reliableEvents += events.length;
   }
@@ -1109,6 +1130,11 @@ export class MatchClientRuntime {
   readonly errors: RuntimeValue[] = [];
   private readonly eventListeners = new Set<(event: MatchEvent) => void>();
   private readonly pendingEventBatches: EventBatch[] = [];
+  private readonly localConfirmedShots: LocalConfirmedShotQueue;
+  private localShotFeedbackEnabled = false;
+  private activeFireIntentSeq: number | null = null;
+  lastSubmittedFireIntentSeq: number | null = null;
+  shotFeedbackVersion = 0;
   private readonly connectionListeners = new Set<(connected: boolean) => void>();
   private readonly authorityProgressListeners = new Set<() => void>();
   private readonly roomListeners = new Set<(state: MatchRoomState) => void>();
@@ -1137,6 +1163,7 @@ export class MatchClientRuntime {
     }
     this.transport = transport;
     this.playerId = String(playerId || '');
+    this.localConfirmedShots = new LocalConfirmedShotQueue(this.playerId);
     this.buffer = new SnapshotBuffer({
       interpolationDelayMs,
       maxInterpolationDelayMs,
@@ -1157,6 +1184,8 @@ export class MatchClientRuntime {
     this.connected = false;
     this.closed = true;
     this.closeReason = reason;
+    this.shotFeedbackVersion = 0;
+    this.localConfirmedShots.clearPending();
     for (const listener of [...this.connectionListeners]) listener(false);
   }
 
@@ -1384,6 +1413,7 @@ export class MatchClientRuntime {
       throw new ProtocolError('invalid_welcome', 'welcome timing is malformed');
     }
     this.connected = true;
+    this.shotFeedbackVersion = rawPayload.shotFeedbackVersion === 1 ? 1 : 0;
     this.clientTick = serverTick;
     if (Number.isFinite(tickHz) && Number.isFinite(snapshotHz) &&
         tickHz > 0 && snapshotHz > 0) {
@@ -1415,16 +1445,27 @@ export class MatchClientRuntime {
 
   #receiveEventBatch(rawPayload: ProtocolPayload): void {
     const batch = validateEventBatch(rawPayload);
+    if (this.roomRound > 0 && batch.roomRound != null && batch.roomRound !== this.roomRound) return;
     if (this.pendingEventBatches.length >= MAX_PENDING_EVENT_BATCHES) {
       throw new ProtocolError(
         'event_backlog_overflow',
         'reliable event backlog exceeded its limit',
       );
     }
-    this.pendingEventBatches.push(batch);
-    for (const event of batch.events) {
+    const events = batch.events;
+    if (this.localShotFeedbackEnabled) this.#extractLocalShots(batch);
+    if (batch.events.length) this.pendingEventBatches.push(batch);
+    for (const event of events) {
       for (const listener of [...this.eventListeners]) listener(event);
     }
+  }
+
+  #extractLocalShots(batch: EventBatch): void {
+    const delayed: MatchEvent[] = [];
+    for (const event of batch.events) {
+      if (!this.localConfirmedShots.take(event)) delayed.push(event);
+    }
+    batch.events = delayed;
   }
 
   #receiveRoomState(rawPayload: ProtocolPayload): void {
@@ -1485,6 +1526,8 @@ export class MatchClientRuntime {
   clearPendingInputIntent(): void {
     this.pendingFireAckSeq = null;
     this.lastRequestedFire = false;
+    this.activeFireIntentSeq = null;
+    this.lastSubmittedFireIntentSeq = null;
     this.pendingActionAckSeqs.clear();
   }
 
@@ -1506,6 +1549,7 @@ export class MatchClientRuntime {
     });
     if (normalized.fire && !this.lastRequestedFire && this.pendingFireAckSeq == null) {
       this.pendingFireAckSeq = submittedInputSeq;
+      this.activeFireIntentSeq = submittedInputSeq;
     }
     this.lastRequestedFire = normalized.fire;
     for (let bit = 1; bit <= 0x8000; bit *= 2) {
@@ -1514,12 +1558,21 @@ export class MatchClientRuntime {
       }
     }
     normalized.fire = normalized.fire || this.pendingFireAckSeq != null;
+    if (!normalized.fire) this.activeFireIntentSeq = null;
+    // The compact transport's optional 19th column is negotiated. Cached
+    // legacy hosts require exactly 18 columns and must receive no extension.
+    if (this.shotFeedbackVersion === 1 && this.activeFireIntentSeq != null) {
+      normalized.fireIntentSeq = this.activeFireIntentSeq;
+    } else {
+      delete normalized.fireIntentSeq;
+    }
     for (const bit of this.pendingActionAckSeqs.keys()) normalized.actionBits |= bit;
     this.inputSeq = nextSequence(this.inputSeq);
     this.clientTick = Math.max(this.clientTick, clientTick);
     const sent = this.#send(MESSAGE_TYPES.INPUT, normalized);
     if (sent) {
       this.lastSubmittedInputSeq = submittedInputSeq;
+      this.lastSubmittedFireIntentSeq = normalized.fire ? this.activeFireIntentSeq : null;
       this.inputPacketsSubmitted++;
     }
     return sent;
@@ -1588,6 +1641,7 @@ export class MatchClientRuntime {
     this.buffer.clear();
     this.assembler.clear();
     this.pendingEventBatches.length = 0;
+    this.localConfirmedShots.reset();
     this.lastSnapshotTick = 0;
     this.lastSnapshotReceivedAtMs = null;
     this.lastSnapshotPacketTick = null;
@@ -1636,6 +1690,16 @@ export class MatchClientRuntime {
       consumed++;
     }
     if (consumed > 0) this.pendingEventBatches.splice(0, consumed);
+    return target;
+  }
+
+  /** Opt-in browser feedback path; authority accepted these shots already. */
+  drainLocalShotEvents(target: MatchEvent[] = []): MatchEvent[] {
+    if (!this.localShotFeedbackEnabled) {
+      this.localShotFeedbackEnabled = true;
+      for (const batch of this.pendingEventBatches) this.#extractLocalShots(batch);
+    }
+    this.localConfirmedShots.drain(target);
     return target;
   }
 
@@ -1703,6 +1767,7 @@ export class MatchClientRuntime {
     if (this.unsubscribeMessage) this.unsubscribeMessage();
     if (this.unsubscribeClose) this.unsubscribeClose();
     this.pendingEventBatches.length = 0;
+    this.localConfirmedShots.reset();
     this.roomListeners.clear();
     this.roomChatListeners.clear();
     this.roomChatHistory.length = 0;

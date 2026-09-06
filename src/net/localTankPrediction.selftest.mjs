@@ -1539,4 +1539,58 @@ for (const phase of ['resting', 'driving', 'destroyed']) {
   }
 }
 
+// Uploaded intervals and unsent display time are separate owners. An ACK may
+// arrive on a cadence-held frame: dropping its current input would reintroduce
+// a refresh-rate-dependent backward correction before the next upload.
+{
+  const make = () => {
+    const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+    const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+    prediction.reconcile(authority(0, null));
+    return prediction;
+  };
+  const live = make();
+  const reference = make();
+  for (const prediction of [live, reference]) {
+    prediction.recordInput(driving, 1 / 120, 1);
+    prediction.advancePrediction(driving, 1 / 120);
+  }
+  live.reconcile(authority(1, 1));
+  const sample = authority(1, 1);
+  reference.reconcile({ ...sample, sampledEntity: sample.entity });
+  reference.advancePrediction(driving, 1 / 120);
+  assert.ok(live.simEntity.state.pos.distanceTo(reference.simEntity.state.pos) < 1e-12,
+    'acknowledged upload leaves exactly the unsent current-frame prediction tail');
+  live.recordInput(driving, 1 / 60, 2, 1 / 120);
+  reference.recordInput(driving, 1 / 60, 2, 1 / 120);
+  live.reconcile(authority(2, 1));
+  reference.reconcile({ ...authority(2, 1), sampledEntity: sample.entity });
+  reference.advancePrediction(driving, 1 / 60);
+  assert.ok(live.simEntity.state.pos.distanceTo(reference.simEntity.state.pos) < 1e-12,
+    'committing the next upload absorbs unsent time once, not twice');
+  live.advancePrediction(driving, 1 / 120);
+  live.reconcile(authority(3, 2, 0, 0, { destroyed: true }));
+  live.reconcile(authority(4, 2, 0, 2));
+  live.reconcile(authority(5, 2, 0, 2));
+  assert.equal(live.simEntity.state.pos.z, 2,
+    'terminal/respawn authority cannot replay the old life\'s unsent frame');
+  live.advancePrediction(driving, 1 / 120);
+  live.resetForPresentationResume();
+  live.reconcile(authority(6, 2, 0, 4));
+  live.reconcile(authority(7, 2, 0, 4));
+  assert.equal(live.simEntity.state.pos.z, 4,
+    'visibility resume also releases the unsent-frame owner');
+}
+
+{
+  const entity = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+  const prediction = new LocalTankPredictor({ entity, heightField: FIELD });
+  prediction.reconcile(authority(0, null));
+  for (let seq = 0; seq < 120; seq++) prediction.recordInput(driving, 1 / 60, seq);
+  prediction.reconcile(authority(1, null));
+  assert.equal(prediction.history.length, 120, 'a replay cap does not invent input acknowledgements');
+  assert.ok(prediction.simEntity.state.pos.z < 0.25,
+    'a live snapshot stream with lost controls cannot replay seconds of future driving');
+}
+
 console.log('localTankPrediction.selftest: replay, parked stability, correction, and reconnect passed');

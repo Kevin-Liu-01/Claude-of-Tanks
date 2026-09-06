@@ -130,10 +130,86 @@ Vercel `/api/ice` still issues short-lived Cloudflare TURN credentials. Never
 place provider tokens or room resume capabilities in a public `VITE_*` value.
 
 Limits: 14 seats per room; exact-origin admission; bounded pending sockets,
-message sizes/rates, and unauthenticated lifetimes; 24-hour idle room expiry.
+message sizes/rates, and unauthenticated lifetimes. Abandoned membership is
+reclaimed in minutes, independently of the 24-hour room-idle safety limit.
 The per-IP connection limiter is per Cloudflare location, not a global quota
 or user authentication. Public room codes are invitations, not strong private
 account authentication. Host departure closes a room; host migration is absent.
+
+### Abandoned rooms and reconnect leases
+
+Room cleanup does **not** depend on `beforeunload`, a successful Leave request,
+or another player visiting the room. Cloudflare uses one durable alarm per room;
+the LAN helper applies the same membership policy through its local sweep.
+
+| Condition | Cleanup policy |
+| --- | --- |
+| Socket opens but never authenticates | Close after 15 seconds; no room seat is allocated. |
+| Authenticated socket closes without Leave | Reserve that player's seat for up to 90 seconds for authenticated reconnect. |
+| Socket stays apparently open but stops sending valid authenticated traffic | Expire that player's lease after 180 seconds since its last valid request. |
+| Host's lease expires | Close the whole room, notify remaining players, retire its sockets, and delete its stored state. |
+| Guest's lease expires | Free only that seat, tell the host the peer left, and end that guest's connection if it remains open. |
+| Explicit host Leave | Close immediately; no reconnect grace. |
+
+The LAN helper checks these deadlines before each message and on a five-second
+housekeeping tick; an otherwise silent socket may be physically closed up to one
+tick after its deadline. Unauthenticated traffic never extends the initial
+15-second admission window. Expired/replaced socket notifications precede close,
+and late asynchronous admissions cannot announce an obsolete player session.
+Shutdown clears the timer, rejects new connections, and closes native resources
+without waiting for a stalled optional store sweep; repeated shutdown is safe.
+
+The disconnected deadline is the earlier of the 90-second disconnect grace and
+the 180-second last-activity deadline. Only the authenticated sender renews its
+lease: guest heartbeats, join attempts, malformed messages, and signals addressed
+to a missing host cannot keep that host alive. Normal routed-client heartbeats
+are 15 seconds apart; the lease allows the existing 60-second gameplay recovery
+window plus margin. A browser or OS suspended beyond the lease is deliberately
+expired. An open, responsive room is not considered abandoned merely because
+players are waiting in its lobby; gameplay itself travels peer-to-peer and is
+not inspected by the room service.
+
+Deadlines are restored from persisted per-player timestamps and surviving
+WebSocket attachments, never reset to the time an actor wakes. The constructor
+repairs a missing or obsolete alarm; every admission/message also checks expiry,
+so a late request cannot revive a dead host before a delayed alarm runs. Empty
+actors use `storage.deleteAll()` to release SQLite metadata and alarms once no
+pending/live socket remains. Cleanup is idempotent across repeated alarms and
+old socket callbacks; neither may erase a replacement room or connection.
+An actor abandoned before this cleanup revision is deployed may sleep until its
+previous alarm (at most the old 24-hour idle deadline); its first wake applies
+the saved timestamps immediately. Deployment does not enumerate or reset rooms.
+Cloudflare alarms may be delayed during provider maintenance/failover and retry
+on failure, so these are deadlines rather than exact wall-clock deletion SLAs.
+See [Cloudflare alarms](https://developers.cloudflare.com/durable-objects/api/alarms/)
+and [SQLite deletion semantics](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/#deleteall).
+
+Expired guest IDs retain a bounded capability-hash fence **outside** active
+capacity. This prevents another browser claiming that public player ID while
+the host is recovering. The original browser retains its private proof for an
+explicit later join, subject to room capacity and match admission; expiry itself
+stops automatic retries and shows the existing expired-room error. At most 128
+retired-or-active guest identities may be reserved per room. Extreme identity
+churn requires a new room instead of unbounded storage or discarded identity
+fences. Closing the room deletes these fences too; no passwords, SDP, ICE data,
+or raw resume tokens are stored in them.
+
+Verification for the follow-up: 30 real Workers tests (15 new abandonment
+cases), 14 native LAN WebSocket cleanup cases, shared-store and browser-client
+regressions, root/Worker typechecks and public build pass. This cleanup follow-up
+is deployed from `10ac577de6618a594c3a38b2bb64e0cbd103d109`, Worker version
+`af923039-1119-4465-8854-53237e0ee18a`. Live abrupt and silent-open host rooms
+expired after 90,032 and 179,768 ms while guests continued heartbeats; both
+returned `room_not_found` and all owned sockets closed. Native production
+room/RTC/launch/exit checks and real TURN allocation also pass. See the
+[current release evidence](research/multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements).
+
+Browser-only firing warmup subsequently landed as `6604fbdad` and `adbcf2aaf`;
+canonical production was verified READY for both exact revisions. The Worker,
+room leases, TURN configuration and retired Redis resource did not change.
+The [native firing receipts](research/multiplayer-response-latency-2026-09.md#production-warmup-follow-up-shells-and-guided-missiles)
+separate measured first-shot improvements from unresolved frame outliers and
+do not promise zero physical network latency.
 
 Keep the new backend available before promoting the frontend. Rollback requires
 a deliberately verified alternative signaling service; simply removing the
@@ -142,7 +218,8 @@ new URL would return players to the exhausted old Redis route.
 ### Deployment receipt — 2026-09-05
 
 - Worker: `https://cot-private-rooms.kk23907751.workers.dev`;
-  version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`.
+  initial version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`;
+  historical host-burst correction `119c2871-40b7-4964-8fdb-03de3c82c040`.
 - Native production room probe passed create/join, bidirectional signaling,
   authenticated reconnect, signaling after reconnect, guest departure, host
   closure and absence of the closed room. This probe uses temporary owned rooms.
@@ -173,8 +250,57 @@ new URL would return players to the exhausted old Redis route.
   3% input loss, 624 authority ticks, with no dropped catch-up time. These are
   functional test receipts, not full 14-rendered-player or Internet FPS claims.
 
-The frontend release is tracked separately below after its production check.
-No Redis resource, credentials or paid plan were changed by Worker deployment.
+The release follow-up expands this to 15 Workers-runtime tests. A full room
+can emit 169 host negotiation messages (13 guests, each receiving one offer
+and 12 ICE candidates), which exceeded the original 120-message/10-second
+limit. Only the authenticated canonical host now receives a capacity-based
+allowance, `max(120, 32 + 32 * (maxPlayers - 1))`, capped at 448 for 14 seats.
+Guest and unauthenticated limits remain 120. Regression coverage proves all
+169 targeted messages arrive, hibernation retains the counter, message 449
+closes the full-room host, and forged-host/guest message 121 still closes.
+
+### Frontend cutover receipt — 2026-09-05
+
+With owner approval, release `e60d2839a7313d14415bd842b27b00253b62ff50`
+was pushed without force and deployed by the existing main-branch integration.
+Vercel deployment `dpl_5JgVDqyToVS1czn9VNC4KDMBDH23` became Ready and the
+canonical website reports `v1.0.0+ge60d2839a`. Its deployed lazy-loaded room-menu
+bundle contains `wss://cot-private-rooms.kk23907751.workers.dev/rooms`.
+The production environment also has `COT_SIGNAL_BACKEND=cloudflare`.
+
+The canonical `/api/signal` now returns HTTP 410 with `signaling_moved` and
+`refreshRequired: true`. A fresh post-cutover lifecycle/TURN check passed room
+creation, joining, reconnect, two-way signaling, clean departure, room removal,
+and actual browser relay allocation. Existing players should refresh before
+creating a new room. The cutover does not disconnect sockets already pinned to
+old immutable deployment instances or retire those old deployment URLs.
+
+No Redis resource or credential was deleted or revoked, and no paid plan was
+changed. The build's pre-existing TS2688 Node-declaration diagnostics were also
+present four times in the previous untouched-main Vercel build; both deployments
+completed successfully. Independent root/source/test typechecks pass locally.
+
+Actual deployed-frontend verification also passed, using two pristine browser
+contexts and native controls only: Private 1v1 creation, invite join, native
+map selection, both players ready, Start, both connected live battles, advancing
+snapshots/inputs, Leave Battle, host room closure and guest return to Garage.
+Host counters increased by 9 snapshots / 13 inputs; guest by 9 snapshots /
+7 inputs. There were zero page errors and owned room/browser cleanup passed.
+After the host-burst correction, both the TURN-only peer-pair check and the
+native frontend smoke passed again. The repeat match advanced host counters
+by 7 snapshots / 10 inputs and guest counters by 7 snapshots / 7 inputs, with
+zero page errors, native room closure and verified browser cleanup.
+The probe neither replaces the production endpoint nor injects simulation state:
+
+~~~sh
+node tools/production-private-room-ui.mjs --url=https://cot.kevinliu.studio
+~~~
+
+An earlier agent-browser attempt lost its named-session page between commands
+(`about:blank`); it created no rooms and is not counted as gameplay evidence.
+The durable Puppeteer regression above booted both real frontends successfully.
+This short functional smoke does not certify frame-rate parity, every hardware
+configuration, different physical networks, or fourteen rendered players.
 
 ## Alternative: one self-hosted signaling process
 

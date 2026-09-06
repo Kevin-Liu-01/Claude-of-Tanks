@@ -215,6 +215,7 @@ interface AudioTap {
 }
 
 interface ShellFiredEvent {
+  feedbackPredicted?: boolean;
   shellId?: number;
   shooterId?: string;
   muzzlePos: Vec3Tuple;
@@ -2615,8 +2616,10 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       : !!event.isPlayer;
     const s = spat(mp[0], mp[1], mp[2]);
     const dist = s.dist, gain = s.gain;
-    gunshot(mp[0], mp[1], mp[2], event.caliberMm, ownShot,
-      event.weaponSound, event.muzzleIndex);
+    if (!event.feedbackPredicted) {
+      gunshot(mp[0], mp[1], mp[2], event.caliberMm, ownShot,
+        event.weaponSound, event.muzzleIndex);
+    }
     if (!ownShot) scheduleWhizz(event);
     if (event.isPlayer) radio.say('firing', { prob: 0.18, delayS: 0.08 });
     logSound('shell:fired', {
@@ -2624,6 +2627,15 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       scoped: ownShot && listenerScoped, caliberMm: event.caliberMm,
       report: resolveWeaponReportProfile(event.weaponSound).kind, dist, gain,
     });
+  }
+
+  function onPredictedWeapon(event: ShellFiredEvent): void {
+    if (!ctx || phase !== 'battle' || battleOver || !event.isPlayer) return;
+    if (listenerOwnerId == null || event.shooterId !== listenerOwnerId) return;
+    const mp = event.muzzlePos;
+    // Intent-only report: no whizz, firing radio call, or shell-ID bookkeeping.
+    gunshot(mp[0], mp[1], mp[2], event.caliberMm, true,
+      event.weaponSound, event.muzzleIndex);
   }
 
   const CREW_DAMAGE_CALL: Readonly<Record<string, string>> = {
@@ -2941,6 +2953,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       bus.on(event, (payload) => listener(payload as T));
     };
     on<ShellFiredEvent>('shell:fired', (event) => { if (ctx) onShellFired(event); });
+    on<ShellFiredEvent>('weapon:predicted', onPredictedWeapon);
     on<ShellHitEvent>('shell:hit', (event) => { if (ctx) onShellHit(event); });
     // Shells that terminate in the world (dirt/rubble) were silent before the
     // SOUND overhaul — fx already keyed off this event, audio now does too.

@@ -32,6 +32,9 @@ const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
 const REST_HULL_YAW_RATE_RAD_S = 0.0035;
 const MAX_INPUT_HISTORY = 240;
+// Match the snapshot extrapolation horizon. A live state stream with lost
+// control uploads cannot replay seconds of unacknowledged driving ahead.
+const MAX_INPUT_REPLAY_S = 0.25;
 
 export interface PredictionInput {
   throttle?: number;
@@ -309,6 +312,10 @@ function advance(
   }
 }
 
+function inputElapsedS(elapsedS: number): number {
+  return Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
+}
+
 function createCollisionResolver(
   entity: PredictionSimEntity,
   collide: PredictionCollision | null,
@@ -384,6 +391,8 @@ export class LocalTankPredictor {
   contactSmoothingS = 0;
   lastStaticContactCount = 0;
   lastDynamicContactCount = 0;
+  private pendingPresentationInput: PredictionInput | null = null;
+  private pendingPresentationElapsedS = 0;
 
   constructor({
     entity,
@@ -471,7 +480,13 @@ export class LocalTankPredictor {
       this.present(elapsedS);
       return false;
     }
-    if (!input) return false;
+    if (!input) {
+      this.present(elapsedS);
+      return false;
+    }
+    this.pendingPresentationInput = input;
+    this.pendingPresentationElapsedS = Math.min(0.1,
+      this.pendingPresentationElapsedS + inputElapsedS(elapsedS));
     this.syncMovementPolicy();
     this.motionIntent = hasDriveIntent(input);
     if (this.motionIntent) this.holdRestingHull = false;
@@ -529,12 +544,18 @@ export class LocalTankPredictor {
       this.stats.droppedHistory++;
     }
     this.advancePrediction(input, presentationElapsedS);
+    // The accepted upload interval includes every display frame through this
+    // one. Only subsequent unsent frames need a separate replay tail.
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
     return true;
   }
 
   initializeAuthority(snapshot: PredictionSnapshot): void {
     this.initialized = true;
     this.holdRestingHull = false;
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
     applyAuthority(this.simEntity.state, snapshot);
     clearCorrection(this.correction);
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
@@ -554,6 +575,8 @@ export class LocalTankPredictor {
     this.motionIntent = false;
     this.holdRestingHull = false;
     this.contactSmoothingS = 0;
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
     clearCorrection(this.correction);
   }
 
@@ -564,19 +587,30 @@ export class LocalTankPredictor {
   ): void {
     this.syncMovementPolicy();
     applyAuthority(this.simEntity.state, sampledEntity || snapshot);
-    // Browser inputs are replaceable held states. A clock-corrected sampled
-    // entity already includes their network transit time; deterministic
-    // callers without that sample replay the unacknowledged fixed-step input.
+    // A supplied presentation sample has already advanced its own timeline.
+    // Browser prediction uses raw authority instead: replaying on top of an
+    // extrapolated/smoothed sample would account for network transit twice.
     if (sampledEntity || terminalDestroyed) return;
+    let durationS = this.pendingPresentationElapsedS;
+    for (const frame of this.history) durationS += inputElapsedS(frame.elapsedS);
+    let skipS = Math.max(0, durationS - MAX_INPUT_REPLAY_S);
     for (const frame of this.history) {
+      const frameS = inputElapsedS(frame.elapsedS);
+      const replayS = Math.max(0, frameS - skipS);
+      skipS = Math.max(0, skipS - frameS);
+      if (replayS <= 1e-8) continue;
       advance(
         this.simEntity,
         frame.input,
-        frame.elapsedS,
+        replayS,
         this.heightField,
         this.collisionResolver,
       );
       this.stats.replayedInputs++;
+    }
+    if (this.pendingPresentationInput && this.pendingPresentationElapsedS > 0) {
+      advance(this.simEntity, this.pendingPresentationInput, this.pendingPresentationElapsedS,
+        this.heightField, this.collisionResolver);
     }
   }
 
@@ -622,6 +656,8 @@ export class LocalTankPredictor {
       clearCorrection(this.correction);
       this.holdRestingHull = false;
       this.contactSmoothingS = 0;
+      this.pendingPresentationInput = null;
+      this.pendingPresentationElapsedS = 0;
       this.stats.hardSnaps++;
       return;
     }
@@ -645,6 +681,8 @@ export class LocalTankPredictor {
       this.history.length = 0;
       this.motionIntent = false;
       this.contactSmoothingS = 0;
+      this.pendingPresentationInput = null;
+      this.pendingPresentationElapsedS = 0;
     }
     this.terminalDestroyed = terminalDestroyed;
   }

@@ -202,6 +202,7 @@ export async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10
   ]);
   const sockets = [];
   const clients = [];
+  let stage = 'create';
   class OriginSocket extends WebSocket {
     constructor(endpoint) {
       super(endpoint, { origin, handshakeTimeout: timeoutMs });
@@ -221,25 +222,34 @@ export async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10
     const guest = makeClient();
     const room = await host.createRoom({ maxPlayers: 2, mode: 'private',
       player: { id: `probe_h_${nonce}`, name: 'Readiness Host' } });
+    stage = 'join';
     const joined = await guest.joinRoom({ roomCode: room.roomCode,
       player: { id: `probe_g_${nonce}`, name: 'Readiness Guest' } });
     if (joined.hostId !== room.hostId || joined.peerId === room.peerId) {
       throw Object.assign(new Error('room join returned inconsistent membership'),
         { code: 'room_membership_mismatch' });
     }
+    stage = 'host_to_guest_relay';
     await verifySignalRelay(host, guest, timeoutMs);
+    stage = 'guest_to_host_relay';
     await verifySignalRelay(guest, host, timeoutMs);
     // Keep the host authenticated so failure during guest resume still has
     // an owner able to delete this exact synthetic room in finally.
+    stage = 'guest_resume';
     await verifyRoomResume(guest, timeoutMs);
+    stage = 'resumed_guest_to_host_relay';
     await verifySignalRelay(guest, host, timeoutMs);
+    stage = 'resumed_host_to_guest_relay';
     await verifySignalRelay(host, guest, timeoutMs);
+    stage = 'guest_leave';
     await waitForSignalEvent(host, 'peer_left',
       (payload) => payload.peerId === joined.peerId, timeoutMs,
       () => closeProbeClient(guest, 'readiness_guest_complete'));
     const witness = makeClient();
+    stage = 'witness_join';
     await witness.joinRoom({ roomCode: room.roomCode,
       player: { id: `probe_w_${nonce}`, name: 'Readiness Closure Check' } });
+    stage = 'host_leave';
     await Promise.all([
       waitForSocketClose(host.socket, timeoutMs),
       waitForSignalEvent(witness, 'room_closed',
@@ -247,6 +257,7 @@ export async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10
         timeoutMs, () => closeProbeClient(host, 'readiness_host_complete')),
     ]);
     const absent = makeClient();
+    stage = 'room_removal';
     let removed = false;
     try {
       await absent.joinRoom({ roomCode: room.roomCode,
@@ -262,6 +273,7 @@ export async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10
   } catch (error) {
     throw Object.assign(new Error('signaling room lifecycle check failed'), {
       code: diagnosticCode(error?.code) || 'room_lifecycle_failed',
+      detail: { stage },
     });
   } finally {
     for (const client of clients) closeProbeClient(client, 'readiness_complete');

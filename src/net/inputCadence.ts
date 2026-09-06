@@ -26,6 +26,7 @@ export class NetworkInputCadence {
   readonly analogEdgeThreshold: number;
   readonly maxAccumulatedS: number;
   #accumulatedS = 0;
+  #cadenceElapsedS = 0;
   #lastSent: NetworkInputSample | null = null;
 
   constructor({
@@ -49,15 +50,17 @@ export class NetworkInputCadence {
   }
 
   advance(elapsedS: number): void {
+    const dt = Math.max(0, finite(elapsedS));
     this.#accumulatedS = Math.min(
       this.maxAccumulatedS,
-      this.#accumulatedS + Math.max(0, finite(elapsedS)),
+      this.#accumulatedS + dt,
     );
+    this.#cadenceElapsedS = Math.min(this.maxAccumulatedS, this.#cadenceElapsedS + dt);
   }
 
   shouldSend(input: NetworkInputSample): boolean {
     const previous = this.#lastSent;
-    if (!previous || this.#accumulatedS + Number.EPSILON >= this.intervalS) return true;
+    if (!previous || this.#cadenceElapsedS + Number.EPSILON >= this.intervalS) return true;
     if (!!input.fire !== !!previous.fire || !!input.brake !== !!previous.brake ||
         !!input.aimLocked !== !!previous.aimLocked ||
         (finite(input.shellSlot) | 0) !== (finite(previous.shellSlot) | 0) ||
@@ -73,6 +76,12 @@ export class NetworkInputCadence {
   commit(input: NetworkInputSample): number {
     const elapsedS = this.#accumulatedS;
     this.#accumulatedS = 0;
+    // Preserve fractional upload phase on non-divisor refresh rates. Keep it
+    // separate from actual elapsed input time: carrying this remainder into
+    // replay duration would simulate it twice. Early control edges start a new
+    // interval, and long pauses drop missed slots rather than sending a burst.
+    this.#cadenceElapsedS = this.#cadenceElapsedS + Number.EPSILON >= this.intervalS
+      ? Math.max(0, this.#cadenceElapsedS - this.intervalS) % this.intervalS : 0;
     this.#lastSent = {
       throttle: finite(input.throttle),
       steer: finite(input.steer),
@@ -87,6 +96,7 @@ export class NetworkInputCadence {
 
   reset(): void {
     this.#accumulatedS = 0;
+    this.#cadenceElapsedS = 0;
     this.#lastSent = null;
   }
 

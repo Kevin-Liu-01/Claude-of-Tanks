@@ -101,7 +101,7 @@ function unpackRows(
 
 function encodeInputEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
   const input = normalizePlayerInput(envelope.payload);
-  return [
+  const wire: RuntimeValue[] = [
     INPUT_WIRE_TAG,
     envelope.v,
     envelope.seq,
@@ -121,10 +121,14 @@ function encodeInputEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
     input.actionBits,
     input.aimLocked ? 1 : 0,
   ];
+  // Only capability-negotiated clients attach this optional extension. Keep
+  // legacy input packets byte-shape compatible with 18-column hosts.
+  if (input.fireIntentSeq != null) wire.push(input.fireIntentSeq);
+  return wire;
 }
 
 function decodeInputEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<NormalizedPlayerInput> {
-  if (wire.length !== 18) throw new TypeError('invalid input wire packet');
+  if (wire.length !== 18 && wire.length !== 19) throw new TypeError('invalid input wire packet');
   const envelope = validateEnvelope({
     v: wire[1],
     type: MESSAGE_TYPES.INPUT,
@@ -145,6 +149,7 @@ function decodeInputEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<NormalizedP
       shellSlot: wire[15],
       actionBits: wire[16],
       aimLocked: wire[17] === 1,
+      ...(wire.length === 19 ? { fireIntentSeq: wire[18] } : {}),
     },
   });
   return {
@@ -184,6 +189,11 @@ function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
   ];
 }
 
+function validSnapshotAck(value: RuntimeValue): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isSafeInteger(value) &&
+    value >= 0 && value < 0x80000000);
+}
+
 function readSnapshotEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<SnapshotWirePayload> {
   if (wire.length !== 13 || wire[0] !== SNAPSHOT_WIRE_TAG) {
     throw new TypeError('invalid snapshot wire packet');
@@ -200,8 +210,7 @@ function readSnapshotEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<SnapshotWi
   const ackInputSeq = wire[6];
   const baseTick = Number(wire[7]);
   if (!Number.isFinite(serverTimeMs) || serverTimeMs < 0 ||
-      (ackInputSeq !== null && (typeof ackInputSeq !== 'number' ||
-        !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0 || ackInputSeq >= 0x80000000)) ||
+      !validSnapshotAck(ackInputSeq) ||
       !Number.isSafeInteger(baseTick) || baseTick < -1) {
     throw new TypeError('invalid snapshot wire metadata');
   }
