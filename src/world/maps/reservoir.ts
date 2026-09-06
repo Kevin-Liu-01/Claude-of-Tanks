@@ -46,6 +46,9 @@ export default {
   },
   props: {
     sourcedPalette: 'frontier',
+    // A supported control kiosk, bank manifold and submerged-footed intake
+    // replace three accepted rubble piles; the closed works leave roads open.
+    reservoirWaterworks: { lakeIndex: 1, kiosk: [14, 84], bank: [39.5, 100], intake: [46.5, 99] },
     plan: ['foundryoffice', 'depot', 'rangerlodge', 'warehouse', 'watertower', 'farmhouse', 'woodshed', 'tavern', 'depot', 'granary', 'ruin', 'cottage', 'warehouse', 'rangerlodge', 'depot', 'farmhouse', 'woodshed', 'ruin'],
     destructibleBuildings: ['transformershed', 'servicegarage', 'huntingblind', 'fieldhut'],
     buildingLat: [13, 2], destructibleBuildingLat: [17, 3], sideSkip: 0.18, spacingPad: 8,

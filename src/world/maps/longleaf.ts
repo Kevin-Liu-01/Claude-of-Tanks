@@ -45,6 +45,20 @@ export default {
   },
   props: {
     sourcedPalette: 'frontier',
+    loggingYard: {
+      // Existing flatbeds load beside grounded cut timber inside the western
+      // garage apron. The existing access loop and defensive bay stay clear.
+      flatbeds: [{ x: -84, z: 64, yaw: 0 }, { x: -84, z: 100, yaw: 0 }],
+      bundles: [
+        { x: -104, z: 64, yaw: -Math.PI / 2 }, { x: -103.2, z: 64, yaw: -Math.PI / 2 },
+        { x: -102.4, z: 64, yaw: -Math.PI / 2 }, { x: -101.6, z: 64, yaw: -Math.PI / 2 },
+        { x: -100.8, z: 64, yaw: -Math.PI / 2 },
+        { x: -104, z: 100, yaw: -Math.PI / 2 }, { x: -103.2, z: 100, yaw: -Math.PI / 2 },
+        { x: -102.4, z: 100, yaw: -Math.PI / 2 }, { x: -101.6, z: 100, yaw: -Math.PI / 2 },
+        { x: -100.8, z: 100, yaw: -Math.PI / 2 },
+      ],
+      clearcut: [[-114, -238], [-74, -176], [-20, -100]],
+    },
     plan: ['rangerlodge', 'woodshed', 'depot', 'barn', 'logcabin', 'warehouse', 'woodshed', 'tavern', 'granary', 'depot', 'logcabin', 'ruin', 'woodshed', 'barn', 'farmhouse', 'rangerlodge', 'depot', 'logcabin'],
     destructibleBuildings: ['leanto', 'huntingblind', 'fieldhut', 'servicegarage'],
     buildingLat: [13, 2], destructibleBuildingLat: [17, 3], sideSkip: 0.18, spacingPad: 8,

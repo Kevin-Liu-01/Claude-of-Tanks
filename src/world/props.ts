@@ -30,6 +30,8 @@ import {
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
+import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
@@ -212,6 +214,8 @@ type WallRun = readonly [number, number, number, number, number?];
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  loggingYard?: LoggingYardConfig;
+  reservoirWaterworks?: ReservoirWaterworksConfig;
   plan: string[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
@@ -4398,6 +4402,10 @@ ${snowCap ? `
   yield { fine: true, stage: 'field-haystacks' };
 
   // --- field clutter: fallen logs + stumps (visual ground detail) ---
+  function beginFieldTimberCapture(): FieldTimberPiece[] | null {
+    return P.loggingYard ? [] : null;
+  }
+  const fieldTimber = beginFieldTimberCapture();
   function placeFieldLogsAndStumps(): void {
   for (let i = 0, placed = 0; P.logs && i < 260 && placed < 26; i++) {
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
@@ -4421,18 +4429,21 @@ ${snowCap ? `
         relief: pose.relief, baseClearance: -r * 0.1,
         start: pose.start, end: pose.end,
       });
+      fieldTimber?.push({ geometry: log, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: len, height: 0, yaw });
     } else { // stump
       const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
       const support = sampleDiscGround(heightField, x, z, r, 0.06);
       const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
       scaleUV(st, 1.5, 0.5);
-      st.rotateY(rng() * Math.PI);
+      const yaw = rng() * Math.PI;
+      st.rotateY(yaw);
       st.translate(x, support.y + h / 2, z);
       buckets.wood.push(st);
       decorationGroundingReceipts.push({
         kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
         supportMin: support.min, supportMax: support.max,
       });
+      fieldTimber?.push({ geometry: st, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: 0, height: h, yaw });
     }
     placed++;
   }
@@ -5024,6 +5035,10 @@ ${snowCap ? `
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
   // rect — shelled approaches carry debris too; the establishing camera used
   // to frame nothing but clean lawn between itself and the first block
+  function beginWaterworksRubbleCapture(): WaterworksRubblePacket[] | null {
+    return mapId === 'reservoir' && P.reservoirWaterworks ? [] : null;
+  }
+  const waterworksRubble = beginWaterworksRubbleCapture();
   function placeStreetRubble(): void {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
@@ -5040,7 +5055,14 @@ ${snowCap ? `
       const nearSpawn = [L.spawns.player, ...L.spawns.enemies]
         .some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 20);
       if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) return false;
+      const capture = waterworksRubble && waterworksRubble.length < 3;
+      const stoneStart = capture ? buckets.stone.length : 0;
+      const woodStart = capture ? buckets.wood.length : 0;
       addRubblePile(x, z, 1.6 + rrng() * 1.3, rrng);
+      if (capture) waterworksRubble!.push({
+        stone: buckets.stone.slice(stoneStart), wood: buckets.wood.slice(woodStart),
+        obstacle: obstacles[obstacles.length - 1], collider: colliders[colliders.length - 1],
+      });
       return true;
     };
     for (let i = 0, placed = 0; i < P.rubblePiles * 14 && placed < P.rubblePiles; i++) {
@@ -5681,6 +5703,26 @@ ${snowCap ? `
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
   });
+
+  // All seeded decoration has finished. Relocate accepted records before
+  // merging, pool collider refits and spatial indexing; never resample RNG.
+  function composeAuthoredLoggingYard(): void {
+    if (!fieldTimber) return;
+    group.userData.loggingYard = composeLoggingYard(P.loggingYard, heightField, fieldTimber,
+      [...obstacles, ...colliders], destructibles, dPools);
+    fieldTimber.length = 0;
+  }
+  composeAuthoredLoggingYard();
+
+  // Reservoir reuses three accepted street-rubble packets, never a synthetic
+  // quota. Plan against all late props before changing any geometry or slot.
+  function composeAuthoredReservoirWaterworks(): void {
+    if (!waterworksRubble) return;
+    group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders]);
+    waterworksRubble.length = 0;
+  }
+  composeAuthoredReservoirWaterworks();
 
   // Delta uses two resident procedural plaster families. Fold the incidental
   // third paint tone after authoring so river-supported placement cannot add
