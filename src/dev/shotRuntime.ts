@@ -394,7 +394,9 @@ export async function setShotView(
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
   context.game.phase = 'shot';
-  context.setGarageSpots(true);
+  // Use the ordinary phase owner: battlefield captures must detach the whole
+  // workshop (including its archive timer), not merely hide its DOM panels.
+  context.setGarageSpots(name === 'garage');
   for (const entity of context.game.tanks) {
     entity.input.throttle = 0;
     entity.input.steer = 0;
@@ -418,6 +420,9 @@ export async function setShotView(
     VIEW_MAP[name] || 'verdant',
     featuredPlayerId,
   );
+  // Acquisition may mount a world for terrain/roster preparation. A Garage
+  // recipe still owns only the showroom when it starts painting.
+  context.setWorldDormant(name === 'garage');
   const helpers = createRecipeHelpers(context);
   const world = context.getWorld();
   const fx = context.getFx();
