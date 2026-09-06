@@ -97,6 +97,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/local-import-integrity.selftest.mjs',
     'tools/production-multiplayer-check.selftest.mjs',
     'tools/production-room-webrtc-check.selftest.mjs',
+    'tools/production-private-room-ui.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',

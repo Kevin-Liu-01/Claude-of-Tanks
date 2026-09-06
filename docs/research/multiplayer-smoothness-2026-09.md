@@ -2,16 +2,23 @@
 
 Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 
-Status: focused verification, strict LAN and severe impaired-private rendering,
+Current deployment status: release `e60d2839a` is live on the canonical website
+with Cloudflare room signaling and the existing TURN service. The old canonical
+Redis signaling route returns HTTP 410 and requests a refresh. See the final
+Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
+versions, production checks and limitations. Earlier **not deployed** statements
+below describe their historical verification phase, not the current cutover.
+
+Pre-cutover verification: focused verification, strict LAN and severe impaired-private rendering,
 four-/14-human capacity, persistent-room reconnect/rematch, natural rendered
 host/client matches, and actual hidden-tab behavior are recorded below. The
 earlier Redis-free hardening boundary passed all 457 ordered tests, typecheck
 and public/private builds. The subsequent user-approved private/LAN-only product
 and broken-room UX slice passed its focused, browser, typecheck and public-build
 gates; the strict suite's responsive-policy failure and successful tail rerun
-are recorded in the final verification section below. Production room creation remains blocked
-by the signaling database's exhausted monthly command quota; these code
-changes have not been deployed.
+are recorded in the final verification section below. At that earlier boundary,
+production room creation was blocked by the signaling database's exhausted
+monthly command quota and those changes had not yet been deployed.
 Hidden-browser hosting slowdown and the failed CPU-rate-4 budget are documented
 limitations. This record does not claim zero network latency or certify an
 untested production deployment.
@@ -41,12 +48,12 @@ consumables, and match results remain authoritative.
 | Ranked/dedicated client | Dedicated Node match | Authenticated WebSocket with replaceable-state coalescing | Same bridge, predictor, and snapshot buffer |
 
 The ranked row documents the retained internal compatibility implementation.
-The current player-facing contract is Solo, Private and LAN only; supported
-deployment uses a single in-memory signaling process and the existing TURN
-service, not ranked/dedicated simulation, Redis, Supabase or rating storage.
-See [the deployment/runbook](../MULTIPLAYER-HOSTING.md). A public signaling
-endpoint and frontend cutover still require actual deployment; local source
-and tests do not provision a backend.
+The current player-facing contract is Solo, Private and LAN only. The selected
+Internet deployment uses Cloudflare per-room Durable Objects and the existing
+TURN service; LAN can use the local in-memory helper. Neither requires
+ranked/dedicated simulation, Redis, Supabase or rating storage. See
+[the deployment/runbook](../MULTIPLAYER-HOSTING.md). The earlier self-hosted
+single-process implementation remains an alternative, not the live backend.
 
 The authoritative match runs at 60 Hz and publishes snapshots at 20 Hz.
 Browser input upload cadence is separate from render cadence. The local tank
@@ -1507,8 +1514,12 @@ unchanged main base reproduced the same 240,000 ms child timeout and SIGTERM;
 the test is byte-identical. This distinguishes an upstream/host-condition failure
 from this multiplayer diff, but does not establish its underlying cause. No
 timeout was raised and no vehicle code was changed to bypass it. Remaining
-ordered tests are run separately; do not describe the complete `npm test` as
-passing unless that full gate is subsequently rerun successfully.
+ordered tests were resumed separately and passed through the remaining pre
+checks and the early core checks. That optional broad run was deliberately
+stopped during the unrelated `surfaceMarkupFleet` check after more than
+32 minutes, not reported as a passing full suite. All changed/new multiplayer
+checks were run separately. Do not describe the complete `npm test` as passing
+unless that full gate is subsequently rerun successfully.
 
 The deployment procedure, storage lifetime, hibernation boundaries, rate limits,
 rollback constraints and supported LAN setup are in
@@ -1516,3 +1527,27 @@ rollback constraints and supported LAN setup are in
 ends when the host leaves; a backgrounded or suspended host cannot guarantee
 single-player frame pacing. Fourteen rendered players and throttled-device
 performance remain uncertified.
+
+### Final room-capacity and native production follow-up
+
+A deterministic full-room review found a legitimate negotiation burst that
+the initial 120-message/10-second socket budget rejected: 13 guests × (one
+offer + 12 ICE messages) = 169 host messages. The host's canonical authenticated
+room membership now determines a bounded capacity allowance, up to 448 for
+14 seats; guests and unauthenticated sockets retain 120. Payload role claims
+cannot increase it. The 169-message fixture failed before the correction and
+passes after it; all 15 real Workers tests, source/test typechecks and focused
+quality checks pass. The corrected Worker is live at version
+`119c2871-40b7-4964-8fdb-03de3c82c040`.
+
+The deployed frontend was exercised through native controls in two fresh
+browser contexts: create Private 1v1, invite join, select map, both ready,
+start, both connected battles, advancing snapshot/input counters, native exit,
+room closure and guest return to Garage. Zero page errors; owned rooms and
+browsers closed. This passed before and after the capacity correction, and a
+fresh TURN-only production peer-pair check also passed after it. The committed
+`production-private-room-ui` probe and its deterministic guards/cleanup test
+make that same deployed-frontend check reproducible with an explicit origin.
+The earlier failed agent-browser session-continuity attempt created no rooms
+and is not counted as gameplay proof. These remain short functional receipts,
+not full-capacity rendered or different-physical-network performance guarantees.

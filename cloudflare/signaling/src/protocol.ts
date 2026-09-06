@@ -3,6 +3,10 @@ import type { RuntimeValue } from '../../../src/runtimeTypes.ts';
 export const MAX_PAYLOAD_BYTES = 128 * 1024;
 export const RATE_WINDOW_MS = 10_000;
 export const RATE_MAX_MESSAGES = 120;
+// One host socket negotiates every peer: allow two observed 13-message ICE/
+// description bursts per peer plus headroom, without relaxing guest admission.
+export const RATE_HOST_CONTROL_MESSAGES = 32;
+export const RATE_HOST_MESSAGES_PER_PEER = 32;
 export const UNAUTHENTICATED_TIMEOUT_MS = 15_000;
 export const MAX_SOCKETS = 32;
 export const MAX_PENDING_SOCKETS = 16;

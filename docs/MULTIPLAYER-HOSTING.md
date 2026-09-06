@@ -142,7 +142,8 @@ new URL would return players to the exhausted old Redis route.
 ### Deployment receipt — 2026-09-05
 
 - Worker: `https://cot-private-rooms.kk23907751.workers.dev`;
-  version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`.
+  initial version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`;
+  current host-burst correction `119c2871-40b7-4964-8fdb-03de3c82c040`.
 - Native production room probe passed create/join, bidirectional signaling,
   authenticated reconnect, signaling after reconnect, guest departure, host
   closure and absence of the closed room. This probe uses temporary owned rooms.
@@ -173,8 +174,57 @@ new URL would return players to the exhausted old Redis route.
   3% input loss, 624 authority ticks, with no dropped catch-up time. These are
   functional test receipts, not full 14-rendered-player or Internet FPS claims.
 
-The frontend release is tracked separately below after its production check.
-No Redis resource, credentials or paid plan were changed by Worker deployment.
+The release follow-up expands this to 15 Workers-runtime tests. A full room
+can emit 169 host negotiation messages (13 guests, each receiving one offer
+and 12 ICE candidates), which exceeded the original 120-message/10-second
+limit. Only the authenticated canonical host now receives a capacity-based
+allowance, `max(120, 32 + 32 * (maxPlayers - 1))`, capped at 448 for 14 seats.
+Guest and unauthenticated limits remain 120. Regression coverage proves all
+169 targeted messages arrive, hibernation retains the counter, message 449
+closes the full-room host, and forged-host/guest message 121 still closes.
+
+### Frontend cutover receipt — 2026-09-05
+
+With owner approval, release `e60d2839a7313d14415bd842b27b00253b62ff50`
+was pushed without force and deployed by the existing main-branch integration.
+Vercel deployment `dpl_5JgVDqyToVS1czn9VNC4KDMBDH23` became Ready and the
+canonical website reports `v1.0.0+ge60d2839a`. Its deployed lazy-loaded room-menu
+bundle contains `wss://cot-private-rooms.kk23907751.workers.dev/rooms`.
+The production environment also has `COT_SIGNAL_BACKEND=cloudflare`.
+
+The canonical `/api/signal` now returns HTTP 410 with `signaling_moved` and
+`refreshRequired: true`. A fresh post-cutover lifecycle/TURN check passed room
+creation, joining, reconnect, two-way signaling, clean departure, room removal,
+and actual browser relay allocation. Existing players should refresh before
+creating a new room. The cutover does not disconnect sockets already pinned to
+old immutable deployment instances or retire those old deployment URLs.
+
+No Redis resource or credential was deleted or revoked, and no paid plan was
+changed. The build's pre-existing TS2688 Node-declaration diagnostics were also
+present four times in the previous untouched-main Vercel build; both deployments
+completed successfully. Independent root/source/test typechecks pass locally.
+
+Actual deployed-frontend verification also passed, using two pristine browser
+contexts and native controls only: Private 1v1 creation, invite join, native
+map selection, both players ready, Start, both connected live battles, advancing
+snapshots/inputs, Leave Battle, host room closure and guest return to Garage.
+Host counters increased by 9 snapshots / 13 inputs; guest by 9 snapshots /
+7 inputs. There were zero page errors and owned room/browser cleanup passed.
+After the host-burst correction, both the TURN-only peer-pair check and the
+native frontend smoke passed again. The repeat match advanced host counters
+by 7 snapshots / 10 inputs and guest counters by 7 snapshots / 7 inputs, with
+zero page errors, native room closure and verified browser cleanup.
+The probe neither replaces the production endpoint nor injects simulation state:
+
+~~~sh
+node tools/production-private-room-ui.mjs --url=https://cot.kevinliu.studio
+~~~
+
+An earlier agent-browser attempt lost its named-session page between commands
+(`about:blank`); it created no rooms and is not counted as gameplay evidence.
+The durable Puppeteer regression above booted both real frontends successfully.
+This short functional smoke does not certify frame-rate parity, every hardware
+configuration, different physical networks, or fourteen rendered players.
 
 ## Alternative: one self-hosted signaling process
 

@@ -1,0 +1,242 @@
+import { pathToFileURL } from 'node:url';
+
+export function productionUiOptions({ url, timeoutMs = 300_000 } = {}) {
+  let origin;
+  try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
+  if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
+      origin.username || origin.password || origin.search || origin.hash) {
+    throw new TypeError('frontend must be a credential-free HTTP(S) origin without a path');
+  }
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30_000 || timeoutMs > 300_000) {
+    throw new TypeError('timeout must be an integer from 30000 through 300000 ms');
+  }
+  return { origin: origin.origin, timeoutMs };
+}
+
+function failure(stage) {
+  return Object.assign(new Error('production private-room UI smoke failed'), {
+    code: 'production_private_room_ui_failed', stage,
+  });
+}
+
+function bounded(promise, milliseconds, stage) {
+  let timer;
+  return Promise.race([promise, new Promise((_, reject) => {
+    timer = setTimeout(() => reject(failure(stage)), Math.max(1, milliseconds));
+  })]).finally(() => clearTimeout(timer));
+}
+
+/** Read-only projection: never export player IDs, invitation codes, storage, or signaling secrets. */
+export function readUiState() {
+  const shown = (selector) => {
+    const element = document.querySelector(selector);
+    return !!element && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+  };
+  const network = window.__DEBUG?.network;
+  return { phase: window.__DEBUG?.game?.phase || null, ready: window.__GAME_READY === true,
+    garageVisible: shown('.cot-battle'), lobbyVisible: shown('.cot-play .lobby.show'),
+    lobbyPlayers: document.querySelector('.cot-play .lobby.show .players')?.children.length || 0,
+    failureVisible: shown('.cot-play .room-failure:not([hidden])'),
+    loadingVisible: shown('.cot-bl.on'), connected: network?.connected === true,
+    snapshotPacketsReceived: Number(network?.snapshotPacketsReceived) || 0,
+    inputPacketsSubmitted: Number(network?.inputPacketsSubmitted) || 0,
+    hasRoomUrl: new URL(location.href).searchParams.has('room') };
+}
+
+export function validateUiProgress(before, after) {
+  if (before.length !== 2 || after.length !== 2) throw failure('battle_progress');
+  return after.map((state, index) => {
+    const prior = before[index];
+    if (state.phase !== 'battle' || !state.connected || state.loadingVisible ||
+        state.snapshotPacketsReceived <= prior.snapshotPacketsReceived ||
+        state.inputPacketsSubmitted <= prior.inputPacketsSubmitted) throw failure('battle_progress');
+    return { role: index ? 'guest' : 'host', phase: 'battle', connected: true,
+      snapshotIncrease: state.snapshotPacketsReceived - prior.snapshotPacketsReceived,
+      inputIncrease: state.inputPacketsSubmitted - prior.inputPacketsSubmitted };
+  });
+}
+
+async function visible(page, selector) {
+  return page.$eval(selector, (element) => element.getClientRects().length > 0)
+    .catch(() => false);
+}
+
+async function nativeClick(page, selector, timeoutMs) {
+  await page.bringToFront();
+  await page.waitForSelector(selector, { visible: true, timeout: timeoutMs });
+  await page.click(selector);
+}
+
+async function openPrivateMenu(page, timeoutMs) {
+  await nativeClick(page, '.cot-battle-mode', timeoutMs);
+  await nativeClick(page, '.cot-battle-choice[data-mode="private"]', timeoutMs);
+  await nativeClick(page, '.cot-battle', timeoutMs);
+  await page.waitForSelector('.cot-play.show [data-action="create"]', { visible: true, timeout: timeoutMs });
+}
+
+async function selectMenuOption(page, control, value, timeoutMs) {
+  await nativeClick(page, `${control} [data-select-trigger]`, timeoutMs);
+  await nativeClick(page, `${control} [role="option"][data-value="${value}"]`, timeoutMs);
+}
+
+async function nativeLeaveBattle(page, timeoutMs) {
+  await page.bringToFront();
+  await page.keyboard.press('Escape');
+  if (!await visible(page, '.cot-settings.open .leave')) {
+    // The first Escape can belong to native pointer-lock release.
+    await page.keyboard.press('Escape');
+  }
+  await nativeClick(page, '.cot-settings.open .leave', timeoutMs);
+  await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'garage', { timeout: timeoutMs });
+}
+
+async function closeOwnedRoom(page, timeoutMs) {
+  if (!page || page.isClosed()) return false;
+  const state = await page.evaluate(readUiState);
+  if (state.phase === 'battle') await nativeLeaveBattle(page, timeoutMs);
+  if (await visible(page, '.cot-play.show [data-action="leave"]')) {
+    await nativeClick(page, '.cot-play.show [data-action="leave"]', timeoutMs);
+  } else if ((await page.evaluate(readUiState)).hasRoomUrl) {
+    // Retained room membership is reopened through the same native garage control.
+    await nativeClick(page, '.cot-battle', timeoutMs);
+    if (await visible(page, '.cot-play.show [data-action="leave"]')) {
+      await nativeClick(page, '.cot-play.show [data-action="leave"]', timeoutMs);
+    }
+  }
+  return !(await page.evaluate(readUiState)).hasRoomUrl;
+}
+
+export async function cleanupProductionUi({ browser, pages, roomCreated }, timeoutMs = 10_000) {
+  const roomCleanup = [];
+  if (roomCreated) {
+    // Host first: its explicit native Leave closes this exact room for both players.
+    for (const page of pages) {
+      roomCleanup.push(await bounded(closeOwnedRoom(page, 3_000), timeoutMs, 'room_cleanup').catch(() => false));
+    }
+  }
+  let browserClosed = !browser;
+  if (browser) {
+    try { await bounded(browser.close(), 5_000, 'browser_cleanup'); browserClosed = true; }
+    catch (_) { browser.process()?.kill('SIGKILL'); }
+  }
+  return { roomCleanupVerified: !roomCreated || roomCleanup.every(Boolean), browserClosed };
+}
+
+async function freshPage(browser, origin, timeoutMs, owners, onPageError) {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  owners.pages.push(page);
+  page.on('pageerror', onPageError);
+  await page.setCacheEnabled(false);
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  page.setDefaultTimeout(Math.min(15_000, timeoutMs));
+  page.setDefaultNavigationTimeout(Math.min(60_000, timeoutMs));
+  await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.cot-battle-mode', { visible: true, timeout: Math.min(90_000, timeoutMs) });
+  if (new URL(page.url()).origin !== origin) throw failure('frontend_origin');
+  return page;
+}
+
+/** Native deployed controls only; never override endpoints, import /src, or change game state. */
+export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
+  launchBrowser = null, onStage = () => {} } = {}) {
+  const options = productionUiOptions({ url, timeoutMs });
+  const started = performance.now();
+  const owners = { browser: null, pages: [], roomCreated: false };
+  let stage = 'browser_launch';
+  let problem;
+  let result;
+  let pageErrors = 0;
+  const left = () => Math.max(1, timeoutMs - 27_000 - (performance.now() - started));
+  const run = (next, action) => {
+    stage = next;
+    onStage(next);
+    return bounded(Promise.resolve().then(action), left(), next);
+  };
+  try {
+    const launch = launchBrowser || (async () => {
+      const { default: puppeteer } = await import('puppeteer');
+      return puppeteer.launch({ headless: true, timeout: Math.min(30_000, timeoutMs),
+        protocolTimeout: 60_000, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-gl=angle', '--enable-webgl'] });
+    });
+    owners.browser = await launch();
+    for (const role of ['host', 'guest']) {
+      await run(`${role}_garage`, () => freshPage(owners.browser, options.origin, left(), owners,
+        () => { pageErrors++; }));
+    }
+    const [host, guest] = owners.pages;
+    await run('private_controls', () => openPrivateMenu(host, left()));
+    const modes = await host.$$eval('.cot-play [data-mode]', (elements) => elements.map((el) => el.dataset.mode));
+    if (modes.join(',') !== 'solo,private,lan') throw failure('private_controls');
+    // Read the built-in endpoint only. There is deliberately no endpoint override option.
+    const endpoint = await host.$eval('.cot-play [data-field="signal"]', (el) => el.value);
+    const signaling = new URL(endpoint);
+    if (signaling.protocol !== 'wss:' || signaling.pathname !== '/rooms') throw failure('default_endpoint');
+    await run('create_1v1_room', async () => {
+      await selectMenuOption(host, '.cot-play [data-field="create-size"]', '1', left());
+      owners.roomCreated = true;
+      await nativeClick(host, '.cot-play [data-action="create"]', left());
+      await host.waitForSelector('.cot-play .lobby.show .code', { visible: true, timeout: left() });
+    });
+    const code = await host.$eval('.cot-play .lobby.show .code', (el) => el.textContent.trim());
+    if (!/^[A-Z0-9]{6}$/.test(code)) throw failure('room_code');
+    const invite = new URL('/', options.origin);
+    invite.searchParams.set('room', code);
+    await run('guest_native_invite', async () => {
+      await guest.goto(invite.href, { waitUntil: 'domcontentloaded' });
+      await guest.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
+        { timeout: left() });
+      await host.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
+        { timeout: left() });
+    });
+    await run('ready_and_launch', async () => {
+      await selectMenuOption(host, '.cot-play [data-control="map"]', 'winter', left());
+      await nativeClick(guest, '.cot-play [data-action="ready"]', left());
+      await nativeClick(host, '.cot-play [data-action="ready"]', left());
+      await host.waitForFunction(() => document.querySelector('.cot-play [data-action="start"]')?.disabled === false,
+        { timeout: left() });
+      await nativeClick(host, '.cot-play [data-action="start"]', left());
+    });
+    await run('both_live_battles', () => Promise.all(owners.pages.map((page) => page.waitForFunction(() =>
+      window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG?.network?.connected === true &&
+      !document.querySelector('.cot-bl.on'), { timeout: left() }))));
+    const before = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
+    await run('battle_progress', () => Promise.all(owners.pages.map((page, index) => page.waitForFunction((prior) =>
+      window.__DEBUG.network.snapshotPacketsReceived > prior.snapshotPacketsReceived + 5 &&
+      window.__DEBUG.network.inputPacketsSubmitted > prior.inputPacketsSubmitted + 5,
+    { timeout: Math.min(10_000, left()) }, before[index]))));
+    const after = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
+    const peers = validateUiProgress(before, after);
+    await run('native_exit_and_room_close', async () => {
+      await nativeLeaveBattle(host, left());
+      await closeOwnedRoom(host, left());
+      await guest.waitForFunction(() => window.__DEBUG?.game?.phase === 'garage' &&
+        !window.__DEBUG?.network && !new URL(location.href).searchParams.has('room'), { timeout: left() });
+    });
+    if (pageErrors) throw failure('page_errors');
+    result = { ok: true, freshBrowserContexts: 2, nativePrivate1v1: true, defaultRoomEndpoint: true,
+      nativeInviteJoined: true, nativeReadyAndLaunch: true, peers, nativeExitAndRoomClose: true, pageErrors };
+  } catch (_) {
+    problem = failure(stage);
+    problem.lastStates = await Promise.all(owners.pages.map((page) =>
+      bounded(page.evaluate(readUiState), 1_000, 'last_state').catch(() => null)));
+  }
+  const cleanup = await cleanupProductionUi(owners);
+  if (problem) throw Object.assign(problem, { cleanup });
+  if (!cleanup.browserClosed || !cleanup.roomCleanupVerified) throw Object.assign(failure('cleanup'), { cleanup });
+  return { ...result, cleanup };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const option = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+  try {
+    const result = await verifyProductionPrivateRoomUi({ url: option('url'),
+      timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),
+      onStage: (stage) => console.log(`[production-ui] ${stage}`) });
+    console.log(JSON.stringify(result, null, 2));
+  } catch (error) {
+    console.error(JSON.stringify({ ok: false, code: 'production_private_room_ui_failed',
+      stage: error?.stage || 'configuration', lastStates: error?.lastStates || null, cleanup: error?.cleanup || null }, null, 2));
+    process.exitCode = 1;
+  }
+}

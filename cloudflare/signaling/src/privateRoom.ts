@@ -7,7 +7,8 @@ import {
 import { signalingResumeAllowed, signalingResumeHash } from '../../../server/signalingMembership.ts';
 import {
   ACTIVITY_CHECKPOINT_MS, MAX_PAYLOAD_BYTES, MAX_PENDING_SOCKETS, MAX_SOCKETS,
-  RATE_MAX_MESSAGES, RATE_WINDOW_MS, ROOM_IDLE_TTL_MS, UNAUTHENTICATED_TIMEOUT_MS,
+  RATE_HOST_CONTROL_MESSAGES, RATE_HOST_MESSAGES_PER_PEER, RATE_MAX_MESSAGES,
+  RATE_WINDOW_MS, ROOM_IDLE_TTL_MS, UNAUTHENTICATED_TIMEOUT_MS,
   allowedOrigin, failure, parseEnvelope, publicError, record, roomCodeFromUrl,
   validSignal, type SignalEnvelope,
 } from './protocol.ts';
@@ -294,6 +295,21 @@ export class PrivateRoom extends DurableObject<Env> {
       payload: { roomCode: this.#roomCode } });
   }
 
+  #messageLimit(attachment: SocketState): number {
+    if (!attachment.authenticated) return RATE_MAX_MESSAGES;
+    const connection = this.#connections.get(attachment.id);
+    const membership = connection && this.#store.membership.get(connection);
+    const room = this.#store.rooms.get(this.#roomCode);
+    // Never trust payload role/capacity or a stale attachment alone. Admission
+    // validates capacity 2..14, making this host-only ceiling at most 448.
+    if (!membership || !room || membership.roomCode !== room.roomCode ||
+        membership.peerId !== room.hostId || room.peers.get(room.hostId)?.connection !== connection) {
+      return RATE_MAX_MESSAGES;
+    }
+    return Math.max(RATE_MAX_MESSAGES,
+      RATE_HOST_CONTROL_MESSAGES + RATE_HOST_MESSAGES_PER_PEER * (room.maxPlayers - 1));
+  }
+
   async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): Promise<void> {
     const attachment = this.#sessions.get(ws);
     if (!attachment) {
@@ -313,7 +329,7 @@ export class PrivateRoom extends DurableObject<Env> {
     }
     attachment.rateCount++;
     ws.serializeAttachment(attachment);
-    if (attachment.rateCount > RATE_MAX_MESSAGES) {
+    if (attachment.rateCount > this.#messageLimit(attachment)) {
       await this.#detach(ws, 'rate_limit');
       return;
     }
