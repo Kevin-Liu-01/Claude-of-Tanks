@@ -43,6 +43,16 @@ export default {
       { x0: 110, z0: 126, x1: 272, z1: 146, gap: 18, jitter: 0.8, species: 'oak' },
       { x0: 126, z0: -98, x1: 268, z1: -80, gap: 18, jitter: 0.8, species: 'oak' },
     ],
+    authoredTrees: [
+      // Rehouse existing oaks as cultivated parcels. Cedar/pine libraries,
+      // total tree records, variants and the distant wooded rim stay intact.
+      { id: 'west-lower-orchard', species: 'oak', path: [[-210, -96], [-140, -78]], count: 10, width: 0.15 },
+      { id: 'west-middle-orchard', species: 'oak', path: [[-212, -44], [-142, -28]], count: 10, width: 0.15 },
+      { id: 'west-upper-orchard', species: 'oak', path: [[-208, 42], [-142, 60]], count: 10, width: 0.15 },
+      { id: 'east-lower-orchard', species: 'oak', path: [[146, -94], [250, -78]], count: 14, width: 0.15 },
+      { id: 'east-middle-orchard', species: 'oak', path: [[146, 78], [236, 94]], count: 12, width: 0.15 },
+      { id: 'east-upper-orchard', species: 'oak', path: [[150, 132], [246, 146]], count: 13, width: 0.15 },
+    ],
   },
   props: {
     sourcedPalette: 'autumn',

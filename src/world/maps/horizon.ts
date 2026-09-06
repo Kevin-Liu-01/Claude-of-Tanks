@@ -1092,8 +1092,8 @@ function subdivideHorizonGeometry(
   };
 }
 
-function reshapeSkybridgeTableCaps(ring: HorizonRingGeometry, amp: number): void {
-  // Skybridge's tall mesas need a surface at the summit, not just one crest
+function reshapeFiniteTableCaps(ring: HorizonRingGeometry, amp: number): void {
+  // Authored tablelands need a surface at the summit, not just one crest
   // row. Reuse the final approach row as the front cap edge in each range.
   // Only separated high sectors reach a shared rock stratum; low passes and
   // the existing meandering edges keep these attached landforms irregular.
@@ -1173,7 +1173,9 @@ export function sampleHorizonGeometry(
     style, PROFILES[style], noise, horizon.amp ?? 1,
   );
   const ring = subdivideHorizonGeometry(source, style, noise);
-  if (mapId === 'skybridge' && style === 'mesa') reshapeSkybridgeTableCaps(ring, horizon.amp ?? 1);
+  if ((mapId === 'skybridge' || mapId === 'copper_mesa') && style === 'mesa') {
+    reshapeFiniteTableCaps(ring, horizon.amp ?? 1);
+  }
   openHorizonToSea(ring, horizon.seaOpening);
   return ring;
 }
@@ -1989,7 +1991,9 @@ export function* buildHorizonRingSteps(
   // room for this relief within the previous vertex AND triangle ceilings.
   // Coastal apertures then lower the same annulus into a sea-level apron.
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
-  if (mapId === 'skybridge' && style === 'mesa') reshapeSkybridgeTableCaps(ring, amp);
+  if ((mapId === 'skybridge' || mapId === 'copper_mesa') && style === 'mesa') {
+    reshapeFiniteTableCaps(ring, amp);
+  }
   openHorizonToSea(ring, H.seaOpening);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, H.seaOpening);

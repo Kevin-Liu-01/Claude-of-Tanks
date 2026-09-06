@@ -57,6 +57,12 @@ export default {
       { x0: -192, z0: -182, x1: -188, z1: 208, gap: 17, jitter: 1.6, species: 'poplar' },
       { x0: 190, z0: -328, x1: 208, z1: -98, gap: 18, jitter: 1.2, species: 'willow' },
     ],
+    authoredTrees: [
+      // Existing poplars move onto the field headland, outside the protected
+      // farm court; crossings retain their ordinary empty road shoulders.
+      { id: 'west-field-headland', species: 'poplar', path: [[-226, -174], [-232, -50], [-238, 102], [-214, 192]], count: 34, width: 0.4 },
+      { id: 'east-drain-willow-edge', species: 'willow', path: [[144, -320], [176, -318], [199, -298], [198, -268]], count: 18, width: 0.5 },
+    ],
   },
   props: {
     sourcedPalette: 'coastal',

@@ -54,6 +54,13 @@ export default {
     loneMix: [['palm', 0.44], ['willow', 0.42], ['eucalyptus', 0.14]], rimMix: [['willow', 0.62], ['eucalyptus', 0.24], ['palm', 0.14]],
     clusterCount: 58, loneCount: 78, rimCount: 84, grassDensity: 1.06, bushCount: 1.14, bushSpecies: 'willow', clusterScrub: 2.0,
     belts: [{ x0: -382, z0: -40, x1: -330, z1: 258, gap: 22, jitter: 5, species: 'willow' }, { x0: 40, z0: -278, x1: 46, z1: 48, gap: 23, jitter: 5, species: 'willow' }],
+    authoredTrees: [
+      // Dry rooted ribbons follow the actual tidal spine, not new random
+      // forest discs. Lake/causeway/village clearances remain unchanged.
+      { id: 'southern-tidal-bank', species: 'willow', path: [[122, -306], [122, -208], [154, -130]], count: 22, width: 0.6 },
+      { id: 'relief-island-bank', species: 'willow', path: [[168, -72], [160, 64], [132, 128]], count: 24, width: 0.6 },
+      { id: 'fishing-creek-bank', species: 'willow', path: [[-116, 204], [-42, 210], [20, 216]], count: 18, width: 0.5 },
+    ],
   },
   props: {
     riverLandings: [

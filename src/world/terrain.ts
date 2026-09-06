@@ -21,6 +21,7 @@ import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, 
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import { roadCoreMask } from './roadMaskProfile.ts';
+import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -143,6 +144,7 @@ interface TerrainSettings {
   softLakes?: boolean;
   clearMarshVeg?: boolean;
   hardstands?: readonly HardstandConfig[];
+  quarryBenches?: boolean;
 }
 
 interface SplatConfig {
@@ -621,6 +623,7 @@ export function createHeightField(
   let liquidSurfaces: Float64Array | null = null;
   let liquidLakeBanks: Float64Array | null = null;
   let liquidIndex: Uint32Array | null = null;
+  let quarryFloorY: number | null = null;
   const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
 
   function applyMacroTerrain(
@@ -855,7 +858,11 @@ export function createHeightField(
     // lake level tracks the lowest shore, so on the uphill side the raw
     // terrain can sit 10+ m above the sheet — graded over ~35 m that is a
     // snowy bank; over the old few-meter band it was a sheer quarry wall.
-    return applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn);
+    h = applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn);
+    if (quarryFloorY !== null && insideCopperQuarry(x, z)) {
+      h = sampleCopperQuarrySurface(x, z, h, quarryFloorY, gridSample(gRoadDist, x, z));
+    }
+    return h;
   }
 
   function baseTerrainHeight(x: number, z: number, corridorWeight: number, settlementWeight: number): number {
@@ -967,6 +974,12 @@ export function createHeightField(
       (x, z) => heightAt(x, z, false, false, false));
   }
 
+  // Freeze original road, junction, pad and water support before activating
+  // this single-map excavation. No new height grid or alternate collision
+  // surface: mesh, exact physics and the existing fast cache read heightAt.
+  if (cfg?.id === 'copper_mesa' && T.quarryBenches) {
+    quarryFloorY = heightAt(COPPER_QUARRY.x, COPPER_QUARRY.z, true, true);
+  }
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
 
   // perf-r3b (CPU profile): every height query runs the full 9-octave simplex

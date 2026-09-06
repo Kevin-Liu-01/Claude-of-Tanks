@@ -6,7 +6,7 @@ export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
   terrain: {
-    hillScale: 0.9, microScale: 0.8, rimH: 38,
+    hillScale: 0.9, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
     roads: { paths: [
       // A stepped loading apron on the eastern shelf puts the gantries and

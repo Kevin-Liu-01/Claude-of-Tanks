@@ -18,6 +18,7 @@ import {
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation } from './vegetationClearance.ts';
+import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
@@ -126,6 +127,7 @@ interface VegetationConfig {
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
   clusterScrub?: number;
+  authoredTrees?: AuthoredTreeFeature[];
 }
 
 export interface VegetationMapConfig extends Pick<PropsMapConfig, 'props'> {
@@ -3489,6 +3491,7 @@ function* vegetationBuildSteps(
   const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
+  const authoredTreeDonors = veg.authoredTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
@@ -3645,6 +3648,10 @@ function* vegetationBuildSteps(
       trees[i].tint.b *= 1.10 - toneBias * 0.20;
     }
   }
+  function rememberAuthoredDonors(start: number, count: number): void {
+    if (!authoredTreeDonors) return;
+    for (let i = start; i < start + count; i++) authoredTreeDonors.add(trees[i]);
+  }
   function placeTreeClusters(): void {
     let attempts = 0;
     while (clusters.length < veg.clusterCount && attempts++ < 2200) {
@@ -3669,6 +3676,9 @@ function* vegetationBuildSteps(
       // mid-distance forest blocks read as distinct species stands instead of
       // "uniform leaf-card blobs" (critique).
       tintTreeStand(cb0);
+      // Keep at least three quarters of every existing stand in place. The
+      // map-authored rows consume records, never add trees or change RNG.
+      rememberAuthoredDonors(cb0, Math.floor(placed / 4));
       if (placed > 2) clusters.push({ x, z, r });
     }
   }
@@ -3686,6 +3696,7 @@ function* vegetationBuildSteps(
       }
     }
   }
+  const authoredLoneStart = trees.length;
   placeLoneTrees();
   // maps r1 (ADDITIVE, config-gated): WINDBREAK BELTS — authored tree LINES
   // ({x0,z0,x1,z1, gap?, jitter?, species?}) for steppe shelterbelts and
@@ -3711,6 +3722,7 @@ function* vegetationBuildSteps(
     }
   }
   placeTreeBelts();
+  rememberAuthoredDonors(authoredLoneStart, trees.length - authoredLoneStart);
 
   // horizon rim forest: dense clustered blocks on the raised map border so
   // distant ridgelines carry massed silhouettes instead of scattered lollipops
@@ -3847,6 +3859,11 @@ function* vegetationBuildSteps(
       (tree) => tree.cr + Math.sin(TREE_ARCHETYPES[tree.species].leanMaxRad) * (tree.fallH ?? 0),
     ),
   };
+  if (authoredTreeDonors && veg.authoredTrees) {
+    group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
+      authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
+    authoredTreeDonors.clear();
+  }
 
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing

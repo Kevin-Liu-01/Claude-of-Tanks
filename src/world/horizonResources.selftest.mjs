@@ -28,7 +28,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
   const anchors = style === 'alpine' ? [1, 4, 9, 14, 19, 24, 29, 32]
-    : label === 'skybridge' ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
+    : ['skybridge', 'copper_mesa'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
   let reliefSamples = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
@@ -282,13 +282,13 @@ function assertAlpineSurfaceShader(shader, normals, label) {
 // Actual full-circle geometry, all maps and three seeds, without repeating
 // expensive texture bakes. Numeric bounds complement, never replace, matched
 // establishing/water/foliage renders from several map-edge viewpoints.
-// Captured before the Skybridge-only finite-cap correction. Hash the actual
-// buffers and row metadata so a fix for one map cannot quietly reshape 29.
+// Captured before the two map-local finite-cap corrections. Hash the actual
+// buffers and row metadata so these fixes cannot quietly reshape the other28.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unchangedReceipts = [
-  '3a048245aeb0feece0a6d8aad926686a5aec70dc27c1a7ca04967c03a06a9678',
-  '10f8fb06c8ef4fcccfcb4c2c3cbb572147e94d8e368d3c1deee249dbadee5a78',
-  '57fa5fd45023f8c580661c141a0461e1857d93c716279785d05d8ba92a90af22',
+  '0da99e0beb5098b7226d610001e47a01267cfe49aead052467da8625a1c08dd0',
+  '21d1fb66558b453abc3cf33cb9cd9269dc1c072c731b4878b5eab237eebca623',
+  '8c9f97155a8ad453d2eb11634fbca3db8a0da6d981e4e96d29b7ba8f9a2b1b56',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
@@ -307,6 +307,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   if (config.horizon.style === 'alpine') assertFullAngleAlpineLandform(ring, config, label);
   if (config.horizon.style === 'mesa') assertFullAngleMesaLandform(ring, config, label);
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
+  else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else {
     const hash = unchangedGeometry.get(seed);
     hash.update(mapId);
@@ -317,7 +318,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'the other 29 maps remain byte-identical across all three audited seeds');
+  'the other28 maps remain byte-identical across all three audited seeds');
 
 const originalNoise = SimplexNoise.prototype.noise;
 let geometryNoiseCalls = 0;
@@ -373,7 +374,7 @@ globalThis.document = {
 try {
   // Cover every topology plus the exact map seeds that exposed folded alpine
   // rows in the matched winter/fjord/alpine visual captures.
-  for (const mapId of ['verdant', 'desert', 'skybridge', 'titan_gorge', 'urban', 'winter', 'fjord', 'alpine']) {
+  for (const mapId of ['verdant', 'desert', 'skybridge', 'copper_mesa', 'titan_gorge', 'urban', 'winter', 'fjord', 'alpine']) {
     const config = getMapConfig(mapId);
     const style = config.horizon.style;
     const mesh = buildHorizonRing(null, {
@@ -400,14 +401,14 @@ try {
     assert.equal(mesh.geometry.index.count, style === 'alpine' ? 55104 : 15498,
       `${mapId}: topology correction does not add triangles`);
     const { position, color, normal, uv } = mesh.geometry.attributes;
-    if (mapId === 'skybridge') {
+    if (mapId === 'skybridge' || mapId === 'copper_mesa') {
       const sampled = sampleHorizonGeometry(config, 1337);
       for (let row = 0; row < sampled.rows.length; row++) {
         for (let column = 0; column < 287; column++) {
           for (let axis = 0; axis < 3; axis++) {
             assert.equal(position.array[(row * columns + column) * 3 + axis],
               sampled.positions[(row * 287 + column) * 3 + axis],
-              'Skybridge uploads the exact finite-cap geometry inspected by the pure area tests');
+              `${mapId} uploads the exact finite-cap geometry inspected by the pure area tests`);
           }
         }
       }
