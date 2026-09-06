@@ -9,7 +9,8 @@ import { createHeightField } from './terrain.ts';
 import { MAP_IDS } from './maps/index.ts';
 import reservoir from './maps/reservoir.ts';
 import { slabBox } from './propGeometry.ts';
-import { setCircleShape } from './collision.ts';
+import { pushHullFromObstacle, rayCollisionRecord, setCircleShape,
+  shellPassesThroughCollisionRecord } from './collision.ts';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = array => Buffer.from(array.buffer, array.byteOffset, array.byteLength);
@@ -18,6 +19,27 @@ const geometryHash = geometry => hash(Buffer.concat([
   ...(geometry.index ? [bytes(geometry.index.array)] : []),
 ]));
 const clone = value => JSON.parse(JSON.stringify(value));
+// Captured from the V25 producer before the intake-only reprofile. The named
+// kiosk/bank/penstock partition includes every position/normal/UV/index byte.
+const fixedPartition = {
+  1337: '1a3aeae9cd1844391de1b7b832f9352404d511d4b7a3cfa833b477d2d1bcb45f',
+  2049: 'de198fa60378d42bec58042783b0da71bcc7ac87d260ed374ee718dd514703b3',
+  7719: '0a4508862b4253469e1400708e8cd209a1ac8ce81e9e6c1392421f2961345a9e',
+};
+
+function unchangedPartitionHash(geometry) {
+  const h = createHash('sha256');
+  for (const name of ['kiosk-body', 'kiosk-cap', 'bank-body', 'bank-cap', 'kiosk-door',
+    'kiosk-window', 'kiosk-lintel', 'kiosk-vent', 'bank-hatch', 'bank-stop',
+    'connected-penstock', 'penstock-support']) {
+    for (const g of geometry.filter(g => g.name === `reservoir-${name}`)) {
+      h.update(g.name);
+      for (const a of Object.values(g.attributes)) h.update(bytes(a.array));
+      h.update(bytes(g.index.array));
+    }
+  }
+  return h.digest('hex');
+}
 
 function installFixtureCanvas() {
   globalThis.ImageData = class { constructor(data) { this.data = data; } };
@@ -85,12 +107,16 @@ async function wholeWorld(seed) {
         const body = result.bodies[i];
         for (const ob of [donors[i].obstacle, donors[i].collider]) {
           assert.deepEqual(ob.min, [body.x - body.width / 2, body.bottom, body.z - body.depth / 2]);
-          assert.deepEqual(ob.max, [body.x + body.width / 2, body.top + 0.06, body.z + body.depth / 2]);
+          assert.deepEqual(ob.max, [body.x + body.width / 2, body.collisionTop, body.z + body.depth / 2]);
           assert.deepEqual(ob.shape2, { kind: 'obb', cx: body.x, cz: body.z,
             hw: body.width / 2, hl: body.depth / 2, yaw: 0 });
         }
       }
       validateAssembly(result, buckets, field);
+      const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
+      assert.equal(unchangedPartitionHash(geometry), fixedPartition[seed],
+        'kiosk, bank, pipe and every support remain byte-identical to V25');
+      validateIntake(result, geometry, donors[2].collider);
     } else assert.deepEqual(records.map(clone), before);
     seam = { donors: donors.slice(), before, result };
     return result;
@@ -155,11 +181,30 @@ async function wholeWorld(seed) {
     after: after.seam.result.after, bodies: after.seam.result.bodies, fullWorldVertices: [before.meshes.vertices, after.meshes.vertices] }));
 }
 
+function validateBodySupport(body, geometry, field) {
+  const box = geometry.find(g => g.name === `reservoir-${body.name}-body`).boundingBox;
+  const cap = geometry.find(g => g.name === `reservoir-${body.name}-cap`).boundingBox;
+  assert.ok(Math.abs(box.min.x - (body.x - body.width / 2)) < 1e-5);
+  assert.ok(Math.abs(box.max.x - (body.x + body.width / 2)) < 1e-5);
+  assert.ok(Math.abs(box.min.y - body.bottom) < 1e-5 && Math.abs(box.max.y - body.top) < 1e-5);
+  assert.ok(cap.min.y < box.max.y - 0.05 && cap.max.y > box.max.y + 0.05,
+    'roof cap is visible above the opaque body and overlaps its actual support');
+  assert.ok(Math.abs(cap.min.x - box.min.x) < 1e-5 && Math.abs(cap.max.x - box.max.x) < 1e-5
+    && Math.abs(cap.min.z - box.min.z) < 1e-5 && Math.abs(cap.max.z - box.max.z) < 1e-5,
+  'body and closed cap retain the same exact hard collision plan');
+  for (let x = box.min.x; x <= box.max.x; x += 0.5) for (let z = box.min.z; z <= box.max.z; z += 0.5) {
+    assert.ok(body.bottom < field.getHeightAt(x, z), 'whole foundation is buried, never placed on its centre alone');
+    assert.ok(field._roadDist(x, z) >= 8);
+  }
+}
+
 function validateAssembly(receipt, buckets, field) {
   assert.equal(receipt.bodies.length, 3); assert.equal(receipt.pipe.length, 8);
   assert.ok(receipt.after.triangles <= receipt.before.triangles);
   assert.ok(receipt.after.sourceBytes <= receipt.before.sourceBytes);
   assert.ok(receipt.after.mergedBytes <= receipt.before.mergedBytes);
+  assert.deepEqual(receipt.after, { geometries: 31, triangles: 456, sourceBytes: 27632, mergedBytes: 43776 },
+    'the intake reprofile preserves every current source/merged budget, not just the larger donor allowance');
   const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
   for (const g of geometry) {
     assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv']);
@@ -167,22 +212,7 @@ function validateAssembly(receipt, buckets, field) {
     for (const i of g.index.array) assert.ok(i < g.attributes.position.count);
     g.computeBoundingBox();
   }
-  for (const body of receipt.bodies) {
-    const box = geometry.find(g => g.name === `reservoir-${body.name}-body`).boundingBox;
-    const cap = geometry.find(g => g.name === `reservoir-${body.name}-cap`).boundingBox;
-    assert.ok(Math.abs(box.min.x - (body.x - body.width / 2)) < 1e-5);
-    assert.ok(Math.abs(box.max.x - (body.x + body.width / 2)) < 1e-5);
-    assert.ok(Math.abs(box.min.y - body.bottom) < 1e-5 && Math.abs(box.max.y - body.top) < 1e-5);
-    assert.ok(cap.min.y < box.max.y - 0.05 && cap.max.y > box.max.y + 0.05,
-      'roof cap is visible above the opaque body and overlaps its actual support');
-    assert.ok(Math.abs(cap.min.x - box.min.x) < 1e-5 && Math.abs(cap.max.x - box.max.x) < 1e-5
-      && Math.abs(cap.min.z - box.min.z) < 1e-5 && Math.abs(cap.max.z - box.max.z) < 1e-5,
-    'full-footprint body/cap union exactly matches the existing simple collision slot');
-    for (let x = box.min.x; x <= box.max.x; x += 0.5) for (let z = box.min.z; z <= box.max.z; z += 0.5) {
-      assert.ok(body.bottom < field.getHeightAt(x, z), 'whole foundation is buried, never placed on its centre alone');
-      assert.ok(field._roadDist(x, z) >= 8);
-    }
-  }
+  for (const body of receipt.bodies) validateBodySupport(body, geometry, field);
   const bankCap = geometry.find(g => g.name === 'reservoir-bank-cap').boundingBox;
   const hatches = geometry.filter(g => g.name === 'reservoir-bank-hatch');
   assert.equal(hatches.length, 2, 'both service hatches survive inside the same piece budget');
@@ -205,6 +235,182 @@ function validateAssembly(receipt, buckets, field) {
     const ring = receipt.pipe.find(v => Math.hypot(v[0] - x, v[2] - z) < 1e-5);
     assert.ok(ring && b.max.y > ring[1] - Math.sin(Math.PI / 3) * 0.34, 'brace intersects its connected pipe ring');
   }
+}
+
+function meshDistance(geometries, origin, direction) {
+  const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const ray = new THREE.Raycaster(origin, direction, 0, 100);
+  const meshes = geometries.map(g => new THREE.Mesh(g, material));
+  const hits = ray.intersectObjects(meshes, false);
+  material.dispose();
+  return hits[0]?.distance ?? -1;
+}
+
+function validateTrimAttachment(body, geometry) {
+  const b = geometry.boundingBox;
+  const axis = b.max.z > body.z + body.depth / 2 ? 'z' : 'x';
+  const tangent = axis === 'x' ? 'z' : 'x';
+  const half = axis === 'x' ? body.width / 2 : body.depth / 2;
+  const tangentHalf = axis === 'x' ? body.depth / 2 : body.width / 2;
+  const face = body[axis] + half;
+  assert.ok(b.min[axis] < face - 0.009 && b.max[axis] > face + 0.009,
+    `${geometry.name}: real +${axis} masonry overlap plus visible attached relief`);
+  assert.ok(b.max[axis] <= face + 0.060005, 'trim is explicitly shallow, not extra hard footprint');
+  assert.ok(b.min.y >= body.bottom && b.max.y <= body.top + 1e-5);
+  assert.ok(b.min[tangent] > body[tangent] - tangentHalf && b.max[tangent] < body[tangent] + tangentHalf);
+  return axis;
+}
+
+function validateApproachScreen(body, geometry) {
+  const b = geometry.boundingBox, uv = geometry.attributes.uv;
+  const screen = geometry.name === 'reservoir-intake-screen';
+  const width = screen ? 2.8 : 2.9, depth = screen ? 0.10 : 0.16;
+  assert.ok(Math.abs(b.max.x - b.min.x - width) < 1e-5, 'exposed screen/bar has its authored along-X width');
+  assert.ok(Math.abs(b.max.z - b.min.z - depth) < 1e-5);
+  assert.ok(Math.abs((b.max.x + b.min.x) / 2 - body.x) < 1e-5);
+  assert.ok(Math.abs((b.max.z + b.min.z) / 2 - (body.z + body.depth / 2 - 0.02)) < 1e-5);
+  const faceU = [16, 17, 18, 19].map(i => uv.getX(i));
+  assert.ok(Math.abs(Math.max(...faceU) - Math.min(...faceU) - width * 0.65) < 1e-5,
+    'existing slab primitive rebuilds metric UVs for the widened +Z face');
+}
+
+function validateIntakeFacade(body, geometry) {
+  const trim = geometry.filter(g =>
+    /reservoir-(intake-screen|intake-face-pier|intake-header|screen-crossbar)$/.test(g.name));
+  assert.equal(trim.length, 11, 'two screens, six bars, two buttresses and one header are reused');
+  const approach = trim.filter(g => validateTrimAttachment(body, g) === 'z');
+  assert.equal(approach.length, 4, 'exactly one existing screen and three bars move to the approach wall');
+  assert.equal(approach.filter(g => g.name === 'reservoir-intake-screen').length, 1);
+  assert.equal(approach.filter(g => g.name === 'reservoir-screen-crossbar').length, 3);
+  for (const g of approach) validateApproachScreen(body, g);
+  const header = trim.find(g => g.name === 'reservoir-intake-header').boundingBox;
+  const piers = trim.filter(g => g.name === 'reservoir-intake-face-pier');
+  for (const g of piers) assert.ok(g.boundingBox.intersectsBox(header)
+    && g.boundingBox.max.y > header.min.y + 0.2, 'both buttresses visibly support the header');
+  const screens = trim.filter(g => g.name === 'reservoir-intake-screen');
+  for (const g of trim.filter(g => g.name === 'reservoir-screen-crossbar')) {
+    assert.ok(screens.some(s => s.boundingBox.intersectsBox(g.boundingBox)), 'bar intersects a real screen');
+  }
+  return trim;
+}
+
+function validateHood(body, hood) {
+  const p = hood.attributes.position, n = hood.attributes.normal, uv = hood.attributes.uv;
+  assert.equal(p.count, 24); assert.equal(hood.index.count, 36);
+  assert.ok(Math.abs(body.top + 0.6) < 1e-8);
+  assert.ok(Math.abs(body.collisionTop - 0.44) < 1e-5);
+  let bottomCount = 0, upperCount = 0;
+  for (let i = 0; i < p.count; i++) {
+    assert.ok(Math.abs(p.getX(i) - body.x) <= body.width / 2 + 1e-5);
+    assert.ok(Math.abs(p.getZ(i) - body.z) <= body.depth / 2 + 1e-5);
+    assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-5);
+    if (p.getY(i) < body.top) {
+      bottomCount++;
+      assert.ok(Math.abs(p.getY(i) - (body.top - 0.06)) < 1e-5, 'whole underside embedded in solid support');
+      assert.ok(Math.abs(Math.abs(p.getX(i) - body.x) - body.width / 2) < 1e-5);
+      assert.ok(Math.abs(Math.abs(p.getZ(i) - body.z) - body.depth / 2) < 1e-5);
+    } else {
+      upperCount++;
+      assert.ok(Math.abs(p.getY(i) - body.collisionTop) < 1e-5, 'flat closed top matches the actual collision height');
+      assert.ok(Math.abs(Math.abs(p.getX(i) - body.x) - body.width / 2) < 1e-5);
+      assert.ok(Math.abs(Math.abs(p.getZ(i) - body.z) - body.depth / 2) < 1e-5);
+    }
+  }
+  assert.equal(bottomCount, 12); assert.equal(upperCount, 12);
+  // The top face uses actual deformed dimensions, not the old broad 12cm cap UVs.
+  const edge3 = Math.hypot(p.getX(8) - p.getX(9), p.getY(8) - p.getY(9), p.getZ(8) - p.getZ(9));
+  const edgeUv = Math.hypot(uv.getX(8) - uv.getX(9), uv.getY(8) - uv.getY(9));
+  assert.ok(Math.abs(edgeUv / edge3 - 0.65) < 0.002, 'closed top retains metric texture density');
+  const vRange = Math.max(...Array.from({ length: 4 }, (_, i) => uv.getY(i)))
+    - Math.min(...Array.from({ length: 4 }, (_, i) => uv.getY(i)));
+  assert.ok(vRange > 0.5, 'service-head face does not stretch a 12cm UV range over its full height');
+}
+
+function validateIntakeCollision(body, geometry, collider, trim) {
+  const solid = geometry.filter(g => ['reservoir-intake-body', 'reservoir-intake-cap'].includes(g.name));
+  validateHoodRayParity(body, solid, collider);
+  const normal = new THREE.Vector3(), direction = new THREE.Vector3(-1, 0, 0);
+  const front = body.x + body.width / 2;
+  assert.equal(shellPassesThroughCollisionRecord(collider), false, 'closed waterworks remain hard ballistic cover');
+  for (const y of [-7.5, -5, -2, body.top - 0.001]) {
+    for (const z of [body.z - 2.9, body.z, body.z + 2.9]) {
+      const origin = new THREE.Vector3(front + 2, y, z);
+      const physical = rayCollisionRecord(origin, direction, collider, 100, normal);
+      const visible = meshDistance(solid, origin, direction);
+      assert.ok(Math.abs(physical - visible) < 1e-5,
+        'full-height rectangular masonry and tank-contact region exactly match the hard OBB');
+      const decorated = meshDistance([...solid, ...trim], origin, direction);
+      assert.ok(physical - decorated >= -1e-5 && physical - decorated <= 0.06001,
+        'decorative relief is bounded separately from hard collision');
+    }
+  }
+  for (const gap of [0.24, 0.26]) {
+    const push = { x: 0, z: 0 };
+    assert.equal(pushHullFromObstacle({ x: front + gap, z: body.z }, 0, 1, 1, 0,
+      0.25, 0.25, collider, push), gap < 0.25, 'tank footprint contacts the existing hard plan only');
+  }
+  assert.equal(rayCollisionRecord(new THREE.Vector3(front + 1, body.collisionTop + 0.001, body.z),
+    new THREE.Vector3(-1, 0, 0), collider, 100, normal), -1, 'nothing blocks above the actual hood maximum');
+}
+
+function assertShellParity(solid, collider, origin, direction, label) {
+  const physical = rayCollisionRecord(origin, direction, collider, 100, new THREE.Vector3());
+  const visible = meshDistance(solid, origin, direction);
+  assert.equal(physical >= 0, visible >= 0, `${label}: no invisible blocker or missing solid cover`);
+  assert.ok(Math.abs(physical - visible) < 1e-5,
+    `${label}: physical ${physical}m versus emitted shell ${visible}m`);
+}
+
+function validateHoodRayParity(body, solid, collider) {
+  // These horizontal rays falsified the prior vertical-slack-only test:
+  // the tapered hood used to hit at7.486667m / miss while its OBB hit at1m.
+  for (const z of [99, 101.9]) assertShellParity(solid, collider,
+    new THREE.Vector3(51, 0.43, z), new THREE.Vector3(-1, 0, 0), 'reported upper-band ray');
+  let cases = 2;
+  const heights = [body.bottom - 0.001, body.bottom + 0.001, -5, body.top - 0.001,
+    body.top + 0.001, 0.14, 0.43, body.collisionTop - 0.0001, body.collisionTop + 0.0001];
+  for (let angle = 0; angle < 32; angle++) {
+    const dx = Math.cos(angle * Math.PI / 16), dz = Math.sin(angle * Math.PI / 16);
+    for (const y of heights) {
+      assertShellParity(solid, collider, new THREE.Vector3(body.x + dx * 12, y, body.z + dz * 12),
+        new THREE.Vector3(-dx, 0, -dz), 'azimuth / full-height ray');
+      cases++;
+    }
+    const origin = new THREE.Vector3(body.x + dx * 12, body.collisionTop + 4, body.z + dz * 12);
+    const below = origin.clone().setY(body.bottom - 4);
+    for (const y of [body.bottom, body.top, body.collisionTop]) {
+      assertShellParity(solid, collider, origin,
+        new THREE.Vector3(body.x, y, body.z).sub(origin).normalize(), 'descending diagonal ray');
+      assertShellParity(solid, collider, below,
+        new THREE.Vector3(body.x, y, body.z).sub(below).normalize(), 'ascending diagonal ray');
+      cases += 2;
+    }
+  }
+  for (const x of [-3.501, -3.499, -3.2, 0, 3.2, 3.499, 3.501]) {
+    for (const z of [-3.001, -2.999, -2.7, 0, 2.7, 2.999, 3.001]) {
+      assertShellParity(solid, collider, new THREE.Vector3(body.x + x, 3, body.z + z),
+        new THREE.Vector3(0, -1, 0), 'vertical interior / exterior edge ray');
+      assertShellParity(solid, collider, new THREE.Vector3(body.x + x, body.bottom - 3, body.z + z),
+        new THREE.Vector3(0, 1, 0), 'upward interior / exterior edge ray');
+      cases += 2;
+    }
+  }
+  for (const offset of [-0.0001, 0.0001]) {
+    for (const y of [body.top + 0.001, body.collisionTop - 0.001]) {
+      assertShellParity(solid, collider,
+        new THREE.Vector3(body.x + body.width / 2 + offset, y, body.z + 8),
+        new THREE.Vector3(0, 0, -1), 'grazing upper side');
+      cases++;
+    }
+  }
+  assert.equal(cases, 584, 'all azimuth, ascending/descending, vertical, reported and grazing cases executed');
+}
+
+function validateIntake(receipt, geometry, collider) {
+  const body = receipt.bodies[2], hood = geometry.find(g => g.name === 'reservoir-intake-cap');
+  validateHood(body, hood);
+  const trim = validateIntakeFacade(body, geometry);
+  validateIntakeCollision(body, geometry, collider, trim);
 }
 
 function fixture() {

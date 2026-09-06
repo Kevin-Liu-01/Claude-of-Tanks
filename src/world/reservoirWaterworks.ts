@@ -31,7 +31,7 @@ interface Buckets { stone: BufferGeometry[]; wood: BufferGeometry[]; dark: Buffe
 interface Budget { triangles: number; sourceBytes: number; mergedBytes: number; geometries: number }
 interface Body {
   name: 'kiosk' | 'bank' | 'intake'; x: number; z: number; width: number; depth: number;
-  bottom: number; top: number; supportMin: number; supportMax: number;
+  bottom: number; top: number; collisionTop: number; supportMin: number; supportMax: number;
 }
 interface Piece { bucket: BucketName; geometry: BufferGeometry }
 interface Plan { bodies: Body[]; pipe: Point3[]; waterLevel: number }
@@ -110,8 +110,9 @@ function planBody(name: Body['name'], center: Point2, width: number, depth: numb
   // Water height is the visible liquid surface, not a claim about the lakebed.
   // Both hydraulic foundations continue below it; the dry body buries its toe.
   const bottom = name === 'kiosk' ? min - 0.12 : level - 1.2;
-  const top = name === 'kiosk' ? max + 3.2 : level + (name === 'intake' ? 3.8 : 1.1);
-  return { name, x, z, width, depth, bottom, top, supportMin: min, supportMax: max };
+  const top = name === 'kiosk' ? max + 3.2 : level + (name === 'intake' ? 7.4 : 1.1);
+  return { name, x, z, width, depth, bottom, top, collisionTop: top + 0.06,
+    supportMin: min, supportMax: max };
 }
 
 function clearPipeSpan(field: WaterworksTerrain, route: PipeRoute, segment: number,
@@ -191,21 +192,48 @@ function planWorks(config: ReservoirWaterworksConfig, field: WaterworksTerrain,
 }
 
 function piece(out: Piece[], bucket: BucketName, name: string,
-  width: number, height: number, depth: number, x: number, y: number, z: number): void {
+  width: number, height: number, depth: number, x: number, y: number, z: number): BufferGeometry {
   const geometry = slabBox(width, height, depth, 0.65);
   geometry.name = `reservoir-${name}`;
   geometry.translate(x, y, z);
   out.push({ bucket, geometry });
+  return geometry;
+}
+
+function shapeIntakeHood(geometry: BufferGeometry, body: Body): void {
+  const position = geometry.attributes.position, uv = geometry.attributes.uv;
+  let highest = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i) - body.x, z = position.getZ(i) - body.z;
+    // The collision format extrudes one footprint through a single height.
+    // A full-footprint closed hood matches that solid exactly; a tapered or
+    // pitched head would introduce long invisible blockers for grazing shells.
+    const y = body.top + (position.getY(i) > body.top ? 1.04 : -0.06);
+    position.setXYZ(i, body.x + x, y, body.z + z);
+    const face = Math.floor(i / 4);
+    const u = face < 2 ? (face === 0 ? -z : z) + body.depth / 2
+      : (face === 5 ? -x : x) + body.width / 2;
+    const v = face === 2 || face === 3 ? (face === 2 ? -z : z) + body.depth / 2
+      : y - (body.top - 0.06);
+    // Reproject the deformed surfaces at the existing metric texture density;
+    // do not stretch the old 12cm cap's V range over the new service head.
+    uv.setXY(i, u * 0.65, v * 0.65);
+    highest = Math.max(highest, position.getY(i));
+  }
+  geometry.computeVertexNormals();
+  // The overlapping body and hood form exactly the existing hard-plan OBB.
+  body.collisionTop = highest;
 }
 
 function buildBodies(plan: Plan, out: Piece[]): void {
   for (const body of plan.bodies) {
     piece(out, 'stone', `${body.name}-body`, body.width, body.top - body.bottom,
       body.depth, body.x, (body.top + body.bottom) / 2, body.z);
-    // Full-footprint cap overlaps the masonry by6cm and exposes6cm above it.
-    // Its union with the body is exactly the same simple collider footprint.
-    piece(out, 'dark', `${body.name}-cap`, body.width, 0.12,
+    // The ordinary cap overlaps by6cm. The intake reuses that same geometry
+    // for a taller full-footprint closed hood, still inside one exact hard OBB.
+    const cap = piece(out, 'dark', `${body.name}-cap`, body.width, 0.12,
       body.depth, body.x, body.top, body.z);
+    if (body.name === 'intake') shapeIntakeHood(cap, body);
   }
   const [kiosk, bank, intake] = plan.bodies;
   const y = kiosk.top - 1.65;
@@ -215,18 +243,24 @@ function buildBodies(plan: Plan, out: Piece[]): void {
   }
   piece(out, 'stone', 'kiosk-lintel', 2.0, 0.16, 0.14, kiosk.x - 1.3, y + 1.23, kiosk.z - 3.04);
   piece(out, 'dark', 'kiosk-vent', 0.06, 0.65, 1.35, kiosk.x + 3.015, kiosk.top - 0.8, kiosk.z - 1.3);
-  // Two closed intake-screen recesses on the lake-facing front. Crossbars
-  // attach to a real solid face; these are not holes with invisible blockers.
-  for (const z of [-1.7, 1.7]) {
-    piece(out, 'dark', 'intake-screen', 0.08, 2.5, 1.7,
-      intake.x + 3.52, plan.waterLevel + 1.5, intake.z + z);
-    for (let j = 0; j < 3; j++) piece(out, 'stone', 'screen-crossbar', 0.14, 0.10, 1.8,
-      intake.x + 3.55, plan.waterLevel + 0.65 + j * 0.8, intake.z + z);
-  }
-  for (const z of [-2.8, 2.8]) piece(out, 'stone', 'intake-face-pier', 0.22, 3.65, 0.22,
-    intake.x + 3.56, plan.waterLevel + 1.825, intake.z + z);
-  piece(out, 'stone', 'intake-header', 0.28, 0.22, 5.85,
-    intake.x + 3.59, intake.top - 0.16, intake.z);
+  // Split the two closed screens between the exposed +Z approach wall and
+  // lakeward +X face. Crossbars attach to solid masonry, not fake open holes.
+  const faceX = intake.x + intake.width / 2;
+  const faceZ = intake.z + intake.depth / 2;
+  piece(out, 'dark', 'intake-screen', 2.8, 5.8, 0.10,
+    intake.x, plan.waterLevel + 3.15, faceZ - 0.02);
+  for (let j = 0; j < 3; j++) piece(out, 'stone', 'screen-crossbar', 2.9, 0.10, 0.16,
+    intake.x, plan.waterLevel + 1.25 + j * 1.9, faceZ - 0.02);
+  piece(out, 'dark', 'intake-screen', 0.10, 5.8, 1.95,
+    faceX - 0.02, plan.waterLevel + 3.15, intake.z + 1.35);
+  for (let j = 0; j < 3; j++) piece(out, 'stone', 'screen-crossbar', 0.16, 0.10, 2.05,
+    faceX - 0.02, plan.waterLevel + 1.25 + j * 1.9, intake.z + 1.35);
+  // Shallow attached trim: at most6cm outside the hard plan, reduced from the
+  // previous17cm piers/23cm header. It does not create another collision slot.
+  for (const z of [-2.65, 2.65]) piece(out, 'stone', 'intake-face-pier', 0.24, 7.2, 0.55,
+    faceX - 0.06, plan.waterLevel + 3.6, intake.z + z);
+  piece(out, 'stone', 'intake-header', 0.20, 0.50, 5.90,
+    faceX - 0.04, intake.top - 0.25, intake.z);
   // Shallow soft fixtures overlap the cap by4cm and expose4cm above it.
   // Like the inset trim, they do not introduce another hard collision volume.
   for (const z of [-3.8, 3.8]) piece(out, 'dark', 'bank-hatch', 2.2, 0.08, 2.0,
@@ -283,7 +317,7 @@ function buildBraces(plan: Plan, field: WaterworksTerrain, out: Piece[]): void {
 }
 
 function replaceCollision(record: CollisionRecord, body: Body): void {
-  record.min[1] = body.bottom; record.max[1] = body.top + 0.06;
+  record.min[1] = body.bottom; record.max[1] = body.collisionTop;
   setObbShape(record, body.x, body.z, body.width / 2, body.depth / 2);
   record.kind = 'waterworks';
 }
