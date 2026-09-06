@@ -108,6 +108,31 @@ record('merge-origin', {
   before, after,
 });
 
+// 4b. Auto-merge upstream/main if it has new commits. We prefer a normal
+//     merge over fast-forward to keep the local i18n lineage on top. If
+//     conflict, the orchestrating agent turn must resolve it.
+const upHeadBefore = run('git rev-parse HEAD').stdout.trim();
+const upMerge = run('git merge upstream/main --no-edit --no-ff');
+if (upMerge.code !== 0) {
+  record('merge-upstream', {
+    ok: false,
+    message: 'merge conflict with upstream/main; orchestrator must resolve',
+    stderr: upMerge.stderr.slice(0, 2000),
+  });
+  // abort so the script does not commit a half-merged tree
+  run('git merge --abort');
+  process.exit(4);
+}
+const upHeadAfter = run('git rev-parse HEAD').stdout.trim();
+record('merge-upstream', {
+  ok: true,
+  message: upHeadBefore === upHeadAfter
+    ? 'already up to date with upstream'
+    : 'merged upstream/main',
+  before: upHeadBefore,
+  after: upHeadAfter,
+});
+
 // 5. Diff against upstream/main to see what new code arrived this round.
 const diffRange = before + '..' + after;
 const changed = run(
