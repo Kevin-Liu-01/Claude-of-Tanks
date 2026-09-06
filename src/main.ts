@@ -176,6 +176,8 @@ import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
+import { createNetworkRoomFailureRuntime } from './net/networkRoomFailureRuntime.ts';
+import { isIntentionalRoomCloseReason } from './net/roomFailure.ts';
 import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
 import { createNetworkBattleIntentCover } from './net/networkBattleIntentCover.ts';
 import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
@@ -950,13 +952,16 @@ const playSurface = createPlaySurfaceRuntime({
       getVehicleName: (specId: string) => getSpec(specId).name,
       onNetworkStart: beginNetworkBattle,
       onNetworkClose: (reason: string) => {
+        if (networkSession.match && !battleEntryLifecycle.pending && !isIntentionalRoomCloseReason(reason)) {
+          void networkRoomFailure.fail(reason).catch((error) => {
+            console.error('[network] room recovery presentation failed', error);
+          });
+          return;
+        }
         const current = networkComposition.current;
         if (current) current.round.close(reason || 'room_closed');
         else networkSession.close(reason || 'room_closed');
       },
-      onRankedStart: async (request) => (
-        (await ensureNetworkComposition()).launcher.beginRanked(request)
-      ),
       onLobbyChange: (context) => {
         const current = currentNetworkRoom();
         if (current) current.handleLobbyChange(context);
@@ -985,11 +990,10 @@ const playSurface = createPlaySurfaceRuntime({
     preloadNetworkRoomChatModule(),
   ]),
   preloadPrivateMatch: preloadPrivateMatchHandoffModule,
-  preloadDedicatedMatch: preloadDedicatedClientModule,
 });
 
 // Battle entry owns the play modal's visibility. Every player-facing entry
-// path emits this event, so first matches, retained-room rematches, ranked,
+// path emits this event, so first matches, retained-room rematches,
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   playSurface.hideForBattle();
@@ -1629,6 +1633,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   },
 });
 const networkBattleIntentCover = createNetworkBattleIntentCover({
+  game,
   battleLoad,
   rosterRows: rosterPresentation.lobbyRows,
   getMapPresentation: (mapId, fallback) => ({
@@ -1791,6 +1796,29 @@ const networkSession = createNetworkBrowserSessionRuntime({
   isBattleActive: battlePhase.isBattle,
   shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
   nextFrame,
+  onDisconnect: (reason) => {
+    if (battleEntryLifecycle.pending) {
+      networkComposition.current?.round.close(reason);
+      return;
+    }
+    void networkRoomFailure.fail(reason).catch((error) => {
+      console.error('[network] room recovery presentation failed', error);
+    });
+  },
+});
+const networkRoomFailure = createNetworkRoomFailureRuntime({
+  hasMatch: () => !!networkSession.match,
+  getMode: () => (currentNetworkRoom()?.activeRoom?.mode
+    ?? currentNetworkRoom()?.pendingLobby?.state.mode) === 'lan' ? 'lan' : 'private',
+  shouldReturnToGarage: () => game.phase !== 'garage',
+  clearInput: () => input.setEnabled(false),
+  closeRoom: (reason) => {
+    const current = networkComposition.current;
+    if (current) current.round.close(reason);
+    else networkSession.close(reason);
+  },
+  returnToGarage: () => garageReturn.leave(),
+  getMenu: playSurface.getMenuPromise,
 });
 
 // Persistent subject-owned FX resolve against the presentation entity the
@@ -1891,7 +1919,17 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         },
         bridge: {
           installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
-          createStatus: (factory) => factory(),
+          createStatus: (factory) => factory({
+            onExit: () => {
+              const entryPending = battleEntryLifecycle.pending;
+              input.setEnabled(false);
+              networkComposition.current?.round.close('explicit_leave');
+              if (entryPending) return; // The cancelled launcher owns covered Garage restoration.
+              void garageReturn.leave().catch((error) => {
+                console.error('[network] room exit failed', error);
+              });
+            },
+          }),
           publishStatus: (status) => networkSession.publishStatus(status),
           attachRecovery: () => networkSession.attachRecovery(),
           create: (factory, request, spectator) => factory({
@@ -1979,6 +2017,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         loadPrivateMatch: preloadPrivateMatchHandoffModule,
         loadDedicatedMatch: preloadDedicatedClientModule,
         enterGarage: () => garageReturn.enter(),
+        onPrivateEntryFailure: async (reason, mode) => {
+          const menu = await playSurface.getMenuPromise();
+          if (!networkSession.match) menu?.showRoomFailure(reason, mode);
+        },
         setNetworkStatus: (status) => networkSession.status?.set(status),
         recordEntryFailure: (failure) => {
           if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
@@ -2193,7 +2235,17 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   }),
 });
 const enterGarage = garageReturn.enter;
-const leaveBattleToGarage = garageReturn.leave;
+const leaveBattleToGarage = (): Promise<void> => {
+  const network = networkComposition.current;
+  if (network?.launcher.pending) {
+    // A retained-room rematch may still own unpublished or warming state.
+    // Cancel it before disposal; its launcher owns the one covered restore.
+    input.setEnabled(false);
+    network.round.close('explicit_leave');
+    return Promise.resolve();
+  }
+  return garageReturn.leave();
+};
 const soloBattleEntry = createSoloBattleEntryRuntime({
   lifecycle: battleEntryLifecycle,
   loading: soloBattleLoading,
@@ -2340,7 +2392,8 @@ const mainFrame = createMainFrameRuntime({
 // game reads as "controls dead". Two rescue paths drive the very same tick:
 //  1. a 100 ms interval while the hidden document still claims focus (hidden
 //     pages clamp intervals to >= 1 s, hence also path 2) — a genuinely
-//     backgrounded tab (no focus) keeps the classic full freeze;
+//     backgrounded tab (no focus) keeps presentation frozen; an active network
+//     session has a separate render-free transport/authority timer below;
 //  2. real input events (they arrive unthrottled): each pumps a tick so a
 //     click is simulated long before its 250 ms fire edge can expire. These
 //     listeners register AFTER the input layer's own (same target + phase,
@@ -2350,6 +2403,8 @@ const mainFrame = createMainFrameRuntime({
 const frameLoop = createFrameLoopScheduler({
   tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
+  hasBackgroundWork: () => !!networkSession.match,
+  backgroundTick: (nowMs) => networkSession.pumpBackground(nowMs),
   // The authoritative simulation is fixed at 60 Hz. Presenting the complete
   // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
   // ProMotion displays without creating additional simulation states.

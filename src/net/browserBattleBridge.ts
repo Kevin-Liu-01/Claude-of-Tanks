@@ -14,6 +14,7 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
+import { applyPredictionAuthorityState } from './predictionAuthorityState.ts';
 import {
   PresentationEventQueue,
   type PresentationEvent,
@@ -294,6 +295,8 @@ export interface BrowserBattleBridge {
   ): boolean;
   getPredictionStats(): LocalPredictionStats | null;
   getPresentationEventStats(): Record<string, RuntimeValue>;
+  beginBackground(): void;
+  retainBackgroundState(snapshot: SampledSnapshotFrame, events: PresentationEvent[]): void;
   setPerspective(entityId: RuntimeValue): boolean;
   unmount(): void;
   dispose(): void;
@@ -556,7 +559,11 @@ export function createBrowserBattleBridge<
         aimPoint: state.aimPoint.clone(),
       },
       visual,
-      contactGeom: visual.contactGeom || null,
+      // Headless authority uses movement's spec-derived contact footprint.
+      // The visual's measured track ends/floor are a different support solve;
+      // feeding them into only the predictor changes ride height AND grip on
+      // terrain every tick. Keep authored contact data on the visual alone.
+      contactGeom: null,
       rigidGear: false,
       networkVisible: false,
       _networkPoseReady: false,
@@ -626,6 +633,12 @@ export function createBrowserBattleBridge<
     entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
     const destroyed = updateEntityCombat(entity, snapshot);
+    if (entity.isPlayer && immediateAuthority) {
+      // Use the same newest authority tick as the local pose, not the remote
+      // interpolation buffer's delayed metadata. Repaired tracks and game-mode
+      // boosts must affect the very next predicted frame.
+      applyPredictionAuthorityState(entity, immediateAuthority.predictionState);
+    }
     updateEntityEra(entity, snapshot);
     updateEntityDestruction(entity, destroyed);
     updateEntityPose(entity, snapshot, dt, immediateAuthority);
@@ -1031,6 +1044,56 @@ export function createBrowserBattleBridge<
   const presentationEvents = new PresentationEventQueue({
     emit: (event) => emitEvent(event as BridgeEvent),
   });
+  const backgroundAliveThroughTime = new Map<string, number>();
+  let presentationRound = 0;
+  let backgroundSnapshotTick = -1;
+
+  function rememberPresentedLife(snapshot: SampledSnapshotFrame): void {
+    const timeS = Number(snapshot.meta?.battleTimeMs) / 1000;
+    for (const sampled of snapshot.entities) {
+      const current = sampled.id === id ? snapshot.immediateAuthority?.entity || sampled : sampled;
+      if (current.flags & SNAPSHOT_FLAGS.DESTROYED) continue;
+      destructionCause.delete(current.id);
+      if (Number.isFinite(timeS)) backgroundAliveThroughTime.set(current.id, timeS);
+    }
+  }
+
+  function beginBackground(): void {
+    presentationEvents.clear();
+    entities.get(id)?.predictor?.resetForPresentationResume();
+    backgroundSnapshotTick = -1;
+  }
+
+  function retainBackgroundState(
+    snapshot: SampledSnapshotFrame,
+    events: PresentationEvent[],
+  ): void {
+    const round = Number(snapshot.meta?.roomRound) || 0;
+    if (round < presentationRound ||
+        (round === presentationRound && snapshot.tick < backgroundSnapshotTick)) return;
+    if (round > presentationRound) {
+      destructionCause.clear();
+      backgroundAliveThroughTime.clear();
+      presentationRound = round;
+    }
+    backgroundSnapshotTick = snapshot.tick;
+    // Preserve only lifecycle metadata, never emit an effect or touch a visual.
+    // A live sample ends the preceding life, so late destruction events cannot
+    // attach an old ammo-rack pop to a repaired/respawned tank.
+    rememberPresentedLife(snapshot);
+    for (const event of events) {
+      if (event.type !== 'tank_destroyed' || typeof event.id !== 'string' ||
+          typeof event.cause !== 'string' || typeof event.timeS !== 'number' ||
+          !Number.isFinite(event.timeS)) continue;
+      const current = event.id === id ? snapshot.immediateAuthority?.entity ||
+        snapshot.entities.find((entity) => entity.id === event.id)
+        : snapshot.entities.find((entity) => entity.id === event.id);
+      const aliveThrough = backgroundAliveThroughTime.get(event.id);
+      if (!current || !(current.flags & SNAPSHOT_FLAGS.DESTROYED) ||
+          (aliveThrough != null && event.timeS < aliveThrough)) continue;
+      destructionCause.set(event.id, event.cause);
+    }
+  }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
     return [...entities.values()].map((entity) => ({
@@ -1102,7 +1165,15 @@ export function createBrowserBattleBridge<
     reliableEvents: PresentationEvent[] = [],
   ): boolean {
     if (!snapshot) return false;
+    const round = Number(snapshot.meta?.roomRound) || 0;
+    if (round < presentationRound) return false;
+    if (round > presentationRound) {
+      destructionCause.clear();
+      backgroundAliveThroughTime.clear();
+      presentationRound = round;
+    }
     if (typeof snapshot.meta?.phase === 'string') snapshotPhase = snapshot.meta.phase;
+    rememberPresentedLife(snapshot);
     indexDestructionCauses(reliableEvents);
     reconcileSnapshotEntities(snapshot, dt);
     publishSnapshotState(snapshot);
@@ -1262,6 +1333,7 @@ export function createBrowserBattleBridge<
     liveShells.length = 0;
     shellById.clear();
     destructionCause.clear();
+    backgroundAliveThroughTime.clear();
     presentationEvents.clear();
   }
 
@@ -1275,6 +1347,8 @@ export function createBrowserBattleBridge<
     advancePrediction,
     recordInput,
     getPredictionStats,
+    beginBackground,
+    retainBackgroundState,
     getPresentationEventStats: () => ({
       ...presentationEvents.getStats(),
       visualDestroyCount,

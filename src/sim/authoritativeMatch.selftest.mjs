@@ -288,6 +288,25 @@ hiddenMatch.onMatchReady();
 const privateSnap = hiddenMatch.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'near-a', ackInputSeq: 0 });
 assert.deepEqual(privateSnap.entities.map((entity) => entity.id), ['near-a'],
   'unspotted enemy coordinates never serialize');
+assert.equal(privateSnap.meta.localPrediction.id, 'near-a');
+assert.equal(JSON.stringify(privateSnap.meta.localPrediction).includes('far-b'), false,
+  'movement metadata contains only the viewer, never hidden enemy state');
+const localDriver = hiddenMatch.entityById.get('near-a');
+localDriver.combat.modules.trackL.state = 'red';
+localDriver.combat.crew.driver = false;
+localDriver.combat.equipMults = { traverse: 1.1, turret: 1.15 };
+localDriver.modeSpeedMultiplier = 1.85;
+const damagedMobility = hiddenMatch.snapshot({ tick: 1, serverTimeMs: 17,
+  viewerId: 'near-a', ackInputSeq: 1 }).meta.localPrediction;
+assert.equal(damagedMobility.modules.trackL, 'red');
+assert.equal(damagedMobility.crew.driver, false);
+assert.equal(damagedMobility.equipment.turret, 1.15);
+assert.equal(damagedMobility.modeSpeedMultiplier, 1.85);
+assert.equal(privateSnap.meta.localPrediction.modules.trackL, 'ok',
+  'stored baseline metadata is immutable after authority damage');
+assert.equal(hiddenMatch.snapshot({ tick: 1, serverTimeMs: 17,
+  viewerId: 'spectator', ackInputSeq: null }).meta.localPrediction, undefined,
+  'spectators never receive private local-prediction details');
 
 const timedMatch = createAuthoritativeMatch({
   countdownS: 0,

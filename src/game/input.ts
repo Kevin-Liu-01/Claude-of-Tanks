@@ -876,7 +876,17 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     const actionId = codeToAction.get(code);
     if (actionId) firePress(actionId, code, event);
   };
-  const onBlurClear = () => down.clear();
+  const onBlurClear = () => {
+    down.clear();
+    pressLatch.clear();
+    virtualHeld.clear();
+    virtualMove.x = 0; virtualMove.y = 0; virtualMoveActive = false;
+    resetPadState();
+    firePressMs = -Infinity;
+    lastCanvasFirePressMs = -Infinity;
+    fireHoldLegit = false;
+    rawDX = 0; rawDY = 0; smDX = 0; smDY = 0;
+  };
   const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
   window.addEventListener('keydown', onKeyDown);

@@ -1,0 +1,329 @@
+# Private rooms and LAN hosting
+
+Decision, 2026-09-05: the supported multiplayer setup is **private rooms and
+LAN**, with browser-hosted gameplay. It requires no ranked service, dedicated
+simulation server, Redis, Supabase, or rating database. The website can stay on
+Vercel. Internet room codes still need shared signaling; reliable connectivity
+across different networks also needs working TURN credentials and a relay.
+The selected Internet backend is Cloudflare Workers + a Durable Object per room.
+Implementation and deployment receipts are recorded below; frontend cutover is
+not implied by a successful local test.
+
+## What runs where
+
+| Component | Responsibility |
+| --- | --- |
+| Browser host | Authoritative movement, combat, bots and match result |
+| Other browsers | Inputs, local prediction and remote presentation |
+| Cloudflare room objects | Room codes, reconnect membership and WebRTC negotiation |
+| Existing Vercel /api/ice | Expiring TURN credentials; provider secrets stay server-side |
+| Existing TURN provider | Relays WebRTC traffic when a direct route is unavailable |
+| Local Node helper, for LAN | In-memory rendezvous without Internet infrastructure |
+
+Signaling does not simulate tanks or store gameplay in a database. A short room
+code selects one Cloudflare room object (or one shared Node helper on LAN), not
+an offline discovery mechanism. All participants must use the same deployment/helper.
+LAN mode requests no STUN/TURN configuration and uses direct WebRTC; router
+client-isolation settings or blocked peer traffic can still prevent a connection.
+
+## LAN: one local helper, no public backend required
+
+On the machine serving the game, install the repository dependencies and start
+the local signaling helper. Replace 192.168.1.20 with that machine's actual
+LAN address; allow only the frontend origins you will open:
+
+~~~sh
+COT_ALLOWED_ORIGINS=http://192.168.1.20:5173,http://localhost:5173 \
+  npm run server:signal -- --host 0.0.0.0
+~~~
+
+In a second terminal, serve the game on the local network:
+
+~~~sh
+npx vite --host 0.0.0.0 --port 5173 --strictPort
+~~~
+
+Leave VITE_SIGNAL_URL unset for this local build. Every device opens
+http://192.168.1.20:5173, chooses **LAN**, and creates or joins a room. The
+client resolves signaling to ws://192.168.1.20:7777/signal. Allow local-network
+access to ports 5173/7777 in the host firewall; do not expose them to the public
+Internet. Localhost on another device means that other device, not the host.
+
+This runs a local website and a small signaling helper, not a dedicated game
+server. It can work without Internet access once the game/dependencies are
+available locally. Merely choosing LAN on the public website does not start a
+local helper: that page still uses its configured secure signaling endpoint.
+Do not point an HTTPS page at insecure ws:// signaling; browsers reject mixed
+content. No public tunnel from a development laptop is part of this setup.
+
+## Internet private rooms: Cloudflare
+
+The frontend remains on Vercel. `cloudflare/signaling` deploys only rendezvous:
+one SQLite-backed Durable Object per six-character room code, with hibernatable
+WebSockets. SQLite stores bounded room membership and hashed reconnect
+capabilities; this is Cloudflare-managed room state, not a separate Redis,
+Supabase, ranked, or gameplay database. SDP/ICE and raw capabilities are not
+written to durable storage or logs. Hibernation/restart is not match restoration:
+the browser host must still be running.
+
+The `/rooms/<code>` socket route lets Cloudflare connect straight to the owning
+room object. No global coordinator or non-hibernating socket proxy is required.
+The browser generates a random candidate code on create; the object reserves it
+atomically and rejects collisions. A lost create reply retries the same code
+with its private capability, not a new orphaned room. Joining/resuming requires
+the canonical room code and the existing protocol's seat credentials.
+
+Delivery is pushed. After an immediate post-authentication check, the Cloudflare
+client sends recurring membership-checked heartbeats no more frequently than
+once per 15 seconds instead of checking a Redis mailbox twice per second.
+Browser throttling can delay a heartbeat; this is not a maximum delivery delay.
+Gameplay has its own earlier stall detection and does not wait for that
+heartbeat. Membership changes persist before acknowledgments; routine activity
+checkpoints are coalesced. The Worker has no credentials for Redis or TURN.
+
+Install and verify from the release checkout:
+
+~~~sh
+npm ci --prefix cloudflare/signaling
+npm --prefix cloudflare/signaling run types
+npm run typecheck:cloudflare
+npm run test:net:cloudflare
+cd cloudflare/signaling
+npx wrangler deploy --dry-run
+~~~
+
+`wrangler.jsonc` pins the runtime compatibility date, SQLite migration, bindings,
+exact frontend origins and connection-rate limit. `worker-configuration.d.ts`
+is generated by Wrangler, not a handwritten binding contract. Test dependencies
+are isolated from the browser/Vercel runtime. See Cloudflare's
+[hibernation lifecycle](https://developers.cloudflare.com/durable-objects/best-practices/websockets/)
+and [Workers runtime tests](https://developers.cloudflare.com/workers/testing/vitest-integration/write-your-first-test/).
+
+Authenticate Wrangler to the intended account, inspect the target, then deploy
+only this Worker with `npm run deploy:net:cloudflare`. TURN credentials do not
+grant Workers deployment access. Do not upgrade billing plans automatically;
+Cloudflare has its own usage limits even though Redis is gone.
+
+Before changing the frontend, run the real temporary-room check:
+
+~~~sh
+npm run net:prod:check -- \
+  --url=https://cot.kevinliu.studio \
+  --backend-url=https://cot-private-rooms.<your-subdomain>.workers.dev \
+  --signal-mode=cloudflare
+~~~
+
+The probe requires both the explicit Cloudflare health schema and an actual
+room lifecycle. A shallow `/healthz` response alone is not deployment proof.
+Then set these two production values together and build/redeploy the frontend:
+
+~~~dotenv
+VITE_SIGNAL_URL=wss://cot-private-rooms.<your-subdomain>.workers.dev/rooms
+COT_SIGNAL_BACKEND=cloudflare
+~~~
+
+The second setting retires Vercel `/api/signal` with HTTP 410, without validating
+old credentials, constructing Redis clients, or starting polling timers. Cached
+old clients must refresh and recreate rooms. Previous deployment URLs/resources
+are not deleted or disabled by this switch. Leave `VITE_ICE_CONFIG_URL` unset:
+Vercel `/api/ice` still issues short-lived Cloudflare TURN credentials. Never
+place provider tokens or room resume capabilities in a public `VITE_*` value.
+
+Limits: 14 seats per room; exact-origin admission; bounded pending sockets,
+message sizes/rates, and unauthenticated lifetimes; 24-hour idle room expiry.
+The per-IP connection limiter is per Cloudflare location, not a global quota
+or user authentication. Public room codes are invitations, not strong private
+account authentication. Host departure closes a room; host migration is absent.
+
+Keep the new backend available before promoting the frontend. Rollback requires
+a deliberately verified alternative signaling service; simply removing the
+new URL would return players to the exhausted old Redis route.
+
+### Deployment receipt — 2026-09-05
+
+- Worker: `https://cot-private-rooms.kk23907751.workers.dev`;
+  version `8404b0d3-345f-4f6d-be9c-dac1e8d06b60`.
+- Native production room probe passed create/join, bidirectional signaling,
+  authenticated reconnect, signaling after reconnect, guest departure, host
+  closure and absence of the closed room. This probe uses temporary owned rooms.
+- Existing same-origin Cloudflare TURN issued 8-hour credentials; a pristine
+  browser obtained 12 UDP relay candidates. Allocation alone is not proof of a
+  connected peer pair or gameplay on different physical networks.
+- A separate production peer-pair check used two fresh browser contexts with
+  `iceTransportPolicy: 'relay'` on both peers. Offer/answer/ICE traveled through
+  the live room Worker; both selected candidates were UDP relays, both peers
+  received the other's data-channel payload, and host departure closed the room.
+  This proves the production signaling/TURN path, not distinct physical networks
+  or rendered-game frame budgets. Reproduce with explicit endpoints:
+
+  ~~~sh
+  node tools/production-room-webrtc-check.mjs \
+    --url=https://cot.kevinliu.studio \
+    --backend-url=https://cot-private-rooms.kk23907751.workers.dev
+  ~~~
+- 13 real Workers-runtime integration tests cover hibernation, restart,
+  membership fencing, expiry, empty-object deallocation/reuse, origin, capacity,
+  payload, per-message and upgrade-rate limits. Source/test typechecks pass.
+- Local browser pair against this Worker implementation passed impaired play
+  (85 ms delay / 35 ms jitter / 12% injected snapshot loss), native signaling
+  resume, mid-match reload, rematch and clean departure. Its sampled own/remote
+  motion had zero backward frames; the exact release replay recovered from
+  reload in 375 ms (382 ms in the earlier implementation run).
+- Local 4-browser / 2v2 test passed at 45 ms delay, 15 ms jitter, 5% snapshot loss,
+  3% input loss, 624 authority ticks, with no dropped catch-up time. These are
+  functional test receipts, not full 14-rendered-player or Internet FPS claims.
+
+The frontend release is tracked separately below after its production check.
+No Redis resource, credentials or paid plan were changed by Worker deployment.
+
+## Alternative: one self-hosted signaling process
+
+The supported compose.multiplayer.yaml starts exactly **gateway + signal**.
+It does not start a database, dedicated match process, ranked queue, frontend,
+or TURN server. The website and existing credential service remain on Vercel.
+The backend requires one authorized, always-on host with Docker Compose, a DNS
+name, and inbound TCP 80/443. Use exactly one signaling instance; random load
+balancing across independent in-memory stores splits room ownership.
+
+No hosting account, purchase, DNS change, provider change or production release
+is authorized merely by these files. Free hosts that sleep and operating-system
+suspension can interrupt room signaling. Measure capacity on the real host;
+local browser tests are not production sizing evidence.
+
+Use a clean, verified release checkout and keep its revision with deployment
+records. Copy .env.multiplayer.example to the ignored .env.multiplayer and
+replace the placeholder host:
+
+~~~dotenv
+COT_MULTIPLAYER_ADDRESS=multiplayer.example.com
+COT_MULTIPLAYER_ALLOWED_ORIGINS=https://cot.kevinliu.studio
+~~~
+
+Allowed origins are exact, comma-separated frontend origins. Do not use a
+wildcard or authorize every preview. An explicitly empty/whitespace-only list
+fails startup; an origin allowlist is not user authentication or a DDoS defense.
+Keep host/provider connection, memory, disk and network limits enabled.
+
+Validate without printing expanded configuration values, then start only the
+supported services:
+
+~~~sh
+npm run multiplayer:config
+docker compose --env-file .env.multiplayer -f compose.multiplayer.yaml up --build -d
+docker compose --env-file .env.multiplayer -f compose.multiplayer.yaml ps
+~~~
+
+Dockerfile.multiplayer installs runtime dependencies and copies the shared
+source imports. Compose starts only the signaling entrypoint, as non-root Node
+with a read-only filesystem and bounded shutdown. It needs no writable gameplay
+or rating directory. Browser assets, .env secrets, Vercel project files and
+development browser binaries are excluded from the image.
+
+Only Caddy publishes ports; signaling port 7777 remains inside Docker. The
+gateway routes /api/signal to the signaling WebSocket and /healthz/signaling
+to its health endpoint. All other routes return 404, including /ranked/*,
+/match, /healthz/match, and /api/ice. TLS certificate data/config use named
+volumes; these are not a room or rating database. See [Caddy HTTPS](https://caddyserver.com/docs/automatic-https)
+and [WebSocket proxy behavior](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy).
+
+## Alternative Node helper: frontend cutover and verification
+
+After the backend is authorized, reachable and verified, set this **public
+build-time** value on the Vercel frontend and rebuild/redeploy it:
+
+~~~dotenv
+VITE_SIGNAL_URL=wss://multiplayer.example.com/api/signal
+~~~
+
+No VITE_MATCH_SERVICE_URL is required for private rooms or LAN. Leave
+VITE_ICE_CONFIG_URL unset to retain same-origin /api/ice. If the credential
+service is deliberately moved later, use an explicit HTTPS override with the
+frontend's exact allowed origin. Never put TURN provider secrets, resume tokens
+or other credentials in VITE_* values.
+
+The legacy Vercel signaling adapter remains a separate distributed option when
+COT_SIGNAL_BACKEND is not cloudflare; its Redis guard still applies. Removing its Redis environment variables does
+not turn it into this single-process service. Updating the frontend endpoint
+requires an actual backend deployment, not merely a local code change.
+
+Run the private-room checker against the authorized backend:
+
+~~~sh
+npm run net:prod:check -- \
+  --url=https://cot.kevinliu.studio \
+  --backend-url=https://multiplayer.example.com \
+  --signal-mode=standalone
+~~~
+
+The backend-url option selects /healthz/signaling and the /api/signal WebSocket.
+There is **no implicit match/ranked health check**. Standalone mode requires its
+health schema and a real temporary room create/join/guest-departure/host-removal
+sequence. The probe closes only its own clients and prints no room codes or
+tokens. TURN config and actual pristine-browser relay allocation still use the
+frontend /api/ice; successful signaling alone does not prove Internet peers
+can connect.
+
+An intentionally separate credential service can be selected with
+--ice-url=https://credentials.example.com/api/ice. The --dependency-only option
+skips browser TURN allocation, **not** standalone room creation/cleanup. Label
+that reduced check accordingly. Local ICE fixtures are stubbed configuration,
+not provider readiness or allocation proof. HTTPS-to-HTTP overrides fail rather
+than bypassing browser security. Default distributed checks remain strict;
+degraded Redis never becomes standalone readiness automatically. The retained
+--match-url option is solely an explicit legacy diagnostic, not a requirement
+or route in this supported setup.
+
+Before a production claim, use two pristine browser contexts on different
+networks to create/join a private room, prove a relay when needed, play, reload
+and rejoin, rematch, then leave cleanly. Also test LAN on the actual local
+devices, full/invalid rooms, stale reconnect credentials, temporary connection
+loss, hidden-tab input release and result delivery. Confirm the browser opened
+WSS to the intended backend. Keep sanitized receipts and the exact revision;
+native room tests and local Docker tests are not production certification.
+
+## Host lifecycle, restart and existing data
+
+- The browser host owns the match. Leaving ends the room; there is no host
+  migration, dedicated failover or durable live-match restoration. Keep the
+  host page open and foreground for reliable simulation pacing. Background
+  servicing releases controls and avoids WebGL work, but browser/OS throttling
+  still prevents a hidden-host 60 Hz guarantee.
+- The alternative Node helper keeps signaling rooms and reconnect ownership
+  in memory; restarting that process loses its rooms. Cloudflare instead
+  persists room membership and hashed reconnect capabilities across object
+  hibernation/restart. Neither backend saves or restores the running match.
+- Node runs under Compose init; SIGTERM/SIGINT trigger bounded cleanup within
+  the 15-second stop grace. Caddy reloads/restarts can interrupt WSS connections.
+  Schedule maintenance between matches; do not promise zero-downtime migration.
+- Preserve the Compose project name and TLS volumes. Do not use down -v,
+  --remove-orphans, or broad cleanup to migrate an existing installation.
+  This code change does not delete any old rating file, database, cloud resource
+  or running legacy container. Inventory existing services and agree on a
+  separate maintenance/retirement plan before stopping them.
+- Existing ranked/dedicated source and compose.selfhost.yaml remain legacy
+  opt-in/internal paths, not prerequisites for private rooms or LAN. They are
+  not automatically provisioned or removed by this supported configuration.
+- Monitor failed room operations, connections, event-loop delay and resource
+  use. Rotating logs and per-connection limits do not replace abuse protection
+  or measurements on the deployment host.
+
+## Local-only configuration smoke test
+
+This validates the supported service graph without creating a public endpoint:
+
+~~~sh
+COT_MULTIPLAYER_ADDRESS=:80 \
+COT_MULTIPLAYER_ALLOWED_ORIGINS=http://127.0.0.1:5173 \
+COT_MULTIPLAYER_BIND=127.0.0.1 \
+COT_MULTIPLAYER_HTTP_PORT=18080 \
+COT_MULTIPLAYER_HTTPS_PORT=18443 \
+docker compose -f compose.multiplayer.yaml config --services
+node tools/selfhost-deployment.selftest.mjs
+node tools/production-multiplayer-check.selftest.mjs
+node server/processShutdown.selftest.mjs
+~~~
+
+The service list must contain only signal and gateway. Configuration and
+native local tests do not prove public DNS/TLS, TURN allocation, or production
+gameplay. Any service tests must use their own ports/project/volumes and clean
+up only resources they own.

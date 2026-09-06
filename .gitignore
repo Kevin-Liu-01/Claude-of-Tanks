@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 shots/
 .DS_Store
@@ -18,7 +18,10 @@ __pycache__/
 .vercel/
 .qa-device/
 .qa-dev/
-.env.local
+.env
+.env.*
+!.env.example
+!.env.*.example
 public/models/tanks/**/*.glb
 
 # Local agent/task state and generated performance evidence

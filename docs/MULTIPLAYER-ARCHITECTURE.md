@@ -1,6 +1,9 @@
 # Multiplayer architecture
 
-Status: implemented and playable. LAN, private room codes, and ranked matches
+Implementation status: implemented and locally exercised. Production dependency
+availability and release certification are tracked separately in the
+[September 2026 verification record](research/multiplayer-smoothness-2026-09.md).
+Supported multiplayer consists of LAN and private room codes. Both
 enter the renderer-free authoritative simulation. Solo bots deliberately keep
 the original presentation-integrated local simulation: this avoids snapshot,
 prediction, serialization, and duplicate presentation work in the latency-free
@@ -13,7 +16,12 @@ mode while preserving the game's established high-refresh performance.
 | Solo vs bots | local browser | direct in-page simulation | local battle record |
 | LAN | one trusted browser host | direct WebRTC | unranked |
 | Private code | one trusted browser host | WebRTC, with configured TURN fallback | unranked |
-| Ranked | dedicated Node service | authenticated WebSocket | server-owned Elo |
+
+Ranked is no longer offered in the player-facing flow. Its dedicated service,
+wire adapter, and tests remain internal compatibility tools, not deployment
+requirements. References to ranked below describe those retained tools.
+`src/net/playMode.ts` owns supported modes and maps stale ranked intent to Private.
+The supported room setup uses in-memory signaling, not Redis or Supabase.
 
 `src/ui/playMenu.ts` owns the strict browser entry boundary for these modes:
 persisted identity and invite input are normalized before signaling, ICE and
@@ -35,6 +43,43 @@ Bravo wave pool with authority-owned bots. Ranked remains Standard Battle until
 its dedicated service explicitly negotiates another ruleset.
 
 ## Runtime boundaries
+
+### Broken-room contract
+
+The room UI accepts only normalized failure codes (`roomFailure.ts`), never
+raw provider messages or credentials. It distinguishes full/invalid/expired
+rooms, unavailable signaling, host departure, removed/replaced seats, connection
+timeouts, recovery exhaustion and host simulation failure. Full or ended rooms
+do not automatically retry. Temporary failures expose an explicit retry;
+creating/joining another room invalidates every older attempt and callback.
+
+`privateRoomConnectionRuntime.ts` relinquishes lobby ownership during handoff
+but retains one terminal callback lease for that room. It cannot lose a later
+host-closure event, and new acquisition or explicit departure revokes the lease.
+Client session recovery has a bounded end-to-end deadline; opening an RTC
+channel alone does not prove that the match handshake succeeded.
+
+`networkFramePump.ts` also watches accepted authority snapshots, not extrapolated
+render samples. After five seconds without updates it stops uploads/prediction
+and reports a stalled host. At the first outage it clears queued browser actions
+and unacknowledged input intent; action/consumable presses during recovery are
+discarded. New accepted authority reopens action admission, and physical held
+controls resume from a fresh player sample, not a replayed action queue. The
+authority's separate 500 ms input lease neutralizes stale admitted controls
+while its simulation advances. An open RTC channel cannot leave a player
+waiting forever: recovery grace is sixty seconds, with a native Return to garage
+action available earlier. Healthy gameplay does not depend on continuous
+signaling availability.
+
+`networkRoomFailureRuntime.ts` coalesces terminal failure, stops input, closes
+the owned room and restores Garage before presenting the error. During initial
+entry/rematch, the cancelled launcher alone performs that restoration. Abort
+checks extend through the final reveal/fade. Delayed error UI cannot overwrite
+a newer room or pending acquisition. No disconnect path fabricates a win,
+loss, draw or progression update; explicit Leave is not an error. There is no
+host migration or automatic match restoration after host loss.
+
+### Module owners
 
 - `src/sim/authoritativeMatch.ts` is the strict renderer-free battle authority
   shared by browser-hosted and dedicated matches.
@@ -145,6 +190,11 @@ order therefore cannot strand either peer at the readiness barrier.
 
 ## Client smoothness
 
+The [September 2026 smoothness and reliability record](research/multiplayer-smoothness-2026-09.md)
+documents reproduced failure cases, authority/presentation fixes, research,
+measured limits, and the local/browser/production verification matrix. Its
+pending release gates must not be read as production certification.
+
 Remote tanks use contact-safe monotone Hermite position interpolation,
 shortest-path angle blending, and at most 250 ms of bounded extrapolation.
 Direct-room presentation starts at 50 ms for the host loopback, 65 ms for LAN,
@@ -154,9 +204,16 @@ backward. Ranked/dedicated clients retain the conservative 100–220 ms defaults
 The same sampled timeline drives authoritative shells, missiles, match clocks,
 and moving mode objectives such as Turbo Ball, while score/reset transitions
 snap instead of interpolating across the arena. The local tank predicts the
-exact shared 60 Hz movement code,
-terrain contact, map bounds, and nearby static collision, then replays
-unacknowledged inputs after each authority snapshot. Presentation correction is
+shared movement code, terrain contact, map bounds, and nearby static collision
+on every rendered frame, using substeps no larger than `1/60 s` plus a bounded
+fractional remainder. Raw-authority callers replay unacknowledged inputs;
+browser callers use the clock-corrected own-entity sample without replaying
+that elapsed time twice. Viewer-only module, crew, equipment, and mode-mobility
+metadata accompanies the latest own pose so prediction cannot silently assume
+healthy movement after damage. Prediction uses the same spec-derived contact
+footprint as headless authority; prepared visual contact geometry remains on
+the renderer and cannot silently change only the client's support/traction.
+Presentation correction is
 grouped by physical role: horizontal hull motion uses an 110 ms envelope,
 support height and hull attitude use 160 ms, and live turret/gun aim uses 75 ms.
 Recent terrain or dynamic contact extends hull envelopes to 180/240 ms for
@@ -409,9 +466,17 @@ hitches are attributable rather than hidden by aggregate FPS.
   never be accepted as ranked outcomes.
 
 The signaling server only relays room membership, SDP, and ICE. Gameplay never
-travels through it. Production room membership lives in Redis and signaling
-notifications use Redis pub/sub, so peers routed to different WebSocket
-function instances still share one room. Private rooms automatically request
+travels through it. The Vercel function adapter stores room membership in Redis
+and uses distributed notifications/mailboxes so peers routed to different
+function instances still share one room. The standalone Node adapter instead
+uses one in-memory owner and requires no Redis. The supported split deployment
+keeps the website on Vercel and routes only signaling to one persistent
+host; see [Redis-free hosting](MULTIPLAYER-HOSTING.md) for configuration,
+single-writer limits and cutover verification. Healthy peer connections can
+continue through a transient signaling outage while room membership survives.
+Restarting the in-memory signaling owner loses its rooms; resume then reports
+expiry and closes the associated peer sessions. There is no battle-continuity
+guarantee across that restart, and players must create a new room. Private rooms request
 short-lived TURN credentials from same-origin `/api/ice`; the deployment keeps
 the long-lived provider token server-side. `VITE_ICE_CONFIG_URL` only overrides
 that endpoint for a separate credential service. LAN remains direct.
@@ -446,6 +511,34 @@ whose intended receiver session has already been replaced. Page-session
 rotation discards negotiation queued by the dead peer connection; ordinary
 WebSocket resume preserves and flushes the current generation. This prevents
 durable mailbox replay from mixing pre- and post-reload peer connections.
+
+Stable player IDs and public page-session IDs are not membership credentials.
+Both signaling stores require a private 256-bit resume capability before an
+existing seat can move to another socket. Only its hash is stored server-side;
+the owning request receipt contains the capability, while rosters, peer events,
+invite URLs and public client results do not. Duplicate or unsolicited private
+receipts are discarded rather than becoming events.
+
+Capabilities use browser-profile `localStorage`, matching the existing persistent
+`cot.player.id.v1` identity and close-tab/reopen-room workflow. Records are scoped
+to signaling endpoint, room and player, and bounded to 16 entries. Another
+browser profile knowing only the room code/player ID cannot resume that seat.
+The client persists a proposed next capability before sending a rotation. The
+server accepts proof of the current capability or an already-installed next
+capability, so a lost reply can be retried without weakening ownership. Distinct
+rotations have exactly one atomic winner. Storage writes/acknowledgements and
+cleanup preserve a newer accepted owner, including competing pending proposals.
+
+Every accepted socket has a separate connection-generation fence. Superseded
+sockets cannot relay, poll, or leave on behalf of the replacement; a poll denied
+by that fence terminates the old client instead of automatically competing for
+the seat again. Redis mailboxes are scoped to room and connection generation,
+including terminal host-departure delivery. Upgrading the default Redis namespace
+from `cot:signaling:v1` to `cot:signaling:v2` deliberately recreates existing rooms;
+operators using a custom namespace must likewise retire capability-less rooms.
+Cached old clients may freshly join, but cannot resume without retaining the
+credential and must refresh to the new client. There is no ID-only fallback.
+
 The signaling send boundary checks the browser socket's native ready state as
 well as the higher-level client state. A socket that has entered `CLOSING`
 before its asynchronous close event arrives cannot receive another native
@@ -464,9 +557,12 @@ degraded deployment even when `/api/signal` is healthy.
 `npm run net:prod:check` enforces all requirements without printing credentials;
 `--dependency-only` is an endpoint diagnostic, not a release gate.
 
-LAN setup is automatic. Public deployments use their same-origin secure
-signaling endpoint for rendezvous, while pages served from localhost or an
-RFC1918 address use that host's bundled port-7777 signaling service. LAN does
+LAN endpoint selection is automatic only after someone starts the local
+signaling helper and serves the frontend on the network, as described in the
+hosting runbook. An explicit `VITE_SIGNAL_URL` takes precedence, including the
+supported separate WSS backend for the public website. Without that override,
+public pages use same-origin secure signaling; localhost and RFC1918 pages
+select that host's port-7777 helper. Selecting LAN does not start a service. LAN does
 not request STUN or TURN routes, so match traffic stays on the direct Wi-Fi
 WebRTC path; the signaling service only exchanges room and connection metadata.
 

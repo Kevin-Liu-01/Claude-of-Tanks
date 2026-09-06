@@ -17,6 +17,7 @@ import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
 const MATCH_ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
 const PLAYER_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
+const LOADING_GRACE_MS = 180_000;
 
 export interface DedicatedSimulationOptions {
   players: AuthoritativePlayerRecord[];
@@ -77,6 +78,7 @@ export interface DedicatedMatchRegistryOptions {
   simulationFactory?: (options: DedicatedSimulationOptions) => AuthoritativeMatch;
   runtimeFactory?: (simulation: AuthoritativeMatch) => AuthoritativeMatchRuntime;
   tokenFactory?: () => string;
+  now?: () => number;
 }
 
 export interface DedicatedMatchAuthentication {
@@ -122,6 +124,7 @@ export class DedicatedMatchRegistry {
   readonly simulationFactory: (options: DedicatedSimulationOptions) => AuthoritativeMatch;
   readonly runtimeFactory: (simulation: AuthoritativeMatch) => AuthoritativeMatchRuntime;
   readonly tokenFactory: () => string;
+  readonly now: () => number;
   readonly matches = new Map<string, DedicatedMatchRecord>();
   closed = false;
 
@@ -129,10 +132,12 @@ export class DedicatedMatchRegistry {
     simulationFactory = createDedicatedSimulation,
     runtimeFactory = createDedicatedRuntime,
     tokenFactory = randomToken,
+    now = () => Date.now(),
   }: DedicatedMatchRegistryOptions = {}) {
     this.simulationFactory = simulationFactory;
     this.runtimeFactory = runtimeFactory;
     this.tokenFactory = tokenFactory;
+    this.now = now;
   }
 
   createMatch({
@@ -172,7 +177,7 @@ export class DedicatedMatchRegistry {
       players: playerRecords,
       simulation,
       runtime,
-      createdAtMs: Date.now(),
+      createdAtMs: this.now(),
       finishedAtMs: null,
     };
     this.matches.set(id, record);
@@ -229,8 +234,15 @@ export class DedicatedMatchRegistry {
   advance(elapsedMs: number): number {
     if (this.closed) return 0;
     let steps = 0;
-    const now = Date.now();
+    const now = this.now();
     for (const match of [...this.matches.values()]) {
+      // A reserved player may never connect or finish loading. Reclaim that
+      // unstarted operation without manufacturing a battle result or forfeit.
+      if (!match.runtime.matchStarted && !match.simulation.result &&
+          now - match.createdAtMs >= LOADING_GRACE_MS) {
+        this.removeMatch(match.id, 'loading_expired');
+        continue;
+      }
       steps += match.runtime.advance(elapsedMs);
       if (match.simulation.result && match.finishedAtMs == null) match.finishedAtMs = now;
       // Keep a completed match alive briefly for its final snapshots and

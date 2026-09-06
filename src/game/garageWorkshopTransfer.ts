@@ -76,6 +76,12 @@ function bufferAttribute(source: NonNullable<AttributeWire>): THREE.BufferAttrib
   return new THREE.BufferAttribute(source.array, source.itemSize, source.normalized);
 }
 
+function instancedAttribute(source: NonNullable<AttributeWire>): THREE.InstancedBufferAttribute {
+  // A cast of BufferAttribute does not set Three's runtime instancing flag.
+  // Without it, matrix/color inputs advance per vertex and overrun buffers.
+  return new THREE.InstancedBufferAttribute(source.array, source.itemSize, source.normalized);
+}
+
 function geometryFromWire(source: GarageWorkshopGeometryWire['geometries'][number]): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   for (const [name, attribute] of Object.entries(source.attributes)) {
@@ -168,8 +174,8 @@ function rebuildNodeObject(
       resolvedMaterials.length === 1 ? resolvedMaterials[0] : resolvedMaterials,
       source.count,
     );
-    if (source.instanceMatrix) mesh.instanceMatrix = bufferAttribute(source.instanceMatrix) as THREE.InstancedBufferAttribute;
-    if (source.instanceColor) mesh.instanceColor = bufferAttribute(source.instanceColor) as THREE.InstancedBufferAttribute;
+    if (source.instanceMatrix) mesh.instanceMatrix = instancedAttribute(source.instanceMatrix);
+    if (source.instanceColor) mesh.instanceColor = instancedAttribute(source.instanceColor);
     object = mesh;
   } else if (source.kind === 'mesh') {
     object = new THREE.Mesh(

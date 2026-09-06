@@ -34,6 +34,7 @@ interface NetworkBrowserSessionOptions {
   shouldPresentDisconnect(): boolean;
   nextFrame(): Promise<RuntimeValue>;
   onHostError?: (error: RuntimeValue) => void;
+  onDisconnect?: (reason: string) => void;
 }
 
 export interface NetworkBrowserSessionRuntime {
@@ -45,6 +46,7 @@ export interface NetworkBrowserSessionRuntime {
   queueAction(action: string): void;
   queueConsumable(slot: number): void;
   pump(dt: number, nowMs: number): void;
+  pumpBackground(nowMs: number): void;
   waitForInitialSnapshot(
     request: { viewerId: string; spectator?: boolean },
   ): Promise<SampledSnapshotFrame>;
@@ -96,6 +98,7 @@ export function createNetworkBrowserSessionRuntime({
   shouldPresentDisconnect,
   nextFrame,
   onHostError,
+  onDisconnect,
 }: NetworkBrowserSessionOptions): NetworkBrowserSessionRuntime {
   if ([getPlayer, isBattleActive, shouldPresentDisconnect, nextFrame]
     .some((entry) => typeof entry !== 'function')) {
@@ -118,6 +121,7 @@ export function createNetworkBrowserSessionRuntime({
     recovery,
     nextFrame,
     onHostError,
+    onDisconnect,
   });
   const barrier = createNetworkBattleBarrier({
     getMatch: () => match,
@@ -175,6 +179,7 @@ export function createNetworkBrowserSessionRuntime({
     queueAction: (action) => framePump.queueAction(action),
     queueConsumable: (slot) => framePump.queueConsumable(slot),
     pump: (dt, nowMs) => framePump.pump(dt, nowMs),
+    pumpBackground: (nowMs) => framePump.pumpBackground(nowMs),
     waitForInitialSnapshot: async (request) =>
       requireSampledSnapshot(await barrier.waitForInitialSnapshot(request)),
     waitForPeerReadiness: async () =>

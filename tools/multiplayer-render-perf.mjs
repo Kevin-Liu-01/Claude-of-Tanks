@@ -51,6 +51,15 @@ if (!['all', 'solo', 'host', 'client'].includes(only)) {
 }
 const enforceBudgets = stringOption('enforce', '1') !== '0';
 const verifyEntryReset = stringOption('entry-reset', '1') !== '0';
+const backgroundCheck = process.argv.includes('--background-check');
+if (backgroundCheck && !['all', 'host'].includes(only)) {
+  throw new TypeError('--background-check requires --only=host or --only=all');
+}
+const backgroundThrottleOverrides = [
+  '--disable-background-timer-throttling',
+  '--disable-renderer-backgrounding',
+  '--disable-backgrounding-occluded-windows',
+];
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
 const contextByPage = new WeakMap();
@@ -239,6 +248,118 @@ async function createStartingRoom(hostPage, guestPage, signalUrl) {
   ]);
 }
 
+async function installBackgroundObserver(page) {
+  await page.evaluate(async () => {
+    const { MatchClientRuntime } = await import('/src/net/matchRuntime.ts');
+    const originalStats = MatchClientRuntime.prototype.getStats;
+    let client;
+    // Capture the already-running client through the existing read-only debug
+    // getter. Restore synchronously; no application API or clock is replaced.
+    MatchClientRuntime.prototype.getStats = function (...args) {
+      client = this;
+      return originalStats.apply(this, args);
+    };
+    try { void window.__DEBUG.network; }
+    finally { MatchClientRuntime.prototype.getStats = originalStats; }
+    if (!client) throw new Error('background probe could not observe the local client');
+    const probe = globalThis.__COT_BACKGROUND_PROBE = {
+      client, heldPackets: 0, backgroundPackets: 0, nonNeutralPackets: 0,
+    };
+    const transport = client.transport;
+    const method = typeof transport.sendInput === 'function' ? 'sendInput' : 'send';
+    const originalSend = transport[method];
+    transport[method] = function (message, ...args) {
+      if (message?.type === 'input') {
+        const input = message.payload;
+        if (document.hasFocus()) {
+          if (input.fire && input.throttle > 0) probe.heldPackets++;
+        } else {
+          probe.backgroundPackets++;
+          if (input.throttle !== 0 || input.steer !== 0 || input.fire ||
+              input.actionBits !== 0 || !input.brake || !input.aimLocked) {
+            probe.nonNeutralPackets++;
+          }
+        }
+      }
+      return originalSend.call(this, message, ...args);
+    };
+    probe.restore = () => { transport[method] = originalSend; };
+    window.__DEBUG.input.pressVirtual('forward');
+    window.__DEBUG.input.pressVirtual('fire');
+  });
+}
+
+async function backgroundState(page) {
+  return page.evaluate(() => {
+    const probe = globalThis.__COT_BACKGROUND_PROBE;
+    const rawInput = window.__DEBUG.input.getState();
+    return {
+      timeMs: performance.now(), hidden: document.hidden, focused: document.hasFocus(),
+      connected: probe.client.connected,
+      authorityTick: probe.client.lastSnapshotTick,
+      rendererFrame: window.__DEBUG.renderer.info.render.frame,
+      scheduler: window.__DEBUG.frameLoopScheduler,
+      heldPackets: probe.heldPackets, backgroundPackets: probe.backgroundPackets,
+      nonNeutralPackets: probe.nonNeutralPackets,
+      pendingInputEdges: probe.client.getStats().pendingInputEdges,
+      fireHeld: rawInput.fire, forwardHeld: rawInput.forward,
+    };
+  });
+}
+
+async function checkBackgroundHost(page, label) {
+  let foregroundTab = null;
+  try {
+    await installBackgroundObserver(page);
+    await page.waitForFunction(() => globalThis.__COT_BACKGROUND_PROBE.heldPackets > 0,
+      { timeout: 10_000 });
+    const before = await backgroundState(page);
+    foregroundTab = await contextByPage.get(page).newPage();
+    await foregroundTab.bringToFront();
+    await page.waitForFunction(() => document.hidden && !document.hasFocus(),
+      { timeout: 10_000, polling: 100 });
+    // Exclude the visibility transition itself from the no-render interval.
+    // The host's real timers remain browser-controlled; Node waits do not pump it.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const hiddenStart = await backgroundState(page);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const hiddenEnd = await backgroundState(page);
+    const receipt = { before, hiddenStart, hiddenEnd };
+    const detail = `${label}: ${JSON.stringify(receipt)}`;
+    assert.ok(hiddenStart.hidden && hiddenEnd.hidden &&
+      !hiddenStart.focused && !hiddenEnd.focused, `probe must observe actual hidden focus: ${detail}`);
+    assert.ok(hiddenEnd.connected && hiddenEnd.authorityTick > hiddenStart.authorityTick,
+      `background host authority must progress with its client connected: ${detail}`);
+    assert.equal(hiddenEnd.rendererFrame, hiddenStart.rendererFrame,
+      `hidden host must not submit renderer work: ${detail}`);
+    assert.equal(hiddenEnd.scheduler.animationTicks, hiddenStart.scheduler.animationTicks,
+      `hidden host must not run display frames: ${detail}`);
+    assert.ok(hiddenEnd.backgroundPackets > hiddenStart.backgroundPackets,
+      `hidden host must continue neutral network input: ${detail}`);
+    assert.equal(hiddenEnd.nonNeutralPackets, 0, `hidden input must not drive/fire/retry: ${detail}`);
+    assert.equal(hiddenEnd.pendingInputEdges, 0, `hidden input must release action retries: ${detail}`);
+    assert.equal(hiddenEnd.fireHeld || hiddenEnd.forwardHeld, false,
+      `background input must clear held touch controls: ${detail}`);
+    console.log(`[background-check] ${JSON.stringify(receipt)}`);
+    return receipt;
+  } finally {
+    await page.evaluate(() => {
+      globalThis.__COT_BACKGROUND_PROBE?.restore?.();
+      delete globalThis.__COT_BACKGROUND_PROBE;
+      window.__DEBUG.input.releaseVirtual('forward');
+      window.__DEBUG.input.releaseVirtual('fire');
+    }).catch(() => {});
+    if (foregroundTab) await foregroundTab.close().catch(() => {});
+    await page.bringToFront();
+    await page.waitForFunction(() => !document.hidden && document.hasFocus(), { timeout: 10_000 });
+  }
+}
+
+async function collectBackgroundReceipt(page, label) {
+  if (backgroundCheck && label.endsWith('-host')) return checkBackgroundHost(page, label);
+  return null;
+}
+
 async function collectFullRenderer(page, label) {
   await page.bringToFront();
   await page.waitForFunction(
@@ -270,6 +391,7 @@ async function collectFullRenderer(page, label) {
         `${label} must clear a prior match result synchronously at handoff`);
     }
   }
+  const backgroundReceipt = await collectBackgroundReceipt(page, label);
   await page.evaluate((mode) => {
     const state = globalThis.__COT_RENDER_PERF = globalThis.__COT_RENDER_PERF || {};
     state.syncCalls = 0;
@@ -381,6 +503,7 @@ async function collectFullRenderer(page, label) {
     };
   }, label);
   report.entry.coldReadyMs = coldReadyMsByPage.get(page) ?? null;
+  report.background = backgroundReceipt;
   if (!enforceBudgets) return report;
   assert.ok(report.entry.coldReadyMs != null && report.entry.coldReadyMs < maxColdReadyMs,
     `${label} cold profile took ${report.entry.coldReadyMs} ms to become ready`);
@@ -465,7 +588,7 @@ async function collectFullRenderer(page, label) {
       presentation: window.__DEBUG.networkPresentation,
     }));
     assert.equal(report.destructionBurst.freezes, 0,
-      `${label} destruction/result burst must not freeze`);
+      `${label} destruction/result burst must not freeze: ${JSON.stringify(report.destructionBurst)}`);
     assert.ok(report.destructionBurst.maxGapMs < 200,
       `${label} destruction/result burst stalled ${report.destructionBurst.maxGapMs} ms`);
     assert.equal(report.destructionBurst.presentation?.pending, 0,
@@ -604,7 +727,16 @@ async function runNetwork(origin, signalUrl, renderedRole) {
       state.readyTimer = setInterval(() => {
         if (!state.match?.client?.closed && !state.match?.host?.matchStarted) state.match.ready();
       }, 1000);
-      state.pumpTimer = setInterval(() => state.match.advance(1000 / 60), 1000 / 60);
+      // Browser timers may quantize 16.67 ms or run late. Use elapsed wall
+      // time like the real frame pump; a fixed increment per callback changes
+      // authority speed and contaminates prediction/clock-offset evidence.
+      let lastPumpMs = performance.now();
+      state.pumpTimer = setInterval(() => {
+        const nowMs = performance.now();
+        const elapsedMs = Math.max(0, nowMs - lastPumpMs);
+        lastPumpMs = nowMs;
+        state.match.advance(elapsedMs);
+      }, 1000 / 60);
     });
     await guestPage.evaluate((seedPriorResult) => {
       const state = globalThis.__COT_RENDER_PERF;
@@ -644,12 +776,13 @@ try {
   const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
   browser = await puppeteer.launch({
     headless: true,
+    // Puppeteer supplies these defaults too: omitting only our explicit flags
+    // would falsely certify normal background behavior under timer overrides.
+    ignoreDefaultArgs: backgroundCheck ? backgroundThrottleOverrides : [],
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows',
+      ...(backgroundCheck ? [] : backgroundThrottleOverrides),
       '--use-gl=angle',
       '--enable-webgl',
     ],
@@ -683,6 +816,7 @@ try {
     ok: true,
     profile: {
       seconds, cpuRate, minimumFps, cycles, maxColdReadyMs, enforceBudgets, verifyEntryReset,
+      backgroundCheck,
       viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
       freshBrowserContexts: true,
     },

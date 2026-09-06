@@ -1,0 +1,14 @@
+.git
+.vercel
+dist
+node_modules
+**/node_modules
+**/.wrangler
+.qa-*
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Independently deployed Worker; never upload its local tooling to Vercel.
+cloudflare/signaling

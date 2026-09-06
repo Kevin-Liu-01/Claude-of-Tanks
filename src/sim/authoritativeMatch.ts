@@ -63,6 +63,7 @@ import type {
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
+import { capturePredictionAuthorityState } from '../net/predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
   SnapshotShellSource,
@@ -821,7 +822,8 @@ export function createAuthoritativeMatch({
       entity.input.steer = 0;
       entity.input.brake = true;
       entity.input.fire = false;
-      entity.input.aimLocked = false;
+      // No driver must also stop sight-driven hull traverse/hydraulic lay.
+      entity.input.aimLocked = true;
       entity.input.actionBits = 0;
       return;
     }
@@ -1800,7 +1802,8 @@ export function createAuthoritativeMatch({
         entity.input.steer = 0;
         entity.input.brake = true;
         entity.input.fire = false;
-        entity.input.aimLocked = false;
+        entity.input.aimLocked = true;
+        entity.input.actionBits = 0;
       }
     },
 
@@ -1866,6 +1869,7 @@ export function createAuthoritativeMatch({
           resultReason,
           destructibleRevision,
           destroyedObstacleIndices: destroyedObstacleIndices.slice(),
+          ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
           ...(normalizedGameMode === 'standard' ? {} : {
             gameMode: normalizedGameMode,
             modeState: modeController.serialize(viewerId),

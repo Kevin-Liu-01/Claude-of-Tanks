@@ -13,7 +13,7 @@ type WireRow = Record<string, RuntimeValue>;
 export interface SnapshotWirePayload {
   tick: number;
   serverTimeMs: number;
-  ackInputSeq: number;
+  ackInputSeq: number | null;
   baseTick: number;
   entities: WireRow[];
   removedEntityIds: RuntimeValue[];
@@ -42,6 +42,7 @@ const SHELL_FIELDS = Object.freeze([
 ] as const);
 const MAX_ENTITIES = 32;
 const MAX_SHELLS = 256;
+const GUIDED_SHELL_IDS = '__cotGuidedShellIds';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -156,6 +157,16 @@ function decodeInputEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<NormalizedP
 function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
   if (!isRecord(envelope.payload)) throw new TypeError('snapshot payload is required');
   const packet = envelope.payload;
+  const shells = Array.isArray(packet.shells) ? packet.shells : [];
+  const guidedIds: RuntimeValue[] = [];
+  for (const shell of shells) {
+    if (isRecord(shell) && shell.guided === true) guidedIds.push(shell.id);
+  }
+  const meta = isRecord(packet.meta) ? packet.meta : null;
+  // Keep v2 shell rows at their existing width. Older clients reject added
+  // columns but safely ignore metadata they do not know. New clients restore
+  // guided presentation from this optional codec-only sidecar.
+  const wireMeta = guidedIds.length ? { ...meta, [GUIDED_SHELL_IDS]: guidedIds } : meta;
   return [
     SNAPSHOT_WIRE_TAG,
     envelope.v,
@@ -169,7 +180,7 @@ function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): RuntimeValue[] {
     Array.isArray(packet.removedEntityIds) ? packet.removedEntityIds : [],
     packRows(packet.shells || [], SHELL_FIELDS, MAX_SHELLS, 'shell'),
     Array.isArray(packet.events) ? packet.events : [],
-    isRecord(packet.meta) ? packet.meta : null,
+    wireMeta,
   ];
 }
 
@@ -186,14 +197,30 @@ function readSnapshotEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<SnapshotWi
     payload: null,
   });
   const serverTimeMs = Number(wire[5]);
-  const ackInputSeq = Number(wire[6]);
+  const ackInputSeq = wire[6];
   const baseTick = Number(wire[7]);
   if (!Number.isFinite(serverTimeMs) || serverTimeMs < 0 ||
-      !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0 ||
+      (ackInputSeq !== null && (typeof ackInputSeq !== 'number' ||
+        !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0 || ackInputSeq >= 0x80000000)) ||
       !Number.isSafeInteger(baseTick) || baseTick < -1) {
     throw new TypeError('invalid snapshot wire metadata');
   }
-  const meta = isRecord(wire[12]) ? wire[12] : null;
+  let meta = isRecord(wire[12]) ? wire[12] : null;
+  const shells = unpackRows(wire[10], SHELL_FIELDS, MAX_SHELLS, 'shell');
+  const guidedIds = meta?.[GUIDED_SHELL_IDS];
+  const shellIds = new Set(shells.map((shell) => shell.id));
+  if (guidedIds != null && (!Array.isArray(guidedIds) || guidedIds.length > MAX_SHELLS ||
+      guidedIds.some((id) => typeof id !== 'number' || !Number.isSafeInteger(id) || id < 0 ||
+        !shellIds.has(id)) || new Set(guidedIds).size !== guidedIds.length)) {
+    throw new TypeError('invalid guided shell wire metadata');
+  }
+  const guidedSet = new Set(Array.isArray(guidedIds) ? guidedIds : []);
+  for (const shell of shells) shell.guided = guidedSet.has(shell.id);
+  if (meta && Object.hasOwn(meta, GUIDED_SHELL_IDS)) {
+    const restoredMeta = { ...meta };
+    delete restoredMeta[GUIDED_SHELL_IDS];
+    meta = Object.keys(restoredMeta).length ? restoredMeta : null;
+  }
   return {
     ...envelope,
     type: MESSAGE_TYPES.SNAPSHOT,
@@ -204,7 +231,7 @@ function readSnapshotEnvelope(wire: RuntimeValue[]): ProtocolEnvelope<SnapshotWi
       baseTick,
       entities: unpackRows(wire[8], ENTITY_FIELDS, MAX_ENTITIES, 'entity'),
       removedEntityIds: Array.isArray(wire[9]) ? wire[9] : [],
-      shells: unpackRows(wire[10], SHELL_FIELDS, MAX_SHELLS, 'shell'),
+      shells,
       events: Array.isArray(wire[11]) ? wire[11] : [],
       meta,
     },
