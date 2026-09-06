@@ -26,6 +26,9 @@ function createHarness(failAt = '', pauseAt = '') {
   const connectGate = deferred();
   const rosterGate = deferred();
   const revealGate = deferred();
+  const atmosphereGate = deferred();
+  const initialGate = deferred();
+  const initial = { entities: [], meta: { weatherSeed: 0 } };
   const entity = (specId) => ({
     specId,
     visual: { setGroundSampler: () => events.push(`ground:${specId}`) },
@@ -128,12 +131,21 @@ function createHarness(failAt = '', pauseAt = '') {
       groundSampler: () => 0,
       waitForInitialSnapshot: async () => {
         events.push('initial');
+        if (pauseAt === 'initial') await initialGate.promise;
         if (failAt === 'initial') throw new Error('initial failed');
-        return { entities: [] };
+        events.push('initialReady');
+        return initial;
       },
       waitForPeerReadiness: async () => events.push('ready'),
     },
     warm: {
+      atmosphere: async (snapshot) => {
+        assert.strictEqual(snapshot, initial, 'atmosphere consumes the actual initial authority frame');
+        events.push('atmosphere');
+        if (pauseAt === 'atmosphere') await atmosphereGate.promise;
+        if (failAt === 'atmosphere') throw new Error('atmosphere failed');
+        events.push('atmosphereReady');
+      },
       getFx: () => ({ id: 'fx' }),
       terrain: async () => events.push('terrain'),
       wrecks: async () => events.push('wrecks'),
@@ -176,6 +188,8 @@ function createHarness(failAt = '', pauseAt = '') {
     get trace() { return trace; },
     releaseConnect: () => connectGate.resolve(),
     releaseRoster: () => rosterGate.resolve(),
+    releaseAtmosphere: () => atmosphereGate.resolve(),
+    releaseInitial: () => initialGate.resolve(),
   };
 }
 
@@ -187,6 +201,13 @@ function createHarness(failAt = '', pauseAt = '') {
   assert.equal(harness.disposed, false, 'the live bridge remains owned after activation');
   assert.ok(harness.events.indexOf('initial') < harness.events.indexOf('publishBridge'),
     'authority must arrive before the bridge becomes render-visible');
+  for (const [before, after] of [
+    ['initialReady', 'atmosphere'], ['apply', 'atmosphere'],
+    ['garageLights:false', 'atmosphere'], ['atmosphere', 'atmosphereReady'],
+    ['atmosphereReady', 'terrain'], ['atmosphereReady', 'compile'],
+    ['compile', 'activate'],
+  ]) assert.ok(harness.events.indexOf(before) >= 0
+    && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);
   assert.ok(harness.events.indexOf('ready') < harness.events.indexOf('activate'),
     'peer readiness is the final activation barrier');
   assert.ok(harness.events.indexOf('activate') < harness.events.indexOf('hide'),
@@ -206,6 +227,32 @@ for (const failure of ['roster', 'initial']) {
   assert.equal(harness.disposed, true, `${failure}: unpublished bridge is released`);
   assert.equal(harness.publishedBridge, null, `${failure}: partial bridge never becomes visible`);
   assert.ok(!harness.events.includes('activate'), `${failure}: battle never activates`);
+  assert.ok(!harness.events.includes('atmosphere'), `${failure}: no weather without initial authority`);
+}
+
+{
+  const harness = createHarness('atmosphere');
+  await assert.rejects(harness.runtime.present(harness.request), /atmosphere failed/);
+  for (const stage of ['compile', 'activate', 'primeReveal', 'hide']) {
+    assert.ok(!harness.events.includes(stage), `failed atmosphere cannot reach ${stage}`);
+  }
+}
+
+for (const pauseAt of ['initial', 'atmosphere']) {
+  const harness = createHarness('', pauseAt);
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, pauseAt);
+  assert.ok(!harness.events.includes('compile'), `${pauseAt}: first compile remains covered`);
+  controller.abort('return to Garage during weather acquisition');
+  if (pauseAt === 'initial') harness.releaseInitial();
+  else harness.releaseAtmosphere();
+  await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error));
+  for (const stage of ['compile', 'activate', 'primeReveal', 'hide']) {
+    assert.ok(!harness.events.includes(stage), `${pauseAt}: aborted weather entry cannot reach ${stage}`);
+  }
+  if (pauseAt === 'initial') assert.ok(!harness.events.includes('atmosphere'));
 }
 
 {

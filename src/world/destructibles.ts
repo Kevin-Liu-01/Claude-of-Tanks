@@ -1,13 +1,16 @@
 // src/world/destructibles.ts — the seam between the FX layer and the world
 // prop layer for destructible small props (world-dressing r1).
 //
-// Why this module exists: shells resolve in src/game/state.ts (frozen) and
-// their impact/flight data surfaces in src/fx/effects.ts (bus listeners +
+// Why this module exists: authoritative shells resolve in solo game state or
+// shared simulation; their presentation data surfaces in src/fx/effects.ts (bus listeners +
 // per-frame shell loop). The destructible props themselves live in
 // src/world/props.ts. Neither layer may import the other's heavyweight module
 // (fx -> props would pull the whole world builder into the fx layer), so both
 // meet here: props.ts registers per-world break handlers, effects.ts registers
 // the particle-burst provider and forwards shell flight/impact events.
+// These callbacks may break or kick NON-COLLIDING decoration only. Movement
+// obstacles and shell colliders require the authoritative crushObstacle seam;
+// cosmetic proximity must never open cover that the authority still retains.
 //
 // Worlds are CACHED per mapId and reused across battles (main.ts worldCache),
 // with only the active one visible — handlers register keyed by mapId
@@ -119,8 +122,8 @@ export function notifyShellSweep(
 }
 
 /**
- * Shell world-impact point (effects.ts shell:expired listener). HE gets a
- * real blast radius, AP a token one.
+ * Shell world-impact presentation (effects.ts shell:expired listener). HE has
+ * a larger cosmetic radius; neither radius authorizes collidable destruction.
  * @param {{r:number, he:boolean}} opts
  */
 export function notifyShellImpact(

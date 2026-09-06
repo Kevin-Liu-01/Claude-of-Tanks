@@ -31,6 +31,8 @@ type ColorTriple = readonly [number, number, number];
 type VectorPair = readonly [number, number];
 
 export interface SkyPreset {
+  /** Dome radiance only; 1 preserves authored daylight. Applied under loading. */
+  skyIntensity: number;
   sunElevationDeg: number;
   sunAzimuthDeg: number;
   turbidity: number;
@@ -392,6 +394,7 @@ const CLOUD_LAYER2_OPACITY = 0.42; // default for preset field cloudOpacity2 (ci
 // Per-map sky preset defaults — map configs (src/world/maps/*) override any
 // subset via createSky(...).applyPreset(preset, scene).
 const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
+  skyIntensity: 1,
   sunElevationDeg: SUN_ELEVATION_DEG,
   sunAzimuthDeg: SUN_AZIMUTH_DEG,
   turbidity: TURBIDITY,
@@ -439,6 +442,10 @@ function configureSkyUniforms(
   preset: Readonly<SkyPreset> = DEFAULT_PRESET,
 ): void {
   const u = sky.material.uniforms;
+  // Keep a stable reference: Three reuses the compiled program on a rematch
+  // and does not rerun onBeforeCompile just to refresh a preset's scalar.
+  u.uSkyIntensity ??= { value: 1 };
+  u.uSkyIntensity.value = preset.skyIntensity;
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
   // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulled it
@@ -457,6 +464,7 @@ function configureSkyUniforms(
   // shaped cumulus dome below owns clouds.
   if (u.cloudCoverage) u.cloudCoverage.value = 0;
   sky.material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
+    shader.uniforms.uSkyIntensity = u.uSkyIntensity;
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
@@ -499,12 +507,12 @@ function configureSkyUniforms(
 	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
-	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ), 1.0 );`,
+	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity, 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
-    shader.fragmentShader = patched;
+    shader.fragmentShader = `uniform float uSkyIntensity;\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1045,7 +1053,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
       // sky re-bakes per map and would reinstall the bad texture — and swap
       // to compensated ambient when invalid (deviceDiag.ts).
-      enforceEnvValidity(renderer, scene);
+      enforceEnvValidity(renderer, scene, preset.skyIntensity);
     },
 
     horizonColor,

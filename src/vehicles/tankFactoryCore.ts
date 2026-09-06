@@ -24,6 +24,7 @@ import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
+import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
@@ -919,6 +920,7 @@ interface TankVisual {
   recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number): number | null;
   setGroundSampler(sampler?: RuntimeValue): void;
   hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
+  applyEquipmentDamage(event: EquipmentDamageEvent): boolean;
   setTrackState(module: 'trackL' | 'trackR', broken: boolean): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
@@ -5516,7 +5518,7 @@ function ammoCan(
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-  P.addEquipment(bucket, box(0.155, 0.028, 0.315), x, y + 0.11, z, 0, yaw, 0); // rolled lid lip
+  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // rolled lid lip
   for (const side of [-1, 1]) {
     addEquipmentLocal(P, dark, box(0.026, 0.075, 0.024), x, y, z, yaw,
       side * 0.045, 0.035, 0.158);                                            // twin over-center latches
@@ -9247,6 +9249,7 @@ export function createTank(
   let activeVisualEraCluster: VisualEraCluster | null = null;
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
+  const equipmentDamage = new EquipmentDamage();
 
   const P: TankBuilderPort = {
     // PERF r3: `quality` remains the texture tier. Mobile battle bots can
@@ -9966,6 +9969,8 @@ export function createTank(
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
+      combatHitboxRoleForBucket(bucket));
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     tagMergedBucket(bucket, mesh);
@@ -11756,6 +11761,10 @@ export function createTank(
       return () => setBattleDetailsAttached(wasAttached);
     },
 
+    applyEquipmentDamage(event) {
+      return !destroyed && equipmentDamage.apply(event);
+    },
+
     /**
      * Restore the live (pre-wreck) visual for a rematch: original materials,
      * decals, neutral turret/gun pose, re-seated ERA bricks and track bands,
@@ -11763,6 +11772,7 @@ export function createTank(
      * tank (ERA/track restore still runs — a survivor may have lost both).
      */
     resetDestroyed() {
+      equipmentDamage.reset();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -11839,6 +11849,7 @@ export function createTank(
     setVisible(v) { root.visible = v; },
 
     dispose() {
+      equipmentDamage.dispose();
       // Detached detail is intentionally outside root traversal while far.
       // Reattach before resource disposal so no retained mesh is skipped.
       setBattleDetailsAttached(true);

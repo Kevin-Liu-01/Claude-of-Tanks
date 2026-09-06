@@ -125,6 +125,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   getDeploymentShadowWarm(): DeploymentShadowWarmOwner;
   getEntryLifecycle(): BattleEntryLifecycle;
   prepareRevealCamera(): void;
+  prepareAtmosphere?(): Promise<void>;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -263,6 +264,9 @@ export function createSoloBattleDeploymentRuntime(
         await camoSweep;
         requireCurrent(generation);
         mark('camo');
+        await options.prepareAtmosphere?.();
+        requireCurrent(generation);
+        mark('atmosphere');
         battleLoad.progress(0.91, 'Finishing camouflage');
         const coveredYield = createLoadingYielder(18, 80);
         const battleVisuals = getBattleVisuals();
