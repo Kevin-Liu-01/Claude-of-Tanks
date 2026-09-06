@@ -223,12 +223,17 @@ interface ExplosionMoment {
   ageS: number;
 }
 
-interface ShellFiredEvent {
+interface PredictedWeaponEvent {
   muzzlePos: WireVec3;
   dir: WireVec3;
   caliberMm: number;
+  isPlayer?: boolean;
+}
+
+interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
+  feedbackPredicted?: boolean;
 }
 
 interface ShellHitEvent {
@@ -285,6 +290,7 @@ interface TankFireEvent {
 
 interface FxEventMap {
   'shell:fired': ShellFiredEvent;
+  'weapon:predicted': PredictedWeaponEvent;
   'shell:hit': ShellHitEvent;
   'shell:expired': ShellExpiredEvent;
   'tank:destroyed': TankDestroyedEvent;
@@ -4289,7 +4295,7 @@ export function createFx(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-        fx.muzzleFlash(_v3, _v4, e.caliberMm);
+        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -4299,6 +4305,13 @@ export function createFx(
         if (shellKinds.size > 96) { shellKinds.clear(); sweepTails.clear(); } // leak guard
         shellKinds.set(e.shellId, e.shellType);
         sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+      });
+      onFxEvent(bus, 'weapon:predicted', (e) => {
+        if (!e.isPlayer) return;
+        _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
+        _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+        // Presentation only; sabot petals and sweep/prop ownership await authority.
+        fx.muzzleFlash(_v3, _v4, e.caliberMm);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);

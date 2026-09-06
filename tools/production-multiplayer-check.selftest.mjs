@@ -315,6 +315,7 @@ try {
   await assert.rejects(checkProductionMultiplayer({ baseUrl: frontend, backendUrl,
     signalMode: 'standalone', fetchImpl: splitFetch, timeoutMs: 2000,
   }), (error) => error.code === 'room_resume_failed' &&
+    error.detail.stage === 'guest_resume' &&
     !JSON.stringify(error.dependencies).includes('private-resume-token'));
   store.join = originalJoin;
   assert.equal(store.rooms.size, 0, 'failed guest resume retains a host able to remove the exact probe room');
@@ -325,6 +326,7 @@ try {
   await assert.rejects(checkProductionMultiplayer({ baseUrl: frontend, backendUrl,
     signalMode: 'standalone', fetchImpl: splitFetch, timeoutMs: 2000,
   }), (error) => error.code === 'room_lifecycle_timeout' &&
+    error.detail.stage === 'host_to_guest_relay' &&
     !JSON.stringify(error.dependencies).includes('private-relay-token'));
   store.relay = originalRelay;
   assert.equal(store.rooms.size, 0, 'a healthy endpoint with broken relay fails and removes its probe room');

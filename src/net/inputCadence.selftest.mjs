@@ -26,6 +26,47 @@ for (let frame = 0; frame < 239; frame++) {
 assert.ok(sends >= 59 && sends <= 61,
   `240 Hz presentation produces a bounded 60 Hz upload cadence (${sends})`);
 
+for (const refreshHz of [60, 90, 120, 144, 165, 240]) {
+  const clock = new NetworkInputCadence();
+  let count = 0;
+  let recordedS = 0;
+  let elapsedSinceSend = 0;
+  for (let frame = 0; frame < refreshHz * 10; frame++) {
+    clock.advance(1 / refreshHz);
+    elapsedSinceSend += 1 / refreshHz;
+    if (!clock.shouldSend(held)) continue;
+    const elapsed = clock.commit(held);
+    assert.ok(Math.abs(elapsed - elapsedSinceSend) < 1e-12,
+      'upload phase preservation cannot change actual input replay duration');
+    elapsedSinceSend = 0;
+    recordedS += elapsed;
+    count++;
+  }
+  assert.ok(count >= 599 && count <= 601,
+    `${refreshHz} Hz display preserves 60 Hz authority upload phase (${count} / 10s)`);
+  assert.ok(Math.abs(recordedS + clock.pendingElapsedS - 10) < 1e-9,
+    'cadence phase is not double-counted as simulated input time');
+}
+
+{
+  const clock = new NetworkInputCadence();
+  const frames = [1 / 120, 1 / 90, 1 / 165, 1 / 144, 1 / 60];
+  let time = 0;
+  let count = 0;
+  for (let index = 0; index < 2_000; index++) {
+    const dt = frames[index % frames.length];
+    time += dt;
+    clock.advance(dt);
+    if (clock.shouldSend(held)) { clock.commit(held); count++; }
+  }
+  assert.ok(Math.abs(count - time * 60) <= 1,
+    `variable-rate frames preserve upload phase (${count} versus ${time * 60})`);
+  clock.advance(10);
+  assert.equal(clock.shouldSend(held), true);
+  assert.equal(clock.commit(held), 0.1, 'suspension preserves the existing catch-up duration bound');
+  assert.equal(clock.shouldSend(held), false, 'resume cannot emit a stale catch-up packet burst');
+}
+
 cadence.reset();
 cadence.advance(1 / 240);
 cadence.commit(held);

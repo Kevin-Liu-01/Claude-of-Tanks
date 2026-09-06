@@ -2,12 +2,14 @@
 
 Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 
-Current deployment status: release `e60d2839a` is live on the canonical website
+Current deployment status: release `b970e9caa` is live on the canonical website
 with Cloudflare room signaling and the existing TURN service. The old canonical
 Redis signaling route returns HTTP 410 and requests a refresh. See the final
 Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
 versions, production checks and limitations. Earlier **not deployed** statements
 below describe their historical verification phase, not the current cutover.
+The abandoned-room follow-up at the end is a separate local change and is not
+included in that production receipt.
 
 Pre-cutover verification: focused verification, strict LAN and severe impaired-private rendering,
 four-/14-human capacity, persistent-room reconnect/rematch, natural rendered
@@ -64,10 +66,14 @@ integration at every display refresh rate; the measured difference is recorded
 below. Replacing it with held 60 Hz poses without render interpolation would
 introduce another visible cadence defect.
 
-The browser's own-entity sample already accounts for the sampled network time.
+The first smoothness release's browser own-entity sample already accounted for the sampled network time.
 That path does not replay unacknowledged render durations a second time. The
 raw-authority-only predictor path retains explicit unacknowledged-input replay.
-Both discard confirmed input history using real sequence acknowledgements.
+Both discarded confirmed input history using real sequence acknowledgements.
+The subsequent [response-latency wave](multiplayer-response-latency-2026-09.md)
+supersedes that browser policy: raw own authority plus bounded input replay
+removes the second smoothed/extrapolated reconciliation target. The earlier
+measurements below remain historical, not evidence for the new code path.
 
 `snapshot.ts` pairs the own tank's latest pose and `localPrediction` metadata
 at one authority tick. Remote objects and their presentation metadata remain on
@@ -1551,3 +1557,61 @@ make that same deployed-frontend check reproducible with an explicit origin.
 The earlier failed agent-browser session-continuity attempt created no rooms
 and is not counted as gameplay proof. These remain short functional receipts,
 not full-capacity rendered or different-physical-network performance guarantees.
+
+## Abandoned-room lifecycle follow-up — local, not deployed
+
+Base: `b970e9caadb681903b9b35ae1dfecb3650598dfa`. The audit found that the
+old room-wide 24-hour idle timeout did not bound individual disconnected seats.
+An active guest could keep a dead host's room touched indefinitely, and restoring
+a room without surviving sockets needed to preserve historical timestamps rather
+than invent new activity at every wake.
+
+The shared store now uses per-member leases: a recorded disconnect has up to
+90 seconds of reconnect grace, capped by the 180-second valid-traffic deadline.
+A host expiry closes the room; a guest expiry frees its seat. Valid traffic from
+one player cannot renew another. Cloudflare restores activity from durable
+snapshots plus surviving server-written socket attachments, repairs alarms on
+wake, and deletes empty actors' SQL metadata, key-value state and alarm. The LAN
+adapter applies the same lease policy with local socket housekeeping. The browser
+client treats expiry as terminal even before a lobby subscriber is installed,
+so no orphan polling/reconnect loop remains after the expired-room event.
+
+Expired guest identities retain bounded capability hashes outside active room
+capacity. This avoids an expired-seat cleanup opening an identity-takeover window
+while the host is disconnected. The original browser can explicitly rejoin with
+its private proof if the room and match still admit it. Proofs are not dropped to
+make room for unlimited identities; the room instead has a bounded identity
+budget. Host closure removes the entire room, including these fences.
+
+The 15 new real workerd regressions cover native socket abandonment, apparently
+open but silent peers, exact grace/deadline boundaries, healthy heartbeats across
+multiple lease windows, invalid traffic, hibernation and missing-alarm repair,
+just-in-time reconnect, late predecessor callbacks, repeated cleanup alarms,
+same-code reuse, expired-ID proof fencing, and failed SQL/deallocation retries.
+All 30 Worker tests (15 existing + 15 new), source/test Cloudflare typechecks,
+root typecheck and public build pass. Shared-store expiry/security and routed
+client lifecycle regression checks also pass. The full fleet-wide root test run
+is not represented as passing; its previously recorded unrelated timeout remains
+outside this targeted verification.
+
+The 14 native LAN WebSocket regressions also pass, including unauthenticated
+15-second admission expiry, shared host/guest lease behavior, a dropped host,
+late renewals rejected before a periodic sweep, stale predecessor closes,
+admission completing after its socket expired, a superseded post-commit join,
+and shutdown during a stalled/rejected optional store sweep. Repeated shutdown
+shares one promise and closes the store once. The old adapter reproduced the
+unauthenticated-socket leak in an isolated in-memory baseline import. Existing
+signaling and dedicated-world-collision tests pass on the final change, as does
+root typecheck; the combined focused quality gate has zero complexity violations,
+`any` or `unknown` annotations. The test registry discovers all 474 ordered
+checks, including both new root cleanup checks; discovery is not an execution
+claim for the unrelated fleet suite.
+
+These are local verification results, not a new production deployment. The
+existing production room/UI/TURN receipts above remain tied to their recorded
+versions. A sleeping actor created before this policy ships can retain its old
+alarm until its first wake; this change does not bulk enumerate/delete existing
+rooms. Cloudflare alarm delivery is at least once and may be delayed or exhaust
+provider retries after repeated failures, so the lease is an admission deadline,
+not an exact wall-clock deletion guarantee. See the
+[cleanup runbook](../MULTIPLAYER-HOSTING.md#abandoned-rooms-and-reconnect-leases).

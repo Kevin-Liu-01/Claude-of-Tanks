@@ -18,6 +18,7 @@ import {
 const MAX_PAYLOAD_BYTES = 128 * 1024;
 const RATE_WINDOW_MS = 10_000;
 const RATE_MAX_MESSAGES = 120;
+const LEGACY_SWEEP_INTERVAL_MS = 60_000;
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -34,6 +35,7 @@ interface StoreJoinResponse {
 
 export interface SignalingStore {
   rooms?: Map<RuntimeValue, RuntimeValue>;
+  membership?: { has(connection: SignalingConnection): boolean };
   create(connection: SignalingConnection, options?: CreateRoomOptions):
     MaybePromise<SignalingJoinResult>;
   join(connection: SignalingConnection, options?: JoinRoomOptions):
@@ -42,6 +44,7 @@ export interface SignalingStore {
     MaybePromise<StoreNotification>;
   leave(connection: SignalingConnection, reason?: string): MaybePromise<StoreNotification[]>;
   sweepExpired(): MaybePromise<StoreNotification[]>;
+  nextExpiryAt?(): number | null;
   detach?(connection: SignalingConnection, reason?: string): MaybePromise<StoreNotification[]>;
   poll?(connection: SignalingConnection): MaybePromise<StoreNotification[]>;
   deliver?(notification: StoreNotification): MaybePromise<boolean>;
@@ -62,6 +65,9 @@ export interface SignalingServerOptions {
   icePaths?: readonly string[];
   iceConfigHandler?: IceConfigHandler;
   store?: SignalingStore;
+  now?: () => number;
+  cleanupIntervalMs?: number;
+  unauthenticatedTimeoutMs?: number;
 }
 
 export interface SignalingServerService {
@@ -81,6 +87,10 @@ interface SignalingEnvelope extends Record<string, RuntimeValue> {
 interface RateWindow {
   start: number;
   count: number;
+  acceptedAt: number;
+  authenticated: boolean;
+  retired: boolean;
+  terminal?: { message: SignalingMessage; queuedAt: number };
 }
 
 interface SignalingHealth {
@@ -144,6 +154,10 @@ function originAllowed(origin: RuntimeValue, allowedOrigins: readonly string[] |
   return typeof origin === 'string' && allowedOrigins.includes(origin);
 }
 
+function mayDispatchReceivedEnvelope(connection: WebSocket, message: SignalingEnvelope): boolean {
+  return connection.readyState === WebSocket.OPEN || message.type === 'room_leave';
+}
+
 export function createSignalingServer({
   host = '127.0.0.1',
   port = 7777,
@@ -153,9 +167,18 @@ export function createSignalingServer({
   icePaths = ['/api/ice'],
   iceConfigHandler = createIceConfigHandler(),
   store = new SignalingRoomStore(),
+  now = Date.now,
+  cleanupIntervalMs = 5_000,
+  unauthenticatedTimeoutMs = 15_000,
 }: SignalingServerOptions = {}): SignalingServerService {
   if (allowedOrigins && allowedOrigins.length === 0) {
     throw new TypeError('COT_ALLOWED_ORIGINS must contain at least one exact origin');
+  }
+  if (!Number.isFinite(cleanupIntervalMs) || cleanupIntervalMs < 10 || cleanupIntervalMs > 15_000) {
+    throw new TypeError('cleanupIntervalMs must be between 10 and 15000');
+  }
+  if (!Number.isFinite(unauthenticatedTimeoutMs) || unauthenticatedTimeoutMs <= 0) {
+    throw new TypeError('unauthenticatedTimeoutMs must be positive');
   }
   const allowedWebSocketPaths = new Set(webSocketPaths);
   const allowedHealthPaths = new Set(healthPaths);
@@ -166,6 +189,10 @@ export function createSignalingServer({
     perMessageDeflate: false,
   });
   const rate = new WeakMap<WebSocket, RateWindow>();
+  let closing = false;
+  let cleanupPending: Promise<void> | null = null;
+  let closePending: Promise<void> | null = null;
+  let lastLegacySweepAt = now();
   const server = http.createServer(async (request, response) => {
     let pathname = '';
     try { pathname = new URL(String(request.url || ''), 'http://localhost').pathname; }
@@ -201,21 +228,112 @@ export function createSignalingServer({
     response.end();
   });
 
+  function retire(connection: WebSocket, reason: string): void {
+    const state = rate.get(connection);
+    if (!state || state.retired) return;
+    state.retired = true;
+    if (reason === 'resume_denied') {
+      safeSend(connection, errorMessage(Object.assign(new Error('room connection was replaced'), {
+        code: 'resume_denied',
+      })));
+    }
+    connection.close(1008, reason);
+  }
+
+  function deliverLocally(connection: SignalingConnection | null | undefined, message: SignalingMessage): boolean {
+    const delivered = safeSend(connection, message);
+    // Queue-backed stores call this only when the notification is actually
+    // delivered, not when it is merely enqueued for a later room_poll.
+    if (connection && message.type === 'room_closed') {
+      retire(connection as WebSocket, String(message.payload.reason || 'room_closed'));
+    }
+    return delivered;
+  }
+
   async function sendNotifications(notifications: StoreNotification[] | null | undefined): Promise<void> {
     for (const notification of notifications || []) {
-      if (typeof store.deliver === 'function') await store.deliver(notification);
-      else safeSend(notification.connection, notification.message);
+      if (typeof store.deliver === 'function') {
+        const state = notification.connection && rate.get(notification.connection as WebSocket);
+        if (state && notification.message.type === 'room_closed') {
+          state.terminal = { message: notification.message, queuedAt: now() };
+        }
+        await store.deliver(notification);
+      }
+      else deliverLocally(notification.connection, notification.message);
     }
   }
   if (typeof store.setDeliveryHandler === 'function') {
-    store.setDeliveryHandler((connection, message) => safeSend(connection, message));
+    store.setDeliveryHandler(deliverLocally);
+  }
+
+  function retireUnauthenticatedConnections(): void {
+    for (const connection of webSocketServer.clients) {
+      const state = rate.get(connection);
+      if (!state || state.retired) continue;
+      if (!state.authenticated && now() - state.acceptedAt >= unauthenticatedTimeoutMs) {
+        retire(connection, 'authentication_timeout');
+      } else if (state.terminal && now() - state.terminal.queuedAt >= unauthenticatedTimeoutMs) {
+        // A local terminal recipient cannot remain open forever if its
+        // optional mailbox delivery path stalls. Preserve the terminal reason.
+        deliverLocally(connection, state.terminal.message);
+      }
+    }
+  }
+
+  function retireReplacedConnections(): void {
+    for (const connection of webSocketServer.clients) {
+      const state = rate.get(connection);
+      if (state?.authenticated && !state.retired && !state.terminal &&
+          store.membership && !store.membership.has(connection)) {
+        retire(connection, 'resume_denied');
+      }
+    }
+  }
+
+  async function cleanup(): Promise<void> {
+    if (closing) return;
+    // Socket deadlines must not wait behind a slow optional distributed sweep.
+    retireUnauthenticatedConnections();
+    if (cleanupPending) return cleanupPending;
+    cleanupPending = (async () => {
+      const deadline = store.nextExpiryAt?.();
+      const sweepDue = typeof store.nextExpiryAt === 'function'
+        ? deadline != null && deadline <= now()
+        : now() - lastLegacySweepAt >= LEGACY_SWEEP_INTERVAL_MS;
+      if (sweepDue) {
+        lastLegacySweepAt = now();
+        const notifications = await store.sweepExpired();
+        if (closing) return;
+        await sendNotifications(notifications);
+      }
+      retireReplacedConnections();
+    })();
+    try { await cleanupPending; }
+    finally { cleanupPending = null; }
+  }
+
+  async function acceptAdmission(connection: WebSocket): Promise<boolean> {
+    const state = rate.get(connection);
+    if (state && !state.authenticated && now() - state.acceptedAt >= unauthenticatedTimeoutMs) {
+      retire(connection, 'authentication_timeout');
+    }
+    if (!state || state.retired || connection.readyState !== WebSocket.OPEN) {
+      // An asynchronous store request may finish after the unauthenticated
+      // socket deadline. Do not leave that newly installed seat attached.
+      if (typeof store.detach === 'function') await store.detach(connection, 'connection_closed');
+      else await sendNotifications(await store.leave(connection, 'connection_closed'));
+      return false;
+    }
+    state.authenticated = true;
+    retireReplacedConnections();
+    return !state.retired;
   }
 
   server.on('upgrade', (request, socket, head) => {
     let pathname = '';
     try { pathname = new URL(String(request.url || ''), 'http://localhost').pathname; }
     catch (_) { /* reject below */ }
-    if (!allowedWebSocketPaths.has(pathname) || !originAllowed(request.headers.origin, allowedOrigins)) {
+    if (closing || !allowedWebSocketPaths.has(pathname) || !originAllowed(request.headers.origin, allowedOrigins)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
@@ -226,22 +344,28 @@ export function createSignalingServer({
   });
 
   webSocketServer.on('connection', (connection: WebSocket) => {
-    rate.set(connection, { start: Date.now(), count: 0 });
+    const acceptedAt = now();
+    rate.set(connection, { start: acceptedAt, count: 0, acceptedAt, authenticated: false, retired: false });
     let messageChain: Promise<void> = Promise.resolve();
     connection.on('message', (data: RawData, isBinary: boolean) => {
       const limit = rate.get(connection);
-      if (!limit) return;
-      const now = Date.now();
-      if (now - limit.start >= RATE_WINDOW_MS) {
-        limit.start = now;
+      if (!limit || limit.retired || connection.readyState !== WebSocket.OPEN) return;
+      const receivedAt = now();
+      if (receivedAt - limit.start >= RATE_WINDOW_MS) {
+        limit.start = receivedAt;
         limit.count = 0;
       }
       limit.count++;
       if (limit.count > RATE_MAX_MESSAGES) {
-        connection.close(1008, 'rate_limit');
+        retire(connection, 'rate_limit');
         return;
       }
       messageChain = messageChain.then(async () => {
+        // Admission must not revive a lease that expired between timer ticks.
+        // Legacy distributed stores keep their existing 60-second sweep;
+        // local socket housekeeping never introduces a Redis poll per message.
+        await cleanup();
+        if (closing || limit.retired) return;
         if (isBinary) {
           safeSend(connection, errorMessage(Object.assign(new Error('binary signaling is unsupported'), {
             code: 'invalid_payload',
@@ -255,16 +379,24 @@ export function createSignalingServer({
             throw new Error('invalid message');
           }
           message = parsed as SignalingEnvelope;
+          // Clients send Leave then native close in order. The frame arrived
+          // OPEN, but the asynchronous cleanup above may observe CLOSING by
+          // now. Preserve that explicit departure before the close handler's
+          // detach; store.leave fences it to this exact connection generation.
+          // Closed sockets still cannot create, join, relay, or renew activity.
+          if (!mayDispatchReceivedEnvelope(connection, message)) return;
           const requestId = message.requestId == null ? null : String(message.requestId);
           const payload = isRecord(message.payload) ? message.payload : {};
           switch (message.type) {
             case 'room_create': {
               const result = await store.create(connection, payload);
+              if (!await acceptAdmission(connection)) break;
               safeSend(connection, { type: 'room_created', requestId, payload: result });
               break;
             }
             case 'room_join': {
               const joined = await store.join(connection, payload);
+              if (!await acceptAdmission(connection)) break;
               safeSend(connection, { type: 'room_joined', requestId, payload: joined.result });
               await sendNotifications(joined.notify);
               break;
@@ -297,6 +429,7 @@ export function createSignalingServer({
               break;
             case 'room_leave':
               await sendNotifications(await store.leave(connection, 'client_leave'));
+              if (limit.authenticated) retire(connection, 'client_leave');
               break;
             default:
               throw Object.assign(new Error('unknown signaling message'), { code: 'unknown_message' });
@@ -312,6 +445,7 @@ export function createSignalingServer({
     });
     connection.on('close', () => {
       messageChain.then(async () => {
+        if (closing) return;
         // A WebSocket is only the rendezvous transport. Mobile radio changes,
         // sleeping tabs, serverless recycling, and temporary Redis outages
         // must not destroy a healthy peer-to-peer room. Explicit room_leave
@@ -325,9 +459,9 @@ export function createSignalingServer({
   });
 
   const sweepTimer: ReturnType<typeof setInterval> = setInterval(() => {
-    Promise.resolve(store.sweepExpired()).then(sendNotifications)
+    cleanup()
       .catch((error) => console.error('[signal] Room sweep failed', error));
-  }, 60_000);
+  }, cleanupIntervalMs);
   if (typeof sweepTimer.unref === 'function') sweepTimer.unref();
 
   return {
@@ -361,14 +495,21 @@ export function createSignalingServer({
       }
       return address;
     },
-    async close(): Promise<void> {
+    close(): Promise<void> {
+      if (closePending) return closePending;
+      closing = true;
       clearInterval(sweepTimer);
-      for (const connection of webSocketServer.clients) connection.close(1001, 'server_shutdown');
-      await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
-      if (server.listening) {
-        await new Promise<void>((resolve) => server.close(() => resolve()));
-      }
-      if (typeof store.close === 'function') await store.close();
+      // A slow or failed optional store sweep must not prevent native socket
+      // and HTTP shutdown. Its continuation is fenced by closing above.
+      closePending = (async () => {
+        for (const connection of webSocketServer.clients) connection.close(1001, 'server_shutdown');
+        await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
+        if (server.listening) {
+          await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+        if (typeof store.close === 'function') await store.close();
+      })();
+      return closePending;
     },
   };
 }

@@ -130,10 +130,75 @@ Vercel `/api/ice` still issues short-lived Cloudflare TURN credentials. Never
 place provider tokens or room resume capabilities in a public `VITE_*` value.
 
 Limits: 14 seats per room; exact-origin admission; bounded pending sockets,
-message sizes/rates, and unauthenticated lifetimes; 24-hour idle room expiry.
+message sizes/rates, and unauthenticated lifetimes. Abandoned membership is
+reclaimed in minutes, independently of the 24-hour room-idle safety limit.
 The per-IP connection limiter is per Cloudflare location, not a global quota
 or user authentication. Public room codes are invitations, not strong private
 account authentication. Host departure closes a room; host migration is absent.
+
+### Abandoned rooms and reconnect leases
+
+Room cleanup does **not** depend on `beforeunload`, a successful Leave request,
+or another player visiting the room. Cloudflare uses one durable alarm per room;
+the LAN helper applies the same membership policy through its local sweep.
+
+| Condition | Cleanup policy |
+| --- | --- |
+| Socket opens but never authenticates | Close after 15 seconds; no room seat is allocated. |
+| Authenticated socket closes without Leave | Reserve that player's seat for up to 90 seconds for authenticated reconnect. |
+| Socket stays apparently open but stops sending valid authenticated traffic | Expire that player's lease after 180 seconds since its last valid request. |
+| Host's lease expires | Close the whole room, notify remaining players, retire its sockets, and delete its stored state. |
+| Guest's lease expires | Free only that seat, tell the host the peer left, and end that guest's connection if it remains open. |
+| Explicit host Leave | Close immediately; no reconnect grace. |
+
+The LAN helper checks these deadlines before each message and on a five-second
+housekeeping tick; an otherwise silent socket may be physically closed up to one
+tick after its deadline. Unauthenticated traffic never extends the initial
+15-second admission window. Expired/replaced socket notifications precede close,
+and late asynchronous admissions cannot announce an obsolete player session.
+Shutdown clears the timer, rejects new connections, and closes native resources
+without waiting for a stalled optional store sweep; repeated shutdown is safe.
+
+The disconnected deadline is the earlier of the 90-second disconnect grace and
+the 180-second last-activity deadline. Only the authenticated sender renews its
+lease: guest heartbeats, join attempts, malformed messages, and signals addressed
+to a missing host cannot keep that host alive. Normal routed-client heartbeats
+are 15 seconds apart; the lease allows the existing 60-second gameplay recovery
+window plus margin. A browser or OS suspended beyond the lease is deliberately
+expired. An open, responsive room is not considered abandoned merely because
+players are waiting in its lobby; gameplay itself travels peer-to-peer and is
+not inspected by the room service.
+
+Deadlines are restored from persisted per-player timestamps and surviving
+WebSocket attachments, never reset to the time an actor wakes. The constructor
+repairs a missing or obsolete alarm; every admission/message also checks expiry,
+so a late request cannot revive a dead host before a delayed alarm runs. Empty
+actors use `storage.deleteAll()` to release SQLite metadata and alarms once no
+pending/live socket remains. Cleanup is idempotent across repeated alarms and
+old socket callbacks; neither may erase a replacement room or connection.
+An actor abandoned before this cleanup revision is deployed may sleep until its
+previous alarm (at most the old 24-hour idle deadline); its first wake applies
+the saved timestamps immediately. Deployment does not enumerate or reset rooms.
+Cloudflare alarms may be delayed during provider maintenance/failover and retry
+on failure, so these are deadlines rather than exact wall-clock deletion SLAs.
+See [Cloudflare alarms](https://developers.cloudflare.com/durable-objects/api/alarms/)
+and [SQLite deletion semantics](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/#deleteall).
+
+Expired guest IDs retain a bounded capability-hash fence **outside** active
+capacity. This prevents another browser claiming that public player ID while
+the host is recovering. The original browser retains its private proof for an
+explicit later join, subject to room capacity and match admission; expiry itself
+stops automatic retries and shows the existing expired-room error. At most 128
+retired-or-active guest identities may be reserved per room. Extreme identity
+churn requires a new room instead of unbounded storage or discarded identity
+fences. Closing the room deletes these fences too; no passwords, SDP, ICE data,
+or raw resume tokens are stored in them.
+
+Verification for the local follow-up: 30 real Workers tests (15 new abandonment
+cases), 14 native LAN WebSocket cleanup cases, shared-store and browser-client
+regressions, root/Worker typechecks and public build pass. This cleanup follow-up
+is **not yet deployed**; the production receipt below describes the preceding
+release. See the [audit record](research/multiplayer-smoothness-2026-09.md#abandoned-room-lifecycle-follow-up--local-not-deployed).
 
 Keep the new backend available before promoting the frontend. Rollback requires
 a deliberately verified alternative signaling service; simply removing the

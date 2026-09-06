@@ -1,6 +1,9 @@
 import { pathToFileURL } from 'node:url';
+import { isAbsolute, join, normalize, parse } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { installFeedbackPeerObserver, measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
 
-export function productionUiOptions({ url, timeoutMs = 300_000 } = {}) {
+export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -10,7 +13,13 @@ export function productionUiOptions({ url, timeoutMs = 300_000 } = {}) {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30_000 || timeoutMs > 300_000) {
     throw new TypeError('timeout must be an integer from 30000 through 300000 ms');
   }
-  return { origin: origin.origin, timeoutMs };
+  if (screenshots !== undefined && (typeof screenshots !== 'string' || !isAbsolute(screenshots) ||
+      screenshots.split(/[\\/]/).includes('..') || normalize(screenshots) === parse(screenshots).root ||
+      !measurePerformance)) {
+    throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
+  }
+  return { origin: origin.origin, timeoutMs,
+    ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
 }
 
 function failure(stage) {
@@ -41,6 +50,38 @@ export function readUiState() {
     snapshotPacketsReceived: Number(network?.snapshotPacketsReceived) || 0,
     inputPacketsSubmitted: Number(network?.inputPacketsSubmitted) || 0,
     hasRoomUrl: new URL(location.href).searchParams.has('room') };
+}
+
+/** Fail closed rather than photograph an invitation, settings, login, or stale lobby. */
+export function battleScreenshotAllowed() {
+  const shown = (selector) => Array.from(document.querySelectorAll(selector)).some((element) =>
+    element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+  const game = window.__DEBUG?.game;
+  if (game?.phase !== 'battle' || game.result || !window.__DEBUG?.network?.connected ||
+      document.hidden || !document.hasFocus() ||
+      (window.__COT_FEEDBACK_SAMPLE && !window.__COT_FEEDBACK_SAMPLE.disposed)) return false;
+  if (shown('.cot-play.show, .cot-bl.on, .cot-settings.open, dialog[open], input[type="password"], .cot-room-chat.open')) {
+    return false;
+  }
+  const visibleText = document.body.innerText.toUpperCase();
+  const code = new URL(location.href).searchParams.get('room')?.toUpperCase();
+  if (code && visibleText.includes(code)) return false;
+  const ids = [game.player?.id, ...(game.tanks || []).slice(0, 32).map((tank) => tank.id)];
+  return !ids.some((id) => typeof id === 'string' && id.length >= 8 && visibleText.includes(id.toUpperCase()));
+}
+
+/** Two fixed filenames, viewport only, exclusive writes; never overwrite prior evidence. */
+export async function captureBattleScreenshot(page, directory, role, io = { mkdir, writeFile }) {
+  if (!['host', 'guest'].includes(role)) throw failure('screenshot_role');
+  if (!await page.evaluate(battleScreenshotAllowed)) throw failure('screenshot_battle_guard');
+  const bytes = await bounded(page.screenshot({ type: 'png', fullPage: false,
+    captureBeyondViewport: false }), 5000, 'screenshot_capture');
+  // A terminal/menu transition during capture must not persist sensitive pixels.
+  if (!await page.evaluate(battleScreenshotAllowed)) throw failure('screenshot_battle_guard');
+  const filename = `${role}-battle.png`;
+  await io.mkdir(directory, { recursive: true });
+  await io.writeFile(join(directory, filename), bytes, { flag: 'wx' });
+  return { role, filename, capturedAfterSample: true, viewportOnly: true };
 }
 
 export function validateUiProgress(before, after) {
@@ -122,7 +163,7 @@ export async function cleanupProductionUi({ browser, pages, roomCreated }, timeo
   return { roomCleanupVerified: !roomCreated || roomCleanup.every(Boolean), browserClosed };
 }
 
-async function freshPage(browser, origin, timeoutMs, owners, onPageError) {
+async function freshPage(browser, origin, timeoutMs, owners, onPageError, measurePerformance) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   owners.pages.push(page);
@@ -131,7 +172,8 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError) {
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
   page.setDefaultTimeout(Math.min(15_000, timeoutMs));
   page.setDefaultNavigationTimeout(Math.min(60_000, timeoutMs));
-  await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+  if (measurePerformance) await page.evaluateOnNewDocument(installFeedbackPeerObserver);
+  await page.goto(`${origin}/${measurePerformance ? '?debug=1' : ''}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.cot-battle-mode', { visible: true, timeout: Math.min(90_000, timeoutMs) });
   if (new URL(page.url()).origin !== origin) throw failure('frontend_origin');
   return page;
@@ -139,8 +181,8 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError) {
 
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
-  launchBrowser = null, onStage = () => {} } = {}) {
-  const options = productionUiOptions({ url, timeoutMs });
+  launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots } = {}) {
+  const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance });
   const started = performance.now();
   const owners = { browser: null, pages: [], roomCreated: false };
   let stage = 'browser_launch';
@@ -162,7 +204,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     owners.browser = await launch();
     for (const role of ['host', 'guest']) {
       await run(`${role}_garage`, () => freshPage(owners.browser, options.origin, left(), owners,
-        () => { pageErrors++; }));
+        () => { pageErrors++; }, measurePerformance));
     }
     const [host, guest] = owners.pages;
     await run('private_controls', () => openPrivateMenu(host, left()));
@@ -182,6 +224,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     if (!/^[A-Z0-9]{6}$/.test(code)) throw failure('room_code');
     const invite = new URL('/', options.origin);
     invite.searchParams.set('room', code);
+    if (measurePerformance) invite.searchParams.set('debug', '1');
     await run('guest_native_invite', async () => {
       await guest.goto(invite.href, { waitUntil: 'domcontentloaded' });
       await guest.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
@@ -207,6 +250,21 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     { timeout: Math.min(10_000, left()) }, before[index]))));
     const after = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
     const peers = validateUiProgress(before, after);
+    const performanceReceipt = measurePerformance ? await run('native_feedback_performance', async () => {
+      const samples = [];
+      const captures = [];
+      for (const [index, page] of owners.pages.entries()) {
+        const role = index ? 'guest' : 'host';
+        samples.push({ role, ...await measureNativeFeedback(page) });
+        if (options.screenshots) captures.push(await captureBattleScreenshot(page, options.screenshots, role));
+      }
+      return { scenario: 'native-private-1v1-winter', sampleMsPerRole: 20_000,
+        viewport: [1280, 800], deviceScaleFactor: 1, cpuThrottle: 1,
+        twoRenderedContextsSameMachine: true, foregroundRolesMeasuredSequentially: true,
+        externalGpuContention: 'not-detected-or-controlled-by-this-probe',
+        latencyMeaning: 'application-input-edge-to-confirmed-effect-and-next-rAF-callback-not-click-to-photon',
+        samples, ...(options.screenshots ? { screenshots: captures } : {}) };
+    }) : null;
     await run('native_exit_and_room_close', async () => {
       await nativeLeaveBattle(host, left());
       await closeOwnedRoom(host, left());
@@ -216,6 +274,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     if (pageErrors) throw failure('page_errors');
     result = { ok: true, freshBrowserContexts: 2, nativePrivate1v1: true, defaultRoomEndpoint: true,
       nativeInviteJoined: true, nativeReadyAndLaunch: true, peers, nativeExitAndRoomClose: true, pageErrors };
+    if (performanceReceipt) result.performance = performanceReceipt;
   } catch (_) {
     problem = failure(stage);
     problem.lastStates = await Promise.all(owners.pages.map((page) =>
@@ -231,6 +290,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const option = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   try {
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
+      measurePerformance: process.argv.includes('--performance'),
+      screenshots: option('screenshots'),
       timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),
       onStage: (stage) => console.log(`[production-ui] ${stage}`) });
     console.log(JSON.stringify(result, null, 2));

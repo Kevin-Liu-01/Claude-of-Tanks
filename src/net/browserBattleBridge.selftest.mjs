@@ -353,4 +353,39 @@ bridge.dispose();
   assert.deepEqual(wrecks, [true, false, false], 'old-round ammo-rack metadata stays discarded');
   backgroundBridge.dispose();
 }
+{
+  const predictionGame = { tanks: [], tankById: new Map(), player: null, shells: [],
+    spotting: null, timeS: 0, preBattleS: 0, result: null, resultReason: null };
+  const field = { getHeightAt: () => 0, getHeightAtFast: () => 0,
+    getNormalAt: () => new Vector3(0, 1, 0), getGroundType: () => 'hard' };
+  const predictionBridge = createBrowserBattleBridge({ engineCtx: { scene }, game: predictionGame,
+    bus: { emit() {} }, viewerId: 'guest', worldCollision: { heightField: field },
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {} });
+  const own = entity('guest', 'alpha', 0, 0);
+  const frame = { tick: 0, serverTimeMs: 0, entities: [own], shells: [],
+    meta: { phase: 'playing' }, immediateAuthority: { tick: 0, serverTimeMs: 0,
+      ackInputSeq: null, entity: { ...own }, predictionState: null } };
+  predictionBridge.apply(frame);
+  predictionBridge.recordInput({ throttle: 1, steer: 0, aimLocked: true }, 1 / 60, 1);
+  frame.tick = frame.immediateAuthority.tick = 1;
+  own.z = 10;
+  predictionBridge.apply(frame, 1 / 60);
+  const prediction = predictionGame.player.predictor;
+  assert.ok(prediction.simEntity.state.pos.z < 0.01,
+    'browser owned movement replays raw authority, never an already smoothed/extrapolated pose');
+  assert.equal(prediction.getStats().replayedInputs, 1,
+    'the browser uses its unacknowledged control history instead of cancelling local motion');
+  frame.immediateAuthority.ackInputSeq = 1;
+  frame.tick = frame.immediateAuthority.tick = 2;
+  predictionBridge.apply(frame, 0);
+  prediction.correction.x = 0.4;
+  assert.equal(predictionBridge.advancePrediction(null, 1 / 60), false);
+  const shown = predictionGame.player.state.pos.x;
+  assert.ok(shown > 0 && shown < 0.4, 'no-control frames still settle existing presentation error');
+  frame.tick = frame.immediateAuthority.tick = 3;
+  predictionBridge.apply(frame, 1 / 60);
+  assert.equal(predictionGame.player.state.pos.x, shown,
+    'a fresh authority sample cannot spend the display correction clock a second time');
+  predictionBridge.dispose();
+}
 console.log('browserBattleBridge.selftest: hidden authority-pose reveal passed');

@@ -510,11 +510,15 @@ assert.equal(rebuiltPeer.payload.sessionId, resumeHost.sessionId,
   'other peers receive the replacement epoch and can rebuild their RTC connection');
 const reloadedHost = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,
   resumeStorage, eventPollIntervalMs: 20 });
+const oldHostRetired = clientEvent(resumeHost, (message) => message.type === 'room_closed'
+  && message.payload?.reason === 'resume_denied');
 await reloadedHost.joinRoom({ roomCode: resumeRoom.roomCode,
   player: { id: 'resume-host', name: 'Reloaded Host' } });
 assert.notEqual(reloadedHost.sessionId, resumeHost.sessionId);
-assert.equal(await resumeHost.restartRoomSession('stale_owner_resume'), false,
-  'retired automatic resume cannot overwrite the successor capability in tab storage');
+await oldHostRetired;
+await assert.rejects(resumeHost.restartRoomSession('stale_owner_resume'),
+  (error) => error.code === 'room_resume_unavailable',
+  'immediately retired ownership cannot restart or overwrite the successor capability');
 assert.equal(resumeHost.roomCode, null, 'superseded credentials fail once without reconnecting forever');
 resumeHost.close('resume_test_complete');
 const secondReload = new RoomSignalingClient({ url: resumeUrl, WebSocketImpl: WebSocket,

@@ -165,9 +165,25 @@ browser bridge never reconstructs magazine state from muzzle events, so packet
 loss cannot create a locally fireable round that the authority does not own.
 
 One-shot combat/destruction events travel independently over reliable control
-instead of living only inside replaceable snapshots. The browser bridge drains
-critical state immediately and budgets expensive cosmetic presentation across
-frames. Persistent facts are reconstructible after packet loss or reconnect:
+instead of living only inside replaceable snapshots. The shared authority flushes
+viewer-filtered events after each 60 Hz simulation tick, without increasing the
+20 Hz snapshot rate or serializing an extra fleet snapshot. The browser bridge
+drains critical state immediately and budgets remote cosmetic presentation across
+frames. Accepted own shots have a bounded, deduplicated fast queue that bypasses
+remote interpolation and volley scheduling. Hidden/inactive presentation discards
+transient feedback; match-local shell IDs reset with the room round.
+
+An optional `shotFeedbackVersion: 1` WELCOME capability permits immediate local
+weapon feedback. A newly submitted fire intent can produce a muzzle flash, report
+and recoil only when recent own authority says that exact slot is ready, alive,
+loaded and not weapon-disabled. It creates no shell, tracer, ammo consumption,
+hit or damage. Authority echoes the admitted `fireIntentSeq` and fired `shellSlot`;
+only that exact confirmation suppresses duplicate feedback. Reload/empty/switch/
+action/stale-authority cases wait for confirmation. Sustained fire still presents
+every accepted shot. Old hosts without the capability use confirmed-only feedback.
+Sabot pieces and shell sweep bookkeeping always wait for the true shell event.
+
+Persistent facts are reconstructible after packet loss or reconnect:
 the verdict is mirrored in snapshot metadata and destructible state carries a
 revision plus destroyed identifiers in keyframes.
 
@@ -206,9 +222,12 @@ and moving mode objectives such as Turbo Ball, while score/reset transitions
 snap instead of interpolating across the arena. The local tank predicts the
 shared movement code, terrain contact, map bounds, and nearby static collision
 on every rendered frame, using substeps no larger than `1/60 s` plus a bounded
-fractional remainder. Raw-authority callers replay unacknowledged inputs;
-browser callers use the clock-corrected own-entity sample without replaying
-that elapsed time twice. Viewer-only module, crew, equipment, and mode-mobility
+fractional remainder. The local browser reconciles against the unsmoothed own
+authority pose, then replays acknowledged-sequence-filtered input durations and
+the unsent display-frame tail, with a 250 ms replay horizon. It does not seed
+prediction from the remote presentation sampler. Correction decay advances once
+on the display clock, not again on snapshot application. Viewer-only module,
+crew, equipment, and mode-mobility
 metadata accompanies the latest own pose so prediction cannot silently assume
 healthy movement after damage. Prediction uses the same spec-derived contact
 footprint as headless authority; prepared visual contact geometry remains on
@@ -220,6 +239,15 @@ Recent terrain or dynamic contact extends hull envelopes to 180/240 ms for
 300 ms. Errors above 7 m still snap immediately. Death applies its combat state
 immediately but settles the displayed wreck onto the final authority pose
 through the same bounded correction path, preventing a last-frame hull pop.
+
+When a guest receives no advancing authority for 500 ms, the frame pump resets
+pending fire/action intents once and uploads a neutral/braking input through
+the ordinary transport. Prediction applies that same control; it continues the
+shared inertial model instead of freezing the hull in space. Fresh authority
+restores controls. This soft-gap state does not replace the 5-second host-stall
+watchdog or its existing bounded reconnect grace. It limits invisible driving
+during both-way outages without making downlink-only recovery teleport a
+frozen client to a host that was still driving.
 
 RTT samples update a target server-clock offset rather than moving the active
 presentation timeline immediately. The client slews toward that target at a
