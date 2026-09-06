@@ -45,6 +45,30 @@ const before = {
   'whiteout:7719': [4839, 0.0683232310693711, 16877, 44316, 628696, 542, 383,
     'd009e977a47c2401a14405e2790b5c48631d5fd46ee72303eb51ac880ef24e70'],
 };
+// Native-V23 source ac999b861, recorded before the snow-profile/material change.
+// Exact row sequences fix every berm's topology/storage. The complementary
+// hash includes every bucket header and every byte EXCEPT the named berms;
+// ice wedges, reeds, snow lenses, boats and their bucket ownership cannot drift.
+const bermBefore = {
+  'winter:1337': [[9, 10, 6, 10, 10, 9, 9, 7, 11, 9, 8],
+    '535217f62072c27494a9321832e7afe0682565120871ed0f5394c6d36932f284'],
+  'alpine:1337': [[9, 8, 6, 9, 9, 11, 10, 7, 11],
+    'f19e6f88d2c6aec80a95608a034d4e9813a7d3e9aecb0a619067c6a81cb487c1'],
+  'whiteout:1337': [[7, 6, 10, 11],
+    '02824dc5f476b99f38095464003a6ad18efd558e25ded9b7c2a1b8f84bb09dc9'],
+  'winter:2049': [[9, 7, 7, 7, 9, 6, 11, 11, 8, 8, 9],
+    '89437d40cc7e62b51c3dcf7c92e440511048e41f3494eb9c5824a34283e3a1bb'],
+  'alpine:2049': [[7, 9, 7, 7, 9, 11, 9, 8, 7],
+    '0fa784920f5f3a04a03646661b76a5ff4335fc6f1a172d882ab02d8c846b29b5'],
+  'whiteout:2049': [[8, 9, 6, 7],
+    'b7f451f08501422bd838f3c029e57dca0807cc2fc5207f4b3d18b0a6f80cb536'],
+  'winter:7719': [[11, 10, 7, 10, 10, 12, 9, 10, 9, 12, 10],
+    'a7d06bf3aac084318a49aecfeba1bf4067a1f4cce8bbb9c6bdd65b18f048c9dc'],
+  'alpine:7719': [[7, 8, 6, 7, 11, 6, 11, 10, 8],
+    'dbd5b4260723c84ce1d38b0f024bd9f2ebf1276f7625785b7787ff80e76849d3'],
+  'whiteout:7719': [[6, 11, 11, 9],
+    'e2caf24ad7c17c5586c0767f904ea9bd435347e6323a5396dc54d1de8f561d18'],
+};
 // Refreshed only for the separately audited beachedBoat heel/contact repair.
 // Replaying the original constructor from 0e1a52ea4 reproduced all three old
 // aggregate hashes exactly. Only Coastal/Fjord/Mangrove boat bytes changed;
@@ -69,51 +93,131 @@ function build(mapId, seed) {
   return { field, buckets, calls, next: random() };
 }
 
+function hashGeometry(geometry, hashes) {
+  let bytes = 0;
+  for (const attrName of Object.keys(geometry.attributes).sort()) {
+    const a = geometry.attributes[attrName].array;
+    const data = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+    bytes += a.byteLength;
+    for (const hash of hashes) { hash.update(attrName); hash.update(data); }
+  }
+  if (geometry.index) {
+    const a = geometry.index.array, data = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+    bytes += a.byteLength;
+    for (const hash of hashes) hash.update(data);
+  }
+  return bytes;
+}
+
 function inventory(buckets) {
-  const hash = createHash('sha256'), later = createHash('sha256');
+  const hash = createHash('sha256'), later = createHash('sha256'), nonBerm = createHash('sha256');
   let vertices = 0, indices = 0, bytes = 0, geometries = 0;
   for (const name of names) {
     const untouched = !['stone', 'straw'].includes(name);
-    hash.update(name); if (untouched) later.update(name);
+    hash.update(name); nonBerm.update(name); if (untouched) later.update(name);
     for (const geometry of buckets[name]) {
+      const preserve = geometry.name !== 'winter-pressure-berm';
       geometries++; vertices += geometry.attributes.position.count;
       indices += geometry.index?.count ?? geometry.attributes.position.count;
-      for (const attrName of Object.keys(geometry.attributes).sort()) {
-        const a = geometry.attributes[attrName].array;
-        const data = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
-        bytes += a.byteLength; hash.update(attrName); hash.update(data);
-        if (untouched) { later.update(attrName); later.update(data); }
-      }
-      if (geometry.index) {
-        const a = geometry.index.array, data = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
-        bytes += a.byteLength; hash.update(data); if (untouched) later.update(data);
-      }
+      const hashes = [hash];
+      if (preserve) hashes.push(nonBerm);
+      if (untouched && preserve) hashes.push(later);
+      bytes += hashGeometry(geometry, hashes);
     }
   }
-  return { hash: hash.digest('hex'), later: later.digest('hex'), vertices, indices, bytes, geometries };
+  return { hash: hash.digest('hex'), later: later.digest('hex'), nonBerm: nonBerm.digest('hex'),
+    vertices, indices, bytes, geometries };
 }
 
 function clearance(field, p, i) {
   return p.getY(i) - field.getHeightAt(p.getX(i), p.getZ(i));
 }
 
+function auditBermEdge(p, field, a, b) {
+  // Four times the construction sample density, on the actual Float32 mesh.
+  for (let step = 0; step <= 32; step++) {
+    const t = step / 32;
+    const x = p.getX(a) + (p.getX(b) - p.getX(a)) * t;
+    const z = p.getZ(a) + (p.getZ(b) - p.getZ(a)) * t;
+    const y = p.getY(a) + (p.getY(b) - p.getY(a)) * t;
+    assert.ok(y - field.getHeightAt(x, z) <= -0.01,
+      `interpolated perimeter ${a}→${b}/${step} stays embedded, not vertex-only grounded`);
+  }
+}
+
+function auditBermShape(p, field) {
+  const rows = p.count / 5, widths = [], crests = [];
+  for (let row = 0; row < rows; row++) {
+    const left = row * 5, crest = left + 2, right = left + 4;
+    const dx = p.getX(right) - p.getX(left), dz = p.getZ(right) - p.getZ(left);
+    const width = Math.hypot(dx, dz);
+    const crestFraction = ((p.getX(crest) - p.getX(left)) * dx
+      + (p.getZ(crest) - p.getZ(left)) * dz) / (width * width);
+    assert.ok(Math.abs(crestFraction - 0.5) >= 0.069,
+      'every actual cross-section has an offset crest, not mirror-image shoulders');
+    widths.push(width); crests.push(clearance(field, p, crest));
+    if (row > 0 && row < rows - 1) {
+      assert.ok(Math.abs(clearance(field, p, left + 1) - clearance(field, p, left + 3))
+        > crests[row] * 0.23, 'the two snow shoulders have unequal heights');
+    }
+  }
+  const middleWidth = Math.max(...widths.slice(1, -1));
+  assert.ok(widths[0] < middleWidth * 0.4 && widths.at(-1) < middleWidth * 0.4,
+    'both finite ends taper into the sheet rather than finishing as squared track ends');
+  const peaks = [];
+  for (let row = 1; row < rows - 1; row++) {
+    if (crests[row] > crests[row - 1] && crests[row] > crests[row + 1]) peaks.push(row);
+  }
+  assert.equal(peaks.length, 2, 'actual mesh has two broad, separately readable humps');
+  assert.ok(Math.abs(crests[peaks[0]] - crests[peaks[1]]) > 0.001,
+    'the two humps are not repeated equal-height teeth');
+  assert.ok(Math.min(...crests.slice(peaks[0] + 1, peaks[1]))
+    < Math.min(crests[peaks[0]], crests[peaks[1]]) * 0.8,
+  'a lower connected snow saddle separates the unequal humps');
+}
+
+function auditBermTopology(geometry, rows) {
+  const { position, uv, normal } = geometry.attributes;
+  assert.equal(geometry.index.count, (rows - 1) * 24);
+  assert.equal(position.array.byteLength + uv.array.byteLength + normal.array.byteLength, rows * 160,
+    'same exact three attribute buffers and storage per pre-V24 cross-section');
+  assert.equal(geometry.index.array.byteLength, (rows - 1) * 48,
+    'same exact Uint16 index storage per pre-V24 cross-section gap');
+  for (let row = 0; row < rows - 1; row++) for (let column = 0; column < 4; column++) {
+    const i = row * 5 + column, start = (row * 4 + column) * 6;
+    assert.deepEqual(Array.from(geometry.index.array.subarray(start, start + 6)),
+      [i, i + 1, i + 5, i + 1, i + 6, i + 5],
+      'each actual triangle retains the precise V23 connectivity and winding order');
+  }
+}
+
 function auditBerm(geometry, field) {
   const p = geometry.attributes.position, uv = geometry.attributes.uv, n = geometry.attributes.normal;
   const rows = p.count / 5;
   assert.ok(Number.isInteger(rows) && rows >= 6 && rows <= 12);
-  assert.equal(geometry.index.count, (rows - 1) * 24);
+  auditBermTopology(geometry, rows);
   assert.ok(p.count < rows * 24 && geometry.index.count < rows * 36,
     'the actual replacement uses fewer vertices AND indices than the old slab chain');
   for (let row = 0; row < rows; row++) for (let column = 0; column < 5; column++) {
     const i = row * 5 + column, h = clearance(field, p, i);
     const edge = row === 0 || row === rows - 1 || column === 0 || column === 4;
-    assert.ok(edge ? Math.abs(h + 0.035) < 0.0001 : h > 0 && h <= 0.316,
+    assert.ok(edge ? h <= -0.0349 : h > 0 && h <= 0.316,
       'real terrain seats the whole perimeter and the crest remains above ice');
     assert.ok(n.getY(i) > 0.52, 'visible berm faces receive the existing slope-based snow cap');
-    assert.ok(Math.abs(uv.getX(i) - p.getX(i) * 0.8) < 0.00005
-      && Math.abs(uv.getY(i) - p.getZ(i) * 0.8) < 0.00005,
-    'continuous world-metric UVs cannot repeat the old thin-box V stretch');
+    assert.ok(Math.abs(uv.getX(i) - p.getX(i) * 0.3) < 0.00005
+      && Math.abs(uv.getY(i) - p.getZ(i) * 0.3) < 0.00005,
+    'existing plaster/drift surface uses continuous .3 world-metric UVs');
   }
+  for (let row = 0; row < rows - 1; row++) {
+    auditBermEdge(p, field, row * 5, (row + 1) * 5);
+    auditBermEdge(p, field, row * 5 + 4, (row + 1) * 5 + 4);
+  }
+  for (let column = 0; column < 4; column++) {
+    auditBermEdge(p, field, column, column + 1);
+    const last = (rows - 1) * 5 + column;
+    auditBermEdge(p, field, last, last + 1);
+  }
+  auditBermShape(p, field);
   for (let i = 0; i < geometry.index.count; i += 3) {
     const a = geometry.index.getX(i), b = geometry.index.getX(i + 1), c = geometry.index.getX(i + 2);
     const abx = p.getX(b) - p.getX(a), abz = p.getZ(b) - p.getZ(a);
@@ -232,12 +336,19 @@ for (const seed of [1337, 2049, 7719]) {
         && stats.geometries < old[5], `${mapId}: all actual construction/render geometry budgets decrease`);
       assert.equal(built.buckets.straw.length, old[6], 'the authored reed/head population is not thinned');
       assert.equal(stats.later, old[7], 'later snow lenses and lake landmarks survive byte-identically');
+      const control = bermBefore[`${mapId}:${seed}`];
+      assert.equal(stats.nonBerm, control[1],
+        'every non-berm byte and bucket matches V23, including separate ice wedges and reeds');
+      const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
+      assert.deepEqual(snowBerms.map(g => g.attributes.position.count / 5), control[0],
+        'every named berm keeps its exact ordered topology, indices and attribute-byte budget');
       assert.deepEqual(names.filter(name => built.buckets[name].length),
         mapId === 'whiteout' ? ['plaster', 'stone', 'straw'] : ['plaster', 'stone', 'wood', 'straw'],
         'no material/texture/shader bucket or extra draw family is introduced');
       let mapBerms = 0, mapWedges = 0;
+      for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
       for (const geometry of built.buckets.stone) {
-        if (geometry.name === 'winter-pressure-berm') { auditBerm(geometry, built.field); mapBerms++; }
+        assert.notEqual(geometry.name, 'winter-pressure-berm', 'only continuous berms leave the masonry bucket');
         if (geometry.name === 'winter-ice-wedge') { auditIce(geometry, built.field); mapWedges++; }
       }
       assert.equal(mapBerms, built.field._layout.lakes.reduce((n, lake) => n + (lake.r >= 80 ? 7 : 2), 0),
@@ -291,8 +402,10 @@ for (const getHeightAt of supportFunctions) {
     L: { lakes: [{ x: 40, z: -30, r: 20 }], roads: [], village: { x0: 0, z0: 0, z1: 0 } },
     heightField: field, rng: mulberry32(7719), buckets });
   try {
-    for (const geometry of buckets.stone) {
+    for (const geometry of buckets.plaster) {
       if (geometry.name === 'winter-pressure-berm') auditBerm(geometry, field);
+    }
+    for (const geometry of buckets.stone) {
       if (geometry.name === 'winter-ice-wedge') auditIce(geometry, field);
     }
     auditReeds(buckets.straw, field);

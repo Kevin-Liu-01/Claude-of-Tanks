@@ -650,29 +650,75 @@ interface WinterRidgeRow {
   x: number; z: number; angle: number; height: number; halfWidth: number;
 }
 
+function winterBermHump(t: number, center: number, radius: number): number {
+  const q = Math.max(0, 1 - Math.abs(t - center) / radius);
+  return q * q * (3 - 2 * q);
+}
+
+function seatWinterBermEdge(
+  positions: Float32Array, heightField: DressingHeightField, a: number, b: number,
+): void {
+  a *= 3; b *= 3;
+  let lower = 0;
+  // Construction only: seat the interpolated edge, not just its two vertices.
+  // Lowering both endpoints cannot reopen any already seated adjoining edge.
+  for (let step = 1; step < 8; step++) {
+    const t = step / 8;
+    const x = positions[a] + (positions[b] - positions[a]) * t;
+    const z = positions[a + 2] + (positions[b + 2] - positions[a + 2]) * t;
+    const y = positions[a + 1] + (positions[b + 1] - positions[a + 1]) * t;
+    lower = Math.max(lower, y - heightField.getHeightAt(x, z) + 0.035);
+  }
+  positions[a + 1] -= lower;
+  positions[b + 1] -= lower;
+}
+
+function seatWinterBermPerimeter(
+  positions: Float32Array, heightField: DressingHeightField, rows: number,
+): void {
+  for (let row = 0; row < rows - 1; row++) {
+    seatWinterBermEdge(positions, heightField, row * 5, (row + 1) * 5);
+    seatWinterBermEdge(positions, heightField, row * 5 + 4, (row + 1) * 5 + 4);
+  }
+  for (let column = 0; column < 4; column++) {
+    seatWinterBermEdge(positions, heightField, column, column + 1);
+    const last = (rows - 1) * 5 + column;
+    seatWinterBermEdge(positions, heightField, last, last + 1);
+  }
+}
+
 function winterPressureBerm(
   heightField: DressingHeightField, rows: WinterRidgeRow[],
 ): THREE.BufferGeometry {
-  // Continuous cross-sections remove intersecting slab tops. Five samples
-  // across each row keep both toes and both ends below the real ice surface.
+  // Keep the same five-vertex sections, but compose two unequal snow humps
+  // instead of a uniformly wide, regularly segmented masonry-looking strip.
   const positions = new Float32Array(rows.length * 15), uvs = new Float32Array(rows.length * 10);
   const indices = new Uint16Array((rows.length - 1) * 24);
-  const profile = [-0.035, 0.62, 1, 0.54, -0.035];
+  const wave = Math.sin(rows[0].x * 0.17 + rows[0].z * 0.11), side = wave >= 0 ? 1 : -1;
+  const profile = side > 0 ? [0, 0.44, 1, 0.68, 0] : [0, 0.68, 1, 0.44, 0];
+  let peak = 0;
+  for (const row of rows) peak = Math.max(peak, row.height);
   for (let row = 0; row < rows.length; row++) {
     const r = rows[row], ca = Math.cos(r.angle), sa = Math.sin(r.angle);
+    const t = row / (rows.length - 1), taper = 4 * t * (1 - t);
+    const skew = side * (0.14 + 0.06 * (1 - taper));
+    const acrossProfile = [-1, -0.52 + skew * 0.5, skew, 0.55 + skew * 0.5, 1];
+    const rise = peak * (0.18 + 0.78 * winterBermHump(t, 0.28 + 0.04 * wave, 0.23)
+      + 0.57 * winterBermHump(t, 0.75 + 0.02 * wave, 0.19));
     for (let column = 0; column < 5; column++) {
-      const across = (column * 0.5 - 1) * r.halfWidth;
+      const across = acrossProfile[column] * r.halfWidth * (0.24 + 0.76 * taper);
       const x = r.x - sa * across, z = r.z + ca * across;
       const edge = row === 0 || row === rows.length - 1 || column === 0 || column === 4;
-      const y = heightField.getHeightAt(x, z) + (edge ? -0.035 : r.height * profile[column]);
+      const y = heightField.getHeightAt(x, z) + (edge ? -0.035 : rise * profile[column]);
       const i = row * 5 + column;
       positions.set([x, y, z], i * 3);
-      uvs.set([x * 0.8, z * 0.8], i * 2);
+      uvs.set([x * 0.3, z * 0.3], i * 2);
       if (row < rows.length - 1 && column < 4) {
         indices.set([i, i + 1, i + 5, i + 1, i + 6, i + 5], (row * 4 + column) * 6);
       }
     }
   }
+  seatWinterBermPerimeter(positions, heightField, rows.length);
   return winterSurface('winter-pressure-berm', positions, uvs, indices);
 }
 
@@ -712,7 +758,9 @@ function pressureRidge(
       buckets.stone.push(jitterUV(plate, rng));
     }
   }
-  buckets.stone.push(winterPressureBerm(heightField, rows));
+  // Only the continuous snow-filled seam uses the existing plaster/drift
+  // surface. Separate fractured ice plates retain their original stone finish.
+  buckets.plaster.push(winterPressureBerm(heightField, rows));
 }
 
 // Weathered rowboat frozen into the sheet near the shore — planked sides,
