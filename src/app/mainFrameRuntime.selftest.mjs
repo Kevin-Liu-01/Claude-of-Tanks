@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { PerspectiveCamera, Scene } from 'three';
 
 import { createMainFrameRuntime } from './mainFrameRuntime.ts';
+import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 
 function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
+  densityChanged = false, contextLost = false, useRealGaragePacer = false,
 } = {}) {
   const calls = [];
   const frameRequests = [];
@@ -17,6 +19,8 @@ function createFixture({
     noteBattleFrame: () => calls.push('entry:frame'),
   };
   const presentationRestore = { covering: false };
+  const density = { pending: densityChanged };
+  const realGaragePacer = createGarageFramePacer();
   const fx = { update: () => calls.push('fx') };
   const world = { update: () => calls.push('world') };
   const lighting = {
@@ -29,7 +33,13 @@ function createFixture({
     camera,
     game,
     scheduleFrame: () => calls.push('schedule'),
-    isGraphicsContextLost: () => false,
+    isGraphicsContextLost: () => contextLost,
+    syncViewportPixelRatio: () => {
+      calls.push('viewport:sync');
+      const changed = density.pending;
+      density.pending = false;
+      return changed;
+    },
     battleEntryLifecycle,
     getFx: () => fx,
     getWorld: () => world,
@@ -55,10 +65,14 @@ function createFixture({
     pedestal: { switchPending: false },
     networkSession: { pump: () => calls.push('network') },
     garageFramePacer: {
+      noteActivity: nowMs => {
+        calls.push('garage:activity');
+        realGaragePacer.noteActivity(nowMs);
+      },
       shouldRender: (_nowMs, request) => {
         frameRequests.push(request);
         calls.push('garage:pacer');
-        return phase !== 'garage';
+        return useRealGaragePacer ? realGaragePacer.shouldRender(_nowMs, request) : phase !== 'garage';
       },
     },
     battleFrame: {
@@ -103,6 +117,7 @@ function createFixture({
     game,
     battleEntryLifecycle,
     presentationRestore,
+    density,
   };
 }
 
@@ -113,20 +128,20 @@ assert.equal(garage.frameRequests.length, 2);
 assert.equal(garage.frameRequests[0], garage.frameRequests[1],
   'Garage pacing reuses one retained request record');
 assert.deepEqual(garage.calls, [
-  'schedule', 'network', 'garage:pacer',
-  'schedule', 'network', 'garage:pacer',
+  'schedule', 'viewport:sync', 'network', 'garage:pacer',
+  'schedule', 'viewport:sync', 'network', 'garage:pacer',
 ]);
 
 const shot = createFixture({ shotMode: true });
 shot.runtime.tick(1000);
 assert.deepEqual(shot.calls, [
-  'schedule', 'world', 'sniper', 'fx', 'hud:frozen',
+  'schedule', 'viewport:sync', 'world', 'sniper', 'fx', 'hud:frozen',
   'lighting:update:true', 'post',
 ]);
 
 const studio = createFixture({ studioActive: true });
 studio.runtime.tick(1000);
-assert.deepEqual(studio.calls, ['schedule', 'studio']);
+assert.deepEqual(studio.calls, ['schedule', 'viewport:sync', 'studio']);
 
 const battle = createFixture({ phase: 'battle' });
 battle.runtime.noteFovPrimed(70);
@@ -174,6 +189,45 @@ restoring.runtime.tick(1000);
 assert.deepEqual(restoring.calls, ['schedule', 'network'],
   'covered Garage restoration skips the cold scene frame but keeps networking alive');
 
+const lost = createFixture({ contextLost: true, densityChanged: true });
+lost.runtime.tick(1000);
+assert.deepEqual(lost.calls, ['schedule'], 'context loss never resizes unavailable GPU owners');
+assert.equal(lost.density.pending, true, 'the unapplied density remains pending until the context returns');
+
+for (const options of [
+  { phase: 'battle' }, { phase: 'shot', shotMode: true }, { phase: 'studio', studioActive: true },
+]) {
+  const f = createFixture({ ...options, densityChanged: true });
+  f.runtime.tick(1000);
+  assert.equal(f.calls.filter(call => call === 'viewport:sync').length, 1,
+    'each visible frame transaction samples density exactly once');
+  assert.ok(f.calls.indexOf('viewport:sync') < f.calls.indexOf(options.studioActive ? 'studio' : 'post'),
+    'density repair precedes actual shot, battle and delegated Studio presentation');
+}
+
+const quietGarage = createFixture({ useRealGaragePacer: true });
+quietGarage.runtime.tick(0);
+quietGarage.calls.length = 0;
+quietGarage.runtime.tick(16);
+assert.equal(quietGarage.calls.includes('post'), false, 'the real settled Garage pacer skips an ordinary tick');
+quietGarage.calls.length = 0;
+quietGarage.density.pending = true;
+quietGarage.runtime.tick(32);
+assert.equal(quietGarage.calls.filter(call => call === 'post').length, 1,
+  'a silent density repair is painted on the SAME tick, never left as a cleared canvas');
+assert.ok(quietGarage.calls.indexOf('viewport:sync') < quietGarage.calls.indexOf('garage:activity'));
+assert.ok(quietGarage.calls.indexOf('garage:activity') < quietGarage.calls.indexOf('garage:pacer'));
+assert.ok(quietGarage.calls.includes('lighting:dormant:false'), 'resize-invalidation is not immediately suppressed by static shadows');
+assert.equal(quietGarage.calls.filter(call => call === 'schedule').length, 1,
+  'density recovery adds no second frame schedule or Garage restart');
+quietGarage.calls.length = 0;
+quietGarage.runtime.tick(1000);
+assert.equal(quietGarage.calls.includes('post'), false, 'ordinary idle suppression resumes after the existing activity tail');
+quietGarage.density.pending = true;
+quietGarage.runtime.tick(5032);
+assert.equal(quietGarage.calls.filter(call => call === 'post').length, 1,
+  'the existing five-second safety tick also repairs a silent density change');
+
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
@@ -184,5 +238,7 @@ assert.ok(inertStudioAt >= 0 && inertStudioAt < mainFrameAt,
   'an inert Studio presentation must exist before the frame scheduler can tick');
 assert.ok(liveStudioAt > mainFrameAt,
   'the lazy Studio presentation replaces the inert owner after composition');
+assert.match(mainSource, /syncViewportPixelRatio: viewport\.syncPixelRatio/,
+  'production composition uses the real viewport owner, not a test-only forced resize');
 
 console.log('mainFrameRuntime.selftest: retained Garage, studio, shot, and battle frames pass');

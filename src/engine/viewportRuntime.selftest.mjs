@@ -8,7 +8,7 @@ function createHarness({ width = 1280, height = 720, canvasWidth = width, canvas
   const mediaQueries = [];
   const resizeOrder = [];
   const observed = [];
-  const state = { disconnected: 0, intervalClears: 0, resizeCalls: 0, postCalls: 0, frustumCalls: 0 };
+  const state = { disconnected: 0, intervalClears: 0, intervalStarts: 0, resizeCalls: 0, postCalls: 0, frustumCalls: 0 };
   let intervalCallback = null;
   let observerCallback = null;
   const container = { clientWidth: width, clientHeight: height };
@@ -52,7 +52,7 @@ function createHarness({ width = 1280, height = 720, canvasWidth = width, canvas
     },
     documentElement,
     ResizeObserver: FakeResizeObserver,
-    setInterval(callback) { intervalCallback = callback; return 7; },
+    setInterval(callback) { state.intervalStarts++; intervalCallback = callback; return 7; },
     clearInterval(id) { assert.equal(id, 7); state.intervalClears++; intervalCallback = null; },
   };
   if (supportsMatchMedia) environment.window.matchMedia = query => {
@@ -101,6 +101,61 @@ function createHarness({ width = 1280, height = 720, canvasWidth = width, canvas
     runInterval: () => intervalCallback?.(),
     runObserver: () => observerCallback?.([], null),
   };
+}
+
+{
+  const h = createHarness({ width: 1440, height: 900 });
+  // No synthetic browser events: reproduce the observed1→2→1 change in the
+  // actual DPR value while window resize and MQL listeners remain silent.
+  assert.equal(h.runtime.syncPixelRatio(), false, 'normal boot adds no resize');
+  for (const dpr of [2, 1]) {
+    h.environment.window.devicePixelRatio = dpr;
+    assert.equal(h.runtime.syncPixelRatio(), true);
+    assert.deepEqual([h.renderer.domElement.width, h.renderer.domElement.height], [1440 * dpr, 900 * dpr]);
+    assert.equal(h.camera.aspect, 1.6);
+    assert.equal(h.runtime.syncPixelRatio(), false);
+  }
+  assert.deepEqual(h.resizeOrder, ['renderer', 'post', 'frustums', 'renderer', 'post', 'frustums']);
+  assert.equal(h.state.intervalStarts, 0, 'silent DPR recovery starts no polling timer');
+  assert.equal(h.mediaQueries.filter(query => query.callbacks.size).length, 1);
+  for (const key of ['clientWidth', 'clientHeight']) Object.defineProperty(h.container, key,
+    { get() { assert.fail('unchanged-DPR hot path must not read layout'); } });
+  for (const key of ['innerWidth', 'innerHeight']) Object.defineProperty(h.environment.window, key,
+    { get() { assert.fail('unchanged-DPR hot path must not read window dimensions'); } });
+  const queries = h.mediaQueries.length;
+  for (let frame = 0; frame < 100; frame++) assert.equal(h.runtime.syncPixelRatio(), false);
+  assert.equal(h.mediaQueries.length, queries, 'unchanged frames create no new media queries');
+  h.runtime.dispose();
+  h.environment.window.devicePixelRatio = 3;
+  assert.equal(h.runtime.syncPixelRatio(), false, 'disposed synchronization is inert before reading layout');
+}
+
+{
+  const h = createHarness({ width: 0, height: 0, canvasWidth: 0, canvasHeight: 0 });
+  h.environment.window.devicePixelRatio = 2;
+  h.mediaQueries[0].dispatch();
+  assert.equal(h.runtime.syncPixelRatio(), false);
+  assert.equal(h.state.resizeCalls, 0);
+  h.container.clientWidth = 1024; h.container.clientHeight = 640;
+  assert.equal(h.runtime.syncPixelRatio(), true,
+    're-armed MQL density is not confused with successfully applied density');
+  assert.deepEqual([h.renderer.domElement.width, h.renderer.domElement.height], [2048, 1280]);
+  assert.equal(h.runtime.isRecovering(), false, 'successful sync completes the existing layout recovery');
+  h.runInterval();
+  assert.equal(h.state.resizeCalls, 1, 'the retired recovery timer cannot duplicate the repair');
+  h.runtime.dispose();
+}
+
+{
+  const h = createHarness();
+  h.environment.window.devicePixelRatio = 2;
+  h.mediaQueries[0].dispatch();
+  assert.equal(h.runtime.syncPixelRatio(), false, 'delivered events and frame fallback never double-apply');
+  h.environment.window.devicePixelRatio = 1;
+  assert.equal(h.runtime.syncPixelRatio(), true);
+  h.listeners.get('resize')();
+  assert.equal(h.state.resizeCalls, 2, 'late resize after silent repair remains coalesced');
+  h.runtime.dispose();
 }
 
 {

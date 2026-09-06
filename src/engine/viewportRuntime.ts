@@ -22,6 +22,8 @@ interface ViewportEnvironment {
 
 export interface ViewportRuntime {
   apply(): void;
+  /** Repair a silent density change before a visible frame; inert otherwise. */
+  syncPixelRatio(): boolean;
   dispose(): void;
   isRecovering(): boolean;
 }
@@ -64,6 +66,7 @@ export function createViewportRuntime({
   let interval: ReturnType<typeof globalThis.setInterval> | null = null;
   let resolutionQuery: MediaQueryList | null = null;
   let watchedPixelRatio = win.devicePixelRatio ?? 1;
+  let lastAppliedPixelRatio = watchedPixelRatio;
   let appliedViewport: { width: number; height: number; pixelRatio: number } | null = null;
   let disposed = false;
 
@@ -78,7 +81,8 @@ export function createViewportRuntime({
     const { width, height } = dimensions();
     post.setSize(width, height);
     lighting.updateFrustums();
-    appliedViewport = { width, height, pixelRatio: win.devicePixelRatio ?? 1 };
+    lastAppliedPixelRatio = win.devicePixelRatio ?? 1;
+    appliedViewport = { width, height, pixelRatio: lastAppliedPixelRatio };
     watchPixelRatio();
   };
 
@@ -101,6 +105,21 @@ export function createViewportRuntime({
     onViewportChange();
   }
 
+  function syncPixelRatio(): boolean {
+    // Some hosts change DPR/query.matches without delivering either resize
+    // or MediaQueryList events. The normal frame path is one scalar compare:
+    // no layout reads, objects, query allocation, timers or scheduling.
+    if (disposed || (win.devicePixelRatio ?? 1) === lastAppliedPixelRatio) return false;
+    const { width, height } = dimensions();
+    if (width <= 0 || height <= 0) {
+      watchPixelRatio();
+      return false;
+    }
+    apply();
+    stopRecovery();
+    return true;
+  }
+
   function watchPixelRatio(): void {
     if (!win.matchMedia) return;
     const pixelRatio = win.devicePixelRatio ?? 1;
@@ -108,7 +127,8 @@ export function createViewportRuntime({
     resolutionQuery?.removeEventListener('change', onPixelRatioChange);
     watchedPixelRatio = pixelRatio;
     // DPR can change without a CSS resize when moving between displays or
-    // changing host density. Re-arm the query instead of polling each frame.
+    // changing host density. Events remain the immediate path; syncPixelRatio
+    // covers silent hosts through the already-owned presentation cadence.
     resolutionQuery = win.matchMedia(`(resolution: ${pixelRatio}dppx)`);
     resolutionQuery.addEventListener('change', onPixelRatioChange);
   }
@@ -150,6 +170,7 @@ export function createViewportRuntime({
 
   return {
     apply,
+    syncPixelRatio,
     dispose() {
       if (disposed) return;
       disposed = true;

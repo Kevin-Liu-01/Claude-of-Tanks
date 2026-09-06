@@ -45,6 +45,7 @@ export interface MainFrameRuntimeOptions {
   game: MainGameState;
   scheduleFrame(): void;
   isGraphicsContextLost(): boolean;
+  syncViewportPixelRatio(): boolean;
   battleEntryLifecycle: BattleEntryLifecycle;
   getFx(): MainFxRuntime | null;
   getWorld(): MainWorld | null;
@@ -94,6 +95,7 @@ export function createMainFrameRuntime({
   game,
   scheduleFrame,
   isGraphicsContextLost,
+  syncViewportPixelRatio,
   battleEntryLifecycle,
   getFx,
   getWorld,
@@ -129,6 +131,7 @@ export function createMainFrameRuntime({
   const required = [
     scheduleFrame,
     isGraphicsContextLost,
+    syncViewportPixelRatio,
     getFx,
     getWorld,
     getBaseFogDensity,
@@ -153,6 +156,7 @@ export function createMainFrameRuntime({
   let lastFov = camera.fov;
   let lastCinematicActive = false;
   let lastRenderedPhase = game.phase;
+  let viewportChanged = false;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
@@ -241,7 +245,7 @@ export function createMainFrameRuntime({
       lastFov = camera.fov;
     }
     const garageShadowsDirty = game.phase === 'garage'
-      && (showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
+      && (viewportChanged || showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
     lighting.setStaticPresentationDormant(
       game.phase === 'garage' && !garageShadowsDirty,
     );
@@ -302,6 +306,13 @@ export function createMainFrameRuntime({
       // those veils.
       networkSession.pump(dtR, nowMs);
       return;
+    }
+
+    viewportChanged = syncViewportPixelRatio();
+    if (viewportChanged && game.phase === 'garage') {
+      // Resizing clears the canvas. The same existing tick must paint rather
+      // than being skipped by the settled-Garage pacer. Do not start a loop.
+      garageFramePacer.noteActivity(nowMs);
     }
 
     const fx = getFx();

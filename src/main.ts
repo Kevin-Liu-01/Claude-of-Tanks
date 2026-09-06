@@ -2299,6 +2299,7 @@ const mainFrame = createMainFrameRuntime({
   game,
   scheduleFrame: () => frameLoop.schedule(),
   isGraphicsContextLost: () => graphicsContextLost,
+  syncViewportPixelRatio: viewport.syncPixelRatio,
   battleEntryLifecycle,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
