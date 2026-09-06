@@ -3,7 +3,8 @@
 Baseline: `b970e9caadb681903b9b35ae1dfecb3650598dfa`, canonical production,
 2026-09-05. This is a follow-up to [the multiplayer reliability audit](multiplayer-smoothness-2026-09.md).
 The network/room release `10ac577de`, browser warmup follow-ups `6604fbdad` and
-`adbcf2aaf`, and diagnostic checkpoint `a6394192f` are deployed. The live
+`adbcf2aaf`, diagnostic checkpoint `a6394192f`, and acknowledged-ammo follow-up
+`c63f136c8` are deployed. The live
 verification receipts below distinguish measured improvements from an
 unconditional zero-latency claim.
 
@@ -501,3 +502,49 @@ These runs selected host/host UDP on the same machine. These are bounded
 production-rendering observations, not geographically separated or TURN-path
 gameplay measurements, and they do not establish zero network latency,
 click-to-photon timing or universally single-player-equivalent performance.
+
+### Final production missile verification
+
+Canonical HTML served `v1.0.0+gc63f136c8`; deployment
+`dpl_Hu7YLfzV3Sd1gBULcZAWDJgqeBGh` was READY. The final fresh two-client
+Winter run used the same native private-room controls and rendering setup above,
+without the optional CPU timeline. The other coordinated browser task was
+paused; unrelated machine load remains uncontrolled.
+
+| Final measurement | Host | Guest |
+| --- | ---: | ---: |
+| Eligible missile clicks / accepted missiles | 4 / 4 | 4 / 4 |
+| Input → first firing feedback median / maximum | 12.2 / 22.2 ms | 9.9 / 16.3 ms (predicted) |
+| Input → accepted callback median / maximum | 12.2 / 22.2 ms | 32.2 / 42.4 ms |
+| Input → first-feedback next rAF median / maximum | 46.2 / 59.9 ms | 38.4 / 50.2 ms |
+| Frame samples | 757 | 832 |
+| Frame-gap p95 / p99 / maximum | 35.5 / 39.6 / 45.5 ms | 31.6 / 38.5 / 46.2 ms |
+| Sampled last reconciliation error p95 / maximum | 0.4958 / 0.7447 m | 0.4050 / 0.6348 m |
+| Cumulative correction-step maximum | 0.1213 m | 0.1001 m |
+| Hard snaps / dropped history / observer failures | 0 / 0 / 0 | 0 / 0 / 0 |
+
+All eight clicks recorded matching requested, presented and last-authority
+missile slots, no pending selection, stock and completed reload. No unmatched
+or ambiguous eligible clicks occurred. All four guest predictions were matched
+and their accepted duplicate effects suppressed; actual projectile creation
+and damage remain authoritative. Guest application RTT p95 was 13.0 ms and
+receipt-to-accepted-callback maximum was 12.7 ms. Both peers used host/host UDP.
+This does not certify distant-client or relay-path gameplay latency.
+
+Both post-sample screenshots were inspected as connected Winter battles with
+all four missiles expended and normal ammunition remaining. Native departure
+verified room cleanup, the browser closed, and the owned runner exited 0.
+There were zero page errors. The raw receipt and screenshots are retained outside
+git as `production-ammo-final.log` and `production-ammo-final-images/` under
+`/private/tmp/cot-cloudflare-release-r1.eY0t44/`.
+
+The earlier isolated 214–319 ms stalls did not recur in this sample. Their cause
+is still unproven; this is not evidence that all such stalls are fixed. The
+missile scenario now deliberately excludes unacknowledged/unloaded clicks and
+must not be used to erase historical unmatched-click rows. Immediate cosmetic
+feedback is also not immediate authoritative impact or physical display timing.
+
+The separate [Colyseus assessment](colyseus-assessment-2026-09.md) explains why
+the current Private/LAN architecture is retained, what its newer netcode can
+teach this implementation, and what a future dedicated-server comparison would
+need to prove. No framework migration was made.
