@@ -279,6 +279,7 @@ export const enUS: Record<string, string> = {
   'killcam.xray.fuel': 'FUEL',
   'killcam.legend.fresh': 'fresh → after {tag} / nominal',
   'killcam.legend.roll': 'roll / nominal',
+  'studio.documentTitle': 'Claude of Tanks — Studio',
   'studio.exitF8': 'EXIT (F8)',
   'studio.addInView': 'ADD IN VIEW',
   'studio.addInViewTitle': 'Uses the terrain marker when set; otherwise places at the camera focus',

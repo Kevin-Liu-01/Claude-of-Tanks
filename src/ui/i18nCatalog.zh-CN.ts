@@ -271,6 +271,7 @@ export const zhCN: Record<string, string> = {
   'killcam.xray.fuel': '油箱',
   'killcam.legend.fresh': '穿透前 → {tag} 作用后 / 公称',
   'killcam.legend.roll': '随机 / 公称',
+  'studio.documentTitle': '坦克指挥官 — 场景工作室',
   'studio.exitF8': '退出 (F8)',
   'studio.addInView': '在视野中添加',
   'studio.addInViewTitle': '已设置标记时使用标记；否则使用摄像机焦点位置',
