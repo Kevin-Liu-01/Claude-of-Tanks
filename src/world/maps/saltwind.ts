@@ -41,6 +41,13 @@ export default {
   },
   props: {
     sourcedPalette: 'coastal',
+    extraKits: ['river'],
+    // Two low timber landings face the village and its northern coastal exit.
+    // Dry limestone beaches use the existing wood batch, not wet-bank reeds.
+    riverLandings: [
+      { lakeIndex: 1, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
+      { lakeIndex: 2, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
+    ],
     plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'bathhouse', 'cottage', 'depot', 'tavern', 'boatshed', 'ruin', 'cornershop', 'market', 'farmhouse', 'woodshed', 'fishery', 'cottage', 'granary', 'ruin'],
     destructibleBuildings: ['fishershack', 'fieldhut', 'guardpost', 'checkpointhut'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.16, spacingPad: 7.5,

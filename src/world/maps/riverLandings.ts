@@ -3,10 +3,15 @@ import { sampleShorelineMask, shorelineRadiusAt } from '../shoreline.ts';
 export interface RiverLandingAnchor {
   lakeIndex: number;
   shoreAngleDeg: number;
+  /** Dry working coasts may omit reeds; existing wet-bank sites keep them. */
+  shoreReeds?: boolean;
+  /** Four to ten complete 1.9 m spans; omission preserves the 7.6 m kit. */
+  jettyLength?: number;
 }
 
 interface LandingHeightField {
   getHeightAt(x: number, z: number): number;
+  getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
 }
 
@@ -22,6 +27,12 @@ export function planRiverLanding(
   heightField: LandingHeightField, lakes: readonly LandingLake[], anchor: RiverLandingAnchor,
 ): { x: number; z: number; angle: number; length: number; deckY: number;
   waterLevel: number; boatX: number; boatZ: number; boatYaw: number } | null {
+  const length = anchor.jettyLength === undefined ? 7.6 : anchor.jettyLength;
+  const spans = length / 1.9;
+  if (!Number.isFinite(length) || length < 7.6 || length > 19
+    || Math.abs(spans - Math.round(spans)) > 1e-9) {
+    throw new RangeError('jettyLength must be 7.6–19 m in complete 1.9 m spans');
+  }
   const lake = lakes[anchor.lakeIndex];
   if (!lake || !Number.isFinite(lake.level)) return null;
   const angle = anchor.shoreAngleDeg * Math.PI / 180;
@@ -29,14 +40,21 @@ export function planRiverLanding(
   const x = lake.x + Math.cos(angle) * radius * 1.02;
   const z = lake.z + Math.sin(angle) * radius * 1.02;
   const inward = angle + Math.PI;
-  const length = 7.6;
   const level = lake.level!;
   const tipX = x + Math.cos(inward) * length;
   const tipZ = z + Math.sin(inward) * length;
   // The tip must reach the true planar liquid core. The deck stays low above
   // that same waterline; do not put a tall pier on a cliff or across a road.
-  if (Math.abs(heightField.getHeightAt(tipX, tipZ) - level) > 0.01) return null;
-  for (const t of [0, length * 0.5, length]) {
+  for (const side of [-0.75, 0, 0.75]) {
+    const px = tipX - Math.sin(inward) * side;
+    const pz = tipZ + Math.cos(inward) * side;
+    if (heightField.getWaterMaskAt(px, pz) !== 1
+      || Math.abs(heightField.getHeightAt(px, pz) - level) > 1e-8) return null;
+  }
+  // Validate every pile station along the actual authored length, not only
+  // a short default footprint or an unsampled midpoint of a longer deck.
+  for (let station = 0; station <= Math.round(spans); station++) {
+    const t = station * 1.9;
     for (const side of [-1, 1]) {
       const px = x + Math.cos(inward) * t - Math.sin(inward) * side * 0.75;
       const pz = z + Math.sin(inward) * t + Math.cos(inward) * side * 0.75;
