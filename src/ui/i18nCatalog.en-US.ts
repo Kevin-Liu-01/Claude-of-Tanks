@@ -85,6 +85,7 @@ export const enUS: Record<string, string> = {
   'garage.nav.gallery': 'Tank Gallery',
   'garage.nav.docs': 'Documentation',
   'garage.nav.github': 'GitHub',
+  'garage.nav.githubAria': 'View Claude of Tanks on GitHub',
   'garage.nav.menu': 'Menu',
   'garage.nav.mobileHomeSub': 'Public showcase',
   'garage.nav.mobileGarageSub': 'Current page',
@@ -432,6 +433,7 @@ export const enUS: Record<string, string> = {
   'garage.country.scrollRight': 'Scroll countries right',
   'garage.carousel.prev': 'Previous vehicle',
   'garage.carousel.next': 'Next vehicle',
+  'garage.carousel.listAria': 'Vehicle catalog',
   'garage.gallery.copied': 'Copied',
   'garage.gallery.copyJson': 'Copy JSON',
   'garage.tools.battlefields': 'Battlefields',
@@ -549,6 +551,7 @@ export const enUS: Record<string, string> = {
   'garage.module.optics': 'Optics',
   'garage.module.trackL': 'Track L',
   'garage.module.trackR': 'Track R',
+  'garage.module.tooltip': 'Damageable module: {name}',
   'garage.crew.commander': 'Commander',
   'garage.crew.gunner': 'Gunner',
   'garage.crew.driver': 'Driver',
@@ -757,6 +760,7 @@ export const enUS: Record<string, string> = {
   'settings.language.note': 'Switches every UI string between English and Simplified Chinese. Tank names, nations and map names stay in their original form.',
   'settings.controls.note.part1': 'Click a chip, then press any key, mouse button or wheel notch to rebind — pad chips listen for a controller button. Tap Esc to cancel; <b>hold Esc</b> to bind Escape itself. Right-click a chip to clear it.',
   'settings.controls.note.part2': 'What <b>Aim / Free Look (RMB)</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the GAMEPLAY tab. <b>Gun Hold (Free Aim)</b> preserves the current turret and gun lay while the sight keeps moving. Controller: left stick drives, right stick aims, RB holds the gun, START opens this menu.',
+  'settings.aim.note': 'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view (aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. Gun hold: hold RMB to preserve the current turret and gun lay while freely moving the sight. Caps Lock is always the dedicated gun-hold action; Left Alt remains its secondary default. Release to let the gun catch up. Shift toggles sniper mode.',
   'settings.group.move': 'Move',
   'settings.group.fire': 'Fire',
   'settings.group.sniper': 'Sniper',
@@ -1148,6 +1152,9 @@ export const enUS: Record<string, string> = {
   'spectator.garage': 'Garage',
   'spectator.garageAria': 'Return to garage',
   'spectator.idxAria': 'Spectator index',
+  'spectator.switchGroupAria': 'Switch spectated vehicle',
+  'spectator.cyclePrevAria': 'Previous vehicle',
+  'spectator.cycleNextAria': 'Next vehicle',
 
   // context info panel (debug modal) ------------------------------------------
   'contextInfo.copyJson': 'Copy JSON',
@@ -1935,4 +1942,17 @@ export const enUS: Record<string, string> = {
   'garage.roomReminder.statusNotReady': 'not ready',
   'studioPanel.archive.copy': 'Open live gunnery, destruction, terrain, and vehicle references without leaving your scene.',
   'studioPanel.archive.button': 'OPEN FIELD FRAMES · 61',
+
+  // public gallery media archive (presentation/mediaArchive.ts) ----------------
+  'mediaArchive.lightbox.closeAria': 'Close full-screen image',
+  'mediaArchive.card.openAria': 'Open {title}',
+  'mediaArchive.filterAria': 'Filter captured game frames',
+
+  // device diagnostics overlay (engine/deviceDiag.ts) -------------------------
+  'deviceDiag.shadowSaver.aria': 'COT Shadow Saver diagnostics',
+  'deviceDiag.shadowSaver.collapseAria': 'Collapse Shadow Saver',
+
+  // documentation topic pages (docs/topics.ts) --------------------------------
+  'docs.topic.navAria': 'Technical manual sections',
+  'docs.topic.onThisPage': 'On this page',
 };

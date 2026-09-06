@@ -917,12 +917,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       }
       for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
       const rmbNote = el('div', 'cot-set-note', aim);
-      rmbNote.textContent =
-        'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
-        '(aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. ' +
-        'Gun hold: hold RMB to preserve the current turret and gun lay while freely moving the sight. ' +
-        'Caps Lock is always the dedicated gun-hold action; Left Alt remains its secondary default. ' +
-        'Release to let the gun catch up. Shift toggles sniper mode.';
+      rmbNote.textContent = t('settings.aim.note');
     }
 
     const battle = groupCard(body, t('settings.battle.title'));

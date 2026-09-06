@@ -25,6 +25,8 @@
 // Overlay visibility: explicit only (`?diag` / `?diag=1`). Rescue logic stays
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
+import '../ui/i18nCatalog.ts';
+import { t } from '../ui/i18n.ts';
 
 interface DeviceDiagResult {
   basic: boolean;
@@ -623,7 +625,7 @@ export function mountDiagOverlay({
   };
   const el = document.createElement('aside');
   el.id = 'cot-diag';
-  el.setAttribute('aria-label', 'COT Shadow Saver diagnostics');
+  el.setAttribute('aria-label', t('deviceDiag.shadowSaver.aria'));
   el.style.cssText = [
     'position:fixed', 'left:14px', 'bottom:14px', 'z-index:400',
     'width:min(430px,calc(100vw - 28px))', 'box-sizing:border-box',
@@ -639,7 +641,7 @@ export function mountDiagOverlay({
       <div aria-hidden="true" style="width:27px;height:27px;display:grid;place-items:center;border:1px solid rgba(239,190,102,.5);border-radius:50%;color:#f2c36f">◈</div>
       <div style="flex:1;min-width:0"><b style="font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em">COT SHADOW SAVER</b>
         <div data-summary style="margin-top:4px;color:#aab7b9">Checking renderer health…</div></div>
-      <button data-collapse type="button" aria-label="Collapse Shadow Saver" style="border:0;background:transparent;color:#9ca8ab;font:18px/1 sans-serif;cursor:pointer;padding:5px">−</button>
+      <button data-collapse type="button" aria-label="${t('deviceDiag.shadowSaver.collapseAria')}" style="border:0;background:transparent;color:#9ca8ab;font:18px/1 sans-serif;cursor:pointer;padding:5px">−</button>
     </div>
     <div data-body style="padding:11px 12px 12px">
       <div data-probes style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:9px"></div>

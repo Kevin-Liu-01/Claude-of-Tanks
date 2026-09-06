@@ -1,4 +1,5 @@
 import { uiIconSVG } from './uiIcons.ts';
+import './i18nCatalog.ts';
 import { t } from './i18n.ts';
 
 const SAFE_SPEC_ID = /^[a-z0-9_]+$/;
@@ -38,12 +39,12 @@ export function spectatorSwitcherMarkup(): string {
       '</span>' +
       '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
     '</div>' +
-    '<div class="switch" role="group" aria-label="Switch spectated vehicle">' +
-      '<button type="button" class="cycle prev" aria-label="Previous vehicle">' +
+    '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
+      '<button type="button" class="cycle prev" aria-label="' + t('spectator.cyclePrevAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
         '<kbd aria-hidden="true">A</kbd>' +
       '</button>' +
-      '<button type="button" class="cycle next" aria-label="Next vehicle">' +
+      '<button type="button" class="cycle next" aria-label="' + t('spectator.cycleNextAria') + '">' +
         '<kbd aria-hidden="true">D</kbd>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
       '</button>' +

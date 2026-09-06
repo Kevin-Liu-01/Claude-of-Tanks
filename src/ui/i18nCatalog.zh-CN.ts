@@ -77,6 +77,7 @@ export const zhCN: Record<string, string> = {
   'garage.nav.gallery': '战车画廊',
   'garage.nav.docs': '文档',
   'garage.nav.github': 'GitHub',
+  'garage.nav.githubAria': '在 GitHub 上查看 Claude of Tanks',
   'garage.nav.menu': '菜单',
   'garage.nav.mobileHomeSub': '公共展示',
   'garage.nav.mobileGarageSub': '当前页',
@@ -424,6 +425,7 @@ export const zhCN: Record<string, string> = {
   'garage.country.scrollRight': '向右滚动国家列表',
   'garage.carousel.prev': '上一辆战车',
   'garage.carousel.next': '下一辆战车',
+  'garage.carousel.listAria': '战车目录',
   'garage.gallery.copied': '已复制',
   'garage.gallery.copyJson': '复制 JSON',
   'garage.tools.battlefields': '战场',
@@ -541,6 +543,7 @@ export const zhCN: Record<string, string> = {
   'garage.module.optics': '光学设备',
   'garage.module.trackL': '左侧履带',
   'garage.module.trackR': '右侧履带',
+  'garage.module.tooltip': '可被破坏的模块：{name}',
   'garage.crew.commander': '车长',
   'garage.crew.gunner': '炮手',
   'garage.crew.driver': '驾驶员',
@@ -749,6 +752,7 @@ export const zhCN: Record<string, string> = {
   'settings.language.note': '切换所有界面文字为英文或简体中文。战车型号、国别、地图名保持原名。',
   'settings.controls.note.part1': '点击按键后，按任意键盘按键、鼠标键或滚轮刻度即可重绑 — 手柄栏会监听手柄按键。轻按 Esc 取消；<b>长按 Esc</b> 可将 Esc 自身绑定上去。右键点击可清除绑定。',
   'settings.controls.note.part2': '<b>瞄准 / 自由视角 (RMB)</b> 的行为（按住瞄准、切换瞄准或经典自由视角）在「游戏」选项卡中设置。<b>火炮锁定 (自由瞄准)</b> 在视野移动期间保持炮塔与火炮当前指向。手柄：左摇杆驾驶，右摇杆瞄准，RB 锁定炮管，START 打开本菜单。',
+  'settings.aim.note': '按住瞄准：按住鼠标右键拉入狙击镜，松开回到原视角（两种模式下俯仰角都会保留）。切换瞄准：单击鼠标右键进入或退出狙击镜。火炮锁定：按住鼠标右键，在视野自由移动的同时保留当前炮塔与火炮指向。Caps Lock 始终是专属的火炮锁定键；左 Alt 是次级快捷键。松开右键后火炮追上来。Shift 切换狙击镜模式。',
   'settings.group.move': '移动',
   'settings.group.fire': '射击',
   'settings.group.sniper': '狙击',
@@ -1139,6 +1143,9 @@ export const zhCN: Record<string, string> = {
   'spectator.garage': '车库',
   'spectator.garageAria': '返回车库',
   'spectator.idxAria': '观战序号',
+  'spectator.switchGroupAria': '切换观战车辆',
+  'spectator.cyclePrevAria': '上一辆战车',
+  'spectator.cycleNextAria': '下一辆战车',
 
   // context info panel (debug modal) ------------------------------------------
   'contextInfo.copyJson': '复制 JSON',
@@ -1926,4 +1933,17 @@ export const zhCN: Record<string, string> = {
   'garage.roomReminder.statusNotReady': '未就绪',
   'studioPanel.archive.copy': '在不离开当前场景的情况下，打开实时射击、毁坏、地形与战车参考。',
   'studioPanel.archive.button': '打开现场截图 · 61',
+
+  // public gallery media archive (presentation/mediaArchive.ts) ----------------
+  'mediaArchive.lightbox.closeAria': '关闭全屏图像',
+  'mediaArchive.card.openAria': '打开{title}',
+  'mediaArchive.filterAria': '筛选已捕获的战场画面',
+
+  // device diagnostics overlay (engine/deviceDiag.ts) -------------------------
+  'deviceDiag.shadowSaver.aria': 'COT Shadow Saver 诊断',
+  'deviceDiag.shadowSaver.collapseAria': '折叠 Shadow Saver',
+
+  // documentation topic pages (docs/topics.ts) --------------------------------
+  'docs.topic.navAria': '技术手册章节',
+  'docs.topic.onThisPage': '本页导航',
 };

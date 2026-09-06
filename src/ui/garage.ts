@@ -540,9 +540,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
     `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
-    `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="${t('garage.nav.github')}">` +
+    `target="_blank" rel="noopener noreferrer" aria-label="${t('garage.nav.githubAria')}" title="${t('garage.nav.github')}">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">${t('garage.nav.github')}</span><span class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></a>` +
+    `<span class="nav-label">${t('garage.nav.github')}</span><span class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="${t('githubStars.loadingLabel')}"></span></a>` +
     `<div class="cot-settings-slot"></div>` +
     `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="${t('garage.nav.menu')}" ` +
     `title="${t('garage.nav.menu')}" aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
@@ -624,20 +624,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas></span>` +
     `<span class="cot-garage-preview-foot"><span data-garage-camo-name></span>` +
     `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button></nav>` +
-    `<button class="cot-garage-panel-scrim" type="button" aria-label="Close garage panel"></button>` +
+    `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier"></div>` +
     `<div class="cot-country-rail">` +
     `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="Scroll countries left">${uiIconSVG('chevronLeft', 14)}</button>` +
-    `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
+    `aria-label="${t('garage.country.scrollLeft')}">${uiIconSVG('chevronLeft', 14)}</button>` +
+    `<div class="cot-country-chips" role="group" aria-label="${t('garage.country.filterAria')}"></div>` +
     `<button class="cot-country-edge next is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="Scroll countries right">${uiIconSVG('chevronRight', 14)}</button>` +
+    `aria-label="${t('garage.country.scrollRight')}">${uiIconSVG('chevronRight', 14)}</button>` +
     `</div>` +
     `<div class="cot-carousel">` +
-    `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="Previous vehicle">` +
+    `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.prev')}">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
-    `<div class="cot-cards" role="listbox" tabindex="0" aria-label="Vehicle catalog"></div>` +
-    `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="Next vehicle">` +
+    `<div class="cot-cards" role="listbox" tabindex="0" aria-label="${t('garage.carousel.listAria')}"></div>` +
+    `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol"><div class="cot-maps" id="cot-garage-maps"></div>` +
@@ -2410,7 +2410,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
-      `<div class="cot-module-chip" title="Damageable module: ${row.label}">` +
+      `<div class="cot-module-chip" title="${t('garage.module.tooltip', { name: row.label })}">` +
       `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
