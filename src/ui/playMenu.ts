@@ -860,11 +860,11 @@ export function createPlayMenu({
       if (handedOff) return;
       if (connectionState === 'reconnecting') {
         room.setAttribute('aria-busy', 'true');
-        setStatus('Connection interrupted. Trying to reconnect for a limited time; you can leave the room.');
+        setStatus(t('playMenu.connection.interrupted'));
       } else if (connectionState === 'connected' && session) {
         room.setAttribute('aria-busy', 'false');
         clearFailure();
-        setStatus('Connection restored.');
+        setStatus(t('playMenu.connection.restored'));
       }
     },
     onError: (error) => {
@@ -1061,7 +1061,7 @@ export function createPlayMenu({
     if (handedOff) return false;
     const activeSession = session;
     if (!activeSession || !nextRole) {
-      setStatus('Room session is unavailable.', true);
+      setStatus(t('playMenu.status.sessionUnavailable'), true);
       return false;
     }
     handedOff = true;
@@ -1171,7 +1171,7 @@ export function createPlayMenu({
     const vehicleName = document.createElement('span');
     vehicleName.className = 'vehicle-name';
     if (!player.specId) {
-      vehicleName.textContent = 'Selecting vehicle';
+      vehicleName.textContent = t('playMenu.lobby.selectingVehicle');
       vehicle.appendChild(vehicleName);
       return vehicle;
     }
@@ -1388,7 +1388,7 @@ export function createPlayMenu({
   editCodeBtn.addEventListener('click', () => {
     if (session || activeRoom) return;
     clearFailure();
-    setStatus('Enter another room code from your host.');
+    setStatus(t('playMenu.status.enterAnotherCode'));
     codeInput.focus();
     codeInput.select();
   });
@@ -1412,7 +1412,7 @@ export function createPlayMenu({
     });
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      setStatus('Invite link copied. Send it to another player.');
+      setStatus(t('playMenu.invite.copied'));
     } catch {
       setStatus(`Invite link: ${inviteUrl}`);
     }

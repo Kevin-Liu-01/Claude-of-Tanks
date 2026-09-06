@@ -879,6 +879,11 @@ export const zhCN: Record<string, string> = {
   'playMenu.eyebrow.private': '私人邀请',
   'playMenu.invite.connected': '你已进入房间 {code}。请选择战车、队伍并准备。',
   'playMenu.invite.connecting': '房间 {code} 已就绪，正在直接连接房主。',
+  'playMenu.invite.copied': '邀请链接已复制。发送给其他玩家吧。',
+  'playMenu.connection.interrupted': '连接中断。正在尝试在限定时间内重连，你可以先离开房间。',
+  'playMenu.connection.restored': '连接已恢复。',
+  'playMenu.status.sessionUnavailable': '房间会话不可用。',
+  'playMenu.status.enterAnotherCode': '请输入房主提供的另一个房间码。',
   'playMenu.room.turnUnconfigured': '生产环境 TURN 服务尚未配置',
   'playMenu.room.turnUnavailable': 'TURN 中继暂时不可用',
   'playMenu.room.directOnly': '当前房间 {action} 仅支持直连；{reason}，部分外网可能无法加入。',
@@ -1389,6 +1394,8 @@ export const zhCN: Record<string, string> = {
   'publicNav.brandAria': 'Claude of Tanks 首页',
   'publicNav.brand': 'Claude of Tanks',
   'publicNav.garage': '车库',
+  'publicPages.video.playButton': '播放视频',
+  'publicPages.video.playAria': '播放{label}',
 
   // gallery — archive panel ---------------------------------------------------
   'gallery.archive.heading': '车辆档案',

@@ -887,6 +887,12 @@ export const enUS: Record<string, string> = {
   'playMenu.eyebrow.private': 'Private invitation',
   'playMenu.invite.connected': 'You are in room {code}. Choose your vehicle, team, and ready state.',
   'playMenu.invite.connecting': 'Room {code} is ready. Connecting you directly to the host.',
+  'playMenu.invite.copied': 'Invite link copied. Send it to another player.',
+  'playMenu.connection.interrupted':
+    'Connection interrupted. Trying to reconnect for a limited time; you can leave the room.',
+  'playMenu.connection.restored': 'Connection restored.',
+  'playMenu.status.sessionUnavailable': 'Room session is unavailable.',
+  'playMenu.status.enterAnotherCode': 'Enter another room code from your host.',
   'playMenu.room.turnUnconfigured': 'the production TURN service is not configured',
   'playMenu.room.turnUnavailable': 'the TURN relay is temporarily unavailable',
   'playMenu.room.directOnly': 'Direct-only room {action}; {reason}, so some external networks cannot connect.',
@@ -1397,6 +1403,8 @@ export const enUS: Record<string, string> = {
   'publicNav.brandAria': 'Claude of Tanks home',
   'publicNav.brand': 'Claude of Tanks',
   'publicNav.garage': 'Garage',
+  'publicPages.video.playButton': 'Play video',
+  'publicPages.video.playAria': 'Play {label}',
 
   // gallery — archive panel ---------------------------------------------------
   'gallery.archive.heading': 'Fleet archive',
