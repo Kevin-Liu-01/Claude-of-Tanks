@@ -62,11 +62,17 @@ export function installResidencyGeometryTracker() {
   const renderer = window.__DEBUG.renderer;
   const original = renderer.renderBufferDirect;
   const entries = new Map();
+  const rootRefs = new Map();
   let draws = 0, allocations = 0, disposals = 0;
   function ownerOf(object) {
     let owner = object.name || object.type || 'renderer';
     for (let node = object; node; node = node.parent) {
-      if (node.name?.startsWith('world-')) return `${node.name}/${owner}`;
+      if (node.name?.startsWith('world-')) {
+        if (node.isGroup && !rootRefs.has(node.uuid)) {
+          rootRefs.set(node.uuid, { uuid: node.uuid, name: node.name, ref: new WeakRef(node) });
+        }
+        return `${node.name}/${owner}`;
+      }
       if (node.name) owner = node.name;
     }
     return owner;
@@ -113,8 +119,17 @@ export function installResidencyGeometryTracker() {
       const worlds = window.__DEBUG.scene.children.filter(object => object.name?.startsWith('world-'))
         .map(world => ({ name: world.name, uuid: world.uuid, visible: world.visible,
           terrain: world.children.find(child => child.name === 'terrain')?.userData.streamingStats || null }));
+      const worldRoots = [];
+      let worldRootsAlive = 0;
+      for (const { uuid, name, ref } of rootRefs.values()) {
+        const cpuAlive = !!ref.deref();
+        if (cpuAlive) worldRootsAlive++;
+        worldRoots.push({ uuid, name, cpuAlive });
+      }
       return { draws, allocations, disposals, residentTracked: entries.size,
-        rendererGeometries: renderer.info.memory.geometries, owners, worlds, rows };
+        rendererGeometries: renderer.info.memory.geometries, owners, worlds, rows,
+        worldRoots, worldRootsAlive,
+        worldRootsCoverage: 'World Groups encountered on first geometry upload; not unrendered constructed worlds.' };
     },
   };
 }

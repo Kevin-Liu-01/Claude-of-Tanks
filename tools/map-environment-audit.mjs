@@ -33,6 +33,9 @@ import {
   waitForTimingGarage, warmTimingGarage, captureTimingGarageOwner, captureTimingBackend,
   requireTimingGarageSetup, requireSameTimingGarageSetup, requireSameTimingGarageOwner,
   requireTimingBuildProvenance,
+  selectTimingArchiveTarget, captureTimingGarageArchive,
+  requireSameTimingGarageArchive,
+  captureTimingPhaseOwnership, requireTimingPhaseOwnership,
 } from './map-environment-acquisition.mjs';
 import { selectStandView, stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
 import { evaluateQuality } from './map-environment-quality.mjs';
@@ -50,6 +53,8 @@ const ROOT = path.resolve(valueArg('root', process.cwd()));
 // in another worktree must never warm the implementation's module graph.
 process.chdir(ROOT);
 const { MAP_IDS } = await import(pathToFileURL(path.join(ROOT, 'src/world/maps/index.ts')).href);
+const { FEATURED_SHOTS } = await import(pathToFileURL(path.join(ROOT, 'src/ui/featuredShots.ts')).href);
+const garageArchiveTarget = selectTimingArchiveTarget(FEATURED_SHOTS);
 
 const requested = valueArg('maps', MAP_IDS.join(','))
   .split(',').map((id) => id.trim()).filter(Boolean);
@@ -91,7 +96,7 @@ for (const file of ['map-environment-audit.mjs', 'map-environment-acquisition.mj
 const acquisition = {
   protocol: ACQUISITION_PROTOCOL, harnessHash: harnessHash.digest('hex'),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats, settleMs, syncGpu, tier, captureShots, production, maps: requested,
+  sampleCount, repeats, settleMs, syncGpu, tier, captureShots, production, garageArchiveTarget, maps: requested,
 };
 if (baseline) requireComparableRun(baseline, acquisition);
 fs.mkdirSync(outDir, { recursive: true });
@@ -102,7 +107,7 @@ const readBuildIndexHash = () => production
   ? createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'dist/index.html'))).digest('hex') : null;
 
 const report = {
-  schemaVersion: 5,
+  schemaVersion: 6,
   generatedAt: new Date().toISOString(),
   revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
   dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
@@ -178,7 +183,9 @@ async function stageMap(mapId) {
 
 async function timingReceipt(mapId, prepared) {
   const receipt = {
+    phaseOwnership: await page.evaluate(captureTimingPhaseOwnership),
     garage: await page.evaluate(captureTimingGarageOwner),
+    garageArchive: await page.evaluate(captureTimingGarageArchive, garageArchiveTarget),
     scene: await page.evaluate(capturePinnedScene, PINNED_SCENE),
     state: await page.evaluate(captureTimingState),
     readiness: prepared.readiness,
@@ -186,6 +193,7 @@ async function timingReceipt(mapId, prepared) {
   };
   requireTimingReceipt(receipt, mapId, acquisition.viewport);
   requireSameTimingGarageOwner(report.garageSetup.owner, receipt.garage);
+  requireSameTimingGarageArchive(report.garageSetup.archive, receipt.garageArchive);
   return receipt;
 }
 
@@ -805,11 +813,25 @@ try {
   await page.evaluate(waitForTimingGarage);
   await page.evaluate(() => window.__SHOTS.set('garage'));
   await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
+  const archiveWaitStarted = performance.now();
+  // Observe the recurring production pair. Never force the slideshow forward,
+  // hide it, or replace this readiness barrier with additional warm frames.
+  const archiveHandle = await page.waitForFunction(captureTimingGarageArchive,
+    { timeout: 120000, polling: 100 }, garageArchiveTarget);
+  const archiveBefore = await archiveHandle.jsonValue();
+  await archiveHandle.dispose();
+  const archiveWait = { target: garageArchiveTarget, timeoutMs: 120000,
+    elapsedMs: performance.now() - archiveWaitStarted };
   const garageOwner = await page.evaluate(captureTimingGarageOwner);
-  const garageWarm = await page.evaluate(warmTimingGarage);
+  const phaseBefore = await page.evaluate(captureTimingPhaseOwnership);
+  report.garageSetup = { ownerBefore: garageOwner, archiveBefore, archiveWait, phaseBefore };
+  requireTimingPhaseOwnership(phaseBefore, 'garage', 'verdant');
+  const garageWarm = await page.evaluate(warmTimingGarage, { archive: archiveBefore });
   const warmedGarageOwner = await page.evaluate(captureTimingGarageOwner);
   report.garageSetup = {
     ownerBefore: garageOwner, owner: warmedGarageOwner, warm: garageWarm,
+    phaseBefore, phaseOwnership: await page.evaluate(captureTimingPhaseOwnership),
+    archiveBefore, archive: await page.evaluate(captureTimingGarageArchive, garageArchiveTarget), archiveWait,
     backend: await page.evaluate(captureTimingBackend), browserVersion: await browser.version(),
   };
   requireTimingGarageSetup(report.garageSetup);

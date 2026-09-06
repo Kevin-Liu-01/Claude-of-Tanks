@@ -1,7 +1,81 @@
 import { isPinnedSceneReceipt } from './pinned-scene-acquisition.mjs';
 import { RESIDENCY_TERRAIN_PROTOCOL } from './world-residency-acquisition.mjs';
 
-export const ACQUISITION_PROTOCOL = 'settled-pinned-map-timing-v3';
+export const ACQUISITION_PROTOCOL = 'settled-pinned-map-timing-v5';
+
+/** Browser-side actual owners; phase labels do not prove scene membership. */
+export function captureTimingPhaseOwnership() {
+  const D = window.__DEBUG;
+  const owner = D.phaseSceneResidency;
+  if (!D.scene?.isScene || typeof owner?.garageMounted !== 'boolean'
+      || typeof owner.worldMounted !== 'boolean') throw new Error('Missing timing phase owner');
+  const rootState = root => {
+    if (root?.isObject3D !== true || typeof root.visible !== 'boolean') {
+      throw new Error('Missing actual timing phase root');
+    }
+    return { parentIsScene: root.parent === D.scene, parentIsNull: root.parent === null,
+      visible: root.visible };
+  };
+  return {
+    protocol: 'exclusive-phase-owners-v1', mapId: D.world?.mapId,
+    owner: { garageMounted: owner.garageMounted, worldMounted: owner.worldMounted },
+    garageDressing: rootState(D.garageDressing?.group), battlefield: rootState(D.world?.group),
+  };
+}
+
+export function requireTimingPhaseOwnership(receipt, phase, mapId) {
+  if (phase !== 'garage' && phase !== 'battlefield') throw new Error('Unknown timing ownership phase');
+  const garage = phase === 'garage';
+  if (receipt?.protocol !== 'exclusive-phase-owners-v1' || receipt.mapId !== mapId
+      || receipt.owner?.garageMounted !== garage || receipt.owner.worldMounted !== !garage) {
+    throw new Error(`Incorrect timing phase owner: ${phase}/${mapId}`);
+  }
+  for (const [key, active] of [['garageDressing', garage], ['battlefield', !garage]]) {
+    const root = receipt[key];
+    if (root?.parentIsScene !== active || root.parentIsNull !== !active || root.visible !== active) {
+      throw new Error(`Incorrect actual timing phase root: ${phase}/${key}`);
+    }
+  }
+}
+
+/** Match the production archive's recurring pair, not its one-off boot pair. */
+export function selectTimingArchiveTarget(featuredShots) {
+  const shots = featuredShots.filter(shot => shot.maps?.length).slice(0, 6);
+  const target = { primary: shots[1]?.img, secondary: shots[0]?.img };
+  if (Object.values(target).some(source => typeof source !== 'string' || !source.startsWith('/media/'))
+      || target.primary === target.secondary) throw new Error('Missing canonical Garage archive pair');
+  return target;
+}
+
+/** Browser predicate: wait for the actual producer, never for stable counts. */
+export function captureTimingGarageArchive(target) {
+  const root = window.__DEBUG.garageDressing.group;
+  const data = root.userData;
+  const names = ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'];
+  const sources = [data.battleScreenCurrentImage, data.battleScreenSecondaryImage];
+  const screens = names.map((name, index) => {
+    const uniforms = root.getObjectByName(name)?.material?.uniforms;
+    if (!uniforms?.uImageA || !uniforms.uImageB || !uniforms.uTransition) {
+      throw new Error(`Missing Garage archive producer: ${name}`);
+    }
+    const texture = uniforms.uImageA.value;
+    const image = texture?.image;
+    if (!texture?.isTexture || texture.isDataTexture || texture !== uniforms.uImageB.value
+        || uniforms.uTransition.value !== 0 || image?.complete !== true
+        || !(image.naturalWidth > 1 && image.naturalHeight > 1)) return null;
+    const source = new URL(image.currentSrc || image.src, window.location.href).pathname;
+    if (source !== sources[index]) return null;
+    return { name, source, width: image.naturalWidth, height: image.naturalHeight,
+      format: texture.format, type: texture.type, minFilter: texture.minFilter,
+      magFilter: texture.magFilter, generateMipmaps: texture.generateMipmaps,
+      colorSpace: texture.colorSpace, anisotropy: texture.anisotropy,
+      transition: 0, pairedUniforms: true };
+  });
+  if (data.battleScreenDisplayCount !== 2 || data.battleScreenResidentImageCount !== 2
+      || screens.some(screen => !screen) || sources[0] !== target.primary
+      || sources[1] !== target.secondary) return null;
+  return { protocol: 'decoded-canonical-archive-v1', displayCount: 2, residentImageCount: 2, screens };
+}
 
 /** Browser-side: let the production scheduler finish; never race its pump. */
 export async function waitForTimingGarage({ timeoutMs = 180000, pollMs = 100 } = {}) {
@@ -25,8 +99,16 @@ export async function waitForTimingGarage({ timeoutMs = 180000, pollMs = 100 } =
 }
 
 /** Browser-side: fixed eight submitted frames, not rAFs or warm-until-pass. */
-export function warmTimingGarage({ timeoutMs = 30000 } = {}) {
+export function warmTimingGarage({ archive, timeoutMs = 30000 } = {}) {
   const { post, renderer } = window.__DEBUG;
+  const root = window.__DEBUG.garageDressing.group;
+  const monitors = archive.screens.map(screen => {
+    const uniforms = root.getObjectByName(screen.name).material.uniforms;
+    return { uniforms, texture: uniforms.uImageA.value };
+  });
+  const archiveUnchanged = () => root.userData.battleScreenResidentImageCount === 2
+    && monitors.every(({ uniforms, texture }) => uniforms.uImageA.value === texture
+      && uniforms.uImageB.value === texture && uniforms.uTransition.value === 0);
   const original = post.render;
   return new Promise((resolve, reject) => {
     let frames = 0, previous = null;
@@ -38,11 +120,13 @@ export function warmTimingGarage({ timeoutMs = 30000 } = {}) {
     post.render = function (...args) {
       try {
         original.apply(this, args);
+        if (!archiveUnchanged()) throw new Error('Garage archive changed during fixed warmup');
         const counts = { geometries: renderer.info.memory.geometries,
           textures: renderer.info.memory.textures, programs: renderer.info.programs.length };
         if (++frames === 8) {
           restore();
-          resolve({ frames, stable: JSON.stringify(previous) === JSON.stringify(counts), renderer: counts });
+          resolve({ frames, archiveUnchanged: true,
+            stable: JSON.stringify(previous) === JSON.stringify(counts), renderer: counts });
         }
         previous = counts;
       } catch (error) {
@@ -172,15 +256,15 @@ const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Fail before launching a browser: legacy/mixed-history reports are not paired. */
 export function requireComparableRun(baseline, acquisition) {
-  if (baseline?.schemaVersion !== 5 || !baseline.acquisition
+  if (baseline?.schemaVersion !== 6 || !baseline.acquisition
       || baseline.acquisition.protocol !== ACQUISITION_PROTOCOL) {
-    throw new Error('Baseline needs schema 5 build-mode/full-Garage/pinned/settled timing acquisition; recapture it');
+    throw new Error('Baseline needs schema 6 exclusive-phase/decoded-archive/build-mode timing acquisition; recapture it');
   }
   requireTimingBuildProvenance(baseline);
   if (baseline.acquisition.captureShots || acquisition.captureShots) {
     throw new Error('Paired performance runs must be timing-only; capture images separately');
   }
-  for (const key of ['protocol', 'harnessHash', 'production', 'viewport', 'sampleCount', 'repeats', 'settleMs', 'syncGpu', 'tier']) {
+  for (const key of ['protocol', 'harnessHash', 'production', 'garageArchiveTarget', 'viewport', 'sampleCount', 'repeats', 'settleMs', 'syncGpu', 'tier']) {
     if (!identical(baseline.acquisition[key], acquisition[key])) {
       throw new Error(`Mismatched timing acquisition: ${key}`);
     }
@@ -192,9 +276,13 @@ export function requireComparableRun(baseline, acquisition) {
   }
   if (baseline.pageErrors?.length || baseline.acquisitionError) throw new Error('Baseline contains browser/acquisition errors');
   requireTimingGarageSetup(baseline.garageSetup);
+  if (!identical(baseline.acquisition.garageArchiveTarget, baseline.garageSetup.archiveWait.target)) {
+    throw new Error('Baseline Garage archive target differs from acquisition');
+  }
   for (const row of baseline.maps) {
     requireTimingReceipt(row.acquisition, row.id, acquisition.viewport);
     requireSameTimingGarageOwner(baseline.garageSetup.owner, row.acquisition.garage);
+    requireSameTimingGarageArchive(baseline.garageSetup.archive, row.acquisition.garageArchive);
     requireFrameRunReceipts(row, acquisition);
   }
 }
@@ -226,7 +314,9 @@ function requireFrameRunReceipts(row, acquisition) {
 }
 
 export function requireTimingReceipt(receipt, mapId, viewport) {
+  requireTimingPhaseOwnership(receipt?.phaseOwnership, 'battlefield', mapId);
   requireTimingGarageOwner(receipt?.garage);
+  requireSameTimingGarageArchive(receipt?.garageArchive, receipt?.garageArchive);
   if (!isPinnedSceneReceipt(receipt?.scene) || receipt?.state?.mapId !== mapId
       || receipt?.readiness?.mapId !== mapId || receipt?.readiness?.settled !== true) {
     throw new Error(`Invalid pinned/settled timing receipt: ${mapId}`);
@@ -273,8 +363,12 @@ function requireTerrainReceipt(terrain, camera) {
 }
 
 export function requireSameTimingState(reference, current) {
+  requireTimingPhaseOwnership(reference.phaseOwnership, 'battlefield', reference.state?.mapId);
+  requireTimingPhaseOwnership(current.phaseOwnership, 'battlefield', current.state?.mapId);
   requireSameTimingGarageOwner(reference.garage, current.garage);
-  if (!identical(reference.scene, current.scene) || !identical(reference.state, current.state)) {
+  requireSameTimingGarageArchive(reference.garageArchive, current.garageArchive);
+  if (!identical(reference.scene, current.scene) || !identical(reference.state, current.state)
+      || !identical(reference.phaseOwnership, current.phaseOwnership)) {
     throw new Error(`Timed roster/camera/quality changed: ${current.state?.mapId}`);
   }
   // UUIDs differ between independent browser processes; the same camera must
@@ -307,9 +401,18 @@ export function requireSameTimingGarageOwner(reference, current) {
 }
 
 export function requireTimingGarageSetup(setup) {
+  requireTimingPhaseOwnership(setup?.phaseBefore, 'garage', 'verdant');
+  requireTimingPhaseOwnership(setup?.phaseOwnership, 'garage', 'verdant');
   requireTimingGarageOwner(setup?.owner);
   requireSameTimingGarageOwner(setup.ownerBefore, setup.owner);
-  if (setup.warm?.frames !== 8 || setup.warm.stable !== true) {
+  requireTimingGarageArchive(setup.archiveBefore, setup.archiveWait?.target);
+  requireTimingGarageArchive(setup.archive, setup.archiveWait?.target);
+  if (!identical(setup.archiveBefore, setup.archive)) throw new Error('Garage archive changed during warmup');
+  if (setup.archiveWait.timeoutMs !== 120000 || !Number.isFinite(setup.archiveWait.elapsedMs)
+      || setup.archiveWait.elapsedMs < 0 || setup.archiveWait.elapsedMs > 120000) {
+    throw new Error('Invalid bounded Garage archive wait');
+  }
+  if (setup.warm?.frames !== 8 || setup.warm.stable !== true || setup.warm.archiveUnchanged !== true) {
     throw new Error('Garage must stabilize within the fixed eight rendered frames');
   }
   for (const key of ['geometries', 'textures', 'programs']) {
@@ -325,10 +428,41 @@ export function requireTimingGarageSetup(setup) {
   }
 }
 
+function requireTimingGarageArchive(archive, target) {
+  const names = ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'];
+  const sources = [target?.primary, target?.secondary];
+  if (archive?.protocol !== 'decoded-canonical-archive-v1' || archive.displayCount !== 2
+      || archive.residentImageCount !== 2 || archive.screens?.length !== 2
+      || sources.some(source => typeof source !== 'string' || !source.startsWith('/media/'))
+      || sources[0] === sources[1]) throw new Error('Invalid canonical Garage archive receipt');
+  for (let index = 0; index < 2; index++) {
+    const screen = archive.screens[index];
+    if (screen.name !== names[index] || screen.source !== sources[index]
+        || screen.transition !== 0 || screen.pairedUniforms !== true
+        || typeof screen.generateMipmaps !== 'boolean' || typeof screen.colorSpace !== 'string') {
+      throw new Error('Invalid decoded Garage archive screen');
+    }
+    for (const key of ['width', 'height', 'format', 'type', 'minFilter', 'magFilter', 'anisotropy']) {
+      if (!Number.isInteger(screen[key]) || screen[key] < (key === 'width' || key === 'height' ? 2 : 1)) {
+        throw new Error(`Invalid Garage archive capacity: ${key}`);
+      }
+    }
+  }
+}
+
+export function requireSameTimingGarageArchive(reference, current) {
+  const target = { primary: reference?.screens?.[0]?.source, secondary: reference?.screens?.[1]?.source };
+  requireTimingGarageArchive(reference, target);
+  requireTimingGarageArchive(current, target);
+  if (!identical(reference, current)) throw new Error('Timing Garage archive capacity changed');
+}
+
 export function requireSameTimingGarageSetup(reference, current) {
   requireTimingGarageSetup(reference);
   requireTimingGarageSetup(current);
   requireSameTimingGarageOwner(reference.owner, current.owner);
+  if (!identical(reference.phaseOwnership, current.phaseOwnership)) throw new Error('Timing phase owners changed');
+  requireSameTimingGarageArchive(reference.archive, current.archive);
   if (!identical(reference.backend, current.backend) || reference.browserVersion !== current.browserVersion) {
     throw new Error('Timing GPU backend/browser changed');
   }
