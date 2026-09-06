@@ -535,7 +535,7 @@ function assembleWorld(
     /**
      * Build exact terrain lookahead meshes in an explicitly bounded batch.
      * Used only during the frozen deployment countdown; live streaming keeps
-     * its conservative one-job-per-four-frames fallback.
+     * its conservative, incrementally sliced live-streaming fallback.
      */
     warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;

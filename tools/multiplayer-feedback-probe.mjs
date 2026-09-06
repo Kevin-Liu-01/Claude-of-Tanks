@@ -77,7 +77,10 @@ export function startFeedbackSample() {
   const trace = window.__QA_TRACE;
   if (!debug?.input?.onAction || !debug.bus?.on || !trace?.enabled) throw new Error('feedback_qa_unavailable');
   window.__COT_FEEDBACK_SAMPLE?.dispose();
-  const sample = { started: performance.now(), traceStart: trace.stats().durationMs, actions: [],
+  const started = performance.now();
+  const traceStart = trace.stats().durationMs;
+  const traceClockReadSpanMs = performance.now() - started;
+  const sample = { started, traceStart, traceClockReadSpanMs, actions: [],
     shots: [], predicted: [], authority: new Map(), diagnostics: [], ice: [], rafs: new Set(), disposed: false };
   const active = () => !document.hidden && document.hasFocus() && debug.game.phase === 'battle' &&
     debug.game.preBattleS <= 0 && !debug.game.result;
@@ -159,6 +162,32 @@ export function startFeedbackSample() {
   window.__COT_FEEDBACK_SAMPLE = sample;
 }
 
+/** End opt-in observation before recorder shutdown/report allocation. No game writes. */
+export function endFeedbackSample() {
+  const sample = window.__COT_FEEDBACK_SAMPLE;
+  if (!sample) throw new Error('feedback_sample_missing');
+  sample.endedAt ??= performance.now();
+  sample.dispose();
+  return sample.endedAt;
+}
+
+/** Source-profiler startup may pause V8. Start the observed gameplay interval
+ * only after that handshake, reusing the trace clock without another stats sort.
+ * This resets QA observer buffers, never the game's input/simulation/trace history.
+ */
+export function resetFeedbackSampleBoundary() {
+  const sample = window.__COT_FEEDBACK_SAMPLE;
+  if (!sample || sample.disposed) throw new Error('feedback_sample_missing');
+  const next = performance.now();
+  sample.observationResetExcludedMs = next - sample.started;
+  sample.traceStart += sample.observationResetExcludedMs;
+  sample.started = next;
+  sample.actions.length = sample.shots.length = sample.predicted.length = sample.diagnostics.length = 0;
+  sample.authority.clear();
+  for (const raf of sample.rafs) cancelAnimationFrame(raf);
+  sample.rafs.clear();
+}
+
 /** Export only numeric measurements and closed enums, never raw bus/trace/RTC objects. */
 export function stopFeedbackSample() {
   const sample = window.__COT_FEEDBACK_SAMPLE;
@@ -166,38 +195,91 @@ export function stopFeedbackSample() {
   sample.dispose();
   const trace = window.__QA_TRACE.snapshot({ gpu: false });
   const index = (key) => trace.frameSchema.indexOf(key);
+  const traceEnd = Number.isFinite(sample.endedAt) ? sample.traceStart + sample.endedAt - sample.started : Infinity;
+  let observationBoundaryFramesExcluded = 0;
   const frames = trace.frames.filter((row) => row[index('tMs')] >= sample.traceStart &&
+    row[index('tMs')] <= traceEnd &&
     row[index('phase')] === 'battle' && row[index('preBattleS')] <= 0 &&
-    (row[index('flags')] & 127) === 0);
+    (row[index('flags')] & 127) === 0).filter((row) => {
+    if (sample.observationResetExcludedMs === undefined ||
+        row[index('tMs')] - row[index('gapMs')] >= sample.traceStart) return true;
+    observationBoundaryFramesExcluded++;
+    return false;
+  });
 
   // Keep only bounded, numeric trace windows. Never export raw trace events:
   // their payloads can contain room codes, entity IDs, positions, or URLs.
-  function timingWindow(kind, centerMs, ordinal = null) {
-    const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  function longTaskStart(event) {
+    if (event.name !== 'longtask') return null;
+    const start = numeric(event.data?.startTime);
+    const duration = numeric(event.data?.duration);
+    if (start === null || start < 0 || duration === null || duration < 0 ||
+        !Number.isFinite(start + duration)) return null;
+    // PerformanceEntry uses performance.now()'s epoch; trace rows use traceZero.
+    return start - sample.started + sample.traceStart;
+  }
+  function eventTime(event, centerMs) {
+    const start = longTaskStart(event);
+    return start === null ? event.tMs : Math.min(Math.max(centerMs, start), start + event.data.duration);
+  }
+  function projectEvent(event, centerMs) {
+    const row = { dtFromCenterMs: event.tMs - centerMs, name: event.name };
+    if (event.name !== 'longtask') return row;
+    const start = longTaskStart(event);
+    return { ...row, startAtMs: start === null ? null : event.data.startTime - sample.started,
+      startDtFromCenterMs: start === null ? null : start - centerMs,
+      durationMs: start === null ? null : event.data.duration };
+  }
+  function precedingFrame(centerMs) {
+    let previous = null;
+    for (const row of trace.frames) {
+      const at = numeric(row[index('tMs')]);
+      if (at !== null && at < centerMs && (!previous || at > previous[index('tMs')])) previous = row;
+    }
+    return previous;
+  }
+  function closest(rows, time, centerMs, limit, anchors = []) {
+    const pinned = anchors.filter((row) => row && rows.includes(row));
+    const selected = rows.filter((row) => !pinned.includes(row)).sort((a, b) =>
+      Math.abs(time(a) - centerMs) - Math.abs(time(b) - centerMs)).slice(0, limit - pinned.length);
+    return [...pinned, ...selected].sort((a, b) => time(a) - time(b));
+  }
+  function timingWindow(kind, centerMs, ordinal = null, worstFrame = null) {
     const frameKeys = ['gapMs', 'dtMs', 'calls', 'triangles', 'programs', 'geometries',
       'textures', 'renderScale', 'heapMB', 'flags'];
     const eventNames = new Set(['fire', 'weapon:predicted', 'shell:fired', 'shell:hit',
       'shell:expired', 'tank:destroyed', 'tank:ram', 'prop:crushed', 'prop:destroyed',
       'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap']);
+    const previous = worstFrame ? precedingFrame(centerMs) : null;
+    const gapStart = worstFrame ? -Math.max(0, numeric(worstFrame[index('gapMs')]) ?? 0) : null;
+    const previousAt = previous ? previous[index('tMs')] - centerMs : null;
+    const startDt = Math.min(-250, gapStart ?? 0, previousAt ?? 0);
+    const startMs = centerMs + startDt;
+    const endMs = Math.min(centerMs + 250, traceEnd);
     const nearbyFrames = trace.frames.filter((row) =>
-      Math.abs(row[index('tMs')] - centerMs) <= 250);
-    const nearbyEvents = (trace.events || []).filter((event) => eventNames.has(event.name) &&
-      Math.abs(event.tMs - centerMs) <= 250);
-    // Preserve the center/worst frame even on a high-refresh display whose
-    // 500 ms window contains more than 48 frames; then restore time ordering.
-    const closest = (rows, time, limit) => rows.sort((a, b) =>
-      Math.abs(time(a) - centerMs) - Math.abs(time(b) - centerMs)).slice(0, limit)
-      .sort((a, b) => time(a) - time(b));
+      row[index('tMs')] >= startMs && row[index('tMs')] <= endMs);
+    const nearbyEvents = (trace.events || []).filter((event) => {
+      if (!eventNames.has(event.name) || numeric(event.tMs) === null) return false;
+      const start = longTaskStart(event);
+      return start === null ? event.tMs >= startMs && event.tMs <= endMs
+        : start <= endMs && start + event.data.duration >= startMs;
+    });
+    // Keep both endpoints of a stalled interval, even if following high-refresh
+    // frames consume the 48-row budget. Omitted context remains explicit.
     return { kind, ordinal, atMs: centerMs - sample.traceStart,
+      startDtFromCenterMs: startDt, endDtFromCenterMs: endMs - centerMs,
+      ...(worstFrame ? { gapStartDtFromCenterMs: gapStart,
+        precedingFrameDtFromCenterMs: previousAt } : {}),
       frameRowsOmitted: Math.max(0, nearbyFrames.length - 48),
       eventRowsOmitted: Math.max(0, nearbyEvents.length - 32),
-      frames: closest(nearbyFrames, (row) => row[index('tMs')], 48).map((row) => ({
+      frames: closest(nearbyFrames, (row) => row[index('tMs')], centerMs, 48,
+        [previous, worstFrame]).map((row) => ({
         dtFromCenterMs: row[index('tMs')] - centerMs,
         ...Object.fromEntries(frameKeys.map((key) => [key, numeric(row[index(key)])])),
       })),
-      events: closest(nearbyEvents, (event) => event.tMs, 32).map((event) => ({
-        dtFromCenterMs: event.tMs - centerMs, name: event.name,
-      })),
+      events: closest(nearbyEvents, (event) => eventTime(event, centerMs), centerMs, 32)
+        .map((event) => projectEvent(event, centerMs)),
     };
   }
   const windows = sample.actions.slice(0, 4).map((action, ordinal) => timingWindow(
@@ -209,18 +291,23 @@ export function stopFeedbackSample() {
     if (!worst || row[index('gapMs')] > worst[index('gapMs')]) worst = row;
   }
   if (worst) {
-    const window = timingWindow('worst-frame', worst[index('tMs')]);
+    const window = timingWindow('worst-frame', worst[index('tMs')], null, worst);
     // frame() records the preceding interval at its END. Keep the original
     // aggregate unchanged, but identify a focus/start-boundary overlap.
     window.gapStartedBeforeSample = worst[index('tMs')] - worst[index('gapMs')] < sample.traceStart;
     windows.push(window);
   }
-  const result = { sampleStartedAtMs: sample.started, durationMs: performance.now() - sample.started,
+  const result = { sampleStartedAtMs: sample.started,
+    ...(Number.isFinite(sample.observationResetExcludedMs) ? {
+      observationResetExcludedMs: sample.observationResetExcludedMs, observationBoundaryFramesExcluded,
+    } : {}),
+    ...(Number.isFinite(sample.endedAt) ? { sampleEndedAtMs: sample.endedAt } : {}),
+    durationMs: (sample.endedAt ?? performance.now()) - sample.started,
     actions: sample.actions.map(({ at, ready, matched, ambiguous, eligibility }) => ({
       atMs: at - sample.started, ready, matched, ambiguous, eligibility })),
     shots: sample.shots, predicted: sample.predicted, diagnostics: sample.diagnostics,
     gapsMs: frames.map((row) => row[index('gapMs')]),
-    timingWindows: { halfWidthMs: 250, windows },
+    timingWindows: { halfWidthMs: 250, traceClockReadSpanMs: sample.traceClockReadSpanMs, windows },
     traceFramesDropped: trace.stats.framesDropped,
     observerFailures: window.__COT_FEEDBACK_NETWORK?.failures || 0 };
   delete window.__COT_FEEDBACK_SAMPLE;
@@ -237,18 +324,47 @@ export function sanitizeFeedbackTimingWindows(source) {
     'shell:expired', 'tank:destroyed', 'tank:ram', 'prop:crushed', 'prop:destroyed',
     'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap']);
   const kinds = new Set(['first-click', 'subsequent-click', 'worst-frame']);
-  const nearby = (row) => row && numeric(row.dtFromCenterMs) !== null &&
-    Math.abs(row.dtFromCenterMs) <= 250;
-  return { halfWidthMs: 250, windows: source.windows.filter((row) => kinds.has(row?.kind)).slice(0, 5)
-    .map((window) => ({ kind: window.kind, ordinal: numeric(window.ordinal), atMs: numeric(window.atMs),
+  const nonpositive = (value) => numeric(value) !== null && value <= 0 ? value : null;
+  function taskStart(row) {
+    const start = numeric(row.startDtFromCenterMs);
+    const duration = numeric(row.durationMs);
+    return row.name === 'longtask' && start !== null && duration !== null && duration >= 0 &&
+      Number.isFinite(start + duration) ? start : null;
+  }
+  function projectEvent(row) {
+    const event = { dtFromCenterMs: row.dtFromCenterMs, name: row.name };
+    if (row.name !== 'longtask') return event;
+    const start = taskStart(row);
+    return { ...event, startAtMs: start === null ? null : numeric(row.startAtMs),
+      startDtFromCenterMs: start, durationMs: start === null ? null : row.durationMs };
+  }
+  function projectWindow(window) {
+    const isWorst = window.kind === 'worst-frame';
+    const gapStart = isWorst ? nonpositive(window.gapStartDtFromCenterMs) : null;
+    const previous = isWorst ? nonpositive(window.precedingFrameDtFromCenterMs) : null;
+    const startDt = Math.min(-250, gapStart ?? 0, previous ?? 0);
+    const endDt = Math.min(250, Math.max(0, numeric(window.endDtFromCenterMs) ?? 250));
+    const nearby = (row) => row && numeric(row.dtFromCenterMs) !== null &&
+      row.dtFromCenterMs >= startDt && row.dtFromCenterMs <= endDt;
+    const eventNearby = (row) => {
+      if (!row || !eventNames.has(row.name) || numeric(row.dtFromCenterMs) === null) return false;
+      const start = taskStart(row);
+      return start === null ? nearby(row) : start <= endDt && start + row.durationMs >= startDt;
+    };
+    return { kind: window.kind, ordinal: numeric(window.ordinal), atMs: numeric(window.atMs),
+      startDtFromCenterMs: startDt, endDtFromCenterMs: endDt,
       frameRowsOmitted: numeric(window.frameRowsOmitted), eventRowsOmitted: numeric(window.eventRowsOmitted),
-      ...(window.kind === 'worst-frame' ? { gapStartedBeforeSample: window.gapStartedBeforeSample === true } : {}),
+      ...(isWorst ? { gapStartedBeforeSample: window.gapStartedBeforeSample === true,
+        gapStartDtFromCenterMs: gapStart, precedingFrameDtFromCenterMs: previous } : {}),
       frames: (Array.isArray(window.frames) ? window.frames : []).filter(nearby).slice(0, 48)
         .map((row) => Object.fromEntries(frameKeys.map((key) => [key, numeric(row[key])]))),
       events: (Array.isArray(window.events) ? window.events : [])
-        .filter((row) => nearby(row) && eventNames.has(row.name)).slice(0, 32)
-        .map((row) => ({ dtFromCenterMs: row.dtFromCenterMs, name: row.name })),
-    })) };
+        .filter(eventNearby).slice(0, 32).map(projectEvent),
+    };
+  }
+  const span = numeric(source.traceClockReadSpanMs);
+  return { halfWidthMs: 250, traceClockReadSpanMs: span !== null && span >= 0 ? span : null,
+    windows: source.windows.filter((row) => kinds.has(row?.kind)).slice(0, 5).map(projectWindow) };
 }
 
 export function metricDistribution(values) {
@@ -290,6 +406,12 @@ export function summarizeFeedbackSample(raw, ice = []) {
     authorityReceiptToCallbackMs: metricDistribution(rows.map((row) => row.authorityToFeedbackMs)) });
   const path = (row) => ['host', 'srflx', 'prflx', 'relay'].includes(row) ? row : null;
   return { sampleStartedAtMs: Number.isFinite(raw.sampleStartedAtMs) ? raw.sampleStartedAtMs : null,
+    ...(Number.isFinite(raw.observationResetExcludedMs) ? {
+      observationResetExcludedMs: raw.observationResetExcludedMs,
+      observationBoundaryFramesExcluded: Number.isFinite(raw.observationBoundaryFramesExcluded)
+        ? raw.observationBoundaryFramesExcluded : null,
+    } : {}),
+    ...(Number.isFinite(raw.sampleEndedAtMs) ? { sampleEndedAtMs: raw.sampleEndedAtMs } : {}),
     durationMs: Number.isFinite(raw.durationMs) ? raw.durationMs : null,
     frameGapMs: metricDistribution(raw.gapsMs || []),
     timingWindows: sanitizeFeedbackTimingWindows(raw.timingWindows),
@@ -342,13 +464,20 @@ export async function selectNativeFeedbackAmmo(page, ammoSlot) {
   return ammoSlot;
 }
 
-export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot) {
+export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
+  { beforeSample, afterSampleStarted, afterSample } = {}) {
   const ice = [];
   try {
     await page.bringToFront();
     await page.waitForFunction(() => window.__DEBUG?.game?.preBattleS <= 0 && !window.__DEBUG?.game?.result);
     const selectedAmmoSlot = await selectNativeFeedbackAmmo(page, ammoSlot);
+    // Optional diagnostics exclude native readiness but precede every timed listener/input edge.
+    if (beforeSample) await beforeSample();
     await page.evaluate(startFeedbackSample);
+    if (afterSampleStarted) {
+      await afterSampleStarted();
+      await page.evaluate(resetFeedbackSampleBoundary);
+    }
     const started = performance.now();
     await page.keyboard.down('w');
     await page.keyboard.down('d');
@@ -364,6 +493,10 @@ export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot)
       }
       ice.push(...await page.evaluate(readFeedbackIceStats));
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    if (afterSample) {
+      const sampleEndedAtMs = await page.evaluate(endFeedbackSample);
+      await afterSample(sampleEndedAtMs);
     }
     const result = summarizeFeedbackSample(await page.evaluate(stopFeedbackSample), ice);
     if (result.firing.predicted.count !== result.firing.confirmed.predictionSuppressedCount) {
