@@ -982,6 +982,7 @@ export const enUS: Record<string, string> = {
   'hud.dmg.crit': 'CRIT',
   'hud.ammo.selectedAria': 'Selected ammunition: {name}, {count} rounds{empty}',
   'hud.ammo.selectAria': 'Select ammunition: {name}, {count} rounds{empty}',
+  'hud.ammo.switchingAria': 'Switching ammunition: {name}, {count} rounds{empty}',
   'hud.ammo.empty': ', empty',
   'hud.consumable.repair': 'Repair Kit',
   'hud.consumable.firstAid': 'First Aid Kit',

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   AUTOLOADER_HUD_SHELLS,
   HIT_CONFIRM_LIFETIME_S,
@@ -10,6 +11,9 @@ import {
   directionalHitValueVisible,
   hitConfirmVisualState,
   reloadHudFraction,
+  reloadHudCountdown,
+  reloadHudReadyPulse,
+  ammunitionSelectionLabel,
   resolveReticleAnchor,
 } from './hud.ts';
 
@@ -108,6 +112,30 @@ assert.deepEqual(
 );
 
 assert.equal(reloadHudFraction(null), 0, 'missing reload state has no dot sweep');
+assert.equal(reloadHudFraction({ t: 0, totalS: 3 }, true), 1,
+  'pending ammunition remains visually unavailable despite the old ready reload');
+assert.equal(reloadHudCountdown({ t: 0, totalS: 3 }, true), 'SWITCHING',
+  'pending confirmation must never paint a fabricated numeric countdown');
+assert.equal(reloadHudCountdown({ t: 2.8, totalS: 3 }), '2.8');
+assert.equal(reloadHudCountdown({ t: 10.2, totalS: 12 }), '11');
+assert.equal(reloadHudReadyPulse(true, false, true), false,
+  'pending selection suppresses the old channel ready edge');
+assert.equal(reloadHudReadyPulse(false, false), false,
+  'settling a pending selection alone does not invent a ready pulse');
+assert.equal(reloadHudReadyPulse(true, false), true,
+  'actual reload completion retains normal ready feedback');
+assert.equal(ammunitionSelectionLabel('ATGM', 4, true, true),
+  'Switching ammunition: ATGM, 4 rounds');
+assert.equal(ammunitionSelectionLabel('APFSDS', 24, false, true),
+  'Select ammunition: APFSDS, 24 rounds');
+assert.equal(ammunitionSelectionLabel('ATGM', 0, true),
+  'Selected ammunition: ATGM, 0 rounds, empty');
+const hudSource = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
+const pendingStatusCss = hudSource.match(/\.cot-ammo-switching\{([^}]+)\}/)?.[1] || '';
+assert.match(pendingStatusCss, /position:absolute;.*width:1px;height:1px;.*clip-path:inset\(50%\)/s,
+  'accessible pending status is visually clipped rather than a tag over the ATGM toggle');
+assert.doesNotMatch(pendingStatusCss, /bottom:|transform:|padding:/,
+  'pending status cannot add a floating label above the shared shell/special-action tray');
 assert.equal(
   reloadHudFraction({ t: 6, totalS: 8 }),
   0.75,

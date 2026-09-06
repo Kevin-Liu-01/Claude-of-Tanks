@@ -3,7 +3,7 @@ import { createContext, runInContext } from 'node:vm';
 import { metricDistribution, summarizeFeedbackSample, installFeedbackPeerObserver,
   readFeedbackIceStats, startFeedbackSample, stopFeedbackSample,
   sanitizeFeedbackTimingWindows, sanitizeFeedbackActions, selectNativeFeedbackAmmo,
-  measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
+  measureNativeFeedback, readFeedbackAmmoReadiness } from './multiplayer-feedback-probe.mjs';
 
 assert.deepEqual(metricDistribution([0, 10, 20, 30, null, NaN, Infinity, -1, '90']),
   { count: 4, p50: 10, p95: 30, p99: 30, max: 30 });
@@ -136,7 +136,8 @@ assert.deepEqual(JSON.parse(JSON.stringify(sample.actions[0])), {
   atMs: 0, ready: true, matched: true, ambiguous: false,
   eligibility: { locked: false, cursorAim: false, mouseFireLane: false,
     pointerLocked: false, focused: true, hidden: false, fireHeld: null, currentInputFire: false,
-    shellSlot: 0, requestedShellSlot: 1, ammo: 12, requestedAmmo: 4, reloadS: 0, inputPacketsSubmitted: 52 },
+    shellSlot: 0, requestedShellSlot: 1, authorityShellSlot: null, selectionPending: null,
+    ammo: 12, requestedAmmo: 4, reloadS: 0, inputPacketsSubmitted: 52 },
 }, 'reload-ready actions retain the observed blocked mouse lane and pending ammo switch');
 assert.equal(summary.firing.readyAttempts, 2, 'new diagnostics do not rewrite historical readiness');
 assert.equal(timerCleared, 1);
@@ -231,20 +232,31 @@ assert.doesNotMatch(JSON.stringify(summarizeFeedbackSample(crowded)), /PRIVATE/)
 
 const ammoCalls = [];
 let selectedSlot = 1;
+let authoritySlot = 1;
+let requestedSlot = 1;
 let ammoCount = 4;
 const ammoPage = { keyboard: { async press(key) { ammoCalls.push(['key', key]); } },
-  async waitForFunction(predicate, options, slot) {
-    ammoCalls.push(['wait', options.timeout, slot]);
-    const ready = runInContext(`(${predicate.toString()})(${slot})`, createContext({ window: {
-      __DEBUG: { game: { player: { combat: { shellSlot: selectedSlot, ammo: [0, ammoCount, 0] } } } },
+  async waitForFunction(predicate, options, args) {
+    ammoCalls.push(['wait', options.timeout, args]);
+    const ready = runInContext(`(${predicate.toString()})(${JSON.stringify(args)})`, createContext({ window: {
+      __DEBUG: { game: { player: { _networkShellSlot: authoritySlot, input: { shellSlot: requestedSlot },
+        combat: { shellSlot: selectedSlot, ammo: [0, ammoCount, 0] } } } },
     } }));
     if (!ready) throw new Error('PRIVATE_WAIT_TOKEN');
   } };
 assert.equal(await selectNativeFeedbackAmmo(ammoPage), 1);
 assert.deepEqual(ammoCalls, [], 'the default slot-one baseline adds no selection key or wait');
 assert.equal(await selectNativeFeedbackAmmo(ammoPage, 2), 2);
-assert.deepEqual(ammoCalls, [['key', '2'], ['wait', 10000, 2]],
-  'native numeric key selection precedes a bounded presented slot/ammo check, not authority readiness');
+assert.deepEqual(ammoCalls, [['key', '2'], ['wait', 10000, { ammoSlot: 2, requireReload: false }]],
+  'native numeric key selection waits for slot acknowledgement, but not completed reload');
+authoritySlot = 0;
+await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /feedback_ammo_selection_timeout/,
+  'an optimistic local slot change is not host acknowledgement');
+authoritySlot = 1;
+requestedSlot = 0;
+await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /feedback_ammo_selection_timeout/,
+  'a newer selection cannot be mistaken for the requested missile scenario');
+requestedSlot = 1;
 for (const badCount of [0, -1, Infinity, '4', undefined]) {
   ammoCount = badCount;
   await assert.rejects(selectNativeFeedbackAmmo(ammoPage, 2), /^Error: feedback_ammo_selection_timeout$/);
@@ -258,6 +270,27 @@ for (const slot of [0, 4, null, '2', Infinity, 1.5]) {
   await assert.rejects(selectNativeFeedbackAmmo(ammoPage, slot), TypeError);
 }
 assert.equal(ammoCalls.length, beforeInvalidAmmo, 'invalid slots never issue a key or touch the page');
+
+const readinessPlayer = { _networkShellSlot: 1, input: { shellSlot: 1 },
+  combat: { shellSlot: 1, ammo: [24, 4, 18], reload: { t: 3 }, destroyed: false } };
+const readinessContext = createContext({ window: { __DEBUG: { game: { player: readinessPlayer } } } });
+const ammoReady = (requireReload) => runInContext(`(${readFeedbackAmmoReadiness.toString()})` +
+  `(${JSON.stringify({ ammoSlot: 2, requireReload })})`, readinessContext);
+assert.equal(ammoReady(false), true, 'setup acknowledges the requested slot while it is still loading');
+assert.equal(ammoReady(true), false, 'a timed trigger waits for the real authoritative reload');
+readinessPlayer.combat.reload.t = 0;
+assert.equal(ammoReady(true), true);
+readinessPlayer._networkAmmoSelectionPending = true;
+assert.equal(ammoReady(false), false, 'equal slot values do not acknowledge an in-flight cancellation');
+readinessPlayer._networkAmmoSelectionPending = false;
+readinessPlayer.combat.ammo[1] = 0;
+assert.equal(ammoReady(true), false, 'empty missiles cannot cause fallback shells to count as missile shots');
+readinessPlayer.combat.ammo[1] = 4;
+readinessPlayer.combat.destroyed = true;
+assert.equal(ammoReady(true), false);
+readinessPlayer.combat.destroyed = false;
+readinessPlayer.combat.shellSlot = 0;
+assert.equal(ammoReady(true), false, 'reload-ready prior ammo is not eligible while the switch is pending');
 
 // Selection timeouts use the same finally cleanup as timed failures, even
 // though no sample listeners or held movement keys have been acquired yet.

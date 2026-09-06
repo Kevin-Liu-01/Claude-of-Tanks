@@ -96,6 +96,8 @@ export function startFeedbackSample() {
       // them from an observer; no non-mutating held-fire getter is exposed.
       fireHeld: null, currentInputFire: boolean(player?.input?.fire),
       shellSlot: numeric(combat?.shellSlot), requestedShellSlot: numeric(player?.input?.shellSlot),
+      authorityShellSlot: numeric(player?._networkShellSlot),
+      selectionPending: boolean(player?._networkAmmoSelectionPending),
       ammo: numeric(combat?.ammo?.[combat?.shellSlot]),
       requestedAmmo: numeric(combat?.ammo?.[player?.input?.shellSlot]),
       reloadS: numeric(combat?.reload?.t),
@@ -262,8 +264,8 @@ export function sanitizeFeedbackActions(source) {
   const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
   const boolean = (value) => typeof value === 'boolean' ? value : null;
   const booleans = ['locked', 'cursorAim', 'mouseFireLane', 'pointerLocked', 'focused',
-    'hidden', 'fireHeld', 'currentInputFire'];
-  const numbers = ['shellSlot', 'requestedShellSlot', 'ammo', 'requestedAmmo', 'reloadS', 'inputPacketsSubmitted'];
+    'hidden', 'fireHeld', 'currentInputFire', 'selectionPending'];
+  const numbers = ['shellSlot', 'requestedShellSlot', 'authorityShellSlot', 'ammo', 'requestedAmmo', 'reloadS', 'inputPacketsSubmitted'];
   return (Array.isArray(source) ? source : []).slice(0, 128).map((action) => ({
     atMs: numeric(action?.atMs), ready: boolean(action?.ready), matched: boolean(action?.matched),
     ambiguous: boolean(action?.ambiguous), eligibility: {
@@ -313,6 +315,17 @@ export function summarizeFeedbackSample(raw, ice = []) {
     observerFailures: Number.isFinite(raw.observerFailures) ? raw.observerFailures : null };
 }
 
+/** Read-only scenario guard: an optimistic card change is not an acknowledged load. */
+export function readFeedbackAmmoReadiness({ ammoSlot, requireReload }) {
+  const player = window.__DEBUG?.game?.player;
+  const combat = player?.combat;
+  const slot = ammoSlot - 1;
+  const count = combat?.ammo?.[slot];
+  return combat?.shellSlot === slot && player?.input?.shellSlot === slot &&
+    player?._networkShellSlot === slot && player?._networkAmmoSelectionPending !== true && !combat?.destroyed &&
+    Number.isFinite(count) && count > 0 && (!requireReload || combat.reload?.t <= 0);
+}
+
 /** Optional trusted key selection before the timed sample; no authority writes. */
 export async function selectNativeFeedbackAmmo(page, ammoSlot) {
   if (ammoSlot === undefined) return 1; // Preserve the original fresh-profile slot-one path.
@@ -321,11 +334,8 @@ export async function selectNativeFeedbackAmmo(page, ammoSlot) {
   }
   try {
     await page.keyboard.press(String(ammoSlot));
-    await page.waitForFunction((slot) => {
-      const combat = window.__DEBUG?.game?.player?.combat;
-      const count = combat?.ammo?.[slot - 1];
-      return combat?.shellSlot === slot - 1 && Number.isFinite(count) && count > 0;
-    }, { timeout: 10_000 }, ammoSlot);
+    await page.waitForFunction(readFeedbackAmmoReadiness, { timeout: 10_000 },
+      { ammoSlot, requireReload: false });
   } catch (_) {
     throw new Error('feedback_ammo_selection_timeout');
   }
@@ -343,8 +353,8 @@ export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot)
     await page.keyboard.down('w');
     await page.keyboard.down('d');
     while (performance.now() - started < durationMs) {
-      const ready = await page.evaluate(() => window.__DEBUG.game.player?.combat?.reload?.t <= 0 &&
-        !window.__DEBUG.game.player?.combat?.destroyed);
+      const ready = await page.evaluate(readFeedbackAmmoReadiness,
+        { ammoSlot: selectedAmmoSlot, requireReload: true });
       if (ready) {
         // Trusted canvas input: no debug fire, reload, ammo or authority mutation.
         const canvas = await page.$('canvas');

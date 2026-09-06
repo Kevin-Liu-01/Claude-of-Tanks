@@ -14,6 +14,7 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
+import { LocalAmmoSelectionIntent } from './localAmmoSelectionIntent.ts';
 import { LocalShotPrediction, type ShotPredictionContext, type ShotPresentationInput,
   type LocalShotPresentationFrame } from './localShotPrediction.ts';
 import { applyPredictionAuthorityState } from './predictionAuthorityState.ts';
@@ -92,6 +93,7 @@ interface BridgeEntity extends PredictionSimEntity {
   _networkDestroyPop?: boolean;
   _networkEraSpent?: Set<string>;
   _networkShellSlot?: number;
+  _networkAmmoSelectionPending?: boolean;
   _lastX: number;
   _lastZ: number;
 }
@@ -381,6 +383,12 @@ export function createBrowserBattleBridge<
   > | null = null;
   const destructionCause = new Map<string, string>();
   const shotPrediction = new LocalShotPrediction();
+  const ammoSelection = new LocalAmmoSelectionIntent();
+  function resetAmmoSelection(): void {
+    ammoSelection.reset();
+    const own = entities.get(id);
+    if (own) own._networkAmmoSelectionPending = false;
+  }
   let shotLifeAlive: boolean | null = null;
   const nearbyPredictionObstacles: CollisionObstacle[] = [];
   let appliedDestructibleRevision = -1;
@@ -633,6 +641,8 @@ export function createBrowserBattleBridge<
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
     immediateAuthority: ImmediateAuthoritySnapshot | null = null,
+    sampleTick = 0,
+    sampleAckInputSeq: number | null = null,
   ): void {
     entity.networkTeam = snapshot.team;
     if (!spectator && entity.id === id) viewerTeam = snapshot.team;
@@ -640,7 +650,10 @@ export function createBrowserBattleBridge<
     entity.team = snapshot.team === referenceTeam ? 'player' : 'enemy';
     entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
-    const destroyed = updateEntityCombat(entity, snapshot);
+    const destroyed = updateEntityCombat(entity,
+      entity.isPlayer && immediateAuthority ? immediateAuthority.entity : snapshot,
+      immediateAuthority?.tick ?? sampleTick,
+      immediateAuthority ? immediateAuthority.ackInputSeq : sampleAckInputSeq);
     if (entity.isPlayer && immediateAuthority) {
       // Use the same newest authority tick as the local pose, not the remote
       // interpolation buffer's delayed metadata. Repaired tracks and game-mode
@@ -658,6 +671,8 @@ export function createBrowserBattleBridge<
   function updateEntityCombat(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
+    authorityTick: number,
+    ackInputSeq: number | null,
   ): boolean {
     const { combat } = entity;
     combat.hp = snapshot.hp;
@@ -677,11 +692,6 @@ export function createBrowserBattleBridge<
     gunReload.t = gunReloadS;
     gunReload.totalS = Math.max(gunReloadTotalS || 0, gunReloadS);
     gunReload.kind = snapshot.gunReloadKind || snapshot.reloadKind || 'ready';
-    const priorAuthorityShellSlot = entity._networkShellSlot;
-    const requestedShellSlot = entity.input.shellSlot;
-    const hasPendingLocalShellSelection = entity.isPlayer &&
-      priorAuthorityShellSlot != null &&
-      requestedShellSlot !== priorAuthorityShellSlot;
     combat.shellSlot = snapshot.shellSlot;
     if (combat.reloadChannels?.[snapshot.shellSlot]) {
       combat.reload = combat.reloadChannels[snapshot.shellSlot];
@@ -696,13 +706,13 @@ export function createBrowserBattleBridge<
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
-    // The local input slot is player intent, not presentation state. Preserve
-    // a selection that diverged from the last authoritative snapshot until a
-    // newer input frame reaches the host. Otherwise one delayed snapshot can
-    // erase the edge before upload and strand firing on a depleted channel.
-    // Initial snapshots and server-side resets still seed the input whenever
-    // there is no outstanding local request.
-    if (!hasPendingLocalShellSelection) entity.input.shellSlot = snapshot.shellSlot;
+    // Own selection settles only against the input receipt paired with this
+    // authority state, never an interpolated ACK or equality of slot values.
+    entity.input.shellSlot = entity.isPlayer
+      ? ammoSelection.reconcile(entity.input.shellSlot, snapshot.shellSlot,
+        ackInputSeq, authorityTick, destroyed)
+      : snapshot.shellSlot;
+    entity._networkAmmoSelectionPending = entity.isPlayer && ammoSelection.pending;
     entity._networkShellSlot = snapshot.shellSlot;
     entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
     entity.state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
@@ -1145,6 +1155,7 @@ export function createBrowserBattleBridge<
     if (round > presentationRound) {
       destructionCause.clear();
       shotPrediction.reset();
+      resetAmmoSelection();
       shotLifeAlive = null;
       backgroundAliveThroughTime.clear();
       presentationRound = round;
@@ -1246,6 +1257,7 @@ export function createBrowserBattleBridge<
     if (round > presentationRound) {
       destructionCause.clear();
       shotPrediction.reset();
+      resetAmmoSelection();
       shotLifeAlive = null;
       backgroundAliveThroughTime.clear();
       presentationRound = round;
@@ -1288,6 +1300,8 @@ export function createBrowserBattleBridge<
       ensureEntity(entry),
       entry,
       entry.id === id ? snapshot.immediateAuthority : null,
+      snapshot.tick,
+      snapshot.ackInputSeq ?? null,
     );
     classifyAndHideEntities();
     if (!mounted) mount();
@@ -1380,8 +1394,13 @@ export function createBrowserBattleBridge<
     inputSeq: number,
     presentationElapsedS = elapsedS,
   ): boolean {
-    if (spectator || snapshotPhase !== 'playing') return false;
+    if (spectator) return false;
     const own = entities.get(id);
+    if (own && input && !own.combat.destroyed) {
+      ammoSelection.recordSubmitted(input.shellSlot, inputSeq, snapshotPhase === 'playing');
+      own._networkAmmoSelectionPending = ammoSelection.pending;
+    }
+    if (snapshotPhase !== 'playing') return false;
     return own?.predictor?.recordInput(
       input,
       elapsedS,
@@ -1410,13 +1429,17 @@ export function createBrowserBattleBridge<
 
   function dispose(): void {
     unmount();
-    for (const entity of entities.values()) entity.visual.dispose();
+    for (const entity of entities.values()) {
+      entity._networkAmmoSelectionPending = false;
+      entity.visual.dispose();
+    }
     entities.clear();
     roster.length = 0;
     visibleRoster.length = 0;
     liveShells.length = 0;
     shellById.clear();
     shotPrediction.reset();
+    resetAmmoSelection();
     destructionCause.clear();
     backgroundAliveThroughTime.clear();
     presentationEvents.clear();

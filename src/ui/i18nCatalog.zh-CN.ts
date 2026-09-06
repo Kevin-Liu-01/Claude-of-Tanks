@@ -973,6 +973,7 @@ export const zhCN: Record<string, string> = {
   'hud.dmg.crit': '暴击',
   'hud.ammo.selectedAria': '已选弹药：{name}，{count} 发{empty}',
   'hud.ammo.selectAria': '选择弹药：{name}，{count} 发{empty}',
+  'hud.ammo.switchingAria': '切换弹药中：{name}，{count} 发{empty}',
   'hud.ammo.empty': '，已用完',
   'hud.consumable.repair': '维修包',
   'hud.consumable.firstAid': '急救包',
