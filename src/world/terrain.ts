@@ -1508,7 +1508,7 @@ function makeDirtLayer(
 // dark meandering pressure-crack lines, faint wind-blown snow drift streaks.
 // Roughness (packed in alpha) is LOW on clear ice, high on the drifts, so the
 // sheet picks up sun/sky specular and reads as ice, not mud.
-function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
+export function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x1cE5);
@@ -1516,17 +1516,20 @@ function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
   c.width = c.height = s;
   const ctx = require2DContext(c, { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
+  const hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
     for (let x = 0; x < s; x++) {
       const u = x / s, j = (y * s + x) * 4;
-      // r6: depth field pushed to LOWER frequency (2/5 was 3/7, fine 23 -> 11)
-      // — the old texel-scale variation resolved as salt-speckle from the
-      // establishing camera; a sheet needs broad clear-ice fields
-      const depth = torusNoise(noi, u, v, 2, 2, 9) * 0.6 + torusNoise(noi, u, v, 5, 5, 41) * 0.4;
-      const fine = torusNoise(noi, u, v, 11, 11, 77) * 0.5 + 0.5;
+      // Broad clear-ice fields. Torus frequency scales both circle angle and
+      // radius, so the former 5/11 octaves still produced texel-scale mottling.
+      const depth = torusNoise(noi, u, v, 1, 1, 9) * 0.6 + torusNoise(noi, u, v, 2, 2, 41) * 0.4;
+      const fine = torusNoise(noi, u, v, 3, 3, 77) * 0.5 + 0.5;
       const d01 = depth * 0.5 + 0.5;
       const deep = smoothstep(0.45, 0.88, 1 - d01); // dark water under thin ice
+      // Refrozen pigment is not relief. Reuse the already sampled broad
+      // field so white seams never emboss an etched normal-map network.
+      hgt[y * s + x] = 0.5 + depth * 0.12;
       // r5: GRAY-WHITE ice, not swimming-pool blue. Real lake ice under an
       // overcast sky is a desaturated gray sheet with faint blue-green depth
       // cues — the old s=0.15..0.25 base (then squared by the shader's
@@ -1553,14 +1556,37 @@ function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
     }
   }
   ctx.putImageData(base, 0, 0);
-  // pressure cracks: long forking dark polylines with a bright refrozen edge
+  // Broad, feathered wind-swept fields leave quiet clear ice between them.
+  // All random choices precede wrapping so opposite tile edges agree.
+  const unit = s / 256;
+  for (let k = 0; k < 10; k++) {
+    const x = rng() * s, y = rng() * s;
+    const rx = (38 + rng() * 38) * unit, ry = (10 + rng() * 14) * unit;
+    ctx.globalAlpha = 0.22 + rng() * 0.20;
+    drawWrapped(ctx, s, () => {
+      ctx.translate(x, y);
+      ctx.rotate(0.6);
+      ctx.scale(rx, ry);
+      const drift = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      drift.addColorStop(0, 'rgba(232,238,242,1)');
+      drift.addColorStop(1, 'rgba(232,238,242,0)');
+      ctx.fillStyle = drift;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  // Three dominant stress seams, each with at most one short secondary fork.
+  // This same atlas is sampled at 5 m and 75 m: many recursively branching
+  // strokes became a uniformly scratched print at both scales.
   ctx.lineCap = 'round';
   function crack(x: number, y: number, a: number, segs: number, w: number): void {
     const ptsX = [x], ptsY = [y];
     for (let q = 0; q < segs; q++) {
-      a += (rng() - 0.5) * 0.9;
-      x += Math.cos(a) * (14 + rng() * 22);
-      y += Math.sin(a) * (14 + rng() * 22);
+      a += (rng() - 0.5) * 0.65;
+      const step = (22 + rng() * 14) * unit;
+      x += Math.cos(a) * step;
+      y += Math.sin(a) * step;
       ptsX.push(x); ptsY.push(y);
     }
     drawWrapped(ctx, s, () => {
@@ -1568,50 +1594,35 @@ function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
       // pressure cracks read as white veins across darker ice (the old dark-
       // core version read as mud cracks). Both desaturated (r5).
       ctx.strokeStyle = _css(0.58, 0.10, 0.36);
-      ctx.lineWidth = w + 2.2;
-      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = w + 1.8 * unit;
+      ctx.globalAlpha = 0.30;
       ctx.beginPath();
       ctx.moveTo(ptsX[0], ptsY[0]);
       for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
       ctx.stroke();
-      ctx.strokeStyle = _css(0.575, 0.05, 0.93);
+      ctx.strokeStyle = _css(0.575, 0.05, 0.90);
       ctx.lineWidth = w;
-      ctx.globalAlpha = 0.95;
+      ctx.globalAlpha = 0.86;
       ctx.beginPath();
       ctx.moveTo(ptsX[0], ptsY[0]);
       for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
       ctx.stroke();
       ctx.globalAlpha = 1;
     });
-    if (segs > 3 && rng() < 0.7) crack(ptsX[2], ptsY[2], a + (rng() < 0.5 ? 0.9 : -0.9), segs - 2, w * 0.7);
+    if (segs > 3 && rng() < 0.35) {
+      const heading = Math.atan2(ptsY[2] - ptsY[1], ptsX[2] - ptsX[1]);
+      crack(ptsX[2], ptsY[2], heading + (rng() < 0.5 ? 0.8 : -0.8), 2, w * 0.45);
+    }
   }
-  // r6: more, WIDER cracks — at the 5 m detail tile the old 1.4 px veins
-  // mip away by 100 m; 2.2-3.8 px survive into the macro re-projection
-  for (let k = 0; k < 13; k++) crack(rng() * s, rng() * s, rng() * Math.PI * 2, 5 + (rng() * 4) | 0, 2.2 + rng() * 1.6);
-  // wind-blown snow drift streaks, one global direction
-  const dir = 0.6;
-  for (let k = 0; k < 60; k++) {
-    const x = rng() * s, y = rng() * s;
-    const len = 30 + rng() * 90, wdt = 2 + rng() * 7;
-    ctx.globalAlpha = 0.10 + rng() * 0.22;
-    ctx.strokeStyle = _css(0.58, 0.04, 0.88);
-    ctx.lineWidth = wdt;
-    drawWrapped(ctx, s, () => {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(
-        x + Math.cos(dir) * len * 0.5, y + Math.sin(dir) * len * 0.5 + (rng() - 0.5) * 8,
-        x + Math.cos(dir) * len, y + Math.sin(dir) * len);
-      ctx.stroke();
-    });
+  for (let k = 0; k < 3; k++) {
+    crack(((k + 0.2 + rng() * 0.5) / 3) * s, rng() * s,
+      k * 2.1 + rng() * 0.6, 6, (2.6 + rng() * 0.8) * unit);
   }
   ctx.globalAlpha = 1;
   const out = ctx.getImageData(0, 0, s, s);
   const px = new Uint8ClampedArray(out.data);
-  const hgt = new Float32Array(s * s);
   for (let i = 0; i < s * s; i++) {
     const l = (px[i * 4] * 0.3 + px[i * 4 + 1] * 0.45 + px[i * 4 + 2] * 0.25) / 255;
-    hgt[i] = l * 0.5 + 0.25;
     // bright texels = snow drift (rough); dark clear ice = glossy
     const snowy = smoothstep(0.72, 0.9, l);
     px[i * 4 + 3] = clamp(0.10 + snowy * 0.72, 0.05, 1) * 255;
