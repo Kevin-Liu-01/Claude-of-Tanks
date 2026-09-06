@@ -1,0 +1,27 @@
+{
+  "schemaVersion":1,
+  "tankId":"t90a_x",
+  "sourceArchiveSha256":"99da2b1357a199e4fdbb2596de984549e23157a34f04a2fe6149a06b3aaf83ab",
+  "purpose":"Independent local-source cap-center and fan-direction measurements; no source topology or mesh buffers",
+  "frame":"Canonical source X right, Y up, Z forward, metres",
+  "caps":[
+    {"sourceNode":"smokef-model","front":[-1.50901263,1.88624407,-0.03201086],"back":[-1.39151880,1.79718905,-0.27608662]},
+    {"sourceNode":"smoke2f-model","front":[-1.37546399,1.89588720,0.05184682],"back":[-1.27532771,1.80349936,-0.19950995]},
+    {"sourceNode":"smokee-model","front":[-1.47226736,2.08357266,0.02760685],"back":[-1.40442716,1.98636330,-0.23373426]},
+    {"sourceNode":"smoke2e-model","front":[-1.32802664,2.08304821,0.06361537],"back":[-1.27419435,1.98421476,-0.20073546]},
+    {"sourceNode":"smoked-model","front":[-1.10102432,2.19751378,0.25438123],"back":[-1.12156243,2.11461677,-0.02119749]},
+    {"sourceNode":"smoke2d-model","front":[-0.96182507,2.19883329,0.23525959],"back":[-0.99440866,2.11571638,-0.03894944]},
+    {"sourceNode":"smokec-model","front":[1.59398992,1.74599647,0.06687740],"back":[1.46470452,1.66765033,-0.17460315]},
+    {"sourceNode":"smoke2c-model","front":[1.44377727,1.75159620,0.14819394],"back":[1.32389809,1.67226888,-0.09835087]},
+    {"sourceNode":"smokeb-model","front":[1.58196128,1.90960796,0.14129141],"back":[1.49114693,1.82794601,-0.11815737]},
+    {"sourceNode":"smoke2b-model","front":[1.42824667,1.91887888,0.19896271],"back":[1.34893633,1.83659098,-0.06450503]},
+    {"sourceNode":"smoke-model","front":[1.49637440,2.08100162,0.23641302],"back":[1.46377388,1.99790169,-0.03781403]},
+    {"sourceNode":"smoke2-model","front":[1.31535452,2.08164453,0.23821524],"back":[1.32366114,1.99852760,-0.03803030]}
+  ],
+  "construction":"Original native round bodies and coaxial caps with individual measured directions, source-length envelope and shallow axis-aligned underside carriers. All twelve belong to the turret rig.",
+  "simplifications":[
+    "Source six-sided radial shells use smoother original 16-sided round sections at 46–46.5 mm radius.",
+    "Submillimetre source normalization anisotropy is simplified into a circular axial section; no source sampled contour is reproduced.",
+    "Per-tube fasteners and narrow stamped carrier details are simplified while existing turret backing supports remain."
+  ]
+}

@@ -20,6 +20,7 @@ const option = (name, fallback = null) => {
 const requested = option('ids')?.split(',').map((id) => id.trim()).filter(Boolean) || null;
 const shotCount = Math.max(0, Number(option('shots', '0')) || 0);
 const BOARD = args.includes('--board'); // per-id shaded + articulation boards
+const NEUTRAL_BOARD = args.includes('--neutral-board'); // equal clay shading, no camouflage
 const COMPONENTS = args.includes('--components'); // expanded hull/turret mask diagnostics
 const CHECK = args.includes('--check');
 const PASS = 90;
@@ -79,7 +80,7 @@ try {
       if (runtimeError) throw new Error(runtimeError);
       const row = await page.evaluate('window.__FIDELITY_REPORT');
       const errors = browserErrors.slice(errorStart);
-      if (errors.length) row.errors = errors;
+      if (errors.length) { row.errors = errors; row.gatePassed = false; }
       rows.push(row);
       console.log(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id.padEnd(22)} ` +
         `${row.score.toFixed(1)}  H${metric(row.scores.hull)} T${metric(row.scores.turret)} ` +
@@ -107,7 +108,7 @@ try {
       await page.screenshot({ path:path.join(shotDir,`${row.id}.png`), fullPage:true });
     }
   }
-  if (BOARD) {
+  if (BOARD || NEUTRAL_BOARD) {
     // BUILD-STANDARD evidence boards: shaded pair + articulation strip +
     // 24-frame turntable, captured at native canvas resolution (wide viewport
     // so the page never downscales the strips).
@@ -116,9 +117,9 @@ try {
     await page.setViewport({ width:2520, height:1200, deviceScaleFactor:1 });
     for (const row of rows) {
       if (row.error) continue;
-      await page.goto(`${urlFor(row.id)}&board=1`, { waitUntil:'domcontentloaded', timeout:120000 });
+      await page.goto(`${urlFor(row.id)}&board=1${NEUTRAL_BOARD ? '&neutralBoard=1' : ''}`, { waitUntil:'domcontentloaded', timeout:120000 });
       await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:120000, polling:60 });
-      await page.screenshot({ path:path.join(boardDir,`${row.id}.png`), fullPage:true });
+      await page.screenshot({ path:path.join(boardDir,`${row.id}${NEUTRAL_BOARD ? '-neutral' : ''}.png`), fullPage:true });
       console.log(`[board] ${row.id}`);
     }
   }

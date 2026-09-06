@@ -28,11 +28,17 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
 import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
-import { requiredMinimumForQualityBar } from '/tools/geometry-gate-policy.mjs';
+import { requiredMinimumForQualityBar, evaluateFidelityGate, evaluateGeometryGate } from '/tools/geometry-gate-policy.mjs';
+import { T90_X_REFERENCE_OVERRIDES } from '/tools/t90-x-reference-overrides.ts';
+import { LEOPARD_X_REFERENCE_OVERRIDES } from '/tools/leopard-x-reference-overrides.ts';
+import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts';
+import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
+import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -50,6 +56,15 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // registered by the public build; the generated procedural code stays an
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
+  ...T90_X_REFERENCE_OVERRIDES,
+  ...LEOPARD_X_REFERENCE_OVERRIDES,
+  ...WEST_X_REFERENCE_OVERRIDES,
+  // Owner T-14 material meshes mix hull/turret equipment and cannon/roof MG.
+  // Neutral whole-source comparison is honest; invented component masks are not.
+  t14_x: { source:'glb', qualityBar:'exemplar', glb:{
+    path:'/models/community-candidates/t14_x_source.glb', fixedMount:true,
+    componentMasks:false, paintUntextured:true,
+  } },
   // Owner-authoritative STB-1 print (2026-08-16). The source exports a clean
   // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
   // hull/turret/whole comparisons strict and disable only the dishonest
@@ -650,6 +665,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
+// Certified local oracles already share a measured metre frame. Applying a
+// second width fit in ordinary fidelity let a 4 mm paint decal rescale the
+// whole vehicle, unlike the geometry check. Both modes must use the same
+// hash-verified root and articulation datums; unverified references retain
+// the established normalization path.
+const sourceWorldCertificate = SOURCE_WORLD_FRAMES[id] || null;
 const preservation = validatedPreservationOracle(source, id);
 window.__FIDELITY_SOURCE_PATH = source?.glb?.path || null;
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
@@ -713,7 +734,14 @@ const effectivelyVisible = (o) => {
   for (let p=o; p; p=p.parent) if (!p.visible) return false;
   return true;
 };
-const isShadowHelper = (o) => /shadow/i.test(o.name || '');
+function isShadowHelper(o) {
+  if (o.userData?.shadowOnly) return true;
+  // These visible, color-writing rings/annuli are the actual cannon mouth.
+  // Their legacy "ShadowFallback" name describes the recessed bore, not a
+  // scene shadow proxy. Dropping them shortens the measured barrel.
+  if (o.userData?.cannonBoreFallbackPart || o.userData?.cannonBorePrimaryPart) return false;
+  return /shadow/i.test(o.name || '');
+}
 const swapped = (visual) => {
   let yes = false;
   visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
@@ -792,7 +820,7 @@ const useHullLengthAnchor=source?.glb?.fidelityScaleAnchor === 'hullLength';
 const refAnchor=useHullLengthAnchor ? hullLength(reference) : refWidth;
 const procAnchor=useHullLengthAnchor ? hullLength(procedural) : procWidth;
 const targetAnchor=useHullLengthAnchor ? spec.dims.hullLengthM : spec.dims.widthM;
-if (!preservation) {
+if (!preservation && !sourceWorldCertificate) {
   reference.root.scale.multiplyScalar(safeScale(targetAnchor,refAnchor));
   procedural.root.scale.multiplyScalar(safeScale(targetAnchor,procAnchor));
 }
@@ -815,6 +843,17 @@ if (refGunNode && refTurretNode) {
 }
 reference.root.updateMatrixWorld(true);
 procedural.root.updateMatrixWorld(true);
+let sourceWorldRegistration = null;
+if (sourceWorldCertificate) {
+  const frame = visual => {
+    const datum = name => visual.root.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).toArray();
+    return { rootMatrix:visual.root.matrixWorld.toArray(), hull:datum('rig_hull'),
+      turret:datum('rig_turret'), gun:datum('rig_gun') };
+  };
+  sourceWorldRegistration = validateSourceWorldFrame(sourceWorldCertificate,
+    await hashLocalOracle(source.glb.path), {reference:frame(reference),procedural:frame(procedural)});
+  if (!sourceWorldRegistration.passed) failFidelity(sourceWorldRegistration.failures.join('; '));
+}
 referenceBox.copy(visibleBox(reference.root));
 proceduralBox.copy(visibleBox(procedural.root));
 const sharedBox = referenceBox.clone().union(proceduralBox);
@@ -1165,11 +1204,6 @@ for (const [name,dir] of Object.entries(ANGLES)) {
   rawDirectTurretMasks[name]={ref:refTurret,proc:procTurret};
   rawMasks[name]={refWhole,procWhole,refHull,procHull};
   overlayCanvas(name,refWhole,procWhole,overall);
-  if (params.get('components')) {
-    overlayCanvas(`${name} hull`,refHull,procHull,hullRows[name]);
-    overlayCanvas(`${name} turret`,subtract(refWhole,refHull),subtract(procWhole,procHull),upperRows[name]);
-    overlayCanvas(`${name} direct turret`,refTurret,procTurret,directTurretRows[name]);
-  }
 }
 
 // A number of recovered GLBs are intentionally kept as one fused mesh. They
@@ -1235,6 +1269,17 @@ const hullScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>hullR
 // complete assembly rather than only whichever fragments happen to be visible.
 const turretComponentMasksAvailable=componentMasksAvailable && source?.glb?.turretComponentMasks !== false;
 const turretScore=turretComponentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>directTurretRows[name].score)) : null;
+// Do not label a fused source's nonexistent component as a zero-score
+// comparison. Raw masks stay in diagnostics; the evidence board presents
+// only certified ownership pairs, matching the unchanged metric policy.
+if (params.get('components')) for (const name of Object.keys(ANGLES)) {
+  const masks = rawMasks[name];
+  if (componentMasksAvailable) overlayCanvas(`${name} hull`,masks.refHull,masks.procHull,hullRows[name]);
+  if (turretComponentMasksAvailable) {
+    const direct = rawDirectTurretMasks[name];
+    overlayCanvas(`${name} direct turret`,direct.ref,direct.proc,directTurretRows[name]);
+  }
+}
 const gunScore=gunMetric?.score ?? null;
 const tracksScore=trackMetric.score;
 const weighted=[
@@ -1244,7 +1289,8 @@ const totalScore=weighted.reduce((sum,[value,weight])=>sum+value*weight,0)/
   weighted.reduce((sum,[,weight])=>sum+weight,0);
 const rounded=(v)=>Number(v.toFixed(2));
 const nullableRounded=(v)=>Number.isFinite(v)?rounded(v):null;
-const scores={overall:nullableRounded(overallScore),hull:nullableRounded(hullScore),turret:nullableRounded(turretScore),gun:nullableRounded(gunScore),tracks:rounded(tracksScore)};
+const rawScores={overall:overallScore,hull:hullScore,turret:turretScore,gun:gunScore,tracks:tracksScore};
+const scores=Object.fromEntries(Object.entries(rawScores).map(([name,value])=>[name,nullableRounded(value)]));
 // A damaged/fused upper export may still be an authoritative hull oracle.
 // When that limitation is explicitly documented, enforce the per-view law on
 // every valid hull view instead of rewarding a procedural model for copying a
@@ -1255,7 +1301,15 @@ const minView=Math.min(...Object.values(scoredAngleRows).map((row)=>row.score));
 // AbramsX / Challenger 2 / Leclerc-class work.  It is intentionally stricter
 // than the legacy fleet floor and cannot be averaged away by one strong view.
 const requiredFidelity=requiredMinimumForQualityBar(source?.qualityBar);
-const gatePassed=totalScore>=requiredFidelity && minView>=requiredFidelity;
+const fidelityGate=evaluateFidelityGate({ qualityBar:source?.qualityBar,
+  totalScore, wholeScores:Object.fromEntries(Object.entries(scoredAngleRows).map(([name,row])=>[name,row.score])),
+  componentScores:rawScores,
+  componentViews:componentMasksAvailable ? {
+    hull:Object.fromEntries(COMPONENT_VIEWS.map(name=>[name,hullRows[name].score])),
+    turret:turretComponentMasksAvailable ? Object.fromEntries(COMPONENT_VIEWS.map(name=>[name,directTurretRows[name].score])) : null,
+  } : {},
+});
+const gatePassed=fidelityGate.gatePassed;
 document.querySelector('#score').textContent=totalScore.toFixed(1);
 for (const [name,value] of Object.entries(scores)) {
   const div=document.createElement('div'); div.className='metric';
@@ -1267,8 +1321,14 @@ window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
   comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
   ...(preservation ? { preservationBaseline:preservation } : {}),
-  fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
+  // variantOf is combat lineage, not evidence of visual-builder delegation.
+  fallback:spec.publicVisualFallback || spec.visualBase || id,
   score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),requiredMinimum:requiredFidelity,qualityBar:source?.qualityBar||'fleet',gatePassed,
+  gateFailures:fidelityGate.failures,
+  rawScore:totalScore,rawScores,rawMinView:minView,
+  registration:sourceWorldRegistration || {mode:useHullLengthAnchor ? 'legacy-hull-length-normalization' : 'legacy-width-normalization'},
+  normalizationAnchors:{applied:!preservation && !sourceWorldCertificate,
+    target:targetAnchor,referenceRaw:refAnchor,proceduralRaw:procAnchor},
   angles:Object.fromEntries(Object.entries(scoredAngleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   rawWholeAngles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   // Retain the raw silhouette receipts as well as the compact score table.
@@ -1320,7 +1380,9 @@ window.__FIDELITY_REPORT={
     ) : null,
   },
   boxes:{
-    normalization:{ anchor:preservation?'none (immutable historical metres)':useHullLengthAnchor?'hullLength':'width', target:preservation?null:rounded(targetAnchor),
+    normalization:{ applied:!preservation && !sourceWorldCertificate,
+      anchor:preservation?'none (immutable historical metres)':sourceWorldCertificate?'none (certified source metres)':useHullLengthAnchor?'hullLength':'width',
+      target:preservation||sourceWorldCertificate?null:rounded(targetAnchor),
       referenceRaw:rounded(refAnchor), proceduralRaw:rounded(procAnchor) },
     reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),
     procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded),
@@ -1340,7 +1402,13 @@ window.__FIDELITY_REPORT={
 // pair, articulation strip, procedural turntable. Rendered strictly AFTER
 // scoring so pose/visibility mutations can never contaminate the masks.
 if (params.get('board')) {
-  scene.overrideMaterial = null;
+  // This equal-clay diagnostic is deliberately applied only after masks and
+  // scores are finalized. Albedo, texture detail and instanced tread tints
+  // cannot disguise mismatched physical planes in this optional board.
+  const neutralBoard = params.has('neutralBoard');
+  scene.overrideMaterial = neutralBoard ? new THREE.MeshStandardMaterial({
+    color: 0xb8b8ac, roughness: .85, metalness: 0, side: THREE.DoubleSide,
+  }) : null;
   renderer.setClearColor(0x151b20, 1);
   const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
   const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
@@ -1356,7 +1424,8 @@ if (params.get('board')) {
     setPart(visual.root, 'whole');
     renderer.setSize(px, px, false);
     renderer.setRenderTarget(null);
-    renderer.render(scene, camera);
+    if (neutralBoard) renderGeometryOnly(camera);
+    else renderer.render(scene, camera);
     ctx2d.drawImage(renderer.domElement, dx, dy, px, px);
   };
   // Locked mild-perspective beauty camera. PER-MODEL framing: the two roots
@@ -1365,15 +1434,13 @@ if (params.get('board')) {
   // — the shaded pairs were judged scale-mismatched (wave-2 finding). Each
   // cell now frames its own subject with identical fov/direction/fill.
   const heroCameraFor = (root) => {
-    const box = visibleBox(root);
-    const c = box.getCenter(new THREE.Vector3());
-    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
-    const radius = box.getSize(new THREE.Vector3()).length() * 1.06;
-    cam.position.copy(c).addScaledVector(new THREE.Vector3(0.75, 0.32, 1).normalize(), radius);
-    cam.lookAt(c);
-    cam.updateProjectionMatrix();
-    cam.updateMatrixWorld(true);
-    return cam;
+    // The final score pass may leave only a component visible. Restore the
+    // full subject before measuring, otherwise the resulting beauty camera
+    // frames that component and clips the bow/cannon from the evidence board.
+    root.visible = true;
+    setPart(root, 'whole');
+    root.updateMatrixWorld(true);
+    return fitBoardCamera(root, object => isRenderNode(object) && baseVisible.get(object));
   };
   const addBoard = (title, canvas) => {
     canvas.style.width = `${canvas.width}px`;
@@ -1392,7 +1459,7 @@ if (params.get('board')) {
     const ctx = cv.getContext('2d');
     shadedInto(ctx, reference, procedural, refCam, 0, 0, px);
     shadedInto(ctx, procedural, reference, procCam, px, 0, px);
-    addBoard('shaded — reference | procedural', cv);
+    addBoard(`${neutralBoard ? 'equal neutral clay' : 'shaded'} — reference | procedural`, cv);
   }
 
   { // articulation: turret -90/0/+90/180 at level gun, then gun -dep/+elev.
@@ -1417,9 +1484,9 @@ if (params.get('board')) {
     };
     poses.forEach((pose, i) => {
       applyPose(reference, pose);
-      shadedInto(ctx, reference, procedural, refCam, i * px, 0, px);
+      shadedInto(ctx, reference, procedural, heroCameraFor(reference.root), i * px, 0, px);
       applyPose(procedural, pose);
-      shadedInto(ctx, procedural, reference, procCam, i * px, px, px);
+      shadedInto(ctx, procedural, reference, heroCameraFor(procedural.root), i * px, px, px);
     });
     for (const visual of [reference, procedural]) applyPose(visual, { yawDeg: 0, pitchDeg: 0 });
     addBoard(`articulation — turret −90/0/+90/180 · gun −${dep}°/+${elev}° (reference top, procedural bottom)`, cv);
@@ -1433,7 +1500,7 @@ if (params.get('board')) {
     for (let i = 0; i < 24; i++) {
       procedural.root.rotation.y = baseYaw + i * (Math.PI / 12);
       procedural.root.updateMatrixWorld(true);
-      shadedInto(ctx, procedural, reference, procCam, (i % cols) * px, Math.floor(i / cols) * px, px);
+      shadedInto(ctx, procedural, reference, heroCameraFor(procedural.root), (i % cols) * px, Math.floor(i / cols) * px, px);
     }
     procedural.root.rotation.y = baseYaw;
     procedural.root.updateMatrixWorld(true);
@@ -1667,7 +1734,7 @@ if (params.get('geo')) {
     const coverPct = either ? onlyOne / either * 100 : 0;
     return { score: Math.max(0, Math.min(100, 100 - 12 * meanPct - 0.6 * p95Pct - 1.5 * coverPct)),
       meanPct: +meanPct.toFixed(2), p95Pct: +p95Pct.toFixed(2), coverPct: +coverPct.toFixed(2),
-      reg: { dAlong: +dAlong.toFixed(3), dy: +dy.toFixed(3) }, worst };
+      reg: { dAlong, dy }, worst };
   };
   const sub = (whole, hull) => whole.map((w, i) => {
     const h = hull[i];
@@ -1696,7 +1763,7 @@ if (params.get('geo')) {
   for (const view of ['side', 'plan', 'front']) {
     // hull anchors the frame: it contains no barrel, so gun-length deltas
     // cannot shift registration (dims stays satisfiable vs short-gun oracles)
-    curveRows[`${view}_hull`] = curveScore(curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view]);
+    curveRows[`${view}_hull`] = curveScore(curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view], sourceWorldRegistration?.fixedReg);
     viewReg[view] = curveRows[`${view}_hull`].reg; // may be undefined if hull empty
     // A fused oracle cannot provide a truthful hull anchor: its nominal hull
     // curve may contain turret/glacis equipment while the authored hull does
@@ -1705,7 +1772,7 @@ if (params.get('geo')) {
     // registration so turret placement still counts.
     curveRows[`${view}_whole`] = curveScore(
       curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view],
-      geometryComponentMasksAvailable ? viewReg[view] : undefined);
+      sourceWorldRegistration?.fixedReg || (geometryComponentMasksAvailable ? viewReg[view] : undefined));
   }
   for (const view of ['side', 'plan']) {
     curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
@@ -1740,7 +1807,7 @@ if (params.get('geo')) {
       const row = curveRows[`${view}_hull`];
       if (!row || row.score <= 0) continue;
       const mirrored = curveScore(
-        curves[`${view}_hull_ref`], mirror(curves[`${view}_hull_proc`]), norm[view]);
+        curves[`${view}_hull_ref`], mirror(curves[`${view}_hull_proc`]), norm[view], sourceWorldRegistration?.fixedReg);
       if (mirrored.score > row.score + 8) {
         row.orientationFlip = true;
         row.mirrorScore = +mirrored.score.toFixed(1);
@@ -1784,9 +1851,25 @@ if (params.get('geo')) {
       return z1 > z0 ? [z0, z1] : null;
     };
     const refZR = hullZRange(reference, procedural);
-    const procZR = hullZRange(procedural, reference);
+    // Canonical metre frames use the same physical source slice planes; a
+    // longer candidate hull must not stretch the sampling stations to fit.
+    const procZR = sourceWorldRegistration ? refZR : hullZRange(procedural, reference);
+    // Rendering an uncapped near/far slice erases exactly Z-parallel flanks.
+    // Certified source-world models instead intersect actual surface triangles
+    // with identical physical planes, retaining parallel faces and real voids.
+    const exactStationRows = visual => {
+      const zr = refZR || [refBoxG.min.z, refBoxG.max.z];
+      const planes = Array.from({length:14}, (_,i) => [
+        zr[0]+i/14*(zr[1]-zr[0]), zr[0]+(i+1)/14*(zr[1]-zr[0])]);
+      visual.root.visible = true;
+      setPart(visual.root, 'whole');
+      return measureSlabBounds(visual.root, planes, o => baseVisible.get(o) === true);
+    };
+    const refExact = sourceWorldRegistration ? exactStationRows(reference) : null;
+    const procExact = sourceWorldRegistration ? exactStationRows(procedural) : null;
     for (let i = 0; i < 14; i++) {
-      const meas = (visual, other, box, zr) => {
+      const meas = (visual, other, box, zr, exact) => {
+        if (exact) return exact[i].empty ? null : {w:exact[i].width, top:exact[i].top};
         const sz = (zr ? zr[1] - zr[0] : box.max.z - box.min.z);
         const zb = zr ? zr[0] : box.min.z;
         const z0 = zb + (i / 14) * sz, z1 = zb + ((i + 1) / 14) * sz;
@@ -1804,12 +1887,13 @@ if (params.get('geo')) {
         }
         return any ? { w: maxX - minX, top: maxY } : null;
       };
-      const r = meas(reference, procedural, refBoxG, refZR), p = meas(procedural, reference, procBoxS, procZR);
+      const r = meas(reference, procedural, refBoxG, refZR, refExact), p = meas(procedural, reference, procBoxS, procZR, procExact);
+      const procGround = sourceWorldRegistration ? refBoxG.min.y : procBoxS.min.y;
       if (r && p) stationErr.push({ i,
         refW: +r.w.toFixed(3), procW: +p.w.toFixed(3),
-        refTop: +(r.top - refBoxG.min.y).toFixed(3), procTop: +(p.top - procBoxS.min.y).toFixed(3),
-        wPct: +((Math.abs(r.w - p.w) / Math.max(r.w, 0.2)) * 100).toFixed(2),
-        topPct: +((Math.abs((r.top - refBoxG.min.y) - (p.top - procBoxS.min.y)) / height) * 100).toFixed(2) });
+        refTop: +(r.top - refBoxG.min.y).toFixed(3), procTop: +(p.top - procGround).toFixed(3),
+        wPct: (Math.abs(r.w - p.w) / Math.max(r.w, 0.2)) * 100,
+        topPct: (Math.abs((r.top - refBoxG.min.y) - (p.top - procGround)) / height) * 100 });
       else if (r || p) stationErr.push({ i, wPct: 100, topPct: 100, onlyOne: true });
     }
   }
@@ -1861,7 +1945,7 @@ if (params.get('geo')) {
   const dimCheck = (name, actual, published) => {
     if (!published || !Number.isFinite(actual) || actual <= 0) return;
     const pct = Math.abs(actual - published) / published * 100;
-    dimRows.push({ name, actual: +actual.toFixed(2), published, pct: +pct.toFixed(2) });
+    dimRows.push({ name, actual, published, pct });
   };
   const pixelSpanZ = (part, visual = procedural, other = reference) => {
     const cam = camsG.side;
@@ -1979,25 +2063,29 @@ if (params.get('geo')) {
   const components = {
     ...(geometryComponentMasksAvailable ? {
       hullCurves: Math.min(...['side_hull', 'plan_hull', 'front_hull'].map((k) => curveRows[k].score)),
-      stations: +stationScore.toFixed(1),
+      stations: stationScore,
     } : {}),
     ...(turretComponentMasksAvailable ? {
       turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
     } : {}),
     wholeCurves: wholeShapeScore,
-    dims: +dimScore.toFixed(1),
+    dims: dimScore,
     floaters: floaterScore,
   };
-  const geoMin = Math.min(...Object.values(components).map((v) => +v));
+  const geometryGate=evaluateGeometryGate({qualityBar:source?.qualityBar,components});
+  const geoMin = geometryGate.geoMin;
   window.__GEO_CURVES = curves;                                              // italy §5.248: raw trace export for builder-lane column decode (score-neutral)
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
+    registration:sourceWorldRegistration || {mode:'legacy-hull-translation'},
     comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
     dimensionTarget:preservation ? 'hash-pinned historical first-party baseline' : 'published specification',
     ...(preservation ? { preservationBaseline:preservation } : {}),
-    qualityBar: source?.qualityBar || 'fleet', gatePassed: geoMin >= requiredFidelity,
+    qualityBar: source?.qualityBar || 'fleet', gatePassed: geometryGate.gatePassed,
+    rawGeoMin:geoMin,rawComponents:components,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
     wholeShapeMetric: geometryComponentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
+    stationMethod: sourceWorldRegistration ? 'exact-triangle-slab-intersections' : 'legacy-uncapped-raster-slices',
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
     turretRows, stationErr, dimRows,
     referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },

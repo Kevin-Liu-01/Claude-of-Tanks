@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "id": "t90sm_x",
+  "measuredAt": "2026-09-06T03:07:10Z",
+  "purpose": "Independent local-only source scalar measurements for the SM engine-deck correction; no source mesh, topology, UV or texture is retained",
+  "canonicalSource": {
+    "path": "public/models/community-candidates/t90sm_x_source.glb",
+    "sha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+    "frame": "+Y up, +Z forward, metres; unchanged canonical-source-world registration",
+    "ownership": "OracleHull/chasis; confirmed full OracleHull visibility for exterior rays"
+  },
+  "diagnosis": {
+    "genericHeaderTopY": 1.6640000343,
+    "sourceHeaderTopY": 1.5767868736,
+    "headerExcessM": 0.0872131607,
+    "genericRearHandleAtPositiveX082ZMinus319Y": 1.6404999495,
+    "sourceLocalCoverAtPositiveX082ZMinus319Y": 1.4610221202,
+    "scope": "Replace only the SM generic engineDeck call; retain all separate rear cases, drum brackets, running gear, hull underside and other T90 profiles"
+  },
+  "header": {
+    "boundsM": {
+      "left": -0.9112151265,
+      "right": 0.9283498526,
+      "rear": -2.1523041725,
+      "front": -1.4492546320,
+      "bottom": 1.5060082674,
+      "top": 1.5767868757
+    },
+    "topNormal": [0, 1, 0],
+    "sourceConnectedIslandVertices": 20
+  },
+  "coolingCover": {
+    "rearRampStationsZY": [[-3.0532176, 1.5030174], [-3.0237505, 1.5319264], [-2.9879661, 1.5708065]],
+    "frontCenterZY": [-2.3164887, 1.5568494],
+    "frontOuterY": 1.5558521,
+    "leftCrestX": -0.9366763,
+    "rightCrestX": 0.9361844,
+    "centerX": 0.00041666,
+    "sourceSurfaceCharacter": "Shallow solid four-facet cooling cover; not the M source's open louvre field and not fifteen generic raised crossbars",
+    "lowerChannelStationsZY": [[-2.2954397, 1.5000271], [-2.1796689, 1.4990298]]
+  },
+  "latches": {
+    "positiveBoundsM": {
+      "left": 0.8823243380,
+      "right": 0.9851486683,
+      "rear": -2.2764971256,
+      "front": -2.1986138821,
+      "bottom": 1.5080020428,
+      "top": 1.5887501240
+    },
+    "negativeBoundsXM": [-0.9773162603, -0.8744920492],
+    "sourceConnectedIslandVerticesEach": 64,
+    "recessFloorY": 1.5468797684,
+    "recessPositiveBoundsXM": [0.9087652564, 0.9596875310],
+    "recessBoundsZM": [-2.2659709454, -2.2070326805],
+    "leftCheekZY": [[-2.2554464340, 1.5867564678], [-2.2217679024, 1.5857591629]],
+    "rightCheekZY": [[-2.2533407211, 1.5817716122], [-2.2259776592, 1.5887501240]]
+  },
+  "independentTopRaysXZY": [
+    [0.19, -2.14, 1.5767868736],
+    [-0.19, -2.14, 1.5767868736],
+    [0.66, -2.14, 1.5767868736],
+    [0.66, -3.10, 1.5030174],
+    [0.66, -3.04, 1.51598],
+    [0.66, -3.00, 1.55773],
+    [0.66, -2.90, 1.56898],
+    [0.66, -2.60, 1.5624604714],
+    [-0.66, -2.60, 1.5624602839],
+    [0.95, -2.60, 1.52947],
+    [-0.95, -2.60, 1.52649],
+    [0.66, -2.20, 1.49912],
+    [-0.66, -2.20, 1.49920],
+    [0.90, -2.25, 1.5865951854],
+    [-0.90, -2.25, 1.5865951854],
+    [0.93, -2.24, 1.5468797684],
+    [0.97, -2.23, 1.58772]
+  ],
+  "inferencesAndLimits": [
+    "The internal SM carrier roof is locally lowered only beneath this measured deck footprint so it cannot occlude the source channel; exterior closed cover surfaces supply the actual source roof",
+    "Four small hidden bearing feet below the separate access cover are mechanical support inference; they do not expand its exterior envelope",
+    "Small hinge bevels and cast edge variations are simplified while the source-backed latch recess and unequal cheeks remain actual geometry",
+    "No camera, registration, target width, source scaling, scoring threshold or continuity policy is changed"
+  ],
+  "test": "src/vehicles/profiles/t90SMXEngineDeck.selftest.mjs",
+  "status": "SM-only profile wiring complete; actual high/low source header, cover, bevel, channel and latch ray tests pass. Fresh whole-model shaded, geometry and strict-track proof remains required after the other SM hull/gear edits finish"
+}

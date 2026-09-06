@@ -1,0 +1,39 @@
+{
+  "vehicleId": "t90m_x",
+  "reference": "local-only canonical t90m_x_source.glb / Cylinder003",
+  "measurementFrame": "+Y up, +Z forward, ground zero, unchanged canonical source world",
+  "method": "Independent CPU source surface rays and scalar plane/bounds measurements; no source buffers or topology copied",
+  "sourceBounds": {
+    "min": [-0.747815525, 2.195880353, -1.309623674],
+    "max": [-0.200380629, 2.700091481, -0.733777478]
+  },
+  "heldOutTopRaysXYZ": [
+    [-0.42, 2.319792807, -0.797],
+    [-0.35, 2.319792807, -0.782],
+    [-0.631, 2.319792807, -1.046],
+    [-0.705, 2.678602099, -1.066],
+    [-0.489, 2.493278146, -1.252],
+    [-0.42, 2.700091481, -0.978]
+  ],
+  "heldOutFrontRaysXYZ": [
+    [-0.45, 2.46, -0.875182256],
+    [-0.4, 2.59, -0.887912340],
+    [-0.5, 2.69, -0.878556147],
+    [-0.4, 2.695, -0.810419038]
+  ],
+  "sourceFrontNormal": [0, 0.106970176, 0.994262230],
+  "authoredPrimitives": [
+    "Low full elliptic collar and smaller raised flange",
+    "Clipped upper body with inclined recessed front face",
+    "Separate 20 mm rear ledge and 9 mm forward canopy lip",
+    "Rounded lateral returns and flat inboard rear return",
+    "Separate quarter-annular side guard with hollow crescent and lower aft step"
+  ],
+  "validation": {
+    "focusedTest": "src/vehicles/profiles/t90MXRwsHousing.selftest.mjs",
+    "qualities": ["high", "low"],
+    "maxRayToleranceM": 0.004,
+    "normalMinimumDot": 0.999,
+    "freshGpuProof": "Fresh scoped source fidelity, neutral board and official standard completed 2026-09-06 after this replacement; all registered views, geometry, exact tracks, continuity and real MG census passed. Full source row and timestamp are preserved in t90m_x.fidelity.json. Scoped standard stdout is retained locally at .qa-dev/reports/t90-avm-final-standard.log."
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "id": "k2_x",
+  "measured": "2026-09-05",
+  "purpose": "Owner-authorized local comparison only; no mesh payload",
+  "sourceSha256": "3e514bedb40be0fde6787dad6513f625ba077cd0c1da04d29defe94e9c156140",
+  "provenance": "Inconclusive AW title; existing local-only owner adjudication",
+  "normalization": { "translationM": [0, 0.0045, -0.13185], "uniformScale": 1, "axes": "+Y up, +Z forward" },
+  "dimensionsM": { "width": 3.71906, "hullExteriorLength": 7.8535, "coreArmorHullLength": 7.3418, "source1024BodyExtentLength": 7.566, "overallLength": 10.84482, "structuralRoof": 2.369, "sourceP95BodyHeight": 2.997, "source1024P95BodyHeight": 3.020, "highestFitting": 4.73527 },
+  "turretPivotM": [0, 1.5945, 0.21815],
+  "gunAxisM": [0, 1.99253, 1.36815],
+  "muzzleZM": 6.91807,
+  "muzzleRadiusM": 0.0878,
+  "roadWheels": { "stationsZM": [-2.17585, -1.28085, -0.38585, 0.50915, 1.40415, 2.29915], "radiusM": 0.3225, "axleYM": 0.4095 },
+  "sprocket": { "zM": -2.80685, "yM": 0.8265, "radiusM": 0.351 },
+  "idler": { "zM": 3.18415, "yM": 0.8175, "radiusM": 0.300 },
+  "sourceHullRoofRaysM": [[0, -2.9, 1.7035], [0, 0, 1.5775], [0, 2.6, 1.4145], [0, 3.58, 1.1519]],
+  "sourceEquipmentCanonicalM": {
+    "measurementDate": "2026-09-05",
+    "method": "Independent connected-island bounds, face-plane scalars and exact physical rays; not source vertices or topology",
+    "gpsHousingBounds": [[-0.8545, 2.37814, 0.44407], [-0.4185, 2.73114, 0.86417]],
+    "gpsPedestalBounds": [[-0.7637, 2.29464, 0.53507], [-0.5093, 2.38254, 0.78917]],
+    "gpsGlazingBounds": [[-0.7104, 2.46454, 0.78607], [-0.5625, 2.70574, 0.78627]],
+    "gpsCenterViewingRay": { "origin": [-0.6365, 2.64, 1.2], "direction": [0, 0, -1], "firstHitZ": 0.78627002 },
+    "commanderEyeFrontCenters": [
+      [-0.1222, 2.75314, -1.4474], [0.0373, 2.75994, -1.4474], [0.137, 2.75314, -1.4474],
+      [-0.1222, 2.84784, -1.4640], [-0.0142, 2.85469, -1.4659], [0.137, 2.84784, -1.4640],
+      [-0.07505, 2.93424, -1.4776], [0.08335, 2.93424, -1.4776]
+    ],
+    "commanderEyeCenterRay": { "origin": [-0.1222, 2.84784, -1.2], "direction": [0, 0, -1], "firstHitZ": -1.55555157 },
+    "rightLauncherMouthCenters": [
+      [1.39065, 2.01214, 1.80947], [1.53905, 1.92169, 1.64687],
+      [1.50245, 2.01004, 1.64442], [1.42385, 1.92029, 1.80947],
+      [1.29930, 1.93954, 1.96767], [1.25245, 2.02849, 1.97202]
+    ],
+    "rightLauncherRoundedAxisDirections": [
+      [0.494, 0.218, 0.842], [0.786, 0.289, 0.548], [0.729, 0.417, 0.544],
+      [0.642, 0.098, 0.760], [0.310, 0.150, 0.939], [0.174, 0.356, 0.918]
+    ],
+    "leftLauncherMapping": "Negate center X and direction X; retain each measured Y and Z",
+    "foremostMouthCenterRayFirstHit": [1.254916, 2.033536, 1.985032],
+    "cheekOuterRay": { "origin": [2.5, 2.03, 1.972], "direction": [-1, 0, 0], "permanentArmorFirstHitX": 1.19758499 },
+    "innerBladeTopRaysXZUpperY": [[0.48, 1.7, 2.24955], [0.48, 1.9, 2.24075], [0.48, 2.05, 2.23483], [0.48, 2.2, 2.22662]],
+    "innerBladeUndersideRay": { "origin": [0.48, 1.55, 1.9], "direction": [0, 1, 0], "firstHitY": 1.693939917 }
+  },
+  "notes": ["Roof rays are x,z,upperY", "Mixed source object ownership prevents honest disjoint component masks", "Native bottom-course center .095 m is a physical pad-reach correction, not a changed source wheel datum"]
+}

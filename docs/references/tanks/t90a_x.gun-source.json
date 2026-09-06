@@ -1,0 +1,27 @@
+{
+  "purpose": "Independent local source metrology for the original A-only procedural gun correction",
+  "sourceOracleSha256": "f0ba16a464dc7e9584ea382f11e5e98481b2945db2b8a2f134dfbae4fbba793d",
+  "sourceNode": "weapon001 (original weapon.001)",
+  "canonicalFrame": "+Y up, +Z forward, gun trunnion world [0.005,1.8174,1.30]",
+  "units": "metres",
+  "date": "2026-09-06",
+  "cause": "The shared generic tube taper remained up to 14mm too thick beneath the jacket; a 55mm-wide near-muzzle MRS placeholder occupied source air. Correctly restoring visible muzzle parts to the fidelity mask exposed the failed 91.63858786699103 gun score; no mask, camera, source registration or 92 floor was changed.",
+  "sourceScalarStations": [
+    {"z":1.63433,"radius":0.124955},
+    {"z":2.25047,"radius":0.097345},
+    {"z":6.26418,"radius":0.086636}
+  ],
+  "sourceEvacuator": {"startZ":3.91676,"endZ":4.80578,"radius":0.115667},
+  "sourceSeamSpans": [[2.31525,2.98400],[3.11414,3.82652],[4.88418,5.38938],[5.52671,6.03688]],
+  "sourceSeamWidth":0.004974,
+  "sourceSeamHeight":0.030,
+  "originalConstruction": "Two circular tapered solids, original narrow rear flange, cylindrical evacuator and four closed narrow seam strips; no external vertex/index buffers or source topology copied.",
+  "documentedApproximations": [
+    "Source radial center drifts laterally by less than 3mm from the independently registered gun axis; the original runtime taper is concentric to preserve actual circularity and muzzle axis.",
+    "Source coarse radial tessellation is represented by original 28/16-segment circular solids.",
+    "Unchanged native muzzle system seats its physical lip about 2.4mm forward of the source terminal plane; its outer radius is about 5.2mm smaller. The low-detail policy retains the bore disc but omits the separate toroidal rim.",
+    "The original closed rear flange uses a 4mm seated front return rather than a zero-thickness imported ring."
+  ],
+  "regression": "src/vehicles/profiles/t90AXGun.selftest.mjs checks held-out actual high/low source cardinal sections within3.5mm, seam spans and real gaps, absent false MRS volume, actual recoil ownership and visible mouth.",
+  "status": "Focused source, all13 high/low articulation, full typecheck and quality tests pass. Fresh fixed-mask GPU proof passes: raw fidelity97.37276953943785, gun99.57650529537115, raw minimum whole view96.12523917559459, raw geometry92.32764166415646, visible bore contrast124.1, circularity1.000 and axis0.0mm. Full regenerated fleet release remains parent-pipeline work."
+}

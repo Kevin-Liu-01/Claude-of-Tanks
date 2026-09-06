@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "tankId": "t90a_x",
+  "purpose": "Independent local-source physical measurements for original native gun-mount primitives; no source mesh payload",
+  "sourceArchiveSha256": "99da2b1357a199e4fdbb2596de984549e23157a34f04a2fe6149a06b3aaf83ab",
+  "frame": "Canonical source X right, Y up, Z forward, metres; fixed source-world registration",
+  "sourceNode": "mgbracketb",
+  "adjustingBoss": {
+    "xRange": [0.41531334,0.51793642],
+    "yRange": [2.59379530,2.72169340],
+    "zRange": [0.02865215,0.18598667],
+    "frontBevelNormal": [0,0.52416866,0.85161448],
+    "topRays": [
+      {"x":0.42,"z":0.10,"y":2.72169340},
+      {"x":0.42,"z":0.15,"y":2.71621168},
+      {"x":0.42,"z":0.18,"y":2.66747081}
+    ]
+  },
+  "inclinedFork": {
+    "leftArmXRange": [0.52209819,0.56391890],
+    "rightArmXRange": [0.71445293,0.75637520],
+    "topRays": [
+      {"x":0.74,"z":-0.15,"y":2.41461894},
+      {"x":0.74,"z":-0.075,"y":2.51073136},
+      {"x":0.74,"z":0,"y":2.60684378}
+    ],
+    "negativeSpace": "At Y2.60/Z-0.15 the side ray through both arms is empty; their bounding boxes are not solid cheek geometry."
+  },
+  "pedestal": {
+    "leftLegXRange": [0.47347663,0.52057565],
+    "rightLegXRange": [0.74125070,0.78774072],
+    "legsYRange": [2.19964564,2.43940383],
+    "crossmemberYRange": [2.41818893,2.43920100]
+  },
+  "construction": "Closed original inclined plate sections, beveled pivot blocks, separate pedestal legs and crossmember. Existing source-specific weapon, ammunition cases and cupola remain in the original native turret rig.",
+  "simplifications": [
+    "Submillimetre casting skew and curved micro-edge radii are simplified into parallel closed native plate faces and chamfers.",
+    "The source side boss is an adjusting mount part; no duplicate weapon is created or counted."
+  ],
+  "regression": "src/vehicles/profiles/t90AXRwsBracket.selftest.mjs checks actual high/low tank geometry against independent source rays, bevel normals and empty fork space; fresh GPU proof remains required."
+}

@@ -38,7 +38,7 @@ assert.deepEqual(
 
 const armorNames = {
   hull: new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR']),
-  turret: new Set(['turret']),
+  turret: new Set(['turret', 'turretPermanentMarkingSurface']),
 };
 
 function markingSupportHit(mark, owner) {

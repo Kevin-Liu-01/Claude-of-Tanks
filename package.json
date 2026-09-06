@@ -108,7 +108,7 @@
     "quality:mutation:prediction": "stryker run stryker.prediction.config.mjs",
     "quality:coverage:match-mode-world": "c8 --include src/game/matchModeWorldPresentation.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node src/game/matchModeWorldPresentation.selftest.mjs",
     "quality:mutation:match-mode-world": "stryker run stryker.match-mode-world.config.mjs",
-    "quality:coverage:damage": "c8 --include src/sim/damage.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node -e \"import('./src/sim/combat.selftest.mjs').then(() => import('./src/sim/ammunitionFlow.selftest.mjs')).then(() => import('./src/sim/autoloader.selftest.mjs')).then(() => import('./src/sim/specialActions.selftest.mjs')).then(() => import('./src/game/equipment.selftest.mjs'))\"",
+    "quality:coverage:damage": "c8 --include src/sim/damage.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node -e \"import('./src/sim/combat.selftest.mjs').then(() => import('./src/sim/ammunitionFlow.selftest.mjs')).then(() => import('./src/sim/autoloader.selftest.mjs')).then(() => import('./src/sim/specialActions.selftest.mjs')).then(() => import('./src/game/equipment.selftest.mjs')).then(() => import('./src/vehicles/sourceXEraMultiplicity.selftest.mjs'))\"",
     "quality:mutation:damage": "stryker run stryker.damage.config.mjs",
     "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
     "test:net:four": "node tools/multiplayer-four-player-soak.mjs",

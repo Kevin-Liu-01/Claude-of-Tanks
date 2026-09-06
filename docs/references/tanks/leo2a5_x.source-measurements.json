@@ -1,0 +1,3970 @@
+{
+  "id": "leo2a5_x",
+  "purpose": "owner-authorized LOCAL comparison only; no source geometry or textures ship",
+  "sourceSha256": "40ee3021c7cea8fb17cdd5ef3343feef19957523deb2818e3fe2d1009a15fe41",
+  "normalization": {
+    "sourceAxes": "x,z,-y",
+    "sourceHullAnchor": "vehicle#x_root_107",
+    "sourceCenterX": -2.999999999997449e-05,
+    "sourceGroundY": -0.01157,
+    "sourceHullCenterZ": -0.28388499999999994,
+    "scaleXY": 1.0089025561555163,
+    "scaleHullZ": 0.9974946345900645,
+    "gunOverhangZScale": 1.0404624277456653,
+    "gunOverhangStartsAtSourceZ": 3.58581,
+    "widthM": 3.75,
+    "hullLengthM": 7.72,
+    "overallLengthM": 9.97,
+    "sternM": -3.86,
+    "muzzleM": 6.110000000000001,
+    "widthNormalizedHullBeforeM": 7.808290354084441,
+    "widthNormalizedOverallBeforeM": 9.990042131770744,
+    "heightCorrection": "none; global ground translation and width-uniform height only"
+  },
+  "objects": [
+    {
+      "name": "vehicle#ammo_110",
+      "vertices": 884,
+      "triangles": 1000,
+      "boundsM": {
+        "min": [
+          0.92141,
+          2.83851,
+          0.05625
+        ],
+        "max": [
+          1.23323,
+          2.87725,
+          0.13199
+        ],
+        "size": [
+          0.31182,
+          0.03874,
+          0.07574
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#antenna_01_109",
+      "vertices": 83,
+      "triangles": 124,
+      "boundsM": {
+        "min": [
+          -0.9665,
+          2.84301,
+          -1.87658
+        ],
+        "max": [
+          -0.9574,
+          4.11688,
+          -1.75619
+        ],
+        "size": [
+          0.0091,
+          1.27387,
+          0.12039
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#antenna_02_108",
+      "vertices": 83,
+      "triangles": 124,
+      "boundsM": {
+        "min": [
+          1.05604,
+          2.83655,
+          -1.9337
+        ],
+        "max": [
+          1.06519,
+          4.11042,
+          -1.8133
+        ],
+        "size": [
+          0.00915,
+          1.27387,
+          0.1204
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#bone_gun_48",
+      "vertices": 1790,
+      "triangles": 1523,
+      "boundsM": {
+        "min": [
+          -0.17074,
+          1.71433,
+          1.76062
+        ],
+        "max": [
+          0.29086,
+          2.52031,
+          3.23804
+        ],
+        "size": [
+          0.4616,
+          0.80597,
+          1.47742
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0,
+          "z": 2.5,
+          "topY": 2.35256,
+          "bottomY": 2.27529
+        }
+      ]
+    },
+    {
+      "name": "vehicle#bone_mg_aa_h_01_45",
+      "vertices": 504,
+      "triangles": 520,
+      "boundsM": {
+        "min": [
+          0.84772,
+          2.64686,
+          -0.10995
+        ],
+        "max": [
+          1.2354,
+          2.86437,
+          0.13651
+        ],
+        "size": [
+          0.38768,
+          0.21751,
+          0.24646
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#bone_turret_40",
+      "vertices": 42474,
+      "triangles": 34022,
+      "boundsM": {
+        "min": [
+          -1.45041,
+          0.82029,
+          -2.83642
+        ],
+        "max": [
+          1.47417,
+          2.85365,
+          2.39478
+        ],
+        "size": [
+          2.92459,
+          2.03336,
+          5.2312
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -1.4,
+          "y": 1.9,
+          "frontZ": -0.48318
+        },
+        {
+          "x": -1.4,
+          "y": 2.1,
+          "frontZ": -0.52636
+        },
+        {
+          "x": -1.1,
+          "y": 1.9,
+          "frontZ": 1.83397
+        },
+        {
+          "x": -1.1,
+          "y": 2.1,
+          "frontZ": 1.83397
+        },
+        {
+          "x": -1.1,
+          "y": 2.3,
+          "frontZ": 1.89518
+        },
+        {
+          "x": -1.1,
+          "y": 2.4,
+          "frontZ": 1.39628
+        },
+        {
+          "x": -1.1,
+          "y": 2.5,
+          "frontZ": -0.15879
+        },
+        {
+          "x": -0.95,
+          "y": 1.9,
+          "frontZ": 1.89568
+        },
+        {
+          "x": -0.95,
+          "y": 2.1,
+          "frontZ": 1.89662
+        },
+        {
+          "x": -0.95,
+          "y": 2.3,
+          "frontZ": 1.89757
+        },
+        {
+          "x": -0.95,
+          "y": 2.4,
+          "frontZ": 1.8454
+        },
+        {
+          "x": -0.95,
+          "y": 2.5,
+          "frontZ": 0.72872
+        },
+        {
+          "x": -0.95,
+          "y": 2.6,
+          "frontZ": 0.26296
+        },
+        {
+          "x": -0.8,
+          "y": 1.9,
+          "frontZ": 1.98872
+        },
+        {
+          "x": -0.8,
+          "y": 2.1,
+          "frontZ": 1.98965
+        },
+        {
+          "x": -0.8,
+          "y": 2.3,
+          "frontZ": 1.96043
+        },
+        {
+          "x": -0.8,
+          "y": 2.4,
+          "frontZ": 1.78835
+        },
+        {
+          "x": -0.8,
+          "y": 2.5,
+          "frontZ": 1.78835
+        },
+        {
+          "x": -0.8,
+          "y": 2.6,
+          "frontZ": 1.44034
+        },
+        {
+          "x": -0.65,
+          "y": 1.9,
+          "frontZ": 2.08177
+        },
+        {
+          "x": -0.65,
+          "y": 2.1,
+          "frontZ": 2.08278
+        },
+        {
+          "x": -0.65,
+          "y": 2.3,
+          "frontZ": 1.99981
+        },
+        {
+          "x": -0.65,
+          "y": 2.4,
+          "frontZ": 1.8927
+        },
+        {
+          "x": -0.65,
+          "y": 2.5,
+          "frontZ": 1.88561
+        },
+        {
+          "x": -0.65,
+          "y": 2.6,
+          "frontZ": 1.46973
+        },
+        {
+          "x": -0.5,
+          "y": 1.9,
+          "frontZ": 2.17488
+        },
+        {
+          "x": -0.5,
+          "y": 2.1,
+          "frontZ": 2.23234
+        },
+        {
+          "x": -0.5,
+          "y": 2.3,
+          "frontZ": 2.02287
+        },
+        {
+          "x": -0.5,
+          "y": 2.4,
+          "frontZ": 2.12417
+        },
+        {
+          "x": -0.5,
+          "y": 2.5,
+          "frontZ": 2.11553
+        },
+        {
+          "x": -0.5,
+          "y": 2.6,
+          "frontZ": 1.55009
+        },
+        {
+          "x": 0.5,
+          "y": 1.9,
+          "frontZ": 2.30226
+        },
+        {
+          "x": 0.5,
+          "y": 2.1,
+          "frontZ": 2.30226
+        },
+        {
+          "x": 0.5,
+          "y": 2.3,
+          "frontZ": 2.24736
+        },
+        {
+          "x": 0.5,
+          "y": 2.4,
+          "frontZ": 1.81509
+        },
+        {
+          "x": 0.5,
+          "y": 2.5,
+          "frontZ": 0.71526
+        },
+        {
+          "x": 0.5,
+          "y": 2.6,
+          "frontZ": -0.23088
+        },
+        {
+          "x": 0.8,
+          "y": 1.9,
+          "frontZ": 2.02633
+        },
+        {
+          "x": 0.8,
+          "y": 2.1,
+          "frontZ": 2.02573
+        },
+        {
+          "x": 0.8,
+          "y": 2.3,
+          "frontZ": 2.02525
+        },
+        {
+          "x": 0.8,
+          "y": 2.4,
+          "frontZ": 1.54094
+        },
+        {
+          "x": 0.8,
+          "y": 2.5,
+          "frontZ": 0.83307
+        },
+        {
+          "x": 1.1,
+          "y": 1.9,
+          "frontZ": 1.87165
+        },
+        {
+          "x": 1.1,
+          "y": 2.1,
+          "frontZ": 1.87165
+        },
+        {
+          "x": 1.1,
+          "y": 2.3,
+          "frontZ": 1.924
+        },
+        {
+          "x": 1.1,
+          "y": 2.4,
+          "frontZ": 1.37502
+        },
+        {
+          "x": 1.1,
+          "y": 2.5,
+          "frontZ": -0.09932
+        },
+        {
+          "x": 1.4,
+          "y": 1.9,
+          "frontZ": -0.34912
+        },
+        {
+          "x": 1.4,
+          "y": 2.1,
+          "frontZ": -0.30135
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": -1,
+          "z": -1.5,
+          "topY": 2.51415,
+          "bottomY": 1.86653
+        },
+        {
+          "x": -1,
+          "z": -0.5,
+          "topY": 2.51421,
+          "bottomY": 1.78191
+        },
+        {
+          "x": -1,
+          "z": 0.5,
+          "topY": 2.52009,
+          "bottomY": 1.67881
+        },
+        {
+          "x": -1,
+          "z": 1.5,
+          "topY": 2.38859,
+          "bottomY": 1.67878
+        },
+        {
+          "x": -0.8,
+          "z": -1.5,
+          "topY": 2.51356,
+          "bottomY": 1.86636
+        },
+        {
+          "x": -0.8,
+          "z": -0.5,
+          "topY": 2.51412,
+          "bottomY": 1.75088
+        },
+        {
+          "x": -0.8,
+          "z": 0.5,
+          "topY": 2.64621,
+          "bottomY": 0.82029
+        },
+        {
+          "x": -0.8,
+          "z": 1.5,
+          "topY": 2.5941,
+          "bottomY": 1.67875
+        },
+        {
+          "x": -0.6,
+          "z": -2.5,
+          "topY": 1.94443,
+          "bottomY": 1.92181
+        },
+        {
+          "x": -0.6,
+          "z": -1.5,
+          "topY": 2.51743,
+          "bottomY": 1.86623
+        },
+        {
+          "x": -0.6,
+          "z": -0.5,
+          "topY": 2.51815,
+          "bottomY": 1.71984
+        },
+        {
+          "x": -0.6,
+          "z": 0.5,
+          "topY": 2.64621,
+          "bottomY": 0.82029
+        },
+        {
+          "x": -0.6,
+          "z": 1.5,
+          "topY": 2.60205,
+          "bottomY": 1.67875
+        },
+        {
+          "x": 0,
+          "z": -2.5,
+          "topY": 1.9445,
+          "bottomY": 1.92217
+        },
+        {
+          "x": 0,
+          "z": -1.5,
+          "topY": 2.51743,
+          "bottomY": 1.86619
+        },
+        {
+          "x": 0,
+          "z": -0.5,
+          "topY": 2.51812,
+          "bottomY": 1.67886
+        },
+        {
+          "x": 0,
+          "z": 0.5,
+          "topY": 2.51981,
+          "bottomY": 0.82029
+        },
+        {
+          "x": 0,
+          "z": 1.5,
+          "topY": 2.38283,
+          "bottomY": 0.82029
+        },
+        {
+          "x": 0.6,
+          "z": -2.5,
+          "topY": 1.94501,
+          "bottomY": 1.92249
+        },
+        {
+          "x": 0.6,
+          "z": -1.5,
+          "topY": 2.51267,
+          "bottomY": 1.86623
+        },
+        {
+          "x": 0.6,
+          "z": -0.5,
+          "topY": 2.51305,
+          "bottomY": 1.74365
+        },
+        {
+          "x": 0.6,
+          "z": 0.5,
+          "topY": 2.51899,
+          "bottomY": 0.82029
+        },
+        {
+          "x": 0.6,
+          "z": 1.5,
+          "topY": 2.39835,
+          "bottomY": 1.67875
+        },
+        {
+          "x": 0.8,
+          "z": -1.5,
+          "topY": 2.5129,
+          "bottomY": 1.86623
+        },
+        {
+          "x": 0.8,
+          "z": -0.5,
+          "topY": 2.51306,
+          "bottomY": 1.77356
+        },
+        {
+          "x": 0.8,
+          "z": 0.5,
+          "topY": 2.51868,
+          "bottomY": 0.82029
+        },
+        {
+          "x": 0.8,
+          "z": 1.5,
+          "topY": 2.40398,
+          "bottomY": 1.67875
+        },
+        {
+          "x": 1,
+          "z": -1.5,
+          "topY": 2.51312,
+          "bottomY": 1.86622
+        },
+        {
+          "x": 1,
+          "z": -0.5,
+          "topY": 2.51313,
+          "bottomY": 1.78292
+        },
+        {
+          "x": 1,
+          "z": 0.5,
+          "topY": 2.51242,
+          "bottomY": 1.67883
+        },
+        {
+          "x": 1,
+          "z": 1.5,
+          "topY": 2.38137,
+          "bottomY": 1.67875
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_armor_01_70",
+      "vertices": 1928,
+      "triangles": 1680,
+      "boundsM": {
+        "min": [
+          -0.32087,
+          1.12922,
+          3.4356
+        ],
+        "max": [
+          0.31971,
+          1.44012,
+          3.88721
+        ],
+        "size": [
+          0.64057,
+          0.3109,
+          0.45161
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0,
+          "z": 3.5,
+          "topY": 1.38473,
+          "bottomY": 1.35242
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_armor_l_01_89",
+      "vertices": 397,
+      "triangles": 326,
+      "boundsM": {
+        "min": [
+          1.69924,
+          0.90496,
+          3.48493
+        ],
+        "max": [
+          1.87391,
+          1.43224,
+          3.79319
+        ],
+        "size": [
+          0.17467,
+          0.52727,
+          0.30826
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_02_90",
+      "vertices": 132,
+      "triangles": 116,
+      "boundsM": {
+        "min": [
+          1.70113,
+          0.89623,
+          2.87663
+        ],
+        "max": [
+          1.875,
+          1.34257,
+          3.48266
+        ],
+        "size": [
+          0.17387,
+          0.44634,
+          0.60604
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_03_91",
+      "vertices": 252,
+      "triangles": 214,
+      "boundsM": {
+        "min": [
+          1.69522,
+          1.34394,
+          2.87694
+        ],
+        "max": [
+          1.7791,
+          1.50934,
+          3.4778
+        ],
+        "size": [
+          0.08388,
+          0.1654,
+          0.60086
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_04_92",
+      "vertices": 250,
+      "triangles": 288,
+      "boundsM": {
+        "min": [
+          1.70113,
+          0.81367,
+          2.27194
+        ],
+        "max": [
+          1.875,
+          1.3426,
+          2.87798
+        ],
+        "size": [
+          0.17387,
+          0.52893,
+          0.60604
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_05_93",
+      "vertices": 250,
+      "triangles": 212,
+      "boundsM": {
+        "min": [
+          1.69131,
+          1.34394,
+          2.27648
+        ],
+        "max": [
+          1.77976,
+          1.61009,
+          2.87339
+        ],
+        "size": [
+          0.08845,
+          0.26615,
+          0.59691
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_06_94",
+      "vertices": 284,
+      "triangles": 246,
+      "boundsM": {
+        "min": [
+          1.70113,
+          0.89623,
+          1.49339
+        ],
+        "max": [
+          1.875,
+          1.34257,
+          2.27397
+        ],
+        "size": [
+          0.17387,
+          0.44634,
+          0.78058
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_07_95",
+      "vertices": 222,
+      "triangles": 190,
+      "boundsM": {
+        "min": [
+          1.68309,
+          1.3438,
+          1.67354
+        ],
+        "max": [
+          1.78126,
+          1.68413,
+          2.26946
+        ],
+        "size": [
+          0.09818,
+          0.34033,
+          0.59592
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_08_96",
+      "vertices": 632,
+      "triangles": 688,
+      "boundsM": {
+        "min": [
+          1.70802,
+          0.69825,
+          0.4559
+        ],
+        "max": [
+          1.72409,
+          1.30842,
+          1.65676
+        ],
+        "size": [
+          0.01607,
+          0.61016,
+          1.20085
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_09_97",
+      "vertices": 464,
+      "triangles": 412,
+      "boundsM": {
+        "min": [
+          1.70804,
+          0.89476,
+          -0.04093
+        ],
+        "max": [
+          1.72372,
+          1.30837,
+          0.80737
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.8483
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_10_98",
+      "vertices": 632,
+      "triangles": 688,
+      "boundsM": {
+        "min": [
+          1.70802,
+          0.69825,
+          -1.25753
+        ],
+        "max": [
+          1.72409,
+          1.30842,
+          -0.05594
+        ],
+        "size": [
+          0.01607,
+          0.61016,
+          1.20159
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_11_99",
+      "vertices": 464,
+      "triangles": 412,
+      "boundsM": {
+        "min": [
+          1.70804,
+          0.89476,
+          -1.75474
+        ],
+        "max": [
+          1.72372,
+          1.30837,
+          -0.90644
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.8483
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_12_100",
+      "vertices": 416,
+      "triangles": 368,
+      "boundsM": {
+        "min": [
+          1.70804,
+          0.89476,
+          -2.63982
+        ],
+        "max": [
+          1.72372,
+          1.30837,
+          -1.75882
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.881
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_13_101",
+      "vertices": 256,
+      "triangles": 228,
+      "boundsM": {
+        "min": [
+          1.70804,
+          1.1119,
+          -3.4699
+        ],
+        "max": [
+          1.72372,
+          1.30838,
+          -2.63972
+        ],
+        "size": [
+          0.01568,
+          0.19647,
+          0.83018
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_l_14_54",
+      "vertices": 3018,
+      "triangles": 2730,
+      "boundsM": {
+        "min": [
+          0.29201,
+          1.70268,
+          1.52908
+        ],
+        "max": [
+          1.44534,
+          2.366,
+          3.231
+        ],
+        "size": [
+          1.15333,
+          0.66332,
+          1.70192
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": 0.5,
+          "y": 1.9,
+          "frontZ": 2.86452
+        },
+        {
+          "x": 0.5,
+          "y": 2.1,
+          "frontZ": 2.94034
+        },
+        {
+          "x": 0.5,
+          "y": 2.3,
+          "frontZ": 2.55694
+        },
+        {
+          "x": 0.8,
+          "y": 1.9,
+          "frontZ": 2.63716
+        },
+        {
+          "x": 0.8,
+          "y": 2.1,
+          "frontZ": 2.71839
+        },
+        {
+          "x": 0.8,
+          "y": 2.3,
+          "frontZ": 2.33481
+        },
+        {
+          "x": 1.1,
+          "y": 1.9,
+          "frontZ": 2.40998
+        },
+        {
+          "x": 1.1,
+          "y": 2.1,
+          "frontZ": 2.51205
+        },
+        {
+          "x": 1.1,
+          "y": 2.3,
+          "frontZ": 2.14832
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": 0.6,
+          "z": 2.5,
+          "topY": 2.29109,
+          "bottomY": 1.78973
+        },
+        {
+          "x": 0.8,
+          "z": 2.5,
+          "topY": 2.2139,
+          "bottomY": 1.82459
+        },
+        {
+          "x": 1,
+          "z": 2.5,
+          "topY": 2.13671,
+          "bottomY": 1.90777
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_armor_l_15_53",
+      "vertices": 881,
+      "triangles": 828,
+      "boundsM": {
+        "min": [
+          1.23963,
+          1.70202,
+          0.31105
+        ],
+        "max": [
+          1.52032,
+          2.45769,
+          1.68312
+        ],
+        "size": [
+          0.2807,
+          0.75567,
+          1.37206
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": 1.4,
+          "y": 2.1,
+          "frontZ": 1.08862
+        }
+      ],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_01_72",
+      "vertices": 397,
+      "triangles": 326,
+      "boundsM": {
+        "min": [
+          -1.8739,
+          0.90497,
+          3.48493
+        ],
+        "max": [
+          -1.69923,
+          1.43224,
+          3.79319
+        ],
+        "size": [
+          0.17467,
+          0.52727,
+          0.30826
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_02_73",
+      "vertices": 152,
+      "triangles": 132,
+      "boundsM": {
+        "min": [
+          -1.875,
+          0.89623,
+          2.87663
+        ],
+        "max": [
+          -1.70113,
+          1.34257,
+          3.48266
+        ],
+        "size": [
+          0.17387,
+          0.44634,
+          0.60604
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_03_74",
+      "vertices": 252,
+      "triangles": 214,
+      "boundsM": {
+        "min": [
+          -1.77904,
+          1.34394,
+          2.87694
+        ],
+        "max": [
+          -1.69516,
+          1.50934,
+          3.4778
+        ],
+        "size": [
+          0.08388,
+          0.1654,
+          0.60086
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_04_75",
+      "vertices": 250,
+      "triangles": 288,
+      "boundsM": {
+        "min": [
+          -1.875,
+          0.81371,
+          2.27194
+        ],
+        "max": [
+          -1.70113,
+          1.34257,
+          2.87798
+        ],
+        "size": [
+          0.17387,
+          0.52886,
+          0.60604
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_05_76",
+      "vertices": 269,
+      "triangles": 226,
+      "boundsM": {
+        "min": [
+          -1.77969,
+          1.34395,
+          2.27648
+        ],
+        "max": [
+          -1.69124,
+          1.61009,
+          2.87339
+        ],
+        "size": [
+          0.08845,
+          0.26615,
+          0.59691
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_06_77",
+      "vertices": 284,
+      "triangles": 246,
+      "boundsM": {
+        "min": [
+          -1.875,
+          0.89623,
+          1.49339
+        ],
+        "max": [
+          -1.70113,
+          1.34257,
+          2.27397
+        ],
+        "size": [
+          0.17387,
+          0.44634,
+          0.78058
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_07_78",
+      "vertices": 288,
+      "triangles": 244,
+      "boundsM": {
+        "min": [
+          -1.78118,
+          1.34382,
+          1.67354
+        ],
+        "max": [
+          -1.67922,
+          1.70053,
+          2.26946
+        ],
+        "size": [
+          0.10196,
+          0.35671,
+          0.59592
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_08_80",
+      "vertices": 632,
+      "triangles": 688,
+      "boundsM": {
+        "min": [
+          -1.72405,
+          0.69828,
+          0.45594
+        ],
+        "max": [
+          -1.70798,
+          1.30837,
+          1.65679
+        ],
+        "size": [
+          0.01607,
+          0.61009,
+          1.20084
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_09_81",
+      "vertices": 464,
+      "triangles": 412,
+      "boundsM": {
+        "min": [
+          -1.72366,
+          0.89476,
+          -0.04093
+        ],
+        "max": [
+          -1.70798,
+          1.30837,
+          0.80737
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.8483
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_10_82",
+      "vertices": 632,
+      "triangles": 688,
+      "boundsM": {
+        "min": [
+          -1.72408,
+          0.69826,
+          -1.25753
+        ],
+        "max": [
+          -1.70801,
+          1.30842,
+          -0.05594
+        ],
+        "size": [
+          0.01607,
+          0.61016,
+          1.20159
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_11_83",
+      "vertices": 464,
+      "triangles": 412,
+      "boundsM": {
+        "min": [
+          -1.72366,
+          0.89476,
+          -1.75697
+        ],
+        "max": [
+          -1.70798,
+          1.30837,
+          -0.90867
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.8483
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_12_84",
+      "vertices": 416,
+      "triangles": 368,
+      "boundsM": {
+        "min": [
+          -1.72367,
+          0.89477,
+          -2.63982
+        ],
+        "max": [
+          -1.70799,
+          1.30837,
+          -1.75882
+        ],
+        "size": [
+          0.01568,
+          0.41361,
+          0.881
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_13_85",
+      "vertices": 176,
+      "triangles": 164,
+      "boundsM": {
+        "min": [
+          -1.72367,
+          1.1119,
+          -3.4699
+        ],
+        "max": [
+          -1.70799,
+          1.30838,
+          -2.63972
+        ],
+        "size": [
+          0.01568,
+          0.19647,
+          0.83018
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_armor_r_14_41",
+      "vertices": 3556,
+      "triangles": 3328,
+      "boundsM": {
+        "min": [
+          -1.44563,
+          1.7029,
+          1.52907
+        ],
+        "max": [
+          -0.17649,
+          2.36533,
+          3.23568
+        ],
+        "size": [
+          1.26914,
+          0.66243,
+          1.7066
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -1.1,
+          "y": 1.9,
+          "frontZ": 2.40271
+        },
+        {
+          "x": -1.1,
+          "y": 2.1,
+          "frontZ": 2.52283
+        },
+        {
+          "x": -1.1,
+          "y": 2.3,
+          "frontZ": 2.10377
+        },
+        {
+          "x": -0.95,
+          "y": 1.9,
+          "frontZ": 2.50182
+        },
+        {
+          "x": -0.95,
+          "y": 2.1,
+          "frontZ": 2.62048
+        },
+        {
+          "x": -0.95,
+          "y": 2.3,
+          "frontZ": 2.19078
+        },
+        {
+          "x": -0.8,
+          "y": 1.9,
+          "frontZ": 2.60092
+        },
+        {
+          "x": -0.8,
+          "y": 2.1,
+          "frontZ": 2.68258
+        },
+        {
+          "x": -0.65,
+          "y": 1.9,
+          "frontZ": 2.70042
+        },
+        {
+          "x": -0.65,
+          "y": 2.1,
+          "frontZ": 2.78167
+        },
+        {
+          "x": -0.5,
+          "y": 1.9,
+          "frontZ": 2.79993
+        },
+        {
+          "x": -0.5,
+          "y": 2.1,
+          "frontZ": 2.88076
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": -1,
+          "z": 2.5,
+          "topY": 2.12589,
+          "bottomY": 1.91645
+        },
+        {
+          "x": -0.8,
+          "z": 2.5,
+          "topY": 2.19413,
+          "bottomY": 1.84682
+        },
+        {
+          "x": -0.6,
+          "z": 2.5,
+          "topY": 2.21407,
+          "bottomY": 1.8163
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_armor_r_15_42",
+      "vertices": 866,
+      "triangles": 822,
+      "boundsM": {
+        "min": [
+          -1.5264,
+          1.69409,
+          0.43653
+        ],
+        "max": [
+          -1.24261,
+          2.45577,
+          1.68623
+        ],
+        "size": [
+          0.28378,
+          0.76168,
+          1.2497
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -1.4,
+          "y": 1.9,
+          "frontZ": 0.95144
+        },
+        {
+          "x": -1.4,
+          "y": 2.1,
+          "frontZ": 1.28782
+        }
+      ],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_01_58",
+      "vertices": 458,
+      "triangles": 456,
+      "boundsM": {
+        "min": [
+          0.95801,
+          1.07743,
+          3.75167
+        ],
+        "max": [
+          1.70512,
+          1.37076,
+          3.9584
+        ],
+        "size": [
+          0.74711,
+          0.29333,
+          0.20673
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_02_61",
+      "vertices": 597,
+      "triangles": 710,
+      "boundsM": {
+        "min": [
+          0.52579,
+          1.04676,
+          3.70493
+        ],
+        "max": [
+          0.73417,
+          1.26382,
+          3.95958
+        ],
+        "size": [
+          0.20838,
+          0.21706,
+          0.25464
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_03_63",
+      "vertices": 944,
+      "triangles": 784,
+      "boundsM": {
+        "min": [
+          0.32585,
+          1.11726,
+          3.39048
+        ],
+        "max": [
+          0.74317,
+          1.43611,
+          3.7915
+        ],
+        "size": [
+          0.41732,
+          0.31885,
+          0.40102
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0.6,
+          "z": 3.5,
+          "topY": 1.33636,
+          "bottomY": 1.32914
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_decor_l_04_59",
+      "vertices": 882,
+      "triangles": 772,
+      "boundsM": {
+        "min": [
+          1.02387,
+          1.32427,
+          3.21716
+        ],
+        "max": [
+          1.48879,
+          1.41685,
+          3.74117
+        ],
+        "size": [
+          0.46492,
+          0.09258,
+          0.524
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_05_60",
+      "vertices": 776,
+      "triangles": 862,
+      "boundsM": {
+        "min": [
+          1.16811,
+          1.38082,
+          3.20795
+        ],
+        "max": [
+          1.67904,
+          1.49517,
+          3.42196
+        ],
+        "size": [
+          0.51093,
+          0.11435,
+          0.21401
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_06_79",
+      "vertices": 868,
+      "triangles": 760,
+      "boundsM": {
+        "min": [
+          0.19532,
+          1.53366,
+          2.30967
+        ],
+        "max": [
+          1.46262,
+          1.67143,
+          2.56045
+        ],
+        "size": [
+          1.2673,
+          0.13778,
+          0.25078
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0.6,
+          "z": 2.5,
+          "topY": 1.61309,
+          "bottomY": 1.54839
+        },
+        {
+          "x": 0.8,
+          "z": 2.5,
+          "topY": 1.61308,
+          "bottomY": 1.54845
+        },
+        {
+          "x": 1,
+          "z": 2.5,
+          "topY": 1.61306,
+          "bottomY": 1.54851
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_decor_l_07_104",
+      "vertices": 1185,
+      "triangles": 1148,
+      "boundsM": {
+        "min": [
+          1.29839,
+          1.74411,
+          -3.33784
+        ],
+        "max": [
+          1.54756,
+          1.84795,
+          -2.27539
+        ],
+        "size": [
+          0.24917,
+          0.10384,
+          1.06245
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_08_105",
+      "vertices": 1111,
+      "triangles": 1094,
+      "boundsM": {
+        "min": [
+          1.12985,
+          1.75923,
+          -3.56774
+        ],
+        "max": [
+          1.37902,
+          1.86456,
+          -2.5043
+        ],
+        "size": [
+          0.24917,
+          0.10533,
+          1.06344
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_09_87",
+      "vertices": 454,
+      "triangles": 376,
+      "boundsM": {
+        "min": [
+          1.01405,
+          0.60911,
+          -3.57674
+        ],
+        "max": [
+          1.69937,
+          1.17918,
+          -3.42662
+        ],
+        "size": [
+          0.68532,
+          0.57007,
+          0.15012
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_l_10_44",
+      "vertices": 1459,
+      "triangles": 1732,
+      "boundsM": {
+        "min": [
+          0.63441,
+          1.91552,
+          -2.78292
+        ],
+        "max": [
+          1.35428,
+          2.45736,
+          -1.89095
+        ],
+        "size": [
+          0.71987,
+          0.54184,
+          0.89197
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": 0.8,
+          "y": 2.1,
+          "frontZ": -2.40912
+        },
+        {
+          "x": 0.8,
+          "y": 2.3,
+          "frontZ": -2.40911
+        },
+        {
+          "x": 1.1,
+          "y": 2.1,
+          "frontZ": -1.8978
+        },
+        {
+          "x": 1.1,
+          "y": 2.3,
+          "frontZ": -1.8978
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": 0.8,
+          "z": -2.5,
+          "topY": 1.94883,
+          "bottomY": 1.93792
+        },
+        {
+          "x": 1,
+          "z": -2.5,
+          "topY": 1.94883,
+          "bottomY": 1.93795
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_decor_r_01_64",
+      "vertices": 458,
+      "triangles": 456,
+      "boundsM": {
+        "min": [
+          -1.70506,
+          1.07743,
+          3.75167
+        ],
+        "max": [
+          -0.95795,
+          1.37076,
+          3.9584
+        ],
+        "size": [
+          0.74711,
+          0.29333,
+          0.20673
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_r_02_67",
+      "vertices": 597,
+      "triangles": 710,
+      "boundsM": {
+        "min": [
+          -0.73423,
+          1.04676,
+          3.70493
+        ],
+        "max": [
+          -0.52585,
+          1.26382,
+          3.95958
+        ],
+        "size": [
+          0.20838,
+          0.21706,
+          0.25464
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_r_03_69",
+      "vertices": 944,
+      "triangles": 783,
+      "boundsM": {
+        "min": [
+          -0.74323,
+          1.11722,
+          3.39067
+        ],
+        "max": [
+          -0.32591,
+          1.43608,
+          3.79145
+        ],
+        "size": [
+          0.41732,
+          0.31885,
+          0.40078
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": -0.6,
+          "z": 3.5,
+          "topY": 1.33631,
+          "bottomY": 1.32919
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_decor_r_04_65",
+      "vertices": 882,
+      "triangles": 772,
+      "boundsM": {
+        "min": [
+          -1.48885,
+          1.32427,
+          3.21716
+        ],
+        "max": [
+          -1.02393,
+          1.41685,
+          3.74117
+        ],
+        "size": [
+          0.46492,
+          0.09258,
+          0.524
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_r_05_66",
+      "vertices": 776,
+      "triangles": 862,
+      "boundsM": {
+        "min": [
+          -1.67901,
+          1.38077,
+          3.20795
+        ],
+        "max": [
+          -1.16802,
+          1.49522,
+          3.42196
+        ],
+        "size": [
+          0.51099,
+          0.11445,
+          0.21401
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_r_06_86",
+      "vertices": 454,
+      "triangles": 376,
+      "boundsM": {
+        "min": [
+          -1.69941,
+          0.60911,
+          -3.57674
+        ],
+        "max": [
+          -1.0141,
+          1.17918,
+          -3.42662
+        ],
+        "size": [
+          0.68532,
+          0.57007,
+          0.15012
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_decor_r_07_43",
+      "vertices": 1512,
+      "triangles": 1782,
+      "boundsM": {
+        "min": [
+          -1.27135,
+          1.91552,
+          -2.78292
+        ],
+        "max": [
+          -0.55148,
+          2.45736,
+          -1.89095
+        ],
+        "size": [
+          0.71987,
+          0.54184,
+          0.89197
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -1.1,
+          "y": 2.1,
+          "frontZ": -1.89095
+        },
+        {
+          "x": -1.1,
+          "y": 2.3,
+          "frontZ": -1.89095
+        },
+        {
+          "x": -0.95,
+          "y": 2.1,
+          "frontZ": -2.00086
+        },
+        {
+          "x": -0.95,
+          "y": 2.3,
+          "frontZ": -2.00086
+        },
+        {
+          "x": -0.8,
+          "y": 2.1,
+          "frontZ": -2.26377
+        },
+        {
+          "x": -0.8,
+          "y": 2.3,
+          "frontZ": -2.26378
+        },
+        {
+          "x": -0.65,
+          "y": 2.1,
+          "frontZ": -2.5267
+        },
+        {
+          "x": -0.65,
+          "y": 2.3,
+          "frontZ": -2.52671
+        },
+        {
+          "x": -0.65,
+          "y": 2.4,
+          "frontZ": -2.5166
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": -1,
+          "z": -2.5,
+          "topY": 1.94883,
+          "bottomY": 1.93796
+        },
+        {
+          "x": -0.8,
+          "z": -2.5,
+          "topY": 1.94883,
+          "bottomY": 1.93794
+        }
+      ]
+    },
+    {
+      "name": "vehicle#ex_lantern_l_01_62",
+      "vertices": 1219,
+      "triangles": 1328,
+      "boundsM": {
+        "min": [
+          0.7237,
+          1.15278,
+          3.58852
+        ],
+        "max": [
+          0.94775,
+          1.38289,
+          3.80378
+        ],
+        "size": [
+          0.22405,
+          0.23011,
+          0.21526
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#ex_lantern_r_01_68",
+      "vertices": 1219,
+      "triangles": 1328,
+      "boundsM": {
+        "min": [
+          -0.94768,
+          1.15278,
+          3.58852
+        ],
+        "max": [
+          -0.72363,
+          1.38289,
+          3.80378
+        ],
+        "size": [
+          0.22405,
+          0.23011,
+          0.21526
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#gun_barrel_49",
+      "vertices": 3533,
+      "triangles": 3273,
+      "boundsM": {
+        "min": [
+          -0.30125,
+          1.62672,
+          -0.0628
+        ],
+        "max": [
+          0.44415,
+          2.24147,
+          6.11
+        ],
+        "size": [
+          0.7454,
+          0.61474,
+          6.1728
+        ]
+      },
+      "muzzleTipBoundsM": {
+        "min": [
+          -0.05809,
+          1.916,
+          6.10472
+        ],
+        "max": [
+          0.10572,
+          2.07982,
+          6.11
+        ],
+        "size": [
+          0.16381,
+          0.16382,
+          0.00528
+        ]
+      },
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0,
+          "z": 0.5,
+          "topY": 1.6479,
+          "bottomY": 1.63901
+        },
+        {
+          "x": 0,
+          "z": 1.5,
+          "topY": 2.16931,
+          "bottomY": 1.83363
+        },
+        {
+          "x": 0,
+          "z": 2.5,
+          "topY": 2.16593,
+          "bottomY": 1.84197
+        },
+        {
+          "x": 0,
+          "z": 3.5,
+          "topY": 2.20031,
+          "bottomY": 1.86302
+        }
+      ]
+    },
+    {
+      "name": "vehicle#hatch_01_71",
+      "vertices": 1648,
+      "triangles": 1416,
+      "boundsM": {
+        "min": [
+          -1.10609,
+          1.53617,
+          2.05049
+        ],
+        "max": [
+          -0.33055,
+          1.70188,
+          2.57138
+        ],
+        "size": [
+          0.77554,
+          0.16571,
+          0.52089
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": -1,
+          "z": 2.5,
+          "topY": 1.58962,
+          "bottomY": 1.54596
+        },
+        {
+          "x": -0.8,
+          "z": 2.5,
+          "topY": 1.58967,
+          "bottomY": 1.546
+        },
+        {
+          "x": -0.6,
+          "z": 2.5,
+          "topY": 1.58971,
+          "bottomY": 1.54604
+        }
+      ]
+    },
+    {
+      "name": "vehicle#hatch_02_103",
+      "vertices": 238,
+      "triangles": 272,
+      "boundsM": {
+        "min": [
+          -1.71705,
+          1.38566,
+          -2.06458
+        ],
+        "max": [
+          -1.66302,
+          1.63005,
+          -1.24428
+        ],
+        "size": [
+          0.05404,
+          0.24439,
+          0.8203
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#hatch_03_102",
+      "vertices": 226,
+      "triangles": 256,
+      "boundsM": {
+        "min": [
+          -1.71704,
+          1.40461,
+          -3.08691
+        ],
+        "max": [
+          -1.66147,
+          1.66229,
+          -2.3353
+        ],
+        "size": [
+          0.05557,
+          0.25768,
+          0.7516
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#hatch_04_88",
+      "vertices": 238,
+      "triangles": 272,
+      "boundsM": {
+        "min": [
+          1.66244,
+          1.40841,
+          -2.08217
+        ],
+        "max": [
+          1.71839,
+          1.65259,
+          -1.27358
+        ],
+        "size": [
+          0.05595,
+          0.24418,
+          0.80859
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#hatch_05_51",
+      "vertices": 1758,
+      "triangles": 2014,
+      "boundsM": {
+        "min": [
+          0.30875,
+          2.43936,
+          -0.27116
+        ],
+        "max": [
+          0.86929,
+          2.65477,
+          0.37212
+        ],
+        "size": [
+          0.56053,
+          0.21541,
+          0.64327
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": 0.5,
+          "y": 2.6,
+          "frontZ": -0.1757
+        }
+      ],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#hatch_06_52",
+      "vertices": 1349,
+      "triangles": 1624,
+      "boundsM": {
+        "min": [
+          -0.87666,
+          2.45347,
+          -0.24125
+        ],
+        "max": [
+          -0.33067,
+          2.64806,
+          0.3807
+        ],
+        "size": [
+          0.54599,
+          0.19459,
+          0.62194
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -0.8,
+          "y": 2.6,
+          "frontZ": -0.19885
+        },
+        {
+          "x": -0.65,
+          "y": 2.5,
+          "frontZ": 0.16561
+        },
+        {
+          "x": -0.65,
+          "y": 2.6,
+          "frontZ": 0.08613
+        },
+        {
+          "x": -0.5,
+          "y": 2.6,
+          "frontZ": -0.05948
+        }
+      ],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#hatch_07_55",
+      "vertices": 468,
+      "triangles": 338,
+      "boundsM": {
+        "min": [
+          -0.75242,
+          2.39798,
+          -2.74468
+        ],
+        "max": [
+          0.1893,
+          2.46331,
+          -2.32798
+        ],
+        "size": [
+          0.94172,
+          0.06533,
+          0.4167
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [
+        {
+          "x": -0.5,
+          "y": 2.4,
+          "frontZ": -2.71113
+        }
+      ],
+      "verticalRayProbesM": [
+        {
+          "x": -0.6,
+          "z": -2.5,
+          "topY": 2.43105,
+          "bottomY": 2.42465
+        },
+        {
+          "x": 0,
+          "z": -2.5,
+          "topY": 2.43105,
+          "bottomY": 2.42465
+        }
+      ]
+    },
+    {
+      "name": "vehicle#mg_aa_01_47",
+      "vertices": 4071,
+      "triangles": 4058,
+      "boundsM": {
+        "min": [
+          0.85706,
+          2.69216,
+          -0.43735
+        ],
+        "max": [
+          0.99386,
+          2.92573,
+          0.82049
+        ],
+        "size": [
+          0.1368,
+          0.23357,
+          1.25784
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#mg_mount_v_46",
+      "vertices": 1240,
+      "triangles": 980,
+      "boundsM": {
+        "min": [
+          0.91308,
+          2.69296,
+          -0.23046
+        ],
+        "max": [
+          1.04364,
+          2.86511,
+          0.43873
+        ],
+        "size": [
+          0.13056,
+          0.17215,
+          0.66919
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#optic_commander_56",
+      "vertices": 4315,
+      "triangles": 3825,
+      "boundsM": {
+        "min": [
+          -0.50808,
+          2.62693,
+          -0.59961
+        ],
+        "max": [
+          -0.04727,
+          3.01667,
+          -0.14406
+        ],
+        "size": [
+          0.46081,
+          0.38974,
+          0.45555
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_01_26",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34844,
+          2.48837
+        ],
+        "max": [
+          1.3741,
+          0.7661,
+          3.13277
+        ],
+        "size": [
+          0.32659,
+          0.41767,
+          0.6444
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_02_28",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          1.63233
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          2.31078
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_03_30",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          0.84519
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          1.52363
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_04_32",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          0.0754
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          0.75385
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_05_34",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          -0.77152
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          -0.09308
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_06_36",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          -1.60175
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          -0.9233
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_l_07_38",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          1.04751,
+          0.34447,
+          -2.45252
+        ],
+        "max": [
+          1.3741,
+          0.68919,
+          -1.77407
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_01_12",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36841,
+          0.34553,
+          2.71871
+        ],
+        "max": [
+          -1.04182,
+          0.79713,
+          3.34338
+        ],
+        "size": [
+          0.32659,
+          0.45159,
+          0.62467
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_02_14",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          1.87866
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          2.5571
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_03_16",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          1.06045
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          1.7389
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_04_18",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          0.31039
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          0.98883
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_05_20",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          -0.5352
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          0.14325
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_06_22",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          -1.38396
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          -0.70551
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#suspension_r_07_24",
+      "vertices": 154,
+      "triangles": 146,
+      "boundsM": {
+        "min": [
+          -1.36844,
+          0.34447,
+          -2.22951
+        ],
+        "max": [
+          -1.04185,
+          0.68919,
+          -1.55106
+        ],
+        "size": [
+          0.32659,
+          0.34472,
+          0.67845
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#track_l_106",
+      "vertices": 5782,
+      "triangles": 5612,
+      "boundsM": {
+        "min": [
+          1.04631,
+          -0.0,
+          -3.29343
+        ],
+        "max": [
+          1.69472,
+          1.31448,
+          3.81941
+        ],
+        "size": [
+          0.64841,
+          1.31448,
+          7.11284
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#track_r_57",
+      "vertices": 5900,
+      "triangles": 5734,
+      "boundsM": {
+        "min": [
+          -1.69485,
+          -0.0,
+          -3.29343
+        ],
+        "max": [
+          -1.04642,
+          1.31448,
+          3.81941
+        ],
+        "size": [
+          0.64842,
+          1.31448,
+          7.11284
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#turret_cap_50",
+      "vertices": 192,
+      "triangles": 148,
+      "boundsM": {
+        "min": [
+          -0.17045,
+          2.34208,
+          1.38958
+        ],
+        "max": [
+          0.29087,
+          2.42714,
+          1.95614
+        ],
+        "size": [
+          0.46132,
+          0.08506,
+          0.56657
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": 0,
+          "z": 1.5,
+          "topY": 2.42651,
+          "bottomY": 2.39048
+        }
+      ]
+    },
+    {
+      "name": "vehicle#wheel_l_01_27",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          2.23311
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          2.92834
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_02_29",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          1.3793
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          2.07453
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_03_31",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          0.59212
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          1.28734
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_04_33",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          -0.17797
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          0.51725
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_05_35",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          -1.02467
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          -0.32944
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_06_37",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          -1.85645
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          -1.16122
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_07_39",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.24931,
+          0.08851,
+          -2.69847
+        ],
+        "max": [
+          1.58634,
+          0.79168,
+          -2.00324
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_drive_1",
+      "vertices": 2617,
+      "triangles": 2445,
+      "boundsM": {
+        "min": [
+          1.0203,
+          0.5544,
+          -3.25471
+        ],
+        "max": [
+          1.6906,
+          1.27399,
+          -2.55036
+        ],
+        "size": [
+          0.6703,
+          0.71959,
+          0.70435
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_front_2",
+      "vertices": 1092,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          1.20878,
+          0.64182,
+          3.19199
+        ],
+        "max": [
+          1.53935,
+          1.18771,
+          3.73167
+        ],
+        "size": [
+          0.33058,
+          0.54589,
+          0.53967
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_top_01_3",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          1.44952,
+          0.99198,
+          2.07522
+        ],
+        "max": [
+          1.60755,
+          1.22587,
+          2.30651
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_top_02_4",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          1.20154,
+          0.99198,
+          1.2618
+        ],
+        "max": [
+          1.35958,
+          1.22587,
+          1.49309
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_top_03_10",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          1.44923,
+          0.99198,
+          -0.26452
+        ],
+        "max": [
+          1.60727,
+          1.22587,
+          -0.03323
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_l_top_04_11",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          1.2033,
+          0.99198,
+          -1.93214
+        ],
+        "max": [
+          1.36134,
+          1.22587,
+          -1.70085
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_01_13",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          2.45989
+        ],
+        "max": [
+          -1.20586,
+          0.79167,
+          3.15512
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_02_15",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          1.62547
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          2.3207
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_03_17",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          0.80787
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          1.5031
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_04_19",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          0.05727
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          0.7525
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_05_21",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          -0.78865
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          -0.09343
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_06_23",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          -1.63633
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          -0.94111
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_07_25",
+      "vertices": 1004,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.5429,
+          0.08851,
+          -2.48185
+        ],
+        "max": [
+          -1.20586,
+          0.79168,
+          -1.78663
+        ],
+        "size": [
+          0.33703,
+          0.70316,
+          0.69522
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_drive_5",
+      "vertices": 2617,
+      "triangles": 2445,
+      "boundsM": {
+        "min": [
+          -1.69054,
+          0.5544,
+          -3.25471
+        ],
+        "max": [
+          -1.02023,
+          1.27399,
+          -2.55036
+        ],
+        "size": [
+          0.6703,
+          0.71959,
+          0.70435
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_front_0",
+      "vertices": 1092,
+      "triangles": 1088,
+      "boundsM": {
+        "min": [
+          -1.53929,
+          0.64182,
+          3.19199
+        ],
+        "max": [
+          -1.20872,
+          1.18771,
+          3.73167
+        ],
+        "size": [
+          0.33058,
+          0.54589,
+          0.53967
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_top_01_6",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          -1.60721,
+          0.99198,
+          2.197
+        ],
+        "max": [
+          -1.44917,
+          1.22587,
+          2.42829
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_top_02_9",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          -1.35923,
+          0.99198,
+          1.38358
+        ],
+        "max": [
+          -1.2012,
+          1.22587,
+          1.61487
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_top_03_7",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          -1.54861,
+          0.99198,
+          -0.14274
+        ],
+        "max": [
+          -1.39057,
+          1.22587,
+          0.08855
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#wheel_r_top_04_8",
+      "vertices": 238,
+      "triangles": 236,
+      "boundsM": {
+        "min": [
+          -1.36099,
+          0.99198,
+          -1.81036
+        ],
+        "max": [
+          -1.20296,
+          1.22587,
+          -1.57907
+        ],
+        "size": [
+          0.15803,
+          0.23389,
+          0.23129
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": []
+    },
+    {
+      "name": "vehicle#x_root_107",
+      "vertices": 56363,
+      "triangles": 51920,
+      "boundsM": {
+        "min": [
+          -1.8472,
+          0.41917,
+          -3.86
+        ],
+        "max": [
+          1.84726,
+          2.37985,
+          3.86
+        ],
+        "size": [
+          3.69446,
+          1.96068,
+          7.72
+        ]
+      },
+      "muzzleTipBoundsM": null,
+      "frontRayProbesM": [],
+      "verticalRayProbesM": [
+        {
+          "x": -1,
+          "z": -2.5,
+          "topY": 1.75984,
+          "bottomY": 0.55798
+        },
+        {
+          "x": -1,
+          "z": -1.5,
+          "topY": 1.79301,
+          "bottomY": 0.72096
+        },
+        {
+          "x": -1,
+          "z": -0.5,
+          "topY": 1.66096,
+          "bottomY": 0.75984
+        },
+        {
+          "x": -1,
+          "z": 0.5,
+          "topY": 1.61159,
+          "bottomY": 0.75986
+        },
+        {
+          "x": -1,
+          "z": 1.5,
+          "topY": 1.66042,
+          "bottomY": 0.51772
+        },
+        {
+          "x": -1,
+          "z": 2.5,
+          "topY": 1.54361,
+          "bottomY": 0.448
+        },
+        {
+          "x": -1,
+          "z": 3.5,
+          "topY": 1.35739,
+          "bottomY": 0.89263
+        },
+        {
+          "x": -0.8,
+          "z": -2.5,
+          "topY": 1.81916,
+          "bottomY": 0.55797
+        },
+        {
+          "x": -0.8,
+          "z": -1.5,
+          "topY": 1.82034,
+          "bottomY": 0.47136
+        },
+        {
+          "x": -0.8,
+          "z": -0.5,
+          "topY": 1.66084,
+          "bottomY": 0.65384
+        },
+        {
+          "x": -0.8,
+          "z": 0.5,
+          "topY": 0.66156,
+          "bottomY": 0.63417
+        },
+        {
+          "x": -0.8,
+          "z": 1.5,
+          "topY": 1.69064,
+          "bottomY": 0.46385
+        },
+        {
+          "x": -0.8,
+          "z": 2.5,
+          "topY": 0.66156,
+          "bottomY": 0.44733
+        },
+        {
+          "x": -0.8,
+          "z": 3.5,
+          "topY": 1.35739,
+          "bottomY": 0.78996
+        },
+        {
+          "x": -0.6,
+          "z": -2.5,
+          "topY": 1.83813,
+          "bottomY": 0.55793
+        },
+        {
+          "x": -0.6,
+          "z": -1.5,
+          "topY": 1.81554,
+          "bottomY": 0.557
+        },
+        {
+          "x": -0.6,
+          "z": -0.5,
+          "topY": 1.66076,
+          "bottomY": 0.55609
+        },
+        {
+          "x": -0.6,
+          "z": 0.5,
+          "topY": 0.64936,
+          "bottomY": 0.55517
+        },
+        {
+          "x": -0.6,
+          "z": 1.5,
+          "topY": 0.64936,
+          "bottomY": 0.55426
+        },
+        {
+          "x": -0.6,
+          "z": 2.5,
+          "topY": 0.64936,
+          "bottomY": 0.55333
+        },
+        {
+          "x": -0.6,
+          "z": 3.5,
+          "topY": 1.32043,
+          "bottomY": 0.78996
+        },
+        {
+          "x": 0,
+          "z": -2.5,
+          "topY": 1.82478,
+          "bottomY": 0.52123
+        },
+        {
+          "x": 0,
+          "z": -1.5,
+          "topY": 1.73109,
+          "bottomY": 0.55689
+        },
+        {
+          "x": 0,
+          "z": -0.5,
+          "topY": 1.66493,
+          "bottomY": 0.55597
+        },
+        {
+          "x": 0,
+          "z": 0.5,
+          "topY": 0.64936,
+          "bottomY": 0.55505
+        },
+        {
+          "x": 0,
+          "z": 1.5,
+          "topY": 0.64936,
+          "bottomY": 0.55409
+        },
+        {
+          "x": 0,
+          "z": 2.5,
+          "topY": 1.54269,
+          "bottomY": 0.55313
+        },
+        {
+          "x": 0,
+          "z": 3.5,
+          "topY": 1.30876,
+          "bottomY": 0.78996
+        },
+        {
+          "x": 0.6,
+          "z": -2.5,
+          "topY": 1.83811,
+          "bottomY": 0.5577
+        },
+        {
+          "x": 0.6,
+          "z": -1.5,
+          "topY": 1.81421,
+          "bottomY": 0.55677
+        },
+        {
+          "x": 0.6,
+          "z": -0.5,
+          "topY": 1.65991,
+          "bottomY": 0.55581
+        },
+        {
+          "x": 0.6,
+          "z": 0.5,
+          "topY": 0.64943,
+          "bottomY": 0.55485
+        },
+        {
+          "x": 0.6,
+          "z": 1.5,
+          "topY": 0.64947,
+          "bottomY": 0.55389
+        },
+        {
+          "x": 0.6,
+          "z": 2.5,
+          "topY": 1.54218,
+          "bottomY": 0.55293
+        },
+        {
+          "x": 0.6,
+          "z": 3.5,
+          "topY": 1.32043,
+          "bottomY": 0.79001
+        },
+        {
+          "x": 0.8,
+          "z": -2.5,
+          "topY": 1.81923,
+          "bottomY": 0.55767
+        },
+        {
+          "x": 0.8,
+          "z": -1.5,
+          "topY": 1.81975,
+          "bottomY": 0.62702
+        },
+        {
+          "x": 0.8,
+          "z": -0.5,
+          "topY": 1.65982,
+          "bottomY": 0.65384
+        },
+        {
+          "x": 0.8,
+          "z": 0.5,
+          "topY": 0.68213,
+          "bottomY": 0.46542
+        },
+        {
+          "x": 0.8,
+          "z": 1.5,
+          "topY": 1.69069,
+          "bottomY": 0.45662
+        },
+        {
+          "x": 0.8,
+          "z": 2.5,
+          "topY": 1.54188,
+          "bottomY": 0.57191
+        },
+        {
+          "x": 0.8,
+          "z": 3.5,
+          "topY": 1.35739,
+          "bottomY": 0.79006
+        },
+        {
+          "x": 1,
+          "z": -2.5,
+          "topY": 1.75984,
+          "bottomY": 0.55765
+        },
+        {
+          "x": 1,
+          "z": -1.5,
+          "topY": 1.80134,
+          "bottomY": 0.75968
+        },
+        {
+          "x": 1,
+          "z": -0.5,
+          "topY": 1.6597,
+          "bottomY": 0.75974
+        },
+        {
+          "x": 1,
+          "z": 0.5,
+          "topY": 1.61229,
+          "bottomY": 0.71495
+        },
+        {
+          "x": 1,
+          "z": 1.5,
+          "topY": 1.65866,
+          "bottomY": 0.45733
+        },
+        {
+          "x": 1,
+          "z": 2.5,
+          "topY": 1.54169,
+          "bottomY": 0.75989
+        },
+        {
+          "x": 1,
+          "z": 3.5,
+          "topY": 1.35739,
+          "bottomY": 0.89272
+        }
+      ]
+    }
+  ],
+  "independentTowEyeAndExteriorAirWitnesses": {
+    "frame": "canonical local oracle meters; fixed source triangle bounds and rays",
+    "bowTowEyeWidthX": 0.09870,
+    "bowTowEyeBoundsY": [1.04676,1.26149],
+    "bowTowEyeFrontZ": 3.95546,
+    "bowTowEyePositiveRayXZ": [0.65,3.84],
+    "rearExteriorNoSurfaceXZ": [[-1.22,-3.76],[1.25,-3.76]],
+    "rearAirOwnership": "outside real main stern ending Z -3.6927; inside recovery cable projection"
+  },
+  "wholeBoundsM": {
+    "min": [
+      -1.875,
+      -0.0,
+      -3.86
+    ],
+    "max": [
+      1.875,
+      4.11688,
+      6.11
+    ],
+    "size": [
+      3.75,
+      4.11688,
+      9.97
+    ]
+  }
+}

@@ -3,7 +3,8 @@
 // bore/barrel circularity, existing geometry/track/contiguity/fittings
 // standard, tests and build.
 
-import { execFileSync } from 'node:child_process';
+import { runCommand, runCapturedCommand } from './capture-command.mjs';
+import { tankReleaseSteps } from './tank-release-plan.mjs';
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='))
   || process.argv.find((arg) => arg.startsWith('--tanks='));
@@ -14,23 +15,16 @@ if (!idArg) {
 const ids = idArg.slice(idArg.indexOf('=') + 1);
 const gate = process.argv.includes('--gate');
 
-function run(command, args) {
+async function run({command,args,capture}) {
   console.log(`\n[tank-release] ${command} ${args.join(' ')}`);
-  execFileSync(command, args, { stdio: 'inherit' });
+  // Standard checking manages its own render phases. Wrapping that entire
+  // child would deadlock its queue; wrap only otherwise-unlocked probes.
+  const execute=capture?runCapturedCommand:runCommand;
+  await execute(command,args);
 }
 
 try {
-  run(process.execPath, ['tools/gen-combat-anatomy.mjs', '--check']);
-  run(process.execPath, ['tools/presentation-centering.mjs', '--check', `--ids=${ids}`]);
-  run(process.execPath, ['tools/module-visual-align-probe.mjs', `--ids=${ids}`, '--gate']);
-  run(process.execPath, ['tools/module-hit-probe.mjs', `--ids=${ids}`]);
-  run(process.execPath, ['tools/tank-assets-check.mjs', `--ids=${ids}`]);
-  run(process.execPath, ['tools/track-duplicate-audit.mjs', `--ids=${ids}`]);
-  run(process.execPath, ['tools/muzzle-bore-probe.mjs', `--ids=${ids}`]);
-  run(process.execPath, ['tools/turret-barrel-circularity.mjs', `--ids=${ids}`]);
-  run(process.execPath, ['tools/tank-standard-check.mjs', `--ids=${ids}`, ...(gate ? ['--gate'] : [])]);
-  run('npm', ['test']);
-  run('npm', ['run', 'build:private']);
+  for(const step of tankReleaseSteps(ids,gate))await run(step);
   console.log(`\n[tank-release] PASS ${ids}`);
 } catch (error) {
   console.error(`\n[tank-release] FAIL ${ids}`);

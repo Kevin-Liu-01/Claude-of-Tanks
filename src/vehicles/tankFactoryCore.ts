@@ -21,6 +21,9 @@ import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.t
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
 import { suspensionPatternFor } from './suspensionPatterns.ts';
+import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, type SuspensionDimensions } from './suspensionDimensions.ts';
+import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
+import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
@@ -46,7 +49,7 @@ import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
 import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
-import type { SuspensionPatternId } from './suspensionPatterns.ts';
+import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 
@@ -72,6 +75,7 @@ interface EraSurfaceFrame {
 
 interface EraSurfaceCollection {
   surfaces: EraSurface[];
+  exactSurfaces: EraSurface[];
   allPoints: THREE.Vector3[];
 }
 
@@ -135,6 +139,9 @@ interface GearEndpoint {
   y: number;
   r: number;
   trackR?: number;
+  /** Independent axial casting envelopes; rolling radius and track lanes stay fixed. */
+  axialScaleLeft?: number;
+  axialScaleRight?: number;
 }
 
 type TrackPoint = [number, number];
@@ -235,11 +242,43 @@ interface SpinnerBatchEntry {
   x: number;
   y: number;
   z: number;
+  scaleX: number;
 }
 
 interface SpinnerBatchRecord {
   batch: THREE.BatchedMesh;
   entries: SpinnerBatchEntry[];
+}
+
+export interface TrackShoeDimensions {
+  readonly padHeight?: number;
+  readonly grouserHeight?: number;
+  readonly webHeight?: number;
+  readonly hornHeight?: number;
+  readonly pinRadius?: number;
+  /** Shoe-local radial pin centre; positive is outward from the course. */
+  readonly pinCentreY?: number;
+}
+
+type DimensionedTrackPattern = Omit<TrackPattern, keyof TrackShoeDimensions>
+  & Required<Omit<TrackShoeDimensions, 'pinCentreY'>>
+  & Pick<TrackShoeDimensions, 'pinCentreY'>;
+
+/** Source-measured native shoe dimensions, without changing family grammar. */
+export function trackPatternWithDimensions(
+  pattern: TrackPattern,
+  dimensions?: TrackShoeDimensions,
+): DimensionedTrackPattern {
+  if (!dimensions) return pattern;
+  const names = new Set(['padHeight', 'grouserHeight', 'webHeight', 'hornHeight', 'pinRadius', 'pinCentreY']);
+  for (const [name, value] of Object.entries(dimensions)) {
+    if (!names.has(name) || !Number.isFinite(value)) {
+      throw new TypeError(`Invalid native track-shoe dimension: ${name}`);
+    }
+    const valid = name === 'pinCentreY' ? Math.abs(value) <= 0.5 : value > 0 && value <= 0.5;
+    if (!valid) throw new RangeError(`Native track-shoe dimension outside physical range: ${name}`);
+  }
+  return Object.freeze({ ...pattern, ...dimensions });
 }
 
 interface RunningGearConfig {
@@ -251,12 +290,22 @@ interface RunningGearConfig {
   xcLeft?: number;
   xcRight?: number;
   wheelY?: number;
+  /** Absolute authored axle heights, in the same station order as wheelZs. */
+  wheelYs?: readonly number[];
+  /** Road-wheel axle offset only, outward from each native track lane. */
+  roadWheelOutsetM?: number;
   wheelZScale?: number;
+  /** Source-measured axial dish/hub depth only; tires and axle stations stay fixed. */
+  wheelFaceDepthScale?: number;
   layers?: number[][] | null;
   sprocket: GearEndpoint;
   idler: GearEndpoint;
   rollers?: GearEndpoint[];
   rollerR?: number;
+  /** Complete axial return-roller envelope; absent preserves the native family. */
+  returnRollerWidthM?: number;
+  /** Inward offset from the native shoe lane, applied to the animated roller. */
+  returnRollerInsetM?: number;
   trackW: number;
   trackTh?: number;
   topY: number;
@@ -276,7 +325,10 @@ interface RunningGearConfig {
   linkPitchM?: number;
   wheelPattern?: WheelPatternId;
   trackPattern?: TrackPatternId;
+  trackShoeDimensions?: TrackShoeDimensions;
   suspensionPattern?: SuspensionPatternId;
+  /** Source-measured native arm and independent fixed/moving boss dimensions. */
+  suspensionDimensions?: SuspensionDimensions;
   suspensionDroopM?: number;
   suspensionCompressionM?: number;
   shoeRadialScale?: number;
@@ -558,6 +610,8 @@ interface RunningGearUnit {
     wheelY: number;
     wheelR: number;
     wheelZs: number[];
+    wheelYs?: number[];
+    roadWheelOutsetM?: number;
   };
   update(left: number, right: number, dt?: number): void;
   updateSurface?(left: number, right: number): void;
@@ -2566,7 +2620,7 @@ const TRACK_SHOE_SIMPLIFIED_DIST_M = 55;
 function simplifiedTrackShoeGeometry(
   trackW: number,
   pitch: number,
-  pattern: TrackPattern,
+  pattern: DimensionedTrackPattern,
   radialScale = 1,
   widthScale = 1,
 ): THREE.BufferGeometry {
@@ -2637,7 +2691,7 @@ function appendTrackShoeChevron(
     trackW * 0.225, z, -direction * 0.28, height);
 }
 
-function appendTrackShoePad(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+function appendTrackShoePad(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {
   const { trackW, pitch, padH } = assembly;
   if (pattern.surface !== 'paired-pad' && pattern.surface !== 'rubber-block'
       && pattern.surface !== 'split-chevron') {
@@ -2652,7 +2706,7 @@ function appendTrackShoePad(assembly: TrackShoeAssembly, pattern: TrackPattern):
     (halfW + gap) / 2);
 }
 
-function appendTrackShoeSurface(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+function appendTrackShoeSurface(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {
   const { trackW, pitch, grouserH } = assembly;
   switch (pattern.surface) {
     case 'triple-bar':
@@ -2726,7 +2780,7 @@ function appendTrackShoeSurface(assembly: TrackShoeAssembly, pattern: TrackPatte
   }
 }
 
-function appendTrackShoeStructure(assembly: TrackShoeAssembly, pattern: TrackPattern): void {
+function appendTrackShoeStructure(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {
   const { trackW, pitch, padH } = assembly;
   const shoulderLift = pattern.shoulderHeight;
   for (const side of [-1, 1]) {
@@ -2750,7 +2804,7 @@ function appendTrackShoeStructure(assembly: TrackShoeAssembly, pattern: TrackPat
 
 function appendTrackShoePins(
   assembly: TrackShoeAssembly,
-  pattern: TrackPattern,
+  pattern: DimensionedTrackPattern,
   pinCapOuter: number | null,
 ): void {
   if (pattern.pinStyle !== 'end-caps') return;
@@ -2758,7 +2812,7 @@ function appendTrackShoePins(
   const outer = pinCapOuter ?? trackW * 0.48;
   const capLength = Math.min(0.058, trackW * 0.15);
   const capX = Math.max(0, outer - capLength / 2);
-  const pinY = -(padH / 2 + pattern.webHeight * 0.38);
+  const pinY = pattern.pinCentreY ?? -(padH / 2 + pattern.webHeight * 0.38);
   for (const side of [-1, 1] as const) {
     for (const z of [-pitch * 0.30, pitch * 0.30]) {
       parts.push(xform(
@@ -2772,7 +2826,7 @@ function appendTrackShoePins(
 function trackShoeGeometry(
   trackW: number,
   pitch: number,
-  pattern: TrackPattern,
+  pattern: DimensionedTrackPattern,
   pinCapOuter: number | null = null,
   radialScale = 1,
   widthScale = 1,
@@ -2806,6 +2860,17 @@ function trackShoeGeometry(
   return geometry;
 }
 
+function runningGearArmGeometry(
+  dimensions: Readonly<SuspensionDimensions> | undefined,
+  width: number, height: number, pattern: SuspensionPattern,
+): THREE.BufferGeometry {
+  if(dimensions?.armHeightM!==undefined) {
+    return dimensionedSuspensionArm(width,dimensions.armHeightM,dimensions.armAxleHeightM??dimensions.armHeightM);
+  }
+  return xform(cylZ(.5*pattern.wheelEndTaper,1,pattern.armSegments,.5),
+    0,0,0,0,0,0,[width,height,1]);
+}
+
 function runningGearContactPatch(
   wheelZs: readonly number[],
   wheelR: number,
@@ -2832,6 +2897,7 @@ function trackCourseSupports(
   wheelY: number,
   wheelR: number,
   layers: number[][] | null,
+  wheelYs?: readonly number[],
 ): Array<{ z: number; y: number }> {
   if (rollers.length) {
     return rollers.map((roller) => ({
@@ -2841,8 +2907,8 @@ function trackCourseSupports(
   }
   const maxOffset = layers ? Math.max(...layers.flat()) : 0;
   return wheelZs
-    .filter((z, index) => !layers || layers[index % layers.length].includes(maxOffset))
-    .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+    .map((z, index) => ({ z, y: (wheelYs?.[index] ?? wheelY) + wheelR + trackTh / 2 - 0.02 }))
+    .filter((point, index) => !layers || layers[index % layers.length].includes(maxOffset));
 }
 
 function orderedTrackEndpoints(
@@ -2962,7 +3028,7 @@ function buildTrackCourse({
 }): TrackCourse {
   const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
   const supports = trackCourseSupports(
-    rollers, rollerR, trackTh, wheelZs, wheelY, wheelR, layers,
+    rollers, rollerR, trackTh, wheelZs, wheelY, wheelR, layers, cfg.wheelYs,
   );
 
   // trackLoopPoints always receives the geometrically front (+Z) end first;
@@ -3004,6 +3070,47 @@ function buildTrackCourse({
   };
 }
 
+function validateReturnRollerDimensions(cfg: RunningGearConfig): void {
+  if (cfg.returnRollerWidthM !== undefined && (!Number.isFinite(cfg.returnRollerWidthM)
+    || cfg.returnRollerWidthM <= 0 || cfg.returnRollerWidthM > 1)) {
+    throw new RangeError('Native return-roller width must be finite and inside (0, 1] metres');
+  }
+  if (cfg.returnRollerInsetM !== undefined && (!Number.isFinite(cfg.returnRollerInsetM)
+    || cfg.returnRollerInsetM < 0 || cfg.returnRollerInsetM > .5)) {
+    throw new RangeError('Native return-roller inset must be finite and inside [0, .5] metres');
+  }
+}
+
+function validateRoadWheelStations(cfg: RunningGearConfig): void {
+  if (cfg.wheelYs !== undefined && (!Array.isArray(cfg.wheelYs)
+    || cfg.wheelYs.length !== cfg.wheelZs.length
+    || !Array.from(cfg.wheelYs).every(Number.isFinite))) {
+    throw new RangeError('Native road-wheel heights must be finite and match wheelZs');
+  }
+  if (cfg.roadWheelOutsetM !== undefined && !Number.isFinite(cfg.roadWheelOutsetM)) {
+    throw new RangeError('Native road-wheel outset must be finite');
+  }
+}
+
+function weightedRoadWheelRestY(
+  wheels: readonly WheelEntry[], weights: BandWheelWeights, fallbackY: number,
+): number {
+  const sum = weights.wa + weights.wb;
+  if (weights.a < 0 || sum < 1e-8) return fallbackY;
+  const secondary = weights.b < 0 ? 0 : wheels[weights.b].y * weights.wb;
+  return (wheels[weights.a].y * weights.wa + secondary) / sum;
+}
+
+function resolveRoadWheelStations(cfg: RunningGearConfig): {
+  wheelYs: number[] | undefined; roadWheelOutsetM: number;
+} {
+  validateRoadWheelStations(cfg);
+  return {
+    wheelYs: cfg.wheelYs ? [...cfg.wheelYs] : undefined,
+    roadWheelOutsetM: cfg.roadWheelOutsetM ?? 0,
+  };
+}
+
 function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
   if (!P.spec || !P.disposables) {
     throw new TypeError('Running gear requires a vehicle spec and disposal registry');
@@ -3011,6 +3118,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const builderSpec = P.spec;
   const disposables = P.disposables;
   const { mats, hullG, q } = P;
+  validateReturnRollerDimensions(cfg);
+  const { wheelYs, roadWheelOutsetM } = resolveRoadWheelStations(cfg);
   const {
     style = 'rubber', wheelR, wheelW, wheelZs, xc,
     wheelZScale = 1,                    // elliptical road-wheel profile in side elevation
@@ -3037,7 +3146,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
     const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
     const wheelPattern = wheelPatternFor(builderSpec, style, cfg.wheelPattern ?? null);
-    const trackPattern = trackPatternFor(builderSpec, wheelPattern, cfg.trackPattern ?? null);
+    const trackPattern = trackPatternWithDimensions(
+      trackPatternFor(builderSpec, wheelPattern, cfg.trackPattern ?? null), cfg.trackShoeDimensions,
+    );
     return {
       seg: q ? 26 : 12,
       xcLeft,
@@ -3102,6 +3213,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         wheelZs: [...wheelZs],
         wheelR,
         wheelY,
+        ...(wheelYs ? { wheelYs: [...wheelYs] } : {}),
+        ...(cfg.roadWheelOutsetM !== undefined ? { roadWheelOutsetM } : {}),
         sprocket: { z: sprocket.z, y: sprocket.y, r: sprocket.r },
         sprocketTeeth: cfg.sprocketTeeth !== false,
         idler: { z: idler.z, y: idler.y, r: idler.r },
@@ -3122,6 +3235,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         shoeSimplifiedDistanceM: TRACK_SHOE_SIMPLIFIED_DIST_M,
         trackPatternId: trackPattern.id,
         trackPatternLabel: trackPattern.label,
+        ...(cfg.trackShoeDimensions ? { trackShoeDimensions: { ...cfg.trackShoeDimensions } } : {}),
         suspensionPatternId: suspensionPattern.id,
         suspensionPatternLabel: suspensionPattern.label,
         suspensionLinkCount: wheelZs.length * 2,
@@ -3201,7 +3315,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         // on both sides now: x = side * (xc + o).
         for (const o of offs) {
           entries.push({
-            x: side * (sideXc + o), y: wheelY, z, r: wheelR, road: true, i, off: 0,
+            x: side * (sideXc + o + roadWheelOutsetM),
+            y: wheelYs?.[i] ?? wheelY, z, r: wheelR, road: true, i, off: 0,
             // only rows well behind the proud face bake shadow (middle rows of a
             // triple interleave keep paint). tank_models r4: cfg.recessDepth —
             // TWO-row interleaves (Panther, HVSS pairs) keep BOTH rows painted;
@@ -3237,7 +3352,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for (const rl of rollers) {
       for (const side of [-1, 1] as const) {
         rollerEntries.push({
-          x: side * xcForSide(side), y: rl.y, z: rl.z,
+          x: side * (xcForSide(side) - (cfg.returnRollerInsetM ?? 0)), y: rl.y, z: rl.z,
           r: rl.r ?? rollerR, road: false, i: 0, off: 0,
         });
       }
@@ -3264,6 +3379,14 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       tire?.scale(1, 1, wheelZScale);
       disc?.scale(1, 1, wheelZScale);
       dark?.scale(1, 1, wheelZScale);
+    }
+    const faceDepth = cfg.wheelFaceDepthScale ?? 1;
+    if (!Number.isFinite(faceDepth) || faceDepth <= 0 || faceDepth > 1.5) {
+      throw new RangeError('Native wheel-face depth scale must be positive and no greater than 1.5');
+    }
+    if (faceDepth !== 1) {
+      disc.scale(faceDepth, 1, 1);
+      dark?.scale(faceDepth, 1, 1);
     }
   };
   const buildRunningGearRunningGearStage9 = (): void => {
@@ -3388,12 +3511,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // wheel's measured back face. Two instanced draws cover the complete unit;
   // there are still no per-wheel meshes or frame-loop allocations.
   const suspensionEntries: SuspensionEntry[] = [];
-  const suspensionLift = wheelR * suspensionPattern.anchorLiftRatio;
+  const { dimensions: suspensionDimensions, lift: suspensionLift, armWidth,
+    assemblyHalfDepth: suspensionAssemblyHalfDepth, bossRadius, bossWidth,
+  } = resolveSuspensionShape(cfg.suspensionDimensions, wheelR, wheelW, suspensionPattern);
   const suspensionTrail = wheelR * suspensionPattern.trailRatio;
-  const armWidth = Math.max(0.05, wheelW * suspensionPattern.armWidthRatio);
   const armHeight = Math.max(0.045, wheelR * suspensionPattern.armHeightRatio);
-  const jointRadius = Math.max(0.042, wheelR * suspensionPattern.jointRadiusRatio);
-  const jointWidth = Math.max(0.05, wheelW * suspensionPattern.jointWidthRatio);
   let visibleWheelHalfDepth = wheelW * 0.5;
   const buildRunningGearAssemblyStage6 = (): void => {
     for (const geometry of [tire, disc, dark]) {
@@ -3412,11 +3534,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage6();
   };
   buildRunningGearRunningGearStage13();
-  const suspensionAssemblyHalfDepth = Math.max(armWidth, jointWidth) * 0.5;
   const suspensionWheelClearance = Math.max(0.012, wheelW * 0.055);
-  const suspensionAbsX = (side: Side): number => Math.max(
+  const suspensionAbsX = (side: Side): number => sourceArmCenter(suspensionDimensions,side) ?? Math.max(
     0.04,
-    xcForSide(side) - visibleWheelHalfDepth
+    xcForSide(side) + roadWheelOutsetM - visibleWheelHalfDepth
       - suspensionWheelClearance - suspensionAssemblyHalfDepth,
   );
   const roadWheelAt = (index: number, side: Side): WheelEntry => {
@@ -3440,7 +3561,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       suspensionEntries.push({
         side,
         wheel: roadWheelAt(index, side),
-        anchorY: wheelY + suspensionLift,
+        anchorY: (wheelYs?.[index] ?? wheelY) + suspensionLift,
         anchorZ,
         x: side * suspensionAbsX(side),
       });
@@ -3461,16 +3582,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Local +Z points from the hull pivot to the wheel axle. A slightly wider
   // pivot end and an octagonal/dodecagonal cross-section read as a forged arm
   // instead of a prism, while remaining cheap enough for the full fleet.
-  const suspensionGeo = xform(
-    cylZ(
-      0.5 * suspensionPattern.wheelEndTaper,
-      1,
-      suspensionPattern.armSegments,
-      0.5,
-    ),
-    0, 0, 0, 0, 0, 0,
-    [armWidth, armHeight, 1],
-  );
+  const suspensionGeo = runningGearArmGeometry(suspensionDimensions,armWidth,armHeight,suspensionPattern);
   const suspensionIM = new THREE.InstancedMesh(
     suspensionGeo,
     mats.wheelsRecessed || mats.dark || mats.spareTrack,
@@ -3492,8 +3604,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     suspensionIM.userData.visibleWheelHalfDepth = visibleWheelHalfDepth;
     suspensionIM.userData.wheelClearanceM = suspensionWheelClearance;
     suspensionIM.userData.wheelInnerAbsX = {
-      left: xcLeft - visibleWheelHalfDepth,
-      right: xcRight - visibleWheelHalfDepth,
+      left: xcLeft + roadWheelOutsetM - visibleWheelHalfDepth,
+      right: xcRight + roadWheelOutsetM - visibleWheelHalfDepth,
     };
     suspensionIM.userData.assemblyOutboardAbsX = {
       left: suspensionAbsX(-1) + suspensionAssemblyHalfDepth,
@@ -3515,9 +3627,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // and the lower boss follows the road-wheel axle. Both are one instanced
   // layer so the added shape costs a single draw per running-gear unit.
   const suspensionJointGeo = mergeAll([
-    cylX(jointRadius, jointWidth * 0.72, Math.max(8, suspensionPattern.armSegments)),
-    cylX(jointRadius * 0.67, jointWidth, Math.max(8, suspensionPattern.armSegments)),
-    cylX(jointRadius * 0.30, jointWidth * 1.12, 8),
+    cylX(bossRadius, bossWidth * 0.72, Math.max(8, suspensionPattern.armSegments)),
+    cylX(bossRadius * 0.67, bossWidth, Math.max(8, suspensionPattern.armSegments)),
+    cylX(bossRadius * 0.30, bossWidth * 1.12, 8),
   ]);
   const suspensionJointIM = new THREE.InstancedMesh(
     suspensionJointGeo,
@@ -3545,10 +3657,25 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage16();
 
+  function placeSuspensionBoss(index: number, link: SuspensionEntry, axle: boolean, y: number, z: number): void {
+    _q.identity();
+    _s.set(1, 1, 1);
+    _v.set(link.x, y, z);
+    if (suspensionDimensions) {
+      const width = axle ? suspensionDimensions.axleBossWidthM : suspensionDimensions.anchorBossWidthM;
+      const radius = axle ? suspensionDimensions.axleBossRadiusM : suspensionDimensions.anchorBossRadiusM;
+      const center = axle ? suspensionDimensions.axleBossCenterAbsXM : suspensionDimensions.anchorBossCenterAbsXM;
+      _s.set(width, radius, radius);
+      _v.x = link.side * center;
+    }
+    _m.compose(_v, _q, _s);
+    suspensionJointIM.setMatrixAt(index, _m);
+  }
+
   function updateSuspensionLinks() {
     for (let i = 0; i < suspensionEntries.length; i++) {
       const link = suspensionEntries[i];
-      const axleY = wheelY + (link.wheel?.off || 0);
+      const axleY = link.wheel.y + (link.wheel.off || 0);
       const axleZ = link.wheel.z;
       const dy = axleY - link.anchorY;
       const dz = axleZ - link.anchorZ;
@@ -3559,14 +3686,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _m.compose(_v, _q, _s);
       suspensionIM.setMatrixAt(i, _m);
 
-      _q.identity();
-      _s.set(1, 1, 1);
-      _v.set(link.x, link.anchorY, link.anchorZ);
-      _m.compose(_v, _q, _s);
-      suspensionJointIM.setMatrixAt(i * 2, _m);
-      _v.set(link.x, axleY, axleZ);
-      _m.compose(_v, _q, _s);
-      suspensionJointIM.setMatrixAt(i * 2 + 1, _m);
+      placeSuspensionBoss(i * 2, link, false, link.anchorY, link.anchorZ);
+      placeSuspensionBoss(i * 2 + 1, link, true, axleY, axleZ);
     }
     suspensionIM.instanceMatrix.needsUpdate = true;
     suspensionJointIM.instanceMatrix.needsUpdate = true;
@@ -3597,6 +3718,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         cylX(rollerR * wheelPattern.rollerHub, trackW * 0.63, 8),
         cylX(rollerR * 0.18, trackW * 0.69, 8),
       ]);
+      if (cfg.returnRollerWidthM !== undefined) {
+        const axialScale = cfg.returnRollerWidthM / (trackW * .69);
+        rollerTire.scale(axialScale, 1, 1);
+        rollerDish.scale(axialScale, 1, 1);
+      }
       mkInst(rollerTire, mats.rubber, rollerEntries, 'wheelTire', 'gearReturnRollerTires');
       mkInst(rollerDish, mats.wheels, rollerEntries, 'wheelDish', 'gearReturnRollerDiscs');
     }
@@ -3740,6 +3866,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
                 instanceId: batch.addInstance(geometryId),
                 side, r: spinR,
                 x: side * xcForSide(side), y: end.y, z: end.z,
+                scaleX: endpointAxialScale(end,side),
               });
             }
           }
@@ -3782,6 +3909,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
             mesh.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
             mesh.name = name;
             mesh.position.set(side * sideXc, end.y, end.z);
+            mesh.scale.x=endpointAxialScale(end,side);
             mesh.castShadow = false;
             mesh.receiveShadow = true;
             hullG.add(mesh);
@@ -4441,7 +4569,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const weightA: number[] = [];
     const weightB: number[] = [];
     const dirtyVertex = new Uint8Array(bandBasePos.length / 3);
-    const span = Math.max(wheelY - botY, 1e-3);
     const weights: BandWheelWeights = { a: -1, b: -1, wa: 0, wb: 0 };
     for (let vi = 0, j = 0; j < bandBasePos.length; vi++, j += 3) {
       const segmentBase = Math.floor(vi / 24) * 24;
@@ -4450,11 +4577,14 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       const innerVertex = segmentBase + (usesF1 ? 8 : 6);
       const by = (bandBasePos[outerVertex * 3 + 1]
         + bandBasePos[innerVertex * 3 + 1]) / 2;
-      if (by >= wheelY || !ws.length) continue;
-      const vertical = Math.min((wheelY - by) / span, 1) ** 2;
+      if (!ws.length) continue;
       const z = (bandBasePos[outerVertex * 3 + 2]
         + bandBasePos[innerVertex * 3 + 2]) / 2;
       resolveBandWheelWeights(ws, z, weights);
+      const localWheelY = wheelYs ? weightedRoadWheelRestY(ws, weights, wheelY) : wheelY;
+      if (by >= localWheelY) continue;
+      const span = Math.max(localWheelY - botY, 1e-3);
+      const vertical = Math.min((localWheelY - by) / span, 1) ** 2;
       weights.wa *= vertical;
       weights.wb *= vertical;
       if (weights.a < 0 || (Math.abs(weights.wa) + Math.abs(weights.wb) < 1e-8)) continue;
@@ -4525,7 +4655,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       for (const sp of record.entries) {
         _q.setFromAxisAngle(_X, (sp.side < 0 ? l : r) / sp.r);
         _v.set(sp.x, sp.y, sp.z);
-        _s.set(1, 1, 1);
+        _s.set(sp.scaleX, 1, 1);
         _m.compose(_v, _q, _s);
         record.batch.setMatrixAt(sp.instanceId, _m);
       }
@@ -4542,7 +4672,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
     }],
     addRoadWheelLayer,
-    roadWheelLayout: { xc, wheelY, wheelR, wheelZs: [...wheelZs] },
+    roadWheelLayout: {
+      xc, wheelY, wheelR, wheelZs: [...wheelZs],
+      ...(wheelYs ? { wheelYs: [...wheelYs] } : {}),
+      ...(cfg.roadWheelOutsetM !== undefined ? { roadWheelOutsetM } : {}),
+    },
     updateSurface: updateGearSurface,
     /** Restore the authored flat-ground running-gear pose for showroom use. */
     resetPose() {
@@ -7444,6 +7578,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
   turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],
+  // Explicit fixed equipment surfaces may carry paint without becoming
+  // structural armor. Never put detachable ERA or open cage bars here.
+  turretPermanentMarkingSurface: ['turretG', 'detail'],
+  turretOpenLattice: ['turretG', 'detail'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
@@ -8146,7 +8284,7 @@ function createNonRenderingTankMaterials(camoUvScale = 0.34): TankMaterials {
 
 const MARKING_ARMOR_MESH_NAMES = Object.freeze({
   hull: new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR']),
-  turret: new Set(['turret']),
+  turret: new Set(['turret', 'turretPermanentMarkingSurface']),
 });
 
 function markingObjectVisibleInTree(object: THREE.Object3D, root: THREE.Object3D): boolean {
@@ -8859,8 +8997,16 @@ function collectEraSurfaces(
 ): EraSurfaceCollection {
   const point = new THREE.Vector3();
   const surfaces: EraSurface[] = [];
+  const exactSurfaces: EraSurface[] = [];
   const allPoints: THREE.Vector3[] = [];
   for (const part of parts) {
+    const exact = authoredEraSurfaces(part);
+    if (exact !== null) {
+      // A physical cassette can straddle X=0 yet deplete as one owned module.
+      // Preserve its real triangles; a plate-name suffix is not a cutting plane.
+      exactSurfaces.push(...exact);
+      continue;
+    }
     const positions = part.getAttribute('position');
     if (!positions) continue;
     const partPoints: THREE.Vector3[] = [];
@@ -8875,7 +9021,7 @@ function collectEraSurfaces(
     const surface = fitEraPointCloud(partPoints, frame);
     if (surface) surfaces.push(surface);
   }
-  return { surfaces, allPoints };
+  return { surfaces, exactSurfaces, allPoints };
 }
 
 function describeEraSurface(surface: EraSurface): {
@@ -9577,7 +9723,7 @@ export function createTank(
     // Collapsing cheek, side and roof-edge parts into a single best-fit plane
     // creates false armor across empty space. All faces still share the same
     // plate name, so one activation atomically spends the correct visual bank.
-    const { surfaces, allPoints } = collectEraSurfaces(parts, sideSuffix, frame);
+    const { surfaces, exactSurfaces, allPoints } = collectEraSurfaces(parts, sideSuffix, frame);
     if (!surfaces.length) {
       const fallback = fitEraPointCloud(allPoints, frame);
       if (fallback) surfaces.push(fallback);
@@ -9585,7 +9731,8 @@ export function createTank(
     // Many builders author a cassette body and a thinner painted face as two
     // coincident parts. Retain only the outer face so one physical tile does
     // not become two nearly identical collision surfaces.
-    return deduplicateEraSurfaces(surfaces);
+    // Adjacent authored triangles must not be merged by centroid proximity.
+    return [...exactSurfaces, ...deduplicateEraSurfaces(surfaces)];
   };
 
   // Preserve the builder's unmerged semantic parts only for offline geometry
@@ -9780,7 +9927,8 @@ export function createTank(
         || bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') return 'armor';
     if (bucket === 'hullExternalArmor' || bucket === 'turretExternalArmor') return 'externalArmor';
-    if (bucket === 'hullEquipment' || bucket === 'turretEquipment') return 'equipment';
+    if (bucket === 'hullEquipment' || bucket === 'turretEquipment'
+        || bucket === 'turretPermanentMarkingSurface') return 'equipment';
     return 'nonArmor';
   };
   const tagMergedBucket = (bucket: string, mesh: THREE.Mesh): void => {
@@ -9790,7 +9938,8 @@ export function createTank(
         || bucket === 'hullHatch' || bucket === 'turretHatch') {
       mesh.userData.combatHitboxPart = bucket.endsWith('Hatch') ? 'hatch' : 'cupola';
     }
-    if (bucket === 'hullOpenLattice' || bucket === 'hullOpenLatticeDark') {
+    if (bucket === 'hullOpenLattice' || bucket === 'hullOpenLatticeDark'
+        || bucket === 'turretOpenLattice' || bucket === 'turretOpenLatticeDark') {
       mesh.userData.continuityRole = 'open-lattice';
     }
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
@@ -9869,11 +10018,28 @@ export function createTank(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
+    const receiptPlates = (owner: VehicleOwner) => {
+      const exactZones = new Map<string, boolean>();
+      return gameplayEraByOwner[owner].filter((plate) => {
+        if (exactZones.has(plate.name)) return !exactZones.get(plate.name);
+        const parts = eraBoundPartsByPlate.get(plate.name) || [];
+        const exact = parts.length > 0 && createEraSurfaceFrame(plate) !== null && parts.every(
+          (part) => part.userData.eraHitFaceVertexStarts != null,
+        );
+        exactZones.set(plate.name, exact);
+        return true;
+      }).map((plate) => ({ owner, plate }));
+    };
     root.userData.eraVisualBindingReceipt = Object.freeze({
       revision: 'canonical-gameplay-era-binding-r1',
+      // Generated anatomy expands a canonical zone into many same-name hit
+      // faces. Fully annotated zones already collect every native facet in
+      // one pass; emit/cache that complete result once per owner and name.
+      // Legacy or mixed zones keep every row and its authored fitting frame:
+      // different plate normals can legitimately change their PCA result.
       plates: Object.freeze(([
-        ...gameplayEraByOwner.hull.map((plate) => ({ owner: 'hull' as const, plate })),
-        ...gameplayEraByOwner.turret.map((plate) => ({ owner: 'turret' as const, plate })),
+        ...receiptPlates('hull'),
+        ...receiptPlates('turret'),
       ]).map(({ owner, plate }) => {
         const binding = eraVisualBindings.get(plate.name);
         const registeredOwner = destructibleClusterOwners.get(plate.name) || null;

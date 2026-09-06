@@ -1536,20 +1536,34 @@ function heScreenStack(
  * @param {function} rng
  * @returns {object} HitEvent (kind 'he_pen' | 'he_splash')
  */
+function coincidentEraSurface(hits: ArmorHit[], index: number, hit: PlateHit): boolean {
+  // Two triangles of one physical cover share an edge, so a ray on that
+  // edge can report both. Keep genuinely separated layers (even in one
+  // depleted bank), but do not count that one steel surface twice.
+  for (let priorIndex = index - 1; priorIndex >= 0; priorIndex--) {
+    const prior = hits[priorIndex];
+    if (prior.kind === 'plate' && prior.plate.kind === 'era'
+        && prior.plate.name === hit.plate.name
+        && prior.point.distanceToSquared(hit.point) <= 1e-12) return true;
+  }
+  return false;
+}
+
 function findHeBurstPlate(
   hits: ArmorHit[],
   combat: CombatState,
   event: HitEvent,
 ): { plateHit: PlateHit | null; eraArmorMm: number } {
   let eraArmorMm = 0;
-  for (const hit of hits) {
+  for (let index = 0; index < hits.length; index++) {
+    const hit = hits[index];
     if (hit.kind !== 'plate') continue;
     if (hit.plate.kind !== 'era') return { plateHit: hit, eraArmorMm };
     if (!combat.eraSpent.has(hit.plate.name)) {
       combat.eraSpent.add(hit.plate.name);
       recordEraActivation(event, hit);
     }
-    eraArmorMm += hit.plate.physicalMm;
+    if (!coincidentEraSurface(hits, index, hit)) eraArmorMm += hit.plate.physicalMm;
   }
   // Stryker disable next-line ObjectLiteral: an ERA-only trace is deliberately discarded by resolveDirectHeTarget after ERA activation is recorded.
   return { plateHit: null, eraArmorMm };
@@ -2302,6 +2316,14 @@ function applyEstimatedEra(
     : pen * (1 - era.keReduction);
 }
 
+function earlierEraActivation(layers: AimArmorLayers, index: number, name: string): boolean {
+  for (let priorIndex = index - 1; priorIndex >= 0; priorIndex--) {
+    const plate = layers[priorIndex].plate;
+    if (plate.kind === 'era' && plate.name === name) return true;
+  }
+  return false;
+}
+
 function estimateLayeredPenRatio(
   shellSpec: DamageShellSpec,
   distM: number,
@@ -2315,6 +2337,10 @@ function estimateLayeredPenRatio(
   for (let i = 0; i < gateIdx; i++) {
     const hit = layers[i];
     const plate = hit.plate;
+
+    // Live resolution spends a named bank on its first hit and skips every
+    // later face before ricochet/reduction. The HUD and AI must do the same.
+    if (plate.kind === 'era' && earlierEraActivation(layers, i, plate.name)) continue;
 
     // Ricochet gate on EVERY surface — ERA tiles included, mirroring
     // resolveShellHit (armor doc §12): a jet grazing a tile deflects

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "tankId": "t90m_x",
+  "purpose": "Independent physical source measurements for original native hull-end primitives, not source geometry",
+  "sourceArchiveSha256": "2f8ab99994f55611cc53926233146f10411d005fd0651496c0bb00374f108303",
+  "frame": "Canonical whole-source structural registration in t90m_x.source-measurements.json; X right, Y up, Z forward; metres",
+  "fenderTopWitnesses": [
+    { "x": 1.4, "z": 3.3, "sourceY": 1.16673 },
+    { "x": 1.4, "z": 3.5, "sourceY": 1.06805 },
+    { "x": 1.4, "z": 3.6, "sourceY": 0.99541 },
+    { "x": 1.4, "z": 3.7, "sourceY": 0.90524 }
+  ],
+  "rearHousingWitness": { "x": 1.4, "z": -3.3, "sourceTopY": 1.323777, "sourceBottomY": 0.813344 },
+  "rearCageAir": { "rightHousingOuterX": 1.713183, "leftHousingOuterX": -1.742753, "fullWidthFrontFenderBeginsZ": -1.3369, "witnessX": 1.8, "witnessZ": -2.0, "sourceLowerRailTopY": 1.14445 },
+  "drum": { "axialLength": 0.838253, "radiusY": 0.2915795, "radiusZ": 0.3045994, "centerY": 1.478919, "centerZ": -3.792562, "rightCenterX": 0.571606 },
+  "supportPlates": {
+    "count": 4,
+    "axialThickness": 0.013049,
+    "positiveXCenters": [0.277338, 0.863465],
+    "inclinedLegWitnesses": [
+      { "z": -3.3, "sourceLowY": 0.880335, "sourceHighY": 0.946069 },
+      { "z": -3.2, "sourceLowY": 0.712388, "sourceHighY": 0.778122 },
+      { "z": -3.1, "sourceLowY": 0.544441, "sourceHighY": 0.610175 }
+    ]
+  },
+  "crossDrumHose": { "connectedSourceIslands": 1, "sourceMostForwardZ": -3.414346, "sourceTopY": 1.840349, "nativeConstruction": "One original continuous U-shaped tube terminating at both drum caps" },
+  "negativeSpace": "Separate thin wheel-well cheeks, curved upper skin and forward return; no full-depth solid filling the idler cavity. Four drum arms retain open gaps between supports.",
+  "simplifications": [
+    "The casting's approximately 11 mm outboard welded seam is seated inside the native tub half-width instead of protruding into the adjacent native belt clearance.",
+    "Native hull-end solids approximate small edge rounds and fastener sculpting; the numeric source witnesses are comparison evidence, not claims of exact source-mesh identity.",
+    "The independent ordinary engine-deck fixtures are outside this bounded hull-end correction and retain their separate verification obligations."
+  ],
+  "regression": "src/vehicles/profiles/t90MXHullEnds.selftest.mjs; high and low actual native geometry; full strict official track proof still required"
+}

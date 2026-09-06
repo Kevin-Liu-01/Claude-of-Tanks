@@ -61,6 +61,11 @@ const currentFacts = [
   'public/site.webmanifest',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 
+const gallery = renderProductStats(readFileSync(join(ROOT, 'gallery.html'), 'utf8'));
+const galleryTitle = `Tank Gallery — Inspect ${PRODUCT_STATS.productionVehicles} Claude of Tanks Vehicles`;
+assert.ok(gallery.includes(`<title>${galleryTitle}</title>`), 'Gallery tab title follows the live fleet count');
+assert.ok(gallery.includes(`property="og:title" content="${galleryTitle}"`), 'Gallery share title follows the live fleet count');
+
 for (const value of [
   PRODUCT_STATS.productionVehicles,
   PRODUCT_STATS.developmentVehicles,

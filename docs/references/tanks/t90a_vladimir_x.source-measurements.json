@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "t90a_vladimir_x",
+  "measuredAt": "2026-09-05",
+  "units": "metres; +Y up, +Z forward; structural hull centre; ground zero",
+  "sourceModelSha256": "68eaf6f2e315363e2aff067c2daef304b6ef7bc97f74eaf5635544f2a5dbbf67",
+  "localOracleSha256": "c3c41ccc322f5746727022964dc03760fab196183532d0e416884d97ffa8858c",
+  "sourceUse": "Owner-supplied local comparison only. Uploader attribution claim is not verified title; World of Tanks tag and DesireFX naming leave provenance unresolved. No source buffers ship.",
+  "normalization": { "xyScale": 13.755458515283843, "longitudinalScale": 14.246247988629744, "structuralHullLength": 6.86, "exteriorWidth": 3.78 },
+  "sourceFitDimensions": { "exteriorHullLength": 8.1115, "overallGunForwardLength": 10.7863, "totalHeight": 3.8069, "rearZ": -4.1899, "hullHardwareFrontZ": 3.9215, "muzzleZ": 6.5964 },
+  "sourceOnlyFilteredSilhouette": { "bodyExtentHeight": 2.881, "bodyExtentLength": 8.016, "method": "Unchanged canonical reference in the shared 1024-pixel geometry pipeline; 12% band filter, P95 column tops. The 3.8069m whip is intentionally a separate complete-envelope datum." },
+  "structuralTurret": { "width": 2.8997, "length": 2.6552, "roofY": 2.2595, "chinY": 1.5283, "rearZ": -1.2180, "frontZ": 1.4372 },
+  "articulation": { "yawSeat": [0,1.416,0.298], "gunPivot": [0,1.7287,1.34], "confidence": "Physical datums inferred from ring and barrel axis; tower and gun are fused and equipment/glass ownership is mixed. Direct component masks remain unsupported; all whole views remain mandatory." },
+  "nativeWheelStationsZ": [-1.828225,-0.94808,-0.067935,0.812205,1.69235,2.572495],
+  "wheelMeasurements": { "centreY": 0.439685, "verticalRadius": 0.368365, "longitudinalRadiusScale": 1.03568 },
+  "requiredCertification": { "minimumEveryValidViewAndComponent": 92, "maximumDimensionErrorPercent": 3, "independentNeutralShadedReview": true },
+  "certificationStatus": "Eighth proof: every valid fidelity view passes (96.00 aggregate), primary geometry minimum93.7 passes, dimensions and floaters100, exact strict front/rear/full-sweep band and shoe intersections all zero. Final fleet anatomy/release certification remains pending; intact fused source still disables dishonest split component masks.",
+  "dimensionCaveat": "Exterior dimensions describe the source after structural registration, not claimed published real-world overall dimensions. No separate gun or rear-drum compression."
+}
