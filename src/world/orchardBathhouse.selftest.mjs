@@ -37,13 +37,30 @@ const frontageLedger = {
   wood: [43, 1104, 1608, 38352], dark: [10, 352, 600, 12464],
   glass: [2, 48, 72, 1680], curtain: [2, 48, 72, 1680],
 };
-// Production also retains its existing42-part addCatalogExterior pass. Its
-// geometry/allocation is preserved, with an explicit material-only variant.
+// Production retains its existing42-part addCatalogExterior pass. Only its
+// two five-piece aperture packages move from the rear to the side elevations.
 const finalTotals = { parts: 112, vertices: 2980, indices: 4584, bytes: 104336 };
 const finalLedger = {
   plaster: [2, 48, 72, 1680], stone: [12, 288, 432, 10080], roof: [4, 120, 216, 4272],
   wood: [68, 1704, 2508, 59352], dark: [22, 724, 1212, 25592],
   glass: [2, 48, 72, 1680], curtain: [2, 48, 72, 1680],
+};
+// Actual complete production-stage output captured before window relocation,
+// from frozen ART8d089c51d/V27. Exclude only the ten named catalog apertures;
+// all 102 other parts retain their exact bucket/index/position/normal/UV bytes.
+const v27Placement = {
+  1337: { hash: 'b0351c4f644a34288e118a229a8ec2f9e88e671973ca644b745b2d9dcce8a6a3',
+    next: 0.5986086630728096, detail: 0.1450007522944361,
+    min: [-39.841426849365234, -1.8057814836502075, -73.73188018798828],
+    max: [-25.519432067871094, 4.929218292236328, -59.519901275634766] },
+  2025: { hash: 'b4b420782f1f8a0569f7d33dd11c1f40ad3cb51a735c8e7ef88cdd371c6a0969',
+    next: 0.17094760527834296, detail: 0.41312244231812656,
+    min: [-38.692893981933594, 0.18397000432014465, -73.4675521850586],
+    max: [-24.981157302856445, 6.918969631195068, -59.6763801574707] },
+  7719: { hash: 'b12491f1d47427af9d57e8445bc42886453e6d9d0c461e264a5a871bde0c24ca',
+    next: 0.6194300358183682, detail: 0.905945718055591,
+    min: [-62.229461669921875, -2.718656063079834, -71.2048110961914],
+    max: [-48.242431640625, 4.016343593597412, -57.221858978271484] },
 };
 
 function hashGeometry(hash, geometry) {
@@ -120,7 +137,7 @@ function assertPlacedBudget(before, after) {
 function assertRetainedCatalogPass(seed) {
   const before = emptyBuckets(), after = emptyBuckets();
   try {
-    const oldInfo = makeBathhouse(mulberry32(seed), before, 'stone');
+    const oldInfo = makeTimberBathhouse(mulberry32(seed), before, 'stone');
     const newInfo = makeTimberBathhouse(mulberry32(seed), after, 'stone');
     const oldCounts = names.map(name => before[name].length), newCounts = names.map(name => after[name].length);
     addCatalogExterior(before, { id: 'bathhouse', info: oldInfo, variant: 0 });
@@ -128,11 +145,131 @@ function assertRetainedCatalogPass(seed) {
     const suffix = (buckets, counts) => names.flatMap((name, i) => buckets[name].slice(counts[i]));
     const oldParts = suffix(before, oldCounts), newParts = suffix(after, newCounts);
     assert.equal(newParts.length, 42);
-    assert.deepEqual(newParts.map(geometryDigest).sort(), oldParts.map(geometryDigest).sort(),
-      'the retained42-part production pass changes only material ownership, not geometry/UVs/normals');
+    const stable = parts => parts.filter(g => !isAperture(g));
+    assert.equal(stable(newParts).length, 32);
+    assert.deepEqual(stable(newParts).map(geometryDigest).sort(), stable(oldParts).map(geometryDigest).sort(),
+      'all32 non-window catalog shapes/UVs/normals stay exact; only ten named aperture boxes move');
+    assert.deepEqual(bucketStats(newParts.filter(isAperture)),
+      { parts: 10, vertices: 240, indices: 360, bytes: 8400 }, 'window redistribution keeps its actual source budget');
+    assert.throws(() => assertNoWindowOverlap(before), /coplanar window overlap/,
+      'the real previous rear-window collision is rejected, not an always-passing empty fixture');
+    assertSideWindows(after);
     for (const name of names) assert.deepEqual(Object.values(bucketStats(after[name])),
       finalLedger[name] || [0, 0, 0, 0], `${name}: exact premerge final material ledger`);
   } finally { dispose(before); dispose(after); }
+}
+
+function isAperture(geometry) {
+  return geometry.userData.structureSupport?.part.startsWith('aperture-');
+}
+
+function isCatalogAperture(name, index, geometry) {
+  return index >= (frontageLedger[name]?.[0] || 0) && isAperture(geometry);
+}
+
+function aperturePackages(buckets) {
+  const packages = new Map();
+  for (const name of names) for (let index = 0; index < buckets[name].length; index++) {
+    const geometry = buckets[name][index];
+    if (!isAperture(geometry)) continue;
+    const part = geometry.userData.structureSupport.part;
+    const side = part.endsWith('--1') ? -1 : 1;
+    const catalog = isCatalogAperture(name, index, geometry), key = `${catalog}:${side}`;
+    if (!packages.has(key)) packages.set(key, { catalog, side, parts: [], bounds: new THREE.Box3() });
+    const value = packages.get(key);
+    geometry.computeBoundingBox(); value.bounds.union(geometry.boundingBox);
+    value.parts.push({ name, geometry });
+  }
+  return [...packages.values()];
+}
+
+function assertNoWindowOverlap(buckets) {
+  const packages = aperturePackages(buckets);
+  assert.equal(packages.length, 4, 'both civic rear windows and both catalog windows are present');
+  const windows = packages.map(p => p.bounds).concat(buckets.glass.map(g => {
+    g.computeBoundingBox(); return g.boundingBox;
+  }));
+  assert.equal(windows.length, 6, 'the two original front glazing panels are also checked');
+  const normalAxis = b => b.max.x - b.min.x < b.max.z - b.min.z ? 'x' : 'z';
+  for (let i = 0; i < windows.length; i++) for (let j = i + 1; j < windows.length; j++) {
+    const a = windows[i], b = windows[j], axis = normalAxis(a), along = axis === 'x' ? 'z' : 'x';
+    if (normalAxis(b) !== axis || Math.abs(a.min[axis] - b.min[axis]) > 0.25) continue;
+    const overlap = key => Math.min(a.max[key], b.max[key]) - Math.max(a.min[key], b.min[key]);
+    assert.ok(overlap('y') <= 1e-5 || overlap(along) <= 1e-5, 'coplanar window overlap on an actual wall elevation');
+  }
+}
+
+function assertWindowSolid(geometry) {
+  const p = geometry.attributes.position, n = geometry.attributes.normal;
+  assert.deepEqual(Object.keys(geometry.attributes).sort(), ['normal', 'position', 'uv']);
+  assert.equal(p.count, 24); assert.equal(geometry.index.count, 36);
+  for (const a of Object.values(geometry.attributes)) assert.ok(a.array.every(Number.isFinite));
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), normal = new THREE.Vector3();
+  for (let i = 0; i < n.count; i++) assert.ok(Math.abs(normal.fromBufferAttribute(n, i).length() - 1) < 1e-5);
+  for (let i = 0; i < geometry.index.count; i += 3) {
+    const ia = geometry.index.getX(i), ib = geometry.index.getX(i + 1), ic = geometry.index.getX(i + 2);
+    a.fromBufferAttribute(p, ia); b.fromBufferAttribute(p, ib); c.fromBufferAttribute(p, ic);
+    assert.ok(b.sub(a).cross(c.sub(a)).dot(normal.fromBufferAttribute(n, ia)) > 1e-5,
+      'both rotated window solids retain nondegenerate outward triangle winding');
+  }
+}
+
+function assertSideWindows(buckets) {
+  const main = buckets.plaster.find(g => g.parameters.width === 12.4);
+  main.computeBoundingBox();
+  const packages = aperturePackages(buckets), sideWindows = packages.filter(p => p.catalog);
+  assert.equal(sideWindows.length, 2);
+  for (const item of sideWindows) {
+    assert.equal(item.parts.length, 5);
+    assert.equal(item.parts.filter(p => p.name === 'wood').length, 4);
+    assert.equal(item.parts.filter(p => p.name === 'dark').length, 1);
+    const b = item.bounds;
+    assert.ok(b.min.y > 2.14 && b.max.y < 3.46, 'high privacy windows stay above the 1.8 m tank contact band');
+    assert.ok(Math.max(Math.abs(b.min.x), Math.abs(b.max.x)) < 6.38,
+      'side frames stay inside the existing 6.45 m foundation silhouette, not a new lateral blocker');
+    assert.ok(Math.abs(b.min.z + 1.47) < 1e-4 && Math.abs(b.max.z - 1.47) < 1e-4,
+      'one broad 2.94 m framed opening is centered on each previously blank side elevation');
+    const pane = item.parts.find(p => p.name === 'dark').geometry.boundingBox;
+    assert.ok(Math.abs((pane.min.x + pane.max.x) / 2 - item.side * 6.235) < 1e-4);
+    assert.ok(Math.abs(pane.max.z - pane.min.z - 2.6) < 1e-4);
+    assert.ok(Math.abs(pane.max.y - pane.min.y - 1.02) < 1e-4);
+    assert.ok(Math.max(Math.abs(pane.min.x), Math.abs(pane.max.x)) > 6.27,
+      'the closed pane has a real visible outer face, not a fully buried placeholder');
+    for (const { geometry } of item.parts) {
+      const joint = measureBoundsJoint(geometry.boundingBox, main.boundingBox);
+      assert.equal(joint.gap, 0); assert.ok(joint.contactAxes >= 2 && joint.minContactSpan > 0.10);
+      assert.ok(joint.overlaps[0] > 0.0049, 'even the pane embeds at least 4.9 mm into the actual plaster wall');
+      assert.ok(geometry.userData.detailUv, 'the independent detail RNG ownership is unchanged');
+      assertWindowSolid(geometry);
+    }
+  }
+  assertNoWindowOverlap(buckets);
+  const all = Object.values(buckets).flat();
+  assert.equal(certifyGroundedStructureParts('orchard-complete-bathhouse', all).connected, 112);
+}
+
+function assertPlacedWindowPreservation(result, seed) {
+  const expected = v27Placement[seed], hash = createHash('sha256');
+  let excluded = 0;
+  for (const name of names) for (let index = 0; index < result.buckets[name].length; index++) {
+    const geometry = result.buckets[name][index];
+    if (isCatalogAperture(name, index, geometry)) { excluded++; continue; }
+    hash.update(`${name}:${index}`); hashGeometry(hash, geometry);
+  }
+  assert.equal(excluded, 10);
+  assert.equal(hash.digest('hex'), expected.hash, 'all102 non-target production parts retain exact bytes and indices');
+  assert.equal(result.next, expected.next); assert.equal(result.detail, expected.detail);
+  const actualBounds = bounds(result.buckets);
+  assert.deepEqual(actualBounds.min.toArray(), expected.min);
+  assert.deepEqual(actualBounds.max.toArray(), expected.max, 'actual rotated world silhouette bounds stay exact');
+  const feature = result.buildingFeatures[0], local = emptyBuckets();
+  const main = result.buckets.plaster.find(g => g.parameters.width === 12.4);
+  const transform = new THREE.Matrix4().compose(new THREE.Vector3(feature.x, main.boundingBox.min.y, feature.z),
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), feature.rot), new THREE.Vector3(1, 1, 1)).invert();
+  try {
+    for (const name of names) local[name] = result.buckets[name].map(g => g.clone().applyMatrix4(transform));
+    assertSideWindows(local);
+  } finally { dispose(local); }
 }
 
 function assertUnchangedConstructorShapes(buckets) {
@@ -338,6 +475,7 @@ for (const seed of [1337, 2025, 7719]) {
     assert.equal(after.next, before.next, 'placement + wall picker + complete real UV pass preserves the RNG tail');
     assert.equal(after.detail, before.detail, 'connected exterior detail keeps its independent RNG tail');
     assertPlacedBudget(before.buckets, after.buckets);
+    assertPlacedWindowPreservation(after, seed);
     for (const name of names) for (let i = 0; i < after.buckets[name].length; i++) {
       assert.deepEqual(after.buckets[name][i].attributes.position.array,
         replay.buckets[name][i].attributes.position.array, 'actual transformed vertex positions replay deterministically');
@@ -346,4 +484,4 @@ for (const seed of [1337, 2025, 7719]) {
   } finally { dispose(before.buckets); dispose(after.buckets); dispose(replay.buckets); }
 }
 console.log(`orchardBathhouse: all legacy builders exact; V25 totals70parts/1888vertices/2892indices/66008bytes unchanged with explicit material transfers; ${savings.savedBytes} fewer constructor bytes, ${savings.savedFinalBytes} fewer merged bytes than domes; CPU only, native acceptance required`);
-console.log('orchardBathhouse: actual112-part production output2980vertices/4584indices/104336bytes unchanged; all42 retained catalog-pass shapes exact, material routing explicit');
+console.log('orchardBathhouse: actual112-part production output2980vertices/4584indices/104336bytes unchanged; ten catalog window boxes relocated, all102 other placed parts and both V27 RNG tails exact');

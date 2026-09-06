@@ -308,6 +308,29 @@ function addUtilityApertures(
   }
 }
 
+function addTimberSideApertures(author: ExteriorAuthor, w: number, d: number, wallH: number): void {
+  // The Orchard catalog pass reuses its two five-piece window packages on
+  // the blank side elevations, leaving the original civic rear pair intact.
+  // Keep bucket insertion order and detail UV ownership for the seeded pass.
+  const apertureW = Math.min(2.6, d * 0.3), apertureH = 1.02;
+  const y = Math.min(wallH - 0.82, 2.8);
+  for (const side of [-1, 1]) {
+    const add = (name: string, material: string, geometry: THREE.BufferGeometry): void => {
+      geometry.rotateY(-side * Math.PI / 2).translate(side * (w / 2 + 0.035), y, 0);
+      author.add(`aperture-${name}-${side}`, material, geometry);
+    };
+    add('pane', 'dark', box(apertureW, apertureH, 0.08));
+    add('left', 'stone', box(0.11, apertureH + 0.24, 0.13)
+      .translate(-apertureW / 2 - 0.065, 0, -0.01));
+    add('right', 'stone', box(0.11, apertureH + 0.24, 0.13)
+      .translate(apertureW / 2 + 0.065, 0, -0.01));
+    add('head', 'stone', box(apertureW + 0.32, 0.12, 0.14)
+      .translate(0, apertureH / 2 + 0.08, -0.01));
+    add('sill', 'stone', box(apertureW + 0.34, 0.12, 0.20)
+      .translate(0, -apertureH / 2 - 0.08, -0.035));
+  }
+}
+
 function addFacadeBayRhythm(
   author: ExteriorAuthor,
   w: number,
@@ -315,6 +338,7 @@ function addFacadeBayRhythm(
   wallH: number,
   profile: string,
   variant: number,
+  timberSideApertures = false,
 ): void {
   if (!['urban', 'civic', 'industrial', 'desert'].includes(profile)) return;
   const material = profile === 'industrial' ? 'dark' : 'stone';
@@ -323,7 +347,8 @@ function addFacadeBayRhythm(
   const pierH = Math.max(1.7, wallH - 0.45);
   addFrontRearBays(author, w, d, material, pierW, pierD, pierH);
   if (profile === 'industrial') addIndustrialSideBays(author, w, d, pierW, pierH);
-  addUtilityApertures(author, w, d, wallH, profile, variant, material);
+  if (timberSideApertures) addTimberSideApertures(author, w, d, wallH);
+  else addUtilityApertures(author, w, d, wallH, profile, variant, material);
 }
 
 function addRainwater(
@@ -620,12 +645,13 @@ function validateExteriorEnvelope(
 
 function addPrimaryExterior(
   author: ExteriorAuthor,
-  { w, d, wallH, profile, timberBathhouseEntry }: ExteriorEnvelope,
+  { w, d, wallH, profile, bathhouseStyle, timberBathhouseEntry }: ExteriorEnvelope,
   variant: number,
 ): void {
   const masonry = profile !== 'timber' && profile !== 'canvas';
   addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
-  addFacadeBayRhythm(author, w, d, wallH, profile, variant);
+  addFacadeBayRhythm(author, w, d, wallH, profile, variant,
+    bathhouseStyle === 'timber' && profile === 'desert');
   if (profile !== 'canvas' && profile !== 'open') {
     addEntryAssembly(author, w, d, wallH, profile, variant);
     if (timberBathhouseEntry) addTimberBathhouseEntry(author, timberBathhouseEntry);
