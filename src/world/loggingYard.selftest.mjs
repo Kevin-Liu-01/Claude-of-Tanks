@@ -173,21 +173,48 @@ for (const seed of [1337, 2025]) {
   cleanup(before); cleanup(after); cleanup(replay);
 }
 
-// The canonical shipped Longleaf corpus has TWO flatbeds. Reconstruct these
-// saved donors through the actual record builder separately from the isolated
-// heavy-traffic stage (whose conservative building inputs may reject a donor).
-const savedTraffic = canonical.filter(ob => ob.kind === 'truckflatbed').map(ob => ({
-  kind: ob.kind, x: (ob.min[0] + ob.max[0]) / 2, z: (ob.min[2] + ob.max[2]) / 2,
-  sc: (ob.max[1] - ob.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h,
-}));
-assert.equal(savedTraffic.length, 2, 'canonical Longleaf genuinely has two donors');
+// Explicit PRE-layout donor envelopes from the preserved native Longleaf
+// capture (terrain1337/props2002), shard SHA256
+// 0919a68451128ff2d0e59cf00447bd53b78fb3c113b70487c01eda7216f55f42.
+// The current canonical corpus is the OUTPUT of composition. Reconstructing
+// donors at its already-relocated AABB centers runs this one-shot construction
+// backwards: their own shell colliders occupy the requested loading bays.
+// These are envelope-center test inputs, not claims of captured mesh origins
+// or yaw; the actual record builder still owns shape, pool and lifecycle data.
+const preLayoutTraffic = [
+  { propIdx: 268, bounds: [307.7485, 1.2493, 357.2405, 312.394, 3.136, 363.634] },
+  { propIdx: 280, bounds: [45.7761, -2.1775, 226.462, 52.6585, -0.1724, 230.2845] },
+];
+const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed');
+assert.equal(currentTraffic.length, 2, 'canonical Longleaf genuinely preserves two donors');
+assert.deepEqual(currentTraffic.map(ob => ob.propIdx), preLayoutTraffic.map(row => row.propIdx),
+  'saved pre-layout inputs identify the same two current physical records');
+const savedTraffic = preLayoutTraffic.map(({ bounds: b }, index) => {
+  const sc = (b[4] - b[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h;
+  const current = currentTraffic[index];
+  assert.ok(Math.abs((current.max[1] - current.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10,
+    'composition preserves each captured donor scale');
+  const x = (b[0] + b[3]) / 2, z = (b[2] + b[5]) / 2;
+  assert.ok(longleaf.props.loggingYard.flatbeds.every(point => Math.hypot(x - point.x, z - point.z) > 26),
+    'donor input must precede, not already occupy, an authored destination');
+  return { kind: 'truckflatbed', x, z, sc };
+});
 for (const seed of [1337, 2025]) {
   const field = createHeightField(seed, longleaf), fixture = factory(longleaf, field, buildings, savedTraffic);
   const slots = fixture.pools.get('truckflatbed').mats4.length;
+  const donorRecords = fixture.records.slice();
+  const donorIdentity = recordIdentity(fixture.records);
   const receipt = composeLoggingYard(longleaf.props.loggingYard, field, fixture.fieldTimber,
     [...canonicalBlockers.filter(ob => ob.kind !== 'truckflatbed'), ...fixture.obstacles, ...fixture.colliders], fixture.records, fixture.pools);
   assert.equal(receipt.flatbeds.accepted, 2, `seed ${seed}: both canonical flatbeds form grounded loading bays`);
   assert.equal(fixture.pools.get('truckflatbed').mats4.length, slots);
+  assert.deepEqual(recordIdentity(fixture.records), donorIdentity);
+  fixture.records.forEach((record, index) => {
+    assert.equal(record, donorRecords[index], 'the original reconstructed record is relocated, not replaced');
+    const target = longleaf.props.loggingYard.flatbeds[index];
+    assert.deepEqual([record.x, record.z, record.yaw], [target.x, target.z, target.yaw]);
+    assert.ok(record.groundSupport.spread <= 0.45);
+  });
   console.log(JSON.stringify({ seed, canonicalFlatbeds: slots, canonicalDonorReceipt: receipt.flatbeds }));
   cleanup(fixture);
 }

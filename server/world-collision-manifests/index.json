@@ -145,18 +145,18 @@
       "concealers": 1892
     },
     "polders": {
-      "bytes": 953515,
-      "sha256": "b6218e8c9b7bb9ba856472f77a9ceb034cbcf128b0648caaccaa4dd4671505cf",
+      "bytes": 953559,
+      "sha256": "b3e3473437179790cf0146f53864ee943b225af1dfc71565981f3d16690b3d82",
       "obstacles": 4051,
       "colliders": 3823,
       "concealers": 3506
     },
     "copper_mesa": {
-      "bytes": 727632,
-      "sha256": "109ce7d42f82df1f15e852a40be19d3fae5e7e1c5515b60243577e360b5b8f05",
-      "obstacles": 2560,
-      "colliders": 2379,
-      "concealers": 1812
+      "bytes": 727167,
+      "sha256": "694904341c0382526f0558d1454b3581db264bac312e6abc66d814e52da3033a",
+      "obstacles": 2556,
+      "colliders": 2375,
+      "concealers": 1811
     },
     "airfield": {
       "bytes": 786018,
@@ -180,22 +180,22 @@
       "concealers": 805
     },
     "orchard": {
-      "bytes": 1135817,
-      "sha256": "2fda5eb4aa2e13928dd2747b407c794e62e1b98b53547721e8084969932ab082",
+      "bytes": 1135684,
+      "sha256": "f5ecbf0d444828352cd00ce687cbf916d8f77aefe7fc81792cfe29fb2959381e",
       "obstacles": 4403,
       "colliders": 4163,
       "concealers": 4454
     },
     "longleaf": {
-      "bytes": 1218507,
-      "sha256": "0919a68451128ff2d0e59cf00447bd53b78fb3c113b70487c01eda7216f55f42",
+      "bytes": 1218490,
+      "sha256": "b414a825d1a1223dcf8f3f48f5e30949f4c1a5a02d596c4104bbb26d51553432",
       "obstacles": 5631,
       "colliders": 5421,
       "concealers": 6154
     },
     "mangrove": {
-      "bytes": 1055886,
-      "sha256": "96fd6e4da0601eb9a31944bc735df6f8ee7a361ac77c070cb40147b5398d0cfd",
+      "bytes": 1055765,
+      "sha256": "1ad45c905a83add00a80b6b5eeeb20df6bc114f385d0e9a5fc30ef6eda9cdcd6",
       "obstacles": 4918,
       "colliders": 4740,
       "concealers": 5666
@@ -208,8 +208,8 @@
       "concealers": 2723
     },
     "reservoir": {
-      "bytes": 1282897,
-      "sha256": "debda216040f2e3b08218266b62a99fc40219a3720568a1b2600e9fe56b7c2df",
+      "bytes": 1282807,
+      "sha256": "924935e218a9f357b75e27eb35e0b98a6db9201d126f3073e0a7a2f95cd76a58",
       "obstacles": 5932,
       "colliders": 5749,
       "concealers": 6443
