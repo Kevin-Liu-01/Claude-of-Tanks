@@ -157,6 +157,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/multiplayer-cpu-timeline.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
     'tools/multiplayer-source-profile.selftest.mjs',
+    'tools/multiplayer-render-workload.selftest.mjs',
     'tools/multiplayer-live-combat.selftest.mjs',
     'tools/terrain-stream-benchmark.selftest.mjs',
     'tools/terrain-fast-cache-benchmark.selftest.mjs',

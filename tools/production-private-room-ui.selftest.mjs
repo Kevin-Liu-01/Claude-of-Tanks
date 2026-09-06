@@ -6,6 +6,7 @@ import { productionUiOptions, validateUiProgress, cleanupProductionUi,
   verifyProductionPrivateRoomUi, battleScreenshotAllowed, captureBattleScreenshot,
   measureProductionFeedback } from './production-private-room-ui.mjs';
 import * as relayProbe from './production-private-room-ui.mjs';
+import { createMultiplayerRenderWorkload } from './multiplayer-render-workload.mjs';
 
 assert.deepEqual(productionUiOptions({ url: 'https://game.example.test' }),
   { origin: 'https://game.example.test', timeoutMs: 300_000 });
@@ -16,6 +17,59 @@ assert.throws(() => productionUiOptions({ url: 'https://game.example.test', forc
 for (const forceRelay of [null, 1, 'true']) assert.throws(() => productionUiOptions({
   url: 'https://game.example.test', measurePerformance: true, forceRelay,
 }), TypeError);
+
+for (const renderWorkload of ['dual-render-stress', 'single-foreground']) {
+  assert.equal(productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
+    renderWorkload }).renderWorkload, renderWorkload);
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', renderWorkload }),
+    /requires --performance/);
+}
+for (const renderWorkload of [null, 1, '', 'PRIVATE_MODE']) assert.throws(() => productionUiOptions({
+  url: 'https://game.example.test', measurePerformance: true, renderWorkload,
+}), TypeError);
+
+const workloadCalls = [];
+const workloadOwner = { async dispose() { workloadCalls.push('restore'); return { windowsRestored: true }; } };
+const workloadPorts = { async create(pages, options) {
+  assert.equal(pages.length, 2); assert.equal(options.mode, 'single-foreground');
+  workloadCalls.push('acquire'); return workloadOwner;
+}, onOwner(owner) { assert.equal(owner, workloadOwner); workloadCalls.push('owned'); } };
+assert.deepEqual(await relayProbe.withProductionRenderWorkload([{}, {}], 'single-foreground', async (owner) => {
+  assert.equal(owner, workloadOwner); workloadCalls.push('sample'); return { samples: [1, 2] };
+}, workloadPorts), { result: { samples: [1, 2] }, cleanup: { windowsRestored: true } });
+assert.deepEqual(workloadCalls, ['acquire', 'owned', 'sample', 'restore']);
+const sampleError = new Error('feedback_sample_missing');
+await assert.rejects(relayProbe.withProductionRenderWorkload([{}, {}], 'single-foreground',
+  async () => { throw sampleError; }, workloadPorts), (error) => error === sampleError);
+assert.equal(workloadCalls.at(-1), 'restore', 'measurement failure restores before room teardown');
+await assert.rejects(relayProbe.withProductionRenderWorkload([{}, {}], 'single-foreground',
+  async () => { assert.fail('late acquisition cannot start sampling after overall cancellation'); },
+  { ...workloadPorts, onOwner() { throw sampleError; } }), (error) => error === sampleError);
+assert.equal(workloadCalls.at(-1), 'restore', 'late acquired native owner is restored even before collection begins');
+const cleanupError = new Error('render_workload_cleanup_failed');
+const failedWorkloadPorts = { create: async () => ({ dispose: async () => { throw cleanupError; } }) };
+await assert.rejects(relayProbe.withProductionRenderWorkload([{}, {}], undefined,
+  async () => { throw sampleError; }, failedWorkloadPorts), (error) => {
+  assert.equal(error, sampleError, 'primary measurement error is not replaced by cleanup failure');
+  assert.equal(error.cleanupFailed, true);
+  return true;
+});
+await assert.rejects(relayProbe.withProductionRenderWorkload([{}, {}], undefined,
+  async () => ({}), failedWorkloadPorts), (error) => error === cleanupError);
+for (const code of ['render_workload_start_failed', 'render_workload_admission_failed',
+  'render_workload_observation_failed', 'render_workload_cleanup_failed']) {
+  assert.equal(relayProbe.productionDiagnosticCode(new Error(code)), code);
+  assert.equal(relayProbe.productionDiagnosticCode(new Error(`${code}:PRIVATE_SECRET`)), null);
+}
+for (const version of ['HeadlessChrome/148.0.7757.4', 'Chrome/148.0.7757.4']) {
+  assert.equal(await relayProbe.readProductionBrowserVersion({ version: async () => version }), version);
+}
+for (const version of ['PRIVATE_VERSION', 'HeadlessChrome/148.0.7757.4?PRIVATE_SECRET',
+  'Chrome/148.0.7757.4\n', 'Chrome/148.0.7757', null, { PRIVATE: true }]) {
+  assert.equal(await relayProbe.readProductionBrowserVersion({ version: async () => version }), null);
+}
+assert.equal(await relayProbe.readProductionBrowserVersion({}), null);
+assert.equal(await relayProbe.readProductionBrowserVersion({ version: async () => { throw new Error('PRIVATE'); } }), null);
 
 class NativePeer {
   static nativeMarker = 'native-static';
@@ -152,6 +206,35 @@ function relayMonitorPorts(overrides = {}) {
 }
 const gameplayResult = { samples: [0, 1].map(() => ({ firing: { confirmed: { count: 2 } } })) };
 const ports = relayMonitorPorts();
+const preparationError = Object.assign(new Error('feedback_native_input_preparation_failed'), {
+  nativePreparation: { nativeClickAttempts: 1, nativeClickCompleted: true, fireActions: 1,
+    predictedShots: 1, confirmedShots: 0, overflow: false, ammoBefore: [24, 4, 6, 'PRIVATE'],
+    ammoAfter: [23, 4, 6, 'PRIVATE'], durationMs: 400, ready: false, PRIVATE_TOKEN: 'PRIVATE_SECRET' },
+});
+await assert.rejects(relayProbe.withProductionRelayValidation([{}, {}], async () => { throw preparationError; },
+  relayMonitorPorts()), (error) => {
+  assert.equal(relayProbe.productionDiagnosticCode(error), 'feedback_native_input_preparation_failed');
+  const receipt = relayProbe.productionFailureEvidence(error).nativePreparation;
+  assert.equal(receipt.nativeClickAttempts, 1);
+  assert.equal(receipt.predictedShots, 1);
+  assert.equal(receipt.confirmedShots, 0, 'unconfirmed preparation is not represented as successful firing');
+  assert.deepEqual(receipt.ammoAfter, [23, 4, 6]);
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+  return true;
+});
+assert.equal(relayProbe.productionDiagnosticCode(new Error('feedback_native_input_preparation_failed:PRIVATE')), null);
+const unavailablePages = [0, 1].map(() => ({ evaluate: async () => { throw new Error('PRIVATE_PAGE'); } }));
+const unavailableWorkload = await createMultiplayerRenderWorkload(unavailablePages);
+let workloadError;
+try { await unavailableWorkload.begin('host'); } catch (error) { workloadError = error; }
+await unavailableWorkload.dispose();
+await assert.rejects(relayProbe.withProductionRelayValidation([{}, {}], async () => { throw workloadError; },
+  relayMonitorPorts()), (error) => {
+  assert.equal(relayProbe.productionDiagnosticCode(error), 'render_workload_admission_failed');
+  assert.equal(relayProbe.productionFailureEvidence(error).renderWorkload.measuredRole, 'host');
+  assert.doesNotMatch(JSON.stringify(relayProbe.productionFailureEvidence(error)), /PRIVATE/);
+  return true;
+});
 const monitored = await relayProbe.withProductionRelayValidation([{}, {}], async () => {
   await ports.tick(); await ports.tick(); return gameplayResult;
 }, ports);
@@ -403,6 +486,26 @@ const sourcePorts = { ...diagnosticPorts, role: 'host',
     }; } };
   },
 };
+for (const diagnosis of [{}, { cpuTimeline: true }, { frameTrace: true }, { sourceProfile: 'guest' }]) {
+  await measureProductionFeedback(timelinePage, { origin: sourceProfileOptions.origin, ammoSlot: 2,
+    renderWorkload: 'single-foreground', ...diagnosis }, { ...sourcePorts, role: 'guest',
+    startTrace: diagnosticPorts.startTimeline,
+    async measure(...args) {
+      assert.equal(args[3].nativePreflight, true,
+        'single-foreground restores legitimate native pointer capture before every diagnostic variant');
+      return diagnosticPorts.measure(...args);
+    },
+  });
+}
+for (const renderWorkload of [undefined, 'dual-render-stress']) {
+  await measureProductionFeedback(timelinePage, { ammoSlot: 2, renderWorkload }, {
+    ...diagnosticPorts, async measure(...args) {
+      assert.equal(args.length, 3, 'default and explicit dual stress retain original sample invocation');
+      return diagnosticPorts.measure(...args);
+    },
+  });
+}
+timelineCalls.splice(0);
 await measureProductionFeedback(timelinePage, sourceProfileOptions, sourcePorts);
 assert.deepEqual(timelineCalls.splice(0), ['ready', 'measure'], 'unselected role does not acquire any profiler');
 const sourceDiagnostic = await measureProductionFeedback(timelinePage, sourceProfileOptions,
@@ -785,8 +888,14 @@ assert.match(source, /completedPerformance = receipt;[\s\S]{0,50}return receipt/
 assert.match(source, /performance: completedPerformance/,
   'outer failure keeps locally generated measurements, never arbitrary error payloads');
 assert.match(source, /measurePerformance = false/);
-assert.match(source, /await measureProductionFeedback\(page, options, \{ role \}\)[\s\S]{0,150}await captureBattleScreenshot/,
-  'each screenshot follows the completed timed role sample, not its measurement loop');
+assert.match(source, /await measureProductionFeedback\(page, options, \{ role \}\)[\s\S]{0,100}await workload\.finish\(role\)[\s\S]{0,150}await captureBattleScreenshot/,
+  'whole-sample workload observation precedes screenshots and the next role switch');
+assert.match(source, /twoLoadedContextsSameMachine: true/);
+assert.match(source, /27_000 \+ \(renderWorkload === 'single-foreground' \? 12_000 : 2_000\)/,
+  'overall timeout reserves bounded native restoration in addition to room/browser cleanup');
+assert.match(source, /requestedRenderWorkload: options\.renderWorkload \?\? 'dual-render-stress'/);
+assert.match(source, /options\.renderWorkload === 'single-foreground' \? \{\} : \{ twoRenderedContextsSameMachine: true \}/,
+  'legacy dual-render configuration is not mislabeled as the native single-foreground workload');
 assert.match(source, /createBrowserContext\(\)/);
 assert.match(source, /page\.click\(selector\)/, 'all room actions use native pointer events');
 const child = spawnSync(process.execPath, ['tools/production-private-room-ui.mjs'],
@@ -799,7 +908,10 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   ['--source-profile=host'], ['--performance', '--source-profile'], ['--performance', '--source-profile='],
   ['--performance', '--source-profile=PRIVATE_TOKEN'],
   ['--performance', '--source-profile=host', '--cpu-timeline'],
-  ['--performance', '--source-profile=guest', '--frame-trace']]) {
+  ['--performance', '--source-profile=guest', '--frame-trace'],
+  ['--render-workload=single-foreground'], ['--render-workload=dual-render-stress'],
+  ['--performance', '--render-workload'], ['--performance', '--render-workload='],
+  ['--performance', '--render-workload=PRIVATE_TOKEN']]) {
   const invalid = spawnSync(process.execPath, ['tools/production-private-room-ui.mjs',
     '--url=https://game.example.test', ...args], { encoding: 'utf8', timeout: 5000 });
   assert.equal(invalid.status, 1);

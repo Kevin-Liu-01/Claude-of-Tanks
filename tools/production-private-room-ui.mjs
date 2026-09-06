@@ -1,10 +1,11 @@
 import { pathToFileURL } from 'node:url';
 import { isAbsolute, join, normalize, parse } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { installFeedbackPeerObserver, measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
+import { installFeedbackPeerObserver, measureNativeFeedback, projectNativePreparation } from './multiplayer-feedback-probe.mjs';
 import { startMultiplayerCpuTimeline } from './multiplayer-cpu-timeline.mjs';
 import { startMultiplayerFrameTrace } from './multiplayer-frame-trace.mjs';
 import { startMultiplayerSourceProfile } from './multiplayer-source-profile.mjs';
+import { createMultiplayerRenderWorkload, renderWorkloadFailureEvidence } from './multiplayer-render-workload.mjs';
 
 function validateAmmoSelection(ammoSlot, measurePerformance) {
   if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
@@ -34,17 +35,25 @@ function validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, f
   if (cpuTimeline || frameTrace) throw new TypeError('source profile and other CPU diagnostics are mutually exclusive');
 }
 
-function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, ammoSlot, screenshots }) {
+function validateRenderWorkload(renderWorkload, measurePerformance) {
+  if (renderWorkload !== undefined &&
+      (!['dual-render-stress', 'single-foreground'].includes(renderWorkload) || !measurePerformance)) {
+    throw new TypeError('render workload must select dual-render-stress or single-foreground and requires --performance');
+  }
+}
+
+function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, renderWorkload, ammoSlot, screenshots }) {
   return { ...(forceRelay ? { forceRelay: true } : {}),
     ...(frameTrace ? { frameTrace: true } : {}),
     ...(cpuTimeline ? { cpuTimeline: true } : {}),
     ...(sourceProfile === undefined ? {} : { sourceProfile }),
+    ...(renderWorkload === undefined ? {} : { renderWorkload }),
     ...(ammoSlot === undefined ? {} : { ammoSlot }),
     ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
 }
 
 export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
-  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile } = {}) {
+  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, renderWorkload } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -58,6 +67,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
   validateCpuTimeline(cpuTimeline, measurePerformance);
   validateFrameTrace(frameTrace, cpuTimeline, measurePerformance);
   validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, frameTrace);
+  validateRenderWorkload(renderWorkload, measurePerformance);
   if (typeof forceRelay !== 'boolean' || (forceRelay && !measurePerformance)) {
     throw new TypeError('force relay requires --performance');
   }
@@ -67,7 +77,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
-    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, ammoSlot, screenshots }) };
+    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, renderWorkload, ammoSlot, screenshots }) };
 }
 
 /** Optional diagnosis has measurable overhead and is not a timing certification. */
@@ -116,18 +126,21 @@ export async function measureProductionFeedback(page, options, {
   startSourceProfile = startMultiplayerSourceProfile, measure = measureNativeFeedback, role = 'host',
 } = {}) {
   const profileSelected = options.sourceProfile === role;
-  if (!options.cpuTimeline && !options.frameTrace && !profileSelected) return measure(page, 20_000, options.ammoSlot);
+  const preparation = options.renderWorkload === 'single-foreground' ? { nativePreflight: true } : null;
+  if (!options.cpuTimeline && !options.frameTrace && !profileSelected) {
+    return preparation ? measure(page, 20_000, options.ammoSlot, preparation) : measure(page, 20_000, options.ammoSlot);
+  }
   let timeline;
   let sample;
   let cpu;
   let measurementError;
   try {
-    const capture = profileSelected ? {
+    const capture = { ...preparation, ...(profileSelected ? {
       afterSampleStarted: async () => { timeline = await startSourceProfile(page, { origin: options.origin }); },
       afterSample: async () => { cpu = await timeline.stop(); },
     } : { beforeSample: async () => {
       timeline = await (options.frameTrace ? startTrace(page) : startTimeline(page));
-    } };
+    } }) };
     sample = await measure(page, 20_000, options.ammoSlot, capture);
   }
   catch (error) { measurementError = error; }
@@ -137,6 +150,7 @@ export async function measureProductionFeedback(page, options, {
   catch (error) {
     throw Object.assign(failure('native_feedback_performance'), productionDiagnosticDetails(error), {
       measurementDiagnosticCode: measurementCode(productionDiagnosticCode(measurementError)),
+      ...nativePreparationEvidence(measurementError),
     });
   }
   if (measurementError) throw measurementError;
@@ -148,6 +162,25 @@ export async function measureProductionFeedback(page, options, {
     diagnosticOverhead: true } };
 }
 
+/** Restore owned native windows before room teardown, even when sampling fails. */
+export async function withProductionRenderWorkload(pages, mode, collect, {
+  create = createMultiplayerRenderWorkload, onOwner = () => {},
+} = {}) {
+  const owner = await create(pages, { mode });
+  let result;
+  let problem;
+  let cleanup;
+  try { onOwner(owner); result = await collect(owner); }
+  catch (error) { problem = error; }
+  try { cleanup = await owner.dispose(); }
+  catch (error) {
+    if (!problem) problem = error;
+    else problem.cleanupFailed = true;
+  }
+  if (problem) throw problem;
+  return { result, cleanup };
+}
+
 function failure(stage) {
   return Object.assign(new Error('production private-room UI smoke failed'), {
     code: 'production_private_room_ui_failed', stage,
@@ -157,9 +190,12 @@ function failure(stage) {
 const DIAGNOSTIC_CODES = new Set([
   'frame_trace_start_failed', 'frame_trace_stop_failed', 'frame_trace_cleanup_failed',
   'feedback_qa_unavailable', 'feedback_sample_missing', 'feedback_ammo_selection_timeout',
+  'feedback_native_input_preparation_failed',
   'predicted_feedback_confirmation_mismatch', 'cpu_timeline_start_failed',
   'cpu_timeline_sample_failed', 'cpu_timeline_cleanup_failed', 'relay_verification_failed',
   'source_profile_start_failed', 'source_profile_stop_failed', 'source_profile_cleanup_failed',
+  'render_workload_start_failed', 'render_workload_admission_failed',
+  'render_workload_observation_failed', 'render_workload_cleanup_failed',
 ]);
 const RELAY_REASONS = ['pair', 'observer', 'channels', 'disconnected', 'counter', 'policy', 'missing', 'stats'];
 const FAILURE_EVIDENCE = new WeakMap();
@@ -171,6 +207,16 @@ export function productionFailureEvidence(error) {
 function retainFailureEvidence(error, evidence) {
   FAILURE_EVIDENCE.set(error, evidence);
   return Object.assign(error, evidence);
+}
+
+function workloadFailureEvidence(error) {
+  return renderWorkloadFailureEvidence(error) ?? FAILURE_EVIDENCE.get(error)?.renderWorkload ?? null;
+}
+
+function nativePreparationEvidence(error) {
+  const nativePreparation = projectNativePreparation(error?.nativePreparation ??
+    FAILURE_EVIDENCE.get(error)?.nativePreparation);
+  return nativePreparation ? { nativePreparation } : {};
 }
 
 function relayPairDetails(error) {
@@ -201,7 +247,7 @@ export function productionDiagnosticCode(error) {
 
 function measurementCode(value) {
   return ['feedback_qa_unavailable', 'feedback_sample_missing', 'feedback_ammo_selection_timeout',
-    'predicted_feedback_confirmation_mismatch'].includes(value) ? value : null;
+    'feedback_native_input_preparation_failed', 'predicted_feedback_confirmation_mismatch'].includes(value) ? value : null;
 }
 
 /** No arbitrary strings or raw nested errors cross the public receipt boundary. */
@@ -225,6 +271,16 @@ function bounded(promise, milliseconds, stage) {
   return Promise.race([promise, new Promise((_, reject) => {
     timer = setTimeout(() => reject(failure(stage)), Math.max(1, milliseconds));
   })]).finally(() => clearTimeout(timer));
+}
+
+/** Browser product/version only; remote debugging addresses are never retained. */
+export async function readProductionBrowserVersion(browser) {
+  if (typeof browser?.version !== 'function') return null;
+  try {
+    const version = await bounded(Promise.resolve().then(() => browser.version()), 2000, 'browser_version');
+    return typeof version === 'string' &&
+      /^(?:HeadlessChrome|Chrome)\/\d{1,3}\.\d{1,5}\.\d{1,5}\.\d{1,5}$/.exec(version)?.[0] === version ? version : null;
+  } catch { return null; }
 }
 
 /** Explicit tool-only override: preserve native RTC behavior and deployed ICE servers. */
@@ -392,7 +448,9 @@ function partialRelayReceipt(first, last, sampleCount, remoteTypes, pairStates) 
 function relayFailure(error, partialRelay) {
   return retainFailureEvidence(Object.assign(failure('relay_gameplay'), productionDiagnosticDetails(error), {
     relaySampleCount: partialRelay.sampleCount,
-  }), { performance: null, partialRelay });
+  }), { performance: null, partialRelay,
+    ...nativePreparationEvidence(error),
+    ...(workloadFailureEvidence(error) ? { renderWorkload: workloadFailureEvidence(error) } : {}) });
 }
 
 /** Bounded, non-overlapping checks cover the native movement/fire operation. */
@@ -661,20 +719,28 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError, measur
   return page;
 }
 
+function cleanupReserveMs(measurePerformance, renderWorkload) {
+  if (!measurePerformance) return 27_000;
+  // Two owners restore in parallel: at most one in-flight 2 s operation plus
+  // normal/rectangle/prior-state/verification/detach commands, each bounded 2 s.
+  return 27_000 + (renderWorkload === 'single-foreground' ? 12_000 : 2_000);
+}
+
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot,
-  cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile } = {}) {
+  cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, renderWorkload } = {}) {
   const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot,
-    cpuTimeline, forceRelay, frameTrace, sourceProfile });
+    cpuTimeline, forceRelay, frameTrace, sourceProfile, renderWorkload });
   const started = performance.now();
-  const owners = { browser: null, pages: [], roomCreated: false };
+  const owners = { browser: null, pages: [], roomCreated: false, renderWorkload: null, cancelled: false };
   let stage = 'browser_launch';
   let problem;
   let result;
   let completedPerformance = null;
   let pageErrors = 0;
-  const left = () => Math.max(1, timeoutMs - 27_000 - (performance.now() - started));
+  const reserveMs = cleanupReserveMs(measurePerformance, options.renderWorkload);
+  const left = () => Math.max(1, timeoutMs - reserveMs - (performance.now() - started));
   const run = (next, action) => {
     stage = next;
     onStage(next);
@@ -736,24 +802,40 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     const after = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
     const peers = validateUiProgress(before, after);
     const performanceReceipt = measurePerformance ? await run('native_feedback_performance', async () => {
-      const collect = async () => {
+      const browserVersion = await readProductionBrowserVersion(owners.browser);
+      const collectSamples = async (workload) => {
         const samples = [];
         const captures = [];
         for (const [index, page] of owners.pages.entries()) {
           const role = index ? 'guest' : 'host';
+          await workload.begin(role);
           samples.push({ role, ...await measureProductionFeedback(page, options, { role }) });
+          samples.at(-1).renderWorkload = await workload.finish(role);
           if (options.screenshots) captures.push(await captureBattleScreenshot(page, options.screenshots, role));
           samples.at(-1).renderingContext = await page.evaluate(readProductionRenderingContext);
         }
         const receipt = { scenario: 'native-private-1v1-winter', sampleMsPerRole: 20_000,
           ammoSlot: options.ammoSlot ?? 1,
+          browserVersion,
           viewport: [1280, 800], deviceScaleFactor: 1, cpuThrottle: 1,
-          twoRenderedContextsSameMachine: true, foregroundRolesMeasuredSequentially: true,
+          twoLoadedContextsSameMachine: true,
+          requestedRenderWorkload: options.renderWorkload ?? 'dual-render-stress',
+          ...(options.renderWorkload === 'single-foreground' ? {} : { twoRenderedContextsSameMachine: true }),
+          foregroundRolesMeasuredSequentially: true,
           externalGpuContention: 'not-detected-or-controlled-by-this-probe',
           latencyMeaning: 'application-input-edge-to-confirmed-effect-and-next-rAF-callback-not-click-to-photon',
           samples, ...(options.screenshots ? { screenshots: captures } : {}) };
         completedPerformance = receipt;
         return receipt;
+      };
+      const collect = async () => {
+        const workload = await withProductionRenderWorkload(owners.pages, options.renderWorkload, collectSamples,
+          { onOwner: (owner) => {
+            owners.renderWorkload = owner;
+            if (owners.cancelled) throw new Error('render_workload_admission_failed');
+          } });
+        completedPerformance = { ...workload.result, nativeWindowCleanup: workload.cleanup };
+        return completedPerformance;
       };
       if (!options.forceRelay) return collect();
       const verified = await withProductionRelayValidation(owners.pages, collect);
@@ -770,10 +852,16 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       nativeInviteJoined: true, nativeReadyAndLaunch: true, peers, nativeExitAndRoomClose: true, pageErrors };
     if (performanceReceipt) result.performance = performanceReceipt;
   } catch (error) {
+    owners.cancelled = true;
     problem = failure(error?.stage === 'relay_gameplay' ? 'relay_gameplay' : stage);
     Object.assign(problem, productionDiagnosticDetails(error));
     retainFailureEvidence(problem, { performance: completedPerformance,
-      partialRelay: productionFailureEvidence(error).partialRelay });
+      partialRelay: productionFailureEvidence(error).partialRelay,
+      ...nativePreparationEvidence(error),
+      ...(workloadFailureEvidence(error) ? { renderWorkload: workloadFailureEvidence(error) } : {}) });
+    // The overall deadline can win while a sample is still pending. Fence future
+    // native admission work and restore its exact windows before room cleanup.
+    try { await owners.renderWorkload?.dispose(); } catch { problem.cleanupFailed = true; }
     problem.lastStates = await Promise.all(owners.pages.map((page) =>
       bounded(page.evaluate(readUiState), 1_000, 'last_state').catch(() => null)));
   }
@@ -792,12 +880,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       throw new TypeError('ammo slot must be 1, 2, or 3');
     }
     if (process.argv.includes('--source-profile')) throw new TypeError('source profile must select host or guest');
+    if (process.argv.includes('--render-workload')) throw new TypeError('render workload requires an explicit mode');
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
       cpuTimeline: process.argv.includes('--cpu-timeline'),
       forceRelay: process.argv.includes('--force-relay'),
       frameTrace: process.argv.includes('--frame-trace'),
       sourceProfile: option('source-profile'),
+      renderWorkload: option('render-workload'),
       ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
       screenshots: option('screenshots'),
       timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),

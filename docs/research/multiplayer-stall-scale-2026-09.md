@@ -479,3 +479,171 @@ checks 402 functions with zero complexity violations, `any` or `unknown`;
 changed-file Doctor reports no findings, score 92. Independent cache and
 diagnostic lifecycle reviews found no remaining blocker. No vehicle asset,
 terrain geometry, authority protocol, Worker or paid-service setting changed.
+
+### Live release and corrected same-machine workload accounting
+
+The cache and bounded diagnostic changes landed in
+`466244989d8e2bbeb32a197bc2b806bf1b587780`. The normal Git deployment reached
+READY as `dpl_3ubWdxdeYTfoyciHcNVEkQR6QCa8`, with production reporting
+`v1.0.0+g466244989` before and after both subsequent captures. There was no
+Worker, alias, Redis or billing change.
+
+The unprofiled seeded repeat (`r3-prod-seeded-after.json`) reports host frame
+p50/p95/max **33.4/43.4/51.6 ms**, guest **32.4/41.3/53.1 ms**. Compared with
+the identically seeded pre-release control, this is mixed: host maximum falls,
+guest maximum rises, and typical cadence does not improve. Neither role passes
+the strict 50 ms maximum gate. All ready shots, room flow and native cleanup
+pass, with zero page errors or hard snaps. The isolated cold-height benchmark
+is the verified runtime improvement; these frame results are not evidence of
+a general FPS improvement.
+
+The bounded source-profile repeat (`r3-prod-source-bounded-after.json`) verifies
+the new measurement boundary: 481.3 ms of setup and one straddling frame are
+explicitly excluded from the gameplay observer. Host observed maximum is
+63.5 ms, not the profiler's 449.66 ms startup sample interval. The whole-profile
+weights still include startup, as declared. `sampleFullyCovered` is true; only
+fully covered 100 ms bins 5 through 202 are safe for observed-window analysis.
+This diagnostic is not the unprofiled acceptance run.
+
+Read-only focus and frame-scheduler snapshots uncovered a separate harness
+assumption. `bringToFront()` does **not** suspend the other independent headless
+browser context on this machine: both report focused/visible. During the host
+sample their animation ticks advanced 754 and 751; during the guest sample,
+642 and 641. Background ticks and suspensions remained zero. Thus the earlier
+"foreground roles measured sequentially" label describes the **observer**, not
+one renderer at a time. These receipts remain valid **two-renderer stress
+results**, but are not single-visible-game measurements.
+
+A bounded blank-page control (`native-window-focus-probe.json`) proved native
+window minimization works in both directions: the selected page advances about
+60 RAF callbacks/s; the minimized peer is genuinely unfocused/hidden, advances
+zero RAF callbacks, and retains its 100 ms timer. No visibility/focus getter or
+game setting was overridden. The
+[Chrome DevTools Browser window API](https://chromedevtools.github.io/devtools-protocol/tot/Browser/)
+is used only for the two owned windows, restoring their original state before
+closing. The game control must additionally prove continued background
+authority/network progress before and throughout measurement. This identifies
+concurrent test rendering; it does **not** retrospectively prove the cause of
+the historical 214–319 ms events.
+
+A read-only source review also avoids misattributing bundled filenames:
+`battlefieldBounds-B0FPWe9A.js` contains the sampled obstacle-grid query and
+ray/convex collision functions; the hot entries are not the playable-boundary
+clamp. Retained interior-bin self weights average approximately 0.555 ms/frame
+for those selected collision functions, 0.156 ms/frame for selected HUD slot
+updates, and 0.203 ms/frame for reload text/drawing. These are statistical
+steady-work estimates, not maximum-frame attribution or completely removable
+cost. The HUD's sampled generated line was verified byte-identical against the
+public production chunk. No speculative HUD/collision rewrite was added to
+this fix.
+
+Both older receipts (`production-performance-missile.log`, 319.1/214.2 ms,
+and `production-release-relay.log`, 109.6/63.5 ms) explicitly recorded two fresh
+rendered contexts on one machine, but did not retain inactive-page focus/tick
+observations or the executed harness SHA. The documented `6604fbdad` and
+`f7003cc46` tool revisions use separate live headless contexts and sequential
+`bringToFront()` observation, without native minimization or visibility
+emulation. The latter receipt pins the live frontend to `f7003cc46`; the former
+frontend revision is documented separately, not in that log itself. This
+establishes a dual-context test configuration, **not** direct proof of its
+instant-by-instant historical render concurrency. The newly measured behavior
+is a plausible workload confound, not retrospective attribution of those peaks.
+
+The first temporary native-window game control
+(`r3-prod-native-foreground-a-failure.json`) passed both pre-sample admissions:
+the peer rendered zero frames while background ticks, inputs and snapshots
+advanced. Observed host p50/p95/max was 16.7/24.6/41.2 ms, guest
+18.8/26.7/83.1 ms. The guest spike occurred 16.232 s into observation with stable
+program/geometry counts, not at the focus transition. This run is **not a
+release PASS**: the temporary wrapper incorrectly reapplied its window policy
+during repeated exit actions, causing native room-exit verification to fail.
+The owned browser closed, but explicit room closure was not verified. The
+complete failed receipt is retained. Admission-only proof also must not be
+upgraded to a whole-sample concurrency guarantee.
+
+The durable controller applies window policy only around the two timed samples,
+then restores original owned bounds/state before normal room teardown. It
+verifies the actual counter/state conditions across each complete observation,
+not only before it, and records a sanitized browser product/version. The default
+remains the two-context stress configuration with read-only concurrency
+observations. No runtime focus, visibility or rendering policy is changed.
+Timeout/cancellation tests cover pending native operations and conservative
+cleanup failure when an unresolved command prevents certified restoration.
+
+The durable-controller run (`r3-prod-native-foreground-b.json`) verifies
+production `466244989` before/after on Chrome 151.0.7922.47, with the same clear
+Winter seed 20260906, low preset, scale 1 and real TURN relay:
+
+| Measured role | Frame p50 / p95 / p99 / maximum | Frames |
+| --- | --- | --- |
+| Host | 16.7 / 25.2 / 27.7 / **42.5 ms** | 1,186 |
+| Guest | 18.8 / 26.8 / 33.0 / **49.0 ms** | 1,064 |
+
+Both admissions and both complete role observations classify as
+`single-foreground-live-background-observed`. During the host observation the
+guest rendered **zero** animation frames while advancing 465 background ticks,
+465 input packets and 465 snapshots. During the guest observation the host
+rendered **zero** frames while advancing 410 background ticks/inputs and 376
+snapshots. Original windows were restored, sessions detached, native room
+closure verified, and the owned browser closed. Hard snaps and page errors were
+zero. This run passes the strict 50 ms maximum-frame check, not a universal
+16.7 ms frame budget or a separate-device performance certification.
+
+Its shooting report still has two ambiguous guest attempts after native window
+restoration lost pointer lock; one gesture reacquired mouse capture instead of
+being an eligible shot. Host 4/4 and the remaining guest 3/3 ready firing
+attempts matched; the report retains the two ambiguous attempts rather than
+erasing them. Guest predicted callback median/max was 6.9/18.2 ms and next-RAF
+callback median/max 36.9/41.5 ms. These are application callback latencies, not
+instant click-to-photon. A native pre-measurement input-readiness step is needed
+before using this window-control scenario as a clean shooting-response test.
+
+### Final native-input control and scope of completion
+
+The final unprofiled production repeat (`r3-prod-native-foreground-c.json`)
+verified `v1.0.0+g466244989` before and after with the same browser, seed,
+presentation and forced live TURN connection. The explicit
+`--performance --render-workload=single-foreground` option now checks native
+canvas pointer lock and settled input before starting the observation. It uses
+at most one trusted click, never fabricates input/focus or refunds ammunition,
+and reports preparation actions separately. Default dual-render tests are
+unchanged. Any real preparation shot remains counted and would preclude a
+cold-first-shot claim.
+
+| Measured role | Frame p50 / p95 / p99 / maximum | Frames | Timed shots |
+| --- | --- | --- | --- |
+| Host | 16.7 / 25.3 / 27.2 / **35.3 ms** | 1,180 | 4/4 matched |
+| Guest | 19.1 / 29.3 / 37.1 / **46.5 ms** | 1,043 | 4/4 matched |
+
+Host preparation required no click; the guest required one capture click and
+321 ms of preparation. Both reported **zero preparation shots** and unchanged
+ammunition `[24, 4, 18]`. All eight timed attempts were eligible and matched,
+with no ambiguous attempts. Guest predicted effect callback median/maximum was
+**5.3/10.8 ms**, and its next-RAF callback was **32.6/46.5 ms**. Authoritative
+guest confirmation took **49.9/87.7 ms** median/maximum; neither number is a
+click-to-photon measurement or a promise of zero network latency.
+
+Both complete observation windows pass the single-foreground/live-background
+classification: inactive guest animation delta 0 with 465 background ticks,
+inputs and snapshots; inactive host animation delta 0 with 416 of each. Relay
+verification sampled 48 times. There were zero hard snaps, missing-snapshot
+estimates, dropped histories, observer failures or page errors. Both native
+windows were restored, diagnostic sessions detached, explicit room exit and
+closure verified, and the owned browser closed. No user/foreign process was
+stopped.
+
+Five focused tool/registry selftests pass on the final source. The registry
+discovers **560 ordered checks**, not a claim that the entire 560-check suite
+was rerun. The three changed tool modules pass the quality gate across 338
+functions with zero complexity violations, `any` or `unknown`; diff checks
+pass. The runtime typecheck, public build and terrain gates above cover the
+already-deployed cache change; this follow-up is tools/tests/documentation only.
+
+Two completed corrected workload runs pass the 50 ms maximum-frame check.
+The cache benchmark demonstrates less cold aiming work, while the window
+control corrects test workload accounting rather than changing the game's
+renderer. The old dual-render receipts, the failed 83.1 ms native control,
+and profiler-overhead evidence remain retained. **The exact cause of the
+historical 214–319 ms pauses is still not proven.** These short same-machine
+relay tests do not establish universal 60 FPS, different-device behavior,
+distant-network performance or the absence of every future stall.

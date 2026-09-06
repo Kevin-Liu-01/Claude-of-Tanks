@@ -464,12 +464,158 @@ export async function selectNativeFeedbackAmmo(page, ammoSlot) {
   return ammoSlot;
 }
 
-export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
-  { beforeSample, afterSampleStarted, afterSample } = {}) {
-  const ice = [];
+/** Bounded, identity-free preparation evidence, including failed native attempts. */
+export function projectNativePreparation(value) {
+  if (!value || typeof value !== 'object') return null;
+  const count = (n) => Number.isSafeInteger(n) && n >= 0 && n <= 128 ? n : null;
+  const ammo = (array) => Array.from({ length: 3 }, (_, i) => {
+    const n = array?.[i];
+    return Number.isSafeInteger(n) && n >= 0 && n <= 100000 ? n : null;
+  });
+  return { nativeClickAttempts: count(value.nativeClickAttempts),
+    nativeClickCompleted: value.nativeClickCompleted === true,
+    fireActions: count(value.fireActions), predictedShots: count(value.predictedShots),
+    confirmedShots: count(value.confirmedShots), overflow: value.overflow === true,
+    ammoBefore: ammo(value.ammoBefore), ammoAfter: ammo(value.ammoAfter),
+    durationMs: Number.isFinite(value.durationMs) && value.durationMs >= 0 && value.durationMs <= 20000
+      ? value.durationMs : null, ready: value.ready === true };
+}
+
+/** Observation only: these callbacks never poll/consume input or change gameplay. */
+export function startFeedbackInputPreparation() {
+  window.__COT_FEEDBACK_PREPARATION?.dispose();
+  const debug = window.__DEBUG;
+  const canvas = debug?.renderer?.domElement;
+  if (!canvas || !debug.input?.onAction || !debug.bus?.on || !debug.settings?.isOpen ||
+      !debug.killcam?.isActive) throw new Error('feedback_native_input_preparation_failed');
+  const started = performance.now();
+  const ammo = () => Array.from({ length: 3 }, (_, i) => {
+    const n = debug.game?.player?.combat?.ammo?.[i];
+    return Number.isSafeInteger(n) && n >= 0 && n <= 100000 ? n : null;
+  });
+  const state = { nativeClickAttempts: 0, nativeClickCompleted: false,
+    fireActions: 0, predictedShots: 0, confirmedShots: 0, overflow: false,
+    ammoBefore: ammo(), ammoAfter: null, durationMs: 0, ready: false };
+  let clickAt = -Infinity;
+  let shotAt = -Infinity;
+  let disposed = false;
+  const stops = [];
+  let timer;
+  const active = () => canvas.isConnected && document.hasFocus() && !document.hidden &&
+    debug.game?.phase === 'battle' && debug.game.preBattleS <= 0 && !debug.game.result &&
+    !!debug.game.player?.combat && !debug.game.player.combat.destroyed &&
+    !debug.settings.isOpen() && !debug.killcam.isActive();
+  const locked = () => document.pointerLockElement === canvas && debug.input.isLocked?.() === true;
+  const observedAmmoSpent = () => ammo().reduce((spent, n, i) => spent +
+    (n === null || state.ammoBefore[i] === null ? 0 : Math.max(0, state.ammoBefore[i] - n)), 0);
+  const ready = () => !disposed && active() && locked() && debug.game.player.input?.fire === false &&
+    debug.network?.pendingInputEdges === 0 &&
+    (state.nativeClickAttempts === 0 || (performance.now() - Math.max(clickAt, shotAt) >= 300 &&
+      debug.game.player.combat.reload?.t <= 0 && state.predictedShots <= state.confirmedShots &&
+      state.confirmedShots >= observedAmmoSpent()));
+  const increment = (key) => {
+    if (disposed) return;
+    if (state[key] >= 128) state.overflow = true;
+    else state[key]++;
+  };
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    clearTimeout(timer);
+    for (const stop of stops) stop();
+  };
+  window.__COT_FEEDBACK_PREPARATION = { dispose, ready,
+    target() {
+      if (ready()) return null;
+      if (!active()) throw new Error('feedback_native_input_preparation_failed');
+      if (locked()) return null; // Wait out existing input; never create another fire edge.
+      const box = canvas.getBoundingClientRect();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      if (!(box.width > 0 && box.height > 0) || !Number.isFinite(x) || !Number.isFinite(y) ||
+          document.elementFromPoint(x, y) !== canvas) throw new Error('feedback_native_input_preparation_failed');
+      state.nativeClickAttempts++;
+      clickAt = performance.now();
+      return { x, y };
+    },
+    completed() { state.nativeClickCompleted = true; },
+    finish() {
+      state.ready = ready();
+      state.ammoAfter = ammo();
+      state.durationMs = performance.now() - started;
+      dispose();
+      return state;
+    } };
   try {
-    await page.bringToFront();
-    await page.waitForFunction(() => window.__DEBUG?.game?.preBattleS <= 0 && !window.__DEBUG?.game?.result);
+    stops.push(debug.input.onAction('fire', () => increment('fireActions')));
+    stops.push(debug.bus.on('weapon:predicted', (event) => {
+      if (event.isPlayer === true) { increment('predictedShots'); shotAt = performance.now(); }
+    }));
+    stops.push(debug.bus.on('shell:fired', (event) => {
+      if (event.isPlayer === true) { increment('confirmedShots'); shotAt = performance.now(); }
+    }));
+    // Also bounds a late evaluate that resolves after Node's command deadline.
+    timer = setTimeout(dispose, 15000);
+  } catch (error) { dispose(); throw error; }
+  return { ready: ready() };
+}
+
+export function finishFeedbackInputPreparation() {
+  return window.__COT_FEEDBACK_PREPARATION?.finish() ?? null;
+}
+
+async function boundedPreparationCommand(operation, timeoutMs) {
+  let timer;
+  try {
+    return await Promise.race([Promise.resolve().then(operation), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('feedback_native_input_preparation_failed')), timeoutMs);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
+/** One trusted recovery gesture at most. A denied lock never becomes a timing sample. */
+export async function prepareNativeFeedbackInput(page, timeoutMs = 10000) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 10000) throw new TypeError('invalid preflight timeout');
+  const deadline = performance.now() + timeoutMs;
+  const abort = new AbortController();
+  const run = (operation) => boundedPreparationCommand(operation, Math.max(1, deadline - performance.now()));
+  let failed = false;
+  let receipt = null;
+  try {
+    const initial = await run(() => page.evaluate(startFeedbackInputPreparation));
+    if (!initial?.ready) {
+      const target = await run(() => page.evaluate(() => window.__COT_FEEDBACK_PREPARATION.target()));
+      if (target) {
+        await run(() => page.mouse.click(target.x, target.y));
+        await run(() => page.evaluate(() => window.__COT_FEEDBACK_PREPARATION.completed()));
+      }
+      await run(() => page.waitForFunction(() => window.__COT_FEEDBACK_PREPARATION?.ready(),
+        { timeout: Math.max(1, deadline - performance.now()), polling: 50, signal: abort.signal })
+        .then((handle) => boundedPreparationCommand(() => handle?.dispose(), 1000)));
+    }
+  } catch (_) { failed = true; }
+  finally {
+    abort.abort();
+    try { receipt = projectNativePreparation(await boundedPreparationCommand(
+      () => page.evaluate(finishFeedbackInputPreparation), 1000)); } catch (_) { failed = true; }
+  }
+  if (failed || !receipt?.ready || receipt.overflow) {
+    const error = new Error('feedback_native_input_preparation_failed');
+    error.nativePreparation = receipt;
+    throw error;
+  }
+  return receipt;
+}
+
+export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
+  { beforeSample, afterSampleStarted, afterSample, nativePreflight = false } = {}) {
+  if (typeof nativePreflight !== 'boolean') throw new TypeError('native preflight must be boolean');
+  const ice = [];
+  let nativePreparation = null;
+  try {
+    const startup = (operation) => nativePreflight ? boundedPreparationCommand(operation, 10000) : operation();
+    await startup(() => page.bringToFront());
+    await startup(() => page.waitForFunction(() => window.__DEBUG?.game?.preBattleS <= 0 && !window.__DEBUG?.game?.result));
+    nativePreparation = nativePreflight ? await prepareNativeFeedbackInput(page) : null;
     const selectedAmmoSlot = await selectNativeFeedbackAmmo(page, ammoSlot);
     // Optional diagnostics exclude native readiness but precede every timed listener/input edge.
     if (beforeSample) await beforeSample();
@@ -502,11 +648,15 @@ export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
     if (result.firing.predicted.count !== result.firing.confirmed.predictionSuppressedCount) {
       throw new Error('predicted_feedback_confirmation_mismatch');
     }
-    return { ...result, ammoSlot: selectedAmmoSlot };
+    return { ...result, ammoSlot: selectedAmmoSlot, ...(nativePreflight ? { nativePreparation } : {}) };
+  } catch (error) {
+    if (nativePreparation && error instanceof Error) error.nativePreparation = nativePreparation;
+    throw error;
   } finally {
-    await page.keyboard.up('w').catch(() => {});
-    await page.keyboard.up('d').catch(() => {});
-    await page.mouse.up().catch(() => {});
-    await page.evaluate(() => window.__COT_FEEDBACK_SAMPLE?.dispose()).catch(() => {});
+    const cleanup = (operation) => (nativePreflight ? boundedPreparationCommand(operation, 1000) : operation()).catch(() => {});
+    await cleanup(() => page.keyboard.up('w'));
+    await cleanup(() => page.keyboard.up('d'));
+    await cleanup(() => page.mouse.up());
+    await cleanup(() => page.evaluate(() => window.__COT_FEEDBACK_SAMPLE?.dispose()));
   }
 }

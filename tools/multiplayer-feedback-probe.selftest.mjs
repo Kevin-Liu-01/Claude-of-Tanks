@@ -3,7 +3,9 @@ import { createContext, runInContext } from 'node:vm';
 import { metricDistribution, summarizeFeedbackSample, installFeedbackPeerObserver,
   readFeedbackIceStats, startFeedbackSample, stopFeedbackSample, endFeedbackSample, resetFeedbackSampleBoundary,
   sanitizeFeedbackTimingWindows, sanitizeFeedbackActions, selectNativeFeedbackAmmo,
-  measureNativeFeedback, readFeedbackAmmoReadiness } from './multiplayer-feedback-probe.mjs';
+  measureNativeFeedback, readFeedbackAmmoReadiness, prepareNativeFeedbackInput,
+  startFeedbackInputPreparation, finishFeedbackInputPreparation,
+  projectNativePreparation } from './multiplayer-feedback-probe.mjs';
 
 assert.deepEqual(metricDistribution([0, 10, 20, 30, null, NaN, Infinity, -1, '90']),
   { count: 4, p50: 10, p95: 30, p99: 30, max: 30 });
@@ -440,6 +442,172 @@ const defaultBoundary = sampleBoundaryPage();
 await measureNativeFeedback(defaultBoundary.page, 0);
 assert.deepEqual(defaultBoundary.calls, ['front', 'countdown_ready', 'sample_start', 'down:w', 'down:d',
   'sample_stop', 'up:w', 'up:d', 'mouse:up', 'dispose'], 'legacy default adds neither selection nor diagnostics');
+const preflightBoundary = sampleBoundaryPage();
+const boundaryEvaluate = preflightBoundary.page.evaluate;
+preflightBoundary.page.evaluate = async (fn, arg) => {
+  if (fn.name === 'startFeedbackInputPreparation') {
+    preflightBoundary.calls.push('preparation_start'); return { ready: true };
+  }
+  if (fn.name === 'finishFeedbackInputPreparation') {
+    preflightBoundary.calls.push('preparation_end'); return { ready: true, nativeClickAttempts: 0, confirmedShots: 0 };
+  }
+  return boundaryEvaluate(fn, arg);
+};
+await measureNativeFeedback(preflightBoundary.page, 0, 2, { nativePreflight: true });
+assert.ok(preflightBoundary.calls.indexOf('preparation_start') >= 0 &&
+  preflightBoundary.calls.indexOf('preparation_start') < preflightBoundary.calls.indexOf('press:2'),
+  'opt-in native input preparation must precede ammunition selection');
+assert.ok(preflightBoundary.calls.indexOf('preparation_end') < preflightBoundary.calls.indexOf('sample_start'),
+  'preparation observations must close before timed shot listeners start');
+
+function inputPreparationPage({ locked = false, denied = false, consumesShot = false } = {}) {
+  const calls = [], timers = new Map(), handlers = new Map();
+  let now = 100, nextTimer = 0;
+  const canvas = { isConnected: true, getBoundingClientRect: () => ({ x: 10, y: 20, width: 100, height: 60 }) };
+  const doc = { pointerLockElement: locked ? canvas : null, hasFocus: () => true, hidden: false,
+    elementFromPoint: () => canvas };
+  const on = (name, fn) => { handlers.set(name, fn); return () => handlers.delete(name); };
+  const player = { id: 'PRIVATE_PLAYER', input: { fire: false },
+    combat: { ammo: [24, 4, 18], reload: { t: 0 }, destroyed: false } };
+  const world = createContext({ window: { __DEBUG: { renderer: { domElement: canvas },
+    input: { onAction: on, isLocked: () => doc.pointerLockElement === canvas,
+      getState() { assert.fail('preflight cannot consume input'); },
+      isDown() { assert.fail('preflight cannot consume action edges'); } },
+    bus: { on }, settings: { isOpen: () => false }, killcam: { isActive: () => false },
+    game: { phase: 'battle', preBattleS: 0, result: null, player }, network: { pendingInputEdges: 0 } } },
+    document: doc, performance: { now: () => now },
+    setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; }, clearTimeout(id) { timers.delete(id); } });
+  const invoke = (fn) => runInContext(`(${fn.toString()})()`, world);
+  const page = {
+    async evaluate(fn) { calls.push(fn.name || 'evaluate'); return invoke(fn); },
+    mouse: { async click(x, y) {
+      calls.push('native_click'); assert.equal(x, 60); assert.equal(y, 50);
+      handlers.get('fire')();
+      if (!denied) doc.pointerLockElement = canvas;
+      if (consumesShot) {
+        player.combat.ammo[0]--;
+        player.combat.reload.t = 3;
+        handlers.get('weapon:predicted')({ isPlayer: true });
+        handlers.get('shell:fired')({ isPlayer: false });
+      }
+    } },
+    async waitForFunction(fn, options) {
+      assert.ok(options.timeout > 0 && options.timeout <= 10000);
+      assert.equal(options.polling, 50);
+      assert.equal(options.signal.aborted, false);
+      now += 299;
+      assert.equal(invoke(fn), false, 'do not admit the buffered preparation press');
+      now += 2;
+      if (consumesShot) {
+        assert.equal(invoke(fn), false, 'real preparation reload cannot be erased');
+        player.combat.reload.t = 0;
+        assert.equal(invoke(fn), false, 'ammo decrement needs the real own-shot confirmation');
+        handlers.get('shell:fired')({ isPlayer: true });
+        now += 301;
+      }
+      if (!invoke(fn)) throw new Error('PRIVATE_LOCK_DENIAL');
+      return { async dispose() { calls.push('wait_handle_disposed'); } };
+    },
+  };
+  return { page, calls, timers, handlers, world, doc, canvas, invoke, player };
+}
+
+const alreadyPrepared = inputPreparationPage({ locked: true });
+const alreadyReceipt = await prepareNativeFeedbackInput(alreadyPrepared.page);
+assert.equal(alreadyReceipt.ready, true);
+assert.equal(alreadyReceipt.nativeClickAttempts, 0);
+assert.ok(!alreadyPrepared.calls.includes('native_click'), 'never fire a preparation shot when already locked');
+assert.equal(alreadyPrepared.handlers.size, 0);
+assert.equal(alreadyPrepared.timers.size, 0);
+const pendingPreparation = inputPreparationPage({ locked: true });
+pendingPreparation.player.input.fire = true;
+pendingPreparation.world.window.__DEBUG.network.pendingInputEdges = 1;
+pendingPreparation.page.waitForFunction = async (fn) => {
+  assert.equal(pendingPreparation.invoke(fn), false);
+  pendingPreparation.player.input.fire = false;
+  assert.equal(pendingPreparation.invoke(fn), false, 'native fire retry must settle before measurement');
+  pendingPreparation.world.window.__DEBUG.network.pendingInputEdges = 0;
+  assert.equal(pendingPreparation.invoke(fn), true);
+};
+const pendingReceipt = await prepareNativeFeedbackInput(pendingPreparation.page);
+assert.equal(pendingReceipt.nativeClickAttempts, 0);
+assert.ok(!pendingPreparation.calls.includes('native_click'));
+assert.equal(pendingPreparation.handlers.size, 0);
+assert.equal(pendingPreparation.timers.size, 0);
+
+for (const consumesShot of [false, true]) {
+  const fixture = inputPreparationPage({ consumesShot });
+  const receipt = await prepareNativeFeedbackInput(fixture.page);
+  assert.equal(receipt.nativeClickAttempts, 1);
+  assert.equal(receipt.nativeClickCompleted, true);
+  assert.equal(receipt.fireActions, 1, 'raw action includes a swallowed acquisition click');
+  assert.equal(receipt.confirmedShots, consumesShot ? 1 : 0);
+  assert.equal(receipt.predictedShots, consumesShot ? 1 : 0);
+  assert.deepEqual(receipt.ammoBefore, [24, 4, 18]);
+  assert.deepEqual(receipt.ammoAfter, [consumesShot ? 23 : 24, 4, 18]);
+  assert.equal(fixture.player.combat.ammo[0], receipt.ammoAfter[0], 'preparation cannot refund ammunition');
+  assert.equal(fixture.handlers.size, 0);
+  assert.equal(fixture.timers.size, 0);
+  assert.ok(fixture.calls.includes('wait_handle_disposed'));
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+}
+
+const deniedPreparation = inputPreparationPage({ denied: true, consumesShot: true });
+await assert.rejects(prepareNativeFeedbackInput(deniedPreparation.page), (error) => {
+  assert.equal(error.message, 'feedback_native_input_preparation_failed');
+  assert.equal(error.nativePreparation.ready, false);
+  assert.equal(error.nativePreparation.confirmedShots, 1, 'denial failure retains preparation fire evidence');
+  assert.deepEqual(error.nativePreparation.ammoAfter, [23, 4, 18]);
+  assert.doesNotMatch(JSON.stringify(error), /PRIVATE/);
+  return true;
+});
+assert.equal(deniedPreparation.handlers.size, 0);
+assert.equal(deniedPreparation.timers.size, 0);
+
+for (const change of ['other_canvas', 'overlay', 'settings', 'killcam', 'destroyed', 'hidden']) {
+  const fixture = inputPreparationPage({ locked: change === 'other_canvas' });
+  const live = fixture.world.window.__DEBUG;
+  if (change === 'other_canvas') { fixture.doc.pointerLockElement = {}; live.input.isLocked = () => true; }
+  if (change === 'overlay') fixture.doc.elementFromPoint = () => ({});
+  if (change === 'settings') live.settings.isOpen = () => true;
+  if (change === 'killcam') live.killcam.isActive = () => true;
+  if (change === 'destroyed') fixture.player.combat.destroyed = true;
+  if (change === 'hidden') fixture.doc.hidden = true;
+  if (change === 'other_canvas') {
+    const state = fixture.invoke(startFeedbackInputPreparation);
+    assert.equal(state.ready, false, 'some other element holding pointer lock is not the renderer');
+    fixture.invoke(finishFeedbackInputPreparation);
+  } else {
+    await assert.rejects(prepareNativeFeedbackInput(fixture.page), /feedback_native_input_preparation_failed/);
+    assert.ok(!fixture.calls.includes('native_click'), 'never click through an overlay or inactive firing lane');
+  }
+  assert.equal(fixture.handlers.size, 0);
+  assert.equal(fixture.timers.size, 0);
+}
+
+const closedPreparation = inputPreparationPage();
+closedPreparation.page.mouse.click = async () => { throw new Error('PRIVATE_CLOSED_URL'); };
+await assert.rejects(prepareNativeFeedbackInput(closedPreparation.page), (error) => {
+  assert.equal(error.message, 'feedback_native_input_preparation_failed');
+  assert.equal(error.nativePreparation.nativeClickAttempts, 1);
+  assert.equal(error.nativePreparation.nativeClickCompleted, false);
+  return true;
+});
+assert.equal(closedPreparation.handlers.size, 0);
+assert.equal(closedPreparation.timers.size, 0);
+
+const stalledPreparation = inputPreparationPage();
+stalledPreparation.page.mouse.click = () => new Promise(() => {});
+await assert.rejects(prepareNativeFeedbackInput(stalledPreparation.page, 10), /feedback_native_input_preparation_failed/);
+assert.equal(stalledPreparation.handlers.size, 0, 'timed-out native command does not keep observation listeners');
+assert.equal(stalledPreparation.timers.size, 0);
+assert.equal(projectNativePreparation(null), null);
+assert.doesNotMatch(JSON.stringify(projectNativePreparation({
+  nativeClickAttempts: Infinity, fireActions: -1, predictedShots: 'PRIVATE', confirmedShots: 999,
+  durationMs: Infinity, ammoBefore: ['PRIVATE', -1, Infinity, 99], ammoAfter: [24, 4, 18, 999],
+  url: 'PRIVATE', token: 'PRIVATE', ready: 'PRIVATE',
+})), /PRIVATE/);
+assert.deepEqual(projectNativePreparation({ ammoBefore: [], ammoAfter: [24, 4, 18, 999] }).ammoAfter, [24, 4, 18]);
 const profileBoundary = sampleBoundaryPage();
 await measureNativeFeedback(profileBoundary.page, 0, undefined, {
   async afterSampleStarted() { profileBoundary.calls.push('profiler_start'); },
