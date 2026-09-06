@@ -636,3 +636,45 @@ that fourteen-entity scenario, with unchanged decoded values and no observed
 serialization tradeoff. Artifacts are `snapshot-era-reuse-bench.mjs`,
 `snapshot-era-reuse-benchmark.json`, `snapshot-era-before.ts` and
 `snapshot-era-reuse-red.log` in the isolated release artifact directory.
+
+### Empty-ERA release verification
+
+Runtime commit `15b227a2e081164fccdc44747f0e87d4772ab97a` passed the complete
+ordered regression run (88 pre, 371 core, 28 post), type checking, the public
+production build, the scoped code review and the network complexity gate.
+It was fast-forwarded to `origin/main`; Vercel reported the exact SHA ready,
+and the canonical website returned HTTP 200 with `v1.0.0+g15b227a2e`.
+
+A fresh native private 1v1 Winter battle then used two browser contexts at
+1280×800, DPR 1, with twenty-second foreground samples measured sequentially.
+Both selected ordinary ammunition through the existing controls. All eight
+eligible clicks produced accepted shots; the guest's four predicted effects
+had their accepted duplicates suppressed. Input-edge to effect-callback
+medians were 9.6 ms for the host and 11.6 ms for the guest prediction
+(maxima 24.9/12.9 ms). Guest authoritative acceptance was 38.6 ms median,
+61.1 ms maximum. These callback timings are not click-to-photon measurements:
+the corresponding next-rAF callback maxima were 50.6/50.1 ms for the host
+effect and guest prediction.
+
+Host/guest frame-gap p95 was 29.8/27.9 ms, p99 42.0/31.2 ms, and maximum
+49.9/38.1 ms. Both had zero hard snaps, dropped history, missing snapshot
+estimates, observer failures and trace-frame drops. Guest application RTT p95
+was 12.0 ms. Both ICE paths were host/host UDP on the same machine; this does
+not certify distant clients, TURN relay performance, a larger room, or isolated
+GPU performance. No large FPS gain is attributed to the empty-array change.
+
+Both saved screenshots were inspected as live connected battles, with four
+ordinary rounds expended per player and the other ammunition retained. Native
+departure verified room cleanup, the browser closed, the runner exited 0 and
+the shared capture slot was released. Page errors were zero. Evidence remains
+outside git in `production-era-reuse.log` and `production-metadata-images/`
+under the isolated release artifact directory.
+
+The historical 214–319 ms pauses did not recur in this short sample; their
+cause remains unproven. One older gap coincided with falling JS heap usage,
+another did not. The existing ±250 ms window around a gap's end can omit the
+preceding frame of a longer gap, and its long-task summary does not preserve
+the original entry's start/duration. A next diagnostic should retain complete
+gap intervals and align bounded Chrome GC/main-thread/compositor activity,
+without forcing GC or synchronizing the renderer. A sample that does not
+reproduce a pause cannot establish its cause or prove it fixed.
