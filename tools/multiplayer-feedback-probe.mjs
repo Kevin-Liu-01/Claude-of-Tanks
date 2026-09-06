@@ -162,6 +162,32 @@ export function startFeedbackSample() {
   window.__COT_FEEDBACK_SAMPLE = sample;
 }
 
+/** End opt-in observation before recorder shutdown/report allocation. No game writes. */
+export function endFeedbackSample() {
+  const sample = window.__COT_FEEDBACK_SAMPLE;
+  if (!sample) throw new Error('feedback_sample_missing');
+  sample.endedAt ??= performance.now();
+  sample.dispose();
+  return sample.endedAt;
+}
+
+/** Source-profiler startup may pause V8. Start the observed gameplay interval
+ * only after that handshake, reusing the trace clock without another stats sort.
+ * This resets QA observer buffers, never the game's input/simulation/trace history.
+ */
+export function resetFeedbackSampleBoundary() {
+  const sample = window.__COT_FEEDBACK_SAMPLE;
+  if (!sample || sample.disposed) throw new Error('feedback_sample_missing');
+  const next = performance.now();
+  sample.observationResetExcludedMs = next - sample.started;
+  sample.traceStart += sample.observationResetExcludedMs;
+  sample.started = next;
+  sample.actions.length = sample.shots.length = sample.predicted.length = sample.diagnostics.length = 0;
+  sample.authority.clear();
+  for (const raf of sample.rafs) cancelAnimationFrame(raf);
+  sample.rafs.clear();
+}
+
 /** Export only numeric measurements and closed enums, never raw bus/trace/RTC objects. */
 export function stopFeedbackSample() {
   const sample = window.__COT_FEEDBACK_SAMPLE;
@@ -169,9 +195,17 @@ export function stopFeedbackSample() {
   sample.dispose();
   const trace = window.__QA_TRACE.snapshot({ gpu: false });
   const index = (key) => trace.frameSchema.indexOf(key);
+  const traceEnd = Number.isFinite(sample.endedAt) ? sample.traceStart + sample.endedAt - sample.started : Infinity;
+  let observationBoundaryFramesExcluded = 0;
   const frames = trace.frames.filter((row) => row[index('tMs')] >= sample.traceStart &&
+    row[index('tMs')] <= traceEnd &&
     row[index('phase')] === 'battle' && row[index('preBattleS')] <= 0 &&
-    (row[index('flags')] & 127) === 0);
+    (row[index('flags')] & 127) === 0).filter((row) => {
+    if (sample.observationResetExcludedMs === undefined ||
+        row[index('tMs')] - row[index('gapMs')] >= sample.traceStart) return true;
+    observationBoundaryFramesExcluded++;
+    return false;
+  });
 
   // Keep only bounded, numeric trace windows. Never export raw trace events:
   // their payloads can contain room codes, entity IDs, positions, or URLs.
@@ -222,7 +256,7 @@ export function stopFeedbackSample() {
     const previousAt = previous ? previous[index('tMs')] - centerMs : null;
     const startDt = Math.min(-250, gapStart ?? 0, previousAt ?? 0);
     const startMs = centerMs + startDt;
-    const endMs = centerMs + 250;
+    const endMs = Math.min(centerMs + 250, traceEnd);
     const nearbyFrames = trace.frames.filter((row) =>
       row[index('tMs')] >= startMs && row[index('tMs')] <= endMs);
     const nearbyEvents = (trace.events || []).filter((event) => {
@@ -234,7 +268,7 @@ export function stopFeedbackSample() {
     // Keep both endpoints of a stalled interval, even if following high-refresh
     // frames consume the 48-row budget. Omitted context remains explicit.
     return { kind, ordinal, atMs: centerMs - sample.traceStart,
-      startDtFromCenterMs: startDt, endDtFromCenterMs: 250,
+      startDtFromCenterMs: startDt, endDtFromCenterMs: endMs - centerMs,
       ...(worstFrame ? { gapStartDtFromCenterMs: gapStart,
         precedingFrameDtFromCenterMs: previousAt } : {}),
       frameRowsOmitted: Math.max(0, nearbyFrames.length - 48),
@@ -263,7 +297,12 @@ export function stopFeedbackSample() {
     window.gapStartedBeforeSample = worst[index('tMs')] - worst[index('gapMs')] < sample.traceStart;
     windows.push(window);
   }
-  const result = { sampleStartedAtMs: sample.started, durationMs: performance.now() - sample.started,
+  const result = { sampleStartedAtMs: sample.started,
+    ...(Number.isFinite(sample.observationResetExcludedMs) ? {
+      observationResetExcludedMs: sample.observationResetExcludedMs, observationBoundaryFramesExcluded,
+    } : {}),
+    ...(Number.isFinite(sample.endedAt) ? { sampleEndedAtMs: sample.endedAt } : {}),
+    durationMs: (sample.endedAt ?? performance.now()) - sample.started,
     actions: sample.actions.map(({ at, ready, matched, ambiguous, eligibility }) => ({
       atMs: at - sample.started, ready, matched, ambiguous, eligibility })),
     shots: sample.shots, predicted: sample.predicted, diagnostics: sample.diagnostics,
@@ -304,15 +343,16 @@ export function sanitizeFeedbackTimingWindows(source) {
     const gapStart = isWorst ? nonpositive(window.gapStartDtFromCenterMs) : null;
     const previous = isWorst ? nonpositive(window.precedingFrameDtFromCenterMs) : null;
     const startDt = Math.min(-250, gapStart ?? 0, previous ?? 0);
+    const endDt = Math.min(250, Math.max(0, numeric(window.endDtFromCenterMs) ?? 250));
     const nearby = (row) => row && numeric(row.dtFromCenterMs) !== null &&
-      row.dtFromCenterMs >= startDt && row.dtFromCenterMs <= 250;
+      row.dtFromCenterMs >= startDt && row.dtFromCenterMs <= endDt;
     const eventNearby = (row) => {
       if (!row || !eventNames.has(row.name) || numeric(row.dtFromCenterMs) === null) return false;
       const start = taskStart(row);
-      return start === null ? nearby(row) : start <= 250 && start + row.durationMs >= startDt;
+      return start === null ? nearby(row) : start <= endDt && start + row.durationMs >= startDt;
     };
     return { kind: window.kind, ordinal: numeric(window.ordinal), atMs: numeric(window.atMs),
-      startDtFromCenterMs: startDt, endDtFromCenterMs: 250,
+      startDtFromCenterMs: startDt, endDtFromCenterMs: endDt,
       frameRowsOmitted: numeric(window.frameRowsOmitted), eventRowsOmitted: numeric(window.eventRowsOmitted),
       ...(isWorst ? { gapStartedBeforeSample: window.gapStartedBeforeSample === true,
         gapStartDtFromCenterMs: gapStart, precedingFrameDtFromCenterMs: previous } : {}),
@@ -366,6 +406,12 @@ export function summarizeFeedbackSample(raw, ice = []) {
     authorityReceiptToCallbackMs: metricDistribution(rows.map((row) => row.authorityToFeedbackMs)) });
   const path = (row) => ['host', 'srflx', 'prflx', 'relay'].includes(row) ? row : null;
   return { sampleStartedAtMs: Number.isFinite(raw.sampleStartedAtMs) ? raw.sampleStartedAtMs : null,
+    ...(Number.isFinite(raw.observationResetExcludedMs) ? {
+      observationResetExcludedMs: raw.observationResetExcludedMs,
+      observationBoundaryFramesExcluded: Number.isFinite(raw.observationBoundaryFramesExcluded)
+        ? raw.observationBoundaryFramesExcluded : null,
+    } : {}),
+    ...(Number.isFinite(raw.sampleEndedAtMs) ? { sampleEndedAtMs: raw.sampleEndedAtMs } : {}),
     durationMs: Number.isFinite(raw.durationMs) ? raw.durationMs : null,
     frameGapMs: metricDistribution(raw.gapsMs || []),
     timingWindows: sanitizeFeedbackTimingWindows(raw.timingWindows),
@@ -418,7 +464,8 @@ export async function selectNativeFeedbackAmmo(page, ammoSlot) {
   return ammoSlot;
 }
 
-export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot, { beforeSample } = {}) {
+export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
+  { beforeSample, afterSampleStarted, afterSample } = {}) {
   const ice = [];
   try {
     await page.bringToFront();
@@ -427,6 +474,10 @@ export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
     // Optional diagnostics exclude native readiness but precede every timed listener/input edge.
     if (beforeSample) await beforeSample();
     await page.evaluate(startFeedbackSample);
+    if (afterSampleStarted) {
+      await afterSampleStarted();
+      await page.evaluate(resetFeedbackSampleBoundary);
+    }
     const started = performance.now();
     await page.keyboard.down('w');
     await page.keyboard.down('d');
@@ -442,6 +493,10 @@ export async function measureNativeFeedback(page, durationMs = 20_000, ammoSlot,
       }
       ice.push(...await page.evaluate(readFeedbackIceStats));
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    if (afterSample) {
+      const sampleEndedAtMs = await page.evaluate(endFeedbackSample);
+      await afterSample(sampleEndedAtMs);
     }
     const result = summarizeFeedbackSample(await page.evaluate(stopFeedbackSample), ice);
     if (result.firing.predicted.count !== result.firing.confirmed.predictionSuppressedCount) {

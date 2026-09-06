@@ -359,6 +359,18 @@ assert.throws(() => productionUiOptions({ url: 'https://game.example.test', meas
 for (const frameTrace of [null, 1, 'true']) assert.throws(() => productionUiOptions({
   url: 'https://game.example.test', measurePerformance: true, frameTrace,
 }), TypeError);
+for (const sourceProfile of ['host', 'guest']) {
+  assert.equal(productionUiOptions({ url: 'https://game.example.test', measurePerformance: true,
+    sourceProfile }).sourceProfile, sourceProfile);
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', sourceProfile }),
+    /requires --performance/);
+  for (const conflicting of ['cpuTimeline', 'frameTrace']) assert.throws(() => productionUiOptions({
+    url: 'https://game.example.test', measurePerformance: true, sourceProfile, [conflicting]: true,
+  }), /mutually exclusive/);
+}
+for (const sourceProfile of [null, '', true, 1, 'both', 'PRIVATE_ROLE']) assert.throws(() => productionUiOptions({
+  url: 'https://game.example.test', measurePerformance: true, sourceProfile,
+}), TypeError);
 const timelineCalls = [];
 const timelinePage = {};
 const diagnosticPorts = {
@@ -369,13 +381,60 @@ const diagnosticPorts = {
   async measure(page, duration, slot, capture) {
     assert.equal(page, timelinePage); assert.equal(duration, 20_000); assert.equal(slot, 2);
     timelineCalls.push('ready');
-    if (capture) await capture.beforeSample();
-    timelineCalls.push('measure'); return { sampleStartedAtMs: 120, firing: {} };
+    if (capture?.beforeSample) await capture.beforeSample();
+    if (capture?.afterSampleStarted) await capture.afterSampleStarted();
+    timelineCalls.push('measure');
+    if (capture?.afterSample) await capture.afterSample(140);
+    return { sampleStartedAtMs: 120, firing: {} };
   },
 };
 assert.deepEqual(await measureProductionFeedback(timelinePage, { ammoSlot: 2 }, diagnosticPorts),
   { sampleStartedAtMs: 120, firing: {} });
 assert.deepEqual(timelineCalls.splice(0), ['ready', 'measure'], 'default native sample has no added CDP work');
+const sourceProfileOptions = { origin: 'https://game.example.test', ammoSlot: 2, sourceProfile: 'guest' };
+const sourcePorts = { ...diagnosticPorts, role: 'host',
+  async startSourceProfile(page, settings) {
+    assert.equal(page, timelinePage);
+    assert.deepEqual(settings, { origin: sourceProfileOptions.origin });
+    timelineCalls.push('source-start');
+    return { async stop() { timelineCalls.push('source-stop'); return {
+      baselinePageTimeMs: 100, startBeforePageTimeMs: 99, startAfterPageTimeMs: 101,
+      profileDurationMs: 30, diagnosticOverhead: true, functions: [], bins: [], binMs: 100,
+    }; } };
+  },
+};
+await measureProductionFeedback(timelinePage, sourceProfileOptions, sourcePorts);
+assert.deepEqual(timelineCalls.splice(0), ['ready', 'measure'], 'unselected role does not acquire any profiler');
+const sourceDiagnostic = await measureProductionFeedback(timelinePage, sourceProfileOptions,
+  { ...sourcePorts, role: 'guest' });
+assert.deepEqual(timelineCalls.splice(0), ['ready', 'source-start', 'measure', 'source-stop']);
+assert.equal(sourceDiagnostic.sourceProfile.sampleStartOffsetMs, 20);
+assert.equal(sourceDiagnostic.sourceProfile.sampleFullyCovered, false, 'missing sample duration cannot claim coverage');
+assert.equal(sourceDiagnostic.sourceProfile.captureComplete, true);
+for (const durationMs of [8, 10]) {
+  const measured = await measureProductionFeedback(timelinePage, sourceProfileOptions, {
+    ...sourcePorts, role: 'guest', async measure(_page, _duration, _slot, capture) {
+      await capture.afterSampleStarted(); await capture.afterSample(120 + durationMs);
+      return { sampleStartedAtMs: 120, durationMs };
+    },
+  });
+  assert.equal(measured.sourceProfile.sampleFullyCovered, durationMs === 8,
+    'coverage uses the conservative start bracket, not midpoint optimism');
+}
+timelineCalls.splice(0);
+await assert.rejects(measureProductionFeedback(timelinePage, sourceProfileOptions, {
+  ...sourcePorts, role: 'guest', async measure(_page, _duration, _slot, capture) {
+    await capture.afterSampleStarted(); throw new Error('feedback_sample_missing');
+  },
+}), /feedback_sample_missing/);
+assert.deepEqual(timelineCalls.splice(0), ['source-start', 'source-stop'], 'measurement failure still stops the source profiler');
+await assert.rejects(measureProductionFeedback(timelinePage, sourceProfileOptions, {
+  role: 'guest', async startSourceProfile() { return { async stop() {
+    throw Object.assign(new Error('source_profile_stop_failed'), { cleanupFailed: true });
+  } }; },
+  async measure(_page, _duration, _slot, capture) { await capture.afterSampleStarted(); throw new Error('feedback_sample_missing'); },
+}), (error) => error.diagnosticCode === 'source_profile_stop_failed' &&
+  error.measurementDiagnosticCode === 'feedback_sample_missing' && error.cleanupFailed === true);
 const diagnostic = await measureProductionFeedback(timelinePage, { ammoSlot: 2, cpuTimeline: true }, diagnosticPorts);
 assert.equal(diagnostic.cpuTimeline.sampleStartOffsetMs, 20);
 assert.equal(diagnostic.cpuTimeline.diagnosticOverhead, true);
@@ -726,7 +785,7 @@ assert.match(source, /completedPerformance = receipt;[\s\S]{0,50}return receipt/
 assert.match(source, /performance: completedPerformance/,
   'outer failure keeps locally generated measurements, never arbitrary error payloads');
 assert.match(source, /measurePerformance = false/);
-assert.match(source, /await measureProductionFeedback\(page, options\)[\s\S]{0,150}await captureBattleScreenshot/,
+assert.match(source, /await measureProductionFeedback\(page, options, \{ role \}\)[\s\S]{0,150}await captureBattleScreenshot/,
   'each screenshot follows the completed timed role sample, not its measurement loop');
 assert.match(source, /createBrowserContext\(\)/);
 assert.match(source, /page\.click\(selector\)/, 'all room actions use native pointer events');
@@ -736,7 +795,11 @@ assert.equal(child.status, 1);
 assert.equal(JSON.parse(child.stderr).stage, 'configuration');
 for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_TOKEN']
   .map((slot) => ['--performance', `--ammo-slot=${slot}`]), ['--performance', '--ammo-slot'],
-  ['--force-relay'], ['--frame-trace'], ['--performance', '--frame-trace', '--cpu-timeline']]) {
+  ['--force-relay'], ['--frame-trace'], ['--performance', '--frame-trace', '--cpu-timeline'],
+  ['--source-profile=host'], ['--performance', '--source-profile'], ['--performance', '--source-profile='],
+  ['--performance', '--source-profile=PRIVATE_TOKEN'],
+  ['--performance', '--source-profile=host', '--cpu-timeline'],
+  ['--performance', '--source-profile=guest', '--frame-trace']]) {
   const invalid = spawnSync(process.execPath, ['tools/production-private-room-ui.mjs',
     '--url=https://game.example.test', ...args], { encoding: 'utf8', timeout: 5000 });
   assert.equal(invalid.status, 1);

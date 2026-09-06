@@ -365,3 +365,117 @@ be described as single-player-equivalent or consistently smooth performance.
 Historical 214–319 ms attribution and these newly retained production frame
 limits remain open. All owned capture resources were closed; unrelated worktrees,
 processes and Redis were left untouched.
+
+## Follow-up: cold height queries and render attribution (September 6)
+
+The follow-up starts from `ff68c3d6c61b405f6e528572c76f210ebc519849`.
+The historical 214–319 ms events remain an attribution question: a new hot-path
+finding does not retroactively explain an old event without a matching trace.
+
+### On-demand height cache
+
+`getHeightAtFast` previously evaluated a whole 17×17 tile when an aiming ray
+first requested any cell in that tile. A bilinear read requires only four
+vertices. A long ray could therefore synchronously evaluate many mostly unused
+tiles outside the deployment warm region, separately from the already-budgeted
+terrain **mesh** streaming work.
+
+The cache now evaluates those four vertices on demand, with a per-heightfield
+131,329-byte validity bitset. Completed deployment tiles retain their existing
+fast path. Explicit tile warmup still finishes a complete tile before yielding,
+reusing any vertices calculated by earlier reads. A partial read is deliberately
+not reported as a completed warm tile. Zero and NaN heights are valid cached
+values; no value sentinel is used. Float32 storage, interpolation order, clamp
+behavior, analytic geometry and the simulation field are unchanged.
+
+`tools/terrain-fast-cache-benchmark.mjs` compares the current runtime with an
+immutable pre-change cache fixture, rather than comparing two copies of the new
+code. Its selftest pins that fixture's digest. Tests cover exact ray hits,
+shared borders, partial/full/cancelled warmup, independent worlds and non-finite
+inputs. The prototype's Winter cold-ray workload reduced analytic evaluations
+from 69,071 to 9,829 (85.8%). That is evidence of removed synchronous work, not a
+claim of an 85.8% frame-rate improvement. Candidate and production receipts must
+be assessed separately.
+
+The exact runtime candidate subsequently passed seven alternating Winter pairs
+in `terrain-fast-cache-candidate.log`: median 24-ray cold total
+**41.074 → 6.879 ms**, median per-run maximum cold ray **5.989 → 0.810 ms**,
+and identical returned hit distances. Repeated partial-cache and fully warmed
+2,400-ray medians were 15.111 → 15.263 ms and 14.865 → 15.213 ms respectively;
+those small, overlapping timing differences are not a warm-path speedup claim.
+Explicit warmup still pays the deferred 53,455 evaluations across 239 remaining
+tiles (31.751 ms median when the benchmark drains all yields synchronously).
+
+### Source profiler and measurement overhead
+
+The native private-room probe now has an opt-in `--source-profile=host|guest`
+diagnostic. Its bounded statistical CPU profile retains sanitized generated
+application locations, category weights and time bins; it does not export raw
+source, private URLs, room identifiers or frame arguments. Inclusive nested
+function weights overlap and must not be added together. It is mutually
+exclusive with the other timeline/trace capture modes. The default probe does
+not attach a profiler.
+
+The first diagnostic capture (`r3-prod-source-host.json`) included a 634.1 ms
+startup pause while `Profiler.start` was in progress; its first sample interval
+was 600.149 ms. This is a **measurement artifact**, not a new game-stall finding.
+The source-profile path now starts gameplay observation after that command,
+reports the excluded setup duration and incomplete boundary frame explicitly,
+and begins trusted movement afterward. Ending observation also precedes
+profiler stop/report generation. No game clock, simulation state or application
+trace history is cleared. Deterministic regressions cover the setup pause and
+late/failing cleanup. CPU-profile totals still describe their declared profile
+scope, not a magically overhead-free gameplay interval.
+
+### Rendering evidence and limits
+
+An initial production cost capture observed CPU post-processing submission
+around 9 ms per frame while whole-frame gaps were substantially longer. Source
+sampling localized much of the application work to the scene/post chain, with
+smaller aiming, collision and HUD costs. This does not, alone, prove GPU hardware
+duration or a networking cause.
+
+A separate same-machine diagnostic used asynchronous WebGL elapsed queries,
+checking availability and disjoint state and releasing every query. The
+[WebGL extension specification](https://registry.khronos.org/webgl/extensions/EXT_disjoint_timer_query_webgl2/)
+defines these asynchronous results; the test does not insert a blocking finish.
+The seeded `r3-prod-gpu-seeded` capture retained GPU-interval p50/p95/max of
+11.52/79.37/162.44 ms on the host and 27.07/54.21/79.94 ms on the guest. CPU post
+submission remained around 9–10 ms on average. These are sampled intervals,
+subject to diagnostic overhead and shared-device scheduling—not exclusive GPU
+busy time, complete frame coverage, or a final performance gate.
+
+The machine is an Apple M5 Max; Chromium reported its ANGLE Metal renderer.
+Cooperating test workloads use the shared FIFO lease, but unrelated user apps
+remain untouched. Both players run on this one machine and the same network,
+using forced live TURN relay; this is not separate-device or distant-network
+certification. The seeded repeat uses clear/day Winter at the same 1280×800,
+DPR 1, CPU 1, scale 1 presentation. Earlier unseeded snow samples are not an
+identical-scene before/after comparison. Functional room/shooting PASS must
+continue to be reported separately from smooth-frame acceptance.
+
+The subsequent rotated pass capture (`r3-prod-gpu-passes-seeded`) still showed
+highly variable elapsed results even for simple fullscreen operations, so it
+does not justify assigning their complete elapsed interval to shader work. A
+proposed one-copy render-graph optimization was **not applied** without a useful
+measured benefit and image-parity result. Graphics settings, pass count and
+shadow quality/cadence are unchanged in this candidate.
+
+The unprofiled, fixed-seed production control (`r3-prod-seeded-before.json`)
+verified `v1.0.0+gff68c3d6c` before and after: host frame p50/p95/max
+**32.5/43.3/64.0 ms**, guest **29.9/39.3/50.7 ms**. Both samples are 20 seconds,
+with the same native inputs and live relay. This already differs from the older
+unseeded 109.6/63.5 ms maxima **before the candidate is deployed**, illustrating
+why neither weather changes nor run-to-run variation may be credited to the fix.
+All ready firing attempts matched, with zero hard snaps/page errors and verified
+native room/browser cleanup; these functional results do not pass a strict
+50 ms maximum-frame gate.
+
+Candidate verification: twelve focused terrain/movement/world-presentation,
+frame-loop and diagnostic test modules pass; the registry discovers 559 ordered
+checks (not a claim that all 559 were rerun here). Typecheck/core-unused and the
+public production build pass. The explicit five-runtime-file quality gate
+checks 402 functions with zero complexity violations, `any` or `unknown`;
+changed-file Doctor reports no findings, score 92. Independent cache and
+diagnostic lifecycle reviews found no remaining blocker. No vehicle asset,
+terrain geometry, authority protocol, Worker or paid-service setting changed.

@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { installFeedbackPeerObserver, measureNativeFeedback } from './multiplayer-feedback-probe.mjs';
 import { startMultiplayerCpuTimeline } from './multiplayer-cpu-timeline.mjs';
 import { startMultiplayerFrameTrace } from './multiplayer-frame-trace.mjs';
+import { startMultiplayerSourceProfile } from './multiplayer-source-profile.mjs';
 
 function validateAmmoSelection(ammoSlot, measurePerformance) {
   if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
@@ -25,16 +26,25 @@ function validateFrameTrace(frameTrace, cpuTimeline, measurePerformance) {
   if (frameTrace && cpuTimeline) throw new TypeError('frame trace and CPU timeline are mutually exclusive');
 }
 
-function captureOptions({ forceRelay, frameTrace, cpuTimeline, ammoSlot, screenshots }) {
+function validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, frameTrace) {
+  if (sourceProfile === undefined) return;
+  if (!['host', 'guest'].includes(sourceProfile) || !measurePerformance) {
+    throw new TypeError('source profile must select host or guest and requires --performance');
+  }
+  if (cpuTimeline || frameTrace) throw new TypeError('source profile and other CPU diagnostics are mutually exclusive');
+}
+
+function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, ammoSlot, screenshots }) {
   return { ...(forceRelay ? { forceRelay: true } : {}),
     ...(frameTrace ? { frameTrace: true } : {}),
     ...(cpuTimeline ? { cpuTimeline: true } : {}),
+    ...(sourceProfile === undefined ? {} : { sourceProfile }),
     ...(ammoSlot === undefined ? {} : { ammoSlot }),
     ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
 }
 
 export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
-  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false } = {}) {
+  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -47,6 +57,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
   validateAmmoSelection(ammoSlot, measurePerformance);
   validateCpuTimeline(cpuTimeline, measurePerformance);
   validateFrameTrace(frameTrace, cpuTimeline, measurePerformance);
+  validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, frameTrace);
   if (typeof forceRelay !== 'boolean' || (forceRelay && !measurePerformance)) {
     throw new TypeError('force relay requires --performance');
   }
@@ -56,7 +67,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
-    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, ammoSlot, screenshots }) };
+    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, ammoSlot, screenshots }) };
 }
 
 /** Optional diagnosis has measurable overhead and is not a timing certification. */
@@ -77,30 +88,59 @@ function frameTraceReceipt(sample, capture) {
       capture.malformed === 0 && capture.stackOverflow === 0 && capture.openDurationEvents === 0 };
 }
 
+function sourceProfileReceipt(sample, capture) {
+  const offset = sample.sampleStartedAtMs - capture.baselinePageTimeMs;
+  const end = sample.sampleStartedAtMs + sample.durationMs;
+  // Profile and performance.now epochs differ. Bracket start instead of silently
+  // treating CDP microseconds as page time; no claim finer than this uncertainty.
+  const sampleFullyCovered = Number.isFinite(end) &&
+    capture.startAfterPageTimeMs <= sample.sampleStartedAtMs &&
+    capture.startBeforePageTimeMs + capture.profileDurationMs >= end;
+  const observedStartOffsetMs = Math.max(0, capture.startAfterPageTimeMs - sample.sampleStartedAtMs);
+  const observedEndOffsetMs = Math.min(sample.durationMs,
+    capture.startBeforePageTimeMs + capture.profileDurationMs - sample.sampleStartedAtMs);
+  return { ...capture, sampleStartOffsetMs: Number.isFinite(offset) ? offset : null,
+    sampleFullyCovered, captureComplete: true,
+    observedStartOffsetMs: Number.isFinite(observedStartOffsetMs) ? observedStartOffsetMs : null,
+    observedEndOffsetMs: Number.isFinite(observedEndOffsetMs) ? observedEndOffsetMs : null,
+    observerSetupAndReportExcluded: true,
+    cpuWeightsScope: 'whole-profile-including-startup-use-observed-window-bounds',
+    observedFullBinStartIndex: Number.isFinite(offset)
+      ? Math.max(0, Math.ceil((sample.sampleStartedAtMs - capture.startBeforePageTimeMs) / capture.binMs)) : null,
+    observedFullBinEndIndexExclusive: Number.isFinite(end)
+      ? Math.max(0, Math.floor((end - capture.startAfterPageTimeMs) / capture.binMs)) : null };
+}
+
 export async function measureProductionFeedback(page, options, {
   startTimeline = startMultiplayerCpuTimeline, startTrace = startMultiplayerFrameTrace,
-  measure = measureNativeFeedback,
+  startSourceProfile = startMultiplayerSourceProfile, measure = measureNativeFeedback, role = 'host',
 } = {}) {
-  if (!options.cpuTimeline && !options.frameTrace) return measure(page, 20_000, options.ammoSlot);
+  const profileSelected = options.sourceProfile === role;
+  if (!options.cpuTimeline && !options.frameTrace && !profileSelected) return measure(page, 20_000, options.ammoSlot);
   let timeline;
   let sample;
   let cpu;
   let measurementError;
   try {
-    sample = await measure(page, 20_000, options.ammoSlot, { beforeSample: async () => {
+    const capture = profileSelected ? {
+      afterSampleStarted: async () => { timeline = await startSourceProfile(page, { origin: options.origin }); },
+      afterSample: async () => { cpu = await timeline.stop(); },
+    } : { beforeSample: async () => {
       timeline = await (options.frameTrace ? startTrace(page) : startTimeline(page));
-    } });
+    } };
+    sample = await measure(page, 20_000, options.ammoSlot, capture);
   }
   catch (error) { measurementError = error; }
   // Native readiness or capture acquisition can fail before any CDP owner exists.
   if (!timeline) throw measurementError || new Error('feedback_sample_missing');
-  try { cpu = await timeline.stop(); }
+  try { cpu ??= await timeline.stop(); }
   catch (error) {
     throw Object.assign(failure('native_feedback_performance'), productionDiagnosticDetails(error), {
       measurementDiagnosticCode: measurementCode(productionDiagnosticCode(measurementError)),
     });
   }
   if (measurementError) throw measurementError;
+  if (profileSelected) return { ...sample, sourceProfile: sourceProfileReceipt(sample, cpu) };
   const offset = sample.sampleStartedAtMs - cpu.baselinePageTimeMs;
   if (options.frameTrace) return { ...sample, frameTrace: frameTraceReceipt(sample, cpu) };
   return { ...sample, cpuTimeline: { ...cpu,
@@ -119,6 +159,7 @@ const DIAGNOSTIC_CODES = new Set([
   'feedback_qa_unavailable', 'feedback_sample_missing', 'feedback_ammo_selection_timeout',
   'predicted_feedback_confirmation_mismatch', 'cpu_timeline_start_failed',
   'cpu_timeline_sample_failed', 'cpu_timeline_cleanup_failed', 'relay_verification_failed',
+  'source_profile_start_failed', 'source_profile_stop_failed', 'source_profile_cleanup_failed',
 ]);
 const RELAY_REASONS = ['pair', 'observer', 'channels', 'disconnected', 'counter', 'policy', 'missing', 'stats'];
 const FAILURE_EVIDENCE = new WeakMap();
@@ -623,9 +664,9 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError, measur
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot,
-  cpuTimeline = false, forceRelay = false, frameTrace = false } = {}) {
+  cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile } = {}) {
   const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot,
-    cpuTimeline, forceRelay, frameTrace });
+    cpuTimeline, forceRelay, frameTrace, sourceProfile });
   const started = performance.now();
   const owners = { browser: null, pages: [], roomCreated: false };
   let stage = 'browser_launch';
@@ -700,7 +741,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
         const captures = [];
         for (const [index, page] of owners.pages.entries()) {
           const role = index ? 'guest' : 'host';
-          samples.push({ role, ...await measureProductionFeedback(page, options) });
+          samples.push({ role, ...await measureProductionFeedback(page, options, { role }) });
           if (options.screenshots) captures.push(await captureBattleScreenshot(page, options.screenshots, role));
           samples.at(-1).renderingContext = await page.evaluate(readProductionRenderingContext);
         }
@@ -750,11 +791,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if ((ammoSlot !== undefined || process.argv.includes('--ammo-slot')) && !/^[123]$/.test(ammoSlot || '')) {
       throw new TypeError('ammo slot must be 1, 2, or 3');
     }
+    if (process.argv.includes('--source-profile')) throw new TypeError('source profile must select host or guest');
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
       cpuTimeline: process.argv.includes('--cpu-timeline'),
       forceRelay: process.argv.includes('--force-relay'),
       frameTrace: process.argv.includes('--frame-trace'),
+      sourceProfile: option('source-profile'),
       ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
       screenshots: option('screenshots'),
       timeoutMs: option('timeout-ms') === undefined ? 300_000 : Number(option('timeout-ms')),

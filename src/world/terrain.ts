@@ -865,20 +865,31 @@ export function createHeightField(
   // geometry (wheel conform, spawns, staged captures, world builders) keeps
   // the exact analytic getHeightAt above, so frozen screenshot/metrology
   // contracts are untouched. Deployment tiles are warmed behind the battle
-  // loading veil. Any later first-touch tile is only 16 m (17x17 queries),
-  // bounding an unexpected route change to one quarter of the former 32 m
-  // bake while returning the exact same bilinear samples.
+  // loading veil. A later first-touch sample evaluates only its four grid
+  // vertices, not a whole 17x17 tile for every new part of a camera ray.
+  // Float32 storage and bilinear operation order remain unchanged.
   const FGN = MAP_SIZE + 1;                 // 1 m verts, 1025^2 ≈ 4.2 MB
   const FTILE = 16;                          // bake granularity (cells)
   const FTN = Math.ceil(MAP_SIZE / FTILE);   // tiles per axis
   const fGrid = new Float32Array(FGN * FGN);
   const fBaked = new Uint8Array(FTN * FTN);
+  // Separate validity preserves legitimate zero/NaN heights and costs one bit
+  // per vertex (~128 KiB/world), not another byte-sized full-world grid.
+  const vertexReady = new Uint8Array(Math.ceil(FGN * FGN / 8));
+  function ensureFastVertex(gx: number, gz: number): void {
+    const index = gz * FGN + gx;
+    const byte = index >>> 3;
+    const mask = 1 << (index & 7);
+    if (vertexReady[byte] & mask) return;
+    fGrid[index] = heightAt(gx - HALF, gz - HALF, true, true);
+    vertexReady[byte] |= mask;
+  }
   function bakeFastTile(tx: number, tz: number): void {
     const x0 = tx * FTILE, z0 = tz * FTILE;
     const x1 = Math.min(MAP_SIZE, x0 + FTILE), z1 = Math.min(MAP_SIZE, z0 + FTILE);
     for (let gz = z0; gz <= z1; gz++) {
       for (let gx = x0; gx <= x1; gx++) {
-        fGrid[gz * FGN + gx] = heightAt(gx - HALF, gz - HALF, true, true);
+        ensureFastVertex(gx, gz);
       }
     }
     fBaked[tz * FTN + tx] = 1;
@@ -888,9 +899,14 @@ export function createHeightField(
     const gz = clamp(z + HALF, 0, MAP_SIZE - 1e-4);
     const x0 = gx | 0, z0 = gz | 0;
     const tx = (x0 / FTILE) | 0, tz = (z0 / FTILE) | 0;
-    // each tile bakes its far border row/col inclusively, so the bilinear
-    // read below never leaves this tile's baked region
-    if (!fBaked[tz * FTN + tx]) bakeFastTile(tx, tz);
+    // Completed deployment tiles keep the existing cheap hot path. Else fill
+    // exactly the four vertices read below, sharing validity across borders.
+    if (!fBaked[tz * FTN + tx]) {
+      ensureFastVertex(x0, z0);
+      ensureFastVertex(x0 + 1, z0);
+      ensureFastVertex(x0, z0 + 1);
+      ensureFastVertex(x0 + 1, z0 + 1);
+    }
     const fx = gx - x0, fz = gz - z0;
     const i = z0 * FGN + x0;
     const a = fGrid[i] + (fGrid[i + 1] - fGrid[i]) * fx;
@@ -901,7 +917,9 @@ export function createHeightField(
   /**
    * Bake fast-grid tiles around known deployment points. This is a generator
    * so loading-screen callers can yield between tiles and preserve progress
-   * paints on constrained devices. Each point may provide `radiusM`.
+   * paints on constrained devices. Each point may provide `radiusM`. A tile
+   * touched only by fast reads still yields once when its remaining vertices
+   * finish; only fully completed tiles may be skipped on subsequent warmup.
    */
   function* warmFastTilesAround(
     points: readonly TerrainWarmPoint[],

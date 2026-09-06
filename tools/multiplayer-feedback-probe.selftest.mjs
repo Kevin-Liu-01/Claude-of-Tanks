@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createContext, runInContext } from 'node:vm';
 import { metricDistribution, summarizeFeedbackSample, installFeedbackPeerObserver,
-  readFeedbackIceStats, startFeedbackSample, stopFeedbackSample,
+  readFeedbackIceStats, startFeedbackSample, stopFeedbackSample, endFeedbackSample, resetFeedbackSampleBoundary,
   sanitizeFeedbackTimingWindows, sanitizeFeedbackActions, selectNativeFeedbackAmmo,
   measureNativeFeedback, readFeedbackAmmoReadiness } from './multiplayer-feedback-probe.mjs';
 
@@ -411,6 +411,8 @@ function sampleBoundaryPage() {
     mouse: { async up() { calls.push('mouse:up'); } },
     async evaluate(fn) {
       if (fn === startFeedbackSample) { calls.push('sample_start'); return; }
+      if (fn === endFeedbackSample) { calls.push('sample_end'); return 1234; }
+      if (fn === resetFeedbackSampleBoundary) { calls.push('sample_reset'); return; }
       if (fn === stopFeedbackSample) { calls.push('sample_stop'); return {
         durationMs: 0, shots: [], predicted: [], actions: [], diagnostics: [], gapsMs: [],
       }; }
@@ -438,4 +440,66 @@ const defaultBoundary = sampleBoundaryPage();
 await measureNativeFeedback(defaultBoundary.page, 0);
 assert.deepEqual(defaultBoundary.calls, ['front', 'countdown_ready', 'sample_start', 'down:w', 'down:d',
   'sample_stop', 'up:w', 'up:d', 'mouse:up', 'dispose'], 'legacy default adds neither selection nor diagnostics');
+const profileBoundary = sampleBoundaryPage();
+await measureNativeFeedback(profileBoundary.page, 0, undefined, {
+  async afterSampleStarted() { profileBoundary.calls.push('profiler_start'); },
+  async afterSample(endedAt) { assert.equal(endedAt, 1234); profileBoundary.calls.push('profiler_stop'); },
+});
+assert.deepEqual(profileBoundary.calls, ['front', 'countdown_ready', 'sample_start', 'profiler_start', 'sample_reset',
+  'down:w', 'down:d', 'sample_end', 'profiler_stop', 'sample_stop', 'up:w', 'up:d', 'mouse:up', 'dispose'],
+  'source sampling excludes observer stats setup and report export, retaining native input cleanup');
+for (const hook of ['afterSampleStarted', 'afterSample']) {
+  const f = sampleBoundaryPage();
+  await assert.rejects(measureNativeFeedback(f.page, 0, undefined, {
+    [hook]: async () => { throw new Error('source_profile_stop_failed'); },
+  }), /source_profile_stop_failed/);
+  assert.deepEqual(f.calls.slice(-4), ['up:w', 'up:d', 'mouse:up', 'dispose']);
+  assert.ok(!f.calls.includes('sample_stop'), 'failed collector cannot be followed by report export');
+}
+
+at = 100;
+trace.stats = () => ({ durationMs: at });
+trace.snapshot = () => {
+  at += 50; // Deliberately expensive report assembly after source capture ended.
+  return { frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'], stats: { framesDropped: 0 },
+    frames: [[120, 'battle', 0, 0, 20], [160, 'battle', 0, 0, 40], [250, 'battle', 0, 0, 90]],
+    events: [] };
+};
+evaluate(startFeedbackSample);
+at = 140;
+assert.equal(evaluate(endFeedbackSample), 140);
+at = 200;
+assert.equal(evaluate(endFeedbackSample), 140, 'repeated stop cannot move the observation boundary');
+const stoppedBeforeExport = summarizeFeedbackSample(evaluate(stopFeedbackSample));
+assert.equal(stoppedBeforeExport.sampleEndedAtMs, 140);
+assert.equal(stoppedBeforeExport.durationMs, 40, 'profiler stop and export cost are not sample duration');
+assert.equal(stoppedBeforeExport.frameGapMs.max, 20, 'no frames recorded during collector shutdown enter the sample');
+assert.equal(stoppedBeforeExport.timingWindows.windows[0].endDtFromCenterMs, 20);
+
+let statsReads = 0;
+at = 100;
+trace.stats = () => { statsReads++; return { durationMs: at }; };
+const startupFrames = [[99, 'battle', 0, 0, 30], [720, 'battle', 0, 0, 621],
+  [750, 'battle', 0, 0, 30], [770, 'battle', 0, 0, 20], [850, 'battle', 0, 0, 80]];
+trace.snapshot = () => ({ frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'],
+  stats: { framesDropped: 0 }, frames: startupFrames, events: [] });
+evaluate(startFeedbackSample);
+fire();
+const combatBeforeReset = JSON.stringify(debug.game.player);
+at = 735; // Reproduce a slow Profiler.start handshake before native controls begin.
+evaluate(resetFeedbackSampleBoundary);
+assert.equal(statsReads, 1, 'rebasing does not sort the application frame history again');
+assert.equal(JSON.stringify(debug.game.player), combatBeforeReset, 'only observer state is reset');
+assert.equal(context.window.__COT_FEEDBACK_SAMPLE.actions.length, 0);
+at = 780;
+evaluate(endFeedbackSample);
+at = 900;
+const rebased = summarizeFeedbackSample(evaluate(stopFeedbackSample));
+assert.equal(rebased.sampleStartedAtMs, 735);
+assert.equal(rebased.durationMs, 45);
+assert.equal(rebased.observationResetExcludedMs, 635);
+assert.equal(rebased.observationBoundaryFramesExcluded, 1, 'the straddling interval is accounted for explicitly');
+assert.equal(rebased.frameGapMs.max, 20, 'startup and shutdown cannot masquerade as observed gameplay stalls');
+assert.equal(rebased.timingWindows.windows[0].gapStartedBeforeSample, false);
+assert.equal(startupFrames.length, 5, 'underlying game trace history is not cleared or rewritten');
 console.log('multiplayer feedback probe selftest passed (metrics, native observer identity, correlation, privacy, cleanup)');
