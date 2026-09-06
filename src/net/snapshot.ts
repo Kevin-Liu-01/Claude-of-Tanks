@@ -19,6 +19,8 @@ const ENTITY_TELEPORT_SPEED_MULTIPLIER = 3;
 const OBJECTIVE_TELEPORT_FLOOR_M = 8;
 const OBJECTIVE_TELEPORT_SPEED_MULTIPLIER = 3;
 const REST_POSE = Symbol('networkRestPose');
+// Presentation-only fallback; raw capture and wire omissions stay unchanged.
+const EMPTY_ERA_SPENT: readonly string[] = Object.freeze([]);
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
   'x', 'y', 'z', 'vx', 'vy', 'vz',
@@ -194,7 +196,7 @@ export interface DecodedEntitySnapshot {
   ammo1: number;
   ammo2: number;
   flags: number;
-  eraSpent: string[];
+  eraSpent: readonly string[];
   [REST_POSE]?: RestPose;
 }
 
@@ -619,7 +621,7 @@ export function decodeEntitySnapshot(
   out.ammo1 = Math.max(0, entity.ammo1 | 0);
   out.ammo2 = Math.max(0, entity.ammo2 | 0);
   out.flags = entity.flags;
-  out.eraSpent = Array.isArray(entity.eraSpent) ? entity.eraSpent : [];
+  out.eraSpent = Array.isArray(entity.eraSpent) ? entity.eraSpent : EMPTY_ERA_SPENT;
   return out;
 }
 
