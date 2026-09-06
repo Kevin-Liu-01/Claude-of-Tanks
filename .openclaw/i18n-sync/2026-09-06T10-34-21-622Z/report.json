@@ -1,0 +1,12 @@
+{
+  "stamp": "2026-09-06T10-34-21-622Z",
+  "repo": "/root/Claude-of-Tanks",
+  "steps": [
+    {
+      "step": "preflight-dirty",
+      "ok": false,
+      "message": "working tree is dirty; refusing to sync",
+      "porcelain": "?? docs/ENGINE-EXTRACTION-PLAN.md\n?? test-isolate.mjs\n?? test-polyfill.mjs\n"
+    }
+  ]
+}

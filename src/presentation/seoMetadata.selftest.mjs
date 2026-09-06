@@ -88,7 +88,7 @@ for (const file of ['llms.txt', 'llms-full.txt', 'docs/llms.txt', 'humans.txt', 
   assert.ok(existsSync(join(ROOT, 'public', file)), `missing public/${file}`);
 }
 const llms = readFileSync(join(ROOT, 'public/llms.txt'), 'utf8');
-assert.match(llms, /^# Claude of Tanks\n\n>/);
+assert.match(llms, /^# Claude of Tanks\r?\n\r?\n>/);
 assert.match(llms, new RegExp(`${PRODUCT_STATS.productionVehicles} first-party procedural vehicles`));
 assert.match(llms, new RegExp(`${PRODUCT_STATS.battlefields} authored battlefields`));
 assert.match(llms, /## Technical documentation/);

@@ -66,6 +66,17 @@ export function getMapName(mapId: string): string {
   return isMapId(mapId) ? MAP_NAMES[mapId] : MAP_NAMES.verdant;
 }
 
+/**
+ * Localized map name. Falls back to the English MAP_NAMES when the active
+ * locale is en-US. The Random option always returns the localized label.
+ */
+import { t } from '../../ui/i18n.ts';
+
+export function getLocalizedMapName(mapId: string): string {
+  if (mapId === 'random') return t('map.random');
+  return isMapId(mapId) ? t(`map.${mapId}`) : t('map.verdant');
+}
+
 export function resolveMapId(mapId: string, rand: () => number = Math.random): MapId {
   if (mapId === 'random' || !isMapId(mapId)) {
     const sample = Number(rand());

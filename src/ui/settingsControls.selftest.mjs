@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
+import './i18nCatalog.ts';
+import { getLocale, setLocale } from './i18n.ts';
 import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+
+const originalLocale = getLocale();
+setLocale('en-US');
 
 const holdGroups = battleControlHintGroups('hold');
 assert.deepEqual(holdGroups.find(([label]) => label === 'Gun Hold'),
@@ -41,3 +46,4 @@ for (const color of ['#d95b54', '#e3a53b', '#63c77a']) {
 }
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
+setLocale(originalLocale);

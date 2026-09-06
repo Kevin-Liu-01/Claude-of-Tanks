@@ -40,6 +40,14 @@ import {
 import { isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import {
+  getLocale,
+  setLocale,
+  t,
+  type SupportedLocale,
+} from './i18n.ts';
+
+const SUPPORTED_LOCALES: readonly SupportedLocale[] = ['en-US', 'zh-CN'] as const;
 import type {
   ActionId,
   AiDifficulty,
@@ -49,10 +57,20 @@ import type {
 } from '../game/input.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
-  MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
+  MOBILE_PRESET_ORDER, PRESET_ORDER,
   setMobilePresetName, setPresetName,
   type PresetName,
 } from '../engine/quality.ts';
+
+const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
+  ultra: 'settings.preset.ultra',
+  high: 'settings.preset.high',
+  medium: 'settings.preset.medium',
+  low: 'settings.preset.low',
+  'mobile-low': 'settings.preset.mobileLow',
+  mobile: 'settings.preset.mobile',
+  'mobile-high': 'settings.preset.mobileHigh',
+});
 
 type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics';
 type BindingSlotKey = BindingSlot | 'pad';
@@ -457,15 +475,15 @@ const KC_DONE_GRACE_MS = 250;
 /** Canonical compact battle-control reference, shared by the hint UI and tests. */
 export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[string, ActionId[]]> {
   return [
-    ['Move', ['forward', 'left', 'back', 'right']],
-    ['Fire', ['fire']],
-    ['Sniper', ['sniperToggle']],
-    ['Gun Hold', ['freeLook']],
-    [rmbMode === 'freelook' ? 'Gun Hold' : 'Aim', ['freeCamera']],
-    ['Shells', ['shell1', 'shell2', 'shell3']],
-    ['Repairs', ['consumable1', 'consumable2', 'consumable3']],
-    ['Handbrake', ['handbrake']],
-    ['Menu', ['settingsMenu']],
+    [t('settings.group.move'), ['forward', 'left', 'back', 'right']],
+    [t('settings.group.fire'), ['fire']],
+    [t('settings.group.sniper'), ['sniperToggle']],
+    [t('settings.group.gunHold'), ['freeLook']],
+    [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
+    [t('settings.group.shells'), ['shell1', 'shell2', 'shell3']],
+    [t('settings.group.repairs'), ['consumable1', 'consumable2', 'consumable3']],
+    [t('settings.group.handbrake'), ['handbrake']],
+    [t('settings.group.menu'), ['settingsMenu']],
   ];
 }
 
@@ -507,25 +525,25 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const root = el('div', 'cot-settings');
   root.innerHTML =
     `<div class="cot-set-panel">` +
-    `<div class="cot-set-hdr"><h2>Settings</h2>` +
-    `<span class="cot-set-paused">Paused</span>` +
-    `<button class="cot-set-close" type="button" title="Close">&#10005;</button></div>` +
+    `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
+    `<span class="cot-set-paused">${t('settings.paused')}</span>` +
+    `<button class="cot-set-close" type="button" title="${t('settings.close.title')}">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +
     // settings_ui r2: CONTROLS carries its action count (era-chip .ct read);
     // the other tabs stay clean — a count of sliders is noise, not signal.
-    `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls<i class="ct">${input.actionDefs.length}</i></button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button">Gameplay</button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button">Sound</button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button">Graphics</button>` +
+    `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}<i class="ct">${input.actionDefs.length}</i></button>` +
+    `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
-    `<button class="cot-set-btn swap" type="button">Swap</button>` +
-    `<button class="cot-set-btn ghost dismiss" type="button">Cancel</button></div>` +
+    `<button class="cot-set-btn swap" type="button">${t('settings.conflict.swap')}</button>` +
+    `<button class="cot-set-btn ghost dismiss" type="button">${t('settings.conflict.cancel')}</button></div>` +
     `<div class="cot-set-body"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn ghost reset" type="button">Reset to defaults</button>` +
-    `<button class="cot-set-btn ghost leave" type="button">Leave Battle</button>` +
-    `<button class="cot-set-btn resume" type="button">Resume</button></div>` +
+    `<button class="cot-set-btn ghost reset" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn ghost leave" type="button">${t('settings.leave')}</button>` +
+    `<button class="cot-set-btn resume" type="button">${t('settings.resume')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
 
@@ -573,9 +591,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   const gear = opts.gear || el('button', 'cot-gear');
   gear.type = 'button';
-  gear.setAttribute('aria-label', 'Settings');
+  gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = GEAR_SVG;
-  gear.title = 'Settings';
+  gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
   const hints = el('div', 'cot-hints');
@@ -586,8 +604,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // you to the battle). The veil relocks inside its own click gesture.
   const resume = el('div', 'cot-resume');
   resume.innerHTML =
-    '<div class="rz-title">Battle paused</div>' +
-    '<div class="rz-sub">Click to resume &mdash; Esc for settings</div>';
+    `<div class="rz-title">${t('settings.pauseTitle')}</div>` +
+    `<div class="rz-sub">${t('settings.pauseSub')}</div>`;
   document.body.appendChild(resume);
 
   function showResumeVeil() {
@@ -650,7 +668,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   let panelRaf = 0; // gamepad poll while the panel is open
   const panelPadPrev = new Array(MAX_PAD_BUTTONS).fill(true);
 
-  const SLOT_NAME: Readonly<Record<BindingSlot, string>> = { 0: 'primary', 1: 'secondary' };
+  const SLOT_NAME: Readonly<Record<BindingSlot, string>> = {
+    0: t('settings.bind.primary'),
+    1: t('settings.bind.secondary'),
+  };
   const bindLabel = (id: ActionId): string =>
     input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
 
@@ -674,8 +695,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const rowByAction = new Map<ActionId, ActionBindingRow>();
 
   function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
-    if (slotKey === 'pad') return input.padLabelFor(input.getPadBinding(actionId));
-    return input.labelFor(input.getBinding(actionId, slotKey));
+    if (slotKey === 'pad') {
+      const label = input.padLabelFor(input.getPadBinding(actionId));
+      return label === '—' ? t('settings.bind.empty') : label;
+    }
+    const label = input.labelFor(input.getBinding(actionId, slotKey));
+    return label === '—' ? t('settings.bind.empty') : label;
   }
 
   function makeChip(
@@ -685,9 +710,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
+    const labelText = t(def.label);
     chip.title = slotKey === 'pad'
-      ? `${def.label} — controller button. Right-click to clear.`
-      : `${def.label} — ${SLOT_NAME[slotKey]} key. Right-click to clear.`;
+      ? `${labelText} — ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
+      : `${labelText} — ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       beginCapture(def.id, slotKey, chip);
@@ -709,16 +735,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     rowByAction.clear();
     const colhdr = el('div', 'cot-set-colhdr', body);
     colhdr.innerHTML =
-      '<span class="act">Action</span><span>Primary</span><span>Secondary</span><span class="pad">Pad</span>';
+      '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';
     let lastGroup = null;
     for (const def of input.actionDefs) {
       if (def.group !== lastGroup) {
-        el('div', 'cot-set-group', body).textContent = def.group;
+        el('div', 'cot-set-group', body).textContent = t(def.group);
         lastGroup = def.group;
       }
       const row = el('div', 'cot-set-row', body);
       row.dataset.action = def.id;
-      settingLabel(row, def.label, SETTINGS_ACTION_ICONS[def.id]);
+      settingLabel(row, t(def.label), SETTINGS_ACTION_ICONS[def.id]);
       const chipsWrap = el('div', 'chips', row);
       const chips = {
         0: makeChip(def, 0, chipsWrap),
@@ -729,12 +755,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     const note = el('div', 'cot-set-note', body);
     note.innerHTML =
-      'Click a chip, then press any key, mouse button or wheel notch to rebind — pad chips listen for a ' +
-      'controller button. Tap Esc to cancel; <b>hold Esc</b> to bind Escape itself. Right-click a chip to clear it.<br>' +
-      'What <b>Aim / Free Look (RMB)</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the ' +
-      'GAMEPLAY tab. <b>Gun Hold (Free Aim)</b> preserves the current turret and gun lay while ' +
-      'the sight keeps moving. Controller: left stick drives, right stick aims, RB holds the gun, ' +
-      'START opens this menu.';
+      t('settings.controls.note.part1') +
+      '<br>' +
+      t('settings.controls.note.part2');
     refreshChips();
   }
 
@@ -836,7 +859,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       btns[0].setAttribute('aria-pressed', String(!on));
       btns[1].setAttribute('aria-pressed', String(on));
     };
-    for (const [val, txt] of [[false, 'Off'], [true, 'On']] as const) {
+    for (const [val, txt] of [[false, t('settings.off')], [true, t('settings.on')]] as const) {
       const b = el('button', '', seg);
       b.type = 'button';
       b.textContent = txt;
@@ -858,26 +881,26 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     body.textContent = '';
     const touchLayout = !!(input.isTouchLayout && input.isTouchLayout());
     // settings_ui r2: each cluster sits on its own plate card
-    const aim = groupCard(body, touchLayout ? 'Touch aim' : 'Mouse');
-    sliderRow(aim, touchLayout ? 'Swipe sensitivity' : 'Mouse sensitivity', 'sensitivity', 0.2, 3);
-    sliderRow(aim, 'Sniper sensitivity scale', 'sniperSensScale', 0.2, 3);
-    sliderRow(aim, 'Aim smoothing (0% = raw input)', 'aimSmoothing', 0, 1, {
+    const aim = groupCard(body, touchLayout ? t('settings.aim.touch') : t('settings.aim.mouse'));
+    sliderRow(aim, touchLayout ? t('settings.touch.swipeSensitivity') : t('settings.mouse.sensitivity'), 'sensitivity', 0.2, 3);
+    sliderRow(aim, t('settings.mouse.sniperScale'), 'sniperSensScale', 0.2, 3);
+    sliderRow(aim, t('settings.mouse.aimSmoothing'), 'aimSmoothing', 0, 1, {
       step: '0.01', dispStep: '1', unit: '%', digits: 0,
       toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
     });
-    onOffRow(aim, 'Invert vertical aim (Y axis)', 'invertY');
+    onOffRow(aim, t('settings.mouse.invertY'), 'invertY');
 
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as
     // settings.rmbMode; main.ts routes the RMB-bound action per frame.
     const RMB_MODE_DEFS: ReadonlyArray<readonly [RmbMode, string]> = [
-      ['hold', 'hold-to-aim'],
-      ['toggle', 'toggle-aim'],
-      ['freelook', 'free look'],
+      ['hold', t('settings.rmb.hold')],
+      ['toggle', t('settings.rmb.toggle')],
+      ['freelook', t('settings.rmb.freelook')],
     ];
     if (!touchLayout) {
       const rmbRow = el('div', 'cot-set-row', aim);
-      settingLabel(rmbRow, 'Right click (RMB)', SETTINGS_OPTION_ICONS.rmbMode);
+      settingLabel(rmbRow, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
       const rmbSeg = el('div', 'cot-set-seg', rmbRow);
       const rmbBtns: HTMLButtonElement[] = [];
       for (const [value, label] of RMB_MODE_DEFS) {
@@ -894,89 +917,75 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       }
       for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
       const rmbNote = el('div', 'cot-set-note', aim);
-      rmbNote.textContent =
-        'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
-        '(aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. ' +
-        'Gun hold: hold RMB to preserve the current turret and gun lay while freely moving the sight. ' +
-        'Caps Lock is always the dedicated gun-hold action; Left Alt remains its secondary default. ' +
-        'Release to let the gun catch up. Shift toggles sniper mode.';
+      rmbNote.textContent = t('settings.aim.note');
     }
 
-    const battle = groupCard(body, 'Battle');
+    const battle = groupCard(body, t('settings.battle.title'));
     const diffRow = el('div', 'cot-set-row', battle);
-    settingLabel(diffRow, 'AI difficulty (next battle)', SETTINGS_OPTION_ICONS.aiDifficulty);
+    settingLabel(diffRow, t('settings.gameplay.difficultyNext'), SETTINGS_OPTION_ICONS.aiDifficulty);
     const seg = el('div', 'cot-set-seg', diffRow);
     const diffBtns: HTMLButtonElement[] = [];
     for (const tier of ['easy', 'normal', 'hard'] as const satisfies readonly AiDifficulty[]) {
       const b = el('button', '', seg);
       b.type = 'button';
-      b.textContent = tier;
+      b.textContent = t(`settings.difficulty.${tier}`);
       b.addEventListener('click', () => {
         input.setSetting('aiDifficulty', tier);
-        for (const x of diffBtns) x.classList.toggle('sel', x.textContent === tier);
+        for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === tier);
         emit('ui:difficulty', { difficulty: tier });
         emit('ui:click', {});
       });
+      b.dataset.tier = tier;
       diffBtns.push(b);
     }
-    for (const x of diffBtns) x.classList.toggle('sel', x.textContent === input.getSettings().aiDifficulty);
+    for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === input.getSettings().aiDifficulty);
     const diffNote = el('div', 'cot-set-note', battle);
-    diffNote.textContent =
-      'Easy bots aim slower, react later and engage closer; Hard bots hunt weak spots. ' +
-      'Takes effect when the next battle starts.';
+    diffNote.textContent = t('settings.difficulty.note');
 
-    const iface = groupCard(body, 'Interface');
+    const iface = groupCard(body, t('settings.interface.title'));
     onOffRow(
       iface,
-      'Scoped armor flashlight · penetration gradient (default on)',
+      t('settings.interface.armorOverlay'),
       'armorAimOverlay',
     );
-    onOffRow(iface, 'FPS / ping readout (top-right · default on)', 'showPerfMeter',
+    onOffRow(iface, t('settings.gameplay.showPerfMeter'), 'showPerfMeter',
       emitPerfMeter);
     onOffRow(
       iface,
-      'Blocked-shot values on directional hit indicators',
+      t('settings.interface.hitValues'),
       'showDirectionalHitValues',
       emitDirectionalHitValues,
     );
-    onOffRow(iface, 'Debug telemetry dashboard (top-right)', 'showDebugHud',
+    onOffRow(iface, t('settings.interface.debugHud'), 'showDebugHud',
       emitDebugHud);
     const armorNote = el('div', 'cot-set-note', iface);
-    armorNote.textContent =
-      'In sniper view, aimed enemy armor is shaded from red (blocked) through amber to green ' +
-      '(high penetration chance). The calculation follows the selected shell, range, angle, ' +
-      'ricochet rules, ERA, tracks, and spaced armor.';
+    armorNote.textContent = t('settings.interface.armorNote');
     const hitValueNote = el('div', 'cot-set-note', iface);
-    hitValueNote.textContent =
-      'Incoming HP damage and outcome words always appear beyond their direction arcs. ' +
-      'Enable this to append the authoritative pre-mitigation value to blocked results.';
+    hitValueNote.textContent = t('settings.interface.hitValueNote');
     const debugNote = el('div', 'cot-set-note', iface);
-    debugNote.textContent =
-      'Debug telemetry folds FPS, latency, frame pacing, render load, resolution, simulation, ' +
-      'world, shadow, network, and memory diagnostics into one 4 Hz dashboard. It loads only when enabled.';
+    debugNote.textContent = t('settings.interface.debugNote');
 
-    const pad = groupCard(body, 'Controller');
-    sliderRow(pad, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
+    const pad = groupCard(body, t('settings.pad.title'));
+    sliderRow(pad, t('settings.gameplay.aimPad'), 'padSensitivity', 0.2, 3);
     const padNote = el('div', 'cot-set-note', pad);
     padNote.textContent = input.isPadConnected()
-      ? 'Controller detected — left stick drives, right stick aims (squared response for fine aim).'
-      : 'No controller detected. Plug in any standard gamepad and press a button.';
+      ? t('settings.pad.detected')
+      : t('settings.pad.absent');
 
     const note = el('div', 'cot-set-note', body);
     note.textContent = touchLayout
-      ? 'Swipe sensitivity and smoothing apply directly to the battlefield aim pad. Sniper sensitivity stacks with each zoom step.'
-      : 'Sniper sensitivity stacks with the per-zoom reduction, so high zoom always aims finer. ' +
-        'Type exact values in the number fields for precise tuning.';
+      ? t('settings.aim.sniper.touch')
+      : t('settings.aim.sniper.mouse');
   }
 
   // --- SOUND tab ---------------------------------------------------------------
   const VOLUME_DEFS = [
-    ['volMaster', 'Master volume'],
-    ['volEngine', 'Engine & mechanical volume'],
-    ['volCombat', 'Gunfire & impacts volume'],
-    ['volAmbience', 'Ambience volume (wind, birds, garage)'],
-    ['volUi', 'Interface & music volume'],
-    ['volVoice', 'Crew voices & alarms volume'],
+    ['volMaster', t('settings.sound.master')],
+    ['volEngine', t('settings.sound.engine')],
+    ['volCombat', t('settings.sound.combat')],
+    ['volAmbience', t('settings.sound.ambience')],
+    ['volUi', t('settings.sound.ui')],
+    ['volVoice', t('settings.sound.voice')],
   ] as const satisfies ReadonlyArray<readonly [NumericSettingKey, string]>;
 
   /** Broadcast the persisted FPS/ping preference (default on, user opt-out). */
@@ -1012,7 +1021,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   function renderSound() {
     body.textContent = '';
-    const vol = groupCard(body, 'Volume');
+    const vol = groupCard(body, t('settings.sound.title'));
     for (const [key, label] of VOLUME_DEFS) {
       sliderRow(vol, label, key, 0, 1, {
         step: '0.01', dispStep: '1', unit: '%', digits: 0,
@@ -1020,24 +1029,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
-    const alarms = groupCard(body, 'Alarms');
-    onOffRow(alarms, 'Critical-damage heartbeat pulse', 'alarmHeartbeat', emitVolumes);
+    const alarms = groupCard(body, t('settings.alarms.title'));
+    onOffRow(alarms, t('settings.alarms.heartbeat'), 'alarmHeartbeat', emitVolumes);
 
     const note = el('div', 'cot-set-note', body);
-    note.textContent =
-      'Effects, engines and music are synthesized in real time; the crew radio lines are ' +
-      'original voice takes generated offline (no third-party recordings). Everything mixes ' +
-      'under the master fader; changes apply instantly and persist. Release a slider to hear ' +
-      'a reference blip at the new level. The heartbeat pulse plays a short low throb when ' +
-      'your tank drops below quarter health.';
+    note.textContent = t('settings.sound.note');
   }
 
   // --- GRAPHICS tab -----------------------------------------------------------
   function renderGraphics() {
     body.textContent = '';
-    const card = groupCard(body, 'Quality');
+    const card = groupCard(body, t('settings.graphics.title'));
     const row = el('div', 'cot-set-row', card);
-    settingLabel(row, 'Graphics quality', SETTINGS_OPTION_ICONS.graphicsQuality);
+    settingLabel(row, t('settings.graphics.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
     const seg = el('div', 'cot-set-seg', row);
     const btns: HTMLButtonElement[] = [];
     const mobile = getDeviceTier() === 'mobile';
@@ -1047,7 +1051,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const name of choices) {
       const b = el('button', '', seg);
       b.type = 'button';
-      b.textContent = name === 'auto' ? 'auto' : PRESETS[name].label.toLowerCase();
+      b.textContent = name === 'auto'
+        ? t('settings.preset.auto')
+        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
       b.dataset.name = name;
       b.addEventListener('click', () => {
         if (mobile) setMobilePresetName(name);
@@ -1061,12 +1067,35 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
     const note = el('div', 'cot-set-note', card);
     note.textContent = mobile
-      ? 'Performance, Balanced and Quality stay inside the mobile texture budget. They resize raster, ' +
-        'anti-aliasing and shadow buffers instantly without reloading the battlefield.'
-      : 'Auto uses adaptive High quality with full-resolution final-frame SMAA: real geometry, foliage, ' +
-        'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
-        'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
-        'Applies instantly.';
+      ? t('settings.graphics.note.mobile')
+      : t('settings.graphics.note.desktop');
+
+    // Language picker. Lives under Graphics tab for now (matches Settings panel
+    // layout); the language only affects UI text, not rendering quality.
+    const langCard = groupCard(body, t('settings.language.title'));
+    const langRow = el('div', 'cot-set-row', langCard);
+    settingLabel(langRow, t('settings.language.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
+    const langSeg = el('div', 'cot-set-seg', langRow);
+    const langBtns: HTMLButtonElement[] = [];
+    const currentLocale = getLocale();
+    for (const locale of SUPPORTED_LOCALES) {
+      const b = el('button', '', langSeg);
+      b.type = 'button';
+      b.dataset.locale = locale;
+      b.textContent = t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en'));
+      b.addEventListener('click', () => {
+        setLocale(locale as SupportedLocale);
+        for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === locale);
+        emit('ui:click', {});
+        // Re-render this tab so labels and notes translate in place without
+        // requiring the player to switch tabs and back.
+        renderTab();
+      });
+      langBtns.push(b);
+    }
+    for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === currentLocale);
+    const langNote = el('div', 'cot-set-note', langCard);
+    langNote.textContent = t('settings.language.note');
   }
 
   function renderTab() {
@@ -1097,10 +1126,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     capture = { actionId, slot, chip };
     chip.classList.add('listening');
     if (slot === 'pad') {
-      chip.textContent = 'PRESS PAD…';
+      chip.textContent = t('settings.bind.pressPad');
       // pad button edges are picked up by the panel's gamepad poll loop
     } else {
-      chip.textContent = 'PRESS KEY…';
+      chip.textContent = t('settings.bind.press');
       window.addEventListener('mousedown', onCaptureMouse, true);
       window.addEventListener('wheel', onCaptureWheel, { capture: true, passive: false });
     }
@@ -1170,11 +1199,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     conflict = c;
     const defA = input.actionDefs.find((d) => d.id === c.actionId);
     const defB = input.actionDefs.find((d) => d.id === c.otherId);
-    const codeLabel = c.pad ? input.padLabelFor(c.code) : input.labelFor(c.code);
+    const codeLabel = c.pad
+      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })()
+      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })();
     const slotTag = c.pad ? '' : ` (${SLOT_NAME[c.otherSlot]})`;
     conflictMsg.innerHTML =
-      `<b>${codeLabel}</b>&nbsp; is already bound to &nbsp;<b>${defB ? defB.label : c.otherId}</b>${slotTag}` +
-      `&nbsp;&mdash; swap it with ${defA ? defA.label : c.actionId}?`;
+      t('settings.conflict.message', {
+        codeLabel,
+        otherLabel: defB ? defB.label : c.otherId,
+        slotTag,
+        thisLabel: defA ? defA.label : c.actionId,
+      });
     conflictBar.classList.add('show');
     for (const id of [c.actionId, c.otherId]) {
       const r = rowByAction.get(id);
@@ -1211,7 +1246,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         if (capture.slot === 'pad') { cancelCapture(); return; }
         // Tap = cancel (on keyup), hold = bind Escape itself.
         if (!escHoldTimer && !e.repeat) {
-          capture.chip.textContent = 'HOLD FOR ESC…';
+          capture.chip.textContent = t('settings.bind.holdForEsc');
           escHoldTimer = setTimeout(() => {
             escHoldTimer = null;
             if (capture) finishCapture('Escape');
@@ -1312,7 +1347,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     leaveBtn.style.display = canLeave ? 'block' : 'none';
     // settings_ui r2: the footer primary reads RESUME only where there is a
     // battle to resume — the garage gear context labels the same button CLOSE.
-    resumeBtn.textContent = canLeave ? 'Resume' : 'Close';
+    resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
     root.classList.add('open');
     updateScrollFades(); // measured after display flips — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);

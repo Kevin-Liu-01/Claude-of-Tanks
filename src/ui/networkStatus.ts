@@ -1,4 +1,5 @@
 import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
+import { t } from './i18n.ts';
 
 const STYLE_ID = 'cot-network-status-style';
 
@@ -134,11 +135,13 @@ function formatDiagnostics(stats: NetworkDiagnosticsStats): string {
 export function networkStatusMessage({ state, attempt = 0, reason }: NetworkStatusState): string {
   if (state === 'reconnecting') {
     return reason === 'authority_stalled'
-      ? 'Host not responding · waiting for game updates'
-      : `Connection interrupted · reconnecting ${attempt || 1}`;
+      ? t('networkStatus.authorityStalled')
+      : t('networkStatus.reconnecting', { attempt: attempt || 1 });
   }
-  if (state === 'reconnected') return 'Connection restored';
-  if (state === 'failed') return `${privateRoomFailurePresentation(reason).title} · no result recorded`;
+  if (state === 'reconnected') return t('networkStatus.restored');
+  if (state === 'failed') return t('networkStatus.failedWithReason', {
+    title: privateRoomFailurePresentation(reason).title,
+  });
   return '';
 }
 
@@ -153,14 +156,14 @@ export function createNetworkStatus({ onExit }: { onExit?: () => void } = {}): N
   root.appendChild(message);
   const exit = document.createElement('button');
   exit.type = 'button';
-  exit.textContent = 'Return to garage';
+  exit.textContent = t('networkStatus.exit');
   exit.hidden = true;
   exit.addEventListener('click', () => onExit?.());
   root.appendChild(exit);
   document.body.appendChild(root);
   const diagnostics = document.createElement('div');
   diagnostics.className = 'cot-network-diagnostics';
-  diagnostics.setAttribute('aria-label', 'Network diagnostics');
+  diagnostics.setAttribute('aria-label', t('networkStatus.diagnosticsAria'));
   document.body.appendChild(diagnostics);
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
   let lastDiagnosticsAt = -Infinity;

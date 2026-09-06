@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { Object3D } from 'three';
+import '../ui/i18nCatalog.ts';
+import { getLocale, setLocale } from '../ui/i18n.ts';
 import { createSoloBattleLoadingRuntime } from './soloBattleLoadingRuntime.ts';
+
+const originalLocale = getLocale();
+setLocale('en-US');
 
 const events = [];
 const world = { mapId: 'verdant', group: new Object3D() };
@@ -188,6 +193,7 @@ try {
   delete globalThis.__BATTLE_LOAD;
   delete globalThis.__VISUAL_LOAD_TIMINGS;
   delete globalThis.__WORLD_LOAD;
+  setLocale(originalLocale);
 }
 
 console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm and reveal order pass');

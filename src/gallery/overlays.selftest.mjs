@@ -8,6 +8,7 @@ import {
   CREW_STANDING_HEIGHT_M,
 } from '../vehicles/internalAnatomyVisuals.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
+import '../ui/i18nCatalog.ts';
 
 function visualRoot() {
   const root = new THREE.Group();

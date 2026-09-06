@@ -15,9 +15,51 @@
 import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
+import { t } from './i18n.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
+
+// Translate legacy English progress labels written by the various loading
+// runtimes. Each entry pairs a known English string with its i18n key; any
+// unknown label is left as-is so the loading screen still updates.
+const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  'Loading combat interface': 'battleLoad.stage.loadingCombatInterface',
+  'Loading battlefield': 'battleLoad.stage.loadingBattlefield',
+  'Uploading battlefield textures': 'battleLoad.stage.uploadingTextures',
+  'Battlefield ready': 'battleLoad.stage.battlefieldReady',
+  'Assembling rosters': 'battleLoad.stage.assemblingRosters',
+  'Drawing tactical map': 'battleLoad.stage.drawingTacticalMap',
+  'Preparing player vehicle': 'battleLoad.stage.preparingPlayer',
+  'Painting vehicles': 'battleLoad.stage.paintingVehicles',
+  'Preparing deployment': 'battleLoad.stage.preparingDeployment',
+  'Ready': 'battleLoad.stage.ready',
+  'Finishing camouflage': 'battleLoad.stage.finishingCamo',
+  'Warming suspension terrain': 'battleLoad.stage.warmingSuspension',
+  'Priming deployment view': 'battleLoad.stage.primingDeployment',
+  'Priming deployment shadows': 'battleLoad.stage.primingShadows',
+  'Combat effects ready': 'battleLoad.stage.combatEffectsReady',
+  'Loading multiplayer runtime': 'battleLoad.stage.loadingMultiplayer',
+  'Opening battle channel': 'battleLoad.stage.openingBattleChannel',
+  'Preparing the next round': 'battleLoad.stage.preparingNextRound',
+  'Opening dedicated channel': 'battleLoad.stage.openingDedicatedChannel',
+  'Securing match channel': 'battleLoad.stage.securingMatchChannel',
+  'Synchronizing authority': 'battleLoad.stage.synchronizingAuthority',
+  'Priming wreck variants': 'battleLoad.stage.primingWreckVariants',
+  'Surveying terrain': 'battleLoad.stage.surveyingTerrain',
+  'Building terrain meshes': 'battleLoad.stage.buildingTerrain',
+  'Placing structures': 'battleLoad.stage.placingStructures',
+  'Sealing the battlefield': 'battleLoad.stage.sealingBattlefield',
+  'Planting vegetation': 'battleLoad.stage.plantingVegetation',
+  'Surveying battlefield': 'battleLoad.stage.surveyingBattlefield',
+  'Settling actors': 'battleLoad.stage.settlingActors',
+  'Studio ready': 'battleLoad.stage.studioReady',
+});
+
+function translateStageLabel(label: string): string {
+  const key = STAGE_LABEL_KEYS[label];
+  return key ? t(key) : label;
+}
 
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
@@ -125,12 +167,19 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving{transition-duration:1ms;}}
 `;
 
-const BATTLE_TIPS = [
-  ['Opening move', 'Do not drive into the open on the first bounce of the clock — let the scouts spot and pick a flank once the map has told you where the weight went.'],
-  ['Trade', 'Fire, then break line of sight. A shot that costs you two in return is a shot you should not have taken.'],
-  ['Team', 'Allied guns matter more than yours. Fighting beside two friendlies beats fighting alone with the better tank.'],
-  ['Minimap', 'Half of every battle is on the minimap. Check it at every reload.'],
+const BATTLE_TIPS: ReadonlyArray<readonly [string, string]> = [
+  ['battleLoad.tip.opening.heading', 'battleLoad.tip.opening.body'],
+  ['battleLoad.tip.trade.heading', 'battleLoad.tip.trade.body'],
+  ['battleLoad.tip.team.heading', 'battleLoad.tip.team.body'],
+  ['battleLoad.tip.minimap.heading', 'battleLoad.tip.minimap.body'],
 ];
+
+/** Resolve a BATTLE_TIPS entry into its localized heading and body. */
+function localizedTip(
+  entry: readonly [string, string],
+): readonly [string, string] {
+  return [t(entry[0]), t(entry[1])];
+}
 
 export interface BattleLoadRosterRow {
   readonly id: string;
@@ -186,21 +235,21 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const root = document.createElement('div');
   root.className = 'cot-bl';
   root.setAttribute('role', 'status');
-  root.setAttribute('aria-label', 'Preparing battle');
+  root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
-    `<main class="briefing"><div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +
+    `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
-    `<div class="team ally"><div class="thead"><span>Allies</span><span class="n">0</span></div>` +
+    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
-    `<div class="vs">VS</div>` +
-    `<div class="team foe"><div class="thead"><span>Enemies</span><span class="n">0</span></div>` +
+    `<div class="vs">${t('battleLoad.vs')}</div>` +
+    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">Loading battlefield</div>` +
+    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">${t('battleLoad.loading')}</div>` +
     `<div class="fpct">0%</div></div>` +
-    `<div class="fbar" role="progressbar" aria-label="Battlefield loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
+    `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
     `<div class="count"></div><div class="tip"></div></div></main>`;
   document.body.appendChild(root);
 
@@ -259,16 +308,18 @@ export function createBattleLoadScreen(): BattleLoadScreen {
      *   mode?:string, allies:Array, enemies:Array}} info
      */
     show(info: BattleLoadInfo) {
-      nameEl.textContent = info.mapName || 'Battlefield';
+      nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
       if (info.mode) kickEl.textContent = info.mode;
       artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
       artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';
       fillTeam(allyRows, allyN, info.allies);
       fillTeam(foeRows, foeN, info.enemies);
-      const [h, b] = BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)];
+      const [h, b] = localizedTip(
+        BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
+      );
       tipEl.innerHTML = `<b>${h}</b>${b}`;
       countEl.textContent = '';
-      api.progress(0, 'Loading battlefield');
+      api.progress(0, t('battleLoad.loading'));
       visible = true;
       covering = true;
       // Entry is a safety cover, not an animation: it must own the very next
@@ -297,14 +348,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       fillEl.style.width = `${(v * 100).toFixed(1)}%`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
       progressEl.setAttribute('aria-valuenow', String(Math.round(v * 100)));
-      if (label) stageEl.textContent = label;
+      if (label) stageEl.textContent = translateStageLabel(label);
     },
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
     countdown(n: number) {
       countEl.innerHTML = n > 0
-        ? `Battle begins in <b>${n}</b>`
-        : `<b>Battle!</b>`;
+        ? t('battleLoad.countdown', { n }) + ''
+        : `<b>${t('battleLoad.go')}</b>`;
     },
 
     /** Fade out, then drop out of layout. */

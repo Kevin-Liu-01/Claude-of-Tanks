@@ -1,4 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import '../ui/i18nCatalog.ts';
+import { t } from '../ui/i18n.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
@@ -43,7 +45,7 @@ function ensureLightbox(): HTMLDialogElement {
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.className = 'media-lightbox';
-  dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="Close full-screen image">×</button></figcaption></figure>`;
+  dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="${t('mediaArchive.lightbox.closeAria')}">×</button></figcaption></figure>`;
   const closeButton = dialog.querySelector<HTMLButtonElement>('button');
   if (!closeButton) throw new Error('media lightbox close control is unavailable');
   closeButton.addEventListener('click', () => dialog.close());
@@ -73,7 +75,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'media-archive-card-open';
-  button.setAttribute('aria-label', `Open ${shot.title}`);
+  button.setAttribute('aria-label', t('mediaArchive.card.openAria', { title: shot.title }));
   const image = document.createElement('img');
   image.src = shot.src;
   image.alt = shot.alt;
@@ -134,7 +136,7 @@ export async function mountMediaArchive(
   const filters = document.createElement('div');
   filters.className = 'media-archive-filters';
   filters.setAttribute('role', 'group');
-  filters.setAttribute('aria-label', 'Filter captured game frames');
+  filters.setAttribute('aria-label', t('mediaArchive.filterAria'));
   const count = document.createElement('output');
   count.className = 'media-archive-count';
   const status = document.createElement('div');

@@ -41,3 +41,4 @@ docs/critique/*
 .stryker-tmp/
 .quality-reports/
 coverage/
+docs/ENGINE-EXTRACTION-PLAN.md

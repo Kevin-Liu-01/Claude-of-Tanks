@@ -43,34 +43,37 @@ const PAD_TRIGGER_THRESHOLD = 0.5; // analog trigger "pressed" level
 const PAD_ACTIVE_WINDOW_MS = 4000; // recent-activity window for padActive()
 const PAD_MAX_BUTTONS = 17;
 
-/** Every rebindable action, grouped for the settings panel. */
+/** Every rebindable action, grouped for the settings panel.
+ *  Labels and groups are i18n keys resolved by the settings UI
+ *  (see `src/ui/settings.ts` — `t()` is applied to both `label` and
+ *  `group` before render). */
 const ACTION_DEFS = [
-  { id: 'forward', label: 'Move Forward', group: 'Movement' },
-  { id: 'back', label: 'Move Back', group: 'Movement' },
-  { id: 'left', label: 'Steer Left', group: 'Movement' },
-  { id: 'right', label: 'Steer Right', group: 'Movement' },
-  { id: 'handbrake', label: 'Handbrake', group: 'Movement' },
-  { id: 'selfRight', label: 'Flip Tank', group: 'Movement' },
-  { id: 'fire', label: 'Fire Gun', group: 'Combat' },
-  { id: 'sniperToggle', label: 'Sniper Mode', group: 'Combat' },
-  { id: 'shell1', label: 'Shell Slot 1', group: 'Combat' },
-  { id: 'shell2', label: 'Shell Slot 2', group: 'Combat' },
-  { id: 'shell3', label: 'Shell Slot 3', group: 'Combat' },
-  { id: 'specialAction', label: 'Special Action', group: 'Combat' },
-  { id: 'reloadMagazine', label: 'Reload Magazine', group: 'Combat' },
-  { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
-  { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
-  { id: 'consumable3', label: 'Fire Extinguisher', group: 'Consumables' },
-  { id: 'freeLook', label: 'Gun Hold (Free Aim)', group: 'Camera' },
+  { id: 'forward', label: 'action.forward', group: 'settings.group.movement' },
+  { id: 'back', label: 'action.back', group: 'settings.group.movement' },
+  { id: 'left', label: 'action.left', group: 'settings.group.movement' },
+  { id: 'right', label: 'action.right', group: 'settings.group.movement' },
+  { id: 'handbrake', label: 'action.handbrake', group: 'settings.group.movement' },
+  { id: 'selfRight', label: 'action.selfRight', group: 'settings.group.movement' },
+  { id: 'fire', label: 'action.fire', group: 'settings.group.combat' },
+  { id: 'sniperToggle', label: 'action.sniperToggle', group: 'settings.group.combat' },
+  { id: 'shell1', label: 'action.shell1', group: 'settings.group.combat' },
+  { id: 'shell2', label: 'action.shell2', group: 'settings.group.combat' },
+  { id: 'shell3', label: 'action.shell3', group: 'settings.group.combat' },
+  { id: 'specialAction', label: 'action.specialAction', group: 'settings.group.combat' },
+  { id: 'reloadMagazine', label: 'action.reloadMagazine', group: 'settings.group.combat' },
+  { id: 'consumable1', label: 'action.consumable1', group: 'settings.group.consumables' },
+  { id: 'consumable2', label: 'action.consumable2', group: 'settings.group.consumables' },
+  { id: 'consumable3', label: 'action.consumable3', group: 'settings.group.consumables' },
+  { id: 'freeLook', label: 'action.freeLook', group: 'settings.group.camera' },
   // gunnery r1: RMB's FUNCTION is picked by settings.rmbMode (hold-to-aim /
   // toggle-aim / free-look classic); this action owns the physical binding.
-  { id: 'freeCamera', label: 'Aim / Free Look (RMB)', group: 'Camera' },
-  { id: 'zoomIn', label: 'Zoom In', group: 'Camera' },
-  { id: 'zoomOut', label: 'Zoom Out', group: 'Camera' },
-  { id: 'minimapZoom', label: 'Minimap Zoom', group: 'Interface' },
-  { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.ts)
-  { id: 'perfHud', label: 'Performance Overlay', group: 'Interface' }, // FEEL r12 (perfHud.ts)
-  { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
+  { id: 'freeCamera', label: 'action.freeCamera', group: 'settings.group.camera' },
+  { id: 'zoomIn', label: 'action.zoomIn', group: 'settings.group.camera' },
+  { id: 'zoomOut', label: 'action.zoomOut', group: 'settings.group.camera' },
+  { id: 'minimapZoom', label: 'action.minimapZoom', group: 'settings.group.interface' },
+  { id: 'shotLog', label: 'action.shotLog', group: 'settings.group.interface' }, // SHOT-INFO (shotInfo.ts)
+  { id: 'perfHud', label: 'action.perfHud', group: 'settings.group.interface' }, // FEEL r12 (perfHud.ts)
+  { id: 'settingsMenu', label: 'action.settingsMenu', group: 'settings.group.interface' },
 ] as const;
 
 export type ActionId = (typeof ACTION_DEFS)[number]['id'];

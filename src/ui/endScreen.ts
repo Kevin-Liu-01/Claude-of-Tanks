@@ -34,6 +34,7 @@ import { iconUrl, maskIcon } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import { t, formatNumber } from './i18n.ts';
 import type {
   NetworkRoomPlayer,
   NetworkRoomState,
@@ -382,7 +383,7 @@ const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-const fmtN = (n: number): string => Math.round(n).toLocaleString('en-US');
+const fmtN = (n: number): string => formatNumber(Math.round(n));
 
 export function summarizeTeam(rows: TeamSummaryInput[] = []): TeamSummary {
   return rows.reduce<TeamSummary>((summary, row) => {
@@ -449,7 +450,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.classList.add('cot-es');
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');
-  host.setAttribute('aria-label', 'Battle results');
+  host.setAttribute('aria-label', t('endScreen.resultsAria'));
   host.setAttribute('aria-hidden', 'true');
 
   let visible = false;
@@ -516,7 +517,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       if (btn) {
         btn.removeAttribute('style'); // shed the inline amber pill styling
         btn.classList.add('cot-es-btn', 'ghost');
-        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>RETURN TO GARAGE</span></span>`;
+        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>${t('endScreen.returnToGarage')}</span></span>`;
         garageBtn = btn;
       }
       overlay.style.display = 'none';
@@ -550,14 +551,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     state: NetworkRoomState,
     nextRound: number,
   ): void {
-    const mode = state.mode === 'lan' ? 'LAN room' : 'Private room';
+    const mode = state.mode === 'lan' ? t('endScreen.lan') : t('endScreen.private');
     const head = el('div', 'es-room-head', parent);
     const modeIcon = el('span', 'es-room-mode-icon', head);
     modeIcon.innerHTML = uiIconSVG(state.mode === 'lan' ? 'battleLan' : 'battlePrivate', 21);
     const roomTitle = el('span', 'es-room-title', head);
     roomTitle.innerHTML = `<span>${mode}</span><b>${state.roomCode || ''}</b>`;
     const round = el('span', 'es-room-round', head);
-    round.innerHTML = `${uiIconSVG('rematch', 16)}<span>Round ${nextRound}</span>`;
+    round.innerHTML = `${uiIconSVG('rematch', 16)}<span>${t('endScreen.round', { n: nextRound })}</span>`;
   }
 
   function renderRoomPlayer(
@@ -573,12 +574,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     }
     const copy = el('span', 'room-copy', row);
     const name = el('span', 'rn', copy);
-    const vehicle = vehicleName(player.specId) || 'No vehicle';
-    name.textContent = `${player.name || 'Commander'}${player.id === playerId ? ' (You)' : ''}`;
+    const vehicle = vehicleName(player.specId) || t('endScreen.noVehicle');
+    name.textContent = `${player.name || t('playMenu.commander.fallback')}${player.id === playerId ? t('endScreen.you') : ''}`;
     el('span', 'rv', copy).textContent = vehicle;
     const status = el('span', 'rs', row);
     const statusIcon = player.team === 'spectator' ? 'scope' : player.ready ? 'check' : 'clock';
-    const statusText = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    const statusText = player.team === 'spectator' ? t('endScreen.watching') : player.ready ? t('endScreen.ready') : t('endScreen.notReady');
     status.innerHTML = `${uiIconSVG(statusIcon, 13)}<span>${statusText}</span>`;
   }
 
@@ -599,7 +600,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   ): void {
     const meter = el('div', 'es-ready-meter', controls);
     const readyPct = activeCount ? Math.round((readyCount / activeCount) * 100) : 0;
-    meter.innerHTML = `${uiIconSVG('check', 15)}<span class="meter-label">Ready for round ${nextRound}</span>` +
+    meter.innerHTML = `${uiIconSVG('check', 15)}<span class="meter-label">${t('endScreen.readyForRound', { n: nextRound })}</span>` +
       `<b>${readyCount} / ${activeCount}</b><span class="es-ready-track"><span class="es-ready-fill" style="width:${readyPct}%"></span></span>`;
   }
 
@@ -612,7 +613,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime needs-ready'}`, controls);
     ready.type = 'button';
     ready.innerHTML = `<span class="btn-inner">${uiIconSVG(me.ready ? 'close' : 'check', 17)}` +
-      `<span>${me.ready ? 'CANCEL READY' : 'READY FOR NEXT BATTLE'}</span></span>`;
+      `<span>${me.ready ? t('endScreen.cancelReady') : t('endScreen.readyNext')}</span></span>`;
     ready.disabled = state.phase !== 'waiting';
     ready.addEventListener('click', () => {
       bus.emit('ui:click', {});
@@ -628,7 +629,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
     start.type = 'button';
     start.innerHTML = `<span class="btn-inner">${uiIconSVG(everyoneReady ? 'rematch' : 'clock', 17)}` +
-      `<span>${everyoneReady ? 'START NEXT BATTLE' : 'WAITING FOR TEAM'}</span></span>`;
+      `<span>${everyoneReady ? t('endScreen.startNext') : t('endScreen.waitingTeam')}</span></span>`;
     start.disabled = state.phase !== 'waiting' || !everyoneReady;
     start.addEventListener('click', () => {
       bus.emit('ui:click', {});
@@ -680,29 +681,33 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     row.setAttribute('role', 'listitem');
     const vehicle = vehicleName(result.specId);
     const details: string[] = [vehicle];
-    if (result.kills > 0) details.push(`${result.kills} kill${result.kills === 1 ? '' : 's'}`);
+    if (result.kills > 0) {
+      details.push(t(result.kills === 1
+        ? 'endScreen.killsCountOne'
+        : 'endScreen.killsCountMany', { count: result.kills }));
+    }
     row.innerHTML =
       '<span class="si"></span>' +
-      `<span class="identity"><span class="nm">${result.isPlayer ? '<b class="you">YOU</b>' : ''}${result.name || result.id}</span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${result.name || result.id}</span>` +
       `<span class="veh">${details.filter(Boolean).join(' · ')}</span></span>` +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
     const damage = Math.max(0, Number(result.dmg) || 0);
     const output = requiredDescendant<HTMLElement>(row, '.output');
     output.setAttribute('role', 'meter');
-    output.setAttribute('aria-label', 'Damage');
+    output.setAttribute('aria-label', t('endScreen.damageAria'));
     output.setAttribute('aria-valuemin', '0');
     output.setAttribute('aria-valuemax', String(Math.max(1, Math.round(maxDamage))));
     output.setAttribute('aria-valuenow', String(Math.round(damage)));
-    output.setAttribute('aria-valuetext', `${fmtN(damage)} damage`);
-    output.title = `${fmtN(damage)} damage`;
+    output.setAttribute('aria-valuetext', t('endScreen.damageValueAria', { value: fmtN(damage) }));
+    output.title = t('endScreen.damageValueAria', { value: fmtN(damage) });
     requiredDescendant<HTMLElement>(row, '.ov').textContent = fmtN(damage);
     requiredDescendant<HTMLElement>(row, '.obar i').style.width =
       `${damageComparisonPercent(damage, maxDamage)}%`;
     const stateMark = requiredDescendant<HTMLElement>(row, '.st');
     stateMark.setAttribute('role', 'img');
-    stateMark.setAttribute('aria-label', result.dead ? 'Destroyed' : 'Survived');
-    stateMark.title = result.dead ? 'Destroyed' : 'Survived';
+    stateMark.setAttribute('aria-label', result.dead ? t('endScreen.destroyed') : t('endScreen.survived'));
+    stateMark.title = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
     maskIcon(requiredDescendant<HTMLElement>(row, '.si'), result.specId || result.id,
       'side_silhouette', result.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
   }
@@ -718,13 +723,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     panel.setAttribute('role', 'group');
     panel.setAttribute('aria-label', title);
     const columns = el('div', 'es-roster-cols', panel);
-    columns.innerHTML = '<span>Combatant</span><span>Damage</span>';
+    columns.innerHTML = `<span>${t('endScreen.roster.colCombatant')}</span><span>${t('endScreen.damage')}</span>`;
     const listRoot = el('div', 'es-roster-list', panel);
     listRoot.setAttribute('role', 'list');
-    listRoot.setAttribute('aria-label', `${title} damage results`);
+    listRoot.setAttribute('aria-label', t('endScreen.roster.damageResults', { title }));
     listRoot.tabIndex = 0;
     if (!list.length) {
-      el('div', 'es-none', listRoot).textContent = 'No combatants recorded.';
+      el('div', 'es-none', listRoot).textContent = t('endScreen.noCombatants');
       return;
     }
     for (const result of list) renderTeamRosterRow(listRoot, result, hostile, maxDamage);
@@ -732,29 +737,29 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function outcomeLine(result: EndScreenResult, sum: EndScreenSummary): string {
     if (sum.reason === 'network_disconnect') {
-      return 'The match connection was interrupted. No result was recorded.';
+      return t('endScreen.outcome.disconnect');
     }
     if (result === 'victory') {
       return sum.playerDead
-        ? 'Your team carried the field after you fell.'
-        : 'Enemy force destroyed. The field is yours.';
+        ? t('endScreen.outcome.victory.survived')
+        : t('endScreen.outcome.victory.alive');
     }
-    if (result === 'defeat') return 'Your force was wiped out. The field is lost.';
+    if (result === 'defeat') return t('endScreen.outcome.defeat');
     if (result !== 'draw') return '';
     return sum.reason === 'time_limit'
-      ? 'Battle timer expired. No side held the field.'
-      : 'Neither side held the field.';
+      ? t('endScreen.outcome.draw.time')
+      : t('endScreen.outcome.draw.stalemate');
   }
 
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
-    kick.textContent = 'After action report';
+    kick.textContent = t('endScreen.kicker');
     const bannerClass = result === 'victory' ? 'v' : result === 'defeat' ? 'd' : 'n';
-    const bannerText = result === 'victory' ? 'VICTORY'
-      : result === 'defeat' ? 'DEFEAT'
-        : result === 'draw' ? 'DRAW' : 'BATTLE OVER';
+    const bannerText = result === 'victory' ? t('endScreen.victory')
+      : result === 'defeat' ? t('endScreen.defeat')
+        : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
     const banner = el('div', `es-ban ${bannerClass}`, hero);
     banner.textContent = bannerText;
     host.dataset.banner = bannerText;
@@ -792,10 +797,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats): void {
     const penetrationRate = stats.hits > 0
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
-    renderMiniStat(parent, 'penetration', null, 'Penetrations',
-      `${stats.pens} / ${stats.hits}`, `${penetrationRate}% of hits`);
-    renderMiniStat(parent, 'shield', 'blocked', 'Damage blocked', fmtN(stats.blocked));
-    renderMiniStat(parent, 'damage', 'received', 'Damage received', fmtN(stats.received));
+    renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
+      `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
+    renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
+    renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
     host.dataset.hits = String(stats.hits);
     host.dataset.pens = String(stats.pens);
     host.dataset.received = String(Math.round(stats.received));
@@ -810,12 +815,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details = [
       bestShot.zone,
       bestShot.distM ? `${Math.round(bestShot.distM)} m` : '',
-      bestShot.destroyed ? 'Kill confirmed' : '',
+      bestShot.destroyed ? t('endScreen.killConfirmed') : '',
     ].filter(Boolean).join(' · ');
     strip.innerHTML =
-      `<span class="bk">${uiIconSVG('autoAim', 16)}<span>Best shot</span></span>` +
+      `<span class="bk">${uiIconSVG('autoAim', 16)}<span>${t('endScreen.bestShot')}</span></span>` +
       `<span class="bd">${fmtN(bestShot.damage)}</span>` +
-      `<span class="bt"><b>${bestShot.targetName || 'Enemy vehicle'}</b><small>${details}</small></span>`;
+      `<span class="bt"><b>${bestShot.targetName || t('endScreen.enemyVehicle')}</b><small>${details}</small></span>`;
     host.dataset.bestShot = String(Math.round(bestShot.damage));
   }
 
@@ -827,11 +832,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const killBlock = el('div', 'es-kill-block', parent);
     const killHead = el('div', 'es-ph', killBlock);
     killHead.innerHTML = `<span class="ph-title">${uiIconSVG('skull', 15)}` +
-      `<span>Vehicles destroyed</span></span><span>${kills.length}</span>`;
+      `<span>${t('endScreen.killsHeading')}</span></span><span>${kills.length}</span>`;
     const killList = el('div', 'es-kill-list', killBlock);
     if (!kills.length) {
       el('div', 'es-none', killList).textContent = result === 'victory'
-        ? 'No kills credited — your team finished them.' : 'No kills this battle.';
+        ? t('endScreen.noKillsVictory') : t('endScreen.noKillsBattle');
     }
     for (const kill of kills) {
       const row = el('div', 'es-kr', killList);
@@ -849,22 +854,22 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     sum: EndScreenSummary,
   ): void {
     const personal = el('section', 'es-debrief personal', report);
-    personal.setAttribute('aria-label', 'Your battle performance');
+    personal.setAttribute('aria-label', t('endScreen.personal.aria'));
     const heading = el('div', 'es-dh', personal);
     heading.innerHTML = `<span class="titleline">${uiIconSVG('battleRecord', 18)}` +
-      '<span class="ey">Your performance</span></span>';
+      `<span class="ey">${t('endScreen.personal.title')}</span></span>`;
     const statGrid = el('div', 'es-stat-grid', personal);
     if (sum.playerSpecId) {
       statGrid.classList.add('has-vehicle');
       const vehicleCard = el('div', 'es-vehicle-card', statGrid);
       const vehicle = el('img', '', vehicleCard);
       vehicle.src = iconUrl(sum.playerSpecId, 'angle');
-      vehicle.alt = sum.playerVehicle ? `${sum.playerVehicle} vehicle` : 'Your vehicle';
+      vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
     }
-    tile(statGrid, 'dealt', 'Damage dealt', {
+    tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',
     });
-    tile(statGrid, 'kills', 'Kills', {
+    tile(statGrid, 'kills', t('endScreen.tile.kills'), {
       value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull',
     });
     renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats);
@@ -874,28 +879,28 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
     const teams = el('section', 'es-debrief teams', report);
-    teams.setAttribute('aria-label', 'Team battle result');
+    teams.setAttribute('aria-label', t('endScreen.team.aria'));
     const allyStats = summarizeTeam(sum.allies);
     const enemyStats = summarizeTeam(sum.enemies);
     const heading = el('div', 'es-dh', teams);
     heading.innerHTML = `<span class="titleline">${uiIconSVG('team', 19)}` +
-      '<span class="ey">Battle outcome</span></span>';
+      `<span class="ey">${t('endScreen.team.outcome')}</span></span>`;
     const scoreboard = el('div', 'es-scoreboard', teams);
     scoreboard.innerHTML =
       '<div class="es-score-side ally"><div class="es-score-copy">' +
-      `<div class="sl">${uiIconSVG('team', 16)}<span>Your team</span></div>` +
-      `<div class="ss">${allyStats.alive} / ${allyStats.total} survived · ${fmtN(allyStats.damage)} damage</div>` +
+      `<div class="sl">${uiIconSVG('team', 16)}<span>${t('endScreen.team.ally')}</span></div>` +
+      `<div class="ss">${t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) })}</div>` +
       `</div><div class="sn">${fmtN(allyStats.kills)}</div></div>` +
       '<div class="es-score-dash">—</div>' +
       `<div class="es-score-side foe"><div class="sn">${fmtN(enemyStats.kills)}</div>` +
-      `<div class="es-score-copy"><div class="sl"><span>Enemy team</span>${uiIconSVG('team', 16)}</div>` +
-      `<div class="ss">${enemyStats.alive} / ${enemyStats.total} survived · ${fmtN(enemyStats.damage)} damage</div>` +
+      `<div class="es-score-copy"><div class="sl"><span>${t('endScreen.team.enemy')}</span>${uiIconSVG('team', 16)}</div>` +
+      `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
       '</div></div>';
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
-    renderTeamRoster(rosters, 'Your team', sum.allies, false, maxDamage);
-    renderTeamRoster(rosters, 'Enemy team', sum.enemies, true, maxDamage);
+    renderTeamRoster(rosters, t('endScreen.team.ally'), sum.allies, false, maxDamage);
+    renderTeamRoster(rosters, t('endScreen.team.enemy'), sum.enemies, true, maxDamage);
     host.dataset.rosterAllies = String(sum.allies.length);
     host.dataset.rosterEnemies = String(sum.enemies.length);
     host.dataset.damageRows = String(sum.allies.length + sum.enemies.length);
@@ -919,7 +924,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const again = el('button', 'cot-es-btn prime', actions);
       again.type = 'button';
       again.innerHTML = `<span class="btn-inner">${uiIconSVG('rematch', 18)}` +
-        '<span>BATTLE AGAIN</span></span>';
+        `<span>${t('endScreen.battleAgain')}</span></span>`;
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});

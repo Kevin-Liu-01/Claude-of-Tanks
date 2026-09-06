@@ -1,0 +1,12 @@
+{
+  "stamp": "2026-09-06T10-36-31-814Z",
+  "repo": "/root/Claude-of-Tanks",
+  "steps": [
+    {
+      "step": "preflight-dirty",
+      "ok": false,
+      "message": "working tree is dirty; refusing to sync",
+      "porcelain": "M  .gitignore\n"
+    }
+  ]
+}
