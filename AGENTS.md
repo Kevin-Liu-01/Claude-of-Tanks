@@ -19,6 +19,9 @@ worktree and never stage generated tank work wholesale.
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
   new source-backed tanks, family rebuilds or exact-surface geometry repairs.
+- `docs/tank-generation/fleet-style-performance-priority.md` — urgent open
+  fleet-wide primitive/cost, switching, roller/track, chassis-closure and
+  material-role work; read before adding further tank micro-detail.
 - `src/main.ts` — strict typed boot, scene composition, UI flow, and render-loop
   wiring across extracted lifecycle owners; keep changes surgical.
 - `src/game/stateCore.ts` — dependency-free typed session shell, event bus,

@@ -113,6 +113,12 @@ Use side/top/front/rear outlines and cross-sections before adding equipment.
 
 ## 4. Author the independent base
 
+Apply the [urgent style/performance contract](fleet-style-performance-priority.md)
+before increasing detail: measure construction and instance-expanded geometry
+cost, select shared or new quality-aware primitives, and retain a meaningful
+low-detail reduction. Source resemblance alone is not a switching-performance
+or shared-material-system pass.
+
 Use first-party parametric closed solids, joined station lofts and explicit
 open assemblies. Shared material/fitting/rig helpers are vocabulary; they do
 not justify starting every new visual with the same full donor hull/turret.

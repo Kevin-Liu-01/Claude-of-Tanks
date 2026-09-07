@@ -53,6 +53,10 @@ Replace placeholders; unknown is an explicit value, not an invented result.
 - Hull belly/deck, upper/lower glacis, shoulder/skirt stations:
 - Turret roof/brow/cheeks/bustle and gun seat:
 - Running-gear centers/radii/tangents; datums that must not move:
+- Actual bilateral return rollers; original-fleet track-thickness control:
+- Shared/new primitives and high/low segment/instance strategy:
+- Baseline geometry/build/memory cost and frozen class/detail budgets:
+- Body camouflage versus accessory/cloth/bag/glass/rubber/metal roles:
 - Intentional negative spaces (dimensions, ownership, section/ray proof):
 - Permanent armor versus removable ERA and damage-state tests:
 - Equipment inventory, local physical seats and owner rigs:
@@ -72,6 +76,10 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
 | Winding, closure and intentional negative space | NOT RUN | | | |
 | Physical seats and yaw/pitch/recoil ownership | NOT RUN | | | |
 | High/low gear motion / strict band+shoe / duplicates | NOT RUN | | | |
+| Actual return rollers / track thickness / chassis-side closure | NOT RUN | | | |
+| Stored and instance-expanded triangles / build/draw/memory budgets | NOT RUN | | | |
+| Cold/warm/rapid tank-switch latency and frame gaps | NOT RUN | | | |
+| Primitive reuse / high-low reduction / accessory material roles | NOT RUN | | | |
 | Live/spent/reset ERA / permanent backing | NOT RUN | | | |
 | Main/aux armor finite rays / modules / crew | NOT RUN | | | |
 | Markings, colors, bores, actual roof weapon | NOT RUN | | | |

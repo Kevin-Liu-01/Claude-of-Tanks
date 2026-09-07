@@ -9,6 +9,12 @@ transcript whose old commands should be replayed.
 
 ## Start a build
 
+**Current urgent priority:** read the [fleet style and performance backlog](fleet-style-performance-priority.md)
+before adding further tank detail. The 2026-09-07 owner request makes switching
+cost, reusable primitives, return rollers, track thickness, chassis closure and
+correct camouflage/accessory materials required work across all new tanks.
+These are open issues, not completed fleet-wide fixes.
+
 1. Read the root [agent index](../../AGENTS.md), [vehicle instructions](../../src/vehicles/SKILL.md),
    this directory's [procedure](SKILL.md), and the applicable build/gate laws.
 2. Create a scoped worktree and copy [the run packet](templates/run-packet.md)

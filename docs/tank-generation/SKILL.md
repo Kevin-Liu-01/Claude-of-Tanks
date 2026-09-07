@@ -15,6 +15,7 @@ not a separately installed global plugin or an autonomous publication grant.
 ## Read order
 <!-- agent-docs:fill:model -->
 Read [README](README.md), [workflow](workflow.md), [quality gates](quality-gates.md),
+the current [fleet style/performance priority](fleet-style-performance-priority.md),
 the root [agent index](../../AGENTS.md), and [vehicle skill](../../src/vehicles/SKILL.md).
 Read the full applicable [build standard](../BUILD-STANDARD.md) and
 [geometry gate](../GEOMETRY-GATE.md), respecting the chronology note in README.
@@ -31,13 +32,15 @@ override guesses about what was already built, not current gate failures.
 3. Hash and inspect sources; freeze independent registration and actual source
    ownership. Resolve incompatible targets before committing to broad geometry.
 4. Author measured primary solids and real negative space. Establish proportions
-   before detail; reuse mechanics, not an unrequested donor silhouette.
+   before detail; reuse mechanics and quality-aware primitives, not an unrequested
+   donor silhouette. Record high/low geometry cost before adding micro-detail.
 5. Add physically seated, correctly parented equipment and combat surfaces.
    Verify both sides, articulation, moving tracks, and live/spent/reset ERA.
 6. Iterate measured outlines, geometry, native shaded comparisons and an
    independent critic. Keep failed experiments and invalidated receipts honest.
 7. Integrate exact lazy IDs, gameplay metadata, anatomy, markings and generated
-   assets. Run the complete required validation; preserve originals.
+   assets. Run the complete required validation and cold/warm/rapid tank-switch
+   performance checks; preserve originals and report per-ID coverage.
 8. Show the actual procedural path and write a resumable handoff. Publish only
    when requested and within the verified/explicitly authorized scope.
 

@@ -39,6 +39,9 @@ placeholders; don't paste a whole transcript. Revalidate the live state on resum
 - Required view list and missing images:
 - Remaining geometry/contact/negative-space issues, worst first:
 - Remaining gameplay/ERA/track/asset issues:
+- Open fleet-style/performance issue IDs; measured costs versus unverified causes:
+- Per-ID roller, track-thickness, chassis-closure and material-role coverage:
+- Cold/warm/rapid-switch benchmark state and frozen budgets:
 - Original-model and unrelated-record preservation evidence:
 - Local artifact paths plus regeneration commands if ignored/machine-local:
 - Experiments rejected and why (do not redo without new evidence):
