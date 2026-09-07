@@ -53,8 +53,8 @@ assert.match(hudSource,
   /mmBg = image;[\s\S]{0,120}drawMinimapBackground\(\)/,
   'production retains the decoded image instead of a purge-prone iPad canvas copy');
 assert.match(worldActivationSource,
-  /minimapAssetVersion \|\| 'north-up-v6'/,
-  'the corrected current-world raster bypasses stale heading-up browser caches');
+  /minimapAssetVersion \|\| 'north-up-v7'/,
+  'refreshed environment rasters bypass stale orientation and shoreline browser caches');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
