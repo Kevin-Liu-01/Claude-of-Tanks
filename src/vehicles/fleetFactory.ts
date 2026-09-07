@@ -44,6 +44,7 @@ import './germany.ts';
 import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
+import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -79,6 +80,7 @@ export interface CreateTankOptions {
 
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
+synchronizeSecondWaveXCombatMetadata();
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
@@ -111,6 +113,29 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
+  k1a1X: () => import('./profiles/k1a1X.ts').then((mod) => registerProfiles(mod.K1A1_X_PROFILES)),
+  amx30X: () => import('./profiles/amx30X.ts').then((mod) => registerProfiles(mod.AMX30_X_PROFILES)),
+  t62mv1X: () => import('./profiles/t62mv1X.ts').then((mod) => registerProfiles(mod.T62MV1_X_PROFILES)),
+  t72b1987X: () => import('./profiles/t72b1987X.ts').then((mod) => registerProfiles(mod.T72B1987_X_PROFILES)),
+  t80uX: () => import('./profiles/t80uX.ts').then((mod) => registerProfiles(mod.T80U_X_PROFILES)),
+  t72b3X: () => import('./profiles/t72b3X.ts').then((mod) => registerProfiles(mod.T72B3_X_PROFILES)),
+  jagdpanzerE100X: () => import('./profiles/jagdpanzerE100X.ts').then((mod) => registerProfiles(mod.JPZE100_X_PROFILES)),
+  type10X: () => import('./profiles/type10X.ts').then((mod) => registerProfiles(mod.TYPE10_X_PROFILES)),
+  type90X: () => import('./profiles/type90X.ts').then((mod) => registerProfiles(mod.TYPE90_X_PROFILES)),
+  amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
+  arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
+  strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),
+  t72b3mX: () => import('./profiles/t72b3mX.ts').then((mod) => registerProfiles(mod.T72B3M_X_PROFILES)),
+  challenger1X: () => import('./profiles/challenger1X.ts').then((mod) => registerProfiles(mod.CHALLENGER1_X_PROFILES)),
+  t72buX: () => import('./profiles/t72buX.ts').then((mod) => registerProfiles(mod.T72BU_X_PROFILES)),
+  chieftain5X: () => import('./profiles/chieftain5X.ts').then((mod) => registerProfiles(mod.CHIEFTAIN5_X_PROFILES)),
+  t90AwX: () => import('./profiles/t90AwX.ts').then((mod) => registerProfiles(mod.T90_AW_X_PROFILES)),
+  t90BurlakX: () => import('./profiles/t90BurlakX.ts').then((mod) => registerProfiles(mod.T90_BURLAK_X_PROFILES)),
+  t90msX: () => import('./profiles/t90msX.ts').then((mod) => registerProfiles(mod.T90MS_X_PROFILES)),
+  leclercX: () => import('./profiles/leclercX.ts').then((mod) => registerProfiles(mod.LECLERC_X_PROFILES)),
+  leclercClassicX: () => import('./profiles/leclercClassicX.ts').then((mod) => registerProfiles(mod.LECLERC_CLASSIC_X_PROFILES)),
+  chieftain10X: () => import('./profiles/chieftain10X.ts').then((mod) => registerProfiles(mod.CHIEFTAIN10_X_PROFILES)),
   leopardX: () => import('./profiles/leopardX.ts').then((mod) => registerProfiles(mod.LEOPARD_X_PROFILES)),
   t90X: () => import('./profiles/t90X.ts').then((mod) => registerProfiles(mod.T90_X_PROFILES)),
   merkavaX: () => import('./profiles/merkavaX.ts').then((mod) => registerProfiles(mod.MERKAVA_X_PROFILES)),

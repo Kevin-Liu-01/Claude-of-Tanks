@@ -1,0 +1,16 @@
+{
+  "id": "amx40_x",
+  "sourceSha256": "2a510ae66a2355bc9766f043c7f42ae51164181ac9a6ed40d45c63993789d50e",
+  "scale": 1,
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "translation": [
+    0,
+    -0.0013999999500804161,
+    0.030300021171569824
+  ],
+  "registrationReason": "Raw metre-size source, unchanged uniform scale1. Main structural shell Z[-3.371100,3.310500] centered; physical native track contact Y.0014 grounded. No candidate-derived fit."
+}

@@ -1,5 +1,16 @@
 # TANK BUILD STANDARD — the one checklist (owner-ratified laws, 2026-08-03)
 
+For the current source-backed X workflow, start with the
+[tank-generation handbook](tank-generation/README.md). It supplies intake,
+construction, prompts, current tool coverage and handoff instructions. This
+living rulebook retains August history: newer source-X contracts use the
+**92-point exemplar floor**, source-only rigid/uniform registration, and explicit
+source-versus-real-vehicle target decisions. Do not replay older nonuniform
+oracle fitting, score-counterweight or mask-exclusion shortcuts for new source
+studies. Missing historical tools are not available proof. See the handbook's
+[chronology](tank-generation/README.md#authority-and-chronology) and
+[quality gates](tank-generation/quality-gates.md) before applying an old recipe.
+
 Every tank ships when it meets ALL of this. Builders self-check every round;
 critics carry these as standing checks; the orchestrator lands nothing that
 regresses them. This file supersedes scattered per-packet law restatements —

@@ -1,0 +1,16 @@
+{
+  "id": "jpz_e100_x",
+  "sourceSha256": "3e0e68362353175d4d7100c33802b95b60e305ae7ae3b8bb204a79b174fe7a40",
+  "scale": 1,
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "translation": [
+    -2.3841857377e-7,
+    1.0654931687812503,
+    -0.13314741268048544
+  ],
+  "registrationReason": "Fictional vehicle: supplied semantic source is shape authority, not a claim about a built historical vehicle. Preserve full metre-sized source, ground native track contact, center complete hull bounds independently of long cannon. No candidate fit."
+}

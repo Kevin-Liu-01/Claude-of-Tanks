@@ -7,7 +7,7 @@
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Free browser-native armored combat built with <strong>Three.js</strong>. Take 141 production-visible first-party procedural vehicles
+  Free browser-native armored combat built with <strong>Three.js</strong>. Take 164 production-visible first-party procedural vehicles
   across 30 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
@@ -59,7 +59,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **141** production-visible and **178** keyed local-development procedural vehicles across **180** saved roster records; **0** GLB-sourced playables |
+| Fleet | **164** production-visible and **201** keyed local-development procedural vehicles across **203** saved roster records; **0** GLB-sourced playables |
 | Worlds | **30** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -67,7 +67,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
-The provenance gate currently reports **151 first-party procedural battle playables, 0 GLB-sourced playables, and 7
+The provenance gate currently reports **174 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 tracked external comparison models with exact source records**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage
@@ -113,7 +113,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </tr>
 <tr>
 <td width="50%"><img src="public/media/showcase-r2/13_gallery_modules.webp" alt="Leclerc XLR internal modules and crew shown in the current Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—141 in production or 178 in keyed local development.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—164 in production or 201 in keyed local development.</sub></td>
 </tr>
 </table>
 
@@ -169,7 +169,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 141 production vehicles or 178 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 164 production vehicles or 201 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>
@@ -258,6 +258,10 @@ receive dedicated movement, aim, scope, fire, ammunition, equipment, and special
 desktop HUD.
 
 ## Production tools
+
+For procedural vehicle creation, use the [tank-generation handbook](docs/tank-generation/README.md):
+source-file and Gallery-markup intake, measured geometry and negative space,
+independent review gates, reusable agent briefs, and handoff templates.
 
 <p>
   <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">

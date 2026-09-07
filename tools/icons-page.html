@@ -15,6 +15,7 @@ import {
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
 import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
 import { createInspectionOverlay, inspectionLegend } from '/src/gallery/overlays.ts';
+import { portraitSideRatio } from '/tools/portrait-camera.ts';
 import {
   auditPortraitPixels,
   directPortraitPlacement,
@@ -829,12 +830,9 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       // portrait a 3% camera cushion instead of weakening the fleet audit.
       const portraitMargin = id === 'challenger_3' ? MARGIN * 1.03 : MARGIN;
       const dist = (radius * portraitMargin) / Math.sin((fov / 2) * Math.PI / 180);
-      // The source-fitted Panther's tall whips exceed the card's full-height
-      // envelope at the fleet's front-biased angle. Show more of its chassis
-      // side in this portrait; preserve the whips, dense-core scale, baseline
-      // and audit limits. This does not affect comparison or technical views.
-      const portraitSideRatio = id === 'kf51_x' ? -0.76 : -0.56;
-      const dir = new THREE.Vector3(portraitSideRatio, 0.34, 1.0).normalize();
+      // Tall source fittings remain intact; only their portrait azimuth changes.
+      // Comparison/technical cameras, dense-core scale and pixel gates do not.
+      const dir = new THREE.Vector3(portraitSideRatio(id), 0.34, 1.0).normalize();
       const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
       angleCam.position.copy(center).addScaledVector(dir, dist);
       angleCam.lookAt(center);

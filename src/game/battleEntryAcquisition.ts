@@ -85,8 +85,18 @@ export function createBattleEntryAcquisition({
       });
       const matchP = connectAfterWorld ? worldP.then(connectTask) : connectTask();
 
-      const [modules, world, match] = await Promise.all([modulesP, worldP, matchP]);
-      return { modules, world, match };
+      try {
+        const [modules, world, match] = await Promise.all([modulesP, worldP, matchP]);
+        return { modules, world, match };
+      } catch (error) {
+        // World acquisition mutates the shared scene even after a sibling
+        // fails. Let it finish before the caller restores Garage, preserving
+        // the first failure. Do not wait for transport: caller cleanup owns
+        // aborting an unfinished connection, whose rejection remains observed
+        // by the original Promise.all barrier.
+        await worldP.catch(() => {});
+        throw error;
+      }
     },
   };
 }

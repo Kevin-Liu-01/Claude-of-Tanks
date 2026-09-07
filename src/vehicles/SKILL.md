@@ -112,6 +112,14 @@ normal anatomy/release sequence below.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
+For source-backed creation, explicit family derivation or Gallery-markup repair,
+start with [the tank-generation handbook](../../docs/tank-generation/README.md)
+and its repo-local procedure. It consolidates intake decisions, source-only
+registration, negative-space construction, current tool coverage, strict gates,
+reusable prompts and handoffs. Its chronology notes distinguish current
+source-X requirements from historical oracle-repair recipes and scoped as-is
+publication exceptions; a published model is not necessarily qualified.
+
 Read current program state and the relevant family profile, inspect standard
 side/top views, run focused geometry gates, then fleet/family/assets checks.
 For a new tank or a ground-up rebuild backed by an owner-supplied reference,

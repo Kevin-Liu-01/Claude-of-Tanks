@@ -35,7 +35,9 @@ and the nearest directory `SKILL.md`.
 - Physics/combat: read `src/sim/SKILL.md`, then its existing selftests.
 - UI: read `src/ui/SKILL.md` and inspect the rendered browser surface.
 - Multiplayer: read `docs/MULTIPLAYER-ARCHITECTURE.md` and `src/net/SKILL.md`.
-- Tank fidelity/assets: read `src/vehicles/SKILL.md` and current program state.
+- Tank creation/rebuild/markup repair: read `docs/tank-generation/SKILL.md`,
+  `src/vehicles/SKILL.md` and the latest per-tank/batch packet; use the handbook's
+  source-freeze, gate, prompt and handoff templates.
 - Performance: capture a baseline with the committed probes before editing.
 
 ## Gotchas

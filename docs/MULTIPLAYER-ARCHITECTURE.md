@@ -94,10 +94,19 @@ host migration or automatic match restoration after host loss.
   It admits only complete canonical lobby packets to the retained-room menu;
   a partial match-room packet cannot mutate that UI contract.
 - `src/net/networkBattlePresentationRuntime.ts` owns the complete covered
-  cold-client transition for private/LAN and dedicated adapters. Module, world,
-  and transport acquisition overlap; a bridge is published only after exact
-  roster preparation and a viewer-bearing authoritative snapshot; warmup and
-  peer readiness finish before atomic activation and loader reveal.
+  cold-client transition for private/LAN and dedicated adapters. Module/visual
+  initialization, world, and transport acquisition overlap; a bridge is
+  published only after exact roster preparation and a viewer-bearing
+  authoritative snapshot. Warmup precedes atomic visual activation, verified
+  first-frame rendering, and awaited loader fade. Only then is READY sent, so
+  the shared five-second countdown is not consumed behind the loader. An early
+  visible peer shows WAITING FOR COMMANDERS until authority starts that clock;
+  late joins retain the actual remaining countdown or playing phase.
+- `src/net/networkBattleLaunchRuntime.ts` keeps failed/cancelled entry covered
+  through Garage restoration and the first restored paint. Acquisition settles
+  any in-flight world activation before recovery, preserving the original
+  error without waiting on an unrelated stalled connection. No presentation
+  step grants gameplay authority during loading or countdown.
 - `src/net/networkBattlePresentationAccess.ts` demand-loads that deep owner on
   network-mode or joined-lobby intent and retries a transient chunk failure.
 - `src/net/connectionRecovery.ts` owns the single reconnect/failure
@@ -302,6 +311,30 @@ locking, host permissions, and start policy. Empty 1v1/2v2/3v3/5v5/7v7 slots are
 filled deterministically by authority-owned bots. Bots use seeded diverse
 openings, traversability planning on every map, local obstacle recovery, and
 the same spotting limits as human players.
+
+Bot decisions and gun aiming use the same `src/game/ai.ts` controller and
+`updateTank` gun-lay solver as solo bot battles. The countdown deliberately
+sets `aimLocked` on every vehicle. On each playing tick, authority releases
+that hold for active living bots before updating their controller; humans
+release it only through their own input. Otherwise bots keep choosing aim
+points but never traverse or elevate after an ordinary room countdown.
+Inactive participants, wrecks, and disconnected/explicitly aim-locked humans
+are not unlocked by this handoff. `authoritativeBotControls.selftest.mjs`
+covers the default countdown, a one-tick countdown, no countdown, firing, and
+control ownership. `multiplayerBotPresentation.selftest.mjs` follows real bot
+angles through compact deltas, interpolation, and per-frame visual updates.
+
+Readiness is reversible while the room is waiting. The Garage provides a
+direct Ready / Not ready action beside its persistent room reminder; the
+room drawer and results screen expose the same command. Cancelling readiness
+unlocks that player's loadout and prevents the host from starting until all
+active players ready again. Initial lobbies route through the menu's guarded
+session; retained rooms use the room coordinator. Spectators, disconnected
+players, and rooms already starting or playing cannot change readiness.
+Authority orders start/unready races: an accepted start remains atomic, while
+an accepted unready blocks the following start. `lobbyReadiness.selftest.mjs`
+exercises both private/LAN room modes and rematch votes; coordinator tests
+guard delayed commands from reaching a replacement room.
 
 `src/net/lobbyRuntime.ts` is the strict transport owner around that policy. It
 validates serialized room state before client admission, rejects stale sequence

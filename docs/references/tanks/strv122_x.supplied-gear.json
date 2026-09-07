@@ -1,0 +1,94 @@
+{
+  "id": "strv122_x",
+  "status": "source-file native gear draft; full-model proof pending",
+  "source": {
+    "file": "stridsvagn_122.glb",
+    "sha256": "c9419be9f25791df72eb2cb55efc65f6241ccf196e20dce0b1d6168bfedf8f4e",
+    "registration": "docs/research/second-wave-registrations/strv122_x.json",
+    "ownership": "All 18 original chunks retained. Fused file has no independently trustworthy wheel rig nodes.",
+    "measurement": "Complete original transformed triangles used for offline line intersections. No source topology or buffers enter the runtime. Visible surface scalars define original turned solids and native articulated gear."
+  },
+  "road": {
+    "centersZ": [-2.245, -1.4375, -0.645, 0.1275, 0.8925, 1.6675, 2.465],
+    "centerY": 0.432,
+    "radius": 0.3375,
+    "axisRightX": 1.335,
+    "axisLeftX": -1.315,
+    "width": 0.370,
+    "tireInnerRadius": 0.314,
+    "inference": "Circular fits to the exposed lower wheel arcs; hidden upper arcs, axle backs and bearing contacts are mechanical reconstructions, not source-owned joints.",
+    "rightHeldOutFirstFaceYZX": [[0.4,0.90,1.538104],[0.4,0.72,1.427402],[0.52,0.76,1.429100],[0.28,0.76,1.416023],[0.16,0.90,1.452394],[0.4,1.18,1.496193]],
+    "leftHeldOutFirstFaceYZX": [[0.4,0.90,-1.518543]],
+    "nativeToleranceM": 0.006,
+    "form": "Closed original steel bowl with six curved pressed recesses, raised annular rim and small stepped hub; no opaque rubber center or proud star plate."
+  },
+  "track": {
+    "laneRightX": 1.410,
+    "laneLeftX": -1.387,
+    "shoeAndPinWidth": 0.640,
+    "continuousCarrierWidth": 0.540,
+    "sourceLowerCourseBounds": {
+      "continuousAtZ0_90": [-1.652261,-1.116053,1.133322,1.676717],
+      "connectorsAtZ0_14": [-1.697008,-1.070490,1.090340,1.724550]
+    },
+    "nativeRestShoeEnvelope": [[-1.697,0.006,-3.279],[1.720,1.218,3.593]],
+    "pitchM": 0.143,
+    "hiddenReturnSupportInferenceZY": [[-1.85,1.070],[-0.38,1.060],[1.15,1.050],[2.00,1.018]],
+    "ground": "Sixteen live physical shoe phases remain at or above ground within 0.5 mm tolerance; rest minimum is +6 mm."
+  },
+  "endFits": {
+    "method": "Twenty-one complete-source outer-course sections per end, at Y0.50 through1.00 in25mm steps; tooth-phase radial residuals reach23mm. Above1.00 the front scan includes the separate overhanging fender and is not used for the circular fit.",
+    "rearOuterCircle": {"z":-2.8741697963,"y":0.8083167584,"meanRadius":0.3924729675},
+    "frontOuterCircle": {"z":3.2364872991,"y":0.8224767007,"meanRadius":0.3447818862},
+    "nativeBodyRadii": {"rear":0.321,"front":0.273},
+    "courseAccounting": "Native KIT adds45mm wrap clearance to body radius; physical shoe stock supplies the remaining outer reach. No misleading trackR-only input or altered axle/course is used to clear hull conflicts.",
+    "frontAxialSeat": {"scale":0.760,"rightOutset":-0.149780,"leftOutset":-0.151350},
+    "rearAxialOutset": -0.054,
+    "sourceFirstFaceSideYZX": [[1,0.825,3.235,1.480088],[1,0.80,3.235,1.479829],[1,0.60,3.235,1.411785],[-1,0.825,3.235,-1.455521],[-1,0.60,3.235,-1.387156],[1,0.80,-2.85,1.678559],[-1,0.80,-2.85,-1.653152]],
+    "nativeToleranceM": 0.006,
+    "limitation": "End wheels retain the native pressed-family radial construction. Although the measured idler hub/lower bowl and sprocket hub axial witnesses match, the rear source has a broader proud off-hub shoulder: at right Y0.70/Z-2.85 sourceX1.664887 versus nativeX1.560800 (104mm local deficit). This is an explicit unfinished form limitation, not claimed source-exact or removed from comparison."
+  },
+  "concealedSuspensionAccommodation": {
+    "basis": "Mechanical inference behind source-measured wheel bowls, not source-owned axle geometry. The prior symmetric arm penetrated the narrower left bowl by about16mm.",
+    "armCenterAbsXBeforeM": 1.091,
+    "armCenterAbsXAfterM": 1.046,
+    "anchorBossCenterAbsXBeforeM": 1.054,
+    "anchorBossCenterAbsXAfterM": 1.009,
+    "axleBossCenterAbsXBeforeM": 1.167,
+    "axleBossCenterAbsXAfterM": 1.125,
+    "axleBossWidthBeforeM": 0.050,
+    "axleBossWidthAfterM": 0.106,
+    "verification": "Both-LOD actual arm/wheel triangle samples exceed the unchanged20.35mm clearance floor. Double-sided closed-stock rays establish more than2mm positive overlap at every arm/anchor boss, arm/spindle and spindle/wheel-core joint.",
+    "preserved": "All seven road stations per side, source wheel faces, end axles, roller stations, track lanes, loop points and physical shoe geometry remain unchanged.",
+    "test": "src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs"
+  },
+  "concealedHullAccommodation": {
+    "reason": "The fused file does not expose a separate upper return course. Its low solid shoulder conflicts with a mechanically continuous native belt using the independently fitted visible end wraps. No visible roof or outer lip and no gear axes are displaced.",
+    "clearCorridorAbsX": {"left":1.717,"right":1.740},
+    "recommendedCeilingZY": [[2.84,1.180],[3.20,1.195],[3.35,1.175],[3.45,1.115],[3.52,1.035],[3.70,1.016]],
+    "sourceExample": {"x":1.5,"z":3.2,"sourceShoulderUndersideY":0.976270,"sourceLowerTrackTopY":0.471341},
+    "authorization": "Root authorized bounded internal wheel-well relief and then the narrow concealed right lower-tip upturn below. Original roof planes and outerX stations remain; this is a disclosed mechanical accommodation, not source geometry proof.",
+    "rightTipUpturn": {
+      "peakZ": 3.520,
+      "heightM": 0.042,
+      "zeroBlendZ": [3.470,3.580],
+      "oldLipPoint": [1.6894,0.9836,3.52],
+      "newLipPoint": [1.6894,1.0256,3.52],
+      "sourceUndersideAnchor": [1.71015,1.0,3.52],
+      "sourceUndersideNormal": [-0.596418,-0.731093,0.331343],
+      "sourcePlaneExtendedToOldLipXY": [1.6894,1.0169276323],
+      "newLipAboveSourcePlaneExtensionM": 0.0086723677,
+      "qualification": "The source anchor/normal are measured full-source hits; extension into the concealed native corner is an inference. The42mm upturn is mechanical clearance, not a claimed source vertex.38mm gave18.809mm physical separation. A read-only41mm counterfactual on the limiting original triangle edge gives19.756mm, still below20mm;42mm is the smallest whole-mm lift meeting20mm.",
+      "minimumTriangleGapBeforeM": 0.0031954121,
+      "minimumTriangleGapAfterM": 0.0200641174,
+      "beforeFinding": "No physical intersection; two20mm audit cells straddled the3.2mm near gap. No scanner change or exclusion was made.",
+      "actualStrictHighLow": "Front/rear/full-sweep BAND0 and SHOE0 after the mechanical relief.",
+      "test": "src/vehicles/profiles/strv122XSuppliedFrontClearance.selftest.mjs"
+    }
+  },
+  "tests": {
+    "focused": "src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs",
+    "covers": ["Actual seven native axles per side", "Independent belt lanes and road outsets", "Held-out road and endpoint surfaces", "Open rubber centers", "Actual wheel-face suspension and GPU matrix uploads", "Complete endpoint spin ownership", "Both-side narrow-phase suspension clearance", "Positive arm/spindle/wheel and anchor-boss joints", "Sixteen physical shoe phases", "Resource disposal"],
+    "quality": "Explicit new helper/test paths are scanned, including untracked files; no full-fleet acceptance inferred from this focused fixture."
+  }
+}

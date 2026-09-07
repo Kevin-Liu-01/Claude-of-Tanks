@@ -1,0 +1,67 @@
+{
+  "id": "challenger1_x",
+  "checkpoint": "source-positive-hood",
+  "date": "2026-09-07",
+  "status": "Geometry frozen; fresh full scoped proof remains REJECTED. The bounded hood repair is physically and visually accepted, not full-model qualification.",
+  "source": {
+    "canonicalSha256": "90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64",
+    "rawSha256": "27b81eab3162ec03a0b96311462586dab02332d6ed45121aa59b9ed1223b9ab7",
+    "owner": "Object_3",
+    "scope": "Owner-selected supplied likeness, not historical metrology. The complete twelve-owner oracle, including loose below-ground panels, is unchanged and reference-only.",
+    "runtimePolicy": "Independent scalar planes, analytic edging and sampled section measurements only; no source vertex, index, texture or loader reuse."
+  },
+  "finding": "The positive-X cheek lacked the overhanging thin sheet and its edging/return. The lower cheek already left real approach air; this correction adds the absent overhead stock without carving or raising that core.",
+  "sheetWitnesses": [
+    { "x": 0.6834460703627521, "z": 2.022104030751699, "sourceTopY": 1.8280367672647526, "sourceBottomY": 1.8258623978919022 },
+    { "x": 0.7972790597528854, "z": 1.9082710413615658, "sourceTopY": 1.7951425881329528, "sourceBottomY": 1.7931370621764515 },
+    { "x": 0.5696130809726188, "z": 2.022104030751699, "sourceTopY": 1.8002481384501023, "sourceBottomY": 1.7974169148097154 }
+  ],
+  "heldOutReturnWitnesses": [
+    { "x": 1.025, "y": 1.66, "sourceFrontZ": 2.048675528151158, "sourceBackZ": 2.0451157875310164, "nativeFrontZ": 2.0435214373803983, "nativeBackZ": 2.0403213832116975 },
+    { "x": 1.13, "y": 1.82, "sourceFrontZ": 1.9548203292002557, "sourceBackZ": 1.9508716853126495, "nativeFrontZ": 1.9507487926251506, "nativeBackZ": 1.9475487980611133 },
+    { "x": 1.24, "y": 1.87, "sourceFrontZ": 1.8750310283143583, "sourceBackZ": 1.8711290838451864, "nativeFrontZ": 1.8751343007829735, "nativeBackZ": 1.8719343658235619 }
+  ],
+  "heldOutCapWitnesses": [
+    { "x": 0.5248, "z": 1.9, "sourceTopY": 1.9541714381371489, "nativeTopY": 1.9548800119030125, "sourceBottomY": 1.9304913092459688, "nativeBottomY": 1.9297800275948624 },
+    { "x": 0.72, "z": 2.124, "sourceTopY": 1.9178771580913694, "nativeTopY": 1.9196941800001217 }
+  ],
+  "realAirWitnesses": [
+    { "origin": [0.683446070363, 1.71018380918, 2.02210403075], "direction": [0, 1, 0], "lengthM": 0.1 },
+    { "origin": [0.797279059753, 1.71018380918, 1.90827104136], "direction": [0, 1, 0], "lengthM": 0.075 },
+    { "origin": [0.683446070363, 1.778483602814, 1.90827104136], "direction": [0, 0, -1], "lengthM": 0.1 },
+    { "origin": [1.13, 1.82, 1.9], "direction": [0, 0, -1], "lengthM": 0.3 },
+    { "origin": [1.24, 1.87, 1.82], "direction": [0, 0, -1], "lengthM": 0.3 }
+  ],
+  "constructionLimits": [
+    "The central sheet uses exact scalar planes; all six tested top/bottom depths and normals agree at floating-point tolerance.",
+    "The independently lofted rounded outer return is an approximation, with held-out front/back deviations up to 5.155 mm. Its axial stock is 3.2 mm versus source held-out spans 3.560–3.949 mm. These are not exact-topology claims.",
+    "Original octagonal edging approximates irregular source chamfers: held-out cap crown/underside errors are at most 1.818 mm.",
+    "A 3 mm concealed sheet-root continuation supplies positive attachment to the existing measured cheek; no broad pedestal, core lift or filled interior is introduced. The rounded receiving rails intersect existing permanent support stock."
+  ],
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/challenger1XSourceHood.selftest.mjs",
+    "highLow": "PASS: source planes, five complete-model air rays, held-out return front/back stock, cap surfaces, actual triangle-edge surface-crossing support graph, yaw ownership and disposal.",
+    "oldAuthoredPrimitiveHash": "e456a8f4009c749032ffbf23adb3f2d5b0a299e2308e0475c4479f7ece7747c8",
+    "preservationScope": "Every pre-existing P.add/addEquipment/addCupola/addMudguard primitive buffer, placement and owner, high and low, excluding only nine explicitly tagged new hood pieces. Root-owned native suspension and paint additions are separately tested, not rebaselined into this hash.",
+    "existingSuppliedTest": "PASS high/low, including current root-owned source axle, concealed joint, wheel audit, barrel and carrier assertions.",
+    "typecheck": "PASS",
+    "quality": { "functions": 30, "complexityViolations": 0, "any": 0, "unknown": 0 },
+    "fullScopedProof": {
+      "generatedAt": "2026-09-07T02:06:34.621Z",
+      "rawFidelity": 88.8968995979384,
+      "rawMinWholeView": 82.78994635935747,
+      "rawGeometryMinimum": 0,
+      "rawGeometryComponents": { "wholeCurves": 82.78994635935747, "dims": 0, "floaters": 100 },
+      "fixedSourceRegistration": { "passed": true, "dAlong": 0, "dy": 0 },
+      "strictTracks": "PASS: front, rear and full sweep, both continuous band and articulated shoes, all overlap counts 0.",
+      "continuityHoles": 0,
+      "machineGunCensus": 0,
+      "result": "REJECTED: raw aggregate, registered oblique/side whole views, track profile, dimensions and absent MG remain below their unchanged requirements. Source orphan panels and missing armament are not excused by this repair.",
+      "fidelityArchive": ".qa-dev/reports/challenger1_x-source-positive-hood-fidelity.json",
+      "geometryArchive": ".qa-dev/reports/challenger1_x-source-positive-hood-geometry.json",
+      "neutralArchive": ".qa-dev/reports/challenger1_x-source-positive-hood-neutral.png",
+      "log": ".qa-dev/reports/challenger1-source-positive-hood-proof.log",
+      "independentVisualReview": "Original-resolution fresh board closes the missing overhead-sheet finding: positive-X hood/outer return visible, black under-hood slit retained in hero/front views, no new floater or filled air. Cap remains more angular than the source. Bounded acceptance only; whole-model failures retained."
+    }
+  }
+}

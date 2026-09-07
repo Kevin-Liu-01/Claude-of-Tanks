@@ -63,6 +63,7 @@ interface GarageRoomStatus {
   roomCode?: string;
   mode?: string;
   ready: boolean;
+  canSetReady: boolean;
   readyCount: number;
   total: number;
 }
@@ -228,6 +229,7 @@ export function createNetworkRoomCoordinator({
 
   let pendingLobby: NetworkLobbyContext | null = null;
   let activeRoom: NetworkRoomState | null = null;
+  let attachedMatch: NetworkRoomMatch | null = null;
   let unsubscribeRoom: (() => void) | null = null;
   let unsubscribeChat: (() => void) | null = null;
   let menuAttached = false;
@@ -251,6 +253,8 @@ export function createNetworkRoomCoordinator({
       roomCode: state.roomCode,
       mode: state.mode,
       ready: !!me.ready,
+      canSetReady: state.phase === 'waiting' && me.team !== 'spectator' &&
+        !!me.specId && me.connected !== false,
       readyCount: active.filter((player) => player.ready).length,
       total: active.length,
     };
@@ -401,6 +405,7 @@ export function createNetworkRoomCoordinator({
       unsubscribeRoom?.();
       unsubscribeChat?.();
       activeRoom = initialState;
+      attachedMatch = match;
       presentedRound = Number(initialState?.round) || 1;
       rematchPending = false;
       present(initialState);
@@ -416,6 +421,7 @@ export function createNetworkRoomCoordinator({
       unsubscribeRoom = null;
       unsubscribeChat = null;
       activeRoom = null;
+      attachedMatch = null;
       pendingLobby = null;
       presentedRound = 0;
       rematchPending = false;
@@ -448,8 +454,24 @@ export function createNetworkRoomCoordinator({
     },
 
     setReady(ready) {
-      if (activeRoom?.phase !== 'waiting') return false;
-      getMatch()?.roomCommand?.({ type: 'set_ready', ready: !!ready });
+      if (activeRoom) {
+        const match = getMatch();
+        const me = matchPlayer();
+        if (match !== attachedMatch || activeRoom.phase !== 'waiting' || !me || me.team === 'spectator' ||
+            !me.specId || me.connected === false || match?.client?.closed ||
+            !match?.roomCommand) return false;
+        return match.roomCommand({ type: 'set_ready', ready: !!ready }) !== false;
+      }
+      const context = pendingLobby;
+      const menuPromise = getPlayMenu();
+      if (!context || !roomStatus(context.state, context.playerId)?.canSetReady ||
+          !menuPromise) return false;
+      const generation = roomGeneration;
+      menuPromise.then((menu) => {
+        // A Garage click belongs to this acquisition, never a replacement
+        // room or a round that has crossed the launch barrier while loading.
+        if (generation === roomGeneration && !activeRoom && pendingLobby) menu.setReady(!!ready);
+      }).catch(() => null);
       return true;
     },
 

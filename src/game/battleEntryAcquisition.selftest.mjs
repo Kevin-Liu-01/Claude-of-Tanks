@@ -88,6 +88,54 @@ await assert.rejects(failingP, /module failed/);
 assert.deepEqual(failureMatch, { id: 'must-close' },
   'later failures retain the connected match for caller cleanup');
 
+for (const rejectWorld of [false, true]) {
+  const world = deferred();
+  const modules = deferred();
+  const transport = deferred();
+  const originalError = new Error('visual module failed');
+  const events = [];
+  let settled = false;
+  const loading = acquisition.acquireNetwork({
+    loadModules: () => modules.promise,
+    loadWorld: async () => {
+      await world.promise;
+      events.push('activate-world');
+      return 'world';
+    },
+    connect: () => transport.promise,
+    publishMatch: () => events.push('publish'),
+  });
+  const failedLoading = assert.rejects(loading, (error) => error === originalError)
+    .then(() => { settled = true; events.push('restore-garage'); });
+  modules.reject(originalError);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false,
+    'module rejection must not restore Garage while the world can still activate');
+  if (rejectWorld) world.reject(new Error('world failed after modules'));
+  else world.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, true, 'failed entry must not wait for a hung transport');
+  await failedLoading;
+  assert.deepEqual(events, rejectWorld ? ['restore-garage'] : ['activate-world', 'restore-garage']);
+  // The transport may reject only after caller cleanup aborts the connection.
+  // Its original Promise.all observer must still own this late rejection.
+  transport.reject(new Error('connection aborted during cleanup'));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+const rejectedHostWorld = new Error('host world failed');
+const hostFailureEvents = [];
+await assert.rejects(acquisition.acquireNetwork({
+  loadModules: () => 'modules',
+  loadWorld: () => { throw rejectedHostWorld; },
+  connect: () => { hostFailureEvents.push('connect'); },
+  publishMatch: () => hostFailureEvents.push('publish'),
+  connectAfterWorld: true,
+}), (error) => error === rejectedHostWorld);
+await new Promise((resolve) => setImmediate(resolve));
+assert.deepEqual(hostFailureEvents, [],
+  'a failed host world must neither connect nor leak the dependent rejection');
+
 assert.throws(() => createBattleEntryAcquisition({ now: null }), /requires a clock/);
 await assert.rejects(acquisition.acquireSolo(null), /requires tasks/);
 

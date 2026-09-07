@@ -18,6 +18,13 @@ load, frame, network-presentation, and diagnostic contracts.
 These are architectural goals, not a promise that every device renders every
 scene at a fixed frame rate.
 
+The 2026-09-07 [urgent fleet construction/style pass](tank-generation/fleet-style-performance-priority.md)
+tracks the owner's report of slower tank selection and suspected excessive
+triangle counts in new X/Revolution and older Challenger builds. It requires
+per-ID cost attribution, reusable quality-aware primitives and real cold/warm/
+rapid-switch measurements. That backlog is open; it is not an assertion that
+triangles alone explain the latency or that fleet optimization has passed.
+
 ## Boot and route isolation
 
 The game entry, public home page, and public docs are separate Vite entries.

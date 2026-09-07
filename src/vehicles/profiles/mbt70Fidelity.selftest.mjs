@@ -7,6 +7,9 @@ import { wheelPatternFor } from '../wheelPatterns.ts';
 import { resolveCamoVisual } from '../materials.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 import { createTankState, SIM_DT } from '../../sim/movement.ts';
+import { createShell, stepShell } from '../../sim/ballistics.ts';
+import { createCombatState, selectShell } from '../../sim/damage.ts';
+import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 
 const spec = getSpec('mbt70');
 assert(spec, 'MBT-70 is registered');
@@ -28,9 +31,32 @@ assert.ok(signatureVisual.patches.length >= 3 && signatureVisual.camoScale <= 0.
   'Signature flecktarn carries enough tonal layers and a tight enough repeat to read at gallery range');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
-assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
-assert.equal(spec.gun.shells[0].guided, true);
+assert.deepEqual(spec.gun.shells.map((round) => ({
+  name: round.name,
+  type: round.type,
+  guided: round.guided === true,
+  count: round.count,
+})), [
+  { name: 'XMGM-51C Shillelagh ATGM', type: 'HEAT', guided: true, count: 13 },
+  { name: 'XM578 APFSDS-T', type: 'APFSDS', guided: false, count: 20 },
+  { name: 'M409A1 HEAT-MP', type: 'HEAT', guided: false, count: 15 },
+], 'XM150 exposes its missile and conventional combustible-case ammunition');
 assert.equal(spec.gun.reloadS, 9.8, 'primary gun-launched ATGM uses the normal 152 mm feed cycle');
+const combat = createCombatState(spec);
+assert.equal(combat.reloadChannels[0], combat.gunReload,
+  'gun-launched ATGM shares the XM150 breech reload with conventional rounds');
+for (const slot of [1, 2]) {
+  assert.equal(selectShell(combat, slot, spec), true,
+    `MBT-70 conventional slot ${slot + 1} is selectable`);
+  const round = spec.gun.shells[slot];
+  const projectile = createShell(
+    round, spec.id, true, new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 0, 1), 700 + slot,
+  );
+  assert.equal(specialActionGuidesShell({ spec, combat }, projectile), false,
+    `${round.name} remains an ordinary ballistic shell`);
+  stepShell(projectile, SIM_DT);
+  assert.ok(projectile.vel.y < 0, `${round.name} receives shell gravity instead of missile guidance`);
+}
 assert.equal(typeof spec.hydropneumaticAim, 'object',
   'MBT-70 suspension aim owns an explicit physical travel envelope');
 assert.ok(spec.hydropneumaticAim.compressionM >= 0.60 && spec.hydropneumaticAim.droopM >= 0.60,

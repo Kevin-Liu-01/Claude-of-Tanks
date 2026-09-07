@@ -1,0 +1,76 @@
+{
+  "status": "CPU-verified, frozen for fresh source comparison; not qualified",
+  "date": "2026-09-06T21:02:00Z",
+  "sourceSha256": "f8c1888e345742a5f9f65e877e51b55028d708e5cb42ab4392b5fbc21d1db2de",
+  "canonicalOracleSha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85",
+  "sourceOwner": "bone_turret_39001_chieftain_mk_10_turret_c_0",
+  "sourceUse": "Local scalar measurement and comparison only. Independently authored procedural solids; no supplied topology, arrays, UVs, textures or material imports.",
+  "rejectedPreCorrectionCapture": {
+    "generatedAt": "2026-09-06T20:17:31.014Z",
+    "retainedPath": ".qa-dev/reports/mk10-engine-carriage-fidelity.json",
+    "rawComposite": 94.97522929410444,
+    "rawWhole": 97.52622099333911,
+    "rawHull": 96.5347575020964,
+    "rawTurret": 87.85803683662627,
+    "rawGun": 95.15938535594435,
+    "rawTracks": 96.45786201091352,
+    "decision": "FAIL: four required turret views were 84–88. The queued geometry stage was canceled before running; prior geometry is not a receipt for this correction."
+  },
+  "floor": {
+    "sourceLowerY": 0.761857,
+    "sourceUpperY": 0.794758,
+    "sourceRadiusM": 0.785085,
+    "sourceCenterZ": 0.596846,
+    "previousIncorrectSolidThicknessM": 0.27771,
+    "sourceThicknessM": 0.032901,
+    "localRearRimUpperY": 1.039567,
+    "centralBossUpperY": 0.912637622915,
+    "opening": "The starboard floor aperture starts at X0.250071, terminates at Z0.561786, and retains the five measured folded outer boundaries. A fixed ray from [0.4,0.81,0.3] downward remains empty for 0.12 m. The raised aft rim is local, not a full-height drum."
+  },
+  "supports": {
+    "leftSteppedPedestalX": [-0.681770, -0.453759],
+    "leftSteppedPedestalTopY": 1.342027,
+    "leftSourceFirstXAtY110Z031": -0.681769521590,
+    "leftSourceFirstXAtY125Z043": -0.681769655057,
+    "rightObliqueSupportBottomY": 0.807089,
+    "rightObliqueSupportTopY": 1.542399,
+    "rightSourceFirstXAtY110Z090": 0.686381248705,
+    "rightSourceFirstXAtY130Z100": 0.617324669091,
+    "rightSourceFaceNormal": [0.82286457, 0, 0.56823754],
+    "attachment": "Left pedestal overlaps the actual pierced floor by 1 mm. Right support overlaps the permanent bearing by 29.44 mm; its measured lower gap remains open, with no added floor pedestal."
+  },
+  "foldedTrays": {
+    "upperFloorY": [1.364646, 1.374587],
+    "upperOutboardRimTopY": 1.605556,
+    "sourceUpperFirstXAtY142Z055": -1.090342066816,
+    "sourceUpperFirstXAtY150Z020": -1.011369319159,
+    "sourceUpperFirstXAtY150ZMinus025": -0.664722615869,
+    "lowerFloorY": [1.016326, 1.023697],
+    "lowerOuterRimTopY": 1.179977,
+    "lowerInnerRimTopY": 1.065207,
+    "sourceLowerFirstXAtY110Z085": -0.808309606500,
+    "hangingReturnBottomY": 1.226186,
+    "sourceReturnFirstXAtY130Z063": -0.866986738336,
+    "sourceReturnFirstXAtY130Z070": -0.870178170274,
+    "sourceReturnFirstXAtY130Z078": -0.873271242066,
+    "constructionLimits": "The thin upper and lower horizontal tray planes simplify small source crown variations by at most approximately 3.2 mm. The seat has its true rear notch. A concealed 54 x 24.62 x 190 mm joint bridges the 22.62 mm source-pedestal/seat separation with 1 mm overlap at each end; the small source linkage there was not isolated and this connection is explicitly inferred, not an exact source fitting."
+  },
+  "hangingLink": {
+    "nominalDiameterM": 0.03990,
+    "sourceFirstXAtY110ZMinus012": 0.104968277728,
+    "sourceFirstXAtY115ZMinus0115": 0.104822563873,
+    "sourceFirstXAtY138Z010": 0.637900349522,
+    "constructionLimits": "A scalar centerline and closed round segments interpret the source's narrow bent linkage. Irregular ten-sided fillets and end transitions are simplified; the three independent full-source ray depths remain within 3.5 mm. No adjacent basket air is filled."
+  },
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/chieftain10XBasket.selftest.mjs",
+    "highLowFixedSourcePlanesAirAndAttachment": "PASS",
+    "permanentTurretYawAndGunPitchIndependence": "PASS",
+    "nonTargetPreservation": "PASS: every non-basket primitive submission retains its geometry buffers/transforms; all other complete physical buckets, including native gear and gun, retain exact buffers and world transforms against the old drum construction.",
+    "mergedGeometryDisposal": "PASS",
+    "existingSourceGroundAndArticulation": "PASS",
+    "typecheck": "PASS",
+    "newHelperComplexity": "18 functions, zero violations, zero any/unknown",
+    "pending": "Fresh unchanged fidelity/geometry/strict gates and full composed release. Smaller forward roof sight discrepancies remain subject to the next source review."
+  }
+}

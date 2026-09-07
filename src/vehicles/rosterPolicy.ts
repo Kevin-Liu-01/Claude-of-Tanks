@@ -55,6 +55,9 @@ export function isProductionHiddenTankId(id: RuntimeValue): boolean {
 }
 
 export const RETAINED_WW2_IDS = Object.freeze([
+  // Explicitly requested independent reconstruction, not an unhide of its
+  // archived original. Preserve the original's production curation above.
+  'jpz_e100_x',
   'tiger1',
   'panther_g',
   'kv2',

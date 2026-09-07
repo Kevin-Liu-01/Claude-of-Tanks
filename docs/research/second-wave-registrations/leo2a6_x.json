@@ -1,0 +1,16 @@
+{
+  "id": "leo2a6_x",
+  "sourceSha256": "b98d81990ecf8a65e8d7f81158226f1bd55fe71d6e923c4f896151d7ee237477",
+  "scale": 1,
+  "axes": [
+    "-x",
+    "y",
+    "-z"
+  ],
+  "translation": [
+    0.000005,
+    1.08062,
+    0.251745
+  ],
+  "registrationReason": "Original metre-scale source; hull body longitudinal midpoint and track contact course; proper half-turn puts gun +Z. No per-part deformation."
+}

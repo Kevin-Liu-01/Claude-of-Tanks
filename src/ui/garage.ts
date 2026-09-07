@@ -122,6 +122,7 @@ interface GarageCamoOptions {
 
 interface GarageRoomStatus {
   readonly ready?: boolean;
+  readonly canSetReady?: boolean;
   readonly readyCount?: number;
   readonly total?: number;
   readonly mode?: string;
@@ -576,8 +577,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="endless_horde" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
     `<span class="choice-name">Endless Horde</span><small>Waves</small></button>` +
-    `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
-    `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
+    `</div><div class="cot-room-controls" role="group" aria-label="Room readiness">` +
+    `<button class="cot-room-reminder" type="button" aria-label="Open active room">` +
+    `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
+    `<button class="cot-room-ready" type="button" disabled aria-pressed="false">Ready</button></div></div>` +
     `<nav class="cot-garage-tools" aria-label="Garage setup previews">` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
     `aria-label="Open battlefield selection" aria-expanded="false" aria-controls="cot-garage-maps">` +
@@ -772,6 +775,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
+  const roomControls = requiredElement<HTMLElement>(root, '.cot-room-controls');
+  const roomReady = requiredElement<HTMLButtonElement>(root, '.cot-room-ready');
   const mapsEl = requiredElement<HTMLElement>(root, '.cot-maps');
   const recordTrigger = requiredElement<HTMLButtonElement>(root, '.cot-record-trigger');
   const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
@@ -792,6 +797,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let battleMode: BattleMode = 'solo';
   let battleGameMode: GameModeId = 'standard';
   let vehicleLocked = false;
+  let roomStatus: GarageRoomStatus | null = null;
   const garageVariants = Array.isArray(opts.garageVariants) ? opts.garageVariants : [];
   let selectedGarageVariantId = garageVariants.some((variant) =>
     variant.id === opts.selectedGarageVariantId)
@@ -2633,6 +2639,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   battleControl.addEventListener('focusin', signalBattleIntent);
   battleControl.addEventListener('touchstart', signalBattleIntent, { passive: true });
   roomReminder.addEventListener('click', () => emit('ui:roomOpen', {}));
+  roomReady.addEventListener('click', () => {
+    if (!roomStatus?.canSetReady) return;
+    emit('ui:click', {});
+    emit('ui:roomReady', { ready: !roomStatus.ready });
+  });
   battleModeBtn.addEventListener('click', () => {
     emit('ui:click', {});
     if (battleMenu.classList.contains('open')) closeBattleMenu();
@@ -2969,6 +2980,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** Reflect persistent multiplayer membership beneath the main battle action. */
     setRoomStatus(status: GarageRoomStatus | null = null) {
+      roomStatus = status;
+      root.classList.toggle('has-room', !!status);
+      roomControls.classList.toggle('show', !!status);
+      roomReady.disabled = !status?.canSetReady;
+      roomReady.textContent = status?.ready ? 'Not ready' : 'Ready';
+      roomReady.setAttribute('aria-pressed', String(!!status?.ready));
+      roomReady.setAttribute('aria-label', status?.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
+      roomReady.title = status?.canSetReady
+        ? (status.ready ? 'Cancel ready to change your loadout' : 'Ready for the next battle')
+        : 'Readiness can only change while waiting in the room';
       if (!status) {
         roomReminder.classList.remove('show', 'ready');
         requiredElement<HTMLElement>(roomReminder, '.rr-copy').textContent = '';
@@ -2979,8 +3000,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const ready = !!status.ready;
       const count = Math.max(0, Number(status.readyCount) || 0);
       const total = Math.max(0, Number(status.total) || 0);
-      requiredElement<HTMLElement>(roomReminder, '.rr-copy').innerHTML =
-        `<b>${status.mode === 'lan' ? 'LAN' : 'PRIVATE'} ROOM ${status.roomCode || ''}</b> · ` +
+      requiredElement<HTMLElement>(roomReminder, '.rr-copy').textContent =
+        `${status.mode === 'lan' ? 'LAN' : 'PRIVATE'} ROOM ${status.roomCode || ''} · ` +
         `${ready ? 'READY' : 'NOT READY'} · ${count}/${total} READY`;
       roomReminder.classList.add('show');
       roomReminder.classList.toggle('ready', ready);

@@ -1,0 +1,34 @@
+{
+  "id": "challenger1_x",
+  "status": "source-only-frame-approved-2026-09-06-native-orphan-panel-disposition-pending",
+  "sourceFilename": "challenger_1_main_battle_tank.glb",
+  "sourceSha256": "27b81eab3162ec03a0b96311462586dab02332d6ed45121aa59b9ed1223b9ab7",
+  "scale": 0.022766597878026665,
+  "axes": ["x", "y", "z"],
+  "translation": [0.00044813402195212397, 0.002688968328105816, 1.2252731050207657],
+  "registrationReason": "Owner explicitly selected supplied-file likeness after the earlier photo/handbook-led build. Fixed pre-candidate instrument scale is the original MoD handbook 3.510 m width divided by supplied complete occupied width154.17323303222656 raw units. This is one uniform instrument anchor, not a claim that other file proportions are historically correct. Bake actual source node transforms (proper determinant+1); keep +Y up/+Z forward. Ground is actual Tracks_245 bottom-0.11811023950579334, not full AABB. Hull center is the union of principal upper hull island1660 and lower tub1840: rawX midpoint-0.019683837890625, Z midpoint-53.81889343261719. No candidate fit, source clamp, part rescale or owner deletion.",
+  "ownership": {
+    "comparison": "whole-only",
+    "reason": "Twelve original material batches retain real Cannon/Turret/Hull names, but Gear/Glass span unrelated fixtures and no complete source articulation hierarchy exists. Do not fabricate full component ownership from only the convenient material names.",
+    "retainedNodes": ["Object_2", "Object_3", "Object_4", "Object_5", "Object_6", "Object_7", "Object_8", "Object_9", "Object_10", "Object_11", "Object_12", "Object_13"]
+  },
+  "measuredFrameOutcomesM": {
+    "completeWidth": 3.51,
+    "completeGunForwardLength": 9.845209180180676,
+    "principalHullLength": 6.42125612,
+    "hullWithPermanentFittingsLength": 7.39645551,
+    "structuralTurretRoofY": 2.19061285,
+    "highestAntennaY": 3.70270926,
+    "trackCourseWidth": 0.564683342,
+    "turretBearingCenterEstimate": [-0.000896355, 1.396470802, 0.616221775],
+    "physicalBoreAxisAndRearCollarTrunnionEstimate": [-0.014789353, 1.675227178, 1.697635208],
+    "muzzleZ": 6.147877692
+  },
+  "jointEvidence": "All source scene-node origins are exporter origin, not working joints. Turret_615 island4819 supplies the measured circular lower bearing; yaw Y is its axial midpoint and is an inferred design pivot. Cannon_715 island770 has a level circular axis rawX-0.669291/rawY73.464565; trunnion Z20.748032 is the original rear barrel collar station within the mantlet, an inferred mechanical joint rather than a source rig claim.",
+  "physicalDiscrepancies": {
+    "historicalDimensions": "Historical handbook overall11.560 m, width3.510 m, sight hood2.950 m remain separate documentary facts. The uniformly scaled supplied model is not made to satisfy those incompatible proportions with anisotropic deformation.",
+    "orphanPanels": "Four separate SideSkirts_294 islands812/429/483/530 (120 triangles) are centered at rawX+-0.590551, rawY-28.346457..0 and rawZ-72.834648..0.551181. They project0.64266342 m below true track ground and are not proven world-duplicate triangles. The installed left/right skirt plates are above track ground and are not to be altered. All four orphan panels remain in the canonical source. Native disposition awaits explicit owner choice; no silent omission or AABB grounding.",
+    "bore": "Complete axial sections correct the preliminary circular-diameter shorthand: the blind floor is an octagon with circumradius2.383416 raw units and cardinal across-flats4.409449 (100.386 mm at the approved scale). The entrance has sixteen inner/outer facets, with outer circumradius2.9133855; it transitions into the eight-sided throat115.63 mm behind the muzzle plane. The native uses original procedural polygon sections, not a round120 mm replacement or copied contour vertices. Nominal120 mm gameplay caliber remains separate donor metadata; source exporter coordinate quantization is documented rather than reproduced point-for-point.",
+    "roofWeapon": "Direct complete-source quarter/rear/top clay and original material-island census confirm the cupola has rails, hinge and mounting brackets but no complete secondary receiver/barrel. Native preserves the empty mount as equipment and does not reuse the prior photo-led weapon or falsely satisfy the MG census. Official minimum remains unmet until the owner resolves the supplied empty-mount case."
+  }
+}

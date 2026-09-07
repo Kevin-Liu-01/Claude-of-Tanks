@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **180 saved vehicle records**: **141 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **203 saved vehicle records**: **164 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -188,6 +188,29 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 178 | PROD | `t90m_x` | T-90M X | Russia | IX | Modern | Production |
 | 179 | PROD | `t90sm_x` | T-90SM X | Russia | IX | Modern | Production |
 | 180 | PROD | `t14_x` | T-14 Armata X | Russia | X | Next Generation | Production |
+| 181 | PROD | `leo2a6_x` | Leopard 2A6 X | Germany | IX | Modern | Production |
+| 182 | PROD | `k1a1_x` | K1A1 X | South Korea | VIII | Modern | Production |
+| 183 | PROD | `amx30_x` | AMX-30 B X | France | VII | Cold War | Production |
+| 184 | PROD | `t62mv1_x` | T-62MV-1 X | USSR/Russia | VII | Cold War | Production |
+| 185 | PROD | `t72b_1987_x` | T-72B obr. 1987 X | USSR/Russia | VIII | Modern | Production |
+| 186 | PROD | `t80u_x` | T-80U X | USSR/Russia | VIII | Modern | Production |
+| 187 | PROD | `leclerc_x` | Char Leclerc X | France | IX | Modern | Production |
+| 188 | PROD | `leclerc_classic_x` | Leclerc X | France | IX | Modern | Production |
+| 189 | PROD | `chieftain_mk10_x` | Chieftain Mk 10 X | UK | VIII | Modern | Production |
+| 190 | PROD | `t72b3_x` | T-72B3 X | Russia | VIII | Modern | Production |
+| 191 | PROD | `jpz_e100_x` | Jagdpanzer E100 X | Germany | X | World War II | Production |
+| 192 | PROD | `type10_x` | Type 10 X | Japan | X | Modern | Production |
+| 193 | PROD | `type90_x` | Type 90 X | Japan | IX | Modern | Production |
+| 194 | PROD | `amx40_x` | AMX-40 X | France | IX | Cold War | Production |
+| 195 | PROD | `ariete_c1_x` | C1 Ariete X | Italy | IX | Modern | Production |
+| 196 | PROD | `strv122_x` | Stridsvagn 122 X | Sweden | X | Modern | Production |
+| 197 | PROD | `t72b3m_x` | T-72B3M obr. 2022 X | Russia | IX | Modern | Production |
+| 198 | PROD | `challenger1_x` | Challenger 1 X | UK | IX | Cold War | Production |
+| 199 | PROD | `t72bu_x` | T-72BU X | USSR/Russia | VIII | Cold War | Production |
+| 200 | PROD | `chieftain5_x` | Chieftain Mk 5 X | UK | VII | Cold War | Production |
+| 201 | PROD | `t90_x` | T-90 X | USSR/Russia | X | Modern | Production |
+| 202 | PROD | `t90a_burlak_x` | T-90A Burlak X | USSR/Russia | X | Modern | Production |
+| 203 | PROD | `t90ms_x` | T-90MS Tagil X | USSR/Russia | X | Modern | Production |
 
 ## Policy ownership
 

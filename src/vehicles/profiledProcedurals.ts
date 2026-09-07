@@ -35,6 +35,29 @@ import { MERKAVA_X_PROFILES } from './profiles/merkavaX.ts';
 import { K2_X_PROFILES } from './profiles/k2X.ts';
 import { KF51_X_PROFILES } from './profiles/kf51X.ts';
 import { T14_X_PROFILES } from './profiles/t14X.ts';
+import { LEOPARD_A6_X_PROFILES } from './profiles/leopardA6X.ts';
+import { K1A1_X_PROFILES } from './profiles/k1a1X.ts';
+import { AMX30_X_PROFILES } from './profiles/amx30X.ts';
+import { T62MV1_X_PROFILES } from './profiles/t62mv1X.ts';
+import { T72B1987_X_PROFILES } from './profiles/t72b1987X.ts';
+import { T80U_X_PROFILES } from './profiles/t80uX.ts';
+import { T72B3_X_PROFILES } from './profiles/t72b3X.ts';
+import { JPZE100_X_PROFILES } from './profiles/jagdpanzerE100X.ts';
+import { TYPE10_X_PROFILES } from './profiles/type10X.ts';
+import { TYPE90_X_PROFILES } from './profiles/type90X.ts';
+import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
+import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
+import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
+import {T72B3M_X_PROFILES} from './profiles/t72b3mX.ts';
+import {CHALLENGER1_X_PROFILES} from './profiles/challenger1X.ts';
+import {T72BU_X_PROFILES} from './profiles/t72buX.ts';
+import {CHIEFTAIN5_X_PROFILES} from './profiles/chieftain5X.ts';
+import {T90_AW_X_PROFILES} from './profiles/t90AwX.ts';
+import {T90_BURLAK_X_PROFILES} from './profiles/t90BurlakX.ts';
+import {T90MS_X_PROFILES} from './profiles/t90msX.ts';
+import { LECLERC_X_PROFILES } from './profiles/leclercX.ts';
+import { LECLERC_CLASSIC_X_PROFILES } from './profiles/leclercClassicX.ts';
+import { CHIEFTAIN10_X_PROFILES } from './profiles/chieftain10X.ts';
 import {
   createProfileBuilders,
   type VehicleProfileRecord,
@@ -69,6 +92,29 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
+  ...CHIEFTAIN5_X_PROFILES,
+  ...T90_AW_X_PROFILES,
+  ...T90_BURLAK_X_PROFILES,
+  ...T90MS_X_PROFILES,
+  ...CHALLENGER1_X_PROFILES,
+  ...T72BU_X_PROFILES,
+  ...LEOPARD_A6_X_PROFILES,
+  ...K1A1_X_PROFILES,
+  ...AMX30_X_PROFILES,
+  ...T62MV1_X_PROFILES,
+  ...T72B1987_X_PROFILES,
+  ...T80U_X_PROFILES,
+  ...T72B3_X_PROFILES,
+  ...JPZE100_X_PROFILES,
+  ...TYPE10_X_PROFILES,
+  ...TYPE90_X_PROFILES,
+  ...AMX40_X_PROFILES,
+  ...ARIETE_X_PROFILES,
+  ...STRV122_X_PROFILES,
+  ...T72B3M_X_PROFILES,
+  ...LECLERC_X_PROFILES,
+  ...LECLERC_CLASSIC_X_PROFILES,
+  ...CHIEFTAIN10_X_PROFILES,
   ...WW2_PROFILES,
   ...CASEMATE_PROFILES,
   ...SOVIET_HEAVY_PROFILES,

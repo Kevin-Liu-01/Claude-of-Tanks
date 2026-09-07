@@ -612,8 +612,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime needs-ready'}`, controls);
     ready.type = 'button';
     ready.innerHTML = `<span class="btn-inner">${uiIconSVG(me.ready ? 'close' : 'check', 17)}` +
-      `<span>${me.ready ? 'CANCEL READY' : 'READY FOR NEXT BATTLE'}</span></span>`;
-    ready.disabled = state.phase !== 'waiting';
+      `<span>${me.ready ? 'NOT READY' : 'READY FOR NEXT BATTLE'}</span></span>`;
+    ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
+    ready.setAttribute('aria-pressed', String(!!me.ready));
+    ready.setAttribute('aria-label', me.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
     ready.addEventListener('click', () => {
       bus.emit('ui:click', {});
       bus.emit('ui:roomReady', { ready: !me.ready });

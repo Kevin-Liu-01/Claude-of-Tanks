@@ -1,0 +1,50 @@
+{
+  "id": "chieftain5_x",
+  "status": "2026-09-06T20:40:00Z bounded detail checkpoint; CPU checks and fresh neutral/actual camouflaged gallery inspection complete. Overall visual acceptance and final release remain pending.",
+  "metricRegistration": null,
+  "sourcePolicy": "AI source is supplemental only and is never a metric oracle or runtime dependency",
+  "primaryReferences": [
+    {
+      "url": "https://www.flickr.com/photos/ajw1970/37900660042",
+      "author": "Alan Wilson",
+      "date": "2017-08-24",
+      "configuration": "Chieftain Mk5/5P export vehicle at Kubinka",
+      "evidence": "Recessed pressed road-wheel identity; exact bowl depth and hidden bearing shape are not measured by this oblique photo"
+    },
+    {
+      "url": "https://www.military-references.com/wp-content/uploads/books/tanks/britain/chieftain/Chieftain_Tank_Armament_Pamphlet_No_33_1980.pdf",
+      "sha256": "03d4956285f00d19f7154d65fdfc8db8f81dddad73cdf094c0d80296736f82f5",
+      "pages": "printed 124–127, Figure 44; actual illustration inspected",
+      "evidence": "No.37 Mk3/4 forward-inclined object reflector, retaining frame and supporting upper casting",
+      "restriction": "Ignored reference-only document; no redistribution or operational implementation"
+    }
+  ],
+  "retainedDatumsM": {
+    "tireRadius": 0.395,
+    "tireWidth": 0.4,
+    "steelRimRadius": 0.3555,
+    "rubberShoulderHalfWidth": 0.206,
+    "wheelCenterAbsX": 1.365,
+    "wheelY": 0.471,
+    "wheelZs": [-2.18, -1.39, -0.395, 0.395, 1.39, 2.18],
+    "structuralRoofY": 2.45,
+    "opticMaximumY": 2.76
+  },
+  "constructionEstimatesM": {
+    "bowlHeldOutRadiusAndAxialDepth": [[0.2, 0.119615384615], [0.28, 0.163333333333], [0.32, 0.192705882353], [0.35, 0.20523255814]],
+    "localizedHubHalfWidth": 0.246,
+    "rubberOpeningRadius": 0.3535,
+    "windowCaseFrontRadius": 0.3735,
+    "windowGlassFrontRadius": 0.365,
+    "reflectorFrontPlane": "z = 0.040 + 0.7 * (y - 2.637)",
+    "reflectorFramePlane": "z = 0.046 + 0.7 * (y - 2.637)"
+  },
+  "verification": {
+    "actualHighLow": ["chieftain5XWheels.selftest.mjs", "chieftain5XOptics.selftest.mjs", "chieftain5X.selftest.mjs"],
+    "unchangedGeometry": "Every non-wheel physical buffer and moving matrix agrees with the original native-face recipe; only replaced wheel center/rubber and automatically seated links differ",
+    "negativeSpace": "Whole-scene wheel bowl air, nine framed windows, inclined reflector recess and retained driver/gunner/searchlight/main-bore/smoke apertures",
+    "strictCpuTrack": { "frontBand": 0, "frontShoes": 0, "rearBand": 0, "rearShoes": 0, "sweepBand": 0, "sweepShoes": 0 },
+    "ground": "All 48 opposing-scroll phases retain loaded-shoe ground within 0.1 mm",
+    "freshShadedReview": "2026-09-06 20:40 UTC: four neutral quarter/rear/wheel/optic views and actual gallery appearance hero/right/rear inspected. Pressed bowls, inset glazing and inclined reflector remain distinct; no new floating support or filled aperture observed in these additions. Broad stowage/roof fields remain simplified; photo-derived bowl depths remain inferred. No full-model visual qualification is claimed."
+  }
+}

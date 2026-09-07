@@ -26,6 +26,11 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
+import {
+  applySiteMetadataToDocument,
+  GAME_METADATA,
+  privateRoomMetadata,
+} from '../presentation/siteMetadata.ts';
 import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
 import {
   GAME_MODE_DEFINITIONS,
@@ -114,6 +119,7 @@ export interface PlayMenuRuntime {
   showCurrentRoom(): boolean;
   showRoomFailure(reason: string, mode?: PlayMode): void;
   syncGarageSelection(): boolean;
+  setReady(ready: boolean): boolean;
 }
 
 interface MenuSelectElement extends HTMLDivElement {
@@ -295,6 +301,7 @@ const CSS = `
   display:flex;flex-wrap:wrap;align-items:end;gap:8px}.cot-play .control-actions{margin-left:auto;justify-content:flex-end}
 .cot-play .control-options .field{width:140px}.cot-play .control-options .vehicle-field{width:230px}
 .cot-play .control-actions .action{min-width:128px}
+.cot-play button[data-action="ready"]{min-height:44px}
 .cot-play .leave-room{border-color:rgba(230,113,94,.4)!important;color:#efaaa0!important}
 @keyframes cot-ready-attention{0%,100%{box-shadow:0 0 0 0 rgba(230,154,54,0),0 0 0 rgba(230,154,54,0)}
   48%{box-shadow:0 0 0 4px rgba(230,154,54,.16),0 0 24px rgba(230,154,54,.48);transform:translateY(-1px)}}
@@ -665,7 +672,7 @@ export function createPlayMenu({
                 <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
               </div></div></div></div>
         <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">Leave room</button>
-          <button class="action alt" data-action="ready" type="button">I'm ready</button>
+          <button class="action alt" data-action="ready" type="button">Ready</button>
           <button class="action" data-action="start" type="button">Start match</button></div>
       </div><div class="note"></div>
     </div></section></div>`;
@@ -790,7 +797,6 @@ export function createPlayMenu({
   const joinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="join"]');
   const copyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="copy"]');
   const note = requiredElement<HTMLElement>(root, '.note');
-  const defaultDocumentTitle = document.documentElement.dataset.baseTitle || document.title;
   const defaultEyebrow = eyebrow.textContent;
   const defaultMenuTitle = menuTitle.textContent;
   const defaultMenuLead = menuLead.textContent;
@@ -897,7 +903,13 @@ export function createPlayMenu({
     menuLead.textContent = connected
       ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
       : 'Room ' + code + ' is ready. Connecting you directly to the host.';
-    document.title = menuTitle.textContent + ' — Claude of Tanks';
+    const metadataUrl = new URL(window.location.href);
+    metadataUrl.searchParams.set('room', code);
+    metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
+    if (invitedHostName) metadataUrl.searchParams.set('host', invitedHostName);
+    else metadataUrl.searchParams.delete('host');
+    const metadata = privateRoomMetadata(metadataUrl);
+    if (metadata) applySiteMetadataToDocument(document, metadata);
   }
 
   function resetInvitation(): void {
@@ -906,7 +918,7 @@ export function createPlayMenu({
     eyebrow.textContent = defaultEyebrow;
     menuTitle.textContent = defaultMenuTitle;
     menuLead.textContent = defaultMenuLead;
-    if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
+    if (document.title.startsWith('Join ')) applySiteMetadataToDocument(document, GAME_METADATA);
   }
 
   function setStatus(message: RuntimeValue, error = false): void {
@@ -1120,6 +1132,8 @@ export function createPlayMenu({
 
   function renderLobbySelf(player: LobbyPlayer | undefined, next: SerializedLobby): void {
     if (!player) {
+      readyBtn.disabled = true;
+      readyBtn.textContent = 'Ready';
       readyBtn.classList.remove('needs-ready', 'is-ready');
       readyBtn.removeAttribute('aria-pressed');
       return;
@@ -1131,8 +1145,8 @@ export function createPlayMenu({
       remember(PLAYER_NAME_KEY, player.name);
     }
     const spectator = player.team === 'spectator';
-    readyBtn.textContent = spectator ? 'Watching' : player.ready ? 'Not ready' : "I'm ready";
-    readyBtn.disabled = spectator || next.phase !== 'waiting';
+    readyBtn.textContent = spectator ? 'Watching' : player.ready ? 'Not ready' : 'Ready';
+    readyBtn.disabled = spectator || !player.connected || !player.specId || next.phase !== 'waiting';
     readyBtn.classList.toggle('needs-ready', !spectator && !player.ready && next.phase === 'waiting');
     readyBtn.classList.toggle('is-ready', !spectator && player.ready);
     readyBtn.setAttribute('aria-pressed', String(!spectator && player.ready));
@@ -1433,7 +1447,7 @@ export function createPlayMenu({
   mapSelect.addEventListener('change', () => command({ type: 'set_map', mapId: mapSelect.value }));
   readyBtn.addEventListener('click', () => {
     const me = state && state.players.find((player) => player.id === ownId());
-    command({ type: 'set_ready', ready: !(me && me.ready) });
+    if (me) setReady(!me.ready);
   });
   leaveBtn.addEventListener('click', () => {
     closeCurrentSession('left_room');
@@ -1590,10 +1604,17 @@ export function createPlayMenu({
     }
     return true;
   }
+  function setReady(ready: boolean): boolean {
+    const me = state?.players.find((player) => player.id === ownId());
+    if ((!activeRoom && !session) || handedOff || state?.phase !== 'waiting' ||
+        !me || me.team === 'spectator' || !me.connected || !me.specId) return false;
+    command({ type: 'set_ready', ready: !!ready });
+    return true;
+  }
   const showActiveRoom = showCurrentRoom;
   return {
     root, show, hide, dispose,
     attachActiveRoom, updateActiveRoom, detachActiveRoom, showRoomFailure,
-    showActiveRoom, showCurrentRoom, syncGarageSelection,
+    showActiveRoom, showCurrentRoom, syncGarageSelection, setReady,
   };
 }

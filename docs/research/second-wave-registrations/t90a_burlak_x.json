@@ -1,0 +1,8 @@
+{
+  "id": "t90a_burlak_x",
+  "sourceSha256": "812000466f783234effb41b54d32925bf071a3bf117c2b0780a26d6a40bd8f90",
+  "scale": 1,
+  "axes": ["x", "y", "z"],
+  "translation": [-0.0009499788284301758, 0, 0.3769500255584717],
+  "registrationReason": "Source already metric,+Y up,+Z forward. Independently measured primary tub Object_24 island25202 has bounds X[-1.2393000126,1.2411999702],Z[-3.5585999489,2.8046998978]; use its midpoint and actual track ground0. Preserve every original owner and all geometry; no candidate fitting. Owner-supplied AW-labelled source remains local-only comparison."
+}

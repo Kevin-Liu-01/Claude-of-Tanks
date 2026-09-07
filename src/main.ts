@@ -908,6 +908,7 @@ function minimapSnapCtx() {
 battleHudRuntime = createMainBattleHudRuntime({
   bus,
   engineContext: engineCtx,
+  perfMeterEnabled: () => !!input.getSettings().showPerfMeter,
   directionalHitValuesEnabled: () => !!input.getSettings().showDirectionalHitValues,
   queueMinimap: () => { worldRuntime.queueMinimap(); },
 });
@@ -2048,6 +2049,11 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           },
         },
         presentation: {
+          setWaitingForPeers: (waiting: boolean) => {
+            const hud = currentHud();
+            hud?.setPreBattleWaiting(waiting);
+            if (!waiting) hud?.preBattleCountdown(game.preBattleS);
+          },
           setGarageLighting: (active: boolean) => {
             setGarageSpots(active);
             setGarageSunTrim(active);
@@ -2057,6 +2063,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
       },
       launcher: {
         lifecycle: battleEntryLifecycle,
+        nextFrame,
         battleLoad,
         audio,
         getMatch: () => networkSession.match,

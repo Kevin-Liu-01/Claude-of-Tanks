@@ -7,11 +7,12 @@ import { requiredMinimumForQualityBar } from './geometry-gate-policy.mjs';
 import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
 import { LEOPARD_X_REFERENCE_OVERRIDES } from './leopard-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
+import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from './second-wave-x-reference-overrides.ts';
 
 const page = fs.readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
 const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n\});/)[1];
 const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE,
-  T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES });
+  T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES });
 const rebuilt = registry.leo2_revolution;
 const preserved = registry.leo2_revolution_proto;
 assert.equal(rebuilt.qualityBar, 'exemplar');
@@ -44,6 +45,6 @@ if (fs.existsSync(oracle)) {
 }
 assert.match(page, /if \(!preservation && !sourceWorldCertificate\) \{\s*reference\.root\.scale\.multiplyScalar/,
   'preservation must not independently rescale the candidate to hide drift');
-assert.match(page, /preservationDimensionTargets\(source, id, preservation \? \{/,
+assert.match(page, /preservationDimensionTargets\(source, id, preservation \? referenceDimensions : \{\}, specDimensions\)/,
   'actual baseline mask measurements feed the preservation dimension branch');
 console.log('preservation-oracle.selftest: immutable 99-point historical baseline isolated from 92-point source fidelity');

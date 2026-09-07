@@ -6,9 +6,20 @@ import { createNetworkBattleLaunchRuntime } from './networkBattleLaunchRuntime.t
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 import { createNetworkRoundLifecycle } from './networkRoundLifecycle.ts';
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+
 function createHarness(overrides = {}) {
   const calls = [];
   let match = null;
+  let visible = false;
+  let renderingCovered = false;
   const room = {
     attach: (state) => calls.push(['attach', state.round || 0]),
     claimRematch: (_state, blocked) => !blocked,
@@ -29,14 +40,16 @@ function createHarness(overrides = {}) {
     lifecycle: {
       pending: false,
       run: async (task) => task(),
-      coverRendering: () => calls.push(['cover']),
-      uncoverRendering: () => calls.push(['uncover']),
+      coverRendering: () => { renderingCovered = true; calls.push(['cover']); },
+      uncoverRendering: () => { renderingCovered = false; calls.push(['uncover']); },
+      get renderingCovered() { return renderingCovered; },
       primeReveal: async () => calls.push(['primeReveal']),
     },
     battleLoad: {
-      show: (value) => calls.push(['show', value]),
+      get visible() { return visible; },
+      show: (value) => { visible = true; calls.push(['show', value]); },
       progress: (fraction, label) => calls.push(['progress', fraction, label]),
-      hide: async () => calls.push(['hide']),
+      hide: async () => { visible = false; calls.push(['hide']); },
     },
     audio: {
       resume: () => calls.push(['resume']),
@@ -71,6 +84,7 @@ function createHarness(overrides = {}) {
     clearNetworkRound: () => calls.push(['clearRound']),
     closeMatch: (reason) => { calls.push(['close', reason]); match = null; },
     enterGarage: () => calls.push(['garage']),
+    nextFrame: async () => calls.push(['frame']),
     setNetworkStatus: (status) => calls.push(['status', status]),
     recordEntryFailure: (failure) => calls.push(['failure', failure]),
     reportError: (scope, error) => calls.push(['error', scope, error.message]),
@@ -169,9 +183,116 @@ assert.ok(failed.calls.some(([name, reason]) => name === 'close' && reason === '
 assert.ok(failed.calls.some(([name]) => name === 'hide'));
 assert.ok(failed.calls.some(([name]) => name === 'garage'));
 assert.ok(failed.calls.some(([name]) => name === 'uncover'),
-  'failed cold entry releases the render cover before restoring Garage');
+  'failed cold entry releases the render cover after restoring Garage');
+assert.deepEqual(failed.calls.filter(([name]) =>
+  ['garage', 'uncover', 'frame', 'hide'].includes(name)).map(([name]) => name),
+  ['garage', 'uncover', 'frame', 'hide'],
+  'Garage restores and paints under the opaque loader before it fades');
 assert.deepEqual(failed.calls.at(-1), ['roomFailure', 'connection_failed', 'private'],
   'cold failure restores Garage before showing an actionable error');
+
+function startEntry(kind, entry, launcher) {
+  if (kind === 'rematch') {
+    entry.match = { playerId: 'host', role: 'host' };
+    return launcher.beginRematch(rematchState);
+  }
+  if (kind === 'ranked') return launcher.beginRanked({
+    serviceUrl: 'wss://ranked.example',
+    state: { match: { playerId: 'host', mapId: 'verdant', roster: state.players } },
+  });
+  return launcher.beginPrivate({
+    role: 'host', lobbyState: state,
+    session: { roomInfo: { peerId: 'host' }, takeMatchChannels: () => [] },
+  });
+}
+
+for (const kind of ['private', 'rematch', 'ranked']) {
+  for (const revealed of [false, true]) {
+    for (const cancelEntry of [false, true]) {
+      const entry = createHarness();
+      const garageReady = deferred();
+      const painted = deferred();
+      let launcher;
+      entry.options.enterGarage = () => {
+        entry.calls.push(['garage']);
+        return garageReady.promise;
+      };
+      entry.options.nextFrame = () => {
+        entry.calls.push(['frame']);
+        return painted.promise;
+      };
+      entry.options.presentBattle = async (request) => {
+        entry.match = await request.connectMatch();
+        if (revealed) {
+          entry.options.lifecycle.uncoverRendering();
+          await entry.options.battleLoad.hide();
+        }
+        if (cancelEntry) {
+          launcher.cancel('host_left');
+          throwIfNetworkBattleEntryAborted(request.signal);
+        }
+        throw new Error('entry presentation failed');
+      };
+      launcher = createNetworkBattleLaunchRuntime(entry.options);
+      const starting = startEntry(kind, entry, launcher);
+      await nextTurn();
+      const prefix = `${kind}/${revealed ? 'revealed' : 'loading'}/${cancelEntry ? 'cancel' : 'failure'}`;
+      assert.equal(entry.options.battleLoad.visible, true, `${prefix}: recovery stays opaque`);
+      assert.equal(entry.options.lifecycle.renderingCovered, true,
+        `${prefix}: partially restored Garage cannot render`);
+      assert.equal(launcher.pending, true, `${prefix}: restoration retains entry ownership`);
+      assert.equal(entry.calls.filter(([name]) => name === 'hide').length, Number(revealed));
+      assert.equal(entry.calls.some(([name]) => name === 'frame'), false);
+      assert.equal(entry.calls.filter(([name]) => name === 'close').length, 1);
+      assert.equal(entry.calls.filter(([name]) => name === 'garage').length, 1);
+      assert.equal(entry.calls.some(([name]) => name === 'roomFailure'), false);
+      assert.deepEqual(entry.calls.filter(([name]) => name === 'progress').at(-1),
+        ['progress', 1, 'Restoring Garage']);
+      if (revealed) assert.deepEqual(entry.calls.filter(([name]) => name === 'show').at(-1),
+        ['show', { mapName: 'Returning to Garage', thumb: '', biome: 'none',
+          mode: 'Deployment ended', allies: [], enemies: [] }],
+        `${prefix}: recovery reacquires an opaque screen after reveal`);
+      garageReady.resolve();
+      await nextTurn();
+      assert.equal(entry.options.lifecycle.renderingCovered, false,
+        `${prefix}: restored Garage is released to paint`);
+      assert.equal(entry.options.battleLoad.visible, true, `${prefix}: loader waits for paint`);
+      assert.equal(launcher.pending, true);
+      painted.resolve();
+      const result = await starting;
+      assert.equal(result, kind === 'ranked' ? undefined : false);
+      assert.equal(entry.options.battleLoad.visible, false);
+      assert.equal(launcher.pending, false);
+      assert.equal(entry.calls.filter(([name]) => name === 'close').length, 1);
+      assert.equal(entry.calls.filter(([name]) => name === 'garage').length, 1);
+      assert.equal(entry.calls.filter(([name]) => name === 'hide').length, Number(revealed) + 1);
+      assert.equal(entry.calls.filter(([name]) => name === 'finishRematch').length,
+        Number(kind === 'rematch'));
+      assert.equal(entry.calls.filter(([name]) => name === 'error').length, Number(!cancelEntry));
+      assert.equal(entry.match, null);
+    }
+  }
+
+  const entry = createHarness();
+  const recoveryError = new Error('Garage restoration failed');
+  entry.options.presentBattle = async () => { throw new Error('entry failed'); };
+  entry.options.enterGarage = async () => {
+    entry.calls.push(['garage']);
+    throw recoveryError;
+  };
+  const launcher = createNetworkBattleLaunchRuntime(entry.options);
+  await assert.rejects(startEntry(kind, entry, launcher), (error) => error === recoveryError);
+  assert.equal(entry.options.battleLoad.visible, true,
+    `${kind}: failed recovery cannot uncover an unrestored scene`);
+  assert.equal(entry.calls.some(([name]) => ['hide', 'frame', 'uncover'].includes(name)), false);
+  assert.equal(entry.calls.filter(([name]) => name === 'close').length, 1);
+  assert.equal(entry.calls.filter(([name]) => name === 'garage').length, 1);
+  assert.equal(launcher.pending, false);
+}
+
+assert.throws(() => createNetworkBattleLaunchRuntime({
+  ...createHarness().options, nextFrame: undefined,
+}), /requires every lifecycle port/, 'Garage recovery requires an explicit paint barrier');
 
 let cancelSignal = null;
 let presentStarted;

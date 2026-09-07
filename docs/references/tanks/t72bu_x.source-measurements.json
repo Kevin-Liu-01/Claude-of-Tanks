@@ -1,0 +1,61 @@
+{
+  "id": "t72bu_x",
+  "author": "Kevin B. Liu",
+  "status": "Independent first native draft; CPU source/mechanical tests required separately from pending strict visual qualification.",
+  "source": {
+    "ownerSupplied": true,
+    "archive": "t-72bu-ussr/source/t-72bu.zip",
+    "entry": "t-72bu.fbx",
+    "archiveSha256": "11c0f63b8434c9f44c1a04194ab29a3a7e1ee2e3f02693157c6a0da7ce48cc21",
+    "payloadSha256": "3bb7bb20841ada6d5fa84a446e1229c78dde46dc0aea9216adc6bc2d9c170898",
+    "canonicalSha256": "d62a92b41e65c9c0085f73d6f402980f6c057bc3c6169b8dfcd7bc41ec019ec3",
+    "ownership": "Two fused material owners, body mesh_324 and tread mesh_325. Whole-vehicle gate only; component segmentation is not inferred from the filename.",
+    "use": "Local-only authoring/comparison. No supplied vertices, indices, textures, archive or loader are eligible for the runtime or public distribution. Historical provenance is not a redistributable license."
+  },
+  "canonicalFrame": {
+    "axes": ["-z", "y", "x"],
+    "scale": 0.00045399046222865263,
+    "translation": [-0.006793353134526931, 0.00046626321866131076, 0.05136669629346181],
+    "reason": "The arbitrary FBX export scale has no trustworthy metric unit. A fixed3.59m configuration-width instrument was approved before candidate construction; this is not a claimed measured historical prototype specification. Center the independently identified original main tub and use actual track ground. No candidate fitting.",
+    "scaleUncertainty": "All metric scalar values inherit the chosen width anchor; configuration-specific real-world dimensions may differ."
+  },
+  "physicalDatums": {
+    "hullLengthM": 6.34341572519,
+    "overallLengthM": 10.34772314839,
+    "widthM": 3.59,
+    "structuralRoofM": 2.16259918790,
+    "highestFittingM": 3.39756178023,
+    "turretPivot": [0.00489819586996, 1.33032792438745, 0.248076543568282],
+    "turretInference": "Source lower casting's16 bottom perimeter points support a1.0588244m circle with maximum1.50mm residual. This establishes a design joint, not an alleged source rig node.",
+    "trunnion": [0.002245869663885, 1.629788855115796, 1.37094868816255],
+    "trunnionInference": "Measured circular cannon axis, with longitudinal pivot at the widest original canvas/mount shoulder.",
+    "muzzleZ": 6.558946867971733,
+    "boreFloorZ": 6.453155544449773,
+    "boreDepthM": 0.1057913235219604,
+    "boreConvention": "Physically circular125mm native bore; exterior axial spans and actual source recessed floor retained. The runtime firing marker is restored after shared gun construction."
+  },
+  "runningGear": {
+    "wheelRadiusM": 0.380115,
+    "wheelCenterYM": 0.451075,
+    "wheelWidthM": 0.38270,
+    "wheelZs": [-1.5872, -0.7276, 0.14085, 1.00566, 1.85831, 2.72517],
+    "trackWidthM": 0.56169,
+    "sourcePairedLaneM": 1.359,
+    "nativeLaneM": 1.371,
+    "physicalDeparture": "Whole native animated lanes placed12mm outward. Source left band-to-tub air is only about2mm, right about9mm; the documented correction provides positive native corridor clearance without changing pad width, end radii, axle heights or longitudinal stations. Wheels, end drums and shoes remain one real animated assembly.",
+    "hiddenReturnRollers": "Three small supporting rollers are mechanically inferred where source fused side skirts conceal the return support. Their size/height is constrained by the original visible return-course envelope; they are not claimed directly measured source pieces."
+  },
+  "authoredForms": [
+    "Independent rising belly/narrow tub and source-stepped crowned end guards, separate thin side leaves.",
+    "Independent longitudinal cast sections, ten folded cheek modules with genuine internal air and separate permanent supports.",
+    "Six actual named reactive fields; roof cells and covers use exact authored triangle hits. Fixed tub, casting, case carriers and drum supports survive spent/reset.",
+    "Source-canted side cases, separate rear box, twin transverse drums with correctly oriented retaining hoops and open center gap.",
+    "Coherent level source AA receiver/barrel on its real elevated supporting assembly, not a marker-only weapon."
+  ],
+  "limitations": [
+    "Source low-polygon silhouettes are original comparison input, not evidence of exact real-world anatomy.",
+    "Fine fasteners, cloth folds and grille perforations remain simplified; no full visual pass is claimed before fresh registered views.",
+    "Hidden ERA carrier closure and return supports are documented mechanical inferences. Protection values remain gameplay conventions, not inferred protection performance."
+  ],
+  "regression": "src/vehicles/profiles/t72buXGeometry.selftest.mjs"
+}

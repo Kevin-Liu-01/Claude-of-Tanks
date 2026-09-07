@@ -1,0 +1,117 @@
+{
+  "id": "chieftain5_x",
+  "status": "2026-09-06 23:44 UTC: source-closures fidelity/geometry/track/continuity PASS; complete standard FAIL because supplied source has no MG; final release and independent full visual review pending",
+  "source": {
+    "file": "chieftain_mk-5_main_battle_tank.glb",
+    "sha256": "a7cb7c9ab877635d204f96f359e84f2da8b59298bf09f2eeaeeecd4205725169",
+    "canonicalSha256": "2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79",
+    "uniformScale": 0.022766597878026665,
+    "translation": [0.10442165384306669, -0.0026889683281052347, 1.5766318033032203],
+    "retainedOwners": 11,
+    "omittedOwners": 0,
+    "componentMasks": "whole-only: material batches mix mechanical owners",
+    "restriction": "local-only reference; embedded CC-BY statement and AI provenance are not redistribution clearance or historical metrology"
+  },
+  "sourceDatums": {
+    "hullCenterlineLengthM": 6.57542378005239,
+    "overallLengthM": 10.470842599868774,
+    "widthM": 3.509999990463257,
+    "structuralRoofY": 2.315201997756958,
+    "fixedProjectorTopY": 2.730199,
+    "highestAntennaY": 3.8093717098236084,
+    "muzzleZ": 6.812053203582764,
+    "nominalGunAxisXY": [-0.008067, 1.859441],
+    "gunBoreRadiusM": 0.0804,
+    "gunBoreFloorZ": 6.24935,
+    "roadWheelZs": [-2.230051, -1.339106, -0.420375, 0.47057, 1.491482, 2.382427],
+    "roadWheelY": 0.4481615,
+    "roadWheelRadiusM": 0.3952785,
+    "roadWheelWidthM": 0.41679,
+    "trackCenterAbsXM": 1.2947382,
+    "trackWidthM": 0.6094994,
+    "continuousTrackWebWidthM": 0.432923913,
+    "roadWheelAxialOffsetsLeftRightM": [-0.0004482, 0.0004482],
+    "rearEndAxisZY": [-3.140714, 0.837166],
+    "frontEndAxisZY": [3.100381, 0.8788445],
+    "returnRollerZs": [-1.784579, 0.025545, 1.936953],
+    "returnRollerY": 0.978785
+  },
+  "fixedCompleteSourceWitnesses": {
+    "centerBellyY": 0.4992064264955368,
+    "projectorLensZ": -0.15864908695220947,
+    "gunnerLensZAtXMinus0668209Y225649": 0.39034863100821193,
+    "driverLensZ": 1.9378498792648315,
+    "rightDishXAtRadial019And022": 1.334176,
+    "rightRimXAtRadial029And031": 1.392437,
+    "openPortBasketApproach": { "origin": [-1.45, 2.02, -0.8], "direction": [1, 0, 0], "firstSourceDistanceM": 0.41470548111957495 },
+    "upperGunNotchApproach": { "origin": [0, 2.25, 1.8], "direction": [0, 0, -1], "firstSourceDistanceM": 0.4064741916023922 }
+  },
+  "explicitConstructionInferences": [
+    "The source has no native rig and a warped bearing: functional yaw [0.0031,1.476,0.36928] and pitch [-0.008067,1.859441,1.57] are inferred inside the measured bearing/root, not exact source pivots.",
+    "Each source launcher carrier visibly has four upper, three middle and one lower mouth. Original nominal cylinders regularize warped individual bores; their initial arrangement is not claimed sub-millimetric.",
+    "Eight cupola windows are original framed planes with source height and nominal regular spacing; local source warp remains simplified.",
+    "The fused alpha-textured source courses are represented by functional native belts and rigid shoes. Shoe dimensions and concealed paired-bogie travel are explicitly inferred; source axles and tire envelopes are retained.",
+    "The round cupola projector is an optical assembly. No complete external source MG was identified, so no projector or empty bracket is mislabeled as a weapon.",
+    "Broad casting/lobes, cloth stowage and folded carriers are independent parametric approximations pending fresh complete-source outline and shaded review. Source vertices, topology and sampled contour arrays never enter runtime."
+  ],
+  "historicalFirstProof": {
+    "checkpoint": "supplied-first",
+    "rawFidelity": 96.70456965046819,
+    "rawMinimumWholeView": 94.16599847706479,
+    "rawGeometryMinimum": 89.66182204891875,
+    "dimensionFailure": "Filtered body length 7.0678187549 versus source 7.1892968898; substantial width 3.5007789770 versus source 3.4455616430. Missing actual rear case and over-wide constant-X bag, not a registration or spec problem.",
+    "strict": "front0/rear72/full-sweep658 band voxels, all shoes0; continuity1 at X0.96/Z3.00; actual source MG0",
+    "archives": ".qa-dev/reports/chieftain5_x-supplied-first-{fidelity,geometry}.json remain immutable"
+  },
+  "sourceClosureCorrections": {
+    "clothRoll": {
+      "sourceOwner": "Object_7 island649",
+      "shape": "Oblique ~170mm/m axis and tapered folded ends; transverse thickness185–200mm, not its399mm global bound at every Z.",
+      "heldOutRightSideAtY210": [[-1.4, 1.6864364392688271], [-1, 1.7639660467181666], [-0.8, 1.7802630373129096]],
+      "nativeMaximumHeldOutErrorM": 0.0082,
+      "construction": "Original chamfered sections simplify cloth relief; shared material at [1.60,2.10,-1] with the independently authored inboard case proves positive receiving contact. Real air below the roll is retained."
+    },
+    "aftCase": {
+      "sourceOwner": "Object_4 island3265",
+      "bounds": [[0.3204354346, 1.1714937687, -3.6587893963], [0.5965028405, 1.4753471613, -3.5261335373]],
+      "constructionInference": "Only concealed front root continues16mm to Z-3.510 for3.6mm overlap with permanent native rear skin. The measured visible aft face and lateral/vertical extrema remain fixed; air beside the case remains open."
+    },
+    "innerFenderReturn": {
+      "sourceOwner": "Object_4",
+      "upperPlaneNormal": [-0.982645575405, 0.183001336760, 0.030301549147],
+      "upperPlaneD": -0.627490045239,
+      "heldOutTopRaysXYZ": [[0.96, 1.2291989976234123, 3], [0.95, 1.1688796692768, 3.04]],
+      "lowerRayXYZ": [0.96, 0.9632936556855709, 3],
+      "constructionInference": "Narrow closed inclined web; concealed inboard root overlaps the closed bow and outer root the existing fender. No full-width cover over the idler; actual air above the inclined top remains open."
+    },
+    "trackWeb": {
+      "sourceOwner": "Object_10 island128, mirrored course retained",
+      "measuredWebX": [1.0787245035171509, 1.511648416519165],
+      "connectorStripX": [1.0213598012924194, 1.0787245035171509],
+      "fullOuterShoePlaneX": [0.9899885058403015, 1.5994879007339478],
+      "correction": "Existing trackCarrierWidthM now432.923913mm; full shoe/connector span, all356 shoe instances, axles, wheel geometry and track center/course unchanged. Narrow physical web replaces the incorrect full-width continuous fill; no audit exclusion or threshold change."
+    }
+  },
+  "verification": {
+    "actualIdHighLowConstruction": "PASS",
+    "focusedSourceScalarsDishAirOpticsAndOwnership": "PASS",
+    "nominalLauncherRadialAir": "128 of 128 rays PASS in each LOD, including yaw",
+    "strictWheelMechanics": "PASS high and low",
+    "typecheck": "PASS",
+    "quality": "10 runtime files, 80 functions, 0 complexity violations, 0 any, 0 unknown",
+    "historicalPhotoFixtures": "all three original tests PASS, unchanged assertions using process-local chieftain5XPhotoDraft.ts",
+    "newClosureHighLowTest": "PASS source-fixed case/web/cloth surfaces, geometric air, positive receiving contacts, yaw ownership, narrow carrier and unchanged broad shoes",
+    "strictTrackSampler": "PASS high and low: front/rear/full-sweep band0 and shoe0; unchanged committed sampler, no excluded hull or threshold changes",
+    "sourceClosuresCaptureAt": "2026-09-06T23:44:40.708Z",
+    "rawFidelity": 96.98655114842332,
+    "rawMinimumWholeView": 94.18100126873912,
+    "rawGeometryMinimum": 94.18100126873912,
+    "rawGeometryComponents": { "wholeCurves": 94.18100126873912, "dims": 100, "floaters": 100 },
+    "sourceComponentStatus": "Hull/turret/gun isolated metrics N/A: source material batches are fused; complete whole and tracks remain required and pass.",
+    "officialStrictTrackAndContinuity": "PASS all front/rear/full-sweep band/shoe0 and continuity0",
+    "officialStandard": "FAIL actual MG0: no complete source weapon exists. The projector is not relabeled. No blanket or census exception introduced.",
+    "boundedNeutralReview": "Fresh local board viewed: corrected source obliquity, rear case and fender web are seated; no new bounded floater/air defect. Cloth/casting relief, latch fields and warped fixture axes remain approximations, not perfect source parity.",
+    "archives": ".qa-dev/reports/chieftain5_x-source-closures-{fidelity,geometry}.json",
+    "finalAnatomyAssetsAndRelease": "PENDING parent-owned composed pipeline"
+  }
+}

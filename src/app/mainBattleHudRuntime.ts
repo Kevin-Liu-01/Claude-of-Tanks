@@ -19,6 +19,7 @@ type HudEngineContext = Parameters<typeof createBattleHudAccess>[1];
 export interface MainBattleHudRuntimeOptions {
   bus: HudBus;
   engineContext: HudEngineContext;
+  perfMeterEnabled(): boolean;
   directionalHitValuesEnabled(): boolean;
   queueMinimap(): void;
   access?: BattleHudAccess;
@@ -44,6 +45,13 @@ export function createMainBattleHudRuntime(
 
   const preload = async (): Promise<BattleHudBundle> => {
     const runtime = await access.preload();
+    // Settings initializes before the demand-loaded battle HUD, so its boot
+    // broadcast may have no listener yet. Re-apply the persisted preference
+    // after acquisition (and on every later battle entry) instead of letting
+    // the HUD's safe default silently win for the whole session.
+    options.bus.emit('ui:perfMeter', {
+      on: options.perfMeterEnabled(),
+    });
     options.bus.emit('ui:directionalHitValues', {
       on: options.directionalHitValuesEnabled(),
     });

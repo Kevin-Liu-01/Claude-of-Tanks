@@ -68,6 +68,11 @@ import type {
   StoryboardInput,
 } from './studioTimeline.ts';
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
+import {
+  applySiteMetadataToDocument,
+  GAME_METADATA,
+  STUDIO_METADATA,
+} from '../presentation/siteMetadata.ts';
 import type {
   MovementContactGeometry,
   MovementEntity,
@@ -2932,12 +2937,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /**
    * Tab identity follows the mode (owner: "use relevant logos"): the studio
-   * mark + title while active, the crest favicon + original title back in
-   * the garage. Saved/restored as a pair so nothing leaks across modes.
+   * mark + route metadata while active, then the crest favicon + canonical
+   * Garage metadata on exit so direct /studio boots restore cleanly too.
    */
   const docBrand = (() => {
     interface SavedBrand {
-      title: string;
       links: Array<{
         l: HTMLLinkElement;
         href: string | null;
@@ -2951,7 +2955,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         if (mode === 'studio') {
           if (!saved) {
             saved = {
-              title: document.title,
               links: links.map((l) => ({
                 l, href: l.getAttribute('href'), type: l.getAttribute('type'),
               })),
@@ -2961,7 +2964,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             l.setAttribute('href', '/brand/nav/studio.svg');
             l.setAttribute('type', 'image/svg+xml');
           }
-          document.title = 'Claude of Tanks — Studio';
+          applySiteMetadataToDocument(document, STUDIO_METADATA);
         } else if (saved) {
           for (const { l, href, type } of saved.links) {
             if (href != null) l.setAttribute('href', href);
@@ -2969,7 +2972,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             if (type) l.setAttribute('type', type);
             else l.removeAttribute('type');
           }
-          document.title = saved.title;
+          applySiteMetadataToDocument(document, GAME_METADATA);
           saved = null;
         }
       } catch (_) { /* headless DOM without icon links */ }

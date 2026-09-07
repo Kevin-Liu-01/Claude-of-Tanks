@@ -1,0 +1,16 @@
+{
+  "id": "t72b_1987_x",
+  "sourceSha256": "97e5cab758f070ca516dc865f46c09ff259ed562bb311add5da897892c89d743",
+  "scale": 0.0008829128978115287,
+  "axes": [
+    "-z",
+    "y",
+    "x"
+  ],
+  "translation": [
+    -0.0075494921115505376,
+    0.007335317468527515,
+    0.11183692411947455
+  ],
+  "registrationReason": "Uniform 3.59m configuration-width anchor. True closed central-hull longitudinal midpoint and measured source track contact ground; original node matrices baked with mirrored winding corrected exactly once. Fused source remains fused; do not invent component scores."
+}

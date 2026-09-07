@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { KIT } from './tankFactoryCore.ts';
-import { resolveSuspensionDimensions, endpointAxialScale } from './suspensionDimensions.ts';
+import { resolveSuspensionDimensions, endpointAxialScale, endpointAxleOutset, sourceToothTip } from './suspensionDimensions.ts';
+import { measuredTireBands,validateMeasuredWheelCore } from './measuredWheelGeometry.ts';
 
 function hashArray(hash, values) {
   hash.update(Buffer.from(values.buffer, values.byteOffset, values.byteLength));
@@ -81,6 +82,57 @@ function positions(mesh) {
 function close(actual, expected, label) {
   assert.ok(Math.abs(actual - expected) < 1e-6, `${label}: ${actual} vs ${expected}`);
 }
+
+for(const high of[true,false]) {
+  const left=[-1.038,-.038,.962],right=[-.962,.038,1.038];
+  const model=fixture({wheelZsLeftM:left,wheelZsRightM:right},high);
+  try {
+    left[0]=99;model.gear.update(.42,-.37);
+    for(const wheel of positions(model.root.getObjectByName('gearRoadWheelTires'))) {
+      const expected=wheel.x<0?[-1.038,-.038,.962]:right;
+      assert.ok(expected.some(z=>Math.abs(z-wheel.z)<1e-6),'side axle stagger survives independent spinning');
+      close(wheel.y,.5,'stagger does not move wheel heights');
+      const joints=positions(model.root.getObjectByName('gearSuspensionJointBosses'));
+      assert.ok(joints.some(p=>Math.sign(p.x)===Math.sign(wheel.x)&&Math.abs(p.z-wheel.z)<1e-6&&Math.abs(p.y-wheel.y)<1e-6),
+        'source stagger carries its physical suspension axle');
+    }
+    close(model.root.getObjectByName('gearTrackBandR').position.x,BASE.xc,'stagger leaves lane fixed');
+    assert.deepEqual(model.receipt.wheelZsLeftM,[-1.038,-.038,.962]);
+    assert.deepEqual(model.gear.roadWheelLayout.wheelZsRightM,right);
+    for(const body of model.root.children.filter(o=>o.name==='gearEndWheelBody'))
+      assert.ok(Math.abs(body.position.z)===2,'stagger leaves end drums fixed');
+  }finally{model.dispose();}
+}
+for(const bad of[[],[0,1],[0,NaN,2],new Array(3),'bad'])
+  assert.throws(()=>fixture({wheelZsLeftM:bad}),/Native road-wheel/);
+
+for(const high of[true,false]) {
+  const core=new THREE.CylinderGeometry(.08,.08,.30,20).rotateZ(Math.PI/2);
+  const bandDefs=[{centerM:-.1,widthM:.1,innerRadiusM:.3},{centerM:.1,widthM:.1,innerRadiusM:.3}];
+  const model=fixture({wheelTireBands:bandDefs,wheelCoreGeometry:{disc:core}},high);
+  try {
+    model.root.updateMatrixWorld(true);
+    const tire=model.root.getObjectByName('gearRoadWheelTires');
+    const hit=(x,r)=>new THREE.Raycaster(new THREE.Vector3(x,.5+r,-1.8),new THREE.Vector3(0,0,1),0,1.6).intersectObject(tire,false);
+    assert.equal(hit(1.3,.35).length,0,'true 100mm inter-tire air, no rubber bridge');
+    assert.ok(hit(1.20,.35).length&&hit(1.40,.35).length,'both physical rubber rings exist');
+    const ray=new THREE.Raycaster(new THREE.Vector3(1.20,.5,-1),new THREE.Vector3(0,1,0),0,.29);
+    assert.equal(ray.intersectObject(tire,false).length,0,'rubber does not fill steel-dish cavity');
+    close(model.root.getObjectByName('gearRoadWheelDiscs').geometry.boundingBox?.max.y??.08,.08,'measured core has no injected full-radius disc');
+    const steel=new THREE.MeshBasicMaterial();
+    model.gear.addRoadWheelLayer(new THREE.BoxGeometry(.02,.1,.1),steel,{side:-1,name:'gearRoadWheelMeasuredLeft'});
+    model.gear.update(.35,-.65);model.root.updateMatrixWorld(true);
+    const faces=positions(model.root.getObjectByName('gearRoadWheelMeasuredLeft'));
+    assert.equal(faces.length,3);assert.ok(faces.every(p=>p.x<0),'left face cannot be duplicated on right');
+    assert.throws(()=>model.gear.addRoadWheelLayer(new THREE.BoxGeometry(.01,.1,.1),steel,{side:0}),/face side/);
+    assert.deepEqual(model.receipt.wheelTireBands,bandDefs);
+  }finally{model.dispose();}
+}
+for(const bands of[[],[{centerM:0,widthM:.1,innerRadiusM:0}],
+  [{centerM:0,widthM:2,innerRadiusM:.2}],[{centerM:NaN,widthM:.1,innerRadiusM:.2}],
+  [{centerM:0,widthM:.15,innerRadiusM:.2},{centerM:.05,widthM:.15,innerRadiusM:.2}]])
+  assert.throws(()=>measuredTireBands(bands,.4,.3,20),/Measured tire bands/);
+assert.throws(()=>validateMeasuredWheelCore(new THREE.BufferGeometry()),/Measured wheel core/);
 function assertStations(model, heights, outset) {
   const tires = positions(model.root.getObjectByName('gearRoadWheelTires'));
   const joints = positions(model.root.getObjectByName('gearSuspensionJointBosses'));
@@ -148,12 +200,17 @@ const SOURCE_SUSPENSION = {
   anchorLiftM:.16946,
 };
 for (const key of Object.keys(SOURCE_SUSPENSION)) for (const bad of [NaN,Infinity,0,-.1,100]) {
+  if (key === 'anchorLiftM' && bad === 0) {
+    assert.equal(resolveSuspensionDimensions({...SOURCE_SUSPENSION,anchorLiftM:0}).anchorLiftM, 0,
+      'horizontal measured arms preserve zero lift; other dimensions still reject zero');
+    continue;
+  }
   assert.throws(() => resolveSuspensionDimensions({...SOURCE_SUSPENSION,[key]:bad}), /Suspension dimension/);
 }
 for (const key of ['armCenterLeftAbsXM','armCenterRightAbsXM']) for(const bad of [NaN,Infinity,0,-.1,100]) {
   assert.throws(()=>resolveSuspensionDimensions({...SOURCE_SUSPENSION,[key]:bad}),/Suspension dimension/);
 }
-for(const key of ['armHeightM','armAxleHeightM'])for(const bad of [NaN,Infinity,0,-.1,100]) {
+for(const key of ['armHeightM','armAxleHeightM','anchorTrailM'])for(const bad of [NaN,Infinity,0,-.1,100]) {
   assert.throws(()=>resolveSuspensionDimensions({...SOURCE_SUSPENSION,armHeightM:.16,armAxleHeightM:.195,[key]:bad}),/Suspension dimension/);
 }
 assert.throws(()=>resolveSuspensionDimensions({...SOURCE_SUSPENSION,armAxleHeightM:undefined}),/endpoint heights/);
@@ -161,6 +218,14 @@ for(const key of ['axialScaleLeft','axialScaleRight'])for(const bad of [NaN,Infi
   assert.throws(()=>endpointAxialScale({[key]:bad},key==='axialScaleLeft'?-1:1),/End-wheel axial scale/);
 }
 assert.throws(() => resolveSuspensionDimensions({}), /Suspension dimension/);
+for(const value of [NaN,Infinity,-Infinity,.51,-.51])assert.throws(()=>endpointAxleOutset({axleOutsetM:value}),/axle outset/);
+for(const side of[-1,1])for(const value of[NaN,Infinity,.51,-.51])
+  assert.throws(()=>endpointAxleOutset({[side<0?'axleOutsetLeftM':'axleOutsetRightM']:value},side),/axle outset/);
+assert.equal(endpointAxleOutset({axleOutsetM:.02,axleOutsetLeftM:.03},-1),.03);
+assert.equal(endpointAxleOutset({axleOutsetM:.02,axleOutsetLeftM:.03},1),.02);
+for(const value of [NaN,Infinity,0,-1,2])assert.throws(()=>sourceToothTip({toothTipRadiusM:value},.4),/tooth tip/);
+assert.equal(sourceToothTip({},.44),.44);
+assert.equal(sourceToothTip({toothTipRadiusM:.36207},.44),.35607);
 
 for(const high of [true,false]) {
   const ordinary=fixture({},high,true);
@@ -179,6 +244,47 @@ for(const high of [true,false]) {
       close(new THREE.Vector3().setFromMatrixPosition(am).distanceTo(new THREE.Vector3().setFromMatrixPosition(bm)),0,'batched axle lane/height/station unchanged');
     }
   }finally{ordinary.dispose();scaled.dispose();}
+}
+for(const high of[true,false])for(const batch of[true,false]) {
+  const model=fixture({roadWheelOutsetLeftM:.019,roadWheelOutsetRightM:-.021,
+    sprocket:{...BASE.sprocket,axleOutsetLeftM:.031,axleOutsetRightM:-.027},
+    idler:{...BASE.idler,axleOutsetLeftM:.019,axleOutsetRightM:-.021}},high,batch);
+  try {
+    model.gear.update(.19,-.37);
+    for(const wheel of positions(model.root.getObjectByName('gearRoadWheelTires'))) {
+      close(wheel.x,wheel.x<0?-(BASE.xc+.019):BASE.xc-.021,'independent side road datum survives spinning');
+      close(wheel.y,BASE.wheelY,'asymmetric axial adjustment does not alter height');
+    }
+    for(const side of[-1,1]) {
+      const band=model.root.getObjectByName(side<0?'gearTrackBandL':'gearTrackBandR');
+      close(band.position.x,side*BASE.xc,'belt lane remains unchanged');
+    }
+    const verify=(p,kind)=>{
+      const left=p.x<0,delta=kind==='sprocket'?(left?.031:-.027):(left?.019:-.021);
+      close(Math.abs(p.x),BASE.xc+delta,'independent endpoint datum survives spinning');
+    };
+    if(batch) {
+      const mesh=model.root.getObjectByName('gearEndWheelBody');
+      for(let i=0;i<4;i++){const m=new THREE.Matrix4();mesh.getMatrixAt(i,m);verify(new THREE.Vector3().setFromMatrixPosition(m),i<2?'sprocket':'idler');}
+    } else model.root.traverse(o=>{if(o.name==='gearEndWheelBody')verify(o.position,o.userData.runningGearEndKind);});
+    assert.equal(model.receipt.roadWheelOutsetLeftM,.019);
+    assert.equal(model.receipt.roadWheelOutsetRightM,-.021);
+    assert.equal(model.gear.roadWheelLayout.roadWheelOutsetRightM,-.021);
+  } finally {model.dispose();}
+}
+for(const high of [true,false])for(const batch of [true,false]) {
+  const model=fixture({idler:{...BASE.idler,axleOutsetM:-.0631}},high,batch);
+  try {
+    model.gear.update(.17,.21);
+    if(batch) {
+      const mesh=model.root.getObjectByName('gearEndWheelBody');
+      for(const i of [2,3]){const m=new THREE.Matrix4();mesh.getMatrixAt(i,m);
+        close(Math.abs(new THREE.Vector3().setFromMatrixPosition(m).x),BASE.xc-.0631,'batched measured idler axle, independent of belt');}
+    } else model.root.traverse(o=>{
+      if(o.name==='gearEndWheelBody'&&o.userData.runningGearEndKind==='idler')close(Math.abs(o.position.x),BASE.xc-.0631,'unbatched measured idler axle');
+    });
+    close(Math.abs(model.root.getObjectByName('gearTrackBandL').position.x),BASE.xc,'axle correction never moves band');
+  } finally {model.dispose();}
 }
 
 function assertMeasuredBosses(root) {
@@ -245,5 +351,17 @@ for(const high of [true,false]) {
       close(left?bounds.min.x:bounds.max.x,left?-1.65821776:1.66204587,'actual independent source sprocket axial outer face');
     });
   } finally {tank.dispose();}
+}
+for(const high of [true,false]) {
+  const model=fixture({suspensionDimensions:{...SOURCE_SUSPENSION,anchorTrailM:.485275}},high);
+  try {
+    const bosses=positions(model.root.getObjectByName('gearSuspensionJointBosses'));
+    for(let i=0;i<bosses.length;i+=2) {
+      close(bosses[i].z-bosses[i+1].z,.485275,'source longitudinal arm anchor, not generic wheel-radius ratio');
+    }
+    model.gear.resetPose();
+    const reset=positions(model.root.getObjectByName('gearSuspensionJointBosses'));
+    for(let i=0;i<reset.length;i++)close(reset[i].distanceTo(bosses[i]),0,'source arm datum survives reset');
+  } finally { model.dispose(); }
 }
 console.log('roadWheelRestHeights.selftest: measured axles/supports and independent moving suspension dimensions, fixed drum lanes, immutable inputs and eight original buffer snapshots pass');

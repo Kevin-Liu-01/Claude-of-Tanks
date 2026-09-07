@@ -1,0 +1,67 @@
+{
+  "id": "t90_x",
+  "recordedAt": "2026-09-06T21:28:27Z",
+  "status": "Bounded CPU correction frozen; fresh official silhouette, geometry and continuity proof pending. The preceding turret.front score 90.86955722150465 remains a rejection, not waived by this hull-equipment repair.",
+  "source": {
+    "payload": "T-90.obj",
+    "payloadSha256": "fd7d8552bcb9d4b416ca2e101f6061e1a3b50a9e96e768db85a8a2e1e7daa4a9",
+    "canonicalSha256": "619f5cec83ed3ceb8ab852bd1ae95b09d097e12631d8c89f3c0f19f56c7fa592",
+    "owner": "vehicle#t-90--t-90_7_2",
+    "transform": {"scale": 1, "axes": ["x", "y", "z"], "translation": [-0.0009499788284301758, 0, 0.3769500255584717]},
+    "policy": "Existing owner-authorized local-only comparison input. Original runtime scalar sections contain no supplied topology, texture or loading path. Source rights and provenance restrictions are unchanged."
+  },
+  "cause": "Missing stepped cassette mounting carriers and receiving pins leave four enclosed top-down cells where the full source has material. This is not permission to close the genuine skirt seams or external air.",
+  "classifierDiagnostic": {
+    "nativeBefore": 4,
+    "nativeAfter": 0,
+    "fullSource": 0,
+    "grid": [68, 174],
+    "actualCellSizeM": [0.059645295002881224, 0.05984637749232469],
+    "actualCellCentersXZ": [[-1.8201314764163075, 2.271349959829383], [1.8182315187594478, 2.271349959829383], [-1.8201314764163075, 1.613039807413811], [1.8182315187594478, 1.613039807413811]],
+    "qualification": "CPU triangle projection reproduces the existing grid, 3 by 3 subpixels and flood classification. Printed standard coordinates use the nominal 0.06 m spacing rather than the exact frame/grid spacing; classification itself is unchanged. No tool, threshold, mask or camera edits were made."
+  },
+  "construction": {
+    "primitiveCount": 28,
+    "carrierCount": 6,
+    "receivingAssemblyCount": 2,
+    "owner": "Permanent hullDetail equipment, not removable ERA",
+    "rightCarrierIslands": [7219, 7489, 7759],
+    "rightReceiverIsland": 5615,
+    "leftWitnessIslands": [11386, 9328],
+    "carrierLongitudinalBoundsM": [[1.41795, 1.58495], [1.65915, 1.82715], [2.21585, 2.38285]],
+    "carrierWebLongitudinalBoundsM": [[1.48245, 1.51955], [1.72465, 1.76075], [2.28125, 2.31735]],
+    "carrierBaseBoundsXYM": [[1.72755, 1.1875], [1.79985, 1.2979]],
+    "outerToeCrownYM": 1.2168,
+    "webCrownYM": 1.3398,
+    "pinCenterXYM": [1.81645, 1.3213],
+    "pinLongitudinalBoundsM": [1.54295, 1.70115],
+    "collarLongitudinalBoundsM": [1.61425, 1.62985],
+    "collarBoundsXYM": [[1.79395, 1.2998], [1.83885, 1.3418]],
+    "segmentLapM": 0.0001,
+    "reflectionCenterXM": -0.0009499788284301758
+  },
+  "fixedSourceWitnesses": [
+    {"x": 1.82, "z": 2.26, "firstY": 1.215036384109, "normal": [-0.275650222864, 0.961258006279, 0]},
+    {"x": -1.82, "z": 2.26, "firstY": 1.214491552494, "normal": [0.275650222864, 0.961258006279, 0]},
+    {"x": 1.818231518759, "z": 1.613039807414, "firstY": 1.331609275084, "normal": [0.447219063386, 0.894424457036, 0]},
+    {"x": -1.820131476416, "z": 1.613039807414, "firstY": 1.331609275084, "normal": [-0.447219063386, 0.894424457036, 0]},
+    {"x": 1.75, "z": 2.3, "firstY": 1.326936051578, "normal": [0.380656228479, 0.924716624551, 0]},
+    {"x": 1.81, "z": 1.622, "firstY": 1.341799974442, "normal": [0, 1, 0]}
+  ],
+  "airAndSupport": {
+    "air": "Both sides preserve the source opening above the rolled toe, below the inclined web, the full exterior column at Z 2.10, and the inboard receiving-pin clearance. These are complete-source and whole-native rays, not isolated helper omissions.",
+    "support": "Every carrier base intersects the unchanged fixed skirt. The receiving pin has five mutually overlapping closed segments and positive attachment through its aft stock to the existing hinge leaf. Turret yaw and gun pitch do not move any new part.",
+    "limits": "The existing forward leaf is about 5.76 mm below the stock and remains unchanged; no claim of two-ended attachment or complete hinge reproduction is made. Optional tiny twisted hooks are omitted. Stock-end taper and small source bevels retain approximately 1–2 mm scalar simplification. Source exposed planes and verified air remain exact within the focused tolerance."
+  },
+  "verification": {
+    "test": "src/vehicles/profiles/t90AwXSideMounts.selftest.mjs",
+    "quality": ["high", "low"],
+    "sourceFaceToleranceM": 0.000002,
+    "sourceNormalDotMinimum": 0.999999,
+    "unchanged": "Every non-target submitted primitive buffer/transform is byte-identical with the pre-addition build; complete cassette, skirt, hull, turret, gun and running-gear meshes and transforms are also unchanged. Only the additive permanent hullDetail contents differ.",
+    "strictTrackCPU": {"frontBand": 0, "frontShoe": 0, "rearBand": 0, "rearShoe": 0, "sweepBand": 0, "sweepShoe": 0},
+    "typecheck": "PASS",
+    "codeQuality": "Two helper/test files: 28 functions, zero complexity violations, any or unknown.",
+    "officialFreshCapture": "Pending parent-owned scoped proof; no browser or GPU used for this correction."
+  }
+}

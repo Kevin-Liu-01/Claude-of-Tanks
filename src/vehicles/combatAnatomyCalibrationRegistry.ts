@@ -14,6 +14,9 @@ export interface AnatomyCalibrationCell extends AnatomyCalibrationBounds {
   readonly faces: readonly (readonly number[])[];
   readonly structureKind?: string | null;
   readonly structureIndex?: number;
+  readonly interiorPoint?: readonly number[];
+  readonly sourceStock?: string;
+  readonly sourceStation?: number;
 }
 
 export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {

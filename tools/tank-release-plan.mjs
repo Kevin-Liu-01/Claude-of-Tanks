@@ -2,7 +2,9 @@
 export function tankReleaseSteps(ids, gate, node = process.execPath) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
   const selected=`--ids=${ids}`;
-  const cpu=(tool,...args)=>({command:node,args:[`tools/${tool}.mjs`,...args],capture:false});
+  // Fleet construction and builds share the resource queue with rendering.
+  // Only children that already queue their own phases bypass this wrapper.
+  const cpu=(tool,...args)=>({command:node,args:[`tools/${tool}.mjs`,...args],capture:true});
   const gpu=(tool,...args)=>({...cpu(tool,...args),capture:true});
   return [
     cpu('gen-combat-anatomy','--check'),
@@ -16,8 +18,8 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     // Strict source release requires BOTH outline/fidelity and geometry.
     ...(gate ? [gpu('procedural-fidelity',selected,'--check','--board','--neutral-board')] : []),
     // This child queues its individual render phases; never nest a lock.
-    cpu('tank-standard-check',selected,...(gate?['--gate']:[])),
+    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
     {command:'npm',args:['test'],capture:false},
-    {command:'npm',args:['run','build:private'],capture:false},
+    {command:'npm',args:['run','build:private'],capture:true},
   ];
 }

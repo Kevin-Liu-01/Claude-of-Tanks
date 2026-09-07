@@ -1,0 +1,8 @@
+{
+  "id": "type90_x",
+  "sourceSha256": "d47c9446d82e511922c92244c375afca7701b9202ff11d601197e3a898adeaac",
+  "scale": 0.1083596770099818,
+  "axes": ["-z", "y", "x"],
+  "translation": [0.00000172794, 0.00000197300, 0.15699306157],
+  "registrationReason": "Proper axis rotation and uniform official9.8m overall-length anchor only. Canonical width3.61781384 conflicts with official3.40m. Native profile follows primary dimensions/photos; unmodified local source residual stays reported. No inferred yaw axis is claimed as source-proven."
+}

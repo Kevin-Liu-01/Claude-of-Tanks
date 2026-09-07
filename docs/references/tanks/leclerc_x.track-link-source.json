@@ -1,0 +1,40 @@
+{
+  "id": "leclerc_x",
+  "sourceSha256": "8d3f1061d6e9cfcf195052317859a57af9a7d7883050aed9538b77f3027e7c4e",
+  "sourceRole": "private measurement oracle, never playable geometry",
+  "measuredRightPadWidthM": 0.5253277,
+  "measuredRightFullPinEnvelopeM": 0.6360791,
+  "capSourceObject": "Object5:51675",
+  "capWorldCenterYZ": [0.0316314, -0.9197801],
+  "capRadiusM": 0.0222443,
+  "capLengthM": 0.0404054,
+  "measuredPinPairSpacingM": 0.077615,
+  "connectorSourceObject": "Object5:51947",
+  "connectorAxialBoundsM": [1.530597, 1.582765],
+  "connectorThicknessM": 0.035629,
+  "connectorDepthM": 0.0985811,
+  "sourceShape": "near-rectangular closed forging; separate circular caps; actual gap outside the pad",
+  "sourceRoofPlane": [0, 0.9999924, 0.0039042, -0.0465532906],
+  "sourceUndersidePlane": [-0.0000014, -0.9999924, -0.0039052, 0.0109256864],
+  "authoringLimits": [
+    "Tiny 0.224-degree connector pitch is approximated by a level forging, under 0.2 mm at its ends.",
+    "The right-side measured cross-section is translated to both independently retained native lanes.",
+    "Original 81-link native cadence and course are retained; the source alternating 77.615/83.288 mm spacing is not represented as an imported animation or mesh.",
+    "No source vertex, connectivity or texture buffers are included."
+  ],
+  "verification": {
+    "test": "src/vehicles/profiles/leclercXTrackLinks.selftest.mjs",
+    "highLowSourceSpansAirClosedCaps": "pass",
+    "nativeCourseMatricesAndWheelCarrierBuffers": "unchanged",
+    "legacyDefaultDetailedAndSimplifiedGeometry": "byte-identical",
+    "existingLeclercGround48PhaseAndWheelArticulation": "pass",
+    "strictBandAndShoeSweep": [0, 0],
+    "freshCombinedVisualGeometryProof": {
+      "fidelityRawOverall": 97.85692719450148,
+      "allRegisteredViewsAtLeast92": true,
+      "geometryMinimumRounded": 93.4,
+      "officialStandard": "pass: strict band/shoe sweeps zero; continuity zero; recognized weapon one",
+      "scope": "Char Leclerc X rear shoulders and track links; complete batch release still pending"
+    }
+  }
+}

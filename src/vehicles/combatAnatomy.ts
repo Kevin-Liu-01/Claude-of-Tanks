@@ -16,6 +16,9 @@ import {
   type CombatAnatomyCalibration,
 } from './combatAnatomyCalibrationRegistry.ts';
 import { isCombatAnatomyMeasurementMode } from './combatAnatomyMeasurementMode.ts';
+import {
+  calibrationOrientationPoint, stockCollisionCoverCandidates, stockCollisionFaceCovered,
+} from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import type {
   InternalCrewStation,
@@ -102,6 +105,7 @@ interface CollisionCell extends Bounds {
   vertices: Vec3[];
   faces: CollisionFace[];
   structureKind: string | null;
+  sourceStock?: string;
 }
 
 interface ArmorAnatomy {
@@ -329,14 +333,6 @@ function mainPlateDescriptors(plates: readonly ArmorPlate[]): PlateDescriptor[] 
     .filter((descriptor): descriptor is PlateDescriptor => descriptor !== null);
 }
 
-function calibrationCellCenter(source: AnatomyCalibrationCell): Vec3 {
-  return [
-    (source.min[0] + source.max[0]) * 0.5,
-    (source.min[1] + source.max[1]) * 0.5,
-    (source.min[2] + source.max[2]) * 0.5,
-  ];
-}
-
 function collisionFaceFromTriangle(
   sourceIndices: readonly number[],
   vertices: Vec3[],
@@ -376,7 +372,7 @@ function collisionCellFromCalibration(
 ): CollisionCell | null {
   if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) return null;
   const vertices = source.vertices.map((point: readonly number[]) => point.slice());
-  const center = calibrationCellCenter(source);
+  const center = calibrationOrientationPoint(source);
   const faces: CollisionFace[] = [];
   for (const indices of source.faces) {
     const face = collisionFaceFromTriangle(indices, vertices, center, descriptors);
@@ -389,6 +385,7 @@ function collisionCellFromCalibration(
     vertices,
     faces,
     structureKind: source.structureKind || null,
+    ...(source.sourceStock === undefined ? {} : { sourceStock: source.sourceStock }),
   };
 }
 
@@ -406,10 +403,12 @@ function collisionBoundaryCounts(cells: readonly CollisionCell[]): Map<number, n
 function markInternalCollisionFaces(cells: readonly CollisionCell[]): void {
   const boundaryCounts = collisionBoundaryCounts(cells);
   for (const cell of cells) {
+    const candidates = cell.sourceStock === undefined ? cells : stockCollisionCoverCandidates(cell, cells);
     for (const face of cell.faces) {
       const key = Math.round(face.center[2] * 10000);
-      face.internal = Math.abs(face.normal[2]) > 0.985
-        && (boundaryCounts.get(key) || 0) > 1;
+      face.internal = cell.sourceStock === undefined
+        ? Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1
+        : stockCollisionFaceCovered(cell, face, candidates);
     }
   }
 }

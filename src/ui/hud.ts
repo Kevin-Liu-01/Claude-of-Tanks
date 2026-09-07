@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
@@ -476,6 +477,7 @@ export interface HudRuntime {
   stageSpectateBar(payload?: HudEventPayload): void;
   warmShotCards(specIds: readonly string[]): void;
   preBattleCountdown(secondsLeft: number): void;
+  setPreBattleWaiting(waiting: boolean): void;
   setMode(mode: HudMode): void;
   update(frame: HudFrame): void;
   buildMinimap(
@@ -1453,6 +1455,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
     0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
 .cot-prebattle .n.tick{animation:cot-pb-pop var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
+.cot-prebattle.waiting .n{font-size:48px;letter-spacing:.12em;text-indent:.12em;}
+.cot-prebattle.waiting .k{font-size:14px;letter-spacing:.16em;text-indent:.16em;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
 .cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
@@ -1995,8 +1999,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const pbKick = el('div', 'k', preBattleEl);
   pbKick.textContent = 'BATTLE BEGINS IN';
   const pbNum = el('div', 'n', preBattleEl);
-  let pbShownSec = -1;
-  let pbHideTimer: ReturnType<typeof setTimeout> | null = null;
+  const preBattleOverlay = createPreBattleOverlay(preBattleEl, pbKick, pbNum);
 
   const alertEl = el('div', 'cot-alert', root);
   alertEl.setAttribute('role', 'status');
@@ -5833,35 +5836,10 @@ export function initHud(bus: EventBus): HudRuntime {
      * @param {number} secondsLeft remaining hold (0 = released)
      */
     preBattleCountdown(secondsLeft: number) {
-      if (secondsLeft > 0) {
-        const sec = Math.ceil(secondsLeft);
-        if (pbHideTimer) clearTimeout(pbHideTimer);
-        preBattleEl.classList.remove('rollout');
-        preBattleEl.classList.add('on');
-        if (sec !== pbShownSec) {
-          pbShownSec = sec;
-          pbNum.classList.remove('go', 'tick');
-          pbNum.textContent = String(sec);
-          void pbNum.offsetWidth; // restart the pop animation per second
-          pbNum.classList.add('tick');
-        }
-      } else if (pbShownSec !== 0) {
-        pbShownSec = 0;
-        preBattleEl.classList.add('rollout');
-        pbNum.classList.remove('tick');
-        pbNum.textContent = 'ROLL OUT!';
-        void pbNum.offsetWidth;
-        pbNum.classList.add('tick', 'go');
-        if (pbHideTimer) clearTimeout(pbHideTimer);
-        pbHideTimer = setTimeout(() => {
-          preBattleEl.classList.remove('on');
-          // Keep the rollout typography intact for the entire opacity fade.
-          // The next positive countdown resets these classes before showing,
-          // so the kicker cannot flash back or shift the numeral while this
-          // release is still fading out.
-        }, 1100);
-      }
+      preBattleOverlay.countdown(secondsLeft);
     },
+
+    setPreBattleWaiting(waiting: boolean) { preBattleOverlay.setWaiting(waiting); },
 
     /**
      * Switch overall HUD mode.
@@ -5879,6 +5857,7 @@ export function initHud(bus: EventBus): HudRuntime {
       netLastMs = 0;
       netLastPaintMs = 0;
       if (m === 'hidden') {
+        preBattleOverlay.reset();
         setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);
         aimTargetId = null;

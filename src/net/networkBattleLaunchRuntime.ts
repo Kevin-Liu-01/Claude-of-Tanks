@@ -109,6 +109,7 @@ export interface NetworkBattleLaunchOptions {
   clearNetworkRound: () => void;
   closeMatch: (reason: string) => void;
   enterGarage: () => Promise<void> | void;
+  nextFrame: () => Promise<RuntimeValue>;
   setNetworkStatus: (status: DedicatedStatus) => void;
   recordEntryFailure: (failure: NetworkEntryFailure | null) => void;
   reportError?: (scope: string, error: RuntimeValue) => void;
@@ -192,17 +193,19 @@ export function createNetworkBattleLaunchRuntime({
   clearNetworkRound,
   closeMatch,
   enterGarage,
+  nextFrame,
   setNetworkStatus,
   recordEntryFailure,
   onPrivateEntryFailure = () => {},
   reportError = (scope, error) => console.error(`[${scope}] entry failed`, error),
 }: NetworkBattleLaunchOptions): NetworkBattleLaunchRuntime {
-  const required = [lifecycle?.run, battleLoad?.show, battleLoad?.progress,
+  const required = [lifecycle?.run, lifecycle?.coverRendering,
+    lifecycle?.uncoverRendering, battleLoad?.show, battleLoad?.progress,
     battleLoad?.hide, audio?.resume, audio?.loadingOn, getMatch,
     getRoomCoordinator, getWorldCollision, getMapPresentation, rosterRows,
     emitBattleStart, resetBattleState, presentBattle, loadPrivateMatch,
     loadDedicatedMatch, disposePresentation, clearNetworkRound, closeMatch,
-    enterGarage, setNetworkStatus, recordEntryFailure, reportError];
+    enterGarage, nextFrame, setNetworkStatus, recordEntryFailure, reportError];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('network battle launch runtime requires every lifecycle port');
   }
@@ -256,11 +259,22 @@ export function createNetworkBattleLaunchRuntime({
   };
 
   const stopLoading = async (reason: string) => {
+    // A failure can arrive after reveal has started. Reacquire opaque coverage
+    // before teardown, then keep it until the restored Garage has painted.
+    if (!battleLoad.visible) {
+      battleLoad.show({
+        mapName: 'Returning to Garage', thumb: '', biome: 'none',
+        mode: 'Deployment ended', allies: [], enemies: [],
+      });
+    }
+    battleLoad.progress(1, 'Restoring Garage');
+    lifecycle.coverRendering();
     audio.loadingOn(false);
     closeMatch(reason);
-    lifecycle.uncoverRendering();
-    await battleLoad.hide();
     await enterGarage();
+    lifecycle.uncoverRendering();
+    await nextFrame();
+    await battleLoad.hide();
   };
 
   const presentPrivateEntryFailure = async (

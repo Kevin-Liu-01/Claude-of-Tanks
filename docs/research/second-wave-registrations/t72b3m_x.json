@@ -1,0 +1,8 @@
+{
+  "id": "t72b3m_x",
+  "sourceSha256": "6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350",
+  "scale": 1,
+  "axes": ["-x", "y", "-z"],
+  "translation": [-0.03808850049972534, 0.8157399892807016, 0.9552165269851685],
+  "registrationReason": "Source-only proper signed-axis rotation and structural-hull center/actual occupied ground. All 15 material-mixed meshes retained. Preserve the source's 0.03495-degree export yaw and 0.837-degree parked cannon elevation; no independent component fitting or invented ownership masks. The measured collar center is joint inference, not a calibrated source rig."
+}

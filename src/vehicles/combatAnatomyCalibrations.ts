@@ -3,17 +3,28 @@
 import type { CombatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ABRAMS } from './combatAnatomyGroups/abrams.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AFV } from './combatAnatomyGroups/afv.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX30X } from './combatAnatomyGroups/amx30X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX40X } from './combatAnatomyGroups/amx40X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARIETEX } from './combatAnatomyGroups/arieteX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CASEMATE } from './combatAnatomyGroups/casemate.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER } from './combatAnatomyGroups/challenger.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER1X } from './combatAnatomyGroups/challenger1X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHIEFTAIN10X } from './combatAnatomyGroups/chieftain10X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHIEFTAIN5X } from './combatAnatomyGroups/chieftain5X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CORE } from './combatAnatomyGroups/core.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FRANCECORE } from './combatAnatomyGroups/franceCore.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GERMANY } from './combatAnatomyGroups/germany.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ITALY } from './combatAnatomyGroups/italy.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_JAGDPANZERE100X } from './combatAnatomyGroups/jagdpanzerE100X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_JAPAN } from './combatAnatomyGroups/japan.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_K1A1X } from './combatAnatomyGroups/k1a1X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_K2X } from './combatAnatomyGroups/k2X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_KF51X } from './combatAnatomyGroups/kf51X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_KOREA } from './combatAnatomyGroups/korea.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LECLERCCLASSICX } from './combatAnatomyGroups/leclercClassicX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LECLERCX } from './combatAnatomyGroups/leclercX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARD } from './combatAnatomyGroups/leopard.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDA6X } from './combatAnatomyGroups/leopardA6X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDX } from './combatAnatomyGroups/leopardX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MERKAVA } from './combatAnatomyGroups/merkava.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MERKAVAX } from './combatAnatomyGroups/merkavaX.generated.ts';
@@ -25,12 +36,24 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_POLAND } from './combatAnat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA } from './combatAnatomyGroups/russia.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SHERIDAN } from './combatAnatomyGroups/sheridan.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SOVIETHEAVY } from './combatAnatomyGroups/sovietHeavy.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_STRV122X } from './combatAnatomyGroups/strv122X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SWEDEN } from './combatAnatomyGroups/sweden.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T14X } from './combatAnatomyGroups/t14X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T62MV1X } from './combatAnatomyGroups/t62mv1X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72 } from './combatAnatomyGroups/t72.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B1987X } from './combatAnatomyGroups/t72b1987X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B3X } from './combatAnatomyGroups/t72b3X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B3MX } from './combatAnatomyGroups/t72b3mX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72BUX } from './combatAnatomyGroups/t72buX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T80 } from './combatAnatomyGroups/t80.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T80UX } from './combatAnatomyGroups/t80uX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90 } from './combatAnatomyGroups/t90.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90AWX } from './combatAnatomyGroups/t90AwX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90BURLAKX } from './combatAnatomyGroups/t90BurlakX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90X } from './combatAnatomyGroups/t90X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90MSX } from './combatAnatomyGroups/t90msX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE10X } from './combatAnatomyGroups/type10X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE90X } from './combatAnatomyGroups/type90X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_UK } from './combatAnatomyGroups/uk.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_UKRAINE } from './combatAnatomyGroups/ukraine.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_WW2 } from './combatAnatomyGroups/ww2.generated.ts';
@@ -38,17 +61,28 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_WW2 } from './combatAnatomy
 export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> = Object.freeze(Object.assign({},
   CALIBRATIONS_ABRAMS,
   CALIBRATIONS_AFV,
+  CALIBRATIONS_AMX30X,
+  CALIBRATIONS_AMX40X,
+  CALIBRATIONS_ARIETEX,
   CALIBRATIONS_CASEMATE,
   CALIBRATIONS_CHALLENGER,
+  CALIBRATIONS_CHALLENGER1X,
+  CALIBRATIONS_CHIEFTAIN10X,
+  CALIBRATIONS_CHIEFTAIN5X,
   CALIBRATIONS_CORE,
   CALIBRATIONS_FRANCECORE,
   CALIBRATIONS_GERMANY,
   CALIBRATIONS_ITALY,
+  CALIBRATIONS_JAGDPANZERE100X,
   CALIBRATIONS_JAPAN,
+  CALIBRATIONS_K1A1X,
   CALIBRATIONS_K2X,
   CALIBRATIONS_KF51X,
   CALIBRATIONS_KOREA,
+  CALIBRATIONS_LECLERCCLASSICX,
+  CALIBRATIONS_LECLERCX,
   CALIBRATIONS_LEOPARD,
+  CALIBRATIONS_LEOPARDA6X,
   CALIBRATIONS_LEOPARDX,
   CALIBRATIONS_MERKAVA,
   CALIBRATIONS_MERKAVAX,
@@ -60,12 +94,24 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_RUSSIA,
   CALIBRATIONS_SHERIDAN,
   CALIBRATIONS_SOVIETHEAVY,
+  CALIBRATIONS_STRV122X,
   CALIBRATIONS_SWEDEN,
   CALIBRATIONS_T14X,
+  CALIBRATIONS_T62MV1X,
   CALIBRATIONS_T72,
+  CALIBRATIONS_T72B1987X,
+  CALIBRATIONS_T72B3X,
+  CALIBRATIONS_T72B3MX,
+  CALIBRATIONS_T72BUX,
   CALIBRATIONS_T80,
+  CALIBRATIONS_T80UX,
   CALIBRATIONS_T90,
+  CALIBRATIONS_T90AWX,
+  CALIBRATIONS_T90BURLAKX,
   CALIBRATIONS_T90X,
+  CALIBRATIONS_T90MSX,
+  CALIBRATIONS_TYPE10X,
+  CALIBRATIONS_TYPE90X,
   CALIBRATIONS_UK,
   CALIBRATIONS_UKRAINE,
   CALIBRATIONS_WW2,

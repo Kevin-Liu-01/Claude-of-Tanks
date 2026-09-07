@@ -1,0 +1,29 @@
+{
+  "id": "t72b3m_x",
+  "status": "independent native first draft; actual high/low CPU tests pass; fresh registered visual and dimension gates pending",
+  "source": {
+    "file": "owner-local t-72b3m_obr._2022.glb",
+    "sha256": "6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350",
+    "canonicalSha256": "1df241160448443c6cde0e13be959720acdf7b5ce3e21185ed82b0b308c744e2",
+    "registration": "../../research/second-wave-registrations/t72b3m_x.json",
+    "ownership": "15 material-mixed original meshes retained. Object_14 includes stock cladding as well as turret parts; no invented whole-turret/gun component mask.",
+    "use": "Source geometry, materials and imagery are local comparison/authoring inputs only; runtime is original analytic first-party solids and native mechanisms. Embedded42manako/CCBY4 attribution is recorded in the inventory, not silently conflated with a different historical file hash."
+  },
+  "sourceFrame": {"uniformScale":1,"axes":["-x","y","-z"],"translation":[-0.03808850049972534,0.8157399892807016,0.9552165269851685],"candidateFit":false},
+  "dimensions": {"structuralHullLengthM":6.68398928642,"externalOverallLengthM":10.26753902435,"widthM":3.95101606846,"structuralCastRoofM":2.35125696659,"highestFittingM":3.76104700565},
+  "joints": {
+    "yaw":[0.0000072471277,1.52948397398,0.1143146502203],
+    "yawEvidence":"Physical circular collar Object_7 island718, seven independent top-course points, radius1.318788249m, maximum radial residual9.57micrometres. This is a design-joint inference, not a claimed source rig node.",
+    "trunnion":[0.0014311877863,1.82199396492,1.334185526985],
+    "trunnionEvidence":"Inferred source widest canvas shoulder longitudinal station, actual barrel-axis centerline at that station. Exact design pivot was not supplied.",
+    "sourceBoreAxis":[0.000617822978,0.014607797197,0.999893109565],
+    "nativeNeutralBoreAxis":[0,0,1],
+    "poseLimitation":"Parent-approved native level neutral cannon preserves independently measured axial spans, circular radii and recessed depth. Source parked elevation0.837deg and tiny export yaw0.03495deg remain unchanged in the oracle; this produces a truthful visible pose residual rather than rotating the source hull or fitting the candidate."
+  },
+  "bore": {"neutralMuzzleZ":6.587516409117,"neutralFloorZ":5.890883855316,"depthM":0.696632553801,"nativeRadiusM":0.0625,"sourceMouthRadiusApproxM":0.06805,"sourceShape":"Stepped/conical recess with first axial hit at the recorded floor; native125mm cylindrical opening is a documented physical caliber correction, not a claim of exact source bore shape.","stockRadiusStations":[[5.84385,0.098435],[6.294786,0.098435],[6.300016,0.09313],[6.448276,0.09313],[6.452386,0.103942],[6.581836,0.103942],[6.587516409117,0.09945]],"opaqueRuntime":"Actual complete high/low metal and opaque-scene rays pass. Existing shared black lining leads the metal floor by1.2mm only; no hidden-helper exclusion or filled muzzle cap."},
+  "runningGear": {"roadRadiusM":0.391766,"roadHeightM":0.4728865,"roadWidthM":0.45254,"axleZs":[-1.822412,-0.953673,-0.089323,0.858392,1.722743,2.591482],"axleLimitation":"The source's side-to-side stagger is averaged to the native paired-axle contract; maximum11.2mm station displacement. No original fleet gear parameters changed.","returnSupportLimitation":"Source return course remains an independent outline target. Hidden roller supports are mechanically inferred below the measured return, not claimed source cylinder islands.","strictCommittedCpuSampler":{"frontBand":0,"rearBand":0,"sweepBand":0,"frontShoe":0,"rearShoe":0,"sweepShoe":0}},
+  "assemblies": ["Closed narrow hull and separate rounded end guards; native six-wheel gear", "Two front reactive fields over a separate closed permanent carrier; source mixed topology prevents a stronger internal ERA boundary claim", "Paired side upper/lower reactive panels, permanent hangers and thin lower curtains", "Source-specific cast sections, nine broad cheek cassettes and separately placed roof cells", "Fourteen individually canted bustle cases; no invented rear fuel drums", "Six upright rear screen leaves, six separately inclined lower leaves and physical supports", "Independent sights, commander/loader hatches, launcher bank and coherent elevated AA stock"],
+  "combatProvenance": "New X field locations follow authored removable geometry. KE.20/CE450 main and KE.05/CE280 skirt reductions retain donor conventions; protection cannot be measured from this visual source. Original donor unchanged.",
+  "checks": ["t72b3mXGeometry.selftest high/low source joints, nine articulation poses, five bore rays, actual cover facets/backing, strip/reset, native axles and source AA endpoint PASS", "Committed exact strict CPU track sampler front/rear/full-sweep band/shoe all0", "Full TypeScript and3-file36-function complexity checks PASS"],
+  "limitations": ["First draft, not a92-qualified final model until every registered raw view and geometry dimension gate passes", "Fine fasteners, textured seams, source canvas creases and partly hidden equipment are simplified analytically", "Some small supports and closed hidden backing are explicit inference, not recovered source topology", "Source AA weapon elevation is retained as a coherent mounted assembly; the main cannon neutral-pose correction is separately documented"]
+}

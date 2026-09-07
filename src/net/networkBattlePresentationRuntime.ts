@@ -148,6 +148,7 @@ export interface NetworkBattlePresentationOptions {
   presentation: {
     resetRoundState(): void;
     setGarageLighting(active: boolean): void;
+    setWaitingForPeers(waiting: boolean): void;
     activate(request: NetworkBattleActivationRequest): void;
     runBlackWatchdog(): RuntimeValue;
   };
@@ -204,7 +205,7 @@ function validateNetworkPresentationPorts(options: NetworkBattlePresentationOpti
     checkedIntegrationPort(
       options.presentation ?? {},
       'network battle activation',
-      ['resetRoundState', 'setGarageLighting', 'activate', 'runBlackWatchdog'],
+      ['resetRoundState', 'setGarageLighting', 'setWaitingForPeers', 'activate', 'runBlackWatchdog'],
     );
   } catch {
     throw new TypeError('network battle presentation requires every lifecycle port');
@@ -272,8 +273,6 @@ export function createNetworkBattlePresentationRuntime(
       } = request;
       throwIfNetworkBattleEntryAborted(signal);
 
-      await load.ensureBattleVisuals();
-      throwIfNetworkBattleEntryAborted(signal);
       load.audio.resume();
       load.audio.loadingOn(true);
       load.lighting.setFarCascadeDormant(false);
@@ -314,7 +313,10 @@ export function createNetworkBattlePresentationRuntime(
 
       load.battleLoad.progress(0.08, 'Loading battlefield');
       const { modules } = await entry.acquire({
-        loadModules: entry.loadModules,
+        loadModules: async () => {
+          const [modules] = await Promise.all([entry.loadModules(), load.ensureBattleVisuals()]);
+          return modules;
+        },
         loadWorld: () => entry.loadWorld(mapId, (fraction, label) => {
           load.battleLoad.progress(0.08 + fraction * 0.48, label);
         }),
@@ -429,11 +431,8 @@ export function createNetworkBattlePresentationRuntime(
       } catch (_) { /* warm only */ }
       throwIfNetworkBattleEntryAborted(signal);
       mark('compile');
-      load.battleLoad.progress(0.96, 'Waiting for every commander');
-      await bridge.waitForPeerReadiness();
-      throwIfNetworkBattleEntryAborted(signal);
-      mark('readyBarrier');
 
+      presentation.setWaitingForPeers(initial.meta?.phase === 'loading');
       presentation.activate({ viewerId, own, spectator, mapId, bridge: preparedBridge, fx });
       try {
         trace.blackCheck = presentation.runBlackWatchdog();
@@ -453,8 +452,14 @@ export function createNetworkBattlePresentationRuntime(
       throwIfNetworkBattleEntryAborted(signal);
       await load.battleLoad.hide();
       throwIfNetworkBattleEntryAborted(signal);
-      load.setAdaptiveSuspended(false);
       mark('reveal');
+      // READY starts the shared authority countdown. Declare it only after the
+      // expensive first frame and loader fade so none of that countdown is hidden.
+      await bridge.waitForPeerReadiness();
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('readyBarrier');
+      presentation.setWaitingForPeers(false);
+      load.setAdaptiveSuspended(false);
       trace.totalMs = Math.round(now() - loadStartedAt);
     },
   };

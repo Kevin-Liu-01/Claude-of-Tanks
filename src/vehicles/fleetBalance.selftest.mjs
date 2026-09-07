@@ -8,6 +8,7 @@ import { tankTier } from './tier.ts';
 import { createCombatState, startReload } from '../sim/damage.ts';
 import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { traceTank } from '../sim/armor.ts';
+import { assertArmorTraceBounds, assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { garageStatGroup } from '../ui/garageDossier.ts';
 import {
@@ -79,7 +80,9 @@ for (const id of SAVED_TANK_IDS) {
   assert.ok(Array.isArray(armor.turretPlates) && Array.isArray(armor.modules) &&
     Array.isArray(armor.crew), `${id}: complete combat-anatomy collections exist`);
   for (const plate of [...armor.hullPlates, ...armor.turretPlates]) {
-    assert.equal(plate.verts?.length, 4, `${id}/${plate.name}: quad has four vertices`);
+    if (plate.convexPolygon) assertConvexArmorOutline(plate.verts, `${id}/${plate.name}`, plate.openEdges);
+    else assert.equal(plate.verts?.length, 4, `${id}/${plate.name}: quad has four vertices`);
+    if (plate.convexPolygon) assertArmorTraceBounds(plate.verts, plate.traceBounds, `${id}/${plate.name}`);
     for (const vertex of plate.verts) {
       assert.equal(vertex.length, 3, `${id}/${plate.name}: vertex is 3D`);
       assert.ok(vertex.every(finite), `${id}/${plate.name}: vertex is finite`);

@@ -1,0 +1,10 @@
+{
+  "id": "t72b3_x",
+  "sourceSha256": "9da4a363d5a2a86d763b66ebc23cfabda06fdd2d2e3d4527688389c82f2488ed",
+  "scale": 0.01,
+  "axes": ["-z", "y", "x"],
+  "translation": [0, 0.00000028097299713244273, 0.17215001583099365],
+  "exactDuplicateMeshes": ["gear1-optionb", "gear1-optionc", "gear1-optiond", "gear1-optionf"],
+  "selectionReason": "Retain original optiona and distinct two-triangle optione. Options b and f are exact world-triangle duplicates of a; c+d partition the same triangles. The converter verifies every omitted triangle exists in retained original geometry and fails on any unmatched source point. No source internals, fittings, whip, or exterior owners are excluded.",
+  "registrationReason": "Baked-root centimetre units, proper +X-forward to +Z-forward rotation, source track contact plane, and the midpoint of actual main tub plus inclined rear transom. The rear recovery fitting is not the structural hull end. No nonuniform candidate-relative fit. Yaw comes from a seven-point physical aperture circle, pitch is an explicitly inferred mantlet station on the measured metal bore axis."
+}

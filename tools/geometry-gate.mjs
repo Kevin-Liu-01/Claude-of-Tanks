@@ -38,6 +38,13 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
+// Startup import/runtime failures must remain visible instead of appearing
+// only as an unexplained registry timeout during an authored-fleet audit.
+page.on('pageerror', error => console.error(`[geo browser] ${String(error)}`));
+page.on('console', message => {
+  if (message.type() === 'error' && !message.text().includes('favicon'))
+    console.error(`[geo console] ${message.text()}`);
+});
 page.setDefaultTimeout(150000);
 const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
 const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
