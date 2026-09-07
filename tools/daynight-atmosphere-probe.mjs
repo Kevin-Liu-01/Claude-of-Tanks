@@ -16,9 +16,10 @@ const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
 const out = resolve(outputArgument);
 mkdirSync(out); // Refuse existing evidence; never overwrite or mix probe runs.
-const report = { schemaVersion: 4, startedAt: new Date().toISOString(),
+const report = { schemaVersion: 5, startedAt: new Date().toISOString(),
   method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; actual bounded headlights, authored fixture/window emission, retained equipment damage and Garage cleanup. Staged screenshots suspend post adaptivity after entry, not quality-adaptation acceptance. No performance measurement or physical-device certification.',
   acquisitionSha256: createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex'),
+  visualAcceptance: 'requires-human-screenshot-review',
   cases: [], lightCloseups: [], screenshots: [], observerCleanup: [],
   errors: [], consoleErrors: [], cleanupErrors: [], passed: false };
 const save = () => writeFileSync(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
@@ -173,22 +174,10 @@ function installNightLightProbe() {
     return null;
   }
   function windowSeat(d) {
-    let seat = null;
-    d.world?.group.traverse(mesh => {
-      if (seat || !mesh.isMesh || mesh.isInstancedMesh || mesh.material?.userData.nightLightKind !== 'window') return;
-      const position = mesh.geometry.getAttribute('position'), normal = mesh.geometry.getAttribute('normal');
-      if (!position || !normal) return;
-      for (let i = 0; i < position.count; i++) {
-        if (Math.abs(normal.getY(i)) > .7) continue;
-        mesh.updateWorldMatrix(true, false);
-        seat = { kind: 'window', ownerUuid: mesh.uuid, vertex: i,
-          point: d.camera.position.clone().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld),
-          direction: d.camera.position.clone().fromBufferAttribute(normal, i).transformDirection(mesh.matrixWorld) };
-        break;
-      }
-    });
-    if (!seat) throw new Error('No authored streetlamp or occupied window for closeup');
-    return seat;
+    const seat = d.inspectNightWindow?.();
+    if (!seat || seat.lineOfSight !== 'authored-emissive-face') throw new Error('No authored unobstructed occupied window for closeup');
+    return { ...seat, point: d.camera.position.clone().fromArray(seat.point),
+      direction: d.camera.position.clone().fromArray(seat.direction) };
   }
   probe.stageNightLightCloseup = kind => {
     const d = window.__DEBUG;
@@ -198,12 +187,14 @@ function installNightLightProbe() {
     d.camera.position.copy(seat.point).addScaledVector(seat.direction, kind === 'headlight' ? 11 : 9)
       .addScaledVector(side, kind === 'headlight' ? 6 : 3);
     d.camera.position.y += kind === 'headlight' ? 4 : 1;
+    if (seat.camera) d.camera.position.fromArray(seat.camera);
     const target = seat.point.clone();
     if (kind === 'headlight') target.addScaledVector(seat.direction, 3);
-    d.camera.lookAt(target); d.camera.fov = 48; d.camera.updateProjectionMatrix();
+    d.camera.lookAt(target); d.camera.fov = seat.kind === 'window' ? 40 : 48; d.camera.updateProjectionMatrix();
     probe.beginStateEpoch();
     return { kind: seat.kind, ownerUuid: seat.ownerUuid, slot: seat.slot ?? null,
-      vertex: seat.vertex ?? null, point: seat.point.toArray(), direction: seat.direction.toArray() };
+      faceIndex: seat.faceIndex ?? null, lineOfSight: seat.lineOfSight ?? null,
+      point: seat.point.toArray(), direction: seat.direction.toArray() };
   };
   probe.restoreNightLightCamera = () => {
     if (!savedCamera) return;
@@ -443,14 +434,18 @@ async function nightLightCloseups(label) {
       const fixture = await evaluateWithin(kind => window.__equipmentDamageProbe.stageNightLightCloseup(kind), kind);
       await settle(30);
       const state = await evaluateWithin(readVisualState);
-      const row = { label: `${label}-${fixture.kind}`, fixture, state, passed: false };
+      const row = { label: `${label}-${fixture.kind}`, fixture, state, structuralPassed: false,
+        visualAcceptance: 'requires-human-screenshot-review' };
       report.lightCloseups.push(row); save();
       assert.equal(state.weather?.timeOfDay, 'night');
       assert(state.nightLighting.attached && state.nightLighting.emitterCount > 0);
       if (fixture.kind === 'streetlamp') assert(state.nightLighting.lights.some(light => light.kind === 'point' && light.intensity > 0));
-      if (fixture.kind === 'window') assert(state.nightLighting.materials.some(material => material.kind === 'window' && material.intensity >= .55));
+      if (fixture.kind === 'window') {
+        assert.equal(fixture.lineOfSight, 'authored-emissive-face');
+        assert(state.nightLighting.materials.some(material => material.kind === 'window' && material.masked && material.intensity >= .55));
+      }
       await screenshot(row.label, state);
-      row.passed = true; save();
+      row.structuralPassed = true; save();
     }
   } finally {
     await evaluateWithin(() => window.__equipmentDamageProbe.restoreNightLightCamera());
@@ -690,7 +685,7 @@ try {
   }
   report.passed = report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
-    && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.passed)
+    && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.structuralPassed)
     && report.screenshots.length === 25 && report.screenshots.every(row => row.completed)
     && report.errors.length === 0 && report.consoleErrors.length === 0;
 } catch (error) { report.errors.push(error.stack ?? String(error)); save(); }

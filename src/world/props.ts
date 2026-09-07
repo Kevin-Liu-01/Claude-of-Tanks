@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
+import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
@@ -1577,8 +1578,10 @@ function addRowhouseWindow(
   z: number,
   side: number,
 ): void {
-  parts[pickRowhousePaneBucket(rng, lowContrastFacade)].push(
-    box(0.05, style.height, style.width).translate(x + side * 0.012, y, z),
+  const paneBucket = pickRowhousePaneBucket(rng, lowContrastFacade);
+  parts[paneBucket].push(
+    markWorldWindowPane(box(0.05, style.height, style.width), paneBucket, [side, 0, 0])
+      .translate(x + side * 0.012, y, z),
   );
   const jambWidth = 0.14, proudness = side * 0.065;
   parts[style.trimBucket].push(box(jambWidth, style.height + 0.14, 0.13)
@@ -1610,8 +1613,10 @@ function addRowhouseGableWindows(
   const x = w * (0.14 + rng() * 0.08);
   for (const z of [d / 2 + 0.05, -d / 2 - 0.05]) {
     for (const side of [-1, 1]) {
-      parts[pickRowhousePaneBucket(rng, lowContrastFacade)].push(
-        box(style.width, style.height, 0.06).translate(side * x, y, z),
+      const paneBucket = pickRowhousePaneBucket(rng, lowContrastFacade);
+      parts[paneBucket].push(
+        markWorldWindowPane(box(style.width, style.height, 0.06), paneBucket, [0, 0, Math.sign(z)])
+          .translate(side * x, y, z),
       );
       parts.stone.push(box(style.width + 0.28, 0.10, 0.16)
         .translate(side * x, y - style.height / 2 - 0.06, z));
@@ -5785,6 +5790,7 @@ ${snowCap ? `
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
+      if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
       const merged = mergeGeometries(buckets[key].map((geometry) =>
         (geometry.index ? geometry.toNonIndexed() : geometry)), false);

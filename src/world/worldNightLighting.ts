@@ -27,10 +27,13 @@ export function registerWorldNightLighting(
 ): void {
   // Ruined-city panes remain abandoned, not an occupied illuminated skyline.
   if (mapId !== 'ruinspires' && mapId !== 'blackglass') {
+    // Panes, unlit fabric and red obstruction bulbs retain one material/draw;
+    // only authored aperture vertices participate in night emission.
+    installNightEmissionMask(curtain);
     curtain.userData.nightLightKind = 'window';
     registerNightLightEmitters(root, [{
       kind: 'marker', position: [0, 0, 0],
-      emission: { material: curtain, color: 0xffbd72, intensity: 0.55 },
+      emission: { material: curtain, color: 0xffffff, intensity: 0.9 },
     }]);
   }
   const object = root.getObjectByName('destructible-lamp');

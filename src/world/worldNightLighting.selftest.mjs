@@ -26,7 +26,6 @@ const lampMaterial = ordinary.clone();
 configureWorldLampMaterial(lampMaterial);
 const curtain = new THREE.MeshStandardMaterial({ emissive: 0x2b190d, emissiveIntensity: .08 });
 const originalColor = curtain.emissive.clone();
-const originalVersion = curtain.version;
 const lamps = new THREE.InstancedMesh(geometry, lampMaterial, 2);
 lamps.name = 'destructible-lamp';
 root.add(lamps, new THREE.Mesh(geometry, curtain));
@@ -39,6 +38,8 @@ lamps.setMatrixAt(0, matrix);
 lamps.setMatrixAt(1, new THREE.Matrix4().makeTranslation(12, 0, -4));
 const records = [{ kind: 'lamp', slot: 0, state: 0 }, { kind: 'lamp', slot: 1, state: 0 }];
 registerWorldNightLighting(root, curtain, records, 'urban');
+const originalVersion = curtain.version;
+assert.equal(curtain.userData.nightEmissionMask, true, 'window bucket uses exact vertex masks, not blanket material glow');
 root.updateWorldMatrix(true, true);
 lamps.getMatrixAt(0, matrix); // GPU instance matrices have Float32 precision.
 const expected = new THREE.Vector3(.98, 3.895, 0).applyMatrix4(matrix).applyMatrix4(lamps.matrixWorld);
@@ -50,8 +51,8 @@ try {
   const light = runtime.lights.find(light => light.isPointLight);
   assert.ok(light.position.distanceTo(expected) < 1e-10, 'light uses actual tilted/scaled instance lens, not pole base');
   assert.equal(light.intensity, 24);
-  assert.equal(curtain.emissive.getHex(), 0xffbd72);
-  assert.equal(curtain.emissiveIntensity, .55);
+  assert.equal(curtain.emissive.getHex(), 0xffffff, 'authored mask supplies warm pane/red beacon tint');
+  assert.equal(curtain.emissiveIntensity, .9);
   assert.equal(ordinary.emissive.getHex(), 0, 'generic baked props do not glow');
   assert.equal(lampMaterial.emissiveIntensity, 3, 'night radiance is available only to masked lens faces');
   const active = geometry.getAttribute(WORLD_LAMP_ACTIVE_ATTRIBUTE);
@@ -77,7 +78,7 @@ try {
   assert.deepEqual(curtain.emissive, originalColor, 'dormant world restores shared window material');
   root.visible = true;
   runtime.update(expected);
-  assert.equal(curtain.emissiveIntensity, .55);
+  assert.equal(curtain.emissiveIntensity, .9);
   runtime.reset();
   assert.deepEqual(curtain.emissive, originalColor);
   assert.equal(curtain.emissiveIntensity, .08);

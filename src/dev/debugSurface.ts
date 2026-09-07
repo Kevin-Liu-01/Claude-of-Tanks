@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { Object3D, PerspectiveCamera } from 'three';
 /**
  * Explicit browser diagnostics surface.
  *
@@ -9,6 +10,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
 import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
+import { inspectNightWindow } from './nightWindowInspection.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -120,6 +122,11 @@ export function installDebugSurface(
     selectGarageTank: deps.selectGarageTank,
     stagePedestalTank: deps.stagePedestalTank,
     get world() { return deps.getWorld(); },
+    inspectNightWindow: () => {
+      const world = deps.getWorld() as { group?: Object3D } | null;
+      const camera = deps.camera as PerspectiveCamera;
+      return world?.group ? inspectNightWindow(world.group, camera.position) : null;
+    },
     visitOwnedGeometries: visitOwnedObject3DGeometries,
     switchMap: deps.switchMap,
     flags: deps.flags,

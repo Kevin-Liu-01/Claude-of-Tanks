@@ -13,6 +13,7 @@ import {
   box, gablePrism, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from '../propGeometry.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 
 interface BuildingParts {
   [name: string]: THREE.BufferGeometry[];
@@ -121,7 +122,8 @@ function addFarmhouseWindows(
       if (rng() < 0.15) continue;
       parts.wood.push(box(0.12, 1.05, 0.84)
         .translate(side * (w / 2 + 0.04), 1.75, zz));
-      parts[rng() < 0.5 ? 'glass' : 'curtain'].push(box(0.05, 0.9, 0.68)
+      const paneBucket = rng() < 0.5 ? 'glass' : 'curtain';
+      parts[paneBucket].push(markWorldWindowPane(box(0.05, 0.9, 0.68), paneBucket, [side, 0, 0])
         .translate(side * (w / 2 + 0.015), 1.75, zz));
       parts.stone.push(box(0.15, 0.09, 0.96)
         .translate(side * (w / 2 + 0.05), 1.16, zz));
@@ -336,7 +338,9 @@ export function makeLogCabin(rng: () => number, buckets: GeometryBuckets): Struc
   for (const side of [-1, 1]) {
     if (rng() < 0.2) continue;
     parts.wood.push(box(0.12, 0.8, 0.7).translate(side * (w / 2 + 0.02), 1.5, -d * 0.14));
-    parts[rng() < 0.5 ? 'curtain' : 'dark'].push(box(0.05, 0.62, 0.52).translate(side * (w / 2 + 0.06), 1.5, -d * 0.14));
+    const paneBucket = rng() < 0.5 ? 'curtain' : 'dark';
+    parts[paneBucket].push(markWorldWindowPane(box(0.05, 0.62, 0.52), paneBucket, [side, 0, 0])
+      .translate(side * (w / 2 + 0.06), 1.5, -d * 0.14));
   }
   parts.stone.push(box(0.72, topY + roofH + 0.8, 0.72, 0.8).translate(-w / 2 + 0.1, (topY + roofH + 0.8) / 2, -d * 0.22));
   parts.stone.push(box(0.9, 0.14, 0.9).translate(-w / 2 + 0.1, topY + roofH + 0.78, -d * 0.22));
@@ -382,7 +386,9 @@ export function makeAlpine(
     }
   }
   for (const gs of [-1, 1]) { // gable-face upper windows
-    parts[rng() < 0.5 ? 'curtain' : 'dark'].push(box(0.6, 0.72, 0.06).translate(gs * w * 0.2, gfH + ufH * 0.6, d / 2 + 0.02));
+    const paneBucket = rng() < 0.5 ? 'curtain' : 'dark';
+    parts[paneBucket].push(markWorldWindowPane(box(0.6, 0.72, 0.06), paneBucket, [0, 0, 1])
+      .translate(gs * w * 0.2, gfH + ufH * 0.6, d / 2 + 0.02));
   }
   parts.stone.push(box(0.66, 1.4, 0.66).translate(w * 0.18, gfH + ufH + roofH - 0.1, -d * 0.2));
   pushParts(buckets, parts);
@@ -578,9 +584,11 @@ function addCornerShopUpperWindows(
       const sill = box(0.2, 0.10, 1.05);
       const paneBucket = rng() < 0.6 ? 'glass' : rng() < 0.8 ? 'curtain' : 'dark';
       if (face === 0) {
+        markWorldWindowPane(pane, paneBucket, [1, 0, 0]);
         parts[paneBucket].push(pane.translate(w / 2 + 0.012, 5.0, position));
         parts.stone.push(sill.translate(w / 2 + 0.09, 4.32, position));
       } else {
+        markWorldWindowPane(pane, paneBucket, [-1, 0, 0]);
         pane.rotateY(Math.PI / 2);
         sill.rotateY(Math.PI / 2);
         parts[paneBucket].push(pane.translate(position, 5.0, d / 2 + 0.012));

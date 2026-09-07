@@ -13,6 +13,7 @@ import { sampleObbGround } from './propPlacement.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from './structureCollision.ts';
 import { certifyGroundedStructureParts, measureBoundsJoint } from './structureConnectivity.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const emptyBuckets = () => Object.fromEntries(names.map(name => [name, []]));
@@ -64,7 +65,9 @@ const v27Placement = {
 };
 
 function hashGeometry(hash, geometry) {
-  for (const name of Object.keys(geometry.attributes).sort()) {
+  // Retain frozen V25/V27 shape/UV/index/RNG receipts. The later one-byte
+  // night mask has independent exact-surface coverage and memory tests.
+  for (const name of Object.keys(geometry.attributes).filter(name => name !== NIGHT_EMISSION_ATTRIBUTE).sort()) {
     const a = geometry.attributes[name].array;
     hash.update(name); hash.update(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
   }
@@ -102,7 +105,7 @@ function bucketStats(geometries) {
     sum.parts++;
     sum.vertices += g.attributes.position.count;
     sum.indices += g.index?.count ?? g.attributes.position.count;
-    sum.bytes += Object.values(g.attributes).reduce((n, a) => n + a.array.byteLength, 0)
+    sum.bytes += Object.entries(g.attributes).reduce((n, [name, a]) => n + (name === NIGHT_EMISSION_ATTRIBUTE ? 0 : a.array.byteLength), 0)
       + (g.index?.array.byteLength ?? 0);
     return sum;
   }, { parts: 0, vertices: 0, indices: 0, bytes: 0 });

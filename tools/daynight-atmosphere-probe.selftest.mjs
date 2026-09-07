@@ -5,6 +5,8 @@ import { webcrypto } from 'node:crypto';
 import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, MeshStandardMaterial,
   Group, Scene, PerspectiveCamera, SpotLight, PointLight, InstancedMesh, Matrix4, BoxGeometry } from 'three';
 import ts from 'typescript-compiler-api';
+import { inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
+import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
 
 // Execute actual maintained functions without importing the browser-owning CLI.
 const source = readFileSync(new URL('./daynight-atmosphere-probe.mjs', import.meta.url), 'utf8');
@@ -214,11 +216,13 @@ for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glErro
   const windowMaterial = new MeshStandardMaterial({ emissive: 0xffbd72, emissiveIntensity: .55 });
   windowMaterial.userData.nightLightKind = 'window';
   const windowGeometry = new BoxGeometry(1, 2, .03), pane = new Mesh(windowGeometry, windowMaterial);
+  markWorldWindowPane(windowGeometry, 'curtain', [0, 0, 1]);
   pane.position.set(0, 2, 0); world.add(pane);
   actor.userData.nightLightCoverage = { headlights: 2, shtora: 0 };
   const runtime = { group, lights: [spot, spot2, point], emitterCount: 4 };
   const probe = { epochs: 0, beginStateEpoch() { this.epochs++; } };
   const window = { __equipmentDamageProbe: probe, __DEBUG: { scene, camera, world: { group: world },
+    inspectNightWindow: () => inspectNightWindow(world, camera.position),
     game: { player: { visual: { root: actor } } }, nightLighting: { current: runtime } } };
   load('installNightLightProbe', { window })();
   try {

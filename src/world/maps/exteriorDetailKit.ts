@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { pitchSkillionRoof } from '../propGeometry.ts';
 import { measureBoundsJoint } from '../structureConnectivity.ts';
+import { ensureWorldNightEmissionMask } from '../worldNightEmissionGeometry.ts';
 
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
@@ -523,7 +524,7 @@ function addTimberBathhouseEntry(author: ExteriorAuthor, vestibule: THREE.Buffer
     box(2.1, 0.16, 0.09).translate(x, headerY, z + 0.045), 'bathhouse-entry-bracket--1');
   for (const side of [-1, 1]) {
     author.add(`bathhouse-entry-panel-${side}`, 'curtain',
-      box(0.69, 0.78, 0.016).translate(x + side * 0.405, 2.355, z + 0.082),
+      ensureWorldNightEmissionMask(box(0.69, 0.78, 0.016)).translate(x + side * 0.405, 2.355, z + 0.082),
       'bathhouse-entry-header');
   }
 }

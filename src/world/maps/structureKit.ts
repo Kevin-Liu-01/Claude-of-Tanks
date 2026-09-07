@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
   certifyGroundedStructureParts,
   certifyStructureAttachments,
@@ -154,11 +155,12 @@ function slab(w: number, h: number, d: number, uv = 0.45): THREE.BoxGeometry {
   return geo;
 }
 
-function facadePanel(w: number, h: number, face: FacadeFace = 'front'): THREE.PlaneGeometry {
+function facadePanel(w: number, h: number, face: FacadeFace = 'front', bucket = 'glass'): THREE.PlaneGeometry {
   // Window bays only need a camera-facing skin: the surrounding mullions and
   // transfer ledges provide the physical reveal. Two-triangle panels preserve
   // the richer facade at one sixth the raster/merge cost of tiny boxes.
   const geo = scaleUV(new THREE.PlaneGeometry(w, h), w * 0.88, h * 0.88);
+  markWorldWindowPane(geo, bucket, [0, 0, 1]);
   if (face === 'back') geo.rotateY(Math.PI);
   else if (face === 'right') geo.rotateY(Math.PI / 2);
   else if (face === 'left') geo.rotateY(-Math.PI / 2);
@@ -444,7 +446,9 @@ function addWindow(
   const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
   const lit = Math.abs(Math.round(x * 17 + y * 11 + z * 7)) % 5 === 0;
-  out[lit ? 'curtain' : 'glass'].push(pane.translate(x, y, z));
+  const bucket = lit ? 'curtain' : 'glass';
+  markWorldWindowPane(pane, bucket, face === 'z' ? [0, 0, Math.sign(z)] : [Math.sign(x), 0, 0]);
+  out[bucket].push(pane.translate(x, y, z));
   out[frameBucket].push(sill.translate(x, y - tall / 2 - 0.08, z));
   // Full recessed surround: the former pane+sill treatment read as a flat
   // dark sticker at street distance. Jambs, lintel and divided glazing reuse
@@ -756,7 +760,7 @@ function addTowerFacadeGrid(out: StructureParts, {
     for (let bay = 0; bay < bays; bay++) {
       const bx = x - w / 2 + bayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 3 + bay * 5) % 13 === 0 ? 'curtain' : 'glass';
-      out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front')
+      out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front', bucket)
         .translate(bx, y, z + d / 2 + 0.055));
       out.glass.push(facadePanel(bayW * 0.72, 1.18, 'back')
         .translate(bx, y, z - d / 2 - 0.055));
@@ -764,7 +768,7 @@ function addTowerFacadeGrid(out: StructureParts, {
     for (let bay = 0; bay < sideBays; bay++) {
       const bz = z - d / 2 + sideBayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 7 + bay * 3) % 17 === 0 ? 'curtain' : 'glass';
-      out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right')
+      out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right', bucket)
         .translate(x + w / 2 + 0.055, y, bz));
       out.glass.push(facadePanel(sideBayW * 0.70, 1.18, 'left')
         .translate(x - w / 2 - 0.055, y, bz));
@@ -827,7 +831,7 @@ function addConnectedCrown(out: StructureParts, {
     }
     out.dark.push(cylinder(0.10, 0.13, 4.6, 8)
       .translate(x, mastBase + mastH + 2.25, z));
-    out.curtain.push(cylinder(0.24, 0.24, 0.26, 10)
+    out.curtain.push(markWorldBeacon(cylinder(0.24, 0.24, 0.26, 10))
       .translate(x, mastBase + mastH + 4.5, z));
     return mastBase + mastH + 4.65;
   }
@@ -878,7 +882,7 @@ function addConnectedCrown(out: StructureParts, {
     { style: 'needle', role: 'needle', centerX: x, centerZ: z },
   ));
   out.dark.push(cylinder(0.085, 0.12, 4.0, 8).translate(x, cursor + 9.38, z));
-  out.curtain.push(cylinder(0.22, 0.22, 0.22, 10).translate(x, cursor + 11.28, z));
+  out.curtain.push(markWorldBeacon(cylinder(0.22, 0.22, 0.22, 10)).translate(x, cursor + 11.28, z));
   return cursor + 11.4;
 }
 
