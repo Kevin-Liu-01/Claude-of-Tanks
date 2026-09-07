@@ -275,6 +275,41 @@ is not heap-snapshot-proven. The identical candidate sweep must demonstrate
 bounded residency before the leak is called fixed. No new cleanup patch or
 quality reduction was made merely from this baseline result.
 
+## Recovery round 4 — integrated build and native checks
+
+`3c06d3352` integrates the current `237b9a12c` multiplayer entry work without
+discarding either branch's load-stage and failed-world-activation coverage.
+The `nightLighting` stage is explicitly included in the ordered network load
+stage union. Focused network/world/FX checks and full typecheck pass.
+
+The frozen review tree is
+`/Users/kevinliu/.codex/worktrees/cot-environment-release-review-20260907`.
+Its public build index SHA-256 is
+`11357b5c63d0320b5e26046837f251ed4cdaab61d49c1c69ac9fee137b9342ea`.
+This immutable source/build separates native acquisition from subsequent
+anatomy artifact generation in integration.
+
+`night-lights-r3` records fourteen native captures. The desktop Verdant,
+Winter and Monsoon day/night/day cases pass every structural check, and
+visual review confirms restored daylight, readable player silhouettes,
+visible headlight apertures and road pools, and exposed glowing farmhouse
+panes. The focused streetlamp case remains **failed**: its lamp material and
+point-light position cycle correctly, but the camera is obstructed by a
+roof/chimney. Its shared check also incorrectly demands a player spotlight
+when the closeup is hundreds of metres from the player. These are diagnostic
+defects to repair; those three frames are not accepted fixture evidence.
+
+`candidate-residency-r1.json` uses the identical six-map, three-sweep native
+scenario and camera manifest as the current-production comparison above.
+All comparative memory checks pass. In the mature sweep, GPU geometry,
+texture and program counts remain exactly stable for every revisited map,
+as does backing storage (roughly 201–303 MiB, depending on the two cached
+maps). Managed heap is much lower than the baseline but the strict repeated
+heap gate still fails for Coastal (+2,169,488 bytes versus a 1,450,132-byte
+allowance) and Delta (+1,565,372 versus 1,479,400). Browser errors are empty.
+The overall result remains **failed**, pending retained-heap diagnosis;
+no tolerance was changed and no allocation category was subtracted.
+
 ## Remaining acceptance gates
 
 1. Polders contour/terrain/route tests and matched native before/after views.
