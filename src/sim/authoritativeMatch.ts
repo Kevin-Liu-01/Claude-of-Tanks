@@ -416,6 +416,23 @@ function spawnFor(
     const base = layout.spawns.player;
     const row = Math.floor(index / 4);
     const col = index % 4;
+    const formation = base.formation;
+    if (formation) {
+      const { columnSpacingM, rowSpacingM } = formation;
+      if (!Number.isFinite(columnSpacingM) || columnSpacingM <= 0
+        || !Number.isFinite(rowSpacingM) || rowSpacingM <= 0) {
+        throw new TypeError('spawn formation spacing must be finite and positive');
+      }
+      const yaw = finite(base.yaw, 0);
+      const right = (col - 1.5) * columnSpacingM;
+      const back = row * rowSpacingM;
+      const sin = Math.sin(yaw), cos = Math.cos(yaw);
+      return {
+        x: base.x + right * cos - back * sin,
+        z: base.z - right * sin - back * cos,
+        yaw,
+      };
+    }
     return {
       x: base.x + (col - 1.5) * 8,
       z: base.z - row * 10,

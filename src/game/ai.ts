@@ -17,6 +17,7 @@
 
 import { Euler, Quaternion, Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.ts';
+import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { botNominalGunLaneClear } from '../sim/botGunLane.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
@@ -86,7 +87,7 @@ interface AiGunSpec extends MovementGunSpec {
 type AiSpec = Omit<MovementSpec, 'gun' | 'armor' | 'dims'> & {
   id: string;
   gun: AiGunSpec;
-  armor?: ArmorModel;
+  armor?: ArmorModel & NonNullable<MovementSpec['armor']>;
   dims: MovementSpec['dims'] & { lengthM?: number };
 };
 
@@ -209,6 +210,8 @@ interface AiObstacle {
 }
 
 interface AiHeightField {
+  readonly navigationWaterPolicy?: 'avoid-liquid';
+  getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { y: number };
@@ -740,6 +743,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ensureAiInput(entity);
 
   const spec = entity.spec;
+  const liquidSafe = createNavigationLiquidSafety(hf, spec);
   // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
   const role = roleOf(spec);
   const tune = ROLE_TUNE[role];
@@ -1883,6 +1887,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     ux: number,
     uz: number,
   ): number {
+    if (liquidSafe && !liquidSafe(sx,sz,Math.atan2(ux,uz),TERRAIN_ROUTE_LOOK_M)) return Infinity;
     let previousH = startH;
     let worstCost = 1;
     const debuff = entity.state._debuff;
@@ -1929,6 +1934,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const s = Math.sin(angle);
       const ux = dirx * c + dirz * s;
       const uz = -dirx * s + dirz * c;
+      if (liquidSafe && findBlockingObstacle(sx,sz,ux,uz,TERRAIN_ROUTE_LOOK_M,spec.dims.widthM*0.5+1.4)) continue;
       const terrainCost = terrainLineCost(sx, sz, startH, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;
       const cx = sx + ux * TERRAIN_ROUTE_LOOK_M;
@@ -2024,6 +2030,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) continue;
       const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
       if (d1 < 2) continue; // standing on this corner already
+      if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) continue;
       if (nowS < lastCorner.untilS &&
           Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) continue;
       if (routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin)) continue;
@@ -2058,9 +2065,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       chooseRouteCorner(
         box, sourceX, sourceZ, gx, gz, directionX, directionZ, margin,
       );
-      return;
+      if (!liquidSafe || routeActive) return;
     }
-    if (nowS < terrainRouteUntilS) {
+    if (liquidSafe || nowS < terrainRouteUntilS) {
       planTerrainRoute(sourceX, sourceZ, directionX, directionZ, gx, gz);
     }
   }
@@ -3602,6 +3609,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt);
+    if (liquidSafe) {
+      const st = entity.state;
+      const speed = Math.abs(st.speed);
+      const sign = speed > 0.2 ? Math.sign(st.speed) : Math.sign(input.throttle);
+      // Controller safety can only brake after allied avoidance, never add a reverse ram.
+      // Conservative 2m/s² nominal stop envelope; collision impulses still obey shared physics.
+      const stopM = sign * (1.5 + speed * 0.2 + speed * speed / 4);
+      if (!liquidSafe(st.pos.x,st.pos.z,st.yaw,stopM)) {
+        input.throttle = 0;
+        input.brake = true;
+        routeTimer = Math.min(routeTimer,0.1);
+      }
+    }
     input.actionBits = chooseAiSupportActionBits(entity, timeS, {
       safeToReloadMagazine: !target || !losClear || mode === 'seekCover',
       wantsSuspensionAim: !!target && losClear
