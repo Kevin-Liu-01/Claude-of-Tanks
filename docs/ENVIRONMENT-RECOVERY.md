@@ -229,6 +229,52 @@ buffer savings establish ordinary-play performance parity.
   baseline and three normal, unprofiled phase runs are being acquired with the
   same maintained probe. Do not relax existing resource ceilings.
 
+## Recovery round 3 — native review and fixture coverage
+
+`all-map-review-r1` captures the other 28 maps from the immutable `56924f7bf`
+map-review build. Together with `candidate-maps-r2`, all thirty maps have fresh
+1440×900 native establishing views. Browser errors and structural-quality
+failures are empty. All thirty establishing views and selected water/building
+closeups were visually reviewed. They show distinct layouts and continuous
+reviewed shore contacts, not photorealistic/WoT parity or complete motion
+acceptance. The staged timings are not ordinary gameplay performance evidence.
+
+`b2f3aa9a8` registers existing authored vehicle lamp apertures. The complete
+201-model, high/low oracle has 402 exact geometry/material/draw/order matches
+against `13b9497dd`; semantic masks add no shape or draw owners. That result
+precedes the deliberately separate physical repairs in `37de0b6aa`: the M1A3
+lamp assemblies move forward 55 mm, MBT-70 assemblies 115 mm authored
+(108.1 mm installed), and T-90M/Proryv's existing four discs are seated in their
+canted cassettes. Eight high/low aperture checks pass with unchanged main-hull
+geometry and mesh/material/vertex counts. Anatomy/release and native repair
+closeups are still required.
+
+`6f2709ede` detaches inactive cached Garage pedestal roots without freeing or
+rebuilding them. Focused tests cover same-object A→B→A reuse, changed Garage
+height, actual eviction, stale async work, external disposal and battle/Studio
+handoffs. This reduces attached-scene traversal, not retained GPU allocations.
+
+The immutable `c7089f069` production comparison completed three unprofiled
+phase runs (`current-main-phase-r1.json` through `r3.json`). Active battle
+task costs were 13.137, 15.561 and 11.958 ms/render at 57.99, 58.37 and 57.24
+rendered FPS. All three retain the same thirteen failing resource/workload
+ceilings, including the existing 11.5 ms/render limit. Browser errors are
+empty. These are measured baseline failures, not a reason to loosen budgets.
+
+`current-main-residency-r1.json` records eighteen native map activations, three
+ordered sweeps of Verdant, Coastal, Delta, Monsoon, Autumn and Urban, using
+the immutable `residency-cameras-r1.json`. It fails repeated residency:
+renderer textures grow by 78 per six-map sweep, with roughly 133 MB of managed
+heap and 673 MB of backing storage retained per sweep. Source inspection
+identifies exactly thirteen unowned shader textures per map in that production
+revision: ten terrain, one props grime, one canopy detail and one horizon
+detail. Integration already contains their explicit ownership/disposal in
+`23b82f0bc`, plus world-specific disposal in `79d424360`. The connection to
+CSM-held build closures explains the direction of CPU/backing retention but
+is not heap-snapshot-proven. The identical candidate sweep must demonstrate
+bounded residency before the leak is called fixed. No new cleanup patch or
+quality reduction was made merely from this baseline result.
+
 ## Remaining acceptance gates
 
 1. Polders contour/terrain/route tests and matched native before/after views.
