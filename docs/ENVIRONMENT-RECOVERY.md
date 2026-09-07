@@ -194,7 +194,42 @@ distinct drainage/bay/hooked-basin composition remains open. Source/test
 checkpointing is not art acceptance. Neither these staged timings nor tree
 buffer savings establish ordinary-play performance parity.
 
-## Pending high-value gates
+## Recovery round 2 — retained source and native evidence
+
+- `56924f7bf` integrates five differently proportioned Polders drainage
+  contours and order-independent support for overlapping authored bank aprons.
+  Three-seed road, deployment-pad, bank-slope and tree-clearance checks pass;
+  29 other maps retain exact height/normal/water query hashes. Native review at
+  `candidate-maps-r2` shows a long narrow drain, offset retention bays and a
+  flatter coastal horizon. The shapes remain deliberately simple at map scale;
+  this is not a claim of photorealistic shoreline detail. Frosthollow's frozen
+  bank, boat contact and surrounding terrain render without visible gaps in
+  the reviewed views. Capture errors are empty. These staged captures do not
+  certify ordinary gameplay performance.
+- `72f73c156` exposes the farmhouse/alpine panes above their existing wooden
+  backing and fixes a diagnostic Raycaster-origin alias. Exact-build native
+  `window-census-r2` proved six eligible Verdant pane faces were all blocked
+  by wood approximately 6.09 cm in front; increasing the search limit was not
+  the fix. Geometry/RNG/non-pane parity tests preserve the rest of the village.
+- `fc6f06f18` masks existing intact structure windows, the relay warning bulb
+  and the lighthouse lantern. Per-instance destruction/reset activity remains
+  event-driven. Twenty structure families across three seeds retain exact
+  shape/UV/color/topology and RNG; debris and unrelated surfaces remain unlit.
+  The fixed two-spot/one-point projection budget is unchanged. New fixtures
+  still need native closeups before visual acceptance.
+- `candidate-phase-r2.json` records the actual native GPU, build, daytime
+  atmosphere and effective quality around its profiling window. Its CPU
+  profile is diagnostic, not an unprofiled performance repeat. The active
+  nighttime owner was detached, so active night lights do not explain the
+  earlier daytime sample. Baseline/candidate enemy visibility differs, making
+  raw attached-resource and heap deltas unsuitable as an optimization claim.
+  The Garage resource/triangle excess itself predates this candidate.
+- Current production has advanced to `c7089f069`; preserve its cooperative
+  multiplayer entry warming on integration. An immutable current-main
+  baseline and three normal, unprofiled phase runs are being acquired with the
+  same maintained probe. Do not relax existing resource ceilings.
+
+## Remaining acceptance gates
 
 1. Polders contour/terrain/route tests and matched native before/after views.
 2. Night source and lifecycle integration, spotting/death/Garage tests.
