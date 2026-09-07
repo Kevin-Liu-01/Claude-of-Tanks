@@ -10019,7 +10019,9 @@ function buildLeo2Revolution(P: TankBuilderPort) {
         const cxB = FITTINGS.towCable({ mats: P.mats, r: 0.016, seed: 8, eyes: false, pts: [[-1.08, 1.26, -3.863], [0.05, 1.46, -3.863], [1.08, 1.62, -3.863]] });
         P.hullG.add(cxB);
         for (const s of [-1, 1] as const) {
-          const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, r: 0.040, lens: 'dark', rake: 0, seed: 5, rotation: [0, Math.PI, 0] });
+          // Preserve the dark daytime lens/housing; only the authored rear
+          // aperture caps emit red at night. Rear markers never cast a beam.
+          const lc = FITTINGS.lightCluster({ nightKind: 'marker', nightTint: 'red', mats: P.mats, pods: 2, r: 0.040, lens: 'dark', rake: 0, seed: 5, rotation: [0, Math.PI, 0] });
           lc.position.set(s * 1.18, 1.615, -3.826);
           P.hullG.add(lc);
         }

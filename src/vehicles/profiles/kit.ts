@@ -243,6 +243,7 @@ interface FittingOptions {
   lens?: string;
   /** Explicit fixture role; rear lamps/other optics never infer headlights. */
   nightKind?: VehicleLampKind;
+  nightTint?: 'red' | 'warm';
   rake?: number;
   len?: number;
   splay?: number;
@@ -2847,7 +2848,7 @@ function fittingLightCluster(opts: FittingOptions = {}): THREE.Group {
     const x = (i - (pods - 1) / 2) * spacing;
     parts.add('detail', xform(cylZ(r, r * 1.35, 12), 0, 0, 0, rake, 0, 0), x, 0, 0);
     const lens = cylZ(r * 0.8, 0.02, 12);
-    if (opts.nightKind) markVehicleNightLens(lens, opts.nightKind);
+    if (opts.nightKind) markVehicleNightLens(lens, opts.nightKind, { tint: opts.nightTint });
     parts.add(lensSlot, xform(xform(lens, 0, 0, r * 0.72), 0, 0, 0, rake, 0, 0), x, 0, 0);
     if (opts.guard !== false) {
       for (const sx of [-1, 1]) {

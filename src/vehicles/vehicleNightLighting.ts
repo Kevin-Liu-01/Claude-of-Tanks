@@ -9,7 +9,11 @@ import {
 } from '../engine/nightEmissionMaterial.ts';
 
 export type VehicleLampKind = 'headlight' | 'shtora' | 'marker';
-interface LensDefinition { readonly kind: VehicleLampKind; readonly faces: readonly number[]; }
+interface LensDefinition {
+  readonly kind: VehicleLampKind;
+  readonly faces: readonly number[];
+  readonly tint?: 'red' | 'warm';
+}
 type LensMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 const SOURCES = new WeakMap<THREE.Object3D, readonly NightLightEmitter[]>();
 
@@ -22,23 +26,28 @@ function vertexAt(geometry: THREE.BufferGeometry, offset: number): number {
 }
 
 /** Call on an authored lens primitive BEFORE its pose transform. Only its
- * outward +Z aperture is tagged; side/rear glass and all other optics stay off.
+ * outward +Z aperture is tagged; the explicit Y option is only for authored
+ * upward service-lamp caps. Side/rear glass and other optics stay off.
  * Serializable face offsets survive profile clones and nonuniform scaling.
  */
 export function markVehicleNightLens<T extends THREE.BufferGeometry>(
-  geometry: T, kind: VehicleLampKind, options: { readonly curvedAperture?: boolean } = {},
+  geometry: T, kind: VehicleLampKind,
+  options: { readonly curvedAperture?: boolean; readonly apertureAxis?: 'z' | 'y'; readonly tint?: 'red' | 'warm' } = {},
 ): T {
   const normal = geometry.getAttribute('normal');
   const count = geometry.index?.count ?? geometry.getAttribute('position').count;
   const faces: number[] = [];
-  const minNormalZ = options.curvedAperture ? .01 : .98;
+  const minFacingNormal = options.curvedAperture ? .01 : .98;
   for (let face = 0; face < count; face += 3) {
     // A source-authored closed curved lens may have no planar cap. Opt in
     // only on that lens primitive; rear-facing stock is still excluded.
-    if ([0, 1, 2].every(corner => normal.getZ(vertexAt(geometry, face + corner)) > minNormalZ)) faces.push(face);
+    if ([0, 1, 2].every(corner => {
+      const vertex = vertexAt(geometry, face + corner);
+      return (options.apertureAxis === 'y' ? normal.getY(vertex) : normal.getZ(vertex)) > minFacingNormal;
+    })) faces.push(face);
   }
   if (!faces.length) throw new Error('Authored night lens has no forward aperture');
-  geometry.userData.vehicleNightLens = { kind, faces } satisfies LensDefinition;
+  geometry.userData.vehicleNightLens = { kind, faces, ...(options.tint ? { tint: options.tint } : {}) } satisfies LensDefinition;
   return geometry;
 }
 
@@ -48,7 +57,7 @@ function maskLens(geometry: THREE.BufferGeometry): void {
   if (definition) for (const face of definition.faces) {
     for (let corner = 0; corner < 3; corner++) vertices.push(vertexAt(geometry, face + corner));
   }
-  setNightEmissionMask(geometry, definition?.kind === 'shtora' ? 2 : 1, vertices);
+  setNightEmissionMask(geometry, definition?.kind === 'shtora' || definition?.tint === 'red' ? 2 : 1, vertices);
 }
 
 /** Merge utilities require matching attributes on every part in one bucket. */
@@ -95,7 +104,7 @@ export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THR
     const definition = lensDefinition(part)!;
     return {
       kind: definition.kind, ...apertureFrame(part, definition),
-      color: definition.kind === 'shtora' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
+      color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
       intensity: definition.kind === 'headlight' ? 80 : 0,
       range: definition.kind === 'headlight' ? 42 : 0,
       emission: { material, color: 0xffffff, intensity: 3 },

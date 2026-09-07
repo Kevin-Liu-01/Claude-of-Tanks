@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { box, cylZ, xform, mergeAll } from './factoryGeometry.ts';
+import { box, cylY, cylZ, xform, mergeAll } from './factoryGeometry.ts';
 import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
   transferVehicleNightLenses, finalizeVehicleNightLighting, vehicleNightLightEmittersFor,
@@ -75,7 +75,7 @@ close(new THREE.Vector3().fromArray(moved[0].position), new THREE.Vector3().from
 assert.equal(tank.children.length, 2, 'night setup adds no vehicle mesh/rig owners');
 runtime.dispose(); material.dispose(); head.dispose(); merged.dispose(); plainOptic.geometry.dispose(); replacement.geometry.dispose();
 // Blackout/parking lamps glow but must never occupy a headlight beam slot.
-const markerPart = markVehicleNightLens(box(.06, .02, .01), 'marker');
+const markerPart = markVehicleNightLens(box(.06, .02, .01), 'marker', { tint: 'red' });
 prepareVehicleNightLensParts([markerPart]);
 const markerMaterial = new THREE.MeshStandardMaterial();
 const markerMesh = new THREE.Mesh(markerPart, markerMaterial);
@@ -86,8 +86,22 @@ assert.equal(marker.kind, 'marker');
 assert.equal(marker.intensity, 0);
 assert.equal(marker.range, 0);
 assert.deepEqual(markerMesh.userData.nightLightCoverage, { headlights: 0, shtora: 0, markers: 1 });
-assert.ok([...markerPart.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].some(value => value === 1));
+assert.ok([...markerPart.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].some(value => value === 2));
 markerPart.dispose(); markerMaterial.dispose();
+const serviceCap = markVehicleNightLens(cylY(.068, .068, .012, 16), 'marker', { apertureAxis: 'y' });
+const servicePositions = serviceCap.getAttribute('position').array.slice();
+prepareVehicleNightLensParts([serviceCap]);
+const serviceMaterial = new THREE.MeshStandardMaterial();
+const serviceMesh = new THREE.Mesh(serviceCap, serviceMaterial);
+registerVehicleNightLensMesh(serviceMesh, [serviceCap]);
+const serviceLamp = vehicleNightLightEmittersFor(serviceMesh)[0];
+close(new THREE.Vector3().fromArray(serviceLamp.direction), new THREE.Vector3(0, 1, 0), 'authored upward service cap stays upward');
+assert.equal(serviceLamp.kind, 'marker');
+assert.equal(serviceLamp.intensity, 0, 'service cap never invents a forward beam');
+assert.deepEqual(serviceCap.getAttribute('position').array, servicePositions, 'service semantics leave geometry bytes unchanged');
+const serviceMask = serviceCap.getAttribute(NIGHT_EMISSION_ATTRIBUTE), serviceNormals = serviceCap.getAttribute('normal');
+for (let i = 0; i < serviceMask.count; i++) if (serviceMask.getX(i)) assert.ok(serviceNormals.getY(i) > .98, 'only actual upward aperture glows');
+serviceCap.dispose(); serviceMaterial.dispose();
 console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, periscope exclusion, zero added owners, batch transport, destruction/garage restoration PASS');
 
 // Opt-in CPU integration oracle. --baseline=<ref> loads edited vehicle sources

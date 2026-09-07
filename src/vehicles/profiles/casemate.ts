@@ -5244,7 +5244,8 @@ function buildISU122S(P: CasemateBuilderPort): void {
       }
     }
     P.add('hullDetail', KIT.xform(cylY(0.086, 0.092, 0.026, 18), 0, 0, 0, 0, 0, 0), 0.565, 1.142, 2.75);
-    P.add('hullDark', KIT.xform(cylY(0.068, 0.068, 0.012, 16), 0, 0.014, 0, 0, 0, 0), 0.565, 1.144, 2.75);
+    P.add('hullDark', KIT.xform(markVehicleNightLens(cylY(0.068, 0.068, 0.012, 16),
+      'marker', { apertureAxis: 'y' }), 0, 0.014, 0, 0, 0, 0), 0.565, 1.144, 2.75);
     P.add('hullDetail', box(0.040, 0.026, 0.10), 0.565, 1.116, 2.66);             // stem foot
     P.add('hullDark', box(0.014, 0.014, 0.16), 0.505, 1.126, 2.52, 0, 0, 0.2);    // cable conduit
     // ---- D-25S mantlet AUTHORED TO THE ORACLE TABLE (visual r4). The
