@@ -303,6 +303,18 @@ filled deterministically by authority-owned bots. Bots use seeded diverse
 openings, traversability planning on every map, local obstacle recovery, and
 the same spotting limits as human players.
 
+Bot decisions and gun aiming use the same `src/game/ai.ts` controller and
+`updateTank` gun-lay solver as solo bot battles. The countdown deliberately
+sets `aimLocked` on every vehicle. On each playing tick, authority releases
+that hold for active living bots before updating their controller; humans
+release it only through their own input. Otherwise bots keep choosing aim
+points but never traverse or elevate after an ordinary room countdown.
+Inactive participants, wrecks, and disconnected/explicitly aim-locked humans
+are not unlocked by this handoff. `authoritativeBotControls.selftest.mjs`
+covers the default countdown, a one-tick countdown, no countdown, firing, and
+control ownership. `multiplayerBotPresentation.selftest.mjs` follows real bot
+angles through compact deltas, interpolation, and per-frame visual updates.
+
 `src/net/lobbyRuntime.ts` is the strict transport owner around that policy. It
 validates serialized room state before client admission, rejects stale sequence
 numbers, bounds the temporary match-handoff inbox, and transfers each live

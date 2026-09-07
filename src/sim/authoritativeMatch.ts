@@ -1679,6 +1679,10 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
+        // Countdown holds every gun through applyNetworkInput(null). Unlike
+        // humans, bots have no incoming frame to release that safety hold;
+        // hand aiming back to the shared solo AI before it writes this tick.
+        if (!entity.combat.destroyed) entity.input.aimLocked = false;
         entity.aiCtl?.update(dt, timeS);
         reconcileBotShell(entity);
       } else {
