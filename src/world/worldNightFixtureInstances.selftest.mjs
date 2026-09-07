@@ -97,6 +97,10 @@ const curtain = new THREE.MeshStandardMaterial(), plain = new THREE.MeshStandard
 const fixtures = [{ material: structureMaterial, intensity: 1.2 }, { material: glassMaterial, intensity: 2 }, { material: plain, intensity: 3 }];
 registerWorldNightLighting(root, curtain, [], 'coastal', fixtures);
 const runtime = createNightLightingRuntime(scene), children = [...root.children], reference = new THREE.Vector3();
+const relay = new THREE.InstancedMesh(DESTRUCTIBLE_BUILDING_TYPES.relaystation.build(() => .5), structureMaterial, 1);
+const relayWreck = new THREE.InstancedMesh(DESTRUCTIBLE_BUILDING_TYPES.relaystation.broken(() => .5), structureMaterial, 1);
+prepareWorldStructureNightFixture(relay, true); prepareWorldStructureNightFixture(relayWreck, false);
+relayWreck.count = 0;
 try {
   runtime.prepare([{ root }], true); runtime.update(reference);
   assert.equal(runtime.emitterCount, 3, 'one marker per authored shared material, no per-building loop');
@@ -124,13 +128,41 @@ try {
   assert.equal(runtime.emitterCount, 0); assert.equal(glassMaterial.emissive.getHex(), 0, 'day/Garage stays original');
   for (const mapId of ['ruinspires', 'blackglass']) {
     const ruins = new THREE.Group(); scene.add(ruins);
-    registerWorldNightLighting(ruins, curtain, [], mapId, fixtures);
+    ruins.add(intact, wreck, relay, relayWreck);
+    registerWorldNightLighting(ruins, curtain, [], mapId, [fixtures[0], fixtures[2]]);
     runtime.prepare([{ root: ruins }], true); runtime.update(reference);
-    assert.equal(runtime.emitterCount, 0, 'ruined-world panes/beacons are not treated as occupied buildings');
+    assert.equal(runtime.emitterCount, 1, `${mapId}: intact office panes and relay share one authored material marker`);
+    assert.equal(curtain.emissive.getHex(), 0, `${mapId}: abandoned skyline stays dark`);
+    assert.equal(structureMaterial.emissiveIntensity, 1.2);
+    assert.deepEqual([...active.array], [1, 1]);
+    assert.deepEqual([...relay.geometry.getAttribute(WORLD_FIXTURE_ACTIVE_ATTRIBUTE).array], [1]);
+    const pool = [...runtime.lights];
+    assert(pool.every(light => light.intensity === 0), 'fixture admission allocates no projected light');
+    for (let slot = 0; slot < 2; slot++) setWorldNightFixtureActive(intact, slot, false);
+    setWorldNightFixtureActive(relay, 0, false); runtime.update(reference);
+    assert.deepEqual([...active.array], [0, 0], 'destroyed office panes are excluded by existing instance mask');
+    assert.deepEqual([...relay.geometry.getAttribute(WORLD_FIXTURE_ACTIVE_ATTRIBUTE).array], [0], 'destroyed relay bulb is inactive');
+    for (const debris of [wreck, relayWreck]) {
+      assert(debris.geometry.getAttribute(WORLD_FIXTURE_ACTIVE_ATTRIBUTE).array.every(value => value === 0));
+      assert(debris.geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array.every(value => value === 0), 'broken debris never emits');
+    }
+    for (let slot = 0; slot < 2; slot++) setWorldNightFixtureActive(intact, slot, true);
+    setWorldNightFixtureActive(relay, 0, true); runtime.update(reference);
+    assert.deepEqual([...active.array], [1, 1], 'rematch restores authored panes');
+    assert.deepEqual([...relay.geometry.getAttribute(WORLD_FIXTURE_ACTIVE_ATTRIBUTE).array], [1], 'rematch restores authored relay bulb');
+    assert.deepEqual(runtime.lights, pool, 'ruined-map activity preserves pool identity and count');
+    runtime.prepare([{ root: ruins }], false); runtime.update(reference);
+    assert.equal(runtime.emitterCount, 0); assert.equal(structureMaterial.emissiveIntensity, .07);
+    assert.equal(structureMaterial.emissive.getHex(), 0x221100); assert.equal(runtime.group.parent, null);
+    runtime.prepare([{ root: ruins }], true); runtime.update(reference); runtime.reset();
+    assert.equal(structureMaterial.emissiveIntensity, .07, 'Garage reset restores the exact material baseline');
+    assert.equal(curtain.emissive.getHex(), 0); assert.equal(runtime.emitterCount, 0);
+    root.add(intact, wreck);
     ruins.removeFromParent();
   }
 } finally {
   runtime.dispose(); intact.dispose(); wreck.dispose(); intact.geometry.dispose(); wreck.geometry.dispose();
+  for (const mesh of [relay, relayWreck]) { mesh.dispose(); mesh.geometry.dispose(); }
   for (const geometry of Object.values(buckets).flat()) geometry.dispose(); ordinaryGlass.dispose();
   for (const material of [structureMaterial, glassMaterial, curtain, plain]) material.dispose();
 }

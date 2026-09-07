@@ -31,22 +31,25 @@ export function registerWorldNightLighting(
   mapId: string,
   fixtures: readonly WorldFixtureMaterial[] = [],
 ): void {
+  const markers: NightLightEmitter[] = [];
   // Ruined-city panes remain abandoned, not an occupied illuminated skyline.
   if (mapId !== 'ruinspires' && mapId !== 'blackglass') {
     // Panes, unlit fabric and red obstruction bulbs retain one material/draw;
     // only authored aperture vertices participate in night emission.
     installNightEmissionMask(curtain);
     curtain.userData.nightLightKind = 'window';
-    const markers: NightLightEmitter[] = [{
+    markers.push({
       kind: 'marker', position: [0, 0, 0],
       emission: { material: curtain, color: 0xffffff, intensity: 0.9 },
-    }];
-    for (const { material, intensity } of fixtures) {
-      if (material.userData.nightEmissionMask !== true || material.userData.nightLightKind !== 'fixture') continue;
-      markers.push({ kind: 'marker', position: [0, 0, 0], emission: { material, color: 0xffffff, intensity } });
-    }
-    registerNightLightEmitters(root, markers);
+    });
   }
+  // Intact service structures and actual lanterns remain eligible even in a
+  // ruined district. Their authored masks/activity slots exclude debris.
+  for (const { material, intensity } of fixtures) {
+    if (material.userData.nightEmissionMask !== true || material.userData.nightLightKind !== 'fixture') continue;
+    markers.push({ kind: 'marker', position: [0, 0, 0], emission: { material, color: 0xffffff, intensity } });
+  }
+  registerNightLightEmitters(root, markers);
   const object = root.getObjectByName('destructible-lamp');
   if (!object || !(object as InstancedMesh).isInstancedMesh) return;
   const mesh = object as InstancedMesh;
