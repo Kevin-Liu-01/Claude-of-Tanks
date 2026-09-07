@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
+import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
+import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicles/vehicleNightLighting.ts';
 import { markWorldWindowPane, markWorldBeacon, ensureWorldNightEmissionMask } from '../world/worldNightEmissionGeometry.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -50,4 +51,24 @@ assert.equal(inspectNightWindow(vehicle, reference), null, 'Shtora glass does no
 emitter.visible = false;
 assert.equal(inspectNightShtora(vehicle, reference), null, 'hidden Shtora cannot satisfy an exposed-source receipt');
 lens.dispose(); redMaterial.dispose();
+{
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  const parts = [markVehicleNightLens(new THREE.BoxGeometry(.2, .2, .04), 'marker'),
+    markVehicleNightLens(new THREE.BoxGeometry(.2, .2, .04), 'headlight').translate(2, 0, 0)];
+  prepareVehicleNightLensParts(parts);
+  const geometry = mergeGeometries(parts), mesh = new THREE.Mesh(geometry, material);
+  registerVehicleNightLensMesh(mesh, parts); root.add(mesh);
+  const before = [...root.children], reference = new THREE.Vector3(0, 1, 4);
+  const seat = inspectNightHeadlight(root, reference);
+  assert.equal(seat.kind, 'headlight'); assert.equal(seat.materialUuid, material.uuid);
+  assert(seat.point[0] > 1.9, 'nearer mask1 parking light cannot substitute for a driving aperture');
+  assert.equal(inspectNightShtora(root, reference), null);
+  const wallGeometry = new THREE.BoxGeometry(.5, .5, .1), wallMaterial = new THREE.MeshBasicMaterial();
+  const wall = new THREE.Mesh(wallGeometry, wallMaterial); wall.position.set(2, 0, .08); root.add(wall);
+  assert.equal(inspectNightHeadlight(root, reference), null, 'buried authored driving lamp fails closed');
+  wall.removeFromParent(); assert.deepEqual(root.children, before);
+  mesh.visible = false; assert.equal(inspectNightHeadlight(root, reference), null);
+  for (const part of [...parts, geometry, wallGeometry]) part.dispose();
+  material.dispose(); wallMaterial.dispose();
+}
 console.log('nightWindowInspection: exact outward masked pane, authored transforms, obstruction/hidden rejection and no scene edits PASS');

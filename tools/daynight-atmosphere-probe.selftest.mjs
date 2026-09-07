@@ -123,6 +123,13 @@ const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), 
   legacy: [state('day', 13), state('night', 3)],
   expected: [weather('day', 1), weather('night', 3), weather('day', 1), weather('day', 13), weather('night', 3)] };
 const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle });
+const requestedVehicleFixtures = load('requestedVehicleFixtures', { assert });
+assert.deepEqual(requestedVehicleFixtures([]), []);
+assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv']),
+  ['m1a3', 'mbt70', 't90m', 't90m_proryv']);
+for (const value of ['', 'm1a3,m1a3', 'proryv', 'm1a3,mbt70,t90m,t90m_proryv,m1a1']) {
+  assert.throws(() => requestedVehicleFixtures([`--vehicle-fixtures=${value}`]), /canonical repair IDs/);
+}
 function focusedRow(kind) {
   const row = { ...structuredClone(good), kind,
     specId: kind === 'shtora' ? 't90a_vladimir' : 'm1a1',
@@ -162,6 +169,64 @@ for (const kind of ['shtora', 'streetlamp']) {
   assert.equal(focusedChecks(row).actualStreetPool, false, 'window fallback cannot substitute for an actual lamp slot');
   row.fixture.slot = 7; row.night.nightLighting.lights[2].position = [100, 2, 3];
   assert.equal(focusedChecks(row).actualStreetPool, false, 'a point light on another fixture is not a pool beneath this lamp');
+}
+const worldFixtureChecks = load('checkWorldFixtureCase', { checkFocusedFixtureCase: focusedChecks,
+  clearWeatherState: load('clearWeatherState') });
+for (const [kind, ownerName, mask, slot, intensity] of [
+  ['structure-window', 'destructible-securityoffice', 1, 7, 1.2],
+  ['relay-beacon', 'destructible-relaystation', 2, 3, 1.2],
+  ['lighthouse', '', 1, null, 2],
+]) {
+  const row = focusedRow(kind);
+  Object.assign(row.fixture, { ownerName, mask, slot, faceIndex: 12 });
+  for (const value of [row.day, row.night, row.restored]) {
+    const lens = value.nightLighting.materials[0];
+    value.nightLighting.materials.push({ ...lens, uuid: 'actual-fixture', kind: 'fixture',
+      intensity: value === row.night ? intensity : 0 });
+  }
+  row.fixture.materialUuid = 'actual-fixture';
+  assert(Object.values(worldFixtureChecks(row)).every(Boolean), `${kind}: actual fixture intensity and reset`);
+  for (const mutate of [
+    row => { row.fixture.mask = 0; },
+    row => { row.fixture.faceIndex = null; },
+    row => { row.fixture.faceIndex = -1; },
+    row => { row.fixture.lineOfSight = null; },
+    row => { row.fixture.slot = -1; },
+    row => { row.fixture.materialUuid = 'lens'; },
+    row => { row.night.nightLighting.materials[1].kind = 'masked'; },
+    row => { row.night.nightLighting.materials[1].intensity = 0; },
+    row => { row.restored.nightLighting.materials[1].intensity = intensity; },
+    row => { row.night.weather.condition = 'rain'; },
+  ]) {
+    const bad = structuredClone(row); mutate(bad);
+    assert(Object.values(worldFixtureChecks(bad)).some(value => !value), `${kind}: reject false source/reset receipt`);
+  }
+  if (kind !== 'lighthouse') {
+    const bad = structuredClone(row); bad.fixture.ownerName = 'destructible-vent';
+    assert.equal(worldFixtureChecks(bad).actualWorldAperture, false, 'generic vents cannot masquerade as windows or bulbs');
+  }
+}
+{
+  const lowLamp = focusedRow('streetlamp'); lowLamp.night.nightLighting.materials[0].intensity = 1.2;
+  assert.equal(focusedChecks(lowLamp).exactEmitterRadiance, false, 'original streetlamp/Shtora radiance gate remains three');
+}
+{
+  const vehicleChecks = load('checkVehicleFixtureCase', { checkFocusedFixtureCase: focusedChecks,
+    clearWeatherState: load('clearWeatherState') });
+  const row = focusedRow('headlight'); row.fixture.faceIndex = 8;
+  assert(Object.values(vehicleChecks(row)).every(Boolean));
+  for (const mutate of [
+    row => { row.fixture.lineOfSight = null; },
+    row => { row.fixture.faceIndex = null; },
+    row => { row.night.playerSpecId = 'fallback-vehicle'; },
+    row => { row.night.nightLighting.playerCoverage.headlights = 0; },
+    row => { row.night.nightLighting.materials[0].intensity = 0; },
+    row => { row.restored.nightLighting.materials[0].intensity = 3; },
+    row => { row.night.weather.condition = 'snow'; },
+  ]) {
+    const bad = structuredClone(row); mutate(bad);
+    assert(Object.values(vehicleChecks(bad)).some(value => !value));
+  }
 }
 assert(Object.values(checks(good, 'mobile')).every(Boolean));
 for (const mutate of [

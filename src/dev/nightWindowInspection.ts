@@ -1,7 +1,10 @@
 // Explicit diagnostics only: select a real outward-facing lit pane and prove
 // its camera sightline against rendered geometry. Never part of a frame loop.
-import { Raycaster, Vector3, type Mesh, type Object3D } from 'three';
+import { Matrix3, Raycaster, Vector3, type Mesh, type Object3D } from 'three';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
+import { vehicleNightLightEmittersFor } from '../vehicles/vehicleNightLighting.ts';
+
+type ApertureKind = 'window' | 'shtora' | 'headlight';
 
 interface WindowCandidate {
   mesh: Mesh;
@@ -12,7 +15,7 @@ interface WindowCandidate {
 }
 
 export interface NightWindowInspection {
-  kind: 'window' | 'shtora';
+  kind: ApertureKind;
   ownerUuid: string;
   materialUuid: string;
   faceIndex: number;
@@ -30,7 +33,18 @@ function visibleInRoot(object: Object3D, root: Object3D): boolean {
   return false;
 }
 
-function windowCandidates(root: Object3D, reference: Vector3, kind: 'window' | 'shtora'): WindowCandidate[] {
+function belongsToHeadlight(mesh: Mesh, point: Vector3): boolean {
+  let nearest = Infinity, selected = null;
+  for (const lamp of vehicleNightLightEmittersFor(mesh)) {
+    const distance = point.distanceToSquared(new Vector3().fromArray(lamp.position));
+    if (distance < nearest) { nearest = distance; selected = lamp; }
+  }
+  // Mask1 also includes parking lamps. The nearest authored source, not color
+  // or generic glass ownership, distinguishes the actual driving aperture.
+  return selected?.kind === 'headlight';
+}
+
+function windowCandidates(root: Object3D, reference: Vector3, kind: ApertureKind): WindowCandidate[] {
   const candidates: WindowCandidate[] = [];
   root.updateWorldMatrix(true, true);
   root.traverseVisible(object => {
@@ -45,12 +59,15 @@ function windowCandidates(root: Object3D, reference: Vector3, kind: 'window' | '
     const count = geometry.index?.count ?? position.count;
     for (let offset = 0; offset < count; offset += 3) {
       const ids = [0, 1, 2].map(i => geometry.index?.getX(offset + i) ?? offset + i);
-      if (ids.some(i => mask.getX(i) !== (kind === 'window' ? 1 : 2))) continue;
-      const direction = new Vector3().fromBufferAttribute(normal, ids[0]).transformDirection(mesh.matrixWorld);
+      if (ids.some(i => mask.getX(i) !== (kind === 'shtora' ? 2 : 1))) continue;
+      const direction = new Vector3().fromBufferAttribute(normal, ids[0])
+        .applyNormalMatrix(new Matrix3().getNormalMatrix(mesh.matrixWorld));
       if (Math.abs(direction.y) > .25) continue;
       const point = new Vector3();
       for (const id of ids) point.add(new Vector3().fromBufferAttribute(position, id));
-      point.multiplyScalar(1 / 3).applyMatrix4(mesh.matrixWorld);
+      point.multiplyScalar(1 / 3);
+      if (kind === 'headlight' && !belongsToHeadlight(mesh, point)) continue;
+      point.applyMatrix4(mesh.matrixWorld);
       candidates.push({ mesh, faceIndex: offset / 3, point, direction, score: point.distanceToSquared(reference) });
     }
   });
@@ -71,7 +88,7 @@ function unobstructedPane(root: Object3D, candidate: WindowCandidate, camera: Ve
   return !ray.intersectObject(root, true).some(hit => visibleInRoot(hit.object, root));
 }
 
-function inspectAperture(root: Object3D, reference: Vector3, kind: 'window' | 'shtora'): NightWindowInspection | null {
+function inspectAperture(root: Object3D, reference: Vector3, kind: ApertureKind): NightWindowInspection | null {
   for (const candidate of windowCandidates(root, reference, kind)) {
     const side = new Vector3(-candidate.direction.z, 0, candidate.direction.x);
     const camera = candidate.point.clone().addScaledVector(candidate.direction, 4)
@@ -93,4 +110,9 @@ export function inspectNightWindow(root: Object3D, reference: Vector3): NightWin
 /** Only called with the selected player's vehicle root, never world beacons. */
 export function inspectNightShtora(root: Object3D, reference: Vector3): NightWindowInspection | null {
   return inspectAperture(root, reference, 'shtora');
+}
+
+/** Actual registered driving lens, excluding parking lamps and other glass. */
+export function inspectNightHeadlight(root: Object3D, reference: Vector3): NightWindowInspection | null {
+  return inspectAperture(root, reference, 'headlight');
 }
