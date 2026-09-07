@@ -34,8 +34,10 @@ function weatherPreset(authored: MapSkyConfig, weather: BattleWeather | null): M
   if (!weather) return preset;
   if (weather.timeOfDay === 'night') {
     Object.assign(preset, {
-      skyIntensity: .035, sunElevationDeg: 20, sunIntensity: .32,
-      sunColorHex: 0xa6bce8, hemiIntensity: .28, fillIntensity: .12, envIntensity: .75,
+      // Moonlit, not pitch black: preserve plate/ground readability away from
+      // the small headlamp pool without adding a render pass or scene light.
+      skyIntensity: .05, sunElevationDeg: 20, sunIntensity: .42,
+      sunColorHex: 0xa6bce8, hemiIntensity: .46, fillIntensity: .20, envIntensity: .85,
       cloudTintHex: 0x33455e, fogTintHex: 0x34455a, fogMix: .7,
     });
   }
@@ -100,7 +102,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
     options.applyPreset(weatherPreset(nextAuthored, next));
-    setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .12 : 1);
+    setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .24 : 1);
     restoreHorizon();
     if (next?.timeOfDay === 'night') dimHorizon(root, horizonColors);
     authored = nextAuthored;

@@ -48,10 +48,10 @@ try {
   runtime.prepare(3, 'winter');
   const night = applied.at(-1);
   assert.equal(runtime.weather.condition, 'clear'); assert.equal(runtime.weather.timeOfDay, 'night');
-  assert.equal(getVehicleReadabilityScale(), .12, 'night dims daylight-calibrated vehicle floors');
-  assert.equal(night.skyIntensity, .035); assert.equal(night.sunElevationDeg, 20);
-  assert.equal(night.sunIntensity, .32); assert.equal(night.sunColorHex, 0xa6bce8);
-  assert.equal(night.hemiIntensity, .28); assert.equal(night.fillIntensity, .12); assert.equal(night.envIntensity, .75);
+  assert.equal(getVehicleReadabilityScale(), .24, 'night retains readable plates below the daylight floor');
+  assert.equal(night.skyIntensity, .05); assert.equal(night.sunElevationDeg, 20);
+  assert.equal(night.sunIntensity, .42); assert.equal(night.sunColorHex, 0xa6bce8);
+  assert.equal(night.hemiIntensity, .46); assert.equal(night.fillIntensity, .20); assert.equal(night.envIntensity, .85);
   assert.equal(night.cloudTintHex, 0x33455e); assert.equal(night.fogTintHex, 0x34455a);
   assert.equal(night.fogMix, .7); assert.equal(night.postExposure, .95);
   assert.equal(night.cloudOpacity, base.cloudOpacity); assert.equal(night.cloudOpacity2, base.cloudOpacity2);
@@ -80,7 +80,7 @@ try {
   runtime.reset();
   assert.equal(applied.length, afterReset, 'reset restores exactly once; no frame entry can wake');
   runtime.prepare(3, 'winter');
-  assert.equal(getVehicleReadabilityScale(), .12);
+  assert.equal(getVehicleReadabilityScale(), .24);
   assert.equal(scene.children.length, 0);
   for (const mapId of MAP_IDS) {
     runtime.reset();
@@ -166,4 +166,4 @@ const source = readFileSync(new URL('./battleAtmosphereRuntime.ts', import.meta.
 assert.doesNotMatch(source, /from ['"].*maps\/index|from ['"].*quality|requestAnimationFrame\(|setTimeout\(|performance\.|Math\.random\(/);
 assert.doesNotMatch(source, /from ['"].*(?:battlePrecipitation|battleVehicleLighting)|new THREE\./,
   'clear-only owner must not acquire a precipitation/lamp pool or create GPU resources');
-console.log(`battleAtmosphereRuntime self-test: all ${MAP_IDS.length} biomes, covered match rekey, authored clouds/fog, unchanged night, no frame owner and exact restore PASS`);
+console.log(`battleAtmosphereRuntime self-test: all ${MAP_IDS.length} biomes, covered match rekey, authored clouds/fog, readable night, no frame owner and exact restore PASS`);
