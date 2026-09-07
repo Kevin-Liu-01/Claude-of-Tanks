@@ -103,6 +103,16 @@ file cache is unspecified, and these are not browser/frame-time measurements.
 Many `tmp-*` tools and `.qa-dev/` outputs are transient and must not be staged.
 Own and stop every dev server/browser process you start.
 
+`node src/world/iceSurfaceDetail.selftest.mjs` requires the pinned native
+`@napi-rs/canvas` devDependency installed by `npm ci`. It exercises real Canvas2D
+paths/gradients, packed RGB/roughness, independent relief and desktop/mobile
+texture budgets; no pixel-upload stub or skip is supported. A bundled native
+installation may be selected explicitly with
+`--canvas-module=/absolute/node_modules/@napi-rs/canvas/index.js`. Missing or
+wrong-package rasterizers fail closed. Optional `--out-dir=/absolute/new-output`
+writes fresh PNGs and a receipt identifying the actual module/version; these
+are CPU raster evidence, not GPU or final-shader acceptance.
+
 `node tools/environment-motion-probe.mjs --root=/absolute/release --out=/absolute/fresh-output --expected-build-index-hash=<approved-sha256> --case=desktop/winter`
 is a committed Playwright visual regression. It owns one video-recording context
 per case, with viewport/DPR and normal persisted quality choices applied before

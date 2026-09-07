@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -10,18 +11,29 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier, texSize } from '../engine/quality.ts';
 import { normalTextureFromHeight, tileableTorusNoise } from './proceduralTexture.ts';
 
-// An explicit native Canvas2D rasterizer is mandatory: path/gradient coverage
-// cannot be proved by the pixel-upload-only stubs used by other CPU tests.
+// Genuine native Canvas2D is mandatory: path/gradient coverage cannot be
+// proved by the pixel-upload-only stubs used by other CPU tests. npm ci installs
+// the pinned rasterizer; an explicit bundled native module is also supported.
 const { values } = parseArgs({ options: {
   'canvas-module': { type: 'string' }, 'out-dir': { type: 'string' },
 } });
-assert.ok(values['canvas-module'] && isAbsolute(values['canvas-module']),
-  'Pass --canvas-module=<absolute @napi-rs/canvas/index.js>; no stub or skip is supported');
-const native = await import(pathToFileURL(values['canvas-module']).href);
+function resolveCanvasModule(explicitPath) {
+  if (explicitPath !== undefined) {
+    assert.ok(isAbsolute(explicitPath), '--canvas-module must be an absolute @napi-rs/canvas/index.js path');
+    return explicitPath;
+  }
+  try { return createRequire(import.meta.url).resolve('@napi-rs/canvas'); }
+  catch (cause) {
+    throw new Error('Native @napi-rs/canvas is required: run npm ci, or pass '
+      + '--canvas-module=<absolute @napi-rs/canvas/index.js>. No stub or skip is supported.', { cause });
+  }
+}
+const canvasModule = resolveCanvasModule(values['canvas-module']);
+const rasterizer = JSON.parse(readFileSync(join(dirname(canvasModule), 'package.json'), 'utf8'));
+assert.equal(rasterizer.name, '@napi-rs/canvas', 'The rasterizer must be the genuine @napi-rs/canvas package');
+const native = await import(pathToFileURL(canvasModule).href);
 assert.equal(typeof native.createCanvas, 'function');
 assert.equal(typeof native.ImageData, 'function');
-const rasterizer = JSON.parse(readFileSync(join(dirname(values['canvas-module']), 'package.json'), 'utf8'));
-assert.equal(rasterizer.name, '@napi-rs/canvas');
 if (values['out-dir']) {
   assert.ok(isAbsolute(values['out-dir']), '--out-dir must be absolute and new');
   mkdirSync(values['out-dir']);
@@ -200,7 +212,7 @@ try {
   rows.push(...mobile);
   const receipt = { proof: 'actual Canvas2D rasterization and CPU texture payloads; no GPU or final-shader acceptance',
     consumers: ['winter', 'alpine', 'whiteout'], rasterizer: { name: rasterizer.name, version: rasterizer.version,
-      module: values['canvas-module'] }, rows };
+      module: canvasModule }, rows };
   if (values['out-dir']) writeFileSync(join(values['out-dir'], 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(receipt, null, 2));
   console.log('iceSurfaceDetail.selftest: PASS actual seeded ice atlas, sparse stress, smooth separate relief, unchanged two-texture budget');
