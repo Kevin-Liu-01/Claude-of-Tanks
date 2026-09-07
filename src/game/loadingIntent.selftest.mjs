@@ -145,8 +145,8 @@ assert.match(networkBattleComposition,
   /preloadPresentation: presentation\.preload/,
   'a joined waiting room should keep the presentation runtime warm');
 assert.match(networkPresentation,
-  /entry\.acquire\(\{[\s\S]{0,180}loadModules: entry\.loadModules/,
-  'network entry should delegate the intent-preloaded module join');
+  /entry\.acquire\(\{[\s\S]{0,180}loadModules: async \(\) => \{[\s\S]{0,120}Promise\.all\(\[entry\.loadModules\(\), load\.ensureBattleVisuals\(\)\]\)/,
+  'network entry should join visual initialization with modules inside parallel acquisition');
 assert.match(networkPresentation,
   /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: async \(\) =>/,
   'network entry should delegate modules, battlefield construction, and connection setup');

@@ -31,7 +31,7 @@ const room = {
 
 const runtime = createNetworkBattleComposition({
   round: { game: {}, session: {} },
-  presentation: { presentation: {} },
+  presentation: { presentation: { setWaitingForPeers: (waiting) => calls.push(`waiting:${waiting}`) } },
   launcher: {
     lifecycle: {
       primeReveal: () => Promise.resolve('revealed'),
@@ -82,12 +82,14 @@ await seen.room.onRematch({ players: [] });
 seen.room.onClose('owner-left');
 presentationOptions.presentation.resetRoundState();
 presentationOptions.presentation.activate({});
+presentationOptions.presentation.setWaitingForPeers(true);
 assert.deepEqual(calls, [
   'preload-lobby',
   'rematch',
   'close:owner-left',
   'reset',
   'activate',
+  'waiting:true',
 ]);
 
 console.log('networkBattleComposition.selftest: circular lifecycle ownership passed');

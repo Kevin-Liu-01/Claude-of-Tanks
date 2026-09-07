@@ -29,6 +29,10 @@ const [
 ]);
 const garage = `${garageSource}\n${await readFile(new URL('./garage.css', import.meta.url), 'utf8')}`;
 
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-prebattle\{\s*top:max\(255px,30%\);transform:translateX\(-50%\);/,
+  'portrait countdown labels must clear the initial minimap and room-chat controls');
+
 assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
 assert.doesNotMatch(garage, /@media \([^)]*orientation:/,

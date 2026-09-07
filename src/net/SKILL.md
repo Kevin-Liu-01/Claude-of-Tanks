@@ -49,11 +49,11 @@ play without importing Three.js rendering or DOM state.
   ranked launch policy, including cold-loader presentation and terminal cleanup.
 - `networkBattlePresentationRuntime.ts` owns the shared cold-client path from
   opaque loader through parallel module/world/transport acquisition, hidden
-  roster preparation, initial authority, warmup, all-peer readiness, atomic
-  activation, black-frame validation, and reveal.
+  roster preparation, initial authority, warmup, atomic visual activation,
+  black-frame validation, reveal, and then all-peer readiness.
 - `networkBattlePresentationAccess.ts` keeps that deep multiplayer-only owner
   out of Garage/solo boot and retries failed intent transfers.
-- `networkBattleActivationRuntime.ts` owns the atomic post-readiness transfer
+- `networkBattleActivationRuntime.ts` owns the atomic prepared-visual transfer
   into live player or spectator presentation: world/HUD/FX/result reset, phase
   publication, camera ownership, and Garage shutdown.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure
@@ -88,8 +88,14 @@ play without importing Three.js rendering or DOM state.
   collision adapter stable for the predictor lifetime; do not allocate a new
   closure for every replayed fixed step.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
-- Network activation must remain one operation after the peer-ready barrier;
-  do not publish battle phase or camera state piecemeal from `main.ts`.
+- Visual activation must remain one operation after roster/snapshot preparation
+  and warmup; do not publish battle phase or camera state piecemeal from
+  `main.ts`. Send READY only after the verified battlefield frame and awaited
+  loader fade. Authority still holds gameplay until every peer is ready and
+  its countdown expires; visible loading peers show WAITING FOR COMMANDERS.
+- Failed entry keeps an opaque loader through Garage restoration and its first
+  paint. Settle in-flight world activation before restoring Garage, without
+  waiting on an unrelated stalled transport.
 - A bridge must remain private until its exact roster and viewer-bearing first
   snapshot are ready. Keep that order in `networkBattlePresentationRuntime.ts`;
   failed unpublished bridges are disposed before the launcher handles cleanup.

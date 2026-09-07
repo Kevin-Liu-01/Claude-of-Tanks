@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
@@ -6,6 +8,13 @@ import { createSignalingServer } from '../server/signalingServer.ts';
 const root = new URL('..', import.meta.url).pathname;
 const failureScenario = process.argv.find((arg) => arg.startsWith('--failure-scenario='))
   ?.split('=')[1] || 'cold-entry';
+const outputArg = process.argv.find((arg) => arg.startsWith('--out='));
+assert.ok(!outputArg || outputArg.length > '--out='.length, '--out requires a directory');
+const outputDir = outputArg ? resolve(outputArg.slice('--out='.length)) : null;
+const mobile = process.argv.includes('--mobile');
+const viewport = mobile
+  ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }
+  : { width: 800, height: 600, deviceScaleFactor: 1 };
 assert.ok(['cold-entry', 'host-left', 'host-stall'].includes(failureScenario),
   'failure-scenario must be cold-entry, host-left, or host-stall');
 const errors = [];
@@ -78,6 +87,7 @@ try {
   const guestContext = await browser.createBrowserContext();
   const hostPage = await hostContext.newPage();
   const guestPage = await guestContext.newPage();
+  await guestPage.setViewport(viewport);
   observe(hostPage, 'host');
   observe(guestPage, 'guest');
   await hostPage.goto(`${origin}/tools/multiplayer-browser-soak.html`, {
@@ -131,7 +141,7 @@ try {
 
   const inviteUrl = new URL(`${origin}/`);
   inviteUrl.searchParams.set('nosplash', '1');
-  inviteUrl.searchParams.set('tier', 'desktop');
+  if (!mobile) inviteUrl.searchParams.set('tier', 'desktop');
   inviteUrl.searchParams.set('gfxreset', '1');
   inviteUrl.searchParams.set('room', room.roomCode);
   inviteUrl.searchParams.set('host', 'Entry Host');
@@ -266,32 +276,60 @@ try {
   }
 
   await guestPage.evaluate(() => {
-    globalThis.__COT_GUEST_ENTRY = { frames: [] };
+    globalThis.__COT_GUEST_ENTRY = {
+      frames: [], sequence: [], firstLoaderHidden: null, complete: false, truncated: false,
+    };
     const state = globalThis.__COT_GUEST_ENTRY;
     const menu = document.querySelector('.cot-play');
     const loader = document.querySelector('.cot-bl');
+    const startedAt = performance.now();
     let handoffStarted = false;
+    let previousSignature = '';
     const sample = () => {
       const menuVisible = menu.classList.contains('show');
       if (!menuVisible) handoffStarted = true;
       if (handoffStarted) {
         const loaderStyle = getComputedStyle(loader);
+        const preBattle = document.querySelector('.cot-prebattle');
+        const preBattleStyle = preBattle ? getComputedStyle(preBattle) : null;
         const garage = window.__DEBUG?.garage;
         const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        state.frames.push({
+        const frame = {
+          index: state.frames.length,
+          elapsedMs: Math.round(performance.now() - startedAt),
           phase: window.__DEBUG?.game?.phase,
+          preBattleS: window.__DEBUG?.game?.preBattleS,
           menuVisible,
           loaderOn: loader.classList.contains('on'),
           loaderDisplay: loaderStyle.display,
           loaderOpacity: Number(loaderStyle.opacity),
+          // Removing .on starts the fade; only display:none proves that the
+          // loader has left layout and no longer covers the battlefield.
+          loaderHidden: loaderStyle.display === 'none',
+          preBattleOn: preBattle?.classList.contains('on') || false,
+          waiting: preBattle?.classList.contains('waiting') || false,
+          preBattleLabel: preBattle?.querySelector('.k')?.textContent?.trim() || '',
+          preBattleText: preBattle?.querySelector('.n')?.textContent?.trim() || '',
+          preBattleVisible: !!preBattle?.getClientRects().length &&
+            preBattleStyle?.visibility !== 'hidden' && Number(preBattleStyle?.opacity) > 0,
           garageOpen: !!garage?.isOpen,
           topSurface: center?.closest?.('.cot-bl,.cot-play')?.className || center?.tagName || '',
-        });
+        };
+        state.frames.push(frame);
+        if (frame.loaderHidden && !state.firstLoaderHidden) state.firstLoaderHidden = frame;
+        const signature = JSON.stringify([
+          frame.phase, frame.loaderOn, frame.loaderHidden, frame.preBattleOn,
+          frame.waiting, frame.preBattleLabel, frame.preBattleText, frame.preBattleVisible,
+        ]);
+        if (signature !== previousSignature) {
+          state.sequence.push(frame);
+          previousSignature = signature;
+        }
+        state.complete = frame.loaderHidden && frame.phase === 'battle' &&
+          frame.preBattleS <= 0 && frame.preBattleVisible && frame.preBattleText === 'ROLL OUT!';
       }
-      if (state.frames.length < 3600 &&
-          (window.__DEBUG?.game?.phase !== 'battle' || loader.classList.contains('on'))) {
-        requestAnimationFrame(sample);
-      }
+      state.truncated = state.frames.length >= 18_000;
+      if (!state.complete && !state.truncated) requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
   });
@@ -311,9 +349,8 @@ try {
     type: 'start', matchSeed: 0xC07CAFE,
   }));
 
-  // The regression is the guest's compositor handoff, not the full (and
-  // intentionally expensive) battlefield load. Ten real animation frames
-  // are enough to prove whether closing the lobby exposed the garage.
+  // Check the first ten compositor frames immediately, while the same
+  // recorder continues through the finished fade and the live HUD countdown.
   await guestPage.waitForFunction(
     () => globalThis.__COT_GUEST_ENTRY?.frames?.length >= 10,
     { timeout: 30_000, polling: 20 },
@@ -342,13 +379,37 @@ try {
   assert.deepEqual(report.exposed, [], 'guest exposed the garage before entering battle');
   assert.equal(report.entryFailure, null, 'guest handoff must not enter recovery');
 
-  // Let the pristine invite finish its first real battlefield load, then
-  // reload the actual application while authority is already playing. The
-  // stable browser identity and canonical room URL must reclaim the same
-  // seat and enter the live match without requiring the user to reopen the
-  // lobby or paste the code again.
+  let countdownScreenshot = null;
+  if (outputDir) {
+    await mkdir(outputDir, { recursive: true });
+    await guestPage.waitForFunction(() => {
+      const loader = document.querySelector('.cot-bl');
+      const overlay = document.querySelector('.cot-prebattle');
+      return (loader && getComputedStyle(loader).display === 'none' &&
+        overlay?.classList.contains('on') && overlay.getClientRects().length > 0 &&
+        Number(getComputedStyle(overlay).opacity) >= 0.99 &&
+        /^[1-5]$/.test(overlay.querySelector('.n')?.textContent?.trim() || '')) ||
+        window.__NETWORK_ENTRY_FAILURE;
+    }, { timeout: 240_000, polling: 'raf' });
+    if (!await guestPage.evaluate(() => window.__NETWORK_ENTRY_FAILURE)) {
+      const surface = () => guestPage.evaluate(() => ({
+        elapsedMs: Math.round(performance.now()),
+        numeral: document.querySelector('.cot-prebattle .n')?.textContent?.trim() || '',
+        loaderHidden: getComputedStyle(document.querySelector('.cot-bl')).display === 'none',
+      }));
+      const before = await surface();
+      const path = join(outputDir, 'guest-countdown.png');
+      await guestPage.screenshot({ path });
+      countdownScreenshot = { path, before, after: await surface() };
+    }
+  }
+
+  // Observe the complete fresh-round countdown before reloading. Phase=battle
+  // is published under the loader, so it cannot prove a visible countdown or
+  // that authority is already playing.
   await guestPage.waitForFunction(() =>
-    (window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG?.network?.connected === true) ||
+    (globalThis.__COT_GUEST_ENTRY?.complete === true &&
+      window.__DEBUG?.network?.connected === true) || globalThis.__COT_GUEST_ENTRY?.truncated ||
       window.__NETWORK_ENTRY_FAILURE,
   { timeout: 240_000, polling: 50 });
   const initialEntryFailure = await guestPage.evaluate(() =>
@@ -379,6 +440,8 @@ try {
       }),
       guestPage.evaluate(() => ({
         failure: window.__NETWORK_ENTRY_FAILURE || null,
+        load: window.__NETWORK_LOAD || null,
+        sequence: globalThis.__COT_GUEST_ENTRY?.sequence || [],
         phase: window.__DEBUG?.game?.phase,
         network: window.__DEBUG?.network,
         roomVisible: document.querySelector('.cot-play')?.classList.contains('show'),
@@ -389,7 +452,54 @@ try {
   }
   assert.equal(initialEntryFailure, null,
     `the pristine invite failed its first authoritative snapshot: ${JSON.stringify(initialEntryFailure)}`);
-  checkpoint('first-battle-connected');
+  const firstBattle = await guestPage.evaluate(() => {
+    const state = globalThis.__COT_GUEST_ENTRY;
+    const countdownFrames = state.frames.filter((frame) => frame.loaderHidden &&
+      frame.preBattleOn && frame.preBattleVisible && /^\d+$/.test(frame.preBattleText));
+    const countdown = countdownFrames.map((frame) => Number(frame.preBattleText))
+      .filter((second, index, seconds) => index === 0 || second !== seconds[index - 1]);
+    return {
+      frames: state.frames.length,
+      complete: state.complete,
+      truncated: state.truncated,
+      firstLoaderHidden: state.firstLoaderHidden,
+      sequence: state.sequence,
+      countdown,
+      firstCountdownFrame: countdownFrames[0] || null,
+      exposed: state.frames.filter((frame) => frame.phase !== 'battle' &&
+        !frame.menuVisible && (frame.loaderDisplay === 'none' || frame.loaderOpacity < 0.99)).slice(0, 8),
+      load: window.__NETWORK_LOAD || null,
+      blackCheck: window.__NETWORK_LOAD?.blackCheck || null,
+    };
+  });
+  // Emit the receipt before assertions so a missing numeral retains the real
+  // DOM sequence and reveal evidence even when this gate rejects the run.
+  console.log('[guest-entry] first-battle-presentation', JSON.stringify(firstBattle));
+  if (outputDir) await writeFile(join(outputDir, 'first-battle-presentation.json'),
+    `${JSON.stringify({ ...firstBattle, countdownScreenshot }, null, 2)}\n`);
+  assert.equal(firstBattle.truncated, false, 'fresh-round frame recording must not exhaust its bound');
+  assert.equal(firstBattle.complete, true, 'fresh round must visibly reach ROLL OUT before live reload');
+  assert.equal(firstBattle.firstLoaderHidden?.phase, 'battle',
+    'the first fully loader-hidden frame must already contain the battlefield');
+  assert.deepEqual(firstBattle.exposed, [], 'cold entry must stay covered through battlefield activation');
+  const waitingFrame = firstBattle.sequence.find((frame) => frame.waiting && frame.preBattleOn &&
+    frame.preBattleLabel === 'WAITING FOR COMMANDERS' && frame.preBattleText === 'READY');
+  assert.ok(waitingFrame, 'fresh entry must present truthful peer waiting before the countdown');
+  assert.ok(waitingFrame.index < firstBattle.firstCountdownFrame?.index,
+    'waiting must precede the first visible countdown numeral');
+  assert.deepEqual(firstBattle.countdown, [5, 4, 3, 2, 1],
+    'the guest must actually see the complete fresh-round countdown after loader dismissal');
+  assert.ok(firstBattle.load && Number.isFinite(firstBattle.load.totalMs) &&
+    Number.isFinite(firstBattle.load.stages?.reveal) &&
+    Number.isFinite(firstBattle.load.stages?.readyBarrier),
+  'the network load receipt must include completed reveal and peer-readiness stages');
+  assert.ok(firstBattle.blackCheck && !firstBattle.blackCheck.error &&
+    Math.max(firstBattle.blackCheck.before, firstBattle.blackCheck.after ?? 0) >= 6,
+  'the existing black-scene watchdog must certify a non-black battle frame');
+  checkpoint('first-battle-playing');
+  // Reload the actual app only after authority is playing. Stable browser
+  // identity and the canonical URL must reclaim the same seat without a
+  // manually reopened lobby or pasted room code.
   const beforeReload = await guestPage.evaluate(() => ({
     playerId: localStorage.getItem('cot.player.id.v1'),
     roomCode: new URL(location.href).searchParams.get('room'),
@@ -588,19 +698,24 @@ try {
     !document.querySelector('.cot-play')?.classList.contains('show') &&
       window.__DEBUG?.garage?.isOpen === true, { timeout: 10_000 });
   assert.deepEqual(errors, [], `browser errors:\n${errors.join('\n')}`);
-  console.log(JSON.stringify({
+  const result = {
     ok: true,
     failureScenario,
+    viewport,
     roomRecoveryMs: Number(roomRecoveryMs.toFixed(1)),
     returnInteractionMs: Number((performance.now() - pointerStartedAt).toFixed(1)),
     failureRecoveryMs: Number((performance.now() - failureStartedAt).toFixed(1)),
     report,
+    firstBattle,
+    countdownScreenshot,
     liveReload: {
       ...liveReload,
       recoveryMs: Number(liveReloadRecoveryMs.toFixed(1)),
     },
     cancellation,
-  }, null, 2));
+  };
+  console.log(JSON.stringify(result, null, 2));
+  if (outputDir) await writeFile(join(outputDir, 'report.json'), `${JSON.stringify(result, null, 2)}\n`);
 
   await Promise.all([closeState(hostPage), closeState(guestPage)]);
 } catch (error) {

@@ -28,7 +28,7 @@ import {
 
 type PresentationLifecyclePorts = Pick<
   NetworkBattlePresentationOptions['presentation'],
-  'setGarageLighting' | 'runBlackWatchdog'
+  'setGarageLighting' | 'setWaitingForPeers' | 'runBlackWatchdog'
 >;
 
 export type NetworkBattleCompositionPresentationOptions = Omit<

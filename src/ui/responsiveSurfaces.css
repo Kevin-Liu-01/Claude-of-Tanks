@@ -90,6 +90,10 @@ body[data-cot-width='phone'] .cot-spec .gar{width:40px;height:40px;padding:0;mar
 body[data-cot-width='phone'] .cot-spec .gar>span:last-child{display:none}
 body[data-cot-height='short'] .cot-killfeed .cot-kf:nth-child(n+3){display:none}
 body[data-cot-height='short'] .cot-prebattle{top:16%;transform:translateX(-50%) scale(.82)}
+/* Keep the initial countdown clear of the portrait minimap/chat stack. */
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-prebattle{
+  top:max(255px,30%);transform:translateX(-50%);
+}
 
 /* PENETRATION / HIT REPORTS ---------------------------------------------- */
 body[data-cot-width='tablet'] .cot-si-cardhost{right:var(--cot-edge);width:300px}

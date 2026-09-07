@@ -94,10 +94,19 @@ host migration or automatic match restoration after host loss.
   It admits only complete canonical lobby packets to the retained-room menu;
   a partial match-room packet cannot mutate that UI contract.
 - `src/net/networkBattlePresentationRuntime.ts` owns the complete covered
-  cold-client transition for private/LAN and dedicated adapters. Module, world,
-  and transport acquisition overlap; a bridge is published only after exact
-  roster preparation and a viewer-bearing authoritative snapshot; warmup and
-  peer readiness finish before atomic activation and loader reveal.
+  cold-client transition for private/LAN and dedicated adapters. Module/visual
+  initialization, world, and transport acquisition overlap; a bridge is
+  published only after exact roster preparation and a viewer-bearing
+  authoritative snapshot. Warmup precedes atomic visual activation, verified
+  first-frame rendering, and awaited loader fade. Only then is READY sent, so
+  the shared five-second countdown is not consumed behind the loader. An early
+  visible peer shows WAITING FOR COMMANDERS until authority starts that clock;
+  late joins retain the actual remaining countdown or playing phase.
+- `src/net/networkBattleLaunchRuntime.ts` keeps failed/cancelled entry covered
+  through Garage restoration and the first restored paint. Acquisition settles
+  any in-flight world activation before recovery, preserving the original
+  error without waiting on an unrelated stalled connection. No presentation
+  step grants gameplay authority during loading or countdown.
 - `src/net/networkBattlePresentationAccess.ts` demand-loads that deep owner on
   network-mode or joined-lobby intent and retries a transient chunk failure.
 - `src/net/connectionRecovery.ts` owns the single reconnect/failure
