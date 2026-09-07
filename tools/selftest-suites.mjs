@@ -383,6 +383,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/playMenu.selftest.mjs',
     'src/net/networkFramePump.selftest.mjs',
     'src/net/networkBackgroundWake.selftest.mjs',
+    'src/net/networkBackgroundPrivateTransport.selftest.mjs',
     'src/net/networkBattleBarrier.selftest.mjs',
     'src/net/networkBattleEntryAbort.selftest.mjs',
     'src/net/networkBrowserSessionRuntime.selftest.mjs',

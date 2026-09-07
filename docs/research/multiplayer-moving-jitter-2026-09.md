@@ -1,6 +1,7 @@
 # Moving-tank jitter: suspension replay, turning and hidden-host service
 
-September 6, 2026. Isolated implementation starts from `9cd2a6425`.
+September 6, 2026. Isolated implementation starts from `9cd2a6425`, rebases
+over the unrelated home-page update `2fc0103aa`, and ships as `72d46c8f8`.
 This follows [the stalled-frame/scale audit](multiplayer-stall-scale-2026-09.md).
 The reported defect is movement that wobbles unlike solo bot battles, not
 merely large position snaps. Previous zero-`hardSnaps` receipts did not test it.
@@ -209,9 +210,13 @@ The initial all-suite command passed all 143 pre-suite files before its owned
 20-minute process timeout interrupted the core suite. The separate core run
 passed its first 70 files, then failed an unchanged Garage construction timing
 assertion at 100.5 ms against its strict 100 ms ceiling. Its original failure
-is retained in `core-test.log`; a bounded continuation starts with that exact
-failed test and runs every remaining core file. Neither the timeout nor the
-first timing failure is recorded as an uninterrupted `npm test` pass.
+is retained in `core-test.log`. That exact failed test passed in the continuation,
+which reached 339/394 core files before its own twenty-minute process limit.
+The final ordered continuation passed the remaining 55 files, then reran the
+upstream home-page test, canonical typecheck and production build on the rebased
+tree. All 143 pre, 394 core and 28 post entries therefore have passing receipts
+(565 total), but this is **not an uninterrupted `npm test` pass**. Neither the
+process limits nor the original 100.5 ms Garage failure is erased or relaxed.
 
 The complete-match fourteen-seat rendered-host fixture (one full renderer,
 thirteen real lightweight Chromium/WebRTC peers) completed combat with all
@@ -257,4 +262,144 @@ The fixture compares an owned immediate presentation against a teammate's
 delayed presentation, and advances a fixed simulation step per awaited browser
 iteration, so three seconds of wall time need not mean three seconds of
 braking simulation. More drain and explicit final motion diagnostics are
-needed before claiming convergence; no runtime tolerances are relaxed.
+needed before claiming convergence; no runtime tolerances are relaxed. The
+follow-up with eight seconds of drain passed the same 0.5 m gate and clean
+departures; mean/max authority advance was 0.228/1.6 ms. This validates that
+longer-drain fixture, not a claim that every three-second wall-time drain is
+sufficient. Failure receipts now include bounded raw-authority motion/timing
+and delayed/immediate pose diagnostics to distinguish those cases.
+
+### Complete short trace: current cost is not a major-GC stall
+
+`live-host-trace-short/` retains the complete follow-up trace: an 8,015.3 ms
+window beginning twelve seconds into observation, 42,822 retained rows,
+zero dropped/malformed/open-in-window events and 0.041 ms clock drift. The
+complete fourteen-seat battle passed the unchanged 50 ms gate in this run:
+1,817 frames, p50/p95/p99/max 16.7/25.1/33.7/43.4 ms; all fourteen shooters,
+both teams dealing damage, zero hard snaps, and 876 accepted checkpoints with
+none missing or rejected. Tracing has overhead, and one passing repetition
+does not erase the earlier 51.7/63.2 ms failures.
+
+Within the valid captured interval, main-thread tasks had p95/max elapsed
+durations of 19.975/25.065 ms; animation callbacks had p95/max durations of
+18.636/22.373 ms. Twenty-three minor-GC pauses totalled 19.917 ms, with a
+1.379 ms maximum; no major GC occurred. The ten longest main tasks had zero
+GC overlap. Thus ordinary frame work consumes the budget in this interval;
+GC is a small measured contributor here. The category trace does not separate
+JavaScript execution from synchronous renderer/driver waits or identify a
+source function. Its window ends before the full-run 43.4 ms worst frame,
+and cannot establish causes for any earlier historical stall.
+
+### Native production baseline exposes a separate hidden-host failure
+
+`prod-native-before.json` is the first pre-change run whose **actual** browser
+arguments verify all three background overrides absent. It uses real TURN,
+native window minimization and sequential foreground-role measurements.
+Foreground host/guest frame maxima were only 29.0/30.6 ms, but the run failed
+`relay_gameplay`: when the host was minimized, it serviced just 23 background
+pumps and delivered 15 snapshots over 22.41 seconds. The guest admitted only
+13 snapshots during its twenty-second sample, accumulated up to 115 input
+ACK lag, and did not produce the required firing attempts/confirmations.
+Its screenshot explicitly shows **Host not responding** despite 60 FPS.
+
+This is a concrete production example of the throttled-timer service problem,
+distinct from renderer frame spikes. Cleanup still verified room closure and
+browser shutdown. Because the test failed before its final version-consistency
+guard, it is retained as failed pre-change evidence, not a completed release
+certification. A deployed repetition must verify both checkpoint admission and
+normal hidden-host progress, not merely a high rendered FPS.
+
+### Deployed follow-ups: movement fix delivered, performance remains open
+
+The first native after-run on verified `v1.0.0+g72d46c8f8`
+(`prod-native-after-a.json`) failed its guest workload-admission check: over
+one second the minimized host advanced one background pump, while the visible
+guest received no new snapshot. Both rooms and the browser were closed.
+This failure is retained; it cannot be retroactively classified as passing.
+
+The subsequent passive diagnostic run (`prod-native-diagnostic.json`) verified
+the same release before and after, actual native browser launch arguments,
+relay gameplay, both foreground roles, and cleanup. It retained channel
+message/error counters and scheduler counters without adding scheduling,
+changing focus, altering input, or relaxing the admission check. During the
+guest observation the minimized host performed 842 background pumps and sent
+426 snapshots in 21.36 seconds, with **zero animation frames**. The accepted-
+input activity counter rose from 43 to 878. This demonstrates the shipped
+event-driven service path working in a real minimized Chrome window, not just
+a timer-injected unit test. It does not explain the prior admission failure.
+
+In that run host/guest accepted 408/415 movement checkpoints with none missing
+or rejected, no hard snaps, and no dropped prediction history. Maximum recorded
+vertical correction steps were 5.66/10.37 mm. Both fired four confirmed ATGMs;
+the guest's four predicted-effect callbacks arrived within 14.0 ms of the
+application input event (not physical click-to-photon). Foreground frame maxima
+were 35.2/54.8 ms. The functional/relay probe passed, **not** a consistent
+sub-50 ms performance certification.
+
+The passive movement rows also support the originally reported wobble fix.
+Restricting each host run to moving, consecutive observed frames with 12–22 ms
+intervals, baseline root-height step p95 was 14.85 cm on the first frame after
+reconciliation versus 4.34 cm on other non-reconcile frames. After the fix these
+were 5.27 versus 5.42 cm: the distinctive correction-phase pulse is absent.
+Derived vertical-velocity change p95 on first-after-reconcile frames fell from
+8.47 to 0.71 m/s, and sign reversals from 47% to 9%. This is a within-run
+phase-correlation observation, not an exact live A/B: paths, cadence and host
+graphics preset differ. The failed baseline guest barely moved, so it supplies
+no valid moving-guest before/after comparison. The deterministic matched-input
+regressions above provide the causal isolation that these native runs cannot.
+
+A second native repetition (`prod-native-repeat.json`) also passed relay
+gameplay, firing, hidden-host progress and room/browser cleanup on that same
+release. Its host/guest accepted 427/304 checkpoints with none missing/rejected.
+However, frame maxima were 40.7/**440.9 ms**, guest p95/p99 were 45.3/81.9 ms,
+and the guest recorded one hard snap. Hidden-host diagnostics retained
+2,506 ms of discarded elapsed time and a 996 ms worst service gap. This is a
+real failed smoothness observation, not erased by functional success or the
+previous passing repetition. `screen:freeze` is our frame-gap anomaly label,
+not evidence of the browser's native Page Lifecycle `freeze` event.
+
+An unrelated full fleet test was active during follow-up observation; ordinary
+user Chrome renderer/GPU processes were also active. Those processes were
+left untouched and coordination requested. These runs cannot certify isolated
+machine performance; contention is a possible contributor, **not proven cause**
+of the 440.9 ms gap. The historical 214–319 ms cause remains unproven as well.
+
+The added `networkBackgroundPrivateTransport.selftest.mjs` exercises the actual
+private host/client handoff, split transport, compact INPUT binary codec,
+browser-session owner and scheduler. Thirty explicitly delivered messages
+advance sixty authority ticks in one second without any timer callback or
+background presentation. Undelivered messages and post-close delivery cannot
+wake the host. It uses a lightweight simulation sink and native-like event
+dispatch, so it certifies application wiring, not native-browser scheduling.
+This new check and seven related focused checks pass; the ordered registry now
+contains 566 checks. The prior aggregated 565-check receipts are not relabeled
+as a fresh uninterrupted 566-check suite.
+
+### Final statistical capture and remaining limits
+
+The September 7 follow-up (`prod-native-profile.json`) again completed native
+relay gameplay, both players' shots, hidden-host service and explicit room/
+browser cleanup on `72d46c8f8`. Frame maxima were 43.4/69.6 ms; the guest
+accepted 401 movement checkpoints with none missing/rejected and no hard snaps.
+Its four predicted-shot callbacks arrived within 6.4 ms of the application
+input event. This optional profiler run is diagnostic, not a timing certificate.
+
+The guest's bounded statistical profile retained 4,356 samples over 20.89 s.
+Render-path inclusive sample weight dominates the named application paths;
+whole-profile self weights were approximately 2.52 s application, 7.11 s idle,
+2.39 s program, 0.14 s GC and 8.73 s other/native/unmapped. These categories
+are sample weights, not exact CPU/GPU durations. The maximum sampling interval
+was **367.258 ms**, startup clock uncertainty 193.5 ms, and the profile did not
+fully cover the gameplay sample. These limits prevent precise attribution of
+individual frame gaps or interpreting a long sample as time executing its
+named function. No historical 214–319 ms source stack was recovered, and the
+440.9 ms frame did not recur in this capture.
+
+All owned browser/test processes are terminal and owned test rooms explicitly
+closed. Unrelated tests, user browsers, existing servers and failed artifacts
+were preserved. The checkpoint/turning fixes are shipped; isolated frame-budget
+certification, the unexplained native admission failure, and genuinely frozen
+browser-host service remain open. Browser-hosted private rooms still cannot
+advance while the browser/OS supplies no execution opportunity. Native open
+WebRTC channels do not promise an unthrottled interval timer; see
+[Chrome's background timer policy](https://developer.chrome.com/blog/timer-throttling-in-chrome-88/).
