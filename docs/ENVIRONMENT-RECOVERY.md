@@ -15,6 +15,15 @@ Work now lives at
 checked out at `/Users/kevinliu/.codex/worktrees/cot-environment-baseline-20260907`.
 The shared dirty main checkout is not an integration target.
 
+Current integration now lives at
+`/Users/kevinliu/.codex/worktrees/cot-environment-integration-20260907`, branch
+`codex/environment-integration-20260907`. Merge `4bffcad8c` preserves current
+production `247cb2ef5` (including its 23 newer fleet variants and entry fixes)
+alongside the recovered 30-map environment. Typecheck, product counts, SEO,
+network presentation tests and the public build passed at `13b9497dd`.
+Map refinement continues in the recovery checkout and is cherry-picked only
+after its focused checks; neither checkout is release-approved yet.
+
 The preceding goal turn was **progress**: the recovery and shipping audits
 established the actual surviving source and changed the next action. This
 turn restores a persistent candidate and rebuilds missing improvements.
@@ -132,6 +141,15 @@ quality. `d3fcc3710` separately lifts night ambient/fill/vehicle readability
 without new lights, geometry, passes or daytime changes. The next fresh native
 run must review these corrections together.
 
+The fresh `night-lights-r2` native run used that integrated public build.
+Its three completed Verdant images show improved tank readability, one clearly
+glowing exposed headlight and a soft road-light pool. The opposite lens is not
+proved visible from this angle. The run then **failed** because no unobstructed
+authored window passed the closeup check. There are no page/console/cleanup
+errors, but it never reached the streetlamp, Shtora or tablet captures. Preserve
+the failed report; do not count this as a complete visual pass. A bounded
+same-build pane/first-occluder census is being added before changing geometry.
+
 ### Fresh phase-resource baseline
 
 The unchanged `c57968388` public build completed the maintained native
@@ -147,6 +165,17 @@ battle scene/geometric/material/texture counts and returned geometry counts.
 Those raw failures are retained; the thresholds were not relaxed. This is a
 failed baseline, not a new-lighting performance pass. A same-procedure candidate
 run is still required. The owned browser/preview and FIFO wrapper exited.
+
+The integrated `candidate-phase-r1.json` completed the same procedure without
+browser/console/resource errors. Active managed heap is 273.4 MB versus 296 MB
+in the baseline; returned Garage is 188.4 MB versus 201 MB. Active scene objects
+fell from 1,486 to 1,356 and geometry/material/texture residency also fell. This
+does **not** pass the gate: eleven existing ceilings remain exceeded, and the
+new active-battle CPU sample is 17.465 ms/render (46.44 rendered FPS), exceeding
+the unchanged 11.5 ms/render ceiling and the baseline's 7.353 ms/render. A
+profile and controlled repeat are required. New checkpoint-only environment,
+native-GPU and effective-quality receipts will prevent unrecorded atmosphere
+or adaptive-quality differences from being mistaken for matched comparisons.
 
 ### Shoreline candidate and fresh visual review
 
