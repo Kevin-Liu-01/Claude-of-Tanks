@@ -492,7 +492,7 @@ Spectators skip that player-only step. Abort checks bracket it; synchronous
 The shared lazy API still serves solo callers. No authority or countdown policy
 changes, eager Garage warming, geometry edits or image-quality reductions occur.
 
-Mask programs compile with the actual unlit scene, camera and target, then
+Mask programs compile with the actual mask scene, camera and target, then
 restore target/cube face/mip before bounded readiness polling. Unlike the pinned
 Three.js `compileAsync`, the poll owns exact program references rather than
 re-reading mutable material properties. It detects context loss and destroyed
@@ -576,3 +576,57 @@ assertion readability; JSON roundtrips verify the observer's transport/cross-VM
 boundary. These reviewed test-only warnings were not suppressed. The earlier
 89/100 scan covered only nine already-tracked files, so it excluded the new
 regression fixtures and is not a like-for-like regression score.
+
+The final bounded-program/source-lifetime build (`f9b5549d1`,
+`mask-final-timings-visual`) passed the complete native local two-client run:
+invite, ready/launch, foreground 5→1 for both peers, masks complete before
+activation, nonblack/no-rescue reveal, advancing input/snapshots, native Garage
+exit and verified room/browser cleanup. There were zero application errors.
+The screenshots show populated tank/module masks and the battle HUD without a
+black reveal. Entry used HIGH, clear/day, Frosthollow, on one machine with local
+loopback signaling:
+
+| Peer | Entry | Largest task / maximum RAF gap | Panel preparation | Watchdog / fade |
+| --- | --- | --- | --- | --- |
+| Host | 4,527 ms | 544 / 545.2 ms | 92.5 ms | 148.3 / 231.5 ms |
+| Guest | 4,402 ms | 421 / 422.2 ms | 140.0 ms | 181.2 / 248.8 ms |
+
+Hull mask draws were 1.5/1.9 ms and turret draws 0.9/1.2 ms, with no mask work
+in fade. Readback wall time includes yielded fence polling and is not GPU time.
+The subsequent interaction probe explicitly used LOW, with two loaded/rendered
+contexts and 20 seconds per foreground role, measured sequentially. Host frame
+gaps were p50/p95/p99/max 21.9/28.8/35.9/47.1 ms; guest gaps were
+21.0/35.5/42.9/57.1 ms. Both reported zero hard snaps, dropped input history,
+estimated missing snapshots and observer failures. Native windows were restored
+and sessions detached. These are functional and bounded observation receipts,
+not consistent frame-budget, HIGH combat, relay, separate-device or historical
+combat-stall certificates. The remaining watchdog pause still needs finer
+render/readback attribution.
+
+Production E served exactly `v1.0.0+gf9b5549d1` before the native live test
+(`production-e-timings-visual`). The complete run passed production room
+creation/invite, ready/launch, both foreground 5→1 countdowns, nonblack/no-rescue
+reveal, live input/snapshot progress, interaction sampling, native Garage exit,
+and verified room/browser/window cleanup, with zero application errors.
+Both player masks finished before activation, and inspected screenshots show
+their populated panel silhouettes. This again used two fresh contexts on the
+same machine, HIGH clear/day Frosthollow entry:
+
+| Peer | Entry | Largest task / maximum RAF gap | Panel preparation | Watchdog / fade |
+| --- | --- | --- | --- | --- |
+| Host | 7,777 ms | 1,494 / 1,494.3 ms | 706.4 ms | 214.4 / 231.0 ms |
+| Guest | 7,645 ms | 1,481 / 1,482.5 ms | 708.4 ms | 213.5 / 230.8 ms |
+
+Hull draws stayed at 1.7/1.9 ms and turret draws at 1.0/1.3 ms, with no mask
+work in fade. Program-preparation intervals were approximately 657 ms for the
+hull; these include asynchronous readiness waiting and are not synchronous-task
+or GPU durations. Wreck warm occupied 1,506.7/1,492.2 ms and effects preparation
+1,246.0/1,254.1 ms. The runtime is functionally verified, but loading is not
+uniformly smooth and no end-to-end speedup is claimed from this noisy comparison.
+
+The separate LOW gameplay sample used 20 seconds per foreground role with two
+rendered contexts. Host frame p50/p95/p99/max was 23.3/31.5/42.6/53.6 ms; guest
+was 20.7/28.8/38.6/45.9 ms. Both reported zero hard snaps, dropped history,
+estimated missing snapshots and observer failures. This is not a stable 60 Hz,
+larger-room, relay-only or separate-device certificate. This run's room was
+closed and owned browsers/servers stopped; excluded QA artifacts remain local.
