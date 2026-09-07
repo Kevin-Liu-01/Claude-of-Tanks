@@ -97,7 +97,11 @@ const browserCalls = [];
 const allocation = await verifyProductionTurnAllocation({
   baseUrl: 'https://game.example.test/path',
   iceUrl: 'https://credentials.example.test/api/ice',
-  launchBrowser: async () => ({
+  launchBrowser: async (options) => {
+    assert.deepEqual(options.ignoreDefaultArgs, ['--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding']);
+    return {
+    process: () => ({ spawnargs: ['PRIVATE_EXECUTABLE', '--headless=new'] }),
     async createBrowserContext() {
       browserCalls.push('context');
       return {
@@ -115,13 +119,15 @@ const allocation = await verifyProductionTurnAllocation({
       };
     },
     async close() { browserCalls.push('browser-close'); },
-  }),
+    };
+  },
 });
 assert.deepEqual(allocation, {
   ok: true,
   relayCandidateCount: 2,
   protocols: ['tcp', 'udp'],
   pristineBrowserContext: true,
+  browserLaunch: { verified: true, argumentCount: 2, checkedBackgroundFlags: 3, backgroundOverridesPresent: 0 },
 });
 assert.deepEqual(browserCalls, [
   'context',
@@ -135,6 +141,7 @@ assert.deepEqual(browserCalls, [
 const failedBrowserCalls = [];
 await assert.rejects(verifyProductionTurnAllocation({
   launchBrowser: async () => ({
+    process: () => ({ spawnargs: ['PRIVATE_EXECUTABLE', '--headless=new'] }),
     async createBrowserContext() {
       return {
         async newPage() {
@@ -155,6 +162,17 @@ await assert.rejects(verifyProductionTurnAllocation({
 }), (error) => error.code === 'turn_allocation_failed' &&
   /no relay candidate/.test(error.message));
 assert.deepEqual(failedBrowserCalls, ['context-close', 'browser-close']);
+
+for (const spawnargs of [undefined, ['PRIVATE_EXECUTABLE', '--disable-background-timer-throttling']]) {
+  let closed = 0;
+  await assert.rejects(verifyProductionTurnAllocation({ launchBrowser: async (options) => ({
+    process: () => ({ spawnargs }),
+    async createBrowserContext() { assert.fail('unverified launch must not navigate or allocate TURN'); },
+    async close() { closed++; },
+  }) }), error => error.code === 'turn_allocation_failed' &&
+    /native_browser_(launch_unverifiable|background_override)/.test(error.message));
+  assert.equal(closed, 1, 'failed argv verification closes the owned browser');
+}
 
 for (const signalMode of ['standalone', 'distributed']) {
   await assert.rejects(checkProductionMultiplayer({ signalMode,

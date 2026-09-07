@@ -53,6 +53,7 @@ let pages = [];
 let contexts = [];
 let cleaningUp = false;
 let runFailed = false;
+let convergenceDiagnostic = null;
 const diagnosticStartedAt = performance.now();
 
 function diagnostic(event, details = {}) {
@@ -438,6 +439,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
 
+  const settleStartTick = await hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.match.host.tick);
   const settleDeadline = performance.now() + settleMs;
   while (performance.now() < settleDeadline) {
     await Promise.all([
@@ -455,11 +457,17 @@ try {
     const state = globalThis.__COT_ROSTER_SOAK;
     return {
       tick: state.match.host.tick,
+      serverTimeMs: state.match.host.timeMs,
       peerCount: state.match.host.peers.size,
       invalidMessages: state.match.host.stats.invalidMessages,
       droppedCatchUpMs: state.match.host.stats.droppedCatchUpMs,
       positions: Object.fromEntries([...state.match.simulation.entityById].map(([id, entity]) =>
-        [id, { x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z }])),
+        [id, { x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z,
+          speed: entity.state.speed, verticalSpeed: entity.state.verticalSpeed,
+          yawRate: entity.state.yawRate, grounded: entity.state.grounded,
+          throttle: entity.input?.throttle ?? null, brake: entity.input?.brake ?? null,
+          lastInputSeq: state.match.host.peers.get(id)?.lastInputSeq ?? null,
+          lastInputAtMs: state.match.host.peers.get(id)?.lastInputAtMs ?? null }])),
       averageAdvanceMs: state.advanceDurations.reduce((sum, value) => sum + value, 0) /
         Math.max(1, state.advanceDurations.length),
       maxAdvanceMs: Math.max(...state.advanceDurations),
@@ -468,12 +476,23 @@ try {
   const reports = await Promise.all(pages.map((page) => page.evaluate(() => {
     const state = globalThis.__COT_ROSTER_SOAK;
     const stats = state.match.client.getStats();
+    const latest = state.match.client.buffer.snapshots.at(-1);
     return {
       playerId: state.match.playerId,
       connected: state.match.client.connected,
       sampleTick: state.sample?.tick ?? null,
+      sampleTimeMs: state.sample?.serverTimeMs ?? null,
+      latestTick: latest?.tick ?? null,
+      latestTimeMs: latest?.serverTimeMs ?? null,
       entities: (state.sample?.entities || []).map((entity) => ({
         id: entity.id, x: entity.x, y: entity.y, z: entity.z,
+        vx: entity.vx, vy: entity.vy, vz: entity.vz, flags: entity.flags,
+      })),
+      // Retain the actual quantized row, distinctly labeled from sampled
+      // meters. This read does not advance any client's interpolation clock.
+      latestEntities: (latest?.entities || []).slice(0, 14).map((entity) => ({
+        id: entity.id, xCm: entity.x, yCm: entity.y, zCm: entity.z,
+        vxCmS: entity.vx, vyCmS: entity.vy, vzCmS: entity.vz, flags: entity.flags,
       })),
       stats,
       errors: state.match.client.errors,
@@ -484,6 +503,31 @@ try {
         : 0,
     };
   })));
+
+  // Preserve bounded convergence evidence before any gate can throw. The
+  // existing wall-clock drain may advance less simulation time because the
+  // external driver awaits browser work between fixed 16.667 ms advances.
+  // Own immediate and teammate delayed samples also have different clocks.
+  convergenceDiagnostic = {
+    configuredSettleMs: settleMs,
+    settleSimulationMs: (authority.tick - settleStartTick) * 1000 / 60,
+    authorityTick: authority.tick,
+    authorityTimeMs: authority.serverTimeMs,
+    players: playerIds.slice(0, 14).map((playerId) => ({
+      playerId,
+      authority: authority.positions[playerId],
+      views: reports.slice(0, 14).flatMap((report) => {
+        const sampled = report.entities.find((entity) => entity.id === playerId);
+        if (!sampled) return [];
+        return [{ viewerId: report.playerId, own: report.playerId === playerId,
+          sampleTick: report.sampleTick, sampleTimeMs: report.sampleTimeMs,
+          latestTick: report.latestTick, latestTimeMs: report.latestTimeMs,
+          interpolationDelayMs: report.stats.buffer.interpolationDelayMs,
+          inputAckLag: report.stats.inputAckLag,
+          sampled, latest: report.latestEntities.find((entity) => entity.id === playerId) ?? null }];
+      }),
+    })),
+  };
 
   assert.equal(authority.peerCount, playerCount);
   assert.equal(authority.invalidMessages, 0);
@@ -609,6 +653,7 @@ try {
   diagnostic('run_failed_before_cleanup', {
     message: error.stack || error.message,
     browserErrors: browserErrors.slice(0, 20),
+    convergence: convergenceDiagnostic,
   });
   throw error;
 } finally {

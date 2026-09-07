@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { MovementCombatState } from '../sim/movement.ts';
+import type { MovementCombatState, TankState } from '../sim/movement.ts';
+import { captureMovementPredictionState } from './movementPredictionState.ts';
 
 // Only the viewer's movement dependencies cross this seam. Never serialize
 // another tank's hidden damage/loadout or make prediction authoritative.
@@ -11,6 +12,7 @@ interface PredictionAuthorityEntity {
   id: string;
   combat: MovementCombatState;
   modeSpeedMultiplier?: number;
+  state?: TankState;
 }
 
 function record(value: RuntimeValue): Record<string, RuntimeValue> | null {
@@ -32,7 +34,9 @@ export function capturePredictionAuthorityState(
   for (const key of MODULES) modules[key] = entity.combat.modules?.[key]?.state || 'ok';
   for (const key of CREW) crew[key] = entity.combat.crew?.[key] !== false;
   for (const key of EQUIPMENT) equipment[key] = multiplier(entity.combat.equipMults?.[key]);
+  const movement = entity.state ? captureMovementPredictionState(entity.state) : null;
   return { id: entity.id, modules, crew, equipment,
+    ...(movement ? { movement } : {}),
     modeSpeedMultiplier: multiplier(entity.modeSpeedMultiplier) };
 }
 

@@ -35,6 +35,7 @@ interface NetworkBrowserSessionOptions {
   nextFrame(): Promise<RuntimeValue>;
   onHostError?: (error: RuntimeValue) => void;
   onDisconnect?: (reason: string) => void;
+  onBackgroundActivity?: () => void;
 }
 
 export interface NetworkBrowserSessionRuntime {
@@ -99,6 +100,7 @@ export function createNetworkBrowserSessionRuntime({
   nextFrame,
   onHostError,
   onDisconnect,
+  onBackgroundActivity,
 }: NetworkBrowserSessionOptions): NetworkBrowserSessionRuntime {
   if ([getPlayer, isBattleActive, shouldPresentDisconnect, nextFrame]
     .some((entry) => typeof entry !== 'function')) {
@@ -109,6 +111,7 @@ export function createNetworkBrowserSessionRuntime({
   let bridge: NetworkBrowserBridge | null = null;
   let status: NetworkBrowserStatus | null = null;
   let spectator = false;
+  let unsubscribeRemoteInput: (() => void) | null = null;
 
   const recovery = createNetworkRecoveryOwner();
   const framePump = createNetworkFramePump({
@@ -150,6 +153,11 @@ export function createNetworkBrowserSessionRuntime({
         throw new Error('A different network match already owns this browser session.');
       }
       match = nextMatch;
+      if (!unsubscribeRemoteInput && nextMatch.role === 'host' && onBackgroundActivity) {
+        unsubscribeRemoteInput = nextMatch.onRemoteInput?.(() => {
+          if (match === nextMatch && isBattleActive()) onBackgroundActivity();
+        }) ?? null;
+      }
     },
 
     publishBridge(nextBridge) {
@@ -190,6 +198,8 @@ export function createNetworkBrowserSessionRuntime({
     close(reason = 'network_match_closed') {
       const closing = match;
       match = null;
+      unsubscribeRemoteInput?.();
+      unsubscribeRemoteInput = null;
       closing?.close(reason);
       disposePresentation();
     },

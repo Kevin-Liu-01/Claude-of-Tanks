@@ -75,7 +75,8 @@ pump.pump(1 / 60, 500);
 assert.ok(calls.some(([name, bits]) => name === 'ack' && bits === 4));
 assert.ok(calls.some(([name, tick, , events]) =>
   name === 'apply' && tick === 12 && events[0].tick === 12));
-assert.deepEqual(pump.diagnostics(), { rttMs: 42, prediction: { hardSnaps: 0 } });
+assert.deepEqual(pump.diagnostics(), { rttMs: 42, prediction: { hardSnaps: 0 },
+  pumpTiming: { backgroundPumps: 0, backgroundElapsedMs: 0, backgroundDiscardedMs: 0, backgroundMaxGapMs: 0 } });
 assert.equal((await pump.waitForSnapshot((snapshot) => snapshot.tick === 12, 10, 'timeout')).tick, 12);
 
 match.role = 'client';

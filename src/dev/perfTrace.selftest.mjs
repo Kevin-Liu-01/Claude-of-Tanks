@@ -129,4 +129,85 @@ assert.equal(qaSummary.trace.frames, 120);
 assert.equal(qaSummary.frame.fps, 55.5);
 assert.equal(qaSummary.telemetry.quality.preset, 'mobile');
 
+// freeze/resume do not bubble from document to window. Exercise actual EventTarget
+// dispatch and exact cleanup, not a source-string assertion or a synthetic window event.
+class TraceTarget extends EventTarget {
+  listeners = new Set();
+  addEventListener(name, listener, options) {
+    this.listeners.add(listener);
+    super.addEventListener(name, listener, options);
+  }
+  removeEventListener(name, listener, options) {
+    this.listeners.delete(listener);
+    super.removeEventListener(name, listener, options);
+  }
+}
+const priorGlobals = new Map(['window', 'document', 'PerformanceObserver'].map((name) =>
+  [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+const browserWindow = Object.assign(new TraceTarget(), { innerWidth: 800, innerHeight: 600 });
+const browserDocument = Object.assign(new TraceTarget(), {
+  hidden: true, visibilityState: 'hidden', hasFocus: () => false,
+});
+const canvas = new TraceTarget();
+const observers = [];
+class TraceObserver {
+  disconnected = 0;
+  constructor(callback) { this.callback = callback; observers.push(this); }
+  observe() {}
+  disconnect() { this.disconnected++; }
+}
+let browserTrace;
+let successor;
+try {
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: browserWindow });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: browserDocument });
+  Object.defineProperty(globalThis, 'PerformanceObserver', { configurable: true, value: TraceObserver });
+  browserTrace = createDevTraceCore({ enabled: true, now: () => clock, eventCapacity: 32,
+    frameCapacity: 4, renderer: { ...renderer, domElement: canvas } });
+  let inputOff = 0;
+  browserTrace.configure({ input: { actionDefs: [{ id: 'fire' }], onAction() {
+    return () => { inputOff++; };
+  } } });
+  browserDocument.dispatchEvent(new Event('freeze'));
+  clock += 1000;
+  browserDocument.dispatchEvent(new Event('resume'));
+  assert.deepEqual(browserTrace.tail(8, 'lifecycle').map((row) => row.name), ['freeze', 'resume']);
+  assert.deepEqual(browserTrace.tail(1, 'lifecycle')[0].data, {
+    persisted: undefined, hidden: true, visibilityState: 'hidden', focused: false, viewport: [800, 600],
+  });
+  assert.equal(browserWindow.listeners.size, 6);
+  assert.equal(browserDocument.listeners.size, 4);
+  assert.equal(canvas.listeners.size, 2);
+  browserTrace.stop();
+  browserDocument.dispatchEvent(new Event('freeze'));
+  assert.equal(browserTrace.tail(8, 'lifecycle').length, 2, 'stop still pauses without rebinding');
+  browserTrace.start();
+  browserDocument.dispatchEvent(new Event('resume'));
+  assert.equal(browserTrace.tail(8, 'lifecycle').length, 3);
+  successor = createDevTraceCore({ enabled: true, now: () => clock, eventCapacity: 8, frameCapacity: 4 });
+  browserTrace.dispose();
+  browserTrace.dispose();
+  assert.equal(inputOff, 1);
+  assert.equal(observers[0].disconnected, 1);
+  assert.equal(browserWindow.__QA_TRACE, successor, 'old cleanup cannot unpublish a newer recorder');
+  const eventsAfterDispose = browserTrace.stats().events;
+  browserTrace.start();
+  browserDocument.dispatchEvent(new Event('freeze'));
+  observers[0].callback({ getEntries: () => [{ startTime: clock, duration: 100 }] });
+  assert.equal(browserTrace.active, false);
+  assert.equal(browserTrace.stats().events, eventsAfterDispose, 'late observer delivery remains inert');
+  successor.dispose();
+  assert.equal(observers[1].disconnected, 1);
+  assert.equal(browserWindow.listeners.size + browserDocument.listeners.size + canvas.listeners.size, 0);
+  assert.equal(browserWindow.__QA_TRACE, undefined);
+  assert.equal(browserWindow.__DEV_TRACE, undefined);
+} finally {
+  browserTrace?.dispose?.();
+  successor?.dispose?.();
+  for (const [name, descriptor] of priorGlobals) {
+    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+    else delete globalThis[name];
+  }
+}
+
 console.log('perfTrace selftest: pass');

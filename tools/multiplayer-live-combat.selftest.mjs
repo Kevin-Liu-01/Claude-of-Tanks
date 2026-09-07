@@ -32,6 +32,15 @@ assert.equal(worst.events[1].startDtFromCenterMs, -300);
 assert.equal(windows.traceClockReadSpanMs, 0.25);
 assert.doesNotMatch(JSON.stringify(windows), /PRIVATE|shooterId|url/);
 assert.deepEqual(liveCombatTimingWindows(null).windows, []);
+const lifecycleWindow = liveCombatTimingWindows({ ...source, events: [
+  { tMs: 150, name: 'freeze', data: { hidden: true, focused: false, token: 'PRIVATE' } },
+  { tMs: 495, name: 'resume', data: { hidden: false, focused: true, persisted: true } },
+] }).windows[0];
+assert.deepEqual(lifecycleWindow.events, [
+  { name: 'freeze', dtFromCenterMs: -350, hidden: true, focused: false, persisted: null },
+  { name: 'resume', dtFromCenterMs: -5, hidden: false, focused: true, persisted: true },
+]);
+assert.doesNotMatch(JSON.stringify(lifecycleWindow), /PRIVATE|token/);
 
 const fixture = {
   role: 'client', measuredDurationMs: 21000,
@@ -42,7 +51,8 @@ const fixture = {
       sessionId: 'PRIVATE_SESSION' },
     traceAnomalies: [{ data: 'PRIVATE_TOKEN' }], timingWindows: windows,
     network: { connected: true, inputAckLag: 0, transportBufferedBytes: 0,
-      prediction: { hardSnaps: 0, maxPositionErrorM: 0.732, token: 'PRIVATE_TOKEN' },
+      prediction: { hardSnaps: 0, maxPositionErrorM: 0.732, token: 'PRIVATE_TOKEN',
+        movementCheckpoints: 300, missingMovementCheckpoints: 0, rejectedMovementCheckpoints: 2 },
       transport: { token: 'PRIVATE_TOKEN' } },
     events: { fired: 54, firedBy: { PRIVATE_ID: 4 }, hits: 55, damage: 35309 },
     motion: { maxStepM: 0.1, last: { x: 'PRIVATE_POSITION' } },
@@ -68,6 +78,9 @@ assert.equal(health.rendered.trace.maxGapMs, 52.1);
 assert.equal(health.rendered.errorCount, 1);
 assert.equal(health.rendered.events.uniqueShooters, 1);
 assert.equal(health.rendered.network.prediction.hardSnaps, 0);
+assert.equal(health.rendered.network.prediction.movementCheckpoints, 300);
+assert.equal(health.rendered.network.prediction.missingMovementCheckpoints, 0);
+assert.equal(health.rendered.network.prediction.rejectedMovementCheckpoints, 2);
 assert.equal(health.clients.length, 14);
 assert.equal(health.browserErrorCount, 1);
 assert.equal(health.browserGlWarningCount, 1);

@@ -4,6 +4,7 @@ import { createTankState, SIM_DT, updateTank } from '../sim/movement.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
+import { captureMovementPredictionState } from './movementPredictionState.ts';
 
 const SPEC = {
   enginePowerHp: 1500,
@@ -516,6 +517,64 @@ for (const phase of ['resting', 'driving', 'destroyed']) {
   }
 }
 
+// Exact authority echoes must not disturb a moving suspension. Both timelines
+// use the same 60 Hz integrator, field and controls; there is no quantization,
+// latency, collision disagreement or input replay to explain a vertical jump.
+{
+  const snapshotOf = (state, tick) => ({ ...authority(tick, tick, state.pos.x, state.pos.z, {
+    y: state.pos.y,
+    yaw: state.yaw,
+    pitch: state.visualPitch,
+    roll: state.visualRoll,
+    turretYaw: state.turretYaw,
+    gunPitch: state.gunPitch,
+    vx: Math.sin(state.yaw) * state.speed,
+    vy: state.verticalSpeed,
+    vz: Math.cos(state.yaw) * state.speed,
+    flags: state.grounded ? 0 : SNAPSHOT_FLAGS.AIRBORNE,
+  }), predictionState: { id: 'viewer', movement: captureMovementPredictionState(state) } });
+  for (const terrain of ['flat', 'wave']) {
+    const height = (x, z) => terrain === 'flat' ? 0 :
+      0.25 * Math.sin(z / 2) + 0.15 * Math.sin(x / 2);
+    const field = { ...FIELD, getHeightAt: height, getHeightAtFast: height };
+    for (const delayTicks of [null, 0, 6, 12]) {
+      const echoes = delayTicks !== null;
+      const solo = { spec: SPEC, state: createTankState(SPEC, new Vector3(), 0),
+        input: { aimPoint: new Vector3() } };
+      const shown = { id: 'viewer', spec: SPEC, state: createTankState(SPEC, new Vector3(), 0) };
+      const prediction = new LocalTankPredictor({ entity: shown, heightField: field });
+      prediction.reconcile(snapshotOf(solo.state, 0));
+      let maxYErrorM = 0;
+      let maxVerticalStepErrorM = 0;
+      let previousShownY = 0;
+      let previousSoloY = 0;
+      const inFlight = [];
+      for (let tick = 1; tick <= 600; tick++) {
+        const input = { ...driving, throttle: tick < 450 ? 1 : 0,
+          steer: tick > 120 && tick < 400 ? 0.25 : 0,
+          brake: tick >= 450, aimLocked: true };
+        Object.assign(solo.input, input);
+        decodeAimIntent(input, solo.state.pos, solo.input.aimPoint);
+        updateTank(solo, field, SIM_DT);
+        prediction.recordInput(input, SIM_DT, tick);
+        if (echoes && tick % 3 === 0) inFlight.push(snapshotOf(solo.state, tick));
+        while (inFlight.length && inFlight[0].tick <= tick - delayTicks) {
+          prediction.reconcile(inFlight.shift());
+        }
+        maxYErrorM = Math.max(maxYErrorM, Math.abs(shown.state.pos.y - solo.state.pos.y));
+        maxVerticalStepErrorM = Math.max(maxVerticalStepErrorM, Math.abs(
+          (shown.state.pos.y - previousShownY) - (solo.state.pos.y - previousSoloY)));
+        previousShownY = shown.state.pos.y;
+        previousSoloY = solo.state.pos.y;
+      }
+      assert.ok(maxYErrorM < 1e-9,
+        `${terrain}, delay=${delayTicks}: exact moving authority cannot inject ${maxYErrorM} m heave error`);
+      assert.ok(maxVerticalStepErrorM < 1e-9,
+        `${terrain}, delay=${delayTicks}: exact moving authority cannot inject a ${maxVerticalStepErrorM} m vertical step`);
+    }
+  }
+}
+
 // Rest means grounded and settled, not merely zero planar velocity. A tank
 // crossing its airborne apex or recovering on its side must keep moving, even
 // when its latest quantized displacement fits the usual parked deadzone.
@@ -787,6 +846,9 @@ for (const phase of ['resting', 'driving', 'destroyed']) {
   assert.deepEqual(
     seeded.getStats(),
     {
+      movementCheckpoints: 0,
+      missingMovementCheckpoints: 0,
+      rejectedMovementCheckpoints: 0,
       reconciliations: 0,
       hardSnaps: 0,
       terminalSyncs: 0,

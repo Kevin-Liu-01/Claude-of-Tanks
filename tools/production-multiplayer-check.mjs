@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 function httpEndpoint(value, label) {
   const url = new URL(value);
@@ -388,16 +389,15 @@ export async function verifyProductionTurnAllocation({
   if (new URL(baseUrl).protocol === 'https:' && new URL(endpoint).protocol !== 'https:') {
     throw new TypeError('HTTPS frontends require an HTTPS ICE endpoint');
   }
-  const launch = launchBrowser || (async () => {
+  const launch = launchBrowser || (async (options) => {
     const { default: puppeteer } = await import('puppeteer');
-    return puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    return puppeteer.launch(options);
   });
-  const browser = await launch();
+  const browser = await launch(nativeBrowserLaunchOptions({ headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'] }));
   let context = null;
   try {
+    const browserLaunch = verifyNativeBrowserLaunch(browser);
     context = await browser.createBrowserContext();
     const page = await context.newPage();
     await page.setCacheEnabled?.(false);
@@ -459,6 +459,7 @@ export async function verifyProductionTurnAllocation({
       relayCandidateCount: receipt.relayCandidateCount,
       protocols: receipt.protocols.map(String),
       pristineBrowserContext: true,
+      browserLaunch,
     };
   } catch (error) {
     const wrapped = new Error(`production TURN allocation failed: ${error?.message || error}`);

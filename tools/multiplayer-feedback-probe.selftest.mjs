@@ -13,8 +13,10 @@ assert.deepEqual(metricDistribution([]), { count: 0, p50: null, p95: null, p99: 
 const raw = { durationMs: 20000, gapsMs: Array.from({ length: 100 }, (_, i) => i + 1),
   actions: [{ ready: true, matched: true }, { ready: true, matched: false }, { ready: false }],
   shots: [{ inputToFeedbackMs: 120, inputToNextRafMs: 130, authorityToFeedbackMs: 80 }], predicted: [],
-  diagnostics: [{ hardSnaps: 5, reconciliations: 100, droppedHistory: 1, rttMs: 25 },
-    { hardSnaps: 5, reconciliations: 110, droppedHistory: 1, rttMs: 30 }],
+  diagnostics: [{ hardSnaps: 5, reconciliations: 100, droppedHistory: 1, rttMs: 25,
+    movementCheckpoints: 20, missingMovementCheckpoints: 1, rejectedMovementCheckpoints: 0 },
+    { hardSnaps: 5, reconciliations: 110, droppedHistory: 1, rttMs: 30,
+      movementCheckpoints: 30, missingMovementCheckpoints: 1, rejectedMovementCheckpoints: 0 }],
   traceFramesDropped: 0, observerFailures: 0, roomCode: 'PRIVATE_ROOM', sdp: 'PRIVATE_SDP' };
 const summary = summarizeFeedbackSample(raw, [{ stunRttMs: 4, localType: 'relay', remoteType: 'host',
   protocol: 'udp', address: 'PRIVATE_IP', credential: 'PRIVATE_TURN' }]);
@@ -22,6 +24,9 @@ assert.equal(summary.frameGapMs.p95, 95);
 assert.equal(summary.frameGapMs.p99, 99);
 assert.equal(summary.hardSnaps, 0, 'report sample counter delta, not prior cumulative failures');
 assert.equal(summary.reconciliations, 10);
+assert.equal(summary.movementCheckpoints, 10, 'only checkpoints consumed during this sample are counted');
+assert.equal(summary.missingMovementCheckpoints, 0);
+assert.equal(summary.rejectedMovementCheckpoints, 0);
 assert.equal(summary.firing.readyAttempts, 2);
 assert.equal(summary.firing.unmatchedReadyAttempts, 1);
 assert.equal(summary.firing.predicted.count, 0, 'no speculative feedback is fabricated');
@@ -34,6 +39,10 @@ assert.equal(summary.ice.stunRttMs.p50, 4);
 assert.doesNotMatch(JSON.stringify(summary), /PRIVATE/);
 assert.equal(summarizeFeedbackSample({ ...raw, diagnostics: [{ hardSnaps: 5 }, { hardSnaps: 1 }] }).hardSnaps,
   null, 'counter reset must not masquerade as zero corrections');
+assert.equal(summarizeFeedbackSample({ ...raw, diagnostics: [] }).movementCheckpoints, null);
+assert.equal(summarizeFeedbackSample({ ...raw, diagnostics: [
+  { movementCheckpoints: 9 }, { movementCheckpoints: 2 },
+] }).movementCheckpoints, null, 'checkpoint resets cannot certify admission during the sample');
 
 let at = 100;
 let fire;
@@ -72,7 +81,8 @@ const debug = { input: { isLocked: () => false, isCursorAim: () => false,
 } }, bus: { on(name, callback) { listeners.set(name, callback); return () => { unsubscribed++; }; } },
 game: { phase: 'battle', preBattleS: 0, result: null, player: { id: 'PRIVATE_PLAYER',
   input: { fire: false, shellSlot: 1 }, combat: { shellSlot: 0, ammo: [12, 4, 0], reload: { t: 0 } } } },
-network: { rttMs: 4, transportBufferedBytes: 0, inputPacketsSubmitted: 52, prediction: { hardSnaps: 0 } } };
+network: { rttMs: 4, transportBufferedBytes: 0, inputPacketsSubmitted: 52, prediction: { hardSnaps: 0,
+  movementCheckpoints: 8, missingMovementCheckpoints: NaN, rejectedMovementCheckpoints: 'PRIVATE_COUNTER' } } };
 const trace = { enabled: true, stats: () => ({ durationMs: at }), snapshot: () => ({
   frameSchema: ['tMs', 'phase', 'preBattleS', 'flags', 'gapMs'], stats: { framesDropped: 0 },
   frames: [[90, 'battle', 0, 0, 999], [120, 'battle', 0, 0, 16], [130, 'battle', 0, 1, 999],
@@ -80,7 +90,11 @@ const trace = { enabled: true, stats: () => ({ durationMs: at }), snapshot: () =
   events: [{ tMs: 100, kind: 'action', name: 'fire', data: { roomCode: 'PRIVATE_ROOM' } },
     { tMs: 110, kind: 'bus', name: 'weapon:predicted', data: { playerId: 'PRIVATE_PLAYER' } },
     { tMs: 120, name: 'PRIVATE_EVENT_NAME', data: 'PRIVATE_TOKEN' },
-    { tMs: 125, name: 'longtask', data: { containerSrc: 'PRIVATE_URL' } }],
+    { tMs: 125, name: 'longtask', data: { containerSrc: 'PRIVATE_URL' } },
+    { tMs: 126, kind: 'lifecycle', name: 'freeze', data: { hidden: true, focused: false,
+      persisted: false, url: 'PRIVATE_URL', roomCode: 'PRIVATE_ROOM' } },
+    { tMs: 127, kind: 'lifecycle', name: 'resume', data: { hidden: false, focused: true,
+      persisted: 'PRIVATE_BOOL', viewport: [12345, 67890] } }],
 }) };
 const context = createContext({ window: { __DEBUG: debug, __QA_TRACE: trace, RTCPeerConnection: Peer },
   document: { hidden: false, hasFocus: () => true }, performance: { now: () => at },
@@ -145,6 +159,9 @@ assert.equal(summary.firing.readyAttempts, 2, 'new diagnostics do not rewrite hi
 assert.equal(timerCleared, 1);
 assert.equal(unsubscribed, 3);
 assert.equal(context.window.__COT_FEEDBACK_NETWORK.onAuthority, null);
+assert.equal(sample.diagnostics[0].movementCheckpoints, 8);
+assert.equal(sample.diagnostics[0].missingMovementCheckpoints, null);
+assert.equal(sample.diagnostics[0].rejectedMovementCheckpoints, null);
 assert.doesNotMatch(JSON.stringify(sample), /PRIVATE|OTHER_PLAYER|AMBIGUOUS/);
 
 const timing = JSON.parse(JSON.stringify(summarizeFeedbackSample(sample).timingWindows));
@@ -153,7 +170,11 @@ assert.deepEqual(timing.windows.map((row) => row.kind),
   ['first-click', 'subsequent-click', 'subsequent-click', 'worst-frame']);
 assert.deepEqual(timing.windows.slice(0, 3).map((row) => row.atMs), [0, 110, 120]);
 assert.deepEqual(timing.windows[0].events.map((row) => [row.dtFromCenterMs, row.name]),
-  [[0, 'fire'], [10, 'weapon:predicted'], [25, 'longtask']]);
+  [[0, 'fire'], [10, 'weapon:predicted'], [25, 'longtask'], [26, 'freeze'], [27, 'resume']]);
+assert.deepEqual(timing.windows[0].events.slice(-2), [
+  { dtFromCenterMs: 26, name: 'freeze', hidden: true, focused: false, persisted: false },
+  { dtFromCenterMs: 27, name: 'resume', hidden: false, focused: true, persisted: null },
+]);
 assert.equal(timing.windows.at(-1).atMs, 20);
 assert.equal(timing.windows.at(-1).gapStartedBeforeSample, false);
 assert.equal(timing.windows[0].frames[0].dtFromCenterMs, -10,
@@ -179,6 +200,16 @@ assert.equal(projected.windows[0].events.length, 32);
 assert.equal(projected.windows[0].atMs, null);
 assert.doesNotMatch(JSON.stringify(projected), /PRIVATE/);
 assert.equal(sanitizeFeedbackTimingWindows(null), null);
+const safeLifecycle = sanitizeFeedbackTimingWindows({ windows: [{ kind: 'worst-frame',
+  frames: [], events: ['freeze', 'resume', 'visibilitychange', 'pagehide', 'pageshow',
+    'pointerlockchange', 'resize', 'orientationchange', 'webglcontextrestored'].map((name) => ({
+    name, dtFromCenterMs: 0, hidden: 'PRIVATE_BOOL', focused: true, persisted: false,
+    viewport: [12345, 67890], visibilityState: 'PRIVATE_STATE', url: 'PRIVATE_URL',
+  })),
+}] });
+assert.equal(safeLifecycle.windows[0].events.length, 9);
+assert.ok(safeLifecycle.windows[0].events.every((row) => row.hidden === null && row.focused === true));
+assert.doesNotMatch(JSON.stringify(safeLifecycle), /PRIVATE|viewport|visibilityState|url/);
 const actionSecrets = Array.from({ length: 200 }, () => ({ atMs: 'PRIVATE_CLOCK', ready: true,
   matched: false, ambiguous: false, roomCode: 'PRIVATE_ROOM', eligibility: {
     locked: 'PRIVATE_BOOL', currentInputFire: true, shellSlot: '1', requestedShellSlot: 1,

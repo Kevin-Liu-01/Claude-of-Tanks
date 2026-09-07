@@ -44,7 +44,9 @@ export function liveCombatTimingWindows(source) {
     ? clock.pageTimeMs - clock.traceTimeMs : null;
 
   function projectEvent(event, center) {
-    const projected = { name: event.name, dtFromCenterMs: event.tMs - center };
+    const projected = { name: event.name, dtFromCenterMs: event.tMs - center,
+      hidden: boolean(event.data?.hidden), focused: boolean(event.data?.focused),
+      persisted: boolean(event.data?.persisted) };
     if (event.name !== 'longtask' || traceZero === null ||
         finite(event.data?.startTime) === null || finite(event.data?.duration) === null ||
         event.data.duration < 0) return projected;
@@ -101,7 +103,7 @@ function clientHealth(report = {}) {
     motion: metrics(report.motion, 'samples maxStepM maxShortFrameStepM maxExcessStepM maxBackstepM'),
     network: { connected: boolean(network?.connected),
       ...metrics(network, 'rttMs rttJitterMs snapshotPacketsReceived estimatedMissingSnapshots estimatedSnapshotLoss inputAckLag pendingInputEdges transportBufferedBytes pendingEventBatches inputPacketsSubmitted'),
-      prediction: metrics(network?.prediction, 'reconciliations hardSnaps terminalSyncs replayedInputs droppedHistory maxPositionErrorM maxFreePositionErrorM maxContactPositionErrorM contactReconciliations lastPositionErrorM maxCorrectionStepM maxVerticalCorrectionStepM pendingInputs correctionM') },
+      prediction: metrics(network?.prediction, 'movementCheckpoints missingMovementCheckpoints rejectedMovementCheckpoints reconciliations hardSnaps terminalSyncs replayedInputs droppedHistory maxPositionErrorM maxFreePositionErrorM maxContactPositionErrorM contactReconciliations lastPositionErrorM maxCorrectionStepM maxVerticalCorrectionStepM pendingInputs correctionM') },
   };
 }
 

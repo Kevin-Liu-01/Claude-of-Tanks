@@ -113,7 +113,8 @@ export function startFeedbackSample() {
       ...project(net, ['rttMs', 'rttJitterMs', 'transportBufferedBytes', 'pendingEventBatches', 'inputAckLag',
         'snapshotPacketsReceived', 'estimatedMissingSnapshots', 'inputPacketsSubmitted']),
       ...project(net?.prediction, ['reconciliations', 'hardSnaps', 'droppedHistory', 'lastPositionErrorM',
-        'maxPositionErrorM', 'maxCorrectionStepM', 'maxVerticalCorrectionStepM']),
+        'maxPositionErrorM', 'maxCorrectionStepM', 'maxVerticalCorrectionStepM',
+        'movementCheckpoints', 'missingMovementCheckpoints', 'rejectedMovementCheckpoints']),
       presentationPending: numeric(debug.networkPresentation?.pending) });
   }
   const offInput = debug.input.onAction('fire', () => {
@@ -210,6 +211,12 @@ export function stopFeedbackSample() {
   // Keep only bounded, numeric trace windows. Never export raw trace events:
   // their payloads can contain room codes, entity IDs, positions, or URLs.
   const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const boolean = (value) => typeof value === 'boolean' ? value : null;
+  const lifecycleNames = new Set(['freeze', 'resume', 'visibilitychange', 'pagehide', 'pageshow',
+    'pointerlockchange', 'resize', 'orientationchange', 'webglcontextrestored']);
+  const eventNames = new Set(['fire', 'weapon:predicted', 'shell:fired', 'shell:hit',
+    'shell:expired', 'tank:destroyed', 'tank:ram', 'prop:crushed', 'prop:destroyed',
+    'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap', ...lifecycleNames]);
   function longTaskStart(event) {
     if (event.name !== 'longtask') return null;
     const start = numeric(event.data?.startTime);
@@ -225,6 +232,8 @@ export function stopFeedbackSample() {
   }
   function projectEvent(event, centerMs) {
     const row = { dtFromCenterMs: event.tMs - centerMs, name: event.name };
+    if (lifecycleNames.has(event.name)) return { ...row, hidden: boolean(event.data?.hidden),
+      focused: boolean(event.data?.focused), persisted: boolean(event.data?.persisted) };
     if (event.name !== 'longtask') return row;
     const start = longTaskStart(event);
     return { ...row, startAtMs: start === null ? null : event.data.startTime - sample.started,
@@ -248,9 +257,6 @@ export function stopFeedbackSample() {
   function timingWindow(kind, centerMs, ordinal = null, worstFrame = null) {
     const frameKeys = ['gapMs', 'dtMs', 'calls', 'triangles', 'programs', 'geometries',
       'textures', 'renderScale', 'heapMB', 'flags'];
-    const eventNames = new Set(['fire', 'weapon:predicted', 'shell:fired', 'shell:hit',
-      'shell:expired', 'tank:destroyed', 'tank:ram', 'prop:crushed', 'prop:destroyed',
-      'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap']);
     const previous = worstFrame ? precedingFrame(centerMs) : null;
     const gapStart = worstFrame ? -Math.max(0, numeric(worstFrame[index('gapMs')]) ?? 0) : null;
     const previousAt = previous ? previous[index('tMs')] - centerMs : null;
@@ -318,11 +324,14 @@ export function stopFeedbackSample() {
 export function sanitizeFeedbackTimingWindows(source) {
   if (!source || !Array.isArray(source.windows)) return null;
   const numeric = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const boolean = (value) => typeof value === 'boolean' ? value : null;
   const frameKeys = ['dtFromCenterMs', 'gapMs', 'dtMs', 'calls', 'triangles', 'programs',
     'geometries', 'textures', 'renderScale', 'heapMB', 'flags'];
+  const lifecycleNames = new Set(['freeze', 'resume', 'visibilitychange', 'pagehide', 'pageshow',
+    'pointerlockchange', 'resize', 'orientationchange', 'webglcontextrestored']);
   const eventNames = new Set(['fire', 'weapon:predicted', 'shell:fired', 'shell:hit',
     'shell:expired', 'tank:destroyed', 'tank:ram', 'prop:crushed', 'prop:destroyed',
-    'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap']);
+    'longtask', 'frame:spike', 'screen:freeze', 'frame:hidden-spike', 'frame:hidden-gap', ...lifecycleNames]);
   const kinds = new Set(['first-click', 'subsequent-click', 'worst-frame']);
   const nonpositive = (value) => numeric(value) !== null && value <= 0 ? value : null;
   function taskStart(row) {
@@ -333,6 +342,8 @@ export function sanitizeFeedbackTimingWindows(source) {
   }
   function projectEvent(row) {
     const event = { dtFromCenterMs: row.dtFromCenterMs, name: row.name };
+    if (lifecycleNames.has(row.name)) return { ...event, hidden: boolean(row.hidden),
+      focused: boolean(row.focused), persisted: boolean(row.persisted) };
     if (row.name !== 'longtask') return event;
     const start = taskStart(row);
     return { ...event, startAtMs: start === null ? null : numeric(row.startAtMs),
@@ -427,6 +438,9 @@ export function summarizeFeedbackSample(raw, ice = []) {
     cumulativeCorrectionStepMaxM: distribution('maxCorrectionStepM').max,
     cumulativeVerticalCorrectionStepMaxM: distribution('maxVerticalCorrectionStepM').max,
     hardSnaps: delta('hardSnaps'), reconciliations: delta('reconciliations'), droppedHistory: delta('droppedHistory'),
+    movementCheckpoints: delta('movementCheckpoints'),
+    missingMovementCheckpoints: delta('missingMovementCheckpoints'),
+    rejectedMovementCheckpoints: delta('rejectedMovementCheckpoints'),
     snapshotPackets: delta('snapshotPacketsReceived'), inputPackets: delta('inputPacketsSubmitted'),
     missingSnapshotEstimate: delta('estimatedMissingSnapshots'),
     ice: { stunRttMs: metricDistribution(ice.map((row) => row.stunRttMs)),

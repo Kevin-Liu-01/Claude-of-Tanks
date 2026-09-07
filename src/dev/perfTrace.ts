@@ -225,7 +225,7 @@ function inert() {
   const noop = (..._args: RuntimeValue[]) => {};
   return {
     enabled: false, active: false, event: noop, action: noop, frame: noop,
-    mark: noop, configure: noop, clear: noop, start: noop, stop: noop,
+    mark: noop, configure: noop, clear: noop, start: noop, stop: noop, dispose: noop,
     console: noop, download: () => null, exportJson: () => '{}', tail: () => [],
     snapshot: () => ({ enabled: false }), stats: () => ({ enabled: false }),
   };
@@ -272,6 +272,8 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
   const counts: Record<string, number> = Object.create(null);
   let refs: TraceRefs = options.renderer ? { renderer: options.renderer } : {};
   let active = true, consoleAll = false, inputBound = false;
+  let disposed = false;
+  const cleanup: Array<() => void> = [];
   let seq = 0, eventNext = 0, lastEventName = '';
   let gpuCaptured = false, cachedGpu: TraceGpuInfo | null = null;
   let frameNext = 0, frameSize = 0, frameDropped = 0, lastFrameAt = 0;
@@ -491,6 +493,22 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
     longTasks = longTaskMs = 0; lastPhase = 'unknown'; lastSim = NaN;
     lastSimAt = simFrozenAt = 0; lastRender = -1; lastRenderAt = renderFrozenAt = 0;
   }
+  function listen(target: EventTarget, name: string, listener: EventListener): void {
+    target.addEventListener(name, listener, { passive: true });
+    cleanup.push(() => target.removeEventListener(name, listener));
+  }
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    active = false;
+    while (cleanup.length) {
+      // Diagnostic cleanup must release remaining owners even if one adapter fails.
+      try { cleanup.pop()?.(); } catch (_) { /* best-effort observer teardown */ }
+    }
+    if (typeof window === 'undefined') return;
+    if (window.__DEV_TRACE === api) delete window.__DEV_TRACE;
+    if (window.__QA_TRACE === api) delete window.__QA_TRACE;
+  }
 
   const api = {
     enabled: true, get active() { return active; },
@@ -498,12 +516,14 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
     action: (name: string, data: RuntimeValue = {}) => push('action', name, data), frame,
     mark: (name: string, data: RuntimeValue = {}) => push('mark', name, data),
     configure(next: TraceRefs = {}) {
+      if (disposed) return api;
       refs = { ...refs, ...next };
       if (refs.input?.onAction && !inputBound) {
         inputBound = true;
         const input = refs.input;
         for (const def of input.actionDefs || []) {
-          input.onAction?.(def.id, (code: RuntimeValue) => api.action(def.id, { code }));
+          const off = input.onAction?.(def.id, (code: RuntimeValue) => api.action(def.id, { code }));
+          if (typeof off === 'function') cleanup.push(off);
         }
       }
       // GPU driver queries can serialize with software rasterizers. Keep them
@@ -511,7 +531,7 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
       push('trace', 'configured', { refs: Object.keys(next), environment: environment(false) });
       return api;
     },
-    clear, start() { active = true; push('trace', 'started', {}); },
+    clear, dispose, start() { if (!disposed) { active = true; push('trace', 'started', {}); } },
     stop() { push('trace', 'stopped', {}); active = false; },
     console(on = true) { consoleAll = !!on; return consoleAll; }, stats, snapshot,
     exportJson(pretty = false, snapshotOptions: TraceSnapshotOptions = {}) {
@@ -531,7 +551,7 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
 
   if (typeof PerformanceObserver !== 'undefined') {
     try {
-      new PerformanceObserver((list) => {
+      const observer = new PerformanceObserver((list) => {
         for (const e of list.getEntries()) {
           if (!active) continue;
           longTasks++; longTaskMs += e.duration;
@@ -544,32 +564,41 @@ export function createDevTraceCore(options: DevTraceOptions = {}) {
             })),
           });
         }
-      }).observe({ entryTypes: ['longtask'] });
+      });
+      cleanup.push(() => observer.disconnect());
+      observer.observe({ entryTypes: ['longtask'] });
     } catch (_) { /* unsupported */ }
   }
   if (typeof window !== 'undefined') {
     const life = (name: string) => (event: Event) => push('lifecycle', name, {
-      persisted: event instanceof PageTransitionEvent ? event.persisted : undefined,
+      persisted: typeof PageTransitionEvent !== 'undefined' && event instanceof PageTransitionEvent
+        ? event.persisted : undefined,
       hidden: document.hidden, visibilityState: document.visibilityState,
       focused: document.hasFocus(), viewport: [window.innerWidth, window.innerHeight],
     });
-    for (const name of ['freeze', 'resume', 'pagehide', 'pageshow', 'resize', 'orientationchange']) {
-      window.addEventListener(name, life(name), { passive: true });
+    // freeze/resume target document and do not bubble to window.
+    for (const name of ['freeze', 'resume', 'visibilitychange', 'pointerlockchange']) {
+      listen(document, name, life(name));
     }
-    document.addEventListener('visibilitychange', life('visibilitychange'), { passive: true });
-    document.addEventListener('pointerlockchange', life('pointerlockchange'), { passive: true });
-    window.addEventListener('error', (e: ErrorEvent) => push('error', 'window:error', {
-      message: e.message, filename: e.filename, lineno: e.lineno, colno: e.colno, error: e.error,
-    }));
-    window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => (
-      push('error', 'unhandledrejection', { reason: e.reason })
+    for (const name of ['pagehide', 'pageshow', 'resize', 'orientationchange']) {
+      listen(window, name, life(name));
+    }
+    listen(window, 'error', (event) => {
+      const e = event as ErrorEvent;
+      push('error', 'window:error', {
+        message: e.message, filename: e.filename, lineno: e.lineno, colno: e.colno, error: e.error,
+      });
+    });
+    listen(window, 'unhandledrejection', (e) => (
+      push('error', 'unhandledrejection', { reason: (e as PromiseRejectionEvent).reason })
     ));
     const canvas = refs.renderer?.domElement;
-    canvas?.addEventListener('webglcontextlost', (event: Event) => {
-      const message = event instanceof WebGLContextEvent ? event.statusMessage : '';
+    if (canvas) listen(canvas, 'webglcontextlost', (event) => {
+      const message = typeof WebGLContextEvent !== 'undefined' && event instanceof WebGLContextEvent
+        ? event.statusMessage : '';
       anomaly('webgl:context-lost', { statusMessage: message || '' });
     });
-    canvas?.addEventListener('webglcontextrestored', () => push('lifecycle', 'webglcontextrestored', {}));
+    if (canvas) listen(canvas, 'webglcontextrestored', () => push('lifecycle', 'webglcontextrestored', {}));
     window.__DEV_TRACE = api; // backwards-compatible probe name
     window.__QA_TRACE = api;
   }

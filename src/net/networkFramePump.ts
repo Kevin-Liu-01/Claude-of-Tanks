@@ -49,6 +49,7 @@ interface NetworkMatchBase {
 
 export interface NetworkHostMatchLike extends NetworkMatchBase {
   role: 'host';
+  onRemoteInput?(listener: () => void): (() => void);
   advance(dtMs: number, input: NetworkInputFrame | null): NetworkSnapshot | null;
 }
 
@@ -185,6 +186,21 @@ export function createNetworkFramePump({
   let authorityBrakeInput: NetworkInputFrame | null = null;
   let terminal = false;
   let terminalReason = 'rtc_recovery_exhausted';
+  const pumpTiming = { backgroundPumps: 0, backgroundElapsedMs: 0,
+    backgroundDiscardedMs: 0, backgroundMaxGapMs: 0 };
+
+  const resetPumpTiming = (): void => {
+    pumpTiming.backgroundPumps = 0;
+    pumpTiming.backgroundElapsedMs = 0;
+    pumpTiming.backgroundDiscardedMs = 0;
+    pumpTiming.backgroundMaxGapMs = 0;
+  };
+  const recordBackgroundElapsed = (rawMs: number, admittedMs: number): void => {
+    pumpTiming.backgroundPumps++;
+    pumpTiming.backgroundElapsedMs += rawMs;
+    pumpTiming.backgroundDiscardedMs += Math.max(0, rawMs - admittedMs);
+    pumpTiming.backgroundMaxGapMs = Math.max(pumpTiming.backgroundMaxGapMs, rawMs);
+  };
 
   const endConnection = (reason: string) => {
     if (terminal) return;
@@ -246,6 +262,7 @@ export function createNetworkFramePump({
       throw new TypeError('network pump timing must be finite and non-negative');
     }
     if (pumpClockMatch !== match) {
+      resetPumpTiming();
       pumpClockMatch = match;
       lastPumpNowMs = null;
       backgroundActive = false;
@@ -261,6 +278,8 @@ export function createNetworkFramePump({
     const elapsed = Math.min(0.1, dt, lastPumpNowMs == null ? dt
       : nowMs <= lastPumpNowMs ? 0
       : background || backgroundActive ? (nowMs - lastPumpNowMs) / 1000 : dt);
+    if (background || backgroundActive) recordBackgroundElapsed(lastPumpNowMs == null ? 0
+      : Math.max(0, nowMs - lastPumpNowMs), elapsed * 1000);
     lastPumpNowMs = Math.max(lastPumpNowMs ?? nowMs, nowMs);
     return elapsed;
   };
@@ -340,7 +359,7 @@ export function createNetworkFramePump({
   const diagnostics = () => {
     const stats = getMatch()?.client?.getStats?.() || null;
     if (!stats) return null;
-    return { ...stats, prediction: getBridge()?.getPredictionStats?.() || null };
+    return { ...stats, pumpTiming: { ...pumpTiming }, prediction: getBridge()?.getPredictionStats?.() || null };
   };
 
   const pumpHost = (
@@ -513,6 +532,7 @@ export function createNetworkFramePump({
     },
 
     clearRound() {
+      resetPumpTiming();
       latestSnapshot = null;
       pendingEvents.length = 0;
       localShotEvents.length = 0;
@@ -525,6 +545,7 @@ export function createNetworkFramePump({
     },
 
     dispose() {
+      resetPumpTiming();
       inputRuntime?.reset();
       latestSnapshot = null;
       pendingEvents.length = 0;

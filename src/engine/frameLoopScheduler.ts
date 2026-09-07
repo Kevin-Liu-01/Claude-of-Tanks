@@ -48,6 +48,8 @@ export interface FrameLoopSchedulerOptions {
 export interface FrameLoopScheduler {
   schedule(): void;
   restart(): void;
+  /** Accepted network activity can service hidden authority without waiting for a throttled timer. */
+  wakeBackground(): boolean;
   dispose(): void;
   readonly stats: {
     animationTicks: number;
@@ -56,6 +58,7 @@ export interface FrameLoopScheduler {
     frameRateLimitedCallbacks: number;
     backgroundSuspensions: number;
     backgroundTicks: number;
+    backgroundActivityTicks: number;
     queued: 'animation' | 'idle' | 'none';
   };
 }
@@ -103,6 +106,8 @@ export function createFrameLoopScheduler({
   let disposed = false;
   let backgroundSuspended = false;
   let nextAnimationTickMs = -Infinity;
+  let lastBackgroundTickMs = -Infinity;
+  let backgroundTickRunning = false;
   const idleDelayMs = Math.max(100, Math.min(5000, idleIntervalMs));
   const animationIntervalMs = Number.isFinite(maximumFrameRate) && maximumFrameRate > 0
     ? 1000 / Math.min(240, maximumFrameRate)
@@ -121,6 +126,7 @@ export function createFrameLoopScheduler({
     frameRateLimitedCallbacks: 0,
     backgroundSuspensions: 0,
     backgroundTicks: 0,
+    backgroundActivityTicks: 0,
     queued: 'none' as 'animation' | 'idle' | 'none',
   };
 
@@ -135,13 +141,20 @@ export function createFrameLoopScheduler({
     tick(timestampMs);
   };
 
-  const runBackgroundTick = (): boolean => {
+  const runBackgroundTick = (force = false): boolean => {
     if (disposed || !isBootComplete() || !isBackgrounded() ||
         !backgroundTick || !hasBackgroundWork()) return false;
+    const timestampMs = now();
+    if (backgroundTickRunning || !Number.isFinite(timestampMs) ||
+        (!force && timestampMs - lastBackgroundTickMs < 1000 / 60 - 1e-6)) return false;
+    lastBackgroundTickMs = timestampMs;
+    backgroundTickRunning = true;
     // This port must not render or update visuals. Browsers can still throttle
     // or freeze timers; the network owner bounds elapsed time on resumption.
-    backgroundTick(now());
-    stats.backgroundTicks += 1;
+    try {
+      backgroundTick(timestampMs);
+      stats.backgroundTicks += 1;
+    } finally { backgroundTickRunning = false; }
     return true;
   };
 
@@ -255,7 +268,7 @@ export function createFrameLoopScheduler({
       backgroundSuspended = true;
       nextAnimationTickMs = -Infinity;
       cancelQueued();
-      runBackgroundTick();
+      runBackgroundTick(true);
       syncRescueInterval();
       return;
     }
@@ -270,7 +283,7 @@ export function createFrameLoopScheduler({
     backgroundSuspended = true;
     nextAnimationTickMs = -Infinity;
     cancelQueued();
-    runBackgroundTick();
+    runBackgroundTick(true);
     syncRescueInterval();
   };
 
@@ -301,6 +314,11 @@ export function createFrameLoopScheduler({
   return {
     schedule,
     restart,
+    wakeBackground() {
+      const serviced = runBackgroundTick();
+      if (serviced) stats.backgroundActivityTicks++;
+      return serviced;
+    },
     stats,
     dispose() {
       if (disposed) return;

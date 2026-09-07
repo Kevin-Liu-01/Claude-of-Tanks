@@ -1817,6 +1817,7 @@ const networkSession = createNetworkBrowserSessionRuntime({
   isBattleActive: battlePhase.isBattle,
   shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
   nextFrame,
+  onBackgroundActivity: () => { frameLoop.wakeBackground(); },
   onDisconnect: (reason) => {
     if (battleEntryLifecycle.pending) {
       networkComposition.current?.round.close(reason);

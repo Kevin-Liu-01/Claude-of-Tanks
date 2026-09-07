@@ -569,8 +569,14 @@ const remoteDriveInput = {
   throttle: 1, steer: 0, brake: false, fire: false,
   aimYaw: Math.PI, aimPitch: 0, shellSlot: 0, actionBits: 0,
 };
+let acceptedRemoteInputs = 0;
+const stopRemoteInput = hosted.onRemoteInput(() => { acceptedRemoteInputs++; });
+hosted.advance(0, { ...remoteDriveInput, throttle: 0 });
+assert.equal(acceptedRemoteInputs, 0, 'local loopback input cannot recursively wake its own authority');
 joined.submitInput(remoteDriveInput, hosted.host.tick);
 await Promise.resolve();
+assert.equal(acceptedRemoteInputs, 1, 'real handoff exposes only admitted remote input');
+stopRemoteInput();
 for (let i = 0; i < 120; i++) {
   if (i > 0 && i % 10 === 0) {
     joined.submitInput(remoteDriveInput, hosted.host.tick);
@@ -582,6 +588,7 @@ await Promise.resolve();
 assert.ok(joined.client.buffer.snapshots.length > 0, 'remote receives authoritative snapshots');
 assert.ok(hosted.simulation.entityById.get('peer-1').state.speed > 0,
   'remote controls feed host authority');
+assert.equal(acceptedRemoteInputs, 1, 'released background observer cannot survive teardown');
 const admittedRemoteSequence = hosted.host.peers.get('peer-1').lastInputSeq;
 for (let i = 0; i < 32; i++) hosted.host.advance(1000 / 60);
 assert.equal(hosted.host.peers.get('peer-1').input.throttle, 0,

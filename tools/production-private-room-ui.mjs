@@ -6,6 +6,7 @@ import { startMultiplayerCpuTimeline } from './multiplayer-cpu-timeline.mjs';
 import { startMultiplayerFrameTrace } from './multiplayer-frame-trace.mjs';
 import { startMultiplayerSourceProfile } from './multiplayer-source-profile.mjs';
 import { createMultiplayerRenderWorkload, renderWorkloadFailureEvidence } from './multiplayer-render-workload.mjs';
+import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 function validateAmmoSelection(ammoSlot, measurePerformance) {
   if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
@@ -196,6 +197,7 @@ const DIAGNOSTIC_CODES = new Set([
   'source_profile_start_failed', 'source_profile_stop_failed', 'source_profile_cleanup_failed',
   'render_workload_start_failed', 'render_workload_admission_failed',
   'render_workload_observation_failed', 'render_workload_cleanup_failed',
+  'native_browser_launch_unverifiable', 'native_browser_background_override',
 ]);
 const RELAY_REASONS = ['pair', 'observer', 'channels', 'disconnected', 'counter', 'policy', 'missing', 'stats'];
 const FAILURE_EVIDENCE = new WeakMap();
@@ -738,6 +740,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   let problem;
   let result;
   let completedPerformance = null;
+  let browserLaunch = null;
   let pageErrors = 0;
   const reserveMs = cleanupReserveMs(measurePerformance, options.renderWorkload);
   const left = () => Math.max(1, timeoutMs - reserveMs - (performance.now() - started));
@@ -747,12 +750,14 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     return bounded(Promise.resolve().then(action), left(), next);
   };
   try {
-    const launch = launchBrowser || (async () => {
+    const launch = launchBrowser || (async (launchOptions) => {
       const { default: puppeteer } = await import('puppeteer');
-      return puppeteer.launch({ headless: true, timeout: Math.min(30_000, timeoutMs),
-        protocolTimeout: 60_000, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-gl=angle', '--enable-webgl'] });
+      return puppeteer.launch(launchOptions);
     });
-    owners.browser = await launch();
+    owners.browser = await launch(nativeBrowserLaunchOptions({ headless: true,
+      timeout: Math.min(30_000, timeoutMs), protocolTimeout: 60_000,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-gl=angle', '--enable-webgl'] }));
+    browserLaunch = verifyNativeBrowserLaunch(owners.browser);
     for (const role of ['host', 'guest']) {
       await run(`${role}_garage`, () => freshPage(owners.browser, options.origin, left(), owners,
         () => { pageErrors++; }, measurePerformance, forceRelay));
@@ -816,7 +821,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
         }
         const receipt = { scenario: 'native-private-1v1-winter', sampleMsPerRole: 20_000,
           ammoSlot: options.ammoSlot ?? 1,
-          browserVersion,
+          browserVersion, browserLaunch,
           viewport: [1280, 800], deviceScaleFactor: 1, cpuThrottle: 1,
           twoLoadedContextsSameMachine: true,
           requestedRenderWorkload: options.renderWorkload ?? 'dual-render-stress',
@@ -848,7 +853,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
         !window.__DEBUG?.network && !new URL(location.href).searchParams.has('room'), { timeout: left() });
     });
     if (pageErrors) throw failure('page_errors');
-    result = { ok: true, freshBrowserContexts: 2, nativePrivate1v1: true, defaultRoomEndpoint: true,
+    result = { ok: true, browserLaunch, freshBrowserContexts: 2, nativePrivate1v1: true, defaultRoomEndpoint: true,
       nativeInviteJoined: true, nativeReadyAndLaunch: true, peers, nativeExitAndRoomClose: true, pageErrors };
     if (performanceReceipt) result.performance = performanceReceipt;
   } catch (error) {

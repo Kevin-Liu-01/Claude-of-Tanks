@@ -16,6 +16,7 @@ const IMMEDIATE_CORRECTION_RATE_MPS = 6;
 const IMMEDIATE_CORRECTION_STEP_M = 0.2;
 const IMMEDIATE_TELEPORT_M = 8;
 const ENTITY_TELEPORT_SPEED_MULTIPLIER = 3;
+const CONTINUED_ANGLES = ['yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch'] as const;
 const OBJECTIVE_TELEPORT_FLOOR_M = 8;
 const OBJECTIVE_TELEPORT_SPEED_MULTIPLIER = 3;
 const REST_POSE = Symbol('networkRestPose');
@@ -803,6 +804,29 @@ function extrapolateEntity(
   return entity;
 }
 
+function continueEntityAngles(
+  previous: QuantizedEntitySnapshot | undefined,
+  current: QuantizedEntitySnapshot,
+  sampled: DecodedEntitySnapshot,
+  durationS: number,
+  extraS: number,
+): void {
+  if (!previous || !(durationS > 0) || !(extraS > 0) ||
+      (current.flags & (SNAPSHOT_FLAGS.DESTROYED | SNAPSHOT_FLAGS.OVERTURNED | SNAPSHOT_FLAGS.AUTO_RIGHTING)) ||
+      ((previous.flags ^ current.flags) & (SNAPSHOT_FLAGS.AIRBORNE |
+        SNAPSHOT_FLAGS.OVERTURNED | SNAPSHOT_FLAGS.AUTO_RIGHTING)) ||
+      !hasContinuousEntityPose(previous, current, durationS)) return;
+  // Position already continues through short underruns. Holding orientation
+  // during those same frames creates a turn-stop/catch-up pulse on recovery.
+  // Use only this visible entity's last short-arc secant, for at most ONE
+  // observed interval (and never beyond the existing extrapolation horizon).
+  // A longer loss or a physical/lifecycle discontinuity needs fresh authority.
+  const fraction = Math.min(1, extraS / durationS);
+  for (const key of CONTINUED_ANGLES) {
+    sampled[key] += shortestAngleDelta(dequantizeAngle(previous[key]), sampled[key]) * fraction;
+  }
+}
+
 /**
  * Keep a non-rendering client's owned sample continuous when a newly arrived
  * authority packet corrects the prior extrapolation. The full browser runtime
@@ -1187,6 +1211,9 @@ export class SnapshotBuffer {
     for (const raw of snapshot.entities) {
       const sampled = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
       const previousRaw = this.olderById.get(raw.id);
+      if (raw.id !== this.immediateEntityId) {
+        continueEntityAngles(previousRaw, raw, sampled, durationS, extraMs / 1000);
+      }
       if (extraMs > 0 && raw.id !== this.immediateEntityId &&
           !(raw.flags & (SNAPSHOT_FLAGS.AIRBORNE | SNAPSHOT_FLAGS.DESTROYED))) {
         sampled.vy = groundedExtrapolationVelocity(previousRaw, raw, durationS);

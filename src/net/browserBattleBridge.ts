@@ -644,6 +644,7 @@ export function createBrowserBattleBridge<
     sampleTick = 0,
     sampleAckInputSeq: number | null = null,
   ): void {
+    const wasDestroyed = entity.combat.destroyed;
     entity.networkTeam = snapshot.team;
     if (!spectator && entity.id === id) viewerTeam = snapshot.team;
     const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
@@ -662,7 +663,7 @@ export function createBrowserBattleBridge<
     }
     updateEntityEra(entity, snapshot);
     updateEntityDestruction(entity, destroyed);
-    updateEntityPose(entity, snapshot, immediateAuthority);
+    updateEntityPose(entity, snapshot, immediateAuthority, wasDestroyed !== destroyed);
     entity._lastX = entity.state.pos.x;
     entity._lastZ = entity.state.pos.z;
     revealEntity(entity);
@@ -752,6 +753,7 @@ export function createBrowserBattleBridge<
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
     immediateAuthority: ImmediateAuthoritySnapshot | null,
+    resetTrackMotion: boolean,
   ): void {
     if (entity.predictor && immediateAuthority) {
       // Replay pending local controls from the exact acknowledged authority
@@ -761,19 +763,27 @@ export function createBrowserBattleBridge<
       entity.predictor.reconcile(immediateAuthority, 0, entity.combat.destroyed);
       return;
     }
-    applySnapshotPose(entity, snapshot);
+    applySnapshotPose(entity, snapshot, resetTrackMotion);
   }
 
   function applySnapshotPose(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
+    resetTrackMotion: boolean,
   ): void {
     const { state } = entity;
     const dx = snapshot.x - entity._lastX;
     const dz = snapshot.z - entity._lastZ;
     const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
-    state.trackScroll.l += forwardDistance;
-    state.trackScroll.r += forwardDistance;
+    if (entity._networkPoseReady && !resetTrackMotion && !entity.combat.destroyed) {
+      // The shared movement model uses a 1.5 m outer-track arm. Integrating
+      // the observed shortest hull turn preserves its opposing track motion
+      // even during a stationary pivot, without a second simulation clock.
+      const yawDelta = Math.atan2(Math.sin(snapshot.yaw - state.yaw), Math.cos(snapshot.yaw - state.yaw));
+      const turnDistance = yawDelta * 1.5;
+      state.trackScroll.l += forwardDistance + turnDistance;
+      state.trackScroll.r += forwardDistance - turnDistance;
+    }
     state.pos.set(snapshot.x, snapshot.y, snapshot.z);
     state.verticalSpeed = snapshot.vy || 0;
     state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);

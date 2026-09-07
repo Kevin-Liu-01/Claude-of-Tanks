@@ -211,6 +211,18 @@ documents reproduced failure cases, authority/presentation fixes, research,
 measured limits, and the local/browser/production verification matrix. Its
 pending release gates must not be read as production certification.
 
+The [moving-jitter follow-up](research/multiplayer-moving-jitter-2026-09.md)
+documents the reproduced suspension replay and remote turn-freeze defects.
+The own-authority sidecar now includes a validated, versioned integrator
+checkpoint, including retained terrain support and pending landing impulse.
+Replay restores this state at the same authority tick as the public pose;
+presentation corrections account for the total amplified suspension/sway angle.
+Remote short underruns continue angles for at most one observed interval,
+and differential track presentation follows the shared pivot geometry.
+Accepted remote input can also wake render-free hidden-host service, without
+creating another clock or bypassing the bounded catch-up policy. This cannot
+run a fully frozen browser or guarantee a universal frame-time budget.
+
 Remote tanks use contact-safe monotone Hermite position interpolation,
 shortest-path angle blending, and at most 250 ms of bounded extrapolation.
 Direct-room presentation starts at 50 ms for the host loopback, 65 ms for LAN,

@@ -142,6 +142,29 @@ function createHarness(background = {}) {
 }
 
 {
+  let serviced = 0, harness;
+  harness = createHarness({ hasBackgroundWork: () => true,
+    backgroundTick() {
+      serviced++;
+      assert.equal(harness.scheduler.wakeBackground(), false, 'synchronous packet reentry cannot step recursively');
+    } });
+  harness.setBoot(true);
+  assert.equal(harness.scheduler.wakeBackground(), false, 'foreground activity cannot service a second clock');
+  harness.setFocused(false);
+  harness.listeners.get('blur')();
+  for (let at = 1; at <= 1000; at++) {
+    harness.setNow(at);
+    harness.scheduler.wakeBackground();
+    if (at % 50 === 0) harness.fireTimer();
+  }
+  assert.ok(serviced >= 50 && serviced <= 61, 'network and timer activity share a 60 Hz admission ceiling');
+  assert.equal(harness.frames.size, 0);
+  assert.equal(harness.ticks.length, 0);
+  harness.scheduler.dispose();
+  assert.equal(harness.scheduler.wakeBackground(), false, 'retired scheduler ignores late network activity');
+}
+
+{
   const harness = createHarness();
   harness.setBoot(true);
   harness.setIdle(true);

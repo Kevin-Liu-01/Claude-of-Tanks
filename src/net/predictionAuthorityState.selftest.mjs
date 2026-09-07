@@ -58,7 +58,7 @@ test('mobility capture is a detached, minimal viewer-only primitive record', () 
   entity.hiddenEnemy = { id: 'classified-enemy', pos: { x: 421, z: 312 } };
   const captured = capturePredictionAuthorityState(entity);
   assert.deepEqual(Object.keys(captured).sort(),
-    ['crew', 'equipment', 'id', 'modeSpeedMultiplier', 'modules']);
+    ['crew', 'equipment', 'id', 'modeSpeedMultiplier', 'modules', 'movement']);
   assert.equal(captured.id, 'viewer');
   assert.equal(JSON.stringify(captured).includes('classified-enemy'), false);
   assert.equal(JSON.stringify(captured).includes('maxHp'), false);

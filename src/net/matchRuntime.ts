@@ -365,6 +365,7 @@ export class AuthoritativeMatchRuntime {
   timeMs = 0;
   accumulatorMs = 0;
   readonly peers = new Map<string, MatchPeer>();
+  private readonly inputAcceptedListeners = new Set<(peerId: string) => void>();
   closed = false;
   matchStarted = false;
   roomRound: number;
@@ -525,6 +526,13 @@ export class AuthoritativeMatchRuntime {
     return true;
   }
 
+  /** Notification only after complete fresh-input admission; never a second clock. */
+  onInputAccepted(listener: (peerId: string) => void): Unsubscribe {
+    if (this.closed) return () => {};
+    this.inputAcceptedListeners.add(listener);
+    return () => { this.inputAcceptedListeners.delete(listener); };
+  }
+
   detachPeer(
     peerId: string,
     reason = 'left',
@@ -578,13 +586,21 @@ export class AuthoritativeMatchRuntime {
   }
 
   #receive(peer: MatchPeer, raw: RuntimeValue): void {
+    let inputAccepted = false;
     try {
       const message = validateEnvelope(raw);
       if (!this.#acceptPeerSequence(peer, message)) return;
+      const previousInputSeq = peer.lastInputSeq;
       this.#dispatchPeerMessage(peer, message);
+      inputAccepted = message.type === MESSAGE_TYPES.INPUT && peer.lastInputSeq !== previousInputSeq;
     } catch (error) {
       this.stats.invalidMessages++;
       this.#send(peer, MESSAGE_TYPES.ERROR, safeErrorPayload(error));
+    }
+    // Wake owners outside validation: their errors must not turn accepted input
+    // into a protocol violation. Exact membership fences late transport callbacks.
+    if (inputAccepted && !this.closed && this.peers.get(peer.id) === peer) {
+      for (const listener of this.inputAcceptedListeners) listener(peer.id);
     }
   }
 
@@ -1081,6 +1097,7 @@ export class AuthoritativeMatchRuntime {
   }
 
   close(reason = 'host_closed'): void {
+    this.inputAcceptedListeners.clear();
     if (this.closed) return;
     this.closed = true;
     this.roomStateFanoutGeneration++;

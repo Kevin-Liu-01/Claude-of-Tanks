@@ -7,6 +7,60 @@ import { productionUiOptions, validateUiProgress, cleanupProductionUi,
   measureProductionFeedback } from './production-private-room-ui.mjs';
 import * as relayProbe from './production-private-room-ui.mjs';
 import { createMultiplayerRenderWorkload } from './multiplayer-render-workload.mjs';
+import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+
+const backgroundOverrides = ['--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+const requestedLaunch = { headless: true, args: ['--enable-webgl'],
+  ignoreDefaultArgs: ['--some-existing-default', backgroundOverrides[0]] };
+const savedLaunch = structuredClone(requestedLaunch);
+const nativeLaunch = nativeBrowserLaunchOptions(requestedLaunch);
+assert.deepEqual(requestedLaunch, savedLaunch, 'normalization cannot mutate caller-owned launch options');
+assert.deepEqual(nativeLaunch.args, requestedLaunch.args);
+assert.deepEqual(nativeLaunch.ignoreDefaultArgs, ['--some-existing-default', ...backgroundOverrides]);
+assert.equal(nativeBrowserLaunchOptions({ ignoreDefaultArgs: true }).ignoreDefaultArgs, true);
+assert.deepEqual(nativeBrowserLaunchOptions({ ignoreDefaultArgs: false }).ignoreDefaultArgs, backgroundOverrides);
+for (const flag of backgroundOverrides) {
+  assert.throws(() => nativeBrowserLaunchOptions({ args: [flag] }), /native_browser_background_override/);
+  for (const argument of [flag, `${flag}=false`]) assert.throws(() => verifyNativeBrowserLaunch({
+    process: () => ({ spawnargs: ['PRIVATE_EXECUTABLE', argument] }),
+  }), /native_browser_background_override/);
+}
+for (const value of [null, {}, { process: () => null }, { process() { throw new Error('PRIVATE'); } },
+  { process: () => ({ spawnargs: [] }) }, { process: () => ({ spawnargs: [7] }) },
+  { process: () => ({ spawnargs: Array(513).fill('PRIVATE') }) }]) {
+  assert.throws(() => verifyNativeBrowserLaunch(value), /native_browser_launch_unverifiable/);
+}
+for (const options of [{ args: 'PRIVATE' }, { args: [1] }, { ignoreDefaultArgs: 'PRIVATE' },
+  { ignoreDefaultArgs: [1] }]) {
+  assert.throws(() => nativeBrowserLaunchOptions(options), /native_browser_launch_options_invalid/);
+}
+const launchReceipt = verifyNativeBrowserLaunch({ process: () => ({ spawnargs: [
+  'PRIVATE_EXECUTABLE', '--user-data-dir=PRIVATE_PATH', 'https://PRIVATE_URL/PRIVATE_TOKEN', '--headless=new',
+] }) });
+assert.deepEqual(launchReceipt,
+  { verified: true, argumentCount: 4, checkedBackgroundFlags: 3, backgroundOverridesPresent: 0 });
+assert.doesNotMatch(JSON.stringify(launchReceipt), /PRIVATE|spawnargs|user-data-dir/);
+for (const spawnargs of [undefined, ['PRIVATE_EXECUTABLE', backgroundOverrides[1]]]) {
+  let closed = 0;
+  await assert.rejects(verifyProductionPrivateRoomUi({ url: 'https://game.example.test',
+    launchBrowser: async (options) => {
+      assert.deepEqual(options.ignoreDefaultArgs, backgroundOverrides);
+      return { process: () => ({ spawnargs }),
+        async createBrowserContext() { assert.fail('unverified browser must not create or join a room'); },
+        async close() { closed++; } };
+    },
+  }), error => {
+    assert.equal(error.stage, 'browser_launch');
+    assert.equal(error.diagnosticCode, spawnargs
+      ? 'native_browser_background_override' : 'native_browser_launch_unverifiable');
+    assert.equal(error.cleanup.browserClosed, true);
+    assert.equal(error.cleanup.roomCleanupVerified, true);
+    assert.doesNotMatch(JSON.stringify(error), /PRIVATE/);
+    return true;
+  });
+  assert.equal(closed, 1);
+}
 
 assert.deepEqual(productionUiOptions({ url: 'https://game.example.test' }),
   { origin: 'https://game.example.test', timeoutMs: 300_000 });
