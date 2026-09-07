@@ -5,10 +5,10 @@ import * as THREE from 'three';
 import { registerNightLightEmitters, type NightLightEmitter } from '../engine/nightLightingRuntime.ts';
 import {
   NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR,
-  setNightEmissionMask, installNightEmissionMask,
+  setNightEmissionMask, installNightEmissionMask, refreshNightEmissionBase,
 } from '../engine/nightEmissionMaterial.ts';
 
-type VehicleLampKind = 'headlight' | 'shtora';
+export type VehicleLampKind = 'headlight' | 'shtora' | 'marker';
 interface LensDefinition { readonly kind: VehicleLampKind; readonly faces: readonly number[]; }
 type LensMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 const SOURCES = new WeakMap<THREE.Object3D, readonly NightLightEmitter[]>();
@@ -25,12 +25,17 @@ function vertexAt(geometry: THREE.BufferGeometry, offset: number): number {
  * outward +Z aperture is tagged; side/rear glass and all other optics stay off.
  * Serializable face offsets survive profile clones and nonuniform scaling.
  */
-export function markVehicleNightLens<T extends THREE.BufferGeometry>(geometry: T, kind: VehicleLampKind): T {
+export function markVehicleNightLens<T extends THREE.BufferGeometry>(
+  geometry: T, kind: VehicleLampKind, options: { readonly curvedAperture?: boolean } = {},
+): T {
   const normal = geometry.getAttribute('normal');
   const count = geometry.index?.count ?? geometry.getAttribute('position').count;
   const faces: number[] = [];
+  const minNormalZ = options.curvedAperture ? .01 : .98;
   for (let face = 0; face < count; face += 3) {
-    if ([0, 1, 2].every(corner => normal.getZ(vertexAt(geometry, face + corner)) > .98)) faces.push(face);
+    // A source-authored closed curved lens may have no planar cap. Opt in
+    // only on that lens primitive; rear-facing stock is still excluded.
+    if ([0, 1, 2].every(corner => normal.getZ(vertexAt(geometry, face + corner)) > minNormalZ)) faces.push(face);
   }
   if (!faces.length) throw new Error('Authored night lens has no forward aperture');
   geometry.userData.vehicleNightLens = { kind, faces } satisfies LensDefinition;
@@ -43,7 +48,7 @@ function maskLens(geometry: THREE.BufferGeometry): void {
   if (definition) for (const face of definition.faces) {
     for (let corner = 0; corner < 3; corner++) vertices.push(vertexAt(geometry, face + corner));
   }
-  setNightEmissionMask(geometry, definition?.kind === 'headlight' ? 1 : 2, vertices);
+  setNightEmissionMask(geometry, definition?.kind === 'shtora' ? 2 : 1, vertices);
 }
 
 /** Merge utilities require matching attributes on every part in one bucket. */
@@ -90,7 +95,7 @@ export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THR
     const definition = lensDefinition(part)!;
     return {
       kind: definition.kind, ...apertureFrame(part, definition),
-      color: definition.kind === 'headlight' ? NIGHT_HEADLIGHT_COLOR : NIGHT_SHTORA_COLOR,
+      color: definition.kind === 'shtora' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
       intensity: definition.kind === 'headlight' ? 80 : 0,
       range: definition.kind === 'headlight' ? 42 : 0,
       emission: { material, color: 0xffffff, intensity: 3 },
@@ -121,14 +126,17 @@ export function vehicleNightLightEmittersFor(anchor: THREE.Object3D): readonly N
  */
 export function finalizeVehicleNightLighting(root: THREE.Object3D): void {
   const counts = { headlights: 0, shtora: 0 };
+  let markers = 0;
   root.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     const materials: THREE.Material[] = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) if (material instanceof THREE.MeshStandardMaterial) refreshNightEmissionBase(material);
     if (materials.some(material => material.userData.nightEmissionMask === true) && !object.geometry.hasAttribute(NIGHT_EMISSION_ATTRIBUTE)) maskLens(object.geometry);
     for (const lamp of SOURCES.get(object) ?? []) {
       if (lamp.kind === 'headlight') counts.headlights++;
       if (lamp.kind === 'shtora') counts.shtora++;
+      if (lamp.kind === 'marker') markers++;
     }
   });
-  root.userData.nightLightCoverage = Object.freeze(counts);
+  root.userData.nightLightCoverage = Object.freeze(markers ? { ...counts, markers } : counts);
 }

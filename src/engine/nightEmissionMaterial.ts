@@ -5,6 +5,14 @@ import * as THREE from 'three';
 export const NIGHT_EMISSION_ATTRIBUTE = 'nightEmissionMask';
 export const NIGHT_HEADLIGHT_COLOR = 0xffe2ad;
 export const NIGHT_SHTORA_COLOR = 0xff3020;
+const BASE_EMISSION = new WeakMap<THREE.MeshStandardMaterial, THREE.Color>();
+
+/** Authoring may adjust a shared material after attaching a lens. Finalize
+ * its day radiance once the whole model has been authored, before night use.
+ */
+export function refreshNightEmissionBase(material: THREE.MeshStandardMaterial): void {
+  BASE_EMISSION.get(material)?.copy(material.emissive).multiplyScalar(material.emissiveIntensity);
+}
 
 export function setNightEmissionMask(
   geometry: THREE.BufferGeometry, value: 0 | 1 | 2, vertices?: readonly number[],
@@ -32,6 +40,7 @@ export function installNightEmissionMask(
   material.userData.nightEmissionMask = true;
   material.userData.nightEmissionActivity = activity;
   const base = material.emissive.clone().multiplyScalar(material.emissiveIntensity);
+  BASE_EMISSION.set(material, base);
   const headlight = new THREE.Color(NIGHT_HEADLIGHT_COLOR), shtora = new THREE.Color(NIGHT_SHTORA_COLOR);
   const previous = material.onBeforeCompile, previousKey = material.customProgramCacheKey;
   material.onBeforeCompile = function (shader, renderer) {

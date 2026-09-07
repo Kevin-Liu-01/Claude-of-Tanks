@@ -1,6 +1,7 @@
 // First-party K2 X. The owner's quarantined source is a measurement/reference
 // input only; this module has no source loader, mesh buffers or donor builder.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -87,7 +88,7 @@ function hullFurniture(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.637,.031,.525),side*1.4775,1.3853,3.204-CENTER_Z);
     P.addEquipment('hullDetail',box(.156,.134,.090),side*1.627,1.4555,2.969-CENTER_Z);
     P.addEquipment('hullDark',cylZ(.051,.012,20),side*1.627,1.4555,3.019-CENTER_Z);
-    P.addEquipment('hullGlass',cylZ(.036,.014,20),side*1.627,1.4555,3.027-CENTER_Z);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.036,.014,20), 'headlight'),side*1.627,1.4555,3.027-CENTER_Z);
     for(const x of[1.549,1.705])P.addEquipment('hullDetail',box(.018,.132,.128),side*x,1.460,2.985-CENTER_Z);
     P.addEquipment('hullDetail',box(.184,.018,.132),side*1.627,1.531,2.985-CENTER_Z);
     // Low paired towing lugs are not the headlamps. Their real seats are on
@@ -157,7 +158,7 @@ function hullDeckFittings(P: TankBuilderPort): void {
   for(const side of[-1,1]) {
     P.addEquipment('hullDetail',box(.6387,.0137,.0117),side*1.40915,1.40585,3.1592);
     P.addEquipment('hullDetail',cylZ(.0742,.1484,16),side*1.6494,1.32575,3.60645);
-    P.addEquipment('hullGlass',cylZ(.0464,.009,20),side*1.6494,1.32575,3.6875);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.0464,.009,20), 'headlight'),side*1.6494,1.32575,3.6875);
   }
 }
 

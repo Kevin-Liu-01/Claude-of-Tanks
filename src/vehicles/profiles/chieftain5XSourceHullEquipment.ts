@@ -1,6 +1,7 @@
 // Source-measured medium exterior forms, authored as original closed equipment
 // and folded sheets. Supplied topology/media remain reference-only.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -64,14 +65,14 @@ function bowLamps(P: TankBuilderPort): void {
     boxSpan(P, center - .175, center + .175, 1.179, 1.197, 2.753, 3.008);
     for (const x of [center - .086, center + .084]) {
       P.addEquipment('hullDetail', KIT.cylZ(.0645, .1031, 20), x, 1.2620, 2.9502);
-      P.addEquipment('hullGlass', KIT.cylZ(.0484, .002, 20), x, 1.2616, 2.9940);
+      P.addEquipment('hullGlass', markVehicleNightLens(KIT.cylZ(.0484, .002, 20), 'headlight'), x, 1.2616, 2.9940);
     }
     for (const dx of [-.173, 0, .173]) {
       P.addEquipment('hullDetail', KIT.box(.018, .155, .255), center + dx, 1.270, 2.884);
     }
     P.addEquipment('hullDetail', KIT.box(.359, .018, .260), center, 1.345, 2.888);
     P.addEquipment('hullDetail', KIT.cylZ(.036, .148, 16), side * 1.420, 1.3463, 2.8349);
-    P.addEquipment('hullGlass', KIT.cylZ(.0296, .004, 16), side * 1.420, 1.3463, 2.9075);
+    P.addEquipment('hullGlass', markVehicleNightLens(KIT.cylZ(.0296, .004, 16), 'marker'), side * 1.420, 1.3463, 2.9075);
     P.addEquipment('hullDetail', KIT.box(.175, .132, .081), side * .862, 1.042, 3.166);
     P.addEquipment('hullDetail', KIT.torus(.058, .021, 20, 6), side * .862, 1.047, 3.218, Math.PI / 2);
   }

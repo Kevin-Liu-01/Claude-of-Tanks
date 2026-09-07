@@ -1727,7 +1727,7 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     P.add('hullDetail', cylY(0.016, 0.016, 0.56, 8), s * 1.26, 1.68, 1.76, -0.76, 0, 0);
     P.add('hullDark', box(0.16, 0.18, 0.03), s * 1.26, 1.93, 1.53, -0.20, 0, 0);
     P.add('hullDetail', box(0.05, 0.05, 0.05), s * 1.26, 1.47, 1.96);          // stalk foot on the fender
-    const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.045, rake: -0.28, seed: 5 + s });
+    const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, r: 0.045, rake: -0.28, seed: 5 + s });
     lc.position.set(s * 0.88, 1.33, 2.78);
     P.hullG.add(lc);
     P.add('hullDetail', box(0.26, 0.03, 0.03), s * 0.88, 1.39, 2.72, -16.3 * D2R, 0, 0); // guard bar hugging the pods

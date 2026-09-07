@@ -29,6 +29,7 @@
 // m4a3e8 1.50 (track outer face EXACT), tiger1 1.855 (superstructure),
 // t34_85 1.50 (track outer face EXACT).
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, MUDGUARDS, evenStations } from './kit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -1946,7 +1947,7 @@ function buildTigerI(P: Ww2BuilderPort): void {
   // Bosch blackout headlight on the glacis shelf center
   P.add('hullDetail', cylY(0.055, 0.065, 0.09, 12), 0, 1.315, 2.70);
   P.add('hullDetail', box(0.13, 0.035, 0.10), 0, 1.37, 2.70);
-  P.add('hullDark', box(0.10, 0.018, 0.02), 0, 1.35, 2.755);
+  P.add('hullDark', markVehicleNightLens(box(0.10, 0.018, 0.02), 'marker'), 0, 1.35, 2.755);
   // §5.247 r3: lamp conduit down the shelf face (the floating-lamp read) +
   // width-indicator rods with pale tips on both front fender corners.
   P.add('hullDark', box(0.016, 0.30, 0.016), -0.09, 1.15, 2.86, -0.52, 0, 0);

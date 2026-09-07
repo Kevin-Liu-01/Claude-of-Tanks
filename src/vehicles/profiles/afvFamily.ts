@@ -6,6 +6,7 @@
 // armor, turret, gun plant and supported equipment in project primitives.
 
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
 import {
   BRADLEY_UPPER_GLACIS_SURFACE,
@@ -206,7 +207,7 @@ function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
 
 function bowLightPair(P: AfvBuilderPort, x: number, y: number, z: number, seed: number): void {
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.045,
       shield: true, rake: -0.15, seed: seed + (side > 0 ? 1 : 0),
     }), side * x, y, z, [-0.14, 0, 0]);
@@ -1370,7 +1371,7 @@ function buildUpior(P: AfvBuilderPort): void {
     P.add('hullDark', box(0.10, 0.16, 0.05), s * 0.62, 0.82, 2.545);           // tow shackle plates ON the beam
     P.add('hullDetail', xform(torus(0.055, 0.018, 10), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.62, 0.80, 2.585);
     P.add('hullDetail', box(0.16, 0.06, 0.05), s * 0.98, 1.345, 1.845, -0.98, 0, 0); // headlight pods sunk ON the
-    P.add('hullGlass', box(0.12, 0.035, 0.02), s * 0.98, 1.375, 1.865, -0.98, 0, 0); //   glacis corners (§B2: the
+    P.add('hullGlass', markVehicleNightLens(box(0.12, 0.035, 0.02), 'headlight'), s * 0.98, 1.375, 1.865, -0.98, 0, 0); //   glacis corners (§B2: the
                                                                                 //   proud seat left a 122px sky
                                                                                 //   wedge under each pod)
   }

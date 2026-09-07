@@ -32,6 +32,7 @@
 // kf51 3.60, leo2a7v/leo2_revolution 4.00. Nothing may stand wider, and the
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -10948,8 +10949,8 @@ function buildKF51(P: TankBuilderPort) {
       // guard bars, all inside the certified pod bump (y ≤ 1.445, z ≤ 3.13,
       // front columns ±0.93..1.17 the pod already lights).
       P.add('hullDark', box(0.20, 0.075, 0.008), s * 1.05, 1.386, 3.118, -0.16, 0, 0);
-      P.add('hullGlass', box(0.055, 0.045, 0.012), s * 1.005, 1.388, 3.123, -0.16, 0, 0);
-      P.add('hullGlass', box(0.055, 0.045, 0.012), s * 1.095, 1.388, 3.123, -0.16, 0, 0);
+      P.add('hullGlass', markVehicleNightLens(box(0.055, 0.045, 0.012), 'headlight'), s * 1.005, 1.388, 3.123, -0.16, 0, 0);
+      P.add('hullGlass', markVehicleNightLens(box(0.055, 0.045, 0.012), 'headlight'), s * 1.095, 1.388, 3.123, -0.16, 0, 0);
       P.add('hullDetail', box(0.016, 0.10, 0.10), s * 0.98, 1.392, 3.072, -0.16, 0, 0);
       P.add('hullDetail', box(0.016, 0.10, 0.10), s * 1.12, 1.392, 3.072, -0.16, 0, 0);
       P.add('hullDark', box(0.26, 0.018, 0.16), s * 1.05, 1.428, 3.04, -0.16, 0, 0);

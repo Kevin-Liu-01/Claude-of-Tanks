@@ -26,6 +26,7 @@
 //  - Oracle-defect caps (quantified in docs/references/tanks/<id>.md): the
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {
   BufferAttribute,
   BufferGeometry,
@@ -561,7 +562,7 @@ function boschLight(P: CasemateBuilderPort, x: number, y: number, z: number): vo
   const { cylY } = KIT;
   P.add('hullDetail', cylY(0.05, 0.06, 0.085, 10), x, y, z);
   P.add('hullDetail', box(0.12, 0.03, 0.095), x, y + 0.05, z);
-  P.add('hullDark', box(0.09, 0.016, 0.02), x, y + 0.03, z + 0.048);
+  P.add('hullDark', markVehicleNightLens(box(0.09, 0.016, 0.02), 'marker'), x, y + 0.03, z + 0.048);
   P.add('hullDark', cylY(0.018, 0.018, 0.06, 8), x, y - 0.06, z);
 }
 

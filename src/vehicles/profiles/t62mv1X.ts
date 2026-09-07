@@ -1,6 +1,7 @@
 // T-62MV-1 X: independently authored solids from the owner-supplied fused
 // FBX's scalar sections. No donor builder, model buffer or source texture.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
@@ -93,7 +94,7 @@ function deck(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',cylY(.264,.043,28),.49,1.441,1.65);
   for(const x of [-.69,-.34])P.addEquipment('hullDetail',cylY(.078,.04,20),x,1.439,1.73);
   for(const x of [-.99,.99]) {
-    P.addEquipment('hullDetail',cylZ(.061,.073,20),x,1.289,2.178);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.061,.073,20),'headlight'),x,1.289,2.178);
     P.addEquipment('hullDark',torus(.068,.010,20,6).rotateX(Math.PI/2),x,1.289,2.218);
   }
 }

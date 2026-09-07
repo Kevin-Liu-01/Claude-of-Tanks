@@ -269,7 +269,7 @@ function engineDeck(P: TankBuilderPort,y: number,rear: number,width: number): vo
 function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,driverY=modern?1.54:1.50,driverZ=1.81,sourceM=false,finalBowStrip=true): void {
   for(const side of [-1,1]) {
     P.addEquipment('hullDark',cylZ(.09,.10,14),side*.85,y,z);
-    P.addEquipment('hullGlass',cylZ(.066,.015,16),side*.85,y,z+.062);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*.85,y,z+.062);
     P.addEquipment('hullDetail',box(.27,.028,.28),side*.85,y+.115,z-.018,-.12);
     for(const dx of [-.105,.105])P.addEquipment('hullDetail',cylY(.013,.16,8),side*.85+dx,y+.034,z+.074);
     P.addEquipment('hullDetail',torus(.055,.020,12,6),side*.79,.64,z+.02);

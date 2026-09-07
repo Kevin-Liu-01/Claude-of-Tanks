@@ -2,6 +2,7 @@
 // X follows the supplied uniformly anchored visual source; the conflicting
 // official9.42×3.24m dimensions remain documented. No source buffers ship.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -136,7 +137,7 @@ function frontEquipment(P:TankBuilderPort):void {
   for(const side of [-1,1]) {
     for(const [x,r]of[[1.16,.054],[1.277,.061]]) {
       P.addEquipment('hullDetail',cylZ(r+.010,.073,20),side*x,1.281,3.459);
-      P.addEquipment('hullGlass',cylZ(r,.004,20),side*x,1.281,3.497);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r,.004,20),'headlight'),side*x,1.281,3.497);
     }
     P.addEquipment('hullDetail',box(.330,.153,.017),side*1.19,1.279,3.552);
     const eye=new THREE.TorusGeometry(.041,.010,8,18);

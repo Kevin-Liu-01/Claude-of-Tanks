@@ -1,6 +1,7 @@
 // Independent Leclerc reconstruction from the owner-supplied Char Leclerc
 // scalar study. The older same-author model is supplementary, not a variant.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
@@ -157,7 +158,7 @@ function deck(P: TankBuilderPort): void {
       side * .65, 1.352 - i * .042, -3.209, -.228);
     const x = side > 0 ? .8324 : -.8066;
     P.addEquipment('hullDetail', box(.122, .05135, .11536), x, 1.25063, 3.27196);
-    P.addEquipment('hullGlass', box(.087, .028, .006), x, 1.256, 3.333);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.087, .028, .006), 'headlight'), x, 1.256, 3.333);
     P.addEquipment('hullDetail', box(.40, .08, .13), side * 1.05, 1.339, 3.09, .17);
   }
   P.addEquipment('hullDetail', cylY(.102, .102, .21, 20), 1.496, 1.477, -3.416);

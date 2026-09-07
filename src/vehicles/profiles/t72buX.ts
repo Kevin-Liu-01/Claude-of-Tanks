@@ -2,6 +2,7 @@
 // or an imported reference mesh. Source units and joint inference are recorded
 // in the accompanying measurement packet.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
@@ -90,7 +91,7 @@ function deck(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',cylY(.252,.030,24),-.011,1.382,1.574);
   P.addEquipment('hullDark',box(.22537,.075,.09),0,1.32907,1.90868);
   for(const x of [-.774,.775]){
-    P.addEquipment('hullDetail',cylZ(.0695,.1222,20),x,1.09069,2.70575);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.0695,.1222,20),'headlight'),x,1.09069,2.70575);
     for(const dx of [-.101,.101])P.addEquipment('hullDetail',beamBetween([x+dx,.954,2.66],[x+dx,1.202,2.70],.008));
   }
   for(const x of [-.545,0,.547])P.addEquipment('hullDetail',roofSheet([[2.62,x-.1907,x+.1907,1.043,1.043],[3.179,x-.1907,x+.1907,.795,.795]],.018));

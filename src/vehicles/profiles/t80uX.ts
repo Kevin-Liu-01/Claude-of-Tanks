@@ -1,6 +1,7 @@
 // First-party T-80U solids, authored from scalar studies of the supplied fused
 // two-object model. No donor builder or external source topology is imported.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
@@ -117,7 +118,7 @@ function glacisEra(P:TankBuilderPort):void {
       P.addExternalArmor('hull',markEraFurniture(box(.325,.011,.268)),side*.647,1.277,2.480,.40);
       for(const x of [side*.546,side*.670])P.addExternalArmor('hull',markEraFurniture(box(.029,.018,.143)),x,1.351,2.291,.38);
     });
-    P.addEquipment('hullDetail',cylZ(.0735,.074,24),side*.8475,1.28473,2.62253);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.0735,.074,24),'headlight'),side*.8475,1.28473,2.62253);
     for(const dx of [-.066,.066])P.addEquipment('hullDetail',beamBetween([side*.8475+dx,1.199,2.60],[side*.8475+dx,1.346,2.67],.0108));
     P.addEquipment('hullDetail',beamBetween([side*.8475-.067,1.366,2.557],[side*.8475+.067,1.366,2.557],.010));
   }

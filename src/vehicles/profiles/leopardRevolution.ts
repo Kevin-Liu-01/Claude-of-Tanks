@@ -2,6 +2,7 @@
 // September 2026 reference. The source remains a local comparison asset: no
 // source topology, textures, or runtime loader is used by this builder.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -141,7 +142,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     P.add('hull', box(0.28, 0.13, 3.03), side * 1.57, 1.46, -2.09);
     P.addEquipment('hullOpenLattice', box(0.075, 0.075, 3.27), side * 1.93, 1.61, -2.21);
     P.addEquipment('hullDark', box(0.31, 0.16, 0.065), side * 0.72, 1.128, 3.68, -0.15);
-    P.addEquipment('hullGlass', box(0.18, 0.098, 0.008), side * 0.72, 1.136, 3.716, -0.15);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(0.18, 0.098, 0.008), 'headlight'), side * 0.72, 1.136, 3.716, -0.15);
     P.addEquipment('hullDetail', box(0.33, 0.025, 0.125), side * 0.72, 1.218, 3.667, -0.15);
     for (const z of [2.8, 0.95, -1.20, -3.15]) {
       P.addEquipment('hullDetail', torus(0.035, 0.012, 12, 6), side * 1.45, z > 2 ? 1.40 : 1.57, z, Math.PI / 2);

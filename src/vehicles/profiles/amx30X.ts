@@ -1,6 +1,7 @@
 // Independent first-party AMX-30 B X. Source geometry is a private comparison
 // instrument only. These are authored solids, not a donor or mesh conversion.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT } from './kit.ts';
@@ -93,7 +94,7 @@ function hull(P: TankBuilderPort): void {
     for (const [x,r,y] of [[.83167,.05973,1.39096],[1.02767,.07356,1.39702]]) {
       equipment(P, 'hullDetail', box(.024, .120, .038), s * x, 1.329, 2.654);
       equipment(P, 'hullDark', cylZ(r, .100, 20), s * x, y, 2.650);
-      equipment(P, 'hullGlass', cylZ(r*.83, .006, 24), s * x, y, 2.704);
+      equipment(P, 'hullGlass', markVehicleNightLens(cylZ(r*.83, .006, 24), 'headlight'), s * x, y, 2.704);
     }
     for (const x of [.737, 1.108]) equipment(P, 'hullDetail', box(.018, .196, .024), s * x, 1.373, 2.733);
     equipment(P, 'hullDetail', box(.390, .018, .022), s * .9226, 1.471, 2.733);

@@ -35,7 +35,12 @@ assert.strictEqual(lamps[0].emission.material, lamps[1].emission.material, 'mixe
 const scene = new THREE.Scene(), tank = new THREE.Group(), turret = new THREE.Group();
 scene.add(tank); tank.add(turret); turret.add(mesh);
 const plainOptic = new THREE.Mesh(box(.1, .1, .1), material); tank.add(plainOptic);
+material.emissive.setHex(0x43120d); // a later Shtora-family authoring adjustment
 finalizeVehicleNightLighting(tank);
+const authoredShader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '#include <common>\n#include <emissivemap_fragment>' };
+material.onBeforeCompile(authoredShader, {});
+assert.deepEqual(authoredShader.uniforms.nightEmissionBase.value.toArray(), material.emissive.clone().multiplyScalar(material.emissiveIntensity).toArray(),
+  'late profile emissive edits define the exact day radiance before night starts');
 assert.ok([...plainOptic.geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].every(value => value === 0));
 assert.deepEqual(tank.userData.nightLightCoverage, { headlights: 1, shtora: 1 });
 const oldColor = material.emissive.clone(), oldIntensity = material.emissiveIntensity;
@@ -69,10 +74,24 @@ assert.equal(moved.length, lamps.length);
 close(new THREE.Vector3().fromArray(moved[0].position), new THREE.Vector3().fromArray(lamps[0].position).applyMatrix4(mesh.matrix), 'static-batch replacement preserves source seat');
 assert.equal(tank.children.length, 2, 'night setup adds no vehicle mesh/rig owners');
 runtime.dispose(); material.dispose(); head.dispose(); merged.dispose(); plainOptic.geometry.dispose(); replacement.geometry.dispose();
+// Blackout/parking lamps glow but must never occupy a headlight beam slot.
+const markerPart = markVehicleNightLens(box(.06, .02, .01), 'marker');
+prepareVehicleNightLensParts([markerPart]);
+const markerMaterial = new THREE.MeshStandardMaterial();
+const markerMesh = new THREE.Mesh(markerPart, markerMaterial);
+registerVehicleNightLensMesh(markerMesh, [markerPart]);
+finalizeVehicleNightLighting(markerMesh);
+const marker = vehicleNightLightEmittersFor(markerMesh)[0];
+assert.equal(marker.kind, 'marker');
+assert.equal(marker.intensity, 0);
+assert.equal(marker.range, 0);
+assert.deepEqual(markerMesh.userData.nightLightCoverage, { headlights: 0, shtora: 0, markers: 1 });
+assert.ok([...markerPart.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].some(value => value === 1));
+markerPart.dispose(); markerMaterial.dispose();
 console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, periscope exclusion, zero added owners, batch transport, destruction/garage restoration PASS');
 
-// Opt-in CPU integration oracle. --baseline=<ref> loads only the three edited
-// builders from that known revision, making geometry/draw-order parity visible
+// Opt-in CPU integration oracle. --baseline=<ref> loads edited vehicle sources
+// from that known revision, making geometry/draw-order parity visible
 // without maintaining duplicate builders or requiring a native renderer.
 if (process.argv.includes('--fleet')) {
   const { createHash } = await import('node:crypto');
@@ -80,7 +99,9 @@ if (process.argv.includes('--fleet')) {
   if (baseline) {
     const { registerHooks, stripTypeScriptTypes } = await import('node:module');
     const { execFileSync } = await import('node:child_process');
-    const paths = ['tankFactoryCore.ts', 'profiles/russia.ts', 'profiles/t90X.ts', 'profiles/abrams.ts'];
+    const paths = execFileSync('git', ['diff', '--name-only', baseline, '--', 'src/vehicles'], { encoding: 'utf8' })
+      .trim().split('\n').filter(path => path.endsWith('.ts') && !path.includes('.selftest.'))
+      .map(path => path.slice('src/vehicles/'.length));
     const sources = new Map(paths.map(path => [new URL(path, import.meta.url).href,
       stripTypeScriptTypes(execFileSync('git', ['show', `${baseline}:src/vehicles/${path}`], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }))]));
     registerHooks({ load(url, context, next) {
@@ -89,16 +110,33 @@ if (process.argv.includes('--fleet')) {
   }
   const { createTank } = await import('./tankFactory.ts');
   const tejasIds = ['m1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'];
-  const ids = ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'];
+  const shtoraIds = ['t90a', 't90a_vladimir', 't90a_x', 't90a_vladimir_x', 't90_x'];
+  const sourceStudyLampIds = new Set([
+    'leo2a6_x', 'k1a1_x', 'amx30_x', 't62mv1_x', 't72b_1987_x', 't80u_x', 'leclerc_x',
+    'leclerc_classic_x', 'chieftain_mk10_x', 't72b3_x', 'jpz_e100_x', 'type10_x', 'type90_x',
+    'amx40_x', 'ariete_c1_x', 'strv122_x', 't72b3m_x', 'challenger1_x', 't72bu_x',
+    'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x',
+  ]);
+  const requestedIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',');
+  const allIds = process.argv.includes('--all') ? (await import('./specs.ts')).DEVELOPMENT_TANK_IDS : null;
+  const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
+  const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
+  const ids = (requestedIds ?? allIds ?? ['m48', ...tejasIds, 't90a_vladimir', 't90a_x']).slice(offset, offset + count);
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
     const hash = createHash('sha256');
     let meshCount = 0, vertices = 0, maskBytes = 0;
+    const materials = new Set();
     visual.root.updateMatrixWorld(true);
     visual.root.traverse(node => {
       if (!node.isMesh) return;
       meshCount++;
+      for (const material of Array.isArray(node.material) ? node.material : [node.material]) materials.add(material);
+      hash.update(JSON.stringify((Array.isArray(node.material) ? node.material : [node.material]).map(material => [
+        material.type, material.name, material.color?.toArray(), material.emissive?.toArray(), material.emissiveIntensity,
+        material.roughness, material.metalness, material.opacity, material.transparent, material.side,
+      ])));
       hash.update(JSON.stringify([node.name, node.matrixWorld.elements, node.castShadow, node.receiveShadow, node.count ?? null]));
       for (const key of ['position', 'normal', 'uv', 'color']) {
         const attribute = node.geometry.getAttribute(key);
@@ -112,9 +150,11 @@ if (process.argv.includes('--fleet')) {
     });
     const coverage = visual.root.userData.nightLightCoverage ?? { headlights: 0, shtora: 0 };
     if (!baseline) {
+      if (sourceStudyLampIds.has(id)) assert.ok(coverage.headlights > 0, `${id}/${quality} retains actual authored front fixtures`);
+      if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
       if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
-      if (id.startsWith('t90a')) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
-      if (tejasIds.includes(id)) {
+      if (shtoraIds.includes(id)) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
+      if (tejasIds.includes(id) || process.argv.includes('--exposed')) {
         const hull = visual.root.getObjectByName('hull');
         assert.ok(hull, `${id}/${quality} has the authored hull to test against`);
         let checked = 0;
@@ -132,7 +172,7 @@ if (process.argv.includes('--fleet')) {
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
       }
     }
-    rows.push({ id, quality, meshCount, vertices, digest: hash.digest('hex'), maskBytes, coverage });
+    rows.push({ id, quality, meshCount, materialCount: materials.size, vertices, digest: hash.digest('hex'), maskBytes, coverage });
     visual.dispose();
   }
   console.log('NIGHT_FLEET_ORACLE ' + JSON.stringify(rows));

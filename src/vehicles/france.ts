@@ -354,10 +354,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.add('hullDetail', box(0.62, 0.045, 0.05), s * 0.33, 1.545, 2.26, 0.33, s * 0.42, 0);
   }
   {
-    const lcL = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, rake: -0.20, seed: 3 });
+    const lcL = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, rake: -0.20, seed: 3 });
     lcL.position.set(-1.30, 1.435, 3.06);                                       // lamps LOW on the bow platform (r2: pod+guard tops ≤1.49 — the r1
     P.hullG.add(lcL);                                                           //   1.60 tops owned four side cols over the ref's 1.47-1.53 line)
-    const lcR = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, rake: -0.20, seed: 4 });
+    const lcR = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, rake: -0.20, seed: 4 });
     lcR.position.set(1.30, 1.435, 3.06);
     P.hullG.add(lcR);
     for (const s of [-1, 1]) {                                                 // source corner lamp seats and brows, embedded in the bow platform

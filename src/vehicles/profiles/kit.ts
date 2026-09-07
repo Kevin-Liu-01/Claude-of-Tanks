@@ -9,6 +9,7 @@
 // contain, decode, or reproduce source mesh topology.
 import * as THREE from 'three';
 import { KIT } from '../tankFactoryCore.ts';
+import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type Vec3Tuple = readonly [number, number, number];
@@ -240,6 +241,8 @@ interface FittingOptions {
   spacing?: number;
   guard?: boolean;
   lens?: string;
+  /** Explicit fixture role; rear lamps/other optics never infer headlights. */
+  nightKind?: VehicleLampKind;
   rake?: number;
   len?: number;
   splay?: number;
@@ -1277,6 +1280,7 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   const shadows = opts.shadows !== false;
   for (const [slot, geos] of Object.entries(parts.bySlot)) {
     if (!geos.length) continue;
+    prepareVehicleNightLensParts(geos);
     const merged = KIT.mergeAll(geos);
     const material = fitMat(mats, slot);
     const camoUvScale = Number(material.userData?.camoUvScale);
@@ -1291,6 +1295,7 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     merged.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
     const mesh = new THREE.Mesh(merged, material);
+    registerVehicleNightLensMesh(mesh, geos);
     mesh.name = `fitting_${type}_${slot}`;
     mesh.castShadow = mesh.receiveShadow = shadows;
     mesh.userData.fitting = type;
@@ -2841,7 +2846,9 @@ function fittingLightCluster(opts: FittingOptions = {}): THREE.Group {
   for (let i = 0; i < pods; i++) {
     const x = (i - (pods - 1) / 2) * spacing;
     parts.add('detail', xform(cylZ(r, r * 1.35, 12), 0, 0, 0, rake, 0, 0), x, 0, 0);
-    parts.add(lensSlot, xform(xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), 0, 0, 0, rake, 0, 0), x, 0, 0);
+    const lens = cylZ(r * 0.8, 0.02, 12);
+    if (opts.nightKind) markVehicleNightLens(lens, opts.nightKind);
+    parts.add(lensSlot, xform(xform(lens, 0, 0, r * 0.72), 0, 0, 0, rake, 0, 0), x, 0, 0);
     if (opts.guard !== false) {
       for (const sx of [-1, 1]) {
         parts.add('dark', xform(xform(box(0.016, r * 2.5, 0.016), sx * r * 0.62, 0, r * 0.55), 0, 0, 0, rake, 0, 0), x, 0, 0);
