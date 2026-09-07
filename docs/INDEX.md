@@ -20,6 +20,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | GARAGE-ENVIRONMENTS.md | Players, designers, and engineers | Ten Garage locations, visual contract, scene-pack lifecycle, collision, performance, and quality gates |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
+| [tank-generation/README.md](tank-generation/README.md) | Tank builders and takeover agents | Source/markup intake, geometry methods, prompts, strict gates, case studies and handoff templates |
 | DECISIONS.md | Contributors | Current architecture decisions, non-goals, and proof requirements |
 
 The public browser field manual is available at
@@ -66,6 +67,7 @@ assets:
 
 | Document | Scope |
 | --- | --- |
+| [tank-generation/README.md](tank-generation/README.md) | Current end-to-end creation workflow and chronology of source-study requirements; reusable prompts and run/handoff templates |
 | BUILD-STANDARD.md | Vehicle construction, silhouette, topology, fittings, tracks, parenting, review, and landing law |
 | GEOMETRY-GATE.md | Measured geometry acceptance, scoring, caps, and anti-gaming rules |
 | TANK-ASSET-PIPELINE.md | Presentation asset and fingerprint release contract |
@@ -92,8 +94,11 @@ and the current subsystem documents above.
 ## Engineering history
 
 Only history that explains a current invariant or a major incident remains in
-the repository. Transient task handoffs, agent prompts, raw machine-specific
-benchmarks, and superseded program ledgers are intentionally excluded.
+the repository. Reusable tank-generation prompts, handoff templates and curated
+case studies live in [tank-generation/](tank-generation/README.md). Transient
+execution handoffs, raw machine-specific benchmarks and redundant transcript
+dumps stay outside the maintained documentation; current per-tank/batch packets
+retain decisions, status and reproducible evidence summaries.
 
 | Document or directory | Historical role |
 | --- | --- |

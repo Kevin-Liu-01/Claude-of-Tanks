@@ -259,6 +259,10 @@ desktop HUD.
 
 ## Production tools
 
+For procedural vehicle creation, use the [tank-generation handbook](docs/tank-generation/README.md):
+source-file and Gallery-markup intake, measured geometry and negative space,
+independent review gates, reusable agent briefs, and handoff templates.
+
 <p>
   <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">
   <img src="public/brand/features/camera-paths.svg" width="52" alt="Camera path icon" title="Camera direction">

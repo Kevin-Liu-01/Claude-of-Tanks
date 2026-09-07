@@ -16,6 +16,9 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:fill:architecture -->
 - `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
 - `docs/MULTIPLAYER-ARCHITECTURE.md` — authoritative multiplayer migration.
+- `docs/tank-generation/README.md` — source/markup intake, measured construction,
+  prompts, quality gates and resumable tank-generation handoffs. Read before
+  new source-backed tanks, family rebuilds or exact-surface geometry repairs.
 - `src/main.ts` — strict typed boot, scene composition, UI flow, and render-loop
   wiring across extracted lifecycle owners; keep changes surgical.
 - `src/game/stateCore.ts` — dependency-free typed session shell, event bus,
@@ -34,10 +37,10 @@ worktree and never stage generated tank work wholesale.
 
 ## Commands
 <!-- agent-docs:auto:commands start -->
-- Package scripts detected: 79. Use `package.json` as the exhaustive source.
+- Package scripts detected: 122. Use `package.json` as the exhaustive source.
 - `npm run build` - VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs
 - `npm run test` - node tools/run-selftests.mjs core
-- `npm run typecheck` - tsc -p tsconfig.json --noEmit
+- `npm run typecheck` - node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs
 - `npm run agent-docs` - node scripts/run-agent-docs.ts
 - Keep this block compact. Put full command catalogs in a generated command index, not in AGENTS.md.
 <!-- agent-docs:auto:commands end -->
@@ -46,6 +49,7 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:auto:dirmap start -->
 | Directory | Skill | Purpose |
 |---|---|---|
+| `docs/tank-generation/` | [`docs/tank-generation/SKILL.md`](docs/tank-generation/SKILL.md) | Reconstruct, edit, verify, and hand off first-party procedural tanks from supplied models, photographs, and Gallery surface markup. |
 | `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate Claude of Tanks signaling and dedicated authoritative multiplayer servers. |
 | `src/audio/` | [`src/audio/SKILL.md`](src/audio/SKILL.md) | Work on event-driven spatial audio, radio voices, engines, weapons, ambience, and mix state. |
 | `src/engine/` | [`src/engine/SKILL.md`](src/engine/SKILL.md) | Work on renderer, lighting, camera, postprocessing, device quality, and frame diagnostics. |

@@ -1,5 +1,14 @@
 # The Geometry Gate
 
+Current source-backed new builds use the **92-point exemplar** contract in
+[vehicle instructions](../src/vehicles/SKILL.md), not the legacy 90 floor stated
+in the historical program below. See the
+[tank-generation handbook](tank-generation/README.md) for source-only frame
+freezing, owner-selected supplied-file targets, current tool availability and
+handoff procedure. Older axis-warp/cap recipes are historical, not permission
+to fit a new source oracle to its candidate. Preserve raw dimension and other
+gate conflicts; an explicit as-is publication never changes a failed score.
+
 The authoritative, ruthless scoring mechanism for the from-scratch rebuild
 program. A tank ships only when it passes **BOTH** gates:
 
