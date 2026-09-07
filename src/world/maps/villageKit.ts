@@ -124,7 +124,8 @@ function addFarmhouseWindows(
         .translate(side * (w / 2 + 0.04), 1.75, zz));
       const paneBucket = rng() < 0.5 ? 'glass' : 'curtain';
       parts[paneBucket].push(markWorldWindowPane(box(0.05, 0.9, 0.68), paneBucket, [side, 0, 0])
-        .translate(side * (w / 2 + 0.015), 1.75, zz));
+        // Seat the aperture 5 mm proud of its solid wood backing (+0.10).
+        .translate(side * (w / 2 + 0.08), 1.75, zz));
       parts.stone.push(box(0.15, 0.09, 0.96)
         .translate(side * (w / 2 + 0.05), 1.16, zz));
       if (!shutter) continue;
@@ -388,7 +389,8 @@ export function makeAlpine(
   for (const gs of [-1, 1]) { // gable-face upper windows
     const paneBucket = rng() < 0.5 ? 'curtain' : 'dark';
     parts[paneBucket].push(markWorldWindowPane(box(0.6, 0.72, 0.06), paneBucket, [0, 0, 1])
-      .translate(gs * w * 0.2, gfH + ufH * 0.6, d / 2 + 0.02));
+      // Upper timber cladding extends 8 cm beyond the ground-floor shell.
+      .translate(gs * w * 0.2, gfH + ufH * 0.6, d / 2 + 0.055));
   }
   parts.stone.push(box(0.66, 1.4, 0.66).translate(w * 0.18, gfH + ufH + roofH - 0.1, -d * 0.2));
   pushParts(buckets, parts);

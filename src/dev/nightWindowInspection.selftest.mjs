@@ -22,6 +22,10 @@ const localPoint = root.worldToLocal(new THREE.Vector3().fromArray(seat.point));
 assert(Math.abs(localPoint.z - .015) < 1e-6 && Math.abs(localPoint.x - 5) < .5);
 const expectedNormal = new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld);
 assert(expectedNormal.distanceTo(new THREE.Vector3().fromArray(seat.direction)) < 1e-8);
+const toCamera = new THREE.Vector3().fromArray(seat.camera).sub(new THREE.Vector3().fromArray(seat.point));
+assert(Math.abs(toCamera.dot(expectedNormal) - 4) < 1e-8,
+  'reverse ray does not mutate the returned external camera into a near-clipped pane');
+assert(Math.abs(toCamera.length() - Math.hypot(4, .65, .25)) < 1e-8);
 assert.deepEqual(root.children, before, 'inspection adds no lights, markers or extra geometry');
 
 const obstructionGeometry = new THREE.BoxGeometry(2, 3, .1).translate(5, 2, .3);

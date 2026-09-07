@@ -59,7 +59,9 @@ function windowCandidates(root: Object3D, reference: Vector3, kind: 'window' | '
 
 function unobstructedPane(root: Object3D, candidate: WindowCandidate, camera: Vector3): boolean {
   const direction = candidate.point.clone().sub(camera), distance = direction.length();
-  const ray = new Raycaster(camera, direction.normalize(), .02, distance + .02);
+  // Raycaster retains origin by reference; the reverse check must not move
+  // the returned inspection camera to 3 cm off the selected aperture.
+  const ray = new Raycaster(camera.clone(), direction.normalize(), .02, distance + .02);
   const hit = ray.intersectObject(root, true).find(hit => visibleInRoot(hit.object, root));
   if (!hit || hit.object !== candidate.mesh || hit.faceIndex !== candidate.faceIndex) return false;
   // Reverse trace also rejects a camera inside a neighboring single-sided wall.
