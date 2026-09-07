@@ -16,10 +16,10 @@ const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
 const out = resolve(outputArgument);
 mkdirSync(out); // Refuse existing evidence; never overwrite or mix probe runs.
-const report = { schemaVersion: 3, startedAt: new Date().toISOString(),
-  method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; retained equipment damage and Garage cleanup. No performance measurement or physical-device certification.',
+const report = { schemaVersion: 4, startedAt: new Date().toISOString(),
+  method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; actual bounded headlights, authored fixture/window emission, retained equipment damage and Garage cleanup. Staged screenshots suspend post adaptivity after entry, not quality-adaptation acceptance. No performance measurement or physical-device certification.',
   acquisitionSha256: createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex'),
-  cases: [], screenshots: [], observerCleanup: [],
+  cases: [], lightCloseups: [], screenshots: [], observerCleanup: [],
   errors: [], consoleErrors: [], cleanupErrors: [], passed: false };
 const save = () => writeFileSync(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 const deadlines = { progressMs: 5_000, settleMs: 30_000 };
@@ -108,6 +108,112 @@ function installFrameWait(deadlines) {
   };
 }
 
+// Explicit screenshot checkpoints only. These scans do not run in the game
+// frame loop and their cost is not a native performance measurement.
+function installNightLightProbe() {
+  const probe = window.__equipmentDamageProbe;
+  let savedCamera = null;
+  function materialReceipt(material) {
+    return { uuid: material.uuid, kind: material.userData.nightLightKind ?? 'masked',
+      masked: material.userData.nightEmissionMask === true,
+      color: material.emissive.toArray(), intensity: material.emissiveIntensity,
+      version: material.version };
+  }
+  function emissionMaterials(scene) {
+    const found = new Map();
+    scene.traverse(object => {
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        if (material?.userData.nightEmissionMask === true || material?.userData.nightLightKind === 'window') {
+          found.set(material.uuid, materialReceipt(material));
+        }
+      }
+    });
+    return [...found.values()].sort((a, b) => a.uuid.localeCompare(b.uuid));
+  }
+  probe.readNightLighting = () => {
+    const d = window.__DEBUG, runtime = d.nightLighting?.current;
+    return { ownerAvailable: !!d.nightLighting, uuid: runtime?.group.uuid ?? null,
+      attached: runtime?.group.parent === d.scene, emitterCount: runtime?.emitterCount ?? 0,
+      lights: (runtime?.lights ?? []).map(light => ({ uuid: light.uuid,
+        kind: light.isSpotLight ? 'spot' : 'point', intensity: light.intensity,
+        position: light.position.toArray(), target: light.target?.position.toArray() ?? null,
+        color: light.color.toArray(), range: light.distance,
+        castShadow: light.castShadow, shadowMap: !!light.shadow?.map })),
+      playerCoverage: d.game.player?.visual?.root.userData.nightLightCoverage ?? null,
+      materials: emissionMaterials(d.scene) };
+  };
+  function headlightSeat(d) {
+    const light = d.nightLighting.current?.lights.find(light => light.isSpotLight && light.intensity > 0);
+    if (!light) throw new Error('No active authored headlight for closeup');
+    return { kind: 'headlight', ownerUuid: light.uuid, point: light.position.clone(),
+      direction: light.target.position.clone().sub(light.position).normalize() };
+  }
+  function lampSeat(d) {
+    const mesh = d.world?.group.getObjectByName('destructible-lamp');
+    const mask = mesh?.geometry?.getAttribute('nightEmissionMask');
+    if (!mesh?.isInstancedMesh || !mask) return null;
+    const active = mesh.geometry.getAttribute('nightFixtureActive');
+    const position = mesh.geometry.getAttribute('position');
+    const center = d.camera.position.clone().set(0, 0, 0), vertex = center.clone();
+    let count = 0;
+    for (let i = 0; i < mask.count; i++) if (mask.getX(i) > .5) {
+      center.add(vertex.fromBufferAttribute(position, i)); count++;
+    }
+    if (!count) return null;
+    center.divideScalar(count);
+    for (let slot = 0; slot < mesh.count; slot++) {
+      if (active && active.getX(slot) < .5) continue;
+      const matrix = d.camera.matrixWorld.clone(); mesh.getMatrixAt(slot, matrix);
+      mesh.updateWorldMatrix(true, false);
+      return { kind: 'streetlamp', ownerUuid: mesh.uuid, slot,
+        point: center.applyMatrix4(matrix).applyMatrix4(mesh.matrixWorld),
+        direction: vertex.set(1, 0, 0).transformDirection(mesh.matrixWorld) };
+    }
+    return null;
+  }
+  function windowSeat(d) {
+    let seat = null;
+    d.world?.group.traverse(mesh => {
+      if (seat || !mesh.isMesh || mesh.isInstancedMesh || mesh.material?.userData.nightLightKind !== 'window') return;
+      const position = mesh.geometry.getAttribute('position'), normal = mesh.geometry.getAttribute('normal');
+      if (!position || !normal) return;
+      for (let i = 0; i < position.count; i++) {
+        if (Math.abs(normal.getY(i)) > .7) continue;
+        mesh.updateWorldMatrix(true, false);
+        seat = { kind: 'window', ownerUuid: mesh.uuid, vertex: i,
+          point: d.camera.position.clone().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld),
+          direction: d.camera.position.clone().fromBufferAttribute(normal, i).transformDirection(mesh.matrixWorld) };
+        break;
+      }
+    });
+    if (!seat) throw new Error('No authored streetlamp or occupied window for closeup');
+    return seat;
+  }
+  probe.stageNightLightCloseup = kind => {
+    const d = window.__DEBUG;
+    if (!savedCamera) savedCamera = { position: d.camera.position.clone(), quaternion: d.camera.quaternion.clone(), fov: d.camera.fov };
+    const seat = kind === 'headlight' ? headlightSeat(d) : lampSeat(d) ?? windowSeat(d);
+    const side = seat.direction.clone().set(-seat.direction.z, 0, seat.direction.x).normalize();
+    d.camera.position.copy(seat.point).addScaledVector(seat.direction, kind === 'headlight' ? 11 : 9)
+      .addScaledVector(side, kind === 'headlight' ? 6 : 3);
+    d.camera.position.y += kind === 'headlight' ? 4 : 1;
+    const target = seat.point.clone();
+    if (kind === 'headlight') target.addScaledVector(seat.direction, 3);
+    d.camera.lookAt(target); d.camera.fov = 48; d.camera.updateProjectionMatrix();
+    probe.beginStateEpoch();
+    return { kind: seat.kind, ownerUuid: seat.ownerUuid, slot: seat.slot ?? null,
+      vertex: seat.vertex ?? null, point: seat.point.toArray(), direction: seat.direction.toArray() };
+  };
+  probe.restoreNightLightCamera = () => {
+    if (!savedCamera) return;
+    const camera = window.__DEBUG.camera;
+    camera.position.copy(savedCamera.position); camera.quaternion.copy(savedCamera.quaternion);
+    camera.fov = savedCamera.fov; camera.updateProjectionMatrix(); savedCamera = null;
+    probe.beginStateEpoch();
+  };
+}
+
 async function configurePage(tier) {
   // Mobile/touch configuration can navigate about:blank. Observe reloads only
   // after it settles and before the one intended application navigation.
@@ -123,7 +229,9 @@ async function configurePage(tier) {
   page.on('error', error => { report.errors.push(`Browser page crash: ${error.message}`); save(); });
   page.on('pageerror', error => { report.errors.push(error.message); save(); });
   page.on('console', event => {
-    if (event.type() === 'error') { report.consoleErrors.push(event.text()); save(); }
+    if (event.type() === 'error' || /GL_INVALID_|INVALID_(?:OPERATION|VALUE|ENUM)|THREE\.WebGLProgram: Shader Error/i.test(event.text())) {
+      report.consoleErrors.push(`[${event.type()}] ${event.text()}`); save();
+    }
   });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('cot.gfxPreset', 'high');
@@ -214,6 +322,7 @@ function seedFor(biome, timeOfDay) {
 async function atmosphereReceipt(seed, mapId) {
   await evaluateWithin(async ({ seed, mapId }) => {
     await window.__DEBUG.battleAtmosphere.prepare(seed, mapId);
+    await window.__DEBUG.nightLighting.prepare();
     window.__equipmentDamageProbe.beginStateEpoch();
   }, { seed, mapId }, 120_000, 'Atmosphere preparation');
   await settle(30);
@@ -246,6 +355,7 @@ function readVisualState() {
       worldUuid: d.world?.group.uuid ?? null,
       camera: [d.camera.position.toArray(), d.camera.quaternion.toArray(), d.camera.fov],
       playerPose: d.game.player?.visual?.root.matrixWorld.toArray() ?? null,
+      nightLighting: window.__equipmentDamageProbe.readNightLighting(),
       raster: [d.renderer.domElement.width, d.renderer.domElement.height],
       render: window.__equipmentDamageProbe.renderReceipt() };
 }
@@ -274,6 +384,36 @@ function requestedScenarios(row, states) {
     && JSON.stringify(state.weather) === JSON.stringify(row.expected[i]));
 }
 
+function validNightLightState(state) {
+  const pool = state.nightLighting;
+  if (!pool?.ownerAvailable || pool.lights.length > 3 || pool.lights.some(light => light.castShadow || light.shadowMap
+    || !Number.isFinite(light.intensity) || light.intensity < 0)) return false;
+  if (state.weather?.timeOfDay !== 'night') {
+    return !pool.attached && pool.emitterCount === 0 && pool.lights.every(light => light.intensity === 0);
+  }
+  return pool.attached && pool.emitterCount > 0 && pool.playerCoverage?.headlights > 0
+    && pool.lights.filter(light => light.kind === 'spot').length === 2
+    && pool.lights.filter(light => light.kind === 'point').length === 1
+    && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
+    && pool.materials.some(material => material.masked && material.intensity >= 3);
+}
+
+function checkNightLightingCycle(row, states) {
+  const { day, night, restored } = row;
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const identity = pool => pool.lights.map(light => light.uuid);
+  const firstMaterials = new Map(day.nightLighting.materials.map(material => [material.uuid, material]));
+  const emissionIncreased = night.nightLighting.materials.some(material => {
+    const baseline = firstMaterials.get(material.uuid);
+    return baseline && material.intensity > baseline.intensity;
+  });
+  return states.every(validNightLightState) && emissionIncreased
+    && same(day.nightLighting.materials, restored.nightLighting.materials)
+    && states.every(state => !state.nightLighting.uuid || state.nightLighting.uuid === night.nightLighting.uuid)
+    && states.every(state => !state.nightLighting.lights.length || same(identity(state.nightLighting), identity(night.nightLighting)))
+    && same(identity(night.nightLighting), identity(restored.nightLighting));
+}
+
 function checkAtmosphereCase(row, preset) {
   const { day, night, restored, legacy } = row;
   const states = [day, night, restored, ...legacy];
@@ -284,6 +424,7 @@ function checkAtmosphereCase(row, preset) {
     dayNightDay: day.weather.timeOfDay === 'day' && night.weather.timeOfDay === 'night'
       && restored.weather.timeOfDay === 'day',
     actualLightingChanges: actualLightingChanges(day, night),
+    actualNightLightingAndRestoration: checkNightLightingCycle(row, states),
     authoredCloudOpacityAndFogDensity: day.clouds.length === 2 && Number.isFinite(day.fogDensity)
       && states.every(state => state.fogDensity === day.fogDensity
       && same(state.clouds, day.clouds)),
@@ -294,6 +435,27 @@ function checkAtmosphereCase(row, preset) {
     actualRenderedStates: states.every(state => state.render.renderCount > 0
       && state.render.stateEpoch === state.render.completedEpoch),
   };
+}
+
+async function nightLightCloseups(label) {
+  try {
+    for (const kind of ['headlight', 'world']) {
+      const fixture = await evaluateWithin(kind => window.__equipmentDamageProbe.stageNightLightCloseup(kind), kind);
+      await settle(30);
+      const state = await evaluateWithin(readVisualState);
+      const row = { label: `${label}-${fixture.kind}`, fixture, state, passed: false };
+      report.lightCloseups.push(row); save();
+      assert.equal(state.weather?.timeOfDay, 'night');
+      assert(state.nightLighting.attached && state.nightLighting.emitterCount > 0);
+      if (fixture.kind === 'streetlamp') assert(state.nightLighting.lights.some(light => light.kind === 'point' && light.intensity > 0));
+      if (fixture.kind === 'window') assert(state.nightLighting.materials.some(material => material.kind === 'window' && material.intensity >= .55));
+      await screenshot(row.label, state);
+      row.passed = true; save();
+    }
+  } finally {
+    await evaluateWithin(() => window.__equipmentDamageProbe.restoreNightLightCamera());
+    await settle(30);
+  }
 }
 
 async function dayNightPictures(tier) {
@@ -314,6 +476,7 @@ async function dayNightPictures(tier) {
     await screenshot(`${label}-day`, row.day);
     row.night = await atmosphereReceipt(nightSeed, mapId); save();
     await screenshot(`${label}-night`, row.night);
+    if (mapId === 'verdant') await nightLightCloseups(label);
     for (const seed of oldSeeds) { row.legacy.push(await atmosphereReceipt(seed, mapId)); save(); }
     row.restored = await atmosphereReceipt(daySeed, mapId); save();
     await screenshot(`${label}-day-restored`, row.restored);
@@ -334,6 +497,7 @@ async function enterAuthoredGarage() {
   assertRenderedState(result);
   assert.equal(result.phase, 'garage'); assert.equal(result.weather, null);
   assert.equal(result.precipitationAttached, false);
+  assert(validNightLightState(result), 'Garage detaches and zeroes the battle-only lamp pool');
   return result;
 }
 
@@ -387,6 +551,7 @@ async function equipmentPictures() {
   report.atmosphere = await evaluateWithin(async () => {
     const d = window.__DEBUG;
     await d.battleAtmosphere.prepare(1, 'verdant');
+    await d.nightLighting.prepare();
     const turret = d.game.player.visual.root.getObjectByName('rig_turret');
     const target = d.camera.position.clone().set(.26, .405, -2.485);
     turret.localToWorld(target);
@@ -496,8 +661,9 @@ try {
     page = await within(browser.newPage(), 30_000, 'Browser page creation');
     await configurePage(tier);
     await page.goto(`http://127.0.0.1:5852/?debug=1&tier=${tier.query}`, { waitUntil: 'domcontentloaded', timeout: 360_000 });
-    await page.waitForFunction('window.__GAME_READY && window.__DEBUG?.battleAtmosphere', { timeout: 360_000 });
+    await page.waitForFunction('window.__GAME_READY && window.__DEBUG?.battleAtmosphere && window.__DEBUG?.nightLighting', { timeout: 360_000 });
     await evaluateWithin(() => window.__equipmentDamageProbe.install(window.__DEBUG.post));
+    await evaluateWithin(installNightLightProbe);
     await settle(2);
     // The sealed Verdant cold-boot path deliberately skips preset activation
     // (main.ts): its sky default far-cloud opacity is .42, while normal Garage
@@ -513,13 +679,19 @@ try {
       report.equipment = await equipmentPictures();
       await nativeGraphics('graphicsAfterEquipment');
     }
+    const exitMap = tier.label === 'high' ? 'verdant' : 'monsoon';
+    const exitBiome = tier.label === 'high' ? 'temperate' : 'tropical';
+    const beforeGarage = await atmosphereReceipt(seedFor(exitBiome, 'night'), exitMap);
+    report[`${tier.label}-nightBeforeGarage`] = beforeGarage; save();
+    assert(validNightLightState(beforeGarage), 'Garage cleanup must begin with actual active night lamps');
     report[`${tier.label}-garage`] = await garageReceipt(garageBaseline); save();
     await stopFrameObserver();
     await within(page.close(), 10_000, 'Page close');
   }
   report.passed = report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
-    && report.screenshots.length === 21 && report.screenshots.every(row => row.completed)
+    && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.passed)
+    && report.screenshots.length === 25 && report.screenshots.every(row => row.completed)
     && report.errors.length === 0 && report.consoleErrors.length === 0;
 } catch (error) { report.errors.push(error.stack ?? String(error)); save(); }
 finally {

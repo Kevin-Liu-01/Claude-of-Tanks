@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { compileFunction } from 'node:vm';
 import { webcrypto } from 'node:crypto';
-import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, Group } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, MeshStandardMaterial,
+  Group, Scene, PerspectiveCamera, SpotLight, PointLight, InstancedMesh, Matrix4, BoxGeometry } from 'three';
 import ts from 'typescript-compiler-api';
 
 // Execute actual maintained functions without importing the browser-owning CLI.
@@ -93,9 +94,11 @@ function observerFixture() {
 const lightingReceipt = load('lightingReceipt');
 const assertRenderedState = load('assertRenderedState', { assert });
 const assertScreenshotState = load('assertScreenshotState', { assert, assertRenderedState });
+const validNightLightState = load('validNightLightState');
+const checkNightLightingCycle = load('checkNightLightingCycle', { validNightLightState });
 const checks = load('checkAtmosphereCase', { lightingReceipt,
   clearWeatherState: load('clearWeatherState'), actualLightingChanges: load('actualLightingChanges'),
-  requestedScenarios: load('requestedScenarios') });
+  requestedScenarios: load('requestedScenarios'), checkNightLightingCycle });
 const weather = (timeOfDay, seed) => ({ version: 2, seed, biome: 'cold', condition: 'clear',
   precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1, timeOfDay });
 const state = (timeOfDay, seed) => ({
@@ -106,6 +109,12 @@ const state = (timeOfDay, seed) => ({
   hemi: .4, hemiColor: [1, 1, 1], clouds: [1.1, 1], cloudDecks: [],
   fogColor: [.1, .2, .3], environmentIntensity: 1, cloudShadeAmp: .1,
   worldUuid: 'same-world', camera: [[1, 2, 3], [0, 0, 0, 1], 50], playerPose: [1], raster: [2360, 1640],
+  nightLighting: { ownerAvailable: true, uuid: 'pool', attached: timeOfDay === 'night',
+    emitterCount: timeOfDay === 'night' ? 3 : 0, playerCoverage: { headlights: 2, shtora: 0 },
+    lights: ['spot', 'spot', 'point'].map((kind, index) => ({ kind, uuid: `lamp-${index}`,
+      intensity: timeOfDay === 'night' ? 80 : 0, castShadow: false, shadowMap: false })),
+    materials: [{ uuid: 'lens', masked: true, kind: 'masked', color: [1, 1, 1],
+      intensity: timeOfDay === 'night' ? 3 : 0, version: 1 }] },
   render: { stateEpoch: 1, completedEpoch: 1, renderCount: 30 },
 });
 const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), restored: state('day', 1),
@@ -134,6 +143,22 @@ for (const mutate of [
   row => { row.night.raster = [1180, 820]; },
   row => { row.night.render.completedEpoch = 0; },
   row => { row.night.render.renderCount = 0; },
+  row => { row.night.nightLighting.attached = false; },
+  row => { row.night.nightLighting.emitterCount = 0; },
+  row => { row.night.nightLighting.playerCoverage.headlights = 0; },
+  row => { row.night.nightLighting.lights[0].castShadow = true; },
+  row => { row.night.nightLighting.lights[1].shadowMap = true; },
+  row => { row.night.nightLighting.lights[0].intensity = NaN; },
+  row => { row.night.nightLighting.lights.push(row.night.nightLighting.lights[0]); },
+  row => { row.night.nightLighting.lights.forEach(light => { light.intensity = 0; }); },
+  row => { row.night.nightLighting.materials[0].intensity = 0; },
+  row => { row.restored.nightLighting.uuid = 'reconstructed-pool'; },
+  row => { row.restored.nightLighting.materials[0].intensity = 3; },
+  row => { row.restored.nightLighting.materials[0].version++; },
+  row => { row.restored.nightLighting.lights[0].uuid = 'reconstructed-light'; },
+  row => { row.legacy[1].nightLighting.lights[0].uuid = 'replaced-legacy-light'; },
+  row => { row.restored.nightLighting.lights[0].intensity = 80; },
+  row => { row.restored.nightLighting.attached = true; },
 ]) {
   const bad = structuredClone(good); mutate(bad);
   assert(Object.values(checks(bad, 'mobile')).some(value => !value), 'reject broken actual scenario/lighting/render receipt');
@@ -164,6 +189,82 @@ for (const gpu of ['', '  ', null, undefined, 'SwiftShader', 'llvmpipe', 'softwa
 }
 for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glError: 1282 }]) {
   assert(!validNativeGraphics({ ...native, ...overrides }));
+}
+
+// Exercise actual authored geometry/matrices and the maintained receipt/camera
+// implementation. No browser, render call, scene surgery, or guessed lamp seat.
+{
+  const scene = new Scene(), world = new Group(), actor = new Group(), group = new Group();
+  const camera = new PerspectiveCamera(50, 1.6, .5, 4000);
+  camera.position.set(3, 7, 9); camera.lookAt(0, 1, 0); camera.updateMatrixWorld();
+  const originalCamera = [camera.position.toArray(), camera.quaternion.toArray(), camera.fov];
+  const spot = new SpotLight(0xffe2ad, 80), spot2 = new SpotLight(0xffe2ad, 80), point = new PointLight(0xffc889, 24);
+  spot.position.set(1, 1, 2); spot.target.position.set(1, 1, 3);
+  spot2.position.set(-1, 1, 2); spot2.target.position.set(-1, 1, 3);
+  group.add(spot, spot2, point, spot.target, spot2.target); scene.add(world, actor, group);
+  world.position.set(30, 1, -20); world.rotation.y = .3;
+  const lampMaterial = new MeshStandardMaterial({ emissive: 0xffffff, emissiveIntensity: 3 });
+  lampMaterial.userData.nightEmissionMask = true;
+  const lampGeometry = new BoxGeometry(.3, .06, .2).translate(.98, 3.895, 0);
+  lampGeometry.setAttribute('nightEmissionMask', new Float32BufferAttribute(new Array(lampGeometry.attributes.position.count).fill(1), 1));
+  lampGeometry.setAttribute('nightFixtureActive', new Float32BufferAttribute([0, 1], 1));
+  const lamp = new InstancedMesh(lampGeometry, lampMaterial, 2); lamp.name = 'destructible-lamp';
+  const instance = new Matrix4().makeRotationY(.5).setPosition(10, 2, 15);
+  lamp.setMatrixAt(1, instance); world.add(lamp);
+  const windowMaterial = new MeshStandardMaterial({ emissive: 0xffbd72, emissiveIntensity: .55 });
+  windowMaterial.userData.nightLightKind = 'window';
+  const windowGeometry = new BoxGeometry(1, 2, .03), pane = new Mesh(windowGeometry, windowMaterial);
+  pane.position.set(0, 2, 0); world.add(pane);
+  actor.userData.nightLightCoverage = { headlights: 2, shtora: 0 };
+  const runtime = { group, lights: [spot, spot2, point], emitterCount: 4 };
+  const probe = { epochs: 0, beginStateEpoch() { this.epochs++; } };
+  const window = { __equipmentDamageProbe: probe, __DEBUG: { scene, camera, world: { group: world },
+    game: { player: { visual: { root: actor } } }, nightLighting: { current: runtime } } };
+  load('installNightLightProbe', { window })();
+  try {
+    const nodes = scene.children.length;
+    const receipt = probe.readNightLighting();
+    assert.equal(receipt.ownerAvailable, true); assert.equal(receipt.attached, true);
+    assert.equal(receipt.uuid, group.uuid); assert.equal(receipt.emitterCount, 4);
+    assert.deepEqual(receipt.playerCoverage, actor.userData.nightLightCoverage);
+    assert.equal(receipt.materials.length, 2);
+    assert(receipt.materials.some(material => material.uuid === windowMaterial.uuid && material.kind === 'window'));
+    const front = probe.stageNightLightCloseup('headlight');
+    assert.deepEqual(front.point, [1, 1, 2]); assert.deepEqual(front.direction, [0, 0, 1]);
+    assert.equal(front.ownerUuid, spot.uuid);
+    const fixture = probe.stageNightLightCloseup('world');
+    assert.equal(fixture.kind, 'streetlamp'); assert.equal(fixture.slot, 1,
+      'a destroyed instance must never be chosen for the fixture screenshot');
+    lamp.updateWorldMatrix(true, false);
+    const expected = camera.position.clone().set(.98, 3.895, 0).applyMatrix4(instance).applyMatrix4(lamp.matrixWorld);
+    assert(expected.distanceTo(camera.position.clone().fromArray(fixture.point)) < 1e-6,
+      'fixture seat follows the real aperture vertices plus authored instance/world transforms');
+    probe.restoreNightLightCamera();
+    assert.deepEqual([camera.position.toArray(), camera.quaternion.toArray(), camera.fov], originalCamera);
+    assert.equal(scene.children.length, nodes, 'readbacks and closeups add no fake lighting or geometry');
+    lamp.removeFromParent();
+    assert.equal(probe.stageNightLightCloseup('world').kind, 'window', 'occupied facade is an authored fallback');
+    probe.restoreNightLightCamera(); pane.removeFromParent();
+    assert.throws(() => probe.stageNightLightCloseup('world'), /No authored/);
+    probe.restoreNightLightCamera(); spot.intensity = spot2.intensity = 0;
+    assert.throws(() => probe.stageNightLightCloseup('headlight'), /No active authored/);
+    probe.restoreNightLightCamera();
+  } finally {
+    lamp.dispose(); lampGeometry.dispose(); lampMaterial.dispose(); windowGeometry.dispose(); windowMaterial.dispose();
+    spot.dispose(); spot2.dispose(); point.dispose();
+  }
+}
+
+{
+  const calls = [], window = { __DEBUG: {
+    battleAtmosphere: { async prepare(seed, map) { calls.push(['atmosphere', seed, map]); } },
+    nightLighting: { async prepare() { calls.push(['lamps']); } },
+  }, __equipmentDamageProbe: { beginStateEpoch() { calls.push(['epoch']); } } };
+  const prepare = load('atmosphereReceipt', { window, evaluateWithin: async (callback, argument) => callback(argument),
+    settle: async count => { calls.push(['render', count]); }, readVisualState: () => good.night });
+  assert.equal(await prepare(3, 'winter'), good.night);
+  assert.deepEqual(calls, [['atmosphere', 3, 'winter'], ['lamps'], ['epoch'], ['render', 30]],
+    'explicit atmosphere changes prepare actual lamps before observed frames and receipt capture');
 }
 
 const checkEquipmentGeometry = load('checkEquipmentGeometry', { assert });
@@ -209,6 +310,7 @@ async function exerciseEquipment(fault = null) {
     game: { player: { visual } },
     battleAtmosphere: { async prepare(...args) { assert.deepEqual(args, [1, 'verdant']); },
       current: { weather: { condition: 'clear', timeOfDay: 'day' } } },
+    nightLighting: { async prepare() {} },
     scene: { getObjectByName() { return null; } },
     camera: { position: vector, lookAt() {}, updateProjectionMatrix() {} },
   };
@@ -243,16 +345,18 @@ async function exerciseEquipment(fault = null) {
 }
 await exerciseEquipment(); await exerciseEquipment('duplicate'); await exerciseEquipment('reset');
 
-for (const fault of [null, 'attached', 'weather', 'lighting']) {
+for (const fault of [null, 'attached', 'weather', 'lighting', 'lamps', 'lamp-glow']) {
   const baseline = { ...structuredClone(good.day), phase: 'garage', weather: null };
   const restored = structuredClone(baseline);
   if (fault === 'attached') restored.precipitationAttached = true;
   if (fault === 'weather') restored.weather = good.night.weather;
   if (fault === 'lighting') restored.skies = [.035];
+  if (fault === 'lamps') restored.nightLighting.attached = true;
+  if (fault === 'lamp-glow') restored.nightLighting.lights[0].intensity = 80;
   const debug = { shotMode: true, async enterGarage() {} };
   let entries = 0;
   debug.enterGarage = async () => { entries++; };
-  const enterAuthoredGarage = load('enterAuthoredGarage', { assert, assertRenderedState,
+  const enterAuthoredGarage = load('enterAuthoredGarage', { assert, assertRenderedState, validNightLightState,
     evaluateWithin: async callback => callback(), readVisualState: () => restored,
     settle: async count => assert.equal(count, 2),
     window: { __DEBUG: debug, __equipmentDamageProbe: { beginStateEpoch() {} } },
