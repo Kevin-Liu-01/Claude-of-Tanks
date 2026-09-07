@@ -106,3 +106,28 @@ export function stampHardstandRoadMask(
     }
   }
 }
+
+/**
+ * Construction/placement exclusion for the painted apron, not the combined
+ * road network. The 2 m rounded shoulder covers the mask's 1.25 m feather.
+ */
+export function createHardstandVegetationExclusion(
+  strips: readonly HardstandConfig[] | undefined,
+): ((x: number, z: number) => boolean) | null {
+  if (!strips?.length) return null;
+  const frames = new Float64Array(strips.length * 6);
+  for (let i = 0; i < strips.length; i++) {
+    const strip = strips[i], angle = (strip.yawDeg ?? 0) * Math.PI / 180;
+    frames.set([strip.x, strip.z, Math.cos(angle), Math.sin(angle),
+      strip.width * 0.5, strip.length * 0.5], i * 6);
+  }
+  return (x, z) => {
+    for (let at = 0; at < frames.length; at += 6) {
+      const dx = x - frames[at], dz = z - frames[at + 1];
+      const across = Math.max(0, Math.abs(dx * frames[at + 2] - dz * frames[at + 3]) - frames[at + 4]);
+      const along = Math.max(0, Math.abs(dx * frames[at + 3] + dz * frames[at + 2]) - frames[at + 5]);
+      if (across * across + along * along <= 4) return true;
+    }
+    return false;
+  };
+}

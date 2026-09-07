@@ -230,7 +230,7 @@ for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
 assert.ok(checkedWater > 300, 'real river/pond cores are exercised, not just synthetic geometry');
 assert.ok(worstBankGrade < 0.75, `graded near shores exceed 75% slope (${worstBankGrade}; ${worstBankSite})`);
 const source = await readFile(new URL('./terrain.ts', import.meta.url), 'utf8');
-assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt\)/,
+assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt,/,
   'the existing texture bake and live water query share the protected wetness callback');
 console.log(`liquidMarshSurface.selftest: ${checkedWater} real water samples; worst near-bank grade ${worstBankGrade.toFixed(3)}`);
 console.log(JSON.stringify(receipts));

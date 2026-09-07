@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
+import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
 import { createHeightField } from './terrain.ts';
 import airfield from './maps/airfield.ts';
 
@@ -54,3 +54,42 @@ for (const seed of [1337, 2049]) {
   }
 }
 console.log('hardstandSurface.selftest: full-width plane, pavement mask, dry drive and connected aprons passed');
+
+assert.equal(createHardstandVegetationExclusion(undefined), null);
+assert.equal(createHardstandVegetationExclusion([]), null);
+for (const yawDeg of [0, 27, 90, -137]) {
+  const strip = { x: 20, z: -60, width: 36, length: 180, yawDeg };
+  const excluded = createHardstandVegetationExclusion([strip]);
+  const angle = yawDeg * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
+  const point = (a, b) => [strip.x + c * a + s * b, strip.z - s * a + c * b];
+  for (const a of [-19.25, -18, 0, 18, 19.25]) for (const b of [-90, 0, 90]) {
+    assert.equal(excluded(...point(a, b)), true, 'paint and feather stay clear');
+  }
+  for (const [a, b] of [[20.01, 0], [0, 92.01], [19.5, 91.5], [200, 200]]) {
+    assert.equal(excluded(...point(a, b)), false, 'exclusion stays local with rounded corners');
+  }
+}
+const multiple = createHardstandVegetationExclusion([
+  { x: -100, z: 0, width: 20, length: 40 },
+  { x: 100, z: 0, width: 20, length: 40, yawDeg: 90 },
+]);
+assert.equal(multiple(-100, 0), true);
+assert.equal(multiple(100, 0), true);
+assert.equal(multiple(0, 0), false, 'separate aprons do not bridge their intervening land');
+
+for (const seed of [1337, 2049, 7719]) {
+  const field = createHeightField(seed, airfield);
+  const noApron = createHeightField(seed, { ...airfield, terrain: { ...airfield.terrain, hardstands: [] } });
+  let controls = 0;
+  for (let z = -480; z <= 480; z += 8) for (let x = -480; x <= 480; x += 8) {
+    if (Math.abs(x) <= 20 && Math.abs(z) <= 382) continue;
+    assert.equal(field._noVeg(x, z), noApron._noVeg(x, z), 'remote exclusion is not a road-mask side effect');
+    if (field._roadDist(x, z) < 4.3 && !noApron._noVeg(x, z)) controls++;
+  }
+  assert.ok(controls > 100, 'real unrelated road sites exercise the regression');
+}
+const lakeField = createHeightField(1337, { ...airfield,
+  terrain: { ...airfield.terrain, lakes: [{ x: 300, z: 280, r: 35 }], marshes: [], softLakes: true } });
+assert.equal(lakeField._noVeg(300, 280), true, 'existing liquid-water exclusion is retained');
+assert.equal(lakeField._noVeg(300, 340), false);
+console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls and additive water passed');

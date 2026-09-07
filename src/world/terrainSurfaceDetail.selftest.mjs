@@ -13,7 +13,7 @@ for (const id of MAP_IDS) {
 }
 assert.equal(selectTerrainLandformMask(undefined, landform), landform);
 assert.equal(selectTerrainLandformMask({}, null), null);
-assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt\)/);
+assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt,/);
 assert.match(source, /uRockGate = \{ value: rockMask \? 1 : 0 \}/,
   'mask bake and shader agree about the single blue-channel owner');
 assert.equal((source.match(/texture2D\(/g) || []).length, 78,

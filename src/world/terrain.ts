@@ -1,3 +1,4 @@
+import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
 // procedural PBR ground material. Pure part (createHeightField) is node-runnable.
 // Contract: docs/ARCHITECTURE.md §2.7, §3.2; visuals per docs/research/graphics-aaa.md §6–7.
@@ -19,8 +20,10 @@ import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
-import { stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
+import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import { roadCoreMask } from './roadMaskProfile.ts';
+import { stampShoreDirtMask } from './shoreDirtMask.ts';
+import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -69,6 +72,8 @@ interface SpawnPoint {
   x: number;
   z: number;
   yaw?: number;
+  /** Presence opts Alpha into vehicle-right columns and backward-facing rows. */
+  formation?: { columnSpacingM: number; rowSpacingM: number };
 }
 
 interface SpawnConfig {
@@ -144,6 +149,7 @@ interface TerrainSettings {
   softLakes?: boolean;
   clearMarshVeg?: boolean;
   hardstands?: readonly HardstandConfig[];
+  workedGround?: readonly WorkedGroundPatch[];
   quarryBenches?: boolean;
 }
 
@@ -170,6 +176,8 @@ interface SplatConfig {
   iceDrift?: number;
   seaFoam?: number;
   seaRamp?: readonly [number, number];
+  /** Construction-only 3–10m earthy bank in existing mask A; water is unchanged. */
+  shoreDirt?: boolean;
   midRelief?: number;
   fieldPatch?: number;
   sandMacro?: number;
@@ -180,6 +188,8 @@ interface SplatConfig {
 }
 
 export interface TerrainMapConfig extends HorizonMapConfig {
+  /** Opt-in bot route preference. Omission preserves existing wading semantics. */
+  navigationWaterPolicy?: NavigationWaterPolicy;
   terrain?: Partial<TerrainSettings>;
   spawns?: SpawnConfig;
   splat?: SplatConfig;
@@ -201,6 +211,7 @@ export interface TerrainWarmPoint {
 }
 
 export interface HeightField {
+  readonly navigationWaterPolicy?: NavigationWaterPolicy;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
@@ -528,6 +539,7 @@ export function createHeightField(
 ): HeightField {
   const layout = createLayout(cfg);
   const T = layout.terrain;
+  const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const _LAKES = layout.lakes;
@@ -1181,14 +1193,13 @@ export function createHeightField(
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
     getWaterMaskAt,
+    ...(cfg?.navigationWaterPolicy
+      ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
-    // Only hardstand maps need this wrapper. Their existing road-distance
-    // grid already includes the pavement; no retained footprint/query loop.
-    _noVeg: T.hardstands?.length
-      ? (x, z) => gridSample(gRoadDist, x, z) < 4.3 || noVeg(x, z)
-      : noVeg,
+    // Keep pavement clear without excluding vegetation along unrelated roads.
+    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     _layout: layout,
     _mesaW: mesaWeight,
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),
@@ -1809,14 +1820,15 @@ function makeGroundLayer(
   };
 }
 
-// R = road core, G = wheel ruts, B = marsh wetness, A = village worn ground.
+// R = road core, G = wheel ruts, B = marsh wetness, A = worn village/bank soil.
 // Road coverage is filtered to the actual 2–4 metre texel footprint. Keeping
 // sub-texel hard borders here causes repeated scallops after interpolation.
-function makeMaskTexture(
+export function makeMaskTexture(
   seedNoi: SimplexNoise,
   layout: TerrainLayout,
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
+  shoreDirtStart: number | null = null,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
@@ -1912,6 +1924,14 @@ function makeMaskTexture(
   paintMaskPixels();
   if (layout.terrain.hardstands?.length) {
     stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
+  }
+  if (shoreDirtStart !== null) {
+    // The road-distance raster has no further consumers. Reuse it without
+    // touching the height field's separate persistent road/water queries.
+    stampShoreDirtMask(px, dist, s, MAP_SIZE, shoreDirtStart);
+  }
+  if (layout.terrain.workedGround?.length) {
+    stampWorkedGroundMask(px, s, MAP_SIZE, layout.terrain.workedGround, seedNoi);
   }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
@@ -2977,7 +2997,8 @@ function* createSplatMaterialSteps(
   // sourcedTextures.ts and on any load failure.
   const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
-  const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt);
+  const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null);
   yield;
   const noiseTex = makeShaderNoiseTexture(3011);
   yield;

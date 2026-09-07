@@ -170,7 +170,7 @@ const newMapPalettes = {
   whiteout: ['winter', 'winter'],
   orchard: ['verdant', 'orchard'],
   longleaf: ['verdant', 'frontier'],
-  mangrove: ['delta', 'delta'],
+  mangrove: ['monsoon', 'delta'],
   saltwind: ['coastal', 'coastal'],
   reservoir: ['frontier', 'frontier'],
 };
