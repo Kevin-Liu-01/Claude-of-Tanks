@@ -315,6 +315,18 @@ covers the default countdown, a one-tick countdown, no countdown, firing, and
 control ownership. `multiplayerBotPresentation.selftest.mjs` follows real bot
 angles through compact deltas, interpolation, and per-frame visual updates.
 
+Readiness is reversible while the room is waiting. The Garage provides a
+direct Ready / Not ready action beside its persistent room reminder; the
+room drawer and results screen expose the same command. Cancelling readiness
+unlocks that player's loadout and prevents the host from starting until all
+active players ready again. Initial lobbies route through the menu's guarded
+session; retained rooms use the room coordinator. Spectators, disconnected
+players, and rooms already starting or playing cannot change readiness.
+Authority orders start/unready races: an accepted start remains atomic, while
+an accepted unready blocks the following start. `lobbyReadiness.selftest.mjs`
+exercises both private/LAN room modes and rematch votes; coordinator tests
+guard delayed commands from reaching a replacement room.
+
 `src/net/lobbyRuntime.ts` is the strict transport owner around that policy. It
 validates serialized room state before client admission, rejects stale sequence
 numbers, bounds the temporary match-handoff inbox, and transfers each live

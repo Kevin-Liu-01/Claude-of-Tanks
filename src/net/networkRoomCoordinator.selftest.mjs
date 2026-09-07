@@ -20,6 +20,7 @@ const menu = {
   detachActiveRoom() { calls.push(['detach-menu']); },
   showActiveRoom() { calls.push(['show-menu']); return true; },
   syncGarageSelection() { calls.push(['sync-selection']); },
+  setReady(ready) { calls.push(['menu-ready', ready]); return true; },
 };
 const chat = {
   append(message) { calls.push(['chat', message.id]); },
@@ -68,6 +69,16 @@ coordinator.handleLobbyChange({ state: room(), playerId: 'p1', role: 'host' });
 coordinator.syncPendingLobbySelection();
 await Promise.resolve();
 assert.ok(calls.some(([name]) => name === 'sync-selection'));
+assert.equal(calls.find(([name]) => name === 'garage')[1].canSetReady, true);
+assert.equal(coordinator.setReady(true), true, 'Garage can ready in the initial lobby');
+await Promise.resolve();
+assert.deepEqual(calls.at(-1), ['menu-ready', true]);
+const pendingReady = room();
+pendingReady.players[0].ready = true;
+coordinator.handleLobbyChange({ state: pendingReady, playerId: 'p1', role: 'host' });
+assert.equal(coordinator.setReady(false), true, 'Garage can unready before the first battle');
+await Promise.resolve();
+assert.deepEqual(calls.at(-1), ['menu-ready', false]);
 
 coordinator.attach(room());
 await Promise.resolve();
@@ -97,12 +108,15 @@ stateListener(room());
 assert.equal(await coordinator.showActiveRoom(), true,
   'a later complete canonical room state restores lobby presentation');
 assert.equal(coordinator.setReady(true), true);
+assert.equal(coordinator.setReady(false), true, 'retained-room Garage can withdraw readiness');
+assert.deepEqual(calls.at(-1), ['command', { type: 'set_ready', ready: false }]);
 assert.equal(coordinator.startRound(), true);
 assert.ok(calls.some(([name, command]) =>
   name === 'command' && command.type === 'start' && command.matchSeed === 99));
 
 const visibleMenuUpdates = calls.filter(([name]) => name === 'update-menu').length;
 stateListener(room(2, 'starting'));
+assert.equal(coordinator.setReady(false), false, 'launch barrier rejects late Garage unready');
 await Promise.resolve();
 assert.equal(calls.filter(([name]) => name === 'update-menu').length, visibleMenuUpdates,
   'battle room revisions do not rebuild an invisible lobby');
@@ -185,4 +199,73 @@ for (const successor of ['lobby', 'match']) {
   await Promise.resolve();
 }
 
-console.log('networkRoomCoordinator.selftest: lobby, chat, commands, and rematch lifecycle passed');
+// The Garage shortcut must be just as strict as the full lobby: neither an
+// incomplete seat nor a retired/launching owner can submit readiness changes.
+for (const reason of ['spectator', 'disconnected', 'no-vehicle', 'unknown', 'starting', 'playing']) {
+  const deniedRoom = room();
+  if (reason === 'spectator') deniedRoom.players[0].team = 'spectator';
+  if (reason === 'disconnected') deniedRoom.players[0].connected = false;
+  if (reason === 'no-vehicle') deniedRoom.players[0].specId = null;
+  if (reason === 'unknown') deniedRoom.players = deniedRoom.players.slice(1);
+  if (reason === 'starting' || reason === 'playing') deniedRoom.phase = reason;
+  for (const owner of ['initial', 'retained']) {
+    const guard = createNetworkRoomCoordinator(options);
+    if (owner === 'initial') guard.handleLobbyChange({ state: deniedRoom, playerId: 'p1' });
+    else guard.attach(deniedRoom);
+    const before = calls.filter(([name]) => name === 'command' || name === 'menu-ready').length;
+    assert.equal(guard.setReady(false), false, `${owner} ${reason} cannot change readiness`);
+    await Promise.resolve();
+    assert.equal(calls.filter(([name]) => name === 'command' || name === 'menu-ready').length, before);
+    const status = calls.filter(([name]) => name === 'garage').at(-1)?.[1];
+    assert.equal(status?.canSetReady ?? false, false, `${owner} ${reason} disables the Garage shortcut`);
+    guard.clear();
+    await Promise.resolve();
+  }
+}
+
+for (const unavailable of ['no-match', 'replaced-owner', 'closed-client', 'no-command', 'rejected-command']) {
+  let unavailableMatch = { ...match, client: { closed: false } };
+  const guard = createNetworkRoomCoordinator({ ...options, getMatch: () => unavailableMatch });
+  guard.attach(room());
+  if (unavailable === 'no-match') unavailableMatch = null;
+  if (unavailable === 'replaced-owner') unavailableMatch = { ...match };
+  if (unavailable === 'closed-client') unavailableMatch.client.closed = true;
+  if (unavailable === 'no-command') unavailableMatch.roomCommand = undefined;
+  if (unavailable === 'rejected-command') unavailableMatch.roomCommand = () => false;
+  const before = calls.filter(([name]) => name === 'command').length;
+  assert.equal(guard.setReady(false), false, `${unavailable} cannot acknowledge a readiness change`);
+  assert.equal(calls.filter(([name]) => name === 'command').length, before);
+  guard.clear();
+  await Promise.resolve();
+}
+
+for (const successor of ['closed', 'same-code-rejoin', 'other-room', 'starting', 'spectator', 'disconnected', 'retained']) {
+  let resolveMenu;
+  const deferred = new Promise((resolve) => { resolveMenu = resolve; });
+  const guard = createNetworkRoomCoordinator({ ...options, getPlayMenu: () => deferred });
+  guard.handleLobbyChange({ state: room(), playerId: 'p1' });
+  assert.equal(guard.setReady(false), true, 'valid initial-lobby click waits for the menu owner');
+  if (successor === 'closed' || successor === 'same-code-rejoin') guard.clear();
+  if (successor === 'same-code-rejoin') guard.handleLobbyChange({ state: room(), playerId: 'p1' });
+  if (successor === 'other-room') {
+    guard.handleLobbyChange({ state: { ...room(), roomCode: 'OTHER2' }, playerId: 'p1' });
+  }
+  if (successor === 'starting') guard.handleLobbyChange({ state: room(1, 'starting'), playerId: 'p1' });
+  if (successor === 'spectator' || successor === 'disconnected') {
+    const changed = room();
+    if (successor === 'spectator') changed.players[0].team = 'spectator';
+    else changed.players[0].connected = false;
+    guard.handleLobbyChange({ state: changed, playerId: 'p1' });
+  }
+  if (successor === 'retained') guard.attach(room());
+  const before = calls.filter(([name]) => name === 'menu-ready').length;
+  resolveMenu(menu);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(calls.filter(([name]) => name === 'menu-ready').length, before,
+    `deferred initial-lobby readiness cannot leak into ${successor}`);
+  guard.clear();
+  await Promise.resolve();
+}
+
+console.log('networkRoomCoordinator.selftest: lobby, chat, readiness guards, commands, and rematch lifecycle passed');

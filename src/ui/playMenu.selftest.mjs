@@ -38,4 +38,19 @@ assert.match(source, /\.room-failure button\.action\{min-height:44px/);
 assert.match(source, /\.room-failure:focus-visible\{outline:2px/);
 assert.match(responsive, /body\[data-cot-width='compact'\] \.cot-play \.room-failure-actions,\s*body\[data-cot-width='phone'\] \.cot-play \.room-failure-actions\{display:grid;grid-template-columns:1fr\}/,
   'room recovery actions use the shared compact and phone viewport policy');
+assert.match(source, /readyBtn\.disabled = spectator \|\| !player\.connected \|\| !player\.specId \|\| next\.phase !== 'waiting'/,
+  'ready players retain the enabled unready action while waiting');
+assert.match(source, /if \(me\) setReady\(!me\.ready\)/,
+  'the drawer routes its toggle through the same guarded command as Garage');
+assert.match(source, /setReady\(ready: boolean\): boolean/);
+assert.match(source, /\(!activeRoom && !session\) \|\| handedOff \|\| state\?\.phase !== 'waiting'/,
+  'the quick control cannot change a handed-off or retired lobby');
+const garage = await readFile(new URL('./garage.ts', import.meta.url), 'utf8');
+const garageCss = await readFile(new URL('./garage.css', import.meta.url), 'utf8');
+assert.match(garage, /class="cot-room-ready" type="button" disabled aria-pressed="false"/);
+assert.match(garage, /if \(!roomStatus\?\.canSetReady\) return;\s*emit\('ui:click', \{\}\);\s*emit\('ui:roomReady', \{ ready: !roomStatus\.ready \}\)/,
+  'the Garage toggles canonical readiness, without changing it optimistically');
+assert.match(garage, /roomReady\.disabled = !status\?\.canSetReady/);
+assert.match(garageCss, /\.cot-room-reminder,\.cot-room-ready\{min-height:44px/,
+  'both room actions keep full mobile touch targets');
 console.log('playMenu.selftest: supported mode boundary, safe persistent alert/actions, and stale request presentation guards');

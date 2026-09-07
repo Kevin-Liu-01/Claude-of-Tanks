@@ -512,6 +512,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/localWeaponPresentation.selftest.mjs',
     'src/net/adverseNetworkTransport.selftest.mjs',
     'src/net/privateMatchHandoff.selftest.mjs',
+    'src/net/lobbyReadiness.selftest.mjs',
     'src/net/multiplayerBotPresentation.selftest.mjs',
     'src/net/privateRoomConnectionRuntime.selftest.mjs',
     'src/net/rankedServiceClient.selftest.mjs',

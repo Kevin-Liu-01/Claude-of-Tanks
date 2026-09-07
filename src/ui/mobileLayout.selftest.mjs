@@ -48,7 +48,7 @@ assert.equal((garageSource.match(/<canvas width="64" height="44">/g) || []).leng
 assert.doesNotMatch(garage, /cot-garage-tools-(?:trigger|menu)/,
   'compact garage panel actions must not regress to a single setup dropdown');
 assert.match(garage,
-  /\.cot-garage-preview-card\{[^}]*height:var\(--cot-preview-card-height,150px\)[^}]*grid-template-rows:18px auto 22px[\s\S]*\.cot-garage-map-preview,\.cot-garage-camo-preview\{[^}]*aspect-ratio:16\/9;[^}]*background-size:cover[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-tools\{\s*display:flex;left:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-left\)\);right:auto;\s*top:76px;bottom:auto[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-preview-card\{\s*height:var\(--cot-preview-card-height\);min-height:0;flex:0 0 auto/,
+  /\.cot-garage-preview-card\{[^}]*height:var\(--cot-preview-card-height,150px\)[^}]*grid-template-rows:18px auto 22px[\s\S]*\.cot-garage-map-preview,\.cot-garage-camo-preview\{[^}]*aspect-ratio:16\/9;[^}]*background-size:cover[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-tools\{\s*display:flex;left:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-left\)\);right:auto;\s*top:calc\(76px \+ var\(--cot-room-row-space,0px\)\);bottom:auto[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-preview-card\{\s*height:var\(--cot-preview-card-height\);min-height:0;flex:0 0 auto/,
   'map and camouflage cards must share one bounded anatomy and preserve widescreen preview proportions');
 assert.match(garage,
   /--cot-roster-bottom:max\(8px,env\(safe-area-inset-bottom\)\);[\s\S]*--cot-country-bottom:calc\(var\(--cot-roster-bottom\) \+ var\(--cot-roster-height\) \+ var\(--cot-stack-gap\)\);[\s\S]*--cot-side-panel-bottom:calc\(var\(--cot-country-bottom\) \+ var\(--cot-country-height\) \+ var\(--cot-stack-gap\)\)/,
@@ -93,8 +93,14 @@ assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
   'portrait phones must place Battle below the brand and global controls instead of overlapping them');
 assert.match(garage,
-  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='maps'\] \.cot-leftcol,[\s\S]*top:max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\)/,
-  'portrait garage drawers must begin below the lowered Battle control');
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='maps'\] \.cot-leftcol,[\s\S]*top:calc\(max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\) \+ var\(--cot-room-row-space,0px\)\)/,
+  'portrait garage drawers must begin below the lowered Battle control and any room-readiness row');
+assert.match(garageSource, /root\.classList\.toggle\('has-room', !!status\)/,
+  'room departure must release the space reserved for readiness controls');
+assert.match(garage, /\.cot-garage\.has-room\{--cot-room-row-space:52px;\}/,
+  'connected rooms must reserve a full touch-target row above compact previews and drawers');
+assert.match(playMenu, /\.cot-play button\[data-action="ready"\]\{min-height:44px\}/,
+  'drawer readiness must retain a full-size touch target');
 assert.match(garage,
   /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*setGaragePanel\(''\);/,
   'page navigation must close garage disclosures instead of stacking over them');
