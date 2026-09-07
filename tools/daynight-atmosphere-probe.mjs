@@ -3,18 +3,23 @@
 // Screenshots and state checks only: no performance or memory certification.
 // From repo root after npm run build:
 // node tools/daynight-atmosphere-probe.mjs --out=/tmp/cot-daynight-UNIQUE [--gate]
+// Same-build diagnostic only: add --window-census-source=/absolute/rejected-report.json
+// to record bounded pane/occluder receipts, not approve visuals or run the matrix.
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
+import { collectNightWindowCensus } from './night-window-census.mjs';
 
 const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
 const out = resolve(outputArgument);
+const censusSourcePath = process.argv.find(x => x.startsWith('--window-census-source='))?.slice('--window-census-source='.length);
+const censusSource = censusSourcePath ? JSON.parse(readFileSync(resolve(censusSourcePath), 'utf8')) : null;
 mkdirSync(out); // Refuse existing evidence; never overwrite or mix probe runs.
 const report = { schemaVersion: 6, startedAt: new Date().toISOString(),
   method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; actual bounded headlights, authored fixture/window emission, retained equipment damage and Garage cleanup. Staged screenshots suspend post adaptivity after entry, not quality-adaptation acceptance. No performance measurement or physical-device certification.',
@@ -307,6 +312,27 @@ async function nativeGraphics(label) {
   assert(validNativeGraphics(receipt),
   `Native error-free WebGL is required: ${receipt.gpu}`);
   return receipt;
+}
+
+async function windowCensus() {
+  assert.equal(report.build, censusSource.build, 'Census must use the exact rejected production build');
+  const source = censusSource.screenshots.find(row => row.label === 'high-verdant-night')?.before;
+  assert(source?.camera && source.weather?.seed, 'Census requires the original rendered Verdant night state');
+  await stage('verdant');
+  await evaluateWithin(camera => {
+    const d = window.__DEBUG;
+    d.camera.position.fromArray(camera[0]); d.camera.quaternion.fromArray(camera[1]);
+    d.camera.fov = camera[2]; d.camera.updateProjectionMatrix();
+  }, source.camera);
+  await atmosphereReceipt(source.weather.seed, 'verdant');
+  const modules = readdirSync('dist/assets').filter(file => /^three\.core-.+\.js$/.test(file));
+  assert.equal(modules.length, 1, 'Use one exact retained production Three core');
+  report.windowCensus = await evaluateWithin(collectNightWindowCensus,
+    { moduleUrl: `/assets/${modules[0]}`, limit: 256 }, 120_000, 'Bounded rendered pane rejection census');
+  report.diagnosticOnly = true;
+  report.visualAcceptance = 'diagnostic-only-no-visual-approval'; save();
+  await nativeGraphics('graphicsAfterWindowCensus');
+  await screenshot('window-census-source-scene', await evaluateWithin(readVisualState));
 }
 
 function seedFor(biome, timeOfDay) {
@@ -728,6 +754,13 @@ try {
     assert.equal(garageBaseline.phase, 'garage'); assert.equal(garageBaseline.weather, null);
     report[`${tier.label}-garageBaseline`] = garageBaseline; save();
     await nativeGraphics(`${tier.label}-graphics`);
+    if (censusSource) {
+      assert.equal(tier.label, 'high');
+      await windowCensus();
+      await stopFrameObserver();
+      await within(page.close(), 10_000, 'Page close');
+      break;
+    }
     await dayNightPictures(tier);
     if (tier.label === 'high') {
       await focusedNightFixturePictures();
@@ -743,7 +776,7 @@ try {
     await stopFrameObserver();
     await within(page.close(), 10_000, 'Page close');
   }
-  report.passed = report.equipment.applied === true && report.equipment.duplicate === false
+  report.passed = !censusSource && report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
     && report.focusedFixtures.length === 2 && report.focusedFixtures.every(row => Object.values(row.checks).every(Boolean))
     && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.structuralPassed)
