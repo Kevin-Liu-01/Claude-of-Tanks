@@ -1,5 +1,6 @@
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
@@ -7684,7 +7685,13 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // land directly on the raised shoulder bridges.
   for (const s of [-1, 1]) {
     P.add('hull', box(0.34, 0.18, 0.25), s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
-    for (const dx of [-0.075, 0.075]) P.add('hullGlass', cylY(0.047, 0.052, 0.025, 10), s * 1.40 + dx, 1.36, 2.76);
+    // These existing discs faced upward. Seat their apertures in the actual
+    // canted cassette front, with 5.5 mm of rear stock entering its housing.
+    for (const dx of [-0.075, 0.075]) {
+      const lens = markVehicleNightLens(cylY(0.047, 0.052, 0.025, 10).rotateX(Math.PI / 2), 'headlight');
+      P.add('hullGlass', KIT.xform(lens, dx, 0.025, 0.132),
+        s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
+    }
     P.add('hullDark', box(0.38, 0.025, 0.30), s * 1.40, 1.39, 2.66, -0.18, -s * 0.18, 0);
     P.add('hullDark', torus(0.105, 0.024, 14), s * 0.73, 0.66, 3.09, Math.PI / 2, 0, 0);
   }

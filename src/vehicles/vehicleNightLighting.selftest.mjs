@@ -118,10 +118,11 @@ if (process.argv.includes('--fleet')) {
     'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x',
   ]);
   const requestedIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',');
+  const physicalIds = ['m1a3', 'mbt70', 't90m', 't90m_proryv'];
   const allIds = process.argv.includes('--all') ? (await import('./specs.ts')).DEVELOPMENT_TANK_IDS : null;
   const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
-  const ids = (requestedIds ?? allIds ?? ['m48', ...tejasIds, 't90a_vladimir', 't90a_x']).slice(offset, offset + count);
+  const ids = (requestedIds ?? allIds ?? (process.argv.includes('--physical') ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -154,7 +155,7 @@ if (process.argv.includes('--fleet')) {
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
       if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
       if (shtoraIds.includes(id)) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
-      if (tejasIds.includes(id) || process.argv.includes('--exposed')) {
+      if (tejasIds.includes(id) || process.argv.includes('--exposed') || process.argv.includes('--physical')) {
         const hull = visual.root.getObjectByName('hull');
         assert.ok(hull, `${id}/${quality} has the authored hull to test against`);
         let checked = 0;
@@ -170,9 +171,20 @@ if (process.argv.includes('--fleet')) {
           }
         });
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
+        if (physicalIds.includes(id)) assert.equal(checked, id.startsWith('t90') ? 4 : 2,
+          `${id}/${quality} restores only the existing lamp apertures`);
       }
     }
-    rows.push({ id, quality, meshCount, materialCount: materials.size, vertices, digest: hash.digest('hex'), maskBytes, coverage });
+    const hull = visual.root.getObjectByName('hull'), hullHash = createHash('sha256');
+    if (hull?.isMesh) {
+      hullHash.update(JSON.stringify(hull.matrixWorld.elements));
+      for (const key of ['position', 'normal', 'uv', 'color']) {
+        const attribute = hull.geometry.getAttribute(key);
+        if (attribute) hullHash.update(Buffer.from(attribute.array.buffer, attribute.array.byteOffset, attribute.array.byteLength));
+      }
+      if (hull.geometry.index) hullHash.update(Buffer.from(hull.geometry.index.array.buffer));
+    }
+    rows.push({ id, quality, meshCount, materialCount: materials.size, vertices, digest: hash.digest('hex'), hullDigest: hullHash.digest('hex'), maskBytes, coverage });
     visual.dispose();
   }
   console.log('NIGHT_FLEET_ORACLE ' + JSON.stringify(rows));
