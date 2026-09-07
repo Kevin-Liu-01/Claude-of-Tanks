@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -110,6 +111,7 @@ interface AbramsHullConfig {
   readonly tipYOff?: number;
   readonly rearFlapCamo?: boolean;
   readonly cleanBow?: boolean;
+  readonly authoredBowLights?: boolean;
   readonly noCable?: boolean;
   readonly noRearFace?: boolean;
   readonly sootZ?: number;
@@ -1507,7 +1509,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
       P.add('hullDetail', cylY(0.085 * s, 0.085 * s, 0.03, 12), side * 1.1 * s, deckAt(g, glacisTopZ - 0.5) + 0.015, glacisTopZ - 0.5);
       P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, g.nose - 0.3);
-      headlight(P, side * bowLightX, noseTipY - 0.12, g.nose - 0.21, -0.12, 0.045 * s);
+      headlight(P, side * bowLightX, noseTipY - 0.12, g.nose - 0.21, -0.12, 0.045 * s, !g.authoredBowLights);
       // g.cleanBow (visual r2, tejas): the heavy near-black brush-guard bars +
       // shackle rings read as debris fragments scattered on the glacis at
       // critic zoom (fleet class: isu122s orange fragments). Slim scheme-tone
@@ -1996,6 +1998,9 @@ const TEJAS_HULL: AbramsHullConfig = {
   // no glacis cable, rear-face kit authored on the visible walls, soot on
   // the visible -3.937 plane (the default rearZ+0.012 sat inside the loft).
   rearFlapCamo: true, cleanBow: true, noCable: true, noRearFace: true,
+  // This family's rebuilt nose encloses the inherited drums. Its visible
+  // forward pod lenses below own lighting; retain the old geometry unlit.
+  authoredBowLights: true,
   sootZ: -3.9405,
   // Visual r5 fleet law: skirt seam/clip/trim ink -> hullShadow mid-tier.
   softSeams: true,
@@ -4193,7 +4198,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // in the body classification for hullLengthM)
     for (const side of [-1, 1]) {
       P.add('hull', box(0.09, 0.14, 0.058), side * 1.05, 1.27, 3.906);
-      P.add('hullDark', box(0.07, 0.12, 0.02), side * 1.05, 1.27, 3.928);
+      P.add('hullDark', markVehicleNightLens(box(0.07, 0.12, 0.02), 'headlight'), side * 1.05, 1.27, 3.928);
     }
     // Tail plan mid-step: ref rear runs -3.94 (|x|<=0.95) / -3.83 (to ±1.06) /
     // -3.635 full width; the tailPull loft carries the first and third, this

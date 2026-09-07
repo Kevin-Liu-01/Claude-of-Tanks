@@ -80,7 +80,7 @@ if (process.argv.includes('--fleet')) {
   if (baseline) {
     const { registerHooks, stripTypeScriptTypes } = await import('node:module');
     const { execFileSync } = await import('node:child_process');
-    const paths = ['tankFactoryCore.ts', 'profiles/russia.ts', 'profiles/t90X.ts'];
+    const paths = ['tankFactoryCore.ts', 'profiles/russia.ts', 'profiles/t90X.ts', 'profiles/abrams.ts'];
     const sources = new Map(paths.map(path => [new URL(path, import.meta.url).href,
       stripTypeScriptTypes(execFileSync('git', ['show', `${baseline}:src/vehicles/${path}`], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }))]));
     registerHooks({ load(url, context, next) {
@@ -88,7 +88,8 @@ if (process.argv.includes('--fleet')) {
     } });
   }
   const { createTank } = await import('./tankFactory.ts');
-  const ids = ['m48', 'm1a2_sepv3', 't90a_vladimir', 't90a_x'];
+  const tejasIds = ['m1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'];
+  const ids = ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'];
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -113,6 +114,23 @@ if (process.argv.includes('--fleet')) {
     if (!baseline) {
       if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
       if (id.startsWith('t90a')) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
+      if (tejasIds.includes(id)) {
+        const hull = visual.root.getObjectByName('hull');
+        assert.ok(hull, `${id}/${quality} has the authored hull to test against`);
+        let checked = 0;
+        visual.root.traverse(owner => {
+          for (const lamp of vehicleNightLightEmittersFor(owner)) {
+            if (lamp.kind !== 'headlight') continue;
+            const point = new THREE.Vector3().fromArray(lamp.position).applyMatrix4(owner.matrixWorld);
+            const direction = new THREE.Vector3().fromArray(lamp.direction).transformDirection(owner.matrixWorld);
+            const ray = new THREE.Raycaster(point.clone().addScaledVector(direction, .002), direction, .001, .5);
+            assert.equal(ray.intersectObject(hull, false).length, 0,
+              `${id}/${quality} actual emitting aperture is not buried behind the rebuilt bow`);
+            checked++;
+          }
+        });
+        assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
+      }
     }
     rows.push({ id, quality, meshCount, vertices, digest: hash.digest('hex'), maskBytes, coverage });
     visual.dispose();

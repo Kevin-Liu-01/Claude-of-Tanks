@@ -5138,10 +5138,13 @@ function headlight(
   z: number,
   rx = 0,
   r = 0.055,
+  nightLight = true,
 ): void {
   const P = requireGeometryAddPort(builder);
   P.add('hullDetail', cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
-  P.add('hullGlass', xform(markVehicleNightLens(cylZ(r * 0.8, 0.02, 12), 'headlight'), 0, 0, r * 0.72), x, y, z, rx, 0, 0);
+  const lens = cylZ(r * 0.8, 0.02, 12);
+  if (nightLight) markVehicleNightLens(lens, 'headlight');
+  P.add('hullGlass', xform(lens, 0, 0, r * 0.72), x, y, z, rx, 0, 0);
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
 
